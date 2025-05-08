@@ -382,6 +382,25 @@ type NameAndSchema interface {
 	Schema() sql.Schema
 }
 
+func convertColumnDefaultToString(ctx *sql.Context, def *sql.ColumnDefaultValue) (string, error) {
+	// TODO : string literals should have character set introducer
+	colDefaultStr := def.String()
+	defType := def.Type()
+
+	// These types do not need to be quoted
+	if !def.IsLiteral() || colDefaultStr == "NULL" || types.IsTime(defType) || types.IsText(defType) {
+		return colDefaultStr, nil
+	}
+	v, err := def.Eval(ctx, nil)
+	if err != nil {
+		return "", err
+	}
+	if types.IsBit(def.OutType) {
+		return fmt.Sprintf("b'%b'", v), nil
+	}
+	return fmt.Sprintf("'%v'", v), nil
+}
+
 func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, table sql.Table, schema sql.Schema, pkSchema sql.PrimaryKeySchema) (string, error) {
 	colStmts := make([]string, len(schema))
 	var primaryKeyCols []string
@@ -395,26 +414,20 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 	tableCollation := table.Collation()
 	for i, col := range schema {
 		var colDefaultStr string
+		var err error
 		if col.Default != nil && col.Generated == nil {
 			// TODO : string literals should have character set introducer
-			colDefaultStr = col.Default.String()
-			if colDefaultStr != "NULL" && col.Default.IsLiteral() && !types.IsTime(col.Default.Type()) && !types.IsText(col.Default.Type()) {
-				v, err := col.Default.Eval(ctx, nil)
-				if err != nil {
-					return "", err
-				}
-				colDefaultStr = fmt.Sprintf("'%v'", v)
+			colDefaultStr, err = convertColumnDefaultToString(ctx, col.Default)
+			if err != nil {
+				return "", err
 			}
 		}
+
 		var onUpdateStr string
 		if col.OnUpdate != nil {
-			onUpdateStr = col.OnUpdate.String()
-			if onUpdateStr != "NULL" && col.OnUpdate.IsLiteral() && !types.IsTime(col.OnUpdate.Type()) && !types.IsText(col.OnUpdate.Type()) {
-				v, err := col.OnUpdate.Eval(ctx, nil)
-				if err != nil {
-					return "", err
-				}
-				onUpdateStr = fmt.Sprintf("'%v'", v)
+			onUpdateStr, err = convertColumnDefaultToString(ctx, col.OnUpdate)
+			if err != nil {
+				return "", err
 			}
 		}
 
