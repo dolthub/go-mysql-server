@@ -190,6 +190,7 @@ var BuiltIns = []sql.Function{
 	sql.Function2{Name: "pow", Fn: NewPower},
 	sql.Function2{Name: "power", Fn: NewPower},
 	sql.Function1{Name: "quarter", Fn: NewQuarter},
+	sql.Function1{Name: "quote", Fn: NewQuote},
 	sql.Function1{Name: "radians", Fn: NewRadians},
 	sql.FunctionN{Name: "rand", Fn: NewRand},
 	sql.FunctionN{Name: "regexp_instr", Fn: NewRegexpInstr},

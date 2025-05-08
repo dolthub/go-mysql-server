@@ -15,6 +15,7 @@
 package function
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"math"
@@ -613,4 +614,56 @@ func (h *Bitlength) WithChildren(children ...sql.Expression) (sql.Expression, er
 		return nil, sql.ErrInvalidChildrenNumber.New(h, len(children), 1)
 	}
 	return NewBitlength(children[0]), nil
+}
+
+type Quote struct {
+	*UnaryFunc
+}
+
+var _ sql.FunctionExpression = (*Bitlength)(nil)
+var _ sql.CollationCoercible = (*Bitlength)(nil)
+
+func NewQuote(arg sql.Expression) sql.Expression {
+	return &Quote{UnaryFunc: NewUnaryFunc(arg, "QUOTE", types.Text)}
+}
+
+func (q *Quote) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	arg, err := q.EvalChild(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+
+	val, _, err := types.Blob.Convert(ctx, arg)
+	if err != nil {
+		return nil, err
+	}
+	if val == nil {
+		return nil, nil
+	}
+	valBytes := val.([]byte)
+
+	ret := new(bytes.Buffer)
+	ret.WriteByte('\'')
+	for _, c := range valBytes {
+		switch c {
+		// '\032' is CTRL+Z character
+		case '\\', '\'', '\032':
+			ret.WriteByte('\\')
+			ret.WriteByte(c)
+		case '\000':
+			ret.WriteByte('\\')
+			ret.WriteByte('0')
+		default:
+			ret.WriteByte(c)
+		}
+	}
+	ret.WriteByte('\'')
+	return ret.String(), nil
+}
+
+func (q *Quote) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(q, len(children), 1)
+	}
+	return NewQuote(children[0]), nil
 }
