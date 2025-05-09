@@ -8436,6 +8436,22 @@ where
 			},
 		},
 	},
+	{
+		Name:    "hash tuples",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE test (id longtext);",
+			"INSERT INTO test (id) VALUES ('test_id');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM test WHERE id IN ('test_id');",
+				Expected: []sql.Row{
+					{"test_id"},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{

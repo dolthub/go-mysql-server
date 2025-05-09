@@ -274,7 +274,10 @@ func hashOfSimple(ctx *sql.Context, i interface{}, t sql.Type) (uint64, error) {
 			if err != nil {
 				return 0, err
 			}
-			str = converted.(string)
+			str, _, err = sql.Unwrap[string](ctx, converted)
+			if err != nil {
+				return 0, err
+			}
 		}
 	} else {
 		x, err := convertOrTruncate(ctx, i, t.Promote())
