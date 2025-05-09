@@ -162,7 +162,7 @@ func (r *RenameTable) renameTable(ctx *sql.Context, renamer sql.TableRenamer, tb
 
 func (r *RenameTable) renameView(ctx *sql.Context, viewDb sql.ViewDatabase, vr *sql.ViewRegistry, oldName, newName string) (bool, error) {
 	if viewDb != nil {
-		oldView, exists, err := viewDb.GetViewDefinition(ctx, oldName)
+		oldView, exists, err := viewDb.GetViewDefinitionAsOf(ctx, oldName, nil)
 		if err != nil {
 			return false, err
 		} else if !exists {

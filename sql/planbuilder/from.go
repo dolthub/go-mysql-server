@@ -679,6 +679,10 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 		asOfLit = asof
 	}
 
+	if asOfLit != nil {
+		print()
+	}
+
 	if view := b.resolveView(name, database, asOfLit); view != nil {
 		// TODO: Schema name
 		return resolvedViewScope(outScope, view, db, name)
@@ -813,7 +817,7 @@ func (b *Builder) resolveView(name string, database sql.Database, asOf interface
 	var view *sql.View
 
 	if vdb, vok := database.(sql.ViewDatabase); vok {
-		viewDef, vdok, err := vdb.GetViewDefinition(b.ctx, name)
+		viewDef, vdok, err := vdb.GetViewDefinitionAsOf(b.ctx, name, asOf)
 		if err != nil {
 			b.handleErr(err)
 		}

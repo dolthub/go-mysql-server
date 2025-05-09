@@ -399,12 +399,13 @@ func (pdb PrivilegedDatabase) DropView(ctx *sql.Context, name string) error {
 	return sql.ErrViewsNotSupported.New(pdb.db.Name())
 }
 
-// GetViewDefinition implements sql.ViewDatabase
-func (pdb PrivilegedDatabase) GetViewDefinition(ctx *sql.Context, viewName string) (sql.ViewDefinition, bool, error) {
-	if db, ok := pdb.db.(sql.ViewDatabase); ok {
-		return db.GetViewDefinition(ctx, viewName)
+// GetViewDefinitionAsOf implements sql.ViewDatabase
+func (pdb PrivilegedDatabase) GetViewDefinitionAsOf(ctx *sql.Context, viewName string, asOf interface{}) (sql.ViewDefinition, bool, error) {
+	db, ok := pdb.db.(sql.ViewDatabase)
+	if !ok {
+		return sql.ViewDefinition{}, false, sql.ErrViewsNotSupported.New(pdb.db.Name())
 	}
-	return sql.ViewDefinition{}, false, sql.ErrViewsNotSupported.New(pdb.db.Name())
+	return db.GetViewDefinitionAsOf(ctx, viewName, asOf)
 }
 
 // AllViews implements sql.ViewDatabase

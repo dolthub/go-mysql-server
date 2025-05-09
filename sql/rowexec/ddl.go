@@ -996,7 +996,7 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 	}
 
 	if vdb, vok := n.Db.(sql.ViewDatabase); vok {
-		_, ok, err := vdb.GetViewDefinition(ctx, n.Name())
+		_, ok, err := vdb.GetViewDefinitionAsOf(ctx, n.Name(), nil)
 		if err != nil {
 			return nil, err
 		}

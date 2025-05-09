@@ -114,7 +114,7 @@ func TestDropExistingViewNative(t *testing.T) {
 		_, err := DefaultBuilder.Build(ctx, dropView, nil)
 		require.NoError(t, err)
 
-		_, ok, err := db.GetViewDefinition(ctx, view.Name())
+		_, ok, err := db.GetViewDefinitionAsOf(ctx, view.Name(), nil)
 		require.NoError(t, err)
 		require.False(t, ok)
 	}
@@ -135,7 +135,7 @@ func TestDropNonExistingViewNative(t *testing.T) {
 
 		_, dropErr := DefaultBuilder.Build(ctx, dropView, nil)
 
-		_, ok, err := db.GetViewDefinition(ctx, view.Name())
+		_, ok, err := db.GetViewDefinitionAsOf(ctx, view.Name(), nil)
 		require.NoError(t, err)
 		require.True(t, ok)
 
