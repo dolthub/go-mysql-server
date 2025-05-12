@@ -127,7 +127,7 @@ func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 }
 
 func (b *Builder) buildLimit(inScope *scope, limit *ast.Limit) sql.Expression {
-	if limit != nil {
+	if limit != nil && limit.Rowcount != nil {
 		return b.buildLimitVal(inScope, limit.Rowcount)
 	}
 	return nil
