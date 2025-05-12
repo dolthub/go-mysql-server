@@ -278,8 +278,8 @@ func (d Database) DropView(ctx *sql.Context, name string) error {
 	return d.shim.Exec(d.name, fmt.Sprintf("DROP VIEW `%s`;", name))
 }
 
-// GetViewDefinition implements the interface sql.ViewDatabase.
-func (d Database) GetViewDefinition(ctx *sql.Context, viewName string) (sql.ViewDefinition, bool, error) {
+// GetViewDefinitionAsOf implements the interface sql.ViewDatabase.
+func (d Database) GetViewDefinitionAsOf(ctx *sql.Context, viewName string, asOf interface{}) (sql.ViewDefinition, bool, error) {
 	views, err := d.AllViews(ctx)
 	if err != nil {
 		return sql.ViewDefinition{}, false, err
