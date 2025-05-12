@@ -679,10 +679,6 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 		asOfLit = asof
 	}
 
-	if asOfLit != nil {
-		print()
-	}
-
 	if view := b.resolveView(name, database, asOfLit); view != nil {
 		// TODO: Schema name
 		return resolvedViewScope(outScope, view, db, name)
