@@ -76,6 +76,7 @@ func (b *BaseBuilder) buildDescribeQuery(ctx *sql.Context, n *plan.DescribeQuery
 	var rows []sql.Row
 	if n.Format.Plan {
 		formatString := sql.Describe(n.Child, n.Format)
+		formatString = strings.Replace(formatString, "\r", "", -1)
 		for _, l := range strings.Split(formatString, "\n") {
 			if strings.TrimSpace(l) != "" {
 				rows = append(rows, sql.NewRow(l))

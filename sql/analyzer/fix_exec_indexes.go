@@ -362,8 +362,20 @@ func (s *idxScope) visitChildren(n sql.Node) error {
 			}
 			s.children = append(s.children, newC)
 		}
+	case *plan.GroupBy:
+		for _, c := range n.Children() {
+			newC, cScope, err := assignIndexesHelper(c, s)
+			if err != nil {
+				return err
+			}
+			s.childScopes = append(s.childScopes, cScope)
+			s.children = append(s.children, newC)
+		}
 	default:
 		for _, c := range n.Children() {
+			if _, ok := c.(*plan.GroupBy); ok {
+				print()
+			}
 			newC, cScope, err := assignIndexesHelper(c, s)
 			if err != nil {
 				return err
@@ -535,6 +547,24 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 			n.DestSch[colIdx].Default = newDef.(*sql.ColumnDefaultValue)
 		}
 	default:
+		if proj, isProj := n.(*plan.Project); isProj {
+			if _, isGb := proj.Child.(*plan.GroupBy); isGb {
+				for _, e := range proj.Expressions() {
+					// default nodes can't see lateral join nodes, unless we're in lateral
+					// join and lateral scopes are promoted to parent status
+					s.expressions = append(s.expressions, fixExprToScope(e, s.childScopes...))
+				}
+				return nil
+			}
+			if _, isGb := proj.Child.(*plan.Window); isGb {
+				for _, e := range proj.Expressions() {
+					// default nodes can't see lateral join nodes, unless we're in lateral
+					// join and lateral scopes are promoted to parent status
+					s.expressions = append(s.expressions, fixExprToScope(e, s.childScopes...))
+				}
+				return nil
+			}
+		}
 		if ne, ok := n.(sql.Expressioner); ok {
 			scope := append(s.parentScopes, s.childScopes...)
 			for _, e := range ne.Expressions() {
@@ -694,6 +724,12 @@ func fixExprToScope(e sql.Expression, scopes ...*idxScope) sql.Expression {
 			//  don't have the destination schema, and column references in default values are determined in the build phase)
 
 			idx, _ := newScope.getIdxId(e.Id(), e.String())
+			if e.String() == "ref_tbl.id" {
+				print()
+			}
+			if e.String() == "new.id" {
+				print()
+			}
 			if idx >= 0 {
 				return e.WithIndex(idx), transform.NewTree, nil
 			}
