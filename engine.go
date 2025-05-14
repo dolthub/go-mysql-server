@@ -240,6 +240,9 @@ func (e *Engine) PrepareParsedQuery(
 	statementKey, query string,
 	stmt sqlparser.Statement,
 ) (sql.Node, error) {
+	// Make sure there is an active transaction if one hasn't been started yet
+	e.beginTransaction(ctx)
+
 	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.EventScheduler, e.Parser)
 	node, _, err := binder.BindOnly(stmt, query, nil)
 

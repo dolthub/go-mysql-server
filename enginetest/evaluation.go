@@ -269,12 +269,23 @@ func TestTransactionScript(t *testing.T, harness Harness, script queries.Transac
 		harness.Setup(setup.MydbData)
 		e := mustNewEngine(t, harness)
 		defer e.Close()
-		TestTransactionScriptWithEngine(t, e, harness, script)
+		TestTransactionScriptWithEngine(t, e, harness, script, false)
 	})
 }
 
-// TestTransactionScriptWithEngine runs the transaction test script given with the engine provided.
-func TestTransactionScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script queries.TransactionTest) {
+// TestTransactionScriptPrepared runs the test script given using prepared statements.
+func TestTransactionScriptPrepared(t *testing.T, harness Harness, script queries.TransactionTest) bool {
+	return t.Run(script.Name, func(t *testing.T) {
+		harness.Setup(setup.MydbData)
+		e := mustNewEngine(t, harness)
+		defer e.Close()
+		TestTransactionScriptWithEngine(t, e, harness, script, true)
+	})
+}
+
+// TestTransactionScriptWithEngine runs the transaction test script given with the engine provided. If |prepared| is true
+// then the queries will be prepared and then executed, otherwise they will be executed directly.
+func TestTransactionScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script queries.TransactionTest, prepared bool) {
 	setupSession := NewSession(harness)
 	for _, statement := range script.SetUpScript {
 		if sh, ok := harness.(SkippingHarness); ok {
@@ -307,17 +318,40 @@ func TestTransactionScriptWithEngine(t *testing.T, e QueryEngine, harness Harnes
 			}
 
 			if assertion.ExpectedErr != nil {
-				AssertErrWithCtx(t, e, harness, clientSession, assertion.Query, assertion.Bindings, assertion.ExpectedErr)
+				if prepared {
+					AssertErrPreparedWithCtx(t, e, harness, clientSession, assertion.Query, assertion.ExpectedErr)
+				} else {
+					AssertErrWithCtx(t, e, harness, clientSession, assertion.Query, assertion.Bindings, assertion.ExpectedErr)
+				}
 			} else if assertion.ExpectedErrStr != "" {
-				AssertErrWithCtx(t, e, harness, clientSession, assertion.Query, assertion.Bindings, nil, assertion.ExpectedErrStr)
+				if prepared {
+					AssertErrPreparedWithCtx(t, e, harness, clientSession, assertion.Query, nil, assertion.ExpectedErrStr)
+				} else {
+					AssertErrWithCtx(t, e, harness, clientSession, assertion.Query, assertion.Bindings, nil, assertion.ExpectedErrStr)
+				}
 			} else if assertion.ExpectedWarning != 0 {
-				AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query, assertion.Expected,
-					nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
-					assertion.ExpectedWarningMessageSubstring, false)
+				if prepared {
+					// TODO: Looks like we don't have a prepared version of this yet
+					AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query, assertion.Expected,
+						nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
+						assertion.ExpectedWarningMessageSubstring, false)
+				} else {
+					AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query, assertion.Expected,
+						nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
+						assertion.ExpectedWarningMessageSubstring, false)
+				}
 			} else if assertion.SkipResultsCheck {
-				RunQueryWithContext(t, e, harness, clientSession, assertion.Query)
+				if prepared {
+					runQueryPreparedWithCtx(t, clientSession, e, assertion.Query, assertion.Bindings, false)
+				} else {
+					RunQueryWithContext(t, e, harness, clientSession, assertion.Query)
+				}
 			} else {
-				TestQueryWithContext(t, clientSession, e, harness, assertion.Query, assertion.Expected, nil, nil, nil)
+				if prepared {
+					TestPreparedQueryWithContext(t, clientSession, e, harness, assertion.Query, assertion.Expected, nil, nil, false)
+				} else {
+					TestQueryWithContext(t, clientSession, e, harness, assertion.Query, assertion.Expected, nil, nil, nil)
+				}
 			}
 		})
 	}
@@ -551,7 +585,7 @@ func injectBindVarsAndPrepare(
 
 	switch p := parsed.(type) {
 	case *sqlparser.Load, *sqlparser.Prepare, *sqlparser.Execute:
-		// LOAD DATA query cannot be used as PREPARED STATEMENT
+		// LOAD DATA, PREPARE, and EXECUTE queries cannot be used as prepared statements
 		return q, nil, nil
 	case *sqlparser.Set:
 		// SET system variable query cannot be used as PREPARED STATEMENT
@@ -564,7 +598,7 @@ func injectBindVarsAndPrepare(
 
 	b := planbuilder.New(ctx, e.EngineAnalyzer().Catalog, e.EngineEventScheduler(), nil)
 	b.SetParserOptions(sql.LoadSqlMode(ctx).ParserOptions())
-	resPlan, _, err := b.BindOnly(parsed, q, nil)
+	resPlan, err := e.PrepareQuery(ctx, q)
 	if err != nil {
 		return q, nil, err
 	}
