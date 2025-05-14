@@ -257,7 +257,10 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 	return outScope
 }
 
-func isAggregateFunc(name string) bool {
+// IsAggregateFunc is a hacky "extension point" to allow for other dialects to declare additional aggregate functions 
+var IsAggregateFunc = IsMySQLAggregateFuncName
+
+func IsMySQLAggregateFuncName(name string) bool {
 	switch name {
 	case "avg", "bit_and", "bit_or", "bit_xor", "count",
 		"group_concat", "json_arrayagg", "json_objectagg",
@@ -794,7 +797,7 @@ func (b *Builder) analyzeHaving(fromScope, projScope *scope, having *ast.Where) 
 			return false, nil
 		case *ast.FuncExpr:
 			name := n.Name.Lowered()
-			if isAggregateFunc(name) {
+			if IsAggregateFunc(name) {
 				// record aggregate
 				// TODO: this should get projScope as well
 				_ = b.buildAggregateFunc(fromScope, name, n)
