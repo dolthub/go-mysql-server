@@ -224,7 +224,9 @@ func (s *scope) initProc() {
 // initGroupBy creates a container scope for aggregation
 // functions and function inputs.
 func (s *scope) initGroupBy() {
-	s.groupBy = &groupBy{outScope: s.replace()}
+	if s.groupBy != nil {
+		s.groupBy = &groupBy{outScope: s.replace()}
+	}
 }
 
 // pushSubquery creates a new scope with the subquery already initialized.

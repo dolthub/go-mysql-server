@@ -95,9 +95,8 @@ func (b *Builder) buildGroupingCols(fromScope, projScope *scope, groupby ast.Gro
 	// 3) an index into selects
 	// 4) a simple non-aggregate expression
 	groupings := make([]sql.Expression, 0)
-	if fromScope.groupBy == nil {
-		fromScope.initGroupBy()
-	}
+	fromScope.initGroupBy()
+	
 	g := fromScope.groupBy
 	for _, e := range groupby {
 		var col scopeColumn
@@ -194,9 +193,7 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 	// - grouping cols projection
 	// - aggregate expressions
 	// - output projection
-	if fromScope.groupBy == nil {
-		fromScope.initGroupBy()
-	}
+	fromScope.initGroupBy()
 
 	group := fromScope.groupBy
 	outScope := group.outScope
@@ -281,9 +278,7 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 		b.handleErr(err)
 	}
 
-	if inScope.groupBy == nil {
-		inScope.initGroupBy()
-	}
+	inScope.initGroupBy()
 	gb := inScope.groupBy
 
 	if strings.EqualFold(name, "count") {
@@ -466,9 +461,7 @@ func (b *Builder) buildCountStarAggregate(e *ast.FuncExpr, gb *groupBy) sql.Expr
 
 // buildGroupConcat builds a GROUP_CONCAT aggregate function
 func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.Expression {
-	if inScope.groupBy == nil {
-		inScope.initGroupBy()
-	}
+	inScope.initGroupBy()
 	gb := inScope.groupBy
 
 	args := make([]sql.Expression, len(e.Exprs))
@@ -898,9 +891,7 @@ func (b *Builder) buildHaving(fromScope, projScope, outScope *scope, having *ast
 	if having == nil {
 		return
 	}
-	if fromScope.groupBy == nil {
-		fromScope.initGroupBy()
-	}
+	fromScope.initGroupBy()
 
 	havingScope := b.newScope()
 	if fromScope.parent != nil {
