@@ -67,7 +67,9 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 			//		scope = &plan.Scope{}
 			//	}
 			//}
-			scope.InInsertSource = true // TODO: use a setter?
+			if scope != nil {
+				scope.InInsertSource = true // TODO: use a setter?
+			}
 			source, _, err = a.analyzeWithSelector(ctx, insert.Source, scope, SelectAllBatches, newInsertSourceSelector(sel), qFlags)
 			if err != nil {
 				return nil, transform.SameTree, err
