@@ -157,7 +157,11 @@ func (j *jsonObjectBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		return err
 	}
 
-	// unwrap JSON values
+	// unwrap wrapper values
+	val, err = sql.UnwrapAny(ctx, val)
+	if err != nil {
+		return err
+	}
 	if js, ok := val.(sql.JSONWrapper); ok {
 		val, err = js.ToInterface()
 		if err != nil {
@@ -166,11 +170,12 @@ func (j *jsonObjectBuffer) Update(ctx *sql.Context, row sql.Row) error {
 	}
 
 	// Update the map.
-	keyAsString, _, err := types.LongText.Convert(ctx, key)
+	convertedKey, _, err := types.LongText.Convert(ctx, key)
 	if err != nil {
 		return nil
 	}
-	j.vals[keyAsString.(string)] = val
+	keyAsString, _, err := sql.Unwrap[string](ctx, convertedKey)
+	j.vals[keyAsString] = val
 
 	return nil
 }
