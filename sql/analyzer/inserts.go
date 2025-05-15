@@ -59,17 +59,7 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 					plan.NewSubqueryAlias("dummy", "", insert.Source),
 				))
 			}
-			//if proj, ok := insert.Source.(*plan.Project); ok {
-			//	if _, ok := proj.Child.(*plan.GroupBy); ok {
-			//		scope = &plan.Scope{}
-			//	}
-			//	if _, ok := proj.Child.(*plan.Window); ok {
-			//		scope = &plan.Scope{}
-			//	}
-			//}
-			if scope != nil {
-				scope.InInsertSource = true // TODO: use a setter?
-			}
+			scope.SetInInsertSource(true)
 			source, _, err = a.analyzeWithSelector(ctx, insert.Source, scope, SelectAllBatches, newInsertSourceSelector(sel), qFlags)
 			if err != nil {
 				return nil, transform.SameTree, err

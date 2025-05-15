@@ -32,7 +32,7 @@ func assignExecIndexes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 	if !scope.IsEmpty() {
 		// triggers
 		s.triggerScope = true
-		s.insertSourceScope = scope.InInsertSource
+		s.insertSourceScope = scope.InInsertSource()
 		s.addSchema(scope.Schema())
 		s = s.push()
 	}
@@ -300,9 +300,6 @@ func (s *idxScope) copy() *idxScope {
 		parentScopes:  parentCopy,
 		columns:       varsCopy,
 		ids:           idsCopy,
-
-		triggerScope:      s.triggerScope,
-		insertSourceScope: s.insertSourceScope,
 	}
 }
 
@@ -369,42 +366,10 @@ func (s *idxScope) visitChildren(n sql.Node) error {
 		// keep only the first union scope to avoid double counting
 		s.childScopes = append(s.childScopes, keepScope)
 	case *plan.InsertInto:
-		// TODO: special case into sources when in triggers with groupby/window functions
-		var newSrc sql.Node
-		var err error
-
-		// TODO: do something cleaner
-		//var isInTrigger bool
-		//for _, ps := range s.parentScopes {
-		//	if ps.triggerScope {
-		//		isInTrigger = true
-		//		break
-		//	}
-		//}
-		//if isInTrigger {
-		//	if proj, isProj := n.Source.(*plan.Project); isProj {
-		//		switch proj.Child.(type) {
-		//		case *plan.GroupBy, *plan.Window:
-		//			subScope := s.copy()
-		//			subScope.parentScopes = subScope.parentScopes[:0]
-		//			newSrc, _, err = assignIndexesHelper(proj, subScope)
-		//		default:
-		//			newSrc, _, err = assignIndexesHelper(n.Source, s)
-		//		}
-		//	} else {
-		//		newSrc, _, err = assignIndexesHelper(n.Source, s)
-		//	}
-		//} else {
-		//	newSrc, _, err = assignIndexesHelper(n.Source, s)
-		//}
-
-		s.insertSourceScope = true
-		newSrc, _, err = assignIndexesHelper(n.Source, s)
+		newSrc, _, err := assignIndexesHelper(n.Source, s)
 		if err != nil {
 			return err
 		}
-		s.insertSourceScope = false
-
 		newDst, dScope, err := assignIndexesHelper(n.Destination, s)
 		if err != nil {
 			return err
@@ -426,9 +391,6 @@ func (s *idxScope) visitChildren(n sql.Node) error {
 		}
 	default:
 		for _, c := range n.Children() {
-			if _, ok := c.(*plan.GroupBy); ok {
-				print()
-			}
 			newC, cScope, err := assignIndexesHelper(c, s)
 			if err != nil {
 				return err
@@ -600,7 +562,9 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 			n.DestSch[colIdx].Default = newDef.(*sql.ColumnDefaultValue)
 		}
 	default:
-		// TODO: this very specific pattern
+		// Group By and Window functions already account for the new/old columns present from triggers
+		// This means that when indexing the Projections, we should not include the trigger scope(s), which are
+		// within s.parentScopes.
 		if proj, isProj := n.(*plan.Project); isProj {
 			switch proj.Child.(type) {
 			case *plan.GroupBy, *plan.Window:
@@ -771,9 +735,6 @@ func fixExprToScope(e sql.Expression, scopes ...*idxScope) sql.Expression {
 			//  don't have the destination schema, and column references in default values are determined in the build phase)
 
 			idx, _ := newScope.getIdxId(e.Id(), e.String())
-			if e.String() == "modeldisambig.id_modelinfo" && e.Index() == 1 {
-				print()
-			}
 			if idx >= 0 {
 				return e.WithIndex(idx), transform.NewTree, nil
 			}
