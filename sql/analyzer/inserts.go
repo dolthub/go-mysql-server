@@ -31,7 +31,8 @@ import (
 func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	if _, ok := n.(*plan.TriggerExecutor); ok {
 		return n, transform.SameTree, nil
-	} else if _, ok := n.(*plan.CreateProcedure); ok {
+	}
+	if _, ok := n.(*plan.CreateProcedure); ok {
 		return n, transform.SameTree, nil
 	}
 	// We capture all INSERTs along the tree, such as those inside of block statements.
@@ -50,7 +51,7 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 
 		source := insert.Source
 		// TriggerExecutor has already been analyzed
-		if _, ok := insert.Source.(*plan.TriggerExecutor); !ok && !insert.LiteralValueSource {
+		if _, isTrigExec := insert.Source.(*plan.TriggerExecutor); !isTrigExec && !insert.LiteralValueSource {
 			// Analyze the source of the insert independently
 			if _, ok := insert.Source.(*plan.Values); ok {
 				scope = scope.NewScope(plan.NewProject(
@@ -58,6 +59,14 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 					plan.NewSubqueryAlias("dummy", "", insert.Source),
 				))
 			}
+			//if proj, ok := insert.Source.(*plan.Project); ok {
+			//	if _, ok := proj.Child.(*plan.GroupBy); ok {
+			//		scope = &plan.Scope{}
+			//	}
+			//	if _, ok := proj.Child.(*plan.Window); ok {
+			//		scope = &plan.Scope{}
+			//	}
+			//}
 			source, _, err = a.analyzeWithSelector(ctx, insert.Source, scope, SelectAllBatches, newInsertSourceSelector(sel), qFlags)
 			if err != nil {
 				return nil, transform.SameTree, err

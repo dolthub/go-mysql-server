@@ -161,7 +161,33 @@ type idxScope struct {
 	children      []sql.Node
 	expressions   []sql.Expression
 	checks        sql.CheckConstraints
-	triggerScope  bool
+
+	triggerScope      bool
+	insertSourceScope bool
+}
+
+func (s *idxScope) inTrigger() bool {
+	if s == nil {
+		return false
+	}
+	for _, ps := range s.parentScopes {
+		if ps.inTrigger() {
+			return true
+		}
+	}
+	return s.triggerScope
+}
+
+func (s *idxScope) inInsertSource() bool {
+	if s == nil {
+		return false
+	}
+	for _, ps := range s.parentScopes {
+		if ps.inInsertSource() {
+			return true
+		}
+	}
+	return s.insertSourceScope
 }
 
 func (s *idxScope) addSchema(sch sql.Schema) {
@@ -273,6 +299,9 @@ func (s *idxScope) copy() *idxScope {
 		parentScopes:  parentCopy,
 		columns:       varsCopy,
 		ids:           idsCopy,
+
+		triggerScope:      s.triggerScope,
+		insertSourceScope: s.insertSourceScope,
 	}
 }
 
@@ -339,10 +368,42 @@ func (s *idxScope) visitChildren(n sql.Node) error {
 		// keep only the first union scope to avoid double counting
 		s.childScopes = append(s.childScopes, keepScope)
 	case *plan.InsertInto:
-		newSrc, _, err := assignIndexesHelper(n.Source, s)
+		// TODO: special case into sources when in triggers with groupby/window functions
+		var newSrc sql.Node
+		var err error
+
+		// TODO: do something cleaner
+		//var isInTrigger bool
+		//for _, ps := range s.parentScopes {
+		//	if ps.triggerScope {
+		//		isInTrigger = true
+		//		break
+		//	}
+		//}
+		//if isInTrigger {
+		//	if proj, isProj := n.Source.(*plan.Project); isProj {
+		//		switch proj.Child.(type) {
+		//		case *plan.GroupBy, *plan.Window:
+		//			subScope := s.copy()
+		//			subScope.parentScopes = subScope.parentScopes[:0]
+		//			newSrc, _, err = assignIndexesHelper(proj, subScope)
+		//		default:
+		//			newSrc, _, err = assignIndexesHelper(n.Source, s)
+		//		}
+		//	} else {
+		//		newSrc, _, err = assignIndexesHelper(n.Source, s)
+		//	}
+		//} else {
+		//	newSrc, _, err = assignIndexesHelper(n.Source, s)
+		//}
+
+		s.insertSourceScope = true
+		newSrc, _, err = assignIndexesHelper(n.Source, s)
 		if err != nil {
 			return err
 		}
+		s.insertSourceScope = false
+
 		newDst, dScope, err := assignIndexesHelper(n.Destination, s)
 		if err != nil {
 			return err
@@ -360,15 +421,6 @@ func (s *idxScope) visitChildren(n sql.Node) error {
 			if err != nil {
 				return err
 			}
-			s.children = append(s.children, newC)
-		}
-	case *plan.GroupBy:
-		for _, c := range n.Children() {
-			newC, cScope, err := assignIndexesHelper(c, s)
-			if err != nil {
-				return err
-			}
-			s.childScopes = append(s.childScopes, cScope)
 			s.children = append(s.children, newC)
 		}
 	default:
@@ -547,22 +599,18 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 			n.DestSch[colIdx].Default = newDef.(*sql.ColumnDefaultValue)
 		}
 	default:
+		// TODO: this very specific pattern
 		if proj, isProj := n.(*plan.Project); isProj {
-			if _, isGb := proj.Child.(*plan.GroupBy); isGb {
-				for _, e := range proj.Expressions() {
-					// default nodes can't see lateral join nodes, unless we're in lateral
-					// join and lateral scopes are promoted to parent status
-					s.expressions = append(s.expressions, fixExprToScope(e, s.childScopes...))
+			switch proj.Child.(type) {
+			case *plan.GroupBy, *plan.Window:
+				if s.inTrigger() && s.inInsertSource() {
+					for _, e := range proj.Expressions() {
+						// default nodes can't see lateral join nodes, unless we're in lateral
+						// join and lateral scopes are promoted to parent status
+						s.expressions = append(s.expressions, fixExprToScope(e, s.childScopes...))
+					}
+					return nil
 				}
-				return nil
-			}
-			if _, isGb := proj.Child.(*plan.Window); isGb {
-				for _, e := range proj.Expressions() {
-					// default nodes can't see lateral join nodes, unless we're in lateral
-					// join and lateral scopes are promoted to parent status
-					s.expressions = append(s.expressions, fixExprToScope(e, s.childScopes...))
-				}
-				return nil
 			}
 		}
 		if ne, ok := n.(sql.Expressioner); ok {
