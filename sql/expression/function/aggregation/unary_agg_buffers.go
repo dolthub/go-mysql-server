@@ -646,7 +646,11 @@ func (j *jsonArrayBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		return err
 	}
 
-	// unwrap JSON values
+	// unwrap wrapper values
+	v, err = sql.UnwrapAny(ctx, v)
+	if err != nil {
+		return err
+	}
 	if js, ok := v.(sql.JSONWrapper); ok {
 		v, err = js.ToInterface()
 		if err != nil {
