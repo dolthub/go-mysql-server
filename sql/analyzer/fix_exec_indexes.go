@@ -32,6 +32,7 @@ func assignExecIndexes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 	if !scope.IsEmpty() {
 		// triggers
 		s.triggerScope = true
+		s.insertSourceScope = scope.InInsertSource
 		s.addSchema(scope.Schema())
 		s = s.push()
 	}
@@ -605,8 +606,6 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 			case *plan.GroupBy, *plan.Window:
 				if s.inTrigger() && s.inInsertSource() {
 					for _, e := range proj.Expressions() {
-						// default nodes can't see lateral join nodes, unless we're in lateral
-						// join and lateral scopes are promoted to parent status
 						s.expressions = append(s.expressions, fixExprToScope(e, s.childScopes...))
 					}
 					return nil
@@ -772,10 +771,7 @@ func fixExprToScope(e sql.Expression, scopes ...*idxScope) sql.Expression {
 			//  don't have the destination schema, and column references in default values are determined in the build phase)
 
 			idx, _ := newScope.getIdxId(e.Id(), e.String())
-			if e.String() == "ref_tbl.id" {
-				print()
-			}
-			if e.String() == "new.id" {
+			if e.String() == "modeldisambig.id_modelinfo" && e.Index() == 1 {
 				print()
 			}
 			if idx >= 0 {
