@@ -377,6 +377,50 @@ where d.x = new.x`,
 		},
 	},
 	{
+		Name: "trigger insert projection group by index error",
+		SetUpScript: []string{
+			"create table a (x int primary key, y int default 1, z int)",
+			"create table b (x int primary key)",
+			"create table c (x int primary key, y tinyint)",
+			"create table d (x int primary key)",
+			"insert into b values (1), (2)",
+			"insert into d values (1), (2)",
+			`
+create trigger insert_into_a
+after insert on a
+for each row replace into c
+select max(d.x + new.x), 0 from d join b using (x)
+where d.x = new.x`,
+			"insert into a (x,z) values (2,2)",
+		},
+		Query: "select x, y from c order by 1",
+		Expected: []sql.Row{
+			{4, 0},
+		},
+	},
+	{
+		Name: "trigger insert projection window index error",
+		SetUpScript: []string{
+			"create table a (x int primary key, y int default 1, z int)",
+			"create table b (x int primary key)",
+			"create table c (x int primary key, y tinyint)",
+			"create table d (x int primary key)",
+			"insert into b values (1), (2)",
+			"insert into d values (1), (2)",
+			`
+create trigger insert_into_a
+after insert on a
+for each row replace into c
+select first_value(d.x + new.x) over (partition by (x) order by x), 0 from d join b using (x)
+where d.x = new.x`,
+			"insert into a (x,z) values (2,2)",
+		},
+		Query: "select x, y from c order by 1",
+		Expected: []sql.Row{
+			{4, 0},
+		},
+	},
+	{
 		Name: "trigger before insert, alter inserted value",
 		SetUpScript: []string{
 			"create table a (x int primary key)",
