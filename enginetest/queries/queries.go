@@ -10261,6 +10261,16 @@ from typestable`,
 		},
 	},
 	{
+		Query: "explain plan select count(*) from mytable",
+		Expected: []sql.Row{
+			{"Project"},
+			{" ├─ columns: [count(1)]"},
+			{" └─ Project"},
+			{"     ├─ columns: [mytable.COUNT(1) as COUNT(1)]"},
+			{"     └─ table_count(mytable) as COUNT(1)"},
+		},
+	},
+	{
 		Query:            "explain select 1",
 		SkipServerEngine: true,
 		Expected: []sql.Row{
@@ -10268,8 +10278,7 @@ from typestable`,
 		},
 	},
 	{
-		Query:            "explain plan select 1",
-		SkipServerEngine: true,
+		Query: "explain plan select 1",
 		Expected: []sql.Row{
 			{"Project"},
 			{" ├─ columns: [1]"},
@@ -10278,8 +10287,7 @@ from typestable`,
 		},
 	},
 	{
-		Query:            "explain format=tree select 1",
-		SkipServerEngine: true,
+		Query: "explain format=tree select 1",
 		Expected: []sql.Row{
 			{"Project"},
 			{" ├─ columns: [1]"},
