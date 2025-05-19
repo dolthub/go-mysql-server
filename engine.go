@@ -414,7 +414,7 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	if shouldLock == true {
+	if shouldLock.(int8) == 1 {
 		ctx.LockWarnings()
 		defer ctx.UnlockWarnings()
 	}
