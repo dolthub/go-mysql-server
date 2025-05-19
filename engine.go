@@ -268,7 +268,7 @@ func clearWarnings(ctx *sql.Context, node sql.Node) {
 	case *plan.Offset, *plan.Limit:
 		// `show warning limit x offset y` is valid, so we need to recurse
 		clearWarnings(ctx, n.Children()[0])
-	case plan.ShowWarnings:
+	case plan.ShowWarnings, *plan.Set:
 		// ShowWarnings should not clear the warnings, but should still reset the warning count.
 		ctx.ClearWarningCount()
 	default:
@@ -408,6 +408,15 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 	err = e.beginTransaction(ctx)
 	if err != nil {
 		return nil, nil, nil, err
+	}
+
+	shouldLock, err := ctx.GetSessionVariable(ctx, "lock_warnings")
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if shouldLock == true {
+		ctx.LockWarnings()
+		defer ctx.UnlockWarnings()
 	}
 
 	// planbuilding can produce warnings, so we need to preserve them

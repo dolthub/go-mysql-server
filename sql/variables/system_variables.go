@@ -1253,6 +1253,14 @@ var systemVars = map[string]sql.SystemVariable{
 		Type:              types.NewSystemIntType("lock_wait_timeout", 1, 31536000, false),
 		Default:           int64(31536000),
 	},
+	"lock_warnings": &sql.MysqlSystemVariable{
+		Name:              "lock_warnings",
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
+		Dynamic:           true,
+		SetVarHintApplies: false,
+		Type:              types.NewSystemBoolType("lock_warnings"),
+		Default:           int8(0),
+	},
 	"log_bin": &sql.MysqlSystemVariable{
 		Name:              "log_bin",
 		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Persist),
