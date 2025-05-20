@@ -1255,11 +1255,20 @@ var systemVars = map[string]sql.SystemVariable{
 	},
 	"lock_warnings": &sql.MysqlSystemVariable{
 		Name:              "lock_warnings",
-		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Session),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("lock_warnings"),
 		Default:           int8(0),
+		NotifyChanged: func(ctx *sql.Context, _ sql.SystemVariableScope, value sql.SystemVarValue) error {
+			switch value.Val.(int8) {
+			case 0:
+				ctx.UnlockWarnings()
+			case 1:
+				ctx.LockWarnings()
+			}
+			return nil
+		},
 	},
 	"log_bin": &sql.MysqlSystemVariable{
 		Name:              "log_bin",

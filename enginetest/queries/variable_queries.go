@@ -589,6 +589,20 @@ var VariableQueries = []ScriptTest{
 					{"Warning", 1365, "Division by 0"},
 					{"Warning", 1365, "Division by 0"}},
 			},
+			{
+				Query: "select 1/0",
+				Expected: []sql.Row{
+					{"NULL"},
+				},
+			},
+			{
+				Query: "show warnings",
+				Expected: []sql.Row{
+					{"Warning", 1365, "Division by 0"},
+					{"Warning", 1365, "Division by 0"},
+					{"Warning", 1365, "Division by 0"},
+				},
+			},
 		},
 	},
 	{
@@ -602,6 +616,22 @@ var VariableQueries = []ScriptTest{
 			{
 				Query:    "show warnings",
 				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		Name: "warnings persist after locking between queries",
+		SetUpScript: []string{
+			"select 1/0",
+			"set @@lock_warnings = 1",
+			"select 1/1",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show warnings",
+				Expected: []sql.Row{
+					{"Warning", 1365, "Division by 0"},
+				},
 			},
 		},
 	},
