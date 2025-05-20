@@ -257,11 +257,18 @@ func groupingKey(
 			}
 		}
 
-		t, isStringType := expr.Type().(sql.StringType)
-		if isStringType && v != nil {
-			v, err = types.ConvertToString(ctx, v, t, nil)
+		extendedType, isExtendedType := expr.Type().(types.ExtendedType)
+		stringType, isStringType := expr.Type().(sql.StringType)
+
+		if isExtendedType && v != nil {
+			bytes, err := extendedType.SerializeValue(ctx, v)
 			if err == nil {
-				err = t.Collation().WriteWeightString(hash, v.(string))
+				_, err = fmt.Fprint(hash, string(bytes))
+			}
+		} else if isStringType && v != nil {
+			v, err = types.ConvertToString(ctx, v, stringType, nil)
+			if err == nil {
+				err = stringType.Collation().WriteWeightString(hash, v.(string))
 			}
 		} else {
 			_, err = fmt.Fprintf(hash, "%v", v)
