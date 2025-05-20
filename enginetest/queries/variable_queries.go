@@ -575,6 +575,36 @@ var VariableQueries = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "locked warnings stay after query",
+		SetUpScript: []string{
+			"set @@lock_warnings = 1",
+			"select 1/0,1/0",
+			"select 1/1",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show warnings",
+				Expected: []sql.Row{
+					{"Warning", 1365, "Division by 0"},
+					{"Warning", 1365, "Division by 0"}},
+			},
+		},
+	},
+	{
+		Name: "unlocked warnings clear after query",
+		SetUpScript: []string{
+			"set @@lock_warnings = 0",
+			"select 1/0,1/0",
+			"select 1/1",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "show warnings",
+				Expected: []sql.Row{},
+			},
+		},
+	},
 	//TODO: do not override tables with user-var-like names...but why would you do this??
 	//{
 	//	Name: "user var table name no conflict",
