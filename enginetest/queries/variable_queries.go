@@ -592,7 +592,7 @@ var VariableQueries = []ScriptTest{
 			{
 				Query: "select 1/0",
 				Expected: []sql.Row{
-					{"NULL"},
+					{interface{}(nil)},
 				},
 			},
 			{
