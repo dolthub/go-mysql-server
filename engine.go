@@ -269,6 +269,8 @@ func clearWarnings(ctx *sql.Context, node sql.Node) {
 		// `show warning limit x offset y` is valid, so we need to recurse
 		clearWarnings(ctx, n.Children()[0])
 	case *plan.Set:
+		// We want to maintain warnings when setting the warnings_lock variable.
+		// Set statements also can't produce warnings, so we don't care about clearing them.
 	case plan.ShowWarnings:
 		// ShowWarnings should not clear the warnings, but should still reset the warning count.
 		ctx.ClearWarningCount()
