@@ -80,6 +80,18 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 		row = row[len(row)-len(i.schema):]
 	}
 
+	// This is a special case in MySQL.
+	// When there's an enum column with a NOT NULL constraint, the DEFAULT value is the first entry.
+	for idx, col := range i.schema {
+		if idx >= len(i.insertExprs) {
+			break
+		}
+		_, isColDefVal := i.insertExprs[idx].(*sql.ColumnDefaultValue)
+		if row[idx] == nil && types.IsEnum(col.Type) && isColDefVal {
+			row[idx] = 1
+		}
+	}
+
 	err = i.validateNullability(ctx, i.schema, row)
 	if err != nil {
 		return nil, i.ignoreOrClose(ctx, row, err)
