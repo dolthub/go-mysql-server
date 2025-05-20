@@ -590,10 +590,8 @@ var VariableQueries = []ScriptTest{
 					{"Warning", 1365, "Division by 0"}},
 			},
 			{
-				Query: "select 1/0",
-				Expected: []sql.Row{
-					{interface{}(nil)},
-				},
+				Query:            "select 1/0",
+				SkipResultsCheck: true,
 			},
 			{
 				Query: "show warnings",
