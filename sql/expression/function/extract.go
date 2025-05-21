@@ -169,11 +169,11 @@ func (td *Extract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		ss := dateTime.Second()
 		return dd + hh + mm + ss, nil
 	case "DAY_MICROSECOND":
-		dd := dateTime.Day() * 1_00_00_00_000000
-		hh := dateTime.Hour() * 1_00_00_000000
-		mm := dateTime.Minute() * 1_00_000000
-		ss := dateTime.Second() * 1_000000
-		mmmmmm := dateTime.Nanosecond() / 1000
+		dd := uint64(dateTime.Day()) * 1_00_00_00_000000
+		hh := uint64(dateTime.Hour()) * 1_00_00_000000
+		mm := uint64(dateTime.Minute()) * 1_00_000000
+		ss := uint64(dateTime.Second()) * 1_000000
+		mmmmmm := uint64(dateTime.Nanosecond()) / 1000
 		return dd + hh + mm + ss + mmmmmm, nil
 	case "HOUR_MINUTE":
 		hh := dateTime.Hour() * 1_00
@@ -185,10 +185,10 @@ func (td *Extract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		ss := dateTime.Second()
 		return hh + mm + ss, nil
 	case "HOUR_MICROSECOND":
-		hh := dateTime.Hour() * 1_00_00_000000
-		mm := dateTime.Minute() * 1_00_000000
-		ss := dateTime.Second() * 1_000000
-		mmmmmm := dateTime.Nanosecond() / 1000
+		hh := uint64(dateTime.Hour()) * 1_00_00_000000
+		mm := uint64(dateTime.Minute()) * 1_00_000000
+		ss := uint64(dateTime.Second()) * 1_000000
+		mmmmmm := uint64(dateTime.Nanosecond()) / 1000
 		return hh + mm + ss + mmmmmm, nil
 	case "MINUTE_SECOND":
 		mm := dateTime.Minute() * 1_00

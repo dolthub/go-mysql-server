@@ -304,9 +304,9 @@ func (b *BaseBuilder) buildLoop(ctx *sql.Context, n *plan.Loop, row sql.Row) (sq
 	selectSeen := false
 
 	// It's technically valid to make an infinite loop, but we don't want to actually allow that
-	const maxIterationCount = 10_000_000_000
+	const maxIterationCount uint64 = 10_000_000_000
 
-	for loopIteration := 0; loopIteration <= maxIterationCount; loopIteration++ {
+	for loopIteration := uint64(0); loopIteration <= maxIterationCount; loopIteration++ {
 		if loopIteration >= maxIterationCount {
 			return nil, fmt.Errorf("infinite LOOP detected")
 		}
