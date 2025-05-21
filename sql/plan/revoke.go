@@ -26,11 +26,12 @@ import (
 
 // Revoke represents the statement REVOKE [privilege...] ON [item] FROM [user...].
 type Revoke struct {
-	Privileges     []Privilege
-	ObjectType     ObjectType
-	PrivilegeLevel PrivilegeLevel
-	Users          []UserName
-	MySQLDb        sql.Database
+	Privileges        []Privilege
+	ObjectType        ObjectType
+	PrivilegeLevel    PrivilegeLevel
+	Users             []UserName
+	IgnoreUnknownUser bool
+	MySQLDb           sql.Database
 }
 
 var _ sql.Node = (*Revoke)(nil)
@@ -497,9 +498,11 @@ func (*RevokeAll) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 
 // RevokeRole represents the statement REVOKE [role...] FROM [user...].
 type RevokeRole struct {
-	Roles       []UserName
-	TargetUsers []UserName
-	MySQLDb     sql.Database
+	Roles             []UserName
+	TargetUsers       []UserName
+	IfExists          bool
+	IgnoreUnknownUser bool
+	MySQLDb           sql.Database
 }
 
 var _ sql.Node = (*RevokeRole)(nil)
@@ -508,11 +511,13 @@ var _ sql.CollationCoercible = (*RevokeRole)(nil)
 var _ sql.AuthorizationCheckerNode = (*RevokeRole)(nil)
 
 // NewRevokeRole returns a new RevokeRole node.
-func NewRevokeRole(roles []UserName, users []UserName) *RevokeRole {
+func NewRevokeRole(roles []UserName, users []UserName, ifExists, ignoreUnknownUser bool) *RevokeRole {
 	return &RevokeRole{
-		Roles:       roles,
-		TargetUsers: users,
-		MySQLDb:     sql.UnresolvedDatabase("mysql"),
+		Roles:             roles,
+		TargetUsers:       users,
+		IfExists:          ifExists,
+		IgnoreUnknownUser: ignoreUnknownUser,
+		MySQLDb:           sql.UnresolvedDatabase("mysql"),
 	}
 }
 
@@ -613,8 +618,10 @@ func (*RevokeRole) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 
 // RevokeProxy represents the statement REVOKE PROXY.
 type RevokeProxy struct {
-	On   UserName
-	From []UserName
+	On                UserName
+	From              []UserName
+	IfExists          bool
+	ignoreUnknownUser bool
 }
 
 var _ sql.Node = (*RevokeProxy)(nil)
@@ -622,10 +629,12 @@ var _ sql.CollationCoercible = (*RevokeProxy)(nil)
 var _ sql.AuthorizationCheckerNode = (*RevokeProxy)(nil)
 
 // NewRevokeProxy returns a new RevokeProxy node.
-func NewRevokeProxy(on UserName, from []UserName) *RevokeProxy {
+func NewRevokeProxy(on UserName, from []UserName, ifExists, ignoreUnknownUser bool) *RevokeProxy {
 	return &RevokeProxy{
-		On:   on,
-		From: from,
+		On:                on,
+		From:              from,
+		IfExists:          ifExists,
+		ignoreUnknownUser: ignoreUnknownUser,
 	}
 }
 

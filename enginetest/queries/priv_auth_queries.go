@@ -1230,6 +1230,27 @@ var UserPrivTests = []UserPrivilegeTest{
 				Query:    "SELECT User, Host, Select_priv FROM mysql.user WHERE User = 'tester';",
 				Expected: []sql.Row{{"tester", "localhost", "N"}},
 			},
+
+			{
+				// Re-revoking does nothing
+				User:     "root",
+				Host:     "localhost",
+				Query:    "REVOKE SELECT ON *.* FROM tester@localhost;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				// IF EXISTS option does nothing
+				User:     "root",
+				Host:     "localhost",
+				Query:    "REVOKE IF EXISTS SELECT ON *.* FROM tester@localhost;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "SELECT User, Host, Select_priv FROM mysql.user WHERE User = 'tester';",
+				Expected: []sql.Row{{"tester", "localhost", "N"}},
+			},
 		},
 	},
 	{
@@ -1324,6 +1345,39 @@ var UserPrivTests = []UserPrivilegeTest{
 				Host:     "localhost",
 				Query:    "SELECT User, Host, Select_priv, Insert_priv, Grant_priv FROM mysql.user WHERE User = 'tester2';",
 				Expected: []sql.Row{{"tester2", "localhost", "N", "N", "N"}},
+			},
+			{
+				// Re-revoking does nothing
+				User:     "root",
+				Host:     "localhost",
+				Query:    "REVOKE ALL PRIVILEGES, GRANT OPTION FROM tester2@localhost;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				// IF EXISTS does nothing
+				User:     "root",
+				Host:     "localhost",
+				Query:    "REVOKE IF EXISTS ALL PRIVILEGES, GRANT OPTION FROM tester2@localhost;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "SELECT User, Host, Select_priv, Insert_priv, Grant_priv FROM mysql.user WHERE User = 'tester2';",
+				Expected: []sql.Row{{"tester2", "localhost", "N", "N", "N"}},
+			},
+			{
+				User:        "root",
+				Host:        "localhost",
+				Query:       "REVOKE IF EXISTS ALL PRIVILEGES, GRANT OPTION FROM fake1@localhost, fake2@localhost, fake3@localhost;",
+				ExpectedErr: sql.ErrRevokeUserDoesNotExist,
+			},
+			{
+				// TODO: check warnings
+				User:     "root",
+				Host:     "localhost",
+				Query:    "REVOKE IF EXISTS ALL PRIVILEGES, GRANT OPTION FROM fake1@localhost, fake2@localhost, fake3@localhost IGNORE UNKNOWN USER;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 		},
 	},
@@ -1443,6 +1497,32 @@ var UserPrivTests = []UserPrivilegeTest{
 				Host:     "localhost",
 				Query:    "SELECT COUNT(*) FROM mysql.user WHERE User = 'tester';",
 				Expected: []sql.Row{{1}},
+			},
+			{
+				User:        "root",
+				Host:        "localhost",
+				Query:       "REVOKE fake_role FROM tester@localhost;",
+				ExpectedErr: sql.ErrGrantRevokeRoleDoesNotExist,
+			},
+			{
+				// TODO: check for warning
+				User:     "root",
+				Host:     "localhost",
+				Query:    "REVOKE IF EXISTS fake_role FROM tester@localhost;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				User:        "root",
+				Host:        "localhost",
+				Query:       "REVOKE test_role FROM fake_user@localhost;",
+				ExpectedErr: sql.ErrGrantRevokeRoleDoesNotExist,
+			},
+			{
+				// TODO: check for warning
+				User:     "root",
+				Host:     "localhost",
+				Query:    "REVOKE test_role FROM fake_user@localhost IGNORE UNKNOWN USER;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 		},
 	},
