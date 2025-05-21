@@ -530,16 +530,6 @@ func (b *Builder) buildRevokePrivilege(inScope *scope, n *ast.RevokePrivilege) (
 	return
 }
 
-func (b *Builder) buildRevokeAllPrivileges(inScope *scope, n *ast.RevokeAllPrivileges) (outScope *scope) {
-	outScope = inScope.push()
-	outScope.node = plan.NewRevokeAll(convertAccountName(n.From...))
-	n.Auth.Extra = outScope.node
-	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
-		b.handleErr(err)
-	}
-	return
-}
-
 func (b *Builder) buildRevokeRole(inScope *scope, n *ast.RevokeRole) (outScope *scope) {
 	outScope = inScope.push()
 	outScope.node = &plan.RevokeRole{

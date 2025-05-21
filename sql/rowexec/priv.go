@@ -291,10 +291,6 @@ func (b *BaseBuilder) buildRevoke(ctx *sql.Context, n *plan.Revoke, row sql.Row)
 	return rowIterWithOkResultWithZeroRowsAffected(), nil
 }
 
-func (b *BaseBuilder) buildRevokeAll(ctx *sql.Context, n *plan.RevokeAll, row sql.Row) (sql.RowIter, error) {
-	return nil, fmt.Errorf("not yet implemented")
-}
-
 func (b *BaseBuilder) buildGrant(ctx *sql.Context, n *plan.Grant, row sql.Row) (sql.RowIter, error) {
 	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
 	if !ok {
