@@ -375,8 +375,6 @@ func (b *Builder) buildSubquery(inScope *scope, stmt ast.Statement, subQuery str
 		return b.buildGrantProxy(inScope, n)
 	case *ast.RevokePrivilege:
 		return b.buildRevokePrivilege(inScope, n)
-	case *ast.RevokeAllPrivileges:
-		return b.buildRevokeAllPrivileges(inScope, n)
 	case *ast.RevokeRole:
 		return b.buildRevokeRole(inScope, n)
 	case *ast.RevokeProxy:

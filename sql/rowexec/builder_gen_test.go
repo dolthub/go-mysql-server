@@ -135,7 +135,6 @@ func TestGenBuilder(t *testing.T) {
 		"ResetReplica":              "*plan.ResetReplica",
 		"TableNode":                 "*plan.TableNode",
 		"Revoke":                    "*plan.Revoke",
-		"RevokeAll":                 "*plan.RevokeAll",
 		"RevokeRole":                "*plan.RevokeRole",
 		"RevokeProxy":               "*plan.RevokeProxy",
 		"RowUpdateAccumulator":      "plan.RowUpdateAccumulator",
