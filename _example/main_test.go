@@ -17,12 +17,12 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"github.com/gocraft/dbr/v2"
 	"net"
 	"testing"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/gocraft/dbr/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
