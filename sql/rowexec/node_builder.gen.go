@@ -198,8 +198,6 @@ func (b *BaseBuilder) buildNodeExecNoAnalyze(ctx *sql.Context, n sql.Node, row s
 		return b.buildAlterPK(ctx, n, row)
 	case plan.Nothing:
 		return b.buildNothing(ctx, n, row)
-	case *plan.RevokeAll:
-		return b.buildRevokeAll(ctx, n, row)
 	case *plan.DeferredAsOfTable:
 		return b.buildDeferredAsOfTable(ctx, n, row)
 	case *plan.CreateUser:

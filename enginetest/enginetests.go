@@ -1907,7 +1907,7 @@ func TestComplexIndexQueriesPrepared(t *testing.T, harness Harness) {
 }
 
 func TestJsonScriptsPrepared(t *testing.T, harness Harness, skippedTests []string) {
-	harness.Setup(setup.MydbData)
+	harness.Setup(setup.MydbData, setup.BlobData)
 	for _, script := range queries.JsonScripts {
 		for _, skippedTest := range skippedTests {
 			if strings.Contains(script.Name, skippedTest) {
@@ -5154,13 +5154,16 @@ func TestNullRanges(t *testing.T, harness Harness) {
 }
 
 func TestJsonScripts(t *testing.T, harness Harness, skippedTests []string) {
+	harness.Setup(setup.MydbData, setup.BlobData)
 	for _, script := range queries.JsonScripts {
-		for _, skippedTest := range skippedTests {
-			if strings.Contains(script.Name, skippedTest) {
-				t.Skip()
+		t.Run(script.Name, func(t *testing.T) {
+			for _, skippedTest := range skippedTests {
+				if strings.Contains(script.Name, skippedTest) {
+					t.Skip()
+				}
 			}
-		}
-		TestScript(t, harness, script)
+			TestScript(t, harness, script)
+		})
 	}
 }
 

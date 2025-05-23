@@ -102,12 +102,19 @@ func (j JSONObject) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 		if i%2 == 0 {
-			val, _, err := types.LongText.Convert(ctx, val)
+			val, _, err = types.LongText.Convert(ctx, val)
 			if err != nil {
 				return nil, err
 			}
-			key = val.(string)
+			key, _, err = sql.Unwrap[string](ctx, val)
+			if err != nil {
+				return nil, err
+			}
 		} else {
+			val, err = sql.UnwrapAny(ctx, val)
+			if err != nil {
+				return nil, err
+			}
 			if json, ok := val.(sql.JSONWrapper); ok {
 				val, err = json.ToInterface()
 				if err != nil {

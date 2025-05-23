@@ -7901,6 +7901,31 @@ where
 		},
 	},
 	{
+		Name:    "special case for not null default enum",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (i int primary key, e enum('abc', 'def', 'ghi') not null);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into t(i) values (1)",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query:       "insert into t values (2, null)",
+				ExpectedErr: sql.ErrInsertIntoNonNullableProvidedNull,
+			},
+			{
+				Query: "select * from t;",
+				Expected: []sql.Row{
+					{1, "abc"},
+				},
+			},
+		},
+	},
+	{
 		Name:    "not expression optimization",
 		Dialect: "mysql",
 		SetUpScript: []string{

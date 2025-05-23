@@ -477,6 +477,7 @@ func (a *Analyzer) Analyze(ctx *sql.Context, node sql.Node, scope *plan.Scope, q
 	switch n := node.(type) {
 	case *plan.DescribeQuery:
 		child, _, err := a.analyzeWithSelector(ctx, n.Query(), scope, SelectAllBatches, DefaultRuleSelector, qFlags)
+		qFlags.Unset(sql.QFlagMax1Row) // the rule replaceCountStar can set this incorrectly for queries containing count(*).
 		return n.WithQuery(child), err
 	}
 	node, _, err := a.analyzeWithSelector(ctx, node, scope, SelectAllBatches, DefaultRuleSelector, qFlags)

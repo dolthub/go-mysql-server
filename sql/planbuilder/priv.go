@@ -516,22 +516,13 @@ func (b *Builder) buildRevokePrivilege(inScope *scope, n *ast.RevokePrivilege) (
 	}
 	outScope = inScope.push()
 	outScope.node = &plan.Revoke{
-		Privileges:     privs,
-		ObjectType:     objType,
-		PrivilegeLevel: level,
-		Users:          users,
-		MySQLDb:        b.resolveDb("mysql"),
+		Privileges:        privs,
+		ObjectType:        objType,
+		PrivilegeLevel:    level,
+		Users:             users,
+		IgnoreUnknownUser: n.IgnoreUnknownUser,
+		MySQLDb:           b.resolveDb("mysql"),
 	}
-	n.Auth.Extra = outScope.node
-	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
-		b.handleErr(err)
-	}
-	return
-}
-
-func (b *Builder) buildRevokeAllPrivileges(inScope *scope, n *ast.RevokeAllPrivileges) (outScope *scope) {
-	outScope = inScope.push()
-	outScope.node = plan.NewRevokeAll(convertAccountName(n.From...))
 	n.Auth.Extra = outScope.node
 	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
 		b.handleErr(err)
@@ -542,9 +533,11 @@ func (b *Builder) buildRevokeAllPrivileges(inScope *scope, n *ast.RevokeAllPrivi
 func (b *Builder) buildRevokeRole(inScope *scope, n *ast.RevokeRole) (outScope *scope) {
 	outScope = inScope.push()
 	outScope.node = &plan.RevokeRole{
-		Roles:       convertAccountName(n.Roles...),
-		TargetUsers: convertAccountName(n.From...),
-		MySQLDb:     b.resolveDb("mysql"),
+		Roles:             convertAccountName(n.Roles...),
+		TargetUsers:       convertAccountName(n.From...),
+		IfExists:          n.IfExists,
+		IgnoreUnknownUser: n.IgnoreUnknownUser,
+		MySQLDb:           b.resolveDb("mysql"),
 	}
 	n.Auth.Extra = outScope.node
 	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
@@ -558,7 +551,7 @@ func (b *Builder) buildRevokeProxy(inScope *scope, n *ast.RevokeProxy) (outScope
 		b.handleErr(err)
 	}
 	outScope = inScope.push()
-	outScope.node = plan.NewRevokeProxy(convertAccountName(n.On)[0], convertAccountName(n.From...))
+	outScope.node = plan.NewRevokeProxy(convertAccountName(n.On)[0], convertAccountName(n.From...), n.IfExists, n.IgnoreUnknownUser)
 	return
 }
 

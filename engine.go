@@ -240,6 +240,9 @@ func (e *Engine) PrepareParsedQuery(
 	statementKey, query string,
 	stmt sqlparser.Statement,
 ) (sql.Node, error) {
+	// Make sure there is an active transaction if one hasn't been started yet
+	e.beginTransaction(ctx)
+
 	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.EventScheduler, e.Parser)
 	node, _, err := binder.BindOnly(stmt, query, nil)
 
@@ -265,6 +268,9 @@ func clearWarnings(ctx *sql.Context, node sql.Node) {
 	case *plan.Offset, *plan.Limit:
 		// `show warning limit x offset y` is valid, so we need to recurse
 		clearWarnings(ctx, n.Children()[0])
+	case *plan.Set:
+		// We want to maintain warnings when setting the warnings_lock variable.
+		// Set statements also can't produce warnings, so we don't care about clearing them.
 	case plan.ShowWarnings:
 		// ShowWarnings should not clear the warnings, but should still reset the warning count.
 		ctx.ClearWarningCount()

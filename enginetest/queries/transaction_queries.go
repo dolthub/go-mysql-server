@@ -1447,4 +1447,35 @@ var TransactionTests = []TransactionTest{
 			},
 		},
 	},
+	{
+		// Repro for https://github.com/dolthub/dolt/issues/3402
+		//       and https://github.com/dolthub/dolt/issues/9213 (similar issue, just with prepared statements)
+		Name: "DDL changes from transactions are available before analyzing statements in other sessions (autocommit on)",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "/* client a */ select @@autocommit;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "/* client b */ select @@autocommit;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "/* client a */ show tables like 't';",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client b */ show tables like 't';",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "/* client a */ create table t(pk int primary key);",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				Query:    "/* client b */ select count(*) from t;",
+				Expected: []sql.Row{{0}},
+			},
+		},
+	},
 }

@@ -44,20 +44,8 @@ type Scope struct {
 	inLateralJoin bool
 	joinSiblings  []sql.Node
 	JoinTrees     []string
-}
 
-func (s *Scope) SetJoin(b bool) {
-	if s == nil {
-		return
-	}
-	s.inJoin = b
-}
-
-func (s *Scope) SetLateralJoin(b bool) {
-	if s == nil {
-		return
-	}
-	s.inLateralJoin = b
+	inInsertSource bool
 }
 
 func (s *Scope) IsEmpty() bool {
@@ -318,18 +306,37 @@ func (s *Scope) Schema() sql.Schema {
 	return schema
 }
 
-func (s *Scope) InJoin() bool {
+func (s *Scope) SetJoin(b bool) {
 	if s == nil {
-		return false
+		return
 	}
-	return s.inJoin
+	s.inJoin = b
+}
+
+func (s *Scope) SetLateralJoin(b bool) {
+	if s == nil {
+		return
+	}
+	s.inLateralJoin = b
+}
+
+func (s *Scope) SetInInsertSource(b bool) {
+	if s == nil {
+		return
+	}
+	s.inInsertSource = b
+}
+
+func (s *Scope) InJoin() bool {
+	return s != nil && s.inJoin
 }
 
 func (s *Scope) InLateralJoin() bool {
-	if s == nil {
-		return false
-	}
-	return s.inLateralJoin
+	return s != nil && s.inLateralJoin
+}
+
+func (s *Scope) InInsertSource() bool {
+	return s != nil && s.inInsertSource
 }
 
 func (s *Scope) JoinSiblings() []sql.Node {

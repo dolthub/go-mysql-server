@@ -127,6 +127,17 @@ var JsonScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "json_object works on text values from tables",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `select JSON_OBJECT(t, t) FROM textt where i = 1;`,
+				Expected: []sql.Row{
+					{types.MustJSON("{\"first row\": \"first row\"}")},
+				},
+			},
+		},
+	},
+	{
 		Name: "types survive round-trip into tables",
 		SetUpScript: []string{
 			"CREATE TABLE xy (x bigint primary key, y JSON)",

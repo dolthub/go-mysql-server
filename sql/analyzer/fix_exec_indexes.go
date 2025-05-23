@@ -32,12 +32,13 @@ func assignExecIndexes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 	if !scope.IsEmpty() {
 		// triggers
 		s.triggerScope = true
+		s.insertSourceScope = scope.InInsertSource()
 		s.addSchema(scope.Schema())
 		s = s.push()
 	}
 	switch n := n.(type) {
 	case *plan.InsertInto:
-		if n.LiteralValueSource && len(n.Checks()) == 0 && len(n.OnDupExprs) == 0 {
+		if n.LiteralValueSource && len(n.Checks()) == 0 && len(n.OnDupExprs) == 0 && len(n.Returning) == 0 {
 			return n, transform.SameTree, nil
 		}
 	case *plan.Update:
@@ -161,7 +162,33 @@ type idxScope struct {
 	children      []sql.Node
 	expressions   []sql.Expression
 	checks        sql.CheckConstraints
-	triggerScope  bool
+
+	triggerScope      bool
+	insertSourceScope bool
+}
+
+func (s *idxScope) inTrigger() bool {
+	if s == nil {
+		return false
+	}
+	for _, ps := range s.parentScopes {
+		if ps.inTrigger() {
+			return true
+		}
+	}
+	return s.triggerScope
+}
+
+func (s *idxScope) inInsertSource() bool {
+	if s == nil {
+		return false
+	}
+	for _, ps := range s.parentScopes {
+		if ps.inInsertSource() {
+			return true
+		}
+	}
+	return s.insertSourceScope
 }
 
 func (s *idxScope) addSchema(sch sql.Schema) {
@@ -535,6 +562,20 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 			n.DestSch[colIdx].Default = newDef.(*sql.ColumnDefaultValue)
 		}
 	default:
+		// Group By and Window functions already account for the new/old columns present from triggers
+		// This means that when indexing the Projections, we should not include the trigger scope(s), which are
+		// within s.parentScopes.
+		if proj, isProj := n.(*plan.Project); isProj {
+			switch proj.Child.(type) {
+			case *plan.GroupBy, *plan.Window:
+				if s.inTrigger() && s.inInsertSource() {
+					for _, e := range proj.Expressions() {
+						s.expressions = append(s.expressions, fixExprToScope(e, s.childScopes...))
+					}
+					return nil
+				}
+			}
+		}
 		if ne, ok := n.(sql.Expressioner); ok {
 			scope := append(s.parentScopes, s.childScopes...)
 			for _, e := range ne.Expressions() {
