@@ -224,7 +224,7 @@ func (s *scope) initProc() {
 // initGroupBy creates a container scope for aggregation
 // functions and function inputs.
 func (s *scope) initGroupBy() {
-	if s.groupBy != nil {
+	if s.groupBy == nil {
 		s.groupBy = &groupBy{outScope: s.replace()}
 	}
 }
