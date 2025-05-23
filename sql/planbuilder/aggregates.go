@@ -95,9 +95,8 @@ func (b *Builder) buildGroupingCols(fromScope, projScope *scope, groupby ast.Gro
 	// 3) an index into selects
 	// 4) a simple non-aggregate expression
 	groupings := make([]sql.Expression, 0)
-	if fromScope.groupBy == nil {
-		fromScope.initGroupBy()
-	}
+	fromScope.initGroupBy()
+
 	g := fromScope.groupBy
 	for _, e := range groupby {
 		var col scopeColumn
@@ -194,9 +193,7 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 	// - grouping cols projection
 	// - aggregate expressions
 	// - output projection
-	if fromScope.groupBy == nil {
-		fromScope.initGroupBy()
-	}
+	fromScope.initGroupBy()
 
 	group := fromScope.groupBy
 	outScope := group.outScope
@@ -257,7 +254,10 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 	return outScope
 }
 
-func isAggregateFunc(name string) bool {
+// IsAggregateFunc is a hacky "extension point" to allow for other dialects to declare additional aggregate functions
+var IsAggregateFunc = IsMySQLAggregateFuncName
+
+func IsMySQLAggregateFuncName(name string) bool {
 	switch name {
 	case "avg", "bit_and", "bit_or", "bit_xor", "count",
 		"group_concat", "json_arrayagg", "json_objectagg",
@@ -278,67 +278,19 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 		b.handleErr(err)
 	}
 
-	if inScope.groupBy == nil {
-		inScope.initGroupBy()
-	}
+	inScope.initGroupBy()
 	gb := inScope.groupBy
 
 	if strings.EqualFold(name, "count") {
 		if _, ok := e.Exprs[0].(*ast.StarExpr); ok {
-			var agg sql.Aggregation
-			if e.Distinct {
-				agg = aggregation.NewCountDistinct(expression.NewLiteral(1, types.Int64))
-			} else {
-				agg = aggregation.NewCount(expression.NewLiteral(1, types.Int64))
-			}
-			b.qFlags.Set(sql.QFlagCountStar)
-			aggName := strings.ToLower(agg.String())
-			gf := gb.getAggRef(aggName)
-			if gf != nil {
-				// if we've already computed use reference here
-				return gf
-			}
-
-			col := scopeColumn{col: strings.ToLower(agg.String()), scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
-			id := gb.outScope.newColumn(col)
-			col.id = id
-
-			agg = agg.WithId(sql.ColumnId(id)).(sql.Aggregation)
-			gb.outScope.cols[len(gb.outScope.cols)-1].scalar = agg
-			col.scalar = agg
-
-			gb.addAggStr(col)
-			return col.scalarGf()
+			return b.buildCountStarAggregate(e, gb)
 		}
 	}
 
 	if strings.EqualFold(name, "jsonarray") {
 		// TODO we don't have any tests for this
 		if _, ok := e.Exprs[0].(*ast.StarExpr); ok {
-			var agg sql.Aggregation
-			agg = aggregation.NewJsonArray(expression.NewLiteral(expression.NewStar(), types.Int64))
-			b.qFlags.Set(sql.QFlagStar)
-
-			//if e.Distinct {
-			//	agg = plan.NewDistinct(expression.NewLiteral(1, types.Int64))
-			//}
-			aggName := strings.ToLower(agg.String())
-			gf := gb.getAggRef(aggName)
-			if gf != nil {
-				// if we've already computed use reference here
-				return gf
-			}
-
-			col := scopeColumn{col: strings.ToLower(agg.String()), scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
-			id := gb.outScope.newColumn(col)
-
-			agg = agg.WithId(sql.ColumnId(id)).(*aggregation.JsonArray)
-			gb.outScope.cols[len(gb.outScope.cols)-1].scalar = agg
-			col.scalar = agg
-
-			col.id = id
-			gb.addAggStr(col)
-			return col.scalarGf()
+			return b.buildJsonArrayStarAggregate(gb)
 		}
 	}
 
@@ -346,6 +298,77 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 		b.qFlags.Set(sql.QFlagAnyAgg)
 	}
 
+	args := b.buildAggFunctionArgs(inScope, e, gb)
+	agg := b.newAggregation(e, name, args)
+
+	if name == "count" {
+		b.qFlags.Set(sql.QFlagCount)
+	}
+
+	aggType := agg.Type()
+	if name == "avg" || name == "sum" {
+		aggType = types.Float64
+	}
+
+	aggName := strings.ToLower(plan.AliasSubqueryString(agg))
+	if id, ok := gb.outScope.getExpr(aggName, true); ok {
+		// if we've already computed use reference here
+		gf := expression.NewGetFieldWithTable(int(id), 0, aggType, "", "", aggName, agg.IsNullable())
+		return gf
+	}
+
+	col := scopeColumn{col: aggName, scalar: agg, typ: aggType, nullable: agg.IsNullable()}
+	id := gb.outScope.newColumn(col)
+
+	agg = agg.WithId(sql.ColumnId(id)).(sql.Aggregation)
+	gb.outScope.cols[len(gb.outScope.cols)-1].scalar = agg
+	col.scalar = agg
+
+	col.id = id
+	gb.addAggStr(col)
+	return col.scalarGf()
+}
+
+// newAggregation creates a new aggregation function instanc from the arguments given
+func (b *Builder) newAggregation(e *ast.FuncExpr, name string, args []sql.Expression) sql.Aggregation {
+	var agg sql.Aggregation
+	if e.Distinct && name == "count" {
+		agg = aggregation.NewCountDistinct(args...)
+	} else {
+		// NOTE: Not all aggregate functions support DISTINCT. Fortunately, the vitess parser will throw
+		// errors for when DISTINCT is used on aggregate functions that don't support DISTINCT.
+		if e.Distinct {
+			if len(e.Exprs) != 1 {
+				err := sql.ErrUnsupportedSyntax.New("more than one expression with distinct")
+				b.handleErr(err)
+			}
+
+			args[0] = expression.NewDistinctExpression(args[0])
+		}
+
+		f, ok := b.cat.Function(b.ctx, name)
+		if !ok {
+			// todo(max): similar names in registry?
+			err := sql.ErrFunctionNotFound.New(name)
+			b.handleErr(err)
+		}
+
+		newInst, err := f.NewInstance(args)
+		if err != nil {
+			b.handleErr(err)
+		}
+
+		agg, ok = newInst.(sql.Aggregation)
+		if !ok {
+			err := fmt.Errorf("expected function to be aggregation: %s", f.FunctionName())
+			b.handleErr(err)
+		}
+	}
+	return agg
+}
+
+// buildAggFunctionArgs builds the arguments for an aggregate function
+func (b *Builder) buildAggFunctionArgs(inScope *scope, e *ast.FuncExpr, gb *groupBy) []sql.Expression {
 	var args []sql.Expression
 	for _, arg := range e.Exprs {
 		e := b.selectExprToExpression(inScope, arg)
@@ -377,62 +400,29 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 			gb.addInCol(col)
 		}
 	}
+	return args
+}
 
+// buildJsonArrayStarAggregate builds a JSON_ARRAY(*) aggregate function
+func (b *Builder) buildJsonArrayStarAggregate(gb *groupBy) sql.Expression {
 	var agg sql.Aggregation
-	if e.Distinct && name == "count" {
-		agg = aggregation.NewCountDistinct(args...)
-	} else {
+	agg = aggregation.NewJsonArray(expression.NewLiteral(expression.NewStar(), types.Int64))
+	b.qFlags.Set(sql.QFlagStar)
 
-		// NOTE: Not all aggregate functions support DISTINCT. Fortunately, the vitess parser will throw
-		// errors for when DISTINCT is used on aggregate functions that don't support DISTINCT.
-		if e.Distinct {
-			if len(e.Exprs) != 1 {
-				err := sql.ErrUnsupportedSyntax.New("more than one expression with distinct")
-				b.handleErr(err)
-			}
-
-			args[0] = expression.NewDistinctExpression(args[0])
-		}
-
-		f, ok := b.cat.Function(b.ctx, name)
-		if !ok {
-			// todo(max): similar names in registry?
-			err := sql.ErrFunctionNotFound.New(name)
-			b.handleErr(err)
-		}
-
-		newInst, err := f.NewInstance(args)
-		if err != nil {
-			b.handleErr(err)
-		}
-
-		agg, ok = newInst.(sql.Aggregation)
-		if !ok {
-			err := fmt.Errorf("expected function to be aggregation: %s", f.FunctionName())
-			b.handleErr(err)
-		}
-	}
-
-	if name == "count" {
-		b.qFlags.Set(sql.QFlagCount)
-	}
-
-	aggType := agg.Type()
-	if name == "avg" || name == "sum" {
-		aggType = types.Float64
-	}
-
-	aggName := strings.ToLower(plan.AliasSubqueryString(agg))
-	if id, ok := gb.outScope.getExpr(aggName, true); ok {
+	// if e.Distinct {
+	//	agg = plan.NewDistinct(expression.NewLiteral(1, types.Int64))
+	// }
+	aggName := strings.ToLower(agg.String())
+	gf := gb.getAggRef(aggName)
+	if gf != nil {
 		// if we've already computed use reference here
-		gf := expression.NewGetFieldWithTable(int(id), 0, aggType, "", "", aggName, agg.IsNullable())
 		return gf
 	}
 
-	col := scopeColumn{col: aggName, scalar: agg, typ: aggType, nullable: agg.IsNullable()}
+	col := scopeColumn{col: strings.ToLower(agg.String()), scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
 	id := gb.outScope.newColumn(col)
 
-	agg = agg.WithId(sql.ColumnId(id)).(sql.Aggregation)
+	agg = agg.WithId(sql.ColumnId(id)).(*aggregation.JsonArray)
 	gb.outScope.cols[len(gb.outScope.cols)-1].scalar = agg
 	col.scalar = agg
 
@@ -441,10 +431,37 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 	return col.scalarGf()
 }
 
-func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.Expression {
-	if inScope.groupBy == nil {
-		inScope.initGroupBy()
+// buildCountStarAggregate builds a COUNT(*) aggregate function
+func (b *Builder) buildCountStarAggregate(e *ast.FuncExpr, gb *groupBy) sql.Expression {
+	var agg sql.Aggregation
+	if e.Distinct {
+		agg = aggregation.NewCountDistinct(expression.NewLiteral(1, types.Int64))
+	} else {
+		agg = aggregation.NewCount(expression.NewLiteral(1, types.Int64))
 	}
+	b.qFlags.Set(sql.QFlagCountStar)
+	aggName := strings.ToLower(agg.String())
+	gf := gb.getAggRef(aggName)
+	if gf != nil {
+		// if we've already computed use reference here
+		return gf
+	}
+
+	col := scopeColumn{col: strings.ToLower(agg.String()), scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
+	id := gb.outScope.newColumn(col)
+	col.id = id
+
+	agg = agg.WithId(sql.ColumnId(id)).(sql.Aggregation)
+	gb.outScope.cols[len(gb.outScope.cols)-1].scalar = agg
+	col.scalar = agg
+
+	gb.addAggStr(col)
+	return col.scalarGf()
+}
+
+// buildGroupConcat builds a GROUP_CONCAT aggregate function
+func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.Expression {
+	inScope.initGroupBy()
 	gb := inScope.groupBy
 
 	args := make([]sql.Expression, len(e.Exprs))
@@ -794,7 +811,7 @@ func (b *Builder) analyzeHaving(fromScope, projScope *scope, having *ast.Where) 
 			return false, nil
 		case *ast.FuncExpr:
 			name := n.Name.Lowered()
-			if isAggregateFunc(name) {
+			if IsAggregateFunc(name) {
 				// record aggregate
 				// TODO: this should get projScope as well
 				_ = b.buildAggregateFunc(fromScope, name, n)
@@ -874,9 +891,7 @@ func (b *Builder) buildHaving(fromScope, projScope, outScope *scope, having *ast
 	if having == nil {
 		return
 	}
-	if fromScope.groupBy == nil {
-		fromScope.initGroupBy()
-	}
+	fromScope.initGroupBy()
 
 	havingScope := b.newScope()
 	if fromScope.parent != nil {
