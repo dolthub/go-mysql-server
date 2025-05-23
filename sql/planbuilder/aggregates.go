@@ -96,7 +96,7 @@ func (b *Builder) buildGroupingCols(fromScope, projScope *scope, groupby ast.Gro
 	// 4) a simple non-aggregate expression
 	groupings := make([]sql.Expression, 0)
 	fromScope.initGroupBy()
-	
+
 	g := fromScope.groupBy
 	for _, e := range groupby {
 		var col scopeColumn
@@ -254,7 +254,7 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 	return outScope
 }
 
-// IsAggregateFunc is a hacky "extension point" to allow for other dialects to declare additional aggregate functions 
+// IsAggregateFunc is a hacky "extension point" to allow for other dialects to declare additional aggregate functions
 var IsAggregateFunc = IsMySQLAggregateFuncName
 
 func IsMySQLAggregateFuncName(name string) bool {
