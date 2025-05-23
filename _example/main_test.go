@@ -81,6 +81,7 @@ func TestExampleLoadedUser(t *testing.T) {
 	go func() {
 		main()
 	}()
+	// Wait for the database to start
 	time.Sleep(1 * time.Second)
 	conn, err := dbr.Open("mysql", fmt.Sprintf("no_user:@tcp(%s:%d)/%s", address, port, dbName), nil)
 	require.NoError(t, err)
