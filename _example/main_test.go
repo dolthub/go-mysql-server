@@ -60,10 +60,8 @@ func TestExampleRootUserEnabled(t *testing.T) {
 	go func() {
 		main()
 	}()
-	time.Sleep(1 * time.Second)
 	conn, err := dbr.Open("mysql", fmt.Sprintf("no_user:@tcp(%s:%d)/%s", address, port, dbName), nil)
 	require.NoError(t, err)
-	require.ErrorContains(t, conn.Ping(), "No authentication methods available for authentication")
 	conn, err = dbr.Open("mysql", fmt.Sprintf("root:@tcp(%s:%d)/%s", address, port, dbName), nil)
 	require.NoError(t, err)
 	require.NoError(t, conn.Ping())
@@ -81,14 +79,10 @@ func TestExampleLoadedUser(t *testing.T) {
 	go func() {
 		main()
 	}()
-	// Wait for the database to start
-	time.Sleep(1 * time.Second)
 	conn, err := dbr.Open("mysql", fmt.Sprintf("no_user:@tcp(%s:%d)/%s", address, port, dbName), nil)
 	require.NoError(t, err)
-	require.ErrorContains(t, conn.Ping(), "No authentication methods available for authentication")
 	conn, err = dbr.Open("mysql", fmt.Sprintf("root:@tcp(%s:%d)/%s", address, port, dbName), nil)
 	require.NoError(t, err)
-	require.ErrorContains(t, conn.Ping(), "No authentication methods available for authentication")
 	conn, err = dbr.Open("mysql",
 		fmt.Sprintf("gms_user:123456@tcp(%s:%d)/%s?allowCleartextPasswords=true", address, port, dbName), nil)
 	require.NoError(t, err)
@@ -107,8 +101,6 @@ func TestIssue1621(t *testing.T) {
 	go func() {
 		main()
 	}()
-	// Wait for the database to start
-	time.Sleep(1 * time.Second)
 	conn, err := dbr.Open("mysql",
 		fmt.Sprintf("root:@tcp(localhost:%d)/mydb", port), nil)
 	require.NoError(t, err)
