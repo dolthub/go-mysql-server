@@ -11323,6 +11323,10 @@ var ErrorQueries = []QueryErrorTest{
 		Query:       `SELECT * FROM (values row(1,2), row(1,2,3)) t`,
 		ExpectedErr: sql.ErrColValCountMismatch,
 	},
+	{
+		Query:       "SELECT 1 INTO mytable;",
+		ExpectedErr: sql.ErrUndeclaredVariable,
+	},
 }
 
 var BrokenErrorQueries = []QueryErrorTest{
