@@ -238,9 +238,6 @@ var (
 	// ErrEventDoesNotExist is returned when an event does not exist.
 	ErrEventDoesNotExist = errors.NewKind("Event '%s' does not exist")
 
-	// ErrUndeclaredVariable is return when an undeclared variable is used.
-	ErrUndeclaredVariable = errors.NewKind("Undeclared variable: '%s'")
-
 	// ErrUnknownEvent is returned when a query references an event that doesn't exist
 	ErrUnknownEvent = errors.NewKind("Unknown event '%s'")
 

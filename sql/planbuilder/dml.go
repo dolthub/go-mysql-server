@@ -752,7 +752,7 @@ func (b *Builder) buildInto(inScope *scope, into *ast.Into) {
 			vars[i] = expression.NewUserVar(strings.TrimPrefix(val.String(), "@"))
 		} else {
 			if inScope.proc == nil {
-				err := sql.ErrUndeclaredVariable.New(val.String())
+				err := sql.ErrExternalProcedureMissingContextParam.New(val.String())
 				b.handleErr(err)
 			}
 			col, ok := inScope.proc.GetVar(val.String())
