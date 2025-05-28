@@ -359,7 +359,11 @@ func (t EnumType) WithNewCollation(collation sql.CollationID) (sql.Type, error) 
 
 // StringWithTableCollation implements sql.TypeWithCollation interface.
 func (t EnumType) StringWithTableCollation(tableCollation sql.CollationID) string {
-	s := fmt.Sprintf("enum('%v')", strings.Join(t.idxToVal, `','`))
+	escapedValues := make([]string, len(t.idxToVal))
+	for i, value := range t.idxToVal {
+		escapedValues[i] = strings.ReplaceAll(value, "'", "''")
+	}
+	s := fmt.Sprintf("enum('%s')", strings.Join(escapedValues, `','`))
 	if t.CharacterSet() != tableCollation.CharacterSet() {
 		s += " CHARACTER SET " + t.CharacterSet().String()
 	}
