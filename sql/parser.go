@@ -133,8 +133,17 @@ func RemoveSpaceAndDelimiter(query string, d rune) string {
 	})
 }
 
-func EscapeSingleQuotesInComment(comment string) string {
-	return strings.ReplaceAll(comment, "'", "''")
+func EscapeSpecialCharactersInComment(comment string) string {
+	panic("here!")
+	commentString := comment
+	commentString = strings.ReplaceAll(commentString, "'", "''")
+	commentString = strings.ReplaceAll(commentString, "\\", "\\\\")
+	commentString = strings.ReplaceAll(commentString, "\"", "\\\"")
+	commentString = strings.ReplaceAll(commentString, "\n", "\\n")
+	commentString = strings.ReplaceAll(commentString, "\r", "\\r")
+
+	commentString = strings.ReplaceAll(commentString, "\x00", "\\0")
+	return commentString
 }
 
 type MySqlSchemaFormatter struct{}
@@ -143,9 +152,10 @@ var _ SchemaFormatter = &MySqlSchemaFormatter{}
 
 // GenerateCreateTableStatement implements the SchemaFormatter interface.
 func (m *MySqlSchemaFormatter) GenerateCreateTableStatement(tblName string, colStmts []string, temp, autoInc, tblCharsetName, tblCollName, comment string) string {
+	panic("here! 1")
 	if comment != "" {
 		// Escape any single quotes in the comment and add the COMMENT keyword
-		comment = fmt.Sprintf(" COMMENT='%s'", EscapeSingleQuotesInComment(comment))
+		comment = fmt.Sprintf(" COMMENT='%s'", EscapeSpecialCharactersInComment(comment))
 	}
 
 	if autoInc != "" {
@@ -166,6 +176,7 @@ func (m *MySqlSchemaFormatter) GenerateCreateTableStatement(tblName string, colS
 
 // GenerateCreateTableColumnDefinition implements the SchemaFormatter interface.
 func (m *MySqlSchemaFormatter) GenerateCreateTableColumnDefinition(col *Column, colDefault, onUpdate string, tableCollation CollationID) string {
+	panic("here! 2")
 	var colTypeString string
 	if collationType, ok := col.Type.(TypeWithCollation); ok {
 		colTypeString = collationType.StringWithTableCollation(tableCollation)
@@ -204,7 +215,7 @@ func (m *MySqlSchemaFormatter) GenerateCreateTableColumnDefinition(col *Column, 
 	}
 
 	if col.Comment != "" {
-		stmt = fmt.Sprintf("%s COMMENT '%s'", stmt, EscapeSingleQuotesInComment(col.Comment))
+		stmt = fmt.Sprintf("%s COMMENT '%s'", stmt, EscapeSpecialCharactersInComment(col.Comment))
 	}
 	return stmt
 }
