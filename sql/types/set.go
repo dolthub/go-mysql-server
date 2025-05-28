@@ -306,7 +306,12 @@ func (t SetType) WithNewCollation(collation sql.CollationID) (sql.Type, error) {
 
 // StringWithTableCollation implements sql.TypeWithCollation interface.
 func (t SetType) StringWithTableCollation(tableCollation sql.CollationID) string {
-	s := fmt.Sprintf("set('%v')", strings.Join(t.Values(), `','`))
+	values := t.Values()
+	escapedValues := make([]string, len(values))
+	for i, value := range values {
+		escapedValues[i] = strings.ReplaceAll(value, "'", "''")
+	}
+	s := fmt.Sprintf("set('%s')", strings.Join(escapedValues, `','`))
 	if t.CharacterSet() != tableCollation.CharacterSet() {
 		s += " CHARACTER SET " + t.CharacterSet().String()
 	}
