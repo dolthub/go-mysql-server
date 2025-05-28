@@ -304,9 +304,6 @@ func (b *Builder) buildCall(inScope *scope, c *ast.Call) (outScope *scope) {
 	} else if b.ctx.GetCurrentDatabase() != "" {
 		db = b.currentDb()
 	}
-	if db == nil {
-		b.handleErr(sql.ErrNoDatabaseSelected.New())
-	}
 
 	var proc *plan.Procedure
 	var innerQFlags *sql.QueryFlags
