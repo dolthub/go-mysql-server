@@ -1029,6 +1029,23 @@ var AlterTableScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "alter table comments are escaped",
+		SetUpScript: []string{
+			"create table t (i int);",
+			`alter table t modify column i int comment "newline \n | return \r | backslash \\ | NUL \0 \x00"`,
+			`alter table t add column j int comment "newline \n | return \r | backslash \\ | NUL \0 \x00"`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t",
+				Expected: []sql.Row{{
+					"t",
+					"CREATE TABLE `t` (\n  `i` int COMMENT 'newline \\n | return \\r | backslash \\\\ | NUL \\0 x00'," +
+						"\n  `j` int COMMENT 'newline \\n | return \\r | backslash \\\\ | NUL \\0 x00'\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
 }
 
 var RenameTableScripts = []ScriptTest{

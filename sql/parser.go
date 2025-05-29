@@ -133,6 +133,17 @@ func RemoveSpaceAndDelimiter(query string, d rune) string {
 	})
 }
 
+func EscapeSpecialCharactersInComment(comment string) string {
+	commentString := comment
+	commentString = strings.ReplaceAll(commentString, "'", "''")
+	commentString = strings.ReplaceAll(commentString, "\\", "\\\\")
+	commentString = strings.ReplaceAll(commentString, "\"", "\\\"")
+	commentString = strings.ReplaceAll(commentString, "\n", "\\n")
+	commentString = strings.ReplaceAll(commentString, "\r", "\\r")
+	commentString = strings.ReplaceAll(commentString, "\x00", "\\0")
+	return commentString
+}
+
 type MySqlSchemaFormatter struct{}
 
 var _ SchemaFormatter = &MySqlSchemaFormatter{}
@@ -141,8 +152,7 @@ var _ SchemaFormatter = &MySqlSchemaFormatter{}
 func (m *MySqlSchemaFormatter) GenerateCreateTableStatement(tblName string, colStmts []string, temp, autoInc, tblCharsetName, tblCollName, comment string) string {
 	if comment != "" {
 		// Escape any single quotes in the comment and add the COMMENT keyword
-		comment = strings.ReplaceAll(comment, "'", "''")
-		comment = fmt.Sprintf(" COMMENT='%s'", comment)
+		comment = fmt.Sprintf(" COMMENT='%s'", EscapeSpecialCharactersInComment(comment))
 	}
 
 	if autoInc != "" {
@@ -201,7 +211,7 @@ func (m *MySqlSchemaFormatter) GenerateCreateTableColumnDefinition(col *Column, 
 	}
 
 	if col.Comment != "" {
-		stmt = fmt.Sprintf("%s COMMENT '%s'", stmt, col.Comment)
+		stmt = fmt.Sprintf("%s COMMENT '%s'", stmt, EscapeSpecialCharactersInComment(col.Comment))
 	}
 	return stmt
 }
