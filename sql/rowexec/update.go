@@ -17,6 +17,7 @@ package rowexec
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -230,7 +231,7 @@ func (u *updateJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 		tableToNewRowMap := plan.SplitRowIntoTableRowMap(newJoinRow, u.joinSchema)
 
 		for tableName, _ := range u.updaters {
-			oldTableRow := tableToOldRowMap[tableName]
+			oldTableRow := tableToOldRowMap[strings.ToLower(tableName)]
 
 			// Handle the case of row being ignored due to it not being valid in the join row.
 			if isRightOrLeftJoin(u.joinNode) {
@@ -388,15 +389,14 @@ func recreateRowFromMap(rowMap map[string]sql.Row, joinSchema sql.Schema) sql.Ro
 		return ret
 	}
 
-	currentTable := joinSchema[0].Source
+	currentTable := strings.ToLower(joinSchema[0].Source)
 	ret = append(ret, rowMap[currentTable]...)
 
 	for i := 1; i < len(joinSchema); i++ {
-		c := joinSchema[i]
-
-		if c.Source != currentTable {
-			ret = append(ret, rowMap[c.Source]...)
-			currentTable = c.Source
+		newTable := strings.ToLower(joinSchema[i].Source)
+		if !strings.EqualFold(newTable, currentTable) {
+			ret = append(ret, rowMap[newTable]...)
+			currentTable = newTable
 		}
 	}
 
