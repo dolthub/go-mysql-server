@@ -47,6 +47,18 @@ var CreateTableQueries = []WriteQueryTest{
 		ExpectedSelect:      []sql.Row{{"tableWithComment", "CREATE TABLE `tableWithComment` (\n  `pk` int\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin COMMENT=''''"}},
 	},
 	{
+		WriteQuery:          `create table tableWithComment (pk int) COMMENT "\'"`,
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
+		SelectQuery:         "SHOW CREATE TABLE tableWithComment",
+		ExpectedSelect:      []sql.Row{{"tableWithComment", "CREATE TABLE `tableWithComment` (\n  `pk` int\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin COMMENT=''''"}},
+	},
+	{
+		WriteQuery:          `create table tableWithComment (pk int) COMMENT "newline \n | return \r | backslash \\ | NUL \0 \x00"`,
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
+		SelectQuery:         "SHOW CREATE TABLE tableWithComment",
+		ExpectedSelect:      []sql.Row{{"tableWithComment", "CREATE TABLE `tableWithComment` (\n  `pk` int\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin COMMENT='newline \\n | return \\r | backslash \\\\ | NUL \\0 x00'"}},
+	},
+	{
 		WriteQuery:          `create table tableWithColumnComment (pk int COMMENT "'")`,
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
 		SelectQuery:         "SHOW CREATE TABLE tableWithColumnComment",
