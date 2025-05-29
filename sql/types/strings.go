@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"math"
 	"reflect"
 	"strconv"
 	strings2 "strings"
@@ -41,7 +42,7 @@ const (
 	TinyTextBlobMax   = charBinaryMax
 	TextBlobMax       = varcharVarbinaryMax
 	MediumTextBlobMax = 16_777_215
-	LongTextBlobMax   = int64(4_294_967_295)
+	LongTextBlobMax   = int64(math.MaxInt32)
 )
 
 var (
