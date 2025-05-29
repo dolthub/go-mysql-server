@@ -206,6 +206,9 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 	case *ast.GroupConcatExpr:
 		// TODO this is an aggregation
 		return b.buildGroupConcat(inScope, v)
+	case *ast.OrderedInjectedExpr:
+		// TODO this is an aggregation
+		return b.buildOrderedInjectedExpr(inScope, v)
 	case *ast.ParenExpr:
 		return b.buildScalar(inScope, v.Expr)
 	case *ast.AndExpr:
@@ -272,23 +275,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		}
 		return ret
 	case ast.InjectedExpr:
-		if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, v.Auth); err != nil && b.authEnabled {
-			b.handleErr(err)
-		}
-		resolvedChildren := make([]any, len(v.Children))
-		for i, child := range v.Children {
-			resolvedChildren[i] = b.buildScalar(inScope, child)
-		}
-		expr, err := v.Expression.WithResolvedChildren(resolvedChildren)
-		if err != nil {
-			b.handleErr(err)
-			return nil
-		}
-		if sqlExpr, ok := expr.(sql.Expression); ok {
-			return sqlExpr
-		}
-		b.handleErr(fmt.Errorf("Injected expression does not resolve to a valid expression"))
-		return nil
+		return b.buildInjectedExpr(inScope, v)
 	case *ast.RangeCond:
 		val := b.buildScalar(inScope, v.Left)
 		lower := b.buildScalar(inScope, v.From)
@@ -419,6 +406,30 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 	default:
 		b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(e)))
 	}
+	return nil
+}
+
+func (b *Builder) buildInjectedExpr(inScope *scope, v ast.InjectedExpr) sql.Expression {
+	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, v.Auth); err != nil && b.authEnabled {
+		b.handleErr(err)
+	}
+	resolvedChildren := make([]any, len(v.Children))
+	for i, child := range v.Children {
+		resolvedChildren[i] = b.buildScalar(inScope, child)
+	}
+	return b.buildInjectedExpressionFromResolvedChildren(v, resolvedChildren)
+}
+
+func (b *Builder) buildInjectedExpressionFromResolvedChildren(v ast.InjectedExpr, resolvedChildren []any) sql.Expression {
+	expr, err := v.Expression.WithResolvedChildren(resolvedChildren)
+	if err != nil {
+		b.handleErr(err)
+		return nil
+	}
+	if sqlExpr, ok := expr.(sql.Expression); ok {
+		return sqlExpr
+	}
+	b.handleErr(fmt.Errorf("injected expression should resolve to sql.Expression, got %T", expr))
 	return nil
 }
 

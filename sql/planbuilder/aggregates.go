@@ -492,7 +492,7 @@ func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.E
 		sortFields = append(sortFields, sf)
 	}
 
-	//TODO: this should be acquired at runtime, not at parse time, so fix this
+	// TODO: this should be acquired at runtime, not at parse time, so fix this
 	gcml, err := b.ctx.GetSessionVariable(b.ctx, "group_concat_max_len")
 	if err != nil {
 		b.handleErr(err)
@@ -504,6 +504,55 @@ func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.E
 	aggName := strings.ToLower(plan.AliasSubqueryString(agg))
 	col := scopeColumn{col: aggName, scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
 
+	id := gb.outScope.newColumn(col)
+
+	agg = agg.WithId(sql.ColumnId(id)).(*aggregation.GroupConcat)
+	gb.outScope.cols[len(gb.outScope.cols)-1].scalar = agg
+	col.scalar = agg
+
+	gb.addAggStr(col)
+	col.id = id
+	return col.scalarGf()
+}
+
+// buildOrderedInjectedExpr builds an InjectedExpr with an ORDER BY dependency
+func (b *Builder) buildOrderedInjectedExpr(inScope *scope, e *ast.OrderedInjectedExpr) sql.Expression {
+	inScope.initGroupBy()
+	gb := inScope.groupBy
+
+	resolvedChildren := make([]any, len(e.Children))
+	for i, child := range e.Children {
+		resolvedChildren[i] = b.buildScalar(inScope, child)
+	}
+
+	orderByScope := b.analyzeOrderBy(inScope, inScope, e.OrderBy)
+	var sortFields sql.SortFields
+	for _, c := range orderByScope.cols {
+		so := sql.Ascending
+		if c.descending {
+			so = sql.Descending
+		}
+		scalar := c.scalar
+		if scalar == nil {
+			scalar = c.scalarGf()
+		}
+		sf := sql.SortField{
+			Column: scalar,
+			Order:  so,
+		}
+		sortFields = append(sortFields, sf)
+	}
+
+	resolvedChildren = append(resolvedChildren, sortFields)
+
+	expr := b.buildInjectedExpressionFromResolvedChildren(e.InjectedExpr, resolvedChildren)
+	agg, ok := expr.(sql.Aggregation)
+	if !ok {
+		b.handleErr(fmt.Errorf("expected sql.Aggregation, got %T", expr))
+	}
+
+	aggName := strings.ToLower(plan.AliasSubqueryString(agg))
+	col := scopeColumn{col: aggName, scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
 	id := gb.outScope.newColumn(col)
 
 	agg = agg.WithId(sql.ColumnId(id)).(*aggregation.GroupConcat)
