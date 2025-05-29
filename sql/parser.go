@@ -134,14 +134,12 @@ func RemoveSpaceAndDelimiter(query string, d rune) string {
 }
 
 func EscapeSpecialCharactersInComment(comment string) string {
-	panic("here!")
 	commentString := comment
 	commentString = strings.ReplaceAll(commentString, "'", "''")
 	commentString = strings.ReplaceAll(commentString, "\\", "\\\\")
 	commentString = strings.ReplaceAll(commentString, "\"", "\\\"")
 	commentString = strings.ReplaceAll(commentString, "\n", "\\n")
 	commentString = strings.ReplaceAll(commentString, "\r", "\\r")
-
 	commentString = strings.ReplaceAll(commentString, "\x00", "\\0")
 	return commentString
 }
@@ -152,7 +150,6 @@ var _ SchemaFormatter = &MySqlSchemaFormatter{}
 
 // GenerateCreateTableStatement implements the SchemaFormatter interface.
 func (m *MySqlSchemaFormatter) GenerateCreateTableStatement(tblName string, colStmts []string, temp, autoInc, tblCharsetName, tblCollName, comment string) string {
-	panic("here! 1")
 	if comment != "" {
 		// Escape any single quotes in the comment and add the COMMENT keyword
 		comment = fmt.Sprintf(" COMMENT='%s'", EscapeSpecialCharactersInComment(comment))
@@ -176,7 +173,6 @@ func (m *MySqlSchemaFormatter) GenerateCreateTableStatement(tblName string, colS
 
 // GenerateCreateTableColumnDefinition implements the SchemaFormatter interface.
 func (m *MySqlSchemaFormatter) GenerateCreateTableColumnDefinition(col *Column, colDefault, onUpdate string, tableCollation CollationID) string {
-	panic("here! 2")
 	var colTypeString string
 	if collationType, ok := col.Type.(TypeWithCollation); ok {
 		colTypeString = collationType.StringWithTableCollation(tableCollation)
