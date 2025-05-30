@@ -413,7 +413,7 @@ func (b *Builder) buildInjectedExpr(inScope *scope, v ast.InjectedExpr) sql.Expr
 	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, v.Auth); err != nil && b.authEnabled {
 		b.handleErr(err)
 	}
-	
+
 	var resolvedChildren []any
 	if len(v.Children) > 0 {
 		resolvedChildren = make([]any, len(v.Children))
@@ -621,10 +621,10 @@ func (b *Builder) typeExpandComparisonLiteral(left, right sql.Expression) (sql.E
 
 	if leftGf != nil && rightLit != nil {
 		if types.IsSigned(left.Type()) && types.IsSigned(right.Type()) ||
-				types.IsUnsigned(left.Type()) && types.IsUnsigned(right.Type()) ||
-				types.IsFloat(left.Type()) && types.IsFloat(right.Type()) ||
-				types.IsDecimal(left.Type()) && types.IsDecimal(right.Type()) ||
-				types.IsText(left.Type()) && types.IsText(right.Type()) {
+			types.IsUnsigned(left.Type()) && types.IsUnsigned(right.Type()) ||
+			types.IsFloat(left.Type()) && types.IsFloat(right.Type()) ||
+			types.IsDecimal(left.Type()) && types.IsDecimal(right.Type()) ||
+			types.IsText(left.Type()) && types.IsText(right.Type()) {
 			if left.Type().MaxTextResponseByteLength(b.ctx) >= right.Type().MaxTextResponseByteLength(b.ctx) {
 				// The types are congruent and the literal does not lose
 				// information casting to the column type. The conditions
