@@ -207,7 +207,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		// TODO this is an aggregation
 		return b.buildGroupConcat(inScope, v)
 	case *ast.OrderedInjectedExpr:
-		// TODO this is an aggregation
+		// TODO this is an aggregation in practice but is handled differently
 		return b.buildOrderedInjectedExpr(inScope, v)
 	case *ast.ParenExpr:
 		return b.buildScalar(inScope, v.Expr)
