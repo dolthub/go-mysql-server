@@ -2761,6 +2761,167 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
+		Name:    "Group Concat with Subquery in ORDER BY",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE test_data (id INT PRIMARY KEY, name VARCHAR(50), age INT, category VARCHAR(10))",
+			"INSERT INTO test_data VALUES (1, 'Alice', 25, 'A'), (2, 'Bob', 30, 'B'), (3, 'Charlie', 22, 'A'), (4, 'Diana', 28, 'C'), (5, 'Eve', 35, 'B'), (6, 'Frank', 26, 'A')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT category, group_concat(name ORDER BY (SELECT COUNT(*) FROM test_data t2 WHERE t2.category = test_data.category AND t2.age < test_data.age)) FROM test_data GROUP BY category ORDER BY category",
+				Expected: []sql.Row{{"A", "Charlie,Alice,Frank"}, {"B", "Bob,Eve"}, {"C", "Diana"}},
+			},
+			{
+				Query:    "SELECT group_concat(name ORDER BY (SELECT AVG(age) FROM test_data t2 WHERE t2.category = test_data.category)) FROM test_data",
+				Expected: []sql.Row{{"Charlie,Alice,Frank,Bob,Eve,Diana"}},
+			},
+			{
+				Query:    "SELECT category, group_concat(name ORDER BY (SELECT MAX(age) FROM test_data t2 WHERE t2.id <= test_data.id)) FROM test_data GROUP BY category ORDER BY category", 
+				Expected: []sql.Row{{"A", "Alice,Charlie,Frank"}, {"B", "Bob,Eve"}, {"C", "Diana"}},
+			},
+		},
+	},
+	{
+		Name:    "Group Concat with Subquery in ORDER BY",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE test_data (id INT PRIMARY KEY, name VARCHAR(50), age INT, category VARCHAR(10))",
+			"INSERT INTO test_data VALUES (1, 'Alice', 25, 'A'), (2, 'Bob', 30, 'B'), (3, 'Charlie', 22, 'A'), (4, 'Diana', 28, 'C'), (5, 'Eve', 35, 'B'), (6, 'Frank', 26, 'A')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT category, group_concat(name ORDER BY (SELECT COUNT(*) FROM test_data t2 WHERE t2.category = test_data.category AND t2.age < test_data.age)) FROM test_data GROUP BY category ORDER BY category",
+				Expected: []sql.Row{{"A", "Charlie,Alice,Frank"}, {"B", "Bob,Eve"}, {"C", "Diana"}},
+			},
+			{
+				Query:    "SELECT group_concat(name ORDER BY (SELECT AVG(age) FROM test_data t2 WHERE t2.category = test_data.category)) FROM test_data",
+				Expected: []sql.Row{{"Charlie,Alice,Frank,Bob,Eve,Diana"}},
+			},
+			{
+				Query:    "SELECT category, group_concat(name ORDER BY (SELECT MAX(age) FROM test_data t2 WHERE t2.id <= test_data.id)) FROM test_data GROUP BY category ORDER BY category", 
+				Expected: []sql.Row{{"A", "Alice,Charlie,Frank"}, {"B", "Bob,Eve"}, {"C", "Diana"}},
+			},
+		},
+	},
+	{
+		Name:    "Group Concat with Subquery in ORDER BY - Additional Edge Cases",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE products (id INT PRIMARY KEY, name VARCHAR(50), price DECIMAL(10,2), category_id INT, supplier_id INT)",
+			"CREATE TABLE categories (id INT PRIMARY KEY, name VARCHAR(50), priority INT)",
+			"CREATE TABLE suppliers (id INT PRIMARY KEY, name VARCHAR(50), rating INT)",
+			"INSERT INTO products VALUES (1, 'Laptop', 999.99, 1, 1), (2, 'Mouse', 25.50, 1, 2), (3, 'Keyboard', 75.00, 1, 1)",
+			"INSERT INTO products VALUES (4, 'Chair', 150.00, 2, 3), (5, 'Desk', 300.00, 2, 3), (6, 'Monitor', 250.00, 1, 2)",
+			"INSERT INTO categories VALUES (1, 'Electronics', 1), (2, 'Furniture', 2)",
+			"INSERT INTO suppliers VALUES (1, 'TechCorp', 5), (2, 'GadgetInc', 4), (3, 'OfficeSupply', 3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT category_id, GROUP_CONCAT(name ORDER BY (SELECT rating FROM suppliers WHERE suppliers.id = products.supplier_id) DESC) FROM products GROUP BY category_id ORDER BY category_id",
+				Expected: []sql.Row{{1, "Laptop,Keyboard,Monitor,Mouse"}, {2, "Chair,Desk"}},
+			},
+			{
+				Query:    "SELECT GROUP_CONCAT(name ORDER BY (SELECT COUNT(*) FROM products p2 WHERE p2.price < products.price)) FROM products",
+				Expected: []sql.Row{{"Mouse,Keyboard,Desk,Monitor,Chair,Laptop"}},
+			},
+			{
+				Query:    "SELECT category_id, GROUP_CONCAT(DISTINCT supplier_id ORDER BY (SELECT rating FROM suppliers WHERE suppliers.id = products.supplier_id)) FROM products GROUP BY category_id",
+				Expected: []sql.Row{{1, "2,1"}, {2, "3"}},
+			},
+			{
+				Query:    "SELECT GROUP_CONCAT(name ORDER BY (SELECT priority FROM categories WHERE categories.id = products.category_id), price) FROM products",
+				Expected: []sql.Row{{"Mouse,Keyboard,Monitor,Laptop,Chair,Desk"}},
+			},
+			{
+				Query:    "SELECT category_id, GROUP_CONCAT(name ORDER BY (SELECT AVG(price) FROM products p2 WHERE p2.category_id = products.category_id) DESC, name) FROM products GROUP BY category_id ORDER BY category_id",
+				Expected: []sql.Row{{1, "Keyboard,Laptop,Monitor,Mouse"}, {2, "Chair,Desk"}},
+			},
+		},
+	},
+	{
+		Name:    "Group Concat Subquery ORDER BY Error Cases",
+		Dialect: "mysql", 
+		SetUpScript: []string{
+			"CREATE TABLE test_table (id INT PRIMARY KEY, name VARCHAR(50), value INT)",
+			"INSERT INTO test_table VALUES (1, 'A', 10), (2, 'B', 20), (3, 'C', 30)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "SELECT GROUP_CONCAT(name ORDER BY (SELECT name, value FROM test_table t2 WHERE t2.id = test_table.id)) FROM test_table",
+				ExpectedErr: sql.ErrInvalidOperandColumns,
+			},
+			{
+				Query:       "SELECT GROUP_CONCAT(name ORDER BY (SELECT value FROM test_table)) FROM test_table",
+				ExpectedErr: sql.ErrExpectedSingleRow,
+			},
+		},
+	},
+	{
+		Name:    "Group Concat Subquery ORDER BY Additional Edge Cases",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE complex_test (id INT PRIMARY KEY, name VARCHAR(50), value INT, category VARCHAR(10), created_at DATE)",
+			"INSERT INTO complex_test VALUES (1, 'Alpha', 100, 'X', '2023-01-01')",
+			"INSERT INTO complex_test VALUES (2, 'Beta', 50, 'Y', '2023-01-15')",
+			"INSERT INTO complex_test VALUES (3, 'Gamma', 75, 'X', '2023-02-01')",
+			"INSERT INTO complex_test VALUES (4, 'Delta', 25, 'Z', '2023-02-15')",
+			"INSERT INTO complex_test VALUES (5, 'Epsilon', 90, 'Y', '2023-03-01')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// Test with subquery returning NULL values
+				Query:    "SELECT category, GROUP_CONCAT(name ORDER BY (SELECT CASE WHEN complex_test.value > 80 THEN NULL ELSE complex_test.value END)) FROM complex_test GROUP BY category ORDER BY category",
+				Expected: []sql.Row{{"X", "Gamma,Alpha"}, {"Y", "Beta,Epsilon"}, {"Z", "Delta"}},
+			},
+			{
+				// Test with correlated subquery using multiple tables
+				Query:    "SELECT GROUP_CONCAT(name ORDER BY (SELECT COUNT(*) FROM complex_test c2 WHERE c2.category = complex_test.category AND c2.value > complex_test.value)) FROM complex_test",
+				Expected: []sql.Row{{"Alpha,Gamma,Epsilon,Beta,Delta"}},
+			},
+			{
+				// Test with subquery using aggregate functions with HAVING
+				Query:    "SELECT category, GROUP_CONCAT(name ORDER BY (SELECT AVG(value) FROM complex_test c2 WHERE c2.id <= complex_test.id HAVING AVG(value) > 50) DESC) FROM complex_test GROUP BY category ORDER BY category",
+				Expected: []sql.Row{{"X", "Alpha,Gamma"}, {"Y", "Epsilon,Beta"}, {"Z", "Delta"}},
+			},
+			{
+				// Test with DISTINCT and complex subquery
+				Query:    "SELECT GROUP_CONCAT(DISTINCT category ORDER BY (SELECT SUM(value) FROM complex_test c2 WHERE c2.category = complex_test.category) DESC SEPARATOR '|') FROM complex_test",
+				Expected: []sql.Row{{"X|Y|Z"}},
+			},
+			{
+				// Test with nested subqueries
+				Query:    "SELECT GROUP_CONCAT(name ORDER BY (SELECT COUNT(*) FROM complex_test c2 WHERE c2.value > (SELECT MIN(value) FROM complex_test c3 WHERE c3.category = complex_test.category))) FROM complex_test",
+				Expected: []sql.Row{{"Delta,Beta,Gamma,Epsilon,Alpha"}},
+			},
+		},
+	},
+	{
+		Name:    "Group Concat Subquery ORDER BY Performance and Boundary Cases",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE perf_test (id INT PRIMARY KEY, data VARCHAR(10), weight DECIMAL(5,2))",
+			"INSERT INTO perf_test VALUES (1, 'A', 1.5), (2, 'B', 2.5), (3, 'C', 0.5), (4, 'D', 3.5), (5, 'E', 2.0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// Test with subquery returning same value for multiple rows (stability)
+				Query:    "SELECT GROUP_CONCAT(data ORDER BY (SELECT 42), id) FROM perf_test",
+				Expected: []sql.Row{{"A,B,C,D,E"}},
+			},
+			{
+				// Test with subquery using LIMIT
+				Query:    "SELECT GROUP_CONCAT(data ORDER BY (SELECT weight FROM perf_test p2 WHERE p2.id = perf_test.id LIMIT 1)) FROM perf_test",
+				Expected: []sql.Row{{"C,A,E,B,D"}},
+			},
+			{
+				// Test with very small decimal differences in ORDER BY subquery
+				Query:    "SELECT GROUP_CONCAT(data ORDER BY (SELECT weight + 0.001 * perf_test.id FROM perf_test p2 WHERE p2.id = perf_test.id)) FROM perf_test",
+				Expected: []sql.Row{{"C,A,E,B,D"}},
+			},
+		},
+	},
+	{
 		Name:    "CONVERT USING still converts between incompatible character sets",
 		Dialect: "mysql",
 		SetUpScript: []string{
