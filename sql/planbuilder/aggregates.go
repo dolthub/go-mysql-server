@@ -520,13 +520,14 @@ func (b *Builder) buildOrderedInjectedExpr(inScope *scope, e *ast.OrderedInjecte
 	inScope.initGroupBy()
 	gb := inScope.groupBy
 
-	resolvedChildren := make([]any, len(e.Children))
-
+	var resolvedChildren []any
 	if len(e.Children) > 0 {
+		resolvedChildren = make([]any, len(e.Children))
 		for i, child := range e.Children {
 			resolvedChildren[i] = b.buildScalar(inScope, child)
 		}
 	} else {
+		resolvedChildren = make([]any, len(e.SelectExprChildren))
 		for i, child := range e.SelectExprChildren {
 			resolvedChildren[i] = b.selectExprToExpression(inScope, child)
 		}
@@ -562,7 +563,7 @@ func (b *Builder) buildOrderedInjectedExpr(inScope *scope, e *ast.OrderedInjecte
 	col := scopeColumn{col: aggName, scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
 	id := gb.outScope.newColumn(col)
 
-	agg = agg.WithId(sql.ColumnId(id)).(*aggregation.GroupConcat)
+	agg = agg.WithId(sql.ColumnId(id)).(sql.Aggregation)
 	gb.outScope.cols[len(gb.outScope.cols)-1].scalar = agg
 	col.scalar = agg
 
