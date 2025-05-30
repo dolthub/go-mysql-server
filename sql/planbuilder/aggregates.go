@@ -521,8 +521,15 @@ func (b *Builder) buildOrderedInjectedExpr(inScope *scope, e *ast.OrderedInjecte
 	gb := inScope.groupBy
 
 	resolvedChildren := make([]any, len(e.Children))
-	for i, child := range e.Children {
-		resolvedChildren[i] = b.buildScalar(inScope, child)
+
+	if len(e.Children) > 0 {
+		for i, child := range e.Children {
+			resolvedChildren[i] = b.buildScalar(inScope, child)
+		}
+	} else {
+		for i, child := range e.SelectExprChildren {
+			resolvedChildren[i] = b.selectExprToExpression(inScope, child)
+		}
 	}
 
 	orderByScope := b.analyzeOrderBy(inScope, inScope, e.OrderBy)

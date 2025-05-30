@@ -414,8 +414,14 @@ func (b *Builder) buildInjectedExpr(inScope *scope, v ast.InjectedExpr) sql.Expr
 		b.handleErr(err)
 	}
 	resolvedChildren := make([]any, len(v.Children))
-	for i, child := range v.Children {
-		resolvedChildren[i] = b.buildScalar(inScope, child)
+	if len(v.Children) > 0 {
+		for i, child := range v.Children {
+			resolvedChildren[i] = b.buildScalar(inScope, child)
+		}
+	} else {
+		for i, child := range v.SelectExprChildren {
+			resolvedChildren[i] = b.selectExprToExpression(inScope, child)
+		}
 	}
 	return b.buildInjectedExpressionFromResolvedChildren(v, resolvedChildren)
 }
