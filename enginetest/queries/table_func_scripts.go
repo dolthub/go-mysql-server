@@ -222,4 +222,20 @@ var TableFunctionScriptTests = []ScriptTest{
 		JoinTypes:       []plan.JoinType{plan.JoinTypeLookup},
 		ExpectedIndexes: []string{"y"},
 	},
+	{
+		SetUpScript: []string{
+			`
+create procedure proc(in x int)
+begin
+  select * from sequence_table('x', x);
+end;
+`,
+		},
+		Query: "call proc(3)",
+		Expected: []sql.Row{
+			{0},
+			{1},
+			{2},
+		},
+	},
 }

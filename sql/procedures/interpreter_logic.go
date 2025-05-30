@@ -148,6 +148,14 @@ func replaceVariablesInExpr(ctx *sql.Context, stack *InterpreterStack, expr ast.
 			}
 			e.Exprs[i] = newExpr.(ast.SelectExpr)
 		}
+	case *ast.TableFuncExpr:
+		for i := range e.Exprs {
+			newExpr, err := replaceVariablesInExpr(ctx, stack, e.Exprs[i], asOf)
+			if err != nil {
+				return nil, err
+			}
+			e.Exprs[i] = newExpr.(ast.SelectExpr)
+		}
 	case *ast.Set:
 		for _, setExpr := range e.Exprs {
 			newExpr, err := replaceVariablesInExpr(ctx, stack, setExpr.Expr, asOf)
