@@ -413,12 +413,15 @@ func (b *Builder) buildInjectedExpr(inScope *scope, v ast.InjectedExpr) sql.Expr
 	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, v.Auth); err != nil && b.authEnabled {
 		b.handleErr(err)
 	}
-	resolvedChildren := make([]any, len(v.Children))
+	
+	var resolvedChildren []any
 	if len(v.Children) > 0 {
+		resolvedChildren = make([]any, len(v.Children))
 		for i, child := range v.Children {
 			resolvedChildren[i] = b.buildScalar(inScope, child)
 		}
 	} else {
+		resolvedChildren = make([]any, len(v.SelectExprChildren))
 		for i, child := range v.SelectExprChildren {
 			resolvedChildren[i] = b.selectExprToExpression(inScope, child)
 		}
@@ -618,10 +621,10 @@ func (b *Builder) typeExpandComparisonLiteral(left, right sql.Expression) (sql.E
 
 	if leftGf != nil && rightLit != nil {
 		if types.IsSigned(left.Type()) && types.IsSigned(right.Type()) ||
-			types.IsUnsigned(left.Type()) && types.IsUnsigned(right.Type()) ||
-			types.IsFloat(left.Type()) && types.IsFloat(right.Type()) ||
-			types.IsDecimal(left.Type()) && types.IsDecimal(right.Type()) ||
-			types.IsText(left.Type()) && types.IsText(right.Type()) {
+				types.IsUnsigned(left.Type()) && types.IsUnsigned(right.Type()) ||
+				types.IsFloat(left.Type()) && types.IsFloat(right.Type()) ||
+				types.IsDecimal(left.Type()) && types.IsDecimal(right.Type()) ||
+				types.IsText(left.Type()) && types.IsText(right.Type()) {
 			if left.Type().MaxTextResponseByteLength(b.ctx) >= right.Type().MaxTextResponseByteLength(b.ctx) {
 				// The types are congruent and the literal does not lose
 				// information casting to the column type. The conditions
@@ -947,7 +950,7 @@ func (b *Builder) ConvertVal(v *ast.SQLVal) sql.Expression {
 			return b.convertInt(string(v.Val), 10)
 		}
 	case ast.HexNum:
-		//TODO: binary collation?
+		// TODO: binary collation?
 		v := strings.ToLower(string(v.Val))
 		if strings.HasPrefix(v, "0x") {
 			v = v[2:]
@@ -966,7 +969,7 @@ func (b *Builder) ConvertVal(v *ast.SQLVal) sql.Expression {
 		}
 		return expression.NewLiteral(val, types.LongBlob)
 	case ast.HexVal:
-		//TODO: binary collation?
+		// TODO: binary collation?
 		val, err := v.HexDecode()
 		if err != nil {
 			b.handleErr(err)
@@ -1011,7 +1014,7 @@ func (b *Builder) ConvertVal(v *ast.SQLVal) sql.Expression {
 // filter, since we only need to load the tables once. All steps after this
 // one can assume that the expression has been fully resolved and is valid.
 func (b *Builder) buildMatchAgainst(inScope *scope, v *ast.MatchExpr) *expression.MatchAgainst {
-	//TODO: implement proper scope support and remove this check
+	// TODO: implement proper scope support and remove this check
 	if (inScope.groupBy != nil && inScope.groupBy.hasAggs()) || inScope.windowFuncs != nil {
 		b.handleErr(fmt.Errorf("aggregate and window functions are not yet supported alongside MATCH expressions"))
 	}
