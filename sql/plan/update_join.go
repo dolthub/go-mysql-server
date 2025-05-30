@@ -15,6 +15,8 @@
 package plan
 
 import (
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -232,6 +234,7 @@ func SplitRowIntoTableRowMap(row sql.Row, joinSchema sql.Schema) map[string]sql.
 		}
 	}
 
+	currentTable = strings.ToLower(currentTable)
 	ret[currentTable] = currentRow
 
 	return ret

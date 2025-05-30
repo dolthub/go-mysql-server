@@ -8477,6 +8477,56 @@ where
 			},
 		},
 	},
+	{
+		// This is a script test here because every table in the harness setup data is in all lowercase
+		Name:    "case insensitive update with insubqueries and update joins",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table MiXeDcAsE (i int primary key, j int)",
+			"insert into mixedcase values (1, 1);",
+			"insert into mixedcase values (2, 2);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "update mixedcase set j = 999 where i in (select 1)",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 1,
+						Info: plan.UpdateInfo{
+							Matched: 1,
+							Updated: 1,
+						},
+					}},
+				},
+			},
+			{
+				Query: "select * from mixedcase;",
+				Expected: []sql.Row{
+					{1, 999},
+					{2, 2},
+				},
+			},
+			{
+				Query: " with cte(x) as (select 2) update mixedcase set j = 999 where i in (select x from cte)",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 1,
+						Info: plan.UpdateInfo{
+							Matched: 1,
+							Updated: 1,
+						},
+					}},
+				},
+			},
+			{
+				Query: "select * from mixedcase;",
+				Expected: []sql.Row{
+					{1, 999},
+					{2, 999},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
