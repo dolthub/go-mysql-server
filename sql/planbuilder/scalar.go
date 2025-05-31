@@ -206,6 +206,9 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 	case *ast.GroupConcatExpr:
 		// TODO this is an aggregation
 		return b.buildGroupConcat(inScope, v)
+	case *ast.OrderedInjectedExpr:
+		// TODO this is an aggregation in practice but is handled differently
+		return b.buildOrderedInjectedExpr(inScope, v)
 	case *ast.ParenExpr:
 		return b.buildScalar(inScope, v.Expr)
 	case *ast.AndExpr:
@@ -272,23 +275,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		}
 		return ret
 	case ast.InjectedExpr:
-		if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, v.Auth); err != nil && b.authEnabled {
-			b.handleErr(err)
-		}
-		resolvedChildren := make([]any, len(v.Children))
-		for i, child := range v.Children {
-			resolvedChildren[i] = b.buildScalar(inScope, child)
-		}
-		expr, err := v.Expression.WithResolvedChildren(resolvedChildren)
-		if err != nil {
-			b.handleErr(err)
-			return nil
-		}
-		if sqlExpr, ok := expr.(sql.Expression); ok {
-			return sqlExpr
-		}
-		b.handleErr(fmt.Errorf("Injected expression does not resolve to a valid expression"))
-		return nil
+		return b.buildInjectedExpr(inScope, v)
 	case *ast.RangeCond:
 		val := b.buildScalar(inScope, v.Left)
 		lower := b.buildScalar(inScope, v.From)
@@ -419,6 +406,39 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 	default:
 		b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(e)))
 	}
+	return nil
+}
+
+func (b *Builder) buildInjectedExpr(inScope *scope, v ast.InjectedExpr) sql.Expression {
+	if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, v.Auth); err != nil && b.authEnabled {
+		b.handleErr(err)
+	}
+
+	var resolvedChildren []any
+	if len(v.Children) > 0 {
+		resolvedChildren = make([]any, len(v.Children))
+		for i, child := range v.Children {
+			resolvedChildren[i] = b.buildScalar(inScope, child)
+		}
+	} else {
+		resolvedChildren = make([]any, len(v.SelectExprChildren))
+		for i, child := range v.SelectExprChildren {
+			resolvedChildren[i] = b.selectExprToExpression(inScope, child)
+		}
+	}
+	return b.buildInjectedExpressionFromResolvedChildren(v, resolvedChildren)
+}
+
+func (b *Builder) buildInjectedExpressionFromResolvedChildren(v ast.InjectedExpr, resolvedChildren []any) sql.Expression {
+	expr, err := v.Expression.WithResolvedChildren(resolvedChildren)
+	if err != nil {
+		b.handleErr(err)
+		return nil
+	}
+	if sqlExpr, ok := expr.(sql.Expression); ok {
+		return sqlExpr
+	}
+	b.handleErr(fmt.Errorf("injected expression should resolve to sql.Expression, got %T", expr))
 	return nil
 }
 
@@ -930,7 +950,7 @@ func (b *Builder) ConvertVal(v *ast.SQLVal) sql.Expression {
 			return b.convertInt(string(v.Val), 10)
 		}
 	case ast.HexNum:
-		//TODO: binary collation?
+		// TODO: binary collation?
 		v := strings.ToLower(string(v.Val))
 		if strings.HasPrefix(v, "0x") {
 			v = v[2:]
@@ -949,7 +969,7 @@ func (b *Builder) ConvertVal(v *ast.SQLVal) sql.Expression {
 		}
 		return expression.NewLiteral(val, types.LongBlob)
 	case ast.HexVal:
-		//TODO: binary collation?
+		// TODO: binary collation?
 		val, err := v.HexDecode()
 		if err != nil {
 			b.handleErr(err)
@@ -994,7 +1014,7 @@ func (b *Builder) ConvertVal(v *ast.SQLVal) sql.Expression {
 // filter, since we only need to load the tables once. All steps after this
 // one can assume that the expression has been fully resolved and is valid.
 func (b *Builder) buildMatchAgainst(inScope *scope, v *ast.MatchExpr) *expression.MatchAgainst {
-	//TODO: implement proper scope support and remove this check
+	// TODO: implement proper scope support and remove this check
 	if (inScope.groupBy != nil && inScope.groupBy.hasAggs()) || inScope.windowFuncs != nil {
 		b.handleErr(fmt.Errorf("aggregate and window functions are not yet supported alongside MATCH expressions"))
 	}
