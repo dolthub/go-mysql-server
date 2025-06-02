@@ -62,6 +62,7 @@ func TestExampleRootUserEnabled(t *testing.T) {
 	}()
 	conn, err := dbr.Open("mysql", fmt.Sprintf("no_user:@tcp(%s:%d)/%s", address, port, dbName), nil)
 	require.NoError(t, err)
+	require.ErrorContains(t, conn.Ping(), "User not found")
 	conn, err = dbr.Open("mysql", fmt.Sprintf("root:@tcp(%s:%d)/%s", address, port, dbName), nil)
 	require.NoError(t, err)
 	require.NoError(t, conn.Ping())
@@ -81,8 +82,10 @@ func TestExampleLoadedUser(t *testing.T) {
 	}()
 	conn, err := dbr.Open("mysql", fmt.Sprintf("no_user:@tcp(%s:%d)/%s", address, port, dbName), nil)
 	require.NoError(t, err)
+	require.ErrorContains(t, conn.Ping(), "User not found")
 	conn, err = dbr.Open("mysql", fmt.Sprintf("root:@tcp(%s:%d)/%s", address, port, dbName), nil)
 	require.NoError(t, err)
+	require.ErrorContains(t, conn.Ping(), "User not found")
 	conn, err = dbr.Open("mysql",
 		fmt.Sprintf("gms_user:123456@tcp(%s:%d)/%s?allowCleartextPasswords=true", address, port, dbName), nil)
 	require.NoError(t, err)
