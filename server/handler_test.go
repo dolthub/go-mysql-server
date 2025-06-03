@@ -1954,17 +1954,17 @@ func TestLoggerFieldsSetup(t *testing.T) {
 	// Verify that the logger has the expected fields
 	require.Contains(t, logger.Data, sql.ConnectTimeLogKey, "Logger should contain connect time")
 	require.Contains(t, logger.Data, sql.ConnectionIdLogField, "Logger should contain connection ID")
-	
+
 	// Verify that queryTime is actually used in logs by capturing a log entry
 	var capturedFields logrus.Fields
 	hook := &testHook{fields: &capturedFields}
 	logrus.AddHook(hook)
 	defer logrus.StandardLogger().ReplaceHooks(make(logrus.LevelHooks))
-	
+
 	// Execute a query that will trigger error logging (which includes queryTime)
 	err = handler.ComQuery(context.Background(), conn, "SELECT * FROM nonexistent_table", dummyCb)
 	require.Error(t, err) // This should cause an error log with queryTime
-	
+
 	// Verify that the log entry contained queryTime
 	require.Contains(t, capturedFields, sql.QueryTimeLogKey, "Log entry should contain queryTime field")
 
