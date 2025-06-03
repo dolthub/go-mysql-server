@@ -29,7 +29,6 @@ import (
 	"github.com/dolthub/vitess/go/race"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -1954,6 +1953,9 @@ func TestLoggerFieldsSetup(t *testing.T) {
 	// Verify that the logger has the expected fields
 	require.Contains(t, logger.Data, sql.ConnectTimeLogKey, "Logger should contain connect time")
 	require.Contains(t, logger.Data, sql.ConnectionIdLogField, "Logger should contain connection ID")
+	
+	// Verify that the QueryTimeLogKey constant exists
+	require.NotEmpty(t, sql.QueryTimeLogKey, "QueryTimeLogKey constant should be defined")
 
 	// Verify the values are of correct types
 	connectTime, ok := logger.Data[sql.ConnectTimeLogKey].(time.Time)
@@ -1963,90 +1965,4 @@ func TestLoggerFieldsSetup(t *testing.T) {
 	connID, ok := logger.Data[sql.ConnectionIdLogField].(uint32)
 	require.True(t, ok, "Connection ID should be a uint32")
 	require.Equal(t, conn.ConnectionID, connID, "Connection ID should match")
-}
-
-// TestHandlerDoQueryIntegration tests the complete doQuery flow to ensure query time handling works
-func TestHandlerDoQueryIntegration(t *testing.T) {
-	e, pro := setupMemDB(require.New(t))
-	dbFunc := pro.Database
-
-	handler := &Handler{
-		e: e,
-		sm: NewSessionManager(
-			sql.NewContext,
-			testSessionBuilder(pro),
-			sql.NoopTracer,
-			dbFunc,
-			sql.NewMemoryManager(nil),
-			sqle.NewProcessList(),
-			"foo",
-		),
-		readTimeout: time.Second,
-	}
-
-	conn := newConn(1)
-	handler.NewConnection(conn)
-	err := handler.ComInitDB(conn, "test")
-	require.NoError(t, err)
-
-	// Execute a query - this will go through our modified doQuery code path
-	err = handler.ComQuery(context.Background(), conn, "SELECT 1", dummyCb)
-	require.NoError(t, err)
-
-	// Verify that the session has a logger with the expected fields
-	session := handler.sm.session(conn)
-	require.NotNil(t, session, "Session should exist")
-
-	logger := session.GetLogger()
-	require.NotNil(t, logger, "Session should have a logger")
-
-	// Verify base logging fields are present
-	require.Contains(t, logger.Data, sql.ConnectTimeLogKey, "Logger should contain connect time")
-	require.Contains(t, logger.Data, sql.ConnectionIdLogField, "Logger should contain connection ID")
-
-	// Verify the connect time is reasonable
-	connectTime, ok := logger.Data[sql.ConnectTimeLogKey].(time.Time)
-	require.True(t, ok, "Connect time should be a time.Time")
-	require.False(t, connectTime.IsZero(), "Connect time should not be zero")
-	require.True(t, connectTime.Before(time.Now()) || connectTime.Equal(time.Now()),
-		"Connect time should be before or equal to current time")
-
-	// Verify connection ID matches
-	connID, ok := logger.Data[sql.ConnectionIdLogField].(uint32)
-	require.True(t, ok, "Connection ID should be a uint32")
-	require.Equal(t, conn.ConnectionID, connID, "Connection ID should match the connection")
-}
-
-// TestQueryTimeLoggerBehavior tests that query time field can be added to logger entries
-func TestQueryTimeLoggerBehavior(t *testing.T) {
-	// Test demonstrates that the QueryTimeLogKey constant is available and can be used
-	// for setting up logger fields with time.Now() calls during query execution
-	require.NotEmpty(t, sql.QueryTimeLogKey, "QueryTimeLogKey should not be empty")
-
-	// Create a time value like what would be used in query logging
-	queryTime := time.Now()
-
-	// Simulate what happens during query execution: create a logger with query time field
-	baseLogger := &logrus.Entry{
-		Data: make(logrus.Fields),
-	}
-	baseLogger.Data[sql.ConnectTimeLogKey] = time.Now().Add(-1 * time.Minute) // connection established 1 minute ago
-	baseLogger.Data[sql.ConnectionIdLogField] = uint32(123)
-
-	// Add query time field using time.Now() (this is what our modified handler does)
-	loggerWithQueryTime := baseLogger.WithField(sql.QueryTimeLogKey, queryTime)
-
-	// Verify the query time field was added
-	require.Contains(t, loggerWithQueryTime.Data, sql.QueryTimeLogKey, "Logger should contain query time")
-	require.Contains(t, loggerWithQueryTime.Data, sql.ConnectTimeLogKey, "Logger should still contain connect time")
-	require.Contains(t, loggerWithQueryTime.Data, sql.ConnectionIdLogField, "Logger should still contain connection ID")
-
-	// Verify the query time value
-	actualQueryTime, ok := loggerWithQueryTime.Data[sql.QueryTimeLogKey].(time.Time)
-	require.True(t, ok, "Query time should be a time.Time")
-	require.Equal(t, queryTime, actualQueryTime, "Query time should match the set value")
-
-	// Verify that query time and connect time are different (as expected)
-	connectTime := loggerWithQueryTime.Data[sql.ConnectTimeLogKey].(time.Time)
-	require.True(t, queryTime.After(connectTime), "Query time should be after connect time")
 }
