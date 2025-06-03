@@ -447,29 +447,24 @@ func (h *Handler) doQuery(
 		}
 	}
 
-	// Add query time to logger for this query (after connect time)
-	logger := sqlCtx.GetLogger()
 	if queryStr != "" {
-		logger = logger.WithField(sql.QueryTimeLogKey, start).WithField("query", queryStr)
-	} else {
-		logger = logger.WithField(sql.QueryTimeLogKey, start)
+		sqlCtx.SetLogger(sqlCtx.GetLogger().WithField("query", queryStr))
 	}
-	sqlCtx.SetLogger(logger)
-	sqlCtx.GetLogger().Debugf("Starting query")
+	sqlCtx.GetLogger().WithField(sql.QueryTimeLogKey, time.Now()).Debugf("Starting query")
 
 	finish := observeQuery(sqlCtx, query)
 	defer func() {
 		finish(err)
 	}()
 
-	sqlCtx.GetLogger().Tracef("beginning execution")
+	sqlCtx.GetLogger().WithField(sql.QueryTimeLogKey, time.Now()).Tracef("beginning execution")
 
 	var schema sql.Schema
 	var rowIter sql.RowIter
 	qFlags.Set(sql.QFlagDeferProjections)
 	schema, rowIter, qFlags, err = queryExec(sqlCtx, query, parsed, analyzedPlan, bindings, qFlags)
 	if err != nil {
-		sqlCtx.GetLogger().WithError(err).Warn("error running query")
+		sqlCtx.GetLogger().WithField(sql.QueryTimeLogKey, time.Now()).WithError(err).Warn("error running query")
 		if verboseErrorLogging {
 			fmt.Printf("Err: %+v", err)
 		}
@@ -516,7 +511,7 @@ func (h *Handler) doQuery(
 		sqlCtx.GetLogger().Tracef("returning result %v", r)
 	}
 
-	sqlCtx.GetLogger().Debugf("Query finished in %d ms", time.Since(start).Milliseconds())
+	sqlCtx.GetLogger().WithField(sql.QueryTimeLogKey, time.Now()).Debugf("Query finished in %d ms", time.Since(start).Milliseconds())
 
 	// processedAtLeastOneBatch means we already called callback() at least
 	// once, so no need to call it if RowsAffected == 0.

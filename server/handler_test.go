@@ -2037,23 +2037,23 @@ func TestHandlerDoQueryIntegration(t *testing.T) {
 	// but won't persist in the session logger (which is the expected behavior)
 }
 
-// TestQueryTimeLoggerBehavior tests that query time is added to logger during query execution
+// TestQueryTimeLoggerBehavior tests that query time field can be added to logger entries
 func TestQueryTimeLoggerBehavior(t *testing.T) {
 	// Test demonstrates that the QueryTimeLogKey constant is available and can be used
-	// for setting up logger fields (which happens in the doQuery method)
+	// for setting up logger fields with time.Now() calls during query execution
 	require.NotEmpty(t, sql.QueryTimeLogKey, "QueryTimeLogKey should not be empty")
 	
-	// Create a time value like what would be used in doQuery
+	// Create a time value like what would be used in query logging
 	queryTime := time.Now()
 	
-	// Simulate what happens in doQuery: create a logger with query time field
+	// Simulate what happens during query execution: create a logger with query time field
 	baseLogger := &logrus.Entry{
 		Data: make(logrus.Fields),
 	}
 	baseLogger.Data[sql.ConnectTimeLogKey] = time.Now().Add(-1 * time.Minute) // connection established 1 minute ago
 	baseLogger.Data[sql.ConnectionIdLogField] = uint32(123)
 	
-	// Add query time field (this is what our modified doQuery does)
+	// Add query time field using time.Now() (this is what our modified handler does)
 	loggerWithQueryTime := baseLogger.WithField(sql.QueryTimeLogKey, queryTime)
 	
 	// Verify the query time field was added
