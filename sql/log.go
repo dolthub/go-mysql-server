@@ -18,4 +18,5 @@ const (
 	ConnectionIdLogField = "connectionID"
 	ConnectionDbLogField = "connectionDb"
 	ConnectTimeLogKey    = "connectTime"
+	QueryTimeLogKey      = "queryTime"
 )
