@@ -2021,10 +2021,6 @@ func TestHandlerDoQueryIntegration(t *testing.T) {
 	connID, ok := logger.Data[sql.ConnectionIdLogField].(uint32)
 	require.True(t, ok, "Connection ID should be a uint32")
 	require.Equal(t, conn.ConnectionID, connID, "Connection ID should match the connection")
-
-	// The test verifies that our code changes compile and execute without error
-	// The actual query time field will be set temporarily during query execution in doQuery
-	// but won't persist in the session logger (which is the expected behavior)
 }
 
 // TestQueryTimeLoggerBehavior tests that query time field can be added to logger entries
