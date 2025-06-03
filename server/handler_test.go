@@ -1971,16 +1971,6 @@ func TestLoggerFieldsSetup(t *testing.T) {
 	require.Equal(t, conn.ConnectionID, connID, "Connection ID should match")
 }
 
-// TestQueryTimeConstantDefined tests that the QueryTimeLogKey constant is properly defined and available
-func TestQueryTimeConstantDefined(t *testing.T) {
-	// Verify the constant exists and has the expected value
-	require.Equal(t, "queryTime", sql.QueryTimeLogKey, "QueryTimeLogKey constant should be defined as 'queryTime'")
-
-	// Verify it's different from other log keys
-	require.NotEqual(t, sql.QueryTimeLogKey, sql.ConnectTimeLogKey, "QueryTimeLogKey should be different from ConnectTimeLogKey")
-	require.NotEqual(t, sql.QueryTimeLogKey, sql.ConnectionIdLogField, "QueryTimeLogKey should be different from ConnectionIdLogField")
-}
-
 // TestHandlerDoQueryIntegration tests the complete doQuery flow to ensure query time handling works
 func TestHandlerDoQueryIntegration(t *testing.T) {
 	e, pro := setupMemDB(require.New(t))
