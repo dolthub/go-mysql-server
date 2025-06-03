@@ -1956,7 +1956,7 @@ func TestLoggerFieldsSetup(t *testing.T) {
 	session := handler.sm.session(conn)
 	logger := session.GetLogger()
 	require.NotNil(t, logger, "Session should have a logger")
-	
+
 	// Verify that the logger has the expected fields
 	require.Contains(t, logger.Data, sql.ConnectTimeLogKey, "Logger should contain connect time")
 	require.Contains(t, logger.Data, sql.ConnectionIdLogField, "Logger should contain connection ID")
@@ -1975,7 +1975,7 @@ func TestLoggerFieldsSetup(t *testing.T) {
 func TestQueryTimeConstantDefined(t *testing.T) {
 	// Verify the constant exists and has the expected value
 	require.Equal(t, "queryTime", sql.QueryTimeLogKey, "QueryTimeLogKey constant should be defined as 'queryTime'")
-	
+
 	// Verify it's different from other log keys
 	require.NotEqual(t, sql.QueryTimeLogKey, sql.ConnectTimeLogKey, "QueryTimeLogKey should be different from ConnectTimeLogKey")
 	require.NotEqual(t, sql.QueryTimeLogKey, sql.ConnectionIdLogField, "QueryTimeLogKey should be different from ConnectionIdLogField")
@@ -2012,7 +2012,7 @@ func TestHandlerDoQueryIntegration(t *testing.T) {
 	// Verify that the session has a logger with the expected fields
 	session := handler.sm.session(conn)
 	require.NotNil(t, session, "Session should exist")
-	
+
 	logger := session.GetLogger()
 	require.NotNil(t, logger, "Session should have a logger")
 
@@ -2024,14 +2024,14 @@ func TestHandlerDoQueryIntegration(t *testing.T) {
 	connectTime, ok := logger.Data[sql.ConnectTimeLogKey].(time.Time)
 	require.True(t, ok, "Connect time should be a time.Time")
 	require.False(t, connectTime.IsZero(), "Connect time should not be zero")
-	require.True(t, connectTime.Before(time.Now()) || connectTime.Equal(time.Now()), 
+	require.True(t, connectTime.Before(time.Now()) || connectTime.Equal(time.Now()),
 		"Connect time should be before or equal to current time")
 
 	// Verify connection ID matches
 	connID, ok := logger.Data[sql.ConnectionIdLogField].(uint32)
 	require.True(t, ok, "Connection ID should be a uint32")
 	require.Equal(t, conn.ConnectionID, connID, "Connection ID should match the connection")
-	
+
 	// The test verifies that our code changes compile and execute without error
 	// The actual query time field will be set temporarily during query execution in doQuery
 	// but won't persist in the session logger (which is the expected behavior)
@@ -2042,30 +2042,30 @@ func TestQueryTimeLoggerBehavior(t *testing.T) {
 	// Test demonstrates that the QueryTimeLogKey constant is available and can be used
 	// for setting up logger fields with time.Now() calls during query execution
 	require.NotEmpty(t, sql.QueryTimeLogKey, "QueryTimeLogKey should not be empty")
-	
+
 	// Create a time value like what would be used in query logging
 	queryTime := time.Now()
-	
+
 	// Simulate what happens during query execution: create a logger with query time field
 	baseLogger := &logrus.Entry{
 		Data: make(logrus.Fields),
 	}
 	baseLogger.Data[sql.ConnectTimeLogKey] = time.Now().Add(-1 * time.Minute) // connection established 1 minute ago
 	baseLogger.Data[sql.ConnectionIdLogField] = uint32(123)
-	
+
 	// Add query time field using time.Now() (this is what our modified handler does)
 	loggerWithQueryTime := baseLogger.WithField(sql.QueryTimeLogKey, queryTime)
-	
+
 	// Verify the query time field was added
 	require.Contains(t, loggerWithQueryTime.Data, sql.QueryTimeLogKey, "Logger should contain query time")
 	require.Contains(t, loggerWithQueryTime.Data, sql.ConnectTimeLogKey, "Logger should still contain connect time")
 	require.Contains(t, loggerWithQueryTime.Data, sql.ConnectionIdLogField, "Logger should still contain connection ID")
-	
+
 	// Verify the query time value
 	actualQueryTime, ok := loggerWithQueryTime.Data[sql.QueryTimeLogKey].(time.Time)
 	require.True(t, ok, "Query time should be a time.Time")
 	require.Equal(t, queryTime, actualQueryTime, "Query time should match the set value")
-	
+
 	// Verify that query time and connect time are different (as expected)
 	connectTime := loggerWithQueryTime.Data[sql.ConnectTimeLogKey].(time.Time)
 	require.True(t, queryTime.After(connectTime), "Query time should be after connect time")
