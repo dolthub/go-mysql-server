@@ -1953,7 +1953,7 @@ func TestLoggerFieldsSetup(t *testing.T) {
 	// Verify that the logger has the expected fields
 	require.Contains(t, logger.Data, sql.ConnectTimeLogKey, "Logger should contain connect time")
 	require.Contains(t, logger.Data, sql.ConnectionIdLogField, "Logger should contain connection ID")
-	
+
 	// Verify that the QueryTimeLogKey constant exists
 	require.NotEmpty(t, sql.QueryTimeLogKey, "QueryTimeLogKey constant should be defined")
 
