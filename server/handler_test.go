@@ -29,6 +29,7 @@ import (
 	"github.com/dolthub/vitess/go/race"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -1954,8 +1955,18 @@ func TestLoggerFieldsSetup(t *testing.T) {
 	require.Contains(t, logger.Data, sql.ConnectTimeLogKey, "Logger should contain connect time")
 	require.Contains(t, logger.Data, sql.ConnectionIdLogField, "Logger should contain connection ID")
 	
-	// Verify that the QueryTimeLogKey constant exists
-	require.NotEmpty(t, sql.QueryTimeLogKey, "QueryTimeLogKey constant should be defined")
+	// Verify that queryTime is actually used in logs by capturing a log entry
+	var capturedFields logrus.Fields
+	hook := &testHook{fields: &capturedFields}
+	logrus.AddHook(hook)
+	defer logrus.StandardLogger().ReplaceHooks(make(logrus.LevelHooks))
+	
+	// Execute a query that will trigger error logging (which includes queryTime)
+	err = handler.ComQuery(context.Background(), conn, "SELECT * FROM nonexistent_table", dummyCb)
+	require.Error(t, err) // This should cause an error log with queryTime
+	
+	// Verify that the log entry contained queryTime
+	require.Contains(t, capturedFields, sql.QueryTimeLogKey, "Log entry should contain queryTime field")
 
 	// Verify the values are of correct types
 	connectTime, ok := logger.Data[sql.ConnectTimeLogKey].(time.Time)
@@ -1965,4 +1976,20 @@ func TestLoggerFieldsSetup(t *testing.T) {
 	connID, ok := logger.Data[sql.ConnectionIdLogField].(uint32)
 	require.True(t, ok, "Connection ID should be a uint32")
 	require.Equal(t, conn.ConnectionID, connID, "Connection ID should match")
+}
+
+// Simple hook to capture log fields for testing
+type testHook struct {
+	fields *logrus.Fields
+}
+
+func (h *testHook) Levels() []logrus.Level {
+	return []logrus.Level{logrus.WarnLevel} // Only capture warning level (error logs)
+}
+
+func (h *testHook) Fire(entry *logrus.Entry) error {
+	if entry.Message == "error running query" {
+		*h.fields = entry.Data
+	}
+	return nil
 }
