@@ -447,9 +447,14 @@ func (h *Handler) doQuery(
 		}
 	}
 
+	// Add query time to logger for this query (after connect time)
+	logger := sqlCtx.GetLogger()
 	if queryStr != "" {
-		sqlCtx.SetLogger(sqlCtx.GetLogger().WithField("query", queryStr))
+		logger = logger.WithField(sql.QueryTimeLogKey, start).WithField("query", queryStr)
+	} else {
+		logger = logger.WithField(sql.QueryTimeLogKey, start)
 	}
+	sqlCtx.SetLogger(logger)
 	sqlCtx.GetLogger().Debugf("Starting query")
 
 	finish := observeQuery(sqlCtx, query)
