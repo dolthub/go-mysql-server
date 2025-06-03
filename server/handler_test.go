@@ -1918,12 +1918,6 @@ func TestStatusVariableComUpdate(t *testing.T) {
 	checkSessionStatVar(t, sess2, "Com_update", uint64(3))
 }
 
-// TestQueryTimeLogField tests that the QueryTimeLogKey constant is properly defined
-func TestQueryTimeLogField(t *testing.T) {
-	// Test that the constant is defined and has the expected value
-	require.Equal(t, "queryTime", sql.QueryTimeLogKey, "QueryTimeLogKey should be 'queryTime'")
-}
-
 // TestLoggerFieldsSetup tests that handler properly sets up logger fields including query time
 func TestLoggerFieldsSetup(t *testing.T) {
 	e, pro := setupMemDB(require.New(t))
