@@ -157,7 +157,10 @@ func (h *Handler) ComPrepare(ctx context.Context, c *mysql.Conn, query string, p
 // than they will at execution time.
 func nodeReturnsOkResultSchema(node sql.Node) bool {
 	switch node.(type) {
-	case *plan.InsertInto, *plan.Update, *plan.UpdateJoin, *plan.DeleteFrom:
+	case *plan.InsertInto:
+		insertNode, _ := node.(*plan.InsertInto)
+		return insertNode.Returning == nil
+	case *plan.Update, *plan.UpdateJoin, *plan.DeleteFrom:
 		return true
 	}
 	return false
