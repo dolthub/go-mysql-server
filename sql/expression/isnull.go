@@ -54,6 +54,17 @@ func (e *IsNull) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
+	// Slices of typed values (e.g. Record and Composite types in Postgres) evaluate
+	// to NULL if all of their entries are NULL.
+	if tupleValue, ok := v.([]types.TupleValue); ok {
+		for _, typedValue := range tupleValue {
+			if typedValue.Value != nil {
+				return false, nil
+			}
+		}
+		return true, nil
+	}
+
 	return v == nil, nil
 }
 
