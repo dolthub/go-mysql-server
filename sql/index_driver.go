@@ -120,7 +120,7 @@ var (
 	ErrIndexExpressionAlreadyRegistered = errors.NewKind("there is already an index registered for the expressions: %s")
 
 	// ErrIndexNotFound is returned when the index could not be found.
-	ErrIndexNotFound = errors.NewKind("index %q	was not found")
+	ErrIndexNotFound = errors.NewKind("index %q was not found")
 
 	// ErrIndexDeleteInvalidStatus is returned when the index trying to delete
 	// does not have a ready or outdated state.
