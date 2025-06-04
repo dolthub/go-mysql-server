@@ -29,6 +29,7 @@ import (
 	"github.com/dolthub/vitess/go/race"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -1915,4 +1916,80 @@ func TestStatusVariableComUpdate(t *testing.T) {
 	checkGlobalStatVar(t, "Com_update", uint64(8))
 	checkSessionStatVar(t, sess1, "Com_update", uint64(5))
 	checkSessionStatVar(t, sess2, "Com_update", uint64(3))
+}
+
+// TestLoggerFieldsSetup tests that handler properly sets up logger fields including query time
+func TestLoggerFieldsSetup(t *testing.T) {
+	e, pro := setupMemDB(require.New(t))
+	dbFunc := pro.Database
+
+	handler := &Handler{
+		e: e,
+		sm: NewSessionManager(
+			sql.NewContext,
+			testSessionBuilder(pro),
+			sql.NoopTracer,
+			dbFunc,
+			sql.NewMemoryManager(nil),
+			sqle.NewProcessList(),
+			"foo",
+		),
+		readTimeout: time.Second,
+	}
+
+	conn := newConn(1)
+	handler.NewConnection(conn)
+	err := handler.ComInitDB(conn, "test")
+	require.NoError(t, err)
+
+	// Execute a query and verify basic logging setup
+	err = handler.ComQuery(context.Background(), conn, "SELECT 1", dummyCb)
+	require.NoError(t, err)
+
+	// Verify that the session's logger has the expected fields
+	session := handler.sm.session(conn)
+	logger := session.GetLogger()
+	require.NotNil(t, logger, "Session should have a logger")
+
+	// Verify that the logger has the expected fields
+	require.Contains(t, logger.Data, sql.ConnectTimeLogKey, "Logger should contain connect time")
+	require.Contains(t, logger.Data, sql.ConnectionIdLogField, "Logger should contain connection ID")
+
+	// Verify that queryTime is actually used in logs by capturing a log entry
+	var capturedFields logrus.Fields
+	hook := &testHook{fields: &capturedFields}
+	logrus.AddHook(hook)
+	defer logrus.StandardLogger().ReplaceHooks(make(logrus.LevelHooks))
+
+	// Execute a query that will trigger error logging (which includes queryTime)
+	err = handler.ComQuery(context.Background(), conn, "SELECT * FROM nonexistent_table", dummyCb)
+	require.Error(t, err) // This should cause an error log with queryTime
+
+	// Verify that the log entry contained queryTime
+	require.Contains(t, capturedFields, sql.QueryTimeLogKey, "Log entry should contain queryTime field")
+
+	// Verify the values are of correct types
+	connectTime, ok := logger.Data[sql.ConnectTimeLogKey].(time.Time)
+	require.True(t, ok, "Connect time should be a time.Time")
+	require.False(t, connectTime.IsZero(), "Connect time should not be zero")
+
+	connID, ok := logger.Data[sql.ConnectionIdLogField].(uint32)
+	require.True(t, ok, "Connection ID should be a uint32")
+	require.Equal(t, conn.ConnectionID, connID, "Connection ID should match")
+}
+
+// Simple hook to capture log fields for testing
+type testHook struct {
+	fields *logrus.Fields
+}
+
+func (h *testHook) Levels() []logrus.Level {
+	return []logrus.Level{logrus.WarnLevel} // Only capture warning level (error logs)
+}
+
+func (h *testHook) Fire(entry *logrus.Entry) error {
+	if entry.Message == "error running query" {
+		*h.fields = entry.Data
+	}
+	return nil
 }
