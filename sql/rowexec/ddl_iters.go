@@ -2123,6 +2123,9 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 		}
 		err = idxAltTbl.DropIndex(ctx, n.IndexName)
 		if err != nil {
+			if sql.ErrIndexNotFound.Is(err) && n.IfExists {
+				return nil
+			}
 			return err
 		}
 		return nil

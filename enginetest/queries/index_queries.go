@@ -4387,7 +4387,13 @@ var IndexQueries = []ScriptTest{
 			},
 			{
 				Query:       "alter table t drop index notanidx",
-				ExpectedErr: sql.ErrDuplicateKey,
+				ExpectedErr: sql.ErrCantDropFieldOrKey,
+			},
+			{
+				Query: "alter table t drop index if exists notanidx",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
 			},
 		},
 	},
