@@ -612,6 +612,7 @@ func (b *Builder) buildAlterTableClause(inScope *scope, ddl *ast.DDL) []*scope {
 					createIndex := plan.NewAlterCreateIndex(
 						rt.Database(),
 						rt,
+						ddl.IfNotExists,
 						column.Name.String(),
 						sql.IndexUsing_BTree,
 						sql.IndexConstraint_Unique,
@@ -994,7 +995,16 @@ func (b *Builder) buildAlterIndex(inScope *scope, ddl *ast.DDL, table *plan.Reso
 			b.handleErr(err)
 		}
 
-		createIndex := plan.NewAlterCreateIndex(table.SqlDatabase, table, ddl.IndexSpec.ToName.String(), using, constraint, columns, comment)
+		createIndex := plan.NewAlterCreateIndex(
+			table.SqlDatabase,
+			table,
+			ddl.IfNotExists,
+			ddl.IndexSpec.ToName.String(),
+			using,
+			constraint,
+			columns,
+			comment,
+		)
 		outScope.node = b.modifySchemaTarget(inScope, createIndex, table.Schema())
 		return
 	case ast.DropStr:
@@ -1002,7 +1012,7 @@ func (b *Builder) buildAlterIndex(inScope *scope, ddl *ast.DDL, table *plan.Reso
 			outScope.node = plan.NewAlterDropPk(table.SqlDatabase, table)
 			return
 		}
-		outScope.node = plan.NewAlterDropIndex(table.Database(), table, ddl.IndexSpec.ToName.String())
+		outScope.node = plan.NewAlterDropIndex(table.Database(), table, ddl.IfExists, ddl.IndexSpec.ToName.String())
 		return
 	case ast.RenameStr:
 		outScope.node = plan.NewAlterRenameIndex(table.Database(), table, ddl.IndexSpec.FromName.String(), ddl.IndexSpec.ToName.String())

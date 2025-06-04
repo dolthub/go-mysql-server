@@ -1950,8 +1950,7 @@ func getFulltextDatabase(db sql.Database) (fulltext.Database, error) {
 // Execute inserts the rows in the database.
 func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) error {
 	// We should refresh the state of the table in case this alter was in a multi alter statement.
-	db := n.Database()
-	table, err := getTableFromDatabase(ctx, db, n.Table)
+	table, err := getTableFromDatabase(ctx, n.Db, n.Table)
 	if err != nil {
 		return err
 	}
@@ -1986,7 +1985,7 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 
 		if indexDef.IsFullText() {
 			var database fulltext.Database
-			database, err = getFulltextDatabase(db)
+			database, err = getFulltextDatabase(n.Db)
 			if err != nil {
 				return err
 			}
@@ -1999,6 +1998,9 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 
 		err = idxAltTbl.CreateIndex(ctx, indexDef)
 		if err != nil {
+			if sql.ErrDuplicateKey.Is(err) && n.IfNotExists {
+				return nil
+			}
 			return err
 		}
 
@@ -2062,7 +2064,7 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 		// If we're dropping a Full-Text, then we also need to delete its tables
 		if addressable, ok := idxAltTbl.(sql.IndexAddressableTable); !ok {
 			// If they don't support their creation, then it's safe to assume that they won't have any to delete
-			if _, err = getFulltextDatabase(db); err != nil {
+			if _, err = getFulltextDatabase(n.Db); err != nil {
 				return err
 			}
 		} else {
@@ -2091,7 +2093,7 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 			}
 			// We found the index and it is Full-Text, so we need to delete the other tables
 			if ftIndex != nil {
-				dropper, ok := db.(sql.TableDropper)
+				dropper, ok := n.Db.(sql.TableDropper)
 				if !ok {
 					return sql.ErrIncompleteFullTextIntegration.New()
 				}
@@ -2119,7 +2121,11 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 				}
 			}
 		}
-		return idxAltTbl.DropIndex(ctx, n.IndexName)
+		err = idxAltTbl.DropIndex(ctx, n.IndexName)
+		if err != nil {
+			return err
+		}
+		return nil
 	case plan.IndexAction_Rename:
 		return idxAltTbl.RenameIndex(ctx, n.PreviousIndexName, n.IndexName)
 	case plan.IndexAction_DisableEnableKeys:

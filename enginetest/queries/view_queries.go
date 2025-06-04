@@ -29,7 +29,7 @@ var ViewScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "create if not exists view v as select 2;",
+				Query: "create view if not exists v as select 2;",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
@@ -39,7 +39,7 @@ var ViewScripts = []ScriptTest{
 				Expected: []sql.Row{{1}},
 			},
 			{
-				Query: "create if not exists view t as select 2;",
+				Query: "create view if not exists t as select 2;",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
