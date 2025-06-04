@@ -11760,6 +11760,19 @@ var VersionedViewTests = []QueryTest{
 			sql.NewRow("myview5"),
 		},
 	},
+	{
+		Query: "insert into mytable values(4, 'fourth row'),(5, 'fifth row') returning i, s",
+		Expected: []sql.Row{
+			sql.NewRow(4, "fourth row"),
+			sql.NewRow(5, "fifth row"),
+		},
+	},
+	{
+		Query: "insert into mytable set i =4, s='fourth row' returning i, s",
+		Expected: []sql.Row{
+			sql.NewRow(4, "fourth row"),
+		},
+	},
 }
 
 var ShowTableStatusQueries = []QueryTest{
