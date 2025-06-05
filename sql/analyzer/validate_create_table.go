@@ -657,6 +657,9 @@ func validateAlterIndex(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.A
 			}
 		}
 		if savedIdx == -1 {
+			if ai.IfExists {
+				return nil, nil
+			}
 			return nil, sql.ErrCantDropFieldOrKey.New(ai.IndexName)
 		}
 		// Remove the index from the list

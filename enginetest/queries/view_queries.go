@@ -21,6 +21,36 @@ import (
 
 var ViewScripts = []ScriptTest{
 	{
+		Name: "existing views",
+		SetUpScript: []string{
+			"create view v as select 1;",
+			"create table t (i int);",
+			"insert into t values (1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "create view if not exists v as select 2;",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query:    "select * from v;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query: "create view if not exists t as select 2;",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query:    "select * from t;",
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
+	{
 		Name: "multi database view",
 		SetUpScript: []string{
 			"Create database base;",
