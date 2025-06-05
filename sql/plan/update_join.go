@@ -21,7 +21,8 @@ import (
 )
 
 type UpdateJoin struct {
-	Updaters map[string]sql.RowUpdater
+	Updaters     map[string]sql.RowUpdater
+	TargetTables []string
 	UnaryNode
 }
 
@@ -54,7 +55,14 @@ func (u *UpdateJoin) DebugString() string {
 
 // GetUpdatable returns an updateJoinTable which implements sql.UpdatableTable.
 func (u *UpdateJoin) GetUpdatable() sql.UpdatableTable {
+	// TODO: UpdateJoin can update multiple tables, but this interface only allows for a single table.
+	//       Additionally, updatableJoinTable doesn't implement interfaces that other parts of the code
+	//       expect, so UpdateJoins don't always work correctly. For example, because updatableJoinTable
+	//       doesn't implement ForeignKeyTable, we UpdateJoin statements don't properly enforce foreign key
+	//       checks. We should revamp this function so that we can support multiple tables being updated,
+	//       but right now we just return the name of the
 	return &updatableJoinTable{
+		name:     u.TargetTables[0],
 		updaters: u.Updaters,
 		joinNode: u.Child.(*UpdateSource).Child,
 	}
@@ -66,7 +74,9 @@ func (u *UpdateJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 1)
 	}
 
-	return NewUpdateJoin(u.Updaters, children[0]), nil
+	newUpdateJoin := NewUpdateJoin(u.Updaters, children[0])
+	newUpdateJoin.TargetTables = u.TargetTables
+	return newUpdateJoin, nil
 }
 
 func (u *UpdateJoin) IsReadOnly() bool {
@@ -80,6 +90,7 @@ func (u *UpdateJoin) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 
 // updatableJoinTable manages the update of multiple tables.
 type updatableJoinTable struct {
+	name     string
 	updaters map[string]sql.RowUpdater
 	joinNode sql.Node
 }
@@ -98,7 +109,7 @@ func (u *updatableJoinTable) PartitionRows(context *sql.Context, partition sql.P
 
 // Name implements the sql.UpdatableTable interface.
 func (u *updatableJoinTable) Name() string {
-	panic("this method should not be called")
+	return u.name
 }
 
 // String implements the sql.UpdatableTable interface.

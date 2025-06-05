@@ -534,20 +534,29 @@ func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 	update.IsProcNested = b.ProcCtx().DbName != ""
 
 	var checks []*sql.CheckConstraint
-	if join, ok := outScope.node.(*plan.JoinNode); ok {
-		// TODO this doesn't work, a lot of the time the top node
-		// is a filter. This would have to go before we build the
-		// filter/accessory nodes. But that errors for a lot of queries.
+	if hasJoinNode(outScope.node) {
 		source := plan.NewUpdateSource(
-			join,
+			outScope.node,
 			ignore,
 			updateExprs,
 		)
-		updaters, err := rowUpdatersByTable(b.ctx, source, join)
+		updaters, err := rowUpdatersByTable(b.ctx, source, outScope.node)
 		if err != nil {
 			b.handleErr(err)
 		}
+
+		tablesToUpdate, err := getResolvedTablesToUpdate(b.ctx, source, outScope.node)
+		if err != nil {
+			b.handleErr(err)
+		}
+
+		tableNames := make([]string, len(tablesToUpdate))
+		for i, tableToUpdate := range tablesToUpdate {
+			tableNames[i] = tableToUpdate.Name()
+		}
+
 		updateJoin := plan.NewUpdateJoin(updaters, source)
+		updateJoin.TargetTables = tableNames
 		update.Child = updateJoin
 		transform.Inspect(update, func(n sql.Node) bool {
 			// todo maybe this should be later stage
@@ -592,6 +601,34 @@ func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 
 	outScope.node = update.WithChecks(checks)
 	return
+}
+
+// hasJoinNode returns true if |node| or any child is a JoinNode.
+func hasJoinNode(node sql.Node) bool {
+	updateJoinFound := false
+	transform.Inspect(node, func(n sql.Node) bool {
+		if _, ok := n.(*plan.JoinNode); ok {
+			updateJoinFound = true
+		}
+		return !updateJoinFound
+	})
+	return updateJoinFound
+}
+
+func getResolvedTablesToUpdate(_ *sql.Context, node sql.Node, ij sql.Node) (resolvedTables []*plan.ResolvedTable, err error) {
+	namesOfTableToBeUpdated := getTablesToBeUpdated(node)
+	resolvedTablesMap := getTablesByName(ij)
+
+	for tableToBeUpdated, _ := range namesOfTableToBeUpdated {
+		resolvedTable, ok := resolvedTablesMap[strings.ToLower(tableToBeUpdated)]
+		if !ok {
+			return nil, plan.ErrUpdateForTableNotSupported.New(tableToBeUpdated)
+		}
+
+		resolvedTables = append(resolvedTables, resolvedTable)
+	}
+
+	return resolvedTables, nil
 }
 
 // rowUpdatersByTable maps a set of tables to their RowUpdater objects.
