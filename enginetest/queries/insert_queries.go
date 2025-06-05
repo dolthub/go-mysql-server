@@ -2276,6 +2276,26 @@ var InsertScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "insert...returning... statements",
+		SetUpScript: []string{
+			"CREATE TABLE animals (id int, name varchar(20))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "insert into animals (id) values (2) returning id",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "insert into animals(id,name) values (1, 'Dog'),(2,'Lion'),(3,'Tiger'),(4,'Leopard') returning id, id+id",
+				Expected: []sql.Row{{1, 2}, {2, 4}, {3, 6}, {4, 8}},
+			},
+			{
+				Query:    "insert into animals set id=1,name='Bear' returning id,name",
+				Expected: []sql.Row{{1, "Bear"}},
+			},
+		},
+	},
 }
 
 var InsertDuplicateKeyKeyless = []ScriptTest{
