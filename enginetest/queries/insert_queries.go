@@ -2277,9 +2277,11 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "insert...returning... statements",
+		Name:    "insert...returning... statements",
+		Dialect: "mysql", // actually mariadb
 		SetUpScript: []string{
 			"CREATE TABLE animals (id int, name varchar(20))",
+			"CREATE TABLE auto_pk (`pk` int NOT NULL AUTO_INCREMENT, `name` varchar(20), PRIMARY KEY (`pk`))",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -2293,6 +2295,14 @@ var InsertScripts = []ScriptTest{
 			{
 				Query:    "insert into animals set id=1,name='Bear' returning id,name",
 				Expected: []sql.Row{{1, "Bear"}},
+			},
+			{
+				Query:    "insert into auto_pk (name) values ('Cat') returning pk,name",
+				Expected: []sql.Row{{1, "Cat"}},
+			},
+			{
+				Query:    "insert into auto_pk values (NULL, 'Dog'),(5, 'Fish'),(NULL, 'Horse') returning pk,name",
+				Expected: []sql.Row{{2, "Dog"}, {5, "Fish"}, {6, "Horse"}},
 			},
 		},
 	},
