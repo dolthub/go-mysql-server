@@ -31,6 +31,7 @@ type CreateView struct {
 	database         sql.Database
 	targetSchema     sql.Schema
 	Name             string
+	IfNotExists      bool
 	IsReplace        bool
 	Definition       *SubqueryAlias
 	CreateViewString string
@@ -46,11 +47,12 @@ var _ sql.SchemaTarget = (*CreateView)(nil)
 
 // NewCreateView creates a CreateView node with the specified parameters,
 // setting its catalog to nil.
-func NewCreateView(database sql.Database, name string, definition *SubqueryAlias, isReplace bool, createViewStr, algorithm, definer, security string) *CreateView {
+func NewCreateView(database sql.Database, name string, definition *SubqueryAlias, ifNotExists, isReplace bool, createViewStr, algorithm, definer, security string) *CreateView {
 	return &CreateView{
 		UnaryNode:        UnaryNode{Child: definition},
 		database:         database,
 		Name:             name,
+		IfNotExists:      ifNotExists,
 		IsReplace:        isReplace,
 		Definition:       definition,
 		CreateViewString: createViewStr,
