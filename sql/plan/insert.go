@@ -72,7 +72,7 @@ type InsertInto struct {
 	LiteralValueSource bool
 
 	// Returning is a list of expressions to return after the insert operation. This feature is not supported
-	// in MySQL's syntax, but is exposed through PostgreSQL's syntax.
+	// in MySQL's syntax, but is exposed through PostgreSQL's and MariaDB's syntax.
 	Returning []sql.Expression
 
 	// FirstGenerateAutoIncRowIdx is the index of the first row inserted that increments last_insert_id.
