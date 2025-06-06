@@ -164,19 +164,32 @@ func (b *BaseBuilder) buildCreateView(ctx *sql.Context, n *plan.CreateView, row 
 		return nil, err
 	}
 	for _, name := range names {
-		if strings.ToLower(name) == strings.ToLower(n.Name) {
-			return nil, sql.ErrTableAlreadyExists.New(n)
+		if !strings.EqualFold(name, n.Name) {
+			continue
 		}
+		if n.IfNotExists {
+			return rowIterWithOkResultWithZeroRowsAffected(), nil
+		}
+		return nil, sql.ErrTableAlreadyExists.New(n)
 	}
 
 	// TODO: isUpdatable should be defined at CREATE VIEW time
 	// isUpdatable := GetIsUpdatableFromCreateView(cv)
 	creator, ok := n.Database().(sql.ViewDatabase)
-	if ok {
-		return rowIterWithOkResultWithZeroRowsAffected(), creator.CreateView(ctx, n.Name, n.Definition.TextDefinition, n.CreateViewString)
-	} else {
-		return rowIterWithOkResultWithZeroRowsAffected(), registry.Register(n.Database().Name(), n.View())
+	if !ok {
+		err = registry.Register(n.Database().Name(), n.View())
+		if err != nil {
+			return nil, err
+		}
+		return rowIterWithOkResultWithZeroRowsAffected(), nil
 	}
+	err = creator.CreateView(ctx, n.Name, n.Definition.TextDefinition, n.CreateViewString)
+	if err != nil {
+		if !sql.ErrExistingView.Is(err) || !n.IfNotExists {
+			return nil, err
+		}
+	}
+	return rowIterWithOkResultWithZeroRowsAffected(), nil
 }
 
 func (b *BaseBuilder) buildCreateCheck(ctx *sql.Context, n *plan.CreateCheck, row sql.Row) (sql.RowIter, error) {

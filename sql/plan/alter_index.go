@@ -45,9 +45,13 @@ type AlterIndex struct {
 	// Action states whether it's a CREATE, DROP, or RENAME
 	Action IndexAction
 	// ddlNode references to the database that is being operated on
-	ddlNode
+	Db sql.Database
 	// Table is the table that is being referenced
 	Table sql.TableNode
+	// IfExists indicates if we should error when deleting an index that doesn't exist
+	IfExists bool
+	// IfNotExists indicates if we should error when creating a duplicate index
+	IfNotExists bool
 	// IndexName is the index name, and in the case of a RENAME it represents the new name
 	IndexName string
 	// PreviousIndexName states the old name when renaming an index
@@ -72,24 +76,26 @@ var _ sql.Expressioner = (*AlterIndex)(nil)
 var _ sql.Node = (*AlterIndex)(nil)
 var _ sql.CollationCoercible = (*AlterIndex)(nil)
 
-func NewAlterCreateIndex(db sql.Database, table sql.TableNode, indexName string, using sql.IndexUsing, constraint sql.IndexConstraint, columns []sql.IndexColumn, comment string) *AlterIndex {
+func NewAlterCreateIndex(db sql.Database, table sql.TableNode, ifNotExists bool, indexName string, using sql.IndexUsing, constraint sql.IndexConstraint, columns []sql.IndexColumn, comment string) *AlterIndex {
 	return &AlterIndex{
-		Action:     IndexAction_Create,
-		ddlNode:    ddlNode{Db: db},
-		Table:      table,
-		IndexName:  indexName,
-		Using:      using,
-		Constraint: constraint,
-		Columns:    columns,
-		Comment:    comment,
+		Action:      IndexAction_Create,
+		Db:          db,
+		Table:       table,
+		IfNotExists: ifNotExists,
+		IndexName:   indexName,
+		Using:       using,
+		Constraint:  constraint,
+		Columns:     columns,
+		Comment:     comment,
 	}
 }
 
-func NewAlterDropIndex(db sql.Database, table sql.TableNode, indexName string) *AlterIndex {
+func NewAlterDropIndex(db sql.Database, table sql.TableNode, ifExists bool, indexName string) *AlterIndex {
 	return &AlterIndex{
 		Action:    IndexAction_Drop,
-		ddlNode:   ddlNode{Db: db},
+		Db:        db,
 		Table:     table,
+		IfExists:  ifExists,
 		IndexName: indexName,
 	}
 }
@@ -97,7 +103,7 @@ func NewAlterDropIndex(db sql.Database, table sql.TableNode, indexName string) *
 func NewAlterRenameIndex(db sql.Database, table sql.TableNode, fromIndexName, toIndexName string) *AlterIndex {
 	return &AlterIndex{
 		Action:            IndexAction_Rename,
-		ddlNode:           ddlNode{Db: db},
+		Db:                db,
 		Table:             table,
 		IndexName:         toIndexName,
 		PreviousIndexName: fromIndexName,
@@ -107,7 +113,7 @@ func NewAlterRenameIndex(db sql.Database, table sql.TableNode, fromIndexName, to
 func NewAlterDisableEnableKeys(db sql.Database, table sql.TableNode, disableKeys bool) *AlterIndex {
 	return &AlterIndex{
 		Action:      IndexAction_DisableEnableKeys,
-		ddlNode:     ddlNode{Db: db},
+		Db:          db,
 		Table:       table,
 		DisableKeys: disableKeys,
 	}
@@ -120,7 +126,7 @@ func (p *AlterIndex) Schema() sql.Schema {
 
 // WithChildren implements the Node interface. For AlterIndex, the only appropriate input is
 // a single child - The Table.
-func (p AlterIndex) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (p *AlterIndex) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
@@ -131,21 +137,24 @@ func (p AlterIndex) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 	switch p.Action {
 	case IndexAction_Create, IndexAction_Drop, IndexAction_Rename, IndexAction_DisableEnableKeys:
-		p.Table = child
-		return &p, nil
+		np := *p
+		np.Table = child
+		return &np, nil
 	default:
 		return nil, ErrIndexActionNotImplemented.New(p.Action)
 	}
 }
 
-func (p AlterIndex) WithColumns(columns []sql.IndexColumn) (sql.Node, error) {
-	p.Columns = columns
-	return &p, nil
+func (p *AlterIndex) WithColumns(columns []sql.IndexColumn) (sql.Node, error) {
+	np := *p
+	np.Columns = columns
+	return &np, nil
 }
 
-func (p AlterIndex) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
-	p.targetSchema = schema
-	return &p, nil
+func (p *AlterIndex) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
+	np := *p
+	np.targetSchema = schema
+	return &np, nil
 }
 
 func (p *AlterIndex) TargetSchema() sql.Schema {
@@ -164,7 +173,7 @@ func (p *AlterIndex) Expressions() []sql.Expression {
 
 // WithExpressions implements the Node Interface. For AlterIndex, expressions represent  column defaults on the
 // targetSchema instance - required to be the same number of columns on the target schema.
-func (p AlterIndex) WithExpressions(expressions ...sql.Expression) (sql.Node, error) {
+func (p *AlterIndex) WithExpressions(expressions ...sql.Expression) (sql.Node, error) {
 	columns := p.TargetSchema().Copy()
 
 	if len(columns) != len(expressions) {
@@ -209,7 +218,7 @@ func (p *AlterIndex) WithDatabase(database sql.Database) (sql.Node, error) {
 	return &np, nil
 }
 
-func (p AlterIndex) String() string {
+func (p *AlterIndex) String() string {
 	pr := sql.NewTreePrinter()
 	switch p.Action {
 	case IndexAction_Create:
@@ -259,7 +268,7 @@ func (p AlterIndex) String() string {
 }
 
 func (p *AlterIndex) Resolved() bool {
-	return p.Table.Resolved() && p.ddlNode.Resolved() && p.targetSchema.Resolved()
+	return p.Table.Resolved() && p.targetSchema.Resolved()
 }
 
 func (p *AlterIndex) IsReadOnly() bool {

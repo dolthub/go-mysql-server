@@ -4338,4 +4338,63 @@ var IndexQueries = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "indexes and if exists",
+		SetUpScript: []string{
+			"create table t (i int, j int);",
+			"create index idx on t (i);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "create index idx on t(j)",
+				ExpectedErr: sql.ErrDuplicateKey,
+			},
+			{
+				Query: "create index if not exists idx on t(j)",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table t",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int,\n" +
+						"  `j` int,\n" +
+						"  KEY `idx` (`i`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query:       "alter table t add index idx (j)",
+				ExpectedErr: sql.ErrDuplicateKey,
+			},
+			{
+				Query: "alter table t add index if not exists idx (j)",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table t",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int,\n" +
+						"  `j` int,\n" +
+						"  KEY `idx` (`i`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query:       "alter table t drop index notanidx",
+				ExpectedErr: sql.ErrCantDropFieldOrKey,
+			},
+			{
+				Query: "alter table t drop index if exists notanidx",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+		},
+	},
 }

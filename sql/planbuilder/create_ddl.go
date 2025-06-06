@@ -672,7 +672,7 @@ func (b *Builder) buildCreateView(inScope *scope, subQuery string, fullQuery str
 	if !ok {
 		b.handleErr(sql.ErrDatabaseSchemaNotFound.New(c.Table.SchemaQualifier.String()))
 	}
-	createView := plan.NewCreateView(db, c.ViewSpec.ViewName.Name.String(), queryAlias, c.OrReplace, subQuery, c.ViewSpec.Algorithm, definer, c.ViewSpec.Security)
+	createView := plan.NewCreateView(db, c.ViewSpec.ViewName.Name.String(), queryAlias, c.IfNotExists, c.OrReplace, subQuery, c.ViewSpec.Algorithm, definer, c.ViewSpec.Security)
 	outScope.node = b.modifySchemaTarget(queryScope, createView, createView.Definition.Schema())
 
 	return outScope

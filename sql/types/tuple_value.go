@@ -1,4 +1,4 @@
-// Copyright 2022 Dolthub, Inc.
+// Copyright 2025 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,11 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sql
+package types
 
-const (
-	ConnectionIdLogField = "connectionID"
-	ConnectionDbLogField = "connectionDb"
-	ConnectTimeLogKey    = "connectTime"
-	QueryTimeLogKey      = "queryTime"
-)
+import "github.com/dolthub/go-mysql-server/sql"
+
+// TupleValue represents a value and its associated type information. TupleValue is used by collections of
+// values where the type information is not consistent across all values (e.g. Records in Postgres).
+type TupleValue struct {
+	Value any
+	Type  sql.Type
+}
