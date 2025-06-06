@@ -39,7 +39,18 @@ func modifyUpdateExprsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 			return nil, transform.SameTree, err
 		}
 
+		tablesToUpdate, err := getResolvedTablesToUpdate(ctx, us, jn)
+		if err != nil {
+			return n, transform.SameTree, err
+		}
+
+		tableNames := make([]string, len(tablesToUpdate))
+		for i, tableToUpdate := range tablesToUpdate {
+			tableNames[i] = tableToUpdate.Name()
+		}
+
 		uj := plan.NewUpdateJoin(updaters, us)
+		uj.TargetTables = tableNames
 		ret, err := n.WithChildren(uj)
 		if err != nil {
 			return nil, transform.SameTree, err
@@ -98,4 +109,20 @@ func getTablesToBeUpdated(node sql.Node) map[string]struct{} {
 	})
 
 	return ret
+}
+
+func getResolvedTablesToUpdate(_ *sql.Context, node sql.Node, ij sql.Node) (resolvedTables []*plan.ResolvedTable, err error) {
+	namesOfTableToBeUpdated := getTablesToBeUpdated(node)
+	resolvedTablesMap := getTablesByName(ij)
+
+	for tableToBeUpdated, _ := range namesOfTableToBeUpdated {
+		resolvedTable, ok := resolvedTablesMap[strings.ToLower(tableToBeUpdated)]
+		if !ok {
+			return nil, plan.ErrUpdateForTableNotSupported.New(tableToBeUpdated)
+		}
+
+		resolvedTables = append(resolvedTables, resolvedTable)
+	}
+
+	return resolvedTables, nil
 }
