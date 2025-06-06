@@ -137,17 +137,15 @@ func updateSystemVariables(cfg mysql.ListenerConfig) error {
 	if err != nil {
 		return err
 	}
-	print(port)
 	portInt, err := strconv.ParseInt(port, 10, 64)
 	if err != nil {
 		return err
 	}
-	if portInt == 0 {
-	}
+	// TODO: add the rest of the config variables
 	err = sql.SystemVariables.AssignValues(map[string]interface{}{
 		"port":     portInt,
 		"hostname": hostname,
-		// TODO: the rest
+		// TODO: this causes an error because max_connections is 0?
 		//"max_connections": cfg.MaxConns,
 	})
 	if err != nil {
