@@ -150,7 +150,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	ins := plan.NewInsertInto(db, plan.NewInsertDestination(sch, dest), srcScope.node, isReplace, columns, onDupExprs, ignore)
 	ins.LiteralValueSource = srcLiteralOnly
 
-	if i.Returning != nil {
+	if len(i.Returning) > 0 {
 		// TODO: read returning results from outScope instead of ins.Returning so that there is no need to return list
 		// of expressions
 		ins.Returning = b.analyzeSelectList(destScope, destScope, i.Returning)
@@ -581,11 +581,7 @@ func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 	}
 
 	if len(u.Returning) > 0 {
-		returningExprs := make([]sql.Expression, len(u.Returning))
-		for i, selectExpr := range u.Returning {
-			returningExprs[i] = b.selectExprToExpression(outScope, selectExpr)
-		}
-		update.Returning = returningExprs
+		update.Returning = b.analyzeSelectList(outScope, outScope, u.Returning)
 	}
 
 	outScope.node = update.WithChecks(checks)
