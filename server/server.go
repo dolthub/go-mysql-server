@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strconv"
 	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
@@ -118,6 +119,15 @@ func portInUse(hostPort string) bool {
 	return false
 }
 
+func updateSystemVariables(cfg mysql.ListenerConfig) {
+	_, port, _ := net.SplitHostPort(cfg.Listener.Addr().String())
+	portInt, _ := strconv.ParseInt(port, 10, 64)
+	sql.SystemVariables.AssignValues(map[string]interface{}{
+		"max_connections": cfg.MaxConns,
+		"port":            portInt,
+	})
+}
+
 func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handler mysql.Handler, sel ServerEventListener) (*Server, error) {
 	if cfg.ConnReadTimeout < 0 {
 		cfg.ConnReadTimeout = 0
@@ -171,6 +181,8 @@ func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handle
 	if err != nil {
 		return nil, err
 	}
+
+	updateSystemVariables(listenerCfg)
 
 	return &Server{
 		Listener:   protocolListener,
