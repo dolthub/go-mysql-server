@@ -2301,7 +2301,7 @@ var InsertScripts = []ScriptTest{
 				Expected: []sql.Row{{1, "Cat"}},
 			},
 			{
-				Query:    "insert into auto_pk values (NULL, 'Dog'),(5, 'Fish'),(NULL, 'Horse') returning pk,name",
+				Query:    "insert into auto_pk values (NULL, 'Dog'),(5, 'Fish'),(NULL, 'Horse') returning *",
 				Expected: []sql.Row{{2, "Dog"}, {5, "Fish"}, {6, "Horse"}},
 			},
 		},

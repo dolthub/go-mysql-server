@@ -29,8 +29,8 @@ func (b *Builder) analyzeProjectionList(inScope, outScope *scope, selectExprs as
 	b.analyzeSelectList(inScope, outScope, selectExprs)
 }
 
-func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.SelectExprs) {
-	// todo ideally we would not create new expressions here.
+func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.SelectExprs) (expressions []sql.Expression) {
+	// TODO: ideally we would not create new expressions here.
 	// we want to in-place identify aggregations, expand stars.
 	// use inScope to construct projections for projScope
 
@@ -160,6 +160,7 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 	}
 
 	inScope.parent = tempScope.parent
+	return exprs
 }
 
 // selectExprToExpression binds dependencies in a scalar expression in a SELECT clause.
