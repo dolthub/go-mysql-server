@@ -375,3 +375,88 @@ func TestServerPreparedStatements(t *testing.T) {
 		})
 	}
 }
+
+func TestServerQueries(t *testing.T) {
+	port, perr := findEmptyPort()
+	require.NoError(t, perr)
+
+	s, serr := initTestServer(port)
+	require.NoError(t, serr)
+
+	go s.Start()
+	defer s.Close()
+
+	tests := []serverScriptTest{
+		{
+			name:  "test that config variables are properly set",
+			setup: []string{},
+			assertions: []serverScriptTestAssertion{
+				{
+					query: "select @@hostname, @@port",
+					//query:  "select @@hostname, @@port, @@max_connections",
+					isExec: false,
+					expectedRows: []any{
+						sql.Row{"macbook.local", port},
+					},
+					checkRows: func(t *testing.T, rows *gosql.Rows, expectedRows []any) (bool, error) {
+						var resHostname string
+						var resPort int
+						var rowNum int
+						for rows.Next() {
+							if err := rows.Scan(&resHostname, &resPort); err != nil {
+								return false, err
+							}
+							if rowNum >= len(expectedRows) {
+								return false, nil
+							}
+							expectedRow := expectedRows[rowNum].(sql.Row)
+							require.Equal(t, expectedRow[0].(string), resHostname)
+							require.Equal(t, expectedRow[1].(int), resPort)
+						}
+						return true, nil
+					},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			conn, cerr := dbr.Open("mysql", fmt.Sprintf(noUserFmt, address, port), nil)
+			require.NoError(t, cerr)
+			defer conn.Close()
+			commonSetup := []string{
+				"create database test_db;",
+				"use test_db;",
+			}
+			commonTeardown := []string{
+				"drop database test_db",
+			}
+			for _, stmt := range append(commonSetup, test.setup...) {
+				_, err := conn.Exec(stmt)
+				require.NoError(t, err)
+			}
+			for _, assertion := range test.assertions {
+				t.Run(assertion.query, func(t *testing.T) {
+					if assertion.skip {
+						t.Skip()
+					}
+					rows, err := conn.Query(assertion.query, assertion.args...)
+					if assertion.expectErr {
+						require.Error(t, err)
+						return
+					}
+					require.NoError(t, err)
+
+					ok, err := assertion.checkRows(t, rows, assertion.expectedRows)
+					require.NoError(t, err)
+					require.True(t, ok)
+				})
+			}
+			for _, stmt := range append(commonTeardown) {
+				_, err := conn.Exec(stmt)
+				require.NoError(t, err)
+			}
+		})
+	}
+}

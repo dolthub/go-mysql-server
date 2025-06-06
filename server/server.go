@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
 	"strconv"
 	"time"
 
@@ -119,13 +120,38 @@ func portInUse(hostPort string) bool {
 	return false
 }
 
-func updateSystemVariables(cfg mysql.ListenerConfig) {
-	_, port, _ := net.SplitHostPort(cfg.Listener.Addr().String())
-	portInt, _ := strconv.ParseInt(port, 10, 64)
-	sql.SystemVariables.AssignValues(map[string]interface{}{
-		"max_connections": cfg.MaxConns,
-		"port":            portInt,
+func getHostname() (string, error) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return "", err
+	}
+	return hostname, nil
+}
+
+func updateSystemVariables(cfg mysql.ListenerConfig) error {
+	hostname, err := getHostname()
+	if err != nil {
+		return err
+	}
+	_, port, err := net.SplitHostPort(cfg.Listener.Addr().String())
+	if err != nil {
+		return err
+	}
+	portInt, err := strconv.ParseInt(port, 10, 64)
+	if err != nil {
+		return err
+	}
+	// TODO: add the rest of the config variables
+	err = sql.SystemVariables.AssignValues(map[string]interface{}{
+		"port":     portInt,
+		"hostname": hostname,
+		// TODO: this causes an error because max_connections is 0?
+		//"max_connections": cfg.MaxConns,
 	})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handler mysql.Handler, sel ServerEventListener) (*Server, error) {
@@ -182,7 +208,10 @@ func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handle
 		return nil, err
 	}
 
-	updateSystemVariables(listenerCfg)
+	err = updateSystemVariables(listenerCfg)
+	if err != nil {
+		return nil, err
+	}
 
 	return &Server{
 		Listener:   protocolListener,
