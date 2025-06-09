@@ -8685,7 +8685,6 @@ where
 		},
 	},
 	{
-		// This is a script test here because every table in the harness setup data is in all lowercase
 		Name:    "substring function tests with wrappers",
 		Dialect: "mysql",
 		SetUpScript: []string{
