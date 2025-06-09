@@ -21,7 +21,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// Oct function provides a string representation for the octal value of N, where N is a decimal number.
+// Oct function provides a string representation for the octal value of N, where N is a decimal (base 10) number.
 type Oct struct {
 	n sql.Expression
 }
@@ -39,7 +39,7 @@ func (o *Oct) FunctionName() string {
 
 // Description implements sql.FunctionExpression.
 func (o *Oct) Description() string {
-	return "returns a string representation for octal value of N, where N is a decimal number."
+	return "returns a string representation for octal value of N, where N is a decimal (base 10) number."
 }
 
 // Type implements the Expression interface.

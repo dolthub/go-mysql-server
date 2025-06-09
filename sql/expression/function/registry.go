@@ -184,6 +184,7 @@ var BuiltIns = []sql.Function{
 	sql.Function1{Name: "ntile", Fn: window.NewNTile},
 	sql.FunctionN{Name: "now", Fn: NewNow},
 	sql.Function2{Name: "nullif", Fn: NewNullIf},
+	sql.Function1{Name: "oct", Fn: NewOct},
 	sql.Function1{Name: "octet_length", Fn: NewLength},
 	sql.Function1{Name: "ord", Fn: NewOrd},
 	sql.Function0{Name: "pi", Fn: NewPi},
