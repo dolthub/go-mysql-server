@@ -29,24 +29,30 @@ type Oct struct {
 var _ sql.FunctionExpression = (*Oct)(nil)
 var _ sql.CollationCoercible = (*Oct)(nil)
 
+// NewOct returns a new Oct expression.
 func NewOct(n sql.Expression) sql.Expression { return &Oct{n} }
 
+// FunctionName implements sql.FunctionExpression.
 func (o *Oct) FunctionName() string {
 	return "oct"
 }
 
+// Description implements sql.FunctionExpression.
 func (o *Oct) Description() string {
 	return "returns a string representation for octal value of N, where N is a decimal number."
 }
 
+// Type implements the Expression interface.
 func (o *Oct) Type() sql.Type {
 	return types.LongText
 }
 
+// IsNullable implements the Expression interface.
 func (o *Oct) IsNullable() bool {
 	return o.n.IsNullable()
 }
 
+// Eval implements the Expression interface.
 func (o *Oct) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Convert a decimal (base 10) number to octal (base 8)
 	return NewConv(
@@ -56,14 +62,17 @@ func (o *Oct) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	).Eval(ctx, row)
 }
 
+// Resolved implements the Expression interface.
 func (o *Oct) Resolved() bool {
 	return o.n.Resolved()
 }
 
+// Children implements the Expression interface.
 func (o *Oct) Children() []sql.Expression {
 	return []sql.Expression{o.n}
 }
 
+// WithChildren implements the Expression interface.
 func (o *Oct) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(o, len(children), 1)
@@ -75,6 +84,7 @@ func (o *Oct) String() string {
 	return fmt.Sprintf("%s(%s)", o.FunctionName(), o.n)
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
 func (*Oct) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return ctx.GetCollation(), 4 // strings with collations
 }
