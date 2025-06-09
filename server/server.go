@@ -18,7 +18,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"os"
 	"strconv"
 	"time"
 
@@ -120,19 +119,7 @@ func portInUse(hostPort string) bool {
 	return false
 }
 
-func getHostname() (string, error) {
-	hostname, err := os.Hostname()
-	if err != nil {
-		return "", err
-	}
-	return hostname, nil
-}
-
 func updateSystemVariables(cfg mysql.ListenerConfig) error {
-	hostname, err := getHostname()
-	if err != nil {
-		return err
-	}
 	_, port, err := net.SplitHostPort(cfg.Listener.Addr().String())
 	if err != nil {
 		return err
@@ -143,10 +130,10 @@ func updateSystemVariables(cfg mysql.ListenerConfig) error {
 	}
 	// TODO: add the rest of the config variables
 	err = sql.SystemVariables.AssignValues(map[string]interface{}{
-		"port":     portInt,
-		"hostname": hostname,
-		// TODO: this causes an error because max_connections is 0?
-		//"max_connections": cfg.MaxConns,
+		"port":              portInt,
+		"max_connections":   cfg.MaxConns,
+		"net_read_timeout":  cfg.ConnReadTimeout.Seconds(),
+		"net_write_timeout": cfg.ConnWriteTimeout.Seconds(),
 	})
 	if err != nil {
 		return err
@@ -155,14 +142,18 @@ func updateSystemVariables(cfg mysql.ListenerConfig) error {
 }
 
 func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handler mysql.Handler, sel ServerEventListener) (*Server, error) {
-	if cfg.ConnReadTimeout < 0 {
-		cfg.ConnReadTimeout = 0
+	oneSecond := time.Duration(1) * time.Second
+	if cfg.ConnReadTimeout < oneSecond {
+		// TODO set to MySQL default value
+		cfg.ConnReadTimeout = oneSecond
 	}
-	if cfg.ConnWriteTimeout < 0 {
-		cfg.ConnWriteTimeout = 0
+	if cfg.ConnWriteTimeout < oneSecond {
+		// TODO set to MySQL default value
+		cfg.ConnWriteTimeout = oneSecond
 	}
-	if cfg.MaxConnections < 0 {
-		cfg.MaxConnections = 0
+	if cfg.MaxConnections < 1 {
+		// TODO set to MySQL default value
+		cfg.MaxConnections = 1
 	}
 
 	for _, opt := range cfg.Options {

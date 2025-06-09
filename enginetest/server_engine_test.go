@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"net"
+	"os"
 	"testing"
 
 	"github.com/dolthub/vitess/go/mysql"
@@ -376,7 +377,10 @@ func TestServerPreparedStatements(t *testing.T) {
 	}
 }
 
-func TestServerQueries(t *testing.T) {
+func TestServerVariables(t *testing.T) {
+	hostname, herr := os.Hostname()
+	require.NoError(t, herr)
+
 	port, perr := findEmptyPort()
 	require.NoError(t, perr)
 
@@ -388,22 +392,24 @@ func TestServerQueries(t *testing.T) {
 
 	tests := []serverScriptTest{
 		{
-			name:  "test that config variables are properly set",
+			name:  "test that config system variables are properly set",
 			setup: []string{},
 			assertions: []serverScriptTestAssertion{
 				{
-					query: "select @@hostname, @@port",
-					//query:  "select @@hostname, @@port, @@max_connections",
+					query:  "select @@hostname, @@port, @@max_connections, @@net_read_timeout, @@net_write_timeout",
 					isExec: false,
 					expectedRows: []any{
-						sql.Row{"macbook.local", port},
+						sql.Row{hostname, port, 1, 1, 1},
 					},
 					checkRows: func(t *testing.T, rows *gosql.Rows, expectedRows []any) (bool, error) {
 						var resHostname string
 						var resPort int
+						var resMaxConnections int
+						var resNetReadTimeout int
+						var resNetWriteTimeout int
 						var rowNum int
 						for rows.Next() {
-							if err := rows.Scan(&resHostname, &resPort); err != nil {
+							if err := rows.Scan(&resHostname, &resPort, &resMaxConnections, &resNetReadTimeout, &resNetWriteTimeout); err != nil {
 								return false, err
 							}
 							if rowNum >= len(expectedRows) {
