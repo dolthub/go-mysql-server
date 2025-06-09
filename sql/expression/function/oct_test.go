@@ -15,11 +15,12 @@
 package function
 
 import (
+	"math"
+	"testing"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"math"
-	"testing"
 )
 
 type test struct {
