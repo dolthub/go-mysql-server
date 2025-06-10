@@ -19,9 +19,9 @@ import (
 	"reflect"
 	"testing"
 
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/go-mysql-org/go-mysql/client"
 	"github.com/go-mysql-org/go-mysql/mysql"
+	_ "github.com/go-sql-driver/mysql"
 )
 
 const connectionString = "root:@tcp(127.0.0.1:3306)/mydb"
