@@ -119,18 +119,26 @@ func portInUse(hostPort string) bool {
 	return false
 }
 
-func updateSystemVariables(cfg mysql.ListenerConfig) error {
+func getPortOrDefault(cfg mysql.ListenerConfig) int64 {
+	// TODO read this values from systemVars
+	defaultPort := int64(3606)
 	_, port, err := net.SplitHostPort(cfg.Listener.Addr().String())
 	if err != nil {
-		return err
+		return defaultPort
 	}
 	portInt, err := strconv.ParseInt(port, 10, 64)
 	if err != nil {
-		return err
+		return defaultPort
 	}
+	return portInt
+}
+
+func updateSystemVariables(cfg mysql.ListenerConfig) error {
+	port := getPortOrDefault(cfg)
+
 	// TODO: add the rest of the config variables
-	err = sql.SystemVariables.AssignValues(map[string]interface{}{
-		"port":              portInt,
+	err := sql.SystemVariables.AssignValues(map[string]interface{}{
+		"port":              port,
 		"max_connections":   cfg.MaxConns,
 		"net_read_timeout":  cfg.ConnReadTimeout.Seconds(),
 		"net_write_timeout": cfg.ConnWriteTimeout.Seconds(),
