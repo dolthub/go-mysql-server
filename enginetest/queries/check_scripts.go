@@ -495,7 +495,7 @@ var ChecksOnUpdateScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Update join updates",
+		Name: "Update join - single table",
 		SetUpScript: []string{
 			"CREATE TABLE sales (year_built int primary key, CONSTRAINT `valid_year_built` CHECK (year_built <= 2022));",
 			"INSERT INTO sales VALUES (1981);",
@@ -532,6 +532,45 @@ var ChecksOnUpdateScriptTests = []ScriptTest{
 			{
 				Query:       "UPDATE sales as s1 JOIN (SELECT year_built FROM sales) AS t SET t.year_built = 2030;",
 				ExpectedErr: plan.ErrUpdateForTableNotSupported,
+			},
+		},
+	},
+	{
+		Name: "Update join - multiple tables",
+		SetUpScript: []string{
+			"CREATE TABLE sales (year_built int primary key, CONSTRAINT `valid_year_built` CHECK (year_built <= 2022));",
+			"INSERT INTO sales VALUES (1981);",
+			"CREATE TABLE locations (state char(2) primary key, CONSTRAINT `state` CHECK (state != 'GA'));",
+			"INSERT INTO locations VALUES ('WA');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "UPDATE sales JOIN locations SET sales.year_built = 2000, locations.state = 'GA';",
+				ExpectedErr: sql.ErrCheckConstraintViolated,
+			},
+			{
+				Query:       "UPDATE sales JOIN locations SET sales.year_built = 2025, locations.state = 'CA';",
+				ExpectedErr: sql.ErrCheckConstraintViolated,
+			},
+			{
+				Query:    "select * from sales;",
+				Expected: []sql.Row{{1981}},
+			},
+			{
+				Query:    "select * from locations;",
+				Expected: []sql.Row{{"WA"}},
+			},
+			{
+				Query:    "UPDATE sales JOIN locations SET sales.year_built = 2000, locations.state = 'CA';",
+				Expected: []sql.Row{{types.OkResult{2, 0, plan.UpdateInfo{2, 2, 0}}}},
+			},
+			{
+				Query:    "select * from sales;",
+				Expected: []sql.Row{{2000}},
+			},
+			{
+				Query:    "select * from locations;",
+				Expected: []sql.Row{{"CA"}},
 			},
 		},
 	},
