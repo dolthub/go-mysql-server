@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"github.com/cespare/xxhash/v2"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -75,7 +76,7 @@ func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, sql.ErrInvalidOperandColumns.New(types.NumColumns(typ), types.NumColumns(right.Type()))
 		}
 
-		typ := right.Type()
+		rTyp := right.Type()
 
 		values, err := right.HashMultiple(ctx, row)
 		if err != nil {
@@ -91,9 +92,22 @@ func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 
 		// convert left to right's type
-		nLeft, _, err := typ.Convert(ctx, left)
+		nLeft, _, err := rTyp.Convert(ctx, left)
 		if err != nil {
 			return false, nil
+		}
+
+		if strTyp, ok := rTyp.(sql.StringType); ok {
+			weightStr := xxhash.New()
+			valStr, err := types.ConvertToString(ctx, nLeft, strTyp, nil)
+			if err != nil {
+				return nil, err
+			}
+			err = strTyp.Collation().WriteWeightString(weightStr, valStr)
+			if err != nil {
+				return nil, err
+			}
+			nLeft = weightStr
 		}
 
 		key, err := sql.HashOf(ctx, sql.NewRow(nLeft))
@@ -109,12 +123,12 @@ func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return false, nil
 		}
 
-		val, _, err = typ.Convert(ctx, val)
+		val, _, err = rTyp.Convert(ctx, val)
 		if err != nil {
 			return false, nil
 		}
 
-		cmp, err := typ.Compare(ctx, left, val)
+		cmp, err := rTyp.Compare(ctx, left, val)
 		if err != nil {
 			return nil, err
 		}

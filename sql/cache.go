@@ -26,7 +26,7 @@ import (
 )
 
 // HashOf returns a hash of the given value to be used as key in a cache.
-func HashOf(ctx context.Context, v Row) (uint64, error) {
+func HashOf(sch Schema, v Row) (uint64, error) {
 	hash := digestPool.Get().(*xxhash.Digest)
 	hash.Reset()
 	defer digestPool.Put(hash)
@@ -37,10 +37,17 @@ func HashOf(ctx context.Context, v Row) (uint64, error) {
 				return 0, err
 			}
 		}
-		x, err := UnwrapAny(ctx, x)
-		if err != nil {
-			return 0, err
+
+		if i < len(sch) {
+			typ := sch[i].Type
+			if strType, ok := typ.(StringType); ok {
+				strType.Convert(nil, )
+				strType.Collation().WriteWeightString(hash, )
+
+			}
+			continue
 		}
+
 		// TODO: probably much faster to do this with a type switch
 		// TODO: we don't have the type info necessary to appropriately encode the value of a string with a non-standard
 		//  collation, which means that two strings that differ only in their collations will hash to the same value.
