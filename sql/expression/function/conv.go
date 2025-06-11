@@ -152,14 +152,14 @@ func convertFromBase(ctx *sql.Context, nVal string, fromBase interface{}) interf
 
 	// Handle sign
 	negative := false
-	switch case nVal[0] {
+	switch nVal[0] {
 	case '-':
 		if len(nVal) == 1 {
 			return uint64(0)
 		}
 		negative = true
 		nVal = nVal[1:]
-	case nVal[0] == '+':
+	case '+':
 		if len(nVal) == 1 {
 			return uint64(0)
 		}
