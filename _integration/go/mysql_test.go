@@ -196,7 +196,7 @@ func TestMySQLStreamingPrepared(t *testing.T) {
 
 	expected := [][3]string{
 		{"Evil Bob", "evilbob@gmail.com", "abc"},
-		{"Jane Doe", "jaane@doe.com", "abc"},
+		{"Jane Doe", "jane@doe.com", "abc"},
 		{"John Doe", "john@doe.com", "abc"},
 		{"John Doe", "johnalt@doe.com", "abc"},
 	}
