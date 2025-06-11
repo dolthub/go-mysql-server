@@ -8388,6 +8388,78 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{"1"}, {"10"}, {"11"}},
 	},
 	{
+		Query:    "SELECT OCT(8)",
+		Expected: []sql.Row{{"10"}},
+	},
+	{
+		Query:    "SELECT OCT(255)",
+		Expected: []sql.Row{{"377"}},
+	},
+	{
+		Query:    "SELECT OCT(0)",
+		Expected: []sql.Row{{"0"}},
+	},
+	{
+		Query:    "SELECT OCT(1)",
+		Expected: []sql.Row{{"1"}},
+	},
+	{
+		Query:    "SELECT OCT(NULL)",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT OCT(-1)",
+		Expected: []sql.Row{{"1777777777777777777777"}},
+	},
+	{
+		Query:    "SELECT OCT(-8)",
+		Expected: []sql.Row{{"1777777777777777777770"}},
+	},
+	{
+		Query:    "SELECT OCT(OCT(4))",
+		Expected: []sql.Row{{"4"}},
+	},
+	{
+		Query:    "SELECT OCT('16')",
+		Expected: []sql.Row{{"20"}},
+	},
+	{
+		Query:    "SELECT OCT('abc')",
+		Expected: []sql.Row{{"0"}},
+	},
+	{
+		Query:    "SELECT OCT(15.7)",
+		Expected: []sql.Row{{"17"}},
+	},
+	{
+		Query:    "SELECT OCT(-15.2)",
+		Expected: []sql.Row{{"1777777777777777777761"}},
+	},
+	{
+		Query:    "SELECT OCT(HEX(SUBSTRING('127.0', 1, 3)))",
+		Expected: []sql.Row{{"1143625"}},
+	},
+	{
+		Query: "SELECT i, OCT(i), OCT(-i), OCT(i * 2) FROM mytable ORDER BY i",
+		Expected: []sql.Row{
+			{1, "1", "1777777777777777777777", "2"},
+			{2, "2", "1777777777777777777776", "4"},
+			{3, "3", "1777777777777777777775", "6"},
+		},
+	},
+	{
+		Query:    "SELECT OCT(i) FROM mytable ORDER BY CONV(i, 10, 16)",
+		Expected: []sql.Row{{"1"}, {"2"}, {"3"}},
+	},
+	{
+		Query:    "SELECT i FROM mytable WHERE OCT(s) > 0",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SELECT s FROM mytable WHERE OCT(i*123) < 400",
+		Expected: []sql.Row{{"first row"}, {"second row"}},
+	},
+	{
 		Query:    `SELECT t1.pk from one_pk join (one_pk t1 join one_pk t2 on t1.pk = t2.pk) on t1.pk = one_pk.pk and one_pk.pk = 1 join (one_pk t3 join one_pk t4 on t3.c1 is not null) on t3.pk = one_pk.pk and one_pk.c1 = 10`,
 		Expected: []sql.Row{{1}, {1}, {1}, {1}},
 	},

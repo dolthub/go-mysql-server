@@ -35,6 +35,8 @@ func TestConv(t *testing.T) {
 		{"n is nil", types.Int32, sql.NewRow(nil, 16, 2), nil},
 		{"fromBase is nil", types.LongText, sql.NewRow('a', nil, 2), nil},
 		{"toBase is nil", types.LongText, sql.NewRow('a', 16, nil), nil},
+		{"empty n string", types.LongText, sql.NewRow("", 3, 4), nil},
+		{"empty arg strings", types.LongText, sql.NewRow(4, "", ""), nil},
 
 		// invalid inputs
 		{"invalid N", types.LongText, sql.NewRow("r", 16, 2), "0"},
