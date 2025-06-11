@@ -6123,7 +6123,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 	{
 		Query: `SELECT if(0, "abc", 456)`,
 		Expected: []sql.Row{
-			{456},
+			{"456"},
 		},
 	},
 	{
@@ -9696,7 +9696,7 @@ from typestable`,
 	{
 		Query: "select if('', 1, char(''));",
 		Expected: []sql.Row{
-			{[]byte{0}},
+			{"\x00"},
 		},
 	},
 	{

@@ -77,11 +77,20 @@ func (f *If) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
+	var eval interface{}
 	if asBool {
-		return f.ifTrue.Eval(ctx, row)
+		eval, err = f.ifTrue.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
 	} else {
-		return f.ifFalse.Eval(ctx, row)
+		eval, err = f.ifFalse.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
 	}
+	eval, _, err = f.Type().Convert(ctx, eval)
+	return eval, err
 }
 
 // Type implements the Expression interface.
