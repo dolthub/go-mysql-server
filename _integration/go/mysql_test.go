@@ -19,6 +19,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/go-mysql-org/go-mysql/client"
+	"github.com/go-mysql-org/go-mysql/mysql"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -116,6 +118,101 @@ func TestGrafana(t *testing.T) {
 
 		if !reflect.DeepEqual(result, c.expected) {
 			t.Fatalf("rows do not match, expected: %v, got: %v", c.expected, result)
+		}
+	}
+}
+
+func TestMySQLStreaming(t *testing.T) {
+	conn, err := client.Connect("127.0.0.1:3306", "root", "", "mydb")
+	if err != nil {
+		t.Fatalf("can't connect to mysql: %s", err)
+	}
+	defer func() {
+		err = conn.Close()
+		if err != nil {
+			t.Fatalf("error closing mysql connection: %s", err)
+		}
+	}()
+
+	var result mysql.Result
+	var rows [][2]string
+	err = conn.ExecuteSelectStreaming("SELECT name, email FROM mytable ORDER BY name, email", &result, func(row []mysql.FieldValue) error {
+		if len(row) != 2 {
+			t.Fatalf("expected 2 columns, got %d", len(row))
+		}
+		rows = append(rows, [2]string{row[0].String(), row[1].String()})
+		return nil
+	}, nil)
+
+	expected := [][2]string{
+		{"Evil Bob", "evilbob@gmail.com"},
+		{"Jane Doe", "jane@doe.com"},
+		{"John Doe", "john@doe.com"},
+		{"John Doe", "johnalt@doe.com"},
+	}
+
+	if len(expected) != len(rows) {
+		t.Errorf("got %d rows, expecting %d", len(rows), len(expected))
+	}
+
+	for i := range rows {
+		if rows[i][0] != expected[i][0] || rows[i][1] != expected[i][1] {
+			t.Errorf(
+				"incorrect row %d, got: {%s, %s}, expected: {%s, %s}",
+				i,
+				rows[i][0], rows[i][1],
+				expected[i][0], expected[i][1],
+			)
+		}
+	}
+}
+
+func TestMySQLStreamingPrepared(t *testing.T) {
+	conn, err := client.Connect("127.0.0.1:3306", "root", "", "mydb")
+	if err != nil {
+		t.Fatalf("can't connect to mysql: %s", err)
+	}
+	defer func() {
+		err = conn.Close()
+		if err != nil {
+			t.Fatalf("error closing mysql connection: %s", err)
+		}
+	}()
+
+	stmt, err := conn.Prepare("SELECT name, email, ? FROM mytable ORDER BY name, email")
+	if err != nil {
+		t.Fatalf("error preparing statement: %s", err)
+	}
+
+	var result mysql.Result
+	var rows [][3]string
+	err = stmt.ExecuteSelectStreaming(&result, func(row []mysql.FieldValue) error {
+		if len(row) != 3 {
+			t.Fatalf("expected 3 columns, got %d", len(row))
+		}
+		rows = append(rows, [3]string{row[0].String(), row[1].String(), row[2].String()})
+		return nil
+	}, nil, "abc")
+
+	expected := [][3]string{
+		{"Evil Bob", "evilbob@gmail.com", "abc"},
+		{"Jane Doe", "jane@doe.com", "abc"},
+		{"John Doe", "john@doe.com", "abc"},
+		{"John Doe", "johnalt@doe.com", "abc"},
+	}
+
+	if len(expected) != len(rows) {
+		t.Errorf("got %d rows, expecting %d", len(rows), len(expected))
+	}
+
+	for i := range rows {
+		if rows[i][0] != expected[i][0] || rows[i][1] != expected[i][1] || rows[i][2] != expected[i][2] {
+			t.Errorf(
+				"incorrect row %d, got: {%s, %s, %s}, expected: {%s, %s, %s}",
+				i,
+				rows[i][0], rows[i][1], rows[i][2],
+				expected[i][0], expected[i][1], expected[i][2],
+			)
 		}
 	}
 }
