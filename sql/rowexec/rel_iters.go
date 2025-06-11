@@ -446,7 +446,7 @@ func (r *recursiveCteIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 		var key uint64
 		if r.deduplicate {
-			key, _ = sql.HashOf(ctx, row)
+			key, _ = sql.HashOf(ctx, nil, row)
 			if k, _ := r.cache.Get(key); k != nil {
 				// skip duplicate
 				continue

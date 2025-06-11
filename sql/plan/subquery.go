@@ -485,7 +485,7 @@ func putAllRows(ctx *sql.Context, cache sql.KeyValueCache, sch sql.Schema, vals 
 		if err != nil {
 			return err
 		}
-		rowKey, err := sql.HashOf(ctx, sql.NewRow(normVal))
+		rowKey, err := sql.HashOf(ctx, sch, sql.NewRow(normVal))
 		if err != nil {
 			return err
 		}

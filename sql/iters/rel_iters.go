@@ -571,7 +571,7 @@ func (di *distinctIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, err
 		}
 
-		hash, err := sql.HashOf(ctx, row)
+		hash, err := sql.HashOf(ctx, nil, row)
 		if err != nil {
 			return nil, err
 		}
@@ -647,7 +647,7 @@ func (ii *IntersectIter) Next(ctx *sql.Context) (sql.Row, error) {
 				return nil, err
 			}
 
-			hash, herr := sql.HashOf(ctx, res)
+			hash, herr := sql.HashOf(ctx, nil, res)
 			if herr != nil {
 				return nil, herr
 			}
@@ -669,7 +669,7 @@ func (ii *IntersectIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, err
 		}
 
-		hash, herr := sql.HashOf(ctx, res)
+		hash, herr := sql.HashOf(ctx, nil, res)
 		if herr != nil {
 			return nil, herr
 		}
@@ -714,7 +714,7 @@ func (ei *ExceptIter) Next(ctx *sql.Context) (sql.Row, error) {
 				return nil, err
 			}
 
-			hash, herr := sql.HashOf(ctx, res)
+			hash, herr := sql.HashOf(ctx, nil, res)
 			if herr != nil {
 				return nil, herr
 			}
@@ -736,7 +736,7 @@ func (ei *ExceptIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, err
 		}
 
-		hash, herr := sql.HashOf(ctx, res)
+		hash, herr := sql.HashOf(ctx, nil, res)
 		if herr != nil {
 			return nil, herr
 		}

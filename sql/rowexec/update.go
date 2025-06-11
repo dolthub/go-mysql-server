@@ -249,7 +249,7 @@ func (u *updateJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 			// Determine whether this row in the table has already been updated
 			cache := u.getOrCreateCache(ctx, tableName)
-			hash, err := sql.HashOf(ctx, oldTableRow)
+			hash, err := sql.HashOf(ctx, nil, oldTableRow)
 			if err != nil {
 				return nil, err
 			}

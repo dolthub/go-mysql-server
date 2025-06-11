@@ -16,9 +16,7 @@ package plan
 
 import (
 	"fmt"
-	"github.com/cespare/xxhash/v2"
-
-	"github.com/dolthub/go-mysql-server/sql"
+		"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -48,7 +46,7 @@ func NewInSubquery(left sql.Expression, right sql.Expression) *InSubquery {
 	return &InSubquery{expression.BinaryExpressionStub{LeftChild: left, RightChild: right}}
 }
 
-var nilKey, _ = sql.HashOf(nil, sql.NewRow(nil))
+var nilKey, _ = sql.HashOf(nil, nil, sql.NewRow(nil))
 
 // Eval implements the Expression interface.
 func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -97,20 +95,7 @@ func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return false, nil
 		}
 
-		if strTyp, ok := rTyp.(sql.StringType); ok {
-			weightStr := xxhash.New()
-			valStr, err := types.ConvertToString(ctx, nLeft, strTyp, nil)
-			if err != nil {
-				return nil, err
-			}
-			err = strTyp.Collation().WriteWeightString(weightStr, valStr)
-			if err != nil {
-				return nil, err
-			}
-			nLeft = weightStr
-		}
-
-		key, err := sql.HashOf(ctx, sql.NewRow(nLeft))
+		key, err := sql.HashOf(ctx, sql.Schema{&sql.Column{Type: rTyp}}, sql.NewRow(nLeft))
 		if err != nil {
 			return nil, err
 		}

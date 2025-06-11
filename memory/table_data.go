@@ -297,7 +297,7 @@ func (td *TableData) errIfDuplicateEntryExist(ctx context.Context, cols []string
 			if hasNulls(idxPrefixKey) {
 				continue
 			}
-			h, err := sql.HashOf(ctx, idxPrefixKey)
+			h, err := sql.HashOf(ctx, td.schema.Schema, idxPrefixKey)
 			if err != nil {
 				return err
 			}

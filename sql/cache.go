@@ -26,7 +26,7 @@ import (
 )
 
 // HashOf returns a hash of the given value to be used as key in a cache.
-func HashOf(sch Schema, v Row) (uint64, error) {
+func HashOf(ctx context.Context, sch Schema, v Row) (uint64, error) {
 	hash := digestPool.Get().(*xxhash.Digest)
 	hash.Reset()
 	defer digestPool.Put(hash)
@@ -41,11 +41,16 @@ func HashOf(sch Schema, v Row) (uint64, error) {
 		if i < len(sch) {
 			typ := sch[i].Type
 			if strType, ok := typ.(StringType); ok {
-				strType.Convert(nil, )
-				strType.Collation().WriteWeightString(hash, )
-
+				newX, _, err := strType.Convert(ctx, x)
+				if err != nil {
+					return 0, err
+				}
+				err = strType.Collation().WriteWeightString(hash, newX.(string))
+				if err != nil {
+					return 0, err
+				}
+				continue
 			}
-			continue
 		}
 
 		// TODO: probably much faster to do this with a type switch
