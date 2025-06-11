@@ -54,6 +54,11 @@ func (u *UpdateJoin) DebugString() string {
 
 // GetUpdatable returns an updateJoinTable which implements sql.UpdatableTable.
 func (u *UpdateJoin) GetUpdatable() sql.UpdatableTable {
+	// TODO: UpdateJoin can update multiple tables, but this interface only allows for a single table.
+	//       Additionally, updatableJoinTable doesn't implement interfaces that other parts of the code
+	//       expect, so UpdateJoins don't always work correctly. For example, because updatableJoinTable
+	//       doesn't implement ForeignKeyTable, UpdateJoin statements don't enforce foreign key checks.
+	//       We should revamp this function so that we can communicate multiple tables being updated.
 	return &updatableJoinTable{
 		updaters: u.Updaters,
 		joinNode: u.Child.(*UpdateSource).Child,

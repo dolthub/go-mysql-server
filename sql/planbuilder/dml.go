@@ -150,12 +150,10 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 	ins := plan.NewInsertInto(db, plan.NewInsertDestination(sch, dest), srcScope.node, isReplace, columns, onDupExprs, ignore)
 	ins.LiteralValueSource = srcLiteralOnly
 
-	if i.Returning != nil {
-		returningExprs := make([]sql.Expression, len(i.Returning))
-		for i, selectExpr := range i.Returning {
-			returningExprs[i] = b.selectExprToExpression(destScope, selectExpr)
-		}
-		ins.Returning = returningExprs
+	if len(i.Returning) > 0 {
+		// TODO: read returning results from outScope instead of ins.Returning so that there is no need to return list
+		// of expressions
+		ins.Returning = b.analyzeSelectList(destScope, destScope, i.Returning)
 	}
 
 	b.validateInsert(ins)
@@ -492,6 +490,11 @@ func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 	return
 }
 
+// buildUpdate builds a Update node from |u|. If the update joins tables, the returned Update node's
+// children will have a JoinNode, which will later be replaced by an UpdateJoin node during analysis. We
+// don't create the UpdateJoin node here, because some query plans, such as IN SUBQUERY nodes, require
+// analyzer processing that converts the subquery into a join, and then requires the same logic to
+// create an UpdateJoin node under the original Update node.
 func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 	// TODO: this shouldn't be called during ComPrepare or `PREPARE ... FROM ...` statements, but currently it is.
 	//   The end result is that the ComDelete counter is incremented during prepare statements, which is incorrect.
@@ -534,44 +537,26 @@ func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 	update.IsProcNested = b.ProcCtx().DbName != ""
 
 	var checks []*sql.CheckConstraint
-	if join, ok := outScope.node.(*plan.JoinNode); ok {
-		// TODO this doesn't work, a lot of the time the top node
-		// is a filter. This would have to go before we build the
-		// filter/accessory nodes. But that errors for a lot of queries.
-		source := plan.NewUpdateSource(
-			join,
-			ignore,
-			updateExprs,
-		)
-		updaters, err := rowUpdatersByTable(b.ctx, source, join)
+	if hasJoinNode(outScope.node) {
+		tablesToUpdate, err := getResolvedTablesToUpdate(b.ctx, update.Child, outScope.node)
 		if err != nil {
 			b.handleErr(err)
 		}
-		updateJoin := plan.NewUpdateJoin(updaters, source)
-		update.Child = updateJoin
-		transform.Inspect(update, func(n sql.Node) bool {
-			// todo maybe this should be later stage
-			switch n := n.(type) {
-			case sql.NameableNode:
-				if _, ok := updaters[n.Name()]; ok {
-					rt := getResolvedTable(n)
-					tableScope := inScope.push()
-					for _, c := range rt.Schema() {
-						tableScope.addColumn(scopeColumn{
-							db:       rt.SqlDatabase.Name(),
-							table:    strings.ToLower(n.Name()),
-							tableId:  tableScope.tables[strings.ToLower(n.Name())],
-							col:      strings.ToLower(c.Name),
-							typ:      c.Type,
-							nullable: c.Nullable,
-						})
-					}
-					checks = append(checks, b.loadChecksFromTable(tableScope, rt.Table)...)
-				}
-			default:
+
+		for _, rt := range tablesToUpdate {
+			tableScope := inScope.push()
+			for _, c := range rt.Schema() {
+				tableScope.addColumn(scopeColumn{
+					db:       rt.SqlDatabase.Name(),
+					table:    strings.ToLower(rt.Name()),
+					tableId:  tableScope.tables[strings.ToLower(rt.Name())],
+					col:      strings.ToLower(c.Name),
+					typ:      c.Type,
+					nullable: c.Nullable,
+				})
 			}
-			return true
-		})
+			checks = append(checks, b.loadChecksFromTable(tableScope, rt.Table)...)
+		}
 	} else {
 		transform.Inspect(update, func(n sql.Node) bool {
 			// todo maybe this should be later stage
@@ -583,46 +568,39 @@ func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 	}
 
 	if len(u.Returning) > 0 {
-		returningExprs := make([]sql.Expression, len(u.Returning))
-		for i, selectExpr := range u.Returning {
-			returningExprs[i] = b.selectExprToExpression(outScope, selectExpr)
-		}
-		update.Returning = returningExprs
+		update.Returning = b.analyzeSelectList(outScope, outScope, u.Returning)
 	}
 
 	outScope.node = update.WithChecks(checks)
 	return
 }
 
-// rowUpdatersByTable maps a set of tables to their RowUpdater objects.
-func rowUpdatersByTable(ctx *sql.Context, node sql.Node, ij sql.Node) (map[string]sql.RowUpdater, error) {
-	namesOfTableToBeUpdated := getTablesToBeUpdated(node)
-	resolvedTables := getTablesByName(ij)
+// hasJoinNode returns true if |node| or any child is a JoinNode.
+func hasJoinNode(node sql.Node) bool {
+	updateJoinFound := false
+	transform.Inspect(node, func(n sql.Node) bool {
+		if _, ok := n.(*plan.JoinNode); ok {
+			updateJoinFound = true
+		}
+		return !updateJoinFound
+	})
+	return updateJoinFound
+}
 
-	rowUpdatersByTable := make(map[string]sql.RowUpdater)
-	for tableToBeUpdated, _ := range namesOfTableToBeUpdated {
-		resolvedTable, ok := resolvedTables[strings.ToLower(tableToBeUpdated)]
+func getResolvedTablesToUpdate(_ *sql.Context, node sql.Node, ij sql.Node) (resolvedTables []*plan.ResolvedTable, err error) {
+	namesOfTablesToBeUpdated := getTablesToBeUpdated(node)
+	resolvedTablesMap := getTablesByName(ij)
+
+	for tableToBeUpdated, _ := range namesOfTablesToBeUpdated {
+		resolvedTable, ok := resolvedTablesMap[strings.ToLower(tableToBeUpdated)]
 		if !ok {
 			return nil, plan.ErrUpdateForTableNotSupported.New(tableToBeUpdated)
 		}
 
-		var table = resolvedTable.UnderlyingTable()
-
-		// If there is no UpdatableTable for a table being updated, error out
-		updatable, ok := table.(sql.UpdatableTable)
-		if !ok && updatable == nil {
-			return nil, plan.ErrUpdateForTableNotSupported.New(tableToBeUpdated)
-		}
-
-		keyless := sql.IsKeyless(updatable.Schema())
-		if keyless {
-			return nil, sql.ErrUnsupportedFeature.New("error: keyless tables unsupported for UPDATE JOIN")
-		}
-
-		rowUpdatersByTable[tableToBeUpdated] = updatable.Updater(ctx)
+		resolvedTables = append(resolvedTables, resolvedTable)
 	}
 
-	return rowUpdatersByTable, nil
+	return resolvedTables, nil
 }
 
 // getTablesByName takes a node and returns all found resolved tables in a map.

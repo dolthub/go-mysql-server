@@ -8684,6 +8684,34 @@ where
 			},
 		},
 	},
+	{
+		Name:    "substring function tests with wrappers",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table tbl (t text);",
+			"insert into tbl values ('abcdef');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select left(t, 3) from tbl;",
+				Expected: []sql.Row{
+					{"abc"},
+				},
+			},
+			{
+				Query: "select right(t, 3) from tbl;",
+				Expected: []sql.Row{
+					{"def"},
+				},
+			},
+			{
+				Query: "select instr(t, 'bcd') from tbl;",
+				Expected: []sql.Row{
+					{2},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
