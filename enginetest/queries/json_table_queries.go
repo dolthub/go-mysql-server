@@ -139,6 +139,12 @@ var JSONTableQueryTests = []QueryTest{
 			{9},
 		},
 	},
+	{
+		Query: "select * from json_table('[\"foo\", \"bar\"]', \"$[*]\" columns(tag text path '$')) as tags where tag like 'foo';",
+		Expected: []sql.Row{
+			{"foo"},
+		},
+	},
 }
 
 var JSONTableScriptTests = []ScriptTest{
