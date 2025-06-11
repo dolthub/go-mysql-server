@@ -120,7 +120,7 @@ func portInUse(hostPort string) bool {
 }
 
 func getPortOrDefault(cfg mysql.ListenerConfig) int64 {
-	// TODO read this values from systemVars
+	// TODO read this value from systemVars
 	defaultPort := int64(3606)
 	_, port, err := net.SplitHostPort(cfg.Listener.Addr().String())
 	if err != nil {
