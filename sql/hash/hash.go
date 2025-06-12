@@ -43,6 +43,11 @@ func HashOf(ctx *sql.Context, sch sql.Schema, row sql.Row) (uint64, error) {
 			}
 		}
 
+		v, err := sql.UnwrapAny(ctx, v)
+		if err != nil {
+			return 0, fmt.Errorf("error unwrapping value: %w", err)
+		}
+
 		// TODO: we may not always have the type information available, so we check schema length.
 		//   Then, defer to original behavior
 		if i >= len(sch) || v == nil {

@@ -644,7 +644,10 @@ func (ii *IntersectIter) Next(ctx *sql.Context) (sql.Row, error) {
 		ii.cache = make(map[uint64]int)
 		for {
 			res, err := ii.RIter.Next(ctx)
-			if err != nil && err != io.EOF {
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
 				return nil, err
 			}
 
@@ -656,10 +659,6 @@ func (ii *IntersectIter) Next(ctx *sql.Context) (sql.Row, error) {
 				ii.cache[hash] = 0
 			}
 			ii.cache[hash]++
-
-			if err == io.EOF {
-				break
-			}
 		}
 		ii.cached = true
 	}
