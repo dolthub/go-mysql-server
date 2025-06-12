@@ -307,6 +307,8 @@ var OrderByGroupByScriptTests = []ScriptTest{
 	},
 	{
 		Name: "Group by true and 1",
+		// https://github.com/dolthub/dolt/issues/9320
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t0(c0 int)",
 			"insert into t0(c0) values(1),(123)",
