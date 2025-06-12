@@ -16,14 +16,13 @@ package plan
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/hash"
-"io"
+	"io"
 	"sync"
 
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/hash"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
-
-	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // Subquery is as an expression whose value is derived by executing a subquery. It must be executed for every row in

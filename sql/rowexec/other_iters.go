@@ -15,9 +15,10 @@
 package rowexec
 
 import (
-	"github.com/dolthub/go-mysql-server/sql/hash"
-"io"
+	"io"
 	"sync"
+
+	"github.com/dolthub/go-mysql-server/sql/hash"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
