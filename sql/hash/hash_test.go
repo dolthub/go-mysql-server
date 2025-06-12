@@ -14,11 +14,12 @@
 
 package hash
 
-import(
+import (
 	"testing"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
+
 func BenchmarkHashOf(b *testing.B) {
 	ctx := sql.NewEmptyContext()
 	row := sql.NewRow(1, "1")

@@ -18,7 +18,7 @@ import (
 	"errors"
 	"testing"
 
-		"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLRUCache(t *testing.T) {
