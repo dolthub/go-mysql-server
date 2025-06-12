@@ -40,7 +40,7 @@ func HashOf(ctx context.Context, sch Schema, v Row) (uint64, error) {
 
 		if i < len(sch) {
 			typ := sch[i].Type
-			if strType, ok := typ.(StringType); ok {
+			if strType, ok := typ.(StringType); ok && x != nil {
 				newX, _, err := strType.Convert(ctx, x)
 				if err != nil {
 					return 0, err

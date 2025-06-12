@@ -250,6 +250,8 @@ func groupingKey(
 			return 0, err
 		}
 
+		// TODO: this should just use sql.HashOf
+
 		if i > 0 {
 			// separate each expression in the grouping key with a nil byte
 			if _, err = hash.Write([]byte{0}); err != nil {
@@ -257,15 +259,12 @@ func groupingKey(
 			}
 		}
 
-		extendedType, isExtendedType := expr.Type().(types.ExtendedType)
-		stringType, isStringType := expr.Type().(sql.StringType)
-
-		if isExtendedType && v != nil {
+		if extendedType, isExtendedType := expr.Type().(types.ExtendedType); isExtendedType && v != nil {
 			bytes, err := extendedType.SerializeValue(ctx, v)
 			if err == nil {
 				_, err = fmt.Fprint(hash, string(bytes))
 			}
-		} else if isStringType && v != nil {
+		} else if stringType, isStringType := expr.Type().(sql.StringType); isStringType && v != nil {
 			v, err = types.ConvertToString(ctx, v, stringType, nil)
 			if err == nil {
 				err = stringType.Collation().WriteWeightString(hash, v.(string))

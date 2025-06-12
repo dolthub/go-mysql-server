@@ -470,8 +470,7 @@ func (s *Subquery) HasResultRow(ctx *sql.Context, row sql.Row) (bool, error) {
 
 // normalizeValue returns a canonical version of a value for use in a sql.KeyValueCache.
 // Two values that compare equal should have the same canonical version.
-// TODO: Fix https://github.com/dolthub/dolt/issues/9049 by making this function collation-aware
-func normalizeForKeyValueCache(ctx *sql.Context, typ sql.Type, val interface{}) (interface{}, error) {
+func normalizeForKeyValueCache(ctx *sql.Context, val interface{}) (interface{}, error) {
 	val, err := sql.UnwrapAny(ctx, val)
 	if err != nil {
 		return nil, err
@@ -480,8 +479,8 @@ func normalizeForKeyValueCache(ctx *sql.Context, typ sql.Type, val interface{}) 
 }
 
 func putAllRows(ctx *sql.Context, cache sql.KeyValueCache, sch sql.Schema, vals []interface{}) error {
-	for i, val := range vals {
-		normVal, err := normalizeForKeyValueCache(ctx, sch[i].Type, val)
+	for _, val := range vals {
+		normVal, err := normalizeForKeyValueCache(ctx, val)
 		if err != nil {
 			return err
 		}
