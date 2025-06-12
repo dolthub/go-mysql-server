@@ -31,7 +31,14 @@ var InfoSchemaQueries = []QueryTest{
 		Expected: []sql.Row{},
 	},
 	{
-		Query:    "SELECT table_schema AS TABLE_CAT, NULL AS TABLE_SCHEM, table_name, CASE WHEN table_type = 'BASE TABLE' THEN CASE WHEN table_schema = 'mysql' OR table_schema = 'performance_schema' THEN 'SYSTEM TABLE' ELSE 'TABLE' END WHEN table_type = 'TEMPORARY' THEN 'LOCAL_TEMPORARY' ELSE table_type END AS TABLE_TYPE FROM information_schema.tables; ",
+		Query: `SELECT table_schema AS TABLE_CAT,
+       			NULL AS TABLE_SCHEM,
+       			table_name,
+       			CASE WHEN table_type = 'BASE TABLE' THEN
+       			    CASE WHEN table_schema = 'mysql' OR table_schema = 'performance_schema' THEN 'SYSTEM TABLE'
+       			 	ELSE 'TABLE' END
+       			WHEN table_type = 'TEMPORARY' THEN 'LOCAL_TEMPORARY'
+       			ELSE table_type END AS TABLE_TYPE FROM information_schema.tables;`,
 		Expected: []sql.Row{{"information_schema", nil, "administrable_role_authorizations", "SYSTEM VIEW"}},
 	},
 	{
