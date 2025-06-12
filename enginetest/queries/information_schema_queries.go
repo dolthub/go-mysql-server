@@ -38,7 +38,7 @@ var InfoSchemaQueries = []QueryTest{
        			    CASE WHEN table_schema = 'mysql' OR table_schema = 'performance_schema' THEN 'SYSTEM TABLE'
        			 	ELSE 'TABLE' END
        			WHEN table_type = 'TEMPORARY' THEN 'LOCAL_TEMPORARY'
-       			ELSE table_type END AS TABLE_TYPE FROM information_schema.tables;`,
+       			ELSE table_type END AS TABLE_TYPE FROM information_schema.tables ORDER BY table_name LIMIT 1;`,
 		Expected: []sql.Row{{"information_schema", nil, "administrable_role_authorizations", "SYSTEM VIEW"}},
 	},
 	{
