@@ -69,7 +69,15 @@ func (e *EnumToString) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	}
 
 	enumType := e.Enum.Type().(types.EnumType)
-	str, _ := enumType.At(int(val.(uint16)))
+	var str string
+	switch v := val.(type) {
+	case uint16:
+		str, _ = enumType.At(int(v))
+	case string:
+		str = v
+	default:
+		return nil, sql.ErrInvalidType.New(val, types.Text)
+	}
 	return str, nil
 }
 
