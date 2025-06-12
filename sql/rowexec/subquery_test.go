@@ -92,5 +92,5 @@ func TestSubqueryMultipleRows(t *testing.T) {
 
 	values, err := subquery.EvalMultiple(ctx, nil)
 	require.NoError(err)
-	require.Equal(values, []interface{}{"one", "two", "three"})
+	require.Equal(sql.Row{"one", "two", "three"}, values)
 }
