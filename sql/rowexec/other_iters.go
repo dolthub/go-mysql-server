@@ -15,7 +15,8 @@
 package rowexec
 
 import (
-	"io"
+	"github.com/dolthub/go-mysql-server/sql/hash"
+"io"
 	"sync"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -334,7 +335,7 @@ func (ci *concatIter) Next(ctx *sql.Context) (sql.Row, error) {
 		if err != nil {
 			return nil, err
 		}
-		hash, err := sql.HashOf(ctx, nil, res)
+		hash, err := hash.HashOf(ctx, nil, res)
 		if err != nil {
 			return nil, err
 		}

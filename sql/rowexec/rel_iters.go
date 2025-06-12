@@ -22,6 +22,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
+	"github.com/dolthub/go-mysql-server/sql/hash"
 	"github.com/dolthub/go-mysql-server/sql/iters"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -446,7 +447,7 @@ func (r *recursiveCteIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 		var key uint64
 		if r.deduplicate {
-			key, _ = sql.HashOf(ctx, nil, row)
+			key, _ = hash.HashOf(ctx, nil, row)
 			if k, _ := r.cache.Get(key); k != nil {
 				// skip duplicate
 				continue

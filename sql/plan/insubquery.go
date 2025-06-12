@@ -19,6 +19,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/hash"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -47,7 +48,7 @@ func NewInSubquery(left sql.Expression, right sql.Expression) *InSubquery {
 	return &InSubquery{expression.BinaryExpressionStub{LeftChild: left, RightChild: right}}
 }
 
-var nilKey, _ = sql.HashOf(nil, nil, sql.NewRow(nil))
+var nilKey, _ = hash.HashOf(nil, nil, sql.NewRow(nil))
 
 // Eval implements the Expression interface.
 func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -96,7 +97,7 @@ func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return false, nil
 		}
 
-		key, err := sql.HashOf(ctx, sql.Schema{&sql.Column{Type: rTyp}}, sql.NewRow(nLeft))
+		key, err := hash.HashOf(ctx, sql.Schema{&sql.Column{Type: rTyp}}, sql.NewRow(nLeft))
 		if err != nil {
 			return nil, err
 		}

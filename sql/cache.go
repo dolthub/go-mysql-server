@@ -15,60 +15,11 @@
 package sql
 
 import (
-	"context"
 	"fmt"
 	"runtime"
-	"sync"
-
-	"github.com/cespare/xxhash/v2"
 
 	lru "github.com/hashicorp/golang-lru"
 )
-
-// HashOf returns a hash of the given value to be used as key in a cache.
-func HashOf(ctx context.Context, sch Schema, v Row) (uint64, error) {
-	hash := digestPool.Get().(*xxhash.Digest)
-	hash.Reset()
-	defer digestPool.Put(hash)
-	for i, x := range v {
-		if i > 0 {
-			// separate each value in the row with a nil byte
-			if _, err := hash.Write([]byte{0}); err != nil {
-				return 0, err
-			}
-		}
-
-		if i < len(sch) {
-			typ := sch[i].Type
-			if strType, ok := typ.(StringType); ok && x != nil {
-				newX, _, err := strType.Convert(ctx, x)
-				if err != nil {
-					return 0, err
-				}
-				err = strType.Collation().WriteWeightString(hash, newX.(string))
-				if err != nil {
-					return 0, err
-				}
-				continue
-			}
-		}
-
-		// TODO: probably much faster to do this with a type switch
-		// TODO: we don't have the type info necessary to appropriately encode the value of a string with a non-standard
-		//  collation, which means that two strings that differ only in their collations will hash to the same value.
-		//  See rowexec/grouping_key()
-		if _, err := fmt.Fprintf(hash, "%v,", x); err != nil {
-			return 0, err
-		}
-	}
-	return hash.Sum64(), nil
-}
-
-var digestPool = sync.Pool{
-	New: func() any {
-		return xxhash.New()
-	},
-}
 
 // ErrKeyNotFound is returned when the key could not be found in the cache.
 var ErrKeyNotFound = fmt.Errorf("memory: key not found in cache")

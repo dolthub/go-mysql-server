@@ -213,7 +213,9 @@ func TestSingleScript(t *testing.T) {
 			Assertions: []queries.ScriptTestAssertion{
 				{
 					Query:    "select 'abcdef' in (select name from test)",
-					Expected: []sql.Row{},
+					Expected: []sql.Row{
+						{true},
+					},
 				},
 			},
 		},

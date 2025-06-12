@@ -15,8 +15,7 @@
 package memory
 
 import (
-	"context"
-	"fmt"
+		"fmt"
 	"sort"
 	"strconv"
 	"strings"
@@ -25,6 +24,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/hash"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -275,7 +275,7 @@ func (td *TableData) numRows(ctx *sql.Context) (uint64, error) {
 }
 
 // throws an error if any two or more rows share the same |cols| values.
-func (td *TableData) errIfDuplicateEntryExist(ctx context.Context, cols []string, idxName string) error {
+func (td *TableData) errIfDuplicateEntryExist(ctx *sql.Context, cols []string, idxName string) error {
 	columnMapping, err := td.columnIndexes(cols)
 
 	// We currently skip validating duplicates on unique virtual columns.
@@ -297,7 +297,7 @@ func (td *TableData) errIfDuplicateEntryExist(ctx context.Context, cols []string
 			if hasNulls(idxPrefixKey) {
 				continue
 			}
-			h, err := sql.HashOf(ctx, td.schema.Schema, idxPrefixKey)
+			h, err := hash.HashOf(ctx, td.schema.Schema, idxPrefixKey)
 			if err != nil {
 				return err
 			}

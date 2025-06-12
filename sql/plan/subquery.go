@@ -16,7 +16,8 @@ package plan
 
 import (
 	"fmt"
-	"io"
+	"github.com/dolthub/go-mysql-server/sql/hash"
+"io"
 	"sync"
 
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -484,7 +485,7 @@ func putAllRows(ctx *sql.Context, cache sql.KeyValueCache, sch sql.Schema, vals 
 		if err != nil {
 			return err
 		}
-		rowKey, err := sql.HashOf(ctx, sch, sql.NewRow(normVal))
+		rowKey, err := hash.HashOf(ctx, sch, sql.NewRow(normVal))
 		if err != nil {
 			return err
 		}

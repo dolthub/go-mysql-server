@@ -25,6 +25,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/hash"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
@@ -462,7 +463,7 @@ func (i *fullJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 		rightRow, err := i.r.Next(ctx)
 		if err == io.EOF {
-			key, err := sql.HashOf(ctx, nil, i.leftRow)
+			key, err := hash.HashOf(ctx, nil, i.leftRow)
 			if err != nil {
 				return nil, err
 			}
@@ -485,12 +486,12 @@ func (i *fullJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 		if !sql.IsTrue(matches) {
 			continue
 		}
-		rkey, err := sql.HashOf(ctx, nil, rightRow)
+		rkey, err := hash.HashOf(ctx, nil, rightRow)
 		if err != nil {
 			return nil, err
 		}
 		i.seenRight[rkey] = struct{}{}
-		lKey, err := sql.HashOf(ctx, nil, i.leftRow)
+		lKey, err := hash.HashOf(ctx, nil, i.leftRow)
 		if err != nil {
 			return nil, err
 		}
@@ -517,7 +518,7 @@ func (i *fullJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, io.EOF
 		}
 
-		key, err := sql.HashOf(ctx, nil, rightRow)
+		key, err := hash.HashOf(ctx, nil, rightRow)
 		if err != nil {
 			return nil, err
 		}

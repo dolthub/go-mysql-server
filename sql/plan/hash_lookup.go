@@ -18,9 +18,10 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
 
-	"github.com/dolthub/go-mysql-server/sql"
+"github.com/dolthub/go-mysql-server/sql"
+"github.com/dolthub/go-mysql-server/sql/hash"
+"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // NewHashLookup returns a node that performs an indexed hash lookup
@@ -127,7 +128,7 @@ func (n *HashLookup) GetHashKey(ctx *sql.Context, e sql.Expression, row sql.Row)
 		return nil, err
 	}
 	if s, ok := key.([]interface{}); ok {
-		return sql.HashOf(ctx, n.Schema(), s)
+		return hash.HashOf(ctx, n.Schema(), s)
 	}
 	// byte slices are not hashable
 	if k, ok := key.([]byte); ok {
