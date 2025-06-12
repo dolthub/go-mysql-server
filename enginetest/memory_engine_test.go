@@ -136,7 +136,7 @@ func TestJoinStats(t *testing.T) {
 func TestJSONTableQueries(t *testing.T) {
 	enginetest.TestJSONTableQueries(t, enginetest.NewDefaultMemoryHarness())
 }
-git
+
 // TestJSONTableScripts runs the canonical test queries against a single threaded index enabled harness.
 func TestJSONTableScripts(t *testing.T) {
 	enginetest.TestJSONTableScripts(t, enginetest.NewDefaultMemoryHarness())
