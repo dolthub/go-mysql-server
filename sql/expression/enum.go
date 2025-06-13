@@ -70,6 +70,10 @@ func (e *EnumToString) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 
 	enumType := e.Enum.Type().(types.EnumType)
 	var str string
+	val, err = sql.UnwrapAny(ctx, val)
+	if err != nil {
+		return nil, err
+	}
 	switch v := val.(type) {
 	case uint16:
 		str, _ = enumType.At(int(v))
