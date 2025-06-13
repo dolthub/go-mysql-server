@@ -217,7 +217,7 @@ var JsonScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: `SELECT JSON_OBJECT(t, t) FROM textt;`,
+				Query: `SELECT JSON_OBJECT(t, t) FROM textt_7998;`,
 				Expected: []sql.Row{
 					{types.MustJSON(`{"first row\n\\": "first row\n\\"}`)},
 					{types.MustJSON(`{"second row\"": "second row\""}`)},
