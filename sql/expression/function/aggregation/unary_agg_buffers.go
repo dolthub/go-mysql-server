@@ -500,17 +500,19 @@ func (c *countBuffer) Dispose() {
 }
 
 type firstBuffer struct {
-	val  interface{}
-	expr sql.Expression
+	val interface{}
+	// writtenNil means that val is supposed to be nil and should not be overwritten
+	writtenNil bool
+	expr       sql.Expression
 }
 
 func NewFirstBuffer(child sql.Expression) *firstBuffer {
-	return &firstBuffer{nil, child}
+	return &firstBuffer{nil, false, child}
 }
 
 // Update implements the AggregationBuffer interface.
 func (f *firstBuffer) Update(ctx *sql.Context, row sql.Row) error {
-	if f.val != nil {
+	if f.val != nil || f.writtenNil {
 		return nil
 	}
 
@@ -520,6 +522,7 @@ func (f *firstBuffer) Update(ctx *sql.Context, row sql.Row) error {
 	}
 
 	if v == nil {
+		f.writtenNil = true
 		return nil
 	}
 

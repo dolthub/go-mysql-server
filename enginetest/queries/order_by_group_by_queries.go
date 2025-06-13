@@ -320,4 +320,18 @@ var OrderByGroupByScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Group by null = 1",
+		// https://github.com/dolthub/dolt/issues/9035
+		SetUpScript: []string{
+			"create table t0(c0 int, c1 int)",
+			"insert into t0(c0, c1) values(NULL,1),(1,NULL)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select t0.c0 = t0.c1 as ref0, sum(1) as ref1 from t0 group by ref0",
+				Expected: []sql.Row{{nil, float64(2)}},
+			},
+		},
+	},
 }
