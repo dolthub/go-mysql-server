@@ -554,3 +554,24 @@ func TypesEqual(a, b sql.Type) bool {
 		return a.Equals(b)
 	}
 }
+
+// GeneralizeTypes returns the more "general" of two types as defined by
+// https://dev.mysql.com/doc/refman/8.4/en/flow-control-functions.html#function_if and
+// https://dev.mysql.com/doc/refman/8.4/en/flow-control-functions.html#function_ifnull
+// TODO: Currently returns the most general type. Update to match MySQL (pick the more general of the two given types)
+func GeneralizeTypes(a, b sql.Type) sql.Type {
+	if IsText(a) || IsText(b) {
+		// TODO: handle case-sensitive strings
+		return Text
+	}
+
+	if IsFloat(a) || IsFloat(b) {
+		return Float64
+	}
+
+	if a == Null {
+		return b.Promote()
+	}
+
+	return a.Promote()
+}

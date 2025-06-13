@@ -69,13 +69,7 @@ func (f *IfNull) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // Type implements the Expression interface.
 func (f *IfNull) Type() sql.Type {
-	if types.IsNull(f.LeftChild) {
-		if types.IsNull(f.RightChild) {
-			return types.Null
-		}
-		return f.RightChild.Type()
-	}
-	return f.LeftChild.Type()
+	return types.GeneralizeTypes(f.LeftChild.Type(), f.RightChild.Type())
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
