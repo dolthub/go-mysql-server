@@ -212,8 +212,8 @@ var JsonScripts = []ScriptTest{
 	{
 		Name: "json_object with escaped k:v pairs from table",
 		SetUpScript: []string{
-			`CREATE TABLE textt (t text);`,
-			`INSERT INTO textt VALUES ('first row\n\\'), ('second row"');`,
+			`CREATE TABLE textt_7998 (t text) IF NOT EXISTS;`,
+			`INSERT INTO textt_7998 VALUES ('first row\n\\'), ('second row"');`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
