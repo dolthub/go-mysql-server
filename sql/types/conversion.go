@@ -559,8 +559,7 @@ func TypesEqual(a, b sql.Type) bool {
 // https://dev.mysql.com/doc/refman/8.4/en/flow-control-functions.html#function_if and
 // https://dev.mysql.com/doc/refman/8.4/en/flow-control-functions.html#function_ifnull
 // TODO: Currently returns the most general type via Promote(). Update to match MySQL (pick the more general of the two
-//
-//	given types)
+// given types)
 func GeneralizeTypes(a, b sql.Type) sql.Type {
 	if IsText(a) || IsText(b) {
 		// TODO: handle case-sensitive strings
