@@ -188,6 +188,28 @@ var JsonScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "json_object preserves escaped characters in key and values",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `select cast(JSON_OBJECT('key"with"quotes\n','3"\\') as char);`,
+				Expected: []sql.Row{
+					{`{"key\"with\"quotes\n": "3\"\\"}`},
+				},
+			},
+		},
+	},
+	{
+		Name: "json conversion works with escaped characters",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `select cast(cast(JSON_OBJECT('key"with"quotes', 1) as char) as json);`,
+				Expected: []sql.Row{
+					{`{"key\"with\"quotes": 1}`},
+				},
+			},
+		},
+	},
+	{
 		Name: "json_value preserves types",
 		Assertions: []ScriptTestAssertion{
 			{
