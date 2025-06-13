@@ -57,14 +57,16 @@ func (f *IfNull) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 	if left != nil {
-		return left, nil
+		left, _, err = f.Type().Convert(ctx, left)
+		return left, err
 	}
 
 	right, err := f.RightChild.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-	return right, nil
+	right, _, err = f.Type().Convert(ctx, right)
+	return right, err
 }
 
 // Type implements the Expression interface.
