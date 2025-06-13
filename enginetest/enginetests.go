@@ -496,7 +496,7 @@ func TestReadOnlyDatabases(t *testing.T, harness ReadOnlyDatabaseHarness) {
 
 	for _, querySet := range [][]queries.WriteQueryTest{
 		queries.InsertQueries,
-		queries.UpdateTests,
+		queries.UpdateWriteQueryTests,
 		queries.DeleteTests,
 		queries.ReplaceQueries,
 	} {
@@ -1352,8 +1352,11 @@ func TestReplaceIntoErrors(t *testing.T, harness Harness) {
 
 func TestUpdate(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.Mytable_del_idxData, setup.FloattableData, setup.NiltableData, setup.TypestableData, setup.Pk_tablesData, setup.OthertableData, setup.TabletestData)
-	for _, tt := range queries.UpdateTests {
+	for _, tt := range queries.UpdateWriteQueryTests {
 		RunWriteQueryTest(t, harness, tt)
+	}
+	for _, tt := range queries.UpdateScriptTests {
+		TestScript(t, harness, tt)
 	}
 }
 
@@ -1421,8 +1424,11 @@ func TestDelete(t *testing.T, harness Harness) {
 
 func TestUpdateQueriesPrepared(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.Mytable_del_idxData, setup.OthertableData, setup.TypestableData, setup.Pk_tablesData, setup.FloattableData, setup.NiltableData, setup.TabletestData)
-	for _, tt := range queries.UpdateTests {
+	for _, tt := range queries.UpdateWriteQueryTests {
 		runWriteQueryTestPrepared(t, harness, tt)
+	}
+	for _, tt := range queries.UpdateScriptTests {
+		TestScriptPrepared(t, harness, tt)
 	}
 }
 
