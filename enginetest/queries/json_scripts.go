@@ -202,9 +202,25 @@ var JsonScripts = []ScriptTest{
 		Name: "json conversion works with escaped characters",
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: `select cast(cast(JSON_OBJECT('key"with"quotes', 1) as char) as json);`,
+				Query: `SELECT CAST(CAST(JSON_OBJECT('key"with"quotes', 1) as CHAR) as JSON);`,
 				Expected: []sql.Row{
 					{`{"key\"with\"quotes": 1}`},
+				},
+			},
+		},
+	},
+	{
+		Name: "json_object with escaped k:v pairs from table",
+		SetUpScript: []string{
+			`CREATE TABLE textt (t text);`,
+			`INSERT INTO textt VALUES ('first row\n\\'), ('second row"');`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT JSON_OBJECT(t, t) FROM textt;`,
+				Expected: []sql.Row{
+					{types.MustJSON(`{"first row\n\\": "first row\n\\"}`)},
+					{types.MustJSON(`{"second row\"": "second row\""}`)},
 				},
 			},
 		},
