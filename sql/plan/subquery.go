@@ -19,10 +19,10 @@ import (
 	"io"
 	"sync"
 
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/hash"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
-
-	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // Subquery is as an expression whose value is derived by executing a subquery. It must be executed for every row in
@@ -313,7 +313,7 @@ func (m *Max1Row) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 }
 
 // EvalMultiple returns all rows returned by a subquery.
-func (s *Subquery) EvalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, error) {
+func (s *Subquery) EvalMultiple(ctx *sql.Context, row sql.Row) ([]any, error) {
 	s.cacheMu.Lock()
 	cached := s.resultsCached
 	s.cacheMu.Unlock()
@@ -341,7 +341,7 @@ func (s *Subquery) canCacheResults() bool {
 	return s.correlated.Empty() && !s.volatile
 }
 
-func (s *Subquery) evalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, error) {
+func (s *Subquery) evalMultiple(ctx *sql.Context, row sql.Row) ([]any, error) {
 	// Any source of rows, as well as any node that alters the schema of its children, needs to be wrapped so that its
 	// result rows are prepended with the scope row.
 	q, _, err := transform.Node(s.Query, PrependRowInPlan(row, false))
@@ -362,7 +362,7 @@ func (s *Subquery) evalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, e
 
 	// Reduce the result row to the size of the expected schema. This means chopping off the first len(row) columns.
 	col := len(row)
-	var result []interface{}
+	var result []any
 	for {
 		row, err := iter.Next(ctx)
 		if err == io.EOF {
@@ -407,7 +407,7 @@ func (s *Subquery) HashMultiple(ctx *sql.Context, row sql.Row) (sql.KeyValueCach
 		defer s.cacheMu.Unlock()
 		if !s.resultsCached || s.hashCache == nil {
 			hashCache, disposeFn := ctx.Memory.NewHistoryCache()
-			err = putAllRows(ctx, hashCache, result)
+			err = putAllRows(ctx, hashCache, s.Query.Schema(), result)
 			if err != nil {
 				return nil, err
 			}
@@ -417,7 +417,11 @@ func (s *Subquery) HashMultiple(ctx *sql.Context, row sql.Row) (sql.KeyValueCach
 	}
 
 	cache := sql.NewMapCache()
-	return cache, putAllRows(ctx, cache, result)
+	err = putAllRows(ctx, cache, s.Query.Schema(), result)
+	if err != nil {
+		return nil, err
+	}
+	return cache, nil
 }
 
 // HasResultRow returns whether the subquery has a result set > 0.
@@ -466,22 +470,25 @@ func (s *Subquery) HasResultRow(ctx *sql.Context, row sql.Row) (bool, error) {
 
 // normalizeValue returns a canonical version of a value for use in a sql.KeyValueCache.
 // Two values that compare equal should have the same canonical version.
-// TODO: Fix https://github.com/dolthub/dolt/issues/9049 by making this function collation-aware
 func normalizeForKeyValueCache(ctx *sql.Context, val interface{}) (interface{}, error) {
-	return sql.UnwrapAny(ctx, val)
+	val, err := sql.UnwrapAny(ctx, val)
+	if err != nil {
+		return nil, err
+	}
+	return val, nil
 }
 
-func putAllRows(ctx *sql.Context, cache sql.KeyValueCache, vals []interface{}) error {
+func putAllRows(ctx *sql.Context, cache sql.KeyValueCache, sch sql.Schema, vals []interface{}) error {
 	for _, val := range vals {
-		val, err := normalizeForKeyValueCache(ctx, val)
+		normVal, err := normalizeForKeyValueCache(ctx, val)
 		if err != nil {
 			return err
 		}
-		rowKey, err := sql.HashOf(ctx, sql.NewRow(val))
+		rowKey, err := hash.HashOf(ctx, sch, sql.NewRow(normVal))
 		if err != nil {
 			return err
 		}
-		err = cache.Put(rowKey, val)
+		err = cache.Put(rowKey, normVal)
 		if err != nil {
 			return err
 		}

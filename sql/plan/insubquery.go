@@ -19,6 +19,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/hash"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -47,7 +48,7 @@ func NewInSubquery(left sql.Expression, right sql.Expression) *InSubquery {
 	return &InSubquery{expression.BinaryExpressionStub{LeftChild: left, RightChild: right}}
 }
 
-var nilKey, _ = sql.HashOf(nil, sql.NewRow(nil))
+var nilKey, _ = hash.HashOf(nil, nil, sql.NewRow(nil))
 
 // Eval implements the Expression interface.
 func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -75,7 +76,7 @@ func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, sql.ErrInvalidOperandColumns.New(types.NumColumns(typ), types.NumColumns(right.Type()))
 		}
 
-		typ := right.Type()
+		rTyp := right.Type()
 
 		values, err := right.HashMultiple(ctx, row)
 		if err != nil {
@@ -91,12 +92,12 @@ func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 
 		// convert left to right's type
-		nLeft, _, err := typ.Convert(ctx, left)
+		nLeft, _, err := rTyp.Convert(ctx, left)
 		if err != nil {
 			return false, nil
 		}
 
-		key, err := sql.HashOf(ctx, sql.NewRow(nLeft))
+		key, err := hash.HashOf(ctx, sql.Schema{&sql.Column{Type: rTyp}}, sql.NewRow(nLeft))
 		if err != nil {
 			return nil, err
 		}
@@ -109,12 +110,12 @@ func (in *InSubquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return false, nil
 		}
 
-		val, _, err = typ.Convert(ctx, val)
+		val, _, err = rTyp.Convert(ctx, val)
 		if err != nil {
 			return false, nil
 		}
 
-		cmp, err := typ.Compare(ctx, left, val)
+		cmp, err := rTyp.Compare(ctx, left, val)
 		if err != nil {
 			return nil, err
 		}

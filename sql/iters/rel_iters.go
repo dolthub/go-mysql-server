@@ -24,6 +24,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/hash"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -571,7 +572,7 @@ func (di *distinctIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, err
 		}
 
-		hash, err := sql.HashOf(ctx, row)
+		hash, err := hash.HashOf(ctx, nil, row)
 		if err != nil {
 			return nil, err
 		}
@@ -643,11 +644,14 @@ func (ii *IntersectIter) Next(ctx *sql.Context) (sql.Row, error) {
 		ii.cache = make(map[uint64]int)
 		for {
 			res, err := ii.RIter.Next(ctx)
-			if err != nil && err != io.EOF {
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
 				return nil, err
 			}
 
-			hash, herr := sql.HashOf(ctx, res)
+			hash, herr := hash.HashOf(ctx, nil, res)
 			if herr != nil {
 				return nil, herr
 			}
@@ -655,10 +659,6 @@ func (ii *IntersectIter) Next(ctx *sql.Context) (sql.Row, error) {
 				ii.cache[hash] = 0
 			}
 			ii.cache[hash]++
-
-			if err == io.EOF {
-				break
-			}
 		}
 		ii.cached = true
 	}
@@ -669,7 +669,7 @@ func (ii *IntersectIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, err
 		}
 
-		hash, herr := sql.HashOf(ctx, res)
+		hash, herr := hash.HashOf(ctx, nil, res)
 		if herr != nil {
 			return nil, herr
 		}
@@ -714,7 +714,7 @@ func (ei *ExceptIter) Next(ctx *sql.Context) (sql.Row, error) {
 				return nil, err
 			}
 
-			hash, herr := sql.HashOf(ctx, res)
+			hash, herr := hash.HashOf(ctx, nil, res)
 			if herr != nil {
 				return nil, herr
 			}
@@ -736,7 +736,7 @@ func (ei *ExceptIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, err
 		}
 
-		hash, herr := sql.HashOf(ctx, res)
+		hash, herr := hash.HashOf(ctx, nil, res)
 		if herr != nil {
 			return nil, herr
 		}

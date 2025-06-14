@@ -18,6 +18,8 @@ import (
 	"io"
 	"sync"
 
+	"github.com/dolthub/go-mysql-server/sql/hash"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
@@ -334,7 +336,7 @@ func (ci *concatIter) Next(ctx *sql.Context) (sql.Row, error) {
 		if err != nil {
 			return nil, err
 		}
-		hash, err := sql.HashOf(ctx, res)
+		hash, err := hash.HashOf(ctx, nil, res)
 		if err != nil {
 			return nil, err
 		}
