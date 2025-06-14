@@ -26,25 +26,28 @@ import (
 
 func TestIfNull(t *testing.T) {
 	testCases := []struct {
-		expression interface{}
-		value      interface{}
-		expected   interface{}
+		expression     interface{}
+		expressionType sql.Type
+		value          interface{}
+		valueType      sql.Type
+		expected       interface{}
+		expectedType   sql.Type
 	}{
-		{"foo", "bar", "foo"},
-		{"foo", "foo", "foo"},
-		{nil, "foo", "foo"},
-		{"foo", nil, "foo"},
-		{nil, nil, nil},
-		{"", nil, ""},
+		{"foo", types.LongText, "bar", types.LongText, "foo", types.LongText},
+		{"foo", types.LongText, "foo", types.LongText, "foo", types.LongText},
+		{nil, types.LongText, "foo", types.LongText, "foo", types.LongText},
+		{"foo", types.LongText, nil, types.LongText, "foo", types.LongText},
+		{nil, types.LongText, nil, types.LongText, nil, types.LongText},
+		{"", types.LongText, nil, types.LongText, "", types.LongText},
+		{nil, types.Int8, 128, types.Int64, int64(128), types.Int64},
 	}
 
-	f := NewIfNull(
-		expression.NewGetField(0, types.LongText, "expression", true),
-		expression.NewGetField(1, types.LongText, "value", true),
-	)
-	require.Equal(t, types.LongText, f.Type())
-
 	for _, tc := range testCases {
+		f := NewIfNull(
+			expression.NewGetField(0, tc.expressionType, "expression", true),
+			expression.NewGetField(1, tc.valueType, "value", true),
+		)
+		require.Equal(t, tc.expectedType, f.Type())
 		v, err := f.Eval(sql.NewEmptyContext(), sql.NewRow(tc.expression, tc.value))
 		require.NoError(t, err)
 		require.Equal(t, tc.expected, v)

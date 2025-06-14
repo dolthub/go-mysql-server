@@ -119,7 +119,7 @@ func TestColumnTypeToType_Time(t *testing.T) {
 }
 
 func TestColumnCharTypes(t *testing.T) {
-	test := []struct {
+	tests := []struct {
 		typ string
 		len int64
 		exp sql.Type
@@ -146,7 +146,7 @@ func TestColumnCharTypes(t *testing.T) {
 		},
 	}
 
-	for _, test := range test {
+	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v %v", test.typ, test.exp), func(t *testing.T) {
 			ct := &sqlparser.ColumnType{
 				Type:   test.typ,
@@ -155,6 +155,28 @@ func TestColumnCharTypes(t *testing.T) {
 			res, err := ColumnTypeToType(ct)
 			assert.NoError(t, err)
 			assert.Equal(t, test.exp, res)
+		})
+	}
+}
+
+func TestGeneralizeTypes(t *testing.T) {
+	tests := []struct {
+		typeA    sql.Type
+		typeB    sql.Type
+		expected sql.Type
+	}{
+		{Text, Text, LongText},
+		{Text, Float64, LongText},
+		{Int64, Text, LongText},
+		{Float32, Float32, Float64},
+		{Int64, Float64, Float64},
+		{Int32, Int32, Int64},
+		{Null, Null, Null},
+	}
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v %v %v", test.typeA, test.typeB, test.expected), func(t *testing.T) {
+			res := GeneralizeTypes(test.typeA, test.typeB)
+			assert.Equal(t, test.expected, res)
 		})
 	}
 }

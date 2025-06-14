@@ -57,25 +57,21 @@ func (f *IfNull) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 	if left != nil {
-		return left, nil
+		left, _, err = f.Type().Convert(ctx, left)
+		return left, err
 	}
 
 	right, err := f.RightChild.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-	return right, nil
+	right, _, err = f.Type().Convert(ctx, right)
+	return right, err
 }
 
 // Type implements the Expression interface.
 func (f *IfNull) Type() sql.Type {
-	if types.IsNull(f.LeftChild) {
-		if types.IsNull(f.RightChild) {
-			return types.Null
-		}
-		return f.RightChild.Type()
-	}
-	return f.LeftChild.Type()
+	return types.GeneralizeTypes(f.LeftChild.Type(), f.RightChild.Type())
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
