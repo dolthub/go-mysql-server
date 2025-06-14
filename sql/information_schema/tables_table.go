@@ -65,7 +65,7 @@ var tablesSchema = Schema{
 func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 	var rows []Row
 	var (
-		tableType      string
+		tableType      uint16
 		tableRows      uint64
 		avgRowLength   uint64
 		dataLength     uint64
@@ -82,9 +82,9 @@ func tablesRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 
 	for _, db := range databases {
 		if db.Database.Name() == InformationSchemaDatabaseName {
-			tableType = "SYSTEM VIEW"
+			tableType = 3 // SYSTEM_VIEW
 		} else {
-			tableType = "BASE TABLE"
+			tableType = 1 // BASE_TABLE
 			engine = "InnoDB"
 			rowFormat = "Dynamic"
 		}

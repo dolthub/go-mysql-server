@@ -188,6 +188,44 @@ var JsonScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "json_object preserves escaped characters in key and values",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `select cast(JSON_OBJECT('key"with"quotes\n','3"\\') as char);`,
+				Expected: []sql.Row{
+					{`{"key\"with\"quotes\n": "3\"\\"}`},
+				},
+			},
+		},
+	},
+	{
+		Name: "json conversion works with escaped characters",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT CAST(CAST(JSON_OBJECT('key"with"quotes', 1) as CHAR) as JSON);`,
+				Expected: []sql.Row{
+					{`{"key\"with\"quotes": 1}`},
+				},
+			},
+		},
+	},
+	{
+		Name: "json_object with escaped k:v pairs from table",
+		SetUpScript: []string{
+			`CREATE TABLE IF NOT EXISTS textt_7998 (t text);`,
+			`INSERT INTO textt_7998 VALUES ('first row\n\\'), ('second row"');`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT JSON_OBJECT(t, t) FROM textt_7998;`,
+				Expected: []sql.Row{
+					{types.MustJSON(`{"first row\n\\": "first row\n\\"}`)},
+					{types.MustJSON(`{"second row\"": "second row\""}`)},
+				},
+			},
+		},
+	},
+	{
 		Name: "json_value preserves types",
 		Assertions: []ScriptTestAssertion{
 			{
