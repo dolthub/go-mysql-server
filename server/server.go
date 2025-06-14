@@ -20,12 +20,12 @@ import (
 	"net"
 	"time"
 
-	"github.com/dolthub/vitess/go/mysql"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/trace"
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/vitess/go/mysql"
 )
 
 // ProtocolListener handles connections based on the configuration it was given. These listeners also implement

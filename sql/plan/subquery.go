@@ -313,7 +313,7 @@ func (m *Max1Row) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 }
 
 // EvalMultiple returns all rows returned by a subquery.
-func (s *Subquery) EvalMultiple(ctx *sql.Context, row sql.Row) (sql.Row, error) {
+func (s *Subquery) EvalMultiple(ctx *sql.Context, row sql.Row) ([]any, error) {
 	s.cacheMu.Lock()
 	cached := s.resultsCached
 	s.cacheMu.Unlock()
@@ -341,7 +341,7 @@ func (s *Subquery) canCacheResults() bool {
 	return s.correlated.Empty() && !s.volatile
 }
 
-func (s *Subquery) evalMultiple(ctx *sql.Context, row sql.Row) (sql.Row, error) {
+func (s *Subquery) evalMultiple(ctx *sql.Context, row sql.Row) ([]any, error) {
 	// Any source of rows, as well as any node that alters the schema of its children, needs to be wrapped so that its
 	// result rows are prepended with the scope row.
 	q, _, err := transform.Node(s.Query, PrependRowInPlan(row, false))
@@ -362,7 +362,7 @@ func (s *Subquery) evalMultiple(ctx *sql.Context, row sql.Row) (sql.Row, error) 
 
 	// Reduce the result row to the size of the expected schema. This means chopping off the first len(row) columns.
 	col := len(row)
-	var result sql.Row
+	var result []any
 	for {
 		row, err := iter.Next(ctx)
 		if err == io.EOF {
