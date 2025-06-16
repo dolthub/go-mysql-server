@@ -60,16 +60,13 @@ func HashOf(ctx *sql.Context, sch sql.Schema, row sql.Row) (uint64, error) {
 
 		switch typ := sch[i].Type.(type) {
 		case types.ExtendedType:
-			bytes, err := typ.SerializeValue(ctx, v)
-			if err != nil {
-				return 0, err
-			}
-			_, err = fmt.Fprint(hash, string(bytes))
+			_, err = fmt.Fprintf(hash, "%v", v)
 			if err != nil {
 				return 0, err
 			}
 		case types.StringType:
-			strVal, err := types.ConvertToString(ctx, v, typ, nil)
+			var strVal string
+			strVal, err = types.ConvertToString(ctx, v, typ, nil)
 			if err != nil {
 				return 0, err
 			}
@@ -79,7 +76,7 @@ func HashOf(ctx *sql.Context, sch sql.Schema, row sql.Row) (uint64, error) {
 			}
 		default:
 			// TODO: probably much faster to do this with a type switch
-			_, err := fmt.Fprintf(hash, "%v", v)
+			_, err = fmt.Fprintf(hash, "%v", v)
 			if err != nil {
 				return 0, err
 			}
