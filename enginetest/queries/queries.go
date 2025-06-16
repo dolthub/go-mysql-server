@@ -6092,7 +6092,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Query:    `SELECT if(123 = 123, NULL, NULL = 1)`,
 		Expected: []sql.Row{{nil}},
 		ExpectedColumns: []*sql.Column{
-			{Name: "if(123 = 123, NULL, NULL = 1)", Type: types.Int64}, // TODO: this should be getting coerced to bool
+			{Name: "if(123 = 123, NULL, NULL = 1)", Type: types.Boolean},
 		},
 	},
 	{

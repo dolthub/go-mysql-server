@@ -557,11 +557,9 @@ func TypesEqual(a, b sql.Type) bool {
 
 // generalizeNumberTypes assumes both inputs return true for IsNumber
 func generalizeNumberTypes(a, b sql.Type) sql.Type {
-	if a == Float64 || b == Float64 {
+	if IsFloat(a) || IsFloat(b) {
+		// TODO: handle cases where MySQL returns Float32
 		return Float64
-	}
-	if a == Float32 || b == Float32 {
-		return Float32
 	}
 
 	if IsDecimal(a) || IsDecimal(b) {
@@ -598,6 +596,7 @@ func generalizeNumberTypes(a, b sql.Type) sql.Type {
 		if aIsSigned || bIsSigned {
 			return Int32
 		}
+		return Uint24
 	}
 
 	if a == Int24 || b == Int24 {
@@ -644,6 +643,13 @@ func GeneralizeTypes(a, b sql.Type) sql.Type {
 		return a
 	}
 
+	if svt, ok := a.(sql.SystemVariableType); ok {
+		a = svt.UnderlyingType()
+	}
+	if svt, ok := a.(sql.SystemVariableType); ok {
+		b = svt.UnderlyingType()
+	}
+
 	if IsJSON(a) && IsJSON(b) {
 		return JSON
 	}
@@ -663,7 +669,7 @@ func GeneralizeTypes(a, b sql.Type) sql.Type {
 	aIsTimespan := IsTimespan(a)
 	bIsTimespan := IsTimespan(b)
 	if aIsTimespan && bIsTimespan {
-		return a
+		return Time
 	}
 	if (IsTime(a) || aIsTimespan) && (IsTime(b) || bIsTimespan) {
 		if IsDateType(a) && IsDateType(b) {
@@ -678,7 +684,8 @@ func GeneralizeTypes(a, b sql.Type) sql.Type {
 	}
 
 	if IsBlobType(a) || IsBlobType(b) {
-		return Blob
+		// TODO: match blob length to max of the blob lengths
+		return LongBlob
 	}
 
 	aIsBit := IsBit(a)
@@ -707,12 +714,6 @@ func GeneralizeTypes(a, b sql.Type) sql.Type {
 	}
 
 	if IsNumber(a) && IsNumber(b) {
-		if svt, ok := a.(sql.SystemVariableType); ok {
-			a = svt.UnderlyingType()
-		}
-		if svt, ok := a.(sql.SystemVariableType); ok {
-			b = svt.UnderlyingType()
-		}
 		return generalizeNumberTypes(a, b)
 	}
 	// TODO: decide if we want to make this VarChar to match MySQL, match VarChar length to max of two types
