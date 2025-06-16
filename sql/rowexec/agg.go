@@ -16,8 +16,9 @@ package rowexec
 
 import (
 	"errors"
-	"github.com/dolthub/go-mysql-server/sql/types"
 	"io"
+
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
