@@ -33,7 +33,7 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, 
 		switch node := n.(type) {
 		case *plan.ShowTriggers:
 			newShowTriggers := *node
-			loadedTriggers, err := loadTriggersFromDb(ctx, a, newShowTriggers.Database())
+			loadedTriggers, err := loadTriggersFromDb(ctx, a, newShowTriggers.Database(), false)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -44,16 +44,17 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, 
 			}
 			return &newShowTriggers, transform.NewTree, nil
 		case *plan.DropTrigger:
-			loadedTriggers, err := loadTriggersFromDb(ctx, a, node.Database())
+			// TODO: load triggers without parsing
+			loadedTriggers, err := loadTriggersFromDb(ctx, a, node.Database(), true)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			lowercasedTriggerName := strings.ToLower(node.TriggerName)
 			for _, trigger := range loadedTriggers {
-				if strings.ToLower(trigger.TriggerName) == lowercasedTriggerName {
+				if strings.EqualFold(node.TriggerName, trigger.TriggerName) {
 					node.TriggerName = trigger.TriggerName
-				} else if trigger.TriggerOrder != nil &&
-					strings.ToLower(trigger.TriggerOrder.OtherTriggerName) == lowercasedTriggerName {
+					continue
+				}
+				if trigger.TriggerOrder != nil && strings.EqualFold(node.TriggerName, trigger.TriggerOrder.OtherTriggerName) {
 					return nil, transform.SameTree, sql.ErrTriggerCannotBeDropped.New(node.TriggerName, trigger.TriggerName)
 				}
 			}
@@ -70,7 +71,7 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, 
 				dropTableDb = t.SqlDatabase
 			}
 
-			loadedTriggers, err := loadTriggersFromDb(ctx, a, dropTableDb)
+			loadedTriggers, err := loadTriggersFromDb(ctx, a, dropTableDb, false)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -95,7 +96,7 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, 
 	})
 }
 
-func loadTriggersFromDb(ctx *sql.Context, a *Analyzer, db sql.Database) ([]*plan.CreateTrigger, error) {
+func loadTriggersFromDb(ctx *sql.Context, a *Analyzer, db sql.Database, ignoreParseErrors bool) ([]*plan.CreateTrigger, error) {
 	var loadedTriggers []*plan.CreateTrigger
 	if triggerDb, ok := db.(sql.TriggerDatabase); ok {
 		triggers, err := triggerDb.GetTriggers(ctx)
@@ -108,7 +109,14 @@ func loadTriggersFromDb(ctx *sql.Context, a *Analyzer, db sql.Database) ([]*plan
 			// TODO: should perhaps add the auth query handler to the analyzer? does this even use auth?
 			parsedTrigger, _, err = planbuilder.ParseWithOptions(ctx, a.Catalog, trigger.CreateStatement, sqlMode.ParserOptions())
 			if err != nil {
-				return nil, err
+				// We want to be able to drop invalid triggers, so ignore any parser errors and return the name of the trigger
+				if !ignoreParseErrors {
+					return nil, err
+				}
+				// TODO: we won't have TriggerOrder information for this unparseable trigger.
+				fakeTrigger := &plan.CreateTrigger{TriggerName: trigger.Name}
+				loadedTriggers = append(loadedTriggers, fakeTrigger)
+				continue
 			}
 			triggerPlan, ok := parsedTrigger.(*plan.CreateTrigger)
 			if !ok {
