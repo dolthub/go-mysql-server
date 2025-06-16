@@ -16,6 +16,7 @@ package rowexec
 
 import (
 	"errors"
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"io"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -243,8 +244,19 @@ func groupingKey(ctx *sql.Context, exprs []sql.Expression, row sql.Row) (uint64,
 		if err != nil {
 			return 0, err
 		}
+
+		// TODO: this should be moved into hash.HashOf
+		typ := expr.Type()
+		if extTyp, isExtTyp := typ.(types.ExtendedType); isExtTyp {
+			val, vErr := extTyp.SerializeValue(ctx, v)
+			if vErr != nil {
+				return 0, vErr
+			}
+			v = string(val)
+		}
+
 		keyRow[i] = v
-		keySch[i] = &sql.Column{Type: expr.Type()}
+		keySch[i] = &sql.Column{Type: typ}
 	}
 	return hash.HashOf(ctx, keySch, keyRow)
 }
