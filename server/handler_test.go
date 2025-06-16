@@ -212,7 +212,7 @@ func TestHandlerOutput(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.Equal(t, 1, len(result.Rows))
-		require.Equal(t, sqltypes.Int64, result.Rows[0][0].Type())
+		require.Equal(t, sqltypes.Int16, result.Rows[0][0].Type())
 		require.Equal(t, []byte("456"), result.Rows[0][0].ToBytes())
 	})
 }
@@ -569,8 +569,8 @@ func TestHandlerComPrepareExecuteWithPreparedDisabled(t *testing.T) {
 				BindVars:    nil,
 			},
 			schema: []*query.Field{
-				{Name: "a", OrgName: "a", Table: "", OrgTable: "", Database: "", Type: query.Type_INT64,
-					Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 20, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
+				{Name: "a", OrgName: "a", Table: "", OrgTable: "", Database: "", Type: query.Type_INT16,
+					Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 6, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
 			},
 			expected: []sql.Row{
 				{1000},
@@ -587,8 +587,8 @@ func TestHandlerComPrepareExecuteWithPreparedDisabled(t *testing.T) {
 				BindVars:    nil,
 			},
 			schema: []*query.Field{
-				{Name: "a", OrgName: "a", Table: "", OrgTable: "", Database: "", Type: query.Type_INT64,
-					Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 20, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
+				{Name: "a", OrgName: "a", Table: "", OrgTable: "", Database: "", Type: query.Type_INT16,
+					Charset: uint32(sql.CharacterSet_utf8mb4), ColumnLength: 6, Flags: uint32(query.MySqlFlag_NOT_NULL_FLAG)},
 			},
 			expected: []sql.Row{
 				{-129},
