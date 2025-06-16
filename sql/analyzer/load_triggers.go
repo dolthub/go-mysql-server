@@ -114,7 +114,9 @@ func loadTriggersFromDb(ctx *sql.Context, a *Analyzer, db sql.Database, ignorePa
 					return nil, err
 				}
 				// TODO: we won't have TriggerOrder information for this unparseable trigger.
-				fakeTrigger := &plan.CreateTrigger{TriggerName: trigger.Name}
+				fakeTrigger := &plan.CreateTrigger{
+					TriggerName: trigger.Name,
+				}
 				loadedTriggers = append(loadedTriggers, fakeTrigger)
 				continue
 			}
