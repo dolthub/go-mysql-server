@@ -60,6 +60,8 @@ func HashOf(ctx *sql.Context, sch sql.Schema, row sql.Row) (uint64, error) {
 
 		switch typ := sch[i].Type.(type) {
 		case types.ExtendedType:
+			// TODO: this should use types.ExtendedType.SerializeValue, but there are some doltgres conversion issues
+			//   we need to address. Resort to old behavior for now.
 			_, err = fmt.Fprintf(hash, "%v", v)
 			if err != nil {
 				return 0, err
