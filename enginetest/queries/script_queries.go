@@ -8727,7 +8727,8 @@ where
 				},
 			},
 			{
-				Query: "select if(t0.c0 = 1, t0.c0, 128) as ref0 from t0",
+				Query:    "select if(t0.c0 = 1, t0.c0, 128) as ref0 from t0",
+				Expected: []sql.Row{{128}},
 			},
 		},
 	},

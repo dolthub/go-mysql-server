@@ -89,7 +89,9 @@ func (f *If) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 	}
-	eval, _, err = f.Type().Convert(ctx, eval)
+	if ret, _, err := f.Type().Convert(ctx, eval); err == nil {
+		return ret, nil
+	}
 	return eval, err
 }
 

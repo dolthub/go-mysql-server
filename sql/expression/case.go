@@ -43,71 +43,14 @@ func NewCase(expr sql.Expression, branches []CaseBranch, elseExpr sql.Expression
 	return &Case{expr, branches, elseExpr}
 }
 
-// From the description of operator typing here:
-// https://dev.mysql.com/doc/refman/8.0/en/flow-control-functions.html#operator_case
-func combinedCaseBranchType(left, right sql.Type) sql.Type {
-	if left == types.Null {
-		return right
-	}
-	if right == types.Null {
-		return left
-	}
-
-	// Our current implementation of StringType.Convert(enum), does not match MySQL's behavior.
-	// So, we make sure to return Enums in this particular case.
-	// More details: https://github.com/dolthub/dolt/issues/8598
-	if types.IsEnum(left) && types.IsEnum(right) {
-		return right
-	}
-	if types.IsSet(left) && types.IsSet(right) {
-		return right
-	}
-	if types.IsTextOnly(left) && types.IsTextOnly(right) {
-		return types.LongText
-	}
-	if types.IsTextBlob(left) && types.IsTextBlob(right) {
-		return types.LongBlob
-	}
-	if types.IsTime(left) && types.IsTime(right) {
-		if left == right {
-			return left
-		}
-		return types.DatetimeMaxPrecision
-	}
-	if types.IsNumber(left) && types.IsNumber(right) {
-		if left == types.Float64 || right == types.Float64 {
-			return types.Float64
-		}
-		if left == types.Float32 || right == types.Float32 {
-			return types.Float32
-		}
-		if types.IsDecimal(left) || types.IsDecimal(right) {
-			return types.MustCreateDecimalType(65, 10)
-		}
-		if left == types.Uint64 && types.IsSigned(right) ||
-			right == types.Uint64 && types.IsSigned(left) {
-			return types.MustCreateDecimalType(65, 10)
-		}
-		if !types.IsSigned(left) && !types.IsSigned(right) {
-			return types.Uint64
-		} else {
-			return types.Int64
-		}
-	}
-	if types.IsJSON(left) && types.IsJSON(right) {
-		return types.JSON
-	}
-	return types.LongText
-}
-
 // Type implements the sql.Expression interface.
 func (c *Case) Type() sql.Type {
 	curr := types.Null
 	for _, b := range c.Branches {
-		curr = combinedCaseBranchType(curr, b.Value.Type())
+		curr = types.GeneralizeTypes(curr, b.Value.Type())
 	}
 	if c.Else != nil {
-		curr = combinedCaseBranchType(curr, c.Else.Type())
+		curr = types.GeneralizeTypes(curr, c.Else.Type())
 	}
 	return curr
 }

@@ -52,12 +52,16 @@ func (f *IfNull) Description() string {
 
 // Eval implements the Expression interface.
 func (f *IfNull) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	t := f.Type()
+
 	left, err := f.LeftChild.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 	if left != nil {
-		left, _, err = f.Type().Convert(ctx, left)
+		if ret, _, err := t.Convert(ctx, left); err == nil {
+			return ret, nil
+		}
 		return left, err
 	}
 
@@ -65,7 +69,9 @@ func (f *IfNull) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	right, _, err = f.Type().Convert(ctx, right)
+	if ret, _, err := t.Convert(ctx, right); err == nil {
+		return ret, nil
+	}
 	return right, err
 }
 

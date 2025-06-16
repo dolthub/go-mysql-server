@@ -555,24 +555,166 @@ func TypesEqual(a, b sql.Type) bool {
 	}
 }
 
-// GeneralizeTypes returns the more "general" of two types as defined by
-// https://dev.mysql.com/doc/refman/8.4/en/flow-control-functions.html#function_if and
-// https://dev.mysql.com/doc/refman/8.4/en/flow-control-functions.html#function_ifnull
-// TODO: Currently returns the most general type via Promote(). Update to match MySQL (pick the more general of the two
-// given types)
-func GeneralizeTypes(a, b sql.Type) sql.Type {
-	if IsText(a) || IsText(b) {
-		// TODO: handle case-sensitive strings
-		return LongText
-	}
-
-	if IsFloat(a) || IsFloat(b) {
+// generalizeNumberTypes assumes both inputs return true for IsNumber
+func generalizeNumberTypes(a, b sql.Type) sql.Type {
+	if a == Float64 || b == Float64 {
 		return Float64
 	}
-
-	if a == Null {
-		return b.Promote()
+	if a == Float32 || b == Float32 {
+		return Float32
 	}
 
-	return a.Promote()
+	if IsDecimal(a) || IsDecimal(b) {
+		// TODO: match precision and scale to that of the decimal type, check if defines column
+		return MustCreateDecimalType(DecimalTypeMaxPrecision, DecimalTypeMaxScale)
+	}
+
+	aIsSigned := IsSigned(a)
+	bIsSigned := IsSigned(b)
+
+	if a == Uint64 || b == Uint64 {
+		if aIsSigned || bIsSigned {
+			return MustCreateDecimalType(DecimalTypeMaxPrecision, 0)
+		}
+		return Uint64
+	}
+
+	if a == Int64 || b == Int64 {
+		return Int64
+	}
+
+	if a == Uint32 || b == Uint32 {
+		if aIsSigned || bIsSigned {
+			return Int64
+		}
+		return Uint32
+	}
+
+	if a == Int32 || b == Int32 {
+		return Int32
+	}
+
+	if a == Uint24 || b == Uint24 {
+		if aIsSigned || bIsSigned {
+			return Int32
+		}
+	}
+
+	if a == Int24 || b == Int24 {
+		return Int24
+	}
+
+	if a == Uint16 || b == Uint16 {
+		if aIsSigned || bIsSigned {
+			return Int24
+		}
+		return Uint16
+	}
+
+	if a == Int16 || b == Int16 {
+		return Int16
+	}
+
+	if a == Uint8 || b == Uint8 {
+		if aIsSigned || bIsSigned {
+			return Int16
+		}
+		return Uint8
+	}
+
+	if a == Int8 || b == Int8 {
+		return Int8
+	}
+
+	if IsBoolean(a) && IsBoolean(b) {
+		return Boolean
+	}
+
+	return Int64
+}
+
+// GeneralizeTypes returns the more "general" of two types as defined by
+// https://dev.mysql.com/doc/refman/8.4/en/flow-control-functions.html
+// TODO: Create and handle "Illegal mix of collations" error
+func GeneralizeTypes(a, b sql.Type) sql.Type {
+	if a == Null {
+		return b
+	}
+	if b == Null {
+		return a
+	}
+
+	if IsJSON(a) && IsJSON(b) {
+		return JSON
+	}
+
+	if IsGeometry(a) && IsGeometry(b) {
+		return a
+	}
+
+	if IsEnum(a) && IsEnum(b) {
+		return a
+	}
+
+	if IsSet(a) && IsSet(b) {
+		return a
+	}
+
+	aIsTimespan := IsTimespan(a)
+	bIsTimespan := IsTimespan(b)
+	if aIsTimespan && bIsTimespan {
+		return a
+	}
+	if (IsTime(a) || aIsTimespan) && (IsTime(b) || bIsTimespan) {
+		if IsDateType(a) && IsDateType(b) {
+			return Date
+		}
+		if IsTimestampType(a) && IsTimestampType(b) {
+			// TODO: match precision to max precision of the two timestamps
+			return TimestampMaxPrecision
+		}
+		// TODO: match precision to max precision of the two time types
+		return DatetimeMaxPrecision
+	}
+
+	if IsBlobType(a) || IsBlobType(b) {
+		return Blob
+	}
+
+	aIsBit := IsBit(a)
+	bIsBit := IsBit(b)
+	if aIsBit && bIsBit {
+		// TODO: match max bits to max of max bits between a and b
+		return a.Promote()
+	}
+	if aIsBit {
+		a = Int64
+	}
+	if bIsBit {
+		b = Int64
+	}
+
+	aIsYear := IsYear(a)
+	bIsYear := IsYear(b)
+	if aIsYear && bIsYear {
+		return a
+	}
+	if aIsYear {
+		a = Int32
+	}
+	if bIsYear {
+		b = Int32
+	}
+
+	if IsNumber(a) && IsNumber(b) {
+		if svt, ok := a.(sql.SystemVariableType); ok {
+			a = svt.UnderlyingType()
+		}
+		if svt, ok := a.(sql.SystemVariableType); ok {
+			b = svt.UnderlyingType()
+		}
+		return generalizeNumberTypes(a, b)
+	}
+	// TODO: decide if we want to make this VarChar to match MySQL, match VarChar length to max of two types
+	return LongText
 }

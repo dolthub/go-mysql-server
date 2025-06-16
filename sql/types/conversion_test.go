@@ -168,9 +168,9 @@ func TestGeneralizeTypes(t *testing.T) {
 		{Text, Text, LongText},
 		{Text, Float64, LongText},
 		{Int64, Text, LongText},
-		{Float32, Float32, Float64},
+		{Float32, Float32, Float32},
 		{Int64, Float64, Float64},
-		{Int32, Int32, Int64},
+		{Int32, Int32, Int32},
 		{Null, Null, Null},
 	}
 	for _, test := range tests {
