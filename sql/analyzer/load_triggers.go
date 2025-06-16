@@ -44,7 +44,6 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, 
 			}
 			return &newShowTriggers, transform.NewTree, nil
 		case *plan.DropTrigger:
-			// TODO: load triggers without parsing
 			loadedTriggers, err := loadTriggersFromDb(ctx, a, node.Database(), true)
 			if err != nil {
 				return nil, transform.SameTree, err
@@ -113,7 +112,8 @@ func loadTriggersFromDb(ctx *sql.Context, a *Analyzer, db sql.Database, ignorePa
 				if !ignoreParseErrors {
 					return nil, err
 				}
-				// TODO: we won't have TriggerOrder information for this unparseable trigger.
+				// TODO: we won't have TriggerOrder information for this unparseable trigger,
+				//   but it will still be referenced by any valid triggers.
 				fakeTrigger := &plan.CreateTrigger{
 					TriggerName: trigger.Name,
 				}
