@@ -485,7 +485,7 @@ var UpdateScriptTests = []ScriptTest{
 				// TODO: Foreign key constraints are not honored for UDPATE ... JOIN statements
 				Skip:        true,
 				Query:       "UPDATE orders o JOIN customers c ON o.customer_id = c.id SET o.customer_id = 123 where o.customer_id != 1;",
-				ExpectedErr: sql.ErrCheckConstraintViolated,
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
 				Query: "SELECT * FROM orders;",

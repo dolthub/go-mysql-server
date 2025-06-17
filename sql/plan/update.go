@@ -31,11 +31,13 @@ var ErrUpdateUnexpectedSetResult = errors.NewKind("attempted to set field but ex
 // Update is a node for updating rows on tables.
 type Update struct {
 	UnaryNode
-	checks       sql.CheckConstraints
-	Ignore       bool
-	IsJoin       bool
-	HasSingleRel bool
-	IsProcNested bool
+	checks            sql.CheckConstraints
+	Ignore            bool
+	IsJoin            bool
+	updateJoinTargets []sql.Node
+	joinSchema        sql.Schema
+	HasSingleRel      bool
+	IsProcNested      bool
 
 	// Returning is a list of expressions to return after the update operation. This feature is not
 	// supported in MySQL's syntax, but is exposed through PostgreSQL's syntax.
@@ -168,8 +170,17 @@ func (u *Update) Expressions() []sql.Expression {
 	return exprs
 }
 
+func (u *Update) updateJoinTargetsResolved() bool {
+	for _, target := range u.updateJoinTargets {
+		if target.Resolved() == false {
+			return false
+		}
+	}
+	return true
+}
+
 func (u *Update) Resolved() bool {
-	return u.Child.Resolved() &&
+	return u.Child.Resolved() && u.updateJoinTargetsResolved() &&
 		expression.ExpressionsResolved(u.checks.ToExpressions()...) &&
 		expression.ExpressionsResolved(u.Returning...)
 
@@ -190,6 +201,57 @@ func (u Update) WithExpressions(newExprs ...sql.Expression) (sql.Node, error) {
 	u.Returning = newExprs[len(u.checks):]
 
 	return &u, nil
+}
+
+// WithUpdateJoinTargets returns a new Update node instance with the specified |targets| set as the update join targets
+// of the update operation
+func (u *Update) WithUpdateJoinTargets(targets []sql.Node) *Update {
+	ret := *u
+	ret.updateJoinTargets = targets
+	return &ret
+}
+
+// GetUpdateTargets returns the sql.Nodes representing the tables from which rows should be updated
+func (u *Update) GetUpdateTargets() []sql.Node {
+	if u.IsJoin {
+		return u.updateJoinTargets
+	}
+	return []sql.Node{u.Child}
+}
+
+func (u *Update) WithJoinSchema(schema sql.Schema) *Update {
+	ret := *u
+	ret.joinSchema = schema
+	return &ret
+}
+
+func (u *Update) JoinUpdater() sql.RowUpdater {
+	updaters := make([]sql.RowUpdater, len(u.updateJoinTargets))
+	return &joinUpdater{
+		updaters:   updaters,
+		joinSchema: u.joinSchema,
+	}
+}
+
+type joinUpdater struct {
+	updaters   []sql.RowUpdater
+	joinSchema sql.Schema
+}
+
+var _ sql.RowUpdater = (*joinUpdater)(nil)
+
+func (u *joinUpdater) StatementBegin(ctx *sql.Context) {}
+func (u *joinUpdater) DiscardChanges(ctx *sql.Context, errorEncountered error) error {
+	return nil
+}
+func (u *joinUpdater) StatementComplete(ctx *sql.Context) error {
+	return nil
+}
+func (u *joinUpdater) Update(ctx *sql.Context, old sql.Row, new sql.Row) error {
+	return nil
+}
+func (u *joinUpdater) Close(ctx *sql.Context) error {
+	return nil
 }
 
 // UpdateInfo is the Info for OKResults returned by Update nodes.

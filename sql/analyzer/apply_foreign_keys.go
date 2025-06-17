@@ -124,31 +124,43 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 		}
 		// TODO: UPDATE JOIN can update multiple tables. Because updatableJoinTable does not implement
 		//       sql.ForeignKeyTable, we do not currenly support FK checks for UPDATE JOIN statements.
-		updateDest, err := plan.GetUpdatable(n.Child)
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-		fkTbl, ok := updateDest.(sql.ForeignKeyTable)
-		// If foreign keys aren't supported then we return
-		if !ok {
-			return n, transform.SameTree, nil
-		}
+		targets := n.GetUpdateTargets()
+		foreignKeyHandlers := make([]sql.Node, len(targets))
+		copy(foreignKeyHandlers, targets)
 
-		fkEditor, err := getForeignKeyEditor(ctx, a, fkTbl, cache, fkChain, false)
-		if err != nil {
-			return nil, transform.SameTree, err
+		for i, node := range targets {
+			updateDest, err := plan.GetUpdatable(node)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+
+			tbl, ok := updateDest.(sql.ForeignKeyTable)
+			if !ok {
+				continue
+			}
+			fkEditor, err := getForeignKeyEditor(ctx, a, tbl, cache, fkChain, false)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			if fkEditor == nil {
+				continue
+			}
+			foreignKeyHandlers[i] = &plan.ForeignKeyHandler{
+				Table:        tbl,
+				Sch:          updateDest.Schema(),
+				OriginalNode: targets[i],
+				AllUpdaters:  fkChain.GetUpdaters(),
+			}
 		}
-		if fkEditor == nil {
-			return n, transform.SameTree, nil
+		if n.IsJoin {
+			return n.WithUpdateJoinTargets(foreignKeyHandlers), transform.NewTree, nil
+		} else {
+			newNode, err := n.WithChildren(foreignKeyHandlers...)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			return newNode, transform.NewTree, nil
 		}
-		nn, err := n.WithChildren(&plan.ForeignKeyHandler{
-			Table:        fkTbl,
-			Sch:          updateDest.Schema(),
-			OriginalNode: n.Child,
-			Editor:       fkEditor,
-			AllUpdaters:  fkChain.GetUpdaters(),
-		})
-		return nn, transform.NewTree, err
 	case *plan.DeleteFrom:
 		if plan.IsEmptyTable(n.Child) {
 			return n, transform.SameTree, nil

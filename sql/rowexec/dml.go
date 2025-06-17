@@ -157,18 +157,26 @@ func (b *BaseBuilder) buildForeignKeyHandler(ctx *sql.Context, n *plan.ForeignKe
 }
 
 func (b *BaseBuilder) buildUpdate(ctx *sql.Context, n *plan.Update, row sql.Row) (sql.RowIter, error) {
-	updatable, err := plan.GetUpdatable(n.Child)
-	if err != nil {
-		return nil, err
+	var updater sql.RowUpdater
+	var schema sql.Schema
+	if n.IsJoin {
+		updater = n.JoinUpdater()
+		schema = n.Schema()
+	} else {
+		updatable, err := plan.GetUpdatable(n.Child)
+		if err != nil {
+			return nil, err
+		}
+		updater = updatable.Updater(ctx)
+		schema = updatable.Schema()
 	}
-	updater := updatable.Updater(ctx)
 
 	iter, err := b.buildNodeExec(ctx, n.Child, row)
 	if err != nil {
 		return nil, err
 	}
 
-	return newUpdateIter(iter, updatable.Schema(), updater, n.Checks(), n.Ignore, n.Returning, n.Schema()), nil
+	return newUpdateIter(iter, schema, updater, n.Checks(), n.Ignore, n.Returning, n.Schema()), nil
 }
 
 func (b *BaseBuilder) buildDropForeignKey(ctx *sql.Context, n *plan.DropForeignKey, row sql.Row) (sql.RowIter, error) {
