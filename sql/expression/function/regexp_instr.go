@@ -167,8 +167,8 @@ func (r *RegexpInstr) String() string {
 // compile handles compilation of the regex.
 func (r *RegexpInstr) compile(ctx *sql.Context, row sql.Row) {
 	r.compileOnce.Do(func() {
-		r.cacheRegex = canBeCached(r.Text, r.Pattern, r.Flags)
-		r.cacheVal = canBeCached(r.Text, r.Pattern, r.Position, r.Occurrence, r.ReturnOption, r.Flags)
+		r.cacheRegex = canBeCached(r.Pattern, r.Flags)
+		r.cacheVal = r.cacheRegex && canBeCached(r.Text, r.Position, r.Occurrence, r.ReturnOption)
 		if r.cacheRegex {
 			r.re, r.compileErr = compileRegex(ctx, r.Pattern, r.Text, r.Flags, r.FunctionName(), row)
 		}
