@@ -203,6 +203,45 @@ func (u Update) WithExpressions(newExprs ...sql.Expression) (sql.Node, error) {
 	return &u, nil
 }
 
+// UpdateInfo is the Info for OKResults returned by Update nodes.
+type UpdateInfo struct {
+	Matched, Updated, Warnings int
+}
+
+// String implements fmt.Stringer
+func (ui UpdateInfo) String() string {
+	return fmt.Sprintf("Rows matched: %d  Changed: %d  Warnings: %d", ui.Matched, ui.Updated, ui.Warnings)
+}
+
+// WithChildren implements the Node interface.
+func (u *Update) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 1)
+	}
+	np := *u
+	np.Child = children[0]
+	return &np, nil
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Update) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
+func (u *Update) String() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("Update")
+	_ = pr.WriteChildren(u.Child.String())
+	return pr.String()
+}
+
+func (u *Update) DebugString() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("Update")
+	_ = pr.WriteChildren(sql.DebugString(u.Child))
+	return pr.String()
+}
+
 // WithUpdateJoinTargets returns a new Update node instance with the specified |targets| set as the update join targets
 // of the update operation
 func (u *Update) WithUpdateJoinTargets(targets []sql.Node) *Update {
@@ -252,43 +291,4 @@ func (u *joinUpdater) Update(ctx *sql.Context, old sql.Row, new sql.Row) error {
 }
 func (u *joinUpdater) Close(ctx *sql.Context) error {
 	return nil
-}
-
-// UpdateInfo is the Info for OKResults returned by Update nodes.
-type UpdateInfo struct {
-	Matched, Updated, Warnings int
-}
-
-// String implements fmt.Stringer
-func (ui UpdateInfo) String() string {
-	return fmt.Sprintf("Rows matched: %d  Changed: %d  Warnings: %d", ui.Matched, ui.Updated, ui.Warnings)
-}
-
-// WithChildren implements the Node interface.
-func (u *Update) WithChildren(children ...sql.Node) (sql.Node, error) {
-	if len(children) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 1)
-	}
-	np := *u
-	np.Child = children[0]
-	return &np, nil
-}
-
-// CollationCoercibility implements the interface sql.CollationCoercible.
-func (*Update) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
-	return sql.Collation_binary, 7
-}
-
-func (u *Update) String() string {
-	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("Update")
-	_ = pr.WriteChildren(u.Child.String())
-	return pr.String()
-}
-
-func (u *Update) DebugString() string {
-	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("Update")
-	_ = pr.WriteChildren(sql.DebugString(u.Child))
-	return pr.String()
 }
