@@ -389,7 +389,7 @@ func BenchmarkRegexpReplace(b *testing.B) {
 	for i := range data {
 		data[i] = sql.Row{fmt.Sprintf("test%d", i)}
 	}
-	
+
 	for i := 0; i < b.N; i++ {
 		f, err := NewRegexpReplace(
 			expression.NewGetField(0, types.LongText, "text", false),
