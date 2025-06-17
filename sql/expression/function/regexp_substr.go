@@ -36,8 +36,8 @@ type RegexpSubstr struct {
 	Flags      sql.Expression
 
 	cachedVal   any
-	cacheRegex  bool
 	cacheVal    bool
+	cacheRegex  bool
 	re          regex.Regex
 	compileOnce sync.Once
 	compileErr  error

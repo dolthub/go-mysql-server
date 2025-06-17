@@ -26,6 +26,7 @@ import (
 )
 
 // Last Run: 06/17/2025
+// BenchmarkRegexpSubstr
 // BenchmarkRegexpSubstr-14    	     100	  95661410 ns/op
 // BenchmarkRegexpSubstr-14    	   10000	    999559 ns/op
 func BenchmarkRegexpSubstr(b *testing.B) {
