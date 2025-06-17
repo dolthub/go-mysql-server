@@ -16,7 +16,6 @@ package plan
 
 import (
 	"fmt"
-
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -170,17 +169,8 @@ func (u *Update) Expressions() []sql.Expression {
 	return exprs
 }
 
-func (u *Update) updateJoinTargetsResolved() bool {
-	for _, target := range u.updateJoinTargets {
-		if target.Resolved() == false {
-			return false
-		}
-	}
-	return true
-}
-
 func (u *Update) Resolved() bool {
-	return u.Child.Resolved() && u.updateJoinTargetsResolved() &&
+	return u.Child.Resolved() &&
 		expression.ExpressionsResolved(u.checks.ToExpressions()...) &&
 		expression.ExpressionsResolved(u.Returning...)
 
@@ -264,31 +254,97 @@ func (u *Update) WithJoinSchema(schema sql.Schema) *Update {
 	return &ret
 }
 
-func (u *Update) JoinUpdater() sql.RowUpdater {
-	updaters := make([]sql.RowUpdater, len(u.updateJoinTargets))
-	return &joinUpdater{
-		updaters:   updaters,
-		joinSchema: u.joinSchema,
+func (u *Update) GetUpdaterAndSchema(ctx *sql.Context) (sql.RowUpdater, sql.Schema, error) {
+	if u.IsJoin {
+		updaterMap := make(map[string]sql.RowUpdater)
+		for _, target := range u.updateJoinTargets {
+			targetTable, err := GetUpdatable(target)
+			if err != nil {
+				return nil, nil, err
+			}
+			updaterMap[targetTable.Name()] = targetTable.Updater(ctx)
+		}
+		return &joinUpdater{
+			updaterMap: updaterMap,
+			schemaMap:  RecreateTableSchemaFromJoinSchema(u.joinSchema),
+			joinSchema: u.joinSchema,
+		}, u.joinSchema, nil
 	}
+	updatable, err := GetUpdatable(u.Child)
+	if err != nil {
+		return nil, nil, err
+	}
+	return updatable.Updater(ctx), updatable.Schema(), nil
 }
 
 type joinUpdater struct {
-	updaters   []sql.RowUpdater
+	updaterMap map[string]sql.RowUpdater
+	schemaMap  map[string]sql.Schema
 	joinSchema sql.Schema
 }
 
 var _ sql.RowUpdater = (*joinUpdater)(nil)
 
-func (u *joinUpdater) StatementBegin(ctx *sql.Context) {}
+// StatementBegins implements the sql.TableEditor interface
+func (u *joinUpdater) StatementBegin(ctx *sql.Context) {
+	for _, updater := range u.updaterMap {
+		updater.StatementBegin(ctx)
+	}
+}
+
+// DiscardChanges implements the sql.TableEditor interface
 func (u *joinUpdater) DiscardChanges(ctx *sql.Context, errorEncountered error) error {
+	for _, updater := range u.updaterMap {
+		err := updater.DiscardChanges(ctx, errorEncountered)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
+
+// StatementComplete implements the sql.TableEditor interface
 func (u *joinUpdater) StatementComplete(ctx *sql.Context) error {
+	for _, updater := range u.updaterMap {
+		err := updater.StatementComplete(ctx)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 func (u *joinUpdater) Update(ctx *sql.Context, old sql.Row, new sql.Row) error {
+	tableToOldRowMap := SplitRowIntoTableRowMap(old, u.joinSchema)
+	tableToNewRowMap := SplitRowIntoTableRowMap(new, u.joinSchema)
+
+	for tableName, updater := range u.updaterMap {
+		oldRow := tableToOldRowMap[tableName]
+		newRow := tableToNewRowMap[tableName]
+		schema := u.schemaMap[tableName]
+
+		eq, err := oldRow.Equals(ctx, newRow, schema)
+		if err != nil {
+			return err
+		}
+
+		if !eq {
+			err = updater.Update(ctx, oldRow, newRow)
+		}
+
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
+
 func (u *joinUpdater) Close(ctx *sql.Context) error {
+	for _, updater := range u.updaterMap {
+		err := updater.Close(ctx)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
