@@ -31,13 +31,11 @@ var ErrUpdateUnexpectedSetResult = errors.NewKind("attempted to set field but ex
 // Update is a node for updating rows on tables.
 type Update struct {
 	UnaryNode
-	checks            sql.CheckConstraints
-	Ignore            bool
-	IsJoin            bool
-	updateJoinTargets []sql.Node
-	joinSchema        sql.Schema
-	HasSingleRel      bool
-	IsProcNested      bool
+	checks       sql.CheckConstraints
+	Ignore       bool
+	IsJoin       bool
+	HasSingleRel bool
+	IsProcNested bool
 
 	// Returning is a list of expressions to return after the update operation. This feature is not
 	// supported in MySQL's syntax, but is exposed through PostgreSQL's syntax.
@@ -231,121 +229,4 @@ func (u *Update) DebugString() string {
 	_ = pr.WriteNode("Update")
 	_ = pr.WriteChildren(sql.DebugString(u.Child))
 	return pr.String()
-}
-
-// WithUpdateJoinTargets returns a new Update node instance with the specified |targets| set as the update join targets
-// of the update operation
-func (u *Update) WithUpdateJoinTargets(targets []sql.Node) *Update {
-	ret := *u
-	ret.updateJoinTargets = targets
-	return &ret
-}
-
-// GetUpdateTargets returns the sql.Nodes representing the tables from which rows should be updated
-func (u *Update) GetUpdateTargets() []sql.Node {
-	if u.IsJoin {
-		return u.updateJoinTargets
-	}
-	return []sql.Node{u.Child}
-}
-
-func (u *Update) WithJoinSchema(schema sql.Schema) *Update {
-	ret := *u
-	ret.joinSchema = schema
-	return &ret
-}
-
-func (u *Update) GetUpdaterAndSchema(ctx *sql.Context) (sql.RowUpdater, sql.Schema, error) {
-	if u.IsJoin {
-		updaterMap := make(map[string]sql.RowUpdater)
-		for _, target := range u.updateJoinTargets {
-			targetTable, err := GetUpdatable(target)
-			if err != nil {
-				return nil, nil, err
-			}
-			updaterMap[targetTable.Name()] = targetTable.Updater(ctx)
-		}
-		return &joinUpdater{
-			updaterMap: updaterMap,
-			schemaMap:  RecreateTableSchemaFromJoinSchema(u.joinSchema),
-			joinSchema: u.joinSchema,
-		}, u.joinSchema, nil
-	}
-	updatable, err := GetUpdatable(u.Child)
-	if err != nil {
-		return nil, nil, err
-	}
-	return updatable.Updater(ctx), updatable.Schema(), nil
-}
-
-type joinUpdater struct {
-	updaterMap map[string]sql.RowUpdater
-	schemaMap  map[string]sql.Schema
-	joinSchema sql.Schema
-}
-
-var _ sql.RowUpdater = (*joinUpdater)(nil)
-
-// StatementBegins implements the sql.TableEditor interface
-func (u *joinUpdater) StatementBegin(ctx *sql.Context) {
-	for _, updater := range u.updaterMap {
-		updater.StatementBegin(ctx)
-	}
-}
-
-// DiscardChanges implements the sql.TableEditor interface
-func (u *joinUpdater) DiscardChanges(ctx *sql.Context, errorEncountered error) error {
-	for _, updater := range u.updaterMap {
-		err := updater.DiscardChanges(ctx, errorEncountered)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// StatementComplete implements the sql.TableEditor interface
-func (u *joinUpdater) StatementComplete(ctx *sql.Context) error {
-	for _, updater := range u.updaterMap {
-		err := updater.StatementComplete(ctx)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-func (u *joinUpdater) Update(ctx *sql.Context, old sql.Row, new sql.Row) error {
-	tableToOldRowMap := SplitRowIntoTableRowMap(old, u.joinSchema)
-	tableToNewRowMap := SplitRowIntoTableRowMap(new, u.joinSchema)
-
-	for tableName, updater := range u.updaterMap {
-		oldRow := tableToOldRowMap[tableName]
-		newRow := tableToNewRowMap[tableName]
-		schema := u.schemaMap[tableName]
-
-		eq, err := oldRow.Equals(ctx, newRow, schema)
-		if err != nil {
-			return err
-		}
-
-		if !eq {
-			err = updater.Update(ctx, oldRow, newRow)
-		}
-
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (u *joinUpdater) Close(ctx *sql.Context) error {
-	for _, updater := range u.updaterMap {
-		err := updater.Close(ctx)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }

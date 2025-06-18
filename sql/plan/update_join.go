@@ -21,15 +21,15 @@ import (
 )
 
 type UpdateJoin struct {
-	Updaters map[string]sql.RowUpdater
+	Updatables map[string]sql.UpdatableTable
 	UnaryNode
 }
 
 // NewUpdateJoin returns an *UpdateJoin node.
-func NewUpdateJoin(editorMap map[string]sql.RowUpdater, child sql.Node) *UpdateJoin {
+func NewUpdateJoin(updatablesMap map[string]sql.UpdatableTable, child sql.Node) *UpdateJoin {
 	return &UpdateJoin{
-		Updaters:  editorMap,
-		UnaryNode: UnaryNode{Child: child},
+		Updatables: updatablesMap,
+		UnaryNode:  UnaryNode{Child: child},
 	}
 }
 
@@ -59,9 +59,9 @@ func (u *UpdateJoin) GetUpdatable() sql.UpdatableTable {
 	//       expect, so UpdateJoins don't always work correctly. For example, because updatableJoinTable
 	//       doesn't implement ForeignKeyTable, UpdateJoin statements don't enforce foreign key checks.
 	//       We should revamp this function so that we can communicate multiple tables being updated.
-	return &updatableJoinTable{
-		updaters: u.Updaters,
-		joinNode: u.Child.(*UpdateSource).Child,
+	return &UpdatableJoinTable{
+		updatables: u.Updatables,
+		joinNode:   u.Child.(*UpdateSource).Child,
 	}
 }
 
@@ -71,7 +71,7 @@ func (u *UpdateJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 1)
 	}
 
-	return NewUpdateJoin(u.Updaters, children[0]), nil
+	return NewUpdateJoin(u.Updatables, children[0]), nil
 }
 
 func (u *UpdateJoin) IsReadOnly() bool {
@@ -83,48 +83,60 @@ func (u *UpdateJoin) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 	return sql.GetCoercibility(ctx, u.Child)
 }
 
-// updatableJoinTable manages the update of multiple tables.
-type updatableJoinTable struct {
-	updaters map[string]sql.RowUpdater
-	joinNode sql.Node
+func (u *UpdateJoin) GetUpdaters(ctx *sql.Context) map[string]sql.RowUpdater {
+	return getUpdaters(u.Updatables, ctx)
 }
 
-var _ sql.UpdatableTable = (*updatableJoinTable)(nil)
+func getUpdaters(updatables map[string]sql.UpdatableTable, ctx *sql.Context) map[string]sql.RowUpdater {
+	updaterMap := make(map[string]sql.RowUpdater)
+	for tableName, updatable := range updatables {
+		updaterMap[tableName] = updatable.Updater(ctx)
+	}
+	return updaterMap
+}
+
+// updatableJoinTable manages the update of multiple tables.
+type UpdatableJoinTable struct {
+	updatables map[string]sql.UpdatableTable
+	joinNode   sql.Node
+}
+
+var _ sql.UpdatableTable = (*UpdatableJoinTable)(nil)
 
 // Partitions implements the sql.UpdatableTable interface.
-func (u *updatableJoinTable) Partitions(context *sql.Context) (sql.PartitionIter, error) {
+func (u *UpdatableJoinTable) Partitions(context *sql.Context) (sql.PartitionIter, error) {
 	panic("this method should not be called")
 }
 
 // PartitionsRows implements the sql.UpdatableTable interface.
-func (u *updatableJoinTable) PartitionRows(context *sql.Context, partition sql.Partition) (sql.RowIter, error) {
+func (u *UpdatableJoinTable) PartitionRows(context *sql.Context, partition sql.Partition) (sql.RowIter, error) {
 	panic("this method should not be called")
 }
 
 // Name implements the sql.UpdatableTable interface.
-func (u *updatableJoinTable) Name() string {
+func (u *UpdatableJoinTable) Name() string {
 	panic("this method should not be called")
 }
 
 // String implements the sql.UpdatableTable interface.
-func (u *updatableJoinTable) String() string {
+func (u *UpdatableJoinTable) String() string {
 	panic("this method should not be called")
 }
 
 // Schema implements the sql.UpdatableTable interface.
-func (u *updatableJoinTable) Schema() sql.Schema {
+func (u *UpdatableJoinTable) Schema() sql.Schema {
 	return u.joinNode.Schema()
 }
 
 // Collation implements the sql.Table interface.
-func (u *updatableJoinTable) Collation() sql.CollationID {
+func (u *UpdatableJoinTable) Collation() sql.CollationID {
 	return sql.Collation_Default
 }
 
 // Updater implements the sql.UpdatableTable interface.
-func (u *updatableJoinTable) Updater(ctx *sql.Context) sql.RowUpdater {
+func (u *UpdatableJoinTable) Updater(ctx *sql.Context) sql.RowUpdater {
 	return &updatableJoinUpdater{
-		updaterMap: u.updaters,
+		updaterMap: getUpdaters(u.updatables, ctx),
 		schemaMap:  RecreateTableSchemaFromJoinSchema(u.joinNode.Schema()),
 		joinSchema: u.joinNode.Schema(),
 	}

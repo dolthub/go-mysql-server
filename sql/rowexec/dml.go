@@ -157,17 +157,18 @@ func (b *BaseBuilder) buildForeignKeyHandler(ctx *sql.Context, n *plan.ForeignKe
 }
 
 func (b *BaseBuilder) buildUpdate(ctx *sql.Context, n *plan.Update, row sql.Row) (sql.RowIter, error) {
-	updater, schema, err := n.GetUpdaterAndSchema(ctx)
+	updatable, err := plan.GetUpdatable(n.Child)
 	if err != nil {
 		return nil, err
 	}
+	updater := updatable.Updater(ctx)
 
 	iter, err := b.buildNodeExec(ctx, n.Child, row)
 	if err != nil {
 		return nil, err
 	}
 
-	return newUpdateIter(iter, schema, updater, n.Checks(), n.Ignore, n.Returning, n.Schema()), nil
+	return newUpdateIter(iter, updatable.Schema(), updater, n.Checks(), n.Ignore, n.Returning, n.Schema()), nil
 }
 
 func (b *BaseBuilder) buildDropForeignKey(ctx *sql.Context, n *plan.DropForeignKey, row sql.Row) (sql.RowIter, error) {
@@ -418,7 +419,7 @@ func (b *BaseBuilder) buildUpdateJoin(ctx *sql.Context, n *plan.UpdateJoin, row 
 	return &updateJoinIter{
 		updateSourceIter: ji,
 		joinSchema:       n.Child.(*plan.UpdateSource).Child.Schema(),
-		updaters:         n.Updaters,
+		updaters:         n.GetUpdaters(ctx),
 		caches:           make(map[string]sql.KeyValueCache),
 		disposals:        make(map[string]sql.DisposeFunc),
 		joinNode:         n.Child.(*plan.UpdateSource).Child,
