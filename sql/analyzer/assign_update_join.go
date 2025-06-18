@@ -34,12 +34,12 @@ func modifyUpdateExprsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 			return n, transform.SameTree, nil
 		}
 
-		updatables, err := updatablesByTable(us, jn)
+		updateTargets, err := updateTargetsByTable(us, jn)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
 
-		uj := plan.NewUpdateJoin(updatables, us)
+		uj := plan.NewUpdateJoin(updateTargets, us)
 		ret, err := n.WithChildren(uj)
 		if err != nil {
 			return nil, transform.SameTree, err
@@ -52,11 +52,11 @@ func modifyUpdateExprsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 }
 
 // rowUpdatersByTable maps a set of tables to their RowUpdater objects.
-func updatablesByTable(node sql.Node, ij sql.Node) (map[string]sql.UpdatableTable, error) {
+func updateTargetsByTable(node sql.Node, ij sql.Node) (map[string]sql.Node, error) {
 	namesOfTableToBeUpdated := getTablesToBeUpdated(node)
 	resolvedTables := getTablesByName(ij)
 
-	updatables := make(map[string]sql.UpdatableTable)
+	updateTargets := make(map[string]sql.Node)
 	for tableToBeUpdated, _ := range namesOfTableToBeUpdated {
 		resolvedTable, ok := resolvedTables[tableToBeUpdated]
 		if !ok {
@@ -76,10 +76,10 @@ func updatablesByTable(node sql.Node, ij sql.Node) (map[string]sql.UpdatableTabl
 			return nil, sql.ErrUnsupportedFeature.New("error: keyless tables unsupported for UPDATE JOIN")
 		}
 
-		updatables[tableToBeUpdated] = updatable
+		updateTargets[tableToBeUpdated] = resolvedTable
 	}
 
-	return updatables, nil
+	return updateTargets, nil
 }
 
 // getTablesToBeUpdated takes a node and looks for the tables to modified by a SetField.

@@ -128,27 +128,33 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
-		fkTbl, ok := updateDest.(sql.ForeignKeyTable)
-		// If foreign keys aren't supported then we return
-		if !ok {
-			return n, transform.SameTree, nil
-		}
+		switch updateDest.(type) {
+		case *plan.UpdatableJoinTable:
 
-		fkEditor, err := getForeignKeyEditor(ctx, a, fkTbl, cache, fkChain, false)
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-		if fkEditor == nil {
 			return n, transform.SameTree, nil
+		default:
+			fkTbl, ok := updateDest.(sql.ForeignKeyTable)
+			// If foreign keys aren't supported then we return
+			if !ok {
+				return n, transform.SameTree, nil
+			}
+
+			fkEditor, err := getForeignKeyEditor(ctx, a, fkTbl, cache, fkChain, false)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			if fkEditor == nil {
+				return n, transform.SameTree, nil
+			}
+			nn, err := n.WithChildren(&plan.ForeignKeyHandler{
+				Table:        fkTbl,
+				Sch:          updateDest.Schema(),
+				OriginalNode: n.Child,
+				Editor:       fkEditor,
+				AllUpdaters:  fkChain.GetUpdaters(),
+			})
+			return nn, transform.NewTree, err
 		}
-		nn, err := n.WithChildren(&plan.ForeignKeyHandler{
-			Table:        fkTbl,
-			Sch:          updateDest.Schema(),
-			OriginalNode: n.Child,
-			Editor:       fkEditor,
-			AllUpdaters:  fkChain.GetUpdaters(),
-		})
-		return nn, transform.NewTree, err
 	case *plan.DeleteFrom:
 		if plan.IsEmptyTable(n.Child) {
 			return n, transform.SameTree, nil
