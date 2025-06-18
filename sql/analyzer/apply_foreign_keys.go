@@ -130,8 +130,37 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 		}
 		switch updateDest.(type) {
 		case *plan.UpdatableJoinTable:
+			updateTargets := updateDest.(*plan.UpdatableJoinTable).UpdateTargets
+			fkHandlerMap := make(map[string]sql.Node, len(updateTargets))
+			for tableName, updateTarget := range updateTargets {
+				fkHandlerMap[tableName] = updateTarget
+				updateDest, err := plan.GetUpdatable(updateTarget)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
 
-			return n, transform.SameTree, nil
+				fkTbl, ok := updateDest.(sql.ForeignKeyTable)
+				if !ok {
+					continue
+				}
+				fkEditor, err := getForeignKeyEditor(ctx, a, fkTbl, cache, fkChain, false)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+				if fkEditor == nil {
+					continue
+				}
+				fkHandlerMap[tableName] = &plan.ForeignKeyHandler{
+					Table:        fkTbl,
+					Sch:          updateDest.Schema(),
+					OriginalNode: updateTarget,
+					Editor:       fkEditor,
+					AllUpdaters:  fkChain.GetUpdaters(),
+				}
+			}
+			uj := plan.NewUpdateJoin(fkHandlerMap, n.Child.(*plan.UpdateJoin).Child)
+			nn, err := n.WithChildren(uj)
+			return nn, transform.NewTree, err
 		default:
 			fkTbl, ok := updateDest.(sql.ForeignKeyTable)
 			// If foreign keys aren't supported then we return
