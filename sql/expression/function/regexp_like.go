@@ -34,8 +34,9 @@ type RegexpLike struct {
 	Pattern sql.Expression
 	Flags   sql.Expression
 
+	cacheVal    bool
 	cachedVal   any
-	cacheable   bool
+	cacheRegex  bool
 	re          regex.Regex
 	compileOnce sync.Once
 	compileErr  error
@@ -136,12 +137,13 @@ func (r *RegexpLike) String() string {
 // compile handles compilation of the regex.
 func (r *RegexpLike) compile(ctx *sql.Context, row sql.Row) {
 	r.compileOnce.Do(func() {
-		r.cacheable = canBeCached(r.Text, r.Pattern, r.Flags)
-		if r.cacheable {
+		r.cacheRegex = canBeCached(r.Pattern, r.Flags)
+		r.cacheVal = r.cacheRegex && canBeCached(r.Text)
+		if r.cacheRegex {
 			r.re, r.compileErr = compileRegex(ctx, r.Pattern, r.Text, r.Flags, r.FunctionName(), row)
 		}
 	})
-	if !r.cacheable {
+	if !r.cacheRegex {
 		if r.re != nil {
 			if r.compileErr = r.re.Close(); r.compileErr != nil {
 				return
@@ -199,7 +201,7 @@ func (r *RegexpLike) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		outVal = int8(0)
 	}
 
-	if r.cacheable {
+	if r.cacheVal {
 		r.cachedVal = outVal
 	}
 	return outVal, nil
