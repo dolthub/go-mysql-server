@@ -139,9 +139,9 @@ func (r *RegexpReplace) Resolved() bool {
 
 // WithChildren implements the sql.Expression interface.
 func (r *RegexpReplace) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	required := 3
+	required := 5
 	if r.Flags != nil {
-		required = 4
+		required = 6
 	}
 	if len(children) != required {
 		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), required)
