@@ -127,7 +127,7 @@ func (n *HashLookup) GetHashKey(ctx *sql.Context, e sql.Expression, row sql.Row)
 		return nil, err
 	}
 	if s, ok := key.([]interface{}); ok {
-		return hash.HashOf(ctx, n.Schema(), s)
+		return hash.HashOf(ctx, nil, s)
 	}
 	// byte slices are not hashable
 	if k, ok := key.([]byte); ok {
