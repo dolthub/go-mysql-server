@@ -482,8 +482,6 @@ var UpdateScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				// TODO: Foreign key constraints are not honored for UDPATE ... JOIN statements
-				Skip:        true,
 				Query:       "UPDATE orders o JOIN customers c ON o.customer_id = c.id SET o.customer_id = 123 where o.customer_id != 1;",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
@@ -510,16 +508,12 @@ var UpdateScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				// TODO: Foreign key constraints are not honored for UDPATE ... JOIN statements
-				Skip: true,
 				Query: `UPDATE child1 c1
 						JOIN child2 c2 ON c1.id = 10 AND c2.id = 20
 						SET c1.p1_id = 999, c2.p2_id = 3;`,
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
-				// TODO: Foreign key constraints are not honored for UDPATE ... JOIN statements
-				Skip: true,
 				Query: `UPDATE child1 c1
 						JOIN child2 c2 ON c1.id = 10 AND c2.id = 20
 						SET c1.p1_id = 3, c2.p2_id = 999;`,

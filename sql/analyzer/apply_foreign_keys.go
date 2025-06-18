@@ -138,50 +138,29 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
-
-				fkTbl, ok := updateDest.(sql.ForeignKeyTable)
-				if !ok {
-					continue
-				}
-				fkEditor, err := getForeignKeyEditor(ctx, a, fkTbl, cache, fkChain, false)
+				fkHandler, err :=
+					getForeignKeyHandlerFromUpdateDestination(updateDest, ctx, a, cache, fkChain, updateTarget)
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
-				if fkEditor == nil {
-					continue
-				}
-				fkHandlerMap[tableName] = &plan.ForeignKeyHandler{
-					Table:        fkTbl,
-					Sch:          updateDest.Schema(),
-					OriginalNode: updateTarget,
-					Editor:       fkEditor,
-					AllUpdaters:  fkChain.GetUpdaters(),
+				if fkHandler == nil {
+					fkHandlerMap[tableName] = updateTarget
+				} else {
+					fkHandlerMap[tableName] = fkHandler
 				}
 			}
 			uj := plan.NewUpdateJoin(fkHandlerMap, n.Child.(*plan.UpdateJoin).Child)
 			nn, err := n.WithChildren(uj)
 			return nn, transform.NewTree, err
 		default:
-			fkTbl, ok := updateDest.(sql.ForeignKeyTable)
-			// If foreign keys aren't supported then we return
-			if !ok {
-				return n, transform.SameTree, nil
-			}
-
-			fkEditor, err := getForeignKeyEditor(ctx, a, fkTbl, cache, fkChain, false)
+			fkHandler, err := getForeignKeyHandlerFromUpdateDestination(updateDest, ctx, a, cache, fkChain, n.Child)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			if fkEditor == nil {
+			if fkHandler == nil {
 				return n, transform.SameTree, nil
 			}
-			nn, err := n.WithChildren(&plan.ForeignKeyHandler{
-				Table:        fkTbl,
-				Sch:          updateDest.Schema(),
-				OriginalNode: n.Child,
-				Editor:       fkEditor,
-				AllUpdaters:  fkChain.GetUpdaters(),
-			})
+			nn, err := n.WithChildren(fkHandler)
 			return nn, transform.NewTree, err
 		}
 	case *plan.DeleteFrom:
@@ -478,6 +457,30 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 		}
 	}
 	return fkEditor, nil
+}
+
+func getForeignKeyHandlerFromUpdateDestination(updateDest sql.UpdatableTable, ctx *sql.Context, a *Analyzer,
+	cache *foreignKeyCache, fkChain foreignKeyChain, originalNode sql.Node) (*plan.ForeignKeyHandler, error) {
+	fkTbl, ok := updateDest.(sql.ForeignKeyTable)
+	if !ok {
+		return nil, nil
+	}
+
+	fkEditor, err := getForeignKeyEditor(ctx, a, fkTbl, cache, fkChain, false)
+	if err != nil {
+		return nil, err
+	}
+	if fkEditor == nil {
+		return nil, nil
+	}
+
+	return &plan.ForeignKeyHandler{
+		Table:        fkTbl,
+		Sch:          updateDest.Schema(),
+		OriginalNode: originalNode,
+		Editor:       fkEditor,
+		AllUpdaters:  fkChain.GetUpdaters(),
+	}, nil
 }
 
 // resolveSchemaDefaults resolves the default values for the schema of |table|. This is primarily needed for column

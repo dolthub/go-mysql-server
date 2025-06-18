@@ -25,7 +25,7 @@ type UpdateJoin struct {
 	UnaryNode
 }
 
-// NewUpdateJoin returns an *UpdateJoin node.
+// NewUpdateJoin returns a new *UpdateJoin node.
 func NewUpdateJoin(updateTargets map[string]sql.Node, child sql.Node) *UpdateJoin {
 	return &UpdateJoin{
 		UpdateTargets: updateTargets,
@@ -54,11 +54,6 @@ func (u *UpdateJoin) DebugString() string {
 
 // GetUpdatable returns an updateJoinTable which implements sql.UpdatableTable.
 func (u *UpdateJoin) GetUpdatable() sql.UpdatableTable {
-	// TODO: UpdateJoin can update multiple tables, but this interface only allows for a single table.
-	//       Additionally, updatableJoinTable doesn't implement interfaces that other parts of the code
-	//       expect, so UpdateJoins don't always work correctly. For example, because updatableJoinTable
-	//       doesn't implement ForeignKeyTable, UpdateJoin statements don't enforce foreign key checks.
-	//       We should revamp this function so that we can communicate multiple tables being updated.
 	return &UpdatableJoinTable{
 		UpdateTargets: u.UpdateTargets,
 		joinNode:      u.Child.(*UpdateSource).Child,
@@ -72,10 +67,6 @@ func (u *UpdateJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 
 	return NewUpdateJoin(u.UpdateTargets, children[0]), nil
-}
-
-func (u *UpdateJoin) WithUpdateTargets(updateTargets map[string]sql.Node) *UpdateJoin {
-	return NewUpdateJoin(updateTargets, u.Child)
 }
 
 func (u *UpdateJoin) IsReadOnly() bool {
@@ -103,7 +94,7 @@ func getUpdaters(updateTargets map[string]sql.Node, ctx *sql.Context) (map[strin
 	return updaterMap, nil
 }
 
-// updatableJoinTable manages the update of multiple tables.
+// UpdatableJoinTable manages the update of multiple tables.
 type UpdatableJoinTable struct {
 	UpdateTargets map[string]sql.Node
 	joinNode      sql.Node
