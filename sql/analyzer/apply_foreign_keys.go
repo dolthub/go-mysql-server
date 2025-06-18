@@ -147,6 +147,7 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 				Table:        tbl,
 				Sch:          updateDest.Schema(),
 				OriginalNode: targets[i],
+				Editor:       fkEditor,
 				AllUpdaters:  fkChain.GetUpdaters(),
 			}
 		}
