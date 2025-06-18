@@ -1161,6 +1161,25 @@ var JoinScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		// Since hash.HashOf takes in a sql.Schema to convert and hash keys,
+		//  we need to pass in the right keys.
+		Name: "HashLookups regression test",
+		SetUpScript: []string{
+			"create table t1 (i int primary key, j varchar(1), k int);",
+			"create table t2 (i int primary key, k int);",
+			"insert into t1 values (111111, 'a', 111111);",
+			"insert into t2 values (111111, 111111);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select /*+ HASH_JOIN(t1, t2) */ * from t1 join t2 on t1.i = t2.i and t1.k = t2.k;",
+				Expected: []sql.Row{
+					{111111, "a", 111111, 111111, 111111},
+				},
+			},
+		},
+	},
 }
 
 var LateralJoinScriptTests = []ScriptTest{
