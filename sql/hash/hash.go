@@ -49,7 +49,7 @@ func HashOf(ctx *sql.Context, sch sql.Schema, row sql.Row) (uint64, error) {
 		}
 
 		// TODO: we may not always have the type information available, so we check schema length.
-		//   Then, defer to original behavior
+		//  Then, defer to original behavior
 		if i >= len(sch) || v == nil {
 			_, err := fmt.Fprintf(hash, "%v", v)
 			if err != nil {
@@ -60,8 +60,8 @@ func HashOf(ctx *sql.Context, sch sql.Schema, row sql.Row) (uint64, error) {
 
 		switch typ := sch[i].Type.(type) {
 		case types.ExtendedType:
-			// TODO: this should use types.ExtendedType.SerializeValue, but there are some doltgres conversion issues
-			//   we need to address. Resort to old behavior for now.
+			// TODO: Doltgres follows Postgres conventions which don't align with the expectations of MySQL,
+			//  so we're using the old (probably incorrect) behavior for now
 			_, err = fmt.Fprintf(hash, "%v", v)
 			if err != nil {
 				return 0, err

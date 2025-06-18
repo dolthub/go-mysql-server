@@ -8713,6 +8713,26 @@ where
 		},
 	},
 	{
+		Name: "tinyint column does not restrict IF or IFNULL output",
+		// https://github.com/dolthub/dolt/issues/9321
+		SetUpScript: []string{
+			"create table t0 (c0 tinyint);",
+			"insert into t0 values (null);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select ifnull(t0.c0, 128) as ref0 from t0",
+				Expected: []sql.Row{
+					{128},
+				},
+			},
+			{
+				Query:    "select if(t0.c0 = 1, t0.c0, 128) as ref0 from t0",
+				Expected: []sql.Row{{128}},
+			},
+		},
+	},
+	{
 		Name:    "subquery with case insensitive collation",
 		Dialect: "mysql",
 		SetUpScript: []string{

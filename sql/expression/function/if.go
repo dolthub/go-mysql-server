@@ -89,23 +89,15 @@ func (f *If) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 	}
-	eval, _, err = f.Type().Convert(ctx, eval)
+	if ret, _, err := f.Type().Convert(ctx, eval); err == nil {
+		return ret, nil
+	}
 	return eval, err
 }
 
 // Type implements the Expression interface.
 func (f *If) Type() sql.Type {
-	// if either type is string type, this should be a string type, regardless need to promote
-	typ1 := f.ifTrue.Type()
-	typ2 := f.ifFalse.Type()
-	if types.IsText(typ1) || types.IsText(typ2) {
-		return types.Text
-	}
-
-	if typ1 == types.Null {
-		return typ2.Promote()
-	}
-	return typ1.Promote()
+	return types.GeneralizeTypes(f.ifTrue.Type(), f.ifFalse.Type())
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

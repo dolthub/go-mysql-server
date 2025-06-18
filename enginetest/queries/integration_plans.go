@@ -7148,7 +7148,7 @@ WHERE
 			"                 │   │   └─ 0.5 (decimal(2,1))\n" +
 			"                 │   └─ Eq\n" +
 			"                 │       ├─ nrfj3.YHYLK:6\n" +
-			"                 │       └─ 0 (bigint)\n" +
+			"                 │       └─ 0 (tinyint)\n" +
 			"                 │   THEN 1 (tinyint) ELSE 0 (tinyint) END), nrfj3.T4IBQ:0!null, nrfj3.ECUWU:1!null, nrfj3.GSTQA:2!null, nrfj3.B5OUF:3\n" +
 			"                 ├─ group: nrfj3.T4IBQ:0!null, nrfj3.ECUWU:1!null, nrfj3.GSTQA:2!null\n" +
 			"                 └─ SubqueryAlias\n" +
@@ -8023,7 +8023,7 @@ WHERE
 			"                 │   │   └─ 0.5 (decimal(2,1))\n" +
 			"                 │   └─ Eq\n" +
 			"                 │       ├─ nrfj3.YHYLK:6\n" +
-			"                 │       └─ 0 (bigint)\n" +
+			"                 │       └─ 0 (tinyint)\n" +
 			"                 │   THEN 1 (tinyint) ELSE 0 (tinyint) END), nrfj3.T4IBQ:0!null, nrfj3.ECUWU:1!null, nrfj3.GSTQA:2!null, nrfj3.B5OUF:3\n" +
 			"                 ├─ group: nrfj3.T4IBQ:0!null, nrfj3.ECUWU:1!null, nrfj3.GSTQA:2!null\n" +
 			"                 └─ SubqueryAlias\n" +

@@ -52,30 +52,32 @@ func (f *IfNull) Description() string {
 
 // Eval implements the Expression interface.
 func (f *IfNull) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	t := f.Type()
+
 	left, err := f.LeftChild.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 	if left != nil {
-		return left, nil
+		if ret, _, err := t.Convert(ctx, left); err == nil {
+			return ret, nil
+		}
+		return left, err
 	}
 
 	right, err := f.RightChild.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-	return right, nil
+	if ret, _, err := t.Convert(ctx, right); err == nil {
+		return ret, nil
+	}
+	return right, err
 }
 
 // Type implements the Expression interface.
 func (f *IfNull) Type() sql.Type {
-	if types.IsNull(f.LeftChild) {
-		if types.IsNull(f.RightChild) {
-			return types.Null
-		}
-		return f.RightChild.Type()
-	}
-	return f.LeftChild.Type()
+	return types.GeneralizeTypes(f.LeftChild.Type(), f.RightChild.Type())
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

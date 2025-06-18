@@ -3784,6 +3784,42 @@ end;
 			},
 		},
 	},
+
+	// Invalid triggers
+	{
+		Name: "insert trigger with subquery projections",
+		SetUpScript: []string{
+			"create table t (i int);",
+			"create trigger trig before insert on t for each row begin replace into t select 1; end;",
+			"alter table t add column j int;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create trigger trig",
+				Expected: []sql.Row{
+					{
+						"trig",
+						"",
+						"create trigger trig before insert on t for each row begin replace into t select 1; end",
+						sql.Collation_Default.CharacterSet().String(),
+						sql.Collation_Default.String(),
+						sql.Collation_Default.String(),
+						time.Unix(0, 0).UTC(),
+					},
+				},
+			},
+			{
+				Query:       "insert into t values (1, 2);",
+				ExpectedErr: sql.ErrInsertIntoMismatchValueCount,
+			},
+			{
+				Query: "drop trigger trig;",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+		},
+	},
 }
 
 var TriggerCreateInSubroutineTests = []ScriptTest{
