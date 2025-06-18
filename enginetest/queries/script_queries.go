@@ -8732,6 +8732,22 @@ where
 			},
 		},
 	},
+	{
+		Name:    "subquery with case insensitive collation",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table tbl (t text) collate=utf8mb4_0900_ai_ci;",
+			"insert into tbl values ('abcdef');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select 'AbCdEf' in (select t from tbl);",
+				Expected: []sql.Row{
+					{true},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
