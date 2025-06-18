@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"sync"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -127,7 +128,13 @@ func (n *HashLookup) GetHashKey(ctx *sql.Context, e sql.Expression, row sql.Row)
 		return nil, err
 	}
 	if s, ok := key.([]interface{}); ok {
-		return hash.HashOf(ctx, nil, s)
+		var sch sql.Schema
+		if tup, isTup := e.(*expression.Tuple); isTup {
+			for _, expr := range tup.Children() {
+				sch = append(sch, &sql.Column{Type: expr.Type()})
+			}
+		}
+		return hash.HashOf(ctx, sch, s)
 	}
 	// byte slices are not hashable
 	if k, ok := key.([]byte); ok {
