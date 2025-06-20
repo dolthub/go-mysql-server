@@ -449,7 +449,7 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 }
 
 // getForeignKeyHandlerFromUpdateTarget creates a ForeignKeyHandler from a given update target Node. It is used for
-// applying foreign key constrains to Update nodes
+// applying foreign key constraints to Update nodes
 func getForeignKeyHandlerFromUpdateTarget(updateTarget sql.Node, ctx *sql.Context, a *Analyzer,
 	cache *foreignKeyCache, fkChain foreignKeyChain) (*plan.ForeignKeyHandler, error) {
 	updateDest, err := plan.GetUpdatable(updateTarget)

@@ -52,7 +52,7 @@ func modifyUpdateExprsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 	return n, transform.SameTree, nil
 }
 
-// getUpdateTargetsByTable maps a set of table names to their corresponding update target Node
+// getUpdateTargetsByTable maps a set of table names and aliases to their corresponding update target Node
 func getUpdateTargetsByTable(node sql.Node, ij sql.Node) (map[string]sql.Node, error) {
 	namesOfTableToBeUpdated := getTablesToBeUpdated(node)
 	resolvedTables := getTablesByName(ij)
