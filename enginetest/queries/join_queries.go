@@ -1162,20 +1162,34 @@ var JoinScriptTests = []ScriptTest{
 		},
 	},
 	{
-		// Since hash.HashOf takes in a sql.Schema to convert and hash keys,
-		//  we need to pass in the right keys.
-		Name: "HashLookups regression test",
+		// After this change: https://github.com/dolthub/go-mysql-server/pull/3038
+		// hash.HashOf takes in a sql.Schema to convert and hash keys, so
+		// we need to pass in the schema of the join key.
+		// This tests a bug introduced in that same PR where we incorrectly pass in the entire schema,
+		// resulting in incorrect conversions.
+		Name: "HashLookup on multiple columns with tables with different schemas",
 		SetUpScript: []string{
-			"create table t1 (i int primary key, j varchar(1), k int);",
-			"create table t2 (i int primary key, k int);",
-			"insert into t1 values (111111, 'a', 111111);",
-			"insert into t2 values (111111, 111111);",
+			"create table t1 (i int primary key, k int);",
+			"create table t2 (i int primary key, j varchar(1), k int);",
+			"insert into t1 values (111111, 111111);",
+			"insert into t2 values (111111, 'a', 111111);",
+
+			"create table tt2 (i int primary key, j varchar(128) collate utf8mb4_0900_ai_ci);",
+			"create table tt1 (i int primary key, j varchar(128) collate utf8mb4_0900_ai_ci);",
+			"insert into tt1 values (1, 'ABCDE');",
+			"insert into tt2 values (1, 'abcde');",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "select /*+ HASH_JOIN(t1, t2) */ * from t1 join t2 on t1.i = t2.i and t1.k = t2.k;",
 				Expected: []sql.Row{
-					{111111, "a", 111111, 111111, 111111},
+					{111111, 111111, 111111, "a", 111111},
+				},
+			},
+			{
+				Query: "select /*+ HASH_JOIN(tt1, tt2) */ * from tt1 join tt2 on tt1.i = tt2.i and tt1.j = tt2.j;",
+				Expected: []sql.Row{
+					{1, "ABCDE", 1, "abcde"},
 				},
 			},
 		},
