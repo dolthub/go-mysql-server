@@ -122,22 +122,14 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 		if plan.IsEmptyTable(n.Child) {
 			return n, transform.SameTree, nil
 		}
-		updateDest, err := plan.GetUpdatable(n.Child)
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-		switch updateDest.(type) {
-		case *plan.UpdatableJoinTable:
-			updateTargets := updateDest.(*plan.UpdatableJoinTable).UpdateTargets
+		if n.IsJoin {
+			uj := n.Child.(*plan.UpdateJoin)
+			updateTargets := uj.UpdateTargets
 			fkHandlerMap := make(map[string]sql.Node, len(updateTargets))
 			for tableName, updateTarget := range updateTargets {
 				fkHandlerMap[tableName] = updateTarget
-				updateDest, err := plan.GetUpdatable(updateTarget)
-				if err != nil {
-					return nil, transform.SameTree, err
-				}
 				fkHandler, err :=
-					getForeignKeyHandlerFromUpdateDestination(updateDest, ctx, a, cache, fkChain, updateTarget)
+					getForeignKeyHandlerFromUpdateTarget(updateTarget, ctx, a, cache, fkChain)
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
@@ -147,20 +139,19 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 					fkHandlerMap[tableName] = fkHandler
 				}
 			}
-			uj := plan.NewUpdateJoin(fkHandlerMap, n.Child.(*plan.UpdateJoin).Child)
+			uj = plan.NewUpdateJoin(fkHandlerMap, uj.Child)
 			nn, err := n.WithChildren(uj)
 			return nn, transform.NewTree, err
-		default:
-			fkHandler, err := getForeignKeyHandlerFromUpdateDestination(updateDest, ctx, a, cache, fkChain, n.Child)
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-			if fkHandler == nil {
-				return n, transform.SameTree, nil
-			}
-			nn, err := n.WithChildren(fkHandler)
-			return nn, transform.NewTree, err
 		}
+		fkHandler, err := getForeignKeyHandlerFromUpdateTarget(n.Child, ctx, a, cache, fkChain)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+		if fkHandler == nil {
+			return n, transform.SameTree, nil
+		}
+		nn, err := n.WithChildren(fkHandler)
+		return nn, transform.NewTree, err
 	case *plan.DeleteFrom:
 		if plan.IsEmptyTable(n.Child) {
 			return n, transform.SameTree, nil
@@ -457,10 +448,14 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 	return fkEditor, nil
 }
 
-// getForeignKeyHandlerFromUpdateDestination creates a ForeignKeyHandler from a given UpdatableTable. It's used in
-// applying foreign keys to Update nodes
-func getForeignKeyHandlerFromUpdateDestination(updateDest sql.UpdatableTable, ctx *sql.Context, a *Analyzer,
-	cache *foreignKeyCache, fkChain foreignKeyChain, originalNode sql.Node) (*plan.ForeignKeyHandler, error) {
+// getForeignKeyHandlerFromUpdateTarget creates a ForeignKeyHandler from a given update target Node. It is used for
+// applying foreign key constrains to Update nodes
+func getForeignKeyHandlerFromUpdateTarget(updateTarget sql.Node, ctx *sql.Context, a *Analyzer,
+	cache *foreignKeyCache, fkChain foreignKeyChain) (*plan.ForeignKeyHandler, error) {
+	updateDest, err := plan.GetUpdatable(updateTarget)
+	if err != nil {
+		return nil, err
+	}
 	fkTbl, ok := updateDest.(sql.ForeignKeyTable)
 	if !ok {
 		return nil, nil
@@ -477,7 +472,7 @@ func getForeignKeyHandlerFromUpdateDestination(updateDest sql.UpdatableTable, ct
 	return &plan.ForeignKeyHandler{
 		Table:        fkTbl,
 		Sch:          updateDest.Schema(),
-		OriginalNode: originalNode,
+		OriginalNode: updateTarget,
 		Editor:       fkEditor,
 		AllUpdaters:  fkChain.GetUpdaters(),
 	}, nil

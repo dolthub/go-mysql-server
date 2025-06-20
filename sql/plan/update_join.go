@@ -21,14 +21,14 @@ import (
 )
 
 type UpdateJoin struct {
-	updateTargets map[string]sql.Node
+	UpdateTargets map[string]sql.Node
 	UnaryNode
 }
 
 // NewUpdateJoin returns a new *UpdateJoin node.
 func NewUpdateJoin(updateTargets map[string]sql.Node, child sql.Node) *UpdateJoin {
 	return &UpdateJoin{
-		updateTargets: updateTargets,
+		UpdateTargets: updateTargets,
 		UnaryNode:     UnaryNode{Child: child},
 	}
 }
@@ -55,7 +55,7 @@ func (u *UpdateJoin) DebugString() string {
 // GetUpdatable returns an updateJoinTable which implements sql.UpdatableTable.
 func (u *UpdateJoin) GetUpdatable() sql.UpdatableTable {
 	return &UpdatableJoinTable{
-		UpdateTargets: u.updateTargets,
+		UpdateTargets: u.UpdateTargets,
 		joinNode:      u.Child.(*UpdateSource).Child,
 	}
 }
@@ -66,7 +66,7 @@ func (u *UpdateJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 1)
 	}
 
-	return NewUpdateJoin(u.updateTargets, children[0]), nil
+	return NewUpdateJoin(u.UpdateTargets, children[0]), nil
 }
 
 func (u *UpdateJoin) IsReadOnly() bool {
@@ -79,7 +79,7 @@ func (u *UpdateJoin) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 }
 
 func (u *UpdateJoin) GetUpdaters(ctx *sql.Context) (map[string]sql.RowUpdater, error) {
-	return getUpdaters(u.updateTargets, ctx)
+	return getUpdaters(u.UpdateTargets, ctx)
 }
 
 func getUpdaters(updateTargets map[string]sql.Node, ctx *sql.Context) (map[string]sql.RowUpdater, error) {
