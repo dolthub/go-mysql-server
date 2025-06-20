@@ -33,7 +33,7 @@ var digestPool = sync.Pool{
 // ExprsToSchema converts a list of sql.Expression to a sql.Schema.
 // This is used for functions that use HashOf, but don't already have a schema.
 // The generated schema ONLY contains the types of the expressions without any column names or any other info.
-func ExprsToSchema(exprs... sql.Expression) sql.Schema {
+func ExprsToSchema(exprs ...sql.Expression) sql.Schema {
 	var sch sql.Schema
 	for _, expr := range exprs {
 		sch = append(sch, &sql.Column{Type: expr.Type()})
