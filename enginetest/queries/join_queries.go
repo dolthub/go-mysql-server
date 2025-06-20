@@ -1173,11 +1173,6 @@ var JoinScriptTests = []ScriptTest{
 			"create table t2 (i int primary key, j varchar(1), k int);",
 			"insert into t1 values (111111, 111111);",
 			"insert into t2 values (111111, 'a', 111111);",
-
-			"create table tt2 (i int primary key, j varchar(128) collate utf8mb4_0900_ai_ci);",
-			"create table tt1 (i int primary key, j varchar(128) collate utf8mb4_0900_ai_ci);",
-			"insert into tt1 values (1, 'ABCDE');",
-			"insert into tt2 values (1, 'abcde');",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -1186,8 +1181,19 @@ var JoinScriptTests = []ScriptTest{
 					{111111, 111111, 111111, "a", 111111},
 				},
 			},
+		},
+	},
+	{
+		Name: "HashLookup on multiple columns with collations",
+		SetUpScript: []string{
+			"create table t1 (i int primary key, j varchar(128) collate utf8mb4_0900_ai_ci);",
+			"create table t2 (i int primary key, j varchar(128) collate utf8mb4_0900_ai_ci);",
+			"insert into t1 values (1, 'ABCDE');",
+			"insert into t2 values (1, 'abcde');",
+		},
+		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select /*+ HASH_JOIN(tt1, tt2) */ * from tt1 join tt2 on tt1.i = tt2.i and tt1.j = tt2.j;",
+				Query: "select /*+ HASH_JOIN(t1, t2) */ * from t1 join t2 on t1.i = t2.i and t1.j = t2.j;",
 				Expected: []sql.Row{
 					{1, "ABCDE", 1, "abcde"},
 				},
