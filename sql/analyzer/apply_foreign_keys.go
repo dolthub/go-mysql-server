@@ -122,8 +122,6 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 		if plan.IsEmptyTable(n.Child) {
 			return n, transform.SameTree, nil
 		}
-		// TODO: UPDATE JOIN can update multiple tables. Because updatableJoinTable does not implement
-		//       sql.ForeignKeyTable, we do not currenly support FK checks for UPDATE JOIN statements.
 		updateDest, err := plan.GetUpdatable(n.Child)
 		if err != nil {
 			return nil, transform.SameTree, err
@@ -459,6 +457,8 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 	return fkEditor, nil
 }
 
+// getForeignKeyHandlerFromUpdateDestination creates a ForeignKeyHandler from a given UpdatableTable. It's used in
+// applying foreign keys to Update nodes
 func getForeignKeyHandlerFromUpdateDestination(updateDest sql.UpdatableTable, ctx *sql.Context, a *Analyzer,
 	cache *foreignKeyCache, fkChain foreignKeyChain, originalNode sql.Node) (*plan.ForeignKeyHandler, error) {
 	fkTbl, ok := updateDest.(sql.ForeignKeyTable)

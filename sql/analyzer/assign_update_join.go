@@ -34,6 +34,7 @@ func modifyUpdateExprsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 			return n, transform.SameTree, nil
 		}
 
+		n.IsJoin = true
 		updateTargets, err := getUpdateTargetsByTable(us, jn)
 		if err != nil {
 			return nil, transform.SameTree, err
