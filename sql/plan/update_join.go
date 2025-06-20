@@ -54,8 +54,8 @@ func (u *UpdateJoin) DebugString() string {
 
 // GetUpdatable returns an updateJoinTable which implements sql.UpdatableTable.
 func (u *UpdateJoin) GetUpdatable() sql.UpdatableTable {
-	return &UpdatableJoinTable{
-		UpdateTargets: u.UpdateTargets,
+	return &updatableJoinTable{
+		updateTargets: u.UpdateTargets,
 		joinNode:      u.Child.(*UpdateSource).Child,
 	}
 }
@@ -94,47 +94,47 @@ func getUpdaters(updateTargets map[string]sql.Node, ctx *sql.Context) (map[strin
 	return updaterMap, nil
 }
 
-// UpdatableJoinTable manages the update of multiple tables.
-type UpdatableJoinTable struct {
-	UpdateTargets map[string]sql.Node
+// updatableJoinTable manages the update of multiple tables.
+type updatableJoinTable struct {
+	updateTargets map[string]sql.Node
 	joinNode      sql.Node
 }
 
-var _ sql.UpdatableTable = (*UpdatableJoinTable)(nil)
+var _ sql.UpdatableTable = (*updatableJoinTable)(nil)
 
 // Partitions implements the sql.UpdatableTable interface.
-func (u *UpdatableJoinTable) Partitions(context *sql.Context) (sql.PartitionIter, error) {
+func (u *updatableJoinTable) Partitions(context *sql.Context) (sql.PartitionIter, error) {
 	panic("this method should not be called")
 }
 
 // PartitionsRows implements the sql.UpdatableTable interface.
-func (u *UpdatableJoinTable) PartitionRows(context *sql.Context, partition sql.Partition) (sql.RowIter, error) {
+func (u *updatableJoinTable) PartitionRows(context *sql.Context, partition sql.Partition) (sql.RowIter, error) {
 	panic("this method should not be called")
 }
 
 // Name implements the sql.UpdatableTable interface.
-func (u *UpdatableJoinTable) Name() string {
+func (u *updatableJoinTable) Name() string {
 	panic("this method should not be called")
 }
 
 // String implements the sql.UpdatableTable interface.
-func (u *UpdatableJoinTable) String() string {
+func (u *updatableJoinTable) String() string {
 	panic("this method should not be called")
 }
 
 // Schema implements the sql.UpdatableTable interface.
-func (u *UpdatableJoinTable) Schema() sql.Schema {
+func (u *updatableJoinTable) Schema() sql.Schema {
 	return u.joinNode.Schema()
 }
 
 // Collation implements the sql.Table interface.
-func (u *UpdatableJoinTable) Collation() sql.CollationID {
+func (u *updatableJoinTable) Collation() sql.CollationID {
 	return sql.Collation_Default
 }
 
 // Updater implements the sql.UpdatableTable interface.
-func (u *UpdatableJoinTable) Updater(ctx *sql.Context) sql.RowUpdater {
-	updaters, _ := getUpdaters(u.UpdateTargets, ctx)
+func (u *updatableJoinTable) Updater(ctx *sql.Context) sql.RowUpdater {
+	updaters, _ := getUpdaters(u.updateTargets, ctx)
 	return &updatableJoinUpdater{
 		updaterMap: updaters,
 		schemaMap:  RecreateTableSchemaFromJoinSchema(u.joinNode.Schema()),
