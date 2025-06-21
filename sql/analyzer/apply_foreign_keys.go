@@ -129,7 +129,7 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 			for tableName, updateTarget := range updateTargets {
 				fkHandlerMap[tableName] = updateTarget
 				fkHandler, err :=
-					getForeignKeyHandlerFromUpdateTarget(updateTarget, ctx, a, cache, fkChain)
+					getForeignKeyHandlerFromUpdateTarget(ctx, a, updateTarget, cache, fkChain)
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
@@ -143,7 +143,7 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 			nn, err := n.WithChildren(uj)
 			return nn, transform.NewTree, err
 		}
-		fkHandler, err := getForeignKeyHandlerFromUpdateTarget(n.Child, ctx, a, cache, fkChain)
+		fkHandler, err := getForeignKeyHandlerFromUpdateTarget(ctx, a, n.Child, cache, fkChain)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
@@ -450,7 +450,7 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 
 // getForeignKeyHandlerFromUpdateTarget creates a ForeignKeyHandler from a given update target Node. It is used for
 // applying foreign key constraints to Update nodes
-func getForeignKeyHandlerFromUpdateTarget(updateTarget sql.Node, ctx *sql.Context, a *Analyzer,
+func getForeignKeyHandlerFromUpdateTarget(ctx *sql.Context, a *Analyzer, updateTarget sql.Node,
 	cache *foreignKeyCache, fkChain foreignKeyChain) (*plan.ForeignKeyHandler, error) {
 	updateDest, err := plan.GetUpdatable(updateTarget)
 	if err != nil {
