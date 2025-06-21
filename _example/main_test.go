@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net"
 	"testing"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gocraft/dbr/v2"
@@ -40,6 +41,8 @@ func TestExampleUsersDisabled(t *testing.T) {
 		main()
 	}()
 
+	// Wait for the database to start
+	time.Sleep(1 * time.Second)
 	conn, err := dbr.Open("mysql", fmt.Sprintf("no_user:@tcp(%s:%d)/%s", address, port, dbName), nil)
 	require.NoError(t, err)
 	require.NoError(t, conn.Ping())
@@ -57,7 +60,6 @@ func TestExampleRootUserEnabled(t *testing.T) {
 	go func() {
 		main()
 	}()
-
 	conn, err := dbr.Open("mysql", fmt.Sprintf("no_user:@tcp(%s:%d)/%s", address, port, dbName), nil)
 	require.NoError(t, err)
 	require.ErrorContains(t, conn.Ping(), "User not found")
@@ -78,7 +80,6 @@ func TestExampleLoadedUser(t *testing.T) {
 	go func() {
 		main()
 	}()
-
 	conn, err := dbr.Open("mysql", fmt.Sprintf("no_user:@tcp(%s:%d)/%s", address, port, dbName), nil)
 	require.NoError(t, err)
 	require.ErrorContains(t, conn.Ping(), "User not found")
@@ -103,7 +104,6 @@ func TestIssue1621(t *testing.T) {
 	go func() {
 		main()
 	}()
-
 	conn, err := dbr.Open("mysql",
 		fmt.Sprintf("root:@tcp(localhost:%d)/mydb", port), nil)
 	require.NoError(t, err)
