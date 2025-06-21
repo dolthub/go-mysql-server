@@ -122,32 +122,35 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 		if plan.IsEmptyTable(n.Child) {
 			return n, transform.SameTree, nil
 		}
-		// TODO: UPDATE JOIN can update multiple tables. Because updatableJoinTable does not implement
-		//       sql.ForeignKeyTable, we do not currenly support FK checks for UPDATE JOIN statements.
-		updateDest, err := plan.GetUpdatable(n.Child)
+		if n.IsJoin {
+			uj := n.Child.(*plan.UpdateJoin)
+			updateTargets := uj.UpdateTargets
+			fkHandlerMap := make(map[string]sql.Node, len(updateTargets))
+			for tableName, updateTarget := range updateTargets {
+				fkHandlerMap[tableName] = updateTarget
+				fkHandler, err :=
+					getForeignKeyHandlerFromUpdateTarget(ctx, a, updateTarget, cache, fkChain)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+				if fkHandler == nil {
+					fkHandlerMap[tableName] = updateTarget
+				} else {
+					fkHandlerMap[tableName] = fkHandler
+				}
+			}
+			uj = plan.NewUpdateJoin(fkHandlerMap, uj.Child)
+			nn, err := n.WithChildren(uj)
+			return nn, transform.NewTree, err
+		}
+		fkHandler, err := getForeignKeyHandlerFromUpdateTarget(ctx, a, n.Child, cache, fkChain)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
-		fkTbl, ok := updateDest.(sql.ForeignKeyTable)
-		// If foreign keys aren't supported then we return
-		if !ok {
+		if fkHandler == nil {
 			return n, transform.SameTree, nil
 		}
-
-		fkEditor, err := getForeignKeyEditor(ctx, a, fkTbl, cache, fkChain, false)
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-		if fkEditor == nil {
-			return n, transform.SameTree, nil
-		}
-		nn, err := n.WithChildren(&plan.ForeignKeyHandler{
-			Table:        fkTbl,
-			Sch:          updateDest.Schema(),
-			OriginalNode: n.Child,
-			Editor:       fkEditor,
-			AllUpdaters:  fkChain.GetUpdaters(),
-		})
+		nn, err := n.WithChildren(fkHandler)
 		return nn, transform.NewTree, err
 	case *plan.DeleteFrom:
 		if plan.IsEmptyTable(n.Child) {
@@ -443,6 +446,36 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 		}
 	}
 	return fkEditor, nil
+}
+
+// getForeignKeyHandlerFromUpdateTarget creates a ForeignKeyHandler from a given update target Node. It is used for
+// applying foreign key constraints to Update nodes
+func getForeignKeyHandlerFromUpdateTarget(ctx *sql.Context, a *Analyzer, updateTarget sql.Node,
+	cache *foreignKeyCache, fkChain foreignKeyChain) (*plan.ForeignKeyHandler, error) {
+	updateDest, err := plan.GetUpdatable(updateTarget)
+	if err != nil {
+		return nil, err
+	}
+	fkTbl, ok := updateDest.(sql.ForeignKeyTable)
+	if !ok {
+		return nil, nil
+	}
+
+	fkEditor, err := getForeignKeyEditor(ctx, a, fkTbl, cache, fkChain, false)
+	if err != nil {
+		return nil, err
+	}
+	if fkEditor == nil {
+		return nil, nil
+	}
+
+	return &plan.ForeignKeyHandler{
+		Table:        fkTbl,
+		Sch:          updateDest.Schema(),
+		OriginalNode: updateTarget,
+		Editor:       fkEditor,
+		AllUpdaters:  fkChain.GetUpdaters(),
+	}, nil
 }
 
 // resolveSchemaDefaults resolves the default values for the schema of |table|. This is primarily needed for column

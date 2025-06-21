@@ -416,10 +416,14 @@ func (b *BaseBuilder) buildUpdateJoin(ctx *sql.Context, n *plan.UpdateJoin, row 
 		return nil, err
 	}
 
+	updaters, err := n.GetUpdaters(ctx)
+	if err != nil {
+		return nil, err
+	}
 	return &updateJoinIter{
 		updateSourceIter: ji,
 		joinSchema:       n.Child.(*plan.UpdateSource).Child.Schema(),
-		updaters:         n.Updaters,
+		updaters:         updaters,
 		caches:           make(map[string]sql.KeyValueCache),
 		disposals:        make(map[string]sql.DisposeFunc),
 		joinNode:         n.Child.(*plan.UpdateSource).Child,
