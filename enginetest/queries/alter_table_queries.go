@@ -135,7 +135,7 @@ var AlterTableScripts = []ScriptTest{
 			{
 				Query: "SELECT * FROM information_schema.CHECK_CONSTRAINTS",
 				Expected: []sql.Row{
-					{"def", "mydb", "v1gt0", "(v1 > 0)"},
+					{"def", "mydb", "v1gt0", "(`v1` > 0)"},
 				},
 			},
 		},
@@ -1864,7 +1864,7 @@ var RenameColumnScripts = []ScriptTest{
 				Query: `SELECT TC.CONSTRAINT_NAME, CC.CHECK_CLAUSE, TC.ENFORCED 
 FROM information_schema.TABLE_CONSTRAINTS TC, information_schema.CHECK_CONSTRAINTS CC 
 WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'mytable' AND TC.TABLE_SCHEMA = CC.CONSTRAINT_SCHEMA AND TC.CONSTRAINT_NAME = CC.CONSTRAINT_NAME AND TC.CONSTRAINT_TYPE = 'CHECK';`,
-				Expected: []sql.Row{{"test_check", "(i2 < 12345)", "YES"}},
+				Expected: []sql.Row{{"test_check", "(`i2` < 12345)", "YES"}},
 			},
 		},
 	},
