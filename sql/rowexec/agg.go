@@ -16,14 +16,13 @@ package rowexec
 
 import (
 	"errors"
-	"fmt"
 	"io"
 
-	"github.com/cespare/xxhash/v2"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
-	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/hash"
 )
 
 type groupByIter struct {
@@ -238,47 +237,29 @@ func (i *groupByGroupingIter) Dispose() {
 	}
 }
 
-func groupingKey(
-	ctx *sql.Context,
-	exprs []sql.Expression,
-	row sql.Row,
-) (uint64, error) {
-	hash := xxhash.New()
+func groupingKey(ctx *sql.Context, exprs []sql.Expression, row sql.Row) (uint64, error) {
+	var keyRow = make(sql.Row, len(exprs))
+	var keySch = make(sql.Schema, len(exprs))
 	for i, expr := range exprs {
 		v, err := expr.Eval(ctx, row)
 		if err != nil {
 			return 0, err
 		}
 
-		if i > 0 {
-			// separate each expression in the grouping key with a nil byte
-			if _, err = hash.Write([]byte{0}); err != nil {
-				return 0, err
+		// TODO: this should be moved into hash.HashOf
+		typ := expr.Type()
+		if extTyp, isExtTyp := typ.(types.ExtendedType); isExtTyp {
+			val, vErr := extTyp.SerializeValue(ctx, v)
+			if vErr != nil {
+				return 0, vErr
 			}
+			v = string(val)
 		}
 
-		extendedType, isExtendedType := expr.Type().(types.ExtendedType)
-		stringType, isStringType := expr.Type().(sql.StringType)
-
-		if isExtendedType && v != nil {
-			bytes, err := extendedType.SerializeValue(ctx, v)
-			if err == nil {
-				_, err = fmt.Fprint(hash, string(bytes))
-			}
-		} else if isStringType && v != nil {
-			v, err = types.ConvertToString(ctx, v, stringType, nil)
-			if err == nil {
-				err = stringType.Collation().WriteWeightString(hash, v.(string))
-			}
-		} else {
-			_, err = fmt.Fprintf(hash, "%v", v)
-		}
-		if err != nil {
-			return 0, err
-		}
+		keyRow[i] = v
+		keySch[i] = &sql.Column{Type: typ}
 	}
-
-	return hash.Sum64(), nil
+	return hash.HashOf(ctx, keySch, keyRow)
 }
 
 func newAggregationBuffer(expr sql.Expression) (sql.AggregationBuffer, error) {

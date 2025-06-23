@@ -36,8 +36,8 @@ type RegexpSubstr struct {
 	Flags      sql.Expression
 
 	cachedVal   any
-	cacheRegex  bool
 	cacheVal    bool
+	cacheRegex  bool
 	re          regex.Regex
 	compileOnce sync.Once
 	compileErr  error
@@ -154,8 +154,8 @@ func (r *RegexpSubstr) String() string {
 // compile handles compilation of the regex.
 func (r *RegexpSubstr) compile(ctx *sql.Context, row sql.Row) {
 	r.compileOnce.Do(func() {
-		r.cacheRegex = canBeCached(r.Text, r.Pattern, r.Flags)
-		r.cacheVal = canBeCached(r.Text, r.Pattern, r.Position, r.Occurrence, r.Flags)
+		r.cacheRegex = canBeCached(r.Pattern, r.Flags)
+		r.cacheVal = r.cacheRegex && canBeCached(r.Text, r.Position, r.Occurrence)
 		if r.cacheRegex {
 			r.re, r.compileErr = compileRegex(ctx, r.Pattern, r.Text, r.Flags, r.FunctionName(), row)
 		}

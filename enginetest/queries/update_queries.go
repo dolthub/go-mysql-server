@@ -24,7 +24,7 @@ import (
 	"github.com/dolthub/vitess/go/mysql"
 )
 
-var UpdateTests = []WriteQueryTest{
+var UpdateWriteQueryTests = []WriteQueryTest{
 	{
 		WriteQuery:          "UPDATE mytable SET s = 'updated';",
 		ExpectedWriteResult: []sql.Row{{NewUpdateResult(3, 3)}},
@@ -466,6 +466,103 @@ var UpdateTests = []WriteQueryTest{
 			sql.NewRow(1, "updated 1"),
 			sql.NewRow(2, "updated 2"),
 			sql.NewRow(3, "third row"),
+		},
+	},
+}
+
+var UpdateScriptTests = []ScriptTest{
+	{
+		Dialect: "mysql",
+		Name:    "UPDATE join – single table, with FK constraint",
+		SetUpScript: []string{
+			"CREATE TABLE customers (id INT PRIMARY KEY, name TEXT);",
+			"CREATE TABLE orders (id INT PRIMARY KEY, customer_id INT, amount INT, FOREIGN KEY (customer_id) REFERENCES customers(id));",
+			"INSERT INTO customers VALUES (1, 'Alice'), (2, 'Bob');",
+			"INSERT INTO orders VALUES (101, 1, 50), (102, 2, 75);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "UPDATE orders o JOIN customers c ON o.customer_id = c.id SET o.customer_id = 123 where o.customer_id != 1;",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query: "SELECT * FROM orders;",
+				Expected: []sql.Row{
+					{101, 1, 50}, {102, 2, 75},
+				},
+			},
+		},
+	},
+	{
+		Dialect: "mysql",
+		Name:    "UPDATE join – multiple tables, with FK constraint",
+		SetUpScript: []string{
+			"CREATE TABLE parent1 (id INT PRIMARY KEY);",
+			"CREATE TABLE parent2 (id INT PRIMARY KEY);",
+			"CREATE TABLE child1 (id INT PRIMARY KEY, p1_id INT, FOREIGN KEY (p1_id) REFERENCES parent1(id));",
+			"CREATE TABLE child2 (id INT PRIMARY KEY, p2_id INT, FOREIGN KEY (p2_id) REFERENCES parent2(id));",
+			"INSERT INTO parent1 VALUES (1), (3);",
+			"INSERT INTO parent2 VALUES (1), (3);",
+			"INSERT INTO child1 VALUES (10, 1);",
+			"INSERT INTO child2 VALUES (20, 1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `UPDATE child1 c1
+						JOIN child2 c2 ON c1.id = 10 AND c2.id = 20
+						SET c1.p1_id = 999, c2.p2_id = 3;`,
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query: `UPDATE child1 c1
+						JOIN child2 c2 ON c1.id = 10 AND c2.id = 20
+						SET c1.p1_id = 3, c2.p2_id = 999;`,
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query:    "SELECT * FROM child1;",
+				Expected: []sql.Row{{10, 1}},
+			},
+			{
+				Query:    "SELECT * FROM child2;",
+				Expected: []sql.Row{{20, 1}},
+			},
+		},
+	},
+	{
+		Dialect: "mysql",
+		Name:    "UPDATE join – multiple tables, with trigger",
+		SetUpScript: []string{
+			"CREATE TABLE a (id INT PRIMARY KEY, x INT);",
+			"CREATE TABLE b (id INT PRIMARY KEY, y INT);",
+			"CREATE TABLE logbook (entry TEXT);",
+			`CREATE TRIGGER trig_a AFTER UPDATE ON a FOR EACH ROW
+		 BEGIN
+		   INSERT INTO logbook VALUES ('a updated');
+		 END;`,
+			`CREATE TRIGGER trig_b AFTER UPDATE ON b FOR EACH ROW
+		 BEGIN
+		   INSERT INTO logbook VALUES ('b updated');
+		 END;`,
+			"INSERT INTO a VALUES (5, 100);",
+			"INSERT INTO b VALUES (6, 200);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `UPDATE a
+					JOIN b ON a.id = 5 AND b.id = 6
+					SET a.x = 101, b.y = 201;`,
+			},
+			{
+				// TODO: UPDATE ... JOIN does not properly apply triggers when multiple tables are being updated,
+				//       and will currently only apply triggers from one of the tables.
+				Skip:  true,
+				Query: "SELECT * FROM logbook ORDER BY entry;",
+				Expected: []sql.Row{
+					{"a updated"},
+					{"b updated"},
+				},
+			},
 		},
 	},
 }

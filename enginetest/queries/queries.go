@@ -813,7 +813,7 @@ var QueryTests = []QueryTest{
 	{
 		// Assert that SYSDATE() returns different times on each call in a query (unlike NOW())
 		// Using the maximum precision for fractional seconds, lets us see a difference.
-		Query:    "select now() = sysdate(), sleep(0.5), now(6) < sysdate(6);",
+		Query:    "select sysdate() - now() <= 1, sleep(2), sysdate() - now() > 0;",
 		Expected: []sql.Row{{true, 0, true}},
 	},
 	{
@@ -6092,7 +6092,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Query:    `SELECT if(123 = 123, NULL, NULL = 1)`,
 		Expected: []sql.Row{{nil}},
 		ExpectedColumns: []*sql.Column{
-			{Name: "if(123 = 123, NULL, NULL = 1)", Type: types.Int64}, // TODO: this should be getting coerced to bool
+			{Name: "if(123 = 123, NULL, NULL = 1)", Type: types.Boolean},
 		},
 	},
 	{

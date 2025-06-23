@@ -100,7 +100,7 @@ func deleteToTruncate(ctx *sql.Context, a *Analyzer, deletePlan *plan.DeleteFrom
 		return deletePlan, transform.SameTree, nil
 	}
 
-	triggers, err := loadTriggersFromDb(ctx, a, currentDb)
+	triggers, err := loadTriggersFromDb(ctx, a, currentDb, false)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
