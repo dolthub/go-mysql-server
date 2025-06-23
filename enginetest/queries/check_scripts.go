@@ -329,7 +329,7 @@ CREATE TABLE t4
 	{
 		Name: "check constraints using keywords",
 		SetUpScript: []string{
-			"create table t (`order` int primary key, check(`order` > 0));",
+			"create table t (`order` int primary key, constraint chk check (`order` > 0));",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -351,7 +351,7 @@ CREATE TABLE t4
 			{
 				Query: "show create table t;",
 				Expected: []sql.Row{
-					{"t", "CREATE TABLE `t` (\n  `order` int NOT NULL,\n  PRIMARY KEY (`order`),\n  CONSTRAINT `t_chk_1` CHECK ((`order` > 0))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+					{"t", "CREATE TABLE `t` (\n  `order` int NOT NULL,\n  PRIMARY KEY (`order`),\n  CONSTRAINT `chk` CHECK ((`order` > 0))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 		},
