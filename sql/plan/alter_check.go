@@ -157,7 +157,9 @@ func NewCheckDefinition(ctx *sql.Context, check *sql.CheckConstraint) (*sql.Chec
 	unqualifiedCols, _, err := transform.Expr(check.Expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		gf, ok := e.(*expression.GetField)
 		if ok {
-			return expression.NewGetField(gf.Index(), gf.Type(), gf.Name(), gf.IsNullable()), transform.NewTree, nil
+			newGf := expression.NewGetField(gf.Index(), gf.Type(), gf.Name(), gf.IsNullable())
+			newGf = newGf.WithQuotedNames(sql.GlobalSchemaFormatter, true)
+			return newGf, transform.NewTree, nil
 		}
 		return e, transform.SameTree, nil
 	})
@@ -167,7 +169,7 @@ func NewCheckDefinition(ctx *sql.Context, check *sql.CheckConstraint) (*sql.Chec
 
 	return &sql.CheckDefinition{
 		Name:            check.Name,
-		CheckExpression: fmt.Sprintf("%s", unqualifiedCols),
+		CheckExpression: unqualifiedCols.String(),
 		Enforced:        check.Enforced,
 	}, nil
 }

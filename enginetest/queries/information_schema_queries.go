@@ -1543,10 +1543,10 @@ FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='all_ty
 FROM information_schema.TABLE_CONSTRAINTS TC, information_schema.CHECK_CONSTRAINTS CC 
 WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'checks' AND TC.TABLE_SCHEMA = CC.CONSTRAINT_SCHEMA AND TC.CONSTRAINT_NAME = CC.CONSTRAINT_NAME AND TC.CONSTRAINT_TYPE = 'CHECK';`,
 				Expected: []sql.Row{
-					{"chk1", "(B > 0)", "YES"},
-					{"chk2", "(b > 0)", "NO"},
-					{"chk3", "(B > 1)", "YES"},
-					{"chk4", "(upper(C) = c)", "YES"},
+					{"chk1", "(`B` > 0)", "YES"},
+					{"chk2", "(`b` > 0)", "NO"},
+					{"chk3", "(`B` > 1)", "YES"},
+					{"chk4", "(upper(`C`) = `c`)", "YES"},
 				},
 			},
 			{
@@ -1562,10 +1562,10 @@ WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'checks' AND TC.TABLE_SCHEMA = CC.C
 			{
 				Query: `select * from information_schema.check_constraints where constraint_schema = 'mydb';`,
 				Expected: []sql.Row{
-					{"def", "mydb", "chk1", "(B > 0)"},
-					{"def", "mydb", "chk2", "(b > 0)"},
-					{"def", "mydb", "chk3", "(B > 1)"},
-					{"def", "mydb", "chk4", "(upper(C) = c)"},
+					{"def", "mydb", "chk1", "(`B` > 0)"},
+					{"def", "mydb", "chk2", "(`b` > 0)"},
+					{"def", "mydb", "chk3", "(`B` > 1)"},
+					{"def", "mydb", "chk4", "(upper(`C`) = `c`)"},
 				},
 			},
 			{
