@@ -205,37 +205,29 @@ func TestSingleScript(t *testing.T) {
 	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name:    "Group Concat with Subquery in ORDER BY",
+			Name:    "Group Concat Subquery ORDER BY Additional Edge Cases",
 			Dialect: "mysql",
 			SetUpScript: []string{
-				"CREATE TABLE test_data (id INT PRIMARY KEY, name VARCHAR(50), age INT, category VARCHAR(10))",
-				`INSERT INTO test_data VALUES  
-(1, 'Alice', 25, 'A'),
-(2, 'Bob', 30, 'B'), 
-(3, 'Charlie', 22, 'A'), 
-(4, 'Diana', 28, 'C'), 
-(5, 'Eve', 35, 'B'), 
-(6, 'Frank', 26, 'A')`,
+				"CREATE TABLE complex_test (id INT PRIMARY KEY, name VARCHAR(50), value INT, category VARCHAR(10), created_at DATE)",
+				"INSERT INTO complex_test VALUES (1, 'Alpha', 100, 'X', '2023-01-01')",
+				"INSERT INTO complex_test VALUES (2, 'Beta', 50, 'Y', '2023-01-15')",
+				"INSERT INTO complex_test VALUES (3, 'Gamma', 75, 'X', '2023-02-01')",
+				"INSERT INTO complex_test VALUES (4, 'Delta', 25, 'Z', '2023-02-15')",
+				"INSERT INTO complex_test VALUES (5, 'Epsilon', 90, 'Y', '2023-03-01')",
 			},
 			Assertions: []queries.ScriptTestAssertion{
-				//{
-				//	Query:    "SELECT group_concat(name order by age) from test_data",
-				//	Expected: []sql.Row{},
-				//},
 				{
+					// Test with subquery using aggregate functions with HAVING
 					//Skip:     true,
-					Query:    "SELECT group_concat(name ORDER BY (SELECT sum(t2.age) FROM test_data t2 WHERE t2.age < test_data.age)) FROM test_data",
-					Expected: []sql.Row{},
+					Query:    "SELECT category, GROUP_CONCAT(name ORDER BY (SELECT AVG(value), name FROM complex_test c2 WHERE c2.id <= complex_test.id HAVING AVG(value) > 50) DESC) FROM complex_test GROUP BY category ORDER BY category",
+					Expected: []sql.Row{{"X", "Alpha,Gamma"}, {"Y", "Beta,Epsilon"}, {"Z", "Delta"}},
 				},
-				//{
-				//	Skip:     true,
-				//	Query:    "SELECT group_concat(name ORDER BY (SELECT AVG(age) FROM test_data t2 WHERE t2.category = test_data.category), id) FROM test_data;",
-				//	Expected: []sql.Row{{"Alice,Charlie,Frank,Diana,Bob,Eve"}},
-				//},
-				//{
-				//	Query:    "SELECT category, group_concat(name ORDER BY (SELECT MAX(age) FROM test_data t2 WHERE t2.id <= test_data.id)) FROM test_data GROUP BY category ORDER BY category",
-				//	Expected: []sql.Row{{"A", "Alice,Charlie,Frank"}, {"B", "Bob,Eve"}, {"C", "Diana"}},
-				//},
+				{
+					// Test with nested subqueries
+					Skip:     true,
+					Query:    "SELECT GROUP_CONCAT(name ORDER BY (SELECT COUNT(*) FROM complex_test c2 WHERE c2.value > (SELECT MIN(value) FROM complex_test c3 WHERE c3.category = complex_test.category))) FROM complex_test",
+					Expected: []sql.Row{{"Gamma,Alpha,Epsilon,Beta,Delta"}},
+				},
 			},
 		},
 	}
