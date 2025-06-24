@@ -202,24 +202,40 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name:        "AS OF propagates to nested CALLs",
-			SetUpScript: []string{},
+			Name:    "Group Concat with Subquery in ORDER BY",
+			Dialect: "mysql",
+			SetUpScript: []string{
+				"CREATE TABLE test_data (id INT PRIMARY KEY, name VARCHAR(50), age INT, category VARCHAR(10))",
+				`INSERT INTO test_data VALUES  
+(1, 'Alice', 25, 'A'),
+(2, 'Bob', 30, 'B'), 
+(3, 'Charlie', 22, 'A'), 
+(4, 'Diana', 28, 'C'), 
+(5, 'Eve', 35, 'B'), 
+(6, 'Frank', 26, 'A')`,
+			},
 			Assertions: []queries.ScriptTestAssertion{
+				//{
+				//	Query:    "SELECT group_concat(name order by age) from test_data",
+				//	Expected: []sql.Row{},
+				//},
 				{
-					Query: "create procedure create_proc() create table t (i int primary key, j int);",
-					Expected: []sql.Row{
-						{types.NewOkResult(0)},
-					},
+					//Skip:     true,
+					Query:    "SELECT group_concat(name ORDER BY (SELECT sum(t2.age) FROM test_data t2 WHERE t2.age < test_data.age)) FROM test_data",
+					Expected: []sql.Row{},
 				},
-				{
-					Query: "call create_proc()",
-					Expected: []sql.Row{
-						{types.NewOkResult(0)},
-					},
-				},
+				//{
+				//	Skip:     true,
+				//	Query:    "SELECT group_concat(name ORDER BY (SELECT AVG(age) FROM test_data t2 WHERE t2.category = test_data.category), id) FROM test_data;",
+				//	Expected: []sql.Row{{"Alice,Charlie,Frank,Diana,Bob,Eve"}},
+				//},
+				//{
+				//	Query:    "SELECT category, group_concat(name ORDER BY (SELECT MAX(age) FROM test_data t2 WHERE t2.id <= test_data.id)) FROM test_data GROUP BY category ORDER BY category",
+				//	Expected: []sql.Row{{"A", "Alice,Charlie,Frank"}, {"B", "Bob,Eve"}, {"C", "Diana"}},
+				//},
 			},
 		},
 	}
@@ -232,8 +248,8 @@ func TestSingleScript(t *testing.T) {
 			panic(err)
 		}
 
-		//engine.EngineAnalyzer().Debug = true
-		//engine.EngineAnalyzer().Verbose = true
+		engine.EngineAnalyzer().Debug = true
+		engine.EngineAnalyzer().Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}

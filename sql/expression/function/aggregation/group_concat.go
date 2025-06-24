@@ -153,6 +153,40 @@ func (g *GroupConcat) String() string {
 	return sb.String()
 }
 
+func (g *GroupConcat) DebugString() string {
+	sb := strings.Builder{}
+	sb.WriteString("group_concat(")
+	if g.distinct != "" {
+		sb.WriteString(fmt.Sprintf("distinct %s", g.distinct))
+	}
+
+	if g.selectExprs != nil {
+		var exprs = make([]string, len(g.selectExprs))
+		for i, expr := range g.selectExprs {
+			exprs[i] = sql.DebugString(expr)
+		}
+
+		sb.WriteString(strings.Join(exprs, ", "))
+	}
+
+	if len(g.sf) > 0 {
+		sb.WriteString(" order by ")
+		for i, ob := range g.sf {
+			if i > 0 {
+				sb.WriteString(", ")
+			}
+			sb.WriteString(sql.DebugString(ob))
+		}
+	}
+
+	sb.WriteString(" separator ")
+	sb.WriteString(fmt.Sprintf("'%s'", g.separator))
+
+	sb.WriteString(")")
+
+	return sb.String()
+}
+
 // Type implements the Expression interface.
 // cc: https://dev.mysql.com/doc/refman/8.0/en/aggregate-functions.html#function_group-concat for explanations
 // on return type.
@@ -193,6 +227,12 @@ func (g *GroupConcat) WithChildren(children ...sql.Expression) (sql.Expression, 
 	orderByExpr := children[:len(g.sf)]
 
 	return NewGroupConcat(g.distinct, g.sf.FromExpressions(orderByExpr...), g.separator, children[sortFieldMarker:], g.maxLen), nil
+}
+
+// GetSelectExprs returns the select expressions
+// TODO: just expose the member variable
+func (g *GroupConcat) GetSelectExprs() []sql.Expression {
+	return g.selectExprs
 }
 
 type groupConcatBuffer struct {
@@ -257,7 +297,8 @@ func (g *groupConcatBuffer) Update(ctx *sql.Context, originalRow sql.Row) error 
 
 	// Append the current value to the end of the row. We want to preserve the row's original structure for
 	// for sort ordering in the final step.
-	g.rows = append(g.rows, append(originalRow, nil, vs))
+	// TODO: why nil spacer?
+	g.rows = append(g.rows, append(originalRow, vs))
 
 	return nil
 }

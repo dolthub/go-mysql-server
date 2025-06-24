@@ -2775,12 +2775,12 @@ CREATE TABLE tab3 (
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Skip:     true,
+				//Skip:     true,
 				Query:    "SELECT category, group_concat(name ORDER BY (SELECT COUNT(*) FROM test_data t2 WHERE t2.category = test_data.category AND t2.age < test_data.age)) FROM test_data GROUP BY category ORDER BY category",
 				Expected: []sql.Row{{"A", "Charlie,Alice,Frank"}, {"B", "Bob,Eve"}, {"C", "Diana"}},
 			},
 			{
-				Skip:     true,
+				//Skip:     true,
 				Query:    "SELECT group_concat(name ORDER BY (SELECT AVG(age) FROM test_data t2 WHERE t2.category = test_data.category), id) FROM test_data;",
 				Expected: []sql.Row{{"Alice,Charlie,Frank,Diana,Bob,Eve"}},
 			},
@@ -2804,22 +2804,22 @@ CREATE TABLE tab3 (
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Skip:     true,
+				//Skip:     true,
 				Query:    "SELECT category_id, GROUP_CONCAT(name ORDER BY (SELECT rating FROM suppliers WHERE suppliers.id = products.supplier_id) DESC, id ASC) FROM products GROUP BY category_id ORDER BY category_id",
 				Expected: []sql.Row{{1, "Laptop,Keyboard,Mouse,Monitor"}, {2, "Chair,Desk"}},
 			},
 			{
-				Skip:     true,
+				//Skip:     true,
 				Query:    "SELECT GROUP_CONCAT(name ORDER BY (SELECT COUNT(*) FROM products p2 WHERE p2.price < products.price), id) FROM products",
 				Expected: []sql.Row{{"Mouse,Keyboard,Chair,Monitor,Desk,Laptop"}},
 			},
 			{
-				Skip:     true,
+				//Skip:     true,
 				Query:    "SELECT category_id, GROUP_CONCAT(DISTINCT supplier_id ORDER BY (SELECT rating FROM suppliers WHERE suppliers.id = products.supplier_id)) FROM products GROUP BY category_id",
 				Expected: []sql.Row{{1, "2,1"}, {2, "3"}},
 			},
 			{
-				Skip:     true,
+				//Skip:     true,
 				Query:    "SELECT GROUP_CONCAT(name ORDER BY (SELECT priority FROM categories WHERE categories.id = products.category_id), price) FROM products",
 				Expected: []sql.Row{{"Mouse,Keyboard,Monitor,Laptop,Chair,Desk"}},
 			},
@@ -2905,13 +2905,13 @@ CREATE TABLE tab3 (
 			},
 			{
 				// Test with subquery using LIMIT
-				Skip:     true,
+				//Skip:     true,
 				Query:    "SELECT GROUP_CONCAT(data ORDER BY (SELECT weight FROM perf_test p2 WHERE p2.id = perf_test.id LIMIT 1)) FROM perf_test",
 				Expected: []sql.Row{{"C,A,E,B,D"}},
 			},
 			{
 				// Test with very small decimal differences in ORDER BY subquery
-				Skip:     true,
+				//Skip:     true,
 				Query:    "SELECT GROUP_CONCAT(data ORDER BY (SELECT weight + 0.001 * perf_test.id FROM perf_test p2 WHERE p2.id = perf_test.id)) FROM perf_test",
 				Expected: []sql.Row{{"C,A,E,B,D"}},
 			},
