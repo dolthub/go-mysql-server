@@ -554,9 +554,6 @@ var UpdateScriptTests = []ScriptTest{
 					SET a.x = 101, b.y = 201;`,
 			},
 			{
-				// TODO: UPDATE ... JOIN does not properly apply triggers when multiple tables are being updated,
-				//       and will currently only apply triggers from one of the tables.
-				Skip:  true,
 				Query: "SELECT * FROM logbook ORDER BY entry;",
 				Expected: []sql.Row{
 					{"a updated"},

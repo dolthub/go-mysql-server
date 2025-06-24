@@ -364,25 +364,16 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 	}
 
 	canApplyTriggerExecutor := func(c transform.Context) bool {
+		// Don't double-apply trigger executors to the bodies of triggers. To avoid this, don't apply the trigger if the
+		// parent is a trigger body.
 		if _, ok := c.Parent.(*plan.TriggerExecutor); ok {
-			if c.ChildNum == 1 {
+			if c.ChildNum == 1 { // Right child is the trigger execution logic
 				return false
 			}
 		}
 		return true
 	}
 	return transform.NodeWithCtx(n, canApplyTriggerExecutor, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
-		// Don't double-apply trigger executors to the bodies of triggers. To avoid this, don't apply the trigger if the
-		// parent is a trigger body.
-		// TODO: this won't work for BEGIN END blocks, stored procedures, etc. For those, we need to examine all ancestors,
-		//  not just the immediate parent. Alternately, we could do something like not walk all children of some node types
-		//  (probably better).
-		if _, ok := c.Parent.(*plan.TriggerExecutor); ok {
-			if c.ChildNum == 1 { // Right child is the trigger execution logic
-				return c.Node, transform.SameTree, nil
-			}
-		}
-
 		switch n := c.Node.(type) {
 		case *plan.InsertInto:
 			qFlags.Set(sql.QFlagTrigger)
