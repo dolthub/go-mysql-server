@@ -158,7 +158,15 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 				db = n.Database().Name()
 			}
 		case *plan.Update:
-			affectedTables = append(affectedTables, getTableName(n))
+			if n.IsJoin {
+				uj := n.Child.(*plan.UpdateJoin)
+				updateTargets := uj.UpdateTargets
+				for _, updateTarget := range updateTargets {
+					affectedTables = append(affectedTables, getTableName(updateTarget))
+				}
+			} else {
+				affectedTables = append(affectedTables, getTableName(n))
+			}
 			triggerEvent = plan.UpdateTrigger
 			if n.Database() != "" {
 				db = n.Database()
@@ -355,7 +363,15 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 		}
 	}
 
-	return transform.NodeWithCtx(n, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
+	canApplyTriggerExecutor := func(c transform.Context) bool {
+		if _, ok := c.Parent.(*plan.TriggerExecutor); ok {
+			if c.ChildNum == 1 {
+				return false
+			}
+		}
+		return true
+	}
+	return transform.NodeWithCtx(n, canApplyTriggerExecutor, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		// Don't double-apply trigger executors to the bodies of triggers. To avoid this, don't apply the trigger if the
 		// parent is a trigger body.
 		// TODO: this won't work for BEGIN END blocks, stored procedures, etc. For those, we need to examine all ancestors,
