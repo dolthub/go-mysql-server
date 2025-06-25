@@ -205,31 +205,75 @@ func TestSingleScript(t *testing.T) {
 	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name:    "Group Concat Subquery ORDER BY Additional Edge Cases",
 			Dialect: "mysql",
+			Name:    "UPDATE join – multiple tables, with trigger",
 			SetUpScript: []string{
-				"CREATE TABLE complex_test (id INT PRIMARY KEY, name VARCHAR(50), value INT, category VARCHAR(10), created_at DATE)",
-				"INSERT INTO complex_test VALUES (1, 'Alpha', 100, 'X', '2023-01-01')",
-				"INSERT INTO complex_test VALUES (2, 'Beta', 50, 'Y', '2023-01-15')",
-				"INSERT INTO complex_test VALUES (3, 'Gamma', 75, 'X', '2023-02-01')",
-				"INSERT INTO complex_test VALUES (4, 'Delta', 25, 'Z', '2023-02-15')",
-				"INSERT INTO complex_test VALUES (5, 'Epsilon', 90, 'Y', '2023-03-01')",
+				"create table customers (id int primary key, name text, tier text);",
+				"create table orders (id int primary key, customer_id int, status text);",
+				"create table trigger_log (msg text);",
+				//`CREATE TRIGGER after_orders_update after update on orders for each row
+				//begin
+				//    insert into trigger_log (msg) values(
+				//        concat('Order ', OLD.id, ' status changed from ', OLD.status, ' to ', NEW.status));
+				//end;`,
+				`Create trigger after_customers_update after update on customers for each row
+                    begin
+                        insert into trigger_log (msg) values(
+							concat('Customer ', OLD.id, ' tier changed from ', OLD.tier, ' to ', NEW.tier)
+						);
+                    end;`,
+				"insert into customers values(1, 'Alice', 'silver'), (2, 'Bob', 'gold');",
+				"insert into orders values (101, 1, 'pending'), (102, 2, 'pending');",
+				"update customers c join orders o on c.id = o.customer_id set c.tier = 'platinum', o.status = 'shipped' where o.status = 'pending';",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					// Test with subquery using aggregate functions with HAVING
-					//Skip:     true,
-					Query:    "SELECT category, GROUP_CONCAT(name ORDER BY (SELECT AVG(value), name FROM complex_test c2 WHERE c2.id <= complex_test.id HAVING AVG(value) > 50) DESC) FROM complex_test GROUP BY category ORDER BY category",
-					Expected: []sql.Row{{"X", "Alpha,Gamma"}, {"Y", "Beta,Epsilon"}, {"Z", "Delta"}},
-				},
-				{
-					// Test with nested subqueries
-					Skip:     true,
-					Query:    "SELECT GROUP_CONCAT(name ORDER BY (SELECT COUNT(*) FROM complex_test c2 WHERE c2.value > (SELECT MIN(value) FROM complex_test c3 WHERE c3.category = complex_test.category))) FROM complex_test",
-					Expected: []sql.Row{{"Gamma,Alpha,Epsilon,Beta,Delta"}},
+					Query:    "SELECT * FROM trigger_log order by msg;",
+					Expected: []sql.Row{
+						//{"Customer 1 tier changed from silver to platinum"},
+						//{"Customer 2 tier changed from gold to platinum"},
+						//{"Order 101 status changed from pending to shipped"},
+						//{"Order 102 status changed from pending to shipped"},
+					},
 				},
 			},
 		},
+		//{
+		//	Name:    "Group Concat Subquery ORDER BY Additional Edge Cases",
+		//	Dialect: "mysql",
+		//	SetUpScript: []string{
+		//		"CREATE TABLE complex_test (id INT PRIMARY KEY, name VARCHAR(50), value INT, category VARCHAR(10), created_at DATE);",
+		//		"INSERT INTO complex_test VALUES (1, 'Alpha', 100, 'X', '2023-01-01');",
+		//		"INSERT INTO complex_test VALUES (2, 'Beta', 50, 'Y', '2023-01-15');",
+		//		"INSERT INTO complex_test VALUES (3, 'Gamma', 75, 'X', '2023-02-01');",
+		//		"INSERT INTO complex_test VALUES (4, 'Delta', 25, 'Z', '2023-02-15');",
+		//		"INSERT INTO complex_test VALUES (5, 'Epsilon', 90, 'Y', '2023-03-01');",
+		//	},
+		//	Assertions: []queries.ScriptTestAssertion{
+		//		{
+		//			// Test with subquery using aggregate functions with HAVING
+		//			Skip:        true,
+		//			Query:       "SELECT category, GROUP_CONCAT(name ORDER BY (SELECT AVG(value), name FROM complex_test c2 WHERE c2.id <= complex_test.id HAVING AVG(value) > 50) DESC) FROM complex_test GROUP BY category ORDER BY category",
+		//			ExpectedErr: sql.ErrInvalidOperandColumns,
+		//		},
+		//		{
+		//			// Test with subquery using aggregate functions with HAVING
+		//			Skip:  true,
+		//			Query: "SELECT category, GROUP_CONCAT(name ORDER BY (SELECT AVG(value) FROM complex_test c2 WHERE c2.id <= complex_test.id HAVING AVG(value) > 50) DESC) FROM complex_test GROUP BY category ORDER BY category",
+		//			Expected: []sql.Row{
+		//				{"X", "Alpha,Gamma"},
+		//				{"Y", "Beta,Epsilon"},
+		//				{"Z", "Delta"},
+		//			},
+		//		},
+		//		{
+		//			// Test with nested subqueries
+		//			//Skip:     true,
+		//			Query:    "SELECT GROUP_CONCAT(name ORDER BY (SELECT COUNT(*) FROM complex_test c2 WHERE c2.value > (SELECT MIN(value) FROM complex_test c3 WHERE c3.category = complex_test.category))) FROM complex_test",
+		//			Expected: []sql.Row{{"Gamma,Alpha,Epsilon,Beta,Delta"}},
+		//		},
+		//	},
+		//},
 	}
 
 	for _, test := range scripts {
