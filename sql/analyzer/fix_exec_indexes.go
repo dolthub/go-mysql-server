@@ -16,8 +16,9 @@ package analyzer
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"strings"
+
+	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
