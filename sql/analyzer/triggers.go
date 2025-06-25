@@ -487,9 +487,33 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 					plan.NewSubqueryAlias("new", "", updateSrc.Child),
 				),
 			)
+
+			updateTargets := n.(*plan.Update).Child.(*plan.UpdateJoin).UpdateTargets
+			if proj, isProj := updateSrc.Child.(*plan.Project); isProj {
+				oldExprs := make([]sql.Expression, len(proj.Expressions()))
+				newExprs := make([]sql.Expression, len(proj.Expressions()))
+				for i, expr := range proj.Expressions() {
+					if gf, isGf := expr.(*expression.GetField); isGf {
+						if tbl, ok := updateTargets[gf.Table()]; ok {
+							if tbl.(*plan.ResolvedTable).Name() == trigger.Table.(*plan.ResolvedTable).Name() {
+								oldExprs[i] = gf.WithTable("old")
+								newExprs[i] = gf.WithTable("new")
+								continue
+							}
+						}
+					}
+					oldExprs[i] = expr
+					newExprs[i] = expr
+				}
+				scopeNode.Child = plan.NewCrossJoin(
+					plan.NewProject(oldExprs, proj.Child),
+					plan.NewProject(newExprs, proj.Child),
+				)
+			}
 		}
 		// Triggers are wrapped in prepend nodes, which means that the parent scope is included
 		s := (*plan.Scope)(nil).NewScope(scopeNode).WithMemos(scope.Memo(n).MemoNodes()).WithProcedureCache(scope.ProcedureCache())
+		s.InUpdateJoin = true
 		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, DefaultRuleSelector, qFlags)
 	case sqlparser.DeleteStr:
 		scopeNode := plan.NewProject(

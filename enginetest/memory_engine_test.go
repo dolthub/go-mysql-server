@@ -202,22 +202,37 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name:        "AS OF propagates to nested CALLs",
-			SetUpScript: []string{},
+			Dialect: "mysql",
+			Name:    "UPDATE join – multiple tables, with trigger",
+			SetUpScript: []string{
+				"create table customers (id int primary key, name text, tier text)",
+				"create table orders (id int primary key, customer_id int, status text)",
+				"create table trigger_log (msg text)",
+				`CREATE TRIGGER after_orders_update after update on orders for each row
+				begin
+				  insert into trigger_log (msg) values(
+				      concat('Order ', OLD.id, ' status changed from ', OLD.status, ' to ', NEW.status));
+				end;`,
+				`Create trigger after_customers_update after update on customers for each row
+				   begin
+				       insert into trigger_log (msg) values(
+				           concat('Customer ', OLD.id, ' tier changed from ', OLD.tier, ' to ', NEW.tier));
+				   end;`,
+				"insert into customers values(1, 'Alice', 'silver'), (2, 'Bob', 'gold');",
+				"insert into orders values (101, 1, 'pending'), (102, 2, 'pending');",
+				"update customers c join orders o on c.id = o.customer_id set c.tier = 'platinum', o.status = 'shipped' where o.status = 'pending'",
+			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "create procedure create_proc() create table t (i int primary key, j int);",
+					Query: "SELECT * FROM trigger_log order by msg;",
 					Expected: []sql.Row{
-						{types.NewOkResult(0)},
-					},
-				},
-				{
-					Query: "call create_proc()",
-					Expected: []sql.Row{
-						{types.NewOkResult(0)},
+						{"Customer 1 tier changed from silver to platinum"},
+						{"Customer 2 tier changed from gold to platinum"},
+						{"Order 101 status changed from pending to shipped"},
+						{"Order 102 status changed from pending to shipped"},
 					},
 				},
 			},
@@ -232,8 +247,8 @@ func TestSingleScript(t *testing.T) {
 			panic(err)
 		}
 
-		//engine.EngineAnalyzer().Debug = true
-		//engine.EngineAnalyzer().Verbose = true
+		engine.EngineAnalyzer().Debug = true
+		engine.EngineAnalyzer().Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}

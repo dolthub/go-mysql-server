@@ -46,6 +46,7 @@ type Scope struct {
 	JoinTrees     []string
 
 	inInsertSource bool
+	InUpdateJoin   bool
 }
 
 func (s *Scope) IsEmpty() bool {
@@ -79,6 +80,7 @@ func (s *Scope) NewScope(node sql.Node) *Scope {
 		recursionDepth: s.recursionDepth + 1,
 		Procedures:     s.Procedures,
 		joinSiblings:   s.joinSiblings,
+		InUpdateJoin:   s.InUpdateJoin,
 	}
 }
 

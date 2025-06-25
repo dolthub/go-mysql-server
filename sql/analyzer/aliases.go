@@ -167,6 +167,7 @@ func getTableAliases(n sql.Node, scope *plan.Scope) (TableAliases, error) {
 	var recScope *plan.Scope
 	if !scope.IsEmpty() {
 		recScope = recScope.WithMemos(scope.Memos)
+		recScope.InUpdateJoin = scope.InUpdateJoin
 	}
 
 	aliasFn = func(node sql.Node) bool {
@@ -179,6 +180,9 @@ func getTableAliases(n sql.Node, scope *plan.Scope) (TableAliases, error) {
 			case *plan.RecursiveCte:
 			case sql.NameableNode:
 				analysisErr = passAliases.addUnqualified(at.Name(), t)
+				if scope != nil && scope.InUpdateJoin {
+					analysisErr = nil
+				}
 			case *plan.UnresolvedTable:
 				panic("Table not resolved")
 			default:

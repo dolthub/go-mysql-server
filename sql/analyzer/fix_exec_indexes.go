@@ -735,6 +735,11 @@ func fixExprToScope(e sql.Expression, scopes ...*idxScope) sql.Expression {
 			//  don't have the destination schema, and column references in default values are determined in the build phase)
 
 			idx, _ := newScope.getIdxId(e.Id(), e.String())
+
+			if e.String() == "old.id" {
+				print()
+			}
+
 			if idx >= 0 {
 				return e.WithIndex(idx), transform.NewTree, nil
 			}
