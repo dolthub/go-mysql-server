@@ -87,7 +87,7 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 			break
 		}
 		_, isColDefVal := i.insertExprs[idx].(*sql.ColumnDefaultValue)
-		if row[idx] == nil && types.IsEnum(col.Type) && isColDefVal {
+		if row[idx] == nil && !col.Nullable && types.IsEnum(col.Type) && isColDefVal {
 			row[idx] = 1
 		}
 	}
