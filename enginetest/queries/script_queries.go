@@ -8083,6 +8083,27 @@ where
 		},
 	},
 	{
+		Name:    "ensure that special case does not apply for nullable enums",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (i int primary key, e enum('abc', 'def', 'ghi'));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into t(i) values (1)",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select * from t;",
+				Expected: []sql.Row{
+					{1, nil},
+				},
+			},
+		},
+	},
+	{
 		Name:    "not expression optimization",
 		Dialect: "mysql",
 		SetUpScript: []string{
