@@ -1033,16 +1033,32 @@ var AlterTableScripts = []ScriptTest{
 		Name: "alter table comments are escaped",
 		SetUpScript: []string{
 			"create table t (i int);",
-			`alter table t modify column i int comment "newline \n | return \r | backslash \\ | NUL \0 \x00"`,
-			`alter table t add column j int comment "newline \n | return \r | backslash \\ | NUL \0 \x00"`,
+			`alter table t modify column i int comment "newline \n | return \r | backslash \\ | NUL \0 \x00 | ctrlz \Z \x1A"`,
+			`alter table t add column j int comment "newline \n | return \r | backslash \\ | NUL \0 \x00 | ctrlz \Z \x1A"`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "show create table t",
 				Expected: []sql.Row{{
 					"t",
-					"CREATE TABLE `t` (\n  `i` int COMMENT 'newline \\n | return \\r | backslash \\\\ | NUL \\0 x00'," +
-						"\n  `j` int COMMENT 'newline \\n | return \\r | backslash \\\\ | NUL \\0 x00'\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+					"CREATE TABLE `t` (\n  `i` int COMMENT 'newline \\n | return \\r | backslash \\\\ | NUL \\0 x00 | ctrlz \x1A x1A'," +
+						"\n  `j` int COMMENT 'newline \\n | return \\r | backslash \\\\ | NUL \\0 x00 | ctrlz \x1A x1A'\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "alter table supports non-escaped \\Z",
+		SetUpScript: []string{
+			"create table t (i int);",
+			`alter table t modify column i int comment "ctrlz \Z \\Z"`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n" +
+					"  `i` int COMMENT 'ctrlz \x1A \\\\Z'\n" +
+					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},
