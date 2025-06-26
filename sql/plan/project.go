@@ -26,9 +26,15 @@ import (
 // Project is a projection of certain expression from the children node.
 type Project struct {
 	UnaryNode
-	Projections []sql.Expression
-	CanDefer    bool
-	deps        sql.ColSet
+	// Projections are the expressions to be projected on the row returned by the child node 
+	Projections         []sql.Expression
+	// CanDefer is true when the projection evaluation can be deferred to row spooling, which allows us to avoid a
+	// separate iterator for the project node. 
+	CanDefer            bool
+	// IncludesNestedIters is true when the projection includes nested iterators because of expressions that return 
+	// a RowIter.
+	IncludesNestedIters bool
+	deps                sql.ColSet
 }
 
 var _ sql.Expressioner = (*Project)(nil)
@@ -202,8 +208,16 @@ func (p *Project) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	return &np, nil
 }
 
+// WithCanDefer returns a new Project with the CanDefer field set to the given value.
 func (p *Project) WithCanDefer(canDefer bool) *Project {
 	np := *p
 	np.CanDefer = canDefer
+	return &np
+}
+
+// WithIncludesNestedIters returns a new Project with the IncludesNestedIters field set to the given value.
+func (p *Project) WithIncludesNestedIters(includesNestedIters bool) *Project {
+	np := *p
+	np.IncludesNestedIters = includesNestedIters
 	return &np
 }
