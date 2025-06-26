@@ -219,5 +219,6 @@ func (p *Project) WithCanDefer(canDefer bool) *Project {
 func (p *Project) WithIncludesNestedIters(includesNestedIters bool) *Project {
 	np := *p
 	np.IncludesNestedIters = includesNestedIters
+	np.CanDefer = false
 	return &np
 }

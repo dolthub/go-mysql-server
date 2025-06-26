@@ -25,6 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/hash"
 	"github.com/dolthub/go-mysql-server/sql/iters"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -126,9 +127,19 @@ func (i *offsetIter) Close(ctx *sql.Context) error {
 var _ sql.RowIter = &iters.JsonTableRowIter{}
 
 type ProjectIter struct {
-	projs     []sql.Expression
-	canDefer  bool
-	childIter sql.RowIter
+	projs          []sql.Expression
+	canDefer       bool
+	hasNestedIters bool
+	nestedState    *nestedIterState
+	childIter      sql.RowIter
+}
+
+type nestedIterState struct {
+	normalFields     []sql.Expression
+	nestedIters      []sql.RowIter
+	nestedIterIdxes  []int
+	sourceRow        sql.Row
+	iterEvaluators   []*RowIterEvaluator
 }
 
 func (i *ProjectIter) Next(ctx *sql.Context) (sql.Row, error) {
@@ -136,6 +147,11 @@ func (i *ProjectIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if i.hasNestedIters {
+		return i.ProjectRowWithNestedIters(ctx, i.projs, childRow)
+	}
+
 	return ProjectRow(ctx, i.projs, childRow)
 }
 
@@ -154,6 +170,120 @@ func (i *ProjectIter) CanDefer() bool {
 func (i *ProjectIter) GetChildIter() sql.RowIter {
 	return i.childIter
 }
+
+// ProjectRowWithNestedIters evaluates a set of projections, allowing for nested iterators in the expressions.
+func (i *ProjectIter) ProjectRowWithNestedIters(
+	ctx *sql.Context,
+	projections []sql.Expression,
+	row sql.Row,
+) (sql.Row, error) {
+
+	// For the set of iterators, we return one row each element in the longest of the iterators provided.
+	// Other iterator values will be NULL after they are depleted. All non-iterator fields for the row are returned
+	// identically for each row in the result set.
+	if i.nestedState != nil {
+
+	}
+
+	nestedState := &nestedIterState{
+		sourceRow: row,
+	}
+	
+	// We need a new set of projections, with any iterator-returning expressions replaced by new expressions that will 
+	// return the result of the iteration on each call to Eval. We also need to keep a list of all such iterators, so
+	// that we can tell when they have all finished their iterations.
+	var rowIterEvaluators []*RowIterEvaluator
+	newProjs := make([]sql.Expression, len(projections))
+	for i, proj := range projections {
+		p, _, err := transform.Expr(proj, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			if rie, ok := e.(sql.RowIterExpression); ok {
+				ri, err := rie.EvalRowIter(ctx, row)
+				if err != nil {
+					return nil, false, err
+				}
+
+				evaluator := &RowIterEvaluator{
+					iter: ri,
+				}
+				rowIterEvaluators = append(rowIterEvaluators, evaluator)
+				return evaluator, transform.NewTree, nil
+			}
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		newProjs[i] = p
+	}
+
+	vals, err := ProjectRow(ctx, projections, row)
+	if err != nil {
+		return nil, err
+	}
+
+	nestedState.normalFields = make([]sql.Expression, len(vals))
+	for i, val := range vals {
+		if iter, ok := val.(sql.RowIter); ok {
+			nestedState.nestedIters = append(nestedState.nestedIters, iter)
+			nestedState.nestedIterIdxes = append(nestedState.nestedIterIdxes, i)
+		} else {
+			nestedState.normalFields[i] = projections[i]
+		}
+	}
+
+	i.nestedState = nestedState
+	return i.ProjectRowWithNestedIters(ctx, projections, row)
+}
+
+type RowIterEvaluator struct {
+	iter     sql.RowIter
+	finished bool
+}
+
+func (r RowIterEvaluator) Resolved() bool {
+	return true
+}
+
+func (r RowIterEvaluator) String() string {
+	return "RowIterEvaluator"
+}
+
+func (r RowIterEvaluator) Type() sql.Type {
+	return nil
+}
+
+func (r RowIterEvaluator) IsNullable() bool {
+	return false
+}
+
+func (r *RowIterEvaluator) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	if r.finished {
+		return nil, nil
+	}
+
+	nextRow, err := r.iter.Next(ctx)
+	if err != nil {
+		if errors.Is(err, io.EOF) {
+			r.finished = true
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return nextRow, nil
+}
+
+func (r RowIterEvaluator) Children() []sql.Expression {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (r RowIterEvaluator) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	// TODO implement me
+	panic("implement me")
+}
+
+var _ sql.Expression = (*RowIterEvaluator)(nil)
 
 // ProjectRow evaluates a set of projections.
 func ProjectRow(
