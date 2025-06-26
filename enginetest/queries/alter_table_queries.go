@@ -1041,7 +1041,7 @@ var AlterTableScripts = []ScriptTest{
 				Query: "show create table t",
 				Expected: []sql.Row{{
 					"t",
-					"CREATE TABLE `t` (\n  `i` int COMMENT 'newl ine \\n | return \\r | backslash \\\\ | NUL \\0 x00 | ctrlz \x1A x1A'," +
+					"CREATE TABLE `t` (\n  `i` int COMMENT 'newline \\n | return \\r | backslash \\\\ | NUL \\0 x00 | ctrlz \x1A x1A'," +
 						"\n  `j` int COMMENT 'newline \\n | return \\r | backslash \\\\ | NUL \\0 x00 | ctrlz \x1A x1A'\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
