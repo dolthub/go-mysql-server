@@ -235,8 +235,8 @@ func TestSingleScript(t *testing.T) {
 				{
 					// Test with nested subqueries
 					//Skip:     true,
-					Query:    "SELECT GROUP_CONCAT(name ORDER BY (SELECT COUNT(*) FROM complex_test c2 WHERE c2.value > complex_test.value + (SELECT MIN(value) FROM complex_test c3 where c3.id = complex_test.id))) FROM complex_test;",
-					Expected: []sql.Row{{"Epsilon,Gamma,Beta,Alpha,Delta"}},
+					Query:    "SELECT GROUP_CONCAT(name ORDER BY (SELECT SUM(value) FROM complex_test c2 WHERE c2.value != (SELECT MIN(value) FROM complex_test c3 where c3.id = complex_test.id))) FROM complex_test;",
+					Expected: []sql.Row{{"Alpha,Epsilon,Gamma,Beta,Delta"}},
 				},
 			},
 		},

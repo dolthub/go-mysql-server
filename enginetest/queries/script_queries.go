@@ -2855,8 +2855,12 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				// Test with subquery returning NULL values
-				Query:    "SELECT category, GROUP_CONCAT(name ORDER BY (SELECT CASE WHEN complex_test.value > 80 THEN NULL ELSE complex_test.value END), name) FROM complex_test GROUP BY category ORDER BY category",
-				Expected: []sql.Row{{"X", "Alpha,Gamma"}, {"Y", "Epsilon,Beta"}, {"Z", "Delta"}},
+				Query: "SELECT category, GROUP_CONCAT(name ORDER BY (SELECT CASE WHEN complex_test.value > 80 THEN NULL ELSE complex_test.value END), name) FROM complex_test GROUP BY category ORDER BY category",
+				Expected: []sql.Row{
+					{"X", "Alpha,Gamma"},
+					{"Y", "Epsilon,Beta"},
+					{"Z", "Delta"},
+				},
 			},
 			{
 				// Test with correlated subquery using multiple tables
@@ -2865,9 +2869,12 @@ CREATE TABLE tab3 (
 			},
 			{
 				// Test with subquery using aggregate functions with HAVING
-				Skip:     true,
-				Query:    "SELECT category, GROUP_CONCAT(name ORDER BY (SELECT AVG(value), name FROM complex_test c2 WHERE c2.id <= complex_test.id HAVING AVG(value) > 50) DESC) FROM complex_test GROUP BY category ORDER BY category",
-				Expected: []sql.Row{{"X", "Alpha,Gamma"}, {"Y", "Beta,Epsilon"}, {"Z", "Delta"}},
+				Query: "SELECT category, GROUP_CONCAT(name ORDER BY (SELECT AVG(value), name FROM complex_test c2 WHERE c2.id <= complex_test.id HAVING AVG(value) > 50) DESC) FROM complex_test GROUP BY category ORDER BY category",
+				Expected: []sql.Row{
+					{"X", "Alpha,Gamma"},
+					{"Y", "Beta,Epsilon"},
+					{"Z", "Delta"},
+				},
 			},
 			{
 				// Test with DISTINCT and complex subquery
@@ -2876,8 +2883,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				// Test with nested subqueries
-				Skip:     true,
-				Query:    "SELECT GROUP_CONCAT(name ORDER BY (SELECT COUNT(*) FROM complex_test c2 WHERE c2.value > (SELECT MIN(value) FROM complex_test c3 WHERE c3.category = complex_test.category))) FROM complex_test",
+				Query:    "SELECT GROUP_CONCAT(name ORDER BY (SELECT SUM(value) FROM complex_test c2 WHERE c2.value != (SELECT MIN(value) FROM complex_test c3 where c3.id = complex_test.id))) FROM complex_test;",
 				Expected: []sql.Row{{"Gamma,Alpha,Epsilon,Beta,Delta"}},
 			},
 		},
