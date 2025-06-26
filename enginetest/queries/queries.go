@@ -5687,7 +5687,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 			sql.Collation_Default.CharacterSet().String() +
 			" */",
 		Expected: []sql.Row{
-			{},
+			{types.NewOkResult(0)},
 		},
 	},
 	{
@@ -5695,7 +5695,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 			sql.Collation_Default.String() +
 			"';",
 		Expected: []sql.Row{
-			{},
+			{types.NewOkResult(0)},
 		},
 	},
 	{
