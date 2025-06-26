@@ -2868,8 +2868,13 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{"Alpha,Delta,Epsilon,Beta,Gamma"}},
 			},
 			{
+				// Test with subquery using multiple columns errors
+				Query:       "SELECT category, GROUP_CONCAT(name ORDER BY (SELECT AVG(value), name FROM complex_test c2 WHERE c2.id <= complex_test.id HAVING AVG(value) > 50) DESC) FROM complex_test GROUP BY category ORDER BY category",
+				ExpectedErr: sql.ErrInvalidOperandColumns,
+			},
+			{
 				// Test with subquery using aggregate functions with HAVING
-				Query: "SELECT category, GROUP_CONCAT(name ORDER BY (SELECT AVG(value), name FROM complex_test c2 WHERE c2.id <= complex_test.id HAVING AVG(value) > 50) DESC) FROM complex_test GROUP BY category ORDER BY category",
+				Query: "SELECT category, GROUP_CONCAT(name ORDER BY (SELECT AVG(value) FROM complex_test c2 WHERE c2.id <= complex_test.id HAVING AVG(value) > 50) DESC) FROM complex_test GROUP BY category ORDER BY category",
 				Expected: []sql.Row{
 					{"X", "Alpha,Gamma"},
 					{"Y", "Beta,Epsilon"},
@@ -2884,7 +2889,7 @@ CREATE TABLE tab3 (
 			{
 				// Test with nested subqueries
 				Query:    "SELECT GROUP_CONCAT(name ORDER BY (SELECT SUM(value) FROM complex_test c2 WHERE c2.value != (SELECT MIN(value) FROM complex_test c3 where c3.id = complex_test.id))) FROM complex_test;",
-				Expected: []sql.Row{{"Gamma,Alpha,Epsilon,Beta,Delta"}},
+				Expected: []sql.Row{{"Alpha,Epsilon,Gamma,Beta,Delta"}},
 			},
 		},
 	},
