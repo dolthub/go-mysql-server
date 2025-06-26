@@ -239,7 +239,7 @@ func (d *DateAdd) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// return appropriate type
-	res := types.ValidateTime(delta.Add(dateVal.(time.Time)))
+	res := types.ValidateDatetime(delta.Add(dateVal.(time.Time)))
 	if res == nil {
 		return nil, nil
 	}
@@ -387,7 +387,7 @@ func (d *DateSub) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// return appropriate type
-	res := types.ValidateTime(delta.Sub(dateVal.(time.Time)))
+	res := types.ValidateDatetime(delta.Sub(dateVal.(time.Time)))
 	if res == nil {
 		return nil, nil
 	}
