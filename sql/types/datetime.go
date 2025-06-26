@@ -17,7 +17,6 @@ package types
 import (
 	"context"
 	"fmt"
-	"math"
 	"reflect"
 	"time"
 
@@ -39,17 +38,21 @@ var (
 
 	ErrConvertingToTimeOutOfRange = errors.NewKind("value %q is outside of %v range")
 
-	// datetimeTypeMaxDatetime is the maximum representable Datetime/Date value.
-	datetimeTypeMaxDatetime = time.Date(9999, 12, 31, 23, 59, 59, 999999000, time.UTC)
+	// datetimeTypeMaxDatetime is the maximum representable Datetime/Date value. MYSQL: 9999-12-31 23:59:59.499999 (microseconds)
+	datetimeTypeMaxDatetime = time.Date(9999, 12, 31, 23, 59, 59, 499999000, time.UTC)
 
-	// datetimeTypeMinDatetime is the minimum representable Datetime/Date value.
-	datetimeTypeMinDatetime = time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC)
+	// datetimeTypeMinDatetime is the minimum representable Datetime/Date value. MYSQL: 1000-01-01 00:00:00.000000 (microseconds)
+	datetimeTypeMinDatetime = time.Date(1000, 1, 1, 0, 0, 0, 0, time.UTC)
 
-	// datetimeTypeMaxTimestamp is the maximum representable Timestamp value, which is the maximum 32-bit integer as a Unix time.
-	datetimeTypeMaxTimestamp = time.Unix(math.MaxInt32, 999999000)
+	// datetimeTypeMaxTimestamp is the maximum representable Timestamp value, MYSQL: 2038-01-19 03:14:07.999999 (microseconds)
+	datetimeTypeMaxTimestamp = time.Date(2038, 1, 19, 3, 14, 7, 999999000, time.UTC)
 
-	// datetimeTypeMinTimestamp is the minimum representable Timestamp value, which is one second past the epoch.
-	datetimeTypeMinTimestamp = time.Unix(1, 0)
+	// datetimeTypeMinTimestamp is the minimum representable Timestamp value, MYSQL: 1970-01-01 00:00:01.000000 (microseconds)
+	datetimeTypeMinTimestamp = time.Date(1970, 1, 1, 0, 0, 1, 0, time.UTC)
+
+	datetimeTypeMaxDate = time.Date(9999, 12, 31, 0, 0, 0, 0, time.UTC)
+
+	datetimeTypeMinDate = time.Date(1000, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	DateOnlyLayouts = []string{
 		"20060102",
@@ -206,15 +209,15 @@ func ConvertToTime(ctx context.Context, v interface{}, t datetimeType) (time.Tim
 
 	switch t.baseType {
 	case sqltypes.Date:
-		if res.Year() < 0 || res.Year() > 9999 {
+		if validated := ValidateDate(res); validated == nil {
 			return time.Time{}, ErrConvertingToTimeOutOfRange.New(res.Format(sql.DateLayout), t.String())
 		}
 	case sqltypes.Datetime:
-		if res.Year() < 0 || res.Year() > 9999 {
+		if validated := ValidateDatetime(res); validated == nil {
 			return time.Time{}, ErrConvertingToTimeOutOfRange.New(res.Format(sql.TimestampDatetimeLayout), t.String())
 		}
 	case sqltypes.Timestamp:
-		if res.Before(datetimeTypeMinTimestamp) || res.After(datetimeTypeMaxTimestamp) {
+		if validated := ValidateTimestamp(res); validated == nil {
 			return time.Time{}, ErrConvertingToTimeOutOfRange.New(res.Format(sql.TimestampDatetimeLayout), t.String())
 		}
 	}
@@ -470,10 +473,28 @@ func (t datetimeType) MinimumTime() time.Time {
 	return datetimeTypeMinDatetime
 }
 
-// ValidateTime receives a time and returns either that time or nil if it's
+// validateDatetime receives a time and returns either that time or nil if it's
 // not a valid time.
-func ValidateTime(t time.Time) interface{} {
-	if t.After(time.Date(9999, time.December, 31, 23, 59, 59, 999999999, time.UTC)) {
+func ValidateDatetime(t time.Time) interface{} {
+	if t.Before(datetimeTypeMinDatetime) || t.After(datetimeTypeMaxDatetime) {
+		return nil
+	}
+	return t
+}
+
+// ValidateTimestamp receives a time and returns either that time or nil if it's
+// not a valid timestamp.
+func ValidateTimestamp(t time.Time) interface{} {
+	if t.Before(datetimeTypeMinTimestamp) || t.After(datetimeTypeMaxTimestamp) {
+		return nil
+	}
+	return t
+}
+
+// validateDate receives a time and returns either that time or nil if it's
+// not a valid date.
+func ValidateDate(t time.Time) interface{} {
+	if t.Before(datetimeTypeMinDatetime) || t.After(datetimeTypeMaxDate) {
 		return nil
 	}
 	return t

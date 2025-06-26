@@ -405,3 +405,46 @@ func TestDatetimeZero(t *testing.T) {
 	_, ok = MustCreateDatetimeType(sqltypes.Timestamp, 0).Zero().(time.Time)
 	require.True(t, ok)
 }
+
+func TestDatetimeOverflowUnderflow(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	tests := []struct {
+		typ         sql.DatetimeType
+		val         interface{}
+		expectError bool
+	}{
+		// Date underflow
+		{Date, "0999-12-31", true},
+		// Date overflow
+		{Date, "10000-01-01", true},
+		// Datetime underflow
+		{Datetime, "0999-12-31 23:59:59", true},
+		// Datetime overflow
+		{Datetime, "10000-01-01 00:00:00", true},
+		// Timestamp underflow
+		{Timestamp, "1969-12-31 23:59:59", true},
+		// Timestamp overflow
+		{Timestamp, "2038-01-19 03:14:08", true},
+		// Valid edge cases
+		{Date, Date.MinimumTime().Format("2006-01-02"), false},
+		{Date, Date.MaximumTime().Format("2006-01-02"), false},
+		{Datetime, Datetime.MinimumTime().Format("2006-01-02 15:04:05"), false},
+		{Datetime, Datetime.MaximumTime().Format("2006-01-02 15:04:05"), false},
+		{Timestamp, Timestamp.MinimumTime().Format("2006-01-02 15:04:05"), false},
+		{Timestamp, Timestamp.MaximumTime().Format("2006-01-02 15:04:05"), false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.typ.String()+"_"+tt.val.(string), func(t *testing.T) {
+			_, inRange, err := tt.typ.Convert(ctx, tt.val)
+
+			if tt.expectError {
+				require.True(t, err != nil || inRange == sql.OutOfRange,
+					"expected error or out-of-range but got neither; err: %v, inRange: %v", err, inRange)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, sql.InRange, inRange)
+			}
+		})
+	}
+}

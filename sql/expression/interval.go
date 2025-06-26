@@ -238,71 +238,22 @@ const (
 )
 
 func (td TimeDelta) apply(t time.Time, sign int64) time.Time {
-	y := int64(t.Year())
-	mo := int64(t.Month())
-	d := t.Day()
-	h := t.Hour()
-	min := t.Minute()
-	s := t.Second()
-	ns := t.Nanosecond()
+	// add years, months, days using AddDate (handles normalization)
+	t = t.AddDate(
+		int(td.Years*sign),
+		int(td.Months*sign),
+		int(td.Days*sign),
+	)
 
-	if td.Years != 0 {
-		y += td.Years * sign
+	// add hours, minutes, seconds, microseconds
+	duration := time.Duration(td.Hours*sign)*time.Hour +
+		time.Duration(td.Minutes*sign)*time.Minute +
+		time.Duration(td.Seconds*sign)*time.Second +
+		time.Duration(td.Microseconds*sign)*time.Microsecond
+
+	if duration != 0 {
+		t = t.Add(duration)
 	}
 
-	if td.Months != 0 {
-		m := mo + td.Months*sign
-		if m < 1 {
-			mo = 12 + (m % 12)
-			y += m/12 - 1
-		} else if m > 12 {
-			mo = m % 12
-			y += m / 12
-		} else {
-			mo = m
-		}
-
-		// Due to the operations done before, month may be zero, which means it's
-		// december.
-		if mo == 0 {
-			mo = 12
-		}
-	}
-
-	if days := daysInMonth(time.Month(mo), int(y)); days < d {
-		d = days
-	}
-
-	date := time.Date(int(y), time.Month(mo), d, h, min, s, ns, t.Location())
-
-	if td.Days != 0 {
-		date = date.Add(time.Duration(td.Days) * day * time.Duration(sign))
-	}
-
-	if td.Hours != 0 {
-		date = date.Add(time.Duration(td.Hours) * time.Hour * time.Duration(sign))
-	}
-
-	if td.Minutes != 0 {
-		date = date.Add(time.Duration(td.Minutes) * time.Minute * time.Duration(sign))
-	}
-
-	if td.Seconds != 0 {
-		date = date.Add(time.Duration(td.Seconds) * time.Second * time.Duration(sign))
-	}
-
-	if td.Microseconds != 0 {
-		date = date.Add(time.Duration(td.Microseconds) * time.Microsecond * time.Duration(sign))
-	}
-
-	return date
-}
-
-func daysInMonth(month time.Month, year int) int {
-	if month == time.December {
-		return 31
-	}
-
-	date := time.Date(year, month+time.Month(1), 1, 0, 0, 0, 0, time.Local)
-	return date.Add(-1 * day).Day()
+	return t
 }
