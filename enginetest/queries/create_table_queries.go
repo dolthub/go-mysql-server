@@ -53,10 +53,10 @@ var CreateTableQueries = []WriteQueryTest{
 		ExpectedSelect:      []sql.Row{{"tableWithComment", "CREATE TABLE `tableWithComment` (\n  `pk` int\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin COMMENT=''''"}},
 	},
 	{
-		WriteQuery:          `create table tableWithComment (pk int) COMMENT "newline \n | return \r | backslash \\ | NUL \0 \x00"`,
+		WriteQuery:          `create table tableWithComment (pk int) COMMENT "newline \n | return \r | backslash \\ | NUL \0 \x00 | ctrlz \Z \x1A"`,
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
 		SelectQuery:         "SHOW CREATE TABLE tableWithComment",
-		ExpectedSelect:      []sql.Row{{"tableWithComment", "CREATE TABLE `tableWithComment` (\n  `pk` int\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin COMMENT='newline \\n | return \\r | backslash \\\\ | NUL \\0 x00'"}},
+		ExpectedSelect:      []sql.Row{{"tableWithComment", "CREATE TABLE `tableWithComment` (\n  `pk` int\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin COMMENT='newline \\n | return \\r | backslash \\\\ | NUL \\0 x00 | ctrlz \x1A x1A'"}},
 	},
 	{
 		WriteQuery:          `create table tableWithColumnComment (pk int COMMENT "'")`,
@@ -71,10 +71,10 @@ var CreateTableQueries = []WriteQueryTest{
 		ExpectedSelect:      []sql.Row{{"tableWithColumnComment", "CREATE TABLE `tableWithColumnComment` (\n  `pk` int COMMENT ''''\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 	},
 	{
-		WriteQuery:          `create table tableWithColumnComment (pk int COMMENT "newline \n | return \r | backslash \\ | NUL \0 \x00")`,
+		WriteQuery:          `create table tableWithColumnComment (pk int COMMENT "newline \n | return \r | backslash \\ | NUL \0 \x00 | ctrlz \Z \x1A")`,
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
 		SelectQuery:         "SHOW CREATE TABLE tableWithColumnComment",
-		ExpectedSelect:      []sql.Row{{"tableWithColumnComment", "CREATE TABLE `tableWithColumnComment` (\n  `pk` int COMMENT 'newline \\n | return \\r | backslash \\\\ | NUL \\0 x00'\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+		ExpectedSelect:      []sql.Row{{"tableWithColumnComment", "CREATE TABLE `tableWithColumnComment` (\n  `pk` int COMMENT 'newline \\n | return \\r | backslash \\\\ | NUL \\0 x00 | ctrlz \x1A x1A'\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 	},
 	{
 		WriteQuery:          `create table floattypedefs (a float(10), b float(10, 2), c double(10, 2))`,
