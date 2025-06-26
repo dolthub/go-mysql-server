@@ -202,41 +202,23 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name:    "Group Concat Subquery ORDER BY Additional Edge Cases",
-			Dialect: "mysql",
-			SetUpScript: []string{
-				"CREATE TABLE complex_test (id INT PRIMARY KEY, name VARCHAR(50), value INT, category VARCHAR(10), created_at DATE);",
-				"INSERT INTO complex_test VALUES (1, 'Alpha', 100, 'X', '2023-01-01');",
-				"INSERT INTO complex_test VALUES (2, 'Beta', 50, 'Y', '2023-01-15');",
-				"INSERT INTO complex_test VALUES (3, 'Gamma', 75, 'X', '2023-02-01');",
-				"INSERT INTO complex_test VALUES (4, 'Delta', 25, 'Z', '2023-02-15');",
-				"INSERT INTO complex_test VALUES (5, 'Epsilon', 90, 'Y', '2023-03-01');",
-			},
+			Name:        "AS OF propagates to nested CALLs",
+			SetUpScript: []string{},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					// Test with subquery using aggregate functions with HAVING
-					Skip:        true,
-					Query:       "SELECT category, GROUP_CONCAT(name ORDER BY (SELECT AVG(value), name FROM complex_test c2 WHERE c2.id <= complex_test.id HAVING AVG(value) > 50) DESC) FROM complex_test GROUP BY category ORDER BY category",
-					ExpectedErr: sql.ErrInvalidOperandColumns,
-				},
-				{
-					// Test with subquery using aggregate functions with HAVING
-					Skip:  true,
-					Query: "SELECT category, GROUP_CONCAT(name ORDER BY (SELECT AVG(value) FROM complex_test c2 WHERE c2.id <= complex_test.id HAVING AVG(value) > 50) DESC) FROM complex_test GROUP BY category ORDER BY category",
+					Query: "create procedure create_proc() create table t (i int primary key, j int);",
 					Expected: []sql.Row{
-						{"X", "Alpha,Gamma"},
-						{"Y", "Beta,Epsilon"},
-						{"Z", "Delta"},
+						{types.NewOkResult(0)},
 					},
 				},
 				{
-					// Test with nested subqueries
-					//Skip:     true,
-					Query:    "SELECT GROUP_CONCAT(name ORDER BY (SELECT SUM(value) FROM complex_test c2 WHERE c2.value != (SELECT MIN(value) FROM complex_test c3 where c3.id = complex_test.id))) FROM complex_test;",
-					Expected: []sql.Row{{"Alpha,Epsilon,Gamma,Beta,Delta"}},
+					Query: "call create_proc()",
+					Expected: []sql.Row{
+						{types.NewOkResult(0)},
+					},
 				},
 			},
 		},
@@ -250,8 +232,8 @@ func TestSingleScript(t *testing.T) {
 			panic(err)
 		}
 
-		engine.EngineAnalyzer().Debug = true
-		engine.EngineAnalyzer().Verbose = true
+		//engine.EngineAnalyzer().Debug = true
+		//engine.EngineAnalyzer().Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
