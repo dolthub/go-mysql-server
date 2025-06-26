@@ -512,8 +512,8 @@ func validateNoCircularUpdates(trigger *plan.CreateTrigger, n sql.Node, scope *p
 		switch node := node.(type) {
 		case *plan.Update, *plan.InsertInto, *plan.DeleteFrom:
 			for _, n := range append([]sql.Node{n}, scope.MemoNodes()...) {
-				invokingTableName := getUnaliasedTableName(n)
-				updatedTable := getUnaliasedTableName(node)
+				invokingTableName := getTableName(n)
+				updatedTable := getTableName(node)
 				// TODO: need to compare DB as well
 				if updatedTable == invokingTableName {
 					circularRef = sql.ErrTriggerTableInUse.New(updatedTable)
