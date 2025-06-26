@@ -593,6 +593,7 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 							selScope.ids = append(selScope.ids, gf.Id())
 						}
 					}
+					scope = append(scope, selScope)
 				}
 				s.expressions = append(s.expressions, fixExprToScope(e, scope...))
 			}
