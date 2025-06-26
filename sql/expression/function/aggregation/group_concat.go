@@ -40,6 +40,7 @@ type GroupConcat struct {
 var _ sql.FunctionExpression = &GroupConcat{}
 var _ sql.Aggregation = &GroupConcat{}
 var _ sql.WindowAdaptableExpression = (*GroupConcat)(nil)
+var _ sql.OrderedAggregation = (*GroupConcat)(nil)
 
 func NewEmptyGroupConcat() sql.Expression {
 	return &GroupConcat{}
@@ -229,9 +230,8 @@ func (g *GroupConcat) WithChildren(children ...sql.Expression) (sql.Expression, 
 	return NewGroupConcat(g.distinct, g.sf.FromExpressions(orderByExpr...), g.separator, children[sortFieldMarker:], g.maxLen), nil
 }
 
-// GetSelectExprs returns the select expressions
-// TODO: just expose the member variable
-func (g *GroupConcat) GetSelectExprs() []sql.Expression {
+// OutputExpressions implements the OrderedAggregation interface.
+func (g *GroupConcat) OutputExpressions() []sql.Expression {
 	return g.selectExprs
 }
 

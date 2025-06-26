@@ -18,8 +18,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -583,11 +581,11 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 			// default nodes can't see lateral join nodes, unless we're in lateral
 			// join and lateral scopes are promoted to parent status
 			for _, e := range ne.Expressions() {
-				// groupConcat is special as it appends results to outer scope row
-				// we need to account for this extra column in the rows when assigning indexes
-				// see gms/expression/function/aggregation/group_concat.go:groupConcatBuffer.Update()
-				if gc, isGc := e.(*aggregation.GroupConcat); isGc {
-					selExprs := gc.GetSelectExprs()
+				// OrderedAggregations are special as they append results to the outer scope row
+				// We need to account for this extra column in the rows when assigning indexes
+				// Example: gms/expression/function/aggregation/group_concat.go:groupConcatBuffer.Update()
+				if ordAgg, isOrdAgg := e.(sql.OrderedAggregation); isOrdAgg {
+					selExprs := ordAgg.OutputExpressions()
 					selScope := &idxScope{}
 					for _, expr := range selExprs {
 						selScope.columns = append(selScope.columns, expr.String())
@@ -595,7 +593,6 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 							selScope.ids = append(selScope.ids, gf.Id())
 						}
 					}
-					scope = append(scope, selScope)
 				}
 				s.expressions = append(s.expressions, fixExprToScope(e, scope...))
 			}
