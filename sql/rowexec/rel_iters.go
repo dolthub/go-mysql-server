@@ -135,9 +135,7 @@ type ProjectIter struct {
 }
 
 type nestedIterState struct {
-	normalFields     []sql.Expression
-	nestedIters      []sql.RowIter
-	nestedIterIdxes  []int
+	projections      []sql.Expression
 	sourceRow        sql.Row
 	iterEvaluators   []*RowIterEvaluator
 }
@@ -182,7 +180,18 @@ func (i *ProjectIter) ProjectRowWithNestedIters(
 	// Other iterator values will be NULL after they are depleted. All non-iterator fields for the row are returned
 	// identically for each row in the result set.
 	if i.nestedState != nil {
-
+		var stillIterating
+		for _, evaluator := range i.nestedState.iterEvaluators {
+			if !evaluator.finished {
+				stillIterating = true
+				break
+			}
+		}
+		
+		if !stillIterating {
+			i.nestedState = nil
+			return i.ProjectRowWithNestedIters(ctx, i.nestedState.projections, i.nestedState.sourceRow)
+		}
 	}
 
 	nestedState := &nestedIterState{
@@ -208,29 +217,19 @@ func (i *ProjectIter) ProjectRowWithNestedIters(
 				rowIterEvaluators = append(rowIterEvaluators, evaluator)
 				return evaluator, transform.NewTree, nil
 			}
+			
+			return e, transform.SameTree, nil
 		})
+		
 		if err != nil {
 			return nil, err
 		}
 
 		newProjs[i] = p
 	}
-
-	vals, err := ProjectRow(ctx, projections, row)
-	if err != nil {
-		return nil, err
-	}
-
-	nestedState.normalFields = make([]sql.Expression, len(vals))
-	for i, val := range vals {
-		if iter, ok := val.(sql.RowIter); ok {
-			nestedState.nestedIters = append(nestedState.nestedIters, iter)
-			nestedState.nestedIterIdxes = append(nestedState.nestedIterIdxes, i)
-		} else {
-			nestedState.normalFields[i] = projections[i]
-		}
-	}
-
+	
+	nestedState.projections = newProjs
+	nestedState.iterEvaluators = rowIterEvaluators
 	i.nestedState = nestedState
 	return i.ProjectRowWithNestedIters(ctx, projections, row)
 }
