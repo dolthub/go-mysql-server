@@ -138,7 +138,6 @@ func EscapeSpecialCharactersInComment(comment string) string {
 	commentString := comment
 	commentString = strings.ReplaceAll(commentString, "'", "''")
 	commentString = strings.ReplaceAll(commentString, "\\", "\\\\")
-	commentString = strings.ReplaceAll(commentString, "\\Z", "\x1A") // MYSQL handles \\ first, then \Z
 	commentString = strings.ReplaceAll(commentString, "\"", "\\\"")
 	commentString = strings.ReplaceAll(commentString, "\n", "\\n")
 	commentString = strings.ReplaceAll(commentString, "\r", "\\r")
