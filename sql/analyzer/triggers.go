@@ -241,7 +241,6 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 				return nil, transform.SameTree, err
 			}
 
-			// triggerTable = getTableName(ct)
 			var triggerTable string
 			switch t := ct.Table.(type) {
 			case *plan.ResolvedTable:
@@ -451,39 +450,6 @@ func getUpdateJoinSource(n sql.Node) *plan.UpdateSource {
 	return nil
 }
 
-// Determines if a GetField expression references the triggered table in an UpdateJoin
-func isUpdateJoinTriggerField(getField *expression.GetField, updateJoin *plan.UpdateJoin, trigger *plan.CreateTrigger) bool {
-	updateTargets := updateJoin.UpdateTargets
-	if updateTarget, isUpdateTarget := updateTargets[getField.Table()]; isUpdateTarget {
-		if getTableName(updateTarget) == getTableName(trigger.Table) {
-			return true
-		}
-	}
-	return false
-}
-
-// Returns the projection from an UpdateJoin with the non-triggered tables masked. This is to prevent conflicts if two
-// joined tables have columns with the same name
-func getMaskedUpdateJoinProject(updateJoin *plan.UpdateJoin, trigger *plan.CreateTrigger) *plan.Project {
-	if updateSrc, isUpdateSrc := updateJoin.Child.(*plan.UpdateSource); isUpdateSrc {
-		// get project parent
-		if project, isProject := updateSrc.Child.(*plan.Project); isProject {
-			projections := project.Projections
-			maskedProjections := make([]sql.Expression, len(projections))
-			for i, projection := range projections {
-				maskedProjections[i] = projection
-				if gf, isGf := projection.(*expression.GetField); isGf {
-					if !isUpdateJoinTriggerField(gf, updateJoin, trigger) {
-						maskedProjections[i] = gf.WithName("")
-					}
-				}
-			}
-			return plan.NewProject(maskedProjections, project.Child)
-		}
-	}
-	panic("UpdateJoin node is not correctly structured")
-}
-
 // getTriggerLogic analyzes and returns the Node representing the trigger body for the trigger given, applied to the
 // plan node given, which must be an insert, update, or delete.
 func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, trigger *plan.CreateTrigger, qFlags *sql.QueryFlags) (sql.Node, error) {
@@ -492,30 +458,19 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	// fabricate one with the right properties (its child schema matches the table schema, with the right aliased name)
 	var triggerLogic sql.Node
 	var err error
-	var scopeNode *plan.Project
 	qFlags = nil
 
 	switch trigger.TriggerEvent {
 	case sqlparser.InsertStr:
-		scopeNode = plan.NewProject(
+		scopeNode := plan.NewProject(
 			[]sql.Expression{expression.NewStar()},
 			plan.NewTableAlias("new", trigger.Table),
 		)
 		s := (*plan.Scope)(nil).NewScope(scopeNode).WithMemos(scope.Memo(n).MemoNodes()).WithProcedureCache(scope.ProcedureCache())
 		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, DefaultRuleSelector, qFlags)
 	case sqlparser.UpdateStr:
-		if updateJoin, isUpdateJoin := n.(*plan.Update).Child.(*plan.UpdateJoin); isUpdateJoin {
-			masked := getMaskedUpdateJoinProject(updateJoin, trigger)
-			// The scopeNode for an UpdateJoin should contain every node in the updateSource as new and old but should
-			// have placeholder expressions for non-triggered tables.
-			scopeNode = plan.NewProject(
-				[]sql.Expression{expression.NewStar()},
-				plan.NewCrossJoin(
-					plan.NewSubqueryAlias("old", "", masked),
-					plan.NewSubqueryAlias("new", "", masked),
-				),
-			)
-		} else {
+		var scopeNode *plan.Project
+		if updateSrc := getUpdateJoinSource(n); updateSrc == nil {
 			scopeNode = plan.NewProject(
 				[]sql.Expression{expression.NewStar()},
 				plan.NewCrossJoin(
@@ -523,12 +478,21 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 					plan.NewTableAlias("new", trigger.Table),
 				),
 			)
+		} else {
+			// The scopeNode for an UpdateJoin should contain every node in the updateSource as new and old.
+			scopeNode = plan.NewProject(
+				[]sql.Expression{expression.NewStar()},
+				plan.NewCrossJoin(
+					plan.NewSubqueryAlias("old", "", updateSrc.Child),
+					plan.NewSubqueryAlias("new", "", updateSrc.Child),
+				),
+			)
 		}
 		// Triggers are wrapped in prepend nodes, which means that the parent scope is included
 		s := (*plan.Scope)(nil).NewScope(scopeNode).WithMemos(scope.Memo(n).MemoNodes()).WithProcedureCache(scope.ProcedureCache())
 		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, DefaultRuleSelector, qFlags)
 	case sqlparser.DeleteStr:
-		scopeNode = plan.NewProject(
+		scopeNode := plan.NewProject(
 			[]sql.Expression{expression.NewStar()},
 			plan.NewTableAlias("old", trigger.Table),
 		)
