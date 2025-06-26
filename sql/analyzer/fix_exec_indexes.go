@@ -583,7 +583,9 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 			// default nodes can't see lateral join nodes, unless we're in lateral
 			// join and lateral scopes are promoted to parent status
 			for _, e := range ne.Expressions() {
-				// groupConcat is special as it appends results to outer scope row.
+				// groupConcat is special as it appends results to outer scope row
+				// we need to account for this extra column in the rows when assigning indexes
+				// see gms/expression/function/aggregation/group_concat.go:groupConcatBuffer.Update()
 				if gc, isGc := e.(*aggregation.GroupConcat); isGc {
 					selExprs := gc.GetSelectExprs()
 					selScope := &idxScope{}
@@ -747,10 +749,6 @@ func fixExprToScope(e sql.Expression, scopes ...*idxScope) sql.Expression {
 			//  queries where the columns being selected are only found in subqueries. Conversely, we actually want to ignore
 			//  this error for the case of DEFAULT in a `plan.Values`, since we analyze the insert source in isolation (we
 			//  don't have the destination schema, and column references in default values are determined in the build phase)
-
-			if e.Name() == "sum(t2.age)" {
-				print()
-			}
 
 			idx, _ := newScope.getIdxId(e.Id(), e.String())
 			if idx >= 0 {
