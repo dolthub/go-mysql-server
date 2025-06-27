@@ -78,13 +78,9 @@ func (s *Set) Expressions() []sql.Expression {
 	return s.Exprs
 }
 
-// setSch is used to differentiate from the nil schema,
-// because Set does return rows
-var setSch = types.OkResultSchema
-
 // Schema implements the sql.Node interface.
 func (s *Set) Schema() sql.Schema {
-	return setSch
+	return types.OkResultSchema
 }
 
 func (s *Set) String() string {
