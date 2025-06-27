@@ -5100,7 +5100,7 @@ CREATE TABLE tab3 (
 			{
 				// Set the timezone set to UTC as an offset
 				Query:    `set @@time_zone='+00:00';`,
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				// When the session's time zone is set to UTC, NOW() and UTC_TIMESTAMP() should return the same value
@@ -5114,7 +5114,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    `set @@time_zone='+02:00';`,
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				// When the session's time zone is set to +2:00, NOW() should report two hours ahead of UTC_TIMESTAMP()
@@ -5147,7 +5147,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    `set @@time_zone='-08:00';`,
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				// TODO: Unskip after adding support for converting timestamp values to/from session time_zone
@@ -5161,7 +5161,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    `set @@time_zone='+5:00';`,
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				// Test with explicit timezone in datetime literal
@@ -5180,7 +5180,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    `set @@time_zone='+0:00';`,
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				// TODO: Unskip after adding support for converting timestamp values to/from session time_zone
