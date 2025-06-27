@@ -103,6 +103,8 @@ var (
 	Timestamp = MustCreateDatetimeType(sqltypes.Timestamp, 0)
 	// TimestampMaxPrecision is a UNIX timestamp with maximum precision
 	TimestampMaxPrecision = MustCreateDatetimeType(sqltypes.Timestamp, 6)
+	// DatetimeMaxLimit is a date and a time with maximum precision and maximum range.
+	DatetimeMaxLimit = MustCreateDatetimeType(sqltypes.Datetime, 6)
 
 	datetimeValueType = reflect.TypeOf(time.Time{})
 )
@@ -207,11 +209,34 @@ func ConvertToTime(ctx context.Context, v interface{}, t datetimeType) (time.Tim
 		return time.Time{}, err
 	}
 
+	if t == DatetimeMaxLimit {
+		validated := ValidateTime(res)
+		if validated == nil {
+			return time.Time{}, ErrConvertingToTimeOutOfRange.New(v, t)
+		}
+		return validated.(time.Time), nil
+	}
+
+	switch t.baseType {
+	case sqltypes.Date:
+		if ValidateDate(res) == nil {
+			return time.Time{}, ErrConvertingToTimeOutOfRange.New(v, t)
+		}
+	case sqltypes.Datetime:
+		if ValidateDatetime(res) == nil {
+			return time.Time{}, ErrConvertingToTimeOutOfRange.New(v, t)
+		}
+	case sqltypes.Timestamp:
+		if ValidateTimestamp(res) == nil {
+			return time.Time{}, ErrConvertingToTimeOutOfRange.New(v, t)
+		}
+	}
+
 	if res.Equal(zeroTime) {
 		return zeroTime, nil
 	}
 
-	return res.Round(time.Microsecond), nil
+	return res, nil
 }
 
 // ConvertWithoutRangeCheck converts the parameter to time.Time without checking the range.
@@ -234,6 +259,7 @@ func (t datetimeType) ConvertWithoutRangeCheck(ctx context.Context, v interface{
 		// TODO: consider not using time.Parse if we want to match MySQL exactly ('2010-06-03 11:22.:.:.:.:' is a valid timestamp)
 		var parsed bool
 		res, parsed = parseDatetime(value)
+		res = res.Round(time.Microsecond)
 		if !parsed {
 			return zeroTime, ErrConvertingToTime.New(v)
 		}
@@ -469,7 +495,6 @@ func ValidateTime(t time.Time) interface{} {
 	if t.Before(datetimeMinTime) || t.After(datetimeMaxTime) {
 		return nil
 	}
-
 	return t
 }
 

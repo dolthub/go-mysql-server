@@ -237,15 +237,62 @@ const (
 	week = 7 * day
 )
 
-func (td TimeDelta) apply(t time.Time, sign int64) time.Time {
-	// add years, months, days using AddDate (handles normalization)
-	t = t.AddDate(
-		int(td.Years*sign),
-		int(td.Months*sign),
-		int(td.Days*sign),
-	)
+// isLeapYear determines if a given year is a leap year
+// Uses Go's built-in date handling for accuracy
+func isLeapYear(year int) bool {
+	return daysInMonth(year, time.February) == 29
+}
 
-	// add hours, minutes, seconds, microseconds
+// daysInMonth returns the number of days in a given month/year combination
+// Uses Go's built-in date handling: day 0 of next month = last day of current month
+func daysInMonth(year int, month time.Month) int {
+	return time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC).Day()
+}
+
+func (td TimeDelta) apply(t time.Time, sign int64) time.Time {
+	if td.Years != 0 {
+		targetYear := t.Year() + int(td.Years*sign)
+
+		// Special handling for Feb 29 on leap years
+		if t.Month() == time.February && t.Day() == 29 && !isLeapYear(targetYear) {
+			// If we're on Feb 29 and target year is not a leap year,
+			// move to Feb 28
+			t = time.Date(targetYear, time.February, 28,
+				t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), t.Location())
+		} else {
+			t = time.Date(targetYear, t.Month(), t.Day(),
+				t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), t.Location())
+		}
+	}
+
+	if td.Months != 0 {
+		totalMonths := int(t.Month()) - 1 + int(td.Months*sign) // Convert to 0-based
+
+		// Calculate target year and month
+		yearOffset := totalMonths / 12
+		if totalMonths < 0 {
+			yearOffset = (totalMonths - 11) / 12 // Handle negative division correctly
+		}
+		targetYear := t.Year() + yearOffset
+		targetMonth := time.Month((totalMonths%12+12)%12 + 1) // Ensure positive month
+
+		// Handle end-of-month edge cases
+		originalDay := t.Day()
+		maxDaysInTargetMonth := daysInMonth(targetYear, targetMonth)
+
+		targetDay := originalDay
+		if originalDay > maxDaysInTargetMonth {
+			targetDay = maxDaysInTargetMonth
+		}
+
+		t = time.Date(targetYear, targetMonth, targetDay,
+			t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), t.Location())
+	}
+
+	if td.Days != 0 {
+		t = t.AddDate(0, 0, int(td.Days*sign))
+	}
+
 	duration := time.Duration(td.Hours*sign)*time.Hour +
 		time.Duration(td.Minutes*sign)*time.Minute +
 		time.Duration(td.Seconds*sign)*time.Second +
