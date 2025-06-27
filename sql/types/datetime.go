@@ -17,6 +17,7 @@ package types
 import (
 	"context"
 	"fmt"
+	"math"
 	"reflect"
 	"time"
 
@@ -209,6 +210,10 @@ func ConvertToTime(ctx context.Context, v interface{}, t datetimeType) (time.Tim
 		return time.Time{}, err
 	}
 
+	if res.Equal(zeroTime) {
+		return zeroTime, nil
+	}
+
 	if t == DatetimeMaxLimit {
 		validated := ValidateTime(res)
 		if validated == nil {
@@ -224,16 +229,12 @@ func ConvertToTime(ctx context.Context, v interface{}, t datetimeType) (time.Tim
 		}
 	case sqltypes.Datetime:
 		if res.Year() < 0 || res.Year() > 9999 {
-			return time.Time{}, ErrConvertingToTimeOutOfRange.New(res.Format(sql.TimestampDatetimeLayout), t.String())
+			return time.Time{}, ErrConvertingToTimeOutOfRange.New(res.Format(sql.DatetimeLayoutNoTrim), t.String())
 		}
 	case sqltypes.Timestamp:
-		if ValidateTimestamp(res) == nil {
-			return time.Time{}, ErrConvertingToTimeOutOfRange.New(v, t)
+		if res.Before(time.Unix(1, 0)) || res.After(time.Unix(math.MaxInt32, 999999000)) {
+			return time.Time{}, ErrConvertingToTimeOutOfRange.New(res.Format(sql.TimestampDatetimeLayout), t.String())
 		}
-	}
-
-	if res.Equal(zeroTime) {
-		return zeroTime, nil
 	}
 
 	return res, nil
