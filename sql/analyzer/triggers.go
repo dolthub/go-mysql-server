@@ -483,7 +483,7 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 		} else {
 			// TODO: We should be able to handle duplicate column names by masking columns that aren't part of the
 			// triggered table https://github.com/dolthub/dolt/issues/9403
-			err = validateNoConflictingColumnNames(updateSrc.Child)
+			err = validateNoConflictingColumnNames(updateSrc.Child.Schema())
 			if err != nil {
 				return nil, err
 			}
