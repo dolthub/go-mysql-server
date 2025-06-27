@@ -261,6 +261,7 @@ func getFieldIndexFromUpdateExpr(updateExpr sql.Expression) (int, bool) {
 
 // resolveValues resolves all VALUES functions.
 func (i *insertIter) resolveValues(ctx *sql.Context, insertRow sql.Row) error {
+	// if vals empty then no need to resolve
 	for _, updateExpr := range i.updateExprs {
 		var err error
 		sql.Inspect(updateExpr, func(expr sql.Expression) bool {

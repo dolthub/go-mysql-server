@@ -17,7 +17,6 @@ package types
 import (
 	"context"
 	"fmt"
-	"math"
 	"reflect"
 	"time"
 
@@ -104,8 +103,8 @@ var (
 	Timestamp = MustCreateDatetimeType(sqltypes.Timestamp, 0)
 	// TimestampMaxPrecision is a UNIX timestamp with maximum precision
 	TimestampMaxPrecision = MustCreateDatetimeType(sqltypes.Timestamp, 6)
-	// DatetimeMaxLimit is a date and a time with maximum precision and maximum range.
-	DatetimeMaxLimit = MustCreateDatetimeType(sqltypes.Datetime, 6)
+	// DatetimeMaxRange is a date and a time with maximum precision and maximum range.
+	DatetimeMaxRange = MustCreateDatetimeType(sqltypes.Datetime, 6)
 
 	datetimeValueType = reflect.TypeOf(time.Time{})
 )
@@ -222,7 +221,7 @@ func ConvertToTime(ctx context.Context, v interface{}, t datetimeType) (time.Tim
 		res = res.Round(time.Microsecond)
 	}
 
-	if t == DatetimeMaxLimit {
+	if t == DatetimeMaxRange {
 		validated := ValidateTime(res)
 		if validated == nil {
 			return time.Time{}, ErrConvertingToTimeOutOfRange.New(v, t)
@@ -237,10 +236,10 @@ func ConvertToTime(ctx context.Context, v interface{}, t datetimeType) (time.Tim
 		}
 	case sqltypes.Datetime:
 		if res.Year() < 0 || res.Year() > 9999 {
-			return time.Time{}, ErrConvertingToTimeOutOfRange.New(res.Format(sql.DatetimeLayoutNoTrim), t.String())
+			return time.Time{}, ErrConvertingToTimeOutOfRange.New(res.Format(sql.TimestampDatetimeLayout), t.String())
 		}
 	case sqltypes.Timestamp:
-		if res.Before(time.Unix(1, 0)) || res.After(time.Unix(math.MaxInt32, 999999000)) {
+		if ValidateTimestamp(res) == nil {
 			return time.Time{}, ErrConvertingToTimeOutOfRange.New(res.Format(sql.TimestampDatetimeLayout), t.String())
 		}
 	}
@@ -506,28 +505,10 @@ func ValidateTime(t time.Time) interface{} {
 	return t
 }
 
-// ValidateDatetime receives a time and returns either that time or nil if it's
-// not a valid datetime.
-func ValidateDatetime(t time.Time) interface{} {
-	if t.Before(datetimeTypeMinDatetime) || t.After(datetimeTypeMaxDatetime) {
-		return nil
-	}
-	return t
-}
-
 // ValidateTimestamp receives a time and returns either that time or nil if it's
 // not a valid timestamp.
 func ValidateTimestamp(t time.Time) interface{} {
 	if t.Before(datetimeTypeMinTimestamp) || t.After(datetimeTypeMaxTimestamp) {
-		return nil
-	}
-	return t
-}
-
-// validateDate receives a time and returns either that time or nil if it's
-// not a valid date.
-func ValidateDate(t time.Time) interface{} {
-	if t.Before(datetimeTypeMinDate) || t.After(datetimeTypeMaxDate) {
 		return nil
 	}
 	return t
