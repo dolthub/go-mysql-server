@@ -366,7 +366,8 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 
 	canApplyTriggerExecutor := func(c transform.Context) bool {
 		// Don't double-apply trigger executors to the bodies of triggers. To avoid this, don't apply the trigger if the
-		// parent is a trigger body.
+		// parent is a trigger body. Having this as a selector function will also prevent walking the child nodes in the
+		// trigger execution logic.
 		if _, ok := c.Parent.(*plan.TriggerExecutor); ok {
 			if c.ChildNum == 1 { // Right child is the trigger execution logic
 				return false
