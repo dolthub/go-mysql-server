@@ -1285,7 +1285,7 @@ func (c *indexCoster) costIndexScanOr(filter *iScanOr, s sql.Statistic, buckets 
 			if err != nil {
 				return nil, nil, false, err
 			}
-			if ids.Len() != 1 || !ids.Contains(int(child.Id())) {
+			if ids.Len() != child.childCnt() {
 				// scan option missed some filters
 				return nil, nil, false, nil
 			}
