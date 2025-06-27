@@ -281,7 +281,8 @@ func (r *RowIterEvaluator) Eval(ctx *sql.Context, row sql.Row) (interface{}, err
 		return nil, err
 	}
 
-	return nextRow, nil
+	// All of the set-returning functions return a single value per column
+	return nextRow[0], nil
 }
 
 func (r RowIterEvaluator) Children() []sql.Expression {
