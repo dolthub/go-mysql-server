@@ -225,6 +225,7 @@ func (i *ProjectIter) ProjectRowWithNestedIters(
 
 				evaluator := &RowIterEvaluator{
 					iter: ri,
+					typ:  rie.Type(),
 				}
 				rowIterEvaluators = append(rowIterEvaluators, evaluator)
 				return evaluator, transform.NewTree, nil
@@ -248,6 +249,7 @@ func (i *ProjectIter) ProjectRowWithNestedIters(
 
 type RowIterEvaluator struct {
 	iter     sql.RowIter
+	typ      sql.Type
 	finished bool
 }
 
@@ -260,11 +262,11 @@ func (r RowIterEvaluator) String() string {
 }
 
 func (r RowIterEvaluator) Type() sql.Type {
-	return nil
+	return r.typ
 }
 
 func (r RowIterEvaluator) IsNullable() bool {
-	return false
+	return true
 }
 
 func (r *RowIterEvaluator) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -286,13 +288,14 @@ func (r *RowIterEvaluator) Eval(ctx *sql.Context, row sql.Row) (interface{}, err
 }
 
 func (r RowIterEvaluator) Children() []sql.Expression {
-	// TODO implement me
-	panic("implement me")
+	return nil
 }
 
 func (r RowIterEvaluator) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	// TODO implement me
-	panic("implement me")
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), 0)
+	}
+	return &r, nil
 }
 
 var _ sql.Expression = (*RowIterEvaluator)(nil)
