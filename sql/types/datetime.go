@@ -219,12 +219,12 @@ func ConvertToTime(ctx context.Context, v interface{}, t datetimeType) (time.Tim
 
 	switch t.baseType {
 	case sqltypes.Date:
-		if ValidateDate(res) == nil {
-			return time.Time{}, ErrConvertingToTimeOutOfRange.New(v, t)
+		if res.Year() < 0 || res.Year() > 9999 {
+			return time.Time{}, ErrConvertingToTimeOutOfRange.New(res.Format(sql.DateLayout), t.String())
 		}
 	case sqltypes.Datetime:
-		if ValidateDatetime(res) == nil {
-			return time.Time{}, ErrConvertingToTimeOutOfRange.New(v, t)
+		if res.Year() < 0 || res.Year() > 9999 {
+			return time.Time{}, ErrConvertingToTimeOutOfRange.New(res.Format(sql.TimestampDatetimeLayout), t.String())
 		}
 	case sqltypes.Timestamp:
 		if ValidateTimestamp(res) == nil {
