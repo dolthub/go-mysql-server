@@ -52,7 +52,15 @@ var (
 
 	datetimeTypeMaxDate = time.Date(9999, 12, 31, 0, 0, 0, 0, time.UTC)
 
+	// datetimeTypeMinDate is the minimum representable Date value, MYSQL: 1000-01-01 00:00:00.000000 (microseconds)
 	datetimeTypeMinDate = time.Date(1000, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	// The MAX and MIN are extrapolated from commit ff05628a530 in the MySQL source code from my_time.cc
+	// datetimeMaxTime is the maximum representable time value, MYSQL: 9999-12-31 23:59:59.999999 (microseconds)
+	datetimeMaxTime = time.Date(9999, 12, 31, 23, 59, 59, 999999000, time.UTC)
+
+	// datetimeMinTime is the minimum representable time value, MYSQL: 0000-01-01 00:00:00.000000 (microseconds)
+	datetimeMinTime = time.Date(0000, 0, 0, 0, 0, 0, 0, time.UTC)
 
 	DateOnlyLayouts = []string{
 		"20060102",
@@ -74,8 +82,9 @@ var (
 		"2006-01-02 15:04:",
 		"2006-01-02 15:04:.",
 		"2006-01-02 15:04:05.",
-		"2006-01-02 15:04:05.999999",
-		"2006-1-2 15:4:5.999999",
+		"2006-01-02 15:04:05.999999999",
+		"2006-1-2 15:4:5.999999999",
+		"2006-1-2:15:4:5.999999999",
 		"2006-01-02T15:04:05",
 		"20060102150405",
 		"2006-01-02 15:04:05.999999999 -0700 MST", // represents standard Time.time.UTC()
@@ -202,26 +211,7 @@ func ConvertToTime(ctx context.Context, v interface{}, t datetimeType) (time.Tim
 		return zeroTime, nil
 	}
 
-	// Round the date to the precision of this type
-	truncationDuration := time.Second
-	truncationDuration /= time.Duration(precisionConversion[t.precision])
-	res = res.Round(truncationDuration)
-
-	switch t.baseType {
-	case sqltypes.Date:
-		if validated := ValidateDate(res); validated == nil {
-			return time.Time{}, ErrConvertingToTimeOutOfRange.New(res.Format(sql.DateLayout), t.String())
-		}
-	case sqltypes.Datetime:
-		if validated := ValidateDatetime(res); validated == nil {
-			return time.Time{}, ErrConvertingToTimeOutOfRange.New(res.Format(sql.TimestampDatetimeLayout), t.String())
-		}
-	case sqltypes.Timestamp:
-		if validated := ValidateTimestamp(res); validated == nil {
-			return time.Time{}, ErrConvertingToTimeOutOfRange.New(res.Format(sql.TimestampDatetimeLayout), t.String())
-		}
-	}
-	return res, nil
+	return res.Round(time.Microsecond), nil
 }
 
 // ConvertWithoutRangeCheck converts the parameter to time.Time without checking the range.
@@ -341,8 +331,8 @@ func (t datetimeType) ConvertWithoutRangeCheck(ctx context.Context, v interface{
 }
 
 func parseDatetime(value string) (time.Time, bool) {
-	for _, fmt := range TimestampDatetimeLayouts {
-		if t, err := time.Parse(fmt, value); err == nil {
+	for _, layout := range TimestampDatetimeLayouts {
+		if t, err := time.Parse(layout, value); err == nil {
 			return t.UTC(), true
 		}
 	}
@@ -473,9 +463,20 @@ func (t datetimeType) MinimumTime() time.Time {
 	return datetimeTypeMinDatetime
 }
 
-// validateDatetime receives a time and returns either that time or nil if it's
+// ValidateTime receives a time and returns either that time or nil if it's
 // not a valid time.
+func ValidateTime(t time.Time) interface{} {
+	if t.Before(datetimeMinTime) || t.After(datetimeMaxTime) {
+		return nil
+	}
+
+	return t
+}
+
+// ValidateDatetime receives a time and returns either that time or nil if it's
+// not a valid datetime.
 func ValidateDatetime(t time.Time) interface{} {
+	t = t.Round(time.Microsecond)
 	if t.Before(datetimeTypeMinDatetime) || t.After(datetimeTypeMaxDatetime) {
 		return nil
 	}
@@ -485,6 +486,7 @@ func ValidateDatetime(t time.Time) interface{} {
 // ValidateTimestamp receives a time and returns either that time or nil if it's
 // not a valid timestamp.
 func ValidateTimestamp(t time.Time) interface{} {
+	t = t.Round(time.Microsecond)
 	if t.Before(datetimeTypeMinTimestamp) || t.After(datetimeTypeMaxTimestamp) {
 		return nil
 	}
@@ -494,7 +496,8 @@ func ValidateTimestamp(t time.Time) interface{} {
 // validateDate receives a time and returns either that time or nil if it's
 // not a valid date.
 func ValidateDate(t time.Time) interface{} {
-	if t.Before(datetimeTypeMinDatetime) || t.After(datetimeTypeMaxDate) {
+	t = t.Round(time.Microsecond)
+	if t.Before(datetimeTypeMinDate) || t.After(datetimeTypeMaxDate) {
 		return nil
 	}
 	return t
