@@ -214,6 +214,14 @@ func ConvertToTime(ctx context.Context, v interface{}, t datetimeType) (time.Tim
 		return zeroTime, nil
 	}
 
+	// Round the date to the precision of this type
+	if t.precision < 6 {
+		truncationDuration := time.Second / time.Duration(precisionConversion[t.precision])
+		res = res.Round(truncationDuration)
+	} else {
+		res = res.Round(time.Microsecond)
+	}
+
 	if t == DatetimeMaxLimit {
 		validated := ValidateTime(res)
 		if validated == nil {
@@ -260,7 +268,6 @@ func (t datetimeType) ConvertWithoutRangeCheck(ctx context.Context, v interface{
 		// TODO: consider not using time.Parse if we want to match MySQL exactly ('2010-06-03 11:22.:.:.:.:' is a valid timestamp)
 		var parsed bool
 		res, parsed = parseDatetime(value)
-		res = res.Round(time.Microsecond)
 		if !parsed {
 			return zeroTime, ErrConvertingToTime.New(v)
 		}
