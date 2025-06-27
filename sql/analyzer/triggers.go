@@ -412,9 +412,9 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 			//       like we need something like a MultipleTriggerExecutor node
 			//       that could execute multiple triggers on the same row from its
 			//       wrapped iterator. There is also an issue with running triggers
-			//       because their field indexes assume the row they evalute will
+			//       because their field indexes assume the row they evaluate will
 			//       only ever contain the columns from the single table the trigger
-			//       is based on, but this isn't true with UPDATE JOIN or DELETE JOIN.
+			//       is based on.
 			if n.HasExplicitTargets() {
 				return nil, transform.SameTree, fmt.Errorf("delete from with explicit target tables " +
 					"does not support triggers; retry with single table deletes")
