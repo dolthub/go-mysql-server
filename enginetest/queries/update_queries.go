@@ -935,21 +935,6 @@ var UpdateIgnoreScripts = []ScriptTest{
 			},
 		},
 	},
-	{
-		Name: "UPDATE with subquery in keyless tables",
-		// https://github.com/dolthub/dolt/issues/9334
-		SetUpScript: []string{
-			"create table t (i int)",
-			"insert into t values (1)",
-			"update t set i = 10 where i in (select 1)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "select * from t",
-				Expected: []sql.Row{{10}},
-			},
-		},
-	},
 }
 
 var UpdateErrorTests = []QueryErrorTest{
