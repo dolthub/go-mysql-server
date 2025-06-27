@@ -8773,6 +8773,19 @@ where
 			},
 		},
 	},
+
+	// Enum tests
+	{
+		Name:        "enums with auto increment",
+		SetUpScript: []string{},
+		Assertions:  []ScriptTestAssertion{},
+	},
+	{
+		Name: "enums with empty string",
+	},
+	{
+		Name: "enums with foreign keys",
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{

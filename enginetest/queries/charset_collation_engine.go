@@ -605,6 +605,10 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 					{int64(2), uint16(2)},
 				},
 			},
+			{
+				Query: "create table t (e enum('abc', 'ABC') collate utf8mb4_0900_ai_ci))",
+				Error: true,
+			},
 		},
 	},
 	{
