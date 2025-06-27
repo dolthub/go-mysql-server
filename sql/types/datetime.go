@@ -476,7 +476,6 @@ func ValidateTime(t time.Time) interface{} {
 // ValidateDatetime receives a time and returns either that time or nil if it's
 // not a valid datetime.
 func ValidateDatetime(t time.Time) interface{} {
-	t = t.Round(time.Microsecond)
 	if t.Before(datetimeTypeMinDatetime) || t.After(datetimeTypeMaxDatetime) {
 		return nil
 	}
@@ -486,7 +485,6 @@ func ValidateDatetime(t time.Time) interface{} {
 // ValidateTimestamp receives a time and returns either that time or nil if it's
 // not a valid timestamp.
 func ValidateTimestamp(t time.Time) interface{} {
-	t = t.Round(time.Microsecond)
 	if t.Before(datetimeTypeMinTimestamp) || t.After(datetimeTypeMaxTimestamp) {
 		return nil
 	}
@@ -496,7 +494,6 @@ func ValidateTimestamp(t time.Time) interface{} {
 // validateDate receives a time and returns either that time or nil if it's
 // not a valid date.
 func ValidateDate(t time.Time) interface{} {
-	t = t.Round(time.Microsecond)
 	if t.Before(datetimeTypeMinDate) || t.After(datetimeTypeMaxDate) {
 		return nil
 	}
