@@ -141,13 +141,13 @@ type nestedIterState struct {
 }
 
 func (i *ProjectIter) Next(ctx *sql.Context) (sql.Row, error) {
+	if i.hasNestedIters {
+		return i.ProjectRowWithNestedIters(ctx)
+	}
+
 	childRow, err := i.childIter.Next(ctx)
 	if err != nil {
 		return nil, err
-	}
-
-	if i.hasNestedIters {
-		return i.ProjectRowWithNestedIters(ctx, i.projs, childRow)
 	}
 
 	return ProjectRow(ctx, i.projs, childRow)
@@ -172,29 +172,41 @@ func (i *ProjectIter) GetChildIter() sql.RowIter {
 // ProjectRowWithNestedIters evaluates a set of projections, allowing for nested iterators in the expressions.
 func (i *ProjectIter) ProjectRowWithNestedIters(
 	ctx *sql.Context,
-	projections []sql.Expression,
-	row sql.Row,
 ) (sql.Row, error) {
 
+	projections := i.projs
+	
 	// For the set of iterators, we return one row each element in the longest of the iterators provided.
 	// Other iterator values will be NULL after they are depleted. All non-iterator fields for the row are returned
 	// identically for each row in the result set.
 	if i.nestedState != nil {
-		var stillIterating
+		row, err := ProjectRow(ctx, i.nestedState.projections, i.nestedState.sourceRow)
+		if err != nil {
+			return nil, err
+		}
+
+		nestedIterationFinished := true 
 		for _, evaluator := range i.nestedState.iterEvaluators {
 			if !evaluator.finished {
-				stillIterating = true
+				nestedIterationFinished = false
 				break
 			}
 		}
-		
-		if !stillIterating {
+
+		if nestedIterationFinished {
 			i.nestedState = nil
-			return i.ProjectRowWithNestedIters(ctx, i.nestedState.projections, i.nestedState.sourceRow)
+			return i.ProjectRowWithNestedIters(ctx)
 		}
+		
+		return row, nil
 	}
 
-	nestedState := &nestedIterState{
+	row, err := i.childIter.Next(ctx)
+	if err != nil {
+		return nil, err
+	}
+	
+	i.nestedState = &nestedIterState{
 		sourceRow: row,
 	}
 	
@@ -228,10 +240,10 @@ func (i *ProjectIter) ProjectRowWithNestedIters(
 		newProjs[i] = p
 	}
 	
-	nestedState.projections = newProjs
-	nestedState.iterEvaluators = rowIterEvaluators
-	i.nestedState = nestedState
-	return i.ProjectRowWithNestedIters(ctx, projections, row)
+	i.nestedState.projections = newProjs
+	i.nestedState.iterEvaluators = rowIterEvaluators
+	
+	return i.ProjectRowWithNestedIters(ctx)
 }
 
 type RowIterEvaluator struct {
