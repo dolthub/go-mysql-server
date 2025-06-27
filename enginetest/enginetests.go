@@ -5277,17 +5277,17 @@ func TestPersist(t *testing.T, harness Harness, newPersistableSess func(ctx *sql
 	}{
 		{
 			Query:           "SET PERSIST max_connections = 1000;",
-			Expected:        []sql.Row{{}},
+			Expected:        []sql.Row{{types.NewOkResult(0)}},
 			ExpectedGlobal:  int64(1000),
 			ExpectedPersist: int64(1000),
 		}, {
 			Query:           "SET @@PERSIST.max_connections = 1000;",
-			Expected:        []sql.Row{{}},
+			Expected:        []sql.Row{{types.NewOkResult(0)}},
 			ExpectedGlobal:  int64(1000),
 			ExpectedPersist: int64(1000),
 		}, {
 			Query:           "SET PERSIST_ONLY max_connections = 1000;",
-			Expected:        []sql.Row{{}},
+			Expected:        []sql.Row{{types.NewOkResult(0)}},
 			ExpectedGlobal:  int64(151),
 			ExpectedPersist: int64(1000),
 		},
