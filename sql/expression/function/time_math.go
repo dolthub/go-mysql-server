@@ -232,7 +232,7 @@ func (d *DateAdd) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	var dateVal interface{}
-	dateVal, _, err = types.DatetimeMaxPrecision.Convert(ctx, date)
+	dateVal, _, err = types.DatetimeMaxLimit.Convert(ctx, date)
 	if err != nil {
 		ctx.Warn(1292, err.Error())
 		return nil, nil
