@@ -318,8 +318,8 @@ func convertRowsResult(ctx *sql.Context, rows *gosql.Rows, query string) (sql.Sc
 	// (like a CALL to a stored procedure that only does SET operations)
 	// But we should NOT convert USE, SHOW, etc. statements to OkResult
 	// Also, external procedures (starting with "memory_") should return empty results, not OkResult
-	if len(sch) == 0 && strings.HasPrefix(strings.ToUpper(strings.TrimSpace(query)), "CALL") && 
-	   !strings.Contains(strings.ToLower(query), "memory_") {
+	if len(sch) == 0 && strings.HasPrefix(strings.ToUpper(strings.TrimSpace(query)), "CALL") &&
+		!strings.Contains(strings.ToLower(query), "memory_") {
 		// Check if we actually have any rows by trying to get the first row
 		firstRow, err := rowIter.Next(ctx)
 		if err == io.EOF {
