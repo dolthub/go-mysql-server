@@ -3237,7 +3237,7 @@ CREATE TABLE tab3 (
 			// in +8:00
 			{
 				Query:    "set @@session.time_zone='+08:00'",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "select from_unixtime(1)",
@@ -3254,7 +3254,7 @@ CREATE TABLE tab3 (
 			// in utc
 			{
 				Query:    "set @@session.time_zone='UTC'",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "select from_unixtime(1)",
