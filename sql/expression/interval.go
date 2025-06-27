@@ -238,24 +238,23 @@ const (
 )
 
 // isLeapYear determines if a given year is a leap year
-// Uses Go's built-in date handling for accuracy
 func isLeapYear(year int) bool {
 	return daysInMonth(year, time.February) == 29
 }
 
 // daysInMonth returns the number of days in a given month/year combination
-// Uses Go's built-in date handling: day 0 of next month = last day of current month
 func daysInMonth(year int, month time.Month) int {
 	return time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC).Day()
 }
 
+// apply applies the time delta to the given time, using the specified sign
 func (td TimeDelta) apply(t time.Time, sign int64) time.Time {
 	if td.Years != 0 {
 		targetYear := t.Year() + int(td.Years*sign)
 
-		// Special handling for Feb 29 on leap years
+		// special handling for Feb 29 on leap years
 		if t.Month() == time.February && t.Day() == 29 && !isLeapYear(targetYear) {
-			// If we're on Feb 29 and target year is not a leap year,
+			// if we're on Feb 29 and target year is not a leap year,
 			// move to Feb 28
 			t = time.Date(targetYear, time.February, 28,
 				t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), t.Location())
@@ -266,17 +265,17 @@ func (td TimeDelta) apply(t time.Time, sign int64) time.Time {
 	}
 
 	if td.Months != 0 {
-		totalMonths := int(t.Month()) - 1 + int(td.Months*sign) // Convert to 0-based
+		totalMonths := int(t.Month()) - 1 + int(td.Months*sign) // convert to 0-based
 
-		// Calculate target year and month
+		// calculate target year and month
 		yearOffset := totalMonths / 12
 		if totalMonths < 0 {
-			yearOffset = (totalMonths - 11) / 12 // Handle negative division correctly
+			yearOffset = (totalMonths - 11) / 12 // handle negative division correctly
 		}
 		targetYear := t.Year() + yearOffset
-		targetMonth := time.Month((totalMonths%12+12)%12 + 1) // Ensure positive month
+		targetMonth := time.Month((totalMonths%12+12)%12 + 1) // ensure positive month
 
-		// Handle end-of-month edge cases
+		// handle end-of-month edge cases
 		originalDay := t.Day()
 		maxDaysInTargetMonth := daysInMonth(targetYear, targetMonth)
 
