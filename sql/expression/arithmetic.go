@@ -521,14 +521,14 @@ func plus(lval, rval interface{}) (interface{}, error) {
 	case time.Time:
 		switch r := rval.(type) {
 		case *TimeDelta:
-			return types.ValidateDatetime(r.Add(l)), nil
+			return types.ValidateTime(r.Add(l)), nil
 		case time.Time:
 			return l.Unix() + r.Unix(), nil
 		}
 	case *TimeDelta:
 		switch r := rval.(type) {
 		case time.Time:
-			return types.ValidateDatetime(l.Add(r)), nil
+			return types.ValidateTime(l.Add(r)), nil
 		}
 	}
 
@@ -595,7 +595,7 @@ func minus(lval, rval interface{}) (interface{}, error) {
 	case time.Time:
 		switch r := rval.(type) {
 		case *TimeDelta:
-			return types.ValidateDatetime(r.Sub(l)), nil
+			return types.ValidateTime(r.Sub(l)), nil
 		case time.Time:
 			return l.Unix() - r.Unix(), nil
 		}
