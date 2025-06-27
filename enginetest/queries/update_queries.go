@@ -534,7 +534,7 @@ var UpdateScriptTests = []ScriptTest{
 		Name:    "UPDATE join – multiple tables, with trigger",
 		SetUpScript: []string{
 			"CREATE TABLE a (id INT PRIMARY KEY, x INT);",
-			"CREATE TABLE b (id INT PRIMARY KEY, y INT);",
+			"CREATE TABLE b (pk INT PRIMARY KEY, y INT);",
 			"CREATE TABLE logbook (entry TEXT);",
 			`CREATE TRIGGER trig_a AFTER UPDATE ON a FOR EACH ROW
 		 BEGIN
@@ -550,17 +550,90 @@ var UpdateScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: `UPDATE a
-					JOIN b ON a.id = 5 AND b.id = 6
+					JOIN b ON a.id = 5 AND b.pk = 6
 					SET a.x = 101, b.y = 201;`,
 			},
 			{
-				// TODO: UPDATE ... JOIN does not properly apply triggers when multiple tables are being updated,
-				//       and will currently only apply triggers from one of the tables.
-				Skip:  true,
 				Query: "SELECT * FROM logbook ORDER BY entry;",
 				Expected: []sql.Row{
 					{"a updated"},
 					{"b updated"},
+				},
+			},
+		},
+	},
+	{
+		Dialect: "mysql",
+		Name:    "UPDATE join – multiple tables with triggers that reference row values",
+		SetUpScript: []string{
+			"create table customers (id int primary key, name text, tier text)",
+			"create table orders (order_id int primary key, customer_id int, status text)",
+			"create table trigger_log (msg text)",
+			`CREATE TRIGGER after_orders_update after update on orders for each row
+				begin
+					insert into trigger_log (msg) values(
+						concat('Order ', OLD.order_id, ' status changed from ', OLD.status, ' to ', NEW.status));
+				end;`,
+			`Create trigger after_customers_update after update on customers for each row
+					begin
+						insert into trigger_log (msg) values(
+							concat('Customer ', OLD.id, ' tier changed from ', OLD.tier, ' to ', NEW.tier));
+					end;`,
+			"insert into customers values(1, 'Alice', 'silver'), (2, 'Bob', 'gold');",
+			"insert into orders values (101, 1, 'pending'), (102, 2, 'pending');",
+			"update customers c join orders o on c.id = o.customer_id " +
+				"set c.tier = 'platinum', o.status = 'shipped' where o.status = 'pending'",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM trigger_log order by msg;",
+				Expected: []sql.Row{
+					{"Customer 1 tier changed from silver to platinum"},
+					{"Customer 2 tier changed from gold to platinum"},
+					{"Order 101 status changed from pending to shipped"},
+					{"Order 102 status changed from pending to shipped"},
+				},
+			},
+		},
+	},
+	{
+		Dialect: "mysql",
+		Name:    "UPDATE join – multiple tables with same column names with triggers",
+		SetUpScript: []string{
+			"create table customers (id int primary key, name text, tier text)",
+			"create table orders (id int primary key, customer_id int, status text)",
+			"create table trigger_log (msg text)",
+			`CREATE TRIGGER after_orders_update after update on orders for each row
+				begin
+					insert into trigger_log (msg) values(
+						concat('Order ', OLD.id, ' status changed from ', OLD.status, ' to ', NEW.status));
+				end;`,
+			`Create trigger after_customers_update after update on customers for each row
+					begin
+						insert into trigger_log (msg) values(
+							concat('Customer ', OLD.id, ' tier changed from ', OLD.tier, ' to ', NEW.tier));
+					end;`,
+			"insert into customers values(1, 'Alice', 'silver'), (2, 'Bob', 'gold');",
+			"insert into orders values (101, 1, 'pending'), (102, 2, 'pending');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "update customers c join orders o on c.id = o.customer_id " +
+					"set c.tier = 'platinum', o.status = 'shipped' where o.status = 'pending'",
+				// TODO: we shouldn't expect an error once we're able to handle conflicting column names
+				// https://github.com/dolthub/dolt/issues/9403
+				ExpectedErrStr: "Unable to apply triggers when joined tables have columns with the same name",
+			},
+			{
+				// TODO: unskip once we're able to handle conflicting column names
+				// https://github.com/dolthub/dolt/issues/9403
+				Skip:  true,
+				Query: "SELECT * FROM trigger_log order by msg;",
+				Expected: []sql.Row{
+					{"Customer 1 tier changed from silver to platinum"},
+					{"Customer 2 tier changed from gold to platinum"},
+					{"Order 101 status changed from pending to shipped"},
+					{"Order 102 status changed from pending to shipped"},
 				},
 			},
 		},
