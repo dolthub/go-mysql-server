@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -479,6 +480,12 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 				),
 			)
 		} else {
+			// TODO: We should be able to handle duplicate column names by masking columns that aren't part of the
+			// triggered table https://github.com/dolthub/dolt/issues/9403
+			err = validateNoConflictingColumnNames(updateSrc.Child)
+			if err != nil {
+				return nil, err
+			}
 			// The scopeNode for an UpdateJoin should contain every node in the updateSource as new and old.
 			scopeNode = plan.NewProject(
 				[]sql.Expression{expression.NewStar()},
@@ -502,6 +509,20 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	}
 
 	return triggerLogic, err
+}
+
+// validateNoConflictingColumnNames checks the columns of a joined table to make sure there are no conflicting column
+// names
+func validateNoConflictingColumnNames(n sql.Node) error {
+	sch := n.Schema()
+	columnNames := make(map[string]string)
+	for _, col := range sch {
+		if sourceName, ok := columnNames[col.Name]; ok && sourceName != col.Source {
+			return errors.New("Unable to apply triggers when joined tables have columns with the same name")
+		}
+		columnNames[col.Name] = col.Source
+	}
+	return nil
 }
 
 // validateNoCircularUpdates returns an error if the trigger logic attempts to update the table that invoked it (or any

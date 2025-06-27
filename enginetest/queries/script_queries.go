@@ -514,7 +514,7 @@ SET entity_test.value = joined.value;`,
 				Expected: []sql.Row{{1, "john", "doe", 0, 42}},
 			},
 			{
-				Query:    "UPDATE test_users JOIN (SELECT id, 1 FROM test_users) AS tu SET test_users.favorite_number = 420;",
+				Query:    "UPDATE test_users JOIN (SELECT 1 FROM test_users) AS tu SET test_users.favorite_number = 420;",
 				Expected: []sql.Row{{NewUpdateResult(1, 1)}},
 			},
 			{
@@ -522,7 +522,7 @@ SET entity_test.value = joined.value;`,
 				Expected: []sql.Row{{1, "john", "doe", 0, 420}},
 			},
 			{
-				Query:    "UPDATE test_users JOIN (SELECT id, 1 FROM test_users) AS tu SET test_users.deleted = 1;",
+				Query:    "UPDATE test_users JOIN (SELECT 1 FROM test_users) AS tu SET test_users.deleted = 1;",
 				Expected: []sql.Row{{NewUpdateResult(1, 1)}},
 			},
 			{
