@@ -52,6 +52,9 @@ type ScriptTest struct {
 	// Dialect is the supported dialect for this script, which must match the dialect of the harness if specified.
 	// The script is skipped if the dialect doesn't match.
 	Dialect string
+	// Skip is used to completely skip a test, not execute any part of the script, and to record it as a skipped test in
+	// the test suite results.
+	Skip bool
 }
 
 type ScriptTestAssertion struct {
