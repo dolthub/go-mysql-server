@@ -17,6 +17,7 @@ package types
 import (
 	"context"
 	"fmt"
+	"math"
 	"reflect"
 	"time"
 
@@ -45,10 +46,10 @@ var (
 	datetimeTypeMinDatetime = time.Date(1000, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	// datetimeTypeMaxTimestamp is the maximum representable Timestamp value, MYSQL: 2038-01-19 03:14:07.999999 (microseconds)
-	datetimeTypeMaxTimestamp = time.Date(2038, 1, 19, 3, 14, 7, 999999000, time.UTC)
+	datetimeTypeMaxTimestamp = time.Unix(math.MaxInt32, 999999000)
 
 	// datetimeTypeMinTimestamp is the minimum representable Timestamp value, MYSQL: 1970-01-01 00:00:01.000000 (microseconds)
-	datetimeTypeMinTimestamp = time.Date(1970, 1, 1, 0, 0, 1, 0, time.UTC)
+	datetimeTypeMinTimestamp = time.Unix(1, 0)
 
 	datetimeTypeMaxDate = time.Date(9999, 12, 31, 0, 0, 0, 0, time.UTC)
 
