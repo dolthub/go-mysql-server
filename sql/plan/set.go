@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Set represents a set statement. This can be variables, but in some instances can also refer to row values.
@@ -79,7 +80,7 @@ func (s *Set) Expressions() []sql.Expression {
 
 // setSch is used to differentiate from the nil schema,
 // because Set does return rows
-var setSch = make(sql.Schema, 0)
+var setSch = types.OkResultSchema
 
 // Schema implements the sql.Node interface.
 func (s *Set) Schema() sql.Schema {

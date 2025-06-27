@@ -250,7 +250,7 @@ func (s *ServerQueryEngine) queryOrExec(ctx *sql.Context, stmt *gosql.Stmt, pars
 			shouldQuery = true
 		}
 	case *sqlparser.Select, *sqlparser.SetOp, *sqlparser.Show,
-		*sqlparser.Set, *sqlparser.Call, *sqlparser.Begin,
+		*sqlparser.Call, *sqlparser.Begin,
 		*sqlparser.Use, *sqlparser.Load, *sqlparser.Execute,
 		*sqlparser.Analyze, *sqlparser.Flush, *sqlparser.Explain:
 		shouldQuery = true
