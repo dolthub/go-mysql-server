@@ -187,7 +187,7 @@ func (i *ProjectIter) ProjectRowWithNestedIters(
 
 		nestedIterationFinished := true 
 		for _, evaluator := range i.nestedState.iterEvaluators {
-			if !evaluator.finished {
+			if !evaluator.finished && evaluator.iter != nil {
 				nestedIterationFinished = false
 				break
 			}
@@ -268,7 +268,7 @@ func (r RowIterEvaluator) IsNullable() bool {
 }
 
 func (r *RowIterEvaluator) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	if r.finished {
+	if r.finished || r.iter == nil {
 		return nil, nil
 	}
 
