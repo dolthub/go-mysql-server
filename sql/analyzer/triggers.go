@@ -514,14 +514,13 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 
 // validateNoConflictingColumnNames checks the columns of a joined table to make sure there are no conflicting column
 // names
-func validateNoConflictingColumnNames(n sql.Node) error {
-	sch := n.Schema()
-	columnNames := make(map[string]string)
+func validateNoConflictingColumnNames(sch sql.Schema) error {
+	columnNames := make(map[string]struct{})
 	for _, col := range sch {
-		if sourceName, ok := columnNames[col.Name]; ok && sourceName != col.Source {
+		if _, ok := columnNames[col.Name]; ok {
 			return errors.New("Unable to apply triggers when joined tables have columns with the same name")
 		}
-		columnNames[col.Name] = col.Source
+		columnNames[col.Name] = struct{}{}
 	}
 	return nil
 }
