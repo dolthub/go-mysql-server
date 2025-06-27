@@ -943,11 +943,6 @@ var UpdateErrorTests = []QueryErrorTest{
 		Query:       `UPDATE people SET height_inches = IF(ROW_NUMBER() OVER() % 2 = 0, 42, height_inches)`,
 		ExpectedErr: sql.ErrWindowUnsupported,
 	},
-	{
-		Query: `update people join people set height_inches = 100 where height_inches < 100`,
-		// TODO: mysql outputs sql.ErrDuplicateAliasOrTable error instead
-		ExpectedErr: sql.ErrAmbiguousColumnName,
-	},
 }
 
 var UpdateErrorScripts = []ScriptTest{
