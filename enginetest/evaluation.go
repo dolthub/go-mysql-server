@@ -84,18 +84,8 @@ func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script q
 	require.NoError(t, err, nil)
 
 	t.Run(script.Name, func(t *testing.T) {
-		if sh, ok := harness.(SkippingHarness); ok {
-			if script.Skip {
-				t.Skip()
-			}
-			
-			if sh.SkipQueryTest(script.Name) {
-				t.Skip()
-			}
-
-			if !supportedDialect(harness, script.Dialect) {
-				t.Skip()
-			}
+		if skipScript(harness, script, false) {
+			t.Skip()
 		}
 
 		for _, statement := range script.SetUpScript {
@@ -130,7 +120,7 @@ func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script q
 					ctx = th.NewSession()
 				}
 
-				if skipAssertion(t, harness, assertion) {
+				if skipAssertion(harness, assertion) {
 					t.Skip()
 				}
 
@@ -165,30 +155,26 @@ func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script q
 	})
 }
 
-func skipAssertion(t *testing.T, harness Harness, assertion queries.ScriptTestAssertion) bool {
+func skipScript(harness Harness, script queries.ScriptTest, prepared bool) bool {
+	if sh, ok := harness.(SkippingHarness); ok && sh.SkipQueryTest(script.Name) {
+		return true
+	}
+
+	return script.Skip || !supportedDialect(harness, script.Dialect) || (prepared && script.SkipPrepared)
+}
+
+func skipAssertion(harness Harness, assertion queries.ScriptTestAssertion) bool {
 	if sh, ok := harness.(SkippingHarness); ok && sh.SkipQueryTest(assertion.Query) {
 		return true
 	}
 
-	if !supportedDialect(harness, assertion.Dialect) {
-		return true
-	}
-
-	if assertion.Skip {
-		return true
-	}
-
-	return false
+	return assertion.Skip || !supportedDialect(harness, assertion.Dialect)
 }
 
 // TestScriptPrepared substitutes literals for bindvars, runs the test script given,
 // and makes any assertions given
 func TestScriptPrepared(t *testing.T, harness Harness, script queries.ScriptTest) bool {
 	return t.Run(script.Name, func(t *testing.T) {
-		if script.SkipPrepared {
-			t.Skip()
-		}
-
 		e := mustNewEngine(t, harness)
 		defer e.Close()
 		TestScriptWithEnginePrepared(t, e, harness, script)
@@ -198,6 +184,10 @@ func TestScriptPrepared(t *testing.T, harness Harness, script queries.ScriptTest
 // TestScriptWithEnginePrepared runs the test script with bindvars substituted for literals
 // using the engine provided.
 func TestScriptWithEnginePrepared(t *testing.T, e QueryEngine, harness Harness, script queries.ScriptTest) {
+	if skipScript(harness, script, true) {
+		t.Skip()
+	}
+
 	ctx := NewContext(harness)
 	err := CreateNewConnectionForServerEngine(ctx, e)
 	require.NoError(t, err, nil)
@@ -227,13 +217,7 @@ func TestScriptWithEnginePrepared(t *testing.T, e QueryEngine, harness Harness, 
 
 	for _, assertion := range assertions {
 		t.Run(assertion.Query, func(t *testing.T) {
-
-			if sh, ok := harness.(SkippingHarness); ok {
-				if sh.SkipQueryTest(assertion.Query) {
-					t.Skip()
-				}
-			}
-			if assertion.Skip {
+			if skipAssertion(harness, assertion) {
 				t.Skip()
 			}
 
