@@ -215,19 +215,19 @@ func (b *Builder) buildInsertValues(inScope *scope, v *ast.AliasedValues, column
 	exprTuples := make([][]sql.Expression, len(v.Values))
 	for i, vt := range v.Values {
 		// noExprs is an edge case where we fill VALUES with nil expressions
-		noExprs := len(vt) == 0
+		//noExprs := len(vt) == 0
 		// triggerUnknownTable is an edge case where we ignored an unresolved
 		// table error and do not have a schema for resolving defaults
 		triggerUnknownTable := (len(columnNames) == 0 && len(vt) > 0) && (len(b.TriggerCtx().UnresolvedTables) > 0)
 
-		if len(vt) != len(columnNames) && !noExprs && !triggerUnknownTable {
-			err := sql.ErrInsertIntoMismatchValueCount.New()
+		if len(vt) != len(columnNames) && !triggerUnknownTable {
+			err := sql.ErrColumnCountMismatch.New()
 			b.handleErr(err)
 		}
 		exprs := make([]sql.Expression, len(columnNames))
 		exprTuples[i] = exprs
 		for j := range columnNames {
-			if noExprs || triggerUnknownTable {
+			if triggerUnknownTable {
 				exprs[j] = expression.WrapExpression(columnDefaultValues[j])
 				continue
 			}
