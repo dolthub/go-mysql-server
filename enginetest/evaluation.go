@@ -88,7 +88,7 @@ func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script q
 			if script.Skip {
 				t.Skip()
 			}
-			
+
 			if sh.SkipQueryTest(script.Name) {
 				t.Skip()
 			}
