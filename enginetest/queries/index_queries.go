@@ -4095,7 +4095,17 @@ var IndexPrefixQueries = []ScriptTest{
 				ExpectedIndexes: []string{"a_idx"},
 			},
 			{
+				Query:           "select * from test where shared1 = 1 and shared2 = 2 and a3 > 3 and a3 < 5;",
+				Expected:        []sql.Row{},
+				ExpectedIndexes: []string{"a_idx"},
+			},
+			{
 				Query:           "select * from test where shared1 = 1 and shared2 = 2 and b3 = 3;",
+				Expected:        []sql.Row{},
+				ExpectedIndexes: []string{"b_idx"},
+			},
+			{
+				Query:           "select * from test where shared1 = 1 and shared2 = 2 and b3 > 3 and b3 < 5;",
 				Expected:        []sql.Row{},
 				ExpectedIndexes: []string{"b_idx"},
 			},
@@ -4113,7 +4123,17 @@ var IndexPrefixQueries = []ScriptTest{
 				ExpectedIndexes: []string{"a_idx"},
 			},
 			{
+				Query:           "select * from test where shared1 = 1 and shared2 = 2 and a3 > 3 and a3 < 5;",
+				Expected:        []sql.Row{},
+				ExpectedIndexes: []string{"a_idx"},
+			},
+			{
 				Query:           "select * from test where shared1 = 1 and shared2 = 2 and b3 = 3;",
+				Expected:        []sql.Row{},
+				ExpectedIndexes: []string{"b_idx"},
+			},
+			{
+				Query:           "select * from test where shared1 = 1 and shared2 = 2 and b3 > 3 and b3 < 5;",
 				Expected:        []sql.Row{},
 				ExpectedIndexes: []string{"b_idx"},
 			},
@@ -4131,7 +4151,17 @@ var IndexPrefixQueries = []ScriptTest{
 				ExpectedIndexes: []string{"a_idx"},
 			},
 			{
+				Query:           "select * from test where shared1 = 1 and shared2 = 2 and a3 > 3 and a3 < 5;",
+				Expected:        []sql.Row{},
+				ExpectedIndexes: []string{"a_idx"},
+			},
+			{
 				Query:           "select * from test where shared1 = 1 and shared2 = 2 and b3 = 3;",
+				Expected:        []sql.Row{},
+				ExpectedIndexes: []string{"b_idx"},
+			},
+			{
+				Query:           "select * from test where shared1 = 1 and shared2 = 2 and b3 > 3 and b3 < 5;",
 				Expected:        []sql.Row{},
 				ExpectedIndexes: []string{"b_idx"},
 			},
