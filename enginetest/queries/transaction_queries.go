@@ -40,11 +40,11 @@ var TransactionTests = []TransactionTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "/* client a */ set @@autocommit = 0;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 			{
 				Query:    "/* client b */ set @@autocommit = 0;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 			{
 				Query:    "/* client a */ select @@autocommit;",
@@ -120,11 +120,11 @@ var TransactionTests = []TransactionTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "/* client a */ set autocommit = off",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 			{
 				Query:    "/* client b */ set autocommit = off",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 			{
 				Query:    "/* client b */ select * from t order by x",
@@ -191,11 +191,11 @@ var TransactionTests = []TransactionTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "/* client a */ set autocommit = off",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 			{
 				Query:    "/* client b */ set autocommit = off",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 			{
 				Query:    "/* client b */ insert into t values (2,2)",
@@ -208,7 +208,7 @@ var TransactionTests = []TransactionTest{
 			// should commit any pending transaction
 			{
 				Query:    "/* client b */ set autocommit = on",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 			{
 				Query:    "/* client a */ select * from t order by x",
@@ -217,7 +217,7 @@ var TransactionTests = []TransactionTest{
 			// client a sees the committed transaction from client b when it begins a new transaction
 			{
 				Query:    "/* client a */ set autocommit = on",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 			{
 				Query:    "/* client a */ select * from t order by x",
@@ -283,11 +283,11 @@ var TransactionTests = []TransactionTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "/* client a */ set autocommit = off",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 			{
 				Query:    "/* client b */ set autocommit = off",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 			{
 				Query:    "/* client a */ start transaction",
@@ -360,11 +360,11 @@ var TransactionTests = []TransactionTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "/* client a */ set autocommit = off",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 			{
 				Query:    "/* client b */ set autocommit = off",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 			{
 				Query:    "/* client a */ start transaction",
@@ -529,11 +529,11 @@ var TransactionTests = []TransactionTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "/* client a */ set autocommit = off",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 			{
 				Query:    "/* client b */ set autocommit = off",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 			{
 				Query:    "/* client a */ start transaction",
@@ -666,15 +666,15 @@ var TransactionTests = []TransactionTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "/* client a */ set autocommit = off",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 			{
 				Query:    "/* client b */ set autocommit = off",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 			{
 				Query:    "/* client c */ set autocommit = off",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 			// Client a starts by insert into t
 			{
@@ -958,7 +958,7 @@ var TransactionTests = []TransactionTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "/* client a */ set autocommit = off",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 			{
 				Query:    "/* client a */ create temporary table tmp(pk int primary key)",
@@ -1074,7 +1074,7 @@ var TransactionTests = []TransactionTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "/* client a */ set @@autocommit = 0;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 			{
 				Query:    "/* client a */ start transaction;",
@@ -1131,7 +1131,7 @@ var TransactionTests = []TransactionTest{
 
 			{
 				Query:    "/* client a */ set @@autocommit = 0;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 			{
 				Query:    "/* client a */ start transaction;",
@@ -1243,7 +1243,7 @@ var TransactionTests = []TransactionTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "/* client a */ set @@autocommit = 0;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 			{
 				Query:    "/* client a */ start transaction;",
@@ -1285,7 +1285,7 @@ var TransactionTests = []TransactionTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "/* client a */ set @@autocommit = 0;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 			{
 				Query:    "/* client a */ start transaction;",
@@ -1327,7 +1327,7 @@ var TransactionTests = []TransactionTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "/* client a */ set @@autocommit = 0;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 			{
 				Query:    "/* client a */ start transaction;",
@@ -1365,7 +1365,7 @@ var TransactionTests = []TransactionTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "/* client a */ set @@autocommit = 0;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 			{
 				Query:    "/* client a */ start transaction;",
@@ -1386,7 +1386,7 @@ var TransactionTests = []TransactionTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "/* client a */ set @@autocommit = 0;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 			{
 				Query:    "/* client a */ start transaction;",
@@ -1408,7 +1408,7 @@ var TransactionTests = []TransactionTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "/* client a */ set @@autocommit = 0;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 			{
 				Query:    "/* client a */ start transaction;",
@@ -1430,7 +1430,7 @@ var TransactionTests = []TransactionTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "/* client a */ set @@autocommit = 0;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 			{
 				Query:    "/* client a */ start transaction;",

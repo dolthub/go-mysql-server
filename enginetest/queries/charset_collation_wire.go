@@ -476,7 +476,7 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 			},
 			{
 				Query:    "SET collation_connection = 'utf8mb4_0900_bin';",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 			{
 				Query: "SELECT COUNT(*) FROM test WHERE v1 LIKE 'ABC';",
@@ -536,7 +536,7 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 			},
 			{
 				Query:    "SET collation_connection = 'utf8mb4_0900_bin';",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 			{
 				Query: "SELECT 'abc' LIKE 'ABC';",

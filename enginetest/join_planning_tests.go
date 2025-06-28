@@ -28,7 +28,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/transform"
-	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type JoinPlanTest struct {
@@ -104,7 +103,7 @@ var JoinPlanningTests = []joinPlanScript{
 			},
 			{
 				q:   "set @@SESSION.disable_merge_join = 1",
-				exp: []sql.Row{{types.NewOkResult(0)}},
+				exp: []sql.Row{{}},
 			},
 			{
 				q:     "select /*+ JOIN_ORDER(ab, xy) MERGE_JOIN(ab, xy)*/ * from ab join xy on y = a order by 1, 3",
