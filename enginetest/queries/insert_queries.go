@@ -3128,4 +3128,24 @@ var InsertBrokenScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "column count mismatch in insert",
+		SetUpScript: []string{
+			"create table t(i int, j int)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "insert into t(i, j) values (1, 2, 3)",
+				ExpectedErr: sql.ErrColumnCountMismatch,
+			},
+			{
+				Query:       "insert into t(i, j) values (1)",
+				ExpectedErr: sql.ErrColumnCountMismatch,
+			},
+			{
+				Query:       "insert into t(i, j) values (1, 2), ()",
+				ExpectedErr: sql.ErrColumnCountMismatch,
+			},
+		},
+	},
 }
