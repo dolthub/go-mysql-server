@@ -221,7 +221,7 @@ func (b *Builder) buildInsertValues(inScope *scope, v *ast.AliasedValues, column
 		triggerUnknownTable := (len(columnNames) == 0 && len(vt) > 0) && (len(b.TriggerCtx().UnresolvedTables) > 0)
 
 		if len(vt) != len(columnNames) && !triggerUnknownTable {
-			err := sql.ErrColumnCountMismatch.New()
+			err := sql.ErrColValCountMismatch.New(i + 1)
 			b.handleErr(err)
 		}
 		exprs := make([]sql.Expression, len(columnNames))
