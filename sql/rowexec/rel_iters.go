@@ -135,9 +135,9 @@ type ProjectIter struct {
 }
 
 type nestedIterState struct {
-	projections      []sql.Expression
-	sourceRow        sql.Row
-	iterEvaluators   []*RowIterEvaluator
+	projections    []sql.Expression
+	sourceRow      sql.Row
+	iterEvaluators []*RowIterEvaluator
 }
 
 func (i *ProjectIter) Next(ctx *sql.Context) (sql.Row, error) {
@@ -175,7 +175,7 @@ func (i *ProjectIter) ProjectRowWithNestedIters(
 ) (sql.Row, error) {
 
 	projections := i.projs
-	
+
 	// For the set of iterators, we return one row each element in the longest of the iterators provided.
 	// Other iterator values will be NULL after they are depleted. All non-iterator fields for the row are returned
 	// identically for each row in the result set.
@@ -185,7 +185,7 @@ func (i *ProjectIter) ProjectRowWithNestedIters(
 			return nil, err
 		}
 
-		nestedIterationFinished := true 
+		nestedIterationFinished := true
 		for _, evaluator := range i.nestedState.iterEvaluators {
 			if !evaluator.finished && evaluator.iter != nil {
 				nestedIterationFinished = false
@@ -197,7 +197,7 @@ func (i *ProjectIter) ProjectRowWithNestedIters(
 			i.nestedState = nil
 			return i.ProjectRowWithNestedIters(ctx)
 		}
-		
+
 		return row, nil
 	}
 
@@ -205,12 +205,12 @@ func (i *ProjectIter) ProjectRowWithNestedIters(
 	if err != nil {
 		return nil, err
 	}
-	
+
 	i.nestedState = &nestedIterState{
 		sourceRow: row,
 	}
-	
-	// We need a new set of projections, with any iterator-returning expressions replaced by new expressions that will 
+
+	// We need a new set of projections, with any iterator-returning expressions replaced by new expressions that will
 	// return the result of the iteration on each call to Eval. We also need to keep a list of all such iterators, so
 	// that we can tell when they have all finished their iterations.
 	var rowIterEvaluators []*RowIterEvaluator
@@ -230,20 +230,20 @@ func (i *ProjectIter) ProjectRowWithNestedIters(
 				rowIterEvaluators = append(rowIterEvaluators, evaluator)
 				return evaluator, transform.NewTree, nil
 			}
-			
+
 			return e, transform.SameTree, nil
 		})
-		
+
 		if err != nil {
 			return nil, err
 		}
 
 		newProjs[i] = p
 	}
-	
+
 	i.nestedState.projections = newProjs
 	i.nestedState.iterEvaluators = rowIterEvaluators
-	
+
 	return i.ProjectRowWithNestedIters(ctx)
 }
 
