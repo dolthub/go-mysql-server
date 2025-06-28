@@ -4011,7 +4011,7 @@ var IndexPrefixQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "set @@strict_mysql_compatibility = true;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 			{
 				Query:    "select @@strict_mysql_compatibility;",

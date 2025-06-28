@@ -325,20 +325,20 @@ END`,
 			//       need to filter out Result Sets that should be completely omitted.
 			{
 				Query:    "CALL p1(0)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 			{
 				Query:    "CALL p1(1)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 			{
 				Query:    "CALL p1(2)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 			{
 				// https://github.com/dolthub/dolt/issues/6230
 				Query:    "CALL p1(200)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 		},
 	},
@@ -359,15 +359,15 @@ END`,
 			//       need to filter out Result Sets that should be completely omitted.
 			{
 				Query:    "CALL p1(0)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 			{
 				Query:    "CALL p1(1)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 			{
 				Query:    "CALL p1(2)",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 		},
 	},
@@ -985,7 +985,7 @@ END;`,
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SET @x = 2;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 			{
 				// TODO: Set statements don't return anything for whatever reason
@@ -2270,7 +2270,7 @@ end;
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "call proc();",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{}},
 			},
 			{
 				Query: "select @v;",
