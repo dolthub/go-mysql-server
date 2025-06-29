@@ -45,6 +45,12 @@ type Expression interface {
 	WithChildren(children ...Expression) (Expression, error)
 }
 
+type RowIterExpression interface {
+	Expression
+	// EvalRowIter evaluates the expression, which must be a RowIter
+	EvalRowIter(ctx *Context, r Row) (RowIter, error)
+}
+
 // ExpressionWithNodes is an expression that contains nodes as children.
 type ExpressionWithNodes interface {
 	Expression

@@ -312,9 +312,10 @@ func (b *BaseBuilder) buildProject(ctx *sql.Context, n *plan.Project, row sql.Ro
 	}
 
 	return sql.NewSpanIter(span, &ProjectIter{
-		projs:     n.Projections,
-		canDefer:  n.CanDefer,
-		childIter: i,
+		projs:          n.Projections,
+		canDefer:       n.CanDefer,
+		hasNestedIters: n.IncludesNestedIters,
+		childIter:      i,
 	}), nil
 }
 
