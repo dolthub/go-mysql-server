@@ -39,17 +39,29 @@ var (
 
 	ErrConvertingToTimeOutOfRange = errors.NewKind("value %q is outside of %v range")
 
-	// datetimeTypeMaxDatetime is the maximum representable Datetime/Date value.
-	datetimeTypeMaxDatetime = time.Date(9999, 12, 31, 23, 59, 59, 999999000, time.UTC)
+	// datetimeTypeMaxDatetime is the maximum representable Datetime/Date value. MYSQL: 9999-12-31 23:59:59.499999 (microseconds)
+	datetimeTypeMaxDatetime = time.Date(9999, 12, 31, 23, 59, 59, 499999000, time.UTC)
 
-	// datetimeTypeMinDatetime is the minimum representable Datetime/Date value.
-	datetimeTypeMinDatetime = time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC)
+	// datetimeTypeMinDatetime is the minimum representable Datetime/Date value. MYSQL: 1000-01-01 00:00:00.000000 (microseconds)
+	datetimeTypeMinDatetime = time.Date(1000, 1, 1, 0, 0, 0, 0, time.UTC)
 
-	// datetimeTypeMaxTimestamp is the maximum representable Timestamp value, which is the maximum 32-bit integer as a Unix time.
+	// datetimeTypeMaxTimestamp is the maximum representable Timestamp value, MYSQL: 2038-01-19 03:14:07.999999 (microseconds)
 	datetimeTypeMaxTimestamp = time.Unix(math.MaxInt32, 999999000)
 
-	// datetimeTypeMinTimestamp is the minimum representable Timestamp value, which is one second past the epoch.
+	// datetimeTypeMinTimestamp is the minimum representable Timestamp value, MYSQL: 1970-01-01 00:00:01.000000 (microseconds)
 	datetimeTypeMinTimestamp = time.Unix(1, 0)
+
+	datetimeTypeMaxDate = time.Date(9999, 12, 31, 0, 0, 0, 0, time.UTC)
+
+	// datetimeTypeMinDate is the minimum representable Date value, MYSQL: 1000-01-01 00:00:00.000000 (microseconds)
+	datetimeTypeMinDate = time.Date(1000, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	// The MAX and MIN are extrapolated from commit ff05628a530 in the MySQL source code from my_time.cc
+	// datetimeMaxTime is the maximum representable time value, MYSQL: 9999-12-31 23:59:59.999999 (microseconds)
+	datetimeMaxTime = time.Date(9999, 12, 31, 23, 59, 59, 999999000, time.UTC)
+
+	// datetimeMinTime is the minimum representable time value, MYSQL: 0000-01-01 00:00:00.000000 (microseconds)
+	datetimeMinTime = time.Date(0000, 0, 0, 0, 0, 0, 0, time.UTC)
 
 	DateOnlyLayouts = []string{
 		"20060102",
@@ -71,8 +83,9 @@ var (
 		"2006-01-02 15:04:",
 		"2006-01-02 15:04:.",
 		"2006-01-02 15:04:05.",
-		"2006-01-02 15:04:05.999999",
-		"2006-1-2 15:4:5.999999",
+		"2006-01-02 15:04:05.999999999",
+		"2006-1-2 15:4:5.999999999",
+		"2006-1-2:15:4:5.999999999",
 		"2006-01-02T15:04:05",
 		"20060102150405",
 		"2006-01-02 15:04:05.999999999 -0700 MST", // represents standard Time.time.UTC()
@@ -91,6 +104,8 @@ var (
 	Timestamp = MustCreateDatetimeType(sqltypes.Timestamp, 0)
 	// TimestampMaxPrecision is a UNIX timestamp with maximum precision
 	TimestampMaxPrecision = MustCreateDatetimeType(sqltypes.Timestamp, 6)
+	// DatetimeMaxRange is a date and a time with maximum precision and maximum range.
+	DatetimeMaxRange = MustCreateDatetimeType(sqltypes.Datetime, 6)
 
 	datetimeValueType = reflect.TypeOf(time.Time{})
 )
@@ -200,9 +215,20 @@ func ConvertToTime(ctx context.Context, v interface{}, t datetimeType) (time.Tim
 	}
 
 	// Round the date to the precision of this type
-	truncationDuration := time.Second
-	truncationDuration /= time.Duration(precisionConversion[t.precision])
-	res = res.Round(truncationDuration)
+	if t.precision < 6 {
+		truncationDuration := time.Second / time.Duration(precisionConversion[t.precision])
+		res = res.Round(truncationDuration)
+	} else {
+		res = res.Round(time.Microsecond)
+	}
+
+	if t == DatetimeMaxRange {
+		validated := ValidateTime(res)
+		if validated == nil {
+			return time.Time{}, ErrConvertingToTimeOutOfRange.New(v, t)
+		}
+		return validated.(time.Time), nil
+	}
 
 	switch t.baseType {
 	case sqltypes.Date:
@@ -214,10 +240,11 @@ func ConvertToTime(ctx context.Context, v interface{}, t datetimeType) (time.Tim
 			return time.Time{}, ErrConvertingToTimeOutOfRange.New(res.Format(sql.TimestampDatetimeLayout), t.String())
 		}
 	case sqltypes.Timestamp:
-		if res.Before(datetimeTypeMinTimestamp) || res.After(datetimeTypeMaxTimestamp) {
+		if ValidateTimestamp(res) == nil {
 			return time.Time{}, ErrConvertingToTimeOutOfRange.New(res.Format(sql.TimestampDatetimeLayout), t.String())
 		}
 	}
+
 	return res, nil
 }
 
@@ -338,8 +365,8 @@ func (t datetimeType) ConvertWithoutRangeCheck(ctx context.Context, v interface{
 }
 
 func parseDatetime(value string) (time.Time, bool) {
-	for _, fmt := range TimestampDatetimeLayouts {
-		if t, err := time.Parse(fmt, value); err == nil {
+	for _, layout := range TimestampDatetimeLayouts {
+		if t, err := time.Parse(layout, value); err == nil {
 			return t.UTC(), true
 		}
 	}
@@ -473,7 +500,16 @@ func (t datetimeType) MinimumTime() time.Time {
 // ValidateTime receives a time and returns either that time or nil if it's
 // not a valid time.
 func ValidateTime(t time.Time) interface{} {
-	if t.After(time.Date(9999, time.December, 31, 23, 59, 59, 999999999, time.UTC)) {
+	if t.Before(datetimeMinTime) || t.After(datetimeMaxTime) {
+		return nil
+	}
+	return t
+}
+
+// ValidateTimestamp receives a time and returns either that time or nil if it's
+// not a valid timestamp.
+func ValidateTimestamp(t time.Time) interface{} {
+	if t.Before(datetimeTypeMinTimestamp) || t.After(datetimeTypeMaxTimestamp) {
 		return nil
 	}
 	return t

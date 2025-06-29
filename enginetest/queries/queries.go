@@ -4831,6 +4831,47 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{time.Date(2019, time.December, 30, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
+		Query:    "SELECT date_add('4444-01-01', INTERVAL 5400000 DAY);",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT date_add('4444-01-01', INTERVAL -5300000 DAY);",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT subdate('2008-01-02', 12e10);",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT date_add('2008-01-02', INTERVAL 1000000 day);",
+		Expected: []sql.Row{{"4745-11-29"}},
+	},
+	{
+		Query:    "SELECT subdate('2008-01-02', INTERVAL 700000 day);",
+		Expected: []sql.Row{{"0091-06-20"}},
+	},
+	{
+		Query: "SELECT date_add('0000-01-01:01:00:00', INTERVAL 0 day);",
+		// MYSQL uses a proleptic gregorian, however, Go's time package does normal gregorian.
+		Expected: []sql.Row{{"0000-01-01 01:00:00"}},
+	},
+	{
+		Query:    "SELECT date_add('9999-12-31:23:59:59.9999994', INTERVAL 0 day);",
+		Expected: []sql.Row{{"9999-12-31 23:59:59.999999"}},
+	},
+	{
+		Query:    "SELECT date_add('9999-12-31:23:59:59.9999995', INTERVAL 0 day);",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT date_add('9999-12-31:23:59:59.99999945', INTERVAL 0 day);",
+		Expected: []sql.Row{{"9999-12-31 23:59:59.999999"}},
+	},
+	{
+		Query:    "SELECT date_add('9999-12-31:23:59:59.99999944444444444-', INTERVAL 0 day);",
+		Expected: []sql.Row{{nil}},
+	},
+	{
 		Query: `SELECT * FROM (SELECT * FROM (SELECT * FROM (SELECT * FROM othertable) othertable_one) othertable_two) othertable_three WHERE s2 = 'first'`,
 		Expected: []sql.Row{
 			{"first", int64(3)},

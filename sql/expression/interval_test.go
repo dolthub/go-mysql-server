@@ -51,10 +51,10 @@ func TestTimeDelta(t *testing.T) {
 			date(2005, time.March, 29, 0, 0, 0, 0),
 		},
 		{
-			"plus overflowing until december",
+			"plus overflowing until december", // #7300 mysql produced 2005-12-29
 			TimeDelta{Months: 22},
 			leapYear,
-			date(2006, time.December, 29, 0, 0, 0, 0),
+			date(2005, time.December, 29, 0, 0, 0, 0),
 		},
 		{
 			"minus overflowing months",
