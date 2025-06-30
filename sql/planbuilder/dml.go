@@ -75,8 +75,29 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 		if len(columns) == 0 && len(destScope.cols) > 0 && rt != nil {
 			schema := rt.Schema()
 			columns = make([]string, len(schema))
-			for i, col := range schema {
-				columns[i] = col.Name
+			for index, col := range schema {
+				// Tables with any generated column must always supply a column list, so this is always an error
+				if col.Generated != nil {
+					b.handleErr(sql.ErrGeneratedColumnValue.New(col.Name, rt.Name()))
+				}
+				columns[index] = col.Name
+			}
+			if ir, ok := i.Rows.(*ast.AliasedValues); ok {
+				// Handle any empty VALUES() tuples when no column list was specified
+				for valueIdx, valueRow := range ir.Values {
+					if len(valueRow) == 0 {
+						// VALUES() clause is empty in conjunction with empty column list, so we need to
+						// insert default val for respective columns.
+						ir.Values[valueIdx] = make([]ast.Expr, len(schema))
+						for j, col := range schema {
+							if col.Default == nil && !col.AutoIncrement {
+								b.handleErr(sql.ErrInsertIntoNonNullableDefaultNullColumn.New(col.Name))
+							}
+
+							ir.Values[valueIdx][j] = &ast.Default{}
+						}
+					}
+				}
 			}
 		}
 	}
@@ -210,8 +231,6 @@ func (b *Builder) buildInsertValues(inScope *scope, v *ast.AliasedValues, column
 	literalOnly = true
 	exprTuples := make([][]sql.Expression, len(v.Values))
 	for i, vt := range v.Values {
-		// noExprs is an edge case where we fill VALUES with nil expressions
-		//noExprs := len(vt) == 0
 		// triggerUnknownTable is an edge case where we ignored an unresolved
 		// table error and do not have a schema for resolving defaults
 		triggerUnknownTable := (len(columnNames) == 0 && len(vt) > 0) && (len(b.TriggerCtx().UnresolvedTables) > 0)
