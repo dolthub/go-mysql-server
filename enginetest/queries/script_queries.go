@@ -8778,6 +8778,7 @@ where
 	},
 	{
 		Name:        "enums with default values",
+		Dialect:     "mysql",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -8980,6 +8981,7 @@ where
 	{
 		Skip:        true,
 		Name:        "enums with auto increment",
+		Dialect:     "mysql",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -8990,8 +8992,9 @@ where
 	},
 	{
 		// This is with STRICT_TRANS_TABLES or STRICT_ALL_TABLES in sql_mode
-		Skip: true,
-		Name: "enums with zero",
+		Skip:    true,
+		Name:    "enums with zero",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t (e enum('a', 'b', 'c'));",
 		},
@@ -9009,8 +9012,9 @@ where
 	},
 	{
 		// This is with STRICT_TRANS_TABLES or STRICT_ALL_TABLES in sql_mode
-		Skip: true,
-		Name: "enums with empty string",
+		Skip:    true,
+		Name:    "enums with empty string",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t (e enum('a', 'b', 'c'));",
 			"create table et (e enum('a', 'b', '', 'c'));",
@@ -9043,8 +9047,9 @@ where
 		},
 	},
 	{
-		Skip: true,
-		Name: "enum conversion to strings",
+		Skip:    true,
+		Name:    "enum conversion to strings",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t (e enum('abc', 'defg', 'hjikl'));",
 			"insert into t values(1), (2), (3);",
@@ -9071,8 +9076,9 @@ where
 		},
 	},
 	{
-		Skip: true,
-		Name: "enums with foreign keys",
+		Skip:    true,
+		Name:    "enums with foreign keys",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table parent (e enum('a', 'b', 'c') primary key);",
 			"insert into parent values (1), (2);",
@@ -9250,8 +9256,9 @@ where
 		},
 	},
 	{
-		Skip: true,
-		Name: "enums with foreign keys and cascade",
+		Skip:    true,
+		Name:    "enums with foreign keys and cascade",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table parent (e enum('a', 'b', 'c') primary key);",
 			"insert into parent values (1), (2);",
