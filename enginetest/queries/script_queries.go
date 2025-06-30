@@ -8061,52 +8061,7 @@ where
 			},
 		},
 	},
-	{
-		Name:    "special case for not null default enum",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"create table t (i int primary key, e enum('abc', 'def', 'ghi') not null);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "insert into t(i) values (1)",
-				Expected: []sql.Row{
-					{types.NewOkResult(1)},
-				},
-			},
-			{
-				Query:       "insert into t values (2, null)",
-				ExpectedErr: sql.ErrInsertIntoNonNullableProvidedNull,
-			},
-			{
-				Query: "select * from t;",
-				Expected: []sql.Row{
-					{1, "abc"},
-				},
-			},
-		},
-	},
-	{
-		Name:    "ensure that special case does not apply for nullable enums",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"create table t (i int primary key, e enum('abc', 'def', 'ghi'));",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "insert into t(i) values (1)",
-				Expected: []sql.Row{
-					{types.NewOkResult(1)},
-				},
-			},
-			{
-				Query: "select * from t;",
-				Expected: []sql.Row{
-					{1, nil},
-				},
-			},
-		},
-	},
+
 	{
 		Name:    "not expression optimization",
 		Dialect: "mysql",
@@ -8776,15 +8731,560 @@ where
 
 	// Enum tests
 	{
+		Name:    "special case for not null default enum",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (i int primary key, e enum('abc', 'def', 'ghi') not null);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into t(i) values (1)",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query:       "insert into t values (2, null)",
+				ExpectedErr: sql.ErrInsertIntoNonNullableProvidedNull,
+			},
+			{
+				Query: "select * from t;",
+				Expected: []sql.Row{
+					{1, "abc"},
+				},
+			},
+		},
+	},
+	{
+		Name:    "ensure that special case does not apply for nullable enums",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (i int primary key, e enum('abc', 'def', 'ghi'));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into t(i) values (1)",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select * from t;",
+				Expected: []sql.Row{
+					{1, nil},
+				},
+			},
+		},
+	},
+	{
+		Name:        "enums with default values",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "create table bad (e enum('a') primary key default null);",
+				ExpectedErr: sql.ErrIncompatibleDefaultType,
+			},
+			{
+				Skip:        true,
+				Query:       "create table bad (e enum('a') default 0);",
+				ExpectedErr: sql.ErrIncompatibleDefaultType,
+			},
+			{
+				Query:       "create table bad (e enum('a') default '');",
+				ExpectedErr: sql.ErrIncompatibleDefaultType,
+			},
+			{
+				Skip:        true,
+				Query:       "create table bad (e enum('a') default '1');",
+				ExpectedErr: sql.ErrIncompatibleDefaultType,
+			},
+			{
+				Skip:        true,
+				Query:       "create table bad (e enum('a') default 1);",
+				ExpectedErr: sql.ErrIncompatibleDefaultType,
+			},
+
+			{
+				Query: "create table t1 (e enum('a') default 'a');",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				// TODO: while this is round-trippable, it doesn't match MySQL
+				Skip:  true,
+				Query: "show create table t1;",
+				Expected: []sql.Row{
+					{"t1", "CREATE TABLE `t1` (\n" +
+						"  `e` enum('a') DEFAULT 'a'\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "insert into t1 values (default);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "insert into t1 values ();",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "insert into t1() values ();",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select * from t1 order by e;",
+				Expected: []sql.Row{
+					{"a"},
+					{"a"},
+					{"a"},
+				},
+			},
+			{
+				Query: "insert into t1 values (null)",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select * from t1 order by e;",
+				Expected: []sql.Row{
+					{nil},
+					{"a"},
+					{"a"},
+					{"a"},
+				},
+			},
+
+			{
+				Query: "create table t2 (e enum('a') default (1));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show create table t2;",
+				Expected: []sql.Row{
+					{"t2", "CREATE TABLE `t2` (\n" +
+						"  `e` enum('a') DEFAULT (1)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "insert into t2 values (default);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "insert into t2 values ();",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "insert into t2() values ();",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select * from t2 order by e;",
+				Expected: []sql.Row{
+					{"a"},
+					{"a"},
+					{"a"},
+				},
+			},
+			{
+				Query: "insert into t2 values (null)",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select * from t2 order by e;",
+				Expected: []sql.Row{
+					{nil},
+					{"a"},
+					{"a"},
+					{"a"},
+				},
+			},
+
+			{
+				Query: "create table t3 (e enum('a') default ('1'));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				// TODO: we don't print the collation before the string
+				Skip:  true,
+				Query: "show create table t3;",
+				Expected: []sql.Row{
+					{"t3", "CREATE TABLE `t3` (\n" +
+						"  `e` enum('a') DEFAULT (_utf8mb4'1')\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "insert into t3 values (default);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "insert into t3 values ();",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "insert into t3() values ();",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select * from t3 order by e;",
+				Expected: []sql.Row{
+					{"a"},
+					{"a"},
+					{"a"},
+				},
+			},
+			{
+				Query: "insert into t3 values (null)",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select * from t3 order by e;",
+				Expected: []sql.Row{
+					{nil},
+					{"a"},
+					{"a"},
+					{"a"},
+				},
+			},
+		},
+	},
+	{
+		Skip:        true,
 		Name:        "enums with auto increment",
 		SetUpScript: []string{},
-		Assertions:  []ScriptTestAssertion{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "create table t (e enum('a', 'b', 'c') primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'e'",
+			},
+		},
 	},
 	{
+		// This is with STRICT_TRANS_TABLES or STRICT_ALL_TABLES in sql_mode
+		Skip: true,
+		Name: "enums with zero",
+		SetUpScript: []string{
+			"create table t (e enum('a', 'b', 'c'));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into t values (0);",
+				// TODO should be truncated error, but this is the error we throw for empty string
+				ExpectedErrStr: "is not valid for this Enum",
+			},
+			{
+				Query:       "create table tt (e enum('a', 'b', 'c') default 0)",
+				ExpectedErr: sql.ErrInvalidColumnDefaultValue,
+			},
+		},
+	},
+	{
+		// This is with STRICT_TRANS_TABLES or STRICT_ALL_TABLES in sql_mode
+		Skip: true,
 		Name: "enums with empty string",
+		SetUpScript: []string{
+			"create table t (e enum('a', 'b', 'c'));",
+			"create table et (e enum('a', 'b', '', 'c'));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "insert into t values ('');",
+				ExpectedErrStr: "Data truncated for column 'e'", // TODO should be truncated error
+			},
+			{
+				Query:       "create table tt (e enum('a', 'b', 'c') default '')",
+				ExpectedErr: sql.ErrInvalidColumnDefaultValue,
+			},
+			{
+				Query: "insert into et values (1), (2), (3), (4), ('');",
+				Expected: []sql.Row{
+					{types.NewOkResult(5)},
+				},
+			},
+			{
+				Query: "select e, cast(e as signed) from et order by e;",
+				Expected: []sql.Row{
+					{"a", 1},
+					{"b", 2},
+					{"", 3},
+					{"", 3},
+					{"c", 4},
+				},
+			},
+		},
 	},
 	{
+		Skip: true,
+		Name: "enum conversion to strings",
+		SetUpScript: []string{
+			"create table t (e enum('abc', 'defg', 'hjikl'));",
+			"insert into t values(1), (2), (3);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// We incorrectly use the numeric values of the enum, resulting in length of 1
+				Query: "select e, length(e) from t order by e;",
+				Expected: []sql.Row{
+					{"abc", 3},
+					{"defg", 4},
+					{"hijkl", 5},
+				},
+			},
+			{
+				// We incorrectly use the numeric values of the enum, resulting in length of 1
+				Query: "select e, concat(e, 'test') from t order by e;",
+				Expected: []sql.Row{
+					{"abc", "abctest"},
+					{"defg", "defgtest"},
+					{"hijkl", "hijkltest"},
+				},
+			},
+		},
+	},
+	{
+		Skip: true,
 		Name: "enums with foreign keys",
+		SetUpScript: []string{
+			"create table parent (e enum('a', 'b', 'c') primary key);",
+			"insert into parent values (1), (2);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "create table child0 (e enum('a', 'b', 'c'), foreign key (e) references parent (e));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "insert into child0 values (1), (2), (NULL);",
+				Expected: []sql.Row{
+					{types.NewOkResult(3)},
+				},
+			},
+			{
+				Query: "select * from child0 order by e",
+				Expected: []sql.Row{
+					{nil},
+					{"a"},
+					{"b"},
+				},
+			},
+
+			{
+				Query: "create table child1 (e enum('x', 'y', 'z'), foreign key (e) references parent (e));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "insert into child1 values (1), (2);",
+				Expected: []sql.Row{
+					{types.NewOkResult(2)},
+				},
+			},
+			{
+				Query:       "insert into child1 values (3);",
+				ExpectedErr: sql.ErrForeignKeyParentViolation,
+			},
+			{
+				Query: "insert into child1 values ('x'), ('y');",
+				Expected: []sql.Row{
+					{types.NewOkResult(2)},
+				},
+			},
+			{
+				Query:       "insert into child1 values ('z');",
+				ExpectedErr: sql.ErrForeignKeyParentViolation,
+			},
+			{
+				Query:          "insert into child1 values ('a');",
+				ExpectedErrStr: "Data truncated for column 'e'",
+			},
+			{
+				Query: "select * from child1 order by e;",
+				Expected: []sql.Row{
+					{"x"},
+					{"x"},
+					{"y"},
+					{"y"},
+				},
+			},
+
+			{
+				Query: "create table child2 (e enum('b', 'c', 'a'), foreign key (e) references parent (e));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "insert into child2 values (1), (2);",
+				Expected: []sql.Row{
+					{types.NewOkResult(2)},
+				},
+			},
+			{
+				Query:       "insert into child2 values (3);",
+				ExpectedErr: sql.ErrForeignKeyParentViolation,
+			},
+			{
+				Query: "insert into child2 values ('c');",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query:       "insert into child2 values ('a');",
+				ExpectedErr: sql.ErrForeignKeyParentViolation,
+			},
+			{
+				Query: "select * from child2 order by e;",
+				Expected: []sql.Row{
+					{"c"},
+					{"c"},
+					{"b"},
+				},
+			},
+
+			{
+				Query: "create table child3 (e enum('x', 'y', 'z', 'a', 'b', 'c'), foreign key (e) references parent (e));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "insert into child3 values (1), (2);",
+				Expected: []sql.Row{
+					{types.NewOkResult(2)},
+				},
+			},
+			{
+				Query:       "insert into child3 values (3);",
+				ExpectedErr: sql.ErrForeignKeyParentViolation,
+			},
+			{
+				Query: "insert into child3 values ('x'), ('y');",
+				Expected: []sql.Row{
+					{types.NewOkResult(2)},
+				},
+			},
+			{
+				Query:       "insert into child3 values ('z');",
+				ExpectedErr: sql.ErrForeignKeyParentViolation,
+			},
+			{
+				Query:       "insert into child3 values ('a');",
+				ExpectedErr: sql.ErrForeignKeyParentViolation,
+			},
+			{
+				Query: "select * from child3 order by e;",
+				Expected: []sql.Row{
+					{"x"},
+					{"x"},
+					{"y"},
+					{"y"},
+				},
+			},
+
+			{
+				Query: "create table child4 (e enum('q'), foreign key (e) references parent (e));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "insert into child4 values (1);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query:          "insert into child4 values (3);",
+				ExpectedErrStr: "Data truncated for column 'e'",
+			},
+			{
+				Query: "insert into child4 values ('q');",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query:          "insert into child4 values ('a');",
+				ExpectedErrStr: "Data truncated for column 'e'",
+			},
+			{
+				Query: "select * from child4 order by e;",
+				Expected: []sql.Row{
+					{"q"},
+					{"q"},
+				},
+			},
+		},
+	},
+	{
+		Skip: true,
+		Name: "enums with foreign keys and cascade",
+		SetUpScript: []string{
+			"create table parent (e enum('a', 'b', 'c') primary key);",
+			"insert into parent values (1), (2);",
+			"create table child (e enum('x', 'y', 'z'), foreign key (e) references parent (e) on update cascade on delete cascade);",
+			"insert into child values (1), (2);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "update parent set e = 'c' where e = 'a';",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
+				},
+			},
+			{
+				Query: "select * from child order by e;",
+				Expected: []sql.Row{
+					{"y"},
+					{"z"},
+				},
+			},
+			{
+				Query: "delete from parent where e = 'b';",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select * from child order by e;",
+				Expected: []sql.Row{
+					{"z"},
+				},
+			},
+		},
 	},
 }
 
