@@ -174,8 +174,6 @@ func (i *ProjectIter) ProjectRowWithNestedIters(
 	ctx *sql.Context,
 ) (sql.Row, error) {
 
-	projections := i.projs
-	
 	// For the set of iterators, we return one row each element in the longest of the iterators provided.
 	// Other iterator values will be NULL after they are depleted. All non-iterator fields for the row are returned
 	// identically for each row in the result set.
@@ -214,10 +212,10 @@ func (i *ProjectIter) ProjectRowWithNestedIters(
 	// return the result of the iteration on each call to Eval. We also need to keep a list of all such iterators, so
 	// that we can tell when they have all finished their iterations.
 	var rowIterEvaluators []*RowIterEvaluator
-	newProjs := make([]sql.Expression, len(projections))
-	for i, proj := range projections {
+	newProjs := make([]sql.Expression, len(i.projs))
+	for i, proj := range i.projs {
 		p, _, err := transform.Expr(proj, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-			if rie, ok := e.(sql.RowIterExpression); ok {
+			if rie, ok := e.(sql.RowIterExpression); ok && rie.ReturnsRowIter() {
 				ri, err := rie.EvalRowIter(ctx, row)
 				if err != nil {
 					return nil, false, err

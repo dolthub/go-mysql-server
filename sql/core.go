@@ -49,6 +49,8 @@ type RowIterExpression interface {
 	Expression
 	// EvalRowIter evaluates the expression, which must be a RowIter
 	EvalRowIter(ctx *Context, r Row) (RowIter, error)
+	// ReturnsRowIter returns whether this expression returns a RowIter
+	ReturnsRowIter() bool
 }
 
 // ExpressionWithNodes is an expression that contains nodes as children.
