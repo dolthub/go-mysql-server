@@ -477,67 +477,53 @@ func TestRangeBuilder(t *testing.T) {
 		},
 		// nulls
 		{
-			or2(
-				and2(isNull(x), gt2(y, 5)),
-			),
+			and2(isNull(x), gt2(y, 5)),
 			sql.MySQLRangeCollection{
 				r(null2(), rgt(5)),
 			},
-			1,
+			2,
 		},
 		{
-			or2(
-				and2(isNull(x), isNotNull(y)),
-			),
+			and2(isNull(x), isNotNull(y)),
 			sql.MySQLRangeCollection{
 				r(null2(), notNull()),
 			},
-			1,
+			2,
 		},
 		{
-			or2(
-				and2(isNull(x), lt2(y, 5)),
-			),
+			and2(isNull(x), lt2(y, 5)),
 			sql.MySQLRangeCollection{
 				r(null2(), rlt(5)),
 			},
-			1,
+			2,
 		},
 		{
-			or2(
-				and(isNull(x), gte2(y, 5)),
-			),
+			and(isNull(x), gte2(y, 5)),
 			sql.MySQLRangeCollection{
 				r(null2(), rgte(5)),
 			},
-			1,
+			2,
 		},
 		{
-			or2(
-				and(isNull(x), lte2(y, 5)),
-			),
+			and(isNull(x), lte2(y, 5)),
 			sql.MySQLRangeCollection{
 				r(null2(), rlte(5)),
 			},
-			1,
+			2,
 		},
 		{
-			or2(
-				and(isNull(x), lte2(y, 5)),
-			),
+			and(isNull(x), lte2(y, 5)),
 			sql.MySQLRangeCollection{
 				r(null2(), rlte(5)),
 			},
-			1,
+			2,
 		},
 		{
-			or2(
-				and2(isNull(x), eq2(y, 1)),
-			),
+			and2(isNull(x), eq2(y, 1)),
 			sql.MySQLRangeCollection{
 				r(null2(), req(1)),
 			},
-			1,
+			2,
 		},
 	}
 
@@ -590,8 +576,6 @@ func TestRangeBuilder(t *testing.T) {
 			require.NoError(t, err)
 
 			include := c.bestFilters
-			// most tests are designed so that all filters are supported
-			// |included| = |root.id|
 			require.Equal(t, tt.cnt, include.Len())
 			if tt.cnt == 1 {
 				require.True(t, include.Contains(1))
