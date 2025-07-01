@@ -249,23 +249,23 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	}
 
 	var err error
-	var parent sql.Node
+	//var parent sql.Node
 	transform.Inspect(n, func(n sql.Node) bool {
-		defer func() {
-			parent = n
-		}()
+		//defer func() {
+		//	parent = n
+		//}()
 
 		gb, ok := n.(*plan.GroupBy)
 		if !ok {
 			return true
 		}
 
-		switch parent.(type) {
-		case *plan.Having, *plan.Project, *plan.Sort:
-			// TODO: these shouldn't be skipped; you can group by primary key without problem b/c only one value
-			// https://dev.mysql.com/doc/refman/8.0/en/group-by-handling.html#:~:text=The%20query%20is%20valid%20if%20name%20is%20a%20primary%20key
-			return true
-		}
+		//switch parent.(type) {
+		//case *plan.Having, *plan.Project, *plan.Sort:
+		//	// TODO: these shouldn't be skipped; you can group by primary key without problem b/c only one value
+		//	// https://dev.mysql.com/doc/refman/8.0/en/group-by-handling.html#:~:text=The%20query%20is%20valid%20if%20name%20is%20a%20primary%20key
+		//	return true
+		//}
 
 		// Allow the parser use the GroupBy node to eval the aggregation functions
 		// for sql statements that don't make use of the GROUP BY expression.
