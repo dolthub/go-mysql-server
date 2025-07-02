@@ -135,7 +135,7 @@ var AlterTableScripts = []ScriptTest{
 			{
 				Query: "SELECT * FROM information_schema.CHECK_CONSTRAINTS",
 				Expected: []sql.Row{
-					{"def", "mydb", "v1gt0", "(v1 > 0)"},
+					{"def", "mydb", "v1gt0", "(`v1` > 0)"},
 				},
 			},
 		},
@@ -1033,16 +1033,32 @@ var AlterTableScripts = []ScriptTest{
 		Name: "alter table comments are escaped",
 		SetUpScript: []string{
 			"create table t (i int);",
-			`alter table t modify column i int comment "newline \n | return \r | backslash \\ | NUL \0 \x00"`,
-			`alter table t add column j int comment "newline \n | return \r | backslash \\ | NUL \0 \x00"`,
+			`alter table t modify column i int comment "newline \n | return \r | backslash \\ | NUL \0 \x00 | ctrlz \Z \x1A"`,
+			`alter table t add column j int comment "newline \n | return \r | backslash \\ | NUL \0 \x00 | ctrlz \Z \x1A"`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "show create table t",
 				Expected: []sql.Row{{
 					"t",
-					"CREATE TABLE `t` (\n  `i` int COMMENT 'newline \\n | return \\r | backslash \\\\ | NUL \\0 x00'," +
-						"\n  `j` int COMMENT 'newline \\n | return \\r | backslash \\\\ | NUL \\0 x00'\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+					"CREATE TABLE `t` (\n  `i` int COMMENT 'newline \\n | return \\r | backslash \\\\ | NUL \\0 x00 | ctrlz \x1A x1A'," +
+						"\n  `j` int COMMENT 'newline \\n | return \\r | backslash \\\\ | NUL \\0 x00 | ctrlz \x1A x1A'\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "alter table supports non-escaped \\Z",
+		SetUpScript: []string{
+			"create table t (i int);",
+			`alter table t modify column i int comment "ctrlz \Z \\Z"`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n" +
+					"  `i` int COMMENT 'ctrlz \x1A \\\\Z'\n" +
+					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},
@@ -1864,7 +1880,7 @@ var RenameColumnScripts = []ScriptTest{
 				Query: `SELECT TC.CONSTRAINT_NAME, CC.CHECK_CLAUSE, TC.ENFORCED 
 FROM information_schema.TABLE_CONSTRAINTS TC, information_schema.CHECK_CONSTRAINTS CC 
 WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'mytable' AND TC.TABLE_SCHEMA = CC.CONSTRAINT_SCHEMA AND TC.CONSTRAINT_NAME = CC.CONSTRAINT_NAME AND TC.CONSTRAINT_TYPE = 'CHECK';`,
-				Expected: []sql.Row{{"test_check", "(i2 < 12345)", "YES"}},
+				Expected: []sql.Row{{"test_check", "(`i2` < 12345)", "YES"}},
 			},
 		},
 	},

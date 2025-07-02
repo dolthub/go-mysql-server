@@ -372,25 +372,18 @@ func (o joinOpHint) typeMatches(n RelExpr) bool {
 	return true
 }
 
-type joinBlockHint struct {
-	cb func(n RelExpr) bool
-}
-
-func (o joinBlockHint) isOk(n RelExpr) bool {
-	return o.cb(n)
-}
-
 // joinHints wraps a collection of join hints. The memo
 // interfaces with this object during costing.
 type joinHints struct {
-	ops      []joinOpHint
-	order    *joinOrderHint
-	block    []joinBlockHint
-	leftDeep bool
+	ops              []joinOpHint
+	order            *joinOrderHint
+	leftDeep         bool
+	disableMergeJoin bool
 }
 
+// isEmpty returns true if no hints that affect join planning have been set.
 func (h joinHints) isEmpty() bool {
-	return len(h.ops) == 0 && h.order == nil && !h.leftDeep && len(h.block) == 0
+	return len(h.ops) == 0 && h.order == nil && !h.leftDeep && !h.disableMergeJoin
 }
 
 // satisfiedBy returns whether a RelExpr satisfies every join hint. This

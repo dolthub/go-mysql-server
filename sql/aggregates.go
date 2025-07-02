@@ -115,7 +115,7 @@ type WindowFrame interface {
 	StartNFollowing() Expression
 	// EndNPreceding returns whether a frame end preceding Expression or nil
 	EndNPreceding() Expression
-	// EndNPreceding returns whether a frame end following Expression or nil
+	// EndNFollowing returns whether a frame end following Expression or nil
 	EndNFollowing() Expression
 }
 
@@ -134,4 +134,10 @@ type AggregationBuffer interface {
 // index given on demand.
 type WindowAggregation interface {
 	WindowAdaptableExpression
+}
+
+// OrderedAggregation are aggregate functions that modify the current working row with additional result columns.
+type OrderedAggregation interface {
+	// OutputExpressions gets a list of return expressions.
+	OutputExpressions() []Expression
 }

@@ -237,72 +237,69 @@ const (
 	week = 7 * day
 )
 
-func (td TimeDelta) apply(t time.Time, sign int64) time.Time {
-	y := int64(t.Year())
-	mo := int64(t.Month())
-	d := t.Day()
-	h := t.Hour()
-	min := t.Minute()
-	s := t.Second()
-	ns := t.Nanosecond()
+// isLeapYear determines if a given year is a leap year
+func isLeapYear(year int) bool {
+	return daysInMonth(year, time.February) == 29
+}
 
+// daysInMonth returns the number of days in a given month/year combination
+func daysInMonth(year int, month time.Month) int {
+	return time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC).Day()
+}
+
+// apply applies the time delta to the given time, using the specified sign
+func (td TimeDelta) apply(t time.Time, sign int64) time.Time {
 	if td.Years != 0 {
-		y += td.Years * sign
+		targetYear := t.Year() + int(td.Years*sign)
+
+		// special handling for Feb 29 on leap years
+		if t.Month() == time.February && t.Day() == 29 && !isLeapYear(targetYear) {
+			// if we're on Feb 29 and target year is not a leap year,
+			// move to Feb 28
+			t = time.Date(targetYear, time.February, 28,
+				t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), t.Location())
+		} else {
+			t = time.Date(targetYear, t.Month(), t.Day(),
+				t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), t.Location())
+		}
 	}
 
 	if td.Months != 0 {
-		m := mo + td.Months*sign
-		if m < 1 {
-			mo = 12 + (m % 12)
-			y += m/12 - 1
-		} else if m > 12 {
-			mo = m % 12
-			y += m / 12
-		} else {
-			mo = m
+		totalMonths := int(t.Month()) - 1 + int(td.Months*sign) // convert to 0-based
+
+		// calculate target year and month
+		yearOffset := totalMonths / 12
+		if totalMonths < 0 {
+			yearOffset = (totalMonths - 11) / 12 // handle negative division correctly
+		}
+		targetYear := t.Year() + yearOffset
+		targetMonth := time.Month((totalMonths%12+12)%12 + 1) // ensure positive month
+
+		// handle end-of-month edge cases
+		originalDay := t.Day()
+		maxDaysInTargetMonth := daysInMonth(targetYear, targetMonth)
+
+		targetDay := originalDay
+		if originalDay > maxDaysInTargetMonth {
+			targetDay = maxDaysInTargetMonth
 		}
 
-		// Due to the operations done before, month may be zero, which means it's
-		// december.
-		if mo == 0 {
-			mo = 12
-		}
+		t = time.Date(targetYear, targetMonth, targetDay,
+			t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), t.Location())
 	}
-
-	if days := daysInMonth(time.Month(mo), int(y)); days < d {
-		d = days
-	}
-
-	date := time.Date(int(y), time.Month(mo), d, h, min, s, ns, t.Location())
 
 	if td.Days != 0 {
-		date = date.Add(time.Duration(td.Days) * day * time.Duration(sign))
+		t = t.AddDate(0, 0, int(td.Days*sign))
 	}
 
-	if td.Hours != 0 {
-		date = date.Add(time.Duration(td.Hours) * time.Hour * time.Duration(sign))
+	duration := time.Duration(td.Hours*sign)*time.Hour +
+		time.Duration(td.Minutes*sign)*time.Minute +
+		time.Duration(td.Seconds*sign)*time.Second +
+		time.Duration(td.Microseconds*sign)*time.Microsecond
+
+	if duration != 0 {
+		t = t.Add(duration)
 	}
 
-	if td.Minutes != 0 {
-		date = date.Add(time.Duration(td.Minutes) * time.Minute * time.Duration(sign))
-	}
-
-	if td.Seconds != 0 {
-		date = date.Add(time.Duration(td.Seconds) * time.Second * time.Duration(sign))
-	}
-
-	if td.Microseconds != 0 {
-		date = date.Add(time.Duration(td.Microseconds) * time.Microsecond * time.Duration(sign))
-	}
-
-	return date
-}
-
-func daysInMonth(month time.Month, year int) int {
-	if month == time.December {
-		return 31
-	}
-
-	date := time.Date(year, month+time.Month(1), 1, 0, 0, 0, 0, time.Local)
-	return date.Add(-1 * day).Day()
+	return t
 }

@@ -87,7 +87,7 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 			break
 		}
 		_, isColDefVal := i.insertExprs[idx].(*sql.ColumnDefaultValue)
-		if row[idx] == nil && types.IsEnum(col.Type) && isColDefVal {
+		if row[idx] == nil && !col.Nullable && types.IsEnum(col.Type) && isColDefVal {
 			row[idx] = 1
 		}
 	}
@@ -261,6 +261,7 @@ func getFieldIndexFromUpdateExpr(updateExpr sql.Expression) (int, bool) {
 
 // resolveValues resolves all VALUES functions.
 func (i *insertIter) resolveValues(ctx *sql.Context, insertRow sql.Row) error {
+	// if vals empty then no need to resolve
 	for _, updateExpr := range i.updateExprs {
 		var err error
 		sql.Inspect(updateExpr, func(expr sql.Expression) bool {

@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -158,7 +159,15 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 				db = n.Database().Name()
 			}
 		case *plan.Update:
-			affectedTables = append(affectedTables, getTableName(n))
+			if n.IsJoin {
+				uj := n.Child.(*plan.UpdateJoin)
+				updateTargets := uj.UpdateTargets
+				for _, updateTarget := range updateTargets {
+					affectedTables = append(affectedTables, getTableName(updateTarget))
+				}
+			} else {
+				affectedTables = append(affectedTables, getTableName(n))
+			}
 			triggerEvent = plan.UpdateTrigger
 			if n.Database() != "" {
 				db = n.Database()
@@ -355,18 +364,18 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 		}
 	}
 
-	return transform.NodeWithCtx(n, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
+	canApplyTriggerExecutor := func(c transform.Context) bool {
 		// Don't double-apply trigger executors to the bodies of triggers. To avoid this, don't apply the trigger if the
-		// parent is a trigger body.
-		// TODO: this won't work for BEGIN END blocks, stored procedures, etc. For those, we need to examine all ancestors,
-		//  not just the immediate parent. Alternately, we could do something like not walk all children of some node types
-		//  (probably better).
+		// parent is a trigger body. Having this as a selector function will also prevent walking the child nodes in the
+		// trigger execution logic.
 		if _, ok := c.Parent.(*plan.TriggerExecutor); ok {
 			if c.ChildNum == 1 { // Right child is the trigger execution logic
-				return c.Node, transform.SameTree, nil
+				return false
 			}
 		}
-
+		return true
+	}
+	return transform.NodeWithCtx(n, canApplyTriggerExecutor, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		switch n := c.Node.(type) {
 		case *plan.InsertInto:
 			qFlags.Set(sql.QFlagTrigger)
@@ -404,9 +413,9 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 			//       like we need something like a MultipleTriggerExecutor node
 			//       that could execute multiple triggers on the same row from its
 			//       wrapped iterator. There is also an issue with running triggers
-			//       because their field indexes assume the row they evalute will
+			//       because their field indexes assume the row they evaluate will
 			//       only ever contain the columns from the single table the trigger
-			//       is based on, but this isn't true with UPDATE JOIN or DELETE JOIN.
+			//       is based on.
 			if n.HasExplicitTargets() {
 				return nil, transform.SameTree, fmt.Errorf("delete from with explicit target tables " +
 					"does not support triggers; retry with single table deletes")
@@ -472,6 +481,12 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 				),
 			)
 		} else {
+			// TODO: We should be able to handle duplicate column names by masking columns that aren't part of the
+			// triggered table https://github.com/dolthub/dolt/issues/9403
+			err = validateNoConflictingColumnNames(updateSrc.Child.Schema())
+			if err != nil {
+				return nil, err
+			}
 			// The scopeNode for an UpdateJoin should contain every node in the updateSource as new and old.
 			scopeNode = plan.NewProject(
 				[]sql.Expression{expression.NewStar()},
@@ -497,6 +512,19 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	return triggerLogic, err
 }
 
+// validateNoConflictingColumnNames checks the columns of a joined table to make sure there are no conflicting column
+// names
+func validateNoConflictingColumnNames(sch sql.Schema) error {
+	columnNames := make(map[string]struct{})
+	for _, col := range sch {
+		if _, ok := columnNames[col.Name]; ok {
+			return errors.New("Unable to apply triggers when joined tables have columns with the same name")
+		}
+		columnNames[col.Name] = struct{}{}
+	}
+	return nil
+}
+
 // validateNoCircularUpdates returns an error if the trigger logic attempts to update the table that invoked it (or any
 // table being updated in an outer scope of this analysis)
 func validateNoCircularUpdates(trigger *plan.CreateTrigger, n sql.Node, scope *plan.Scope) error {
@@ -505,8 +533,8 @@ func validateNoCircularUpdates(trigger *plan.CreateTrigger, n sql.Node, scope *p
 		switch node := node.(type) {
 		case *plan.Update, *plan.InsertInto, *plan.DeleteFrom:
 			for _, n := range append([]sql.Node{n}, scope.MemoNodes()...) {
-				invokingTableName := getUnaliasedTableName(n)
-				updatedTable := getUnaliasedTableName(node)
+				invokingTableName := getTableName(n)
+				updatedTable := getTableName(node)
 				// TODO: need to compare DB as well
 				if updatedTable == invokingTableName {
 					circularRef = sql.ErrTriggerTableInUse.New(updatedTable)

@@ -2309,6 +2309,49 @@ end;
 			},
 		},
 	},
+	{
+		Name: "stored procedure with exists subquery",
+		SetUpScript: []string{
+			`
+create procedure exists_proc1(in x int)
+begin
+	select 1 where exists (select x);
+end;
+`,
+			`
+create procedure exists_proc2(in x int)
+begin
+	select exists (select x);
+end;
+`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "call exists_proc1(1);",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "call exists_proc1(0);",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "call exists_proc2(1);",
+				Expected: []sql.Row{
+					{true},
+				},
+			},
+			{
+				Query: "call exists_proc2(0);",
+				Expected: []sql.Row{
+					{true},
+				},
+			},
+		},
+	},
 }
 
 var ProcedureCallTests = []ScriptTest{

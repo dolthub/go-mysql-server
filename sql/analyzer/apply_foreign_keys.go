@@ -122,8 +122,7 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 		if plan.IsEmptyTable(n.Child) {
 			return n, transform.SameTree, nil
 		}
-		if n.IsJoin {
-			uj := n.Child.(*plan.UpdateJoin)
+		if uj, ok := n.Child.(*plan.UpdateJoin); ok {
 			updateTargets := uj.UpdateTargets
 			fkHandlerMap := make(map[string]sql.Node, len(updateTargets))
 			for tableName, updateTarget := range updateTargets {
