@@ -291,16 +291,28 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 			colIdx := tableSch.IndexOfColName(gf.Name())
 			// TODO: during trigger parsing the table in the node is unresolved, so we need this additional bounds check
 			//  This means that trigger execution will be able to update generated columns
-			// Prevent update of generated columns
-			if colIdx >= 0 && tableSch[colIdx].Generated != nil {
+			
+			// Check if this is a DEFAULT expression for a generated column
+			isDefaultExpr := false
+			if _, ok := updateExpr.Expr.(*ast.Default); ok {
+				isDefaultExpr = true
+			}
+			
+			// Prevent update of generated columns, but allow DEFAULT
+			if colIdx >= 0 && tableSch[colIdx].Generated != nil && !isDefaultExpr {
 				err := sql.ErrGeneratedColumnValue.New(tableSch[colIdx].Name, inScope.node.(sql.NameableNode).Name())
 				b.handleErr(err)
 			}
 
 			// Replace default with column default from resolved schema
-			if _, ok := updateExpr.Expr.(*ast.Default); ok {
+			if isDefaultExpr {
 				if colIdx >= 0 {
-					innerExpr = expression.WrapExpression(tableSch[colIdx].Default)
+					// For generated columns, use the generated expression as the default
+					if tableSch[colIdx].Generated != nil {
+						innerExpr = expression.WrapExpression(tableSch[colIdx].Generated)
+					} else {
+						innerExpr = expression.WrapExpression(tableSch[colIdx].Default)
+					}
 				}
 			}
 		}
