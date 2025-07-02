@@ -26,12 +26,12 @@ import (
 // Project is a projection of certain expression from the children node.
 type Project struct {
 	UnaryNode
-	// Projections are the expressions to be projected on the row returned by the child node 
-	Projections         []sql.Expression
+	// Projections are the expressions to be projected on the row returned by the child node
+	Projections []sql.Expression
 	// CanDefer is true when the projection evaluation can be deferred to row spooling, which allows us to avoid a
-	// separate iterator for the project node. 
-	CanDefer            bool
-	// IncludesNestedIters is true when the projection includes nested iterators because of expressions that return 
+	// separate iterator for the project node.
+	CanDefer bool
+	// IncludesNestedIters is true when the projection includes nested iterators because of expressions that return
 	// a RowIter.
 	IncludesNestedIters bool
 	deps                sql.ColSet
