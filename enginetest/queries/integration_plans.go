@@ -20091,13 +20091,7 @@ FROM
 			"     ├─ columns: [id:0!null, FV24E:1!null, UJ6XY:2!null, M22QN:3!null, NZ4MQ:4!null, ETPQV:5, PRUV2:6, YKSSU:7, FHCYT:8]\n" +
 			"     └─ Union distinct\n" +
 			"         ├─ Project\n" +
-			"         │   ├─ columns: [id:0!null, convert\n" +
-			"         │   │   ├─ type: char\n" +
-			"         │   │   └─ FV24E:1!null\n" +
-			"         │   │  ->FV24E:0, convert\n" +
-			"         │   │   ├─ type: char\n" +
-			"         │   │   └─ UJ6XY:2!null\n" +
-			"         │   │  ->UJ6XY:0, M22QN:3!null, NZ4MQ:4, ETPQV:5!null, convert\n" +
+			"         │   ├─ columns: [id:0!null, FV24E:1!null, UJ6XY:2!null, M22QN:3!null, NZ4MQ:4, ETPQV:5!null, convert\n" +
 			"         │   │   ├─ type: char\n" +
 			"         │   │   └─ PRUV2:6\n" +
 			"         │   │  ->PRUV2:0, YKSSU:7, FHCYT:8]\n" +
@@ -20227,7 +20221,7 @@ FROM
 			"         │                                           ├─ name: E2I7U\n" +
 			"         │                                           └─ columns: [id dkcaj kng7t tw55n qrqxw ecxaj fgg57 zh72s fsk67 xqdyt tce7a iwv2h hpcms n5cc2 fhcyt etaq7 a75x7]\n" +
 			"         └─ Project\n" +
-			"             ├─ columns: [id:0!null, FV24E:1->FV24E:0, UJ6XY:2->UJ6XY:0, M22QN:3, NZ4MQ:4, ETPQV:5!null, convert\n" +
+			"             ├─ columns: [id:0!null, FV24E:1, UJ6XY:2, M22QN:3, NZ4MQ:4, ETPQV:5!null, convert\n" +
 			"             │   ├─ type: char\n" +
 			"             │   └─ PRUV2:6!null\n" +
 			"             │  ->PRUV2:0, YKSSU:7, FHCYT:8]\n" +
