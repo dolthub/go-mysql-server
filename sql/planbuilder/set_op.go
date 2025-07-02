@@ -16,6 +16,7 @@ package planbuilder
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"reflect"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
@@ -144,8 +145,26 @@ func (b *Builder) buildSetOp(inScope *scope, u *ast.SetOp) (outScope *scope) {
 	tabId := b.tabId
 	ret := plan.NewSetOp(setOpType, leftScope.node, rightScope.node, distinct, limit, offset, sortFields).WithId(tabId).WithColumns(cols)
 	outScope = leftScope
+	outScope.cols = b.mergeSetOpScopeColumns(leftScope.cols, rightScope.cols, tabId)
 	outScope.node = b.mergeSetOpSchemas(ret.(*plan.SetOp))
 	return
+}
+
+func (b *Builder) mergeSetOpScopeColumns(left, right []scopeColumn, tabId sql.TableId) []scopeColumn {
+	merged := make([]scopeColumn, len(left))
+	for i := range left {
+		merged[i] = scopeColumn{
+			tableId:     tabId,
+			db:          left[i].db,
+			table:       left[i].table,
+			col:         left[i].col,
+			originalCol: left[i].originalCol,
+			id:          left[i].id,
+			typ:         types.GeneralizeTypes(left[i].typ, right[i].typ),
+			nullable:    left[i].nullable || right[i].nullable,
+		}
+	}
+	return merged
 }
 
 func (b *Builder) mergeSetOpSchemas(u *plan.SetOp) sql.Node {
