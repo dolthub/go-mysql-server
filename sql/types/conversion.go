@@ -721,7 +721,7 @@ func GeneralizeTypes(a, b sql.Type) sql.Type {
 		return generalizeNumberTypes(a, b)
 	}
 	
-	if IsText(a) || IsText(b) {
+	if IsText(a) && IsText(b) {
 		return a
 	}
 	
