@@ -291,13 +291,13 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 			colIdx := tableSch.IndexOfColName(gf.Name())
 			// TODO: during trigger parsing the table in the node is unresolved, so we need this additional bounds check
 			//  This means that trigger execution will be able to update generated columns
-			
+
 			// Check if this is a DEFAULT expression for a generated column
 			isDefaultExpr := false
 			if _, ok := updateExpr.Expr.(*ast.Default); ok {
 				isDefaultExpr = true
 			}
-			
+
 			// Prevent update of generated columns, but allow DEFAULT
 			if colIdx >= 0 && tableSch[colIdx].Generated != nil && !isDefaultExpr {
 				err := sql.ErrGeneratedColumnValue.New(tableSch[colIdx].Name, inScope.node.(sql.NameableNode).Name())

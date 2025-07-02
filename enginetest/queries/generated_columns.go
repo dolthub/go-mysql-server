@@ -124,7 +124,7 @@ var GeneratedColumnTests = []ScriptTest{
 			},
 			{
 				Query:    "update t set j = default where i = 5", // Explicit DEFAULT on specific row
-				Expected: []sql.Row{{NewUpdateResult(1, 0)}}, // 1 row matched, 0 changed (value already correct)
+				Expected: []sql.Row{{NewUpdateResult(1, 0)}},     // 1 row matched, 0 changed (value already correct)
 			},
 			{
 				Query:    "select * from t where i = 5",
