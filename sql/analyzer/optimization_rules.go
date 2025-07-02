@@ -172,7 +172,7 @@ func expressionSources(expr sql.Expression) (sql.FastIntSet, bool) {
 		switch e := e.(type) {
 		case *expression.GetField:
 			tables.Add(int(e.TableId()))
-		case *expression.IsNull:
+		case sql.IsNullExpression, sql.IsNotNullExpression:
 			nullRejecting = false
 		case *expression.NullSafeEquals:
 			nullRejecting = false
@@ -188,7 +188,7 @@ func expressionSources(expr sql.Expression) (sql.FastIntSet, bool) {
 				switch e := innerExpr.(type) {
 				case *expression.GetField:
 					tables.Add(int(e.TableId()))
-				case *expression.IsNull:
+				case sql.IsNullExpression, sql.IsNotNullExpression:
 					nullRejecting = false
 				case *expression.NullSafeEquals:
 					nullRejecting = false

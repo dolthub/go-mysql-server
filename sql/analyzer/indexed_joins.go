@@ -567,7 +567,7 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 		// drop null projected columns on right table
 		nullFilters := make([]sql.Expression, len(nullify))
 		for i, e := range nullify {
-			nullFilters[i] = expression.NewIsNull(e)
+			nullFilters[i] = expression.DefaultExpressionFactory.NewIsNull(e)
 		}
 
 		filterGrp := m.MemoizeFilter(nil, joinGrp, nullFilters)
@@ -1412,7 +1412,7 @@ func isWeaklyMonotonic(e sql.Expression) bool {
 			}
 			return false
 		case *expression.Equals, *expression.NullSafeEquals, *expression.Literal, *expression.GetField,
-			*expression.Tuple, *expression.IsNull, *expression.BindVar:
+			*expression.Tuple, *expression.BindVar, sql.IsNullExpression, sql.IsNotNullExpression:
 			return false
 		default:
 			if e, ok := e.(expression.Equality); ok && e.RepresentsEquality() {

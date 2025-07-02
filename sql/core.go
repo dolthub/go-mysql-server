@@ -75,6 +75,19 @@ type NonDeterministicExpression interface {
 	IsNonDeterministic() bool
 }
 
+// IsNullExpression indicates that this expression tests for IS NULL.
+type IsNullExpression interface {
+	Expression
+	IsNullExpression() bool
+}
+
+// IsNotNullExpression indicates that this expression tests for IS NOT NULL. Note that in some cases in some
+// database engines, such as records in Postgres, IS NOT NULL is not identical to NOT(IS NULL).
+type IsNotNullExpression interface {
+	Expression
+	IsNotNullExpression() bool
+}
+
 // Node is a node in the execution plan tree.
 type Node interface {
 	Resolvable
