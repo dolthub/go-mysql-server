@@ -716,7 +716,7 @@ func GeneralizeTypes(a, b sql.Type) sql.Type {
 	if IsNumber(a) && IsNumber(b) {
 		return generalizeNumberTypes(a, b)
 	}
-	
+
 	if IsText(a) && IsText(b) {
 		sta := a.(sql.StringType)
 		stb := b.(sql.StringType)
