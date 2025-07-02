@@ -8730,7 +8730,8 @@ where
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/9024
-		Name: "subqueries should coerce union types",
+		Name:    "subqueries should coerce union types",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table enum_table (i int primary key, e enum('a','b'))",
 			"insert into enum_table values (1,'a'),(2,'b')",
