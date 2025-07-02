@@ -199,7 +199,7 @@ func TestGeneralizeTypes(t *testing.T) {
 		{Boolean, Int64, Int64},
 		{Boolean, Boolean, Boolean},
 		{Text, Text, Text},
-		{Text, LongText, Text},
+		{Text, LongText, LongText},
 		{Text, Float64, LongText},
 		{Int64, Text, LongText},
 		{Int8, Null, Int8},
