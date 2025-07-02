@@ -245,11 +245,14 @@ func (i *ProjectIter) ProjectRowWithNestedIters(
 	return i.ProjectRowWithNestedIters(ctx)
 }
 
+// RowIterEvaluator is an expression that returns the next value from a sql.RowIter each time Eval is called.
 type RowIterEvaluator struct {
 	iter     sql.RowIter
 	typ      sql.Type
 	finished bool
 }
+
+var _ sql.Expression = (*RowIterEvaluator)(nil)
 
 func (r RowIterEvaluator) Resolved() bool {
 	return true
@@ -295,8 +298,6 @@ func (r RowIterEvaluator) WithChildren(children ...sql.Expression) (sql.Expressi
 	}
 	return &r, nil
 }
-
-var _ sql.Expression = (*RowIterEvaluator)(nil)
 
 // ProjectRow evaluates a set of projections.
 func ProjectRow(
