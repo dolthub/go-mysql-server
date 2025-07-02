@@ -652,7 +652,7 @@ func (c *indexCoster) getConstAndNullFilters(filters sql.FastIntSet) (sql.FastIn
 		switch e.(type) {
 		case *expression.Equals:
 			isConst.Add(i)
-		case *expression.IsNull:
+		case sql.IsNullExpression:
 			isNull.Add(i)
 		case *expression.NullSafeEquals:
 			isConst.Add(i)
@@ -1513,14 +1513,20 @@ func IndexLeafChildren(e sql.Expression) (IndexScanOp, sql.Expression, sql.Expre
 		left = e.Left()
 		right = e.Right()
 		op = IndexScanOpLte
-	case *expression.IsNull:
-		left = e.Child
+	case sql.IsNullExpression:
+		left = e.Children()[0]
 		op = IndexScanOpIsNull
+	case sql.IsNotNullExpression:
+		left = e.Children()[0]
+		op = IndexScanOpIsNotNull
 	case *expression.Not:
 		switch e := e.Child.(type) {
-		case *expression.IsNull:
-			left = e.Child
+		case sql.IsNullExpression:
+			left = e.Children()[0]
 			op = IndexScanOpIsNotNull
+			// TODO: In Postgres, Not(IS NULL) is valid, but doesn't necessarily always mean the
+			//       same thing as IS NOT NULL, particularly for the case of records or composite
+			//       values.
 		case *expression.Equals:
 			left = e.Left()
 			right = e.Right()

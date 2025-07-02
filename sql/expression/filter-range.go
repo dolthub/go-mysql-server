@@ -48,24 +48,24 @@ func NewRangeFilterExpr(exprs []sql.Expression, ranges []sql.MySQLRange) (sql.Ex
 			case sql.RangeType_All:
 				rangeColumnExpr = NewEquals(NewLiteral(1, types.Int8), NewLiteral(1, types.Int8))
 			case sql.RangeType_EqualNull:
-				rangeColumnExpr = NewIsNull(exprs[i])
+				rangeColumnExpr = DefaultExpressionFactory.NewIsNull(exprs[i])
 			case sql.RangeType_GreaterThan:
 				if sql.MySQLRangeCutIsBinding(rce.LowerBound) {
 					rangeColumnExpr = NewGreaterThan(exprs[i], NewLiteral(sql.GetMySQLRangeCutKey(rce.LowerBound), rce.Typ.Promote()))
 				} else {
-					rangeColumnExpr = NewNot(NewIsNull(exprs[i]))
+					rangeColumnExpr = DefaultExpressionFactory.NewIsNotNull(exprs[i])
 				}
 			case sql.RangeType_GreaterOrEqual:
 				rangeColumnExpr = NewGreaterThanOrEqual(exprs[i], NewLiteral(sql.GetMySQLRangeCutKey(rce.LowerBound), rce.Typ.Promote()))
 			case sql.RangeType_LessThanOrNull:
 				rangeColumnExpr = JoinOr(
 					NewLessThan(exprs[i], NewLiteral(sql.GetMySQLRangeCutKey(rce.UpperBound), rce.Typ.Promote())),
-					NewIsNull(exprs[i]),
+					DefaultExpressionFactory.NewIsNull(exprs[i]),
 				)
 			case sql.RangeType_LessOrEqualOrNull:
 				rangeColumnExpr = JoinOr(
 					NewLessThanOrEqual(exprs[i], NewLiteral(sql.GetMySQLRangeCutKey(rce.UpperBound), rce.Typ.Promote())),
-					NewIsNull(exprs[i]),
+					DefaultExpressionFactory.NewIsNull(exprs[i]),
 				)
 			case sql.RangeType_ClosedClosed:
 				rangeColumnExpr = JoinAnd(
