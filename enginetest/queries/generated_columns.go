@@ -66,6 +66,14 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{4, 5}},
 			},
 			{
+				Query:    "insert into t1 values (5, DEFAULT)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "select * from t1 where a = 5",
+				Expected: []sql.Row{{5, 6}},
+			},
+			{
 				Query:       "update t1 set b = b + 1",
 				ExpectedErr: sql.ErrGeneratedColumnValue,
 			},
@@ -75,7 +83,7 @@ var GeneratedColumnTests = []ScriptTest{
 			},
 			{
 				Query:    "select * from t1 order by a",
-				Expected: []sql.Row{{2, 3}, {3, 4}, {4, 5}, {10, 11}},
+				Expected: []sql.Row{{2, 3}, {3, 4}, {4, 5}, {5, 6}, {10, 11}},
 			},
 			{
 				Query:    "delete from t1 where b = 11",
@@ -83,7 +91,35 @@ var GeneratedColumnTests = []ScriptTest{
 			},
 			{
 				Query:    "select * from t1 order by a",
-				Expected: []sql.Row{{2, 3}, {3, 4}, {4, 5}},
+				Expected: []sql.Row{{2, 3}, {3, 4}, {4, 5}, {5, 6}},
+			},
+		},
+	},
+	{
+		Name: "generated column with DEFAULT in VALUES clause (issue #9428)",
+		SetUpScript: []string{
+			"create table t (i int generated always as (1 + 1))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "insert into t values (default)",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "select * from t",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "insert into t values (default), (default)",
+				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "select * from t order by i",
+				Expected: []sql.Row{{2}, {2}, {2}},
+			},
+			{
+				Query:       "insert into t values (5)",
+				ExpectedErr: sql.ErrGeneratedColumnValue,
 			},
 		},
 	},
