@@ -8773,6 +8773,26 @@ where
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/9024
+		Name: "subqueries should coerce union types",
+		SetUpScript: []string{
+			"create table enum_table (i int primary key, e enum('a','b'))",
+			"insert into enum_table values (1,'a'),(2,'b')",
+			"create table uv (u int primary key, v varchar(10))",
+			"insert into uv values (0, 'bug'),(1,'ant')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from (select e from enum_table union select v from uv) sq",
+				Expected: []sql.Row{{"a"}, {"b"}, {"bug"}, {"ant"}},
+			},
+			{
+				Query:    "with a as (select e from enum_table union select v from uv) select * from a",
+				Expected: []sql.Row{{"a"}, {"b"}, {"bug"}, {"ant"}},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
