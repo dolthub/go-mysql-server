@@ -8745,9 +8745,9 @@ where
 			{
 				Query:    "with a as (select e from enum_table union select v from uv) select * from a",
 				Expected: []sql.Row{{"a"}, {"b"}, {"bug"}, {"ant"}},
-      },
-    },
-  },
+			},
+		},
+	},
 
 	// Enum tests
 	{
