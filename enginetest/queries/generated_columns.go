@@ -96,6 +96,47 @@ var GeneratedColumnTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "generated column with DEFAULT in UPDATE clause (issue #9438)",
+		SetUpScript: []string{
+			"create table t (i int primary key, j int generated always as (i + 10))",
+			"insert into t (i) values (1), (2), (3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from t order by i",
+				Expected: []sql.Row{{1, 11}, {2, 12}, {3, 13}},
+			},
+			{
+				Query:    "update t set j = default",
+				Expected: []sql.Row{{NewUpdateResult(3, 0)}}, // 3 rows matched, 0 changed (values already correct)
+			},
+			{
+				Query:    "select * from t order by i",
+				Expected: []sql.Row{{1, 11}, {2, 12}, {3, 13}}, // Values should remain the same
+			},
+			{
+				Query:    "update t set i = 5 where i = 1", // This should update both i and j (through generation)
+				Expected: []sql.Row{{NewUpdateResult(1, 1)}},
+			},
+			{
+				Query:    "select * from t order by i",
+				Expected: []sql.Row{{2, 12}, {3, 13}, {5, 15}}, // j should be updated to i + 10 = 15
+			},
+			{
+				Query:    "update t set j = default where i = 5", // Explicit DEFAULT on specific row
+				Expected: []sql.Row{{NewUpdateResult(1, 0)}},     // 1 row matched, 0 changed (value already correct)
+			},
+			{
+				Query:    "select * from t where i = 5",
+				Expected: []sql.Row{{5, 15}}, // Value should still be correct
+			},
+			{
+				Query:       "update t set j = 99", // Should still fail for non-DEFAULT values
+				ExpectedErr: sql.ErrGeneratedColumnValue,
+			},
+		},
+	},
+	{
 		Name: "generated column with DEFAULT in VALUES clause (issue #9428)",
 		SetUpScript: []string{
 			"create table t (i int generated always as (1 + 1))",
