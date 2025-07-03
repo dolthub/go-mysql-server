@@ -293,10 +293,7 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 			//  This means that trigger execution will be able to update generated columns
 
 			// Check if this is a DEFAULT expression for a generated column
-			isDefaultExpr := false
-			if _, ok := updateExpr.Expr.(*ast.Default); ok {
-				isDefaultExpr = true
-			}
+			_, isDefaultExpr := updateExpr.Expr.(*ast.Default)
 
 			// Prevent update of generated columns, but allow DEFAULT
 			if colIdx >= 0 && tableSch[colIdx].Generated != nil && !isDefaultExpr {
