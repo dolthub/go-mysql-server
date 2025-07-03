@@ -233,6 +233,9 @@ func validateColumnDefault(ctx *sql.Context, col *sql.Column, colDefault *sql.Co
 	var err error
 	sql.Inspect(colDefault.Expr, func(e sql.Expression) bool {
 		switch e.(type) {
+		case *expression.UserVar, *expression.SystemVar:
+			err = sql.ErrColumnDefaultUserVariable.New(col.Name)
+			return false
 		case sql.FunctionExpression, *expression.UnresolvedFunction:
 			var funcName string
 			switch expr := e.(type) {

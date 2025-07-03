@@ -940,4 +940,23 @@ var ColumnDefaultTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "User variables not allowed in column default expressions",
+		SetUpScript: []string{"SET @test_var = 1"},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 BIGINT DEFAULT (@test_var))",
+				ExpectedErr: sql.ErrColumnDefaultUserVariable,
+			},
+		},
+	},
+	{
+		Name: "System variables not allowed in column default expressions",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "CREATE TABLE t999(pk BIGINT PRIMARY KEY, v1 VARCHAR(100) DEFAULT (@@session.sql_mode))",
+				ExpectedErr: sql.ErrColumnDefaultUserVariable,
+			},
+		},
+	},
 }

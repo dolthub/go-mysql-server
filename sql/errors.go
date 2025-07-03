@@ -156,6 +156,9 @@ var (
 	// ErrDropColumnReferencedInDefault is returned when a column cannot be dropped as it is referenced by another column's default value.
 	ErrDropColumnReferencedInDefault = errors.NewKind(`cannot drop column "%s" as default value of column "%s" references it`)
 
+	// ErrColumnDefaultUserVariable is returned when a default/generated column expression contains user or system variables.
+	ErrColumnDefaultUserVariable = errors.NewKind(`Default value expression of column '%s' cannot refer user or system variables.`)
+
 	// ErrTriggersNotSupported is returned when attempting to create a trigger on a database that doesn't support them
 	ErrTriggersNotSupported = errors.NewKind(`database "%s" doesn't support triggers`)
 
