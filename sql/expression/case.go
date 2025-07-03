@@ -45,7 +45,8 @@ func NewCase(expr sql.Expression, branches []CaseBranch, elseExpr sql.Expression
 
 // Type implements the sql.Expression interface.
 func (c *Case) Type() sql.Type {
-	curr := types.Null
+	var curr sql.Type
+	curr = types.Null
 	for _, b := range c.Branches {
 		curr = types.GeneralizeTypes(curr, b.Value.Type())
 	}

@@ -642,10 +642,10 @@ func GeneralizeTypes(a, b sql.Type) sql.Type {
 		return a
 	}
 
-	if a == Null {
+	if IsNullType(a) {
 		return b
 	}
-	if b == Null {
+	if IsNullType(b) {
 		return a
 	}
 	
