@@ -9002,12 +9002,30 @@ where
 	{
 		Name:        "enums with auto increment",
 		Dialect:     "mysql",
-		SetUpScript: []string{},
+		SetUpScript: []string{
+			"CREATE TABLE t (e enum('a', 'b', 'c') PRIMARY KEY)",
+		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:          "create table t (e enum('a', 'b', 'c') primary key auto_increment);",
+				Query:          "CREATE TABLE t2 (e enum('a', 'b', 'c') PRIMARY KEY AUTO_INCREMENT)",
 				ExpectedErrStr: "Incorrect column specifier for column 'e'",
 			},
+			{
+				Query:          "ALTER TABLE t MODIFY e enum('a', 'b', 'c') AUTO_INCREMENT",
+				ExpectedErrStr: "Incorrect column specifier for column 'e'",
+			},
+			{
+				Query:          "ALTER TABLE t MODIFY COLUMN e enum('a', 'b', 'c') AUTO_INCREMENT",
+				ExpectedErrStr: "Incorrect column specifier for column 'e'",
+			},
+			{
+				Query:          "ALTER TABLE t CHANGE e e enum('a', 'b', 'c') AUTO_INCREMENT",
+				ExpectedErrStr: "Incorrect column specifier for column 'e'",
+			},
+			{
+				Query:          "ALTER TABLE t CHANGE COLUMN e e enum('a', 'b', 'c') AUTO_INCREMENT",
+				ExpectedErrStr: "Incorrect column specifier for column 'e'",
+			}
 		},
 	},
 	{
