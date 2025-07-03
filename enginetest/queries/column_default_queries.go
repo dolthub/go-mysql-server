@@ -940,4 +940,120 @@ var ColumnDefaultTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "User variables in column defaults are not allowed",
+		SetUpScript: []string{
+			"set @a = 1;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "CREATE TABLE t(i int DEFAULT (@a));",
+				ExpectedErr: sql.ErrColumnDefaultUserVariable,
+			},
+			{
+				Query:       "CREATE TABLE t(i int DEFAULT ((@a)));",
+				ExpectedErr: sql.ErrColumnDefaultUserVariable,
+			},
+			{
+				Query:       "CREATE TABLE t(i int DEFAULT (@a + 1));",
+				ExpectedErr: sql.ErrColumnDefaultUserVariable,
+			},
+		},
+	},
+	{
+		Name: "System variables in column defaults are not allowed",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "CREATE TABLE t(i int DEFAULT (@@version));",
+				ExpectedErr: sql.ErrColumnDefaultUserVariable,
+			},
+			{
+				Query:       "CREATE TABLE t(i int DEFAULT (@@session.sql_mode));",
+				ExpectedErr: sql.ErrColumnDefaultUserVariable,
+			},
+			{
+				Query:       "CREATE TABLE t(i int DEFAULT (@@global.max_connections));",
+				ExpectedErr: sql.ErrColumnDefaultUserVariable,
+			},
+		},
+	},
+	{
+		Name: "User variables in generated columns are not allowed",
+		SetUpScript: []string{
+			"set @a = 1;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "CREATE TABLE t(i int GENERATED ALWAYS AS (@a));",
+				ExpectedErr: sql.ErrColumnDefaultUserVariable,
+			},
+			{
+				Query:       "CREATE TABLE t(i int GENERATED ALWAYS AS (@a + 1));",
+				ExpectedErr: sql.ErrColumnDefaultUserVariable,
+			},
+		},
+	},
+	{
+		Name: "System variables in generated columns are not allowed",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "CREATE TABLE t(i int GENERATED ALWAYS AS (@@version));",
+				ExpectedErr: sql.ErrColumnDefaultUserVariable,
+			},
+			{
+				Query:       "CREATE TABLE t(i int GENERATED ALWAYS AS (@@session.sql_mode));",
+				ExpectedErr: sql.ErrColumnDefaultUserVariable,
+			},
+		},
+	},
+	{
+		Name: "User variables in ALTER TABLE ADD COLUMN defaults are not allowed",
+		SetUpScript: []string{
+			"CREATE TABLE t(pk int PRIMARY KEY);",
+			"set @a = 1;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "ALTER TABLE t ADD COLUMN i int DEFAULT (@a);",
+				ExpectedErr: sql.ErrColumnDefaultUserVariable,
+			},
+		},
+	},
+	{
+		Name: "System variables in ALTER TABLE ADD COLUMN defaults are not allowed",
+		SetUpScript: []string{
+			"CREATE TABLE t(pk int PRIMARY KEY);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "ALTER TABLE t ADD COLUMN i int DEFAULT (@@version);",
+				ExpectedErr: sql.ErrColumnDefaultUserVariable,
+			},
+		},
+	},
+	{
+		Name: "User variables in ALTER TABLE ALTER COLUMN defaults are not allowed",
+		SetUpScript: []string{
+			"CREATE TABLE t(pk int PRIMARY KEY, i int);",
+			"set @a = 1;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "ALTER TABLE t ALTER COLUMN i SET DEFAULT (@a);",
+				ExpectedErr: sql.ErrColumnDefaultUserVariable,
+			},
+		},
+	},
+	{
+		Name: "System variables in ALTER TABLE ALTER COLUMN defaults are not allowed",
+		SetUpScript: []string{
+			"CREATE TABLE t(pk int PRIMARY KEY, i int);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "ALTER TABLE t ALTER COLUMN i SET DEFAULT (@@version);",
+				ExpectedErr: sql.ErrColumnDefaultUserVariable,
+			},
+		},
+	},
 }
