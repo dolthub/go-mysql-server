@@ -45,6 +45,16 @@ type Expression interface {
 	WithChildren(children ...Expression) (Expression, error)
 }
 
+// RowIterExpression is an Expression that returns a RowIter rather than a scalar, used to implement functions that
+// return sets.
+type RowIterExpression interface {
+	Expression
+	// EvalRowIter evaluates the expression, which must be a RowIter
+	EvalRowIter(ctx *Context, r Row) (RowIter, error)
+	// ReturnsRowIter returns whether this expression returns a RowIter
+	ReturnsRowIter() bool
+}
+
 // ExpressionWithNodes is an expression that contains nodes as children.
 type ExpressionWithNodes interface {
 	Expression

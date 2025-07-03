@@ -208,6 +208,7 @@ func TestGeneralizeTypes(t *testing.T) {
 		{Date, Date, Date},
 		{Date, Timestamp, DatetimeMaxPrecision},
 		{Timestamp, Timestamp, Timestamp},
+		{Timestamp, TimestampMaxPrecision, TimestampMaxPrecision},
 		{Timestamp, Datetime, DatetimeMaxPrecision},
 		{Null, Int64, Int64},
 		{Null, Null, Null},

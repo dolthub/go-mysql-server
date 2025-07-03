@@ -106,6 +106,14 @@ func IsNumber(t sql.Type) bool {
 	}
 }
 
+func IsNullType(t sql.Type) bool {
+	nt, ok := t.(sql.NullType)
+	if !ok {
+		return false
+	}
+	return nt.IsNullType()
+}
+
 // IsSigned checks if t is a signed type.
 func IsSigned(t sql.Type) bool {
 	if svt, ok := t.(sql.SystemVariableType); ok {

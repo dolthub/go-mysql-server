@@ -642,10 +642,10 @@ func GeneralizeTypes(a, b sql.Type) sql.Type {
 		return a
 	}
 
-	if a == Null {
+	if IsNullType(a) {
 		return b
 	}
-	if b == Null {
+	if IsNullType(b) {
 		return a
 	}
 
@@ -722,6 +722,16 @@ func GeneralizeTypes(a, b sql.Type) sql.Type {
 	if IsNumber(a) && IsNumber(b) {
 		return generalizeNumberTypes(a, b)
 	}
+
+	if IsText(a) && IsText(b) {
+		sta := a.(sql.StringType)
+		stb := b.(sql.StringType)
+		if sta.Length() > stb.Length() {
+			return a
+		}
+		return b
+	}
+
 	// TODO: decide if we want to make this VarChar to match MySQL, match VarChar length to max of two types
 	return LongText
 }

@@ -104,6 +104,9 @@ type Type interface {
 // NullType represents the type of NULL values
 type NullType interface {
 	Type
+
+	// IsNullType is a marker interface for types that represent NULL values.
+	IsNullType() bool
 }
 
 // DeferredType is a placeholder for prepared statements

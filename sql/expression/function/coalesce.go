@@ -58,7 +58,9 @@ func (c *Coalesce) Type() sql.Type {
 	if c.typ != nil {
 		return c.typ
 	}
-	retType := types.Null
+
+	var retType sql.Type
+	retType = types.Null
 	for i, arg := range c.args {
 		if arg == nil {
 			continue
