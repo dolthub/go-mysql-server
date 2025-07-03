@@ -229,7 +229,7 @@ func (t EnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.
 		// In non-strict mode, return empty string (index 0) for invalid enum values
 		return uint16(0), sql.InRange, nil
 	}
-	
+
 	// If we can't determine SQL mode (e.g., test contexts), use the original error
 	return nil, sql.InRange, ErrConvertingToEnum.New(v)
 }
