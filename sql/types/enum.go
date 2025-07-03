@@ -129,11 +129,11 @@ func (t EnumType) Compare(ctx context.Context, a interface{}, b interface{}) (in
 	// Attempt to convert the values to their enum values, but don't error
 	// out if they aren't valid enum values.
 	ai, _, err := t.Convert(ctx, a)
-	if err != nil && !ErrConvertingToEnum.Is(err) {
+	if err != nil && !ErrConvertingToEnum.Is(err) && !ErrDataTruncatedForColumn.Is(err) {
 		return 0, err
 	}
 	bi, _, err := t.Convert(ctx, b)
-	if err != nil && !ErrConvertingToEnum.Is(err) {
+	if err != nil && !ErrConvertingToEnum.Is(err) && !ErrDataTruncatedForColumn.Is(err) {
 		return 0, err
 	}
 
@@ -164,16 +164,17 @@ func (t EnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.
 
 	switch value := v.(type) {
 	case int:
-		if _, ok := t.At(value); ok {
-			// Special handling for index 0 in strict mode
-			if value == 0 {
-				if sqlCtx, ok := ctx.(*sql.Context); ok {
-					sqlMode := sql.LoadSqlMode(sqlCtx)
-					if sqlMode.ModeEnabled(sql.StrictTransTables) {
-						return nil, sql.OutOfRange, ErrDataTruncatedForColumn.New("")
-					}
+		// Special handling for index 0 (empty value) in strict mode
+		if value == 0 {
+			if sqlCtx, ok := ctx.(*sql.Context); ok {
+				sqlMode := sql.LoadSqlMode(sqlCtx)
+				if sqlMode.ModeEnabled(sql.StrictTransTables) {
+					return nil, sql.OutOfRange, ErrDataTruncatedForColumn.New("")
 				}
 			}
+			return uint16(0), sql.InRange, nil
+		}
+		if _, ok := t.At(value); ok {
 			return uint16(value), sql.InRange, nil
 		}
 	case uint:
