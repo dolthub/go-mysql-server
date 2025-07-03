@@ -1396,6 +1396,45 @@ var GeneratedColumnTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/8968
+		Name: "can select all columns from table with generated column",
+		SetUpScript: []string{
+			"create table t(pk int primary key, j1 json)",
+			`insert into t values (1, '{"name": "foo"}')`,
+			"alter table t add column g1 varchar(100) generated always as (json_unquote(json_extract(`j1`, '$.name')))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from t",
+				Expected: []sql.Row{{1, `{"name":"foo"}`, "foo"}},
+			},
+			{
+				Query:    "select pk, j1, g1 from t",
+				Expected: []sql.Row{{1, `{"name":"foo"}`, "foo"}},
+			},
+			{
+				Query:    "select pk, g1 from t",
+				Expected: []sql.Row{{1, "foo"}},
+			},
+			{
+				Query:    "select g1 from t",
+				Expected: []sql.Row{{"foo"}},
+			},
+			{
+				Query:    "select j1, g1 from t",
+				Expected: []sql.Row{{`{"name":"foo"}`, "foo"}},
+			},
+			{
+				Query:    "select j1 from t",
+				Expected: []sql.Row{{`{"name":"foo"}`}},
+			},
+			{
+				Query:    "select pk, j1 from t",
+				Expected: []sql.Row{{1, `{"name":"foo"}`}},
+			},
+		},
+	},
 }
 
 var BrokenGeneratedColumnTests = []ScriptTest{
