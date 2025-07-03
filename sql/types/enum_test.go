@@ -138,9 +138,10 @@ func TestEnumConvert(t *testing.T) {
 		{[]string{"0", "1", "2"}, sql.Collation_Default, "3", "2", false},
 		{[]string{"0", "1", "2"}, sql.Collation_Default, "2", "2", false},
 
-		{[]string{"one", "two"}, sql.Collation_Default, 3, nil, true},
-		{[]string{"one", "two"}, sql.Collation_Default, "three", nil, true},
-		{[]string{"one", "two"}, sql.Collation_Default, time.Date(2019, 12, 12, 12, 12, 12, 0, time.UTC), nil, true},
+		// In non-strict mode (empty context), invalid enum values are converted to empty value (index 0)
+		{[]string{"one", "two"}, sql.Collation_Default, 3, "", false},
+		{[]string{"one", "two"}, sql.Collation_Default, "three", "", false},
+		{[]string{"one", "two"}, sql.Collation_Default, time.Date(2019, 12, 12, 12, 12, 12, 0, time.UTC), "", false},
 	}
 
 	for _, test := range tests {

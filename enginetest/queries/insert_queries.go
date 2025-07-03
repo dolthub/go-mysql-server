@@ -2836,7 +2836,7 @@ var InsertIgnoreScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "insert into test_table values (1, 'invalid'), (2, 'comparative politics'), (3, null)",
-				ExpectedErr: types.ErrConvertingToEnum, // TODO: should be ErrDataTruncatedForColumn
+				ExpectedErr: types.ErrDataTruncatedForColumn,
 			},
 			{
 				Query:    "insert ignore into test_table values (1, 'invalid'), (2, 'bye'), (3, null)",
@@ -2846,6 +2846,43 @@ var InsertIgnoreScripts = []ScriptTest{
 			{
 				Query:    "select * from test_table",
 				Expected: []sql.Row{{1, ""}, {2, "bye"}, {3, nil}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9425
+		Name: "issue 9425: 0 value is not allowed for enum in strict mode",
+		SetUpScript: []string{
+			"create table enum_zero_test (id int auto_increment primary key, enum_col enum('apple','banana','cherry'))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select @@sql_mode",
+				Expected: []sql.Row{{"NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES"}},
+			},
+			{
+				Query:       "insert into enum_zero_test (enum_col) values (0)",
+				ExpectedErr: types.ErrDataTruncatedForColumn,
+			},
+			{
+				Query:       "insert into enum_zero_test (enum_col) values ('invalid')",
+				ExpectedErr: types.ErrDataTruncatedForColumn,
+			},
+			{
+				Query:    "set sql_mode = ''",
+				Expected: []sql.Row{{}},
+			},
+			{
+				Query:    "insert into enum_zero_test (enum_col) values (0)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
+			},
+			{
+				Query:    "insert into enum_zero_test (enum_col) values ('invalid')",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
+			},
+			{
+				Query:    "select * from enum_zero_test",
+				Expected: []sql.Row{{1, ""}, {2, ""}},
 			},
 		},
 	},
