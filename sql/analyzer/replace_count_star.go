@@ -65,7 +65,7 @@ func replaceCountStar(ctx *sql.Context, a *Analyzer, n sql.Node, _ *plan.Scope, 
 						rt = t
 					}
 				}
-				if rt == nil {
+				if rt == nil || sql.IsKeyless(rt.Table.Schema()) {
 					return n, transform.SameTree, nil
 				}
 

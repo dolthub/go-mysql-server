@@ -903,21 +903,31 @@ From xy;`,
 		Query: `select count(*) from keyless`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [count(1):0!null->count(*):0]\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [keyless.COUNT(1):0!null->COUNT(1):0]\n" +
-			"     └─ table_count(keyless) as COUNT(1)\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: COUNT(1 (bigint))\n" +
+			"     ├─ group: \n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: keyless\n" +
+			"             └─ columns: []\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(1) as count(*)]\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [keyless.COUNT(1) as COUNT(1)]\n" +
-			"     └─ table_count(keyless) as COUNT(1)\n" +
+			" └─ GroupBy\n" +
+			"     ├─ SelectedExprs(COUNT(1))\n" +
+			"     ├─ Grouping()\n" +
+			"     └─ Table\n" +
+			"         ├─ name: keyless\n" +
+			"         └─ columns: []\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(1) as count(*)]\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [keyless.COUNT(1) as COUNT(1)]\n" +
-			"     └─ table_count(keyless) as COUNT(1)\n" +
+			" └─ GroupBy\n" +
+			"     ├─ SelectedExprs(COUNT(1))\n" +
+			"     ├─ Grouping()\n" +
+			"     └─ Table\n" +
+			"         ├─ name: keyless\n" +
+			"         └─ columns: []\n" +
 			"",
 	},
 	{
@@ -5314,7 +5324,13 @@ Select * from (
 			" │               ├─ name: mytable\n" +
 			" │               └─ columns: [i]\n" +
 			" │  ->(SELECT i FROM mytable WHERE i = 1 group by i):0]\n" +
-			" └─ table_count() as COUNT(1)\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: COUNT(1 (bigint))\n" +
+			"     ├─ group: \n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: \n" +
+			"             └─ columns: []\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(1) as count(*), Subquery\n" +
@@ -5327,7 +5343,11 @@ Select * from (
 			" │           ├─ filters: [{[1, 1]}]\n" +
 			" │           └─ columns: [i]\n" +
 			" │   as (SELECT i FROM mytable WHERE i = 1 group by i)]\n" +
-			" └─ table_count() as COUNT(1)\n" +
+			" └─ GroupBy\n" +
+			"     ├─ SelectedExprs(COUNT(1))\n" +
+			"     ├─ Grouping()\n" +
+			"     └─ Table\n" +
+			"         └─ name: \n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(1) as count(*), Subquery\n" +
@@ -5340,7 +5360,11 @@ Select * from (
 			" │           ├─ filters: [{[1, 1]}]\n" +
 			" │           └─ columns: [i]\n" +
 			" │   as (SELECT i FROM mytable WHERE i = 1 group by i)]\n" +
-			" └─ table_count() as COUNT(1)\n" +
+			" └─ GroupBy\n" +
+			"     ├─ SelectedExprs(COUNT(1))\n" +
+			"     ├─ Grouping()\n" +
+			"     └─ Table\n" +
+			"         └─ name: \n" +
 			"",
 	},
 	{
