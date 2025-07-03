@@ -9000,8 +9000,8 @@ where
 		},
 	},
 	{
-		Name:        "enums with auto increment",
-		Dialect:     "mysql",
+		Name:    "enums with auto increment",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE t (e enum('a', 'b', 'c') PRIMARY KEY)",
 		},
@@ -9025,7 +9025,7 @@ where
 			{
 				Query:          "ALTER TABLE t CHANGE COLUMN e e enum('a', 'b', 'c') AUTO_INCREMENT",
 				ExpectedErrStr: "Incorrect column specifier for column 'e'",
-			}
+			},
 		},
 	},
 	{
