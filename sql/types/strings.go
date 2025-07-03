@@ -516,6 +516,29 @@ func ConvertToCollatedString(ctx context.Context, val interface{}, typ sql.Type)
 			content = strVal
 		} else if byteVal, ok := val.([]byte); ok {
 			content = encodings.BytesToString(byteVal)
+		} else if IsEnum(typ) {
+			// Handle enum types in string context - return the string value, not the index
+			if enumType, ok := typ.(sql.EnumType); ok {
+				if enumVal, ok := val.(uint16); ok {
+					if enumStr, exists := enumType.At(int(enumVal)); exists {
+						content = enumStr
+					} else {
+						content = ""
+					}
+				} else {
+					val, _, err = LongText.Convert(ctx, val)
+					if err != nil {
+						return "", sql.Collation_Unspecified, err
+					}
+					content = val.(string)
+				}
+			} else {
+				val, _, err = LongText.Convert(ctx, val)
+				if err != nil {
+					return "", sql.Collation_Unspecified, err
+				}
+				content = val.(string)
+			}
 		} else {
 			val, _, err = LongText.Convert(ctx, val)
 			if err != nil {
@@ -525,6 +548,17 @@ func ConvertToCollatedString(ctx context.Context, val interface{}, typ sql.Type)
 		}
 	} else {
 		collation = sql.Collation_Default
+		// Handle enum types in string context even without collation
+		if IsEnum(typ) {
+			if enumType, ok := typ.(sql.EnumType); ok {
+				if enumVal, ok := val.(uint16); ok {
+					if enumStr, exists := enumType.At(int(enumVal)); exists {
+						content = enumStr
+						return content, collation, nil
+					}
+				}
+			}
+		}
 		val, _, err = LongText.Convert(ctx, val)
 		if err != nil {
 			return "", sql.Collation_Unspecified, err

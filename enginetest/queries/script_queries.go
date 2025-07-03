@@ -9085,7 +9085,7 @@ where
 		},
 	},
 	{
-		Skip:    true,
+		Skip:    false,
 		Name:    "enum conversion to strings",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -9099,7 +9099,7 @@ where
 				Expected: []sql.Row{
 					{"abc", 3},
 					{"defg", 4},
-					{"hijkl", 5},
+					{"hjikl", 5},
 				},
 			},
 			{
@@ -9108,7 +9108,7 @@ where
 				Expected: []sql.Row{
 					{"abc", "abctest"},
 					{"defg", "defgtest"},
-					{"hijkl", "hijkltest"},
+					{"hjikl", "hjikltest"},
 				},
 			},
 		},
