@@ -9094,7 +9094,6 @@ where
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				// We incorrectly use the numeric values of the enum, resulting in length of 1
 				Query: "select e, length(e) from t order by e;",
 				Expected: []sql.Row{
 					{"abc", 3},
@@ -9103,12 +9102,37 @@ where
 				},
 			},
 			{
-				// We incorrectly use the numeric values of the enum, resulting in length of 1
 				Query: "select e, concat(e, 'test') from t order by e;",
 				Expected: []sql.Row{
 					{"abc", "abctest"},
 					{"defg", "defgtest"},
 					{"hjikl", "hjikltest"},
+				},
+			},
+			{
+				Query: "select e, e like 'a%', e like '%g' from t order by e;",
+				Expected: []sql.Row{
+					{"abc", true, false},
+					{"defg", false, true},
+					{"hjikl", false, false},
+				},
+			},
+			{
+				Query: "select group_concat(e order by e) as grouped from t;",
+				Expected: []sql.Row{
+					{"abc,defg,hjikl"},
+				},
+			},
+			{
+				Query: "select e from t where e = 'abc';",
+				Expected: []sql.Row{
+					{"abc"},
+				},
+			},
+			{
+				Query: "select count(*) from t where e = 'defg';",
+				Expected: []sql.Row{
+					{1},
 				},
 			},
 		},
