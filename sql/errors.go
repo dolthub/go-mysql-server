@@ -669,6 +669,9 @@ var (
 	// ErrInvalidAutoIncCols is returned when an auto_increment column cannot be applied
 	ErrInvalidAutoIncCols = errors.NewKind("there can be only one auto_increment column and it must be defined as a key")
 
+	// ErrInvalidColumnSpecifier is returned when an invalid column specifier is used
+	ErrInvalidColumnSpecifier = errors.NewKind("Incorrect column specifier for column '%s'")
+
 	// ErrUnknownConstraintDefinition is returned when an unknown constraint type is used
 	ErrUnknownConstraintDefinition = errors.NewKind("unknown constraint definition: %s, %T")
 

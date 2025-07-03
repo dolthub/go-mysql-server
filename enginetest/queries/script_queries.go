@@ -9000,7 +9000,7 @@ where
 		},
 	},
 	{
-		Skip:        true,
+		Skip:        false,
 		Name:        "enums with auto increment",
 		Dialect:     "mysql",
 		SetUpScript: []string{},
