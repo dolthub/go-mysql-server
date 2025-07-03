@@ -93,6 +93,10 @@ var GeneratedColumnTests = []ScriptTest{
 				Query:    "select * from t1 order by a",
 				Expected: []sql.Row{{2, 3}, {3, 4}, {4, 5}, {5, 6}},
 			},
+			{
+				Query:    "select count(*) from t1",
+				Expected: []sql.Row{{4}},
+			},
 		},
 	},
 	{
@@ -171,9 +175,15 @@ var GeneratedColumnTests = []ScriptTest{
 			"INSERT INTO t16 (pk) VALUES (1), (2)",
 			"ALTER TABLE t16 ADD COLUMN v2 BIGINT AS (5) STORED FIRST",
 		},
-		Assertions: []ScriptTestAssertion{{
-			Query:    "SELECT * FROM t16",
-			Expected: []sql.Row{{5, 1, 4}, {5, 2, 4}}},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM t16",
+				Expected: []sql.Row{{5, 1, 4}, {5, 2, 4}},
+			},
+			{
+				Query:    "select count(*) from t16",
+				Expected: []sql.Row{{2}},
+			},
 		},
 	},
 	{
@@ -183,9 +193,15 @@ var GeneratedColumnTests = []ScriptTest{
 			"INSERT INTO t17 VALUES (1, 3), (2, 4)",
 			"ALTER TABLE t17 ADD COLUMN v2 BIGINT AS (v1 + 2) STORED FIRST",
 		},
-		Assertions: []ScriptTestAssertion{{
-			Query:    "SELECT * FROM t17",
-			Expected: []sql.Row{{5, 1, 3}, {6, 2, 4}}},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM t17",
+				Expected: []sql.Row{{5, 1, 3}, {6, 2, 4}},
+			},
+			{
+				Query:    "select count(*) from t17",
+				Expected: []sql.Row{{2}},
+			},
 		},
 	},
 	{
@@ -275,6 +291,10 @@ var GeneratedColumnTests = []ScriptTest{
 				Query:    "select * from t1 order by b",
 				Expected: []sql.Row{{1, 2}, {2, 3}},
 			},
+			{
+				Query:    "select count(*) from t1",
+				Expected: []sql.Row{{2}},
+			},
 		},
 	},
 	{
@@ -346,6 +366,10 @@ var GeneratedColumnTests = []ScriptTest{
 			{
 				Query:    "select * from t1 order by b",
 				Expected: []sql.Row{{1, 2, 3, 4}, {2, 3, 4, 5}},
+			},
+			{
+				Query:    "select count(*) from t1",
+				Expected: []sql.Row{{2}},
 			},
 		},
 	},
@@ -426,6 +450,10 @@ var GeneratedColumnTests = []ScriptTest{
 			{
 				Query:    "select * from t1 order by b",
 				Expected: []sql.Row{{1, 2}, {2, 3}},
+			},
+			{
+				Query:    "select count(*) from t1",
+				Expected: []sql.Row{{2}},
 			},
 		},
 	},
@@ -580,6 +608,10 @@ var GeneratedColumnTests = []ScriptTest{
 						"  PRIMARY KEY (`a`)\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
+			{
+				Query:    "select count(*) from t1",
+				Expected: []sql.Row{{3}},
+			},
 		},
 	},
 	{
@@ -617,6 +649,10 @@ var GeneratedColumnTests = []ScriptTest{
 				},
 			},
 			{
+				Query:    "select count(*) from t",
+				Expected: []sql.Row{{1}},
+			},
+			{
 				Query: "alter table tt add column `col 3` int generated always as (`col 1` + `col 2` + pow(`col 1`, `col 2`)) stored;",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
@@ -643,6 +679,10 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{
 					{1, 2, 4},
 				},
+			},
+			{
+				Query:    "select count(*) from tt",
+				Expected: []sql.Row{{1}},
 			},
 		},
 	},
@@ -681,6 +721,10 @@ var GeneratedColumnTests = []ScriptTest{
 				},
 			},
 			{
+				Query:    "select count(*) from t",
+				Expected: []sql.Row{{1}},
+			},
+			{
 				Query: "alter table tt add column `col 3` int generated always as (`col 1` + `col 2` + pow(`col 1`, `col 2`)) virtual;",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
@@ -708,6 +752,10 @@ var GeneratedColumnTests = []ScriptTest{
 					{1, 2, 4},
 				},
 			},
+			{
+				Query:    "select count(*) from tt",
+				Expected: []sql.Row{{1}},
+			},
 		},
 	},
 	{
@@ -717,9 +765,15 @@ var GeneratedColumnTests = []ScriptTest{
 			"INSERT INTO t16 (pk) VALUES (1), (2)",
 			"ALTER TABLE t16 ADD COLUMN v2 BIGINT AS (5) VIRTUAL FIRST",
 		},
-		Assertions: []ScriptTestAssertion{{
-			Query:    "SELECT * FROM t16",
-			Expected: []sql.Row{{5, 1, 4}, {5, 2, 4}}},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM t16",
+				Expected: []sql.Row{{5, 1, 4}, {5, 2, 4}},
+			},
+			{
+				Query:    "select count(*) from t16",
+				Expected: []sql.Row{{2}},
+			},
 		},
 	},
 	{
@@ -729,9 +783,15 @@ var GeneratedColumnTests = []ScriptTest{
 			"INSERT INTO t17 VALUES (1, 3), (2, 4)",
 			"ALTER TABLE t17 ADD COLUMN v2 BIGINT AS (v1 + 2) VIRTUAL FIRST",
 		},
-		Assertions: []ScriptTestAssertion{{
-			Query:    "SELECT * FROM t17",
-			Expected: []sql.Row{{5, 1, 3}, {6, 2, 4}}},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM t17",
+				Expected: []sql.Row{{5, 1, 3}, {6, 2, 4}},
+			},
+			{
+				Query:    "SELECT count(*) FROM t17",
+				Expected: []sql.Row{{2}},
+			},
 		},
 	},
 	{
@@ -872,6 +932,14 @@ var GeneratedColumnTests = []ScriptTest{
 				Query:    "select * from t2 order by c",
 				Expected: []sql.Row{{1, 0}, {2, 1}, {3, 2}, {6, 5}, {7, 6}},
 			},
+			{
+				Query:    "select count(*) from t1",
+				Expected: []sql.Row{{5}},
+			},
+			{
+				Query:    "select count(*) from t2",
+				Expected: []sql.Row{{5}},
+			},
 		},
 	},
 	{
@@ -890,6 +958,10 @@ var GeneratedColumnTests = []ScriptTest{
 					{1, types.MustJSON(`{"a": 1, "b": 2}`), 2},
 					{2, types.MustJSON(`{"a": 1}`), nil},
 					{3, types.MustJSON(`{"b": "300"}`), 300}},
+			},
+			{
+				Query:    "select count(*) from t1",
+				Expected: []sql.Row{{3}},
 			},
 		},
 	},
@@ -910,6 +982,10 @@ var GeneratedColumnTests = []ScriptTest{
 					{"def", nil, nil},
 					{"ghi", "", "ghi"},
 				},
+			},
+			{
+				Query:    "select count(*) from t1",
+				Expected: []sql.Row{{3}},
 			},
 		},
 	},
@@ -950,6 +1026,10 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{
 					{2, 3, 4, 5},
 				},
+			},
+			{
+				Query:    "select count(*) from t",
+				Expected: []sql.Row{{3}},
 			},
 		},
 	},
@@ -1028,6 +1108,10 @@ var GeneratedColumnTests = []ScriptTest{
 				Query:    "select * from t1 order by a",
 				Expected: []sql.Row{{1, 2, 3}, {3, 4, 7}},
 			},
+			{
+				Query:    "select count(*) from t1",
+				Expected: []sql.Row{{2}},
+			},
 		},
 	},
 	{
@@ -1093,6 +1177,10 @@ var GeneratedColumnTests = []ScriptTest{
 				},
 			},
 			{
+				Query:    "select count(*) from t1",
+				Expected: []sql.Row{{2}},
+			},
+			{
 				Query: "select * from t1 where c = 6",
 				Expected: []sql.Row{
 					{1, 5, 6},
@@ -1120,6 +1208,10 @@ var GeneratedColumnTests = []ScriptTest{
 			{
 				Query:    "select * from t1 where v = 2",
 				Expected: []sql.Row{{"{\"a\": 2}", 2}},
+			},
+			{
+				Query:    "select count(*) from t1",
+				Expected: []sql.Row{{3}},
 			},
 			{
 				Query:    "update t1 set j = '{\"a\": 5}' where v = 2",
@@ -1217,6 +1309,10 @@ var GeneratedColumnTests = []ScriptTest{
 				Query:    "select * from t1 order by b",
 				Expected: []sql.Row{{1, 2, 3, 4}, {2, 3, 4, 5}},
 			},
+			{
+				Query:    "select count(*) from t1",
+				Expected: []sql.Row{{2}},
+			},
 		},
 	},
 	{
@@ -1302,6 +1398,10 @@ var GeneratedColumnTests = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(2)}},
 			},
 			{
+				Query:    "select count(*) from t2",
+				Expected: []sql.Row{{2}},
+			},
+			{
 				Query: "select * from t2 order by a",
 				Expected: []sql.Row{
 					{1, 3},
@@ -1317,6 +1417,10 @@ var GeneratedColumnTests = []ScriptTest{
 			{
 				Query:    "insert into t3 (a) values (1), (2)",
 				Expected: []sql.Row{{types.NewOkResult(2)}},
+			},
+			{
+				Query:    "select count(*) from t3",
+				Expected: []sql.Row{{2}},
 			},
 			{
 				Query: "select * from t3 order by a",

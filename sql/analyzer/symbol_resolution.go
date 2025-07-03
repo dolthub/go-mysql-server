@@ -208,7 +208,7 @@ func pruneTableCols(
 	}
 
 	// Don't prune columns if they're needed by a virtual column
-	virtualColDeps := make(map[tableCol]int)
+	virtualColDeps := make(map[string]int)
 	if !selectStar { // if selectStar, we're adding all columns anyway
 		if vct, isVCT := n.WrappedTable().(*plan.VirtualColumnTable); isVCT {
 			for _, projection := range vct.Projections {
@@ -216,8 +216,7 @@ func pruneTableCols(
 					if cd, isCD := e.(*sql.ColumnDefaultValue); isCD {
 						transform.InspectExpr(cd.Expr, func(e sql.Expression) bool {
 							if gf, ok := e.(*expression.GetField); ok {
-								c := newTableCol(gf.Table(), gf.Name())
-								virtualColDeps[c]++
+								virtualColDeps[gf.Name()]++
 							}
 							return false
 						})
@@ -232,7 +231,7 @@ func pruneTableCols(
 	source := strings.ToLower(table.Name())
 	for _, col := range table.Schema() {
 		c := newTableCol(source, col.Name)
-		if selectStar || parentCols[c] > 0 || virtualColDeps[c] > 0 {
+		if selectStar || parentCols[c] > 0 || virtualColDeps[c.Name()] > 0 {
 			cols = append(cols, c.col)
 		}
 	}
