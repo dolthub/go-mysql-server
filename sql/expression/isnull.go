@@ -26,10 +26,17 @@ type IsNull struct {
 
 var _ sql.Expression = (*IsNull)(nil)
 var _ sql.CollationCoercible = (*IsNull)(nil)
+var _ sql.IsNullExpression = (*IsNull)(nil)
 
 // NewIsNull creates a new IsNull expression.
 func NewIsNull(child sql.Expression) *IsNull {
 	return &IsNull{UnaryExpression{child}}
+}
+
+// IsNullExpression implements the sql.IsNullExpression interface. This function exsists primarily
+// to ensure the IsNullExpression interface has a unique signature.
+func (e *IsNull) IsNullExpression() bool {
+	return true
 }
 
 // Type implements the Expression interface.
@@ -53,18 +60,6 @@ func (e *IsNull) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	// Slices of typed values (e.g. Record and Composite types in Postgres) evaluate
-	// to NULL if all of their entries are NULL.
-	if tupleValue, ok := v.([]types.TupleValue); ok {
-		for _, typedValue := range tupleValue {
-			if typedValue.Value != nil {
-				return false, nil
-			}
-		}
-		return true, nil
-	}
-
 	return v == nil, nil
 }
 
