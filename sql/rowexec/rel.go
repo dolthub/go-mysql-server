@@ -387,9 +387,11 @@ func (b *BaseBuilder) buildSet(ctx *sql.Context, n *plan.Set, row sql.Row) (sql.
 		}
 		copy(resultRow, row)
 		resultRow = row.Append(newRow)
+		return sql.RowsToRowIter(resultRow), nil
 	}
 
-	return sql.RowsToRowIter(resultRow), nil
+	// For system and user variable SET statements, return OkResult like MySQL does
+	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
 }
 
 func (b *BaseBuilder) buildGroupBy(ctx *sql.Context, n *plan.GroupBy, row sql.Row) (sql.RowIter, error) {

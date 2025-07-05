@@ -3241,7 +3241,7 @@ CREATE TABLE tab3 (
 			// in +8:00
 			{
 				Query:    "set @@session.time_zone='+08:00'",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "select from_unixtime(1)",
@@ -3258,7 +3258,7 @@ CREATE TABLE tab3 (
 			// in utc
 			{
 				Query:    "set @@session.time_zone='UTC'",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "select from_unixtime(1)",
@@ -5104,7 +5104,7 @@ CREATE TABLE tab3 (
 			{
 				// Set the timezone set to UTC as an offset
 				Query:    `set @@time_zone='+00:00';`,
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				// When the session's time zone is set to UTC, NOW() and UTC_TIMESTAMP() should return the same value
@@ -5118,7 +5118,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    `set @@time_zone='+02:00';`,
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				// When the session's time zone is set to +2:00, NOW() should report two hours ahead of UTC_TIMESTAMP()
@@ -5151,7 +5151,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    `set @@time_zone='-08:00';`,
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				// TODO: Unskip after adding support for converting timestamp values to/from session time_zone
@@ -5165,7 +5165,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    `set @@time_zone='+5:00';`,
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				// Test with explicit timezone in datetime literal
@@ -5184,7 +5184,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    `set @@time_zone='+0:00';`,
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				// TODO: Unskip after adding support for converting timestamp values to/from session time_zone
@@ -5342,7 +5342,7 @@ CREATE TABLE tab3 (
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SET time_zone = '+07:00';",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "SELECT UNIX_TIMESTAMP('2023-09-25 07:02:57');",
@@ -5354,7 +5354,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    "SET time_zone = '+00:00';",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "SELECT UNIX_TIMESTAMP('2023-09-25 07:02:57');",
@@ -5362,7 +5362,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    "SET time_zone = '-06:00';",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "SELECT UNIX_TIMESTAMP('2023-09-25 07:02:57');",
@@ -10539,7 +10539,7 @@ var BrokenScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SET SESSION time_zone = '-05:00';",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "SELECT DATE_FORMAT(ts, '%H:%i:%s'), DATE_FORMAT(dt, '%H:%i:%s') from timezone_test;",

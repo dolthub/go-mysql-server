@@ -1485,7 +1485,7 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "SET FOREIGN_KEY_CHECKS=0;",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "TRUNCATE parent;",
@@ -1497,7 +1497,7 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "SET FOREIGN_KEY_CHECKS=1;",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:       "INSERT INTO child VALUES (4, 5, 6);",
@@ -2777,7 +2777,7 @@ var CreateForeignKeyTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SET FOREIGN_KEY_CHECKS=0;",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "CREATE TABLE child4 (pk BIGINT PRIMARY KEY, CONSTRAINT fk_child4 FOREIGN KEY (pk) REFERENCES delayed_parent4 (pk))",
