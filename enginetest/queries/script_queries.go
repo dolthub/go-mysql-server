@@ -1202,7 +1202,7 @@ CREATE TABLE tab3 (
 			{
 				// enum values must match EXACTLY for case-sensitive collations
 				Query:          "INSERT INTO enumtest1 VALUES (10, 'ABC'), (11, 'aBc'), (12, 'xyz');",
-				ExpectedErrStr: "value ABC is not valid for this Enum",
+				ExpectedErrStr: "Data truncated for column ''",
 			},
 			{
 				Query: "SHOW CREATE TABLE enumtest1;",
@@ -8053,11 +8053,11 @@ where
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:          "insert into t values (1, 500)",
-				ExpectedErrStr: "value 500 is not valid for this Enum",
+				ExpectedErrStr: "Data truncated for column ''",
 			},
 			{
 				Query:          "insert into t values (1, -1)",
-				ExpectedErrStr: "value -1 is not valid for this Enum",
+				ExpectedErrStr: "Data truncated for column ''",
 			},
 		},
 	},

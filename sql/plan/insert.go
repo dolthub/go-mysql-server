@@ -22,6 +22,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // ErrInsertIntoNotSupported is thrown when a table doesn't support inserts
@@ -54,6 +55,7 @@ var IgnorableErrors = []*errors.Kind{sql.ErrInsertIntoNonNullableProvidedNull,
 	sql.ErrDuplicateEntry,
 	sql.ErrUniqueKeyViolation,
 	sql.ErrCheckConstraintViolated,
+	types.ErrDataTruncatedForColumn,
 }
 
 // InsertInto is the top level node for INSERT INTO statements. It has a source for rows and a destination to insert

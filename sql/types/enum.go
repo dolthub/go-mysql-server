@@ -129,11 +129,11 @@ func (t EnumType) Compare(ctx context.Context, a interface{}, b interface{}) (in
 	// Attempt to convert the values to their enum values, but don't error
 	// out if they aren't valid enum values.
 	ai, _, err := t.Convert(ctx, a)
-	if err != nil && !ErrConvertingToEnum.Is(err) {
+	if err != nil && !ErrConvertingToEnum.Is(err) && !ErrDataTruncatedForColumn.Is(err) {
 		return 0, err
 	}
 	bi, _, err := t.Convert(ctx, b)
-	if err != nil && !ErrConvertingToEnum.Is(err) {
+	if err != nil && !ErrConvertingToEnum.Is(err) && !ErrDataTruncatedForColumn.Is(err) {
 		return 0, err
 	}
 
@@ -164,6 +164,16 @@ func (t EnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.
 
 	switch value := v.(type) {
 	case int:
+		// Special handling for index 0 (empty value) in strict mode
+		if value == 0 {
+			if sqlCtx, ok := ctx.(*sql.Context); ok {
+				sqlMode := sql.LoadSqlMode(sqlCtx)
+				if sqlMode.ModeEnabled(sql.StrictTransTables) {
+					return nil, sql.OutOfRange, ErrDataTruncatedForColumn.New("")
+				}
+			}
+			return uint16(0), sql.InRange, nil
+		}
 		if _, ok := t.At(value); ok {
 			return uint16(value), sql.InRange, nil
 		}
@@ -176,6 +186,10 @@ func (t EnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.
 	case int16:
 		return t.Convert(ctx, int(value))
 	case uint16:
+		// uint16(0) is always allowed as it represents the enum empty value used by INSERT IGNORE
+		if value == 0 {
+			return uint16(0), sql.InRange, nil
+		}
 		return t.Convert(ctx, int(value))
 	case int32:
 		return t.Convert(ctx, int(value))
@@ -204,6 +218,19 @@ func (t EnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.
 		return t.Convert(ctx, string(value))
 	}
 
+	// Check if we're in strict mode and handle invalid enum values appropriately
+	// But only for cases where we might want to return the empty value (0)
+	// For other invalid values, always return an error
+	if sqlCtx, ok := ctx.(*sql.Context); ok {
+		sqlMode := sql.LoadSqlMode(sqlCtx)
+		if sqlMode.ModeEnabled(sql.StrictTransTables) {
+			return nil, sql.OutOfRange, ErrDataTruncatedForColumn.New("")
+		}
+		// In non-strict mode, return empty string (index 0) for invalid enum values
+		return uint16(0), sql.InRange, nil
+	}
+
+	// If we can't determine SQL mode (e.g., test contexts), use the original error
 	return nil, sql.InRange, ErrConvertingToEnum.New(v)
 }
 
