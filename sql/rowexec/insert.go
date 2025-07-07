@@ -140,6 +140,8 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 						cErr = types.ErrLengthBeyondLimit.New(row[idx], col.Name)
 					} else if sql.ErrNotMatchingSRID.Is(cErr) {
 						cErr = sql.ErrNotMatchingSRIDWithColName.New(col.Name, cErr)
+					} else if types.ErrDataTruncatedForColumn.Is(cErr) {
+						cErr = types.ErrDataTruncatedForColumn.New(col.Name)
 					}
 					return nil, sql.NewWrappedInsertError(origRow, cErr)
 				}

@@ -77,6 +77,8 @@ func (s *SetField) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			// Fill in error with information
 			if types.ErrLengthBeyondLimit.Is(err) {
 				return nil, sql.NewWrappedTypeConversionError(val, getField.fieldIndex, types.ErrLengthBeyondLimit.New(val, getField.Name()))
+			} else if types.ErrDataTruncatedForColumn.Is(err) {
+				return nil, sql.NewWrappedTypeConversionError(val, getField.fieldIndex, types.ErrDataTruncatedForColumn.New(getField.Name()))
 			}
 			return nil, sql.NewWrappedTypeConversionError(val, getField.fieldIndex, err)
 		}
