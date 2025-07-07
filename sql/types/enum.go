@@ -177,6 +177,16 @@ func (t EnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.
 		if _, ok := t.At(value); ok {
 			return uint16(value), sql.InRange, nil
 		}
+		// For invalid integer values, check strict mode
+		if sqlCtx, ok := ctx.(*sql.Context); ok {
+			sqlMode := sql.LoadSqlMode(sqlCtx)
+			if sqlMode.ModeEnabled(sql.StrictTransTables) {
+				return nil, sql.OutOfRange, ErrDataTruncatedForColumn.New("")
+			}
+			// In non-strict mode, return empty string (index 0) for invalid enum values
+			return uint16(0), sql.InRange, nil
+		}
+		return nil, sql.InRange, ErrConvertingToEnum.New(v)
 	case uint:
 		return t.Convert(ctx, int(value))
 	case int8:
@@ -214,13 +224,22 @@ func (t EnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.
 		if index := t.IndexOf(value); index != -1 {
 			return uint16(index), sql.InRange, nil
 		}
+		// For invalid string values, check strict mode
+		if sqlCtx, ok := ctx.(*sql.Context); ok {
+			sqlMode := sql.LoadSqlMode(sqlCtx)
+			if sqlMode.ModeEnabled(sql.StrictTransTables) {
+				return nil, sql.OutOfRange, ErrDataTruncatedForColumn.New("")
+			}
+			// In non-strict mode, return empty string (index 0) for invalid enum values
+			return uint16(0), sql.InRange, nil
+		}
+		return nil, sql.InRange, ErrConvertingToEnum.New(v)
 	case []byte:
 		return t.Convert(ctx, string(value))
 	}
 
-	// Check if we're in strict mode and handle invalid enum values appropriately
-	// But only for cases where we might want to return the empty value (0)
-	// For other invalid values, always return an error
+	// For other types not handled above, check if we're in strict mode  
+	// In test contexts (empty context), default to non-strict behavior
 	if sqlCtx, ok := ctx.(*sql.Context); ok {
 		sqlMode := sql.LoadSqlMode(sqlCtx)
 		if sqlMode.ModeEnabled(sql.StrictTransTables) {
@@ -230,8 +249,8 @@ func (t EnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.
 		return uint16(0), sql.InRange, nil
 	}
 	
-	// If we can't determine SQL mode (e.g., test contexts), use the original error
-	return nil, sql.InRange, ErrConvertingToEnum.New(v)
+	// If we can't determine SQL mode (e.g., test contexts), use non-strict behavior
+	return uint16(0), sql.InRange, nil
 }
 
 // Equals implements the Type interface.
