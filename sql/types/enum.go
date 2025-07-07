@@ -44,6 +44,8 @@ var (
 
 	ErrDataTruncatedForColumn = errors.NewKind("Data truncated for column '%s'")
 
+	ErrDataTruncatedForColumnAtRow = errors.NewKind("Data truncated for column '%s' at row %d")
+
 	enumValueType = reflect.TypeOf(uint16(0))
 )
 

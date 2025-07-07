@@ -2836,7 +2836,7 @@ var InsertIgnoreScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "insert into test_table values (1, 'invalid'), (2, 'comparative politics'), (3, null)",
-				ExpectedErr: types.ErrDataTruncatedForColumn,
+				ExpectedErr: types.ErrDataTruncatedForColumnAtRow,
 			},
 			{
 				Query:    "insert ignore into test_table values (1, 'invalid'), (2, 'bye'), (3, null)",
@@ -2862,11 +2862,11 @@ var InsertIgnoreScripts = []ScriptTest{
 			},
 			{
 				Query:       "insert into enum_zero_test (enum_col) values (0)",
-				ExpectedErr: types.ErrDataTruncatedForColumn,
+				ExpectedErr: types.ErrDataTruncatedForColumnAtRow,
 			},
 			{
 				Query:       "insert into enum_zero_test (enum_col) values ('invalid')",
-				ExpectedErr: types.ErrDataTruncatedForColumn,
+				ExpectedErr: types.ErrDataTruncatedForColumnAtRow,
 			},
 			{
 				Query:    "set sql_mode = ''",

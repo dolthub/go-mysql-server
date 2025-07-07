@@ -56,6 +56,7 @@ var IgnorableErrors = []*errors.Kind{sql.ErrInsertIntoNonNullableProvidedNull,
 	sql.ErrUniqueKeyViolation,
 	sql.ErrCheckConstraintViolated,
 	types.ErrDataTruncatedForColumn,
+	types.ErrDataTruncatedForColumnAtRow,
 }
 
 // InsertInto is the top level node for INSERT INTO statements. It has a source for rows and a destination to insert
