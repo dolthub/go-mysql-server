@@ -554,14 +554,12 @@ func ConvertToCollatedString(ctx context.Context, val interface{}, typ sql.Type)
 	} else {
 		collation = sql.Collation_Default
 		// Handle enum types in string context even without collation
-		if IsEnum(typ) {
-			if enumType, ok := typ.(sql.EnumType); ok {
-				content, err = convertEnumToString(ctx, val, enumType)
-				if err != nil {
-					return "", sql.Collation_Unspecified, err
-				}
-				return content, collation, nil
+		if enumType, ok := typ.(sql.EnumType); ok {
+			content, err = convertEnumToString(ctx, val, enumType)
+			if err != nil {
+				return "", sql.Collation_Unspecified, err
 			}
+			return content, collation, nil
 		}
 		content, err = convertToLongTextString(ctx, val)
 		if err != nil {

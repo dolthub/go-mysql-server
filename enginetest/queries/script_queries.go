@@ -9137,6 +9137,33 @@ where
 		},
 	},
 	{
+		Name:    "enum conversion with system variables",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (e enum('ON', 'OFF', 'AUTO'));",
+			"set autocommit = 'ON';",
+			"insert into t values(@@autocommit), ('OFF'), ('AUTO');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select e, @@autocommit, e = @@autocommit from t order by e;",
+				Expected: []sql.Row{
+					{"ON", 1, true},
+					{"OFF", 1, false},
+					{"AUTO", 1, false},
+				},
+			},
+			{
+				Query: "select e, concat(e, @@version_comment) from t order by e;",
+				Expected: []sql.Row{
+					{"ON", "ONDolt"},
+					{"OFF", "OFFDolt"},
+					{"AUTO", "AUTODolt"},
+				},
+			},
+		},
+	},
+	{
 		Skip:    true,
 		Name:    "enums with foreign keys",
 		Dialect: "mysql",
