@@ -496,6 +496,29 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 	return val, nil
 }
 
+// convertToLongTextString safely converts a value to string using LongText.Convert with nil checking
+func convertToLongTextString(ctx context.Context, val interface{}) (string, error) {
+	converted, _, err := LongText.Convert(ctx, val)
+	if err != nil {
+		return "", err
+	}
+	if converted == nil {
+		return "", nil
+	}
+	return converted.(string), nil
+}
+
+// convertEnumToString converts an enum value to its string representation
+func convertEnumToString(ctx context.Context, val interface{}, enumType sql.EnumType) (string, error) {
+	if enumVal, ok := val.(uint16); ok {
+		if enumStr, exists := enumType.At(int(enumVal)); exists {
+			return enumStr, nil
+		}
+		return "", nil
+	}
+	return convertToLongTextString(ctx, val)
+}
+
 // ConvertToCollatedString returns the given interface as a string, along with its collation. If the Type possess a
 // collation, then that collation is returned. If the Type does not possess a collation (such as an integer), then the
 // value is converted to a string and the default collation is used. If the value is already a string then no additional
@@ -516,20 +539,32 @@ func ConvertToCollatedString(ctx context.Context, val interface{}, typ sql.Type)
 			content = strVal
 		} else if byteVal, ok := val.([]byte); ok {
 			content = encodings.BytesToString(byteVal)
-		} else {
-			val, _, err = LongText.Convert(ctx, val)
+		} else if enumType, ok := typ.(sql.EnumType); ok {
+			// Handle enum types in string context - return the string value, not the index
+			content, err = convertEnumToString(ctx, val, enumType)
 			if err != nil {
 				return "", sql.Collation_Unspecified, err
 			}
-			content = val.(string)
+		} else {
+			content, err = convertToLongTextString(ctx, val)
+			if err != nil {
+				return "", sql.Collation_Unspecified, err
+			}
 		}
 	} else {
 		collation = sql.Collation_Default
-		val, _, err = LongText.Convert(ctx, val)
+		// Handle enum types in string context even without collation
+		if enumType, ok := typ.(sql.EnumType); ok {
+			content, err = convertEnumToString(ctx, val, enumType)
+			if err != nil {
+				return "", sql.Collation_Unspecified, err
+			}
+			return content, collation, nil
+		}
+		content, err = convertToLongTextString(ctx, val)
 		if err != nil {
 			return "", sql.Collation_Unspecified, err
 		}
-		content = val.(string)
 	}
 	return content, collation, nil
 }

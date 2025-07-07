@@ -9085,7 +9085,6 @@ where
 		},
 	},
 	{
-		Skip:    true,
 		Name:    "enum conversion to strings",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -9094,21 +9093,72 @@ where
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				// We incorrectly use the numeric values of the enum, resulting in length of 1
 				Query: "select e, length(e) from t order by e;",
 				Expected: []sql.Row{
 					{"abc", 3},
 					{"defg", 4},
-					{"hijkl", 5},
+					{"hjikl", 5},
 				},
 			},
 			{
-				// We incorrectly use the numeric values of the enum, resulting in length of 1
 				Query: "select e, concat(e, 'test') from t order by e;",
 				Expected: []sql.Row{
 					{"abc", "abctest"},
 					{"defg", "defgtest"},
-					{"hijkl", "hijkltest"},
+					{"hjikl", "hjikltest"},
+				},
+			},
+			{
+				Query: "select e, e like 'a%', e like '%g' from t order by e;",
+				Expected: []sql.Row{
+					{"abc", true, false},
+					{"defg", false, true},
+					{"hjikl", false, false},
+				},
+			},
+			{
+				Query: "select group_concat(e order by e) as grouped from t;",
+				Expected: []sql.Row{
+					{"abc,defg,hjikl"},
+				},
+			},
+			{
+				Query: "select e from t where e = 'abc';",
+				Expected: []sql.Row{
+					{"abc"},
+				},
+			},
+			{
+				Query: "select count(*) from t where e = 'defg';",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+		},
+	},
+	{
+		Name:    "enum conversion with system variables",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (e enum('ON', 'OFF', 'AUTO'));",
+			"set autocommit = 'ON';",
+			"insert into t values(@@autocommit), ('OFF'), ('AUTO');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select e, @@autocommit, e = @@autocommit from t order by e;",
+				Expected: []sql.Row{
+					{"ON", 1, true},
+					{"OFF", 1, false},
+					{"AUTO", 1, false},
+				},
+			},
+			{
+				Query: "select e, concat(e, @@version_comment) from t order by e;",
+				Expected: []sql.Row{
+					{"ON", "ONDolt"},
+					{"OFF", "OFFDolt"},
+					{"AUTO", "AUTODolt"},
 				},
 			},
 		},
