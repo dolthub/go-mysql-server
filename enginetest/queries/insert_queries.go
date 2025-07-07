@@ -2873,11 +2873,11 @@ var InsertIgnoreScripts = []ScriptTest{
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, InsertID: 0}}},
 			},
 			{
-				Query:    "insert into enum_zero_test (enum_col) values (0)",
+				Query:            "insert into enum_zero_test (enum_col) values (0)",
 				SkipResultsCheck: true,
 			},
 			{
-				Query:    "insert into enum_zero_test (enum_col) values ('invalid')",
+				Query:            "insert into enum_zero_test (enum_col) values ('invalid')",
 				SkipResultsCheck: true,
 			},
 			{
@@ -2886,7 +2886,7 @@ var InsertIgnoreScripts = []ScriptTest{
 			},
 			{
 				Query:    "select enum_col from enum_zero_test order by id",
-				Expected: []sql.Row{{""},{""}},
+				Expected: []sql.Row{{""}, {""}},
 			},
 		},
 	},
