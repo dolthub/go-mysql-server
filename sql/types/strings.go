@@ -335,6 +335,7 @@ func (t StringType) Convert(ctx context.Context, v interface{}) (interface{}, sq
 	}
 
 	// If ConvertToBytes returned nil for invalid UTF-8, return nil (matches MySQL)
+	// Note: empty strings return empty slice [], not nil, so they should be preserved
 	if val == nil {
 		return nil, sql.InRange, nil
 	}
@@ -400,6 +401,10 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 		val = strconv.AppendUint(dest, s, 10)
 	case string:
 		val = append(dest, s...)
+		// Ensure empty strings return empty slice, not nil
+		if val == nil && len(s) == 0 {
+			val = []byte{}
+		}
 	case []byte:
 		// We can avoid copying the slice if this isn't a conversion to BINARY
 		// We'll check for that below, immediately before extending the slice.

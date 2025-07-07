@@ -127,6 +127,11 @@ func (f *ConcatWithSeparator) Eval(ctx *sql.Context, row sql.Row) (interface{}, 
 			return nil, err
 		}
 
+		// Skip NULL values returned from Convert (e.g., invalid UTF-8 data)
+		if val == nil {
+			continue
+		}
+
 		parts = append(parts, val.(string))
 	}
 
