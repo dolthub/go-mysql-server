@@ -402,14 +402,14 @@ func TestStringSQL_InvalidUTF8Handling(t *testing.T) {
 			name:        "Issue #8893 exact scenario - DoltLab with latin1 ® (0xAE)",
 			typ:         Text,
 			input:       []byte{0x44, 0x6F, 0x6C, 0x74, 0x4C, 0x61, 0x62, 0xAE}, // "DoltLab" + 0xAE
-			expected:    "", // Should return NULL for invalid UTF-8 (matches MySQL behavior)
+			expected:    "",                                                     // Should return NULL for invalid UTF-8 (matches MySQL behavior)
 			expectError: false,
 		},
 		{
 			name:        "Multiple invalid UTF-8 bytes",
 			typ:         Text,
 			input:       []byte{0x48, 0x65, 0x6C, 0x6C, 0x6F, 0x98, 0x76, 0x54}, // "Hello" + invalid bytes
-			expected:    "", // Should return NULL for invalid UTF-8 (matches MySQL behavior)
+			expected:    "",                                                     // Should return NULL for invalid UTF-8 (matches MySQL behavior)
 			expectError: false,
 		},
 		{
@@ -430,14 +430,14 @@ func TestStringSQL_InvalidUTF8Handling(t *testing.T) {
 			name:        "VARCHAR with invalid UTF-8",
 			typ:         MustCreateStringWithDefaults(sqltypes.VarChar, 100),
 			input:       []byte{0x54, 0x65, 0x73, 0x74, 0xAE, 0x98}, // "Test" + invalid bytes
-			expected:    "", // Should return NULL for invalid UTF-8 (matches MySQL behavior)
+			expected:    "",                                         // Should return NULL for invalid UTF-8 (matches MySQL behavior)
 			expectError: false,
 		},
 		{
 			name:        "CHAR with invalid UTF-8",
 			typ:         MustCreateStringWithDefaults(sqltypes.Char, 100),
 			input:       []byte{0x41, 0x42, 0x43, 0xAE}, // "ABC" + invalid byte
-			expected:    "", // Should return NULL for invalid UTF-8 (matches MySQL behavior)
+			expected:    "",                             // Should return NULL for invalid UTF-8 (matches MySQL behavior)
 			expectError: false,
 		},
 	}
@@ -445,14 +445,14 @@ func TestStringSQL_InvalidUTF8Handling(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			result, err := test.typ.SQL(ctx, nil, test.input)
-			
+
 			if test.expectError {
 				assert.Error(t, err)
 			} else {
 				require.NoError(t, err)
-				if test.expected == "" && (test.name == "Issue #8893 exact scenario - DoltLab with latin1 ® (0xAE)" || 
-					test.name == "Multiple invalid UTF-8 bytes" || 
-					test.name == "VARCHAR with invalid UTF-8" || 
+				if test.expected == "" && (test.name == "Issue #8893 exact scenario - DoltLab with latin1 ® (0xAE)" ||
+					test.name == "Multiple invalid UTF-8 bytes" ||
+					test.name == "VARCHAR with invalid UTF-8" ||
 					test.name == "CHAR with invalid UTF-8") {
 					// For invalid UTF-8 cases, we expect NULL (which returns empty string but is actually NULL)
 					assert.True(t, result.IsNull(), "Expected NULL for invalid UTF-8")
@@ -469,35 +469,35 @@ func TestStringSQL_InvalidUTF8Handling(t *testing.T) {
 // This verifies the MySQL-compatible behavior required for issue dolthub/dolt#8893.
 func TestStringSQL_StrictConvertValidation(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	
+
 	// The exact invalid UTF-8 data from issue #8893
 	invalidUTF8 := []byte{0x44, 0x6F, 0x6C, 0x74, 0x4C, 0x61, 0x62, 0xAE} // "DoltLab" + 0xAE
-	
+
 	stringType := Text
-	
+
 	// Test 1: Convert should now accept invalid UTF-8 and return NULL (matches MySQL INSERT behavior)
 	t.Run("Convert should accept invalid UTF-8 and return NULL for INSERT operations", func(t *testing.T) {
 		result, _, err := stringType.Convert(ctx, string(invalidUTF8))
 		require.NoError(t, err)
 		assert.Nil(t, result, "Expected NULL for invalid UTF-8 in Convert (matches MySQL)")
 	})
-	
+
 	// Test 2: SQL should accept invalid UTF-8 and return NULL (permissive for SELECT, matches MySQL)
 	t.Run("SQL should accept invalid UTF-8 for SELECT operations", func(t *testing.T) {
 		result, err := stringType.SQL(ctx, nil, invalidUTF8)
 		require.NoError(t, err)
 		assert.True(t, result.IsNull(), "Expected NULL for invalid UTF-8 (matches MySQL behavior)")
 	})
-	
+
 	// Test 3: Valid UTF-8 should work in both cases
 	t.Run("Valid UTF-8 should work in both Convert and SQL", func(t *testing.T) {
 		validUTF8 := []byte("DoltLab®") // Proper UTF-8
-		
+
 		// Convert should work
 		converted, _, err := stringType.Convert(ctx, string(validUTF8))
 		require.NoError(t, err)
 		assert.Equal(t, "DoltLab®", converted)
-		
+
 		// SQL should work
 		result, err := stringType.SQL(ctx, nil, validUTF8)
 		require.NoError(t, err)
@@ -509,11 +509,11 @@ func TestStringSQL_StrictConvertValidation(t *testing.T) {
 // described in issue dolthub/dolt#8893 to ensure MySQL-compatible behavior.
 func TestStringSQL_CustomerWorkflow_Issue8893(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	
+
 	// Customer's exact problematic data: "DoltLab®" with latin1 ® (0xAE)
 	customerData := []byte{0x44, 0x6F, 0x6C, 0x74, 0x4C, 0x61, 0x62, 0xAE}
 	textType := Text
-	
+
 	t.Run("Customer Scenario 1: Basic SELECT that was failing", func(t *testing.T) {
 		// Customer reported: SELECT name FROM Products; threw "invalid string for charset utf8mb4"
 		// After fix: Should return NULL instead of error
@@ -521,7 +521,7 @@ func TestStringSQL_CustomerWorkflow_Issue8893(t *testing.T) {
 		require.NoError(t, err, "Customer's basic SELECT should not throw errors")
 		assert.True(t, result.IsNull(), "Should return NULL for invalid UTF-8 (matches MySQL)")
 	})
-	
+
 	t.Run("Customer Scenario 2: INSERT with problematic data", func(t *testing.T) {
 		// Customer had existing data that was problematic
 		// Our fix should allow INSERT operations to complete with NULL values
@@ -529,41 +529,41 @@ func TestStringSQL_CustomerWorkflow_Issue8893(t *testing.T) {
 		require.NoError(t, err, "INSERT operations should not fail")
 		assert.Nil(t, convertResult, "Should insert NULL for invalid UTF-8 (matches MySQL)")
 	})
-	
+
 	t.Run("Customer Scenario 3: Data identification queries", func(t *testing.T) {
 		// Customer needs to identify problematic records with WHERE clauses
 		// Test that NULL values work properly in comparisons
 		result, err := textType.SQL(ctx, nil, customerData)
 		require.NoError(t, err)
-		
+
 		// Simulate: SELECT * FROM Products WHERE name IS NULL;
 		assert.True(t, result.IsNull(), "NULL values should be identifiable with IS NULL")
-		
-		// Simulate: SELECT * FROM Products WHERE name IS NOT NULL;  
+
+		// Simulate: SELECT * FROM Products WHERE name IS NOT NULL;
 		validData := []byte("ValidProduct")
 		validResult, err := textType.SQL(ctx, nil, validData)
 		require.NoError(t, err)
 		assert.False(t, validResult.IsNull(), "Valid data should not be NULL")
 	})
-	
+
 	t.Run("Customer Scenario 4: Mixed valid and invalid data", func(t *testing.T) {
 		// Customer's table had mix of valid and invalid data
 		testCases := []struct {
-			name     string
-			data     []byte
-			isValid  bool
+			name    string
+			data    []byte
+			isValid bool
 		}{
 			{"Valid product name", []byte("ValidProduct"), true},
 			{"Customer's problematic data", customerData, false},
 			{"Another valid name", []byte("AnotherProduct®"), true}, // Proper UTF-8 ®
 			{"Different invalid UTF-8", []byte{0x48, 0x65, 0x6C, 0x6C, 0x6F, 0x98}, false},
 		}
-		
+
 		for _, tc := range testCases {
 			t.Run(tc.name, func(t *testing.T) {
 				result, err := textType.SQL(ctx, nil, tc.data)
 				require.NoError(t, err, "No queries should fail regardless of data validity")
-				
+
 				if tc.isValid {
 					assert.False(t, result.IsNull(), "Valid UTF-8 should not return NULL")
 					assert.Equal(t, string(tc.data), result.ToString())
@@ -573,23 +573,23 @@ func TestStringSQL_CustomerWorkflow_Issue8893(t *testing.T) {
 			})
 		}
 	})
-	
+
 	t.Run("Customer Scenario 5: Export/cleanup operations", func(t *testing.T) {
 		// Customer wanted to export data and re-import with proper encoding
 		// All SELECT operations should work without throwing errors
-		
+
 		// Simulate customer's export query that was failing
 		problemData := [][]byte{
-			customerData,                                                    // Original issue
-			{0x48, 0x65, 0x6C, 0x6C, 0x6F, 0x98, 0x76, 0x54},             // Other invalid UTF-8
-			{0x54, 0x65, 0x73, 0x74, 0xAE, 0x98},                         // Multiple invalid bytes
+			customerData, // Original issue
+			{0x48, 0x65, 0x6C, 0x6C, 0x6F, 0x98, 0x76, 0x54}, // Other invalid UTF-8
+			{0x54, 0x65, 0x73, 0x74, 0xAE, 0x98},             // Multiple invalid bytes
 		}
-		
+
 		for i, data := range problemData {
 			t.Run(fmt.Sprintf("Export query %d", i+1), func(t *testing.T) {
 				result, err := textType.SQL(ctx, nil, data)
 				require.NoError(t, err, "Export queries must not fail")
-				
+
 				// Customer can now identify records that need fixing
 				if result.IsNull() {
 					// This record needs attention in the re-import
@@ -604,11 +604,11 @@ func TestStringSQL_CustomerWorkflow_Issue8893(t *testing.T) {
 // for the specific scenarios in issue dolthub/dolt#8893.
 func TestStringSQL_MySQLCompatibility_Issue8893(t *testing.T) {
 	ctx := sql.NewEmptyContext()
-	
+
 	t.Run("MySQL VARBINARY behavior comparison", func(t *testing.T) {
 		// Test data: 0x446F6C744C6162AE (DoltLab + latin1 ®)
 		varbinaryData := []byte{0x44, 0x6F, 0x6C, 0x74, 0x4C, 0x61, 0x62, 0xAE}
-		
+
 		// MySQL behavior for VARBINARY with invalid UTF-8:
 		// - Basic SELECT: Shows "DoltLab�" (replacement character in display)
 		// - This is handled at the display level, our SQL function should return the data
@@ -616,64 +616,64 @@ func TestStringSQL_MySQLCompatibility_Issue8893(t *testing.T) {
 		result, err := binaryType.SQL(ctx, nil, varbinaryData)
 		require.NoError(t, err)
 		assert.False(t, result.IsNull(), "Binary data should pass through unchanged")
-		
+
 		// The display shows replacement character, but the data itself is preserved
 		resultBytes := []byte(result.ToString())
 		assert.Equal(t, varbinaryData, resultBytes, "Binary data should be preserved exactly")
 	})
-	
+
 	t.Run("MySQL TEXT behavior comparison", func(t *testing.T) {
 		// Test data: 0x446F6C744C6162AE (DoltLab + latin1 ®)
 		invalidUTF8Data := []byte{0x44, 0x6F, 0x6C, 0x74, 0x4C, 0x61, 0x62, 0xAE}
 		textType := Text
-		
+
 		// MySQL behavior for TEXT with invalid UTF-8:
 		// - SELECT: Returns NULL
 		// - INSERT: Accepts and stores NULL
 		// - CAST to utf8mb4: Returns NULL
-		
+
 		// Test SELECT behavior
 		result, err := textType.SQL(ctx, nil, invalidUTF8Data)
 		require.NoError(t, err, "SELECT should not error (MySQL compatibility)")
 		assert.True(t, result.IsNull(), "Should return NULL for invalid UTF-8 (matches MySQL)")
-		
+
 		// Test INSERT behavior (Convert function)
 		convertResult, _, err := textType.Convert(ctx, string(invalidUTF8Data))
 		require.NoError(t, err, "INSERT should not error (MySQL compatibility)")
 		assert.Nil(t, convertResult, "Should insert NULL for invalid UTF-8 (matches MySQL)")
 	})
-	
+
 	t.Run("MySQL CAST behavior comparison", func(t *testing.T) {
 		// Test MySQL: SELECT CAST(0x446F6C744C6162AE AS CHAR CHARACTER SET utf8mb4);
 		// Result: NULL
 		invalidUTF8Data := []byte{0x44, 0x6F, 0x6C, 0x74, 0x4C, 0x61, 0x62, 0xAE}
-		
+
 		// Test both SQL and Convert functions
 		textType := Text
-		
+
 		// SQL function (used in SELECT CAST(...))
 		sqlResult, err := textType.SQL(ctx, nil, invalidUTF8Data)
 		require.NoError(t, err)
 		assert.True(t, sqlResult.IsNull(), "CAST in SELECT should return NULL (matches MySQL)")
-		
+
 		// Convert function (used in INSERT with CAST(...))
 		convertResult, _, err := textType.Convert(ctx, string(invalidUTF8Data))
 		require.NoError(t, err)
 		assert.Nil(t, convertResult, "CAST in INSERT should return NULL (matches MySQL)")
 	})
-	
+
 	t.Run("Customer's exact error message scenario", func(t *testing.T) {
 		// Customer reported: "invalid string for charset utf8mb4"
 		// This should no longer occur with our fix
 		customerData := []byte{0x44, 0x6F, 0x6C, 0x74, 0x4C, 0x61, 0x62, 0xAE}
 		textType := Text
-		
+
 		// Before fix: This would throw "invalid string for charset utf8mb4"
 		// After fix: Should return NULL without any error
 		result, err := textType.SQL(ctx, nil, customerData)
 		require.NoError(t, err, "Should not throw 'invalid string for charset utf8mb4' error")
 		assert.True(t, result.IsNull(), "Should handle invalid UTF-8 gracefully with NULL")
-		
+
 		// Verify the error message pattern is not present
 		if err != nil {
 			assert.NotContains(t, err.Error(), "invalid string for charset utf8mb4",
