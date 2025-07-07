@@ -496,12 +496,6 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 	return val, nil
 }
 
-// ConvertToCollatedString returns the given interface as a string, along with its collation. If the Type possess a
-// collation, then that collation is returned. If the Type does not possess a collation (such as an integer), then the
-// value is converted to a string and the default collation is used. If the value is already a string then no additional
-// conversions are made. If the value is a byte slice then a non-copying conversion is made, which means that the
-// original byte slice MUST NOT be modified after being passed to this function. If modifications need to be made, then
-// you must allocate a new byte slice and pass that new one in.
 // convertToLongTextString safely converts a value to string using LongText.Convert with nil checking
 func convertToLongTextString(ctx context.Context, val interface{}) (string, error) {
 	converted, _, err := LongText.Convert(ctx, val)
@@ -525,6 +519,12 @@ func convertEnumToString(ctx context.Context, val interface{}, enumType sql.Enum
 	return convertToLongTextString(ctx, val)
 }
 
+// ConvertToCollatedString returns the given interface as a string, along with its collation. If the Type possess a
+// collation, then that collation is returned. If the Type does not possess a collation (such as an integer), then the
+// value is converted to a string and the default collation is used. If the value is already a string then no additional
+// conversions are made. If the value is a byte slice then a non-copying conversion is made, which means that the
+// original byte slice MUST NOT be modified after being passed to this function. If modifications need to be made, then
+// you must allocate a new byte slice and pass that new one in.
 func ConvertToCollatedString(ctx context.Context, val interface{}, typ sql.Type) (string, sql.CollationID, error) {
 	var content string
 	var collation sql.CollationID
@@ -539,13 +539,9 @@ func ConvertToCollatedString(ctx context.Context, val interface{}, typ sql.Type)
 			content = strVal
 		} else if byteVal, ok := val.([]byte); ok {
 			content = encodings.BytesToString(byteVal)
-		} else if IsEnum(typ) {
+		} else if enumType, ok := typ.(sql.EnumType); ok {
 			// Handle enum types in string context - return the string value, not the index
-			if enumType, ok := typ.(sql.EnumType); ok {
-				content, err = convertEnumToString(ctx, val, enumType)
-			} else {
-				content, err = convertToLongTextString(ctx, val)
-			}
+			content, err = convertEnumToString(ctx, val, enumType)
 			if err != nil {
 				return "", sql.Collation_Unspecified, err
 			}
@@ -560,12 +556,11 @@ func ConvertToCollatedString(ctx context.Context, val interface{}, typ sql.Type)
 		// Handle enum types in string context even without collation
 		if IsEnum(typ) {
 			if enumType, ok := typ.(sql.EnumType); ok {
-				if enumVal, ok := val.(uint16); ok {
-					if enumStr, exists := enumType.At(int(enumVal)); exists {
-						content = enumStr
-						return content, collation, nil
-					}
+				content, err = convertEnumToString(ctx, val, enumType)
+				if err != nil {
+					return "", sql.Collation_Unspecified, err
 				}
+				return content, collation, nil
 			}
 		}
 		content, err = convertToLongTextString(ctx, val)
