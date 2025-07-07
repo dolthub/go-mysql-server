@@ -379,6 +379,124 @@ func TestStringConvert(t *testing.T) {
 	}
 }
 
+// TestStringSQL_InvalidUTF8Handling tests that the SQL function gracefully handles
+// invalid UTF-8 data by replacing invalid sequences with replacement characters.
+// This is a regression test for issue dolthub/dolt#8893.
+func TestStringSQL_InvalidUTF8Handling(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	tests := []struct {
+		name        string
+		typ         sql.StringType
+		input       []byte
+		expected    string
+		expectError bool
+	}{
+		{
+			name:        "Valid UTF-8 should work normally",
+			typ:         Text,
+			input:       []byte("DoltLab®"), // Proper UTF-8 encoding of ®
+			expected:    "DoltLab®",
+			expectError: false,
+		},
+		{
+			name:        "Issue #8893 exact scenario - DoltLab with latin1 ® (0xAE)",
+			typ:         Text,
+			input:       []byte{0x44, 0x6F, 0x6C, 0x74, 0x4C, 0x61, 0x62, 0xAE}, // "DoltLab" + 0xAE
+			expected:    "DoltLab�", // Should replace 0xAE with replacement character
+			expectError: false,
+		},
+		{
+			name:        "Multiple invalid UTF-8 bytes",
+			typ:         Text,
+			input:       []byte{0x48, 0x65, 0x6C, 0x6C, 0x6F, 0x98, 0x76, 0x54}, // "Hello" + invalid bytes
+			expected:    "Hello�vT", // ToValidUTF8 replaces invalid sequences intelligently
+			expectError: false,
+		},
+		{
+			name:        "Empty input",
+			typ:         Text,
+			input:       []byte{},
+			expected:    "",
+			expectError: false,
+		},
+		{
+			name:        "Binary type should not be affected",
+			typ:         LongBlob,
+			input:       []byte{0x44, 0x6F, 0x6C, 0x74, 0x4C, 0x61, 0x62, 0xAE},
+			expected:    "DoltLab\xae", // Binary types pass through unchanged
+			expectError: false,
+		},
+		{
+			name:        "VARCHAR with invalid UTF-8",
+			typ:         MustCreateStringWithDefaults(sqltypes.VarChar, 100),
+			input:       []byte{0x54, 0x65, 0x73, 0x74, 0xAE, 0x98}, // "Test" + invalid bytes
+			expected:    "Test�", // ToValidUTF8 handles invalid sequences as one replacement
+			expectError: false,
+		},
+		{
+			name:        "CHAR with invalid UTF-8",
+			typ:         MustCreateStringWithDefaults(sqltypes.Char, 100),
+			input:       []byte{0x41, 0x42, 0x43, 0xAE}, // "ABC" + invalid byte
+			expected:    "ABC�", // Should replace invalid byte
+			expectError: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result, err := test.typ.SQL(ctx, nil, test.input)
+			
+			if test.expectError {
+				assert.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, test.expected, result.ToString())
+			}
+		})
+	}
+}
+
+// TestStringSQL_StrictConvertValidation ensures that Convert (used for INSERT)
+// still maintains strict validation while SQL (used for SELECT) is permissive.
+// This verifies the dual behavior required for issue dolthub/dolt#8893.
+func TestStringSQL_StrictConvertValidation(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	
+	// The exact invalid UTF-8 data from issue #8893
+	invalidUTF8 := []byte{0x44, 0x6F, 0x6C, 0x74, 0x4C, 0x61, 0x62, 0xAE} // "DoltLab" + 0xAE
+	
+	stringType := Text
+	
+	// Test 1: Convert should still reject invalid UTF-8 (strict for INSERT)
+	t.Run("Convert should reject invalid UTF-8 for INSERT operations", func(t *testing.T) {
+		_, _, err := stringType.Convert(ctx, invalidUTF8)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid string for charset utf8mb4")
+	})
+	
+	// Test 2: SQL should accept invalid UTF-8 and replace with replacement chars (permissive for SELECT)
+	t.Run("SQL should accept invalid UTF-8 for SELECT operations", func(t *testing.T) {
+		result, err := stringType.SQL(ctx, nil, invalidUTF8)
+		require.NoError(t, err)
+		assert.Equal(t, "DoltLab�", result.ToString())
+	})
+	
+	// Test 3: Valid UTF-8 should work in both cases
+	t.Run("Valid UTF-8 should work in both Convert and SQL", func(t *testing.T) {
+		validUTF8 := []byte("DoltLab®") // Proper UTF-8
+		
+		// Convert should work
+		converted, _, err := stringType.Convert(ctx, string(validUTF8))
+		require.NoError(t, err)
+		assert.Equal(t, "DoltLab®", converted)
+		
+		// SQL should work
+		result, err := stringType.SQL(ctx, nil, validUTF8)
+		require.NoError(t, err)
+		assert.Equal(t, "DoltLab®", result.ToString())
+	})
+}
+
 func TestStringString(t *testing.T) {
 	tests := []struct {
 		typ         sql.Type
