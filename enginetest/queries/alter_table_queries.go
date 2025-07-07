@@ -1062,6 +1062,163 @@ var AlterTableScripts = []ScriptTest{
 			},
 		},
 	},
+
+	// Enum tests
+	{
+		Name:    "alter nil enum",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table xy (x int primary key, y enum ('a', 'b'));",
+			"insert into xy values (0, NULL),(1, 'b')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "alter table xy modify y enum('a','b','c')",
+			},
+			{
+				Query:       "alter table xy modify y enum('a')",
+				ExpectedErr: types.ErrDataTruncatedForColumn,
+			},
+		},
+	},
+	{
+		Name:    "alter keyless table",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (c1 int, c2 varchar(200), c3 enum('one', 'two'));",
+			"insert into t values (1, 'one', NULL);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    `alter table t modify column c1 int unsigned`,
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "describe t;",
+				Expected: []sql.Row{
+					{"c1", "int unsigned", "YES", "", nil, ""},
+					{"c2", "varchar(200)", "YES", "", nil, ""},
+					{"c3", "enum('one','two')", "YES", "", nil, ""},
+				},
+			},
+			{
+				Query:    `alter table t drop column c1;`,
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "describe t;",
+				Expected: []sql.Row{
+					{"c2", "varchar(200)", "YES", "", nil, ""},
+					{"c3", "enum('one','two')", "YES", "", nil, ""},
+				},
+			},
+			{
+				Query:    "alter table t add column new3 int;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    `insert into t values ('two', 'two', -2);`,
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query: "describe t;",
+				Expected: []sql.Row{
+					{"c2", "varchar(200)", "YES", "", nil, ""},
+					{"c3", "enum('one','two')", "YES", "", nil, ""},
+					{"new3", "int", "YES", "", nil, ""},
+				},
+			},
+			{
+				Query:    "select * from t;",
+				Expected: []sql.Row{{"one", nil, nil}, {"two", "two", -2}},
+			},
+		},
+	},
+	{
+		Name: "preserve enums through alter statements",
+		SetUpScript: []string{
+			"create table t (i int primary key, e enum('a', 'b', 'c'));",
+			"insert ignore into t values (0, 'error');",
+			"insert into t values (1, 'a');",
+			"insert into t values (2, 'b');",
+			"insert into t values (3, 'c');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select i, e, e + 0 from t;",
+				Expected: []sql.Row{
+					{0, "", float64(0)},
+					{1, "a", float64(1)},
+					{2, "b", float64(2)},
+					{3, "c", float64(3)},
+				},
+			},
+			{
+				Query: "alter table t modify column e enum('c', 'a', 'b');",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "select i, e, e + 0 from t;",
+				Expected: []sql.Row{
+					{0, "", float64(0)},
+					{1, "a", float64(2)},
+					{2, "b", float64(3)},
+					{3, "c", float64(1)},
+				},
+			},
+			{
+				Query: "alter table t modify column e enum('asdf', 'a', 'b', 'c');",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "select i, e, e + 0 from t;",
+				Expected: []sql.Row{
+					{0, "", float64(0)},
+					{1, "a", float64(2)},
+					{2, "b", float64(3)},
+					{3, "c", float64(4)},
+				},
+			},
+			{
+				Query: "alter table t modify column e enum('asdf', 'a', 'b', 'c', 'd');",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "select i, e, e + 0 from t;",
+				Expected: []sql.Row{
+					{0, "", float64(0)},
+					{1, "a", float64(2)},
+					{2, "b", float64(3)},
+					{3, "c", float64(4)},
+				},
+			},
+			{
+				Query: "alter table t modify column e enum('a', 'b', 'c');",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "select i, e, e + 0 from t;",
+				Expected: []sql.Row{
+					{0, "", float64(0)},
+					{1, "a", float64(1)},
+					{2, "b", float64(2)},
+					{3, "c", float64(3)},
+				},
+			},
+			{
+				Query:       "alter table t modify column e enum('abc');",
+				ExpectedErr: types.ErrDataTruncatedForColumn,
+			},
+		},
+	},
 }
 
 var RenameTableScripts = []ScriptTest{

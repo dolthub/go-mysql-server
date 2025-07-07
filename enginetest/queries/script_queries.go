@@ -172,23 +172,6 @@ CREATE TABLE teams (
 		},
 	},
 	{
-		Name:    "alter nil enum",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"create table xy (x int primary key, y enum ('a', 'b'));",
-			"insert into xy values (0, NULL),(1, 'b')",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "alter table xy modify y enum('a','b','c')",
-			},
-			{
-				Query:       "alter table xy modify y enum('a')",
-				ExpectedErr: types.ErrDataTruncatedForColumn,
-			},
-		},
-	},
-	{
 		Name: "issue 7958, update join uppercase table name validation",
 		SetUpScript: []string{
 			`
@@ -1098,59 +1081,6 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name:    "alter keyless table",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"create table t (c1 int, c2 varchar(200), c3 enum('one', 'two'));",
-			"insert into t values (1, 'one', NULL);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    `alter table t modify column c1 int unsigned`,
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query: "describe t;",
-				Expected: []sql.Row{
-					{"c1", "int unsigned", "YES", "", nil, ""},
-					{"c2", "varchar(200)", "YES", "", nil, ""},
-					{"c3", "enum('one','two')", "YES", "", nil, ""},
-				},
-			},
-			{
-				Query:    `alter table t drop column c1;`,
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query: "describe t;",
-				Expected: []sql.Row{
-					{"c2", "varchar(200)", "YES", "", nil, ""},
-					{"c3", "enum('one','two')", "YES", "", nil, ""},
-				},
-			},
-			{
-				Query:    "alter table t add column new3 int;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    `insert into t values ('two', 'two', -2);`,
-				Expected: []sql.Row{{types.NewOkResult(1)}},
-			},
-			{
-				Query: "describe t;",
-				Expected: []sql.Row{
-					{"c2", "varchar(200)", "YES", "", nil, ""},
-					{"c3", "enum('one','two')", "YES", "", nil, ""},
-					{"new3", "int", "YES", "", nil, ""},
-				},
-			},
-			{
-				Query:    "select * from t;",
-				Expected: []sql.Row{{"one", nil, nil}, {"two", "two", -2}},
-			},
-		},
-	},
-	{
 		Name: "topN stable output",
 		SetUpScript: []string{
 			"create table xy (x int primary key, y int)",
@@ -1180,99 +1110,6 @@ CREATE TABLE tab3 (
 			{
 				Query:    "with recursive cte as ((select * from xy order by y asc limit 1 offset 1) union (select * from xy order by y asc limit 1 offset 2)) select * from cte",
 				Expected: []sql.Row{{2, 0}, {3, 0}},
-			},
-		},
-	},
-	{
-		Name:    "enums with default, case-sensitive collation (utf8mb4_0900_bin)",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"CREATE TABLE enumtest1 (pk int primary key, e enum('abc', 'XYZ'));",
-			"CREATE TABLE enumtest2 (pk int PRIMARY KEY, e enum('x ', 'X ', 'y', 'Y'));",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "INSERT INTO enumtest1 VALUES (1, 'abc'), (2, 'abc'), (3, 'XYZ');",
-				Expected: []sql.Row{{types.NewOkResult(3)}},
-			},
-			{
-				Query:    "SELECT * FROM enumtest1;",
-				Expected: []sql.Row{{1, "abc"}, {2, "abc"}, {3, "XYZ"}},
-			},
-			{
-				// enum values must match EXACTLY for case-sensitive collations
-				Query:          "INSERT INTO enumtest1 VALUES (10, 'ABC'), (11, 'aBc'), (12, 'xyz');",
-				ExpectedErrStr: "Data truncated for column 'e' at row 1",
-			},
-			{
-				Query: "SHOW CREATE TABLE enumtest1;",
-				Expected: []sql.Row{{
-					"enumtest1",
-					"CREATE TABLE `enumtest1` (\n  `pk` int NOT NULL,\n  `e` enum('abc','XYZ'),\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-			{
-				// Trailing whitespace should be removed from enum values, except when using the "binary" charset and collation
-				Query: "SHOW CREATE TABLE enumtest2;",
-				Expected: []sql.Row{{
-					"enumtest2",
-					"CREATE TABLE `enumtest2` (\n  `pk` int NOT NULL,\n  `e` enum('x','X','y','Y'),\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-			{
-				Query: "DESCRIBE enumtest1;",
-				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", nil, ""},
-					{"e", "enum('abc','XYZ')", "YES", "", nil, ""}},
-			},
-			{
-				Query: "DESCRIBE enumtest2;",
-				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", nil, ""},
-					{"e", "enum('x','X','y','Y')", "YES", "", nil, ""}},
-			},
-			{
-				Query:    "select data_type, column_type from information_schema.columns where table_name='enumtest1' and column_name='e';",
-				Expected: []sql.Row{{"enum", "enum('abc','XYZ')"}},
-			},
-			{
-				Query:    "select data_type, column_type from information_schema.columns where table_name='enumtest2' and column_name='e';",
-				Expected: []sql.Row{{"enum", "enum('x','X','y','Y')"}},
-			},
-		},
-	},
-	{
-		Name:    "enums with case-insensitive collation (utf8mb4_0900_ai_ci)",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"CREATE TABLE enumtest1 (pk int primary key, e enum('abc', 'XYZ') collate utf8mb4_0900_ai_ci);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "INSERT INTO enumtest1 VALUES (1, 'abc'), (2, 'abc'), (3, 'XYZ');",
-				Expected: []sql.Row{{types.NewOkResult(3)}},
-			},
-			{
-				Query: "SHOW CREATE TABLE enumtest1;",
-				Expected: []sql.Row{{
-					"enumtest1",
-					"CREATE TABLE `enumtest1` (\n  `pk` int NOT NULL,\n  `e` enum('abc','XYZ') COLLATE utf8mb4_0900_ai_ci,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-			{
-				Query: "DESCRIBE enumtest1;",
-				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", nil, ""},
-					{"e", "enum('abc','XYZ') COLLATE utf8mb4_0900_ai_ci", "YES", "", nil, ""}},
-			},
-			{
-				Query:    "select data_type, column_type from information_schema.columns where table_name='enumtest1' and column_name='e';",
-				Expected: []sql.Row{{"enum", "enum('abc','XYZ')"}},
-			},
-			{
-				Query:    "CREATE TABLE enumtest2 (pk int PRIMARY KEY, e enum('x ', 'X ', 'y', 'Y'));",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    "INSERT INTO enumtest1 VALUES (10, 'ABC'), (11, 'aBc'), (12, 'xyz');",
-				Expected: []sql.Row{{types.NewOkResult(3)}},
 			},
 		},
 	},
@@ -3328,36 +3165,6 @@ CREATE TABLE tab3 (
 		SkipPrepared: true,
 	},
 	{
-		Name:    "WHERE clause considers ENUM/SET types for comparisons",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 ENUM('a', 'b', 'c'), v2 SET('a', 'b', 'c'));",
-			"INSERT INTO test VALUES (1, 2, 2), (2, 1, 1);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1, "b", "b"}, {2, "a", "a"}},
-			},
-			{
-				Query:    "UPDATE test SET v1 = 3 WHERE v1 = 2;",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
-			},
-			{
-				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1, "c", "b"}, {2, "a", "a"}},
-			},
-			{
-				Query:    "UPDATE test SET v2 = 3 WHERE 2 = v2;",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
-			},
-			{
-				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1, "c", "a,b"}, {2, "a", "a"}},
-			},
-		},
-	},
-	{
 		Name: "Slightly more complex example for the Exists Clause",
 		SetUpScript: []string{
 			"create table store(store_id int, item_id int, primary key (store_id, item_id))",
@@ -4726,72 +4533,6 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name:    "enum columns work as expected in when clauses",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"create table enums (e enum('a'));",
-			"insert into enums values ('a');",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "select (case e when 'a' then 42 end) from enums",
-				Expected: []sql.Row{{42}},
-			},
-			{
-				Query:    "select (case 'a' when e then 42 end) from enums",
-				Expected: []sql.Row{{42}},
-			},
-		},
-	},
-	{
-		Name:    "SET and ENUM properly handle integers using UPDATE and DELETE statements",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"CREATE TABLE setenumtest (pk INT PRIMARY KEY, v1 ENUM('a', 'b', 'c'), v2 SET('a', 'b', 'c'));",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "INSERT INTO setenumtest VALUES (1, 1, 1), (2, 1, 1), (3, 3, 1), (4, 1, 3);",
-				Expected: []sql.Row{{types.NewOkResult(4)}},
-			},
-			{
-				Query: "UPDATE setenumtest SET v1 = 2, v2 = 2 WHERE pk = 2;",
-				Expected: []sql.Row{{types.OkResult{
-					RowsAffected: 1,
-					Info: plan.UpdateInfo{
-						Matched:  1,
-						Updated:  1,
-						Warnings: 0,
-					},
-				}}},
-			},
-			{
-				Query: "SELECT * FROM setenumtest ORDER BY pk;",
-				Expected: []sql.Row{
-					{1, "a", "a"},
-					{2, "b", "b"},
-					{3, "c", "a"},
-					{4, "a", "a,b"},
-				},
-			},
-			{
-				Query:    "DELETE FROM setenumtest WHERE v1 = 3;",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
-			},
-			{
-				Query:    "DELETE FROM setenumtest WHERE v2 = 3;",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
-			},
-			{
-				Query: "SELECT * FROM setenumtest ORDER BY pk;",
-				Expected: []sql.Row{
-					{1, "a", "a"},
-					{2, "b", "b"},
-				},
-			},
-		},
-	},
-	{
 		Name: "identical expressions over different windows should produce different results",
 		SetUpScript: []string{
 			"CREATE TABLE t(a INT, b INT);",
@@ -4889,94 +4630,7 @@ CREATE TABLE tab3 (
 			},
 		},
 	},
-	{
-		Name:    "find_in_set tests",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"create table set_tbl (i int primary key, s set('a','b','c'));",
-			"insert into set_tbl values (0, '');",
-			"insert into set_tbl values (1, 'a');",
-			"insert into set_tbl values (2, 'b');",
-			"insert into set_tbl values (3, 'c');",
-			"insert into set_tbl values (4, 'a,b');",
-			"insert into set_tbl values (6, 'b,c');",
-			"insert into set_tbl values (7, 'a,c');",
-			"insert into set_tbl values (8, 'a,b,c');",
 
-			"create table collate_tbl (i int primary key, s varchar(10) collate utf8mb4_0900_ai_ci);",
-			"insert into collate_tbl values (0, '');",
-			"insert into collate_tbl values (1, 'a');",
-			"insert into collate_tbl values (2, 'b');",
-			"insert into collate_tbl values (3, 'c');",
-			"insert into collate_tbl values (4, 'a,b');",
-			"insert into collate_tbl values (6, 'b,c');",
-			"insert into collate_tbl values (7, 'a,c');",
-			"insert into collate_tbl values (8, 'a,b,c');",
-
-			"create table text_tbl (i int primary key, s text);",
-			"insert into text_tbl values (0, '');",
-			"insert into text_tbl values (1, 'a');",
-			"insert into text_tbl values (2, 'b');",
-			"insert into text_tbl values (3, 'c');",
-			"insert into text_tbl values (4, 'a,b');",
-			"insert into text_tbl values (6, 'b,c');",
-			"insert into text_tbl values (7, 'a,c');",
-			"insert into text_tbl values (8, 'a,b,c');",
-
-			"create table enum_tbl (i int primary key, s enum('a','b','c'));",
-			"insert into enum_tbl values (0, 'a'), (1, 'b'), (2, 'c');",
-			"select i, s, find_in_set('a', s) from enum_tbl;",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "select i, find_in_set('a', s) from set_tbl;",
-				Expected: []sql.Row{
-					{0, 0},
-					{1, 1},
-					{2, 0},
-					{3, 0},
-					{4, 1},
-					{6, 0},
-					{7, 1},
-					{8, 1},
-				},
-			},
-			{
-				Query: "select i, find_in_set('A', s) from collate_tbl;",
-				Expected: []sql.Row{
-					{0, 0},
-					{1, 1},
-					{2, 0},
-					{3, 0},
-					{4, 1},
-					{6, 0},
-					{7, 1},
-					{8, 1},
-				},
-			},
-			{
-				Query: "select i, find_in_set('a', s) from text_tbl;",
-				Expected: []sql.Row{
-					{0, 0},
-					{1, 1},
-					{2, 0},
-					{3, 0},
-					{4, 1},
-					{6, 0},
-					{7, 1},
-					{8, 1},
-				},
-			},
-			{
-				Query: "select i, find_in_set('a', s) from enum_tbl;",
-				Expected: []sql.Row{
-					{0, 1},
-					{1, 0},
-					{2, 0},
-				},
-			},
-		},
-	},
 	{
 		Name:    "coalesce tests",
 		Dialect: "mysql",
@@ -7864,91 +7518,6 @@ where
 		},
 	},
 	{
-		Name: "preserve enums through alter statements",
-		SetUpScript: []string{
-			"create table t (i int primary key, e enum('a', 'b', 'c'));",
-			"insert ignore into t values (0, 'error');",
-			"insert into t values (1, 'a');",
-			"insert into t values (2, 'b');",
-			"insert into t values (3, 'c');",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "select i, e, e + 0 from t;",
-				Expected: []sql.Row{
-					{0, "", float64(0)},
-					{1, "a", float64(1)},
-					{2, "b", float64(2)},
-					{3, "c", float64(3)},
-				},
-			},
-			{
-				Query: "alter table t modify column e enum('c', 'a', 'b');",
-				Expected: []sql.Row{
-					{types.NewOkResult(0)},
-				},
-			},
-			{
-				Query: "select i, e, e + 0 from t;",
-				Expected: []sql.Row{
-					{0, "", float64(0)},
-					{1, "a", float64(2)},
-					{2, "b", float64(3)},
-					{3, "c", float64(1)},
-				},
-			},
-			{
-				Query: "alter table t modify column e enum('asdf', 'a', 'b', 'c');",
-				Expected: []sql.Row{
-					{types.NewOkResult(0)},
-				},
-			},
-			{
-				Query: "select i, e, e + 0 from t;",
-				Expected: []sql.Row{
-					{0, "", float64(0)},
-					{1, "a", float64(2)},
-					{2, "b", float64(3)},
-					{3, "c", float64(4)},
-				},
-			},
-			{
-				Query: "alter table t modify column e enum('asdf', 'a', 'b', 'c', 'd');",
-				Expected: []sql.Row{
-					{types.NewOkResult(0)},
-				},
-			},
-			{
-				Query: "select i, e, e + 0 from t;",
-				Expected: []sql.Row{
-					{0, "", float64(0)},
-					{1, "a", float64(2)},
-					{2, "b", float64(3)},
-					{3, "c", float64(4)},
-				},
-			},
-			{
-				Query: "alter table t modify column e enum('a', 'b', 'c');",
-				Expected: []sql.Row{
-					{types.NewOkResult(0)},
-				},
-			},
-			{
-				Query: "select i, e, e + 0 from t;",
-				Expected: []sql.Row{
-					{0, "", float64(0)},
-					{1, "a", float64(1)},
-					{2, "b", float64(2)},
-					{3, "c", float64(3)},
-				},
-			},
-			{
-				Query:       "alter table t modify column e enum('abc');",
-				ExpectedErr: types.ErrDataTruncatedForColumn,
-			},
-		},
-	},
-	{
 		Name: "coalesce with system types",
 		SetUpScript: []string{
 			"create table t as select @@admin_port as port1, @@port as port2, COALESCE(@@admin_port, @@port) as\n port3;",
@@ -7961,103 +7530,6 @@ where
 					{"port2", "bigint", "NO", "", nil, ""},
 					{"port3", "bigint", "NO", "", nil, ""},
 				},
-			},
-		},
-	},
-	{
-		Name: "multi enum return types",
-		SetUpScript: []string{
-			"create table t (i int primary key, e enum('abc', 'def', 'ghi'));",
-			"insert into t values (1, 'abc'), (2, 'def'), (3, 'ghi');",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "select i, (case e when 'abc' then e when 'def' then e when 'ghi' then e end) as e from t;",
-				Expected: []sql.Row{
-					{1, "abc"},
-					{2, "def"},
-					{3, "ghi"},
-				},
-			},
-			{
-				// https://github.com/dolthub/dolt/issues/8598
-				Skip:  true,
-				Query: "select i, (case e when 'abc' then e when 'def' then e when 'ghi' then 'something' end) as e from t;",
-				Expected: []sql.Row{
-					{1, "abc"},
-					{2, "def"},
-					{3, "something"},
-				},
-			},
-			{
-				// https://github.com/dolthub/dolt/issues/8598
-				Skip:  true,
-				Query: "select i, (case e when 'abc' then e when 'def' then e when 'ghi' then 123 end) as e from t;",
-				Expected: []sql.Row{
-					{1, "abc"},
-					{2, "def"},
-					{3, "123"},
-				},
-			},
-		},
-	},
-	{
-		// https://github.com/dolthub/dolt/issues/8598
-		Name:    "enum cast to int and string",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"create table t (i int primary key, e enum('abc', 'def', 'ghi'));",
-			"insert into t values (1, 'abc'), (2, 'def'), (3, 'ghi');",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "select i, cast(e as signed) from t;",
-				Expected: []sql.Row{
-					{1, 1},
-					{2, 2},
-					{3, 3},
-				},
-			},
-			{
-				Query: "select i, cast(e as char) from t;",
-				Expected: []sql.Row{
-					{1, "abc"},
-					{2, "def"},
-					{3, "ghi"},
-				},
-			},
-			{
-				Query: "select i, cast(e as binary) from t;",
-				Expected: []sql.Row{
-					{1, []uint8("abc")},
-					{2, []uint8("def")},
-					{3, []uint8("ghi")},
-				},
-			},
-			{
-				Query: "select case when e = 'abc' then 'abc' when e = 'def' then 123 else e end from t",
-				Expected: []sql.Row{
-					{"abc"},
-					{"123"},
-					{"ghi"},
-				},
-			},
-		},
-	},
-	{
-		Name:    "enum errors",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"create table t (i int primary key, e enum('abc', 'def', 'ghi'));",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:          "insert into t values (1, 500)",
-				ExpectedErrStr: "Data truncated for column 'e' at row 1",
-			},
-			{
-				Query:          "insert into t values (1, -1)",
-				ExpectedErrStr: "Data truncated for column 'e' at row 1",
 			},
 		},
 	},
@@ -8728,29 +8200,136 @@ where
 			},
 		},
 	},
+
+	// Enum tests
 	{
-		// https://github.com/dolthub/dolt/issues/9024
-		Name:    "subqueries should coerce union types",
+		Name:    "enum errors",
 		Dialect: "mysql",
 		SetUpScript: []string{
-			"create table enum_table (i int primary key, e enum('a','b') not null)",
-			"insert into enum_table values (1,'a'),(2,'b')",
-			"create table uv (u int primary key, v varchar(10))",
-			"insert into uv values (0, 'bug'),(1,'ant'),(3, null)",
+			"create table t (i int primary key, e enum('abc', 'def', 'ghi'));",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "select * from (select e from enum_table union select v from uv) sq",
-				Expected: []sql.Row{{"a"}, {"b"}, {"bug"}, {"ant"}, {nil}},
+				Query:          "insert into t values (1, 500)",
+				ExpectedErrStr: "value 500 is not valid for this Enum",
 			},
 			{
-				Query:    "with a as (select e from enum_table union select v from uv) select * from a",
-				Expected: []sql.Row{{"a"}, {"b"}, {"bug"}, {"ant"}, {nil}},
+				Query:          "insert into t values (1, -1)",
+				ExpectedErrStr: "value -1 is not valid for this Enum",
 			},
 		},
 	},
-
-	// Enum tests
+	{
+		Name:    "enums with default, case-sensitive collation (utf8mb4_0900_bin)",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE enumtest1 (pk int primary key, e enum('abc', 'XYZ'));",
+			"CREATE TABLE enumtest2 (pk int PRIMARY KEY, e enum('x ', 'X ', 'y', 'Y'));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO enumtest1 VALUES (1, 'abc'), (2, 'abc'), (3, 'XYZ');",
+				Expected: []sql.Row{{types.NewOkResult(3)}},
+			},
+			{
+				Query:    "SELECT * FROM enumtest1;",
+				Expected: []sql.Row{{1, "abc"}, {2, "abc"}, {3, "XYZ"}},
+			},
+			{
+				// enum values must match EXACTLY for case-sensitive collations
+				Query:          "INSERT INTO enumtest1 VALUES (10, 'ABC'), (11, 'aBc'), (12, 'xyz');",
+				ExpectedErrStr: "value ABC is not valid for this Enum",
+			},
+			{
+				Query: "SHOW CREATE TABLE enumtest1;",
+				Expected: []sql.Row{{
+					"enumtest1",
+					"CREATE TABLE `enumtest1` (\n  `pk` int NOT NULL,\n  `e` enum('abc','XYZ'),\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				// Trailing whitespace should be removed from enum values, except when using the "binary" charset and collation
+				Query: "SHOW CREATE TABLE enumtest2;",
+				Expected: []sql.Row{{
+					"enumtest2",
+					"CREATE TABLE `enumtest2` (\n  `pk` int NOT NULL,\n  `e` enum('x','X','y','Y'),\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "DESCRIBE enumtest1;",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"e", "enum('abc','XYZ')", "YES", "", nil, ""}},
+			},
+			{
+				Query: "DESCRIBE enumtest2;",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"e", "enum('x','X','y','Y')", "YES", "", nil, ""}},
+			},
+			{
+				Query:    "select data_type, column_type from information_schema.columns where table_name='enumtest1' and column_name='e';",
+				Expected: []sql.Row{{"enum", "enum('abc','XYZ')"}},
+			},
+			{
+				Query:    "select data_type, column_type from information_schema.columns where table_name='enumtest2' and column_name='e';",
+				Expected: []sql.Row{{"enum", "enum('x','X','y','Y')"}},
+			},
+		},
+	},
+	{
+		Name:    "enum columns work as expected in when clauses",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table enums (e enum('a'));",
+			"insert into enums values ('a');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select (case e when 'a' then 42 end) from enums",
+				Expected: []sql.Row{{42}},
+			},
+			{
+				Query:    "select (case 'a' when e then 42 end) from enums",
+				Expected: []sql.Row{{42}},
+			},
+		},
+	},
+	{
+		Name:    "enums with case-insensitive collation (utf8mb4_0900_ai_ci)",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE enumtest1 (pk int primary key, e enum('abc', 'XYZ') collate utf8mb4_0900_ai_ci);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO enumtest1 VALUES (1, 'abc'), (2, 'abc'), (3, 'XYZ');",
+				Expected: []sql.Row{{types.NewOkResult(3)}},
+			},
+			{
+				Query: "SHOW CREATE TABLE enumtest1;",
+				Expected: []sql.Row{{
+					"enumtest1",
+					"CREATE TABLE `enumtest1` (\n  `pk` int NOT NULL,\n  `e` enum('abc','XYZ') COLLATE utf8mb4_0900_ai_ci,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "DESCRIBE enumtest1;",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"e", "enum('abc','XYZ') COLLATE utf8mb4_0900_ai_ci", "YES", "", nil, ""}},
+			},
+			{
+				Query:    "select data_type, column_type from information_schema.columns where table_name='enumtest1' and column_name='e';",
+				Expected: []sql.Row{{"enum", "enum('abc','XYZ')"}},
+			},
+			{
+				Query:    "CREATE TABLE enumtest2 (pk int PRIMARY KEY, e enum('x ', 'X ', 'y', 'Y'));",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "INSERT INTO enumtest1 VALUES (10, 'ABC'), (11, 'aBc'), (12, 'xyz');",
+				Expected: []sql.Row{{types.NewOkResult(3)}},
+			},
+		},
+	},
 	{
 		Name:    "special case for not null default enum",
 		Dialect: "mysql",
@@ -9164,6 +8743,89 @@ where
 		},
 	},
 	{
+		// TODO: merge this with enum conversion to strings test above
+		Name: "multi enum return types",
+		SetUpScript: []string{
+			"create table t (i int primary key, e enum('abc', 'def', 'ghi'));",
+			"insert into t values (1, 'abc'), (2, 'def'), (3, 'ghi');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select i, (case e when 'abc' then e when 'def' then e when 'ghi' then e end) as e from t;",
+				Expected: []sql.Row{
+					{1, "abc"},
+					{2, "def"},
+					{3, "ghi"},
+				},
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/8598
+				Skip:  true,
+				Query: "select i, (case e when 'abc' then e when 'def' then e when 'ghi' then 'something' end) as e from t;",
+				Expected: []sql.Row{
+					{1, "abc"},
+					{2, "def"},
+					{3, "something"},
+				},
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/8598
+				Skip:  true,
+				Query: "select i, (case e when 'abc' then e when 'def' then e when 'ghi' then 123 end) as e from t;",
+				Expected: []sql.Row{
+					{1, "abc"},
+					{2, "def"},
+					{3, "123"},
+				},
+			},
+		},
+	},
+	{
+		// TODO: merge with above
+		// https://github.com/dolthub/dolt/issues/8598
+		Name:    "enum cast to int and string",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (i int primary key, e enum('abc', 'def', 'ghi'));",
+			"insert into t values (1, 'abc'), (2, 'def'), (3, 'ghi');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select i, cast(e as signed) from t;",
+				Expected: []sql.Row{
+					{1, 1},
+					{2, 2},
+					{3, 3},
+				},
+			},
+			{
+				Query: "select i, cast(e as char) from t;",
+				Expected: []sql.Row{
+					{1, "abc"},
+					{2, "def"},
+					{3, "ghi"},
+				},
+			},
+			{
+				Query: "select i, cast(e as binary) from t;",
+				Expected: []sql.Row{
+					{1, []uint8("abc")},
+					{2, []uint8("def")},
+					{3, []uint8("ghi")},
+				},
+			},
+			{
+				Query: "select case when e = 'abc' then 'abc' when e = 'def' then 123 else e end from t",
+				Expected: []sql.Row{
+					{"abc"},
+					{"123"},
+					{"ghi"},
+				},
+			},
+		},
+	},
+	{
+		Skip:    true,
 		Name:    "enums with foreign keys",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -9376,6 +9038,197 @@ where
 				Query: "select * from child order by e;",
 				Expected: []sql.Row{
 					{"z"},
+				},
+			},
+		},
+	},
+	{
+		// TODO: separate these
+		Name:    "SET and ENUM properly handle integers using UPDATE and DELETE statements",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE setenumtest (pk INT PRIMARY KEY, v1 ENUM('a', 'b', 'c'), v2 SET('a', 'b', 'c'));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO setenumtest VALUES (1, 1, 1), (2, 1, 1), (3, 3, 1), (4, 1, 3);",
+				Expected: []sql.Row{{types.NewOkResult(4)}},
+			},
+			{
+				Query: "UPDATE setenumtest SET v1 = 2, v2 = 2 WHERE pk = 2;",
+				Expected: []sql.Row{{types.OkResult{
+					RowsAffected: 1,
+					Info: plan.UpdateInfo{
+						Matched:  1,
+						Updated:  1,
+						Warnings: 0,
+					},
+				}}},
+			},
+			{
+				Query: "SELECT * FROM setenumtest ORDER BY pk;",
+				Expected: []sql.Row{
+					{1, "a", "a"},
+					{2, "b", "b"},
+					{3, "c", "a"},
+					{4, "a", "a,b"},
+				},
+			},
+			{
+				Query:    "DELETE FROM setenumtest WHERE v1 = 3;",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "DELETE FROM setenumtest WHERE v2 = 3;",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query: "SELECT * FROM setenumtest ORDER BY pk;",
+				Expected: []sql.Row{
+					{1, "a", "a"},
+					{2, "b", "b"},
+				},
+			},
+		},
+	},
+	{
+		// TODO: separate these
+		Name:    "WHERE clause considers ENUM/SET types for comparisons",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 ENUM('a', 'b', 'c'), v2 SET('a', 'b', 'c'));",
+			"INSERT INTO test VALUES (1, 2, 2), (2, 1, 1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{1, "b", "b"}, {2, "a", "a"}},
+			},
+			{
+				Query:    "UPDATE test SET v1 = 3 WHERE v1 = 2;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+			},
+			{
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{1, "c", "b"}, {2, "a", "a"}},
+			},
+			{
+				Query:    "UPDATE test SET v2 = 3 WHERE 2 = v2;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+			},
+			{
+				Query:    "SELECT * FROM test;",
+				Expected: []sql.Row{{1, "c", "a,b"}, {2, "a", "a"}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9024
+		Name:    "subqueries should coerce union types to enum",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table enum_table (i int primary key, e enum('a','b') not null)",
+			"insert into enum_table values (1,'a'),(2,'b')",
+			"create table uv (u int primary key, v varchar(10))",
+			"insert into uv values (0, 'bug'),(1,'ant'),(3, null)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from (select e from enum_table union select v from uv) sq",
+				Expected: []sql.Row{{"a"}, {"b"}, {"bug"}, {"ant"}, {nil}},
+			},
+			{
+				Query:    "with a as (select e from enum_table union select v from uv) select * from a",
+				Expected: []sql.Row{{"a"}, {"b"}, {"bug"}, {"ant"}, {nil}},
+			},
+		},
+	},
+
+	// Set tests
+	{
+		Name:    "find_in_set tests",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table set_tbl (i int primary key, s set('a','b','c'));",
+			"insert into set_tbl values (0, '');",
+			"insert into set_tbl values (1, 'a');",
+			"insert into set_tbl values (2, 'b');",
+			"insert into set_tbl values (3, 'c');",
+			"insert into set_tbl values (4, 'a,b');",
+			"insert into set_tbl values (6, 'b,c');",
+			"insert into set_tbl values (7, 'a,c');",
+			"insert into set_tbl values (8, 'a,b,c');",
+
+			"create table collate_tbl (i int primary key, s varchar(10) collate utf8mb4_0900_ai_ci);",
+			"insert into collate_tbl values (0, '');",
+			"insert into collate_tbl values (1, 'a');",
+			"insert into collate_tbl values (2, 'b');",
+			"insert into collate_tbl values (3, 'c');",
+			"insert into collate_tbl values (4, 'a,b');",
+			"insert into collate_tbl values (6, 'b,c');",
+			"insert into collate_tbl values (7, 'a,c');",
+			"insert into collate_tbl values (8, 'a,b,c');",
+
+			"create table text_tbl (i int primary key, s text);",
+			"insert into text_tbl values (0, '');",
+			"insert into text_tbl values (1, 'a');",
+			"insert into text_tbl values (2, 'b');",
+			"insert into text_tbl values (3, 'c');",
+			"insert into text_tbl values (4, 'a,b');",
+			"insert into text_tbl values (6, 'b,c');",
+			"insert into text_tbl values (7, 'a,c');",
+			"insert into text_tbl values (8, 'a,b,c');",
+
+			"create table enum_tbl (i int primary key, s enum('a','b','c'));",
+			"insert into enum_tbl values (0, 'a'), (1, 'b'), (2, 'c');",
+			"select i, s, find_in_set('a', s) from enum_tbl;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select i, find_in_set('a', s) from set_tbl;",
+				Expected: []sql.Row{
+					{0, 0},
+					{1, 1},
+					{2, 0},
+					{3, 0},
+					{4, 1},
+					{6, 0},
+					{7, 1},
+					{8, 1},
+				},
+			},
+			{
+				Query: "select i, find_in_set('A', s) from collate_tbl;",
+				Expected: []sql.Row{
+					{0, 0},
+					{1, 1},
+					{2, 0},
+					{3, 0},
+					{4, 1},
+					{6, 0},
+					{7, 1},
+					{8, 1},
+				},
+			},
+			{
+				Query: "select i, find_in_set('a', s) from text_tbl;",
+				Expected: []sql.Row{
+					{0, 0},
+					{1, 1},
+					{2, 0},
+					{3, 0},
+					{4, 1},
+					{6, 0},
+					{7, 1},
+					{8, 1},
+				},
+			},
+			{
+				Query: "select i, find_in_set('a', s) from enum_tbl;",
+				Expected: []sql.Row{
+					{0, 1},
+					{1, 0},
+					{2, 0},
 				},
 			},
 		},
