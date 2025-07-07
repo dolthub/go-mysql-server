@@ -128,11 +128,16 @@ func (i *AutoIncrement) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		given = nil
 	}
 
+	// Update integrator AUTO_INCREMENT sequence with our value
 	seq, err := i.autoTbl.GetNextAutoIncrementValue(ctx, given)
 	if err != nil {
 		return nil, err
 	}
-	given = seq
+
+	// Use sequence value if NULL or 0 were provided
+	if given == nil {
+		given = seq
+	}
 
 	ret, _, err := i.Type().Convert(ctx, given)
 	if err != nil {
