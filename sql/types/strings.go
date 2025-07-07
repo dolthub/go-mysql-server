@@ -654,7 +654,9 @@ func (t StringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.
 		if !IsBinaryType(t) && !utf8.Valid(valueBytes) {
 			charset := t.CharacterSet()
 			if charset == sql.CharacterSet_utf8mb4 {
-				return sqltypes.Value{}, ErrBadCharsetString.New(charset.String(), valueBytes)
+				// For UTF8MB4, replace invalid UTF-8 sequences with replacement characters
+				// This provides more MySQL-compatible behavior for existing invalid data
+				valueBytes = []byte(strings2.ToValidUTF8(string(valueBytes), "�"))
 			} else {
 				var ok bool
 				if valueBytes, ok = t.CharacterSet().Encoder().Decode(valueBytes); !ok {
