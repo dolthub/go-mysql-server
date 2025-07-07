@@ -402,14 +402,14 @@ func TestStringSQL_InvalidUTF8Handling(t *testing.T) {
 			name:        "Issue #8893 exact scenario - DoltLab with latin1 ® (0xAE)",
 			typ:         Text,
 			input:       []byte{0x44, 0x6F, 0x6C, 0x74, 0x4C, 0x61, 0x62, 0xAE}, // "DoltLab" + 0xAE
-			expected:    "DoltLab�", // Should replace 0xAE with replacement character
+			expected:    "", // Should return NULL for invalid UTF-8 (matches MySQL behavior)
 			expectError: false,
 		},
 		{
 			name:        "Multiple invalid UTF-8 bytes",
 			typ:         Text,
 			input:       []byte{0x48, 0x65, 0x6C, 0x6C, 0x6F, 0x98, 0x76, 0x54}, // "Hello" + invalid bytes
-			expected:    "Hello�vT", // ToValidUTF8 replaces invalid sequences intelligently
+			expected:    "", // Should return NULL for invalid UTF-8 (matches MySQL behavior)
 			expectError: false,
 		},
 		{
@@ -430,14 +430,14 @@ func TestStringSQL_InvalidUTF8Handling(t *testing.T) {
 			name:        "VARCHAR with invalid UTF-8",
 			typ:         MustCreateStringWithDefaults(sqltypes.VarChar, 100),
 			input:       []byte{0x54, 0x65, 0x73, 0x74, 0xAE, 0x98}, // "Test" + invalid bytes
-			expected:    "Test�", // ToValidUTF8 handles invalid sequences as one replacement
+			expected:    "", // Should return NULL for invalid UTF-8 (matches MySQL behavior)
 			expectError: false,
 		},
 		{
 			name:        "CHAR with invalid UTF-8",
 			typ:         MustCreateStringWithDefaults(sqltypes.Char, 100),
 			input:       []byte{0x41, 0x42, 0x43, 0xAE}, // "ABC" + invalid byte
-			expected:    "ABC�", // Should replace invalid byte
+			expected:    "", // Should return NULL for invalid UTF-8 (matches MySQL behavior)
 			expectError: false,
 		},
 	}
@@ -450,7 +450,15 @@ func TestStringSQL_InvalidUTF8Handling(t *testing.T) {
 				assert.Error(t, err)
 			} else {
 				require.NoError(t, err)
-				assert.Equal(t, test.expected, result.ToString())
+				if test.expected == "" && (test.name == "Issue #8893 exact scenario - DoltLab with latin1 ® (0xAE)" || 
+					test.name == "Multiple invalid UTF-8 bytes" || 
+					test.name == "VARCHAR with invalid UTF-8" || 
+					test.name == "CHAR with invalid UTF-8") {
+					// For invalid UTF-8 cases, we expect NULL (which returns empty string but is actually NULL)
+					assert.True(t, result.IsNull(), "Expected NULL for invalid UTF-8")
+				} else {
+					assert.Equal(t, test.expected, result.ToString())
+				}
 			}
 		})
 	}
@@ -474,11 +482,11 @@ func TestStringSQL_StrictConvertValidation(t *testing.T) {
 		assert.Contains(t, err.Error(), "invalid string for charset utf8mb4")
 	})
 	
-	// Test 2: SQL should accept invalid UTF-8 and replace with replacement chars (permissive for SELECT)
+	// Test 2: SQL should accept invalid UTF-8 and return NULL (permissive for SELECT, matches MySQL)
 	t.Run("SQL should accept invalid UTF-8 for SELECT operations", func(t *testing.T) {
 		result, err := stringType.SQL(ctx, nil, invalidUTF8)
 		require.NoError(t, err)
-		assert.Equal(t, "DoltLab�", result.ToString())
+		assert.True(t, result.IsNull(), "Expected NULL for invalid UTF-8 (matches MySQL behavior)")
 	})
 	
 	// Test 3: Valid UTF-8 should work in both cases
