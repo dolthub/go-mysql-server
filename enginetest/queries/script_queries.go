@@ -9085,7 +9085,6 @@ where
 		},
 	},
 	{
-		Skip:    false,
 		Name:    "enum conversion to strings",
 		Dialect: "mysql",
 		SetUpScript: []string{
