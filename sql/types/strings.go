@@ -334,6 +334,11 @@ func (t StringType) Convert(ctx context.Context, v interface{}) (interface{}, sq
 		return nil, sql.OutOfRange, err
 	}
 
+	// If ConvertToBytes returned nil for invalid UTF-8, return nil (matches MySQL)
+	if val == nil {
+		return nil, sql.InRange, nil
+	}
+
 	if IsBinaryType(t) {
 		// Avoid returning nil
 		if len(val) == 0 {
@@ -484,7 +489,9 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 	if !IsBinaryType(t) && !utf8.Valid(bytesVal) {
 		charset := t.CharacterSet()
 		if charset == sql.CharacterSet_utf8mb4 {
-			return nil, ErrBadCharsetString.New(charset.String(), bytesVal)
+			// For UTF8MB4, return nil for invalid UTF-8 sequences (matches MySQL behavior)
+			// This allows INSERT operations to proceed with NULL values instead of throwing errors
+			return nil, nil
 		} else {
 			var ok bool
 			if bytesVal, ok = t.CharacterSet().Encoder().Decode(bytesVal); !ok {

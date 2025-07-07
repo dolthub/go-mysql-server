@@ -464,9 +464,9 @@ func TestStringSQL_InvalidUTF8Handling(t *testing.T) {
 	}
 }
 
-// TestStringSQL_StrictConvertValidation ensures that Convert (used for INSERT)
-// still maintains strict validation while SQL (used for SELECT) is permissive.
-// This verifies the dual behavior required for issue dolthub/dolt#8893.
+// TestStringSQL_StrictConvertValidation ensures that both Convert (used for INSERT)
+// and SQL (used for SELECT) handle invalid UTF-8 by returning NULL.
+// This verifies the MySQL-compatible behavior required for issue dolthub/dolt#8893.
 func TestStringSQL_StrictConvertValidation(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	
@@ -475,11 +475,11 @@ func TestStringSQL_StrictConvertValidation(t *testing.T) {
 	
 	stringType := Text
 	
-	// Test 1: Convert should still reject invalid UTF-8 (strict for INSERT)
-	t.Run("Convert should reject invalid UTF-8 for INSERT operations", func(t *testing.T) {
-		_, _, err := stringType.Convert(ctx, invalidUTF8)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "invalid string for charset utf8mb4")
+	// Test 1: Convert should now accept invalid UTF-8 and return NULL (matches MySQL INSERT behavior)
+	t.Run("Convert should accept invalid UTF-8 and return NULL for INSERT operations", func(t *testing.T) {
+		result, _, err := stringType.Convert(ctx, string(invalidUTF8))
+		require.NoError(t, err)
+		assert.Nil(t, result, "Expected NULL for invalid UTF-8 in Convert (matches MySQL)")
 	})
 	
 	// Test 2: SQL should accept invalid UTF-8 and return NULL (permissive for SELECT, matches MySQL)
