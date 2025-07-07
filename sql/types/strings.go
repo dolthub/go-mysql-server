@@ -530,21 +530,33 @@ func ConvertToCollatedString(ctx context.Context, val interface{}, typ sql.Type)
 					if err != nil {
 						return "", sql.Collation_Unspecified, err
 					}
-					content = val.(string)
+					if val == nil {
+						content = ""
+					} else {
+						content = val.(string)
+					}
 				}
 			} else {
 				val, _, err = LongText.Convert(ctx, val)
 				if err != nil {
 					return "", sql.Collation_Unspecified, err
 				}
-				content = val.(string)
+				if val == nil {
+					content = ""
+				} else {
+					content = val.(string)
+				}
 			}
 		} else {
 			val, _, err = LongText.Convert(ctx, val)
 			if err != nil {
 				return "", sql.Collation_Unspecified, err
 			}
-			content = val.(string)
+			if val == nil {
+				content = ""
+			} else {
+				content = val.(string)
+			}
 		}
 	} else {
 		collation = sql.Collation_Default
@@ -563,7 +575,11 @@ func ConvertToCollatedString(ctx context.Context, val interface{}, typ sql.Type)
 		if err != nil {
 			return "", sql.Collation_Unspecified, err
 		}
-		content = val.(string)
+		if val == nil {
+			content = ""
+		} else {
+			content = val.(string)
+		}
 	}
 	return content, collation, nil
 }
