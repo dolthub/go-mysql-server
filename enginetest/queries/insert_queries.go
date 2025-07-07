@@ -2854,6 +2854,7 @@ var InsertIgnoreScripts = []ScriptTest{
 		Name: "issue 9425: 0 value is not allowed for enum in strict mode",
 		SetUpScript: []string{
 			"create table enum_zero_test (id int auto_increment primary key, enum_col enum('apple','banana','cherry'))",
+			"alter table enum_zero_test auto_increment = 1",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
