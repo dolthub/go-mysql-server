@@ -2870,7 +2870,7 @@ var InsertIgnoreScripts = []ScriptTest{
 			},
 			{
 				Query:    "set sql_mode = ''",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, InsertID: 0}}},
 			},
 			{
 				Query:    "insert into enum_zero_test (enum_col) values (0)",
