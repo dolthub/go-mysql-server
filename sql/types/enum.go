@@ -240,7 +240,7 @@ func (t EnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.
 		return t.Convert(ctx, string(value))
 	}
 
-	// For other types not handled above, check if we're in strict mode  
+	// For other types not handled above, check if we're in strict mode
 	// In test contexts (empty context), default to non-strict behavior
 	if sqlCtx, ok := ctx.(*sql.Context); ok {
 		sqlMode := sql.LoadSqlMode(sqlCtx)
@@ -250,7 +250,7 @@ func (t EnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.
 		// In non-strict mode, return empty string (index 0) for invalid enum values
 		return uint16(0), sql.InRange, nil
 	}
-	
+
 	// If we can't determine SQL mode (e.g., test contexts), use non-strict behavior
 	return uint16(0), sql.InRange, nil
 }
