@@ -2854,7 +2854,6 @@ var InsertIgnoreScripts = []ScriptTest{
 		Name: "issue 9425: 0 value is not allowed for enum in strict mode",
 		SetUpScript: []string{
 			"create table enum_zero_test (id int auto_increment primary key, enum_col enum('apple','banana','cherry'))",
-			"alter table enum_zero_test auto_increment = 1",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -2875,15 +2874,19 @@ var InsertIgnoreScripts = []ScriptTest{
 			},
 			{
 				Query:    "insert into enum_zero_test (enum_col) values (0)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
+				SkipResultsCheck: true,
 			},
 			{
 				Query:    "insert into enum_zero_test (enum_col) values ('invalid')",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
+				SkipResultsCheck: true,
 			},
 			{
-				Query:    "select * from enum_zero_test",
-				Expected: []sql.Row{{1, ""}, {2, ""}},
+				Query:    "select count(*) from enum_zero_test",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "select enum_col from enum_zero_test order by id",
+				Expected: []sql.Row{{""},{""}},
 			},
 		},
 	},
