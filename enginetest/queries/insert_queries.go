@@ -2836,7 +2836,7 @@ var InsertIgnoreScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "insert into test_table values (1, 'invalid'), (2, 'comparative politics'), (3, null)",
-				ExpectedErr: types.ErrDataTruncatedForColumn,
+				ExpectedErr: types.ErrDataTruncatedForColumnAtRow,
 			},
 			{
 				Query:    "insert ignore into test_table values (1, 'invalid'), (2, 'bye'), (3, null)",
