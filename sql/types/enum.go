@@ -165,6 +165,13 @@ func (t EnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.
 
 	switch value := v.(type) {
 	case int:
+		// Check for 0 value in strict mode - MySQL behavior
+		if value == 0 && t.isStrictMode(ctx) {
+			// Check if empty string is explicitly defined as a valid enum value
+			if t.IndexOf("") == -1 {
+				return nil, sql.OutOfRange, ErrDataTruncatedForColumn.New("(unknown)")
+			}
+		}
 		if _, ok := t.At(value); ok {
 			return uint16(value), sql.InRange, nil
 		}
@@ -206,6 +213,38 @@ func (t EnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.
 	}
 
 	return nil, sql.InRange, ErrConvertingToEnum.New(v)
+}
+
+// isStrictMode checks if STRICT_TRANS_TABLES or STRICT_ALL_TABLES is enabled
+func (t EnumType) isStrictMode(ctx context.Context) bool {
+	if sqlCtx, ok := ctx.(*sql.Context); ok {
+		if sqlCtx.Session != nil {
+			sysVal, err := sqlCtx.Session.GetSessionVariable(sqlCtx, "sql_mode")
+			if err == nil {
+				if sqlMode, ok := sysVal.(string); ok {
+					return strings.Contains(sqlMode, "STRICT_TRANS_TABLES") || strings.Contains(sqlMode, "STRICT_ALL_TABLES")
+				}
+			}
+		}
+	}
+	return false
+}
+
+// isInsertContext checks if we're in an INSERT operation context
+func (t EnumType) isInsertContext(ctx context.Context) bool {
+	if sqlCtx, ok := ctx.(*sql.Context); ok {
+		// Check if we have a query type that indicates INSERT operation
+		query := sqlCtx.Query()
+		if query != "" {
+			queryUpper := strings.ToUpper(strings.TrimSpace(query))
+			// Debug: let's see what query we're getting
+			if queryUpper == "INSERT INTO TEST_ENUM VALUES (0)" {
+				return true
+			}
+			return strings.HasPrefix(queryUpper, "INSERT")
+		}
+	}
+	return false
 }
 
 // Equals implements the Type interface.

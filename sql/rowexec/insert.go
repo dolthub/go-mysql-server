@@ -17,6 +17,7 @@ package rowexec
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"gopkg.in/src-d/go-errors.v1"
@@ -117,6 +118,10 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 				cErr = sql.ErrValueOutOfRange.New(row[idx], col.Type)
 			}
 			if cErr != nil {
+				// Enhance enum data truncation errors with column name and row number
+				if types.IsEnum(col.Type) && strings.Contains(cErr.Error(), "Data truncated for column") {
+					cErr = types.ErrDataTruncatedForColumnAtRow.New(col.Name, i.rowNumber)
+				}
 				// Ignore individual column errors when INSERT IGNORE, UPDATE IGNORE, etc. is specified.
 				// For JSON column types, always throw an error. MySQL throws the following error even when
 				// IGNORE is specified:

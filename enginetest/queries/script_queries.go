@@ -8688,21 +8688,59 @@ where
 	},
 	{
 		// This is with STRICT_TRANS_TABLES or STRICT_ALL_TABLES in sql_mode
-		Skip:    true,
+		Skip:    false,
 		Name:    "enums with zero",
 		Dialect: "mysql",
 		SetUpScript: []string{
+			"SET sql_mode = 'STRICT_TRANS_TABLES';",
+			"create table t (e enum('a', 'b', 'c'));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "insert into t values (0);",
+				ExpectedErrStr: "Data truncated for column 'e' at row 1",
+			},
+			{
+				Query:          "insert into t values ('a'), (0), ('b');",
+				ExpectedErrStr: "Data truncated for column 'e' at row 2",
+			},
+			{
+				Query:       "create table tt (e enum('a', 'b', 'c') default 0)",
+				ExpectedErr: sql.ErrIncompatibleDefaultType,
+			},
+			{
+				Query: "create table et (e enum('a', 'b', '', 'c'));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "insert into et values (0);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+		},
+	},
+	{
+		Name:    "enums with zero non-strict mode",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"SET sql_mode = '';",
 			"create table t (e enum('a', 'b', 'c'));",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "insert into t values (0);",
-				// TODO should be truncated error, but this is the error we throw for empty string
-				ExpectedErrStr: "is not valid for this Enum",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
 			},
 			{
-				Query:       "create table tt (e enum('a', 'b', 'c') default 0)",
-				ExpectedErr: sql.ErrInvalidColumnDefaultValue,
+				Query: "select * from t;",
+				Expected: []sql.Row{
+					{""},
+				},
 			},
 		},
 	},
