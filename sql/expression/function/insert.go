@@ -155,7 +155,7 @@ func (i *Insert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// Convert to 0-based indexing
 	startIdx := p - 1
-	
+
 	// Handle case where position is beyond string length
 	if startIdx >= int64(len(s)) {
 		return s, nil
