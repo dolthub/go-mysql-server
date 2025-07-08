@@ -5463,6 +5463,18 @@ SELECT * FROM cte WHERE  d = 2;`,
 		},
 	},
 	{
+		Query: `SELECT INSERT("hello", 2, 100, "xyz")`,
+		Expected: []sql.Row{
+			{string("hxyz")},
+		},
+	},
+	{
+		Query: `SELECT INSERT("hello", 1, 50, "world")`,
+		Expected: []sql.Row{
+			{string("world")},
+		},
+	},
+	{
 		Query: `SELECT INSERT("hello", 10, 2, "xyz")`,
 		Expected: []sql.Row{
 			{string("hello")},

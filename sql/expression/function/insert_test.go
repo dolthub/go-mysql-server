@@ -56,6 +56,8 @@ func TestInsert(t *testing.T) {
 		{"zero length", sql.NewRow("hello", 3, 0, "xyz"), "hexyzllo", false},
 		{"negative length from middle", sql.NewRow("hello", 3, -1, "xyz"), "hexyz", false},
 		{"negative length from beginning", sql.NewRow("hello", 1, -5, "xyz"), "xyz", false},
+		{"large positive length", sql.NewRow("hello", 2, 100, "xyz"), "hxyz", false},
+		{"length exactly matches remaining", sql.NewRow("hello", 3, 3, "xyz"), "hexyz", false},
 	}
 
 	for _, tt := range testCases {
