@@ -5571,6 +5571,134 @@ SELECT * FROM cte WHERE  d = 2;`,
 		},
 	},
 	{
+		Query: `SELECT EXPORT_SET(5, "Y", "N", ",", 4)`,
+		Expected: []sql.Row{
+			{string("Y,N,Y,N")},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(6, "1", "0", ",", 10)`,
+		Expected: []sql.Row{
+			{string("0,1,1,0,0,0,0,0,0,0")},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(0, "1", "0", ",", 4)`,
+		Expected: []sql.Row{
+			{string("0,0,0,0")},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(15, "1", "0", ",", 4)`,
+		Expected: []sql.Row{
+			{string("1,1,1,1")},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(1, "T", "F", ",", 3)`,
+		Expected: []sql.Row{
+			{string("T,F,F")},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(5, "1", "0", "|", 4)`,
+		Expected: []sql.Row{
+			{string("1|0|1|0")},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(5, "1", "0", "", 4)`,
+		Expected: []sql.Row{
+			{string("1010")},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(5, "ON", "OFF", ",", 4)`,
+		Expected: []sql.Row{
+			{string("ON,OFF,ON,OFF")},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(255, "1", "0", ",", 8)`,
+		Expected: []sql.Row{
+			{string("1,1,1,1,1,1,1,1")},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(1024, "1", "0", ",", 12)`,
+		Expected: []sql.Row{
+			{string("0,0,0,0,0,0,0,0,0,0,1,0")},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(5, "1", "0")`,
+		Expected: []sql.Row{
+			{string("1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0")},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(5, "1", "0", ",", 1)`,
+		Expected: []sql.Row{
+			{string("1")},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(-1, "1", "0", ",", 4)`,
+		Expected: []sql.Row{
+			{string("1,1,1,1")},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(NULL, "1", "0", ",", 4)`,
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(5, NULL, "0", ",", 4)`,
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(5, "1", NULL, ",", 4)`,
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(5, "1", "0", NULL, 4)`,
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(5, "1", "0", ",", NULL)`,
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET("5", "1", "0", ",", 4)`,
+		Expected: []sql.Row{
+			{string("1,0,1,0")},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(5.7, "1", "0", ",", 4)`,
+		Expected: []sql.Row{
+			{string("0,1,1,0")},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(i, "1", "0", ",", 4) FROM mytable ORDER BY i`,
+		Expected: []sql.Row{
+			{string("1,0,0,0")},
+			{string("0,1,0,0")},
+			{string("1,1,0,0")},
+		},
+	},
+	{
 		Query: "SELECT version()",
 		Expected: []sql.Row{
 			{"8.0.31"},

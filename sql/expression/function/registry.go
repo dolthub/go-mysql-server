@@ -89,6 +89,7 @@ var BuiltIns = []sql.Function{
 	sql.Function1{Name: "degrees", Fn: NewDegrees},
 	sql.FunctionN{Name: "elt", Fn: NewElt},
 	sql.Function1{Name: "exp", Fn: NewExp},
+	sql.FunctionN{Name: "export_set", Fn: NewExportSet},
 	sql.Function2{Name: "extract", Fn: NewExtract},
 	sql.FunctionN{Name: "field", Fn: NewField},
 	sql.Function2{Name: "find_in_set", Fn: NewFindInSet},
