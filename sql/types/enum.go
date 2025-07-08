@@ -182,7 +182,10 @@ func (t EnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.
 	case int16:
 		return t.Convert(ctx, int(value))
 	case uint16:
-		return t.Convert(ctx, int(value))
+		// uint16 values are stored enum indices - allow them without strict mode validation
+		if _, ok := t.At(int(value)); ok {
+			return value, sql.InRange, nil
+		}
 	case int32:
 		return t.Convert(ctx, int(value))
 	case uint32:
