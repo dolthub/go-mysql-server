@@ -135,7 +135,7 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 					err := sql.ErrColumnNotFound.New(gf.String())
 					b.handleErr(err)
 				}
-				col = scopeColumn{id: id, tableId: gf.TableId(), col: e.Name(), db: gf.Database(), table: gf.Table(), scalar: e, typ: gf.Type(), nullable: gf.IsNullable()}
+				col = scopeColumn{id: id, tableId: gf.TableId(), col: e.Name(), db: gf.Database(), table: gf.Table(), typ: gf.Type(), nullable: gf.IsNullable(), originalCol: gf.Name()}
 			} else if sq, ok := e.Child.(*plan.Subquery); ok {
 				col = scopeColumn{col: e.Name(), scalar: e, typ: sq.Type(), nullable: sq.IsNullable()}
 			} else {
@@ -151,6 +151,10 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 				col.scalar = e
 				tempScope.addColumn(col)
 			}
+			if inScope.selectColumnAliases == nil {
+				inScope.selectColumnAliases = make(map[string]scopeColumn)
+			}
+			inScope.selectColumnAliases[e.Name()] = col
 			exprs = append(exprs, e)
 		default:
 			exprs = append(exprs, pe)
