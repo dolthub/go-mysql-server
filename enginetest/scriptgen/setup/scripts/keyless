@@ -1,8 +1,8 @@
 
 exec
 CREATE TABLE `unique_keyless` (
-  `c0` bigint,
-  `c1` bigint
+  `c0` bigint DEFAULT NULL,
+  `c1` bigint DEFAULT NULL
 )
 ----
 
@@ -15,8 +15,8 @@ insert into unique_keyless values
 
 exec
 CREATE TABLE `keyless` (
-  `c0` bigint,
-  `c1` bigint
+  `c0` bigint DEFAULT NULL,
+  `c1` bigint DEFAULT NULL
 )
 ----
 
