@@ -1298,7 +1298,7 @@ func validateDefaultExprs(col *sql.Column) error {
 	if col.Default == nil {
 		return nil
 	}
-	
+
 	// Validate datetime/timestamp precision
 	if types.IsDatetimeType(col.Type) || types.IsTimestampType(col.Type) {
 		var colPrec int
@@ -1311,7 +1311,7 @@ func validateDefaultExprs(col *sql.Column) error {
 			return sql.ErrInvalidColumnDefaultValue.New(col.Name)
 		}
 	}
-	
+
 	// Validate enum defaults in strict mode
 	if types.IsEnum(col.Type) {
 		// Try to evaluate the default value and convert it
@@ -1327,7 +1327,7 @@ func validateDefaultExprs(col *sql.Column) error {
 			}
 		}
 	}
-	
+
 	return nil
 }
 
@@ -1444,7 +1444,7 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 				}
 			}
 		}
-		
+
 		schema[i].Default = b.convertDefaultExpression(outScope, def, schema[i].Type, schema[i].Nullable)
 		err := validateDefaultExprs(schema[i])
 		if err != nil {
