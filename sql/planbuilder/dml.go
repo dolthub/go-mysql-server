@@ -76,10 +76,6 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 			schema := rt.Schema()
 			columns = make([]string, len(schema))
 			for index, col := range schema {
-				// Tables with any generated column must always supply a column list, so this is always an error
-				if col.Generated != nil {
-					b.handleErr(sql.ErrGeneratedColumnValue.New(col.Name, rt.Name()))
-				}
 				columns[index] = col.Name
 			}
 			if ir, ok := i.Rows.(*ast.AliasedValues); ok {
@@ -90,7 +86,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 						// insert default val for respective columns.
 						ir.Values[valueIdx] = make([]ast.Expr, len(schema))
 						for j, col := range schema {
-							if col.Default == nil && !col.AutoIncrement {
+							if col.Default == nil && !col.AutoIncrement && !col.Nullable {
 								b.handleErr(sql.ErrInsertIntoNonNullableDefaultNullColumn.New(col.Name))
 							}
 
