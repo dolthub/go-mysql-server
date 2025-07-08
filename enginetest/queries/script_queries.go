@@ -1202,7 +1202,7 @@ CREATE TABLE tab3 (
 			{
 				// enum values must match EXACTLY for case-sensitive collations
 				Query:          "INSERT INTO enumtest1 VALUES (10, 'ABC'), (11, 'aBc'), (12, 'xyz');",
-				ExpectedErrStr: "value ABC is not valid for this Enum",
+				ExpectedErrStr: "Data truncated for column 'e'",
 			},
 			{
 				Query: "SHOW CREATE TABLE enumtest1;",
@@ -8053,11 +8053,11 @@ where
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:          "insert into t values (1, 500)",
-				ExpectedErrStr: "value 500 is not valid for this Enum",
+				ExpectedErrStr: "Data truncated for column 'e'",
 			},
 			{
 				Query:          "insert into t values (1, -1)",
-				ExpectedErrStr: "value -1 is not valid for this Enum",
+				ExpectedErrStr: "Data truncated for column 'e'",
 			},
 		},
 	},
@@ -9257,14 +9257,14 @@ where
 			},
 			{
 				Query:       "insert into child2 values ('a');",
-				ExpectedErr: sql.ErrForeignKeyParentViolation,
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
 				Query: "select * from child2 order by e;",
 				Expected: []sql.Row{
-					{"c"},
-					{"c"},
 					{"b"},
+					{"c"},
+					{"c"},
 				},
 			},
 
