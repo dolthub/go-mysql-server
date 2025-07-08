@@ -1419,15 +1419,6 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 
 	for i, def := range defaults {
 		schema[i].Default = b.convertDefaultExpression(outScope, def, schema[i].Type, schema[i].Nullable)
-		if schema[i].Default == nil && schema[i].Nullable {
-			schema[i].Default = &sql.ColumnDefaultValue{
-				Expr:          b.buildScalar(inScope, &ast.NullVal{}),
-				OutType:       types.Null,
-				Literal:       true,
-				ReturnNil:     true,
-				Parenthesized: false,
-			}
-		}
 		err := validateDefaultExprs(schema[i])
 		if err != nil {
 			b.handleErr(err)

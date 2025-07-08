@@ -2988,7 +2988,7 @@ var InsertBrokenScripts = []ScriptTest{
 			{
 				Query: "SELECT * FROM x",
 				Expected: []sql.Row{
-					{1, "one"}, {2, 1}, {3, "three"},
+					{1, "one"}, {2, "1"}, {3, "three"},
 				},
 			},
 			{
@@ -3123,7 +3123,7 @@ var InsertBrokenScripts = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
-				Query:    "select * from t2;",
+				Query:    "select * from test;",
 				Expected: []sql.Row{{1, "a"}},
 			},
 		},
@@ -3136,15 +3136,15 @@ var InsertBrokenScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "insert into t(i, j) values (1, 2, 3)",
-				ExpectedErr: sql.ErrColumnCountMismatch,
+				ExpectedErr: sql.ErrColValCountMismatch,
 			},
 			{
 				Query:       "insert into t(i, j) values (1)",
-				ExpectedErr: sql.ErrColumnCountMismatch,
+				ExpectedErr: sql.ErrColValCountMismatch,
 			},
 			{
 				Query:       "insert into t(i, j) values (1, 2), ()",
-				ExpectedErr: sql.ErrColumnCountMismatch,
+				ExpectedErr: sql.ErrColValCountMismatch,
 			},
 		},
 	},

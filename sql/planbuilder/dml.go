@@ -235,6 +235,8 @@ func (b *Builder) buildInsertValues(inScope *scope, v *ast.AliasedValues, column
 		// table error and do not have a schema for resolving defaults
 		triggerUnknownTable := (len(columnNames) == 0 && len(vt) > 0) && (len(b.TriggerCtx().UnresolvedTables) > 0)
 
+		// For empty VALUES with explicit column list, this is an error
+		// For empty VALUES without column list, it was handled above by filling with defaults
 		if len(vt) != len(columnNames) && !triggerUnknownTable {
 			err := sql.ErrColValCountMismatch.New(i + 1)
 			b.handleErr(err)
