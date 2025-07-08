@@ -5532,7 +5532,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Query: `SELECT INSERT(s, 1, 5, "new") FROM mytable ORDER BY i`,
 		Expected: []sql.Row{
 			{string("new row")},
-			{string("new row")},
+			{string("newd row")},
 			{string("new row")},
 		},
 	},
@@ -5547,9 +5547,9 @@ SELECT * FROM cte WHERE  d = 2;`,
 	{
 		Query: `SELECT INSERT(s, i + 1, i, UPPER(s)) FROM mytable ORDER BY i`,
 		Expected: []sql.Row{
-			{string("FIRST ROWst row")},
-			{string("sSECOND ROWd row")},
-			{string("thTHIRD ROWrow")},
+			{string("fFIRST ROWrst row")},
+			{string("seSECOND ROWnd row")},
+			{string("thiTHIRD ROWrow")},
 		},
 	},
 	{
