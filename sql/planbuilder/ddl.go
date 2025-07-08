@@ -1298,18 +1298,36 @@ func validateDefaultExprs(col *sql.Column) error {
 	if col.Default == nil {
 		return nil
 	}
-	if !(types.IsDatetimeType(col.Type) || types.IsTimestampType(col.Type)) {
-		return nil
+	
+	// Validate datetime/timestamp precision
+	if types.IsDatetimeType(col.Type) || types.IsTimestampType(col.Type) {
+		var colPrec int
+		if dt, ok := col.Type.(sql.DatetimeType); ok {
+			colPrec = dt.Precision()
+		}
+		if isValid, err := validatePrec(col.Default.Expr, colPrec); err != nil {
+			return err
+		} else if !isValid {
+			return sql.ErrInvalidColumnDefaultValue.New(col.Name)
+		}
 	}
-	var colPrec int
-	if dt, ok := col.Type.(sql.DatetimeType); ok {
-		colPrec = dt.Precision()
+	
+	// Validate enum defaults in strict mode
+	if types.IsEnum(col.Type) {
+		// Try to evaluate the default value and convert it
+		if col.Default.Expr != nil {
+			// Check if it's a literal 0 which should fail in strict mode
+			if lit, ok := col.Default.Expr.(*expression.Literal); ok {
+				if val, err := lit.Eval(sql.NewEmptyContext(), nil); err == nil {
+					if intVal, ok := val.(int64); ok && intVal == 0 {
+						// This is a literal 0 default for enum, which MySQL rejects
+						return sql.ErrInvalidColumnDefaultValue.New(col.Name)
+					}
+				}
+			}
+		}
 	}
-	if isValid, err := validatePrec(col.Default.Expr, colPrec); err != nil {
-		return err
-	} else if !isValid {
-		return sql.ErrInvalidColumnDefaultValue.New(col.Name)
-	}
+	
 	return nil
 }
 
@@ -1418,6 +1436,15 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 	}
 
 	for i, def := range defaults {
+		// Early validation for enum default 0 to catch it before conversion
+		if def != nil && types.IsEnum(schema[i].Type) {
+			if lit, ok := def.(*ast.SQLVal); ok {
+				if lit.Type == ast.IntVal && string(lit.Val) == "0" {
+					b.handleErr(sql.ErrInvalidColumnDefaultValue.New(schema[i].Name))
+				}
+			}
+		}
+		
 		schema[i].Default = b.convertDefaultExpression(outScope, def, schema[i].Type, schema[i].Nullable)
 		err := validateDefaultExprs(schema[i])
 		if err != nil {
