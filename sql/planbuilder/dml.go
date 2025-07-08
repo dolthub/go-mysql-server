@@ -86,7 +86,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 						// insert default val for respective columns.
 						ir.Values[valueIdx] = make([]ast.Expr, len(schema))
 						for j, col := range schema {
-							if col.Default == nil && !col.AutoIncrement && !col.Nullable {
+							if col.Default == nil && !col.AutoIncrement {
 								b.handleErr(sql.ErrInsertIntoNonNullableDefaultNullColumn.New(col.Name))
 							}
 
