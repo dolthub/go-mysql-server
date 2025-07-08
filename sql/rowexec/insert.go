@@ -49,6 +49,7 @@ type insertIter struct {
 	firstGeneratedAutoIncRowIdx int
 
 	deferredDefaults sql.FastIntSet
+	rowNumber        int64
 }
 
 func getInsertExpressions(values sql.Node) []sql.Expression {
@@ -73,6 +74,9 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 	if err != nil {
 		return nil, i.ignoreOrClose(ctx, row, err)
 	}
+
+	// Increment row number for error reporting (MySQL starts at 1)
+	i.rowNumber++
 
 	// Prune the row down to the size of the schema. It can be larger in the case of running with an outer scope, in which
 	// case the additional scope variables are prepended to the row.
@@ -141,7 +145,7 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 					} else if sql.ErrNotMatchingSRID.Is(cErr) {
 						cErr = sql.ErrNotMatchingSRIDWithColName.New(col.Name, cErr)
 					} else if types.ErrConvertingToEnum.Is(cErr) {
-						cErr = types.ErrDataTruncatedForColumn.New(col.Name)
+						cErr = types.ErrDataTruncatedForColumnAtRow.New(col.Name, i.rowNumber)
 					}
 					return nil, sql.NewWrappedInsertError(origRow, cErr)
 				}

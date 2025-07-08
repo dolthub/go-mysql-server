@@ -1202,7 +1202,7 @@ CREATE TABLE tab3 (
 			{
 				// enum values must match EXACTLY for case-sensitive collations
 				Query:          "INSERT INTO enumtest1 VALUES (10, 'ABC'), (11, 'aBc'), (12, 'xyz');",
-				ExpectedErrStr: "Data truncated for column 'e'",
+				ExpectedErrStr: "Data truncated for column 'e' at row 1",
 			},
 			{
 				Query: "SHOW CREATE TABLE enumtest1;",
@@ -8053,11 +8053,11 @@ where
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:          "insert into t values (1, 500)",
-				ExpectedErrStr: "Data truncated for column 'e'",
+				ExpectedErrStr: "Data truncated for column 'e' at row 1",
 			},
 			{
 				Query:          "insert into t values (1, -1)",
-				ExpectedErrStr: "Data truncated for column 'e'",
+				ExpectedErrStr: "Data truncated for column 'e' at row 1",
 			},
 		},
 	},
@@ -9221,7 +9221,7 @@ where
 			},
 			{
 				Query:          "insert into child1 values ('a');",
-				ExpectedErrStr: "Data truncated for column 'e'",
+				ExpectedErrStr: "Data truncated for column 'e' at row 1",
 			},
 			{
 				Query: "select * from child1 order by e;",
@@ -9322,7 +9322,7 @@ where
 			},
 			{
 				Query:          "insert into child4 values (3);",
-				ExpectedErrStr: "Data truncated for column 'e'",
+				ExpectedErrStr: "Data truncated for column 'e' at row 1",
 			},
 			{
 				Query: "insert into child4 values ('q');",
@@ -9332,7 +9332,7 @@ where
 			},
 			{
 				Query:          "insert into child4 values ('a');",
-				ExpectedErrStr: "Data truncated for column 'e'",
+				ExpectedErrStr: "Data truncated for column 'e' at row 1",
 			},
 			{
 				Query: "select * from child4 order by e;",
