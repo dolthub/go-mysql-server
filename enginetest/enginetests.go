@@ -4490,7 +4490,7 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 			},
 		},
 		{
-			Name: "inserts should trigger string conversion errors",
+			Name: "inserts should handle invalid UTF-8 gracefully",
 			SetUpScript: []string{
 				"CREATE TABLE test (v1 VARCHAR(10));",
 				"CREATE TABLE test2 (v1 VARCHAR(10) CHARACTER SET latin1);",
@@ -4501,14 +4501,18 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 					Bindings: map[string]sqlparser.Expr{
 						"v1": mustBuildBindVariable([]byte{0x99, 0x98, 0x97}),
 					},
-					ExpectedErrStr: "invalid string for charset utf8mb4: '[153 152 151]'",
+					Expected: []sql.Row{
+						{types.OkResult{RowsAffected: 1}},
+					},
 				},
 				{
 					Query: "INSERT INTO test VALUES (?);",
 					Bindings: map[string]sqlparser.Expr{
 						"v1": mustBuildBindVariable(string([]byte{0x99, 0x98, 0x97})),
 					},
-					ExpectedErrStr: "invalid string for charset utf8mb4: '[153 152 151]'",
+					Expected: []sql.Row{
+						{types.OkResult{RowsAffected: 1}},
+					},
 				},
 				{
 					Query: "INSERT INTO test2 VALUES (?);",
