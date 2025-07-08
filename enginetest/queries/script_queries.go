@@ -8706,7 +8706,7 @@ where
 			},
 			{
 				Query:       "create table tt (e enum('a', 'b', 'c') default 0)",
-				ExpectedErr: sql.ErrIncompatibleDefaultType,
+				ExpectedErr: sql.ErrInvalidColumnDefaultValue,
 			},
 			{
 				Query: "create table et (e enum('a', 'b', '', 'c'));",
