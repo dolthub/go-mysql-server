@@ -5391,6 +5391,108 @@ SELECT * FROM cte WHERE  d = 2;`,
 		},
 	},
 	{
+		Query: `SELECT INSERT("Quadratic", 3, 4, "What")`,
+		Expected: []sql.Row{
+			{string("QuWhattic")},
+		},
+	},
+	{
+		Query: `SELECT INSERT("hello", 2, 2, "xyz")`,
+		Expected: []sql.Row{
+			{string("hxyzlo")},
+		},
+	},
+	{
+		Query: `SELECT INSERT("hello", 1, 2, "xyz")`,
+		Expected: []sql.Row{
+			{string("xyzllo")},
+		},
+	},
+	{
+		Query: `SELECT INSERT("hello", 5, 1, "xyz")`,
+		Expected: []sql.Row{
+			{string("hellxyz")},
+		},
+	},
+	{
+		Query: `SELECT INSERT("hello", 1, 5, "world")`,
+		Expected: []sql.Row{
+			{string("world")},
+		},
+	},
+	{
+		Query: `SELECT INSERT("hello", 3, 10, "world")`,
+		Expected: []sql.Row{
+			{string("heworld")},
+		},
+	},
+	{
+		Query: `SELECT INSERT("hello", 2, 2, "")`,
+		Expected: []sql.Row{
+			{string("hlo")},
+		},
+	},
+	{
+		Query: `SELECT INSERT("hello", 3, 0, "xyz")`,
+		Expected: []sql.Row{
+			{string("hexyzllo")},
+		},
+	},
+	{
+		Query: `SELECT INSERT("hello", 0, 2, "xyz")`,
+		Expected: []sql.Row{
+			{string("hello")},
+		},
+	},
+	{
+		Query: `SELECT INSERT("hello", -1, 2, "xyz")`,
+		Expected: []sql.Row{
+			{string("hello")},
+		},
+	},
+	{
+		Query: `SELECT INSERT("hello", 1, -1, "xyz")`,
+		Expected: []sql.Row{
+			{string("hello")},
+		},
+	},
+	{
+		Query: `SELECT INSERT("hello", 10, 2, "xyz")`,
+		Expected: []sql.Row{
+			{string("hello")},
+		},
+	},
+	{
+		Query: `SELECT INSERT("", 1, 2, "xyz")`,
+		Expected: []sql.Row{
+			{string("")},
+		},
+	},
+	{
+		Query: `SELECT INSERT(NULL, 1, 2, "xyz")`,
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
+		Query: `SELECT INSERT("hello", NULL, 2, "xyz")`,
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
+		Query: `SELECT INSERT("hello", 1, NULL, "xyz")`,
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
+		Query: `SELECT INSERT("hello", 1, 2, NULL)`,
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
 		Query: `SELECT COALESCE(NULL, NULL, NULL, 'example', NULL, 1234567890)`,
 		Expected: []sql.Row{
 			{string("example")},
@@ -5424,6 +5526,30 @@ SELECT * FROM cte WHERE  d = 2;`,
 			{string("first row1")},
 			{string("second row2")},
 			{string("third row3")},
+		},
+	},
+	{
+		Query: `SELECT INSERT(s, 1, 5, "new") FROM mytable ORDER BY i`,
+		Expected: []sql.Row{
+			{string("new row")},
+			{string("new row")},
+			{string("new row")},
+		},
+	},
+	{
+		Query: `SELECT INSERT(s, i, 2, "XY") FROM mytable ORDER BY i`,
+		Expected: []sql.Row{
+			{string("XYrst row")},
+			{string("sXYond row")},
+			{string("thXYd row")},
+		},
+	},
+	{
+		Query: `SELECT INSERT(s, i + 1, i, UPPER(s)) FROM mytable ORDER BY i`,
+		Expected: []sql.Row{
+			{string("FIRST ROWst row")},
+			{string("sSECOND ROWd row")},
+			{string("thTHIRD ROWrow")},
 		},
 	},
 	{
