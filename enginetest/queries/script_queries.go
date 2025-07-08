@@ -9164,7 +9164,7 @@ where
 		},
 	},
 	{
-		Skip:    true,
+		Skip:    false,
 		Name:    "enums with foreign keys",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -9207,7 +9207,7 @@ where
 			},
 			{
 				Query:       "insert into child1 values (3);",
-				ExpectedErr: sql.ErrForeignKeyParentViolation,
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
 				Query: "insert into child1 values ('x'), ('y');",
@@ -9217,7 +9217,7 @@ where
 			},
 			{
 				Query:       "insert into child1 values ('z');",
-				ExpectedErr: sql.ErrForeignKeyParentViolation,
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
 				Query:          "insert into child1 values ('a');",
@@ -9247,7 +9247,7 @@ where
 			},
 			{
 				Query:       "insert into child2 values (3);",
-				ExpectedErr: sql.ErrForeignKeyParentViolation,
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
 				Query: "insert into child2 values ('c');",
@@ -9257,7 +9257,7 @@ where
 			},
 			{
 				Query:       "insert into child2 values ('a');",
-				ExpectedErr: sql.ErrForeignKeyParentViolation,
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
 				Query: "select * from child2 order by e;",
@@ -9282,7 +9282,7 @@ where
 			},
 			{
 				Query:       "insert into child3 values (3);",
-				ExpectedErr: sql.ErrForeignKeyParentViolation,
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
 				Query: "insert into child3 values ('x'), ('y');",
@@ -9292,11 +9292,11 @@ where
 			},
 			{
 				Query:       "insert into child3 values ('z');",
-				ExpectedErr: sql.ErrForeignKeyParentViolation,
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
 				Query:       "insert into child3 values ('a');",
-				ExpectedErr: sql.ErrForeignKeyParentViolation,
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
 				Query: "select * from child3 order by e;",
