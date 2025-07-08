@@ -9164,7 +9164,6 @@ where
 		},
 	},
 	{
-		Skip:    false,
 		Name:    "enums with foreign keys",
 		Dialect: "mysql",
 		SetUpScript: []string{
