@@ -9257,7 +9257,7 @@ where
 			},
 			{
 				Query:       "insert into child2 values ('a');",
-				ExpectedErr: sql.ErrForeignKeyChildViolation,
+				ExpectedErr: sql.ErrForeignKeyParentViolation,
 			},
 			{
 				Query: "select * from child2 order by e;",
