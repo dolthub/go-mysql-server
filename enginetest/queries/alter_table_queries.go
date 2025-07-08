@@ -1244,7 +1244,7 @@ var AlterTableScripts = []ScriptTest{
 			{
 				Query: "alter table t modify column s set('a', 'b', 'c', 'd');",
 				Expected: []sql.Row{
-					{types.NewOkResult(8)},
+					{types.NewOkResult(0)},
 				},
 			},
 			{
