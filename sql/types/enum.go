@@ -216,12 +216,14 @@ func (t EnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.
 // isStrictMode checks if STRICT_TRANS_TABLES or STRICT_ALL_TABLES is enabled
 func (t EnumType) isStrictMode(ctx context.Context) bool {
 	if sqlCtx, ok := ctx.(*sql.Context); ok {
-		if sqlCtx.Session != nil {
-			sysVal, err := sqlCtx.Session.GetSessionVariable(sqlCtx, "sql_mode")
-			if err == nil {
-				if sqlMode, ok := sysVal.(string); ok {
-					return strings.Contains(sqlMode, "STRICT_TRANS_TABLES") || strings.Contains(sqlMode, "STRICT_ALL_TABLES")
-				}
+		// Try the direct context method first
+		sysVal, err := sqlCtx.GetSessionVariable(sqlCtx, "sql_mode")
+		if err != nil {
+			sysVal, err = sqlCtx.GetSessionVariable(sqlCtx, "SQL_MODE")
+		}
+		if err == nil {
+			if sqlMode, ok := sysVal.(string); ok {
+				return strings.Contains(sqlMode, "STRICT_TRANS_TABLES") || strings.Contains(sqlMode, "STRICT_ALL_TABLES")
 			}
 		}
 	}
