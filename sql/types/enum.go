@@ -233,7 +233,6 @@ func (t EnumType) isStrictMode(ctx context.Context) bool {
 	return false
 }
 
-
 // Equals implements the Type interface.
 func (t EnumType) Equals(otherType sql.Type) bool {
 	if ot, ok := otherType.(EnumType); ok && t.collation.Equals(ot.collation) && len(t.idxToVal) == len(ot.idxToVal) {

@@ -1312,7 +1312,6 @@ func validateDefaultExprs(col *sql.Column) error {
 		}
 	}
 
-
 	return nil
 }
 
