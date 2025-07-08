@@ -45,7 +45,7 @@ func TestInsert(t *testing.T) {
 		{"empty string", sql.NewRow("", 1, 2, "new"), "", false},
 		{"position is 0", sql.NewRow("hello", 0, 2, "new"), "hello", false},
 		{"position is negative", sql.NewRow("hello", -1, 2, "new"), "hello", false},
-		{"negative length", sql.NewRow("hello", 1, -1, "new"), "hello", false},
+		{"negative length", sql.NewRow("hello", 1, -1, "new"), "new", false},
 		{"position beyond string length", sql.NewRow("hello", 10, 2, "new"), "hello", false},
 		{"normal insertion", sql.NewRow("hello", 2, 2, "xyz"), "hxyzlo", false},
 		{"insert at beginning", sql.NewRow("hello", 1, 2, "xyz"), "xyzllo", false},
@@ -54,6 +54,8 @@ func TestInsert(t *testing.T) {
 		{"length exceeds string", sql.NewRow("hello", 3, 10, "world"), "heworld", false},
 		{"empty replacement", sql.NewRow("hello", 2, 2, ""), "hlo", false},
 		{"zero length", sql.NewRow("hello", 3, 0, "xyz"), "hexyzllo", false},
+		{"negative length from middle", sql.NewRow("hello", 3, -1, "xyz"), "hexyz", false},
+		{"negative length from beginning", sql.NewRow("hello", 1, -5, "xyz"), "xyz", false},
 	}
 
 	for _, tt := range testCases {

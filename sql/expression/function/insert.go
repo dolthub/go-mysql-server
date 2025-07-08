@@ -148,8 +148,8 @@ func (i *Insert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	n := newStrVal.(string)
 
 	// MySQL uses 1-based indexing for position
-	// Handle negative position or negative length
-	if p < 1 || l < 0 {
+	// Handle negative position - return original string
+	if p < 1 {
 		return s, nil
 	}
 
@@ -162,9 +162,15 @@ func (i *Insert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Calculate end index
-	endIdx := startIdx + l
-	if endIdx > int64(len(s)) {
+	// For negative length, replace from position to end of string
+	var endIdx int64
+	if l < 0 {
 		endIdx = int64(len(s))
+	} else {
+		endIdx = startIdx + l
+		if endIdx > int64(len(s)) {
+			endIdx = int64(len(s))
+		}
 	}
 
 	// Build the result string
