@@ -8715,10 +8715,8 @@ where
 				},
 			},
 			{
-				Query: "insert into et values (0);",
-				Expected: []sql.Row{
-					{types.NewOkResult(1)},
-				},
+				Query:          "insert into et values (0);",
+				ExpectedErrStr: "Data truncated for column 'e' at row 1",
 			},
 		},
 	},
