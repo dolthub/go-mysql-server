@@ -125,7 +125,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		if !ok {
 			alias, ok := inScope.selectColumnAliases[colName]
 			if ok {
-				return alias.scalarGf()
+				return alias.scalar
 			}
 			sysVar, scope, ok := b.buildSysVar(v, ast.SetScope_None)
 			if ok {

@@ -443,6 +443,12 @@ func (s *scope) copy() *scope {
 	if !s.colset.Empty() {
 		ret.colset = s.colset.Copy()
 	}
+	if s.selectColumnAliases != nil {
+		ret.selectColumnAliases = make(map[string]scopeColumn, len(s.selectColumnAliases))
+		for k, v := range s.selectColumnAliases {
+			ret.selectColumnAliases[k] = v
+		}
+	}
 
 	return &ret
 }
@@ -650,7 +656,7 @@ func (c scopeColumn) scalarGf() sql.Expression {
 		case *expression.ProcedureParam:
 			return e
 		case *expression.Alias:
-			return e.Child
+			return e
 		}
 	}
 	if c.originalCol != "" {
