@@ -42,7 +42,7 @@ const (
 var (
 	ErrConvertingToEnum = errors.NewKind("value %v is not valid for this Enum")
 
-	ErrDataTruncatedForColumn = errors.NewKind("Data truncated for column '%s'")
+	ErrDataTruncatedForColumn      = errors.NewKind("Data truncated for column '%s'")
 	ErrDataTruncatedForColumnAtRow = errors.NewKind("Data truncated for column '%s' at row %d")
 
 	enumValueType = reflect.TypeOf(uint16(0))
