@@ -16,7 +16,6 @@ package sql
 
 import (
 	"fmt"
-	"strings"
 )
 
 // ColumnDefaultValue is an expression representing the default value of a column. May represent both a default literal
@@ -84,10 +83,6 @@ func (e *ColumnDefaultValue) Eval(ctx *Context, r Row) (interface{}, error) {
 	if e.OutType != nil {
 		var inRange ConvertInRange
 		if val, inRange, err = e.OutType.Convert(ctx, val); err != nil {
-			// For enum data truncation errors, return Invalid default value error to match MySQL
-			if strings.HasPrefix(e.OutType.String(), "enum(") && strings.Contains(err.Error(), "Data truncated for column") {
-				return nil, ErrInvalidColumnDefaultValue.New("(unknown)")
-			}
 			return nil, ErrIncompatibleDefaultType.New()
 		} else if !inRange {
 			return nil, ErrValueOutOfRange.New(val, e.OutType)
@@ -234,10 +229,6 @@ func (e *ColumnDefaultValue) CheckType(ctx *Context) error {
 		}
 		_, inRange, err := e.OutType.Convert(ctx, val)
 		if err != nil {
-			// For enum data truncation errors, return Invalid default value error to match MySQL
-			if strings.HasPrefix(e.OutType.String(), "enum(") && strings.Contains(err.Error(), "Data truncated for column") {
-				return ErrInvalidColumnDefaultValue.New("(unknown)")
-			}
 			return ErrIncompatibleDefaultType.Wrap(err)
 		} else if !inRange {
 			return ErrIncompatibleDefaultType.Wrap(ErrValueOutOfRange.New(val, e.Expr))

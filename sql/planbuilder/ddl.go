@@ -1312,21 +1312,6 @@ func validateDefaultExprs(col *sql.Column) error {
 		}
 	}
 
-	// Validate enum defaults in strict mode
-	if types.IsEnum(col.Type) {
-		// Try to evaluate the default value and convert it
-		if col.Default.Expr != nil {
-			// Check if it's a literal 0 which should fail in strict mode
-			if lit, ok := col.Default.Expr.(*expression.Literal); ok {
-				if val, err := lit.Eval(sql.NewEmptyContext(), nil); err == nil {
-					if intVal, ok := val.(int64); ok && intVal == 0 {
-						// This is a literal 0 default for enum, which MySQL rejects
-						return sql.ErrInvalidColumnDefaultValue.New(col.Name)
-					}
-				}
-			}
-		}
-	}
 
 	return nil
 }

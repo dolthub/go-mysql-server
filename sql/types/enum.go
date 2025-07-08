@@ -233,22 +233,6 @@ func (t EnumType) isStrictMode(ctx context.Context) bool {
 	return false
 }
 
-// isInsertContext checks if we're in an INSERT operation context
-func (t EnumType) isInsertContext(ctx context.Context) bool {
-	if sqlCtx, ok := ctx.(*sql.Context); ok {
-		// Check if we have a query type that indicates INSERT operation
-		query := sqlCtx.Query()
-		if query != "" {
-			queryUpper := strings.ToUpper(strings.TrimSpace(query))
-			// Debug: let's see what query we're getting
-			if queryUpper == "INSERT INTO TEST_ENUM VALUES (0)" {
-				return true
-			}
-			return strings.HasPrefix(queryUpper, "INSERT")
-		}
-	}
-	return false
-}
 
 // Equals implements the Type interface.
 func (t EnumType) Equals(otherType sql.Type) bool {
