@@ -8338,6 +8338,16 @@ where
 		},
 		Assertions: []ScriptTestAssertion{
 			{
+				Query: "show create table t;",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int NOT NULL,\n" +
+						"  `e` enum('abc','def','ghi') NOT NULL,\n" +
+						"  PRIMARY KEY (`i`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
 				Query: "insert into t(i) values (1)",
 				Expected: []sql.Row{
 					{types.NewOkResult(1)},
@@ -8346,6 +8356,13 @@ where
 			{
 				Query:       "insert into t values (2, null)",
 				ExpectedErr: sql.ErrInsertIntoNonNullableProvidedNull,
+			},
+			{
+				Skip:  true,
+				Query: "insert into t values (2, default)",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
 			},
 			{
 				Query: "select * from t;",
@@ -8667,7 +8684,7 @@ where
 		Name:    "enum conversion to strings",
 		Dialect: "mysql",
 		SetUpScript: []string{
-			"create table t (e enum('abc', 'defg', 'hjikl'));",
+			"create table t (e enum('abc', 'defg', 'hijkl'));",
 			"insert into t values(1), (2), (3);",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -8676,7 +8693,7 @@ where
 				Expected: []sql.Row{
 					{"abc", 3},
 					{"defg", 4},
-					{"hjikl", 5},
+					{"hijkl", 5},
 				},
 			},
 			{
@@ -8684,7 +8701,7 @@ where
 				Expected: []sql.Row{
 					{"abc", "abctest"},
 					{"defg", "defgtest"},
-					{"hjikl", "hjikltest"},
+					{"hijkl", "hijkltest"},
 				},
 			},
 			{
@@ -8692,13 +8709,20 @@ where
 				Expected: []sql.Row{
 					{"abc", true, false},
 					{"defg", false, true},
-					{"hjikl", false, false},
+					{"hijkl", false, false},
+				},
+			},
+			{
+				Skip:  true,
+				Query: "select e from t where e like 'a%' order by e;",
+				Expected: []sql.Row{
+					{"abc"},
 				},
 			},
 			{
 				Query: "select group_concat(e order by e) as grouped from t;",
 				Expected: []sql.Row{
-					{"abc,defg,hjikl"},
+					{"abc,defg,hijkl"},
 				},
 			},
 			{
@@ -8711,6 +8735,82 @@ where
 				Query: "select count(*) from t where e = 'defg';",
 				Expected: []sql.Row{
 					{1},
+				},
+			},
+			{
+				Query: "select (case e when 'abc' then 42 end) from t order by e;",
+				Expected: []sql.Row{
+					{42},
+					{nil},
+					{nil},
+				},
+			},
+			{
+				Query: "select case when e = 'abc' then 'abc' when e = 'defg' then 123 else e end from t order by e;",
+				Expected: []sql.Row{
+					{"abc"},
+					{"123"},
+					{"hijkl"},
+				},
+			},
+			{
+				Query: "select (case 'abc' when e then 42 end) from t order by e;",
+				Expected: []sql.Row{
+					{42},
+					{nil},
+					{nil},
+				},
+			},
+			{
+				Query: "select (case e when 'abc' then e when 'defg' then e when 'hijkl' then e end) as e from t order by e;",
+				Expected: []sql.Row{
+					{"abc"},
+					{"defg"},
+					{"hijkl"},
+				},
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/8598
+				Skip:  true,
+				Query: "select (case e when 'abc' then e when 'defg' then e when 'hijkl' then 'something' end) as e from t order by e;",
+				Expected: []sql.Row{
+					{"abc"},
+					{"defg"},
+					{"something"},
+				},
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/8598
+				Skip:  true,
+				Query: "select (case e when 'abc' then e when 'defg' then e when 'hijkl' then 123 end) as e from t order by e;",
+				Expected: []sql.Row{
+					{"123"},
+					{"abc"},
+					{"def"},
+				},
+			},
+			{
+				Query: "select e, cast(e as signed) from t order by e;",
+				Expected: []sql.Row{
+					{"abc", 1},
+					{"defg", 2},
+					{"hijkl", 3},
+				},
+			},
+			{
+				Query: "select e, cast(e as char) from t order by e;",
+				Expected: []sql.Row{
+					{"abc", "abc"},
+					{"defg", "defg"},
+					{"hijkl", "hijkl"},
+				},
+			},
+			{
+				Query: "select e, cast(e as binary) from t order by e;",
+				Expected: []sql.Row{
+					{"abc", []uint8("abc")},
+					{"defg", []uint8("defg")},
+					{"hijkl", []uint8("hijkl")},
 				},
 			},
 		},
@@ -8738,88 +8838,6 @@ where
 					{"ON", "ONDolt"},
 					{"OFF", "OFFDolt"},
 					{"AUTO", "AUTODolt"},
-				},
-			},
-		},
-	},
-	{
-		// TODO: merge this with enum conversion to strings test above
-		Name: "multi enum return types",
-		SetUpScript: []string{
-			"create table t (i int primary key, e enum('abc', 'def', 'ghi'));",
-			"insert into t values (1, 'abc'), (2, 'def'), (3, 'ghi');",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "select i, (case e when 'abc' then e when 'def' then e when 'ghi' then e end) as e from t;",
-				Expected: []sql.Row{
-					{1, "abc"},
-					{2, "def"},
-					{3, "ghi"},
-				},
-			},
-			{
-				// https://github.com/dolthub/dolt/issues/8598
-				Skip:  true,
-				Query: "select i, (case e when 'abc' then e when 'def' then e when 'ghi' then 'something' end) as e from t;",
-				Expected: []sql.Row{
-					{1, "abc"},
-					{2, "def"},
-					{3, "something"},
-				},
-			},
-			{
-				// https://github.com/dolthub/dolt/issues/8598
-				Skip:  true,
-				Query: "select i, (case e when 'abc' then e when 'def' then e when 'ghi' then 123 end) as e from t;",
-				Expected: []sql.Row{
-					{1, "abc"},
-					{2, "def"},
-					{3, "123"},
-				},
-			},
-		},
-	},
-	{
-		// TODO: merge with above
-		// https://github.com/dolthub/dolt/issues/8598
-		Name:    "enum cast to int and string",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"create table t (i int primary key, e enum('abc', 'def', 'ghi'));",
-			"insert into t values (1, 'abc'), (2, 'def'), (3, 'ghi');",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "select i, cast(e as signed) from t;",
-				Expected: []sql.Row{
-					{1, 1},
-					{2, 2},
-					{3, 3},
-				},
-			},
-			{
-				Query: "select i, cast(e as char) from t;",
-				Expected: []sql.Row{
-					{1, "abc"},
-					{2, "def"},
-					{3, "ghi"},
-				},
-			},
-			{
-				Query: "select i, cast(e as binary) from t;",
-				Expected: []sql.Row{
-					{1, []uint8("abc")},
-					{2, []uint8("def")},
-					{3, []uint8("ghi")},
-				},
-			},
-			{
-				Query: "select case when e = 'abc' then 'abc' when e = 'def' then 123 else e end from t",
-				Expected: []sql.Row{
-					{"abc"},
-					{"123"},
-					{"ghi"},
 				},
 			},
 		},
@@ -9043,82 +9061,63 @@ where
 		},
 	},
 	{
-		// TODO: separate these
-		Name:    "SET and ENUM properly handle integers using UPDATE and DELETE statements",
+		Name:    "enums in update and delete statements",
 		Dialect: "mysql",
 		SetUpScript: []string{
-			"CREATE TABLE setenumtest (pk INT PRIMARY KEY, v1 ENUM('a', 'b', 'c'), v2 SET('a', 'b', 'c'));",
+			"create table t (pk int primary key, e enum('abc', 'def', 'ghi'));",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "INSERT INTO setenumtest VALUES (1, 1, 1), (2, 1, 1), (3, 3, 1), (4, 1, 3);",
-				Expected: []sql.Row{{types.NewOkResult(4)}},
-			},
-			{
-				Query: "UPDATE setenumtest SET v1 = 2, v2 = 2 WHERE pk = 2;",
-				Expected: []sql.Row{{types.OkResult{
-					RowsAffected: 1,
-					Info: plan.UpdateInfo{
-						Matched:  1,
-						Updated:  1,
-						Warnings: 0,
-					},
-				}}},
-			},
-			{
-				Query: "SELECT * FROM setenumtest ORDER BY pk;",
+				Query: "insert into t values (1, 1), (2, 3), (3, 2);",
 				Expected: []sql.Row{
-					{1, "a", "a"},
-					{2, "b", "b"},
-					{3, "c", "a"},
-					{4, "a", "a,b"},
+					{types.NewOkResult(3)},
 				},
 			},
 			{
-				Query:    "DELETE FROM setenumtest WHERE v1 = 3;",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
-			},
-			{
-				Query:    "DELETE FROM setenumtest WHERE v2 = 3;",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
-			},
-			{
-				Query: "SELECT * FROM setenumtest ORDER BY pk;",
+				Query: "update t set e = 2 where e = 'ghi';",
 				Expected: []sql.Row{
-					{1, "a", "a"},
-					{2, "b", "b"},
+					{types.OkResult{
+						RowsAffected: 1,
+						Info: plan.UpdateInfo{
+							Matched:  1,
+							Updated:  1,
+							Warnings: 0,
+						},
+					}},
 				},
 			},
-		},
-	},
-	{
-		// TODO: separate these
-		Name:    "WHERE clause considers ENUM/SET types for comparisons",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 ENUM('a', 'b', 'c'), v2 SET('a', 'b', 'c'));",
-			"INSERT INTO test VALUES (1, 2, 2), (2, 1, 1);",
-		},
-		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1, "b", "b"}, {2, "a", "a"}},
+				Query: "update t set e = 'ghi' where e = '3';",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 0,
+						Info: plan.UpdateInfo{
+							Matched:  0,
+							Updated:  0,
+							Warnings: 0,
+						},
+					}},
+				},
 			},
 			{
-				Query:    "UPDATE test SET v1 = 3 WHERE v1 = 2;",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
+				Query: "select * from t;",
+				Expected: []sql.Row{
+					{1, "abc"},
+					{2, "def"},
+					{3, "def"},
+				},
 			},
 			{
-				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1, "c", "b"}, {2, "a", "a"}},
+				Query: "delete from t where e = 2;",
+				Expected: []sql.Row{
+					{types.NewOkResult(2)},
+				},
 			},
 			{
-				Query:    "UPDATE test SET v2 = 3 WHERE 2 = v2;",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
-			},
-			{
-				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1, "c", "a,b"}, {2, "a", "a"}},
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{1, "abc"},
+				},
 			},
 		},
 	},
@@ -9229,6 +9228,625 @@ where
 					{0, 1},
 					{1, 0},
 					{2, 0},
+				},
+			},
+		},
+	},
+	{
+		Name:    "set with empty string",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (i int primary key, s set(''));",
+			"insert into t values (0, 0), (1, 1), (2, '');",
+			"create table tt (i int primary key, s set('something',''));",
+			"insert into tt values (0, 'something,'), (1, ',something,'), (2, ',,,,,,');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select i, s + 0, s from t;",
+				Expected: []sql.Row{
+					{0, float64(0), ""},
+					{1, float64(1), ""},
+					{2, float64(0), ""},
+				},
+			},
+			{
+				Query: "select i, s + 0, s from t where s = 0;",
+				Expected: []sql.Row{
+					{0, float64(0), ""},
+					{2, float64(0), ""},
+				},
+			},
+			{
+				Skip:  true,
+				Query: "select i, s + 0, s from t where s = '';",
+				Expected: []sql.Row{
+					{0, float64(0), ""},
+					{1, float64(1), ""}, // We miss this one
+					{2, float64(0), ""},
+				},
+			},
+			{
+				Skip:  true,
+				Query: "select i, s + 0, s from tt;",
+				Expected: []sql.Row{
+					{0, float64(0), "something,"},
+					{1, float64(1), "something,"},
+					{2, float64(2), ""},
+				},
+			},
+		},
+	},
+	{
+		Skip:    true,
+		Name:    "set conversion to strings",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (s set('abc', 'defg', 'hijkl'));",
+			"insert into t values(1), (2), (3), (7);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select s, length(s) from t order by s;",
+				Expected: []sql.Row{
+					{"abc", 3},
+					{"defg", 4},
+					{"abc,defg", 8},
+					{"abc,defg,hijkl", 14},
+				},
+			},
+			{
+				Query: "select s, concat(s, 'test') from t order by s;",
+				Expected: []sql.Row{
+					{"abc", "abctest"},
+					{"defg", "defgtest"},
+					{"abc,defg", "abc,defgtest"},
+					{"abc,defg,hijkl", "abc,defg,hijkltest"},
+				},
+			},
+			{
+				Query: "select s, s like 'a%', s like '%g' from t order by s;",
+				Expected: []sql.Row{
+					{"abc", true, false},
+					{"defg", false, true},
+					{"abc,defg", true, true},
+					{"abc,defg,hijkl", true, false},
+				},
+			},
+			{
+				Query: "select s from t where s like 'a%' order by s;",
+				Expected: []sql.Row{
+					{"abc"},
+					{"abc,defg"},
+					{"abc,defg,hijkl"},
+				},
+			},
+			{
+				Query: "select group_concat(s order by s) as grouped from t;",
+				Expected: []sql.Row{
+					{"abc,defg,abc,defg,abc,defg,hijkl"},
+				},
+			},
+			{
+				Query: "select s from t where s = 'abc';",
+				Expected: []sql.Row{
+					{"abc"},
+				},
+			},
+			{
+				Query: "select count(*) from t where s = 'defg';",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select (case s when 'abc' then 42 end) from t order by s;",
+				Expected: []sql.Row{
+					{42},
+					{nil},
+					{nil},
+					{nil},
+				},
+			},
+			{
+				Query: "select case when s = 'abc' then 'abc' when s = 'defg' then 123 else s end from t order by s;",
+				Expected: []sql.Row{
+					{"abc"},
+					{"123"},
+					{"abc,defg"},
+					{"abc,defg,hijkl"},
+				},
+			},
+			{
+				Query: "select (case 'abc' when s then 42 end) from t order by s;",
+				Expected: []sql.Row{
+					{42},
+					{nil},
+					{nil},
+					{nil},
+				},
+			},
+			{
+				Query: "select (case s when 'abc' then s when 'defg' then s when 'hijkl' then s end) as s from t order by s;",
+				Expected: []sql.Row{
+					{nil},
+					{nil},
+					{"abc"},
+					{"defg"},
+				},
+			},
+			{
+				Query: "select (case s when 'abc' then s when 'defg' then s when 'hijkl' then 'something' end) as s from t order by s;",
+				Expected: []sql.Row{
+					{nil},
+					{nil},
+					{"abc"},
+					{"defg"},
+				},
+			},
+			{
+				Query: "select (case s when 'abc' then s when 'defg' then s when 'hijkl' then 123 end) as s from t order by s;",
+				Expected: []sql.Row{
+					{nil},
+					{nil},
+					{"abc"},
+					{"defg"},
+				},
+			},
+			{
+				Query: "select s, cast(s as signed) from t order by s;",
+				Expected: []sql.Row{
+					{"abc", 1},
+					{"defg", 2},
+					{"abc,defg", 3},
+					{"abc,defg,hijkl", 7},
+				},
+			},
+			{
+				Query: "select s, cast(s as char) from t order by s;",
+				Expected: []sql.Row{
+					{"abc", "abc"},
+					{"abc,defg", "abc,defg"},
+					{"abc,defg,hijkl", "abc,defg,hijkl"},
+				},
+			},
+			{
+				Query: "select s, cast(s as binary) from t order by s;",
+				Expected: []sql.Row{
+					{"abc", []uint8("abc")},
+					{"abc,defg", []uint8("abc,defg")},
+					{"abc,defg,hijkl", []uint8("abc,defg,hijkl")},
+				},
+			},
+		},
+	},
+	{
+		Name:    "set with duplicates",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (s set('a', 'b', 'c'));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into t values ('a,b,a,c,a,b,b,b,c,c,c,a,a');",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select s + 0, s from t;",
+				Expected: []sql.Row{
+					{float64(7), "a,b,c"},
+				},
+			},
+			{
+				// This is with STRICT_TRANS_TABLES; errors are warnings when not strict
+				Query:       "create table tt (s set('a', 'a'));",
+				ExpectedErr: sql.ErrDuplicateEntrySet,
+			},
+		},
+	},
+	{
+		Name:    "set in update and delete statements",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (pk int primary key, s set('abc', 'def'));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into t values (0, 0), (1, 1), (2, 3), (3, 2);",
+				Expected: []sql.Row{
+					{types.NewOkResult(4)},
+				},
+			},
+			{
+				Query: "update t set s = 3 where s = 2;",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 1,
+						Info: plan.UpdateInfo{
+							Matched:  1,
+							Updated:  1,
+							Warnings: 0,
+						},
+					}},
+				},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{0, ""},
+					{1, "abc"},
+					{2, "abc,def"},
+					{3, "abc,def"},
+				},
+			},
+			{
+				Query: "delete from t where s = 'abc,def'",
+				Expected: []sql.Row{
+					{types.NewOkResult(2)},
+				},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{0, ""},
+					{1, "abc"},
+				},
+			},
+		},
+	},
+	{
+		Skip:    true,
+		Name:    "set with auto increment",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (s set('a', 'b', 'c') primary key);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "create table t2 (s set('a', 'b', 'c') primary key auto_increment)",
+				ExpectedErrStr: "Incorrect column specifier for column 's'",
+			},
+			{
+				Query:          "alter table t modify s set('a', 'b', 'c') auto_increment;",
+				ExpectedErrStr: "Incorrect column specifier for column 's'",
+			},
+			{
+				Query:          "alter table t modify column s set('a', 'b', 'c') auto_increment;",
+				ExpectedErrStr: "Incorrect column specifier for column 's'",
+			},
+			{
+				Query:          "alter table t change s s set('a', 'b', 'c') auto_increment;",
+				ExpectedErrStr: "Incorrect column specifier for column 's'",
+			},
+			{
+				Query:          "alter table t change column s s set('a', 'b', 'c') auto_increment;",
+				ExpectedErrStr: "Incorrect column specifier for column 's'",
+			},
+		},
+	},
+	{
+		Name:        "set with default values",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Skip:        true,
+				Query:       "create table bad (s set('a', 'b', 'c') default 0);",
+				ExpectedErr: sql.ErrInvalidColumnDefaultValue,
+			},
+			{
+				Skip:        true,
+				Query:       "create table bad (s set('a', 'b', 'c') default 1);",
+				ExpectedErr: sql.ErrInvalidColumnDefaultValue,
+			},
+			{
+				Skip:        true,
+				Query:       "create table bad (s set('a', 'b', 'c') default 'notexists');",
+				ExpectedErr: sql.ErrInvalidColumnDefaultValue,
+			},
+			{
+				Query: "create table t0 (s set('a', 'b', 'c') default (0));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "insert into t0 values ();",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select * from t0",
+				Expected: []sql.Row{
+					{""},
+				},
+			},
+
+			{
+				Query: "create table t (s set('a', 'b', 'c') not null);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip:        true,
+				Query:       "insert into t values ();",
+				ExpectedErr: sql.ErrInsertIntoNonNullableDefaultNullColumn, // wrong error
+			},
+			{
+				Skip:        true,
+				Query:       "insert into t values (default);",
+				ExpectedErr: sql.ErrInsertIntoNonNullableDefaultNullColumn, // wrong error
+			},
+		},
+	},
+	{
+		Name:    "set with collations",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t1 (s set('a', 'b', 'c') collate utf8mb4_0900_ai_ci);",
+			"create table t2 (s set('a', 'b', 'c') collate utf8mb4_0900_bin);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t1;",
+				Expected: []sql.Row{
+					{"t1", "CREATE TABLE `t1` (\n" +
+						"  `s` set('a','b','c') COLLATE utf8mb4_0900_ai_ci\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "insert into t1 values ('A,B,c');",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select * from t1",
+				Expected: []sql.Row{
+					{"a,b,c"},
+				},
+			},
+			{
+				Query: "show create table t2;",
+				Expected: []sql.Row{
+					{"t2", "CREATE TABLE `t2` (\n" +
+						"  `s` set('a','b','c')\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query:       "insert into t2 values ('A,B,c');",
+				ExpectedErr: sql.ErrInvalidSetValue,
+			},
+			{
+				Query:    "select * from t2",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:       "create table bad (s set('a', 'A') collate utf8mb4_0900_ai_ci);",
+				ExpectedErr: sql.ErrDuplicateEntrySet,
+			},
+		},
+	},
+	{
+		Skip:    true,
+		Name:    "set with foreign keys",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table parent (s set('a', 'b', 'c') primary key);",
+			"insert into parent values (1), (2);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "create table child0 (s set('a', 'b', 'c'), foreign key (s) references parent (s));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "insert into child0 values (1), (2), (NULL);",
+				Expected: []sql.Row{
+					{types.NewOkResult(3)},
+				},
+			},
+			{
+				Query: "select * from child0 order by s;",
+				Expected: []sql.Row{
+					{nil},
+					{"a"},
+					{"b"},
+				},
+			},
+
+			{
+				Query: "create table child1 (s set('x', 'y', 'z'), foreign key (s) references parent (s));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "insert into child1 values (1), (2);",
+				Expected: []sql.Row{
+					{types.NewOkResult(2)},
+				},
+			},
+			{
+				Query:       "insert into child1 values (3);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query: "insert into child1 values ('x'), ('y');",
+				Expected: []sql.Row{
+					{types.NewOkResult(2)},
+				},
+			},
+			{
+				Query:       "insert into child1 values ('z');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query:          "insert into child1 values ('a');",
+				ExpectedErrStr: "Data truncated for column 's' at row 1",
+			},
+			{
+				Query: "select * from child1 order by s;",
+				Expected: []sql.Row{
+					{"x"},
+					{"x"},
+					{"y"},
+					{"y"},
+				},
+			},
+
+			{
+				Query: "create table child2 (s set('b', 'c', 'a'), foreign key (s) references parent (s));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "insert into child2 values (1), (2);",
+				Expected: []sql.Row{
+					{types.NewOkResult(2)},
+				},
+			},
+			{
+				Query:       "insert into child2 values (3);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query: "insert into child2 values ('c');",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query:       "insert into child2 values ('a');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query: "select * from child2 order by s;",
+				Expected: []sql.Row{
+					{"b"},
+					{"c"},
+					{"c"},
+				},
+			},
+
+			{
+				Query: "create table child3 (s set('x', 'y', 'z', 'a', 'b', 'c'), foreign key (s) references parent (s));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "insert into child3 values (1), (2);",
+				Expected: []sql.Row{
+					{types.NewOkResult(2)},
+				},
+			},
+			{
+				Query:       "insert into child3 values (3);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query: "insert into child3 values ('x'), ('y');",
+				Expected: []sql.Row{
+					{types.NewOkResult(2)},
+				},
+			},
+			{
+				Query:       "insert into child3 values ('z');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query:       "insert into child3 values ('a');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query: "select * from child3 order by s;",
+				Expected: []sql.Row{
+					{"x"},
+					{"x"},
+					{"y"},
+					{"y"},
+				},
+			},
+
+			{
+				Query: "create table child4 (s set('q'), foreign key (s) references parent (s));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "insert into child4 values (1);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query:          "insert into child4 values (3);",
+				ExpectedErrStr: "Data truncated for column 's' at row 1",
+			},
+			{
+				Query: "insert into child4 values ('q');",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query:          "insert into child4 values ('a');",
+				ExpectedErrStr: "Data truncated for column 's' at row 1",
+			},
+			{
+				Query: "select * from child4 order by s;",
+				Expected: []sql.Row{
+					{"q"},
+					{"q"},
+				},
+			},
+		},
+	},
+	{
+		Skip:    true,
+		Name:    "set with foreign keys and cascade",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table parent (s set('a', 'b', 'c') primary key);",
+			"insert into parent values (1), (2);",
+			"create table child (s set('x', 'y', 'z'), foreign key (s) references parent (s) on update cascade on delete cascade);",
+			"insert into child values (1), (2);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "update parent set s = 'c' where s = 'a';",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
+				},
+			},
+			{
+				Query: "select * from child order by s;",
+				Expected: []sql.Row{
+					{"y"},
+					{"z"},
+				},
+			},
+			{
+				Query: "delete from parent where s = 'b';",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select * from child order by s;",
+				Expected: []sql.Row{
+					{"z"},
 				},
 			},
 		},

@@ -1219,6 +1219,75 @@ var AlterTableScripts = []ScriptTest{
 			},
 		},
 	},
+
+	// Set tests
+	{
+		Name: "modify set column",
+		SetUpScript: []string{
+			"create table t (i int primary key, s set('a', 'b', 'c'));",
+			"insert ignore into t values (0, 0), (1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6), (7, 7);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select i, s + 0, s from t;",
+				Expected: []sql.Row{
+					{0, float64(0), ""},
+					{1, float64(1), "a"},
+					{2, float64(2), "b"},
+					{3, float64(3), "a,b"},
+					{4, float64(4), "c"},
+					{5, float64(5), "a,c"},
+					{6, float64(6), "b,c"},
+					{7, float64(7), "a,b,c"},
+				},
+			},
+			{
+				Query: "alter table t modify column s set('a', 'b', 'c', 'd');",
+				Expected: []sql.Row{
+					{types.NewOkResult(8)},
+				},
+			},
+			{
+				Query: "select i, s + 0, s from t;",
+				Expected: []sql.Row{
+					{0, float64(0), ""},
+					{1, float64(1), "a"},
+					{2, float64(2), "b"},
+					{3, float64(3), "a,b"},
+					{4, float64(4), "c"},
+					{5, float64(5), "a,c"},
+					{6, float64(6), "b,c"},
+					{7, float64(7), "a,b,c"},
+				},
+			},
+			{
+				Skip:  true,
+				Query: "alter table t modify column s set('c', 'b', 'a');",
+				Expected: []sql.Row{
+					{types.NewOkResult(8)}, // We currently return 0 RowsAffected
+				},
+			},
+			{
+				Skip:  true,
+				Query: "select i, s + 0, s from t;",
+				Expected: []sql.Row{
+					{0, 0, ""},
+					{1, 2, "a"},
+					{2, 4, "b"},
+					{3, 6, "a,b"},
+					{4, 1, "c"},
+					{5, 3, "c,a"},
+					{6, 5, "c,b"},
+					{7, 7, "c,a,b"},
+				},
+			},
+			{
+				Skip:           true,
+				Query:          "alter table t modify column s set('a');",
+				ExpectedErrStr: "Data truncated for column", // We currently throw value 2 is not valid for this set
+			},
+		},
+	},
 }
 
 var RenameTableScripts = []ScriptTest{
