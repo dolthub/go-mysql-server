@@ -8211,11 +8211,11 @@ where
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:          "insert into t values (1, 500)",
-				ExpectedErrStr: "value 500 is not valid for this Enum",
+				ExpectedErrStr: "Data truncated for column 'e' at row 1",
 			},
 			{
 				Query:          "insert into t values (1, -1)",
-				ExpectedErrStr: "value -1 is not valid for this Enum",
+				ExpectedErrStr: "Data truncated for column 'e' at row 1",
 			},
 		},
 	},
@@ -8238,7 +8238,7 @@ where
 			{
 				// enum values must match EXACTLY for case-sensitive collations
 				Query:          "INSERT INTO enumtest1 VALUES (10, 'ABC'), (11, 'aBc'), (12, 'xyz');",
-				ExpectedErrStr: "value ABC is not valid for this Enum",
+				ExpectedErrStr: "Data truncated for column 'e' at row 1",
 			},
 			{
 				Query: "SHOW CREATE TABLE enumtest1;",
@@ -8843,7 +8843,6 @@ where
 		},
 	},
 	{
-		Skip:    true,
 		Name:    "enums with foreign keys",
 		Dialect: "mysql",
 		SetUpScript: []string{
