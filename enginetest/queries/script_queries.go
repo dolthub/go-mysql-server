@@ -1202,7 +1202,7 @@ CREATE TABLE tab3 (
 			{
 				// enum values must match EXACTLY for case-sensitive collations
 				Query:          "INSERT INTO enumtest1 VALUES (10, 'ABC'), (11, 'aBc'), (12, 'xyz');",
-				ExpectedErrStr: "value ABC is not valid for this Enum",
+				ExpectedErrStr: "Data truncated for column 'e' at row 1",
 			},
 			{
 				Query: "SHOW CREATE TABLE enumtest1;",
@@ -8053,11 +8053,11 @@ where
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:          "insert into t values (1, 500)",
-				ExpectedErrStr: "value 500 is not valid for this Enum",
+				ExpectedErrStr: "Data truncated for column 'e' at row 1",
 			},
 			{
 				Query:          "insert into t values (1, -1)",
-				ExpectedErrStr: "value -1 is not valid for this Enum",
+				ExpectedErrStr: "Data truncated for column 'e' at row 1",
 			},
 		},
 	},
@@ -9164,7 +9164,6 @@ where
 		},
 	},
 	{
-		Skip:    true,
 		Name:    "enums with foreign keys",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -9207,7 +9206,7 @@ where
 			},
 			{
 				Query:       "insert into child1 values (3);",
-				ExpectedErr: sql.ErrForeignKeyParentViolation,
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
 				Query: "insert into child1 values ('x'), ('y');",
@@ -9217,11 +9216,11 @@ where
 			},
 			{
 				Query:       "insert into child1 values ('z');",
-				ExpectedErr: sql.ErrForeignKeyParentViolation,
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
 				Query:          "insert into child1 values ('a');",
-				ExpectedErrStr: "Data truncated for column 'e'",
+				ExpectedErrStr: "Data truncated for column 'e' at row 1",
 			},
 			{
 				Query: "select * from child1 order by e;",
@@ -9247,7 +9246,7 @@ where
 			},
 			{
 				Query:       "insert into child2 values (3);",
-				ExpectedErr: sql.ErrForeignKeyParentViolation,
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
 				Query: "insert into child2 values ('c');",
@@ -9257,14 +9256,14 @@ where
 			},
 			{
 				Query:       "insert into child2 values ('a');",
-				ExpectedErr: sql.ErrForeignKeyParentViolation,
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
 				Query: "select * from child2 order by e;",
 				Expected: []sql.Row{
-					{"c"},
-					{"c"},
 					{"b"},
+					{"c"},
+					{"c"},
 				},
 			},
 
@@ -9282,7 +9281,7 @@ where
 			},
 			{
 				Query:       "insert into child3 values (3);",
-				ExpectedErr: sql.ErrForeignKeyParentViolation,
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
 				Query: "insert into child3 values ('x'), ('y');",
@@ -9292,11 +9291,11 @@ where
 			},
 			{
 				Query:       "insert into child3 values ('z');",
-				ExpectedErr: sql.ErrForeignKeyParentViolation,
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
 				Query:       "insert into child3 values ('a');",
-				ExpectedErr: sql.ErrForeignKeyParentViolation,
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
 				Query: "select * from child3 order by e;",
@@ -9322,7 +9321,7 @@ where
 			},
 			{
 				Query:          "insert into child4 values (3);",
-				ExpectedErrStr: "Data truncated for column 'e'",
+				ExpectedErrStr: "Data truncated for column 'e' at row 1",
 			},
 			{
 				Query: "insert into child4 values ('q');",
@@ -9332,7 +9331,7 @@ where
 			},
 			{
 				Query:          "insert into child4 values ('a');",
-				ExpectedErrStr: "Data truncated for column 'e'",
+				ExpectedErrStr: "Data truncated for column 'e' at row 1",
 			},
 			{
 				Query: "select * from child4 order by e;",
