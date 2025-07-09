@@ -1298,7 +1298,9 @@ func validateDefaultExprs(col *sql.Column) error {
 	if col.Default == nil {
 		return nil
 	}
-
+	if !(types.IsDatetimeType(col.Type) || types.IsTimestampType(col.Type)) {
+		return nil
+	}
 	var colPrec int
 	if dt, ok := col.Type.(sql.DatetimeType); ok {
 		colPrec = dt.Precision()
@@ -1308,7 +1310,6 @@ func validateDefaultExprs(col *sql.Column) error {
 	} else if !isValid {
 		return sql.ErrInvalidColumnDefaultValue.New(col.Name)
 	}
-
 	return nil
 }
 
