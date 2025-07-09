@@ -5612,6 +5612,238 @@ SELECT * FROM cte WHERE  d = 2;`,
 		},
 	},
 	{
+		Query: `SELECT EXPORT_SET(5, "Y", "N", ",", 4)`,
+		Expected: []sql.Row{
+			{string("Y,N,Y,N")},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(6, "1", "0", ",", 10)`,
+		Expected: []sql.Row{
+			{string("0,1,1,0,0,0,0,0,0,0")},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(0, "1", "0", ",", 4)`,
+		Expected: []sql.Row{
+			{string("0,0,0,0")},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(15, "1", "0", ",", 4)`,
+		Expected: []sql.Row{
+			{string("1,1,1,1")},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(1, "T", "F", ",", 3)`,
+		Expected: []sql.Row{
+			{string("T,F,F")},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(5, "1", "0", "|", 4)`,
+		Expected: []sql.Row{
+			{string("1|0|1|0")},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(5, "1", "0", "", 4)`,
+		Expected: []sql.Row{
+			{string("1010")},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(5, "ON", "OFF", ",", 4)`,
+		Expected: []sql.Row{
+			{string("ON,OFF,ON,OFF")},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(255, "1", "0", ",", 8)`,
+		Expected: []sql.Row{
+			{string("1,1,1,1,1,1,1,1")},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(1024, "1", "0", ",", 12)`,
+		Expected: []sql.Row{
+			{string("0,0,0,0,0,0,0,0,0,0,1,0")},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(5, "1", "0")`,
+		Expected: []sql.Row{
+			{string("1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0")},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(5, "1", "0", ",", 1)`,
+		Expected: []sql.Row{
+			{string("1")},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(-1, "1", "0", ",", 4)`,
+		Expected: []sql.Row{
+			{string("1,1,1,1")},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(NULL, "1", "0", ",", 4)`,
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(5, NULL, "0", ",", 4)`,
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(5, "1", NULL, ",", 4)`,
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(5, "1", "0", NULL, 4)`,
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(5, "1", "0", ",", NULL)`,
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET("5", "1", "0", ",", 4)`,
+		Expected: []sql.Row{
+			{string("1,0,1,0")},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(5.7, "1", "0", ",", 4)`,
+		Expected: []sql.Row{
+			{string("0,1,1,0")},
+		},
+	},
+	{
+		Query: `SELECT EXPORT_SET(i, "1", "0", ",", 4) FROM mytable ORDER BY i`,
+		Expected: []sql.Row{
+			{string("1,0,0,0")},
+			{string("0,1,0,0")},
+			{string("1,1,0,0")},
+		},
+	},
+	{
+		Query: `SELECT MAKE_SET(1, "a", "b", "c")`,
+		Expected: []sql.Row{
+			{string("a")},
+		},
+	},
+	{
+		Query: `SELECT MAKE_SET(1 | 4, "hello", "nice", "world")`,
+		Expected: []sql.Row{
+			{string("hello,world")},
+		},
+	},
+	{
+		Query: `SELECT MAKE_SET(0, "a", "b", "c")`,
+		Expected: []sql.Row{
+			{string("")},
+		},
+	},
+	{
+		Query: `SELECT MAKE_SET(3, "a", "b", "c")`,
+		Expected: []sql.Row{
+			{string("a,b")},
+		},
+	},
+	{
+		Query: `SELECT MAKE_SET(5, "a", "b", "c")`,
+		Expected: []sql.Row{
+			{string("a,c")},
+		},
+	},
+	{
+		Query: `SELECT MAKE_SET(7, "a", "b", "c")`,
+		Expected: []sql.Row{
+			{string("a,b,c")},
+		},
+	},
+	{
+		Query: `SELECT MAKE_SET(1024, "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k")`,
+		Expected: []sql.Row{
+			{string("k")},
+		},
+	},
+	{
+		Query: `SELECT MAKE_SET(1025, "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k")`,
+		Expected: []sql.Row{
+			{string("a,k")},
+		},
+	},
+	{
+		Query: `SELECT MAKE_SET(7, "a", NULL, "c")`,
+		Expected: []sql.Row{
+			{string("a,c")},
+		},
+	},
+	{
+		Query: `SELECT MAKE_SET(7, NULL, "b", "c")`,
+		Expected: []sql.Row{
+			{string("b,c")},
+		},
+	},
+	{
+		Query: `SELECT MAKE_SET(NULL, "a", "b", "c")`,
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
+		Query: `SELECT MAKE_SET("5", "a", "b", "c")`,
+		Expected: []sql.Row{
+			{string("a,c")},
+		},
+	},
+	{
+		Query: `SELECT MAKE_SET(5.7, "a", "b", "c")`,
+		Expected: []sql.Row{
+			{string("b,c")},
+		},
+	},
+	{
+		Query: `SELECT MAKE_SET(-1, "a", "b", "c")`,
+		Expected: []sql.Row{
+			{string("a,b,c")},
+		},
+	},
+	{
+		Query: `SELECT MAKE_SET(16, "a", "b", "c")`,
+		Expected: []sql.Row{
+			{string("")},
+		},
+	},
+	{
+		Query: `SELECT MAKE_SET(3, "", "test", "")`,
+		Expected: []sql.Row{
+			{string(",test")},
+		},
+	},
+	{
+		Query: `SELECT MAKE_SET(i, "first", "second", "third") FROM mytable ORDER BY i`,
+		Expected: []sql.Row{
+			{string("first")},
+			{string("second")},
+			{string("first,second")},
+		},
+	},
+	{
 		Query: "SELECT version()",
 		Expected: []sql.Row{
 			{"8.0.31"},
