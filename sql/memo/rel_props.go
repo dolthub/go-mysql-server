@@ -285,12 +285,17 @@ func (p *relProps) populateFds() {
 					}
 				}
 			case *expression.Not:
-				child, ok := f.Child.(*expression.IsNull)
+				child, ok := f.Child.(sql.IsNullExpression)
 				if ok {
-					col, ok := child.Child.(*expression.GetField)
+					col, ok := child.Children()[0].(*expression.GetField)
 					if ok {
 						notNull.Add(col.Id())
 					}
+				}
+			case sql.IsNotNullExpression:
+				col, ok := f.Children()[0].(*expression.GetField)
+				if ok {
+					notNull.Add(col.Id())
 				}
 			}
 		}

@@ -531,9 +531,12 @@ func NewSemiJoin(left, right sql.Node, cond sql.Expression) *JoinNode {
 // IsNullRejecting returns whether the expression always returns false for
 // nil inputs.
 func IsNullRejecting(e sql.Expression) bool {
+	// Note that InspectExpr will stop inspecting expressions in the
+	// expression tree when true is returned, so we invert that return
+	// value from InspectExpr to return the correct null rejecting value.
 	return !transform.InspectExpr(e, func(e sql.Expression) bool {
 		switch e.(type) {
-		case *expression.NullSafeEquals, *expression.IsNull:
+		case sql.IsNullExpression, sql.IsNotNullExpression, *expression.NullSafeEquals:
 			return true
 		default:
 			return false
