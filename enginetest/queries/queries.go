@@ -10399,7 +10399,8 @@ from typestable`,
 	{
 		Query: "select mod(pk2, 2) from two_pk group by pk1 + 1, mod(pk2, 2)",
 		Expected: []sql.Row{
-			{0}, {1}, {0}, {1},
+			// mod is a Decimal type, which we convert to a string in our enginetests
+			{"0"}, {"1"}, {"0"}, {"1"},
 		},
 	},
 }
