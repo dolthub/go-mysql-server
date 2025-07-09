@@ -14,8 +14,6 @@
 package expression
 
 import (
-	"fmt"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -82,7 +80,7 @@ func (e *EnumToString) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	case string:
 		str = v
 	default:
-		return nil, sql.ErrInvalidType.New(fmt.Sprintf("%T", val))
+		return nil, sql.ErrInvalidType.New(types.Text.String())
 	}
 	return str, nil
 }

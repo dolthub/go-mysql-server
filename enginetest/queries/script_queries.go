@@ -8720,8 +8720,6 @@ where
 		},
 	},
 	{
-		// This tests STRICT_ALL_TABLES mode specifically
-		Skip:    false,
 		Name:    "enums with zero strict all tables",
 		Dialect: "mysql",
 		SetUpScript: []string{

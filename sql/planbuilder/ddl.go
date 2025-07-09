@@ -1299,17 +1299,14 @@ func validateDefaultExprs(col *sql.Column) error {
 		return nil
 	}
 
-	// Validate datetime/timestamp precision
-	if types.IsDatetimeType(col.Type) || types.IsTimestampType(col.Type) {
-		var colPrec int
-		if dt, ok := col.Type.(sql.DatetimeType); ok {
-			colPrec = dt.Precision()
-		}
-		if isValid, err := validatePrec(col.Default.Expr, colPrec); err != nil {
-			return err
-		} else if !isValid {
-			return sql.ErrInvalidColumnDefaultValue.New(col.Name)
-		}
+	var colPrec int
+	if dt, ok := col.Type.(sql.DatetimeType); ok {
+		colPrec = dt.Precision()
+	}
+	if isValid, err := validatePrec(col.Default.Expr, colPrec); err != nil {
+		return err
+	} else if !isValid {
+		return sql.ErrInvalidColumnDefaultValue.New(col.Name)
 	}
 
 	return nil
