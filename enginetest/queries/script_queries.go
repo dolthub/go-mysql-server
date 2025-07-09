@@ -8720,6 +8720,30 @@ where
 		},
 	},
 	{
+		// This tests STRICT_ALL_TABLES mode specifically
+		Skip:    false,
+		Name:    "enums with zero strict all tables",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"SET sql_mode = 'STRICT_ALL_TABLES';",
+			"create table t (e enum('a', 'b', 'c'));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "insert into t values (0);",
+				ExpectedErrStr: "Data truncated for column 'e' at row 1",
+			},
+			{
+				Query:          "insert into t values ('a'), (0), ('b');",
+				ExpectedErrStr: "Data truncated for column 'e' at row 2",
+			},
+			{
+				Query:       "create table tt (e enum('a', 'b', 'c') default 0)",
+				ExpectedErr: sql.ErrInvalidColumnDefaultValue,
+			},
+		},
+	},
+	{
 		Name:    "enums with zero non-strict mode",
 		Dialect: "mysql",
 		SetUpScript: []string{
