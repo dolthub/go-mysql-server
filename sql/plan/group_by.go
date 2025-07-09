@@ -30,17 +30,8 @@ var ErrGroupBy = errors.NewKind("group by aggregation '%v' not supported")
 // GroupBy groups the rows by some expressions.
 type GroupBy struct {
 	UnaryNode
-	// SelectedExprs are projection dependencies. They are not the explicit select expressions. For example, given the
-	// query "SELECT pk div 2 from one_pk group by 1," SelectedExprs would contain a GetField for one_pk.pk even though
-	// the explicit select expression is "pk div 2".
 	SelectedExprs []sql.Expression
 	GroupByExprs  []sql.Expression
-	// SelectedAliasMap maps a projection dependency to an alias if it was part of one. For example, given the query
-	// "SELECT pk div 2, pk + 3 from one_pk group by 2", SelectedAliasMap would contain a mapping from the GetField for
-	// one_pk.pk to the Alias for "pk div 2" and to the Alias for "pk + 3". This allows for projection dependencies to
-	// be validated for GroupBy dependencies. Since SelectedAliasMap is only used for validating GroupBys dependencies,
-	// the expressions are stored as strings. A nested map is used for faster access during validation.
-	SelectedAliasMap map[string][]string
 }
 
 var _ sql.Expressioner = (*GroupBy)(nil)
@@ -52,12 +43,11 @@ var _ sql.CollationCoercible = (*GroupBy)(nil)
 // will appear in the output of the query. Some of these fields may be aggregate functions, some may be columns or
 // other expressions. Unlike a project, the GroupBy also has a list of group-by expressions, which usually also appear
 // in the list of selected expressions.
-func NewGroupBy(selectedExprs, groupByExprs []sql.Expression, selectedAliasMap map[string][]string, child sql.Node) *GroupBy {
+func NewGroupBy(selectedExprs, groupByExprs []sql.Expression, child sql.Node) *GroupBy {
 	return &GroupBy{
-		UnaryNode:        UnaryNode{Child: child},
-		SelectedExprs:    selectedExprs,
-		GroupByExprs:     groupByExprs,
-		SelectedAliasMap: selectedAliasMap,
+		UnaryNode:     UnaryNode{Child: child},
+		SelectedExprs: selectedExprs,
+		GroupByExprs:  groupByExprs,
 	}
 }
 
@@ -111,7 +101,7 @@ func (g *GroupBy) WithChildren(children ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(g, len(children), 1)
 	}
 
-	return NewGroupBy(g.SelectedExprs, g.GroupByExprs, g.SelectedAliasMap, children[0]), nil
+	return NewGroupBy(g.SelectedExprs, g.GroupByExprs, children[0]), nil
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -132,7 +122,7 @@ func (g *GroupBy) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	grouping := make([]sql.Expression, len(g.GroupByExprs))
 	copy(grouping, exprs[len(g.SelectedExprs):])
 
-	return NewGroupBy(agg, grouping, g.SelectedAliasMap, g.Child), nil
+	return NewGroupBy(agg, grouping, g.Child), nil
 }
 
 func (g *GroupBy) String() string {

@@ -262,8 +262,8 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 
 		switch parent.(type) {
 		case *plan.Having, *plan.Project, *plan.Sort:
-			// TODO: these shouldn't be skipped; you can group by primary key without problem b/c only one value
-			// https://dev.mysql.com/doc/refman/8.0/en/group-by-handling.html#:~:text=The%20query%20is%20valid%20if%20name%20is%20a%20primary%20key
+			// TODO: these shouldn't be skipped but we currently aren't able to validate GroupBys with selected aliased
+			// expressions and a lot of our tests group by aliases
 			return true
 		}
 
@@ -276,12 +276,11 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 		primaryKeys := make(map[string]bool)
 		for _, col := range gb.Child.Schema() {
 			if col.PrimaryKey {
-				primaryKeys[strings.ToLower(col.Name)] = true
+				primaryKeys[strings.ToLower(col.String())] = true
 			}
 		}
 
 		groupBys := make(map[string]bool)
-		groupByAliases := make(map[string]bool)
 		groupByPrimaryKeys := 0
 		for _, expr := range gb.GroupByExprs {
 			exprStr := strings.ToLower(expr.String())
@@ -289,17 +288,15 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 			if primaryKeys[exprStr] {
 				groupByPrimaryKeys++
 			}
-			if _, ok := expr.(sql.Aggregation); ok {
-				groupByAliases[exprStr] = true
-			}
 		}
 
+		// TODO: also allow grouping by unique non-nullable columns
 		if len(primaryKeys) != 0 && groupByPrimaryKeys == len(primaryKeys) {
 			return true
 		}
 
 		for _, expr := range gb.SelectedExprs {
-			if !expressionReferencesOnlyGroupBys(groupBys, groupByAliases, expr) {
+			if !expressionReferencesOnlyGroupBys(groupBys, expr) {
 				err = analyzererrors.ErrValidationGroupBy.New(expr.String())
 				return false
 			}
@@ -310,7 +307,7 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	return n, transform.SameTree, err
 }
 
-func expressionReferencesOnlyGroupBys(groupBys, groupByAliases map[string]bool, expr sql.Expression) bool {
+func expressionReferencesOnlyGroupBys(groupBys map[string]bool, expr sql.Expression) bool {
 	valid := true
 	sql.Inspect(expr, func(expr sql.Expression) bool {
 		exprStr := strings.ToLower(expr.String())

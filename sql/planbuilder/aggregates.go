@@ -203,7 +203,6 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 	var selectExprs []sql.Expression
 	var selectGfs []sql.Expression
 	selectStr := make(map[string]bool)
-	aliasMap := make(map[string][]string)
 	for _, e := range group.aggregations() {
 		if !selectStr[strings.ToLower(e.String())] {
 			selectExprs = append(selectExprs, e.scalar)
@@ -213,14 +212,12 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 	}
 	var aliases []sql.Expression
 	for _, col := range projScope.cols {
-		var isAlias bool
 		// eval aliases in project scope
 		switch e := col.scalar.(type) {
 		case *expression.Alias:
 			if !e.Unreferencable() {
 				aliases = append(aliases, e.WithId(sql.ColumnId(col.id)).(*expression.Alias))
 			}
-			isAlias = true
 		default:
 		}
 
@@ -233,9 +230,6 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 					selectExprs = append(selectExprs, e)
 					selectGfs = append(selectGfs, e)
 					selectStr[colName] = true
-				}
-				if isAlias {
-					aliasMap[colName] = append(aliasMap[colName], strings.ToLower(col.scalar.String()))
 				}
 			default:
 			}
@@ -251,7 +245,7 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 			selectStr[e.String()] = true
 		}
 	}
-	gb := plan.NewGroupBy(selectExprs, groupingCols, aliasMap, fromScope.node)
+	gb := plan.NewGroupBy(selectExprs, groupingCols, fromScope.node)
 	outScope.node = gb
 
 	if len(aliases) > 0 {

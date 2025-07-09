@@ -10381,6 +10381,27 @@ from typestable`,
 			{2, "second row"},
 		},
 	},
+	{
+		Query: "select * from two_pk group by pk1, pk2",
+		Expected: []sql.Row{
+			{0, 0, 0, 1, 2, 3, 4},
+			{0, 1, 10, 11, 12, 13, 14},
+			{1, 0, 20, 21, 22, 23, 24},
+			{1, 1, 30, 31, 32, 33, 34},
+		},
+	},
+	{
+		Query: "select pk1+1 from two_pk group by pk1 + 1, mod(pk2, 2)",
+		Expected: []sql.Row{
+			{1}, {1}, {2}, {2},
+		},
+	},
+	{
+		Query: "select mod(pk2, 2) from two_pk group by pk1 + 1, mod(pk2, 2)",
+		Expected: []sql.Row{
+			{0}, {1}, {0}, {1},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
@@ -11399,6 +11420,15 @@ var ErrorQueries = []QueryErrorTest{
 		Query:       "SELECT 1 INTO mytable;",
 		ExpectedErr: sql.ErrUndeclaredVariable,
 	},
+	{
+		Query:       "select * from two_pk group by pk1",
+		ExpectedErr: analyzererrors.ErrValidationGroupBy,
+	},
+	{
+		// Grouping over functions and math expressions over PK does not count, and must appear in select
+		Query:       "select * from two_pk group by pk1 + 1, mod(pk2, 2)",
+		ExpectedErr: analyzererrors.ErrValidationGroupBy,
+	},
 }
 
 var BrokenErrorQueries = []QueryErrorTest{
@@ -11428,38 +11458,10 @@ var BrokenErrorQueries = []QueryErrorTest{
 		ExpectedErr: analyzererrors.ErrValidationGroupBy,
 	},
 	{
-		Query: "select * from two_pk group by pk1, pk2",
-		// No error
-	},
-	{
-		Query:       "select * from two_pk group by pk1",
-		ExpectedErr: analyzererrors.ErrValidationGroupBy,
-	},
-	{
-		// Grouping over functions and math expressions over PK does not count, and must appear in select
-		Query:       "select * from two_pk group by pk1 + 1, mod(pk2, 2)",
-		ExpectedErr: analyzererrors.ErrValidationGroupBy,
-	},
-	{
-		// Grouping over functions and math expressions over PK does not count, and must appear in select
-		Query: "select pk1+1 from two_pk group by pk1 + 1, mod(pk2, 2)",
-		// No error
-	},
-	{
-		// Grouping over functions and math expressions over PK does not count, and must appear in select
-		Query: "select mod(pk2, 2) from two_pk group by pk1 + 1, mod(pk2, 2)",
-		// No error
-	},
-	{
-		// Grouping over functions and math expressions over PK does not count, and must appear in select
-		Query: "select mod(pk2, 2) from two_pk group by pk1 + 1, mod(pk2, 2)",
-		// No error
-	},
-	{
 		Query: `SELECT any_value(pk), (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x
 						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) > 0
 						GROUP BY (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) ORDER BY x`,
-		// No error, but we get opk.pk does not exist
+		// No error, but we get opk.pk does not exist (aliasing error)
 	},
 	// Unimplemented JSON functions
 	{
