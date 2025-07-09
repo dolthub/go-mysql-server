@@ -1005,6 +1005,7 @@ var SQLLogicSubqueryTests = []ScriptTest{
 		},
 	},
 	{
+		// Skipping because we don't convert Time objects to strings in enginetests
 		Skip: true,
 		Name: "multiple nested subquery",
 		SetUpScript: []string{

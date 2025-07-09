@@ -828,10 +828,6 @@ var QueryTests = []QueryTest{
 		Query:    "select y as x from xy group by (y) having AVG(x) > 0",
 		Expected: []sql.Row{{0}, {1}, {3}},
 	},
-	// {
-	//	Query:    "select y as z from xy group by (y) having AVG(z) > 0",
-	//	Expected: []sql.Row{{1}, {2}, {3}},
-	// },
 	{
 		Query:    "SELECT * FROM mytable t0 INNER JOIN mytable t1 ON (t1.i IN (((true)%(''))));",
 		Expected: []sql.Row{},
@@ -10653,6 +10649,20 @@ FROM mytable;`,
 		Expected: []sql.Row{
 			{"DECIMAL"},
 		},
+	},
+	// https://github.com/dolthub/dolt/issues/7095
+	// References in group by and having should be allowed to match select aliases
+	{
+		Query:    "select y as z from xy group by (y) having AVG(z) > 0",
+		Expected: []sql.Row{{1}, {2}, {3}},
+	},
+	{
+		Query:    "select y as z from xy group by (z) having AVG(z) > 0",
+		Expected: []sql.Row{{1}, {2}, {3}},
+	},
+	{
+		Query:    "select y + 1 as z from xy group by (z) having AVG(z) > 1",
+		Expected: []sql.Row{{2}, {3}, {4}},
 	},
 }
 
