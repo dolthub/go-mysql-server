@@ -35,7 +35,7 @@ func schemaLength(node sql.Node) int {
 			schemaLen = len(node.Projections)
 			return false
 		case *plan.GroupBy:
-			schemaLen = len(node.ProjectedExprs())
+			schemaLen = len(node.SelectedExprs)
 			return false
 		case *plan.Window:
 			schemaLen = len(node.SelectExprs)
