@@ -3158,7 +3158,7 @@ var InsertBrokenScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "insert into t_auto values ()",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
 			},
 			{
 				Query:    "select * from t_auto",
@@ -3166,7 +3166,7 @@ var InsertBrokenScripts = []ScriptTest{
 			},
 			{
 				Query:    "insert into t_default_null values ()",
-				Expected: []sql.Row{{&types.OkResult{RowsAffected: 1, InsertID: 1}}},
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0}}},
 			},
 			{
 				Query:    "select * from t_default_null",
