@@ -74,6 +74,20 @@ func TestQueries(t *testing.T, harness Harness) {
 		})
 	}
 
+	for _, tt := range queries.FunctionQueryTests {
+		t.Run(tt.Query, func(t *testing.T) {
+			if sh, ok := harness.(SkippingHarness); ok {
+				if sh.SkipQueryTest(tt.Query) {
+					t.Skipf("Skipping query plan for %s", tt.Query)
+				}
+			}
+			if IsServerEngine(e) && tt.SkipServerEngine {
+				t.Skip("skipping for server engine")
+			}
+			TestQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil, nil)
+		})
+	}
+
 	// TODO: move this into its own test method
 	if keyless, ok := harness.(KeylessTableHarness); ok && keyless.SupportsKeylessTables() {
 		for _, tt := range queries.KeylessQueries {
@@ -209,6 +223,17 @@ func TestQueriesPrepared(t *testing.T, harness Harness) {
 	defer e.Close()
 	t.Run("query prepared tests", func(t *testing.T) {
 		for _, tt := range queries.QueryTests {
+			if tt.SkipPrepared {
+				continue
+			}
+			t.Run(tt.Query, func(t *testing.T) {
+				TestPreparedQueryWithEngine(t, harness, e, tt)
+			})
+		}
+	})
+
+	t.Run("function query prepared tests", func(t *testing.T) {
+		for _, tt := range queries.FunctionQueryTests {
 			if tt.SkipPrepared {
 				continue
 			}
@@ -487,6 +512,7 @@ func TestReadOnlyDatabases(t *testing.T, harness ReadOnlyDatabaseHarness) {
 
 	for _, querySet := range [][]queries.QueryTest{
 		queries.QueryTests,
+		queries.FunctionQueryTests,
 		queries.KeylessQueries,
 	} {
 		for _, tt := range querySet {
