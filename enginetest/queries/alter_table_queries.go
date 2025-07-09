@@ -1469,7 +1469,7 @@ var AlterTableAddAutoIncrementScripts = []ScriptTest{
 		},
 	},
 	{
-		Name:    "ALTER TABLE MODIFY column with multiple UNIQUE KEYS",
+		Name:    "ALTER TABLE MODIFY column with compound UNIQUE KEYS",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE table test (pk int primary key, uk1 int, uk2 int, unique(uk1, uk2))",
@@ -1487,7 +1487,7 @@ var AlterTableAddAutoIncrementScripts = []ScriptTest{
 		},
 	},
 	{
-		Name:    "ALTER TABLE MODIFY column with multiple KEYS",
+		Name:    "ALTER TABLE MODIFY column with compound KEYS",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE table test (pk int primary key, mk1 int, mk2 int, index(mk1, mk2))",
