@@ -5699,6 +5699,110 @@ SELECT * FROM cte WHERE  d = 2;`,
 		},
 	},
 	{
+		Query: `SELECT MAKE_SET(1, "a", "b", "c")`,
+		Expected: []sql.Row{
+			{string("a")},
+		},
+	},
+	{
+		Query: `SELECT MAKE_SET(1 | 4, "hello", "nice", "world")`,
+		Expected: []sql.Row{
+			{string("hello,world")},
+		},
+	},
+	{
+		Query: `SELECT MAKE_SET(0, "a", "b", "c")`,
+		Expected: []sql.Row{
+			{string("")},
+		},
+	},
+	{
+		Query: `SELECT MAKE_SET(3, "a", "b", "c")`,
+		Expected: []sql.Row{
+			{string("a,b")},
+		},
+	},
+	{
+		Query: `SELECT MAKE_SET(5, "a", "b", "c")`,
+		Expected: []sql.Row{
+			{string("a,c")},
+		},
+	},
+	{
+		Query: `SELECT MAKE_SET(7, "a", "b", "c")`,
+		Expected: []sql.Row{
+			{string("a,b,c")},
+		},
+	},
+	{
+		Query: `SELECT MAKE_SET(1024, "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k")`,
+		Expected: []sql.Row{
+			{string("k")},
+		},
+	},
+	{
+		Query: `SELECT MAKE_SET(1025, "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k")`,
+		Expected: []sql.Row{
+			{string("a,k")},
+		},
+	},
+	{
+		Query: `SELECT MAKE_SET(7, "a", NULL, "c")`,
+		Expected: []sql.Row{
+			{string("a,c")},
+		},
+	},
+	{
+		Query: `SELECT MAKE_SET(7, NULL, "b", "c")`,
+		Expected: []sql.Row{
+			{string("b,c")},
+		},
+	},
+	{
+		Query: `SELECT MAKE_SET(NULL, "a", "b", "c")`,
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
+		Query: `SELECT MAKE_SET("5", "a", "b", "c")`,
+		Expected: []sql.Row{
+			{string("a,c")},
+		},
+	},
+	{
+		Query: `SELECT MAKE_SET(5.7, "a", "b", "c")`,
+		Expected: []sql.Row{
+			{string("b,c")},
+		},
+	},
+	{
+		Query: `SELECT MAKE_SET(-1, "a", "b", "c")`,
+		Expected: []sql.Row{
+			{string("a,b,c")},
+		},
+	},
+	{
+		Query: `SELECT MAKE_SET(16, "a", "b", "c")`,
+		Expected: []sql.Row{
+			{string("")},
+		},
+	},
+	{
+		Query: `SELECT MAKE_SET(3, "", "test", "")`,
+		Expected: []sql.Row{
+			{string(",test")},
+		},
+	},
+	{
+		Query: `SELECT MAKE_SET(i, "first", "second", "third") FROM mytable ORDER BY i`,
+		Expected: []sql.Row{
+			{string("first")},
+			{string("second")},
+			{string("first,second")},
+		},
+	},
+	{
 		Query: "SELECT version()",
 		Expected: []sql.Row{
 			{"8.0.31"},
