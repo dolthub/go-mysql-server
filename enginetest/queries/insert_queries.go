@@ -3148,4 +3148,34 @@ var InsertBrokenScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "no cols empty val insert",
+		SetUpScript: []string{
+			"create table t_auto (id int auto_increment primary key, name varchar(10) default null)",
+			"create table t_default_null (id int default null, name varchar(10) default null)",
+			"create table t_not_null (id int not null, name varchar(10) not null)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "insert into t_auto values ()",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "select * from t_auto",
+				Expected: []sql.Row{{1, nil}},
+			},
+			{
+				Query:    "insert into t_default_null values ()",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "select * from t_default_null",
+				Expected: []sql.Row{{nil, nil}},
+			},
+			{
+				Query:       "insert into t_not_null values ()",
+				ExpectedErr: sql.ErrInsertIntoNonNullableDefaultNullColumn,
+			},
+		},
+	},
 }
