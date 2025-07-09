@@ -227,12 +227,6 @@ func (e *ColumnDefaultValue) CheckType(ctx *Context) error {
 		if val == nil && !e.ReturnNil {
 			return ErrIncompatibleDefaultType.New()
 		}
-		
-		// For enum literal defaults, use stricter validation than runtime conversion
-		if enumType, isEnum := e.OutType.(EnumType); isEnum {
-			return e.validateEnumLiteralDefault(enumType, val)
-		}
-		
 		_, inRange, err := e.OutType.Convert(ctx, val)
 		if err != nil {
 			return ErrIncompatibleDefaultType.Wrap(err)
@@ -242,32 +236,6 @@ func (e *ColumnDefaultValue) CheckType(ctx *Context) error {
 
 	}
 	return nil
-}
-
-// validateEnumLiteralDefault validates enum literal defaults more strictly than runtime conversions
-// MySQL doesn't allow numeric index references for literal enum defaults
-func (e *ColumnDefaultValue) validateEnumLiteralDefault(enumType EnumType, val interface{}) error {
-	switch v := val.(type) {
-	case string:
-		// For string values, check if it's a direct enum value match
-		enumValues := enumType.Values()
-		for _, enumVal := range enumValues {
-			if enumVal == v {
-				return nil // Valid enum value
-			}
-		}
-		// String doesn't match any enum value, return appropriate error
-		if v == "" {
-			return ErrIncompatibleDefaultType.New()
-		}
-		return ErrInvalidColumnDefaultValue.New("(unknown)")
-	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
-		// MySQL doesn't allow numeric enum indices as literal defaults
-		return ErrInvalidColumnDefaultValue.New("(unknown)")
-	default:
-		// Other types not supported for enum defaults
-		return ErrIncompatibleDefaultType.New()
-	}
 }
 
 type UnresolvedColumnDefault struct {

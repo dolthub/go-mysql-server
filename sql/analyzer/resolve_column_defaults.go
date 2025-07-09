@@ -273,12 +273,50 @@ func validateColumnDefault(ctx *sql.Context, col *sql.Column, colDefault *sql.Co
 		return err
 	}
 
-	// validate type of default expression
-	if err = colDefault.CheckType(ctx); err != nil {
-		return err
+	// For enum literal defaults, use stricter validation than runtime conversion
+	if enumType, isEnum := col.Type.(sql.EnumType); isEnum && colDefault.IsLiteral() {
+		if err = validateEnumLiteralDefault(enumType, colDefault, col.Name, ctx); err != nil {
+			return err
+		}
+	} else {
+		// validate type of default expression
+		if err = colDefault.CheckType(ctx); err != nil {
+			return err
+		}
 	}
 
 	return nil
+}
+
+// validateEnumLiteralDefault validates enum literal defaults more strictly than runtime conversions
+// MySQL doesn't allow numeric index references for literal enum defaults
+func validateEnumLiteralDefault(enumType sql.EnumType, colDefault *sql.ColumnDefaultValue, columnName string, ctx *sql.Context) error {
+	val, err := colDefault.Expr.Eval(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	switch v := val.(type) {
+	case string:
+		// For string values, check if it's a direct enum value match
+		enumValues := enumType.Values()
+		for _, enumVal := range enumValues {
+			if enumVal == v {
+				return nil // Valid enum value
+			}
+		}
+		// String doesn't match any enum value, return appropriate error
+		if v == "" {
+			return sql.ErrIncompatibleDefaultType.New()
+		}
+		return sql.ErrInvalidColumnDefaultValue.New(columnName)
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+		// MySQL doesn't allow numeric enum indices as literal defaults
+		return sql.ErrInvalidColumnDefaultValue.New(columnName)
+	default:
+		// Other types not supported for enum defaults
+		return sql.ErrIncompatibleDefaultType.New()
+	}
 }
 
 func stripTableNamesFromDefault(e *expression.Wrapper) (sql.Expression, transform.TreeIdentity, error) {
