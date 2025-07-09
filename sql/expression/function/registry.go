@@ -111,6 +111,7 @@ var BuiltIns = []sql.Function{
 	sql.Function1{Name: "inet_ntoa", Fn: NewInetNtoa},
 	sql.Function1{Name: "inet6_aton", Fn: NewInet6Aton},
 	sql.Function1{Name: "inet6_ntoa", Fn: NewInet6Ntoa},
+	sql.Function4{Name: "insert", Fn: NewInsert},
 	sql.Function2{Name: "instr", Fn: NewInstr},
 	sql.Function1{Name: "is_binary", Fn: NewIsBinary},
 	sql.Function1{Name: "is_ipv4", Fn: NewIsIPv4},
