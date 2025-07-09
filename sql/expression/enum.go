@@ -80,7 +80,7 @@ func (e *EnumToString) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	case string:
 		str = v
 	default:
-		return nil, sql.ErrInvalidType.New(types.Text.String())
+		return nil, sql.ErrInvalidType.New(e.Enum.Type().String())
 	}
 	return str, nil
 }
