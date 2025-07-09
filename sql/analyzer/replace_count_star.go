@@ -40,8 +40,8 @@ func replaceCountStar(ctx *sql.Context, a *Analyzer, n sql.Node, _ *plan.Scope, 
 				qFlags.Set(sql.QFlagMax1Row)
 			}
 
-			if len(agg.SelectedExprs) == 1 && len(agg.GroupByExprs) == 0 {
-				child := agg.SelectedExprs[0]
+			if len(agg.ProjectedExprs()) == 1 && len(agg.GroupByExprs) == 0 {
+				child := agg.ProjectedExprs()[0]
 				var cnt *aggregation.Count
 				name := ""
 				if alias, ok := child.(*expression.Alias); ok {
