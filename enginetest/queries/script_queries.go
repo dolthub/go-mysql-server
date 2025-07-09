@@ -8465,23 +8465,20 @@ where
 				ExpectedErr: sql.ErrIncompatibleDefaultType,
 			},
 			{
-				Skip:        true,
 				Query:       "create table bad (e enum('a') default 0);",
-				ExpectedErr: sql.ErrIncompatibleDefaultType,
+				ExpectedErr: sql.ErrInvalidColumnDefaultValue,
 			},
 			{
 				Query:       "create table bad (e enum('a') default '');",
 				ExpectedErr: sql.ErrIncompatibleDefaultType,
 			},
 			{
-				Skip:        true,
 				Query:       "create table bad (e enum('a') default '1');",
-				ExpectedErr: sql.ErrIncompatibleDefaultType,
+				ExpectedErr: sql.ErrInvalidColumnDefaultValue,
 			},
 			{
-				Skip:        true,
 				Query:       "create table bad (e enum('a') default 1);",
-				ExpectedErr: sql.ErrIncompatibleDefaultType,
+				ExpectedErr: sql.ErrInvalidColumnDefaultValue,
 			},
 
 			{
