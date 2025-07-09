@@ -3166,7 +3166,7 @@ var InsertBrokenScripts = []ScriptTest{
 			},
 			{
 				Query:    "insert into t_default_null values ()",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
+				Expected: []sql.Row{{types.NewOkResult(1), 1}},
 			},
 			{
 				Query:    "select * from t_default_null",
