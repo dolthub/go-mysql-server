@@ -221,9 +221,6 @@ func (t EnumType) isStrictMode(ctx context.Context) bool {
 	if sqlCtx, ok := ctx.(*sql.Context); ok {
 		// Try the direct context method first
 		sysVal, err := sqlCtx.GetSessionVariable(sqlCtx, "sql_mode")
-		if err != nil {
-			sysVal, err = sqlCtx.GetSessionVariable(sqlCtx, "SQL_MODE")
-		}
 		if err == nil {
 			if sqlMode, ok := sysVal.(string); ok {
 				return strings.Contains(sqlMode, "STRICT_TRANS_TABLES") || strings.Contains(sqlMode, "STRICT_ALL_TABLES")
