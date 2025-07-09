@@ -245,7 +245,8 @@ CREATE TABLE sourceTable_test (
 		},
 	},
 	{
-		Name: "GMS issue 2369",
+		// https://github.com/dolthub/go-mysql-server/issues/2369
+		Name: "auto_increment with self-referencing foreign key",
 		SetUpScript: []string{
 			`CREATE TABLE table1 (
 	id int NOT NULL AUTO_INCREMENT,
@@ -275,6 +276,31 @@ CREATE TABLE sourceTable_test (
 					{2, "tbl1 row 2", 1},
 					{3, "tbl1 row 3", nil},
 				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/go-mysql-server/issues/2349
+		Name: "auto_increment with foreign key",
+		SetUpScript: []string{
+			"CREATE TABLE table1 (id int NOT NULL AUTO_INCREMENT primary key, name text)",
+			`
+CREATE TABLE table2 (
+	id int NOT NULL AUTO_INCREMENT,
+	name text,
+	fk int,
+	PRIMARY KEY (id),
+	CONSTRAINT myConstraint FOREIGN KEY (fk) REFERENCES table1 (id)
+)`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO table1 (name) VALUES ('tbl1 row 1');",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
+			},
+			{
+				Query:    "INSERT INTO table1 (name) VALUES ('tbl1 row 2');",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
 			},
 		},
 	},
@@ -514,30 +540,6 @@ SET entity_test.value = joined.value;`,
 			{
 				Query:    "select * from test_users;",
 				Expected: []sql.Row{{1, "john", "", 1, 420}},
-			},
-		},
-	},
-	{
-		Name: "GMS issue 2349",
-		SetUpScript: []string{
-			"CREATE TABLE table1 (id int NOT NULL AUTO_INCREMENT primary key, name text)",
-			`
-CREATE TABLE table2 (
-	id int NOT NULL AUTO_INCREMENT,
-	name text,
-	fk int,
-	PRIMARY KEY (id),
-	CONSTRAINT myConstraint FOREIGN KEY (fk) REFERENCES table1 (id)
-)`,
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "INSERT INTO table1 (name) VALUES ('tbl1 row 1');",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
-			},
-			{
-				Query:    "INSERT INTO table1 (name) VALUES ('tbl1 row 2');",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
 			},
 		},
 	},
@@ -3676,18 +3678,6 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "ALTER AUTO INCREMENT TABLE ADD column",
-		SetUpScript: []string{
-			"CREATE TABLE test (pk int primary key, uk int UNIQUE KEY auto_increment);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "alter table test add column j int;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-		},
-	},
-	{
 		Name: "alter json column default; from scorewarrior: https://github.com/dolthub/dolt/issues/4543",
 		SetUpScript: []string{
 			"CREATE TABLE test (i int default 999, j json);",
@@ -3893,42 +3883,6 @@ CREATE TABLE tab3 (
 					{"i", "int", "YES", "MUL", nil, ""},
 					{"j", "int", "YES", "UNI", nil, ""},
 					{"k", "int", "YES", "UNI", nil, ""},
-				},
-			},
-		},
-	},
-	{
-		Name:    "ALTER TABLE MODIFY column with multiple UNIQUE KEYS",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"CREATE table test (pk int primary key, uk1 int, uk2 int, unique(uk1, uk2))",
-			"ALTER TABLE `test` MODIFY column uk1 int auto_increment",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "describe test",
-				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", nil, ""},
-					{"uk1", "int", "NO", "MUL", nil, "auto_increment"},
-					{"uk2", "int", "YES", "", nil, ""},
-				},
-			},
-		},
-	},
-	{
-		Name:    "ALTER TABLE MODIFY column with multiple KEYS",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"CREATE table test (pk int primary key, mk1 int, mk2 int, index(mk1, mk2))",
-			"ALTER TABLE `test` MODIFY column mk1 int auto_increment",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "describe test",
-				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", nil, ""},
-					{"mk1", "int", "NO", "MUL", nil, "auto_increment"},
-					{"mk2", "int", "YES", "", nil, ""},
 				},
 			},
 		},
@@ -8201,6 +8155,114 @@ where
 		},
 	},
 
+	// Char tests
+	{
+		Skip:        true,
+		Name:        "char with auto_increment",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "create table bad (c char primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'c'",
+			},
+		},
+	},
+
+	// Varchar tests
+	{
+		Skip:        true,
+		Name:        "varchar with auto_increment",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "create table bad (vc char(100) primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'vc'", // We throw the wrong error
+			},
+		},
+	},
+
+	// Binary tests
+	{
+		Skip:        true,
+		Name:        "binary with auto_increment",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "create table bad (b binary(100) primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'b'",
+			},
+		},
+	},
+
+	// Varbinary tests
+	{
+		Skip:        true,
+		Name:        "varbinary with auto_increment",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "create table bad (vb varbinary(100) primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'vb'",
+			},
+		},
+	},
+
+	// Blob tests
+	{
+		Skip:        true,
+		Name:        "blob with auto_increment",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "create table bad (b blob primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'b'",
+			},
+			{
+				Query:          "create table bad (tb tinyblob primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'b'",
+			},
+			{
+				Query:          "create table bad (mb mediumblob primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'b'",
+			},
+			{
+				Query:          "create table bad (lb longblob primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'b'",
+			},
+		},
+	},
+
+	// Text Tests
+	{
+		Skip:        true,
+		Name:        "text with auto_increment",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "create table bad (t text primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 't'", // We throw the wrong error
+			},
+			{
+				Query:          "create table bad (tt tinytext primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'tt'", // We throw the wrong error
+			},
+			{
+				Query:          "create table bad (mt mediumtext primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'mt'", // We throw the wrong error
+			},
+			{
+				Query:          "create table bad (lt longtext primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'lt'", // We throw the wrong error
+			},
+		},
+	},
+
 	// Enum tests
 	{
 		Name:    "enum errors",
@@ -9847,6 +9909,232 @@ where
 				Expected: []sql.Row{
 					{"z"},
 				},
+			},
+		},
+	},
+
+	// Bit Tests
+	{
+		Skip:        true,
+		Name:        "bit with auto_increment",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "create table bad (b bit(1) primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'b'",
+			},
+			{
+				Query:          "create table bad (b bit(64) primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'b'",
+			},
+		},
+	},
+
+	// Bool Tests
+	{
+		Name:    "bool with auto_increment",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table bool_tbl (b bool primary key auto_increment);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table bool_tbl;",
+				Expected: []sql.Row{
+					{"bool_tbl", "CREATE TABLE `bool_tbl` (\n" +
+						"  `b` tinyint(1) NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`b`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
+
+	// Int Tests
+	{
+		Name:    "int with auto_increment",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table int_tbl (i int primary key auto_increment);",
+			"create table tinyint_tbl (i tinyint primary key auto_increment);",
+			"create table smallint_tbl (i smallint primary key auto_increment);",
+			"create table mediumint_tbl (i mediumint primary key auto_increment);",
+			"create table bigint_tbl (i bigint primary key auto_increment);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table int_tbl;",
+				Expected: []sql.Row{
+					{"int_tbl", "CREATE TABLE `int_tbl` (\n" +
+						"  `i` int NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`i`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "show create table tinyint_tbl;",
+				Expected: []sql.Row{
+					{"tinyint_tbl", "CREATE TABLE `tinyint_tbl` (\n" +
+						"  `i` tinyint NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`i`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "show create table smallint_tbl;",
+				Expected: []sql.Row{
+					{"smallint_tbl", "CREATE TABLE `smallint_tbl` (\n" +
+						"  `i` smallint NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`i`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "show create table mediumint_tbl;",
+				Expected: []sql.Row{
+					{"mediumint_tbl", "CREATE TABLE `mediumint_tbl` (\n" +
+						"  `i` mediumint NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`i`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "show create table bigint_tbl;",
+				Expected: []sql.Row{
+					{"bigint_tbl", "CREATE TABLE `bigint_tbl` (\n" +
+						"  `i` bigint NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`i`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
+
+	// Float Tests
+	{
+		Skip:        true,
+		Name:        "float with auto_increment",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "create table bad (f float primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'f'",
+			},
+		},
+	},
+
+	// Double Tests
+	{
+		Skip:        true,
+		Name:        "double with auto_increment",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "create table bad (d double primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'vc'",
+			},
+		},
+	},
+
+	// Decimal Tests
+	{
+		Skip:        true,
+		Name:        "decimal with auto_increment",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "create table bad (d decimal primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'd'",
+			},
+			{
+				Query:          "create table bad (d decimal(65,30) primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'd'",
+			},
+		},
+	},
+
+	// Date Tests
+	{
+		Skip:        true,
+		Name:        "date with auto_increment",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "create table bad (d date primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'd'",
+			},
+		},
+	},
+
+	// Datetime Tests
+	{
+		Skip:        true,
+		Name:        "datetime with auto_increment",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "create table bad (dt datetime primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'dt'",
+			},
+			{
+				Query:          "create table bad (dt datetime(6) primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'dt'",
+			},
+		},
+	},
+
+	// Timestamp Tests
+	{
+		Skip:        true,
+		Name:        "timestamp with auto_increment",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "create table bad (ts timestamp primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'ts'",
+			},
+			{
+				Query:          "create table bad (ts timestamp(6) primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'ts'",
+			},
+		},
+	},
+
+	// Time Tests
+	{
+		Skip:        true,
+		Name:        "time with auto_increment",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "create table bad (t time primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 't'",
+			},
+			{
+				Query:          "create table bad (t time(6) primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 't'",
+			},
+		},
+	},
+
+	// Year Tests
+	{
+		Skip:        true,
+		Name:        "year with auto_increment",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "create table bad (y year primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'y'",
 			},
 		},
 	},

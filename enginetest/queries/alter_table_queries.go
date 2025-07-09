@@ -1456,6 +1456,54 @@ var AlterTableAddAutoIncrementScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "ALTER AUTO INCREMENT TABLE ADD column",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk int primary key, uk int UNIQUE KEY auto_increment);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table test add column j int;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+		},
+	},
+	{
+		Name:    "ALTER TABLE MODIFY column with compound UNIQUE KEYS",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE table test (pk int primary key, uk1 int, uk2 int, unique(uk1, uk2))",
+			"ALTER TABLE `test` MODIFY column uk1 int auto_increment",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"uk1", "int", "NO", "MUL", nil, "auto_increment"},
+					{"uk2", "int", "YES", "", nil, ""},
+				},
+			},
+		},
+	},
+	{
+		Name:    "ALTER TABLE MODIFY column with compound KEYS",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE table test (pk int primary key, mk1 int, mk2 int, index(mk1, mk2))",
+			"ALTER TABLE `test` MODIFY column mk1 int auto_increment",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"mk1", "int", "NO", "MUL", nil, "auto_increment"},
+					{"mk2", "int", "YES", "", nil, ""},
+				},
+			},
+		},
+	},
 }
 
 var AddDropPrimaryKeyScripts = []ScriptTest{
