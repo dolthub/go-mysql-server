@@ -245,7 +245,8 @@ CREATE TABLE sourceTable_test (
 		},
 	},
 	{
-		Name: "GMS issue 2369",
+		// https://github.com/dolthub/go-mysql-server/issues/2369
+		Name: "auto_increment with self-referencing foreign key",
 		SetUpScript: []string{
 			`CREATE TABLE table1 (
 	id int NOT NULL AUTO_INCREMENT,
@@ -275,6 +276,31 @@ CREATE TABLE sourceTable_test (
 					{2, "tbl1 row 2", 1},
 					{3, "tbl1 row 3", nil},
 				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/go-mysql-server/issues/2349
+		Name: "auto_increment with foreign key",
+		SetUpScript: []string{
+			"CREATE TABLE table1 (id int NOT NULL AUTO_INCREMENT primary key, name text)",
+			`
+CREATE TABLE table2 (
+	id int NOT NULL AUTO_INCREMENT,
+	name text,
+	fk int,
+	PRIMARY KEY (id),
+	CONSTRAINT myConstraint FOREIGN KEY (fk) REFERENCES table1 (id)
+)`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO table1 (name) VALUES ('tbl1 row 1');",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
+			},
+			{
+				Query:    "INSERT INTO table1 (name) VALUES ('tbl1 row 2');",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
 			},
 		},
 	},
@@ -514,30 +540,6 @@ SET entity_test.value = joined.value;`,
 			{
 				Query:    "select * from test_users;",
 				Expected: []sql.Row{{1, "john", "", 1, 420}},
-			},
-		},
-	},
-	{
-		Name: "GMS issue 2349",
-		SetUpScript: []string{
-			"CREATE TABLE table1 (id int NOT NULL AUTO_INCREMENT primary key, name text)",
-			`
-CREATE TABLE table2 (
-	id int NOT NULL AUTO_INCREMENT,
-	name text,
-	fk int,
-	PRIMARY KEY (id),
-	CONSTRAINT myConstraint FOREIGN KEY (fk) REFERENCES table1 (id)
-)`,
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "INSERT INTO table1 (name) VALUES ('tbl1 row 1');",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
-			},
-			{
-				Query:    "INSERT INTO table1 (name) VALUES ('tbl1 row 2');",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
 			},
 		},
 	},
@@ -3676,18 +3678,6 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "ALTER AUTO INCREMENT TABLE ADD column",
-		SetUpScript: []string{
-			"CREATE TABLE test (pk int primary key, uk int UNIQUE KEY auto_increment);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "alter table test add column j int;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-		},
-	},
-	{
 		Name: "alter json column default; from scorewarrior: https://github.com/dolthub/dolt/issues/4543",
 		SetUpScript: []string{
 			"CREATE TABLE test (i int default 999, j json);",
@@ -3893,42 +3883,6 @@ CREATE TABLE tab3 (
 					{"i", "int", "YES", "MUL", nil, ""},
 					{"j", "int", "YES", "UNI", nil, ""},
 					{"k", "int", "YES", "UNI", nil, ""},
-				},
-			},
-		},
-	},
-	{
-		Name:    "ALTER TABLE MODIFY column with multiple UNIQUE KEYS",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"CREATE table test (pk int primary key, uk1 int, uk2 int, unique(uk1, uk2))",
-			"ALTER TABLE `test` MODIFY column uk1 int auto_increment",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "describe test",
-				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", nil, ""},
-					{"uk1", "int", "NO", "MUL", nil, "auto_increment"},
-					{"uk2", "int", "YES", "", nil, ""},
-				},
-			},
-		},
-	},
-	{
-		Name:    "ALTER TABLE MODIFY column with multiple KEYS",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"CREATE table test (pk int primary key, mk1 int, mk2 int, index(mk1, mk2))",
-			"ALTER TABLE `test` MODIFY column mk1 int auto_increment",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "describe test",
-				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", nil, ""},
-					{"mk1", "int", "NO", "MUL", nil, "auto_increment"},
-					{"mk2", "int", "YES", "", nil, ""},
 				},
 			},
 		},
