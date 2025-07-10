@@ -32,7 +32,7 @@ var VariableQueries = []ScriptTest{
 		Name:        "use string name for foreign_key checks",
 		SetUpScript: []string{},
 		Query:       "set @@foreign_key_checks = off;",
-		Expected:    []sql.Row{{}},
+		Expected:    []sql.Row{{types.NewOkResult(0)}},
 	},
 	{
 		Name: "set system variables",
@@ -115,15 +115,15 @@ var VariableQueries = []ScriptTest{
 			},
 			{
 				Query:    "set @@server_id=123;",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "set @@GLOBAL.server_id=123;",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "set @@GLOBAL.server_id=0;",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 		},
 	},
@@ -523,7 +523,7 @@ var VariableQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "set transaction isolation level serializable, read only",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "select @@transaction_isolation, @@transaction_read_only",
@@ -531,7 +531,7 @@ var VariableQueries = []ScriptTest{
 			},
 			{
 				Query:    "set transaction read write, isolation level read uncommitted",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "select @@transaction_isolation, @@transaction_read_only",
@@ -539,7 +539,7 @@ var VariableQueries = []ScriptTest{
 			},
 			{
 				Query:    "set transaction isolation level read committed",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "select @@transaction_isolation",
@@ -547,7 +547,7 @@ var VariableQueries = []ScriptTest{
 			},
 			{
 				Query:    "set transaction isolation level repeatable read",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "select @@transaction_isolation",
@@ -555,7 +555,7 @@ var VariableQueries = []ScriptTest{
 			},
 			{
 				Query:    "set session transaction isolation level serializable, read only",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "select @@transaction_isolation, @@transaction_read_only",
@@ -563,7 +563,7 @@ var VariableQueries = []ScriptTest{
 			},
 			{
 				Query:    "set global transaction read write, isolation level read uncommitted",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "select @@transaction_isolation, @@transaction_read_only",

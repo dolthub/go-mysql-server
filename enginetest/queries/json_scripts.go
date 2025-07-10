@@ -1004,4 +1004,25 @@ var JsonScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Comparisons with JSON values containing non-JSON types",
+		SetUpScript: []string{
+			"CREATE TABLE test (j json);",
+			"insert into test VALUES ('{ \"key\": 1.0 }');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from test where JSON_OBJECT(\"key\", 0.0) < test.j;",
+				Expected: []sql.Row{{types.MustJSON("{\"key\": 1.0}")}},
+			},
+			{
+				Query:    `select * from test where JSON_OBJECT("key", 1.0) = test.j;`,
+				Expected: []sql.Row{{types.MustJSON("{\"key\": 1.0}")}},
+			},
+			{
+				Query:    `select * from test where JSON_OBJECT("key", 2.0) > test.j;`,
+				Expected: []sql.Row{{types.MustJSON("{\"key\": 1.0}")}},
+			},
+		},
+	},
 }

@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"strconv"
 	"strings"
@@ -217,7 +218,7 @@ func (s *ServerQueryEngine) query(ctx *sql.Context, stmt *gosql.Stmt, query stri
 	if err != nil {
 		return nil, nil, nil, trimMySQLErrCodePrefix(err)
 	}
-	return convertRowsResult(ctx, rows)
+	return convertRowsResult(ctx, rows, query)
 }
 
 func (s *ServerQueryEngine) exec(ctx *sql.Context, stmt *gosql.Stmt, query string, args []any) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
@@ -250,7 +251,7 @@ func (s *ServerQueryEngine) queryOrExec(ctx *sql.Context, stmt *gosql.Stmt, pars
 			shouldQuery = true
 		}
 	case *sqlparser.Select, *sqlparser.SetOp, *sqlparser.Show,
-		*sqlparser.Set, *sqlparser.Call, *sqlparser.Begin,
+		*sqlparser.Call, *sqlparser.Begin,
 		*sqlparser.Use, *sqlparser.Load, *sqlparser.Execute,
 		*sqlparser.Analyze, *sqlparser.Flush, *sqlparser.Explain:
 		shouldQuery = true
@@ -302,7 +303,7 @@ func convertExecResult(exec gosql.Result) (sql.Schema, sql.RowIter, *sql.QueryFl
 	return types.OkResultSchema, sql.RowsToRowIter(sql.NewRow(okResult)), nil, nil
 }
 
-func convertRowsResult(ctx *sql.Context, rows *gosql.Rows) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
+func convertRowsResult(ctx *sql.Context, rows *gosql.Rows, query string) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
 	sch, err := schemaForRows(rows)
 	if err != nil {
 		return nil, nil, nil, err
@@ -310,6 +311,36 @@ func convertRowsResult(ctx *sql.Context, rows *gosql.Rows) (sql.Schema, sql.RowI
 
 	rowIter, err := rowIterForGoSqlRows(ctx, sch, rows)
 	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	// If we have no columns and no rows, this might mean a CALL statement that should return OkResult
+	// (like a CALL to a stored procedure that only does SET operations)
+	// But we should NOT convert USE, SHOW, etc. statements to OkResult
+	// Also, external procedures (starting with "memory_") should return empty results, not OkResult
+	if len(sch) == 0 && strings.HasPrefix(strings.ToUpper(strings.TrimSpace(query)), "CALL") &&
+		!strings.Contains(strings.ToLower(query), "memory_") {
+		// Check if we actually have any rows by trying to get the first row
+		firstRow, err := rowIter.Next(ctx)
+		if err == io.EOF {
+			// No rows available for a CALL statement, this should be OkResult
+			okResult := types.NewOkResult(0)
+			return types.OkResultSchema, sql.RowsToRowIter(sql.NewRow(okResult)), nil, nil
+		} else if err == nil {
+			// We do have a row, so create a new iterator that includes this row plus the rest
+			restRows := []sql.Row{firstRow}
+			for {
+				row, err := rowIter.Next(ctx)
+				if err != nil {
+					break
+				}
+				restRows = append(restRows, row)
+			}
+			rowIter.Close(ctx)
+			return sch, sql.RowsToRowIter(restRows...), nil, nil
+		}
+		// Some other error occurred, close the iterator and return the error
+		rowIter.Close(ctx)
 		return nil, nil, nil, err
 	}
 

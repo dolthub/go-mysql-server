@@ -147,6 +147,9 @@ var (
 	// ErrInvalidColumnDefaultValue is returned when column default function value is not wrapped in parentheses for column types excluding datetime and timestamp
 	ErrInvalidColumnDefaultValue = errors.NewKind("Invalid default value for '%s'")
 
+	// ErrColumnDefaultUserVariable is returned when a column default expression contains user or system variables
+	ErrColumnDefaultUserVariable = errors.NewKind("Default value expression of column '%s' cannot refer user or system variables.")
+
 	// ErrInvalidDefaultValueOrder is returned when a default value references a column that comes after it and contains a default expression.
 	ErrInvalidDefaultValueOrder = errors.NewKind(`default value of column "%s" cannot refer to a column defined after it if those columns have an expression default value`)
 
@@ -668,6 +671,9 @@ var (
 
 	// ErrInvalidAutoIncCols is returned when an auto_increment column cannot be applied
 	ErrInvalidAutoIncCols = errors.NewKind("there can be only one auto_increment column and it must be defined as a key")
+
+	// ErrInvalidColumnSpecifier is returned when an invalid column specifier is used
+	ErrInvalidColumnSpecifier = errors.NewKind("Incorrect column specifier for column '%s'")
 
 	// ErrUnknownConstraintDefinition is returned when an unknown constraint type is used
 	ErrUnknownConstraintDefinition = errors.NewKind("unknown constraint definition: %s, %T")

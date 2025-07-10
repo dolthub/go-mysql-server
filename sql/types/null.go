@@ -34,6 +34,10 @@ var (
 
 type nullType struct{}
 
+func (t nullType) IsNullType() bool {
+	return true
+}
+
 // Compare implements Type interface. Note that while this returns 0 (equals)
 // for ordering purposes, in SQL NULL != NULL.
 func (t nullType) Compare(s context.Context, a interface{}, b interface{}) (int, error) {

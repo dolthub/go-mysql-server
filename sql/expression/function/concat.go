@@ -123,17 +123,13 @@ func (c *Concat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, nil
 		}
 
-		val, _, err = types.LongText.Convert(ctx, val)
+		// Use type-aware conversion for enum types
+		content, _, err := types.ConvertToCollatedString(ctx, val, arg.Type())
 		if err != nil {
 			return nil, err
 		}
 
-		val, _, err = sql.Unwrap[string](ctx, val)
-		if err != nil {
-			return nil, err
-		}
-
-		parts = append(parts, val.(string))
+		parts = append(parts, content)
 	}
 
 	return strings.Join(parts, ""), nil

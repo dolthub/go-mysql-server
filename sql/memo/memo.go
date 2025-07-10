@@ -82,10 +82,13 @@ func (m *Memo) StatsProvider() sql.StatsProvider {
 	return m.statsProv
 }
 
-func (m *Memo) SetDefaultHints() {
+// SessionHints returns any hints that have been enabled in the session for join planning,
+// such as the @@disable_merge_join SQL system variable.
+func (m *Memo) SessionHints() (hints []Hint) {
 	if val, _ := m.Ctx.GetSessionVariable(m.Ctx, sql.DisableMergeJoin); val.(int8) != 0 {
-		m.ApplyHint(Hint{Typ: HintTypeNoMergeJoin})
+		hints = append(hints, Hint{Typ: HintTypeNoMergeJoin})
 	}
+	return hints
 }
 
 // newExprGroup creates a new logical expression group to encapsulate the
@@ -465,11 +468,6 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 // rather than a local property.
 func (m *Memo) updateBest(grp *ExprGroup, n RelExpr, cost float64) {
 	if !m.hints.isEmpty() {
-		for _, block := range m.hints.block {
-			if !block.isOk(n) {
-				return
-			}
-		}
 		if m.hints.satisfiedBy(n) {
 			if !grp.HintOk {
 				grp.Best = n
@@ -522,31 +520,20 @@ func getProjectColset(p *Project) sql.ColSet {
 	return colset
 }
 
+// ApplyHint applies |hint| to this memo, converting the parsed hint into an internal representation and updating
+// the internal data to match the memo metadata. Note that this function MUST be called only after memo groups have
+// been fully built out, otherwise the group information set in the internal join hint structures will be incomplete.
 func (m *Memo) ApplyHint(hint Hint) {
 	switch hint.Typ {
 	case HintTypeJoinOrder:
 		m.SetJoinOrder(hint.Args)
 	case HintTypeJoinFixedOrder:
 	case HintTypeNoMergeJoin:
-		m.SetBlockOp(func(n RelExpr) bool {
-			switch n := n.(type) {
-			case JoinRel:
-				jp := n.JoinPrivate()
-				if !jp.Left.Best.Group().HintOk || !jp.Right.Best.Group().HintOk {
-					// equiv closures can generate child plans that bypass hints
-					return false
-				}
-				if jp.Op.IsMerge() {
-					return false
-				}
-			}
-			return true
-		})
+		m.hints.disableMergeJoin = true
 	case HintTypeInnerJoin, HintTypeMergeJoin, HintTypeLookupJoin, HintTypeHashJoin, HintTypeSemiJoin, HintTypeAntiJoin, HintTypeLeftOuterLookupJoin:
 		m.SetJoinOp(hint.Typ, hint.Args[0], hint.Args[1])
 	case HintTypeLeftDeep:
 		m.hints.leftDeep = true
-	default:
 	}
 }
 
@@ -566,10 +553,6 @@ func (m *Memo) SetJoinOrder(tables []string) {
 	if hint.isValid() {
 		m.hints.order = hint
 	}
-}
-
-func (m *Memo) SetBlockOp(cb func(n RelExpr) bool) {
-	m.hints.block = append(m.hints.block, joinBlockHint{cb: cb})
 }
 
 func (m *Memo) SetJoinOp(op HintType, left, right string) {

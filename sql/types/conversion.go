@@ -16,6 +16,7 @@ package types
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -635,11 +636,16 @@ func generalizeNumberTypes(a, b sql.Type) sql.Type {
 // GeneralizeTypes returns the more "general" of two types as defined by
 // https://dev.mysql.com/doc/refman/8.4/en/flow-control-functions.html
 // TODO: Create and handle "Illegal mix of collations" error
+// TODO: Handle extended types, like DoltgresType
 func GeneralizeTypes(a, b sql.Type) sql.Type {
-	if a == Null {
+	if reflect.DeepEqual(a, b) {
+		return a
+	}
+
+	if IsNullType(a) {
 		return b
 	}
-	if b == Null {
+	if IsNullType(b) {
 		return a
 	}
 
@@ -716,6 +722,16 @@ func GeneralizeTypes(a, b sql.Type) sql.Type {
 	if IsNumber(a) && IsNumber(b) {
 		return generalizeNumberTypes(a, b)
 	}
+
+	if IsText(a) && IsText(b) {
+		sta := a.(sql.StringType)
+		stb := b.(sql.StringType)
+		if sta.Length() > stb.Length() {
+			return a
+		}
+		return b
+	}
+
 	// TODO: decide if we want to make this VarChar to match MySQL, match VarChar length to max of two types
 	return LongText
 }

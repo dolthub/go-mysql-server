@@ -45,6 +45,16 @@ type Expression interface {
 	WithChildren(children ...Expression) (Expression, error)
 }
 
+// RowIterExpression is an Expression that returns a RowIter rather than a scalar, used to implement functions that
+// return sets.
+type RowIterExpression interface {
+	Expression
+	// EvalRowIter evaluates the expression, which must be a RowIter
+	EvalRowIter(ctx *Context, r Row) (RowIter, error)
+	// ReturnsRowIter returns whether this expression returns a RowIter
+	ReturnsRowIter() bool
+}
+
 // ExpressionWithNodes is an expression that contains nodes as children.
 type ExpressionWithNodes interface {
 	Expression
@@ -63,6 +73,19 @@ type NonDeterministicExpression interface {
 	// IsNonDeterministic returns whether this expression returns a non-deterministic result. An expression is
 	// non-deterministic if it can return different results on subsequent evaluations.
 	IsNonDeterministic() bool
+}
+
+// IsNullExpression indicates that this expression tests for IS NULL.
+type IsNullExpression interface {
+	Expression
+	IsNullExpression() bool
+}
+
+// IsNotNullExpression indicates that this expression tests for IS NOT NULL. Note that in some cases in some
+// database engines, such as records in Postgres, IS NOT NULL is not identical to NOT(IS NULL).
+type IsNotNullExpression interface {
+	Expression
+	IsNotNullExpression() bool
 }
 
 // Node is a node in the execution plan tree.

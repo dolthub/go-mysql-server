@@ -791,6 +791,10 @@ func validateAutoIncrementModify(schema sql.Schema, keyedColumns map[string]bool
 	seen := false
 	for _, col := range schema {
 		if col.AutoIncrement {
+			// Check if column type is valid for auto_increment
+			if types.IsEnum(col.Type) {
+				return sql.ErrInvalidColumnSpecifier.New(col.Name)
+			}
 			// keyedColumns == nil means they are trying to add auto_increment column
 			if !col.PrimaryKey && !keyedColumns[col.Name] {
 				// AUTO_INCREMENT col must be a key
@@ -815,6 +819,10 @@ func validateAutoIncrementAdd(schema sql.Schema, keyColumns map[string]bool) err
 	for _, col := range schema {
 		if col.AutoIncrement {
 			{
+				// Check if column type is valid for auto_increment
+				if types.IsEnum(col.Type) {
+					return sql.ErrInvalidColumnSpecifier.New(col.Name)
+				}
 				if !col.PrimaryKey && !keyColumns[col.Name] {
 					// AUTO_INCREMENT col must be a key
 					return sql.ErrInvalidAutoIncCols.New()

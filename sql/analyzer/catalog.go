@@ -467,6 +467,8 @@ func getStatisticsTable(table sql.Table, prevTable sql.Table) (sql.StatisticsTab
 		return t, true
 	case sql.TableNode:
 		return getStatisticsTable(t.UnderlyingTable(), table)
+	case sql.TableWrapper:
+		return getStatisticsTable(t.Underlying(), table)
 	default:
 		return nil, false
 	}

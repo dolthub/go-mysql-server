@@ -34,8 +34,7 @@ func modifyUpdateExprsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 			return n, transform.SameTree, nil
 		}
 
-		n.IsJoin = true
-		updateTargets, err := getUpdateTargetsByTable(us, jn)
+		updateTargets, err := getUpdateTargetsByTable(us, jn, n.IsJoin)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
@@ -53,7 +52,7 @@ func modifyUpdateExprsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 }
 
 // getUpdateTargetsByTable maps a set of table names and aliases to their corresponding update target Node
-func getUpdateTargetsByTable(node sql.Node, ij sql.Node) (map[string]sql.Node, error) {
+func getUpdateTargetsByTable(node sql.Node, ij sql.Node, isJoin bool) (map[string]sql.Node, error) {
 	namesOfTableToBeUpdated := getTablesToBeUpdated(node)
 	resolvedTables := getTablesByName(ij)
 
@@ -73,7 +72,7 @@ func getUpdateTargetsByTable(node sql.Node, ij sql.Node) (map[string]sql.Node, e
 		}
 
 		keyless := sql.IsKeyless(updatable.Schema())
-		if keyless {
+		if keyless && isJoin {
 			return nil, sql.ErrUnsupportedFeature.New("error: keyless tables unsupported for UPDATE JOIN")
 		}
 
