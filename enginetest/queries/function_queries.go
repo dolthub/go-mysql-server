@@ -1241,6 +1241,10 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{{"\t2"}},
 	},
 	{
+		Query:    `SELECT JSON_UNQUOTE('"\t\\u0032"')`,
+		Expected: []sql.Row{{"\t2"}},
+	},
+	{
 		Query:    `SELECT JSON_UNQUOTE(JSON_EXTRACT('{"xid":"hello"}', '$.xid')) = "hello"`,
 		Expected: []sql.Row{{true}},
 	},
@@ -1403,6 +1407,10 @@ var FunctionQueryTests = []QueryTest{
 	{
 		Query:    "SELECT '2018-05-02' + INTERVAL 1 DAY",
 		Expected: []sql.Row{{time.Date(2018, time.May, 3, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    "SELECT '2018-05-02' - INTERVAL 1 DAY",
+		Expected: []sql.Row{{time.Date(2018, time.May, 1, 0, 0, 0, 0, time.UTC)}},
 	},
 	{
 		Query:    "SELECT CONVERT('9999-12-31 23:59:59', DATETIME)",
