@@ -296,6 +296,9 @@ func validateEnumLiteralDefault(enumType sql.EnumType, colDefault *sql.ColumnDef
 	}
 
 	switch v := val.(type) {
+	case nil:
+		// NULL is a valid default for enum columns
+		return nil
 	case string:
 		// For string values, check if it's a direct enum value match
 		enumValues := enumType.Values()
