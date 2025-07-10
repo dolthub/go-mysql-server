@@ -8809,7 +8809,7 @@ where
 	},
 	{
 		// This is with STRICT_TRANS_TABLES or STRICT_ALL_TABLES in sql_mode
-		Skip:    true,
+		Skip:    true, // TODO: Fix error type to match MySQL exactly (should be ErrInvalidColumnDefaultValue)
 		Name:    "enums with empty string",
 		Dialect: "mysql",
 		SetUpScript: []string{
