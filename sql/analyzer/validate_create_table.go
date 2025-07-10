@@ -790,31 +790,17 @@ func removeInSchema(sch sql.Schema, colName, tableName string) sql.Schema {
 
 // validateAutoIncrementType returns true if the given type can be used with AUTO_INCREMENT
 func validateAutoIncrementType(t sql.Type) bool {
-	// Check for invalid types first
-	if types.IsEnum(t) || types.IsSet(t) || types.IsBit(t) {
-		return false
-	}
-
-	// Check for text/string types - not allowed (includes TEXT, VARCHAR, CHAR, BLOB, BINARY, etc.)
-	if types.IsText(t) {
-		return false
-	}
-
-	// Check for datetime/time types - not allowed
-	if types.IsTime(t) || types.IsDateType(t) || types.IsDatetimeType(t) || types.IsTimestampType(t) || types.IsYear(t) {
-		return false
-	}
-
-	// Check for numeric types - only these are potentially allowed
+	// Only integer and floating point numeric types are allowed for auto_increment
+	// All other types are not allowed: TEXT, VARCHAR, CHAR, BLOB, BINARY, VARBINARY,
+	// DATE, TIME, DATETIME, TIMESTAMP, YEAR, ENUM, SET, BIT, DECIMAL, JSON, GEOMETRY, etc.
 	if types.IsNumber(t) {
-		// DECIMAL is not allowed for auto_increment per MySQL behavior
-		if types.IsDecimal(t) {
+		// DECIMAL, YEAR, and BIT are not allowed for auto_increment per MySQL behavior
+		if types.IsDecimal(t) || types.IsYear(t) || types.IsBit(t) {
 			return false
 		}
 		return true
 	}
-
-	// Default to false for any other types (JSON, Geometry, etc.)
+	
 	return false
 }
 
