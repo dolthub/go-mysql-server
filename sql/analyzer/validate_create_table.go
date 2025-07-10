@@ -803,7 +803,7 @@ func validateAutoIncrementType(t sql.Type) bool {
 		query.Type_INT64, query.Type_UINT64:
 		return true
 
-	// Floating point types - allowed  
+	// Floating point types - allowed
 	case query.Type_FLOAT32, query.Type_FLOAT64:
 		return true
 
@@ -817,7 +817,7 @@ func validateAutoIncrementType(t sql.Type) bool {
 		return false
 
 	// Date/time types - not allowed
-	case query.Type_DATE, query.Type_TIME, query.Type_DATETIME, 
+	case query.Type_DATE, query.Type_TIME, query.Type_DATETIME,
 		query.Type_TIMESTAMP, query.Type_YEAR:
 		return false
 
