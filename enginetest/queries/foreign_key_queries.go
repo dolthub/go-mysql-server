@@ -2740,11 +2740,6 @@ var CreateForeignKeyTests = []ScriptTest{
 					{"fk3", "mydb", "child2", "f", "mydb", "child", "d", "SET NULL", "NO ACTION"},
 				},
 			},
-		},
-	},
-	{
-		Name: "error cases",
-		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "ALTER TABLE child2 ADD CONSTRAINT fk3 FOREIGN KEY (f) REFERENCES dne(d) ON UPDATE SET NULL",
 				ExpectedErr: sql.ErrTableNotFound,
@@ -2947,11 +2942,6 @@ var DropForeignKeyTests = []ScriptTest{
 						RC.TABLE_NAME = KCU.TABLE_NAME AND RC.REFERENCED_TABLE_NAME = KCU.REFERENCED_TABLE_NAME;`,
 				Expected: []sql.Row{},
 			},
-		},
-	},
-	{
-		Name: "error cases",
-		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "ALTER TABLE child3 DROP CONSTRAINT dne",
 				ExpectedErr: sql.ErrTableNotFound,
