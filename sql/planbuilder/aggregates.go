@@ -374,16 +374,16 @@ func (b *Builder) buildAggFunctionArgs(inScope *scope, e *ast.FuncExpr, gb *grou
 		e := b.selectExprToExpression(inScope, arg)
 		switch e := e.(type) {
 		case *expression.GetField:
-			if e.TableId() == 0 {
-				// TODO: not sure where this came from but it's not true
-				// aliases are not valid aggregate arguments, the alias must be masking a column
-				gf := b.selectExprToExpression(inScope.parent, arg)
-				var ok bool
-				e, ok = gf.(*expression.GetField)
-				if !ok || e.TableId() == 0 {
-					b.handleErr(fmt.Errorf("failed to resolve aggregate column argument: %s", gf))
-				}
-			}
+			//if e.TableId() == 0 {
+			//	// TODO: not sure where this came from but it's not true
+			//	// aliases are not valid aggregate arguments, the alias must be masking a column
+			//	gf := b.selectExprToExpression(inScope.parent, arg)
+			//	// var ok bool
+			//	e, ok := gf.(*expression.GetField)
+			//	if !ok || e.TableId() == 0 {
+			//		b.handleErr(fmt.Errorf("failed to resolve aggregate column argument: %s", gf))
+			//	}
+			//}
 			args = append(args, e)
 			col := scopeColumn{tableId: e.TableID(), db: e.Database(), table: e.Table(), col: e.Name(), scalar: e, typ: e.Type(), nullable: e.IsNullable()}
 			gb.addInCol(col)
