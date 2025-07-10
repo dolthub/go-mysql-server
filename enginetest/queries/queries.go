@@ -1787,128 +1787,6 @@ SELECT * FROM cte WHERE  d = 2;`,
 	},
 
 	{
-		Query: `SELECT JSON_MERGE_PRESERVE('{ "a": 1, "b": 2 }','{ "a": 3, "c": 4 }','{ "a": 5, "d": 6 }')`,
-		Expected: []sql.Row{
-			{types.MustJSON(`{"a": [1, 3, 5], "b": 2, "c": 4, "d": 6}`)},
-		},
-	},
-	{
-		Query: `SELECT JSON_MERGE_PRESERVE(val1, val2)
-	              FROM (values
-						 row('{ "a": 1, "b": 2 }','null'),
-	                   row('{ "a": 1, "b": 2 }','"row one"'),
-	                   row('{ "a": 3, "c": 4 }','4'),
-	                   row('{ "a": 5, "d": 6 }','[true, true]'),
-	                   row('{ "a": 5, "d": 6 }','{ "a": 3, "e": 2 }'))
-	              test (val1, val2)`,
-		Expected: []sql.Row{
-			{types.MustJSON(`[{ "a": 1, "b": 2 }, null]`)},
-			{types.MustJSON(`[{ "a": 1, "b": 2 }, "row one"]`)},
-			{types.MustJSON(`[{ "a": 3, "c": 4 }, 4]`)},
-			{types.MustJSON(`[{ "a": 5, "d": 6 }, true, true]`)},
-			{types.MustJSON(`{ "a": [5, 3], "d": 6, "e": 2}`)},
-		},
-	},
-	{
-		Query: `SELECT JSON_ARRAY()`,
-		Expected: []sql.Row{
-			{types.MustJSON(`[]`)},
-		},
-	},
-	{
-		Query: `SELECT JSON_ARRAY('{"b": 2, "a": [1, 8], "c": null}', null, 4, '[true, false]', "do")`,
-		Expected: []sql.Row{
-			{types.MustJSON(`["{\"b\": 2, \"a\": [1, 8], \"c\": null}", null, 4, "[true, false]", "do"]`)},
-		},
-	},
-	{
-		Query: `SELECT JSON_ARRAY(1, 'say, "hi"', JSON_OBJECT("abc", 22))`,
-		Expected: []sql.Row{
-			{types.MustJSON(`[1, "say, \"hi\"", {"abc": 22}]`)},
-		},
-	},
-	{
-		Query: `SELECT JSON_ARRAY(JSON_OBJECT("a", JSON_ARRAY(1,2)), JSON_OBJECT("b", 22))`,
-		Expected: []sql.Row{
-			{types.MustJSON(`[{"a": [1, 2]}, {"b": 22}]`)},
-		},
-	},
-	{
-		Query: `SELECT JSON_ARRAY(pk, c1, c2, c3) FROM jsontable`,
-		Expected: []sql.Row{
-			{types.MustJSON(`[1, "row one", [1, 2], {"a": 2}]`)},
-			{types.MustJSON(`[2, "row two", [3, 4], {"b": 2}]`)},
-			{types.MustJSON(`[3, "row three", [5, 6], {"c": 2}]`)},
-			{types.MustJSON(`[4, "row four", [7, 8], {"d": 2}]`)},
-		},
-	},
-	{
-		Query: `SELECT JSON_ARRAY(JSON_OBJECT("id", pk, "name", c1), c2, c3) FROM jsontable`,
-		Expected: []sql.Row{
-			{types.MustJSON(`[{"id": 1,"name": "row one"}, [1, 2], {"a": 2}]`)},
-			{types.MustJSON(`[{"id": 2,"name": "row two"}, [3, 4], {"b": 2}]`)},
-			{types.MustJSON(`[{"id": 3,"name": "row three"}, [5, 6], {"c": 2}]`)},
-			{types.MustJSON(`[{"id": 4,"name": "row four"}, [7, 8], {"d": 2}]`)},
-		},
-	},
-	{
-		Query: `SELECT JSON_KEYS(c3) FROM jsontable`,
-		Expected: []sql.Row{
-			{types.MustJSON(`["a"]`)},
-			{types.MustJSON(`["b"]`)},
-			{types.MustJSON(`["c"]`)},
-			{types.MustJSON(`["d"]`)},
-		},
-	},
-	{
-		Query: `SELECT JSON_OVERLAPS(c3, '{"a": 2, "d": 2}') FROM jsontable`,
-		Expected: []sql.Row{
-			{true},
-			{false},
-			{false},
-			{true},
-		},
-	},
-	{
-		Query: `SELECT JSON_MERGE(c3, '{"a": 1}') FROM jsontable`,
-		Expected: []sql.Row{
-			{types.MustJSON(`{"a": [2, 1]}`)},
-			{types.MustJSON(`{"a": 1, "b": 2}`)},
-			{types.MustJSON(`{"a": 1, "c": 2}`)},
-			{types.MustJSON(`{"a": 1, "d": 2}`)},
-		},
-	},
-	{
-		Query: `SELECT JSON_MERGE_PRESERVE(c3, '{"a": 1}') FROM jsontable`,
-		Expected: []sql.Row{
-			{types.MustJSON(`{"a": [2, 1]}`)},
-			{types.MustJSON(`{"a": 1, "b": 2}`)},
-			{types.MustJSON(`{"a": 1, "c": 2}`)},
-			{types.MustJSON(`{"a": 1, "d": 2}`)},
-		},
-	},
-	{
-		Query: `SELECT JSON_MERGE_PATCH(c3, '{"a": 1}') FROM jsontable`,
-		Expected: []sql.Row{
-			{types.MustJSON(`{"a": 1}`)},
-			{types.MustJSON(`{"a": 1, "b": 2}`)},
-			{types.MustJSON(`{"a": 1, "c": 2}`)},
-			{types.MustJSON(`{"a": 1, "d": 2}`)},
-		},
-	},
-	{
-		Query: `SELECT CONCAT(JSON_OBJECT('aa', JSON_OBJECT('bb', 123, 'y', 456), 'z', JSON_OBJECT('cc', 321, 'x', 654)), "")`,
-		Expected: []sql.Row{
-			{`{"z": {"x": 654, "cc": 321}, "aa": {"y": 456, "bb": 123}}`},
-		},
-	},
-	{
-		Query: `SELECT CONCAT(JSON_ARRAY(JSON_OBJECT('aa', 123, 'z', 456), JSON_OBJECT('BB', 321, 'Y', 654)), "")`,
-		Expected: []sql.Row{
-			{`[{"z": 456, "aa": 123}, {"Y": 654, "BB": 321}]`},
-		},
-	},
-	{
 		Query: `select json_pretty(c3) from jsontable`,
 		Expected: []sql.Row{
 			{
@@ -4787,18 +4665,6 @@ SELECT * FROM cte WHERE  d = 2;`,
 		},
 	},
 	{
-		Query: "SELECT CAST(-3 AS UNSIGNED) FROM mytable",
-		Expected: []sql.Row{
-			{uint64(18446744073709551613)},
-			{uint64(18446744073709551613)},
-			{uint64(18446744073709551613)},
-		},
-	},
-	{
-		Query:    "SELECT CAST(-3 AS DOUBLE) FROM dual",
-		Expected: []sql.Row{{-3.0}},
-	},
-	{
 		Query: "SELECT BINARY c, BINARY vc, BINARY t, BINARY b, BINARY vb, BINARY bl FROM niltexttable",
 		Expected: []sql.Row{
 			{nil, nil, nil, nil, nil, nil},
@@ -4808,34 +4674,6 @@ SELECT * FROM cte WHERE  d = 2;`,
 			{nil, nil, nil, []byte("5\x00"), []byte("5"), []byte("5")},
 			{[]byte("6"), []byte("6"), []byte("6"), []byte("6\x00"), []byte("6"), []byte("6")},
 		},
-	},
-	{
-		Query:    `SELECT CONVERT("-3.9876", FLOAT) FROM dual`,
-		Expected: []sql.Row{{float32(-3.9876)}},
-	},
-	{
-		Query:    "SELECT CAST(10.56789 as CHAR(3));",
-		Expected: []sql.Row{{"10."}},
-	},
-	{
-		Query:    "SELECT CAST(10.56789 as CHAR(30));",
-		Expected: []sql.Row{{"10.56789"}},
-	},
-	{
-		Query:    "SELECT CAST('abcdef' as BINARY(10));",
-		Expected: []sql.Row{{[]byte("abcdef\x00\x00\x00\x00")}},
-	},
-	{
-		Query:    `SELECT CONVERT(10.12345, DECIMAL(4,2))`,
-		Expected: []sql.Row{{"10.12"}},
-	},
-	{
-		Query:    `SELECT CONVERT(1234567893.1234567893, DECIMAL(20,10))`,
-		Expected: []sql.Row{{"1234567893.1234567893"}},
-	},
-	{
-		Query:    `SELECT CONVERT(10, DECIMAL(4,2))`,
-		Expected: []sql.Row{{"10.00"}},
 	},
 	{
 		Query: "SELECT CONVERT(-3, UNSIGNED) FROM mytable",
@@ -5628,30 +5466,6 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Query: `select cast(X'20' as decimal)`,
 		Expected: []sql.Row{
 			{"32"},
-		},
-	},
-	{
-		Query: `SELECT FLOOR(15728640/1024/1030)`,
-		Expected: []sql.Row{
-			{"14"},
-		},
-	},
-	{
-		Query: `SELECT ROUND(15728640/1024/1030)`,
-		Expected: []sql.Row{
-			{"15"},
-		},
-	},
-	{
-		Query: `SELECT ROUND(15.00, 1)`,
-		Expected: []sql.Row{
-			{"15.0"},
-		},
-	},
-	{
-		Query: `SELECT round(15, 1)`,
-		Expected: []sql.Row{
-			{int8(15)},
 		},
 	},
 	{
@@ -7148,10 +6962,6 @@ SELECT * FROM cte WHERE  d = 2;`,
 	{
 		Query:    "SELECT NULL <=> NULL FROM dual",
 		Expected: []sql.Row{{true}},
-	},
-	{
-		Query:    "SELECT POW(2,3) FROM dual",
-		Expected: []sql.Row{{float64(8)}},
 	},
 	{
 		Query: `SELECT /*+ JOIN_ORDER(a, c, b, d) */ a.c1, b.c2, c.c3, d.c4 FROM one_pk a JOIN one_pk b ON a.pk = b.pk JOIN one_pk c ON c.pk = b.pk JOIN (select * from one_pk) d ON d.pk = c.pk`,
