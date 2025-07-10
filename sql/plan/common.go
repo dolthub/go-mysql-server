@@ -16,8 +16,10 @@ package plan
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"strings"
 )
 
 // IsUnary returns whether the node is unary or not.
@@ -161,29 +163,56 @@ func getTableName(nodeToSearch sql.Node) string {
 	return ""
 }
 
-// GetDatabaseName attempts to fetch the database name from the node. If not found directly on the node, searches the
-// children. Returns the first database name found, regardless of whether there are more, therefore this is only
-// intended to be used in situations where only a single database is expected to be found. Unlike how tables are handled
-// in most nodes, databases may be stored as a string field therefore there will be situations where a database name
-// exists on a node, but cannot be found through inspection.
-func GetDatabaseName(nodeToSearch sql.Node) string {
-	nodeStack := []sql.Node{nodeToSearch}
-	for len(nodeStack) > 0 {
-		node := nodeStack[len(nodeStack)-1]
-		nodeStack = nodeStack[:len(nodeStack)-1]
-		switch n := node.(type) {
-		case sql.Databaser:
-			return n.Database().Name()
-		case *ResolvedTable:
-			return n.SqlDatabase.Name()
-		case *UnresolvedTable:
-			return n.Database().Name()
-		case *IndexedTableAccess:
-			return n.Database().Name()
+// GetTablesToBeUpdated takes a node and looks for the tables to modified by a SetField.
+func GetTablesToBeUpdated(node sql.Node) map[string]struct{} {
+	ret := make(map[string]struct{})
+
+	transform.InspectExpressions(node, func(e sql.Expression) bool {
+		switch e := e.(type) {
+		case *expression.SetField:
+			gf := e.LeftChild.(*expression.GetField)
+			ret[strings.ToLower(gf.Table())] = struct{}{}
+			return false
 		}
-		nodeStack = append(nodeStack, node.Children()...)
+
+		return true
+	})
+
+	return ret
+}
+
+// GetDatabaseName attempts to fetch the database name from the node.
+func GetDatabaseName(node sql.Node) string {
+	database := GetDatabase(node)
+	if database != nil {
+		return database.Name()
 	}
 	return ""
+}
+
+// GetDatabase attempts to fetch the database from the node. If not found directly on the node, searches the children.
+// Returns the first database found, regardless of whether there are more, therefore this is only intended to be used in
+// situations where only a single database is expected to be found. Unlike how tables are handled in most nodes,
+// databases may be stored as a string field. Therefore, there will be situations where a database exists on a node but
+// cannot be found through inspection.
+func GetDatabase(node sql.Node) sql.Database {
+	nodeStack := []sql.Node{node}
+	for len(nodeStack) > 0 {
+		n := nodeStack[len(nodeStack)-1]
+		nodeStack = nodeStack[:len(nodeStack)-1]
+		switch n := n.(type) {
+		case sql.Databaser:
+			return n.Database()
+		case *ResolvedTable:
+			return n.SqlDatabase
+		case *UnresolvedTable:
+			return n.Database()
+		case *IndexedTableAccess:
+			return n.Database()
+		}
+		nodeStack = append(nodeStack, n.Children()...)
+	}
+	return nil
 }
 
 // CheckPrivilegeNameForDatabase returns the name of the database to check privileges for, which may not be the result
