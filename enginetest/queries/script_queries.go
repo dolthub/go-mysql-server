@@ -8157,7 +8157,6 @@ where
 
 	// Char tests
 	{
-		Skip:        true,
 		Name:        "char with auto_increment",
 		Dialect:     "mysql",
 		SetUpScript: []string{},
@@ -8171,7 +8170,6 @@ where
 
 	// Varchar tests
 	{
-		Skip:        true,
 		Name:        "varchar with auto_increment",
 		Dialect:     "mysql",
 		SetUpScript: []string{},
@@ -8185,7 +8183,6 @@ where
 
 	// Binary tests
 	{
-		Skip:        true,
 		Name:        "binary with auto_increment",
 		Dialect:     "mysql",
 		SetUpScript: []string{},
@@ -8199,7 +8196,6 @@ where
 
 	// Varbinary tests
 	{
-		Skip:        true,
 		Name:        "varbinary with auto_increment",
 		Dialect:     "mysql",
 		SetUpScript: []string{},
@@ -8213,7 +8209,6 @@ where
 
 	// Blob tests
 	{
-		Skip:        true,
 		Name:        "blob with auto_increment",
 		Dialect:     "mysql",
 		SetUpScript: []string{},
@@ -8239,7 +8234,6 @@ where
 
 	// Text Tests
 	{
-		Skip:        true,
 		Name:        "text with auto_increment",
 		Dialect:     "mysql",
 		SetUpScript: []string{},
@@ -9969,7 +9963,6 @@ where
 
 	// Bit Tests
 	{
-		Skip:        true,
 		Name:        "bit with auto_increment",
 		Dialect:     "mysql",
 		SetUpScript: []string{},
@@ -10095,7 +10088,6 @@ where
 
 	// Decimal Tests
 	{
-		Skip:        true,
 		Name:        "decimal with auto_increment",
 		Dialect:     "mysql",
 		SetUpScript: []string{},
@@ -10113,7 +10105,6 @@ where
 
 	// Date Tests
 	{
-		Skip:        true,
 		Name:        "date with auto_increment",
 		Dialect:     "mysql",
 		SetUpScript: []string{},
@@ -10127,7 +10118,6 @@ where
 
 	// Datetime Tests
 	{
-		Skip:        true,
 		Name:        "datetime with auto_increment",
 		Dialect:     "mysql",
 		SetUpScript: []string{},
@@ -10145,7 +10135,6 @@ where
 
 	// Timestamp Tests
 	{
-		Skip:        true,
 		Name:        "timestamp with auto_increment",
 		Dialect:     "mysql",
 		SetUpScript: []string{},
@@ -10163,7 +10152,6 @@ where
 
 	// Time Tests
 	{
-		Skip:        true,
 		Name:        "time with auto_increment",
 		Dialect:     "mysql",
 		SetUpScript: []string{},
@@ -10181,7 +10169,6 @@ where
 
 	// Year Tests
 	{
-		Skip:        true,
 		Name:        "year with auto_increment",
 		Dialect:     "mysql",
 		SetUpScript: []string{},

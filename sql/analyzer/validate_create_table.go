@@ -40,6 +40,21 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 
 	sch := ct.PkSchema().Schema
 	idxs := ct.Indexes()
+
+	// First validate auto_increment columns before other validations
+	// This ensures proper error precedence matching MySQL behavior
+	keyedColumns := make(map[string]bool)
+	for _, index := range idxs {
+		for _, col := range index.Columns {
+			keyedColumns[col.Name] = true
+		}
+	}
+
+	err = validateAutoIncrementModify(sch, keyedColumns)
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+
 	strictMySQLCompat, err := isStrictMysqlCompatibilityEnabled(ctx)
 	if err != nil {
 		return nil, transform.SameTree, err
@@ -50,20 +65,6 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 	}
 
 	err = validateNoVirtualColumnsInPrimaryKey(sch)
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-
-	// passed validateIndexes, so they all must be valid indexes
-	// extract map of columns that have indexes defined over them
-	keyedColumns := make(map[string]bool)
-	for _, index := range idxs {
-		for _, col := range index.Columns {
-			keyedColumns[col.Name] = true
-		}
-	}
-
-	err = validateAutoIncrementModify(sch, keyedColumns)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
@@ -787,12 +788,42 @@ func removeInSchema(sch sql.Schema, colName, tableName string) sql.Schema {
 	return schCopy
 }
 
+// validateAutoIncrementType returns true if the given type can be used with AUTO_INCREMENT
+func validateAutoIncrementType(t sql.Type) bool {
+	// Check for invalid types first
+	if types.IsEnum(t) || types.IsSet(t) || types.IsBit(t) {
+		return false
+	}
+	
+	// Check for text/string types - not allowed (includes TEXT, VARCHAR, CHAR, BLOB, BINARY, etc.)
+	if types.IsText(t) {
+		return false
+	}
+	
+	// Check for datetime/time types - not allowed
+	if types.IsTime(t) || types.IsDateType(t) || types.IsDatetimeType(t) || types.IsTimestampType(t) || types.IsYear(t) {
+		return false
+	}
+	
+	// Check for numeric types - only these are potentially allowed
+	if types.IsNumber(t) {
+		// DECIMAL is not allowed for auto_increment per MySQL behavior
+		if types.IsDecimal(t) {
+			return false
+		}
+		return true
+	}
+	
+	// Default to false for any other types (JSON, Geometry, etc.)
+	return false
+}
+
 func validateAutoIncrementModify(schema sql.Schema, keyedColumns map[string]bool) error {
 	seen := false
 	for _, col := range schema {
 		if col.AutoIncrement {
 			// Check if column type is valid for auto_increment
-			if types.IsEnum(col.Type) {
+			if !validateAutoIncrementType(col.Type) {
 				return sql.ErrInvalidColumnSpecifier.New(col.Name)
 			}
 			// keyedColumns == nil means they are trying to add auto_increment column
@@ -820,7 +851,7 @@ func validateAutoIncrementAdd(schema sql.Schema, keyColumns map[string]bool) err
 		if col.AutoIncrement {
 			{
 				// Check if column type is valid for auto_increment
-				if types.IsEnum(col.Type) {
+				if !validateAutoIncrementType(col.Type) {
 					return sql.ErrInvalidColumnSpecifier.New(col.Name)
 				}
 				if !col.PrimaryKey && !keyColumns[col.Name] {
