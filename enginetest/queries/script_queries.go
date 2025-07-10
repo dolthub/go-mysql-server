@@ -8219,15 +8219,15 @@ where
 			},
 			{
 				Query:          "create table bad (tb tinyblob primary key auto_increment);",
-				ExpectedErrStr: "Incorrect column specifier for column 'b'",
+				ExpectedErrStr: "Incorrect column specifier for column 'tb'",
 			},
 			{
 				Query:          "create table bad (mb mediumblob primary key auto_increment);",
-				ExpectedErrStr: "Incorrect column specifier for column 'b'",
+				ExpectedErrStr: "Incorrect column specifier for column 'mb'",
 			},
 			{
 				Query:          "create table bad (lb longblob primary key auto_increment);",
-				ExpectedErrStr: "Incorrect column specifier for column 'b'",
+				ExpectedErrStr: "Incorrect column specifier for column 'lb'",
 			},
 		},
 	},
