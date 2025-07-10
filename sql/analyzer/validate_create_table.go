@@ -800,7 +800,7 @@ func validateAutoIncrementType(t sql.Type) bool {
 		}
 		return true
 	}
-	
+
 	return false
 }
 
