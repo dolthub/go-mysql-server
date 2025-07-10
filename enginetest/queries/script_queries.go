@@ -8769,7 +8769,7 @@ where
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:          "INSERT INTO shirts VALUES ('shirt1', 'x-small', 'red');",
+				Query: "INSERT INTO shirts VALUES ('shirt1', 'x-small', 'red');",
 				Expected: []sql.Row{
 					{types.NewOkResult(1)},
 				},
@@ -8781,7 +8781,7 @@ where
 		},
 	},
 	{
-		Name:    "enum default null validation", 
+		Name:    "enum default null validation",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"SET sql_mode = 'STRICT_TRANS_TABLES';",
