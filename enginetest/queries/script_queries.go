@@ -8761,8 +8761,55 @@ where
 		},
 	},
 	{
+		Name:    "enum import error message validation",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"SET sql_mode = 'STRICT_TRANS_TABLES';",
+			"CREATE TABLE shirts (name VARCHAR(40), size ENUM('x-small', 'small', 'medium', 'large', 'x-large'), color ENUM('red', 'blue'));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "INSERT INTO shirts VALUES ('shirt1', 'x-small', 'red');",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query:          "INSERT INTO shirts VALUES ('shirt2', 'other', 'green');",
+				ExpectedErrStr: "Data truncated for column 'size' at row 1",
+			},
+		},
+	},
+	{
+		Name:    "enum default null validation",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"SET sql_mode = 'STRICT_TRANS_TABLES';",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CREATE TABLE test_enum (pk int NOT NULL, e enum('a','b') DEFAULT NULL, PRIMARY KEY (pk));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "INSERT INTO test_enum (pk) VALUES (1);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "SELECT pk, e FROM test_enum;",
+				Expected: []sql.Row{
+					{1, nil},
+				},
+			},
+		},
+	},
+	{
 		// This is with STRICT_TRANS_TABLES or STRICT_ALL_TABLES in sql_mode
-		Skip:    true,
+		Skip:    true, // TODO: Fix error type to match MySQL exactly (should be ErrInvalidColumnDefaultValue)
 		Name:    "enums with empty string",
 		Dialect: "mysql",
 		SetUpScript: []string{
