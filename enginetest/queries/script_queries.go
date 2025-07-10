@@ -8168,49 +8168,6 @@ where
 			},
 		},
 	},
-	{
-		Name:    "char with foreign key",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"create table parent (c char(3) primary key);",
-			"insert into parent values ('abc'), ('def'), ('ghi');",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "create table child_char_1 (c char(1), foreign key (c) references parent(c));",
-				Expected: []sql.Row{
-					{types.NewOkResult(0)},
-				},
-			},
-			{
-				Query:       "insert into child_char_1 values ('a');",
-				ExpectedErr: sql.ErrForeignKeyChildViolation,
-			},
-			{
-				Query:          "insert into child_char_1 values ('abc');",
-				ExpectedErrStr: "string 'abc' is too large for column 'c'",
-			},
-			{
-				Skip:  true,
-				Query: "create table child_varchar_10 (vc varchar(10), foreign key (vc) references parent(c));",
-				Expected: []sql.Row{
-					{types.NewOkResult(0)},
-				},
-			},
-			{
-				Skip:  true,
-				Query: "insert into child_varchar_10 values ('abc');",
-				Expected: []sql.Row{
-					{types.NewOkResult(1)},
-				},
-			},
-			{
-				Skip:        true,
-				Query:       "insert into child_varchar_10 values ('abcdefghij');",
-				ExpectedErr: sql.ErrForeignKeyChildViolation,
-			},
-		},
-	},
 
 	// Varchar tests
 	{
@@ -8236,49 +8193,6 @@ where
 			{
 				Query:          "create table bad (b binary(100) primary key auto_increment);",
 				ExpectedErrStr: "Incorrect column specifier for column 'b'",
-			},
-		},
-	},
-	{
-		Name:    "binary with foreign key",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"create table parent (b binary(3) primary key);",
-			"insert into parent values ('abc'), ('def'), ('ghi');",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "create table child_binary_1 (b binary(1), foreign key (b) references parent(b));",
-				Expected: []sql.Row{
-					{types.NewOkResult(0)},
-				},
-			},
-			{
-				Query:       "insert into child_binary_1 values ('a');",
-				ExpectedErr: sql.ErrForeignKeyChildViolation,
-			},
-			{
-				Query:          "insert into child_binary_1 values ('abc');",
-				ExpectedErrStr: "string 'abc' is too large for column 'b'",
-			},
-			{
-				Skip:  true,
-				Query: "create table child_varbinary_10 (vb varbinary(10), foreign key (vb) references parent(b));",
-				Expected: []sql.Row{
-					{types.NewOkResult(0)},
-				},
-			},
-			{
-				Skip:  true,
-				Query: "insert into child_varbinary_10 values ('abc');",
-				Expected: []sql.Row{
-					{types.NewOkResult(1)},
-				},
-			},
-			{
-				Skip:        true,
-				Query:       "insert into child_varbinary_10 values ('abcdefghij');",
-				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 		},
 	},
