@@ -165,12 +165,12 @@ func (t EnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.
 
 	switch value := v.(type) {
 	case int:
-		if _, ok := t.At(value); ok {
-			return uint16(value), sql.InRange, nil
-		}
 		// MySQL rejects 0 values in strict mode regardless of enum definition
 		if value == 0 && t.validateScrictMode(ctx) {
 			return nil, sql.OutOfRange, ErrConvertingToEnum.New(value)
+		}
+		if _, ok := t.At(value); ok {
+			return uint16(value), sql.InRange, nil
 		}
 	case uint:
 		return t.Convert(ctx, int(value))
@@ -223,7 +223,6 @@ func (t EnumType) validateScrictMode(ctx context.Context) bool {
 	}
 	return false
 }
-
 
 // Equals implements the Type interface.
 func (t EnumType) Equals(otherType sql.Type) bool {
