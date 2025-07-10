@@ -15,11 +15,12 @@
 package plan
 
 import (
+	"strings"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/transform"
-	"strings"
 )
 
 // IsUnary returns whether the node is unary or not.
