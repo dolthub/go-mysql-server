@@ -828,10 +828,6 @@ var QueryTests = []QueryTest{
 		Query:    "select y as x from xy group by (y) having AVG(x) > 0",
 		Expected: []sql.Row{{0}, {1}, {3}},
 	},
-	// {
-	//	Query:    "select y as z from xy group by (y) having AVG(z) > 0",
-	//	Expected: []sql.Row{{1}, {2}, {3}},
-	// },
 	{
 		Query:    "SELECT * FROM mytable t0 INNER JOIN mytable t1 ON (t1.i IN (((true)%(''))));",
 		Expected: []sql.Row{},
@@ -10798,6 +10794,28 @@ from typestable`,
 			{2, "second row"},
 		},
 	},
+	{
+		Query: "select * from two_pk group by pk1, pk2",
+		Expected: []sql.Row{
+			{0, 0, 0, 1, 2, 3, 4},
+			{0, 1, 10, 11, 12, 13, 14},
+			{1, 0, 20, 21, 22, 23, 24},
+			{1, 1, 30, 31, 32, 33, 34},
+		},
+	},
+	{
+		Query: "select pk1+1 from two_pk group by pk1 + 1, mod(pk2, 2)",
+		Expected: []sql.Row{
+			{1}, {1}, {2}, {2},
+		},
+	},
+	{
+		Query: "select mod(pk2, 2) from two_pk group by pk1 + 1, mod(pk2, 2)",
+		Expected: []sql.Row{
+			// mod is a Decimal type, which we convert to a string in our enginetests
+			{"0"}, {"1"}, {"0"}, {"1"},
+		},
+	},
 }
 
 var KeylessQueries = []QueryTest{
@@ -11048,6 +11066,20 @@ FROM mytable;`,
 		Expected: []sql.Row{
 			{"DECIMAL"},
 		},
+	},
+	// https://github.com/dolthub/dolt/issues/7095
+	// References in group by and having should be allowed to match select aliases
+	{
+		Query:    "select y as z from xy group by (y) having AVG(z) > 0",
+		Expected: []sql.Row{{1}, {2}, {3}},
+	},
+	{
+		Query:    "select y as z from xy group by (z) having AVG(z) > 0",
+		Expected: []sql.Row{{1}, {2}, {3}},
+	},
+	{
+		Query:    "select y + 1 as z from xy group by (z) having AVG(z) > 1",
+		Expected: []sql.Row{{2}, {3}, {4}},
 	},
 }
 
@@ -11816,6 +11848,15 @@ var ErrorQueries = []QueryErrorTest{
 		Query:       "SELECT 1 INTO mytable;",
 		ExpectedErr: sql.ErrUndeclaredVariable,
 	},
+	{
+		Query:       "select * from two_pk group by pk1",
+		ExpectedErr: analyzererrors.ErrValidationGroupBy,
+	},
+	{
+		// Grouping over functions and math expressions over PK does not count, and must appear in select
+		Query:       "select * from two_pk group by pk1 + 1, mod(pk2, 2)",
+		ExpectedErr: analyzererrors.ErrValidationGroupBy,
+	},
 }
 
 var BrokenErrorQueries = []QueryErrorTest{
@@ -11832,10 +11873,10 @@ var BrokenErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrTableNotFound,
 	},
 
-	// Our behavior in when sql_mode = ONLY_FULL_GROUP_BY is inconsistent with MySQL
+	// Our behavior in when sql_mode = ONLY_FULL_GROUP_BY is inconsistent with MySQL. This is because we skip validation
+	// for GroupBys wrapped in a Project since we are not able to validate selected expressions that get optimized as an
+	// alias.
 	// Relevant issue: https://github.com/dolthub/dolt/issues/4998
-	// Special case: If you are grouping by every field of the PK, then you can select anything
-	// Otherwise, whatever you are selecting must be in the Group By (with the exception of aggregations)
 	{
 		Query:       "SELECT col0, floor(col1) FROM tab1 GROUP by col0;",
 		ExpectedErr: analyzererrors.ErrValidationGroupBy,
@@ -11845,38 +11886,10 @@ var BrokenErrorQueries = []QueryErrorTest{
 		ExpectedErr: analyzererrors.ErrValidationGroupBy,
 	},
 	{
-		Query: "select * from two_pk group by pk1, pk2",
-		// No error
-	},
-	{
-		Query:       "select * from two_pk group by pk1",
-		ExpectedErr: analyzererrors.ErrValidationGroupBy,
-	},
-	{
-		// Grouping over functions and math expressions over PK does not count, and must appear in select
-		Query:       "select * from two_pk group by pk1 + 1, mod(pk2, 2)",
-		ExpectedErr: analyzererrors.ErrValidationGroupBy,
-	},
-	{
-		// Grouping over functions and math expressions over PK does not count, and must appear in select
-		Query: "select pk1+1 from two_pk group by pk1 + 1, mod(pk2, 2)",
-		// No error
-	},
-	{
-		// Grouping over functions and math expressions over PK does not count, and must appear in select
-		Query: "select mod(pk2, 2) from two_pk group by pk1 + 1, mod(pk2, 2)",
-		// No error
-	},
-	{
-		// Grouping over functions and math expressions over PK does not count, and must appear in select
-		Query: "select mod(pk2, 2) from two_pk group by pk1 + 1, mod(pk2, 2)",
-		// No error
-	},
-	{
 		Query: `SELECT any_value(pk), (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x
 						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) > 0
 						GROUP BY (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) ORDER BY x`,
-		// No error, but we get opk.pk does not exist
+		// No error, but we get opk.pk does not exist (aliasing error)
 	},
 	// Unimplemented JSON functions
 	{
