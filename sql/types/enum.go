@@ -165,9 +165,8 @@ func (t EnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.
 
 	switch value := v.(type) {
 	case int:
-		// Check for 0 value in strict mode - MySQL behavior
 		// MySQL rejects 0 values in strict mode regardless of enum definition
-		if value == 0 && t.isStrictMode(ctx) {
+		if value == 0 && t.validateScrictMode(ctx) {
 			return nil, sql.OutOfRange, ErrConvertingToEnum.New(value)
 		}
 		if _, ok := t.At(value); ok {
@@ -216,8 +215,8 @@ func (t EnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.
 	return nil, sql.InRange, ErrConvertingToEnum.New(v)
 }
 
-// isStrictMode checks if STRICT_TRANS_TABLES or STRICT_ALL_TABLES is enabled
-func (t EnumType) isStrictMode(ctx context.Context) bool {
+// validateScrictMode checks if STRICT_TRANS_TABLES or STRICT_ALL_TABLES is enabled
+func (t EnumType) validateScrictMode(ctx context.Context) bool {
 	if sqlCtx, ok := ctx.(*sql.Context); ok {
 		sqlMode := sql.LoadSqlMode(sqlCtx)
 		return sqlMode.ModeEnabled("STRICT_TRANS_TABLES") || sqlMode.ModeEnabled("STRICT_ALL_TABLES")

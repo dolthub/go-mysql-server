@@ -273,14 +273,13 @@ func validateColumnDefault(ctx *sql.Context, col *sql.Column, colDefault *sql.Co
 		return err
 	}
 
-	// For enum literal defaults, use stricter validation than runtime conversion
+	// validate type of default expression
+	if err = colDefault.CheckType(ctx); err != nil {
+		return err
+	}
+
 	if enumType, isEnum := col.Type.(sql.EnumType); isEnum && colDefault.IsLiteral() {
 		if err = validateEnumLiteralDefault(enumType, colDefault, col.Name, ctx); err != nil {
-			return err
-		}
-	} else {
-		// validate type of default expression
-		if err = colDefault.CheckType(ctx); err != nil {
 			return err
 		}
 	}
