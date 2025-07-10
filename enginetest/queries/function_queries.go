@@ -15,6 +15,8 @@
 package queries
 
 import (
+	"time"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -1223,5 +1225,153 @@ var FunctionQueryTests = []QueryTest{
 	{
 		Query:    `SELECT CONVERT(10, DECIMAL(4,2))`,
 		Expected: []sql.Row{{"10.00"}},
+	},
+
+	// Additional JSON Function Tests
+	{
+		Query:    `SELECT JSON_UNQUOTE('"foo"')`,
+		Expected: []sql.Row{{"foo"}},
+	},
+	{
+		Query:    `SELECT JSON_UNQUOTE('[1, 2, 3]')`,
+		Expected: []sql.Row{{"[1, 2, 3]"}},
+	},
+	{
+		Query:    `SELECT JSON_UNQUOTE('"\\t\\u0032"')`,
+		Expected: []sql.Row{{"\t2"}},
+	},
+	{
+		Query:    `SELECT JSON_UNQUOTE('"\t\\u0032"')`,
+		Expected: []sql.Row{{"\t\\u0032"}},
+	},
+	{
+		Query:    `SELECT JSON_UNQUOTE(JSON_EXTRACT('{"xid":"hello"}', '$.xid')) = "hello"`,
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    `SELECT JSON_QUOTE('"foo"')`,
+		Expected: []sql.Row{{`"\"foo\""`}},
+	},
+	{
+		Query:    `SELECT JSON_QUOTE('[1, 2, 3]')`,
+		Expected: []sql.Row{{`"[1, 2, 3]"`}},
+	},
+	{
+		Query:    `SELECT JSON_QUOTE('"\t\u0032"')`,
+		Expected: []sql.Row{{`"\"\tu0032\""`}},
+	},
+	{
+		Query:    `SELECT JSON_QUOTE('"\t\\u0032"')`,
+		Expected: []sql.Row{{`"\"\t\\u0032\""`}},
+	},
+	{
+		Query:    `SELECT JSON_EXTRACT('{"xid":"hello"}', '$.xid') = "hello"`,
+		Expected: []sql.Row{{true}},
+	},
+	{
+		Query:    `SELECT JSON_EXTRACT('{"xid":"hello"}', '$.xid') = '"hello"'`,
+		Expected: []sql.Row{{false}},
+	},
+	{
+		Query:    `SELECT JSON_UNQUOTE(JSON_EXTRACT('{"xid":null}', '$.xid'))`,
+		Expected: []sql.Row{{"null"}},
+	},
+
+	// Utility Function Tests
+	{
+		Query: `SELECT DATABASE()`,
+		Expected: []sql.Row{
+			{"mydb"},
+		},
+	},
+	{
+		Query: `SELECT USER()`,
+		Expected: []sql.Row{
+			{"root@localhost"},
+		},
+	},
+	{
+		Query: `SELECT CURRENT_USER()`,
+		Expected: []sql.Row{
+			{"root@localhost"},
+		},
+	},
+	{
+		Query: `SELECT CURRENT_USER`,
+		Expected: []sql.Row{
+			{"root@localhost"},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "CURRENT_USER",
+				Type: types.LongText,
+			},
+		},
+	},
+	{
+		Query:    "SELECT SLEEP(0.5)",
+		Expected: []sql.Row{{int(0)}},
+	},
+
+	// Encoding Function Tests
+	{
+		Query:    "SELECT TO_BASE64('foo')",
+		Expected: []sql.Row{{string("Zm9v")}},
+	},
+	{
+		Query:    "SELECT FROM_BASE64('YmFy')",
+		Expected: []sql.Row{{[]byte("bar")}},
+	},
+
+	// Comparison Function Tests
+	{
+		Query:    `SELECT GREATEST(1, 2, "3", 4)`,
+		Expected: []sql.Row{{float64(4)}},
+	},
+	{
+		Query:    `SELECT GREATEST(1, 2, "9", "foo999")`,
+		Expected: []sql.Row{{float64(9)}},
+	},
+	{
+		Query:    `SELECT GREATEST("aaa", "bbb", "ccc")`,
+		Expected: []sql.Row{{"ccc"}},
+	},
+	{
+		Query:    `SELECT GREATEST(i, s) FROM mytable`,
+		Expected: []sql.Row{{float64(1)}, {float64(2)}, {float64(3)}},
+	},
+	{
+		Query:    `SELECT GREATEST(1, 2, 3, 4)`,
+		Expected: []sql.Row{{int64(4)}},
+	},
+	{
+		Query:    `SELECT LEAST(1, 2, 3, 4)`,
+		Expected: []sql.Row{{int64(1)}},
+	},
+	{
+		Query:    `SELECT LEAST(1, 2, "3", 4)`,
+		Expected: []sql.Row{{float64(1)}},
+	},
+	{
+		Query:    `SELECT LEAST(1, 2, "9", "foo999")`,
+		Expected: []sql.Row{{float64(1)}},
+	},
+	{
+		Query:    `SELECT LEAST("aaa", "bbb", "ccc")`,
+		Expected: []sql.Row{{"aaa"}},
+	},
+	{
+		Query:    `SELECT LEAST(i, s) FROM mytable`,
+		Expected: []sql.Row{{float64(1)}, {float64(2)}, {float64(3)}},
+	},
+	{
+		Query:    `SELECT LEAST(CAST("1920-02-03 07:41:11" AS DATETIME), CAST("1980-06-22 14:32:56" AS DATETIME))`,
+		Expected: []sql.Row{{time.Date(1920, 2, 3, 7, 41, 11, 0, time.UTC)}},
+	},
+
+	// Additional Math Function Tests
+	{
+		Query:    "select abs(-i) from mytable order by 1",
+		Expected: []sql.Row{{1}, {2}, {3}},
 	},
 }
