@@ -9385,8 +9385,8 @@ where
 				Skip:  true,
 				Query: "select i, s + 0, s from tt;",
 				Expected: []sql.Row{
-					{0, float64(0), "something,"},
-					{1, float64(1), "something,"},
+					{0, float64(3), "something,"},
+					{1, float64(3), "something,"},
 					{2, float64(2), ""},
 				},
 			},
