@@ -1374,4 +1374,154 @@ var FunctionQueryTests = []QueryTest{
 		Query:    "select abs(-i) from mytable order by 1",
 		Expected: []sql.Row{{1}, {2}, {3}},
 	},
+
+	// Date Manipulation Function Tests
+	{
+		Query:    "SELECT TIMESTAMPADD(DAY, 1, '2018-05-02')",
+		Expected: []sql.Row{{"2018-05-03"}},
+	},
+	{
+		Query:    "SELECT DATE_ADD('2018-05-02', INTERVAL 1 day)",
+		Expected: []sql.Row{{"2018-05-03"}},
+	},
+	{
+		Query:    "SELECT DATE_ADD(DATE('2018-05-02'), INTERVAL 1 day)",
+		Expected: []sql.Row{{time.Date(2018, time.May, 3, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    "select date_add(time('12:13:14'), interval 1 minute);",
+		Expected: []sql.Row{{types.Timespan(44054000000)}},
+	},
+	{
+		Query:    "SELECT DATE_SUB('2018-05-02', INTERVAL 1 DAY)",
+		Expected: []sql.Row{{"2018-05-01"}},
+	},
+	{
+		Query:    "SELECT DATE_SUB(DATE('2018-05-02'), INTERVAL 1 DAY)",
+		Expected: []sql.Row{{time.Date(2018, time.May, 1, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    "select date_sub(time('12:13:14'), interval 1 minute);",
+		Expected: []sql.Row{{types.Timespan(43934000000)}},
+	},
+	{
+		Query:    "SELECT '2018-05-02' + INTERVAL 1 DAY",
+		Expected: []sql.Row{{time.Date(2018, time.May, 3, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		Query:    "SELECT CONVERT('9999-12-31 23:59:59', DATETIME)",
+		Expected: []sql.Row{{time.Date(9999, time.December, 31, 23, 59, 59, 0, time.UTC)}},
+	},
+	{
+		Query:    "SELECT DATETIME('9999-12-31 23:59:59')",
+		Expected: []sql.Row{{time.Date(9999, time.December, 31, 23, 59, 59, 0, time.UTC)}},
+	},
+	{
+		Query:    "SELECT TIMESTAMP('2020-12-31 23:59:59')",
+		Expected: []sql.Row{{time.Date(2020, time.December, 31, 23, 59, 59, 0, time.UTC)}},
+	},
+	{
+		Query:    "SELECT CONVERT('10000-12-31 23:59:59', DATETIME)",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT '9999-12-31 23:59:59' + INTERVAL 1 DAY",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT DATE_ADD('9999-12-31 23:59:59', INTERVAL 1 DAY)",
+		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:    "SELECT EXTRACT(DAY FROM '9999-12-31 23:59:59')",
+		Expected: []sql.Row{{31}},
+	},
+
+	// String Search Function Tests
+	{
+		Query:    "SELECT instr(s, 'row') as l FROM mytable ORDER BY i",
+		Expected: []sql.Row{{int64(7)}, {int64(8)}, {int64(7)}},
+	},
+	{
+		Query:    "SELECT instr(s, 'first') as l FROM mytable ORDER BY i",
+		Expected: []sql.Row{{int64(1)}, {int64(0)}, {int64(0)}},
+	},
+	{
+		Query:    "SELECT instr(s, 'o') as l FROM mytable ORDER BY i",
+		Expected: []sql.Row{{int64(8)}, {int64(4)}, {int64(8)}},
+	},
+	{
+		Query:    "SELECT instr(s, NULL) as l FROM mytable ORDER BY l",
+		Expected: []sql.Row{{nil}, {nil}, {nil}},
+	},
+	{
+		Query:    `select locate("o", s) from mytable order by i`,
+		Expected: []sql.Row{{8}, {4}, {8}},
+	},
+	{
+		Query:    `select locate("o", s, 5) from mytable order by i`,
+		Expected: []sql.Row{{8}, {9}, {8}},
+	},
+	{
+		Query:    `select locate(upper("roW"), upper(s), power(10, 0)) from mytable order by i`,
+		Expected: []sql.Row{{7}, {8}, {7}},
+	},
+	{
+		Query: "select find_in_set('second row', s) from mytable;",
+		Expected: []sql.Row{
+			{0},
+			{1},
+			{0},
+		},
+	},
+	{
+		Query: "select find_in_set(s, 'first row,second row,third row') from mytable;",
+		Expected: []sql.Row{
+			{1},
+			{2},
+			{3},
+		},
+	},
+
+	// Additional Math Function Tests
+	{
+		Query:    "select log2(i) from mytable order by i",
+		Expected: []sql.Row{{0.0}, {1.0}, {1.5849625007211563}},
+	},
+
+	// UUID and Compression Function Tests
+	{
+		Query: `select uuid() = uuid()`,
+		Expected: []sql.Row{
+			{false},
+		},
+	},
+	{
+		Query:    `select instr(REPLACE(CONVERT(UUID() USING utf8mb4), '-', ''), '-')`,
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query: "select uncompress(compress('thisisastring'))",
+		Expected: []sql.Row{
+			{[]byte{0x74, 0x68, 0x69, 0x73, 0x69, 0x73, 0x61, 0x73, 0x74, 0x72, 0x69, 0x6e, 0x67}},
+		},
+	},
+	{
+		Query: "select length(compress(repeat('a', 1000)))",
+		Expected: []sql.Row{
+			{24}, // 21 in MySQL because of library implementation differences
+		},
+	},
+	{
+		Query: "select length(uncompress(compress(repeat('a', 1000))))",
+		Expected: []sql.Row{
+			{1000},
+		},
+	},
+	{
+		Query: "select uncompressed_length(compress(repeat('a', 1000)))",
+		Expected: []sql.Row{
+			{uint32(1000)},
+		},
+	},
 }
