@@ -264,6 +264,7 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 		case *plan.Having, *plan.Project, *plan.Sort:
 			// TODO: these shouldn't be skipped but we currently aren't able to validate GroupBys with selected aliased
 			// expressions and a lot of our tests group by aliases
+			// https://github.com/dolthub/dolt/issues/4998
 			return true
 		}
 
@@ -297,6 +298,8 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 
 		for _, expr := range gb.SelectedExprs {
 			if !expressionReferencesOnlyGroupBys(groupBys, expr) {
+				// TODO: this is currently too restrictive. Dependent columns are fine to reference
+				// https://dev.mysql.com/doc/refman/8.4/en/group-by-functional-dependence.html
 				err = analyzererrors.ErrValidationGroupBy.New(expr.String())
 				return false
 			}
@@ -310,12 +313,11 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 func expressionReferencesOnlyGroupBys(groupBys map[string]bool, expr sql.Expression) bool {
 	valid := true
 	sql.Inspect(expr, func(expr sql.Expression) bool {
-		exprStr := strings.ToLower(expr.String())
 		switch expr := expr.(type) {
 		case nil, sql.Aggregation, *expression.Literal:
 			return false
 		default:
-			if groupBys[exprStr] {
+			if groupBys[strings.ToLower(expr.String())] {
 				return false
 			}
 

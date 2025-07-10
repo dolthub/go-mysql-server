@@ -11456,10 +11456,10 @@ var BrokenErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrTableNotFound,
 	},
 
-	// Our behavior in when sql_mode = ONLY_FULL_GROUP_BY is inconsistent with MySQL
+	// Our behavior in when sql_mode = ONLY_FULL_GROUP_BY is inconsistent with MySQL. This is because we skip validation
+	// for GroupBys wrapped in a Project since we are not able to validate selected expressions that get optimized as an
+	// alias.
 	// Relevant issue: https://github.com/dolthub/dolt/issues/4998
-	// Special case: If you are grouping by every field of the PK, then you can select anything
-	// Otherwise, whatever you are selecting must be in the Group By (with the exception of aggregations)
 	{
 		Query:       "SELECT col0, floor(col1) FROM tab1 GROUP by col0;",
 		ExpectedErr: analyzererrors.ErrValidationGroupBy,
