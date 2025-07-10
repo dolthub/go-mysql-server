@@ -17,6 +17,8 @@ package analyzer
 import (
 	"strings"
 
+	"github.com/dolthub/vitess/go/vt/proto/query"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -790,32 +792,44 @@ func removeInSchema(sch sql.Schema, colName, tableName string) sql.Schema {
 
 // validateAutoIncrementType returns true if the given type can be used with AUTO_INCREMENT
 func validateAutoIncrementType(t sql.Type) bool {
-	// Check for invalid types first
-	if types.IsEnum(t) || types.IsSet(t) || types.IsBit(t) {
+	if t == nil {
 		return false
 	}
 
-	// Check for text/string types - not allowed (includes TEXT, VARCHAR, CHAR, BLOB, BINARY, etc.)
-	if types.IsText(t) {
-		return false
-	}
-
-	// Check for datetime/time types - not allowed
-	if types.IsTime(t) || types.IsDateType(t) || types.IsDatetimeType(t) || types.IsTimestampType(t) || types.IsYear(t) {
-		return false
-	}
-
-	// Check for numeric types - only these are potentially allowed
-	if types.IsNumber(t) {
-		// DECIMAL is not allowed for auto_increment per MySQL behavior
-		if types.IsDecimal(t) {
-			return false
-		}
+	switch t.Type() {
+	// Integer types - allowed
+	case query.Type_INT8, query.Type_UINT8, query.Type_INT16, query.Type_UINT16,
+		query.Type_INT24, query.Type_UINT24, query.Type_INT32, query.Type_UINT32,
+		query.Type_INT64, query.Type_UINT64:
 		return true
-	}
 
-	// Default to false for any other types (JSON, Geometry, etc.)
-	return false
+	// Floating point types - allowed  
+	case query.Type_FLOAT32, query.Type_FLOAT64:
+		return true
+
+	// Text/string types - not allowed
+	case query.Type_CHAR, query.Type_VARCHAR, query.Type_TEXT,
+		query.Type_BLOB, query.Type_BINARY, query.Type_VARBINARY:
+		return false
+
+	// Decimal - not allowed per MySQL behavior
+	case query.Type_DECIMAL:
+		return false
+
+	// Date/time types - not allowed
+	case query.Type_DATE, query.Type_TIME, query.Type_DATETIME, 
+		query.Type_TIMESTAMP, query.Type_YEAR:
+		return false
+
+	// Other types - not allowed
+	case query.Type_ENUM, query.Type_SET, query.Type_BIT,
+		query.Type_JSON, query.Type_GEOMETRY:
+		return false
+
+	// Default to false for any other types
+	default:
+		return false
+	}
 }
 
 func validateAutoIncrementModify(schema sql.Schema, keyedColumns map[string]bool) error {
