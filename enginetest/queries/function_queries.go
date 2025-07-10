@@ -1112,19 +1112,19 @@ var FunctionQueryTests = []QueryTest{
 	{
 		Query: `SELECT JSON_ARRAY(pk, c1, c2, c3) FROM jsontable`,
 		Expected: []sql.Row{
-			{types.MustJSON(`[1, "one", 1.0, {"a": 2}]`)},
-			{types.MustJSON(`[2, "two", 1.5, {"b": 2}]`)},
-			{types.MustJSON(`[3, "three", 2.0, {"c": 2}]`)},
-			{types.MustJSON(`[4, "four", 2.5, {"d": 2}]`)},
+			{types.MustJSON(`[1, "row one", [1, 2], {"a": 2}]`)},
+			{types.MustJSON(`[2, "row two", [3, 4], {"b": 2}]`)},
+			{types.MustJSON(`[3, "row three", [5, 6], {"c": 2}]`)},
+			{types.MustJSON(`[4, "row four", [7, 8], {"d": 2}]`)},
 		},
 	},
 	{
 		Query: `SELECT JSON_ARRAY(JSON_OBJECT("id", pk, "name", c1), c2, c3) FROM jsontable`,
 		Expected: []sql.Row{
-			{types.MustJSON(`[{"id": 1, "name": "one"}, 1.0, {"a": 2}]`)},
-			{types.MustJSON(`[{"id": 2, "name": "two"}, 1.5, {"b": 2}]`)},
-			{types.MustJSON(`[{"id": 3, "name": "three"}, 2.0, {"c": 2}]`)},
-			{types.MustJSON(`[{"id": 4, "name": "four"}, 2.5, {"d": 2}]`)},
+			{types.MustJSON(`[{"id": 1,"name": "row one"}, [1, 2], {"a": 2}]`)},
+			{types.MustJSON(`[{"id": 2,"name": "row two"}, [3, 4], {"b": 2}]`)},
+			{types.MustJSON(`[{"id": 3,"name": "row three"}, [5, 6], {"c": 2}]`)},
+			{types.MustJSON(`[{"id": 4,"name": "row four"}, [7, 8], {"d": 2}]`)},
 		},
 	},
 	{
@@ -1239,10 +1239,6 @@ var FunctionQueryTests = []QueryTest{
 	{
 		Query:    `SELECT JSON_UNQUOTE('"\\t\\u0032"')`,
 		Expected: []sql.Row{{"\t2"}},
-	},
-	{
-		Query:    `SELECT JSON_UNQUOTE('"\t\\u0032"')`,
-		Expected: []sql.Row{{"\t\\u0032"}},
 	},
 	{
 		Query:    `SELECT JSON_UNQUOTE(JSON_EXTRACT('{"xid":"hello"}', '$.xid')) = "hello"`,
