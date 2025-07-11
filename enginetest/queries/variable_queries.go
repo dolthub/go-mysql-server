@@ -25,12 +25,6 @@ var VariableQueries = []ScriptTest{
 	{
 		Name:        "use string name for foreign_key checks",
 		SetUpScript: []string{},
-		Query:       "select @@GLOBAL.unknown",
-		ExpectedErr: sql.ErrUnknownSystemVariable,
-	},
-	{
-		Name:        "use string name for foreign_key checks",
-		SetUpScript: []string{},
 		Query:       "set @@foreign_key_checks = off;",
 		Expected:    []sql.Row{{types.NewOkResult(0)}},
 	},
@@ -649,6 +643,10 @@ var VariableQueries = []ScriptTest{
 }
 
 var VariableErrorTests = []QueryErrorTest{
+	{
+		Query:       "select @@GLOBAL.unknown",
+		ExpectedErr: sql.ErrUnknownSystemVariable,
+	},
 	{
 		Query:       "set @@does_not_exist = 100",
 		ExpectedErr: sql.ErrUnknownSystemVariable,
