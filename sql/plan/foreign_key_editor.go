@@ -548,25 +548,20 @@ func (reference *ForeignKeyReferenceHandler) shouldRejectDecimalMatch(ctx *sql.C
 	if reference.RowMapper.Index == nil {
 		return false
 	}
-	
 	indexColumnTypes := reference.RowMapper.Index.ColumnExpressionTypes()
 	for i := range reference.ForeignKey.Columns {
 		if i >= len(indexColumnTypes) {
 			continue
 		}
-		
 		childColIdx := reference.RowMapper.IndexPositions[i]
 		childDecimal, childOk := reference.RowMapper.SourceSch[childColIdx].Type.(sql.DecimalType)
 		parentDecimal, parentOk := indexColumnTypes[i].Type.(sql.DecimalType)
-		
 		if childOk && parentOk && childDecimal.Scale() != parentDecimal.Scale() {
 			return true
 		}
 	}
 	return false
 }
-
-
 
 // CheckTable checks that every row in the table has an index entry in the referenced table.
 func (reference *ForeignKeyReferenceHandler) CheckTable(ctx *sql.Context, tbl sql.ForeignKeyTable) error {
