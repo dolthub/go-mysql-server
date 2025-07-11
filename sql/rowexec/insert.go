@@ -49,6 +49,7 @@ type insertIter struct {
 	firstGeneratedAutoIncRowIdx int
 
 	deferredDefaults sql.FastIntSet
+	rowNumber        int64
 }
 
 func getInsertExpressions(values sql.Node) []sql.Expression {
@@ -74,6 +75,9 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 		return nil, i.ignoreOrClose(ctx, row, err)
 	}
 
+	// Increment row number for error reporting (MySQL starts at 1)
+	i.rowNumber++
+
 	// Prune the row down to the size of the schema. It can be larger in the case of running with an outer scope, in which
 	// case the additional scope variables are prepended to the row.
 	if len(row) > len(i.schema) {
@@ -87,7 +91,7 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 			break
 		}
 		_, isColDefVal := i.insertExprs[idx].(*sql.ColumnDefaultValue)
-		if row[idx] == nil && types.IsEnum(col.Type) && isColDefVal {
+		if row[idx] == nil && !col.Nullable && types.IsEnum(col.Type) && isColDefVal {
 			row[idx] = 1
 		}
 	}
@@ -140,6 +144,8 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 						cErr = types.ErrLengthBeyondLimit.New(row[idx], col.Name)
 					} else if sql.ErrNotMatchingSRID.Is(cErr) {
 						cErr = sql.ErrNotMatchingSRIDWithColName.New(col.Name, cErr)
+					} else if types.ErrConvertingToEnum.Is(cErr) {
+						cErr = types.ErrDataTruncatedForColumnAtRow.New(col.Name, i.rowNumber)
 					}
 					return nil, sql.NewWrappedInsertError(origRow, cErr)
 				}
@@ -261,6 +267,7 @@ func getFieldIndexFromUpdateExpr(updateExpr sql.Expression) (int, bool) {
 
 // resolveValues resolves all VALUES functions.
 func (i *insertIter) resolveValues(ctx *sql.Context, insertRow sql.Row) error {
+	// if vals empty then no need to resolve
 	for _, updateExpr := range i.updateExprs {
 		var err error
 		sql.Inspect(updateExpr, func(expr sql.Expression) bool {

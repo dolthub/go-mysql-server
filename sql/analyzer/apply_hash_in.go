@@ -56,16 +56,13 @@ func applyHashIn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 
 // hasSingleOutput checks if an expression evaluates to a single output
 func hasSingleOutput(e sql.Expression) bool {
-	return !transform.InspectExpr(e, func(expr sql.Expression) bool {
+	return transform.InspectExpr(e, func(expr sql.Expression) bool {
 		switch expr.(type) {
-		case expression.Tuple, *expression.Literal, *expression.GetField,
-			expression.Comparer, *expression.Convert, sql.FunctionExpression,
-			*expression.IsTrue, *expression.IsNull, expression.ArithmeticOp:
+		case *plan.Subquery:
 			return false
 		default:
 			return true
 		}
-		return false
 	})
 }
 

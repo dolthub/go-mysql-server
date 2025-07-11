@@ -2276,6 +2276,40 @@ var InsertScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name:    "insert...returning... statements",
+		Dialect: "mysql", // actually mariadb
+		SetUpScript: []string{
+			"CREATE TABLE animals (id int, name varchar(20))",
+			"CREATE TABLE auto_pk (`pk` int NOT NULL AUTO_INCREMENT, `name` varchar(20), PRIMARY KEY (`pk`))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "insert into animals (id) values (2) returning id",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    "insert into animals(id,name) values (1, 'Dog'),(2,'Lion'),(3,'Tiger'),(4,'Leopard') returning id, id+id",
+				Expected: []sql.Row{{1, 2}, {2, 4}, {3, 6}, {4, 8}},
+			},
+			{
+				Query:    "insert into animals set id=1,name='Bear' returning id,name",
+				Expected: []sql.Row{{1, "Bear"}},
+			},
+			{
+				Query:    "insert into auto_pk (name) values ('Cat') returning pk,name",
+				Expected: []sql.Row{{1, "Cat"}},
+			},
+			{
+				Query:    "insert into auto_pk values (NULL, 'Dog'),(5, 'Fish'),(NULL, 'Horse') returning *",
+				Expected: []sql.Row{{2, "Dog"}, {5, "Fish"}, {6, "Horse"}},
+			},
+			{
+				Query:    "insert into auto_pk (name) select name from animals where id = 3 returning *",
+				Expected: []sql.Row{{7, "Tiger"}},
+			},
+		},
+	},
 }
 
 var InsertDuplicateKeyKeyless = []ScriptTest{
@@ -2802,7 +2836,7 @@ var InsertIgnoreScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "insert into test_table values (1, 'invalid'), (2, 'comparative politics'), (3, null)",
-				ExpectedErr: types.ErrConvertingToEnum, // TODO: should be ErrDataTruncatedForColumn
+				ExpectedErr: types.ErrDataTruncatedForColumnAtRow,
 			},
 			{
 				Query:    "insert ignore into test_table values (1, 'invalid'), (2, 'bye'), (3, null)",

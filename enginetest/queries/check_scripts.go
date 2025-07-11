@@ -29,7 +29,11 @@ var CreateCheckConstraintsScripts = []ScriptTest{
 				Query: `SELECT TC.CONSTRAINT_NAME, CC.CHECK_CLAUSE, TC.ENFORCED 
 FROM information_schema.TABLE_CONSTRAINTS TC, information_schema.CHECK_CONSTRAINTS CC 
 WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'checks' AND TC.TABLE_SCHEMA = CC.CONSTRAINT_SCHEMA AND TC.CONSTRAINT_NAME = CC.CONSTRAINT_NAME AND TC.CONSTRAINT_TYPE = 'CHECK';`,
-				Expected: []sql.Row{{"chk1", "(B > 0)", "YES"}, {"chk2", "(b > 0)", "NO"}, {"chk3", "(B > 1)", "YES"}, {"chk4", "(upper(C) = c)", "YES"}},
+				Expected: []sql.Row{
+					{"chk1", "(`B` > 0)", "YES"},
+					{"chk2", "(`b` > 0)", "NO"},
+					{"chk3", "(`B` > 1)", "YES"},
+					{"chk4", "(upper(`C`) = `c`)", "YES"}},
 			},
 		},
 	},
@@ -40,9 +44,7 @@ WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'checks' AND TC.TABLE_SCHEMA = CC.C
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: `SELECT LENGTH(TC.CONSTRAINT_NAME) > 0
-FROM information_schema.TABLE_CONSTRAINTS TC, information_schema.CHECK_CONSTRAINTS CC 
-WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'checks' AND TC.TABLE_SCHEMA = CC.CONSTRAINT_SCHEMA AND TC.CONSTRAINT_NAME = CC.CONSTRAINT_NAME AND TC.CONSTRAINT_TYPE = 'CHECK' AND  CC.CHECK_CLAUSE = '(b > 100)';`,
+				Query:    "SELECT LENGTH(TC.CONSTRAINT_NAME) > 0 FROM information_schema.TABLE_CONSTRAINTS TC, information_schema.CHECK_CONSTRAINTS CC WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'checks' AND TC.TABLE_SCHEMA = CC.CONSTRAINT_SCHEMA AND TC.CONSTRAINT_NAME = CC.CONSTRAINT_NAME AND TC.CONSTRAINT_TYPE = 'CHECK' AND  CC.CHECK_CLAUSE = '(`b` > 100)';",
 				Expected: []sql.Row{{true}},
 			},
 		},
@@ -66,7 +68,13 @@ CREATE TABLE T2
 				Query: `SELECT CC.CHECK_CLAUSE
 FROM information_schema.TABLE_CONSTRAINTS TC, information_schema.CHECK_CONSTRAINTS CC 
 WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 't2' AND TC.TABLE_SCHEMA = CC.CONSTRAINT_SCHEMA AND TC.CONSTRAINT_NAME = CC.CONSTRAINT_NAME AND TC.CONSTRAINT_TYPE = 'CHECK';`,
-				Expected: []sql.Row{{"(c1 = c2)"}, {"(c1 > 10)"}, {"(c2 > 0)"}, {"(c3 < 100)"}, {"(c1 = 0)"}, {"(C1 > C3)"}},
+				Expected: []sql.Row{
+					{"(`c1` = `c2`)"},
+					{"(`c1` > 10)"},
+					{"(`c2` > 0)"},
+					{"(`c3` < 100)"},
+					{"(`c1` = 0)"},
+					{"(`C1` > `C3`)"}},
 			},
 		},
 	},
@@ -256,8 +264,8 @@ CREATE TABLE t4
 			{
 				Query: "SELECT * from information_schema.check_constraints where constraint_name IN ('mycheck', 'hcheck') ORDER BY constraint_name",
 				Expected: []sql.Row{
-					{"def", "mydb", "hcheck", "(height < 10)"},
-					{"def", "mydb", "mycheck", "(test_score >= 50)"},
+					{"def", "mydb", "hcheck", "(`height` < 10)"},
+					{"def", "mydb", "mycheck", "(`test_score` >= 50)"},
 				},
 			},
 			{
@@ -318,6 +326,36 @@ CREATE TABLE t4
 			},
 		},
 	},
+	{
+		Name: "check constraints using keywords",
+		SetUpScript: []string{
+			"create table t (`order` int primary key, constraint chk check (`order` > 0));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "insert into t values (0);",
+				ExpectedErr: sql.ErrCheckConstraintViolated,
+			},
+			{
+				Query: "insert into t values (100);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select * from t;",
+				Expected: []sql.Row{
+					{100},
+				},
+			},
+			{
+				Query: "show create table t;",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n  `order` int NOT NULL,\n  PRIMARY KEY (`order`),\n  CONSTRAINT `chk` CHECK ((`order` > 0))\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
 }
 
 var DropCheckConstraintsScripts = []ScriptTest{
@@ -336,7 +374,7 @@ var DropCheckConstraintsScripts = []ScriptTest{
 				Query: `SELECT TC.CONSTRAINT_NAME, CC.CHECK_CLAUSE, TC.ENFORCED 
 FROM information_schema.TABLE_CONSTRAINTS TC, information_schema.CHECK_CONSTRAINTS CC 
 WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 't1' AND TC.TABLE_SCHEMA = CC.CONSTRAINT_SCHEMA AND TC.CONSTRAINT_NAME = CC.CONSTRAINT_NAME AND TC.CONSTRAINT_TYPE = 'CHECK';`,
-				Expected: []sql.Row{{"chk3", "(c > 0)", "YES"}},
+				Expected: []sql.Row{{"chk3", "(`c` > 0)", "YES"}},
 			},
 		},
 	},
@@ -495,7 +533,7 @@ var ChecksOnUpdateScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Update join updates",
+		Name: "Update join - single table",
 		SetUpScript: []string{
 			"CREATE TABLE sales (year_built int primary key, CONSTRAINT `valid_year_built` CHECK (year_built <= 2022));",
 			"INSERT INTO sales VALUES (1981);",
@@ -532,6 +570,45 @@ var ChecksOnUpdateScriptTests = []ScriptTest{
 			{
 				Query:       "UPDATE sales as s1 JOIN (SELECT year_built FROM sales) AS t SET t.year_built = 2030;",
 				ExpectedErr: plan.ErrUpdateForTableNotSupported,
+			},
+		},
+	},
+	{
+		Name: "Update join - multiple tables",
+		SetUpScript: []string{
+			"CREATE TABLE sales (year_built int primary key, CONSTRAINT `valid_year_built` CHECK (year_built <= 2022));",
+			"INSERT INTO sales VALUES (1981);",
+			"CREATE TABLE locations (state char(2) primary key, CONSTRAINT `state` CHECK (state != 'GA'));",
+			"INSERT INTO locations VALUES ('WA');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "UPDATE sales JOIN locations SET sales.year_built = 2000, locations.state = 'GA';",
+				ExpectedErr: sql.ErrCheckConstraintViolated,
+			},
+			{
+				Query:       "UPDATE sales JOIN locations SET sales.year_built = 2025, locations.state = 'CA';",
+				ExpectedErr: sql.ErrCheckConstraintViolated,
+			},
+			{
+				Query:    "select * from sales;",
+				Expected: []sql.Row{{1981}},
+			},
+			{
+				Query:    "select * from locations;",
+				Expected: []sql.Row{{"WA"}},
+			},
+			{
+				Query:    "UPDATE sales JOIN locations SET sales.year_built = 2000, locations.state = 'CA';",
+				Expected: []sql.Row{{types.OkResult{2, 0, plan.UpdateInfo{2, 2, 0}}}},
+			},
+			{
+				Query:    "select * from sales;",
+				Expected: []sql.Row{{2000}},
+			},
+			{
+				Query:    "select * from locations;",
+				Expected: []sql.Row{{"CA"}},
 			},
 		},
 	},

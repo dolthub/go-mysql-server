@@ -305,4 +305,45 @@ var OrderByGroupByScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Group by true and 1",
+		// https://github.com/dolthub/dolt/issues/9320
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t0(c0 int)",
+			"insert into t0(c0) values(1),(123)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select if(t0.c0 = 123, TRUE, t0.c0) AS ref0, min(t0.c0) as ref1 from t0 group by ref0",
+				Expected: []sql.Row{{1, 1}},
+			},
+		},
+	},
+	{
+		Name: "Group by null = 1",
+		// https://github.com/dolthub/dolt/issues/9035
+		SetUpScript: []string{
+			"create table t0(c0 int, c1 int)",
+			"insert into t0(c0, c1) values(NULL,1),(1,NULL)",
+			"create table t1(id int primary key, c0 int, c1 int)",
+			"insert into t1(id, c0, c1) values(1,NULL,NULL),(2,1,1),(3,1,NULL),(4,2,1),(5,NULL,1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select t0.c0 = t0.c1 as ref0, sum(1) as ref1 from t0 group by ref0",
+				Expected: []sql.Row{
+					{nil, float64(2)},
+				},
+			},
+			{
+				Query: "select t1.c0 = t1.c1 as ref0, sum(1) as ref1 from t1 group by ref0",
+				Expected: []sql.Row{
+					{nil, float64(3)},
+					{true, float64(1)},
+					{false, float64(1)},
+				},
+			},
+		},
+	},
 }

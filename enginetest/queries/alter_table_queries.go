@@ -135,7 +135,7 @@ var AlterTableScripts = []ScriptTest{
 			{
 				Query: "SELECT * FROM information_schema.CHECK_CONSTRAINTS",
 				Expected: []sql.Row{
-					{"def", "mydb", "v1gt0", "(v1 > 0)"},
+					{"def", "mydb", "v1gt0", "(`v1` > 0)"},
 				},
 			},
 		},
@@ -1033,16 +1033,258 @@ var AlterTableScripts = []ScriptTest{
 		Name: "alter table comments are escaped",
 		SetUpScript: []string{
 			"create table t (i int);",
-			`alter table t modify column i int comment "newline \n | return \r | backslash \\ | NUL \0 \x00"`,
-			`alter table t add column j int comment "newline \n | return \r | backslash \\ | NUL \0 \x00"`,
+			`alter table t modify column i int comment "newline \n | return \r | backslash \\ | NUL \0 \x00 | ctrlz \Z \x1A"`,
+			`alter table t add column j int comment "newline \n | return \r | backslash \\ | NUL \0 \x00 | ctrlz \Z \x1A"`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "show create table t",
 				Expected: []sql.Row{{
 					"t",
-					"CREATE TABLE `t` (\n  `i` int COMMENT 'newline \\n | return \\r | backslash \\\\ | NUL \\0 x00'," +
-						"\n  `j` int COMMENT 'newline \\n | return \\r | backslash \\\\ | NUL \\0 x00'\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+					"CREATE TABLE `t` (\n  `i` int COMMENT 'newline \\n | return \\r | backslash \\\\ | NUL \\0 x00 | ctrlz \x1A x1A'," +
+						"\n  `j` int COMMENT 'newline \\n | return \\r | backslash \\\\ | NUL \\0 x00 | ctrlz \x1A x1A'\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+	{
+		Name: "alter table supports non-escaped \\Z",
+		SetUpScript: []string{
+			"create table t (i int);",
+			`alter table t modify column i int comment "ctrlz \Z \\Z"`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t",
+				Expected: []sql.Row{{"t", "CREATE TABLE `t` (\n" +
+					"  `i` int COMMENT 'ctrlz \x1A \\\\Z'\n" +
+					") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+		},
+	},
+
+	// Enum tests
+	{
+		Name:    "alter nil enum",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table xy (x int primary key, y enum ('a', 'b'));",
+			"insert into xy values (0, NULL),(1, 'b')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "alter table xy modify y enum('a','b','c')",
+			},
+			{
+				Query:       "alter table xy modify y enum('a')",
+				ExpectedErr: types.ErrDataTruncatedForColumn,
+			},
+		},
+	},
+	{
+		Name:    "alter keyless table",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (c1 int, c2 varchar(200), c3 enum('one', 'two'));",
+			"insert into t values (1, 'one', NULL);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    `alter table t modify column c1 int unsigned`,
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "describe t;",
+				Expected: []sql.Row{
+					{"c1", "int unsigned", "YES", "", nil, ""},
+					{"c2", "varchar(200)", "YES", "", nil, ""},
+					{"c3", "enum('one','two')", "YES", "", nil, ""},
+				},
+			},
+			{
+				Query:    `alter table t drop column c1;`,
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "describe t;",
+				Expected: []sql.Row{
+					{"c2", "varchar(200)", "YES", "", nil, ""},
+					{"c3", "enum('one','two')", "YES", "", nil, ""},
+				},
+			},
+			{
+				Query:    "alter table t add column new3 int;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    `insert into t values ('two', 'two', -2);`,
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query: "describe t;",
+				Expected: []sql.Row{
+					{"c2", "varchar(200)", "YES", "", nil, ""},
+					{"c3", "enum('one','two')", "YES", "", nil, ""},
+					{"new3", "int", "YES", "", nil, ""},
+				},
+			},
+			{
+				Query:    "select * from t;",
+				Expected: []sql.Row{{"one", nil, nil}, {"two", "two", -2}},
+			},
+		},
+	},
+	{
+		Name: "preserve enums through alter statements",
+		SetUpScript: []string{
+			"create table t (i int primary key, e enum('a', 'b', 'c'));",
+			"insert ignore into t values (0, 'error');",
+			"insert into t values (1, 'a');",
+			"insert into t values (2, 'b');",
+			"insert into t values (3, 'c');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select i, e, e + 0 from t;",
+				Expected: []sql.Row{
+					{0, "", float64(0)},
+					{1, "a", float64(1)},
+					{2, "b", float64(2)},
+					{3, "c", float64(3)},
+				},
+			},
+			{
+				Query: "alter table t modify column e enum('c', 'a', 'b');",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "select i, e, e + 0 from t;",
+				Expected: []sql.Row{
+					{0, "", float64(0)},
+					{1, "a", float64(2)},
+					{2, "b", float64(3)},
+					{3, "c", float64(1)},
+				},
+			},
+			{
+				Query: "alter table t modify column e enum('asdf', 'a', 'b', 'c');",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "select i, e, e + 0 from t;",
+				Expected: []sql.Row{
+					{0, "", float64(0)},
+					{1, "a", float64(2)},
+					{2, "b", float64(3)},
+					{3, "c", float64(4)},
+				},
+			},
+			{
+				Query: "alter table t modify column e enum('asdf', 'a', 'b', 'c', 'd');",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "select i, e, e + 0 from t;",
+				Expected: []sql.Row{
+					{0, "", float64(0)},
+					{1, "a", float64(2)},
+					{2, "b", float64(3)},
+					{3, "c", float64(4)},
+				},
+			},
+			{
+				Query: "alter table t modify column e enum('a', 'b', 'c');",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "select i, e, e + 0 from t;",
+				Expected: []sql.Row{
+					{0, "", float64(0)},
+					{1, "a", float64(1)},
+					{2, "b", float64(2)},
+					{3, "c", float64(3)},
+				},
+			},
+			{
+				Query:       "alter table t modify column e enum('abc');",
+				ExpectedErr: types.ErrDataTruncatedForColumn,
+			},
+		},
+	},
+
+	// Set tests
+	{
+		Name: "modify set column",
+		SetUpScript: []string{
+			"create table t (i int primary key, s set('a', 'b', 'c'));",
+			"insert ignore into t values (0, 0), (1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6), (7, 7);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select i, s + 0, s from t;",
+				Expected: []sql.Row{
+					{0, float64(0), ""},
+					{1, float64(1), "a"},
+					{2, float64(2), "b"},
+					{3, float64(3), "a,b"},
+					{4, float64(4), "c"},
+					{5, float64(5), "a,c"},
+					{6, float64(6), "b,c"},
+					{7, float64(7), "a,b,c"},
+				},
+			},
+			{
+				Query: "alter table t modify column s set('a', 'b', 'c', 'd');",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "select i, s + 0, s from t;",
+				Expected: []sql.Row{
+					{0, float64(0), ""},
+					{1, float64(1), "a"},
+					{2, float64(2), "b"},
+					{3, float64(3), "a,b"},
+					{4, float64(4), "c"},
+					{5, float64(5), "a,c"},
+					{6, float64(6), "b,c"},
+					{7, float64(7), "a,b,c"},
+				},
+			},
+			{
+				Skip:  true,
+				Query: "alter table t modify column s set('c', 'b', 'a');",
+				Expected: []sql.Row{
+					{types.NewOkResult(8)}, // We currently return 0 RowsAffected
+				},
+			},
+			{
+				Skip:  true,
+				Query: "select i, s + 0, s from t;",
+				Expected: []sql.Row{
+					{0, 0, ""},
+					{1, 2, "a"},
+					{2, 4, "b"},
+					{3, 6, "a,b"},
+					{4, 1, "c"},
+					{5, 3, "c,a"},
+					{6, 5, "c,b"},
+					{7, 7, "c,a,b"},
+				},
+			},
+			{
+				Skip:           true,
+				Query:          "alter table t modify column s set('a');",
+				ExpectedErrStr: "Data truncated for column", // We currently throw value 2 is not valid for this set
 			},
 		},
 	},
@@ -1211,6 +1453,54 @@ var AlterTableAddAutoIncrementScripts = []ScriptTest{
 			{
 				Query:       "alter table t1 add column j int auto_increment",
 				ExpectedErr: sql.ErrInvalidAutoIncCols,
+			},
+		},
+	},
+	{
+		Name: "ALTER AUTO INCREMENT TABLE ADD column",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk int primary key, uk int UNIQUE KEY auto_increment);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table test add column j int;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+		},
+	},
+	{
+		Name:    "ALTER TABLE MODIFY column with compound UNIQUE KEYS",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE table test (pk int primary key, uk1 int, uk2 int, unique(uk1, uk2))",
+			"ALTER TABLE `test` MODIFY column uk1 int auto_increment",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"uk1", "int", "NO", "MUL", nil, "auto_increment"},
+					{"uk2", "int", "YES", "", nil, ""},
+				},
+			},
+		},
+	},
+	{
+		Name:    "ALTER TABLE MODIFY column with compound KEYS",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE table test (pk int primary key, mk1 int, mk2 int, index(mk1, mk2))",
+			"ALTER TABLE `test` MODIFY column mk1 int auto_increment",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "describe test",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"mk1", "int", "NO", "MUL", nil, "auto_increment"},
+					{"mk2", "int", "YES", "", nil, ""},
+				},
 			},
 		},
 	},
@@ -1864,7 +2154,7 @@ var RenameColumnScripts = []ScriptTest{
 				Query: `SELECT TC.CONSTRAINT_NAME, CC.CHECK_CLAUSE, TC.ENFORCED 
 FROM information_schema.TABLE_CONSTRAINTS TC, information_schema.CHECK_CONSTRAINTS CC 
 WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'mytable' AND TC.TABLE_SCHEMA = CC.CONSTRAINT_SCHEMA AND TC.CONSTRAINT_NAME = CC.CONSTRAINT_NAME AND TC.CONSTRAINT_TYPE = 'CHECK';`,
-				Expected: []sql.Row{{"test_check", "(i2 < 12345)", "YES"}},
+				Expected: []sql.Row{{"test_check", "(`i2` < 12345)", "YES"}},
 			},
 		},
 	},

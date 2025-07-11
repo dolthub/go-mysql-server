@@ -349,8 +349,20 @@ func (l Left) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	switch str := str.(type) {
 	case string:
 		text = []rune(str)
+	case sql.StringWrapper:
+		s, err := str.Unwrap(ctx)
+		if err != nil {
+			return nil, err
+		}
+		text = []rune(s)
 	case []byte:
 		text = []rune(string(str))
+	case sql.BytesWrapper:
+		b, err := str.Unwrap(ctx)
+		if err != nil {
+			return nil, err
+		}
+		text = []rune(string(b))
 	case nil:
 		return nil, nil
 	default:
@@ -583,8 +595,20 @@ func (i Instr) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	switch str := str.(type) {
 	case string:
 		text = []rune(str)
+	case sql.StringWrapper:
+		s, err := str.Unwrap(ctx)
+		if err != nil {
+			return nil, err
+		}
+		text = []rune(s)
 	case []byte:
 		text = []rune(string(str))
+	case sql.BytesWrapper:
+		s, err := str.Unwrap(ctx)
+		if err != nil {
+			return nil, err
+		}
+		text = []rune(string(s))
 	case nil:
 		return nil, nil
 	default:
@@ -600,8 +624,20 @@ func (i Instr) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	switch substr := substr.(type) {
 	case string:
 		subtext = []rune(substr)
+	case sql.StringWrapper:
+		s, err := substr.Unwrap(ctx)
+		if err != nil {
+			return nil, err
+		}
+		text = []rune(s)
 	case []byte:
-		subtext = []rune(string(subtext))
+		subtext = []rune(string(substr))
+	case sql.BytesWrapper:
+		s, err := substr.Unwrap(ctx)
+		if err != nil {
+			return nil, err
+		}
+		subtext = []rune(string(s))
 	case nil:
 		return nil, nil
 	default:

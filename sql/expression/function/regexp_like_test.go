@@ -363,3 +363,31 @@ func TestRegexpLikeNilAndErrors(t *testing.T) {
 	require.Equal(t, nil, res)
 	f.(*RegexpLike).Dispose()
 }
+
+// Last Run: 06/17/2025
+// BenchmarkRegexpLike
+// BenchmarkRegexpLike-14    	     100	  98269522 ns/op
+// BenchmarkRegexpLike-14    	   10000	    958159 ns/op
+func BenchmarkRegexpLike(b *testing.B) {
+	ctx := sql.NewEmptyContext()
+	data := make([]sql.Row, 100)
+	for i := range data {
+		data[i] = sql.Row{fmt.Sprintf("test%d", i)}
+	}
+
+	for i := 0; i < b.N; i++ {
+		f, err := NewRegexpLike(
+			expression.NewGetField(0, types.LongText, "text", false),
+			expression.NewLiteral("^test[0-9]$", types.LongText),
+		)
+		require.NoError(b, err)
+		var total int8
+		for _, row := range data {
+			res, err := f.Eval(ctx, row)
+			require.NoError(b, err)
+			total += res.(int8)
+		}
+		require.Equal(b, int8(10), total)
+		f.(*RegexpLike).Dispose()
+	}
+}

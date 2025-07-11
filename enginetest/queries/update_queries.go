@@ -24,7 +24,7 @@ import (
 	"github.com/dolthub/vitess/go/mysql"
 )
 
-var UpdateTests = []WriteQueryTest{
+var UpdateWriteQueryTests = []WriteQueryTest{
 	{
 		WriteQuery:          "UPDATE mytable SET s = 'updated';",
 		ExpectedWriteResult: []sql.Row{{NewUpdateResult(3, 3)}},
@@ -466,6 +466,191 @@ var UpdateTests = []WriteQueryTest{
 			sql.NewRow(1, "updated 1"),
 			sql.NewRow(2, "updated 2"),
 			sql.NewRow(3, "third row"),
+		},
+	},
+}
+
+var UpdateScriptTests = []ScriptTest{
+	{
+		Dialect: "mysql",
+		Name:    "UPDATE join – single table, with FK constraint",
+		SetUpScript: []string{
+			"CREATE TABLE customers (id INT PRIMARY KEY, name TEXT);",
+			"CREATE TABLE orders (id INT PRIMARY KEY, customer_id INT, amount INT, FOREIGN KEY (customer_id) REFERENCES customers(id));",
+			"INSERT INTO customers VALUES (1, 'Alice'), (2, 'Bob');",
+			"INSERT INTO orders VALUES (101, 1, 50), (102, 2, 75);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "UPDATE orders o JOIN customers c ON o.customer_id = c.id SET o.customer_id = 123 where o.customer_id != 1;",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query: "SELECT * FROM orders;",
+				Expected: []sql.Row{
+					{101, 1, 50}, {102, 2, 75},
+				},
+			},
+		},
+	},
+	{
+		Dialect: "mysql",
+		Name:    "UPDATE join – multiple tables, with FK constraint",
+		SetUpScript: []string{
+			"CREATE TABLE parent1 (id INT PRIMARY KEY);",
+			"CREATE TABLE parent2 (id INT PRIMARY KEY);",
+			"CREATE TABLE child1 (id INT PRIMARY KEY, p1_id INT, FOREIGN KEY (p1_id) REFERENCES parent1(id));",
+			"CREATE TABLE child2 (id INT PRIMARY KEY, p2_id INT, FOREIGN KEY (p2_id) REFERENCES parent2(id));",
+			"INSERT INTO parent1 VALUES (1), (3);",
+			"INSERT INTO parent2 VALUES (1), (3);",
+			"INSERT INTO child1 VALUES (10, 1);",
+			"INSERT INTO child2 VALUES (20, 1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `UPDATE child1 c1
+						JOIN child2 c2 ON c1.id = 10 AND c2.id = 20
+						SET c1.p1_id = 999, c2.p2_id = 3;`,
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query: `UPDATE child1 c1
+						JOIN child2 c2 ON c1.id = 10 AND c2.id = 20
+						SET c1.p1_id = 3, c2.p2_id = 999;`,
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query:    "SELECT * FROM child1;",
+				Expected: []sql.Row{{10, 1}},
+			},
+			{
+				Query:    "SELECT * FROM child2;",
+				Expected: []sql.Row{{20, 1}},
+			},
+		},
+	},
+	{
+		Dialect: "mysql",
+		Name:    "UPDATE join – multiple tables, with trigger",
+		SetUpScript: []string{
+			"CREATE TABLE a (id INT PRIMARY KEY, x INT);",
+			"CREATE TABLE b (pk INT PRIMARY KEY, y INT);",
+			"CREATE TABLE logbook (entry TEXT);",
+			`CREATE TRIGGER trig_a AFTER UPDATE ON a FOR EACH ROW
+		 BEGIN
+		   INSERT INTO logbook VALUES ('a updated');
+		 END;`,
+			`CREATE TRIGGER trig_b AFTER UPDATE ON b FOR EACH ROW
+		 BEGIN
+		   INSERT INTO logbook VALUES ('b updated');
+		 END;`,
+			"INSERT INTO a VALUES (5, 100);",
+			"INSERT INTO b VALUES (6, 200);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `UPDATE a
+					JOIN b ON a.id = 5 AND b.pk = 6
+					SET a.x = 101, b.y = 201;`,
+			},
+			{
+				Query: "SELECT * FROM logbook ORDER BY entry;",
+				Expected: []sql.Row{
+					{"a updated"},
+					{"b updated"},
+				},
+			},
+		},
+	},
+	{
+		Dialect: "mysql",
+		Name:    "UPDATE join – multiple tables with triggers that reference row values",
+		SetUpScript: []string{
+			"create table customers (id int primary key, name text, tier text)",
+			"create table orders (order_id int primary key, customer_id int, status text)",
+			"create table trigger_log (msg text)",
+			`CREATE TRIGGER after_orders_update after update on orders for each row
+				begin
+					insert into trigger_log (msg) values(
+						concat('Order ', OLD.order_id, ' status changed from ', OLD.status, ' to ', NEW.status));
+				end;`,
+			`Create trigger after_customers_update after update on customers for each row
+					begin
+						insert into trigger_log (msg) values(
+							concat('Customer ', OLD.id, ' tier changed from ', OLD.tier, ' to ', NEW.tier));
+					end;`,
+			"insert into customers values(1, 'Alice', 'silver'), (2, 'Bob', 'gold');",
+			"insert into orders values (101, 1, 'pending'), (102, 2, 'pending');",
+			"update customers c join orders o on c.id = o.customer_id " +
+				"set c.tier = 'platinum', o.status = 'shipped' where o.status = 'pending'",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM trigger_log order by msg;",
+				Expected: []sql.Row{
+					{"Customer 1 tier changed from silver to platinum"},
+					{"Customer 2 tier changed from gold to platinum"},
+					{"Order 101 status changed from pending to shipped"},
+					{"Order 102 status changed from pending to shipped"},
+				},
+			},
+		},
+	},
+	{
+		Dialect: "mysql",
+		Name:    "UPDATE join – multiple tables with same column names with triggers",
+		SetUpScript: []string{
+			"create table customers (id int primary key, name text, tier text)",
+			"create table orders (id int primary key, customer_id int, status text)",
+			"create table trigger_log (msg text)",
+			`CREATE TRIGGER after_orders_update after update on orders for each row
+				begin
+					insert into trigger_log (msg) values(
+						concat('Order ', OLD.id, ' status changed from ', OLD.status, ' to ', NEW.status));
+				end;`,
+			`Create trigger after_customers_update after update on customers for each row
+					begin
+						insert into trigger_log (msg) values(
+							concat('Customer ', OLD.id, ' tier changed from ', OLD.tier, ' to ', NEW.tier));
+					end;`,
+			"insert into customers values(1, 'Alice', 'silver'), (2, 'Bob', 'gold');",
+			"insert into orders values (101, 1, 'pending'), (102, 2, 'pending');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "update customers c join orders o on c.id = o.customer_id " +
+					"set c.tier = 'platinum', o.status = 'shipped' where o.status = 'pending'",
+				// TODO: we shouldn't expect an error once we're able to handle conflicting column names
+				// https://github.com/dolthub/dolt/issues/9403
+				ExpectedErrStr: "Unable to apply triggers when joined tables have columns with the same name",
+			},
+			{
+				// TODO: unskip once we're able to handle conflicting column names
+				// https://github.com/dolthub/dolt/issues/9403
+				Skip:  true,
+				Query: "SELECT * FROM trigger_log order by msg;",
+				Expected: []sql.Row{
+					{"Customer 1 tier changed from silver to platinum"},
+					{"Customer 2 tier changed from gold to platinum"},
+					{"Order 101 status changed from pending to shipped"},
+					{"Order 102 status changed from pending to shipped"},
+				},
+			},
+		},
+	},
+	{
+		Name: "UPDATE with subquery in keyless tables",
+		// https://github.com/dolthub/dolt/issues/9334
+		SetUpScript: []string{
+			"create table t (i int)",
+			"insert into t values (1)",
+			"update t set i = 10 where i in (select 1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from t",
+				Expected: []sql.Row{{10}},
+			},
 		},
 	},
 }

@@ -22,8 +22,10 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
+	"github.com/dolthub/go-mysql-server/sql/hash"
 	"github.com/dolthub/go-mysql-server/sql/iters"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -125,16 +127,29 @@ func (i *offsetIter) Close(ctx *sql.Context) error {
 var _ sql.RowIter = &iters.JsonTableRowIter{}
 
 type ProjectIter struct {
-	projs     []sql.Expression
-	canDefer  bool
-	childIter sql.RowIter
+	projs          []sql.Expression
+	canDefer       bool
+	hasNestedIters bool
+	nestedState    *nestedIterState
+	childIter      sql.RowIter
+}
+
+type nestedIterState struct {
+	projections    []sql.Expression
+	sourceRow      sql.Row
+	iterEvaluators []*RowIterEvaluator
 }
 
 func (i *ProjectIter) Next(ctx *sql.Context) (sql.Row, error) {
+	if i.hasNestedIters {
+		return i.ProjectRowWithNestedIters(ctx)
+	}
+
 	childRow, err := i.childIter.Next(ctx)
 	if err != nil {
 		return nil, err
 	}
+
 	return ProjectRow(ctx, i.projs, childRow)
 }
 
@@ -152,6 +167,136 @@ func (i *ProjectIter) CanDefer() bool {
 
 func (i *ProjectIter) GetChildIter() sql.RowIter {
 	return i.childIter
+}
+
+// ProjectRowWithNestedIters evaluates a set of projections, allowing for nested iterators in the expressions.
+func (i *ProjectIter) ProjectRowWithNestedIters(
+	ctx *sql.Context,
+) (sql.Row, error) {
+
+	// For the set of iterators, we return one row each element in the longest of the iterators provided.
+	// Other iterator values will be NULL after they are depleted. All non-iterator fields for the row are returned
+	// identically for each row in the result set.
+	if i.nestedState != nil {
+		row, err := ProjectRow(ctx, i.nestedState.projections, i.nestedState.sourceRow)
+		if err != nil {
+			return nil, err
+		}
+
+		nestedIterationFinished := true
+		for _, evaluator := range i.nestedState.iterEvaluators {
+			if !evaluator.finished && evaluator.iter != nil {
+				nestedIterationFinished = false
+				break
+			}
+		}
+
+		if nestedIterationFinished {
+			i.nestedState = nil
+			return i.ProjectRowWithNestedIters(ctx)
+		}
+
+		return row, nil
+	}
+
+	row, err := i.childIter.Next(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	i.nestedState = &nestedIterState{
+		sourceRow: row,
+	}
+
+	// We need a new set of projections, with any iterator-returning expressions replaced by new expressions that will
+	// return the result of the iteration on each call to Eval. We also need to keep a list of all such iterators, so
+	// that we can tell when they have all finished their iterations.
+	var rowIterEvaluators []*RowIterEvaluator
+	newProjs := make([]sql.Expression, len(i.projs))
+	for i, proj := range i.projs {
+		p, _, err := transform.Expr(proj, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			if rie, ok := e.(sql.RowIterExpression); ok && rie.ReturnsRowIter() {
+				ri, err := rie.EvalRowIter(ctx, row)
+				if err != nil {
+					return nil, false, err
+				}
+
+				evaluator := &RowIterEvaluator{
+					iter: ri,
+					typ:  rie.Type(),
+				}
+				rowIterEvaluators = append(rowIterEvaluators, evaluator)
+				return evaluator, transform.NewTree, nil
+			}
+
+			return e, transform.SameTree, nil
+		})
+
+		if err != nil {
+			return nil, err
+		}
+
+		newProjs[i] = p
+	}
+
+	i.nestedState.projections = newProjs
+	i.nestedState.iterEvaluators = rowIterEvaluators
+
+	return i.ProjectRowWithNestedIters(ctx)
+}
+
+// RowIterEvaluator is an expression that returns the next value from a sql.RowIter each time Eval is called.
+type RowIterEvaluator struct {
+	iter     sql.RowIter
+	typ      sql.Type
+	finished bool
+}
+
+var _ sql.Expression = (*RowIterEvaluator)(nil)
+
+func (r RowIterEvaluator) Resolved() bool {
+	return true
+}
+
+func (r RowIterEvaluator) String() string {
+	return "RowIterEvaluator"
+}
+
+func (r RowIterEvaluator) Type() sql.Type {
+	return r.typ
+}
+
+func (r RowIterEvaluator) IsNullable() bool {
+	return true
+}
+
+func (r *RowIterEvaluator) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	if r.finished || r.iter == nil {
+		return nil, nil
+	}
+
+	nextRow, err := r.iter.Next(ctx)
+	if err != nil {
+		if errors.Is(err, io.EOF) {
+			r.finished = true
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	// All of the set-returning functions return a single value per column
+	return nextRow[0], nil
+}
+
+func (r RowIterEvaluator) Children() []sql.Expression {
+	return nil
+}
+
+func (r RowIterEvaluator) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), 0)
+	}
+	return &r, nil
 }
 
 // ProjectRow evaluates a set of projections.
@@ -446,7 +591,7 @@ func (r *recursiveCteIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 		var key uint64
 		if r.deduplicate {
-			key, _ = sql.HashOf(ctx, row)
+			key, _ = hash.HashOf(ctx, nil, row)
 			if k, _ := r.cache.Get(key); k != nil {
 				// skip duplicate
 				continue

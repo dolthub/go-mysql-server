@@ -74,6 +74,20 @@ func TestQueries(t *testing.T, harness Harness) {
 		})
 	}
 
+	for _, tt := range queries.FunctionQueryTests {
+		t.Run(tt.Query, func(t *testing.T) {
+			if sh, ok := harness.(SkippingHarness); ok {
+				if sh.SkipQueryTest(tt.Query) {
+					t.Skipf("Skipping query plan for %s", tt.Query)
+				}
+			}
+			if IsServerEngine(e) && tt.SkipServerEngine {
+				t.Skip("skipping for server engine")
+			}
+			TestQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil, nil)
+		})
+	}
+
 	// TODO: move this into its own test method
 	if keyless, ok := harness.(KeylessTableHarness); ok && keyless.SupportsKeylessTables() {
 		for _, tt := range queries.KeylessQueries {
@@ -209,6 +223,17 @@ func TestQueriesPrepared(t *testing.T, harness Harness) {
 	defer e.Close()
 	t.Run("query prepared tests", func(t *testing.T) {
 		for _, tt := range queries.QueryTests {
+			if tt.SkipPrepared {
+				continue
+			}
+			t.Run(tt.Query, func(t *testing.T) {
+				TestPreparedQueryWithEngine(t, harness, e, tt)
+			})
+		}
+	})
+
+	t.Run("function query prepared tests", func(t *testing.T) {
+		for _, tt := range queries.FunctionQueryTests {
 			if tt.SkipPrepared {
 				continue
 			}
@@ -487,6 +512,7 @@ func TestReadOnlyDatabases(t *testing.T, harness ReadOnlyDatabaseHarness) {
 
 	for _, querySet := range [][]queries.QueryTest{
 		queries.QueryTests,
+		queries.FunctionQueryTests,
 		queries.KeylessQueries,
 	} {
 		for _, tt := range querySet {
@@ -496,7 +522,7 @@ func TestReadOnlyDatabases(t *testing.T, harness ReadOnlyDatabaseHarness) {
 
 	for _, querySet := range [][]queries.WriteQueryTest{
 		queries.InsertQueries,
-		queries.UpdateTests,
+		queries.UpdateWriteQueryTests,
 		queries.DeleteTests,
 		queries.ReplaceQueries,
 	} {
@@ -1352,8 +1378,11 @@ func TestReplaceIntoErrors(t *testing.T, harness Harness) {
 
 func TestUpdate(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.Mytable_del_idxData, setup.FloattableData, setup.NiltableData, setup.TypestableData, setup.Pk_tablesData, setup.OthertableData, setup.TabletestData)
-	for _, tt := range queries.UpdateTests {
+	for _, tt := range queries.UpdateWriteQueryTests {
 		RunWriteQueryTest(t, harness, tt)
+	}
+	for _, tt := range queries.UpdateScriptTests {
+		TestScript(t, harness, tt)
 	}
 }
 
@@ -1421,8 +1450,11 @@ func TestDelete(t *testing.T, harness Harness) {
 
 func TestUpdateQueriesPrepared(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.Mytable_del_idxData, setup.OthertableData, setup.TypestableData, setup.Pk_tablesData, setup.FloattableData, setup.NiltableData, setup.TabletestData)
-	for _, tt := range queries.UpdateTests {
+	for _, tt := range queries.UpdateWriteQueryTests {
 		runWriteQueryTestPrepared(t, harness, tt)
+	}
+	for _, tt := range queries.UpdateScriptTests {
+		TestScriptPrepared(t, harness, tt)
 	}
 }
 
@@ -4112,7 +4144,7 @@ func TestVariables(t *testing.T, harness Harness) {
 		},
 		{
 			Query:    "SET GLOBAL select_into_buffer_size = 9001",
-			Expected: []sql.Row{{}},
+			Expected: []sql.Row{{types.NewOkResult(0)}},
 		},
 		{
 			Query:    "SELECT @@SESSION.select_into_buffer_size",
@@ -4124,7 +4156,7 @@ func TestVariables(t *testing.T, harness Harness) {
 		},
 		{
 			Query:    "SET @@GLOBAL.select_into_buffer_size = 9002",
-			Expected: []sql.Row{{}},
+			Expected: []sql.Row{{types.NewOkResult(0)}},
 		},
 		{
 			Query:    "SELECT @@GLOBAL.select_into_buffer_size",
@@ -4133,7 +4165,7 @@ func TestVariables(t *testing.T, harness Harness) {
 		{
 			// For boolean types, OFF/ON is converted
 			Query:    "SET @@GLOBAL.activate_all_roles_on_login = 'ON'",
-			Expected: []sql.Row{{}},
+			Expected: []sql.Row{{types.NewOkResult(0)}},
 		},
 		{
 			Query:    "SELECT @@GLOBAL.activate_all_roles_on_login",
@@ -4142,7 +4174,7 @@ func TestVariables(t *testing.T, harness Harness) {
 		{
 			// For non-boolean types, OFF/ON is not converted
 			Query:    "SET @@GLOBAL.delay_key_write = 'OFF'",
-			Expected: []sql.Row{{}},
+			Expected: []sql.Row{{types.NewOkResult(0)}},
 		},
 		{
 			Query:    "SELECT @@GLOBAL.delay_key_write",
@@ -4168,7 +4200,7 @@ func TestVariables(t *testing.T, harness Harness) {
 		},
 		{
 			Query:    "SET GLOBAL select_into_buffer_size = 131072",
-			Expected: []sql.Row{{}},
+			Expected: []sql.Row{{types.NewOkResult(0)}},
 		},
 	} {
 		t.Run(assertion.Query, func(t *testing.T) {
@@ -5271,17 +5303,17 @@ func TestPersist(t *testing.T, harness Harness, newPersistableSess func(ctx *sql
 	}{
 		{
 			Query:           "SET PERSIST max_connections = 1000;",
-			Expected:        []sql.Row{{}},
+			Expected:        []sql.Row{{types.NewOkResult(0)}},
 			ExpectedGlobal:  int64(1000),
 			ExpectedPersist: int64(1000),
 		}, {
 			Query:           "SET @@PERSIST.max_connections = 1000;",
-			Expected:        []sql.Row{{}},
+			Expected:        []sql.Row{{types.NewOkResult(0)}},
 			ExpectedGlobal:  int64(1000),
 			ExpectedPersist: int64(1000),
 		}, {
 			Query:           "SET PERSIST_ONLY max_connections = 1000;",
-			Expected:        []sql.Row{{}},
+			Expected:        []sql.Row{{types.NewOkResult(0)}},
 			ExpectedGlobal:  int64(151),
 			ExpectedPersist: int64(1000),
 		},

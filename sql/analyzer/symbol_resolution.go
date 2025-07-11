@@ -202,37 +202,23 @@ func pruneTableCols(
 		return n, transform.SameTree, nil
 	}
 
+	// columns don't need to be pruned if there's a star
 	_, selectStar := parentStars[table.Name()]
-	if unqualifiedStar {
-		selectStar = true
+	if selectStar || unqualifiedStar {
+		return n, transform.SameTree, nil
 	}
 
-	// Don't prune columns if they're needed by a virtual column
-	virtualColDeps := make(map[tableCol]int)
-	if !selectStar { // if selectStar, we're adding all columns anyway
-		if vct, isVCT := n.WrappedTable().(*plan.VirtualColumnTable); isVCT {
-			for _, projection := range vct.Projections {
-				transform.InspectExpr(projection, func(e sql.Expression) bool {
-					if cd, isCD := e.(*sql.ColumnDefaultValue); isCD {
-						transform.InspectExpr(cd.Expr, func(e sql.Expression) bool {
-							if gf, ok := e.(*expression.GetField); ok {
-								c := newTableCol(gf.Table(), gf.Name())
-								virtualColDeps[c]++
-							}
-							return false
-						})
-					}
-					return false
-				})
-			}
-		}
+	// pruning VirtualColumnTable underlying tables causes indexing errors when VirtualColumnTable.Projections (which are sql.Expression)
+	// are evaluated
+	if _, isVCT := n.WrappedTable().(*plan.VirtualColumnTable); isVCT {
+		return n, transform.SameTree, nil
 	}
 
 	cols := make([]string, 0)
 	source := strings.ToLower(table.Name())
 	for _, col := range table.Schema() {
 		c := newTableCol(source, col.Name)
-		if selectStar || parentCols[c] > 0 || virtualColDeps[c] > 0 {
+		if parentCols[c] > 0 {
 			cols = append(cols, c.col)
 		}
 	}

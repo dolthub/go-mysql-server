@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/hash"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
@@ -249,7 +250,7 @@ func (u *updateJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 			// Determine whether this row in the table has already been updated
 			cache := u.getOrCreateCache(ctx, tableName)
-			hash, err := sql.HashOf(ctx, oldTableRow)
+			hash, err := hash.HashOf(ctx, nil, oldTableRow)
 			if err != nil {
 				return nil, err
 			}
@@ -258,8 +259,12 @@ func (u *updateJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 			if errors.Is(err, sql.ErrKeyNotFound) {
 				cache.Put(hash, struct{}{})
 
-				// updateJoin counts matched rows from join output
-				u.accumulator.handleRowMatched()
+				// updateJoin counts matched rows from join output, unless a RETURNING clause
+				// is in use, in which case there will not be an accumulator assigned, since we
+				// don't need to return the count of updated rows, just the RETURNING expressions.
+				if u.accumulator != nil {
+					u.accumulator.handleRowMatched()
+				}
 
 				continue
 			} else if err != nil {

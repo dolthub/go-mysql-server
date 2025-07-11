@@ -655,6 +655,10 @@ func foreignKeyComparableTypes(ctx *sql.Context, type1 sql.Type, type2 sql.Type)
 				if type1String.Collation().CharacterSet() != type2String.Collation().CharacterSet() {
 					return false
 				}
+			case sqltypes.Enum:
+				// Enum types can reference each other in foreign keys regardless of their string values.
+				// MySQL allows enum foreign keys to match based on underlying numeric values.
+				return true
 			default:
 				return false
 			}

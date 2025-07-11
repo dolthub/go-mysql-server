@@ -95,7 +95,7 @@ func replaceCountStar(ctx *sql.Context, a *Analyzer, n sql.Node, _ *plan.Scope, 
 					return n, transform.SameTree, nil
 				}
 
-				if statsTable, ok := rt.Table.(sql.StatisticsTable); ok {
+				if statsTable, ok := getStatisticsTable(rt.Table, nil); ok {
 					rowCnt, exact, err := statsTable.RowCount(ctx)
 					if err == nil && exact {
 						return plan.NewProject(

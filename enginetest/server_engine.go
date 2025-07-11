@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"strconv"
 	"strings"
@@ -206,39 +207,61 @@ func (s *ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, pa
 	return s.queryOrExec(ctx, stmt, parsed, query, args)
 }
 
+func (s *ServerQueryEngine) query(ctx *sql.Context, stmt *gosql.Stmt, query string, args []any) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
+	var rows *gosql.Rows
+	var err error
+	if stmt != nil {
+		rows, err = stmt.Query(args...)
+	} else {
+		rows, err = s.conn.Query(query, args...)
+	}
+	if err != nil {
+		return nil, nil, nil, trimMySQLErrCodePrefix(err)
+	}
+	return convertRowsResult(ctx, rows, query)
+}
+
+func (s *ServerQueryEngine) exec(ctx *sql.Context, stmt *gosql.Stmt, query string, args []any) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
+	var res gosql.Result
+	var err error
+	if stmt != nil {
+		res, err = stmt.Exec(args...)
+	} else {
+		res, err = s.conn.Exec(query, args...)
+	}
+	if err != nil {
+		return nil, nil, nil, trimMySQLErrCodePrefix(err)
+	}
+	return convertExecResult(res)
+}
+
 // queryOrExec function use `query()` or `exec()` method of go-sql-driver depending on the sql parser plan.
 // If |stmt| is nil, then we use the connection db to query/exec the given query statement because some queries cannot
 // be run as prepared.
 // TODO: for `EXECUTE` and `CALL` statements, it can be either query or exec depending on the statement that prepared or stored procedure holds.
 //
-//	for now, we use `query` to get the row results for these statements. For statements that needs `exec`, there will be no result.
+//	for now, we use `query` to get the row results for these statements. For statements that needs `exec`, the result is OkResult.
 func (s *ServerQueryEngine) queryOrExec(ctx *sql.Context, stmt *gosql.Stmt, parsed sqlparser.Statement, query string, args []any) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
-	var err error
-	switch parsed.(type) {
 	// TODO: added `FLUSH` stmt here (should be `exec`) because we don't support `FLUSH BINARY LOGS` or `FLUSH ENGINE LOGS`, so nil schema is returned.
-	case *sqlparser.Select, *sqlparser.SetOp, *sqlparser.Show, *sqlparser.Set, *sqlparser.Call, *sqlparser.Begin, *sqlparser.Use, *sqlparser.Load, *sqlparser.Execute, *sqlparser.Analyze, *sqlparser.Flush, *sqlparser.Explain:
-		var rows *gosql.Rows
-		if stmt != nil {
-			rows, err = stmt.Query(args...)
-		} else {
-			rows, err = s.conn.Query(query, args...)
+	var shouldQuery bool
+	switch p := parsed.(type) {
+	// Insert statements with a returning clause return rows, not OkResult, so we need to call stmt.Query instead of stmt.Exec
+	case *sqlparser.Insert:
+		if p.Returning != nil {
+			shouldQuery = true
 		}
-		if err != nil {
-			return nil, nil, nil, trimMySQLErrCodePrefix(err)
-		}
-		return convertRowsResult(ctx, rows)
+	case *sqlparser.Select, *sqlparser.SetOp, *sqlparser.Show,
+		*sqlparser.Call, *sqlparser.Begin,
+		*sqlparser.Use, *sqlparser.Load, *sqlparser.Execute,
+		*sqlparser.Analyze, *sqlparser.Flush, *sqlparser.Explain:
+		shouldQuery = true
 	default:
-		var res gosql.Result
-		if stmt != nil {
-			res, err = stmt.Exec(args...)
-		} else {
-			res, err = s.conn.Exec(query, args...)
-		}
-		if err != nil {
-			return nil, nil, nil, trimMySQLErrCodePrefix(err)
-		}
-		return convertExecResult(res)
 	}
+
+	if shouldQuery {
+		return s.query(ctx, stmt, query, args)
+	}
+	return s.exec(ctx, stmt, query, args)
 }
 
 // trimMySQLErrCodePrefix temporarily removes the error code part of the error message returned from the server.
@@ -280,7 +303,7 @@ func convertExecResult(exec gosql.Result) (sql.Schema, sql.RowIter, *sql.QueryFl
 	return types.OkResultSchema, sql.RowsToRowIter(sql.NewRow(okResult)), nil, nil
 }
 
-func convertRowsResult(ctx *sql.Context, rows *gosql.Rows) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
+func convertRowsResult(ctx *sql.Context, rows *gosql.Rows, query string) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
 	sch, err := schemaForRows(rows)
 	if err != nil {
 		return nil, nil, nil, err
@@ -288,6 +311,36 @@ func convertRowsResult(ctx *sql.Context, rows *gosql.Rows) (sql.Schema, sql.RowI
 
 	rowIter, err := rowIterForGoSqlRows(ctx, sch, rows)
 	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	// If we have no columns and no rows, this might mean a CALL statement that should return OkResult
+	// (like a CALL to a stored procedure that only does SET operations)
+	// But we should NOT convert USE, SHOW, etc. statements to OkResult
+	// Also, external procedures (starting with "memory_") should return empty results, not OkResult
+	if len(sch) == 0 && strings.HasPrefix(strings.ToUpper(strings.TrimSpace(query)), "CALL") &&
+		!strings.Contains(strings.ToLower(query), "memory_") {
+		// Check if we actually have any rows by trying to get the first row
+		firstRow, err := rowIter.Next(ctx)
+		if err == io.EOF {
+			// No rows available for a CALL statement, this should be OkResult
+			okResult := types.NewOkResult(0)
+			return types.OkResultSchema, sql.RowsToRowIter(sql.NewRow(okResult)), nil, nil
+		} else if err == nil {
+			// We do have a row, so create a new iterator that includes this row plus the rest
+			restRows := []sql.Row{firstRow}
+			for {
+				row, err := rowIter.Next(ctx)
+				if err != nil {
+					break
+				}
+				restRows = append(restRows, row)
+			}
+			rowIter.Close(ctx)
+			return sch, sql.RowsToRowIter(restRows...), nil, nil
+		}
+		// Some other error occurred, close the iterator and return the error
+		rowIter.Close(ctx)
 		return nil, nil, nil, err
 	}
 

@@ -154,7 +154,7 @@ var ErrUnsupportedReorderNode = errors.New("unsupported join reorder node")
 
 // useFastReorder determines whether to skip the current brute force join planning and use an alternate
 // planning algorithm that analyzes the join tree to find a sequence that can be implemented purely as lookup joins.
-// Currently we only use it for large joins (20+ tables) with no join hints.
+// Currently, we only use it for large joins (15+ tables) with no join hints.
 func (j *joinOrderBuilder) useFastReorder() bool {
 	if j.forceFastDFSLookupForTest {
 		return true
@@ -180,7 +180,7 @@ func (j *joinOrderBuilder) ReorderJoin(n sql.Node) {
 	// from ensureClosure in buildSingleLookupPlan, but the equivalence sets could create multiple possible join orders
 	// for the single-lookup plan, which would complicate things.
 	j.ensureClosure(j.m.root)
-	j.dbSube()
+	j.dpEnumerateSubsets()
 	return
 }
 
@@ -627,10 +627,10 @@ func (j *joinOrderBuilder) checkSize() {
 	}
 }
 
-// dpSube iterates all disjoint combinations of table sets,
+// dpEnumerateSubsets iterates all disjoint combinations of table sets,
 // adding plans to the tree when we find two sets that can
 // be joined
-func (j *joinOrderBuilder) dbSube() {
+func (j *joinOrderBuilder) dpEnumerateSubsets() {
 	all := j.allVertices()
 	for subset := vertexSet(1); subset <= all; subset++ {
 		if subset.isSingleton() {

@@ -22,29 +22,8 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-// Returns the underlying table name for the node given
+// Returns the underlying table name, unaliased, for the node given
 func getTableName(node sql.Node) string {
-	var tableName string
-	transform.Inspect(node, func(node sql.Node) bool {
-		switch node := node.(type) {
-		case *plan.ResolvedTable:
-			tableName = node.Name()
-			return false
-		case *plan.UnresolvedTable:
-			tableName = node.Name()
-			return false
-		case *plan.IndexedTableAccess:
-			tableName = node.Name()
-			return false
-		}
-		return true
-	})
-
-	return tableName
-}
-
-// Returns the underlying table name for the node given, ignoring table aliases
-func getUnaliasedTableName(node sql.Node) string {
 	var tableName string
 	transform.Inspect(node, func(node sql.Node) bool {
 		switch node := node.(type) {

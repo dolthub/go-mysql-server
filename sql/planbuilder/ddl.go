@@ -1418,6 +1418,15 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 	}
 
 	for i, def := range defaults {
+		// Early validation for enum default 0 to catch it before conversion
+		if def != nil && types.IsEnum(schema[i].Type) {
+			if lit, ok := def.(*ast.SQLVal); ok {
+				if lit.Type == ast.IntVal && string(lit.Val) == "0" {
+					b.handleErr(sql.ErrInvalidColumnDefaultValue.New(schema[i].Name))
+				}
+			}
+		}
+
 		schema[i].Default = b.convertDefaultExpression(outScope, def, schema[i].Type, schema[i].Nullable)
 		err := validateDefaultExprs(schema[i])
 		if err != nil {

@@ -165,7 +165,12 @@ func validGeneratedColumnValue(idx int, source sql.Node) bool {
 				if _, ok := val.Unwrap().(*sql.ColumnDefaultValue); ok {
 					return true
 				}
+				if _, ok := val.Unwrap().(*expression.DefaultColumn); ok {
+					return true
+				}
 				return false
+			case *expression.DefaultColumn: // handle unwrapped DefaultColumn
+				return true
 			default:
 				return false
 			}

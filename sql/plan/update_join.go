@@ -21,15 +21,15 @@ import (
 )
 
 type UpdateJoin struct {
-	Updaters map[string]sql.RowUpdater
+	UpdateTargets map[string]sql.Node
 	UnaryNode
 }
 
-// NewUpdateJoin returns an *UpdateJoin node.
-func NewUpdateJoin(editorMap map[string]sql.RowUpdater, child sql.Node) *UpdateJoin {
+// NewUpdateJoin returns a new *UpdateJoin node.
+func NewUpdateJoin(updateTargets map[string]sql.Node, child sql.Node) *UpdateJoin {
 	return &UpdateJoin{
-		Updaters:  editorMap,
-		UnaryNode: UnaryNode{Child: child},
+		UpdateTargets: updateTargets,
+		UnaryNode:     UnaryNode{Child: child},
 	}
 }
 
@@ -55,8 +55,8 @@ func (u *UpdateJoin) DebugString() string {
 // GetUpdatable returns an updateJoinTable which implements sql.UpdatableTable.
 func (u *UpdateJoin) GetUpdatable() sql.UpdatableTable {
 	return &updatableJoinTable{
-		updaters: u.Updaters,
-		joinNode: u.Child.(*UpdateSource).Child,
+		updateTargets: u.UpdateTargets,
+		joinNode:      u.Child.(*UpdateSource).Child,
 	}
 }
 
@@ -66,7 +66,7 @@ func (u *UpdateJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 1)
 	}
 
-	return NewUpdateJoin(u.Updaters, children[0]), nil
+	return NewUpdateJoin(u.UpdateTargets, children[0]), nil
 }
 
 func (u *UpdateJoin) IsReadOnly() bool {
@@ -78,10 +78,26 @@ func (u *UpdateJoin) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 	return sql.GetCoercibility(ctx, u.Child)
 }
 
+func (u *UpdateJoin) GetUpdaters(ctx *sql.Context) (map[string]sql.RowUpdater, error) {
+	return getUpdaters(u.UpdateTargets, ctx)
+}
+
+func getUpdaters(updateTargets map[string]sql.Node, ctx *sql.Context) (map[string]sql.RowUpdater, error) {
+	updaterMap := make(map[string]sql.RowUpdater)
+	for tableName, updateTarget := range updateTargets {
+		updatable, err := GetUpdatable(updateTarget)
+		if err != nil {
+			return nil, err
+		}
+		updaterMap[tableName] = updatable.Updater(ctx)
+	}
+	return updaterMap, nil
+}
+
 // updatableJoinTable manages the update of multiple tables.
 type updatableJoinTable struct {
-	updaters map[string]sql.RowUpdater
-	joinNode sql.Node
+	updateTargets map[string]sql.Node
+	joinNode      sql.Node
 }
 
 var _ sql.UpdatableTable = (*updatableJoinTable)(nil)
@@ -118,8 +134,9 @@ func (u *updatableJoinTable) Collation() sql.CollationID {
 
 // Updater implements the sql.UpdatableTable interface.
 func (u *updatableJoinTable) Updater(ctx *sql.Context) sql.RowUpdater {
+	updaters, _ := getUpdaters(u.updateTargets, ctx)
 	return &updatableJoinUpdater{
-		updaterMap: u.updaters,
+		updaterMap: updaters,
 		schemaMap:  RecreateTableSchemaFromJoinSchema(u.joinNode.Schema()),
 		joinSchema: u.joinNode.Schema(),
 	}

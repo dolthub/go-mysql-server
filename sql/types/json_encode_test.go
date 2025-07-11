@@ -106,6 +106,14 @@ newlines
 			val:      decimal.New(123, -2),
 			expected: "1.23",
 		},
+		{
+			name: "formatted key strings",
+			val: map[string]interface{}{
+				"baz\n\\n": "qux",
+				"foo\"":    "bar\t",
+			},
+			expected: `{"foo\"": "bar\t", "baz\n\\n": "qux"}`,
+		},
 	}
 
 	for _, test := range tests {

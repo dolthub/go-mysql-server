@@ -18,9 +18,9 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/hash"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // NewHashLookup returns a node that performs an indexed hash lookup
@@ -33,12 +33,14 @@ import (
 // on the projected results. If cached results are not available, it
 // simply delegates to the child.
 func NewHashLookup(n sql.Node, rightEntryKey sql.Expression, leftProbeKey sql.Expression, joinType JoinType) *HashLookup {
+	leftKeySch := hash.ExprsToSchema(leftProbeKey)
 	return &HashLookup{
 		UnaryNode:     UnaryNode{n},
 		RightEntryKey: rightEntryKey,
 		LeftProbeKey:  leftProbeKey,
 		Mutex:         new(sync.Mutex),
 		JoinType:      joinType,
+		leftKeySch:    leftKeySch,
 	}
 }
 
@@ -49,6 +51,7 @@ type HashLookup struct {
 	Mutex         *sync.Mutex
 	Lookup        *map[interface{}][]sql.Row
 	JoinType      JoinType
+	leftKeySch    sql.Schema
 }
 
 var _ sql.Node = (*HashLookup)(nil)
@@ -70,6 +73,7 @@ func (n *HashLookup) WithExpressions(exprs ...sql.Expression) (sql.Node, error) 
 	ret := *n
 	ret.RightEntryKey = exprs[0]
 	ret.LeftProbeKey = exprs[1]
+	ret.leftKeySch = hash.ExprsToSchema(ret.LeftProbeKey)
 	return &ret, nil
 }
 
@@ -127,7 +131,7 @@ func (n *HashLookup) GetHashKey(ctx *sql.Context, e sql.Expression, row sql.Row)
 		return nil, err
 	}
 	if s, ok := key.([]interface{}); ok {
-		return sql.HashOf(ctx, s)
+		return hash.HashOf(ctx, n.leftKeySch, s)
 	}
 	// byte slices are not hashable
 	if k, ok := key.([]byte); ok {

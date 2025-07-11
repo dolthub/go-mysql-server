@@ -71,7 +71,7 @@ var AnsiQuotesTests = []ScriptTest{
 			{
 				// Disable ANSI_QUOTES and make sure we can still run queries
 				Query:    `SET @@sql_mode='NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';`,
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    `select "data" from auctions order by "ai" desc;`,
@@ -154,7 +154,7 @@ var AnsiQuotesTests = []ScriptTest{
 			{
 				// Disable ANSI_QUOTES mode
 				Query:    `SET @@sql_mode='NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';`,
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    `show create table view1;`,
@@ -197,7 +197,7 @@ var AnsiQuotesTests = []ScriptTest{
 			{
 				// Disable ANSI_QUOTES mode
 				Query:    `SET @@sql_mode='NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';`,
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    `insert into t values (2, 'George', 'SomethingElse');`,
@@ -237,7 +237,7 @@ var AnsiQuotesTests = []ScriptTest{
 			{
 				// Disable ANSI_QUOTES mode
 				Query:    `SET @@sql_mode='NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';`,
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				// Assert the procedure runs correctly with ANSI_QUOTES mode disabled
@@ -269,7 +269,7 @@ var AnsiQuotesTests = []ScriptTest{
 			{
 				// Disable ANSI_QUOTES mode
 				Query:    `SET @@sql_mode='NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';`,
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				// Insert a row with ANSI_QUOTES mode disabled
@@ -298,7 +298,7 @@ var AnsiQuotesTests = []ScriptTest{
 			{
 				// Disable ANSI_QUOTES mode
 				Query:    `SET @@sql_mode='NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';`,
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				// Assert the check constraint runs correctly when ANSI_QUOTES mode is disabled
@@ -328,7 +328,7 @@ var AnsiQuotesTests = []ScriptTest{
 			{
 				// Disable ANSI_QUOTES mode and make sure we can still list and run events
 				Query:    `SET @@sql_mode='NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES';`,
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    `SHOW EVENTS;`,

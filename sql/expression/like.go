@@ -86,10 +86,12 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 	if _, ok := left.(string); !ok {
-		left, _, err = types.LongText.Convert(ctx, left)
+		// Use type-aware conversion for enum types
+		leftStr, _, err := types.ConvertToCollatedString(ctx, left, l.Left().Type())
 		if err != nil {
 			return nil, err
 		}
+		left = leftStr
 	}
 
 	var lm LikeMatcher
@@ -120,9 +122,6 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	if lm.collation == sql.Collation_Unspecified {
-		return false, nil
-	}
 
 	ok := lm.Match(left.(string))
 	if l.cached {
@@ -141,10 +140,12 @@ func (l *Like) evalRight(ctx *sql.Context, row sql.Row) (right *string, escape r
 		return nil, 0, err
 	}
 	if _, ok := rightVal.(string); !ok {
-		rightVal, _, err = types.LongText.Convert(ctx, rightVal)
+		// Use type-aware conversion for enum types
+		rightStr, _, err := types.ConvertToCollatedString(ctx, rightVal, l.Right().Type())
 		if err != nil {
 			return nil, 0, err
 		}
+		rightVal = rightStr
 	}
 
 	var escapeVal interface{}

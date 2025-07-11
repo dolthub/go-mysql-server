@@ -130,6 +130,10 @@ func (c Column) Copy() *Column {
 	return &c
 }
 
+func (c *Column) String() string {
+	return c.Source + "." + c.Name
+}
+
 // TableId is the unique identifier of a table or table alias in a multi-db environment.
 // The long-term goal is to migrate all uses of table name strings to this and minimize places where we
 // construct/inspect TableIDs. By treating this as an opaque identifier, it will be easier to migrate to

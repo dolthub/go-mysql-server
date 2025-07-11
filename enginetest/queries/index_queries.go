@@ -4011,7 +4011,7 @@ var IndexPrefixQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "set @@strict_mysql_compatibility = true;",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "select @@strict_mysql_compatibility;",
@@ -4062,6 +4062,121 @@ var IndexPrefixQueries = []ScriptTest{
 			{
 				Query:       "create table bad(c blob, index (c(3073)))",
 				ExpectedErr: sql.ErrKeyTooLong,
+			},
+		},
+	},
+	{
+		Name: "multiple nullable index prefixes",
+		SetUpScript: []string{
+			"create table test(pk int primary key, shared1 int, shared2 int, a3 int, a4 int, b3 int, b4 int, unique key a_idx(shared1, shared2, a3, a4), unique key b_idx(shared1, shared2, b3, b4))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "select * from test where shared1 = 1 and shared2 = 2 and a3 = 3;",
+				Expected:        []sql.Row{},
+				ExpectedIndexes: []string{"a_idx"},
+			},
+			{
+				Query:           "select * from test where shared1 = 1 and shared2 = 2 and b3 = 3;",
+				Expected:        []sql.Row{},
+				ExpectedIndexes: []string{"b_idx"},
+			},
+		},
+	},
+	{
+		Name: "multiple non-unique index prefixes",
+		SetUpScript: []string{
+			"create table test(pk int primary key, shared1 int not null, shared2 int not null, a3 int not null, a4 int not null, b3 int not null, b4 int not null, key a_idx(shared1, shared2, a3, a4), key b_idx(shared1, shared2, b3, b4))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "select * from test where shared1 = 1 and shared2 = 2 and a3 = 3;",
+				Expected:        []sql.Row{},
+				ExpectedIndexes: []string{"a_idx"},
+			},
+			{
+				Query:           "select * from test where shared1 = 1 and shared2 = 2 and a3 > 3 and a3 < 5;",
+				Expected:        []sql.Row{},
+				ExpectedIndexes: []string{"a_idx"},
+			},
+			{
+				Query:           "select * from test where shared1 = 1 and shared2 = 2 and b3 = 3;",
+				Expected:        []sql.Row{},
+				ExpectedIndexes: []string{"b_idx"},
+			},
+			{
+				Query:           "select * from test where shared1 = 1 and shared2 = 2 and b3 > 3 and b3 < 5;",
+				Expected:        []sql.Row{},
+				ExpectedIndexes: []string{"b_idx"},
+			},
+		},
+	},
+	{
+		Name: "multiple non-unique nullable index prefixes",
+		SetUpScript: []string{
+			"create table test(pk int primary key, shared1 int, shared2 int, a3 int, a4 int, b3 int, b4 int, key a_idx(shared1, shared2, a3, a4), key b_idx(shared1, shared2, b3, b4))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "select * from test where shared1 = 1 and shared2 = 2 and a3 = 3;",
+				Expected:        []sql.Row{},
+				ExpectedIndexes: []string{"a_idx"},
+			},
+			{
+				Query:           "select * from test where shared1 = 1 and shared2 = 2 and a3 > 3 and a3 < 5;",
+				Expected:        []sql.Row{},
+				ExpectedIndexes: []string{"a_idx"},
+			},
+			{
+				Query:           "select * from test where shared1 = 1 and shared2 = 2 and b3 = 3;",
+				Expected:        []sql.Row{},
+				ExpectedIndexes: []string{"b_idx"},
+			},
+			{
+				Query:           "select * from test where shared1 = 1 and shared2 = 2 and b3 > 3 and b3 < 5;",
+				Expected:        []sql.Row{},
+				ExpectedIndexes: []string{"b_idx"},
+			},
+		},
+	},
+	{
+		Name: "unique and non-unique nullable index prefixes",
+		SetUpScript: []string{
+			"create table test(pk int primary key, shared1 int, shared2 int, a3 int, a4 int, b3 int, b4 int, unique key a_idx(shared1, shared2, a3, a4), key b_idx(shared1, shared2, b3, b4))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "select * from test where shared1 = 1 and shared2 = 2 and a3 = 3;",
+				Expected:        []sql.Row{},
+				ExpectedIndexes: []string{"a_idx"},
+			},
+			{
+				Query:           "select * from test where shared1 = 1 and shared2 = 2 and a3 > 3 and a3 < 5;",
+				Expected:        []sql.Row{},
+				ExpectedIndexes: []string{"a_idx"},
+			},
+			{
+				Query:           "select * from test where shared1 = 1 and shared2 = 2 and b3 = 3;",
+				Expected:        []sql.Row{},
+				ExpectedIndexes: []string{"b_idx"},
+			},
+			{
+				Query:           "select * from test where shared1 = 1 and shared2 = 2 and b3 > 3 and b3 < 5;",
+				Expected:        []sql.Row{},
+				ExpectedIndexes: []string{"b_idx"},
+			},
+		},
+	},
+	{
+		Name: "avoid picking an index simply because it matches more filters if those filters are not in the prefix.",
+		SetUpScript: []string{
+			"create table test(pk int primary key, shared1 int, shared2 int, a3 int, a4 int, b3 int, b4 int, unique key a_idx(shared1, a3, a4, shared2), key b_idx(shared1, shared2, b3, b4))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "select * from test where shared1 = 1 and shared2 = 2 and a4 = 3;",
+				Expected:        []sql.Row{},
+				ExpectedIndexes: []string{"b_idx"},
 			},
 		},
 	},

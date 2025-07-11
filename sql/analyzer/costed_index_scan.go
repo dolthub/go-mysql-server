@@ -16,6 +16,7 @@ package analyzer
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -202,6 +203,9 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 		stat, ok := qualToStat[qual]
 		if !ok {
 			stat, err = uniformDistStatisticsForIndex(ctx, statsProv, iat, idx)
+		}
+		if err != nil {
+			return nil, nil, nil, err
 		}
 		err := c.cost(root, stat, idx)
 		if err != nil {
@@ -446,6 +450,8 @@ type indexCoster struct {
 	// prefix key of the best indexScan
 	bestPrefix     int
 	underlyingName string
+	// whether the column following the prefix key is limited to a subrange
+	hasRange bool
 }
 
 // cost tries to build the lowest cardinality index scan for an expression
@@ -459,10 +465,11 @@ func (c *indexCoster) cost(f indexFilter, stat sql.Statistic, idx sql.Index) err
 	var prefix int
 	var err error
 	var ok bool
+	hasRange := false
 
 	switch f := f.(type) {
 	case *iScanAnd:
-		newHist, newFds, filters, prefix, err = c.costIndexScanAnd(c.ctx, f, stat, stat.Histogram(), ordinals, idx)
+		newHist, newFds, filters, prefix, hasRange, err = c.costIndexScanAnd(c.ctx, f, stat, stat.Histogram(), ordinals, idx)
 		if err != nil {
 			return err
 		}
@@ -491,12 +498,12 @@ func (c *indexCoster) cost(f indexFilter, stat sql.Statistic, idx sql.Index) err
 		newFds = &sql.FuncDepSet{}
 	}
 
-	c.updateBest(stat, newHist, newFds, filters, prefix)
+	c.updateBest(stat, newHist, newFds, filters, prefix, hasRange)
 
 	return nil
 }
 
-func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fds *sql.FuncDepSet, filters sql.FastIntSet, prefix int) {
+func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fds *sql.FuncDepSet, filters sql.FastIntSet, prefix int, hasRange bool) {
 	if s == nil || filters.Len() == 0 {
 		return
 	}
@@ -510,6 +517,7 @@ func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fd
 			c.bestCnt = rowCnt
 			c.bestFilters = filters
 			c.bestPrefix = prefix
+			c.hasRange = hasRange
 		}
 	}()
 
@@ -531,6 +539,26 @@ func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fd
 		best := c.bestStat.FuncDeps()
 		if cmp.HasMax1Row() {
 			update = true
+			return
+		}
+
+		// If one index uses a strict superset of the filters of the other, we should always pick the superset.
+		// This is true even if the index with more filters isn't unique.
+		if prefix > c.bestPrefix && slices.Equal(c.bestStat.Columns()[:c.bestPrefix], s.Columns()[:c.bestPrefix]) {
+			update = true
+			return
+		}
+
+		if prefix == c.bestPrefix && slices.Equal(c.bestStat.Columns()[:c.bestPrefix], s.Columns()[:c.bestPrefix]) && hasRange && !c.hasRange {
+			update = true
+			return
+		}
+
+		if c.bestPrefix > prefix && slices.Equal(c.bestStat.Columns()[:prefix], s.Columns()[:prefix]) {
+			return
+		}
+
+		if c.bestPrefix == prefix && slices.Equal(c.bestStat.Columns()[:prefix], s.Columns()[:prefix]) && !hasRange && c.hasRange {
 			return
 		}
 
@@ -572,6 +600,10 @@ func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fd
 
 		if filters.Len() > c.bestFilters.Len() {
 			update = true
+			return
+		}
+
+		if filters.Len() < c.bestFilters.Len() {
 			return
 		}
 
@@ -620,7 +652,7 @@ func (c *indexCoster) getConstAndNullFilters(filters sql.FastIntSet) (sql.FastIn
 		switch e.(type) {
 		case *expression.Equals:
 			isConst.Add(i)
-		case *expression.IsNull:
+		case sql.IsNullExpression:
 			isNull.Add(i)
 		case *expression.NullSafeEquals:
 			isConst.Add(i)
@@ -1199,7 +1231,7 @@ func ordinalsForStat(stat sql.Statistic) map[string]int {
 // updated statistic, the subset of applicable filters, the maximum prefix
 // key created by a subset of equality filters (from conjunction only),
 // or an error if applicable.
-func (c *indexCoster) costIndexScanAnd(ctx *sql.Context, filter *iScanAnd, s sql.Statistic, buckets []sql.HistogramBucket, ordinals map[string]int, idx sql.Index) ([]sql.HistogramBucket, *sql.FuncDepSet, sql.FastIntSet, int, error) {
+func (c *indexCoster) costIndexScanAnd(ctx *sql.Context, filter *iScanAnd, s sql.Statistic, buckets []sql.HistogramBucket, ordinals map[string]int, idx sql.Index) ([]sql.HistogramBucket, *sql.FuncDepSet, sql.FastIntSet, int, bool, error) {
 	// first step finds the conjunctions that match index prefix columns.
 	// we divide into eqFilters and rangeFilters
 
@@ -1210,13 +1242,13 @@ func (c *indexCoster) costIndexScanAnd(ctx *sql.Context, filter *iScanAnd, s sql
 		for _, or := range filter.orChildren {
 			childStat, _, ok, err := c.costIndexScanOr(or.(*iScanOr), s, buckets, ordinals, idx)
 			if err != nil {
-				return nil, nil, sql.FastIntSet{}, 0, err
+				return nil, nil, sql.FastIntSet{}, 0, false, err
 			}
 			// if valid, INTERSECT
 			if ok {
 				ret, err = stats.Intersect(c.ctx, ret, childStat, s.Types())
 				if err != nil {
-					return nil, nil, sql.FastIntSet{}, 0, err
+					return nil, nil, sql.FastIntSet{}, 0, false, err
 				}
 				exact.Add(int(or.Id()))
 			}
@@ -1237,12 +1269,8 @@ func (c *indexCoster) costIndexScanAnd(ctx *sql.Context, filter *iScanAnd, s sql
 		conjFDs = conj.getFds()
 	}
 
-	if exact.Len()+conj.applied.Len() == filter.childCnt() {
-		// matched all filters
-		return conj.hist, conjFDs, sql.NewFastIntSet(int(filter.id)), conj.missingPrefix, nil
-	}
-
-	return conj.hist, conjFDs, exact.Union(conj.applied), conj.missingPrefix, nil
+	hasRange := conj.ineqCols.Contains(conj.missingPrefix)
+	return conj.hist, conjFDs, exact.Union(conj.applied), conj.missingPrefix, hasRange, nil
 }
 
 func (c *indexCoster) costIndexScanOr(filter *iScanOr, s sql.Statistic, buckets []sql.HistogramBucket, ordinals map[string]int, idx sql.Index) ([]sql.HistogramBucket, *sql.FuncDepSet, bool, error) {
@@ -1253,11 +1281,11 @@ func (c *indexCoster) costIndexScanOr(filter *iScanOr, s sql.Statistic, buckets 
 	for _, child := range filter.children {
 		switch child := child.(type) {
 		case *iScanAnd:
-			childBuckets, _, ids, _, err := c.costIndexScanAnd(c.ctx, child, s, buckets, ordinals, idx)
+			childBuckets, _, ids, _, _, err := c.costIndexScanAnd(c.ctx, child, s, buckets, ordinals, idx)
 			if err != nil {
 				return nil, nil, false, err
 			}
-			if ids.Len() != 1 || !ids.Contains(int(child.Id())) {
+			if ids.Len() != child.childCnt() {
 				// scan option missed some filters
 				return nil, nil, false, nil
 			}
@@ -1485,14 +1513,20 @@ func IndexLeafChildren(e sql.Expression) (IndexScanOp, sql.Expression, sql.Expre
 		left = e.Left()
 		right = e.Right()
 		op = IndexScanOpLte
-	case *expression.IsNull:
-		left = e.Child
+	case sql.IsNullExpression:
+		left = e.Children()[0]
 		op = IndexScanOpIsNull
+	case sql.IsNotNullExpression:
+		left = e.Children()[0]
+		op = IndexScanOpIsNotNull
 	case *expression.Not:
 		switch e := e.Child.(type) {
-		case *expression.IsNull:
-			left = e.Child
+		case sql.IsNullExpression:
+			left = e.Children()[0]
 			op = IndexScanOpIsNotNull
+			// TODO: In Postgres, Not(IS NULL) is valid, but doesn't necessarily always mean the
+			//       same thing as IS NOT NULL, particularly for the case of records or composite
+			//       values.
 		case *expression.Equals:
 			left = e.Left()
 			right = e.Right()
@@ -1664,6 +1698,7 @@ type conjCollector struct {
 	ordinals      map[string]int
 	missingPrefix int
 	constant      sql.FastIntSet
+	ineqCols      sql.FastIntSet
 	eqVals        []interface{}
 	nullable      []bool
 	applied       sql.FastIntSet
@@ -1732,6 +1767,7 @@ func (c *conjCollector) addEq(ctx *sql.Context, col string, val interface{}, nul
 
 func (c *conjCollector) addIneq(ctx *sql.Context, op IndexScanOp, col string, val interface{}) error {
 	ord := c.ordinals[col]
+	c.ineqCols.Add(ord)
 	if ord > 0 {
 		return nil
 	}

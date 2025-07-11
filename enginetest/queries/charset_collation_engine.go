@@ -463,7 +463,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			},
 			{
 				Query:    "set @@session.character_set_connection = 'latin1';",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "select @@session.character_set_connection, @@session.collation_connection;",
@@ -473,7 +473,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			},
 			{
 				Query:    "set @@session.collation_connection = 'utf8mb4_0900_bin';",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "select @@session.character_set_connection, @@session.collation_connection;",
@@ -490,7 +490,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			},
 			{
 				Query:    "set @@global.character_set_connection = 'latin1';",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "select @@global.character_set_connection, @@global.collation_connection;",
@@ -500,7 +500,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			},
 			{
 				Query:    "set @@global.collation_connection = 'utf8mb4_0900_bin';",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "select @@global.character_set_connection, @@global.collation_connection;",
@@ -517,7 +517,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			},
 			{
 				Query:    "set @@session.character_set_server = 'latin1';",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "select @@session.character_set_server, @@session.collation_server;",
@@ -527,7 +527,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			},
 			{
 				Query:    "set @@session.collation_server = 'utf8mb4_0900_bin';",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "select @@session.character_set_server, @@session.collation_server;",
@@ -544,7 +544,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			},
 			{
 				Query:    "set @@global.character_set_server = 'latin1';",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "select @@global.character_set_server, @@global.collation_server;",
@@ -554,7 +554,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			},
 			{
 				Query:    "set @@global.collation_server = 'utf8mb4_0900_bin';",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "select @@global.character_set_server, @@global.collation_server;",
@@ -604,6 +604,10 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 				Expected: []sql.Row{
 					{int64(2), uint16(2)},
 				},
+			},
+			{
+				Query: "create table t (e enum('abc', 'ABC') collate utf8mb4_0900_ai_ci))",
+				Error: true,
 			},
 		},
 	},
@@ -696,7 +700,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			},
 			{
 				Query:    "SET collation_connection = 'utf8mb4_0900_bin';",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "SELECT COUNT(*) FROM test WHERE v1 LIKE 'ABC';",
@@ -756,7 +760,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			},
 			{
 				Query:    "SET collation_connection = 'utf8mb4_0900_bin';",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "SELECT 'abc' LIKE 'ABC';",

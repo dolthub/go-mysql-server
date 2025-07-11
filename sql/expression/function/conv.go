@@ -136,62 +136,66 @@ func (c *Conv) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 // This conversion truncates nVal as its first subpart that is convertable.
 // nVal is treated as unsigned except nVal is negative.
 func convertFromBase(ctx *sql.Context, nVal string, fromBase interface{}) interface{} {
-	fromBase, _, err := types.Int64.Convert(ctx, fromBase)
-	if err != nil {
+	if len(nVal) == 0 {
 		return nil
 	}
 
-	fromVal := int(math.Abs(float64(fromBase.(int64))))
+	// Convert and validate fromBase
+	baseVal, _, err := types.Int64.Convert(ctx, fromBase)
+	if err != nil {
+		return nil
+	}
+	fromVal := int(math.Abs(float64(baseVal.(int64))))
 	if fromVal < 2 || fromVal > 36 {
 		return nil
 	}
 
+	// Handle sign
 	negative := false
-	var upper string
-	var lower string
-	if nVal[0] == '-' {
+	switch nVal[0] {
+	case '-':
+		if len(nVal) == 1 {
+			return uint64(0)
+		}
 		negative = true
 		nVal = nVal[1:]
-	} else if nVal[0] == '+' {
+	case '+':
+		if len(nVal) == 1 {
+			return uint64(0)
+		}
 		nVal = nVal[1:]
 	}
 
-	// check for upper and lower bound for given fromBase
+	// Determine bounds based on sign
+	var maxLen int
 	if negative {
-		upper = strconv.FormatInt(math.MaxInt64, fromVal)
-		lower = strconv.FormatInt(math.MinInt64, fromVal)
-		if len(nVal) > len(lower) {
-			nVal = lower
-		} else if len(nVal) > len(upper) {
-			nVal = upper
+		maxLen = len(strconv.FormatInt(math.MinInt64, fromVal))
+		if len(nVal) > maxLen {
+			// Use MinInt64 representation in the given base
+			nVal = strconv.FormatInt(math.MinInt64, fromVal)[1:] // remove minus sign
 		}
 	} else {
-		upper = strconv.FormatUint(math.MaxUint64, fromVal)
-		lower = "0"
-		if len(nVal) < len(lower) {
-			nVal = lower
-		} else if len(nVal) > len(upper) {
-			nVal = upper
+		maxLen = len(strconv.FormatUint(math.MaxUint64, fromVal))
+		if len(nVal) > maxLen {
+			// Use MaxUint64 representation in the given base
+			nVal = strconv.FormatUint(math.MaxUint64, fromVal)
 		}
 	}
 
-	truncate := false
-	result := uint64(0)
-	i := 1
-	for !truncate && i <= len(nVal) {
+	// Find the longest valid prefix that can be converted
+	var result uint64
+	for i := 1; i <= len(nVal); i++ {
 		val, err := strconv.ParseUint(nVal[:i], fromVal, 64)
 		if err != nil {
-			truncate = true
-			return result
+			break
 		}
 		result = val
-		i++
 	}
 
 	if negative {
+		// MySQL returns signed value for negative inputs
 		return int64(result) * -1
 	}
-
 	return result
 }
 

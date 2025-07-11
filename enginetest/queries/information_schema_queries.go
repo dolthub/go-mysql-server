@@ -31,6 +31,17 @@ var InfoSchemaQueries = []QueryTest{
 		Expected: []sql.Row{},
 	},
 	{
+		Query: `SELECT table_schema AS TABLE_CAT,
+       			NULL AS TABLE_SCHEM,
+       			table_name,
+       			CASE WHEN table_type = 'BASE TABLE' THEN
+       			    CASE WHEN table_schema = 'mysql' OR table_schema = 'performance_schema' THEN 'SYSTEM TABLE'
+       			 	ELSE 'TABLE' END
+       			WHEN table_type = 'TEMPORARY' THEN 'LOCAL_TEMPORARY'
+       			ELSE table_type END AS TABLE_TYPE FROM information_schema.tables ORDER BY table_name LIMIT 1;`,
+		Expected: []sql.Row{{"information_schema", nil, "administrable_role_authorizations", "SYSTEM VIEW"}},
+	},
+	{
 		Query: `SELECT 
      table_name, index_name, comment, non_unique, GROUP_CONCAT(column_name ORDER BY seq_in_index) AS COLUMNS 
    FROM information_schema.statistics 
@@ -1532,10 +1543,10 @@ FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='all_ty
 FROM information_schema.TABLE_CONSTRAINTS TC, information_schema.CHECK_CONSTRAINTS CC 
 WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'checks' AND TC.TABLE_SCHEMA = CC.CONSTRAINT_SCHEMA AND TC.CONSTRAINT_NAME = CC.CONSTRAINT_NAME AND TC.CONSTRAINT_TYPE = 'CHECK';`,
 				Expected: []sql.Row{
-					{"chk1", "(B > 0)", "YES"},
-					{"chk2", "(b > 0)", "NO"},
-					{"chk3", "(B > 1)", "YES"},
-					{"chk4", "(upper(C) = c)", "YES"},
+					{"chk1", "(`B` > 0)", "YES"},
+					{"chk2", "(`b` > 0)", "NO"},
+					{"chk3", "(`B` > 1)", "YES"},
+					{"chk4", "(upper(`C`) = `c`)", "YES"},
 				},
 			},
 			{
@@ -1551,10 +1562,10 @@ WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'checks' AND TC.TABLE_SCHEMA = CC.C
 			{
 				Query: `select * from information_schema.check_constraints where constraint_schema = 'mydb';`,
 				Expected: []sql.Row{
-					{"def", "mydb", "chk1", "(B > 0)"},
-					{"def", "mydb", "chk2", "(b > 0)"},
-					{"def", "mydb", "chk3", "(B > 1)"},
-					{"def", "mydb", "chk4", "(upper(C) = c)"},
+					{"def", "mydb", "chk1", "(`B` > 0)"},
+					{"def", "mydb", "chk2", "(`b` > 0)"},
+					{"def", "mydb", "chk3", "(`B` > 1)"},
+					{"def", "mydb", "chk4", "(upper(`C`) = `c`)"},
 				},
 			},
 			{

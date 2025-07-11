@@ -210,10 +210,12 @@ func writeMarshalledValue(writer io.Writer, val interface{}) error {
 
 		writer.Write([]byte{'{'})
 		for i, k := range keys {
-			writer.Write([]byte{'"'})
-			writer.Write([]byte(k))
-			writer.Write([]byte(`": `))
-			err := writeMarshalledValue(writer, val[k])
+			err := writeMarshalledValue(writer, k)
+			if err != nil {
+				return err
+			}
+			writer.Write([]byte(`: `))
+			err = writeMarshalledValue(writer, val[k])
 			if err != nil {
 				return err
 			}

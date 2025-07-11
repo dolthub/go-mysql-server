@@ -158,6 +158,9 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 
 	qFlags.Set(sql.QFlagInnerJoin)
 
+	hints := m.SessionHints()
+	hints = append(hints, memo.ExtractJoinHint(n)...)
+
 	err = addIndexScans(ctx, m)
 	if err != nil {
 		return nil, err
@@ -180,9 +183,11 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 		return nil, err
 	}
 
-	err = addMergeJoins(ctx, m)
-	if err != nil {
-		return nil, err
+	if !mergeJoinsDisabled(hints) {
+		err = addMergeJoins(ctx, m)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	memo.CardMemoGroups(ctx, m.Root())
@@ -200,11 +205,9 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 		return nil, err
 	}
 
-	m.SetDefaultHints()
-	hints := memo.ExtractJoinHint(n)
+	// Once we've enumerated all expression groups, we can apply hints. This must be done after expression
+	// groups have been identified, so that the applied hints use the correct metadata.
 	for _, h := range hints {
-		// this should probably happen earlier, but the root is not
-		// populated before reordering
 		m.ApplyHint(h)
 	}
 
@@ -221,6 +224,16 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 	}
 
 	return m.BestRootPlan(ctx)
+}
+
+// mergeJoinsDisabled returns true if merge joins have been disabled in the specified |hints|.
+func mergeJoinsDisabled(hints []memo.Hint) bool {
+	for _, hint := range hints {
+		if hint.Typ == memo.HintTypeNoMergeJoin {
+			return true
+		}
+	}
+	return false
 }
 
 // addLookupJoins prefixes memo join group expressions with indexed join
@@ -554,7 +567,7 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 		// drop null projected columns on right table
 		nullFilters := make([]sql.Expression, len(nullify))
 		for i, e := range nullify {
-			nullFilters[i] = expression.NewIsNull(e)
+			nullFilters[i] = expression.DefaultExpressionFactory.NewIsNull(e)
 		}
 
 		filterGrp := m.MemoizeFilter(nil, joinGrp, nullFilters)
@@ -1399,7 +1412,7 @@ func isWeaklyMonotonic(e sql.Expression) bool {
 			}
 			return false
 		case *expression.Equals, *expression.NullSafeEquals, *expression.Literal, *expression.GetField,
-			*expression.Tuple, *expression.IsNull, *expression.BindVar:
+			*expression.Tuple, *expression.BindVar, sql.IsNullExpression, sql.IsNotNullExpression:
 			return false
 		default:
 			if e, ok := e.(expression.Equality); ok && e.RepresentsEquality() {
