@@ -513,7 +513,7 @@ func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, ro
 	}
 	if err == nil {
 		// We have a parent row, but for DECIMAL types we need to be strict about precision/scale
-		if shouldReject := reference.shouldRejectDecimalMatch(ctx, row); shouldReject {
+		if shouldReject := reference.validateDecimalMatch(ctx, row); shouldReject {
 			return sql.ErrForeignKeyChildViolation.New(reference.ForeignKey.Name, reference.ForeignKey.Table,
 				reference.ForeignKey.ParentTable, reference.RowMapper.GetKeyString(row))
 		}
@@ -544,7 +544,7 @@ func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, ro
 		reference.ForeignKey.ParentTable, reference.RowMapper.GetKeyString(row))
 }
 
-func (reference *ForeignKeyReferenceHandler) shouldRejectDecimalMatch(ctx *sql.Context, row sql.Row) bool {
+func (reference *ForeignKeyReferenceHandler) validateDecimalMatch(ctx *sql.Context, row sql.Row) bool {
 	if reference.RowMapper.Index == nil {
 		return false
 	}
