@@ -127,7 +127,7 @@ func (b *BaseBuilder) buildShowProcessList(ctx *sql.Context, n *plan.ShowProcess
 			progress := proc.Progress[name]
 
 			printer := sql.NewTreePrinter()
-			_ = printer.WriteNode("%s", "\n" + progress.String())
+			_ = printer.WriteNode("%s", "\n"+progress.String())
 			children := []string{}
 			for _, partitionProgress := range progress.PartitionsProgress {
 				children = append(children, partitionProgress.String())
