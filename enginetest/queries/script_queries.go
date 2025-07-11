@@ -10529,41 +10529,41 @@ where
 			},
 
 			{
-				Skip:  true,
 				Query: "create table child_dec_4_1 (d decimal(4,1), foreign key (d) references parent (d));",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Skip:        true,
-				Query:       "insert into child_dec_4_1 values (78.9);",
-				ExpectedErr: sql.ErrForeignKeyParentViolation,
+				Query: "insert into child_dec_4_1 values (78.9);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
 			},
 
 			{
-				Skip:  true,
 				Query: "create table child_dec_3_2 (d decimal(3,2), foreign key (d) references parent (d));",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Skip:        true,
-				Query:       "insert into child_dec_3_2 values (1.23);",
-				ExpectedErr: sql.ErrForeignKeyParentViolation,
+				Query: "insert into child_dec_3_2 values (1.23);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
 			},
 			{
-				Skip:  true,
 				Query: "create table child_dec_65_30 (d decimal(65,30), foreign key (d) references parent (d));",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Skip:        true,
-				Query:       "insert into child_dec_65_30 values (1.23);",
-				ExpectedErr: sql.ErrForeignKeyParentViolation,
+				Query: "insert into child_dec_65_30 values (1.23);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
 			},
 		},
 	},
