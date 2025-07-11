@@ -90,7 +90,7 @@ func (b *BaseBuilder) buildRevokeRole(ctx *sql.Context, n *plan.RevokeRole, row 
 		if user == nil {
 			err := sql.ErrGrantRevokeRoleDoesNotExist.New(targetUser.String("`"))
 			if n.IgnoreUnknownUser {
-				ctx.Warn(1362, err.Error())
+				ctx.Warn(1362, "%s", err.Error())
 				continue
 			}
 			return nil, err
@@ -100,7 +100,7 @@ func (b *BaseBuilder) buildRevokeRole(ctx *sql.Context, n *plan.RevokeRole, row 
 			if role == nil {
 				err := sql.ErrGrantRevokeRoleDoesNotExist.New(targetUser.String("`"))
 				if n.IfExists {
-					ctx.Warn(3523, err.Error())
+					ctx.Warn(3523, "%s", err.Error())
 					continue
 				}
 				return nil, err
@@ -222,7 +222,7 @@ func (b *BaseBuilder) buildRevoke(ctx *sql.Context, n *plan.Revoke, row sql.Row)
 		if user == nil {
 			err := sql.ErrRevokeUserDoesNotExist.New(revokeUser.Name, revokeUser.Host)
 			if n.IgnoreUnknownUser {
-				ctx.Warn(3162, err.Error())
+				ctx.Warn(3162, "%s", err.Error())
 				continue
 			}
 			return nil, err

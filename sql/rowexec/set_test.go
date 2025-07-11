@@ -58,7 +58,7 @@ func TestSet(t *testing.T) {
 }
 
 func newPersistedSqlContext() (*sql.Context, memory.GlobalsMap) {
-	ctx, _ := context.WithCancel(context.TODO())
+	ctx := context.Background()
 	pro := memory.NewDBProvider()
 	sess := memory.NewSession(sql.NewBaseSession(), pro)
 

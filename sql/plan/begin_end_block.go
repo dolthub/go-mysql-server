@@ -47,7 +47,7 @@ func (b *BeginEndBlock) String() string {
 		label = b.Label + ": "
 	}
 	p := sql.NewTreePrinter()
-	_ = p.WriteNode(label + "BEGIN .. END")
+	_ = p.WriteNode("%s", label + "BEGIN .. END")
 	var children []string
 	for _, s := range b.statements {
 		children = append(children, s.String())
@@ -63,7 +63,7 @@ func (b *BeginEndBlock) DebugString() string {
 		label = b.Label + ": "
 	}
 	p := sql.NewTreePrinter()
-	_ = p.WriteNode(label + "BEGIN .. END")
+	_ = p.WriteNode("%s", label + "BEGIN .. END")
 	var children []string
 	for _, s := range b.statements {
 		children = append(children, sql.DebugString(s))

@@ -379,8 +379,6 @@ func (l LikeMatcher) Match(s string) bool {
 			continue
 		}
 	}
-	// Must return something here to compile, but the above loop will handle all return cases
-	return false
 }
 
 // String returns the string form of this LIKE expression. If an Escape character was provided, it is used instead of

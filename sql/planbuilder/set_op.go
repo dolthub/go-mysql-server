@@ -247,5 +247,4 @@ func colIdsForRel(n sql.Node) []sql.ColumnId {
 	default:
 		return colIdsForRel(n.Children()[0])
 	}
-	return nil
 }
