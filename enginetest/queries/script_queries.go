@@ -7270,6 +7270,149 @@ where
 		},
 	},
 	{
+		Name: "charset validation edge cases - formatInvalidByteForError testing",
+		SetUpScript: []string{
+			"create table charset_edge_test (c char(10), v varchar(20), t text);",
+		},
+		Assertions: []ScriptTestAssertion{
+			// STRICT MODE TESTS - Test formatInvalidByteForError function behavior
+			{
+				Query:    "set sql_mode = 'STRICT_TRANS_TABLES';",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			// Test 1: Single invalid byte (0xAE) - tests basic formatInvalidByteForError
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('AE'));",
+				ExpectedErrStr: "Incorrect string value: '\\xAE' for column 'c' at row 1",
+			},
+			{
+				Query:          "insert into charset_edge_test(v) values (UNHEX('AE'));",
+				ExpectedErrStr: "Incorrect string value: '\\xAE' for column 'v' at row 1",
+			},
+			{
+				Query:          "insert into charset_edge_test(t) values (UNHEX('AE'));",
+				ExpectedErrStr: "Incorrect string value: '\\xAE' for column 't' at row 1",
+			},
+			// Test 2: Multiple invalid bytes - tests consecutive invalid byte handling
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('AEAEAE'));",
+				ExpectedErrStr: "Incorrect string value: '\\xAE\\xAE\\xAE' for column 'c' at row 1",
+			},
+			// Test 3: Invalid bytes 0xC0, 0xC1 (overlong sequences)
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('C0C1'));",
+				ExpectedErrStr: "Incorrect string value: '\\xC0\\xC1' for column 'c' at row 1",
+			},
+			// Test 4: Invalid bytes 0xFE, 0xFF (never valid UTF-8)
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('FE'));",
+				ExpectedErrStr: "Incorrect string value: '\\xFE' for column 'c' at row 1",
+			},
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('FF'));",
+				ExpectedErrStr: "Incorrect string value: '\\xFF' for column 'c' at row 1",
+			},
+			// Test 5: Surrogate pairs (invalid in UTF-8)
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('EDA080'));",
+				ExpectedErrStr: "Incorrect string value: '\\xED\\xA0\\x80' for column 'c' at row 1",
+			},
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('EDBFBF'));",
+				ExpectedErrStr: "Incorrect string value: '\\xED\\xBF\\xBF' for column 'c' at row 1",
+			},
+			// Test 6: Overlong sequences
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('C080'));",
+				ExpectedErrStr: "Incorrect string value: '\\xC0\\x80' for column 'c' at row 1",
+			},
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('E08080'));",
+				ExpectedErrStr: "Incorrect string value: '\\xE0\\x80\\x80' for column 'c' at row 1",
+			},
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('F0808080'));",
+				ExpectedErrStr: "Incorrect string value: '\\xF0\\x80\\x80\\x80' for column 'c' at row 1",
+			},
+			// Test 7: Out of range (beyond U+10FFFF)
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('F4908080'));",
+				ExpectedErrStr: "Incorrect string value: '\\xF4\\x90\\x80\\x80' for column 'c' at row 1",
+			},
+			// Test 8: Continuation bytes without start byte
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('80'));",
+				ExpectedErrStr: "Incorrect string value: '\\x80' for column 'c' at row 1",
+			},
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('BF'));",
+				ExpectedErrStr: "Incorrect string value: '\\xBF' for column 'c' at row 1",
+			},
+			// Test 9: Incomplete sequences
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('C2'));",
+				ExpectedErrStr: "Incorrect string value: '\\xC2' for column 'c' at row 1",
+			},
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('E0A0'));",
+				ExpectedErrStr: "Incorrect string value: '\\xE0\\xA0' for column 'c' at row 1",
+			},
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('F09080'));",
+				ExpectedErrStr: "Incorrect string value: '\\xF0\\x90\\x80' for column 'c' at row 1",
+			},
+			// Test 10: Long sequence - tests truncation in formatInvalidByteForError (should show first 6 bytes + ...)
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('999897969594939291'));",
+				ExpectedErrStr: "Incorrect string value: '\\x99\\x98\\x97\\x96\\x95\\x94...' for column 'c' at row 1",
+			},
+			// Test 11: Valid UTF-8 with invalid bytes (mixed case) - tests position finding
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('446F6C744C6162AE'));",
+				ExpectedErrStr: "Incorrect string value: '\\xAE' for column 'c' at row 1",
+			},
+			
+			// NON-STRICT MODE TESTS - Should truncate invalid UTF-8 bytes
+			{
+				Query:    "set sql_mode = '';",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			// Test 12: Valid UTF-8 with invalid bytes should truncate
+			{
+				Query:    "insert into charset_edge_test(c) values (UNHEX('446F6C744C6162AE'));",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			// Test 13: Multiple edge cases should truncate properly
+			{
+				Query:    "insert into charset_edge_test(v) values (UNHEX('48656C6C6FC0'));",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "insert into charset_edge_test(t) values (UNHEX('54657374FF'));",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			// Test 14: Verify truncated data matches expected results
+			{
+				Query: "select HEX(c), LENGTH(c) from charset_edge_test where c is not null;",
+				Expected: []sql.Row{
+					{"446F6C744C6162", 7},
+				},
+			},
+			{
+				Query: "select HEX(v), LENGTH(v) from charset_edge_test where v is not null;",
+				Expected: []sql.Row{
+					{"48656C6C6F", 5},
+				},
+			},
+			{
+				Query: "select HEX(t), LENGTH(t) from charset_edge_test where t is not null;",
+				Expected: []sql.Row{
+					{"54657374", 4},
+				},
+			},
+		},
+	},
+	{
 		Name:    "unix_timestamp script tests",
 		Dialect: "mysql",
 		SetUpScript: []string{
