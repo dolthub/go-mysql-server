@@ -151,17 +151,15 @@ func updateSystemVariables(cfg mysql.ListenerConfig) error {
 
 func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handler mysql.Handler, sel ServerEventListener) (*Server, error) {
 	oneSecond := time.Duration(1) * time.Second
+	// TODO read default values from systemVars
 	if cfg.ConnReadTimeout < oneSecond {
-		// TODO set to MySQL default value
-		cfg.ConnReadTimeout = oneSecond
+		cfg.ConnReadTimeout = oneSecond * 30
 	}
 	if cfg.ConnWriteTimeout < oneSecond {
-		// TODO set to MySQL default value
-		cfg.ConnWriteTimeout = oneSecond
+		cfg.ConnWriteTimeout = oneSecond * 60
 	}
 	if cfg.MaxConnections < 1 {
-		// TODO set to MySQL default value
-		cfg.MaxConnections = 1
+		cfg.MaxConnections = 151
 	}
 
 	for _, opt := range cfg.Options {
