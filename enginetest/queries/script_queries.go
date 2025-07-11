@@ -10065,12 +10065,8 @@ where
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "create table float_tbl (f float primary key auto_increment);",
-				Expected: []sql.Row{{types.OkResult{}}},
-			},
-			{
-				Query:    "show create table float_tbl;",
-				Expected: []sql.Row{{"float_tbl", "CREATE TABLE `float_tbl` (\n  `f` float NOT NULL AUTO_INCREMENT,\n  PRIMARY KEY (`f`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Query:          "create table float_tbl (f float primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'f'",
 			},
 		},
 	},
@@ -10082,12 +10078,8 @@ where
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "create table double_tbl (d double primary key auto_increment);",
-				Expected: []sql.Row{{types.OkResult{}}},
-			},
-			{
-				Query:    "show create table double_tbl;",
-				Expected: []sql.Row{{"double_tbl", "CREATE TABLE `double_tbl` (\n  `d` double NOT NULL AUTO_INCREMENT,\n  PRIMARY KEY (`d`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Query:          "create table double_tbl (d double primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'd'",
 			},
 		},
 	},
