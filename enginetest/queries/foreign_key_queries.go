@@ -2956,4 +2956,66 @@ var DropForeignKeyTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "DECIMAL foreign key compatibility",
+		SetUpScript: []string{
+			"CREATE TABLE decimal_parent (d decimal(4, 2) primary key);",
+			"ALTER TABLE decimal_parent ADD INDEX idx_d (d);",
+			"INSERT INTO decimal_parent VALUES (1.23), (45.67), (78.9);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CREATE TABLE decimal_child_same (d decimal(4,2), foreign key (d) references decimal_parent (d));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "INSERT INTO decimal_child_same VALUES (1.23), (45.67), (NULL);",
+				Expected: []sql.Row{
+					{types.NewOkResult(3)},
+				},
+			},
+			{
+				Query: "CREATE TABLE decimal_child_diff_scale (d decimal(4,1), foreign key (d) references decimal_parent (d));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "CREATE TABLE decimal_child_diff_precision (d decimal(3,2), foreign key (d) references decimal_parent (d));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "CREATE TABLE decimal_child_large (d decimal(65,30), foreign key (d) references decimal_parent (d));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query:       "INSERT INTO decimal_child_diff_scale VALUES (78.9);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query: "INSERT INTO decimal_child_diff_precision VALUES (1.23);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query:       "INSERT INTO decimal_child_large VALUES (1.23);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query:       "INSERT INTO decimal_child_same VALUES (99.99);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query:       "INSERT INTO decimal_child_diff_scale VALUES (99.9);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+		},
+	},
 }

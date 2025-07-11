@@ -512,6 +512,11 @@ func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, ro
 		return err
 	}
 	if err == nil {
+		// We have a parent row, but for DECIMAL types we need to be strict about precision/scale
+		if shouldReject := reference.validateDecimalMatch(ctx, row); shouldReject {
+			return sql.ErrForeignKeyChildViolation.New(reference.ForeignKey.Name, reference.ForeignKey.Table,
+				reference.ForeignKey.ParentTable, reference.RowMapper.GetKeyString(row))
+		}
 		// We have a parent row so throw no error
 		return nil
 	}
@@ -537,6 +542,25 @@ func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, ro
 
 	return sql.ErrForeignKeyChildViolation.New(reference.ForeignKey.Name, reference.ForeignKey.Table,
 		reference.ForeignKey.ParentTable, reference.RowMapper.GetKeyString(row))
+}
+
+func (reference *ForeignKeyReferenceHandler) validateDecimalMatch(ctx *sql.Context, row sql.Row) bool {
+	if reference.RowMapper.Index == nil {
+		return false
+	}
+	indexColumnTypes := reference.RowMapper.Index.ColumnExpressionTypes()
+	for i := range reference.ForeignKey.Columns {
+		if i >= len(indexColumnTypes) {
+			continue
+		}
+		childColIdx := reference.RowMapper.IndexPositions[i]
+		childDecimal, childOk := reference.RowMapper.SourceSch[childColIdx].Type.(sql.DecimalType)
+		parentDecimal, parentOk := indexColumnTypes[i].Type.(sql.DecimalType)
+		if childOk && parentOk && childDecimal.Scale() != parentDecimal.Scale() {
+			return true
+		}
+	}
+	return false
 }
 
 // CheckTable checks that every row in the table has an index entry in the referenced table.
@@ -596,6 +620,7 @@ func (mapper *ForeignKeyRowMapper) GetIter(ctx *sql.Context, row sql.Row, refChe
 		}
 
 		targetType := mapper.SourceSch[rowPos].Type
+
 		// Transform the type of the value in this row to the one in the other table for the index lookup, if necessary
 		if mapper.TargetTypeConversions != nil && mapper.TargetTypeConversions[rowPos] != nil {
 			var err error
