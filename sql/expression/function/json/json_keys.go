@@ -105,7 +105,7 @@ func (j *JSONKeys) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	js, err := types.LookupJSONValue(doc, *path)
+	js, err := types.LookupJSONValue(ctx, doc, *path)
 	if err != nil {
 		if errors.Is(err, jsonpath.ErrKeyError) {
 			return nil, nil
@@ -117,7 +117,7 @@ func (j *JSONKeys) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	val, err := js.ToInterface()
+	val, err := js.ToInterface(ctx)
 	if err != nil {
 		return nil, err
 	}

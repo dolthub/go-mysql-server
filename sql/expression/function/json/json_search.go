@@ -295,7 +295,7 @@ func (j *JSONSearch) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
-	val, err := doc.ToInterface()
+	val, err := doc.ToInterface(ctx)
 	if err != nil {
 		return nil, err
 	}
