@@ -7167,7 +7167,7 @@ where
 	{
 		Name: "charset validation strict vs non-strict mode",
 		SetUpScript: []string{
-			"create table charset_test (c char(10) character set utf8mb4, v varchar(10) character set utf8mb4, txt text character set utf8mb4);",
+			"create table charset_test (c char(10), v varchar(10), txt text) character set utf8mb4;",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -7224,6 +7224,39 @@ where
 				Query: "select HEX(txt), LENGTH(txt) from charset_test where txt is not null;",
 				Expected: []sql.Row{
 					{"446F6C744C6162", 7},
+				},
+			},
+		},
+	},
+	{
+		Name: "charset validation UTF-8 multibyte sequence validation",
+		SetUpScript: []string{
+			"create table utf8_validation_test (c char(10), v varchar(20), t text) character set utf8mb4;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "set sql_mode = 'STRICT_TRANS_TABLES';",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			// Test that valid multibyte sequences > 127 are accepted (fixes the b > asciiMax bug)
+			{
+				Query:    "insert into utf8_validation_test(c, v, t) values (UNHEX('C3A9'), UNHEX('E282AC'), UNHEX('F09F8D95'));", // é, €, 🍕 - valid UTF-8 sequences with bytes > 127
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			// Test that actual invalid UTF-8 sequences are still rejected
+			{
+				Query:          "insert into utf8_validation_test(c) values (UNHEX('C0C1'));", // Invalid overlong sequence
+				ExpectedErrStr: "Incorrect string value: '\\xC0\\xC1' for column 'c' at row 1",
+			},
+			{
+				Query:          "insert into utf8_validation_test(v) values (UNHEX('FE'));", // Invalid UTF-8 byte
+				ExpectedErrStr: "Incorrect string value: '\\xFE' for column 'v' at row 1",
+			},
+			// Verify the valid multibyte data was stored correctly
+			{
+				Query: "select HEX(c), HEX(v), HEX(t) from utf8_validation_test where c is not null and v is not null and t is not null;",
+				Expected: []sql.Row{
+					{"C3A9", "E282AC", "F09F8D95"}, // é, €, 🍕
 				},
 			},
 		},
