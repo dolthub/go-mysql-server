@@ -7275,12 +7275,12 @@ where
 			"create table charset_edge_test (c char(10), v varchar(20), t text);",
 		},
 		Assertions: []ScriptTestAssertion{
-			// STRICT MODE TESTS - Test formatInvalidByteForError function behavior
+			// STRICT MODE TESTS
 			{
 				Query:    "set sql_mode = 'STRICT_TRANS_TABLES';",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
 			},
-			// Test 1: Single invalid byte (0xAE) - tests basic formatInvalidByteForError
+			// Single invalid byte (0xAE)
 			{
 				Query:          "insert into charset_edge_test(c) values (UNHEX('AE'));",
 				ExpectedErrStr: "Incorrect string value: '\\xAE' for column 'c' at row 1",
@@ -7293,17 +7293,17 @@ where
 				Query:          "insert into charset_edge_test(t) values (UNHEX('AE'));",
 				ExpectedErrStr: "Incorrect string value: '\\xAE' for column 't' at row 1",
 			},
-			// Test 2: Multiple invalid bytes - tests consecutive invalid byte handling
+			// Multiple invalid bytes
 			{
 				Query:          "insert into charset_edge_test(c) values (UNHEX('AEAEAE'));",
 				ExpectedErrStr: "Incorrect string value: '\\xAE\\xAE\\xAE' for column 'c' at row 1",
 			},
-			// Test 3: Invalid bytes 0xC0, 0xC1 (overlong sequences)
+			// Overlong sequences
 			{
 				Query:          "insert into charset_edge_test(c) values (UNHEX('C0C1'));",
 				ExpectedErrStr: "Incorrect string value: '\\xC0\\xC1' for column 'c' at row 1",
 			},
-			// Test 4: Invalid bytes 0xFE, 0xFF (never valid UTF-8)
+			// Invalid bytes 0xFE, 0xFF
 			{
 				Query:          "insert into charset_edge_test(c) values (UNHEX('FE'));",
 				ExpectedErrStr: "Incorrect string value: '\\xFE' for column 'c' at row 1",
@@ -7312,7 +7312,7 @@ where
 				Query:          "insert into charset_edge_test(c) values (UNHEX('FF'));",
 				ExpectedErrStr: "Incorrect string value: '\\xFF' for column 'c' at row 1",
 			},
-			// Test 5: Surrogate pairs (invalid in UTF-8)
+			// Surrogate pairs
 			{
 				Query:          "insert into charset_edge_test(c) values (UNHEX('EDA080'));",
 				ExpectedErrStr: "Incorrect string value: '\\xED\\xA0\\x80' for column 'c' at row 1",
@@ -7321,7 +7321,7 @@ where
 				Query:          "insert into charset_edge_test(c) values (UNHEX('EDBFBF'));",
 				ExpectedErrStr: "Incorrect string value: '\\xED\\xBF\\xBF' for column 'c' at row 1",
 			},
-			// Test 6: Overlong sequences
+			// More overlong sequences
 			{
 				Query:          "insert into charset_edge_test(c) values (UNHEX('C080'));",
 				ExpectedErrStr: "Incorrect string value: '\\xC0\\x80' for column 'c' at row 1",
@@ -7334,12 +7334,12 @@ where
 				Query:          "insert into charset_edge_test(c) values (UNHEX('F0808080'));",
 				ExpectedErrStr: "Incorrect string value: '\\xF0\\x80\\x80\\x80' for column 'c' at row 1",
 			},
-			// Test 7: Out of range (beyond U+10FFFF)
+			// Out of range (beyond U+10FFFF)
 			{
 				Query:          "insert into charset_edge_test(c) values (UNHEX('F4908080'));",
 				ExpectedErrStr: "Incorrect string value: '\\xF4\\x90\\x80\\x80' for column 'c' at row 1",
 			},
-			// Test 8: Continuation bytes without start byte
+			// Continuation bytes without start byte
 			{
 				Query:          "insert into charset_edge_test(c) values (UNHEX('80'));",
 				ExpectedErrStr: "Incorrect string value: '\\x80' for column 'c' at row 1",
@@ -7348,7 +7348,7 @@ where
 				Query:          "insert into charset_edge_test(c) values (UNHEX('BF'));",
 				ExpectedErrStr: "Incorrect string value: '\\xBF' for column 'c' at row 1",
 			},
-			// Test 9: Incomplete sequences
+			// Incomplete sequences
 			{
 				Query:          "insert into charset_edge_test(c) values (UNHEX('C2'));",
 				ExpectedErrStr: "Incorrect string value: '\\xC2' for column 'c' at row 1",
@@ -7361,28 +7361,26 @@ where
 				Query:          "insert into charset_edge_test(c) values (UNHEX('F09080'));",
 				ExpectedErrStr: "Incorrect string value: '\\xF0\\x90\\x80' for column 'c' at row 1",
 			},
-			// Test 10: Long sequence - tests truncation in formatInvalidByteForError (should show first 6 bytes + ...)
+			// Long sequence (tests truncation with ...)
 			{
 				Query:          "insert into charset_edge_test(c) values (UNHEX('999897969594939291'));",
 				ExpectedErrStr: "Incorrect string value: '\\x99\\x98\\x97\\x96\\x95\\x94...' for column 'c' at row 1",
 			},
-			// Test 11: Valid UTF-8 with invalid bytes (mixed case) - tests position finding
+			// Valid UTF-8 with invalid bytes
 			{
 				Query:          "insert into charset_edge_test(c) values (UNHEX('446F6C744C6162AE'));",
 				ExpectedErrStr: "Incorrect string value: '\\xAE' for column 'c' at row 1",
 			},
 			
-			// NON-STRICT MODE TESTS - Should truncate invalid UTF-8 bytes
+			// NON-STRICT MODE TESTS (should truncate)
 			{
 				Query:    "set sql_mode = '';",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
 			},
-			// Test 12: Valid UTF-8 with invalid bytes should truncate
 			{
 				Query:    "insert into charset_edge_test(c) values (UNHEX('446F6C744C6162AE'));",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
 			},
-			// Test 13: Multiple edge cases should truncate properly
 			{
 				Query:    "insert into charset_edge_test(v) values (UNHEX('48656C6C6FC0'));",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
@@ -7391,7 +7389,7 @@ where
 				Query:    "insert into charset_edge_test(t) values (UNHEX('54657374FF'));",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
 			},
-			// Test 14: Verify truncated data matches expected results
+			// Verify truncated data
 			{
 				Query: "select HEX(c), LENGTH(c) from charset_edge_test where c is not null;",
 				Expected: []sql.Row{
@@ -7410,6 +7408,113 @@ where
 					{"54657374", 4},
 				},
 			},
+		},
+	},
+	{
+		Name: "charset validation ASCII range tests",
+		SetUpScript: []string{
+			"create table ascii_test (c char(10), v varchar(20), t text);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "set sql_mode = 'STRICT_TRANS_TABLES';",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			// ASCII range 0x00-0x7F
+			{
+				Query:    "insert into ascii_test(c) values (UNHEX('00'));",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "insert into ascii_test(c) values (UNHEX('20'));",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "insert into ascii_test(c) values (UNHEX('41'));",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "insert into ascii_test(c) values (UNHEX('7F'));",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "insert into ascii_test(v) values (UNHEX('48656C6C6F'));", // "Hello"
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "insert into ascii_test(t) values (UNHEX('00207F41'));",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			// Verify ASCII data
+			{
+				Query: "select HEX(c), LENGTH(c) from ascii_test where c is not null order by c;",
+				Expected: []sql.Row{
+					{"00", 1},
+					{"20", 1},
+					{"41", 1},
+					{"7F", 1},
+				},
+			},
+			{
+				Query: "select HEX(v), LENGTH(v) from ascii_test where v is not null;",
+				Expected: []sql.Row{
+					{"48656C6C6F", 5}, // "Hello"
+				},
+			},
+			{
+				Query: "select HEX(t), LENGTH(t) from ascii_test where t is not null;",
+				Expected: []sql.Row{
+					{"00207F41", 4}, // NULL + SPACE + DEL + A
+				},
+			},
+			// Boundary cases
+			{
+				Query:    "insert into ascii_test(c) values (UNHEX('7E'));", // 0x7E is valid ASCII
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:          "insert into ascii_test(c) values (UNHEX('81'));", // 0x81 is invalid
+				ExpectedErrStr: "Incorrect string value: '\\x81' for column 'c' at row 1",
+			},
+			// Mixed ASCII and invalid (non-strict mode)
+			{
+				Query:    "set sql_mode = '';", // Non-strict mode
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query:    "insert into ascii_test(c) values (UNHEX('41424380'));", // ABC + 0x80 (invalid)
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			// Verify truncation
+			{
+				Query: "select HEX(c), LENGTH(c) from ascii_test where HEX(c) = '414243';",
+				Expected: []sql.Row{
+					{"414243", 3}, // "ABC" - truncated at invalid byte
+				},
+			},
+			// Valid UTF-8 sequences
+			{
+				Query:    "set sql_mode = 'STRICT_TRANS_TABLES';", // Back to strict mode
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query:    "insert into ascii_test(c) values (UNHEX('C3A9'));", // é (2-byte UTF-8)
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "insert into ascii_test(c) values (UNHEX('E282AC'));", // € (3-byte UTF-8)
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "insert into ascii_test(c) values (UNHEX('F09D849E'));", // 𝄞 (4-byte UTF-8)
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			// Function boundary constants (asciiMin=32, asciiMax=127)
+			{
+				Query:    "insert into ascii_test(c) values (UNHEX('1F'));", // ASCII 31 (below asciiMin=32) - valid ASCII but non-printable
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			// Note: UNHEX('80') test is covered in edge cases test above
 		},
 	},
 	{
