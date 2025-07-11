@@ -45,6 +45,7 @@ const (
 
 	// Constants for charset validation
 	asciiMax            = 127
+	asciiMin            = 32
 	invalidByteFormat   = "\\x%02X"
 	fallbackInvalidByte = "\\x00"
 )
@@ -582,12 +583,12 @@ func formatInvalidByteForError(bytesVal []byte) string {
 
 		// MySQL shows valid ASCII characters as their actual characters,
 		// but invalid UTF-8 bytes (> 127) or control characters as hex
-		if b >= 32 && b <= 126 {
+		if b >= asciiMin && b <= asciiMax {
 			// Printable ASCII character - show as character
 			result.WriteByte(b)
 		} else {
 			// Invalid UTF-8 byte or control character - show as hex
-			result.WriteString(fmt.Sprintf("\\x%02X", b))
+			result.WriteString(fmt.Sprintf(invalidByteFormat, b))
 		}
 	}
 
