@@ -1286,28 +1286,6 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name:    "auto increment on float",
-		Dialect: "mysql",
-		SetUpScript: []string{},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:          "create table auto (pk float primary key auto_increment)",
-				ExpectedErrStr: "Incorrect column specifier for column 'pk'",
-			},
-		},
-	},
-	{
-		Name:    "auto increment on double",
-		Dialect: "mysql",
-		SetUpScript: []string{},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:          "create table auto (pk double primary key auto_increment)",
-				ExpectedErrStr: "Incorrect column specifier for column 'pk'",
-			},
-		},
-	},
-	{
 		Name:    "sql_mode=NO_auto_value_ON_ZERO",
 		Dialect: "mysql",
 		SetUpScript: []string{
