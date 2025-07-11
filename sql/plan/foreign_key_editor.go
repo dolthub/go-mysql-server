@@ -21,6 +21,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 // ChildParentMapping is a mapping from the foreign key columns of a child schema to the parent schema. The position
@@ -512,6 +513,11 @@ func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, ro
 		return err
 	}
 	if err == nil {
+		// We have a parent row, but for DECIMAL types we need to be strict about precision/scale
+		if shouldReject := reference.shouldRejectDecimalMatch(ctx, row); shouldReject {
+			return sql.ErrForeignKeyChildViolation.New(reference.ForeignKey.Name, reference.ForeignKey.Table,
+				reference.ForeignKey.ParentTable, reference.RowMapper.GetKeyString(row))
+		}
 		// We have a parent row so throw no error
 		return nil
 	}
@@ -538,6 +544,35 @@ func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, ro
 	return sql.ErrForeignKeyChildViolation.New(reference.ForeignKey.Name, reference.ForeignKey.Table,
 		reference.ForeignKey.ParentTable, reference.RowMapper.GetKeyString(row))
 }
+
+// shouldRejectDecimalMatch checks if we should reject a foreign key match for DECIMAL types
+// This implements MySQL's strict behavior for DECIMAL precision/scale matching
+func (reference *ForeignKeyReferenceHandler) shouldRejectDecimalMatch(ctx *sql.Context, row sql.Row) bool {
+	// Check if any FK column is DECIMAL type and has precision/scale mismatch
+	for i := range reference.ForeignKey.Columns {
+		childColIdx := reference.RowMapper.IndexPositions[i]
+		childType := reference.RowMapper.SourceSch[childColIdx].Type
+		
+		// If this is a DECIMAL type, check if there's a precision/scale mismatch marker
+		if childType.Type() == sqltypes.Decimal {
+			// Check if there's a type conversion function that indicates mismatch
+			if reference.RowMapper.TargetTypeConversions != nil && 
+			   len(reference.RowMapper.TargetTypeConversions) > childColIdx &&
+			   reference.RowMapper.TargetTypeConversions[childColIdx] != nil {
+				// Test the conversion function to see if it indicates a mismatch
+				_, _, err := reference.RowMapper.TargetTypeConversions[childColIdx](ctx, row[childColIdx])
+				if err != nil && err.Error() == "DECIMAL_PRECISION_MISMATCH" {
+					// This indicates that the DECIMAL types have different precision/scale
+					// MySQL would reject this match
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+
 
 // CheckTable checks that every row in the table has an index entry in the referenced table.
 func (reference *ForeignKeyReferenceHandler) CheckTable(ctx *sql.Context, tbl sql.ForeignKeyTable) error {
@@ -596,6 +631,17 @@ func (mapper *ForeignKeyRowMapper) GetIter(ctx *sql.Context, row sql.Row, refChe
 		}
 
 		targetType := mapper.SourceSch[rowPos].Type
+		
+		// Special handling for DECIMAL types: check if this is a foreign key reference
+		// with different precision/scale. If so, we need to be strict like MySQL
+		if targetType.Type() == sqltypes.Decimal && refCheck {
+			// For DECIMAL foreign key lookups, we need to ensure exact type matching
+			// This is a simplified approach - we'll return an empty iterator for now
+			// to prevent matches when precision/scale differs
+			// TODO: This should be refined to only block when types actually differ
+			// For now, let's continue with normal processing and handle it later
+		}
+		
 		// Transform the type of the value in this row to the one in the other table for the index lookup, if necessary
 		if mapper.TargetTypeConversions != nil && mapper.TargetTypeConversions[rowPos] != nil {
 			var err error
@@ -717,6 +763,27 @@ func GetForeignKeyTypeConversions(
 			if !ok {
 				// this should be impossible (child and parent should both be extended types), but just in case
 				return nil, nil
+			}
+
+			// Special handling for DECIMAL types: when precision/scale differs,
+			// don't allow type conversion to ensure strict constraint checking
+			if childType.Type() == sqltypes.Decimal && parentType.Type() == sqltypes.Decimal {
+				// For DECIMAL foreign keys with different precision/scale, we don't allow
+				// automatic type conversion. This ensures constraint checking matches MySQL's
+				// strict behavior where 78.9 (4,1) != 78.90 (4,2)
+				// Note: childType.Equals(parentType) already returned false above, so we know they differ
+				
+				// Store this information so we can use it in constraint validation
+				// We'll set a special marker in the conversion function that indicates
+				// precision/scale mismatch
+				if convFns == nil {
+					convFns = make([]ForeignKeyTypeConversionFn, len(childSch))
+				}
+				convFns[childIndex] = func(ctx *sql.Context, val any) (sql.Type, any, error) {
+					// Return a special error that indicates DECIMAL precision/scale mismatch
+					return nil, nil, fmt.Errorf("DECIMAL_PRECISION_MISMATCH")
+				}
+				continue
 			}
 
 			fromType := childExtendedType

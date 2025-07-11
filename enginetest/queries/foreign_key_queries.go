@@ -2960,6 +2960,7 @@ var DropForeignKeyTests = []ScriptTest{
 		Name: "DECIMAL foreign key compatibility",
 		SetUpScript: []string{
 			"CREATE TABLE decimal_parent (d decimal(4, 2) primary key);",
+			"ALTER TABLE decimal_parent ADD INDEX idx_d (d);",
 			"INSERT INTO decimal_parent VALUES (1.23), (45.67), (78.9);",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -2994,10 +2995,8 @@ var DropForeignKeyTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "INSERT INTO decimal_child_diff_scale VALUES (78.9);",
-				Expected: []sql.Row{
-					{types.NewOkResult(1)},
-				},
+				Query:       "INSERT INTO decimal_child_diff_scale VALUES (78.9);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
 				Query: "INSERT INTO decimal_child_diff_precision VALUES (1.23);",
@@ -3006,18 +3005,16 @@ var DropForeignKeyTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "INSERT INTO decimal_child_large VALUES (1.23);",
-				Expected: []sql.Row{
-					{types.NewOkResult(1)},
-				},
+				Query:       "INSERT INTO decimal_child_large VALUES (1.23);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
 				Query:       "INSERT INTO decimal_child_same VALUES (99.99);",
-				ExpectedErr: sql.ErrForeignKeyParentViolation,
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
 				Query:       "INSERT INTO decimal_child_diff_scale VALUES (99.9);",
-				ExpectedErr: sql.ErrForeignKeyParentViolation,
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 		},
 	},

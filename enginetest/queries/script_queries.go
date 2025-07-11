@@ -10180,10 +10180,8 @@ where
 				},
 			},
 			{
-				Query: "insert into child_dec_4_1 values (78.9);",
-				Expected: []sql.Row{
-					{types.NewOkResult(1)},
-				},
+				Query:       "insert into child_dec_4_1 values (78.9);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 
 			{
@@ -10205,10 +10203,8 @@ where
 				},
 			},
 			{
-				Query: "insert into child_dec_65_30 values (1.23);",
-				Expected: []sql.Row{
-					{types.NewOkResult(1)},
-				},
+				Query:       "insert into child_dec_65_30 values (1.23);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 		},
 	},
