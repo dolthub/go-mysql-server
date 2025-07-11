@@ -218,7 +218,7 @@ func (b *BaseBuilder) buildLockTables(ctx *sql.Context, n *plan.LockTables, row 
 		lockable, err := getLockable(l.Table)
 		if err != nil {
 			// If a table is not lockable, just skip it
-			ctx.Warn(0, err.Error())
+			ctx.Warn(0, "%s", err.Error())
 			continue
 		}
 
@@ -265,6 +265,7 @@ func (b *BaseBuilder) buildSignal(ctx *sql.Context, n *plan.Signal, row sql.Row)
 		return nil, mysql.NewSQLError(
 			int(n.Info[plan.SignalConditionItemName_MysqlErrno].IntValue),
 			n.SqlStateValue,
+			"%s",
 			strValue,
 		)
 	}

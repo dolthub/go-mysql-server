@@ -90,7 +90,7 @@ func (i *InetAton) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	ip := net.ParseIP(ipstr)
 	if ip == nil {
 		// Failed to Parse IP correctly
-		ctx.Warn(1411, fmt.Sprintf("Incorrect string value: ''%s'' for function %s", ipstr, i.FunctionName()))
+		ctx.Warn(1411, "Incorrect string value: ''%s'' for function %s", ipstr, i.FunctionName())
 		return nil, nil
 	}
 
@@ -98,7 +98,7 @@ func (i *InetAton) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	ipv4 := ip.To4()
 	if ipv4 == nil {
 		// Received invalid IPv4 address (IPv6 address are invalid)
-		ctx.Warn(1411, fmt.Sprintf("Incorrect string value: ''%s'' for function %s", ipstr, i.FunctionName()))
+		ctx.Warn(1411, "Incorrect string value: ''%s'' for function %s", ipstr, i.FunctionName())
 		return nil, nil
 	}
 
@@ -165,7 +165,7 @@ func (i *Inet6Aton) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	ip := net.ParseIP(ipstr)
 	if ip == nil {
 		// Failed to Parse IP correctly
-		ctx.Warn(1411, fmt.Sprintf("Incorrect string value: ''%s'' for function %s", ipstr, i.FunctionName()))
+		ctx.Warn(1411, "Incorrect string value: ''%s'' for function %s", ipstr, i.FunctionName())
 		return nil, nil
 	}
 
@@ -179,7 +179,7 @@ func (i *Inet6Aton) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	ipv6 := ip.To16()
 	if ipv6 == nil {
 		// Invalid IPv6 address
-		ctx.Warn(1411, fmt.Sprintf("Incorrect string value: ''%s'' for function %s", ipstr, i.FunctionName()))
+		ctx.Warn(1411, "Incorrect string value: ''%s'' for function %s", ipstr, i.FunctionName())
 		return nil, nil
 	}
 
@@ -326,7 +326,7 @@ func (i *Inet6Ntoa) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 		// There must be exactly 4 or 16 bytes (len == 4 satisfied above)
 		if len(ipbytes) != 16 {
-			ctx.Warn(1411, fmt.Sprintf("Incorrect string value: ''%s'' for function %s", string(val.([]byte)), i.FunctionName()))
+			ctx.Warn(1411, "Incorrect string value: ''%s'' for function %s", string(val.([]byte)), i.FunctionName())
 			return nil, nil
 		}
 
@@ -355,7 +355,7 @@ func (i *Inet6Ntoa) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		var ipv6 net.IP = ipbytes
 		return ipv6.String(), nil
 	default:
-		ctx.Warn(1411, fmt.Sprintf("Incorrect string value: ''%v'' for function %s", val, i.FunctionName()))
+		ctx.Warn(1411, "Incorrect string value: ''%v'' for function %s", val, i.FunctionName())
 		return nil, nil
 	}
 }

@@ -51,7 +51,7 @@ func (l *Loop) String() string {
 		label = l.Label + ": "
 	}
 	p := sql.NewTreePrinter()
-	_ = p.WriteNode(label + "LOOP")
+	_ = p.WriteNode("%s", label+"LOOP")
 	var children []string
 	for _, s := range l.statements {
 		children = append(children, s.String())
@@ -67,7 +67,7 @@ func (l *Loop) DebugString() string {
 		label = l.Label + ": "
 	}
 	p := sql.NewTreePrinter()
-	_ = p.WriteNode(label + ": LOOP")
+	_ = p.WriteNode("%s", label+": LOOP")
 	var children []string
 	for _, s := range l.statements {
 		children = append(children, sql.DebugString(s))

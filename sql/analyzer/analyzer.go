@@ -369,7 +369,7 @@ func (a *Analyzer) LogDiff(prev, next sql.Node) {
 				panic(err)
 			}
 			if len(diff) > 0 {
-				a.Log(diff)
+				a.Log("%s", diff)
 			} else {
 				a.Log("nodes are different, but no textual diff found (implement better DebugString?)")
 			}

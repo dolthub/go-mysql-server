@@ -110,7 +110,7 @@ func (b *Builder) buildCreateTrigger(inScope *scope, subQuery string, fullQuery 
 			// previous ctx set means this is an INSERT or SHOW
 			// old version of Dolt permitted a bad trigger on VIEW
 			// warn and noop
-			b.ctx.Warn(0, fmt.Sprintf("trigger on view is not supported; 'DROP TRIGGER  %s' to fix", c.TriggerSpec.TrigName.Name.String()))
+			b.ctx.Warn(0, "trigger on view is not supported; 'DROP TRIGGER  %s' to fix", c.TriggerSpec.TrigName.Name.String())
 			bodyScope.node = plan.NewResolvedDualTable()
 		} else {
 			// top-level call is DDL

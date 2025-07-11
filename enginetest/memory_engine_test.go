@@ -156,7 +156,6 @@ func TestSingleQuery(t *testing.T) {
 		Expected: []sql.Row{{-1}},
 	}
 
-	fmt.Sprintf("%v", test)
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
 	// harness.UseServer()
 	harness.Setup(setup.MydbData, setup.NiltableData)
@@ -186,7 +185,6 @@ func TestSingleQueryPrepared(t *testing.T) {
 		},
 	}
 
-	fmt.Sprintf("%v", test)
 	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, false, nil)
 	harness.Setup(setup.KeylessSetup...)
 	engine, err := harness.NewEngine(t)

@@ -458,7 +458,6 @@ func statsForRel(ctx *sql.Context, rel RelExpr) sql.Statistic {
 		if prov := rel.Group().m.StatsProvider(); prov != nil {
 			if card, err := prov.RowCount(rel.Group().m.Ctx, dbName, table); err == nil {
 				return &stats.Statistic{RowCnt: card}
-				break
 			}
 		}
 		return &stats.Statistic{RowCnt: defaultTableSize}

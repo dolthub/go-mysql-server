@@ -236,11 +236,11 @@ func (l *Log) Eval(
 
 func computeLog(ctx *sql.Context, v float64, base float64) (interface{}, error) {
 	if v <= 0 {
-		ctx.Warn(3020, ErrInvalidArgumentForLogarithm.New(v).Error())
+		ctx.Warn(3020, "%s", ErrInvalidArgumentForLogarithm.New(v).Error())
 		return nil, nil
 	}
 	if base == float64(1) || base <= float64(0) {
-		ctx.Warn(3020, ErrInvalidArgumentForLogarithm.New(base).Error())
+		ctx.Warn(3020, "%s", ErrInvalidArgumentForLogarithm.New(base).Error())
 		return nil, nil
 	}
 	switch base {

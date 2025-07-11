@@ -217,7 +217,7 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 	}
 
 	if a.Verbose && a.Debug {
-		a.Log(m.String())
+		a.Log("%s", m.String())
 	}
 	if scope != nil {
 		scope.JoinTrees = append(scope.JoinTrees, m.String())
@@ -489,7 +489,6 @@ func convertSemiToInnerJoin(m *memo.Memo) error {
 			}
 			if srcNode == nil {
 				break
-				return fmt.Errorf("table for column not found: %d", colId)
 			}
 
 			sch := srcNode.Schema()

@@ -240,7 +240,7 @@ func (c *Convert) DebugString() string {
 		children = append(children, fmt.Sprintf("typeScale: %v", c.typeScale))
 	}
 
-	children = append(children, fmt.Sprintf(sql.DebugString(c.Child)))
+	children = append(children, sql.DebugString(c.Child))
 
 	_ = pr.WriteChildren(children...)
 	return pr.String()

@@ -15,7 +15,6 @@
 package plan
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -86,7 +85,7 @@ func (s *Set) Schema() sql.Schema {
 func (s *Set) String() string {
 	var children = make([]string, len(s.Exprs))
 	for i, v := range s.Exprs {
-		children[i] = fmt.Sprintf(v.String())
+		children[i] = v.String()
 	}
 	return strings.Join(children, ", ")
 }
@@ -94,7 +93,7 @@ func (s *Set) String() string {
 func (s *Set) DebugString() string {
 	var children = make([]string, len(s.Exprs))
 	for i, v := range s.Exprs {
-		children[i] = fmt.Sprintf(sql.DebugString(v))
+		children[i] = sql.DebugString(v)
 	}
 	return strings.Join(children, ", ")
 }

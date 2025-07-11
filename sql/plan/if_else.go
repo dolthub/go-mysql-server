@@ -52,7 +52,7 @@ func (ic *IfConditional) Resolved() bool {
 // String implements the sql.Node interface.
 func (ic *IfConditional) String() string {
 	p := sql.NewTreePrinter()
-	_ = p.WriteNode(fmt.Sprintf("IF(%s)", ic.Condition.String()))
+	_ = p.WriteNode("IF(%s)", ic.Condition.String())
 	_ = p.WriteChildren(ic.Body.String())
 	return p.String()
 }
@@ -60,7 +60,7 @@ func (ic *IfConditional) String() string {
 // DebugString implements the sql.DebugStringer interface.
 func (ic *IfConditional) DebugString() string {
 	p := sql.NewTreePrinter()
-	_ = p.WriteNode(fmt.Sprintf("IF(%s)", sql.DebugString(ic.Condition)))
+	_ = p.WriteNode("IF(%s)", sql.DebugString(ic.Condition))
 	_ = p.WriteChildren(sql.DebugString(ic.Body))
 	return p.String()
 }

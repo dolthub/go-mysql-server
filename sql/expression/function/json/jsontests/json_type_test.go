@@ -121,42 +121,42 @@ func TestJSONType(t *testing.T) {
 
 		{
 			f:   f1,
-			row: sql.Row{types.JSONDocument{nil}},
+			row: sql.Row{types.JSONDocument{Val: nil}},
 			exp: "NULL",
 		},
 		{
 			f:   f1,
-			row: sql.Row{types.JSONDocument{uint64(1)}},
+			row: sql.Row{types.JSONDocument{Val: uint64(1)}},
 			exp: "UNSIGNED INTEGER",
 		},
 		{
 			f:   f1,
-			row: sql.Row{types.JSONDocument{int64(1)}},
+			row: sql.Row{types.JSONDocument{Val: int64(1)}},
 			exp: "INTEGER",
 		},
 		{
 			f:   f1,
-			row: sql.Row{types.JSONDocument{true}},
+			row: sql.Row{types.JSONDocument{Val: true}},
 			exp: "BOOLEAN",
 		},
 		{
 			f:   f1,
-			row: sql.Row{types.JSONDocument{123.456}},
+			row: sql.Row{types.JSONDocument{Val: 123.456}},
 			exp: "DOUBLE",
 		},
 		{
 			f:   f1,
-			row: sql.Row{types.JSONDocument{decimal.New(123456, -3)}},
+			row: sql.Row{types.JSONDocument{Val: decimal.New(123456, -3)}},
 			exp: "DECIMAL",
 		},
 		{
 			f:   f1,
-			row: sql.Row{types.JSONDocument{[]interface{}{}}},
+			row: sql.Row{types.JSONDocument{Val: []interface{}{}}},
 			exp: "ARRAY",
 		},
 		{
 			f:   f1,
-			row: sql.Row{types.JSONDocument{map[string]interface{}{}}},
+			row: sql.Row{types.JSONDocument{Val: map[string]interface{}{}}},
 			exp: "OBJECT",
 		},
 	}

@@ -365,7 +365,7 @@ func (f *Uncompress) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	val, _, err := types.LongBlob.Convert(ctx, arg)
 	if err != nil {
-		ctx.Warn(1258, err.Error())
+		ctx.Warn(1258, "%s", err.Error())
 		return nil, nil
 	}
 	valBytes := val.([]byte)
@@ -387,14 +387,14 @@ func (f *Uncompress) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	outLen := binary.LittleEndian.Uint32(valBytes[:compressHeaderSize])
 	if outLen > compressMaxSize {
-		ctx.Warn(1258, fmt.Sprintf("Uncompressed data too large; the maximum size is %d", compressMaxSize))
+		ctx.Warn(1258, "Uncompressed data too large; the maximum size is %d", compressMaxSize)
 		return nil, nil
 	}
 
 	outBuf := make([]byte, outLen)
 	readLen, err := reader.Read(outBuf)
 	if err != nil && err != io.EOF {
-		ctx.Warn(1258, err.Error())
+		ctx.Warn(1258, "%s", err.Error())
 		return nil, nil
 	}
 	// if we don't receive io.EOF, then received outLen was too small
@@ -453,7 +453,7 @@ func (f *UncompressedLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, e
 
 	val, _, err := types.LongBlob.Convert(ctx, arg)
 	if err != nil {
-		ctx.Warn(1258, err.Error())
+		ctx.Warn(1258, "%s", err.Error())
 		return nil, nil
 	}
 	valBytes := val.([]byte)

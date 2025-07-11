@@ -310,7 +310,7 @@ func TestCompress(t *testing.T) {
 
 	for _, test := range tests {
 		f := NewCompress(test.val)
-		t.Run(fmt.Sprintf(f.String()), func(t *testing.T) {
+		t.Run(f.String(), func(t *testing.T) {
 			res, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(t, err)
 			if test.exp == nil {
@@ -370,7 +370,7 @@ func TestUncompress(t *testing.T) {
 
 	for _, test := range tests {
 		f := NewUncompress(test.val)
-		t.Run(fmt.Sprintf(f.String()), func(t *testing.T) {
+		t.Run(f.String(), func(t *testing.T) {
 			res, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(t, err)
 			if test.exp == nil {
@@ -430,7 +430,7 @@ func TestUncompressedLength(t *testing.T) {
 
 	for _, test := range tests {
 		f := NewUncompressedLength(test.val)
-		t.Run(fmt.Sprintf(f.String()), func(t *testing.T) {
+		t.Run(f.String(), func(t *testing.T) {
 			res, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(t, err)
 			require.Equal(t, test.exp, res)
@@ -475,7 +475,7 @@ func TestValidatePasswordStrength(t *testing.T) {
 
 	for _, test := range tests {
 		f := NewValidatePasswordStrength(test.val)
-		t.Run(fmt.Sprintf(f.String()), func(t *testing.T) {
+		t.Run(f.String(), func(t *testing.T) {
 			res, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(t, err)
 			require.Equal(t, test.exp, res)

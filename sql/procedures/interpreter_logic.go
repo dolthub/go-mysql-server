@@ -651,7 +651,7 @@ func execOp(ctx *sql.Context, runner sql.StatementRunner, stack *InterpreterStac
 			}
 		}
 
-		return 0, nil, nil, nil, mysql.NewSQLError(mysqlErrNo, sqlState, msgTxt)
+		return 0, nil, nil, nil, mysql.NewSQLError(mysqlErrNo, sqlState, "%s", msgTxt)
 
 	case OpCode_Open:
 		openCur := operation.PrimaryData.(*ast.OpenCursor)
