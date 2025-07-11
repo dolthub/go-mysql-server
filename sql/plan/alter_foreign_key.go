@@ -659,6 +659,10 @@ func foreignKeyComparableTypes(ctx *sql.Context, type1 sql.Type, type2 sql.Type)
 				// Enum types can reference each other in foreign keys regardless of their string values.
 				// MySQL allows enum foreign keys to match based on underlying numeric values.
 				return true
+			case sqltypes.Decimal:
+				// MySQL allows decimal foreign keys with different precision/scale
+				// The foreign key constraint validation will handle the actual value comparison
+				return true
 			default:
 				return false
 			}
