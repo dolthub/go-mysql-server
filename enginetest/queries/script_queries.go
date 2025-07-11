@@ -7167,7 +7167,7 @@ where
 	{
 		Name: "charset validation strict vs non-strict mode",
 		SetUpScript: []string{
-			"create table charset_test (c char(10), v varchar(10), txt text);",
+			"create table charset_test (c char(10) character set utf8mb4, v varchar(10) character set utf8mb4, txt text character set utf8mb4);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
