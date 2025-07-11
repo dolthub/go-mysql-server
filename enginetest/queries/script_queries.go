@@ -8157,7 +8157,6 @@ where
 
 	// Char tests
 	{
-		Skip:        true,
 		Name:        "char with auto_increment",
 		Dialect:     "mysql",
 		SetUpScript: []string{},
@@ -8171,7 +8170,6 @@ where
 
 	// Varchar tests
 	{
-		Skip:        true,
 		Name:        "varchar with auto_increment",
 		Dialect:     "mysql",
 		SetUpScript: []string{},
@@ -8185,7 +8183,6 @@ where
 
 	// Binary tests
 	{
-		Skip:        true,
 		Name:        "binary with auto_increment",
 		Dialect:     "mysql",
 		SetUpScript: []string{},
@@ -8199,7 +8196,6 @@ where
 
 	// Varbinary tests
 	{
-		Skip:        true,
 		Name:        "varbinary with auto_increment",
 		Dialect:     "mysql",
 		SetUpScript: []string{},
@@ -8213,7 +8209,6 @@ where
 
 	// Blob tests
 	{
-		Skip:        true,
 		Name:        "blob with auto_increment",
 		Dialect:     "mysql",
 		SetUpScript: []string{},
@@ -8224,22 +8219,21 @@ where
 			},
 			{
 				Query:          "create table bad (tb tinyblob primary key auto_increment);",
-				ExpectedErrStr: "Incorrect column specifier for column 'b'",
+				ExpectedErrStr: "Incorrect column specifier for column 'tb'",
 			},
 			{
 				Query:          "create table bad (mb mediumblob primary key auto_increment);",
-				ExpectedErrStr: "Incorrect column specifier for column 'b'",
+				ExpectedErrStr: "Incorrect column specifier for column 'mb'",
 			},
 			{
 				Query:          "create table bad (lb longblob primary key auto_increment);",
-				ExpectedErrStr: "Incorrect column specifier for column 'b'",
+				ExpectedErrStr: "Incorrect column specifier for column 'lb'",
 			},
 		},
 	},
 
 	// Text Tests
 	{
-		Skip:        true,
 		Name:        "text with auto_increment",
 		Dialect:     "mysql",
 		SetUpScript: []string{},
@@ -9659,7 +9653,6 @@ where
 		},
 	},
 	{
-		Skip:    true,
 		Name:    "set with auto increment",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -10016,7 +10009,6 @@ where
 
 	// Bit Tests
 	{
-		Skip:        true,
 		Name:        "bit with auto_increment",
 		Dialect:     "mysql",
 		SetUpScript: []string{},
@@ -10114,13 +10106,12 @@ where
 
 	// Float Tests
 	{
-		Skip:        true,
 		Name:        "float with auto_increment",
 		Dialect:     "mysql",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:          "create table bad (f float primary key auto_increment);",
+				Query:          "create table float_tbl (f float primary key auto_increment);",
 				ExpectedErrStr: "Incorrect column specifier for column 'f'",
 			},
 		},
@@ -10128,21 +10119,19 @@ where
 
 	// Double Tests
 	{
-		Skip:        true,
 		Name:        "double with auto_increment",
 		Dialect:     "mysql",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:          "create table bad (d double primary key auto_increment);",
-				ExpectedErrStr: "Incorrect column specifier for column 'vc'",
+				Query:          "create table double_tbl (d double primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'd'",
 			},
 		},
 	},
 
 	// Decimal Tests
 	{
-		Skip:        true,
 		Name:        "decimal with auto_increment",
 		Dialect:     "mysql",
 		SetUpScript: []string{},
@@ -10226,7 +10215,6 @@ where
 
 	// Date Tests
 	{
-		Skip:        true,
 		Name:        "date with auto_increment",
 		Dialect:     "mysql",
 		SetUpScript: []string{},
@@ -10240,7 +10228,6 @@ where
 
 	// Datetime Tests
 	{
-		Skip:        true,
 		Name:        "datetime with auto_increment",
 		Dialect:     "mysql",
 		SetUpScript: []string{},
@@ -10258,7 +10245,6 @@ where
 
 	// Timestamp Tests
 	{
-		Skip:        true,
 		Name:        "timestamp with auto_increment",
 		Dialect:     "mysql",
 		SetUpScript: []string{},
@@ -10276,7 +10262,6 @@ where
 
 	// Time Tests
 	{
-		Skip:        true,
 		Name:        "time with auto_increment",
 		Dialect:     "mysql",
 		SetUpScript: []string{},
@@ -10294,7 +10279,6 @@ where
 
 	// Year Tests
 	{
-		Skip:        true,
 		Name:        "year with auto_increment",
 		Dialect:     "mysql",
 		SetUpScript: []string{},

@@ -40,6 +40,21 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 
 	sch := ct.PkSchema().Schema
 	idxs := ct.Indexes()
+
+	// First validate auto_increment columns before other validations
+	// This ensures proper error precedence matching MySQL behavior
+	keyedColumns := make(map[string]bool)
+	for _, index := range idxs {
+		for _, col := range index.Columns {
+			keyedColumns[col.Name] = true
+		}
+	}
+
+	err = validateAutoIncrementModify(sch, keyedColumns)
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+
 	strictMySQLCompat, err := isStrictMysqlCompatibilityEnabled(ctx)
 	if err != nil {
 		return nil, transform.SameTree, err
@@ -50,20 +65,6 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 	}
 
 	err = validateNoVirtualColumnsInPrimaryKey(sch)
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-
-	// passed validateIndexes, so they all must be valid indexes
-	// extract map of columns that have indexes defined over them
-	keyedColumns := make(map[string]bool)
-	for _, index := range idxs {
-		for _, col := range index.Columns {
-			keyedColumns[col.Name] = true
-		}
-	}
-
-	err = validateAutoIncrementModify(sch, keyedColumns)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
@@ -336,7 +337,7 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 	// We can't evaluate auto-increment until the end of the analysis, since we break adding a new auto-increment unique
 	// column into two steps: first add the column, then create the index. If there was no index created, that's an error.
 	if addedColumn {
-		err = validateAutoIncrementAdd(sch, keyedColumns)
+		err = validateAutoIncrementModify(sch, keyedColumns)
 		if err != nil {
 			return nil, false, err
 		}
@@ -791,8 +792,8 @@ func validateAutoIncrementModify(schema sql.Schema, keyedColumns map[string]bool
 	seen := false
 	for _, col := range schema {
 		if col.AutoIncrement {
-			// Check if column type is valid for auto_increment
-			if types.IsEnum(col.Type) {
+			// Under MySQL 8.4+, AUTO_INCREMENT columns must be integer types.
+			if !types.IsInteger(col.Type) {
 				return sql.ErrInvalidColumnSpecifier.New(col.Name)
 			}
 			// keyedColumns == nil means they are trying to add auto_increment column
@@ -809,34 +810,6 @@ func validateAutoIncrementModify(schema sql.Schema, keyedColumns map[string]bool
 				return sql.ErrInvalidAutoIncCols.New()
 			}
 			seen = true
-		}
-	}
-	return nil
-}
-
-func validateAutoIncrementAdd(schema sql.Schema, keyColumns map[string]bool) error {
-	seen := false
-	for _, col := range schema {
-		if col.AutoIncrement {
-			{
-				// Check if column type is valid for auto_increment
-				if types.IsEnum(col.Type) {
-					return sql.ErrInvalidColumnSpecifier.New(col.Name)
-				}
-				if !col.PrimaryKey && !keyColumns[col.Name] {
-					// AUTO_INCREMENT col must be a key
-					return sql.ErrInvalidAutoIncCols.New()
-				}
-				if col.Default != nil {
-					// AUTO_INCREMENT col cannot have default
-					return sql.ErrInvalidAutoIncCols.New()
-				}
-				if seen {
-					// there can be at most one AUTO_INCREMENT col
-					return sql.ErrInvalidAutoIncCols.New()
-				}
-				seen = true
-			}
 		}
 	}
 	return nil
