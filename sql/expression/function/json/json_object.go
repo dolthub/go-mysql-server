@@ -116,7 +116,7 @@ func (j JSONObject) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 				return nil, err
 			}
 			if json, ok := val.(sql.JSONWrapper); ok {
-				val, err = json.ToInterface()
+				val, err = json.ToInterface(ctx)
 				if err != nil {
 					return nil, err
 				}

@@ -116,7 +116,7 @@ func (j *JSONMergePatch) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 		return nil, nil
 	}
 
-	val, err := initDoc.ToInterface()
+	val, err := initDoc.ToInterface(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +131,7 @@ func (j *JSONMergePatch) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 		if doc == nil {
 			return nil, nil
 		}
-		val, err = doc.ToInterface()
+		val, err = doc.ToInterface(ctx)
 		if err != nil {
 			return nil, err
 		}

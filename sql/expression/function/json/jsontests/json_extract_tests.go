@@ -15,6 +15,7 @@
 package jsontests
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -67,7 +68,7 @@ func JsonExtractTestCases(t *testing.T, prepare prepareJsonValue) []testCase {
 	}}
 	// Workaround for https://github.com/dolthub/dolt/issues/7998
 	// Otherwise, converting this to a string will create invalid JSON
-	jsonBytes, err := types.MarshallJson(jsonDocument)
+	jsonBytes, err := types.MarshallJson(context.Background(), jsonDocument)
 	require.NoError(t, err)
 	jsonInput := prepare(t, jsonBytes)
 

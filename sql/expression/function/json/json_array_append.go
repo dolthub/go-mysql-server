@@ -88,7 +88,7 @@ func (j JSONArrayAppend) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 
 	// Apply the path-value pairs to the document.
 	for _, pair := range pairs {
-		doc, _, err = doc.ArrayAppend(pair.path, pair.val)
+		doc, _, err = doc.ArrayAppend(ctx, pair.path, pair.val)
 		if err != nil {
 			return nil, err
 		}

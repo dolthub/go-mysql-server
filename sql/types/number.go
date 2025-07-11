@@ -243,7 +243,7 @@ func (t NumberTypeImpl_) Compare(s context.Context, a interface{}, b interface{}
 }
 
 // Convert implements Type interface.
-func (t NumberTypeImpl_) Convert(c context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t NumberTypeImpl_) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	var err error
 	if v == nil {
 		return nil, sql.InRange, nil
@@ -254,7 +254,7 @@ func (t NumberTypeImpl_) Convert(c context.Context, v interface{}) (interface{},
 	}
 
 	if jv, ok := v.(sql.JSONWrapper); ok {
-		v, err = jv.ToInterface()
+		v, err = jv.ToInterface(ctx)
 		if err != nil {
 			return nil, sql.OutOfRange, err
 		}
@@ -559,7 +559,7 @@ func (t NumberTypeImpl_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqlt
 
 	var err error
 	if jv, ok := v.(sql.JSONWrapper); ok {
-		v, err = jv.ToInterface()
+		v, err = jv.ToInterface(ctx)
 		if err != nil {
 			return sqltypes.Value{}, err
 		}

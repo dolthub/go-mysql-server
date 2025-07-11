@@ -76,7 +76,7 @@ func (j JSONContainsPath) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 			return nil, err
 		}
 
-		result, err := types.LookupJSONValue(target, path.(string))
+		result, err := types.LookupJSONValue(ctx, target, path.(string))
 		if err != nil {
 			return nil, err
 		}

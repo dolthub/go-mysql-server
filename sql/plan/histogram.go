@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -59,7 +60,7 @@ func (u *UpdateHistogram) Resolved() bool {
 }
 
 func (u *UpdateHistogram) String() string {
-	statBytes, _ := types.MarshallJson(u.stats)
+	statBytes, _ := types.MarshallJson(context.TODO(), u.stats)
 	return fmt.Sprintf("update histogram  %s.(%s) using %s", u.table, strings.Join(u.cols, ","), statBytes)
 }
 

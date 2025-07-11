@@ -102,7 +102,7 @@ func MutableJsonDoc(ctx context.Context, wrapper sql.JSONWrapper) (types.Mutable
 		return mutable, nil
 	}
 
-	val, err := clonedJsonWrapper.ToInterface()
+	val, err := clonedJsonWrapper.ToInterface(ctx)
 	if err != nil {
 		return nil, err
 	}

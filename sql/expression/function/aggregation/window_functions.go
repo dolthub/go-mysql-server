@@ -1055,7 +1055,7 @@ func (a *WindowedJSONArrayAgg) aggregateVals(ctx *sql.Context, interval sql.Wind
 			return nil, err
 		}
 		if js, ok := v.(sql.JSONWrapper); ok {
-			v, err = js.ToInterface()
+			v, err = js.ToInterface(ctx)
 			if err != nil {
 				return nil, err
 			}
@@ -1146,7 +1146,7 @@ func (a *WindowedJSONObjectAgg) aggregateVals(ctx *sql.Context, interval sql.Win
 			return nil, err
 		}
 		if js, ok := val.(sql.JSONWrapper); ok {
-			val, err = js.ToInterface()
+			val, err = js.ToInterface(ctx)
 			if err != nil {
 				return nil, err
 			}

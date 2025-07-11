@@ -173,7 +173,7 @@ func (h Histogram) Clone(context.Context) JSONWrapper {
 	return h
 }
 
-func (h Histogram) ToInterface() (interface{}, error) {
+func (h Histogram) ToInterface(context.Context) (interface{}, error) {
 	ret := make([]interface{}, len(h))
 	for i, b := range h {
 		var upperBound Row

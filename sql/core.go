@@ -15,6 +15,7 @@
 package sql
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	trace2 "runtime/trace"
@@ -324,7 +325,7 @@ func ConvertToBool(ctx *Context, v interface{}) (bool, error) {
 	}
 }
 
-func ConvertToVector(v interface{}) ([]float64, error) {
+func ConvertToVector(ctx context.Context, v interface{}) ([]float64, error) {
 	switch b := v.(type) {
 	case []float64:
 		return b, nil
@@ -336,7 +337,7 @@ func ConvertToVector(v interface{}) ([]float64, error) {
 		}
 		return convertJsonInterfaceToVector(val)
 	case JSONWrapper:
-		val, err := b.ToInterface()
+		val, err := b.ToInterface(ctx)
 		if err != nil {
 			return nil, err
 		}

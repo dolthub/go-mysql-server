@@ -49,7 +49,7 @@ var jsonFormatTests = []jsonFormatTest{
 		prepareFunc: func(t *testing.T, js interface{}) interface{} {
 			doc, _, err := types.JSON.Convert(sqlCtx, js)
 			require.NoError(t, err)
-			val, err := doc.(sql.JSONWrapper).ToInterface()
+			val, err := doc.(sql.JSONWrapper).ToInterface(t.Context())
 			require.NoError(t, err)
 			return types.JSONDocument{Val: val}
 		},
@@ -59,7 +59,7 @@ var jsonFormatTests = []jsonFormatTest{
 		prepareFunc: func(t *testing.T, js interface{}) interface{} {
 			doc, _, err := types.JSON.Convert(sqlCtx, js)
 			require.NoError(t, err)
-			bytes, err := types.MarshallJson(doc.(sql.JSONWrapper))
+			bytes, err := types.MarshallJson(sqlCtx, doc.(sql.JSONWrapper))
 			require.NoError(t, err)
 			return types.NewLazyJSONDocument(bytes)
 		},

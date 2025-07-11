@@ -38,11 +38,11 @@ var _ sql.CollationCoercible = JsonType{}
 type JsonType struct{}
 
 // Compare implements Type interface.
-func (t JsonType) Compare(s context.Context, a interface{}, b interface{}) (int, error) {
+func (t JsonType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
-	return CompareJSON(a, b)
+	return CompareJSON(ctx, a, b)
 }
 
 // Convert implements Type interface.
@@ -137,7 +137,7 @@ func (t JsonType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Va
 	// This is kind of a hack, and it means that reading JSON from tables no longer matches MySQL byte-for-byte.
 	// But its worth it to avoid the round-trip, which can be very slow.
 	if j, ok := v.(JSONBytes); ok {
-		str, err := MarshallJson(j)
+		str, err := MarshallJson(ctx, j)
 		if err != nil {
 			return sqltypes.NULL, err
 		}
@@ -150,7 +150,7 @@ func (t JsonType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Va
 		}
 		js := jsVal.(sql.JSONWrapper)
 
-		str, err := JsonToMySqlString(js)
+		str, err := JsonToMySqlString(ctx, js)
 		if err != nil {
 			return sqltypes.NULL, err
 		}

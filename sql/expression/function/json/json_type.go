@@ -109,7 +109,7 @@ func (j JSONType) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return comparableDoc.Type(ctx)
 	}
 
-	val, err := doc.ToInterface()
+	val, err := doc.ToInterface(ctx)
 	if err != nil {
 		return nil, err
 	}

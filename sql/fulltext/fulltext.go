@@ -173,7 +173,7 @@ func writeHashedValue(ctx context.Context, h hash.Hash, val interface{}) (valIsN
 			return false, err
 		}
 	case sql.JSONWrapper:
-		str, err := types.JsonToMySqlString(val)
+		str, err := types.JsonToMySqlString(ctx, val)
 		if err != nil {
 			return false, err
 		}

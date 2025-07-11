@@ -147,7 +147,7 @@ func (j *JSONContains) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 			return nil, err
 		}
 
-		extracted, err := types.LookupJSONValue(target, path.(string))
+		extracted, err := types.LookupJSONValue(ctx, target, path.(string))
 		if err != nil {
 			return nil, err
 		}
@@ -162,11 +162,11 @@ func (j *JSONContains) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	}
 
 	// Now determine whether the candidate value exists in the target
-	targetVal, err := target.ToInterface()
+	targetVal, err := target.ToInterface(ctx)
 	if err != nil {
 		return nil, err
 	}
-	candidateVal, err := candidate.ToInterface()
+	candidateVal, err := candidate.ToInterface(ctx)
 	if err != nil {
 		return nil, err
 	}

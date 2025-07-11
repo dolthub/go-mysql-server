@@ -91,5 +91,5 @@ type JSONWrapper interface {
 	// Clone creates a new value that can be mutated without affecting the original.
 	Clone(ctx context.Context) JSONWrapper
 	// ToInterface converts a JSONWrapper to an interface{} of simple types
-	ToInterface() (interface{}, error)
+	ToInterface(ctx context.Context) (interface{}, error)
 }
