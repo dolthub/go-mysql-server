@@ -42,14 +42,27 @@ const (
 	TextBlobMax       = varcharVarbinaryMax
 	MediumTextBlobMax = 16_777_215
 	LongTextBlobMax   = int64(4_294_967_295)
+
+	// Constants for charset validation
+	asciiMax            = 127
+	invalidByteFormat   = "\\x%02X"
+	fallbackInvalidByte = "\\x00"
+)
+
+// Context keys for passing column information during conversion
+type contextKey string
+
+const (
+	ColumnNameKey contextKey = "column_name"
+	RowNumberKey  contextKey = "row_number"
 )
 
 var (
 	// ErrLengthTooLarge is thrown when a string's length is too large given the other parameters.
-	ErrLengthTooLarge    = errors.NewKind("length is %v but max allowed is %v")
-	ErrLengthBeyondLimit = errors.NewKind("string '%v' is too large for column '%v'")
-	ErrBinaryCollation   = errors.NewKind("binary types must have the binary collation: %v")
-	ErrBadCharsetString  = errors.NewKind("invalid string for charset %s: '%v'")
+	ErrLengthTooLarge       = errors.NewKind("length is %v but max allowed is %v")
+	ErrLengthBeyondLimit    = errors.NewKind("string '%v' is too large for column '%v'")
+	ErrBinaryCollation      = errors.NewKind("binary types must have the binary collation: %v")
+	ErrBadCharsetString = errors.NewKind("Incorrect string value: '%v' for column '%s' at row %d")
 
 	TinyText   = MustCreateStringWithDefaults(sqltypes.Text, TinyTextBlobMax)
 	Text       = MustCreateStringWithDefaults(sqltypes.Text, TextBlobMax)
@@ -484,16 +497,101 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 	if !IsBinaryType(t) && !utf8.Valid(bytesVal) {
 		charset := t.CharacterSet()
 		if charset == sql.CharacterSet_utf8mb4 {
-			return nil, ErrBadCharsetString.New(charset.String(), bytesVal)
+			if sqlCtx, ok := ctx.(*sql.Context); ok && sql.ValidateStrictMode(sqlCtx) {
+				// Strict mode: reject invalid UTF8
+				invalidByte := formatInvalidByteForError(bytesVal)
+				colName, rowNum := getColumnContext(ctx)
+				return nil, ErrBadCharsetString.New(invalidByte, colName, rowNum)
+			} else {
+				// Non-strict mode: truncate invalid bytes (MySQL behavior)
+				bytesVal = truncateInvalidUTF8(bytesVal)
+			}
 		} else {
 			var ok bool
 			if bytesVal, ok = t.CharacterSet().Encoder().Decode(bytesVal); !ok {
-				return nil, ErrBadCharsetString.New(charset.String(), bytesVal)
+				invalidByte := formatInvalidByteForError(bytesVal)
+				colName, rowNum := getColumnContext(ctx)
+				return nil, ErrBadCharsetString.New(invalidByte, colName, rowNum)
 			}
 		}
 	}
 
-	return val, nil
+	return bytesVal, nil
+}
+
+// getColumnContext extracts column name and row number from context.
+func getColumnContext(ctx context.Context) (string, int64) {
+	colName := "<unknown>"
+	rowNum := int64(0)
+
+	if name, ok := ctx.Value(ColumnNameKey).(string); ok {
+		colName = name
+	}
+	if num, ok := ctx.Value(RowNumberKey).(int64); ok {
+		rowNum = num
+	}
+
+	return colName, rowNum
+}
+
+// truncateInvalidUTF8 truncates byte slice at first invalid UTF8 sequence (MySQL non-strict behavior)
+func truncateInvalidUTF8(data []byte) []byte {
+	for i := 0; i < len(data); {
+		r, size := utf8.DecodeRune(data[i:])
+		if r == utf8.RuneError && size == 1 {
+			// Invalid UTF8 sequence found, truncate here
+			return data[:i]
+		}
+		i += size
+	}
+	return data
+}
+
+// formatInvalidByteForError formats invalid bytes for MySQL-compatible error messages.
+// Shows consecutive invalid bytes, truncating with "..." after 6 bytes.
+func formatInvalidByteForError(bytesVal []byte) string {
+	if len(bytesVal) == 0 {
+		return fallbackInvalidByte
+	}
+
+	// Find the first invalid UTF-8 position
+	firstInvalidPos := -1
+	for i, b := range bytesVal {
+		if b > asciiMax {
+			firstInvalidPos = i
+			break
+		}
+	}
+
+	// If no invalid bytes found, but we're here due to invalid UTF-8,
+	// show the first byte (this handles edge cases)
+	if firstInvalidPos == -1 {
+		return fmt.Sprintf(invalidByteFormat, bytesVal[0])
+	}
+
+	// Build the error string starting from first invalid byte
+	var result strings2.Builder
+	maxBytesToShow := 6 // MySQL seems to show around 6 bytes before truncating
+	remainingBytes := bytesVal[firstInvalidPos:]
+
+	for i, b := range remainingBytes {
+		if i >= maxBytesToShow {
+			result.WriteString("...")
+			break
+		}
+
+		// MySQL shows valid ASCII characters as their actual characters,
+		// but invalid UTF-8 bytes (> 127) or control characters as hex
+		if b >= 32 && b <= 126 {
+			// Printable ASCII character - show as character
+			result.WriteByte(b)
+		} else {
+			// Invalid UTF-8 byte or control character - show as hex
+			result.WriteString(fmt.Sprintf("\\x%02X", b))
+		}
+	}
+
+	return result.String()
 }
 
 // convertToLongTextString safely converts a value to string using LongText.Convert with nil checking
@@ -651,17 +749,10 @@ func (t StringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.
 		if t.baseType == sqltypes.Binary {
 			val = append(val, bytes.Repeat([]byte{0}, int(t.maxCharLength)-len(val))...)
 		}
-		if !IsBinaryType(t) && !utf8.Valid(valueBytes) {
-			charset := t.CharacterSet()
-			if charset == sql.CharacterSet_utf8mb4 {
-				return sqltypes.Value{}, ErrBadCharsetString.New(charset.String(), valueBytes)
-			} else {
-				var ok bool
-				if valueBytes, ok = t.CharacterSet().Encoder().Decode(valueBytes); !ok {
-					return sqltypes.Value{}, ErrBadCharsetString.New(charset.String(), valueBytes)
-				}
-			}
-		}
+		// Note: MySQL does not validate charset when returning query results.
+		// It returns whatever data is stored, allowing users to query and clean up
+		// invalid data that may have been inserted through various means.
+		// Charset validation should only occur during data insertion/conversion.
 
 		resultCharset := ctx.GetCharacterSetResults()
 		if resultCharset == sql.CharacterSet_Unspecified || resultCharset == sql.CharacterSet_binary {

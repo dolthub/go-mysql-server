@@ -7140,15 +7140,15 @@ where
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:          "insert into t(c) values (X'9876543210');",
-				ExpectedErrStr: "invalid string for charset utf8mb4: '[152 118 84 50 16]'",
+				ExpectedErrStr: "Incorrect string value: '\\x98vT2\\x10' for column 'c' at row 1",
 			},
 			{
 				Query:          "insert into t(v) values (X'9876543210');",
-				ExpectedErrStr: "invalid string for charset utf8mb4: '[152 118 84 50 16]'",
+				ExpectedErrStr: "Incorrect string value: '\\x98vT2\\x10' for column 'v' at row 1",
 			},
 			{
 				Query:          "insert into t(txt) values (X'9876543210');",
-				ExpectedErrStr: "invalid string for charset utf8mb4: '[152 118 84 50 16]'",
+				ExpectedErrStr: "Incorrect string value: '\\x98vT2\\x10' for column 'txt' at row 1",
 			},
 			{
 				Query: "insert into t(b) values (X'9876543210');",
@@ -7160,6 +7160,216 @@ where
 				Query: "insert into t(bi) values (X'9876543210');",
 				Expected: []sql.Row{
 					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query:          "insert into t(c) values (X'999897969594939291');",
+				ExpectedErrStr: "Incorrect string value: '\\x99\\x98\\x97\\x96\\x95\\x94...' for column 'c' at row 1",
+			},
+		},
+	},
+	{
+		Name: "charset validation strict vs non-strict mode",
+		SetUpScript: []string{
+			"create table charset_test (c char(10), v varchar(10), txt text);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "set sql_mode = 'STRICT_TRANS_TABLES';",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query:          "insert into charset_test(c) values (UNHEX('446F6C744C6162AE'));",
+				ExpectedErrStr: "Incorrect string value: '\\xAE' for column 'c' at row 1",
+			},
+			{
+				Query:          "insert into charset_test(v) values (UNHEX('446F6C744C6162AE'));",
+				ExpectedErrStr: "Incorrect string value: '\\xAE' for column 'v' at row 1",
+			},
+			{
+				Query:          "insert into charset_test(txt) values (UNHEX('446F6C744C6162AE'));",
+				ExpectedErrStr: "Incorrect string value: '\\xAE' for column 'txt' at row 1",
+			},
+			{
+				Query:    "set sql_mode = '';",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query: "insert into charset_test(c) values (UNHEX('446F6C744C6162AE'));",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "insert into charset_test(v) values (UNHEX('446F6C744C6162AE'));",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "insert into charset_test(txt) values (UNHEX('446F6C744C6162AE'));",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "select HEX(c), LENGTH(c) from charset_test where c is not null;",
+				Expected: []sql.Row{
+					{"446F6C744C6162", 7},
+				},
+			},
+			{
+				Query: "select HEX(v), LENGTH(v) from charset_test where v is not null;",
+				Expected: []sql.Row{
+					{"446F6C744C6162", 7},
+				},
+			},
+			{
+				Query: "select HEX(txt), LENGTH(txt) from charset_test where txt is not null;",
+				Expected: []sql.Row{
+					{"446F6C744C6162", 7},
+				},
+			},
+		},
+	},
+	{
+		Name: "charset validation CSV import simulation",
+		SetUpScript: []string{
+			"create table csv_import_test (id int, name text character set utf8mb4);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "set sql_mode = 'STRICT_TRANS_TABLES';",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query:    "insert into csv_import_test values (1, UNHEX('56616C6964205554463820C2AE'));",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:          "insert into csv_import_test values (2, UNHEX('496E76616C6964205554463820AE'));",
+				ExpectedErrStr: "Incorrect string value: '\\xAE' for column 'name' at row 1",
+			},
+			{
+				Query:          "insert into csv_import_test values (3, UNHEX('416E6F7468657220496E76616C696420FFFE'));",
+				ExpectedErrStr: "Incorrect string value: '\\xFF\\xFE' for column 'name' at row 1",
+			},
+			{
+				Query:    "set sql_mode = '';",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query:    "insert into csv_import_test values (2, UNHEX('496E76616C6964205554463820AE'));",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "insert into csv_import_test values (3, UNHEX('416E6F7468657220496E76616C696420FFFE'));",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "insert into csv_import_test values (4, UNHEX('4E6F726D616C2054657874'));",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query: "select id, name, HEX(name), LENGTH(name) from csv_import_test order by id;",
+				Expected: []sql.Row{
+					{1, "Valid UTF8 ®", "56616C6964205554463820C2AE", 13},
+					{2, "Invalid UTF8 ", "496E76616C6964205554463820", 13},
+					{3, "Another Invalid ", "416E6F7468657220496E76616C696420", 16},
+					{4, "Normal Text", "4E6F726D616C2054657874", 11},
+				},
+			},
+			{
+				Query: "select id, name from csv_import_test where name like '%®%';",
+				Expected: []sql.Row{
+					{1, "Valid UTF8 ®"},
+				},
+			},
+			{
+				Query: "select id, name from csv_import_test where name like '%UTF8%';",
+				Expected: []sql.Row{
+					{1, "Valid UTF8 ®"},
+					{2, "Invalid UTF8 "},
+				},
+			},
+			{
+				Query: "select count(*) as total_queryable from csv_import_test;",
+				Expected: []sql.Row{
+					{4},
+				},
+			},
+		},
+	},
+	{
+		Name: "charset validation customer scenario simulation",
+		SetUpScript: []string{
+			"create table products (id int primary key, name text character set utf8mb4);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "set sql_mode = '';",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query:    "insert into products values (1, UNHEX('446F6C744C6162AE'));",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "insert into products values (2, UNHEX('4D7953514CAE'));",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "insert into products values (3, UNHEX('43C3A9666561AE'));",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query: "select id, name, HEX(name), LENGTH(name) from products order by id;",
+				Expected: []sql.Row{
+					{1, "DoltLab", "446F6C744C6162", 7},
+					{2, "MySQL", "4D7953514C", 5},
+					{3, "Céfea", "43C3A9666561", 6},
+				},
+			},
+			{
+				Query: "select 'Data cleanup successful - all rows queryable:';",
+				Expected: []sql.Row{
+					{"Data cleanup successful - all rows queryable:"},
+				},
+			},
+			{
+				Query: "select id, name from products where name like '%Lab%';",
+				Expected: []sql.Row{
+					{1, "DoltLab"},
+				},
+			},
+			{
+				Query: "select id, name from products where name like '%SQL%';",
+				Expected: []sql.Row{
+					{2, "MySQL"},
+				},
+			},
+			{
+				Query: "select id, CONCAT(name, ' - cleaned') as cleaned_name from products;",
+				Expected: []sql.Row{
+					{1, "DoltLab - cleaned"},
+					{2, "MySQL - cleaned"},
+					{3, "Céfea - cleaned"},
+				},
+			},
+			{
+				Query: "select 'Customer migration pattern:';",
+				Expected: []sql.Row{
+					{"Customer migration pattern:"},
+				},
+			},
+			{
+				Query:    "create table products_clean as select * from products;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 3}}},
+			},
+			{
+				Query: "select count(*) as migrated_rows from products_clean;",
+				Expected: []sql.Row{
+					{3},
 				},
 			},
 		},
