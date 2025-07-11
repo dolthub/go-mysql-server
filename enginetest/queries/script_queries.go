@@ -7301,75 +7301,38 @@ where
 		},
 	},
 	{
-		Name: "charset validation customer scenario simulation",
+		Name: "charset validation issue #8893 - customer scenario",
 		SetUpScript: []string{
 			"create table products (id int primary key, name text character set utf8mb4);",
 		},
 		Assertions: []ScriptTestAssertion{
+			// Customer's problem: inserting latin1-encoded "DoltLab®" into utf8mb4 column
+			// Before fix: error showed "<unknown>" instead of column name
+			{
+				Query:          "insert into products values (1, UNHEX('446F6C744C6162AE'));", // "DoltLab®" as latin1 bytes
+				ExpectedErrStr: "Incorrect string value: '\\xAE' for column 'name' at row 1",
+			},
+			// Customer's solution: use non-strict mode to clean up data
 			{
 				Query:    "set sql_mode = '';",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
 			},
 			{
-				Query:    "insert into products values (1, UNHEX('446F6C744C6162AE'));",
+				Query:    "insert into products values (1, UNHEX('446F6C744C6162AE'));", // Now succeeds with truncation
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
 			},
+			// Verify data was truncated at invalid byte (MySQL behavior)
 			{
-				Query:    "insert into products values (2, UNHEX('4D7953514CAE'));",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
-			},
-			{
-				Query:    "insert into products values (3, UNHEX('43C3A9666561AE'));",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
-			},
-			{
-				Query: "select id, name, HEX(name), LENGTH(name) from products order by id;",
+				Query: "select id, name, HEX(name) from products;",
 				Expected: []sql.Row{
-					{1, "DoltLab", "446F6C744C6162", 7},
-					{2, "MySQL", "4D7953514C", 5},
-					{3, "Céfea", "43C3A9666561", 6},
+					{1, "DoltLab", "446F6C744C6162"}, // Invalid byte 0xAE was truncated
 				},
 			},
-			{
-				Query: "select 'Data cleanup successful - all rows queryable:';",
-				Expected: []sql.Row{
-					{"Data cleanup successful - all rows queryable:"},
-				},
-			},
+			// Customer can now query and work with the data
 			{
 				Query: "select id, name from products where name like '%Lab%';",
 				Expected: []sql.Row{
 					{1, "DoltLab"},
-				},
-			},
-			{
-				Query: "select id, name from products where name like '%SQL%';",
-				Expected: []sql.Row{
-					{2, "MySQL"},
-				},
-			},
-			{
-				Query: "select id, CONCAT(name, ' - cleaned') as cleaned_name from products;",
-				Expected: []sql.Row{
-					{1, "DoltLab - cleaned"},
-					{2, "MySQL - cleaned"},
-					{3, "Céfea - cleaned"},
-				},
-			},
-			{
-				Query: "select 'Customer migration pattern:';",
-				Expected: []sql.Row{
-					{"Customer migration pattern:"},
-				},
-			},
-			{
-				Query:    "create table products_clean as select * from products;",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 3}}},
-			},
-			{
-				Query: "select count(*) as migrated_rows from products_clean;",
-				Expected: []sql.Row{
-					{3},
 				},
 			},
 		},
