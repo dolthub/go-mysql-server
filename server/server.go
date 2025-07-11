@@ -120,7 +120,7 @@ func portInUse(hostPort string) bool {
 }
 
 func getPortOrDefault(cfg mysql.ListenerConfig) int64 {
-	// TODO read this value from systemVars
+	// TODO read this value from systemVars (different in postgres)
 	defaultPort := int64(3606)
 	_, port, err := net.SplitHostPort(cfg.Listener.Addr().String())
 	if err != nil {
@@ -151,7 +151,7 @@ func updateSystemVariables(cfg mysql.ListenerConfig) error {
 
 func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handler mysql.Handler, sel ServerEventListener) (*Server, error) {
 	oneSecond := time.Duration(1) * time.Second
-	// TODO read default values from systemVars
+	// TODO read default values from systemVars. some default values are different in postgres vs mysql
 	if cfg.ConnReadTimeout < oneSecond {
 		cfg.ConnReadTimeout = oneSecond * 30
 	}
