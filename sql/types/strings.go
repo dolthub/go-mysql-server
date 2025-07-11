@@ -557,11 +557,13 @@ func formatInvalidByteForError(bytesVal []byte) string {
 
 	// Find the first invalid UTF-8 position
 	firstInvalidPos := -1
-	for i, b := range bytesVal {
-		if b > asciiMax {
+	for i := 0; i < len(bytesVal); {
+		r, size := utf8.DecodeRune(bytesVal[i:])
+		if r == utf8.RuneError && size == 1 {
 			firstInvalidPos = i
 			break
 		}
+		i += size
 	}
 
 	// If no invalid bytes found, but we're here due to invalid UTF-8,
