@@ -10157,6 +10157,72 @@ where
 			},
 		},
 	},
+	{
+		Name:    "decimals with foreign keys",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table parent (d decimal(4, 2) primary key);",
+			"insert into parent values (1.23), (45.67), (78.9);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "create table child_dec_4_2 (d decimal(4,2), foreign key (d) references parent (d));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "insert into child_dec_4_2 values (1.23), (45.67), (NULL);",
+				Expected: []sql.Row{
+					{types.NewOkResult(3)},
+				},
+			},
+			{
+				Query: "insert into child_dec_4_2 values (1.229999), (45.6711111), (78.90);",
+				Expected: []sql.Row{
+					{types.NewOkResult(3)},
+				},
+			},
+
+			{
+				Skip:  true,
+				Query: "create table child_dec_4_1 (d decimal(4,1), foreign key (d) references parent (d));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip:        true,
+				Query:       "insert into child_dec_4_1 values (78.9);",
+				ExpectedErr: sql.ErrForeignKeyParentViolation,
+			},
+
+			{
+				Skip:  true,
+				Query: "create table child_dec_3_2 (d decimal(3,2), foreign key (d) references parent (d));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip:        true,
+				Query:       "insert into child_dec_3_2 values (1.23);",
+				ExpectedErr: sql.ErrForeignKeyParentViolation,
+			},
+			{
+				Skip:  true,
+				Query: "create table child_dec_65_30 (d decimal(65,30), foreign key (d) references parent (d));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip:        true,
+				Query:       "insert into child_dec_65_30 values (1.23);",
+				ExpectedErr: sql.ErrForeignKeyParentViolation,
+			},
+		},
+	},
 
 	// Date Tests
 	{
