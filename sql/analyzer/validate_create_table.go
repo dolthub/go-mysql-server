@@ -337,7 +337,7 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 	// We can't evaluate auto-increment until the end of the analysis, since we break adding a new auto-increment unique
 	// column into two steps: first add the column, then create the index. If there was no index created, that's an error.
 	if addedColumn {
-		err = validateAutoIncrementAdd(sch, keyedColumns)
+		err = validateAutoIncrementModify(sch, keyedColumns)
 		if err != nil {
 			return nil, false, err
 		}
@@ -788,24 +788,12 @@ func removeInSchema(sch sql.Schema, colName, tableName string) sql.Schema {
 	return schCopy
 }
 
-// validateAutoIncrementType returns true if the given type can be used with AUTO_INCREMENT
-func validateAutoIncrementType(t sql.Type) bool {
-	// Only integer types are allowed for auto_increment in MySQL 8.4+
-	// All other types are not allowed: TEXT, VARCHAR, CHAR, BLOB, BINARY, VARBINARY,
-	// FLOAT, DOUBLE, DATE, TIME, DATETIME, TIMESTAMP, YEAR, ENUM, SET, BIT, DECIMAL, JSON, GEOMETRY, etc.
-	if types.IsInteger(t) {
-		return true
-	}
-
-	return false
-}
-
 func validateAutoIncrementModify(schema sql.Schema, keyedColumns map[string]bool) error {
 	seen := false
 	for _, col := range schema {
 		if col.AutoIncrement {
-			// Check if column type is valid for auto_increment
-			if !validateAutoIncrementType(col.Type) {
+			// Under MySQL 8.4+, AUTO_INCREMENT columns must be integer types.
+			if !types.IsInteger(col.Type) {
 				return sql.ErrInvalidColumnSpecifier.New(col.Name)
 			}
 			// keyedColumns == nil means they are trying to add auto_increment column
@@ -822,34 +810,6 @@ func validateAutoIncrementModify(schema sql.Schema, keyedColumns map[string]bool
 				return sql.ErrInvalidAutoIncCols.New()
 			}
 			seen = true
-		}
-	}
-	return nil
-}
-
-func validateAutoIncrementAdd(schema sql.Schema, keyColumns map[string]bool) error {
-	seen := false
-	for _, col := range schema {
-		if col.AutoIncrement {
-			{
-				// Check if column type is valid for auto_increment
-				if !validateAutoIncrementType(col.Type) {
-					return sql.ErrInvalidColumnSpecifier.New(col.Name)
-				}
-				if !col.PrimaryKey && !keyColumns[col.Name] {
-					// AUTO_INCREMENT col must be a key
-					return sql.ErrInvalidAutoIncCols.New()
-				}
-				if col.Default != nil {
-					// AUTO_INCREMENT col cannot have default
-					return sql.ErrInvalidAutoIncCols.New()
-				}
-				if seen {
-					// there can be at most one AUTO_INCREMENT col
-					return sql.ErrInvalidAutoIncCols.New()
-				}
-				seen = true
-			}
 		}
 	}
 	return nil
