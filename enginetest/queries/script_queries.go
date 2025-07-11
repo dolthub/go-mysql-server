@@ -7366,7 +7366,7 @@ where
 				Query:          "insert into charset_edge_test(c) values (UNHEX('446F6C744C6162AE'));",
 				ExpectedErrStr: "Incorrect string value: '\\xAE' for column 'c' at row 1",
 			},
-			
+
 			// NON-STRICT MODE TESTS (should truncate)
 			{
 				Query:    "set sql_mode = '';",
