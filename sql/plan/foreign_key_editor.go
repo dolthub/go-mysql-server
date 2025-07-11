@@ -21,7 +21,6 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 // ChildParentMapping is a mapping from the foreign key columns of a child schema to the parent schema. The position
@@ -514,7 +513,7 @@ func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, ro
 	}
 	if err == nil {
 		// We have a parent row, but for DECIMAL types we need to be strict about precision/scale
-		if shouldReject := reference.shouldRejectDecimalMatch(ctx, row); shouldReject {
+		if shouldReject := reference.validateDecimalMatch(ctx, row); shouldReject {
 			return sql.ErrForeignKeyChildViolation.New(reference.ForeignKey.Name, reference.ForeignKey.Table,
 				reference.ForeignKey.ParentTable, reference.RowMapper.GetKeyString(row))
 		}
@@ -545,35 +544,24 @@ func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, ro
 		reference.ForeignKey.ParentTable, reference.RowMapper.GetKeyString(row))
 }
 
-func (reference *ForeignKeyReferenceHandler) shouldRejectDecimalMatch(ctx *sql.Context, row sql.Row) bool {
+func (reference *ForeignKeyReferenceHandler) validateDecimalMatch(ctx *sql.Context, row sql.Row) bool {
+	if reference.RowMapper.Index == nil {
+		return false
+	}
+	indexColumnTypes := reference.RowMapper.Index.ColumnExpressionTypes()
 	for i := range reference.ForeignKey.Columns {
+		if i >= len(indexColumnTypes) {
+			continue
+		}
 		childColIdx := reference.RowMapper.IndexPositions[i]
-		childType := reference.RowMapper.SourceSch[childColIdx].Type
-		
-		if childType.Type() == sqltypes.Decimal {
-			childDecimal, ok := childType.(sql.DecimalType)
-			if !ok {
-				continue
-			}
-			
-			if reference.RowMapper.Index != nil {
-				indexColumnTypes := reference.RowMapper.Index.ColumnExpressionTypes()
-				if len(indexColumnTypes) > i {
-					parentType := indexColumnTypes[i].Type
-					if parentType.Type() == sqltypes.Decimal {
-						parentDecimal, ok := parentType.(sql.DecimalType)
-						if ok && childDecimal.Scale() != parentDecimal.Scale() {
-							return true
-						}
-					}
-				}
-			}
+		childDecimal, childOk := reference.RowMapper.SourceSch[childColIdx].Type.(sql.DecimalType)
+		parentDecimal, parentOk := indexColumnTypes[i].Type.(sql.DecimalType)
+		if childOk && parentOk && childDecimal.Scale() != parentDecimal.Scale() {
+			return true
 		}
 	}
 	return false
 }
-
-
 
 // CheckTable checks that every row in the table has an index entry in the referenced table.
 func (reference *ForeignKeyReferenceHandler) CheckTable(ctx *sql.Context, tbl sql.ForeignKeyTable) error {
@@ -632,16 +620,6 @@ func (mapper *ForeignKeyRowMapper) GetIter(ctx *sql.Context, row sql.Row, refChe
 		}
 
 		targetType := mapper.SourceSch[rowPos].Type
-		
-		// Special handling for DECIMAL types: check if this is a foreign key reference
-		// with different precision/scale. If so, we need to be strict like MySQL
-		if targetType.Type() == sqltypes.Decimal && refCheck {
-			// For DECIMAL foreign key lookups, we need to ensure exact type matching
-			// This is a simplified approach - we'll return an empty iterator for now
-			// to prevent matches when precision/scale differs
-			// TODO: This should be refined to only block when types actually differ
-			// For now, let's continue with normal processing and handle it later
-		}
 		
 		// Transform the type of the value in this row to the one in the other table for the index lookup, if necessary
 		if mapper.TargetTypeConversions != nil && mapper.TargetTypeConversions[rowPos] != nil {
@@ -766,17 +744,6 @@ func GetForeignKeyTypeConversions(
 				return nil, nil
 			}
 
-			// Special handling for DECIMAL types: when precision/scale differs,
-			// don't allow type conversion to ensure strict constraint checking
-			if childType.Type() == sqltypes.Decimal && parentType.Type() == sqltypes.Decimal {
-				// For DECIMAL foreign keys with different precision/scale, we don't allow
-				// automatic type conversion. This ensures constraint checking matches MySQL's
-				// strict behavior where 78.9 (4,1) != 78.90 (4,2)
-				// Note: childType.Equals(parentType) already returned false above, so we know they differ
-				// However, since DECIMAL is not ExtendedType, this logic won't be triggered
-				// The actual constraint validation is handled in CheckReference
-				return nil, nil
-			}
 
 			fromType := childExtendedType
 			toType := parentExtendedType
