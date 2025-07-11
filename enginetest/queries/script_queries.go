@@ -9606,7 +9606,6 @@ where
 		},
 	},
 	{
-		Skip:    true,
 		Name:    "set with auto increment",
 		Dialect: "mysql",
 		SetUpScript: []string{
