@@ -735,3 +735,17 @@ func GeneralizeTypes(a, b sql.Type) sql.Type {
 	// TODO: decide if we want to make this VarChar to match MySQL, match VarChar length to max of two types
 	return LongText
 }
+
+func TypeAwareConversion(ctx *sql.Context, val interface{}, originalType sql.Type, convertedType sql.Type) (interface{}, error) {
+	var converted interface{}
+	var err error
+	if IsTextOnly(convertedType) {
+		converted, _, err = ConvertToCollatedString(ctx, val, originalType)
+	} else {
+		converted, _, err = convertedType.Convert(ctx, val)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return converted, nil
+}

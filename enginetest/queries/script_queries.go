@@ -9393,7 +9393,6 @@ where
 		},
 	},
 	{
-		Skip:    true,
 		Name:    "set conversion to strings",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -9429,6 +9428,7 @@ where
 				},
 			},
 			{
+				Skip:  true,
 				Query: "select s from t where s like 'a%' order by s;",
 				Expected: []sql.Row{
 					{"abc"},
@@ -9518,6 +9518,7 @@ where
 				},
 			},
 			{
+				Skip:  true,
 				Query: "select s, cast(s as char) from t order by s;",
 				Expected: []sql.Row{
 					{"abc", "abc"},
@@ -9526,6 +9527,7 @@ where
 				},
 			},
 			{
+				Skip:  true,
 				Query: "select s, cast(s as binary) from t order by s;",
 				Expected: []sql.Row{
 					{"abc", []uint8("abc")},
