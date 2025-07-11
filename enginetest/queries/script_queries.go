@@ -8887,7 +8887,6 @@ where
 			},
 			{
 				// https://github.com/dolthub/dolt/issues/8598
-				Skip:  true,
 				Query: "select (case e when 'abc' then e when 'defg' then e when 'hijkl' then 'something' end) as e from t order by e;",
 				Expected: []sql.Row{
 					{"abc"},
@@ -8897,12 +8896,11 @@ where
 			},
 			{
 				// https://github.com/dolthub/dolt/issues/8598
-				Skip:  true,
 				Query: "select (case e when 'abc' then e when 'defg' then e when 'hijkl' then 123 end) as e from t order by e;",
 				Expected: []sql.Row{
 					{"123"},
 					{"abc"},
-					{"def"},
+					{"defg"},
 				},
 			},
 			{
