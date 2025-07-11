@@ -1288,32 +1288,22 @@ var InsertScripts = []ScriptTest{
 	{
 		Name:    "auto increment on float",
 		Dialect: "mysql",
-		SetUpScript: []string{
-			"create table auto (pk float primary key auto_increment)",
-			"insert into auto values (NULL),(10),(0)",
-		},
+		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select * from auto order by 1",
-				Expected: []sql.Row{
-					{float64(1)}, {float64(10)}, {float64(11)},
-				},
+				Query:          "create table auto (pk float primary key auto_increment)",
+				ExpectedErrStr: "Incorrect column specifier for column 'pk'",
 			},
 		},
 	},
 	{
 		Name:    "auto increment on double",
 		Dialect: "mysql",
-		SetUpScript: []string{
-			"create table auto (pk double primary key auto_increment)",
-			"insert into auto values (NULL),(10),(0)",
-		},
+		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select * from auto order by 1",
-				Expected: []sql.Row{
-					{float64(1)}, {float64(10)}, {float64(11)},
-				},
+				Query:          "create table auto (pk double primary key auto_increment)",
+				ExpectedErrStr: "Incorrect column specifier for column 'pk'",
 			},
 		},
 	},
