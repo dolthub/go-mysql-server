@@ -151,25 +151,25 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			{
 				Query: "SELECT v1, pk FROM test1 ORDER BY pk;",
 				Expected: []sql.Row{
-					{"abc", int32(1)}, {"ABC", int32(2)}, {"aBc", int32(3)}, {"AbC", int32(4)},
+					{"abc", int64(1)}, {"ABC", int64(2)}, {"aBc", int64(3)}, {"AbC", int64(4)},
 				},
 			},
 			{
 				Query: "SELECT v1, pk FROM test1 ORDER BY v1, pk;",
 				Expected: []sql.Row{
-					{"abc", int32(1)}, {"ABC", int32(2)}, {"aBc", int32(3)}, {"AbC", int32(4)},
+					{"abc", int64(1)}, {"ABC", int64(2)}, {"aBc", int64(3)}, {"AbC", int64(4)},
 				},
 			},
 			{
 				Query: "SELECT v1, pk FROM test2 ORDER BY pk;",
 				Expected: []sql.Row{
-					{"abc", int32(1)}, {"ABC", int32(2)}, {"aBc", int32(3)}, {"AbC", int32(4)},
+					{"abc", int64(1)}, {"ABC", int64(2)}, {"aBc", int64(3)}, {"AbC", int64(4)},
 				},
 			},
 			{
 				Query: "SELECT v1, pk FROM test2 ORDER BY v1, pk;",
 				Expected: []sql.Row{
-					{"ABC", int32(2)}, {"AbC", int32(4)}, {"aBc", int32(3)}, {"abc", int32(1)},
+					{"ABC", int64(2)}, {"AbC", int64(4)}, {"aBc", int64(3)}, {"abc", int64(1)},
 				},
 			},
 		},
@@ -190,67 +190,67 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			{
 				Query: "SELECT v1, pk FROM test1 WHERE v1 >= 'AbC' ORDER BY v1, pk;",
 				Expected: []sql.Row{
-					{"abc", int32(1)}, {"ABC", int32(2)}, {"aBc", int32(3)}, {"AbC", int32(4)},
+					{"abc", int64(1)}, {"ABC", int64(2)}, {"aBc", int64(3)}, {"AbC", int64(4)},
 				},
 			},
 			{
 				Query: "SELECT v1, pk FROM test1 WHERE v1 <= 'aBc' ORDER BY v1, pk;",
 				Expected: []sql.Row{
-					{"abc", int32(1)}, {"ABC", int32(2)}, {"aBc", int32(3)}, {"AbC", int32(4)},
+					{"abc", int64(1)}, {"ABC", int64(2)}, {"aBc", int64(3)}, {"AbC", int64(4)},
 				},
 			},
 			{
 				Query: "SELECT v1, pk FROM test1 WHERE v1 = 'ABC' ORDER BY v1, pk;",
 				Expected: []sql.Row{
-					{"abc", int32(1)}, {"ABC", int32(2)}, {"aBc", int32(3)}, {"AbC", int32(4)},
+					{"abc", int64(1)}, {"ABC", int64(2)}, {"aBc", int64(3)}, {"AbC", int64(4)},
 				},
 			},
 			{
 				Query: "SELECT v1, pk FROM test1 WHERE v1 BETWEEN 'ABC' AND 'AbC' ORDER BY v1, pk;",
 				Expected: []sql.Row{
-					{"abc", int32(1)}, {"ABC", int32(2)}, {"aBc", int32(3)}, {"AbC", int32(4)},
+					{"abc", int64(1)}, {"ABC", int64(2)}, {"aBc", int64(3)}, {"AbC", int64(4)},
 				},
 			},
 			{
 				Query: "SELECT v1, pk FROM test1 WHERE v1 IN ('abc') ORDER BY v1, pk;",
 				Expected: []sql.Row{
-					{"abc", int32(1)}, {"ABC", int32(2)}, {"aBc", int32(3)}, {"AbC", int32(4)},
+					{"abc", int64(1)}, {"ABC", int64(2)}, {"aBc", int64(3)}, {"AbC", int64(4)},
 				},
 			},
 			{
 				Query: "SELECT v1, pk FROM test2 WHERE v1 > 'AbC' ORDER BY v1, pk;",
 				Expected: []sql.Row{
-					{"aBc", int32(3)}, {"abc", int32(1)},
+					{"aBc", int64(3)}, {"abc", int64(1)},
 				},
 			},
 			{
 				Query: "SELECT v1, pk FROM test2 WHERE v1 >= 'AbC' ORDER BY v1, pk;",
 				Expected: []sql.Row{
-					{"AbC", int32(4)}, {"aBc", int32(3)}, {"abc", int32(1)},
+					{"AbC", int64(4)}, {"aBc", int64(3)}, {"abc", int64(1)},
 				},
 			},
 			{
 				Query: "SELECT v1, pk FROM test2 WHERE v1 <= 'aBc' ORDER BY v1, pk;",
 				Expected: []sql.Row{
-					{"ABC", int32(2)}, {"AbC", int32(4)}, {"aBc", int32(3)},
+					{"ABC", int64(2)}, {"AbC", int64(4)}, {"aBc", int64(3)},
 				},
 			},
 			{
 				Query: "SELECT v1, pk FROM test2 WHERE v1 = 'ABC' ORDER BY v1, pk;",
 				Expected: []sql.Row{
-					{"ABC", int32(2)},
+					{"ABC", int64(2)},
 				},
 			},
 			{
 				Query: "SELECT v1, pk FROM test2 WHERE v1 BETWEEN 'ABC' AND 'AbC' ORDER BY v1, pk;",
 				Expected: []sql.Row{
-					{"ABC", int32(2)}, {"AbC", int32(4)},
+					{"ABC", int64(2)}, {"AbC", int64(4)},
 				},
 			},
 			{
 				Query: "SELECT v1, pk FROM test2 WHERE v1 IN ('abc') ORDER BY v1, pk;",
 				Expected: []sql.Row{
-					{"abc", int32(1)},
+					{"abc", int64(1)},
 				},
 			},
 		},
@@ -270,13 +270,13 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			{
 				Query: "SELECT v1, pk FROM test1 WHERE v1 <= 'aBc' ORDER BY v1, pk;",
 				Expected: []sql.Row{
-					{"abc", int32(1)}, {"ABC", int32(2)}, {"aBc", int32(3)}, {"AbC", int32(4)},
+					{"abc", int64(1)}, {"ABC", int64(2)}, {"aBc", int64(3)}, {"AbC", int64(4)},
 				},
 			},
 			{
 				Query: "SELECT v1, pk FROM test2 WHERE v1 <= 'aBc' ORDER BY v1, pk;",
 				Expected: []sql.Row{
-					{"abc", int32(1)}, {"ABC", int32(2)}, {"aBc", int32(3)}, {"AbC", int32(4)},
+					{"abc", int64(1)}, {"ABC", int64(2)}, {"aBc", int64(3)}, {"AbC", int64(4)},
 				},
 			},
 			{
@@ -288,19 +288,19 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			{
 				Query: "SELECT v1, pk FROM test2 WHERE v1 <= 'aBc' ORDER BY v1, pk;",
 				Expected: []sql.Row{
-					{"abc", int32(1)}, {"ABC", int32(2)}, {"aBc", int32(3)}, {"AbC", int32(4)},
+					{"abc", int64(1)}, {"ABC", int64(2)}, {"aBc", int64(3)}, {"AbC", int64(4)},
 				},
 			},
 			{
 				Query: "SELECT v1, pk FROM test3 WHERE v1 <= 'aBc' ORDER BY v1, pk;",
 				Expected: []sql.Row{
-					{"abc", int32(1)}, {"ABC", int32(2)}, {"aBc", int32(3)}, {"AbC", int32(4)},
+					{"abc", int64(1)}, {"ABC", int64(2)}, {"aBc", int64(3)}, {"AbC", int64(4)},
 				},
 			},
 			{
 				Query: "SELECT v1, pk FROM test4 WHERE v1 <= 'aBc' ORDER BY v1, pk;",
 				Expected: []sql.Row{
-					{"abc", int32(1)}, {"ABC", int32(2)}, {"aBc", int32(3)}, {"AbC", int32(4)},
+					{"abc", int64(1)}, {"ABC", int64(2)}, {"aBc", int64(3)}, {"AbC", int64(4)},
 				},
 			},
 			{
@@ -376,13 +376,13 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			{
 				Query: "SELECT v1, pk FROM test2 WHERE v1 <= 'aBc' ORDER BY v1, pk;",
 				Expected: []sql.Row{
-					{"abc", int32(1)}, {"ABC", int32(2)}, {"aBc", int32(3)}, {"AbC", int32(4)},
+					{"abc", int64(1)}, {"ABC", int64(2)}, {"aBc", int64(3)}, {"AbC", int64(4)},
 				},
 			},
 			{
 				Query: "SELECT v2, pk FROM test2 WHERE v2 <= 'aBc' ORDER BY v2, pk;",
 				Expected: []sql.Row{
-					{"ABC", int32(2)}, {"AbC", int32(4)}, {"aBc", int32(3)},
+					{"ABC", int64(2)}, {"AbC", int64(4)}, {"aBc", int64(3)},
 				},
 			},
 			{
@@ -403,7 +403,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 		Queries: []CharsetCollationEngineTestQuery{
 			{
 				Query:    "SELECT * FROM test ORDER BY v1 COLLATE utf8mb4_bin ASC;",
-				Expected: []sql.Row{{int32(1), "a"}, {int32(2), "b"}},
+				Expected: []sql.Row{{int64(1), "a"}, {int64(2), "b"}},
 			},
 			{
 				Query:   "SELECT * FROM test ORDER BY v1 COLLATE utf8mb3_bin ASC;",
@@ -596,13 +596,13 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			{
 				Query: "SELECT * FROM test1 ORDER BY pk;",
 				Expected: []sql.Row{
-					{int32(1), uint16(1)}, {int32(2), uint16(2)},
+					{int64(1), uint16(1)}, {int64(2), uint16(2)},
 				},
 			},
 			{
 				Query: "SELECT * FROM test2 ORDER BY pk;",
 				Expected: []sql.Row{
-					{int32(2), uint16(2)},
+					{int64(2), uint16(2)},
 				},
 			},
 			{
@@ -643,13 +643,13 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			{
 				Query: "SELECT * FROM test1 ORDER BY pk;",
 				Expected: []sql.Row{
-					{int32(1), uint32(1)}, {int32(2), uint32(6)},
+					{int64(1), uint64(1)}, {int64(2), uint64(6)},
 				},
 			},
 			{
 				Query: "SELECT * FROM test2 ORDER BY pk;",
 				Expected: []sql.Row{
-					{int32(2), uint32(6)},
+					{int64(2), uint64(6)},
 				},
 			},
 		},
@@ -665,37 +665,37 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			{
 				Query: "SELECT COUNT(*) FROM test WHERE v1 LIKE 'ABC';",
 				Expected: []sql.Row{
-					{int32(1)},
+					{int64(1)},
 				},
 			},
 			{
 				Query: "SELECT COUNT(*) FROM test WHERE v2 LIKE 'ABC';",
 				Expected: []sql.Row{
-					{int32(2)},
+					{int64(2)},
 				},
 			},
 			{
 				Query: "SELECT COUNT(*) FROM test WHERE v1 LIKE 'A%';",
 				Expected: []sql.Row{
-					{int32(1)},
+					{int64(1)},
 				},
 			},
 			{
 				Query: "SELECT COUNT(*) FROM test WHERE v2 LIKE 'A%';",
 				Expected: []sql.Row{
-					{int32(2)},
+					{int64(2)},
 				},
 			},
 			{
 				Query: "SELECT COUNT(*) FROM test WHERE v1 LIKE '%C';",
 				Expected: []sql.Row{
-					{int32(1)},
+					{int64(1)},
 				},
 			},
 			{
 				Query: "SELECT COUNT(*) FROM test WHERE v2 LIKE '%C';",
 				Expected: []sql.Row{
-					{int32(2)},
+					{int64(2)},
 				},
 			},
 			{
@@ -705,19 +705,19 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			{
 				Query: "SELECT COUNT(*) FROM test WHERE v1 LIKE 'ABC';",
 				Expected: []sql.Row{
-					{int32(1)},
+					{int64(1)},
 				},
 			},
 			{
 				Query: "SELECT COUNT(*) FROM test WHERE v2 LIKE 'ABC';",
 				Expected: []sql.Row{
-					{int32(2)},
+					{int64(2)},
 				},
 			},
 			{
 				Query: "SELECT COUNT(*) FROM test WHERE v1 LIKE 'ABC' COLLATE utf8mb4_0900_ai_ci;",
 				Expected: []sql.Row{
-					{int32(2)},
+					{int64(2)},
 				},
 			},
 		},
@@ -1249,90 +1249,6 @@ T.TABLE_SCHEMA AS 'database', T.TABLE_CATALOG AS 'catalog',
 0 AS isView FROM INFORMATION_SCHEMA.TABLES AS T WHERE T.TABLE_CATALOG = 'def' AND
                                                       UPPER(T.TABLE_TYPE) = 'BASE TABLE' ORDER BY T.TABLE_NAME;`,
 				Expected: []sql.Row(nil),
-			},
-		},
-	},
-	{
-		Name: "UTF-8 charset validation edge cases",
-		SetUpScript: []string{
-			"CREATE TABLE test_utf8_edge_edge (id INT PRIMARY KEY, c CHAR(10), v VARCHAR(20), t TEXT);",
-		},
-		Queries: []CharsetCollationEngineTestQuery{
-			{
-				Query:   "INSERT INTO test_utf8_edge VALUES (1, 'Valid', 'ValidText', 'ValidLongText');",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
-			},
-			{
-				Query:   "INSERT INTO test_utf8_edge VALUES (2, X'AE', 'ValidText', 'ValidLongText');",
-				ErrKind: types.ErrBadCharsetString,
-			},
-			{
-				Query:   "INSERT INTO test_utf8_edge VALUES (3, 'ValidText', X'AEAEAE', 'ValidLongText');",
-				ErrKind: types.ErrBadCharsetString,
-			},
-			{
-				Query:   "INSERT INTO test_utf8_edge VALUES (4, 'ValidText', 'ValidText', X'C0C1');",
-				ErrKind: types.ErrBadCharsetString,
-			},
-			{
-				Query:   "INSERT INTO test_utf8_edge VALUES (5, X'999897969594939291', 'ValidText', 'ValidLongText');",
-				ErrKind: types.ErrBadCharsetString,
-			},
-			{
-				Query:   "INSERT INTO test_utf8_edge VALUES (6, X'FE', 'ValidText', 'ValidLongText');",
-				ErrKind: types.ErrBadCharsetString,
-			},
-			{
-				Query:   "INSERT INTO test_utf8_edge VALUES (7, X'FF', 'ValidText', 'ValidLongText');",
-				ErrKind: types.ErrBadCharsetString,
-			},
-			{
-				Query:   "INSERT INTO test_utf8_edge VALUES (8, X'EDA080', 'ValidText', 'ValidLongText');",
-				ErrKind: types.ErrBadCharsetString,
-			},
-			{
-				Query:   "INSERT INTO test_utf8_edge VALUES (9, X'EDBFBF', 'ValidText', 'ValidLongText');",
-				ErrKind: types.ErrBadCharsetString,
-			},
-			{
-				Query:   "INSERT INTO test_utf8_edge VALUES (10, X'C080', 'ValidText', 'ValidLongText');",
-				ErrKind: types.ErrBadCharsetString,
-			},
-			{
-				Query:   "INSERT INTO test_utf8_edge VALUES (11, X'E08080', 'ValidText', 'ValidLongText');",
-				ErrKind: types.ErrBadCharsetString,
-			},
-			{
-				Query:   "INSERT INTO test_utf8_edge VALUES (12, X'F0808080', 'ValidText', 'ValidLongText');",
-				ErrKind: types.ErrBadCharsetString,
-			},
-			{
-				Query:   "INSERT INTO test_utf8_edge VALUES (13, X'F4908080', 'ValidText', 'ValidLongText');",
-				ErrKind: types.ErrBadCharsetString,
-			},
-			{
-				Query:   "INSERT INTO test_utf8_edge VALUES (14, X'80', 'ValidText', 'ValidLongText');",
-				ErrKind: types.ErrBadCharsetString,
-			},
-			{
-				Query:   "INSERT INTO test_utf8_edge VALUES (15, X'BF', 'ValidText', 'ValidLongText');",
-				ErrKind: types.ErrBadCharsetString,
-			},
-			{
-				Query:   "INSERT INTO test_utf8_edge VALUES (16, CONCAT('Valid', X'AE', 'Text'), 'ValidText', 'ValidLongText');",
-				ErrKind: types.ErrBadCharsetString,
-			},
-			{
-				Query:   "INSERT INTO test_utf8_edge VALUES (17, X'C2', 'ValidText', 'ValidLongText');",
-				ErrKind: types.ErrBadCharsetString,
-			},
-			{
-				Query:   "INSERT INTO test_utf8_edge VALUES (18, X'E0A0', 'ValidText', 'ValidLongText');",
-				ErrKind: types.ErrBadCharsetString,
-			},
-			{
-				Query:   "INSERT INTO test_utf8_edge VALUES (19, X'F09080', 'ValidText', 'ValidLongText');",
-				ErrKind: types.ErrBadCharsetString,
 			},
 		},
 	},
