@@ -3372,19 +3372,15 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 
 func TestCreateForeignKeys(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData)
-	e := mustNewEngine(t, harness)
-	defer e.Close()
 	for _, tt := range queries.CreateForeignKeyTests {
-		TestScriptWithEngine(t, e, harness, tt)
+		TestScript(t, harness, tt)
 	}
 }
 
 func TestDropForeignKeys(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData)
-	e := mustNewEngine(t, harness)
-	defer e.Close()
 	for _, tt := range queries.DropForeignKeyTests {
-		TestScriptWithEngine(t, e, harness, tt)
+		TestScript(t, harness, tt)
 	}
 }
 
