@@ -8928,7 +8928,6 @@ where
 			},
 			{
 				// https://github.com/dolthub/dolt/issues/8598
-				Skip:  true,
 				Query: "select (case e when 'abc' then e when 'defg' then e when 'hijkl' then 'something' end) as e from t order by e;",
 				Expected: []sql.Row{
 					{"abc"},
@@ -8938,12 +8937,11 @@ where
 			},
 			{
 				// https://github.com/dolthub/dolt/issues/8598
-				Skip:  true,
 				Query: "select (case e when 'abc' then e when 'defg' then e when 'hijkl' then 123 end) as e from t order by e;",
 				Expected: []sql.Row{
 					{"123"},
 					{"abc"},
-					{"def"},
+					{"defg"},
 				},
 			},
 			{
@@ -9426,15 +9424,14 @@ where
 				Skip:  true,
 				Query: "select i, s + 0, s from tt;",
 				Expected: []sql.Row{
-					{0, float64(0), "something,"},
-					{1, float64(1), "something,"},
+					{0, float64(3), "something,"},
+					{1, float64(3), "something,"},
 					{2, float64(2), ""},
 				},
 			},
 		},
 	},
 	{
-		Skip:    true,
 		Name:    "set conversion to strings",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -9470,6 +9467,7 @@ where
 				},
 			},
 			{
+				Skip:  true,
 				Query: "select s from t where s like 'a%' order by s;",
 				Expected: []sql.Row{
 					{"abc"},
@@ -9559,6 +9557,7 @@ where
 				},
 			},
 			{
+				Skip:  true,
 				Query: "select s, cast(s as char) from t order by s;",
 				Expected: []sql.Row{
 					{"abc", "abc"},
@@ -9567,6 +9566,7 @@ where
 				},
 			},
 			{
+				Skip:  true,
 				Query: "select s, cast(s as binary) from t order by s;",
 				Expected: []sql.Row{
 					{"abc", []uint8("abc")},
