@@ -620,7 +620,7 @@ func (mapper *ForeignKeyRowMapper) GetIter(ctx *sql.Context, row sql.Row, refChe
 		}
 
 		targetType := mapper.SourceSch[rowPos].Type
-		
+
 		// Transform the type of the value in this row to the one in the other table for the index lookup, if necessary
 		if mapper.TargetTypeConversions != nil && mapper.TargetTypeConversions[rowPos] != nil {
 			var err error
@@ -743,7 +743,6 @@ func GetForeignKeyTypeConversions(
 				// this should be impossible (child and parent should both be extended types), but just in case
 				return nil, nil
 			}
-
 
 			fromType := childExtendedType
 			toType := parentExtendedType
