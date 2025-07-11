@@ -549,13 +549,18 @@ func (reference *ForeignKeyReferenceHandler) shouldRejectDecimalMatch(ctx *sql.C
 		return false
 	}
 	indexColumnTypes := reference.RowMapper.Index.ColumnExpressionTypes()
-	for i := range reference.ForeignKey.Columns {
-		if i >= len(indexColumnTypes) {
+	return foreignKeyHasDifferentDecimalScales(reference.ForeignKey, reference.RowMapper.SourceSch, reference.RowMapper.IndexPositions, indexColumnTypes)
+}
+
+// foreignKeyHasDifferentDecimalScales checks if any DECIMAL columns have different scales between child and parent
+func foreignKeyHasDifferentDecimalScales(fk sql.ForeignKeyConstraint, childSch sql.Schema, indexPositions []int, parentTypes []sql.ColumnExpressionType) bool {
+	for i := range fk.Columns {
+		if i >= len(parentTypes) {
 			continue
 		}
-		childColIdx := reference.RowMapper.IndexPositions[i]
-		childDecimal, childOk := reference.RowMapper.SourceSch[childColIdx].Type.(sql.DecimalType)
-		parentDecimal, parentOk := indexColumnTypes[i].Type.(sql.DecimalType)
+		childColIdx := indexPositions[i]
+		childDecimal, childOk := childSch[childColIdx].Type.(sql.DecimalType)
+		parentDecimal, parentOk := parentTypes[i].Type.(sql.DecimalType)
 		if childOk && parentOk && childDecimal.Scale() != parentDecimal.Scale() {
 			return true
 		}
