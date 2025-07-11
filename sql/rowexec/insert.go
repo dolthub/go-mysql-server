@@ -15,6 +15,7 @@
 package rowexec
 
 import (
+	"context"
 	"fmt"
 	"io"
 
@@ -112,7 +113,13 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 	// Do any necessary type conversions to the target schema
 	for idx, col := range i.schema {
 		if row[idx] != nil {
-			converted, inRange, cErr := col.Type.Convert(ctx, row[idx])
+			// Add column/row context for charset error messages
+			// Unlike other errors that get recreated here with column/row info,
+			// charset validation happens deep in ConvertToBytes and needs context during error creation
+			ctxWithValues := context.WithValue(ctx.Context, types.ColumnNameKey, col.Name)
+			ctxWithValues = context.WithValue(ctxWithValues, types.RowNumberKey, i.rowNumber)
+			ctxWithColumnInfo := ctx.WithContext(ctxWithValues)
+			converted, inRange, cErr := col.Type.Convert(ctxWithColumnInfo, row[idx])
 			if cErr == nil && !inRange {
 				cErr = sql.ErrValueOutOfRange.New(row[idx], col.Type)
 			}

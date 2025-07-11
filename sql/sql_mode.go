@@ -119,3 +119,12 @@ func (s *SqlMode) ParserOptions() sqlparser.ParserOptions {
 func (s *SqlMode) String() string {
 	return s.modeString
 }
+
+// ValidateStrictMode returns true if either STRICT_TRANS_TABLES or STRICT_ALL_TABLES is enabled
+func ValidateStrictMode(ctx *Context) bool {
+	if ctx == nil {
+		return false
+	}
+	sqlMode := LoadSqlMode(ctx)
+	return sqlMode.ModeEnabled("STRICT_TRANS_TABLES") || sqlMode.ModeEnabled("STRICT_ALL_TABLES")
+}
