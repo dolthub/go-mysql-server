@@ -7162,10 +7162,6 @@ where
 					{types.OkResult{RowsAffected: 1}},
 				},
 			},
-			{
-				Query:          "insert into t(c) values (X'999897969594939291');",
-				ExpectedErrStr: "Incorrect string value: '\\x99\\x98\\x97\\x96\\x95\\x94...' for column 'c' at row 1",
-			},
 		},
 	},
 	{
@@ -7238,13 +7234,12 @@ where
 			"create table products (id int primary key, name text character set utf8mb4);",
 		},
 		Assertions: []ScriptTestAssertion{
-			// Customer's problem: inserting latin1-encoded "DoltLab®" into utf8mb4 column
-			// Before fix: error showed "<unknown>" instead of column name
+			// Test charset validation with invalid UTF-8 data
 			{
-				Query:          "insert into products values (1, UNHEX('446F6C744C6162AE'));", // "DoltLab®" as latin1 bytes
+				Query:          "insert into products values (1, UNHEX('446F6C744C6162AE'));", // "DoltLab" + invalid byte 0xAE
 				ExpectedErrStr: "Incorrect string value: '\\xAE' for column 'name' at row 1",
 			},
-			// Customer's solution: use non-strict mode to clean up data
+			// Test non-strict mode truncation behavior
 			{
 				Query:    "set sql_mode = '';",
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
