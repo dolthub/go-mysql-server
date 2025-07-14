@@ -9765,6 +9765,7 @@ where
 			},
 			{
 				// this is failing due to a type coercion bug in comparison.Compare
+				// https://github.com/dolthub/dolt/issues/9510
 				Skip:  true,
 				Query: "select i, s + 0, s from t where s = '';",
 				Expected: []sql.Row{
