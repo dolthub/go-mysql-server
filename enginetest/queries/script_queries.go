@@ -9819,6 +9819,7 @@ where
 				},
 			},
 			{
+				// https://github.com/dolthub/dolt/issues/9510
 				Skip:  true,
 				Query: "select s from t where s like 'a%' order by s;",
 				Expected: []sql.Row{
@@ -9909,6 +9910,7 @@ where
 				},
 			},
 			{
+				// https://github.com/dolthub/dolt/issues/9511
 				Skip:  true,
 				Query: "select s, cast(s as char) from t order by s;",
 				Expected: []sql.Row{
@@ -9918,6 +9920,7 @@ where
 				},
 			},
 			{
+				// https://github.com/dolthub/dolt/issues/9511
 				Skip:  true,
 				Query: "select s, cast(s as binary) from t order by s;",
 				Expected: []sql.Row{
