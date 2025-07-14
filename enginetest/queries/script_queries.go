@@ -7166,6 +7166,7 @@ where
 	},
 	{
 		Name: "charset validation strict vs non-strict mode",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table charset_test (c char(10), v varchar(10), txt text) character set utf8mb4;",
 		},
@@ -7230,6 +7231,7 @@ where
 	},
 	{
 		Name: "charset validation issue #8893 - customer scenario",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table products (id int primary key, name text character set utf8mb4);",
 		},
@@ -7266,6 +7268,7 @@ where
 	},
 	{
 		Name: "charset validation edge cases - formatInvalidByteForError testing",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table charset_edge_test (c char(10), v varchar(20), t text);",
 		},
@@ -7407,6 +7410,7 @@ where
 	},
 	{
 		Name: "charset validation ASCII range tests",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table ascii_test (c char(10), v varchar(20), t text);",
 		},
