@@ -737,6 +737,9 @@ func GeneralizeTypes(a, b sql.Type) sql.Type {
 }
 
 func TypeAwareConversion(ctx *sql.Context, val interface{}, originalType sql.Type, convertedType sql.Type) (interface{}, error) {
+	if val == nil {
+		return nil, nil
+	}
 	var converted interface{}
 	var err error
 	if IsTextOnly(convertedType) {
