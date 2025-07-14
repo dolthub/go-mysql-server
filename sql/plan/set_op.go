@@ -220,11 +220,11 @@ func (s *SetOp) String() string {
 	}
 	switch s.SetOpType {
 	case UnionType:
-		_ = pr.WriteNode(fmt.Sprintf("Union %s", distinct))
+		_ = pr.WriteNode("Union %s", distinct)
 	case IntersectType:
-		_ = pr.WriteNode(fmt.Sprintf("Intersect %s", distinct))
+		_ = pr.WriteNode("Intersect %s", distinct)
 	case ExceptType:
-		_ = pr.WriteNode(fmt.Sprintf("Except %s", distinct))
+		_ = pr.WriteNode("Except %s", distinct)
 	}
 	var children []string
 	if len(s.SortFields) > 0 {
@@ -255,11 +255,11 @@ func (s *SetOp) DebugString() string {
 	}
 	switch s.SetOpType {
 	case UnionType:
-		_ = pr.WriteNode(fmt.Sprintf("Union %s", distinct))
+		_ = pr.WriteNode("Union %s", distinct)
 	case IntersectType:
-		_ = pr.WriteNode(fmt.Sprintf("Intersect %s", distinct))
+		_ = pr.WriteNode("Intersect %s", distinct)
 	case ExceptType:
-		_ = pr.WriteNode(fmt.Sprintf("Except %s", distinct))
+		_ = pr.WriteNode("Except %s", distinct)
 	}
 	var children []string
 	if len(s.SortFields) > 0 {

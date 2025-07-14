@@ -77,7 +77,7 @@ func (i *topRowsIter) Close(ctx *sql.Context) error {
 
 func (i *topRowsIter) computeTopRows(ctx *sql.Context) error {
 	topRowsHeap := &expression.TopRowsHeap{
-		expression.Sorter{
+		Sorter: expression.Sorter{
 			SortFields: i.sortFields,
 			Rows:       []sql.Row{},
 			LastError:  nil,

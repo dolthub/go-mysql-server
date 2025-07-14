@@ -234,7 +234,7 @@ func (d *DateAdd) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	var dateVal interface{}
 	dateVal, _, err = types.DatetimeMaxRange.Convert(ctx, date)
 	if err != nil {
-		ctx.Warn(1292, err.Error())
+		ctx.Warn(1292, "%s", err.Error())
 		return nil, nil
 	}
 
@@ -382,7 +382,7 @@ func (d *DateSub) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	var dateVal interface{}
 	dateVal, _, err = types.DatetimeMaxRange.Convert(ctx, date)
 	if err != nil {
-		ctx.Warn(1292, err.Error())
+		ctx.Warn(1292, "%s", err.Error())
 		return nil, nil
 	}
 
@@ -502,14 +502,14 @@ func (td *TimeDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if _, ok := left.(string); ok {
 		left, err = convToDateOrTime(ctx, left)
 		if err != nil {
-			ctx.Warn(1292, err.Error())
+			ctx.Warn(1292, "%s", err.Error())
 			return nil, nil
 		}
 	}
 	if _, ok := right.(string); ok {
 		right, err = convToDateOrTime(ctx, right)
 		if err != nil {
-			ctx.Warn(1292, err.Error())
+			ctx.Warn(1292, "%s", err.Error())
 			return nil, nil
 		}
 	}

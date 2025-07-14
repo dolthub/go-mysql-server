@@ -440,7 +440,6 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (sql.Type, error) {
 	default:
 		return nil, fmt.Errorf("unknown type: %v", ct.Type)
 	}
-	return nil, fmt.Errorf("type not yet implemented: %v", ct.Type)
 }
 
 // CompareNulls compares two values, and returns true if either is null.

@@ -69,9 +69,6 @@ func NewIndexedAccessForTableNode(ctx *sql.Context, node sql.TableNode, lb *Look
 	}
 	var indexedTable sql.IndexedTable
 	indexedTable = iaTable.IndexedAccess(ctx, lookup)
-	if err != nil {
-		return nil, err
-	}
 
 	if mtn, ok := node.(sql.MutableTableNode); ok {
 		mtn, err = mtn.WithTable(indexedTable)
@@ -399,7 +396,7 @@ func (i *IndexedTableAccess) DebugString() string {
 			filters = append(filters, sql.DebugString(e))
 		}
 		if len(filters) > 0 {
-			children = append(children, fmt.Sprintf(fmt.Sprintf("keys: %v", filters)))
+			children = append(children, fmt.Sprintf("keys: %v", filters))
 		}
 	}
 

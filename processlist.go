@@ -17,7 +17,6 @@ package sqle
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 
@@ -387,7 +386,7 @@ func getLongQueryTime() float64 {
 	}
 	longQueryTime, ok := longQueryTimeValue.(float64)
 	if !ok {
-		logrus.Errorf(fmt.Sprintf("unexpected type for value of long_query_time system variable: %T", longQueryTimeValue))
+		logrus.Errorf("unexpected type for value of long_query_time system variable: %T", longQueryTimeValue)
 		return 0
 	}
 	return longQueryTime
