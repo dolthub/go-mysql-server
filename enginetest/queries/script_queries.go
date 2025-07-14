@@ -7165,7 +7165,7 @@ where
 		},
 	},
 	{
-		Name: "charset validation strict vs non-strict mode",
+		Name:    "charset validation strict vs non-strict mode",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table charset_test (c char(10), v varchar(10), txt text) character set utf8mb4;",
@@ -7230,7 +7230,7 @@ where
 		},
 	},
 	{
-		Name: "charset validation issue #8893 - customer scenario",
+		Name:    "charset validation issue #8893 - customer scenario",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table products (id int primary key, name text character set utf8mb4);",
@@ -7267,7 +7267,7 @@ where
 		},
 	},
 	{
-		Name: "charset validation edge cases - formatInvalidByteForError testing",
+		Name:    "charset validation edge cases - formatInvalidByteForError testing",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table charset_edge_test (c char(10), v varchar(20), t text);",
@@ -7369,7 +7369,7 @@ where
 				Query:          "insert into charset_edge_test(c) values (UNHEX('446F6C744C6162AE'));",
 				ExpectedErrStr: "Incorrect string value: '\\xAE' for column 'c' at row 1",
 			},
-			
+
 			// NON-STRICT MODE TESTS (should truncate)
 			{
 				Query:    "set sql_mode = '';",
@@ -7409,7 +7409,7 @@ where
 		},
 	},
 	{
-		Name: "charset validation ASCII range tests",
+		Name:    "charset validation ASCII range tests",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table ascii_test (c char(10), v varchar(20), t text);",
