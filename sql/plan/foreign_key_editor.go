@@ -514,9 +514,8 @@ func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, ro
 	if err == nil {
 		// We have a parent row, but for DECIMAL types we need to be strict about precision/scale
 		if shouldReject := reference.validateDecimalMatch(ctx, row); shouldReject {
-			// Use MySQL 8.4 compatible format for DECIMAL foreign key violations
-			return sql.MySQL84.ErrForeignKeyChildViolation.New(reference.ForeignKey.Database, reference.ForeignKey.Table,
-				reference.ForeignKey.Name, strings.Join(reference.ForeignKey.Columns, ", "), 
+			return sql.ErrForeignKeyChildViolationMySQL845.New(reference.ForeignKey.Database, reference.ForeignKey.Table,
+				reference.ForeignKey.Name, strings.Join(reference.ForeignKey.Columns, ", "),
 				reference.ForeignKey.ParentTable, strings.Join(reference.ForeignKey.ParentColumns, ", "))
 		}
 		// We have a parent row so throw no error
@@ -542,9 +541,8 @@ func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, ro
 		}
 	}
 
-	// Use MySQL 8.4 compatible format for all foreign key violations going forward
-	return sql.MySQL84.ErrForeignKeyChildViolation.New(reference.ForeignKey.Database, reference.ForeignKey.Table,
-		reference.ForeignKey.Name, strings.Join(reference.ForeignKey.Columns, ", "), 
+	return sql.ErrForeignKeyChildViolationMySQL845.New(reference.ForeignKey.Database, reference.ForeignKey.Table,
+		reference.ForeignKey.Name, strings.Join(reference.ForeignKey.Columns, ", "),
 		reference.ForeignKey.ParentTable, strings.Join(reference.ForeignKey.ParentColumns, ", "))
 }
 
@@ -624,7 +622,7 @@ func (mapper *ForeignKeyRowMapper) GetIter(ctx *sql.Context, row sql.Row, refChe
 		}
 
 		targetType := mapper.SourceSch[rowPos].Type
-		
+
 		// Transform the type of the value in this row to the one in the other table for the index lookup, if necessary
 		if mapper.TargetTypeConversions != nil && mapper.TargetTypeConversions[rowPos] != nil {
 			var err error
@@ -747,7 +745,6 @@ func GetForeignKeyTypeConversions(
 				// this should be impossible (child and parent should both be extended types), but just in case
 				return nil, nil
 			}
-
 
 			fromType := childExtendedType
 			toType := parentExtendedType
