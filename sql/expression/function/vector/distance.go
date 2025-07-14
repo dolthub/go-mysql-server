@@ -15,6 +15,7 @@
 package vector
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -127,18 +128,18 @@ func (d Distance) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	return MeasureDistance(lval, rval, d.DistanceType)
+	return MeasureDistance(ctx, lval, rval, d.DistanceType)
 }
 
-func MeasureDistance(left, right interface{}, distanceType DistanceType) (interface{}, error) {
-	leftVec, err := sql.ConvertToVector(left)
+func MeasureDistance(ctx context.Context, left, right interface{}, distanceType DistanceType) (interface{}, error) {
+	leftVec, err := sql.ConvertToVector(ctx, left)
 	if err != nil {
 		return nil, err
 	}
 	if leftVec == nil {
 		return nil, nil
 	}
-	rightVec, err := sql.ConvertToVector(right)
+	rightVec, err := sql.ConvertToVector(ctx, right)
 	if err != nil {
 		return nil, err
 	}

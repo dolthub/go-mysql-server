@@ -144,14 +144,14 @@ func TestLazyJsonDocument(t *testing.T) {
 	for _, testCase := range testCases {
 		t.Run(testCase.s, func(t *testing.T) {
 			doc := types.NewLazyJSONDocument([]byte(testCase.s))
-			val, err := doc.ToInterface()
+			val, err := doc.ToInterface(context.Background())
 			require.NoError(t, err)
 			require.Equal(t, testCase.json, val)
 		})
 	}
 	t.Run("lazy docs only error when deserialized", func(t *testing.T) {
 		doc := types.NewLazyJSONDocument([]byte("not valid json"))
-		_, err := doc.ToInterface()
+		_, err := doc.ToInterface(context.Background())
 		require.Error(t, err)
 	})
 }
@@ -366,7 +366,7 @@ func TestJsonInsertErrors(t *testing.T) {
 
 	for _, test := range JsonArrayInsertErrors {
 		t.Run("JSON Path: "+test.desc, func(t *testing.T) {
-			_, changed, err := doc.ArrayInsert(test.path, types.MustJSON(`{"a": 42}`))
+			_, changed, err := doc.ArrayInsert(t.Context(), test.path, types.MustJSON(`{"a": 42}`))
 			assert.Equal(t, false, changed)
 			require.Error(t, err)
 			assert.Equal(t, test.expectErrStr, err.Error())

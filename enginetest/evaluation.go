@@ -852,7 +852,7 @@ func WidenRow(t *testing.T, sch sql.Schema, row sql.Row) sql.Row {
 	widened := make(sql.Row, len(row))
 	for i, v := range row {
 		if i < len(sch) && types.IsJSON(sch[i].Type) {
-			widened[i] = widenJSONValues(v)
+			widened[i] = widenJSONValues(t.Context(), v)
 			continue
 		}
 
@@ -893,7 +893,7 @@ func widenValue(t *testing.T, v interface{}) (vw interface{}) {
 	return vw
 }
 
-func widenJSONValues(val interface{}) sql.JSONWrapper {
+func widenJSONValues(ctx context.Context, val interface{}) sql.JSONWrapper {
 	if val == nil {
 		return nil
 	}
@@ -907,7 +907,7 @@ func widenJSONValues(val interface{}) sql.JSONWrapper {
 		js = types.MustJSON(str)
 	}
 
-	doc, err := js.ToInterface()
+	doc, err := js.ToInterface(ctx)
 	if err != nil {
 		panic(err)
 	}

@@ -226,13 +226,13 @@ func (s *Statistic) Clone(context.Context) sql.JSONWrapper {
 	return s
 }
 
-func (s *Statistic) ToInterface() (interface{}, error) {
+func (s *Statistic) ToInterface(ctx context.Context) (interface{}, error) {
 	typs := make([]string, len(s.Typs))
 	for i, t := range s.Typs {
 		typs[i] = t.String()
 	}
 
-	buckets, err := s.Histogram().ToInterface()
+	buckets, err := s.Histogram().ToInterface(ctx)
 	if err != nil {
 		return nil, err
 	}

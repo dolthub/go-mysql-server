@@ -655,7 +655,7 @@ func (j *jsonArrayBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		return err
 	}
 	if js, ok := v.(sql.JSONWrapper); ok {
-		v, err = js.ToInterface()
+		v, err = js.ToInterface(ctx)
 		if err != nil {
 			return err
 		}
