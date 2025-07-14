@@ -2740,11 +2740,6 @@ var CreateForeignKeyTests = []ScriptTest{
 					{"fk3", "mydb", "child2", "f", "mydb", "child", "d", "SET NULL", "NO ACTION"},
 				},
 			},
-		},
-	},
-	{
-		Name: "error cases",
-		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "ALTER TABLE child2 ADD CONSTRAINT fk3 FOREIGN KEY (f) REFERENCES dne(d) ON UPDATE SET NULL",
 				ExpectedErr: sql.ErrTableNotFound,
@@ -2786,6 +2781,122 @@ var CreateForeignKeyTests = []ScriptTest{
 			{
 				Query:    "CREATE TABLE delayed_parent4 (pk BIGINT PRIMARY KEY)",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+		},
+	},
+	{
+		Name:    "char with foreign key",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table parent (c char(3) primary key);",
+			"insert into parent values ('abc'), ('def'), ('ghi');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "create table child_char_1 (c char(1), foreign key (c) references parent(c));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query:       "insert into child_char_1 values ('a');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query:          "insert into child_char_1 values ('abc');",
+				ExpectedErrStr: "string 'abc' is too large for column 'c'",
+			},
+			{
+				Skip:  true,
+				Query: "create table child_varchar_10 (vc varchar(10), foreign key (vc) references parent(c));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip:  true,
+				Query: "insert into child_varchar_10 values ('abc');",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Skip:        true,
+				Query:       "insert into child_varchar_10 values ('abcdefghij');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+		},
+	},
+	{
+		Name:    "binary with foreign key",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table parent (b binary(3) primary key);",
+			"insert into parent values ('abc'), ('def'), ('ghi');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "create table child_binary_1 (b binary(1), foreign key (b) references parent(b));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query:       "insert into child_binary_1 values ('a');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query:          "insert into child_binary_1 values ('abc');",
+				ExpectedErrStr: "string 'abc' is too large for column 'b'",
+			},
+			{
+				Skip:  true,
+				Query: "create table child_varbinary_10 (vb varbinary(10), foreign key (vb) references parent(b));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip:  true,
+				Query: "insert into child_varbinary_10 values ('abc');",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Skip:        true,
+				Query:       "insert into child_varbinary_10 values ('abcdefghij');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+		},
+	},
+	{
+		Name:    "mixed int type foreign key tests",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table parent (i int primary key);",
+			"insert into parent values (1), (2), (3);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "create table child_tinyint (ti tinyint, foreign key (ti) references parent (i));",
+				ExpectedErr: sql.ErrForeignKeyColumnTypeMismatch,
+			},
+			{
+				Query:       "create table child_smallint (si tinyint, foreign key (si) references parent (i));",
+				ExpectedErr: sql.ErrForeignKeyColumnTypeMismatch,
+			},
+			{
+				Query:       "create table child_mediumint (mi tinyint, foreign key (mi) references parent (i));",
+				ExpectedErr: sql.ErrForeignKeyColumnTypeMismatch,
+			},
+			{
+				Query:       "create table child_bigint (ti tinyint, foreign key (ti) references parent (i));",
+				ExpectedErr: sql.ErrForeignKeyColumnTypeMismatch,
+			},
+			{
+				Query:       "create table child_unsigned (i int unsigned, foreign key (i) references parent (i));",
+				ExpectedErr: sql.ErrForeignKeyColumnTypeMismatch,
 			},
 		},
 	},
@@ -2831,11 +2942,6 @@ var DropForeignKeyTests = []ScriptTest{
 						RC.TABLE_NAME = KCU.TABLE_NAME AND RC.REFERENCED_TABLE_NAME = KCU.REFERENCED_TABLE_NAME;`,
 				Expected: []sql.Row{},
 			},
-		},
-	},
-	{
-		Name: "error cases",
-		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "ALTER TABLE child3 DROP CONSTRAINT dne",
 				ExpectedErr: sql.ErrTableNotFound,
