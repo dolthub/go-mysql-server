@@ -541,7 +541,7 @@ func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, ro
 		}
 	}
 
-	return sql.ErrForeignKeyChildViolationMySQL845.New(reference.ForeignKey.Database, reference.ForeignKey.Table,
+	return sql.ErrForeignKeyChildViolation.New(reference.ForeignKey.Database, reference.ForeignKey.Table,
 		reference.ForeignKey.Name, strings.Join(reference.ForeignKey.Columns, ", "),
 		reference.ForeignKey.ParentTable, strings.Join(reference.ForeignKey.ParentColumns, ", "))
 }
