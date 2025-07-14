@@ -514,7 +514,8 @@ func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, ro
 	if err == nil {
 		// We have a parent row, but for DECIMAL types we need to be strict about precision/scale
 		if shouldReject := reference.validateDecimalMatch(ctx, row); shouldReject {
-			return sql.ErrForeignKeyChildViolation.New(reference.ForeignKey.Database, reference.ForeignKey.Table,
+			// Use MySQL 8.4 compatible format for DECIMAL foreign key violations
+			return sql.MySQL84.ErrForeignKeyChildViolation.New(reference.ForeignKey.Database, reference.ForeignKey.Table,
 				reference.ForeignKey.Name, strings.Join(reference.ForeignKey.Columns, ", "), 
 				reference.ForeignKey.ParentTable, strings.Join(reference.ForeignKey.ParentColumns, ", "))
 		}
@@ -541,7 +542,8 @@ func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, ro
 		}
 	}
 
-	return sql.ErrForeignKeyChildViolation.New(reference.ForeignKey.Database, reference.ForeignKey.Table,
+	// Use MySQL 8.4 compatible format for all foreign key violations going forward
+	return sql.MySQL84.ErrForeignKeyChildViolation.New(reference.ForeignKey.Database, reference.ForeignKey.Table,
 		reference.ForeignKey.Name, strings.Join(reference.ForeignKey.Columns, ", "), 
 		reference.ForeignKey.ParentTable, strings.Join(reference.ForeignKey.ParentColumns, ", "))
 }

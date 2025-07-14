@@ -22,6 +22,14 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 )
 
+// MySQL84 contains error definitions that match MySQL 8.4 behavior and formatting
+var MySQL84 = struct {
+	// ErrForeignKeyChildViolation is the MySQL 8.4 compatible error format for foreign key child violations
+	ErrForeignKeyChildViolation *errors.Kind
+}{
+	ErrForeignKeyChildViolation: errors.NewKind("cannot add or update a child row: a foreign key constraint fails (`%s`.`%s`, CONSTRAINT `%s` FOREIGN KEY (`%s`) REFERENCES `%s` (`%s`))"),
+}
+
 var (
 	// ErrSyntaxError is returned when a syntax error in vitess is encountered.
 	ErrSyntaxError = errors.NewKind("%s")
@@ -419,7 +427,7 @@ var (
 	ErrInsertIntoNonNullableProvidedNull = errors.NewKind("column name '%v' is non-nullable but attempted to set a value of null")
 
 	// ErrForeignKeyChildViolation is called when a rows is added but there is no parent row, and a foreign key constraint fails. Add the parent row first.
-	ErrForeignKeyChildViolation = errors.NewKind("cannot add or update a child row: a foreign key constraint fails (`%s`.`%s`, CONSTRAINT `%s` FOREIGN KEY (`%s`) REFERENCES `%s` (`%s`))")
+	ErrForeignKeyChildViolation = errors.NewKind("cannot add or update a child row - Foreign key violation on fk: `%s`, table: `%s`, referenced table: `%s`, key: `%s`")
 
 	// ErrForeignKeyParentViolation is called when a parent row that is deleted has children, and a foreign key constraint fails. Delete the children first.
 	ErrForeignKeyParentViolation = errors.NewKind("cannot delete or update a parent row - Foreign key violation on fk: `%s`, table: `%s`, referenced table: `%s`, key: `%s`")
@@ -982,6 +990,8 @@ func CastSQLError(err error) *mysql.SQLError {
 	case ErrPartitionNotFound.Is(err):
 		code = 1526 // TODO: Needs to be added to vitess
 	case ErrForeignKeyChildViolation.Is(err):
+		code = mysql.ErNoReferencedRow2 // test with mysql returns 1452 vs 1216
+	case MySQL84.ErrForeignKeyChildViolation.Is(err):
 		code = mysql.ErNoReferencedRow2 // test with mysql returns 1452 vs 1216
 	case ErrForeignKeyParentViolation.Is(err):
 		code = mysql.ERRowIsReferenced2 // test with mysql returns 1451 vs 1215
