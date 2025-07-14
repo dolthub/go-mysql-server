@@ -9764,6 +9764,7 @@ where
 				},
 			},
 			{
+				// this is failing due to a type coercion bug in comparison.Compare
 				Skip:  true,
 				Query: "select i, s + 0, s from t where s = '';",
 				Expected: []sql.Row{
@@ -9773,7 +9774,6 @@ where
 				},
 			},
 			{
-				Skip:  true,
 				Query: "select i, s + 0, s from tt;",
 				Expected: []sql.Row{
 					{0, float64(3), "something,"},
