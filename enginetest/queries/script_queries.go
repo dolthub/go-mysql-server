@@ -10561,6 +10561,14 @@ where
 				Query:       "insert into child_dec_65_30 values (1.23);",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
+			{
+				Query:       "insert into child_dec_4_2 values (99.99);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query:       "insert into child_dec_4_1 values (99.9);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
 		},
 	},
 
