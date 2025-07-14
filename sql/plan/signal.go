@@ -293,6 +293,7 @@ func (s *Signal) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		return nil, mysql.NewSQLError(
 			int(s.Info[SignalConditionItemName_MysqlErrno].IntValue),
 			s.SqlStateValue,
+			"%s",
 			strValue,
 		)
 	}

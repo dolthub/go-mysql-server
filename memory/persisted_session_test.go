@@ -27,7 +27,7 @@ import (
 )
 
 func newPersistedSqlContext() *sql.Context {
-	ctx, _ := context.WithCancel(context.TODO())
+	ctx := context.Background()
 	pro := NewDBProvider()
 	sess := sql.NewBaseSession()
 
