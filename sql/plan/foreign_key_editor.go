@@ -512,11 +512,9 @@ func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, ro
 		return err
 	}
 	if err == nil {
-		// We have a parent row, but for DECIMAL types we need to be strict about precision/scale
-		if shouldReject := reference.validateDecimalMatch(); shouldReject {
-			return sql.ErrForeignKeyChildViolationMySQL845.New(reference.ForeignKey.Database, reference.ForeignKey.Table,
-				reference.ForeignKey.Name, strings.Join(reference.ForeignKey.Columns, ", "),
-				reference.ForeignKey.ParentTable, strings.Join(reference.ForeignKey.ParentColumns, ", "))
+		// We have a parent row, but check for type-specific validation
+		if validationErr := reference.validateDecimalConstraints(row); validationErr != nil {
+			return validationErr
 		}
 		// We have a parent row so throw no error
 		return nil
@@ -545,23 +543,34 @@ func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, ro
 		reference.ForeignKey.ParentTable, reference.RowMapper.GetKeyString(row))
 }
 
-func (reference *ForeignKeyReferenceHandler) validateDecimalMatch() bool {
+// validateDecimalConstraints checks that decimal foreign key columns have compatible scales.
+func (reference *ForeignKeyReferenceHandler) validateDecimalConstraints(row sql.Row) error {
 	if reference.RowMapper.Index == nil {
-		return false
+		return nil
 	}
+
 	indexColumnTypes := reference.RowMapper.Index.ColumnExpressionTypes()
 	for i := range reference.ForeignKey.Columns {
 		if i >= len(indexColumnTypes) {
 			continue
 		}
+
 		childColIdx := reference.RowMapper.IndexPositions[i]
-		childDecimal, childOk := reference.RowMapper.SourceSch[childColIdx].Type.(sql.DecimalType)
-		parentDecimal, parentOk := indexColumnTypes[i].Type.(sql.DecimalType)
-		if childOk && parentOk && childDecimal.Scale() != parentDecimal.Scale() {
-			return true
+		childType := reference.RowMapper.SourceSch[childColIdx].Type
+		parentType := indexColumnTypes[i].Type
+
+		// For decimal types, check scale compatibility (following existing pattern for type-specific validation)
+		if childDecimal, ok := childType.(sql.DecimalType); ok {
+			if parentDecimal, ok := parentType.(sql.DecimalType); ok {
+				if childDecimal.Scale() != parentDecimal.Scale() {
+					return sql.ErrForeignKeyChildViolation.New(reference.ForeignKey.Name, reference.ForeignKey.Table,
+						reference.ForeignKey.ParentTable, reference.RowMapper.GetKeyString(row))
+				}
+			}
 		}
 	}
-	return false
+
+	return nil
 }
 
 // CheckTable checks that every row in the table has an index entry in the referenced table.
