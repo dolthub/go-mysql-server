@@ -103,8 +103,9 @@ func (t systemBoolType) Convert(v interface{}) (interface{}, error) {
 		// Therefore, if the float doesn't have a fractional portion, we treat it as an int.
 		if value == float64(int64(value)) {
 			if value >= float64(math.MinInt64) && value <= float64(math.MaxInt64) {
-				if intVal := int64(value); intVal >= math.MinInt8 && intVal <= math.MaxInt8 {
-					return t.Convert(intVal)
+				intVal := int64(value)
+				if intVal >= math.MinInt8 && intVal <= math.MaxInt8 {
+					return int8(intVal), nil
 				}
 				return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
 			}
