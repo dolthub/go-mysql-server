@@ -104,7 +104,6 @@ func (t systemIntType) Convert(v interface{}) (interface{}, error) {
 					intVal := int64(value)
 					return t.Convert(intVal)
 				}
-				return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
 			}
 			return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
 		}
