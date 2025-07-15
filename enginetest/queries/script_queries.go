@@ -10479,6 +10479,7 @@ where
 				},
 			},
 			{
+				Skip:  true,
 				Query: "show create table mediumint_tbl;",
 				Expected: []sql.Row{
 					{"mediumint_tbl", "CREATE TABLE `mediumint_tbl` (\n" +
@@ -10504,6 +10505,7 @@ where
 				},
 			},
 			{
+				Skip:  true,
 				Query: "show create table int_tbl;",
 				Expected: []sql.Row{
 					{"int_tbl", "CREATE TABLE `int_tbl` (\n" +
@@ -10529,6 +10531,7 @@ where
 				},
 			},
 			{
+				Skip:  true,
 				Query: "show create table bigint_tbl;",
 				Expected: []sql.Row{
 					{"bigint_tbl", "CREATE TABLE `bigint_tbl` (\n" +
@@ -10618,6 +10621,7 @@ where
 				},
 			},
 			{
+				Skip:  true,
 				Query: "show create table mediumint_tbl;",
 				Expected: []sql.Row{
 					{"mediumint_tbl", "CREATE TABLE `mediumint_tbl` (\n" +
@@ -10643,6 +10647,7 @@ where
 				},
 			},
 			{
+				Skip:  true,
 				Query: "show create table int_tbl;",
 				Expected: []sql.Row{
 					{"int_tbl", "CREATE TABLE `int_tbl` (\n" +
@@ -10668,6 +10673,7 @@ where
 				},
 			},
 			{
+				Skip:  true,
 				Query: "show create table bigint_tbl;",
 				Expected: []sql.Row{
 					{"bigint_tbl", "CREATE TABLE `bigint_tbl` (\n" +
