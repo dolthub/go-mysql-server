@@ -425,7 +425,7 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 		val = append(dest, s.Decimal.String()...)
 	case sql.JSONWrapper:
 		var err error
-		val, err = JsonToMySqlBytes(s)
+		val, err = JsonToMySqlBytes(ctx, s)
 		if err != nil {
 			return nil, err
 		}
@@ -715,7 +715,7 @@ func (t StringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.
 		var valueBytes []byte
 		switch v := v.(type) {
 		case JSONBytes:
-			valueBytes, err = v.GetBytes()
+			valueBytes, err = v.GetBytes(ctx)
 			if err != nil {
 				return sqltypes.Value{}, err
 			}

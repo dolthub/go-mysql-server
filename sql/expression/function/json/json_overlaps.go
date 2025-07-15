@@ -190,7 +190,7 @@ func (j *JSONOverlaps) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	if left == nil {
 		return nil, nil
 	}
-	leftVal, err := left.ToInterface()
+	leftVal, err := left.ToInterface(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -202,7 +202,7 @@ func (j *JSONOverlaps) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	if right == nil {
 		return nil, nil
 	}
-	rightVal, err := right.ToInterface()
+	rightVal, err := right.ToInterface(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -1327,21 +1327,21 @@ func (*DayName) CollationCoercibility(ctx *sql.Context) (collation sql.Collation
 func (d *DayName) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	val, err := d.EvalChild(ctx, row)
 	if err != nil {
-		ctx.Warn(1292, types.ErrConvertingToTime.New(val).Error())
+		ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(val).Error())
 		return nil, nil
 	}
 
 	if s, ok := val.(string); ok {
 		val, _, err = types.DatetimeMaxPrecision.Convert(ctx, s)
 		if err != nil {
-			ctx.Warn(1292, types.ErrConvertingToTime.New(val).Error())
+			ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(val).Error())
 			return nil, nil
 		}
 	}
 
 	t, ok := val.(time.Time)
 	if !ok {
-		ctx.Warn(1292, types.ErrConvertingToTime.New(val).Error())
+		ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(val).Error())
 		return nil, nil
 	}
 
@@ -1389,7 +1389,7 @@ func (m *Microsecond) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case nil:
 		return nil, nil
 	default:
-		ctx.Warn(1292, types.ErrConvertingToTime.New(val).Error())
+		ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(val).Error())
 		return nil, nil
 	}
 }
@@ -1435,7 +1435,7 @@ func (d *MonthName) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case nil:
 		return nil, nil
 	default:
-		ctx.Warn(1292, types.ErrConvertingToTime.New(val).Error())
+		ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(val).Error())
 		return nil, nil
 	}
 }
@@ -1481,7 +1481,7 @@ func (m *TimeToSec) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case nil:
 		return nil, nil
 	default:
-		ctx.Warn(1292, types.ErrConvertingToTime.New(val).Error())
+		ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(val).Error())
 		return nil, nil
 	}
 }
@@ -1528,7 +1528,7 @@ func (m *WeekOfYear) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case nil:
 		return nil, nil
 	default:
-		ctx.Warn(1292, types.ErrConvertingToTime.New(val).Error())
+		ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(val).Error())
 		return nil, nil
 	}
 }
@@ -1689,7 +1689,7 @@ func (t *Time) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// convert to time
 	val, _, err := types.Time.Convert(ctx, v)
 	if err != nil {
-		ctx.Warn(1292, err.Error())
+		ctx.Warn(1292, "%s", err.Error())
 		return nil, nil
 	}
 	return val, nil

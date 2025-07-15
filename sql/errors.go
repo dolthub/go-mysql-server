@@ -17,7 +17,6 @@ package sql
 import (
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/dolthub/vitess/go/mysql"
 	"gopkg.in/src-d/go-errors.v1"
@@ -1021,8 +1020,7 @@ func CastSQLError(err error) *mysql.SQLError {
 		code = mysql.ERUnknownError
 	}
 
-	// This uses the given error as a format string, so we have to escape any percentage signs else they'll show up as "%!(MISSING)"
-	return mysql.NewSQLError(code, sqlState, strings.Replace(err.Error(), `%`, `%%`, -1))
+	return mysql.NewSQLError(code, sqlState, "%s", err.Error())
 }
 
 // UnwrapError removes any wrapping errors (e.g. WrappedInsertError) around the specified error and

@@ -251,9 +251,6 @@ func WriteInt24(buf []byte, val int32) []byte {
 	// copy |tmp| to |buf|
 	buf[2], buf[1], buf[0] = tmp[2], tmp[1], tmp[0]
 	return buf
-
-	binary.LittleEndian.PutUint16(buf, uint16(val))
-	return buf
 }
 
 func WriteUint24(buf []byte, val uint32) []byte {
@@ -266,9 +263,6 @@ func WriteUint24(buf []byte, val uint32) []byte {
 	binary.LittleEndian.PutUint32(tmp[:], uint32(val))
 	// copy |tmp| to |buf|
 	buf[2], buf[1], buf[0] = tmp[2], tmp[1], tmp[0]
-	return buf
-
-	binary.LittleEndian.PutUint16(buf, uint16(val))
 	return buf
 }
 

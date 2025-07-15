@@ -371,7 +371,7 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 			ctx.Session.Warn(&sql.Warning{
 				Level:   "Note",
 				Code:    1537,
-				Message: fmt.Sprintf(err.Error()),
+				Message: err.Error(),
 			})
 			return sql.Row{types.NewOkResult(0)}, nil
 		}
