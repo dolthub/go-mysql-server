@@ -101,7 +101,6 @@ func (t systemSetType) Convert(v interface{}) (interface{}, error) {
 			return nil, ErrInvalidSystemVariableValue.New(t.varName, v) // Reject values with fractional parts
 		}
 		return nil, ErrInvalidSystemVariableValue.New(t.varName, v) // Reject out-of-range values
-		return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
 	case decimal.Decimal:
 		f, _ := value.Float64()
 		return t.Convert(f)
