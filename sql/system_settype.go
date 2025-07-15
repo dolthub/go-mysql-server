@@ -92,6 +92,9 @@ func (t systemSetType) Convert(v interface{}) (interface{}, error) {
 		// Therefore, if the float doesn't have a fractional portion, we treat it as an int.
 		if value >= float64(math.MinInt64) && value <= float64(math.MaxInt64) {
 			if math.Trunc(value) == value { // Ensure no fractional part exists
+				if value < 0 || value > math.MaxInt64 { // Additional bounds check
+					return nil, ErrInvalidSystemVariableValue.New(t.varName, v) // Reject out-of-range values
+				}
 				intValue := int64(value)
 				return t.SetType.Convert(intValue)
 			}
