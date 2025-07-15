@@ -15,16 +15,15 @@
 package sql
 
 import (
+	"math"
 	"reflect"
 	"strconv"
 	"time"
 
-	"github.com/shopspring/decimal"
-
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
-	"math"
 )
 
 var (
