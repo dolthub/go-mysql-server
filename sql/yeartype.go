@@ -24,6 +24,7 @@ import (
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"gopkg.in/src-d/go-errors.v1"
+	"math"
 )
 
 var (
@@ -110,6 +111,9 @@ func (t yearType) Convert(v interface{}) (interface{}, error) {
 	case float32:
 		return t.Convert(int64(value))
 	case float64:
+		if value < float64(math.MinInt64) || value > float64(math.MaxInt64) {
+			return nil, ErrConvertingToYear.New("float64 value out of bounds for int64")
+		}
 		return t.Convert(int64(value))
 	case decimal.Decimal:
 		return t.Convert(value.IntPart())
