@@ -15,9 +15,9 @@
 package sql
 
 import (
+	"math"
 	"reflect"
 	"strconv"
-	"math"
 
 	"github.com/shopspring/decimal"
 
