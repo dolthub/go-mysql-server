@@ -170,34 +170,104 @@ func (t enumType) Convert(v interface{}) (interface{}, error) {
 			return uint16(value), nil
 		}
 	case uint:
+		var maxInt int
+		if strconv.IntSize == 32 {
+			maxInt = math.MaxInt32
+		} else {
+			maxInt = math.MaxInt64
+		}
+		if value > uint(maxInt) {
+			return nil, ErrConvertingToEnum.New(v)
+		}
 		return t.Convert(int(value))
 	case int8:
 		return t.Convert(int(value))
 	case uint8:
+		var maxInt int
+		if strconv.IntSize == 32 {
+			maxInt = math.MaxInt32
+		} else {
+			maxInt = math.MaxInt64
+		}
+		if value > uint8(maxInt) {
+			return nil, ErrConvertingToEnum.New(v)
+		}
 		return t.Convert(int(value))
 	case int16:
 		return t.Convert(int(value))
 	case uint16:
+		var maxInt int
+		if strconv.IntSize == 32 {
+			maxInt = math.MaxInt32
+		} else {
+			maxInt = math.MaxInt64
+		}
+		if value > uint16(maxInt) {
+			return nil, ErrConvertingToEnum.New(v)
+		}
 		return t.Convert(int(value))
 	case int32:
 		return t.Convert(int(value))
 	case uint32:
+		var maxInt int
+		if strconv.IntSize == 32 {
+			maxInt = math.MaxInt32
+		} else {
+			maxInt = math.MaxInt64
+		}
+		if value > uint32(maxInt) {
+			return nil, ErrConvertingToEnum.New(v)
+		}
 		return t.Convert(int(value))
 	case int64:
+		var minInt64, maxInt64 int64
+		if strconv.IntSize == 32 {
+			minInt64 = int64(math.MinInt32)
+			maxInt64 = int64(math.MaxInt32)
+		} else {
+			minInt64 = int64(math.MinInt64)
+			maxInt64 = int64(math.MaxInt64)
+		}
+		if value > maxInt64 || value < minInt64 {
+			return nil, ErrConvertingToEnum.New(v)
+		}
 		return t.Convert(int(value))
 	case uint64:
+		var maxInt uint64
+		if strconv.IntSize == 32 {
+			maxInt = uint64(math.MaxInt32)
+		} else {
+			maxInt = uint64(math.MaxInt64)
+		}
+		if value > maxInt {
+			return nil, ErrConvertingToEnum.New(v)
+		}
 		return t.Convert(int(value))
 	case float32:
+		if value < float32(int(^uint(0)>>1)*-1) || value > float32(int(^uint(0)>>1)) {
+			return nil, ErrConvertingToEnum.New(v)
+		}
 		return t.Convert(int(value))
 	case float64:
+		if value < float64(int(^uint(0)>>1)*-1) || value > float64(int(^uint(0)>>1)) {
+			return nil, ErrConvertingToEnum.New(v)
+		}
 		return t.Convert(int(value))
 	case decimal.Decimal:
-		return t.Convert(value.IntPart())
+		decInt := value.IntPart()
+		if decInt > int64(^int(0)) || decInt < int64(-1<<((strconv.IntSize)-1)) {
+			return nil, ErrConvertingToEnum.New(v)
+		}
+		return t.Convert(int(decInt))
 	case decimal.NullDecimal:
 		if !value.Valid {
 			return nil, nil
 		}
-		return t.Convert(value.Decimal.IntPart())
+		decInt := value.Decimal.IntPart()
+		if decInt > int64(^int(0)) || decInt < int64(-1<<((strconv.IntSize)-1)) {
+			return nil, ErrConvertingToEnum.New(v)
+		}
+		return t.Convert(int(decInt))
 	case string:
 		if index := t.IndexOf(value); index != -1 {
 			if index > math.MaxUint16 {
