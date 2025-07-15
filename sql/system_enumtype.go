@@ -16,6 +16,7 @@ package sql
 
 import (
 	"math"
+	_ "math"
 	"reflect"
 	"strings"
 
@@ -93,7 +94,10 @@ func (t systemEnumType) Convert(v interface{}) (interface{}, error) {
 	case uint32:
 		return t.Convert(int(value))
 	case int64:
-		return t.Convert(int(value))
+		if value >= math.MinInt && value <= math.MaxInt {
+			return t.Convert(int(value))
+		}
+		return nil, ErrInvalidSystemVariableValue.New(t.varName, value)
 	case uint64:
 		if value <= math.MaxInt {
 			return t.Convert(int(value))
