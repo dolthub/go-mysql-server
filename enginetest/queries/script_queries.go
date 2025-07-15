@@ -10507,6 +10507,8 @@ where
 		SetUpScript: []string{
 			"create table parent (d decimal(4, 2) primary key);",
 			"insert into parent values (1.23), (45.67), (78.9);",
+			"create table parent_multi (d1 decimal(4,2), d2 decimal(3,1), primary key (d1, d2));",
+			"insert into parent_multi values (1.23, 4.5), (45.67, 78.9), (99.99, 0.1);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -10567,6 +10569,21 @@ where
 			},
 			{
 				Query:       "insert into child_dec_4_1 values (99.9);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query: "create table child_multi_4_2_3_1 (d1 decimal(4,2), d2 decimal(3,1), foreign key (d1, d2) references parent_multi (d1, d2));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				}},
+			{
+				Query: "insert into child_multi_4_2_3_1 values (1.23, 4.5), (45.67, 78.9), (NULL, NULL);",
+				Expected: []sql.Row{
+					{types.NewOkResult(3)},
+				},
+			},
+			{
+				Query:       "insert into child_multi_4_2_3_1 values (1.23, 9.9);",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 		},
