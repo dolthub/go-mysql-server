@@ -4512,4 +4512,25 @@ var IndexQueries = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "aggregates using indexes with false filter",
+		SetUpScript: []string{
+			"create table pk_tbl (i int primary key);",
+			"create table unq_tbl (i int unique key);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select count(*) from pk_tbl where (i = 0 and i = 1);",
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+			{
+				Query: "select count(*) from unq_tbl where (i = 0 and i = 1);",
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+		},
+	},
 }
