@@ -17,6 +17,7 @@ package sql
 import (
 	"reflect"
 	"strconv"
+	"math"
 
 	"github.com/shopspring/decimal"
 
@@ -99,8 +100,11 @@ func (t systemIntType) Convert(v interface{}) (interface{}, error) {
 		// Therefore, if the float doesn't have a fractional portion, we treat it as an int.
 		if value == float64(int64(value)) {
 			if value >= float64(t.lowerbound) && value <= float64(t.upperbound) {
-				intVal := int64(value)
-				return t.Convert(intVal)
+				if value >= float64(math.MinInt64) && value <= float64(math.MaxInt64) {
+					intVal := int64(value)
+					return t.Convert(intVal)
+				}
+				return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
 			}
 			return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
 		}
