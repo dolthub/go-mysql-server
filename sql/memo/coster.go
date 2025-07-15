@@ -124,15 +124,14 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 			// TODO added overhead for right lookups
 			switch n := n.(type) {
 			case *LookupJoin:
-				if !n.Injective {
-					// partial index completion is undesirable
-					// TODO don't do this whe we have stats
-					selfJoinCard = math.Max(0, selfJoinCard+float64(indexCoverageAdjustment(n.Lookup)))
+				if n.Injective {
+					return lBest*seqIOCostFactor + lBest*randIOCostFactor, nil
 				}
-
+				sel := lookupJoinSelectivity(n.Lookup, n.JoinBase)
+				expectedRightRows := selfJoinCard * sel
 				// read the whole left table and randIO into table equivalent to
 				// this join's output cardinality estimate
-				return lBest*seqIOCostFactor + selfJoinCard*(randIOCostFactor+seqIOCostFactor), nil
+				return lBest*seqIOCostFactor + expectedRightRows*randIOCostFactor, nil
 			case *ConcatJoin:
 				return c.costConcatJoin(ctx, n, s)
 			}

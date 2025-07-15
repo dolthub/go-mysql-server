@@ -507,6 +507,10 @@ func (i *indexScanRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 }
 
 func indexRowMatches(ranges sql.Expression, candidate sql.Row) (bool, error) {
+	if ranges == nil {
+		// If there is no ranges expression, default to match all (return all rows)
+		return true, nil
+	}
 	result, err := ranges.Eval(nil, candidate)
 	if err != nil {
 		return false, err
@@ -1668,6 +1672,10 @@ func adjustRangeScanFilterForIndexLookup(filter sql.Expression, index *Index) sq
 		indexStorageSchema[i] = &sql.Column{
 			Name: e.(*expression.GetField).Name(),
 		}
+	}
+
+	if filter == nil {
+		return filter
 	}
 
 	filter, _, err := transform.Expr(filter, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
