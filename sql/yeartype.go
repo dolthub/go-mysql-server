@@ -111,6 +111,13 @@ func (t yearType) Convert(v interface{}) (interface{}, error) {
 		}
 		return t.Convert(int64(value))
 	case float32:
+		if float64(value) < float64(math.MinInt64) || float64(value) > float64(math.MaxInt64) {
+			return nil, ErrConvertingToYear.New("float32 value out of bounds for int64")
+		}
+		// Check for fractional part
+		if float64(value) != math.Trunc(float64(value)) {
+			return nil, ErrConvertingToYear.New("float32 value has a fractional component, cannot convert to int64")
+		}
 		return t.Convert(int64(value))
 	case float64:
 		if value < float64(math.MinInt16) || value > float64(math.MaxInt16) {
