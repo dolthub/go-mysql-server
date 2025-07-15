@@ -90,6 +90,9 @@ func (t systemSetType) Convert(v interface{}) (interface{}, error) {
 		// Float values aren't truly accepted, but the engine will give them when it should give ints.
 		// Therefore, if the float doesn't have a fractional portion, we treat it as an int.
 		if value == float64(int64(value)) {
+			if value < float64(math.MinInt64) || value > float64(math.MaxInt64) {
+				return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
+			}
 			return t.SetType.Convert(int64(value))
 		}
 	case decimal.Decimal:
