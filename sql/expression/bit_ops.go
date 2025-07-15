@@ -189,6 +189,9 @@ func convertUintFromInt(n int64) uint64 {
 	if err != nil {
 		return 0
 	}
+	if uintVal > math.MaxInt64 {
+		return 0 // Out of range for int64
+	}
 	return uintVal
 }
 
