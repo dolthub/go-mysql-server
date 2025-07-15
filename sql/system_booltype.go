@@ -107,8 +107,6 @@ func (t systemBoolType) Convert(v interface{}) (interface{}, error) {
 				if intVal >= math.MinInt8 && intVal <= math.MaxInt8 {
 					return int8(intVal), nil
 				}
-				return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
-				return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
 			}
 			return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
 		}
