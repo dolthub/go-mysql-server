@@ -10465,7 +10465,7 @@ where
 
 			{
 				Skip:        true,
-				Query:       "insert into mediumint_tbl values (9999999);",
+				Query:       "insert into mediumint_tbl values (99999999);",
 				ExpectedErr: sql.ErrValueOutOfRange,
 			},
 			{
@@ -10534,7 +10534,7 @@ where
 					{"bigint_tbl", "CREATE TABLE `bigint_tbl` (\n" +
 						"  `i` bigint NOT NULL AUTO_INCREMENT,\n" +
 						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+						") ENGINE=InnoDB AUTO_INCREMENT=9223372036854775807 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 		},
@@ -10557,11 +10557,11 @@ where
 			},
 			{
 				Skip:  true,
-				Query: "insert into tinyint_tbl values (127)",
+				Query: "insert into tinyint_tbl values (255)",
 				Expected: []sql.Row{
 					{types.OkResult{
 						RowsAffected: 1,
-						InsertID:     127,
+						InsertID:     255,
 					}},
 				},
 			},
@@ -10572,7 +10572,7 @@ where
 					{"tinyint_tbl", "CREATE TABLE `tinyint_tbl` (\n" +
 						"  `i` tinyint NOT NULL AUTO_INCREMENT,\n" +
 						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=127 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+						") ENGINE=InnoDB AUTO_INCREMENT=255 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 
@@ -10583,11 +10583,11 @@ where
 			},
 			{
 				Skip:  true,
-				Query: "insert into smallint_tbl values (32767);",
+				Query: "insert into smallint_tbl values (65535);",
 				Expected: []sql.Row{
 					{types.OkResult{
 						RowsAffected: 1,
-						InsertID:     32767,
+						InsertID:     65535,
 					}},
 				},
 			},
@@ -10598,22 +10598,22 @@ where
 					{"smallint_tbl", "CREATE TABLE `smallint_tbl` (\n" +
 						"  `i` smallint NOT NULL AUTO_INCREMENT,\n" +
 						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=36727 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+						") ENGINE=InnoDB AUTO_INCREMENT=65535 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 
 			{
 				Skip:        true,
-				Query:       "insert into mediumint_tbl values (9999999);",
+				Query:       "insert into mediumint_tbl values (999999999);",
 				ExpectedErr: sql.ErrValueOutOfRange,
 			},
 			{
 				Skip:  true,
-				Query: "insert into mediumint_tbl values (8388607);",
+				Query: "insert into mediumint_tbl values (16777215);",
 				Expected: []sql.Row{
 					{types.OkResult{
 						RowsAffected: 1,
-						InsertID:     8388607,
+						InsertID:     16777215,
 					}},
 				},
 			},
@@ -10623,7 +10623,7 @@ where
 					{"mediumint_tbl", "CREATE TABLE `mediumint_tbl` (\n" +
 						"  `i` mediumint NOT NULL AUTO_INCREMENT,\n" +
 						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=8388607 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+						") ENGINE=InnoDB AUTO_INCREMENT=16777215 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 
@@ -10634,11 +10634,11 @@ where
 			},
 			{
 				Skip:  true,
-				Query: "insert into int_tbl values (2147483647)",
+				Query: "insert into int_tbl values (4294967295)",
 				Expected: []sql.Row{
 					{types.OkResult{
 						RowsAffected: 1,
-						InsertID:     2147483647,
+						InsertID:     4294967295,
 					}},
 				},
 			},
@@ -10648,22 +10648,22 @@ where
 					{"int_tbl", "CREATE TABLE `int_tbl` (\n" +
 						"  `i` int NOT NULL AUTO_INCREMENT,\n" +
 						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=2147483647 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+						") ENGINE=InnoDB AUTO_INCREMENT=4294967295 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 
 			{
 				Skip:        true,
-				Query:       "insert into bigint_tbl values (99999999999999999999);",
+				Query:       "insert into bigint_tbl values (999999999999999999999);",
 				ExpectedErr: sql.ErrValueOutOfRange,
 			},
 			{
 				Skip:  true,
-				Query: "insert into bigint_tbl values (9223372036854775807);",
+				Query: "insert into bigint_tbl values (18446744073709551615);",
 				Expected: []sql.Row{
 					{types.OkResult{
 						RowsAffected: 1,
-						InsertID:     9223372036854775807,
+						InsertID:     18446744073709551615,
 					}},
 				},
 			},
@@ -10673,7 +10673,7 @@ where
 					{"bigint_tbl", "CREATE TABLE `bigint_tbl` (\n" +
 						"  `i` bigint NOT NULL AUTO_INCREMENT,\n" +
 						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+						") ENGINE=InnoDB AUTO_INCREMENT=18446744073709551615 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 		},
