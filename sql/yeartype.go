@@ -106,6 +106,9 @@ func (t yearType) Convert(v interface{}) (interface{}, error) {
 			return int16(value), nil
 		}
 	case uint64:
+		if value > math.MaxInt64 {
+			return nil, ErrConvertingToYear.New("uint64 value out of bounds for int64")
+		}
 		return t.Convert(int64(value))
 	case float32:
 		return t.Convert(int64(value))
