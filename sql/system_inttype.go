@@ -92,7 +92,10 @@ func (t systemIntType) Convert(v interface{}) (interface{}, error) {
 			return value, nil
 		}
 	case uint64:
-		return t.Convert(int64(value))
+		if value <= math.MaxInt64 {
+			return t.Convert(int64(value))
+		}
+		return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
 	case float32:
 		return t.Convert(float64(value))
 	case float64:

@@ -261,7 +261,10 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			case int8:
 				dVal = float64(dNum)
 			case uint64:
-				dVal = float64(dNum)
+				if dNum > math.MaxInt64 {
+					return nil, fmt.Errorf("value %d exceeds the maximum value for int64", dNum)
+				}
+				dVal = float64(int64(dNum))
 			case uint32:
 				dVal = float64(dNum)
 			case uint16:

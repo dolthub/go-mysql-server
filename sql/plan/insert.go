@@ -17,6 +17,7 @@ package plan
 import (
 	"fmt"
 	"io"
+	"math"
 	"strings"
 
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -657,6 +658,9 @@ func toInt64(x interface{}) int64 {
 	case int64:
 		return x
 	case uint64:
+		if x > math.MaxInt64 {
+			return math.MaxInt64
+		}
 		return int64(x)
 	case float32:
 		return int64(x)

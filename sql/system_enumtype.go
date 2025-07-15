@@ -15,6 +15,7 @@
 package sql
 
 import (
+	"math"
 	"reflect"
 	"strings"
 
@@ -94,15 +95,19 @@ func (t systemEnumType) Convert(v interface{}) (interface{}, error) {
 	case int64:
 		return t.Convert(int(value))
 	case uint64:
-		return t.Convert(int(value))
+		if value <= math.MaxInt {
+			return t.Convert(int(value))
+		}
+		return nil, ErrInvalidSystemVariableValue.New(t.varName, value)
 	case float32:
 		return t.Convert(float64(value))
 	case float64:
 		// Float values aren't truly accepted, but the engine will give them when it should give ints.
 		// Therefore, if the float doesn't have a fractional portion, we treat it as an int.
-		if value == float64(int(value)) {
+		if value >= 0 && value <= float64(math.MaxInt) && value == float64(int(value)) {
 			return t.Convert(int(value))
 		}
+		return nil, ErrInvalidSystemVariableValue.New(t.varName, value)
 	case decimal.Decimal:
 		f, _ := value.Float64()
 		return t.Convert(f)

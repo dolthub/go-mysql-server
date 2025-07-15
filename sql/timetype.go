@@ -164,6 +164,13 @@ func (t timespanType) ConvertToTimespan(v interface{}) (Timespan, error) {
 			}
 		}
 	case uint64:
+		if value > math.MaxInt64 {
+			return Timespan(0), fmt.Errorf("value %d exceeds int64 maximum limit", value)
+		}
+		// Explicit bounds check added to prevent overflow during conversion to int64.
+		if value > math.MaxInt64 {
+			return Timespan(0), fmt.Errorf("value %d exceeds int64 maximum limit", value)
+		}
 		return t.ConvertToTimespan(int64(value))
 	case float32:
 		return t.ConvertToTimespan(float64(value))

@@ -188,8 +188,14 @@ func (t enumType) Convert(v interface{}) (interface{}, error) {
 	case uint64:
 		return t.Convert(int(value))
 	case float32:
+		if value < float32(math.MinInt) || value > float32(math.MaxInt) {
+			return nil, ErrConvertingToEnum.New(v)
+		}
 		return t.Convert(int(value))
 	case float64:
+		if value < float64(math.MinInt) || value > float64(math.MaxInt) {
+			return nil, ErrConvertingToEnum.New(v)
+		}
 		return t.Convert(int(value))
 	case decimal.Decimal:
 		return t.Convert(value.IntPart())
