@@ -98,7 +98,6 @@ func (t systemSetType) Convert(v interface{}) (interface{}, error) {
 				intValue := int64(value)
 				return t.SetType.Convert(intValue)
 			}
-			return nil, ErrInvalidSystemVariableValue.New(t.varName, v) // Reject values with fractional parts
 		}
 		return nil, ErrInvalidSystemVariableValue.New(t.varName, v) // Reject out-of-range values
 	case decimal.Decimal:
