@@ -879,4 +879,3 @@ func verifyRowTypes(row sql.Row, schema sql.Schema) error {
 	}
 	return nil
 }
-

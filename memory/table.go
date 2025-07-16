@@ -1153,7 +1153,6 @@ func canIncrementAutoIncVal(ctx *sql.Context, colType sql.Type, currentVal uint6
 	return err == nil && inRange == sql.InRange
 }
 
-
 // GetNextAutoIncrementValue gets the next auto increment value for the memory table the increment.
 func (t *Table) GetNextAutoIncrementValue(ctx *sql.Context, insertVal interface{}) (uint64, error) {
 	data := t.sessionTableData(ctx)
