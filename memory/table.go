@@ -1668,7 +1668,7 @@ func adjustRangeScanFilterForIndexLookup(filter sql.Expression, index *Index) sq
 	if filter == nil {
 		return filter
 	}
-	
+
 	exprs := index.ExtendedExprs()
 
 	indexStorageSchema := make(sql.Schema, len(exprs))
