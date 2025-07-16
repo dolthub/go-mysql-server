@@ -2807,21 +2807,18 @@ var CreateForeignKeyTests = []ScriptTest{
 				ExpectedErrStr: "string 'abc' is too large for column 'c'",
 			},
 			{
-				Skip:  true,
 				Query: "create table child_varchar_10 (vc varchar(10), foreign key (vc) references parent(c));",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Skip:  true,
 				Query: "insert into child_varchar_10 values ('abc');",
 				Expected: []sql.Row{
 					{types.NewOkResult(1)},
 				},
 			},
 			{
-				Skip:        true,
 				Query:       "insert into child_varchar_10 values ('abcdefghij');",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
@@ -2850,21 +2847,18 @@ var CreateForeignKeyTests = []ScriptTest{
 				ExpectedErrStr: "string 'abc' is too large for column 'b'",
 			},
 			{
-				Skip:  true,
 				Query: "create table child_varbinary_10 (vb varbinary(10), foreign key (vb) references parent(b));",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Skip:  true,
 				Query: "insert into child_varbinary_10 values ('abc');",
 				Expected: []sql.Row{
 					{types.NewOkResult(1)},
 				},
 			},
 			{
-				Skip:        true,
 				Query:       "insert into child_varbinary_10 values ('abcdefghij');",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},

@@ -670,10 +670,46 @@ func foreignKeyComparableTypes(ctx *sql.Context, type1 sql.Type, type2 sql.Type)
 				return false
 			}
 		} else {
-			return false
+			// MySQL allows mixed string types in foreign key constraints:
+			// - CHAR can reference VARCHAR and vice versa
+			// - BINARY can reference VARBINARY and vice versa
+			if compatibleStringTypes(type1, type2) {
+				type1String := type1.(sql.StringType)
+				type2String := type2.(sql.StringType)
+				if type1String.Collation().CharacterSet() != type2String.Collation().CharacterSet() {
+					return false
+				}
+			} else {
+				return false
+			}
 		}
 	}
 	return true
+}
+
+// compatibleStringTypes checks if two different string types are compatible for foreign key constraints.
+// MySQL allows mixed string types within the same category:
+// - Character types: CHAR and VARCHAR
+// - Binary types: BINARY and VARBINARY
+func compatibleStringTypes(type1 sql.Type, type2 sql.Type) bool {
+	if type1 == nil || type2 == nil {
+		return false
+	}
+	
+	t1 := type1.Type()
+	t2 := type2.Type()
+	
+	// Check if both are character string types (CHAR/VARCHAR)
+	if (t1 == sqltypes.Char || t1 == sqltypes.VarChar) && (t2 == sqltypes.Char || t2 == sqltypes.VarChar) {
+		return true
+	}
+	
+	// Check if both are binary string types (BINARY/VARBINARY)
+	if (t1 == sqltypes.Binary || t1 == sqltypes.VarBinary) && (t2 == sqltypes.Binary || t2 == sqltypes.VarBinary) {
+		return true
+	}
+	
+	return false
 }
 
 // exprsAreIndexPrefix returns whether the given expressions are a prefix of the given index expressions
