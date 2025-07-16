@@ -2969,7 +2969,7 @@ func TestPlanBuilderErr(t *testing.T) {
 			Query: "select 1 from xy group by 100;",
 			Err:   "column ordinal out of range: 100",
 		},
-		
+
 		// Test mixed named columns and star expressions
 		{
 			Query: "SELECT x, * FROM xy",
