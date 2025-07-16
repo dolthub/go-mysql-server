@@ -121,16 +121,19 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 			// TODO: estimate memory overhead
 			return float64(lTableScan+rTableScan)*(seqIOCostFactor+cpuCostFactor) + cpuCostFactor*selfJoinCard, nil
 		case jp.Op.IsLookup():
-			// TODO added overhead for right lookups
 			switch n := n.(type) {
 			case *LookupJoin:
-				if n.Injective {
+				// Match rate is what proportion of rows from the right side we're expected to read
+				matchRate := lookupJoinMatchRate(n.Lookup, n.JoinBase)
+
+				// If LookupJoin is injective, then there will only be one right lookup per left row
+				if n.Injective || matchRate == 0 {
 					return lBest*seqIOCostFactor + lBest*randIOCostFactor, nil
 				}
-				sel := lookupJoinSelectivity(n.Lookup, n.JoinBase)
-				expectedRightRows := selfJoinCard * sel
-				// read the whole left table and randIO into table equivalent to
-				// this join's output cardinality estimate
+
+				// The total expected number of right row lookups
+				expectedRightRows := lBest * matchRate
+				// Estimate for reading each left row and each expected right row
 				return lBest*seqIOCostFactor + expectedRightRows*randIOCostFactor, nil
 			case *ConcatJoin:
 				return c.costConcatJoin(ctx, n, s)
@@ -227,15 +230,17 @@ func (c *coster) costConcatJoin(_ *sql.Context, n *ConcatJoin, _ sql.StatsProvid
 	var sel float64
 	for _, l := range n.Concat {
 		lookup := l
-		sel += lookupJoinSelectivity(lookup, n.JoinBase)
+		sel += lookupJoinMatchRate(lookup, n.JoinBase)
 	}
 	return l*sel*concatCostFactor*(randIOCostFactor+cpuCostFactor) - float64(n.Right.RelProps.GetStats().RowCount())*seqIOCostFactor, nil
 }
 
-// lookupJoinSelectivity estimates the selectivity of a join condition with n lhs rows and m rhs rows.
-// A join with a selectivity of k will return k*(n*m) rows.
-// Special case: A join with a selectivity of 0 will return n rows.
-func lookupJoinSelectivity(l *IndexScan, joinBase *JoinBase) float64 {
+// lookupJoinMatchRate returns a heuristic estimate of the proportion of right-side rows matched
+// for each left-side row in a LookupJoin. Lower values indicate higher selectivity (i.e., more filtering).
+//
+// Special case: If the lookup is injective (i.e., at most one match per left row), we return 0 to
+// indicate that join cardinality is ≤ the left-side cardinality.
+func lookupJoinMatchRate(l *IndexScan, joinBase *JoinBase) float64 {
 	if isInjectiveLookup(l.Index, joinBase, l.Table.Expressions(), l.Table.NullMask()) {
 		return 0
 	}

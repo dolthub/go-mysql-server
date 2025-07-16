@@ -1665,6 +1665,10 @@ func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup
 }
 
 func adjustRangeScanFilterForIndexLookup(filter sql.Expression, index *Index) sql.Expression {
+	if filter == nil {
+		return filter
+	}
+	
 	exprs := index.ExtendedExprs()
 
 	indexStorageSchema := make(sql.Schema, len(exprs))
@@ -1672,10 +1676,6 @@ func adjustRangeScanFilterForIndexLookup(filter sql.Expression, index *Index) sq
 		indexStorageSchema[i] = &sql.Column{
 			Name: e.(*expression.GetField).Name(),
 		}
-	}
-
-	if filter == nil {
-		return filter
 	}
 
 	filter, _, err := transform.Expr(filter, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
