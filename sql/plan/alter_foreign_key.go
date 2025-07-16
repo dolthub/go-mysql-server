@@ -669,10 +669,9 @@ func foreignKeyComparableTypes(ctx *sql.Context, type1 sql.Type, type2 sql.Type)
 	}
 
 	// Handle string types (both same-type with different lengths and mixed types)
-	if ((t1 == sqltypes.Char || t1 == sqltypes.VarChar) && (t2 == sqltypes.Char || t2 == sqltypes.VarChar)) ||
-		((t1 == sqltypes.Binary || t1 == sqltypes.VarBinary) && (t2 == sqltypes.Binary || t2 == sqltypes.VarBinary)) {
-		// There seems to be a special case where CHAR/VARCHAR/BINARY/VARBINARY can have unequal lengths.
-		// Have not tested every type nor combination, but this seems specific to those 4 types.
+	if (types.IsTextOnly(type1) && types.IsTextOnly(type2)) ||
+		(types.IsBinaryType(type1) && types.IsBinaryType(type2)) {
+		// String types must have matching character sets
 		type1String := type1.(sql.StringType)
 		type2String := type2.(sql.StringType)
 		return type1String.Collation().CharacterSet() == type2String.Collation().CharacterSet()
