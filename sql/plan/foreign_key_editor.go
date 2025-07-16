@@ -548,28 +548,31 @@ func (reference *ForeignKeyReferenceHandler) validateDecimalConstraints(row sql.
 	if reference.RowMapper.Index == nil {
 		return nil
 	}
-
 	indexColumnTypes := reference.RowMapper.Index.ColumnExpressionTypes()
-	for i := range reference.ForeignKey.Columns {
-		if i >= len(indexColumnTypes) {
+	for parentIdx, parentCol := range indexColumnTypes {
+		if parentIdx >= len(reference.RowMapper.IndexPositions) {
+			break
+		}
+		parentType := parentCol.Type
+		childColIdx := reference.RowMapper.IndexPositions[parentIdx]
+		childType := reference.RowMapper.SourceSch[childColIdx].Type
+		childDecimal, ok := childType.(sql.DecimalType)
+		if !ok {
 			continue
 		}
-
-		childColIdx := reference.RowMapper.IndexPositions[i]
-		childType := reference.RowMapper.SourceSch[childColIdx].Type
-		parentType := indexColumnTypes[i].Type
-
-		// For decimal types, check scale compatibility (following existing pattern for type-specific validation)
-		if childDecimal, ok := childType.(sql.DecimalType); ok {
-			if parentDecimal, ok := parentType.(sql.DecimalType); ok {
-				if childDecimal.Scale() != parentDecimal.Scale() {
-					return sql.ErrForeignKeyChildViolation.New(reference.ForeignKey.Name, reference.ForeignKey.Table,
-						reference.ForeignKey.ParentTable, reference.RowMapper.GetKeyString(row))
-				}
-			}
+		parentDecimal, ok := parentType.(sql.DecimalType)
+		if !ok {
+			continue
+		}
+		if childDecimal.Scale() != parentDecimal.Scale() {
+			return sql.ErrForeignKeyChildViolation.New(
+				reference.ForeignKey.Name,
+				reference.ForeignKey.Table,
+				reference.ForeignKey.ParentTable,
+				reference.RowMapper.GetKeyString(row),
+			)
 		}
 	}
-
 	return nil
 }
 

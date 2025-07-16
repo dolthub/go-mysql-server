@@ -10529,7 +10529,10 @@ where
 					{types.NewOkResult(3)},
 				},
 			},
-
+			{
+				Query:       "insert into child_dec_4_2 values (99.99);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
 			{
 				Query: "create table child_dec_4_1 (d decimal(4,1), foreign key (d) references parent (d));",
 				Expected: []sql.Row{
@@ -10540,7 +10543,10 @@ where
 				Query:       "insert into child_dec_4_1 values (78.9);",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
-
+			{
+				Query:       "insert into child_dec_4_1 values (99.9);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
 			{
 				Query: "create table child_dec_3_2 (d decimal(3,2), foreign key (d) references parent (d));",
 				Expected: []sql.Row{
@@ -10561,14 +10567,6 @@ where
 			},
 			{
 				Query:       "insert into child_dec_65_30 values (1.23);",
-				ExpectedErr: sql.ErrForeignKeyChildViolation,
-			},
-			{
-				Query:       "insert into child_dec_4_2 values (99.99);",
-				ExpectedErr: sql.ErrForeignKeyChildViolation,
-			},
-			{
-				Query:       "insert into child_dec_4_1 values (99.9);",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
