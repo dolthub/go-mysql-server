@@ -132,9 +132,9 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 				}
 
 				// The total expected number of right row lookups
-				expectedRightRows := lBest * matchRate
+				expectedRightRows := selfJoinCard * matchRate
 				// Estimate for reading each left row and each expected right row
-				return lBest*seqIOCostFactor + expectedRightRows*randIOCostFactor, nil
+				return lBest*seqIOCostFactor + expectedRightRows*(randIOCostFactor+seqIOCostFactor), nil
 			case *ConcatJoin:
 				return c.costConcatJoin(ctx, n, s)
 			}
