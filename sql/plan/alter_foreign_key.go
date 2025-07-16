@@ -651,15 +651,9 @@ func foreignKeyComparableTypes(ctx *sql.Context, type1 sql.Type, type2 sql.Type)
 	t1 := type1.Type()
 	t2 := type2.Type()
 
-	// Same type with different parameters
+	// Handle same-type cases for special types
 	if t1 == t2 {
 		switch t1 {
-		case sqltypes.Char, sqltypes.VarChar, sqltypes.Binary, sqltypes.VarBinary:
-			// There seems to be a special case where CHAR/VARCHAR/BINARY/VARBINARY can have unequal lengths.
-			// Have not tested every type nor combination, but this seems specific to those 4 types.
-			type1String := type1.(sql.StringType)
-			type2String := type2.(sql.StringType)
-			return type1String.Collation().CharacterSet() == type2String.Collation().CharacterSet()
 		case sqltypes.Enum:
 			// Enum types can reference each other in foreign keys regardless of their string values.
 			// MySQL allows enum foreign keys to match based on underlying numeric values.
@@ -671,14 +665,14 @@ func foreignKeyComparableTypes(ctx *sql.Context, type1 sql.Type, type2 sql.Type)
 		case sqltypes.Set:
 			// MySQL allows set foreign keys to match based on underlying numeric values.
 			return true
-		default:
-			return false
 		}
 	}
 
-	// Mixed string types: CHAR/VARCHAR or BINARY/VARBINARY
+	// Handle string types (both same-type with different lengths and mixed types)
 	if ((t1 == sqltypes.Char || t1 == sqltypes.VarChar) && (t2 == sqltypes.Char || t2 == sqltypes.VarChar)) ||
 		((t1 == sqltypes.Binary || t1 == sqltypes.VarBinary) && (t2 == sqltypes.Binary || t2 == sqltypes.VarBinary)) {
+		// There seems to be a special case where CHAR/VARCHAR/BINARY/VARBINARY can have unequal lengths.
+		// Have not tested every type nor combination, but this seems specific to those 4 types.
 		type1String := type1.(sql.StringType)
 		type2String := type2.(sql.StringType)
 		return type1String.Collation().CharacterSet() == type2String.Collation().CharacterSet()
