@@ -10401,6 +10401,7 @@ where
 
 	// Int Tests
 	{
+		// https://github.com/dolthub/dolt/issues/9530
 		Name:    "int with auto_increment",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -10543,6 +10544,7 @@ where
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/9530
 		Name:    "unsigned int with auto_increment",
 		Dialect: "mysql",
 		SetUpScript: []string{
