@@ -680,7 +680,6 @@ func foreignKeyComparableTypes(ctx *sql.Context, type1 sql.Type, type2 sql.Type)
 	return false
 }
 
-
 // exprsAreIndexPrefix returns whether the given expressions are a prefix of the given index expressions
 func exprsAreIndexPrefix(exprs, indexExprs []string) bool {
 	if len(exprs) > len(indexExprs) {
