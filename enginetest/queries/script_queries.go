@@ -10131,8 +10131,8 @@ where
 				},
 			},
 			{
-				Query:       "insert into t2 values ('A,B,c');",
-				ExpectedErr: sql.ErrInvalidSetValue,
+				Query:          "insert into t2 values ('A,B,c');",
+				ExpectedErrStr: "Data truncated for column 's' at row 1",
 			},
 			{
 				Query:    "select * from t2",
@@ -10145,7 +10145,6 @@ where
 		},
 	},
 	{
-		Skip:    true,
 		Name:    "set with foreign keys",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -10325,7 +10324,6 @@ where
 		},
 	},
 	{
-		Skip:    true,
 		Name:    "set with foreign keys and cascade",
 		Dialect: "mysql",
 		SetUpScript: []string{

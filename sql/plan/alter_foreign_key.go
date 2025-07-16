@@ -663,6 +663,9 @@ func foreignKeyComparableTypes(ctx *sql.Context, type1 sql.Type, type2 sql.Type)
 				// MySQL allows decimal foreign keys with different precision/scale
 				// The foreign key constraint validation will handle the actual value comparison
 				return true
+			case sqltypes.Set:
+				// MySQL allows set foreign keys to match based on underlying numeric values.
+				return true
 			default:
 				return false
 			}
