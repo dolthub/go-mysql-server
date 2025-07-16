@@ -10649,7 +10649,6 @@ where
 				ExpectedErr: sql.ErrValueOutOfRange,
 			},
 			{
-				Skip:  true,
 				Query: "insert into tinyint_tbl values (127)",
 				Expected: []sql.Row{
 					{types.OkResult{
@@ -10659,7 +10658,6 @@ where
 				},
 			},
 			{
-				Skip:  true,
 				Query: "show create table tinyint_tbl;",
 				Expected: []sql.Row{
 					{"tinyint_tbl", "CREATE TABLE `tinyint_tbl` (\n" +
@@ -10675,7 +10673,6 @@ where
 				ExpectedErr: sql.ErrValueOutOfRange,
 			},
 			{
-				Skip:  true,
 				Query: "insert into smallint_tbl values (32767);",
 				Expected: []sql.Row{
 					{types.OkResult{
@@ -10685,13 +10682,12 @@ where
 				},
 			},
 			{
-				Skip:  true,
 				Query: "show create table smallint_tbl;",
 				Expected: []sql.Row{
 					{"smallint_tbl", "CREATE TABLE `smallint_tbl` (\n" +
 						"  `i` smallint NOT NULL AUTO_INCREMENT,\n" +
 						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=36727 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+						") ENGINE=InnoDB AUTO_INCREMENT=32767 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 
@@ -10727,7 +10723,6 @@ where
 				ExpectedErr: sql.ErrValueOutOfRange,
 			},
 			{
-				Skip:  true,
 				Query: "insert into int_tbl values (2147483647)",
 				Expected: []sql.Row{
 					{types.OkResult{
@@ -10737,7 +10732,6 @@ where
 				},
 			},
 			{
-				Skip:  true,
 				Query: "show create table int_tbl;",
 				Expected: []sql.Row{
 					{"int_tbl", "CREATE TABLE `int_tbl` (\n" +
@@ -10753,7 +10747,6 @@ where
 				ExpectedErr: sql.ErrValueOutOfRange,
 			},
 			{
-				Skip:  true,
 				Query: "insert into bigint_tbl values (9223372036854775807);",
 				Expected: []sql.Row{
 					{types.OkResult{
@@ -10763,7 +10756,6 @@ where
 				},
 			},
 			{
-				Skip:  true,
 				Query: "show create table bigint_tbl;",
 				Expected: []sql.Row{
 					{"bigint_tbl", "CREATE TABLE `bigint_tbl` (\n" +
