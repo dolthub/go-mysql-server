@@ -509,6 +509,11 @@ func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, ro
 
 	_, err = rowIter.Next(ctx)
 	if err != nil && err != io.EOF {
+		// For SET types, conversion failures during foreign key validation should be treated as foreign key violations
+		if sql.ErrConvertingToSet.Is(err) || sql.ErrInvalidSetValue.Is(err) {
+			return sql.ErrForeignKeyChildViolation.New(reference.ForeignKey.Name, reference.ForeignKey.Table,
+				reference.ForeignKey.ParentTable, reference.RowMapper.GetKeyString(row))
+		}
 		return err
 	}
 	if err == nil {
