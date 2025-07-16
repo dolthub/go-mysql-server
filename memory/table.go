@@ -1147,6 +1147,12 @@ func (t *Table) PeekNextAutoIncrementValue(ctx *sql.Context) (uint64, error) {
 	return data.autoIncVal, nil
 }
 
+func canIncrementAutoIncVal(ctx *sql.Context, colType sql.Type, currentVal uint64) bool {
+	nextVal := currentVal + 1
+	_, inRange, err := colType.Convert(ctx, nextVal)
+	return err == nil && inRange == sql.InRange
+}
+
 // GetNextAutoIncrementValue gets the next auto increment value for the memory table the increment.
 func (t *Table) GetNextAutoIncrementValue(ctx *sql.Context, insertVal interface{}) (uint64, error) {
 	data := t.sessionTableData(ctx)
@@ -1163,7 +1169,6 @@ func (t *Table) GetNextAutoIncrementValue(ctx *sql.Context, insertVal interface{
 		}
 		data.autoIncVal = v.(uint64)
 	}
-
 	return data.autoIncVal, nil
 }
 
@@ -1257,7 +1262,9 @@ func addColumnToSchema(ctx *sql.Context, data *TableData, newCol *sql.Column, or
 			data.autoIncVal = 0
 		}
 
-		data.autoIncVal++
+		if canIncrementAutoIncVal(ctx, newCol.Type, data.autoIncVal) {
+			data.autoIncVal++
+		}
 	}
 
 	newPkOrds := data.schema.PkOrdinals
