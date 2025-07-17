@@ -85,12 +85,11 @@ func (t *TableFunctionWrapper) RowIter(ctx *sql.Context, r sql.Row) (sql.RowIter
 	if err != nil {
 		return nil, err
 	}
-	switch ri := v.(type) {
-	case sql.RowIter:
-		return ri, nil
-	default:
-		return sql.RowsToRowIter(sql.Row{v}), nil
-	}
+	// TODO
+	//if ri, ok := v.(sql.RowIter); ok {
+	//	return ri, nil
+	//}
+	return sql.RowsToRowIter(sql.Row{v}), nil
 }
 
 func (t *TableFunctionWrapper) Resolved() bool {
