@@ -50,9 +50,9 @@ func (t *TableFunctionWrapper) NewInstance(ctx *sql.Context, db sql.Database, ar
 	if err != nil {
 		return nil, err
 	}
-	if !f.Resolved() {
-		return nil, fmt.Errorf("table function is unresolved")
-	}
+	//if !f.Resolved() {
+	//	return nil, fmt.Errorf("table function is unresolved")
+	//}
 	nt.funcExpr = f
 	return &nt, nil
 }
