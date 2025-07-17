@@ -509,9 +509,18 @@ func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, ro
 
 	_, err = rowIter.Next(ctx)
 	if err != nil && err != io.EOF {
+		// For SET types, conversion failures during foreign key validation should be treated as foreign key violations
+		if sql.ErrConvertingToSet.Is(err) || sql.ErrInvalidSetValue.Is(err) {
+			return sql.ErrForeignKeyChildViolation.New(reference.ForeignKey.Name, reference.ForeignKey.Table,
+				reference.ForeignKey.ParentTable, reference.RowMapper.GetKeyString(row))
+		}
 		return err
 	}
 	if err == nil {
+		// We have a parent row, but check for type-specific validation
+		if validationErr := reference.validateDecimalConstraints(row); validationErr != nil {
+			return validationErr
+		}
 		// We have a parent row so throw no error
 		return nil
 	}
@@ -537,6 +546,39 @@ func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, ro
 
 	return sql.ErrForeignKeyChildViolation.New(reference.ForeignKey.Name, reference.ForeignKey.Table,
 		reference.ForeignKey.ParentTable, reference.RowMapper.GetKeyString(row))
+}
+
+// validateDecimalConstraints checks that decimal foreign key columns have compatible scales.
+func (reference *ForeignKeyReferenceHandler) validateDecimalConstraints(row sql.Row) error {
+	if reference.RowMapper.Index == nil {
+		return nil
+	}
+	indexColumnTypes := reference.RowMapper.Index.ColumnExpressionTypes()
+	for parentIdx, parentCol := range indexColumnTypes {
+		if parentIdx >= len(reference.RowMapper.IndexPositions) {
+			break
+		}
+		parentType := parentCol.Type
+		childColIdx := reference.RowMapper.IndexPositions[parentIdx]
+		childType := reference.RowMapper.SourceSch[childColIdx].Type
+		childDecimal, ok := childType.(sql.DecimalType)
+		if !ok {
+			continue
+		}
+		parentDecimal, ok := parentType.(sql.DecimalType)
+		if !ok {
+			continue
+		}
+		if childDecimal.Scale() != parentDecimal.Scale() {
+			return sql.ErrForeignKeyChildViolation.New(
+				reference.ForeignKey.Name,
+				reference.ForeignKey.Table,
+				reference.ForeignKey.ParentTable,
+				reference.RowMapper.GetKeyString(row),
+			)
+		}
+	}
+	return nil
 }
 
 // CheckTable checks that every row in the table has an index entry in the referenced table.

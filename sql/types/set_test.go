@@ -272,7 +272,7 @@ func TestSetConvertToString(t *testing.T) {
 		bit         uint64
 		expectedStr string
 	}{
-		{[]string{"", "a", "b", "c"}, sql.Collation_Default, 15, "a,b,c"},
+		{[]string{"", "a", "b", "c"}, sql.Collation_Default, 15, ",a,b,c"},
 		{[]string{"", "a", "b", "c"}, sql.Collation_Default, 14, "a,b,c"},
 	}
 

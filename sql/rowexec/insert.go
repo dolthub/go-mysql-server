@@ -153,6 +153,8 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 						cErr = sql.ErrNotMatchingSRIDWithColName.New(col.Name, cErr)
 					} else if types.ErrConvertingToEnum.Is(cErr) {
 						cErr = types.ErrDataTruncatedForColumnAtRow.New(col.Name, i.rowNumber)
+					} else if sql.ErrInvalidSetValue.Is(cErr) || sql.ErrConvertingToSet.Is(cErr) {
+						cErr = types.ErrDataTruncatedForColumnAtRow.New(col.Name, i.rowNumber)
 					}
 					return nil, sql.NewWrappedInsertError(origRow, cErr)
 				}

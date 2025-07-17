@@ -347,9 +347,6 @@ func (t SetType) convertBitFieldToString(bitField uint64) (string, error) {
 			if !ok {
 				return "", sql.ErrInvalidSetValue.New(bitField)
 			}
-			if len(val) == 0 {
-				continue
-			}
 			if writeCommas {
 				strBuilder.WriteByte(',')
 			} else {
@@ -367,6 +364,7 @@ func (t SetType) convertStringToBitField(str string) (uint64, error) {
 		return 0, nil
 	}
 	var bitField uint64
+	_, allowEmptyString := t.valToBit[""]
 	lastI := 0
 	var val string
 	for i := 0; i < len(str)+1; i++ {
@@ -375,7 +373,7 @@ func (t SetType) convertStringToBitField(str string) (uint64, error) {
 		}
 
 		// empty string should hash to 0, so just skip
-		if lastI == i {
+		if lastI == i && !allowEmptyString {
 			lastI = i + 1
 			continue
 		}

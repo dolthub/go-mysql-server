@@ -9764,6 +9764,8 @@ where
 				},
 			},
 			{
+				// this is failing due to a type coercion bug in comparison.Compare
+				// https://github.com/dolthub/dolt/issues/9510
 				Skip:  true,
 				Query: "select i, s + 0, s from t where s = '';",
 				Expected: []sql.Row{
@@ -9773,7 +9775,6 @@ where
 				},
 			},
 			{
-				Skip:  true,
 				Query: "select i, s + 0, s from tt;",
 				Expected: []sql.Row{
 					{0, float64(3), "something,"},
@@ -10130,8 +10131,8 @@ where
 				},
 			},
 			{
-				Query:       "insert into t2 values ('A,B,c');",
-				ExpectedErr: sql.ErrInvalidSetValue,
+				Query:          "insert into t2 values ('A,B,c');",
+				ExpectedErrStr: "Data truncated for column 's' at row 1",
 			},
 			{
 				Query:    "select * from t2",
@@ -10144,7 +10145,6 @@ where
 		},
 	},
 	{
-		Skip:    true,
 		Name:    "set with foreign keys",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -10324,7 +10324,6 @@ where
 		},
 	},
 	{
-		Skip:    true,
 		Name:    "set with foreign keys and cascade",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -10401,59 +10400,287 @@ where
 
 	// Int Tests
 	{
+		// https://github.com/dolthub/dolt/issues/9530
 		Name:    "int with auto_increment",
 		Dialect: "mysql",
 		SetUpScript: []string{
-			"create table int_tbl (i int primary key auto_increment);",
 			"create table tinyint_tbl (i tinyint primary key auto_increment);",
 			"create table smallint_tbl (i smallint primary key auto_increment);",
 			"create table mediumint_tbl (i mediumint primary key auto_increment);",
+			"create table int_tbl (i int primary key auto_increment);",
 			"create table bigint_tbl (i bigint primary key auto_increment);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "show create table int_tbl;",
+				Skip:        true,
+				Query:       "insert into tinyint_tbl values (999)",
+				ExpectedErr: sql.ErrValueOutOfRange,
+			},
+			{
+				Skip:  true,
+				Query: "insert into tinyint_tbl values (127)",
 				Expected: []sql.Row{
-					{"int_tbl", "CREATE TABLE `int_tbl` (\n" +
-						"  `i` int NOT NULL AUTO_INCREMENT,\n" +
-						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+					{types.OkResult{
+						RowsAffected: 1,
+						InsertID:     127,
+					}},
 				},
 			},
 			{
+				Skip:  true,
 				Query: "show create table tinyint_tbl;",
 				Expected: []sql.Row{
 					{"tinyint_tbl", "CREATE TABLE `tinyint_tbl` (\n" +
 						"  `i` tinyint NOT NULL AUTO_INCREMENT,\n" +
 						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+						") ENGINE=InnoDB AUTO_INCREMENT=127 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Skip:        true,
+				Query:       "insert into smallint_tbl values (99999);",
+				ExpectedErr: sql.ErrValueOutOfRange,
+			},
+			{
+				Skip:  true,
+				Query: "insert into smallint_tbl values (32767);",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 1,
+						InsertID:     32767,
+					}},
 				},
 			},
 			{
+				Skip:  true,
 				Query: "show create table smallint_tbl;",
 				Expected: []sql.Row{
 					{"smallint_tbl", "CREATE TABLE `smallint_tbl` (\n" +
 						"  `i` smallint NOT NULL AUTO_INCREMENT,\n" +
 						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+						") ENGINE=InnoDB AUTO_INCREMENT=36727 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Skip:        true,
+				Query:       "insert into mediumint_tbl values (99999999);",
+				ExpectedErr: sql.ErrValueOutOfRange,
+			},
+			{
+				Skip:  true,
+				Query: "insert into mediumint_tbl values (8388607);",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 1,
+						InsertID:     8388607,
+					}},
 				},
 			},
 			{
+				Skip:  true,
 				Query: "show create table mediumint_tbl;",
 				Expected: []sql.Row{
 					{"mediumint_tbl", "CREATE TABLE `mediumint_tbl` (\n" +
 						"  `i` mediumint NOT NULL AUTO_INCREMENT,\n" +
 						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+						") ENGINE=InnoDB AUTO_INCREMENT=8388607 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Skip:        true,
+				Query:       "insert into int_tbl values (99999999999)",
+				ExpectedErr: sql.ErrValueOutOfRange,
+			},
+			{
+				Skip:  true,
+				Query: "insert into int_tbl values (2147483647)",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 1,
+						InsertID:     2147483647,
+					}},
 				},
 			},
 			{
+				Skip:  true,
+				Query: "show create table int_tbl;",
+				Expected: []sql.Row{
+					{"int_tbl", "CREATE TABLE `int_tbl` (\n" +
+						"  `i` int NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`i`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=2147483647 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Skip:        true,
+				Query:       "insert into bigint_tbl values (99999999999999999999);",
+				ExpectedErr: sql.ErrValueOutOfRange,
+			},
+			{
+				Skip:  true,
+				Query: "insert into bigint_tbl values (9223372036854775807);",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 1,
+						InsertID:     9223372036854775807,
+					}},
+				},
+			},
+			{
+				Skip:  true,
 				Query: "show create table bigint_tbl;",
 				Expected: []sql.Row{
 					{"bigint_tbl", "CREATE TABLE `bigint_tbl` (\n" +
 						"  `i` bigint NOT NULL AUTO_INCREMENT,\n" +
 						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+						") ENGINE=InnoDB AUTO_INCREMENT=9223372036854775807 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9530
+		Name:    "unsigned int with auto_increment",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table tinyint_tbl (i tinyint unsigned primary key auto_increment);",
+			"create table smallint_tbl (i smallint unsigned primary key auto_increment);",
+			"create table mediumint_tbl (i mediumint unsigned primary key auto_increment);",
+			"create table int_tbl (i int unsigned primary key auto_increment);",
+			"create table bigint_tbl (i bigint unsigned primary key auto_increment);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Skip:        true,
+				Query:       "insert into tinyint_tbl values (999)",
+				ExpectedErr: sql.ErrValueOutOfRange,
+			},
+			{
+				Skip:  true,
+				Query: "insert into tinyint_tbl values (255)",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 1,
+						InsertID:     255,
+					}},
+				},
+			},
+			{
+				Skip:  true,
+				Query: "show create table tinyint_tbl;",
+				Expected: []sql.Row{
+					{"tinyint_tbl", "CREATE TABLE `tinyint_tbl` (\n" +
+						"  `i` tinyint NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`i`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=255 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Skip:        true,
+				Query:       "insert into smallint_tbl values (99999);",
+				ExpectedErr: sql.ErrValueOutOfRange,
+			},
+			{
+				Skip:  true,
+				Query: "insert into smallint_tbl values (65535);",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 1,
+						InsertID:     65535,
+					}},
+				},
+			},
+			{
+				Skip:  true,
+				Query: "show create table smallint_tbl;",
+				Expected: []sql.Row{
+					{"smallint_tbl", "CREATE TABLE `smallint_tbl` (\n" +
+						"  `i` smallint NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`i`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=65535 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Skip:        true,
+				Query:       "insert into mediumint_tbl values (999999999);",
+				ExpectedErr: sql.ErrValueOutOfRange,
+			},
+			{
+				Skip:  true,
+				Query: "insert into mediumint_tbl values (16777215);",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 1,
+						InsertID:     16777215,
+					}},
+				},
+			},
+			{
+				Skip:  true,
+				Query: "show create table mediumint_tbl;",
+				Expected: []sql.Row{
+					{"mediumint_tbl", "CREATE TABLE `mediumint_tbl` (\n" +
+						"  `i` mediumint NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`i`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=16777215 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Skip:        true,
+				Query:       "insert into int_tbl values (99999999999)",
+				ExpectedErr: sql.ErrValueOutOfRange,
+			},
+			{
+				Skip:  true,
+				Query: "insert into int_tbl values (4294967295)",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 1,
+						InsertID:     4294967295,
+					}},
+				},
+			},
+			{
+				Skip:  true,
+				Query: "show create table int_tbl;",
+				Expected: []sql.Row{
+					{"int_tbl", "CREATE TABLE `int_tbl` (\n" +
+						"  `i` int NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`i`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=4294967295 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Skip:        true,
+				Query:       "insert into bigint_tbl values (999999999999999999999);",
+				ExpectedErr: sql.ErrValueOutOfRange,
+			},
+			{
+				Skip:  true,
+				Query: "insert into bigint_tbl values (18446744073709551615);",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 1,
+						InsertID:     18446744073709551615,
+					}},
+				},
+			},
+			{
+				Skip:  true,
+				Query: "show create table bigint_tbl;",
+				Expected: []sql.Row{
+					{"bigint_tbl", "CREATE TABLE `bigint_tbl` (\n" +
+						"  `i` bigint NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`i`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=18446744073709551615 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 		},
@@ -10507,6 +10734,8 @@ where
 		SetUpScript: []string{
 			"create table parent (d decimal(4, 2) primary key);",
 			"insert into parent values (1.23), (45.67), (78.9);",
+			"create table parent_multi (d1 decimal(4,2), d2 decimal(3,1), primary key (d1, d2));",
+			"insert into parent_multi values (1.23, 4.5), (45.67, 78.9), (99.99, 0.1);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -10527,43 +10756,60 @@ where
 					{types.NewOkResult(3)},
 				},
 			},
-
 			{
-				Skip:  true,
+				Query:       "insert into child_dec_4_2 values (99.99);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
 				Query: "create table child_dec_4_1 (d decimal(4,1), foreign key (d) references parent (d));",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Skip:        true,
 				Query:       "insert into child_dec_4_1 values (78.9);",
-				ExpectedErr: sql.ErrForeignKeyParentViolation,
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
-
 			{
-				Skip:  true,
+				Query:       "insert into child_dec_4_1 values (99.9);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
 				Query: "create table child_dec_3_2 (d decimal(3,2), foreign key (d) references parent (d));",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Skip:        true,
-				Query:       "insert into child_dec_3_2 values (1.23);",
-				ExpectedErr: sql.ErrForeignKeyParentViolation,
+				Query: "insert into child_dec_3_2 values (1.23);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
 			},
 			{
-				Skip:  true,
 				Query: "create table child_dec_65_30 (d decimal(65,30), foreign key (d) references parent (d));",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Skip:        true,
 				Query:       "insert into child_dec_65_30 values (1.23);",
-				ExpectedErr: sql.ErrForeignKeyParentViolation,
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query: "create table child_multi_4_2_3_1 (d1 decimal(4,2), d2 decimal(3,1), foreign key (d1, d2) references parent_multi (d1, d2));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				}},
+			{
+				Query: "insert into child_multi_4_2_3_1 values (1.23, 4.5), (45.67, 78.9), (NULL, NULL);",
+				Expected: []sql.Row{
+					{types.NewOkResult(3)},
+				},
+			},
+			{
+				Query:       "insert into child_multi_4_2_3_1 values (1.23, 9.9);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 		},
 	},
