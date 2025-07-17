@@ -165,7 +165,11 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 			if !c.JoinType().IsMerge() {
 				continue
 			}
+			if sortNode == nil {
+				continue
+			}
 			// TODO: skipping desc sorting for now
+			// TODO: check that the sort fields are a prefix of the indexes
 			hasDesc := false
 			for _, sf := range sortNode.SortFields {
 				if sf.Order == sql.Descending {

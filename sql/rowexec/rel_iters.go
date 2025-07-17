@@ -110,8 +110,6 @@ func (i *offsetIter) Next(ctx *sql.Context) (sql.Row, error) {
 			}
 			i.skip--
 		}
-
-		// TODO: if i.childIter implements Offsetable Table?
 	}
 
 	row, err := i.childIter.Next(ctx)
