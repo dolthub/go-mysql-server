@@ -10844,6 +10844,7 @@ where
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/9544
 		Name:    "datetime with foreign keys",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -10953,6 +10954,7 @@ where
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/9544
 		Name:    "timestamps with foreign keys",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -11062,6 +11064,7 @@ where
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/9544
 		Name:    "time with foreign keys",
 		Dialect: "mysql",
 		SetUpScript: []string{
