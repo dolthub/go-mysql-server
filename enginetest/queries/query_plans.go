@@ -572,7 +572,7 @@ From xy;`,
 			"     │               ├─ columns: [xy.x:2!null, xy.y:3]\n" +
 			"     │               └─ Filter\n" +
 			"     │                   ├─ uv.u:4!null IS NULL\n" +
-			"     │                   └─ LeftOuterMergeJoin\n" +
+			"     │                   └─ LeftOuterLookupJoin\n" +
 			"     │                       ├─ cmp: Eq\n" +
 			"     │                       │   ├─ xy.x:2!null\n" +
 			"     │                       │   └─ uv.u:4!null\n" +
