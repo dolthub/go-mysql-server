@@ -184,6 +184,8 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 
 	a.Catalog.RegisterFunction(emptyCtx, function.GetLockingFuncs(ls)...)
 
+	//a.Verbose = true
+	//a.Debug = true
 	ret := &Engine{
 		Analyzer:          a,
 		MemoryManager:     sql.NewMemoryManager(sql.ProcessMemory),

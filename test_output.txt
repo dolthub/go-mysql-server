@@ -1,0 +1,4 @@
+# github.com/dolthub/go-mysql-server/enginetest
+enginetest/enginetests.go:39:2: found packages sqle (engine.go) and main (update_plans.go) in /Users/amx/dolt_workspace/go-mysql-server
+FAIL	github.com/dolthub/go-mysql-server/enginetest [setup failed]
+FAIL

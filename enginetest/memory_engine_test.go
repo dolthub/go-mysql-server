@@ -203,8 +203,12 @@ func TestSingleScript(t *testing.T) {
 	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name:        "AS OF propagates to nested CALLs",
-			SetUpScript: []string{},
+			Name: "AS OF propagates to nested CALLs",
+			SetUpScript: []string{
+				"create table test (id varchar(255), parent varchar(255), primary key(id));",
+				"create table test2 (id varchar(255), parent varchar(255));",
+				"create unique index idx_test2_id on test2 (id);",
+			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
 					Query: "create procedure create_proc() create table t (i int primary key, j int);",
@@ -230,8 +234,8 @@ func TestSingleScript(t *testing.T) {
 			panic(err)
 		}
 
-		//engine.EngineAnalyzer().Debug = true
-		//engine.EngineAnalyzer().Verbose = true
+		engine.EngineAnalyzer().Debug = true
+		engine.EngineAnalyzer().Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
