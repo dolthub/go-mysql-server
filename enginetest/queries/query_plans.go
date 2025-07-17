@@ -403,32 +403,23 @@ offset 1;`,
 			"     ├─ Distinct\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [xy_1.x:0!null]\n" +
-			"     │       └─ Project\n" +
-			"     │           ├─ columns: [xy_1.x:0!null, xy_1.y:1]\n" +
-			"     │           └─ MergeJoin\n" +
-			"     │               ├─ cmp: Eq\n" +
-			"     │               │   ├─ xy_1.x:0!null\n" +
-			"     │               │   └─ xy_2.y:2\n" +
-			"     │               ├─ TableAlias(xy_1)\n" +
-			"     │               │   └─ IndexedTableAccess(xy)\n" +
-			"     │               │       ├─ index: [xy.x]\n" +
-			"     │               │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │               │       ├─ colSet: (3,4)\n" +
-			"     │               │       ├─ tableId: 2\n" +
-			"     │               │       └─ Table\n" +
-			"     │               │           ├─ name: xy\n" +
-			"     │               │           └─ columns: [x y]\n" +
-			"     │               └─ Project\n" +
-			"     │                   ├─ columns: [xy_2.y:1]\n" +
-			"     │                   └─ TableAlias(xy_2)\n" +
-			"     │                       └─ IndexedTableAccess(xy)\n" +
-			"     │                           ├─ index: [xy.y]\n" +
-			"     │                           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │                           ├─ colSet: (5,6)\n" +
-			"     │                           ├─ tableId: 3\n" +
-			"     │                           └─ Table\n" +
-			"     │                               ├─ name: xy\n" +
-			"     │                               └─ columns: [x y]\n" +
+			"     │       └─ SemiLookupJoin\n" +
+			"     │           ├─ TableAlias(xy_1)\n" +
+			"     │           │   └─ ProcessTable\n" +
+			"     │           │       └─ Table\n" +
+			"     │           │           ├─ name: xy\n" +
+			"     │           │           └─ columns: [x y]\n" +
+			"     │           └─ Project\n" +
+			"     │               ├─ columns: [xy_2.y:1]\n" +
+			"     │               └─ TableAlias(xy_2)\n" +
+			"     │                   └─ IndexedTableAccess(xy)\n" +
+			"     │                       ├─ index: [xy.y]\n" +
+			"     │                       ├─ keys: [xy_1.x:0!null]\n" +
+			"     │                       ├─ colSet: (5,6)\n" +
+			"     │                       ├─ tableId: 3\n" +
+			"     │                       └─ Table\n" +
+			"     │                           ├─ name: xy\n" +
+			"     │                           └─ columns: [x y]\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.y]\n" +
 			"         ├─ keys: [xy_1.x:0!null]\n" +
@@ -440,50 +431,42 @@ offset 1;`,
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [xy.x]\n" +
-			" └─ LookupJoin (estimated cost=3300.000 rows=1000)\n" +
+			" └─ LookupJoin (estimated cost=2300.000 rows=1000)\n" +
 			"     ├─ (xy.y = xy_1.x)\n" +
 			"     ├─ Distinct\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [xy_1.x]\n" +
-			"     │       └─ Project\n" +
-			"     │           ├─ columns: [xy_1.x, xy_1.y]\n" +
-			"     │           └─ MergeJoin (estimated cost=2030.000 rows=1000)\n" +
-			"     │               ├─ cmp: (xy_1.x = xy_2.y)\n" +
-			"     │               ├─ TableAlias(xy_1)\n" +
-			"     │               │   └─ IndexedTableAccess(xy)\n" +
-			"     │               │       ├─ index: [xy.x]\n" +
-			"     │               │       └─ filters: [{[NULL, ∞)}]\n" +
-			"     │               └─ Project\n" +
-			"     │                   ├─ columns: [xy_2.y]\n" +
-			"     │                   └─ TableAlias(xy_2)\n" +
-			"     │                       └─ IndexedTableAccess(xy)\n" +
-			"     │                           ├─ index: [xy.y]\n" +
-			"     │                           └─ filters: [{[NULL, ∞)}]\n" +
+			"     │       └─ SemiLookupJoin (estimated cost=2300.000 rows=1000)\n" +
+			"     │           ├─ TableAlias(xy_1)\n" +
+			"     │           │   └─ Table\n" +
+			"     │           │       └─ name: xy\n" +
+			"     │           └─ Project\n" +
+			"     │               ├─ columns: [xy_2.y]\n" +
+			"     │               └─ TableAlias(xy_2)\n" +
+			"     │                   └─ IndexedTableAccess(xy)\n" +
+			"     │                       ├─ index: [xy.y]\n" +
+			"     │                       └─ keys: xy_1.x\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.y]\n" +
 			"         └─ keys: xy_1.x\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [xy.x]\n" +
-			" └─ LookupJoin (estimated cost=3300.000 rows=1000) (actual rows=4 loops=1)\n" +
+			" └─ LookupJoin (estimated cost=2300.000 rows=1000) (actual rows=4 loops=1)\n" +
 			"     ├─ (xy.y = xy_1.x)\n" +
 			"     ├─ Distinct\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [xy_1.x]\n" +
-			"     │       └─ Project\n" +
-			"     │           ├─ columns: [xy_1.x, xy_1.y]\n" +
-			"     │           └─ MergeJoin (estimated cost=2030.000 rows=1000) (actual rows=4 loops=1)\n" +
-			"     │               ├─ cmp: (xy_1.x = xy_2.y)\n" +
-			"     │               ├─ TableAlias(xy_1)\n" +
-			"     │               │   └─ IndexedTableAccess(xy)\n" +
-			"     │               │       ├─ index: [xy.x]\n" +
-			"     │               │       └─ filters: [{[NULL, ∞)}]\n" +
-			"     │               └─ Project\n" +
-			"     │                   ├─ columns: [xy_2.y]\n" +
-			"     │                   └─ TableAlias(xy_2)\n" +
-			"     │                       └─ IndexedTableAccess(xy)\n" +
-			"     │                           ├─ index: [xy.y]\n" +
-			"     │                           └─ filters: [{[NULL, ∞)}]\n" +
+			"     │       └─ SemiLookupJoin (estimated cost=2300.000 rows=1000) (actual rows=4 loops=1)\n" +
+			"     │           ├─ TableAlias(xy_1)\n" +
+			"     │           │   └─ Table\n" +
+			"     │           │       └─ name: xy\n" +
+			"     │           └─ Project\n" +
+			"     │               ├─ columns: [xy_2.y]\n" +
+			"     │               └─ TableAlias(xy_2)\n" +
+			"     │                   └─ IndexedTableAccess(xy)\n" +
+			"     │                       ├─ index: [xy.y]\n" +
+			"     │                       └─ keys: xy_1.x\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.y]\n" +
 			"         └─ keys: xy_1.x\n" +
