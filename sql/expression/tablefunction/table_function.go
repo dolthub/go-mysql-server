@@ -85,7 +85,6 @@ func (t *TableFunctionWrapper) RowIter(ctx *sql.Context, r sql.Row) (sql.RowIter
 	if err != nil {
 		return nil, err
 	}
-	// TODO
 	//if ri, ok := v.(sql.RowIter); ok {
 	//	return ri, nil
 	//}
