@@ -528,77 +528,6 @@ select
  end as s
 From xy;`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [CASE  WHEN xy.x:0!null IS NULL THEN 0 (tinyint) WHEN InSubquery\n" +
-			" │   ├─ left: xy.x:0!null\n" +
-			" │   └─ right: Subquery\n" +
-			" │       ├─ cacheable: true\n" +
-			" │       ├─ alias-string: select x from xy where not x in (select u from uv)\n" +
-			" │       └─ Project\n" +
-			" │           ├─ columns: [xy.x:3!null]\n" +
-			" │           └─ Project\n" +
-			" │               ├─ columns: [xy.x:3!null, xy.y:4]\n" +
-			" │               └─ Filter\n" +
-			" │                   ├─ uv.u:5!null IS NULL\n" +
-			" │                   └─ LeftOuterLookupJoin\n" +
-			" │                       ├─ cmp: Eq\n" +
-			" │                       │   ├─ xy.x:3!null\n" +
-			" │                       │   └─ uv.u:5!null\n" +
-			" │                       ├─ IndexedTableAccess(xy)\n" +
-			" │                       │   ├─ index: [xy.x]\n" +
-			" │                       │   ├─ static: [{[NULL, ∞)}]\n" +
-			" │                       │   ├─ colSet: (3,4)\n" +
-			" │                       │   ├─ tableId: 2\n" +
-			" │                       │   └─ Table\n" +
-			" │                       │       ├─ name: xy\n" +
-			" │                       │       └─ columns: [x y]\n" +
-			" │                       └─ IndexedTableAccess(uv)\n" +
-			" │                           ├─ index: [uv.u]\n" +
-			" │                           ├─ static: [{[NULL, ∞)}]\n" +
-			" │                           ├─ colSet: (5,6)\n" +
-			" │                           ├─ tableId: 3\n" +
-			" │                           └─ Table\n" +
-			" │                               ├─ name: uv\n" +
-			" │                               └─ columns: [u]\n" +
-			" │   THEN 1 (tinyint) ELSE 2 (tinyint) END->s:0]\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [xy.x:0!null, xy.y:1, CASE  WHEN xy.x:0!null IS NULL THEN 0 (tinyint) WHEN InSubquery\n" +
-			"     │   ├─ left: xy.x:0!null\n" +
-			"     │   └─ right: Subquery\n" +
-			"     │       ├─ cacheable: true\n" +
-			"     │       ├─ alias-string: select x from xy where not x in (select u from uv)\n" +
-			"     │       └─ Project\n" +
-			"     │           ├─ columns: [xy.x:2!null]\n" +
-			"     │           └─ Project\n" +
-			"     │               ├─ columns: [xy.x:2!null, xy.y:3]\n" +
-			"     │               └─ Filter\n" +
-			"     │                   ├─ uv.u:4!null IS NULL\n" +
-			"     │                   └─ LeftOuterLookupJoin\n" +
-			"     │                       ├─ cmp: Eq\n" +
-			"     │                       │   ├─ xy.x:2!null\n" +
-			"     │                       │   └─ uv.u:4!null\n" +
-			"     │                       ├─ IndexedTableAccess(xy)\n" +
-			"     │                       │   ├─ index: [xy.x]\n" +
-			"     │                       │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │                       │   ├─ colSet: (3,4)\n" +
-			"     │                       │   ├─ tableId: 2\n" +
-			"     │                       │   └─ Table\n" +
-			"     │                       │       ├─ name: xy\n" +
-			"     │                       │       └─ columns: [x y]\n" +
-			"     │                       └─ IndexedTableAccess(uv)\n" +
-			"     │                           ├─ index: [uv.u]\n" +
-			"     │                           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │                           ├─ colSet: (5,6)\n" +
-			"     │                           ├─ tableId: 3\n" +
-			"     │                           └─ Table\n" +
-			"     │                               ├─ name: uv\n" +
-			"     │                               └─ columns: [u]\n" +
-			"     │   THEN 1 (tinyint) ELSE 2 (tinyint) END->s:0]\n" +
-			"     └─ ProcessTable\n" +
-			"         └─ Table\n" +
-			"             ├─ name: xy\n" +
-			"             └─ columns: [x y]\n" +
-			"",
-		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [CASE  WHEN xy.x IS NULL THEN 0 WHEN InSubquery\n" +
 			" │   ├─ left: xy.x\n" +
 			" │   └─ right: Subquery\n" +
@@ -609,15 +538,13 @@ From xy;`,
 			" │               ├─ columns: [xy.x, xy.y]\n" +
 			" │               └─ Filter\n" +
 			" │                   ├─ uv.u IS NULL\n" +
-			" │                   └─ LeftOuterMergeJoin\n" +
-			" │                       ├─ cmp: (xy.x = uv.u)\n" +
-			" │                       ├─ IndexedTableAccess(xy)\n" +
-			" │                       │   ├─ index: [xy.x]\n" +
-			" │                       │   └─ filters: [{[NULL, ∞)}]\n" +
+			" │                   └─ LeftOuterLookupJoin\n" +
+			" │                       ├─ Table\n" +
+			" │                       │   └─ name: xy\n" +
 			" │                       └─ IndexedTableAccess(uv)\n" +
 			" │                           ├─ index: [uv.u]\n" +
-			" │                           ├─ filters: [{[NULL, ∞)}]\n" +
-			" │                           └─ columns: [u]\n" +
+			" │                           ├─ columns: [u]\n" +
+			" │                           └─ keys: xy.x\n" +
 			" │   THEN 1 ELSE 2 END as s]\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [xy.x, xy.y, CASE  WHEN xy.x IS NULL THEN 0 WHEN InSubquery\n" +
@@ -630,15 +557,54 @@ From xy;`,
 			"     │               ├─ columns: [xy.x, xy.y]\n" +
 			"     │               └─ Filter\n" +
 			"     │                   ├─ uv.u IS NULL\n" +
-			"     │                   └─ LeftOuterMergeJoin\n" +
-			"     │                       ├─ cmp: (xy.x = uv.u)\n" +
-			"     │                       ├─ IndexedTableAccess(xy)\n" +
-			"     │                       │   ├─ index: [xy.x]\n" +
-			"     │                       │   └─ filters: [{[NULL, ∞)}]\n" +
+			"     │                   └─ LeftOuterLookupJoin\n" +
+			"     │                       ├─ Table\n" +
+			"     │                       │   └─ name: xy\n" +
 			"     │                       └─ IndexedTableAccess(uv)\n" +
 			"     │                           ├─ index: [uv.u]\n" +
-			"     │                           ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │                           └─ columns: [u]\n" +
+			"     │                           ├─ columns: [u]\n" +
+			"     │                           └─ keys: xy.x\n" +
+			"     │   THEN 1 ELSE 2 END as s]\n" +
+			"     └─ Table\n" +
+			"         └─ name: xy\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [CASE  WHEN xy.x IS NULL THEN 0 WHEN InSubquery\n" +
+			" │   ├─ left: xy.x\n" +
+			" │   └─ right: Subquery\n" +
+			" │       ├─ cacheable: true\n" +
+			" │       └─ Project\n" +
+			" │           ├─ columns: [xy.x]\n" +
+			" │           └─ Project\n" +
+			" │               ├─ columns: [xy.x, xy.y]\n" +
+			" │               └─ Filter\n" +
+			" │                   ├─ uv.u IS NULL\n" +
+			" │                   └─ LeftOuterLookupJoin\n" +
+			" │                       ├─ Table\n" +
+			" │                       │   └─ name: xy\n" +
+			" │                       └─ IndexedTableAccess(uv)\n" +
+			" │                           ├─ index: [uv.u]\n" +
+			" │                           ├─ columns: [u]\n" +
+			" │                           └─ keys: xy.x\n" +
+			" │   THEN 1 ELSE 2 END as s]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [xy.x, xy.y, CASE  WHEN xy.x IS NULL THEN 0 WHEN InSubquery\n" +
+			"     │   ├─ left: xy.x\n" +
+			"     │   └─ right: Subquery\n" +
+			"     │       ├─ cacheable: true\n" +
+			"     │       └─ Project\n" +
+			"     │           ├─ columns: [xy.x]\n" +
+			"     │           └─ Project\n" +
+			"     │               ├─ columns: [xy.x, xy.y]\n" +
+			"     │               └─ Filter\n" +
+			"     │                   ├─ uv.u IS NULL\n" +
+			"     │                   └─ LeftOuterLookupJoin\n" +
+			"     │                       ├─ Table\n" +
+			"     │                       │   └─ name: xy\n" +
+			"     │                       └─ IndexedTableAccess(uv)\n" +
+			"     │                           ├─ index: [uv.u]\n" +
+			"     │                           ├─ columns: [u]\n" +
+			"     │                           └─ keys: xy.x\n" +
 			"     │   THEN 1 ELSE 2 END as s]\n" +
 			"     └─ Table\n" +
 			"         └─ name: xy\n" +
@@ -654,15 +620,13 @@ From xy;`,
 			" │               ├─ columns: [xy.x, xy.y]\n" +
 			" │               └─ Filter\n" +
 			" │                   ├─ uv.u IS NULL\n" +
-			" │                   └─ LeftOuterMergeJoin\n" +
-			" │                       ├─ cmp: (xy.x = uv.u)\n" +
-			" │                       ├─ IndexedTableAccess(xy)\n" +
-			" │                       │   ├─ index: [xy.x]\n" +
-			" │                       │   └─ filters: [{[NULL, ∞)}]\n" +
+			" │                   └─ LeftOuterLookupJoin\n" +
+			" │                       ├─ Table\n" +
+			" │                       │   └─ name: xy\n" +
 			" │                       └─ IndexedTableAccess(uv)\n" +
 			" │                           ├─ index: [uv.u]\n" +
-			" │                           ├─ filters: [{[NULL, ∞)}]\n" +
-			" │                           └─ columns: [u]\n" +
+			" │                           ├─ columns: [u]\n" +
+			" │                           └─ keys: xy.x\n" +
 			" │   THEN 1 ELSE 2 END as s]\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [xy.x, xy.y, CASE  WHEN xy.x IS NULL THEN 0 WHEN InSubquery\n" +
@@ -675,15 +639,13 @@ From xy;`,
 			"     │               ├─ columns: [xy.x, xy.y]\n" +
 			"     │               └─ Filter\n" +
 			"     │                   ├─ uv.u IS NULL\n" +
-			"     │                   └─ LeftOuterMergeJoin\n" +
-			"     │                       ├─ cmp: (xy.x = uv.u)\n" +
-			"     │                       ├─ IndexedTableAccess(xy)\n" +
-			"     │                       │   ├─ index: [xy.x]\n" +
-			"     │                       │   └─ filters: [{[NULL, ∞)}]\n" +
+			"     │                   └─ LeftOuterLookupJoin\n" +
+			"     │                       ├─ Table\n" +
+			"     │                       │   └─ name: xy\n" +
 			"     │                       └─ IndexedTableAccess(uv)\n" +
 			"     │                           ├─ index: [uv.u]\n" +
-			"     │                           ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │                           └─ columns: [u]\n" +
+			"     │                           ├─ columns: [u]\n" +
+			"     │                           └─ keys: xy.x\n" +
 			"     │   THEN 1 ELSE 2 END as s]\n" +
 			"     └─ Table\n" +
 			"         └─ name: xy\n" +
