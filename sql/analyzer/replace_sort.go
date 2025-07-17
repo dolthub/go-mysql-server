@@ -125,6 +125,7 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
+		// TODO: what about the other sort fields?
 		if sortNode.SortFields[0].Order == sql.Descending {
 			lookup = sql.NewIndexLookup(
 				lookup.Index,
@@ -158,6 +159,22 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 		case *plan.Sort, *plan.IndexedTableAccess, *plan.ResolvedTable:
 			newChildren[i], same, err = replaceIdxSortHelper(ctx, scope, child, sortNode)
 		case *plan.Project, *plan.Filter, *plan.Limit, *plan.Offset, *plan.Distinct, *plan.TableAlias:
+			newChildren[i], same, err = replaceIdxSortHelper(ctx, scope, child, sortNode)
+		case *plan.JoinNode:
+			if !c.JoinType().IsMerge() {
+				continue
+			}
+			// TODO: skipping desc sorting for now
+			hasDesc := false
+			for _, sf := range sortNode.SortFields {
+				if sf.Order == sql.Descending {
+					hasDesc = true
+					break
+				}
+			}
+			if hasDesc {
+				continue
+			}
 			newChildren[i], same, err = replaceIdxSortHelper(ctx, scope, child, sortNode)
 		case *plan.JoinNode:
 			// TODO: is this applicable to other types of joins?
