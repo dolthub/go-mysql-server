@@ -54,6 +54,7 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 			return n, transform.SameTree, nil
 		}
 
+		// TODO: verify that we don't need to look at other SortFields?
 		// if the lookup does not need any reversing, do nothing
 		if sortNode.SortFields[0].Order != sql.Descending {
 			return n, transform.NewTree, nil
@@ -126,6 +127,7 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
+		// TODO: what about the other sort fields?
 		if sortNode.SortFields[0].Order == sql.Descending {
 			lookup = sql.NewIndexLookup(
 				lookup.Index,
@@ -158,6 +160,22 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 		same := transform.SameTree
 		switch c := child.(type) {
 		case *plan.Project, *plan.TableAlias, *plan.ResolvedTable, *plan.Filter, *plan.Limit, *plan.Offset, *plan.Sort, *plan.IndexedTableAccess, *plan.Distinct:
+			newChildren[i], same, err = replaceIdxSortHelper(ctx, scope, child, sortNode)
+		case *plan.JoinNode:
+			if !c.JoinType().IsMerge() {
+				continue
+			}
+			// TODO: skipping desc sorting for now
+			hasDesc := false
+			for _, sf := range sortNode.SortFields {
+				if sf.Order == sql.Descending {
+					hasDesc = true
+					break
+				}
+			}
+			if hasDesc {
+				continue
+			}
 			newChildren[i], same, err = replaceIdxSortHelper(ctx, scope, child, sortNode)
 		default:
 			newChildren[i] = c
