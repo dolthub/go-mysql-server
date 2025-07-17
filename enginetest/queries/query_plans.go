@@ -496,7 +496,7 @@ offset 1;`,
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [xy.x, xy.y, uv.u, uv.v]\n" +
-			" └─ LookupJoin (estimated cost=6.600 rows=2)\n" +
+			" └─ LookupJoin (estimated cost=4.600 rows=2)\n" +
 			"     ├─ IndexedTableAccess(uv)\n" +
 			"     │   ├─ index: [uv.u]\n" +
 			"     │   ├─ filters: [{(0, 2)}]\n" +
@@ -508,7 +508,7 @@ offset 1;`,
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [xy.x, xy.y, uv.u, uv.v]\n" +
-			" └─ LookupJoin (estimated cost=6.600 rows=2) (actual rows=1 loops=1)\n" +
+			" └─ LookupJoin (estimated cost=4.600 rows=2) (actual rows=1 loops=1)\n" +
 			"     ├─ IndexedTableAccess(uv)\n" +
 			"     │   ├─ index: [uv.u]\n" +
 			"     │   ├─ filters: [{(0, 2)}]\n" +
@@ -539,7 +539,7 @@ From xy;`,
 			" │               ├─ columns: [xy.x:3!null, xy.y:4]\n" +
 			" │               └─ Filter\n" +
 			" │                   ├─ uv.u:5!null IS NULL\n" +
-			" │                   └─ LeftOuterMergeJoin\n" +
+			" │                   └─ LeftOuterLookupJoin\n" +
 			" │                       ├─ cmp: Eq\n" +
 			" │                       │   ├─ xy.x:3!null\n" +
 			" │                       │   └─ uv.u:5!null\n" +
@@ -1321,7 +1321,7 @@ WHERE
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [customer1.c_discount, customer1.c_last, customer1.c_credit, warehouse1.w_tax]\n" +
-			" └─ LookupJoin (estimated cost=3.300 rows=1)\n" +
+			" └─ LookupJoin (estimated cost=1.058 rows=1)\n" +
 			"     ├─ IndexedTableAccess(warehouse1)\n" +
 			"     │   ├─ index: [warehouse1.w_id]\n" +
 			"     │   ├─ filters: [{[1, 1]}]\n" +
@@ -1335,7 +1335,7 @@ WHERE
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [customer1.c_discount, customer1.c_last, customer1.c_credit, warehouse1.w_tax]\n" +
-			" └─ LookupJoin (estimated cost=3.300 rows=1) (actual rows=0 loops=1)\n" +
+			" └─ LookupJoin (estimated cost=1.058 rows=1) (actual rows=0 loops=1)\n" +
 			"     ├─ IndexedTableAccess(warehouse1)\n" +
 			"     │   ├─ index: [warehouse1.w_id]\n" +
 			"     │   ├─ filters: [{[1, 1]}]\n" +
@@ -1477,8 +1477,8 @@ where
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [style.assetId]\n" +
-			" └─ LookupJoin (estimated cost=19.800 rows=6)\n" +
-			"     ├─ LookupJoin (estimated cost=19.800 rows=6)\n" +
+			" └─ LookupJoin (estimated cost=6.173 rows=6)\n" +
+			"     ├─ LookupJoin (estimated cost=6.173 rows=6)\n" +
 			"     │   ├─ TableAlias(style)\n" +
 			"     │   │   └─ IndexedTableAccess(asset)\n" +
 			"     │   │       ├─ index: [asset.orgId,asset.name,asset.val]\n" +
@@ -1501,8 +1501,8 @@ where
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [style.assetId]\n" +
-			" └─ LookupJoin (estimated cost=19.800 rows=6) (actual rows=1 loops=1)\n" +
-			"     ├─ LookupJoin (estimated cost=19.800 rows=6) (actual rows=1 loops=1)\n" +
+			" └─ LookupJoin (estimated cost=6.173 rows=6) (actual rows=1 loops=1)\n" +
+			"     ├─ LookupJoin (estimated cost=6.173 rows=6) (actual rows=1 loops=1)\n" +
 			"     │   ├─ TableAlias(style)\n" +
 			"     │   │   └─ IndexedTableAccess(asset)\n" +
 			"     │   │       ├─ index: [asset.orgId,asset.name,asset.val]\n" +
@@ -2402,7 +2402,7 @@ Select * from (
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [xy.x, xy.y]\n" +
-			" └─ LookupJoin (estimated cost=13.200 rows=4)\n" +
+			" └─ LookupJoin (estimated cost=9.200 rows=4)\n" +
 			"     ├─ (xy.x = ab.a)\n" +
 			"     ├─ OrderedDistinct\n" +
 			"     │   └─ Project\n" +
@@ -2423,7 +2423,7 @@ Select * from (
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [xy.x, xy.y]\n" +
-			" └─ LookupJoin (estimated cost=13.200 rows=4) (actual rows=4 loops=1)\n" +
+			" └─ LookupJoin (estimated cost=9.200 rows=4) (actual rows=4 loops=1)\n" +
 			"     ├─ (xy.x = ab.a)\n" +
 			"     ├─ OrderedDistinct\n" +
 			"     │   └─ Project\n" +
@@ -2627,7 +2627,7 @@ Select * from (
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [mytable.s]\n" +
-			" └─ LookupJoin (estimated cost=3.300 rows=1)\n" +
+			" └─ LookupJoin (estimated cost=1.058 rows=1)\n" +
 			"     ├─ (mytable.i = othertable.i2)\n" +
 			"     ├─ Distinct\n" +
 			"     │   └─ Project\n" +
@@ -2641,7 +2641,7 @@ Select * from (
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [mytable.s]\n" +
-			" └─ LookupJoin (estimated cost=3.300 rows=1) (actual rows=1 loops=1)\n" +
+			" └─ LookupJoin (estimated cost=1.058 rows=1) (actual rows=1 loops=1)\n" +
 			"     ├─ (mytable.i = othertable.i2)\n" +
 			"     ├─ Distinct\n" +
 			"     │   └─ Project\n" +
@@ -3740,7 +3740,7 @@ Select * from (
 			"     │           └─ Table\n" +
 			"     │               └─ name: \n" +
 			"     │   as is_one]\n" +
-			"     └─ LookupJoin (estimated cost=13.200 rows=4)\n" +
+			"     └─ LookupJoin (estimated cost=9.200 rows=4)\n" +
 			"         ├─ Table\n" +
 			"         │   └─ name: uv\n" +
 			"         └─ IndexedTableAccess(xy)\n" +
@@ -3767,7 +3767,7 @@ Select * from (
 			"     │           └─ Table\n" +
 			"     │               └─ name: \n" +
 			"     │   as is_one]\n" +
-			"     └─ LookupJoin (estimated cost=13.200 rows=4) (actual rows=4 loops=1)\n" +
+			"     └─ LookupJoin (estimated cost=9.200 rows=4) (actual rows=4 loops=1)\n" +
 			"         ├─ Table\n" +
 			"         │   └─ name: uv\n" +
 			"         └─ IndexedTableAccess(xy)\n" +
@@ -4170,7 +4170,7 @@ Select * from (
 			"     ├─ Table\n" +
 			"     │   ├─ name: ab\n" +
 			"     │   └─ columns: [b]\n" +
-			"     └─ LookupJoin (estimated cost=3.300 rows=1)\n" +
+			"     └─ LookupJoin (estimated cost=1.058 rows=1)\n" +
 			"         ├─ IndexedTableAccess(uv)\n" +
 			"         │   ├─ index: [uv.u]\n" +
 			"         │   ├─ filters: [{[-1, -1]}]\n" +
@@ -4187,7 +4187,7 @@ Select * from (
 			"     ├─ Table\n" +
 			"     │   ├─ name: ab\n" +
 			"     │   └─ columns: [b]\n" +
-			"     └─ LookupJoin (estimated cost=3.300 rows=1) (actual rows=0 loops=4)\n" +
+			"     └─ LookupJoin (estimated cost=1.058 rows=1) (actual rows=0 loops=4)\n" +
 			"         ├─ IndexedTableAccess(uv)\n" +
 			"         │   ├─ index: [uv.u]\n" +
 			"         │   ├─ filters: [{[-1, -1]}]\n" +
@@ -4829,7 +4829,7 @@ Select * from (
 			"         ├─ name: ab\n" +
 			"         └─ columns: [a]\n" +
 			"",
-		ExpectedEstimates: "SemiLookupJoin (estimated cost=13.200 rows=4)\n" +
+		ExpectedEstimates: "SemiLookupJoin (estimated cost=9.200 rows=4)\n" +
 			" ├─ Table\n" +
 			" │   └─ name: uv\n" +
 			" └─ IndexedTableAccess(ab)\n" +
@@ -4837,7 +4837,7 @@ Select * from (
 			"     ├─ columns: [a]\n" +
 			"     └─ keys: uv.u\n" +
 			"",
-		ExpectedAnalysis: "SemiLookupJoin (estimated cost=13.200 rows=4) (actual rows=4 loops=1)\n" +
+		ExpectedAnalysis: "SemiLookupJoin (estimated cost=9.200 rows=4) (actual rows=4 loops=1)\n" +
 			" ├─ Table\n" +
 			" │   └─ name: uv\n" +
 			" └─ IndexedTableAccess(ab)\n" +
@@ -5384,7 +5384,7 @@ Select * from (
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [xy.x, xy.y]\n" +
-			" └─ LookupJoin (estimated cost=330.000 rows=100)\n" +
+			" └─ LookupJoin (estimated cost=230.000 rows=100)\n" +
 			"     ├─ (cte.a = xy.x)\n" +
 			"     ├─ Distinct\n" +
 			"     │   └─ Project\n" +
@@ -5403,7 +5403,7 @@ Select * from (
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [xy.x, xy.y]\n" +
-			" └─ LookupJoin (estimated cost=330.000 rows=100) (actual rows=4 loops=1)\n" +
+			" └─ LookupJoin (estimated cost=230.000 rows=100) (actual rows=4 loops=1)\n" +
 			"     ├─ (cte.a = xy.x)\n" +
 			"     ├─ Distinct\n" +
 			"     │   └─ Project\n" +
@@ -5599,7 +5599,7 @@ inner join xy on a = x;`,
 			"         ├─ name: xy\n" +
 			"         └─ columns: [x y]\n" +
 			"",
-		ExpectedEstimates: "LookupJoin (estimated cost=330.000 rows=100)\n" +
+		ExpectedEstimates: "LookupJoin (estimated cost=230.000 rows=100)\n" +
 			" ├─ SubqueryAlias\n" +
 			" │   ├─ name: alias2\n" +
 			" │   ├─ outerVisibility: false\n" +
@@ -5625,7 +5625,7 @@ inner join xy on a = x;`,
 			"     ├─ columns: [x y]\n" +
 			"     └─ keys: alias2.a\n" +
 			"",
-		ExpectedAnalysis: "LookupJoin (estimated cost=330.000 rows=100) (actual rows=4 loops=1)\n" +
+		ExpectedAnalysis: "LookupJoin (estimated cost=230.000 rows=100) (actual rows=4 loops=1)\n" +
 			" ├─ SubqueryAlias\n" +
 			" │   ├─ name: alias2\n" +
 			" │   ├─ outerVisibility: false\n" +
@@ -5701,7 +5701,7 @@ where exists
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [ab.a, ab.b]\n" +
-			" └─ LookupJoin (estimated cost=16.500 rows=5)\n" +
+			" └─ LookupJoin (estimated cost=11.500 rows=5)\n" +
 			"     ├─ (ab.a = uv.u)\n" +
 			"     ├─ OrderedDistinct\n" +
 			"     │   └─ Project\n" +
@@ -5722,7 +5722,7 @@ where exists
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [ab.a, ab.b]\n" +
-			" └─ LookupJoin (estimated cost=16.500 rows=5) (actual rows=4 loops=1)\n" +
+			" └─ LookupJoin (estimated cost=11.500 rows=5) (actual rows=4 loops=1)\n" +
 			"     ├─ (ab.a = uv.u)\n" +
 			"     ├─ OrderedDistinct\n" +
 			"     │   └─ Project\n" +
@@ -5904,7 +5904,7 @@ full join pq on a = p
 			" ├─ columns: [ab.a, ab.b, uv.u, uv.v, pq.p, pq.q]\n" +
 			" └─ FullOuterJoin (estimated cost=30.320 rows=5)\n" +
 			"     ├─ (ab.a = pq.p)\n" +
-			"     ├─ LookupJoin (estimated cost=13.200 rows=4)\n" +
+			"     ├─ LookupJoin (estimated cost=9.200 rows=4)\n" +
 			"     │   ├─ Table\n" +
 			"     │   │   ├─ name: uv\n" +
 			"     │   │   └─ columns: [u v]\n" +
@@ -5920,7 +5920,7 @@ full join pq on a = p
 			" ├─ columns: [ab.a, ab.b, uv.u, uv.v, pq.p, pq.q]\n" +
 			" └─ FullOuterJoin (estimated cost=30.320 rows=5) (actual rows=4 loops=1)\n" +
 			"     ├─ (ab.a = pq.p)\n" +
-			"     ├─ LookupJoin (estimated cost=13.200 rows=4) (actual rows=4 loops=1)\n" +
+			"     ├─ LookupJoin (estimated cost=9.200 rows=4) (actual rows=4 loops=1)\n" +
 			"     │   ├─ Table\n" +
 			"     │   │   ├─ name: uv\n" +
 			"     │   │   └─ columns: [u v]\n" +
@@ -6578,7 +6578,7 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [t1.i]\n" +
-			" └─ InnerJoin (estimated cost=2.010 rows=1)\n" +
+			" └─ InnerJoin (estimated cost=1.115 rows=1)\n" +
 			"     ├─ (t1.i = (t2.i + 1))\n" +
 			"     ├─ TableAlias(t2)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
@@ -6593,7 +6593,7 @@ inner join pq on true
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [t1.i]\n" +
-			" └─ InnerJoin (estimated cost=2.010 rows=1) (actual rows=1 loops=1)\n" +
+			" └─ InnerJoin (estimated cost=1.115 rows=1) (actual rows=1 loops=1)\n" +
 			"     ├─ (t1.i = (t2.i + 1))\n" +
 			"     ├─ TableAlias(t2)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
@@ -6886,7 +6886,7 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [t1.i]\n" +
-			" └─ InnerJoin (estimated cost=2.010 rows=1)\n" +
+			" └─ InnerJoin (estimated cost=1.115 rows=1)\n" +
 			"     ├─ (t1.i = (t2.i + 1))\n" +
 			"     ├─ TableAlias(t1)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
@@ -6901,7 +6901,7 @@ inner join pq on true
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [t1.i]\n" +
-			" └─ InnerJoin (estimated cost=2.010 rows=1) (actual rows=1 loops=1)\n" +
+			" └─ InnerJoin (estimated cost=1.115 rows=1) (actual rows=1 loops=1)\n" +
 			"     ├─ (t1.i = (t2.i + 1))\n" +
 			"     ├─ TableAlias(t1)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
@@ -6944,7 +6944,7 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [t1.i]\n" +
-			" └─ InnerJoin (estimated cost=2.010 rows=1)\n" +
+			" └─ InnerJoin (estimated cost=1.115 rows=1)\n" +
 			"     ├─ (t1.i = (t2.i + 1))\n" +
 			"     ├─ TableAlias(t2)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
@@ -6959,7 +6959,7 @@ inner join pq on true
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [t1.i]\n" +
-			" └─ InnerJoin (estimated cost=2.010 rows=1) (actual rows=1 loops=1)\n" +
+			" └─ InnerJoin (estimated cost=1.115 rows=1) (actual rows=1 loops=1)\n" +
 			"     ├─ (t1.i = (t2.i + 1))\n" +
 			"     ├─ TableAlias(t2)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
@@ -7002,7 +7002,7 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [t1.i]\n" +
-			" └─ InnerJoin (estimated cost=2.010 rows=1)\n" +
+			" └─ InnerJoin (estimated cost=1.115 rows=1)\n" +
 			"     ├─ (t1.i = (t2.i + 1))\n" +
 			"     ├─ TableAlias(t1)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
@@ -7017,7 +7017,7 @@ inner join pq on true
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [t1.i]\n" +
-			" └─ InnerJoin (estimated cost=2.010 rows=1) (actual rows=1 loops=1)\n" +
+			" └─ InnerJoin (estimated cost=1.115 rows=1) (actual rows=1 loops=1)\n" +
 			"     ├─ (t1.i = (t2.i + 1))\n" +
 			"     ├─ TableAlias(t1)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
@@ -7060,7 +7060,7 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [t1.i]\n" +
-			" └─ InnerJoin (estimated cost=2.010 rows=1)\n" +
+			" └─ InnerJoin (estimated cost=1.115 rows=1)\n" +
 			"     ├─ (t1.i = (t2.i + 1))\n" +
 			"     ├─ TableAlias(t2)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
@@ -7075,7 +7075,7 @@ inner join pq on true
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [t1.i]\n" +
-			" └─ InnerJoin (estimated cost=2.010 rows=1) (actual rows=1 loops=1)\n" +
+			" └─ InnerJoin (estimated cost=1.115 rows=1) (actual rows=1 loops=1)\n" +
 			"     ├─ (t1.i = (t2.i + 1))\n" +
 			"     ├─ TableAlias(t2)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
@@ -8167,7 +8167,7 @@ inner join pq on true
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [mytable.i, selfjoin.i]\n" +
 			" └─ SemiJoin (estimated cost=1.505 rows=1)\n" +
-			"     ├─ LookupJoin (estimated cost=3.300 rows=1)\n" +
+			"     ├─ LookupJoin (estimated cost=1.058 rows=1)\n" +
 			"     │   ├─ TableAlias(selfjoin)\n" +
 			"     │   │   └─ IndexedTableAccess(mytable)\n" +
 			"     │   │       ├─ index: [mytable.i]\n" +
@@ -8183,7 +8183,7 @@ inner join pq on true
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [mytable.i, selfjoin.i]\n" +
 			" └─ SemiJoin (estimated cost=1.505 rows=1) (actual rows=1 loops=1)\n" +
-			"     ├─ LookupJoin (estimated cost=3.300 rows=1) (actual rows=1 loops=1)\n" +
+			"     ├─ LookupJoin (estimated cost=1.058 rows=1) (actual rows=1 loops=1)\n" +
 			"     │   ├─ TableAlias(selfjoin)\n" +
 			"     │   │   └─ IndexedTableAccess(mytable)\n" +
 			"     │   │       ├─ index: [mytable.i]\n" +
@@ -9052,7 +9052,7 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
-			" └─ LookupJoin (estimated cost=3.300 rows=1)\n" +
+			" └─ LookupJoin (estimated cost=1.058 rows=1)\n" +
 			"     ├─ TableAlias(a)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.s,mytable.i]\n" +
@@ -9066,7 +9066,7 @@ inner join pq on true
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
-			" └─ LookupJoin (estimated cost=3.300 rows=1) (actual rows=0 loops=1)\n" +
+			" └─ LookupJoin (estimated cost=1.058 rows=1) (actual rows=0 loops=1)\n" +
 			"     ├─ TableAlias(a)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.s,mytable.i]\n" +
@@ -9157,7 +9157,7 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
-			" └─ LookupJoin (estimated cost=3.300 rows=1)\n" +
+			" └─ LookupJoin (estimated cost=1.058 rows=1)\n" +
 			"     ├─ TableAlias(a)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.s,mytable.i]\n" +
@@ -9171,7 +9171,7 @@ inner join pq on true
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
-			" └─ LookupJoin (estimated cost=3.300 rows=1) (actual rows=0 loops=1)\n" +
+			" └─ LookupJoin (estimated cost=1.058 rows=1) (actual rows=0 loops=1)\n" +
 			"     ├─ TableAlias(a)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.s,mytable.i]\n" +
@@ -9210,7 +9210,7 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
-			" └─ LookupJoin (estimated cost=3.300 rows=1)\n" +
+			" └─ LookupJoin (estimated cost=1.058 rows=1)\n" +
 			"     ├─ TableAlias(a)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.i]\n" +
@@ -9224,7 +9224,7 @@ inner join pq on true
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
-			" └─ LookupJoin (estimated cost=3.300 rows=1) (actual rows=0 loops=1)\n" +
+			" └─ LookupJoin (estimated cost=1.058 rows=1) (actual rows=0 loops=1)\n" +
 			"     ├─ TableAlias(a)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.i]\n" +
@@ -10092,10 +10092,10 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
-			" └─ LookupJoin (estimated cost=3.300 rows=1)\n" +
-			"     ├─ LookupJoin (estimated cost=3.300 rows=1)\n" +
+			" └─ LookupJoin (estimated cost=1.058 rows=1)\n" +
+			"     ├─ LookupJoin (estimated cost=1.058 rows=1)\n" +
 			"     │   ├─ (a.i = c.i)\n" +
-			"     │   ├─ LookupJoin (estimated cost=3.300 rows=1)\n" +
+			"     │   ├─ LookupJoin (estimated cost=1.058 rows=1)\n" +
 			"     │   │   ├─ TableAlias(c)\n" +
 			"     │   │   │   └─ IndexedTableAccess(mytable)\n" +
 			"     │   │   │       ├─ index: [mytable.i]\n" +
@@ -10119,10 +10119,10 @@ inner join pq on true
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
-			" └─ LookupJoin (estimated cost=3.300 rows=1) (actual rows=1 loops=1)\n" +
-			"     ├─ LookupJoin (estimated cost=3.300 rows=1) (actual rows=1 loops=1)\n" +
+			" └─ LookupJoin (estimated cost=1.058 rows=1) (actual rows=1 loops=1)\n" +
+			"     ├─ LookupJoin (estimated cost=1.058 rows=1) (actual rows=1 loops=1)\n" +
 			"     │   ├─ (a.i = c.i)\n" +
-			"     │   ├─ LookupJoin (estimated cost=3.300 rows=1) (actual rows=1 loops=1)\n" +
+			"     │   ├─ LookupJoin (estimated cost=1.058 rows=1) (actual rows=1 loops=1)\n" +
 			"     │   │   ├─ TableAlias(c)\n" +
 			"     │   │   │   └─ IndexedTableAccess(mytable)\n" +
 			"     │   │   │       ├─ index: [mytable.i]\n" +
@@ -10761,10 +10761,10 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
-			" └─ LookupJoin (estimated cost=3.300 rows=1)\n" +
-			"     ├─ LookupJoin (estimated cost=3.300 rows=1)\n" +
+			" └─ LookupJoin (estimated cost=1.058 rows=1)\n" +
+			"     ├─ LookupJoin (estimated cost=1.058 rows=1)\n" +
 			"     │   ├─ (a.i = c.i)\n" +
-			"     │   ├─ LookupJoin (estimated cost=3.300 rows=1)\n" +
+			"     │   ├─ LookupJoin (estimated cost=1.058 rows=1)\n" +
 			"     │   │   ├─ TableAlias(c)\n" +
 			"     │   │   │   └─ IndexedTableAccess(mytable)\n" +
 			"     │   │   │       ├─ index: [mytable.i]\n" +
@@ -10788,10 +10788,10 @@ inner join pq on true
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
-			" └─ LookupJoin (estimated cost=3.300 rows=1) (actual rows=1 loops=1)\n" +
-			"     ├─ LookupJoin (estimated cost=3.300 rows=1) (actual rows=1 loops=1)\n" +
+			" └─ LookupJoin (estimated cost=1.058 rows=1) (actual rows=1 loops=1)\n" +
+			"     ├─ LookupJoin (estimated cost=1.058 rows=1) (actual rows=1 loops=1)\n" +
 			"     │   ├─ (a.i = c.i)\n" +
-			"     │   ├─ LookupJoin (estimated cost=3.300 rows=1) (actual rows=1 loops=1)\n" +
+			"     │   ├─ LookupJoin (estimated cost=1.058 rows=1) (actual rows=1 loops=1)\n" +
 			"     │   │   ├─ TableAlias(c)\n" +
 			"     │   │   │   └─ IndexedTableAccess(mytable)\n" +
 			"     │   │   │       ├─ index: [mytable.i]\n" +
@@ -11075,7 +11075,7 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
-			" └─ LookupJoin (estimated cost=3.300 rows=1)\n" +
+			" └─ LookupJoin (estimated cost=1.058 rows=1)\n" +
 			"     ├─ TableAlias(a)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.i]\n" +
@@ -11089,7 +11089,7 @@ inner join pq on true
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
-			" └─ LookupJoin (estimated cost=3.300 rows=1) (actual rows=0 loops=1)\n" +
+			" └─ LookupJoin (estimated cost=1.058 rows=1) (actual rows=0 loops=1)\n" +
 			"     ├─ TableAlias(a)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.i]\n" +
@@ -11655,7 +11655,7 @@ inner join pq on true
 			"             ├─ name: othertable\n" +
 			"             └─ columns: [s2 i2]\n" +
 			"",
-		ExpectedEstimates: "LookupJoin (estimated cost=3.300 rows=1)\n" +
+		ExpectedEstimates: "LookupJoin (estimated cost=1.058 rows=1)\n" +
 			" ├─ TableAlias(mt)\n" +
 			" │   └─ IndexedTableAccess(mytable)\n" +
 			" │       ├─ index: [mytable.i]\n" +
@@ -11667,7 +11667,7 @@ inner join pq on true
 			"         ├─ columns: [s2 i2]\n" +
 			"         └─ keys: mt.i\n" +
 			"",
-		ExpectedAnalysis: "LookupJoin (estimated cost=3.300 rows=1) (actual rows=1 loops=1)\n" +
+		ExpectedAnalysis: "LookupJoin (estimated cost=1.058 rows=1) (actual rows=1 loops=1)\n" +
 			" ├─ TableAlias(mt)\n" +
 			" │   └─ IndexedTableAccess(mytable)\n" +
 			" │       ├─ index: [mytable.i]\n" +
@@ -11756,7 +11756,7 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [mytable.i, othertable.i2, othertable.s2]\n" +
-			" └─ LeftOuterJoin (estimated cost=8.090 rows=3)\n" +
+			" └─ LeftOuterJoin (estimated cost=3.345 rows=3)\n" +
 			"     ├─ (mytable.i = (othertable.i2 - 1))\n" +
 			"     ├─ Table\n" +
 			"     │   ├─ name: othertable\n" +
@@ -11767,7 +11767,7 @@ inner join pq on true
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [mytable.i, othertable.i2, othertable.s2]\n" +
-			" └─ LeftOuterJoin (estimated cost=8.090 rows=3) (actual rows=3 loops=1)\n" +
+			" └─ LeftOuterJoin (estimated cost=3.345 rows=3) (actual rows=3 loops=1)\n" +
 			"     ├─ (mytable.i = (othertable.i2 - 1))\n" +
 			"     ├─ Table\n" +
 			"     │   ├─ name: othertable\n" +
@@ -11870,7 +11870,7 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [t1.timestamp]\n" +
-			" └─ InnerJoin (estimated cost=2.010 rows=1)\n" +
+			" └─ InnerJoin (estimated cost=1.115 rows=1)\n" +
 			"     ├─ (t1.TIMESTAMP = t2.tImEstamp)\n" +
 			"     ├─ TableAlias(t2)\n" +
 			"     │   └─ Table\n" +
@@ -11883,7 +11883,7 @@ inner join pq on true
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [t1.timestamp]\n" +
-			" └─ InnerJoin (estimated cost=2.010 rows=1) (actual rows=1 loops=1)\n" +
+			" └─ InnerJoin (estimated cost=1.115 rows=1) (actual rows=1 loops=1)\n" +
 			"     ├─ (t1.TIMESTAMP = t2.tImEstamp)\n" +
 			"     ├─ TableAlias(t2)\n" +
 			"     │   └─ Table\n" +
@@ -12981,7 +12981,7 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [one_pk.pk]\n" +
-			" └─ LookupJoin (estimated cost=13.200 rows=4)\n" +
+			" └─ LookupJoin (estimated cost=9.200 rows=4)\n" +
 			"     ├─ MergeJoin (estimated cost=8.120 rows=4)\n" +
 			"     │   ├─ cmp: (one_pk.pk = tpk.pk1)\n" +
 			"     │   ├─ sel: (one_pk.pk = tpk.pk2)\n" +
@@ -13002,7 +13002,7 @@ inner join pq on true
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [one_pk.pk]\n" +
-			" └─ LookupJoin (estimated cost=13.200 rows=4) (actual rows=2 loops=1)\n" +
+			" └─ LookupJoin (estimated cost=9.200 rows=4) (actual rows=2 loops=1)\n" +
 			"     ├─ MergeJoin (estimated cost=8.120 rows=4) (actual rows=2 loops=1)\n" +
 			"     │   ├─ cmp: (one_pk.pk = tpk.pk1)\n" +
 			"     │   ├─ sel: (one_pk.pk = tpk.pk2)\n" +
@@ -13066,7 +13066,7 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [one_pk.pk]\n" +
-			" └─ LookupJoin (estimated cost=13.200 rows=4)\n" +
+			" └─ LookupJoin (estimated cost=9.200 rows=4)\n" +
 			"     ├─ MergeJoin (estimated cost=8.120 rows=4)\n" +
 			"     │   ├─ cmp: (one_pk.pk = tpk.pk1)\n" +
 			"     │   ├─ sel: (one_pk.pk = tpk.pk2)\n" +
@@ -13087,7 +13087,7 @@ inner join pq on true
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [one_pk.pk]\n" +
-			" └─ LookupJoin (estimated cost=13.200 rows=4) (actual rows=2 loops=1)\n" +
+			" └─ LookupJoin (estimated cost=9.200 rows=4) (actual rows=2 loops=1)\n" +
 			"     ├─ MergeJoin (estimated cost=8.120 rows=4) (actual rows=2 loops=1)\n" +
 			"     │   ├─ cmp: (one_pk.pk = tpk.pk1)\n" +
 			"     │   ├─ sel: (one_pk.pk = tpk.pk2)\n" +
@@ -13434,7 +13434,7 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [one_pk.pk]\n" +
-			" └─ LookupJoin (estimated cost=16.500 rows=5)\n" +
+			" └─ LookupJoin (estimated cost=11.500 rows=5)\n" +
 			"     ├─ LeftOuterMergeJoin (estimated cost=8.160 rows=5)\n" +
 			"     │   ├─ cmp: (one_pk.pk = tpk.pk1)\n" +
 			"     │   ├─ sel: (one_pk.pk = tpk.pk2)\n" +
@@ -13455,7 +13455,7 @@ inner join pq on true
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [one_pk.pk]\n" +
-			" └─ LookupJoin (estimated cost=16.500 rows=5) (actual rows=2 loops=1)\n" +
+			" └─ LookupJoin (estimated cost=11.500 rows=5) (actual rows=2 loops=1)\n" +
 			"     ├─ LeftOuterMergeJoin (estimated cost=8.160 rows=5) (actual rows=4 loops=1)\n" +
 			"     │   ├─ cmp: (one_pk.pk = tpk.pk1)\n" +
 			"     │   ├─ sel: (one_pk.pk = tpk.pk2)\n" +
@@ -17523,7 +17523,7 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.pk, a.c1, a.c2, a.c3, a.c4, a.c5]\n" +
-			" └─ LookupJoin (estimated cost=13.200 rows=4)\n" +
+			" └─ LookupJoin (estimated cost=9.200 rows=4)\n" +
 			"     ├─ (a.pk = c.pk)\n" +
 			"     ├─ MergeJoin (estimated cost=8.120 rows=4)\n" +
 			"     │   ├─ cmp: (c.pk = b.pk)\n" +
@@ -17545,7 +17545,7 @@ inner join pq on true
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.pk, a.c1, a.c2, a.c3, a.c4, a.c5]\n" +
-			" └─ LookupJoin (estimated cost=13.200 rows=4) (actual rows=4 loops=1)\n" +
+			" └─ LookupJoin (estimated cost=9.200 rows=4) (actual rows=4 loops=1)\n" +
 			"     ├─ (a.pk = c.pk)\n" +
 			"     ├─ MergeJoin (estimated cost=8.120 rows=4) (actual rows=4 loops=1)\n" +
 			"     │   ├─ cmp: (c.pk = b.pk)\n" +
@@ -18125,13 +18125,13 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
-			" └─ LeftOuterJoin (estimated cost=8.090 rows=3)\n" +
+			" └─ LeftOuterJoin (estimated cost=3.345 rows=3)\n" +
 			"     ├─ (b.i = d.i)\n" +
 			"     ├─ TableAlias(d)\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
 			"     │       └─ columns: [i]\n" +
-			"     └─ LeftOuterJoin (estimated cost=8.090 rows=3)\n" +
+			"     └─ LeftOuterJoin (estimated cost=3.345 rows=3)\n" +
 			"         ├─ (a.i = (c.i - 1))\n" +
 			"         ├─ LeftOuterMergeJoin (estimated cost=6.120 rows=3)\n" +
 			"         │   ├─ cmp: ((b.i + 1) = a.i)\n" +
@@ -18152,13 +18152,13 @@ inner join pq on true
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
-			" └─ LeftOuterJoin (estimated cost=8.090 rows=3) (actual rows=3 loops=1)\n" +
+			" └─ LeftOuterJoin (estimated cost=3.345 rows=3) (actual rows=3 loops=1)\n" +
 			"     ├─ (b.i = d.i)\n" +
 			"     ├─ TableAlias(d)\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
 			"     │       └─ columns: [i]\n" +
-			"     └─ LeftOuterJoin (estimated cost=8.090 rows=3) (actual rows=3 loops=3)\n" +
+			"     └─ LeftOuterJoin (estimated cost=3.345 rows=3) (actual rows=3 loops=3)\n" +
 			"         ├─ (a.i = (c.i - 1))\n" +
 			"         ├─ LeftOuterMergeJoin (estimated cost=6.120 rows=3) (actual rows=3 loops=3)\n" +
 			"         │   ├─ cmp: ((b.i + 1) = a.i)\n" +
@@ -18225,9 +18225,9 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.i, a.s, b.s2, b.i2]\n" +
-			" └─ LeftOuterJoin (estimated cost=8.090 rows=3)\n" +
+			" └─ LeftOuterJoin (estimated cost=3.345 rows=3)\n" +
 			"     ├─ (b.i2 = d.i2)\n" +
-			"     ├─ LeftOuterJoin (estimated cost=8.090 rows=3)\n" +
+			"     ├─ LeftOuterJoin (estimated cost=3.345 rows=3)\n" +
 			"     │   ├─ (a.i = (c.i - 1))\n" +
 			"     │   ├─ LeftOuterMergeJoin (estimated cost=6.120 rows=3)\n" +
 			"     │   │   ├─ cmp: ((b.i2 + 1) = a.i)\n" +
@@ -18252,9 +18252,9 @@ inner join pq on true
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.i, a.s, b.s2, b.i2]\n" +
-			" └─ LeftOuterJoin (estimated cost=8.090 rows=3) (actual rows=3 loops=1)\n" +
+			" └─ LeftOuterJoin (estimated cost=3.345 rows=3) (actual rows=3 loops=1)\n" +
 			"     ├─ (b.i2 = d.i2)\n" +
-			"     ├─ LeftOuterJoin (estimated cost=8.090 rows=3) (actual rows=3 loops=1)\n" +
+			"     ├─ LeftOuterJoin (estimated cost=3.345 rows=3) (actual rows=3 loops=1)\n" +
 			"     │   ├─ (a.i = (c.i - 1))\n" +
 			"     │   ├─ LeftOuterMergeJoin (estimated cost=6.120 rows=3) (actual rows=3 loops=1)\n" +
 			"     │   │   ├─ cmp: ((b.i2 + 1) = a.i)\n" +
@@ -18325,9 +18325,9 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.i, a.s, b.s2, b.i2]\n" +
-			" └─ LeftOuterJoin (estimated cost=8.090 rows=3)\n" +
+			" └─ LeftOuterJoin (estimated cost=3.345 rows=3)\n" +
 			"     ├─ (b.i2 = d.i2)\n" +
-			"     ├─ LeftOuterJoin (estimated cost=8.090 rows=3)\n" +
+			"     ├─ LeftOuterJoin (estimated cost=3.345 rows=3)\n" +
 			"     │   ├─ (a.i = (c.i - 1))\n" +
 			"     │   ├─ TableAlias(c)\n" +
 			"     │   │   └─ Table\n" +
@@ -18352,9 +18352,9 @@ inner join pq on true
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.i, a.s, b.s2, b.i2]\n" +
-			" └─ LeftOuterJoin (estimated cost=8.090 rows=3) (actual rows=3 loops=1)\n" +
+			" └─ LeftOuterJoin (estimated cost=3.345 rows=3) (actual rows=3 loops=1)\n" +
 			"     ├─ (b.i2 = d.i2)\n" +
-			"     ├─ LeftOuterJoin (estimated cost=8.090 rows=3) (actual rows=3 loops=1)\n" +
+			"     ├─ LeftOuterJoin (estimated cost=3.345 rows=3) (actual rows=3 loops=1)\n" +
 			"     │   ├─ (a.i = (c.i - 1))\n" +
 			"     │   ├─ TableAlias(c)\n" +
 			"     │   │   └─ Table\n" +
@@ -19074,7 +19074,7 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
-			" └─ LookupJoin (estimated cost=3.300 rows=1)\n" +
+			" └─ LookupJoin (estimated cost=1.058 rows=1)\n" +
 			"     ├─ TableAlias(a)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.i]\n" +
@@ -19088,7 +19088,7 @@ inner join pq on true
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
-			" └─ LookupJoin (estimated cost=3.300 rows=1) (actual rows=1 loops=1)\n" +
+			" └─ LookupJoin (estimated cost=1.058 rows=1) (actual rows=1 loops=1)\n" +
 			"     ├─ TableAlias(a)\n" +
 			"     │   └─ IndexedTableAccess(mytable)\n" +
 			"     │       ├─ index: [mytable.i]\n" +
