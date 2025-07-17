@@ -275,7 +275,11 @@ func (i *WindowPartitionIter) compute(ctx *sql.Context) (sql.Row, error) {
 				return nil, err
 			}
 		}
-		row[j] = agg.fn.Compute(ctx, interval, i.input)
+		v, err := agg.fn.Compute(ctx, interval, i.input)
+		if err != nil {
+			return nil, err
+		}
+		row[j] = v
 	}
 
 	// TODO: move sort by above aggregation
