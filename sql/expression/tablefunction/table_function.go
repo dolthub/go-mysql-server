@@ -85,11 +85,10 @@ func (t *TableFunctionWrapper) RowIter(ctx *sql.Context, r sql.Row) (sql.RowIter
 	if err != nil {
 		return nil, err
 	}
-	if ri, ok := v.(sql.RowIter); ok {
-		return ri, nil
-	} else {
-		return sql.RowsToRowIter(sql.Row{v}), nil
-	}
+	//if ri, ok := v.(sql.RowIter); ok {
+	//	return ri, nil
+	//}
+	return sql.RowsToRowIter(sql.Row{v}), nil
 }
 
 func (t *TableFunctionWrapper) Resolved() bool {
