@@ -94,6 +94,7 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 		case jp.Op.IsDegenerate():
 			return ((lBest*rBest)*seqIOCostFactor + (lBest*rBest)*cpuCostFactor) * degeneratePenalty, nil
 		case jp.Op.IsHash():
+			// TODO we're likely underestimating the cost of hash joins because we don't account for hash setup costs
 			if jp.Op.IsPartial() {
 				cost := lBest * (rBest / 2.0) * (seqIOCostFactor + cpuCostFactor)
 				return cost * .5, nil

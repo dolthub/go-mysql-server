@@ -41,8 +41,8 @@ SELECT c_discount, c_last, c_credit, w_tax FROM customer2, warehouse2 WHERE w_id
 			"         │       ├─ customer2.c_id:0!null\n" +
 			"         │       └─ 2151 (int)\n" +
 			"         └─ IndexedTableAccess(customer2)\n" +
-			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_id]\n" +
-			"             ├─ keys: [warehouse2.w_id:0!null 9 (tinyint) 2151 (int)]\n" +
+			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
+			"             ├─ keys: [warehouse2.w_id:0!null 9 (tinyint)]\n" +
 			"             ├─ colSet: (1-21)\n" +
 			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
@@ -51,7 +51,7 @@ SELECT c_discount, c_last, c_credit, w_tax FROM customer2, warehouse2 WHERE w_id
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [customer2.c_discount, customer2.c_last, customer2.c_credit, warehouse2.w_tax]\n" +
-			" └─ LookupJoin (estimated cost=3.300 rows=1)\n" +
+			" └─ LookupJoin (estimated cost=1.058 rows=1)\n" +
 			"     ├─ IndexedTableAccess(warehouse2)\n" +
 			"     │   ├─ index: [warehouse2.w_id]\n" +
 			"     │   ├─ filters: [{[1, 1]}]\n" +
@@ -59,13 +59,13 @@ SELECT c_discount, c_last, c_credit, w_tax FROM customer2, warehouse2 WHERE w_id
 			"     └─ Filter\n" +
 			"         ├─ ((customer2.c_d_id = 9) AND (customer2.c_id = 2151))\n" +
 			"         └─ IndexedTableAccess(customer2)\n" +
-			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_id]\n" +
+			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
 			"             ├─ columns: [c_id c_d_id c_w_id c_last c_credit c_discount]\n" +
-			"             └─ keys: warehouse2.w_id, 9, 2151\n" +
+			"             └─ keys: warehouse2.w_id, 9\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [customer2.c_discount, customer2.c_last, customer2.c_credit, warehouse2.w_tax]\n" +
-			" └─ LookupJoin (estimated cost=3.300 rows=1) (actual rows=0 loops=1)\n" +
+			" └─ LookupJoin (estimated cost=1.058 rows=1) (actual rows=0 loops=1)\n" +
 			"     ├─ IndexedTableAccess(warehouse2)\n" +
 			"     │   ├─ index: [warehouse2.w_id]\n" +
 			"     │   ├─ filters: [{[1, 1]}]\n" +
@@ -73,9 +73,9 @@ SELECT c_discount, c_last, c_credit, w_tax FROM customer2, warehouse2 WHERE w_id
 			"     └─ Filter\n" +
 			"         ├─ ((customer2.c_d_id = 9) AND (customer2.c_id = 2151))\n" +
 			"         └─ IndexedTableAccess(customer2)\n" +
-			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_id]\n" +
+			"             ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
 			"             ├─ columns: [c_id c_d_id c_w_id c_last c_credit c_discount]\n" +
-			"             └─ keys: warehouse2.w_id, 9, 2151\n" +
+			"             └─ keys: warehouse2.w_id, 9\n" +
 			"",
 	},
 	{
@@ -709,8 +709,8 @@ SELECT d_next_o_id FROM district2 WHERE d_id = 5 AND d_w_id= 1`,
 			"             │       ├─ stock2.s_quantity:2\n" +
 			"             │       └─ 18 (smallint)\n" +
 			"             └─ IndexedTableAccess(stock2)\n" +
-			"                 ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
-			"                 ├─ keys: [1 (smallint) order_line2.ol_i_id:3]\n" +
+			"                 ├─ index: [stock2.s_i_id]\n" +
+			"                 ├─ keys: [order_line2.ol_i_id:3]\n" +
 			"                 ├─ colSet: (11-27)\n" +
 			"                 ├─ tableId: 2\n" +
 			"                 └─ Table\n" +
@@ -730,9 +730,9 @@ SELECT d_next_o_id FROM district2 WHERE d_id = 5 AND d_w_id= 1`,
 			"         └─ Filter\n" +
 			"             ├─ ((stock2.s_w_id = 1) AND (stock2.s_quantity < 18))\n" +
 			"             └─ IndexedTableAccess(stock2)\n" +
-			"                 ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
+			"                 ├─ index: [stock2.s_i_id]\n" +
 			"                 ├─ columns: [s_i_id s_w_id s_quantity]\n" +
-			"                 └─ keys: 1, order_line2.ol_i_id\n" +
+			"                 └─ keys: order_line2.ol_i_id\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [countdistinct([stock2.s_i_id]) as COUNT(DISTINCT (s_i_id))]\n" +
@@ -747,9 +747,9 @@ SELECT d_next_o_id FROM district2 WHERE d_id = 5 AND d_w_id= 1`,
 			"         └─ Filter\n" +
 			"             ├─ ((stock2.s_w_id = 1) AND (stock2.s_quantity < 18))\n" +
 			"             └─ IndexedTableAccess(stock2)\n" +
-			"                 ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
+			"                 ├─ index: [stock2.s_i_id]\n" +
 			"                 ├─ columns: [s_i_id s_w_id s_quantity]\n" +
-			"                 └─ keys: 1, order_line2.ol_i_id\n" +
+			"                 └─ keys: order_line2.ol_i_id\n" +
 			"",
 	},
 	{

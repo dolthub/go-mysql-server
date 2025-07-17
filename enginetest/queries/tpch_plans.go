@@ -184,27 +184,20 @@ order by
 			"         └─ LookupJoin\n" +
 			"             ├─ LookupJoin\n" +
 			"             │   ├─ LookupJoin\n" +
-			"             │   │   ├─ MergeJoin\n" +
-			"             │   │   │   ├─ cmp: Eq\n" +
-			"             │   │   │   │   ├─ part.p_partkey:0!null\n" +
-			"             │   │   │   │   └─ partsupp.ps_partkey:9!null\n" +
+			"             │   │   ├─ LookupJoin\n" +
 			"             │   │   │   ├─ Filter\n" +
 			"             │   │   │   │   ├─ AND\n" +
 			"             │   │   │   │   │   ├─ Eq\n" +
 			"             │   │   │   │   │   │   ├─ part.p_size:5!null\n" +
 			"             │   │   │   │   │   │   └─ 15 (int)\n" +
 			"             │   │   │   │   │   └─ part.p_type LIKE '%BRASS'\n" +
-			"             │   │   │   │   └─ IndexedTableAccess(part)\n" +
-			"             │   │   │   │       ├─ index: [part.P_PARTKEY]\n" +
-			"             │   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"             │   │   │   │       ├─ colSet: (1-9)\n" +
-			"             │   │   │   │       ├─ tableId: 1\n" +
+			"             │   │   │   │   └─ ProcessTable\n" +
 			"             │   │   │   │       └─ Table\n" +
 			"             │   │   │   │           ├─ name: part\n" +
 			"             │   │   │   │           └─ columns: [p_partkey p_name p_mfgr p_brand p_type p_size p_container p_retailprice p_comment]\n" +
 			"             │   │   │   └─ IndexedTableAccess(partsupp)\n" +
 			"             │   │   │       ├─ index: [partsupp.PS_PARTKEY,partsupp.PS_SUPPKEY]\n" +
-			"             │   │   │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             │   │   │       ├─ keys: [part.p_partkey:0!null]\n" +
 			"             │   │   │       ├─ colSet: (17-21)\n" +
 			"             │   │   │       ├─ tableId: 3\n" +
 			"             │   │   │       └─ Table\n" +
@@ -276,16 +269,14 @@ order by
 			"         └─ LookupJoin\n" +
 			"             ├─ LookupJoin\n" +
 			"             │   ├─ LookupJoin\n" +
-			"             │   │   ├─ MergeJoin\n" +
-			"             │   │   │   ├─ cmp: (part.p_partkey = partsupp.ps_partkey)\n" +
+			"             │   │   ├─ LookupJoin\n" +
 			"             │   │   │   ├─ Filter\n" +
 			"             │   │   │   │   ├─ ((part.p_size = 15) AND part.p_type LIKE '%BRASS')\n" +
-			"             │   │   │   │   └─ IndexedTableAccess(part)\n" +
-			"             │   │   │   │       ├─ index: [part.P_PARTKEY]\n" +
-			"             │   │   │   │       └─ filters: [{[NULL, ∞)}]\n" +
+			"             │   │   │   │   └─ Table\n" +
+			"             │   │   │   │       └─ name: part\n" +
 			"             │   │   │   └─ IndexedTableAccess(partsupp)\n" +
 			"             │   │   │       ├─ index: [partsupp.PS_PARTKEY,partsupp.PS_SUPPKEY]\n" +
-			"             │   │   │       └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             │   │   │       └─ keys: part.p_partkey\n" +
 			"             │   │   └─ IndexedTableAccess(supplier)\n" +
 			"             │   │       ├─ index: [supplier.S_SUPPKEY]\n" +
 			"             │   │       └─ keys: partsupp.ps_suppkey\n" +
@@ -335,16 +326,14 @@ order by
 			"         └─ LookupJoin\n" +
 			"             ├─ LookupJoin\n" +
 			"             │   ├─ LookupJoin\n" +
-			"             │   │   ├─ MergeJoin\n" +
-			"             │   │   │   ├─ cmp: (part.p_partkey = partsupp.ps_partkey)\n" +
+			"             │   │   ├─ LookupJoin\n" +
 			"             │   │   │   ├─ Filter\n" +
 			"             │   │   │   │   ├─ ((part.p_size = 15) AND part.p_type LIKE '%BRASS')\n" +
-			"             │   │   │   │   └─ IndexedTableAccess(part)\n" +
-			"             │   │   │   │       ├─ index: [part.P_PARTKEY]\n" +
-			"             │   │   │   │       └─ filters: [{[NULL, ∞)}]\n" +
+			"             │   │   │   │   └─ Table\n" +
+			"             │   │   │   │       └─ name: part\n" +
 			"             │   │   │   └─ IndexedTableAccess(partsupp)\n" +
 			"             │   │   │       ├─ index: [partsupp.PS_PARTKEY,partsupp.PS_SUPPKEY]\n" +
-			"             │   │   │       └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"             │   │   │       └─ keys: part.p_partkey\n" +
 			"             │   │   └─ IndexedTableAccess(supplier)\n" +
 			"             │   │       ├─ index: [supplier.S_SUPPKEY]\n" +
 			"             │   │       └─ keys: partsupp.ps_suppkey\n" +
@@ -389,49 +378,42 @@ order by
 			"     └─ Project\n" +
 			"         ├─ columns: [sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null, lineitem.l_orderkey:1!null, orders.o_orderdate:2!null, orders.o_shippriority:3!null, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null->revenue:0]\n" +
 			"         └─ GroupBy\n" +
-			"             ├─ select: SUM((lineitem.l_extendedprice:5!null * (1 (tinyint) - lineitem.l_discount:6!null))), lineitem.l_orderkey:4!null, orders.o_orderdate:2!null, orders.o_shippriority:3!null\n" +
-			"             ├─ group: lineitem.l_orderkey:4!null, orders.o_orderdate:2!null, orders.o_shippriority:3!null\n" +
+			"             ├─ select: SUM((lineitem.l_extendedprice:7!null * (1 (tinyint) - lineitem.l_discount:8!null))), lineitem.l_orderkey:6!null, orders.o_orderdate:2!null, orders.o_shippriority:3!null\n" +
+			"             ├─ group: lineitem.l_orderkey:6!null, orders.o_orderdate:2!null, orders.o_shippriority:3!null\n" +
 			"             └─ LookupJoin\n" +
-			"                 ├─ MergeJoin\n" +
-			"                 │   ├─ cmp: Eq\n" +
-			"                 │   │   ├─ orders.o_orderkey:0!null\n" +
-			"                 │   │   └─ lineitem.l_orderkey:4!null\n" +
+			"                 ├─ LookupJoin\n" +
 			"                 │   ├─ Filter\n" +
 			"                 │   │   ├─ LessThan\n" +
 			"                 │   │   │   ├─ orders.o_orderdate:2!null\n" +
 			"                 │   │   │   └─ 1995-03-15 (longtext)\n" +
-			"                 │   │   └─ IndexedTableAccess(orders)\n" +
-			"                 │   │       ├─ index: [orders.O_ORDERKEY]\n" +
-			"                 │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"                 │   │       ├─ colSet: (9-17)\n" +
-			"                 │   │       ├─ tableId: 2\n" +
+			"                 │   │   └─ ProcessTable\n" +
 			"                 │   │       └─ Table\n" +
 			"                 │   │           ├─ name: orders\n" +
 			"                 │   │           └─ columns: [o_orderkey o_custkey o_orderdate o_shippriority]\n" +
 			"                 │   └─ Filter\n" +
-			"                 │       ├─ GreaterThan\n" +
-			"                 │       │   ├─ lineitem.l_shipdate:3!null\n" +
-			"                 │       │   └─ 1995-03-15 (longtext)\n" +
-			"                 │       └─ IndexedTableAccess(lineitem)\n" +
-			"                 │           ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
-			"                 │           ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                 │           ├─ colSet: (18-33)\n" +
-			"                 │           ├─ tableId: 3\n" +
+			"                 │       ├─ Eq\n" +
+			"                 │       │   ├─ customer.c_mktsegment:1!null\n" +
+			"                 │       │   └─ BUILDING (longtext)\n" +
+			"                 │       └─ IndexedTableAccess(customer)\n" +
+			"                 │           ├─ index: [customer.C_CUSTKEY]\n" +
+			"                 │           ├─ keys: [orders.o_custkey:1!null]\n" +
+			"                 │           ├─ colSet: (1-8)\n" +
+			"                 │           ├─ tableId: 1\n" +
 			"                 │           └─ Table\n" +
-			"                 │               ├─ name: lineitem\n" +
-			"                 │               └─ columns: [l_orderkey l_extendedprice l_discount l_shipdate]\n" +
+			"                 │               ├─ name: customer\n" +
+			"                 │               └─ columns: [c_custkey c_mktsegment]\n" +
 			"                 └─ Filter\n" +
-			"                     ├─ Eq\n" +
-			"                     │   ├─ customer.c_mktsegment:1!null\n" +
-			"                     │   └─ BUILDING (longtext)\n" +
-			"                     └─ IndexedTableAccess(customer)\n" +
-			"                         ├─ index: [customer.C_CUSTKEY]\n" +
-			"                         ├─ keys: [orders.o_custkey:1!null]\n" +
-			"                         ├─ colSet: (1-8)\n" +
-			"                         ├─ tableId: 1\n" +
+			"                     ├─ GreaterThan\n" +
+			"                     │   ├─ lineitem.l_shipdate:3!null\n" +
+			"                     │   └─ 1995-03-15 (longtext)\n" +
+			"                     └─ IndexedTableAccess(lineitem)\n" +
+			"                         ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
+			"                         ├─ keys: [orders.o_orderkey:0!null]\n" +
+			"                         ├─ colSet: (18-33)\n" +
+			"                         ├─ tableId: 3\n" +
 			"                         └─ Table\n" +
-			"                             ├─ name: customer\n" +
-			"                             └─ columns: [c_custkey c_mktsegment]\n" +
+			"                             ├─ name: lineitem\n" +
+			"                             └─ columns: [l_orderkey l_extendedprice l_discount l_shipdate]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [lineitem.l_orderkey, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as revenue, orders.o_orderdate, orders.o_shippriority]\n" +
@@ -442,26 +424,24 @@ order by
 			"             ├─ SelectedExprs(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), lineitem.l_orderkey, orders.o_orderdate, orders.o_shippriority)\n" +
 			"             ├─ Grouping(lineitem.l_orderkey, orders.o_orderdate, orders.o_shippriority)\n" +
 			"             └─ LookupJoin\n" +
-			"                 ├─ MergeJoin\n" +
-			"                 │   ├─ cmp: (orders.o_orderkey = lineitem.l_orderkey)\n" +
+			"                 ├─ LookupJoin\n" +
 			"                 │   ├─ Filter\n" +
 			"                 │   │   ├─ (orders.o_orderdate < '1995-03-15')\n" +
-			"                 │   │   └─ IndexedTableAccess(orders)\n" +
-			"                 │   │       ├─ index: [orders.O_ORDERKEY]\n" +
-			"                 │   │       ├─ filters: [{[NULL, ∞)}]\n" +
+			"                 │   │   └─ Table\n" +
+			"                 │   │       ├─ name: orders\n" +
 			"                 │   │       └─ columns: [o_orderkey o_custkey o_orderdate o_shippriority]\n" +
 			"                 │   └─ Filter\n" +
-			"                 │       ├─ (lineitem.l_shipdate > '1995-03-15')\n" +
-			"                 │       └─ IndexedTableAccess(lineitem)\n" +
-			"                 │           ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
-			"                 │           ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                 │           └─ columns: [l_orderkey l_extendedprice l_discount l_shipdate]\n" +
+			"                 │       ├─ (customer.c_mktsegment = 'BUILDING')\n" +
+			"                 │       └─ IndexedTableAccess(customer)\n" +
+			"                 │           ├─ index: [customer.C_CUSTKEY]\n" +
+			"                 │           ├─ columns: [c_custkey c_mktsegment]\n" +
+			"                 │           └─ keys: orders.o_custkey\n" +
 			"                 └─ Filter\n" +
-			"                     ├─ (customer.c_mktsegment = 'BUILDING')\n" +
-			"                     └─ IndexedTableAccess(customer)\n" +
-			"                         ├─ index: [customer.C_CUSTKEY]\n" +
-			"                         ├─ columns: [c_custkey c_mktsegment]\n" +
-			"                         └─ keys: orders.o_custkey\n" +
+			"                     ├─ (lineitem.l_shipdate > '1995-03-15')\n" +
+			"                     └─ IndexedTableAccess(lineitem)\n" +
+			"                         ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
+			"                         ├─ columns: [l_orderkey l_extendedprice l_discount l_shipdate]\n" +
+			"                         └─ keys: orders.o_orderkey\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [lineitem.l_orderkey, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as revenue, orders.o_orderdate, orders.o_shippriority]\n" +
@@ -472,26 +452,24 @@ order by
 			"             ├─ SelectedExprs(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), lineitem.l_orderkey, orders.o_orderdate, orders.o_shippriority)\n" +
 			"             ├─ Grouping(lineitem.l_orderkey, orders.o_orderdate, orders.o_shippriority)\n" +
 			"             └─ LookupJoin\n" +
-			"                 ├─ MergeJoin\n" +
-			"                 │   ├─ cmp: (orders.o_orderkey = lineitem.l_orderkey)\n" +
+			"                 ├─ LookupJoin\n" +
 			"                 │   ├─ Filter\n" +
 			"                 │   │   ├─ (orders.o_orderdate < '1995-03-15')\n" +
-			"                 │   │   └─ IndexedTableAccess(orders)\n" +
-			"                 │   │       ├─ index: [orders.O_ORDERKEY]\n" +
-			"                 │   │       ├─ filters: [{[NULL, ∞)}]\n" +
+			"                 │   │   └─ Table\n" +
+			"                 │   │       ├─ name: orders\n" +
 			"                 │   │       └─ columns: [o_orderkey o_custkey o_orderdate o_shippriority]\n" +
 			"                 │   └─ Filter\n" +
-			"                 │       ├─ (lineitem.l_shipdate > '1995-03-15')\n" +
-			"                 │       └─ IndexedTableAccess(lineitem)\n" +
-			"                 │           ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
-			"                 │           ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                 │           └─ columns: [l_orderkey l_extendedprice l_discount l_shipdate]\n" +
+			"                 │       ├─ (customer.c_mktsegment = 'BUILDING')\n" +
+			"                 │       └─ IndexedTableAccess(customer)\n" +
+			"                 │           ├─ index: [customer.C_CUSTKEY]\n" +
+			"                 │           ├─ columns: [c_custkey c_mktsegment]\n" +
+			"                 │           └─ keys: orders.o_custkey\n" +
 			"                 └─ Filter\n" +
-			"                     ├─ (customer.c_mktsegment = 'BUILDING')\n" +
-			"                     └─ IndexedTableAccess(customer)\n" +
-			"                         ├─ index: [customer.C_CUSTKEY]\n" +
-			"                         ├─ columns: [c_custkey c_mktsegment]\n" +
-			"                         └─ keys: orders.o_custkey\n" +
+			"                     ├─ (lineitem.l_shipdate > '1995-03-15')\n" +
+			"                     └─ IndexedTableAccess(lineitem)\n" +
+			"                         ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
+			"                         ├─ columns: [l_orderkey l_extendedprice l_discount l_shipdate]\n" +
+			"                         └─ keys: orders.o_orderkey\n" +
 			"",
 	},
 	{
@@ -524,42 +502,31 @@ order by
 			"     └─ GroupBy\n" +
 			"         ├─ select: COUNT(1 (bigint)), orders.o_orderpriority:5!null\n" +
 			"         ├─ group: orders.o_orderpriority:5!null\n" +
-			"         └─ Project\n" +
-			"             ├─ columns: [orders.O_ORDERKEY:0!null, orders.O_CUSTKEY:1!null, orders.O_ORDERSTATUS:2!null, orders.O_TOTALPRICE:3!null, orders.O_ORDERDATE:4!null, orders.O_ORDERPRIORITY:5!null, orders.O_CLERK:6!null, orders.O_SHIPPRIORITY:7!null, orders.O_COMMENT:8!null]\n" +
-			"             └─ MergeJoin\n" +
-			"                 ├─ cmp: Eq\n" +
-			"                 │   ├─ orders.o_orderkey:0!null\n" +
-			"                 │   └─ lineitem.l_orderkey:9!null\n" +
-			"                 ├─ Filter\n" +
-			"                 │   ├─ AND\n" +
-			"                 │   │   ├─ GreaterThanOrEqual\n" +
-			"                 │   │   │   ├─ orders.o_orderdate:4!null\n" +
-			"                 │   │   │   └─ 1993-07-01 (longtext)\n" +
-			"                 │   │   └─ LessThan\n" +
-			"                 │   │       ├─ orders.o_orderdate:4!null\n" +
-			"                 │   │       └─ 1993-10-01 00:00:00 +0000 UTC (datetime)\n" +
-			"                 │   └─ IndexedTableAccess(orders)\n" +
-			"                 │       ├─ index: [orders.O_ORDERKEY]\n" +
-			"                 │       ├─ static: [{[NULL, ∞)}]\n" +
-			"                 │       ├─ colSet: (1-9)\n" +
-			"                 │       ├─ tableId: 1\n" +
-			"                 │       └─ Table\n" +
-			"                 │           ├─ name: orders\n" +
-			"                 │           └─ columns: [o_orderkey o_custkey o_orderstatus o_totalprice o_orderdate o_orderpriority o_clerk o_shippriority o_comment]\n" +
-			"                 └─ Project\n" +
-			"                     ├─ columns: [lineitem.l_orderkey:0!null]\n" +
-			"                     └─ Filter\n" +
-			"                         ├─ LessThan\n" +
-			"                         │   ├─ lineitem.l_commitdate:11!null\n" +
-			"                         │   └─ lineitem.l_receiptdate:12!null\n" +
-			"                         └─ IndexedTableAccess(lineitem)\n" +
-			"                             ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
-			"                             ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                             ├─ colSet: (10-25)\n" +
-			"                             ├─ tableId: 2\n" +
-			"                             └─ Table\n" +
-			"                                 ├─ name: lineitem\n" +
-			"                                 └─ columns: [l_orderkey l_partkey l_suppkey l_linenumber l_quantity l_extendedprice l_discount l_tax l_returnflag l_linestatus l_shipdate l_commitdate l_receiptdate l_shipinstruct l_shipmode l_comment]\n" +
+			"         └─ SemiLookupJoin\n" +
+			"             ├─ Filter\n" +
+			"             │   ├─ AND\n" +
+			"             │   │   ├─ GreaterThanOrEqual\n" +
+			"             │   │   │   ├─ orders.o_orderdate:4!null\n" +
+			"             │   │   │   └─ 1993-07-01 (longtext)\n" +
+			"             │   │   └─ LessThan\n" +
+			"             │   │       ├─ orders.o_orderdate:4!null\n" +
+			"             │   │       └─ 1993-10-01 00:00:00 +0000 UTC (datetime)\n" +
+			"             │   └─ ProcessTable\n" +
+			"             │       └─ Table\n" +
+			"             │           ├─ name: orders\n" +
+			"             │           └─ columns: [o_orderkey o_custkey o_orderstatus o_totalprice o_orderdate o_orderpriority o_clerk o_shippriority o_comment]\n" +
+			"             └─ Filter\n" +
+			"                 ├─ LessThan\n" +
+			"                 │   ├─ lineitem.l_commitdate:11!null\n" +
+			"                 │   └─ lineitem.l_receiptdate:12!null\n" +
+			"                 └─ IndexedTableAccess(lineitem)\n" +
+			"                     ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
+			"                     ├─ keys: [orders.o_orderkey:0!null]\n" +
+			"                     ├─ colSet: (10-25)\n" +
+			"                     ├─ tableId: 2\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: lineitem\n" +
+			"                         └─ columns: [l_orderkey l_partkey l_suppkey l_linenumber l_quantity l_extendedprice l_discount l_tax l_returnflag l_linestatus l_shipdate l_commitdate l_receiptdate l_shipinstruct l_shipmode l_comment]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [orders.o_orderpriority, count(1) as order_count]\n" +
@@ -567,23 +534,17 @@ order by
 			"     └─ GroupBy\n" +
 			"         ├─ SelectedExprs(COUNT(1), orders.o_orderpriority)\n" +
 			"         ├─ Grouping(orders.o_orderpriority)\n" +
-			"         └─ Project\n" +
-			"             ├─ columns: [orders.O_ORDERKEY, orders.O_CUSTKEY, orders.O_ORDERSTATUS, orders.O_TOTALPRICE, orders.O_ORDERDATE, orders.O_ORDERPRIORITY, orders.O_CLERK, orders.O_SHIPPRIORITY, orders.O_COMMENT]\n" +
-			"             └─ MergeJoin\n" +
-			"                 ├─ cmp: (orders.o_orderkey = lineitem.l_orderkey)\n" +
-			"                 ├─ Filter\n" +
-			"                 │   ├─ ((orders.o_orderdate >= '1993-07-01') AND (orders.o_orderdate < 1993-10-01 00:00:00 +0000 UTC))\n" +
-			"                 │   └─ IndexedTableAccess(orders)\n" +
-			"                 │       ├─ index: [orders.O_ORDERKEY]\n" +
-			"                 │       └─ filters: [{[NULL, ∞)}]\n" +
-			"                 └─ Project\n" +
-			"                     ├─ columns: [lineitem.l_orderkey]\n" +
-			"                     └─ Filter\n" +
-			"                         ├─ (lineitem.l_commitdate < lineitem.l_receiptdate)\n" +
-			"                         └─ IndexedTableAccess(lineitem)\n" +
-			"                             ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
-			"                             ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                             └─ columns: [l_orderkey l_partkey l_suppkey l_linenumber l_quantity l_extendedprice l_discount l_tax l_returnflag l_linestatus l_shipdate l_commitdate l_receiptdate l_shipinstruct l_shipmode l_comment]\n" +
+			"         └─ SemiLookupJoin\n" +
+			"             ├─ Filter\n" +
+			"             │   ├─ ((orders.o_orderdate >= '1993-07-01') AND (orders.o_orderdate < 1993-10-01 00:00:00 +0000 UTC))\n" +
+			"             │   └─ Table\n" +
+			"             │       └─ name: orders\n" +
+			"             └─ Filter\n" +
+			"                 ├─ (lineitem.l_commitdate < lineitem.l_receiptdate)\n" +
+			"                 └─ IndexedTableAccess(lineitem)\n" +
+			"                     ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
+			"                     ├─ columns: [l_orderkey l_partkey l_suppkey l_linenumber l_quantity l_extendedprice l_discount l_tax l_returnflag l_linestatus l_shipdate l_commitdate l_receiptdate l_shipinstruct l_shipmode l_comment]\n" +
+			"                     └─ keys: orders.o_orderkey\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [orders.o_orderpriority, count(1) as order_count]\n" +
@@ -591,23 +552,17 @@ order by
 			"     └─ GroupBy\n" +
 			"         ├─ SelectedExprs(COUNT(1), orders.o_orderpriority)\n" +
 			"         ├─ Grouping(orders.o_orderpriority)\n" +
-			"         └─ Project\n" +
-			"             ├─ columns: [orders.O_ORDERKEY, orders.O_CUSTKEY, orders.O_ORDERSTATUS, orders.O_TOTALPRICE, orders.O_ORDERDATE, orders.O_ORDERPRIORITY, orders.O_CLERK, orders.O_SHIPPRIORITY, orders.O_COMMENT]\n" +
-			"             └─ MergeJoin\n" +
-			"                 ├─ cmp: (orders.o_orderkey = lineitem.l_orderkey)\n" +
-			"                 ├─ Filter\n" +
-			"                 │   ├─ ((orders.o_orderdate >= '1993-07-01') AND (orders.o_orderdate < 1993-10-01 00:00:00 +0000 UTC))\n" +
-			"                 │   └─ IndexedTableAccess(orders)\n" +
-			"                 │       ├─ index: [orders.O_ORDERKEY]\n" +
-			"                 │       └─ filters: [{[NULL, ∞)}]\n" +
-			"                 └─ Project\n" +
-			"                     ├─ columns: [lineitem.l_orderkey]\n" +
-			"                     └─ Filter\n" +
-			"                         ├─ (lineitem.l_commitdate < lineitem.l_receiptdate)\n" +
-			"                         └─ IndexedTableAccess(lineitem)\n" +
-			"                             ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
-			"                             ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                             └─ columns: [l_orderkey l_partkey l_suppkey l_linenumber l_quantity l_extendedprice l_discount l_tax l_returnflag l_linestatus l_shipdate l_commitdate l_receiptdate l_shipinstruct l_shipmode l_comment]\n" +
+			"         └─ SemiLookupJoin\n" +
+			"             ├─ Filter\n" +
+			"             │   ├─ ((orders.o_orderdate >= '1993-07-01') AND (orders.o_orderdate < 1993-10-01 00:00:00 +0000 UTC))\n" +
+			"             │   └─ Table\n" +
+			"             │       └─ name: orders\n" +
+			"             └─ Filter\n" +
+			"                 ├─ (lineitem.l_commitdate < lineitem.l_receiptdate)\n" +
+			"                 └─ IndexedTableAccess(lineitem)\n" +
+			"                     ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
+			"                     ├─ columns: [l_orderkey l_partkey l_suppkey l_linenumber l_quantity l_extendedprice l_discount l_tax l_returnflag l_linestatus l_shipdate l_commitdate l_receiptdate l_shipinstruct l_shipmode l_comment]\n" +
+			"                     └─ keys: orders.o_orderkey\n" +
 			"",
 	},
 	{
@@ -920,7 +875,7 @@ order by
 			"             ├─ colSet: (53-56)\n" +
 			"             ├─ tableId: 7\n" +
 			"             └─ Project\n" +
-			"                 ├─ columns: [n1.n_name:12!null->supp_nation:0, n2.n_name:14!null->cust_nation:0, extract('YEAR' from lineitem.l_shipdate)->l_year:0, (lineitem.l_extendedprice:2!null * (1 (tinyint) - lineitem.l_discount:3!null))->volume:0]\n" +
+			"                 ├─ columns: [n1.n_name:12!null->supp_nation:0, n2.n_name:14!null->cust_nation:0, extract('YEAR' from lineitem.l_shipdate)->l_year:0, (lineitem.l_extendedprice:4!null * (1 (tinyint) - lineitem.l_discount:5!null))->volume:0]\n" +
 			"                 └─ Filter\n" +
 			"                     ├─ Or\n" +
 			"                     │   ├─ AND\n" +
@@ -941,37 +896,31 @@ order by
 			"                         ├─ LookupJoin\n" +
 			"                         │   ├─ LookupJoin\n" +
 			"                         │   │   ├─ LookupJoin\n" +
-			"                         │   │   │   ├─ MergeJoin\n" +
-			"                         │   │   │   │   ├─ cmp: Eq\n" +
-			"                         │   │   │   │   │   ├─ lineitem.l_orderkey:0!null\n" +
-			"                         │   │   │   │   │   └─ orders.o_orderkey:5!null\n" +
-			"                         │   │   │   │   ├─ Filter\n" +
-			"                         │   │   │   │   │   ├─ AND\n" +
-			"                         │   │   │   │   │   │   ├─ GreaterThanOrEqual\n" +
-			"                         │   │   │   │   │   │   │   ├─ lineitem.l_shipdate:4!null\n" +
-			"                         │   │   │   │   │   │   │   └─ 1995-01-01 (longtext)\n" +
-			"                         │   │   │   │   │   │   └─ LessThanOrEqual\n" +
-			"                         │   │   │   │   │   │       ├─ lineitem.l_shipdate:4!null\n" +
-			"                         │   │   │   │   │   │       └─ 1996-12-31 (longtext)\n" +
-			"                         │   │   │   │   │   └─ IndexedTableAccess(lineitem)\n" +
-			"                         │   │   │   │   │       ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
-			"                         │   │   │   │   │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                         │   │   │   │   │       ├─ colSet: (8-23)\n" +
-			"                         │   │   │   │   │       ├─ tableId: 2\n" +
-			"                         │   │   │   │   │       └─ Table\n" +
-			"                         │   │   │   │   │           ├─ name: lineitem\n" +
-			"                         │   │   │   │   │           └─ columns: [l_orderkey l_suppkey l_extendedprice l_discount l_shipdate]\n" +
-			"                         │   │   │   │   └─ IndexedTableAccess(orders)\n" +
-			"                         │   │   │   │       ├─ index: [orders.O_ORDERKEY]\n" +
-			"                         │   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"                         │   │   │   │       ├─ colSet: (24-32)\n" +
-			"                         │   │   │   │       ├─ tableId: 3\n" +
-			"                         │   │   │   │       └─ Table\n" +
-			"                         │   │   │   │           ├─ name: orders\n" +
-			"                         │   │   │   │           └─ columns: [o_orderkey o_custkey]\n" +
+			"                         │   │   │   ├─ LookupJoin\n" +
+			"                         │   │   │   │   ├─ Table\n" +
+			"                         │   │   │   │   │   ├─ name: orders\n" +
+			"                         │   │   │   │   │   ├─ columns: [o_orderkey o_custkey]\n" +
+			"                         │   │   │   │   │   ├─ colSet: (24-32)\n" +
+			"                         │   │   │   │   │   └─ tableId: 3\n" +
+			"                         │   │   │   │   └─ Filter\n" +
+			"                         │   │   │   │       ├─ AND\n" +
+			"                         │   │   │   │       │   ├─ GreaterThanOrEqual\n" +
+			"                         │   │   │   │       │   │   ├─ lineitem.l_shipdate:4!null\n" +
+			"                         │   │   │   │       │   │   └─ 1995-01-01 (longtext)\n" +
+			"                         │   │   │   │       │   └─ LessThanOrEqual\n" +
+			"                         │   │   │   │       │       ├─ lineitem.l_shipdate:4!null\n" +
+			"                         │   │   │   │       │       └─ 1996-12-31 (longtext)\n" +
+			"                         │   │   │   │       └─ IndexedTableAccess(lineitem)\n" +
+			"                         │   │   │   │           ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
+			"                         │   │   │   │           ├─ keys: [orders.o_orderkey:0!null]\n" +
+			"                         │   │   │   │           ├─ colSet: (8-23)\n" +
+			"                         │   │   │   │           ├─ tableId: 2\n" +
+			"                         │   │   │   │           └─ Table\n" +
+			"                         │   │   │   │               ├─ name: lineitem\n" +
+			"                         │   │   │   │               └─ columns: [l_orderkey l_suppkey l_extendedprice l_discount l_shipdate]\n" +
 			"                         │   │   │   └─ IndexedTableAccess(supplier)\n" +
 			"                         │   │   │       ├─ index: [supplier.S_SUPPKEY]\n" +
-			"                         │   │   │       ├─ keys: [lineitem.l_suppkey:1!null]\n" +
+			"                         │   │   │       ├─ keys: [lineitem.l_suppkey:3!null]\n" +
 			"                         │   │   │       ├─ colSet: (1-7)\n" +
 			"                         │   │   │       ├─ tableId: 1\n" +
 			"                         │   │   │       └─ Table\n" +
@@ -979,7 +928,7 @@ order by
 			"                         │   │   │           └─ columns: [s_suppkey s_nationkey]\n" +
 			"                         │   │   └─ IndexedTableAccess(customer)\n" +
 			"                         │   │       ├─ index: [customer.C_CUSTKEY]\n" +
-			"                         │   │       ├─ keys: [orders.o_custkey:6!null]\n" +
+			"                         │   │       ├─ keys: [orders.o_custkey:1!null]\n" +
 			"                         │   │       ├─ colSet: (33-40)\n" +
 			"                         │   │       ├─ tableId: 4\n" +
 			"                         │   │       └─ Table\n" +
@@ -1023,18 +972,16 @@ order by
 			"                         ├─ LookupJoin\n" +
 			"                         │   ├─ LookupJoin\n" +
 			"                         │   │   ├─ LookupJoin\n" +
-			"                         │   │   │   ├─ MergeJoin\n" +
-			"                         │   │   │   │   ├─ cmp: (lineitem.l_orderkey = orders.o_orderkey)\n" +
-			"                         │   │   │   │   ├─ Filter\n" +
-			"                         │   │   │   │   │   ├─ ((lineitem.l_shipdate >= '1995-01-01') AND (lineitem.l_shipdate <= '1996-12-31'))\n" +
-			"                         │   │   │   │   │   └─ IndexedTableAccess(lineitem)\n" +
-			"                         │   │   │   │   │       ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
-			"                         │   │   │   │   │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                         │   │   │   │   │       └─ columns: [l_orderkey l_suppkey l_extendedprice l_discount l_shipdate]\n" +
-			"                         │   │   │   │   └─ IndexedTableAccess(orders)\n" +
-			"                         │   │   │   │       ├─ index: [orders.O_ORDERKEY]\n" +
-			"                         │   │   │   │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"                         │   │   │   │       └─ columns: [o_orderkey o_custkey]\n" +
+			"                         │   │   │   ├─ LookupJoin\n" +
+			"                         │   │   │   │   ├─ Table\n" +
+			"                         │   │   │   │   │   ├─ name: orders\n" +
+			"                         │   │   │   │   │   └─ columns: [o_orderkey o_custkey]\n" +
+			"                         │   │   │   │   └─ Filter\n" +
+			"                         │   │   │   │       ├─ ((lineitem.l_shipdate >= '1995-01-01') AND (lineitem.l_shipdate <= '1996-12-31'))\n" +
+			"                         │   │   │   │       └─ IndexedTableAccess(lineitem)\n" +
+			"                         │   │   │   │           ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
+			"                         │   │   │   │           ├─ columns: [l_orderkey l_suppkey l_extendedprice l_discount l_shipdate]\n" +
+			"                         │   │   │   │           └─ keys: orders.o_orderkey\n" +
 			"                         │   │   │   └─ IndexedTableAccess(supplier)\n" +
 			"                         │   │   │       ├─ index: [supplier.S_SUPPKEY]\n" +
 			"                         │   │   │       ├─ columns: [s_suppkey s_nationkey]\n" +
@@ -1073,18 +1020,16 @@ order by
 			"                         ├─ LookupJoin\n" +
 			"                         │   ├─ LookupJoin\n" +
 			"                         │   │   ├─ LookupJoin\n" +
-			"                         │   │   │   ├─ MergeJoin\n" +
-			"                         │   │   │   │   ├─ cmp: (lineitem.l_orderkey = orders.o_orderkey)\n" +
-			"                         │   │   │   │   ├─ Filter\n" +
-			"                         │   │   │   │   │   ├─ ((lineitem.l_shipdate >= '1995-01-01') AND (lineitem.l_shipdate <= '1996-12-31'))\n" +
-			"                         │   │   │   │   │   └─ IndexedTableAccess(lineitem)\n" +
-			"                         │   │   │   │   │       ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
-			"                         │   │   │   │   │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                         │   │   │   │   │       └─ columns: [l_orderkey l_suppkey l_extendedprice l_discount l_shipdate]\n" +
-			"                         │   │   │   │   └─ IndexedTableAccess(orders)\n" +
-			"                         │   │   │   │       ├─ index: [orders.O_ORDERKEY]\n" +
-			"                         │   │   │   │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"                         │   │   │   │       └─ columns: [o_orderkey o_custkey]\n" +
+			"                         │   │   │   ├─ LookupJoin\n" +
+			"                         │   │   │   │   ├─ Table\n" +
+			"                         │   │   │   │   │   ├─ name: orders\n" +
+			"                         │   │   │   │   │   └─ columns: [o_orderkey o_custkey]\n" +
+			"                         │   │   │   │   └─ Filter\n" +
+			"                         │   │   │   │       ├─ ((lineitem.l_shipdate >= '1995-01-01') AND (lineitem.l_shipdate <= '1996-12-31'))\n" +
+			"                         │   │   │   │       └─ IndexedTableAccess(lineitem)\n" +
+			"                         │   │   │   │           ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
+			"                         │   │   │   │           ├─ columns: [l_orderkey l_suppkey l_extendedprice l_discount l_shipdate]\n" +
+			"                         │   │   │   │           └─ keys: orders.o_orderkey\n" +
 			"                         │   │   │   └─ IndexedTableAccess(supplier)\n" +
 			"                         │   │   │       ├─ index: [supplier.S_SUPPKEY]\n" +
 			"                         │   │   │       ├─ columns: [s_suppkey s_nationkey]\n" +
@@ -1420,81 +1365,57 @@ order by
 			"             ├─ colSet: (54-56)\n" +
 			"             ├─ tableId: 7\n" +
 			"             └─ Project\n" +
-			"                 ├─ columns: [nation.n_name:16!null->nation:0, extract('YEAR' from orders.o_orderdate)->o_year:0, ((lineitem.l_extendedprice:9!null * (1 (tinyint) - lineitem.l_discount:10!null)) - (partsupp.ps_supplycost:4!null * lineitem.l_quantity:8!null))->amount:0]\n" +
+			"                 ├─ columns: [nation.n_name:16!null->nation:0, extract('YEAR' from orders.o_orderdate)->o_year:0, ((lineitem.l_extendedprice:6!null * (1 (tinyint) - lineitem.l_discount:7!null)) - (partsupp.ps_supplycost:10!null * lineitem.l_quantity:5!null))->amount:0]\n" +
 			"                 └─ LookupJoin\n" +
-			"                     ├─ HashJoin\n" +
-			"                     │   ├─ AND\n" +
-			"                     │   │   ├─ AND\n" +
-			"                     │   │   │   ├─ AND\n" +
-			"                     │   │   │   │   ├─ Eq\n" +
-			"                     │   │   │   │   │   ├─ part.p_partkey:0!null\n" +
-			"                     │   │   │   │   │   └─ lineitem.l_partkey:6!null\n" +
-			"                     │   │   │   │   └─ Eq\n" +
-			"                     │   │   │   │       ├─ partsupp.ps_suppkey:3!null\n" +
-			"                     │   │   │   │       └─ lineitem.l_suppkey:7!null\n" +
-			"                     │   │   │   └─ Eq\n" +
-			"                     │   │   │       ├─ partsupp.ps_partkey:2!null\n" +
-			"                     │   │   │       └─ lineitem.l_partkey:6!null\n" +
-			"                     │   │   └─ Eq\n" +
-			"                     │   │       ├─ supplier.s_suppkey:13!null\n" +
-			"                     │   │       └─ partsupp.ps_suppkey:3!null\n" +
-			"                     │   ├─ MergeJoin\n" +
-			"                     │   │   ├─ cmp: Eq\n" +
-			"                     │   │   │   ├─ part.p_partkey:0!null\n" +
-			"                     │   │   │   └─ partsupp.ps_partkey:2!null\n" +
-			"                     │   │   ├─ Filter\n" +
-			"                     │   │   │   ├─ part.p_name LIKE '%green%'\n" +
-			"                     │   │   │   └─ IndexedTableAccess(part)\n" +
-			"                     │   │   │       ├─ index: [part.P_PARTKEY]\n" +
-			"                     │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"                     │   │   │       ├─ colSet: (1-9)\n" +
-			"                     │   │   │       ├─ tableId: 1\n" +
+			"                     ├─ LookupJoin\n" +
+			"                     │   ├─ Eq\n" +
+			"                     │   │   ├─ part.p_partkey:13!null\n" +
+			"                     │   │   └─ partsupp.ps_partkey:8!null\n" +
+			"                     │   ├─ LookupJoin\n" +
+			"                     │   │   ├─ LookupJoin\n" +
+			"                     │   │   │   ├─ LookupJoin\n" +
+			"                     │   │   │   │   ├─ Table\n" +
+			"                     │   │   │   │   │   ├─ name: orders\n" +
+			"                     │   │   │   │   │   ├─ columns: [o_orderkey o_orderdate]\n" +
+			"                     │   │   │   │   │   ├─ colSet: (38-46)\n" +
+			"                     │   │   │   │   │   └─ tableId: 5\n" +
+			"                     │   │   │   │   └─ IndexedTableAccess(lineitem)\n" +
+			"                     │   │   │   │       ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
+			"                     │   │   │   │       ├─ keys: [orders.o_orderkey:0!null]\n" +
+			"                     │   │   │   │       ├─ colSet: (17-32)\n" +
+			"                     │   │   │   │       ├─ tableId: 3\n" +
+			"                     │   │   │   │       └─ Table\n" +
+			"                     │   │   │   │           ├─ name: lineitem\n" +
+			"                     │   │   │   │           └─ columns: [l_orderkey l_partkey l_suppkey l_quantity l_extendedprice l_discount]\n" +
+			"                     │   │   │   └─ IndexedTableAccess(partsupp)\n" +
+			"                     │   │   │       ├─ index: [partsupp.PS_PARTKEY,partsupp.PS_SUPPKEY]\n" +
+			"                     │   │   │       ├─ keys: [lineitem.l_partkey:3!null lineitem.l_suppkey:4!null]\n" +
+			"                     │   │   │       ├─ colSet: (33-37)\n" +
+			"                     │   │   │       ├─ tableId: 4\n" +
 			"                     │   │   │       └─ Table\n" +
-			"                     │   │   │           ├─ name: part\n" +
-			"                     │   │   │           └─ columns: [p_partkey p_name]\n" +
-			"                     │   │   └─ IndexedTableAccess(partsupp)\n" +
-			"                     │   │       ├─ index: [partsupp.PS_PARTKEY,partsupp.PS_SUPPKEY]\n" +
-			"                     │   │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                     │   │       ├─ colSet: (33-37)\n" +
-			"                     │   │       ├─ tableId: 4\n" +
+			"                     │   │   │           ├─ name: partsupp\n" +
+			"                     │   │   │           └─ columns: [ps_partkey ps_suppkey ps_supplycost]\n" +
+			"                     │   │   └─ IndexedTableAccess(supplier)\n" +
+			"                     │   │       ├─ index: [supplier.S_SUPPKEY]\n" +
+			"                     │   │       ├─ keys: [lineitem.l_suppkey:4!null]\n" +
+			"                     │   │       ├─ colSet: (10-16)\n" +
+			"                     │   │       ├─ tableId: 2\n" +
 			"                     │   │       └─ Table\n" +
-			"                     │   │           ├─ name: partsupp\n" +
-			"                     │   │           └─ columns: [ps_partkey ps_suppkey ps_supplycost]\n" +
-			"                     │   └─ HashLookup\n" +
-			"                     │       ├─ left-key: TUPLE(part.p_partkey:0!null, partsupp.ps_suppkey:3!null, partsupp.ps_partkey:2!null, partsupp.ps_suppkey:3!null)\n" +
-			"                     │       ├─ right-key: TUPLE(lineitem.l_partkey:1!null, lineitem.l_suppkey:2!null, lineitem.l_partkey:1!null, supplier.s_suppkey:8!null)\n" +
-			"                     │       └─ LookupJoin\n" +
-			"                     │           ├─ MergeJoin\n" +
-			"                     │           │   ├─ cmp: Eq\n" +
-			"                     │           │   │   ├─ lineitem.l_orderkey:5!null\n" +
-			"                     │           │   │   └─ orders.o_orderkey:11!null\n" +
-			"                     │           │   ├─ IndexedTableAccess(lineitem)\n" +
-			"                     │           │   │   ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
-			"                     │           │   │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                     │           │   │   ├─ colSet: (17-32)\n" +
-			"                     │           │   │   ├─ tableId: 3\n" +
-			"                     │           │   │   └─ Table\n" +
-			"                     │           │   │       ├─ name: lineitem\n" +
-			"                     │           │   │       └─ columns: [l_orderkey l_partkey l_suppkey l_quantity l_extendedprice l_discount]\n" +
-			"                     │           │   └─ IndexedTableAccess(orders)\n" +
-			"                     │           │       ├─ index: [orders.O_ORDERKEY]\n" +
-			"                     │           │       ├─ static: [{[NULL, ∞)}]\n" +
-			"                     │           │       ├─ colSet: (38-46)\n" +
-			"                     │           │       ├─ tableId: 5\n" +
-			"                     │           │       └─ Table\n" +
-			"                     │           │           ├─ name: orders\n" +
-			"                     │           │           └─ columns: [o_orderkey o_orderdate]\n" +
-			"                     │           └─ IndexedTableAccess(supplier)\n" +
-			"                     │               ├─ index: [supplier.S_SUPPKEY]\n" +
-			"                     │               ├─ keys: [lineitem.l_suppkey:7!null]\n" +
-			"                     │               ├─ colSet: (10-16)\n" +
-			"                     │               ├─ tableId: 2\n" +
-			"                     │               └─ Table\n" +
-			"                     │                   ├─ name: supplier\n" +
-			"                     │                   └─ columns: [s_suppkey s_nationkey]\n" +
+			"                     │   │           ├─ name: supplier\n" +
+			"                     │   │           └─ columns: [s_suppkey s_nationkey]\n" +
+			"                     │   └─ Filter\n" +
+			"                     │       ├─ part.p_name LIKE '%green%'\n" +
+			"                     │       └─ IndexedTableAccess(part)\n" +
+			"                     │           ├─ index: [part.P_PARTKEY]\n" +
+			"                     │           ├─ keys: [lineitem.l_partkey:3!null]\n" +
+			"                     │           ├─ colSet: (1-9)\n" +
+			"                     │           ├─ tableId: 1\n" +
+			"                     │           └─ Table\n" +
+			"                     │               ├─ name: part\n" +
+			"                     │               └─ columns: [p_partkey p_name]\n" +
 			"                     └─ IndexedTableAccess(nation)\n" +
 			"                         ├─ index: [nation.N_NATIONKEY]\n" +
-			"                         ├─ keys: [supplier.s_nationkey:14!null]\n" +
+			"                         ├─ keys: [supplier.s_nationkey:12!null]\n" +
 			"                         ├─ colSet: (47-50)\n" +
 			"                         ├─ tableId: 6\n" +
 			"                         └─ Table\n" +
@@ -1515,38 +1436,32 @@ order by
 			"             └─ Project\n" +
 			"                 ├─ columns: [nation.n_name as nation, extract('YEAR' from orders.o_orderdate) as o_year, ((lineitem.l_extendedprice * (1 - lineitem.l_discount)) - (partsupp.ps_supplycost * lineitem.l_quantity)) as amount]\n" +
 			"                 └─ LookupJoin\n" +
-			"                     ├─ HashJoin\n" +
-			"                     │   ├─ ((((part.p_partkey = lineitem.l_partkey) AND (partsupp.ps_suppkey = lineitem.l_suppkey)) AND (partsupp.ps_partkey = lineitem.l_partkey)) AND (supplier.s_suppkey = partsupp.ps_suppkey))\n" +
-			"                     │   ├─ MergeJoin\n" +
-			"                     │   │   ├─ cmp: (part.p_partkey = partsupp.ps_partkey)\n" +
-			"                     │   │   ├─ Filter\n" +
-			"                     │   │   │   ├─ part.p_name LIKE '%green%'\n" +
-			"                     │   │   │   └─ IndexedTableAccess(part)\n" +
-			"                     │   │   │       ├─ index: [part.P_PARTKEY]\n" +
-			"                     │   │   │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"                     │   │   │       └─ columns: [p_partkey p_name]\n" +
-			"                     │   │   └─ IndexedTableAccess(partsupp)\n" +
-			"                     │   │       ├─ index: [partsupp.PS_PARTKEY,partsupp.PS_SUPPKEY]\n" +
-			"                     │   │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                     │   │       └─ columns: [ps_partkey ps_suppkey ps_supplycost]\n" +
-			"                     │   └─ HashLookup\n" +
-			"                     │       ├─ left-key: (part.p_partkey, partsupp.ps_suppkey, partsupp.ps_partkey, partsupp.ps_suppkey)\n" +
-			"                     │       ├─ right-key: (lineitem.l_partkey, lineitem.l_suppkey, lineitem.l_partkey, supplier.s_suppkey)\n" +
-			"                     │       └─ LookupJoin\n" +
-			"                     │           ├─ MergeJoin\n" +
-			"                     │           │   ├─ cmp: (lineitem.l_orderkey = orders.o_orderkey)\n" +
-			"                     │           │   ├─ IndexedTableAccess(lineitem)\n" +
-			"                     │           │   │   ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
-			"                     │           │   │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                     │           │   │   └─ columns: [l_orderkey l_partkey l_suppkey l_quantity l_extendedprice l_discount]\n" +
-			"                     │           │   └─ IndexedTableAccess(orders)\n" +
-			"                     │           │       ├─ index: [orders.O_ORDERKEY]\n" +
-			"                     │           │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"                     │           │       └─ columns: [o_orderkey o_orderdate]\n" +
-			"                     │           └─ IndexedTableAccess(supplier)\n" +
-			"                     │               ├─ index: [supplier.S_SUPPKEY]\n" +
-			"                     │               ├─ columns: [s_suppkey s_nationkey]\n" +
-			"                     │               └─ keys: lineitem.l_suppkey\n" +
+			"                     ├─ LookupJoin\n" +
+			"                     │   ├─ (part.p_partkey = partsupp.ps_partkey)\n" +
+			"                     │   ├─ LookupJoin\n" +
+			"                     │   │   ├─ LookupJoin\n" +
+			"                     │   │   │   ├─ LookupJoin\n" +
+			"                     │   │   │   │   ├─ Table\n" +
+			"                     │   │   │   │   │   ├─ name: orders\n" +
+			"                     │   │   │   │   │   └─ columns: [o_orderkey o_orderdate]\n" +
+			"                     │   │   │   │   └─ IndexedTableAccess(lineitem)\n" +
+			"                     │   │   │   │       ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
+			"                     │   │   │   │       ├─ columns: [l_orderkey l_partkey l_suppkey l_quantity l_extendedprice l_discount]\n" +
+			"                     │   │   │   │       └─ keys: orders.o_orderkey\n" +
+			"                     │   │   │   └─ IndexedTableAccess(partsupp)\n" +
+			"                     │   │   │       ├─ index: [partsupp.PS_PARTKEY,partsupp.PS_SUPPKEY]\n" +
+			"                     │   │   │       ├─ columns: [ps_partkey ps_suppkey ps_supplycost]\n" +
+			"                     │   │   │       └─ keys: lineitem.l_partkey, lineitem.l_suppkey\n" +
+			"                     │   │   └─ IndexedTableAccess(supplier)\n" +
+			"                     │   │       ├─ index: [supplier.S_SUPPKEY]\n" +
+			"                     │   │       ├─ columns: [s_suppkey s_nationkey]\n" +
+			"                     │   │       └─ keys: lineitem.l_suppkey\n" +
+			"                     │   └─ Filter\n" +
+			"                     │       ├─ part.p_name LIKE '%green%'\n" +
+			"                     │       └─ IndexedTableAccess(part)\n" +
+			"                     │           ├─ index: [part.P_PARTKEY]\n" +
+			"                     │           ├─ columns: [p_partkey p_name]\n" +
+			"                     │           └─ keys: lineitem.l_partkey\n" +
 			"                     └─ IndexedTableAccess(nation)\n" +
 			"                         ├─ index: [nation.N_NATIONKEY]\n" +
 			"                         ├─ columns: [n_nationkey n_name]\n" +
@@ -1566,38 +1481,32 @@ order by
 			"             └─ Project\n" +
 			"                 ├─ columns: [nation.n_name as nation, extract('YEAR' from orders.o_orderdate) as o_year, ((lineitem.l_extendedprice * (1 - lineitem.l_discount)) - (partsupp.ps_supplycost * lineitem.l_quantity)) as amount]\n" +
 			"                 └─ LookupJoin\n" +
-			"                     ├─ HashJoin\n" +
-			"                     │   ├─ ((((part.p_partkey = lineitem.l_partkey) AND (partsupp.ps_suppkey = lineitem.l_suppkey)) AND (partsupp.ps_partkey = lineitem.l_partkey)) AND (supplier.s_suppkey = partsupp.ps_suppkey))\n" +
-			"                     │   ├─ MergeJoin\n" +
-			"                     │   │   ├─ cmp: (part.p_partkey = partsupp.ps_partkey)\n" +
-			"                     │   │   ├─ Filter\n" +
-			"                     │   │   │   ├─ part.p_name LIKE '%green%'\n" +
-			"                     │   │   │   └─ IndexedTableAccess(part)\n" +
-			"                     │   │   │       ├─ index: [part.P_PARTKEY]\n" +
-			"                     │   │   │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"                     │   │   │       └─ columns: [p_partkey p_name]\n" +
-			"                     │   │   └─ IndexedTableAccess(partsupp)\n" +
-			"                     │   │       ├─ index: [partsupp.PS_PARTKEY,partsupp.PS_SUPPKEY]\n" +
-			"                     │   │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                     │   │       └─ columns: [ps_partkey ps_suppkey ps_supplycost]\n" +
-			"                     │   └─ HashLookup\n" +
-			"                     │       ├─ left-key: (part.p_partkey, partsupp.ps_suppkey, partsupp.ps_partkey, partsupp.ps_suppkey)\n" +
-			"                     │       ├─ right-key: (lineitem.l_partkey, lineitem.l_suppkey, lineitem.l_partkey, supplier.s_suppkey)\n" +
-			"                     │       └─ LookupJoin\n" +
-			"                     │           ├─ MergeJoin\n" +
-			"                     │           │   ├─ cmp: (lineitem.l_orderkey = orders.o_orderkey)\n" +
-			"                     │           │   ├─ IndexedTableAccess(lineitem)\n" +
-			"                     │           │   │   ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
-			"                     │           │   │   ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                     │           │   │   └─ columns: [l_orderkey l_partkey l_suppkey l_quantity l_extendedprice l_discount]\n" +
-			"                     │           │   └─ IndexedTableAccess(orders)\n" +
-			"                     │           │       ├─ index: [orders.O_ORDERKEY]\n" +
-			"                     │           │       ├─ filters: [{[NULL, ∞)}]\n" +
-			"                     │           │       └─ columns: [o_orderkey o_orderdate]\n" +
-			"                     │           └─ IndexedTableAccess(supplier)\n" +
-			"                     │               ├─ index: [supplier.S_SUPPKEY]\n" +
-			"                     │               ├─ columns: [s_suppkey s_nationkey]\n" +
-			"                     │               └─ keys: lineitem.l_suppkey\n" +
+			"                     ├─ LookupJoin\n" +
+			"                     │   ├─ (part.p_partkey = partsupp.ps_partkey)\n" +
+			"                     │   ├─ LookupJoin\n" +
+			"                     │   │   ├─ LookupJoin\n" +
+			"                     │   │   │   ├─ LookupJoin\n" +
+			"                     │   │   │   │   ├─ Table\n" +
+			"                     │   │   │   │   │   ├─ name: orders\n" +
+			"                     │   │   │   │   │   └─ columns: [o_orderkey o_orderdate]\n" +
+			"                     │   │   │   │   └─ IndexedTableAccess(lineitem)\n" +
+			"                     │   │   │   │       ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
+			"                     │   │   │   │       ├─ columns: [l_orderkey l_partkey l_suppkey l_quantity l_extendedprice l_discount]\n" +
+			"                     │   │   │   │       └─ keys: orders.o_orderkey\n" +
+			"                     │   │   │   └─ IndexedTableAccess(partsupp)\n" +
+			"                     │   │   │       ├─ index: [partsupp.PS_PARTKEY,partsupp.PS_SUPPKEY]\n" +
+			"                     │   │   │       ├─ columns: [ps_partkey ps_suppkey ps_supplycost]\n" +
+			"                     │   │   │       └─ keys: lineitem.l_partkey, lineitem.l_suppkey\n" +
+			"                     │   │   └─ IndexedTableAccess(supplier)\n" +
+			"                     │   │       ├─ index: [supplier.S_SUPPKEY]\n" +
+			"                     │   │       ├─ columns: [s_suppkey s_nationkey]\n" +
+			"                     │   │       └─ keys: lineitem.l_suppkey\n" +
+			"                     │   └─ Filter\n" +
+			"                     │       ├─ part.p_name LIKE '%green%'\n" +
+			"                     │       └─ IndexedTableAccess(part)\n" +
+			"                     │           ├─ index: [part.P_PARTKEY]\n" +
+			"                     │           ├─ columns: [p_partkey p_name]\n" +
+			"                     │           └─ keys: lineitem.l_partkey\n" +
 			"                     └─ IndexedTableAccess(nation)\n" +
 			"                         ├─ index: [nation.N_NATIONKEY]\n" +
 			"                         ├─ columns: [n_nationkey n_name]\n" +
@@ -1644,14 +1553,11 @@ order by
 			"     └─ Project\n" +
 			"         ├─ columns: [sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null, customer.c_custkey:1!null, customer.c_name:2!null, customer.c_acctbal:3!null, nation.n_name:4!null, customer.c_address:5!null, customer.c_phone:6!null, customer.c_comment:7!null, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))):0!null->revenue:0]\n" +
 			"         └─ GroupBy\n" +
-			"             ├─ select: SUM((lineitem.l_extendedprice:4!null * (1 (tinyint) - lineitem.l_discount:5!null))), customer.c_custkey:7!null, customer.c_name:8!null, customer.c_acctbal:12!null, nation.n_name:15!null, customer.c_address:9!null, customer.c_phone:11!null, customer.c_comment:13!null\n" +
-			"             ├─ group: customer.c_custkey:7!null, customer.c_name:8!null, customer.c_acctbal:12!null, customer.c_phone:11!null, nation.n_name:15!null, customer.c_address:9!null, customer.c_comment:13!null\n" +
+			"             ├─ select: SUM((lineitem.l_extendedprice:11!null * (1 (tinyint) - lineitem.l_discount:12!null))), customer.c_custkey:3!null, customer.c_name:4!null, customer.c_acctbal:8!null, nation.n_name:15!null, customer.c_address:5!null, customer.c_phone:7!null, customer.c_comment:9!null\n" +
+			"             ├─ group: customer.c_custkey:3!null, customer.c_name:4!null, customer.c_acctbal:8!null, customer.c_phone:7!null, nation.n_name:15!null, customer.c_address:5!null, customer.c_comment:9!null\n" +
 			"             └─ LookupJoin\n" +
 			"                 ├─ LookupJoin\n" +
-			"                 │   ├─ MergeJoin\n" +
-			"                 │   │   ├─ cmp: Eq\n" +
-			"                 │   │   │   ├─ orders.o_orderkey:0!null\n" +
-			"                 │   │   │   └─ lineitem.l_orderkey:3!null\n" +
+			"                 │   ├─ LookupJoin\n" +
 			"                 │   │   ├─ Filter\n" +
 			"                 │   │   │   ├─ AND\n" +
 			"                 │   │   │   │   ├─ GreaterThanOrEqual\n" +
@@ -1660,37 +1566,33 @@ order by
 			"                 │   │   │   │   └─ LessThan\n" +
 			"                 │   │   │   │       ├─ orders.o_orderdate:2!null\n" +
 			"                 │   │   │   │       └─ 1994-01-01 00:00:00 +0000 UTC (datetime)\n" +
-			"                 │   │   │   └─ IndexedTableAccess(orders)\n" +
-			"                 │   │   │       ├─ index: [orders.O_ORDERKEY]\n" +
-			"                 │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"                 │   │   │       ├─ colSet: (9-17)\n" +
-			"                 │   │   │       ├─ tableId: 2\n" +
+			"                 │   │   │   └─ ProcessTable\n" +
 			"                 │   │   │       └─ Table\n" +
 			"                 │   │   │           ├─ name: orders\n" +
 			"                 │   │   │           └─ columns: [o_orderkey o_custkey o_orderdate]\n" +
-			"                 │   │   └─ Filter\n" +
-			"                 │   │       ├─ Eq\n" +
-			"                 │   │       │   ├─ lineitem.l_returnflag:3!null\n" +
-			"                 │   │       │   └─ R (longtext)\n" +
-			"                 │   │       └─ IndexedTableAccess(lineitem)\n" +
-			"                 │   │           ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
-			"                 │   │           ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                 │   │           ├─ colSet: (18-33)\n" +
-			"                 │   │           ├─ tableId: 3\n" +
-			"                 │   │           └─ Table\n" +
-			"                 │   │               ├─ name: lineitem\n" +
-			"                 │   │               └─ columns: [l_orderkey l_extendedprice l_discount l_returnflag]\n" +
-			"                 │   └─ IndexedTableAccess(customer)\n" +
-			"                 │       ├─ index: [customer.C_CUSTKEY]\n" +
-			"                 │       ├─ keys: [orders.o_custkey:1!null]\n" +
-			"                 │       ├─ colSet: (1-8)\n" +
-			"                 │       ├─ tableId: 1\n" +
-			"                 │       └─ Table\n" +
-			"                 │           ├─ name: customer\n" +
-			"                 │           └─ columns: [c_custkey c_name c_address c_nationkey c_phone c_acctbal c_comment]\n" +
+			"                 │   │   └─ IndexedTableAccess(customer)\n" +
+			"                 │   │       ├─ index: [customer.C_CUSTKEY]\n" +
+			"                 │   │       ├─ keys: [orders.o_custkey:1!null]\n" +
+			"                 │   │       ├─ colSet: (1-8)\n" +
+			"                 │   │       ├─ tableId: 1\n" +
+			"                 │   │       └─ Table\n" +
+			"                 │   │           ├─ name: customer\n" +
+			"                 │   │           └─ columns: [c_custkey c_name c_address c_nationkey c_phone c_acctbal c_comment]\n" +
+			"                 │   └─ Filter\n" +
+			"                 │       ├─ Eq\n" +
+			"                 │       │   ├─ lineitem.l_returnflag:3!null\n" +
+			"                 │       │   └─ R (longtext)\n" +
+			"                 │       └─ IndexedTableAccess(lineitem)\n" +
+			"                 │           ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
+			"                 │           ├─ keys: [orders.o_orderkey:0!null]\n" +
+			"                 │           ├─ colSet: (18-33)\n" +
+			"                 │           ├─ tableId: 3\n" +
+			"                 │           └─ Table\n" +
+			"                 │               ├─ name: lineitem\n" +
+			"                 │               └─ columns: [l_orderkey l_extendedprice l_discount l_returnflag]\n" +
 			"                 └─ IndexedTableAccess(nation)\n" +
 			"                     ├─ index: [nation.N_NATIONKEY]\n" +
-			"                     ├─ keys: [customer.c_nationkey:10!null]\n" +
+			"                     ├─ keys: [customer.c_nationkey:6!null]\n" +
 			"                     ├─ colSet: (34-37)\n" +
 			"                     ├─ tableId: 4\n" +
 			"                     └─ Table\n" +
@@ -1707,24 +1609,22 @@ order by
 			"             ├─ Grouping(customer.c_custkey, customer.c_name, customer.c_acctbal, customer.c_phone, nation.n_name, customer.c_address, customer.c_comment)\n" +
 			"             └─ LookupJoin\n" +
 			"                 ├─ LookupJoin\n" +
-			"                 │   ├─ MergeJoin\n" +
-			"                 │   │   ├─ cmp: (orders.o_orderkey = lineitem.l_orderkey)\n" +
+			"                 │   ├─ LookupJoin\n" +
 			"                 │   │   ├─ Filter\n" +
 			"                 │   │   │   ├─ ((orders.o_orderdate >= '1993-10-01') AND (orders.o_orderdate < 1994-01-01 00:00:00 +0000 UTC))\n" +
-			"                 │   │   │   └─ IndexedTableAccess(orders)\n" +
-			"                 │   │   │       ├─ index: [orders.O_ORDERKEY]\n" +
-			"                 │   │   │       ├─ filters: [{[NULL, ∞)}]\n" +
+			"                 │   │   │   └─ Table\n" +
+			"                 │   │   │       ├─ name: orders\n" +
 			"                 │   │   │       └─ columns: [o_orderkey o_custkey o_orderdate]\n" +
-			"                 │   │   └─ Filter\n" +
-			"                 │   │       ├─ (lineitem.l_returnflag = 'R')\n" +
-			"                 │   │       └─ IndexedTableAccess(lineitem)\n" +
-			"                 │   │           ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
-			"                 │   │           ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                 │   │           └─ columns: [l_orderkey l_extendedprice l_discount l_returnflag]\n" +
-			"                 │   └─ IndexedTableAccess(customer)\n" +
-			"                 │       ├─ index: [customer.C_CUSTKEY]\n" +
-			"                 │       ├─ columns: [c_custkey c_name c_address c_nationkey c_phone c_acctbal c_comment]\n" +
-			"                 │       └─ keys: orders.o_custkey\n" +
+			"                 │   │   └─ IndexedTableAccess(customer)\n" +
+			"                 │   │       ├─ index: [customer.C_CUSTKEY]\n" +
+			"                 │   │       ├─ columns: [c_custkey c_name c_address c_nationkey c_phone c_acctbal c_comment]\n" +
+			"                 │   │       └─ keys: orders.o_custkey\n" +
+			"                 │   └─ Filter\n" +
+			"                 │       ├─ (lineitem.l_returnflag = 'R')\n" +
+			"                 │       └─ IndexedTableAccess(lineitem)\n" +
+			"                 │           ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
+			"                 │           ├─ columns: [l_orderkey l_extendedprice l_discount l_returnflag]\n" +
+			"                 │           └─ keys: orders.o_orderkey\n" +
 			"                 └─ IndexedTableAccess(nation)\n" +
 			"                     ├─ index: [nation.N_NATIONKEY]\n" +
 			"                     ├─ columns: [n_nationkey n_name]\n" +
@@ -1740,24 +1640,22 @@ order by
 			"             ├─ Grouping(customer.c_custkey, customer.c_name, customer.c_acctbal, customer.c_phone, nation.n_name, customer.c_address, customer.c_comment)\n" +
 			"             └─ LookupJoin\n" +
 			"                 ├─ LookupJoin\n" +
-			"                 │   ├─ MergeJoin\n" +
-			"                 │   │   ├─ cmp: (orders.o_orderkey = lineitem.l_orderkey)\n" +
+			"                 │   ├─ LookupJoin\n" +
 			"                 │   │   ├─ Filter\n" +
 			"                 │   │   │   ├─ ((orders.o_orderdate >= '1993-10-01') AND (orders.o_orderdate < 1994-01-01 00:00:00 +0000 UTC))\n" +
-			"                 │   │   │   └─ IndexedTableAccess(orders)\n" +
-			"                 │   │   │       ├─ index: [orders.O_ORDERKEY]\n" +
-			"                 │   │   │       ├─ filters: [{[NULL, ∞)}]\n" +
+			"                 │   │   │   └─ Table\n" +
+			"                 │   │   │       ├─ name: orders\n" +
 			"                 │   │   │       └─ columns: [o_orderkey o_custkey o_orderdate]\n" +
-			"                 │   │   └─ Filter\n" +
-			"                 │   │       ├─ (lineitem.l_returnflag = 'R')\n" +
-			"                 │   │       └─ IndexedTableAccess(lineitem)\n" +
-			"                 │   │           ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
-			"                 │   │           ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                 │   │           └─ columns: [l_orderkey l_extendedprice l_discount l_returnflag]\n" +
-			"                 │   └─ IndexedTableAccess(customer)\n" +
-			"                 │       ├─ index: [customer.C_CUSTKEY]\n" +
-			"                 │       ├─ columns: [c_custkey c_name c_address c_nationkey c_phone c_acctbal c_comment]\n" +
-			"                 │       └─ keys: orders.o_custkey\n" +
+			"                 │   │   └─ IndexedTableAccess(customer)\n" +
+			"                 │   │       ├─ index: [customer.C_CUSTKEY]\n" +
+			"                 │   │       ├─ columns: [c_custkey c_name c_address c_nationkey c_phone c_acctbal c_comment]\n" +
+			"                 │   │       └─ keys: orders.o_custkey\n" +
+			"                 │   └─ Filter\n" +
+			"                 │       ├─ (lineitem.l_returnflag = 'R')\n" +
+			"                 │       └─ IndexedTableAccess(lineitem)\n" +
+			"                 │           ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
+			"                 │           ├─ columns: [l_orderkey l_extendedprice l_discount l_returnflag]\n" +
+			"                 │           └─ keys: orders.o_orderkey\n" +
 			"                 └─ IndexedTableAccess(nation)\n" +
 			"                     ├─ index: [nation.N_NATIONKEY]\n" +
 			"                     ├─ columns: [n_nationkey n_name]\n" +
@@ -2000,15 +1898,8 @@ order by
 			"         │       └─ 2-HIGH (longtext)\n" +
 			"         │   THEN 1 (tinyint) ELSE 0 (tinyint) END), lineitem.l_shipmode:6!null\n" +
 			"         ├─ group: lineitem.l_shipmode:6!null\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: Eq\n" +
-			"             │   ├─ orders.o_orderkey:0!null\n" +
-			"             │   └─ lineitem.l_orderkey:2!null\n" +
-			"             ├─ IndexedTableAccess(orders)\n" +
-			"             │   ├─ index: [orders.O_ORDERKEY]\n" +
-			"             │   ├─ static: [{[NULL, ∞)}]\n" +
-			"             │   ├─ colSet: (1-9)\n" +
-			"             │   ├─ tableId: 1\n" +
+			"         └─ LookupJoin\n" +
+			"             ├─ ProcessTable\n" +
 			"             │   └─ Table\n" +
 			"             │       ├─ name: orders\n" +
 			"             │       └─ columns: [o_orderkey o_orderpriority]\n" +
@@ -2034,7 +1925,7 @@ order by
 			"                 │       └─ 1995-01-01 00:00:00 +0000 UTC (datetime)\n" +
 			"                 └─ IndexedTableAccess(lineitem)\n" +
 			"                     ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
-			"                     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                     ├─ keys: [orders.o_orderkey:0!null]\n" +
 			"                     ├─ colSet: (10-25)\n" +
 			"                     ├─ tableId: 2\n" +
 			"                     └─ Table\n" +
@@ -2047,18 +1938,16 @@ order by
 			"     └─ GroupBy\n" +
 			"         ├─ SelectedExprs(SUM(CASE  WHEN ((NOT((orders.o_orderpriority = '1-URGENT'))) AND (NOT((orders.o_orderpriority = '2-HIGH')))) THEN 1 ELSE 0 END), SUM(CASE  WHEN ((orders.o_orderpriority = '1-URGENT') OR (orders.o_orderpriority = '2-HIGH')) THEN 1 ELSE 0 END), lineitem.l_shipmode)\n" +
 			"         ├─ Grouping(lineitem.l_shipmode)\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: (orders.o_orderkey = lineitem.l_orderkey)\n" +
-			"             ├─ IndexedTableAccess(orders)\n" +
-			"             │   ├─ index: [orders.O_ORDERKEY]\n" +
-			"             │   ├─ filters: [{[NULL, ∞)}]\n" +
+			"         └─ LookupJoin\n" +
+			"             ├─ Table\n" +
+			"             │   ├─ name: orders\n" +
 			"             │   └─ columns: [o_orderkey o_orderpriority]\n" +
 			"             └─ Filter\n" +
 			"                 ├─ (((((lineitem.l_shipmode HASH IN ('MAIL', 'SHIP')) AND (lineitem.l_commitdate < lineitem.l_receiptdate)) AND (lineitem.l_shipdate < lineitem.l_commitdate)) AND (lineitem.l_receiptdate >= '1994-01-01')) AND (lineitem.l_receiptdate < 1995-01-01 00:00:00 +0000 UTC))\n" +
 			"                 └─ IndexedTableAccess(lineitem)\n" +
 			"                     ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
-			"                     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                     └─ columns: [l_orderkey l_shipdate l_commitdate l_receiptdate l_shipmode]\n" +
+			"                     ├─ columns: [l_orderkey l_shipdate l_commitdate l_receiptdate l_shipmode]\n" +
+			"                     └─ keys: orders.o_orderkey\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [lineitem.l_shipmode, sum(case  when ((orders.o_orderpriority = '1-urgent') or (orders.o_orderpriority = '2-high')) then 1 else 0 end) as high_line_count, sum(case  when ((not((orders.o_orderpriority = '1-urgent'))) and (not((orders.o_orderpriority = '2-high')))) then 1 else 0 end) as low_line_count]\n" +
@@ -2066,18 +1955,16 @@ order by
 			"     └─ GroupBy\n" +
 			"         ├─ SelectedExprs(SUM(CASE  WHEN ((NOT((orders.o_orderpriority = '1-URGENT'))) AND (NOT((orders.o_orderpriority = '2-HIGH')))) THEN 1 ELSE 0 END), SUM(CASE  WHEN ((orders.o_orderpriority = '1-URGENT') OR (orders.o_orderpriority = '2-HIGH')) THEN 1 ELSE 0 END), lineitem.l_shipmode)\n" +
 			"         ├─ Grouping(lineitem.l_shipmode)\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: (orders.o_orderkey = lineitem.l_orderkey)\n" +
-			"             ├─ IndexedTableAccess(orders)\n" +
-			"             │   ├─ index: [orders.O_ORDERKEY]\n" +
-			"             │   ├─ filters: [{[NULL, ∞)}]\n" +
+			"         └─ LookupJoin\n" +
+			"             ├─ Table\n" +
+			"             │   ├─ name: orders\n" +
 			"             │   └─ columns: [o_orderkey o_orderpriority]\n" +
 			"             └─ Filter\n" +
 			"                 ├─ (((((lineitem.l_shipmode HASH IN ('MAIL', 'SHIP')) AND (lineitem.l_commitdate < lineitem.l_receiptdate)) AND (lineitem.l_shipdate < lineitem.l_commitdate)) AND (lineitem.l_receiptdate >= '1994-01-01')) AND (lineitem.l_receiptdate < 1995-01-01 00:00:00 +0000 UTC))\n" +
 			"                 └─ IndexedTableAccess(lineitem)\n" +
 			"                     ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
-			"                     ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                     └─ columns: [l_orderkey l_shipdate l_commitdate l_receiptdate l_shipmode]\n" +
+			"                     ├─ columns: [l_orderkey l_shipdate l_commitdate l_receiptdate l_shipmode]\n" +
+			"                     └─ keys: orders.o_orderkey\n" +
 			"",
 	},
 	{
@@ -2516,54 +2403,47 @@ order by
 			"             ├─ select: COUNTDISTINCT([partsupp.ps_suppkey]), part.p_brand:8!null, part.p_type:9!null, part.p_size:10!null\n" +
 			"             ├─ group: part.p_brand:8!null, part.p_type:9!null, part.p_size:10!null\n" +
 			"             └─ Project\n" +
-			"                 ├─ columns: [partsupp.PS_PARTKEY:0!null, partsupp.PS_SUPPKEY:1!null, partsupp.PS_AVAILQTY:2!null, partsupp.PS_SUPPLYCOST:3!null, partsupp.PS_COMMENT:4!null, part.P_PARTKEY:5!null, part.P_NAME:6!null, part.P_MFGR:7!null, part.P_BRAND:8!null, part.P_TYPE:9!null, part.P_SIZE:10!null, part.P_CONTAINER:11!null, part.P_RETAILPRICE:12!null, part.P_COMMENT:13!null]\n" +
+			"                 ├─ columns: [partsupp.PS_PARTKEY:9!null, partsupp.PS_SUPPKEY:10!null, partsupp.PS_AVAILQTY:11!null, partsupp.PS_SUPPLYCOST:12!null, partsupp.PS_COMMENT:13!null, part.P_PARTKEY:0!null, part.P_NAME:1!null, part.P_MFGR:2!null, part.P_BRAND:3!null, part.P_TYPE:4!null, part.P_SIZE:5!null, part.P_CONTAINER:6!null, part.P_RETAILPRICE:7!null, part.P_COMMENT:8!null]\n" +
 			"                 └─ Filter\n" +
 			"                     ├─ supplier.s_suppkey:14!null IS NULL\n" +
 			"                     └─ LeftOuterLookupJoin\n" +
-			"                         ├─ MergeJoin\n" +
-			"                         │   ├─ cmp: Eq\n" +
-			"                         │   │   ├─ partsupp.ps_partkey:0!null\n" +
-			"                         │   │   └─ part.p_partkey:5!null\n" +
-			"                         │   ├─ IndexedTableAccess(partsupp)\n" +
-			"                         │   │   ├─ index: [partsupp.PS_PARTKEY,partsupp.PS_SUPPKEY]\n" +
-			"                         │   │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                         │   │   ├─ colSet: (1-5)\n" +
-			"                         │   │   ├─ tableId: 1\n" +
-			"                         │   │   └─ Table\n" +
-			"                         │   │       ├─ name: partsupp\n" +
-			"                         │   │       └─ columns: [ps_partkey ps_suppkey ps_availqty ps_supplycost ps_comment]\n" +
-			"                         │   └─ Filter\n" +
-			"                         │       ├─ AND\n" +
-			"                         │       │   ├─ AND\n" +
-			"                         │       │   │   ├─ NOT\n" +
-			"                         │       │   │   │   └─ Eq\n" +
-			"                         │       │   │   │       ├─ part.p_brand:3!null\n" +
-			"                         │       │   │   │       └─ Brand#45 (longtext)\n" +
-			"                         │       │   │   └─ Or\n" +
-			"                         │       │   │       ├─ LessThan\n" +
-			"                         │       │   │       │   ├─ part.p_type:4!null\n" +
-			"                         │       │   │       │   └─ MEDIUM POLISHED (longtext)\n" +
-			"                         │       │   │       └─ GreaterThan\n" +
-			"                         │       │   │           ├─ part.p_type:4!null\n" +
-			"                         │       │   │           └─ MEDIUM POLISHEDÿ (longtext)\n" +
-			"                         │       │   └─ HashIn\n" +
-			"                         │       │       ├─ part.p_size:5!null\n" +
-			"                         │       │       └─ TUPLE(49 (tinyint), 14 (tinyint), 23 (tinyint), 45 (tinyint), 19 (tinyint), 3 (tinyint), 36 (tinyint), 9 (tinyint))\n" +
-			"                         │       └─ IndexedTableAccess(part)\n" +
-			"                         │           ├─ index: [part.P_PARTKEY]\n" +
-			"                         │           ├─ static: [{[NULL, ∞)}]\n" +
-			"                         │           ├─ colSet: (6-14)\n" +
-			"                         │           ├─ tableId: 2\n" +
-			"                         │           └─ Table\n" +
-			"                         │               ├─ name: part\n" +
-			"                         │               └─ columns: [p_partkey p_name p_mfgr p_brand p_type p_size p_container p_retailprice p_comment]\n" +
+			"                         ├─ LookupJoin\n" +
+			"                         │   ├─ Filter\n" +
+			"                         │   │   ├─ AND\n" +
+			"                         │   │   │   ├─ AND\n" +
+			"                         │   │   │   │   ├─ NOT\n" +
+			"                         │   │   │   │   │   └─ Eq\n" +
+			"                         │   │   │   │   │       ├─ part.p_brand:3!null\n" +
+			"                         │   │   │   │   │       └─ Brand#45 (longtext)\n" +
+			"                         │   │   │   │   └─ Or\n" +
+			"                         │   │   │   │       ├─ LessThan\n" +
+			"                         │   │   │   │       │   ├─ part.p_type:4!null\n" +
+			"                         │   │   │   │       │   └─ MEDIUM POLISHED (longtext)\n" +
+			"                         │   │   │   │       └─ GreaterThan\n" +
+			"                         │   │   │   │           ├─ part.p_type:4!null\n" +
+			"                         │   │   │   │           └─ MEDIUM POLISHEDÿ (longtext)\n" +
+			"                         │   │   │   └─ HashIn\n" +
+			"                         │   │   │       ├─ part.p_size:5!null\n" +
+			"                         │   │   │       └─ TUPLE(49 (tinyint), 14 (tinyint), 23 (tinyint), 45 (tinyint), 19 (tinyint), 3 (tinyint), 36 (tinyint), 9 (tinyint))\n" +
+			"                         │   │   └─ ProcessTable\n" +
+			"                         │   │       └─ Table\n" +
+			"                         │   │           ├─ name: part\n" +
+			"                         │   │           └─ columns: [p_partkey p_name p_mfgr p_brand p_type p_size p_container p_retailprice p_comment]\n" +
+			"                         │   └─ IndexedTableAccess(partsupp)\n" +
+			"                         │       ├─ index: [partsupp.PS_PARTKEY,partsupp.PS_SUPPKEY]\n" +
+			"                         │       ├─ keys: [part.p_partkey:0!null]\n" +
+			"                         │       ├─ colSet: (1-5)\n" +
+			"                         │       ├─ tableId: 1\n" +
+			"                         │       └─ Table\n" +
+			"                         │           ├─ name: partsupp\n" +
+			"                         │           └─ columns: [ps_partkey ps_suppkey ps_availqty ps_supplycost ps_comment]\n" +
 			"                         └─ Project\n" +
 			"                             ├─ columns: [supplier.s_suppkey:0!null]\n" +
 			"                             └─ Filter\n" +
 			"                                 ├─ supplier.s_comment LIKE '%Customer%Complaints%'\n" +
 			"                                 └─ IndexedTableAccess(supplier)\n" +
 			"                                     ├─ index: [supplier.S_SUPPKEY]\n" +
-			"                                     ├─ keys: [partsupp.ps_suppkey:1!null]\n" +
+			"                                     ├─ keys: [partsupp.ps_suppkey:10!null]\n" +
 			"                                     ├─ colSet: (15-21)\n" +
 			"                                     ├─ tableId: 3\n" +
 			"                                     └─ Table\n" +
@@ -2583,16 +2463,14 @@ order by
 			"                 └─ Filter\n" +
 			"                     ├─ supplier.s_suppkey IS NULL\n" +
 			"                     └─ LeftOuterLookupJoin\n" +
-			"                         ├─ MergeJoin\n" +
-			"                         │   ├─ cmp: (partsupp.ps_partkey = part.p_partkey)\n" +
-			"                         │   ├─ IndexedTableAccess(partsupp)\n" +
-			"                         │   │   ├─ index: [partsupp.PS_PARTKEY,partsupp.PS_SUPPKEY]\n" +
-			"                         │   │   └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                         │   └─ Filter\n" +
-			"                         │       ├─ (((NOT((part.p_brand = 'Brand#45'))) AND ((part.p_type < 'MEDIUM POLISHED') OR (part.p_type > 'MEDIUM POLISHEDÿ'))) AND (part.p_size HASH IN (49, 14, 23, 45, 19, 3, 36, 9)))\n" +
-			"                         │       └─ IndexedTableAccess(part)\n" +
-			"                         │           ├─ index: [part.P_PARTKEY]\n" +
-			"                         │           └─ filters: [{[NULL, ∞)}]\n" +
+			"                         ├─ LookupJoin\n" +
+			"                         │   ├─ Filter\n" +
+			"                         │   │   ├─ (((NOT((part.p_brand = 'Brand#45'))) AND ((part.p_type < 'MEDIUM POLISHED') OR (part.p_type > 'MEDIUM POLISHEDÿ'))) AND (part.p_size HASH IN (49, 14, 23, 45, 19, 3, 36, 9)))\n" +
+			"                         │   │   └─ Table\n" +
+			"                         │   │       └─ name: part\n" +
+			"                         │   └─ IndexedTableAccess(partsupp)\n" +
+			"                         │       ├─ index: [partsupp.PS_PARTKEY,partsupp.PS_SUPPKEY]\n" +
+			"                         │       └─ keys: part.p_partkey\n" +
 			"                         └─ Project\n" +
 			"                             ├─ columns: [supplier.s_suppkey]\n" +
 			"                             └─ Filter\n" +
@@ -2614,16 +2492,14 @@ order by
 			"                 └─ Filter\n" +
 			"                     ├─ supplier.s_suppkey IS NULL\n" +
 			"                     └─ LeftOuterLookupJoin\n" +
-			"                         ├─ MergeJoin\n" +
-			"                         │   ├─ cmp: (partsupp.ps_partkey = part.p_partkey)\n" +
-			"                         │   ├─ IndexedTableAccess(partsupp)\n" +
-			"                         │   │   ├─ index: [partsupp.PS_PARTKEY,partsupp.PS_SUPPKEY]\n" +
-			"                         │   │   └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                         │   └─ Filter\n" +
-			"                         │       ├─ (((NOT((part.p_brand = 'Brand#45'))) AND ((part.p_type < 'MEDIUM POLISHED') OR (part.p_type > 'MEDIUM POLISHEDÿ'))) AND (part.p_size HASH IN (49, 14, 23, 45, 19, 3, 36, 9)))\n" +
-			"                         │       └─ IndexedTableAccess(part)\n" +
-			"                         │           ├─ index: [part.P_PARTKEY]\n" +
-			"                         │           └─ filters: [{[NULL, ∞)}]\n" +
+			"                         ├─ LookupJoin\n" +
+			"                         │   ├─ Filter\n" +
+			"                         │   │   ├─ (((NOT((part.p_brand = 'Brand#45'))) AND ((part.p_type < 'MEDIUM POLISHED') OR (part.p_type > 'MEDIUM POLISHEDÿ'))) AND (part.p_size HASH IN (49, 14, 23, 45, 19, 3, 36, 9)))\n" +
+			"                         │   │   └─ Table\n" +
+			"                         │   │       └─ name: part\n" +
+			"                         │   └─ IndexedTableAccess(partsupp)\n" +
+			"                         │       ├─ index: [partsupp.PS_PARTKEY,partsupp.PS_SUPPKEY]\n" +
+			"                         │       └─ keys: part.p_partkey\n" +
 			"                         └─ Project\n" +
 			"                             ├─ columns: [supplier.s_suppkey]\n" +
 			"                             └─ Filter\n" +
@@ -3178,95 +3054,90 @@ order by
 			"         │   │   └─ partsupp.ps_suppkey:0!null\n" +
 			"         │   ├─ Distinct\n" +
 			"         │   │   └─ Project\n" +
-			"         │   │       ├─ columns: [partsupp.ps_suppkey:1!null]\n" +
+			"         │   │       ├─ columns: [partsupp.ps_suppkey:2!null]\n" +
 			"         │   │       └─ Filter\n" +
 			"         │   │           ├─ GreaterThan\n" +
-			"         │   │           │   ├─ partsupp.ps_availqty:2!null\n" +
+			"         │   │           │   ├─ partsupp.ps_availqty:3!null\n" +
 			"         │   │           │   └─ Subquery\n" +
 			"         │   │           │       ├─ cacheable: false\n" +
 			"         │   │           │       ├─ alias-string: select 0.5 * sum(l_quantity) from lineitem where l_partkey = ps_partkey and l_suppkey = ps_suppkey and l_shipdate >= '1994-01-01' and l_shipdate < '1994-01-01' + interval '1' year\n" +
 			"         │   │           │       └─ Project\n" +
-			"         │   │           │           ├─ columns: [(0.5 (decimal(2,1)) * sum(lineitem.l_quantity):5!null)->0.5 * sum(l_quantity):0]\n" +
+			"         │   │           │           ├─ columns: [(0.5 (decimal(2,1)) * sum(lineitem.l_quantity):6!null)->0.5 * sum(l_quantity):0]\n" +
 			"         │   │           │           └─ GroupBy\n" +
-			"         │   │           │               ├─ select: SUM(lineitem.l_quantity:7!null)\n" +
+			"         │   │           │               ├─ select: SUM(lineitem.l_quantity:8!null)\n" +
 			"         │   │           │               ├─ group: \n" +
 			"         │   │           │               └─ Filter\n" +
 			"         │   │           │                   ├─ AND\n" +
 			"         │   │           │                   │   ├─ AND\n" +
 			"         │   │           │                   │   │   ├─ AND\n" +
 			"         │   │           │                   │   │   │   ├─ Eq\n" +
-			"         │   │           │                   │   │   │   │   ├─ lineitem.l_partkey:5!null\n" +
-			"         │   │           │                   │   │   │   │   └─ partsupp.ps_partkey:0!null\n" +
+			"         │   │           │                   │   │   │   │   ├─ lineitem.l_partkey:6!null\n" +
+			"         │   │           │                   │   │   │   │   └─ partsupp.ps_partkey:1!null\n" +
 			"         │   │           │                   │   │   │   └─ Eq\n" +
-			"         │   │           │                   │   │   │       ├─ lineitem.l_suppkey:6!null\n" +
-			"         │   │           │                   │   │   │       └─ partsupp.ps_suppkey:1!null\n" +
+			"         │   │           │                   │   │   │       ├─ lineitem.l_suppkey:7!null\n" +
+			"         │   │           │                   │   │   │       └─ partsupp.ps_suppkey:2!null\n" +
 			"         │   │           │                   │   │   └─ GreaterThanOrEqual\n" +
-			"         │   │           │                   │   │       ├─ lineitem.l_shipdate:8!null\n" +
+			"         │   │           │                   │   │       ├─ lineitem.l_shipdate:9!null\n" +
 			"         │   │           │                   │   │       └─ 1994-01-01 (longtext)\n" +
 			"         │   │           │                   │   └─ LessThan\n" +
-			"         │   │           │                   │       ├─ lineitem.l_shipdate:8!null\n" +
+			"         │   │           │                   │       ├─ lineitem.l_shipdate:9!null\n" +
 			"         │   │           │                   │       └─ 1995-01-01 00:00:00 +0000 UTC (datetime)\n" +
 			"         │   │           │                   └─ Table\n" +
 			"         │   │           │                       ├─ name: lineitem\n" +
 			"         │   │           │                       ├─ columns: [l_partkey l_suppkey l_quantity l_shipdate]\n" +
 			"         │   │           │                       ├─ colSet: (26-41)\n" +
 			"         │   │           │                       └─ tableId: 5\n" +
-			"         │   │           └─ Project\n" +
-			"         │   │               ├─ columns: [partsupp.PS_PARTKEY:0!null, partsupp.PS_SUPPKEY:1!null, partsupp.PS_AVAILQTY:2!null, partsupp.PS_SUPPLYCOST:3!null, partsupp.PS_COMMENT:4!null]\n" +
-			"         │   │               └─ MergeJoin\n" +
-			"         │   │                   ├─ cmp: Eq\n" +
-			"         │   │                   │   ├─ partsupp.ps_partkey:0!null\n" +
-			"         │   │                   │   └─ part.p_partkey:5!null\n" +
-			"         │   │                   ├─ IndexedTableAccess(partsupp)\n" +
-			"         │   │                   │   ├─ index: [partsupp.PS_PARTKEY,partsupp.PS_SUPPKEY]\n" +
-			"         │   │                   │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"         │   │                   │   ├─ colSet: (12-16)\n" +
-			"         │   │                   │   ├─ tableId: 3\n" +
-			"         │   │                   │   └─ Table\n" +
-			"         │   │                   │       ├─ name: partsupp\n" +
-			"         │   │                   │       └─ columns: [ps_partkey ps_suppkey ps_availqty ps_supplycost ps_comment]\n" +
-			"         │   │                   └─ Project\n" +
-			"         │   │                       ├─ columns: [part.p_partkey:0!null]\n" +
-			"         │   │                       └─ Filter\n" +
-			"         │   │                           ├─ AND\n" +
-			"         │   │                           │   ├─ AND\n" +
-			"         │   │                           │   │   ├─ AND\n" +
-			"         │   │                           │   │   │   ├─ AND\n" +
-			"         │   │                           │   │   │   │   ├─ AND\n" +
-			"         │   │                           │   │   │   │   │   ├─ AND\n" +
-			"         │   │                           │   │   │   │   │   │   ├─ AND\n" +
-			"         │   │                           │   │   │   │   │   │   │   ├─ GreaterThanOrEqual\n" +
-			"         │   │                           │   │   │   │   │   │   │   │   ├─ part.p_name:1!null\n" +
-			"         │   │                           │   │   │   │   │   │   │   │   └─ forest (longtext)\n" +
-			"         │   │                           │   │   │   │   │   │   │   └─ LessThanOrEqual\n" +
-			"         │   │                           │   │   │   │   │   │   │       ├─ part.p_name:1!null\n" +
-			"         │   │                           │   │   │   │   │   │   │       └─ forestÿ (longtext)\n" +
-			"         │   │                           │   │   │   │   │   │   └─ GreaterThanOrEqual\n" +
-			"         │   │                           │   │   │   │   │   │       ├─ part.p_name:1!null\n" +
-			"         │   │                           │   │   │   │   │   │       └─ forest (longtext)\n" +
-			"         │   │                           │   │   │   │   │   └─ LessThanOrEqual\n" +
-			"         │   │                           │   │   │   │   │       ├─ part.p_name:1!null\n" +
-			"         │   │                           │   │   │   │   │       └─ forestÿ (longtext)\n" +
-			"         │   │                           │   │   │   │   └─ GreaterThanOrEqual\n" +
-			"         │   │                           │   │   │   │       ├─ part.p_name:1!null\n" +
-			"         │   │                           │   │   │   │       └─ forest (longtext)\n" +
-			"         │   │                           │   │   │   └─ LessThanOrEqual\n" +
-			"         │   │                           │   │   │       ├─ part.p_name:1!null\n" +
-			"         │   │                           │   │   │       └─ forestÿ (longtext)\n" +
-			"         │   │                           │   │   └─ GreaterThanOrEqual\n" +
-			"         │   │                           │   │       ├─ part.p_name:1!null\n" +
-			"         │   │                           │   │       └─ forest (longtext)\n" +
-			"         │   │                           │   └─ LessThanOrEqual\n" +
-			"         │   │                           │       ├─ part.p_name:1!null\n" +
-			"         │   │                           │       └─ forestÿ (longtext)\n" +
-			"         │   │                           └─ IndexedTableAccess(part)\n" +
-			"         │   │                               ├─ index: [part.P_PARTKEY]\n" +
-			"         │   │                               ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │                               ├─ colSet: (17-25)\n" +
-			"         │   │                               ├─ tableId: 4\n" +
-			"         │   │                               └─ Table\n" +
-			"         │   │                                   ├─ name: part\n" +
-			"         │   │                                   └─ columns: [p_partkey p_name p_mfgr p_brand p_type p_size p_container p_retailprice p_comment]\n" +
+			"         │   │           └─ LookupJoin\n" +
+			"         │   │               ├─ Eq\n" +
+			"         │   │               │   ├─ partsupp.ps_partkey:1!null\n" +
+			"         │   │               │   └─ part.p_partkey:0!null\n" +
+			"         │   │               ├─ Distinct\n" +
+			"         │   │               │   └─ Project\n" +
+			"         │   │               │       ├─ columns: [part.p_partkey:0!null]\n" +
+			"         │   │               │       └─ Filter\n" +
+			"         │   │               │           ├─ AND\n" +
+			"         │   │               │           │   ├─ AND\n" +
+			"         │   │               │           │   │   ├─ AND\n" +
+			"         │   │               │           │   │   │   ├─ AND\n" +
+			"         │   │               │           │   │   │   │   ├─ AND\n" +
+			"         │   │               │           │   │   │   │   │   ├─ AND\n" +
+			"         │   │               │           │   │   │   │   │   │   ├─ AND\n" +
+			"         │   │               │           │   │   │   │   │   │   │   ├─ GreaterThanOrEqual\n" +
+			"         │   │               │           │   │   │   │   │   │   │   │   ├─ part.p_name:1!null\n" +
+			"         │   │               │           │   │   │   │   │   │   │   │   └─ forest (longtext)\n" +
+			"         │   │               │           │   │   │   │   │   │   │   └─ LessThanOrEqual\n" +
+			"         │   │               │           │   │   │   │   │   │   │       ├─ part.p_name:1!null\n" +
+			"         │   │               │           │   │   │   │   │   │   │       └─ forestÿ (longtext)\n" +
+			"         │   │               │           │   │   │   │   │   │   └─ GreaterThanOrEqual\n" +
+			"         │   │               │           │   │   │   │   │   │       ├─ part.p_name:1!null\n" +
+			"         │   │               │           │   │   │   │   │   │       └─ forest (longtext)\n" +
+			"         │   │               │           │   │   │   │   │   └─ LessThanOrEqual\n" +
+			"         │   │               │           │   │   │   │   │       ├─ part.p_name:1!null\n" +
+			"         │   │               │           │   │   │   │   │       └─ forestÿ (longtext)\n" +
+			"         │   │               │           │   │   │   │   └─ GreaterThanOrEqual\n" +
+			"         │   │               │           │   │   │   │       ├─ part.p_name:1!null\n" +
+			"         │   │               │           │   │   │   │       └─ forest (longtext)\n" +
+			"         │   │               │           │   │   │   └─ LessThanOrEqual\n" +
+			"         │   │               │           │   │   │       ├─ part.p_name:1!null\n" +
+			"         │   │               │           │   │   │       └─ forestÿ (longtext)\n" +
+			"         │   │               │           │   │   └─ GreaterThanOrEqual\n" +
+			"         │   │               │           │   │       ├─ part.p_name:1!null\n" +
+			"         │   │               │           │   │       └─ forest (longtext)\n" +
+			"         │   │               │           │   └─ LessThanOrEqual\n" +
+			"         │   │               │           │       ├─ part.p_name:1!null\n" +
+			"         │   │               │           │       └─ forestÿ (longtext)\n" +
+			"         │   │               │           └─ ProcessTable\n" +
+			"         │   │               │               └─ Table\n" +
+			"         │   │               │                   ├─ name: part\n" +
+			"         │   │               │                   └─ columns: [p_partkey p_name p_mfgr p_brand p_type p_size p_container p_retailprice p_comment]\n" +
+			"         │   │               └─ IndexedTableAccess(partsupp)\n" +
+			"         │   │                   ├─ index: [partsupp.PS_PARTKEY,partsupp.PS_SUPPKEY]\n" +
+			"         │   │                   ├─ keys: [part.p_partkey:0!null]\n" +
+			"         │   │                   ├─ colSet: (12-16)\n" +
+			"         │   │                   ├─ tableId: 3\n" +
+			"         │   │                   └─ Table\n" +
+			"         │   │                       ├─ name: partsupp\n" +
+			"         │   │                       └─ columns: [ps_partkey ps_suppkey ps_availqty ps_supplycost ps_comment]\n" +
 			"         │   └─ IndexedTableAccess(supplier)\n" +
 			"         │       ├─ index: [supplier.S_SUPPKEY]\n" +
 			"         │       ├─ keys: [partsupp.ps_suppkey:0!null]\n" +
@@ -3311,20 +3182,18 @@ order by
 			"         │   │           │                   ├─ name: lineitem\n" +
 			"         │   │           │                   └─ columns: [l_partkey l_suppkey l_quantity l_shipdate]\n" +
 			"         │   │           │  )\n" +
-			"         │   │           └─ Project\n" +
-			"         │   │               ├─ columns: [partsupp.PS_PARTKEY, partsupp.PS_SUPPKEY, partsupp.PS_AVAILQTY, partsupp.PS_SUPPLYCOST, partsupp.PS_COMMENT]\n" +
-			"         │   │               └─ MergeJoin\n" +
-			"         │   │                   ├─ cmp: (partsupp.ps_partkey = part.p_partkey)\n" +
-			"         │   │                   ├─ IndexedTableAccess(partsupp)\n" +
-			"         │   │                   │   ├─ index: [partsupp.PS_PARTKEY,partsupp.PS_SUPPKEY]\n" +
-			"         │   │                   │   └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"         │   │                   └─ Project\n" +
-			"         │   │                       ├─ columns: [part.p_partkey]\n" +
-			"         │   │                       └─ Filter\n" +
-			"         │   │                           ├─ ((((((((part.p_name >= 'forest') AND (part.p_name <= 'forestÿ')) AND (part.p_name >= 'forest')) AND (part.p_name <= 'forestÿ')) AND (part.p_name >= 'forest')) AND (part.p_name <= 'forestÿ')) AND (part.p_name >= 'forest')) AND (part.p_name <= 'forestÿ'))\n" +
-			"         │   │                           └─ IndexedTableAccess(part)\n" +
-			"         │   │                               ├─ index: [part.P_PARTKEY]\n" +
-			"         │   │                               └─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │           └─ LookupJoin\n" +
+			"         │   │               ├─ (partsupp.ps_partkey = part.p_partkey)\n" +
+			"         │   │               ├─ Distinct\n" +
+			"         │   │               │   └─ Project\n" +
+			"         │   │               │       ├─ columns: [part.p_partkey]\n" +
+			"         │   │               │       └─ Filter\n" +
+			"         │   │               │           ├─ ((((((((part.p_name >= 'forest') AND (part.p_name <= 'forestÿ')) AND (part.p_name >= 'forest')) AND (part.p_name <= 'forestÿ')) AND (part.p_name >= 'forest')) AND (part.p_name <= 'forestÿ')) AND (part.p_name >= 'forest')) AND (part.p_name <= 'forestÿ'))\n" +
+			"         │   │               │           └─ Table\n" +
+			"         │   │               │               └─ name: part\n" +
+			"         │   │               └─ IndexedTableAccess(partsupp)\n" +
+			"         │   │                   ├─ index: [partsupp.PS_PARTKEY,partsupp.PS_SUPPKEY]\n" +
+			"         │   │                   └─ keys: part.p_partkey\n" +
 			"         │   └─ IndexedTableAccess(supplier)\n" +
 			"         │       ├─ index: [supplier.S_SUPPKEY]\n" +
 			"         │       └─ keys: partsupp.ps_suppkey\n" +
@@ -3357,20 +3226,18 @@ order by
 			"         │   │           │                   ├─ name: lineitem\n" +
 			"         │   │           │                   └─ columns: [l_partkey l_suppkey l_quantity l_shipdate]\n" +
 			"         │   │           │  )\n" +
-			"         │   │           └─ Project\n" +
-			"         │   │               ├─ columns: [partsupp.PS_PARTKEY, partsupp.PS_SUPPKEY, partsupp.PS_AVAILQTY, partsupp.PS_SUPPLYCOST, partsupp.PS_COMMENT]\n" +
-			"         │   │               └─ MergeJoin\n" +
-			"         │   │                   ├─ cmp: (partsupp.ps_partkey = part.p_partkey)\n" +
-			"         │   │                   ├─ IndexedTableAccess(partsupp)\n" +
-			"         │   │                   │   ├─ index: [partsupp.PS_PARTKEY,partsupp.PS_SUPPKEY]\n" +
-			"         │   │                   │   └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"         │   │                   └─ Project\n" +
-			"         │   │                       ├─ columns: [part.p_partkey]\n" +
-			"         │   │                       └─ Filter\n" +
-			"         │   │                           ├─ ((((((((part.p_name >= 'forest') AND (part.p_name <= 'forestÿ')) AND (part.p_name >= 'forest')) AND (part.p_name <= 'forestÿ')) AND (part.p_name >= 'forest')) AND (part.p_name <= 'forestÿ')) AND (part.p_name >= 'forest')) AND (part.p_name <= 'forestÿ'))\n" +
-			"         │   │                           └─ IndexedTableAccess(part)\n" +
-			"         │   │                               ├─ index: [part.P_PARTKEY]\n" +
-			"         │   │                               └─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │           └─ LookupJoin\n" +
+			"         │   │               ├─ (partsupp.ps_partkey = part.p_partkey)\n" +
+			"         │   │               ├─ Distinct\n" +
+			"         │   │               │   └─ Project\n" +
+			"         │   │               │       ├─ columns: [part.p_partkey]\n" +
+			"         │   │               │       └─ Filter\n" +
+			"         │   │               │           ├─ ((((((((part.p_name >= 'forest') AND (part.p_name <= 'forestÿ')) AND (part.p_name >= 'forest')) AND (part.p_name <= 'forestÿ')) AND (part.p_name >= 'forest')) AND (part.p_name <= 'forestÿ')) AND (part.p_name >= 'forest')) AND (part.p_name <= 'forestÿ'))\n" +
+			"         │   │               │           └─ Table\n" +
+			"         │   │               │               └─ name: part\n" +
+			"         │   │               └─ IndexedTableAccess(partsupp)\n" +
+			"         │   │                   ├─ index: [partsupp.PS_PARTKEY,partsupp.PS_SUPPKEY]\n" +
+			"         │   │                   └─ keys: part.p_partkey\n" +
 			"         │   └─ IndexedTableAccess(supplier)\n" +
 			"         │       ├─ index: [supplier.S_SUPPKEY]\n" +
 			"         │       └─ keys: partsupp.ps_suppkey\n" +
@@ -3435,50 +3302,43 @@ order by
 			"                 ├─ NOT\n" +
 			"                 │   └─ Eq\n" +
 			"                 │       ├─ l2.l_suppkey:38!null\n" +
-			"                 │       └─ l1.l_suppkey:2!null\n" +
+			"                 │       └─ l1.l_suppkey:11!null\n" +
 			"                 ├─ AntiJoin\n" +
 			"                 │   ├─ AND\n" +
 			"                 │   │   ├─ Eq\n" +
 			"                 │   │   │   ├─ l3.l_orderkey:36!null\n" +
-			"                 │   │   │   └─ l1.l_orderkey:0!null\n" +
+			"                 │   │   │   └─ l1.l_orderkey:9!null\n" +
 			"                 │   │   └─ NOT\n" +
 			"                 │   │       └─ Eq\n" +
 			"                 │   │           ├─ l3.l_suppkey:38!null\n" +
-			"                 │   │           └─ l1.l_suppkey:2!null\n" +
+			"                 │   │           └─ l1.l_suppkey:11!null\n" +
 			"                 │   ├─ LookupJoin\n" +
 			"                 │   │   ├─ LookupJoin\n" +
-			"                 │   │   │   ├─ MergeJoin\n" +
-			"                 │   │   │   │   ├─ cmp: Eq\n" +
-			"                 │   │   │   │   │   ├─ l1.l_orderkey:0!null\n" +
-			"                 │   │   │   │   │   └─ orders.o_orderkey:16!null\n" +
+			"                 │   │   │   ├─ LookupJoin\n" +
 			"                 │   │   │   │   ├─ Filter\n" +
-			"                 │   │   │   │   │   ├─ GreaterThan\n" +
-			"                 │   │   │   │   │   │   ├─ l1.l_receiptdate:12!null\n" +
-			"                 │   │   │   │   │   │   └─ l1.l_commitdate:11!null\n" +
-			"                 │   │   │   │   │   └─ TableAlias(l1)\n" +
-			"                 │   │   │   │   │       └─ IndexedTableAccess(lineitem)\n" +
-			"                 │   │   │   │   │           ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
-			"                 │   │   │   │   │           ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                 │   │   │   │   │           ├─ colSet: (8-23)\n" +
-			"                 │   │   │   │   │           ├─ tableId: 2\n" +
-			"                 │   │   │   │   │           └─ Table\n" +
-			"                 │   │   │   │   │               ├─ name: lineitem\n" +
-			"                 │   │   │   │   │               └─ columns: [l_orderkey l_partkey l_suppkey l_linenumber l_quantity l_extendedprice l_discount l_tax l_returnflag l_linestatus l_shipdate l_commitdate l_receiptdate l_shipinstruct l_shipmode l_comment]\n" +
+			"                 │   │   │   │   │   ├─ Eq\n" +
+			"                 │   │   │   │   │   │   ├─ orders.o_orderstatus:2!null\n" +
+			"                 │   │   │   │   │   │   └─ F (longtext)\n" +
+			"                 │   │   │   │   │   └─ ProcessTable\n" +
+			"                 │   │   │   │   │       └─ Table\n" +
+			"                 │   │   │   │   │           ├─ name: orders\n" +
+			"                 │   │   │   │   │           └─ columns: [o_orderkey o_custkey o_orderstatus o_totalprice o_orderdate o_orderpriority o_clerk o_shippriority o_comment]\n" +
 			"                 │   │   │   │   └─ Filter\n" +
-			"                 │   │   │   │       ├─ Eq\n" +
-			"                 │   │   │   │       │   ├─ orders.o_orderstatus:2!null\n" +
-			"                 │   │   │   │       │   └─ F (longtext)\n" +
-			"                 │   │   │   │       └─ IndexedTableAccess(orders)\n" +
-			"                 │   │   │   │           ├─ index: [orders.O_ORDERKEY]\n" +
-			"                 │   │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
-			"                 │   │   │   │           ├─ colSet: (24-32)\n" +
-			"                 │   │   │   │           ├─ tableId: 3\n" +
-			"                 │   │   │   │           └─ Table\n" +
-			"                 │   │   │   │               ├─ name: orders\n" +
-			"                 │   │   │   │               └─ columns: [o_orderkey o_custkey o_orderstatus o_totalprice o_orderdate o_orderpriority o_clerk o_shippriority o_comment]\n" +
+			"                 │   │   │   │       ├─ GreaterThan\n" +
+			"                 │   │   │   │       │   ├─ l1.l_receiptdate:12!null\n" +
+			"                 │   │   │   │       │   └─ l1.l_commitdate:11!null\n" +
+			"                 │   │   │   │       └─ TableAlias(l1)\n" +
+			"                 │   │   │   │           └─ IndexedTableAccess(lineitem)\n" +
+			"                 │   │   │   │               ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
+			"                 │   │   │   │               ├─ keys: [orders.o_orderkey:0!null]\n" +
+			"                 │   │   │   │               ├─ colSet: (8-23)\n" +
+			"                 │   │   │   │               ├─ tableId: 2\n" +
+			"                 │   │   │   │               └─ Table\n" +
+			"                 │   │   │   │                   ├─ name: lineitem\n" +
+			"                 │   │   │   │                   └─ columns: [l_orderkey l_partkey l_suppkey l_linenumber l_quantity l_extendedprice l_discount l_tax l_returnflag l_linestatus l_shipdate l_commitdate l_receiptdate l_shipinstruct l_shipmode l_comment]\n" +
 			"                 │   │   │   └─ IndexedTableAccess(supplier)\n" +
 			"                 │   │   │       ├─ index: [supplier.S_SUPPKEY]\n" +
-			"                 │   │   │       ├─ keys: [l1.l_suppkey:2!null]\n" +
+			"                 │   │   │       ├─ keys: [l1.l_suppkey:11!null]\n" +
 			"                 │   │   │       ├─ colSet: (1-7)\n" +
 			"                 │   │   │       ├─ tableId: 1\n" +
 			"                 │   │   │       └─ Table\n" +
@@ -3508,7 +3368,7 @@ order by
 			"                 └─ TableAlias(l2)\n" +
 			"                     └─ IndexedTableAccess(lineitem)\n" +
 			"                         ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
-			"                         ├─ keys: [l1.l_orderkey:0!null]\n" +
+			"                         ├─ keys: [l1.l_orderkey:9!null]\n" +
 			"                         ├─ colSet: (37-52)\n" +
 			"                         ├─ tableId: 5\n" +
 			"                         └─ Table\n" +
@@ -3529,19 +3389,17 @@ order by
 			"                 │   ├─ ((l3.l_orderkey = l1.l_orderkey) AND (NOT((l3.l_suppkey = l1.l_suppkey))))\n" +
 			"                 │   ├─ LookupJoin\n" +
 			"                 │   │   ├─ LookupJoin\n" +
-			"                 │   │   │   ├─ MergeJoin\n" +
-			"                 │   │   │   │   ├─ cmp: (l1.l_orderkey = orders.o_orderkey)\n" +
+			"                 │   │   │   ├─ LookupJoin\n" +
 			"                 │   │   │   │   ├─ Filter\n" +
-			"                 │   │   │   │   │   ├─ (l1.l_receiptdate > l1.l_commitdate)\n" +
-			"                 │   │   │   │   │   └─ TableAlias(l1)\n" +
-			"                 │   │   │   │   │       └─ IndexedTableAccess(lineitem)\n" +
-			"                 │   │   │   │   │           ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
-			"                 │   │   │   │   │           └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 │   │   │   │   │   ├─ (orders.o_orderstatus = 'F')\n" +
+			"                 │   │   │   │   │   └─ Table\n" +
+			"                 │   │   │   │   │       └─ name: orders\n" +
 			"                 │   │   │   │   └─ Filter\n" +
-			"                 │   │   │   │       ├─ (orders.o_orderstatus = 'F')\n" +
-			"                 │   │   │   │       └─ IndexedTableAccess(orders)\n" +
-			"                 │   │   │   │           ├─ index: [orders.O_ORDERKEY]\n" +
-			"                 │   │   │   │           └─ filters: [{[NULL, ∞)}]\n" +
+			"                 │   │   │   │       ├─ (l1.l_receiptdate > l1.l_commitdate)\n" +
+			"                 │   │   │   │       └─ TableAlias(l1)\n" +
+			"                 │   │   │   │           └─ IndexedTableAccess(lineitem)\n" +
+			"                 │   │   │   │               ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
+			"                 │   │   │   │               └─ keys: orders.o_orderkey\n" +
 			"                 │   │   │   └─ IndexedTableAccess(supplier)\n" +
 			"                 │   │   │       ├─ index: [supplier.S_SUPPKEY]\n" +
 			"                 │   │   │       └─ keys: l1.l_suppkey\n" +
@@ -3576,19 +3434,17 @@ order by
 			"                 │   ├─ ((l3.l_orderkey = l1.l_orderkey) AND (NOT((l3.l_suppkey = l1.l_suppkey))))\n" +
 			"                 │   ├─ LookupJoin\n" +
 			"                 │   │   ├─ LookupJoin\n" +
-			"                 │   │   │   ├─ MergeJoin\n" +
-			"                 │   │   │   │   ├─ cmp: (l1.l_orderkey = orders.o_orderkey)\n" +
+			"                 │   │   │   ├─ LookupJoin\n" +
 			"                 │   │   │   │   ├─ Filter\n" +
-			"                 │   │   │   │   │   ├─ (l1.l_receiptdate > l1.l_commitdate)\n" +
-			"                 │   │   │   │   │   └─ TableAlias(l1)\n" +
-			"                 │   │   │   │   │       └─ IndexedTableAccess(lineitem)\n" +
-			"                 │   │   │   │   │           ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
-			"                 │   │   │   │   │           └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 │   │   │   │   │   ├─ (orders.o_orderstatus = 'F')\n" +
+			"                 │   │   │   │   │   └─ Table\n" +
+			"                 │   │   │   │   │       └─ name: orders\n" +
 			"                 │   │   │   │   └─ Filter\n" +
-			"                 │   │   │   │       ├─ (orders.o_orderstatus = 'F')\n" +
-			"                 │   │   │   │       └─ IndexedTableAccess(orders)\n" +
-			"                 │   │   │   │           ├─ index: [orders.O_ORDERKEY]\n" +
-			"                 │   │   │   │           └─ filters: [{[NULL, ∞)}]\n" +
+			"                 │   │   │   │       ├─ (l1.l_receiptdate > l1.l_commitdate)\n" +
+			"                 │   │   │   │       └─ TableAlias(l1)\n" +
+			"                 │   │   │   │           └─ IndexedTableAccess(lineitem)\n" +
+			"                 │   │   │   │               ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
+			"                 │   │   │   │               └─ keys: orders.o_orderkey\n" +
 			"                 │   │   │   └─ IndexedTableAccess(supplier)\n" +
 			"                 │   │   │       ├─ index: [supplier.S_SUPPKEY]\n" +
 			"                 │   │   │       └─ keys: l1.l_suppkey\n" +
