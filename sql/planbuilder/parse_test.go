@@ -2969,6 +2969,24 @@ func TestPlanBuilderErr(t *testing.T) {
 			Query: "select 1 from xy group by 100;",
 			Err:   "column ordinal out of range: 100",
 		},
+
+		// Test mixed named columns and star expressions
+		{
+			Query: "SELECT x, * FROM xy",
+			Err:   "Invalid syntax: cannot mix named columns with '*' in SELECT clause",
+		},
+		{
+			Query: "SELECT 'constant', * FROM xy",
+			Err:   "Invalid syntax: cannot mix named columns with '*' in SELECT clause",
+		},
+		{
+			Query: "SELECT 1, * FROM xy",
+			Err:   "Invalid syntax: cannot mix named columns with '*' in SELECT clause",
+		},
+		{
+			Query: "SELECT * FROM (SELECT 'parent' as db, * FROM xy) as combined",
+			Err:   "Invalid syntax: cannot mix named columns with '*' in SELECT clause",
+		},
 	}
 
 	db := memory.NewDatabase("mydb")
