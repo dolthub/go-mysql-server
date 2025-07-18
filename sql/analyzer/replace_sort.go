@@ -14,15 +14,19 @@ import (
 
 // replaceIdxSort applies an IndexAccess when there is an `OrderBy` over a prefix of any columns with Indexes
 func replaceIdxSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
+	// TODO: check if it's possible to rewrite using transform.NodeWithCtx
 	return replaceIdxSortHelper(ctx, scope, n, nil)
 }
 
 func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, sortNode *plan.Sort) (sql.Node, transform.TreeIdentity, error) {
 	switch n := node.(type) {
 	case *plan.Sort:
-		sortNode = n // lowest parent sort node
+		// TODO: are there problems when there are multiple ORDER BYs?
+		if isValidSortFieldOrder(n.SortFields) {
+			sortNode = n // lowest parent sort node
+		}
 	case *plan.IndexedTableAccess:
-		if sortNode == nil || !isValidSortFieldOrder(sortNode.SortFields) {
+		if sortNode == nil {
 			return n, transform.SameTree, nil
 		}
 		if !n.IsStatic() {
@@ -32,33 +36,30 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
-
 		tableAliases, err := getTableAliases(sortNode, scope)
 		if err != nil {
 			return n, transform.SameTree, nil
 		}
-
 		sfExprs := normalizeExpressions(tableAliases, sortNode.SortFields.ToExpressions()...)
 		sfAliases := aliasedExpressionsInNode(sortNode)
 		if !isSortFieldsValidPrefix(sfExprs, sfAliases, lookup.Index.Expressions()) {
 			return n, transform.SameTree, nil
 		}
-
 		mysqlRanges, ok := lookup.Ranges.(sql.MySQLRangeCollection)
 		if !ok {
 			return n, transform.SameTree, nil
 		}
 		// if the resulting ranges are overlapping, we cannot drop the sort node
-		// it is possible we end up with blocks rows that intersect
+		// it is possible we end up with blocks of rows that intersect
 		if hasOverlapping(sfExprs, mysqlRanges) {
 			return n, transform.SameTree, nil
 		}
-
-		// TODO: verify that we don't need to look at other SortFields?
 		// if the lookup does not need any reversing, do nothing
 		if sortNode.SortFields[0].Order != sql.Descending {
 			return n, transform.NewTree, nil
 		}
+
+		// TODO: need to check for indexOrder = None?
 
 		// if the index is not reversible, do nothing
 		if oi, ok := lookup.Index.(sql.OrderedIndex); ok && !oi.Reversible() {
@@ -79,10 +80,9 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 		}
 		return nn, transform.NewTree, err
 	case *plan.ResolvedTable:
-		if sortNode == nil || !isValidSortFieldOrder(sortNode.SortFields) {
+		if sortNode == nil {
 			return n, transform.SameTree, nil
 		}
-
 		table := n.UnderlyingTable()
 		idxTbl, ok := table.(sql.IndexAddressableTable)
 		if !ok {
@@ -91,7 +91,6 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 		if indexSearchable, ok := table.(sql.IndexSearchableTable); ok && indexSearchable.SkipIndexCosting() {
 			return n, transform.SameTree, nil
 		}
-
 		tableAliases, err := getTableAliases(sortNode, scope)
 		if err != nil {
 			return n, transform.SameTree, nil
@@ -120,14 +119,12 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 		if idx == nil {
 			return n, transform.SameTree, nil
 		}
-
 		// Create lookup based off of index
 		indexBuilder := sql.NewMySQLIndexBuilder(idx)
 		lookup, err := indexBuilder.Build(ctx)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
-		// TODO: what about the other sort fields?
 		if sortNode.SortFields[0].Order == sql.Descending {
 			lookup = sql.NewIndexLookup(
 				lookup.Index,
@@ -139,7 +136,7 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 			)
 		}
 		// Some Primary Keys (like doltHistoryTable) are not in order
-		if oi, ok := idx.(sql.OrderedIndex); ok && ((lookup.IsReverse && !oi.Reversible()) || oi.Order() == sql.IndexOrderNone) {
+		if oi, isOrderedIdx := idx.(sql.OrderedIndex); isOrderedIdx && ((lookup.IsReverse && !oi.Reversible()) || oi.Order() == sql.IndexOrderNone) {
 			return n, transform.SameTree, nil
 		}
 		if !idx.CanSupport(ctx, lookup.Ranges.(sql.MySQLRangeCollection).ToRanges()...) {
@@ -149,7 +146,6 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
-
 		return nn, transform.NewTree, err
 	}
 
@@ -159,28 +155,54 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 		var err error
 		same := transform.SameTree
 		switch c := child.(type) {
-		case *plan.Project, *plan.TableAlias, *plan.ResolvedTable, *plan.Filter, *plan.Limit, *plan.Offset, *plan.Sort, *plan.IndexedTableAccess, *plan.Distinct:
+		case *plan.Sort, *plan.IndexedTableAccess, *plan.ResolvedTable:
+			newChildren[i], same, err = replaceIdxSortHelper(ctx, scope, child, sortNode)
+		case *plan.Project, *plan.Filter, *plan.Limit, *plan.Offset, *plan.Distinct, *plan.TableAlias:
 			newChildren[i], same, err = replaceIdxSortHelper(ctx, scope, child, sortNode)
 		case *plan.JoinNode:
+			// TODO: is this applicable to other types of joins?
+			//   as long as left child is already sorted and SortFields are a prefix, then it's ok?
 			if !c.JoinType().IsMerge() {
 				continue
 			}
+			// It's (probably) not possible to have Sort as child of Join without Subquery/SubqueryAlias,
+			//  and in the case where there is a Subq/SQA it's taken care of through finalizeSubqueries
 			if sortNode == nil {
 				continue
 			}
-			// TODO: skipping desc sorting for now
-			// TODO: check that the sort fields are a prefix of the indexes
-			hasDesc := false
-			for _, sf := range sortNode.SortFields {
-				if sf.Order == sql.Descending {
-					hasDesc = true
-					break
-				}
+			newLeft, sameLeft, errLeft := replaceIdxSortHelper(ctx, scope, c.Left(), sortNode)
+			if errLeft != nil {
+				return nil, transform.SameTree, errLeft
 			}
-			if hasDesc {
+			newRight, sameRight, errRight := replaceIdxSortHelper(ctx, scope, c.Right(), sortNode)
+			if errRight != nil {
+				return nil, transform.SameTree, errRight
+			}
+			if sameLeft && sameRight {
+				newChildren[i] = c
 				continue
 			}
-			newChildren[i], same, err = replaceIdxSortHelper(ctx, scope, child, sortNode)
+			// No need to check all SortField orders because of isValidSortFieldOrder
+			if sortNode.SortFields[0].Order == sql.Descending {
+				// If descending, then both Indexes must be reversed
+				var reversible bool
+				if sameLeft {
+					newLeft, reversible, err = buildReverseIndexedTable(ctx, newLeft)
+				} else {
+					newRight, reversible, err = buildReverseIndexedTable(ctx, newLeft)
+				}
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+				if !reversible {
+					return nil, transform.SameTree, nil
+				}
+			}
+			newChildren[i], err = c.WithChildren(newLeft, newRight)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			allSame = false
 		default:
 			newChildren[i] = c
 		}
@@ -189,21 +211,47 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 		}
 		allSame = allSame && same
 	}
-
 	if allSame {
 		return node, transform.SameTree, nil
 	}
-
 	// if sort node was replaced with indexed access, drop sort node
 	if node == sortNode {
 		return newChildren[0], transform.NewTree, nil
 	}
-
 	newNode, err := node.WithChildren(newChildren...)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
 	return newNode, transform.NewTree, nil
+}
+
+// buildReverseIndexedTable will attempt to take the lookup from an IndexedTableAccess, and return a new
+// IndexedTableAccess with the lookup reversed.
+func buildReverseIndexedTable(ctx *sql.Context, node sql.Node) (*plan.IndexedTableAccess, bool, error) {
+	idxTbl, isIdxTbl := node.(*plan.IndexedTableAccess)
+	if !isIdxTbl {
+		return nil, false, nil
+	}
+	lookup, err := idxTbl.GetLookup(ctx, nil)
+	if err != nil {
+		return nil, false, err
+	}
+	if oi, isOrderedIdx := lookup.Index.(sql.OrderedIndex); isOrderedIdx && (!oi.Reversible() || oi.Order() == sql.IndexOrderNone) {
+		return nil, false, nil
+	}
+	lookup = sql.NewIndexLookup(
+		lookup.Index,
+		lookup.Ranges.(sql.MySQLRangeCollection),
+		lookup.IsPointLookup,
+		lookup.IsEmptyRange,
+		lookup.IsSpatialLookup,
+		true,
+	)
+	newNode, err := plan.NewStaticIndexedAccessForTableNode(ctx, idxTbl, lookup)
+	if err != nil {
+		return nil, false, err
+	}
+	return newNode, true, nil
 }
 
 // replaceAgg converts aggregate functions to order by + limit 1 when possible
