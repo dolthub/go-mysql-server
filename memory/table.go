@@ -1147,7 +1147,6 @@ func (t *Table) PeekNextAutoIncrementValue(ctx *sql.Context) (uint64, error) {
 	return data.autoIncVal, nil
 }
 
-
 // GetNextAutoIncrementValue gets the next auto increment value for the memory table the increment.
 func (t *Table) GetNextAutoIncrementValue(ctx *sql.Context, insertVal interface{}) (uint64, error) {
 	data := t.sessionTableData(ctx)
