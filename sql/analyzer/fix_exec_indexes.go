@@ -692,6 +692,8 @@ func columnIdsForNode(n sql.Node) []sql.ColumnId {
 		default:
 			ret = append(ret, columnIdsForNode(n.Child)...)
 		}
+	case *plan.SetOp:
+		ret = append(ret, columnIdsForNode(n.Left())...)
 	case plan.TableIdNode:
 		if rt, ok := n.(*plan.ResolvedTable); ok && plan.IsDualTable(rt.Table) {
 			ret = append(ret, 0)
