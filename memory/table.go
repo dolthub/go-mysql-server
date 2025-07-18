@@ -1163,7 +1163,6 @@ func (t *Table) GetNextAutoIncrementValue(ctx *sql.Context, insertVal interface{
 		}
 		data.autoIncVal = v.(uint64)
 	}
-
 	return data.autoIncVal, nil
 }
 
@@ -1257,7 +1256,10 @@ func addColumnToSchema(ctx *sql.Context, data *TableData, newCol *sql.Column, or
 			data.autoIncVal = 0
 		}
 
-		data.autoIncVal++
+		nextVal := data.autoIncVal + 1
+		if _, inRange, err := newCol.Type.Convert(ctx, nextVal); err == nil && inRange == sql.InRange {
+			data.autoIncVal++
+		}
 	}
 
 	newPkOrds := data.schema.PkOrdinals
