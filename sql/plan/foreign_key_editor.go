@@ -521,6 +521,9 @@ func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, ro
 		if validationErr := reference.validateDecimalConstraints(row); validationErr != nil {
 			return validationErr
 		}
+		if validationErr := reference.validateTimeConstraints(row); validationErr != nil {
+			return validationErr
+		}
 		// We have a parent row so throw no error
 		return nil
 	}
@@ -570,6 +573,43 @@ func (reference *ForeignKeyReferenceHandler) validateDecimalConstraints(row sql.
 			continue
 		}
 		if childDecimal.Scale() != parentDecimal.Scale() {
+			return sql.ErrForeignKeyChildViolation.New(
+				reference.ForeignKey.Name,
+				reference.ForeignKey.Table,
+				reference.ForeignKey.ParentTable,
+				reference.RowMapper.GetKeyString(row),
+			)
+		}
+	}
+	return nil
+}
+
+// validateTimeConstraints checks that time-related foreign key columns have exact type and precision matches.
+// MySQL requires strict matching for time types in foreign keys - even logically equivalent values
+// like '2001-02-03 12:34:56' vs '2001-02-03 12:34:56.000000' are rejected if precision differs.
+func (reference *ForeignKeyReferenceHandler) validateTimeConstraints(row sql.Row) error {
+	if reference.RowMapper.Index == nil {
+		return nil
+	}
+	indexColumnTypes := reference.RowMapper.Index.ColumnExpressionTypes()
+	for parentIdx, parentCol := range indexColumnTypes {
+		if parentIdx >= len(reference.RowMapper.IndexPositions) {
+			break
+		}
+		parentType := parentCol.Type
+		childColIdx := reference.RowMapper.IndexPositions[parentIdx]
+		childType := reference.RowMapper.SourceSch[childColIdx].Type
+		
+		// Check if both types are time-related
+		isChildTime := types.IsTime(childType) || types.IsTimespan(childType)
+		isParentTime := types.IsTime(parentType) || types.IsTimespan(parentType)
+		
+		if !isChildTime || !isParentTime {
+			continue
+		}
+		
+		// MySQL requires exact type matching for time types in foreign key validation
+		if !childType.Equals(parentType) {
 			return sql.ErrForeignKeyChildViolation.New(
 				reference.ForeignKey.Name,
 				reference.ForeignKey.Table,
