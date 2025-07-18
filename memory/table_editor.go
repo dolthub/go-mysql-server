@@ -193,11 +193,13 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 				return err
 			}
 			t.ea.TableData().autoIncVal = v.(uint64)
-			if canIncrementAutoIncVal(ctx, autoCol.Type, v.(uint64)) {
+			nextVal := v.(uint64) + 1
+			if _, inRange, err := autoCol.Type.Convert(ctx, nextVal); err == nil && inRange == sql.InRange {
 				t.ea.TableData().autoIncVal++
 			}
 		} else if cmp == 0 {
-			if canIncrementAutoIncVal(ctx, autoCol.Type, t.ea.TableData().autoIncVal) {
+			nextVal := t.ea.TableData().autoIncVal + 1
+			if _, inRange, err := autoCol.Type.Convert(ctx, nextVal); err == nil && inRange == sql.InRange {
 				t.ea.TableData().autoIncVal++
 			}
 		}
