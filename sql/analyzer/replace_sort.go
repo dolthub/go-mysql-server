@@ -189,7 +189,7 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 				if sameLeft {
 					newLeft, reversible, err = buildReverseIndexedTable(ctx, newLeft)
 				} else {
-					newRight, reversible, err = buildReverseIndexedTable(ctx, newLeft)
+					newRight, reversible, err = buildReverseIndexedTable(ctx, newRight)
 				}
 				if err != nil {
 					return nil, transform.SameTree, err
