@@ -8506,6 +8506,59 @@ where
 			},
 		},
 	},
+	{
+		Name:    "merge join optimization",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t1 (i int primary key);",
+			"create table t2 (j int primary key);",
+			"insert into t1 values (1), (2), (3);",
+			"insert into t2 values (2), (3), (4);",
+
+			"create table t3 (i int, j int, primary key (i, j));",
+			"create table t4 (x int, y int, primary key (x, y));",
+			"insert into t3 values (1, 1), (2, 2), (3, 3);",
+			"insert into t4 values (2, 2), (3, 3), (4, 4);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on t1.i = t2.j order by t1.i;",
+				Expected: []sql.Row{
+					{2, 2},
+					{3, 3},
+				},
+			},
+			{
+				Query: "select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on t1.i = t2.j order by t2.j;",
+				Expected: []sql.Row{
+					{2, 2},
+					{3, 3},
+				},
+			},
+			{
+				Query: "select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on t1.i = t2.j order by t1.i desc;",
+				Expected: []sql.Row{
+					{3, 3},
+					{2, 2},
+				},
+			},
+			{
+				Query: "select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on t1.i = t2.j order by t2.j desc;",
+				Expected: []sql.Row{
+					{3, 3},
+					{2, 2},
+				},
+			},
+
+			{
+				Query: "explain plan select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t3 on t3.i = t4.j order by t3.i;",
+				Expected: []sql.Row{
+					{2, 2},
+					{3, 3},
+				},
+			},
+		},
+	},
 
 	// Char tests
 	{
@@ -10843,6 +10896,99 @@ where
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/9544
+		Name:    "datetime with foreign keys",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table parent_datetime0 (dt datetime primary key);",
+			"insert into parent_datetime0 values ('2001-02-03 12:34:56');",
+			"create table parent_datetime6 (dt datetime(6) primary key);",
+			"insert into parent_datetime6 values ('2001-02-03 12:34:56');",
+			"insert into parent_datetime6 values ('2001-02-03 12:34:56.123456');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Skip:  true,
+				Query: "create table child_datetime0 (dt datetime, foreign key (dt) references parent_datetime6(dt));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip:        true,
+				Query:       "insert into child_datetime0 values ('2001-02-03 12:34:56');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Skip:  true,
+				Query: "create table child_datetime6 (dt datetime(6), foreign key (dt) references parent_datetime0(dt));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip:        true,
+				Query:       "insert into child_datetime6 values ('2001-02-03 12:34:56');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+
+			{
+				Skip:  true,
+				Query: "create table child1_timestamp0 (ts timestamp, foreign key (ts) references parent_datetime0(dt));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip:        true,
+				Query:       "insert into child1_timestamp0 values ('2001-02-03 12:34:56');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Skip:  true,
+				Query: "create table child2_timestamp0 (ts timestamp, foreign key (ts) references parent_datetime6(dt));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip:        true,
+				Query:       "insert into child2_timestamp0 values ('2001-02-03 12:34:56');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+
+			{
+				Skip:  true,
+				Query: "create table child1_timestamp6 (ts timestamp(6), foreign key (ts) references parent_datetime0(dt));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip:        true,
+				Query:       "insert into child1_timestamp6 values ('2001-02-03 12:34:56');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Skip:  true,
+				Query: "create table child2_timestamp6 (ts timestamp(6), foreign key (ts) references parent_datetime6(dt));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip:        true,
+				Query:       "insert into child2_timestamp6 values ('2001-02-03 12:34:56');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Skip:        true,
+				Query:       "insert into child2_timestamp6 values ('2001-02-03 12:34:56.123456');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+		},
+	},
 
 	// Timestamp Tests
 	{
@@ -10860,6 +11006,99 @@ where
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/9544
+		Name:    "timestamps with foreign keys",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table parent_timestamp0 (ts timestamp primary key);",
+			"insert into parent_timestamp0 values ('2001-02-03 12:34:56');",
+			"create table parent_timestamp6 (ts timestamp(6) primary key);",
+			"insert into parent_timestamp6 values ('2001-02-03 12:34:56');",
+			"insert into parent_timestamp6 values ('2001-02-03 12:34:56.123456');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Skip:  true,
+				Query: "create table child_timestamp0 (ts timestamp, foreign key (ts) references parent_timestamp6(ts));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip:        true,
+				Query:       "insert into child_timestamp0 values ('2001-02-03 12:34:56');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Skip:  true,
+				Query: "create table child_timestamp6 (ts timestamp(6), foreign key (ts) references parent_timestamp0(ts));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip:        true,
+				Query:       "insert into child_timestamp6 values ('2001-02-03 12:34:56');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+
+			{
+				Skip:  true,
+				Query: "create table child1_datetime0 (dt datetime, foreign key (dt) references parent_timestamp0(ts));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip:        true,
+				Query:       "insert into child1_datetime0 values ('2001-02-03 12:34:56');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Skip:  true,
+				Query: "create table child2_datetime0 (dt datetime, foreign key (dt) references parent_timestamp6(ts));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip:        true,
+				Query:       "insert into child2_datetime0 values ('2001-02-03 12:34:56');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+
+			{
+				Skip:  true,
+				Query: "create table child1_datetime6 (dt datetime(6), foreign key (dt) references parent_timestamp0(ts));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip:        true,
+				Query:       "insert into child1_datetime6 values ('2001-02-03 12:34:56');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Skip:  true,
+				Query: "create table child2_datetime6 (dt datetime(6), foreign key (dt) references parent_timestamp6(ts));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip:        true,
+				Query:       "insert into child2_datetime6 values ('2001-02-03 12:34:56');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Skip:        true,
+				Query:       "insert into child2_datetime6 values ('2001-02-03 12:34:56.123456');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+		},
+	},
 
 	// Time Tests
 	{
@@ -10874,6 +11113,42 @@ where
 			{
 				Query:          "create table bad (t time(6) primary key auto_increment);",
 				ExpectedErrStr: "Incorrect column specifier for column 't'",
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9544
+		Name:    "time with foreign keys",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table parent_time0 (t time primary key);",
+			"insert into parent_time0 values ('12:34:56');",
+			"create table parent_time6 (t time(6) primary key);",
+			"insert into parent_time6 values ('12:34:56');",
+			"insert into parent_time6 values ('12:34:56.123456');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "create table child_time0 (t time, foreign key (t) references parent_time6(t));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip:        true,
+				Query:       "insert into child_time0 values ('12:34:56');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query: "create table child_time6 (t time(6), foreign key (t) references parent_time0(t));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip:        true,
+				Query:       "insert into child_time6 values ('12:34:56');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 		},
 	},
