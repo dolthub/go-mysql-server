@@ -183,12 +183,14 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 				continue
 			}
 			// No need to check all SortField orders because of isValidSortFieldOrder
-			if sortNode.SortFields[0].Order == sql.Descending {
+			c.IsReversed = sortNode.SortFields[0].Order == sql.Descending
+			// either left or right has been reversed
+			if (sameLeft != sameRight) && c.IsReversed {
 				// If descending, then both Indexes must be reversed
 				var reversible bool
 				if sameLeft {
 					newLeft, reversible, err = buildReverseIndexedTable(ctx, newLeft)
-				} else {
+				} else if sameRight {
 					newRight, reversible, err = buildReverseIndexedTable(ctx, newRight)
 				}
 				if err != nil {
@@ -247,7 +249,7 @@ func buildReverseIndexedTable(ctx *sql.Context, node sql.Node) (*plan.IndexedTab
 		lookup.IsSpatialLookup,
 		true,
 	)
-	newNode, err := plan.NewStaticIndexedAccessForTableNode(ctx, idxTbl, lookup)
+	newNode, err := plan.NewStaticIndexedAccessForTableNode(ctx, idxTbl.TableNode, lookup)
 	if err != nil {
 		return nil, false, err
 	}

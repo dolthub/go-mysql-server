@@ -8516,7 +8516,7 @@ where
 
 			"create table t3 (i int, j int, primary key (i, j));",
 			"create table t4 (x int, y int, primary key (x, y));",
-			"insert into t3 values (1, 1), (2, 2), (3, 3);",
+			"insert into t3 values (1, 1), (1, 2), (2, 2), (2, 3), (3, 3);",
 			"insert into t4 values (2, 2), (3, 3), (4, 4);",
 		},
 		Assertions: []ScriptTestAssertion{
@@ -8550,10 +8550,131 @@ where
 			},
 
 			{
-				Query: "explain plan select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t3 on t3.i = t4.j order by t3.i;",
+				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i;",
 				Expected: []sql.Row{
-					{2, 2},
-					{3, 3},
+					{2, 2, 2, 2},
+					{2, 3, 2, 2},
+					{3, 3, 3, 3},
+				},
+			},
+			{
+				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i desc;",
+				Expected: []sql.Row{
+					{3, 3, 3, 3},
+					{2, 3, 2, 2},
+					{2, 2, 2, 2},
+				},
+			},
+			{
+				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t4.x;",
+				Expected: []sql.Row{
+					{2, 2, 2, 2},
+					{2, 3, 2, 2},
+					{3, 3, 3, 3},
+				},
+			},
+			{
+				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t4.x desc;",
+				Expected: []sql.Row{
+					{3, 3, 3, 3},
+					{2, 3, 2, 2},
+					{2, 2, 2, 2},
+				},
+			},
+			{
+				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t3.j;",
+				Expected: []sql.Row{
+					{2, 2, 2, 2},
+					{2, 3, 2, 2},
+					{3, 3, 3, 3},
+				},
+			},
+			{
+				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i desc, t3.j desc;",
+				Expected: []sql.Row{
+					{3, 3, 3, 3},
+					{2, 3, 2, 2},
+					{2, 2, 2, 2},
+				},
+			},
+			{
+				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t4.x, t4.y;",
+				Expected: []sql.Row{
+					{2, 2, 2, 2},
+					{2, 3, 2, 2},
+					{3, 3, 3, 3},
+				},
+			},
+			{
+				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t4.x desc, t4.y desc;",
+				Expected: []sql.Row{
+					{3, 3, 3, 3},
+					{2, 3, 2, 2},
+					{2, 2, 2, 2},
+				},
+			},
+			{
+				// The Sort node can be optimized out of this query, but currently is not
+				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t4.x;",
+				Expected: []sql.Row{
+					{2, 2, 2, 2},
+					{2, 3, 2, 2},
+					{3, 3, 3, 3},
+				},
+			},
+			{
+				// The Sort node can be optimized out of this query, but currently is not
+				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t3.j, t4.x;",
+				Expected: []sql.Row{
+					{2, 2, 2, 2},
+					{2, 3, 2, 2},
+					{3, 3, 3, 3},
+				},
+			},
+			{
+				// The Sort node can be optimized out of this query, but currently is not
+				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t3.j, t4.x, t4.y;",
+				Expected: []sql.Row{
+					{2, 2, 2, 2},
+					{2, 3, 2, 2},
+					{3, 3, 3, 3},
+				},
+			},
+
+			{
+				// Sort node cannot be optimized out of this query
+				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.j;",
+				Expected: []sql.Row{
+					{2, 2, 2, 2},
+					{2, 3, 2, 2},
+					{3, 3, 3, 3},
+				},
+			},
+			{
+				// Sort node cannot be optimized out of this query
+				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t4.y;",
+				Expected: []sql.Row{
+					{2, 2, 2, 2},
+					{2, 3, 2, 2},
+					{3, 3, 3, 3},
+				},
+			},
+			{
+				// Sort node cannot be optimized out of this query
+				Query: "explain plan select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t3.j desc;",
+				Expected: []sql.Row{
+					{2, 3, 2, 2},
+					{2, 2, 2, 2},
+					{3, 3, 3, 3},
+				},
+			},
+			{
+				// Trickier, but Sort node can be optimized out of this query
+				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t4.x desc;",
+				Expected: []sql.Row{
+					{2, 2, 2, 2},
+					{2, 3, 2, 2},
+					{3, 3, 3, 3},
 				},
 			},
 		},

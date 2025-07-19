@@ -291,6 +291,7 @@ type JoinNode struct {
 	CommentStr string
 	ScopeLen   int
 	UsingCols  []string
+	IsReversed bool // special case for certain join types over reversed indexed tables
 }
 
 var _ sql.Node = (*JoinNode)(nil)
