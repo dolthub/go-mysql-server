@@ -8661,7 +8661,7 @@ where
 			},
 			{
 				// Sort node cannot be optimized out of this query
-				Query: "explain plan select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t3.j desc;",
+				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t3.j desc;",
 				Expected: []sql.Row{
 					{2, 3, 2, 2},
 					{2, 2, 2, 2},
