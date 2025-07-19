@@ -90,7 +90,7 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.SetOp, name strin
 		// not recursive
 		sqScope := inScope.pushSubquery()
 		cteScope := b.buildSelectStmt(sqScope, union)
-		b.renameSource(cteScope, name, columns)
+
 		switch n := cteScope.node.(type) {
 		case *plan.SetOp:
 			sq := plan.NewSubqueryAlias(name, "", n)
@@ -107,9 +107,9 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.SetOp, name strin
 				colset.Add(sql.ColumnId(c.id))
 				scopeMapping[sql.ColumnId(c.id)] = c.scalarGf()
 			}
-
 			cteScope.node = sq.WithScopeMapping(scopeMapping).WithId(tabId).WithColumns(colset)
 		}
+		b.renameSource(cteScope, name, columns)
 		return cteScope
 	}
 
