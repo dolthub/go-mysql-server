@@ -200,40 +200,22 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name:    "merge join optimization",
-			Dialect: "mysql",
-			SetUpScript: []string{
-				"create table t3 (i int, j int, primary key (i, j));",
-				"create table t4 (x int, y int, primary key (x, y));",
-				"insert into t3 values (1, 1), (1, 2), (2, 2), (2, 3), (3, 3);",
-				"insert into t4 values (2, 2), (3, 3), (4, 4);",
-			},
+			Name:        "AS OF propagates to nested CALLs",
+			SetUpScript: []string{},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i;",
+					Query: "create procedure create_proc() create table t (i int primary key, j int);",
 					Expected: []sql.Row{
-						{2, 2, 2, 2},
-						{2, 3, 2, 2},
-						{3, 3, 3, 3},
+						{types.NewOkResult(0)},
 					},
 				},
 				{
-					Query: "explain plan select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i desc;",
+					Query: "call create_proc()",
 					Expected: []sql.Row{
-						{3, 3, 3, 3},
-						{2, 3, 2, 2},
-						{2, 2, 2, 2},
-					},
-				},
-				{
-					Query: "explain plan select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.j;",
-					Expected: []sql.Row{
-						{2, 2, 2, 2},
-						{2, 3, 2, 2},
-						{3, 3, 3, 3},
+						{types.NewOkResult(0)},
 					},
 				},
 			},
