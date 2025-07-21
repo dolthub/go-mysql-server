@@ -141,46 +141,51 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		return c.Left().Type().Compare(ctx, left, right)
 	}
 
-	// ENUM, SET, and TIME must be excluded when doing comparisons, as they're too restrictive to use as a comparison
-	// base.
+	left, right, compareType, err := c.castLeftAndRight(ctx, left, right)
+	if err != nil {
+		return 0, err
+	}
+
+	//var compareType sql.Type
+	//// ENUM, SET, and TIME must be excluded when doing comparisons, as they're too restrictive to use as a comparison
+	//// base.
+	////
+	//// The best overall method would be to assign type priority. For example, INT would have a higher priority than
+	//// TINYINT. This could then be combined with the origin of the value (table column, procedure param, etc.) to
+	//// determine the best type for any comparison (tie-breakers can be simple rules such as the current left preference).
 	//
-	// The best overall method would be to assign type priority. For example, INT would have a higher priority than
-	// TINYINT. This could then be combined with the origin of the value (table column, procedure param, etc.) to
-	// determine the best type for any comparison (tie-breakers can be simple rules such as the current left preference).
-	var compareType sql.Type
-	collationPreference := sql.Collation_Default
-	switch c.Left().(type) {
-	case *GetField, *UserVar, *SystemVar, *ProcedureParam:
-		compareType = c.Left().Type()
-		if twc, ok := compareType.(sql.TypeWithCollation); ok {
-			collationPreference = twc.Collation()
-		}
-	default:
-		switch c.Right().(type) {
-		case *GetField, *UserVar, *SystemVar, *ProcedureParam:
-			compareType = c.Right().Type()
-			if twc, ok := compareType.(sql.TypeWithCollation); ok {
-				collationPreference = twc.Collation()
-			}
-		}
-	}
-	if compareType != nil {
-		_, isEnum := compareType.(sql.EnumType)
-		_, isSet := compareType.(sql.SetType)
-		_, isTime := compareType.(types.TimeType)
-		if !isEnum && !isSet && !isTime {
-			compareType = nil
-		}
-	}
-	if compareType == nil {
-		left, right, compareType, err = c.castLeftAndRight(ctx, left, right)
-		if err != nil {
-			return 0, err
-		}
-	}
-	if _, isSet := compareType.(sql.SetType); !isSet && types.IsTextOnly(compareType) {
-		collationPreference, _ = c.CollationCoercibility(ctx)
-		stringCompareType := compareType.(sql.StringType)
+	//collationPreference := sql.Collation_Default
+	//switch c.Left().(type) {
+	//case *GetField, *UserVar, *SystemVar, *ProcedureParam:
+	//	compareType = c.Left().Type()
+	//	if twc, ok := compareType.(sql.TypeWithCollation); ok {
+	//		collationPreference = twc.Collation()
+	//	}
+	//default:
+	//	switch c.Right().(type) {
+	//	case *GetField, *UserVar, *SystemVar, *ProcedureParam:
+	//		compareType = c.Right().Type()
+	//		if twc, ok := compareType.(sql.TypeWithCollation); ok {
+	//			collationPreference = twc.Collation()
+	//		}
+	//	}
+	//}
+	//if compareType != nil {
+	//	_, isEnum := compareType.(sql.EnumType)
+	//	_, isSet := compareType.(sql.SetType)
+	//	_, isTime := compareType.(types.TimeType)
+	//	if !isEnum && !isSet && !isTime {
+	//		compareType = nil
+	//	}
+	//}
+	//if compareType == nil {
+	//	left, right, compareType, err = c.castLeftAndRight(ctx, left, right)
+	//	if err != nil {
+	//		return 0, err
+	//	}
+	//}
+	collationPreference, _ := c.CollationCoercibility(ctx)
+	if stringCompareType, ok := compareType.(sql.StringType); ok {
 		compareType = types.MustCreateString(stringCompareType.Type(), stringCompareType.Length(), collationPreference)
 	}
 
@@ -204,6 +209,26 @@ func (c *comparison) evalLeftAndRight(ctx *sql.Context, row sql.Row) (interface{
 func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right interface{}) (interface{}, interface{}, sql.Type, error) {
 	leftType := c.Left().Type()
 	rightType := c.Right().Type()
+
+	leftIsEnumOrSet := types.IsEnum(leftType) || types.IsSet(leftType)
+	rightIsEnumOrSet := types.IsEnum(rightType) || types.IsSet(rightType)
+	leftIsText := types.IsTextOnly(leftType)
+	rightIsText := types.IsTextOnly(rightType)
+	if (leftIsEnumOrSet && rightIsText) || (rightIsEnumOrSet && !leftIsText) {
+		l, err := types.TypeAwareConversion(ctx, left, leftType, rightType)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		return l, right, rightType, nil
+	}
+	if (rightIsEnumOrSet && leftIsText) || (leftIsEnumOrSet && !rightIsText) {
+		r, err := types.TypeAwareConversion(ctx, right, rightType, leftType)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		return left, r, leftType, nil
+	}
+
 	if types.IsTuple(leftType) && types.IsTuple(rightType) {
 		return left, right, c.Left().Type(), nil
 	}
