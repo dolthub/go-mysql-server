@@ -11133,8 +11133,8 @@ where
 			},
 			{
 				Query: "select * from " +
-					"(select 'parent' as db, id, words from t union " +
-					"select 'child' as db, id,words from t2) as combined where combined.id=1",
+					"(select 'parent' as tbl, id, words from t union " +
+					"select 'child' as tbl, id,words from t2) as combined where combined.id=1",
 				Expected: []sql.Row{
 					{"parent", 1, "foo"},
 					{"child", 1, "boo"},

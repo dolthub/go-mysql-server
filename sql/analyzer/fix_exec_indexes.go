@@ -712,6 +712,8 @@ func columnIdsForNode(n sql.Node) []sql.ColumnId {
 				break
 			}
 		}
+		// TODO: columns are appended in increasing order by ColumnId instead of how they are actually ordered. likely
+		// needs to be fixed
 		cols.ForEach(func(col sql.ColumnId) {
 			ret = append(ret, col)
 		})
