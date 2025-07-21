@@ -14,7 +14,6 @@ import (
 
 // replaceIdxSort applies an IndexAccess when there is an `OrderBy` over a prefix of any columns with Indexes
 func replaceIdxSort(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	// TODO: check if it's possible to rewrite using transform.NodeWithCtx
 	return replaceIdxSortHelper(ctx, scope, n, nil)
 }
 
