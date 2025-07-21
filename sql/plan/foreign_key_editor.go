@@ -493,6 +493,7 @@ func (reference *ForeignKeyReferenceHandler) IsInitialized() bool {
 }
 
 // CheckReference checks that the given row has an index entry in the referenced table.
+// Performs MySQL-compatible foreign key constraint validation with type-specific checks.
 func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, row sql.Row) error {
 	// If even one of the values are NULL then we don't check the parent
 	for _, pos := range reference.RowMapper.IndexPositions {
@@ -507,7 +508,7 @@ func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, ro
 	}
 	defer rowIter.Close(ctx)
 
-	_, err = rowIter.Next(ctx)
+	parentRow, err := rowIter.Next(ctx)
 	if err != nil && err != io.EOF {
 		// For SET types, conversion failures during foreign key validation should be treated as foreign key violations
 		if sql.ErrConvertingToSet.Is(err) || sql.ErrInvalidSetValue.Is(err) {
@@ -518,12 +519,10 @@ func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, ro
 	}
 	if err == nil {
 		// We have a parent row, but check for type-specific validation
-		if validationErr := reference.validateDecimalConstraints(row); validationErr != nil {
+		if validationErr := reference.validateColumnTypeConstraints(ctx, row, parentRow); validationErr != nil {
 			return validationErr
 		}
-		if validationErr := reference.validateTimeConstraints(row); validationErr != nil {
-			return validationErr
-		}
+		
 		// We have a parent row so throw no error
 		return nil
 	}
@@ -551,75 +550,54 @@ func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, ro
 		reference.ForeignKey.ParentTable, reference.RowMapper.GetKeyString(row))
 }
 
-// validateDecimalConstraints checks that decimal foreign key columns have compatible scales.
-func (reference *ForeignKeyReferenceHandler) validateDecimalConstraints(row sql.Row) error {
-	if reference.RowMapper.Index == nil {
+
+// validateColumnTypeConstraints validates that column types meet MySQL foreign key requirements.
+// Centralizes type validation for decimal scale matching and exact time type precision matching.
+func (reference *ForeignKeyReferenceHandler) validateColumnTypeConstraints(ctx *sql.Context, childRow sql.Row, parentRow sql.Row) error {
+	mapper := reference.RowMapper
+	if mapper.Index == nil {
 		return nil
 	}
-	indexColumnTypes := reference.RowMapper.Index.ColumnExpressionTypes()
-	for parentIdx, parentCol := range indexColumnTypes {
-		if parentIdx >= len(reference.RowMapper.IndexPositions) {
+	
+	for parentIdx, parentCol := range mapper.Index.ColumnExpressionTypes() {
+		if parentIdx >= len(mapper.IndexPositions) {
 			break
 		}
+		
 		parentType := parentCol.Type
-		childColIdx := reference.RowMapper.IndexPositions[parentIdx]
-		childType := reference.RowMapper.SourceSch[childColIdx].Type
-		childDecimal, ok := childType.(sql.DecimalType)
-		if !ok {
-			continue
+		childType := mapper.SourceSch[mapper.IndexPositions[parentIdx]].Type
+		
+		// Check for constraint violations
+		hasViolation := false
+		
+		// Decimal scale must match
+		if childDecimal, ok := childType.(sql.DecimalType); ok {
+			if parentDecimal, ok := parentType.(sql.DecimalType); ok {
+				hasViolation = childDecimal.Scale() != parentDecimal.Scale()
+			}
 		}
-		parentDecimal, ok := parentType.(sql.DecimalType)
-		if !ok {
-			continue
+		
+		// Time types must match exactly (including precision)
+		if !hasViolation {
+			isChildTime := types.IsTime(childType) || types.IsTimespan(childType)
+			isParentTime := types.IsTime(parentType) || types.IsTimespan(parentType)
+			if isChildTime && isParentTime {
+				hasViolation = !childType.Equals(parentType)
+			}
 		}
-		if childDecimal.Scale() != parentDecimal.Scale() {
+		
+		if hasViolation {
 			return sql.ErrForeignKeyChildViolation.New(
 				reference.ForeignKey.Name,
 				reference.ForeignKey.Table,
 				reference.ForeignKey.ParentTable,
-				reference.RowMapper.GetKeyString(row),
+				mapper.GetKeyString(childRow),
 			)
 		}
 	}
 	return nil
 }
 
-// validateTimeConstraints checks that time-related foreign key columns have exact type and precision matches.
-// MySQL requires strict matching for time types in foreign keys - even logically equivalent values
-// like '2001-02-03 12:34:56' vs '2001-02-03 12:34:56.000000' are rejected if precision differs.
-func (reference *ForeignKeyReferenceHandler) validateTimeConstraints(row sql.Row) error {
-	if reference.RowMapper.Index == nil {
-		return nil
-	}
-	indexColumnTypes := reference.RowMapper.Index.ColumnExpressionTypes()
-	for parentIdx, parentCol := range indexColumnTypes {
-		if parentIdx >= len(reference.RowMapper.IndexPositions) {
-			break
-		}
-		parentType := parentCol.Type
-		childColIdx := reference.RowMapper.IndexPositions[parentIdx]
-		childType := reference.RowMapper.SourceSch[childColIdx].Type
-		
-		// Check if both types are time-related
-		isChildTime := types.IsTime(childType) || types.IsTimespan(childType)
-		isParentTime := types.IsTime(parentType) || types.IsTimespan(parentType)
-		
-		if !isChildTime || !isParentTime {
-			continue
-		}
-		
-		// MySQL requires exact type matching for time types in foreign key validation
-		if !childType.Equals(parentType) {
-			return sql.ErrForeignKeyChildViolation.New(
-				reference.ForeignKey.Name,
-				reference.ForeignKey.Table,
-				reference.ForeignKey.ParentTable,
-				reference.RowMapper.GetKeyString(row),
-			)
-		}
-	}
-	return nil
-}
 
 // CheckTable checks that every row in the table has an index entry in the referenced table.
 func (reference *ForeignKeyReferenceHandler) CheckTable(ctx *sql.Context, tbl sql.ForeignKeyTable) error {
@@ -678,6 +656,7 @@ func (mapper *ForeignKeyRowMapper) GetIter(ctx *sql.Context, row sql.Row, refChe
 		}
 
 		targetType := mapper.SourceSch[rowPos].Type
+		
 		// Transform the type of the value in this row to the one in the other table for the index lookup, if necessary
 		if mapper.TargetTypeConversions != nil && mapper.TargetTypeConversions[rowPos] != nil {
 			var err error
