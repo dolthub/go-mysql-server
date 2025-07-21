@@ -170,6 +170,10 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 			if sortNode == nil {
 				continue
 			}
+			// TODO: allow for reversed indexes; for some reason this breaks
+			if sortNode.SortFields[0].Order == sql.Descending {
+				continue
+			}
 			newLeft, sameLeft, errLeft := replaceIdxSortHelper(ctx, scope, c.Left(), sortNode)
 			if errLeft != nil {
 				return nil, transform.SameTree, errLeft
@@ -179,26 +183,7 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 				return nil, transform.SameTree, errRight
 			}
 			if sameLeft && sameRight {
-				newChildren[i] = c
 				continue
-			}
-			// No need to check all SortField orders because of isValidSortFieldOrder
-			c.IsReversed = sortNode.SortFields[0].Order == sql.Descending
-			// either left or right has been reversed
-			if (sameLeft != sameRight) && c.IsReversed {
-				// If descending, then both Indexes must be reversed
-				var reversible bool
-				if sameLeft {
-					newLeft, reversible, err = buildReverseIndexedTable(ctx, newLeft)
-				} else if sameRight {
-					newRight, reversible, err = buildReverseIndexedTable(ctx, newRight)
-				}
-				if err != nil {
-					return nil, transform.SameTree, err
-				}
-				if !reversible {
-					return nil, transform.SameTree, nil
-				}
 			}
 			newChildren[i], err = c.WithChildren(newLeft, newRight)
 			if err != nil {
