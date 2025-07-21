@@ -174,21 +174,44 @@ func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right interface{})
 
 	leftIsEnumOrSet := types.IsEnum(leftType) || types.IsSet(leftType)
 	rightIsEnumOrSet := types.IsEnum(rightType) || types.IsSet(rightType)
-	leftIsText := types.IsTextOnly(leftType)
-	rightIsText := types.IsTextOnly(rightType)
-	if (leftIsEnumOrSet && rightIsText) || (rightIsEnumOrSet && !leftIsText) {
-		l, err := types.TypeAwareConversion(ctx, left, leftType, rightType)
-		if err != nil {
-			return nil, nil, nil, err
+	// Only convert if same Enum or Set
+	if leftIsEnumOrSet && rightIsEnumOrSet {
+		if types.TypesEqual(leftType, rightType) {
+			return left, right, leftType, nil
 		}
-		return l, right, rightType, nil
+	} else {
+		// If right side is convertible to enum/set, convert. Otherwise, convert left side
+		if leftIsEnumOrSet && (types.IsText(rightType) || types.IsNumber(rightType)) {
+			if r, inRange, err := leftType.Convert(ctx, right); inRange && err == nil {
+				return left, r, leftType, nil
+			} else {
+				l, err := types.TypeAwareConversion(ctx, left, leftType, rightType)
+				if err != nil {
+					return nil, nil, nil, err
+				}
+				return l, right, rightType, nil
+			}
+		}
+		// If left side is convertible to enum/set, convert. Otherwise, convert right side
+		if rightIsEnumOrSet && (types.IsText(leftType) || types.IsNumber(leftType)) {
+			if l, inRange, err := rightType.Convert(ctx, left); inRange && err == nil {
+				return l, right, rightType, nil
+			} else {
+				r, err := types.TypeAwareConversion(ctx, right, rightType, leftType)
+				if err != nil {
+					return nil, nil, nil, err
+				}
+				return left, r, leftType, nil
+			}
+		}
 	}
-	if (rightIsEnumOrSet && leftIsText) || (leftIsEnumOrSet && !rightIsText) {
-		r, err := types.TypeAwareConversion(ctx, right, rightType, leftType)
-		if err != nil {
-			return nil, nil, nil, err
+
+	if types.IsTimespan(leftType) || types.IsTimespan(rightType) {
+		if l, err := types.Time.ConvertToTimespan(left); err == nil {
+			if r, err := types.Time.ConvertToTimespan(right); err == nil {
+				return l, r, types.Time, nil
+			}
 		}
-		return left, r, leftType, nil
 	}
 
 	if types.IsTuple(leftType) && types.IsTuple(rightType) {

@@ -218,7 +218,7 @@ func (t EnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.
 		return t.Convert(ctx, string(value))
 	}
 
-	return nil, sql.InRange, ErrConvertingToEnum.New(v)
+	return nil, sql.OutOfRange, ErrConvertingToEnum.New(v)
 }
 
 // Equals implements the Type interface.
