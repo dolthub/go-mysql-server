@@ -129,9 +129,6 @@ func (t SetType) Compare(ctx context.Context, a interface{}, b interface{}) (int
 	au := ai.(uint64)
 	bu := bi.(uint64)
 
-	if t.isEmptyString(au) && t.isEmptyString(bu) {
-		return 0, nil
-	}
 	if au < bu {
 		return -1, nil
 	} else if au > bu {
@@ -359,11 +356,6 @@ func (t SetType) convertBitFieldToString(bitField uint64) (string, error) {
 		}
 	}
 	return strBuilder.String(), nil
-}
-
-func (t SetType) isEmptyString(bitField uint64) bool {
-	emptyStringBit, ok := t.valToBit[""]
-	return bitField == 0 || (ok && bitField == emptyStringBit)
 }
 
 // convertStringToBitField converts the given string into a bit field.
