@@ -146,44 +146,6 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		return 0, err
 	}
 
-	//var compareType sql.Type
-	//// ENUM, SET, and TIME must be excluded when doing comparisons, as they're too restrictive to use as a comparison
-	//// base.
-	////
-	//// The best overall method would be to assign type priority. For example, INT would have a higher priority than
-	//// TINYINT. This could then be combined with the origin of the value (table column, procedure param, etc.) to
-	//// determine the best type for any comparison (tie-breakers can be simple rules such as the current left preference).
-	//
-	//collationPreference := sql.Collation_Default
-	//switch c.Left().(type) {
-	//case *GetField, *UserVar, *SystemVar, *ProcedureParam:
-	//	compareType = c.Left().Type()
-	//	if twc, ok := compareType.(sql.TypeWithCollation); ok {
-	//		collationPreference = twc.Collation()
-	//	}
-	//default:
-	//	switch c.Right().(type) {
-	//	case *GetField, *UserVar, *SystemVar, *ProcedureParam:
-	//		compareType = c.Right().Type()
-	//		if twc, ok := compareType.(sql.TypeWithCollation); ok {
-	//			collationPreference = twc.Collation()
-	//		}
-	//	}
-	//}
-	//if compareType != nil {
-	//	_, isEnum := compareType.(sql.EnumType)
-	//	_, isSet := compareType.(sql.SetType)
-	//	_, isTime := compareType.(types.TimeType)
-	//	if !isEnum && !isSet && !isTime {
-	//		compareType = nil
-	//	}
-	//}
-	//if compareType == nil {
-	//	left, right, compareType, err = c.castLeftAndRight(ctx, left, right)
-	//	if err != nil {
-	//		return 0, err
-	//	}
-	//}
 	collationPreference, _ := c.CollationCoercibility(ctx)
 	if stringCompareType, ok := compareType.(sql.StringType); ok {
 		compareType = types.MustCreateString(stringCompareType.Type(), stringCompareType.Length(), collationPreference)
