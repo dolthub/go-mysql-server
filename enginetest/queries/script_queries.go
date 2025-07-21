@@ -11112,6 +11112,40 @@ where
 			},
 		},
 	},
+
+	{
+		// TODO: This test currently fails in Doltgres because Doltgres does not allow `create table...as select...`
+		// even though it's a valid Postgres query. Remove Dialect tag once fixed in Doltgres
+		// https://github.com/dolthub/doltgresql/issues/1669
+		Dialect: "mysql",
+		Name:    "union field indexes",
+		SetUpScript: []string{
+			"create table t(id int primary key auto_increment, words varchar(100))",
+			"insert into t(words) values ('foo'),('bar'),('baz'),('zap')",
+			"create table t2 as select * from t",
+			"update t2 set words = 'boo' where id = 1",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from " +
+					"(select id, words from t union " +
+					"select id,words from t2) as combined where combined.id=1",
+				Expected: []sql.Row{
+					{1, "foo"},
+					{1, "boo"},
+				},
+			},
+			{
+				Query: "select * from " +
+					"(select 'parent' as tbl, id, words from t union " +
+					"select 'child' as tbl, id,words from t2) as combined where combined.id=1",
+				Expected: []sql.Row{
+					{"parent", 1, "foo"},
+					{"child", 1, "boo"},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
