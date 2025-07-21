@@ -162,7 +162,7 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 		case *plan.JoinNode:
 			// TODO: is this applicable to other types of joins?
 			//   as long as left child is already sorted and SortFields are a prefix, then it's ok?
-			if !c.JoinType().IsMerge() {
+			if c.JoinType() != plan.JoinTypeMerge {
 				continue
 			}
 			// It's (probably) not possible to have Sort as child of Join without Subquery/SubqueryAlias,
