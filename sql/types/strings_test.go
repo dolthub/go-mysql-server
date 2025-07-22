@@ -379,6 +379,29 @@ func TestStringConvert(t *testing.T) {
 	}
 }
 
+func TestStringSQL(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	tests := []struct {
+		name        string
+		typ         sql.StringType
+		val         interface{}
+		expectedVal interface{}
+	}{
+		{"binary raw bytes", MustCreateBinary(sqltypes.Binary, 4), []byte{0x0A, 0x00, 0x00, 0x00}, []byte{0x0A, 0x00, 0x00, 0x00}},
+		{"varbinary raw bytes", MustCreateBinary(sqltypes.VarBinary, 4), []byte{0x0A, 0x00, 0x40, 0x00}, []byte{0x0A, 0x00, 0x40, 0x00}},
+		{"blob raw bytes", MustCreateBinary(sqltypes.Blob, 4), []byte{0x0A, 0x00, 0x80, 0x00}, []byte{0x0A, 0x00, 0x80, 0x00}},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			val, err := test.typ.SQL(ctx, nil, test.val)
+			require.NoError(t, err)
+			actual := val.Raw()
+			assert.Equal(t, test.expectedVal, actual)
+		})
+	}
+}
+
 func TestStringString(t *testing.T) {
 	tests := []struct {
 		typ         sql.Type
