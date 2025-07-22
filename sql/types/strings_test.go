@@ -379,7 +379,7 @@ func TestStringConvert(t *testing.T) {
 	}
 }
 
-func TestStringSQL(t *testing.T) {
+func TestBinaryDataSQLFormatting(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	tests := []struct {
 		name        string
