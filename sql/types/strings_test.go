@@ -379,7 +379,6 @@ func TestStringConvert(t *testing.T) {
 	}
 }
 
-
 func TestStringString(t *testing.T) {
 	tests := []struct {
 		typ         sql.Type
