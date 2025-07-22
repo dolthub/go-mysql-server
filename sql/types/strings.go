@@ -711,7 +711,7 @@ func (t StringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.
 		if err != nil {
 			return sqltypes.Value{}, err
 		}
-		
+
 		// Format binary data in the MySQL CLI format, which is 0x followed by hex digits
 		result := append([]byte("0x"), bytes.ToUpper([]byte(fmt.Sprintf("%x", binaryBytes)))...)
 		val = result
