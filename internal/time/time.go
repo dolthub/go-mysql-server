@@ -24,7 +24,7 @@ import (
 )
 
 // offsetRegex is a regex for matching MySQL offsets (e.g. +01:00).
-var offsetRegex = regexp.MustCompile(`(?m)^([+\-])(\d{2}):(\d{2})$`)
+var offsetRegex = regexp.MustCompile(`(?m)^([+\-])(\d{1,2}):(\d{2})$`)
 
 // ConvertTimeZone converts |datetime| from one timezone to another. |fromLocation| and |toLocation| can be either
 // the name of a timezone (e.g. "UTC") or a MySQL-formatted timezone offset (e.g. "+01:00"). If the time was converted
@@ -107,7 +107,7 @@ func ConvertTimeToLocation(datetime time.Time, location string) (time.Time, erro
 	// If we can't parse a timezone location string, then try to parse a MySQL location offset
 	duration, err := MySQLOffsetToDuration(location)
 	if err == nil {
-		return datetime.Add(-1 * duration), nil
+		return getCopy(datetime, time.UTC).Add(-1 * duration), nil
 	}
 
 	return time.Time{}, errors.New(fmt.Sprintf("error: unable to parse timezone '%s'", location))
