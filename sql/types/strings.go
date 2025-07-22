@@ -712,9 +712,14 @@ func (t StringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.
 			return sqltypes.Value{}, err
 		}
 
-		// Format binary data as hexadecimal with 0x prefix to match MySQL's display behavior
-		result := append([]byte("0x"), bytes.ToUpper([]byte(fmt.Sprintf("%x", binaryBytes)))...)
-		val = result
+		// Apply hex formatting only to VARBINARY and BINARY types, not BLOB types
+		// This ensures function results (which typically use BLOB types) display as raw bytes
+		if t.baseType == sqltypes.VarBinary || t.baseType == sqltypes.Binary {
+			result := append([]byte("0x"), bytes.ToUpper([]byte(fmt.Sprintf("%x", binaryBytes)))...)
+			val = result
+		} else {
+			val = binaryBytes
+		}
 	} else {
 		var valueBytes []byte
 		switch v := v.(type) {
