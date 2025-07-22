@@ -82,8 +82,7 @@ func newMergeJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode,
 		parentLen:   len(row) - j.ScopeLen,
 		leftRowLen:  len(j.Left().Schema()),
 		rightRowLen: len(j.Right().Schema()),
-
-		isReversed: j.IsReversed,
+		isReversed:  j.IsReversed,
 	}
 	return iter, nil
 }
@@ -116,6 +115,8 @@ type mergeJoinIter struct {
 	// leftMatched indicates whether the current left in |i.fullRow|
 	// has satisfied the join condition.
 	leftMatched bool
+	// isReversed indicates if this join is over two reversed indexes.
+	isReversed bool
 
 	// lifecycle maintenance
 	init           bool
@@ -127,8 +128,6 @@ type mergeJoinIter struct {
 	leftRowLen  int
 	rightRowLen int
 	parentLen   int
-
-	isReversed bool
 }
 
 var _ sql.RowIter = (*mergeJoinIter)(nil)

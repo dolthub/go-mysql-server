@@ -57,9 +57,8 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 			return n, transform.NewTree, nil
 		}
 
-		// TODO: need to check for indexOrder = None?
 		// if the index is not reversible, do nothing
-		if oi, ok := lookup.Index.(sql.OrderedIndex); ok && !oi.Reversible() {
+		if oi, ok := lookup.Index.(sql.OrderedIndex); ok && (!oi.Reversible() || oi.Order() == sql.IndexOrderNone) {
 			return n, transform.SameTree, nil
 		}
 		lookup = sql.NewIndexLookup(

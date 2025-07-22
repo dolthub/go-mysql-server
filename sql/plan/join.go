@@ -291,7 +291,6 @@ type JoinNode struct {
 	CommentStr string
 	ScopeLen   int
 	UsingCols  []string
-
 	IsReversed bool
 }
 
