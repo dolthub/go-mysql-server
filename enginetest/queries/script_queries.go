@@ -8506,7 +8506,8 @@ where
 		},
 	},
 	{
-		Name:    "merge join optimization",
+		// https://github.com/dolthub/dolt/issues/8728
+		Name:    "test merge join optimization (removing sort node over indexed tables) does not break ordering",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t1 (i int primary key);",
@@ -8535,7 +8536,6 @@ where
 				},
 			},
 			{
-				// The Sort node can be optimized out of this query, but currently is not
 				Query: "select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on t1.i = t2.j order by t1.i desc;",
 				Expected: []sql.Row{
 					{3, 3},
@@ -8543,11 +8543,17 @@ where
 				},
 			},
 			{
-				// The Sort node can be optimized out of this query, but currently is not
 				Query: "select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on t1.i = t2.j order by t2.j desc;",
 				Expected: []sql.Row{
 					{3, 3},
 					{2, 2},
+				},
+			},
+			{
+				// InSubquery expressions can be optimized into MERGE_JOINs, so this optimization should apply over this as well
+				Query: "select /*+ MERGE_JOIN(t1, t2) */ * from t1 where ((i in (select j from t2 where j > 2))) order by i desc;",
+				Expected: []sql.Row{
+					{3},
 				},
 			},
 
@@ -8559,7 +8565,6 @@ where
 				},
 			},
 			{
-				// The Sort node can be optimized out of this query, but currently is not
 				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i desc;",
 				Expected: []sql.Row{
 					{3, 3, 3, 3},
@@ -8574,7 +8579,6 @@ where
 				},
 			},
 			{
-				// The Sort node can be optimized out of this query, but currently is not
 				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t4.x desc;",
 				Expected: []sql.Row{
 					{3, 3, 3, 3},
@@ -8589,7 +8593,6 @@ where
 				},
 			},
 			{
-				// The Sort node can be optimized out of this query, but currently is not
 				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i desc, t3.j desc;",
 				Expected: []sql.Row{
 					{3, 3, 3, 3},
@@ -8604,7 +8607,6 @@ where
 				},
 			},
 			{
-				// The Sort node can be optimized out of this query, but currently is not
 				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t4.x desc, t4.y desc;",
 				Expected: []sql.Row{
 					{3, 3, 3, 3},
@@ -8614,6 +8616,14 @@ where
 			{
 				// The Sort node can be optimized out of this query, but currently is not
 				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t4.x;",
+				Expected: []sql.Row{
+					{2, 2, 2, 2},
+					{3, 3, 3, 3},
+				},
+			},
+			{
+				// The Sort node can be optimized out of this query, but currently is not
+				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t4.x desc;",
 				Expected: []sql.Row{
 					{2, 2, 2, 2},
 					{3, 3, 3, 3},
@@ -8655,14 +8665,6 @@ where
 			{
 				// Sort node cannot be optimized out of this query
 				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t3.j desc;",
-				Expected: []sql.Row{
-					{2, 2, 2, 2},
-					{3, 3, 3, 3},
-				},
-			},
-			{
-				// Trickier, but Sort node can be optimized out of this query
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t4.x desc;",
 				Expected: []sql.Row{
 					{2, 2, 2, 2},
 					{3, 3, 3, 3},

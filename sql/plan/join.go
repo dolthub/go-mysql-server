@@ -291,6 +291,8 @@ type JoinNode struct {
 	CommentStr string
 	ScopeLen   int
 	UsingCols  []string
+
+	IsReversed bool
 }
 
 var _ sql.Node = (*JoinNode)(nil)

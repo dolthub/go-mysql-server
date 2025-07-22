@@ -82,6 +82,8 @@ func newMergeJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode,
 		parentLen:   len(row) - j.ScopeLen,
 		leftRowLen:  len(j.Left().Schema()),
 		rightRowLen: len(j.Right().Schema()),
+
+		isReversed: j.IsReversed,
 	}
 	return iter, nil
 }
@@ -125,6 +127,8 @@ type mergeJoinIter struct {
 	leftRowLen  int
 	rightRowLen int
 	parentLen   int
+
+	isReversed bool
 }
 
 var _ sql.RowIter = (*mergeJoinIter)(nil)
@@ -212,6 +216,9 @@ func (i *mergeJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 				break
 			} else if err != nil {
 				return nil, err
+			}
+			if i.isReversed {
+				res = -res
 			}
 			switch {
 			case res < 0:
