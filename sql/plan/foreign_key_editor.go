@@ -522,7 +522,7 @@ func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, ro
 		if validationErr := reference.validateColumnTypeConstraints(ctx, row, parentRow); validationErr != nil {
 			return validationErr
 		}
-		
+
 		// We have a parent row so throw no error
 		return nil
 	}
@@ -550,7 +550,6 @@ func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, ro
 		reference.ForeignKey.ParentTable, reference.RowMapper.GetKeyString(row))
 }
 
-
 // validateColumnTypeConstraints validates that column types meet MySQL foreign key requirements.
 // Centralizes type validation for decimal scale matching and exact time type precision matching.
 func (reference *ForeignKeyReferenceHandler) validateColumnTypeConstraints(ctx *sql.Context, childRow sql.Row, parentRow sql.Row) error {
@@ -558,25 +557,25 @@ func (reference *ForeignKeyReferenceHandler) validateColumnTypeConstraints(ctx *
 	if mapper.Index == nil {
 		return nil
 	}
-	
+
 	for parentIdx, parentCol := range mapper.Index.ColumnExpressionTypes() {
 		if parentIdx >= len(mapper.IndexPositions) {
 			break
 		}
-		
+
 		parentType := parentCol.Type
 		childType := mapper.SourceSch[mapper.IndexPositions[parentIdx]].Type
-		
+
 		// Check for constraint violations
 		hasViolation := false
-		
+
 		// Decimal scale must match
 		if childDecimal, ok := childType.(sql.DecimalType); ok {
 			if parentDecimal, ok := parentType.(sql.DecimalType); ok {
 				hasViolation = childDecimal.Scale() != parentDecimal.Scale()
 			}
 		}
-		
+
 		// Time types must match exactly (including precision)
 		if !hasViolation {
 			isChildTime := types.IsTime(childType) || types.IsTimespan(childType)
@@ -585,7 +584,7 @@ func (reference *ForeignKeyReferenceHandler) validateColumnTypeConstraints(ctx *
 				hasViolation = !childType.Equals(parentType)
 			}
 		}
-		
+
 		if hasViolation {
 			return sql.ErrForeignKeyChildViolation.New(
 				reference.ForeignKey.Name,
@@ -597,7 +596,6 @@ func (reference *ForeignKeyReferenceHandler) validateColumnTypeConstraints(ctx *
 	}
 	return nil
 }
-
 
 // CheckTable checks that every row in the table has an index entry in the referenced table.
 func (reference *ForeignKeyReferenceHandler) CheckTable(ctx *sql.Context, tbl sql.ForeignKeyTable) error {
@@ -656,7 +654,7 @@ func (mapper *ForeignKeyRowMapper) GetIter(ctx *sql.Context, row sql.Row, refChe
 		}
 
 		targetType := mapper.SourceSch[rowPos].Type
-		
+
 		// Transform the type of the value in this row to the one in the other table for the index lookup, if necessary
 		if mapper.TargetTypeConversions != nil && mapper.TargetTypeConversions[rowPos] != nil {
 			var err error
