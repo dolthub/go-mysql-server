@@ -141,17 +141,20 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		return c.Left().Type().Compare(ctx, left, right)
 	}
 
-	left, right, compareType, err := c.castLeftAndRight(ctx, left, right)
+	l, r, compareType, err := c.castLeftAndRight(ctx, left, right)
 	if err != nil {
 		return 0, err
 	}
 
+	// Set comparison relies on empty strings not being converted yet
+	if types.IsSet(compareType) {
+		return compareType.Compare(ctx, left, right)
+	}
 	collationPreference, _ := c.CollationCoercibility(ctx)
 	if stringCompareType, ok := compareType.(sql.StringType); ok {
 		compareType = types.MustCreateString(stringCompareType.Type(), stringCompareType.Length(), collationPreference)
 	}
-
-	return compareType.Compare(ctx, left, right)
+	return compareType.Compare(ctx, l, r)
 }
 
 func (c *comparison) evalLeftAndRight(ctx *sql.Context, row sql.Row) (interface{}, interface{}, error) {
