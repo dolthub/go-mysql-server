@@ -18932,7 +18932,7 @@ inner join pq on true
 			" │   ├─ tableId: 3\n" +
 			" │   └─ Filter\n" +
 			" │       ├─ GreaterThan\n" +
-			" │       │   ├─ a.x:0!null\n" +
+			" │       │   ├─ 1:0!null\n" +
 			" │       │   └─ 1 (tinyint)\n" +
 			" │       └─ Union distinct\n" +
 			" │           ├─ Project\n" +
@@ -18958,7 +18958,7 @@ inner join pq on true
 			"     ├─ tableId: 4\n" +
 			"     └─ Filter\n" +
 			"         ├─ GreaterThan\n" +
-			"         │   ├─ a.x:0!null\n" +
+			"         │   ├─ 1:0!null\n" +
 			"         │   └─ 1 (tinyint)\n" +
 			"         └─ Union distinct\n" +
 			"             ├─ Project\n" +
@@ -18983,7 +18983,7 @@ inner join pq on true
 			" │   ├─ isLateral: false\n" +
 			" │   ├─ cacheable: true\n" +
 			" │   └─ Filter\n" +
-			" │       ├─ (a.x > 1)\n" +
+			" │       ├─ (1 > 1)\n" +
 			" │       └─ Union distinct\n" +
 			" │           ├─ Project\n" +
 			" │           │   ├─ columns: [1]\n" +
@@ -18999,7 +18999,7 @@ inner join pq on true
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
 			"     └─ Filter\n" +
-			"         ├─ (a.x > 1)\n" +
+			"         ├─ (1 > 1)\n" +
 			"         └─ Union distinct\n" +
 			"             ├─ Project\n" +
 			"             │   ├─ columns: [1]\n" +
@@ -19017,7 +19017,7 @@ inner join pq on true
 			" │   ├─ isLateral: false\n" +
 			" │   ├─ cacheable: true\n" +
 			" │   └─ Filter\n" +
-			" │       ├─ (a.x > 1)\n" +
+			" │       ├─ (1 > 1)\n" +
 			" │       └─ Union distinct\n" +
 			" │           ├─ Project\n" +
 			" │           │   ├─ columns: [1]\n" +
@@ -19033,7 +19033,7 @@ inner join pq on true
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
 			"     └─ Filter\n" +
-			"         ├─ (a.x > 1)\n" +
+			"         ├─ (1 > 1)\n" +
 			"         └─ Union distinct\n" +
 			"             ├─ Project\n" +
 			"             │   ├─ columns: [1]\n" +
