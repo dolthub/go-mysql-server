@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package time contains low-level utility functions for working with time.Time values and timezones.
-package time
+package sql
 
 import (
 	"errors"
@@ -24,11 +23,13 @@ import (
 )
 
 // offsetRegex is a regex for matching MySQL offsets (e.g. +01:00).
-var offsetRegex = regexp.MustCompile(`(?m)^([+\-])(\d{2}):(\d{2})$`)
+var offsetRegex = regexp.MustCompile(`(?m)^([+\-])(\d{1,2}):(\d{2})$`)
 
 // ConvertTimeZone converts |datetime| from one timezone to another. |fromLocation| and |toLocation| can be either
 // the name of a timezone (e.g. "UTC") or a MySQL-formatted timezone offset (e.g. "+01:00"). If the time was converted
 // successfully, then the second return value will be true, otherwise the time was not able to be converted.
+// TODO: This function relies on ConvertTimeToLocation functioning incorrectly to get the correct result. The resulting
+// time is still the same location as the original time, just with time values shifted.
 func ConvertTimeZone(datetime time.Time, fromLocation string, toLocation string) (time.Time, bool) {
 	if fromLocation == toLocation {
 		return datetime, true
@@ -62,7 +63,7 @@ func MySQLOffsetToDuration(d string) (time.Duration, error) {
 
 // SystemTimezoneOffset returns the current system timezone offset as a MySQL timezone offset (e.g. "+01:00").
 func SystemTimezoneOffset() string {
-	t := time.Now()
+	t := Now()
 	_, offset := t.Zone()
 
 	return SecondsToMySQLOffset(offset)
@@ -70,7 +71,7 @@ func SystemTimezoneOffset() string {
 
 // SystemTimezoneName returns the current system timezone name.
 func SystemTimezoneName() string {
-	t := time.Now()
+	t := Now()
 	name, _ := t.Zone()
 
 	return name
@@ -97,6 +98,8 @@ func SecondsToMySQLOffset(offset int) string {
 // ConvertTimeToLocation converts |datetime| to the given |location|. |location| can be either the name of a timezone
 // (e.g. "UTC") or a MySQL-formatted timezone offset (e.g. "+01:00"). If the time was converted successfully, then
 // the converted time is returned, otherwise an error is returned.
+// TODO: this function does not work as expected. it takes the current time and converts it to what UTC would be if the
+// datetime is in the given location. The converted time also assumes UTC as its location.
 func ConvertTimeToLocation(datetime time.Time, location string) (time.Time, error) {
 	// Try to load the timezone location string first
 	loc, err := time.LoadLocation(location)
@@ -107,7 +110,7 @@ func ConvertTimeToLocation(datetime time.Time, location string) (time.Time, erro
 	// If we can't parse a timezone location string, then try to parse a MySQL location offset
 	duration, err := MySQLOffsetToDuration(location)
 	if err == nil {
-		return datetime.Add(-1 * duration), nil
+		return getCopy(datetime, time.UTC).Add(-1 * duration), nil
 	}
 
 	return time.Time{}, errors.New(fmt.Sprintf("error: unable to parse timezone '%s'", location))

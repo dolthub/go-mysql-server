@@ -22,7 +22,6 @@ import (
 	"sort"
 	"strings"
 
-	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -889,7 +888,7 @@ func (b *BaseBuilder) buildShowCreateEvent(ctx *sql.Context, n *plan.ShowCreateE
 	}
 
 	// Convert the Event's timestamps into the session's timezone (they are always stored in UTC)
-	newEvent := n.Event.ConvertTimesFromUTCToTz(gmstime.SystemTimezoneOffset())
+	newEvent := n.Event.ConvertTimesFromUTCToTz(sql.SystemTimezoneOffset())
 	n.Event = *newEvent
 
 	// TODO: fill time_zone with appropriate values

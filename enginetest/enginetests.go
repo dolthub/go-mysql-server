@@ -6147,6 +6147,26 @@ func TestSQLLogicTests(t *testing.T, harness Harness) {
 	}
 }
 
+func TestTimeQueries(t *testing.T, harness Harness) {
+	// "America/Phoenix" is a non-UTC time zone that does not observe daylight savings time
+	phoenixTimeZone, _ := time.LoadLocation("America/Phoenix")
+	mockNow := time.Date(2025, time.July, 23, 9, 43, 21, 0, phoenixTimeZone)
+	for _, script := range queries.TimeQueryTests {
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(script.Name) {
+				t.Run(script.Name, func(t *testing.T) {
+					t.Skip(script.Name)
+				})
+				continue
+			}
+		}
+		sql.RunWithNowFunc(func() time.Time { return mockNow }, func() error {
+			TestScript(t, harness, script)
+			return nil
+		})
+	}
+}
+
 // ExecuteNode builds an iterator and then drains it.
 // This is useful for populating actual row counts for `DESCRIBE ANALYZE`.
 func ExecuteNode(ctx *sql.Context, engine QueryEngine, node sql.Node) error {

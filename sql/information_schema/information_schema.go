@@ -24,7 +24,6 @@ import (
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
-	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	. "github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -965,7 +964,7 @@ func eventsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 			}
 
 			for _, e := range eventDefs {
-				ed := e.ConvertTimesFromUTCToTz(gmstime.SystemTimezoneOffset())
+				ed := e.ConvertTimesFromUTCToTz(SystemTimezoneOffset())
 				var at, intervalVal, intervalField, starts, ends interface{}
 				var eventType, status string
 				if ed.HasExecuteAt {
