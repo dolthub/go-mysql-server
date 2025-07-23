@@ -22,8 +22,6 @@ import (
 	"time"
 
 	"gopkg.in/src-d/go-errors.v1"
-
-	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 )
 
 const EventDateSpaceTimeFormat = "2006-01-02 15:04:05"
@@ -83,32 +81,32 @@ type EventDefinition struct {
 func (e *EventDefinition) ConvertTimesFromUTCToTz(tz string) *EventDefinition {
 	ne := *e
 	if ne.HasExecuteAt {
-		t, ok := gmstime.ConvertTimeZone(e.ExecuteAt, "+00:00", tz)
+		t, ok := ConvertTimeZone(e.ExecuteAt, "+00:00", tz)
 		if ok {
 			ne.ExecuteAt = t
 		}
 	} else {
-		t, ok := gmstime.ConvertTimeZone(e.Starts, "+00:00", tz)
+		t, ok := ConvertTimeZone(e.Starts, "+00:00", tz)
 		if ok {
 			ne.Starts = t
 		}
 		if ne.HasEnds {
-			t, ok = gmstime.ConvertTimeZone(e.Ends, "+00:00", tz)
+			t, ok = ConvertTimeZone(e.Ends, "+00:00", tz)
 			if ok {
 				ne.Ends = t
 			}
 		}
 	}
 
-	t, ok := gmstime.ConvertTimeZone(e.CreatedAt, "+00:00", tz)
+	t, ok := ConvertTimeZone(e.CreatedAt, "+00:00", tz)
 	if ok {
 		ne.CreatedAt = t
 	}
-	t, ok = gmstime.ConvertTimeZone(e.LastAltered, "+00:00", tz)
+	t, ok = ConvertTimeZone(e.LastAltered, "+00:00", tz)
 	if ok {
 		ne.LastAltered = t
 	}
-	t, ok = gmstime.ConvertTimeZone(e.LastExecuted, "+00:00", tz)
+	t, ok = ConvertTimeZone(e.LastExecuted, "+00:00", tz)
 	if ok {
 		ne.LastExecuted = t
 	}
@@ -363,7 +361,7 @@ var tzRegex = regexp.MustCompile(`(?m)^([+\-])(\d{2}):(\d{2})$`)
 // evaluating valid MySQL datetime and timestamp formats.
 func GetTimeValueFromStringInput(field, t string) (time.Time, error) {
 	// TODO: the time value should be in session timezone rather than system timezone.
-	sessTz := gmstime.SystemTimezoneOffset()
+	sessTz := SystemTimezoneOffset()
 
 	// For MySQL datetime format, it accepts any valid date format
 	// and tries parsing time part first and timezone part if time part is valid.
@@ -407,7 +405,7 @@ func GetTimeValueFromStringInput(field, t string) (time.Time, error) {
 		}
 
 		// convert the time value to the session timezone for display and storage
-		tVal, ok = gmstime.ConvertTimeZone(tVal, inputTz, sessTz)
+		tVal, ok = ConvertTimeZone(tVal, inputTz, sessTz)
 		if !ok {
 			return time.Time{}, fmt.Errorf("invalid time zone: %s", sessTz)
 		}

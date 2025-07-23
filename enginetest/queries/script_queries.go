@@ -22,7 +22,6 @@ import (
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"gopkg.in/src-d/go-errors.v1"
 
-	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -4685,7 +4684,7 @@ CREATE TABLE tab3 (
 				// To match MySQL's behavior, this comes from the operating system's timezone setting
 				// TODO: the "global" shouldn't be necessary here, but GMS goes to session without it
 				Query:    `select @@global.system_time_zone;`,
-				Expected: []sql.Row{{gmstime.SystemTimezoneOffset()}},
+				Expected: []sql.Row{{sql.SystemTimezoneOffset()}},
 			},
 			{
 				// The default time_zone setting for MySQL is SYSTEM, which means timezone comes from @@system_time_zone

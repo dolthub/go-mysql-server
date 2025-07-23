@@ -17,7 +17,6 @@ package function
 import (
 	"fmt"
 
-	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -104,7 +103,7 @@ func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if fromStr == "SYSTEM" {
-		fromStr = gmstime.SystemTimezoneOffset()
+		fromStr = sql.SystemTimezoneOffset()
 	}
 
 	toStr, ok := to.(string)
@@ -113,10 +112,10 @@ func (c *ConvertTz) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if toStr == "SYSTEM" {
-		toStr = gmstime.SystemTimezoneOffset()
+		toStr = sql.SystemTimezoneOffset()
 	}
 
-	converted, success := gmstime.ConvertTimeZone(datetime, fromStr, toStr)
+	converted, success := sql.ConvertTimeZone(datetime, fromStr, toStr)
 	if !success {
 		return nil, nil
 	}

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // Package time contains low-level utility functions for working with time.Time values and timezones.
-package time
+package sql
 
 import (
 	"errors"
@@ -62,7 +62,7 @@ func MySQLOffsetToDuration(d string) (time.Duration, error) {
 
 // SystemTimezoneOffset returns the current system timezone offset as a MySQL timezone offset (e.g. "+01:00").
 func SystemTimezoneOffset() string {
-	t := time.Now()
+	t := Now()
 	_, offset := t.Zone()
 
 	return SecondsToMySQLOffset(offset)
@@ -70,7 +70,7 @@ func SystemTimezoneOffset() string {
 
 // SystemTimezoneName returns the current system timezone name.
 func SystemTimezoneName() string {
-	t := time.Now()
+	t := Now()
 	name, _ := t.Zone()
 
 	return name

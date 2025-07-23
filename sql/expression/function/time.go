@@ -22,7 +22,6 @@ import (
 
 	"gopkg.in/src-d/go-errors.v1"
 
-	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -1016,7 +1015,7 @@ func (n *Now) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// If no arguments, just return with 0 precision
 	// The way the parser is implemented 0 should always be passed in; have this here just in case
 	if n.prec == nil {
-		t, ok := gmstime.ConvertTimeZone(currentTime, gmstime.SystemTimezoneOffset(), sessionTimeZone)
+		t, ok := sql.ConvertTimeZone(currentTime, sql.SystemTimezoneOffset(), sessionTimeZone)
 		if !ok {
 			return nil, fmt.Errorf("invalid time zone: %s", sessionTimeZone)
 		}
@@ -1056,7 +1055,7 @@ func (n *Now) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Get the timestamp
-	t, ok := gmstime.ConvertTimeZone(currentTime, gmstime.SystemTimezoneOffset(), sessionTimeZone)
+	t, ok := sql.ConvertTimeZone(currentTime, sql.SystemTimezoneOffset(), sessionTimeZone)
 	if !ok {
 		return nil, fmt.Errorf("invalid time zone: %s", sessionTimeZone)
 	}
@@ -1106,7 +1105,7 @@ func SessionTimeZone(ctx *sql.Context) (string, error) {
 	}
 
 	if sessionTimeZone == "SYSTEM" {
-		sessionTimeZone = gmstime.SystemTimezoneOffset()
+		sessionTimeZone = sql.SystemTimezoneOffset()
 	}
 	return sessionTimeZone, nil
 }

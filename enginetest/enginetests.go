@@ -6147,6 +6147,20 @@ func TestSQLLogicTests(t *testing.T, harness Harness) {
 	}
 }
 
+func TestTimeQueryTests(t *testing.T, harness Harness) {
+	for _, script := range queries.TimeQueryTests {
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(script.Name) {
+				t.Run(script.Name, func(t *testing.T) {
+					t.Skip(script.Name)
+				})
+				continue
+			}
+		}
+		TestScript(t, harness, script)
+	}
+}
+
 // ExecuteNode builds an iterator and then drains it.
 // This is useful for populating actual row counts for `DESCRIBE ANALYZE`.
 func ExecuteNode(ctx *sql.Context, engine QueryEngine, node sql.Node) error {
