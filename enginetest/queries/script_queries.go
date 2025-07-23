@@ -9320,6 +9320,12 @@ where
 					{"hijkl", []uint8("hijkl")},
 				},
 			},
+			{
+				Query: "select e from t where e like 'a%'",
+				Expected: []sql.Row{
+					{"abc"},
+				},
+			},
 		},
 	},
 	{
@@ -9764,9 +9770,6 @@ where
 				},
 			},
 			{
-				// this is failing due to a type coercion bug in comparison.Compare
-				// https://github.com/dolthub/dolt/issues/9510
-				Skip:  true,
 				Query: "select i, s + 0, s from t where s = '';",
 				Expected: []sql.Row{
 					{0, float64(0), ""},
@@ -9820,8 +9823,6 @@ where
 				},
 			},
 			{
-				// https://github.com/dolthub/dolt/issues/9510
-				Skip:  true,
 				Query: "select s from t where s like 'a%' order by s;",
 				Expected: []sql.Row{
 					{"abc"},
