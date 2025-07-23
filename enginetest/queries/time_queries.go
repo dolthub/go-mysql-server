@@ -9,7 +9,7 @@ import (
 
 var TimeQueryTests = []ScriptTest{
 	{
-		// time zone tests the current time set as July 23, 2025 at 9:43am America/Phoenix (-7:00) (does not observe
+		// time zone tests the current time set as July 23, 2025 at 9:43:21am America/Phoenix (-7:00) (does not observe
 		// daylight savings time so time zone does not change)
 		Name:        "time zone tests",
 		SetUpScript: []string{},
@@ -20,7 +20,7 @@ var TimeQueryTests = []ScriptTest{
 			},
 			{
 				Query:    "select now()",
-				Expected: []sql.Row{{time.Date(2025, time.July, 23, 16, 43, 0, 0, time.UTC)}},
+				Expected: []sql.Row{{time.Date(2025, time.July, 23, 16, 43, 21, 0, time.UTC)}},
 			},
 			{
 				Query:    "set time_zone='-5:00'",
@@ -28,7 +28,7 @@ var TimeQueryTests = []ScriptTest{
 			},
 			{
 				Query:    "select now()",
-				Expected: []sql.Row{{time.Date(2025, time.July, 23, 11, 43, 0, 0, time.UTC)}},
+				Expected: []sql.Row{{time.Date(2025, time.July, 23, 11, 43, 21, 0, time.UTC)}},
 			},
 			{
 				// doesn't observe daylight savings time
@@ -37,7 +37,7 @@ var TimeQueryTests = []ScriptTest{
 			},
 			{
 				Query:    "select now()",
-				Expected: []sql.Row{{time.Date(2025, time.July, 23, 6, 43, 0, 0, time.UTC)}},
+				Expected: []sql.Row{{time.Date(2025, time.July, 23, 6, 43, 21, 0, time.UTC)}},
 			},
 			{
 				// https://github.com/dolthub/dolt/issues/9559
