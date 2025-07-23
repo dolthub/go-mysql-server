@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Contains low-level utility functions for working with time.Time values and timezones.
 package sql
 
 import (
