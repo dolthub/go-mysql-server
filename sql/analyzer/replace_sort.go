@@ -177,7 +177,13 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 			}
 			// No need to check all SortField orders because of isValidSortFieldOrder
 			isReversed := sortNode.SortFields[0].Order == sql.Descending
-			// either left or right has been reversed
+			// If both left and right have been replaced, no need to manually reverse any indexes as they both should be
+			// replaced already
+			if !sameLeft && !sameRight {
+				c.IsReversed = isReversed
+				continue
+			}
+			// If only one side has been replaced, we need to check if the other side can be reversed
 			if (sameLeft != sameRight) && isReversed {
 				// If descending, then both Indexes must be reversed
 				if sameLeft {
