@@ -1098,6 +1098,6 @@ func TestSQLLogicTestFiles(t *testing.T) {
 	logictest.RunTestFiles(h, paths...)
 }
 
-func TestTimeQueryTests(t *testing.T) {
-	enginetest.TestTimeQueryTests(t, enginetest.NewDefaultMemoryHarness())
+func TestTimeQueries(t *testing.T) {
+	enginetest.TestTimeQueries(t, enginetest.NewDefaultMemoryHarness())
 }
