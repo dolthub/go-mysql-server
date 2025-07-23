@@ -293,9 +293,9 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 	}
 	switch strings.ToLower(castTo) {
 	case ConvertToBinary:
-		// For SET/ENUM types, convert to string first since TypeAwareConversion only handles text types
+		// For SET/ENUM types, convert to string first for blob conversions
 		if types.IsSet(originType) || types.IsEnum(originType) {
-			val, _, _ = types.ConvertToCollatedString(ctx, val, originType)
+			val, _ = types.TypeAwareConversion(ctx, val, originType, types.LongText)
 		}
 		b, _, err := types.LongBlob.Convert(ctx, val)
 		if err != nil {
@@ -476,7 +476,6 @@ func createConvertedDecimalType(length, scale int, logErrors bool) sql.DecimalTy
 	}
 	return types.InternalDecimalType
 }
-
 
 // convertHexBlobToDecimalForNumericContext converts byte array value to unsigned int value if originType is BLOB type.
 // This function is called when convertTo type is number type only. The hex literal values are parsed into blobs as
