@@ -151,7 +151,7 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		return compareType.Compare(ctx, left, right)
 	}
 	collationPreference, _ := c.CollationCoercibility(ctx)
-	if stringCompareType, ok := compareType.(sql.StringType); ok {
+	if stringCompareType, ok := compareType.(sql.StringType); ok && types.IsTextOnly(stringCompareType) {
 		compareType = types.MustCreateString(stringCompareType.Type(), stringCompareType.Length(), collationPreference)
 	}
 	return compareType.Compare(ctx, l, r)
