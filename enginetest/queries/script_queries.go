@@ -10631,7 +10631,6 @@ where
 				},
 			},
 			{
-				Skip:  true,
 				Query: "show create table tinyint_tbl;",
 				Expected: []sql.Row{
 					{"tinyint_tbl", "CREATE TABLE `tinyint_tbl` (\n" +
@@ -10657,7 +10656,6 @@ where
 				},
 			},
 			{
-				Skip:  true,
 				Query: "show create table smallint_tbl;",
 				Expected: []sql.Row{
 					{"smallint_tbl", "CREATE TABLE `smallint_tbl` (\n" +
@@ -10683,7 +10681,6 @@ where
 				},
 			},
 			{
-				Skip:  true,
 				Query: "show create table mediumint_tbl;",
 				Expected: []sql.Row{
 					{"mediumint_tbl", "CREATE TABLE `mediumint_tbl` (\n" +
@@ -10709,7 +10706,6 @@ where
 				},
 			},
 			{
-				Skip:  true,
 				Query: "show create table int_tbl;",
 				Expected: []sql.Row{
 					{"int_tbl", "CREATE TABLE `int_tbl` (\n" +
@@ -10735,7 +10731,6 @@ where
 				},
 			},
 			{
-				Skip:  true,
 				Query: "show create table bigint_tbl;",
 				Expected: []sql.Row{
 					{"bigint_tbl", "CREATE TABLE `bigint_tbl` (\n" +
