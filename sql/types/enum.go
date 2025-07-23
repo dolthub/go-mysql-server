@@ -42,7 +42,8 @@ const (
 var (
 	ErrConvertingToEnum = errors.NewKind("value %v is not valid for this Enum")
 
-	ErrDataTruncatedForColumn = errors.NewKind("Data truncated for column '%s'")
+	ErrDataTruncatedForColumn      = errors.NewKind("Data truncated for column '%s'")
+	ErrDataTruncatedForColumnAtRow = errors.NewKind("Data truncated for column '%s' at row %d")
 
 	enumValueType = reflect.TypeOf(uint16(0))
 )
@@ -164,9 +165,17 @@ func (t EnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.
 
 	switch value := v.(type) {
 	case int:
+		// MySQL rejects 0 values in strict mode regardless of enum definition
+		if value == 0 {
+			if sqlCtx, ok := ctx.(*sql.Context); ok && sql.ValidateStrictMode(sqlCtx) {
+				return nil, sql.OutOfRange, ErrConvertingToEnum.New(value)
+			}
+		}
 		if _, ok := t.At(value); ok {
 			return uint16(value), sql.InRange, nil
 		}
+		// If value is not a valid enum index, return error
+		return nil, sql.OutOfRange, ErrConvertingToEnum.New(value)
 	case uint:
 		return t.Convert(ctx, int(value))
 	case int8:
@@ -176,7 +185,12 @@ func (t EnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.
 	case int16:
 		return t.Convert(ctx, int(value))
 	case uint16:
-		return t.Convert(ctx, int(value))
+		// uint16 values are stored enum indices - allow them without strict mode validation
+		if _, ok := t.At(int(value)); ok {
+			return value, sql.InRange, nil
+		}
+		// If value is not a valid enum index, return error
+		return nil, sql.OutOfRange, ErrConvertingToEnum.New(value)
 	case int32:
 		return t.Convert(ctx, int(value))
 	case uint32:
@@ -204,7 +218,7 @@ func (t EnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.
 		return t.Convert(ctx, string(value))
 	}
 
-	return nil, sql.InRange, ErrConvertingToEnum.New(v)
+	return nil, sql.OutOfRange, ErrConvertingToEnum.New(v)
 }
 
 // Equals implements the Type interface.

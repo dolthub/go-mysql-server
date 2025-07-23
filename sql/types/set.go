@@ -129,6 +129,24 @@ func (t SetType) Compare(ctx context.Context, a interface{}, b interface{}) (int
 	au := ai.(uint64)
 	bu := bi.(uint64)
 
+	// If there's an empty string in the set, empty strings should match both 0 and an empty string bit field
+	if emptyStringBitField, ok := t.emptyStringBitField(); ok {
+		aIsEmptyString := isEmptyString(a)
+		bIsEmptyString := isEmptyString(b)
+		if aIsEmptyString {
+			if bu == 0 || bu == emptyStringBitField {
+				return 0, nil
+			}
+			return -1, nil
+		}
+		if bIsEmptyString {
+			if au == 0 || au == emptyStringBitField {
+				return 0, nil
+			}
+			return 1, nil
+		}
+	}
+
 	if au < bu {
 		return -1, nil
 	} else if au > bu {
@@ -180,7 +198,7 @@ func (t SetType) Convert(ctx context.Context, v interface{}) (interface{}, sql.C
 		return t.Convert(ctx, value.Decimal.BigInt().Uint64())
 	case string:
 		ret, err := t.convertStringToBitField(value)
-		return ret, sql.InRange, err
+		return ret, err == nil, err
 	case []byte:
 		return t.Convert(ctx, string(value))
 	}
@@ -347,9 +365,6 @@ func (t SetType) convertBitFieldToString(bitField uint64) (string, error) {
 			if !ok {
 				return "", sql.ErrInvalidSetValue.New(bitField)
 			}
-			if len(val) == 0 {
-				continue
-			}
 			if writeCommas {
 				strBuilder.WriteByte(',')
 			} else {
@@ -367,6 +382,7 @@ func (t SetType) convertStringToBitField(str string) (uint64, error) {
 		return 0, nil
 	}
 	var bitField uint64
+	_, allowEmptyString := t.emptyStringBitField()
 	lastI := 0
 	var val string
 	for i := 0; i < len(str)+1; i++ {
@@ -375,7 +391,7 @@ func (t SetType) convertStringToBitField(str string) (uint64, error) {
 		}
 
 		// empty string should hash to 0, so just skip
-		if lastI == i {
+		if lastI == i && !allowEmptyString {
 			lastI = i + 1
 			continue
 		}
@@ -411,4 +427,17 @@ func (t SetType) convertStringToBitField(str string) (uint64, error) {
 		return 0, sql.ErrInvalidSetValue.New(val)
 	}
 	return bitField, nil
+}
+
+func (t SetType) emptyStringBitField() (bitField uint64, ok bool) {
+	bitField, ok = t.valToBit[""]
+	return bitField, ok
+}
+
+func isEmptyString(val interface{}) bool {
+	switch v := val.(type) {
+	case string:
+		return v == ""
+	}
+	return false
 }

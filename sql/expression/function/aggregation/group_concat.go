@@ -271,16 +271,27 @@ func (g *groupConcatBuffer) Update(ctx *sql.Context, originalRow sql.Row) error 
 			return nil
 		}
 	} else {
-		v, _, err = types.LongText.Convert(ctx, evalRow[0])
-		if err != nil {
-			return err
-		}
-		if v == nil {
-			return nil
-		}
-		vs, _, err = sql.Unwrap[string](ctx, v)
-		if err != nil {
-			return err
+		// Use type-aware conversion for enum types
+		if len(g.gc.selectExprs) > 0 {
+			vs, _, err = types.ConvertToCollatedString(ctx, evalRow[0], g.gc.selectExprs[0].Type())
+			if err != nil {
+				return err
+			}
+			if vs == "" {
+				return nil
+			}
+		} else {
+			v, _, err = types.LongText.Convert(ctx, evalRow[0])
+			if err != nil {
+				return err
+			}
+			if v == nil {
+				return nil
+			}
+			vs, _, err = sql.Unwrap[string](ctx, v)
+			if err != nil {
+				return err
+			}
 		}
 	}
 

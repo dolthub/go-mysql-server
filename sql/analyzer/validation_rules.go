@@ -262,8 +262,9 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 
 		switch parent.(type) {
 		case *plan.Having, *plan.Project, *plan.Sort:
-			// TODO: these shouldn't be skipped; you can group by primary key without problem b/c only one value
-			// https://dev.mysql.com/doc/refman/8.0/en/group-by-handling.html#:~:text=The%20query%20is%20valid%20if%20name%20is%20a%20primary%20key
+			// TODO: these shouldn't be skipped but we currently aren't able to validate GroupBys with selected aliased
+			// expressions and a lot of our tests group by aliases
+			// https://github.com/dolthub/dolt/issues/4998
 			return true
 		}
 
@@ -273,17 +274,34 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 			return true
 		}
 
-		var groupBys []string
+		primaryKeys := make(map[string]bool)
+		for _, col := range gb.Child.Schema() {
+			if col.PrimaryKey {
+				primaryKeys[strings.ToLower(col.String())] = true
+			}
+		}
+
+		groupBys := make(map[string]bool)
+		groupByPrimaryKeys := 0
 		for _, expr := range gb.GroupByExprs {
-			groupBys = append(groupBys, expr.String())
+			exprStr := strings.ToLower(expr.String())
+			groupBys[exprStr] = true
+			if primaryKeys[exprStr] {
+				groupByPrimaryKeys++
+			}
+		}
+
+		// TODO: also allow grouping by unique non-nullable columns
+		if len(primaryKeys) != 0 && groupByPrimaryKeys == len(primaryKeys) {
+			return true
 		}
 
 		for _, expr := range gb.SelectedExprs {
-			if _, ok := expr.(sql.Aggregation); !ok {
-				if !expressionReferencesOnlyGroupBys(groupBys, expr) {
-					err = analyzererrors.ErrValidationGroupBy.New(expr.String())
-					return false
-				}
+			if !expressionReferencesOnlyGroupBys(groupBys, expr) {
+				// TODO: this is currently too restrictive. Dependent columns are fine to reference
+				// https://dev.mysql.com/doc/refman/8.4/en/group-by-functional-dependence.html
+				err = analyzererrors.ErrValidationGroupBy.New(expr.String())
+				return false
 			}
 		}
 		return true
@@ -292,22 +310,14 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	return n, transform.SameTree, err
 }
 
-func expressionReferencesOnlyGroupBys(groupBys []string, expr sql.Expression) bool {
+func expressionReferencesOnlyGroupBys(groupBys map[string]bool, expr sql.Expression) bool {
 	valid := true
 	sql.Inspect(expr, func(expr sql.Expression) bool {
 		switch expr := expr.(type) {
 		case nil, sql.Aggregation, *expression.Literal:
 			return false
-		case *expression.Alias, sql.FunctionExpression:
-			if stringContains(groupBys, expr.String()) {
-				return false
-			}
-			return true
-		// cc: https://dev.mysql.com/doc/refman/8.0/en/group-by-handling.html
-		// Each part of the SelectExpr must refer to the aggregated columns in some way
-		// TODO: this isn't complete, it's overly restrictive. Dependant columns are fine to reference.
 		default:
-			if stringContains(groupBys, expr.String()) {
+			if groupBys[strings.ToLower(expr.String())] {
 				return false
 			}
 

@@ -74,6 +74,20 @@ func TestQueries(t *testing.T, harness Harness) {
 		})
 	}
 
+	for _, tt := range queries.FunctionQueryTests {
+		t.Run(tt.Query, func(t *testing.T) {
+			if sh, ok := harness.(SkippingHarness); ok {
+				if sh.SkipQueryTest(tt.Query) {
+					t.Skipf("Skipping query plan for %s", tt.Query)
+				}
+			}
+			if IsServerEngine(e) && tt.SkipServerEngine {
+				t.Skip("skipping for server engine")
+			}
+			TestQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil, nil)
+		})
+	}
+
 	// TODO: move this into its own test method
 	if keyless, ok := harness.(KeylessTableHarness); ok && keyless.SupportsKeylessTables() {
 		for _, tt := range queries.KeylessQueries {
@@ -209,6 +223,17 @@ func TestQueriesPrepared(t *testing.T, harness Harness) {
 	defer e.Close()
 	t.Run("query prepared tests", func(t *testing.T) {
 		for _, tt := range queries.QueryTests {
+			if tt.SkipPrepared {
+				continue
+			}
+			t.Run(tt.Query, func(t *testing.T) {
+				TestPreparedQueryWithEngine(t, harness, e, tt)
+			})
+		}
+	})
+
+	t.Run("function query prepared tests", func(t *testing.T) {
+		for _, tt := range queries.FunctionQueryTests {
 			if tt.SkipPrepared {
 				continue
 			}
@@ -487,6 +512,7 @@ func TestReadOnlyDatabases(t *testing.T, harness ReadOnlyDatabaseHarness) {
 
 	for _, querySet := range [][]queries.QueryTest{
 		queries.QueryTests,
+		queries.FunctionQueryTests,
 		queries.KeylessQueries,
 	} {
 		for _, tt := range querySet {
@@ -3346,19 +3372,15 @@ func TestDropDatabase(t *testing.T, harness Harness) {
 
 func TestCreateForeignKeys(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData)
-	e := mustNewEngine(t, harness)
-	defer e.Close()
 	for _, tt := range queries.CreateForeignKeyTests {
-		TestScriptWithEngine(t, e, harness, tt)
+		TestScript(t, harness, tt)
 	}
 }
 
 func TestDropForeignKeys(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData)
-	e := mustNewEngine(t, harness)
-	defer e.Close()
 	for _, tt := range queries.DropForeignKeyTests {
-		TestScriptWithEngine(t, e, harness, tt)
+		TestScript(t, harness, tt)
 	}
 }
 
@@ -4501,14 +4523,14 @@ func TestPreparedInsert(t *testing.T, harness Harness) {
 					Bindings: map[string]sqlparser.Expr{
 						"v1": mustBuildBindVariable([]byte{0x99, 0x98, 0x97}),
 					},
-					ExpectedErrStr: "invalid string for charset utf8mb4: '[153 152 151]'",
+					ExpectedErrStr: "Incorrect string value: '\\x99\\x98\\x97' for column 'v1' at row 1",
 				},
 				{
 					Query: "INSERT INTO test VALUES (?);",
 					Bindings: map[string]sqlparser.Expr{
 						"v1": mustBuildBindVariable(string([]byte{0x99, 0x98, 0x97})),
 					},
-					ExpectedErrStr: "invalid string for charset utf8mb4: '[153 152 151]'",
+					ExpectedErrStr: "Incorrect string value: '\\x99\\x98\\x97' for column 'v1' at row 1",
 				},
 				{
 					Query: "INSERT INTO test2 VALUES (?);",
@@ -6122,6 +6144,26 @@ func TestSQLLogicTests(t *testing.T, harness Harness) {
 			}
 		}
 		TestScript(t, harness, script)
+	}
+}
+
+func TestTimeQueries(t *testing.T, harness Harness) {
+	// "America/Phoenix" is a non-UTC time zone that does not observe daylight savings time
+	phoenixTimeZone, _ := time.LoadLocation("America/Phoenix")
+	mockNow := time.Date(2025, time.July, 23, 9, 43, 21, 0, phoenixTimeZone)
+	for _, script := range queries.TimeQueryTests {
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(script.Name) {
+				t.Run(script.Name, func(t *testing.T) {
+					t.Skip(script.Name)
+				})
+				continue
+			}
+		}
+		sql.RunWithNowFunc(func() time.Time { return mockNow }, func() error {
+			TestScript(t, harness, script)
+			return nil
+		})
 	}
 }
 

@@ -15,6 +15,7 @@
 package sql
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	trace2 "runtime/trace"
@@ -73,6 +74,19 @@ type NonDeterministicExpression interface {
 	// IsNonDeterministic returns whether this expression returns a non-deterministic result. An expression is
 	// non-deterministic if it can return different results on subsequent evaluations.
 	IsNonDeterministic() bool
+}
+
+// IsNullExpression indicates that this expression tests for IS NULL.
+type IsNullExpression interface {
+	Expression
+	IsNullExpression() bool
+}
+
+// IsNotNullExpression indicates that this expression tests for IS NOT NULL. Note that in some cases in some
+// database engines, such as records in Postgres, IS NOT NULL is not identical to NOT(IS NULL).
+type IsNotNullExpression interface {
+	Expression
+	IsNotNullExpression() bool
 }
 
 // Node is a node in the execution plan tree.
@@ -311,7 +325,7 @@ func ConvertToBool(ctx *Context, v interface{}) (bool, error) {
 	}
 }
 
-func ConvertToVector(v interface{}) ([]float64, error) {
+func ConvertToVector(ctx context.Context, v interface{}) ([]float64, error) {
 	switch b := v.(type) {
 	case []float64:
 		return b, nil
@@ -323,7 +337,7 @@ func ConvertToVector(v interface{}) ([]float64, error) {
 		}
 		return convertJsonInterfaceToVector(val)
 	case JSONWrapper:
-		val, err := b.ToInterface()
+		val, err := b.ToInterface(ctx)
 		if err != nil {
 			return nil, err
 		}

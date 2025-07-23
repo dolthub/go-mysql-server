@@ -44,7 +44,8 @@ var _ sql.Node = (*SetOp)(nil)
 var _ sql.Expressioner = (*SetOp)(nil)
 var _ sql.CollationCoercible = (*SetOp)(nil)
 
-// var _ sql.NameableNode = (*SetOp)(nil)
+// TODO: This might not be necessary now that SetOp exec indexes are assigned based on its left child node, instead of
+// the cols in ColSet
 var _ TableIdNode = (*SetOp)(nil)
 
 // NewSetOp creates a new SetOp node with the given children.
@@ -220,11 +221,11 @@ func (s *SetOp) String() string {
 	}
 	switch s.SetOpType {
 	case UnionType:
-		_ = pr.WriteNode(fmt.Sprintf("Union %s", distinct))
+		_ = pr.WriteNode("Union %s", distinct)
 	case IntersectType:
-		_ = pr.WriteNode(fmt.Sprintf("Intersect %s", distinct))
+		_ = pr.WriteNode("Intersect %s", distinct)
 	case ExceptType:
-		_ = pr.WriteNode(fmt.Sprintf("Except %s", distinct))
+		_ = pr.WriteNode("Except %s", distinct)
 	}
 	var children []string
 	if len(s.SortFields) > 0 {
@@ -255,11 +256,11 @@ func (s *SetOp) DebugString() string {
 	}
 	switch s.SetOpType {
 	case UnionType:
-		_ = pr.WriteNode(fmt.Sprintf("Union %s", distinct))
+		_ = pr.WriteNode("Union %s", distinct)
 	case IntersectType:
-		_ = pr.WriteNode(fmt.Sprintf("Intersect %s", distinct))
+		_ = pr.WriteNode("Intersect %s", distinct)
 	case ExceptType:
-		_ = pr.WriteNode(fmt.Sprintf("Except %s", distinct))
+		_ = pr.WriteNode("Except %s", distinct)
 	}
 	var children []string
 	if len(s.SortFields) > 0 {

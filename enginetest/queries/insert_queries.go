@@ -1286,38 +1286,6 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name:    "auto increment on float",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"create table auto (pk float primary key auto_increment)",
-			"insert into auto values (NULL),(10),(0)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "select * from auto order by 1",
-				Expected: []sql.Row{
-					{float64(1)}, {float64(10)}, {float64(11)},
-				},
-			},
-		},
-	},
-	{
-		Name:    "auto increment on double",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"create table auto (pk double primary key auto_increment)",
-			"insert into auto values (NULL),(10),(0)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "select * from auto order by 1",
-				Expected: []sql.Row{
-					{float64(1)}, {float64(10)}, {float64(11)},
-				},
-			},
-		},
-	},
-	{
 		Name:    "sql_mode=NO_auto_value_ON_ZERO",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -2836,7 +2804,7 @@ var InsertIgnoreScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "insert into test_table values (1, 'invalid'), (2, 'comparative politics'), (3, null)",
-				ExpectedErr: types.ErrConvertingToEnum, // TODO: should be ErrDataTruncatedForColumn
+				ExpectedErr: types.ErrDataTruncatedForColumnAtRow,
 			},
 			{
 				Query:    "insert ignore into test_table values (1, 'invalid'), (2, 'bye'), (3, null)",

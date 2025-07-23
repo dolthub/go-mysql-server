@@ -15,7 +15,6 @@
 package plan
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -91,7 +90,7 @@ func (i *Into) String() string {
 	p := sql.NewTreePrinter()
 	var vars = make([]string, len(i.IntoVars))
 	for j, v := range i.IntoVars {
-		vars[j] = fmt.Sprintf(v.String())
+		vars[j] = v.String()
 	}
 	_ = p.WriteNode("Into(%s, Outfile %s, Dumpfile %s)", strings.Join(vars, ", "), i.Outfile, i.Dumpfile)
 	_ = p.WriteChildren(i.Child.String())

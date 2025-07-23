@@ -268,7 +268,8 @@ func TestGroupedAggFuncs(t *testing.T) {
 			for i, p := range partitions {
 				err := tt.Agg.StartPartition(ctx, p, buf)
 				require.NoError(t, err)
-				res[i] = tt.Agg.Compute(ctx, p, buf)
+				res[i], err = tt.Agg.Compute(ctx, p, buf)
+				require.NoError(t, err)
 			}
 			require.Equal(t, tt.Expected, res)
 		})
@@ -382,7 +383,8 @@ func TestWindowedAggFuncs(t *testing.T) {
 					if errors.Is(err, io.EOF) {
 						break
 					}
-					res[i] = tt.Agg.Compute(ctx, interval, buf)
+					res[i], err = tt.Agg.Compute(ctx, interval, buf)
+					require.NoError(t, err)
 					i++
 				}
 			}

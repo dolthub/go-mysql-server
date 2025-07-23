@@ -15,6 +15,7 @@
 package rowexec
 
 import (
+	"context"
 	"fmt"
 	"io"
 
@@ -49,6 +50,7 @@ type insertIter struct {
 	firstGeneratedAutoIncRowIdx int
 
 	deferredDefaults sql.FastIntSet
+	rowNumber        int64
 }
 
 func getInsertExpressions(values sql.Node) []sql.Expression {
@@ -73,6 +75,9 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 	if err != nil {
 		return nil, i.ignoreOrClose(ctx, row, err)
 	}
+
+	// Increment row number for error reporting (MySQL starts at 1)
+	i.rowNumber++
 
 	// Prune the row down to the size of the schema. It can be larger in the case of running with an outer scope, in which
 	// case the additional scope variables are prepended to the row.
@@ -108,7 +113,13 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 	// Do any necessary type conversions to the target schema
 	for idx, col := range i.schema {
 		if row[idx] != nil {
-			converted, inRange, cErr := col.Type.Convert(ctx, row[idx])
+			// Add column/row context for charset error messages
+			// Unlike other errors that get recreated here with column/row info,
+			// charset validation happens deep in ConvertToBytes and needs context during error creation
+			ctxWithValues := context.WithValue(ctx.Context, types.ColumnNameKey, col.Name)
+			ctxWithValues = context.WithValue(ctxWithValues, types.RowNumberKey, i.rowNumber)
+			ctxWithColumnInfo := ctx.WithContext(ctxWithValues)
+			converted, inRange, cErr := col.Type.Convert(ctxWithColumnInfo, row[idx])
 			if cErr == nil && !inRange {
 				cErr = sql.ErrValueOutOfRange.New(row[idx], col.Type)
 			}
@@ -140,6 +151,10 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 						cErr = types.ErrLengthBeyondLimit.New(row[idx], col.Name)
 					} else if sql.ErrNotMatchingSRID.Is(cErr) {
 						cErr = sql.ErrNotMatchingSRIDWithColName.New(col.Name, cErr)
+					} else if types.ErrConvertingToEnum.Is(cErr) {
+						cErr = types.ErrDataTruncatedForColumnAtRow.New(col.Name, i.rowNumber)
+					} else if sql.ErrInvalidSetValue.Is(cErr) || sql.ErrConvertingToSet.Is(cErr) {
+						cErr = types.ErrDataTruncatedForColumnAtRow.New(col.Name, i.rowNumber)
 					}
 					return nil, sql.NewWrappedInsertError(origRow, cErr)
 				}

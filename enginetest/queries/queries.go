@@ -828,10 +828,6 @@ var QueryTests = []QueryTest{
 		Query:    "select y as x from xy group by (y) having AVG(x) > 0",
 		Expected: []sql.Row{{0}, {1}, {3}},
 	},
-	// {
-	//	Query:    "select y as z from xy group by (y) having AVG(z) > 0",
-	//	Expected: []sql.Row{{1}, {2}, {3}},
-	// },
 	{
 		Query:    "SELECT * FROM mytable t0 INNER JOIN mytable t1 ON (t1.i IN (((true)%(''))));",
 		Expected: []sql.Row{},
@@ -1644,78 +1640,6 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{"1.0"}, {"1.5"}},
 	},
 	{
-		Query: `SELECT FORMAT(val, 2) FROM
-			(values row(4328904), row(432053.4853), row(5.93288775208e+08), row("5784029.372"), row(-4229842.122), row(-0.009)) a (val)`,
-		Expected: []sql.Row{
-			{"4,328,904.00"},
-			{"432,053.49"},
-			{"593,288,775.21"},
-			{"5,784,029.37"},
-			{"-4,229,842.12"},
-			{"-0.01"},
-		},
-	},
-	{
-		Query: "SELECT FORMAT(i, 3) FROM mytable;",
-		Expected: []sql.Row{
-			{"1.000"},
-			{"2.000"},
-			{"3.000"},
-		},
-	},
-	{
-		Query: `SELECT FORMAT(val, 2, 'da_DK') FROM
-			(values row(4328904), row(432053.4853), row(5.93288775208e+08), row("5784029.372"), row(-4229842.122), row(-0.009)) a (val)`,
-		Expected: []sql.Row{
-			{"4.328.904,00"},
-			{"432.053,49"},
-			{"593.288.775,21"},
-			{"5.784.029,37"},
-			{"-4.229.842,12"},
-			{"-0,01"},
-		},
-	},
-	{
-		Query: "SELECT FORMAT(i, 3, 'da_DK') FROM mytable;",
-		Expected: []sql.Row{
-			{"1,000"},
-			{"2,000"},
-			{"3,000"},
-		},
-	},
-	{
-		Query: "SELECT DATEDIFF(date_col, '2019-12-28') FROM datetime_table where date_col = date('2019-12-31T12:00:00');",
-		Expected: []sql.Row{
-			{3},
-		},
-	},
-	{
-		Query: `SELECT DATEDIFF(val, '2019/12/28') FROM
-			(values row('2017-11-30 22:59:59'), row('2020/01/02'), row('2021-11-30'), row('2020-12-31T12:00:00')) a (val)`,
-		Expected: []sql.Row{
-			{-758},
-			{5},
-			{703},
-			{369},
-		},
-	},
-	{
-		Query: "SELECT TIMESTAMPDIFF(SECOND,'2007-12-31 23:59:58', '2007-12-31 00:00:00');",
-		Expected: []sql.Row{
-			{-86398},
-		},
-	},
-	{
-		Query: `SELECT TIMESTAMPDIFF(MINUTE, val, '2019/12/28') FROM
-			(values row('2017-11-30 22:59:59'), row('2020/01/02'), row('2019-12-27 23:15:55'), row('2019-12-31T12:00:00')) a (val);`,
-		Expected: []sql.Row{
-			{1090140},
-			{-7200},
-			{44},
-			{-5040},
-		},
-	},
-	{
 		Query: "values row(1, 3), row(2, 2), row(3, 1);",
 		Expected: []sql.Row{
 			{1, 3},
@@ -1858,140 +1782,6 @@ SELECT * FROM cte WHERE  d = 2;`,
 		},
 	},
 
-	{
-		Query:    "SELECT TIMEDIFF(null, '2017-11-30 22:59:59');",
-		Expected: []sql.Row{{nil}},
-	},
-	{
-		Query:    "SELECT DATEDIFF('2019/12/28', null);",
-		Expected: []sql.Row{{nil}},
-	},
-	{
-		Query:    "SELECT TIMESTAMPDIFF(SECOND, null, '2007-12-31 00:00:00');",
-		Expected: []sql.Row{{nil}},
-	},
-	{
-		Query: `SELECT JSON_MERGE_PRESERVE('{ "a": 1, "b": 2 }','{ "a": 3, "c": 4 }','{ "a": 5, "d": 6 }')`,
-		Expected: []sql.Row{
-			{types.MustJSON(`{"a": [1, 3, 5], "b": 2, "c": 4, "d": 6}`)},
-		},
-	},
-	{
-		Query: `SELECT JSON_MERGE_PRESERVE(val1, val2)
-	              FROM (values
-						 row('{ "a": 1, "b": 2 }','null'),
-	                   row('{ "a": 1, "b": 2 }','"row one"'),
-	                   row('{ "a": 3, "c": 4 }','4'),
-	                   row('{ "a": 5, "d": 6 }','[true, true]'),
-	                   row('{ "a": 5, "d": 6 }','{ "a": 3, "e": 2 }'))
-	              test (val1, val2)`,
-		Expected: []sql.Row{
-			{types.MustJSON(`[{ "a": 1, "b": 2 }, null]`)},
-			{types.MustJSON(`[{ "a": 1, "b": 2 }, "row one"]`)},
-			{types.MustJSON(`[{ "a": 3, "c": 4 }, 4]`)},
-			{types.MustJSON(`[{ "a": 5, "d": 6 }, true, true]`)},
-			{types.MustJSON(`{ "a": [5, 3], "d": 6, "e": 2}`)},
-		},
-	},
-	{
-		Query: `SELECT JSON_ARRAY()`,
-		Expected: []sql.Row{
-			{types.MustJSON(`[]`)},
-		},
-	},
-	{
-		Query: `SELECT JSON_ARRAY('{"b": 2, "a": [1, 8], "c": null}', null, 4, '[true, false]', "do")`,
-		Expected: []sql.Row{
-			{types.MustJSON(`["{\"b\": 2, \"a\": [1, 8], \"c\": null}", null, 4, "[true, false]", "do"]`)},
-		},
-	},
-	{
-		Query: `SELECT JSON_ARRAY(1, 'say, "hi"', JSON_OBJECT("abc", 22))`,
-		Expected: []sql.Row{
-			{types.MustJSON(`[1, "say, \"hi\"", {"abc": 22}]`)},
-		},
-	},
-	{
-		Query: `SELECT JSON_ARRAY(JSON_OBJECT("a", JSON_ARRAY(1,2)), JSON_OBJECT("b", 22))`,
-		Expected: []sql.Row{
-			{types.MustJSON(`[{"a": [1, 2]}, {"b": 22}]`)},
-		},
-	},
-	{
-		Query: `SELECT JSON_ARRAY(pk, c1, c2, c3) FROM jsontable`,
-		Expected: []sql.Row{
-			{types.MustJSON(`[1, "row one", [1, 2], {"a": 2}]`)},
-			{types.MustJSON(`[2, "row two", [3, 4], {"b": 2}]`)},
-			{types.MustJSON(`[3, "row three", [5, 6], {"c": 2}]`)},
-			{types.MustJSON(`[4, "row four", [7, 8], {"d": 2}]`)},
-		},
-	},
-	{
-		Query: `SELECT JSON_ARRAY(JSON_OBJECT("id", pk, "name", c1), c2, c3) FROM jsontable`,
-		Expected: []sql.Row{
-			{types.MustJSON(`[{"id": 1,"name": "row one"}, [1, 2], {"a": 2}]`)},
-			{types.MustJSON(`[{"id": 2,"name": "row two"}, [3, 4], {"b": 2}]`)},
-			{types.MustJSON(`[{"id": 3,"name": "row three"}, [5, 6], {"c": 2}]`)},
-			{types.MustJSON(`[{"id": 4,"name": "row four"}, [7, 8], {"d": 2}]`)},
-		},
-	},
-	{
-		Query: `SELECT JSON_KEYS(c3) FROM jsontable`,
-		Expected: []sql.Row{
-			{types.MustJSON(`["a"]`)},
-			{types.MustJSON(`["b"]`)},
-			{types.MustJSON(`["c"]`)},
-			{types.MustJSON(`["d"]`)},
-		},
-	},
-	{
-		Query: `SELECT JSON_OVERLAPS(c3, '{"a": 2, "d": 2}') FROM jsontable`,
-		Expected: []sql.Row{
-			{true},
-			{false},
-			{false},
-			{true},
-		},
-	},
-	{
-		Query: `SELECT JSON_MERGE(c3, '{"a": 1}') FROM jsontable`,
-		Expected: []sql.Row{
-			{types.MustJSON(`{"a": [2, 1]}`)},
-			{types.MustJSON(`{"a": 1, "b": 2}`)},
-			{types.MustJSON(`{"a": 1, "c": 2}`)},
-			{types.MustJSON(`{"a": 1, "d": 2}`)},
-		},
-	},
-	{
-		Query: `SELECT JSON_MERGE_PRESERVE(c3, '{"a": 1}') FROM jsontable`,
-		Expected: []sql.Row{
-			{types.MustJSON(`{"a": [2, 1]}`)},
-			{types.MustJSON(`{"a": 1, "b": 2}`)},
-			{types.MustJSON(`{"a": 1, "c": 2}`)},
-			{types.MustJSON(`{"a": 1, "d": 2}`)},
-		},
-	},
-	{
-		Query: `SELECT JSON_MERGE_PATCH(c3, '{"a": 1}') FROM jsontable`,
-		Expected: []sql.Row{
-			{types.MustJSON(`{"a": 1}`)},
-			{types.MustJSON(`{"a": 1, "b": 2}`)},
-			{types.MustJSON(`{"a": 1, "c": 2}`)},
-			{types.MustJSON(`{"a": 1, "d": 2}`)},
-		},
-	},
-	{
-		Query: `SELECT CONCAT(JSON_OBJECT('aa', JSON_OBJECT('bb', 123, 'y', 456), 'z', JSON_OBJECT('cc', 321, 'x', 654)), "")`,
-		Expected: []sql.Row{
-			{`{"z": {"x": 654, "cc": 321}, "aa": {"y": 456, "bb": 123}}`},
-		},
-	},
-	{
-		Query: `SELECT CONCAT(JSON_ARRAY(JSON_OBJECT('aa', 123, 'z', 456), JSON_OBJECT('BB', 321, 'Y', 654)), "")`,
-		Expected: []sql.Row{
-			{`[{"z": 456, "aa": 123}, {"Y": 654, "BB": 321}]`},
-		},
-	},
 	{
 		Query: `select json_pretty(c3) from jsontable`,
 		Expected: []sql.Row{
@@ -3837,331 +3627,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Query:    `SELECT substring("foo", 2, 2)`,
 		Expected: []sql.Row{{"oo"}},
 	},
-	{
-		Query: `SELECT SUBSTRING_INDEX('a.b.c.d.e.f', '.', 2)`,
-		Expected: []sql.Row{
-			{"a.b"},
-		},
-	},
-	{
-		Query: `SELECT SUBSTRING_INDEX('a.b.c.d.e.f', '.', -2)`,
-		Expected: []sql.Row{
-			{"e.f"},
-		},
-	},
-	{
-		Query: `SELECT SUBSTRING_INDEX(SUBSTRING_INDEX('source{d}', '{d}', 1), 'r', -1)`,
-		Expected: []sql.Row{
-			{"ce"},
-		},
-	},
-	{
-		Query:    `SELECT SUBSTRING_INDEX(mytable.s, "d", 1) AS s FROM mytable INNER JOIN othertable ON (SUBSTRING_INDEX(mytable.s, "d", 1) = SUBSTRING_INDEX(othertable.s2, "d", 1)) GROUP BY 1 HAVING s = 'secon';`,
-		Expected: []sql.Row{{"secon"}},
-	},
-	{
-		Query:    `SELECT SUBSTRING_INDEX(mytable.s, "d", 1) AS s FROM mytable INNER JOIN othertable ON (SUBSTRING_INDEX(mytable.s, "d", 1) = SUBSTRING_INDEX(othertable.s2, "d", 1)) GROUP BY s HAVING s = 'secon';`,
-		Expected: []sql.Row{},
-	},
-	{
-		Query:    `SELECT SUBSTRING_INDEX(mytable.s, "d", 1) AS ss FROM mytable INNER JOIN othertable ON (SUBSTRING_INDEX(mytable.s, "d", 1) = SUBSTRING_INDEX(othertable.s2, "d", 1)) GROUP BY s HAVING s = 'secon';`,
-		Expected: []sql.Row{},
-	},
-	{
-		Query: `SELECT SUBSTRING_INDEX(mytable.s, "d", 1) AS ss FROM mytable INNER JOIN othertable ON (SUBSTRING_INDEX(mytable.s, "d", 1) = SUBSTRING_INDEX(othertable.s2, "d", 1)) GROUP BY ss HAVING ss = 'secon';`,
-		Expected: []sql.Row{
-			{"secon"},
-		},
-	},
-	{
-		Query:    `SELECT TRIM(mytable.s) AS s FROM mytable`,
-		Expected: []sql.Row{{"first row"}, {"second row"}, {"third row"}},
-	},
-	{
-		Query:    `SELECT TRIM("row" from mytable.s) AS s FROM mytable`,
-		Expected: []sql.Row{{"first "}, {"second "}, {"third "}},
-	},
-	{
-		Query:    `SELECT TRIM(mytable.s from "first row") AS s FROM mytable`,
-		Expected: []sql.Row{{""}, {"first row"}, {"first row"}},
-	},
-	{
-		Query:    `SELECT TRIM(mytable.s from mytable.s) AS s FROM mytable`,
-		Expected: []sql.Row{{""}, {""}, {""}},
-	},
-	{
-		Query:    `SELECT TRIM("   foo   ")`,
-		Expected: []sql.Row{{"foo"}},
-	},
-	{
-		Query:    `SELECT TRIM(" " FROM "   foo   ")`,
-		Expected: []sql.Row{{"foo"}},
-	},
-	{
-		Query:    `SELECT TRIM(LEADING " " FROM "   foo   ")`,
-		Expected: []sql.Row{{"foo   "}},
-	},
-	{
-		Query:    `SELECT TRIM(TRAILING " " FROM "   foo   ")`,
-		Expected: []sql.Row{{"   foo"}},
-	},
-	{
-		Query:    `SELECT TRIM(BOTH " " FROM "   foo   ")`,
-		Expected: []sql.Row{{"foo"}},
-	},
-	{
-		Query:    `SELECT TRIM("" FROM " foo")`,
-		Expected: []sql.Row{{" foo"}},
-	},
-	{
-		Query:    `SELECT TRIM("bar" FROM "barfoobar")`,
-		Expected: []sql.Row{{"foo"}},
-	},
-	{
-		Query:    `SELECT TRIM(TRAILING "bar" FROM "barfoobar")`,
-		Expected: []sql.Row{{"barfoo"}},
-	},
-	{
-		Query:    `SELECT TRIM(TRAILING "foo" FROM "foo")`,
-		Expected: []sql.Row{{""}},
-	},
-	{
-		Query:    `SELECT TRIM(LEADING "ooo" FROM TRIM("oooo"))`,
-		Expected: []sql.Row{{"o"}},
-	},
-	{
-		Query:    `SELECT TRIM(BOTH "foo" FROM TRIM("barfoobar"))`,
-		Expected: []sql.Row{{"barfoobar"}},
-	},
-	{
-		Query:    `SELECT TRIM(LEADING "bar" FROM TRIM("foobar"))`,
-		Expected: []sql.Row{{"foobar"}},
-	},
-	{
-		Query:    `SELECT TRIM(TRAILING "oo" FROM TRIM("oof"))`,
-		Expected: []sql.Row{{"oof"}},
-	},
-	{
-		Query:    `SELECT TRIM(LEADING "test" FROM TRIM("  test  "))`,
-		Expected: []sql.Row{{""}},
-	},
-	{
-		Query:    `SELECT TRIM(LEADING CONCAT("a", "b") FROM TRIM("ababab"))`,
-		Expected: []sql.Row{{""}},
-	},
-	{
-		Query:    `SELECT TRIM(TRAILING CONCAT("a", "b") FROM CONCAT("test","ab"))`,
-		Expected: []sql.Row{{"test"}},
-	},
-	{
-		Query:    `SELECT TRIM(LEADING 1 FROM "11111112")`,
-		Expected: []sql.Row{{"2"}},
-	},
-	{
-		Query:    `SELECT TRIM(LEADING 1 FROM 11111112)`,
-		Expected: []sql.Row{{"2"}},
-	},
 
-	{
-		Query:    `SELECT INET_ATON("10.0.5.10")`,
-		Expected: []sql.Row{{uint64(167773450)}},
-	},
-	{
-		Query:    `SELECT INET_NTOA(167773450)`,
-		Expected: []sql.Row{{"10.0.5.10"}},
-	},
-	{
-		Query:    `SELECT INET_ATON("10.0.5.11")`,
-		Expected: []sql.Row{{uint64(167773451)}},
-	},
-	{
-		Query:    `SELECT INET_NTOA(167773451)`,
-		Expected: []sql.Row{{"10.0.5.11"}},
-	},
-	{
-		Query:    `SELECT INET_NTOA(INET_ATON("12.34.56.78"))`,
-		Expected: []sql.Row{{"12.34.56.78"}},
-	},
-	{
-		Query:    `SELECT INET_ATON(INET_NTOA("12345678"))`,
-		Expected: []sql.Row{{uint64(12345678)}},
-	},
-	{
-		Query:    `SELECT INET_ATON("notanipaddress")`,
-		Expected: []sql.Row{{nil}},
-	},
-	{
-		Query:    `SELECT INET_NTOA("spaghetti")`,
-		Expected: []sql.Row{{"0.0.0.0"}},
-	},
-	{
-		Query:    `SELECT HEX(INET6_ATON("10.0.5.9"))`,
-		Expected: []sql.Row{{"0A000509"}},
-	},
-	{
-		Query:    `SELECT HEX(INET6_ATON("::10.0.5.9"))`,
-		Expected: []sql.Row{{"0000000000000000000000000A000509"}},
-	},
-	{
-		Query:    `SELECT HEX(INET6_ATON("1.2.3.4"))`,
-		Expected: []sql.Row{{"01020304"}},
-	},
-	{
-		Query:    `SELECT HEX(INET6_ATON("fdfe::5455:caff:fefa:9098"))`,
-		Expected: []sql.Row{{"FDFE0000000000005455CAFFFEFA9098"}},
-	},
-	{
-		Query:    `SELECT HEX(INET6_ATON("1111:2222:3333:4444:5555:6666:7777:8888"))`,
-		Expected: []sql.Row{{"11112222333344445555666677778888"}},
-	},
-	{
-		Query:    `SELECT INET6_ATON("notanipaddress")`,
-		Expected: []sql.Row{{nil}},
-	},
-	{
-		Query:    `SELECT INET6_NTOA(UNHEX("1234ffff5678ffff1234ffff5678ffff"))`,
-		Expected: []sql.Row{{"1234:ffff:5678:ffff:1234:ffff:5678:ffff"}},
-	},
-	{
-		Query:    `SELECT INET6_NTOA(UNHEX("ffffffff"))`,
-		Expected: []sql.Row{{"255.255.255.255"}},
-	},
-	{
-		Query:    `SELECT INET6_NTOA(UNHEX("000000000000000000000000ffffffff"))`,
-		Expected: []sql.Row{{"::255.255.255.255"}},
-	},
-	{
-		Query:    `SELECT INET6_NTOA(UNHEX("00000000000000000000ffffffffffff"))`,
-		Expected: []sql.Row{{"::ffff:255.255.255.255"}},
-	},
-	{
-		Query:    `SELECT INET6_NTOA(UNHEX("0000000000000000000000000000ffff"))`,
-		Expected: []sql.Row{{"::ffff"}},
-	},
-	{
-		Query:    `SELECT INET6_NTOA(UNHEX("00000000000000000000000000000000"))`,
-		Expected: []sql.Row{{"::"}},
-	},
-	{
-		Query:    `SELECT INET6_NTOA("notanipaddress")`,
-		Expected: []sql.Row{{nil}},
-	},
-	{
-		Query:    `SELECT IS_IPV4("10.0.1.10")`,
-		Expected: []sql.Row{{true}},
-	},
-	{
-		Query:    `SELECT IS_IPV4("::10.0.1.10")`,
-		Expected: []sql.Row{{false}},
-	},
-	{
-		Query:    `SELECT IS_IPV4("notanipaddress")`,
-		Expected: []sql.Row{{false}},
-	},
-	{
-		Query:    `SELECT IS_IPV6("10.0.1.10")`,
-		Expected: []sql.Row{{false}},
-	},
-	{
-		Query:    `SELECT IS_IPV6("::10.0.1.10")`,
-		Expected: []sql.Row{{true}},
-	},
-	{
-		Query:    `SELECT IS_IPV6("notanipaddress")`,
-		Expected: []sql.Row{{false}},
-	},
-	{
-		Query:    `SELECT IS_IPV4_COMPAT(INET6_ATON("10.0.1.10"))`,
-		Expected: []sql.Row{{false}},
-	},
-	{
-		Query:    `SELECT IS_IPV4_COMPAT(INET6_ATON("::10.0.1.10"))`,
-		Expected: []sql.Row{{true}},
-	},
-	{
-		Query:    `SELECT IS_IPV4_COMPAT(INET6_ATON("::ffff:10.0.1.10"))`,
-		Expected: []sql.Row{{false}},
-	},
-	{
-		Query:    `SELECT IS_IPV4_COMPAT(INET6_ATON("notanipaddress"))`,
-		Expected: []sql.Row{{nil}},
-	},
-	{
-		Query:    `SELECT IS_IPV4_MAPPED(INET6_ATON("10.0.1.10"))`,
-		Expected: []sql.Row{{false}},
-	},
-	{
-		Query:    `SELECT IS_IPV4_MAPPED(INET6_ATON("::10.0.1.10"))`,
-		Expected: []sql.Row{{false}},
-	},
-	{
-		Query:    `SELECT IS_IPV4_MAPPED(INET6_ATON("::ffff:10.0.1.10"))`,
-		Expected: []sql.Row{{true}},
-	},
-	{
-		Query:    `SELECT IS_IPV4_COMPAT(INET6_ATON("notanipaddress"))`,
-		Expected: []sql.Row{{nil}},
-	},
-	{
-		Query:    "SELECT YEAR('2007-12-11') FROM mytable",
-		Expected: []sql.Row{{int32(2007)}, {int32(2007)}, {int32(2007)}},
-	},
-	{
-		Query:    "SELECT MONTH('2007-12-11') FROM mytable",
-		Expected: []sql.Row{{int32(12)}, {int32(12)}, {int32(12)}},
-	},
-	{
-		Query:    "SELECT DAY('2007-12-11') FROM mytable",
-		Expected: []sql.Row{{int32(11)}, {int32(11)}, {int32(11)}},
-	},
-	{
-		Query:    "SELECT HOUR('2007-12-11 20:21:22') FROM mytable",
-		Expected: []sql.Row{{int32(20)}, {int32(20)}, {int32(20)}},
-	},
-	{
-		Query:    "SELECT MINUTE('2007-12-11 20:21:22') FROM mytable",
-		Expected: []sql.Row{{int32(21)}, {int32(21)}, {int32(21)}},
-	},
-	{
-		Query:    "SELECT SECOND('2007-12-11 20:21:22') FROM mytable",
-		Expected: []sql.Row{{int32(22)}, {int32(22)}, {int32(22)}},
-	},
-	{
-		Query:    "SELECT DAYOFYEAR('2007-12-11 20:21:22') FROM mytable",
-		Expected: []sql.Row{{int32(345)}, {int32(345)}, {int32(345)}},
-	},
-	{
-		Query:    "SELECT SECOND('2007-12-11T20:21:22Z') FROM mytable",
-		Expected: []sql.Row{{int32(22)}, {int32(22)}, {int32(22)}},
-	},
-	{
-		Query:    "SELECT DAYOFYEAR('2007-12-11') FROM mytable",
-		Expected: []sql.Row{{int32(345)}, {int32(345)}, {int32(345)}},
-	},
-	{
-		Query:    "SELECT DAYOFYEAR('20071211') FROM mytable",
-		Expected: []sql.Row{{int32(345)}, {int32(345)}, {int32(345)}},
-	},
-	{
-		Query:    "SELECT YEARWEEK('0000-01-01')",
-		Expected: []sql.Row{{int32(1)}},
-	},
-	{
-		Query:    "SELECT YEARWEEK('9999-12-31')",
-		Expected: []sql.Row{{int32(999952)}},
-	},
-	{
-		Query:    "SELECT YEARWEEK('2008-02-20', 1)",
-		Expected: []sql.Row{{int32(200808)}},
-	},
-	{
-		Query:    "SELECT YEARWEEK('1987-01-01')",
-		Expected: []sql.Row{{int32(198652)}},
-	},
-	{
-		Query:    "SELECT YEARWEEK('1987-01-01', 20), YEARWEEK('1987-01-01', 1), YEARWEEK('1987-01-01', 2), YEARWEEK('1987-01-01', 3), YEARWEEK('1987-01-01', 4), YEARWEEK('1987-01-01', 5), YEARWEEK('1987-01-01', 6), YEARWEEK('1987-01-01', 7)",
-		Expected: []sql.Row{{int32(198653), int32(198701), int32(198652), int32(198701), int32(198653), int32(198652), int32(198653), int32(198652)}},
-	},
 	{
 		Query:    `select 'a'+4;`,
 		Expected: []sql.Row{{4.0}},
@@ -5236,18 +4702,6 @@ SELECT * FROM cte WHERE  d = 2;`,
 		},
 	},
 	{
-		Query: "SELECT CAST(-3 AS UNSIGNED) FROM mytable",
-		Expected: []sql.Row{
-			{uint64(18446744073709551613)},
-			{uint64(18446744073709551613)},
-			{uint64(18446744073709551613)},
-		},
-	},
-	{
-		Query:    "SELECT CAST(-3 AS DOUBLE) FROM dual",
-		Expected: []sql.Row{{-3.0}},
-	},
-	{
 		Query: "SELECT BINARY c, BINARY vc, BINARY t, BINARY b, BINARY vb, BINARY bl FROM niltexttable",
 		Expected: []sql.Row{
 			{nil, nil, nil, nil, nil, nil},
@@ -5257,34 +4711,6 @@ SELECT * FROM cte WHERE  d = 2;`,
 			{nil, nil, nil, []byte("5\x00"), []byte("5"), []byte("5")},
 			{[]byte("6"), []byte("6"), []byte("6"), []byte("6\x00"), []byte("6"), []byte("6")},
 		},
-	},
-	{
-		Query:    `SELECT CONVERT("-3.9876", FLOAT) FROM dual`,
-		Expected: []sql.Row{{float32(-3.9876)}},
-	},
-	{
-		Query:    "SELECT CAST(10.56789 as CHAR(3));",
-		Expected: []sql.Row{{"10."}},
-	},
-	{
-		Query:    "SELECT CAST(10.56789 as CHAR(30));",
-		Expected: []sql.Row{{"10.56789"}},
-	},
-	{
-		Query:    "SELECT CAST('abcdef' as BINARY(10));",
-		Expected: []sql.Row{{[]byte("abcdef\x00\x00\x00\x00")}},
-	},
-	{
-		Query:    `SELECT CONVERT(10.12345, DECIMAL(4,2))`,
-		Expected: []sql.Row{{"10.12"}},
-	},
-	{
-		Query:    `SELECT CONVERT(1234567893.1234567893, DECIMAL(20,10))`,
-		Expected: []sql.Row{{"1234567893.1234567893"}},
-	},
-	{
-		Query:    `SELECT CONVERT(10, DECIMAL(4,2))`,
-		Expected: []sql.Row{{"10.00"}},
 	},
 	{
 		Query: "SELECT CONVERT(-3, UNSIGNED) FROM mytable",
@@ -5425,204 +4851,6 @@ SELECT * FROM cte WHERE  d = 2;`,
 			{int64(1)},
 		},
 	},
-	{
-		Query: `SELECT CONCAT("a", "b", "c")`,
-		Expected: []sql.Row{
-			{string("abc")},
-		},
-	},
-	{
-		Query: `SELECT COALESCE(NULL, NULL, NULL, 'example', NULL, 1234567890)`,
-		Expected: []sql.Row{
-			{string("example")},
-		},
-	},
-	{
-		Query: `SELECT COALESCE(NULL, NULL, NULL, COALESCE(NULL, 1234567890))`,
-		Expected: []sql.Row{
-			{int32(1234567890)},
-		},
-	},
-	{
-		Query:    "SELECT COALESCE (NULL, NULL)",
-		Expected: []sql.Row{{nil}},
-		ExpectedColumns: []*sql.Column{
-			{
-				Name: "COALESCE (NULL, NULL)",
-				Type: types.Null,
-			},
-		},
-	},
-	{
-		Query: `SELECT COALESCE(CAST('{"a": "one \\n two"}' as json), '');`,
-		Expected: []sql.Row{
-			{"{\"a\": \"one \\n two\"}"},
-		},
-	},
-	{
-		Query: "SELECT concat(s, i) FROM mytable",
-		Expected: []sql.Row{
-			{string("first row1")},
-			{string("second row2")},
-			{string("third row3")},
-		},
-	},
-	{
-		Query: "SELECT version()",
-		Expected: []sql.Row{
-			{"8.0.31"},
-		},
-	},
-	{
-		Query: `SELECT RAND(100)`,
-		Expected: []sql.Row{
-			{float64(0.8165026937796166)},
-		},
-	},
-	{
-		Query:    `SELECT RAND(i) from mytable order by i`,
-		Expected: []sql.Row{{0.6046602879796196}, {0.16729663442585624}, {0.7199826688373036}},
-	},
-	{
-		Query: `SELECT RAND(100) = RAND(100)`,
-		Expected: []sql.Row{
-			{true},
-		},
-	},
-	{
-		Query: `SELECT RAND() = RAND()`,
-		Expected: []sql.Row{
-			{false},
-		},
-	},
-	{
-		Query: "SELECT MOD(i, 2) from mytable order by i limit 1",
-		Expected: []sql.Row{
-			{"1"},
-		},
-	},
-	{
-		Query: "SELECT SIN(i) from mytable order by i limit 1",
-		Expected: []sql.Row{
-			{0.8414709848078965},
-		},
-	},
-	{
-		Query: "SELECT COS(i) from mytable order by i limit 1",
-		Expected: []sql.Row{
-			{0.5403023058681398},
-		},
-	},
-	{
-		Query: "SELECT TAN(i) from mytable order by i limit 1",
-		Expected: []sql.Row{
-			{1.557407724654902},
-		},
-	},
-	{
-		Query: "SELECT ASIN(i) from mytable order by i limit 1",
-		Expected: []sql.Row{
-			{1.5707963267948966},
-		},
-	},
-	{
-		Query: "SELECT ACOS(i) from mytable order by i limit 1",
-		Expected: []sql.Row{
-			{0.0},
-		},
-	},
-	{
-		Query: "SELECT ATAN(i) from mytable order by i limit 1",
-		Expected: []sql.Row{
-			{0.7853981633974483},
-		},
-	},
-	{
-		Query: "SELECT COT(i) from mytable order by i limit 1",
-		Expected: []sql.Row{
-			{0.6420926159343308},
-		},
-	},
-	{
-		Query: "SELECT DEGREES(i) from mytable order by i limit 1",
-		Expected: []sql.Row{
-			{57.29577951308232},
-		},
-	},
-	{
-		Query: "SELECT RADIANS(i) from mytable order by i limit 1",
-		Expected: []sql.Row{
-			{0.017453292519943295},
-		},
-	},
-	{
-		Query: "SELECT CRC32(i) from mytable order by i limit 1",
-		Expected: []sql.Row{
-			{uint64(0x83dcefb7)},
-		},
-	},
-	{
-		Query: "SELECT SIGN(i) from mytable order by i limit 1",
-		Expected: []sql.Row{
-			{1},
-		},
-	},
-	{
-		Query: "SELECT ASCII(s) from mytable order by i limit 1",
-		Expected: []sql.Row{
-			{uint64(0x66)},
-		},
-	},
-	{
-		Query: "SELECT HEX(s) from mytable order by i limit 1",
-		Expected: []sql.Row{
-			{"666972737420726F77"},
-		},
-	},
-	{
-		Query: "SELECT UNHEX(s) from mytable order by i limit 1",
-		Expected: []sql.Row{
-			{nil},
-		},
-	},
-	{
-		Query: "SELECT BIN(i) from mytable order by i limit 1",
-		Expected: []sql.Row{
-			{"1"},
-		},
-	},
-	{
-		Query: "SELECT BIT_LENGTH(i) from mytable order by i limit 1",
-		Expected: []sql.Row{
-			{64},
-		},
-	},
-	{
-		Query: "select date_format(datetime_col, '%D') from datetime_table order by 1",
-		Expected: []sql.Row{
-			{"1st"},
-			{"4th"},
-			{"7th"},
-		},
-	},
-	{
-		Query: "select time_format(time_col, '%h%p') from datetime_table order by 1",
-		Expected: []sql.Row{
-			{"03AM"},
-			{"03PM"},
-			{"04AM"},
-		},
-	},
-	{
-		Query: "select from_unixtime(i) from mytable order by 1",
-		Expected: []sql.Row{
-			{UnixTimeInLocal(1, 0)},
-			{UnixTimeInLocal(2, 0)},
-			{UnixTimeInLocal(3, 0)},
-		},
-	},
-	// TODO: add additional tests for other functions. Every function needs an engine test to ensure it works correctly
-	//  with the analyzer.
 	{
 		Query:    "SELECT * FROM mytable WHERE 1 > 5",
 		Expected: nil,
@@ -5807,36 +5035,6 @@ SELECT * FROM cte WHERE  d = 2;`,
 		},
 	},
 	{
-		Query: `SELECT DATABASE()`,
-		Expected: []sql.Row{
-			{"mydb"},
-		},
-	},
-	{
-		Query: `SELECT USER()`,
-		Expected: []sql.Row{
-			{"root@localhost"},
-		},
-	},
-	{
-		Query: `SELECT CURRENT_USER()`,
-		Expected: []sql.Row{
-			{"root@localhost"},
-		},
-	},
-	{
-		Query: `SELECT CURRENT_USER`,
-		Expected: []sql.Row{
-			{"root@localhost"},
-		},
-		ExpectedColumns: sql.Schema{
-			{
-				Name: "CURRENT_USER",
-				Type: types.LongText,
-			},
-		},
-	},
-	{
 		Query: `SELECT CURRENT_user`,
 		Expected: []sql.Row{
 			{"root@localhost"},
@@ -5925,55 +5123,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Query:    `SELECT JSON_EXTRACT('"foo"', "$")`,
 		Expected: []sql.Row{{types.MustJSON(`"foo"`)}},
 	},
-	{
-		Query:    `SELECT JSON_UNQUOTE('"foo"')`,
-		Expected: []sql.Row{{"foo"}},
-	},
-	{
-		Query:    `SELECT JSON_UNQUOTE('[1, 2, 3]')`,
-		Expected: []sql.Row{{"[1, 2, 3]"}},
-	},
-	{
-		Query:    `SELECT JSON_UNQUOTE('"\\t\\u0032"')`,
-		Expected: []sql.Row{{"\t2"}},
-	},
-	{
-		Query:    `SELECT JSON_UNQUOTE('"\t\\u0032"')`,
-		Expected: []sql.Row{{"\t2"}},
-	},
-	{
-		Query:    `SELECT JSON_UNQUOTE(JSON_EXTRACT('{"xid":"hello"}', '$.xid')) = "hello"`,
-		Expected: []sql.Row{{true}},
-	},
 
-	{
-		Query:    `SELECT JSON_QUOTE('"foo"')`,
-		Expected: []sql.Row{{`"\"foo\""`}},
-	},
-	{
-		Query:    `SELECT JSON_QUOTE('[1, 2, 3]')`,
-		Expected: []sql.Row{{`"[1, 2, 3]"`}},
-	},
-	{
-		Query:    `SELECT JSON_QUOTE('"\t\u0032"')`,
-		Expected: []sql.Row{{`"\"\tu0032\""`}},
-	},
-	{
-		Query:    `SELECT JSON_QUOTE('"\t\\u0032"')`,
-		Expected: []sql.Row{{`"\"\t\\u0032\""`}},
-	},
-	{
-		Query:    `SELECT JSON_EXTRACT('{"xid":"hello"}', '$.xid') = "hello"`,
-		Expected: []sql.Row{{true}},
-	},
-	{
-		Query:    `SELECT JSON_EXTRACT('{"xid":"hello"}', '$.xid') = '"hello"'`,
-		Expected: []sql.Row{{false}},
-	},
-	{
-		Query:    `SELECT JSON_UNQUOTE(JSON_EXTRACT('{"xid":null}', '$.xid'))`,
-		Expected: []sql.Row{{"null"}},
-	},
 	{
 		Query:    `select JSON_EXTRACT('{"id":234}', '$.id')-1;`,
 		Expected: []sql.Row{{float64(233)}},
@@ -6278,30 +5428,6 @@ SELECT * FROM cte WHERE  d = 2;`,
 		},
 	},
 	{
-		Query: `SELECT FLOOR(15728640/1024/1030)`,
-		Expected: []sql.Row{
-			{"14"},
-		},
-	},
-	{
-		Query: `SELECT ROUND(15728640/1024/1030)`,
-		Expected: []sql.Row{
-			{"15"},
-		},
-	},
-	{
-		Query: `SELECT ROUND(15.00, 1)`,
-		Expected: []sql.Row{
-			{"15.0"},
-		},
-	},
-	{
-		Query: `SELECT round(15, 1)`,
-		Expected: []sql.Row{
-			{int8(15)},
-		},
-	},
-	{
 		Query: `SELECT CASE i WHEN 1 THEN 'one' WHEN 2 THEN 'two' ELSE 'other' END FROM mytable`,
 		Expected: []sql.Row{
 			{"one"},
@@ -6471,70 +5597,6 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{"first row"}, {"second row"}, {"third row"}},
 	},
 	{
-		Query:    "SELECT instr(s, 'row') as l FROM mytable ORDER BY i",
-		Expected: []sql.Row{{int64(7)}, {int64(8)}, {int64(7)}},
-	},
-	{
-		Query:    "SELECT instr(s, 'first') as l FROM mytable ORDER BY i",
-		Expected: []sql.Row{{int64(1)}, {int64(0)}, {int64(0)}},
-	},
-	{
-		Query:    "SELECT instr(s, 'o') as l FROM mytable ORDER BY i",
-		Expected: []sql.Row{{int64(8)}, {int64(4)}, {int64(8)}},
-	},
-	{
-		Query:    "SELECT instr(s, NULL) as l FROM mytable ORDER BY l",
-		Expected: []sql.Row{{nil}, {nil}, {nil}},
-	},
-	{
-		Query:    "SELECT SLEEP(0.5)",
-		Expected: []sql.Row{{int(0)}},
-	},
-	{
-		Query:    "SELECT TO_BASE64('foo')",
-		Expected: []sql.Row{{string("Zm9v")}},
-	},
-	{
-		Query:    "SELECT FROM_BASE64('YmFy')",
-		Expected: []sql.Row{{[]byte("bar")}},
-	},
-	{
-		Query:    "SELECT TIMESTAMPADD(DAY, 1, '2018-05-02')",
-		Expected: []sql.Row{{"2018-05-03"}},
-	},
-	{
-		Query:    "SELECT DATE_ADD('2018-05-02', INTERVAL 1 day)",
-		Expected: []sql.Row{{"2018-05-03"}},
-	},
-	{
-		Query:    "SELECT DATE_ADD(DATE('2018-05-02'), INTERVAL 1 day)",
-		Expected: []sql.Row{{time.Date(2018, time.May, 3, 0, 0, 0, 0, time.UTC)}},
-	},
-	{
-		Query:    "select date_add(time('12:13:14'), interval 1 minute);",
-		Expected: []sql.Row{{types.Timespan(44054000000)}},
-	},
-	{
-		Query:    "SELECT DATE_SUB('2018-05-02', INTERVAL 1 DAY)",
-		Expected: []sql.Row{{"2018-05-01"}},
-	},
-	{
-		Query:    "SELECT DATE_SUB(DATE('2018-05-02'), INTERVAL 1 DAY)",
-		Expected: []sql.Row{{time.Date(2018, time.May, 1, 0, 0, 0, 0, time.UTC)}},
-	},
-	{
-		Query:    "select date_sub(time('12:13:14'), interval 1 minute);",
-		Expected: []sql.Row{{types.Timespan(43934000000)}},
-	},
-	{
-		Query:    "SELECT '2018-05-02' + INTERVAL 1 DAY",
-		Expected: []sql.Row{{time.Date(2018, time.May, 3, 0, 0, 0, 0, time.UTC)}},
-	},
-	{
-		Query:    "SELECT '2018-05-02' - INTERVAL 1 DAY",
-		Expected: []sql.Row{{time.Date(2018, time.May, 1, 0, 0, 0, 0, time.UTC)}},
-	},
-	{
 		Query:    `SELECT i AS i FROM mytable ORDER BY i`,
 		Expected: []sql.Row{{int64(1)}, {int64(2)}, {int64(3)}},
 	},
@@ -6613,34 +5675,6 @@ SELECT * FROM cte WHERE  d = 2;`,
 		},
 	},
 	{
-		Query:    "SELECT CONVERT('9999-12-31 23:59:59', DATETIME)",
-		Expected: []sql.Row{{time.Date(9999, time.December, 31, 23, 59, 59, 0, time.UTC)}},
-	},
-	{
-		Query:    "SELECT DATETIME('9999-12-31 23:59:59')",
-		Expected: []sql.Row{{time.Date(9999, time.December, 31, 23, 59, 59, 0, time.UTC)}},
-	},
-	{
-		Query:    "SELECT TIMESTAMP('2020-12-31 23:59:59')",
-		Expected: []sql.Row{{time.Date(2020, time.December, 31, 23, 59, 59, 0, time.UTC)}},
-	},
-	{
-		Query:    "SELECT CONVERT('10000-12-31 23:59:59', DATETIME)",
-		Expected: []sql.Row{{nil}},
-	},
-	{
-		Query:    "SELECT '9999-12-31 23:59:59' + INTERVAL 1 DAY",
-		Expected: []sql.Row{{nil}},
-	},
-	{
-		Query:    "SELECT DATE_ADD('9999-12-31 23:59:59', INTERVAL 1 DAY)",
-		Expected: []sql.Row{{nil}},
-	},
-	{
-		Query:    "SELECT EXTRACT(DAY FROM '9999-12-31 23:59:59')",
-		Expected: []sql.Row{{31}},
-	},
-	{
 		Query:    `SELECT t.date_col FROM (SELECT CONVERT('2019-06-06 00:00:00', DATETIME) AS date_col) t WHERE t.date_col > '0000-01-01 00:00'`,
 		Expected: []sql.Row{{time.Date(2019, time.June, 6, 0, 0, 0, 0, time.UTC)}},
 	},
@@ -6684,30 +5718,6 @@ SELECT * FROM cte WHERE  d = 2;`,
 	{
 		Query:    `SELECT GREATEST(@@back_log,@@auto_increment_offset)`,
 		Expected: []sql.Row{{1}},
-	},
-	{
-		Query:    `SELECT GREATEST(1, 2, "3", 4)`,
-		Expected: []sql.Row{{float64(4)}},
-	},
-	{
-		Query:    `SELECT GREATEST(1, 2, "9", "foo999")`,
-		Expected: []sql.Row{{float64(9)}},
-	},
-	{
-		Query:    `SELECT GREATEST("aaa", "bbb", "ccc")`,
-		Expected: []sql.Row{{"ccc"}},
-	},
-	{
-		Query:    `SELECT GREATEST(i, s) FROM mytable`,
-		Expected: []sql.Row{{float64(1)}, {float64(2)}, {float64(3)}},
-	},
-	{
-		Query:    `SELECT GREATEST(1, 2, 3, 4)`,
-		Expected: []sql.Row{{int64(4)}},
-	},
-	{
-		Query:    "select abs(-i) from mytable order by 1",
-		Expected: []sql.Row{{1}, {2}, {3}},
 	},
 	{
 		Query:    "select distinct abs(c5) as a from one_pk where c2 in (1,11,31) order by a",
@@ -6768,22 +5778,6 @@ SELECT * FROM cte WHERE  d = 2;`,
 	{
 		Query:    "select char_length(s) from mytable order by i",
 		Expected: []sql.Row{{9}, {10}, {9}},
-	},
-	{
-		Query:    `select locate("o", s) from mytable order by i`,
-		Expected: []sql.Row{{8}, {4}, {8}},
-	},
-	{
-		Query:    `select locate("o", s, 5) from mytable order by i`,
-		Expected: []sql.Row{{8}, {9}, {8}},
-	},
-	{
-		Query:    `select locate(upper("roW"), upper(s), power(10, 0)) from mytable order by i`,
-		Expected: []sql.Row{{7}, {8}, {7}},
-	},
-	{
-		Query:    "select log2(i) from mytable order by i",
-		Expected: []sql.Row{{0.0}, {1.0}, {1.5849625007211563}},
 	},
 	{
 		Query:    "select ln(i) from mytable order by i",
@@ -6866,36 +5860,8 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{time.Date(1980, 6, 22, 14, 32, 56, 0, time.UTC)}},
 	},
 	{
-		Query:    `SELECT LEAST(1, 2, 3, 4)`,
-		Expected: []sql.Row{{int64(1)}},
-	},
-	{
-		Query:    `SELECT LEAST(1, 2, "3", 4)`,
-		Expected: []sql.Row{{float64(1)}},
-	},
-	{
-		Query:    `SELECT LEAST(1, 2, "9", "foo999")`,
-		Expected: []sql.Row{{float64(1)}},
-	},
-	{
-		Query:    `SELECT LEAST("aaa", "bbb", "ccc")`,
-		Expected: []sql.Row{{"aaa"}},
-	},
-	{
-		Query:    `SELECT LEAST(i, s) FROM mytable`,
-		Expected: []sql.Row{{float64(1)}, {float64(2)}, {float64(3)}},
-	},
-	{
-		Query:    `SELECT LEAST(CAST("1920-02-03 07:41:11" AS DATETIME), CAST("1980-06-22 14:32:56" AS DATETIME))`,
-		Expected: []sql.Row{{time.Date(1920, 2, 3, 7, 41, 11, 0, time.UTC)}},
-	},
-	{
 		Query:    `SELECT LEAST(@@back_log,@@auto_increment_offset)`,
 		Expected: []sql.Row{{-1}},
-	},
-	{
-		Query:    `SELECT CHAR_LENGTH('áé'), LENGTH('àè')`,
-		Expected: []sql.Row{{int32(2), int32(4)}},
 	},
 	{
 		Query:    "SELECT i, COUNT(i) AS `COUNT(i)` FROM (SELECT i FROM mytable) t GROUP BY i ORDER BY i, `COUNT(i)` DESC",
@@ -6941,10 +5907,6 @@ SELECT * FROM cte WHERE  d = 2;`,
 	{
 		Query:    `SELECT STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') - (STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') - INTERVAL 1 SECOND)`,
 		Expected: []sql.Row{{int64(1)}},
-	},
-	{
-		Query:    `SELECT SUBSTR(SUBSTRING('0123456789ABCDEF', 1, 10), -4)`,
-		Expected: []sql.Row{{"6789"}},
 	},
 	{
 		Query:    `SELECT CASE i WHEN 1 THEN i ELSE NULL END FROM mytable`,
@@ -7805,10 +6767,6 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{true}},
 	},
 	{
-		Query:    "SELECT POW(2,3) FROM dual",
-		Expected: []sql.Row{{float64(8)}},
-	},
-	{
 		Query: `SELECT /*+ JOIN_ORDER(a, c, b, d) */ a.c1, b.c2, c.c3, d.c4 FROM one_pk a JOIN one_pk b ON a.pk = b.pk JOIN one_pk c ON c.pk = b.pk JOIN (select * from one_pk) d ON d.pk = c.pk`,
 		Expected: []sql.Row{
 			{0, 1, 2, 3},
@@ -8363,16 +7321,6 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{},
 	},
 	{
-		Query: `select uuid() = uuid()`,
-		Expected: []sql.Row{
-			{false},
-		},
-	},
-	{
-		Query:    `select instr(REPLACE(CONVERT(UUID() USING utf8mb4), '-', ''), '-')`,
-		Expected: []sql.Row{{0}},
-	},
-	{
 		Query:    `select * from mytable where 1 = 0 order by i asc`,
 		Expected: []sql.Row{},
 	},
@@ -8807,22 +7755,6 @@ SELECT * FROM my_cte;`,
 		Query: "select count((select * from (select pk from one_pk limit 1) as sq)) from one_pk;",
 		Expected: []sql.Row{
 			{4},
-		},
-	},
-	{
-		Query: "select find_in_set('second row', s) from mytable;",
-		Expected: []sql.Row{
-			{0},
-			{1},
-			{0},
-		},
-	},
-	{
-		Query: "select find_in_set(s, 'first row,second row,third row') from mytable;",
-		Expected: []sql.Row{
-			{1},
-			{2},
-			{3},
 		},
 	},
 	{
@@ -10236,30 +9168,6 @@ from typestable`,
 		},
 	},
 	{
-		Query: "select uncompress(compress('thisisastring'))",
-		Expected: []sql.Row{
-			{[]byte{0x74, 0x68, 0x69, 0x73, 0x69, 0x73, 0x61, 0x73, 0x74, 0x72, 0x69, 0x6e, 0x67}},
-		},
-	},
-	{
-		Query: "select length(compress(repeat('a', 1000)))",
-		Expected: []sql.Row{
-			{24}, // 21 in MySQL because of library implementation differences
-		},
-	},
-	{
-		Query: "select length(uncompress(compress(repeat('a', 1000))))",
-		Expected: []sql.Row{
-			{1000},
-		},
-	},
-	{
-		Query: "select uncompressed_length(compress(repeat('a', 1000)))",
-		Expected: []sql.Row{
-			{uint32(1000)},
-		},
-	},
-	{
 		Query: `select distinct pk1 from two_pk order by pk1`,
 		Expected: []sql.Row{
 			{0},
@@ -10420,6 +9328,28 @@ from typestable`,
 		Query: "select i, s from mytable where quote(i) = quote(2)",
 		Expected: []sql.Row{
 			{2, "second row"},
+		},
+	},
+	{
+		Query: "select * from two_pk group by pk1, pk2",
+		Expected: []sql.Row{
+			{0, 0, 0, 1, 2, 3, 4},
+			{0, 1, 10, 11, 12, 13, 14},
+			{1, 0, 20, 21, 22, 23, 24},
+			{1, 1, 30, 31, 32, 33, 34},
+		},
+	},
+	{
+		Query: "select pk1+1 from two_pk group by pk1 + 1, mod(pk2, 2)",
+		Expected: []sql.Row{
+			{1}, {1}, {2}, {2},
+		},
+	},
+	{
+		Query: "select mod(pk2, 2) from two_pk group by pk1 + 1, mod(pk2, 2)",
+		Expected: []sql.Row{
+			// mod is a Decimal type, which we convert to a string in our enginetests
+			{"0"}, {"1"}, {"0"}, {"1"},
 		},
 	},
 }
@@ -10672,6 +9602,20 @@ FROM mytable;`,
 		Expected: []sql.Row{
 			{"DECIMAL"},
 		},
+	},
+	// https://github.com/dolthub/dolt/issues/7095
+	// References in group by and having should be allowed to match select aliases
+	{
+		Query:    "select y as z from xy group by (y) having AVG(z) > 0",
+		Expected: []sql.Row{{1}, {2}, {3}},
+	},
+	{
+		Query:    "select y as z from xy group by (z) having AVG(z) > 0",
+		Expected: []sql.Row{{1}, {2}, {3}},
+	},
+	{
+		Query:    "select y + 1 as z from xy group by (z) having AVG(z) > 1",
+		Expected: []sql.Row{{2}, {3}, {4}},
 	},
 }
 
@@ -11440,6 +10384,15 @@ var ErrorQueries = []QueryErrorTest{
 		Query:       "SELECT 1 INTO mytable;",
 		ExpectedErr: sql.ErrUndeclaredVariable,
 	},
+	{
+		Query:       "select * from two_pk group by pk1",
+		ExpectedErr: analyzererrors.ErrValidationGroupBy,
+	},
+	{
+		// Grouping over functions and math expressions over PK does not count, and must appear in select
+		Query:       "select * from two_pk group by pk1 + 1, mod(pk2, 2)",
+		ExpectedErr: analyzererrors.ErrValidationGroupBy,
+	},
 }
 
 var BrokenErrorQueries = []QueryErrorTest{
@@ -11456,10 +10409,10 @@ var BrokenErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrTableNotFound,
 	},
 
-	// Our behavior in when sql_mode = ONLY_FULL_GROUP_BY is inconsistent with MySQL
+	// Our behavior in when sql_mode = ONLY_FULL_GROUP_BY is inconsistent with MySQL. This is because we skip validation
+	// for GroupBys wrapped in a Project since we are not able to validate selected expressions that get optimized as an
+	// alias.
 	// Relevant issue: https://github.com/dolthub/dolt/issues/4998
-	// Special case: If you are grouping by every field of the PK, then you can select anything
-	// Otherwise, whatever you are selecting must be in the Group By (with the exception of aggregations)
 	{
 		Query:       "SELECT col0, floor(col1) FROM tab1 GROUP by col0;",
 		ExpectedErr: analyzererrors.ErrValidationGroupBy,
@@ -11469,38 +10422,10 @@ var BrokenErrorQueries = []QueryErrorTest{
 		ExpectedErr: analyzererrors.ErrValidationGroupBy,
 	},
 	{
-		Query: "select * from two_pk group by pk1, pk2",
-		// No error
-	},
-	{
-		Query:       "select * from two_pk group by pk1",
-		ExpectedErr: analyzererrors.ErrValidationGroupBy,
-	},
-	{
-		// Grouping over functions and math expressions over PK does not count, and must appear in select
-		Query:       "select * from two_pk group by pk1 + 1, mod(pk2, 2)",
-		ExpectedErr: analyzererrors.ErrValidationGroupBy,
-	},
-	{
-		// Grouping over functions and math expressions over PK does not count, and must appear in select
-		Query: "select pk1+1 from two_pk group by pk1 + 1, mod(pk2, 2)",
-		// No error
-	},
-	{
-		// Grouping over functions and math expressions over PK does not count, and must appear in select
-		Query: "select mod(pk2, 2) from two_pk group by pk1 + 1, mod(pk2, 2)",
-		// No error
-	},
-	{
-		// Grouping over functions and math expressions over PK does not count, and must appear in select
-		Query: "select mod(pk2, 2) from two_pk group by pk1 + 1, mod(pk2, 2)",
-		// No error
-	},
-	{
 		Query: `SELECT any_value(pk), (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x
 						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) > 0
 						GROUP BY (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) ORDER BY x`,
-		// No error, but we get opk.pk does not exist
+		// No error, but we get opk.pk does not exist (aliasing error)
 	},
 	// Unimplemented JSON functions
 	{

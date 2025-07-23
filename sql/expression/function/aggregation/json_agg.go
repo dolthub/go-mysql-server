@@ -163,7 +163,7 @@ func (j *jsonObjectBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		return err
 	}
 	if js, ok := val.(sql.JSONWrapper); ok {
-		val, err = js.ToInterface()
+		val, err = js.ToInterface(ctx)
 		if err != nil {
 			return err
 		}

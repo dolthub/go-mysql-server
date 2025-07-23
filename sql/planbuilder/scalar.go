@@ -749,10 +749,10 @@ func (b *Builder) buildIsExprToExpression(inScope *scope, c *ast.IsExpr) sql.Exp
 	e := b.buildScalar(inScope, c.Expr)
 	switch strings.ToLower(c.Operator) {
 	case ast.IsNullStr:
-		return expression.NewIsNull(e)
+		return expression.DefaultExpressionFactory.NewIsNull(e)
 	case ast.IsNotNullStr:
 		b.qFlags.Set(sql.QFlgNotExpr)
-		return expression.NewNot(expression.NewIsNull(e))
+		return expression.DefaultExpressionFactory.NewIsNotNull(e)
 	case ast.IsTrueStr:
 		return expression.NewIsTrue(e)
 	case ast.IsFalseStr:

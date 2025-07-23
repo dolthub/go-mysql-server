@@ -50,6 +50,9 @@ func (t *TableFunctionWrapper) NewInstance(ctx *sql.Context, db sql.Database, ar
 	if err != nil {
 		return nil, err
 	}
+	if !f.Resolved() {
+		return nil, fmt.Errorf("table function is unresolved")
+	}
 	nt.funcExpr = f
 	return &nt, nil
 }
@@ -82,6 +85,9 @@ func (t *TableFunctionWrapper) RowIter(ctx *sql.Context, r sql.Row) (sql.RowIter
 	if err != nil {
 		return nil, err
 	}
+	//if ri, ok := v.(sql.RowIter); ok {
+	//	return ri, nil
+	//}
 	return sql.RowsToRowIter(sql.Row{v}), nil
 }
 

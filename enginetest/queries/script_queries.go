@@ -22,7 +22,6 @@ import (
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"gopkg.in/src-d/go-errors.v1"
 
-	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -172,23 +171,6 @@ CREATE TABLE teams (
 		},
 	},
 	{
-		Name:    "alter nil enum",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"create table xy (x int primary key, y enum ('a', 'b'));",
-			"insert into xy values (0, NULL),(1, 'b')",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "alter table xy modify y enum('a','b','c')",
-			},
-			{
-				Query:       "alter table xy modify y enum('a')",
-				ExpectedErr: types.ErrDataTruncatedForColumn,
-			},
-		},
-	},
-	{
 		Name: "issue 7958, update join uppercase table name validation",
 		SetUpScript: []string{
 			`
@@ -262,7 +244,8 @@ CREATE TABLE sourceTable_test (
 		},
 	},
 	{
-		Name: "GMS issue 2369",
+		// https://github.com/dolthub/go-mysql-server/issues/2369
+		Name: "auto_increment with self-referencing foreign key",
 		SetUpScript: []string{
 			`CREATE TABLE table1 (
 	id int NOT NULL AUTO_INCREMENT,
@@ -292,6 +275,31 @@ CREATE TABLE sourceTable_test (
 					{2, "tbl1 row 2", 1},
 					{3, "tbl1 row 3", nil},
 				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/go-mysql-server/issues/2349
+		Name: "auto_increment with foreign key",
+		SetUpScript: []string{
+			"CREATE TABLE table1 (id int NOT NULL AUTO_INCREMENT primary key, name text)",
+			`
+CREATE TABLE table2 (
+	id int NOT NULL AUTO_INCREMENT,
+	name text,
+	fk int,
+	PRIMARY KEY (id),
+	CONSTRAINT myConstraint FOREIGN KEY (fk) REFERENCES table1 (id)
+)`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO table1 (name) VALUES ('tbl1 row 1');",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
+			},
+			{
+				Query:    "INSERT INTO table1 (name) VALUES ('tbl1 row 2');",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
 			},
 		},
 	},
@@ -531,30 +539,6 @@ SET entity_test.value = joined.value;`,
 			{
 				Query:    "select * from test_users;",
 				Expected: []sql.Row{{1, "john", "", 1, 420}},
-			},
-		},
-	},
-	{
-		Name: "GMS issue 2349",
-		SetUpScript: []string{
-			"CREATE TABLE table1 (id int NOT NULL AUTO_INCREMENT primary key, name text)",
-			`
-CREATE TABLE table2 (
-	id int NOT NULL AUTO_INCREMENT,
-	name text,
-	fk int,
-	PRIMARY KEY (id),
-	CONSTRAINT myConstraint FOREIGN KEY (fk) REFERENCES table1 (id)
-)`,
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "INSERT INTO table1 (name) VALUES ('tbl1 row 1');",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
-			},
-			{
-				Query:    "INSERT INTO table1 (name) VALUES ('tbl1 row 2');",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 2}}},
 			},
 		},
 	},
@@ -1098,59 +1082,6 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name:    "alter keyless table",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"create table t (c1 int, c2 varchar(200), c3 enum('one', 'two'));",
-			"insert into t values (1, 'one', NULL);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    `alter table t modify column c1 int unsigned`,
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query: "describe t;",
-				Expected: []sql.Row{
-					{"c1", "int unsigned", "YES", "", nil, ""},
-					{"c2", "varchar(200)", "YES", "", nil, ""},
-					{"c3", "enum('one','two')", "YES", "", nil, ""},
-				},
-			},
-			{
-				Query:    `alter table t drop column c1;`,
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query: "describe t;",
-				Expected: []sql.Row{
-					{"c2", "varchar(200)", "YES", "", nil, ""},
-					{"c3", "enum('one','two')", "YES", "", nil, ""},
-				},
-			},
-			{
-				Query:    "alter table t add column new3 int;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    `insert into t values ('two', 'two', -2);`,
-				Expected: []sql.Row{{types.NewOkResult(1)}},
-			},
-			{
-				Query: "describe t;",
-				Expected: []sql.Row{
-					{"c2", "varchar(200)", "YES", "", nil, ""},
-					{"c3", "enum('one','two')", "YES", "", nil, ""},
-					{"new3", "int", "YES", "", nil, ""},
-				},
-			},
-			{
-				Query:    "select * from t;",
-				Expected: []sql.Row{{"one", nil, nil}, {"two", "two", -2}},
-			},
-		},
-	},
-	{
 		Name: "topN stable output",
 		SetUpScript: []string{
 			"create table xy (x int primary key, y int)",
@@ -1180,99 +1111,6 @@ CREATE TABLE tab3 (
 			{
 				Query:    "with recursive cte as ((select * from xy order by y asc limit 1 offset 1) union (select * from xy order by y asc limit 1 offset 2)) select * from cte",
 				Expected: []sql.Row{{2, 0}, {3, 0}},
-			},
-		},
-	},
-	{
-		Name:    "enums with default, case-sensitive collation (utf8mb4_0900_bin)",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"CREATE TABLE enumtest1 (pk int primary key, e enum('abc', 'XYZ'));",
-			"CREATE TABLE enumtest2 (pk int PRIMARY KEY, e enum('x ', 'X ', 'y', 'Y'));",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "INSERT INTO enumtest1 VALUES (1, 'abc'), (2, 'abc'), (3, 'XYZ');",
-				Expected: []sql.Row{{types.NewOkResult(3)}},
-			},
-			{
-				Query:    "SELECT * FROM enumtest1;",
-				Expected: []sql.Row{{1, "abc"}, {2, "abc"}, {3, "XYZ"}},
-			},
-			{
-				// enum values must match EXACTLY for case-sensitive collations
-				Query:          "INSERT INTO enumtest1 VALUES (10, 'ABC'), (11, 'aBc'), (12, 'xyz');",
-				ExpectedErrStr: "value ABC is not valid for this Enum",
-			},
-			{
-				Query: "SHOW CREATE TABLE enumtest1;",
-				Expected: []sql.Row{{
-					"enumtest1",
-					"CREATE TABLE `enumtest1` (\n  `pk` int NOT NULL,\n  `e` enum('abc','XYZ'),\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-			{
-				// Trailing whitespace should be removed from enum values, except when using the "binary" charset and collation
-				Query: "SHOW CREATE TABLE enumtest2;",
-				Expected: []sql.Row{{
-					"enumtest2",
-					"CREATE TABLE `enumtest2` (\n  `pk` int NOT NULL,\n  `e` enum('x','X','y','Y'),\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-			{
-				Query: "DESCRIBE enumtest1;",
-				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", nil, ""},
-					{"e", "enum('abc','XYZ')", "YES", "", nil, ""}},
-			},
-			{
-				Query: "DESCRIBE enumtest2;",
-				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", nil, ""},
-					{"e", "enum('x','X','y','Y')", "YES", "", nil, ""}},
-			},
-			{
-				Query:    "select data_type, column_type from information_schema.columns where table_name='enumtest1' and column_name='e';",
-				Expected: []sql.Row{{"enum", "enum('abc','XYZ')"}},
-			},
-			{
-				Query:    "select data_type, column_type from information_schema.columns where table_name='enumtest2' and column_name='e';",
-				Expected: []sql.Row{{"enum", "enum('x','X','y','Y')"}},
-			},
-		},
-	},
-	{
-		Name:    "enums with case-insensitive collation (utf8mb4_0900_ai_ci)",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"CREATE TABLE enumtest1 (pk int primary key, e enum('abc', 'XYZ') collate utf8mb4_0900_ai_ci);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "INSERT INTO enumtest1 VALUES (1, 'abc'), (2, 'abc'), (3, 'XYZ');",
-				Expected: []sql.Row{{types.NewOkResult(3)}},
-			},
-			{
-				Query: "SHOW CREATE TABLE enumtest1;",
-				Expected: []sql.Row{{
-					"enumtest1",
-					"CREATE TABLE `enumtest1` (\n  `pk` int NOT NULL,\n  `e` enum('abc','XYZ') COLLATE utf8mb4_0900_ai_ci,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
-			},
-			{
-				Query: "DESCRIBE enumtest1;",
-				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", nil, ""},
-					{"e", "enum('abc','XYZ') COLLATE utf8mb4_0900_ai_ci", "YES", "", nil, ""}},
-			},
-			{
-				Query:    "select data_type, column_type from information_schema.columns where table_name='enumtest1' and column_name='e';",
-				Expected: []sql.Row{{"enum", "enum('abc','XYZ')"}},
-			},
-			{
-				Query:    "CREATE TABLE enumtest2 (pk int PRIMARY KEY, e enum('x ', 'X ', 'y', 'Y'));",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-			{
-				Query:    "INSERT INTO enumtest1 VALUES (10, 'ABC'), (11, 'aBc'), (12, 'xyz');",
-				Expected: []sql.Row{{types.NewOkResult(3)}},
 			},
 		},
 	},
@@ -3328,36 +3166,6 @@ CREATE TABLE tab3 (
 		SkipPrepared: true,
 	},
 	{
-		Name:    "WHERE clause considers ENUM/SET types for comparisons",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"CREATE TABLE test (pk BIGINT PRIMARY KEY, v1 ENUM('a', 'b', 'c'), v2 SET('a', 'b', 'c'));",
-			"INSERT INTO test VALUES (1, 2, 2), (2, 1, 1);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1, "b", "b"}, {2, "a", "a"}},
-			},
-			{
-				Query:    "UPDATE test SET v1 = 3 WHERE v1 = 2;",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
-			},
-			{
-				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1, "c", "b"}, {2, "a", "a"}},
-			},
-			{
-				Query:    "UPDATE test SET v2 = 3 WHERE 2 = v2;",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
-			},
-			{
-				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{1, "c", "a,b"}, {2, "a", "a"}},
-			},
-		},
-	},
-	{
 		Name: "Slightly more complex example for the Exists Clause",
 		SetUpScript: []string{
 			"create table store(store_id int, item_id int, primary key (store_id, item_id))",
@@ -3869,18 +3677,6 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name: "ALTER AUTO INCREMENT TABLE ADD column",
-		SetUpScript: []string{
-			"CREATE TABLE test (pk int primary key, uk int UNIQUE KEY auto_increment);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "alter table test add column j int;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
-			},
-		},
-	},
-	{
 		Name: "alter json column default; from scorewarrior: https://github.com/dolthub/dolt/issues/4543",
 		SetUpScript: []string{
 			"CREATE TABLE test (i int default 999, j json);",
@@ -4086,42 +3882,6 @@ CREATE TABLE tab3 (
 					{"i", "int", "YES", "MUL", nil, ""},
 					{"j", "int", "YES", "UNI", nil, ""},
 					{"k", "int", "YES", "UNI", nil, ""},
-				},
-			},
-		},
-	},
-	{
-		Name:    "ALTER TABLE MODIFY column with multiple UNIQUE KEYS",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"CREATE table test (pk int primary key, uk1 int, uk2 int, unique(uk1, uk2))",
-			"ALTER TABLE `test` MODIFY column uk1 int auto_increment",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "describe test",
-				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", nil, ""},
-					{"uk1", "int", "NO", "MUL", nil, "auto_increment"},
-					{"uk2", "int", "YES", "", nil, ""},
-				},
-			},
-		},
-	},
-	{
-		Name:    "ALTER TABLE MODIFY column with multiple KEYS",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"CREATE table test (pk int primary key, mk1 int, mk2 int, index(mk1, mk2))",
-			"ALTER TABLE `test` MODIFY column mk1 int auto_increment",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "describe test",
-				Expected: []sql.Row{
-					{"pk", "int", "NO", "PRI", nil, ""},
-					{"mk1", "int", "NO", "MUL", nil, "auto_increment"},
-					{"mk2", "int", "YES", "", nil, ""},
 				},
 			},
 		},
@@ -4726,72 +4486,6 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		Name:    "enum columns work as expected in when clauses",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"create table enums (e enum('a'));",
-			"insert into enums values ('a');",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "select (case e when 'a' then 42 end) from enums",
-				Expected: []sql.Row{{42}},
-			},
-			{
-				Query:    "select (case 'a' when e then 42 end) from enums",
-				Expected: []sql.Row{{42}},
-			},
-		},
-	},
-	{
-		Name:    "SET and ENUM properly handle integers using UPDATE and DELETE statements",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"CREATE TABLE setenumtest (pk INT PRIMARY KEY, v1 ENUM('a', 'b', 'c'), v2 SET('a', 'b', 'c'));",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "INSERT INTO setenumtest VALUES (1, 1, 1), (2, 1, 1), (3, 3, 1), (4, 1, 3);",
-				Expected: []sql.Row{{types.NewOkResult(4)}},
-			},
-			{
-				Query: "UPDATE setenumtest SET v1 = 2, v2 = 2 WHERE pk = 2;",
-				Expected: []sql.Row{{types.OkResult{
-					RowsAffected: 1,
-					Info: plan.UpdateInfo{
-						Matched:  1,
-						Updated:  1,
-						Warnings: 0,
-					},
-				}}},
-			},
-			{
-				Query: "SELECT * FROM setenumtest ORDER BY pk;",
-				Expected: []sql.Row{
-					{1, "a", "a"},
-					{2, "b", "b"},
-					{3, "c", "a"},
-					{4, "a", "a,b"},
-				},
-			},
-			{
-				Query:    "DELETE FROM setenumtest WHERE v1 = 3;",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
-			},
-			{
-				Query:    "DELETE FROM setenumtest WHERE v2 = 3;",
-				Expected: []sql.Row{{types.NewOkResult(1)}},
-			},
-			{
-				Query: "SELECT * FROM setenumtest ORDER BY pk;",
-				Expected: []sql.Row{
-					{1, "a", "a"},
-					{2, "b", "b"},
-				},
-			},
-		},
-	},
-	{
 		Name: "identical expressions over different windows should produce different results",
 		SetUpScript: []string{
 			"CREATE TABLE t(a INT, b INT);",
@@ -4889,94 +4583,7 @@ CREATE TABLE tab3 (
 			},
 		},
 	},
-	{
-		Name:    "find_in_set tests",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"create table set_tbl (i int primary key, s set('a','b','c'));",
-			"insert into set_tbl values (0, '');",
-			"insert into set_tbl values (1, 'a');",
-			"insert into set_tbl values (2, 'b');",
-			"insert into set_tbl values (3, 'c');",
-			"insert into set_tbl values (4, 'a,b');",
-			"insert into set_tbl values (6, 'b,c');",
-			"insert into set_tbl values (7, 'a,c');",
-			"insert into set_tbl values (8, 'a,b,c');",
 
-			"create table collate_tbl (i int primary key, s varchar(10) collate utf8mb4_0900_ai_ci);",
-			"insert into collate_tbl values (0, '');",
-			"insert into collate_tbl values (1, 'a');",
-			"insert into collate_tbl values (2, 'b');",
-			"insert into collate_tbl values (3, 'c');",
-			"insert into collate_tbl values (4, 'a,b');",
-			"insert into collate_tbl values (6, 'b,c');",
-			"insert into collate_tbl values (7, 'a,c');",
-			"insert into collate_tbl values (8, 'a,b,c');",
-
-			"create table text_tbl (i int primary key, s text);",
-			"insert into text_tbl values (0, '');",
-			"insert into text_tbl values (1, 'a');",
-			"insert into text_tbl values (2, 'b');",
-			"insert into text_tbl values (3, 'c');",
-			"insert into text_tbl values (4, 'a,b');",
-			"insert into text_tbl values (6, 'b,c');",
-			"insert into text_tbl values (7, 'a,c');",
-			"insert into text_tbl values (8, 'a,b,c');",
-
-			"create table enum_tbl (i int primary key, s enum('a','b','c'));",
-			"insert into enum_tbl values (0, 'a'), (1, 'b'), (2, 'c');",
-			"select i, s, find_in_set('a', s) from enum_tbl;",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "select i, find_in_set('a', s) from set_tbl;",
-				Expected: []sql.Row{
-					{0, 0},
-					{1, 1},
-					{2, 0},
-					{3, 0},
-					{4, 1},
-					{6, 0},
-					{7, 1},
-					{8, 1},
-				},
-			},
-			{
-				Query: "select i, find_in_set('A', s) from collate_tbl;",
-				Expected: []sql.Row{
-					{0, 0},
-					{1, 1},
-					{2, 0},
-					{3, 0},
-					{4, 1},
-					{6, 0},
-					{7, 1},
-					{8, 1},
-				},
-			},
-			{
-				Query: "select i, find_in_set('a', s) from text_tbl;",
-				Expected: []sql.Row{
-					{0, 0},
-					{1, 1},
-					{2, 0},
-					{3, 0},
-					{4, 1},
-					{6, 0},
-					{7, 1},
-					{8, 1},
-				},
-			},
-			{
-				Query: "select i, find_in_set('a', s) from enum_tbl;",
-				Expected: []sql.Row{
-					{0, 1},
-					{1, 0},
-					{2, 0},
-				},
-			},
-		},
-	},
 	{
 		Name:    "coalesce tests",
 		Dialect: "mysql",
@@ -5077,7 +4684,7 @@ CREATE TABLE tab3 (
 				// To match MySQL's behavior, this comes from the operating system's timezone setting
 				// TODO: the "global" shouldn't be necessary here, but GMS goes to session without it
 				Query:    `select @@global.system_time_zone;`,
-				Expected: []sql.Row{{gmstime.SystemTimezoneOffset()}},
+				Expected: []sql.Row{{sql.SystemTimezoneOffset()}},
 			},
 			{
 				// The default time_zone setting for MySQL is SYSTEM, which means timezone comes from @@system_time_zone
@@ -7532,15 +7139,15 @@ where
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:          "insert into t(c) values (X'9876543210');",
-				ExpectedErrStr: "invalid string for charset utf8mb4: '[152 118 84 50 16]'",
+				ExpectedErrStr: "Incorrect string value: '\\x98vT2\\x10' for column 'c' at row 1",
 			},
 			{
 				Query:          "insert into t(v) values (X'9876543210');",
-				ExpectedErrStr: "invalid string for charset utf8mb4: '[152 118 84 50 16]'",
+				ExpectedErrStr: "Incorrect string value: '\\x98vT2\\x10' for column 'v' at row 1",
 			},
 			{
 				Query:          "insert into t(txt) values (X'9876543210');",
-				ExpectedErrStr: "invalid string for charset utf8mb4: '[152 118 84 50 16]'",
+				ExpectedErrStr: "Incorrect string value: '\\x98vT2\\x10' for column 'txt' at row 1",
 			},
 			{
 				Query: "insert into t(b) values (X'9876543210');",
@@ -7554,6 +7161,358 @@ where
 					{types.OkResult{RowsAffected: 1}},
 				},
 			},
+		},
+	},
+	{
+		Name:    "charset validation strict vs non-strict mode",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table charset_test (c char(10), v varchar(10), txt text) character set utf8mb4;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "set sql_mode = 'STRICT_TRANS_TABLES';",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query:          "insert into charset_test(c) values (UNHEX('446F6C744C6162AE'));",
+				ExpectedErrStr: "Incorrect string value: '\\xAE' for column 'c' at row 1",
+			},
+			{
+				Query:          "insert into charset_test(v) values (UNHEX('446F6C744C6162AE'));",
+				ExpectedErrStr: "Incorrect string value: '\\xAE' for column 'v' at row 1",
+			},
+			{
+				Query:          "insert into charset_test(txt) values (UNHEX('446F6C744C6162AE'));",
+				ExpectedErrStr: "Incorrect string value: '\\xAE' for column 'txt' at row 1",
+			},
+			{
+				Query:    "set sql_mode = '';",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query: "insert into charset_test(c) values (UNHEX('446F6C744C6162AE'));",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "insert into charset_test(v) values (UNHEX('446F6C744C6162AE'));",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "insert into charset_test(txt) values (UNHEX('446F6C744C6162AE'));",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1}},
+				},
+			},
+			{
+				Query: "select HEX(c), LENGTH(c) from charset_test where c is not null;",
+				Expected: []sql.Row{
+					{"446F6C744C6162", 7},
+				},
+			},
+			{
+				Query: "select HEX(v), LENGTH(v) from charset_test where v is not null;",
+				Expected: []sql.Row{
+					{"446F6C744C6162", 7},
+				},
+			},
+			{
+				Query: "select HEX(txt), LENGTH(txt) from charset_test where txt is not null;",
+				Expected: []sql.Row{
+					{"446F6C744C6162", 7},
+				},
+			},
+		},
+	},
+	{
+		Name:    "charset validation issue #8893 - customer scenario",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table products (id int primary key, name text character set utf8mb4);",
+		},
+		Assertions: []ScriptTestAssertion{
+			// Test charset validation with invalid UTF-8 data
+			{
+				Query:          "insert into products values (1, UNHEX('446F6C744C6162AE'));", // "DoltLab" + invalid byte 0xAE
+				ExpectedErrStr: "Incorrect string value: '\\xAE' for column 'name' at row 1",
+			},
+			// Test non-strict mode truncation behavior
+			{
+				Query:    "set sql_mode = '';",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query:    "insert into products values (1, UNHEX('446F6C744C6162AE'));", // Now succeeds with truncation
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			// Verify data was truncated at invalid byte (MySQL behavior)
+			{
+				Query: "select id, name, HEX(name) from products;",
+				Expected: []sql.Row{
+					{1, "DoltLab", "446F6C744C6162"}, // Invalid byte 0xAE was truncated
+				},
+			},
+			// Customer can now query and work with the data
+			{
+				Query: "select id, name from products where name like '%Lab%';",
+				Expected: []sql.Row{
+					{1, "DoltLab"},
+				},
+			},
+		},
+	},
+	{
+		Name:    "charset validation edge cases - formatInvalidByteForError testing",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table charset_edge_test (c char(10), v varchar(20), t text);",
+		},
+		Assertions: []ScriptTestAssertion{
+			// STRICT MODE TESTS
+			{
+				Query:    "set sql_mode = 'STRICT_TRANS_TABLES';",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			// Single invalid byte (0xAE)
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('AE'));",
+				ExpectedErrStr: "Incorrect string value: '\\xAE' for column 'c' at row 1",
+			},
+			{
+				Query:          "insert into charset_edge_test(v) values (UNHEX('AE'));",
+				ExpectedErrStr: "Incorrect string value: '\\xAE' for column 'v' at row 1",
+			},
+			{
+				Query:          "insert into charset_edge_test(t) values (UNHEX('AE'));",
+				ExpectedErrStr: "Incorrect string value: '\\xAE' for column 't' at row 1",
+			},
+			// Multiple invalid bytes
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('AEAEAE'));",
+				ExpectedErrStr: "Incorrect string value: '\\xAE\\xAE\\xAE' for column 'c' at row 1",
+			},
+			// Overlong sequences
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('C0C1'));",
+				ExpectedErrStr: "Incorrect string value: '\\xC0\\xC1' for column 'c' at row 1",
+			},
+			// Invalid bytes 0xFE, 0xFF
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('FE'));",
+				ExpectedErrStr: "Incorrect string value: '\\xFE' for column 'c' at row 1",
+			},
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('FF'));",
+				ExpectedErrStr: "Incorrect string value: '\\xFF' for column 'c' at row 1",
+			},
+			// Surrogate pairs
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('EDA080'));",
+				ExpectedErrStr: "Incorrect string value: '\\xED\\xA0\\x80' for column 'c' at row 1",
+			},
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('EDBFBF'));",
+				ExpectedErrStr: "Incorrect string value: '\\xED\\xBF\\xBF' for column 'c' at row 1",
+			},
+			// More overlong sequences
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('C080'));",
+				ExpectedErrStr: "Incorrect string value: '\\xC0\\x80' for column 'c' at row 1",
+			},
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('E08080'));",
+				ExpectedErrStr: "Incorrect string value: '\\xE0\\x80\\x80' for column 'c' at row 1",
+			},
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('F0808080'));",
+				ExpectedErrStr: "Incorrect string value: '\\xF0\\x80\\x80\\x80' for column 'c' at row 1",
+			},
+			// Out of range (beyond U+10FFFF)
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('F4908080'));",
+				ExpectedErrStr: "Incorrect string value: '\\xF4\\x90\\x80\\x80' for column 'c' at row 1",
+			},
+			// Continuation bytes without start byte
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('80'));",
+				ExpectedErrStr: "Incorrect string value: '\\x80' for column 'c' at row 1",
+			},
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('BF'));",
+				ExpectedErrStr: "Incorrect string value: '\\xBF' for column 'c' at row 1",
+			},
+			// Incomplete sequences
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('C2'));",
+				ExpectedErrStr: "Incorrect string value: '\\xC2' for column 'c' at row 1",
+			},
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('E0A0'));",
+				ExpectedErrStr: "Incorrect string value: '\\xE0\\xA0' for column 'c' at row 1",
+			},
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('F09080'));",
+				ExpectedErrStr: "Incorrect string value: '\\xF0\\x90\\x80' for column 'c' at row 1",
+			},
+			// Long sequence (tests truncation with ...)
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('999897969594939291'));",
+				ExpectedErrStr: "Incorrect string value: '\\x99\\x98\\x97\\x96\\x95\\x94...' for column 'c' at row 1",
+			},
+			// Valid UTF-8 with invalid bytes
+			{
+				Query:          "insert into charset_edge_test(c) values (UNHEX('446F6C744C6162AE'));",
+				ExpectedErrStr: "Incorrect string value: '\\xAE' for column 'c' at row 1",
+			},
+
+			// NON-STRICT MODE TESTS (should truncate)
+			{
+				Query:    "set sql_mode = '';",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query:    "insert into charset_edge_test(c) values (UNHEX('446F6C744C6162AE'));",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "insert into charset_edge_test(v) values (UNHEX('48656C6C6FC0'));",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "insert into charset_edge_test(t) values (UNHEX('54657374FF'));",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			// Verify truncated data
+			{
+				Query: "select HEX(c), LENGTH(c) from charset_edge_test where c is not null;",
+				Expected: []sql.Row{
+					{"446F6C744C6162", 7},
+				},
+			},
+			{
+				Query: "select HEX(v), LENGTH(v) from charset_edge_test where v is not null;",
+				Expected: []sql.Row{
+					{"48656C6C6F", 5},
+				},
+			},
+			{
+				Query: "select HEX(t), LENGTH(t) from charset_edge_test where t is not null;",
+				Expected: []sql.Row{
+					{"54657374", 4},
+				},
+			},
+		},
+	},
+	{
+		Name:    "charset validation ASCII range tests",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table ascii_test (c char(10), v varchar(20), t text);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "set sql_mode = 'STRICT_TRANS_TABLES';",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			// ASCII range 0x00-0x7F
+			{
+				Query:    "insert into ascii_test(c) values (UNHEX('00'));",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "insert into ascii_test(c) values (UNHEX('20'));",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "insert into ascii_test(c) values (UNHEX('41'));",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "insert into ascii_test(c) values (UNHEX('7F'));",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "insert into ascii_test(v) values (UNHEX('48656C6C6F'));", // "Hello"
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "insert into ascii_test(t) values (UNHEX('00207F41'));",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			// Verify ASCII data
+			{
+				Query: "select HEX(c), LENGTH(c) from ascii_test where c is not null order by c;",
+				Expected: []sql.Row{
+					{"00", 1},
+					{"20", 1},
+					{"41", 1},
+					{"7F", 1},
+				},
+			},
+			{
+				Query: "select HEX(v), LENGTH(v) from ascii_test where v is not null;",
+				Expected: []sql.Row{
+					{"48656C6C6F", 5}, // "Hello"
+				},
+			},
+			{
+				Query: "select HEX(t), LENGTH(t) from ascii_test where t is not null;",
+				Expected: []sql.Row{
+					{"00207F41", 4}, // NULL + SPACE + DEL + A
+				},
+			},
+			// Boundary cases
+			{
+				Query:    "insert into ascii_test(c) values (UNHEX('7E'));", // 0x7E is valid ASCII
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:          "insert into ascii_test(c) values (UNHEX('81'));", // 0x81 is invalid
+				ExpectedErrStr: "Incorrect string value: '\\x81' for column 'c' at row 1",
+			},
+			// Mixed ASCII and invalid (non-strict mode)
+			{
+				Query:    "set sql_mode = '';", // Non-strict mode
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query:    "insert into ascii_test(c) values (UNHEX('41424380'));", // ABC + 0x80 (invalid)
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			// Verify truncation
+			{
+				Query: "select HEX(c), LENGTH(c) from ascii_test where HEX(c) = '414243';",
+				Expected: []sql.Row{
+					{"414243", 3}, // "ABC" - truncated at invalid byte
+				},
+			},
+			// Valid UTF-8 sequences
+			{
+				Query:    "set sql_mode = 'STRICT_TRANS_TABLES';", // Back to strict mode
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query:    "insert into ascii_test(c) values (UNHEX('C3A9'));", // é (2-byte UTF-8)
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "insert into ascii_test(c) values (UNHEX('E282AC'));", // € (3-byte UTF-8)
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "insert into ascii_test(c) values (UNHEX('F09D849E'));", // 𝄞 (4-byte UTF-8)
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			// Function boundary constants (asciiMin=32, asciiMax=127)
+			{
+				Query:    "insert into ascii_test(c) values (UNHEX('1F'));", // ASCII 31 (below asciiMin=32) - valid ASCII but non-printable
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			// Note: UNHEX('80') test is covered in edge cases test above
 		},
 	},
 	{
@@ -7864,91 +7823,6 @@ where
 		},
 	},
 	{
-		Name: "preserve enums through alter statements",
-		SetUpScript: []string{
-			"create table t (i int primary key, e enum('a', 'b', 'c'));",
-			"insert ignore into t values (0, 'error');",
-			"insert into t values (1, 'a');",
-			"insert into t values (2, 'b');",
-			"insert into t values (3, 'c');",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "select i, e, e + 0 from t;",
-				Expected: []sql.Row{
-					{0, "", float64(0)},
-					{1, "a", float64(1)},
-					{2, "b", float64(2)},
-					{3, "c", float64(3)},
-				},
-			},
-			{
-				Query: "alter table t modify column e enum('c', 'a', 'b');",
-				Expected: []sql.Row{
-					{types.NewOkResult(0)},
-				},
-			},
-			{
-				Query: "select i, e, e + 0 from t;",
-				Expected: []sql.Row{
-					{0, "", float64(0)},
-					{1, "a", float64(2)},
-					{2, "b", float64(3)},
-					{3, "c", float64(1)},
-				},
-			},
-			{
-				Query: "alter table t modify column e enum('asdf', 'a', 'b', 'c');",
-				Expected: []sql.Row{
-					{types.NewOkResult(0)},
-				},
-			},
-			{
-				Query: "select i, e, e + 0 from t;",
-				Expected: []sql.Row{
-					{0, "", float64(0)},
-					{1, "a", float64(2)},
-					{2, "b", float64(3)},
-					{3, "c", float64(4)},
-				},
-			},
-			{
-				Query: "alter table t modify column e enum('asdf', 'a', 'b', 'c', 'd');",
-				Expected: []sql.Row{
-					{types.NewOkResult(0)},
-				},
-			},
-			{
-				Query: "select i, e, e + 0 from t;",
-				Expected: []sql.Row{
-					{0, "", float64(0)},
-					{1, "a", float64(2)},
-					{2, "b", float64(3)},
-					{3, "c", float64(4)},
-				},
-			},
-			{
-				Query: "alter table t modify column e enum('a', 'b', 'c');",
-				Expected: []sql.Row{
-					{types.NewOkResult(0)},
-				},
-			},
-			{
-				Query: "select i, e, e + 0 from t;",
-				Expected: []sql.Row{
-					{0, "", float64(0)},
-					{1, "a", float64(1)},
-					{2, "b", float64(2)},
-					{3, "c", float64(3)},
-				},
-			},
-			{
-				Query:       "alter table t modify column e enum('abc');",
-				ExpectedErr: types.ErrDataTruncatedForColumn,
-			},
-		},
-	},
-	{
 		Name: "coalesce with system types",
 		SetUpScript: []string{
 			"create table t as select @@admin_port as port1, @@port as port2, COALESCE(@@admin_port, @@port) as\n port3;",
@@ -7961,103 +7835,6 @@ where
 					{"port2", "bigint", "NO", "", nil, ""},
 					{"port3", "bigint", "NO", "", nil, ""},
 				},
-			},
-		},
-	},
-	{
-		Name: "multi enum return types",
-		SetUpScript: []string{
-			"create table t (i int primary key, e enum('abc', 'def', 'ghi'));",
-			"insert into t values (1, 'abc'), (2, 'def'), (3, 'ghi');",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "select i, (case e when 'abc' then e when 'def' then e when 'ghi' then e end) as e from t;",
-				Expected: []sql.Row{
-					{1, "abc"},
-					{2, "def"},
-					{3, "ghi"},
-				},
-			},
-			{
-				// https://github.com/dolthub/dolt/issues/8598
-				Skip:  true,
-				Query: "select i, (case e when 'abc' then e when 'def' then e when 'ghi' then 'something' end) as e from t;",
-				Expected: []sql.Row{
-					{1, "abc"},
-					{2, "def"},
-					{3, "something"},
-				},
-			},
-			{
-				// https://github.com/dolthub/dolt/issues/8598
-				Skip:  true,
-				Query: "select i, (case e when 'abc' then e when 'def' then e when 'ghi' then 123 end) as e from t;",
-				Expected: []sql.Row{
-					{1, "abc"},
-					{2, "def"},
-					{3, "123"},
-				},
-			},
-		},
-	},
-	{
-		// https://github.com/dolthub/dolt/issues/8598
-		Name:    "enum cast to int and string",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"create table t (i int primary key, e enum('abc', 'def', 'ghi'));",
-			"insert into t values (1, 'abc'), (2, 'def'), (3, 'ghi');",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "select i, cast(e as signed) from t;",
-				Expected: []sql.Row{
-					{1, 1},
-					{2, 2},
-					{3, 3},
-				},
-			},
-			{
-				Query: "select i, cast(e as char) from t;",
-				Expected: []sql.Row{
-					{1, "abc"},
-					{2, "def"},
-					{3, "ghi"},
-				},
-			},
-			{
-				Query: "select i, cast(e as binary) from t;",
-				Expected: []sql.Row{
-					{1, []uint8("abc")},
-					{2, []uint8("def")},
-					{3, []uint8("ghi")},
-				},
-			},
-			{
-				Query: "select case when e = 'abc' then 'abc' when e = 'def' then 123 else e end from t",
-				Expected: []sql.Row{
-					{"abc"},
-					{"123"},
-					{"ghi"},
-				},
-			},
-		},
-	},
-	{
-		Name:    "enum errors",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"create table t (i int primary key, e enum('abc', 'def', 'ghi'));",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:          "insert into t values (1, 500)",
-				ExpectedErrStr: "value 500 is not valid for this Enum",
-			},
-			{
-				Query:          "insert into t values (1, -1)",
-				ExpectedErrStr: "value -1 is not valid for this Enum",
 			},
 		},
 	},
@@ -8728,29 +8505,238 @@ where
 			},
 		},
 	},
+
+	// Char tests
 	{
-		// https://github.com/dolthub/dolt/issues/9024
-		Name:    "subqueries should coerce union types",
-		Dialect: "mysql",
-		SetUpScript: []string{
-			"create table enum_table (i int primary key, e enum('a','b') not null)",
-			"insert into enum_table values (1,'a'),(2,'b')",
-			"create table uv (u int primary key, v varchar(10))",
-			"insert into uv values (0, 'bug'),(1,'ant'),(3, null)",
-		},
+		Name:        "char with auto_increment",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "select * from (select e from enum_table union select v from uv) sq",
-				Expected: []sql.Row{{"a"}, {"b"}, {"bug"}, {"ant"}, {nil}},
+				Query:          "create table bad (c char primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'c'",
+			},
+		},
+	},
+
+	// Varchar tests
+	{
+		Name:        "varchar with auto_increment",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "create table bad (vc char(100) primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'vc'", // We throw the wrong error
+			},
+		},
+	},
+
+	// Binary tests
+	{
+		Name:        "binary with auto_increment",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "create table bad (b binary(100) primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'b'",
+			},
+		},
+	},
+
+	// Varbinary tests
+	{
+		Name:        "varbinary with auto_increment",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "create table bad (vb varbinary(100) primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'vb'",
+			},
+		},
+	},
+
+	// Blob tests
+	{
+		Name:        "blob with auto_increment",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "create table bad (b blob primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'b'",
 			},
 			{
-				Query:    "with a as (select e from enum_table union select v from uv) select * from a",
-				Expected: []sql.Row{{"a"}, {"b"}, {"bug"}, {"ant"}, {nil}},
+				Query:          "create table bad (tb tinyblob primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'tb'",
+			},
+			{
+				Query:          "create table bad (mb mediumblob primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'mb'",
+			},
+			{
+				Query:          "create table bad (lb longblob primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'lb'",
+			},
+		},
+	},
+
+	// Text Tests
+	{
+		Name:        "text with auto_increment",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "create table bad (t text primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 't'", // We throw the wrong error
+			},
+			{
+				Query:          "create table bad (tt tinytext primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'tt'", // We throw the wrong error
+			},
+			{
+				Query:          "create table bad (mt mediumtext primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'mt'", // We throw the wrong error
+			},
+			{
+				Query:          "create table bad (lt longtext primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'lt'", // We throw the wrong error
 			},
 		},
 	},
 
 	// Enum tests
+	{
+		Name:    "enum errors",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (i int primary key, e enum('abc', 'def', 'ghi'));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "insert into t values (1, 500)",
+				ExpectedErrStr: "Data truncated for column 'e' at row 1",
+			},
+			{
+				Query:          "insert into t values (1, -1)",
+				ExpectedErrStr: "Data truncated for column 'e' at row 1",
+			},
+		},
+	},
+	{
+		Name:    "enums with default, case-sensitive collation (utf8mb4_0900_bin)",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE enumtest1 (pk int primary key, e enum('abc', 'XYZ'));",
+			"CREATE TABLE enumtest2 (pk int PRIMARY KEY, e enum('x ', 'X ', 'y', 'Y'));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO enumtest1 VALUES (1, 'abc'), (2, 'abc'), (3, 'XYZ');",
+				Expected: []sql.Row{{types.NewOkResult(3)}},
+			},
+			{
+				Query:    "SELECT * FROM enumtest1;",
+				Expected: []sql.Row{{1, "abc"}, {2, "abc"}, {3, "XYZ"}},
+			},
+			{
+				// enum values must match EXACTLY for case-sensitive collations
+				Query:          "INSERT INTO enumtest1 VALUES (10, 'ABC'), (11, 'aBc'), (12, 'xyz');",
+				ExpectedErrStr: "Data truncated for column 'e' at row 1",
+			},
+			{
+				Query: "SHOW CREATE TABLE enumtest1;",
+				Expected: []sql.Row{{
+					"enumtest1",
+					"CREATE TABLE `enumtest1` (\n  `pk` int NOT NULL,\n  `e` enum('abc','XYZ'),\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				// Trailing whitespace should be removed from enum values, except when using the "binary" charset and collation
+				Query: "SHOW CREATE TABLE enumtest2;",
+				Expected: []sql.Row{{
+					"enumtest2",
+					"CREATE TABLE `enumtest2` (\n  `pk` int NOT NULL,\n  `e` enum('x','X','y','Y'),\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "DESCRIBE enumtest1;",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"e", "enum('abc','XYZ')", "YES", "", nil, ""}},
+			},
+			{
+				Query: "DESCRIBE enumtest2;",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"e", "enum('x','X','y','Y')", "YES", "", nil, ""}},
+			},
+			{
+				Query:    "select data_type, column_type from information_schema.columns where table_name='enumtest1' and column_name='e';",
+				Expected: []sql.Row{{"enum", "enum('abc','XYZ')"}},
+			},
+			{
+				Query:    "select data_type, column_type from information_schema.columns where table_name='enumtest2' and column_name='e';",
+				Expected: []sql.Row{{"enum", "enum('x','X','y','Y')"}},
+			},
+		},
+	},
+	{
+		Name:    "enum columns work as expected in when clauses",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table enums (e enum('a'));",
+			"insert into enums values ('a');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select (case e when 'a' then 42 end) from enums",
+				Expected: []sql.Row{{42}},
+			},
+			{
+				Query:    "select (case 'a' when e then 42 end) from enums",
+				Expected: []sql.Row{{42}},
+			},
+		},
+	},
+	{
+		Name:    "enums with case-insensitive collation (utf8mb4_0900_ai_ci)",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE enumtest1 (pk int primary key, e enum('abc', 'XYZ') collate utf8mb4_0900_ai_ci);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "INSERT INTO enumtest1 VALUES (1, 'abc'), (2, 'abc'), (3, 'XYZ');",
+				Expected: []sql.Row{{types.NewOkResult(3)}},
+			},
+			{
+				Query: "SHOW CREATE TABLE enumtest1;",
+				Expected: []sql.Row{{
+					"enumtest1",
+					"CREATE TABLE `enumtest1` (\n  `pk` int NOT NULL,\n  `e` enum('abc','XYZ') COLLATE utf8mb4_0900_ai_ci,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query: "DESCRIBE enumtest1;",
+				Expected: []sql.Row{
+					{"pk", "int", "NO", "PRI", nil, ""},
+					{"e", "enum('abc','XYZ') COLLATE utf8mb4_0900_ai_ci", "YES", "", nil, ""}},
+			},
+			{
+				Query:    "select data_type, column_type from information_schema.columns where table_name='enumtest1' and column_name='e';",
+				Expected: []sql.Row{{"enum", "enum('abc','XYZ')"}},
+			},
+			{
+				Query:    "CREATE TABLE enumtest2 (pk int PRIMARY KEY, e enum('x ', 'X ', 'y', 'Y'));",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "INSERT INTO enumtest1 VALUES (10, 'ABC'), (11, 'aBc'), (12, 'xyz');",
+				Expected: []sql.Row{{types.NewOkResult(3)}},
+			},
+		},
+	},
 	{
 		Name:    "special case for not null default enum",
 		Dialect: "mysql",
@@ -8758,6 +8744,16 @@ where
 			"create table t (i int primary key, e enum('abc', 'def', 'ghi') not null);",
 		},
 		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t;",
+				Expected: []sql.Row{
+					{"t", "CREATE TABLE `t` (\n" +
+						"  `i` int NOT NULL,\n" +
+						"  `e` enum('abc','def','ghi') NOT NULL,\n" +
+						"  PRIMARY KEY (`i`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
 			{
 				Query: "insert into t(i) values (1)",
 				Expected: []sql.Row{
@@ -8767,6 +8763,13 @@ where
 			{
 				Query:       "insert into t values (2, null)",
 				ExpectedErr: sql.ErrInsertIntoNonNullableProvidedNull,
+			},
+			{
+				Skip:  true,
+				Query: "insert into t values (2, default)",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
 			},
 			{
 				Query: "select * from t;",
@@ -8807,23 +8810,20 @@ where
 				ExpectedErr: sql.ErrIncompatibleDefaultType,
 			},
 			{
-				Skip:        true,
 				Query:       "create table bad (e enum('a') default 0);",
-				ExpectedErr: sql.ErrIncompatibleDefaultType,
+				ExpectedErr: sql.ErrInvalidColumnDefaultValue,
 			},
 			{
 				Query:       "create table bad (e enum('a') default '');",
 				ExpectedErr: sql.ErrIncompatibleDefaultType,
 			},
 			{
-				Skip:        true,
 				Query:       "create table bad (e enum('a') default '1');",
-				ExpectedErr: sql.ErrIncompatibleDefaultType,
+				ExpectedErr: sql.ErrInvalidColumnDefaultValue,
 			},
 			{
-				Skip:        true,
 				Query:       "create table bad (e enum('a') default 1);",
-				ExpectedErr: sql.ErrIncompatibleDefaultType,
+				ExpectedErr: sql.ErrInvalidColumnDefaultValue,
 			},
 
 			{
@@ -9030,17 +9030,52 @@ where
 	},
 	{
 		// This is with STRICT_TRANS_TABLES or STRICT_ALL_TABLES in sql_mode
-		Skip:    true,
 		Name:    "enums with zero",
 		Dialect: "mysql",
 		SetUpScript: []string{
+			"SET sql_mode = 'STRICT_TRANS_TABLES';",
 			"create table t (e enum('a', 'b', 'c'));",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "insert into t values (0);",
-				// TODO should be truncated error, but this is the error we throw for empty string
-				ExpectedErrStr: "is not valid for this Enum",
+				Query:          "insert into t values (0);",
+				ExpectedErrStr: "Data truncated for column 'e' at row 1",
+			},
+			{
+				Query:          "insert into t values ('a'), (0), ('b');",
+				ExpectedErrStr: "Data truncated for column 'e' at row 2",
+			},
+			{
+				Query:       "create table tt (e enum('a', 'b', 'c') default 0)",
+				ExpectedErr: sql.ErrInvalidColumnDefaultValue,
+			},
+			{
+				Query: "create table et (e enum('a', 'b', '', 'c'));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query:          "insert into et values (0);",
+				ExpectedErrStr: "Data truncated for column 'e' at row 1",
+			},
+		},
+	},
+	{
+		Name:    "enums with zero strict all tables",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"SET sql_mode = 'STRICT_ALL_TABLES';",
+			"create table t (e enum('a', 'b', 'c'));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "insert into t values (0);",
+				ExpectedErrStr: "Data truncated for column 'e' at row 1",
+			},
+			{
+				Query:          "insert into t values ('a'), (0), ('b');",
+				ExpectedErrStr: "Data truncated for column 'e' at row 2",
 			},
 			{
 				Query:       "create table tt (e enum('a', 'b', 'c') default 0)",
@@ -9049,8 +9084,77 @@ where
 		},
 	},
 	{
+		Name:    "enums with zero non-strict mode",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"SET sql_mode = '';",
+			"create table t (e enum('a', 'b', 'c'));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into t values (0);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select * from t;",
+				Expected: []sql.Row{
+					{""},
+				},
+			},
+		},
+	},
+	{
+		Name:    "enum import error message validation",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"SET sql_mode = 'STRICT_TRANS_TABLES';",
+			"CREATE TABLE shirts (name VARCHAR(40), size ENUM('x-small', 'small', 'medium', 'large', 'x-large'), color ENUM('red', 'blue'));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "INSERT INTO shirts VALUES ('shirt1', 'x-small', 'red');",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query:          "INSERT INTO shirts VALUES ('shirt2', 'other', 'green');",
+				ExpectedErrStr: "Data truncated for column 'size' at row 1",
+			},
+		},
+	},
+	{
+		Name:    "enum default null validation",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"SET sql_mode = 'STRICT_TRANS_TABLES';",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CREATE TABLE test_enum (pk int NOT NULL, e enum('a','b') DEFAULT NULL, PRIMARY KEY (pk));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "INSERT INTO test_enum (pk) VALUES (1);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "SELECT pk, e FROM test_enum;",
+				Expected: []sql.Row{
+					{1, nil},
+				},
+			},
+		},
+	},
+	{
 		// This is with STRICT_TRANS_TABLES or STRICT_ALL_TABLES in sql_mode
-		Skip:    true,
+		Skip:    true, // TODO: Fix error type to match MySQL exactly (should be ErrInvalidColumnDefaultValue)
 		Name:    "enums with empty string",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -9085,16 +9189,14 @@ where
 		},
 	},
 	{
-		Skip:    true,
 		Name:    "enum conversion to strings",
 		Dialect: "mysql",
 		SetUpScript: []string{
-			"create table t (e enum('abc', 'defg', 'hjikl'));",
+			"create table t (e enum('abc', 'defg', 'hijkl'));",
 			"insert into t values(1), (2), (3);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				// We incorrectly use the numeric values of the enum, resulting in length of 1
 				Query: "select e, length(e) from t order by e;",
 				Expected: []sql.Row{
 					{"abc", 3},
@@ -9103,7 +9205,6 @@ where
 				},
 			},
 			{
-				// We incorrectly use the numeric values of the enum, resulting in length of 1
 				Query: "select e, concat(e, 'test') from t order by e;",
 				Expected: []sql.Row{
 					{"abc", "abctest"},
@@ -9111,10 +9212,149 @@ where
 					{"hijkl", "hijkltest"},
 				},
 			},
+			{
+				Query: "select e, e like 'a%', e like '%g' from t order by e;",
+				Expected: []sql.Row{
+					{"abc", true, false},
+					{"defg", false, true},
+					{"hijkl", false, false},
+				},
+			},
+			{
+				Skip:  true,
+				Query: "select e from t where e like 'a%' order by e;",
+				Expected: []sql.Row{
+					{"abc"},
+				},
+			},
+			{
+				Query: "select group_concat(e order by e) as grouped from t;",
+				Expected: []sql.Row{
+					{"abc,defg,hijkl"},
+				},
+			},
+			{
+				Query: "select e from t where e = 'abc';",
+				Expected: []sql.Row{
+					{"abc"},
+				},
+			},
+			{
+				Query: "select count(*) from t where e = 'defg';",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select (case e when 'abc' then 42 end) from t order by e;",
+				Expected: []sql.Row{
+					{42},
+					{nil},
+					{nil},
+				},
+			},
+			{
+				Query: "select case when e = 'abc' then 'abc' when e = 'defg' then 123 else e end from t order by e;",
+				Expected: []sql.Row{
+					{"abc"},
+					{"123"},
+					{"hijkl"},
+				},
+			},
+			{
+				Query: "select (case 'abc' when e then 42 end) from t order by e;",
+				Expected: []sql.Row{
+					{42},
+					{nil},
+					{nil},
+				},
+			},
+			{
+				Query: "select (case e when 'abc' then e when 'defg' then e when 'hijkl' then e end) as e from t order by e;",
+				Expected: []sql.Row{
+					{"abc"},
+					{"defg"},
+					{"hijkl"},
+				},
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/8598
+				Query: "select (case e when 'abc' then e when 'defg' then e when 'hijkl' then 'something' end) as e from t order by e;",
+				Expected: []sql.Row{
+					{"abc"},
+					{"defg"},
+					{"something"},
+				},
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/8598
+				Query: "select (case e when 'abc' then e when 'defg' then e when 'hijkl' then 123 end) as e from t order by e;",
+				Expected: []sql.Row{
+					{"123"},
+					{"abc"},
+					{"defg"},
+				},
+			},
+			{
+				Query: "select e, cast(e as signed) from t order by e;",
+				Expected: []sql.Row{
+					{"abc", 1},
+					{"defg", 2},
+					{"hijkl", 3},
+				},
+			},
+			{
+				Query: "select e, cast(e as char) from t order by e;",
+				Expected: []sql.Row{
+					{"abc", "abc"},
+					{"defg", "defg"},
+					{"hijkl", "hijkl"},
+				},
+			},
+			{
+				Query: "select e, cast(e as binary) from t order by e;",
+				Expected: []sql.Row{
+					{"abc", []uint8("abc")},
+					{"defg", []uint8("defg")},
+					{"hijkl", []uint8("hijkl")},
+				},
+			},
+			{
+				Query: "select e from t where e like 'a%'",
+				Expected: []sql.Row{
+					{"abc"},
+				},
+			},
 		},
 	},
 	{
-		Skip:    true,
+		Name:    "enum conversion with system variables",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (e enum('ON', 'OFF', 'AUTO'));",
+			"set autocommit = 'ON';",
+			"insert into t values(@@autocommit), ('OFF'), ('AUTO');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select e, @@autocommit, e = @@autocommit from t order by e;",
+				Expected: []sql.Row{
+					{"ON", 1, true},
+					{"OFF", 1, false},
+					{"AUTO", 1, false},
+				},
+			},
+			{
+				Query: "select e, concat(e, @@version_comment) from t order by e;",
+				Expected: []sql.Row{
+					{"ON", "ONDolt"},
+					{"OFF", "OFFDolt"},
+					{"AUTO", "AUTODolt"},
+				},
+			},
+		},
+	},
+	{
 		Name:    "enums with foreign keys",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -9157,7 +9397,7 @@ where
 			},
 			{
 				Query:       "insert into child1 values (3);",
-				ExpectedErr: sql.ErrForeignKeyParentViolation,
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
 				Query: "insert into child1 values ('x'), ('y');",
@@ -9167,11 +9407,11 @@ where
 			},
 			{
 				Query:       "insert into child1 values ('z');",
-				ExpectedErr: sql.ErrForeignKeyParentViolation,
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
 				Query:          "insert into child1 values ('a');",
-				ExpectedErrStr: "Data truncated for column 'e'",
+				ExpectedErrStr: "Data truncated for column 'e' at row 1",
 			},
 			{
 				Query: "select * from child1 order by e;",
@@ -9197,7 +9437,7 @@ where
 			},
 			{
 				Query:       "insert into child2 values (3);",
-				ExpectedErr: sql.ErrForeignKeyParentViolation,
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
 				Query: "insert into child2 values ('c');",
@@ -9207,14 +9447,14 @@ where
 			},
 			{
 				Query:       "insert into child2 values ('a');",
-				ExpectedErr: sql.ErrForeignKeyParentViolation,
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
 				Query: "select * from child2 order by e;",
 				Expected: []sql.Row{
-					{"c"},
-					{"c"},
 					{"b"},
+					{"c"},
+					{"c"},
 				},
 			},
 
@@ -9232,7 +9472,7 @@ where
 			},
 			{
 				Query:       "insert into child3 values (3);",
-				ExpectedErr: sql.ErrForeignKeyParentViolation,
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
 				Query: "insert into child3 values ('x'), ('y');",
@@ -9242,11 +9482,11 @@ where
 			},
 			{
 				Query:       "insert into child3 values ('z');",
-				ExpectedErr: sql.ErrForeignKeyParentViolation,
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
 				Query:       "insert into child3 values ('a');",
-				ExpectedErr: sql.ErrForeignKeyParentViolation,
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
 				Query: "select * from child3 order by e;",
@@ -9272,7 +9512,7 @@ where
 			},
 			{
 				Query:          "insert into child4 values (3);",
-				ExpectedErrStr: "Data truncated for column 'e'",
+				ExpectedErrStr: "Data truncated for column 'e' at row 1",
 			},
 			{
 				Query: "insert into child4 values ('q');",
@@ -9282,7 +9522,7 @@ where
 			},
 			{
 				Query:          "insert into child4 values ('a');",
-				ExpectedErrStr: "Data truncated for column 'e'",
+				ExpectedErrStr: "Data truncated for column 'e' at row 1",
 			},
 			{
 				Query: "select * from child4 order by e;",
@@ -9327,6 +9567,1581 @@ where
 				Query: "select * from child order by e;",
 				Expected: []sql.Row{
 					{"z"},
+				},
+			},
+		},
+	},
+	{
+		Name:    "enums in update and delete statements",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (pk int primary key, e enum('abc', 'def', 'ghi'));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into t values (1, 1), (2, 3), (3, 2);",
+				Expected: []sql.Row{
+					{types.NewOkResult(3)},
+				},
+			},
+			{
+				Query: "update t set e = 2 where e = 'ghi';",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 1,
+						Info: plan.UpdateInfo{
+							Matched:  1,
+							Updated:  1,
+							Warnings: 0,
+						},
+					}},
+				},
+			},
+			{
+				Query: "update t set e = 'ghi' where e = '3';",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 0,
+						Info: plan.UpdateInfo{
+							Matched:  0,
+							Updated:  0,
+							Warnings: 0,
+						},
+					}},
+				},
+			},
+			{
+				Query: "select * from t;",
+				Expected: []sql.Row{
+					{1, "abc"},
+					{2, "def"},
+					{3, "def"},
+				},
+			},
+			{
+				Query: "delete from t where e = 2;",
+				Expected: []sql.Row{
+					{types.NewOkResult(2)},
+				},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{1, "abc"},
+				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9024
+		Name:    "subqueries should coerce union types to enum",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table enum_table (i int primary key, e enum('a','b') not null)",
+			"insert into enum_table values (1,'a'),(2,'b')",
+			"create table uv (u int primary key, v varchar(10))",
+			"insert into uv values (0, 'bug'),(1,'ant'),(3, null)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from (select e from enum_table union select v from uv) sq",
+				Expected: []sql.Row{{"a"}, {"b"}, {"bug"}, {"ant"}, {nil}},
+			},
+			{
+				Query:    "with a as (select e from enum_table union select v from uv) select * from a",
+				Expected: []sql.Row{{"a"}, {"b"}, {"bug"}, {"ant"}, {nil}},
+			},
+		},
+	},
+
+	// Set tests
+	{
+		Name:    "find_in_set tests",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table set_tbl (i int primary key, s set('a','b','c'));",
+			"insert into set_tbl values (0, '');",
+			"insert into set_tbl values (1, 'a');",
+			"insert into set_tbl values (2, 'b');",
+			"insert into set_tbl values (3, 'c');",
+			"insert into set_tbl values (4, 'a,b');",
+			"insert into set_tbl values (6, 'b,c');",
+			"insert into set_tbl values (7, 'a,c');",
+			"insert into set_tbl values (8, 'a,b,c');",
+
+			"create table collate_tbl (i int primary key, s varchar(10) collate utf8mb4_0900_ai_ci);",
+			"insert into collate_tbl values (0, '');",
+			"insert into collate_tbl values (1, 'a');",
+			"insert into collate_tbl values (2, 'b');",
+			"insert into collate_tbl values (3, 'c');",
+			"insert into collate_tbl values (4, 'a,b');",
+			"insert into collate_tbl values (6, 'b,c');",
+			"insert into collate_tbl values (7, 'a,c');",
+			"insert into collate_tbl values (8, 'a,b,c');",
+
+			"create table text_tbl (i int primary key, s text);",
+			"insert into text_tbl values (0, '');",
+			"insert into text_tbl values (1, 'a');",
+			"insert into text_tbl values (2, 'b');",
+			"insert into text_tbl values (3, 'c');",
+			"insert into text_tbl values (4, 'a,b');",
+			"insert into text_tbl values (6, 'b,c');",
+			"insert into text_tbl values (7, 'a,c');",
+			"insert into text_tbl values (8, 'a,b,c');",
+
+			"create table enum_tbl (i int primary key, s enum('a','b','c'));",
+			"insert into enum_tbl values (0, 'a'), (1, 'b'), (2, 'c');",
+			"select i, s, find_in_set('a', s) from enum_tbl;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select i, find_in_set('a', s) from set_tbl;",
+				Expected: []sql.Row{
+					{0, 0},
+					{1, 1},
+					{2, 0},
+					{3, 0},
+					{4, 1},
+					{6, 0},
+					{7, 1},
+					{8, 1},
+				},
+			},
+			{
+				Query: "select i, find_in_set('A', s) from collate_tbl;",
+				Expected: []sql.Row{
+					{0, 0},
+					{1, 1},
+					{2, 0},
+					{3, 0},
+					{4, 1},
+					{6, 0},
+					{7, 1},
+					{8, 1},
+				},
+			},
+			{
+				Query: "select i, find_in_set('a', s) from text_tbl;",
+				Expected: []sql.Row{
+					{0, 0},
+					{1, 1},
+					{2, 0},
+					{3, 0},
+					{4, 1},
+					{6, 0},
+					{7, 1},
+					{8, 1},
+				},
+			},
+			{
+				Query: "select i, find_in_set('a', s) from enum_tbl;",
+				Expected: []sql.Row{
+					{0, 1},
+					{1, 0},
+					{2, 0},
+				},
+			},
+		},
+	},
+	{
+		Name:    "set with empty string",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (i int primary key, s set(''));",
+			"insert into t values (0, 0), (1, 1), (2, '');",
+			"create table tt (i int primary key, s set('something',''));",
+			"insert into tt values (0, 'something,'), (1, ',something,'), (2, ',,,,,,');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select i, s + 0, s from t;",
+				Expected: []sql.Row{
+					{0, float64(0), ""},
+					{1, float64(1), ""},
+					{2, float64(0), ""},
+				},
+			},
+			{
+				Query: "select i, s + 0, s from t where s = 0;",
+				Expected: []sql.Row{
+					{0, float64(0), ""},
+					{2, float64(0), ""},
+				},
+			},
+			{
+				Query: "select i, s + 0, s from t where s = '';",
+				Expected: []sql.Row{
+					{0, float64(0), ""},
+					{1, float64(1), ""}, // We miss this one
+					{2, float64(0), ""},
+				},
+			},
+			{
+				Query: "select i, s + 0, s from tt;",
+				Expected: []sql.Row{
+					{0, float64(3), "something,"},
+					{1, float64(3), "something,"},
+					{2, float64(2), ""},
+				},
+			},
+		},
+	},
+	{
+		Name:    "set conversion to strings",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (s set('abc', 'defg', 'hijkl'));",
+			"insert into t values(1), (2), (3), (7);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select s, length(s) from t order by s;",
+				Expected: []sql.Row{
+					{"abc", 3},
+					{"defg", 4},
+					{"abc,defg", 8},
+					{"abc,defg,hijkl", 14},
+				},
+			},
+			{
+				Query: "select s, concat(s, 'test') from t order by s;",
+				Expected: []sql.Row{
+					{"abc", "abctest"},
+					{"defg", "defgtest"},
+					{"abc,defg", "abc,defgtest"},
+					{"abc,defg,hijkl", "abc,defg,hijkltest"},
+				},
+			},
+			{
+				Query: "select s, s like 'a%', s like '%g' from t order by s;",
+				Expected: []sql.Row{
+					{"abc", true, false},
+					{"defg", false, true},
+					{"abc,defg", true, true},
+					{"abc,defg,hijkl", true, false},
+				},
+			},
+			{
+				Query: "select s from t where s like 'a%' order by s;",
+				Expected: []sql.Row{
+					{"abc"},
+					{"abc,defg"},
+					{"abc,defg,hijkl"},
+				},
+			},
+			{
+				Query: "select group_concat(s order by s) as grouped from t;",
+				Expected: []sql.Row{
+					{"abc,defg,abc,defg,abc,defg,hijkl"},
+				},
+			},
+			{
+				Query: "select s from t where s = 'abc';",
+				Expected: []sql.Row{
+					{"abc"},
+				},
+			},
+			{
+				Query: "select count(*) from t where s = 'defg';",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "select (case s when 'abc' then 42 end) from t order by s;",
+				Expected: []sql.Row{
+					{42},
+					{nil},
+					{nil},
+					{nil},
+				},
+			},
+			{
+				Query: "select case when s = 'abc' then 'abc' when s = 'defg' then 123 else s end from t order by s;",
+				Expected: []sql.Row{
+					{"abc"},
+					{"123"},
+					{"abc,defg"},
+					{"abc,defg,hijkl"},
+				},
+			},
+			{
+				Query: "select (case 'abc' when s then 42 end) from t order by s;",
+				Expected: []sql.Row{
+					{42},
+					{nil},
+					{nil},
+					{nil},
+				},
+			},
+			{
+				Query: "select (case s when 'abc' then s when 'defg' then s when 'hijkl' then s end) as s from t order by s;",
+				Expected: []sql.Row{
+					{nil},
+					{nil},
+					{"abc"},
+					{"defg"},
+				},
+			},
+			{
+				Query: "select (case s when 'abc' then s when 'defg' then s when 'hijkl' then 'something' end) as s from t order by s;",
+				Expected: []sql.Row{
+					{nil},
+					{nil},
+					{"abc"},
+					{"defg"},
+				},
+			},
+			{
+				Query: "select (case s when 'abc' then s when 'defg' then s when 'hijkl' then 123 end) as s from t order by s;",
+				Expected: []sql.Row{
+					{nil},
+					{nil},
+					{"abc"},
+					{"defg"},
+				},
+			},
+			{
+				Query: "select s, cast(s as signed) from t order by s;",
+				Expected: []sql.Row{
+					{"abc", 1},
+					{"defg", 2},
+					{"abc,defg", 3},
+					{"abc,defg,hijkl", 7},
+				},
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/9511
+				Skip:  true,
+				Query: "select s, cast(s as char) from t order by s;",
+				Expected: []sql.Row{
+					{"abc", "abc"},
+					{"abc,defg", "abc,defg"},
+					{"abc,defg,hijkl", "abc,defg,hijkl"},
+				},
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/9511
+				Skip:  true,
+				Query: "select s, cast(s as binary) from t order by s;",
+				Expected: []sql.Row{
+					{"abc", []uint8("abc")},
+					{"abc,defg", []uint8("abc,defg")},
+					{"abc,defg,hijkl", []uint8("abc,defg,hijkl")},
+				},
+			},
+		},
+	},
+	{
+		Name:    "set with duplicates",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (s set('a', 'b', 'c'));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into t values ('a,b,a,c,a,b,b,b,c,c,c,a,a');",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select s + 0, s from t;",
+				Expected: []sql.Row{
+					{float64(7), "a,b,c"},
+				},
+			},
+			{
+				// This is with STRICT_TRANS_TABLES; errors are warnings when not strict
+				Query:       "create table tt (s set('a', 'a'));",
+				ExpectedErr: sql.ErrDuplicateEntrySet,
+			},
+		},
+	},
+	{
+		Name:    "set in update and delete statements",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (pk int primary key, s set('abc', 'def'));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into t values (0, 0), (1, 1), (2, 3), (3, 2);",
+				Expected: []sql.Row{
+					{types.NewOkResult(4)},
+				},
+			},
+			{
+				Query: "update t set s = 3 where s = 2;",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 1,
+						Info: plan.UpdateInfo{
+							Matched:  1,
+							Updated:  1,
+							Warnings: 0,
+						},
+					}},
+				},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{0, ""},
+					{1, "abc"},
+					{2, "abc,def"},
+					{3, "abc,def"},
+				},
+			},
+			{
+				Query: "delete from t where s = 'abc,def'",
+				Expected: []sql.Row{
+					{types.NewOkResult(2)},
+				},
+			},
+			{
+				Query: "select * from t",
+				Expected: []sql.Row{
+					{0, ""},
+					{1, "abc"},
+				},
+			},
+		},
+	},
+	{
+		Name:    "set with auto increment",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (s set('a', 'b', 'c') primary key);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "create table t2 (s set('a', 'b', 'c') primary key auto_increment)",
+				ExpectedErrStr: "Incorrect column specifier for column 's'",
+			},
+			{
+				Query:          "alter table t modify s set('a', 'b', 'c') auto_increment;",
+				ExpectedErrStr: "Incorrect column specifier for column 's'",
+			},
+			{
+				Query:          "alter table t modify column s set('a', 'b', 'c') auto_increment;",
+				ExpectedErrStr: "Incorrect column specifier for column 's'",
+			},
+			{
+				Query:          "alter table t change s s set('a', 'b', 'c') auto_increment;",
+				ExpectedErrStr: "Incorrect column specifier for column 's'",
+			},
+			{
+				Query:          "alter table t change column s s set('a', 'b', 'c') auto_increment;",
+				ExpectedErrStr: "Incorrect column specifier for column 's'",
+			},
+		},
+	},
+	{
+		Name:        "set with default values",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Skip:        true,
+				Query:       "create table bad (s set('a', 'b', 'c') default 0);",
+				ExpectedErr: sql.ErrInvalidColumnDefaultValue,
+			},
+			{
+				Skip:        true,
+				Query:       "create table bad (s set('a', 'b', 'c') default 1);",
+				ExpectedErr: sql.ErrInvalidColumnDefaultValue,
+			},
+			{
+				Skip:        true,
+				Query:       "create table bad (s set('a', 'b', 'c') default 'notexists');",
+				ExpectedErr: sql.ErrInvalidColumnDefaultValue,
+			},
+			{
+				Query: "create table t0 (s set('a', 'b', 'c') default (0));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "insert into t0 values ();",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select * from t0",
+				Expected: []sql.Row{
+					{""},
+				},
+			},
+
+			{
+				Query: "create table t (s set('a', 'b', 'c') not null);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip:        true,
+				Query:       "insert into t values ();",
+				ExpectedErr: sql.ErrInsertIntoNonNullableDefaultNullColumn, // wrong error
+			},
+			{
+				Skip:        true,
+				Query:       "insert into t values (default);",
+				ExpectedErr: sql.ErrInsertIntoNonNullableDefaultNullColumn, // wrong error
+			},
+		},
+	},
+	{
+		Name:    "set with collations",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t1 (s set('a', 'b', 'c') collate utf8mb4_0900_ai_ci);",
+			"create table t2 (s set('a', 'b', 'c') collate utf8mb4_0900_bin);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t1;",
+				Expected: []sql.Row{
+					{"t1", "CREATE TABLE `t1` (\n" +
+						"  `s` set('a','b','c') COLLATE utf8mb4_0900_ai_ci\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "insert into t1 values ('A,B,c');",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select * from t1",
+				Expected: []sql.Row{
+					{"a,b,c"},
+				},
+			},
+			{
+				Query: "show create table t2;",
+				Expected: []sql.Row{
+					{"t2", "CREATE TABLE `t2` (\n" +
+						"  `s` set('a','b','c')\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query:          "insert into t2 values ('A,B,c');",
+				ExpectedErrStr: "Data truncated for column 's' at row 1",
+			},
+			{
+				Query:    "select * from t2",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:       "create table bad (s set('a', 'A') collate utf8mb4_0900_ai_ci);",
+				ExpectedErr: sql.ErrDuplicateEntrySet,
+			},
+		},
+	},
+	{
+		Name:    "set with foreign keys",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table parent (s set('a', 'b', 'c') primary key);",
+			"insert into parent values (1), (2);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "create table child0 (s set('a', 'b', 'c'), foreign key (s) references parent (s));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "insert into child0 values (1), (2), (NULL);",
+				Expected: []sql.Row{
+					{types.NewOkResult(3)},
+				},
+			},
+			{
+				Query: "select * from child0 order by s;",
+				Expected: []sql.Row{
+					{nil},
+					{"a"},
+					{"b"},
+				},
+			},
+
+			{
+				Query: "create table child1 (s set('x', 'y', 'z'), foreign key (s) references parent (s));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "insert into child1 values (1), (2);",
+				Expected: []sql.Row{
+					{types.NewOkResult(2)},
+				},
+			},
+			{
+				Query:       "insert into child1 values (3);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query: "insert into child1 values ('x'), ('y');",
+				Expected: []sql.Row{
+					{types.NewOkResult(2)},
+				},
+			},
+			{
+				Query:       "insert into child1 values ('z');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query:          "insert into child1 values ('a');",
+				ExpectedErrStr: "Data truncated for column 's' at row 1",
+			},
+			{
+				Query: "select * from child1 order by s;",
+				Expected: []sql.Row{
+					{"x"},
+					{"x"},
+					{"y"},
+					{"y"},
+				},
+			},
+
+			{
+				Query: "create table child2 (s set('b', 'c', 'a'), foreign key (s) references parent (s));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "insert into child2 values (1), (2);",
+				Expected: []sql.Row{
+					{types.NewOkResult(2)},
+				},
+			},
+			{
+				Query:       "insert into child2 values (3);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query: "insert into child2 values ('c');",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query:       "insert into child2 values ('a');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query: "select * from child2 order by s;",
+				Expected: []sql.Row{
+					{"b"},
+					{"c"},
+					{"c"},
+				},
+			},
+
+			{
+				Query: "create table child3 (s set('x', 'y', 'z', 'a', 'b', 'c'), foreign key (s) references parent (s));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "insert into child3 values (1), (2);",
+				Expected: []sql.Row{
+					{types.NewOkResult(2)},
+				},
+			},
+			{
+				Query:       "insert into child3 values (3);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query: "insert into child3 values ('x'), ('y');",
+				Expected: []sql.Row{
+					{types.NewOkResult(2)},
+				},
+			},
+			{
+				Query:       "insert into child3 values ('z');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query:       "insert into child3 values ('a');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query: "select * from child3 order by s;",
+				Expected: []sql.Row{
+					{"x"},
+					{"x"},
+					{"y"},
+					{"y"},
+				},
+			},
+
+			{
+				Query: "create table child4 (s set('q'), foreign key (s) references parent (s));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "insert into child4 values (1);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query:          "insert into child4 values (3);",
+				ExpectedErrStr: "Data truncated for column 's' at row 1",
+			},
+			{
+				Query: "insert into child4 values ('q');",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query:          "insert into child4 values ('a');",
+				ExpectedErrStr: "Data truncated for column 's' at row 1",
+			},
+			{
+				Query: "select * from child4 order by s;",
+				Expected: []sql.Row{
+					{"q"},
+					{"q"},
+				},
+			},
+		},
+	},
+	{
+		Name:    "set with foreign keys and cascade",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table parent (s set('a', 'b', 'c') primary key);",
+			"insert into parent values (1), (2);",
+			"create table child (s set('x', 'y', 'z'), foreign key (s) references parent (s) on update cascade on delete cascade);",
+			"insert into child values (1), (2);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "update parent set s = 'c' where s = 'a';",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
+				},
+			},
+			{
+				Query: "select * from child order by s;",
+				Expected: []sql.Row{
+					{"y"},
+					{"z"},
+				},
+			},
+			{
+				Query: "delete from parent where s = 'b';",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "select * from child order by s;",
+				Expected: []sql.Row{
+					{"z"},
+				},
+			},
+		},
+	},
+
+	// Bit Tests
+	{
+		Name:        "bit with auto_increment",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "create table bad (b bit(1) primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'b'",
+			},
+			{
+				Query:          "create table bad (b bit(64) primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'b'",
+			},
+		},
+	},
+
+	// Bool Tests
+	{
+		Name:    "bool with auto_increment",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table bool_tbl (b bool primary key auto_increment);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table bool_tbl;",
+				Expected: []sql.Row{
+					{"bool_tbl", "CREATE TABLE `bool_tbl` (\n" +
+						"  `b` tinyint(1) NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`b`)\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
+
+	// Int Tests
+	{
+		// https://github.com/dolthub/dolt/issues/9530
+		Name:    "int with auto_increment",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table tinyint_tbl (i tinyint primary key auto_increment);",
+			"create table smallint_tbl (i smallint primary key auto_increment);",
+			"create table mediumint_tbl (i mediumint primary key auto_increment);",
+			"create table int_tbl (i int primary key auto_increment);",
+			"create table bigint_tbl (i bigint primary key auto_increment);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Skip:        true,
+				Query:       "insert into tinyint_tbl values (999)",
+				ExpectedErr: sql.ErrValueOutOfRange,
+			},
+			{
+				Skip:  true,
+				Query: "insert into tinyint_tbl values (127)",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 1,
+						InsertID:     127,
+					}},
+				},
+			},
+			{
+				Skip:  true,
+				Query: "show create table tinyint_tbl;",
+				Expected: []sql.Row{
+					{"tinyint_tbl", "CREATE TABLE `tinyint_tbl` (\n" +
+						"  `i` tinyint NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`i`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=127 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Skip:        true,
+				Query:       "insert into smallint_tbl values (99999);",
+				ExpectedErr: sql.ErrValueOutOfRange,
+			},
+			{
+				Skip:  true,
+				Query: "insert into smallint_tbl values (32767);",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 1,
+						InsertID:     32767,
+					}},
+				},
+			},
+			{
+				Skip:  true,
+				Query: "show create table smallint_tbl;",
+				Expected: []sql.Row{
+					{"smallint_tbl", "CREATE TABLE `smallint_tbl` (\n" +
+						"  `i` smallint NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`i`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=36727 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Skip:        true,
+				Query:       "insert into mediumint_tbl values (99999999);",
+				ExpectedErr: sql.ErrValueOutOfRange,
+			},
+			{
+				Skip:  true,
+				Query: "insert into mediumint_tbl values (8388607);",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 1,
+						InsertID:     8388607,
+					}},
+				},
+			},
+			{
+				Skip:  true,
+				Query: "show create table mediumint_tbl;",
+				Expected: []sql.Row{
+					{"mediumint_tbl", "CREATE TABLE `mediumint_tbl` (\n" +
+						"  `i` mediumint NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`i`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=8388607 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Skip:        true,
+				Query:       "insert into int_tbl values (99999999999)",
+				ExpectedErr: sql.ErrValueOutOfRange,
+			},
+			{
+				Skip:  true,
+				Query: "insert into int_tbl values (2147483647)",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 1,
+						InsertID:     2147483647,
+					}},
+				},
+			},
+			{
+				Skip:  true,
+				Query: "show create table int_tbl;",
+				Expected: []sql.Row{
+					{"int_tbl", "CREATE TABLE `int_tbl` (\n" +
+						"  `i` int NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`i`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=2147483647 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Skip:        true,
+				Query:       "insert into bigint_tbl values (99999999999999999999);",
+				ExpectedErr: sql.ErrValueOutOfRange,
+			},
+			{
+				Skip:  true,
+				Query: "insert into bigint_tbl values (9223372036854775807);",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 1,
+						InsertID:     9223372036854775807,
+					}},
+				},
+			},
+			{
+				Skip:  true,
+				Query: "show create table bigint_tbl;",
+				Expected: []sql.Row{
+					{"bigint_tbl", "CREATE TABLE `bigint_tbl` (\n" +
+						"  `i` bigint NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`i`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=9223372036854775807 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9530
+		Name:    "unsigned int with auto_increment",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table tinyint_tbl (i tinyint unsigned primary key auto_increment);",
+			"create table smallint_tbl (i smallint unsigned primary key auto_increment);",
+			"create table mediumint_tbl (i mediumint unsigned primary key auto_increment);",
+			"create table int_tbl (i int unsigned primary key auto_increment);",
+			"create table bigint_tbl (i bigint unsigned primary key auto_increment);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Skip:        true,
+				Query:       "insert into tinyint_tbl values (999)",
+				ExpectedErr: sql.ErrValueOutOfRange,
+			},
+			{
+				Skip:  true,
+				Query: "insert into tinyint_tbl values (255)",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 1,
+						InsertID:     255,
+					}},
+				},
+			},
+			{
+				Skip:  true,
+				Query: "show create table tinyint_tbl;",
+				Expected: []sql.Row{
+					{"tinyint_tbl", "CREATE TABLE `tinyint_tbl` (\n" +
+						"  `i` tinyint NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`i`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=255 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Skip:        true,
+				Query:       "insert into smallint_tbl values (99999);",
+				ExpectedErr: sql.ErrValueOutOfRange,
+			},
+			{
+				Skip:  true,
+				Query: "insert into smallint_tbl values (65535);",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 1,
+						InsertID:     65535,
+					}},
+				},
+			},
+			{
+				Skip:  true,
+				Query: "show create table smallint_tbl;",
+				Expected: []sql.Row{
+					{"smallint_tbl", "CREATE TABLE `smallint_tbl` (\n" +
+						"  `i` smallint NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`i`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=65535 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Skip:        true,
+				Query:       "insert into mediumint_tbl values (999999999);",
+				ExpectedErr: sql.ErrValueOutOfRange,
+			},
+			{
+				Skip:  true,
+				Query: "insert into mediumint_tbl values (16777215);",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 1,
+						InsertID:     16777215,
+					}},
+				},
+			},
+			{
+				Skip:  true,
+				Query: "show create table mediumint_tbl;",
+				Expected: []sql.Row{
+					{"mediumint_tbl", "CREATE TABLE `mediumint_tbl` (\n" +
+						"  `i` mediumint NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`i`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=16777215 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Skip:        true,
+				Query:       "insert into int_tbl values (99999999999)",
+				ExpectedErr: sql.ErrValueOutOfRange,
+			},
+			{
+				Skip:  true,
+				Query: "insert into int_tbl values (4294967295)",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 1,
+						InsertID:     4294967295,
+					}},
+				},
+			},
+			{
+				Skip:  true,
+				Query: "show create table int_tbl;",
+				Expected: []sql.Row{
+					{"int_tbl", "CREATE TABLE `int_tbl` (\n" +
+						"  `i` int NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`i`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=4294967295 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Skip:        true,
+				Query:       "insert into bigint_tbl values (999999999999999999999);",
+				ExpectedErr: sql.ErrValueOutOfRange,
+			},
+			{
+				Skip:  true,
+				Query: "insert into bigint_tbl values (18446744073709551615);",
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 1,
+						InsertID:     18446744073709551615,
+					}},
+				},
+			},
+			{
+				Skip:  true,
+				Query: "show create table bigint_tbl;",
+				Expected: []sql.Row{
+					{"bigint_tbl", "CREATE TABLE `bigint_tbl` (\n" +
+						"  `i` bigint NOT NULL AUTO_INCREMENT,\n" +
+						"  PRIMARY KEY (`i`)\n" +
+						") ENGINE=InnoDB AUTO_INCREMENT=18446744073709551615 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
+
+	// Float Tests
+	{
+		Name:        "float with auto_increment",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "create table float_tbl (f float primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'f'",
+			},
+		},
+	},
+
+	// Double Tests
+	{
+		Name:        "double with auto_increment",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "create table double_tbl (d double primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'd'",
+			},
+		},
+	},
+
+	// Decimal Tests
+	{
+		Name:        "decimal with auto_increment",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "create table bad (d decimal primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'd'",
+			},
+			{
+				Query:          "create table bad (d decimal(65,30) primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'd'",
+			},
+		},
+	},
+	{
+		Name:    "decimals with foreign keys",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table parent (d decimal(4, 2) primary key);",
+			"insert into parent values (1.23), (45.67), (78.9);",
+			"create table parent_multi (d1 decimal(4,2), d2 decimal(3,1), primary key (d1, d2));",
+			"insert into parent_multi values (1.23, 4.5), (45.67, 78.9), (99.99, 0.1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "create table child_dec_4_2 (d decimal(4,2), foreign key (d) references parent (d));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "insert into child_dec_4_2 values (1.23), (45.67), (NULL);",
+				Expected: []sql.Row{
+					{types.NewOkResult(3)},
+				},
+			},
+			{
+				Query: "insert into child_dec_4_2 values (1.229999), (45.6711111), (78.90);",
+				Expected: []sql.Row{
+					{types.NewOkResult(3)},
+				},
+			},
+			{
+				Query:       "insert into child_dec_4_2 values (99.99);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query: "create table child_dec_4_1 (d decimal(4,1), foreign key (d) references parent (d));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query:       "insert into child_dec_4_1 values (78.9);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query:       "insert into child_dec_4_1 values (99.9);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query: "create table child_dec_3_2 (d decimal(3,2), foreign key (d) references parent (d));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "insert into child_dec_3_2 values (1.23);",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "create table child_dec_65_30 (d decimal(65,30), foreign key (d) references parent (d));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query:       "insert into child_dec_65_30 values (1.23);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query: "create table child_multi_4_2_3_1 (d1 decimal(4,2), d2 decimal(3,1), foreign key (d1, d2) references parent_multi (d1, d2));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				}},
+			{
+				Query: "insert into child_multi_4_2_3_1 values (1.23, 4.5), (45.67, 78.9), (NULL, NULL);",
+				Expected: []sql.Row{
+					{types.NewOkResult(3)},
+				},
+			},
+			{
+				Query:       "insert into child_multi_4_2_3_1 values (1.23, 9.9);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+		},
+	},
+
+	// Date Tests
+	{
+		Name:        "date with auto_increment",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "create table bad (d date primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'd'",
+			},
+		},
+	},
+
+	// Datetime Tests
+	{
+		Name:        "datetime with auto_increment",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "create table bad (dt datetime primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'dt'",
+			},
+			{
+				Query:          "create table bad (dt datetime(6) primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'dt'",
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9544
+		Name:    "datetime with foreign keys",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table parent_datetime0 (dt datetime primary key);",
+			"insert into parent_datetime0 values ('2001-02-03 12:34:56');",
+			"create table parent_datetime6 (dt datetime(6) primary key);",
+			"insert into parent_datetime6 values ('2001-02-03 12:34:56');",
+			"insert into parent_datetime6 values ('2001-02-03 12:34:56.123456');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Skip:  true,
+				Query: "create table child_datetime0 (dt datetime, foreign key (dt) references parent_datetime6(dt));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip:        true,
+				Query:       "insert into child_datetime0 values ('2001-02-03 12:34:56');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Skip:  true,
+				Query: "create table child_datetime6 (dt datetime(6), foreign key (dt) references parent_datetime0(dt));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip:        true,
+				Query:       "insert into child_datetime6 values ('2001-02-03 12:34:56');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+
+			{
+				Skip:  true,
+				Query: "create table child1_timestamp0 (ts timestamp, foreign key (ts) references parent_datetime0(dt));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip:        true,
+				Query:       "insert into child1_timestamp0 values ('2001-02-03 12:34:56');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Skip:  true,
+				Query: "create table child2_timestamp0 (ts timestamp, foreign key (ts) references parent_datetime6(dt));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip:        true,
+				Query:       "insert into child2_timestamp0 values ('2001-02-03 12:34:56');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+
+			{
+				Skip:  true,
+				Query: "create table child1_timestamp6 (ts timestamp(6), foreign key (ts) references parent_datetime0(dt));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip:        true,
+				Query:       "insert into child1_timestamp6 values ('2001-02-03 12:34:56');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Skip:  true,
+				Query: "create table child2_timestamp6 (ts timestamp(6), foreign key (ts) references parent_datetime6(dt));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip:        true,
+				Query:       "insert into child2_timestamp6 values ('2001-02-03 12:34:56');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Skip:        true,
+				Query:       "insert into child2_timestamp6 values ('2001-02-03 12:34:56.123456');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+		},
+	},
+
+	// Timestamp Tests
+	{
+		Name:        "timestamp with auto_increment",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "create table bad (ts timestamp primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'ts'",
+			},
+			{
+				Query:          "create table bad (ts timestamp(6) primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'ts'",
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9544
+		Name:    "timestamps with foreign keys",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table parent_timestamp0 (ts timestamp primary key);",
+			"insert into parent_timestamp0 values ('2001-02-03 12:34:56');",
+			"create table parent_timestamp6 (ts timestamp(6) primary key);",
+			"insert into parent_timestamp6 values ('2001-02-03 12:34:56');",
+			"insert into parent_timestamp6 values ('2001-02-03 12:34:56.123456');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Skip:  true,
+				Query: "create table child_timestamp0 (ts timestamp, foreign key (ts) references parent_timestamp6(ts));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip:        true,
+				Query:       "insert into child_timestamp0 values ('2001-02-03 12:34:56');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Skip:  true,
+				Query: "create table child_timestamp6 (ts timestamp(6), foreign key (ts) references parent_timestamp0(ts));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip:        true,
+				Query:       "insert into child_timestamp6 values ('2001-02-03 12:34:56');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+
+			{
+				Skip:  true,
+				Query: "create table child1_datetime0 (dt datetime, foreign key (dt) references parent_timestamp0(ts));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip:        true,
+				Query:       "insert into child1_datetime0 values ('2001-02-03 12:34:56');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Skip:  true,
+				Query: "create table child2_datetime0 (dt datetime, foreign key (dt) references parent_timestamp6(ts));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip:        true,
+				Query:       "insert into child2_datetime0 values ('2001-02-03 12:34:56');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+
+			{
+				Skip:  true,
+				Query: "create table child1_datetime6 (dt datetime(6), foreign key (dt) references parent_timestamp0(ts));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip:        true,
+				Query:       "insert into child1_datetime6 values ('2001-02-03 12:34:56');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Skip:  true,
+				Query: "create table child2_datetime6 (dt datetime(6), foreign key (dt) references parent_timestamp6(ts));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip:        true,
+				Query:       "insert into child2_datetime6 values ('2001-02-03 12:34:56');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Skip:        true,
+				Query:       "insert into child2_datetime6 values ('2001-02-03 12:34:56.123456');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+		},
+	},
+
+	// Time Tests
+	{
+		Name:        "time with auto_increment",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "create table bad (t time primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 't'",
+			},
+			{
+				Query:          "create table bad (t time(6) primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 't'",
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9544
+		Name:    "time with foreign keys",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table parent_time0 (t time primary key);",
+			"insert into parent_time0 values ('12:34:56');",
+			"create table parent_time6 (t time(6) primary key);",
+			"insert into parent_time6 values ('12:34:56');",
+			"insert into parent_time6 values ('12:34:56.123456');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "create table child_time0 (t time, foreign key (t) references parent_time6(t));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip:        true,
+				Query:       "insert into child_time0 values ('12:34:56');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query: "create table child_time6 (t time(6), foreign key (t) references parent_time0(t));",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Skip:        true,
+				Query:       "insert into child_time6 values ('12:34:56');",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+		},
+	},
+
+	// Year Tests
+	{
+		Name:        "year with auto_increment",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "create table bad (y year primary key auto_increment);",
+				ExpectedErrStr: "Incorrect column specifier for column 'y'",
+			},
+		},
+	},
+
+	{
+		// TODO: This test currently fails in Doltgres because Doltgres does not allow `create table...as select...`
+		// even though it's a valid Postgres query. Remove Dialect tag once fixed in Doltgres
+		// https://github.com/dolthub/doltgresql/issues/1669
+		Dialect: "mysql",
+		Name:    "union field indexes",
+		SetUpScript: []string{
+			"create table t(id int primary key auto_increment, words varchar(100))",
+			"insert into t(words) values ('foo'),('bar'),('baz'),('zap')",
+			"create table t2 as select * from t",
+			"update t2 set words = 'boo' where id = 1",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from " +
+					"(select id, words from t union " +
+					"select id,words from t2) as combined where combined.id=1",
+				Expected: []sql.Row{
+					{1, "foo"},
+					{1, "boo"},
+				},
+			},
+			{
+				Query: "select * from " +
+					"(select 'parent' as tbl, id, words from t union " +
+					"select 'child' as tbl, id,words from t2) as combined where combined.id=1",
+				Expected: []sql.Row{
+					{"parent", 1, "foo"},
+					{"child", 1, "boo"},
 				},
 			},
 		},

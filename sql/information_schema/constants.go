@@ -805,7 +805,6 @@ var keywordsArray = [747]Keyword{
 	{"WAIT", 0},
 	{"WARNINGS", 0},
 	{"WEEK", 0},
-	{"WEIGHT_STRING", 0},
 	{"WHEN", 1},
 	{"WHERE", 1},
 	{"WHILE", 1},

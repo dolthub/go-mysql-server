@@ -22,7 +22,6 @@ import (
 
 	"github.com/dolthub/vitess/go/mysql"
 
-	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -241,7 +240,7 @@ func (a *AlterEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	var err error
 	ed := a.Event
 	eventAlteredTime := ctx.QueryTime()
-	sysTz := gmstime.SystemTimezoneOffset()
+	sysTz := sql.SystemTimezoneOffset()
 	ed.LastAltered = eventAlteredTime
 	ed.Definer = a.Definer
 

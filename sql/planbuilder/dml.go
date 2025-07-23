@@ -593,7 +593,7 @@ func hasJoinNode(node sql.Node) bool {
 }
 
 func getResolvedTablesToUpdate(_ *sql.Context, node sql.Node, ij sql.Node) (resolvedTables []*plan.ResolvedTable, err error) {
-	namesOfTablesToBeUpdated := getTablesToBeUpdated(node)
+	namesOfTablesToBeUpdated := plan.GetTablesToBeUpdated(node)
 	resolvedTablesMap := getTablesByName(ij)
 
 	for tableToBeUpdated, _ := range namesOfTablesToBeUpdated {
@@ -660,24 +660,6 @@ func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 		return true
 	})
 	return table
-}
-
-// getTablesToBeUpdated takes a node and looks for the tables to modified by a SetField.
-func getTablesToBeUpdated(node sql.Node) map[string]struct{} {
-	ret := make(map[string]struct{})
-
-	transform.InspectExpressions(node, func(e sql.Expression) bool {
-		switch e := e.(type) {
-		case *expression.SetField:
-			gf := e.LeftChild.(*expression.GetField)
-			ret[gf.Table()] = struct{}{}
-			return false
-		}
-
-		return true
-	})
-
-	return ret
 }
 
 func (b *Builder) buildInto(inScope *scope, into *ast.Into) {

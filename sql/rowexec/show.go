@@ -22,7 +22,6 @@ import (
 	"sort"
 	"strings"
 
-	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -127,7 +126,7 @@ func (b *BaseBuilder) buildShowProcessList(ctx *sql.Context, n *plan.ShowProcess
 			progress := proc.Progress[name]
 
 			printer := sql.NewTreePrinter()
-			_ = printer.WriteNode("\n" + progress.String())
+			_ = printer.WriteNode("%s", "\n"+progress.String())
 			children := []string{}
 			for _, partitionProgress := range progress.PartitionsProgress {
 				children = append(children, partitionProgress.String())
@@ -551,7 +550,7 @@ func (b *BaseBuilder) buildShowVariables(ctx *sql.Context, n *plan.ShowVariables
 			}
 			res, _, err = types.Boolean.Convert(ctx, res)
 			if err != nil {
-				ctx.Warn(1292, err.Error())
+				ctx.Warn(1292, "%s", err.Error())
 				continue
 			}
 			if res.(int8) == 0 {
@@ -889,7 +888,7 @@ func (b *BaseBuilder) buildShowCreateEvent(ctx *sql.Context, n *plan.ShowCreateE
 	}
 
 	// Convert the Event's timestamps into the session's timezone (they are always stored in UTC)
-	newEvent := n.Event.ConvertTimesFromUTCToTz(gmstime.SystemTimezoneOffset())
+	newEvent := n.Event.ConvertTimesFromUTCToTz(sql.SystemTimezoneOffset())
 	n.Event = *newEvent
 
 	// TODO: fill time_zone with appropriate values

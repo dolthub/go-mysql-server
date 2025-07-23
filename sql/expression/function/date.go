@@ -22,7 +22,6 @@ import (
 
 	"github.com/shopspring/decimal"
 
-	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -314,7 +313,7 @@ func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 		return nil, err
 	}
 
-	ctz, ok := gmstime.ConvertTimeZone(date.(time.Time), stz, "UTC")
+	ctz, ok := sql.ConvertTimeZone(date.(time.Time), stz, "UTC")
 	if ok {
 		date = ctz
 	}
@@ -408,7 +407,7 @@ func (r *FromUnixtime) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	if err != nil {
 		return nil, err
 	}
-	t, _ = gmstime.ConvertTimeZone(t, "UTC", tz)
+	t, _ = sql.ConvertTimeZone(t, "UTC", tz)
 	if len(vals) == 1 {
 		return t, nil // If format is omitted, this function returns a DATETIME value.
 	}
