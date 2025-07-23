@@ -1938,8 +1938,16 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 				continue
 			}
 
+			// Capture the current database, so that we can ensure it gets set back to this value
+			// after we adjust it to parse each database's triggers.
+			originalDatabase := ctx.GetCurrentDatabase()
+			defer ctx.SetCurrentDatabase(originalDatabase)
+
 			var triggerPlans []*plan.CreateTrigger
 			for _, trigger := range triggers {
+				// Because we have to parse/resolve the CREATE TRIGGER statement again, we update the
+				// session's current database so that ParseWithOptions can correctly resolve references.
+				ctx.SetCurrentDatabase(db.Database.Name())
 				triggerSqlMode := NewSqlModeFromString(trigger.SqlMode)
 				// TODO: figure out how auth works in this case
 				parsedTrigger, _, err := planbuilder.ParseWithOptions(ctx, c, trigger.CreateStatement, triggerSqlMode.ParserOptions())
@@ -1954,6 +1962,9 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 				triggerPlan.SqlMode = triggerSqlMode.String()
 				triggerPlans = append(triggerPlans, triggerPlan)
 			}
+
+			// Set the context back to the original database, since we changed it to parse each database's triggers
+			ctx.SetCurrentDatabase(originalDatabase)
 
 			beforeTriggers, afterTriggers := plan.OrderTriggers(triggerPlans)
 			var beforeDelete []*plan.CreateTrigger
