@@ -58,7 +58,7 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 		}
 
 		// if the index is not reversible, do nothing
-		if oi, ok := lookup.Index.(sql.OrderedIndex); ok && (!oi.Reversible() || oi.Order() == sql.IndexOrderNone) {
+		if ordIdx, isOrdIdx := lookup.Index.(sql.OrderedIndex); !isOrdIdx || !ordIdx.Reversible() || ordIdx.Order() == sql.IndexOrderNone {
 			return n, transform.SameTree, nil
 		}
 		lookup = sql.NewIndexLookup(
@@ -131,7 +131,7 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 			)
 		}
 		// Some Primary Keys (like doltHistoryTable) are not in order
-		if oi, isOrderedIdx := idx.(sql.OrderedIndex); isOrderedIdx && ((lookup.IsReverse && !oi.Reversible()) || oi.Order() == sql.IndexOrderNone) {
+		if oi, isOrdIdx := idx.(sql.OrderedIndex); !isOrdIdx || (lookup.IsReverse && !oi.Reversible()) || oi.Order() == sql.IndexOrderNone {
 			return n, transform.SameTree, nil
 		}
 		if !idx.CanSupport(ctx, lookup.Ranges.(sql.MySQLRangeCollection).ToRanges()...) {
@@ -188,7 +188,8 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
-				// If we could not replace the IndexedTableAccess with a reversed one, result is same, so abandon
+				// If we could not replace the IndexedTableAccess with a reversed one (due to lack of reversible index)
+				// same = true, so just continue
 				if same {
 					continue
 				}
@@ -231,7 +232,8 @@ func buildReverseIndexedTable(ctx *sql.Context, node sql.Node) (sql.Node, transf
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			if oi, isOrderedIdx := lookup.Index.(sql.OrderedIndex); isOrderedIdx && (!oi.Reversible() || oi.Order() == sql.IndexOrderNone) {
+			// if the index is not reversible, do nothing
+			if ordIdx, isOrdIdx := lookup.Index.(sql.OrderedIndex); !isOrdIdx || !ordIdx.Reversible() || ordIdx.Order() == sql.IndexOrderNone {
 				return n, transform.SameTree, nil
 			}
 			lookup = sql.NewIndexLookup(
