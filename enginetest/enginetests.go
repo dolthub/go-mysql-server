@@ -6148,6 +6148,9 @@ func TestSQLLogicTests(t *testing.T, harness Harness) {
 }
 
 func TestTimeQueryTests(t *testing.T, harness Harness) {
+	// "America/Phoenix" is a non-UTC time zone that does not observe daylight savings time
+	phoenixTimeZone, _ := time.LoadLocation("America/Phoenix")
+	mockNow := time.Date(2025, time.July, 23, 9, 43, 0, 0, phoenixTimeZone)
 	for _, script := range queries.TimeQueryTests {
 		if sh, ok := harness.(SkippingHarness); ok {
 			if sh.SkipQueryTest(script.Name) {
@@ -6157,7 +6160,10 @@ func TestTimeQueryTests(t *testing.T, harness Harness) {
 				continue
 			}
 		}
-		TestScript(t, harness, script)
+		sql.RunWithNowFunc(func() time.Time { return mockNow }, func() error {
+			TestScript(t, harness, script)
+			return nil
+		})
 	}
 }
 

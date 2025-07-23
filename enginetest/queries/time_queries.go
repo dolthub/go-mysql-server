@@ -3,6 +3,7 @@ package queries
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"time"
 )
 
 var TimeQueryTests = []ScriptTest{
@@ -18,7 +19,7 @@ var TimeQueryTests = []ScriptTest{
 			},
 			{
 				Query:    "select now()",
-				Expected: []sql.Row{{""}}, // july 23, 2025 16:43
+				Expected: []sql.Row{{time.Date(2025, time.July, 23, 16, 43, 0, 0, time.UTC)}},
 			},
 			{
 				Query:    "set time_zone='-5:00'",
@@ -26,16 +27,16 @@ var TimeQueryTests = []ScriptTest{
 			},
 			{
 				Query:    "select now()",
-				Expected: []sql.Row{{""}}, // july 23, 2025 11:43
+				Expected: []sql.Row{{time.Date(2025, time.July, 23, 11, 43, 0, 0, time.UTC)}},
 			},
 			{
-				// doesn't observe daylight savings time so time zone does not change
+				// doesn't observe daylight savings time
 				Query:    "set time_zone='Pacific/Honolulu'",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "select now()",
-				Expected: []sql.Row{{""}}, // july 23, 2025 6:43am
+				Expected: []sql.Row{{time.Date(2025, time.July, 23, 6, 43, 0, 0, time.UTC)}},
 			},
 			{
 				// https://github.com/dolthub/dolt/issues/9559
