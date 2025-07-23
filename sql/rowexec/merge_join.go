@@ -216,7 +216,7 @@ func (i *mergeJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 			} else if err != nil {
 				return nil, err
 			}
-			// merge join assumes children area sorted in ascending order, so we need to invert the comparison to
+			// merge join assumes children are sorted in ascending order, so we need to invert the comparison to
 			// iterate over descending order.
 			if i.isReversed {
 				res = -res
