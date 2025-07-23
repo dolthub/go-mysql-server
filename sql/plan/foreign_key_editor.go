@@ -550,8 +550,8 @@ func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, ro
 		reference.ForeignKey.ParentTable, reference.RowMapper.GetKeyString(row))
 }
 
-// validateColumnTypeConstraints validates that column types meet MySQL foreign key requirements.
-// Centralizes type validation for decimal scale matching and exact time type precision matching.
+// validateColumnTypeConstraints enforces MySQL-compatible foreign key type validation
+// between child and parent columns in a foreign key relationship.
 func (reference *ForeignKeyReferenceHandler) validateColumnTypeConstraints(ctx *sql.Context, childRow sql.Row, parentRow sql.Row) error {
 	mapper := reference.RowMapper
 	if mapper.Index == nil {
@@ -565,24 +565,24 @@ func (reference *ForeignKeyReferenceHandler) validateColumnTypeConstraints(ctx *
 
 		parentType := parentCol.Type
 		childType := mapper.SourceSch[mapper.IndexPositions[parentIdx]].Type
-
-		// Check for constraint violations
 		hasViolation := false
 
-		// Decimal scale must match
-		if childDecimal, ok := childType.(sql.DecimalType); ok {
-			if parentDecimal, ok := parentType.(sql.DecimalType); ok {
-				hasViolation = childDecimal.Scale() != parentDecimal.Scale()
-			}
+		// For decimal types, scales must match exactly
+		childDecimal, childOk := childType.(sql.DecimalType)
+		parentDecimal, parentOk := parentType.(sql.DecimalType)
+		if childOk && parentOk {
+			hasViolation = childDecimal.Scale() != parentDecimal.Scale()
 		}
 
-		// Time types must match exactly (including precision)
-		if !hasViolation {
-			isChildTime := types.IsTime(childType) || types.IsTimespan(childType)
-			isParentTime := types.IsTime(parentType) || types.IsTimespan(parentType)
-			if isChildTime && isParentTime {
-				hasViolation = !childType.Equals(parentType)
-			}
+		// For time types, require exact type matching (including precision)
+		// TODO: The TIME type currently normalizes all precisions to TIME(6) internally,
+		// which means TIME and TIME(n) are all treated as TIME(6). This prevents proper
+		// precision validation between different TIME types in foreign keys.
+		// See time.go:50-53 - "TIME is implemented as TIME(6)."
+		isChildTime := types.IsTime(childType) || types.IsTimespan(childType)
+		isParentTime := types.IsTime(parentType) || types.IsTimespan(parentType)
+		if isChildTime && isParentTime {
+			hasViolation = hasViolation || !childType.Equals(parentType)
 		}
 
 		if hasViolation {
