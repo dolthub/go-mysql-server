@@ -129,14 +129,14 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 
 				// If LookupJoin is injective, then there will only be one right lookup per left row
 				if n.Injective || matchRate == 0 {
-					return lBest*seqIOCostFactor + lBest*randIOCostFactor, nil
+					return lBest*seqIOCostFactor + lBest*(seqIOCostFactor+randIOCostFactor), nil
 				}
 				// Fanout is the average number of right-side rows that match each left-side row
 				fanout := 2.0
 				// The total expected number of right row lookups
-				expectedRightRows := lBest * matchRate * fanout
+				expectedRightRows := selfJoinCard * matchRate * fanout
 				// Estimate for reading each left row and each expected right row
-				return lBest*seqIOCostFactor + expectedRightRows*randIOCostFactor, nil
+				return lBest*seqIOCostFactor + expectedRightRows*(seqIOCostFactor+randIOCostFactor), nil
 			case *ConcatJoin:
 				return c.costConcatJoin(ctx, n, s)
 			}
