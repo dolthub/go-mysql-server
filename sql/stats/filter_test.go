@@ -962,3 +962,121 @@ func TestUpdateCounts(t *testing.T) {
 		})
 	}
 }
+
+func TestHistogramUnion(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	tests := []struct {
+		types  []sql.Type
+		h1, h2 []sql.HistogramBucket
+		exp    []sql.HistogramBucket
+	}{
+		{
+			types: []sql.Type{types.Int64},
+			h1: []sql.HistogramBucket{
+				&Bucket{BoundVal: []interface{}{9}},
+			},
+			h2: []sql.HistogramBucket{
+				&Bucket{BoundVal: []interface{}{1}},
+			},
+			exp: []sql.HistogramBucket{
+				&Bucket{BoundVal: []interface{}{1}},
+				&Bucket{BoundVal: []interface{}{9}},
+			},
+		},
+		{
+			types: []sql.Type{types.Int64, types.Int64},
+			h1: []sql.HistogramBucket{
+				&Bucket{BoundVal: []interface{}{1,1}},
+				&Bucket{BoundVal: []interface{}{1,9}},
+			},
+			h2: []sql.HistogramBucket{
+				&Bucket{BoundVal: []interface{}{9,9}},
+			},
+			exp: []sql.HistogramBucket{
+				&Bucket{BoundVal: []interface{}{1,1}},
+				&Bucket{BoundVal: []interface{}{1,9}},
+				&Bucket{BoundVal: []interface{}{9,9}},
+			},
+		},
+		{
+			types: []sql.Type{types.Int64, types.Int64},
+			h1: []sql.HistogramBucket{
+				&Bucket{BoundVal: []interface{}{1,9}},
+				&Bucket{BoundVal: []interface{}{9,9}},
+			},
+			h2: []sql.HistogramBucket{
+				&Bucket{BoundVal: []interface{}{1,1}},
+			},
+			exp: []sql.HistogramBucket{
+				&Bucket{BoundVal: []interface{}{1,1}},
+				&Bucket{BoundVal: []interface{}{1,9}},
+				&Bucket{BoundVal: []interface{}{9,9}},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("union: %v and %v", tt.h1, tt.h2), func(t *testing.T) {
+			res, err := Union(ctx, tt.h1, tt.h2, tt.types)
+			require.NoError(t, err)
+			require.Equal(t, tt.exp, res)
+		})
+	}
+}
+
+func TestHistogramIntersect(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	tests := []struct {
+		types  []sql.Type
+		h1, h2 []sql.HistogramBucket
+		exp    []sql.HistogramBucket
+	}{
+		{
+			types: []sql.Type{types.Int64},
+			h1: []sql.HistogramBucket{
+				&Bucket{BoundVal: []interface{}{1}},
+			},
+			h2: []sql.HistogramBucket{
+				&Bucket{BoundVal: []interface{}{1}},
+			},
+			exp: []sql.HistogramBucket{
+				&Bucket{BoundVal: []interface{}{1}},
+			},
+		},
+		{
+			types: []sql.Type{types.Int64, types.Int64},
+			h1: []sql.HistogramBucket{
+				&Bucket{BoundVal: []interface{}{1,1}},
+				&Bucket{BoundVal: []interface{}{1,9}},
+			},
+			h2: []sql.HistogramBucket{
+				&Bucket{BoundVal: []interface{}{1,1}},
+				&Bucket{BoundVal: []interface{}{9,9}},
+			},
+			exp: []sql.HistogramBucket{
+				&Bucket{BoundVal: []interface{}{1,1}},
+			},
+		},
+		{
+			types: []sql.Type{types.Int64, types.Int64},
+			h1: []sql.HistogramBucket{
+				&Bucket{BoundVal: []interface{}{1,1}},
+				&Bucket{BoundVal: []interface{}{9,9}},
+			},
+			h2: []sql.HistogramBucket{
+				&Bucket{BoundVal: []interface{}{1,1}},
+				&Bucket{BoundVal: []interface{}{9,9}},
+			},
+			exp: []sql.HistogramBucket{
+				&Bucket{BoundVal: []interface{}{1,1}},
+				&Bucket{BoundVal: []interface{}{9,9}},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("union: %v and %v", tt.h1, tt.h2), func(t *testing.T) {
+			res, err := Intersect(ctx, tt.h1, tt.h2, tt.types)
+			require.NoError(t, err)
+			require.Equal(t, tt.exp, res)
+		})
+	}
+}
