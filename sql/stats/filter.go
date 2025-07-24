@@ -47,7 +47,6 @@ func Union(ctx *sql.Context, b1, b2 []sql.HistogramBucket, types []sql.Type) ([]
 				ret = append(ret, b1[i])
 				i++
 				j++
-				break
 			}
 		}
 	}
