@@ -54,7 +54,7 @@ var TimeQueryTests = []ScriptTest{
 				Expected: []sql.Row{{time.Date(2025, time.July, 23, 6, 43, 21, 0, time.UTC)}},
 			},
 			{
-				Query:       "set time_zone='invalid time zone",
+				Query:       "set time_zone='invalid time zone'",
 				ExpectedErr: sql.ErrInvalidTimeZone,
 			},
 		},
