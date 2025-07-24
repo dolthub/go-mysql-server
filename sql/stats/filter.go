@@ -88,7 +88,7 @@ func Intersect(ctx *sql.Context, b1, b2 []sql.HistogramBucket, types []sql.Type)
 				break
 			}
 			// if keys are equal, merge buckets
-			if k == len(key1) - 1 {
+			if k == len(key1)-1 {
 				ret = append(ret, b1[i])
 				i++
 				j++

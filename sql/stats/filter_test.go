@@ -986,31 +986,31 @@ func TestHistogramUnion(t *testing.T) {
 		{
 			types: []sql.Type{types.Int64, types.Int64},
 			h1: []sql.HistogramBucket{
-				&Bucket{BoundVal: []interface{}{1,1}},
-				&Bucket{BoundVal: []interface{}{1,9}},
+				&Bucket{BoundVal: []interface{}{1, 1}},
+				&Bucket{BoundVal: []interface{}{1, 9}},
 			},
 			h2: []sql.HistogramBucket{
-				&Bucket{BoundVal: []interface{}{9,9}},
+				&Bucket{BoundVal: []interface{}{9, 9}},
 			},
 			exp: []sql.HistogramBucket{
-				&Bucket{BoundVal: []interface{}{1,1}},
-				&Bucket{BoundVal: []interface{}{1,9}},
-				&Bucket{BoundVal: []interface{}{9,9}},
+				&Bucket{BoundVal: []interface{}{1, 1}},
+				&Bucket{BoundVal: []interface{}{1, 9}},
+				&Bucket{BoundVal: []interface{}{9, 9}},
 			},
 		},
 		{
 			types: []sql.Type{types.Int64, types.Int64},
 			h1: []sql.HistogramBucket{
-				&Bucket{BoundVal: []interface{}{1,9}},
-				&Bucket{BoundVal: []interface{}{9,9}},
+				&Bucket{BoundVal: []interface{}{1, 9}},
+				&Bucket{BoundVal: []interface{}{9, 9}},
 			},
 			h2: []sql.HistogramBucket{
-				&Bucket{BoundVal: []interface{}{1,1}},
+				&Bucket{BoundVal: []interface{}{1, 1}},
 			},
 			exp: []sql.HistogramBucket{
-				&Bucket{BoundVal: []interface{}{1,1}},
-				&Bucket{BoundVal: []interface{}{1,9}},
-				&Bucket{BoundVal: []interface{}{9,9}},
+				&Bucket{BoundVal: []interface{}{1, 1}},
+				&Bucket{BoundVal: []interface{}{1, 9}},
+				&Bucket{BoundVal: []interface{}{9, 9}},
 			},
 		},
 	}
@@ -1045,30 +1045,30 @@ func TestHistogramIntersect(t *testing.T) {
 		{
 			types: []sql.Type{types.Int64, types.Int64},
 			h1: []sql.HistogramBucket{
-				&Bucket{BoundVal: []interface{}{1,1}},
-				&Bucket{BoundVal: []interface{}{1,9}},
+				&Bucket{BoundVal: []interface{}{1, 1}},
+				&Bucket{BoundVal: []interface{}{1, 9}},
 			},
 			h2: []sql.HistogramBucket{
-				&Bucket{BoundVal: []interface{}{1,1}},
-				&Bucket{BoundVal: []interface{}{9,9}},
+				&Bucket{BoundVal: []interface{}{1, 1}},
+				&Bucket{BoundVal: []interface{}{9, 9}},
 			},
 			exp: []sql.HistogramBucket{
-				&Bucket{BoundVal: []interface{}{1,1}},
+				&Bucket{BoundVal: []interface{}{1, 1}},
 			},
 		},
 		{
 			types: []sql.Type{types.Int64, types.Int64},
 			h1: []sql.HistogramBucket{
-				&Bucket{BoundVal: []interface{}{1,1}},
-				&Bucket{BoundVal: []interface{}{9,9}},
+				&Bucket{BoundVal: []interface{}{1, 1}},
+				&Bucket{BoundVal: []interface{}{9, 9}},
 			},
 			h2: []sql.HistogramBucket{
-				&Bucket{BoundVal: []interface{}{1,1}},
-				&Bucket{BoundVal: []interface{}{9,9}},
+				&Bucket{BoundVal: []interface{}{1, 1}},
+				&Bucket{BoundVal: []interface{}{9, 9}},
 			},
 			exp: []sql.HistogramBucket{
-				&Bucket{BoundVal: []interface{}{1,1}},
-				&Bucket{BoundVal: []interface{}{9,9}},
+				&Bucket{BoundVal: []interface{}{1, 1}},
+				&Bucket{BoundVal: []interface{}{9, 9}},
 			},
 		},
 	}
