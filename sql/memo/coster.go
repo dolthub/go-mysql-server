@@ -132,7 +132,7 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 					return lBest*seqIOCostFactor + lBest*(seqIOCostFactor+randIOCostFactor), nil
 				}
 				// Fanout is the average number of right-side rows that match each left-side row
-				fanout := 2.0
+				fanout := 1.5
 				// The total expected number of right row lookups
 				expectedRightRows := selfJoinCard * matchRate * fanout
 				// Estimate for reading each left row and each expected right row
