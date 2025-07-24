@@ -54,11 +54,8 @@ var TimeQueryTests = []ScriptTest{
 				Expected: []sql.Row{{time.Date(2025, time.July, 23, 6, 43, 21, 0, time.UTC)}},
 			},
 			{
-				// https://github.com/dolthub/dolt/issues/9559
-				Skip:  true,
-				Query: "set time_zone='invalid time zone",
-				// update to actual error or error string
-				ExpectedErrStr: "Unknown of incorrect time zone: 'invalid time zone'",
+				Query:       "set time_zone='invalid time zone'",
+				ExpectedErr: sql.ErrInvalidTimeZone,
 			},
 		},
 	},

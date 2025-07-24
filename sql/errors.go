@@ -42,6 +42,9 @@ var (
 	// the execution tree.
 	ErrInvalidType = errors.NewKind("invalid type: %s")
 
+	// ErrInvalidTimeZone is thrown when an invalid time zone is found
+	ErrInvalidTimeZone = errors.NewKind("Unknown or incorrect time zone: %s")
+
 	// ErrTableAlreadyExists is thrown when someone tries to create a
 	// table with a name of an existing one
 	ErrTableAlreadyExists = errors.NewKind("table with name %s already exists")
