@@ -79,11 +79,9 @@ type ScriptTestAssertion struct {
 	// ExpectedColumns indicates the Name and Type of the columns expected; no other schema fields are tested.
 	ExpectedColumns sql.Schema
 
-	// TODO: replace this with ExpectedPlan
 	// The string representation of indexes that we expect to appear in the query plan
 	ExpectedIndexes []string
 
-	// TODO: replace this with ExpectedPlan
 	// For tests that perform join operations, JoinTypes can be set for the type of merge we expect to perform.
 	JoinTypes []plan.JoinType
 
