@@ -493,7 +493,6 @@ func (reference *ForeignKeyReferenceHandler) IsInitialized() bool {
 }
 
 // CheckReference checks that the given row has an index entry in the referenced table.
-// Performs MySQL-compatible foreign key constraint validation with type-specific checks.
 func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, row sql.Row) error {
 	// If even one of the values are NULL then we don't check the parent
 	for _, pos := range reference.RowMapper.IndexPositions {
@@ -550,8 +549,7 @@ func (reference *ForeignKeyReferenceHandler) CheckReference(ctx *sql.Context, ro
 		reference.ForeignKey.ParentTable, reference.RowMapper.GetKeyString(row))
 }
 
-// validateColumnTypeConstraints enforces MySQL-compatible foreign key type validation
-// between child and parent columns in a foreign key relationship.
+// validateColumnTypeConstraints enforces foreign key type validation between child and parent columns in a foreign key relationship.
 func (reference *ForeignKeyReferenceHandler) validateColumnTypeConstraints(ctx *sql.Context, childRow sql.Row, parentRow sql.Row) error {
 	mapper := reference.RowMapper
 	if mapper.Index == nil {
