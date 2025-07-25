@@ -8505,6 +8505,172 @@ where
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/8728
+		Name: "test merge join optimization (removing sort node over indexed tables) does not break ordering",
+		SetUpScript: []string{
+			"create table t1 (i int primary key);",
+			"create table t2 (j int primary key);",
+			"insert into t1 values (1), (2), (3);",
+			"insert into t2 values (2), (3), (4);",
+
+			"create table t3 (i int, j int, primary key (i, j));",
+			"create table t4 (x int, y int, primary key (x, y));",
+			"insert into t3 values (1, 1), (1, 2), (2, 2), (3, 3);",
+			"insert into t4 values (2, 2), (3, 3), (4, 4);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on t1.i = t2.j order by t1.i;",
+				Expected: []sql.Row{
+					{2, 2},
+					{3, 3},
+				},
+			},
+			{
+				Query: "select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on t1.i = t2.j order by t2.j;",
+				Expected: []sql.Row{
+					{2, 2},
+					{3, 3},
+				},
+			},
+			{
+				Query: "select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on t1.i = t2.j order by t1.i desc;",
+				Expected: []sql.Row{
+					{3, 3},
+					{2, 2},
+				},
+			},
+			{
+				Query: "select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on t1.i = t2.j order by t2.j desc;",
+				Expected: []sql.Row{
+					{3, 3},
+					{2, 2},
+				},
+			},
+			{
+				// InSubquery expressions can be optimized into MERGE_JOINs, so this optimization should apply over this as well
+				Query: "select /*+ MERGE_JOIN(t1, t2) */ * from t1 where ((i in (select j from t2 where j > 2))) order by i desc;",
+				Expected: []sql.Row{
+					{3},
+				},
+			},
+
+			{
+				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i;",
+				Expected: []sql.Row{
+					{2, 2, 2, 2},
+					{3, 3, 3, 3},
+				},
+			},
+			{
+				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i desc;",
+				Expected: []sql.Row{
+					{3, 3, 3, 3},
+					{2, 2, 2, 2},
+				},
+			},
+			{
+				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t4.x;",
+				Expected: []sql.Row{
+					{2, 2, 2, 2},
+					{3, 3, 3, 3},
+				},
+			},
+			{
+				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t4.x desc;",
+				Expected: []sql.Row{
+					{3, 3, 3, 3},
+					{2, 2, 2, 2},
+				},
+			},
+			{
+				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t3.j;",
+				Expected: []sql.Row{
+					{2, 2, 2, 2},
+					{3, 3, 3, 3},
+				},
+			},
+			{
+				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i desc, t3.j desc;",
+				Expected: []sql.Row{
+					{3, 3, 3, 3},
+					{2, 2, 2, 2},
+				},
+			},
+			{
+				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t4.x, t4.y;",
+				Expected: []sql.Row{
+					{2, 2, 2, 2},
+					{3, 3, 3, 3},
+				},
+			},
+			{
+				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t4.x desc, t4.y desc;",
+				Expected: []sql.Row{
+					{3, 3, 3, 3},
+					{2, 2, 2, 2},
+				},
+			},
+			{
+				// The Sort node can be optimized out of this query, but currently is not
+				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t4.x;",
+				Expected: []sql.Row{
+					{2, 2, 2, 2},
+					{3, 3, 3, 3},
+				},
+			},
+			{
+				// The Sort node can be optimized out of this query, but currently is not
+				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t4.x desc;",
+				Expected: []sql.Row{
+					{2, 2, 2, 2},
+					{3, 3, 3, 3},
+				},
+			},
+			{
+				// The Sort node can be optimized out of this query, but currently is not
+				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t3.j, t4.x;",
+				Expected: []sql.Row{
+					{2, 2, 2, 2},
+					{3, 3, 3, 3},
+				},
+			},
+			{
+				// The Sort node can be optimized out of this query, but currently is not
+				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t3.j, t4.x, t4.y;",
+				Expected: []sql.Row{
+					{2, 2, 2, 2},
+					{3, 3, 3, 3},
+				},
+			},
+
+			{
+				// Sort node cannot be optimized out of this query
+				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.j;",
+				Expected: []sql.Row{
+					{2, 2, 2, 2},
+					{3, 3, 3, 3},
+				},
+			},
+			{
+				// Sort node cannot be optimized out of this query
+				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t4.y;",
+				Expected: []sql.Row{
+					{2, 2, 2, 2},
+					{3, 3, 3, 3},
+				},
+			},
+			{
+				// Sort node cannot be optimized out of this query
+				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t3.j desc;",
+				Expected: []sql.Row{
+					{2, 2, 2, 2},
+					{3, 3, 3, 3},
+				},
+			},
+		},
+	},
 
 	// Char tests
 	{
@@ -9189,7 +9355,7 @@ where
 		},
 	},
 	{
-		Name:    "enum conversion to strings",
+		Name:    "enum conversions",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t (e enum('abc', 'defg', 'hijkl'));",
@@ -9323,6 +9489,38 @@ where
 				Query: "select e from t where e like 'a%'",
 				Expected: []sql.Row{
 					{"abc"},
+				},
+			},
+			{
+				Query: "select e, cast(e as unsigned) from t order by e;",
+				Expected: []sql.Row{
+					{"abc", uint64(1)},
+					{"defg", uint64(2)},
+					{"hijkl", uint64(3)},
+				},
+			},
+			{
+				Query: "select e, cast(e as decimal) from t order by e;",
+				Expected: []sql.Row{
+					{"abc", "1"},
+					{"defg", "2"},
+					{"hijkl", "3"},
+				},
+			},
+			{
+				Query: "select e, cast(e as float) from t order by e;",
+				Expected: []sql.Row{
+					{"abc", float32(1)},
+					{"defg", float32(2)},
+					{"hijkl", float32(3)},
+				},
+			},
+			{
+				Query: "select e, cast(e as double) from t order by e;",
+				Expected: []sql.Row{
+					{"abc", float64(1)},
+					{"defg", float64(2)},
+					{"hijkl", float64(3)},
 				},
 			},
 		},
@@ -9787,7 +9985,7 @@ where
 		},
 	},
 	{
-		Name:    "set conversion to strings",
+		Name:    "set conversions",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t (s set('abc', 'defg', 'hijkl'));",
@@ -9911,23 +10109,57 @@ where
 				},
 			},
 			{
-				// https://github.com/dolthub/dolt/issues/9511
-				Skip:  true,
 				Query: "select s, cast(s as char) from t order by s;",
 				Expected: []sql.Row{
 					{"abc", "abc"},
+					{"defg", "defg"},
 					{"abc,defg", "abc,defg"},
 					{"abc,defg,hijkl", "abc,defg,hijkl"},
 				},
 			},
 			{
-				// https://github.com/dolthub/dolt/issues/9511
-				Skip:  true,
 				Query: "select s, cast(s as binary) from t order by s;",
 				Expected: []sql.Row{
 					{"abc", []uint8("abc")},
+					{"defg", []uint8("defg")},
 					{"abc,defg", []uint8("abc,defg")},
 					{"abc,defg,hijkl", []uint8("abc,defg,hijkl")},
+				},
+			},
+			{
+				Query: "select s, cast(s as unsigned) from t order by s;",
+				Expected: []sql.Row{
+					{"abc", uint64(1)},
+					{"defg", uint64(2)},
+					{"abc,defg", uint64(3)},
+					{"abc,defg,hijkl", uint64(7)},
+				},
+			},
+			{
+				Query: "select s, cast(s as decimal) from t order by s;",
+				Expected: []sql.Row{
+					{"abc", "1"},
+					{"defg", "2"},
+					{"abc,defg", "3"},
+					{"abc,defg,hijkl", "7"},
+				},
+			},
+			{
+				Query: "select s, cast(s as float) from t order by s;",
+				Expected: []sql.Row{
+					{"abc", float32(1)},
+					{"defg", float32(2)},
+					{"abc,defg", float32(3)},
+					{"abc,defg,hijkl", float32(7)},
+				},
+			},
+			{
+				Query: "select s, cast(s as double) from t order by s;",
+				Expected: []sql.Row{
+					{"abc", float64(1)},
+					{"defg", float64(2)},
+					{"abc,defg", float64(3)},
+					{"abc,defg,hijkl", float64(7)},
 				},
 			},
 		},

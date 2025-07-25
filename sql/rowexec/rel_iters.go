@@ -392,6 +392,10 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 	if err != nil {
 		return err
 	}
+	err = validateSystemVariableValue(sysVar.Name, val)
+	if err != nil {
+		return err
+	}
 	err = sysVar.Scope.SetValue(ctx, sysVar.Name, val)
 	if err != nil {
 		return err
@@ -460,6 +464,20 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 		}
 		charsetName := collation.CharacterSet().Name()
 		return sysVar.Scope.SetValue(ctx, "character_set_server", charsetName)
+	}
+	return nil
+}
+
+func validateSystemVariableValue(sysVarName string, val interface{}) error {
+	switch strings.ToLower(sysVarName) {
+	case "time_zone":
+		valStr, ok := val.(string)
+		if !ok {
+			return sql.ErrInvalidTimeZone.New(val)
+		}
+		if !sql.ValidTimeZone(valStr) {
+			return sql.ErrInvalidTimeZone.New(valStr)
+		}
 	}
 	return nil
 }

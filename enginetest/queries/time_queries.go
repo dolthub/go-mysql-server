@@ -54,11 +54,47 @@ var TimeQueryTests = []ScriptTest{
 				Expected: []sql.Row{{time.Date(2025, time.July, 23, 6, 43, 21, 0, time.UTC)}},
 			},
 			{
-				// https://github.com/dolthub/dolt/issues/9559
-				Skip:  true,
-				Query: "set time_zone='invalid time zone",
-				// update to actual error or error string
-				ExpectedErrStr: "Unknown of incorrect time zone: 'invalid time zone'",
+				Query:       "set time_zone='invalid time zone'",
+				ExpectedErr: sql.ErrInvalidTimeZone,
+			},
+		},
+	},
+	{
+		Name: "set time zone from table value",
+		SetUpScript: []string{
+			"create table timezones(pk int primary key, tz varchar(20))",
+			"insert into timezones values (1, 'invalid time zone'), (2, '-5:00')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "set time_zone=(select tz from timezones where pk = 1)",
+				ExpectedErr: sql.ErrInvalidTimeZone,
+			},
+			{
+				Query:    "set time_zone=(select tz from timezones where pk = 2)",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "select now()",
+				Expected: []sql.Row{{time.Date(2025, time.July, 23, 11, 43, 21, 0, time.UTC)}},
+			},
+		},
+	},
+	{
+		Name:        "set timezone to SYSTEM",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select @@time_zone",
+				Expected: []sql.Row{{"SYSTEM"}},
+			},
+			{
+				Query:    "set @old_time_zone=@@time_zone",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "set @@time_zone=@old_time_zone",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 		},
 	},
