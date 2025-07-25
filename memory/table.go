@@ -507,6 +507,10 @@ func (i *indexScanRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 }
 
 func indexRowMatches(ranges sql.Expression, candidate sql.Row) (bool, error) {
+	if ranges == nil {
+		// If there is no ranges expression, default to match all (return all rows)
+		return true, nil
+	}
 	result, err := ranges.Eval(nil, candidate)
 	if err != nil {
 		return false, err
@@ -1661,6 +1665,10 @@ func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup
 }
 
 func adjustRangeScanFilterForIndexLookup(filter sql.Expression, index *Index) sql.Expression {
+	if filter == nil {
+		return filter
+	}
+
 	exprs := index.ExtendedExprs()
 
 	indexStorageSchema := make(sql.Schema, len(exprs))
