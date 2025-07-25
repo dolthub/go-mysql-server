@@ -186,16 +186,20 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 			return err
 		}
 		if cmp > 0 {
-			// Provided value larger than autoIncVal, set autoIncVal to that value
 			v, _, err := types.Uint64.Convert(ctx, row[idx])
 			if err != nil {
 				return err
 			}
 			t.ea.TableData().autoIncVal = v.(uint64)
-			t.ea.TableData().autoIncVal++ // Move onto next autoIncVal
+			nextVal := v.(uint64) + 1
+			if _, inRange, err := autoCol.Type.Convert(ctx, nextVal); err == nil && inRange == sql.InRange {
+				t.ea.TableData().autoIncVal = nextVal
+			}
 		} else if cmp == 0 {
-			// Provided value equal to autoIncVal
-			t.ea.TableData().autoIncVal++ // Move onto next autoIncVal
+			nextVal := t.ea.TableData().autoIncVal + 1
+			if _, inRange, err := autoCol.Type.Convert(ctx, nextVal); err == nil && inRange == sql.InRange {
+				t.ea.TableData().autoIncVal = nextVal
+			}
 		}
 	}
 

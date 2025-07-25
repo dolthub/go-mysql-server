@@ -1246,6 +1246,9 @@ func convertToUint32(t NumberTypeImpl_, v interface{}) (uint32, sql.ConvertInRan
 	case uint32:
 		return v, sql.InRange, nil
 	case uint64:
+		if v > math.MaxUint32 {
+			return uint32(math.MaxUint32), sql.OutOfRange, nil
+		}
 		return uint32(v), sql.InRange, nil
 	case float64:
 		if float32(v) > float32(math.MaxInt32) {
@@ -1337,10 +1340,18 @@ func convertToUint16(t NumberTypeImpl_, v interface{}) (uint16, sql.ConvertInRan
 		return uint16(v), sql.InRange, nil
 	case uint8:
 		return uint16(v), sql.InRange, nil
-	case uint64:
-		return uint16(v), sql.InRange, nil
-	case uint32:
-		return uint16(v), sql.InRange, nil
+	case uint32, uint64:
+		var val uint64
+		switch v := v.(type) {
+		case uint32:
+			val = uint64(v)
+		case uint64:
+			val = v
+		}
+		if val > math.MaxUint16 {
+			return uint16(math.MaxUint16), sql.OutOfRange, nil
+		}
+		return uint16(val), sql.InRange, nil
 	case uint16:
 		return v, sql.InRange, nil
 	case float32:
@@ -1433,14 +1444,22 @@ func convertToUint8(t NumberTypeImpl_, v interface{}) (uint8, sql.ConvertInRange
 			return uint8(math.MaxUint8), sql.OutOfRange, nil
 		}
 		return uint8(v), sql.InRange, nil
-	case uint:
-		return uint8(v), sql.InRange, nil
-	case uint16:
-		return uint8(v), sql.InRange, nil
-	case uint64:
-		return uint8(v), sql.InRange, nil
-	case uint32:
-		return uint8(v), sql.InRange, nil
+	case uint, uint16, uint32, uint64:
+		var val uint64
+		switch v := v.(type) {
+		case uint:
+			val = uint64(v)
+		case uint16:
+			val = uint64(v)
+		case uint32:
+			val = uint64(v)
+		case uint64:
+			val = v
+		}
+		if val > math.MaxUint8 {
+			return uint8(math.MaxUint8), sql.OutOfRange, nil
+		}
+		return uint8(val), sql.InRange, nil
 	case uint8:
 		return v, sql.InRange, nil
 	case float32:
