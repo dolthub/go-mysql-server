@@ -651,7 +651,7 @@ func foreignKeyComparableTypes(ctx *sql.Context, type1 sql.Type, type2 sql.Type)
 	t1 := type1.Type()
 	t2 := type2.Type()
 
-	// MySQL allows time-related types to reference each other in foreign keys:
+	// MySQL allows time-related types to reference each other in foreign keys
 	if (types.IsTime(type1) || types.IsTimespan(type1)) && (types.IsTime(type2) || types.IsTimespan(type2)) {
 		return true
 	}
