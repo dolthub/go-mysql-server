@@ -109,8 +109,8 @@ func writeHeader(buf *bytes.Buffer, pkg string) {
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.`)
-		_, _ = fmt.Fprint(buf, "\n\n")
-		_, _ = fmt.Fprintf(buf, "package %s\n\n", pkg)
+	_, _ = fmt.Fprint(buf, "\n\n")
+	_, _ = fmt.Fprintf(buf, "package %s\n\n", pkg)
 }
 
 func generatePlans(specPath string, srcRoot string) error {
