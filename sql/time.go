@@ -49,11 +49,11 @@ func ConvertTimeZone(datetime time.Time, fromLocation string, toLocation string)
 }
 
 func ValidTimeZone(str string) bool {
-	_, err := time.LoadLocation(str)
-	if err == nil {
+	if strings.ToUpper(str) == "SYSTEM" || offsetRegex.MatchString(str) {
 		return true
 	}
-	return offsetRegex.MatchString(str) || strings.ToUpper(str) == "SYSTEM"
+	_, err := time.LoadLocation(str)
+	return err == nil
 }
 
 // MySQLOffsetToDuration takes in a MySQL timezone offset (e.g. "+01:00") and returns it as a time.Duration.
