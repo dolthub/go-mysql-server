@@ -131,12 +131,16 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 				if n.Injective || matchRate == 0 {
 					return lBest*seqIOCostFactor + lBest*(seqIOCostFactor+randIOCostFactor), nil
 				}
-				// Fanout is the average number of right-side rows that match each left-side row
-				fanout := 1.5
+
 				// The total expected number of right row lookups
-				expectedRightRows := selfJoinCard * matchRate * fanout
+				expectedRightRows := selfJoinCard * matchRate
+
+				if expectedRightRows < lBest {
+					return lBest*(seqIOCostFactor) + (lBest + indexCoverageAdjustment(n.Lookup)*(cpuCostFactor+randIOCostFactor)), nil
+				}
+
 				// Estimate for reading each left row and each expected right row
-				return lBest*seqIOCostFactor + expectedRightRows*(seqIOCostFactor+randIOCostFactor), nil
+				return lBest*seqIOCostFactor + expectedRightRows*(cpuCostFactor+randIOCostFactor), nil
 			case *ConcatJoin:
 				return c.costConcatJoin(ctx, n, s)
 			}
