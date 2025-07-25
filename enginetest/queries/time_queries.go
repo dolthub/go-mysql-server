@@ -80,4 +80,22 @@ var TimeQueryTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name:        "set timezone to SYSTEM",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select @@time_zone",
+				Expected: []sql.Row{{"SYSTEM"}},
+			},
+			{
+				Query:    "set @old_time_zone=@@time_zone",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "set @@time_zone=@old_time_zone",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+		},
+	},
 }
