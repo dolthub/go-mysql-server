@@ -18,7 +18,6 @@ import (
 	"errors"
 	"io"
 	"strings"
-	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -476,11 +475,7 @@ func validateSystemVariableValue(sysVarName string, val interface{}) error {
 		if !ok {
 			return sql.ErrInvalidTimeZone.New(val)
 		}
-		_, err := time.LoadLocation(valStr)
-		if err == nil {
-			return nil
-		}
-		if !sql.ValidTimeOffset(valStr) {
+		if !sql.ValidTimeZone(valStr) {
 			return sql.ErrInvalidTimeZone.New(valStr)
 		}
 	}
