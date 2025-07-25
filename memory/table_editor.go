@@ -195,12 +195,12 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 			t.ea.TableData().autoIncVal = v.(uint64)
 			nextVal := v.(uint64) + 1
 			if _, inRange, err := autoCol.Type.Convert(ctx, nextVal); err == nil && inRange == sql.InRange {
-				t.ea.TableData().autoIncVal++
+				t.ea.TableData().autoIncVal = nextVal
 			}
 		} else if cmp == 0 {
 			nextVal := t.ea.TableData().autoIncVal + 1
 			if _, inRange, err := autoCol.Type.Convert(ctx, nextVal); err == nil && inRange == sql.InRange {
-				t.ea.TableData().autoIncVal++
+				t.ea.TableData().autoIncVal = nextVal
 			}
 		}
 	}

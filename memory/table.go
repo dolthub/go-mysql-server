@@ -1258,7 +1258,7 @@ func addColumnToSchema(ctx *sql.Context, data *TableData, newCol *sql.Column, or
 
 		nextVal := data.autoIncVal + 1
 		if _, inRange, err := newCol.Type.Convert(ctx, nextVal); err == nil && inRange == sql.InRange {
-			data.autoIncVal++
+			data.autoIncVal = nextVal
 		}
 	}
 
