@@ -145,7 +145,6 @@ func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script q
 					TestQueryWithContext(t, ctx, e, harness, assertion.Query, expected, assertion.ExpectedColumns, assertion.Bindings, nil)
 				}
 
-				// TODO: remove these?
 				if assertion.ExpectedIndexes != nil && !IsServerEngine(e) {
 					evalIndexTest(t, harness, e, assertion.Query, assertion.ExpectedIndexes, assertion.Skip)
 				}
@@ -155,8 +154,7 @@ func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script q
 
 				if assertion.ExpectedPlan != "" && !IsServerEngine(e) {
 					options := sql.DescribeOptions{
-						Estimates: true,
-						Analyze:   true,
+						Debug: true,
 					}
 					TestQueryPlanWithName(t, options.String(), harness, e, assertion.Query, assertion.ExpectedPlan, options)
 				}
