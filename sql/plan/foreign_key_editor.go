@@ -578,7 +578,7 @@ func (reference *ForeignKeyReferenceHandler) validateColumnTypeConstraints(ctx *
 		// TODO: The TIME type currently normalizes all precisions to TIME(6) internally,
 		// which means TIME and TIME(n) are all treated as TIME(6). This prevents proper
 		// precision validation between different TIME types in foreign keys.
-		// See time.go:50-53 - "TIME is implemented as TIME(6)."
+		// See time.go:"TIME is implemented as TIME(6)."
 		isChildTime := types.IsTime(childType) || types.IsTimespan(childType)
 		isParentTime := types.IsTime(parentType) || types.IsTimespan(parentType)
 		if isChildTime && isParentTime {
