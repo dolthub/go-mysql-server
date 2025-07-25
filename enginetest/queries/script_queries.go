@@ -9355,7 +9355,7 @@ where
 		},
 	},
 	{
-		Name:    "enum conversion to strings",
+		Name:    "enum conversions",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t (e enum('abc', 'defg', 'hijkl'));",
@@ -9985,7 +9985,7 @@ where
 		},
 	},
 	{
-		Name:    "set conversion to strings",
+		Name:    "set conversions",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t (s set('abc', 'defg', 'hijkl'));",

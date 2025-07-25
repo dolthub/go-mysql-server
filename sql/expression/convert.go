@@ -280,8 +280,6 @@ func (c *Convert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // convertValue converts a value from its current type to the specified target type for CAST/CONVERT operations.
 // It handles type-specific conversion logic and applies length/scale constraints where applicable.
-// For SET/ENUM types converting to text types, uses TypeAwareConversion for proper string representation.
-// For SET/ENUM types converting to binary types, converts to string first before applying binary conversion.
 // If |typeLength| and |typeScale| are 0, they are ignored, otherwise they are used as constraints on the
 // converted type where applicable (e.g. Char conversion supports only |typeLength|, Decimal conversion supports
 // |typeLength| and |typeScale|).
@@ -293,7 +291,6 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 	}
 	switch strings.ToLower(castTo) {
 	case ConvertToBinary:
-		// For SET/ENUM types, convert to string first for blob conversions
 		if types.IsSet(originType) || types.IsEnum(originType) {
 			val, _ = types.TypeAwareConversion(ctx, val, originType, types.LongText)
 		}
