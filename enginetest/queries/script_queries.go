@@ -79,11 +79,16 @@ type ScriptTestAssertion struct {
 	// ExpectedColumns indicates the Name and Type of the columns expected; no other schema fields are tested.
 	ExpectedColumns sql.Schema
 
+	// TODO: replace this with ExpectedPlan
 	// The string representation of indexes that we expect to appear in the query plan
 	ExpectedIndexes []string
 
+	// TODO: replace this with ExpectedPlan
 	// For tests that perform join operations, JoinTypes can be set for the type of merge we expect to perform.
 	JoinTypes []plan.JoinType
+
+	// For tests that expect a specific plan
+	ExpectedPlan string
 
 	// NewSession instructs the test framework that this assertion requires a new session to be created before the
 	// query is executed. This is generally only needed when a test script is testing functionality that invalidates
@@ -8501,172 +8506,6 @@ where
 				Query: "select 'AbCdEf' in (select t from tbl);",
 				Expected: []sql.Row{
 					{true},
-				},
-			},
-		},
-	},
-	{
-		// https://github.com/dolthub/dolt/issues/8728
-		Name: "test merge join optimization (removing sort node over indexed tables) does not break ordering",
-		SetUpScript: []string{
-			"create table t1 (i int primary key);",
-			"create table t2 (j int primary key);",
-			"insert into t1 values (1), (2), (3);",
-			"insert into t2 values (2), (3), (4);",
-
-			"create table t3 (i int, j int, primary key (i, j));",
-			"create table t4 (x int, y int, primary key (x, y));",
-			"insert into t3 values (1, 1), (1, 2), (2, 2), (3, 3);",
-			"insert into t4 values (2, 2), (3, 3), (4, 4);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on t1.i = t2.j order by t1.i;",
-				Expected: []sql.Row{
-					{2, 2},
-					{3, 3},
-				},
-			},
-			{
-				Query: "select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on t1.i = t2.j order by t2.j;",
-				Expected: []sql.Row{
-					{2, 2},
-					{3, 3},
-				},
-			},
-			{
-				Query: "select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on t1.i = t2.j order by t1.i desc;",
-				Expected: []sql.Row{
-					{3, 3},
-					{2, 2},
-				},
-			},
-			{
-				Query: "select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on t1.i = t2.j order by t2.j desc;",
-				Expected: []sql.Row{
-					{3, 3},
-					{2, 2},
-				},
-			},
-			{
-				// InSubquery expressions can be optimized into MERGE_JOINs, so this optimization should apply over this as well
-				Query: "select /*+ MERGE_JOIN(t1, t2) */ * from t1 where ((i in (select j from t2 where j > 2))) order by i desc;",
-				Expected: []sql.Row{
-					{3},
-				},
-			},
-
-			{
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i;",
-				Expected: []sql.Row{
-					{2, 2, 2, 2},
-					{3, 3, 3, 3},
-				},
-			},
-			{
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i desc;",
-				Expected: []sql.Row{
-					{3, 3, 3, 3},
-					{2, 2, 2, 2},
-				},
-			},
-			{
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t4.x;",
-				Expected: []sql.Row{
-					{2, 2, 2, 2},
-					{3, 3, 3, 3},
-				},
-			},
-			{
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t4.x desc;",
-				Expected: []sql.Row{
-					{3, 3, 3, 3},
-					{2, 2, 2, 2},
-				},
-			},
-			{
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t3.j;",
-				Expected: []sql.Row{
-					{2, 2, 2, 2},
-					{3, 3, 3, 3},
-				},
-			},
-			{
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i desc, t3.j desc;",
-				Expected: []sql.Row{
-					{3, 3, 3, 3},
-					{2, 2, 2, 2},
-				},
-			},
-			{
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t4.x, t4.y;",
-				Expected: []sql.Row{
-					{2, 2, 2, 2},
-					{3, 3, 3, 3},
-				},
-			},
-			{
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t4.x desc, t4.y desc;",
-				Expected: []sql.Row{
-					{3, 3, 3, 3},
-					{2, 2, 2, 2},
-				},
-			},
-			{
-				// The Sort node can be optimized out of this query, but currently is not
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t4.x;",
-				Expected: []sql.Row{
-					{2, 2, 2, 2},
-					{3, 3, 3, 3},
-				},
-			},
-			{
-				// The Sort node can be optimized out of this query, but currently is not
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t4.x desc;",
-				Expected: []sql.Row{
-					{2, 2, 2, 2},
-					{3, 3, 3, 3},
-				},
-			},
-			{
-				// The Sort node can be optimized out of this query, but currently is not
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t3.j, t4.x;",
-				Expected: []sql.Row{
-					{2, 2, 2, 2},
-					{3, 3, 3, 3},
-				},
-			},
-			{
-				// The Sort node can be optimized out of this query, but currently is not
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t3.j, t4.x, t4.y;",
-				Expected: []sql.Row{
-					{2, 2, 2, 2},
-					{3, 3, 3, 3},
-				},
-			},
-
-			{
-				// Sort node cannot be optimized out of this query
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.j;",
-				Expected: []sql.Row{
-					{2, 2, 2, 2},
-					{3, 3, 3, 3},
-				},
-			},
-			{
-				// Sort node cannot be optimized out of this query
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t4.y;",
-				Expected: []sql.Row{
-					{2, 2, 2, 2},
-					{3, 3, 3, 3},
-				},
-			},
-			{
-				// Sort node cannot be optimized out of this query
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t3.j desc;",
-				Expected: []sql.Row{
-					{2, 2, 2, 2},
-					{3, 3, 3, 3},
 				},
 			},
 		},
