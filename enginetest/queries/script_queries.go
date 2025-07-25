@@ -8508,7 +8508,6 @@ where
 	{
 		// https://github.com/dolthub/dolt/issues/8728
 		Name:    "test merge join optimization (removing sort node over indexed tables) does not break ordering",
-		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t1 (i int primary key);",
 			"create table t2 (j int primary key);",
