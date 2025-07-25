@@ -22,8 +22,7 @@ import (
 
 var QueryPlanScriptTests = []ScriptTest{
 	{
-		Dialect: "mysql",
-		Name:    "test merge join optimization (removing sort node over indexed tables) does not break ordering",
+		Name: "test merge join optimization (removing sort node over indexed tables) does not break ordering",
 		SetUpScript: []string{
 			"create table t1 (i int primary key);",
 			"create table t2 (j int primary key);",
