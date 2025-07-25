@@ -10784,7 +10784,6 @@ where
 				ExpectedErr: sql.ErrValueOutOfRange,
 			},
 			{
-				Skip:  true,
 				Query: "insert into tinyint_tbl values (255)",
 				Expected: []sql.Row{
 					{types.OkResult{
@@ -10809,7 +10808,6 @@ where
 				ExpectedErr: sql.ErrValueOutOfRange,
 			},
 			{
-				Skip:  true,
 				Query: "insert into smallint_tbl values (65535);",
 				Expected: []sql.Row{
 					{types.OkResult{
@@ -10834,7 +10832,6 @@ where
 				ExpectedErr: sql.ErrValueOutOfRange,
 			},
 			{
-				Skip:  true,
 				Query: "insert into mediumint_tbl values (16777215);",
 				Expected: []sql.Row{
 					{types.OkResult{
@@ -10859,7 +10856,6 @@ where
 				ExpectedErr: sql.ErrValueOutOfRange,
 			},
 			{
-				Skip:  true,
 				Query: "insert into int_tbl values (4294967295)",
 				Expected: []sql.Row{
 					{types.OkResult{
@@ -10884,7 +10880,6 @@ where
 				ExpectedErr: sql.ErrValueOutOfRange,
 			},
 			{
-				Skip:  true,
 				Query: "insert into bigint_tbl values (18446744073709551615);",
 				Expected: []sql.Row{
 					{types.OkResult{
