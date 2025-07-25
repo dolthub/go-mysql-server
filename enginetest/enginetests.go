@@ -793,6 +793,21 @@ func TestQueryPlanWithEngine(t *testing.T, harness Harness, e QueryEngine, tt qu
 	})
 }
 
+func TestQueryPlanScripts(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData)
+	for _, script := range queries.QueryPlanScriptTests {
+		if sh, ok := harness.(SkippingHarness); ok {
+			if sh.SkipQueryTest(script.Name) {
+				t.Run(script.Name, func(t *testing.T) {
+					t.Skip(script.Name)
+				})
+				continue
+			}
+		}
+		TestScript(t, harness, script)
+	}
+}
+
 func TestOrderByGroupBy(t *testing.T, harness Harness) {
 	for _, tt := range queries.OrderByGroupByScriptTests {
 		TestScript(t, harness, tt)
