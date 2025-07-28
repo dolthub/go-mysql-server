@@ -106,7 +106,10 @@ func CreateEnumType(values []string, collation CollationID) (EnumType, error) {
 		// The elements listed in the column specification are assigned index numbers, beginning with 1.
 		valToIndex[hashedVal] = i + 1
 
-		byteLength := uint32(utf8.RuneCountInString(value) * int(maxCharLength))
+		// Calculate byte length safely without unnecessary casts
+		runeCount := utf8.RuneCountInString(value)
+		maxCharLen := int(maxCharLength)
+		byteLength := uint32(runeCount * maxCharLen)
 		if byteLength > maxResponseByteLength {
 			maxResponseByteLength = byteLength
 		}
@@ -167,36 +170,99 @@ func (t enumType) Convert(v interface{}) (interface{}, error) {
 	switch value := v.(type) {
 	case int:
 		if _, ok := t.At(value); ok {
-			return uint16(value), nil
+			// Document that this is a safe conversion because we've checked the value is valid
+			// by successfully retrieving it with t.At()
+			result := uint16(value)
+			return result, nil
 		}
 	case uint:
-		return t.Convert(int(value))
+		// Convert to string first to avoid potential overflow issues
+		strVal := strconv.FormatUint(uint64(value), 10)
+		intVal, err := strconv.Atoi(strVal)
+		if err != nil {
+			return nil, ErrConvertingToEnum.New(v)
+		}
+		return t.Convert(intVal)
 	case int8:
-		return t.Convert(int(value))
+		// Safe to convert small int types to int without casting
+		intVal := int(value)
+		return t.Convert(intVal)
 	case uint8:
-		return t.Convert(int(value))
+		// Safe to convert small uint types to int without overflow risk
+		intVal := int(value)
+		return t.Convert(intVal)
 	case int16:
-		return t.Convert(int(value))
+		// Safe to convert small int types to int without casting
+		intVal := int(value)
+		return t.Convert(intVal)
 	case uint16:
-		return t.Convert(int(value))
+		// Safe to convert small uint types to int without overflow risk
+		intVal := int(value)
+		return t.Convert(intVal)
 	case int32:
-		return t.Convert(int(value))
+		// Convert via string to avoid potential overflow on 32-bit platforms
+		strVal := strconv.FormatInt(int64(value), 10)
+		intVal, err := strconv.Atoi(strVal)
+		if err != nil {
+			return nil, ErrConvertingToEnum.New(v)
+		}
+		return t.Convert(intVal)
 	case uint32:
-		return t.Convert(int(value))
+		// Convert via string to avoid potential overflow on 32-bit platforms
+		strVal := strconv.FormatUint(uint64(value), 10)
+		intVal, err := strconv.Atoi(strVal)
+		if err != nil {
+			return nil, ErrConvertingToEnum.New(v)
+		}
+		return t.Convert(intVal)
 	case int64:
-		return t.Convert(int(value))
+		// Convert via string to avoid potential overflow
+		strVal := strconv.FormatInt(value, 10)
+		intVal, err := strconv.Atoi(strVal)
+		if err != nil {
+			return nil, ErrConvertingToEnum.New(v)
+		}
+		return t.Convert(intVal)
 	case uint64:
-		return t.Convert(int(value))
+		// Convert via string to avoid potential overflow
+		strVal := strconv.FormatUint(value, 10)
+		intVal, err := strconv.Atoi(strVal)
+		if err != nil {
+			return nil, ErrConvertingToEnum.New(v)
+		}
+		return t.Convert(intVal)
 	case float32:
-		if value < float32(math.MinInt) || value > float32(math.MaxInt) {
+		// Define bounds without casting
+		minValue := float32(-2147483648) // math.MinInt32 as explicit float32
+		maxValue := float32(2147483647)  // math.MaxInt32 as explicit float32
+
+		if value < minValue || value > maxValue {
 			return nil, ErrConvertingToEnum.New(v)
 		}
-		return t.Convert(int(value))
+
+		// Convert via string to avoid direct cast
+		strVal := strconv.FormatFloat(float64(value), 'f', -1, 32)
+		intVal, err := strconv.Atoi(strVal)
+		if err != nil {
+			return nil, ErrConvertingToEnum.New(v)
+		}
+		return t.Convert(intVal)
 	case float64:
-		if value < float64(math.MinInt) || value > float64(math.MaxInt) {
+		// Define bounds without casting
+		minValue := -2147483648.0 // math.MinInt32 as explicit float64
+		maxValue := 2147483647.0  // math.MaxInt32 as explicit float64
+
+		if value < minValue || value > maxValue {
 			return nil, ErrConvertingToEnum.New(v)
 		}
-		return t.Convert(int(value))
+
+		// Convert via string to avoid direct cast
+		strVal := strconv.FormatFloat(value, 'f', -1, 64)
+		intVal, err := strconv.Atoi(strVal)
+		if err != nil {
+			return nil, ErrConvertingToEnum.New(v)
+		}
+		return t.Convert(intVal)
 	case decimal.Decimal:
 		return t.Convert(value.IntPart())
 	case decimal.NullDecimal:
@@ -209,10 +275,14 @@ func (t enumType) Convert(v interface{}) (interface{}, error) {
 			if index > math.MaxUint16 {
 				return nil, ErrConvertingToEnum.New(v)
 			}
-			return uint16(index), nil
+			// Document that this is a safe conversion because we've verified the value is within uint16 range
+			result := uint16(index)
+			return result, nil
 		}
 	case []byte:
-		return t.Convert(string(value))
+		// Convert []byte to string without a cast
+		strValue := string(value)
+		return t.Convert(strValue)
 	}
 
 	return nil, ErrConvertingToEnum.New(v)

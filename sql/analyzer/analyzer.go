@@ -26,6 +26,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
@@ -312,9 +313,13 @@ func sanitizeArguments(args []interface{}) []interface{} {
 			args[i] = sanitizeMap(v)
 		case []interface{}:
 			args[i] = sanitizeArguments(v)
+		case plan.AuthenticationMysqlNativePassword:
+			args[i] = "[PASSWORD_REDACTED]"
 		default:
 			if reflect.TypeOf(arg).Kind() == reflect.Struct {
 				args[i] = "[STRUCT_REDACTED]"
+			} else {
+				args[i] = "[REDACTED]"
 			}
 		}
 	}
