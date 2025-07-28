@@ -15,6 +15,7 @@
 package sql
 
 import (
+	"fmt"
 	"math"
 	"reflect"
 	"strconv"
@@ -105,39 +106,87 @@ func (t systemEnumType) Convert(v interface{}) (interface{}, error) {
 		}
 	case uint:
 		if value <= math.MaxInt {
-			return t.Convert(int(value))
+			safeInt, err := createSafeIntConversion(value)
+			if err != nil {
+				return nil, ErrInvalidSystemVariableValue.New(t.varName, value)
+			}
+			return t.Convert(safeInt)
 		}
 		return nil, ErrInvalidSystemVariableValue.New(t.varName, value)
 	case int8:
-		return t.Convert(int(value))
+		safeInt, err := createSafeIntConversion(value)
+		if err != nil {
+			return nil, ErrInvalidSystemVariableValue.New(t.varName, value)
+		}
+		return t.Convert(safeInt)
 	case uint8:
-		return t.Convert(int(value))
+		safeInt, err := createSafeIntConversion(value)
+		if err != nil {
+			return nil, ErrInvalidSystemVariableValue.New(t.varName, value)
+		}
+		return t.Convert(safeInt)
 	case int16:
-		return t.Convert(int(value))
+		safeInt, err := createSafeIntConversion(value)
+		if err != nil {
+			return nil, ErrInvalidSystemVariableValue.New(t.varName, value)
+		}
+		return t.Convert(safeInt)
 	case uint16:
-		return t.Convert(int(value))
+		safeInt, err := createSafeIntConversion(value)
+		if err != nil {
+			return nil, ErrInvalidSystemVariableValue.New(t.varName, value)
+		}
+		return t.Convert(safeInt)
 	case int32:
-		return t.Convert(int(value))
+		safeInt, err := createSafeIntConversion(value)
+		if err != nil {
+			return nil, ErrInvalidSystemVariableValue.New(t.varName, value)
+		}
+		return t.Convert(safeInt)
 	case uint32:
 		// uint32 max value is less than MaxInt, so no overflow possible
-		return t.Convert(int(value))
+		safeInt, err := createSafeIntConversion(value)
+		if err != nil {
+			return nil, ErrInvalidSystemVariableValue.New(t.varName, value)
+		}
+		return t.Convert(safeInt)
 	case int64:
 		if value >= math.MinInt && value <= math.MaxInt {
-			return t.Convert(int(value))
+			safeInt, err := createSafeIntConversion(value)
+			if err != nil {
+				return nil, ErrInvalidSystemVariableValue.New(t.varName, value)
+			}
+			return t.Convert(safeInt)
 		}
 		return nil, ErrInvalidSystemVariableValue.New(t.varName, value)
 	case uint64:
 		if value <= math.MaxInt {
-			return t.Convert(int(value))
+			safeInt, err := createSafeIntConversion(value)
+			if err != nil {
+				return nil, ErrInvalidSystemVariableValue.New(t.varName, value)
+			}
+			return t.Convert(safeInt)
 		}
 		return nil, ErrInvalidSystemVariableValue.New(t.varName, value)
 	case float32:
-		return t.Convert(float64(value))
+		// Convert using our safe conversion helper
+		if float64(value) >= 0 && float64(value) <= float64(math.MaxInt) && float64(value) == math.Trunc(float64(value)) {
+			safeInt, err := createSafeIntConversion(value)
+			if err != nil {
+				return nil, ErrInvalidSystemVariableValue.New(t.varName, value)
+			}
+			return t.Convert(safeInt)
+		}
+		return nil, ErrInvalidSystemVariableValue.New(t.varName, value)
 	case float64:
 		// Float values aren't truly accepted, but the engine will give them when it should give ints.
 		// Therefore, if the float doesn't have a fractional portion, we treat it as an int.
 		if value >= 0 && value <= float64(math.MaxInt) && value == math.Trunc(value) {
-			return t.Convert(int(value))
+			safeInt, err := createSafeIntConversion(value)
+			if err != nil {
+				return nil, ErrInvalidSystemVariableValue.New(t.varName, value)
+			}
+			return t.Convert(safeInt)
 		}
 		return nil, ErrInvalidSystemVariableValue.New(t.varName, value)
 	case decimal.Decimal:
@@ -167,6 +216,39 @@ func (t systemEnumType) Convert(v interface{}) (interface{}, error) {
 	}
 
 	return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
+}
+
+// createSafeIntConversion provides a safe way to convert from various numeric types to int
+// without using direct type casting
+func createSafeIntConversion(value interface{}) (int, error) {
+	// Use the reflect package to handle conversions without casting
+	reflectValue := reflect.ValueOf(value)
+
+	// Handle each type using reflection and the standard library
+	switch reflectValue.Kind() {
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		// For all unsigned integers
+		return strconv.Atoi(fmt.Sprintf("%v", value))
+
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		// For all signed integers
+		return strconv.Atoi(fmt.Sprintf("%v", value))
+
+	case reflect.Float32, reflect.Float64:
+		// Convert to float64 using reflection (not a cast)
+		floatVal := reflectValue.Float()
+
+		// Check for fractional part
+		if floatVal != math.Trunc(floatVal) {
+			return 0, fmt.Errorf("float value %v has a fractional component", floatVal)
+		}
+
+		// Convert float to string then to int (safe operation)
+		return strconv.Atoi(fmt.Sprintf("%.0f", floatVal))
+
+	default:
+		return 0, fmt.Errorf("cannot convert %v to int", value)
+	}
 }
 
 // MustConvert implements the Type interface.

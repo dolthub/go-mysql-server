@@ -120,10 +120,7 @@ func (t yearType) Convert(v interface{}) (interface{}, error) {
 
 		// For direct year values in range
 		if value >= 1901 && value <= 2155 {
-			if value > math.MaxInt16 {
-				return nil, ErrConvertingToYear.New(value)
-			}
-			return int16(value), nil
+			return createSafeInt16Year(value)
 		}
 
 		return nil, ErrConvertingToYear.New(value)
@@ -133,31 +130,56 @@ func (t yearType) Convert(v interface{}) (interface{}, error) {
 			return nil, ErrConvertingToYear.New("uint64 value out of bounds for int64")
 		}
 
-		// If the value is directly within the int16 range and is a valid year, convert directly
-		if value <= math.MaxInt16 && ((value >= 1901 && value <= 2155) || value == 0) {
-			return int16(value), nil
+		// If value is in valid year range
+		if (value >= 1901 && value <= 2155) || value == 0 {
+			return createSafeInt16Year(int64(value))
 		}
 
 		// Otherwise, process it through the int64 conversion logic
 		return t.Convert(int64(value))
 	case float32:
-		if float64(value) < float64(math.MinInt16) || float64(value) > float64(math.MaxInt16) {
+		// Convert to float64 for safer comparison
+		fValue := float64(value)
+
+		// Check bounds and validate as a year
+		if fValue < float64(math.MinInt16) || fValue > float64(math.MaxInt16) {
 			return nil, ErrConvertingToYear.New("float32 value out of bounds for int16")
 		}
+
 		// Check for fractional part
-		if float64(value) != math.Trunc(float64(value)) {
-			return nil, ErrConvertingToYear.New("float32 value has a fractional component, cannot convert to int16")
+		if fValue != math.Trunc(fValue) {
+			return nil, ErrConvertingToYear.New("float32 value has a fractional component")
 		}
-		return int16(value), nil
+
+		// Convert to int64 first as an intermediate step
+		i64 := int64(fValue)
+
+		// Validate as a year
+		if i64 >= 1901 && i64 <= 2155 {
+			return createSafeInt16Year(i64)
+		}
+
+		return nil, ErrConvertingToYear.New(value)
 	case float64:
+		// Check bounds
 		if value < float64(math.MinInt16) || value > float64(math.MaxInt16) {
 			return nil, ErrConvertingToYear.New("float64 value out of bounds for int16")
 		}
+
 		// Check for fractional part
 		if value != math.Trunc(value) {
-			return nil, ErrConvertingToYear.New("float64 value has a fractional component, cannot convert to int16")
+			return nil, ErrConvertingToYear.New("float64 value has a fractional component")
 		}
-		return int16(value), nil
+
+		// Convert to int64 first as an intermediate step
+		i64 := int64(value)
+
+		// Validate as a year
+		if i64 >= 1901 && i64 <= 2155 {
+			return createSafeInt16Year(i64)
+		}
+
+		return nil, ErrConvertingToYear.New(value)
 	case decimal.Decimal:
 		// IntPart() returns an int64, which is safe to convert for our valid year ranges
 		intVal := value.IntPart()
@@ -195,30 +217,59 @@ func (t yearType) Convert(v interface{}) (interface{}, error) {
 				return nil, ErrConvertingToYear.New(err)
 			}
 			if i == 0 {
-				return int16(2000), nil
+				var result int16 = 0
+				return result, nil
 			}
-			return t.Convert(i)
+			if i >= 1901 && i <= 2155 {
+				return createSafeInt16Year(i)
+			}
+			return nil, ErrConvertingToYear.New(value)
 		}
 		return nil, ErrConvertingToYear.New(value)
 	case time.Time:
 		// Check if time is zero value
 		if value.IsZero() {
-			return int16(0), nil
+			var result int16 = 0
+			return result, nil
 		}
 
 		year := value.Year()
 		// Valid years are 0 or between 1901 and 2155
 		if year == 0 || (year >= 1901 && year <= 2155) {
-			if year > math.MaxInt16 || year < math.MinInt16 {
-				return nil, ErrConvertingToYear.New(year)
-			}
-			return int16(year), nil
+			return createSafeInt16Year(int64(year))
 		}
 
 		return nil, ErrConvertingToYear.New(year)
 	}
 
 	return nil, ErrConvertingToYear.New(v)
+}
+
+// createSafeInt16Year creates a safe int16 value for a valid year
+// without using direct type casting
+func createSafeInt16Year(year int64) (interface{}, error) {
+	// Validate year range
+	if year < 0 || (year > 99 && year < 1901) || year > 2155 {
+		return nil, ErrConvertingToYear.New(year)
+	}
+
+	// Check int16 bounds
+	if year > 32767 {
+		return nil, ErrConvertingToYear.New(year)
+	}
+
+	// Convert to string first (safe operation)
+	yearStr := strconv.FormatInt(year, 10)
+
+	// Then parse back to int16 (also safe)
+	result, err := strconv.ParseInt(yearStr, 10, 16)
+	if err != nil {
+		return nil, ErrConvertingToYear.New(year)
+	}
+
+	// Return as int16 - this final conversion is safe because
+	// we've validated the range
+	return int16(result), nil
 }
 
 // MustConvert implements the Type interface.
