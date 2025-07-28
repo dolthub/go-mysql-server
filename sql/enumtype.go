@@ -250,20 +250,38 @@ func (t enumType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value,
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
+
 	convertedValue, err := t.Convert(v)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
-	value, _ := t.At(int(convertedValue.(uint16)))
+
+	// Handle the case where Convert returns nil
+	if convertedValue == nil {
+		return sqltypes.NULL, nil
+	}
+
+	// Safe type assertion with validation
+	enumVal, ok := convertedValue.(uint16)
+	if !ok {
+		return sqltypes.Value{}, ErrConvertingToEnum.New(v)
+	}
+
+	value, found := t.At(int(enumVal))
+	if !found {
+		return sqltypes.Value{}, ErrConvertingToEnum.New(v)
+	}
 
 	resultCharset := ctx.GetCharacterSetResults()
 	if resultCharset == CharacterSet_Unspecified || resultCharset == CharacterSet_binary {
 		resultCharset = t.collation.CharacterSet()
 	}
+
 	encodedBytes, ok := resultCharset.Encoder().Encode(encodings.StringToBytes(value))
 	if !ok {
 		return sqltypes.Value{}, ErrCharSetFailedToEncode.New(t.collation.CharacterSet().Name())
 	}
+
 	val := appendAndSliceBytes(dest, encodedBytes)
 
 	return sqltypes.MakeTrusted(sqltypes.Enum, val), nil
@@ -319,19 +337,28 @@ func (t enumType) Collation() CollationID {
 
 // IndexOf implements EnumType interface.
 func (t enumType) IndexOf(v string) int {
+	if v == "" {
+		return -1
+	}
+
 	hashedVal, err := t.collation.HashToUint(v)
 	if err == nil {
 		if index, ok := t.hashedValToIndex[hashedVal]; ok {
 			return index
 		}
 	}
+
 	/// ENUM('0','1','2')
 	/// If you store '3', it does not match any enumeration value, so it is treated as an index and becomes '2' (the value with index 3).
 	if parsedIndex, err := strconv.ParseInt(v, 10, 32); err == nil {
+		if parsedIndex <= 0 || parsedIndex > int64(len(t.indexToVal)) {
+			return -1
+		}
 		if _, ok := t.At(int(parsedIndex)); ok {
 			return int(parsedIndex)
 		}
 	}
+
 	return -1
 }
 
