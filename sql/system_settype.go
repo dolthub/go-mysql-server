@@ -90,15 +90,13 @@ func (t systemSetType) Convert(v interface{}) (interface{}, error) {
 	case float64:
 		// Float values aren't truly accepted, but the engine will give them when it should give ints.
 		// Therefore, if the float doesn't have a fractional portion, we treat it as an int.
-		if value >= float64(math.MinInt64) && value <= float64(math.MaxInt64) {
-			if math.Trunc(value) == value { // Ensure no fractional part exists
-				// Additional bounds check for out-of-range values
-				if value < float64(math.MinInt64) || value > float64(math.MaxInt64) {
-					return nil, ErrInvalidSystemVariableValue.New(t.varName, v) // Reject out-of-range values
-				}
-				intValue := int64(value)
-				return t.SetType.Convert(intValue)
+		if math.Trunc(value) == value { // Ensure no fractional part exists
+			// Explicit bounds check for int64 range
+			if value < float64(math.MinInt64) || value > float64(math.MaxInt64) {
+				return nil, ErrInvalidSystemVariableValue.New(t.varName, v) // Reject out-of-range values
 			}
+			intValue := int64(value)
+			return t.SetType.Convert(intValue)
 		}
 		return nil, ErrInvalidSystemVariableValue.New(t.varName, v) // Reject out-of-range values
 	case decimal.Decimal:
