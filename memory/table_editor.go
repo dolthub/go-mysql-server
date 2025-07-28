@@ -19,6 +19,8 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/shopspring/decimal"
+
 	"github.com/dolthub/go-mysql-server/internal/cmap"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -355,14 +357,25 @@ func columnsMatch(colIndexes []int, prefixLengths []uint16, row sql.Row, row2 sq
 				v2 = v[:prefixLength]
 			}
 		}
-		if v, ok := v1.([]byte); ok {
-			v1 = string(v)
-		}
-		if v, ok := v2.([]byte); ok {
-			v2 = string(v)
-		}
-		if v1 != v2 {
-			return false
+
+		if v1Decimal, ok := v1.(decimal.Decimal); ok {
+			if v2Decimal, ok := v2.(decimal.Decimal); ok {
+				if !v1Decimal.Equal(v2Decimal) {
+					return false
+				}
+			} else {
+				return false
+			}
+		} else {
+			if v, ok := v1.([]byte); ok {
+				v1 = string(v)
+			}
+			if v, ok := v2.([]byte); ok {
+				v2 = string(v)
+			}
+			if v1 != v2 {
+				return false
+			}
 		}
 	}
 	return true

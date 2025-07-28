@@ -10882,6 +10882,19 @@ where
 			},
 		},
 	},
+	{
+		Name: "decimal unique key",
+		SetUpScript: []string{
+			"create table t (i int primary key, d decimal(10, 2) unique)",
+			"insert into t values (1, 1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "insert into t values (2, 1)",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+		},
+	},
 
 	// Date Tests
 	{
