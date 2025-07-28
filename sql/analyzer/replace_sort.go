@@ -154,9 +154,9 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 			*plan.Project, *plan.Filter, *plan.Limit, *plan.Offset, *plan.Distinct, *plan.TableAlias:
 			newChildren[i], same, err = replaceIdxSortHelper(ctx, scope, child, sortNode)
 		case *plan.JoinNode:
-			// TODO: is this applicable to other types of joins?
-			//   as long as left child is already sorted and SortFields are a prefix, then it's ok?
-			if !c.JoinType().IsMerge() && !c.JoinType().IsCross() {
+			// Merge Joins assume that left and right are sorted
+			// Cross Joins and Inner Joins don't care if
+			if !c.JoinType().IsMerge() && !c.JoinType().IsCross() && !c.JoinType().IsInner() {
 				continue
 			}
 			// It's (probably) not possible to have Sort as child of Join without Subquery/SubqueryAlias,
