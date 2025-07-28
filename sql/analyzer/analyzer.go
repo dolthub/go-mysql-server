@@ -295,75 +295,73 @@ func (a *Analyzer) Log(msg string, args ...interface{}) {
 		if len(a.contextStack) > 0 {
 			ctx := strings.Join(a.contextStack, "/")
 			sanitizedArgs := sanitizeArguments(args)
-			if containsSensitiveData(sanitizedArgs) {
-				log.Warnf("Sensitive data detected in log arguments. Logging suppressed.")
-				return
-			}
 			log.Infof("%s: "+msg, append([]interface{}{ctx}, sanitizedArgs...)...)
 		} else {
 			sanitizedArgs := sanitizeArguments(args)
-			if containsSensitiveData(sanitizedArgs) {
-				log.Warnf("Sensitive data detected in log arguments. Logging suppressed.")
-				return
-			}
 			log.Infof(msg, sanitizedArgs...)
 		}
 	}
 }
 
 func sanitizeArguments(args []interface{}) []interface{} {
+	sanitizedArgs := make([]interface{}, len(args))
 	for i, arg := range args {
 		switch v := arg.(type) {
 		case string:
 			if isSensitiveString(v) {
-				args[i] = "[REDACTED]"
+				sanitizedArgs[i] = "[REDACTED]"
+			} else {
+				sanitizedArgs[i] = v
 			}
 		case map[string]interface{}:
-			args[i] = sanitizeMap(v)
+			sanitizedArgs[i] = sanitizeMap(v)
 		case []interface{}:
-			args[i] = sanitizeArguments(v)
+			sanitizedArgs[i] = sanitizeArguments(v)
 		case plan.AuthenticationMysqlNativePassword:
-			args[i] = "[PASSWORD_REDACTED]"
+			sanitizedArgs[i] = "[PASSWORD_REDACTED]"
 		default:
 			// Use reflection to handle structs and pointers to structs
 			rv := reflect.ValueOf(arg)
 			if rv.Kind() == reflect.Ptr {
 				rv = rv.Elem()
 				if rv.Kind() == reflect.Struct {
-					args[i] = sanitizeStruct(rv)
+					sanitizedArgs[i] = sanitizeStruct(rv)
 					continue
 				}
 			}
 			if rv.Kind() == reflect.Struct {
-				args[i] = sanitizeStruct(rv)
+				sanitizedArgs[i] = sanitizeStruct(rv)
 			} else if rv.Kind() == reflect.Slice {
 				// Recursively sanitize slice elements
 				slice := make([]interface{}, rv.Len())
 				for j := 0; j < rv.Len(); j++ {
 					slice[j] = sanitizeArguments([]interface{}{rv.Index(j).Interface()})[0]
 				}
-				args[i] = slice
+				sanitizedArgs[i] = slice
 			} else if rv.Kind() == reflect.Map {
 				// Recursively sanitize map values
 				mapSanitized := make(map[interface{}]interface{})
 				for _, key := range rv.MapKeys() {
 					val := rv.MapIndex(key).Interface()
-					if isSensitiveString(fmt.Sprintf("%v", key.Interface())) || isSensitive(val) {
+					keyStr := fmt.Sprintf("%v", key.Interface())
+					if isSensitiveString(keyStr) || isSensitive(val) {
 						mapSanitized[key.Interface()] = "[REDACTED]"
 					} else {
 						mapSanitized[key.Interface()] = sanitizeArguments([]interface{}{val})[0]
 					}
 				}
-				args[i] = mapSanitized
+				sanitizedArgs[i] = mapSanitized
 			} else {
 				// Catch-all for unhandled types
-				if isSensitive(fmt.Sprintf("%v", arg)) {
-					args[i] = "[REDACTED]"
+				if strVal := fmt.Sprintf("%v", arg); isSensitiveString(strVal) {
+					sanitizedArgs[i] = "[REDACTED]"
+				} else {
+					sanitizedArgs[i] = arg
 				}
 			}
 		}
 	}
-	return args
+	return sanitizedArgs
 }
 
 func sanitizeStruct(rv reflect.Value) interface{} {
@@ -393,7 +391,8 @@ func sanitizeStruct(rv reflect.Value) interface{} {
 				mapSanitized := make(map[interface{}]interface{})
 				for _, key := range rv.Field(i).MapKeys() {
 					val := rv.Field(i).MapIndex(key).Interface()
-					if isSensitiveString(fmt.Sprintf("%v", key.Interface())) || isSensitive(val) {
+					keyStr := fmt.Sprintf("%v", key.Interface())
+					if isSensitiveString(keyStr) || isSensitive(val) {
 						mapSanitized[key.Interface()] = "[REDACTED]"
 					} else {
 						mapSanitized[key.Interface()] = sanitizeArguments([]interface{}{val})[0]
@@ -409,9 +408,10 @@ func sanitizeStruct(rv reflect.Value) interface{} {
 }
 
 func sanitizeMap(m map[string]interface{}) map[string]interface{} {
+	result := make(map[string]interface{})
 	for key, value := range m {
 		if isSensitiveString(key) || isSensitive(value) {
-			m[key] = "[REDACTED]"
+			result[key] = "[REDACTED]"
 		} else {
 			rv := reflect.ValueOf(value)
 			switch rv.Kind() {
@@ -420,31 +420,33 @@ func sanitizeMap(m map[string]interface{}) map[string]interface{} {
 				subMap := make(map[interface{}]interface{})
 				for _, subKey := range rv.MapKeys() {
 					val := rv.MapIndex(subKey).Interface()
-					if isSensitiveString(fmt.Sprintf("%v", subKey.Interface())) || isSensitive(val) {
+					keyStr := fmt.Sprintf("%v", subKey.Interface())
+					if isSensitiveString(keyStr) || isSensitive(val) {
 						subMap[subKey.Interface()] = "[REDACTED]"
 					} else {
 						subMap[subKey.Interface()] = sanitizeArguments([]interface{}{val})[0]
 					}
 				}
-				m[key] = subMap
+				result[key] = subMap
 			case reflect.Slice:
 				slice := make([]interface{}, rv.Len())
 				for j := 0; j < rv.Len(); j++ {
 					slice[j] = sanitizeArguments([]interface{}{rv.Index(j).Interface()})[0]
 				}
-				m[key] = slice
+				result[key] = slice
 			case reflect.Struct:
-				m[key] = sanitizeStruct(rv)
+				result[key] = sanitizeStruct(rv)
 			default:
-				m[key] = value
+				result[key] = value
 			}
 		}
 	}
-	return m
+	return result
 }
 
+// isSensitiveString checks if a string contains sensitive information
 func isSensitiveString(str string) bool {
-	sensitiveKeywords := []string{"password", "secret", "token", "key"}
+	sensitiveKeywords := []string{"password", "secret", "token", "key", "auth", "credential", "private"}
 	str = strings.ToLower(str)
 	for _, keyword := range sensitiveKeywords {
 		if strings.Contains(str, keyword) {
@@ -454,13 +456,19 @@ func isSensitiveString(str string) bool {
 	return false
 }
 
+// isSensitive checks if a value contains sensitive information
 func isSensitive(arg interface{}) bool {
-	// Add logic to identify sensitive data (e.g., passwords)
-	// This may involve checking types or specific fields
-	if str, ok := arg.(string); ok && strings.Contains(strings.ToLower(str), "password") {
-		return true
+	if arg == nil {
+		return false
 	}
-	return false
+
+	// Check strings directly
+	if str, ok := arg.(string); ok {
+		return isSensitiveString(str)
+	}
+
+	// Check string representation
+	return isSensitiveString(fmt.Sprintf("%v", arg))
 }
 
 // LogNode prints the node given if Verbose logging is enabled.
