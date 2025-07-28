@@ -312,9 +312,13 @@ func sanitizeArguments(args []interface{}) []interface{} {
 			args[i] = sanitizeMap(v)
 		case []interface{}:
 			args[i] = sanitizeArguments(v)
+		case plan.AuthenticationMysqlNativePassword:
+			args[i] = "[PASSWORD_REDACTED]"
 		default:
 			if reflect.TypeOf(arg).Kind() == reflect.Struct {
 				args[i] = "[STRUCT_REDACTED]"
+			} else {
+				args[i] = "[REDACTED]"
 			}
 		}
 	}
