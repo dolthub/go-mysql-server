@@ -57,8 +57,26 @@ func (t yearType) Compare(a interface{}, b interface{}) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	ai := as.(int16)
-	bi := bs.(int16)
+
+	// Handle nil values that might have been returned by Convert
+	if as == nil {
+		if bs == nil {
+			return 0, nil
+		}
+		return -1, nil
+	} else if bs == nil {
+		return 1, nil
+	}
+
+	// Safe type assertion with validation
+	ai, ok := as.(int16)
+	if !ok {
+		return 0, ErrConvertingToYear.New(a)
+	}
+	bi, ok := bs.(int16)
+	if !ok {
+		return 0, ErrConvertingToYear.New(b)
+	}
 
 	if ai == bi {
 		return 0, nil
@@ -97,12 +115,21 @@ func (t yearType) Convert(v interface{}) (interface{}, error) {
 			return int16(0), nil
 		}
 		if value >= 1 && value <= 69 {
+			if value+2000 > math.MaxInt16 {
+				return nil, ErrConvertingToYear.New(value)
+			}
 			return int16(value + 2000), nil
 		}
 		if value >= 70 && value <= 99 {
+			if value+1900 > math.MaxInt16 {
+				return nil, ErrConvertingToYear.New(value)
+			}
 			return int16(value + 1900), nil
 		}
 		if value >= 1901 && value <= 2155 {
+			if value > math.MaxInt16 {
+				return nil, ErrConvertingToYear.New(value)
+			}
 			return int16(value), nil
 		}
 	case uint64:
@@ -140,7 +167,7 @@ func (t yearType) Convert(v interface{}) (interface{}, error) {
 		if valueLength == 1 || valueLength == 2 || valueLength == 4 {
 			i, err := strconv.ParseInt(value, 10, 64)
 			if err != nil {
-				return nil, err
+				return nil, ErrConvertingToYear.New(err)
 			}
 			if i == 0 {
 				return int16(2000), nil
@@ -150,6 +177,9 @@ func (t yearType) Convert(v interface{}) (interface{}, error) {
 	case time.Time:
 		year := value.Year()
 		if year == 0 || (year >= 1901 && year <= 2155) {
+			if year > math.MaxInt16 || year < math.MinInt16 {
+				return nil, ErrConvertingToYear.New(year)
+			}
 			return int16(year), nil
 		}
 	}
@@ -193,8 +223,17 @@ func (t yearType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value,
 		return sqltypes.Value{}, err
 	}
 
+	if v == nil {
+		return sqltypes.NULL, nil
+	}
+
+	year, ok := v.(int16)
+	if !ok {
+		return sqltypes.Value{}, ErrConvertingToYear.New(v)
+	}
+
 	stop := len(dest)
-	dest = strconv.AppendInt(dest, int64(v.(int16)), 10)
+	dest = strconv.AppendInt(dest, int64(year), 10)
 	val := dest[stop:]
 
 	return sqltypes.MakeTrusted(sqltypes.Year, val), nil
