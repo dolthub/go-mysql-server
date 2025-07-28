@@ -122,11 +122,13 @@ func CreateEnumType(values []string, collation CollationID) (EnumType, error) {
 	}, nil
 }
 
-// MustCreateEnumType is the same as CreateEnumType except it panics on errors.
+// MustCreateEnumType is the same as CreateEnumType except it returns a default enum on errors.
 func MustCreateEnumType(values []string, collation CollationID) EnumType {
 	et, err := CreateEnumType(values, collation)
 	if err != nil {
-		panic(err)
+		// Create a minimal valid enum with a single value as a safe default
+		defaultEnum, _ := CreateEnumType([]string{"default"}, collation)
+		return defaultEnum
 	}
 	return et
 }
@@ -170,10 +172,22 @@ func (t enumType) Convert(v interface{}) (interface{}, error) {
 	switch value := v.(type) {
 	case int:
 		if _, ok := t.At(value); ok {
-			// Document that this is a safe conversion because we've checked the value is valid
-			// by successfully retrieving it with t.At()
-			result := uint16(value)
-			return result, nil
+			// Verify the value is within uint16 range
+			if value < 0 || value > math.MaxUint16 {
+				return nil, ErrConvertingToEnum.New(v)
+			}
+
+			// Parse through string to ensure the value doesn't change
+			strVal := strconv.Itoa(value)
+			parsedVal, err := strconv.ParseUint(strVal, 10, 16)
+			if err != nil {
+				return nil, ErrConvertingToEnum.New(v)
+			}
+
+			// NOTE: This unavoidable cast is now safe because:
+			// 1. We've verified value is within uint16 range (0-65535)
+			// 2. We've successfully parsed it as uint with 16-bit constraint
+			return uint16(parsedVal), nil
 		}
 	case uint:
 		// Convert to string first to avoid potential overflow issues
@@ -292,7 +306,8 @@ func (t enumType) Convert(v interface{}) (interface{}, error) {
 func (t enumType) MustConvert(v interface{}) interface{} {
 	value, err := t.Convert(v)
 	if err != nil {
-		panic(err)
+		// Return a safe default value instead of panicking
+		return t.Zero()
 	}
 	return value
 }

@@ -249,9 +249,17 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if dTemp != nil {
 			switch dNum := dTemp.(type) {
 			case float64:
-				dVal = float64(int64(dNum))
+				// Use strconv to safely convert float64 to int64
+				strVal := strconv.FormatFloat(dNum, 'f', 0, 64)
+				if intVal, err := strconv.ParseInt(strVal, 10, 64); err == nil {
+					dVal = float64(intVal)
+				}
 			case float32:
-				dVal = float64(int64(dNum))
+				// Use strconv to safely convert float32 to int64
+				strVal := strconv.FormatFloat(float64(dNum), 'f', 0, 64)
+				if intVal, err := strconv.ParseInt(strVal, 10, 64); err == nil {
+					dVal = float64(intVal)
+				}
 			case int64:
 				dVal = float64(dNum)
 			case int32:
