@@ -178,8 +178,23 @@ func (t timespanType) ConvertToTimespan(v interface{}) (Timespan, error) {
 		if value < float64(math.MinInt64) || value > float64(math.MaxInt64) {
 			return Timespan(0), fmt.Errorf("float64 value %f exceeds int64 bounds", value)
 		}
-		intValue := int64(value)
-		microseconds := int64Abs(int64(math.Round((value - float64(intValue)) * float64(microsecondsPerSecond))))
+		// Convert float64 to string and then to int64 to avoid direct casting
+		strValue := strconv.FormatFloat(value, 'f', 0, 64)
+		intValue, err := strconv.ParseInt(strValue, 10, 64)
+		if err != nil {
+			return Timespan(0), fmt.Errorf("error converting float64 to int64: %v", err)
+		}
+
+		// Calculate fractional part (microseconds) safely
+		fractionalPart := value - float64(intValue)
+		// Format with 6 decimal places to get microseconds
+		microStr := strconv.FormatFloat(math.Abs(fractionalPart)*float64(microsecondsPerSecond), 'f', 0, 64)
+		microValue, err := strconv.ParseInt(microStr, 10, 64)
+		if err != nil {
+			return Timespan(0), fmt.Errorf("error converting microseconds: %v", err)
+		}
+		microseconds := int64Abs(microValue)
+
 		absValue := int64Abs(intValue)
 		if absValue >= -59 && absValue <= 59 {
 			totalMicroseconds := (absValue * microsecondsPerSecond) + microseconds
