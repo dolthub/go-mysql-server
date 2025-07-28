@@ -318,7 +318,6 @@ func sanitizeArguments(args []interface{}) []interface{} {
 		default:
 			// Use reflection to handle structs and pointers to structs
 			rv := reflect.ValueOf(arg)
-			rt := reflect.TypeOf(arg)
 			if rv.Kind() == reflect.Ptr {
 				rv = rv.Elem()
 				if rv.Kind() == reflect.Struct {
