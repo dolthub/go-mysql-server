@@ -61,6 +61,8 @@ type scope struct {
 
 	insertTableAlias    string
 	insertColumnAliases map[string]string
+
+	selectColumnAliases map[string]scopeColumn
 }
 
 // resolveColumn matches a variable use to a column definition with a unique
@@ -441,6 +443,12 @@ func (s *scope) copy() *scope {
 	if !s.colset.Empty() {
 		ret.colset = s.colset.Copy()
 	}
+	if s.selectColumnAliases != nil {
+		ret.selectColumnAliases = make(map[string]scopeColumn, len(s.selectColumnAliases))
+		for k, v := range s.selectColumnAliases {
+			ret.selectColumnAliases[k] = v
+		}
+	}
 
 	return &ret
 }
@@ -644,8 +652,11 @@ func (c scopeColumn) withOriginal(origTbl, col string) scopeColumn {
 // scalarGf returns a getField reference to this column's expression.
 func (c scopeColumn) scalarGf() sql.Expression {
 	if c.scalar != nil {
-		if p, ok := c.scalar.(*expression.ProcedureParam); ok {
-			return p
+		switch e := c.scalar.(type) {
+		case *expression.ProcedureParam:
+			return e
+		case *expression.Alias:
+			return e
 		}
 	}
 	if c.originalCol != "" {
