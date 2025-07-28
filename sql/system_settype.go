@@ -17,6 +17,7 @@ package sql
 import (
 	"math"
 	"reflect"
+	"strconv"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -86,7 +87,13 @@ func (t systemSetType) Convert(v interface{}) (interface{}, error) {
 	case uint64:
 		return t.SetType.Convert(value)
 	case float32:
-		return t.Convert(float64(value))
+		// First convert to string, then pass to float64 handler for consistent processing
+		strValue := strconv.FormatFloat(float64(value), 'f', -1, 32)
+		floatValue, err := strconv.ParseFloat(strValue, 64)
+		if err != nil {
+			return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
+		}
+		return t.Convert(floatValue)
 	case float64:
 		// Float values aren't truly accepted, but the engine will give them when it should give ints.
 		// Therefore, if the float doesn't have a fractional portion, we treat it as an int.
@@ -95,7 +102,12 @@ func (t systemSetType) Convert(v interface{}) (interface{}, error) {
 			if value < float64(math.MinInt64) || value > float64(math.MaxInt64) {
 				return nil, ErrInvalidSystemVariableValue.New(t.varName, v) // Reject out-of-range values
 			}
-			intValue := int64(value)
+			// Convert float64 to string and then to int64 to avoid unsafe type casting
+			strValue := strconv.FormatFloat(value, 'f', 0, 64)
+			intValue, err := strconv.ParseInt(strValue, 10, 64)
+			if err != nil {
+				return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
+			}
 			return t.SetType.Convert(intValue)
 		}
 		return nil, ErrInvalidSystemVariableValue.New(t.varName, v) // Reject out-of-range values
