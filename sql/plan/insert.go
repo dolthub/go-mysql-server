@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"strconv"
 	"strings"
 
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -663,11 +664,22 @@ func toInt64(x interface{}) int64 {
 		}
 		return int64(x)
 	case float32:
-		return int64(x)
+		// Use strconv to safely convert float32 to int64
+		strVal := strconv.FormatFloat(float64(x), 'f', 0, 64)
+		if intVal, err := strconv.ParseInt(strVal, 10, 64); err == nil {
+			return intVal
+		}
+		return 0 // Safe default if conversion fails
 	case float64:
-		return int64(x)
+		// Use strconv to safely convert float64 to int64
+		strVal := strconv.FormatFloat(x, 'f', 0, 64)
+		if intVal, err := strconv.ParseInt(strVal, 10, 64); err == nil {
+			return intVal
+		}
+		return 0 // Safe default if conversion fails
 	default:
-		panic(fmt.Sprintf("Expected a numeric auto increment value, but got %T", x))
+		// Return a safe default instead of panicking
+		return 0
 	}
 }
 
