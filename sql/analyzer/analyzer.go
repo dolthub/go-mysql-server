@@ -291,15 +291,23 @@ func NewDefault(provider sql.DatabaseProvider) *Analyzer {
 // Log prints an INFO message to stdout with the given message and args
 // if the analyzer is in debug mode.
 func (a *Analyzer) Log(msg string, args ...interface{}) {
-	if a != nil && a.Debug {
-		if len(a.contextStack) > 0 {
-			ctx := strings.Join(a.contextStack, "/")
-			sanitizedArgs := sanitizeArguments(args)
-			log.Infof("%s: "+msg, append([]interface{}{ctx}, sanitizedArgs...)...)
-		} else {
-			sanitizedArgs := sanitizeArguments(args)
-			log.Infof(msg, sanitizedArgs...)
+	if a == nil || !a.Debug {
+		return
+	}
+
+	sanitizedArgs := sanitizeArguments(args)
+
+	if len(a.contextStack) > 0 {
+		ctx := strings.Join(a.contextStack, "/")
+		// Create a new slice for the final arguments to avoid direct append with variadic expansion
+		finalArgs := make([]interface{}, len(sanitizedArgs)+1)
+		finalArgs[0] = ctx
+		for i, arg := range sanitizedArgs {
+			finalArgs[i+1] = arg
 		}
+		log.Infof("%s: "+msg, finalArgs...)
+	} else {
+		log.Infof(msg, sanitizedArgs...)
 	}
 }
 
