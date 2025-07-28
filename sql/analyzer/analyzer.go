@@ -316,8 +316,36 @@ func sanitizeArguments(args []interface{}) []interface{} {
 		case plan.AuthenticationMysqlNativePassword:
 			args[i] = "[PASSWORD_REDACTED]"
 		default:
-			if reflect.TypeOf(arg).Kind() == reflect.Struct {
-				args[i] = "[STRUCT_REDACTED]"
+			// Use reflection to handle structs and pointers to structs
+			rv := reflect.ValueOf(arg)
+			if rv.Kind() == reflect.Ptr {
+				rv = rv.Elem()
+				if rv.Kind() == reflect.Struct {
+					args[i] = sanitizeStruct(rv)
+					continue
+				}
+			}
+			if rv.Kind() == reflect.Struct {
+				args[i] = sanitizeStruct(rv)
+			} else if rv.Kind() == reflect.Slice {
+				// Recursively sanitize slice elements
+				slice := make([]interface{}, rv.Len())
+				for j := 0; j < rv.Len(); j++ {
+					slice[j] = sanitizeArguments([]interface{}{rv.Index(j).Interface()})[0]
+				}
+				args[i] = slice
+			} else if rv.Kind() == reflect.Map {
+				// Recursively sanitize map values
+				mapSanitized := make(map[interface{}]interface{})
+				for _, key := range rv.MapKeys() {
+					val := rv.MapIndex(key).Interface()
+					if isSensitiveString(fmt.Sprintf("%v", key.Interface())) || isSensitive(val) {
+						mapSanitized[key.Interface()] = "[REDACTED]"
+					} else {
+						mapSanitized[key.Interface()] = sanitizeArguments([]interface{}{val})[0]
+					}
+				}
+				args[i] = mapSanitized
 			} else {
 				args[i] = "[REDACTED]"
 			}
@@ -326,14 +354,78 @@ func sanitizeArguments(args []interface{}) []interface{} {
 	return args
 }
 
+func sanitizeStruct(rv reflect.Value) interface{} {
+	if !rv.IsValid() || rv.Kind() != reflect.Struct {
+		return "[STRUCT_REDACTED]"
+	}
+	rt := rv.Type()
+	result := make(map[string]interface{})
+	for i := 0; i < rv.NumField(); i++ {
+		field := rt.Field(i)
+		fieldName := field.Name
+		fieldValue := rv.Field(i).Interface()
+		if isSensitiveString(fieldName) || isSensitive(fieldValue) {
+			result[fieldName] = "[REDACTED]"
+		} else {
+			// Recursively sanitize nested structs, slices, and maps
+			switch rv.Field(i).Kind() {
+			case reflect.Struct:
+				result[fieldName] = sanitizeStruct(rv.Field(i))
+			case reflect.Slice:
+				slice := make([]interface{}, rv.Field(i).Len())
+				for j := 0; j < rv.Field(i).Len(); j++ {
+					slice[j] = sanitizeArguments([]interface{}{rv.Field(i).Index(j).Interface()})[0]
+				}
+				result[fieldName] = slice
+			case reflect.Map:
+				mapSanitized := make(map[interface{}]interface{})
+				for _, key := range rv.Field(i).MapKeys() {
+					val := rv.Field(i).MapIndex(key).Interface()
+					if isSensitiveString(fmt.Sprintf("%v", key.Interface())) || isSensitive(val) {
+						mapSanitized[key.Interface()] = "[REDACTED]"
+					} else {
+						mapSanitized[key.Interface()] = sanitizeArguments([]interface{}{val})[0]
+					}
+				}
+				result[fieldName] = mapSanitized
+			default:
+				result[fieldName] = fieldValue
+			}
+		}
+	}
+	return result
+}
+
 func sanitizeMap(m map[string]interface{}) map[string]interface{} {
 	for key, value := range m {
 		if isSensitiveString(key) || isSensitive(value) {
 			m[key] = "[REDACTED]"
-		} else if subMap, ok := value.(map[string]interface{}); ok {
-			m[key] = sanitizeMap(subMap)
-		} else if subSlice, ok := value.([]interface{}); ok {
-			m[key] = sanitizeArguments(subSlice)
+		} else {
+			rv := reflect.ValueOf(value)
+			switch rv.Kind() {
+			case reflect.Map:
+				// Recursively sanitize map values
+				subMap := make(map[interface{}]interface{})
+				for _, subKey := range rv.MapKeys() {
+					val := rv.MapIndex(subKey).Interface()
+					if isSensitiveString(fmt.Sprintf("%v", subKey.Interface())) || isSensitive(val) {
+						subMap[subKey.Interface()] = "[REDACTED]"
+					} else {
+						subMap[subKey.Interface()] = sanitizeArguments([]interface{}{val})[0]
+					}
+				}
+				m[key] = subMap
+			case reflect.Slice:
+				slice := make([]interface{}, rv.Len())
+				for j := 0; j < rv.Len(); j++ {
+					slice[j] = sanitizeArguments([]interface{}{rv.Index(j).Interface()})[0]
+				}
+				m[key] = slice
+			case reflect.Struct:
+				m[key] = sanitizeStruct(rv)
+			default:
+				m[key] = value
+			}
 		}
 	}
 	return m

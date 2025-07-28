@@ -90,7 +90,7 @@ func (u *User) ToRow(ctx *sql.Context) sql.Row {
 	for i, col := range userTblSchema {
 		row[i], err = col.Default.Eval(ctx, nil)
 		if err != nil {
-			panic(err) // Should never happen, schema is static
+			row[i] = nil
 		}
 	}
 	//TODO: once the remaining fields are added, fill those in as well
