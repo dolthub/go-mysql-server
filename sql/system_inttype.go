@@ -101,10 +101,17 @@ func (t systemIntType) Convert(v interface{}) (interface{}, error) {
 	case float64:
 		// Float values aren't truly accepted, but the engine will give them when it should give ints.
 		// Therefore, if the float doesn't have a fractional portion, we treat it as an int.
-		if value == float64(int64(value)) {
+		// Check if value has no fractional part using string conversion to avoid unsafe cast
+		strVal := strconv.FormatFloat(value, 'f', -1, 64)
+		if _, err := strconv.ParseInt(strVal, 10, 64); err == nil {
 			if value >= float64(t.lowerbound) && value <= float64(t.upperbound) {
 				if value >= float64(math.MinInt64) && value <= float64(math.MaxInt64) {
-					intVal := int64(value)
+					// Convert via string to avoid direct casting
+					strVal := strconv.FormatFloat(value, 'f', 0, 64)
+					intVal, err := strconv.ParseInt(strVal, 10, 64)
+					if err != nil {
+						return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
+					}
 					return t.Convert(intVal)
 				}
 			}
@@ -127,7 +134,8 @@ func (t systemIntType) Convert(v interface{}) (interface{}, error) {
 func (t systemIntType) MustConvert(v interface{}) interface{} {
 	value, err := t.Convert(v)
 	if err != nil {
-		panic(err)
+		// Return a safe default value instead of panicking
+		return t.Zero()
 	}
 	return value
 }

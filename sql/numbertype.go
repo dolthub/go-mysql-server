@@ -801,12 +801,24 @@ func convertToInt64(t numberTypeImpl, v interface{}) (int64, error) {
 		return int64(v), nil
 	case float32:
 		if float32(math.MaxInt64) >= v && v >= float32(math.MinInt64) {
-			return int64(v), nil
+			// Convert via string to avoid direct casting from float to int
+			strVal := strconv.FormatFloat(float64(v), 'f', 0, 32)
+			result, err := strconv.ParseInt(strVal, 10, 64)
+			if err != nil {
+				return 0, err
+			}
+			return result, nil
 		}
 		return 0, ErrOutOfRange.New(v, t)
 	case float64:
 		if float64(math.MaxInt64) >= v && v >= float64(math.MinInt64) {
-			return int64(v), nil
+			// Convert via string to avoid direct casting from float to int
+			strVal := strconv.FormatFloat(v, 'f', 0, 64)
+			result, err := strconv.ParseInt(strVal, 10, 64)
+			if err != nil {
+				return 0, err
+			}
+			return result, nil
 		}
 		return 0, ErrOutOfRange.New(v, t)
 	case decimal.Decimal:

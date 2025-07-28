@@ -292,12 +292,11 @@ func NewDefault(provider sql.DatabaseProvider) *Analyzer {
 // if the analyzer is in debug mode.
 func (a *Analyzer) Log(msg string, args ...interface{}) {
 	if a != nil && a.Debug {
-		sanitizedArgs := sanitizeArguments(args)
 		if len(a.contextStack) > 0 {
 			ctx := strings.Join(a.contextStack, "/")
-			log.Infof("%s: "+msg, append([]interface{}{ctx}, sanitizedArgs...)...)
+			log.Infof("%s: "+msg, append([]interface{}{ctx}, sanitizeArguments(args)...)...)
 		} else {
-			log.Infof(msg, sanitizedArgs...)
+			log.Infof(msg, sanitizeArguments(args)...)
 		}
 	}
 }
