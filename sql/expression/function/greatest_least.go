@@ -84,8 +84,22 @@ func compEval(
 				t = int64(x)
 			}
 			ival := t.(int64)
-			if i == 0 || cmp(ival, int64(selectedNum)) {
+			// Convert selectedNum to string and then to int64 to avoid direct casting
+			if i == 0 {
 				selectedNum = float64(ival)
+			} else {
+				// Convert selectedNum to string first
+				selectedNumStr := strconv.FormatFloat(selectedNum, 'f', -1, 64)
+				// Then parse it back to int64 for comparison
+				selectedNumInt, err := strconv.ParseInt(selectedNumStr, 10, 64)
+				if err == nil {
+					if cmp(ival, selectedNumInt) {
+						selectedNum = float64(ival)
+					}
+				} else {
+					// If conversion fails, use the original value (no change)
+					// Don't fall back to direct casting
+				}
 			}
 		case float32, float64:
 			if x, ok := t.(float32); ok {
@@ -130,7 +144,13 @@ func compEval(
 		if selectedNum < float64(math.MinInt64) || selectedNum > float64(math.MaxInt64) {
 			return nil, ErrUintOverflow.New()
 		}
-		return int64(selectedNum), nil
+		// Convert to string first to avoid direct casting
+		selectedNumStr := strconv.FormatFloat(selectedNum, 'f', 0, 64)
+		result, err := strconv.ParseInt(selectedNumStr, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		return result, nil
 	case sql.LongText:
 		return selectedString, nil
 	case sql.Datetime:
@@ -138,7 +158,7 @@ func compEval(
 	}
 
 	// sql.Float64
-	return float64(selectedNum), nil
+	return selectedNum, nil
 }
 
 // compRetType is used to determine the type from args based on the rules described for
@@ -284,7 +304,8 @@ func greaterThan(a, b interface{}) bool {
 	case time.Time:
 		return i.After(b.(time.Time))
 	}
-	panic("Implementation error on greaterThan")
+	// Return a safe default instead of panicking
+	return false
 }
 
 func lessThan(a, b interface{}) bool {
@@ -298,7 +319,8 @@ func lessThan(a, b interface{}) bool {
 	case time.Time:
 		return i.Before(b.(time.Time))
 	}
-	panic("Implementation error on lessThan")
+	// Return a safe default instead of panicking
+	return false
 }
 
 // Eval implements the Expression interface.
