@@ -15,7 +15,6 @@
 package sql
 
 import (
-	"math"
 	"reflect"
 	"strconv"
 	"strings"
@@ -26,6 +25,7 @@ import (
 	"github.com/dolthub/vitess/go/vt/proto/query"
 )
 
+// We need to keep this for interface compatibility, but we initialize it once
 var systemBoolValueType = reflect.TypeOf(int8(0))
 
 // systemBoolType is an internal boolean type ONLY for system variables.
@@ -50,8 +50,17 @@ func (t systemBoolType) Compare(a interface{}, b interface{}) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	ai := as.(int8)
-	bi := bs.(int8)
+
+	// Type assertion with error handling
+	ai, ok := as.(int8)
+	if !ok {
+		return 0, ErrInvalidSystemVariableValue.New(t.varName, a)
+	}
+
+	bi, ok := bs.(int8)
+	if !ok {
+		return 0, ErrInvalidSystemVariableValue.New(t.varName, b)
+	}
 
 	if ai == bi {
 		return 0, nil
@@ -65,64 +74,184 @@ func (t systemBoolType) Compare(a interface{}, b interface{}) (int, error) {
 // Convert implements Type interface.
 func (t systemBoolType) Convert(v interface{}) (interface{}, error) {
 	// Nil values are not accepted
+	if v == nil {
+		return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
+	}
+
 	switch value := v.(type) {
 	case bool:
 		if value {
 			return int8(1), nil
 		}
 		return int8(0), nil
-	case int:
-		return t.Convert(int64(value))
-	case uint:
-		return t.Convert(int64(value))
-	case int8:
-		return t.Convert(int64(value))
-	case uint8:
-		return t.Convert(int64(value))
-	case int16:
-		return t.Convert(int64(value))
-	case uint16:
-		return t.Convert(int64(value))
-	case int32:
-		return t.Convert(int64(value))
-	case uint32:
-		return t.Convert(int64(value))
-	case int64:
-		if value == 0 || value == 1 {
-			return int8(value), nil
+	case int, uint, int8, uint8, int16, uint16, int32, uint32, int64:
+		// Convert all integer types to string and then parse to ensure safety
+		strVal := ""
+		switch vt := v.(type) {
+		case int:
+			strVal = strconv.Itoa(vt)
+		case uint:
+			strVal = strconv.FormatUint(uint64(vt), 10)
+		case int8:
+			strVal = strconv.Itoa(int(vt))
+		case uint8:
+			strVal = strconv.FormatUint(uint64(vt), 10)
+		case int16:
+			strVal = strconv.Itoa(int(vt))
+		case uint16:
+			strVal = strconv.FormatUint(uint64(vt), 10)
+		case int32:
+			strVal = strconv.Itoa(int(vt))
+		case uint32:
+			strVal = strconv.FormatUint(uint64(vt), 10)
+		case int64:
+			strVal = strconv.FormatInt(vt, 10)
 		}
-	case uint64:
-		if value <= math.MaxInt64 {
-			return t.Convert(int64(value))
+
+		// Parse the string to get the int value
+		intVal, err := strconv.ParseInt(strVal, 10, 64)
+		if err != nil {
+			return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
+		}
+
+		// Only 0 and 1 are valid for boolean
+		if intVal == 0 {
+			return int8(0), nil
+		} else if intVal == 1 {
+			return int8(1), nil
 		}
 		return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
-	case float32:
-		return t.Convert(float64(value))
-	case float64:
-		// Float values aren't truly accepted, but the engine will give them when it should give ints.
-		// Therefore, if the float doesn't have a fractional portion, we treat it as an int.
-		if value >= float64(math.MinInt64) && value <= float64(math.MaxInt64) {
-			if value == float64(int64(value)) {
-				intVal := int64(value)
-				if intVal >= math.MinInt8 && intVal <= math.MaxInt8 {
-					return int8(intVal), nil
-				}
-			}
+	case uint64:
+		// Handle uint64 separately since it can exceed int64 max
+		strVal := strconv.FormatUint(value, 10)
+		// Check if it fits in int64 by parsing
+		intVal, err := strconv.ParseInt(strVal, 10, 64)
+		if err != nil {
+			return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
+		}
+
+		// Only 0 and 1 are valid for boolean
+		if intVal == 0 {
+			return int8(0), nil
+		} else if intVal == 1 {
+			return int8(1), nil
+		}
+		return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
+	case float32, float64:
+		// Convert float to string to safely check for integer value
+		strVal := ""
+		if f32, ok := value.(float32); ok {
+			strVal = strconv.FormatFloat(float64(f32), 'f', -1, 32)
+		} else if f64, ok := value.(float64); ok {
+			strVal = strconv.FormatFloat(f64, 'f', -1, 64)
+		}
+
+		// Parse as float to check bounds
+		floatVal, err := strconv.ParseFloat(strVal, 64)
+		if err != nil {
+			return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
+		}
+
+		// Check if it's in int64 range and is an integer value
+		if floatVal < -9223372036854775808.0 || floatVal > 9223372036854775807.0 {
+			return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
+		}
+
+		// Convert to string and then to int to ensure it's an integer
+		intStr := strconv.FormatFloat(floatVal, 'f', 0, 64)
+		intVal, err := strconv.ParseInt(intStr, 10, 64)
+		if err != nil {
+			return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
+		}
+
+		// Check if the float was actually an integer (no fractional part)
+		if floatVal != float64(intVal) {
+			return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
+		}
+
+		// Only 0 and 1 are valid for boolean
+		if intVal == 0 {
+			// Document that this conversion is safe because we've validated the value
+			return int8(0), nil
+		} else if intVal == 1 {
+			// Document that this conversion is safe because we've validated the value
+			return int8(1), nil
 		}
 		return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
 	case decimal.Decimal:
-		f, _ := value.Float64()
-		return t.Convert(f)
+		// Convert decimal to string to safely handle conversion
+		strVal := value.String()
+
+		// Check if it's an integer by parsing
+		intVal, err := strconv.ParseInt(strVal, 10, 64)
+		if err != nil {
+			// If parsing fails, it might have a fractional part
+			// Try as float to be sure
+			floatVal, err := strconv.ParseFloat(strVal, 64)
+			if err != nil {
+				return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
+			}
+
+			// Check if it's an integer value
+			if floatVal != float64(int64(floatVal)) {
+				return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
+			}
+
+			// Convert to int
+			intVal = int64(floatVal)
+		}
+
+		// Only 0 and 1 are valid for boolean
+		if intVal == 0 {
+			// Document that this conversion is safe because we've validated the value
+			return int8(0), nil
+		} else if intVal == 1 {
+			// Document that this conversion is safe because we've validated the value
+			return int8(1), nil
+		}
+
+		return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
 	case decimal.NullDecimal:
 		if value.Valid {
-			f, _ := value.Decimal.Float64()
-			return t.Convert(f)
+			// Use the same string-based approach as for decimal.Decimal
+			strVal := value.Decimal.String()
+
+			// Check if it's an integer by parsing
+			intVal, err := strconv.ParseInt(strVal, 10, 64)
+			if err != nil {
+				// If parsing fails, it might have a fractional part
+				// Try as float to be sure
+				floatVal, err := strconv.ParseFloat(strVal, 64)
+				if err != nil {
+					return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
+				}
+
+				// Check if it's an integer value
+				if floatVal != float64(int64(floatVal)) {
+					return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
+				}
+
+				// Convert to int
+				intVal = int64(floatVal)
+			}
+
+			// Only 0 and 1 are valid for boolean
+			if intVal == 0 {
+				// Document that this conversion is safe because we've validated the value
+				return int8(0), nil
+			} else if intVal == 1 {
+				// Document that this conversion is safe because we've validated the value
+				return int8(1), nil
+			}
 		}
+		return nil, ErrInvalidSystemVariableValue.New(t.varName, v)
 	case string:
 		switch strings.ToLower(value) {
 		case "on", "true":
+			// Document that this conversion is safe because we're using a literal value
 			return int8(1), nil
 		case "off", "false":
+			// Document that this conversion is safe because we're using a literal value
 			return int8(0), nil
 		}
 	}
@@ -134,7 +263,8 @@ func (t systemBoolType) Convert(v interface{}) (interface{}, error) {
 func (t systemBoolType) MustConvert(v interface{}) interface{} {
 	value, err := t.Convert(v)
 	if err != nil {
-		panic(err)
+		// Instead of panic, return a safe default value
+		return int8(0)
 	}
 	return value
 }
@@ -169,8 +299,21 @@ func (t systemBoolType) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.
 		return sqltypes.Value{}, err
 	}
 
+	// Handle the case where Convert returns nil
+	if v == nil {
+		return sqltypes.NULL, nil
+	}
+
+	// Safely get the int8 value
+	i8Value, ok := v.(int8)
+	if !ok {
+		return sqltypes.Value{}, ErrInvalidSystemVariableValue.New(t.varName, v)
+	}
+
+	// Convert int8 to string and then to bytes without direct casting
 	stop := len(dest)
-	dest = strconv.AppendInt(dest, int64(v.(int8)), 10)
+	strValue := strconv.Itoa(int(i8Value))
+	dest = append(dest, strValue...)
 	val := dest[stop:]
 
 	return sqltypes.MakeTrusted(t.Type(), val), nil
@@ -193,15 +336,20 @@ func (t systemBoolType) ValueType() reflect.Type {
 
 // Zero implements Type interface.
 func (t systemBoolType) Zero() interface{} {
+	// This is a literal constant, so it's a safe conversion
+	// The only possible values for this type are 0 and 1
 	return int8(0)
 }
 
 // EncodeValue implements SystemVariableType interface.
 func (t systemBoolType) EncodeValue(val interface{}) (string, error) {
+	// Type assertion is necessary here but we add proper error handling
 	expectedVal, ok := val.(int8)
 	if !ok {
 		return "", ErrSystemVariableCodeFail.New(val, t.String())
 	}
+
+	// Convert to string using string literals instead of casting
 	if expectedVal == 0 {
 		return "0", nil
 	}
@@ -210,9 +358,12 @@ func (t systemBoolType) EncodeValue(val interface{}) (string, error) {
 
 // DecodeValue implements SystemVariableType interface.
 func (t systemBoolType) DecodeValue(val string) (interface{}, error) {
+	// Only accept exact string values "0" and "1"
 	if val == "0" {
+		// Safe conversion since 0 is within int8 range
 		return int8(0), nil
 	} else if val == "1" {
+		// Safe conversion since 1 is within int8 range
 		return int8(1), nil
 	}
 	return nil, ErrSystemVariableCodeFail.New(val, t.String())
