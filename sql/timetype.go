@@ -175,6 +175,9 @@ func (t timespanType) ConvertToTimespan(v interface{}) (Timespan, error) {
 	case float32:
 		return t.ConvertToTimespan(float64(value))
 	case float64:
+		if value < float64(math.MinInt64) || value > float64(math.MaxInt64) {
+			return Timespan(0), fmt.Errorf("float64 value %f exceeds int64 bounds", value)
+		}
 		intValue := int64(value)
 		microseconds := int64Abs(int64(math.Round((value - float64(intValue)) * float64(microsecondsPerSecond))))
 		absValue := int64Abs(intValue)
