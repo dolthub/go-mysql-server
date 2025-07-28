@@ -620,6 +620,172 @@ var QueryPlanScriptTests = []ScriptTest{
 					"             └─ columns: [x y]\n" +
 					"",
 			},
+			{
+				Query: "select * from t1 join t2 order by t1.i;",
+				Expected: []sql.Row{
+					sql.Row{1, 2},
+					sql.Row{1, 3},
+					sql.Row{1, 4},
+					sql.Row{2, 2},
+					sql.Row{2, 3},
+					sql.Row{2, 4},
+					sql.Row{3, 2},
+					sql.Row{3, 3},
+					sql.Row{3, 4},
+				},
+				ExpectedPlan: "CrossJoin\n" +
+					" ├─ IndexedTableAccess(t1)\n" +
+					" │   ├─ index: [t1.i]\n" +
+					" │   ├─ static: [{[NULL, ∞)}]\n" +
+					" │   ├─ colSet: (1)\n" +
+					" │   ├─ tableId: 1\n" +
+					" │   └─ Table\n" +
+					" │       ├─ name: t1\n" +
+					" │       └─ columns: [i]\n" +
+					" └─ ProcessTable\n" +
+					"     └─ Table\n" +
+					"         ├─ name: t2\n" +
+					"         └─ columns: [j]\n" +
+					"",
+			},
+			{
+				Query: "select * from t1 join t2 order by t2.j;",
+				Expected: []sql.Row{
+					sql.Row{1, 2},
+					sql.Row{2, 2},
+					sql.Row{3, 2},
+					sql.Row{1, 3},
+					sql.Row{2, 3},
+					sql.Row{3, 3},
+					sql.Row{1, 4},
+					sql.Row{2, 4},
+					sql.Row{3, 4},
+				},
+				ExpectedPlan: "Project\n" +
+					" ├─ columns: [t1.i:1!null, t2.j:0!null]\n" +
+					" └─ CrossJoin\n" +
+					"     ├─ IndexedTableAccess(t2)\n" +
+					"     │   ├─ index: [t2.j]\n" +
+					"     │   ├─ static: [{[NULL, ∞)}]\n" +
+					"     │   ├─ colSet: (2)\n" +
+					"     │   ├─ tableId: 2\n" +
+					"     │   └─ Table\n" +
+					"     │       ├─ name: t2\n" +
+					"     │       └─ columns: [j]\n" +
+					"     └─ ProcessTable\n" +
+					"         └─ Table\n" +
+					"             ├─ name: t1\n" +
+					"             └─ columns: [i]\n" +
+					"",
+			},
+			{
+				Query: "select * from t1 join t2 order by t1.i desc;",
+				Expected: []sql.Row{
+					sql.Row{3, 2},
+					sql.Row{3, 3},
+					sql.Row{3, 4},
+					sql.Row{2, 2},
+					sql.Row{2, 3},
+					sql.Row{2, 4},
+					sql.Row{1, 2},
+					sql.Row{1, 3},
+					sql.Row{1, 4},
+				},
+				ExpectedPlan: "CrossJoin\n" +
+					" ├─ IndexedTableAccess(t1)\n" +
+					" │   ├─ index: [t1.i]\n" +
+					" │   ├─ static: [{[NULL, ∞)}]\n" +
+					" │   ├─ reverse: true\n" +
+					" │   ├─ colSet: (1)\n" +
+					" │   ├─ tableId: 1\n" +
+					" │   └─ Table\n" +
+					" │       ├─ name: t1\n" +
+					" │       └─ columns: [i]\n" +
+					" └─ ProcessTable\n" +
+					"     └─ Table\n" +
+					"         ├─ name: t2\n" +
+					"         └─ columns: [j]\n" +
+					"",
+			},
+			{
+				Query: "select * from t1 join t2 where t1.i > 1 and t1.i < 3 and t2.j > 2 and t2.j < 4 order by t1.i;",
+				Expected: []sql.Row{
+					sql.Row{2, 3},
+				},
+				ExpectedPlan: "CrossJoin\n" +
+					" ├─ IndexedTableAccess(t1)\n" +
+					" │   ├─ index: [t1.i]\n" +
+					" │   ├─ static: [{(1, 3)}]\n" +
+					" │   ├─ colSet: (1)\n" +
+					" │   ├─ tableId: 1\n" +
+					" │   └─ Table\n" +
+					" │       ├─ name: t1\n" +
+					" │       └─ columns: [i]\n" +
+					" └─ IndexedTableAccess(t2)\n" +
+					"     ├─ index: [t2.j]\n" +
+					"     ├─ static: [{(2, 4)}]\n" +
+					"     ├─ colSet: (2)\n" +
+					"     ├─ tableId: 2\n" +
+					"     └─ Table\n" +
+					"         ├─ name: t2\n" +
+					"         └─ columns: [j]\n" +
+					"",
+			},
+			{
+				Query: "select * from t3 join t4 where t3.i = 1 and t4.x = 3 order by t3.i;",
+				Expected: []sql.Row{
+					sql.Row{1, 1, 3, 3},
+					sql.Row{1, 2, 3, 3},
+				},
+				ExpectedPlan: "CrossJoin\n" +
+					" ├─ IndexedTableAccess(t3)\n" +
+					" │   ├─ index: [t3.i,t3.j]\n" +
+					" │   ├─ static: [{[1, 1], [NULL, ∞)}]\n" +
+					" │   ├─ colSet: (1,2)\n" +
+					" │   ├─ tableId: 1\n" +
+					" │   └─ Table\n" +
+					" │       ├─ name: t3\n" +
+					" │       └─ columns: [i j]\n" +
+					" └─ IndexedTableAccess(t4)\n" +
+					"     ├─ index: [t4.x,t4.y]\n" +
+					"     ├─ static: [{[3, 3], [NULL, ∞)}]\n" +
+					"     ├─ colSet: (3,4)\n" +
+					"     ├─ tableId: 2\n" +
+					"     └─ Table\n" +
+					"         ├─ name: t4\n" +
+					"         └─ columns: [x y]\n" +
+					"",
+			},
+			{
+				Query: "select * from t3 join t4 where t3.j = 2 and t4.x = 3 order by t3.i desc;",
+				Expected: []sql.Row{
+					sql.Row{2, 2, 3, 3},
+					sql.Row{1, 2, 3, 3},
+				},
+				ExpectedPlan: "CrossJoin\n" +
+					" ├─ Filter\n" +
+					" │   ├─ Eq\n" +
+					" │   │   ├─ t3.j:1!null\n" +
+					" │   │   └─ 2 (int)\n" +
+					" │   └─ IndexedTableAccess(t3)\n" +
+					" │       ├─ index: [t3.i,t3.j]\n" +
+					" │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+					" │       ├─ reverse: true\n" +
+					" │       ├─ colSet: (1,2)\n" +
+					" │       ├─ tableId: 1\n" +
+					" │       └─ Table\n" +
+					" │           ├─ name: t3\n" +
+					" │           └─ columns: [i j]\n" +
+					" └─ IndexedTableAccess(t4)\n" +
+					"     ├─ index: [t4.x,t4.y]\n" +
+					"     ├─ static: [{[3, 3], [NULL, ∞)}]\n" +
+					"     ├─ colSet: (3,4)\n" +
+					"     ├─ tableId: 2\n" +
+					"     └─ Table\n" +
+					"         ├─ name: t4\n" +
+					"         └─ columns: [x y]\n" +
+					"",
+			},
 		},
 	},
 }
