@@ -294,9 +294,19 @@ func (a *Analyzer) Log(msg string, args ...interface{}) {
 	if a != nil && a.Debug {
 		if len(a.contextStack) > 0 {
 			ctx := strings.Join(a.contextStack, "/")
-			log.Infof("%s: "+msg, append([]interface{}{ctx}, sanitizeArguments(args)...)...)
+			sanitizedArgs := sanitizeArguments(args)
+			if containsSensitiveData(sanitizedArgs) {
+				log.Warnf("Sensitive data detected in log arguments. Logging suppressed.")
+				return
+			}
+			log.Infof("%s: "+msg, append([]interface{}{ctx}, sanitizedArgs...)...)
 		} else {
-			log.Infof(msg, sanitizeArguments(args)...)
+			sanitizedArgs := sanitizeArguments(args)
+			if containsSensitiveData(sanitizedArgs) {
+				log.Warnf("Sensitive data detected in log arguments. Logging suppressed.")
+				return
+			}
+			log.Infof(msg, sanitizedArgs...)
 		}
 	}
 }
@@ -346,7 +356,10 @@ func sanitizeArguments(args []interface{}) []interface{} {
 				}
 				args[i] = mapSanitized
 			} else {
-				args[i] = "[REDACTED]"
+				// Catch-all for unhandled types
+				if isSensitive(fmt.Sprintf("%v", arg)) {
+					args[i] = "[REDACTED]"
+				}
 			}
 		}
 	}
