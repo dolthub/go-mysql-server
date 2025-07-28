@@ -25,6 +25,7 @@ _testmain.go
 *.exe
 *.test
 *.prof
+*.gz
 
 # Tpc-h tbl files
 benchmark/*tbl
