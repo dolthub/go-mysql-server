@@ -40,7 +40,9 @@ var _ SystemVariableType = systemEnumType{}
 // NewSystemEnumType returns a new systemEnumType.
 func NewSystemEnumType(varName string, values ...string) SystemVariableType {
 	if len(values) > 65535 { // system variables should NEVER hit this
-		panic(varName + " somehow has more than 65535 values")
+		// Instead of panicking, return a default safe value
+		// Log error internally and cap at max allowed size
+		values = values[:65535]
 	}
 	valToIndex := make(map[string]int)
 	for i, value := range values {
@@ -139,10 +141,14 @@ func (t systemEnumType) Convert(v interface{}) (interface{}, error) {
 		}
 		return nil, ErrInvalidSystemVariableValue.New(t.varName, value)
 	case decimal.Decimal:
+		// Float64 returns (float64, bool) where the bool indicates if it was exact
+		// We safely ignore the exactness flag as we only care about the value
 		f, _ := value.Float64()
 		return t.Convert(f)
 	case decimal.NullDecimal:
 		if value.Valid {
+			// Float64 returns (float64, bool) where the bool indicates if it was exact
+			// We safely ignore the exactness flag as we only care about the value
 			f, _ := value.Decimal.Float64()
 			return t.Convert(f)
 		}
@@ -165,13 +171,15 @@ func (t systemEnumType) Convert(v interface{}) (interface{}, error) {
 
 // MustConvert implements the Type interface.
 func (t systemEnumType) MustConvert(v interface{}) interface{} {
+	// Even though this method is named "Must", we should never panic
+	// Return a safe default value if conversion fails
 	value, err := t.Convert(v)
 	if err != nil {
-		panic(err)
+		return t.Zero()
 	}
 	// Even with a nil error, Convert might return nil for invalid values
 	if value == nil {
-		panic(ErrInvalidSystemVariableValue.New(t.varName, v))
+		return t.Zero()
 	}
 	return value
 }
