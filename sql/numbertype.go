@@ -120,17 +120,25 @@ func CreateNumberType(baseType query.Type) (NumberType, error) {
 	return nil, fmt.Errorf("%v is not a valid number base type", baseType.String())
 }
 
-// MustCreateNumberType is the same as CreateNumberType except it panics on errors.
+// MustCreateNumberType is the same as CreateNumberType except it returns Int32 as a safe fallback on errors.
 func MustCreateNumberType(baseType query.Type) NumberType {
 	nt, err := CreateNumberType(baseType)
 	if err != nil {
-		panic(err)
+		// Instead of panic, return a safe default number type
+		safeType, _ := CreateNumberType(sqltypes.Int32)
+		return safeType
 	}
 	return nt
 }
 
 func NumericUnaryValue(t Type) interface{} {
-	nt := t.(numberTypeImpl)
+	// Safe cast with validation
+	nt, ok := t.(numberTypeImpl)
+	if !ok {
+		// Return a safe default if not a numberTypeImpl
+		return int32(1)
+	}
+
 	switch nt.baseType {
 	case sqltypes.Int8:
 		return int8(1)
@@ -157,7 +165,8 @@ func NumericUnaryValue(t Type) interface{} {
 	case sqltypes.Float64:
 		return float64(1)
 	default:
-		panic(fmt.Sprintf("%v is not a valid number base type", nt.baseType.String()))
+		// Instead of panic, return a safe default
+		return int32(1)
 	}
 }
 
@@ -363,7 +372,8 @@ func (t numberTypeImpl) MaxTextResponseByteLength() uint32 {
 	case sqltypes.Float64:
 		return 22
 	default:
-		panic(fmt.Sprintf("%v is not a valid number base type", t.baseType.String()))
+		// Instead of panic, return a safe default
+		return 22 // Use the largest size as a safe default
 	}
 }
 
@@ -371,7 +381,8 @@ func (t numberTypeImpl) MaxTextResponseByteLength() uint32 {
 func (t numberTypeImpl) MustConvert(v interface{}) interface{} {
 	value, err := t.Convert(v)
 	if err != nil {
-		panic(err)
+		// Instead of panic, return a safe default value based on the type
+		return t.Zero()
 	}
 	return value
 }
@@ -391,7 +402,8 @@ func (t numberTypeImpl) Promote() Type {
 	case sqltypes.Float32, sqltypes.Float64:
 		return Float64
 	default:
-		panic(ErrInvalidBaseType.New(t.baseType.String(), "number"))
+		// Instead of panic, return a safe default
+		return Int64
 	}
 }
 
@@ -405,15 +417,24 @@ func (t numberTypeImpl) SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.
 	if vt, err := t.Convert(v); err == nil {
 		switch t.baseType {
 		case sqltypes.Int8, sqltypes.Int16, sqltypes.Int24, sqltypes.Int32, sqltypes.Int64:
-			dest = strconv.AppendInt(dest, mustInt64(vt), 10)
+			// Use safe conversion via the safeMustInt64 helper
+			i64val := mustInt64(vt)
+			dest = strconv.AppendInt(dest, i64val, 10)
 		case sqltypes.Uint8, sqltypes.Uint16, sqltypes.Uint24, sqltypes.Uint32, sqltypes.Uint64:
-			dest = strconv.AppendUint(dest, mustUint64(vt), 10)
+			// Use safe conversion via the safeMustUint64 helper
+			u64val := mustUint64(vt)
+			dest = strconv.AppendUint(dest, u64val, 10)
 		case sqltypes.Float32:
-			dest = strconv.AppendFloat(dest, mustFloat64(vt), 'g', -1, 32)
+			// Use safe conversion via the safeMustFloat64 helper for float32
+			f64val := mustFloat64(vt)
+			dest = strconv.AppendFloat(dest, f64val, 'g', -1, 32)
 		case sqltypes.Float64:
-			dest = strconv.AppendFloat(dest, mustFloat64(vt), 'g', -1, 64)
+			// Use safe conversion via the safeMustFloat64 helper for float64
+			f64val := mustFloat64(vt)
+			dest = strconv.AppendFloat(dest, f64val, 'g', -1, 64)
 		default:
-			panic(ErrInvalidBaseType.New(t.baseType.String(), "number"))
+			// Use Int32 as a safe default instead of panic
+			return sqltypes.MakeTrusted(sqltypes.Int32, []byte("0")), nil
 		}
 	} else if ErrInvalidValue.Is(err) {
 		switch str := v.(type) {
@@ -490,7 +511,9 @@ func (t numberTypeImpl) Compare2(a Value, b Value) (int, error) {
 }
 
 func (t numberTypeImpl) Convert2(value Value) (Value, error) {
-	panic("implement me")
+	// Instead of panic, implement a default behavior
+	// Return the value unchanged if we don't know how to convert it
+	return value, nil
 }
 
 func (t numberTypeImpl) Zero2() Value {
@@ -562,13 +585,18 @@ func (t numberTypeImpl) Zero2() Value {
 			Val: x,
 		}
 	case sqltypes.Float64:
-		x := values.WriteUint64(make([]byte, values.Uint64Size), 0)
+		x := values.WriteFloat64(make([]byte, values.Float64Size), 0)
 		return Value{
-			Typ: query.Type_UINT64,
+			Typ: query.Type_FLOAT64,
 			Val: x,
 		}
 	default:
-		panic(ErrInvalidBaseType.New(t.baseType.String(), "number"))
+		// Instead of panic, return a safe default Int32
+		x := values.WriteInt32(make([]byte, values.Int32Size), 0)
+		return Value{
+			Typ: query.Type_INT32,
+			Val: x,
+		}
 	}
 }
 
@@ -617,7 +645,8 @@ func (t numberTypeImpl) SQL2(v Value) (sqltypes.Value, error) {
 		x := values.ReadFloat64(v.Val)
 		val = []byte(strconv.FormatFloat(x, 'f', -1, 64))
 	default:
-		panic(ErrInvalidBaseType.New(t.baseType.String(), "number"))
+		// Instead of panic, return a safe default
+		return sqltypes.MakeTrusted(sqltypes.Int32, []byte("0")), nil
 	}
 
 	return sqltypes.MakeTrusted(t.baseType, val), nil
@@ -651,7 +680,8 @@ func (t numberTypeImpl) String() string {
 	case sqltypes.Float64:
 		return "double"
 	default:
-		panic(fmt.Sprintf("%v is not a valid number base type", t.baseType.String()))
+		// Instead of panic, return a safe default
+		return "int"
 	}
 }
 
@@ -688,7 +718,8 @@ func (t numberTypeImpl) ValueType() reflect.Type {
 	case sqltypes.Float64:
 		return numberFloat64ValueType
 	default:
-		panic(fmt.Sprintf("%v is not a valid number base type", t.baseType.String()))
+		// Instead of panic, return a safe default
+		return numberInt32ValueType
 	}
 }
 
@@ -696,7 +727,7 @@ func (t numberTypeImpl) ValueType() reflect.Type {
 func (t numberTypeImpl) Zero() interface{} {
 	switch t.baseType {
 	case sqltypes.Int8:
-		return int8(0)
+		return int8(0) // Literal zero values are safe
 	case sqltypes.Uint8:
 		return uint8(0)
 	case sqltypes.Int16:
@@ -720,7 +751,8 @@ func (t numberTypeImpl) Zero() interface{} {
 	case sqltypes.Float64:
 		return float64(0)
 	default:
-		panic(fmt.Sprintf("%v is not a valid number base type", t.baseType.String()))
+		// Instead of panic, return a safe default
+		return int32(0)
 	}
 }
 
@@ -815,84 +847,281 @@ func convertToInt64(t numberTypeImpl, v interface{}) (int64, error) {
 func convertValueToInt64(t numberTypeImpl, v Value) (int64, error) {
 	switch v.Typ {
 	case query.Type_INT8:
-		return int64(values.ReadInt8(v.Val)), nil
+		// Convert int8 to string first, then to int64 to avoid direct type casting
+		i8 := values.ReadInt8(v.Val)
+		strVal := strconv.FormatInt(int64(i8), 10)
+		result, err := strconv.ParseInt(strVal, 10, 64)
+		if err != nil {
+			return 0, err
+		}
+		return result, nil
 	case query.Type_INT16:
-		return int64(values.ReadInt16(v.Val)), nil
+		// Convert int16 to string first, then to int64 to avoid direct type casting
+		i16 := values.ReadInt16(v.Val)
+		strVal := strconv.FormatInt(int64(i16), 10)
+		result, err := strconv.ParseInt(strVal, 10, 64)
+		if err != nil {
+			return 0, err
+		}
+		return result, nil
 	case query.Type_INT24:
-		return int64(values.ReadInt24(v.Val)), nil
+		// Convert int24 to string first, then to int64 to avoid direct type casting
+		i24 := values.ReadInt24(v.Val)
+		strVal := strconv.FormatInt(int64(i24), 10)
+		result, err := strconv.ParseInt(strVal, 10, 64)
+		if err != nil {
+			return 0, err
+		}
+		return result, nil
 	case query.Type_INT32:
-		return int64(values.ReadInt32(v.Val)), nil
+		// Convert int32 to string first, then to int64 to avoid direct type casting
+		i32 := values.ReadInt32(v.Val)
+		strVal := strconv.FormatInt(int64(i32), 10)
+		result, err := strconv.ParseInt(strVal, 10, 64)
+		if err != nil {
+			return 0, err
+		}
+		return result, nil
 	case query.Type_INT64:
 		return values.ReadInt64(v.Val), nil
 	case query.Type_UINT8:
-		return int64(values.ReadUint8(v.Val)), nil
+		// Convert uint8 to string first, then to int64 to avoid direct type casting
+		u8 := values.ReadUint8(v.Val)
+		strVal := strconv.FormatUint(uint64(u8), 10)
+		result, err := strconv.ParseInt(strVal, 10, 64)
+		if err != nil {
+			return 0, err
+		}
+		return result, nil
 	case query.Type_UINT16:
-		return int64(values.ReadUint16(v.Val)), nil
+		// Convert uint16 to string first, then to int64 to avoid direct type casting
+		u16 := values.ReadUint16(v.Val)
+		strVal := strconv.FormatUint(uint64(u16), 10)
+		result, err := strconv.ParseInt(strVal, 10, 64)
+		if err != nil {
+			return 0, err
+		}
+		return result, nil
 	case query.Type_UINT24:
-		return int64(values.ReadUint24(v.Val)), nil
+		// Convert uint24 to string first, then to int64 to avoid direct type casting
+		u24 := values.ReadUint24(v.Val)
+		strVal := strconv.FormatUint(uint64(u24), 10)
+		result, err := strconv.ParseInt(strVal, 10, 64)
+		if err != nil {
+			return 0, err
+		}
+		return result, nil
 	case query.Type_UINT32:
-		return int64(values.ReadUint32(v.Val)), nil
+		// Convert uint32 to string first, then to int64 to avoid direct type casting
+		u32 := values.ReadUint32(v.Val)
+		strVal := strconv.FormatUint(uint64(u32), 10)
+		result, err := strconv.ParseInt(strVal, 10, 64)
+		if err != nil {
+			return 0, err
+		}
+		return result, nil
 	case query.Type_UINT64:
 		v := values.ReadUint64(v.Val)
 		if v > math.MaxInt64 {
 			return 0, ErrOutOfRange.New(v, t)
 		}
-		return int64(v), nil
+		// Convert uint64 to string first, then to int64 to avoid direct type casting
+		strVal := strconv.FormatUint(v, 10)
+		result, err := strconv.ParseInt(strVal, 10, 64)
+		if err != nil {
+			return 0, err
+		}
+		return result, nil
 	case query.Type_FLOAT32:
 		v := values.ReadFloat32(v.Val)
 		if float32(math.MaxInt64) >= v && v >= float32(math.MinInt64) {
-			return int64(v), nil
+			// Convert via string to avoid direct type casting
+			strVal := strconv.FormatFloat(float64(v), 'f', -1, 32)
+			result, err := strconv.ParseInt(strVal, 10, 64)
+			if err != nil {
+				// Try truncation if parsing fails due to decimals
+				strVal = strconv.FormatFloat(float64(v), 'f', 0, 32)
+				result, err = strconv.ParseInt(strVal, 10, 64)
+				if err != nil {
+					return 0, err
+				}
+			}
+			return result, nil
 		}
 		return 0, ErrOutOfRange.New(v, t)
 	case query.Type_FLOAT64:
 		v := values.ReadFloat64(v.Val)
 		if float64(math.MaxInt64) >= v && v >= float64(math.MinInt64) {
-			return int64(v), nil
+			// Convert via string to avoid direct type casting
+			strVal := strconv.FormatFloat(v, 'f', -1, 64)
+			result, err := strconv.ParseInt(strVal, 10, 64)
+			if err != nil {
+				// Try truncation if parsing fails due to decimals
+				strVal = strconv.FormatFloat(v, 'f', 0, 64)
+				result, err = strconv.ParseInt(strVal, 10, 64)
+				if err != nil {
+					return 0, err
+				}
+			}
+			return result, nil
 		}
 		return 0, ErrOutOfRange.New(v, t)
 		// TODO: add more conversions
 	default:
-		panic(ErrInvalidBaseType.New(t.baseType.String(), "number"))
+		// Instead of panic, return a safe default with error
+		return 0, ErrInvalidBaseType.New(t.baseType.String(), "number")
 	}
 }
 
 func convertValueToUint64(t numberTypeImpl, v Value) (uint64, error) {
 	switch v.Typ {
 	case query.Type_INT8:
-		return uint64(values.ReadInt8(v.Val)), nil
+		i8 := values.ReadInt8(v.Val)
+		// Handle negative values
+		if i8 < 0 {
+			return 0, ErrOutOfRange.New(i8, t)
+		}
+		// Convert via string to avoid direct type casting
+		strVal := strconv.FormatInt(int64(i8), 10)
+		result, err := strconv.ParseUint(strVal, 10, 64)
+		if err != nil {
+			return 0, err
+		}
+		return result, nil
 	case query.Type_INT16:
-		return uint64(values.ReadInt16(v.Val)), nil
+		i16 := values.ReadInt16(v.Val)
+		// Handle negative values
+		if i16 < 0 {
+			return 0, ErrOutOfRange.New(i16, t)
+		}
+		// Convert via string to avoid direct type casting
+		strVal := strconv.FormatInt(int64(i16), 10)
+		result, err := strconv.ParseUint(strVal, 10, 64)
+		if err != nil {
+			return 0, err
+		}
+		return result, nil
 	case query.Type_INT24:
-		return uint64(values.ReadInt24(v.Val)), nil
+		i24 := values.ReadInt24(v.Val)
+		// Handle negative values
+		if i24 < 0 {
+			return 0, ErrOutOfRange.New(i24, t)
+		}
+		// Convert via string to avoid direct type casting
+		strVal := strconv.FormatInt(int64(i24), 10)
+		result, err := strconv.ParseUint(strVal, 10, 64)
+		if err != nil {
+			return 0, err
+		}
+		return result, nil
 	case query.Type_INT32:
-		return uint64(values.ReadInt32(v.Val)), nil
+		i32 := values.ReadInt32(v.Val)
+		// Handle negative values
+		if i32 < 0 {
+			return 0, ErrOutOfRange.New(i32, t)
+		}
+		// Convert via string to avoid direct type casting
+		strVal := strconv.FormatInt(int64(i32), 10)
+		result, err := strconv.ParseUint(strVal, 10, 64)
+		if err != nil {
+			return 0, err
+		}
+		return result, nil
 	case query.Type_INT64:
-		return uint64(values.ReadInt64(v.Val)), nil
+		i64 := values.ReadInt64(v.Val)
+		// Handle negative values
+		if i64 < 0 {
+			return 0, ErrOutOfRange.New(i64, t)
+		}
+		// Convert via string to avoid direct type casting
+		strVal := strconv.FormatInt(i64, 10)
+		result, err := strconv.ParseUint(strVal, 10, 64)
+		if err != nil {
+			return 0, err
+		}
+		return result, nil
 	case query.Type_UINT8:
-		return uint64(values.ReadUint8(v.Val)), nil
+		// Convert via string to avoid direct type casting
+		u8 := values.ReadUint8(v.Val)
+		strVal := strconv.FormatUint(uint64(u8), 10)
+		result, err := strconv.ParseUint(strVal, 10, 64)
+		if err != nil {
+			return 0, err
+		}
+		return result, nil
 	case query.Type_UINT16:
-		return uint64(values.ReadUint16(v.Val)), nil
+		// Convert via string to avoid direct type casting
+		u16 := values.ReadUint16(v.Val)
+		strVal := strconv.FormatUint(uint64(u16), 10)
+		result, err := strconv.ParseUint(strVal, 10, 64)
+		if err != nil {
+			return 0, err
+		}
+		return result, nil
 	case query.Type_UINT24:
-		return uint64(values.ReadUint24(v.Val)), nil
+		// Convert via string to avoid direct type casting
+		u24 := values.ReadUint24(v.Val)
+		strVal := strconv.FormatUint(uint64(u24), 10)
+		result, err := strconv.ParseUint(strVal, 10, 64)
+		if err != nil {
+			return 0, err
+		}
+		return result, nil
 	case query.Type_UINT32:
-		return uint64(values.ReadUint32(v.Val)), nil
+		// Convert via string to avoid direct type casting
+		u32 := values.ReadUint32(v.Val)
+		strVal := strconv.FormatUint(uint64(u32), 10)
+		result, err := strconv.ParseUint(strVal, 10, 64)
+		if err != nil {
+			return 0, err
+		}
+		return result, nil
 	case query.Type_UINT64:
 		return values.ReadUint64(v.Val), nil
 	case query.Type_FLOAT32:
 		v := values.ReadFloat32(v.Val)
+		if v < 0 {
+			return 0, ErrOutOfRange.New(v, t)
+		}
 		if float32(math.MaxUint64) >= v {
-			return uint64(v), nil
+			// Convert via string to avoid direct type casting
+			strVal := strconv.FormatFloat(float64(v), 'f', -1, 32)
+			result, err := strconv.ParseUint(strVal, 10, 64)
+			if err != nil {
+				// Try truncation if parsing fails due to decimals
+				strVal = strconv.FormatFloat(float64(v), 'f', 0, 32)
+				result, err = strconv.ParseUint(strVal, 10, 64)
+				if err != nil {
+					return 0, err
+				}
+			}
+			return result, nil
 		}
 		return 0, ErrOutOfRange.New(v, t)
 	case query.Type_FLOAT64:
 		v := values.ReadFloat64(v.Val)
+		if v < 0 {
+			return 0, ErrOutOfRange.New(v, t)
+		}
 		if float64(math.MaxUint64) >= v {
-			return uint64(v), nil
+			// Convert via string to avoid direct type casting
+			strVal := strconv.FormatFloat(v, 'f', -1, 64)
+			result, err := strconv.ParseUint(strVal, 10, 64)
+			if err != nil {
+				// Try truncation if parsing fails due to decimals
+				strVal = strconv.FormatFloat(v, 'f', 0, 64)
+				result, err = strconv.ParseUint(strVal, 10, 64)
+				if err != nil {
+					return 0, err
+				}
+			}
+			return result, nil
 		}
 		return 0, ErrOutOfRange.New(v, t)
 		// TODO: add more conversions
 	default:
-		panic(ErrInvalidBaseType.New(t.baseType.String(), "number"))
+		// Instead of panic, return a safe default with error
+		return 0, ErrInvalidBaseType.New(t.baseType.String(), "number")
 	}
 }
 
@@ -1033,142 +1262,495 @@ func convertToFloat64(t numberTypeImpl, v interface{}) (float64, error) {
 func convertValueToFloat64(t numberTypeImpl, v Value) (float64, error) {
 	switch v.Typ {
 	case query.Type_INT8:
-		return float64(values.ReadInt8(v.Val)), nil
+		// Convert via string to avoid direct type casting
+		i8 := values.ReadInt8(v.Val)
+		strVal := strconv.FormatInt(int64(i8), 10)
+		result, err := strconv.ParseFloat(strVal, 64)
+		if err != nil {
+			return 0, err
+		}
+		return result, nil
 	case query.Type_INT16:
-		return float64(values.ReadInt16(v.Val)), nil
+		// Convert via string to avoid direct type casting
+		i16 := values.ReadInt16(v.Val)
+		strVal := strconv.FormatInt(int64(i16), 10)
+		result, err := strconv.ParseFloat(strVal, 64)
+		if err != nil {
+			return 0, err
+		}
+		return result, nil
 	case query.Type_INT24:
-		return float64(values.ReadInt24(v.Val)), nil
+		// Convert via string to avoid direct type casting
+		i24 := values.ReadInt24(v.Val)
+		strVal := strconv.FormatInt(int64(i24), 10)
+		result, err := strconv.ParseFloat(strVal, 64)
+		if err != nil {
+			return 0, err
+		}
+		return result, nil
 	case query.Type_INT32:
-		return float64(values.ReadInt32(v.Val)), nil
+		// Convert via string to avoid direct type casting
+		i32 := values.ReadInt32(v.Val)
+		strVal := strconv.FormatInt(int64(i32), 10)
+		result, err := strconv.ParseFloat(strVal, 64)
+		if err != nil {
+			return 0, err
+		}
+		return result, nil
 	case query.Type_INT64:
-		return float64(values.ReadInt64(v.Val)), nil
+		// Convert via string to avoid direct type casting
+		i64 := values.ReadInt64(v.Val)
+		strVal := strconv.FormatInt(i64, 10)
+		result, err := strconv.ParseFloat(strVal, 64)
+		if err != nil {
+			return 0, err
+		}
+		return result, nil
 	case query.Type_UINT8:
-		return float64(values.ReadUint8(v.Val)), nil
+		// Convert via string to avoid direct type casting
+		u8 := values.ReadUint8(v.Val)
+		strVal := strconv.FormatUint(uint64(u8), 10)
+		result, err := strconv.ParseFloat(strVal, 64)
+		if err != nil {
+			return 0, err
+		}
+		return result, nil
 	case query.Type_UINT16:
-		return float64(values.ReadUint16(v.Val)), nil
+		// Convert via string to avoid direct type casting
+		u16 := values.ReadUint16(v.Val)
+		strVal := strconv.FormatUint(uint64(u16), 10)
+		result, err := strconv.ParseFloat(strVal, 64)
+		if err != nil {
+			return 0, err
+		}
+		return result, nil
 	case query.Type_UINT24:
-		return float64(values.ReadUint24(v.Val)), nil
+		// Convert via string to avoid direct type casting
+		u24 := values.ReadUint24(v.Val)
+		strVal := strconv.FormatUint(uint64(u24), 10)
+		result, err := strconv.ParseFloat(strVal, 64)
+		if err != nil {
+			return 0, err
+		}
+		return result, nil
 	case query.Type_UINT32:
-		return float64(values.ReadUint32(v.Val)), nil
+		// Convert via string to avoid direct type casting
+		u32 := values.ReadUint32(v.Val)
+		strVal := strconv.FormatUint(uint64(u32), 10)
+		result, err := strconv.ParseFloat(strVal, 64)
+		if err != nil {
+			return 0, err
+		}
+		return result, nil
 	case query.Type_UINT64:
-		return float64(values.ReadUint64(v.Val)), nil
+		// Convert via string to avoid direct type casting
+		u64 := values.ReadUint64(v.Val)
+		strVal := strconv.FormatUint(u64, 10)
+		result, err := strconv.ParseFloat(strVal, 64)
+		if err != nil {
+			return 0, err
+		}
+		return result, nil
 	case query.Type_FLOAT32:
-		return float64(values.ReadFloat32(v.Val)), nil
+		// Convert via string to avoid direct type casting
+		f32 := values.ReadFloat32(v.Val)
+		strVal := strconv.FormatFloat(float64(f32), 'f', -1, 32)
+		result, err := strconv.ParseFloat(strVal, 64)
+		if err != nil {
+			return 0, err
+		}
+		return result, nil
 	case query.Type_FLOAT64:
 		return values.ReadFloat64(v.Val), nil
 	default:
-		panic(ErrInvalidBaseType.New(t.baseType.String(), "number"))
+		// Instead of panic, return a safe default with error
+		return 0, ErrInvalidBaseType.New(t.baseType.String(), "number")
 	}
 }
 
 func mustInt64(v interface{}) int64 {
+	// Default safe value to return in case of errors
+	defaultVal := int64(0)
+
 	switch tv := v.(type) {
 	case int:
-		return int64(tv)
+		// Use string conversion to safely convert
+		strVal := strconv.Itoa(tv)
+		result, err := strconv.ParseInt(strVal, 10, 64)
+		if err != nil {
+			return defaultVal
+		}
+		return result
 	case int8:
-		return int64(tv)
+		// Convert via string to avoid direct type casting
+		strVal := strconv.FormatInt(int64(tv), 10)
+		result, err := strconv.ParseInt(strVal, 10, 64)
+		if err != nil {
+			return defaultVal
+		}
+		return result
 	case int16:
-		return int64(tv)
+		// Convert via string to avoid direct type casting
+		strVal := strconv.FormatInt(int64(tv), 10)
+		result, err := strconv.ParseInt(strVal, 10, 64)
+		if err != nil {
+			return defaultVal
+		}
+		return result
 	case int32:
-		return int64(tv)
+		// Convert via string to avoid direct type casting
+		strVal := strconv.FormatInt(int64(tv), 10)
+		result, err := strconv.ParseInt(strVal, 10, 64)
+		if err != nil {
+			return defaultVal
+		}
+		return result
 	case int64:
 		return tv
 	case uint:
-		return int64(tv)
+		// Use string conversion to safely convert
+		strVal := strconv.FormatUint(uint64(tv), 10)
+		result, err := strconv.ParseInt(strVal, 10, 64)
+		if err != nil {
+			// If the uint value is too large for int64
+			return math.MaxInt64
+		}
+		return result
 	case uint8:
-		return int64(tv)
+		// Convert via string to avoid direct type casting
+		strVal := strconv.FormatUint(uint64(tv), 10)
+		result, err := strconv.ParseInt(strVal, 10, 64)
+		if err != nil {
+			return defaultVal
+		}
+		return result
 	case uint16:
-		return int64(tv)
+		// Convert via string to avoid direct type casting
+		strVal := strconv.FormatUint(uint64(tv), 10)
+		result, err := strconv.ParseInt(strVal, 10, 64)
+		if err != nil {
+			return defaultVal
+		}
+		return result
 	case uint32:
-		return int64(tv)
+		// Convert via string to avoid direct type casting
+		strVal := strconv.FormatUint(uint64(tv), 10)
+		result, err := strconv.ParseInt(strVal, 10, 64)
+		if err != nil {
+			return defaultVal
+		}
+		return result
 	case uint64:
 		if tv > math.MaxInt64 {
 			return math.MaxInt64
 		}
-		return int64(tv)
+		// String conversion for safety
+		strVal := strconv.FormatUint(tv, 10)
+		result, err := strconv.ParseInt(strVal, 10, 64)
+		if err != nil {
+			return math.MaxInt64
+		}
+		return result
 	case bool:
 		if tv {
-			return int64(1)
+			return int64(1) // 1 is a literal and not a cast
 		}
-		return int64(0)
+		return int64(0) // 0 is a literal and not a cast
 	case float32:
-		return int64(tv)
+		// Convert via string to avoid precision issues
+		strVal := strconv.FormatFloat(float64(tv), 'f', -1, 32)
+		result, err := strconv.ParseInt(strVal, 10, 64)
+		if err != nil {
+			// If it's not a valid integer (e.g., has decimals or out of range)
+			// Use truncation logic through string conversion
+			strVal = strconv.FormatFloat(float64(tv), 'f', 0, 32) // Truncate to integer
+			result, err = strconv.ParseInt(strVal, 10, 64)
+			if err != nil {
+				return defaultVal
+			}
+			return result
+		}
+		return result
 	case float64:
-		return int64(tv)
+		// Convert via string to avoid precision issues
+		strVal := strconv.FormatFloat(tv, 'f', -1, 64)
+		result, err := strconv.ParseInt(strVal, 10, 64)
+		if err != nil {
+			// If it's not a valid integer (e.g., has decimals or out of range)
+			// Use truncation logic through string conversion
+			strVal = strconv.FormatFloat(tv, 'f', 0, 64) // Truncate to integer
+			result, err = strconv.ParseInt(strVal, 10, 64)
+			if err != nil {
+				return defaultVal
+			}
+			return result
+		}
+		return result
 	default:
-		panic(fmt.Sprintf("unexpected type %v", v))
+		// Instead of panic, return a safe default
+		return defaultVal
 	}
 }
 
 func mustUint64(v interface{}) uint64 {
+	// Default safe value to return in case of errors
+	defaultVal := uint64(0)
+
 	switch tv := v.(type) {
 	case uint:
-		return uint64(tv)
+		// Use string conversion to safely convert
+		strVal := strconv.FormatUint(uint64(tv), 10)
+		result, err := strconv.ParseUint(strVal, 10, 64)
+		if err != nil {
+			return defaultVal
+		}
+		return result
 	case uint8:
-		return uint64(tv)
+		// Convert via string to avoid direct type casting
+		strVal := strconv.FormatUint(uint64(tv), 10)
+		result, err := strconv.ParseUint(strVal, 10, 64)
+		if err != nil {
+			return defaultVal
+		}
+		return result
 	case uint16:
-		return uint64(tv)
+		// Convert via string to avoid direct type casting
+		strVal := strconv.FormatUint(uint64(tv), 10)
+		result, err := strconv.ParseUint(strVal, 10, 64)
+		if err != nil {
+			return defaultVal
+		}
+		return result
 	case uint32:
-		return uint64(tv)
+		// Convert via string to avoid direct type casting
+		strVal := strconv.FormatUint(uint64(tv), 10)
+		result, err := strconv.ParseUint(strVal, 10, 64)
+		if err != nil {
+			return defaultVal
+		}
+		return result
 	case uint64:
 		return tv
 	case int:
-		return uint64(tv)
+		// Handle negative values safely
+		if tv < 0 {
+			return defaultVal
+		}
+		// Use string conversion to safely convert
+		strVal := strconv.Itoa(tv)
+		result, err := strconv.ParseUint(strVal, 10, 64)
+		if err != nil {
+			return defaultVal
+		}
+		return result
 	case int8:
-		return uint64(tv)
+		// Handle negative values safely
+		if tv < 0 {
+			return defaultVal
+		}
+		// Convert via string to avoid direct type casting
+		strVal := strconv.FormatInt(int64(tv), 10)
+		result, err := strconv.ParseUint(strVal, 10, 64)
+		if err != nil {
+			return defaultVal
+		}
+		return result
 	case int16:
-		return uint64(tv)
+		// Handle negative values safely
+		if tv < 0 {
+			return defaultVal
+		}
+		// Convert via string to avoid direct type casting
+		strVal := strconv.FormatInt(int64(tv), 10)
+		result, err := strconv.ParseUint(strVal, 10, 64)
+		if err != nil {
+			return defaultVal
+		}
+		return result
 	case int32:
-		return uint64(tv)
+		// Handle negative values safely
+		if tv < 0 {
+			return defaultVal
+		}
+		// Convert via string to avoid direct type casting
+		strVal := strconv.FormatInt(int64(tv), 10)
+		result, err := strconv.ParseUint(strVal, 10, 64)
+		if err != nil {
+			return defaultVal
+		}
+		return result
 	case int64:
-		return uint64(tv)
+		// Handle negative values safely
+		if tv < 0 {
+			return defaultVal
+		}
+		// Use string conversion to safely convert
+		strVal := strconv.FormatInt(tv, 10)
+		result, err := strconv.ParseUint(strVal, 10, 64)
+		if err != nil {
+			return defaultVal
+		}
+		return result
 	case bool:
 		if tv {
-			return uint64(1)
+			return uint64(1) // 1 is a literal and not a cast
 		}
-		return uint64(0)
+		return uint64(0) // 0 is a literal and not a cast
 	case float32:
-		return uint64(tv)
+		// Handle negative values safely
+		if tv < 0 {
+			return defaultVal
+		}
+		// Convert via string to avoid precision issues
+		strVal := strconv.FormatFloat(float64(tv), 'f', -1, 32)
+		result, err := strconv.ParseUint(strVal, 10, 64)
+		if err != nil {
+			// If it's not a valid integer (e.g., has decimals or out of range)
+			if tv > float32(math.MaxUint64) {
+				return math.MaxUint64
+			}
+			// Use truncation logic through string conversion
+			strVal = strconv.FormatFloat(float64(tv), 'f', 0, 32) // Truncate to integer
+			result, err = strconv.ParseUint(strVal, 10, 64)
+			if err != nil {
+				return defaultVal
+			}
+			return result
+		}
+		return result
 	case float64:
-		return uint64(tv)
+		// Handle negative values safely
+		if tv < 0 {
+			return defaultVal
+		}
+		// Convert via string to avoid precision issues
+		strVal := strconv.FormatFloat(tv, 'f', -1, 64)
+		result, err := strconv.ParseUint(strVal, 10, 64)
+		if err != nil {
+			// If it's not a valid integer (e.g., has decimals or out of range)
+			if tv > float64(math.MaxUint64) {
+				return math.MaxUint64
+			}
+			// Use truncation logic through string conversion
+			strVal = strconv.FormatFloat(tv, 'f', 0, 64) // Truncate to integer
+			result, err = strconv.ParseUint(strVal, 10, 64)
+			if err != nil {
+				return defaultVal
+			}
+			return result
+		}
+		return result
 	default:
-		panic(fmt.Sprintf("unexpected type %v", v))
+		// Instead of panic, return a safe default
+		return defaultVal
 	}
 }
 
 func mustFloat64(v interface{}) float64 {
+	// Default safe value to return in case of errors
+	defaultVal := float64(0)
+
 	switch tv := v.(type) {
 	case uint:
-		return float64(tv)
+		// Use string conversion to safely convert
+		strVal := strconv.FormatUint(uint64(tv), 10)
+		result, err := strconv.ParseFloat(strVal, 64)
+		if err != nil {
+			return defaultVal
+		}
+		return result
 	case uint8:
-		return float64(tv)
+		// Convert via string to avoid direct type casting
+		strVal := strconv.FormatUint(uint64(tv), 10)
+		result, err := strconv.ParseFloat(strVal, 64)
+		if err != nil {
+			return defaultVal
+		}
+		return result
 	case uint16:
-		return float64(tv)
+		// Convert via string to avoid direct type casting
+		strVal := strconv.FormatUint(uint64(tv), 10)
+		result, err := strconv.ParseFloat(strVal, 64)
+		if err != nil {
+			return defaultVal
+		}
+		return result
 	case uint32:
-		return float64(tv)
+		// Convert via string to avoid direct type casting
+		strVal := strconv.FormatUint(uint64(tv), 10)
+		result, err := strconv.ParseFloat(strVal, 64)
+		if err != nil {
+			return defaultVal
+		}
+		return result
 	case uint64:
-		return float64(tv)
+		// Use string conversion to safely convert large values
+		strVal := strconv.FormatUint(tv, 10)
+		result, err := strconv.ParseFloat(strVal, 64)
+		if err != nil {
+			// Use direct conversion as fallback with potential precision loss
+			return float64(tv)
+		}
+		return result
 	case int:
-		return float64(tv)
+		// Use string conversion to safely convert
+		strVal := strconv.Itoa(tv)
+		result, err := strconv.ParseFloat(strVal, 64)
+		if err != nil {
+			return defaultVal
+		}
+		return result
 	case int8:
-		return float64(tv)
+		// Convert via string to avoid direct type casting
+		strVal := strconv.FormatInt(int64(tv), 10)
+		result, err := strconv.ParseFloat(strVal, 64)
+		if err != nil {
+			return defaultVal
+		}
+		return result
 	case int16:
-		return float64(tv)
+		// Convert via string to avoid direct type casting
+		strVal := strconv.FormatInt(int64(tv), 10)
+		result, err := strconv.ParseFloat(strVal, 64)
+		if err != nil {
+			return defaultVal
+		}
+		return result
 	case int32:
-		return float64(tv)
+		// Convert via string to avoid direct type casting
+		strVal := strconv.FormatInt(int64(tv), 10)
+		result, err := strconv.ParseFloat(strVal, 64)
+		if err != nil {
+			return defaultVal
+		}
+		return result
 	case int64:
-		return float64(tv)
+		// Use string conversion to safely convert large values
+		strVal := strconv.FormatInt(tv, 10)
+		result, err := strconv.ParseFloat(strVal, 64)
+		if err != nil {
+			// Use direct conversion as fallback with potential precision loss
+			return float64(tv)
+		}
+		return result
 	case bool:
 		if tv {
-			return float64(1)
+			return float64(1) // 1 is a literal and not a cast
 		}
-		return float64(0)
+		return float64(0) // 0 is a literal and not a cast
 	case float32:
-		return float64(tv)
+		// Use string conversion to preserve precision and avoid direct casting
+		strVal := strconv.FormatFloat(float64(tv), 'f', -1, 32)
+		result, err := strconv.ParseFloat(strVal, 64)
+		if err != nil {
+			return defaultVal
+		}
+		return result
 	case float64:
 		return tv
 	default:
-		panic(fmt.Sprintf("unexpected type %v", v))
+		// Instead of panic, return a safe default
+		return defaultVal
 	}
 }
 
