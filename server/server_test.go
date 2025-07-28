@@ -18,8 +18,8 @@ import (
 	gsql "github.com/dolthub/go-mysql-server/sql"
 )
 
-// TestSeverCustomListener verifies a caller can provide their own net.Conn implementation for the server to use
-func TestSeverCustomListener(t *testing.T) {
+// TestServerCustomListener verifies a caller can provide their own net.Conn implementation for the server to use
+func TestServerCustomListener(t *testing.T) {
 	dbName := "mydb"
 	// create a net.Conn thats based on a golang buffer
 	buffer := 1024
