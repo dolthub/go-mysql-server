@@ -786,6 +786,97 @@ var QueryPlanScriptTests = []ScriptTest{
 					"         └─ columns: [x y]\n" +
 					"",
 			},
+			{
+				Query: "select * from t1 inner join t2 where t1.i < t2.j order by t1.i;",
+				Expected: []sql.Row{
+					sql.Row{1, 2},
+					sql.Row{1, 3},
+					sql.Row{1, 4},
+					sql.Row{2, 3},
+					sql.Row{2, 4},
+					sql.Row{3, 4},
+				},
+				ExpectedPlan: "InnerJoin\n" +
+					" ├─ LessThan\n" +
+					" │   ├─ t1.i:0!null\n" +
+					" │   └─ t2.j:1!null\n" +
+					" ├─ IndexedTableAccess(t1)\n" +
+					" │   ├─ index: [t1.i]\n" +
+					" │   ├─ static: [{[NULL, ∞)}]\n" +
+					" │   ├─ colSet: (1)\n" +
+					" │   ├─ tableId: 1\n" +
+					" │   └─ Table\n" +
+					" │       ├─ name: t1\n" +
+					" │       └─ columns: [i]\n" +
+					" └─ ProcessTable\n" +
+					"     └─ Table\n" +
+					"         ├─ name: t2\n" +
+					"         └─ columns: [j]\n" +
+					"",
+			},
+			{
+				Query: "select * from t1 inner join t2 where t1.i < t2.j order by t2.j desc;",
+				Expected: []sql.Row{
+					sql.Row{1, 4},
+					sql.Row{2, 4},
+					sql.Row{3, 4},
+					sql.Row{1, 3},
+					sql.Row{2, 3},
+					sql.Row{1, 2},
+				},
+				ExpectedPlan: "Project\n" +
+					" ├─ columns: [t1.i:1!null, t2.j:0!null]\n" +
+					" └─ InnerJoin\n" +
+					"     ├─ LessThan\n" +
+					"     │   ├─ t1.i:1!null\n" +
+					"     │   └─ t2.j:0!null\n" +
+					"     ├─ IndexedTableAccess(t2)\n" +
+					"     │   ├─ index: [t2.j]\n" +
+					"     │   ├─ static: [{[NULL, ∞)}]\n" +
+					"     │   ├─ colSet: (2)\n" +
+					"     │   ├─ tableId: 2\n" +
+					"     │   └─ Table\n" +
+					"     │       ├─ name: t2\n" +
+					"     │       └─ columns: [j]\n" +
+					"     └─ ProcessTable\n" +
+					"         └─ Table\n" +
+					"             ├─ name: t1\n" +
+					"             └─ columns: [i]\n" +
+					"",
+			},
+			{
+				Query: "select * from t3 inner join t4 where i != x order by t3.i, t3.j;",
+				Expected: []sql.Row{
+					sql.Row{1, 1, 2, 2},
+					sql.Row{1, 1, 3, 3},
+					sql.Row{1, 1, 4, 4},
+					sql.Row{1, 2, 2, 2},
+					sql.Row{1, 2, 3, 3},
+					sql.Row{1, 2, 4, 4},
+					sql.Row{2, 2, 3, 3},
+					sql.Row{2, 2, 4, 4},
+					sql.Row{3, 3, 2, 2},
+					sql.Row{3, 3, 4, 4},
+				},
+				ExpectedPlan: "InnerJoin\n" +
+					" ├─ NOT\n" +
+					" │   └─ Eq\n" +
+					" │       ├─ t3.i:0!null\n" +
+					" │       └─ t4.x:2!null\n" +
+					" ├─ IndexedTableAccess(t3)\n" +
+					" │   ├─ index: [t3.i,t3.j]\n" +
+					" │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+					" │   ├─ colSet: (1,2)\n" +
+					" │   ├─ tableId: 1\n" +
+					" │   └─ Table\n" +
+					" │       ├─ name: t3\n" +
+					" │       └─ columns: [i j]\n" +
+					" └─ ProcessTable\n" +
+					"     └─ Table\n" +
+					"         ├─ name: t4\n" +
+					"         └─ columns: [x y]\n" +
+					"",
+			},
 		},
 	},
 }
