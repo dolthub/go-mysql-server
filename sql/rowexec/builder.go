@@ -16,6 +16,7 @@ package rowexec
 
 import (
 	"runtime/trace"
+	"sync"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -57,4 +58,20 @@ func FinalizeIters(ctx *sql.Context, analyzed sql.Node, qFlags *sql.QueryFlags, 
 	iter = plan.AddTrackedRowIter(ctx, analyzed, iter)
 	iter = AddExpressionCloser(analyzed, iter)
 	return iter, sch, nil
+}
+
+// TODO: find a proper place for this
+var rowBuffers = sync.Pool{
+	New: func() interface{} {
+		return make(sql.Row, 0, 4096) // TODO: this is apparently max number of columns
+	},
+}
+
+func GetRow(length int) sql.Row {
+	row := rowBuffers.Get().(sql.Row)
+	return row[:length]
+}
+
+func PutRow(row sql.Row) {
+	rowBuffers.Put(row[:0])
 }
