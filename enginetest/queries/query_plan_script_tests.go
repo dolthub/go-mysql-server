@@ -833,6 +833,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					"     ├─ IndexedTableAccess(t2)\n" +
 					"     │   ├─ index: [t2.j]\n" +
 					"     │   ├─ static: [{[NULL, ∞)}]\n" +
+					"     │   ├─ reverse: true\n" +
 					"     │   ├─ colSet: (2)\n" +
 					"     │   ├─ tableId: 2\n" +
 					"     │   └─ Table\n" +
