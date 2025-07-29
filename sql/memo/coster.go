@@ -129,18 +129,18 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 
 				// If LookupJoin is injective, then there will only be one right lookup per left row
 				if n.Injective || matchRate == 0 {
-					return lBest*seqIOCostFactor + lBest*(seqIOCostFactor+randIOCostFactor), nil
+					return lBest*seqIOCostFactor + lBest*(cpuCostFactor+randIOCostFactor), nil
 				}
 
 				// The total expected number of right row lookups
 				expectedRightRows := selfJoinCard * matchRate
 
 				if expectedRightRows < lBest {
-					return lBest*(seqIOCostFactor) + (lBest + indexCoverageAdjustment(n.Lookup)*(seqIOCostFactor+randIOCostFactor)), nil
+					return lBest*(seqIOCostFactor) + (lBest+1+indexCoverageAdjustment(n.Lookup))*(cpuCostFactor+randIOCostFactor), nil
 				}
 
 				// Estimate for reading each left row and each expected right row
-				return lBest*seqIOCostFactor + expectedRightRows*(seqIOCostFactor+randIOCostFactor), nil
+				return lBest*seqIOCostFactor + expectedRightRows*(cpuCostFactor+randIOCostFactor), nil
 			case *ConcatJoin:
 				return c.costConcatJoin(ctx, n, s)
 			}
