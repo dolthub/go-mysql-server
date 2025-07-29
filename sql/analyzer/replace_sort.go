@@ -172,32 +172,34 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 			if errRight != nil {
 				return nil, transform.SameTree, errRight
 			}
-			// Nothing replaced, so nothing to do
-			if sameLeft && sameRight {
+			// Neither child was converted to an IndexedTableAccess, so we can't remove the sort node
+			leftIsSorted, rightIsSorted := !sameLeft, !sameRight
+			if !leftIsSorted && !rightIsSorted {
 				continue
 			}
 			// No need to check all SortField orders because of isValidSortFieldOrder
 			isReversed := sortNode.SortFields[0].Order == sql.Descending
 			// If both left and right have been replaced, no need to manually reverse any indexes as they both should be
 			// replaced already
-			if !sameLeft && !sameRight {
+			if leftIsSorted && rightIsSorted {
 				c.IsReversed = isReversed
 				continue
 			}
 			if c.JoinType().IsCross() || c.JoinType().IsInner() {
 				// For cross joins and inner joins, if the right child is sorted, we need to swap
 				if !sameRight {
-					// Rule eraseProjection will drop any Projections that are now unnecessary.
-					// Rule fixExecIndexes will fix any existing Projection GetField indexes.
+					// Swapping may mess up projections, but
+					// eraseProjection will drop any Projections that are now unnecessary and
+					// fixExecIndexes will fix any existing Projection GetField indexes.
 					newLeft, newRight = newRight, newLeft
 				}
 			} else {
 				// If only one side has been replaced, we need to check if the other side can be reversed
-				if (sameLeft != sameRight) && isReversed {
+				if (leftIsSorted != rightIsSorted) && isReversed {
 					// If descending, then both Indexes must be reversed
-					if sameLeft {
+					if rightIsSorted {
 						newLeft, same, err = buildReverseIndexedTable(ctx, newLeft)
-					} else if sameRight {
+					} else if leftIsSorted {
 						newRight, same, err = buildReverseIndexedTable(ctx, newRight)
 					}
 					if err != nil {
