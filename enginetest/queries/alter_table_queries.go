@@ -2274,6 +2274,20 @@ var ModifyColumnScripts = []ScriptTest{
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/9591
+		Name: "Add check constraint when modifying column",
+		SetUpScript: []string{
+			"create table t(pk int primary key)",
+			"alter table t modify column pk int check(pk < 10)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "insert into t values (20)",
+				ExpectedErr: sql.ErrCheckConstraintViolated,
+			},
+		},
+	},
+	{
 		Name:        "error cases",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
