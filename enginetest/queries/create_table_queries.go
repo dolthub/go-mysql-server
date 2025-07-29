@@ -1178,4 +1178,23 @@ var BrokenCreateTableQueries = []WriteQueryTest{
 		SelectQuery:         `show create table t1`,
 		ExpectedSelect:      []sql.Row{{"t1", "CREATE TABLE `t1` (\n  `i` int NOT NULL,\n  `b1` blob NOT NULL,\n  `b2` blob NOT NULL,\n  PRIMARY KEY (`b1`(123),`b2`(456),`i`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 	},
+	// VECTOR type tests
+	{
+		WriteQuery:          `CREATE TABLE test_vectors (id INT PRIMARY KEY, vec VECTOR(3))`,
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
+		SelectQuery:         `SHOW CREATE TABLE test_vectors`,
+		ExpectedSelect:      []sql.Row{{"test_vectors", "CREATE TABLE `test_vectors` (\n  `id` int NOT NULL,\n  `vec` vector(3),\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+	},
+	{
+		WriteQuery:          `CREATE TABLE embeddings (id INT, vector_col VECTOR(128) NOT NULL, small_vec VECTOR(1))`,
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
+		SelectQuery:         `SHOW CREATE TABLE embeddings`,
+		ExpectedSelect:      []sql.Row{{"embeddings", "CREATE TABLE `embeddings` (\n  `id` int,\n  `vector_col` vector(128) NOT NULL,\n  `small_vec` vector(1)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+	},
+	{
+		WriteQuery:          `CREATE TABLE large_vectors (pk INT PRIMARY KEY, large_vec VECTOR(16000))`,
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
+		SelectQuery:         `SHOW CREATE TABLE large_vectors`,
+		ExpectedSelect:      []sql.Row{{"large_vectors", "CREATE TABLE `large_vectors` (\n  `pk` int NOT NULL,\n  `large_vec` vector(16000),\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+	},
 }
