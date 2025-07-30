@@ -375,7 +375,7 @@ func (i *mergeJoinIter) incMatch(ctx *sql.Context) error {
 
 	if !i.leftDone {
 		// rightBuf has already been validated, we don't need compare
-		copySubslice(i.fullRow, i.rightBuf[i.bufI], i.scopeLen+i.parentLen+i.leftRowLen)
+		copy(i.fullRow[i.scopeLen+i.parentLen+i.leftRowLen:], i.rightBuf[i.bufI])
 		i.bufI++
 		return nil
 	}
@@ -393,7 +393,7 @@ func (i *mergeJoinIter) incMatch(ctx *sql.Context) error {
 		if i.lojFinalize() {
 			// left joins expect the left row in |i.fullRow| as long
 			// as the left iter is not exhausted.
-			copySubslice(i.fullRow, i.leftPeek, i.scopeLen+i.parentLen)
+			copy(i.fullRow[i.scopeLen+i.parentLen:], i.leftPeek)
 		}
 		return nil
 	}
@@ -401,8 +401,8 @@ func (i *mergeJoinIter) incMatch(ctx *sql.Context) error {
 	// both lookaheads fail the join condition. Drain
 	// lookahead rows / increment both iterators.
 	i.matchIncLeft = true
-	copySubslice(i.fullRow, i.leftPeek, i.scopeLen+i.parentLen)
-	copySubslice(i.fullRow, i.rightPeek, i.scopeLen+i.parentLen+i.leftRowLen)
+	copy(i.fullRow[i.scopeLen+i.parentLen:], i.leftPeek)
+	copy(i.fullRow[i.scopeLen+i.parentLen+i.leftRowLen:], i.rightPeek)
 
 	return nil
 }
@@ -453,7 +453,7 @@ func (i *mergeJoinIter) resetMatchState() {
 // no match, no lookahead row, and no error.
 func (i *mergeJoinIter) peekMatch(ctx *sql.Context, iter sql.RowIter) (bool, sql.Row, error) {
 	var off int
-	var restore sql.Row
+	var restore sql.Row // TODO: rowBuffer?
 	switch iter {
 	case i.left:
 		off = i.scopeLen + i.parentLen
@@ -476,17 +476,17 @@ func (i *mergeJoinIter) peekMatch(ctx *sql.Context, iter sql.RowIter) (bool, sql
 	}
 
 	// check if lookahead valid
-	copySubslice(i.fullRow, peek, off)
+	copy(i.fullRow[off:], peek)
 	res, err := i.cmp.Compare(ctx, i.fullRow)
 	if expression.ErrNilOperand.Is(err) {
 		// revert change to output row if no match
-		copySubslice(i.fullRow, restore, off)
+		copy(i.fullRow[off:], restore)
 	} else if err != nil {
 		return false, nil, err
 	}
 	if res != 0 {
 		// revert change to output row if no match
-		copySubslice(i.fullRow, restore, off)
+		copy(i.fullRow[off:], restore)
 	}
 	return res == 0, peek, nil
 }
