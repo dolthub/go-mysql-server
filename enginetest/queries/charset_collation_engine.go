@@ -282,7 +282,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			{
 				Query: "ALTER TABLE test2 MODIFY COLUMN v1 VARCHAR(100);",
 				Expected: []sql.Row{
-					{types.NewOkResult(0)},
+					{types.NewOkResult(4)},
 				},
 			},
 			{
@@ -342,7 +342,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			{
 				Query: "ALTER TABLE test2 CHANGE COLUMN v1 v1 VARCHAR(220);",
 				Expected: []sql.Row{
-					{types.NewOkResult(0)},
+					{types.NewOkResult(4)},
 				},
 			},
 			{
