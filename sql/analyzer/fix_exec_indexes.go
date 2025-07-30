@@ -581,18 +581,15 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 			// default nodes can't see lateral join nodes, unless we're in lateral
 			// join and lateral scopes are promoted to parent status
 			for _, e := range ne.Expressions() {
-				// OrderedAggregations are special as they append results to the outer scope row
+				// OrderedAggregations are special as they append a new field to the outer scope row
 				// We need to account for this extra column in the rows when assigning indexes
 				// Example: gms/expression/function/aggregation/group_concat.go:groupConcatBuffer.Update()
-				if ordAgg, isOrdAgg := e.(sql.OrderedAggregation); isOrdAgg {
-					selExprs := ordAgg.OutputExpressions()
+				if _, isOrdAgg := e.(sql.OrderedAggregation); isOrdAgg {
 					selScope := &idxScope{}
-					for _, expr := range selExprs {
-						selScope.columns = append(selScope.columns, expr.String())
-						if gf, isGf := expr.(*expression.GetField); isGf {
-							selScope.ids = append(selScope.ids, gf.Id())
-						}
+					if idExpr, isIdExpr := e.(sql.IdExpression); isIdExpr {
+						selScope.ids = append(selScope.ids, idExpr.Id())
 					}
+					selScope.columns = append(selScope.columns, e.String())
 					scope = append(scope, selScope)
 				}
 				s.expressions = append(s.expressions, fixExprToScope(e, scope...))
@@ -620,7 +617,6 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 		}
 
 		s.ids = columnIdsForNode(n)
-
 		s.addSchema(n.Schema())
 		var err error
 		if s.children != nil {
