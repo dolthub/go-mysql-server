@@ -31,9 +31,12 @@ var TriggerTests = []ScriptTest{
 			"create table b (x int primary key)",
 			"create trigger trig before insert on a for each row begin set new.j = (select coalesce(max(x),1) from b); update b set x = x + 1; end;",
 			"insert into b values (1)",
-			"insert into a values (1,0), (2,0), (3,0)",
 		},
 		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "insert into a values (1,0), (2,0), (3,0)",
+				Expected: []sql.Row{{types.NewOkResult(3)}},
+			},
 			{
 				Query: "select * from a order by i",
 				Expected: []sql.Row{
@@ -60,9 +63,12 @@ var TriggerTests = []ScriptTest{
 			"create table a (i int, j int)",
 			"create table b (x int)",
 			"create trigger trig before insert on a for each row begin set new.j = (select count(x) from b); insert into b values (new.i + new.j); end;",
-			"insert into a values (0,0), (0,0), (0,0)",
 		},
 		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "insert into a values (0,0), (0,0), (0,0)",
+				Expected: []sql.Row{{types.NewOkResult(3)}},
+			},
 			{
 				Query: "select * from a order by j",
 				Expected: []sql.Row{
@@ -3817,6 +3823,52 @@ end;
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9616
+		Name: "delete trigger using GROUP_CONCAT()",
+		SetUpScript: []string{
+			`CREATE TABLE orders (
+					id INT AUTO_INCREMENT PRIMARY KEY,
+					customer_name VARCHAR(100),
+					product VARCHAR(100),
+					order_date DATETIME DEFAULT CURRENT_TIMESTAMP
+				);`,
+			`CREATE TABLE order_audit (
+					audit_id INT AUTO_INCREMENT PRIMARY KEY,
+					customer_name VARCHAR(100),
+					all_products TEXT,
+					audit_time DATETIME DEFAULT CURRENT_TIMESTAMP
+				);`,
+			`CREATE TRIGGER before_order_delete
+					BEFORE DELETE ON orders
+					FOR EACH ROW
+					BEGIN
+					DECLARE products TEXT;
+					SELECT GROUP_CONCAT(product ORDER BY order_date SEPARATOR ', ')
+					INTO products
+					FROM orders
+					WHERE customer_name = OLD.customer_name
+					AND id != OLD.id;
+					INSERT INTO order_audit (customer_name, all_products)
+					VALUES (OLD.customer_name, products);
+					END;`,
+			`INSERT INTO orders (customer_name, product) VALUES
+					('Alice', 'Book'),
+					('Alice', 'Pen'),
+					('Bob', 'Notebook');`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// Delete a row to trigger the BEFORE DELETE
+				Query:    "DELETE FROM orders WHERE customer_name = 'Alice' AND product = 'Pen';",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "SELECT audit_id, customer_name, all_products FROM order_audit;",
+				Expected: []sql.Row{{1, "Alice", "Book"}},
 			},
 		},
 	},
