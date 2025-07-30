@@ -46,7 +46,7 @@ func newMergeJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode,
 		return nil, err
 	}
 
-	fullRow := sql.GetRow(len(row) + len(j.Left().Schema()) + len(j.Right().Schema()))
+	fullRow := make(sql.Row, len(row)+len(j.Left().Schema())+len(j.Right().Schema()))
 	if len(row) > 0 {
 		copy(fullRow[0:], row[:])
 	}
@@ -200,6 +200,7 @@ func (i *mergeJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 			nextState = msExhaustCheck
 		case msExhaustCheck:
 			if i.lojFinalize() {
+				ret = i.copyReturnRow()
 				nextState = msRetLeft
 			} else if i.exhausted() {
 				return nil, io.EOF
@@ -225,6 +226,7 @@ func (i *mergeJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 					if i.leftMatched {
 						nextState = msIncLeft
 					} else {
+						ret = i.copyReturnRow()
 						nextState = msRetLeft
 					}
 				} else {
@@ -239,6 +241,7 @@ func (i *mergeJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 			left, _ := i.cmp.Left().Eval(ctx, i.fullRow)
 			if left == nil {
 				if i.typ.IsLeftOuter() && !i.leftMatched {
+					ret = i.copyReturnRow()
 					nextState = msRetLeft
 				} else {
 					nextState = msIncLeft
@@ -259,9 +262,10 @@ func (i *mergeJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 			}
 			nextState = msExhaustCheck
 		case msSelect:
+			ret = i.copyReturnRow()
 			currLeftMatched := i.leftMatched
 
-			ok, err := i.sel(ctx, i.fullRow)
+			ok, err := i.sel(ctx, ret)
 			if err != nil {
 				return nil, err
 			}
@@ -290,17 +294,14 @@ func (i *mergeJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 				// |i.incMatch| call incremented the left row.
 				// |currLeftMatched| indicates whether |ret| has already
 				// successfully met a join condition.
-				ret = i.copyReturnRow()
 				return i.removeParentRow(i.nullifyRightRow(ret)), nil
 			} else {
 				nextState = msExhaustCheck
 			}
 
 		case msRet:
-			ret = i.copyReturnRow()
 			return i.removeParentRow(ret), nil
 		case msRetLeft:
-			ret = i.copyReturnRow()
 			ret = i.removeParentRow(i.nullifyRightRow(ret))
 			err = i.incLeft(ctx)
 			if err != nil {
@@ -584,6 +585,5 @@ func (i *mergeJoinIter) Close(ctx *sql.Context) (err error) {
 		}
 	}
 
-	sql.PutRow(i.fullRow)
 	return err
 }
