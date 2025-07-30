@@ -190,13 +190,13 @@ type triggerIter struct {
 func prependRowInPlanForTriggerExecution(row sql.Row) func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 	return func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		switch n := c.Node.(type) {
-		case *plan.Project:
+		case sql.Projector:
 			// Only prepend rows for projects that aren't the input to inserts and other triggers
 			switch c.Parent.(type) {
 			case *plan.InsertInto, *plan.Into, *plan.TriggerExecutor, *plan.DeclareCursor, *plan.Project:
-				return n, transform.SameTree, nil
+				return c.Node, transform.SameTree, nil
 			default:
-				return plan.NewPrependNode(n, row), transform.NewTree, nil
+				return plan.NewPrependNode(c.Node, row), transform.NewTree, nil
 			}
 		case *plan.ResolvedTable, *plan.IndexedTableAccess:
 			return plan.NewPrependNode(n, row), transform.NewTree, nil
