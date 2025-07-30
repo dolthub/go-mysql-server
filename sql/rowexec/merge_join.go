@@ -46,8 +46,8 @@ func newMergeJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode,
 		return nil, err
 	}
 
-	fullRow := GetRow(len(row) + len(j.Left().Schema()) + len(j.Right().Schema()))
-	// TODO: what is this for
+	fullRow := sql.GetRow(len(row) + len(j.Left().Schema()) + len(j.Right().Schema()))
+	// TODO: what is this for?
 	fullRow[0] = row
 	if len(row) > 0 {
 		copy(fullRow[0:], row[:])
@@ -264,7 +264,7 @@ func (i *mergeJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 			}
 			nextState = msExhaustCheck
 		case msSelect:
-			ret = i.copyReturnRow()
+			ret = i.copyReturnRow() // TODO: only copy once we know we're going to return this
 			currLeftMatched := i.leftMatched
 
 			ok, err := i.sel(ctx, ret)
@@ -587,6 +587,6 @@ func (i *mergeJoinIter) Close(ctx *sql.Context) (err error) {
 		}
 	}
 
-	PutRow(i.fullRow)
+	sql.PutRow(i.fullRow)
 	return err
 }

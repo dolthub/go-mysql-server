@@ -20,6 +20,7 @@ import (
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"io"
 	"strings"
+	"sync"
 )
 
 // Row is a tuple of values.
@@ -65,6 +66,22 @@ func (r Row) Equals(ctx *Context, row Row, schema Schema) (bool, error) {
 	}
 
 	return true, nil
+}
+
+// TODO: find a proper place for this
+var rowBuffers = sync.Pool{
+	New: func() interface{} {
+		return make(Row, 0, 4096) // max number of columns for a table
+	},
+}
+
+func GetRow(length int) Row {
+	row := rowBuffers.Get().(Row)
+	return row[:length]
+}
+
+func PutRow(row Row) {
+	rowBuffers.Put(row[:0])
 }
 
 // FormatRow returns a formatted string representing this row's values
