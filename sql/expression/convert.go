@@ -312,8 +312,7 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 		}
 		return truncateConvertedValue(b, typeLength)
 	case ConvertToChar, ConvertToNChar:
-		val, _ = types.TypeAwareConversion(ctx, val, originType, types.LongText)
-		s, _, err := types.LongText.Convert(ctx, val)
+		s, err := types.TypeAwareConversion(ctx, val, originType, types.LongText)
 		if err != nil {
 			return nil, nil
 		}
