@@ -46,8 +46,11 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 		case ast.DescScr:
 			descending = true
 		}
-
-		switch e := o.Expr.(type) {
+		expr := o.Expr
+		if parensExpr, ok := expr.(*ast.ParenExpr); ok {
+			expr = parensExpr.Expr
+		}
+		switch e := expr.(type) {
 		case *ast.ColName:
 			// check for projection alias first
 			dbName := strings.ToLower(e.Qualifier.DbQualifier.String())
@@ -147,7 +150,7 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 					// has to have been ref'd already
 					id, ok := fromScope.getExpr(e.String(), true)
 					if !ok {
-						err := fmt.Errorf("faild to ref aggregate expression: %s", e.String())
+						err := fmt.Errorf("failed to ref aggregate expression: %s", e.String())
 						b.handleErr(err)
 					}
 					return expression.NewGetField(int(id), e.Type(), e.String(), e.IsNullable()), transform.NewTree, nil
