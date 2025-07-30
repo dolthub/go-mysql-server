@@ -47,8 +47,6 @@ func newMergeJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode,
 	}
 
 	fullRow := sql.GetRow(len(row) + len(j.Left().Schema()) + len(j.Right().Schema()))
-	// TODO: what is this for?
-	fullRow[0] = row
 	if len(row) > 0 {
 		copy(fullRow[0:], row[:])
 	}
@@ -202,7 +200,6 @@ func (i *mergeJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 			nextState = msExhaustCheck
 		case msExhaustCheck:
 			if i.lojFinalize() {
-				ret = i.copyReturnRow()
 				nextState = msRetLeft
 			} else if i.exhausted() {
 				return nil, io.EOF
@@ -228,7 +225,6 @@ func (i *mergeJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 					if i.leftMatched {
 						nextState = msIncLeft
 					} else {
-						ret = i.copyReturnRow()
 						nextState = msRetLeft
 					}
 				} else {
@@ -243,7 +239,6 @@ func (i *mergeJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 			left, _ := i.cmp.Left().Eval(ctx, i.fullRow)
 			if left == nil {
 				if i.typ.IsLeftOuter() && !i.leftMatched {
-					ret = i.copyReturnRow()
 					nextState = msRetLeft
 				} else {
 					nextState = msIncLeft
@@ -264,10 +259,9 @@ func (i *mergeJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 			}
 			nextState = msExhaustCheck
 		case msSelect:
-			ret = i.copyReturnRow() // TODO: only copy once we know we're going to return this
 			currLeftMatched := i.leftMatched
 
-			ok, err := i.sel(ctx, ret)
+			ok, err := i.sel(ctx, i.fullRow)
 			if err != nil {
 				return nil, err
 			}
@@ -296,14 +290,17 @@ func (i *mergeJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 				// |i.incMatch| call incremented the left row.
 				// |currLeftMatched| indicates whether |ret| has already
 				// successfully met a join condition.
+				ret = i.copyReturnRow()
 				return i.removeParentRow(i.nullifyRightRow(ret)), nil
 			} else {
 				nextState = msExhaustCheck
 			}
 
 		case msRet:
+			ret = i.copyReturnRow()
 			return i.removeParentRow(ret), nil
 		case msRetLeft:
+			ret = i.copyReturnRow()
 			ret = i.removeParentRow(i.nullifyRightRow(ret))
 			err = i.incLeft(ctx)
 			if err != nil {
