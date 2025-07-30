@@ -193,11 +193,9 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 			if err != nil {
 				return err
 			}
-			currentAutoIncVal := insertedVal.(uint64)
-			t.ea.TableData().autoIncVal = t.updateAutoIncrementValue(ctx, autoCol, currentAutoIncVal)
+			t.updateAutoIncrementValue(ctx, autoCol, insertedVal.(uint64))
 		} else if cmp == 0 {
-			currentAutoIncVal := t.ea.TableData().autoIncVal
-			t.ea.TableData().autoIncVal = t.updateAutoIncrementValue(ctx, autoCol, currentAutoIncVal)
+			t.updateAutoIncrementValue(ctx, autoCol, t.ea.TableData().autoIncVal)
 		}
 	}
 
@@ -893,19 +891,19 @@ func verifyRowTypes(row sql.Row, schema sql.Schema) error {
 
 // updateAutoIncrementValue safely increments the auto_increment value, handling overflow
 // by ensuring it doesn't exceed the column type's maximum value or wrap around.
-// It returns the next valid auto_increment value for the given column type.
-func (t *tableEditor) updateAutoIncrementValue(ctx *sql.Context, autoCol *sql.Column, currentVal uint64) uint64 {
+func (t *tableEditor) updateAutoIncrementValue(ctx *sql.Context, autoCol *sql.Column, currentVal uint64) {
 	// Check for arithmetic overflow before adding 1
 	if currentVal == math.MaxUint64 {
 		// At maximum uint64 value, can't increment further
-		return currentVal
+		t.ea.TableData().autoIncVal = currentVal
+		return
 	}
 	
 	nextVal := currentVal + 1
 	if _, inRange, err := autoCol.Type.Convert(ctx, nextVal); err == nil && inRange == sql.InRange {
-		return nextVal
+		t.ea.TableData().autoIncVal = nextVal
+	} else {
+		// If next value would be out of range for the column type, stay at current value
+		t.ea.TableData().autoIncVal = currentVal
 	}
-	
-	// If next value would be out of range for the column type, stay at current value
-	return currentVal
 }
