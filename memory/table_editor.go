@@ -16,7 +16,6 @@ package memory
 
 import (
 	"fmt"
-	"math"
 	"reflect"
 	"strings"
 
@@ -193,9 +192,10 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 			if err != nil {
 				return err
 			}
-			t.updateAutoIncrementValue(ctx, autoCol, insertedVal.(uint64))
+			t.ea.TableData().autoIncVal = insertedVal.(uint64)
+			updateAutoIncrementSafe(ctx, autoCol, &t.ea.TableData().autoIncVal)
 		} else if cmp == 0 {
-			t.updateAutoIncrementValue(ctx, autoCol, t.ea.TableData().autoIncVal)
+			updateAutoIncrementSafe(ctx, autoCol, &t.ea.TableData().autoIncVal)
 		}
 	}
 
@@ -887,23 +887,4 @@ func verifyRowTypes(row sql.Row, schema sql.Schema) error {
 		}
 	}
 	return nil
-}
-
-// updateAutoIncrementValue safely increments the auto_increment value, handling overflow
-// by ensuring it doesn't exceed the column type's maximum value or wrap around.
-func (t *tableEditor) updateAutoIncrementValue(ctx *sql.Context, autoCol *sql.Column, currentVal uint64) {
-	// Check for arithmetic overflow before adding 1
-	if currentVal == math.MaxUint64 {
-		// At maximum uint64 value, can't increment further
-		t.ea.TableData().autoIncVal = currentVal
-		return
-	}
-	
-	nextVal := currentVal + 1
-	if _, inRange, err := autoCol.Type.Convert(ctx, nextVal); err == nil && inRange == sql.InRange {
-		t.ea.TableData().autoIncVal = nextVal
-	} else {
-		// If next value would be out of range for the column type, stay at current value
-		t.ea.TableData().autoIncVal = currentVal
-	}
 }

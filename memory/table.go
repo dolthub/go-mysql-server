@@ -1284,10 +1284,7 @@ func addColumnToSchema(ctx *sql.Context, data *TableData, newCol *sql.Column, or
 			data.autoIncVal = 0
 		}
 
-		nextVal := data.autoIncVal + 1
-		if _, inRange, err := newCol.Type.Convert(ctx, nextVal); err == nil && inRange == sql.InRange {
-			data.autoIncVal = nextVal
-		}
+		updateAutoIncrementSafe(ctx, newCol, &data.autoIncVal)
 	}
 
 	newPkOrds := data.schema.PkOrdinals
@@ -2580,4 +2577,22 @@ func (t *TableRevision) AddColumn(ctx *sql.Context, column *sql.Column, order *s
 
 func (t *TableRevision) IgnoreSessionData() bool {
 	return true
+}
+
+// updateAutoIncrementSafe safely increments an auto_increment value, handling overflow
+// by ensuring it doesn't exceed the column type's maximum value or wrap around.
+func updateAutoIncrementSafe(ctx *sql.Context, autoCol *sql.Column, autoIncVal *uint64) {
+	currentVal := *autoIncVal
+
+	// Check for arithmetic overflow before adding 1
+	if currentVal == math.MaxUint64 {
+		// At maximum uint64 value, can't increment further
+		return
+	}
+
+	nextVal := currentVal + 1
+	if _, inRange, err := autoCol.Type.Convert(ctx, nextVal); err == nil && inRange == sql.InRange {
+		*autoIncVal = nextVal
+	}
+	// If next value would be out of range for the column type, stay at current value
 }
