@@ -139,7 +139,10 @@ func (i *AutoIncrement) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		given = seq
 	}
 
-	ret, _, err := i.Type().Convert(ctx, given)
+	ret, inRange, err := i.Type().Convert(ctx, given)
+	if err == nil && !inRange {
+		err = sql.ErrValueOutOfRange.New(given, i.Type())
+	}
 	if err != nil {
 		return nil, err
 	}

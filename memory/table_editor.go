@@ -16,6 +16,7 @@ package memory
 
 import (
 	"fmt"
+	"math"
 	"reflect"
 	"strings"
 
@@ -188,20 +189,15 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 			return err
 		}
 		if cmp > 0 {
-			v, _, err := types.Uint64.Convert(ctx, row[idx])
+			insertedVal, _, err := types.Uint64.Convert(ctx, row[idx])
 			if err != nil {
 				return err
 			}
-			t.ea.TableData().autoIncVal = v.(uint64)
-			nextVal := v.(uint64) + 1
-			if _, inRange, err := autoCol.Type.Convert(ctx, nextVal); err == nil && inRange == sql.InRange {
-				t.ea.TableData().autoIncVal = nextVal
-			}
+			currentAutoIncVal := insertedVal.(uint64)
+			t.ea.TableData().autoIncVal = t.updateAutoIncrementValue(ctx, autoCol, currentAutoIncVal)
 		} else if cmp == 0 {
-			nextVal := t.ea.TableData().autoIncVal + 1
-			if _, inRange, err := autoCol.Type.Convert(ctx, nextVal); err == nil && inRange == sql.InRange {
-				t.ea.TableData().autoIncVal = nextVal
-			}
+			currentAutoIncVal := t.ea.TableData().autoIncVal
+			t.ea.TableData().autoIncVal = t.updateAutoIncrementValue(ctx, autoCol, currentAutoIncVal)
 		}
 	}
 
@@ -893,4 +889,23 @@ func verifyRowTypes(row sql.Row, schema sql.Schema) error {
 		}
 	}
 	return nil
+}
+
+// updateAutoIncrementValue safely increments the auto_increment value, handling overflow
+// by ensuring it doesn't exceed the column type's maximum value or wrap around.
+// It returns the next valid auto_increment value for the given column type.
+func (t *tableEditor) updateAutoIncrementValue(ctx *sql.Context, autoCol *sql.Column, currentVal uint64) uint64 {
+	// Check for arithmetic overflow before adding 1
+	if currentVal == math.MaxUint64 {
+		// At maximum uint64 value, can't increment further
+		return currentVal
+	}
+	
+	nextVal := currentVal + 1
+	if _, inRange, err := autoCol.Type.Convert(ctx, nextVal); err == nil && inRange == sql.InRange {
+		return nextVal
+	}
+	
+	// If next value would be out of range for the column type, stay at current value
+	return currentVal
 }

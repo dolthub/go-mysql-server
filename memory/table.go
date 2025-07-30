@@ -19,6 +19,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"io"
+	"math"
 	"sort"
 	"strconv"
 	"strings"
@@ -1144,7 +1145,34 @@ func (t *Table) Insert(ctx *sql.Context, row sql.Row) error {
 func (t *Table) PeekNextAutoIncrementValue(ctx *sql.Context) (uint64, error) {
 	data := t.sessionTableData(ctx)
 
+	// Find the auto increment column to validate the current value
+	autoCol := t.getAutoIncrementColumn()
+	if autoCol == nil {
+		return data.autoIncVal, nil
+	}
+
+	// If the current auto increment value is out of range for the column type,
+	// return the maximum valid value instead
+	if _, inRange, err := autoCol.Type.Convert(ctx, data.autoIncVal); err == nil && inRange == sql.OutOfRange {
+		// When auto increment overflowed to 0, show the previous valid value
+		if data.autoIncVal == 0 {
+			return math.MaxUint64, nil
+		}
+		return data.autoIncVal - 1, nil
+	}
+
 	return data.autoIncVal, nil
+}
+
+// getAutoIncrementColumn returns the auto increment column for this table, or nil if none exists.
+// Only one auto increment column is allowed per table.
+func (t *Table) getAutoIncrementColumn() *sql.Column {
+	for _, col := range t.Schema() {
+		if col.AutoIncrement {
+			return col
+		}
+	}
+	return nil
 }
 
 // GetNextAutoIncrementValue gets the next auto increment value for the memory table the increment.
