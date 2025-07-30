@@ -46,11 +46,7 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 		case ast.DescScr:
 			descending = true
 		}
-		expr := o.Expr
-		// unwrap expressions wrapped by parentheses
-		if parensExpr, ok := expr.(*ast.ParenExpr); ok {
-			expr = parensExpr.Expr
-		}
+		expr := unwrapExpression(o.Expr)
 		switch e := expr.(type) {
 		case *ast.ColName:
 			// check for projection alias first
@@ -229,4 +225,14 @@ func (b *Builder) buildOrderBy(inScope, orderByScope *scope) {
 	}
 	inScope.node = sort
 	return
+}
+
+// unwrapExpression unwraps expressions wrapped in ParenExpr (parenthesis)
+// TODO: consider moving this function to a different file or package since it seems like it could be used in other
+// places
+func unwrapExpression(expr ast.Expr) ast.Expr {
+	if parensExpr, ok := expr.(*ast.ParenExpr); ok {
+		return unwrapExpression(parensExpr.Expr)
+	}
+	return expr
 }

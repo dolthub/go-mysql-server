@@ -348,47 +348,23 @@ var OrderByGroupByScriptTests = []ScriptTest{
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/9605
-		Name: "Order by CTE column wrapped by parentheses",
+		Name: "Order by wrapped by parentheses",
 		SetUpScript: []string{
-			"create table tree_data (id int not null, parent_id int, primary key (id), constraint foreign key (parent_id) references tree_data (id));",
-			"insert into tree_data values (1,null),(2,null),(3,null),(4,1),(5,4),(6,3)",
+			"create table t(i int, j int)",
+			"insert into t values(2,4),(0,7),(9,10),(4,3)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: `WITH RECURSIVE __rank_table(id, parent_id, rank_order) AS  (SELECT tree_data.id,
-					  tree_data.parent_id,
-					  row_number() OVER (
-										 ORDER BY tree_data.id) AS rank_order
-			   FROM tree_data),
-						   __tree(tree_depth, tree_path, tree_ordering, tree_pk) AS
-			  (SELECT 0,
-					  cast(concat("", id, "") AS char(1000)),
-					  cast(concat("", lpad(concat(T.rank_order, ""), 20, "0")) AS char(1000)),
-					  T.id
-			   FROM __rank_table T
-			   WHERE T.parent_id IS NULL
-			   UNION ALL SELECT __tree.tree_depth + 1,
-								concat(__tree.tree_path, T2.id, ""),
-								concat(__tree.tree_ordering, lpad(concat(T2.rank_order, ""), 20, "0")),
-								T2.id
-			   FROM __tree,
-					__rank_table T2
-			   WHERE __tree.tree_pk = T2.parent_id)
-			SELECT __tree.tree_depth AS tree_depth,
-				   tree_data.id,
-				   tree_data.parent_id
-			FROM __tree,
-				 tree_data
-			WHERE __tree.tree_pk = tree_data.id
-			ORDER BY (__tree.tree_depth) DESC;`,
-				Expected: []sql.Row{
-					{2, 5, 4},
-					{1, 4, 1},
-					{1, 6, 3},
-					{0, 1, nil},
-					{0, 2, nil},
-					{0, 3, nil},
-				},
+				Query:    "with cte(i) as (select i from t) select * from cte order by (i)",
+				Expected: []sql.Row{{0}, {2}, {4}, {9}},
+			},
+			{
+				Query:    "with cte(i) as (select i from t) select * from cte order by (((i)))",
+				Expected: []sql.Row{{0}, {2}, {4}, {9}},
+			},
+			{
+				Query:    "select * from t order by (i * 10 + j)",
+				Expected: []sql.Row{{0, 7}, {2, 4}, {4, 3}, {9, 10}},
 			},
 		},
 	},
