@@ -533,8 +533,14 @@ func (db *MySQLDb) ValidateHash(salt []byte, user string, authResponse []byte, a
 	}
 
 	userEntry := db.GetUser(user, host, false, false)
-	if userEntry == nil || userEntry.Locked {
-		return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v'", user)
+	if userEntry == nil {
+		// Just return a simple error with the IP address
+		return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError,
+			"Login not allowed.  Connected from '%v'", host)
+	}
+
+	if userEntry.Locked {
+		return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v': Account is locked", user)
 	}
 	if len(userEntry.Password) > 0 {
 		if !validateMysqlNativePassword(authResponse, salt, userEntry.Password) {
@@ -567,6 +573,15 @@ func (db *MySQLDb) Negotiate(c *mysql.Conn, user string, addr net.Addr) (mysql.G
 		return connUser, nil
 	}
 	userEntry := db.GetUser(user, host, false, false)
+	if userEntry == nil {
+		// Just return a simple error with the IP address
+		return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError,
+			"Login not allowed.  Connected from '%v'", host)
+	}
+
+	if userEntry.Locked {
+		return nil, mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "Access denied for user '%v': Account is locked", user)
+	}
 
 	if userEntry.Plugin != "" {
 		authplugin, ok := db.plugins[userEntry.Plugin]
