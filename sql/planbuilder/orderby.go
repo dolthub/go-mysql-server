@@ -47,6 +47,7 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 			descending = true
 		}
 		expr := o.Expr
+		// unwrap expressions wrapped by parentheses
 		if parensExpr, ok := expr.(*ast.ParenExpr); ok {
 			expr = parensExpr.Expr
 		}
