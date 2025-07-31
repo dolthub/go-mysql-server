@@ -9224,7 +9224,6 @@ where
 				},
 			},
 			{
-				// Skip:  true,
 				Query: "select e from t where e like 'a%' order by e;",
 				Expected: []sql.Row{
 					{"abc"},
