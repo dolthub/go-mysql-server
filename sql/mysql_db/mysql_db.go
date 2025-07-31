@@ -502,7 +502,8 @@ func (db *MySQLDb) AuthMethod(user, addr string) (string, error) {
 
 	u := db.GetUser(user, host, false, false)
 	if u == nil {
-		return "", mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError, "User not found '%v'", user)
+		return "", mysql.NewSQLError(mysql.ERAccessDeniedError, mysql.SSAccessDeniedError,
+			"User not found '%v'.  Connected from '%v'", user, host)
 	}
 	if _, ok := db.plugins[u.Plugin]; ok {
 		return "mysql_clear_password", nil
