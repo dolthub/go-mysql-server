@@ -89,7 +89,7 @@ func (c *Char) CollationCoercibility(ctx *sql.Context) (collation sql.CollationI
 // This function is essentially converting the number to base 256
 func char(num uint32) []byte {
 	if num == 0 {
-		return []byte{}
+		return []byte{0}
 	}
 	return append(char(num>>8), byte(num&255))
 }
