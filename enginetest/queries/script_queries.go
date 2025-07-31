@@ -9224,7 +9224,7 @@ where
 				},
 			},
 			{
-				Skip:  true,
+				// Skip:  true,
 				Query: "select e from t where e like 'a%' order by e;",
 				Expected: []sql.Row{
 					{"abc"},
@@ -9386,6 +9386,37 @@ where
 					{"OFF", "OFFDolt"},
 					{"AUTO", "AUTODolt"},
 				},
+			},
+		},
+	},
+	{
+		Name: "Convert enum columns to string columns with alter table",
+		SetUpScript: []string{
+			"create table t(pk int primary key, c0 enum('a', 'b', 'c'));",
+			"insert into t values(0, 'a'), (1, 'b'), (2, 'c');",
+			"alter table t modify column c0 varchar(100);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from t",
+				Expected: []sql.Row{{0, "a"}, {1, "b"}, {2, "c"}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9613
+		Skip: true,
+		Name: "Convert enum columns to string columns when copying table",
+		SetUpScript: []string{
+			"create table t(pk int primary key, c0 enum('a', 'b', 'c'));",
+			"insert into t values(0, 'a'), (1, 'b'), (2, 'c');",
+			"create table tt(pk int primary key, c0 varchar(10))",
+			"insert into tt select * from t",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from tt",
+				Expected: []sql.Row{{0, "a"}, {1, "b"}, {2, "c"}},
 			},
 		},
 	},
@@ -9998,6 +10029,37 @@ where
 					{"abc,defg", float64(3)},
 					{"abc,defg,hijkl", float64(7)},
 				},
+			},
+		},
+	},
+	{
+		Name: "Convert set columns to string columns with alter table",
+		SetUpScript: []string{
+			"create table t(pk int primary key, c0 set('abc', 'def','ghi'))",
+			"insert into t values(0, 'abc,def'), (1, 'def'), (2, 'ghi');",
+			"alter table t modify column c0 varchar(100);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from t",
+				Expected: []sql.Row{{0, "abc,def"}, {1, "def"}, {2, "ghi"}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9613
+		Skip: true,
+		Name: "Convert set columns to string columns when copying table",
+		SetUpScript: []string{
+			"create table t(pk int primary key, c0 set('abc', 'def','ghi'))",
+			"insert into t values(0, 'abc,def'), (1, 'def'), (2, 'ghi');",
+			"create table tt(pk int primary key, c0 varchar(10))",
+			"insert into tt select * from t",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from tt",
+				Expected: []sql.Row{{0, "abc,def"}, {1, "def"}, {2, "ghi"}},
 			},
 		},
 	},
