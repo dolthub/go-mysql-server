@@ -236,6 +236,61 @@ func TestNumberConvert(t *testing.T) {
 	}
 }
 
+func TestFloat64StringTruncation(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	tests := []struct {
+		name     string
+		input    interface{}
+		expected float64
+		err      bool
+		inRange  sql.ConvertInRange
+	}{
+		// Basic truncation cases
+		{name: "numeric with invalid suffix", input: "123.456abc", expected: 123.456, err: false, inRange: sql.InRange},
+		{name: "integer with invalid suffix", input: "123abc", expected: 123, err: false, inRange: sql.InRange},
+		{name: "negative with invalid suffix", input: "-123.456abc", expected: -123.456, err: false, inRange: sql.InRange},
+		{name: "positive sign with invalid suffix", input: "+123.456abc", expected: 123.456, err: false, inRange: sql.InRange},
+		
+		// Scientific notation cases
+		{name: "scientific notation with suffix", input: "1.5e2abc", expected: 150, err: false, inRange: sql.InRange},
+		{name: "scientific notation negative exponent", input: "1e-4", expected: 0.0001, err: false, inRange: sql.InRange},
+		{name: "uppercase E notation", input: "1.5E2abc", expected: 150, err: false, inRange: sql.InRange},
+		{name: "positive exponent with suffix", input: "2.5e+3xyz", expected: 2500, err: false, inRange: sql.InRange},
+		
+		// Edge cases that become 0
+		{name: "pure non-numeric", input: "abc", expected: 0, err: false, inRange: sql.InRange},
+		{name: "single letter", input: "a", expected: 0, err: false, inRange: sql.InRange},
+		{name: "empty string", input: "", expected: 0, err: false, inRange: sql.InRange},
+		
+		// Whitespace handling
+		{name: "leading spaces", input: "   123.456abc", expected: 123.456, err: false, inRange: sql.InRange},
+		{name: "leading tabs", input: "\t123.456abc", expected: 123.456, err: false, inRange: sql.InRange},
+		{name: "mixed whitespace", input: " \t\n\r123.456abc", expected: 123.456, err: false, inRange: sql.InRange},
+		{name: "only whitespace", input: "   \t\n\r", expected: 0, err: false, inRange: sql.InRange},
+		
+		// Decimal point variations
+		{name: "decimal without leading digit", input: ".5abc", expected: 0.5, err: false, inRange: sql.InRange},
+		{name: "decimal without trailing digits", input: "123.abc", expected: 123, err: false, inRange: sql.InRange},
+		
+		// Multiple decimal points (should stop at first invalid)
+		{name: "multiple decimal points", input: "1.2.3abc", expected: 1.2, err: false, inRange: sql.InRange},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			val, inRange, err := Float64.Convert(ctx, test.input)
+			if test.err {
+				assert.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, test.expected, val)
+				assert.Equal(t, test.inRange, inRange)
+				assert.Equal(t, Float64.ValueType(), reflect.TypeOf(val))
+			}
+		})
+	}
+}
+
 func TestNumberSQL_BooleanFromBoolean(t *testing.T) {
 	val, err := Boolean.SQL(sql.NewEmptyContext(), nil, true)
 	require.NoError(t, err)
@@ -247,13 +302,14 @@ func TestNumberSQL_BooleanFromBoolean(t *testing.T) {
 }
 
 func TestNumberSQL_NumberFromString(t *testing.T) {
+	// MySQL converts invalid strings to 0 when used in numeric contexts
 	val, err := Int64.SQL(sql.NewEmptyContext(), nil, "not a number")
 	require.NoError(t, err)
-	assert.Equal(t, "not a number", val.ToString())
+	assert.Equal(t, "0", val.ToString())
 
 	val, err = Float64.SQL(sql.NewEmptyContext(), nil, "also not a number")
 	require.NoError(t, err)
-	assert.Equal(t, "also not a number", val.ToString())
+	assert.Equal(t, "0", val.ToString())
 }
 
 func TestNumberString(t *testing.T) {

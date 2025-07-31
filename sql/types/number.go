@@ -84,7 +84,7 @@ var (
 	numberFloat32ValueType = reflect.TypeOf(float32(0))
 	numberFloat64ValueType = reflect.TypeOf(float64(0))
 
-	numre = regexp.MustCompile(`^[ ]*[0-9]*\.?[0-9]+`)
+	numre = regexp.MustCompile(`^[ \t\n\r]*[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)([eE][+-]?[0-9]+)?`)
 )
 
 const (
@@ -1004,7 +1004,15 @@ func convertToInt64(t NumberTypeImpl_, v interface{}) (int64, sql.ConvertInRange
 		// If that fails, try as a float and truncate it to integral
 		f, err := strconv.ParseFloat(v, 64)
 		if err != nil {
-			return 0, sql.OutOfRange, sql.ErrInvalidValue.New(v, t.String())
+			// Use same truncation logic as float conversion for MySQL compatibility
+			s := numre.FindString(v)
+			if s != "" {
+				f, _ = strconv.ParseFloat(s, 64)
+				f = math.Round(f)
+				return int64(f), sql.InRange, nil
+			}
+			// If no valid number found, return 0 (MySQL behavior for pure non-numeric strings)
+			return 0, sql.InRange, nil
 		}
 		f = math.Round(f)
 		return int64(f), sql.InRange, nil
@@ -1190,7 +1198,17 @@ func convertToUint64(t NumberTypeImpl_, v interface{}) (uint64, sql.ConvertInRan
 				return val, inRange, err
 			}
 		}
-		return 0, sql.OutOfRange, sql.ErrInvalidValue.New(v, t.String())
+		// Use same truncation logic as float conversion for MySQL compatibility
+		s := numre.FindString(v)
+		if s != "" {
+			if f, err := strconv.ParseFloat(s, 64); err == nil {
+				if val, inRange, err := convertToUint64(t, f); err == nil {
+					return val, inRange, err
+				}
+			}
+		}
+		// If no valid number found, return 0 (MySQL behavior for pure non-numeric strings)
+		return 0, sql.InRange, nil
 	case bool:
 		if v {
 			return 1, sql.InRange, nil
@@ -1290,7 +1308,17 @@ func convertToUint32(t NumberTypeImpl_, v interface{}) (uint32, sql.ConvertInRan
 				return val, inRange, err
 			}
 		}
-		return 0, sql.OutOfRange, sql.ErrInvalidValue.New(v, t.String())
+		// Use same truncation logic as float conversion for MySQL compatibility
+		s := numre.FindString(v)
+		if s != "" {
+			if f, err := strconv.ParseFloat(s, 64); err == nil {
+				if val, inRange, err := convertToUint32(t, f); err == nil {
+					return val, inRange, err
+				}
+			}
+		}
+		// If no valid number found, return 0 (MySQL behavior for pure non-numeric strings)
+		return 0, sql.InRange, nil
 	case bool:
 		if v {
 			return 1, sql.InRange, nil
@@ -1386,7 +1414,17 @@ func convertToUint16(t NumberTypeImpl_, v interface{}) (uint16, sql.ConvertInRan
 				return val, inRange, err
 			}
 		}
-		return 0, sql.OutOfRange, sql.ErrInvalidValue.New(v, t.String())
+		// Use same truncation logic as float conversion for MySQL compatibility
+		s := numre.FindString(v)
+		if s != "" {
+			if f, err := strconv.ParseFloat(s, 64); err == nil {
+				if val, inRange, err := convertToUint16(t, f); err == nil {
+					return val, inRange, err
+				}
+			}
+		}
+		// If no valid number found, return 0 (MySQL behavior for pure non-numeric strings)
+		return 0, sql.InRange, nil
 	case bool:
 		if v {
 			return 1, sql.InRange, nil
@@ -1486,7 +1524,17 @@ func convertToUint8(t NumberTypeImpl_, v interface{}) (uint8, sql.ConvertInRange
 				return val, inRange, err
 			}
 		}
-		return 0, sql.OutOfRange, sql.ErrInvalidValue.New(v, t.String())
+		// Use same truncation logic as float conversion for MySQL compatibility
+		s := numre.FindString(v)
+		if s != "" {
+			if f, err := strconv.ParseFloat(s, 64); err == nil {
+				if val, inRange, err := convertToUint8(t, f); err == nil {
+					return val, inRange, err
+				}
+			}
+		}
+		// If no valid number found, return 0 (MySQL behavior for pure non-numeric strings)
+		return 0, sql.InRange, nil
 	case bool:
 		if v {
 			return 1, sql.InRange, nil
@@ -1542,8 +1590,12 @@ func convertToFloat64(t NumberTypeImpl_, v interface{}) (float64, error) {
 		if err != nil {
 			// parse the first longest valid numbers
 			s := numre.FindString(v)
-			i, _ = strconv.ParseFloat(s, 64)
-			return i, sql.ErrInvalidValue.New(v, t.String())
+			if s != "" {
+				i, _ = strconv.ParseFloat(s, 64)
+				return i, nil
+			}
+			// If no valid number found, return 0 (MySQL behavior for pure non-numeric strings)
+			return 0, nil
 		}
 		return i, nil
 	case bool:
