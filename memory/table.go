@@ -1413,7 +1413,8 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 			var oldRowWithoutVal sql.Row
 			oldRowWithoutVal = append(oldRowWithoutVal, row[:oldIdx]...)
 			oldRowWithoutVal = append(oldRowWithoutVal, row[oldIdx+1:]...)
-			newVal, inRange, err := column.Type.Convert(ctx, row[oldIdx])
+			oldType := data.schema.Schema[oldIdx].Type
+			newVal, inRange, err := types.TypeAwareConversion(ctx, row[oldIdx], oldType, column.Type)
 			if err != nil {
 				if sql.ErrNotMatchingSRID.Is(err) {
 					err = sql.ErrNotMatchingSRIDWithColName.New(columnName, err)
