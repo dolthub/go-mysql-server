@@ -1154,10 +1154,6 @@ func (t *Table) PeekNextAutoIncrementValue(ctx *sql.Context) (uint64, error) {
 	// If the current auto increment value is out of range for the column type,
 	// return the maximum valid value instead
 	if _, inRange, err := autoCol.Type.Convert(ctx, data.autoIncVal); err == nil && inRange == sql.OutOfRange {
-		// When auto increment overflowed to 0, show the previous valid value
-		if data.autoIncVal == 0 {
-			return math.MaxUint64, nil
-		}
 		return data.autoIncVal - 1, nil
 	}
 
