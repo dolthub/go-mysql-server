@@ -198,26 +198,33 @@ func TestSingleQueryPrepared(t *testing.T) {
 	enginetest.TestScriptWithEnginePrepared(t, engine, harness, test)
 }
 
-// Convenience test for debugging a single query. Unskip and set to the desired query.
-func TestSingleScript(t *testing.T) {
-	t.Skip()
+// NOTE: This test works when we DO NOT include *plan.Project nodes
+func TestSingleTriggerScript(t *testing.T) {
+	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name:        "AS OF propagates to nested CALLs",
-			SetUpScript: []string{},
-			Assertions: []queries.ScriptTestAssertion{
-				{
-					Query: "create procedure create_proc() create table t (i int primary key, j int);",
-					Expected: []sql.Row{
-						{types.NewOkResult(0)},
-					},
-				},
-				{
-					Query: "call create_proc()",
-					Expected: []sql.Row{
-						{types.NewOkResult(0)},
-					},
-				},
+			// TODO: This test is failing now!!!
+			Name: "issue #9039: trigger insert projection index error",
+			SetUpScript: []string{
+				"create table a (x int primary key, y int default 1, z int)",
+				"create table b (x int primary key)",
+				"create table c (x int primary key, y tinyint)",
+				"create table d (x int primary key)",
+				"insert into b values (1), (2)",
+				"insert into d values (1), (2)",
+				`
+create trigger insert_into_a
+after insert on a
+for each row
+replace into c
+select max(d.x + new.x), 0 from d join b using (x)
+-- select d.x+2, 0 from d join b using (x)
+where d.x = new.x`,
+				"insert into a (x,z) values (2,2)",
+			},
+			Query: "select x, y from c order by 1",
+			Expected: []sql.Row{
+				{4, 0},
 			},
 		},
 	}
@@ -230,8 +237,84 @@ func TestSingleScript(t *testing.T) {
 			panic(err)
 		}
 
-		//engine.EngineAnalyzer().Debug = true
-		//engine.EngineAnalyzer().Verbose = true
+		engine.EngineAnalyzer().Debug = true
+		engine.EngineAnalyzer().Verbose = true
+
+		enginetest.TestScriptWithEngine(t, engine, harness, test)
+	}
+}
+
+// Convenience test for debugging a single query. Unskip and set to the desired query.
+func TestSingleScript(t *testing.T) {
+	//t.Skip()
+
+	// TODO: Move this into a trigger test
+	var scripts = []queries.ScriptTest{
+		{
+			Name: "GROUP_CONCAT() use in triggers",
+			SetUpScript: []string{
+				`CREATE TABLE orders (
+					id INT AUTO_INCREMENT PRIMARY KEY,
+					customer_name VARCHAR(100),
+					product VARCHAR(100),
+					order_date DATETIME DEFAULT CURRENT_TIMESTAMP
+				);`,
+
+				`CREATE TABLE order_audit (
+					audit_id INT AUTO_INCREMENT PRIMARY KEY,
+					customer_name VARCHAR(100),
+					all_products TEXT,
+					audit_time DATETIME DEFAULT CURRENT_TIMESTAMP
+				);`,
+
+				`CREATE TRIGGER before_order_delete
+					BEFORE DELETE ON orders
+					FOR EACH ROW
+					BEGIN
+					DECLARE products TEXT;
+					SELECT GROUP_CONCAT(product ORDER BY order_date SEPARATOR ', ')
+					INTO products
+					FROM orders
+					WHERE customer_name = OLD.customer_name
+					AND id != OLD.id;
+					INSERT INTO order_audit (customer_name, all_products)
+					VALUES (OLD.customer_name, products);
+					END;`,
+
+				`INSERT INTO orders (customer_name, product) VALUES
+					('Alice', 'Book'),
+					('Alice', 'Pen'),
+					('Bob', 'Notebook');`,
+			},
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					// First try the query by itself
+					Query:    "SELECT GROUP_CONCAT(product ORDER BY order_date SEPARATOR ', ') FROM orders WHERE customer_name = 'Alice';",
+					Expected: []sql.Row{{"Book, Pen"}},
+				},
+				{
+					// Delete a row to trigger the BEFORE DELETE
+					Query:    "DELETE FROM orders WHERE customer_name = 'Alice' AND product = 'Pen';",
+					Expected: []sql.Row{{types.NewOkResult(1)}},
+				},
+				//{
+				//	Query: "SELECT * FROM order_audit;",
+				//	Expected: []sql.Row{{"???"}},
+				//},
+			},
+		},
+	}
+
+	for _, test := range scripts {
+		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+		//harness.UseServer()
+		engine, err := harness.NewEngine(t)
+		if err != nil {
+			panic(err)
+		}
+
+		engine.EngineAnalyzer().Debug = true
+		engine.EngineAnalyzer().Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
