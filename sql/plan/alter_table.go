@@ -428,7 +428,7 @@ func (c ColDefaultExpression) Eval(ctx *sql.Context, row sql.Row) (interface{}, 
 		if err != nil {
 			return nil, err
 		}
-		
+
 		// Use normal conversion for column default expressions
 		ret, _, err := c.Column.Type.Convert(ctx, val)
 		return ret, err

@@ -290,7 +290,7 @@ func (c *JsonTableCol) Next(ctx *sql.Context, obj interface{}, pass bool, ord in
 
 	// JSON_TABLE ERROR ON ERROR vs DEFAULT ON ERROR behavior
 	val, _, err = c.Opts.Typ.Convert(ctx, val)
-	
+
 	if err != nil {
 		if c.Opts.ErrOnErr {
 			return nil, err

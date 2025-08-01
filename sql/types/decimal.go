@@ -216,7 +216,7 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 					return t.ConvertToNullDecimal(res)
 				}
 			}
-			
+
 			// The decimal library cannot handle all of the different formats
 			bf, _, err := new(big.Float).SetPrec(217).Parse(value, 0)
 			if err != nil {
