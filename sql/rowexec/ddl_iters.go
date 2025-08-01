@@ -1428,6 +1428,7 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 			return false, err
 		}
 
+		// Default value validation during ADD COLUMN table rewriting
 		newRow, err := ProjectRow(ctx, projections, r)
 		if err != nil {
 			_ = inserter.DiscardChanges(ctx, err)

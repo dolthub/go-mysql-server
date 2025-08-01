@@ -85,13 +85,30 @@ func (c *Char) CollationCoercibility(ctx *sql.Context) (collation sql.CollationI
 	return sql.Collation_binary, 5
 }
 
-// char converts num into a byte array
-// This function is essentially converting the number to base 256
+const (
+	// byteMax represents the maximum value for a single byte (256)
+	// Used in CHAR function for base-256 conversion
+	byteMax = 256
+	// byteMask is used to extract the lowest 8 bits from a number (0xFF = 255)
+	byteMask = 255
+)
+
+// char converts a number into a byte array using base-256 representation.
+// This matches MySQL's CHAR() function behavior where each number represents
+// a byte value, and larger numbers are broken down into multiple bytes.
+// For example: CHAR(256) = CHAR(1,0) since 256 = 1*256 + 0
 func char(num uint32) []byte {
 	if num == 0 {
-		return []byte{}
+		// CHAR(0) returns a null byte as per MySQL spec
+		return []byte{0}
 	}
-	return append(char(num>>8), byte(num&255))
+	if num < byteMax {
+		// Single byte value - just convert directly
+		return []byte{byte(num)}
+	}
+	// Multi-byte value: recursively convert higher bits, then append lower byte
+	// This implements base-256 conversion: num = (num>>8)*256 + (num&255)
+	return append(char(num>>8), byte(num&byteMask))
 }
 
 // Eval implements the sql.Expression interface

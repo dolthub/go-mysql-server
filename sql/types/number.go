@@ -84,7 +84,16 @@ var (
 	numberFloat32ValueType = reflect.TypeOf(float32(0))
 	numberFloat64ValueType = reflect.TypeOf(float64(0))
 
-	numre = regexp.MustCompile(`^[ ]*[0-9]*\.?[0-9]+`)
+	// numre is a regex pattern for extracting MySQL-compatible numeric prefixes from strings.
+	// It matches:
+	// - Optional leading whitespace (space, tab, newline, carriage return)
+	// - Optional sign (+ or -)
+	// - Either:
+	//   - Digits followed by optional decimal point and more digits: "123.456"
+	//   - Just a decimal point followed by digits: ".456"
+	// - Optional scientific notation (e/E followed by optional sign and digits)
+	// Examples: "123.45abc" -> "123.45", "  -3.14e2xyz" -> "-3.14e2", ".5test" -> ".5"
+	numre = regexp.MustCompile(`^[ \t\n\r]*[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)([eE][+-]?[0-9]+)?`)
 )
 
 const (
@@ -189,11 +198,11 @@ func (t NumberTypeImpl_) Compare(s context.Context, a interface{}, b interface{}
 
 	switch t.baseType {
 	case sqltypes.Uint8, sqltypes.Uint16, sqltypes.Uint24, sqltypes.Uint32, sqltypes.Uint64:
-		ca, _, err := convertToUint64(t, a)
+		ca, _, err := convertToUint64(context.Background(), t, a)
 		if err != nil {
 			return 0, err
 		}
-		cb, _, err := convertToUint64(t, b)
+		cb, _, err := convertToUint64(context.Background(), t, b)
 		if err != nil {
 			return 0, err
 		}
@@ -206,11 +215,11 @@ func (t NumberTypeImpl_) Compare(s context.Context, a interface{}, b interface{}
 		}
 		return +1, nil
 	case sqltypes.Float32, sqltypes.Float64:
-		ca, err := convertToFloat64(t, a)
+		ca, err := convertToFloat64(context.Background(), t, a)
 		if err != nil {
 			return 0, err
 		}
-		cb, err := convertToFloat64(t, b)
+		cb, err := convertToFloat64(context.Background(), t, b)
 		if err != nil {
 			return 0, err
 		}
@@ -223,11 +232,11 @@ func (t NumberTypeImpl_) Compare(s context.Context, a interface{}, b interface{}
 		}
 		return +1, nil
 	default:
-		ca, _, err := convertToInt64(t, a)
+		ca, _, err := convertToInt64(s, t, a)
 		if err != nil {
 			ca = 0
 		}
-		cb, _, err := convertToInt64(t, b)
+		cb, _, err := convertToInt64(s, t, b)
 		if err != nil {
 			cb = 0
 		}
@@ -262,7 +271,7 @@ func (t NumberTypeImpl_) Convert(ctx context.Context, v interface{}) (interface{
 
 	switch t.baseType {
 	case sqltypes.Int8:
-		num, _, err := convertToInt64(t, v)
+		num, _, err := convertToInt64(ctx, t, v)
 		if err != nil {
 			return nil, sql.OutOfRange, err
 		}
@@ -273,9 +282,9 @@ func (t NumberTypeImpl_) Convert(ctx context.Context, v interface{}) (interface{
 		}
 		return int8(num), sql.InRange, nil
 	case sqltypes.Uint8:
-		return convertToUint8(t, v)
+		return convertToUint8(ctx, t, v)
 	case sqltypes.Int16:
-		num, _, err := convertToInt64(t, v)
+		num, _, err := convertToInt64(ctx, t, v)
 		if err != nil {
 			return nil, sql.OutOfRange, err
 		}
@@ -288,7 +297,7 @@ func (t NumberTypeImpl_) Convert(ctx context.Context, v interface{}) (interface{
 	case sqltypes.Uint16:
 		return convertToUint16(t, v)
 	case sqltypes.Int24:
-		num, _, err := convertToInt64(t, v)
+		num, _, err := convertToInt64(ctx, t, v)
 		if err != nil {
 			return nil, sql.OutOfRange, err
 		}
@@ -299,7 +308,7 @@ func (t NumberTypeImpl_) Convert(ctx context.Context, v interface{}) (interface{
 		}
 		return int32(num), sql.InRange, nil
 	case sqltypes.Uint24:
-		num, _, err := convertToInt64(t, v)
+		num, _, err := convertToInt64(ctx, t, v)
 		if err != nil {
 			return nil, sql.OutOfRange, err
 		}
@@ -310,7 +319,7 @@ func (t NumberTypeImpl_) Convert(ctx context.Context, v interface{}) (interface{
 		}
 		return uint32(num), sql.InRange, nil
 	case sqltypes.Int32:
-		num, _, err := convertToInt64(t, v)
+		num, _, err := convertToInt64(ctx, t, v)
 		if err != nil {
 			return nil, sql.OutOfRange, err
 		}
@@ -323,11 +332,11 @@ func (t NumberTypeImpl_) Convert(ctx context.Context, v interface{}) (interface{
 	case sqltypes.Uint32:
 		return convertToUint32(t, v)
 	case sqltypes.Int64:
-		return convertToInt64(t, v)
+		return convertToInt64(ctx, t, v)
 	case sqltypes.Uint64:
-		return convertToUint64(t, v)
+		return convertToUint64(context.Background(), t, v)
 	case sqltypes.Float32:
-		num, err := convertToFloat64(t, v)
+		num, err := convertToFloat64(ctx, t, v)
 		if err != nil {
 			return nil, sql.OutOfRange, err
 		}
@@ -338,7 +347,7 @@ func (t NumberTypeImpl_) Convert(ctx context.Context, v interface{}) (interface{
 		}
 		return float32(num), sql.InRange, nil
 	case sqltypes.Float64:
-		ret, err := convertToFloat64(t, v)
+		ret, err := convertToFloat64(ctx, t, v)
 		return ret, sql.InRange, err
 	default:
 		return nil, sql.OutOfRange, sql.ErrInvalidType.New(t.baseType.String())
@@ -399,7 +408,7 @@ func (t NumberTypeImpl_) Promote() sql.Type {
 }
 
 func (t NumberTypeImpl_) SQLInt8(ctx *sql.Context, dest []byte, v interface{}) ([]byte, error) {
-	num, _, err := convertToInt64(t, v)
+	num, _, err := convertToInt64(ctx, t, v)
 	if err != nil {
 		return nil, err
 	}
@@ -413,7 +422,7 @@ func (t NumberTypeImpl_) SQLInt8(ctx *sql.Context, dest []byte, v interface{}) (
 }
 
 func (t NumberTypeImpl_) SQLInt16(ctx *sql.Context, dest []byte, v interface{}) ([]byte, error) {
-	num, _, err := convertToInt64(t, v)
+	num, _, err := convertToInt64(ctx, t, v)
 	if err != nil {
 		return nil, err
 	}
@@ -427,7 +436,7 @@ func (t NumberTypeImpl_) SQLInt16(ctx *sql.Context, dest []byte, v interface{}) 
 }
 
 func (t NumberTypeImpl_) SQLInt24(ctx *sql.Context, dest []byte, v interface{}) ([]byte, error) {
-	num, _, err := convertToInt64(t, v)
+	num, _, err := convertToInt64(ctx, t, v)
 	if err != nil {
 		return nil, err
 	}
@@ -441,7 +450,7 @@ func (t NumberTypeImpl_) SQLInt24(ctx *sql.Context, dest []byte, v interface{}) 
 }
 
 func (t NumberTypeImpl_) SQLInt32(ctx *sql.Context, dest []byte, v interface{}) ([]byte, error) {
-	num, _, err := convertToInt64(t, v)
+	num, _, err := convertToInt64(ctx, t, v)
 	if err != nil {
 		return nil, err
 	}
@@ -455,7 +464,7 @@ func (t NumberTypeImpl_) SQLInt32(ctx *sql.Context, dest []byte, v interface{}) 
 }
 
 func (t NumberTypeImpl_) SQLInt64(ctx *sql.Context, dest []byte, v interface{}) ([]byte, error) {
-	vt, _, err := convertToInt64(t, v)
+	vt, _, err := convertToInt64(ctx, t, v)
 	if err != nil {
 		return nil, err
 	}
@@ -464,7 +473,7 @@ func (t NumberTypeImpl_) SQLInt64(ctx *sql.Context, dest []byte, v interface{}) 
 }
 
 func (t NumberTypeImpl_) SQLUint8(ctx *sql.Context, dest []byte, v interface{}) ([]byte, error) {
-	num, _, err := convertToUint64(t, v)
+	num, _, err := convertToUint64(ctx, t, v)
 	if err != nil {
 		return nil, err
 	}
@@ -477,7 +486,7 @@ func (t NumberTypeImpl_) SQLUint8(ctx *sql.Context, dest []byte, v interface{}) 
 }
 
 func (t NumberTypeImpl_) SQLUint16(ctx *sql.Context, dest []byte, v interface{}) ([]byte, error) {
-	num, _, err := convertToUint64(t, v)
+	num, _, err := convertToUint64(ctx, t, v)
 	if err != nil {
 		return nil, err
 	}
@@ -490,7 +499,7 @@ func (t NumberTypeImpl_) SQLUint16(ctx *sql.Context, dest []byte, v interface{})
 }
 
 func (t NumberTypeImpl_) SQLUint24(ctx *sql.Context, dest []byte, v interface{}) ([]byte, error) {
-	num, _, err := convertToUint64(t, v)
+	num, _, err := convertToUint64(ctx, t, v)
 	if err != nil {
 		return nil, err
 	}
@@ -503,7 +512,7 @@ func (t NumberTypeImpl_) SQLUint24(ctx *sql.Context, dest []byte, v interface{})
 }
 
 func (t NumberTypeImpl_) SQLUint32(ctx *sql.Context, dest []byte, v interface{}) ([]byte, error) {
-	num, _, err := convertToUint64(t, v)
+	num, _, err := convertToUint64(ctx, t, v)
 	if err != nil {
 		return nil, err
 	}
@@ -516,7 +525,7 @@ func (t NumberTypeImpl_) SQLUint32(ctx *sql.Context, dest []byte, v interface{})
 }
 
 func (t NumberTypeImpl_) SQLUint64(ctx *sql.Context, dest []byte, v interface{}) ([]byte, error) {
-	num, _, err := convertToUint64(t, v)
+	num, _, err := convertToUint64(ctx, t, v)
 	if err != nil {
 		return nil, err
 	}
@@ -529,7 +538,7 @@ func (t NumberTypeImpl_) SQLUint64(ctx *sql.Context, dest []byte, v interface{})
 }
 
 func (t NumberTypeImpl_) SQLFloat64(ctx *sql.Context, dest []byte, v interface{}) ([]byte, error) {
-	num, err := convertToFloat64(t, v)
+	num, err := convertToFloat64(ctx, t, v)
 	if err != nil {
 		return nil, err
 	}
@@ -538,7 +547,7 @@ func (t NumberTypeImpl_) SQLFloat64(ctx *sql.Context, dest []byte, v interface{}
 }
 
 func (t NumberTypeImpl_) SQLFloat32(ctx *sql.Context, dest []byte, v interface{}) ([]byte, error) {
-	num, err := convertToFloat64(t, v)
+	num, err := convertToFloat64(ctx, t, v)
 	if err != nil {
 		return nil, err
 	}
@@ -936,7 +945,20 @@ func (t NumberTypeImpl_) DisplayWidth() int {
 	return t.displayWidth
 }
 
-func convertToInt64(t NumberTypeImpl_, v interface{}) (int64, sql.ConvertInRange, error) {
+// convertStringToFloat64WithTruncation attempts to extract and parse a numeric prefix from a string
+// using MySQL-compatible truncation logic. Returns the parsed float64 value and
+// whether a valid numeric prefix was found.
+func convertStringToFloat64WithTruncation(originalV string) (float64, bool) {
+	s := numre.FindString(originalV)
+	if s != "" {
+		if f, err := strconv.ParseFloat(strings.TrimSpace(s), 64); err == nil {
+			return f, true
+		}
+	}
+	return 0, false
+}
+
+func convertToInt64(ctx context.Context, t NumberTypeImpl_, v interface{}) (int64, sql.ConvertInRange, error) {
 	switch v := v.(type) {
 	case time.Time:
 		return v.UTC().Unix(), sql.InRange, nil
@@ -991,11 +1013,22 @@ func convertToInt64(t NumberTypeImpl_, v interface{}) (int64, sql.ConvertInRange
 		}
 		return i, sql.InRange, nil
 	case string:
+		originalV := v
 		v = strings.Trim(v, intCutSet)
 		if v == "" {
 			// StringType{}.Zero() returns empty string, but should represent "0" for number value
 			return 0, sql.InRange, nil
 		}
+
+		// Check if strict mode is enabled via sql_mode (STRICT_TRANS_TABLES/STRICT_ALL_TABLES)
+		strictMode := false
+		if sqlCtx, ok := ctx.(*sql.Context); ok && sqlCtx != nil {
+			strictMode = sql.ValidateStrictMode(sqlCtx)
+		}
+
+		// Note: IGNORE mode handling is done at the iterator level
+		// rather than in individual type conversions for better separation of concerns
+
 		// Parse first an integer, which allows for more values than float64
 		i, err := strconv.ParseInt(v, 10, 64)
 		if err == nil {
@@ -1004,7 +1037,19 @@ func convertToInt64(t NumberTypeImpl_, v interface{}) (int64, sql.ConvertInRange
 		// If that fails, try as a float and truncate it to integral
 		f, err := strconv.ParseFloat(v, 64)
 		if err != nil {
-			return 0, sql.OutOfRange, sql.ErrInvalidValue.New(v, t.String())
+			// Always try MySQL-compatible truncation first for arithmetic expressions
+			if f, found := convertStringToFloat64WithTruncation(originalV); found {
+				f = math.Round(f)
+				return int64(f), sql.InRange, nil
+			}
+
+			// In strict mode, return error for better schema validation
+			if strictMode {
+				return 0, sql.OutOfRange, sql.ErrInvalidValue.New(originalV, "int")
+			}
+
+			// If no valid number found, return 0 (MySQL behavior for pure non-numeric strings)
+			return 0, sql.InRange, nil
 		}
 		f = math.Round(f)
 		return int64(f), sql.InRange, nil
@@ -1108,7 +1153,7 @@ func convertValueToUint64(t NumberTypeImpl_, v sql.Value) (uint64, error) {
 	}
 }
 
-func convertToUint64(t NumberTypeImpl_, v interface{}) (uint64, sql.ConvertInRange, error) {
+func convertToUint64(ctx context.Context, t NumberTypeImpl_, v interface{}) (uint64, sql.ConvertInRange, error) {
 	switch v := v.(type) {
 	case time.Time:
 		return uint64(v.UTC().Unix()), sql.InRange, nil
@@ -1186,11 +1231,18 @@ func convertToUint64(t NumberTypeImpl_, v interface{}) (uint64, sql.ConvertInRan
 			return math.MaxUint64, sql.OutOfRange, nil
 		}
 		if f, err := strconv.ParseFloat(v, 64); err == nil {
-			if val, inRange, err := convertToUint64(t, f); err == nil && inRange {
+			if val, inRange, err := convertToUint64(context.Background(), t, f); err == nil && inRange {
 				return val, inRange, err
 			}
 		}
-		return 0, sql.OutOfRange, sql.ErrInvalidValue.New(v, t.String())
+		// Use same truncation logic as float conversion for MySQL compatibility
+		if f, found := convertStringToFloat64WithTruncation(v); found {
+			if val, inRange, err := convertToUint64(context.Background(), t, f); err == nil {
+				return val, inRange, err
+			}
+		}
+		// If no valid number found, return 0 (MySQL behavior for pure non-numeric strings)
+		return 0, sql.InRange, nil
 	case bool:
 		if v {
 			return 1, sql.InRange, nil
@@ -1290,7 +1342,14 @@ func convertToUint32(t NumberTypeImpl_, v interface{}) (uint32, sql.ConvertInRan
 				return val, inRange, err
 			}
 		}
-		return 0, sql.OutOfRange, sql.ErrInvalidValue.New(v, t.String())
+		// Use same truncation logic as float conversion for MySQL compatibility
+		if f, found := convertStringToFloat64WithTruncation(v); found {
+			if val, inRange, err := convertToUint32(t, f); err == nil {
+				return val, inRange, err
+			}
+		}
+		// If no valid number found, return 0 (MySQL behavior for pure non-numeric strings)
+		return 0, sql.InRange, nil
 	case bool:
 		if v {
 			return 1, sql.InRange, nil
@@ -1386,7 +1445,14 @@ func convertToUint16(t NumberTypeImpl_, v interface{}) (uint16, sql.ConvertInRan
 				return val, inRange, err
 			}
 		}
-		return 0, sql.OutOfRange, sql.ErrInvalidValue.New(v, t.String())
+		// Use same truncation logic as float conversion for MySQL compatibility
+		if f, found := convertStringToFloat64WithTruncation(v); found {
+			if val, inRange, err := convertToUint16(t, f); err == nil {
+				return val, inRange, err
+			}
+		}
+		// If no valid number found, return 0 (MySQL behavior for pure non-numeric strings)
+		return 0, sql.InRange, nil
 	case bool:
 		if v {
 			return 1, sql.InRange, nil
@@ -1399,7 +1465,7 @@ func convertToUint16(t NumberTypeImpl_, v interface{}) (uint16, sql.ConvertInRan
 	}
 }
 
-func convertToUint8(t NumberTypeImpl_, v interface{}) (uint8, sql.ConvertInRange, error) {
+func convertToUint8(ctx context.Context, t NumberTypeImpl_, v interface{}) (uint8, sql.ConvertInRange, error) {
 	switch v := v.(type) {
 	case int:
 		if v < 0 {
@@ -1477,16 +1543,41 @@ func convertToUint8(t NumberTypeImpl_, v interface{}) (uint8, sql.ConvertInRange
 		}
 		return uint8(i), sql.InRange, nil
 	case string:
+		originalV := v
 		v = strings.Trim(v, intCutSet)
+
+		// Check if strict mode is enabled via sql_mode (STRICT_TRANS_TABLES/STRICT_ALL_TABLES)
+		strictMode := false
+		if sqlCtx, ok := ctx.(*sql.Context); ok && sqlCtx != nil {
+			strictMode = sql.ValidateStrictMode(sqlCtx)
+		}
+
+		// Note: IGNORE mode handling is done at the iterator level
+		// rather than in individual type conversions for better separation of concerns
+
 		if i, err := strconv.ParseUint(v, 10, 8); err == nil {
 			return uint8(i), sql.InRange, nil
 		}
 		if f, err := strconv.ParseFloat(v, 64); err == nil {
-			if val, inRange, err := convertToUint8(t, f); err == nil && inRange {
+			if val, inRange, err := convertToUint8(ctx, t, f); err == nil && inRange {
 				return val, inRange, err
 			}
 		}
-		return 0, sql.OutOfRange, sql.ErrInvalidValue.New(v, t.String())
+
+		// Use same truncation logic as float conversion for MySQL compatibility
+		if f, found := convertStringToFloat64WithTruncation(originalV); found {
+			if val, inRange, err := convertToUint8(ctx, t, f); err == nil {
+				return val, inRange, err
+			}
+		}
+
+		// In strict mode, return error instead of truncating for schema validation
+		if strictMode {
+			return 0, sql.OutOfRange, sql.ErrInvalidValue.New(originalV, t.String())
+		}
+
+		// If no valid number found, return 0 (MySQL behavior for pure non-numeric strings)
+		return 0, sql.InRange, nil
 	case bool:
 		if v {
 			return 1, sql.InRange, nil
@@ -1499,7 +1590,7 @@ func convertToUint8(t NumberTypeImpl_, v interface{}) (uint8, sql.ConvertInRange
 	}
 }
 
-func convertToFloat64(t NumberTypeImpl_, v interface{}) (float64, error) {
+func convertToFloat64(ctx context.Context, t NumberTypeImpl_, v interface{}) (float64, error) {
 	switch v := v.(type) {
 	case time.Time:
 		return float64(v.UTC().Unix()), nil
@@ -1537,13 +1628,32 @@ func convertToFloat64(t NumberTypeImpl_, v interface{}) (float64, error) {
 		}
 		return float64(i), nil
 	case string:
+		originalV := v
 		v = strings.Trim(v, numericCutSet)
+
+		// Check if strict mode is enabled via sql_mode (STRICT_TRANS_TABLES/STRICT_ALL_TABLES)
+		strictMode := false
+		if sqlCtx, ok := ctx.(*sql.Context); ok && sqlCtx != nil {
+			strictMode = sql.ValidateStrictMode(sqlCtx)
+		}
+
+		// Note: IGNORE mode handling is done at the iterator level
+		// rather than in individual type conversions for better separation of concerns
+
 		i, err := strconv.ParseFloat(v, 64)
 		if err != nil {
-			// parse the first longest valid numbers
-			s := numre.FindString(v)
-			i, _ = strconv.ParseFloat(s, 64)
-			return i, sql.ErrInvalidValue.New(v, t.String())
+			// Always try MySQL-compatible truncation first for arithmetic expressions
+			if f, found := convertStringToFloat64WithTruncation(originalV); found {
+				return f, nil
+			}
+
+			// In strict mode, return error instead of truncating for schema validation
+			if strictMode {
+				return 0, sql.ErrInvalidValue.New(originalV, t.String())
+			}
+
+			// If no valid number found, return 0 (MySQL behavior for pure non-numeric strings)
+			return 0, nil
 		}
 		return i, nil
 	case bool:

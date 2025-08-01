@@ -288,11 +288,14 @@ func (c *JsonTableCol) Next(ctx *sql.Context, obj interface{}, pass bool, ord in
 		val = c.Opts.DefEmpVal
 	}
 
+	// JSON_TABLE ERROR ON ERROR vs DEFAULT ON ERROR behavior
 	val, _, err = c.Opts.Typ.Convert(ctx, val)
+
 	if err != nil {
 		if c.Opts.ErrOnErr {
 			return nil, err
 		}
+		// When using DEFAULT ON ERROR, apply default value with normal conversion
 		val, _, err = c.Opts.Typ.Convert(ctx, c.Opts.DefErrVal)
 		if err != nil {
 			return nil, err

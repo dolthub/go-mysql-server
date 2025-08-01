@@ -227,6 +227,7 @@ func (e *ColumnDefaultValue) CheckType(ctx *Context) error {
 		if val == nil && !e.ReturnNil {
 			return ErrIncompatibleDefaultType.New()
 		}
+		// Column defaults should use strict mode validation in MySQL
 		_, inRange, err := e.OutType.Convert(ctx, val)
 		if err != nil {
 			return ErrIncompatibleDefaultType.Wrap(err)

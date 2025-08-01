@@ -138,6 +138,7 @@ func (i *Interval) EvalDelta(ctx *sql.Context, row sql.Row) (*TimeDelta, error) 
 			return nil, errInvalidIntervalUnit.New(i.Unit)
 		}
 	} else {
+		// Use normal conversion for interval values
 		val, _, err = types.Int64.Convert(ctx, val)
 		if err != nil {
 			return nil, err

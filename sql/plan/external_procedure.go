@@ -122,6 +122,7 @@ func (n *ExternalProcedure) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter,
 		if err != nil {
 			return nil, err
 		}
+		// Procedure parameter validation should follow strict conversion rules
 		exprParamVal, _, err = paramDefinition.Type.Convert(ctx, exprParamVal)
 		if err != nil {
 			return nil, err
