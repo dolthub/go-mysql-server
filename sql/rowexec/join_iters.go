@@ -256,6 +256,7 @@ const (
 	esIncRight
 	esRightIterEOF
 	esCompare
+	esRejectNull
 	esRet
 )
 
@@ -272,6 +273,7 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 	//    when the secondaryProvider is empty
 	//  - antiJoin succeeds to RET when LOAD_RIGHT EOF's
 	//  - semiJoin fails when LOAD_RIGHT EOF's, falling back to LOAD_LEFT
+	//  - antiJoin fails when COMPARE returns true, falling back to LOAD_LEFT
 	nextState := esIncLeft
 	for {
 		switch nextState {
@@ -323,6 +325,11 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 				return nil, err
 			}
 
+			if res == nil && i.typ.IsExcludeNulls() {
+				nextState = esRejectNull
+				continue
+			}
+
 			if !sql.IsTrue(res) {
 				nextState = esIncRight
 			} else {
@@ -336,6 +343,12 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 				} else {
 					nextState = esRet
 				}
+			}
+		case esRejectNull:
+			if i.typ.IsAnti() {
+				nextState = esIncLeft
+			} else {
+				nextState = esIncRight
 			}
 		case esRet:
 			return i.removeParentRow(left), nil
