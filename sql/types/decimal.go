@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
-	"regexp"
 	"strings"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -210,8 +209,7 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 		var err error
 		res, err = decimal.NewFromString(value)
 		if err != nil {
-			// Try MySQL-compatible truncation: extract valid numeric portion
-			numre := regexp.MustCompile(`^[ \t\n\r]*[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)([eE][+-]?[0-9]+)?`)
+			// Try MySQL-compatible truncation: extract valid numeric portion using shared regex
 			if match := numre.FindString(value); match != "" {
 				res, err = decimal.NewFromString(strings.TrimSpace(match))
 				if err == nil {

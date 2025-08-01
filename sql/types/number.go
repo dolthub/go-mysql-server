@@ -84,6 +84,15 @@ var (
 	numberFloat32ValueType = reflect.TypeOf(float32(0))
 	numberFloat64ValueType = reflect.TypeOf(float64(0))
 
+	// numre is a regex pattern for extracting MySQL-compatible numeric prefixes from strings.
+	// It matches:
+	// - Optional leading whitespace (space, tab, newline, carriage return)
+	// - Optional sign (+ or -)
+	// - Either:
+	//   - Digits followed by optional decimal point and more digits: "123.456"
+	//   - Just a decimal point followed by digits: ".456"
+	// - Optional scientific notation (e/E followed by optional sign and digits)
+	// Examples: "123.45abc" -> "123.45", "  -3.14e2xyz" -> "-3.14e2", ".5test" -> ".5"
 	numre = regexp.MustCompile(`^[ \t\n\r]*[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)([eE][+-]?[0-9]+)?`)
 )
 
@@ -936,6 +945,19 @@ func (t NumberTypeImpl_) DisplayWidth() int {
 	return t.displayWidth
 }
 
+// convertStringToFloat64WithTruncation attempts to extract and parse a numeric prefix from a string
+// using MySQL-compatible truncation logic. Returns the parsed float64 value and
+// whether a valid numeric prefix was found.
+func convertStringToFloat64WithTruncation(originalV string) (float64, bool) {
+	s := numre.FindString(originalV)
+	if s != "" {
+		if f, err := strconv.ParseFloat(strings.TrimSpace(s), 64); err == nil {
+			return f, true
+		}
+	}
+	return 0, false
+}
+
 func convertToInt64(ctx context.Context, t NumberTypeImpl_, v interface{}) (int64, sql.ConvertInRange, error) {
 	switch v := v.(type) {
 	case time.Time:
@@ -1016,19 +1038,13 @@ func convertToInt64(ctx context.Context, t NumberTypeImpl_, v interface{}) (int6
 		f, err := strconv.ParseFloat(v, 64)
 		if err != nil {
 			// Always try MySQL-compatible truncation first for arithmetic expressions
-			s := numre.FindString(originalV)
-			if s != "" {
-				f, parseErr := strconv.ParseFloat(s, 64)
-				if parseErr == nil {
-					f = math.Round(f)
-					return int64(f), sql.InRange, nil
-				}
+			if f, found := convertStringToFloat64WithTruncation(originalV); found {
+				f = math.Round(f)
+				return int64(f), sql.InRange, nil
 			}
 
-			// For purely non-numeric strings like 'two', 'four', etc., return error
-			// This allows Dolt's diff system to handle incompatible type conversions correctly
-			// In strict mode, also return error for better schema validation
-			if strictMode || s == "" {
+			// In strict mode, return error for better schema validation
+			if strictMode {
 				return 0, sql.OutOfRange, sql.ErrInvalidValue.New(originalV, "int")
 			}
 
@@ -1220,12 +1236,9 @@ func convertToUint64(ctx context.Context, t NumberTypeImpl_, v interface{}) (uin
 			}
 		}
 		// Use same truncation logic as float conversion for MySQL compatibility
-		s := numre.FindString(v)
-		if s != "" {
-			if f, err := strconv.ParseFloat(s, 64); err == nil {
-				if val, inRange, err := convertToUint64(context.Background(), t, f); err == nil {
-					return val, inRange, err
-				}
+		if f, found := convertStringToFloat64WithTruncation(v); found {
+			if val, inRange, err := convertToUint64(context.Background(), t, f); err == nil {
+				return val, inRange, err
 			}
 		}
 		// If no valid number found, return 0 (MySQL behavior for pure non-numeric strings)
@@ -1330,12 +1343,9 @@ func convertToUint32(t NumberTypeImpl_, v interface{}) (uint32, sql.ConvertInRan
 			}
 		}
 		// Use same truncation logic as float conversion for MySQL compatibility
-		s := numre.FindString(v)
-		if s != "" {
-			if f, err := strconv.ParseFloat(s, 64); err == nil {
-				if val, inRange, err := convertToUint32(t, f); err == nil {
-					return val, inRange, err
-				}
+		if f, found := convertStringToFloat64WithTruncation(v); found {
+			if val, inRange, err := convertToUint32(t, f); err == nil {
+				return val, inRange, err
 			}
 		}
 		// If no valid number found, return 0 (MySQL behavior for pure non-numeric strings)
@@ -1436,12 +1446,9 @@ func convertToUint16(t NumberTypeImpl_, v interface{}) (uint16, sql.ConvertInRan
 			}
 		}
 		// Use same truncation logic as float conversion for MySQL compatibility
-		s := numre.FindString(v)
-		if s != "" {
-			if f, err := strconv.ParseFloat(s, 64); err == nil {
-				if val, inRange, err := convertToUint16(t, f); err == nil {
-					return val, inRange, err
-				}
+		if f, found := convertStringToFloat64WithTruncation(v); found {
+			if val, inRange, err := convertToUint16(t, f); err == nil {
+				return val, inRange, err
 			}
 		}
 		// If no valid number found, return 0 (MySQL behavior for pure non-numeric strings)
@@ -1558,12 +1565,9 @@ func convertToUint8(ctx context.Context, t NumberTypeImpl_, v interface{}) (uint
 		}
 
 		// Use same truncation logic as float conversion for MySQL compatibility
-		s := numre.FindString(originalV)
-		if s != "" {
-			if f, err := strconv.ParseFloat(s, 64); err == nil {
-				if val, inRange, err := convertToUint8(ctx, t, f); err == nil {
-					return val, inRange, err
-				}
+		if f, found := convertStringToFloat64WithTruncation(originalV); found {
+			if val, inRange, err := convertToUint8(ctx, t, f); err == nil {
+				return val, inRange, err
 			}
 		}
 
@@ -1639,12 +1643,8 @@ func convertToFloat64(ctx context.Context, t NumberTypeImpl_, v interface{}) (fl
 		i, err := strconv.ParseFloat(v, 64)
 		if err != nil {
 			// Always try MySQL-compatible truncation first for arithmetic expressions
-			s := numre.FindString(originalV)
-			if s != "" {
-				f, parseErr := strconv.ParseFloat(s, 64)
-				if parseErr == nil {
-					return f, nil
-				}
+			if f, found := convertStringToFloat64WithTruncation(originalV); found {
+				return f, nil
 			}
 
 			// In strict mode, return error instead of truncating for schema validation
