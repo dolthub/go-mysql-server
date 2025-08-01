@@ -9389,7 +9389,8 @@ where
 		},
 	},
 	{
-		Name: "Convert enum columns to string columns with alter table",
+		Name:    "Convert enum columns to string columns with alter table",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t(pk int primary key, c0 enum('a', 'b', 'c'));",
 			"insert into t values(0, 'a'), (1, 'b'), (2, 'c');",
@@ -9404,8 +9405,9 @@ where
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/9613
-		Skip: true,
-		Name: "Convert enum columns to string columns when copying table",
+		Skip:    true,
+		Name:    "Convert enum columns to string columns when copying table",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t(pk int primary key, c0 enum('a', 'b', 'c'));",
 			"insert into t values(0, 'a'), (1, 'b'), (2, 'c');",
@@ -10032,7 +10034,8 @@ where
 		},
 	},
 	{
-		Name: "Convert set columns to string columns with alter table",
+		Name:    "Convert set columns to string columns with alter table",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t(pk int primary key, c0 set('abc', 'def','ghi'))",
 			"insert into t values(0, 'abc,def'), (1, 'def'), (2, 'ghi');",
@@ -10047,8 +10050,9 @@ where
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/9613
-		Skip: true,
-		Name: "Convert set columns to string columns when copying table",
+		Skip:    true,
+		Name:    "Convert set columns to string columns when copying table",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t(pk int primary key, c0 set('abc', 'def','ghi'))",
 			"insert into t values(0, 'abc,def'), (1, 'def'), (2, 'ghi');",
