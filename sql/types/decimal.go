@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
+	"regexp"
 	"strings"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -201,7 +202,7 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 	case float64:
 		return t.ConvertToNullDecimal(decimal.NewFromFloat(value))
 	case string:
-		// TODO: implement truncation here
+		// Implement MySQL-compatible truncation
 		value = strings.Trim(value, numericCutSet)
 		if len(value) == 0 {
 			return t.ConvertToNullDecimal(decimal.NewFromInt(0))
@@ -209,14 +210,24 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 		var err error
 		res, err = decimal.NewFromString(value)
 		if err != nil {
+			// Try MySQL-compatible truncation: extract valid numeric portion
+			numre := regexp.MustCompile(`^[ \t\n\r]*[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)([eE][+-]?[0-9]+)?`)
+			if match := numre.FindString(value); match != "" {
+				res, err = decimal.NewFromString(strings.TrimSpace(match))
+				if err == nil {
+					return t.ConvertToNullDecimal(res)
+				}
+			}
+			
 			// The decimal library cannot handle all of the different formats
 			bf, _, err := new(big.Float).SetPrec(217).Parse(value, 0)
 			if err != nil {
-				return decimal.NullDecimal{}, err
+				// If all parsing fails, return zero (MySQL behavior)
+				return t.ConvertToNullDecimal(decimal.NewFromInt(0))
 			}
 			res, err = decimal.NewFromString(bf.Text('f', -1))
 			if err != nil {
-				return decimal.NullDecimal{}, err
+				return t.ConvertToNullDecimal(decimal.NewFromInt(0))
 			}
 		}
 		return t.ConvertToNullDecimal(res)

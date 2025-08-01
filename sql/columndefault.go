@@ -15,8 +15,13 @@
 package sql
 
 import (
+	"context"
 	"fmt"
 )
+
+// Context key for strict conversion mode (must match types.StrictConvertKey exactly)
+type contextKey string
+const strictConvertKey contextKey = "strict_convert"
 
 // ColumnDefaultValue is an expression representing the default value of a column. May represent both a default literal
 // and a default expression. A nil pointer of this type represents an implicit default value and is thus valid, so all
@@ -227,7 +232,11 @@ func (e *ColumnDefaultValue) CheckType(ctx *Context) error {
 		if val == nil && !e.ReturnNil {
 			return ErrIncompatibleDefaultType.New()
 		}
-		_, inRange, err := e.OutType.Convert(ctx, val)
+		// Use strict conversion mode for schema validation to match MySQL behavior
+		ctxWithStrict := context.WithValue(ctx.Context, "strict_convert", true)
+		strictCtx := ctx.WithContext(ctxWithStrict)
+		
+		_, inRange, err := e.OutType.Convert(strictCtx, val)
 		if err != nil {
 			return ErrIncompatibleDefaultType.Wrap(err)
 		} else if !inRange {

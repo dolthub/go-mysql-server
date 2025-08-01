@@ -15,6 +15,7 @@
 package plan
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -428,8 +429,19 @@ func (c ColDefaultExpression) Eval(ctx *sql.Context, row sql.Row) (interface{}, 
 		if err != nil {
 			return nil, err
 		}
-		ret, _, err := c.Column.Type.Convert(ctx, val)
-		return ret, err
+		
+		// Check if strict conversion mode is enabled (used during ADD COLUMN table rewriting)
+		if strictConvert, ok := ctx.Context.Value(types.StrictConvertKey).(bool); ok && strictConvert {
+			// Use strict conversion mode to match validation behavior during analysis
+			ctxWithStrict := context.WithValue(ctx.Context, types.StrictConvertKey, true)
+			strictCtx := ctx.WithContext(ctxWithStrict)
+			ret, _, err := c.Column.Type.Convert(strictCtx, val)
+			return ret, err
+		} else {
+			// Use normal conversion mode for regular operations
+			ret, _, err := c.Column.Type.Convert(ctx, val)
+			return ret, err
+		}
 	}
 
 	return nil, nil

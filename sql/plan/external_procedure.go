@@ -15,6 +15,7 @@
 package plan
 
 import (
+	"context"
 	"reflect"
 	"strconv"
 
@@ -122,7 +123,10 @@ func (n *ExternalProcedure) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter,
 		if err != nil {
 			return nil, err
 		}
-		exprParamVal, _, err = paramDefinition.Type.Convert(ctx, exprParamVal)
+		// Use strict conversion for procedure parameter validation
+		ctxWithStrict := context.WithValue(ctx.Context, "strict_convert", true)
+		strictCtx := ctx.WithContext(ctxWithStrict)
+		exprParamVal, _, err = paramDefinition.Type.Convert(strictCtx, exprParamVal)
 		if err != nil {
 			return nil, err
 		}

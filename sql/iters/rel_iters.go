@@ -16,6 +16,7 @@ package iters
 
 import (
 	"container/heap"
+	"context"
 	"fmt"
 	"io"
 	"sort"
@@ -288,12 +289,19 @@ func (c *JsonTableCol) Next(ctx *sql.Context, obj interface{}, pass bool, ord in
 		val = c.Opts.DefEmpVal
 	}
 
-	val, _, err = c.Opts.Typ.Convert(ctx, val)
+	// JSON_TABLE should always use strict conversion mode
+	ctxWithStrict := context.WithValue(ctx.Context, types.StrictConvertKey, true)
+	convertCtx := ctx.WithContext(ctxWithStrict)
+	
+	val, _, err = c.Opts.Typ.Convert(convertCtx, val)
 	if err != nil {
 		if c.Opts.ErrOnErr {
 			return nil, err
 		}
-		val, _, err = c.Opts.Typ.Convert(ctx, c.Opts.DefErrVal)
+		// Default value conversion should always use strict mode
+		ctxWithStrict := context.WithValue(ctx.Context, types.StrictConvertKey, true)
+		strictCtx := ctx.WithContext(ctxWithStrict)
+		val, _, err = c.Opts.Typ.Convert(strictCtx, c.Opts.DefErrVal)
 		if err != nil {
 			return nil, err
 		}

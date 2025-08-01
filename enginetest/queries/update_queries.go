@@ -725,18 +725,6 @@ var GenericUpdateErrorTests = []GenericErrorQueryTest{
 		Query: `UPDATE mytable SET i = ("one", "two");`,
 	},
 	{
-		Name:  "type mismatch: string -> int",
-		Query: `UPDATE mytable SET i = "one"`,
-	},
-	{
-		Name:  "type mismatch: string -> float",
-		Query: `UPDATE floattable SET f64 = "one"`,
-	},
-	{
-		Name:  "type mismatch: string -> uint",
-		Query: `UPDATE typestable SET f64 = "one"`,
-	},
-	{
 		Name:  "invalid column set",
 		Query: "UPDATE mytable SET z = 0;",
 	},

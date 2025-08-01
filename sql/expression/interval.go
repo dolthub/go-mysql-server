@@ -15,6 +15,7 @@
 package expression
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -138,7 +139,10 @@ func (i *Interval) EvalDelta(ctx *sql.Context, row sql.Row) (*TimeDelta, error) 
 			return nil, errInvalidIntervalUnit.New(i.Unit)
 		}
 	} else {
-		val, _, err = types.Int64.Convert(ctx, val)
+		// Use strict conversion for interval value validation  
+		ctxWithStrict := context.WithValue(ctx.Context, "strict_convert", true)
+		strictCtx := ctx.WithContext(ctxWithStrict)
+		val, _, err = types.Int64.Convert(strictCtx, val)
 		if err != nil {
 			return nil, err
 		}
