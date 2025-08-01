@@ -43,20 +43,20 @@ const (
 	JoinTypeLeftOuterLookup                           // LeftOuterLookupJoin
 	JoinTypeHash                                      // HashJoin
 	JoinTypeLeftOuterHash                             // LeftOuterHashJoin
-	JoinTypeLeftOuterHashExcludeNulls                 // LeftOuterHashJoinExcludeNulls
+	JoinTypeLeftOuterHashExcludeNulls                 // LeftOuterHashJoinExcludingNulls
 	JoinTypeMerge                                     // MergeJoin
 	JoinTypeLeftOuterMerge                            // LeftOuterMergeJoin
 	JoinTypeRangeHeap                                 // RangeHeapJoin
 	JoinTypeLeftOuterRangeHeap                        // LeftOuterRangeHeapJoin
 	JoinTypeSemiHash                                  // SemiHashJoin
 	JoinTypeAntiHash                                  // AntiHashJoin
-	JoinTypeAntiHashIncludeNulls                      // AntiHashJoinIncludeNulls
+	JoinTypeAntiHashIncludeNulls                      // AntiHashJoinIncludingNulls
 	JoinTypeSemiLookup                                // SemiLookupJoin
 	JoinTypeAntiLookup                                // AntiLookupJoin
-	JoinTypeAntiLookupIncludeNulls                    // AntiLookupIncludeNulls
+	JoinTypeAntiLookupIncludeNulls                    // AntiLookupIncludingNulls
 	JoinTypeSemiMerge                                 // SemiMergeJoin
 	JoinTypeAntiMerge                                 // AntiMergeJoin
-	JoinTypeAntiMergeIncludeNulls                     // AntiMergeIncludeNulls
+	JoinTypeAntiMergeIncludeNulls                     // AntiMergeIncludingNulls
 	JoinTypeUsing                                     // NaturalJoin
 	JoinTypeUsingLeft                                 // NaturalLeftJoin
 	JoinTypeUsingRight                                // NaturalRightJoin

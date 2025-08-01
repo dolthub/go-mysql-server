@@ -3931,7 +3931,7 @@ Select * from (
 			"     ├─ columns: [xy.x:0!null, xy.y:1]\n" +
 			"     └─ Filter\n" +
 			"         ├─ cte1.u:2!null IS NULL\n" +
-			"         └─ LeftOuterHashJoinExcludeNulls\n" +
+			"         └─ LeftOuterHashJoinExcludingNulls\n" +
 			"             ├─ Eq\n" +
 			"             │   ├─ xy.x:0!null\n" +
 			"             │   └─ cte1.u:2!null\n" +
@@ -3997,7 +3997,7 @@ Select * from (
 			"     ├─ columns: [xy.x, xy.y]\n" +
 			"     └─ Filter\n" +
 			"         ├─ cte1.u IS NULL\n" +
-			"         └─ LeftOuterHashJoinExcludeNulls\n" +
+			"         └─ LeftOuterHashJoinExcludingNulls\n" +
 			"             ├─ (xy.x = cte1.u)\n" +
 			"             ├─ Table\n" +
 			"             │   └─ name: xy\n" +
@@ -4043,7 +4043,7 @@ Select * from (
 			"     ├─ columns: [xy.x, xy.y]\n" +
 			"     └─ Filter\n" +
 			"         ├─ cte1.u IS NULL\n" +
-			"         └─ LeftOuterHashJoinExcludeNulls\n" +
+			"         └─ LeftOuterHashJoinExcludingNulls\n" +
 			"             ├─ (xy.x = cte1.u)\n" +
 			"             ├─ Table\n" +
 			"             │   └─ name: xy\n" +

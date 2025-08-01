@@ -47,9 +47,9 @@ func _() {
 	_ = x[JoinTypeLateralRight-36]
 }
 
-const _JoinType_name = "UnknownJoinCrossJoinCrossHashJoinInnerJoinSemiJoinAntiJoinAntiJoinIncludingNullsLeftOuterJoinLeftOuterJoinExcludingNullsFullOuterJoinGroupByJoinRightJoinLookupJoinLeftOuterLookupJoinHashJoinLeftOuterHashJoinLeftOuterHashJoinExcludeNullsMergeJoinLeftOuterMergeJoinRangeHeapJoinLeftOuterRangeHeapJoinSemiHashJoinAntiHashJoinAntiHashJoinIncludeNullsSemiLookupJoinAntiLookupJoinAntiLookupIncludeNullsSemiMergeJoinAntiMergeJoinAntiMergeIncludeNullsNaturalJoinNaturalLeftJoinNaturalRightJoinLateralCrossJoinLateralInnerJoinLateralLeftJoinLateralLeftJoin"
+const _JoinType_name = "UnknownJoinCrossJoinCrossHashJoinInnerJoinSemiJoinAntiJoinAntiJoinIncludingNullsLeftOuterJoinLeftOuterJoinExcludingNullsFullOuterJoinGroupByJoinRightJoinLookupJoinLeftOuterLookupJoinHashJoinLeftOuterHashJoinLeftOuterHashJoinExcludingNullsMergeJoinLeftOuterMergeJoinRangeHeapJoinLeftOuterRangeHeapJoinSemiHashJoinAntiHashJoinAntiHashJoinIncludingNullsSemiLookupJoinAntiLookupJoinAntiLookupIncludingNullsSemiMergeJoinAntiMergeJoinAntiMergeIncludingNullsNaturalJoinNaturalLeftJoinNaturalRightJoinLateralCrossJoinLateralInnerJoinLateralLeftJoinLateralLeftJoin"
 
-var _JoinType_index = [...]uint16{0, 11, 20, 33, 42, 50, 58, 80, 93, 120, 133, 144, 153, 163, 182, 190, 207, 236, 245, 263, 276, 298, 310, 322, 346, 360, 374, 396, 409, 422, 443, 454, 469, 485, 501, 517, 532, 547}
+var _JoinType_index = [...]uint16{0, 11, 20, 33, 42, 50, 58, 80, 93, 120, 133, 144, 153, 163, 182, 190, 207, 238, 247, 265, 278, 300, 312, 324, 350, 364, 378, 402, 415, 428, 451, 462, 477, 493, 509, 525, 540, 555}
 
 func (i JoinType) String() string {
 	if i >= JoinType(len(_JoinType_index)-1) {
