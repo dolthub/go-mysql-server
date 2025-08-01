@@ -3436,7 +3436,7 @@ order by
 			"                 │   └─ Eq\n" +
 			"                 │       ├─ l2.l_suppkey:38!null\n" +
 			"                 │       └─ l1.l_suppkey:2!null\n" +
-			"                 ├─ AntiJoin\n" +
+			"                 ├─ AntiJoinIncludingNulls\n" +
 			"                 │   ├─ AND\n" +
 			"                 │   │   ├─ Eq\n" +
 			"                 │   │   │   ├─ l3.l_orderkey:36!null\n" +
@@ -3525,7 +3525,7 @@ order by
 			"             ├─ Grouping(supplier.s_name)\n" +
 			"             └─ SemiLookupJoin\n" +
 			"                 ├─ (NOT((l2.l_suppkey = l1.l_suppkey)))\n" +
-			"                 ├─ AntiJoin\n" +
+			"                 ├─ AntiJoinIncludingNulls\n" +
 			"                 │   ├─ ((l3.l_orderkey = l1.l_orderkey) AND (NOT((l3.l_suppkey = l1.l_suppkey))))\n" +
 			"                 │   ├─ LookupJoin\n" +
 			"                 │   │   ├─ LookupJoin\n" +
@@ -3572,7 +3572,7 @@ order by
 			"             ├─ Grouping(supplier.s_name)\n" +
 			"             └─ SemiLookupJoin\n" +
 			"                 ├─ (NOT((l2.l_suppkey = l1.l_suppkey)))\n" +
-			"                 ├─ AntiJoin\n" +
+			"                 ├─ AntiJoinIncludingNulls\n" +
 			"                 │   ├─ ((l3.l_orderkey = l1.l_orderkey) AND (NOT((l3.l_suppkey = l1.l_suppkey))))\n" +
 			"                 │   ├─ LookupJoin\n" +
 			"                 │   │   ├─ LookupJoin\n" +
@@ -3693,7 +3693,7 @@ order by
 			"                         ├─ columns: [customer.C_CUSTKEY:0!null, customer.C_NAME:1!null, customer.C_ADDRESS:2!null, customer.C_NATIONKEY:3!null, customer.C_PHONE:4!null, customer.C_ACCTBAL:5!null, customer.C_MKTSEGMENT:6!null, customer.C_COMMENT:7!null]\n" +
 			"                         └─ Filter\n" +
 			"                             ├─ orders.o_custkey:8!null IS NULL\n" +
-			"                             └─ LeftOuterHashJoinExcludeNulls\n" +
+			"                             └─ LeftOuterHashJoin\n" +
 			"                                 ├─ Eq\n" +
 			"                                 │   ├─ orders.o_custkey:8!null\n" +
 			"                                 │   └─ customer.c_custkey:0!null\n" +
@@ -3748,7 +3748,7 @@ order by
 			"                         ├─ columns: [customer.C_CUSTKEY, customer.C_NAME, customer.C_ADDRESS, customer.C_NATIONKEY, customer.C_PHONE, customer.C_ACCTBAL, customer.C_MKTSEGMENT, customer.C_COMMENT]\n" +
 			"                         └─ Filter\n" +
 			"                             ├─ orders.o_custkey IS NULL\n" +
-			"                             └─ LeftOuterHashJoinExcludeNulls\n" +
+			"                             └─ LeftOuterHashJoin\n" +
 			"                                 ├─ (orders.o_custkey = customer.c_custkey)\n" +
 			"                                 ├─ Filter\n" +
 			"                                 │   ├─ (SUBSTRING(customer.c_phone, 1, 2) HASH IN ('13', '31', '23', '29', '30', '18', '17'))\n" +
@@ -3794,7 +3794,7 @@ order by
 			"                         ├─ columns: [customer.C_CUSTKEY, customer.C_NAME, customer.C_ADDRESS, customer.C_NATIONKEY, customer.C_PHONE, customer.C_ACCTBAL, customer.C_MKTSEGMENT, customer.C_COMMENT]\n" +
 			"                         └─ Filter\n" +
 			"                             ├─ orders.o_custkey IS NULL\n" +
-			"                             └─ LeftOuterHashJoinExcludeNulls\n" +
+			"                             └─ LeftOuterHashJoin\n" +
 			"                                 ├─ (orders.o_custkey = customer.c_custkey)\n" +
 			"                                 ├─ Filter\n" +
 			"                                 │   ├─ (SUBSTRING(customer.c_phone, 1, 2) HASH IN ('13', '31', '23', '29', '30', '18', '17'))\n" +
