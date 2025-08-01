@@ -2462,7 +2462,7 @@ Select * from (
 	},
 	{
 		Query: `select * from uv where not exists (select * from xy where not exists (select * from xy where not(u = 1)))`,
-		ExpectedPlan: "AntiJoin\n" +
+		ExpectedPlan: "AntiJoinIncludingNulls\n" +
 			" ├─ Or\n" +
 			" │   ├─ NOT\n" +
 			" │   │   └─ EXISTS Subquery\n" +
@@ -2485,7 +2485,7 @@ Select * from (
 			"         ├─ name: xy\n" +
 			"         └─ columns: [x y]\n" +
 			"",
-		ExpectedEstimates: "AntiJoin (estimated cost=2024.000 rows=5)\n" +
+		ExpectedEstimates: "AntiJoinIncludingNulls (estimated cost=2024.000 rows=5)\n" +
 			" ├─ ((NOT(EXISTS Subquery\n" +
 			" │   ├─ cacheable: true\n" +
 			" │   └─ Table\n" +
@@ -2497,7 +2497,7 @@ Select * from (
 			" └─ Table\n" +
 			"     └─ name: xy\n" +
 			"",
-		ExpectedAnalysis: "AntiJoin (estimated cost=2024.000 rows=5) (actual rows=3 loops=1)\n" +
+		ExpectedAnalysis: "AntiJoinIncludingNulls (estimated cost=2024.000 rows=5) (actual rows=3 loops=1)\n" +
 			" ├─ ((NOT(EXISTS Subquery\n" +
 			" │   ├─ cacheable: true\n" +
 			" │   └─ Table\n" +
