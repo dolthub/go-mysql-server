@@ -209,15 +209,6 @@ func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, fil
 
 		switch joinType {
 		case plan.JoinTypeAnti:
-			outerFilters, _, err = transform.Exprs(outerFilters, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-				if equals, ok := e.(*expression.Equals); ok {
-					return equals.MakeNullSafe(), transform.NewTree, nil
-				}
-				return e, transform.SameTree, nil
-			})
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
 			ret = plan.NewAntiJoin(ret, s.inner, expression.JoinAnd(outerFilters...)).WithComment(comment)
 			qFlags.Set(sql.QFlagInnerJoin)
 		case plan.JoinTypeSemi:
