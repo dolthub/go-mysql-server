@@ -408,6 +408,11 @@ func (e *Equals) ToComparer() (Comparer, error) {
 	return e, nil
 }
 
+// MakeNullSafe returns a new NullSafeEquals with the same children
+func (e *Equals) MakeNullSafe() *NullSafeEquals {
+	return NewNullSafeEquals(e.LeftChild, e.RightChild)
+}
+
 // NullSafeEquals is a comparison that checks an expression is equal to
 // another, where NULLs do not coalesce to NULL and two NULLs compare equal to
 // each other.
