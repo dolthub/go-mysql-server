@@ -997,23 +997,16 @@ func convertToInt64(ctx context.Context, t NumberTypeImpl_, v interface{}) (int6
 			// StringType{}.Zero() returns empty string, but should represent "0" for number value
 			return 0, sql.InRange, nil
 		}
-		
-		// Check if strict conversion mode is enabled (e.g., for JSON_TABLE ERROR ON ERROR)
+
+		// Check if strict mode is enabled via sql_mode (STRICT_TRANS_TABLES/STRICT_ALL_TABLES)
 		strictMode := false
-		if strictValue := ctx.Value(StrictConvertKey); strictValue != nil {
-			if strict, ok := strictValue.(bool); ok {
-				strictMode = strict
-			}
+		if sqlCtx, ok := ctx.(*sql.Context); ok && sqlCtx != nil {
+			strictMode = sql.ValidateStrictMode(sqlCtx)
 		}
-		// Also check for string-based key (for schema validation)
-		if !strictMode {
-			if strictValue := ctx.Value("strict_convert"); strictValue != nil {
-				if strict, ok := strictValue.(bool); ok {
-					strictMode = strict
-				}
-			}
-		}
-		
+
+		// Note: IGNORE mode handling is done at the iterator level
+		// rather than in individual type conversions for better separation of concerns
+
 		// Parse first an integer, which allows for more values than float64
 		i, err := strconv.ParseInt(v, 10, 64)
 		if err == nil {
@@ -1022,26 +1015,24 @@ func convertToInt64(ctx context.Context, t NumberTypeImpl_, v interface{}) (int6
 		// If that fails, try as a float and truncate it to integral
 		f, err := strconv.ParseFloat(v, 64)
 		if err != nil {
-			// In strict mode, return error instead of truncating
-			if strictMode {
+			// Always try MySQL-compatible truncation first for arithmetic expressions
+			s := numre.FindString(originalV)
+			if s != "" {
+				f, parseErr := strconv.ParseFloat(s, 64)
+				if parseErr == nil {
+					f = math.Round(f)
+					return int64(f), sql.InRange, nil
+				}
+			}
+
+			// For purely non-numeric strings like 'two', 'four', etc., return error
+			// This allows Dolt's diff system to handle incompatible type conversions correctly
+			// In strict mode, also return error for better schema validation
+			if strictMode || s == "" {
 				return 0, sql.OutOfRange, sql.ErrInvalidValue.New(originalV, "int")
 			}
-			
-			// Use same truncation logic as float conversion for MySQL compatibility
-			s := numre.FindString(v)
-			if s != "" {
-				f, _ = strconv.ParseFloat(s, 64)
-				f = math.Round(f)
-				// Generate warning for truncated string
-				if sqlCtx, ok := ctx.(*sql.Context); ok && sqlCtx != nil {
-					sqlCtx.Warn(1366, "Incorrect integer value: '%s' for column", originalV)
-				}
-				return int64(f), sql.InRange, nil
-			}
+
 			// If no valid number found, return 0 (MySQL behavior for pure non-numeric strings)
-			if sqlCtx, ok := ctx.(*sql.Context); ok && sqlCtx != nil {
-				sqlCtx.Warn(1366, "Incorrect integer value: '%s' for column", originalV)
-			}
 			return 0, sql.InRange, nil
 		}
 		f = math.Round(f)
@@ -1547,23 +1538,16 @@ func convertToUint8(ctx context.Context, t NumberTypeImpl_, v interface{}) (uint
 	case string:
 		originalV := v
 		v = strings.Trim(v, intCutSet)
-		
-		// Check if strict conversion mode is enabled (e.g., for procedure parameter validation)
+
+		// Check if strict mode is enabled via sql_mode (STRICT_TRANS_TABLES/STRICT_ALL_TABLES)
 		strictMode := false
-		if strictValue := ctx.Value(StrictConvertKey); strictValue != nil {
-			if strict, ok := strictValue.(bool); ok {
-				strictMode = strict
-			}
+		if sqlCtx, ok := ctx.(*sql.Context); ok && sqlCtx != nil {
+			strictMode = sql.ValidateStrictMode(sqlCtx)
 		}
-		// Also check for string-based key (for schema validation)
-		if !strictMode {
-			if strictValue := ctx.Value("strict_convert"); strictValue != nil {
-				if strict, ok := strictValue.(bool); ok {
-					strictMode = strict
-				}
-			}
-		}
-		
+
+		// Note: IGNORE mode handling is done at the iterator level
+		// rather than in individual type conversions for better separation of concerns
+
 		if i, err := strconv.ParseUint(v, 10, 8); err == nil {
 			return uint8(i), sql.InRange, nil
 		}
@@ -1572,14 +1556,9 @@ func convertToUint8(ctx context.Context, t NumberTypeImpl_, v interface{}) (uint
 				return val, inRange, err
 			}
 		}
-		
-		// In strict mode, return error instead of truncating
-		if strictMode {
-			return 0, sql.OutOfRange, sql.ErrInvalidValue.New(originalV, t.String())
-		}
-		
+
 		// Use same truncation logic as float conversion for MySQL compatibility
-		s := numre.FindString(v)
+		s := numre.FindString(originalV)
 		if s != "" {
 			if f, err := strconv.ParseFloat(s, 64); err == nil {
 				if val, inRange, err := convertToUint8(ctx, t, f); err == nil {
@@ -1587,6 +1566,12 @@ func convertToUint8(ctx context.Context, t NumberTypeImpl_, v interface{}) (uint
 				}
 			}
 		}
+
+		// In strict mode, return error instead of truncating for schema validation
+		if strictMode {
+			return 0, sql.OutOfRange, sql.ErrInvalidValue.New(originalV, t.String())
+		}
+
 		// If no valid number found, return 0 (MySQL behavior for pure non-numeric strings)
 		return 0, sql.InRange, nil
 	case bool:
@@ -1639,38 +1624,34 @@ func convertToFloat64(ctx context.Context, t NumberTypeImpl_, v interface{}) (fl
 		}
 		return float64(i), nil
 	case string:
-		v = strings.Trim(v, numericCutSet)
 		originalV := v
-		
-		// Check if strict conversion mode is enabled (e.g., for schema validation)
+		v = strings.Trim(v, numericCutSet)
+
+		// Check if strict mode is enabled via sql_mode (STRICT_TRANS_TABLES/STRICT_ALL_TABLES)
 		strictMode := false
-		if strictValue := ctx.Value(StrictConvertKey); strictValue != nil {
-			if strict, ok := strictValue.(bool); ok {
-				strictMode = strict
-			}
+		if sqlCtx, ok := ctx.(*sql.Context); ok && sqlCtx != nil {
+			strictMode = sql.ValidateStrictMode(sqlCtx)
 		}
-		// Also check for string-based key (for schema validation)
-		if !strictMode {
-			if strictValue := ctx.Value("strict_convert"); strictValue != nil {
-				if strict, ok := strictValue.(bool); ok {
-					strictMode = strict
-				}
-			}
-		}
-		
+
+		// Note: IGNORE mode handling is done at the iterator level
+		// rather than in individual type conversions for better separation of concerns
+
 		i, err := strconv.ParseFloat(v, 64)
 		if err != nil {
-			// In strict mode, return error instead of truncating
+			// Always try MySQL-compatible truncation first for arithmetic expressions
+			s := numre.FindString(originalV)
+			if s != "" {
+				f, parseErr := strconv.ParseFloat(s, 64)
+				if parseErr == nil {
+					return f, nil
+				}
+			}
+
+			// In strict mode, return error instead of truncating for schema validation
 			if strictMode {
 				return 0, sql.ErrInvalidValue.New(originalV, t.String())
 			}
-			
-			// parse the first longest valid numbers
-			s := numre.FindString(v)
-			if s != "" {
-				i, _ = strconv.ParseFloat(s, 64)
-				return i, nil
-			}
+
 			// If no valid number found, return 0 (MySQL behavior for pure non-numeric strings)
 			return 0, nil
 		}

@@ -16,7 +16,6 @@ package rowexec
 
 import (
 	"bufio"
-	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -1429,11 +1428,8 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 			return false, err
 		}
 
-		// Use strict conversion mode for default value validation during ADD COLUMN table rewriting
-		ctxWithStrict := context.WithValue(ctx.Context, types.StrictConvertKey, true)
-		strictCtx := ctx.WithContext(ctxWithStrict)
-		
-		newRow, err := ProjectRow(strictCtx, projections, r)
+		// Default value validation during ADD COLUMN table rewriting
+		newRow, err := ProjectRow(ctx, projections, r)
 		if err != nil {
 			_ = inserter.DiscardChanges(ctx, err)
 			_ = inserter.Close(ctx)

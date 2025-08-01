@@ -89,7 +89,10 @@ func (c *Char) CollationCoercibility(ctx *sql.Context) (collation sql.CollationI
 // This function is essentially converting the number to base 256
 func char(num uint32) []byte {
 	if num == 0 {
-		return []byte{}
+		return []byte{0}
+	}
+	if num < 256 {
+		return []byte{byte(num)}
 	}
 	return append(char(num>>8), byte(num&255))
 }
@@ -118,12 +121,7 @@ func (c *Char) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			continue
 		}
 
-		charVal := v.(uint32)
-		if charVal == 0 {
-			res = append(res, 0)
-		} else {
-			res = append(res, char(charVal)...)
-		}
+		res = append(res, char(v.(uint32))...)
 	}
 
 	result, _, err := c.Type().Convert(ctx, res)

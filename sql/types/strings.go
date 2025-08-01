@@ -54,9 +54,8 @@ const (
 type contextKey string
 
 const (
-	ColumnNameKey     contextKey = "column_name"
-	RowNumberKey      contextKey = "row_number"
-	StrictConvertKey  contextKey = "strict_convert"
+	ColumnNameKey contextKey = "column_name"
+	RowNumberKey  contextKey = "row_number"
 )
 
 var (
