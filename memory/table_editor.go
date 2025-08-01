@@ -188,16 +188,14 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 			return err
 		}
 		if cmp > 0 {
-			// Provided value larger than autoIncVal, set autoIncVal to that value
-			v, _, err := types.Uint64.Convert(ctx, row[idx])
+			insertedVal, _, err := types.Uint64.Convert(ctx, row[idx])
 			if err != nil {
 				return err
 			}
-			t.ea.TableData().autoIncVal = v.(uint64)
-			t.ea.TableData().autoIncVal++ // Move onto next autoIncVal
+			t.ea.TableData().autoIncVal = insertedVal.(uint64)
+			updateAutoIncrementSafe(ctx, autoCol, &t.ea.TableData().autoIncVal)
 		} else if cmp == 0 {
-			// Provided value equal to autoIncVal
-			t.ea.TableData().autoIncVal++ // Move onto next autoIncVal
+			updateAutoIncrementSafe(ctx, autoCol, &t.ea.TableData().autoIncVal)
 		}
 	}
 

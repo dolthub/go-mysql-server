@@ -19,6 +19,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"io"
+	"math"
 	"sort"
 	"strconv"
 	"strings"
@@ -1144,7 +1145,30 @@ func (t *Table) Insert(ctx *sql.Context, row sql.Row) error {
 func (t *Table) PeekNextAutoIncrementValue(ctx *sql.Context) (uint64, error) {
 	data := t.sessionTableData(ctx)
 
+	// Find the auto increment column to validate the current value
+	autoCol := t.getAutoIncrementColumn()
+	if autoCol == nil {
+		return data.autoIncVal, nil
+	}
+
+	// If the current auto increment value is out of range for the column type,
+	// return the maximum valid value instead
+	if _, inRange, err := autoCol.Type.Convert(ctx, data.autoIncVal); err == nil && inRange == sql.OutOfRange {
+		return data.autoIncVal - 1, nil
+	}
+
 	return data.autoIncVal, nil
+}
+
+// getAutoIncrementColumn returns the auto increment column for this table, or nil if none exists.
+// Only one auto increment column is allowed per table.
+func (t *Table) getAutoIncrementColumn() *sql.Column {
+	for _, col := range t.Schema() {
+		if col.AutoIncrement {
+			return col
+		}
+	}
+	return nil
 }
 
 // GetNextAutoIncrementValue gets the next auto increment value for the memory table the increment.
@@ -1163,7 +1187,6 @@ func (t *Table) GetNextAutoIncrementValue(ctx *sql.Context, insertVal interface{
 		}
 		data.autoIncVal = v.(uint64)
 	}
-
 	return data.autoIncVal, nil
 }
 
@@ -1257,7 +1280,7 @@ func addColumnToSchema(ctx *sql.Context, data *TableData, newCol *sql.Column, or
 			data.autoIncVal = 0
 		}
 
-		data.autoIncVal++
+		updateAutoIncrementSafe(ctx, newCol, &data.autoIncVal)
 	}
 
 	newPkOrds := data.schema.PkOrdinals
@@ -2550,4 +2573,22 @@ func (t *TableRevision) AddColumn(ctx *sql.Context, column *sql.Column, order *s
 
 func (t *TableRevision) IgnoreSessionData() bool {
 	return true
+}
+
+// updateAutoIncrementSafe safely increments an auto_increment value, handling overflow
+// by ensuring it doesn't exceed the column type's maximum value or wrap around.
+func updateAutoIncrementSafe(ctx *sql.Context, autoCol *sql.Column, autoIncVal *uint64) {
+	currentVal := *autoIncVal
+
+	// Check for arithmetic overflow before adding 1
+	if currentVal == math.MaxUint64 {
+		// At maximum uint64 value, can't increment further
+		return
+	}
+
+	nextVal := currentVal + 1
+	if _, inRange, err := autoCol.Type.Convert(ctx, nextVal); err == nil && inRange == sql.InRange {
+		*autoIncVal = nextVal
+	}
+	// If next value would be out of range for the column type, stay at current value
 }
