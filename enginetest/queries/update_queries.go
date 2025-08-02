@@ -1342,7 +1342,7 @@ var OnUpdateExprScripts = []ScriptTest{
 			{
 				Query: "alter table t modify column ts timestamp default 0 on update current_timestamp;",
 				Expected: []sql.Row{
-					{types.NewOkResult(0)},
+					{types.NewOkResult(3)},
 				},
 			},
 			{

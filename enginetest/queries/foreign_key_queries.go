@@ -513,11 +513,11 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE parent2 MODIFY v1 VARCHAR(30);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(2)}},
 			},
 			{
 				Query:    "ALTER TABLE child2 MODIFY v1 VARCHAR(30);",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "ALTER TABLE parent3 MODIFY v1 BINARY(30);",
@@ -564,11 +564,11 @@ var ForeignKeyTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE parent1 MODIFY v2 BIGINT;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(2)}},
 			},
 			{
 				Query:    "ALTER TABLE child1 MODIFY v2 BIGINT;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 		},
 	},

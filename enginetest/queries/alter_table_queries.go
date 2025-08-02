@@ -456,7 +456,7 @@ var AlterTableScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE t40 MODIFY COLUMN pk int",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(3)}},
 			},
 			{
 				Query: "describe t40",
@@ -1091,7 +1091,7 @@ var AlterTableScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    `alter table t modify column c1 int unsigned`,
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query: "describe t;",
@@ -1156,7 +1156,7 @@ var AlterTableScripts = []ScriptTest{
 			{
 				Query: "alter table t modify column e enum('c', 'a', 'b');",
 				Expected: []sql.Row{
-					{types.NewOkResult(0)},
+					{types.NewOkResult(4)},
 				},
 			},
 			{
@@ -1171,7 +1171,7 @@ var AlterTableScripts = []ScriptTest{
 			{
 				Query: "alter table t modify column e enum('asdf', 'a', 'b', 'c');",
 				Expected: []sql.Row{
-					{types.NewOkResult(0)},
+					{types.NewOkResult(4)},
 				},
 			},
 			{
@@ -1186,7 +1186,7 @@ var AlterTableScripts = []ScriptTest{
 			{
 				Query: "alter table t modify column e enum('asdf', 'a', 'b', 'c', 'd');",
 				Expected: []sql.Row{
-					{types.NewOkResult(0)},
+					{types.NewOkResult(4)},
 				},
 			},
 			{
@@ -1201,7 +1201,7 @@ var AlterTableScripts = []ScriptTest{
 			{
 				Query: "alter table t modify column e enum('a', 'b', 'c');",
 				Expected: []sql.Row{
-					{types.NewOkResult(0)},
+					{types.NewOkResult(4)},
 				},
 			},
 			{
@@ -1244,7 +1244,7 @@ var AlterTableScripts = []ScriptTest{
 			{
 				Query: "alter table t modify column s set('a', 'b', 'c', 'd');",
 				Expected: []sql.Row{
-					{types.NewOkResult(0)},
+					{types.NewOkResult(8)},
 				},
 			},
 			{
@@ -2166,7 +2166,7 @@ var ModifyColumnScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE mytable MODIFY COLUMN i bigint NOT NULL COMMENT 'modified'",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(3)}},
 			},
 			{
 				Query: "SHOW FULL COLUMNS FROM mytable /* 1 */",
@@ -2177,7 +2177,7 @@ var ModifyColumnScripts = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE mytable MODIFY COLUMN i TINYINT NOT NULL COMMENT 'yes' AFTER s",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(3)}},
 			},
 			{
 				Query: "SHOW FULL COLUMNS FROM mytable /* 2 */",
@@ -2188,7 +2188,7 @@ var ModifyColumnScripts = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE mytable MODIFY COLUMN i BIGINT NOT NULL COMMENT 'ok' FIRST",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(3)}},
 			},
 			{
 				Query: "SHOW FULL COLUMNS FROM mytable /* 3 */",
@@ -2199,7 +2199,7 @@ var ModifyColumnScripts = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE mytable MODIFY COLUMN s VARCHAR(20) NULL COMMENT 'changed'",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(3)}},
 			},
 			{
 				Query: "SHOW FULL COLUMNS FROM mytable /* 4 */",
@@ -2216,7 +2216,7 @@ var ModifyColumnScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE mytable MODIFY i BIGINT auto_increment",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(3)}},
 			},
 			{
 				Query: "SHOW FULL COLUMNS FROM mytable /* 1 */",
@@ -2249,7 +2249,7 @@ var ModifyColumnScripts = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE mytable MODIFY COLUMN i BIGINT NOT NULL COMMENT 'ok' FIRST",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(4)}},
 			},
 			{
 				Query: "SHOW FULL COLUMNS FROM mytable /* 3 */",
@@ -2261,7 +2261,7 @@ var ModifyColumnScripts = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE mytable MODIFY COLUMN s VARCHAR(20) NULL COMMENT 'changed'",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(4)}},
 			},
 			{
 				Query: "SHOW FULL COLUMNS FROM mytable /* 4 */",
