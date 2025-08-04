@@ -2603,6 +2603,14 @@ var systemVars = map[string]sql.SystemVariable{
 		Type:              types.NewSystemBoolType("strict_mysql_compatibility"),
 		Default:           int8(0),
 	},
+	"mysql_string_to_number": &sql.MysqlSystemVariable{
+		Name:              "mysql_string_to_number",
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
+		Dynamic:           true,
+		SetVarHintApplies: false,
+		Type:              types.NewSystemBoolType("mysql_string_to_number"),
+		Default:           int8(0),
+	},
 	"super_read_only": &sql.MysqlSystemVariable{
 		Name:              "super_read_only",
 		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
