@@ -138,7 +138,7 @@ func TestGetUserWithWildcardAuthentication(t *testing.T) {
 	db := CreateEmptyMySQLDb()
 	p := &capturingPersistence{}
 	db.SetPersister(p)
-	
+
 	// Add test users with various host patterns
 	ed := db.Editor()
 	db.AddSuperUser(ed, "testuser", "127.0.0.1", "password")
