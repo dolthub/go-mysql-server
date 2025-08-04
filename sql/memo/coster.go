@@ -136,7 +136,7 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 				expectedRightRows := selfJoinCard * matchRate
 
 				if expectedRightRows < lBest {
-					return lBest*(seqIOCostFactor) + (lBest+1+indexCoverageAdjustment(n.Lookup))*(cpuCostFactor+randIOCostFactor), nil
+					return lBest*(seqIOCostFactor) + (lBest+indexCoverageAdjustment(n.Lookup))*(cpuCostFactor+randIOCostFactor), nil
 				}
 
 				// Estimate for reading each left row and each expected right row
