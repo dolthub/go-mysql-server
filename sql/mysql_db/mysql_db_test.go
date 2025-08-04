@@ -99,32 +99,32 @@ func TestMatchesHostPattern(t *testing.T) {
 		{"IP wildcard - different last octet", "127.0.0.255", "127.0.0.%", true},
 		{"IP wildcard - no match", "192.168.1.1", "127.0.0.%", false},
 		{"IP wildcard - partial match", "127.0.1.1", "127.0.0.%", false},
-		
+
 		// Multiple wildcards
 		{"Multiple wildcards", "192.168.1.100", "192.168.%.%", true},
 		{"Multiple wildcards - no match", "10.0.1.100", "192.168.%.%", false},
-		
+
 		// Single wildcard at different positions
 		{"Wildcard first octet", "10.0.0.1", "%.0.0.1", true},
 		{"Wildcard middle octet", "192.168.50.1", "192.%.50.1", true},
 		{"Wildcard last octet", "192.168.1.255", "192.168.1.%", true},
-		
+
 		// Non-IP patterns
 		{"Hostname wildcard", "server1.example.com", "server%.example.com", true},
 		{"Hostname wildcard - no match", "db1.example.com", "server%.example.com", false},
 		{"Domain wildcard", "host.subdomain.example.com", "%.example.com", true},
-		
+
 		// Edge cases
 		{"Empty pattern", "127.0.0.1", "", false},
 		{"Pattern without wildcard", "127.0.0.1", "127.0.0.1", false}, // Should return false as it's not a wildcard pattern
 		{"Just wildcard", "anything", "%", true},
 		{"Multiple wildcards together", "test", "%%", true},
-		
+
 		// Special characters in patterns (should be escaped)
 		{"Pattern with dots", "test.host", "test.%", true},
 		{"Pattern with regex chars", "test[1]", "test[%]", true},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := matchesHostPattern(tt.host, tt.pattern)
@@ -138,17 +138,17 @@ func TestGetUserWithWildcardAuthentication(t *testing.T) {
 	db := CreateEmptyMySQLDb()
 	p := &capturingPersistence{}
 	db.SetPersister(p)
-	
+
 	// Add test users with various host patterns
 	ed := db.Editor()
 	db.AddSuperUser(ed, "testuser", "127.0.0.1", "password")
 	db.AddSuperUser(ed, "localhost_user", "localhost", "password")
 	db.Persist(ctx, ed)
 	ed.Close()
-	
+
 	rd := db.Reader()
 	defer rd.Close()
-	
+
 	tests := []struct {
 		name         string
 		username     string
@@ -162,16 +162,16 @@ func TestGetUserWithWildcardAuthentication(t *testing.T) {
 		{"Localhost user - ::1", "localhost_user", "::1", "localhost_user", true},
 		{"Non-existent user", "nonexistent", "127.0.0.1", "", false},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			user := db.GetUser(rd, tt.username, tt.host, false)
-			
+
 			if !tt.shouldFind {
 				require.Nil(t, user, "Expected no user to be found for %s@%s", tt.username, tt.host)
 				return
 			}
-			
+
 			require.NotNil(t, user, "Expected user to be found for %s@%s", tt.username, tt.host)
 			require.Equal(t, tt.expectedUser, user.User, "Expected username %s, got %s", tt.expectedUser, user.User)
 		})

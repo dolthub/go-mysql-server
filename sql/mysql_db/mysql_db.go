@@ -599,18 +599,14 @@ func matchesHostPattern(host, pattern string) bool {
 	if !strings.Contains(pattern, "%") {
 		return false
 	}
-	
-	// Replace % with .* for regex matching, but first escape other regex metacharacters
-	// We need to escape everything except % first, then replace % with .*
-	regexPattern := regexp.QuoteMeta(pattern)  // This escapes everything including %
-	regexPattern = strings.ReplaceAll(regexPattern, "%", ".*")  // Replace % with .*
+
+	// Escape regex metacharacters, then replace % with .*
+	regexPattern := regexp.QuoteMeta(pattern)
+	regexPattern = strings.ReplaceAll(regexPattern, "%", ".*")
 	regexPattern = "^" + regexPattern + "$"
-	
+
 	matched, err := regexp.MatchString(regexPattern, host)
-	if err != nil {
-		return false
-	}
-	return matched
+	return err == nil && matched
 }
 
 // GetUser returns a user matching the given user and host if it exists. Due to the slight difference between users and
@@ -631,7 +627,7 @@ func (db *MySQLDb) GetUser(fetcher UserFetcher, user string, host string, roleSe
 
 	// Store the original host for pattern matching against IP patterns
 	originalHost := host
-	
+
 	if "127.0.0.1" == host || "::1" == host {
 		host = "localhost"
 	}
@@ -653,7 +649,7 @@ func (db *MySQLDb) GetUser(fetcher UserFetcher, user string, host string, roleSe
 				(host == "localhost" && user.Host == "127.0.0.1") ||
 				(user.Host == "%" && (!roleSearch || host == "")) ||
 				matchesHostPattern(host, user.Host) ||
-				matchesHostPattern(originalHost, user.Host) {
+				(originalHost != host && matchesHostPattern(originalHost, user.Host)) {
 				return user
 			}
 		}
