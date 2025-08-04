@@ -681,7 +681,24 @@ func (b *Builder) buildAlterTableColumnAction(inScope *scope, ddl *ast.DDL, tabl
 	switch strings.ToLower(ddl.ColumnAction) {
 	case ast.AddStr:
 		sch, _, _ := b.tableSpecToSchema(inScope, outScope, table.Database(), ddl.Table.Name.String(), ddl.TableSpec, true)
-		outScope.node = plan.NewAddColumnResolved(table, *sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder))
+		addColNode := plan.NewAddColumnResolved(table, *sch.Schema[0], columnOrderToColumnOrder(ddl.ColumnOrder))
+		
+		// Process inline REFERENCES clauses in the added column
+		inlineFks := b.processInlineForeignKeys(inScope, ddl.Table, ddl.TableSpec.Columns)
+		if len(inlineFks) > 0 {
+			// Create a compound node that adds the column AND the foreign key constraints
+			nodes := []sql.Node{addColNode}
+			for _, fk := range inlineFks {
+				fk.Database = table.SqlDatabase.Name()
+				fk.Table = table.Name()
+				alterFk := plan.NewAlterAddForeignKey(fk)
+				alterFk.DbProvider = b.cat
+				nodes = append(nodes, alterFk)
+			}
+			outScope.node = plan.NewBlock(nodes)
+		} else {
+			outScope.node = addColNode
+		}
 	case ast.DropStr:
 		drop := plan.NewDropColumnResolved(table, ddl.Column.String())
 		checks := b.loadChecksFromTable(outScope, table.Table)
@@ -784,6 +801,7 @@ func (b *Builder) buildAlterConstraint(inScope *scope, ddl *ast.DDL, table *plan
 }
 
 func (b *Builder) buildConstraintsDefs(inScope *scope, tname ast.TableName, spec *ast.TableSpec) (fks []*sql.ForeignKeyConstraint, checks []*sql.CheckConstraint) {
+	// Process table-level constraints
 	for _, unknownConstraint := range spec.Constraints {
 		parsedConstraint := b.convertConstraintDefinition(inScope, unknownConstraint)
 		switch constraint := parsedConstraint.(type) {
@@ -804,7 +822,59 @@ func (b *Builder) buildConstraintsDefs(inScope *scope, tname ast.TableName, spec
 			b.handleErr(err)
 		}
 	}
+
+	inlineFks := b.processInlineForeignKeys(inScope, tname, spec.Columns)
+	fks = append(fks, inlineFks...)
+	
 	return
+}
+
+// processInlineForeignKeys extracts and processes inline REFERENCES clauses from column definitions
+func (b *Builder) processInlineForeignKeys(inScope *scope, tname ast.TableName, columns []*ast.ColumnDefinition) []*sql.ForeignKeyConstraint {
+	var fks []*sql.ForeignKeyConstraint
+	for _, col := range columns {
+		if col.Type.ForeignKeyDef != nil {
+			constraint := b.convertInlineForeignKey(inScope, tname, col)
+			if err := b.validateOnUpdateOnDeleteRefActions(constraint); err != nil {
+				b.handleErr(err)
+			}
+			fks = append(fks, constraint)
+		}
+	}
+	return fks
+}
+
+func (b *Builder) convertInlineForeignKey(inScope *scope, tname ast.TableName, col *ast.ColumnDefinition) *sql.ForeignKeyConstraint {
+	fkDef := col.Type.ForeignKeyDef
+	refColumns := make([]string, len(fkDef.ReferencedColumns))
+	for i, refCol := range fkDef.ReferencedColumns {
+		refColumns[i] = refCol.String()
+	}
+	refDatabase := fkDef.ReferencedTable.DbQualifier.String()
+	if refDatabase == "" {
+		refDatabase = b.ctx.GetCurrentDatabase()
+	}
+	
+	database := tname.DbQualifier.String()
+	if database == "" {
+		database = b.ctx.GetCurrentDatabase()
+	}
+	
+	constraint := &sql.ForeignKeyConstraint{
+		Name:           fmt.Sprintf("%s_ibfk_%s", tname.Name.String(), col.Name.String()),
+		Columns:        []string{col.Name.String()},
+		Database:       database,
+		Table:          tname.Name.String(),
+		ParentDatabase: refDatabase,
+		ParentSchema:   fkDef.ReferencedTable.SchemaQualifier.String(),
+		ParentTable:    fkDef.ReferencedTable.Name.String(),
+		ParentColumns:  refColumns,
+		OnUpdate:       b.buildReferentialAction(fkDef.OnUpdate),
+		OnDelete:       b.buildReferentialAction(fkDef.OnDelete),
+		IsResolved:     false,
+	}
+	
+	return constraint
 }
 
 func columnOrderToColumnOrder(order *ast.ColumnOrder) *sql.ColumnOrder {

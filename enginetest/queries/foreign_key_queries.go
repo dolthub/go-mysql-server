@@ -385,7 +385,7 @@ var ForeignKeyTests = []ScriptTest{
 		Name: "DROP TABLE, with multiple tables, sorts by foreign key dependencies",
 		SetUpScript: []string{
 			"create table grandparent1 (pk int primary key);",
-			"create table parent1 (pk int primary key, c1 int references grandparent(pk));",
+			"create table parent1 (pk int primary key, c1 int references grandparent1(pk));",
 			"create table parent2 (pk int primary key);",
 			"create table child1 (pk int primary key, c1 int, c2 int, foreign key (c1) references parent1(pk), foreign key (c2) references parent2(pk));",
 			"create table selfref (pk int primary key, c1 int, foreign key (c1) references selfref(pk));",
@@ -2698,6 +2698,92 @@ var ForeignKeyTests = []ScriptTest{
 				Expected: []sql.Row{
 					{20, 3},
 				},
+			},
+		},
+	},
+	{
+		Name: "CREATE TABLE with inline REFERENCES - basic",
+		SetUpScript: []string{
+			"CREATE TABLE inline_child (id int PRIMARY KEY, fk int REFERENCES parent(v1));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SHOW CREATE TABLE inline_child;",
+				Expected: []sql.Row{{"inline_child", "CREATE TABLE `inline_child` (\n  `id` int NOT NULL,\n  `fk` int,\n  PRIMARY KEY (`id`),\n  KEY `inline_child_ibfk_fk` (`fk`),\n  CONSTRAINT `inline_child_ibfk_fk` FOREIGN KEY (`fk`) REFERENCES `parent` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "INSERT INTO parent VALUES (1, 1, 1);",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "INSERT INTO inline_child VALUES (1, 1);",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:       "INSERT INTO inline_child VALUES (2, 99);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+		},
+	},
+	{
+		Name: "CREATE TABLE with inline REFERENCES - multiple columns",
+		SetUpScript: []string{
+			"CREATE TABLE multi_inline (id int PRIMARY KEY, fk1 int REFERENCES parent(v1), fk2 int REFERENCES parent(v2));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SHOW CREATE TABLE multi_inline;",
+				Expected: []sql.Row{{"multi_inline", "CREATE TABLE `multi_inline` (\n  `id` int NOT NULL,\n  `fk1` int,\n  `fk2` int,\n  PRIMARY KEY (`id`),\n  KEY `multi_inline_ibfk_fk1` (`fk1`),\n  KEY `multi_inline_ibfk_fk2` (`fk2`),\n  CONSTRAINT `multi_inline_ibfk_fk1` FOREIGN KEY (`fk1`) REFERENCES `parent` (`v1`),\n  CONSTRAINT `multi_inline_ibfk_fk2` FOREIGN KEY (`fk2`) REFERENCES `parent` (`v2`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "INSERT INTO parent VALUES (1, 10, 20);",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "INSERT INTO multi_inline VALUES (1, 10, 20);",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:       "INSERT INTO multi_inline VALUES (2, 99, 20);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query:       "INSERT INTO multi_inline VALUES (3, 10, 99);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+		},
+	},
+	{
+		Name: "ALTER TABLE ADD COLUMN with inline REFERENCES",
+		SetUpScript: []string{
+			"CREATE TABLE alter_test (id int PRIMARY KEY);",
+			"INSERT INTO parent VALUES (1, 100, 200);",
+			"ALTER TABLE alter_test ADD COLUMN new_fk int REFERENCES parent(v1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SHOW CREATE TABLE alter_test;",
+				Expected: []sql.Row{{"alter_test", "CREATE TABLE `alter_test` (\n  `id` int NOT NULL,\n  `new_fk` int,\n  PRIMARY KEY (`id`),\n  KEY `alter_test_ibfk_new_fk` (`new_fk`),\n  CONSTRAINT `alter_test_ibfk_new_fk` FOREIGN KEY (`new_fk`) REFERENCES `parent` (`v1`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+			},
+			{
+				Query:    "INSERT INTO alter_test VALUES (1, 100);",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:       "INSERT INTO alter_test VALUES (2, 999);",
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+		},
+	},
+	{
+		Name: "CREATE TABLE with inline REFERENCES and regular FK constraints",
+		SetUpScript: []string{
+			"CREATE TABLE mixed_fk (id int PRIMARY KEY, inline_fk int REFERENCES parent(v1), CONSTRAINT regular_fk FOREIGN KEY (id) REFERENCES parent(id));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SHOW CREATE TABLE mixed_fk;",
+				Expected: []sql.Row{{"mixed_fk", "CREATE TABLE `mixed_fk` (\n  `id` int NOT NULL,\n  `inline_fk` int,\n  PRIMARY KEY (`id`),\n  KEY `mixed_fk_ibfk_inline_fk` (`inline_fk`),\n  CONSTRAINT `mixed_fk_ibfk_inline_fk` FOREIGN KEY (`inline_fk`) REFERENCES `parent` (`v1`),\n  CONSTRAINT `regular_fk` FOREIGN KEY (`id`) REFERENCES `parent` (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},
