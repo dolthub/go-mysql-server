@@ -19,6 +19,8 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/shopspring/decimal"
+
 	"github.com/dolthub/go-mysql-server/internal/cmap"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -186,16 +188,14 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 			return err
 		}
 		if cmp > 0 {
-			// Provided value larger than autoIncVal, set autoIncVal to that value
-			v, _, err := types.Uint64.Convert(ctx, row[idx])
+			insertedVal, _, err := types.Uint64.Convert(ctx, row[idx])
 			if err != nil {
 				return err
 			}
-			t.ea.TableData().autoIncVal = v.(uint64)
-			t.ea.TableData().autoIncVal++ // Move onto next autoIncVal
+			t.ea.TableData().autoIncVal = insertedVal.(uint64)
+			updateAutoIncrementSafe(ctx, autoCol, &t.ea.TableData().autoIncVal)
 		} else if cmp == 0 {
-			// Provided value equal to autoIncVal
-			t.ea.TableData().autoIncVal++ // Move onto next autoIncVal
+			updateAutoIncrementSafe(ctx, autoCol, &t.ea.TableData().autoIncVal)
 		}
 	}
 
@@ -355,14 +355,25 @@ func columnsMatch(colIndexes []int, prefixLengths []uint16, row sql.Row, row2 sq
 				v2 = v[:prefixLength]
 			}
 		}
-		if v, ok := v1.([]byte); ok {
-			v1 = string(v)
-		}
-		if v, ok := v2.([]byte); ok {
-			v2 = string(v)
-		}
-		if v1 != v2 {
-			return false
+
+		if v1Decimal, ok := v1.(decimal.Decimal); ok {
+			if v2Decimal, ok := v2.(decimal.Decimal); ok {
+				if !v1Decimal.Equal(v2Decimal) {
+					return false
+				}
+			} else {
+				return false
+			}
+		} else {
+			if v, ok := v1.([]byte); ok {
+				v1 = string(v)
+			}
+			if v, ok := v2.([]byte); ok {
+				v2 = string(v)
+			}
+			if v1 != v2 {
+				return false
+			}
 		}
 	}
 	return true

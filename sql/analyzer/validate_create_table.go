@@ -458,7 +458,7 @@ func ValidateModifyColumn(ctx *sql.Context, initialSch sql.Schema, schema sql.Sc
 	// It cannot have been renamed in the same statement.
 	oldColName := mc.Column()
 	if !schema.Contains(oldColName, tableName) || !initialSch.Contains(oldColName, tableName) {
-		return nil, sql.ErrTableColumnNotFound.New(table, oldColName)
+		return nil, sql.ErrTableColumnNotFound.New(tableName, oldColName)
 	}
 
 	newCol := mc.NewColumn()

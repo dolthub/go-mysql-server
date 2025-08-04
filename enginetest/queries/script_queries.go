@@ -85,6 +85,9 @@ type ScriptTestAssertion struct {
 	// For tests that perform join operations, JoinTypes can be set for the type of merge we expect to perform.
 	JoinTypes []plan.JoinType
 
+	// For tests that expect a specific plan
+	ExpectedPlan string
+
 	// NewSession instructs the test framework that this assertion requires a new session to be created before the
 	// query is executed. This is generally only needed when a test script is testing functionality that invalidates
 	// a session and prevents additional queries from being executed on the session.
@@ -8505,172 +8508,6 @@ where
 			},
 		},
 	},
-	{
-		// https://github.com/dolthub/dolt/issues/8728
-		Name: "test merge join optimization (removing sort node over indexed tables) does not break ordering",
-		SetUpScript: []string{
-			"create table t1 (i int primary key);",
-			"create table t2 (j int primary key);",
-			"insert into t1 values (1), (2), (3);",
-			"insert into t2 values (2), (3), (4);",
-
-			"create table t3 (i int, j int, primary key (i, j));",
-			"create table t4 (x int, y int, primary key (x, y));",
-			"insert into t3 values (1, 1), (1, 2), (2, 2), (3, 3);",
-			"insert into t4 values (2, 2), (3, 3), (4, 4);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on t1.i = t2.j order by t1.i;",
-				Expected: []sql.Row{
-					{2, 2},
-					{3, 3},
-				},
-			},
-			{
-				Query: "select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on t1.i = t2.j order by t2.j;",
-				Expected: []sql.Row{
-					{2, 2},
-					{3, 3},
-				},
-			},
-			{
-				Query: "select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on t1.i = t2.j order by t1.i desc;",
-				Expected: []sql.Row{
-					{3, 3},
-					{2, 2},
-				},
-			},
-			{
-				Query: "select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on t1.i = t2.j order by t2.j desc;",
-				Expected: []sql.Row{
-					{3, 3},
-					{2, 2},
-				},
-			},
-			{
-				// InSubquery expressions can be optimized into MERGE_JOINs, so this optimization should apply over this as well
-				Query: "select /*+ MERGE_JOIN(t1, t2) */ * from t1 where ((i in (select j from t2 where j > 2))) order by i desc;",
-				Expected: []sql.Row{
-					{3},
-				},
-			},
-
-			{
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i;",
-				Expected: []sql.Row{
-					{2, 2, 2, 2},
-					{3, 3, 3, 3},
-				},
-			},
-			{
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i desc;",
-				Expected: []sql.Row{
-					{3, 3, 3, 3},
-					{2, 2, 2, 2},
-				},
-			},
-			{
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t4.x;",
-				Expected: []sql.Row{
-					{2, 2, 2, 2},
-					{3, 3, 3, 3},
-				},
-			},
-			{
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t4.x desc;",
-				Expected: []sql.Row{
-					{3, 3, 3, 3},
-					{2, 2, 2, 2},
-				},
-			},
-			{
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t3.j;",
-				Expected: []sql.Row{
-					{2, 2, 2, 2},
-					{3, 3, 3, 3},
-				},
-			},
-			{
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i desc, t3.j desc;",
-				Expected: []sql.Row{
-					{3, 3, 3, 3},
-					{2, 2, 2, 2},
-				},
-			},
-			{
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t4.x, t4.y;",
-				Expected: []sql.Row{
-					{2, 2, 2, 2},
-					{3, 3, 3, 3},
-				},
-			},
-			{
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t4.x desc, t4.y desc;",
-				Expected: []sql.Row{
-					{3, 3, 3, 3},
-					{2, 2, 2, 2},
-				},
-			},
-			{
-				// The Sort node can be optimized out of this query, but currently is not
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t4.x;",
-				Expected: []sql.Row{
-					{2, 2, 2, 2},
-					{3, 3, 3, 3},
-				},
-			},
-			{
-				// The Sort node can be optimized out of this query, but currently is not
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t4.x desc;",
-				Expected: []sql.Row{
-					{2, 2, 2, 2},
-					{3, 3, 3, 3},
-				},
-			},
-			{
-				// The Sort node can be optimized out of this query, but currently is not
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t3.j, t4.x;",
-				Expected: []sql.Row{
-					{2, 2, 2, 2},
-					{3, 3, 3, 3},
-				},
-			},
-			{
-				// The Sort node can be optimized out of this query, but currently is not
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t3.j, t4.x, t4.y;",
-				Expected: []sql.Row{
-					{2, 2, 2, 2},
-					{3, 3, 3, 3},
-				},
-			},
-
-			{
-				// Sort node cannot be optimized out of this query
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.j;",
-				Expected: []sql.Row{
-					{2, 2, 2, 2},
-					{3, 3, 3, 3},
-				},
-			},
-			{
-				// Sort node cannot be optimized out of this query
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t4.y;",
-				Expected: []sql.Row{
-					{2, 2, 2, 2},
-					{3, 3, 3, 3},
-				},
-			},
-			{
-				// Sort node cannot be optimized out of this query
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t3.j desc;",
-				Expected: []sql.Row{
-					{2, 2, 2, 2},
-					{3, 3, 3, 3},
-				},
-			},
-		},
-	},
 
 	// Char tests
 	{
@@ -9387,7 +9224,6 @@ where
 				},
 			},
 			{
-				Skip:  true,
 				Query: "select e from t where e like 'a%' order by e;",
 				Expected: []sql.Row{
 					{"abc"},
@@ -9549,6 +9385,39 @@ where
 					{"OFF", "OFFDolt"},
 					{"AUTO", "AUTODolt"},
 				},
+			},
+		},
+	},
+	{
+		Name:    "Convert enum columns to string columns with alter table",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t(pk int primary key, c0 enum('a', 'b', 'c'));",
+			"insert into t values(0, 'a'), (1, 'b'), (2, 'c');",
+			"alter table t modify column c0 varchar(100);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from t",
+				Expected: []sql.Row{{0, "a"}, {1, "b"}, {2, "c"}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9613
+		Skip:    true,
+		Name:    "Convert enum columns to string columns when copying table",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t(pk int primary key, c0 enum('a', 'b', 'c'));",
+			"insert into t values(0, 'a'), (1, 'b'), (2, 'c');",
+			"create table tt(pk int primary key, c0 varchar(10))",
+			"insert into tt select * from t",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from tt",
+				Expected: []sql.Row{{0, "a"}, {1, "b"}, {2, "c"}},
 			},
 		},
 	},
@@ -10165,6 +10034,39 @@ where
 		},
 	},
 	{
+		Name:    "Convert set columns to string columns with alter table",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t(pk int primary key, c0 set('abc', 'def','ghi'))",
+			"insert into t values(0, 'abc,def'), (1, 'def'), (2, 'ghi');",
+			"alter table t modify column c0 varchar(100);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from t",
+				Expected: []sql.Row{{0, "abc,def"}, {1, "def"}, {2, "ghi"}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9613
+		Skip:    true,
+		Name:    "Convert set columns to string columns when copying table",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t(pk int primary key, c0 set('abc', 'def','ghi'))",
+			"insert into t values(0, 'abc,def'), (1, 'def'), (2, 'ghi');",
+			"create table tt(pk int primary key, c0 varchar(10))",
+			"insert into tt select * from t",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from tt",
+				Expected: []sql.Row{{0, "abc,def"}, {1, "def"}, {2, "ghi"}},
+			},
+		},
+	},
+	{
 		Name:    "set with duplicates",
 		Dialect: "mysql",
 		SetUpScript: []string{
@@ -10644,12 +10546,10 @@ where
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Skip:        true,
 				Query:       "insert into tinyint_tbl values (999)",
 				ExpectedErr: sql.ErrValueOutOfRange,
 			},
 			{
-				Skip:  true,
 				Query: "insert into tinyint_tbl values (127)",
 				Expected: []sql.Row{
 					{types.OkResult{
@@ -10659,7 +10559,6 @@ where
 				},
 			},
 			{
-				Skip:  true,
 				Query: "show create table tinyint_tbl;",
 				Expected: []sql.Row{
 					{"tinyint_tbl", "CREATE TABLE `tinyint_tbl` (\n" +
@@ -10670,12 +10569,10 @@ where
 			},
 
 			{
-				Skip:        true,
 				Query:       "insert into smallint_tbl values (99999);",
 				ExpectedErr: sql.ErrValueOutOfRange,
 			},
 			{
-				Skip:  true,
 				Query: "insert into smallint_tbl values (32767);",
 				Expected: []sql.Row{
 					{types.OkResult{
@@ -10685,23 +10582,20 @@ where
 				},
 			},
 			{
-				Skip:  true,
 				Query: "show create table smallint_tbl;",
 				Expected: []sql.Row{
 					{"smallint_tbl", "CREATE TABLE `smallint_tbl` (\n" +
 						"  `i` smallint NOT NULL AUTO_INCREMENT,\n" +
 						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=36727 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+						") ENGINE=InnoDB AUTO_INCREMENT=32767 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 
 			{
-				Skip:        true,
 				Query:       "insert into mediumint_tbl values (99999999);",
 				ExpectedErr: sql.ErrValueOutOfRange,
 			},
 			{
-				Skip:  true,
 				Query: "insert into mediumint_tbl values (8388607);",
 				Expected: []sql.Row{
 					{types.OkResult{
@@ -10711,7 +10605,6 @@ where
 				},
 			},
 			{
-				Skip:  true,
 				Query: "show create table mediumint_tbl;",
 				Expected: []sql.Row{
 					{"mediumint_tbl", "CREATE TABLE `mediumint_tbl` (\n" +
@@ -10722,12 +10615,10 @@ where
 			},
 
 			{
-				Skip:        true,
 				Query:       "insert into int_tbl values (99999999999)",
 				ExpectedErr: sql.ErrValueOutOfRange,
 			},
 			{
-				Skip:  true,
 				Query: "insert into int_tbl values (2147483647)",
 				Expected: []sql.Row{
 					{types.OkResult{
@@ -10737,7 +10628,6 @@ where
 				},
 			},
 			{
-				Skip:  true,
 				Query: "show create table int_tbl;",
 				Expected: []sql.Row{
 					{"int_tbl", "CREATE TABLE `int_tbl` (\n" +
@@ -10748,12 +10638,10 @@ where
 			},
 
 			{
-				Skip:        true,
 				Query:       "insert into bigint_tbl values (99999999999999999999);",
 				ExpectedErr: sql.ErrValueOutOfRange,
 			},
 			{
-				Skip:  true,
 				Query: "insert into bigint_tbl values (9223372036854775807);",
 				Expected: []sql.Row{
 					{types.OkResult{
@@ -10763,7 +10651,6 @@ where
 				},
 			},
 			{
-				Skip:  true,
 				Query: "show create table bigint_tbl;",
 				Expected: []sql.Row{
 					{"bigint_tbl", "CREATE TABLE `bigint_tbl` (\n" +
@@ -10787,12 +10674,10 @@ where
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Skip:        true,
 				Query:       "insert into tinyint_tbl values (999)",
 				ExpectedErr: sql.ErrValueOutOfRange,
 			},
 			{
-				Skip:  true,
 				Query: "insert into tinyint_tbl values (255)",
 				Expected: []sql.Row{
 					{types.OkResult{
@@ -10802,23 +10687,20 @@ where
 				},
 			},
 			{
-				Skip:  true,
 				Query: "show create table tinyint_tbl;",
 				Expected: []sql.Row{
 					{"tinyint_tbl", "CREATE TABLE `tinyint_tbl` (\n" +
-						"  `i` tinyint NOT NULL AUTO_INCREMENT,\n" +
+						"  `i` tinyint unsigned NOT NULL AUTO_INCREMENT,\n" +
 						"  PRIMARY KEY (`i`)\n" +
 						") ENGINE=InnoDB AUTO_INCREMENT=255 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 
 			{
-				Skip:        true,
 				Query:       "insert into smallint_tbl values (99999);",
 				ExpectedErr: sql.ErrValueOutOfRange,
 			},
 			{
-				Skip:  true,
 				Query: "insert into smallint_tbl values (65535);",
 				Expected: []sql.Row{
 					{types.OkResult{
@@ -10828,23 +10710,20 @@ where
 				},
 			},
 			{
-				Skip:  true,
 				Query: "show create table smallint_tbl;",
 				Expected: []sql.Row{
 					{"smallint_tbl", "CREATE TABLE `smallint_tbl` (\n" +
-						"  `i` smallint NOT NULL AUTO_INCREMENT,\n" +
+						"  `i` smallint unsigned NOT NULL AUTO_INCREMENT,\n" +
 						"  PRIMARY KEY (`i`)\n" +
 						") ENGINE=InnoDB AUTO_INCREMENT=65535 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 
 			{
-				Skip:        true,
 				Query:       "insert into mediumint_tbl values (999999999);",
 				ExpectedErr: sql.ErrValueOutOfRange,
 			},
 			{
-				Skip:  true,
 				Query: "insert into mediumint_tbl values (16777215);",
 				Expected: []sql.Row{
 					{types.OkResult{
@@ -10854,23 +10733,20 @@ where
 				},
 			},
 			{
-				Skip:  true,
 				Query: "show create table mediumint_tbl;",
 				Expected: []sql.Row{
 					{"mediumint_tbl", "CREATE TABLE `mediumint_tbl` (\n" +
-						"  `i` mediumint NOT NULL AUTO_INCREMENT,\n" +
+						"  `i` mediumint unsigned NOT NULL AUTO_INCREMENT,\n" +
 						"  PRIMARY KEY (`i`)\n" +
 						") ENGINE=InnoDB AUTO_INCREMENT=16777215 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 
 			{
-				Skip:        true,
 				Query:       "insert into int_tbl values (99999999999)",
 				ExpectedErr: sql.ErrValueOutOfRange,
 			},
 			{
-				Skip:  true,
 				Query: "insert into int_tbl values (4294967295)",
 				Expected: []sql.Row{
 					{types.OkResult{
@@ -10880,23 +10756,20 @@ where
 				},
 			},
 			{
-				Skip:  true,
 				Query: "show create table int_tbl;",
 				Expected: []sql.Row{
 					{"int_tbl", "CREATE TABLE `int_tbl` (\n" +
-						"  `i` int NOT NULL AUTO_INCREMENT,\n" +
+						"  `i` int unsigned NOT NULL AUTO_INCREMENT,\n" +
 						"  PRIMARY KEY (`i`)\n" +
 						") ENGINE=InnoDB AUTO_INCREMENT=4294967295 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 
 			{
-				Skip:        true,
 				Query:       "insert into bigint_tbl values (999999999999999999999);",
 				ExpectedErr: sql.ErrValueOutOfRange,
 			},
 			{
-				Skip:  true,
 				Query: "insert into bigint_tbl values (18446744073709551615);",
 				Expected: []sql.Row{
 					{types.OkResult{
@@ -10906,11 +10779,10 @@ where
 				},
 			},
 			{
-				Skip:  true,
 				Query: "show create table bigint_tbl;",
 				Expected: []sql.Row{
 					{"bigint_tbl", "CREATE TABLE `bigint_tbl` (\n" +
-						"  `i` bigint NOT NULL AUTO_INCREMENT,\n" +
+						"  `i` bigint unsigned NOT NULL AUTO_INCREMENT,\n" +
 						"  PRIMARY KEY (`i`)\n" +
 						") ENGINE=InnoDB AUTO_INCREMENT=18446744073709551615 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
@@ -11045,6 +10917,19 @@ where
 			},
 		},
 	},
+	{
+		Name: "decimal unique key",
+		SetUpScript: []string{
+			"create table t (i int primary key, d decimal(10, 2) unique)",
+			"insert into t values (1, 1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "insert into t values (2, 1)",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+		},
+	},
 
 	// Date Tests
 	{
@@ -11088,81 +10973,68 @@ where
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Skip:  true,
 				Query: "create table child_datetime0 (dt datetime, foreign key (dt) references parent_datetime6(dt));",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Skip:        true,
 				Query:       "insert into child_datetime0 values ('2001-02-03 12:34:56');",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
-				Skip:  true,
 				Query: "create table child_datetime6 (dt datetime(6), foreign key (dt) references parent_datetime0(dt));",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Skip:        true,
 				Query:       "insert into child_datetime6 values ('2001-02-03 12:34:56');",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 
 			{
-				Skip:  true,
 				Query: "create table child1_timestamp0 (ts timestamp, foreign key (ts) references parent_datetime0(dt));",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Skip:        true,
 				Query:       "insert into child1_timestamp0 values ('2001-02-03 12:34:56');",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
-				Skip:  true,
 				Query: "create table child2_timestamp0 (ts timestamp, foreign key (ts) references parent_datetime6(dt));",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Skip:        true,
 				Query:       "insert into child2_timestamp0 values ('2001-02-03 12:34:56');",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 
 			{
-				Skip:  true,
 				Query: "create table child1_timestamp6 (ts timestamp(6), foreign key (ts) references parent_datetime0(dt));",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Skip:        true,
 				Query:       "insert into child1_timestamp6 values ('2001-02-03 12:34:56');",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
-				Skip:  true,
 				Query: "create table child2_timestamp6 (ts timestamp(6), foreign key (ts) references parent_datetime6(dt));",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Skip:        true,
 				Query:       "insert into child2_timestamp6 values ('2001-02-03 12:34:56');",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
-				Skip:        true,
 				Query:       "insert into child2_timestamp6 values ('2001-02-03 12:34:56.123456');",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
@@ -11198,81 +11070,68 @@ where
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Skip:  true,
 				Query: "create table child_timestamp0 (ts timestamp, foreign key (ts) references parent_timestamp6(ts));",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Skip:        true,
 				Query:       "insert into child_timestamp0 values ('2001-02-03 12:34:56');",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
-				Skip:  true,
 				Query: "create table child_timestamp6 (ts timestamp(6), foreign key (ts) references parent_timestamp0(ts));",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Skip:        true,
 				Query:       "insert into child_timestamp6 values ('2001-02-03 12:34:56');",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 
 			{
-				Skip:  true,
 				Query: "create table child1_datetime0 (dt datetime, foreign key (dt) references parent_timestamp0(ts));",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Skip:        true,
 				Query:       "insert into child1_datetime0 values ('2001-02-03 12:34:56');",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
-				Skip:  true,
 				Query: "create table child2_datetime0 (dt datetime, foreign key (dt) references parent_timestamp6(ts));",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Skip:        true,
 				Query:       "insert into child2_datetime0 values ('2001-02-03 12:34:56');",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 
 			{
-				Skip:  true,
 				Query: "create table child1_datetime6 (dt datetime(6), foreign key (dt) references parent_timestamp0(ts));",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Skip:        true,
 				Query:       "insert into child1_datetime6 values ('2001-02-03 12:34:56');",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
-				Skip:  true,
 				Query: "create table child2_datetime6 (dt datetime(6), foreign key (dt) references parent_timestamp6(ts));",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Skip:        true,
 				Query:       "insert into child2_datetime6 values ('2001-02-03 12:34:56');",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
-				Skip:        true,
 				Query:       "insert into child2_datetime6 values ('2001-02-03 12:34:56.123456');",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
@@ -11314,9 +11173,9 @@ where
 				},
 			},
 			{
-				Skip:        true,
 				Query:       "insert into child_time0 values ('12:34:56');",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
+				Skip:        true, // TODO: Fix TIME precision handling in foreign key constraints (https://github.com/dolthub/dolt/issues/9544)
 			},
 			{
 				Query: "create table child_time6 (t time(6), foreign key (t) references parent_time0(t));",
@@ -11325,9 +11184,9 @@ where
 				},
 			},
 			{
-				Skip:        true,
 				Query:       "insert into child_time6 values ('12:34:56');",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
+				Skip:        true, // TODO: Fix TIME precision handling in foreign key constraints (https://github.com/dolthub/dolt/issues/9544)
 			},
 		},
 	},
