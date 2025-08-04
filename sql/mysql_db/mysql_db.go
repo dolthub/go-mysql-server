@@ -592,10 +592,9 @@ func (db *MySQLDb) AddLockedSuperUser(ed *Editor, username string, host string, 
 	}
 }
 
-// matchesHostPattern checks if a host matches a MySQL host pattern.
-// This function handles wildcard patterns like '127.0.0.%' which should match '127.0.0.1', '127.0.0.255', etc.
+// matchesHostPattern checks if a host matches a host pattern with wildcards.
 func matchesHostPattern(host, pattern string) bool {
-	// If pattern doesn't contain %, it's not a wildcard pattern
+	// No wildcard, not a pattern
 	if !strings.Contains(pattern, "%") {
 		return false
 	}

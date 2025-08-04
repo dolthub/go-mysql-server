@@ -138,11 +138,15 @@ func TestGetUserWithWildcardAuthentication(t *testing.T) {
 	db := CreateEmptyMySQLDb()
 	p := &capturingPersistence{}
 	db.SetPersister(p)
-
+	
 	// Add test users with various host patterns
 	ed := db.Editor()
 	db.AddSuperUser(ed, "testuser", "127.0.0.1", "password")
 	db.AddSuperUser(ed, "localhost_user", "localhost", "password")
+	db.AddSuperUser(ed, "wildcard_user", "127.0.0.%", "password")
+	db.AddSuperUser(ed, "subnet_user", "192.168.1.%", "password")
+	db.AddSuperUser(ed, "hostname_user", "%.example.com", "password")
+	db.AddSuperUser(ed, "any_user", "%", "password")
 	db.Persist(ctx, ed)
 	ed.Close()
 
@@ -156,11 +160,38 @@ func TestGetUserWithWildcardAuthentication(t *testing.T) {
 		expectedUser string
 		shouldFind   bool
 	}{
-		// Test specific IP matching (existing functionality)
+		// Specific IP tests
 		{"Specific IP - exact match", "testuser", "127.0.0.1", "testuser", true},
 		{"Localhost user - normalized", "localhost_user", "127.0.0.1", "localhost_user", true},
 		{"Localhost user - ::1", "localhost_user", "::1", "localhost_user", true},
 		{"Non-existent user", "nonexistent", "127.0.0.1", "", false},
+
+		// IP wildcard tests
+		{"Wildcard IP - 127.0.0.% matches 127.0.0.1", "wildcard_user", "127.0.0.1", "wildcard_user", true},
+		{"Wildcard IP - 127.0.0.% matches 127.0.0.100", "wildcard_user", "127.0.0.100", "wildcard_user", true},
+		{"Wildcard IP - 127.0.0.% matches 127.0.0.255", "wildcard_user", "127.0.0.255", "wildcard_user", true},
+		{"Wildcard IP - 127.0.0.% does not match 127.0.1.1", "wildcard_user", "127.0.1.1", "", false},
+		{"Wildcard IP - 127.0.0.% does not match 192.168.1.1", "wildcard_user", "192.168.1.1", "", false},
+
+		// Subnet wildcard tests
+		{"Subnet wildcard - 192.168.1.% matches 192.168.1.1", "subnet_user", "192.168.1.1", "subnet_user", true},
+		{"Subnet wildcard - 192.168.1.% matches 192.168.1.100", "subnet_user", "192.168.1.100", "subnet_user", true},
+		{"Subnet wildcard - 192.168.1.% does not match 192.168.2.1", "subnet_user", "192.168.2.1", "", false},
+		{"Subnet wildcard - 192.168.1.% does not match 10.0.0.1", "subnet_user", "10.0.0.1", "", false},
+
+		// Hostname wildcard tests
+		{"Hostname wildcard - %.example.com matches host.example.com", "hostname_user", "host.example.com", "hostname_user", true},
+		{"Hostname wildcard - %.example.com matches www.example.com", "hostname_user", "www.example.com", "hostname_user", true},
+		{"Hostname wildcard - %.example.com does not match example.com", "hostname_user", "example.com", "", false},
+		{"Hostname wildcard - %.example.com does not match host.other.com", "hostname_user", "host.other.com", "", false},
+
+		// Global wildcard tests
+		{"Global wildcard - % matches any IP", "any_user", "10.0.0.1", "any_user", true},
+		{"Global wildcard - % matches any hostname", "any_user", "any.hostname.com", "any_user", true},
+		{"Global wildcard - % matches localhost", "any_user", "localhost", "any_user", true},
+
+		// Issue #9624 scenario
+		{"Customer scenario - matches connecting IP in range", "wildcard_user", "127.0.0.50", "wildcard_user", true},
 	}
 
 	for _, tt := range tests {
