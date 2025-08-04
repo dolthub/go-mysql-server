@@ -100,7 +100,6 @@ const (
 	numericCutSet = " \t\n\r"
 )
 
-
 type NumberTypeImpl_ struct {
 	baseType     query.Type
 	displayWidth int
@@ -1008,8 +1007,8 @@ func convertToInt64(ctx context.Context, t NumberTypeImpl_, v interface{}) (int6
 		if err == nil {
 			return i, sql.InRange, nil
 		}
-		
-		// Check if MySQL string-to-number mode is enabled before trying full float parsing  
+
+		// Check if MySQL string-to-number mode is enabled before trying full float parsing
 		if sqlCtx, ok := ctx.(*sql.Context); ok && sql.ValidateStringToNumberMode(sqlCtx) {
 			// Use MySQL-compatible integer parsing (no scientific notation)
 			s := mysqlIntNumre.FindString(originalV)
@@ -1021,7 +1020,7 @@ func convertToInt64(ctx context.Context, t NumberTypeImpl_, v interface{}) (int6
 			}
 			return 0, sql.InRange, nil
 		}
-		
+
 		// If that fails, try as a float and truncate it to integral (original behavior)
 		f, err := strconv.ParseFloat(v, 64)
 		if err != nil {
@@ -1565,13 +1564,13 @@ func convertToFloat64(ctx context.Context, t NumberTypeImpl_, v interface{}) (fl
 			// Extract numeric prefix using appropriate regex
 			var extractedFloat float64
 			var s string
-			
+
 			if sqlCtx, ok := ctx.(*sql.Context); ok && sql.ValidateStringToNumberMode(sqlCtx) {
 				s = mysqlFloatNumre.FindString(originalV)
 			} else {
 				s = numre.FindString(originalV)
 			}
-			
+
 			if s != "" {
 				if f, parseErr := strconv.ParseFloat(strings.TrimSpace(s), 64); parseErr == nil {
 					extractedFloat = f

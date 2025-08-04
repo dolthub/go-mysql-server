@@ -340,7 +340,7 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 		return d, nil
 	case ConvertToDecimal:
 		dt := createConvertedDecimalType(typeLength, typeScale, false)
-		
+
 		// Handle string-to-decimal conversion for mysql_string_to_number mode
 		if strVal, ok := val.(string); ok && sql.ValidateStringToNumberMode(ctx) {
 			if convertedVal, _, err := types.Float64.Convert(ctx, strVal); err == nil {
@@ -351,12 +351,12 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 				return d, nil
 			}
 		}
-		
+
 		value, err := convertHexBlobToDecimalForNumericContext(val, originType)
 		if err != nil {
 			return nil, err
 		}
-		
+
 		d, _, err := dt.Convert(ctx, value)
 		if err != nil {
 			return dt.Zero(), nil
