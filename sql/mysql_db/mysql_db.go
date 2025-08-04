@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -591,6 +592,27 @@ func (db *MySQLDb) AddLockedSuperUser(ed *Editor, username string, host string, 
 	}
 }
 
+// matchesHostPattern checks if a host matches a MySQL host pattern.
+// This function handles wildcard patterns like '127.0.0.%' which should match '127.0.0.1', '127.0.0.255', etc.
+func matchesHostPattern(host, pattern string) bool {
+	// If pattern doesn't contain %, it's not a wildcard pattern
+	if !strings.Contains(pattern, "%") {
+		return false
+	}
+	
+	// Replace % with .* for regex matching, but first escape other regex metacharacters
+	// We need to escape everything except % first, then replace % with .*
+	regexPattern := regexp.QuoteMeta(pattern)  // This escapes everything including %
+	regexPattern = strings.ReplaceAll(regexPattern, "%", ".*")  // Replace % with .*
+	regexPattern = "^" + regexPattern + "$"
+	
+	matched, err := regexp.MatchString(regexPattern, host)
+	if err != nil {
+		return false
+	}
+	return matched
+}
+
 // GetUser returns a user matching the given user and host if it exists. Due to the slight difference between users and
 // roles, roleSearch changes whether the search matches against user or role rules.
 func (db *MySQLDb) GetUser(fetcher UserFetcher, user string, host string, roleSearch bool) *User {
@@ -607,6 +629,9 @@ func (db *MySQLDb) GetUser(fetcher UserFetcher, user string, host string, roleSe
 	//TODO: Allow for CIDR notation in hostnames
 	//TODO: Which user do we choose when multiple host names match (e.g. host name with most characters matched, etc.)
 
+	// Store the original host for pattern matching against IP patterns
+	originalHost := host
+	
 	if "127.0.0.1" == host || "::1" == host {
 		host = "localhost"
 	}
@@ -626,7 +651,9 @@ func (db *MySQLDb) GetUser(fetcher UserFetcher, user string, host string, roleSe
 			if host == user.Host ||
 				(host == "localhost" && user.Host == "::1") ||
 				(host == "localhost" && user.Host == "127.0.0.1") ||
-				(user.Host == "%" && (!roleSearch || host == "")) {
+				(user.Host == "%" && (!roleSearch || host == "")) ||
+				matchesHostPattern(host, user.Host) ||
+				matchesHostPattern(originalHost, user.Host) {
 				return user
 			}
 		}
