@@ -33,7 +33,9 @@ func processTruncate(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 
 	switch n := node.(type) {
 	case *plan.DeleteFrom:
-		if !n.Resolved() {
+		// If there are any returning expressions, then we can't convert to a Truncate operation,
+		// since we need to process all rows and return results.
+		if !n.Resolved() || len(n.Returning) > 0 {
 			return n, transform.SameTree, nil
 		}
 		return deleteToTruncate(ctx, a, n)

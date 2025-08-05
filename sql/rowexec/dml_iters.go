@@ -619,6 +619,10 @@ func AddAccumulatorIter(ctx *sql.Context, iter sql.RowIter) (sql.RowIter, sql.Sc
 			if len(innerIter.returnExprs) > 0 {
 				return innerIter, innerIter.returnSchema
 			}
+		case *deleteIter:
+			if len(innerIter.returnExprs) > 0 {
+				return innerIter, innerIter.returnSchema
+			}
 		}
 
 		return defaultAccumulatorIter(ctx, iter)
