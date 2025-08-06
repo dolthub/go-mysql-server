@@ -450,7 +450,9 @@ func NewFinalizeUnionSel(sel RuleSelector) RuleSelector {
 		case
 			// skip recursive resolve rules
 			resolveSubqueriesId,
-			resolveUnionsId:
+			resolveUnionsId,
+			// skip redundant finalize rules
+			assignExecIndexesId:
 			return false
 		case finalizeSubqueriesId,
 			hoistOutOfScopeFiltersId:
