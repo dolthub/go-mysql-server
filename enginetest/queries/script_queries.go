@@ -11318,7 +11318,7 @@ select * from t1 union (
 select * from t1 intersect (
     select j from t2
     where (
-        j = 1
+        j > 10
         or
         j in (
             select j from t1 join t2
@@ -11335,7 +11335,7 @@ select * from t1 intersect (
 select * from t1 except (
     select j from t2
     where (
-        j = 1
+        j > 10
         or
         j in (
             select j from t1 join t2
