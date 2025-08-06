@@ -227,12 +227,10 @@ func colIdsForRel(n sql.Node) []sql.ColumnId {
 			}
 		}
 		return ids
-	case plan.TableIdNode:
+	case *plan.SetOp:
 		// SetOp nodes need to preserve original schema order to avoid column scrambling in nested UNIONs
-		if setOp, ok := n.(*plan.SetOp); ok {
-			return colIdsForRel(setOp.Left())
-		}
-
+		return colIdsForRel(n.Left())
+	case plan.TableIdNode:
 		cols := n.Columns()
 		if tn, ok := n.(sql.TableNode); ok {
 			if pkt, ok := tn.UnderlyingTable().(sql.PrimaryKeyTable); ok && len(pkt.PrimaryKeySchema().Schema) != len(n.Schema()) {
