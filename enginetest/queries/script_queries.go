@@ -11206,8 +11206,8 @@ where
 
 	{
 		// TODO: This test currently fails in Doltgres because Doltgres does not allow `create table...as select...`
-		// even though it's a valid Postgres query. Remove Dialect tag once fixed in Doltgres
-		// https://github.com/dolthub/doltgresql/issues/1669
+		//   even though it's a valid Postgres query. Remove Dialect tag once fixed in Doltgres
+		//   https://github.com/dolthub/doltgresql/issues/1669
 		Dialect: "mysql",
 		Name:    "union field indexes",
 		SetUpScript: []string{
@@ -11218,18 +11218,30 @@ where
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select * from " +
-					"(select id, words from t union " +
-					"select id,words from t2) as combined where combined.id=1",
+				Query: `
+select * from (
+    select id, words from t
+    union
+    select id, words from t2
+) as combined
+where
+    combined.id = 1;
+`,
 				Expected: []sql.Row{
 					{1, "foo"},
 					{1, "boo"},
 				},
 			},
 			{
-				Query: "select * from " +
-					"(select 'parent' as tbl, id, words from t union " +
-					"select 'child' as tbl, id,words from t2) as combined where combined.id=1",
+				Query: `
+select * from (
+    select 'parent' as tbl, id, words from t
+    union
+    select 'child' as tbl, id, words from t2
+) as combined
+where
+    combined.id = 1;
+`,
 				Expected: []sql.Row{
 					{"parent", 1, "foo"},
 					{"child", 1, "boo"},
@@ -11266,6 +11278,73 @@ where
 					{7, 3, "Collection 3", "Collection 3", 4003, nil, nil, nil, 3, "collection"},
 					{1, 1, "Dashboard 1", "Test dashboard description", 3001, nil, nil, nil, nil, "dashboard"},
 					{1, 2, "Dashboard 2", "Test dashboard 2 description", 3002, nil, nil, nil, nil, "dashboard"},
+				},
+			},
+		},
+	},
+	{
+		// TODO: Doltgres does not support this query
+		// https://github.com/dolthub/dolt/issues/9631
+		Name:    "test union/intersect/except over subqueries over joins",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t1 (i int primary key);",
+			"create table t2 (j int primary key);",
+			"insert into t1 values (0), (1);",
+			"insert into t2 values (0), (2);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `
+select * from t1 union (
+    select j from t2
+    where (
+        j > 10
+        or
+        j in (
+            select j from t1 join t2
+        )
+    )
+);
+`,
+				Expected: []sql.Row{
+					{0},
+					{1},
+					{2},
+				},
+			},
+			{
+				Query: `
+select * from t1 intersect (
+    select j from t2
+    where (
+        j > 10
+        or
+        j in (
+            select j from t1 join t2
+        )
+    )
+);
+`,
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+			{
+				Query: `
+select * from t1 except (
+    select j from t2
+    where (
+        j > 10
+        or
+        j in (
+            select j from t1 join t2
+        )
+    )
+);
+`,
+				Expected: []sql.Row{
+					{1},
 				},
 			},
 		},
