@@ -22,6 +22,7 @@ import (
 	"io"
 	"net"
 	"regexp"
+	"runtime/debug"
 	"runtime/trace"
 	"sync"
 	"time"
@@ -619,7 +620,9 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 	eg, ctx := ctx.NewErrgroup()
 	pan2err := func(err *error) {
 		if recoveredPanic := recover(); recoveredPanic != nil {
-			*err = goerrors.Join(*err, fmt.Errorf("handler caught panic: %v", recoveredPanic))
+			stack := debug.Stack()
+			wrappedErr := fmt.Errorf("handler caught panic: %v\n%s", recoveredPanic, stack)
+			*err = goerrors.Join(*err, wrappedErr)
 		}
 	}
 	wg := sync.WaitGroup{}
