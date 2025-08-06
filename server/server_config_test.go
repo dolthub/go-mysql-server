@@ -49,14 +49,14 @@ func TestConfigWithDefaults(t *testing.T) {
 			Type:        types.NewSystemIntType("net_write_timeout", 1, 9223372036854775807, false),
 			ConfigField: "ConnWriteTimeout",
 			Default:     int64(76),
-			ExpectedCmp: int64(76000000),
+			ExpectedCmp: int64(76000000000),
 		}, {
 			Name:        "net_read_timeout",
 			Scope:       sql.SystemVariableScope_Both,
 			Type:        types.NewSystemIntType("net_read_timeout", 1, 9223372036854775807, false),
 			ConfigField: "ConnReadTimeout",
 			Default:     int64(67),
-			ExpectedCmp: int64(67000000),
+			ExpectedCmp: int64(67000000000),
 		},
 	}
 
