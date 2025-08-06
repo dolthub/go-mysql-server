@@ -11283,8 +11283,10 @@ where
 		},
 	},
 	{
+		// TODO: Doltgres does not support this query
 		// https://github.com/dolthub/dolt/issues/9631
-		Name: "test union/intersect/except over subqueries over joins",
+		Name:    "test union/intersect/except over subqueries over joins",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t1 (i int primary key);",
 			"create table t2 (j int primary key);",
