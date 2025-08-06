@@ -11238,7 +11238,8 @@ where
 		},
 	},
 	{
-		Name: "UNION column mapping bug - issue 9628",
+		// https://github.com/dolthub/dolt/issues/9628
+		Name: "UNION column mapping bug dolt#9628",
 		SetUpScript: []string{
 			"CREATE TABLE report_card (id INT PRIMARY KEY, name VARCHAR(255), entity_id INT, dashboard_id INT, description TEXT, display TEXT, collection_preview TEXT, dataset_query TEXT, collection_id INT, archived_directly BOOLEAN DEFAULT FALSE, collection_position INT, database_id INT, archived BOOLEAN DEFAULT FALSE, last_used_at DATETIME, table_id INT, query_type VARCHAR(50), type VARCHAR(50))",
 			"CREATE TABLE collection (id INT PRIMARY KEY, name VARCHAR(255), entity_id INT, location VARCHAR(500), authority_level VARCHAR(50), personal_owner_id INT, archived_directly BOOLEAN DEFAULT FALSE, type VARCHAR(50), archived BOOLEAN DEFAULT FALSE, namespace VARCHAR(100))",
