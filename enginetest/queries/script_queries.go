@@ -11237,6 +11237,39 @@ where
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/9628
+		Name: "UNION column mapping bug dolt#9628",
+		SetUpScript: []string{
+			"CREATE TABLE report_card (id INT PRIMARY KEY, name VARCHAR(255), entity_id INT, dashboard_id INT, description TEXT, display TEXT, collection_preview TEXT, dataset_query TEXT, collection_id INT, archived_directly BOOLEAN DEFAULT FALSE, collection_position INT, database_id INT, archived BOOLEAN DEFAULT FALSE, last_used_at DATETIME, table_id INT, query_type VARCHAR(50), type VARCHAR(50))",
+			"CREATE TABLE collection (id INT PRIMARY KEY, name VARCHAR(255), entity_id INT, location VARCHAR(500), authority_level VARCHAR(50), personal_owner_id INT, archived_directly BOOLEAN DEFAULT FALSE, type VARCHAR(50), archived BOOLEAN DEFAULT FALSE, namespace VARCHAR(100))",
+			"CREATE TABLE report_dashboard (id INT PRIMARY KEY, name VARCHAR(255), entity_id INT, description TEXT, collection_id INT, archived_directly BOOLEAN DEFAULT FALSE, collection_position INT, archived BOOLEAN DEFAULT FALSE, last_viewed_at DATETIME)",
+			"INSERT INTO report_card (id, name, entity_id, dashboard_id, type, archived_directly, archived, collection_position) VALUES (2, 'Card 2', 1002, NULL, 'question', FALSE, FALSE, NULL), (3, 'Card 3', 1003, NULL, 'question', FALSE, FALSE, NULL)",
+			"INSERT INTO collection (id, name, entity_id, location, type, archived, personal_owner_id, namespace) VALUES (2, 'Collection 2', 4002, '/test2/', 'normal', FALSE, NULL, NULL), (3, 'Collection 3', 4003, '/test3/', 'normal', FALSE, NULL, NULL)",
+			"INSERT INTO report_dashboard (id, name, entity_id, description, collection_id, archived_directly, archived, collection_position) VALUES (1, 'Dashboard 1', 3001, 'Test dashboard description', NULL, FALSE, FALSE, NULL), (2, 'Dashboard 2', 3002, 'Test dashboard 2 description', NULL, FALSE, FALSE, NULL)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `WITH visible_collection_ids AS (SELECT id FROM collection AS c WHERE (1 <> c.id)) 
+				SELECT 5 AS model_ranking, c.id, c.name, c.description, c.entity_id, c.display, c.collection_preview, c.dataset_query, c.collection_id, 'card' AS model 
+				FROM report_card AS c WHERE (c.dashboard_id IS NULL) AND (archived = FALSE) AND (c.type = 'question') 
+				UNION 
+				SELECT 7 AS model_ranking, id, name, name AS description, entity_id, NULL AS display, NULL AS collection_preview, NULL AS dataset_query, id AS collection_id, 'collection' AS model 
+				FROM collection AS col WHERE (archived = FALSE) AND (id <> 1) AND (personal_owner_id IS NULL) AND (namespace IS NULL) 
+				UNION 
+				SELECT 1 AS model_ranking, d.id, d.name, d.description, d.entity_id, NULL AS display, NULL AS collection_preview, NULL AS dataset_query, NULL AS collection_id, 'dashboard' AS model 
+				FROM report_dashboard AS d WHERE (archived = FALSE)`,
+				Expected: []sql.Row{
+					{5, 2, "Card 2", nil, 1002, nil, nil, nil, nil, "card"},
+					{5, 3, "Card 3", nil, 1003, nil, nil, nil, nil, "card"},
+					{7, 2, "Collection 2", "Collection 2", 4002, nil, nil, nil, 2, "collection"},
+					{7, 3, "Collection 3", "Collection 3", 4003, nil, nil, nil, 3, "collection"},
+					{1, 1, "Dashboard 1", "Test dashboard description", 3001, nil, nil, nil, nil, "dashboard"},
+					{1, 2, "Dashboard 2", "Test dashboard 2 description", 3002, nil, nil, nil, nil, "dashboard"},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
