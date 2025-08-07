@@ -102,8 +102,7 @@ func (t systemStringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sql
 		return sqltypes.Value{}, err
 	}
 
-	//val := AppendAndSliceString(dest, v.(string))
-	val := []byte(v.(string))
+	val := AppendAndSliceString(dest, v.(string))
 
 	return sqltypes.MakeTrusted(t.Type(), val), nil
 }

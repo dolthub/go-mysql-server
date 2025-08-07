@@ -480,7 +480,7 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 				val = append(dest, b...)
 				start = len(dest)
 			}
-			val = append(val, bytes.Repeat([]byte{0}, int(st.maxCharLength)-len(val))...)
+			val = append(val, make([]byte, int(st.maxCharLength)-len(val))...)
 		}
 	}
 	val = val[start:]
@@ -715,10 +715,13 @@ func (t StringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.
 		var valueBytes []byte
 		switch v := v.(type) {
 		case JSONBytes:
-			valueBytes, err = v.GetBytes(ctx)
+			// TODO: put on dest?
+			val, err = v.GetBytes(ctx)
 			if err != nil {
 				return sqltypes.Value{}, err
 			}
+			dest = append(dest, val...)
+			valueBytes = dest[start:]
 		case []byte:
 			valueBytes = v
 		case string:
@@ -888,13 +891,6 @@ func (t StringType) MaxByteLength() int64 {
 
 // TODO: move me
 func AppendAndSliceString(buffer []byte, addition string) (slice []byte) {
-	stop := len(buffer)
-	buffer = append(buffer, addition...)
-	slice = buffer[stop:]
-	return
-}
-
-func AppendAndSliceBytes(buffer, addition []byte) (slice []byte) {
 	stop := len(buffer)
 	buffer = append(buffer, addition...)
 	slice = buffer[stop:]
