@@ -130,7 +130,7 @@ var ScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT flag FROM bit_union_test_9641 WHERE id = 1 UNION SELECT NULL as flag",
-				Expected: []sql.Row{{uint64(0)}, {nil}},
+				Expected: []sql.Row{{"0"}, {nil}},
 			},
 		},
 	},
