@@ -98,6 +98,10 @@ func NewServerWithHandler(
 		maxLoggedQueryLen: cfg.MaxLoggedQueryLen,
 		encodeLoggedQuery: cfg.EncodeLoggedQuery,
 		sel:               listener,
+
+		queryCounter:      cfg.QueryCounter,
+		queryErrorCounter: cfg.QueryErrorCounter,
+		queryHistogram:    cfg.QueryHistogram,
 	}
 
 	handler, err := wrapper(h)

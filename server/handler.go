@@ -32,7 +32,6 @@ import (
 	"github.com/dolthub/vitess/go/sqltypes"
 	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
-	"github.com/go-kit/kit/metrics/discard"
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
 	otel "go.opentelemetry.io/otel/trace"
@@ -77,6 +76,10 @@ type Handler struct {
 	maxLoggedQueryLen int
 	encodeLoggedQuery bool
 	sel               ServerEventListener
+
+	queryCounter      Counter
+	queryErrorCounter Counter
+	queryHistogram    Histogram
 }
 
 var _ mysql.Handler = (*Handler)(nil)
@@ -456,7 +459,7 @@ func (h *Handler) doQuery(
 	}
 	sqlCtx.GetLogger().WithField(sql.QueryTimeLogKey, time.Now()).Debugf("Starting query")
 
-	finish := observeQuery(sqlCtx, query)
+	finish := h.observeQuery(sqlCtx, query)
 	defer func() {
 		finish(err)
 	}()
@@ -1090,30 +1093,27 @@ func schemaToFields(ctx *sql.Context, s sql.Schema) []*querypb.Field {
 	return fields
 }
 
-var (
-	// QueryCounter describes a metric that accumulates number of queries monotonically.
-	QueryCounter = discard.NewCounter()
-
-	// QueryErrorCounter describes a metric that accumulates number of failed queries monotonically.
-	QueryErrorCounter = discard.NewCounter()
-
-	// QueryHistogram describes a queries latency.
-	QueryHistogram = discard.NewHistogram()
-)
-
-func observeQuery(ctx *sql.Context, query string) func(err error) {
+func (h *Handler) observeQuery(ctx *sql.Context, query string) func(err error) {
 	span, ctx := ctx.Span("query", otel.WithAttributes(attribute.String("query", query)))
 
 	t := time.Now()
 	return func(err error) {
+		defer span.End()
+
 		if err != nil {
-			QueryErrorCounter.With("query", query, "error", err.Error()).Add(1)
-		} else {
-			QueryCounter.With("query", query).Add(1)
-			QueryHistogram.With("query", query, "duration", "seconds").Observe(time.Since(t).Seconds())
+			if h.queryErrorCounter != nil {
+				h.queryErrorCounter.With("query", query, "error", err.Error()).Add(1)
+			}
+			return
 		}
 
-		span.End()
+		if h.queryCounter != nil {
+			h.queryCounter.With("query", query).Add(1)
+		}
+
+		if h.queryHistogram != nil {
+			h.queryHistogram.With("query", query, "duration", "seconds").Observe(time.Since(t).Seconds())
+		}
 	}
 }
 
