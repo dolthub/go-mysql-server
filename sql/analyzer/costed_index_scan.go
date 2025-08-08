@@ -116,19 +116,9 @@ func indexSearchableLookup(ctx *sql.Context, c transform.Context, rt sql.TableNo
 		ret = plan.NewFilter(newFilter, ret)
 	}
 
-	if fds != nil && fds.HasMax1Row() && !qFlags.JoinIsSet() && !qFlags.SubqueryIsSet() && lookup.Ranges.Len() == 1 {
-		// Prevent max1Row when parent will combine results
-		if c.Parent != nil {
-			switch parent := c.Parent.(type) {
-			case *plan.SetOp:
-				return ret, transform.NewTree, nil
-			case *plan.Project:
-				if plan.IsUnary(parent) {
-					return ret, transform.NewTree, nil
-				}
-			}
-		}
-		
+	// Skip Max1Row optimization for SetOp queries to avoid incorrect single-row assumption
+	_, isSetOp := c.Parent.(*plan.SetOp)
+	if fds != nil && fds.HasMax1Row() && !qFlags.JoinIsSet() && !qFlags.SubqueryIsSet() && lookup.Ranges.Len() == 1 && !isSetOp {
 		qFlags.Set(sql.QFlagMax1Row)
 	}
 
@@ -331,9 +321,13 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 		bestStat = stats.UpdateCounts(bestStat)
 	}
 
-	if bestStat.FuncDeps().HasMax1Row() && !qFlags.JoinIsSet() && !qFlags.SubqueryIsSet() && lookup.Ranges.Len() == 1 {
-		qFlags.Set(sql.QFlagMax1Row)
-	}
+	// Conservative: disable Max1Row optimization here due to lack of context for SetOp detection (dolt#9641)
+	// The indexSearchableLookup path above handles the context-aware SetOp detection for memory engine
+	// Server engine uses this path and would incorrectly set Max1Row for UNION subqueries
+	// See: https://github.com/dolthub/dolt/issues/9641
+	// if bestStat.FuncDeps().HasMax1Row() && !qFlags.JoinIsSet() && !qFlags.SubqueryIsSet() && lookup.Ranges.Len() == 1 {
+	//	qFlags.Set(sql.QFlagMax1Row)
+	// }
 
 	return ret, bestStat, retFilters, nil
 }

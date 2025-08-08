@@ -792,7 +792,7 @@ func validateAutoIncrementModify(schema sql.Schema, keyedColumns map[string]bool
 	seen := false
 	for _, col := range schema {
 		if col.AutoIncrement {
-			// AUTO_INCREMENT requires integer types
+			// Under MySQL 8.4+, AUTO_INCREMENT columns must be integer types.
 			if !types.IsInteger(col.Type) {
 				return sql.ErrInvalidColumnSpecifier.New(col.Name)
 			}
