@@ -121,6 +121,20 @@ type ScriptTestAssertion struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
+		// Regression test for https://github.com/dolthub/dolt/issues/9641
+		Name: "bit union regression test dolt#9641",
+		SetUpScript: []string{
+			"CREATE TABLE bit_union_test_9641 (id INT PRIMARY KEY, flag BIT(1))",
+			"INSERT INTO bit_union_test_9641 VALUES (1, 0), (2, 1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT flag FROM bit_union_test_9641 WHERE id = 1 UNION SELECT NULL as flag",
+				Expected: []sql.Row{{"0"}, {nil}},
+			},
+		},
+	},
+	{
 		Name: "outer join finish unmatched right side",
 		SetUpScript: []string{
 			`
