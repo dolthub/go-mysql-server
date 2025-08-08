@@ -102,7 +102,6 @@ func (s *SetOp) Schema() sql.Schema {
 	for i := range ls {
 		c := *ls[i]
 		if i < len(rs) {
-			// Use MySQL type precedence for UNION columns
 			c.Type = types.GeneralizeTypes(ls[i].Type, rs[i].Type)
 			c.Nullable = ls[i].Nullable || rs[i].Nullable
 		}

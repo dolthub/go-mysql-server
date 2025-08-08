@@ -52,7 +52,8 @@ import (
 // remaining in the parent filter. Much of the format conversions focus
 // on maintaining this invariant.
 func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	return transform.NodeWithCtx(n, nil, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
+		n := c.Node
 		filter, ok := n.(*plan.Filter)
 		if !ok {
 			return n, transform.SameTree, nil
@@ -77,7 +78,7 @@ func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node, qFlags *sql.Que
 				return n, transform.SameTree, err
 			}
 			if ok {
-				return indexSearchableLookup(ctx, n, rt, lookup, filter.Expression, newFilter, lookupFds, qFlags)
+				return indexSearchableLookup(ctx, c, rt, lookup, filter.Expression, newFilter, lookupFds, qFlags)
 			} else if is.SkipIndexCosting() {
 				return n, transform.SameTree, nil
 			}
@@ -89,7 +90,8 @@ func costedIndexScans(ctx *sql.Context, a *Analyzer, n sql.Node, qFlags *sql.Que
 	})
 }
 
-func indexSearchableLookup(ctx *sql.Context, n sql.Node, rt sql.TableNode, lookup sql.IndexLookup, oldFilter, newFilter sql.Expression, fds *sql.FuncDepSet, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
+func indexSearchableLookup(ctx *sql.Context, c transform.Context, rt sql.TableNode, lookup sql.IndexLookup, oldFilter, newFilter sql.Expression, fds *sql.FuncDepSet, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
+	n := c.Node
 	if lookup.IsEmpty() {
 		return n, transform.SameTree, nil
 	}
@@ -115,9 +117,18 @@ func indexSearchableLookup(ctx *sql.Context, n sql.Node, rt sql.TableNode, looku
 	}
 
 	if fds != nil && fds.HasMax1Row() && !qFlags.JoinIsSet() && !qFlags.SubqueryIsSet() && lookup.Ranges.Len() == 1 {
-		// Strict index lookup without a join or subquery scope will return
-		// at most one row. We could also use some sort of scope counting
-		// to check for single scope.
+		// Prevent max1Row when parent will combine results
+		if c.Parent != nil {
+			switch parent := c.Parent.(type) {
+			case *plan.SetOp:
+				return ret, transform.NewTree, nil
+			case *plan.Project:
+				if plan.IsUnary(parent) {
+					return ret, transform.NewTree, nil
+				}
+			}
+		}
+		
 		qFlags.Set(sql.QFlagMax1Row)
 	}
 
@@ -321,9 +332,6 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 	}
 
 	if bestStat.FuncDeps().HasMax1Row() && !qFlags.JoinIsSet() && !qFlags.SubqueryIsSet() && lookup.Ranges.Len() == 1 {
-		// Strict index lookup without a join or subquery scope will return
-		// at most one row. We could also use some sort of scope counting
-		// to check for single scope.
 		qFlags.Set(sql.QFlagMax1Row)
 	}
 
