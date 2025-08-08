@@ -725,13 +725,13 @@ func (t StringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.
 			dest = append(dest, v...)
 			valueBytes = dest[start:]
 		case int, int8, int16, int32, int64:
-			num, _, err := convertToInt64(Int64.(NumberTypeImpl_), v)
+			num, _, err := convertToInt64(ctx, Int64.(NumberTypeImpl_), v)
 			if err != nil {
 				return sqltypes.Value{}, err
 			}
 			valueBytes = strconv.AppendInt(dest, num, 10)
 		case uint, uint8, uint16, uint32, uint64:
-			num, _, err := convertToUint64(Int64.(NumberTypeImpl_), v)
+			num, _, err := convertToUint64(ctx, Int64.(NumberTypeImpl_), v)
 			if err != nil {
 				return sqltypes.Value{}, err
 			}

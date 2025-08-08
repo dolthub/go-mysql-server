@@ -633,6 +633,153 @@ var VariableQueries = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "mysql_string_to_number system variable",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT @@mysql_string_to_number",
+				Expected: []sql.Row{{int8(0)}},
+			},
+			{
+				Query:    "SET @@mysql_string_to_number = 1",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT @@mysql_string_to_number",
+				Expected: []sql.Row{{int8(1)}},
+			},
+			{
+				Query:    "SET @@mysql_string_to_number = 0",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT @@mysql_string_to_number",
+				Expected: []sql.Row{{int8(0)}},
+			},
+			{
+				Query:    "SET @@session.mysql_string_to_number = 1",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT @@session.mysql_string_to_number",
+				Expected: []sql.Row{{int8(1)}},
+			},
+			{
+				Query:    "SET @@global.mysql_string_to_number = 0",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT @@global.mysql_string_to_number",
+				Expected: []sql.Row{{int8(0)}},
+			},
+		},
+	},
+	{
+		Name: "mysql_string_to_number conversion behavior",
+		SetUpScript: []string{
+			"CREATE TABLE test_table (id INT PRIMARY KEY, int_col INT, float_col FLOAT)",
+			"INSERT INTO test_table VALUES (1, 10, 10.5)",
+		},
+		Assertions: []ScriptTestAssertion{
+			// Variable disabled - original behavior
+			{
+				Query:    "SET @@mysql_string_to_number = 0",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT CAST('123abc' AS SIGNED)",
+				Expected: []sql.Row{{int64(0)}},
+			},
+			{
+				Query:    "SELECT CAST('_123_' AS SIGNED)",
+				Expected: []sql.Row{{int64(0)}},
+			},
+			{
+				Query:    "SELECT CAST('abc123' AS SIGNED)",
+				Expected: []sql.Row{{int64(0)}},
+			},
+			// Variable enabled - extract numeric prefixes
+			{
+				Query:    "SET @@mysql_string_to_number = 1",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT CAST('123abc' AS SIGNED)",
+				Expected: []sql.Row{{int64(123)}},
+			},
+			{
+				Query:    "SELECT CAST('_123_' AS SIGNED)",
+				Expected: []sql.Row{{int64(0)}},
+			},
+			{
+				Query:    "SELECT CAST('123_' AS SIGNED)",
+				Expected: []sql.Row{{int64(123)}},
+			},
+			{
+				Query:    "SELECT CAST('abc123' AS SIGNED)",
+				Expected: []sql.Row{{int64(0)}},
+			},
+			{
+				Query:    "SELECT CAST(' 123 ' AS SIGNED)",
+				Expected: []sql.Row{{int64(123)}},
+			},
+			{
+				Query:    "SELECT CAST('  +45.67e2' AS SIGNED)",
+				Expected: []sql.Row{{int64(45)}},
+			},
+			{
+				Query:    "SELECT CAST('-789.123' AS SIGNED)",
+				Expected: []sql.Row{{int64(-789)}},
+			},
+			{
+				Query:    "SELECT CAST('123%' AS SIGNED)",
+				Expected: []sql.Row{{int64(123)}},
+			},
+			{
+				Query:    "SELECT CAST('#123' AS SIGNED)",
+				Expected: []sql.Row{{int64(0)}},
+			},
+			{
+				Query:    "SELECT CAST('123.456' AS SIGNED)",
+				Expected: []sql.Row{{int64(123)}},
+			},
+			// Test decimal conversions
+			{
+				Query:    "SELECT CAST('123.456abc' AS DECIMAL(10,3))",
+				Expected: []sql.Row{{"123.456"}},
+			},
+			{
+				Query:    "SELECT CAST('_123.456_' AS DECIMAL(10,3))",
+				Expected: []sql.Row{{"0.000"}},
+			},
+			{
+				Query:    "SELECT CAST('45.67e2' AS DECIMAL(10,2))",
+				Expected: []sql.Row{{"4567.00"}},
+			},
+			// Test unsigned type handling
+			{
+				Query:    "SELECT CAST('123abc' AS UNSIGNED)",
+				Expected: []sql.Row{{uint64(123)}},
+			},
+			{
+				Query:    "SELECT CAST('-123abc' AS UNSIGNED)",
+				Expected: []sql.Row{{uint64(18446744073709551493)}},
+			},
+			// Test comparison operations from issue #7128
+			{
+				Query:    "SELECT * FROM test_table WHERE int_col = '10abc'",
+				Expected: []sql.Row{{1, 10, float32(10.5)}},
+			},
+			{
+				Query:    "SELECT * FROM test_table WHERE float_col = '10.5xyz'",
+				Expected: []sql.Row{{1, 10, float32(10.5)}},
+			},
+			{
+				Query:    "SELECT * FROM test_table WHERE int_col = '_10_'",
+				Expected: []sql.Row{},
+			},
+		},
+	},
 	//TODO: do not override tables with user-var-like names...but why would you do this??
 	//{
 	//	Name: "user var table name no conflict",

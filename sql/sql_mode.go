@@ -128,3 +128,16 @@ func ValidateStrictMode(ctx *Context) bool {
 	sqlMode := LoadSqlMode(ctx)
 	return sqlMode.ModeEnabled("STRICT_TRANS_TABLES") || sqlMode.ModeEnabled("STRICT_ALL_TABLES")
 }
+
+// ValidateStringToNumberMode returns true if mysql_string_to_number is enabled
+func ValidateStringToNumberMode(ctx *Context) bool {
+	if ctx == nil {
+		return false
+	}
+	if val, err := ctx.GetSessionVariable(ctx, "mysql_string_to_number"); err == nil {
+		if mysqlCompat, ok := val.(int8); ok {
+			return mysqlCompat != 0
+		}
+	}
+	return false
+}
