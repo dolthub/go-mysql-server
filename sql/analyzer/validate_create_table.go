@@ -792,8 +792,8 @@ func validateAutoIncrementModify(schema sql.Schema, keyedColumns map[string]bool
 	seen := false
 	for _, col := range schema {
 		if col.AutoIncrement {
-			// Under MySQL 8.4+, AUTO_INCREMENT columns must be integer types, but not BIT types.
-			if !types.IsInteger(col.Type) || types.IsBit(col.Type) {
+			// AUTO_INCREMENT requires integer types
+			if !types.IsInteger(col.Type) {
 				return sql.ErrInvalidColumnSpecifier.New(col.Name)
 			}
 			// keyedColumns == nil means they are trying to add auto_increment column

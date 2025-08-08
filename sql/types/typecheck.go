@@ -230,7 +230,7 @@ func IsUnsigned(t sql.Type) bool {
 	if svt, ok := t.(sql.SystemVariableType); ok {
 		t = svt.UnderlyingType()
 	}
-	return t == Uint8 || t == Uint16 || t == Uint24 || t == Uint32 || t == Uint64 || IsBit(t)
+	return t == Uint8 || t == Uint16 || t == Uint24 || t == Uint32 || t == Uint64
 }
 
 // IsYear checks if t is a year type.
