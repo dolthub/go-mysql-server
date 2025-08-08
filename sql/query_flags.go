@@ -41,7 +41,6 @@ const (
 	QFlagLimit
 	QFlagInterval
 	QFlagAnyAgg
-	QFlagUnion
 
 	// QFlagMax1Row indicates that a query can only return at most one row
 	QFlagMax1Row

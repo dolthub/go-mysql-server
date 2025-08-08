@@ -114,8 +114,8 @@ func indexSearchableLookup(ctx *sql.Context, n sql.Node, rt sql.TableNode, looku
 		ret = plan.NewFilter(newFilter, ret)
 	}
 
-	if fds != nil && fds.HasMax1Row() && !qFlags.JoinIsSet() && !qFlags.SubqueryIsSet() && !qFlags.IsSet(sql.QFlagUnion) && lookup.Ranges.Len() == 1 {
-		// Index lookup without join/subquery/union scope returns
+	if fds != nil && fds.HasMax1Row() && !qFlags.JoinIsSet() && !qFlags.SubqueryIsSet() && lookup.Ranges.Len() == 1 {
+		// Strict index lookup without a join or subquery scope will return
 		// at most one row. We could also use some sort of scope counting
 		// to check for single scope.
 		qFlags.Set(sql.QFlagMax1Row)

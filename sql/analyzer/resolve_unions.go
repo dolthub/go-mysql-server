@@ -41,9 +41,6 @@ func resolveUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 		subqueryCtx, cancelFunc := ctx.NewSubContext()
 		defer cancelFunc()
 
-		// Prevent max1Row optimization in union branches
-		qFlags.Set(sql.QFlagUnion)
-
 		left, _, err := a.analyzeThroughBatch(subqueryCtx, u.Left(), scope, "default-rules", sel, qFlags)
 		if err != nil {
 			return nil, transform.SameTree, err
@@ -81,9 +78,6 @@ func finalizeUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope
 		}
 		subqueryCtx, cancelFunc := ctx.NewSubContext()
 		defer cancelFunc()
-
-		// Prevent max1Row optimization in union branches
-		qFlags.Set(sql.QFlagUnion)
 
 		scope.SetJoin(false)
 		// TODO we could detect tree modifications here, skip rebuilding
