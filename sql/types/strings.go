@@ -15,7 +15,6 @@
 package types
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"reflect"
@@ -480,7 +479,7 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 				val = append(dest, b...)
 				start = len(dest)
 			}
-			val = append(val, bytes.Repeat([]byte{0}, int(st.maxCharLength)-len(val))...)
+			val = append(val, make([]byte, int(st.maxCharLength)-len(val))...)
 		}
 	}
 	val = val[start:]
@@ -757,7 +756,7 @@ func (t StringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.
 			valueBytes, err = ConvertToBytes(ctx, v, t, dest)
 		}
 		if t.baseType == sqltypes.Binary {
-			val = append(val, bytes.Repeat([]byte{0}, int(t.maxCharLength)-len(val))...)
+			val = append(val, make([]byte, int(t.maxCharLength)-len(val))...)
 		}
 		// Note: MySQL does not validate charset when returning query results.
 		// It returns whatever data is stored, allowing users to query and clean up
@@ -777,7 +776,6 @@ func (t StringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.
 			snippetStr := strings2.ToValidUTF8(string(snippet), string(utf8.RuneError))
 			return sqltypes.Value{}, sql.ErrCharSetFailedToEncode.New(resultCharset.Name(), utf8.ValidString(snippetStr), snippet)
 		}
-		//val = AppendAndSliceBytes(dest, encodedBytes)
 		val = encodedBytes
 	}
 
@@ -888,13 +886,6 @@ func (t StringType) MaxByteLength() int64 {
 
 // TODO: move me
 func AppendAndSliceString(buffer []byte, addition string) (slice []byte) {
-	stop := len(buffer)
-	buffer = append(buffer, addition...)
-	slice = buffer[stop:]
-	return
-}
-
-func AppendAndSliceBytes(buffer, addition []byte) (slice []byte) {
 	stop := len(buffer)
 	buffer = append(buffer, addition...)
 	slice = buffer[stop:]

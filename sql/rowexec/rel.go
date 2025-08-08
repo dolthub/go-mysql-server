@@ -55,7 +55,7 @@ func (b *BaseBuilder) buildTopN(ctx *sql.Context, n *plan.TopN, row sql.Row) (sq
 func (b *BaseBuilder) buildValueDerivedTable(ctx *sql.Context, n *plan.ValueDerivedTable, row sql.Row) (sql.RowIter, error) {
 	rows := make([]sql.Row, len(n.ExpressionTuples))
 	for i, et := range n.ExpressionTuples {
-		vals := make([]interface{}, len(et))
+		vals := make(sql.Row, len(et))
 		for j, e := range et {
 			var err error
 			p, err := e.Eval(ctx, row)
@@ -72,8 +72,7 @@ func (b *BaseBuilder) buildValueDerivedTable(ctx *sql.Context, n *plan.ValueDeri
 				vals[j] = vals[j].(decimal.Decimal).Round(int32(t.Scale()))
 			}
 		}
-
-		rows[i] = sql.NewRow(vals...)
+		rows[i] = vals
 	}
 
 	return sql.RowsToRowIter(rows...), nil

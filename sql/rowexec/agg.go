@@ -117,6 +117,8 @@ type groupByGroupingIter struct {
 	pos           int
 	child         sql.RowIter
 	dispose       sql.DisposeFunc
+	keyRow        sql.Row
+	keySch        sql.Schema
 }
 
 func newGroupByGroupingIter(
@@ -128,6 +130,8 @@ func newGroupByGroupingIter(
 		selectedExprs: selectedExprs,
 		groupByExprs:  groupByExprs,
 		child:         child,
+		keyRow:        make(sql.Row, len(groupByExprs)),
+		keySch:        make(sql.Schema, len(groupByExprs)),
 	}
 }
 
@@ -167,7 +171,7 @@ func (i *groupByGroupingIter) compute(ctx *sql.Context) error {
 			return err
 		}
 
-		key, err := groupingKey(ctx, i.groupByExprs, row)
+		key, err := i.groupingKey(ctx, i.groupByExprs, row)
 		if err != nil {
 			return err
 		}
@@ -237,10 +241,8 @@ func (i *groupByGroupingIter) Dispose() {
 	}
 }
 
-func groupingKey(ctx *sql.Context, exprs []sql.Expression, row sql.Row) (uint64, error) {
-	var keyRow = make(sql.Row, len(exprs))
-	var keySch = make(sql.Schema, len(exprs))
-	for i, expr := range exprs {
+func (i *groupByGroupingIter) groupingKey(ctx *sql.Context, exprs []sql.Expression, row sql.Row) (uint64, error) {
+	for idx, expr := range exprs {
 		v, err := expr.Eval(ctx, row)
 		if err != nil {
 			return 0, err
@@ -256,10 +258,10 @@ func groupingKey(ctx *sql.Context, exprs []sql.Expression, row sql.Row) (uint64,
 			v = string(val)
 		}
 
-		keyRow[i] = v
-		keySch[i] = &sql.Column{Type: typ}
+		i.keyRow[idx] = v
+		i.keySch[idx] = &sql.Column{Type: typ}
 	}
-	return hash.HashOf(ctx, keySch, keyRow)
+	return hash.HashOf(ctx, i.keySch, i.keyRow)
 }
 
 func newAggregationBuffer(expr sql.Expression) (sql.AggregationBuffer, error) {
