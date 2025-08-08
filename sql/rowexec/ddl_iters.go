@@ -352,12 +352,12 @@ func (i *modifyColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 	// TODO: replace with different node in analyzer
 	if rwt, ok := i.alterable.(sql.RewritableTable); ok {
-		rewritten, err := i.rewriteTable(ctx, rwt)
+		rewritten, rowCount, err := i.rewriteTable(ctx, rwt)
 		if err != nil {
 			return nil, err
 		}
 		if rewritten {
-			return sql.NewRow(types.NewOkResult(0)), nil
+			return sql.NewRow(types.NewOkResult(rowCount)), nil
 		}
 	}
 
@@ -376,7 +376,42 @@ func (i *modifyColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, err
 		}
 	}
-	return sql.NewRow(types.NewOkResult(0)), nil
+
+	rowCount, err := countTableRows(ctx, i.alterable)
+	if err != nil {
+		return nil, err
+	}
+
+	return sql.NewRow(types.NewOkResult(rowCount)), nil
+}
+
+// countTableRows counts the number of rows in a table for DDL result reporting
+func countTableRows(ctx *sql.Context, table sql.Table) (int, error) {
+	partitions, err := table.Partitions(ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	rowIter := sql.NewTableRowIter(ctx, table, partitions)
+	defer func() {
+		if rowIter != nil {
+			_ = rowIter.Close(ctx)
+		}
+	}()
+
+	var count int
+	for {
+		_, err := rowIter.Next(ctx)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return 0, err
+		}
+		count++
+	}
+
+	return count, nil
 }
 
 func handleFkColumnRename(ctx *sql.Context, fkTable sql.ForeignKeyTable, db sql.Database, oldName string, newName string) error {
@@ -481,20 +516,20 @@ func (i *modifyColumnIter) Close(context *sql.Context) error {
 }
 
 // rewriteTable rewrites the table given if required or requested, and returns whether it was rewritten
-func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) (bool, error) {
+func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) (bool, int, error) {
 	targetSchema := i.m.TargetSchema()
 	oldColName := i.m.Column()
 	oldColIdx := targetSchema.IndexOfColName(oldColName)
 	if oldColIdx == -1 {
 		// Should be impossible, checked in analyzer
-		return false, sql.ErrTableColumnNotFound.New(rwt.Name(), oldColName)
+		return false, 0, sql.ErrTableColumnNotFound.New(rwt.Name(), oldColName)
 	}
 
 	oldCol := i.m.TargetSchema()[oldColIdx]
 	newCol := i.m.NewColumn()
 	newSch, projections, err := modifyColumnInSchema(targetSchema, oldColName, newCol, i.m.Order())
 	if err != nil {
-		return false, err
+		return false, 0, err
 	}
 
 	// Wrap any auto increment columns in auto increment expressions. This mirrors what happens to row sources for normal
@@ -503,7 +538,7 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 		if col.AutoIncrement {
 			projections[i], err = expression.NewAutoIncrementForColumn(ctx, rwt, col, projections[i])
 			if err != nil {
-				return false, err
+				return false, 0, err
 			}
 		}
 	}
@@ -532,20 +567,21 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 	// TODO: codify rewrite requirements
 	rewriteRequested := rwt.ShouldRewriteTable(ctx, oldPkSchema, newPkSchema, oldCol, newCol)
 	if !rewriteRequired && !rewriteRequested {
-		return false, nil
+		return false, 0, nil
 	}
 
 	inserter, err := rwt.RewriteInserter(ctx, oldPkSchema, newPkSchema, oldCol, newCol, nil)
 	if err != nil {
-		return false, err
+		return false, 0, err
 	}
 
 	partitions, err := rwt.Partitions(ctx)
 	if err != nil {
-		return false, err
+		return false, 0, err
 	}
 
 	rowIter := sql.NewTableRowIter(ctx, rwt, partitions)
+	var rowCount int
 	for {
 		r, err := rowIter.Next(ctx)
 		if err == io.EOF {
@@ -553,7 +589,7 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 		} else if err != nil {
 			_ = inserter.DiscardChanges(ctx, err)
 			_ = inserter.Close(ctx)
-			return false, err
+			return false, 0, err
 		}
 
 		// remap old enum values to new enum values
@@ -564,7 +600,7 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 				oldStr, _ := oldEnum.At(oldIdx)
 				newIdx := newEnum.IndexOf(oldStr)
 				if newIdx == -1 {
-					return false, types.ErrDataTruncatedForColumn.New(newCol.Name)
+					return false, 0, types.ErrDataTruncatedForColumn.New(newCol.Name)
 				}
 				r[oldColIdx] = uint16(newIdx)
 			}
@@ -574,31 +610,32 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 		if err != nil {
 			_ = inserter.DiscardChanges(ctx, err)
 			_ = inserter.Close(ctx)
-			return false, err
+			return false, 0, err
 		}
 
 		err = i.validateNullability(ctx, newSch, newRow)
 		if err != nil {
 			_ = inserter.DiscardChanges(ctx, err)
 			_ = inserter.Close(ctx)
-			return false, err
+			return false, 0, err
 		}
 
 		err = inserter.Insert(ctx, newRow)
 		if err != nil {
 			_ = inserter.DiscardChanges(ctx, err)
 			_ = inserter.Close(ctx)
-			return false, err
+			return false, 0, err
 		}
+		rowCount++
 	}
 
 	// TODO: move this into iter.close, probably
 	err = inserter.Close(ctx)
 	if err != nil {
-		return false, err
+		return false, 0, err
 	}
 
-	return true, nil
+	return true, rowCount, nil
 }
 
 // modifyColumnInSchema modifies the given column in given schema and returns the new schema, along with a set of
