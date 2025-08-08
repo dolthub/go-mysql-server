@@ -109,7 +109,7 @@ type WindowFrame interface {
 	StartCurrentRow() bool
 	// EndCurrentRow returns whether a frame end is CURRENT ROW
 	EndCurrentRow() bool
-	// StartNFollowing returns a frame's start preceding Expression or nil
+	// StartNPreceding returns a frame's start preceding Expression or nil
 	StartNPreceding() Expression
 	// StartNFollowing returns a frame's start following Expression or nil
 	StartNFollowing() Expression

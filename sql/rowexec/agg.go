@@ -238,8 +238,9 @@ func (i *groupByGroupingIter) Dispose() {
 }
 
 func groupingKey(ctx *sql.Context, exprs []sql.Expression, row sql.Row) (uint64, error) {
-	var keyRow = make(sql.Row, len(exprs))
 	var keySch = make(sql.Schema, len(exprs))
+	keyRow := sql.GetRow(len(exprs))
+	defer sql.PutRow(keyRow)
 	for i, expr := range exprs {
 		v, err := expr.Eval(ctx, row)
 		if err != nil {
