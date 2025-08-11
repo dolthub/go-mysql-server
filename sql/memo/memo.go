@@ -407,7 +407,6 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 		return nil
 	}
 
-	var err error
 	n := grp.First
 	if _, ok := n.(SourceRel); ok {
 		// We should order the search bottom-up so that physical operators
@@ -425,7 +424,7 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 	for n != nil {
 		var cost float64
 		for _, g := range n.Children() {
-			err = m.optimizeMemoGroup(g)
+			err := m.optimizeMemoGroup(g)
 			if err != nil {
 				return err
 			}
@@ -437,15 +436,13 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 		}
 
 		if grp.RelProps.Distinct.IsHash() {
-			var dCost float64
 			if sortedInputs(n) {
 				n.SetDistinct(SortedDistinctOp)
 			} else {
 				n.SetDistinct(HashDistinctOp)
 				d := &Distinct{Child: grp}
-				dCost = float64(statsForRel(m.Ctx, d).RowCount())
+				relCost += float64(statsForRel(m.Ctx, d).RowCount())
 			}
-			relCost += dCost
 		} else {
 			n.SetDistinct(NoDistinctOp)
 		}
@@ -457,9 +454,6 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 	}
 
 	grp.Done = true
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
