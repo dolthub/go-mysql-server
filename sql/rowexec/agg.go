@@ -117,8 +117,10 @@ type groupByGroupingIter struct {
 	pos           int
 	child         sql.RowIter
 	dispose       sql.DisposeFunc
-	keyRow        sql.Row
-	keySch        sql.Schema
+
+	// buffers to reduce slice allocations
+	keyRow sql.Row
+	keySch sql.Schema
 }
 
 func newGroupByGroupingIter(
