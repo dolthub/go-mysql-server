@@ -4839,4 +4839,15 @@ var TriggerErrorTests = []ScriptTest{
 		Query:       "create trigger trig before insert on v for each row set b = 1",
 		ExpectedErr: sql.ErrExpectedTableFoundView,
 	},
+	{
+		// NOTE: We limit trigger names to 96 chars. This is more than MySQL allows (64 chars).
+		Name: "trigger name length over limit",
+		SetUpScript: []string{
+			"CREATE TABLE example_table (id INT AUTO_INCREMENT PRIMARY KEY, value VARCHAR(50));",
+		},
+		Query: `CREATE TRIGGER this_is_a_very_long_trigger_name_that_is_purposefully_made_to_be_exactly_one_hundred_characters_long
+				BEFORE INSERT ON example_table
+				FOR EACH ROW BEGIN SET NEW.value = UPPER(NEW.value); END;`,
+		ExpectedErr: sql.ErrIdentifierIsTooLong,
+	},
 }
