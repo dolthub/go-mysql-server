@@ -2366,9 +2366,6 @@ func (b *BaseBuilder) executeAlterAutoInc(ctx *sql.Context, n *plan.AlterAutoInc
 	if !ok {
 		return plan.ErrInsertIntoNotSupported.New()
 	}
-	if err != nil {
-		return err
-	}
 
 	autoTbl, ok := insertable.(sql.AutoIncrementTable)
 	if !ok {
