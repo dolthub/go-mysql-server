@@ -400,7 +400,7 @@ func (m *Memo) OptimizeRoot() error {
 // the same subgroup dependencies. After finding the best implementation
 // for a particular group, we fix the best plan for that group and recurse
 // into its parents.
-// TODO: we should not have to cost every plan, sometimes there is a probably
+// TODO: we should not have to cost every plan, sometimes there is a provably
 // best case implementation
 func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 	if grp.Done {
