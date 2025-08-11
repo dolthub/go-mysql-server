@@ -313,17 +313,14 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	if c.bestStat.FuncDeps().HasMax1Row() {
-		bestStat = c.bestStat.WithRowCount(1).WithDistinctCount(1)
-	} else {
-		bestStat = stats.UpdateCounts(bestStat)
-	}
-
-	if bestStat.FuncDeps().HasMax1Row() && !qFlags.JoinIsSet() && !qFlags.SubqueryIsSet() && lookup.Ranges.Len() == 1 {
+	if c.bestStat.FuncDeps().HasMax1Row() && !qFlags.JoinIsSet() && !qFlags.SubqueryIsSet() && lookup.Ranges.Len() == 1 {
 		// Strict index lookup without a join or subquery scope will return
 		// at most one row. We could also use some sort of scope counting
 		// to check for single scope.
 		qFlags.Set(sql.QFlagMax1Row)
+		bestStat = bestStat.WithRowCount(1).WithDistinctCount(1)
+	} else {
+		bestStat = stats.UpdateCounts(bestStat)
 	}
 
 	return ret, bestStat, retFilters, nil
