@@ -601,7 +601,7 @@ func (t NumberTypeImpl_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqlt
 		case []byte:
 			dest = str
 		case string:
-			dest = []byte(str)
+			dest = append(dest, str...)
 		default:
 			return sqltypes.Value{}, err
 		}
@@ -931,7 +931,7 @@ func (t NumberTypeImpl_) IsSigned() bool {
 	return false
 }
 
-// DisplayWidth() implements NumberType inteface.
+// DisplayWidth implements NumberType interface.
 func (t NumberTypeImpl_) DisplayWidth() int {
 	return t.displayWidth
 }

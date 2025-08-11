@@ -109,7 +109,7 @@ func (l *loadDataIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr erro
 		}
 	}
 
-	return sql.NewRow(row...), nil
+	return row, nil
 }
 
 func (l *loadDataIter) Close(ctx *sql.Context) error {
