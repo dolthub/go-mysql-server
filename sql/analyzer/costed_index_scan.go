@@ -309,14 +309,13 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 		retFilters = b.leftover
 	}
 
-	var bestStat sql.Statistic
+	bestStat, err := c.bestStat.WithHistogram(c.bestHist)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 	if c.bestStat.FuncDeps().HasMax1Row() {
 		bestStat = c.bestStat.WithRowCount(1).WithDistinctCount(1)
 	} else {
-		bestStat, err = c.bestStat.WithHistogram(c.bestHist)
-		if err != nil {
-			return nil, nil, nil, err
-		}
 		bestStat = stats.UpdateCounts(bestStat)
 	}
 
