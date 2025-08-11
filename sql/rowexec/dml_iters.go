@@ -754,7 +754,8 @@ func (u *updateSourceIter) Next(ctx *sql.Context) (sql.Row, error) {
 		newRow = newRow[len(newRow)-expectedSchemaLen:]
 	}
 
-	return oldRow.Append(newRow), nil
+	row := append(oldRow, newRow...)
+	return row, nil
 }
 
 func (u *updateSourceIter) Close(ctx *sql.Context) error {

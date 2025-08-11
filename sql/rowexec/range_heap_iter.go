@@ -43,16 +43,20 @@ func newRangeHeapJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinN
 		return nil, errors.New("right side of join must be a range heap")
 	}
 
+	primaryRow := make(sql.Row, len(row)+len(j.Left().Schema()))
+
 	return sql.NewSpanIter(span, &rangeHeapJoinIter{
-		parentRow:     row,
-		primary:       l,
-		cond:          j.Filter,
-		joinType:      j.Op,
-		rowSize:       len(row) + len(j.Left().Schema()) + len(j.Right().Schema()),
-		scopeLen:      j.ScopeLen,
-		b:             b,
-		rangeHeapPlan: rhp,
-		ctx:           ctx,
+		parentRow:      row,
+		primary:        l,
+		primaryRow:     primaryRow,
+		loadPrimaryRow: true,
+		cond:           j.Filter,
+		joinType:       j.Op,
+		rowSize:        len(row) + len(j.Left().Schema()) + len(j.Right().Schema()),
+		scopeLen:       j.ScopeLen,
+		b:              b,
+		rangeHeapPlan:  rhp,
+		ctx:            ctx,
 	}), nil
 }
 
@@ -65,6 +69,8 @@ type rangeHeapJoinIter struct {
 	secondary  sql.RowIter
 	cond       sql.Expression
 	joinType   plan.JoinType
+
+	loadPrimaryRow bool
 
 	foundMatch bool
 	rowSize    int
@@ -82,14 +88,15 @@ type rangeHeapJoinIter struct {
 }
 
 func (iter *rangeHeapJoinIter) loadPrimary(ctx *sql.Context) error {
-	if iter.primaryRow == nil {
+	if iter.loadPrimaryRow {
 		r, err := iter.primary.Next(ctx)
 		if err != nil {
 			return err
 		}
 
-		iter.primaryRow = iter.parentRow.Append(r)
+		copy(iter.primaryRow[len(iter.parentRow):], r)
 		iter.foundMatch = false
+		iter.loadPrimaryRow = false
 
 		err = iter.initializeHeap(ctx, iter.b, iter.primaryRow)
 		if err != nil {
@@ -121,7 +128,7 @@ func (iter *rangeHeapJoinIter) loadSecondary(ctx *sql.Context) (sql.Row, error) 
 			if err != nil {
 				return nil, err
 			}
-			iter.primaryRow = nil
+			iter.loadPrimaryRow = true
 			return nil, io.EOF
 		}
 		return nil, err
@@ -141,14 +148,14 @@ func (iter *rangeHeapJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				if !iter.foundMatch && iter.joinType.IsLeftOuter() {
-					iter.primaryRow = nil
+					iter.loadPrimaryRow = true
 					row := iter.buildRow(primary, nil)
 					return iter.removeParentRow(row), nil
 				}
 				continue
 			} else if errors.Is(err, plan.ErrEmptyCachedResult) {
 				if !iter.foundMatch && iter.joinType.IsLeftOuter() {
-					iter.primaryRow = nil
+					iter.loadPrimaryRow = true
 					row := iter.buildRow(primary, nil)
 					return iter.removeParentRow(row), nil
 				}
@@ -171,7 +178,7 @@ func (iter *rangeHeapJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 			if err != nil {
 				return nil, err
 			}
-			iter.primaryRow = nil
+			iter.loadPrimaryRow = true
 			continue
 		}
 
@@ -306,7 +313,7 @@ func compareNullsFirst(ctx *sql.Context, comparisonType sql.Type, a, b interface
 	return comparisonType.Compare(ctx, a, b)
 }
 
-func (iter rangeHeapJoinIter) Len() int { return len(iter.activeRanges) }
+func (iter *rangeHeapJoinIter) Len() int { return len(iter.activeRanges) }
 
 func (iter *rangeHeapJoinIter) Less(i, j int) bool {
 	lhs := iter.activeRanges[i][iter.rangeHeapPlan.MaxColumnIndex]

@@ -167,6 +167,8 @@ type JsonTableCol struct {
 	pos      int
 	finished bool // exhausted all rows in data
 	currSib  int
+
+	resultRow sql.Row
 }
 
 // IsSibling returns if the jsonTableCol contains multiple columns
