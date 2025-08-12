@@ -647,7 +647,6 @@ func (i *crossJoinIterator) Next(ctx *sql.Context) (sql.Row, error) {
 			}
 			copy(i.primaryRow[i.parentLen:], r)
 
-			// TODO: do we need to keep rebuilding? there's no condition, so i.leftRow shouldn't produce a new iter right?
 			iter, err := i.b.Build(ctx, i.rp, i.primaryRow)
 			if err != nil {
 				return nil, err
