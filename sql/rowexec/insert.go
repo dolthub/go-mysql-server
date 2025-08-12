@@ -221,7 +221,7 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 
 func (i *insertIter) handleOnDuplicateKeyUpdate(ctx *sql.Context, oldRow, newRow sql.Row) (returnRow sql.Row, returnErr error) {
 	var err error
-	updateAcc := append(oldRow, newRow...) // TODO: how is this safe?
+	updateAcc := append(oldRow, newRow...)
 	var evalRow sql.Row
 	for _, updateExpr := range i.updateExprs {
 		// this SET <val> indexes into LHS, but the <expr> can
@@ -233,13 +233,11 @@ func (i *insertIter) handleOnDuplicateKeyUpdate(ctx *sql.Context, oldRow, newRow
 				if !ok {
 					return nil, err
 				}
-
 				val = convertDataAndWarn(ctx, i.schema, newRow, idx, err)
 			} else {
 				return nil, err
 			}
 		}
-
 		updateAcc = val.(sql.Row)
 	}
 	// project LHS only
