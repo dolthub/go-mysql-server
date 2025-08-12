@@ -2165,7 +2165,7 @@ func (t *Table) ModifyDefaultCollation(ctx *sql.Context, collation sql.Collation
 	return nil
 }
 
-//ModifyComment implements sql.CommentAlterableTable
+// ModifyComment implements sql.CommentAlterableTable
 func (t *Table) ModifyComment(ctx *sql.Context, comment string) error {
 	data := t.sessionTableData(ctx)
 	data.comment = comment
