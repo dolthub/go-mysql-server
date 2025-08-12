@@ -23,6 +23,19 @@ import (
 
 var LoadDataScripts = []ScriptTest{
 	{
+		Name: "LOAD DATA applies column defaults when \\N provided",
+		SetUpScript: []string{
+			"create table t (pk int primary key, c1 int default 1, c2 int)",
+			"LOAD DATA INFILE './testdata/load_defaults_null.csv' INTO TABLE t FIELDS TERMINATED BY ',' LINES TERMINATED BY '\n'",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from t",
+				Expected: []sql.Row{{1, 1, 1}},
+			},
+		},
+	},
+	{
 		Name: "Basic load data with enclosed values.",
 		SetUpScript: []string{
 			"create table loadtable(pk int primary key)",

@@ -206,8 +206,20 @@ func (l *loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Express
 					exprs[exprIdx] = expression.NewLiteral(nil, types.Null)
 				}
 			}
-		case "NULL":
-			exprs[exprIdx] = expression.NewLiteral(nil, types.Null)
+        case "NULL":
+            // For MySQL LOAD DATA semantics, \N (mapped to NULL here) should use the column default
+            // if one exists; otherwise insert NULL.
+            destIdx := l.fieldToColMap[fieldIdx]
+            if destIdx >= 0 {
+                destCol := l.destSch[destIdx]
+                if destCol.Default != nil {
+                    exprs[exprIdx] = destCol.Default
+                } else {
+                    exprs[exprIdx] = expression.NewLiteral(nil, types.Null)
+                }
+            } else {
+                exprs[exprIdx] = expression.NewLiteral(nil, types.Null)
+            }
 		default:
 			exprs[exprIdx] = expression.NewLiteral(field, types.LongText)
 		}
