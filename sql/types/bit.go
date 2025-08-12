@@ -193,6 +193,11 @@ func (t BitType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Va
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
+	
+	// Delegate int64 values to Int64.SQL to prevent server engine []uint8 serialization errors
+	if int64Val, ok := v.(int64); ok {
+		return Int64.SQL(ctx, dest, int64Val)
+	}
 	value, _, err := t.Convert(ctx, v)
 	if err != nil {
 		return sqltypes.Value{}, err

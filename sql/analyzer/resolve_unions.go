@@ -99,6 +99,10 @@ func finalizeUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
+
+		// UNION operations can return multiple rows, so Max1Row optimization is invalid
+		qFlags.Unset(sql.QFlagMax1Row)
+
 		return newN, transform.NewTree, nil
 	})
 }

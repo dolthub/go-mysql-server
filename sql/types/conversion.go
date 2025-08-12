@@ -637,6 +637,11 @@ func generalizeNumberTypes(a, b sql.Type) sql.Type {
 // TODO: Create and handle "Illegal mix of collations" error
 // TODO: Handle extended types, like DoltgresType
 func GeneralizeTypes(a, b sql.Type) sql.Type {
+	// BIT types must convert to Int64 in UNION to avoid server engine serialization errors with []uint8
+	if (IsBit(a) || IsBit(b)) && (IsBit(a) && IsBit(b) || IsNullType(a) || IsNullType(b)) {
+		return Int64
+	}
+	
 	if reflect.DeepEqual(a, b) {
 		return a
 	}
@@ -693,18 +698,6 @@ func GeneralizeTypes(a, b sql.Type) sql.Type {
 		return LongBlob
 	}
 
-	aIsBit := IsBit(a)
-	bIsBit := IsBit(b)
-	if aIsBit && bIsBit {
-		// TODO: match max bits to max of max bits between a and b
-		return a.Promote()
-	}
-	if aIsBit {
-		a = Int64
-	}
-	if bIsBit {
-		b = Int64
-	}
 
 	aIsYear := IsYear(a)
 	bIsYear := IsYear(b)

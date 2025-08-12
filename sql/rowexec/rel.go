@@ -813,6 +813,7 @@ func (b *BaseBuilder) buildSetOp(ctx *sql.Context, s *plan.SetOp, row sql.Row) (
 			NextIter: func(ctx *sql.Context) (sql.RowIter, error) {
 				return b.buildNodeExec(ctx, s.Right(), row)
 			},
+			ResultSchema: s.Schema(),
 		}
 	case plan.IntersectType:
 		var iter2 sql.RowIter
