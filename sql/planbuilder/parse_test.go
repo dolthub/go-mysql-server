@@ -3014,3 +3014,26 @@ func TestPlanBuilderErr(t *testing.T) {
 		})
 	}
 }
+
+// TestParseErrImplementsError verifies that parseErr implements the error interface (issue #3144)
+// This ensures that when parseErr structs are logged directly (like in tracing), they show
+// actual error messages instead of memory addresses like "{0xc006f85d80}"
+func TestParseErrImplementsError(t *testing.T) {
+	// Create a parseErr directly to test the Error() method implementation
+	originalErr := sql.ErrColumnNotFound.New("test_column", "test_table")
+	pErr := parseErr{err: originalErr}
+
+	// Test that parseErr implements the error interface
+	var _ error = pErr
+
+	// Test that Error() returns the underlying error message
+	require.Equal(t, originalErr.Error(), pErr.Error())
+
+	// Test that when formatted as string, it shows meaningful content
+	formatted := fmt.Sprintf("%v", pErr)
+	require.Contains(t, formatted, "test_column")
+	require.NotContains(t, formatted, "0x", "Should not show memory address")
+
+	// Test that the error message is not a struct format
+	require.NotContains(t, formatted, "{github.com/dolthub/go-mysql-server/sql/planbuilder.parseErr")
+}

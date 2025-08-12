@@ -149,7 +149,7 @@ func (b *BaseBuilder) buildDeleteFrom(ctx *sql.Context, n *plan.DeleteFrom, row 
 		}
 		schemaPositionDeleters[i] = schemaPositionDeleter{deleter, int(start), int(end)}
 	}
-	return newDeleteIter(iter, schema, schemaPositionDeleters...), nil
+	return newDeleteIter(iter, schema, schemaPositionDeleters, n.Returning, n.Schema()), nil
 }
 
 func (b *BaseBuilder) buildForeignKeyHandler(ctx *sql.Context, n *plan.ForeignKeyHandler, row sql.Row) (sql.RowIter, error) {

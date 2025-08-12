@@ -561,7 +561,11 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 		rightGrp := m.MemoizeProject(nil, anti.Right, projectExpressions)
 
 		// join is a new group
-		joinGrp := m.MemoizeLeftJoin(nil, anti.Left, rightGrp, plan.JoinTypeLeftOuterExcludeNulls, anti.Filter)
+		joinType := plan.JoinTypeLeftOuter
+		if anti.Op.IsExcludeNulls() {
+			joinType = plan.JoinTypeLeftOuterExcludeNulls
+		}
+		joinGrp := m.MemoizeLeftJoin(nil, anti.Left, rightGrp, joinType, anti.Filter)
 
 		// drop null projected columns on right table
 		nullFilters := make([]sql.Expression, len(nullify))

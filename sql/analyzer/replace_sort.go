@@ -154,14 +154,14 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 			*plan.Project, *plan.Filter, *plan.Limit, *plan.Offset, *plan.Distinct, *plan.TableAlias:
 			newChildren[i], same, err = replaceIdxSortHelper(ctx, scope, child, sortNode)
 		case *plan.JoinNode:
-			// TODO: is this applicable to other types of joins?
-			//   as long as left child is already sorted and SortFields are a prefix, then it's ok?
-			if !c.JoinType().IsMerge() {
-				continue
-			}
 			// It's (probably) not possible to have Sort as child of Join without Subquery/SubqueryAlias,
 			//  and in the case where there is a Subq/SQA it's taken care of through finalizeSubqueries
 			if sortNode == nil {
+				continue
+			}
+			// Merge Joins assume that left and right are sorted
+			// Cross Joins and Inner Joins are valid for sort removal if left child is sorted
+			if !c.JoinType().IsMerge() && !c.JoinType().IsCross() && !c.JoinType().IsInner() {
 				continue
 			}
 			newLeft, sameLeft, errLeft := replaceIdxSortHelper(ctx, scope, c.Left(), sortNode)
@@ -172,35 +172,48 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 			if errRight != nil {
 				return nil, transform.SameTree, errRight
 			}
-			if sameLeft && sameRight {
+			// Neither child was converted to an IndexedTableAccess, so we can't remove the sort node
+			leftIsSorted, rightIsSorted := !sameLeft, !sameRight
+			if !leftIsSorted && !rightIsSorted {
 				continue
 			}
 			// No need to check all SortField orders because of isValidSortFieldOrder
 			isReversed := sortNode.SortFields[0].Order == sql.Descending
 			// If both left and right have been replaced, no need to manually reverse any indexes as they both should be
 			// replaced already
-			if !sameLeft && !sameRight {
+			if leftIsSorted && rightIsSorted {
 				c.IsReversed = isReversed
 				continue
 			}
-			// If only one side has been replaced, we need to check if the other side can be reversed
-			if (sameLeft != sameRight) && isReversed {
-				// If descending, then both Indexes must be reversed
-				if sameLeft {
-					newLeft, same, err = buildReverseIndexedTable(ctx, newLeft)
-				} else if sameRight {
-					newRight, same, err = buildReverseIndexedTable(ctx, newRight)
+			if c.JoinType().IsCross() || c.JoinType().IsInner() {
+				// For cross joins and inner joins, if the right child is sorted, we need to swap
+				if !sameRight {
+					// Swapping may mess up projections, but
+					// eraseProjection will drop any Projections that are now unnecessary and
+					// fixExecIndexes will fix any existing Projection GetField indexes.
+					newLeft, newRight = newRight, newLeft
 				}
-				if err != nil {
-					return nil, transform.SameTree, err
+			} else {
+				// If only one side has been replaced, we need to check if the other side can be reversed
+				if (leftIsSorted != rightIsSorted) && isReversed {
+					// If descending, then both Indexes must be reversed
+					if rightIsSorted {
+						newLeft, same, err = buildReverseIndexedTable(ctx, newLeft)
+					} else if leftIsSorted {
+						newRight, same, err = buildReverseIndexedTable(ctx, newRight)
+					}
+					if err != nil {
+						return nil, transform.SameTree, err
+					}
+					// If we could not replace the IndexedTableAccess with a reversed one (due to lack of reversible index)
+					// same = true, so just continue
+					if same {
+						continue
+					}
+					c.IsReversed = true
 				}
-				// If we could not replace the IndexedTableAccess with a reversed one (due to lack of reversible index)
-				// same = true, so just continue
-				if same {
-					continue
-				}
-				c.IsReversed = true
 			}
+
 			newChildren[i], err = c.WithChildren(newLeft, newRight)
 			if err != nil {
 				return nil, transform.SameTree, err

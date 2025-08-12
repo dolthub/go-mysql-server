@@ -1922,6 +1922,18 @@ SELECT SUM(x) FROM xy WHERE x IN (
 		},
 	},
 	{
+		name: "where not exists",
+		setup: [][]string{
+			setup.XyData[0],
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    `select * from xy_hasnull x where not exists(select 1 from ab_hasnull a where a.b = x.y)`,
+				Expected: []sql.Row{{1, 0}, {3, nil}},
+			},
+		},
+	},
+	{
 		name: "multi-column merge join",
 		setup: [][]string{
 			setup.Pk_tablesData[0],

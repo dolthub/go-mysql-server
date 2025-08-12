@@ -64,10 +64,12 @@ func findSourcePosition(schema sql.Schema, name string) (uint, uint, error) {
 // but in more complex scenarios when there are columns contributed by outer scopes and for DELETE FROM JOIN statements
 // the child iterator will return a row that is composed of rows from multiple table sources.
 type deleteIter struct {
-	deleters  []schemaPositionDeleter
-	schema    sql.Schema
-	childIter sql.RowIter
-	closed    bool
+	deleters     []schemaPositionDeleter
+	schema       sql.Schema
+	childIter    sql.RowIter
+	closed       bool
+	returnExprs  []sql.Expression
+	returnSchema sql.Schema
 }
 
 func (d *deleteIter) Next(ctx *sql.Context) (sql.Row, error) {
@@ -98,6 +100,18 @@ func (d *deleteIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 	}
 
+	if len(d.returnExprs) > 0 {
+		var retExprRow sql.Row
+		for _, returnExpr := range d.returnExprs {
+			result, err := returnExpr.Eval(ctx, row)
+			if err != nil {
+				return nil, err
+			}
+			retExprRow = append(retExprRow, result)
+		}
+		return retExprRow, nil
+	}
+
 	return row, nil
 }
 
@@ -125,14 +139,16 @@ func (d *deleteIter) Close(ctx *sql.Context) error {
 	return nil
 }
 
-func newDeleteIter(childIter sql.RowIter, schema sql.Schema, deleters ...schemaPositionDeleter) sql.RowIter {
+func newDeleteIter(childIter sql.RowIter, schema sql.Schema, deleters []schemaPositionDeleter, returnExprs []sql.Expression, returnSchema sql.Schema) sql.RowIter {
 	openerClosers := make([]sql.EditOpenerCloser, len(deleters))
 	for i, ds := range deleters {
 		openerClosers[i] = ds.deleter
 	}
 	return plan.NewTableEditorIter(&deleteIter{
-		deleters:  deleters,
-		childIter: childIter,
-		schema:    schema,
+		deleters:     deleters,
+		childIter:    childIter,
+		schema:       schema,
+		returnExprs:  returnExprs,
+		returnSchema: returnSchema,
 	}, openerClosers...)
 }

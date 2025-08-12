@@ -502,6 +502,9 @@ var (
 	// ErrInvalidIdentifier is returned when an identifier is invalid
 	ErrInvalidIdentifier = errors.NewKind("invalid identifier: `%s`")
 
+	// ErrIdentifierIsTooLong is returned when creating a resource, but the identifier is longer than a name limit
+	ErrIdentifierIsTooLong = errors.NewKind("Identifier name '%s' is too long")
+
 	// ErrInvalidArgument is returned when an argument to a function is invalid.
 	ErrInvalidArgument = errors.NewKind("Invalid argument to %s")
 

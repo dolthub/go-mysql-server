@@ -492,6 +492,11 @@ func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 	del.RefsSingleRel = !outScope.refsSubquery
 	del.IsProcNested = b.ProcCtx().DbName != ""
 	outScope.node = del
+
+	if len(d.Returning) > 0 {
+		del.Returning = b.analyzeSelectList(outScope, outScope, d.Returning)
+	}
+
 	return
 }
 

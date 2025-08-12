@@ -233,13 +233,11 @@ func (i *insertIter) handleOnDuplicateKeyUpdate(ctx *sql.Context, oldRow, newRow
 				if !ok {
 					return nil, err
 				}
-
 				val = convertDataAndWarn(ctx, i.schema, newRow, idx, err)
 			} else {
 				return nil, err
 			}
 		}
-
 		updateAcc = val.(sql.Row)
 	}
 	// project LHS only
