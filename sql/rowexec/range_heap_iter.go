@@ -13,6 +13,31 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
+// joinIter is an iterator that iterates over every row in the primary table and performs an index lookup in
+// the secondary table for each value
+type rangeHeapJoinIter struct {
+	ctx      *sql.Context
+	err      error
+	b        sql.NodeExecBuilder
+	joinType plan.JoinType
+	cond     sql.Expression
+
+	primary        sql.RowIter
+	primaryRow     sql.Row
+	loadPrimaryRow bool
+
+	secondary  sql.RowIter
+	foundMatch bool
+	rowSize    int
+	scopeLen   int
+	parentLen  int
+
+	rangeHeapPlan *plan.RangeHeap
+	childRowIter  sql.RowIter
+	pendingRow    sql.Row
+	activeRanges  []sql.Row
+}
+
 func newRangeHeapJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode, row sql.Row) (sql.RowIter, error) {
 	var leftName, rightName string
 	if leftTable, ok := j.Left().(sql.Nameable); ok {
@@ -43,48 +68,27 @@ func newRangeHeapJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinN
 		return nil, errors.New("right side of join must be a range heap")
 	}
 
-	primaryRow := make(sql.Row, len(row)+len(j.Left().Schema()))
+	parentLen := len(row)
+
+	primaryRow := make(sql.Row, parentLen+len(j.Left().Schema()))
+	copy(primaryRow, row)
 
 	return sql.NewSpanIter(span, &rangeHeapJoinIter{
-		parentRow:      row,
+		ctx:      ctx,
+		b:        b,
+		joinType: j.Op,
+		cond:     j.Filter,
+
 		primary:        l,
 		primaryRow:     primaryRow,
 		loadPrimaryRow: true,
-		cond:           j.Filter,
-		joinType:       j.Op,
-		rowSize:        len(row) + len(j.Left().Schema()) + len(j.Right().Schema()),
-		scopeLen:       j.ScopeLen,
-		b:              b,
-		rangeHeapPlan:  rhp,
-		ctx:            ctx,
+
+		rowSize:   len(row) + len(j.Left().Schema()) + len(j.Right().Schema()),
+		scopeLen:  j.ScopeLen,
+		parentLen: parentLen,
+
+		rangeHeapPlan: rhp,
 	}), nil
-}
-
-// joinIter is an iterator that iterates over every row in the primary table and performs an index lookup in
-// the secondary table for each value
-type rangeHeapJoinIter struct {
-	parentRow  sql.Row
-	primary    sql.RowIter
-	primaryRow sql.Row
-	secondary  sql.RowIter
-	cond       sql.Expression
-	joinType   plan.JoinType
-
-	loadPrimaryRow bool
-
-	foundMatch bool
-	rowSize    int
-	scopeLen   int
-	b          sql.NodeExecBuilder
-
-	rangeHeapPlan *plan.RangeHeap
-	childRowIter  sql.RowIter
-	pendingRow    sql.Row
-
-	activeRanges []sql.Row
-	err          error
-
-	ctx *sql.Context
 }
 
 func (iter *rangeHeapJoinIter) loadPrimary(ctx *sql.Context) error {
@@ -94,7 +98,7 @@ func (iter *rangeHeapJoinIter) loadPrimary(ctx *sql.Context) error {
 			return err
 		}
 
-		copy(iter.primaryRow[len(iter.parentRow):], r)
+		copy(iter.primaryRow[iter.parentLen:], r)
 		iter.foundMatch = false
 		iter.loadPrimaryRow = false
 
@@ -110,7 +114,6 @@ func (iter *rangeHeapJoinIter) loadPrimary(ctx *sql.Context) error {
 func (iter *rangeHeapJoinIter) loadSecondary(ctx *sql.Context) (sql.Row, error) {
 	if iter.secondary == nil {
 		rowIter, err := iter.getActiveRanges(ctx, iter.b, iter.primaryRow)
-
 		if err != nil {
 			return nil, err
 		}
@@ -192,18 +195,16 @@ func (iter *rangeHeapJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 }
 
 func (iter *rangeHeapJoinIter) removeParentRow(r sql.Row) sql.Row {
-	copy(r[iter.scopeLen:], r[len(iter.parentRow):])
-	r = r[:len(r)-len(iter.parentRow)+iter.scopeLen]
+	copy(r[iter.scopeLen:], r[iter.parentLen:])
+	r = r[:len(r)-iter.parentLen+iter.scopeLen]
 	return r
 }
 
 // buildRow builds the result set row using the rows from the primary and secondary tables
 func (iter *rangeHeapJoinIter) buildRow(primary, secondary sql.Row) sql.Row {
 	row := make(sql.Row, iter.rowSize)
-
 	copy(row, primary)
 	copy(row[len(primary):], secondary)
-
 	return row
 }
 
