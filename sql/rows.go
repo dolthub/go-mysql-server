@@ -29,7 +29,7 @@ type Row []interface{}
 
 // NewRow creates a row from the given values.
 func NewRow(values ...interface{}) Row {
-	row := make([]interface{}, len(values))
+	row := make(Row, len(values))
 	copy(row, values)
 	return row
 }

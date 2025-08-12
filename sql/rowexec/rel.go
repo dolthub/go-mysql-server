@@ -103,7 +103,7 @@ func (b *BaseBuilder) buildValues(ctx *sql.Context, n *plan.Values, row sql.Row)
 			}
 		}
 
-		rows[i] = sql.NewRow(vals...)
+		rows[i] = vals
 	}
 
 	return sql.RowsToRowIter(rows...), nil
