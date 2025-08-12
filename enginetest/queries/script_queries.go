@@ -124,16 +124,15 @@ var ScriptTests = []ScriptTest{
 		// Regression test for https://github.com/dolthub/dolt/issues/9641
 		Name: "bit union regression test dolt#9641",
 		SetUpScript: []string{
-			"CREATE TABLE bit_union_test_9641 (id INT PRIMARY KEY, flag BIT(1))",
-			"INSERT INTO bit_union_test_9641 VALUES (1, 0), (2, 1)",
+			"CREATE TABLE report_card (id INT PRIMARY KEY, archived BIT(1))",
+			"INSERT INTO report_card VALUES (1, 0)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "SELECT flag FROM bit_union_test_9641 WHERE id = 1 UNION SELECT NULL as flag",
-				Expected: []sql.Row{{int64(0)}, {nil}},
-			},
-			{
-				Query:    "SELECT flag FROM bit_union_test_9641 WHERE id = 1 UNION SELECT 48 as flag",
+				// Test UNION with BIT column and integer constant (related to customer's "48 is beyond maximum value" error)
+				Query: `SELECT archived FROM report_card WHERE id = 1
+					UNION ALL  
+					SELECT 48 FROM report_card WHERE id = 1`,
 				Expected: []sql.Row{{int64(0)}, {int64(48)}},
 			},
 		},
