@@ -409,6 +409,9 @@ var (
 	// ErrAlterTableCollationNotSupported is thrown when the table doesn't support ALTER TABLE COLLATE statements
 	ErrAlterTableCollationNotSupported = errors.NewKind("table %s cannot have its collation altered")
 
+	// ErrAlterTableCommentNotSupported is thrown when the table doesn't support ALTER TABLE COMMENT statements
+	ErrAlterTableCommentNotSupported = errors.NewKind("table %s cannot have its comment altered")
+
 	// ErrCollationNotSupportedOnUniqueTextIndex is thrown when a unique index is created on a TEXT column, with no
 	// prefix length specified, and the collation is case-insensitive or accent-insensitive, meaning we can't
 	// reliably use a content-hashed field to detect uniqueness.

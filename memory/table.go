@@ -74,6 +74,7 @@ var _ sql.TruncateableTable = (*Table)(nil)
 var _ sql.AlterableTable = (*Table)(nil)
 var _ sql.IndexAlterableTable = (*Table)(nil)
 var _ sql.CollationAlterableTable = (*Table)(nil)
+var _ sql.CommentAlterableTable = (*Table)(nil)
 var _ sql.ForeignKeyTable = (*Table)(nil)
 var _ sql.CheckAlterableTable = (*Table)(nil)
 var _ sql.RewritableTable = (*Table)(nil)
@@ -2161,6 +2162,13 @@ func (t *Table) ModifyDefaultCollation(ctx *sql.Context, collation sql.Collation
 	data := t.sessionTableData(ctx)
 
 	data.collation = collation
+	return nil
+}
+
+//ModifyComment implements sql.CommentAlterableTable
+func (t *Table) ModifyComment(ctx *sql.Context, comment string) error {
+	data := t.sessionTableData(ctx)
+	data.comment = comment
 	return nil
 }
 

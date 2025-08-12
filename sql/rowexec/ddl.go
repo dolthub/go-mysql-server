@@ -1196,6 +1196,18 @@ func (b *BaseBuilder) buildAlterTableCollation(ctx *sql.Context, n *plan.AlterTa
 	return rowIterWithOkResultWithZeroRowsAffected(), alterable.ModifyDefaultCollation(ctx, n.Collation)
 }
 
+func (b *BaseBuilder) buildAlterTableComment(ctx *sql.Context, n *plan.AlterTableComment, row sql.Row) (sql.RowIter, error) {
+	tbl, err := getTableFromDatabase(ctx, n.Database(), n.Table)
+	if err != nil {
+		return nil, err
+	}
+	alterable, ok := tbl.(sql.CommentAlterableTable)
+	if !ok {
+		return nil, sql.ErrAlterTableCommentNotSupported.New(tbl.Name())
+	}
+	return rowIterWithOkResultWithZeroRowsAffected(), alterable.ModifyComment(ctx, n.Comment)
+}
+
 func (b *BaseBuilder) buildCreateForeignKey(ctx *sql.Context, n *plan.CreateForeignKey, row sql.Row) (sql.RowIter, error) {
 	db, err := n.DbProvider.Database(ctx, n.FkDef.Database)
 	if err != nil {
