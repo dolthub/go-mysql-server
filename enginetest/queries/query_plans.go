@@ -2462,7 +2462,7 @@ Select * from (
 	},
 	{
 		Query: `select * from uv where not exists (select * from xy where not exists (select * from xy where not(u = 1)))`,
-		ExpectedPlan: "AntiJoin\n" +
+		ExpectedPlan: "AntiJoinIncludingNulls\n" +
 			" ├─ Or\n" +
 			" │   ├─ NOT\n" +
 			" │   │   └─ EXISTS Subquery\n" +
@@ -2485,7 +2485,7 @@ Select * from (
 			"         ├─ name: xy\n" +
 			"         └─ columns: [x y]\n" +
 			"",
-		ExpectedEstimates: "AntiJoin (estimated cost=2024.000 rows=5)\n" +
+		ExpectedEstimates: "AntiJoinIncludingNulls (estimated cost=2024.000 rows=5)\n" +
 			" ├─ ((NOT(EXISTS Subquery\n" +
 			" │   ├─ cacheable: true\n" +
 			" │   └─ Table\n" +
@@ -2497,7 +2497,7 @@ Select * from (
 			" └─ Table\n" +
 			"     └─ name: xy\n" +
 			"",
-		ExpectedAnalysis: "AntiJoin (estimated cost=2024.000 rows=5) (actual rows=3 loops=1)\n" +
+		ExpectedAnalysis: "AntiJoinIncludingNulls (estimated cost=2024.000 rows=5) (actual rows=3 loops=1)\n" +
 			" ├─ ((NOT(EXISTS Subquery\n" +
 			" │   ├─ cacheable: true\n" +
 			" │   └─ Table\n" +
@@ -3931,7 +3931,7 @@ Select * from (
 			"     ├─ columns: [xy.x:0!null, xy.y:1]\n" +
 			"     └─ Filter\n" +
 			"         ├─ cte1.u:2!null IS NULL\n" +
-			"         └─ LeftOuterHashJoinExcludeNulls\n" +
+			"         └─ LeftOuterHashJoinExcludingNulls\n" +
 			"             ├─ Eq\n" +
 			"             │   ├─ xy.x:0!null\n" +
 			"             │   └─ cte1.u:2!null\n" +
@@ -3997,7 +3997,7 @@ Select * from (
 			"     ├─ columns: [xy.x, xy.y]\n" +
 			"     └─ Filter\n" +
 			"         ├─ cte1.u IS NULL\n" +
-			"         └─ LeftOuterHashJoinExcludeNulls\n" +
+			"         └─ LeftOuterHashJoinExcludingNulls\n" +
 			"             ├─ (xy.x = cte1.u)\n" +
 			"             ├─ Table\n" +
 			"             │   └─ name: xy\n" +
@@ -4043,7 +4043,7 @@ Select * from (
 			"     ├─ columns: [xy.x, xy.y]\n" +
 			"     └─ Filter\n" +
 			"         ├─ cte1.u IS NULL\n" +
-			"         └─ LeftOuterHashJoinExcludeNulls\n" +
+			"         └─ LeftOuterHashJoinExcludingNulls\n" +
 			"             ├─ (xy.x = cte1.u)\n" +
 			"             ├─ Table\n" +
 			"             │   └─ name: xy\n" +

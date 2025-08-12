@@ -109,7 +109,7 @@ func (l *loadDataIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr erro
 		}
 	}
 
-	return sql.NewRow(row...), nil
+	return row, nil
 }
 
 func (l *loadDataIter) Close(ctx *sql.Context) error {
@@ -570,7 +570,7 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 			}
 		}
 
-		newRow, err := projectRowWithTypes(ctx, newSch, projections, r)
+		newRow, err := projectRowWithTypes(ctx, targetSchema, newSch, projections, r)
 		if err != nil {
 			_ = inserter.DiscardChanges(ctx, err)
 			_ = inserter.Close(ctx)
@@ -905,21 +905,21 @@ func (i *loggingKeyValueIter) Close(ctx *sql.Context) error {
 
 // projectRowWithTypes projects the row given with the projections given and additionally converts them to the
 // corresponding types found in the schema given, using the standard type conversion logic.
-func projectRowWithTypes(ctx *sql.Context, sch sql.Schema, projections []sql.Expression, r sql.Row) (sql.Row, error) {
+func projectRowWithTypes(ctx *sql.Context, oldSchema, newSchema sql.Schema, projections []sql.Expression, r sql.Row) (sql.Row, error) {
 	newRow, err := ProjectRow(ctx, projections, r)
 	if err != nil {
 		return nil, err
 	}
 
 	for i := range newRow {
-		converted, inRange, err := sch[i].Type.Convert(ctx, newRow[i])
+		converted, inRange, err := types.TypeAwareConversion(ctx, newRow[i], oldSchema[i].Type, newSchema[i].Type)
 		if err != nil {
 			if sql.ErrNotMatchingSRID.Is(err) {
-				err = sql.ErrNotMatchingSRIDWithColName.New(sch[i].Name, err)
+				err = sql.ErrNotMatchingSRIDWithColName.New(newSchema[i].Name, err)
 			}
 			return nil, err
 		} else if !inRange {
-			return nil, sql.ErrValueOutOfRange.New(newRow[i], sch[i].Type)
+			return nil, sql.ErrValueOutOfRange.New(newRow[i], newSchema[i].Type)
 		}
 		newRow[i] = converted
 	}
@@ -2365,9 +2365,6 @@ func (b *BaseBuilder) executeAlterAutoInc(ctx *sql.Context, n *plan.AlterAutoInc
 	insertable, ok := table.(sql.InsertableTable)
 	if !ok {
 		return plan.ErrInsertIntoNotSupported.New()
-	}
-	if err != nil {
-		return err
 	}
 
 	autoTbl, ok := insertable.(sql.AutoIncrementTable)

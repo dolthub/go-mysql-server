@@ -205,6 +205,10 @@ type parseErr struct {
 	err error
 }
 
+func (p parseErr) Error() string {
+	return p.err.Error()
+}
+
 func (b *Builder) handleErr(err error) {
 	panic(parseErr{err})
 }

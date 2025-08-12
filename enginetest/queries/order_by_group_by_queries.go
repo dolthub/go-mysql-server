@@ -346,4 +346,26 @@ var OrderByGroupByScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/9605
+		Name: "Order by wrapped by parentheses",
+		SetUpScript: []string{
+			"create table t(i int, j int)",
+			"insert into t values(2,4),(0,7),(9,10),(4,3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "with cte(i) as (select i from t) select * from cte order by (i)",
+				Expected: []sql.Row{{0}, {2}, {4}, {9}},
+			},
+			{
+				Query:    "with cte(i) as (select i from t) select * from cte order by (((i)))",
+				Expected: []sql.Row{{0}, {2}, {4}, {9}},
+			},
+			{
+				Query:    "select * from t order by (i * 10 + j)",
+				Expected: []sql.Row{{0, 7}, {2, 4}, {4, 3}, {9, 10}},
+			},
+		},
+	},
 }

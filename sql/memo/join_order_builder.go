@@ -811,7 +811,7 @@ func (j *joinOrderBuilder) constructJoin(
 		rel = &LeftJoin{b}
 	case plan.JoinTypeSemi:
 		rel = &SemiJoin{b}
-	case plan.JoinTypeAnti:
+	case plan.JoinTypeAnti, plan.JoinTypeAntiIncludeNulls:
 		rel = &AntiJoin{b}
 	case plan.JoinTypeLateralInner, plan.JoinTypeLateralCross,
 		plan.JoinTypeLateralRight, plan.JoinTypeLateralLeft:
@@ -1428,7 +1428,7 @@ func getOpIdx(e *edge) int {
 		return 1
 	case plan.JoinTypeSemi:
 		return 2
-	case plan.JoinTypeAnti:
+	case plan.JoinTypeAnti, plan.JoinTypeAntiIncludeNulls:
 		return 3
 	case plan.JoinTypeLeftOuter:
 		return 4

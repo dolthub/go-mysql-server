@@ -20,6 +20,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 var ErrDeleteFromNotSupported = errors.NewKind("table doesn't support DELETE FROM")
@@ -33,6 +34,10 @@ type DeleteFrom struct {
 	explicitTargets []sql.Node
 	RefsSingleRel   bool
 	IsProcNested    bool
+
+	// Returning is a list of expressions to return after the delete operation. This feature is not
+	// supported in MySQL's syntax, but is exposed through PostgreSQL's syntax.
+	Returning []sql.Expression
 }
 
 var _ sql.Databaseable = (*DeleteFrom)(nil)
@@ -73,6 +78,24 @@ func (p *DeleteFrom) GetDeleteTargets() []sql.Node {
 	}
 }
 
+// Schema implements the sql.Node interface.
+func (p *DeleteFrom) Schema() sql.Schema {
+	// Postgres allows the returned values of the delete statement to be controlled, so if returning
+	// expressions were specified, then we return a different schema.
+	if p.Returning != nil {
+		// We know that returning exprs are resolved here, because you can't call Schema()
+		// safely until Resolved() is true.
+		returningSchema := sql.Schema{}
+		for _, expr := range p.Returning {
+			returningSchema = append(returningSchema, transform.ExpressionToColumn(expr, ""))
+		}
+
+		return returningSchema
+	}
+
+	return p.Child.Schema()
+}
+
 // Resolved implements the sql.Resolvable interface.
 func (p *DeleteFrom) Resolved() bool {
 	if p.Child.Resolved() == false {
@@ -85,7 +108,29 @@ func (p *DeleteFrom) Resolved() bool {
 		}
 	}
 
+	for _, expr := range p.Returning {
+		if expr.Resolved() == false {
+			return false
+		}
+	}
+
 	return true
+}
+
+// Expressions implements the sql.Expressioner interface.
+func (p *DeleteFrom) Expressions() []sql.Expression {
+	return p.Returning
+}
+
+// WithExpressions implements the sql.Expressioner interface.
+func (p *DeleteFrom) WithExpressions(newExprs ...sql.Expression) (sql.Node, error) {
+	if len(newExprs) != len(p.Returning) {
+		return nil, sql.ErrInvalidChildrenNumber.New(p, len(newExprs), len(p.Returning))
+	}
+
+	copy := *p
+	copy.Returning = newExprs
+	return &copy, nil
 }
 
 func (p *DeleteFrom) IsReadOnly() bool {
@@ -111,7 +156,9 @@ func (p *DeleteFrom) WithChildren(children ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
 
-	return NewDeleteFrom(children[0], p.explicitTargets), nil
+	deleteFrom := NewDeleteFrom(children[0], p.explicitTargets)
+	deleteFrom.Returning = p.Returning
+	return deleteFrom, nil
 }
 
 func GetDeletable(node sql.Node) (sql.DeletableTable, error) {
