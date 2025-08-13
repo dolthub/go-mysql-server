@@ -372,6 +372,7 @@ func (b *Builder) buildAggFunctionArgs(inScope *scope, e *ast.FuncExpr, gb *grou
 	var args []sql.Expression
 	for _, arg := range e.Exprs {
 		e := b.selectExprToExpression(inScope, arg)
+		// if GetField is an alias, alias must be masking a column
 		if gf, ok := e.(*expression.GetField); ok && gf.TableId() == 0 {
 			e = b.selectExprToExpression(inScope.parent, arg)
 		}
