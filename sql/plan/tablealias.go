@@ -35,11 +35,9 @@ var _ sql.CollationCoercible = (*TableAlias)(nil)
 
 // NewTableAlias returns a new Table alias node.
 func NewTableAlias(name string, node sql.Node) *TableAlias {
-	schema := make(sql.Schema, len(node.Schema()))
 	ret := &TableAlias{
 		UnaryNode: &UnaryNode{Child: node},
 		name:      name,
-		sch:       schema,
 	}
 	if tin, ok := node.(TableIdNode); ok {
 		ret.id = tin.Id()
@@ -94,13 +92,14 @@ func (t *TableAlias) Comment() string {
 // Schema implements the Node interface. TableAlias alters the schema of its child element to rename the source of
 // columns to the alias.
 func (t *TableAlias) Schema() sql.Schema {
-	if !t.cachedSch {
-		for i, col := range t.Child.Schema() {
+	if t.sch == nil {
+		childSchema := t.Child.Schema()
+		t.sch = make(sql.Schema, len(childSchema))
+		for i, col := range childSchema {
 			newCol := *col
 			newCol.Source = t.name
 			t.sch[i] = &newCol
 		}
-		t.cachedSch = true
 	}
 	return t.sch
 }

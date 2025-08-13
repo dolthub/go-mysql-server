@@ -36,8 +36,7 @@ type Project struct {
 	IncludesNestedIters bool
 	deps                sql.ColSet
 
-	sch       sql.Schema
-	cachedSch bool
+	sch sql.Schema
 }
 
 var _ sql.Expressioner = (*Project)(nil)
@@ -50,7 +49,6 @@ func NewProject(expressions []sql.Expression, child sql.Node) *Project {
 	return &Project{
 		UnaryNode:   UnaryNode{child},
 		Projections: expressions,
-		sch:         make(sql.Schema, len(expressions)),
 	}
 }
 
@@ -126,8 +124,8 @@ func ExprDeps(exprs ...sql.Expression) sql.ColSet {
 
 // Schema implements the Node interface.
 func (p *Project) Schema() sql.Schema {
-	if !p.cachedSch {
-		p.cachedSch = true
+	if p.sch == nil {
+		p.sch = make(sql.Schema, len(p.Projections))
 		for i, expr := range p.Projections {
 			p.sch[i] = transform.ExpressionToColumn(expr, AliasSubqueryString(expr))
 			if gf := unwrapGetField(expr); gf != nil {
