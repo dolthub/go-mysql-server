@@ -260,7 +260,7 @@ var JoinPlanningTests = []joinPlanScript{
 			{
 				// When primary table is much larger, doing many lookups is expensive: prefer merge
 				q:     "select /*+ JOIN_ORDER(rs, xy) */ * from rs join xy on x = r order by 1,3",
-				types: []plan.JoinType{plan.JoinTypeLookup},
+				types: []plan.JoinType{plan.JoinTypeMerge},
 				exp:   []sql.Row{{0, 0, 0, 8}, {2, 3, 2, 1}, {3, 0, 3, 7}, {4, 8, 4, 0}, {5, 4, 5, 4}},
 			},
 			{
@@ -411,7 +411,7 @@ var JoinPlanningTests = []joinPlanScript{
 			},
 			{
 				q:     "select * from xy where y+1 not in (select u from uv);",
-				types: []plan.JoinType{plan.JoinTypeLeftOuterHashExcludeNulls},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterLookup},
 				exp:   []sql.Row{{3, 3}},
 			},
 			{
@@ -822,7 +822,7 @@ where u in (select * from rec);`,
 		tests: []JoinPlanTest{
 			{
 				q:     "select * from xy where x in (select u from uv join ab on u = a and a = 2) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeInner, plan.JoinTypeLookup},
+				types: []plan.JoinType{plan.JoinTypeLookup, plan.JoinTypeLookup},
 				exp:   []sql.Row{{2, 1}},
 			},
 			{

@@ -709,8 +709,8 @@ SELECT d_next_o_id FROM district2 WHERE d_id = 5 AND d_w_id= 1`,
 			"             │       ├─ stock2.s_quantity:2\n" +
 			"             │       └─ 18 (smallint)\n" +
 			"             └─ IndexedTableAccess(stock2)\n" +
-			"                 ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
-			"                 ├─ keys: [1 (smallint) order_line2.ol_i_id:3]\n" +
+			"                 ├─ index: [stock2.s_i_id]\n" +
+			"                 ├─ keys: [order_line2.ol_i_id:3]\n" +
 			"                 ├─ colSet: (11-27)\n" +
 			"                 ├─ tableId: 2\n" +
 			"                 └─ Table\n" +
@@ -730,9 +730,9 @@ SELECT d_next_o_id FROM district2 WHERE d_id = 5 AND d_w_id= 1`,
 			"         └─ Filter\n" +
 			"             ├─ ((stock2.s_w_id = 1) AND (stock2.s_quantity < 18))\n" +
 			"             └─ IndexedTableAccess(stock2)\n" +
-			"                 ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
+			"                 ├─ index: [stock2.s_i_id]\n" +
 			"                 ├─ columns: [s_i_id s_w_id s_quantity]\n" +
-			"                 └─ keys: 1, order_line2.ol_i_id\n" +
+			"                 └─ keys: order_line2.ol_i_id\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [countdistinct([stock2.s_i_id]) as COUNT(DISTINCT (s_i_id))]\n" +
@@ -747,9 +747,9 @@ SELECT d_next_o_id FROM district2 WHERE d_id = 5 AND d_w_id= 1`,
 			"         └─ Filter\n" +
 			"             ├─ ((stock2.s_w_id = 1) AND (stock2.s_quantity < 18))\n" +
 			"             └─ IndexedTableAccess(stock2)\n" +
-			"                 ├─ index: [stock2.s_w_id,stock2.s_i_id]\n" +
+			"                 ├─ index: [stock2.s_i_id]\n" +
 			"                 ├─ columns: [s_i_id s_w_id s_quantity]\n" +
-			"                 └─ keys: 1, order_line2.ol_i_id\n" +
+			"                 └─ keys: order_line2.ol_i_id\n" +
 			"",
 	},
 	{
