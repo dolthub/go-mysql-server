@@ -129,7 +129,7 @@ var ScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				// Reproduces customer's "48 is beyond maximum value" error when BIT and integer constants are UNIONed
+				// max1err
 				Query: `SELECT archived FROM report_card WHERE id = 1
 					UNION ALL  
 					SELECT 48 FROM report_card WHERE id = 1`,
