@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -139,6 +140,15 @@ func (i dummyIdx) Expressions() []string {
 	var exprs []string
 	for _, e := range i.expr {
 		exprs = append(exprs, e.String())
+	}
+	return exprs
+}
+
+func (i dummyIdx) UnqualifiedExpressions() []string {
+	exprs := make([]string, len(i.expr))
+	for i, e := range i.expr {
+		str := e.String()
+		exprs[i] = str[strings.IndexByte(str, '.')+1:]
 	}
 	return exprs
 }
