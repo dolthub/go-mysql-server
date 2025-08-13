@@ -249,6 +249,13 @@ type CollationAlterableTable interface {
 	ModifyDefaultCollation(ctx *Context, collation CollationID) error
 }
 
+// CommentAlterableTable represents a table that supports altering its comment.
+type CommentAlterableTable interface {
+	Table
+	// ModifyComment modifies the table's comment
+	ModifyComment(ctx *Context, comment string) error
+}
+
 // PrimaryKeyTable is a table with a primary key.
 type PrimaryKeyTable interface {
 	// PrimaryKeySchema returns this table's PrimaryKeySchema

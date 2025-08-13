@@ -190,7 +190,7 @@ func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, fil
 			switch joinType {
 			case plan.JoinTypeAnti:
 				cond := expression.NewLiteral(true, types.Boolean)
-				ret = plan.NewAntiJoin(ret, s.inner, cond).WithComment(comment)
+				ret = plan.NewAntiJoinIncludingNulls(ret, s.inner, cond).WithComment(comment)
 				qFlags.Set(sql.QFlagInnerJoin)
 			case plan.JoinTypeSemi:
 				ret = plan.NewCrossJoin(ret, s.inner).WithComment(comment)
@@ -209,7 +209,7 @@ func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, fil
 
 		switch joinType {
 		case plan.JoinTypeAnti:
-			ret = plan.NewAntiJoin(ret, s.inner, expression.JoinAnd(outerFilters...)).WithComment(comment)
+			ret = plan.NewAntiJoinIncludingNulls(ret, s.inner, expression.JoinAnd(outerFilters...)).WithComment(comment)
 			qFlags.Set(sql.QFlagInnerJoin)
 		case plan.JoinTypeSemi:
 			ret = plan.NewSemiJoin(ret, s.inner, expression.JoinAnd(outerFilters...)).WithComment(comment)

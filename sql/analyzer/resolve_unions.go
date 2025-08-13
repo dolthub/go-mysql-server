@@ -95,10 +95,10 @@ func finalizeUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope
 
 		scope.SetJoin(false)
 
-		newn, err := n.WithChildren(left, right)
+		newN, err := n.WithChildren(left, right)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
-		return newn, transform.NewTree, nil
+		return newN, transform.NewTree, nil
 	})
 }

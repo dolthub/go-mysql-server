@@ -278,18 +278,20 @@ func (c *Convert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return casted, nil
 }
 
-// convertValue only returns an error if converting to JSON, Date, and Datetime;
-// the zero value is returned for float types. Nil is returned in all other cases.
+// convertValue converts a value from its current type to the specified target type for CAST/CONVERT operations.
+// It handles type-specific conversion logic and applies length/scale constraints where applicable.
 // If |typeLength| and |typeScale| are 0, they are ignored, otherwise they are used as constraints on the
 // converted type where applicable (e.g. Char conversion supports only |typeLength|, Decimal conversion supports
 // |typeLength| and |typeScale|).
+// Only returns an error if converting to JSON, Date, and Datetime; the zero value is returned for float types.
+// Nil is returned in all other cases.
 func convertValue(ctx *sql.Context, val interface{}, castTo string, originType sql.Type, typeLength, typeScale int) (interface{}, error) {
 	if val == nil {
 		return nil, nil
 	}
 	switch strings.ToLower(castTo) {
 	case ConvertToBinary:
-		b, _, err := types.LongBlob.Convert(ctx, val)
+		b, _, err := types.TypeAwareConversion(ctx, val, originType, types.LongBlob)
 		if err != nil {
 			return nil, nil
 		}
@@ -307,7 +309,7 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 		}
 		return truncateConvertedValue(b, typeLength)
 	case ConvertToChar, ConvertToNChar:
-		s, _, err := types.LongText.Convert(ctx, val)
+		s, _, err := types.TypeAwareConversion(ctx, val, originType, types.LongText)
 		if err != nil {
 			return nil, nil
 		}

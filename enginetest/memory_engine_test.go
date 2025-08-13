@@ -327,6 +327,10 @@ func TestQueryPlans(t *testing.T) {
 	}
 }
 
+func TestQueryPlanScripts(t *testing.T) {
+	enginetest.TestQueryPlanScripts(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+}
+
 func TestSingleQueryPlan(t *testing.T) {
 	t.Skip()
 	tt := []queries.QueryPlanTest{

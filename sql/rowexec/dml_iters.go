@@ -619,6 +619,10 @@ func AddAccumulatorIter(ctx *sql.Context, iter sql.RowIter) (sql.RowIter, sql.Sc
 			if len(innerIter.returnExprs) > 0 {
 				return innerIter, innerIter.returnSchema
 			}
+		case *deleteIter:
+			if len(innerIter.returnExprs) > 0 {
+				return innerIter, innerIter.returnSchema
+			}
 		}
 
 		return defaultAccumulatorIter(ctx, iter)
@@ -750,7 +754,8 @@ func (u *updateSourceIter) Next(ctx *sql.Context) (sql.Row, error) {
 		newRow = newRow[len(newRow)-expectedSchemaLen:]
 	}
 
-	return oldRow.Append(newRow), nil
+	row := append(oldRow, newRow...)
+	return row, nil
 }
 
 func (u *updateSourceIter) Close(ctx *sql.Context) error {

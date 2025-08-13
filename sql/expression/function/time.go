@@ -1017,7 +1017,7 @@ func (n *Now) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if n.prec == nil {
 		t, ok := sql.ConvertTimeZone(currentTime, sql.SystemTimezoneOffset(), sessionTimeZone)
 		if !ok {
-			return nil, fmt.Errorf("invalid time zone: %s", sessionTimeZone)
+			return nil, sql.ErrInvalidTimeZone.New(sessionTimeZone)
 		}
 		tt := time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), 0, time.UTC)
 		return tt, nil
@@ -1057,7 +1057,7 @@ func (n *Now) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Get the timestamp
 	t, ok := sql.ConvertTimeZone(currentTime, sql.SystemTimezoneOffset(), sessionTimeZone)
 	if !ok {
-		return nil, fmt.Errorf("invalid time zone: %s", sessionTimeZone)
+		return nil, sql.ErrInvalidTimeZone.New(sessionTimeZone)
 	}
 
 	// Calculate precision

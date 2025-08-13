@@ -968,3 +968,67 @@ func (atc *AlterTableCollation) WithChildren(children ...sql.Node) (sql.Node, er
 	natc.Table = children[0]
 	return &natc, nil
 }
+
+type AlterTableComment struct {
+	ddlNode
+	Table   sql.Node
+	Comment string
+}
+
+var _ sql.Node = (*AlterTableComment)(nil)
+var _ sql.Databaser = (*AlterTableComment)(nil)
+
+func NewAlterTableComment(table *ResolvedTable, comment string) *AlterTableComment {
+	return &AlterTableComment{
+		ddlNode: ddlNode{Db: table.SqlDatabase},
+		Table:   table,
+		Comment: comment,
+	}
+}
+
+// WithDatabase implements the interface sql.Databaser
+func (atc *AlterTableComment) WithDatabase(db sql.Database) (sql.Node, error) {
+	natc := *atc
+	natc.Db = db
+	return &natc, nil
+}
+
+// IsReadOnly implements the interface sql.Node
+func (atc *AlterTableComment) IsReadOnly() bool {
+	return false
+}
+
+// String implements the interface sql.Node
+func (atc *AlterTableComment) String() string {
+	return fmt.Sprintf("alter table %s comment %s", atc.Table.String(), atc.Comment)
+}
+
+// DebugString implements the interface sql.Node
+func (atc *AlterTableComment) DebugString() string {
+	return atc.String()
+}
+
+// Resolved implements the interface sql.Node
+func (atc *AlterTableComment) Resolved() bool {
+	return atc.Table.Resolved() && atc.ddlNode.Resolved()
+}
+
+// Schema implements the interface sql.Node
+func (atc *AlterTableComment) Schema() sql.Schema {
+	return atc.Table.Schema()
+}
+
+// Children implements the interface sql.Node
+func (atc *AlterTableComment) Children() []sql.Node {
+	return []sql.Node{atc.Table}
+}
+
+// WithChildren implements the interface sql.Node
+func (atc *AlterTableComment) WithChildren(children ...sql.Node) (sql.Node, error) {
+	if len(children) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(atc, len(children), 1)
+	}
+	natc := *atc
+	natc.Table = children[0]
+	return &natc, nil
+}

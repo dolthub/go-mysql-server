@@ -85,6 +85,9 @@ type ScriptTestAssertion struct {
 	// For tests that perform join operations, JoinTypes can be set for the type of merge we expect to perform.
 	JoinTypes []plan.JoinType
 
+	// For tests that expect a specific plan
+	ExpectedPlan string
+
 	// NewSession instructs the test framework that this assertion requires a new session to be created before the
 	// query is executed. This is generally only needed when a test script is testing functionality that invalidates
 	// a session and prevents additional queries from being executed on the session.
@@ -9189,7 +9192,7 @@ where
 		},
 	},
 	{
-		Name:    "enum conversion to strings",
+		Name:    "enum conversions",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t (e enum('abc', 'defg', 'hijkl'));",
@@ -9221,7 +9224,6 @@ where
 				},
 			},
 			{
-				Skip:  true,
 				Query: "select e from t where e like 'a%' order by e;",
 				Expected: []sql.Row{
 					{"abc"},
@@ -9325,6 +9327,38 @@ where
 					{"abc"},
 				},
 			},
+			{
+				Query: "select e, cast(e as unsigned) from t order by e;",
+				Expected: []sql.Row{
+					{"abc", uint64(1)},
+					{"defg", uint64(2)},
+					{"hijkl", uint64(3)},
+				},
+			},
+			{
+				Query: "select e, cast(e as decimal) from t order by e;",
+				Expected: []sql.Row{
+					{"abc", "1"},
+					{"defg", "2"},
+					{"hijkl", "3"},
+				},
+			},
+			{
+				Query: "select e, cast(e as float) from t order by e;",
+				Expected: []sql.Row{
+					{"abc", float32(1)},
+					{"defg", float32(2)},
+					{"hijkl", float32(3)},
+				},
+			},
+			{
+				Query: "select e, cast(e as double) from t order by e;",
+				Expected: []sql.Row{
+					{"abc", float64(1)},
+					{"defg", float64(2)},
+					{"hijkl", float64(3)},
+				},
+			},
 		},
 	},
 	{
@@ -9351,6 +9385,39 @@ where
 					{"OFF", "OFFDolt"},
 					{"AUTO", "AUTODolt"},
 				},
+			},
+		},
+	},
+	{
+		Name:    "Convert enum columns to string columns with alter table",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t(pk int primary key, c0 enum('a', 'b', 'c'));",
+			"insert into t values(0, 'a'), (1, 'b'), (2, 'c');",
+			"alter table t modify column c0 varchar(100);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from t",
+				Expected: []sql.Row{{0, "a"}, {1, "b"}, {2, "c"}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9613
+		Skip:    true,
+		Name:    "Convert enum columns to string columns when copying table",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t(pk int primary key, c0 enum('a', 'b', 'c'));",
+			"insert into t values(0, 'a'), (1, 'b'), (2, 'c');",
+			"create table tt(pk int primary key, c0 varchar(10))",
+			"insert into tt select * from t",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from tt",
+				Expected: []sql.Row{{0, "a"}, {1, "b"}, {2, "c"}},
 			},
 		},
 	},
@@ -9787,7 +9854,7 @@ where
 		},
 	},
 	{
-		Name:    "set conversion to strings",
+		Name:    "set conversions",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t (s set('abc', 'defg', 'hijkl'));",
@@ -9911,24 +9978,91 @@ where
 				},
 			},
 			{
-				// https://github.com/dolthub/dolt/issues/9511
-				Skip:  true,
 				Query: "select s, cast(s as char) from t order by s;",
 				Expected: []sql.Row{
 					{"abc", "abc"},
+					{"defg", "defg"},
 					{"abc,defg", "abc,defg"},
 					{"abc,defg,hijkl", "abc,defg,hijkl"},
 				},
 			},
 			{
-				// https://github.com/dolthub/dolt/issues/9511
-				Skip:  true,
 				Query: "select s, cast(s as binary) from t order by s;",
 				Expected: []sql.Row{
 					{"abc", []uint8("abc")},
+					{"defg", []uint8("defg")},
 					{"abc,defg", []uint8("abc,defg")},
 					{"abc,defg,hijkl", []uint8("abc,defg,hijkl")},
 				},
+			},
+			{
+				Query: "select s, cast(s as unsigned) from t order by s;",
+				Expected: []sql.Row{
+					{"abc", uint64(1)},
+					{"defg", uint64(2)},
+					{"abc,defg", uint64(3)},
+					{"abc,defg,hijkl", uint64(7)},
+				},
+			},
+			{
+				Query: "select s, cast(s as decimal) from t order by s;",
+				Expected: []sql.Row{
+					{"abc", "1"},
+					{"defg", "2"},
+					{"abc,defg", "3"},
+					{"abc,defg,hijkl", "7"},
+				},
+			},
+			{
+				Query: "select s, cast(s as float) from t order by s;",
+				Expected: []sql.Row{
+					{"abc", float32(1)},
+					{"defg", float32(2)},
+					{"abc,defg", float32(3)},
+					{"abc,defg,hijkl", float32(7)},
+				},
+			},
+			{
+				Query: "select s, cast(s as double) from t order by s;",
+				Expected: []sql.Row{
+					{"abc", float64(1)},
+					{"defg", float64(2)},
+					{"abc,defg", float64(3)},
+					{"abc,defg,hijkl", float64(7)},
+				},
+			},
+		},
+	},
+	{
+		Name:    "Convert set columns to string columns with alter table",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t(pk int primary key, c0 set('abc', 'def','ghi'))",
+			"insert into t values(0, 'abc,def'), (1, 'def'), (2, 'ghi');",
+			"alter table t modify column c0 varchar(100);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from t",
+				Expected: []sql.Row{{0, "abc,def"}, {1, "def"}, {2, "ghi"}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9613
+		Skip:    true,
+		Name:    "Convert set columns to string columns when copying table",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t(pk int primary key, c0 set('abc', 'def','ghi'))",
+			"insert into t values(0, 'abc,def'), (1, 'def'), (2, 'ghi');",
+			"create table tt(pk int primary key, c0 varchar(10))",
+			"insert into tt select * from t",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from tt",
+				Expected: []sql.Row{{0, "abc,def"}, {1, "def"}, {2, "ghi"}},
 			},
 		},
 	},
@@ -10412,12 +10546,10 @@ where
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Skip:        true,
 				Query:       "insert into tinyint_tbl values (999)",
 				ExpectedErr: sql.ErrValueOutOfRange,
 			},
 			{
-				Skip:  true,
 				Query: "insert into tinyint_tbl values (127)",
 				Expected: []sql.Row{
 					{types.OkResult{
@@ -10427,7 +10559,6 @@ where
 				},
 			},
 			{
-				Skip:  true,
 				Query: "show create table tinyint_tbl;",
 				Expected: []sql.Row{
 					{"tinyint_tbl", "CREATE TABLE `tinyint_tbl` (\n" +
@@ -10438,12 +10569,10 @@ where
 			},
 
 			{
-				Skip:        true,
 				Query:       "insert into smallint_tbl values (99999);",
 				ExpectedErr: sql.ErrValueOutOfRange,
 			},
 			{
-				Skip:  true,
 				Query: "insert into smallint_tbl values (32767);",
 				Expected: []sql.Row{
 					{types.OkResult{
@@ -10453,23 +10582,20 @@ where
 				},
 			},
 			{
-				Skip:  true,
 				Query: "show create table smallint_tbl;",
 				Expected: []sql.Row{
 					{"smallint_tbl", "CREATE TABLE `smallint_tbl` (\n" +
 						"  `i` smallint NOT NULL AUTO_INCREMENT,\n" +
 						"  PRIMARY KEY (`i`)\n" +
-						") ENGINE=InnoDB AUTO_INCREMENT=36727 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+						") ENGINE=InnoDB AUTO_INCREMENT=32767 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 
 			{
-				Skip:        true,
 				Query:       "insert into mediumint_tbl values (99999999);",
 				ExpectedErr: sql.ErrValueOutOfRange,
 			},
 			{
-				Skip:  true,
 				Query: "insert into mediumint_tbl values (8388607);",
 				Expected: []sql.Row{
 					{types.OkResult{
@@ -10479,7 +10605,6 @@ where
 				},
 			},
 			{
-				Skip:  true,
 				Query: "show create table mediumint_tbl;",
 				Expected: []sql.Row{
 					{"mediumint_tbl", "CREATE TABLE `mediumint_tbl` (\n" +
@@ -10490,12 +10615,10 @@ where
 			},
 
 			{
-				Skip:        true,
 				Query:       "insert into int_tbl values (99999999999)",
 				ExpectedErr: sql.ErrValueOutOfRange,
 			},
 			{
-				Skip:  true,
 				Query: "insert into int_tbl values (2147483647)",
 				Expected: []sql.Row{
 					{types.OkResult{
@@ -10505,7 +10628,6 @@ where
 				},
 			},
 			{
-				Skip:  true,
 				Query: "show create table int_tbl;",
 				Expected: []sql.Row{
 					{"int_tbl", "CREATE TABLE `int_tbl` (\n" +
@@ -10516,12 +10638,10 @@ where
 			},
 
 			{
-				Skip:        true,
 				Query:       "insert into bigint_tbl values (99999999999999999999);",
 				ExpectedErr: sql.ErrValueOutOfRange,
 			},
 			{
-				Skip:  true,
 				Query: "insert into bigint_tbl values (9223372036854775807);",
 				Expected: []sql.Row{
 					{types.OkResult{
@@ -10531,7 +10651,6 @@ where
 				},
 			},
 			{
-				Skip:  true,
 				Query: "show create table bigint_tbl;",
 				Expected: []sql.Row{
 					{"bigint_tbl", "CREATE TABLE `bigint_tbl` (\n" +
@@ -10555,12 +10674,10 @@ where
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Skip:        true,
 				Query:       "insert into tinyint_tbl values (999)",
 				ExpectedErr: sql.ErrValueOutOfRange,
 			},
 			{
-				Skip:  true,
 				Query: "insert into tinyint_tbl values (255)",
 				Expected: []sql.Row{
 					{types.OkResult{
@@ -10570,23 +10687,20 @@ where
 				},
 			},
 			{
-				Skip:  true,
 				Query: "show create table tinyint_tbl;",
 				Expected: []sql.Row{
 					{"tinyint_tbl", "CREATE TABLE `tinyint_tbl` (\n" +
-						"  `i` tinyint NOT NULL AUTO_INCREMENT,\n" +
+						"  `i` tinyint unsigned NOT NULL AUTO_INCREMENT,\n" +
 						"  PRIMARY KEY (`i`)\n" +
 						") ENGINE=InnoDB AUTO_INCREMENT=255 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 
 			{
-				Skip:        true,
 				Query:       "insert into smallint_tbl values (99999);",
 				ExpectedErr: sql.ErrValueOutOfRange,
 			},
 			{
-				Skip:  true,
 				Query: "insert into smallint_tbl values (65535);",
 				Expected: []sql.Row{
 					{types.OkResult{
@@ -10596,23 +10710,20 @@ where
 				},
 			},
 			{
-				Skip:  true,
 				Query: "show create table smallint_tbl;",
 				Expected: []sql.Row{
 					{"smallint_tbl", "CREATE TABLE `smallint_tbl` (\n" +
-						"  `i` smallint NOT NULL AUTO_INCREMENT,\n" +
+						"  `i` smallint unsigned NOT NULL AUTO_INCREMENT,\n" +
 						"  PRIMARY KEY (`i`)\n" +
 						") ENGINE=InnoDB AUTO_INCREMENT=65535 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 
 			{
-				Skip:        true,
 				Query:       "insert into mediumint_tbl values (999999999);",
 				ExpectedErr: sql.ErrValueOutOfRange,
 			},
 			{
-				Skip:  true,
 				Query: "insert into mediumint_tbl values (16777215);",
 				Expected: []sql.Row{
 					{types.OkResult{
@@ -10622,23 +10733,20 @@ where
 				},
 			},
 			{
-				Skip:  true,
 				Query: "show create table mediumint_tbl;",
 				Expected: []sql.Row{
 					{"mediumint_tbl", "CREATE TABLE `mediumint_tbl` (\n" +
-						"  `i` mediumint NOT NULL AUTO_INCREMENT,\n" +
+						"  `i` mediumint unsigned NOT NULL AUTO_INCREMENT,\n" +
 						"  PRIMARY KEY (`i`)\n" +
 						") ENGINE=InnoDB AUTO_INCREMENT=16777215 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 
 			{
-				Skip:        true,
 				Query:       "insert into int_tbl values (99999999999)",
 				ExpectedErr: sql.ErrValueOutOfRange,
 			},
 			{
-				Skip:  true,
 				Query: "insert into int_tbl values (4294967295)",
 				Expected: []sql.Row{
 					{types.OkResult{
@@ -10648,23 +10756,20 @@ where
 				},
 			},
 			{
-				Skip:  true,
 				Query: "show create table int_tbl;",
 				Expected: []sql.Row{
 					{"int_tbl", "CREATE TABLE `int_tbl` (\n" +
-						"  `i` int NOT NULL AUTO_INCREMENT,\n" +
+						"  `i` int unsigned NOT NULL AUTO_INCREMENT,\n" +
 						"  PRIMARY KEY (`i`)\n" +
 						") ENGINE=InnoDB AUTO_INCREMENT=4294967295 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 
 			{
-				Skip:        true,
 				Query:       "insert into bigint_tbl values (999999999999999999999);",
 				ExpectedErr: sql.ErrValueOutOfRange,
 			},
 			{
-				Skip:  true,
 				Query: "insert into bigint_tbl values (18446744073709551615);",
 				Expected: []sql.Row{
 					{types.OkResult{
@@ -10674,11 +10779,10 @@ where
 				},
 			},
 			{
-				Skip:  true,
 				Query: "show create table bigint_tbl;",
 				Expected: []sql.Row{
 					{"bigint_tbl", "CREATE TABLE `bigint_tbl` (\n" +
-						"  `i` bigint NOT NULL AUTO_INCREMENT,\n" +
+						"  `i` bigint unsigned NOT NULL AUTO_INCREMENT,\n" +
 						"  PRIMARY KEY (`i`)\n" +
 						") ENGINE=InnoDB AUTO_INCREMENT=18446744073709551615 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
@@ -10813,6 +10917,19 @@ where
 			},
 		},
 	},
+	{
+		Name: "decimal unique key",
+		SetUpScript: []string{
+			"create table t (i int primary key, d decimal(10, 2) unique)",
+			"insert into t values (1, 1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "insert into t values (2, 1)",
+				ExpectedErr: sql.ErrUniqueKeyViolation,
+			},
+		},
+	},
 
 	// Date Tests
 	{
@@ -10856,81 +10973,68 @@ where
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Skip:  true,
 				Query: "create table child_datetime0 (dt datetime, foreign key (dt) references parent_datetime6(dt));",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Skip:        true,
 				Query:       "insert into child_datetime0 values ('2001-02-03 12:34:56');",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
-				Skip:  true,
 				Query: "create table child_datetime6 (dt datetime(6), foreign key (dt) references parent_datetime0(dt));",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Skip:        true,
 				Query:       "insert into child_datetime6 values ('2001-02-03 12:34:56');",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 
 			{
-				Skip:  true,
 				Query: "create table child1_timestamp0 (ts timestamp, foreign key (ts) references parent_datetime0(dt));",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Skip:        true,
 				Query:       "insert into child1_timestamp0 values ('2001-02-03 12:34:56');",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
-				Skip:  true,
 				Query: "create table child2_timestamp0 (ts timestamp, foreign key (ts) references parent_datetime6(dt));",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Skip:        true,
 				Query:       "insert into child2_timestamp0 values ('2001-02-03 12:34:56');",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 
 			{
-				Skip:  true,
 				Query: "create table child1_timestamp6 (ts timestamp(6), foreign key (ts) references parent_datetime0(dt));",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Skip:        true,
 				Query:       "insert into child1_timestamp6 values ('2001-02-03 12:34:56');",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
-				Skip:  true,
 				Query: "create table child2_timestamp6 (ts timestamp(6), foreign key (ts) references parent_datetime6(dt));",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Skip:        true,
 				Query:       "insert into child2_timestamp6 values ('2001-02-03 12:34:56');",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
-				Skip:        true,
 				Query:       "insert into child2_timestamp6 values ('2001-02-03 12:34:56.123456');",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
@@ -10966,81 +11070,68 @@ where
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Skip:  true,
 				Query: "create table child_timestamp0 (ts timestamp, foreign key (ts) references parent_timestamp6(ts));",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Skip:        true,
 				Query:       "insert into child_timestamp0 values ('2001-02-03 12:34:56');",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
-				Skip:  true,
 				Query: "create table child_timestamp6 (ts timestamp(6), foreign key (ts) references parent_timestamp0(ts));",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Skip:        true,
 				Query:       "insert into child_timestamp6 values ('2001-02-03 12:34:56');",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 
 			{
-				Skip:  true,
 				Query: "create table child1_datetime0 (dt datetime, foreign key (dt) references parent_timestamp0(ts));",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Skip:        true,
 				Query:       "insert into child1_datetime0 values ('2001-02-03 12:34:56');",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
-				Skip:  true,
 				Query: "create table child2_datetime0 (dt datetime, foreign key (dt) references parent_timestamp6(ts));",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Skip:        true,
 				Query:       "insert into child2_datetime0 values ('2001-02-03 12:34:56');",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 
 			{
-				Skip:  true,
 				Query: "create table child1_datetime6 (dt datetime(6), foreign key (dt) references parent_timestamp0(ts));",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Skip:        true,
 				Query:       "insert into child1_datetime6 values ('2001-02-03 12:34:56');",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
-				Skip:  true,
 				Query: "create table child2_datetime6 (dt datetime(6), foreign key (dt) references parent_timestamp6(ts));",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
 			},
 			{
-				Skip:        true,
 				Query:       "insert into child2_datetime6 values ('2001-02-03 12:34:56');",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
 			{
-				Skip:        true,
 				Query:       "insert into child2_datetime6 values ('2001-02-03 12:34:56.123456');",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
 			},
@@ -11082,9 +11173,9 @@ where
 				},
 			},
 			{
-				Skip:        true,
 				Query:       "insert into child_time0 values ('12:34:56');",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
+				Skip:        true, // TODO: Fix TIME precision handling in foreign key constraints (https://github.com/dolthub/dolt/issues/9544)
 			},
 			{
 				Query: "create table child_time6 (t time(6), foreign key (t) references parent_time0(t));",
@@ -11093,9 +11184,9 @@ where
 				},
 			},
 			{
-				Skip:        true,
 				Query:       "insert into child_time6 values ('12:34:56');",
 				ExpectedErr: sql.ErrForeignKeyChildViolation,
+				Skip:        true, // TODO: Fix TIME precision handling in foreign key constraints (https://github.com/dolthub/dolt/issues/9544)
 			},
 		},
 	},
@@ -11115,8 +11206,8 @@ where
 
 	{
 		// TODO: This test currently fails in Doltgres because Doltgres does not allow `create table...as select...`
-		// even though it's a valid Postgres query. Remove Dialect tag once fixed in Doltgres
-		// https://github.com/dolthub/doltgresql/issues/1669
+		//   even though it's a valid Postgres query. Remove Dialect tag once fixed in Doltgres
+		//   https://github.com/dolthub/doltgresql/issues/1669
 		Dialect: "mysql",
 		Name:    "union field indexes",
 		SetUpScript: []string{
@@ -11127,21 +11218,133 @@ where
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select * from " +
-					"(select id, words from t union " +
-					"select id,words from t2) as combined where combined.id=1",
+				Query: `
+select * from (
+    select id, words from t
+    union
+    select id, words from t2
+) as combined
+where
+    combined.id = 1;
+`,
 				Expected: []sql.Row{
 					{1, "foo"},
 					{1, "boo"},
 				},
 			},
 			{
-				Query: "select * from " +
-					"(select 'parent' as tbl, id, words from t union " +
-					"select 'child' as tbl, id,words from t2) as combined where combined.id=1",
+				Query: `
+select * from (
+    select 'parent' as tbl, id, words from t
+    union
+    select 'child' as tbl, id, words from t2
+) as combined
+where
+    combined.id = 1;
+`,
 				Expected: []sql.Row{
 					{"parent", 1, "foo"},
 					{"child", 1, "boo"},
+				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9628
+		Name: "UNION column mapping bug dolt#9628",
+		SetUpScript: []string{
+			"CREATE TABLE report_card (id INT PRIMARY KEY, name VARCHAR(255), entity_id INT, dashboard_id INT, description TEXT, display TEXT, collection_preview TEXT, dataset_query TEXT, collection_id INT, archived_directly BOOLEAN DEFAULT FALSE, collection_position INT, database_id INT, archived BOOLEAN DEFAULT FALSE, last_used_at DATETIME, table_id INT, query_type VARCHAR(50), type VARCHAR(50))",
+			"CREATE TABLE collection (id INT PRIMARY KEY, name VARCHAR(255), entity_id INT, location VARCHAR(500), authority_level VARCHAR(50), personal_owner_id INT, archived_directly BOOLEAN DEFAULT FALSE, type VARCHAR(50), archived BOOLEAN DEFAULT FALSE, namespace VARCHAR(100))",
+			"CREATE TABLE report_dashboard (id INT PRIMARY KEY, name VARCHAR(255), entity_id INT, description TEXT, collection_id INT, archived_directly BOOLEAN DEFAULT FALSE, collection_position INT, archived BOOLEAN DEFAULT FALSE, last_viewed_at DATETIME)",
+			"INSERT INTO report_card (id, name, entity_id, dashboard_id, type, archived_directly, archived, collection_position) VALUES (2, 'Card 2', 1002, NULL, 'question', FALSE, FALSE, NULL), (3, 'Card 3', 1003, NULL, 'question', FALSE, FALSE, NULL)",
+			"INSERT INTO collection (id, name, entity_id, location, type, archived, personal_owner_id, namespace) VALUES (2, 'Collection 2', 4002, '/test2/', 'normal', FALSE, NULL, NULL), (3, 'Collection 3', 4003, '/test3/', 'normal', FALSE, NULL, NULL)",
+			"INSERT INTO report_dashboard (id, name, entity_id, description, collection_id, archived_directly, archived, collection_position) VALUES (1, 'Dashboard 1', 3001, 'Test dashboard description', NULL, FALSE, FALSE, NULL), (2, 'Dashboard 2', 3002, 'Test dashboard 2 description', NULL, FALSE, FALSE, NULL)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `WITH visible_collection_ids AS (SELECT id FROM collection AS c WHERE (1 <> c.id)) 
+				SELECT 5 AS model_ranking, c.id, c.name, c.description, c.entity_id, c.display, c.collection_preview, c.dataset_query, c.collection_id, 'card' AS model 
+				FROM report_card AS c WHERE (c.dashboard_id IS NULL) AND (archived = FALSE) AND (c.type = 'question') 
+				UNION 
+				SELECT 7 AS model_ranking, id, name, name AS description, entity_id, NULL AS display, NULL AS collection_preview, NULL AS dataset_query, id AS collection_id, 'collection' AS model 
+				FROM collection AS col WHERE (archived = FALSE) AND (id <> 1) AND (personal_owner_id IS NULL) AND (namespace IS NULL) 
+				UNION 
+				SELECT 1 AS model_ranking, d.id, d.name, d.description, d.entity_id, NULL AS display, NULL AS collection_preview, NULL AS dataset_query, NULL AS collection_id, 'dashboard' AS model 
+				FROM report_dashboard AS d WHERE (archived = FALSE)`,
+				Expected: []sql.Row{
+					{5, 2, "Card 2", nil, 1002, nil, nil, nil, nil, "card"},
+					{5, 3, "Card 3", nil, 1003, nil, nil, nil, nil, "card"},
+					{7, 2, "Collection 2", "Collection 2", 4002, nil, nil, nil, 2, "collection"},
+					{7, 3, "Collection 3", "Collection 3", 4003, nil, nil, nil, 3, "collection"},
+					{1, 1, "Dashboard 1", "Test dashboard description", 3001, nil, nil, nil, nil, "dashboard"},
+					{1, 2, "Dashboard 2", "Test dashboard 2 description", 3002, nil, nil, nil, nil, "dashboard"},
+				},
+			},
+		},
+	},
+	{
+		// TODO: Doltgres does not support this query
+		// https://github.com/dolthub/dolt/issues/9631
+		Name:    "test union/intersect/except over subqueries over joins",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t1 (i int primary key);",
+			"create table t2 (j int primary key);",
+			"insert into t1 values (0), (1);",
+			"insert into t2 values (0), (2);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `
+select * from t1 union (
+    select j from t2
+    where (
+        j > 10
+        or
+        j in (
+            select j from t1 join t2
+        )
+    )
+);
+`,
+				Expected: []sql.Row{
+					{0},
+					{1},
+					{2},
+				},
+			},
+			{
+				Query: `
+select * from t1 intersect (
+    select j from t2
+    where (
+        j > 10
+        or
+        j in (
+            select j from t1 join t2
+        )
+    )
+);
+`,
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+			{
+				Query: `
+select * from t1 except (
+    select j from t2
+    where (
+        j > 10
+        or
+        j in (
+            select j from t1 join t2
+        )
+    )
+);
+`,
+				Expected: []sql.Row{
+					{1},
 				},
 			},
 		},

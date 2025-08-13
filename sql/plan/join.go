@@ -33,6 +33,7 @@ const (
 	JoinTypeInner                                     // InnerJoin
 	JoinTypeSemi                                      // SemiJoin
 	JoinTypeAnti                                      // AntiJoin
+	JoinTypeAntiIncludeNulls                          // AntiJoinIncludingNulls
 	JoinTypeLeftOuter                                 // LeftOuterJoin
 	JoinTypeLeftOuterExcludeNulls                     // LeftOuterJoinExcludingNulls
 	JoinTypeFullOuter                                 // FullOuterJoin
@@ -42,17 +43,20 @@ const (
 	JoinTypeLeftOuterLookup                           // LeftOuterLookupJoin
 	JoinTypeHash                                      // HashJoin
 	JoinTypeLeftOuterHash                             // LeftOuterHashJoin
-	JoinTypeLeftOuterHashExcludeNulls                 // LeftOuterHashJoinExcludeNulls
+	JoinTypeLeftOuterHashExcludeNulls                 // LeftOuterHashJoinExcludingNulls
 	JoinTypeMerge                                     // MergeJoin
 	JoinTypeLeftOuterMerge                            // LeftOuterMergeJoin
 	JoinTypeRangeHeap                                 // RangeHeapJoin
 	JoinTypeLeftOuterRangeHeap                        // LeftOuterRangeHeapJoin
 	JoinTypeSemiHash                                  // SemiHashJoin
 	JoinTypeAntiHash                                  // AntiHashJoin
+	JoinTypeAntiHashIncludeNulls                      // AntiHashJoinIncludingNulls
 	JoinTypeSemiLookup                                // SemiLookupJoin
 	JoinTypeAntiLookup                                // AntiLookupJoin
+	JoinTypeAntiLookupIncludeNulls                    // AntiLookupIncludingNulls
 	JoinTypeSemiMerge                                 // SemiMergeJoin
 	JoinTypeAntiMerge                                 // AntiMergeJoin
+	JoinTypeAntiMergeIncludeNulls                     // AntiMergeIncludingNulls
 	JoinTypeUsing                                     // NaturalJoin
 	JoinTypeUsingLeft                                 // NaturalLeftJoin
 	JoinTypeUsingRight                                // NaturalRightJoin
@@ -98,7 +102,10 @@ func (i JoinType) IsPhysical() bool {
 		JoinTypeSemiLookup, JoinTypeSemiMerge, JoinTypeSemiHash,
 		JoinTypeHash, JoinTypeLeftOuterHash, JoinTypeLeftOuterHashExcludeNulls,
 		JoinTypeMerge, JoinTypeLeftOuterMerge,
-		JoinTypeAntiLookup, JoinTypeAntiMerge, JoinTypeAntiHash, JoinTypeRangeHeap, JoinTypeLeftOuterRangeHeap:
+		JoinTypeAntiLookup, JoinTypeAntiLookupIncludeNulls,
+		JoinTypeAntiMerge, JoinTypeAntiMergeIncludeNulls,
+		JoinTypeAntiHash, JoinTypeAntiHashIncludeNulls,
+		JoinTypeRangeHeap, JoinTypeLeftOuterRangeHeap:
 		return true
 	default:
 		return false
@@ -129,7 +136,7 @@ func (i JoinType) IsDegenerate() bool {
 
 func (i JoinType) IsMerge() bool {
 	switch i {
-	case JoinTypeMerge, JoinTypeSemiMerge, JoinTypeAntiMerge, JoinTypeLeftOuterMerge:
+	case JoinTypeMerge, JoinTypeSemiMerge, JoinTypeAntiMerge, JoinTypeAntiMergeIncludeNulls, JoinTypeLeftOuterMerge:
 		return true
 	default:
 		return false
@@ -138,7 +145,8 @@ func (i JoinType) IsMerge() bool {
 
 func (i JoinType) IsHash() bool {
 	switch i {
-	case JoinTypeHash, JoinTypeSemiHash, JoinTypeAntiHash, JoinTypeLeftOuterHash, JoinTypeLeftOuterHashExcludeNulls, JoinTypeCrossHash:
+	case JoinTypeHash, JoinTypeSemiHash, JoinTypeAntiHash, JoinTypeAntiHashIncludeNulls,
+		JoinTypeLeftOuterHash, JoinTypeLeftOuterHashExcludeNulls, JoinTypeCrossHash:
 		return true
 	default:
 		return false
@@ -157,7 +165,8 @@ func (i JoinType) IsSemi() bool {
 
 func (i JoinType) IsAnti() bool {
 	switch i {
-	case JoinTypeAnti, JoinTypeAntiLookup, JoinTypeAntiMerge, JoinTypeAntiHash:
+	case JoinTypeAnti, JoinTypeAntiIncludeNulls, JoinTypeAntiLookup, JoinTypeAntiLookupIncludeNulls,
+		JoinTypeAntiMerge, JoinTypeAntiMergeIncludeNulls, JoinTypeAntiHash, JoinTypeAntiHashIncludeNulls:
 		return true
 	default:
 		return false
@@ -165,12 +174,14 @@ func (i JoinType) IsAnti() bool {
 }
 
 func (i JoinType) IsPartial() bool {
-	return i == JoinTypeSemi ||
-		i == JoinTypeAnti ||
-		i == JoinTypeSemiHash ||
-		i == JoinTypeAntiHash ||
-		i == JoinTypeAntiLookup ||
-		i == JoinTypeSemiLookup
+	switch i {
+	case JoinTypeSemi, JoinTypeAnti, JoinTypeAntiIncludeNulls, JoinTypeSemiHash,
+		JoinTypeAntiHash, JoinTypeAntiHashIncludeNulls, JoinTypeAntiLookup, JoinTypeAntiLookupIncludeNulls,
+		JoinTypeSemiLookup:
+		return true
+	default:
+		return false
+	}
 }
 
 func (i JoinType) IsPlaceholder() bool {
@@ -180,7 +191,8 @@ func (i JoinType) IsPlaceholder() bool {
 
 func (i JoinType) IsLookup() bool {
 	switch i {
-	case JoinTypeLookup, JoinTypeLeftOuterLookup, JoinTypeAntiLookup, JoinTypeSemiLookup:
+	case JoinTypeLookup, JoinTypeLeftOuterLookup,
+		JoinTypeAntiLookup, JoinTypeAntiLookupIncludeNulls, JoinTypeSemiLookup:
 		return true
 	default:
 		return false
@@ -221,6 +233,8 @@ func (i JoinType) AsHash() JoinType {
 		return JoinTypeSemiHash
 	case JoinTypeAnti:
 		return JoinTypeAntiHash
+	case JoinTypeAntiIncludeNulls:
+		return JoinTypeAntiHashIncludeNulls
 	case JoinTypeCross:
 		return JoinTypeCrossHash
 	default:
@@ -249,6 +263,8 @@ func (i JoinType) AsMerge() JoinType {
 		return JoinTypeSemiMerge
 	case JoinTypeAnti:
 		return JoinTypeAntiMerge
+	case JoinTypeAntiIncludeNulls:
+		return JoinTypeAntiMergeIncludeNulls
 	default:
 		return i
 	}
@@ -264,6 +280,8 @@ func (i JoinType) AsLookup() JoinType {
 		return JoinTypeSemiLookup
 	case JoinTypeAnti:
 		return JoinTypeAntiLookup
+	case JoinTypeAntiIncludeNulls:
+		return JoinTypeAntiLookupIncludeNulls
 	default:
 		return i
 	}
@@ -291,6 +309,7 @@ type JoinNode struct {
 	CommentStr string
 	ScopeLen   int
 	UsingCols  []string
+	IsReversed bool
 }
 
 var _ sql.Node = (*JoinNode)(nil)
@@ -520,8 +539,8 @@ func NewLookupJoin(left, right sql.Node, cond sql.Expression) *JoinNode {
 	return NewJoin(left, right, JoinTypeLookup, cond)
 }
 
-func NewAntiJoin(left, right sql.Node, cond sql.Expression) *JoinNode {
-	return NewJoin(left, right, JoinTypeAnti, cond)
+func NewAntiJoinIncludingNulls(left, right sql.Node, cond sql.Expression) *JoinNode {
+	return NewJoin(left, right, JoinTypeAntiIncludeNulls, cond)
 }
 
 func NewSemiJoin(left, right sql.Node, cond sql.Expression) *JoinNode {

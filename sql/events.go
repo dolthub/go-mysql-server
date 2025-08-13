@@ -401,13 +401,13 @@ func GetTimeValueFromStringInput(field, t string) (time.Time, error) {
 		datetimeVal := fmt.Sprintf("%4d-%02d-%02d %02d:%02d:%02d", year, month, day, hour, minute, second)
 		tVal, err := time.Parse(EventDateSpaceTimeFormat, datetimeVal)
 		if err != nil {
-			return time.Time{}, fmt.Errorf("invalid time zone: %s", sessTz)
+			return time.Time{}, ErrInvalidTimeZone.New(sessTz)
 		}
 
 		// convert the time value to the session timezone for display and storage
 		tVal, ok = ConvertTimeZone(tVal, inputTz, sessTz)
 		if !ok {
-			return time.Time{}, fmt.Errorf("invalid time zone: %s", sessTz)
+			return time.Time{}, ErrInvalidTimeZone.New(sessTz)
 		}
 		return tVal, nil
 	} else {

@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"math"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -45,6 +46,14 @@ func ConvertTimeZone(datetime time.Time, fromLocation string, toLocation string)
 
 	delta := convertedFromTime.Sub(convertedToTime)
 	return datetime.Add(delta), true
+}
+
+func ValidTimeZone(str string) bool {
+	if strings.ToUpper(str) == "SYSTEM" || offsetRegex.MatchString(str) {
+		return true
+	}
+	_, err := time.LoadLocation(str)
+	return err == nil
 }
 
 // MySQLOffsetToDuration takes in a MySQL timezone offset (e.g. "+01:00") and returns it as a time.Duration.
@@ -113,7 +122,7 @@ func ConvertTimeToLocation(datetime time.Time, location string) (time.Time, erro
 		return getCopy(datetime, time.UTC).Add(-1 * duration), nil
 	}
 
-	return time.Time{}, errors.New(fmt.Sprintf("error: unable to parse timezone '%s'", location))
+	return time.Time{}, ErrInvalidTimeZone.New(location)
 }
 
 // getCopy recreates the time t in the wanted timezone.
