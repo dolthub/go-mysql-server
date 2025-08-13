@@ -123,8 +123,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		colName := strings.ToLower(v.Name.String())
 		c, ok := inScope.resolveColumn(dbName, tblName, colName, true, false)
 		if !ok {
-			alias, ok := inScope.selectColumnAliases[colName]
-			if ok {
+			if alias, ok := inScope.selectColumnAliases[colName]; ok {
 				return alias.scalar
 			}
 			sysVar, scope, ok := b.buildSysVar(v, ast.SetScope_None)

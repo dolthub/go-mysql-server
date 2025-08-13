@@ -372,18 +372,14 @@ func (b *Builder) buildAggFunctionArgs(inScope *scope, e *ast.FuncExpr, gb *grou
 	var args []sql.Expression
 	for _, arg := range e.Exprs {
 		e := b.selectExprToExpression(inScope, arg)
+		if gf, ok := e.(*expression.GetField); ok && gf.TableId() == 0 {
+			e = b.selectExprToExpression(inScope.parent, arg)
+		}
 		switch e := e.(type) {
 		case *expression.GetField:
-			//if e.TableId() == 0 {
-			//	// TODO: not sure where this came from but it's not true
-			//	// aliases are not valid aggregate arguments, the alias must be masking a column
-			//	gf := b.selectExprToExpression(inScope.parent, arg)
-			//	// var ok bool
-			//	e, ok := gf.(*expression.GetField)
-			//	if !ok || e.TableId() == 0 {
-			//		b.handleErr(fmt.Errorf("failed to resolve aggregate column argument: %s", gf))
-			//	}
-			//}
+			if e.TableId() == 0 {
+				b.handleErr(fmt.Errorf("failed to resolve aggregate column argument: %s", e))
+			}
 			args = append(args, e)
 			col := scopeColumn{tableId: e.TableID(), db: e.Database(), table: e.Table(), col: e.Name(), scalar: e, typ: e.Type(), nullable: e.IsNullable()}
 			gb.addInCol(col)
@@ -953,6 +949,7 @@ func (b *Builder) buildHaving(fromScope, projScope, outScope *scope, having *ast
 	havingScope := b.newScope()
 	if fromScope.parent != nil {
 		havingScope.parent = fromScope.parent
+		havingScope.parent.selectColumnAliases = fromScope.selectColumnAliases
 	}
 
 	// add columns from fromScope referenced in the groupBy

@@ -144,7 +144,7 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 					err := sql.ErrColumnNotFound.New(gf.String())
 					b.handleErr(err)
 				}
-				col = scopeColumn{id: id, tableId: gf.TableId(), col: e.Name(), db: gf.Database(), table: gf.Table(), typ: gf.Type(), scalar: e, nullable: gf.IsNullable()}
+				col = scopeColumn{id: id, tableId: gf.TableId(), col: e.Name(), db: gf.Database(), table: gf.Table(), scalar: e, typ: gf.Type(), nullable: gf.IsNullable()}
 			} else if sq, ok := e.Child.(*plan.Subquery); ok {
 				col = scopeColumn{col: e.Name(), scalar: e, typ: sq.Type(), nullable: sq.IsNullable()}
 			} else {

@@ -655,8 +655,6 @@ func (c scopeColumn) scalarGf() sql.Expression {
 		switch e := c.scalar.(type) {
 		case *expression.ProcedureParam:
 			return e
-		case *expression.Alias:
-			return e
 		}
 	}
 	if c.originalCol != "" {
