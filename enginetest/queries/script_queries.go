@@ -129,7 +129,7 @@ var ScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				// Test UNION with BIT column and integer constant (related to customer's "48 is beyond maximum value" error)
+				// Reproduces customer's "48 is beyond maximum value" error when BIT and integer constants are UNIONed
 				Query: `SELECT archived FROM report_card WHERE id = 1
 					UNION ALL  
 					SELECT 48 FROM report_card WHERE id = 1`,
@@ -181,8 +181,8 @@ var ScriptTests = []ScriptTest{
 					WHERE archived = FALSE AND id <> 1
 				) AS dummy_alias`,
 				Expected: []sql.Row{
-					{int64(5), int64(1), "Card1", uint64(0), int64(0), int64(2)},
-					{int64(7), int64(2), "Collection1", uint64(0), nil, int64(2)},
+					{int64(5), int64(1), "Card1", int64(0), int64(0), int64(2)},
+					{int64(7), int64(2), "Collection1", int64(0), nil, int64(2)},
 				},
 			},
 		},

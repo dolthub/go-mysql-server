@@ -100,7 +100,7 @@ func finalizeUnions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope
 			return nil, transform.SameTree, err
 		}
 
-		// UNION operations can return multiple rows, so Max1Row optimization is invalid
+		// UNION can return multiple rows even when child queries use LIMIT 1, so disable Max1Row optimization
 		qFlags.Unset(sql.QFlagMax1Row)
 
 		return newN, transform.NewTree, nil
