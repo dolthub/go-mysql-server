@@ -217,6 +217,10 @@ func (i dummyIndex) Expressions() []string {
 	return i.cols
 }
 
+func (i dummyIndex) UnqualifiedExpressions() []string {
+	return i.cols
+}
+
 func (dummyIndex) IsUnique() bool {
 	return true
 }

@@ -131,13 +131,11 @@ func newRelProps(rel RelExpr) *relProps {
 }
 
 // idxExprsColumns returns the column names used in an index's expressions.
-// TODO: this is unstable as long as periods in Index.Expressions()
-// identifiers are ambiguous.
+// Identifiers are ambiguous.
 func idxExprsColumns(idx sql.Index) []string {
-	columns := make([]string, len(idx.Expressions()))
-	for i, e := range idx.Expressions() {
-		parts := strings.Split(e, ".")
-		columns[i] = strings.ToLower(parts[1])
+	columns := idx.UnqualifiedExpressions()
+	for i := 0; i < len(columns); i++ {
+		columns[i] = strings.ToLower(columns[i])
 	}
 	return columns
 }

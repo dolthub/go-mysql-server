@@ -16,6 +16,7 @@ package sql
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -443,6 +444,16 @@ func (i dummyIdx) Expressions() []string {
 	}
 	return exprs
 }
+
+func (i dummyIdx) UnqualifiedExpressions() []string {
+	exprs := make([]string, len(i.expr))
+	for i, e := range i.expr {
+		str := e.String()
+		exprs[i] = str[strings.IndexByte(str, '.')+1:]
+	}
+	return exprs
+}
+
 func (i dummyIdx) ID() string              { return i.id }
 func (i dummyIdx) Database() string        { return i.database }
 func (i dummyIdx) Table() string           { return i.table }
