@@ -650,6 +650,10 @@ func (b *Builder) buildAlterTableClause(inScope *scope, ddl *ast.DDL) []*scope {
 			outScopes = append(outScopes, b.buildAlterCollationSpec(tableScope, ddl, rt))
 		}
 
+		if ddl.AlterCommentSpec != nil {
+			outScopes = append(outScopes, b.buildAlterCommentSpec(tableScope, ddl, rt))
+		}
+
 		if ddl.NotNullSpec != nil {
 			outScopes = append(outScopes, b.buildAlterNotNull(tableScope, ddl, rt))
 		}
@@ -1173,6 +1177,12 @@ func (b *Builder) buildAlterCollationSpec(inScope *scope, ddl *ast.DDL, table *p
 		b.handleErr(err)
 	}
 	outScope.node = plan.NewAlterTableCollationResolved(table, collation)
+	return
+}
+
+func (b *Builder) buildAlterCommentSpec(inScope *scope, ddl *ast.DDL, table *plan.ResolvedTable) (outScope *scope) {
+	outScope = inScope
+	outScope.node = plan.NewAlterTableComment(table, ddl.AlterCommentSpec.Comment)
 	return
 }
 

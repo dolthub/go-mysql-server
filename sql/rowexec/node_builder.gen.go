@@ -50,6 +50,8 @@ func (b *BaseBuilder) buildNodeExecNoAnalyze(ctx *sql.Context, n sql.Node, row s
 		return b.buildCreateForeignKey(ctx, n, row)
 	case *plan.AlterTableCollation:
 		return b.buildAlterTableCollation(ctx, n, row)
+	case *plan.AlterTableComment:
+		return b.buildAlterTableComment(ctx, n, row)
 	case *plan.CreateRole:
 		return b.buildCreateRole(ctx, n, row)
 	case *plan.Loop:

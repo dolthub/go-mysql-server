@@ -1030,11 +1030,57 @@ var AlterTableScripts = []ScriptTest{
 		},
 	},
 	{
+		Name: "alter table comment",
+		SetUpScript: []string{
+			"create table t (i int)",
+			"create table tableWithComment (i int) comment = 'comment'",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t",
+				Expected: []sql.Row{{
+					"t",
+					"CREATE TABLE `t` (\n  `i` int\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
+				}},
+			},
+			{
+				Query: "show create table tableWithComment",
+				Expected: []sql.Row{{
+					"tableWithComment",
+					"CREATE TABLE `tableWithComment` (\n  `i` int\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin COMMENT='comment'",
+				}},
+			},
+			{
+				Query:    "alter table t comment = 'new comment'",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "alter table tableWithComment comment = 'new comment'",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "show create table t",
+				Expected: []sql.Row{{
+					"t",
+					"CREATE TABLE `t` (\n  `i` int\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin COMMENT='new comment'",
+				}},
+			},
+			{
+				Query: "show create table tableWithComment",
+				Expected: []sql.Row{{
+					"tableWithComment",
+					"CREATE TABLE `tableWithComment` (\n  `i` int\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin COMMENT='new comment'",
+				}},
+			},
+		},
+	},
+	{
 		Name: "alter table comments are escaped",
 		SetUpScript: []string{
 			"create table t (i int);",
 			`alter table t modify column i int comment "newline \n | return \r | backslash \\ | NUL \0 \x00 | ctrlz \Z \x1A"`,
 			`alter table t add column j int comment "newline \n | return \r | backslash \\ | NUL \0 \x00 | ctrlz \Z \x1A"`,
+			`alter table t comment = "newline \n | return \r | backslash \\ | NUL \0 \x00 | ctrlz \Z \x1A"`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -1043,7 +1089,7 @@ var AlterTableScripts = []ScriptTest{
 					"t",
 					"CREATE TABLE `t` (\n  `i` int COMMENT 'newline \\n | return \\r | backslash \\\\ | NUL \\0 x00 | ctrlz \x1A x1A'," +
 						"\n  `j` int COMMENT 'newline \\n | return \\r | backslash \\\\ | NUL \\0 x00 | ctrlz \x1A x1A'\n" +
-						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin COMMENT='newline \\n | return \\r | backslash \\\\ | NUL \\0 x00 | ctrlz \u001A x1A'"}},
 			},
 		},
 	},
