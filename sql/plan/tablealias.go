@@ -25,6 +25,7 @@ type TableAlias struct {
 	comment string
 	id      sql.TableId
 	cols    sql.ColSet
+	sch     sql.Schema
 }
 
 var _ sql.RenameableNode = (*TableAlias)(nil)
@@ -33,7 +34,18 @@ var _ sql.CollationCoercible = (*TableAlias)(nil)
 
 // NewTableAlias returns a new Table alias node.
 func NewTableAlias(name string, node sql.Node) *TableAlias {
-	ret := &TableAlias{UnaryNode: &UnaryNode{Child: node}, name: name}
+	childSchema := node.Schema()
+	schema := make(sql.Schema, len(childSchema))
+	for i, col := range childSchema {
+		newCol := *col
+		newCol.Source = name
+		schema[i] = &newCol
+	}
+	ret := &TableAlias{
+		UnaryNode: &UnaryNode{Child: node},
+		name:      name,
+		sch:       schema,
+	}
 	if tin, ok := node.(TableIdNode); ok {
 		ret.id = tin.Id()
 		ret.cols = tin.Columns()
@@ -87,14 +99,7 @@ func (t *TableAlias) Comment() string {
 // Schema implements the Node interface. TableAlias alters the schema of its child element to rename the source of
 // columns to the alias.
 func (t *TableAlias) Schema() sql.Schema {
-	childSchema := t.Child.Schema()
-	copy := make(sql.Schema, len(childSchema))
-	for i, col := range childSchema {
-		colCopy := *col
-		colCopy.Source = t.name
-		copy[i] = &colCopy
-	}
-	return copy
+	return t.sch
 }
 
 // WithChildren implements the Node interface.
@@ -118,21 +123,22 @@ func (t *TableAlias) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 	return sql.Collation_binary, 7
 }
 
-func (t TableAlias) String() string {
+func (t *TableAlias) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("TableAlias(%s)", t.name)
 	_ = pr.WriteChildren(t.Child.String())
 	return pr.String()
 }
 
-func (t TableAlias) DebugString() string {
+func (t *TableAlias) DebugString() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("TableAlias(%s)", t.name)
 	_ = pr.WriteChildren(sql.DebugString(t.Child))
 	return pr.String()
 }
 
-func (t TableAlias) WithName(name string) sql.Node {
-	t.name = name
-	return &t
+func (t *TableAlias) WithName(name string) sql.Node {
+	nt := *t
+	nt.name = name
+	return &nt
 }

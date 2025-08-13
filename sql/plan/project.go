@@ -35,6 +35,9 @@ type Project struct {
 	// a RowIter.
 	IncludesNestedIters bool
 	deps                sql.ColSet
+
+	sch       sql.Schema
+	cachedSch bool
 }
 
 var _ sql.Expressioner = (*Project)(nil)
@@ -47,6 +50,7 @@ func NewProject(expressions []sql.Expression, child sql.Node) *Project {
 	return &Project{
 		UnaryNode:   UnaryNode{child},
 		Projections: expressions,
+		sch:         make(sql.Schema, len(expressions)),
 	}
 }
 
@@ -122,14 +126,16 @@ func ExprDeps(exprs ...sql.Expression) sql.ColSet {
 
 // Schema implements the Node interface.
 func (p *Project) Schema() sql.Schema {
-	var s = make(sql.Schema, len(p.Projections))
-	for i, expr := range p.Projections {
-		s[i] = transform.ExpressionToColumn(expr, AliasSubqueryString(expr))
-		if gf := unwrapGetField(expr); gf != nil {
-			s[i].Default = findDefault(p.Child, gf)
+	if !p.cachedSch {
+		p.cachedSch = true
+		for i, expr := range p.Projections {
+			p.sch[i] = transform.ExpressionToColumn(expr, AliasSubqueryString(expr))
+			if gf := unwrapGetField(expr); gf != nil {
+				p.sch[i].Default = findDefault(p.Child, gf)
+			}
 		}
 	}
-	return s
+	return p.sch
 }
 
 // Resolved implements the Resolvable interface.
