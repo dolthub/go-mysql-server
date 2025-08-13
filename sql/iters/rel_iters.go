@@ -626,7 +626,7 @@ func (ui *UnionIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, err
 		}
 	}
-	
+
 	// Convert BIT values to Int64 when schema generalization changed types for server engine compatibility
 	if ui.ResultSchema != nil {
 		for i, val := range res {
@@ -637,7 +637,7 @@ func (ui *UnionIter) Next(ctx *sql.Context) (sql.Row, error) {
 			}
 		}
 	}
-	
+
 	return res, err
 }
 
