@@ -816,4 +816,21 @@ var TypeWireTests = []TypeWireTest{
 			{{"1", "[[\"a\",1]]"}, {"2", "[{\"key1\":\"value1\",\"key2\":\"value2\"}]"}},
 		},
 	},
+	{
+		Name: "VECTOR",
+		SetUpScript: []string{
+			`CREATE TABLE test (pk INT PRIMARY KEY, v1 VECTOR(2), v2 VECTOR(3));`,
+			`INSERT INTO test VALUES (1, VEC_FROMTEXT('[1.0, 2.0]', '[1.0, 2.0, 3.0]'), (2, '[4.0, 5.0]', '[4.0, 5.0, 6.0]'));`,
+		},
+		Queries: []string{
+			`SELECT * FROM test ORDER BY pk;`,
+			`SELECT v1, v2 FROM test ORDER BY pk;`,
+			`SELECT pk, v1 FROM test WHERE pk = 1;`,
+		},
+		Results: [][]sql.Row{
+			{{"1", "[1,2]", "[1,2,3]"}, {"2", "[4,5]", "[4,5,6]"}},
+			{{"[1,2]", "[1,2,3]"}, {"[4,5]", "[4,5,6]"}},
+			{{"1", "[1,2]"}},
+		},
+	},
 }

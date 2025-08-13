@@ -922,6 +922,10 @@ func TestVectorFunctions(t *testing.T) {
 	enginetest.TestVectorFunctions(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestVectorType(t *testing.T) {
+	enginetest.TestVectorType(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestIndexPrefix(t *testing.T) {
 	enginetest.TestIndexPrefix(t, enginetest.NewDefaultMemoryHarness())
 }
