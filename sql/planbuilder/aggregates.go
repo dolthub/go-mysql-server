@@ -950,7 +950,7 @@ func (b *Builder) buildHaving(fromScope, projScope, outScope *scope, having *ast
 	havingScope := b.newScope()
 	if fromScope.parent != nil {
 		havingScope.parent = fromScope.parent
-		havingScope.parent.selectColumnAliases = fromScope.selectColumnAliases
+		havingScope.parent.selectAliases = fromScope.selectAliases
 	}
 
 	// add columns from fromScope referenced in the groupBy

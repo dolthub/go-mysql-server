@@ -62,7 +62,7 @@ type scope struct {
 	insertTableAlias    string
 	insertColumnAliases map[string]string
 
-	selectColumnAliases map[string]scopeColumn
+	selectAliases map[string]sql.Expression
 }
 
 // resolveColumn matches a variable use to a column definition with a unique
@@ -443,10 +443,10 @@ func (s *scope) copy() *scope {
 	if !s.colset.Empty() {
 		ret.colset = s.colset.Copy()
 	}
-	if s.selectColumnAliases != nil {
-		ret.selectColumnAliases = make(map[string]scopeColumn, len(s.selectColumnAliases))
-		for k, v := range s.selectColumnAliases {
-			ret.selectColumnAliases[k] = v
+	if s.selectAliases != nil {
+		ret.selectAliases = make(map[string]sql.Expression, len(s.selectAliases))
+		for k, v := range s.selectAliases {
+			ret.selectAliases[k] = v
 		}
 	}
 
