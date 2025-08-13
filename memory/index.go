@@ -298,8 +298,9 @@ func (idx *Index) Reversible() bool {
 	return true
 }
 
-func (idx Index) copy() *Index {
-	return &idx
+func (idx *Index) copy() *Index {
+	newIdx := *idx
+	return &newIdx
 }
 
 // columnIndexes returns the indexes in the given schema for the fields in this index
