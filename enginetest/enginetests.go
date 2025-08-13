@@ -6122,6 +6122,15 @@ func TestVectorFunctions(t *testing.T, h Harness) {
 	for _, tt := range queries.VectorFunctionQueries {
 		TestScript(t, h, tt)
 	}
+	for _, testCase := range queries.VectorFunctionTestCases {
+		TestScript(t, h, queries.MakeVectorFunctionTest(testCase))
+	}
+}
+
+func TestVectorType(t *testing.T, h Harness) {
+	for _, tt := range queries.VectorDDLQueries {
+		TestScript(t, h, tt)
+	}
 }
 
 func TestIndexPrefix(t *testing.T, h Harness) {
