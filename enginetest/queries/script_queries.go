@@ -138,6 +138,56 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		// Regression test for https://github.com/dolthub/dolt/issues/9641
+		Name: "bit union comprehensive regression test dolt#9641",
+		SetUpScript: []string{
+			`CREATE TABLE t1 (
+				id int PRIMARY KEY,
+				name varchar(254),
+				archived bit(1) NOT NULL DEFAULT b'0',
+				archived_directly bit(1) NOT NULL DEFAULT b'0'
+			)`,
+			`CREATE TABLE t2 (
+				id int PRIMARY KEY,
+				name varchar(254),
+				archived bit(1) NOT NULL DEFAULT b'0'
+			)`,
+			"INSERT INTO t1 VALUES (1, 'Card1', b'0', b'0')",
+			"INSERT INTO t2 VALUES (2, 'Collection1', b'0')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT *,
+					COUNT(*) OVER () AS total_count
+				FROM (
+					SELECT
+						5 AS model_ranking,
+						id,
+						name,
+						archived,
+						archived_directly
+					FROM t1
+					WHERE archived_directly = FALSE
+					
+					UNION ALL
+					
+					SELECT
+						7 AS model_ranking,
+						id,
+						name,
+						archived,
+						NULL AS archived_directly
+					FROM t2
+					WHERE archived = FALSE AND id <> 1
+				) AS dummy_alias`,
+				Expected: []sql.Row{
+					{int64(5), int64(1), "Card1", uint64(0), int64(0), int64(2)},
+					{int64(7), int64(2), "Collection1", uint64(0), nil, int64(2)},
+				},
+			},
+		},
+	},
+	{
 		Name: "outer join finish unmatched right side",
 		SetUpScript: []string{
 			`
