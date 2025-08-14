@@ -113,7 +113,7 @@ func NewServerWithHandler(
 	return newServerFromHandler(cfg, e, sm, handler, listener)
 }
 
-func portInUse(hostPort string) bool {
+func PortInUse(hostPort string) bool {
 	timeout := time.Second
 	conn, _ := net.DialTimeout("tcp", hostPort, timeout)
 	if conn != nil {
@@ -166,7 +166,7 @@ func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handle
 	l := cfg.Listener
 	var unixSocketInUse error
 	if l == nil {
-		if portInUse(cfg.Address) {
+		if PortInUse(cfg.Address) {
 			unixSocketInUse = fmt.Errorf("Port %s already in use.", cfg.Address)
 		}
 
