@@ -789,17 +789,10 @@ func sortedColsForRel(rel RelExpr) sql.Schema {
 		}
 	case *MergeJoin:
 		var ret sql.Schema
-		for _, e := range r.InnerScan.Table.Index().Expressions() {
+		for _, e := range r.InnerScan.Table.Index().UnqualifiedExpressions() {
 			// TODO columns can have "." characters, this will miss cases
-			parts := strings.Split(e, ".")
-			var name string
-			if len(parts) == 2 {
-				name = parts[1]
-			} else {
-				return nil
-			}
 			ret = append(ret, &sql.Column{
-				Name:     strings.ToLower(name),
+				Name:     strings.ToLower(e),
 				Source:   strings.ToLower(r.InnerScan.Table.Name()),
 				Nullable: true},
 			)
