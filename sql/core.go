@@ -325,15 +325,15 @@ func ConvertToBool(ctx *Context, v interface{}) (bool, error) {
 	}
 }
 
-func ConvertToVector(ctx context.Context, v interface{}) ([]float64, error) {
+func ConvertToVector(ctx context.Context, v interface{}) ([]float32, error) {
 	switch b := v.(type) {
-	case []float64:
+	case []float32:
 		return b, nil
 	case string:
 		var val interface{}
 		err := json.Unmarshal([]byte(b), &val)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("can't convert JSON to vector: %w", err)
 		}
 		return convertJsonInterfaceToVector(val)
 	case JSONWrapper:
@@ -347,18 +347,25 @@ func ConvertToVector(ctx context.Context, v interface{}) ([]float64, error) {
 	}
 }
 
-func convertJsonInterfaceToVector(val interface{}) ([]float64, error) {
+func convertJsonInterfaceToVector(val interface{}) ([]float32, error) {
 	array, ok := val.([]interface{})
 	if !ok {
-		return nil, fmt.Errorf("can't convert JSON to vector; expected array, got %v", val)
+		return nil, fmt.Errorf("can't convert JSON to vector; expected array, got %T", val)
 	}
-	res := make([]float64, len(array))
+	res := make([]float32, len(array))
 	for i, elem := range array {
-		floatElem, ok := elem.(float64)
-		if !ok {
-			return nil, fmt.Errorf("can't convert JSON to vector; expected array of floats, got %v", elem)
+		switch v := elem.(type) {
+		case float32:
+			res[i] = v
+		case float64:
+			res[i] = float32(v)
+		case int64:
+			res[i] = float32(v)
+		case int32:
+			res[i] = float32(v)
+		default:
+			return nil, fmt.Errorf("can't convert JSON to vector; expected array of floats, but array contained %T", elem)
 		}
-		res[i] = floatElem
 	}
 	return res, nil
 }

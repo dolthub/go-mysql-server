@@ -27,7 +27,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-var vectorValueType = reflect.TypeOf([]float64{})
+var vectorValueType = reflect.TypeOf([]float32{})
 
 // VectorType represents the VECTOR(N) type.
 // It stores a fixed-length array of N floating point numbers.
@@ -64,8 +64,8 @@ func (t VectorType) Compare(ctx context.Context, a interface{}, b interface{}) (
 		return 0, err
 	}
 
-	avec := av.([]float64)
-	bvec := bv.([]float64)
+	avec := av.([]float32)
+	bvec := bv.([]float32)
 
 	aBytes := make([]byte, 4)
 	bBytes := make([]byte, 4)
@@ -88,7 +88,16 @@ func (t VectorType) Convert(ctx context.Context, v interface{}) (interface{}, sq
 	}
 
 	switch val := v.(type) {
-	case []float64:
+	case []byte:
+		if len(val) != 4*t.Dimensions {
+			return nil, sql.OutOfRange, fmt.Errorf("cannot convert BINARY(%d) to VECTOR(%d), need BINARY(%d)", len(val), t.Dimensions, 4*t.Dimensions)
+		}
+		result := make([]float32, t.Dimensions)
+		for i := range result {
+			binary.Decode(val[4*i:4*(i+1)], binary.LittleEndian, &result[i])
+		}
+		return result, sql.InRange, nil
+	case []float32:
 		if len(val) != t.Dimensions {
 			return nil, sql.OutOfRange, fmt.Errorf("VECTOR dimension mismatch: expected %d, got %d", t.Dimensions, len(val))
 		}
@@ -97,26 +106,26 @@ func (t VectorType) Convert(ctx context.Context, v interface{}) (interface{}, sq
 		if len(val) != t.Dimensions {
 			return nil, sql.OutOfRange, fmt.Errorf("VECTOR dimension mismatch: expected %d, got %d", t.Dimensions, len(val))
 		}
-		result := make([]float64, t.Dimensions)
+		result := make([]float32, t.Dimensions)
 		for i, elem := range val {
 			switch e := elem.(type) {
 			case float64:
-				result[i] = e
+				result[i] = float32(e)
 			case float32:
-				result[i] = float64(e)
+				result[i] = e
 			case int:
-				result[i] = float64(e)
+				result[i] = float32(e)
 			case int64:
-				result[i] = float64(e)
+				result[i] = float32(e)
 			case int32:
-				result[i] = float64(e)
+				result[i] = float32(e)
 			default:
 				if str, ok := elem.(string); ok {
 					f, err := strconv.ParseFloat(str, 64)
 					if err != nil {
 						return nil, sql.OutOfRange, fmt.Errorf("invalid vector element: %v", elem)
 					}
-					result[i] = f
+					result[i] = float32(f)
 				} else {
 					return nil, sql.OutOfRange, fmt.Errorf("invalid vector element: %v", elem)
 				}
@@ -182,7 +191,7 @@ func (t VectorType) ValueType() reflect.Type {
 
 // Zero implements Type interface.
 func (t VectorType) Zero() interface{} {
-	return make([]float64, t.Dimensions)
+	return make([]float32, t.Dimensions)
 }
 
 // CollationCoercibility implements sql.CollationCoercible interface.
