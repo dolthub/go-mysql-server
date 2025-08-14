@@ -395,11 +395,11 @@ func (b *Builder) getIndexDefs(table sql.Table) sql.IndexDefs {
 	if !isIdxTbl {
 		return nil
 	}
-	var idxDefs sql.IndexDefs
 	idxs, err := idxTbl.GetIndexes(b.ctx)
 	if err != nil {
 		b.handleErr(err)
 	}
+	idxDefs := make(sql.IndexDefs, 0, len(idxs))
 	for _, idx := range idxs {
 		if idx.IsGenerated() {
 			continue
@@ -412,10 +412,9 @@ func (b *Builder) getIndexDefs(table sql.Table) sql.IndexDefs {
 				constraint = sql.IndexConstraint_Unique
 			}
 		}
-		columns := make([]sql.IndexColumn, len(idx.Expressions()))
-		for i, col := range idx.Expressions() {
-			// TODO: find a better way to get only the column name if the table is present
-			col = strings.TrimPrefix(col, idxTbl.Name()+".")
+		exprs := idx.UnqualifiedExpressions()
+		columns := make([]sql.IndexColumn, len(exprs))
+		for i, col := range exprs {
 			columns[i] = sql.IndexColumn{Name: col}
 		}
 		idxDefs = append(idxDefs, &sql.IndexDef{

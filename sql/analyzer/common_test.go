@@ -157,6 +157,8 @@ func runTestCases(t *testing.T, ctx *sql.Context, testCases []analyzerFnTestCase
 			if expected == nil {
 				expected = tt.node
 			}
+			// Schema of certain nodes aren't filled until needed
+			expected.Schema()
 
 			assertNodesEqualWithDiff(t, expected, result)
 		})
