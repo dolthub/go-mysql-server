@@ -38,15 +38,15 @@ var VectorDDLQueries = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    `SHOW CREATE TABLE vectors`,
-				Expected: []sql.Row{{"vectors", "CREATE TABLE `vectors` (\n  `id` int NOT NULL,\n  `small_vec` VECTOR(2),\n  `medium_vec` VECTOR(10),\n  `large_vec` VECTOR(1000), \n PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+				Query:    `SHOW CREATE TABLE test_vectors`,
+				Expected: []sql.Row{{"test_vectors", "CREATE TABLE `test_vectors` (\n  `id` int NOT NULL,\n  `small_vec` VECTOR(2),\n  `medium_vec` VECTOR(10),\n  `large_vec` VECTOR(1000),\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 			{
-				Query:    `SELECT id, small_vec, medium_vec FROM vectors WHERE id = 2`,
+				Query:    `SELECT id, small_vec, medium_vec FROM test_vectors WHERE id = 2`,
 				Expected: []sql.Row{{2, []float32{3.5, 4.5}, nil}},
 			},
 			{
-				Query:    `SELECT id, small_vec, medium_vec FROM vectors WHERE id = 1`,
+				Query:    `SELECT id, small_vec, medium_vec FROM test_vectors WHERE id = 1`,
 				Expected: []sql.Row{{1, []float32{1.0, 2.0}, []float32{1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0}}},
 			},
 			{
@@ -57,7 +57,7 @@ var VectorDDLQueries = []ScriptTest{
 				},
 			},
 			{
-				Query:    `UPDATE test_vectors SET small_vec = '[10.0, 20.0]' WHERE id = 1`,
+				Query:    `UPDATE test_vectors SET small_vec = STRING_TO_VECTOR('[10.0, 20.0]') WHERE id = 1`,
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}}},
 			},
 			{
@@ -65,13 +65,12 @@ var VectorDDLQueries = []ScriptTest{
 				Expected: []sql.Row{{[]float32{10.0, 20.0}}},
 			},
 			{
-				Query: `INSERT INTO test_vectors VALUES 
-					(3, 0x00F0803F00004040, NULL, NULL)`,
+				Query:    `INSERT INTO test_vectors VALUES (3, 0x0000204100002041, NULL, NULL)`, // [10.0, 10.0]
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    `SELECT small_vec FROM test_vectors WHERE id = 3`,
-				Expected: []sql.Row{{[]float32{1.0, 2.0}}},
+				Expected: []sql.Row{{[]float32{10.0, 10.0}}},
 			},
 		},
 	},
@@ -83,7 +82,7 @@ var VectorDDLQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:          `INSERT INTO error_vectors VALUES (1, '[1.0, 2.0]')`,
-				ExpectedErrStr: "",
+				ExpectedErrStr: "value of type string cannot be converted to 'vector' type",
 			},
 			{
 				Query:          `INSERT INTO error_vectors VALUES (1, STRING_TO_VECTOR('[1.0, 2.0]'))`,
@@ -95,23 +94,23 @@ var VectorDDLQueries = []ScriptTest{
 			},
 			{
 				Query:          `INSERT INTO error_vectors VALUES (3, STRING_TO_VECTOR('[1.0, invalid, 3.0]'))`,
-				ExpectedErrStr: "invalid VECTOR JSON format: invalid character 'i' looking for beginning of value",
+				ExpectedErrStr: "can't convert JSON to vector: invalid character 'i' looking for beginning of value",
 			},
 			{
 				Query:          `INSERT INTO error_vectors VALUES (4, STRING_TO_VECTOR('invalid_json'))`,
-				ExpectedErrStr: "VECTOR must be in JSON array format",
+				ExpectedErrStr: "can't convert JSON to vector: invalid character 'i' looking for beginning of value",
 			},
 			{
 				Query:          `INSERT INTO error_vectors VALUES (5, STRING_TO_VECTOR('[1.0, "not an array"]'))`,
-				ExpectedErrStr: "VECTOR must be in JSON array format",
+				ExpectedErrStr: "can't convert JSON to vector; expected array of floats, but array contained string",
 			},
 			{
 				Query:          `INSERT INTO error_vectors VALUES (5, STRING_TO_VECTOR('"not an array"'))`,
-				ExpectedErrStr: "VECTOR must be in JSON array format",
+				ExpectedErrStr: "can't convert JSON to vector; expected array, got string",
 			},
 			{
-				Query:       `CREATE TABLE error_vectors (id INT PRIMARY KEY, vec3 VECTOR(-3))`,
-				ExpectedErr: sql.ErrInvalidColTypeDefinition,
+				Query:          `CREATE TABLE error_vectors (id INT PRIMARY KEY, vec3 VECTOR(-3))`,
+				ExpectedErrStr: "syntax error at position 62 near 'VECTOR'",
 			},
 			{
 				Query:       `CREATE TABLE error_vectors (id INT PRIMARY KEY, vec3 VECTOR(0))`,

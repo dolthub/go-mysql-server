@@ -820,7 +820,7 @@ var TypeWireTests = []TypeWireTest{
 		Name: "VECTOR",
 		SetUpScript: []string{
 			`CREATE TABLE test (pk INT PRIMARY KEY, v1 VECTOR(2), v2 VECTOR(3));`,
-			`INSERT INTO test VALUES (1, VEC_FROMTEXT('[1.0, 2.0]', '[1.0, 2.0, 3.0]'), (2, '[4.0, 5.0]', '[4.0, 5.0, 6.0]'));`,
+			`INSERT INTO test VALUES (1, VEC_FROMTEXT('[1.0, 2.0]'), VEC_FROMTEXT('[1.0, 2.0, 3.0]')), (2, VEC_FROMTEXT('[4.0, 5.0]'), VEC_FROMTEXT('[4.0, 5.0, 6.0]'));`,
 		},
 		Queries: []string{
 			`SELECT * FROM test ORDER BY pk;`,

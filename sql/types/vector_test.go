@@ -96,32 +96,32 @@ func TestVectorCompare(t *testing.T) {
 	}{
 		{
 			name:     "equal_vectors",
-			a:        []float64{1.0, 2.0, 3.0},
-			b:        []float64{1.0, 2.0, 3.0},
+			a:        []float32{1.0, 2.0, 3.0},
+			b:        []float32{1.0, 2.0, 3.0},
 			expected: 0,
 		},
 		{
 			name:     "a_less_than_b",
-			a:        []float64{1.0, 2.0, 3.0},
-			b:        []float64{1.0, 2.0, 4.0},
+			a:        []float32{258, 0, 0}, // 0x00, 0x00, 0x81, 0x43
+			b:        []float32{257, 0, 0}, // 0x00, 0x80, 0x80, 0x43
 			expected: -1,
 		},
 		{
 			name:     "a_greater_than_b",
-			a:        []float64{1.0, 3.0, 3.0},
-			b:        []float64{1.0, 2.0, 3.0},
+			a:        []float32{1.0, 257, 3.0},
+			b:        []float32{1.0, 258, 3.0},
 			expected: 1,
 		},
 		{
 			name:      "different_dimensions",
-			a:         []float64{1.0, 2.0},
-			b:         []float64{1.0, 2.0, 3.0},
+			a:         []float32{1.0, 2.0},
+			b:         []float32{1.0, 2.0, 3.0},
 			expectErr: true,
 		},
 		{
 			name:      "wrong_types",
 			a:         "string",
-			b:         []float64{1.0, 2.0, 3.0},
+			b:         []float32{1.0, 2.0, 3.0},
 			expectErr: true,
 		},
 	}
