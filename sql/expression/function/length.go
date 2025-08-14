@@ -123,6 +123,10 @@ func (l *Length) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return int32(wrapper.MaxByteLength()), nil
 	}
 
+	// Getting the length of a vector doesn't require converting it to a string, it just returns the length in bytes
+	if vec, ok := val.([]float32); ok {
+		return int32(4 * len(vec)), nil
+	}
 	content, collation, err := types.ConvertToCollatedString(ctx, val, l.Child.Type())
 	if err != nil {
 		return nil, err

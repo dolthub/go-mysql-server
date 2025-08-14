@@ -446,6 +446,9 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (sql.Type, error) {
 				return nil, fmt.Errorf("invalid VECTOR dimension: %v", err)
 			}
 		}
+		if dimensions < 1 || dimensions > MaxVectorDimensions {
+			return nil, sql.ErrInvalidColTypeDefinition.New(ct.String(), fmt.Sprintf("VECTOR dimension must be between 1 and %d", MaxVectorDimensions))
+		}
 		return CreateVectorType(int(dimensions))
 	default:
 		return nil, fmt.Errorf("unknown type: %v", ct.Type)
