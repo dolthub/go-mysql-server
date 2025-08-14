@@ -122,7 +122,7 @@ type ScriptTestAssertion struct {
 var ScriptTests = []ScriptTest{
 	{
 		// Regression test for https://github.com/dolthub/dolt/issues/9641
-		Name: "bit union regression test dolt#9641",
+		Name: "bit union max1err dolt#9641",
 		SetUpScript: []string{
 			"CREATE TABLE report_card (id INT PRIMARY KEY, archived BIT(1))",
 			"INSERT INTO report_card VALUES (1, 0)",
@@ -139,7 +139,8 @@ var ScriptTests = []ScriptTest{
 	},
 	{
 		// Regression test for https://github.com/dolthub/dolt/issues/9641
-		Name: "bit union comprehensive regression test dolt#9641",
+		Name:    "bit union comprehensive regression test dolt#9641",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			`CREATE TABLE t1 (
 				id int PRIMARY KEY,
