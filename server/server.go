@@ -149,9 +149,6 @@ func updateSystemVariables(cfg mysql.ListenerConfig) error {
 	if cfg.ConnWriteTimeout >= oneSecond {
 		sysVars["net_write_timeout"] = cfg.ConnWriteTimeout.Seconds()
 	}
-	if cfg.MaxConns > 0 {
-		sysVars["max_connections"] = cfg.MaxConns
-	}
 
 	// TODO: add the rest of the config variables
 	err := sql.SystemVariables.AssignValues(sysVars)

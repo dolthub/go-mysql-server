@@ -396,20 +396,19 @@ func TestServerVariables(t *testing.T) {
 			setup: []string{},
 			assertions: []serverScriptTestAssertion{
 				{
-					query:  "select @@hostname, @@port, @@max_connections, @@net_read_timeout, @@net_write_timeout",
+					query:  "select @@hostname, @@port, @@net_read_timeout, @@net_write_timeout",
 					isExec: false,
 					expectedRows: []any{
-						sql.Row{hostname, port, 1, 1, 1},
+						sql.Row{hostname, port, 1, 1},
 					},
 					checkRows: func(t *testing.T, rows *gosql.Rows, expectedRows []any) (bool, error) {
 						var resHostname string
 						var resPort int
-						var resMaxConnections int
 						var resNetReadTimeout int
 						var resNetWriteTimeout int
 						var rowNum int
 						for rows.Next() {
-							if err := rows.Scan(&resHostname, &resPort, &resMaxConnections, &resNetReadTimeout, &resNetWriteTimeout); err != nil {
+							if err := rows.Scan(&resHostname, &resPort, &resNetReadTimeout, &resNetWriteTimeout); err != nil {
 								return false, err
 							}
 							if rowNum >= len(expectedRows) {
