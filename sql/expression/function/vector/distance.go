@@ -25,7 +25,7 @@ import (
 
 type DistanceType interface {
 	String() string
-	Eval(left []float64, right []float64) (float64, error)
+	Eval(left []float32, right []float32) (float64, error)
 	CanEval(distanceType DistanceType) bool
 	FunctionName() string
 	Description() string
@@ -40,14 +40,14 @@ func (d DistanceL2Squared) String() string {
 	return "VEC_DISTANCE_L2_SQUARED"
 }
 
-func (d DistanceL2Squared) Eval(left []float64, right []float64) (float64, error) {
+func (d DistanceL2Squared) Eval(left []float32, right []float32) (float64, error) {
 	if len(left) != len(right) {
 		return 0, fmt.Errorf("attempting to find distance between vectors of different lengths: %d vs %d", len(left), len(right))
 	}
 	var total float64 = 0
 	for i, l := range left {
 		r := right[i]
-		total += (l - r) * (l - r)
+		total += float64(l-r) * float64(l-r)
 	}
 	return total, nil
 }
