@@ -120,11 +120,8 @@ func GetConvertToType(l, r sql.Type) string {
 		return ConvertToChar
 	}
 
-	if types.IsDecimal(l) || types.IsDecimal(r) {
+    if types.IsDecimal(l) || types.IsDecimal(r) {
 		return ConvertToDecimal
-	}
-	if types.IsBit(l) || types.IsBit(r) {
-		return ConvertToSigned
 	}
 	if types.IsUnsigned(l) && types.IsUnsigned(r) {
 		return ConvertToUnsigned

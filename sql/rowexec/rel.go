@@ -807,14 +807,13 @@ func (b *BaseBuilder) buildSetOp(ctx *sql.Context, s *plan.SetOp, row sql.Row) (
 		return nil, err
 	}
 	switch s.SetOpType {
-	case plan.UnionType:
-		iter = &iters.UnionIter{
-			Cur: iter,
-			NextIter: func(ctx *sql.Context) (sql.RowIter, error) {
-				return b.buildNodeExec(ctx, s.Right(), row)
-			},
-			ResultSchema: s.Schema(),
-		}
+    case plan.UnionType:
+        iter = &iters.UnionIter{
+            Cur: iter,
+            NextIter: func(ctx *sql.Context) (sql.RowIter, error) {
+                return b.buildNodeExec(ctx, s.Right(), row)
+            },
+        }
 	case plan.IntersectType:
 		var iter2 sql.RowIter
 		iter2, err = b.buildNodeExec(ctx, s.Right(), row)

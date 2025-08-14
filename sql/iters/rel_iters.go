@@ -601,13 +601,12 @@ func (di *distinctIter) Dispose() {
 }
 
 type UnionIter struct {
-	Cur          sql.RowIter
-	NextIter     func(ctx *sql.Context) (sql.RowIter, error)
-	ResultSchema sql.Schema
+    Cur      sql.RowIter
+    NextIter func(ctx *sql.Context) (sql.RowIter, error)
 }
 
 func (ui *UnionIter) Next(ctx *sql.Context) (sql.Row, error) {
-	res, err := ui.Cur.Next(ctx)
+    res, err := ui.Cur.Next(ctx)
 	if err == io.EOF {
 		if ui.NextIter == nil {
 			return nil, io.EOF
@@ -624,17 +623,6 @@ func (ui *UnionIter) Next(ctx *sql.Context) (sql.Row, error) {
 		res, err = ui.Cur.Next(ctx)
 		if err != nil {
 			return nil, err
-		}
-	}
-
-	// Convert BIT values to Int64 when schema generalization changed types for server engine compatibility
-	if ui.ResultSchema != nil {
-		for i, val := range res {
-			if i < len(ui.ResultSchema) && val != nil {
-				if converted, _, err := ui.ResultSchema[i].Type.Convert(ctx, val); err == nil {
-					res[i] = converted
-				}
-			}
 		}
 	}
 
