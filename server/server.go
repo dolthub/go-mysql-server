@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strconv"
 	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
@@ -122,17 +123,42 @@ func portInUse(hostPort string) bool {
 	return false
 }
 
-func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handler mysql.Handler, sel ServerEventListener) (*Server, error) {
-	if cfg.ConnReadTimeout < 0 {
-		cfg.ConnReadTimeout = 0
+func getPort(cfg mysql.ListenerConfig) (int64, error) {
+	_, port, err := net.SplitHostPort(cfg.Listener.Addr().String())
+	if err != nil {
+		return 0, err
 	}
-	if cfg.ConnWriteTimeout < 0 {
-		cfg.ConnWriteTimeout = 0
+	portInt, err := strconv.ParseInt(port, 10, 64)
+	if err != nil {
+		return 0, err
 	}
-	if cfg.MaxConnections < 0 {
-		cfg.MaxConnections = 0
+	return portInt, nil
+}
+
+func updateSystemVariables(cfg mysql.ListenerConfig) error {
+	sysVars := make(map[string]interface{})
+
+	if port, err := getPort(cfg); err == nil {
+		sysVars["port"] = port
 	}
 
+	oneSecond := time.Duration(1) * time.Second
+	if cfg.ConnReadTimeout >= oneSecond {
+		sysVars["net_read_timeout"] = cfg.ConnReadTimeout.Seconds()
+	}
+	if cfg.ConnWriteTimeout >= oneSecond {
+		sysVars["net_write_timeout"] = cfg.ConnWriteTimeout.Seconds()
+	}
+
+	// TODO: add the rest of the config variables
+	err := sql.SystemVariables.AssignValues(sysVars)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handler mysql.Handler, sel ServerEventListener) (*Server, error) {
 	for _, opt := range cfg.Options {
 		e, sm, handler = opt(e, sm, handler)
 	}
@@ -172,6 +198,11 @@ func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handle
 		plf = MySQLProtocolListenerFactory
 	}
 	protocolListener, err := plf(cfg, listenerCfg, sel)
+	if err != nil {
+		return nil, err
+	}
+
+	err = updateSystemVariables(listenerCfg)
 	if err != nil {
 		return nil, err
 	}

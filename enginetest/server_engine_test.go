@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"net"
+	"os"
 	"testing"
 
 	"github.com/dolthub/vitess/go/mysql"
@@ -369,6 +370,95 @@ func TestServerPreparedStatements(t *testing.T) {
 				})
 			}
 			for _, stmt := range commonTeardown {
+				_, err := conn.Exec(stmt)
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestServerVariables(t *testing.T) {
+	hostname, herr := os.Hostname()
+	require.NoError(t, herr)
+
+	port, perr := findEmptyPort()
+	require.NoError(t, perr)
+
+	s, serr := initTestServer(port)
+	require.NoError(t, serr)
+
+	go s.Start()
+	defer s.Close()
+
+	tests := []serverScriptTest{
+		{
+			name:  "test that config system variables are properly set",
+			setup: []string{},
+			assertions: []serverScriptTestAssertion{
+				{
+					query:  "select @@hostname, @@port, @@net_read_timeout, @@net_write_timeout",
+					isExec: false,
+					expectedRows: []any{
+						sql.Row{hostname, port, 1, 1},
+					},
+					checkRows: func(t *testing.T, rows *gosql.Rows, expectedRows []any) (bool, error) {
+						var resHostname string
+						var resPort int
+						var resNetReadTimeout int
+						var resNetWriteTimeout int
+						var rowNum int
+						for rows.Next() {
+							if err := rows.Scan(&resHostname, &resPort, &resNetReadTimeout, &resNetWriteTimeout); err != nil {
+								return false, err
+							}
+							if rowNum >= len(expectedRows) {
+								return false, nil
+							}
+							expectedRow := expectedRows[rowNum].(sql.Row)
+							require.Equal(t, expectedRow[0].(string), resHostname)
+							require.Equal(t, expectedRow[1].(int), resPort)
+						}
+						return true, nil
+					},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			conn, cerr := dbr.Open("mysql", fmt.Sprintf(noUserFmt, address, port), nil)
+			require.NoError(t, cerr)
+			defer conn.Close()
+			commonSetup := []string{
+				"create database test_db;",
+				"use test_db;",
+			}
+			commonTeardown := []string{
+				"drop database test_db",
+			}
+			for _, stmt := range append(commonSetup, test.setup...) {
+				_, err := conn.Exec(stmt)
+				require.NoError(t, err)
+			}
+			for _, assertion := range test.assertions {
+				t.Run(assertion.query, func(t *testing.T) {
+					if assertion.skip {
+						t.Skip()
+					}
+					rows, err := conn.Query(assertion.query, assertion.args...)
+					if assertion.expectErr {
+						require.Error(t, err)
+						return
+					}
+					require.NoError(t, err)
+
+					ok, err := assertion.checkRows(t, rows, assertion.expectedRows)
+					require.NoError(t, err)
+					require.True(t, ok)
+				})
+			}
+			for _, stmt := range append(commonTeardown) {
 				_, err := conn.Exec(stmt)
 				require.NoError(t, err)
 			}
