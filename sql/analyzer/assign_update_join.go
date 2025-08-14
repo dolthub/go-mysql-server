@@ -1,10 +1,7 @@
 package analyzer
 
 import (
-	"strings"
-
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
@@ -53,7 +50,7 @@ func modifyUpdateExprsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 
 // getUpdateTargetsByTable maps a set of table names and aliases to their corresponding update target Node
 func getUpdateTargetsByTable(node sql.Node, ij sql.Node, isJoin bool) (map[string]sql.Node, error) {
-	namesOfTableToBeUpdated := getTablesToBeUpdated(node)
+	namesOfTableToBeUpdated := plan.GetTablesToBeUpdated(node)
 	resolvedTables := getTablesByName(ij)
 
 	updateTargets := make(map[string]sql.Node)
@@ -80,22 +77,4 @@ func getUpdateTargetsByTable(node sql.Node, ij sql.Node, isJoin bool) (map[strin
 	}
 
 	return updateTargets, nil
-}
-
-// getTablesToBeUpdated takes a node and looks for the tables to modified by a SetField.
-func getTablesToBeUpdated(node sql.Node) map[string]struct{} {
-	ret := make(map[string]struct{})
-
-	transform.InspectExpressions(node, func(e sql.Expression) bool {
-		switch e := e.(type) {
-		case *expression.SetField:
-			gf := e.LeftChild.(*expression.GetField)
-			ret[strings.ToLower(gf.Table())] = struct{}{}
-			return false
-		}
-
-		return true
-	})
-
-	return ret
 }

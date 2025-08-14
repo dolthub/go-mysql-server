@@ -123,14 +123,15 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		colName := strings.ToLower(v.Name.String())
 		c, ok := inScope.resolveColumn(dbName, tblName, colName, true, false)
 		if !ok {
+			if aliasedExpr, ok := inScope.selectAliases[colName]; ok {
+				return aliasedExpr
+			}
 			sysVar, scope, ok := b.buildSysVar(v, ast.SetScope_None)
 			if ok {
 				return sysVar
 			}
 			var err error
-			if scope == ast.SetScope_User {
-				err = sql.ErrUnknownUserVariable.New(colName)
-			} else if scope == ast.SetScope_Persist || scope == ast.SetScope_PersistOnly {
+			if scope == ast.SetScope_User || scope == ast.SetScope_Persist || scope == ast.SetScope_PersistOnly {
 				err = sql.ErrUnknownUserVariable.New(colName)
 			} else if scope == ast.SetScope_Global || scope == ast.SetScope_Session {
 				err = sql.ErrUnknownSystemVariable.New(colName)

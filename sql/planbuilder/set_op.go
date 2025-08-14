@@ -227,6 +227,9 @@ func colIdsForRel(n sql.Node) []sql.ColumnId {
 			}
 		}
 		return ids
+	case *plan.SetOp:
+		// SetOp nodes need to preserve original schema order to avoid column scrambling in nested UNIONs
+		return colIdsForRel(n.Left())
 	case plan.TableIdNode:
 		cols := n.Columns()
 		if tn, ok := n.(sql.TableNode); ok {
@@ -247,5 +250,4 @@ func colIdsForRel(n sql.Node) []sql.ColumnId {
 	default:
 		return colIdsForRel(n.Children()[0])
 	}
-	return nil
 }

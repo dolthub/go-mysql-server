@@ -23,7 +23,6 @@ import (
 
 	"github.com/dolthub/vitess/go/mysql"
 
-	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -231,7 +230,7 @@ func (c *CreateEvent) WithExpressions(e ...sql.Expression) (sql.Node, error) {
 func (c *CreateEvent) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
 	eventCreationTime := ctx.QueryTime()
 	// TODO: event time values are evaluated in 'SYSTEM' TZ for now (should be session TZ)
-	eventDefinition, err := c.GetEventDefinition(ctx, eventCreationTime, eventCreationTime, time.Time{}, gmstime.SystemTimezoneOffset())
+	eventDefinition, err := c.GetEventDefinition(ctx, eventCreationTime, eventCreationTime, time.Time{}, sql.SystemTimezoneOffset())
 	if err != nil {
 		return nil, err
 	}
@@ -371,7 +370,7 @@ func (c *createEventIter) Next(ctx *sql.Context) (sql.Row, error) {
 			ctx.Session.Warn(&sql.Warning{
 				Level:   "Note",
 				Code:    1537,
-				Message: fmt.Sprintf(err.Error()),
+				Message: err.Error(),
 			})
 			return sql.Row{types.NewOkResult(0)}, nil
 		}
@@ -562,7 +561,7 @@ func (ost *OnScheduleTimestamp) EvalTime(ctx *sql.Context, tz string) (time.Time
 	if err != nil {
 		return time.Time{}, err
 	}
-	return gmstime.ConvertTimeToLocation(truncatedVal, tz)
+	return sql.ConvertTimeToLocation(truncatedVal, tz)
 }
 
 var _ sql.Node = (*DropEvent)(nil)

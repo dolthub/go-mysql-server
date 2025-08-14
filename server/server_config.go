@@ -94,6 +94,13 @@ type Config struct {
 	// Used to get the ProtocolListener on server start.
 	// If unset, defaults to MySQLProtocolListenerFactory.
 	ProtocolListenerFactory ProtocolListenerFunc
+
+	// QueryCounter is a metrics.Counter that counts the number of queries executed.
+	QueryCounter Counter
+	// QueryErrorCounter is a metrics.Counter that counts the number of queries that resulted in an error.
+	QueryErrorCounter Counter
+	// QueryHistogram is a metrics.Histogram that measures the duration of queries executed.
+	QueryHistogram Histogram
 }
 
 func (c Config) NewConfig() (Config, error) {

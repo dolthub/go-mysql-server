@@ -41,7 +41,16 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 
 	// need to transfer aggregation state from out -> in
 	var exprs []sql.Expression
+	var hasColumnBeforeStar bool
 	for _, se := range selectExprs {
+		// Check for named expressions before unqualified *
+		if star, ok := se.(*ast.StarExpr); ok {
+			if star.TableName.IsEmpty() && hasColumnBeforeStar {
+				b.handleErr(sql.ErrInvalidSyntax.New("cannot mix named columns with '*' in SELECT clause"))
+			}
+		} else if _, ok := se.(*ast.AliasedExpr); ok {
+			hasColumnBeforeStar = true
+		}
 		pe := b.selectExprToExpression(inScope, se)
 
 		// TODO two passes for symbol res and semantic validation
@@ -151,6 +160,10 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 				col.scalar = e
 				tempScope.addColumn(col)
 			}
+			if inScope.selectAliases == nil {
+				inScope.selectAliases = make(map[string]sql.Expression)
+			}
+			inScope.selectAliases[e.Name()] = e
 			exprs = append(exprs, e)
 		default:
 			exprs = append(exprs, pe)

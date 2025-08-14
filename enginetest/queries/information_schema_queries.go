@@ -831,6 +831,40 @@ var SkippedInfoSchemaQueries = []QueryTest{
 
 var InfoSchemaScripts = []ScriptTest{
 	{
+		Name: "List triggers across multiple databases",
+		SetUpScript: []string{
+			"CREATE DATABASE db1;",
+			"CREATE DATABASE db2;",
+			"USE db1;",
+			"CREATE TABLE main1(pk int primary key, c1 varchar(100));",
+			"CREATE TABLE main2(pk int primary key);",
+			"CREATE TRIGGER before_insert_main1 BEFORE INSERT ON main1 FOR EACH ROW BEGIN DECLARE row_count INT; SELECT COUNT(*) INTO row_count FROM main2; IF row_count > 0 THEN SET NEW.c1 = 'has data'; ELSE SET NEW.c1 = 'empty'; END IF; END",
+			"USE db2;",
+			"CREATE TABLE b1(pk int primary key, c1 varchar(100));",
+			"CREATE TABLE b2(pk int primary key);",
+			"CREATE TRIGGER before_insert_b1 BEFORE INSERT ON b1 FOR EACH ROW BEGIN DECLARE row_count INT; SELECT COUNT(*) INTO row_count FROM b2; IF row_count > 0 THEN SET NEW.c1 = 'has data'; ELSE SET NEW.c1 = 'empty'; END IF; END",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "USE db1;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT database();",
+				Expected: []sql.Row{{"db1"}},
+			},
+			{
+				Query:    "SELECT trigger_catalog, trigger_schema, trigger_name FROM information_schema.triggers;",
+				Expected: []sql.Row{{"def", "db1", "before_insert_main1"}, {"def", "db2", "before_insert_b1"}},
+			},
+			{
+				// Ensure the current database is still db1
+				Query:    "SELECT database();",
+				Expected: []sql.Row{{"db1"}},
+			},
+		},
+	},
+	{
 		Name: "foreign key that references dropped table",
 		SetUpScript: []string{
 			"create table parent(a int primary key, b int);",

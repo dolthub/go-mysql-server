@@ -440,7 +440,6 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (sql.Type, error) {
 	default:
 		return nil, fmt.Errorf("unknown type: %v", ct.Type)
 	}
-	return nil, fmt.Errorf("type not yet implemented: %v", ct.Type)
 }
 
 // CompareNulls compares two values, and returns true if either is null.
@@ -734,4 +733,21 @@ func GeneralizeTypes(a, b sql.Type) sql.Type {
 
 	// TODO: decide if we want to make this VarChar to match MySQL, match VarChar length to max of two types
 	return LongText
+}
+
+// TypeAwareConversion converts a value to a specified type, with awareness of the value's original type. This is
+// necessary because some types, such as EnumType and SetType, are stored as ints and require information from the
+// original type to properly convert to strings.
+func TypeAwareConversion(ctx *sql.Context, val interface{}, originalType sql.Type, convertedType sql.Type) (interface{}, sql.ConvertInRange, error) {
+	if val == nil {
+		return nil, sql.InRange, nil
+	}
+	var err error
+	if (IsEnum(originalType) || IsSet(originalType)) && IsText(convertedType) {
+		val, _, err = ConvertToCollatedString(ctx, val, originalType)
+		if err != nil {
+			return nil, sql.OutOfRange, err
+		}
+	}
+	return convertedType.Convert(ctx, val)
 }

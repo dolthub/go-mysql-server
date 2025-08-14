@@ -144,11 +144,19 @@ func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script q
 					}
 					TestQueryWithContext(t, ctx, e, harness, assertion.Query, expected, assertion.ExpectedColumns, assertion.Bindings, nil)
 				}
+
 				if assertion.ExpectedIndexes != nil && !IsServerEngine(e) {
 					evalIndexTest(t, harness, e, assertion.Query, assertion.ExpectedIndexes, assertion.Skip)
 				}
 				if assertion.JoinTypes != nil && !IsServerEngine(e) {
 					evalJoinTypeTest(t, harness, e, assertion.Query, assertion.JoinTypes, assertion.Skip)
+				}
+
+				if assertion.ExpectedPlan != "" && !IsServerEngine(e) {
+					options := sql.DescribeOptions{
+						Debug: true,
+					}
+					TestQueryPlanWithName(t, options.String(), harness, e, assertion.Query, assertion.ExpectedPlan, options)
 				}
 			})
 		}
@@ -852,7 +860,7 @@ func WidenRow(t *testing.T, sch sql.Schema, row sql.Row) sql.Row {
 	widened := make(sql.Row, len(row))
 	for i, v := range row {
 		if i < len(sch) && types.IsJSON(sch[i].Type) {
-			widened[i] = widenJSONValues(v)
+			widened[i] = widenJSONValues(t.Context(), v)
 			continue
 		}
 
@@ -893,7 +901,7 @@ func widenValue(t *testing.T, v interface{}) (vw interface{}) {
 	return vw
 }
 
-func widenJSONValues(val interface{}) sql.JSONWrapper {
+func widenJSONValues(ctx context.Context, val interface{}) sql.JSONWrapper {
 	if val == nil {
 		return nil
 	}
@@ -907,7 +915,7 @@ func widenJSONValues(val interface{}) sql.JSONWrapper {
 		js = types.MustJSON(str)
 	}
 
-	doc, err := js.ToInterface()
+	doc, err := js.ToInterface(ctx)
 	if err != nil {
 		panic(err)
 	}

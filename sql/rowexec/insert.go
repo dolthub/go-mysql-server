@@ -15,6 +15,7 @@
 package rowexec
 
 import (
+	"context"
 	"fmt"
 	"io"
 
@@ -112,7 +113,13 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 	// Do any necessary type conversions to the target schema
 	for idx, col := range i.schema {
 		if row[idx] != nil {
-			converted, inRange, cErr := col.Type.Convert(ctx, row[idx])
+			// Add column/row context for charset error messages
+			// Unlike other errors that get recreated here with column/row info,
+			// charset validation happens deep in ConvertToBytes and needs context during error creation
+			ctxWithValues := context.WithValue(ctx.Context, types.ColumnNameKey, col.Name)
+			ctxWithValues = context.WithValue(ctxWithValues, types.RowNumberKey, i.rowNumber)
+			ctxWithColumnInfo := ctx.WithContext(ctxWithValues)
+			converted, inRange, cErr := col.Type.Convert(ctxWithColumnInfo, row[idx])
 			if cErr == nil && !inRange {
 				cErr = sql.ErrValueOutOfRange.New(row[idx], col.Type)
 			}
@@ -145,6 +152,8 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 					} else if sql.ErrNotMatchingSRID.Is(cErr) {
 						cErr = sql.ErrNotMatchingSRIDWithColName.New(col.Name, cErr)
 					} else if types.ErrConvertingToEnum.Is(cErr) {
+						cErr = types.ErrDataTruncatedForColumnAtRow.New(col.Name, i.rowNumber)
+					} else if sql.ErrInvalidSetValue.Is(cErr) || sql.ErrConvertingToSet.Is(cErr) {
 						cErr = types.ErrDataTruncatedForColumnAtRow.New(col.Name, i.rowNumber)
 					}
 					return nil, sql.NewWrappedInsertError(origRow, cErr)
@@ -224,13 +233,11 @@ func (i *insertIter) handleOnDuplicateKeyUpdate(ctx *sql.Context, oldRow, newRow
 				if !ok {
 					return nil, err
 				}
-
 				val = convertDataAndWarn(ctx, i.schema, newRow, idx, err)
 			} else {
 				return nil, err
 			}
 		}
-
 		updateAcc = val.(sql.Row)
 	}
 	// project LHS only

@@ -15,7 +15,6 @@
 package plan
 
 import (
-	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -100,7 +99,7 @@ func (s *ShowEvents) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error)
 	for _, event := range s.Events {
 		eventType := "RECURRING"
 		var executeAt, intervalVal, intervalField, starts, ends, status interface{}
-		e := event.ConvertTimesFromUTCToTz(gmstime.SystemTimezoneOffset())
+		e := event.ConvertTimesFromUTCToTz(sql.SystemTimezoneOffset())
 		if e.HasExecuteAt {
 			eventType = "ONE TIME"
 			executeAt = e.ExecuteAt.Format(sql.EventDateSpaceTimeFormat)

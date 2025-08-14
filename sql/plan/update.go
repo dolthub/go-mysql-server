@@ -101,24 +101,6 @@ func getUpdatableTable(t sql.Table) (sql.UpdatableTable, error) {
 	}
 }
 
-// GetDatabase returns the first database found in the node tree given
-func GetDatabase(node sql.Node) sql.Database {
-	switch node := node.(type) {
-	case *IndexedTableAccess:
-		return GetDatabase(node.TableNode)
-	case *ResolvedTable:
-		return node.Database()
-	case *UnresolvedTable:
-		return node.Database()
-	}
-
-	for _, child := range node.Children() {
-		return GetDatabase(child)
-	}
-
-	return nil
-}
-
 // Schema implements the sql.Node interface.
 func (u *Update) Schema() sql.Schema {
 	// Postgres allows the returned values of the update statement to be controlled, so if returning

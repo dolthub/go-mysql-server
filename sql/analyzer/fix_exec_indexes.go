@@ -165,6 +165,7 @@ type idxScope struct {
 
 	triggerScope      bool
 	insertSourceScope bool
+	subqueryScope     bool
 }
 
 func (s *idxScope) inTrigger() bool {
@@ -296,10 +297,13 @@ func (s *idxScope) copy() *idxScope {
 		copy(idsCopy, s.ids)
 	}
 	return &idxScope{
-		lateralScopes: lateralCopy,
-		parentScopes:  parentCopy,
-		columns:       varsCopy,
-		ids:           idsCopy,
+		lateralScopes:     lateralCopy,
+		parentScopes:      parentCopy,
+		columns:           varsCopy,
+		ids:               idsCopy,
+		subqueryScope:     s.subqueryScope,
+		triggerScope:      s.triggerScope,
+		insertSourceScope: s.insertSourceScope,
 	}
 }
 
@@ -568,7 +572,7 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 		if proj, isProj := n.(*plan.Project); isProj {
 			switch proj.Child.(type) {
 			case *plan.GroupBy, *plan.Window:
-				if s.inTrigger() && s.inInsertSource() {
+				if s.inTrigger() && !s.subqueryScope {
 					for _, e := range proj.Expressions() {
 						s.expressions = append(s.expressions, fixExprToScope(e, s.childScopes...))
 					}
@@ -581,18 +585,15 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 			// default nodes can't see lateral join nodes, unless we're in lateral
 			// join and lateral scopes are promoted to parent status
 			for _, e := range ne.Expressions() {
-				// OrderedAggregations are special as they append results to the outer scope row
+				// OrderedAggregations are special as they append a new field to the outer scope row
 				// We need to account for this extra column in the rows when assigning indexes
 				// Example: gms/expression/function/aggregation/group_concat.go:groupConcatBuffer.Update()
-				if ordAgg, isOrdAgg := e.(sql.OrderedAggregation); isOrdAgg {
-					selExprs := ordAgg.OutputExpressions()
+				if _, isOrdAgg := e.(sql.OrderedAggregation); isOrdAgg {
 					selScope := &idxScope{}
-					for _, expr := range selExprs {
-						selScope.columns = append(selScope.columns, expr.String())
-						if gf, isGf := expr.(*expression.GetField); isGf {
-							selScope.ids = append(selScope.ids, gf.Id())
-						}
+					if idExpr, isIdExpr := e.(sql.IdExpression); isIdExpr {
+						selScope.ids = append(selScope.ids, idExpr.Id())
 					}
+					selScope.columns = append(selScope.columns, e.String())
 					scope = append(scope, selScope)
 				}
 				s.expressions = append(s.expressions, fixExprToScope(e, scope...))
@@ -620,7 +621,6 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 		}
 
 		s.ids = columnIdsForNode(n)
-
 		s.addSchema(n.Schema())
 		var err error
 		if s.children != nil {
@@ -692,6 +692,8 @@ func columnIdsForNode(n sql.Node) []sql.ColumnId {
 		default:
 			ret = append(ret, columnIdsForNode(n.Child)...)
 		}
+	case *plan.SetOp:
+		ret = append(ret, columnIdsForNode(n.Left())...)
 	case plan.TableIdNode:
 		if rt, ok := n.(*plan.ResolvedTable); ok && plan.IsDualTable(rt.Table) {
 			ret = append(ret, 0)
@@ -710,6 +712,8 @@ func columnIdsForNode(n sql.Node) []sql.ColumnId {
 				break
 			}
 		}
+		// TODO: columns are appended in increasing order by ColumnId instead of how they are actually ordered. likely
+		// needs to be fixed
 		cols.ForEach(func(col sql.ColumnId) {
 			ret = append(ret, col)
 		})
@@ -748,6 +752,7 @@ func fixExprToScope(e sql.Expression, scopes ...*idxScope) sql.Expression {
 			//  this error for the case of DEFAULT in a `plan.Values`, since we analyze the insert source in isolation (we
 			//  don't have the destination schema, and column references in default values are determined in the build phase)
 
+			// TODO: If we don't find a valid index for a field, we should report an error
 			idx, _ := newScope.getIdxId(e.Id(), e.String())
 			if idx >= 0 {
 				return e.WithIndex(idx), transform.NewTree, nil
@@ -755,7 +760,9 @@ func fixExprToScope(e sql.Expression, scopes ...*idxScope) sql.Expression {
 			return e, transform.SameTree, nil
 		case *plan.Subquery:
 			// this |outScope| prepends the subquery scope
-			newQ, _, err := assignIndexesHelper(e.Query, newScope.push())
+			subqueryScope := newScope.push()
+			subqueryScope.subqueryScope = true
+			newQ, _, err := assignIndexesHelper(e.Query, subqueryScope)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}

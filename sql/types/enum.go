@@ -166,12 +166,16 @@ func (t EnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.
 	switch value := v.(type) {
 	case int:
 		// MySQL rejects 0 values in strict mode regardless of enum definition
-		if value == 0 && t.validateScrictMode(ctx) {
-			return nil, sql.OutOfRange, ErrConvertingToEnum.New(value)
+		if value == 0 {
+			if sqlCtx, ok := ctx.(*sql.Context); ok && sql.ValidateStrictMode(sqlCtx) {
+				return nil, sql.OutOfRange, ErrConvertingToEnum.New(value)
+			}
 		}
 		if _, ok := t.At(value); ok {
 			return uint16(value), sql.InRange, nil
 		}
+		// If value is not a valid enum index, return error
+		return nil, sql.OutOfRange, ErrConvertingToEnum.New(value)
 	case uint:
 		return t.Convert(ctx, int(value))
 	case int8:
@@ -185,6 +189,8 @@ func (t EnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.
 		if _, ok := t.At(int(value)); ok {
 			return value, sql.InRange, nil
 		}
+		// If value is not a valid enum index, return error
+		return nil, sql.OutOfRange, ErrConvertingToEnum.New(value)
 	case int32:
 		return t.Convert(ctx, int(value))
 	case uint32:
@@ -212,16 +218,7 @@ func (t EnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.
 		return t.Convert(ctx, string(value))
 	}
 
-	return nil, sql.InRange, ErrConvertingToEnum.New(v)
-}
-
-// validateScrictMode checks if STRICT_TRANS_TABLES or STRICT_ALL_TABLES is enabled
-func (t EnumType) validateScrictMode(ctx context.Context) bool {
-	if sqlCtx, ok := ctx.(*sql.Context); ok {
-		sqlMode := sql.LoadSqlMode(sqlCtx)
-		return sqlMode.ModeEnabled("STRICT_TRANS_TABLES") || sqlMode.ModeEnabled("STRICT_ALL_TABLES")
-	}
-	return false
+	return nil, sql.OutOfRange, ErrConvertingToEnum.New(v)
 }
 
 // Equals implements the Type interface.

@@ -28,6 +28,11 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
+// maxTriggerNameLength is the maximum length for the name of a trigger. Note that MySQL applies a limit of 64 characters,
+// but we allow 96 characters to avoid breaking customers who were relying on the previous behavior where we didn't
+// check the length.
+const maxTriggerNameLength = 96
+
 // validateCreateTrigger handles CreateTrigger nodes, resolving references to "old" and "new" table references in
 // the trigger body. Also validates that these old and new references are being used appropriately -- they are only
 // valid for certain kinds of triggers and certain statements.
@@ -35,6 +40,10 @@ func validateCreateTrigger(ctx *sql.Context, a *Analyzer, node sql.Node, scope *
 	ct, ok := node.(*plan.CreateTrigger)
 	if !ok {
 		return node, transform.SameTree, nil
+	}
+
+	if len(ct.TriggerName) > maxTriggerNameLength {
+		return node, transform.SameTree, sql.ErrIdentifierIsTooLong.New(ct.TriggerName)
 	}
 
 	// We just want to verify that the trigger is correctly defined before creating it. If it is, we replace the

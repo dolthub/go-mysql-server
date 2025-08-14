@@ -644,29 +644,45 @@ func FindFKIndexWithPrefix(ctx *sql.Context, tbl sql.IndexAddressableTable, pref
 // foreignKeyComparableTypes returns whether the two given types are able to be used as parent/child columns in a
 // foreign key.
 func foreignKeyComparableTypes(ctx *sql.Context, type1 sql.Type, type2 sql.Type) bool {
-	if !type1.Equals(type2) {
-		// There seems to be a special case where CHAR/VARCHAR/BINARY/VARBINARY can have unequal lengths.
-		// Have not tested every type nor combination, but this seems specific to those 4 types.
-		if type1.Type() == type2.Type() {
-			switch type1.Type() {
-			case sqltypes.Char, sqltypes.VarChar, sqltypes.Binary, sqltypes.VarBinary:
-				type1String := type1.(sql.StringType)
-				type2String := type2.(sql.StringType)
-				if type1String.Collation().CharacterSet() != type2String.Collation().CharacterSet() {
-					return false
-				}
-			case sqltypes.Enum:
-				// Enum types can reference each other in foreign keys regardless of their string values.
-				// MySQL allows enum foreign keys to match based on underlying numeric values.
-				return true
-			default:
-				return false
-			}
-		} else {
-			return false
+	if type1.Equals(type2) {
+		return true
+	}
+
+	t1 := type1.Type()
+	t2 := type2.Type()
+
+	// MySQL allows time-related types to reference each other in foreign keys
+	if (types.IsTime(type1) || types.IsTimespan(type1)) && (types.IsTime(type2) || types.IsTimespan(type2)) {
+		return true
+	}
+
+	// Handle same-type cases for special types
+	if t1 == t2 {
+		switch t1 {
+		case sqltypes.Enum:
+			// Enum types can reference each other in foreign keys regardless of their string values.
+			// MySQL allows enum foreign keys to match based on underlying numeric values.
+			return true
+		case sqltypes.Decimal:
+			// MySQL allows decimal foreign keys with different precision/scale
+			// The foreign key constraint validation will handle the actual value comparison
+			return true
+		case sqltypes.Set:
+			// MySQL allows set foreign keys to match based on underlying numeric values.
+			return true
 		}
 	}
-	return true
+
+	// Handle string types (both same-type with different lengths and mixed types)
+	if (types.IsTextOnly(type1) && types.IsTextOnly(type2)) ||
+		(types.IsBinaryType(type1) && types.IsBinaryType(type2)) {
+		// String types must have matching character sets
+		type1String := type1.(sql.StringType)
+		type2String := type2.(sql.StringType)
+		return type1String.Collation().CharacterSet() == type2String.Collation().CharacterSet()
+	}
+
+	return false
 }
 
 // exprsAreIndexPrefix returns whether the given expressions are a prefix of the given index expressions

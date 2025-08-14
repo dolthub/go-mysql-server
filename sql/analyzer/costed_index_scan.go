@@ -617,7 +617,7 @@ func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fd
 		{
 			// if no unique keys, prefer equality over ranges
 			bestConst, bestIsNull := c.getConstAndNullFilters(c.bestFilters)
-			cmpConst, cmpIsNull := c.getConstAndNullFilters(c.bestFilters)
+			cmpConst, cmpIsNull := c.getConstAndNullFilters(filters)
 			if cmpConst.Len() > bestConst.Len() {
 				update = true
 				return

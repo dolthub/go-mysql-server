@@ -54,7 +54,7 @@ func (n *NamedWindows) String() string {
 	}
 	pr := sql.NewTreePrinter()
 	sb.WriteString(")")
-	_ = pr.WriteNode(sb.String())
+	_ = pr.WriteNode("%s", sb.String())
 	_ = pr.WriteChildren(n.Child.String())
 	return pr.String()
 }
@@ -70,7 +70,7 @@ func (n *NamedWindows) DebugString() string {
 	}
 	pr := sql.NewTreePrinter()
 	sb.WriteString(")")
-	_ = pr.WriteNode(sb.String())
+	_ = pr.WriteNode("%s", sb.String())
 	_ = pr.WriteChildren(sql.DebugString(n.Child))
 	return pr.String()
 }

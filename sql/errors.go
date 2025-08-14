@@ -17,7 +17,6 @@ package sql
 import (
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/dolthub/vitess/go/mysql"
 	"gopkg.in/src-d/go-errors.v1"
@@ -42,6 +41,9 @@ var (
 	// ErrInvalidType is thrown when there is an unexpected type at some part of
 	// the execution tree.
 	ErrInvalidType = errors.NewKind("invalid type: %s")
+
+	// ErrInvalidTimeZone is thrown when an invalid time zone is found
+	ErrInvalidTimeZone = errors.NewKind("Unknown or incorrect time zone: %s")
 
 	// ErrTableAlreadyExists is thrown when someone tries to create a
 	// table with a name of an existing one
@@ -407,6 +409,9 @@ var (
 	// ErrAlterTableCollationNotSupported is thrown when the table doesn't support ALTER TABLE COLLATE statements
 	ErrAlterTableCollationNotSupported = errors.NewKind("table %s cannot have its collation altered")
 
+	// ErrAlterTableCommentNotSupported is thrown when the table doesn't support ALTER TABLE COMMENT statements
+	ErrAlterTableCommentNotSupported = errors.NewKind("table %s cannot have its comment altered")
+
 	// ErrCollationNotSupportedOnUniqueTextIndex is thrown when a unique index is created on a TEXT column, with no
 	// prefix length specified, and the collation is case-insensitive or accent-insensitive, meaning we can't
 	// reliably use a content-hashed field to detect uniqueness.
@@ -496,6 +501,9 @@ var (
 
 	// ErrInvalidIdentifier is returned when an identifier is invalid
 	ErrInvalidIdentifier = errors.NewKind("invalid identifier: `%s`")
+
+	// ErrIdentifierIsTooLong is returned when creating a resource, but the identifier is longer than a name limit
+	ErrIdentifierIsTooLong = errors.NewKind("Identifier name '%s' is too long")
 
 	// ErrInvalidArgument is returned when an argument to a function is invalid.
 	ErrInvalidArgument = errors.NewKind("Invalid argument to %s")
@@ -1021,8 +1029,7 @@ func CastSQLError(err error) *mysql.SQLError {
 		code = mysql.ERUnknownError
 	}
 
-	// This uses the given error as a format string, so we have to escape any percentage signs else they'll show up as "%!(MISSING)"
-	return mysql.NewSQLError(code, sqlState, strings.Replace(err.Error(), `%`, `%%`, -1))
+	return mysql.NewSQLError(code, sqlState, "%s", err.Error())
 }
 
 // UnwrapError removes any wrapping errors (e.g. WrappedInsertError) around the specified error and

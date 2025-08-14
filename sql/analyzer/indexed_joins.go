@@ -217,7 +217,7 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 	}
 
 	if a.Verbose && a.Debug {
-		a.Log(m.String())
+		a.Log("%s", m.String())
 	}
 	if scope != nil {
 		scope.JoinTrees = append(scope.JoinTrees, m.String())
@@ -489,7 +489,6 @@ func convertSemiToInnerJoin(m *memo.Memo) error {
 			}
 			if srcNode == nil {
 				break
-				return fmt.Errorf("table for column not found: %d", colId)
 			}
 
 			sch := srcNode.Schema()
@@ -562,7 +561,11 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 		rightGrp := m.MemoizeProject(nil, anti.Right, projectExpressions)
 
 		// join is a new group
-		joinGrp := m.MemoizeLeftJoin(nil, anti.Left, rightGrp, plan.JoinTypeLeftOuterExcludeNulls, anti.Filter)
+		joinType := plan.JoinTypeLeftOuter
+		if anti.Op.IsExcludeNulls() {
+			joinType = plan.JoinTypeLeftOuterExcludeNulls
+		}
+		joinGrp := m.MemoizeLeftJoin(nil, anti.Left, rightGrp, joinType, anti.Filter)
 
 		// drop null projected columns on right table
 		nullFilters := make([]sql.Expression, len(nullify))

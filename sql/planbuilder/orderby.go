@@ -46,8 +46,8 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 		case ast.DescScr:
 			descending = true
 		}
-
-		switch e := o.Expr.(type) {
+		expr := unwrapExpression(o.Expr)
+		switch e := expr.(type) {
 		case *ast.ColName:
 			// check for projection alias first
 			dbName := strings.ToLower(e.Qualifier.DbQualifier.String())
@@ -147,7 +147,7 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 					// has to have been ref'd already
 					id, ok := fromScope.getExpr(e.String(), true)
 					if !ok {
-						err := fmt.Errorf("faild to ref aggregate expression: %s", e.String())
+						err := fmt.Errorf("failed to ref aggregate expression: %s", e.String())
 						b.handleErr(err)
 					}
 					return expression.NewGetField(int(id), e.Type(), e.String(), e.IsNullable()), transform.NewTree, nil
@@ -225,4 +225,14 @@ func (b *Builder) buildOrderBy(inScope, orderByScope *scope) {
 	}
 	inScope.node = sort
 	return
+}
+
+// unwrapExpression unwraps expressions wrapped in ParenExpr (parenthesis)
+// TODO: consider moving this function to a different file or package since it seems like it could be used in other
+// places
+func unwrapExpression(expr ast.Expr) ast.Expr {
+	if parensExpr, ok := expr.(*ast.ParenExpr); ok {
+		return unwrapExpression(parensExpr.Expr)
+	}
+	return expr
 }

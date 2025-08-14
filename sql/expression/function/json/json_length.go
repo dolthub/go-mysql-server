@@ -95,7 +95,7 @@ func (j *JsonLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, strErr
 	}
 
-	res, err := types.LookupJSONValue(doc, path)
+	res, err := types.LookupJSONValue(ctx, doc, path)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +104,7 @@ func (j *JsonLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	val, err := res.ToInterface()
+	val, err := res.ToInterface(ctx)
 	if err != nil {
 		return nil, err
 	}

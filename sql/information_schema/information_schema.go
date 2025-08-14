@@ -24,7 +24,6 @@ import (
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
-	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	. "github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -699,7 +698,9 @@ var tablespacesExtensionsSchema = Schema{
 var triggersSchema = Schema{
 	{Name: "TRIGGER_CATALOG", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: TriggersTableName},
 	{Name: "TRIGGER_SCHEMA", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: TriggersTableName},
-	{Name: "TRIGGER_NAME", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: nil, Nullable: false, Source: TriggersTableName},
+	// NOTE: MySQL limits trigger names to 64 characters, but we limit them to 96 chars to avoid breaking existing customers who were
+	//       relying on us not enforcing the 64 character limit. This is a good candidate to change in a future major version bump.
+	{Name: "TRIGGER_NAME", Type: types.MustCreateString(sqltypes.VarChar, 96, Collation_Information_Schema_Default), Default: nil, Nullable: false, Source: TriggersTableName},
 	{Name: "EVENT_MANIPULATION", Type: types.MustCreateEnumType([]string{"INSERT", "UPDATE", "DELETE"}, Collation_Information_Schema_Default), Default: nil, Nullable: false, Source: TriggersTableName},
 	{Name: "EVENT_OBJECT_CATALOG", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: TriggersTableName},
 	{Name: "EVENT_OBJECT_SCHEMA", Type: types.MustCreateString(sqltypes.VarChar, 64, Collation_Information_Schema_Default), Default: nil, Nullable: true, Source: TriggersTableName},
@@ -965,7 +966,7 @@ func eventsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 			}
 
 			for _, e := range eventDefs {
-				ed := e.ConvertTimesFromUTCToTz(gmstime.SystemTimezoneOffset())
+				ed := e.ConvertTimesFromUTCToTz(SystemTimezoneOffset())
 				var at, intervalVal, intervalField, starts, ends interface{}
 				var eventType, status string
 				if ed.HasExecuteAt {
@@ -1938,8 +1939,16 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 				continue
 			}
 
+			// Capture the current database, so that we can ensure it gets set back to this value
+			// after we adjust it to parse each database's triggers.
+			originalDatabase := ctx.GetCurrentDatabase()
+			defer ctx.SetCurrentDatabase(originalDatabase)
+
 			var triggerPlans []*plan.CreateTrigger
 			for _, trigger := range triggers {
+				// Because we have to parse/resolve the CREATE TRIGGER statement again, we update the
+				// session's current database so that ParseWithOptions can correctly resolve references.
+				ctx.SetCurrentDatabase(db.Database.Name())
 				triggerSqlMode := NewSqlModeFromString(trigger.SqlMode)
 				// TODO: figure out how auth works in this case
 				parsedTrigger, _, err := planbuilder.ParseWithOptions(ctx, c, trigger.CreateStatement, triggerSqlMode.ParserOptions())
@@ -1954,6 +1963,9 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 				triggerPlan.SqlMode = triggerSqlMode.String()
 				triggerPlans = append(triggerPlans, triggerPlan)
 			}
+
+			// Set the context back to the original database, since we changed it to parse each database's triggers
+			ctx.SetCurrentDatabase(originalDatabase)
 
 			beforeTriggers, afterTriggers := plan.OrderTriggers(triggerPlans)
 			var beforeDelete []*plan.CreateTrigger

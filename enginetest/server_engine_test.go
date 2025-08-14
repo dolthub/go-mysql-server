@@ -369,7 +369,7 @@ func TestServerPreparedStatements(t *testing.T) {
 					require.True(t, ok)
 				})
 			}
-			for _, stmt := range append(commonTeardown) {
+			for _, stmt := range commonTeardown {
 				_, err := conn.Exec(stmt)
 				require.NoError(t, err)
 			}

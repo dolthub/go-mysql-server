@@ -25,7 +25,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 
-	gmstime "github.com/dolthub/go-mysql-server/internal/time"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -2648,7 +2647,7 @@ var systemVars = map[string]sql.SystemVariable{
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("system_time_zone"),
-		Default:           gmstime.SystemTimezoneName(),
+		Default:           sql.SystemTimezoneName(),
 	},
 	"table_definition_cache": &sql.MysqlSystemVariable{
 		Name:              "table_definition_cache",
