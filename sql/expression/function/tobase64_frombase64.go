@@ -77,11 +77,11 @@ func (t *ToBase64) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 		strBytes = encodedBytes
 	} else {
-		val, _, err = types.LongText.Convert(ctx, val)
+		val, _, err = types.LongBlob.Convert(ctx, val)
 		if err != nil {
 			return nil, sql.ErrInvalidType.New(reflect.TypeOf(val))
 		}
-		strBytes = []byte(val.(string))
+		strBytes = val.([]byte)
 	}
 
 	encoded := base64.StdEncoding.EncodeToString(strBytes)

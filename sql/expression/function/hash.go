@@ -67,13 +67,13 @@ func (f *MD5) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	val, _, err := types.LongText.Convert(ctx, arg)
+	val, _, err := types.LongBlob.Convert(ctx, arg)
 	if err != nil {
 		return nil, err
 	}
 
 	h := md5.New()
-	_, err = io.WriteString(h, val.(string))
+	_, err = h.Write(val.([]byte))
 	if err != nil {
 		return nil, err
 	}
@@ -188,7 +188,7 @@ func (f *SHA2) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	val, _, err := types.LongText.Convert(ctx, arg)
+	val, _, err := types.LongBlob.Convert(ctx, arg)
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +211,7 @@ func (f *SHA2) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	_, err = io.WriteString(h, val.(string))
+	_, err = h.Write(val.([]byte))
 	if err != nil {
 		return nil, err
 	}
