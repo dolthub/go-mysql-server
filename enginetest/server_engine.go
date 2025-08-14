@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"strconv"
 	"strings"
 	"testing"
@@ -61,7 +60,7 @@ func NewServerQueryEngine(t *testing.T, engine *sqle.Engine, builder server.Sess
 		panic(err)
 	}
 
-	p, err := findEmptyPort()
+	p, err := sql.GetEmptyPort()
 	if err != nil {
 		return nil, err
 	}
@@ -706,19 +705,6 @@ func prepareBindingArgs(ctx *sql.Context, bindings map[string]sqlparser.Expr) ([
 		args[i] = lit.Value()
 	}
 	return args, nil
-}
-
-func findEmptyPort() (int, error) {
-	listener, err := net.Listen("tcp", ":0")
-	if err != nil {
-		return -1, err
-	}
-	port := listener.Addr().(*net.TCPAddr).Port
-	if err = listener.Close(); err != nil {
-		return -1, err
-
-	}
-	return port, nil
 }
 
 func (s *ServerQueryEngine) CloseSession(connID uint32) {

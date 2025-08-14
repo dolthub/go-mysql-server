@@ -20,7 +20,6 @@ import (
 	dsql "database/sql"
 	"fmt"
 	"io"
-	"net"
 	"os"
 	"reflect"
 	"strings"
@@ -2144,7 +2143,8 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 	}
 	clientHarness.Setup(setup.MydbData, setup.MytableData)
 
-	port := getEmptyPort(t)
+	port, err := sql.GetEmptyPort()
+	require.NoError(t, err)
 	for _, script := range queries.ServerAuthTests {
 		t.Run(script.Name, func(t *testing.T) {
 			ctx := NewContextWithClient(clientHarness, sql.Client{
@@ -2238,14 +2238,6 @@ func TestUserAuthentication(t *testing.T, h Harness) {
 			}
 		})
 	}
-}
-
-func getEmptyPort(t *testing.T) int {
-	listener, err := net.Listen("tcp", ":0")
-	require.NoError(t, err)
-	port := listener.Addr().(*net.TCPAddr).Port
-	require.NoError(t, listener.Close())
-	return port
 }
 
 func TestComplexIndexQueries(t *testing.T, harness Harness) {
@@ -5725,7 +5717,8 @@ func testCharsetCollationWire(t *testing.T, h Harness, sessionBuilder server.Ses
 		harness.Setup(setup.MydbData)
 	}
 
-	port := getEmptyPort(t)
+	port, err := sql.GetEmptyPort()
+	require.NoError(t, err)
 	for _, script := range tests {
 		t.Run(script.Name, func(t *testing.T) {
 			serverConfig := server.Config{
@@ -5829,7 +5822,8 @@ func extractCollationIdForField(r *dsql.Rows, i int) uint64 {
 func TestTypesOverWire(t *testing.T, harness ClientHarness, sessionBuilder server.SessionBuilder) {
 	harness.Setup(setup.MydbData)
 
-	port := getEmptyPort(t)
+	port, err := sql.GetEmptyPort()
+	require.NoError(t, err)
 	for _, script := range queries.TypeWireTests {
 		t.Run(script.Name, func(t *testing.T) {
 			e := mustNewEngine(t, harness)
