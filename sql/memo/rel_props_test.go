@@ -2,6 +2,7 @@ package memo
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -218,7 +219,11 @@ func (i dummyIndex) Expressions() []string {
 }
 
 func (i dummyIndex) UnqualifiedExpressions() []string {
-	return i.cols
+	res := make([]string, len(i.cols))
+	for idx, col := range i.cols {
+		res[idx] = col[strings.IndexByte(col, '.')+1:]
+	}
+	return res
 }
 
 func (dummyIndex) IsUnique() bool {
