@@ -123,30 +123,38 @@ func portInUse(hostPort string) bool {
 	return false
 }
 
-func getPortOrDefault(cfg mysql.ListenerConfig) int64 {
-	// TODO read this value from systemVars (different in postgres)
-	defaultPort := int64(3606)
+func getPort(cfg mysql.ListenerConfig) (int64, error) {
 	_, port, err := net.SplitHostPort(cfg.Listener.Addr().String())
 	if err != nil {
-		return defaultPort
+		return 0, err
 	}
 	portInt, err := strconv.ParseInt(port, 10, 64)
 	if err != nil {
-		return defaultPort
+		return 0, err
 	}
-	return portInt
+	return portInt, nil
 }
 
 func updateSystemVariables(cfg mysql.ListenerConfig) error {
-	port := getPortOrDefault(cfg)
+	sysVars := make(map[string]interface{})
+
+	if port, err := getPort(cfg); err == nil {
+		sysVars["port"] = port
+	}
+
+	oneSecond := time.Duration(1) * time.Second
+	if cfg.ConnReadTimeout >= oneSecond {
+		sysVars["net_read_timeout"] = cfg.ConnReadTimeout.Seconds()
+	}
+	if cfg.ConnWriteTimeout >= oneSecond {
+		sysVars["net_write_timeout"] = cfg.ConnWriteTimeout.Seconds()
+	}
+	if cfg.MaxConns > 0 {
+		sysVars["max_connections"] = cfg.MaxConns
+	}
 
 	// TODO: add the rest of the config variables
-	err := sql.SystemVariables.AssignValues(map[string]interface{}{
-		"port":              port,
-		"max_connections":   cfg.MaxConns,
-		"net_read_timeout":  cfg.ConnReadTimeout.Seconds(),
-		"net_write_timeout": cfg.ConnWriteTimeout.Seconds(),
-	})
+	err := sql.SystemVariables.AssignValues(sysVars)
 	if err != nil {
 		return err
 	}
@@ -154,18 +162,6 @@ func updateSystemVariables(cfg mysql.ListenerConfig) error {
 }
 
 func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handler mysql.Handler, sel ServerEventListener) (*Server, error) {
-	oneSecond := time.Duration(1) * time.Second
-	// TODO read default values from systemVars. some default values are different in postgres vs mysql
-	if cfg.ConnReadTimeout < oneSecond {
-		cfg.ConnReadTimeout = oneSecond * 30
-	}
-	if cfg.ConnWriteTimeout < oneSecond {
-		cfg.ConnWriteTimeout = oneSecond * 60
-	}
-	if cfg.MaxConnections < 1 {
-		cfg.MaxConnections = 151
-	}
-
 	for _, opt := range cfg.Options {
 		e, sm, handler = opt(e, sm, handler)
 	}
