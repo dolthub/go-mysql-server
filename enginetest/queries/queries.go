@@ -9352,6 +9352,20 @@ from typestable`,
 			{"0"}, {"1"}, {"0"}, {"1"},
 		},
 	},
+	// https://github.com/dolthub/dolt/issues/7095
+	// References in group by and having should be allowed to match select aliases
+	{
+		Query:    "select y as z from xy group by (y) having AVG(z) > 0",
+		Expected: []sql.Row{{1}, {2}, {3}},
+	},
+	{
+		Query:    "select y as z from xy group by (z) having AVG(z) > 0",
+		Expected: []sql.Row{{1}, {2}, {3}},
+	},
+	{
+		Query:    "select y + 1 as z from xy group by (z) having AVG(z) > 1",
+		Expected: []sql.Row{{2}, {3}, {4}},
+	},
 }
 
 var KeylessQueries = []QueryTest{
@@ -9602,20 +9616,6 @@ FROM mytable;`,
 		Expected: []sql.Row{
 			{"DECIMAL"},
 		},
-	},
-	// https://github.com/dolthub/dolt/issues/7095
-	// References in group by and having should be allowed to match select aliases
-	{
-		Query:    "select y as z from xy group by (y) having AVG(z) > 0",
-		Expected: []sql.Row{{1}, {2}, {3}},
-	},
-	{
-		Query:    "select y as z from xy group by (z) having AVG(z) > 0",
-		Expected: []sql.Row{{1}, {2}, {3}},
-	},
-	{
-		Query:    "select y + 1 as z from xy group by (z) having AVG(z) > 1",
-		Expected: []sql.Row{{2}, {3}, {4}},
 	},
 }
 

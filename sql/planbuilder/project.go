@@ -160,6 +160,10 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 				col.scalar = e
 				tempScope.addColumn(col)
 			}
+			if inScope.selectAliases == nil {
+				inScope.selectAliases = make(map[string]sql.Expression)
+			}
+			inScope.selectAliases[e.Name()] = e
 			exprs = append(exprs, e)
 		default:
 			exprs = append(exprs, pe)
