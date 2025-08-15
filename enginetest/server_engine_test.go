@@ -5,7 +5,6 @@ import (
 	gosql "database/sql"
 	"fmt"
 	"math"
-	"net"
 	"os"
 	"testing"
 
@@ -24,19 +23,6 @@ var (
 	address   = "localhost"
 	noUserFmt = "no_user:@tcp(%s:%d)/"
 )
-
-func findEmptyPort() (int, error) {
-	listener, err := net.Listen("tcp", ":0")
-	if err != nil {
-		return -1, err
-	}
-	port := listener.Addr().(*net.TCPAddr).Port
-	if err = listener.Close(); err != nil {
-		return -1, err
-
-	}
-	return port, nil
-}
 
 // initTestServer initializes an in-memory server with the given port, but does not start it.
 func initTestServer(port int) (*server.Server, error) {
@@ -58,7 +44,7 @@ func initTestServer(port int) (*server.Server, error) {
 
 // TestSmoke checks that an in-memory server can be started and stopped without error.
 func TestSmoke(t *testing.T) {
-	port, err := findEmptyPort()
+	port, err := sql.GetEmptyPort()
 	require.NoError(t, err)
 
 	s, err := initTestServer(port)
@@ -315,7 +301,7 @@ func TestServerPreparedStatements(t *testing.T) {
 		},
 	}
 
-	port, perr := findEmptyPort()
+	port, perr := sql.GetEmptyPort()
 	require.NoError(t, perr)
 
 	s, serr := initTestServer(port)
@@ -381,7 +367,7 @@ func TestServerVariables(t *testing.T) {
 	hostname, herr := os.Hostname()
 	require.NoError(t, herr)
 
-	port, perr := findEmptyPort()
+	port, perr := sql.GetEmptyPort()
 	require.NoError(t, perr)
 
 	s, serr := initTestServer(port)

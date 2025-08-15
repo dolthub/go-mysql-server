@@ -19,7 +19,6 @@ import (
 	sql2 "database/sql"
 	"fmt"
 	"io"
-	"net"
 	"runtime"
 	"strings"
 	"testing"
@@ -1051,7 +1050,7 @@ func TestAlterTableWithBadSchema(t *testing.T) {
 			ctx := harness.NewContext()
 			ctx.SetCurrentDatabase("mydb")
 			_, iter, _, err := engine.Query(ctx, tt.q)
-			// errors should be analyze time, not execution time
+			// errors should analyze time, not execution time
 			if tt.err {
 				require.Error(t, err)
 			} else {
@@ -1065,12 +1064,8 @@ func TestAlterTableWithBadSchema(t *testing.T) {
 
 func newDatabase() (*sql2.DB, func()) {
 	// Grab an empty port so that tests do not fail if a specific port is already in use
-	listener, err := net.Listen("tcp", ":0")
+	port, err := sql.GetEmptyPort()
 	if err != nil {
-		panic(err)
-	}
-	port := listener.Addr().(*net.TCPAddr).Port
-	if err = listener.Close(); err != nil {
 		panic(err)
 	}
 
