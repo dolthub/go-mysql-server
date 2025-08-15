@@ -437,6 +437,19 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (sql.Type, error) {
 		return PolygonType{}, nil
 	case "multipolygon":
 		return MultiPolygonType{}, nil
+	case "vector":
+		dimensions := int64(DefaultVectorDimensions)
+		if ct.Length != nil {
+			var err error
+			dimensions, err = strconv.ParseInt(string(ct.Length.Val), 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("invalid VECTOR dimension: %v", err)
+			}
+		}
+		if dimensions < 1 || dimensions > MaxVectorDimensions {
+			return nil, sql.ErrInvalidColTypeDefinition.New(ct.String(), fmt.Sprintf("VECTOR dimension must be between 1 and %d", MaxVectorDimensions))
+		}
+		return CreateVectorType(int(dimensions))
 	default:
 		return nil, fmt.Errorf("unknown type: %v", ct.Type)
 	}
