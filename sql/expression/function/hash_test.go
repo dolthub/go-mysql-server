@@ -37,6 +37,7 @@ func TestMD5(t *testing.T) {
 		{expression.NewLiteral("abcd", types.Text), "e2fc714c4727ee9395f324cd2e7f331f"},
 		{expression.NewLiteral(float32(2.5), types.Float32), "8221435bcce913b5c2dc22eaf6cb6590"},
 		{expression.NewLiteral("2.5", types.Text), "8221435bcce913b5c2dc22eaf6cb6590"},
+		{expression.NewLiteral([]byte{0x80}, types.LongBlob), "8d39dd7eef115ea6975446ef4082951f"},
 		{NewMD5(expression.NewLiteral(int8(10), types.Int8)), "8d8e353b98d5191d5ceea1aa3eb05d43"},
 	}
 
@@ -231,6 +232,11 @@ func TestSHA2(t *testing.T) {
 			expression.NewLiteral("2.5", types.Text),
 			expression.NewLiteral("512", types.Text),
 			"a4281cc49c2503bd0a0876db08ac6280583ebfcee6186c054792d877e7febe63251bfb82616504ed8ee36b146a7d5c6bfcdfcf9c27969a3874bab4544efed501",
+		},
+		{
+			expression.NewLiteral([]byte{0x80}, types.Blob),
+			expression.NewLiteral(256, types.Int64),
+			"76be8b528d0075f7aae98d6fa57a6d3c83ae480a8469e668d7b0af968995ac71",
 		},
 	}
 

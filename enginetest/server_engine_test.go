@@ -5,7 +5,7 @@ import (
 	gosql "database/sql"
 	"fmt"
 	"math"
-	"net"
+	"os"
 	"testing"
 
 	"github.com/dolthub/vitess/go/mysql"
@@ -23,19 +23,6 @@ var (
 	address   = "localhost"
 	noUserFmt = "no_user:@tcp(%s:%d)/"
 )
-
-func findEmptyPort() (int, error) {
-	listener, err := net.Listen("tcp", ":0")
-	if err != nil {
-		return -1, err
-	}
-	port := listener.Addr().(*net.TCPAddr).Port
-	if err = listener.Close(); err != nil {
-		return -1, err
-
-	}
-	return port, nil
-}
 
 // initTestServer initializes an in-memory server with the given port, but does not start it.
 func initTestServer(port int) (*server.Server, error) {
@@ -57,7 +44,7 @@ func initTestServer(port int) (*server.Server, error) {
 
 // TestSmoke checks that an in-memory server can be started and stopped without error.
 func TestSmoke(t *testing.T) {
-	port, err := findEmptyPort()
+	port, err := sql.GetEmptyPort()
 	require.NoError(t, err)
 
 	s, err := initTestServer(port)
@@ -314,7 +301,7 @@ func TestServerPreparedStatements(t *testing.T) {
 		},
 	}
 
-	port, perr := findEmptyPort()
+	port, perr := sql.GetEmptyPort()
 	require.NoError(t, perr)
 
 	s, serr := initTestServer(port)
@@ -369,6 +356,95 @@ func TestServerPreparedStatements(t *testing.T) {
 				})
 			}
 			for _, stmt := range commonTeardown {
+				_, err := conn.Exec(stmt)
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func TestServerVariables(t *testing.T) {
+	hostname, herr := os.Hostname()
+	require.NoError(t, herr)
+
+	port, perr := sql.GetEmptyPort()
+	require.NoError(t, perr)
+
+	s, serr := initTestServer(port)
+	require.NoError(t, serr)
+
+	go s.Start()
+	defer s.Close()
+
+	tests := []serverScriptTest{
+		{
+			name:  "test that config system variables are properly set",
+			setup: []string{},
+			assertions: []serverScriptTestAssertion{
+				{
+					query:  "select @@hostname, @@port, @@net_read_timeout, @@net_write_timeout",
+					isExec: false,
+					expectedRows: []any{
+						sql.Row{hostname, port, 1, 1},
+					},
+					checkRows: func(t *testing.T, rows *gosql.Rows, expectedRows []any) (bool, error) {
+						var resHostname string
+						var resPort int
+						var resNetReadTimeout int
+						var resNetWriteTimeout int
+						var rowNum int
+						for rows.Next() {
+							if err := rows.Scan(&resHostname, &resPort, &resNetReadTimeout, &resNetWriteTimeout); err != nil {
+								return false, err
+							}
+							if rowNum >= len(expectedRows) {
+								return false, nil
+							}
+							expectedRow := expectedRows[rowNum].(sql.Row)
+							require.Equal(t, expectedRow[0].(string), resHostname)
+							require.Equal(t, expectedRow[1].(int), resPort)
+						}
+						return true, nil
+					},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			conn, cerr := dbr.Open("mysql", fmt.Sprintf(noUserFmt, address, port), nil)
+			require.NoError(t, cerr)
+			defer conn.Close()
+			commonSetup := []string{
+				"create database test_db;",
+				"use test_db;",
+			}
+			commonTeardown := []string{
+				"drop database test_db",
+			}
+			for _, stmt := range append(commonSetup, test.setup...) {
+				_, err := conn.Exec(stmt)
+				require.NoError(t, err)
+			}
+			for _, assertion := range test.assertions {
+				t.Run(assertion.query, func(t *testing.T) {
+					if assertion.skip {
+						t.Skip()
+					}
+					rows, err := conn.Query(assertion.query, assertion.args...)
+					if assertion.expectErr {
+						require.Error(t, err)
+						return
+					}
+					require.NoError(t, err)
+
+					ok, err := assertion.checkRows(t, rows, assertion.expectedRows)
+					require.NoError(t, err)
+					require.True(t, ok)
+				})
+			}
+			for _, stmt := range append(commonTeardown) {
 				_, err := conn.Exec(stmt)
 				require.NoError(t, err)
 			}

@@ -17,13 +17,14 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"net"
 	"testing"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gocraft/dbr/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	gms "github.com/dolthub/go-mysql-server/sql"
 )
 
 var expectedResults = [][]string{
@@ -35,7 +36,8 @@ var expectedResults = [][]string{
 
 func TestExampleUsersDisabled(t *testing.T) {
 	enableUsers = false
-	useUnusedPort(t)
+	_, err := gms.GetEmptyPort()
+	require.NoError(t, err)
 	go func() {
 		main()
 	}()
@@ -53,7 +55,8 @@ func TestExampleUsersDisabled(t *testing.T) {
 func TestExampleRootUserEnabled(t *testing.T) {
 	enableUsers = true
 	pretendThatFileExists = false
-	useUnusedPort(t)
+	_, err := gms.GetEmptyPort()
+	require.NoError(t, err)
 	go func() {
 		main()
 	}()
@@ -74,7 +77,8 @@ func TestExampleRootUserEnabled(t *testing.T) {
 func TestExampleLoadedUser(t *testing.T) {
 	enableUsers = true
 	pretendThatFileExists = true
-	useUnusedPort(t)
+	_, err := gms.GetEmptyPort()
+	require.NoError(t, err)
 	go func() {
 		main()
 	}()
@@ -99,7 +103,8 @@ func TestExampleLoadedUser(t *testing.T) {
 func TestIssue1621(t *testing.T) {
 	// This is an issue that is specific to using the example server, as this is not a logic issue but a setup issue
 	enableUsers = true
-	useUnusedPort(t)
+	_, err := gms.GetEmptyPort()
+	require.NoError(t, err)
 	go func() {
 		main()
 	}()
@@ -140,12 +145,4 @@ func checkRows(t *testing.T, expectedRows [][]string, actualRows *sql.Rows) {
 		}
 	}
 	assert.NoError(t, actualRows.Close())
-}
-
-func useUnusedPort(t *testing.T) {
-	// Tests should grab an open port, otherwise they'll fail if some hardcoded port is already in use
-	listener, err := net.Listen("tcp", ":0")
-	require.NoError(t, err)
-	port = listener.Addr().(*net.TCPAddr).Port
-	require.NoError(t, listener.Close())
 }

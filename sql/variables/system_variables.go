@@ -17,6 +17,7 @@ package variables
 import (
 	"fmt"
 	"math"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -184,6 +185,11 @@ func InitSystemVariables() {
 // TODO: get rid of me, make this construction the responsibility of the engine
 func init() {
 	InitSystemVariables()
+}
+
+func getHostname() string {
+	hostname, _ := os.Hostname()
+	return hostname
 }
 
 // systemVars is the internal collection of all MySQL system variables according to the following pages:
@@ -1008,7 +1014,7 @@ var systemVars = map[string]sql.SystemVariable{
 		Dynamic:           false,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemStringType("hostname"),
-		Default:           "",
+		Default:           getHostname(),
 	},
 	"immediate_server_version": &sql.MysqlSystemVariable{
 		Name:              "immediate_server_version",

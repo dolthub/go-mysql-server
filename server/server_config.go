@@ -116,14 +116,14 @@ func (c Config) NewConfig() (Config, error) {
 		if !ok {
 			return Config{}, sql.ErrUnknownSystemVariable.New("net_write_timeout")
 		}
-		c.ConnWriteTimeout = time.Duration(timeout) * time.Millisecond
+		c.ConnWriteTimeout = time.Duration(timeout) * time.Second
 	}
 	if _, val, ok := sql.SystemVariables.GetGlobal("net_read_timeout"); ok {
 		timeout, ok := val.(int64)
 		if !ok {
 			return Config{}, sql.ErrUnknownSystemVariable.New("net_read_timeout")
 		}
-		c.ConnReadTimeout = time.Duration(timeout) * time.Millisecond
+		c.ConnReadTimeout = time.Duration(timeout) * time.Second
 	}
 	return c, nil
 }
