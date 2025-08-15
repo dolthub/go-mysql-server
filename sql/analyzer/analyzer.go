@@ -78,7 +78,7 @@ type Builder struct {
 }
 
 // NewBuilder creates a new Builder from a specific catalog.
-// This builder allow us add custom Rules and modify some internal properties.
+// This builder allow us to add custom Rules and modify some internal properties.
 func NewBuilder(pro sql.DatabaseProvider) *Builder {
 	allBeforeDefault := make([]Rule, len(OnceBeforeDefault)+len(AlwaysBeforeDefault))
 	copy(allBeforeDefault, OnceBeforeDefault)

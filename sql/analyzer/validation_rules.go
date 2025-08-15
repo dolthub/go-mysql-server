@@ -250,59 +250,66 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 
 	var err error
 	var parent sql.Node
+	checkParent := false
 	transform.Inspect(n, func(n sql.Node) bool {
 		defer func() {
 			parent = n
 		}()
 
-		gb, ok := n.(*plan.GroupBy)
-		if !ok {
-			return true
-		}
-
-		switch parent.(type) {
-		case *plan.Having, *plan.Project, *plan.Sort:
-			// TODO: these shouldn't be skipped but we currently aren't able to validate GroupBys with selected aliased
-			// expressions and a lot of our tests group by aliases
-			// https://github.com/dolthub/dolt/issues/4998
-			return true
-		}
-
 		// Allow the parser use the GroupBy node to eval the aggregation functions
 		// for sql statements that don't make use of the GROUP BY expression.
-		if len(gb.GroupByExprs) == 0 {
-			return true
-		}
-
-		primaryKeys := make(map[string]bool)
-		for _, col := range gb.Child.Schema() {
-			if col.PrimaryKey {
-				primaryKeys[strings.ToLower(col.String())] = true
+		switch n := n.(type) {
+		case *plan.GroupBy:
+			if checkParent {
+				switch parent.(type) {
+				case *plan.Having, *plan.Project, *plan.Sort:
+					// TODO: these shouldn't be skipped but we currently aren't able to validate GroupBys with selected aliased
+					// expressions and a lot of our tests group by aliases
+					// https://github.com/dolthub/dolt/issues/4998
+					return true
+				}
 			}
-		}
 
-		groupBys := make(map[string]bool)
-		groupByPrimaryKeys := 0
-		for _, expr := range gb.GroupByExprs {
-			exprStr := strings.ToLower(expr.String())
-			groupBys[exprStr] = true
-			if primaryKeys[exprStr] {
-				groupByPrimaryKeys++
+			if len(n.GroupByExprs) == 0 {
+				return true
 			}
-		}
 
-		// TODO: also allow grouping by unique non-nullable columns
-		if len(primaryKeys) != 0 && groupByPrimaryKeys == len(primaryKeys) {
-			return true
-		}
-
-		for _, expr := range gb.SelectedExprs {
-			if !expressionReferencesOnlyGroupBys(groupBys, expr) {
-				// TODO: this is currently too restrictive. Dependent columns are fine to reference
-				// https://dev.mysql.com/doc/refman/8.4/en/group-by-functional-dependence.html
-				err = analyzererrors.ErrValidationGroupBy.New(expr.String())
-				return false
+			primaryKeys := make(map[string]bool)
+			for _, col := range n.Child.Schema() {
+				if col.PrimaryKey {
+					primaryKeys[strings.ToLower(col.String())] = true
+				}
 			}
+
+			// TODO set groupBys to equalsExpr
+			groupBys := make(map[string]bool)
+			groupByPrimaryKeys := 0
+			for _, expr := range n.GroupByExprs {
+				exprStr := strings.ToLower(expr.String())
+				groupBys[exprStr] = true
+				if primaryKeys[exprStr] {
+					groupByPrimaryKeys++
+				}
+			}
+
+			// TODO: also allow grouping by unique non-nullable columns
+			if len(primaryKeys) != 0 && groupByPrimaryKeys == len(primaryKeys) {
+				return true
+			}
+
+			for _, expr := range n.SelectedExprs {
+				if !expressionReferencesOnlyGroupBys(groupBys, expr) {
+					// TODO: this is currently too restrictive. Dependent columns are fine to reference
+					// https://dev.mysql.com/doc/refman/8.4/en/group-by-functional-dependence.html
+					err = analyzererrors.ErrValidationGroupBy.New(expr.String())
+					return false
+				}
+			}
+		case *plan.Project:
+			// TODO set selectedExprs to n.Projections
+		case *plan.Filter:
+			// TODO inspect for equals and add GetField (if direct child) to equalsExprs
+			// make sure filter hasn't been pushed down yet
 		}
 		return true
 	})
