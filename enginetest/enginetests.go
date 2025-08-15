@@ -3145,7 +3145,7 @@ func TestModifyColumn(t *testing.T, harness Harness) {
 			se.NewConnection(ctx)
 		}
 		TestQueryWithContext(t, ctx, e, harness, "select database()", []sql.Row{{nil}}, nil, nil, nil)
-		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mydb.mytable MODIFY COLUMN s VARCHAR(21) NULL COMMENT 'changed again'", []sql.Row{{types.NewOkResult(0)}}, nil, nil, nil)
+		TestQueryWithContext(t, ctx, e, harness, "ALTER TABLE mydb.mytable MODIFY COLUMN s VARCHAR(21) NULL COMMENT 'changed again'", []sql.Row{{types.NewOkResult(4)}}, nil, nil, nil)
 		TestQueryWithContext(t, ctx, e, harness, "SHOW FULL COLUMNS FROM mydb.mytable", []sql.Row{
 			{"i", "bigint", nil, "NO", "PRI", nil, "", "", "ok"},
 			{"s", "varchar(21)", "utf8mb4_0900_bin", "YES", "", nil, "", "", "changed again"},
