@@ -123,6 +123,12 @@ func GetConvertToType(l, r sql.Type) string {
     if types.IsDecimal(l) || types.IsDecimal(r) {
 		return ConvertToDecimal
 	}
+
+    // Treat BIT as unsigned for numeric promotion contexts to avoid
+    // lossy or overflow-prone signed conversions.
+    if types.IsBit(l) || types.IsBit(r) {
+        return ConvertToUnsigned
+    }
 	if types.IsUnsigned(l) && types.IsUnsigned(r) {
 		return ConvertToUnsigned
 	}

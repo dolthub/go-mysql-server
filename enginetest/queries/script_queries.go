@@ -131,7 +131,8 @@ var ScriptTests = []ScriptTest{
         Assertions: []ScriptTestAssertion{
             {
                 Query:    "select * from t;",
-                Expected: []sql.Row{},
+                // Engine returns the BIT value as uint64(1)
+                Expected: []sql.Row{{uint64(1)}},
                 // Server engine result is inconsistent with engine; skip server result check
                 SkipResultCheckOnServerEngine: true,
             },
