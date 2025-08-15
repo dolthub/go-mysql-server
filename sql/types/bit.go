@@ -199,16 +199,7 @@ func (t BitType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Va
 	}
 	bitVal := value.(uint64)
 
-	var data []byte
-	for i := uint64(0); i < uint64(t.numOfBits); i += 8 {
-		data = append(data, byte(bitVal>>i))
-	}
-	for i, j := 0, len(data)-1; i < j; i, j = i+1, j-1 {
-		data[i], data[j] = data[j], data[i]
-	}
-	val := data
-
-	return sqltypes.MakeTrusted(sqltypes.Bit, val), nil
+	return sqltypes.NewUint64(bitVal), nil
 }
 
 // String implements Type interface.
@@ -218,7 +209,8 @@ func (t BitType_) String() string {
 
 // Type implements Type interface.
 func (t BitType_) Type() query.Type {
-	return sqltypes.Bit
+	// Use Uint64 for MySQL driver compatibility
+	return sqltypes.Uint64
 }
 
 // ValueType implements Type interface.
