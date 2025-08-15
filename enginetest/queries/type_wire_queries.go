@@ -14,7 +14,10 @@
 
 package queries
 
-import "github.com/dolthub/go-mysql-server/sql"
+import (
+	"encoding/binary"
+	"github.com/dolthub/go-mysql-server/sql"
+)
 
 // TypeWireTest is used to ensure that types are properly represented over the wire (vs being directly returned from the
 // engine).
@@ -23,6 +26,12 @@ type TypeWireTest struct {
 	SetUpScript []string
 	Queries     []string
 	Results     [][]sql.Row
+}
+
+func floatsToString(fs ...float32) string {
+	result := make([]byte, 4*len(fs))
+	binary.Encode(result, binary.LittleEndian, fs)
+	return string(result)
 }
 
 // TypeWireTests are used to ensure that types are properly represented over the wire (vs being directly returned from
@@ -828,9 +837,9 @@ var TypeWireTests = []TypeWireTest{
 			`SELECT pk, v1 FROM test WHERE pk = 1;`,
 		},
 		Results: [][]sql.Row{
-			{{"1", "[1,2]", "[1,2,3]"}, {"2", "[4,5]", "[4,5,6]"}},
-			{{"[1,2]", "[1,2,3]"}, {"[4,5]", "[4,5,6]"}},
-			{{"1", "[1,2]"}},
+			{{"1", floatsToString(1, 2), floatsToString(1, 2, 3)}, {"2", floatsToString(4, 5), floatsToString(4, 5, 6)}},
+			{{floatsToString(1, 2), floatsToString(1, 2, 3)}, {floatsToString(4, 5), floatsToString(4, 5, 6)}},
+			{{"1", floatsToString(1, 2)}},
 		},
 	},
 }

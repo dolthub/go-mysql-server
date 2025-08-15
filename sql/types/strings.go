@@ -416,9 +416,7 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 		start = 0
 	case []float32:
 		val = make([]byte, 4*len(s))
-		for i, v := range s {
-			binary.Encode(val[4*i:], binary.LittleEndian, v)
-		}
+		binary.Encode(val, binary.LittleEndian, s)
 	case time.Time:
 		val = s.AppendFormat(dest, sql.TimestampDatetimeLayout)
 	case decimal.Decimal:
