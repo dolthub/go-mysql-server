@@ -251,7 +251,7 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	var err error
 	var parent sql.Node
 	checkParent := false
-	var selectedExprs []sql.Expression
+	var projectParent *plan.Project
 	transform.Inspect(n, func(n sql.Node) bool {
 		defer func() {
 			parent = n
@@ -303,9 +303,9 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 				return true
 			}
 
-			resolveSelectDependencies(selectedExprs, n.SelectDeps, groupBys)
+			selectExprs := getSelectExprs(projectParent, n.SelectDeps, groupBys)
 
-			for _, expr := range selectedExprs {
+			for _, expr := range selectExprs {
 				if !expressionReferencesOnlyGroupBys(groupBys, expr) {
 					// TODO: this is currently too restrictive. Dependent columns are fine to reference
 					// https://dev.mysql.com/doc/refman/8.4/en/group-by-functional-dependence.html
@@ -314,10 +314,8 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 				}
 			}
 		case *plan.Project:
-			// TODO set selectedExprs to n.Projections
-			selectedExprs = make([]sql.Expression, len(n.Projections))
-			copy(selectedExprs, n.Projections)
-		case *plan.Filter:
+			projectParent = n
+		case *plan.Filter, *plan.Having:
 			// TODO inspect for equals and add GetField (if direct child) to equalsExprs
 			// make sure filter hasn't been pushed down yet
 		}
@@ -327,34 +325,39 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	return n, transform.SameTree, err
 }
 
-func resolveSelectDependencies(selectedExprs, selectDeps []sql.Expression, groupBys map[string]bool) {
-	if selectedExprs == nil {
-		selectedExprs = selectDeps
+func getSelectExprs(project *plan.Project, selectDeps []sql.Expression, groupBys map[string]bool) []sql.Expression {
+	if project == nil {
+		return selectDeps
 	} else {
 		sd := make(map[string]sql.Expression, len(selectDeps))
 		for _, dep := range selectDeps {
 			sd[strings.ToLower(dep.String())] = dep
 		}
 
-		for i, expr := range selectedExprs {
-			selectedExprs[i], _, _ = transform.Expr(expr, func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-				if groupBys[strings.ToLower(expr.String())] {
-					return expr, transform.SameTree, nil
-				}
-				switch expr := expr.(type) {
-				case *expression.Alias:
-					if ref, ok := sd[strings.ToLower(expr.Child.String())]; ok {
-						return ref, transform.NewTree, nil
-					}
-				case *expression.GetField:
-					if ref, ok := sd[strings.ToLower(expr.String())]; ok {
-						return ref, transform.NewTree, nil
-					}
-				}
-				return expr, transform.SameTree, nil
-			})
+		selectExprs := make([]sql.Expression, 0)
 
+		for _, expr := range project.Projections {
+			if !project.AliasDeps[strings.ToLower(expr.String())] {
+				resolvedExpr, _, _ := transform.Expr(expr, func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+					if groupBys[strings.ToLower(expr.String())] {
+						return expr, transform.SameTree, nil
+					}
+					switch expr := expr.(type) {
+					case *expression.Alias:
+						if ref, ok := sd[strings.ToLower(expr.Child.String())]; ok {
+							return ref, transform.NewTree, nil
+						}
+					case *expression.GetField:
+						if ref, ok := sd[strings.ToLower(expr.String())]; ok {
+							return ref, transform.NewTree, nil
+						}
+					}
+					return expr, transform.SameTree, nil
+				})
+				selectExprs = append(selectExprs, resolvedExpr)
+			}
 		}
+		return selectExprs
 	}
 }
 

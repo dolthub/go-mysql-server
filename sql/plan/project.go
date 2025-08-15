@@ -35,6 +35,9 @@ type Project struct {
 	// a RowIter.
 	IncludesNestedIters bool
 	deps                sql.ColSet
+	// AliasDeps maps string representations of projected GetField expressions to whether it is projected alias
+	// dependency
+	AliasDeps map[string]bool
 }
 
 var _ sql.Expressioner = (*Project)(nil)
@@ -220,5 +223,11 @@ func (p *Project) WithIncludesNestedIters(includesNestedIters bool) *Project {
 	np := *p
 	np.IncludesNestedIters = includesNestedIters
 	np.CanDefer = false
+	return &np
+}
+
+func (p *Project) WithAliasDeps(aliasDeps map[string]bool) *Project {
+	np := *p
+	np.AliasDeps = aliasDeps
 	return &np
 }
