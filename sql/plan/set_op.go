@@ -19,7 +19,6 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 const (
@@ -101,7 +100,6 @@ func (s *SetOp) Schema() sql.Schema {
 	for i := range ls {
 		c := *ls[i]
 		if i < len(rs) {
-			c.Type = types.GeneralizeTypes(ls[i].Type, rs[i].Type)
 			c.Nullable = ls[i].Nullable || rs[i].Nullable
 		}
 		ret[i] = &c
