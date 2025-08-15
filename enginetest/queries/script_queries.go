@@ -133,9 +133,7 @@ var ScriptTests = []ScriptTest{
 				Query: `SELECT archived FROM report_card WHERE id = 1
 					UNION ALL  
 					SELECT 48 FROM report_card WHERE id = 1`,
-				Expected:                      []sql.Row{{int64(0)}, {int64(48)}},
-				// Server engine returns BIT over the wire as []byte/unsigned, so skip result check here
-				SkipResultCheckOnServerEngine: true,
+				Expected: []sql.Row{{int64(0)}, {int64(48)}},
 			},
 		},
 	},
@@ -187,7 +185,6 @@ var ScriptTests = []ScriptTest{
 					{int64(5), int64(1), "Card1", uint64(0), int64(0), int64(2)},
 					{int64(7), int64(2), "Collection1", uint64(0), nil, int64(2)},
 				},
-				SkipResultCheckOnServerEngine: true,
 			},
 		},
 	},
