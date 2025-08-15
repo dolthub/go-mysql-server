@@ -344,12 +344,12 @@ func getSelectExprs(project *plan.Project, selectDeps []sql.Expression, groupBys
 					}
 					switch expr := expr.(type) {
 					case *expression.Alias:
-						if ref, ok := sd[strings.ToLower(expr.Child.String())]; ok {
-							return ref, transform.NewTree, nil
+						if dep, ok := sd[strings.ToLower(expr.Child.String())]; ok {
+							return dep, transform.NewTree, nil
 						}
 					case *expression.GetField:
-						if ref, ok := sd[strings.ToLower(expr.String())]; ok {
-							return ref, transform.NewTree, nil
+						if dep, ok := sd[strings.ToLower(expr.String())]; ok {
+							return dep, transform.NewTree, nil
 						}
 					}
 					return expr, transform.SameTree, nil

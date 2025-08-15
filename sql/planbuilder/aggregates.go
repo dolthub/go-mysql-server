@@ -200,13 +200,13 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 	// select columns:
 	//  - aggs
 	//  - extra columns needed by having, order by, select
-	var selectExprs []sql.Expression
+	var selectDeps []sql.Expression
 	var selectGfs []sql.Expression
 	selectStr := make(map[string]bool)
 	aliasDeps := make(map[string]bool)
 	for _, e := range group.aggregations() {
 		if !selectStr[strings.ToLower(e.String())] {
-			selectExprs = append(selectExprs, e.scalar)
+			selectDeps = append(selectDeps, e.scalar)
 			selectGfs = append(selectGfs, e.scalarGf())
 			selectStr[strings.ToLower(e.String())] = true
 		}
@@ -230,10 +230,11 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 			case *expression.GetField:
 				colName := strings.ToLower(e.String())
 				if !selectStr[colName] {
-					selectExprs = append(selectExprs, e)
+					selectDeps = append(selectDeps, e)
 					selectGfs = append(selectGfs, e)
 					selectStr[colName] = true
 				}
+
 				exprStr := strings.ToLower(e.String())
 				if isAliasDep, ok := aliasDeps[exprStr]; !ok && inAlias {
 					aliasDeps[exprStr] = true
@@ -248,13 +249,13 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 	for _, e := range fromScope.extraCols {
 		// accessory cols used by ORDER_BY, HAVING
 		if !selectStr[e.String()] {
-			selectExprs = append(selectExprs, e.scalarGf())
+			selectDeps = append(selectDeps, e.scalarGf())
 			selectGfs = append(selectGfs, e.scalarGf())
 
 			selectStr[e.String()] = true
 		}
 	}
-	gb := plan.NewGroupBy(selectExprs, groupingCols, fromScope.node)
+	gb := plan.NewGroupBy(selectDeps, groupingCols, fromScope.node)
 	outScope.node = gb
 
 	if len(aliases) > 0 {
