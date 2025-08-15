@@ -286,11 +286,16 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 			groupBys := make(map[string]bool)
 			groupByPrimaryKeys := 0
 			for _, expr := range n.GroupByExprs {
-				exprStr := strings.ToLower(expr.String())
-				groupBys[exprStr] = true
-				if primaryKeys[exprStr] {
-					groupByPrimaryKeys++
-				}
+				sql.Inspect(expr, func(expr sql.Expression) bool {
+					exprStr := strings.ToLower(expr.String())
+					groupBys[exprStr] = true
+					if primaryKeys[exprStr] {
+						groupByPrimaryKeys++
+					}
+
+					_, isAlias := expr.(*expression.Alias)
+					return isAlias
+				})
 			}
 
 			// TODO: also allow grouping by unique non-nullable columns
@@ -298,7 +303,7 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 				return true
 			}
 
-			resolveSelectDependencies(selectedExprs, n)
+			resolveSelectDependencies(selectedExprs, n.SelectDeps, groupBys)
 
 			for _, expr := range selectedExprs {
 				if !expressionReferencesOnlyGroupBys(groupBys, expr) {
@@ -322,23 +327,27 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	return n, transform.SameTree, err
 }
 
-func resolveSelectDependencies(selectedExprs []sql.Expression, gb *plan.GroupBy) {
+func resolveSelectDependencies(selectedExprs, selectDeps []sql.Expression, groupBys map[string]bool) {
 	if selectedExprs == nil {
-		selectedExprs = gb.SelectDeps
+		selectedExprs = selectDeps
 	} else {
-		selectDeps := make(map[string]sql.Expression, len(gb.SelectDeps))
-		for _, dep := range gb.SelectDeps {
-			selectDeps[strings.ToLower(dep.String())] = dep
+		sd := make(map[string]sql.Expression, len(selectDeps))
+		for _, dep := range selectDeps {
+			sd[strings.ToLower(dep.String())] = dep
 		}
+
 		for i, expr := range selectedExprs {
 			selectedExprs[i], _, _ = transform.Expr(expr, func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				if groupBys[strings.ToLower(expr.String())] {
+					return expr, transform.SameTree, nil
+				}
 				switch expr := expr.(type) {
 				case *expression.Alias:
-					if ref, ok := selectDeps[strings.ToLower(expr.Child.String())]; ok {
+					if ref, ok := sd[strings.ToLower(expr.Child.String())]; ok {
 						return ref, transform.NewTree, nil
 					}
 				case *expression.GetField:
-					if ref, ok := selectDeps[strings.ToLower(expr.String())]; ok {
+					if ref, ok := sd[strings.ToLower(expr.String())]; ok {
 						return ref, transform.NewTree, nil
 					}
 				}
