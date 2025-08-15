@@ -259,9 +259,7 @@ func (h *Hex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	case []float32:
 		buf := make([]byte, 4*len(val))
-		for i, v := range val {
-			binary.Encode(buf[4*i:], binary.LittleEndian, v)
-		}
+		binary.Encode(buf, binary.LittleEndian, val)
 		return hexForString(string(buf)), nil
 
 	case types.GeometryValue:
