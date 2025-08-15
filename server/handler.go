@@ -653,11 +653,7 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 				if err != nil {
 					return err
 				}
-				select {
-				case rowChan <- row:
-				case <-ctx.Done():
-					return nil
-				}
+				rowChan <- row
 			}
 		}
 	})
