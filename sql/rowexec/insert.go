@@ -67,14 +67,15 @@ func getInsertExpressions(values sql.Node) []sql.Expression {
 }
 
 func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error) {
-	row, err := i.rowSource.Next(ctx)
+	origRow, err := i.rowSource.Next(ctx)
 	if err == io.EOF {
 		return nil, err
 	}
-
 	if err != nil {
-		return nil, i.ignoreOrClose(ctx, row, err)
+		return nil, i.ignoreOrClose(ctx, origRow, err)
 	}
+
+	row := origRow.Copy()
 
 	// Increment row number for error reporting (MySQL starts at 1)
 	i.rowNumber++
@@ -106,9 +107,6 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 	if err != nil {
 		return nil, i.ignoreOrClose(ctx, row, err)
 	}
-
-	origRow := make(sql.Row, len(row))
-	copy(origRow, row)
 
 	// Do any necessary type conversions to the target schema
 	for idx, col := range i.schema {

@@ -132,6 +132,8 @@ type ProjectIter struct {
 	hasNestedIters bool
 	nestedState    *nestedIterState
 	childIter      sql.RowIter
+
+	rowBuffer *sql.RowBuffer
 }
 
 type nestedIterState struct {
@@ -150,10 +152,12 @@ func (i *ProjectIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 
-	return ProjectRow(ctx, i.projs, childRow)
+	return ProjectRow(ctx, i.projs, childRow, i.rowBuffer)
 }
 
 func (i *ProjectIter) Close(ctx *sql.Context) error {
+	i.rowBuffer.Reset()
+	sql.RowBufPool.Put(i.rowBuffer)
 	return i.childIter.Close(ctx)
 }
 
@@ -178,7 +182,7 @@ func (i *ProjectIter) ProjectRowWithNestedIters(
 	// Other iterator values will be NULL after they are depleted. All non-iterator fields for the row are returned
 	// identically for each row in the result set.
 	if i.nestedState != nil {
-		row, err := ProjectRow(ctx, i.nestedState.projections, i.nestedState.sourceRow)
+		row, err := ProjectRow(ctx, i.nestedState.projections, i.nestedState.sourceRow, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -304,8 +308,14 @@ func ProjectRow(
 	ctx *sql.Context,
 	projections []sql.Expression,
 	row sql.Row,
+	rowBuffer *sql.RowBuffer,
 ) (sql.Row, error) {
-	var fields = make(sql.Row, len(projections))
+	var fields sql.Row
+	if rowBuffer != nil {
+		fields = rowBuffer.Get(len(projections))
+	} else {
+		fields = make(sql.Row, len(projections))
+	}
 	var secondPass []int
 	for i, expr := range projections {
 		// Default values that are expressions may reference other fields, thus they must evaluate after all other exprs.

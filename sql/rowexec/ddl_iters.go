@@ -918,7 +918,7 @@ func (i *loggingKeyValueIter) Close(ctx *sql.Context) error {
 // projectRowWithTypes projects the row given with the projections given and additionally converts them to the
 // corresponding types found in the schema given, using the standard type conversion logic.
 func projectRowWithTypes(ctx *sql.Context, oldSchema, newSchema sql.Schema, projections []sql.Expression, r sql.Row) (sql.Row, error) {
-	newRow, err := ProjectRow(ctx, projections, r)
+	newRow, err := ProjectRow(ctx, projections, r, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1440,7 +1440,7 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 			return false, err
 		}
 
-		newRow, err := ProjectRow(ctx, projections, r)
+		newRow, err := ProjectRow(ctx, projections, r, nil)
 		if err != nil {
 			_ = inserter.DiscardChanges(ctx, err)
 			_ = inserter.Close(ctx)
@@ -1736,7 +1736,7 @@ func (i *dropColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable)
 			return false, err
 		}
 
-		newRow, err := ProjectRow(ctx, projections, r)
+		newRow, err := ProjectRow(ctx, projections, r, nil)
 		if err != nil {
 			_ = inserter.DiscardChanges(ctx, err)
 			_ = inserter.Close(ctx)
@@ -2240,7 +2240,7 @@ func buildIndex(ctx *sql.Context, n *plan.AlterIndex, ibt sql.IndexBuildingTable
 		}
 
 		if isVirtual {
-			r, err = ProjectRow(ctx, projections, r)
+			r, err = ProjectRow(ctx, projections, r, nil)
 			if err != nil {
 				return err
 			}
@@ -2326,7 +2326,7 @@ func rewriteTableForIndexCreate(ctx *sql.Context, n *plan.AlterIndex, table sql.
 		}
 
 		if isVirtual {
-			r, err = ProjectRow(ctx, projections, r)
+			r, err = ProjectRow(ctx, projections, r, nil)
 			if err != nil {
 				return err
 			}

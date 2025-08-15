@@ -46,8 +46,11 @@ func newMergeJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode,
 		return nil, err
 	}
 
-	fullRow := make(sql.Row, len(row)+len(j.Left().Schema())+len(j.Right().Schema()))
-	fullRow[0] = row
+	//fullRow := make(sql.Row, len(row)+len(j.Left().Schema())+len(j.Right().Schema()))
+
+	rowBuf := sql.RowBufPool.Get().(*sql.RowBuffer)
+	fullRow := rowBuf.Get(len(row) + len(j.Left().Schema()) + len(j.Right().Schema()))
+	//fullRow[0] = row
 	if len(row) > 0 {
 		copy(fullRow[0:], row[:])
 	}
@@ -83,6 +86,7 @@ func newMergeJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode,
 		leftRowLen:  len(j.Left().Schema()),
 		rightRowLen: len(j.Right().Schema()),
 		isReversed:  j.IsReversed,
+		rowBuffer:   rowBuf,
 	}
 	return iter, nil
 }
@@ -128,6 +132,8 @@ type mergeJoinIter struct {
 	leftRowLen  int
 	rightRowLen int
 	parentLen   int
+
+	rowBuffer *sql.RowBuffer
 }
 
 var _ sql.RowIter = (*mergeJoinIter)(nil)
@@ -574,6 +580,9 @@ func (i *mergeJoinIter) removeParentRow(r sql.Row) sql.Row {
 }
 
 func (i *mergeJoinIter) Close(ctx *sql.Context) (err error) {
+	i.rowBuffer.Reset()
+	sql.RowBufPool.Put(i.rowBuffer)
+
 	if i.left != nil {
 		err = i.left.Close(ctx)
 	}
