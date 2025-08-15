@@ -102,6 +102,8 @@ type Index interface {
 	// one expression, it means the index has multiple columns indexed. If it's
 	// just one, it means it may be an expression or a column.
 	Expressions() []string
+	// UnqualifiedExpressions returns the indexed expressions without the source.
+	UnqualifiedExpressions() []string
 	// IsUnique returns whether this index is unique
 	IsUnique() bool
 	// IsSpatial returns whether this index is a spatial index
