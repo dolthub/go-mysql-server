@@ -306,7 +306,7 @@ func getHighestProjection(n sql.Node) (sql.Expression, bool, error) {
 			// todo(max): could make better effort to get column ids from these,
 			// but real fix is also giving synthesized projection column ids
 			// in binder
-			proj = nn.SelectedExprs
+			proj = nn.SelectDeps
 		case *plan.Window:
 			proj = nn.SelectExprs
 		case *plan.SetOp:

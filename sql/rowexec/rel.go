@@ -396,7 +396,7 @@ func (b *BaseBuilder) buildSet(ctx *sql.Context, n *plan.Set, row sql.Row) (sql.
 func (b *BaseBuilder) buildGroupBy(ctx *sql.Context, n *plan.GroupBy, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.GroupBy", trace.WithAttributes(
 		attribute.Int("groupings", len(n.GroupByExprs)),
-		attribute.Int("aggregates", len(n.SelectedExprs)),
+		attribute.Int("aggregates", len(n.SelectDeps)),
 	))
 
 	i, err := b.buildNodeExec(ctx, n.Child, row)
@@ -407,9 +407,9 @@ func (b *BaseBuilder) buildGroupBy(ctx *sql.Context, n *plan.GroupBy, row sql.Ro
 
 	var iter sql.RowIter
 	if len(n.GroupByExprs) == 0 {
-		iter = newGroupByIter(n.SelectedExprs, i)
+		iter = newGroupByIter(n.SelectDeps, i)
 	} else {
-		iter = newGroupByGroupingIter(ctx, n.SelectedExprs, n.GroupByExprs, i)
+		iter = newGroupByGroupingIter(ctx, n.SelectDeps, n.GroupByExprs, i)
 	}
 
 	return sql.NewSpanIter(span, iter), nil

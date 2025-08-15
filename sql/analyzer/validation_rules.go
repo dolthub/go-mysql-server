@@ -251,6 +251,7 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	var err error
 	var parent sql.Node
 	checkParent := false
+	var selectedExprs []sql.Expression
 	transform.Inspect(n, func(n sql.Node) bool {
 		defer func() {
 			parent = n
@@ -297,7 +298,9 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 				return true
 			}
 
-			for _, expr := range n.SelectedExprs {
+			resolveSelectDependencies(selectedExprs, n)
+
+			for _, expr := range selectedExprs {
 				if !expressionReferencesOnlyGroupBys(groupBys, expr) {
 					// TODO: this is currently too restrictive. Dependent columns are fine to reference
 					// https://dev.mysql.com/doc/refman/8.4/en/group-by-functional-dependence.html
@@ -307,6 +310,8 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 			}
 		case *plan.Project:
 			// TODO set selectedExprs to n.Projections
+			selectedExprs = make([]sql.Expression, len(n.Projections))
+			copy(selectedExprs, n.Projections)
 		case *plan.Filter:
 			// TODO inspect for equals and add GetField (if direct child) to equalsExprs
 			// make sure filter hasn't been pushed down yet
@@ -315,6 +320,33 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	})
 
 	return n, transform.SameTree, err
+}
+
+func resolveSelectDependencies(selectedExprs []sql.Expression, gb *plan.GroupBy) {
+	if selectedExprs == nil {
+		selectedExprs = gb.SelectDeps
+	} else {
+		selectDeps := make(map[string]sql.Expression, len(gb.SelectDeps))
+		for _, dep := range gb.SelectDeps {
+			selectDeps[strings.ToLower(dep.String())] = dep
+		}
+		for i, expr := range selectedExprs {
+			selectedExprs[i], _, _ = transform.Expr(expr, func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				switch expr := expr.(type) {
+				case *expression.Alias:
+					if ref, ok := selectDeps[strings.ToLower(expr.Child.String())]; ok {
+						return ref, transform.NewTree, nil
+					}
+				case *expression.GetField:
+					if ref, ok := selectDeps[strings.ToLower(expr.String())]; ok {
+						return ref, transform.NewTree, nil
+					}
+				}
+				return expr, transform.SameTree, nil
+			})
+
+		}
+	}
 }
 
 func expressionReferencesOnlyGroupBys(groupBys map[string]bool, expr sql.Expression) bool {
