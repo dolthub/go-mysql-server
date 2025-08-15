@@ -16,6 +16,7 @@ package queries
 
 import (
 	"encoding/binary"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
