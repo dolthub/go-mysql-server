@@ -6265,7 +6265,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 		},
 	},
 	{
-		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x FROM one_pk opk GROUP BY x ORDER BY x`,
+		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x FROM one_pk opk GROUP BY pk, x ORDER BY x`,
 		Expected: []sql.Row{
 			{0, nil},
 			{1, 0},
@@ -6394,7 +6394,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 	{
 		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x
 						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) > 0
-						GROUP BY x ORDER BY x`,
+						GROUP BY pk, x ORDER BY x`,
 		Expected: []sql.Row{
 			{2, 1},
 			{3, 2},
@@ -6403,7 +6403,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 	{
 		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x
 						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) > 0
-						GROUP BY (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) ORDER BY x`,
+						GROUP BY pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) ORDER BY x`,
 		Expected: []sql.Row{
 			{2, 1},
 			{3, 2},
