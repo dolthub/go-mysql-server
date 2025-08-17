@@ -15,15 +15,11 @@
 package plan
 
 import (
-	"errors"
 	"fmt"
-	"io"
 
 	"github.com/gabereiser/go-mysql-server/sql"
 	"github.com/gabereiser/go-mysql-server/sql/types"
 )
-
-const cteRecursionLimit = 1000
 
 // RecursiveCte is defined by two subqueries
 // connected with a union:
@@ -47,24 +43,30 @@ const cteRecursionLimit = 1000
 // projection count and types. [Init] will be resolved before
 // [Rec] or [RecursiveCte] to share schema types.
 type RecursiveCte struct {
-	union *Union
-	// Columns used to name lazily-loaded schema fields
-	Columns []string
+	union *SetOp
+	// ColumnNames used to name lazily-loaded schema fields
+	ColumnNames []string
 	// schema will match the types of [Init.Schema()], names of [Columns]
 	schema sql.Schema
-	// working is a handle to our refreshable intermediate table
-	working *RecursiveTable
+	// Working is a handle to our refreshable intermediate table
+	Working *RecursiveTable
 	name    string
+	id      sql.TableId
+	cols    sql.ColSet
 }
 
 var _ sql.Node = (*RecursiveCte)(nil)
 var _ sql.Nameable = (*RecursiveCte)(nil)
+var _ sql.RenameableNode = (*RecursiveCte)(nil)
 var _ sql.Expressioner = (*RecursiveCte)(nil)
+var _ sql.CollationCoercible = (*RecursiveCte)(nil)
+var _ TableIdNode = (*RecursiveCte)(nil)
 
 func NewRecursiveCte(initial, recursive sql.Node, name string, outputCols []string, deduplicate bool, l sql.Expression, sf sql.SortFields) *RecursiveCte {
 	return &RecursiveCte{
-		Columns: outputCols,
-		union: &Union{
+		ColumnNames: outputCols,
+		union: &SetOp{
+			SetOpType:  UnionType,
 			BinaryNode: BinaryNode{left: initial, right: recursive},
 			Distinct:   deduplicate,
 			Limit:      l,
@@ -74,9 +76,43 @@ func NewRecursiveCte(initial, recursive sql.Node, name string, outputCols []stri
 	}
 }
 
+// WithId implements sql.TableIdNode
+func (r *RecursiveCte) WithId(id sql.TableId) TableIdNode {
+	ret := *r
+	ret.id = id
+	return &ret
+}
+
+// Id implements sql.TableIdNode
+func (r *RecursiveCte) Id() sql.TableId {
+	return r.id
+}
+
+// WithColumns implements sql.TableIdNode
+func (r *RecursiveCte) WithColumns(set sql.ColSet) TableIdNode {
+	ret := *r
+	ret.cols = set
+	return &ret
+}
+
+// ColumnNames implements sql.TableIdNode
+func (r *RecursiveCte) Columns() sql.ColSet {
+	return r.cols
+}
+
+func (r *RecursiveCte) WithName(s string) sql.Node {
+	ret := *r
+	ret.name = s
+	return &ret
+}
+
 // Name implements sql.Nameable
 func (r *RecursiveCte) Name() string {
 	return r.name
+}
+
+func (r *RecursiveCte) IsReadOnly() bool {
+	return r.union.BinaryNode.left.IsReadOnly() && r.union.BinaryNode.right.IsReadOnly()
 }
 
 // Left implements sql.BinaryNode
@@ -89,7 +125,7 @@ func (r *RecursiveCte) Right() sql.Node {
 	return r.union.right
 }
 
-func (r *RecursiveCte) Union() *Union {
+func (r *RecursiveCte) Union() *SetOp {
 	return r.union
 }
 
@@ -103,7 +139,7 @@ func (r *RecursiveCte) WithSchema(s sql.Schema) *RecursiveCte {
 // WithWorking populates the [working] table with a common schema
 func (r *RecursiveCte) WithWorking(t *RecursiveTable) *RecursiveCte {
 	nr := *r
-	nr.working = t
+	nr.Working = t
 	return &nr
 }
 
@@ -112,42 +148,14 @@ func (r *RecursiveCte) Schema() sql.Schema {
 	return r.schema
 }
 
-// RowIter implements sql.Node
-func (r *RecursiveCte) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	var iter sql.RowIter = &recursiveCteIter{
-		init:        r.Left(),
-		rec:         r.Right(),
-		row:         row,
-		working:     r.working,
-		temp:        make([]sql.Row, 0),
-		deduplicate: r.union.Distinct,
-	}
-	if r.union.Limit != nil && len(r.union.SortFields) > 0 {
-		limit, err := getInt64Value(ctx, r.union.Limit)
-		if err != nil {
-			return nil, err
-		}
-		iter = newTopRowsIter(r.union.SortFields, limit, false, iter)
-	} else if r.union.Limit != nil {
-		limit, err := getInt64Value(ctx, r.union.Limit)
-		if err != nil {
-			return nil, err
-		}
-		iter = &limitIter{limit: limit, childIter: iter}
-	} else if len(r.union.SortFields) > 0 {
-		iter = newSortIter(r.union.SortFields, iter)
-	}
-	return iter, nil
-}
-
 // WithChildren implements sql.Node
 func (r *RecursiveCte) WithChildren(children ...sql.Node) (sql.Node, error) {
 	ret := *r
-	u, err := r.union.WithChildren(children...)
+	s, err := r.union.WithChildren(children...)
 	if err != nil {
 		return nil, err
 	}
-	ret.union = u.(*Union)
+	ret.union = s.(*SetOp)
 	return &ret, nil
 }
 
@@ -163,8 +171,9 @@ func (r *RecursiveCte) Children() []sql.Node {
 	return r.union.Children()
 }
 
-func (r *RecursiveCte) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return r.union.CheckPrivileges(ctx, opChecker)
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*RecursiveCte) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func (r *RecursiveCte) Expressions() []sql.Expression {
@@ -173,11 +182,11 @@ func (r *RecursiveCte) Expressions() []sql.Expression {
 
 func (r *RecursiveCte) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	ret := *r
-	u, err := r.union.WithExpressions(exprs...)
+	s, err := r.union.WithExpressions(exprs...)
 	if err != nil {
 		return nil, err
 	}
-	ret.union = u.(*Union)
+	ret.union = s.(*SetOp)
 	return &ret, nil
 }
 
@@ -215,125 +224,6 @@ func (r *RecursiveCte) IsNullable() bool {
 	return true
 }
 
-// recursiveCteIter exhaustively executes a recursive
-// relation [rec] populated by an [init] base case.
-// Refer to RecursiveCte for more details.
-type recursiveCteIter struct {
-	// base sql.Project
-	init sql.Node
-	// recursive sql.Project
-	rec sql.Node
-	// anchor to recursive table to repopulate with [temp]
-	working *RecursiveTable
-	// true if UNION, false if UNION ALL
-	deduplicate bool
-	// parent iter initialization state
-	row sql.Row
-
-	// active iterator, either [init].RowIter or [rec].RowIter
-	iter sql.RowIter
-	// number of recursive iterations finished
-	cycle int
-	// buffer to collect intermediate results for next recursion
-	temp []sql.Row
-	// duplicate lookup if [deduplicated] set
-	cache sql.KeyValueCache
-}
-
-var _ sql.RowIter = (*recursiveCteIter)(nil)
-
-// Next implements sql.RowIter
-func (r *recursiveCteIter) Next(ctx *sql.Context) (sql.Row, error) {
-	if r.iter == nil {
-		// start with [Init].RowIter
-		var err error
-		if r.deduplicate {
-			r.cache = sql.NewMapCache()
-
-		}
-		r.iter, err = r.init.RowIter(ctx, r.row)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	var row sql.Row
-	for {
-		var err error
-		row, err = r.iter.Next(ctx)
-		if errors.Is(err, io.EOF) && len(r.temp) > 0 {
-			// reset [Rec].RowIter
-			err = r.resetIter(ctx)
-			if err != nil {
-				return nil, err
-			}
-			continue
-		} else if err != nil {
-			return nil, err
-		}
-
-		var key uint64
-		if r.deduplicate {
-			key, _ = sql.HashOf(row)
-			if k, _ := r.cache.Get(key); k != nil {
-				// skip duplicate
-				continue
-			}
-		}
-		r.store(row, key)
-		if err != nil {
-			return nil, err
-		}
-		break
-	}
-	return row, nil
-}
-
-// store saves a row to the [temp] buffer, and hashes if [deduplicated] = true
-func (r *recursiveCteIter) store(row sql.Row, key uint64) {
-	if r.deduplicate {
-		r.cache.Put(key, struct{}{})
-	}
-	r.temp = append(r.temp, row)
-	return
-}
-
-// resetIter creates a new [Rec].RowIter after refreshing the [working] RecursiveTable
-func (r *recursiveCteIter) resetIter(ctx *sql.Context) error {
-	if len(r.temp) == 0 {
-		return io.EOF
-	}
-	r.cycle++
-	if r.cycle > cteRecursionLimit {
-		return sql.ErrCteRecursionLimitExceeded.New()
-	}
-
-	if r.working != nil {
-		r.working.buf = r.temp
-		r.temp = make([]sql.Row, 0)
-	}
-
-	err := r.iter.Close(ctx)
-	if err != nil {
-		return err
-	}
-	r.iter, err = r.rec.RowIter(ctx, r.row)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// Close implements sql.RowIter
-func (r *recursiveCteIter) Close(ctx *sql.Context) error {
-	r.working.buf = nil
-	r.temp = nil
-	if r.iter != nil {
-		return r.iter.Close(ctx)
-	}
-	return nil
-}
-
 func NewRecursiveTable(n string, s sql.Schema) *RecursiveTable {
 	return &RecursiveTable{
 		name:   n,
@@ -346,7 +236,45 @@ func NewRecursiveTable(n string, s sql.Schema) *RecursiveTable {
 type RecursiveTable struct {
 	name   string
 	schema sql.Schema
-	buf    []sql.Row
+	Buf    []sql.Row
+	id     sql.TableId
+	cols   sql.ColSet
+}
+
+var _ sql.Node = (*RecursiveTable)(nil)
+var _ sql.NameableNode = (*RecursiveTable)(nil)
+var _ sql.RenameableNode = (*RecursiveTable)(nil)
+var _ TableIdNode = (*RecursiveTable)(nil)
+var _ sql.CollationCoercible = (*RecursiveTable)(nil)
+
+// WithId implements sql.TableIdNode
+func (r *RecursiveTable) WithId(id sql.TableId) TableIdNode {
+	// currently recursive table pointers need to be stable at execution time
+	r.id = id
+	return r
+}
+
+// Id implements sql.TableIdNode
+func (r *RecursiveTable) Id() sql.TableId {
+	return r.id
+}
+
+// WithColumns implements sql.TableIdNode
+func (r *RecursiveTable) WithColumns(set sql.ColSet) TableIdNode {
+	// currently recursive table pointers need to be stable at execution time
+	r.cols = set
+	return r
+}
+
+// Columns implements sql.TableIdNode
+func (r *RecursiveTable) Columns() sql.ColSet {
+	return r.cols
+}
+
+func (r *RecursiveTable) WithName(s string) sql.Node {
+	ret := *r
+	r.name = s
+	return &ret
 }
 
 func (r *RecursiveTable) Resolved() bool {
@@ -355,6 +283,10 @@ func (r *RecursiveTable) Resolved() bool {
 
 func (r *RecursiveTable) Name() string {
 	return r.name
+}
+
+func (r *RecursiveTable) IsReadOnly() bool {
+	return true
 }
 
 func (r *RecursiveTable) String() string {
@@ -369,38 +301,11 @@ func (r *RecursiveTable) Children() []sql.Node {
 	return nil
 }
 
-func (r *RecursiveTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return &recursiveTableIter{buf: r.buf}, nil
-}
-
 func (r *RecursiveTable) WithChildren(node ...sql.Node) (sql.Node, error) {
 	return r, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (r *RecursiveTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
-}
-
-var _ sql.Node = (*RecursiveTable)(nil)
-
-// TODO a queue is probably more optimal
-type recursiveTableIter struct {
-	pos int
-	buf []sql.Row
-}
-
-var _ sql.RowIter = (*recursiveTableIter)(nil)
-
-func (r *recursiveTableIter) Next(ctx *sql.Context) (sql.Row, error) {
-	if r.buf == nil || r.pos >= len(r.buf) {
-		return nil, io.EOF
-	}
-	r.pos++
-	return r.buf[r.pos-1], nil
-}
-
-func (r *recursiveTableIter) Close(ctx *sql.Context) error {
-	r.buf = nil
-	return nil
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*RecursiveTable) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }

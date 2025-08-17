@@ -15,6 +15,7 @@
 package function
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -36,6 +37,7 @@ func TestMD5(t *testing.T) {
 		{expression.NewLiteral("abcd", types.Text), "e2fc714c4727ee9395f324cd2e7f331f"},
 		{expression.NewLiteral(float32(2.5), types.Float32), "8221435bcce913b5c2dc22eaf6cb6590"},
 		{expression.NewLiteral("2.5", types.Text), "8221435bcce913b5c2dc22eaf6cb6590"},
+		{expression.NewLiteral([]byte{0x80}, types.LongBlob), "8d39dd7eef115ea6975446ef4082951f"},
 		{NewMD5(expression.NewLiteral(int8(10), types.Int8)), "8d8e353b98d5191d5ceea1aa3eb05d43"},
 	}
 
@@ -231,6 +233,11 @@ func TestSHA2(t *testing.T) {
 			expression.NewLiteral("512", types.Text),
 			"a4281cc49c2503bd0a0876db08ac6280583ebfcee6186c054792d877e7febe63251bfb82616504ed8ee36b146a7d5c6bfcdfcf9c27969a3874bab4544efed501",
 		},
+		{
+			expression.NewLiteral([]byte{0x80}, types.Blob),
+			expression.NewLiteral(256, types.Int64),
+			"76be8b528d0075f7aae98d6fa57a6d3c83ae480a8469e668d7b0af968995ac71",
+		},
 	}
 
 	for _, test := range tests {
@@ -272,6 +279,212 @@ func TestSHA2Null(t *testing.T) {
 			res, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(t, err)
 			require.Equal(t, nil, res)
+		})
+	}
+}
+
+func TestCompress(t *testing.T) {
+	tests := []struct {
+		val sql.Expression
+		exp interface{}
+	}{
+		{
+			val: expression.NewLiteral(nil, types.Null),
+			exp: nil,
+		},
+		{
+			val: expression.NewLiteral(int64(1), types.Int64),
+			exp: "0100000078DA3204040000FFFF00320032",
+		},
+		{
+			val: expression.NewLiteral("1", types.Text),
+			exp: "0100000078DA3204040000FFFF00320032",
+		},
+		{
+			val: expression.NewLiteral("", types.Text),
+			exp: "",
+		},
+		{
+			val: expression.NewLiteral("abc", types.Text),
+			exp: "0300000078DA4A4C4A06040000FFFF024D0127",
+		},
+		{
+			val: expression.NewLiteral("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", types.Text),
+			exp: "2A00000078DA72241A00020000FFFFE5710AAB",
+		},
+	}
+
+	for _, test := range tests {
+		f := NewCompress(test.val)
+		t.Run(f.String(), func(t *testing.T) {
+			res, err := f.Eval(sql.NewEmptyContext(), nil)
+			require.NoError(t, err)
+			if test.exp == nil {
+				require.Nil(t, res)
+				return
+			}
+			resStr := fmt.Sprintf("%X", res)
+			require.Equal(t, test.exp, resStr)
+		})
+	}
+}
+
+func TestUncompress(t *testing.T) {
+	tests := []struct {
+		val sql.Expression
+		exp interface{}
+	}{
+		{
+			val: expression.NewLiteral(nil, types.Null),
+			exp: nil,
+		},
+		{
+			val: expression.NewLiteral(int64(1), types.Int64),
+			exp: nil,
+		},
+		{
+			val: expression.NewLiteral("1", types.Text),
+			exp: nil,
+		},
+		{
+			val: expression.NewLiteral("", types.Text),
+			exp: "",
+		},
+		{
+			val: expression.NewLiteral([]byte{0x03, 0x00, 0x00, 0x00, 0x78, 0xDA, 0x4A, 0x4C, 0x4A, 0x06, 0x04, 0x00, 0x00, 0xFF, 0xFF, 0x02, 0x4D, 0x01, 0x27}, types.Blob),
+			exp: "616263", // abc
+		},
+		{
+			val: expression.NewLiteral([]byte{0x2A, 0x00, 0x00, 0x00, 0x78, 0xDA, 0x72, 0x24, 0x1A, 0x00, 0x02, 0x00, 0x00, 0xFF, 0xFF, 0xE5, 0x71, 0x0A, 0xAB}, types.Blob),
+			exp: "414141414141414141414141414141414141414141414141414141414141414141414141414141414141", //AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+		},
+		{
+			val: expression.NewLiteral([]byte{0x0F, 0x00, 0x00, 0x00, 0x78, 0x9C, 0xCB, 0xAD, 0x2C, 0x2E, 0xCC, 0x49, 0xCE, 0xCF, 0x2D, 0x28, 0x4A, 0x2D, 0x2E, 0x4E, 0x4D, 0x01, 0x00, 0x34, 0x0C, 0x06, 0x6C}, types.Blob),
+			exp: "6D7973716C636F6D70726573736564", // mysqlcompressed
+		},
+		{
+			// header is too large
+			val: expression.NewLiteral([]byte{0xFF, 0x00, 0x00, 0x00, 0x78, 0xDA, 0x4A, 0x4C, 0x4A, 0x06, 0x04, 0x00, 0x00, 0xFF, 0xFF, 0x02, 0x4D, 0x01, 0x27}, types.Blob),
+			exp: "616263", // abc
+		},
+		{
+			// header is too small
+			val: expression.NewLiteral([]byte{0x02, 0x00, 0x00, 0x00, 0x78, 0xDA, 0x4A, 0x4C, 0x4A, 0x06, 0x04, 0x00, 0x00, 0xFF, 0xFF, 0x02, 0x4D, 0x01, 0x27}, types.Blob),
+			exp: nil,
+		},
+	}
+
+	for _, test := range tests {
+		f := NewUncompress(test.val)
+		t.Run(f.String(), func(t *testing.T) {
+			res, err := f.Eval(sql.NewEmptyContext(), nil)
+			require.NoError(t, err)
+			if test.exp == nil {
+				require.Nil(t, res)
+				return
+			}
+			resStr := fmt.Sprintf("%X", res)
+			require.Equal(t, test.exp, resStr)
+		})
+	}
+}
+
+func TestUncompressedLength(t *testing.T) {
+	tests := []struct {
+		val sql.Expression
+		exp interface{}
+	}{
+		{
+			val: expression.NewLiteral(nil, types.Null),
+			exp: nil,
+		},
+		{
+			val: expression.NewLiteral(int64(1), types.Int64),
+			exp: nil,
+		},
+		{
+			val: expression.NewLiteral("1", types.Text),
+			exp: nil,
+		},
+		{
+			val: expression.NewLiteral("", types.Text),
+			exp: uint32(0),
+		},
+		{
+			val: expression.NewLiteral([]byte{0x03, 0x00, 0x00, 0x00, 0x78, 0xDA, 0x4A, 0x4C, 0x4A, 0x06, 0x04, 0x00, 0x00, 0xFF, 0xFF, 0x02, 0x4D, 0x01, 0x27}, types.Blob),
+			exp: uint32(3),
+		},
+		{
+			val: expression.NewLiteral([]byte{0x2A, 0x00, 0x00, 0x00, 0x78, 0xDA, 0x72, 0x24, 0x1A, 0x00, 0x02, 0x00, 0x00, 0xFF, 0xFF, 0xE5, 0x71, 0x0A, 0xAB}, types.Blob),
+			exp: uint32(42),
+		},
+		{
+			val: expression.NewLiteral([]byte{0x0F, 0x00, 0x00, 0x00, 0x78, 0x9C, 0xCB, 0xAD, 0x2C, 0x2E, 0xCC, 0x49, 0xCE, 0xCF, 0x2D, 0x28, 0x4A, 0x2D, 0x2E, 0x4E, 0x4D, 0x01, 0x00, 0x34, 0x0C, 0x06, 0x6C}, types.Blob),
+			exp: uint32(15),
+		},
+		{
+			// header is too large
+			val: expression.NewLiteral([]byte{0xFF, 0x00, 0x00, 0x00, 0x78, 0xDA, 0x4A, 0x4C, 0x4A, 0x06, 0x04, 0x00, 0x00, 0xFF, 0xFF, 0x02, 0x4D, 0x01, 0x27}, types.Blob),
+			exp: uint32(255),
+		},
+		{
+			// header is too small
+			val: expression.NewLiteral([]byte{0x02, 0x00, 0x00, 0x00, 0x78, 0xDA, 0x4A, 0x4C, 0x4A, 0x06, 0x04, 0x00, 0x00, 0xFF, 0xFF, 0x02, 0x4D, 0x01, 0x27}, types.Blob),
+			exp: uint32(2),
+		},
+	}
+
+	for _, test := range tests {
+		f := NewUncompressedLength(test.val)
+		t.Run(f.String(), func(t *testing.T) {
+			res, err := f.Eval(sql.NewEmptyContext(), nil)
+			require.NoError(t, err)
+			require.Equal(t, test.exp, res)
+		})
+	}
+}
+
+func TestValidatePasswordStrength(t *testing.T) {
+	tests := []struct {
+		val sql.Expression
+		exp interface{}
+	}{
+		{
+			val: expression.NewLiteral(nil, types.Null),
+			exp: nil,
+		},
+		{
+			val: expression.NewLiteral(int64(1), types.Int64),
+			exp: 0,
+		},
+		{
+			val: expression.NewLiteral("1", types.Text),
+			exp: 0,
+		},
+		{
+			val: expression.NewLiteral("", types.Text),
+			exp: 0,
+		},
+		{
+			val: expression.NewLiteral("weak", types.Text),
+			exp: 25,
+		},
+		{
+			val: expression.NewLiteral("lessweak$_@123", types.Text),
+			exp: 50,
+		},
+		{
+			val: expression.NewLiteral("N0Tweak$_@123!", types.Text),
+			exp: 100,
+		},
+	}
+
+	for _, test := range tests {
+		f := NewValidatePasswordStrength(test.val)
+		t.Run(f.String(), func(t *testing.T) {
+			res, err := f.Eval(sql.NewEmptyContext(), nil)
+			require.NoError(t, err)
+			require.Equal(t, test.exp, res)
 		})
 	}
 }

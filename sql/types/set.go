@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"math/bits"
@@ -44,11 +45,13 @@ type SetType struct {
 	collation             sql.CollationID
 	hashedValToBit        map[uint64]uint64
 	bitToVal              map[uint64]string
+	valToBit              map[string]uint64
 	maxResponseByteLength uint32
 }
 
 var _ sql.SetType = SetType{}
 var _ sql.TypeWithCollation = SetType{}
+var _ sql.CollationCoercible = SetType{}
 
 // CreateSetType creates a SetType.
 func CreateSetType(values []string, collation sql.CollationID) (sql.SetType, error) {
@@ -62,10 +65,11 @@ func CreateSetType(values []string, collation sql.CollationID) (sql.SetType, err
 
 	hashedValToBit := make(map[uint64]uint64)
 	bitToVal := make(map[uint64]string)
+	valToBit := make(map[string]uint64)
 	var maxByteLength uint32
 	maxCharLength := collation.Collation().CharacterSet.MaxLength()
 	for i, value := range values {
-		// ...SET member values should not themselves contain commas.
+		// SET member values should not themselves contain commas.
 		if strings.Contains(value, ",") {
 			return nil, fmt.Errorf("values cannot contain a comma")
 		}
@@ -83,6 +87,7 @@ func CreateSetType(values []string, collation sql.CollationID) (sql.SetType, err
 		}
 		bit := uint64(1 << uint64(i))
 		hashedValToBit[hashedVal] = bit
+		valToBit[value] = bit
 		bitToVal[bit] = value
 		maxByteLength = maxByteLength + uint32(utf8.RuneCountInString(value)*int(maxCharLength))
 		if i != 0 {
@@ -93,6 +98,7 @@ func CreateSetType(values []string, collation sql.CollationID) (sql.SetType, err
 		collation:             collation,
 		hashedValToBit:        hashedValToBit,
 		bitToVal:              bitToVal,
+		valToBit:              valToBit,
 		maxResponseByteLength: maxByteLength,
 	}, nil
 }
@@ -107,21 +113,39 @@ func MustCreateSetType(values []string, collation sql.CollationID) sql.SetType {
 }
 
 // Compare implements Type interface.
-func (t SetType) Compare(a interface{}, b interface{}) (int, error) {
+func (t SetType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
 
-	ai, err := t.Convert(a)
+	ai, _, err := t.Convert(ctx, a)
 	if err != nil {
 		return 0, err
 	}
-	bi, err := t.Convert(b)
+	bi, _, err := t.Convert(ctx, b)
 	if err != nil {
 		return 0, err
 	}
 	au := ai.(uint64)
 	bu := bi.(uint64)
+
+	// If there's an empty string in the set, empty strings should match both 0 and an empty string bit field
+	if emptyStringBitField, ok := t.emptyStringBitField(); ok {
+		aIsEmptyString := isEmptyString(a)
+		bIsEmptyString := isEmptyString(b)
+		if aIsEmptyString {
+			if bu == 0 || bu == emptyStringBitField {
+				return 0, nil
+			}
+			return -1, nil
+		}
+		if bIsEmptyString {
+			if au == 0 || au == emptyStringBitField {
+				return 0, nil
+			}
+			return 1, nil
+		}
+	}
 
 	if au < bu {
 		return -1, nil
@@ -133,66 +157,58 @@ func (t SetType) Compare(a interface{}, b interface{}) (int, error) {
 
 // Convert implements Type interface.
 // Returns the string representing the given value if applicable.
-func (t SetType) Convert(v interface{}) (interface{}, error) {
+func (t SetType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
-		return nil, nil
+		return nil, sql.InRange, nil
 	}
 
 	switch value := v.(type) {
 	case int:
-		return t.Convert(uint64(value))
+		return t.Convert(ctx, uint64(value))
 	case uint:
-		return t.Convert(uint64(value))
+		return t.Convert(ctx, uint64(value))
 	case int8:
-		return t.Convert(uint64(value))
+		return t.Convert(ctx, uint64(value))
 	case uint8:
-		return t.Convert(uint64(value))
+		return t.Convert(ctx, uint64(value))
 	case int16:
-		return t.Convert(uint64(value))
+		return t.Convert(ctx, uint64(value))
 	case uint16:
-		return t.Convert(uint64(value))
+		return t.Convert(ctx, uint64(value))
 	case int32:
-		return t.Convert(uint64(value))
+		return t.Convert(ctx, uint64(value))
 	case uint32:
-		return t.Convert(uint64(value))
+		return t.Convert(ctx, uint64(value))
 	case int64:
-		return t.Convert(uint64(value))
+		return t.Convert(ctx, uint64(value))
 	case uint64:
 		if value <= t.allValuesBitField() {
-			return value, nil
+			return value, sql.InRange, nil
 		}
 	case float32:
-		return t.Convert(uint64(value))
+		return t.Convert(ctx, uint64(value))
 	case float64:
-		return t.Convert(uint64(value))
+		return t.Convert(ctx, uint64(value))
 	case decimal.Decimal:
-		return t.Convert(value.BigInt().Uint64())
+		return t.Convert(ctx, value.BigInt().Uint64())
 	case decimal.NullDecimal:
 		if !value.Valid {
-			return nil, nil
+			return nil, sql.InRange, nil
 		}
-		return t.Convert(value.Decimal.BigInt().Uint64())
+		return t.Convert(ctx, value.Decimal.BigInt().Uint64())
 	case string:
-		return t.convertStringToBitField(value)
+		ret, err := t.convertStringToBitField(value)
+		return ret, err == nil, err
 	case []byte:
-		return t.Convert(string(value))
+		return t.Convert(ctx, string(value))
 	}
 
-	return uint64(0), sql.ErrConvertingToSet.New(v)
+	return uint64(0), sql.OutOfRange, sql.ErrConvertingToSet.New(v)
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t SetType) MaxTextResponseByteLength() uint32 {
+func (t SetType) MaxTextResponseByteLength(*sql.Context) uint32 {
 	return t.maxResponseByteLength
-}
-
-// MustConvert implements the Type interface.
-func (t SetType) MustConvert(v interface{}) interface{} {
-	value, err := t.Convert(v)
-	if err != nil {
-		panic(err)
-	}
-	return value
 }
 
 // Equals implements the Type interface.
@@ -218,7 +234,7 @@ func (t SetType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Val
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
-	convertedValue, err := t.Convert(v)
+	convertedValue, _, err := t.Convert(ctx, v)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
@@ -233,23 +249,21 @@ func (t SetType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Val
 	}
 	encodedBytes, ok := resultCharset.Encoder().Encode(encodings.StringToBytes(value))
 	if !ok {
-		return sqltypes.Value{}, sql.ErrCharSetFailedToEncode.New(t.collation.CharacterSet().Name())
+		snippet := value
+		if len(snippet) > 50 {
+			snippet = snippet[:50]
+		}
+		snippet = strings.ToValidUTF8(snippet, string(utf8.RuneError))
+		return sqltypes.Value{}, sql.ErrCharSetFailedToEncode.New(resultCharset.Name(), utf8.ValidString(value), snippet)
 	}
-	val := AppendAndSliceBytes(dest, encodedBytes)
+	val := encodedBytes
 
 	return sqltypes.MakeTrusted(sqltypes.Set, val), nil
 }
 
 // String implements Type interface.
 func (t SetType) String() string {
-	s := fmt.Sprintf("set('%v')", strings.Join(t.Values(), `','`))
-	if t.CharacterSet() != sql.Collation_Default.CharacterSet() {
-		s += " CHARACTER SET " + t.CharacterSet().String()
-	}
-	if !t.collation.Equals(sql.Collation_Default) {
-		s += " COLLATE " + t.collation.String()
-	}
-	return s
+	return t.StringWithTableCollation(sql.Collation_Default)
 }
 
 // Type implements Type interface.
@@ -265,6 +279,11 @@ func (t SetType) ValueType() reflect.Type {
 // Zero implements Type interface.
 func (t SetType) Zero() interface{} {
 	return uint64(0)
+}
+
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (t SetType) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return t.collation, 4
 }
 
 // CharacterSet implements SetType interface.
@@ -298,9 +317,26 @@ func (t SetType) Values() []string {
 	return valArray
 }
 
-// WithNewCollation implements TypeWithCollation interface.
+// WithNewCollation implements sql.TypeWithCollation interface.
 func (t SetType) WithNewCollation(collation sql.CollationID) (sql.Type, error) {
 	return CreateSetType(t.Values(), collation)
+}
+
+// StringWithTableCollation implements sql.TypeWithCollation interface.
+func (t SetType) StringWithTableCollation(tableCollation sql.CollationID) string {
+	values := t.Values()
+	escapedValues := make([]string, len(values))
+	for i, value := range values {
+		escapedValues[i] = strings.ReplaceAll(value, "'", "''")
+	}
+	s := fmt.Sprintf("set('%s')", strings.Join(escapedValues, `','`))
+	if t.CharacterSet() != tableCollation.CharacterSet() {
+		s += " CHARACTER SET " + t.CharacterSet().String()
+	}
+	if t.collation != tableCollation {
+		s += " COLLATE " + t.collation.String()
+	}
+	return s
 }
 
 // allValuesBitField returns a bit field that references every value that the set contains.
@@ -329,9 +365,6 @@ func (t SetType) convertBitFieldToString(bitField uint64) (string, error) {
 			if !ok {
 				return "", sql.ErrInvalidSetValue.New(bitField)
 			}
-			if len(val) == 0 {
-				continue
-			}
 			if writeCommas {
 				strBuilder.WriteByte(',')
 			} else {
@@ -349,11 +382,29 @@ func (t SetType) convertStringToBitField(str string) (uint64, error) {
 		return 0, nil
 	}
 	var bitField uint64
-	vals := strings.Split(str, ",")
-	for _, val := range vals {
+	_, allowEmptyString := t.emptyStringBitField()
+	lastI := 0
+	var val string
+	for i := 0; i < len(str)+1; i++ {
+		if i < len(str) && str[i] != ',' {
+			continue
+		}
+
+		// empty string should hash to 0, so just skip
+		if lastI == i && !allowEmptyString {
+			lastI = i + 1
+			continue
+		}
+		val = str[lastI:i]
+		lastI = i + 1
+
 		compareVal := val
 		if t.collation != sql.Collation_binary {
 			compareVal = strings.TrimRight(compareVal, " ")
+		}
+		if bit, ok := t.valToBit[compareVal]; ok {
+			bitField |= bit
+			continue
 		}
 		hashedVal, err := t.collation.HashToUint(compareVal)
 		if err == nil {
@@ -376,4 +427,17 @@ func (t SetType) convertStringToBitField(str string) (uint64, error) {
 		return 0, sql.ErrInvalidSetValue.New(val)
 	}
 	return bitField, nil
+}
+
+func (t SetType) emptyStringBitField() (bitField uint64, ok bool) {
+	bitField, ok = t.valToBit[""]
+	return bitField, ok
+}
+
+func isEmptyString(val interface{}) bool {
+	switch v := val.(type) {
+	case string:
+		return v == ""
+	}
+	return false
 }

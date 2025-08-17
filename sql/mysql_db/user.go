@@ -30,12 +30,15 @@ type User struct {
 	Host                string
 	PrivilegeSet        PrivilegeSet
 	Plugin              string
-	Password            string
+	AuthString          string
 	PasswordLastChanged time.Time
 	Locked              bool
 	Attributes          *string
 	Identity            string
 	IsSuperUser         bool
+	// IsEphemeral is true if this user is ephemeral, meaning it will only exist
+	// for the lifetime of the server process and will not be persisted to disk.
+	IsEphemeral bool
 	//TODO: add the remaining fields
 
 	// IsRole is an additional field that states whether the User represents a role or user. In MySQL this must be a
@@ -43,11 +46,34 @@ type User struct {
 	IsRole bool
 }
 
-var _ in_mem_table.Entry = (*User)(nil)
+func UserToRow(ctx *sql.Context, u *User) (sql.Row, error) {
+	row := make(sql.Row, len(userTblSchema))
+	var err error
+	for i, col := range userTblSchema {
+		row[i], err = col.Default.Eval(ctx, nil)
+		if err != nil {
+			panic(err) // Should never happen, schema is static
+		}
+	}
+	//TODO: once the remaining fields are added, fill those in as well
+	row[userTblColIndex_User] = u.User
+	row[userTblColIndex_Host] = u.Host
+	row[userTblColIndex_plugin] = u.Plugin
+	row[userTblColIndex_authentication_string] = u.AuthString
+	row[userTblColIndex_password_last_changed] = u.PasswordLastChanged
+	row[userTblColIndex_identity] = u.Identity
+	if u.Locked {
+		row[userTblColIndex_account_locked] = uint16(2)
+	}
+	if u.Attributes != nil {
+		row[userTblColIndex_User_attributes] = *u.Attributes
+	}
+	u.privSetToRow(ctx, row)
+	return row, nil
+}
 
-// NewFromRow implements the interface in_mem_table.Entry.
-func (u *User) NewFromRow(ctx *sql.Context, row sql.Row) (in_mem_table.Entry, error) {
-	if err := userTblSchema.CheckRow(row); err != nil {
+func UserFromRow(ctx *sql.Context, row sql.Row) (*User, error) {
+	if err := userTblSchema.CheckRow(ctx, row); err != nil {
 		return nil, err
 	}
 	//TODO: once the remaining fields are added, fill those in as well
@@ -62,9 +88,9 @@ func (u *User) NewFromRow(ctx *sql.Context, row sql.Row) (in_mem_table.Entry, er
 	return &User{
 		User:                row[userTblColIndex_User].(string),
 		Host:                row[userTblColIndex_Host].(string),
-		PrivilegeSet:        u.rowToPrivSet(ctx, row),
+		PrivilegeSet:        UserRowToPrivSet(ctx, row),
 		Plugin:              row[userTblColIndex_plugin].(string),
-		Password:            row[userTblColIndex_authentication_string].(string),
+		AuthString:          row[userTblColIndex_authentication_string].(string),
 		PasswordLastChanged: passwordLastChanged,
 		Locked:              row[userTblColIndex_account_locked].(uint16) == 2,
 		Attributes:          attributes,
@@ -73,69 +99,41 @@ func (u *User) NewFromRow(ctx *sql.Context, row sql.Row) (in_mem_table.Entry, er
 	}, nil
 }
 
-// UpdateFromRow implements the interface in_mem_table.Entry.
-func (u *User) UpdateFromRow(ctx *sql.Context, row sql.Row) (in_mem_table.Entry, error) {
-	updatedEntry, err := u.NewFromRow(ctx, row)
+func UserUpdateWithRow(ctx *sql.Context, row sql.Row, u *User) (*User, error) {
+	updatedUser, err := UserFromRow(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-	updatedEntry.(*User).IsRole = u.IsRole
-	return updatedEntry, nil
+	updatedUser.IsRole = u.IsRole
+	return updatedUser, nil
 }
 
-// ToRow implements the interface in_mem_table.Entry.
-func (u *User) ToRow(ctx *sql.Context) sql.Row {
-	row := make(sql.Row, len(userTblSchema))
-	var err error
-	for i, col := range userTblSchema {
-		row[i], err = col.Default.Eval(ctx, nil)
-		if err != nil {
-			panic(err) // Should never happen, schema is static
-		}
-	}
-	//TODO: once the remaining fields are added, fill those in as well
-	row[userTblColIndex_User] = u.User
-	row[userTblColIndex_Host] = u.Host
-	row[userTblColIndex_plugin] = u.Plugin
-	row[userTblColIndex_authentication_string] = u.Password
-	row[userTblColIndex_password_last_changed] = u.PasswordLastChanged
-	row[userTblColIndex_identity] = u.Identity
-	if u.Locked {
-		row[userTblColIndex_account_locked] = uint16(2)
-	}
-	if u.Attributes != nil {
-		row[userTblColIndex_User_attributes] = *u.Attributes
-	}
-	u.privSetToRow(ctx, row)
-	return row
+var UserOps = in_mem_table.ValueOps[*User]{
+	ToRow:         UserToRow,
+	FromRow:       UserFromRow,
+	UpdateWithRow: UserUpdateWithRow,
 }
 
-// Equals implements the interface in_mem_table.Entry.
-func (u *User) Equals(ctx *sql.Context, otherEntry in_mem_table.Entry) bool {
-	otherUser, ok := otherEntry.(*User)
-	if !ok {
-		return false
-	}
+func UserEquals(left, right *User) bool {
 	// IsRole is not tested for equality, as it is additional information
 	//TODO: once the remaining fields are added, fill those in as well
-	if u.User != otherUser.User ||
-		u.Host != otherUser.Host ||
-		u.Plugin != otherUser.Plugin ||
-		u.Password != otherUser.Password ||
-		u.Identity != otherUser.Identity ||
-		!u.PasswordLastChanged.Equal(otherUser.PasswordLastChanged) ||
-		u.Locked != otherUser.Locked ||
-		!u.PrivilegeSet.Equals(otherUser.PrivilegeSet) ||
-		u.Attributes == nil && otherUser.Attributes != nil ||
-		u.Attributes != nil && otherUser.Attributes == nil ||
-		(u.Attributes != nil && *u.Attributes != *otherUser.Attributes) {
+	if left.User != right.User ||
+		left.Host != right.Host ||
+		left.Plugin != right.Plugin ||
+		left.AuthString != right.AuthString ||
+		left.Identity != right.Identity ||
+		!left.PasswordLastChanged.Equal(right.PasswordLastChanged) ||
+		left.Locked != right.Locked ||
+		!left.PrivilegeSet.Equals(right.PrivilegeSet) ||
+		left.Attributes == nil && right.Attributes != nil ||
+		left.Attributes != nil && right.Attributes == nil ||
+		(left.Attributes != nil && *left.Attributes != *right.Attributes) {
 		return false
 	}
 	return true
 }
 
-// Copy implements the interface in_mem_table.Entry.
-func (u *User) Copy(ctx *sql.Context) in_mem_table.Entry {
+func UserCopy(u *User) *User {
 	uu := *u
 	uu.PrivilegeSet = NewPrivilegeSet()
 	uu.PrivilegeSet.UnionWith(u.PrivilegeSet)
@@ -143,7 +141,7 @@ func (u *User) Copy(ctx *sql.Context) in_mem_table.Entry {
 }
 
 // FromJson implements the interface in_mem_table.Entry.
-func (u User) FromJson(ctx *sql.Context, jsonStr string) (in_mem_table.Entry, error) {
+func (u User) FromJson(ctx *sql.Context, jsonStr string) (*User, error) {
 	newUser := &User{}
 	if err := json.Unmarshal([]byte(jsonStr), newUser); err != nil {
 		return nil, err
@@ -171,8 +169,7 @@ func (u User) UserHostToString(quote string) string {
 	return fmt.Sprintf("%s%s%s@%s%s%s", quote, user, quote, quote, host, quote)
 }
 
-// rowToPrivSet returns a set of privileges for the given row.
-func (u *User) rowToPrivSet(ctx *sql.Context, row sql.Row) PrivilegeSet {
+func UserRowToPrivSet(ctx *sql.Context, row sql.Row) PrivilegeSet {
 	privSet := NewPrivilegeSet()
 	for i, val := range row {
 		switch i {

@@ -18,18 +18,17 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gabereiser/go-mysql-server/sql/transform"
-
-	"github.com/gabereiser/go-mysql-server/sql"
-	"github.com/gabereiser/go-mysql-server/sql/expression"
-	"github.com/gabereiser/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // applyIndexesFromOuterScope attempts to apply an indexed lookup to a subquery using variables from the outer scope.
-// It functions similarly to pushdownFilters, in that it applies an index to a table. But unlike that function, it must
+// It functions similarly to generateIndexScans, in that it applies an index to a table. But unlike that function, it must
 // apply, effectively, an indexed join between two tables, one of which is defined in the outer scope. This is similar
 // to the process in the join analyzer.
-func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	if scope.IsEmpty() {
 		return n, transform.SameTree, nil
 	}
@@ -71,7 +70,7 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 					return pushdownIndexToTable(ctx, a, n, idxLookup.index, idxLookup.keyExpr, idxLookup.nullmask)
 				}
 				return n, transform.SameTree, nil
-			case *plan.ResolvedTable:
+			case sql.TableNode:
 				if strings.ToLower(n.Name()) == idxLookup.table {
 					return pushdownIndexToTable(ctx, a, n, idxLookup.index, idxLookup.keyExpr, idxLookup.nullmask)
 				}
@@ -93,29 +92,24 @@ func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 // sql.IndexAddressableTable
 func pushdownIndexToTable(ctx *sql.Context, a *Analyzer, tableNode sql.NameableNode, index sql.Index, keyExpr []sql.Expression, nullmask []bool) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(tableNode, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		switch n := n.(type) {
-		case *plan.ResolvedTable:
+		switch nn := n.(type) {
+		case *plan.IndexedTableAccess:
+		case sql.TableNode:
 			table := getTable(tableNode)
 			if table == nil {
 				return n, transform.SameTree, nil
 			}
-			if tw, ok := table.(sql.TableWrapper); ok {
-				table = tw.Underlying()
+			_, isIdxAddrTbl := table.(sql.IndexAddressableTable)
+			if !isIdxAddrTbl {
+				return n, transform.SameTree, nil
 			}
-			if iat, ok := table.(sql.IndexAddressableTable); ok {
-				a.Log("table %q transformed with pushdown of index", tableNode.Name())
-				lb := plan.NewLookupBuilder(index, keyExpr, nullmask)
-				lookup, err := lb.GetLookup(lb.GetZeroKey())
-				if err != nil {
-					return n, transform.SameTree, err
-				}
-				if !index.CanSupport(lookup.Ranges...) {
-					return n, transform.SameTree, nil
-				}
-				ia := iat.IndexedAccess(lookup)
-				ret := plan.NewIndexedTableAccess(n, ia, lb)
-				return ret, transform.NewTree, nil
+			a.Log("table %q transformed with pushdown of index", tableNode.Name())
+			lb := plan.NewLookupBuilder(index, keyExpr, nullmask)
+			ret, err := plan.NewIndexedAccessForTableNode(ctx, nn, lb)
+			if err != nil {
+				return nil, transform.SameTree, err
 			}
+			return ret, transform.NewTree, nil
 		}
 		return n, transform.SameTree, nil
 	})
@@ -132,7 +126,7 @@ func getOuterScopeIndexes(
 	ctx *sql.Context,
 	a *Analyzer,
 	node sql.Node,
-	scope *Scope,
+	scope *plan.Scope,
 	tableAliases TableAliases,
 ) ([]subqueryIndexLookup, error) {
 	indexSpan, ctx := ctx.Span("getOuterScopeIndexes")
@@ -147,7 +141,7 @@ func getOuterScopeIndexes(
 		case *plan.Filter:
 
 			var indexAnalyzer *indexAnalyzer
-			indexAnalyzer, err = newIndexAnalyzerForNode(ctx, node)
+			indexAnalyzer, err = newIndexAnalyzerForNode(ctx, node.Child)
 			if err != nil {
 				return false
 			}
@@ -213,7 +207,7 @@ func createIndexKeyExpr(ctx *sql.Context, idx sql.Index, joinExprs []*joinColExp
 IndexExpressions:
 	for i, idxExpr := range idxPrefixExpressions {
 		for j := range joinExprs {
-			if idxExpr == normalizedJoinExprStrs[j] {
+			if strings.EqualFold(idxExpr, normalizedJoinExprStrs[j]) {
 				keyExprs[i] = joinExprs[j].comparand
 				nullmask[i] = joinExprs[j].matchnull
 				continue IndexExpressions
@@ -231,23 +225,20 @@ func getSubqueryIndexes(
 	ctx *sql.Context,
 	a *Analyzer,
 	e sql.Expression,
-	scope *Scope,
+	scope *plan.Scope,
 	ia *indexAnalyzer,
 	tableAliases TableAliases,
 ) (map[string]sql.Index, joinExpressionsByTable, error) {
-
-	scopeLen := len(scope.Schema())
-
 	// build a list of candidate predicate expressions, those that might be used for an index lookup
 	var candidatePredicates []sql.Expression
 
-	for _, e := range splitConjunction(e) {
+	for _, e := range expression.SplitConjunction(e) {
 		// We are only interested in expressions that involve an outer scope variable (those whose index is less than the
 		// scope length)
 		isScopeExpr := false
 		sql.Inspect(e, func(e sql.Expression) bool {
 			if gf, ok := e.(*expression.GetField); ok {
-				if gf.Index() < scopeLen {
+				if scope.Correlated().Contains(sql.ColumnId(gf.Id())) {
 					isScopeExpr = true
 					return false
 				}
@@ -272,11 +263,10 @@ func getSubqueryIndexes(
 	for _, scopeTable := range tablesInScope {
 		indexCols := exprsByTable[scopeTable]
 		if indexCols != nil {
-			table := indexCols[0].comparandCol.Table()
-			idx := ia.MatchingIndex(ctx, ctx.GetCurrentDatabase(), table,
-				normalizeExpressions(tableAliases, extractComparands(indexCols)...)...)
+			col := indexCols[0].comparandCol
+			idx := ia.MatchingIndex(ctx, col.Table(), col.Database(), normalizeExpressions(tableAliases, extractComparands(indexCols)...)...)
 			if idx != nil {
-				result[table] = idx
+				result[indexCols[0].comparandCol.Table()] = idx
 			}
 		}
 	}
@@ -284,10 +274,10 @@ func getSubqueryIndexes(
 	return result, exprsByTable, nil
 }
 
-func tablesInScope(scope *Scope) []string {
+func tablesInScope(scope *plan.Scope) []string {
 	tables := make(map[string]bool)
 	for _, node := range scope.InnerToOuter() {
-		for _, col := range schemas(node.Children()) {
+		for _, col := range Schemas(node.Children()) {
 			tables[col.Source] = true
 		}
 	}
@@ -296,4 +286,159 @@ func tablesInScope(scope *Scope) []string {
 		tableSlice = append(tableSlice, table)
 	}
 	return tableSlice
+}
+
+// Schemas returns the Schemas for the nodes given appended in to a single one
+func Schemas(nodes []sql.Node) sql.Schema {
+	var schema sql.Schema
+	for _, n := range nodes {
+		schema = append(schema, n.Schema()...)
+	}
+	return schema
+}
+
+// A joinColExpr  captures a GetField expression used in a comparison, as well as some additional contextual
+// information. Example, for the base expression col1 + 1 > col2 - 1:
+// col refers to `col1`
+// colExpr refers to `col1 + 1`
+// comparand refers to `col2 - 1`
+// comparandCol refers to `col2`
+// comparison refers to `col1 + 1 > col2 - 1`
+// indexes contains any indexes onto col1's table that can be used during the join
+// TODO: rename
+type joinColExpr struct {
+	// The field (column) being evaluated, which may not be the entire term in the comparison
+	col *expression.GetField
+	// The entire expression on this side of the comparison
+	colExpr sql.Expression
+	// The expression this field is being compared to (the other term in the comparison)
+	comparand sql.Expression
+	// The other field (column) this field is being compared to (the other term in the comparison)
+	comparandCol *expression.GetField
+	// The comparison expression in which this joinColExpr is one term
+	comparison sql.Expression
+	// Whether the comparison expression will match null or not.
+	matchnull bool
+}
+
+type joinColExprs []*joinColExpr
+type joinExpressionsByTable map[string]joinColExprs
+
+// extractComparands returns the comparand Expressions in the slice of joinColExpr given.
+func extractComparands(colExprs []*joinColExpr) []sql.Expression {
+	result := make([]sql.Expression, len(colExprs))
+	for i, expr := range colExprs {
+		result[i] = expr.comparand
+	}
+	return result
+}
+
+// joinExprsByTable returns a map of the expressions given keyed by their table name.
+func joinExprsByTable(exprs []sql.Expression) joinExpressionsByTable {
+	var result = make(joinExpressionsByTable)
+
+	for _, expr := range exprs {
+		leftExpr, rightExpr := extractJoinColumnExpr(expr)
+		if leftExpr != nil {
+			result[leftExpr.col.Table()] = append(result[leftExpr.col.Table()], leftExpr)
+		}
+
+		if rightExpr != nil {
+			result[rightExpr.col.Table()] = append(result[rightExpr.col.Table()], rightExpr)
+		}
+	}
+
+	return result
+}
+
+// extractJoinColumnExpr extracts a pair of joinColExprs from a join condition, one each for the left and right side of
+// the expression. Returns nils if either side of the expression doesn't reference a table column.
+// Both sides have to have getField (this is currently invalid: a.x + b.y = 1)
+func extractJoinColumnExpr(e sql.Expression) (leftCol *joinColExpr, rightCol *joinColExpr) {
+	switch e := e.(type) {
+	case *expression.Equals, *expression.NullSafeEquals:
+		cmp := e.(expression.Comparer)
+		left, right := cmp.Left(), cmp.Right()
+		if isEvaluable(left) || isEvaluable(right) {
+			return nil, nil
+		}
+
+		leftField, rightField := expression.ExtractGetField(left), expression.ExtractGetField(right)
+		if leftField == nil || rightField == nil {
+			return nil, nil
+		}
+
+		_, matchnull := e.(*expression.NullSafeEquals)
+
+		leftCol = &joinColExpr{
+			col:          leftField,
+			colExpr:      left,
+			comparand:    right,
+			comparandCol: rightField,
+			comparison:   cmp,
+			matchnull:    matchnull,
+		}
+		rightCol = &joinColExpr{
+			col:          rightField,
+			colExpr:      right,
+			comparand:    left,
+			comparandCol: leftField,
+			comparison:   cmp,
+			matchnull:    matchnull,
+		}
+		return leftCol, rightCol
+	default:
+		return nil, nil
+	}
+}
+
+func containsColumns(e sql.Expression) bool {
+	var result bool
+	sql.Inspect(e, func(e sql.Expression) bool {
+		_, ok1 := e.(*expression.GetField)
+		_, ok2 := e.(*expression.UnresolvedColumn)
+		if ok1 || ok2 {
+			result = true
+			return false
+		}
+		return true
+	})
+	return result
+}
+
+func containsSubquery(e sql.Expression) bool {
+	var result bool
+	sql.Inspect(e, func(e sql.Expression) bool {
+		if _, ok := e.(*plan.Subquery); ok {
+			result = true
+			return false
+		}
+		return true
+	})
+	return result
+}
+
+func isEvaluable(e sql.Expression) bool {
+	return !containsColumns(e) && !containsSubquery(e) && !containsBindvars(e) && !containsProcedureParam(e)
+}
+
+func containsBindvars(e sql.Expression) bool {
+	var result bool
+	sql.Inspect(e, func(e sql.Expression) bool {
+		if _, ok := e.(*expression.BindVar); ok {
+			result = true
+			return false
+		}
+		return true
+	})
+	return result
+}
+
+func containsProcedureParam(e sql.Expression) bool {
+	var result bool
+	sql.Inspect(e, func(e sql.Expression) bool {
+		_, result = e.(*expression.ProcedureParam)
+		return !result
+	})
+	return result
 }

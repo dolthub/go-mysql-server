@@ -16,7 +16,6 @@ package plan
 
 import (
 	"fmt"
-	"io"
 	"strings"
 
 	"github.com/gabereiser/go-mysql-server/sql"
@@ -28,10 +27,11 @@ type DeclareVariables struct {
 	Names      []string
 	Type       sql.Type
 	DefaultVal *sql.ColumnDefaultValue
-	pRef       *expression.ProcedureReference
+	Pref       *expression.ProcedureReference
 }
 
 var _ sql.Node = (*DeclareVariables)(nil)
+var _ sql.CollationCoercible = (*DeclareVariables)(nil)
 var _ expression.ProcedureReferencable = (*DeclareVariables)(nil)
 
 // NewDeclareVariables returns a new *DeclareVariables node.
@@ -45,6 +45,10 @@ func NewDeclareVariables(names []string, typ sql.Type, defaultVal *sql.ColumnDef
 
 // Resolved implements the interface sql.Node.
 func (d *DeclareVariables) Resolved() bool {
+	return true
+}
+
+func (d *DeclareVariables) IsReadOnly() bool {
 	return true
 }
 
@@ -68,46 +72,14 @@ func (d *DeclareVariables) WithChildren(children ...sql.Node) (sql.Node, error) 
 	return NillaryWithChildren(d, children...)
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (d *DeclareVariables) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
-}
-
-// RowIter implements the interface sql.Node.
-func (d *DeclareVariables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return &declareVariablesIter{d, row}, nil
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*DeclareVariables) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // WithParamReference implements the interface expression.ProcedureReferencable.
 func (d *DeclareVariables) WithParamReference(pRef *expression.ProcedureReference) sql.Node {
 	nd := *d
-	nd.pRef = pRef
+	nd.Pref = pRef
 	return &nd
-}
-
-// declareVariablesIter is the sql.RowIter of *DeclareVariables.
-type declareVariablesIter struct {
-	*DeclareVariables
-	row sql.Row
-}
-
-var _ sql.RowIter = (*declareVariablesIter)(nil)
-
-// Next implements the interface sql.RowIter.
-func (d *declareVariablesIter) Next(ctx *sql.Context) (sql.Row, error) {
-	defaultVal, err := d.DefaultVal.Eval(ctx, d.row)
-	if err != nil {
-		return nil, err
-	}
-	for _, varName := range d.Names {
-		if err := d.pRef.InitializeVariable(varName, d.Type, defaultVal); err != nil {
-			return nil, err
-		}
-	}
-	return nil, io.EOF
-}
-
-// Close implements the interface sql.RowIter.
-func (d *declareVariablesIter) Close(ctx *sql.Context) error {
-	return nil
 }

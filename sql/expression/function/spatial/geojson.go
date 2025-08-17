@@ -19,6 +19,7 @@ type AsGeoJSON struct {
 }
 
 var _ sql.FunctionExpression = (*AsGeoJSON)(nil)
+var _ sql.CollationCoercible = (*AsGeoJSON)(nil)
 
 // NewAsGeoJSON creates a new point expression.
 func NewAsGeoJSON(args ...sql.Expression) (sql.Expression, error) {
@@ -41,6 +42,11 @@ func (g *AsGeoJSON) Description() string {
 // Type implements the sql.Expression interface.
 func (g *AsGeoJSON) Type() sql.Type {
 	return types.JSON
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (f *AsGeoJSON) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCollation(), 2
 }
 
 func (g *AsGeoJSON) String() string {
@@ -223,7 +229,7 @@ func RoundFloatSlices(v interface{}, p float64) interface{} {
 	return nil
 }
 
-// getIntArg is a helper method that evaluates the given sql.Expression to an int type, errors on float32 and float 64,
+// getIntArg is a helper method that evaluates the given sql.Expression to an int type, errors on float32 and float64,
 // and returns nil
 func getIntArg(ctx *sql.Context, row sql.Row, expr sql.Expression) (interface{}, error) {
 	x, err := expr.Eval(ctx, row)
@@ -237,7 +243,7 @@ func getIntArg(ctx *sql.Context, row sql.Row, expr sql.Expression) (interface{},
 	case float32, float64:
 		return nil, errors.New("received a float when it should be an int")
 	}
-	x, err = types.Int64.Convert(x)
+	x, _, err = types.Int64.Convert(ctx, x)
 	if err != nil {
 		return nil, err
 	}
@@ -380,6 +386,7 @@ type GeomFromGeoJSON struct {
 }
 
 var _ sql.FunctionExpression = (*GeomFromGeoJSON)(nil)
+var _ sql.CollationCoercible = (*GeomFromGeoJSON)(nil)
 
 // NewGeomFromGeoJSON creates a new point expression.
 func NewGeomFromGeoJSON(args ...sql.Expression) (sql.Expression, error) {
@@ -402,6 +409,11 @@ func (g *GeomFromGeoJSON) Description() string {
 // Type implements the sql.Expression interface.
 func (g *GeomFromGeoJSON) Type() sql.Type {
 	return types.GeometryType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*GeomFromGeoJSON) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (g *GeomFromGeoJSON) String() string {
@@ -655,7 +667,12 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 	if val == nil {
 		return nil, nil
 	}
-	val, err = types.LongBlob.Convert(val)
+	val, _, err = types.LongBlob.Convert(ctx, val)
+	if err != nil {
+		return nil, err
+	}
+
+	val, err = sql.UnwrapAny(ctx, val)
 	if err != nil {
 		return nil, err
 	}
@@ -736,10 +753,10 @@ func (g *GeomFromGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 	if err != nil {
 		return nil, errors.New("incorrect srid value")
 	}
-	srid := uint32(s.(int))
-	if err = ValidateSRID(srid); err != nil {
+	if err = types.ValidateSRID(s.(int), g.FunctionName()); err != nil {
 		return nil, err
 	}
+	srid := uint32(s.(int))
 	res = res.(types.GeometryValue).SetSRID(srid)
 	return res, nil
 }

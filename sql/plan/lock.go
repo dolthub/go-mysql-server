@@ -17,9 +17,7 @@ package plan
 import (
 	"fmt"
 
-	errors "gopkg.in/src-d/go-errors.v1"
-
-	"github.com/gabereiser/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // TableLock is a read or write lock on a table.
@@ -35,6 +33,9 @@ type LockTables struct {
 	Locks   []*TableLock
 }
 
+var _ sql.Node = (*LockTables)(nil)
+var _ sql.CollationCoercible = (*LockTables)(nil)
+
 // NewLockTables creates a new LockTables node.
 func NewLockTables(locks []*TableLock) *LockTables {
 	return &LockTables{Locks: locks}
@@ -49,6 +50,11 @@ func (t *LockTables) Children() []sql.Node {
 	return children
 }
 
+// MySQL allows these against read-only servers.
+func (t *LockTables) IsReadOnly() bool {
+	return true
+}
+
 // Resolved implements the sql.Node interface.
 func (t *LockTables) Resolved() bool {
 	for _, l := range t.Locks {
@@ -61,29 +67,6 @@ func (t *LockTables) Resolved() bool {
 
 // Schema implements the sql.Node interface.
 func (t *LockTables) Schema() sql.Schema { return nil }
-
-// RowIter implements the sql.Node interface.
-func (t *LockTables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.LockTables")
-	defer span.End()
-
-	for _, l := range t.Locks {
-		lockable, err := getLockable(l.Table)
-		if err != nil {
-			// If a table is not lockable, just skip it
-			ctx.Warn(0, err.Error())
-			continue
-		}
-
-		if err := lockable.Lock(ctx, l.Write); err != nil {
-			ctx.Error(0, "unable to lock table: %s", err)
-		} else {
-			t.Catalog.LockTable(ctx, lockable.Name())
-		}
-	}
-
-	return sql.RowsToRowIter(), nil
-}
 
 func (t *LockTables) String() string {
 	var children = make([]string, len(t.Locks))
@@ -118,45 +101,18 @@ func (t *LockTables) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &LockTables{t.Catalog, locks}, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (t *LockTables) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	operations := make([]sql.PrivilegedOperation, len(t.Locks))
-	for i, tableLock := range t.Locks {
-		operations[i] = sql.NewPrivilegedOperation(GetDatabaseName(tableLock.Table),
-			getTableName(tableLock.Table), "", sql.PrivilegeType_Select, sql.PrivilegeType_LockTables)
-	}
-	return opChecker.UserHasPrivileges(ctx, operations...)
-}
-
-// ErrTableNotLockable is returned whenever a lockable table can't be found.
-var ErrTableNotLockable = errors.NewKind("table %s is not lockable")
-
-func getLockable(node sql.Node) (sql.Lockable, error) {
-	switch node := node.(type) {
-	case *ResolvedTable:
-		return getLockableTable(node.Table)
-	case sql.TableWrapper:
-		return getLockableTable(node.Underlying())
-	default:
-		return nil, ErrTableNotLockable.New("unknown")
-	}
-}
-
-func getLockableTable(table sql.Table) (sql.Lockable, error) {
-	switch t := table.(type) {
-	case sql.Lockable:
-		return t, nil
-	case sql.TableWrapper:
-		return getLockableTable(t.Underlying())
-	default:
-		return nil, ErrTableNotLockable.New(t.Name())
-	}
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*LockTables) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // UnlockTables will release all locks for the current session.
 type UnlockTables struct {
 	Catalog sql.Catalog
 }
+
+var _ sql.Node = (*UnlockTables)(nil)
+var _ sql.CollationCoercible = (*UnlockTables)(nil)
 
 // NewUnlockTables returns a new UnlockTables node.
 func NewUnlockTables() *UnlockTables {
@@ -168,6 +124,9 @@ func (t *UnlockTables) Children() []sql.Node { return nil }
 
 // Resolved implements the sql.Node interface.
 func (t *UnlockTables) Resolved() bool { return true }
+
+// MySQL allows these against read-only servers.
+func (t *UnlockTables) IsReadOnly() bool { return true }
 
 // Schema implements the sql.Node interface.
 func (t *UnlockTables) Schema() sql.Schema { return nil }
@@ -199,8 +158,7 @@ func (t *UnlockTables) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return t, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (t *UnlockTables) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	//TODO: Can't quite figure out the privileges for this one, needs more testing
-	return true
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*UnlockTables) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }

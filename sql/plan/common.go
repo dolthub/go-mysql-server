@@ -15,8 +15,12 @@
 package plan
 
 import (
-	"github.com/gabereiser/go-mysql-server/sql"
-	"github.com/gabereiser/go-mysql-server/sql/transform"
+	"strings"
+
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // IsUnary returns whether the node is unary or not.
@@ -29,7 +33,7 @@ func IsBinary(node sql.Node) bool {
 	return len(node.Children()) == 2
 }
 
-// NillaryNode is a node with no children. This is a common WithChildren implementation for all nodes that have none.
+// NillaryWithChildren is a node with no children. This is a common WithChildren implementation for all nodes that have none.
 func NillaryWithChildren(node sql.Node, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(node, len(children), 0)
@@ -94,19 +98,35 @@ type BlockRowIter interface {
 	Schema() sql.Schema
 }
 
-// nodeRepresentsSelect attempts to walk a sql.Node to determine if it represents a SELECT statement.
-func nodeRepresentsSelect(s sql.Node) bool {
+// NodeRepresentsSelect attempts to walk a sql.Node to determine if it represents a SELECT statement.
+func NodeRepresentsSelect(s sql.Node) bool {
 	if s == nil {
 		return false
 	}
+
+	// Special case for calling procedures that call other procedures.
+	switch node := s.(type) {
+	case *Call:
+		return NodeRepresentsSelect(node.Procedure)
+	case *Procedure:
+		return NodeRepresentsSelect(node.ExternalProc)
+	case *Block:
+		for _, stmt := range node.statements {
+			if NodeRepresentsSelect(stmt) {
+				return true
+			}
+		}
+		return false
+	}
+
 	isSelect := false
-	// All SELECT statements, including those that do not specify a table (using "dual"), have a ResolvedTable.
+	// All SELECT statements, including those that do not specify a table (using "dual"), have a TableNode.
 	transform.Inspect(s, func(node sql.Node) bool {
 		switch node.(type) {
 		case *AlterAutoIncrement, *AlterIndex, *CreateForeignKey, *CreateIndex, *CreateTable, *CreateTrigger,
 			*DeleteFrom, *DropForeignKey, *InsertInto, *ShowCreateTable, *ShowIndexes, *Truncate, *Update, *Into:
 			return false
-		case *ResolvedTable, *ProcedureResolvedTable:
+		case sql.Table:
 			isSelect = true
 			return false
 		default:
@@ -130,8 +150,8 @@ func getTableName(nodeToSearch sql.Node) string {
 				nodeStack = append(nodeStack, n.UnaryNode.Child)
 				continue
 			}
-		case *ResolvedTable:
-			return n.Table.Name()
+		case sql.TableNode:
+			return n.UnderlyingTable().Name()
 		case *UnresolvedTable:
 			return n.name
 		case *IndexedTableAccess:
@@ -144,27 +164,71 @@ func getTableName(nodeToSearch sql.Node) string {
 	return ""
 }
 
-// GetDatabaseName attempts to fetch the database name from the node. If not found directly on the node, searches the
-// children. Returns the first database name found, regardless of whether there are more, therefore this is only
-// intended to be used in situations where only a single database is expected to be found. Unlike how tables are handled
-// in most nodes, databases may be stored as a string field therefore there will be situations where a database name
-// exists on a node, but cannot be found through inspection.
-func GetDatabaseName(nodeToSearch sql.Node) string {
-	nodeStack := []sql.Node{nodeToSearch}
+// GetTablesToBeUpdated takes a node and looks for the tables to modified by a SetField.
+func GetTablesToBeUpdated(node sql.Node) map[string]struct{} {
+	ret := make(map[string]struct{})
+
+	transform.InspectExpressions(node, func(e sql.Expression) bool {
+		switch e := e.(type) {
+		case *expression.SetField:
+			gf := e.LeftChild.(*expression.GetField)
+			ret[strings.ToLower(gf.Table())] = struct{}{}
+			return false
+		}
+
+		return true
+	})
+
+	return ret
+}
+
+// GetDatabaseName attempts to fetch the database name from the node.
+func GetDatabaseName(node sql.Node) string {
+	database := GetDatabase(node)
+	if database != nil {
+		return database.Name()
+	}
+	return ""
+}
+
+// GetDatabase attempts to fetch the database from the node. If not found directly on the node, searches the children.
+// Returns the first database found, regardless of whether there are more, therefore this is only intended to be used in
+// situations where only a single database is expected to be found. Unlike how tables are handled in most nodes,
+// databases may be stored as a string field. Therefore, there will be situations where a database exists on a node but
+// cannot be found through inspection.
+func GetDatabase(node sql.Node) sql.Database {
+	nodeStack := []sql.Node{node}
 	for len(nodeStack) > 0 {
-		node := nodeStack[len(nodeStack)-1]
+		n := nodeStack[len(nodeStack)-1]
 		nodeStack = nodeStack[:len(nodeStack)-1]
-		switch n := node.(type) {
+		switch n := n.(type) {
 		case sql.Databaser:
-			return n.Database().Name()
+			return n.Database()
 		case *ResolvedTable:
-			return n.Database.Name()
+			return n.SqlDatabase
 		case *UnresolvedTable:
 			return n.Database()
 		case *IndexedTableAccess:
-			return n.Database().Name()
+			return n.Database()
 		}
-		nodeStack = append(nodeStack, node.Children()...)
+		nodeStack = append(nodeStack, n.Children()...)
 	}
-	return ""
+	return nil
+}
+
+// CheckPrivilegeNameForDatabase returns the name of the database to check privileges for, which may not be the result
+// of db.Name()
+func CheckPrivilegeNameForDatabase(db sql.Database) string {
+	if db == nil {
+		return ""
+	}
+
+	checkDbName := db.Name()
+	if pdb, ok := db.(mysql_db.PrivilegedDatabase); ok {
+		db = pdb.Unwrap()
+	}
+	if adb, ok := db.(sql.AliasedDatabase); ok {
+		checkDbName = adb.AliasedName()
+	}
+	return checkDbName
 }

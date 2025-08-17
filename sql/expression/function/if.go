@@ -29,6 +29,7 @@ type If struct {
 }
 
 var _ sql.FunctionExpression = (*If)(nil)
+var _ sql.CollationCoercible = (*If)(nil)
 
 // FunctionName implements sql.FunctionExpression
 func (f *If) FunctionName() string {
@@ -37,7 +38,7 @@ func (f *If) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (f *If) Description() string {
-	return "if expr1 evaluates to true, retuns expr2. Otherwise returns expr3."
+	return "if expr evaluates to true, returns ifTrue. Otherwise returns ifFalse."
 }
 
 func (f *If) Resolved() bool {
@@ -70,22 +71,40 @@ func (f *If) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if e == nil {
 		asBool = false
 	} else {
-		asBool, err = types.ConvertToBool(e)
+		asBool, err = sql.ConvertToBool(ctx, e)
 		if err != nil {
 			return nil, err
 		}
 	}
 
+	var eval interface{}
 	if asBool {
-		return f.ifTrue.Eval(ctx, row)
+		eval, err = f.ifTrue.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
 	} else {
-		return f.ifFalse.Eval(ctx, row)
+		eval, err = f.ifFalse.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
 	}
+	if ret, _, err := f.Type().Convert(ctx, eval); err == nil {
+		return ret, nil
+	}
+	return eval, err
 }
 
 // Type implements the Expression interface.
 func (f *If) Type() sql.Type {
-	return f.ifTrue.Type()
+	return types.GeneralizeTypes(f.ifTrue.Type(), f.ifFalse.Type())
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (f *If) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	// We would need to evaluate the condition to return the correct result here, so we'll copy
+	// Type and just return the true result
+	return sql.GetCoercibility(ctx, f.ifTrue)
 }
 
 // IsNullable implements the Expression interface.

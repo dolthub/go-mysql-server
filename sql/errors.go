@@ -16,7 +16,7 @@ package sql
 
 import (
 	"fmt"
-	"strings"
+	"io"
 
 	"github.com/dolthub/vitess/go/mysql"
 	"gopkg.in/src-d/go-errors.v1"
@@ -42,6 +42,9 @@ var (
 	// the execution tree.
 	ErrInvalidType = errors.NewKind("invalid type: %s")
 
+	// ErrInvalidTimeZone is thrown when an invalid time zone is found
+	ErrInvalidTimeZone = errors.NewKind("Unknown or incorrect time zone: %s")
+
 	// ErrTableAlreadyExists is thrown when someone tries to create a
 	// table with a name of an existing one
 	ErrTableAlreadyExists = errors.NewKind("table with name %s already exists")
@@ -49,6 +52,10 @@ var (
 	// ErrTableNotFound is returned when the table is not available from the
 	// current scope.
 	ErrTableNotFound = errors.NewKind("table not found: %s")
+
+	// ErrInvalidRefInView is returned when querying existing view that references non-existent table.
+	// Creating new view or updating existing view to reference non-existent table/view do not apply here.
+	ErrInvalidRefInView = errors.NewKind("View '%s.%s' references invalid table(s) or column(s) or function(s) or definer/invoker of view lack rights to use them")
 
 	// ErrUnknownTable is returned when the non-table name is used for table actions.
 	ErrUnknownTable = errors.NewKind("Unknown table '%s'")
@@ -86,7 +93,7 @@ var (
 	ErrDatabaseCollationsNotSupported = errors.NewKind("database %s does not support collation operations")
 
 	// ErrTableCreatedNotFound is thrown when a table is created from CREATE TABLE but cannot be found immediately afterward
-	ErrTableCreatedNotFound = errors.NewKind("table was created but could not be found")
+	ErrTableCreatedNotFound = errors.NewKind("table %q was created but could not be found")
 
 	// ErrUnexpectedRowLength is thrown when the obtained row has more columns than the schema
 	ErrUnexpectedRowLength = errors.NewKind("expected %d values, got %d")
@@ -104,12 +111,15 @@ var (
 	ErrInvalidChildType = errors.NewKind("%T: invalid child type, got %T, expected %T")
 
 	// ErrInvalidJSONText is returned when a JSON string cannot be parsed or unmarshalled
-	ErrInvalidJSONText = errors.NewKind("Invalid JSON text: %s")
+	ErrInvalidJSONText = errors.NewKind("Invalid JSON text in argument %d to function %s: \"%s\"")
 
-	// ErrDeleteRowNotFound
+	// ErrInvalidJSONArgument is returned when a JSON function is called with a parameter that is not JSON or a string
+	ErrInvalidJSONArgument = errors.NewKind("invalid data type for JSON data in argument %d to function %s; a JSON string or JSON type is required")
+
+	// ErrDeleteRowNotFound is returned when row being deleted was not found
 	ErrDeleteRowNotFound = errors.NewKind("row was not found when attempting to delete")
 
-	// ErrDuplicateAlias should be returned when a query contains a duplicate alias / table name.
+	// ErrDuplicateAliasOrTable should be returned when a query contains a duplicate alias / table name.
 	ErrDuplicateAliasOrTable = errors.NewKind("Not unique table/alias: %s")
 
 	// ErrPrimaryKeyViolation is returned when a primary key constraint is violated
@@ -130,12 +140,6 @@ var (
 	// ErrIncompatibleDefaultType is returned when a provided default cannot be coerced into the type of the column
 	ErrIncompatibleDefaultType = errors.NewKind("incompatible type for default value")
 
-	// ErrInvalidTextBlobColumnDefault is returned when a column of type text/blob (or related) has a literal default set.
-	ErrInvalidTextBlobColumnDefault = errors.NewKind("TEXT, BLOB, GEOMETRY, and JSON types may only have expression default values")
-
-	// ErrInvalidColumnDefaultFunction is returned when an invalid function is used in a default value.
-	ErrInvalidColumnDefaultFunction = errors.NewKind("function `%s` on column `%s` is not valid for usage in a default value")
-
 	// ErrColumnDefaultDatetimeOnlyFunc is returned when a non datetime/timestamp column attempts to declare now/current_timestamp as a default value literal.
 	ErrColumnDefaultDatetimeOnlyFunc = errors.NewKind("only datetime/timestamp may declare default values of now()/current_timestamp() without surrounding parentheses")
 
@@ -144,6 +148,9 @@ var (
 
 	// ErrInvalidColumnDefaultValue is returned when column default function value is not wrapped in parentheses for column types excluding datetime and timestamp
 	ErrInvalidColumnDefaultValue = errors.NewKind("Invalid default value for '%s'")
+
+	// ErrColumnDefaultUserVariable is returned when a column default expression contains user or system variables
+	ErrColumnDefaultUserVariable = errors.NewKind("Default value expression of column '%s' cannot refer user or system variables.")
 
 	// ErrInvalidDefaultValueOrder is returned when a default value references a column that comes after it and contains a default expression.
 	ErrInvalidDefaultValueOrder = errors.NewKind(`default value of column "%s" cannot refer to a column defined after it if those columns have an expression default value`)
@@ -175,10 +182,10 @@ var (
 	// ErrVersionedStoredProceduresNotSupported is returned when attempting to retrieve a versioned stored procedure on a database that doesn't support them.
 	ErrVersionedStoredProceduresNotSupported = errors.NewKind(`database "%s" doesn't support versioned stored procedures`)
 
-	// ErrTriggerDoesNotExist is returned when a stored procedure does not exist.
+	// ErrStoredProcedureAlreadyExists is returned when a stored procedure does not exist.
 	ErrStoredProcedureAlreadyExists = errors.NewKind(`stored procedure "%s" already exists`)
 
-	// ErrTriggerDoesNotExist is returned when a stored procedure does not exist.
+	// ErrStoredProcedureDoesNotExist is returned when a stored procedure does not exist.
 	ErrStoredProcedureDoesNotExist = errors.NewKind(`stored procedure "%s" does not exist`)
 
 	// ErrProcedureCreateStatementInvalid is returned when a StoredProcedureDatabase returns a CREATE PROCEDURE statement that is invalid.
@@ -227,8 +234,32 @@ var (
 	// ErrCallIncorrectParameterCount is returned when a CALL statement has the incorrect number of parameters.
 	ErrCallIncorrectParameterCount = errors.NewKind("`%s` expected `%d` parameters but got `%d`")
 
+	// ErrEventsNotSupported is returned when attempting to create an event on a database that doesn't support them.
+	ErrEventsNotSupported = errors.NewKind("database '%s' doesn't support events")
+
+	// ErrEventAlreadyExists is returned when an event does not exist.
+	ErrEventAlreadyExists = errors.NewKind("Event '%s' already exists")
+
+	// ErrEventDoesNotExist is returned when an event does not exist.
+	ErrEventDoesNotExist = errors.NewKind("Event '%s' does not exist")
+
+	// ErrUndceclaredVariable is return when a variable is undeclared.
+	ErrUndeclaredVariable = errors.NewKind("Undeclared variable: %s")
+
+	// ErrUnknownEvent is returned when a query references an event that doesn't exist
+	ErrUnknownEvent = errors.NewKind("Unknown event '%s'")
+
+	// ErrEventCreateStatementInvalid is returned when an EventDatabase returns a CREATE EVENT statement that is invalid
+	ErrEventCreateStatementInvalid = errors.NewKind(`Invalid CREATE TRIGGER statement: %s`)
+
 	// ErrUnknownSystemVariable is returned when a query references a system variable that doesn't exist
 	ErrUnknownSystemVariable = errors.NewKind(`Unknown system variable '%s'`)
+
+	// ErrUnknownStatusVariable is returned when a query references a status variable that doesn't exist
+	ErrUnknownStatusVariable = errors.NewKind(`Unknown status variable '%s'`)
+
+	// ErrUnknownUserVariable is returned when a query references a user variable that doesn't exist
+	ErrUnknownUserVariable = errors.NewKind(`Unknown user variable '%s'`)
 
 	// ErrSystemVariableReadOnly is returned when attempting to set a value to a non-Dynamic system variable.
 	ErrSystemVariableReadOnly = errors.NewKind(`Variable '%s' is a read only variable`)
@@ -271,6 +302,15 @@ var (
 	// ErrDatabaseExists is returned when CREATE DATABASE attempts to create a database that already exists.
 	ErrDatabaseExists = errors.NewKind("can't create database %s; database exists")
 
+	// ErrDatabaseSchemaExists is returned when CREATE SCHEMA attempts to create a schema that already exists.
+	ErrDatabaseSchemaExists = errors.NewKind("can't create schema %s; schema exists")
+
+	// ErrDatabaseNoDatabaseSchemaSelectedCreate is returned when CREATE TABLE is called without a schema selected and one is required.
+	ErrDatabaseNoDatabaseSchemaSelectedCreate = errors.NewKind("no schema has been selected to create in")
+
+	// ErrInvalidDatabaseName is returned when a database name is invalid.
+	ErrInvalidDatabaseName = errors.NewKind("invalid database name: %s")
+
 	// ErrInvalidConstraintFunctionNotSupported is returned when a CONSTRAINT CHECK is called with an unsupported function expression.
 	ErrInvalidConstraintFunctionNotSupported = errors.NewKind("Invalid constraint expression, function not supported: %s")
 
@@ -286,6 +326,9 @@ var (
 	// ErrColumnCountMismatch is returned when a view, derived table or common table expression has a declared column
 	// list with a different number of columns than the schema of the table.
 	ErrColumnCountMismatch = errors.NewKind("In definition of view, derived table or common table expression, SELECT list and column names list have different column counts")
+
+	// ErrColValCountMismatch is returned when not all rows in values constructor are of equal length.
+	ErrColValCountMismatch = errors.NewKind("Column count doesn't match value count at row %d")
 
 	// ErrUuidUnableToParse is returned when a UUID is unable to be parsed.
 	ErrUuidUnableToParse = errors.NewKind("unable to parse '%s' to UUID: %s")
@@ -363,6 +406,18 @@ var (
 	// ErrAlterTableNotSupported is thrown when the table doesn't support ALTER TABLE statements
 	ErrAlterTableNotSupported = errors.NewKind("table %s cannot be altered")
 
+	// ErrAlterTableCollationNotSupported is thrown when the table doesn't support ALTER TABLE COLLATE statements
+	ErrAlterTableCollationNotSupported = errors.NewKind("table %s cannot have its collation altered")
+
+	// ErrAlterTableCommentNotSupported is thrown when the table doesn't support ALTER TABLE COMMENT statements
+	ErrAlterTableCommentNotSupported = errors.NewKind("table %s cannot have its comment altered")
+
+	// ErrCollationNotSupportedOnUniqueTextIndex is thrown when a unique index is created on a TEXT column, with no
+	// prefix length specified, and the collation is case-insensitive or accent-insensitive, meaning we can't
+	// reliably use a content-hashed field to detect uniqueness.
+	ErrCollationNotSupportedOnUniqueTextIndex = errors.NewKind("unable to create a unique index on TEXT columns without " +
+		"a prefix length specified when using a case-insensitive or accent-insensitive collation")
+
 	// ErrPartitionNotFound is thrown when a partition key on a table is not found
 	ErrPartitionNotFound = errors.NewKind("partition not found %q")
 
@@ -435,8 +490,20 @@ var (
 	// ErrForeignKeyDepthLimit is returned when the CASCADE depth limit has been reached.
 	ErrForeignKeyDepthLimit = errors.NewKind("Foreign key cascade delete/update exceeds max depth of 15.")
 
+	// ErrDuplicateKey is returned when a duplicate key is defined on a table.
+	ErrDuplicateKey = errors.NewKind("Duplicate key name '%s'")
+
 	// ErrDuplicateEntry is returns when a duplicate entry is placed on an index such as a UNIQUE or a Primary Key.
 	ErrDuplicateEntry = errors.NewKind("Duplicate entry for key '%s'")
+
+	// ErrDuplicateColumn is returned when a table has two columns with the same name.
+	ErrDuplicateColumn = errors.NewKind("duplicate column name: `%s`")
+
+	// ErrInvalidIdentifier is returned when an identifier is invalid
+	ErrInvalidIdentifier = errors.NewKind("invalid identifier: `%s`")
+
+	// ErrIdentifierIsTooLong is returned when creating a resource, but the identifier is longer than a name limit
+	ErrIdentifierIsTooLong = errors.NewKind("Identifier name '%s' is too long")
 
 	// ErrInvalidArgument is returned when an argument to a function is invalid.
 	ErrInvalidArgument = errors.NewKind("Invalid argument to %s")
@@ -472,7 +539,7 @@ var (
 	ErrWrongAutoKey = errors.NewKind("error: incorrect table definition: there can be only one auto column and it must be defined as a key")
 
 	// ErrKeyColumnDoesNotExist is returned when a table invoked CreatePrimaryKey with a non-existent column.
-	ErrKeyColumnDoesNotExist = errors.NewKind("error: key column '%s' doesn't exist in table")
+	ErrKeyColumnDoesNotExist = errors.NewKind("key column '%s' doesn't exist in table")
 
 	// ErrCantDropFieldOrKey is returned when a table invokes DropPrimaryKey on a keyless table.
 	ErrCantDropFieldOrKey = errors.NewKind("error: can't drop '%s'; check that column/key exists")
@@ -511,6 +578,12 @@ var (
 	// ErrDatabaseNotFound is thrown when a database is not found
 	ErrDatabaseNotFound = errors.NewKind("database not found: %s")
 
+	// ErrDatabaseSchemaNotFound is thrown when a database schema is not found
+	ErrDatabaseSchemaNotFound = errors.NewKind("database schema not found: %s")
+
+	// ErrDatabaseSchemasNotSupported is thrown when a database does not support schemas
+	ErrDatabaseSchemasNotSupported = errors.NewKind("database '%s' does not support schemas")
+
 	// ErrNoDatabaseSelected is thrown when a database is not selected and the query requires one
 	ErrNoDatabaseSelected = errors.NewKind("no database selected")
 
@@ -536,6 +609,15 @@ var (
 	// ErrLockDeadlock is the go-mysql-server equivalent of ER_LOCK_DEADLOCK. Transactions throwing this error
 	// are automatically rolled back. Clients receiving this error must retry the transaction.
 	ErrLockDeadlock = errors.NewKind("serialization failure: %s, try restarting transaction.")
+
+	// ErrViewCreateStatementInvalid is returned when a ViewDatabase returns a CREATE VIEW statement that is invalid
+	ErrViewCreateStatementInvalid = errors.NewKind(`Invalid CREATE VIEW statement: %s`)
+
+	// ErrViewsNotSupported is returned when attempting to access a view on a database that doesn't support them.
+	ErrViewsNotSupported = errors.NewKind("database '%s' doesn't support views")
+
+	// ErrExpectedTableFoundView is returned when attempting to rename a view using ALTER TABLE statement.
+	ErrExpectedTableFoundView = errors.NewKind("expected a table and found view: '%s' ")
 
 	// ErrExistingView is returned when a CREATE VIEW statement uses a name that already exists
 	ErrExistingView = errors.NewKind("the view %s.%s already exists")
@@ -570,9 +652,14 @@ var (
 	// ErrBadSpatialIdxCol is thrown when attempting to define a SPATIAL index over a non-geometry column
 	ErrBadSpatialIdxCol = errors.NewKind("a SPATIAL index may only contain a geometrical type column")
 
-	// ErrUnsupportedSpatialIdx is thrown when attempting to create a SPATIAL index
-	// TODO: remove this error when spatial index are created
-	ErrUnsupportedSpatialIdx = errors.NewKind("unsupported index type: SPATIAL")
+	// ErrNoSRID is thrown when attempting to create a Geometry with a non-existent SRID
+	ErrNoSRID = errors.NewKind("There's no spatial reference with SRID %d")
+
+	// ErrInvalidSRID is thrown when attempting to create a Geometry with an invalid SRID
+	ErrInvalidSRID = errors.NewKind("SRID value is out of range in %s")
+
+	// ErrSpatialRefSysAlreadyExists is thrown when attempting to create a spatial reference system with an existing SRID
+	ErrSpatialRefSysAlreadyExists = errors.NewKind("There is already a spatial reference system with SRID %v")
 
 	// ErrUnsupportedGISTypeForSpatialFunc is a temporary error because geometry is hard
 	// TODO: remove this error when all types are full supported by spatial type functions
@@ -593,6 +680,9 @@ var (
 	// ErrInvalidAutoIncCols is returned when an auto_increment column cannot be applied
 	ErrInvalidAutoIncCols = errors.NewKind("there can be only one auto_increment column and it must be defined as a key")
 
+	// ErrInvalidColumnSpecifier is returned when an invalid column specifier is used
+	ErrInvalidColumnSpecifier = errors.NewKind("Incorrect column specifier for column '%s'")
+
 	// ErrUnknownConstraintDefinition is returned when an unknown constraint type is used
 	ErrUnknownConstraintDefinition = errors.NewKind("unknown constraint definition: %s, %T")
 
@@ -601,6 +691,15 @@ var (
 
 	// ErrUserCreationFailure is returned when attempting to create a user and it fails for any reason.
 	ErrUserCreationFailure = errors.NewKind("Operation CREATE USER failed for %s")
+
+	// ErrUserNameTooLong is returned when a CREATE USER statement uses a name that is longer than 32 chars.
+	ErrUserNameTooLong = errors.NewKind("String '%s' is too long for user name (should be no longer than 32)")
+
+	// ErrUserHostTooLong is returned when a CREATE USER statement uses a host that is longer than 255 chars.
+	ErrUserHostTooLong = errors.NewKind("String '%s' is too long for host name (should be no longer than 255)")
+
+	// ErrUserAlterFailure is returned when attempting to alter a user and it fails for any reason.
+	ErrUserAlterFailure = errors.NewKind("Operation ALTER USER failed for %s")
 
 	// ErrRoleCreationFailure is returned when attempting to create a role and it fails for any reason.
 	ErrRoleCreationFailure = errors.NewKind("Operation CREATE ROLE failed for %s")
@@ -634,14 +733,11 @@ var (
 	// ErrShowGrantsUserDoesNotExist is returned when a user does not exist when attempting to show their grants.
 	ErrShowGrantsUserDoesNotExist = errors.NewKind("There is no such grant defined for user '%s' on host '%s'")
 
-	// ErrInvalidRecursiveCteUnion is returned when a recursive CTE is not a UNION or UNION ALL node.
-	ErrInvalidRecursiveCteUnion = errors.NewKind("recursive cte top-level query must be a union; found: %v")
+	// ErrRecursiveCTEMissingUnion is returned when a recursive CTE is not a UNION or UNION ALL node.
+	ErrRecursiveCTEMissingUnion = errors.NewKind("Recursive Common Table Expression '%s' should contain a UNION")
 
-	// ErrInvalidRecursiveCteInitialQuery is returned when the recursive CTE base clause is not supported.
-	ErrInvalidRecursiveCteInitialQuery = errors.NewKind("recursive cte initial query must be non-recursive projection; found: %v")
-
-	// ErrInvalidRecursiveCteRecursiveQuery is returned when the recursive CTE recursion clause is not supported.
-	ErrInvalidRecursiveCteRecursiveQuery = errors.NewKind("recursive cte recursive query must be a recursive projection; found: %v")
+	// ErrRecursiveCTENotUnion is returned when an INTERSECT or EXCEPT includes a Recursive CTE.
+	ErrRecursiveCTENotUnion = errors.NewKind("Recursive table reference in EXCEPT or INTERSECT operand is not allowed")
 
 	// ErrCteRecursionLimitExceeded is returned when a recursive CTE's execution stack depth exceeds the static limit.
 	ErrCteRecursionLimitExceeded = errors.NewKind("WITH RECURSIVE iteration limit exceeded")
@@ -676,6 +772,15 @@ var (
 
 	// ErrUnsupportedJoinFactorCount is returned for a query with more commutable join tables than we support
 	ErrUnsupportedJoinFactorCount = errors.NewKind("unsupported join factor count: expected fewer than %d tables, found %d")
+
+	// ErrSecureFilePriv is returned when an outfile/dumpfile path is invalid or not under the secure-file-priv directory
+	ErrSecureFilePriv = errors.NewKind("The MySQL server is running with the --secure-file-priv option so it cannot execute this statement")
+
+	// ErrFileExists is returned when a file already exists
+	ErrFileExists = errors.NewKind("File '%s' already exists")
+
+	// ErrUnexpectedSeparator is returned when an invalid separator is used
+	ErrUnexpectedSeparator = errors.NewKind("Field separator argument is not what is expected; check the manual")
 
 	// ErrNotMatchingSRID is returned for SRID values not matching
 	ErrNotMatchingSRID = errors.NewKind("The SRID of the geometry is %v, but the SRID of the column is %v. Consider changing the SRID of the geometry or the SRID property of the column.")
@@ -732,7 +837,7 @@ var (
 	ErrCharSetInvalidString = errors.NewKind("invalid string for character set `%s`: \"%s\"")
 
 	// ErrCharSetFailedToEncode is returned when a character set fails encoding
-	ErrCharSetFailedToEncode = errors.NewKind("failed to encode `%s`")
+	ErrCharSetFailedToEncode = errors.NewKind("failed to encode: `%s`, valid string: `%v`, snippet: `%s`")
 
 	// ErrCharSetUnknown is returned when the character set is not a recognized MySQL character set
 	ErrCharSetUnknown = errors.NewKind("Unknown character set: %v")
@@ -769,6 +874,76 @@ var (
 
 	// ErrDroppedJoinFilters is returned when we removed filters from a join, but failed to re-insert them
 	ErrDroppedJoinFilters = errors.NewKind("dropped filters from join, but failed to re-insert them")
+
+	// ErrInvalidIndexName is called when we try to create an index with an unusable name.
+	ErrInvalidIndexName = errors.NewKind("invalid index name '%s'")
+
+	// ErrStarUnsupported is called for * expressions seen outside: raw projections, count(*), and arrayagg(*)
+	ErrStarUnsupported = errors.NewKind(
+		"a '*' is in a context where it is not allowed.",
+	)
+
+	// ErrAggregationUnsupported is returned when the analyzer has failed
+	// to push down an Aggregation in an expression to a GroupBy node.
+	ErrAggregationUnsupported = errors.NewKind(
+		"an aggregation remained in the expression '%s' after analysis, outside of a node capable of evaluating it; this query is currently unsupported.",
+	)
+
+	ErrWindowUnsupported = errors.NewKind(
+		"a window function '%s' is in a context where it cannot be evaluated.",
+	)
+
+	// ErrFullTextNotSupported is returned when a table does not support the creation of Full-Text indexes.
+	ErrFullTextNotSupported = errors.NewKind("table does not support FULLTEXT indexes")
+
+	// ErrFullTextDatabaseNotSupported is returned when a database does not support the creation of Full-Text indexes.
+	ErrFullTextDatabaseNotSupported = errors.NewKind("database does not support FULLTEXT indexes")
+
+	// ErrIncompleteFullTextIntegration is returned when some portions of Full-Text are implemented but not all of them
+	ErrIncompleteFullTextIntegration = errors.NewKind("proper Full-Text support requires all interfaces to be implemented")
+
+	// ErrNoFullTextIndexFound is returned when the relevant Full-Text index cannot be found.
+	ErrNoFullTextIndexFound = errors.NewKind("no matching Full-Text index found on table `%s`")
+
+	// ErrFullTextMatchAgainstNotColumns is returned when the provided MATCH(...) columns are not column names.
+	ErrFullTextMatchAgainstNotColumns = errors.NewKind("match columns must be column names")
+
+	// ErrFullTextMatchAgainstSameTable is returned when the provided MATCH(...) columns belong to different tables.
+	ErrFullTextMatchAgainstSameTable = errors.NewKind("match columns must refer to the same table")
+
+	// ErrFullTextDifferentCollations is returned when creating a Full-Text index on columns that have different collations.
+	ErrFullTextDifferentCollations = errors.NewKind("Full-Text index columns must have the same collation")
+
+	// ErrFullTextMissingColumn is returned when a Full-Text column cannot be found.
+	ErrFullTextMissingColumn = errors.NewKind("Full-Text index could not find the column `%s`")
+
+	// ErrFullTextDuplicateColumn is returned when a Full-Text index declares the same column multiple times.
+	ErrFullTextDuplicateColumn = errors.NewKind("cannot have duplicate columns in a Full-Text index: `%s`")
+
+	// ErrFullTextInvalidColumnType is returned when a Full-Text index is declared on a non-text column.
+	ErrFullTextInvalidColumnType = errors.NewKind("all Full-Text columns must be declared on a non-binary text type")
+
+	// ErrGeneratedColumnValue is returned when a value is provided for a generated column
+	ErrGeneratedColumnValue = errors.NewKind("The value specified for generated column %q in table %q is not allowed.")
+
+	// ErrVirtualColumnPrimaryKey is returned when a virtual column is defined as a primary key
+	ErrVirtualColumnPrimaryKey = errors.NewKind("Defining a virtual generated column as primary key is not supported")
+
+	// ErrGeneratedColumnWithDefault is returned when a column specifies both a default and a generated value
+	ErrGeneratedColumnWithDefault = errors.NewKind("Incorrect usage of DEFAULT and generated column")
+
+	// ErrJSONIndex is returned when attempting to create an index over a JSON column directly
+	ErrJSONIndex = errors.NewKind("JSON column '%s' supports indexing only via generated columns on a specified JSON path")
+
+	ErrInvalidOnUpdate = errors.NewKind("Invalid ON UPDATE clause for '%s' column")
+
+	ErrInsertIntoMismatchValueCount = errors.NewKind("number of values does not match number of columns provided")
+
+	ErrInvalidTypeForLimit = errors.NewKind("invalid limit. expected %T, found %T")
+
+	ErrColumnSpecifiedTwice = errors.NewKind("column '%v' specified twice")
+
+	ErrEnumTypeTruncated = errors.NewKind("new enum type change truncates value")
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the
@@ -799,6 +974,8 @@ func CastSQLError(err error) *mysql.SQLError {
 		code = mysql.ERNoSuchTable
 	case ErrDatabaseExists.Is(err):
 		code = mysql.ERDbCreateExists
+	case ErrDatabaseNotFound.Is(err):
+		code = mysql.ERBadDb
 	case ErrExpectedSingleRow.Is(err):
 		code = mysql.ERSubqueryNo1Row
 	case ErrInvalidOperandColumns.Is(err):
@@ -835,6 +1012,10 @@ func CastSQLError(err error) *mysql.SQLError {
 		code = 1553 // TODO: Needs to be added to vitess
 	case ErrInvalidValue.Is(err):
 		code = mysql.ERTruncatedWrongValueForField
+	case ErrUnknownColumn.Is(err):
+		code = mysql.ERBadFieldError
+	case ErrColumnSpecifiedTwice.Is(err):
+		code = mysql.ERFieldSpecifiedTwice
 	case ErrLockDeadlock.Is(err):
 		// ER_LOCK_DEADLOCK signals that the transaction was rolled back
 		// due to a deadlock between concurrent transactions.
@@ -848,8 +1029,7 @@ func CastSQLError(err error) *mysql.SQLError {
 		code = mysql.ERUnknownError
 	}
 
-	// This uses the given error as a format string, so we have to escape any percentage signs else they'll show up as "%!(MISSING)"
-	return mysql.NewSQLError(code, sqlState, strings.Replace(err.Error(), `%`, `%%`, -1))
+	return mysql.NewSQLError(code, sqlState, "%s", err.Error())
 }
 
 // UnwrapError removes any wrapping errors (e.g. WrappedInsertError) around the specified error and
@@ -903,6 +1083,15 @@ func NewWrappedInsertError(r Row, err error) WrappedInsertError {
 
 func (w WrappedInsertError) Error() string {
 	return w.Cause.Error()
+}
+
+// Format implements fmt.Formatter
+func (w WrappedInsertError) Format(s fmt.State, verb rune) {
+	if fmtErr, ok := w.Cause.(fmt.Formatter); ok {
+		fmtErr.Format(s, verb)
+		return
+	}
+	_, _ = io.WriteString(s, w.Error())
 }
 
 // IgnorableError is used propagate information about an error that needs to be ignored and does not interfere with

@@ -16,40 +16,33 @@ package plan
 
 import (
 	"fmt"
-	"io"
 
 	"github.com/gabereiser/go-mysql-server/sql"
 	"github.com/gabereiser/go-mysql-server/sql/expression"
 )
 
-type DeclareHandlerAction byte
-
-const (
-	DeclareHandlerAction_Continue DeclareHandlerAction = iota
-	DeclareHandlerAction_Exit
-	DeclareHandlerAction_Undo
-)
-
 // DeclareHandler represents the DECLARE ... HANDLER statement.
 type DeclareHandler struct {
-	Action    DeclareHandlerAction
+	Action    expression.DeclareHandlerAction
 	Statement sql.Node
-	pRef      *expression.ProcedureReference
-	//TODO: implement other conditions besides NOT FOUND
+	Pref      *expression.ProcedureReference
+	Condition expression.HandlerCondition
 }
 
 var _ sql.Node = (*DeclareHandler)(nil)
+var _ sql.CollationCoercible = (*DeclareHandler)(nil)
 var _ sql.DebugStringer = (*DeclareHandler)(nil)
 var _ expression.ProcedureReferencable = (*DeclareHandler)(nil)
 
 // NewDeclareHandler returns a new *DeclareHandler node.
-func NewDeclareHandler(action DeclareHandlerAction, statement sql.Node) (*DeclareHandler, error) {
-	if action == DeclareHandlerAction_Undo {
+func NewDeclareHandler(action expression.DeclareHandlerAction, statement sql.Node, cond expression.HandlerCondition) (*DeclareHandler, error) {
+	if action == expression.DeclareHandlerAction_Undo {
 		return nil, sql.ErrDeclareHandlerUndo.New()
 	}
 	return &DeclareHandler{
 		Action:    action,
 		Statement: statement,
+		Condition: cond,
 	}, nil
 }
 
@@ -58,15 +51,19 @@ func (d *DeclareHandler) Resolved() bool {
 	return true
 }
 
+func (d *DeclareHandler) IsReadOnly() bool {
+	return true
+}
+
 // String implements the interface sql.Node.
 func (d *DeclareHandler) String() string {
 	var action string
 	switch d.Action {
-	case DeclareHandlerAction_Continue:
+	case expression.DeclareHandlerAction_Continue:
 		action = "CONTINUE"
-	case DeclareHandlerAction_Exit:
+	case expression.DeclareHandlerAction_Exit:
 		action = "EXIT"
-	case DeclareHandlerAction_Undo:
+	case expression.DeclareHandlerAction_Undo:
 		action = "UNDO"
 	}
 	return fmt.Sprintf("DECLARE %s HANDLER FOR NOT FOUND %s", action, d.Statement.String())
@@ -76,11 +73,11 @@ func (d *DeclareHandler) String() string {
 func (d *DeclareHandler) DebugString() string {
 	var action string
 	switch d.Action {
-	case DeclareHandlerAction_Continue:
+	case expression.DeclareHandlerAction_Continue:
 		action = "CONTINUE"
-	case DeclareHandlerAction_Exit:
+	case expression.DeclareHandlerAction_Exit:
 		action = "EXIT"
-	case DeclareHandlerAction_Undo:
+	case expression.DeclareHandlerAction_Undo:
 		action = "UNDO"
 	}
 	return fmt.Sprintf("DECLARE %s HANDLER FOR NOT FOUND %s", action, sql.DebugString(d.Statement))
@@ -107,37 +104,14 @@ func (d *DeclareHandler) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &nd, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (d *DeclareHandler) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
-}
-
-// RowIter implements the interface sql.Node.
-func (d *DeclareHandler) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return &declareHandlerIter{d}, nil
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*DeclareHandler) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // WithParamReference implements the interface expression.ProcedureReferencable.
 func (d *DeclareHandler) WithParamReference(pRef *expression.ProcedureReference) sql.Node {
 	nd := *d
-	nd.pRef = pRef
+	nd.Pref = pRef
 	return &nd
-}
-
-// declareHandlerIter is the sql.RowIter of *DeclareHandler.
-type declareHandlerIter struct {
-	*DeclareHandler
-}
-
-var _ sql.RowIter = (*declareHandlerIter)(nil)
-
-// Next implements the interface sql.RowIter.
-func (d *declareHandlerIter) Next(ctx *sql.Context) (sql.Row, error) {
-	d.pRef.InitializeHandler(d.Statement, d.Action == DeclareHandlerAction_Exit)
-	return nil, io.EOF
-}
-
-// Close implements the interface sql.RowIter.
-func (d *declareHandlerIter) Close(ctx *sql.Context) error {
-	return nil
 }

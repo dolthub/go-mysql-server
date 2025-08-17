@@ -1,17 +1,25 @@
 package support
 
 import (
+	"bytes"
 	"fmt"
 	"io"
+	"os"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
+type AggDefs struct {
+	UnaryAggs []AggDef `yaml:"unaryAggs"`
+}
+
 type AggDef struct {
-	Name     string
-	SqlName  string
-	Desc     string
-	RetType  string // must be valid sql.Type
-	Nullable bool
+	Name     string `yaml:"name"`
+	SqlName  string `yaml:"sqlName"`
+	Desc     string `yaml:"desc"`
+	RetType  string `yaml:"retType"` // must be valid sql.Type
+	Nullable bool   `yaml:"nullable"`
 }
 
 var _ GenDefs = ([]AggDef)(nil)
@@ -21,16 +29,28 @@ type AggGen struct {
 	w       io.Writer
 }
 
+func DecodeUnaryAggDefs(path string) (AggDefs, error) {
+	contents, err := os.ReadFile(path)
+	if err != nil {
+		return AggDefs{}, err
+	}
+	dec := yaml.NewDecoder(bytes.NewReader(contents))
+	dec.KnownFields(true)
+	var res AggDefs
+	return res, dec.Decode(&res)
+}
+
 func (g *AggGen) Generate(defines GenDefs, w io.Writer) {
-	g.defines = defines.([]AggDef)
+	g.defines = defines.(AggDefs).UnaryAggs
 
 	g.w = w
 
 	fmt.Fprintf(g.w, "import (\n")
 	fmt.Fprintf(g.w, "    \"fmt\"\n")
-	fmt.Fprintf(g.w, "    \"github.com/gabereiser/go-mysql-server/sql\"\n")
-	fmt.Fprintf(g.w, "    \"github.com/gabereiser/go-mysql-server/sql/expression\"\n")
-	fmt.Fprintf(g.w, "    \"github.com/gabereiser/go-mysql-server/sql/transform\"\n")
+	fmt.Fprintf(g.w, "    \"github.com/dolthub/go-mysql-server/sql/types\"\n")
+	fmt.Fprintf(g.w, "    \"github.com/dolthub/go-mysql-server/sql\"\n")
+	fmt.Fprintf(g.w, "    \"github.com/dolthub/go-mysql-server/sql/expression\"\n")
+	fmt.Fprintf(g.w, "    \"github.com/dolthub/go-mysql-server/sql/transform\"\n")
 	fmt.Fprintf(g.w, ")\n\n")
 
 	for _, define := range g.defines {
@@ -41,6 +61,7 @@ func (g *AggGen) Generate(defines GenDefs, w io.Writer) {
 		g.genAggStringer(define)
 		g.genAggWithWindow(define)
 		g.genAggWithChildren(define)
+		g.genAggWithId(define)
 		g.genAggNewBuffer(define)
 		g.genAggWindowConstructor(define)
 	}
@@ -121,10 +142,17 @@ func (g *AggGen) genAggWithChildren(define AggDef) {
 	fmt.Fprintf(g.w, "}\n\n")
 }
 
+func (g *AggGen) genAggWithId(define AggDef) {
+	fmt.Fprintf(g.w, "func (a *%s) WithId(id sql.ColumnId) sql.IdExpression {\n", define.Name)
+	fmt.Fprintf(g.w, "    res := a.unaryAggBase.WithId(id)\n")
+	fmt.Fprintf(g.w, "    return &%s{unaryAggBase: *res.(*unaryAggBase)}\n", define.Name)
+	fmt.Fprintf(g.w, "}\n\n")
+}
+
 func (g *AggGen) genAggWithWindow(define AggDef) {
-	fmt.Fprintf(g.w, "func (a *%s) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {\n", define.Name)
-	fmt.Fprintf(g.w, "    res, err := a.unaryAggBase.WithWindow(window)\n")
-	fmt.Fprintf(g.w, "    return &%s{unaryAggBase: *res.(*unaryAggBase)}, err\n", define.Name)
+	fmt.Fprintf(g.w, "func (a *%s) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {\n", define.Name)
+	fmt.Fprintf(g.w, "    res := a.unaryAggBase.WithWindow(window)\n")
+	fmt.Fprintf(g.w, "    return &%s{unaryAggBase: *res.(*unaryAggBase)}\n", define.Name)
 	fmt.Fprintf(g.w, "}\n\n")
 }
 

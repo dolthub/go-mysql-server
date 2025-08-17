@@ -18,15 +18,20 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gabereiser/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Coalesce returns the first non-NULL value in the list, or NULL if there are no non-NULL values.
 type Coalesce struct {
 	args []sql.Expression
+	typ  sql.Type
 }
 
 var _ sql.FunctionExpression = (*Coalesce)(nil)
+var _ sql.CollationCoercible = (*Coalesce)(nil)
 
 // NewCoalesce creates a new Coalesce sql.Expression.
 func NewCoalesce(args ...sql.Expression) (sql.Expression, error) {
@@ -34,7 +39,7 @@ func NewCoalesce(args ...sql.Expression) (sql.Expression, error) {
 		return nil, sql.ErrInvalidArgumentNumber.New("COALESCE", "1 or more", 0)
 	}
 
-	return &Coalesce{args}, nil
+	return &Coalesce{args: args}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -50,18 +55,88 @@ func (c *Coalesce) Description() string {
 // Type implements the sql.Expression interface.
 // The return type of Type() is the aggregated type of the argument types.
 func (c *Coalesce) Type() sql.Type {
-	for _, arg := range c.args {
+	if c.typ != nil {
+		return c.typ
+	}
+
+	var retType sql.Type
+	retType = types.Null
+	for i, arg := range c.args {
 		if arg == nil {
 			continue
 		}
-		t := arg.Type()
-		if t == nil {
+		argType := arg.Type()
+		if sysVarType, ok := argType.(sql.SystemVariableType); ok {
+			argType = sysVarType.UnderlyingType()
+		}
+		if i == 0 {
+			retType = argType
 			continue
 		}
-		return t
+		if argType == nil || argType == types.Null {
+			continue
+		}
+		if retType.Equals(argType) {
+			continue
+		}
+
+		// special case for signed and unsigned integers
+		if (types.IsSigned(retType) && types.IsUnsigned(argType)) || (types.IsUnsigned(retType) && types.IsSigned(argType)) {
+			retType = types.MustCreateDecimalType(20, 0)
+			continue
+		}
+
+		convType := expression.GetConvertToType(retType, argType)
+		switch convType {
+		case expression.ConvertToChar:
+			// special case for float64s
+			if (argType == types.Float64 || retType == types.Float64) && !types.IsText(argType) && !types.IsText(retType) {
+				retType = types.Float64
+				continue
+			}
+			// Can't get any larger than this
+			return types.LongText
+		case expression.ConvertToDecimal:
+			if retType == types.Float64 || argType == types.Float64 {
+				retType = types.Float64
+			} else if types.IsDecimal(argType) {
+				retType = argType
+			} else if !types.IsDecimal(retType) {
+				retType = types.MustCreateDecimalType(10, 0)
+			}
+		case expression.ConvertToUnsigned:
+			if retType == types.Uint64 || argType == types.Uint64 {
+				retType = types.Uint64
+			} else {
+				retType = types.Uint32
+			}
+		case expression.ConvertToSigned:
+			if retType == types.Int64 || argType == types.Int64 {
+				retType = types.Int64
+			} else {
+				retType = types.Int32
+			}
+		case expression.ConvertToFloat:
+			if retType == types.Float64 || argType == types.Float64 {
+				retType = types.Float64
+			} else {
+				retType = types.Float32
+			}
+		default:
+		}
 	}
 
-	return nil
+	c.typ = retType
+	return retType
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (c *Coalesce) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	// Preferably, this would be done during evaluation, but that's not possible with the current abstraction
+	if typ := c.Type(); typ != nil {
+		return typ.CollationCoercibility(ctx)
+	}
+	return sql.Collation_binary, 6
 }
 
 // IsNullable implements the sql.Expression interface.
@@ -81,6 +156,14 @@ func (c *Coalesce) String() string {
 	var args = make([]string, len(c.args))
 	for i, arg := range c.args {
 		args[i] = arg.String()
+	}
+	return fmt.Sprintf("%s(%s)", c.FunctionName(), strings.Join(args, ","))
+}
+
+func (c *Coalesce) DebugString() string {
+	var args = make([]string, len(c.args))
+	for i, arg := range c.args {
+		args[i] = sql.DebugString(arg)
 	}
 	return fmt.Sprintf("%s(%s)", c.FunctionName(), strings.Join(args, ","))
 }
@@ -125,6 +208,12 @@ func (c *Coalesce) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			continue
 		}
 
+		if !types.IsEnum(c.Type()) && !types.IsSet(c.Type()) {
+			val, _, err = c.Type().Convert(ctx, val)
+			if err != nil {
+				return nil, err
+			}
+		}
 		return val, nil
 	}
 

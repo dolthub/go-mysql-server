@@ -31,8 +31,9 @@ func applyDefaultSelectLimit(
 	ctx *sql.Context,
 	a *Analyzer,
 	n sql.Node,
-	scope *Scope,
-	sel RuleSelector,
+	scope *plan.Scope,
+	_ RuleSelector,
+	_ *sql.QueryFlags,
 ) (sql.Node, transform.TreeIdentity, error) {
 	if !scope.IsEmpty() || scope.RecursionDepth() > 0 {
 		return n, transform.SameTree, nil
@@ -52,7 +53,7 @@ func applyLimit(n sql.Node, limit sql.Expression) (sql.Node, transform.TreeIdent
 	switch n := n.(type) {
 	case *plan.Limit:
 		return n, transform.SameTree
-	case *plan.Union:
+	case *plan.SetOp:
 		if n.Limit != nil {
 			return n, transform.SameTree
 		}

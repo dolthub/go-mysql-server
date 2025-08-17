@@ -19,16 +19,30 @@ type PrivilegedOperation struct {
 	Database          string
 	Table             string
 	Column            string
+	Routine           string
+	IsProcedure       bool // true if the routine is a procedure, false if it's a function
 	StaticPrivileges  []PrivilegeType
 	DynamicPrivileges []string
 }
 
+// PrivilegeCheckSubject is a struct that contains the entity information for an access check. It's specifically what
+// is being accessed - but not what operation is being attempted.
+type PrivilegeCheckSubject struct {
+	Database    string
+	Table       string
+	Column      string
+	Routine     string
+	IsProcedure bool // true if the routine is a procedure, false if it's a function
+}
+
 // NewPrivilegedOperation returns a new PrivilegedOperation with the given parameters.
-func NewPrivilegedOperation(dbName string, tblName string, colName string, privs ...PrivilegeType) PrivilegedOperation {
+func NewPrivilegedOperation(subject PrivilegeCheckSubject, privs ...PrivilegeType) PrivilegedOperation {
 	return PrivilegedOperation{
-		Database:         dbName,
-		Table:            tblName,
-		Column:           colName,
+		Database:         subject.Database,
+		Table:            subject.Table,
+		Column:           subject.Column,
+		Routine:          subject.Routine,
+		IsProcedure:      subject.IsProcedure,
 		StaticPrivileges: privs,
 	}
 }
@@ -46,8 +60,16 @@ func NewDynamicPrivilegedOperation(privs ...string) PrivilegedOperation {
 type PrivilegedOperationChecker interface {
 	// UserHasPrivileges fetches the User, and returns whether they have the desired privileges necessary to perform the
 	// privileged operation(s). This takes into account the active roles, which are set in the context, therefore both
-	// the user and the active roles are pulled from the context.
+	// the user and the active roles are pulled from the context. This method is sufficient for all MySQL behaviors.
+	// The one exception, currently, is for stored procedures and functions, which have a more fine-grained permission
+	// due to Dolt's use of the AdminOnly flag in procedure definitions.
 	UserHasPrivileges(ctx *Context, operations ...PrivilegedOperation) bool
+	// RoutineAdminCheck fetches the User from the context, and specifically evaluates, the permission check
+	// assuming the operation is for a stored procedure or function. This allows us to have more fine grain control over
+	// permissions for stored procedures (many of which are critical to Dolt). This method specifically checks exists
+	// for the use of AdminOnly procedures which require more fine-grained access control. For procedures which are
+	// not AdminOnly, then |UserHasPrivileges| should be used instead.
+	RoutineAdminCheck(ctx *Context, operations ...PrivilegedOperation) bool
 }
 
 // PrivilegeSet is a set containing privileges. Integrators should not implement this interface.
@@ -83,10 +105,25 @@ type PrivilegeSetDatabase interface {
 	Table(tblName string) PrivilegeSetTable
 	// GetTables returns all tables.
 	GetTables() []PrivilegeSetTable
+	// Routine returns the set of privileges for the given routine. Returns an empty set if the routine does not exist.
+	Routine(routineName string, isProcedure bool) PrivilegeSetRoutine
+	// GetRoutines returns all routines.
+	GetRoutines() []PrivilegeSetRoutine
 	// Equals returns whether the given set of privileges is equivalent to the calling set.
 	Equals(otherPs PrivilegeSetDatabase) bool
 	// ToSlice returns all of the database privileges contained as a sorted slice.
 	ToSlice() []PrivilegeType
+}
+
+// AliasedDatabase is a database that has an alias: a name that is different from the name to be used system
+// tables such as information_schema, or the mysql grant tables. This is the case when an integrator supports multiple
+// ways to address a single physical database, but all such names should resolve to the same underlying name for
+// permission checks.
+type AliasedDatabase interface {
+	Database
+
+	// AliasedName returns the alias (the underlying name for information_schema, privileges) for this database.
+	AliasedName() string
 }
 
 // PrivilegeSetTable is a set containing table-level privileges. Integrators should not implement this interface.
@@ -121,6 +158,25 @@ type PrivilegeSetColumn interface {
 	// Equals returns whether the given set of privileges is equivalent to the calling set.
 	Equals(otherPs PrivilegeSetColumn) bool
 	// ToSlice returns all of the column privileges contained as a sorted slice.
+	ToSlice() []PrivilegeType
+}
+
+// PrivilegeSetRoutine is a set containing routine privileges. Routines are either functions or procedures, and permissions
+// for them are handled identically.
+type PrivilegeSetRoutine interface {
+	// RoutineName returns the name of the routine that this privilege set belongs to.
+	RoutineName() string
+	// RoutineType returns "FUNCTION" or "PROCEDURE".
+	RoutineType() string
+	// Has returns true if all PrivilegeTypes are present in the PrivilegeSet.
+	Has(privileges ...PrivilegeType) bool
+	// HasPrivileges returns whether this routine has any privileges.
+	HasPrivileges() bool
+	// Count returns the number of privileges on the routine
+	Count() int
+	// Equals returns whether the given set of privileges is equivalent to the calling set.
+	Equals(otherPs PrivilegeSetRoutine) bool
+	// ToSlice returns all of the routines privileges as a sorted slice.
 	ToSlice() []PrivilegeType
 }
 

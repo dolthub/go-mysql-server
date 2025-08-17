@@ -89,7 +89,7 @@ var BlobWriteQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "update blobt set b = '100000000' where i = 1",
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(1, 1)}},
 		SelectQuery:         "select * from blobt where i = 1",
 		ExpectedSelect:      []sql.Row{{1, []byte("100000000")}},
 	},
@@ -130,7 +130,7 @@ var BlobWriteQueries = []WriteQueryTest{
 	},
 	{
 		WriteQuery:          "update textt set t = '100000000' where i = 1",
-		ExpectedWriteResult: []sql.Row{{newUpdateResult(1, 1)}},
+		ExpectedWriteResult: []sql.Row{{NewUpdateResult(1, 1)}},
 		SelectQuery:         "select * from textt where i = 1",
 		ExpectedSelect:      []sql.Row{{1, "100000000"}},
 	},
@@ -187,20 +187,12 @@ var BlobErrors = []QueryErrorTest{
 		ExpectedErr: sql.ErrKeyTooLong,
 	},
 	{
-		Query:       "alter table blobt add column b2 blob default '1'",
-		ExpectedErr: sql.ErrInvalidTextBlobColumnDefault,
-	},
-	{
 		Query:       "alter table textt add index tidx (t)",
 		ExpectedErr: sql.ErrInvalidBlobTextKey,
 	},
 	{
 		Query:       "alter table textt add index tidx (t(769))",
 		ExpectedErr: sql.ErrKeyTooLong,
-	},
-	{
-		Query:       "alter table textt add column t2 text default '1'",
-		ExpectedErr: sql.ErrInvalidTextBlobColumnDefault,
 	},
 	{
 		Query:       "alter table textt add index tidx (i, t)",

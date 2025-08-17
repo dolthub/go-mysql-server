@@ -39,7 +39,7 @@ func TestBinary(t *testing.T) {
 	}{
 		{"hi", types.MustCreateBinary(query.Type_VARBINARY, int64(16)), []byte("hi")},
 		{int8(1), types.Int8, []byte("1")},
-		{true, types.Boolean, []byte("true")},
+		{true, types.Boolean, []byte("1")},
 		{"hello", types.LongText, []byte("hello")},
 	}
 

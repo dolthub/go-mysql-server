@@ -15,6 +15,7 @@
 package golden
 
 import (
+	"context"
 	dsql "database/sql"
 	"fmt"
 	"math"
@@ -25,13 +26,13 @@ import (
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	querypb "github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	mysql2 "github.com/go-sql-driver/mysql"
 	"github.com/gocraft/dbr/v2"
 	"github.com/sirupsen/logrus"
 
-	"github.com/gabereiser/go-mysql-server/sql"
-	"github.com/gabereiser/go-mysql-server/sql/parse"
-	"github.com/gabereiser/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 )
 
 type MySqlProxy struct {
@@ -39,6 +40,12 @@ type MySqlProxy struct {
 	connStr string
 	logger  *logrus.Logger
 	conns   map[uint32]proxyConn
+}
+
+var _ mysql.Handler = MySqlProxy{}
+
+func (h MySqlProxy) ParserOptionsForConnection(_ *mysql.Conn) (sqlparser.ParserOptions, error) {
+	return sqlparser.ParserOptions{}, nil
 }
 
 type proxyConn struct {
@@ -73,8 +80,6 @@ func NewMySqlProxyHandler(logger *logrus.Logger, connStr string) (MySqlProxy, er
 		conns:   make(map[uint32]proxyConn),
 	}, nil
 }
-
-var _ mysql.Handler = MySqlProxy{}
 
 func newConn(connStr string, connId uint32, lgr *logrus.Logger) (conn proxyConn, err error) {
 	l := logrus.NewEntry(lgr).WithField("dsn", connStr).WithField(sql.ConnectionIdLogField, connId)
@@ -135,18 +140,18 @@ func (h MySqlProxy) ComInitDB(c *mysql.Conn, schemaName string) error {
 }
 
 // ComPrepare implements mysql.Handler.
-func (h MySqlProxy) ComPrepare(c *mysql.Conn, query string) ([]*querypb.Field, error) {
+func (h MySqlProxy) ComPrepare(ctx context.Context, _ *mysql.Conn, _ string, _ *mysql.PrepareData) ([]*querypb.Field, error) {
 	return nil, fmt.Errorf("ComPrepare unsupported")
 }
 
 // ComStmtExecute implements mysql.Handler.
-func (h MySqlProxy) ComStmtExecute(c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error {
+func (h MySqlProxy) ComStmtExecute(ctx context.Context, c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error {
 	return fmt.Errorf("ComStmtExecute unsupported")
 }
 
 // ComResetConnection implements mysql.Handler.
-func (h MySqlProxy) ComResetConnection(c *mysql.Conn) {
-	return
+func (h MySqlProxy) ComResetConnection(_ *mysql.Conn) error {
+	return nil
 }
 
 // ConnectionClosed implements mysql.Handler.
@@ -162,11 +167,17 @@ func (h MySqlProxy) ConnectionClosed(c *mysql.Conn) {
 	delete(h.conns, c.ConnectionID)
 }
 
+// ConnectionAborted implements mysql.Handler.
+func (h MySqlProxy) ConnectionAborted(c *mysql.Conn, reason string) error {
+	return nil
+}
+
 // ComMultiQuery implements mysql.Handler.
 func (h MySqlProxy) ComMultiQuery(
+	ctx context.Context,
 	c *mysql.Conn,
 	query string,
-	callback func(*sqltypes.Result, bool) error,
+	callback mysql.ResultSpoolFn,
 ) (string, error) {
 	conn, err := h.getConn(c.ConnectionID)
 	if err != nil {
@@ -174,7 +185,7 @@ func (h MySqlProxy) ComMultiQuery(
 	}
 	conn.Entry = conn.Entry.WithField("query", query)
 
-	remainder, err := h.processQuery(c, conn, query, true, callback)
+	remainder, err := h.processQuery(ctx, c, conn, query, true, callback)
 	if err != nil {
 		conn.Errorf("Failed to process MySQL results: %s", err)
 	}
@@ -183,9 +194,10 @@ func (h MySqlProxy) ComMultiQuery(
 
 // ComQuery implements mysql.Handler.
 func (h MySqlProxy) ComQuery(
+	ctx context.Context,
 	c *mysql.Conn,
 	query string,
-	callback func(*sqltypes.Result, bool) error,
+	callback mysql.ResultSpoolFn,
 ) error {
 	conn, err := h.getConn(c.ConnectionID)
 	if err != nil {
@@ -193,27 +205,47 @@ func (h MySqlProxy) ComQuery(
 	}
 	conn.Entry = conn.Entry.WithField("query", query)
 
-	_, err = h.processQuery(c, conn, query, false, callback)
+	_, err = h.processQuery(ctx, c, conn, query, false, callback)
 	if err != nil {
 		conn.Errorf("Failed to process MySQL results: %s", err)
 	}
 	return err
 }
 
+// ComParsedQuery implements mysql.Handler.
+func (h MySqlProxy) ComParsedQuery(
+	ctx context.Context,
+	c *mysql.Conn,
+	query string,
+	parsed sqlparser.Statement,
+	callback func(*sqltypes.Result, bool) error,
+) error {
+	return h.ComQuery(ctx, c, query, callback)
+}
+
 func (h MySqlProxy) processQuery(
+	ctx context.Context,
 	c *mysql.Conn,
 	proxy proxyConn,
 	query string,
 	isMultiStatement bool,
 	callback func(*sqltypes.Result, bool) error,
 ) (string, error) {
-	ctx := sql.NewContext(h.ctx)
+	sqlCtx := sql.NewContext(ctx)
 	var remainder string
 	if isMultiStatement {
-		_, query, remainder, _ = parse.ParseOne(ctx, query)
+		_, ri, err := sqlparser.ParseOne(ctx, query)
+		if err != nil {
+			return "", err
+		}
+		if ri != 0 && ri < len(query) {
+			remainder = query[ri:]
+			query = query[:ri]
+			query = sql.RemoveSpaceAndDelimiter(query, ';')
+		}
 	}
 
-	ctx = ctx.WithQuery(query)
+	sqlCtx = sqlCtx.WithQuery(query)
 	more := remainder != ""
 
 	proxy.Debugf("Sending query to MySQL")
@@ -231,7 +263,7 @@ func (h MySqlProxy) processQuery(
 	res := &sqltypes.Result{}
 	ok := true
 	for ok {
-		if res, ok, err = fetchMySqlRows(ctx, rows, 128); err != nil {
+		if res, ok, err = fetchMySqlRows(sqlCtx, rows, 128); err != nil {
 			return "", err
 		}
 		if err := callback(res, more); err != nil {
@@ -240,19 +272,19 @@ func (h MySqlProxy) processQuery(
 		processedAtLeastOneBatch = true
 	}
 
-	if err := setConnStatusFlags(ctx, c); err != nil {
+	if err := setConnStatusFlags(sqlCtx, c); err != nil {
 		return remainder, err
 	}
 
 	switch len(res.Rows) {
 	case 0:
 		if len(res.Info) > 0 {
-			ctx.GetLogger().Tracef("returning result %s", res.Info)
+			sqlCtx.GetLogger().Tracef("returning result %s", res.Info)
 		} else {
-			ctx.GetLogger().Tracef("returning empty result")
+			sqlCtx.GetLogger().Tracef("returning empty result")
 		}
 	case 1:
-		ctx.GetLogger().Tracef("returning result %v", res)
+		sqlCtx.GetLogger().Tracef("returning result %v", res)
 	}
 
 	// processedAtLeastOneBatch means we already called resultsCB() at least
@@ -297,7 +329,7 @@ func isSessionAutocommit(ctx *sql.Context) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return types.ConvertToBool(autoCommitSessionVar)
+	return sql.ConvertToBool(ctx, autoCommitSessionVar)
 }
 
 func fetchMySqlRows(ctx *sql.Context, results *dsql.Rows, count int) (res *sqltypes.Result, more bool, err error) {
@@ -325,7 +357,7 @@ func fetchMySqlRows(ctx *sql.Context, results *dsql.Rows, count int) (res *sqlty
 
 		row := make([]sqltypes.Value, len(fields))
 		for i := range row {
-			scanRow[i], err = types[i].Convert(scanRow[i])
+			scanRow[i], _, err = types[i].Convert(ctx, scanRow[i])
 			if err != nil {
 				return nil, false, err
 			}
@@ -367,7 +399,7 @@ func schemaToFields(ctx *sql.Context, cols []*dsql.ColumnType) ([]sql.Type, []*q
 			// default to the maximum width
 			typeStr = ts
 		}
-		types[i], err = parse.ParseColumnTypeString(ctx, typeStr)
+		types[i], err = planbuilder.ParseColumnTypeString(typeStr)
 		if err != nil {
 			return nil, nil, err
 		}

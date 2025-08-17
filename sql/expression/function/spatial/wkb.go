@@ -29,6 +29,7 @@ type AsWKB struct {
 }
 
 var _ sql.FunctionExpression = (*AsWKB)(nil)
+var _ sql.CollationCoercible = (*AsWKB)(nil)
 
 // NewAsWKB creates a new point expression.
 func NewAsWKB(e sql.Expression) sql.Expression {
@@ -53,6 +54,11 @@ func (a *AsWKB) IsNullable() bool {
 // Type implements the sql.Expression interface.
 func (a *AsWKB) Type() sql.Type {
 	return types.LongBlob
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*AsWKB) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (a *AsWKB) String() string {
@@ -95,6 +101,7 @@ type GeomFromWKB struct {
 }
 
 var _ sql.FunctionExpression = (*GeomFromWKB)(nil)
+var _ sql.CollationCoercible = (*GeomFromWKB)(nil)
 
 // NewGeomFromWKB creates a new geometry expression.
 func NewGeomFromWKB(args ...sql.Expression) (sql.Expression, error) {
@@ -117,6 +124,11 @@ func (g *GeomFromWKB) Description() string {
 // Type implements the sql.Expression interface.
 func (g *GeomFromWKB) Type() sql.Type {
 	return types.PointType{} // TODO: replace with generic geometry type
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*GeomFromWKB) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (g *GeomFromWKB) String() string {
@@ -144,13 +156,6 @@ func ParseAxisOrder(s string) (bool, error) {
 	default:
 		return false, sql.ErrInvalidArgument.New()
 	}
-}
-
-func ValidateSRID(srid uint32) error {
-	if srid != types.CartesianSRID && srid != types.GeoSpatialSRID {
-		return ErrInvalidSRID.New(srid)
-	}
-	return nil
 }
 
 // EvalGeomFromWKB takes in arguments for the ST_FROMWKB functions, and parses them to their corresponding geometry type
@@ -188,14 +193,14 @@ func EvalGeomFromWKB(ctx *sql.Context, row sql.Row, exprs []sql.Expression, expe
 		if s == nil {
 			return nil, nil
 		}
-		s, err = types.Uint32.Convert(s)
+		s, _, err = types.Int64.Convert(ctx, s)
 		if err != nil {
 			return nil, err
 		}
-		srid = s.(uint32)
-	}
-	if err = ValidateSRID(srid); err != nil {
-		return nil, err
+		if err = types.ValidateSRID(int(s.(int64)), "st_geomfromwkb"); err != nil {
+			return nil, err
+		}
+		srid = uint32(s.(int64))
 	}
 
 	var geom types.GeometryValue
@@ -257,10 +262,11 @@ type PointFromWKB struct {
 }
 
 var _ sql.FunctionExpression = (*PointFromWKB)(nil)
+var _ sql.CollationCoercible = (*PointFromWKB)(nil)
 
 // NewPointFromWKB creates a new point expression.
 func NewPointFromWKB(args ...sql.Expression) (sql.Expression, error) {
-	if len(args) < 1 && len(args) > 3 {
+	if len(args) < 1 || len(args) > 3 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_POINTFROMWKB", "1, 2, or 3", len(args))
 	}
 	return &PointFromWKB{expression.NaryExpression{ChildExpressions: args}}, nil
@@ -279,6 +285,11 @@ func (p *PointFromWKB) Description() string {
 // Type implements the sql.Expression interface.
 func (p *PointFromWKB) Type() sql.Type {
 	return types.PointType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*PointFromWKB) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (p *PointFromWKB) String() string {
@@ -309,6 +320,7 @@ type LineFromWKB struct {
 }
 
 var _ sql.FunctionExpression = (*LineFromWKB)(nil)
+var _ sql.CollationCoercible = (*LineFromWKB)(nil)
 
 // NewLineFromWKB creates a new point expression.
 func NewLineFromWKB(args ...sql.Expression) (sql.Expression, error) {
@@ -331,6 +343,11 @@ func (l *LineFromWKB) Description() string {
 // Type implements the sql.Expression interface.
 func (l *LineFromWKB) Type() sql.Type {
 	return types.LineStringType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*LineFromWKB) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (l *LineFromWKB) String() string {
@@ -361,6 +378,7 @@ type PolyFromWKB struct {
 }
 
 var _ sql.FunctionExpression = (*PolyFromWKB)(nil)
+var _ sql.CollationCoercible = (*PolyFromWKB)(nil)
 
 // NewPolyFromWKB creates a new point expression.
 func NewPolyFromWKB(args ...sql.Expression) (sql.Expression, error) {
@@ -383,6 +401,11 @@ func (p *PolyFromWKB) Description() string {
 // Type implements the sql.Expression interface.
 func (p *PolyFromWKB) Type() sql.Type {
 	return types.PolygonType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*PolyFromWKB) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (p *PolyFromWKB) String() string {
@@ -413,6 +436,7 @@ type MPointFromWKB struct {
 }
 
 var _ sql.FunctionExpression = (*MPointFromWKB)(nil)
+var _ sql.CollationCoercible = (*MPointFromWKB)(nil)
 
 // NewMPointFromWKB creates a new point expression.
 func NewMPointFromWKB(args ...sql.Expression) (sql.Expression, error) {
@@ -435,6 +459,11 @@ func (p *MPointFromWKB) Description() string {
 // Type implements the sql.Expression interface.
 func (p *MPointFromWKB) Type() sql.Type {
 	return types.MultiPointType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*MPointFromWKB) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (p *MPointFromWKB) String() string {
@@ -465,6 +494,7 @@ type MLineFromWKB struct {
 }
 
 var _ sql.FunctionExpression = (*MLineFromWKB)(nil)
+var _ sql.CollationCoercible = (*MLineFromWKB)(nil)
 
 // NewMLineFromWKB creates a new point expression.
 func NewMLineFromWKB(args ...sql.Expression) (sql.Expression, error) {
@@ -487,6 +517,11 @@ func (l *MLineFromWKB) Description() string {
 // Type implements the sql.Expression interface.
 func (l *MLineFromWKB) Type() sql.Type {
 	return types.PolygonType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*MLineFromWKB) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (l *MLineFromWKB) String() string {
@@ -517,6 +552,7 @@ type MPolyFromWKB struct {
 }
 
 var _ sql.FunctionExpression = (*MPolyFromWKB)(nil)
+var _ sql.CollationCoercible = (*MPolyFromWKB)(nil)
 
 // NewMPolyFromWKB creates a new multipolygon expression.
 func NewMPolyFromWKB(args ...sql.Expression) (sql.Expression, error) {
@@ -539,6 +575,11 @@ func (p *MPolyFromWKB) Description() string {
 // Type implements the sql.Expression interface.
 func (p *MPolyFromWKB) Type() sql.Type {
 	return types.MultiPolygonType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*MPolyFromWKB) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (p *MPolyFromWKB) String() string {
@@ -569,6 +610,7 @@ type GeomCollFromWKB struct {
 }
 
 var _ sql.FunctionExpression = (*GeomCollFromWKB)(nil)
+var _ sql.CollationCoercible = (*GeomCollFromWKB)(nil)
 
 // NewGeomCollFromWKB creates a new geometrycollection expression.
 func NewGeomCollFromWKB(args ...sql.Expression) (sql.Expression, error) {
@@ -591,6 +633,11 @@ func (g *GeomCollFromWKB) Description() string {
 // Type implements the sql.Expression interface.
 func (g *GeomCollFromWKB) Type() sql.Type {
 	return types.GeomCollType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*GeomCollFromWKB) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (g *GeomCollFromWKB) String() string {

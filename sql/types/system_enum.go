@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"reflect"
 	"strings"
 
@@ -35,6 +36,7 @@ type systemEnumType struct {
 }
 
 var _ sql.SystemVariableType = systemEnumType{}
+var _ sql.CollationCoercible = systemEnumType{}
 
 // NewSystemEnumType returns a new systemEnumType.
 func NewSystemEnumType(varName string, values ...string) sql.SystemVariableType {
@@ -49,12 +51,12 @@ func NewSystemEnumType(varName string, values ...string) sql.SystemVariableType 
 }
 
 // Compare implements Type interface.
-func (t systemEnumType) Compare(a interface{}, b interface{}) (int, error) {
-	as, err := t.Convert(a)
+func (t systemEnumType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
+	as, _, err := t.Convert(ctx, a)
 	if err != nil {
 		return 0, err
 	}
-	bs, err := t.Convert(b)
+	bs, _, err := t.Convert(ctx, b)
 	if err != nil {
 		return 0, err
 	}
@@ -71,63 +73,54 @@ func (t systemEnumType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t systemEnumType) Convert(v interface{}) (interface{}, error) {
+func (t systemEnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	// Nil values are not accepted
 	switch value := v.(type) {
 	case int:
 		if value >= 0 && value < len(t.indexToVal) {
-			return t.indexToVal[value], nil
+			return t.indexToVal[value], sql.InRange, nil
 		}
 	case uint:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case int8:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case uint8:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case int16:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case uint16:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case int32:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case uint32:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case int64:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case uint64:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case float32:
-		return t.Convert(float64(value))
+		return t.Convert(ctx, float64(value))
 	case float64:
 		// Float values aren't truly accepted, but the engine will give them when it should give ints.
 		// Therefore, if the float doesn't have a fractional portion, we treat it as an int.
 		if value == float64(int(value)) {
-			return t.Convert(int(value))
+			return t.Convert(ctx, int(value))
 		}
 	case decimal.Decimal:
 		f, _ := value.Float64()
-		return t.Convert(f)
+		return t.Convert(ctx, f)
 	case decimal.NullDecimal:
 		if value.Valid {
 			f, _ := value.Decimal.Float64()
-			return t.Convert(f)
+			return t.Convert(ctx, f)
 		}
 	case string:
 		if idx, ok := t.valToIndex[strings.ToLower(value)]; ok {
-			return t.indexToVal[idx], nil
+			return t.indexToVal[idx], sql.InRange, nil
 		}
 	}
 
-	return nil, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
-}
-
-// MustConvert implements the Type interface.
-func (t systemEnumType) MustConvert(v interface{}) interface{} {
-	value, err := t.Convert(v)
-	if err != nil {
-		panic(err)
-	}
-	return value
+	return nil, sql.OutOfRange, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
 }
 
 // Equals implements the Type interface.
@@ -144,9 +137,8 @@ func (t systemEnumType) Equals(otherType sql.Type) bool {
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t systemEnumType) MaxTextResponseByteLength() uint32 {
-	// system types are not sent directly across the wire
-	return 0
+func (t systemEnumType) MaxTextResponseByteLength(ctx *sql.Context) uint32 {
+	return t.UnderlyingType().MaxTextResponseByteLength(ctx)
 }
 
 // Promote implements the Type interface.
@@ -160,7 +152,7 @@ func (t systemEnumType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqlty
 		return sqltypes.NULL, nil
 	}
 
-	v, err := t.Convert(v)
+	v, _, err := t.Convert(ctx, v)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
@@ -190,6 +182,11 @@ func (t systemEnumType) Zero() interface{} {
 	return ""
 }
 
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (systemEnumType) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_utf8mb3_general_ci, 3
+}
+
 // EncodeValue implements SystemVariableType interface.
 func (t systemEnumType) EncodeValue(val interface{}) (string, error) {
 	expectedVal, ok := val.(string)
@@ -201,9 +198,13 @@ func (t systemEnumType) EncodeValue(val interface{}) (string, error) {
 
 // DecodeValue implements SystemVariableType interface.
 func (t systemEnumType) DecodeValue(val string) (interface{}, error) {
-	outVal, err := t.Convert(val)
+	outVal, _, err := t.Convert(context.Background(), val)
 	if err != nil {
 		return nil, sql.ErrSystemVariableCodeFail.New(val, t.String())
 	}
 	return outVal, nil
+}
+
+func (t systemEnumType) UnderlyingType() sql.Type {
+	return EnumType{}
 }

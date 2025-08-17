@@ -30,12 +30,13 @@ import (
 // s. That is, "á"[0:1] does not return a partial unicode glyph, but "á"
 // itself.
 type Substring struct {
-	str   sql.Expression
-	start sql.Expression
-	len   sql.Expression
+	Str   sql.Expression
+	Start sql.Expression
+	Len   sql.Expression
 }
 
 var _ sql.FunctionExpression = (*Substring)(nil)
+var _ sql.CollationCoercible = (*Substring)(nil)
 
 // NewSubstring creates a new substring UDF.
 func NewSubstring(args ...sql.Expression) (sql.Expression, error) {
@@ -67,10 +68,10 @@ func (s *Substring) Description() string {
 
 // Children implements the Expression interface.
 func (s *Substring) Children() []sql.Expression {
-	if s.len == nil {
-		return []sql.Expression{s.str, s.start}
+	if s.Len == nil {
+		return []sql.Expression{s.Str, s.Start}
 	}
-	return []sql.Expression{s.str, s.start, s.len}
+	return []sql.Expression{s.Str, s.Start, s.Len}
 }
 
 // Eval implements the Expression interface.
@@ -78,7 +79,7 @@ func (s *Substring) Eval(
 	ctx *sql.Context,
 	row sql.Row,
 ) (interface{}, error) {
-	str, err := s.str.Eval(ctx, row)
+	str, err := s.Str.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +96,7 @@ func (s *Substring) Eval(
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str).String())
 	}
 
-	start, err := s.start.Eval(ctx, row)
+	start, err := s.Start.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -104,15 +105,15 @@ func (s *Substring) Eval(
 		return nil, nil
 	}
 
-	start, err = types.Int64.Convert(start)
+	start, _, err = types.Int64.Convert(ctx, start)
 	if err != nil {
 		return nil, err
 	}
 
 	var length int64
 	runeCount := int64(len(text))
-	if s.len != nil {
-		len, err := s.len.Eval(ctx, row)
+	if s.Len != nil {
+		len, err := s.Len.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
@@ -121,7 +122,7 @@ func (s *Substring) Eval(
 			return nil, nil
 		}
 
-		len, err = types.Int64.Convert(len)
+		len, _, err = types.Int64.Convert(ctx, len)
 		if err != nil {
 			return nil, err
 		}
@@ -151,23 +152,28 @@ func (s *Substring) Eval(
 
 // IsNullable implements the Expression interface.
 func (s *Substring) IsNullable() bool {
-	return s.str.IsNullable() || s.start.IsNullable() || (s.len != nil && s.len.IsNullable())
+	return s.Str.IsNullable() || s.Start.IsNullable() || (s.Len != nil && s.Len.IsNullable())
 }
 
 func (s *Substring) String() string {
-	if s.len == nil {
-		return fmt.Sprintf("SUBSTRING(%s, %s)", s.str, s.start)
+	if s.Len == nil {
+		return fmt.Sprintf("SUBSTRING(%s, %s)", s.Str, s.Start)
 	}
-	return fmt.Sprintf("SUBSTRING(%s, %s, %s)", s.str, s.start, s.len)
+	return fmt.Sprintf("SUBSTRING(%s, %s, %s)", s.Str, s.Start, s.Len)
 }
 
 // Resolved implements the Expression interface.
 func (s *Substring) Resolved() bool {
-	return s.start.Resolved() && s.str.Resolved() && (s.len == nil || s.len.Resolved())
+	return s.Start.Resolved() && s.Str.Resolved() && (s.Len == nil || s.Len.Resolved())
 }
 
 // Type implements the Expression interface.
-func (s *Substring) Type() sql.Type { return s.str.Type() }
+func (s *Substring) Type() sql.Type { return s.Str.Type() }
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (s *Substring) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, s.Str)
+}
 
 // WithChildren implements the Expression interface.
 func (*Substring) WithChildren(children ...sql.Expression) (sql.Expression, error) {
@@ -185,6 +191,7 @@ type SubstringIndex struct {
 }
 
 var _ sql.FunctionExpression = (*SubstringIndex)(nil)
+var _ sql.CollationCoercible = (*SubstringIndex)(nil)
 
 // NewSubstringIndex creates a new SubstringIndex UDF.
 func NewSubstringIndex(str, delim, count sql.Expression) sql.Expression {
@@ -212,7 +219,7 @@ func (s *SubstringIndex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 	if ex == nil || err != nil {
 		return nil, err
 	}
-	ex, err = types.LongText.Convert(ex)
+	ex, _, err = types.LongText.Convert(ctx, ex)
 	if err != nil {
 		return nil, err
 	}
@@ -225,7 +232,7 @@ func (s *SubstringIndex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 	if ex == nil || err != nil {
 		return nil, err
 	}
-	ex, err = types.LongText.Convert(ex)
+	ex, _, err = types.LongText.Convert(ctx, ex)
 	if err != nil {
 		return nil, err
 	}
@@ -238,7 +245,7 @@ func (s *SubstringIndex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 	if ex == nil || err != nil {
 		return nil, err
 	}
-	ex, err = types.Int64.Convert(ex)
+	ex, _, err = types.Int64.Convert(ctx, ex)
 	if err != nil {
 		return nil, err
 	}
@@ -289,6 +296,11 @@ func (s *SubstringIndex) Resolved() bool {
 // Type implements the Expression interface.
 func (*SubstringIndex) Type() sql.Type { return types.LongText }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (s *SubstringIndex) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, s.str)
+}
+
 // WithChildren implements the Expression interface.
 func (s *SubstringIndex) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 3 {
@@ -304,6 +316,7 @@ type Left struct {
 }
 
 var _ sql.FunctionExpression = Left{}
+var _ sql.CollationCoercible = Left{}
 
 // NewLeft creates a new LEFT function.
 func NewLeft(str, len sql.Expression) sql.Expression {
@@ -336,8 +349,20 @@ func (l Left) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	switch str := str.(type) {
 	case string:
 		text = []rune(str)
+	case sql.StringWrapper:
+		s, err := str.Unwrap(ctx)
+		if err != nil {
+			return nil, err
+		}
+		text = []rune(s)
 	case []byte:
 		text = []rune(string(str))
+	case sql.BytesWrapper:
+		b, err := str.Unwrap(ctx)
+		if err != nil {
+			return nil, err
+		}
+		text = []rune(string(b))
 	case nil:
 		return nil, nil
 	default:
@@ -355,7 +380,7 @@ func (l Left) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	len, err = types.Int64.Convert(len)
+	len, _, err = types.Int64.Convert(ctx, len)
 	if err != nil {
 		return nil, err
 	}
@@ -389,6 +414,11 @@ func (l Left) Resolved() bool {
 // Type implements the Expression interface.
 func (Left) Type() sql.Type { return types.LongText }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (l Left) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, l.str)
+}
+
 // WithChildren implements the Expression interface.
 func (l Left) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
@@ -404,6 +434,7 @@ type Right struct {
 }
 
 var _ sql.FunctionExpression = Right{}
+var _ sql.CollationCoercible = Right{}
 
 // NewRight creates a new RIGHT function.
 func NewRight(str, len sql.Expression) sql.Expression {
@@ -436,8 +467,20 @@ func (r Right) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	switch str := str.(type) {
 	case string:
 		text = []rune(str)
+	case sql.StringWrapper:
+		s, err := str.Unwrap(ctx)
+		if err != nil {
+			return nil, err
+		}
+		text = []rune(s)
 	case []byte:
 		text = []rune(string(str))
+	case sql.BytesWrapper:
+		b, err := str.Unwrap(ctx)
+		if err != nil {
+			return nil, err
+		}
+		text = []rune(string(b))
 	case nil:
 		return nil, nil
 	default:
@@ -455,7 +498,7 @@ func (r Right) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	len, err = types.Int64.Convert(len)
+	len, _, err = types.Int64.Convert(ctx, len)
 	if err != nil {
 		return nil, err
 	}
@@ -500,6 +543,11 @@ func (r Right) Resolved() bool {
 // Type implements the Expression interface.
 func (Right) Type() sql.Type { return types.LongText }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (r Right) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, r.str)
+}
+
 // WithChildren implements the Expression interface.
 func (r Right) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
@@ -514,6 +562,7 @@ type Instr struct {
 }
 
 var _ sql.FunctionExpression = Instr{}
+var _ sql.CollationCoercible = Instr{}
 
 // NewInstr creates a new instr UDF.
 func NewInstr(str, substr sql.Expression) sql.Expression {
@@ -546,8 +595,20 @@ func (i Instr) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	switch str := str.(type) {
 	case string:
 		text = []rune(str)
+	case sql.StringWrapper:
+		s, err := str.Unwrap(ctx)
+		if err != nil {
+			return nil, err
+		}
+		text = []rune(s)
 	case []byte:
 		text = []rune(string(str))
+	case sql.BytesWrapper:
+		s, err := str.Unwrap(ctx)
+		if err != nil {
+			return nil, err
+		}
+		text = []rune(string(s))
 	case nil:
 		return nil, nil
 	default:
@@ -563,8 +624,20 @@ func (i Instr) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	switch substr := substr.(type) {
 	case string:
 		subtext = []rune(substr)
+	case sql.StringWrapper:
+		s, err := substr.Unwrap(ctx)
+		if err != nil {
+			return nil, err
+		}
+		text = []rune(s)
 	case []byte:
-		subtext = []rune(string(subtext))
+		subtext = []rune(string(substr))
+	case sql.BytesWrapper:
+		s, err := substr.Unwrap(ctx)
+		if err != nil {
+			return nil, err
+		}
+		subtext = []rune(string(s))
 	case nil:
 		return nil, nil
 	default:
@@ -605,6 +678,11 @@ func (i Instr) Resolved() bool {
 
 // Type implements the Expression interface.
 func (Instr) Type() sql.Type { return types.Int64 }
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (Instr) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
+}
 
 // WithChildren implements the Expression interface.
 func (i Instr) WithChildren(children ...sql.Expression) (sql.Expression, error) {

@@ -15,11 +15,85 @@
 package queries
 
 import (
-	"github.com/gabereiser/go-mysql-server/sql"
-	"github.com/gabereiser/go-mysql-server/sql/types"
+	"github.com/dolthub/vitess/go/sqltypes"
+
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var InfoSchemaQueries = []QueryTest{
+	{
+		Query:    "SHOW PLUGINS",
+		Expected: []sql.Row{},
+	},
+	{
+		Query:    "SHOW KEYS FROM `columns` FROM `information_schema`;",
+		Expected: []sql.Row{},
+	},
+	{
+		Query: `SELECT table_schema AS TABLE_CAT,
+       			NULL AS TABLE_SCHEM,
+       			table_name,
+       			CASE WHEN table_type = 'BASE TABLE' THEN
+       			    CASE WHEN table_schema = 'mysql' OR table_schema = 'performance_schema' THEN 'SYSTEM TABLE'
+       			 	ELSE 'TABLE' END
+       			WHEN table_type = 'TEMPORARY' THEN 'LOCAL_TEMPORARY'
+       			ELSE table_type END AS TABLE_TYPE FROM information_schema.tables ORDER BY table_name LIMIT 1;`,
+		Expected: []sql.Row{{"information_schema", nil, "administrable_role_authorizations", "SYSTEM VIEW"}},
+	},
+	{
+		Query: `SELECT 
+     table_name, index_name, comment, non_unique, GROUP_CONCAT(column_name ORDER BY seq_in_index) AS COLUMNS 
+   FROM information_schema.statistics 
+   WHERE table_schema='mydb' AND table_name='mytable' AND index_name!="PRIMARY" 
+   GROUP BY index_name;`,
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "TABLE_NAME",
+				Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default),
+			},
+			{
+				Name: "INDEX_NAME",
+				Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default),
+			},
+			{
+				Name: "COMMENT",
+				Type: types.MustCreateString(sqltypes.VarChar, 8, sql.Collation_Information_Schema_Default),
+			},
+			{
+				Name: "NON_UNIQUE",
+				Type: types.Int32,
+			},
+			{
+				Name: "COLUMNS",
+				Type: types.Text,
+			},
+		},
+		Expected: []sql.Row{
+			{"mytable", "idx_si", "", 1, "s,i"},
+			{"mytable", "mytable_i_s", "", 1, "i,s"},
+			{"mytable", "mytable_s", "", 0, "s"},
+		},
+	},
+	{
+		Query: `select table_name from information_schema.tables where table_name = 'mytable' limit 1;`,
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "TABLE_NAME",
+				Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default),
+			},
+		},
+		Expected: []sql.Row{{"mytable"}},
+	},
+	{
+		Query: `select table_catalog, table_schema, table_name from information_schema.tables where table_name = 'mytable' limit 1;`,
+		ExpectedColumns: sql.Schema{
+			{Name: "TABLE_CATALOG", Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default)},
+			{Name: "TABLE_SCHEMA", Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default)},
+			{Name: "TABLE_NAME", Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default)},
+		},
+		Expected: []sql.Row{{"def", "mydb", "mytable"}},
+	},
 	{
 		Query: `select table_name from information_schema.tables where table_schema = 'information_schema' order by table_name;`,
 		Expected: []sql.Row{
@@ -123,7 +197,7 @@ var InfoSchemaQueries = []QueryTest{
 	{
 		Query: "SHOW TABLES FROM foo",
 		Expected: []sql.Row{
-			{"other_table"},
+			{"othertable"},
 		},
 	},
 	{
@@ -135,41 +209,55 @@ var InfoSchemaQueries = []QueryTest{
 	{
 		Query: `SHOW COLUMNS FROM mytable`,
 		Expected: []sql.Row{
-			{"i", "bigint", "NO", "PRI", "NULL", ""},
-			{"s", "varchar(20)", "NO", "UNI", "NULL", ""},
+			{"i", "bigint", "NO", "PRI", nil, ""},
+			{"s", "varchar(20)", "NO", "UNI", nil, ""},
 		},
 	},
 	{
 		Query: `DESCRIBE mytable`,
 		Expected: []sql.Row{
-			{"i", "bigint", "NO", "PRI", "NULL", ""},
-			{"s", "varchar(20)", "NO", "UNI", "NULL", ""},
+			{"i", "bigint", "NO", "PRI", nil, ""},
+			{"s", "varchar(20)", "NO", "UNI", nil, ""},
 		},
 	},
 	{
 		Query: `DESC mytable`,
 		Expected: []sql.Row{
-			{"i", "bigint", "NO", "PRI", "NULL", ""},
-			{"s", "varchar(20)", "NO", "UNI", "NULL", ""},
+			{"i", "bigint", "NO", "PRI", nil, ""},
+			{"s", "varchar(20)", "NO", "UNI", nil, ""},
 		},
 	},
 	{
 		Query: `SHOW COLUMNS FROM mytable WHERE Field = 'i'`,
 		Expected: []sql.Row{
-			{"i", "bigint", "NO", "PRI", "NULL", ""},
+			{"i", "bigint", "NO", "PRI", nil, ""},
 		},
 	},
 	{
 		Query: `SHOW COLUMNS FROM mytable LIKE 'i'`,
 		Expected: []sql.Row{
-			{"i", "bigint", "NO", "PRI", "NULL", ""},
+			{"i", "bigint", "NO", "PRI", nil, ""},
 		},
 	},
 	{
 		Query: `SHOW FULL COLUMNS FROM mytable`,
 		Expected: []sql.Row{
-			{"i", "bigint", nil, "NO", "PRI", "NULL", "", "", ""},
-			{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", "NULL", "", "", "column s"},
+			{"i", "bigint", nil, "NO", "PRI", nil, "", "", ""},
+			{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", nil, "", "", "column s"},
+		},
+	},
+	{
+		Query: `SHOW FULL COLUMNS FROM mytable FROM mydb`,
+		Expected: []sql.Row{
+			{"i", "bigint", nil, "NO", "PRI", nil, "", "", ""},
+			{"s", "varchar(20)", "utf8mb4_0900_bin", "NO", "UNI", nil, "", "", "column s"},
+		},
+	},
+	{
+		Query: `SHOW FULL COLUMNS FROM othertable in foo`,
+		Expected: []sql.Row{
+			{"text", "varchar(20)", "utf8mb4_0900_bin", "NO", "PRI", nil, "", "", ""},
+			{"number", "mediumint", nil, "YES", "", nil, "", "", ""},
 		},
 	},
 	{
@@ -258,6 +346,23 @@ var InfoSchemaQueries = []QueryTest{
 	},
 	{
 		Query: `SHOW INDEXES FROM mytaBLE`,
+		ExpectedColumns: sql.Schema{
+			&sql.Column{Name: "Table", Type: types.LongText},
+			&sql.Column{Name: "Non_unique", Type: types.Int32},
+			&sql.Column{Name: "Key_name", Type: types.LongText},
+			&sql.Column{Name: "Seq_in_index", Type: types.Uint32},
+			&sql.Column{Name: "Column_name", Type: types.LongText, Nullable: true},
+			&sql.Column{Name: "Collation", Type: types.LongText, Nullable: true},
+			&sql.Column{Name: "Cardinality", Type: types.Int64},
+			&sql.Column{Name: "Sub_part", Type: types.Int64, Nullable: true},
+			&sql.Column{Name: "Packed", Type: types.LongText, Nullable: true},
+			&sql.Column{Name: "Null", Type: types.LongText},
+			&sql.Column{Name: "Index_type", Type: types.LongText},
+			&sql.Column{Name: "Comment", Type: types.LongText},
+			&sql.Column{Name: "Index_comment", Type: types.LongText},
+			&sql.Column{Name: "Visible", Type: types.LongText},
+			&sql.Column{Name: "Expression", Type: types.LongText, Nullable: true},
+		},
 		Expected: []sql.Row{
 			{"mytable", 0, "PRIMARY", 1, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 			{"mytable", 0, "mytable_s", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
@@ -265,6 +370,18 @@ var InfoSchemaQueries = []QueryTest{
 			{"mytable", 1, "mytable_i_s", 2, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 			{"mytable", 1, "idx_si", 1, "s", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 			{"mytable", 1, "idx_si", 2, "i", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+		},
+	},
+	{
+		Query: `SHOW INDEXES FROM othertable FROM foo`,
+		Expected: []sql.Row{
+			{"othertable", 0, "PRIMARY", 1, "text", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+		},
+	},
+	{
+		Query: `SHOW INDEXES FROM foo.othertable`,
+		Expected: []sql.Row{
+			{"othertable", 0, "PRIMARY", 1, "text", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 		},
 	},
 	{
@@ -299,7 +416,7 @@ var InfoSchemaQueries = []QueryTest{
 				"  `a` bigint,\n" +
 				"  `b` varchar(20),\n" +
 				"  PRIMARY KEY (`pk`),\n" +
-				"  KEY `ab` (`a`,`b`),\n" +
+				"  KEY `fk1` (`a`,`b`),\n" +
 				"  CONSTRAINT `fk1` FOREIGN KEY (`a`,`b`) REFERENCES `mytable` (`i`,`s`) ON DELETE CASCADE\n" +
 				") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 		},
@@ -318,6 +435,32 @@ var InfoSchemaQueries = []QueryTest{
 		Expected: []sql.Row{
 			{"InnoDB", "DEFAULT", "Supports transactions, row-level locking, and foreign keys", "YES", "YES", "YES"},
 		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "Engine",
+				Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default),
+			},
+			{
+				Name: "Support",
+				Type: types.MustCreateString(sqltypes.VarChar, 8, sql.Collation_Information_Schema_Default),
+			},
+			{
+				Name: "Comment",
+				Type: types.MustCreateString(sqltypes.VarChar, 80, sql.Collation_Information_Schema_Default),
+			},
+			{
+				Name: "Transactions",
+				Type: types.MustCreateString(sqltypes.VarChar, 3, sql.Collation_Information_Schema_Default),
+			},
+			{
+				Name: "XA",
+				Type: types.MustCreateString(sqltypes.VarChar, 3, sql.Collation_Information_Schema_Default),
+			},
+			{
+				Name: "Savepoints",
+				Type: types.MustCreateString(sqltypes.VarChar, 3, sql.Collation_Information_Schema_Default),
+			},
+		},
 	},
 	{
 		Query: "SELECT * FROM information_schema.table_constraints ORDER BY table_name, constraint_type;",
@@ -326,7 +469,7 @@ var InfoSchemaQueries = []QueryTest{
 			{"def", "mydb", "PRIMARY", "mydb", "fk_tbl", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "PRIMARY", "mydb", "mytable", "PRIMARY KEY", "YES"},
 			{"def", "mydb", "mytable_s", "mydb", "mytable", "UNIQUE", "YES"},
-			{"def", "foo", "PRIMARY", "foo", "other_table", "PRIMARY KEY", "YES"},
+			{"def", "foo", "PRIMARY", "foo", "othertable", "PRIMARY KEY", "YES"},
 		},
 	},
 	{
@@ -336,7 +479,7 @@ var InfoSchemaQueries = []QueryTest{
 	{
 		Query: "SELECT * FROM information_schema.key_column_usage ORDER BY constraint_schema, table_name",
 		Expected: []sql.Row{
-			{"def", "foo", "PRIMARY", "def", "foo", "other_table", "text", 1, nil, nil, nil, nil},
+			{"def", "foo", "PRIMARY", "def", "foo", "othertable", "text", 1, nil, nil, nil, nil},
 			{"def", "mydb", "PRIMARY", "def", "mydb", "fk_tbl", "pk", 1, nil, nil, nil, nil},
 			{"def", "mydb", "fk1", "def", "mydb", "fk_tbl", "a", 1, 1, "mydb", "mytable", "i"},
 			{"def", "mydb", "fk1", "def", "mydb", "fk_tbl", "b", 2, 2, "mydb", "mytable", "s"},
@@ -391,6 +534,32 @@ var InfoSchemaQueries = []QueryTest{
 		Query: `SELECT * FROM information_schema.ENGINES ORDER BY engine`,
 		Expected: []sql.Row{
 			{"InnoDB", "DEFAULT", "Supports transactions, row-level locking, and foreign keys", "YES", "YES", "YES"},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: "ENGINE",
+				Type: types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_Information_Schema_Default),
+			},
+			{
+				Name: "SUPPORT",
+				Type: types.MustCreateString(sqltypes.VarChar, 8, sql.Collation_Information_Schema_Default),
+			},
+			{
+				Name: "COMMENT",
+				Type: types.MustCreateString(sqltypes.VarChar, 80, sql.Collation_Information_Schema_Default),
+			},
+			{
+				Name: "TRANSACTIONS",
+				Type: types.MustCreateString(sqltypes.VarChar, 3, sql.Collation_Information_Schema_Default),
+			},
+			{
+				Name: "XA",
+				Type: types.MustCreateString(sqltypes.VarChar, 3, sql.Collation_Information_Schema_Default),
+			},
+			{
+				Name: "SAVEPOINTS",
+				Type: types.MustCreateString(sqltypes.VarChar, 3, sql.Collation_Information_Schema_Default),
+			},
 		},
 	},
 	{
@@ -588,9 +757,9 @@ FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = 'mydb' AND INDEX_NAME='P
 	{
 		Query: `show columns from fk_tbl from mydb`,
 		Expected: []sql.Row{
-			{"pk", "bigint", "NO", "PRI", "NULL", ""},
-			{"a", "bigint", "YES", "MUL", "NULL", ""},
-			{"b", "varchar(20)", "YES", "", "NULL", ""},
+			{"pk", "bigint", "NO", "PRI", nil, ""},
+			{"a", "bigint", "YES", "MUL", nil, ""},
+			{"b", "varchar(20)", "YES", "", nil, ""},
 		},
 	},
 	{
@@ -604,10 +773,18 @@ FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = 'mydb' AND INDEX_NAME='P
 		Expected: []sql.Row{{747}},
 	},
 	{
-		Query: "SELECT * FROM information_schema.st_spatial_reference_systems order by srs_id",
+		Query: "SELECT * FROM information_schema.st_spatial_reference_systems order by srs_id desc limit 10",
 		Expected: []sql.Row{
-			{"", uint32(0), nil, nil, "", nil},
-			{"WGS 84", uint32(4326), "EPSG", uint32(4326), "GEOGCS[\"WGS 84\",DATUM[\"World Geodetic System 1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.017453292519943278,AUTHORITY[\"EPSG\",\"9122\"]],AXIS[\"Lat\",NORTH],AXIS[\"Lon\",EAST],AUTHORITY[\"EPSG\",\"4326\"]]", nil},
+			{`WGS 84 / TM 36 SE`, uint32(32766), `EPSG`, uint32(32766), `PROJCS["WGS 84 / TM 36 SE",GEOGCS["WGS 84",DATUM["World Geodetic System 1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.017453292519943278,AUTHORITY["EPSG","9122"]],AXIS["Lat",NORTH],AXIS["Lon",EAST],AUTHORITY["EPSG","4326"]],PROJECTION["Transverse Mercator",AUTHORITY["EPSG","9807"]],PARAMETER["Latitude of natural origin",0,AUTHORITY["EPSG","8801"]],PARAMETER["Longitude of natural origin",36,AUTHORITY["EPSG","8802"]],PARAMETER["Scale factor at natural origin",0.9996,AUTHORITY["EPSG","8805"]],PARAMETER["False easting",500000,AUTHORITY["EPSG","8806"]],PARAMETER["False northing",10000000,AUTHORITY["EPSG","8807"]],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["E",EAST],AXIS["N",NORTH],AUTHORITY["EPSG","32766"]]`, nil},
+			{`WGS 84 / UPS South (N,E)`, uint32(32761), `EPSG`, uint32(32761), `PROJCS["WGS 84 / UPS South (N,E)",GEOGCS["WGS 84",DATUM["World Geodetic System 1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.017453292519943278,AUTHORITY["EPSG","9122"]],AXIS["Lat",NORTH],AXIS["Lon",EAST],AUTHORITY["EPSG","4326"]],PROJECTION["Polar Stereographic (variant A)",AUTHORITY["EPSG","9810"]],PARAMETER["Latitude of natural origin",-90,AUTHORITY["EPSG","8801"]],PARAMETER["Longitude of natural origin",0,AUTHORITY["EPSG","8802"]],PARAMETER["Scale factor at natural origin",0.994,AUTHORITY["EPSG","8805"]],PARAMETER["False easting",2000000,AUTHORITY["EPSG","8806"]],PARAMETER["False northing",2000000,AUTHORITY["EPSG","8807"]],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["N",NORTH],AXIS["E",NORTH],AUTHORITY["EPSG","32761"]]`, nil},
+			{`WGS 84 / UTM zone 60S`, uint32(32760), `EPSG`, uint32(32760), `PROJCS["WGS 84 / UTM zone 60S",GEOGCS["WGS 84",DATUM["World Geodetic System 1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.017453292519943278,AUTHORITY["EPSG","9122"]],AXIS["Lat",NORTH],AXIS["Lon",EAST],AUTHORITY["EPSG","4326"]],PROJECTION["Transverse Mercator",AUTHORITY["EPSG","9807"]],PARAMETER["Latitude of natural origin",0,AUTHORITY["EPSG","8801"]],PARAMETER["Longitude of natural origin",177,AUTHORITY["EPSG","8802"]],PARAMETER["Scale factor at natural origin",0.9996,AUTHORITY["EPSG","8805"]],PARAMETER["False easting",500000,AUTHORITY["EPSG","8806"]],PARAMETER["False northing",10000000,AUTHORITY["EPSG","8807"]],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["E",EAST],AXIS["N",NORTH],AUTHORITY["EPSG","32760"]]`, nil},
+			{`WGS 84 / UTM zone 59S`, uint32(32759), `EPSG`, uint32(32759), `PROJCS["WGS 84 / UTM zone 59S",GEOGCS["WGS 84",DATUM["World Geodetic System 1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.017453292519943278,AUTHORITY["EPSG","9122"]],AXIS["Lat",NORTH],AXIS["Lon",EAST],AUTHORITY["EPSG","4326"]],PROJECTION["Transverse Mercator",AUTHORITY["EPSG","9807"]],PARAMETER["Latitude of natural origin",0,AUTHORITY["EPSG","8801"]],PARAMETER["Longitude of natural origin",171,AUTHORITY["EPSG","8802"]],PARAMETER["Scale factor at natural origin",0.9996,AUTHORITY["EPSG","8805"]],PARAMETER["False easting",500000,AUTHORITY["EPSG","8806"]],PARAMETER["False northing",10000000,AUTHORITY["EPSG","8807"]],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["E",EAST],AXIS["N",NORTH],AUTHORITY["EPSG","32759"]]`, nil},
+			{`WGS 84 / UTM zone 58S`, uint32(32758), `EPSG`, uint32(32758), `PROJCS["WGS 84 / UTM zone 58S",GEOGCS["WGS 84",DATUM["World Geodetic System 1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.017453292519943278,AUTHORITY["EPSG","9122"]],AXIS["Lat",NORTH],AXIS["Lon",EAST],AUTHORITY["EPSG","4326"]],PROJECTION["Transverse Mercator",AUTHORITY["EPSG","9807"]],PARAMETER["Latitude of natural origin",0,AUTHORITY["EPSG","8801"]],PARAMETER["Longitude of natural origin",165,AUTHORITY["EPSG","8802"]],PARAMETER["Scale factor at natural origin",0.9996,AUTHORITY["EPSG","8805"]],PARAMETER["False easting",500000,AUTHORITY["EPSG","8806"]],PARAMETER["False northing",10000000,AUTHORITY["EPSG","8807"]],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["E",EAST],AXIS["N",NORTH],AUTHORITY["EPSG","32758"]]`, nil},
+			{`WGS 84 / UTM zone 57S`, uint32(32757), `EPSG`, uint32(32757), `PROJCS["WGS 84 / UTM zone 57S",GEOGCS["WGS 84",DATUM["World Geodetic System 1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.017453292519943278,AUTHORITY["EPSG","9122"]],AXIS["Lat",NORTH],AXIS["Lon",EAST],AUTHORITY["EPSG","4326"]],PROJECTION["Transverse Mercator",AUTHORITY["EPSG","9807"]],PARAMETER["Latitude of natural origin",0,AUTHORITY["EPSG","8801"]],PARAMETER["Longitude of natural origin",159,AUTHORITY["EPSG","8802"]],PARAMETER["Scale factor at natural origin",0.9996,AUTHORITY["EPSG","8805"]],PARAMETER["False easting",500000,AUTHORITY["EPSG","8806"]],PARAMETER["False northing",10000000,AUTHORITY["EPSG","8807"]],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["E",EAST],AXIS["N",NORTH],AUTHORITY["EPSG","32757"]]`, nil},
+			{`WGS 84 / UTM zone 56S`, uint32(32756), `EPSG`, uint32(32756), `PROJCS["WGS 84 / UTM zone 56S",GEOGCS["WGS 84",DATUM["World Geodetic System 1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.017453292519943278,AUTHORITY["EPSG","9122"]],AXIS["Lat",NORTH],AXIS["Lon",EAST],AUTHORITY["EPSG","4326"]],PROJECTION["Transverse Mercator",AUTHORITY["EPSG","9807"]],PARAMETER["Latitude of natural origin",0,AUTHORITY["EPSG","8801"]],PARAMETER["Longitude of natural origin",153,AUTHORITY["EPSG","8802"]],PARAMETER["Scale factor at natural origin",0.9996,AUTHORITY["EPSG","8805"]],PARAMETER["False easting",500000,AUTHORITY["EPSG","8806"]],PARAMETER["False northing",10000000,AUTHORITY["EPSG","8807"]],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["E",EAST],AXIS["N",NORTH],AUTHORITY["EPSG","32756"]]`, nil},
+			{`WGS 84 / UTM zone 55S`, uint32(32755), `EPSG`, uint32(32755), `PROJCS["WGS 84 / UTM zone 55S",GEOGCS["WGS 84",DATUM["World Geodetic System 1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.017453292519943278,AUTHORITY["EPSG","9122"]],AXIS["Lat",NORTH],AXIS["Lon",EAST],AUTHORITY["EPSG","4326"]],PROJECTION["Transverse Mercator",AUTHORITY["EPSG","9807"]],PARAMETER["Latitude of natural origin",0,AUTHORITY["EPSG","8801"]],PARAMETER["Longitude of natural origin",147,AUTHORITY["EPSG","8802"]],PARAMETER["Scale factor at natural origin",0.9996,AUTHORITY["EPSG","8805"]],PARAMETER["False easting",500000,AUTHORITY["EPSG","8806"]],PARAMETER["False northing",10000000,AUTHORITY["EPSG","8807"]],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["E",EAST],AXIS["N",NORTH],AUTHORITY["EPSG","32755"]]`, nil},
+			{`WGS 84 / UTM zone 54S`, uint32(32754), `EPSG`, uint32(32754), `PROJCS["WGS 84 / UTM zone 54S",GEOGCS["WGS 84",DATUM["World Geodetic System 1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.017453292519943278,AUTHORITY["EPSG","9122"]],AXIS["Lat",NORTH],AXIS["Lon",EAST],AUTHORITY["EPSG","4326"]],PROJECTION["Transverse Mercator",AUTHORITY["EPSG","9807"]],PARAMETER["Latitude of natural origin",0,AUTHORITY["EPSG","8801"]],PARAMETER["Longitude of natural origin",141,AUTHORITY["EPSG","8802"]],PARAMETER["Scale factor at natural origin",0.9996,AUTHORITY["EPSG","8805"]],PARAMETER["False easting",500000,AUTHORITY["EPSG","8806"]],PARAMETER["False northing",10000000,AUTHORITY["EPSG","8807"]],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["E",EAST],AXIS["N",NORTH],AUTHORITY["EPSG","32754"]]`, nil},
+			{`WGS 84 / UTM zone 53S`, uint32(32753), `EPSG`, uint32(32753), `PROJCS["WGS 84 / UTM zone 53S",GEOGCS["WGS 84",DATUM["World Geodetic System 1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.017453292519943278,AUTHORITY["EPSG","9122"]],AXIS["Lat",NORTH],AXIS["Lon",EAST],AUTHORITY["EPSG","4326"]],PROJECTION["Transverse Mercator",AUTHORITY["EPSG","9807"]],PARAMETER["Latitude of natural origin",0,AUTHORITY["EPSG","8801"]],PARAMETER["Longitude of natural origin",135,AUTHORITY["EPSG","8802"]],PARAMETER["Scale factor at natural origin",0.9996,AUTHORITY["EPSG","8805"]],PARAMETER["False easting",500000,AUTHORITY["EPSG","8806"]],PARAMETER["False northing",10000000,AUTHORITY["EPSG","8807"]],UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["E",EAST],AXIS["N",NORTH],AUTHORITY["EPSG","32753"]]`, nil},
 		},
 	},
 	{
@@ -624,7 +801,7 @@ FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = 'mydb' AND INDEX_NAME='P
 	},
 	{
 		Query:    `SELECT * FROM information_schema.table_constraints_extensions where table_name = 'fk_tbl'`,
-		Expected: []sql.Row{{"def", "mydb", "PRIMARY", "fk_tbl", nil, nil}, {"def", "mydb", "ab", "fk_tbl", nil, nil}},
+		Expected: []sql.Row{{"def", "mydb", "PRIMARY", "fk_tbl", nil, nil}, {"def", "mydb", "fk1", "fk_tbl", nil, nil}},
 	},
 	{
 		Query:    `SELECT * FROM information_schema.tables_extensions where table_name = 'mytable'`,
@@ -653,6 +830,107 @@ var SkippedInfoSchemaQueries = []QueryTest{
 }
 
 var InfoSchemaScripts = []ScriptTest{
+	{
+		Name: "List triggers across multiple databases",
+		SetUpScript: []string{
+			"CREATE DATABASE db1;",
+			"CREATE DATABASE db2;",
+			"USE db1;",
+			"CREATE TABLE main1(pk int primary key, c1 varchar(100));",
+			"CREATE TABLE main2(pk int primary key);",
+			"CREATE TRIGGER before_insert_main1 BEFORE INSERT ON main1 FOR EACH ROW BEGIN DECLARE row_count INT; SELECT COUNT(*) INTO row_count FROM main2; IF row_count > 0 THEN SET NEW.c1 = 'has data'; ELSE SET NEW.c1 = 'empty'; END IF; END",
+			"USE db2;",
+			"CREATE TABLE b1(pk int primary key, c1 varchar(100));",
+			"CREATE TABLE b2(pk int primary key);",
+			"CREATE TRIGGER before_insert_b1 BEFORE INSERT ON b1 FOR EACH ROW BEGIN DECLARE row_count INT; SELECT COUNT(*) INTO row_count FROM b2; IF row_count > 0 THEN SET NEW.c1 = 'has data'; ELSE SET NEW.c1 = 'empty'; END IF; END",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "USE db1;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT database();",
+				Expected: []sql.Row{{"db1"}},
+			},
+			{
+				Query:    "SELECT trigger_catalog, trigger_schema, trigger_name FROM information_schema.triggers;",
+				Expected: []sql.Row{{"def", "db1", "before_insert_main1"}, {"def", "db2", "before_insert_b1"}},
+			},
+			{
+				// Ensure the current database is still db1
+				Query:    "SELECT database();",
+				Expected: []sql.Row{{"db1"}},
+			},
+		},
+	},
+	{
+		Name: "foreign key that references dropped table",
+		SetUpScript: []string{
+			"create table parent(a int primary key, b int);",
+			"create table child(c int primary key);",
+			"alter table child add foreign key (c) references parent(a);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select UNIQUE_CONSTRAINT_NAME from information_schema.referential_constraints where TABLE_NAME = 'child' and REFERENCED_TABLE_NAME = 'parent';",
+				Expected: []sql.Row{{"PRIMARY"}},
+			},
+			{
+				Query:    "select REFERENCED_COLUMN_NAME from information_schema.key_column_usage where TABLE_NAME = 'child' and REFERENCED_TABLE_NAME = 'parent';",
+				Expected: []sql.Row{{"a"}},
+			},
+			{
+				Query: "set foreign_key_checks=0;",
+			},
+			{
+				Query: "drop table parent;",
+			},
+			{
+				Query:    "insert into child values (1), (2);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+			},
+			{
+				Query:    "select * from child;",
+				Expected: []sql.Row{{1}, {2}},
+			},
+			{
+				Query:    "delete from child;",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+			},
+			{
+				Query:    "select * from child;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "set foreign_key_checks=1;",
+			},
+			{
+				Query:       "insert into child values (1), (2);",
+				ExpectedErr: sql.ErrForeignKeyNotResolved,
+			},
+			{
+				Query:    "select UNIQUE_CONSTRAINT_NAME from information_schema.referential_constraints where TABLE_NAME = 'child' and REFERENCED_TABLE_NAME = 'parent';",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    "select REFERENCED_COLUMN_NAME from information_schema.key_column_usage where TABLE_NAME = 'child' and REFERENCED_TABLE_NAME = 'parent';",
+				Expected: []sql.Row{{"a"}},
+			},
+		},
+	},
+	{
+		Name: "issue 8930: connect to info schema",
+		SetUpScript: []string{
+			"use information_schema",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT C.COLUMN_NAME AS label, 'connection.column' as \"type\", C.TABLE_NAME AS \"table\", C.DATA_TYPE AS \"dataType\", CAST(C.CHARACTER_MAXIMUM_LENGTH AS UNSIGNED) AS size, CAST(UPPER( CONCAT( C.DATA_TYPE, CASE WHEN C.DATA_TYPE = 'text' THEN '' ELSE ( CASE WHEN C.CHARACTER_MAXIMUM_LENGTH > 0 THEN ( CONCAT('(', C.CHARACTER_MAXIMUM_LENGTH, ')') ) ELSE '' END ) END ) ) AS CHAR CHARACTER SET utf8) AS \"detail\", C.TABLE_CATALOG AS \"catalog\", C.TABLE_SCHEMA AS \"database\", C.TABLE_SCHEMA AS \"schema\", C.COLUMN_DEFAULT AS \"defaultValue\", C.IS_NULLABLE AS \"isNullable\", (CASE WHEN C.COLUMN_KEY = 'PRI' THEN 1 ELSE 0 END) AS \"isPk\", (CASE WHEN KCU.REFERENCED_COLUMN_NAME IS NULL THEN 0 ELSE 1 END) AS \"isFk\" FROM INFORMATION_SCHEMA.COLUMNS AS C LEFT JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS KCU ON ( C.TABLE_NAME = KCU.TABLE_NAME AND C.TABLE_SCHEMA = KCU.TABLE_SCHEMA AND C.TABLE_CATALOG = KCU.TABLE_CATALOG AND C.COLUMN_NAME = KCU.COLUMN_NAME ) JOIN INFORMATION_SCHEMA.TABLES AS T ON C.TABLE_NAME = T.TABLE_NAME AND C.TABLE_SCHEMA = T.TABLE_SCHEMA AND C.TABLE_CATALOG = T.TABLE_CATALOG WHERE C.TABLE_SCHEMA = 'dev' AND C.TABLE_NAME = 'countries' AND C.TABLE_CATALOG = 'def' ORDER BY C.TABLE_NAME, C.ORDINAL_POSITION",
+				Expected: []sql.Row{},
+			},
+		},
+	},
 	{
 		Name: "query does not use optimization rule on LIKE clause because info_schema db charset is utf8mb3",
 		SetUpScript: []string{
@@ -791,9 +1069,9 @@ character_set_client, collation_connection, database_collation
 FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_schema = 'mydb'`,
 				Expected: []sql.Row{
 					{"def", "mydb", "trigger1", "INSERT", "def", "mydb", "aa", 1, nil, "SET NEW.x = NEW.x + 1", "ROW", "BEFORE", nil, nil, "OLD", "NEW",
-						"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY", "dolt@localhost", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
+						"NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES", "dolt@localhost", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 					{"def", "mydb", "trigger2", "INSERT", "def", "mydb", "aa", 2, nil, "SET NEW.y = NEW.y + 2", "ROW", "BEFORE", nil, nil, "OLD", "NEW",
-						"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY", "root@localhost", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
+						"NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES", "root@localhost", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 				},
 			},
 		},
@@ -864,7 +1142,7 @@ FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_schema = 'mydb'`,
 				Expected: []sql.Row{
 					{"test_table", "pk", nil, "NO"},
 					{"test_table", "col2", "length('he`Llo')", "YES"},
-					{"test_table", "col3", "greatest(pk,2)", "YES"},
+					{"test_table", "col3", "greatest(`pk`,2)", "YES"},
 					{"test_table", "col4", "(5 + 5)", "YES"},
 					{"test_table", "col5", "CURRENT_TIMESTAMP", "YES"},
 					{"test_table", "create_time", "CURRENT_TIMESTAMP(6)", "NO"},
@@ -914,19 +1192,19 @@ FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_schema = 'mydb'`,
 					"datetime_precision, character_set_name, collation_name, dtd_identifier, " +
 					"routine_body, external_name, external_language, parameter_style, is_deterministic, " +
 					"sql_data_access, sql_path, security_type, sql_mode, routine_comment, definer, " +
-					"character_set_client, collation_connection, database_collation FROM information_schema.routines",
+					"character_set_client, collation_connection, database_collation FROM information_schema.routines order by routine_name",
 				Expected: []sql.Row{
 					{"p1", "def", "mydb", "p1", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, nil, "SQL",
-						nil, "SQL", "SQL", "YES", "CONTAINS SQL", nil, "DEFINER", "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY",
+						nil, "SQL", "SQL", "YES", "CONTAINS SQL", nil, "DEFINER", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES",
 						"hi", "", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
-					{"p2", "def", "mydb", "p2", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, nil, "SQL",
-						nil, "SQL", "SQL", "NO", "CONTAINS SQL", nil, "INVOKER", "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY",
-						"", "user@%", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 					{"p12", "def", "foo", "p12", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, nil, "SQL",
-						nil, "SQL", "SQL", "YES", "CONTAINS SQL", nil, "DEFINER", "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY",
+						nil, "SQL", "SQL", "YES", "CONTAINS SQL", nil, "DEFINER", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES",
 						"hello", "", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
+					{"p2", "def", "mydb", "p2", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, nil, "SQL",
+						nil, "SQL", "SQL", "NO", "CONTAINS SQL", nil, "INVOKER", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES",
+						"", "user@%", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 					{"p21", "def", "mydb", "p21", "PROCEDURE", "", nil, nil, nil, nil, nil, nil, nil, nil, "SQL",
-						nil, "SQL", "SQL", "NO", "CONTAINS SQL", nil, "DEFINER", "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY",
+						nil, "SQL", "SQL", "NO", "CONTAINS SQL", nil, "DEFINER", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES",
 						"", "", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 				},
 			},
@@ -936,16 +1214,28 @@ FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_schema = 'mydb'`,
 		Name: "information_schema.columns for view",
 		SetUpScript: []string{
 			"USE foo",
-			"drop table other_table",
-			"CREATE TABLE t (i int)",
-			"CREATE VIEW v as select * from t",
+			"drop table othertable",
+			"CREATE TABLE t (i int primary key, j int default (uuid_to_bin(uuid())));",
+			"CREATE VIEW v as select i + 1, j, j * 2, mod(i, j) from t;",
+			"create table tt (ii int primary key, jj int default (pow(1, 2)));",
+			"create view vv as select * from t join tt where i = ii;",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE table_schema = 'foo'",
 				Expected: []sql.Row{
-					{"def", "foo", "t", "i", uint32(1), nil, "YES", "int", nil, nil, int64(10), int64(0), nil, nil, nil, "int", "", "", "insert,references,select,update", "", "", nil},
-					{"def", "foo", "v", "", uint32(0), nil, "", nil, nil, nil, nil, nil, nil, "", "", "", "", "", "select", "", "", nil},
+					{"def", "foo", "t", "i", uint32(1), nil, "NO", "int", nil, nil, 10, 0, nil, nil, nil, "int", "PRI", "", "insert,references,select,update", "", "", nil},
+					{"def", "foo", "t", "j", uint32(2), "UUID_TO_BIN(uuid())", "YES", "int", nil, nil, 10, 0, nil, nil, nil, "int", "", "DEFAULT_GENERATED", "insert,references,select,update", "", "", nil},
+					{"def", "foo", "tt", "ii", uint32(1), nil, "NO", "int", nil, nil, 10, 0, nil, nil, nil, "int", "PRI", "", "insert,references,select,update", "", "", nil},
+					{"def", "foo", "tt", "jj", uint32(2), "power(1, 2)", "YES", "int", nil, nil, 10, 0, nil, nil, nil, "int", "", "DEFAULT_GENERATED", "insert,references,select,update", "", "", nil},
+					{"def", "foo", "v", "i + 1", uint32(1), nil, "NO", "bigint", nil, nil, 19, 0, nil, nil, nil, "bigint", "", "", "insert,references,select,update", "", "", nil},
+					{"def", "foo", "v", "j", uint32(2), "UUID_TO_BIN(uuid())", "YES", "int", nil, nil, 10, 0, nil, nil, nil, "int", "", "DEFAULT_GENERATED", "insert,references,select,update", "", "", nil},
+					{"def", "foo", "v", "j * 2", uint32(3), nil, "YES", "bigint", nil, nil, 19, 0, nil, nil, nil, "bigint", "", "", "insert,references,select,update", "", "", nil},
+					{"def", "foo", "v", "mod(i, j)", uint32(4), nil, "YES", "decimal", nil, nil, 10, 0, nil, nil, nil, "decimal(10,0)", "", "", "insert,references,select,update", "", "", nil},
+					{"def", "foo", "vv", "i", uint32(1), nil, "NO", "int", nil, nil, 10, 0, nil, nil, nil, "int", "", "", "insert,references,select,update", "", "", nil},
+					{"def", "foo", "vv", "j", uint32(2), "UUID_TO_BIN(uuid())", "YES", "int", nil, nil, 10, 0, nil, nil, nil, "int", "", "DEFAULT_GENERATED", "insert,references,select,update", "", "", nil},
+					{"def", "foo", "vv", "ii", uint32(3), nil, "NO", "int", nil, nil, 10, 0, nil, nil, nil, "int", "", "", "insert,references,select,update", "", "", nil},
+					{"def", "foo", "vv", "jj", uint32(4), "power(1, 2)", "YES", "int", nil, nil, 10, 0, nil, nil, nil, "int", "", "DEFAULT_GENERATED", "insert,references,select,update", "", "", nil},
 				},
 			},
 		},
@@ -1015,7 +1305,7 @@ FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_schema = 'mydb'`,
 				Expected: []sql.Row{
 					{"ptable", "id", "NO", "int", "int", "PRI"},
 					{"ptable", "id2", "NO", "int", "int", "UNI"},
-					{"ptable", "col1", "YES", "tinyint", "tinyint", ""},
+					{"ptable", "col1", "YES", "tinyint", "tinyint(1)", ""},
 				},
 			},
 		},
@@ -1060,7 +1350,7 @@ FROM INFORMATION_SCHEMA.TRIGGERS WHERE trigger_schema = 'mydb'`,
 			{
 				// TODO: cardinality not supported
 				Skip:     true,
-				Query:    `select index_name, seq_in_index, column_name, cardinality, sub_part from information_schema.statistics where table_schema = 'mydb' and table_name = 'ptable' ORDER BY INDEX_NAME`,
+				Query:    `select cardinality from information_schema.statistics where table_schema = 'mydb' and table_name = 'ptable' ORDER BY INDEX_NAME`,
 				Expected: []sql.Row{{2}, {2}, {2}, {2}, {2}},
 			},
 			{
@@ -1087,7 +1377,7 @@ bit_2 bit(2) DEFAULT 2,
 some_blob blob DEFAULT ("abc"),
 char_1 char(1) DEFAULT "A",
 some_date date DEFAULT "2022-02-22",
-date_time datetime DEFAULT "2022-02-22 22:22:21",
+date_time datetime(6) DEFAULT "2022-02-22 22:22:21",
 decimal_52 decimal(5,2) DEFAULT "994.45",
 some_double double DEFAULT "1.1",
 some_enum enum('s','m','l') DEFAULT "s",
@@ -1107,7 +1397,7 @@ some_set set('one','two') DEFAULT "one,two",
 small_int smallint DEFAULT "5",
 some_text text DEFAULT ("abc"),
 time_6 time(6) DEFAULT "11:59:59.000010",
-time_stamp timestamp DEFAULT (CURRENT_TIMESTAMP()),
+time_stamp timestamp(6) DEFAULT (CURRENT_TIMESTAMP(6)),
 tiny_blob tinyblob DEFAULT ("abc"),
 tiny_int tinyint DEFAULT "4",
 tiny_text tinytext DEFAULT ("abc"),
@@ -1169,7 +1459,7 @@ FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='all_ty
 					{"some_blob", "'abc'", "YES", "blob", "blob", 65535, 65535},
 					{"char_1", "A", "YES", "char", "char(1)", 1, 4},
 					{"some_date", "2022-02-22 00:00:00", "YES", "date", "date", nil, nil},
-					{"date_time", "2022-02-22 22:22:21", "YES", "datetime", "datetime", nil, nil},
+					{"date_time", "2022-02-22 22:22:21", "YES", "datetime", "datetime(6)", nil, nil},
 					{"decimal_52", "994.45", "YES", "decimal", "decimal(5,2)", nil, nil},
 					{"some_double", "1.1", "YES", "double", "double", nil, nil},
 					{"some_enum", "s", "YES", "enum", "enum('s','m','l')", 1, 4},
@@ -1189,7 +1479,7 @@ FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='all_ty
 					{"small_int", "5", "YES", "smallint", "smallint", nil, nil},
 					{"some_text", "'abc'", "YES", "text", "text", 16383, 65535},
 					{"time_6", "11:59:59.000010", "YES", "time", "time(6)", nil, nil},
-					{"time_stamp", "CURRENT_TIMESTAMP", "YES", "timestamp", "timestamp", nil, nil},
+					{"time_stamp", "CURRENT_TIMESTAMP(6)", "YES", "timestamp", "timestamp(6)", nil, nil},
 					{"tiny_blob", "'abc'", "YES", "tinyblob", "tinyblob", 255, 255},
 					{"tiny_int", "4", "YES", "tinyint", "tinyint", nil, nil},
 					{"tiny_text", "'abc'", "YES", "tinytext", "tinytext", 63, 255},
@@ -1208,8 +1498,8 @@ FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='all_ty
 					{"bit_2", "bit(2)", 2, nil, nil, nil, nil, "", "", "", "", nil},
 					{"some_blob", "blob", nil, nil, nil, nil, nil, "", "DEFAULT_GENERATED", "", "", nil},
 					{"char_1", "char(1)", nil, nil, nil, "utf8mb4", "utf8mb4_0900_bin", "", "", "", "", nil},
-					{"some_date", "date", nil, nil, nil, nil, nil, "", "", "", "", nil},
-					{"date_time", "datetime", nil, nil, 0, nil, nil, "", "", "", "", nil},
+					{"some_date", "date", nil, nil, 0, nil, nil, "", "", "", "", nil},
+					{"date_time", "datetime(6)", nil, nil, 6, nil, nil, "", "", "", "", nil},
 					{"decimal_52", "decimal(5,2)", 5, 2, nil, nil, nil, "", "", "", "", nil},
 					{"some_double", "double", 22, nil, nil, nil, nil, "", "", "", "", nil},
 					{"some_enum", "enum('s','m','l')", nil, nil, nil, "utf8mb4", "utf8mb4_0900_bin", "", "", "", "", nil},
@@ -1229,7 +1519,7 @@ FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='all_ty
 					{"small_int", "smallint", 5, 0, nil, nil, nil, "", "", "", "", nil},
 					{"some_text", "text", nil, nil, nil, "utf8mb4", "utf8mb4_0900_bin", "", "DEFAULT_GENERATED", "", "", nil},
 					{"time_6", "time(6)", nil, nil, 6, nil, nil, "", "", "", "", nil},
-					{"time_stamp", "timestamp", nil, nil, 0, nil, nil, "", "DEFAULT_GENERATED", "", "", nil},
+					{"time_stamp", "timestamp(6)", nil, nil, 6, nil, nil, "", "DEFAULT_GENERATED", "", "", nil},
 					{"tiny_blob", "tinyblob", nil, nil, nil, nil, nil, "", "DEFAULT_GENERATED", "", "", nil},
 					{"tiny_int", "tinyint", 3, 0, nil, nil, nil, "", "", "", "", nil},
 					{"tiny_text", "tinytext", nil, nil, nil, "utf8mb4", "utf8mb4_0900_bin", "", "DEFAULT_GENERATED", "", "", nil},
@@ -1287,10 +1577,10 @@ FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='mydb' AND TABLE_NAME='all_ty
 FROM information_schema.TABLE_CONSTRAINTS TC, information_schema.CHECK_CONSTRAINTS CC 
 WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'checks' AND TC.TABLE_SCHEMA = CC.CONSTRAINT_SCHEMA AND TC.CONSTRAINT_NAME = CC.CONSTRAINT_NAME AND TC.CONSTRAINT_TYPE = 'CHECK';`,
 				Expected: []sql.Row{
-					{"chk1", "(b > 0)", "YES"},
-					{"chk2", "(b > 0)", "NO"},
-					{"chk3", "(b > 1)", "YES"},
-					{"chk4", "(upper(c) = c)", "YES"},
+					{"chk1", "(`B` > 0)", "YES"},
+					{"chk2", "(`b` > 0)", "NO"},
+					{"chk3", "(`B` > 1)", "YES"},
+					{"chk4", "(upper(`C`) = `c`)", "YES"},
 				},
 			},
 			{
@@ -1306,10 +1596,10 @@ WHERE TABLE_SCHEMA = 'mydb' AND TABLE_NAME = 'checks' AND TC.TABLE_SCHEMA = CC.C
 			{
 				Query: `select * from information_schema.check_constraints where constraint_schema = 'mydb';`,
 				Expected: []sql.Row{
-					{"def", "mydb", "chk1", "(b > 0)"},
-					{"def", "mydb", "chk2", "(b > 0)"},
-					{"def", "mydb", "chk3", "(b > 1)"},
-					{"def", "mydb", "chk4", "(upper(c) = c)"},
+					{"def", "mydb", "chk1", "(`B` > 0)"},
+					{"def", "mydb", "chk2", "(`b` > 0)"},
+					{"def", "mydb", "chk3", "(`B` > 1)"},
+					{"def", "mydb", "chk4", "(upper(`C`) = `c`)"},
 				},
 			},
 			{
@@ -1341,7 +1631,7 @@ routine_comment, definer, character_set_client, collation_connection, database_c
 from information_schema.routines where routine_schema = 'mydb' and routine_type like 'PROCEDURE' order by routine_name;`,
 				Expected: []sql.Row{
 					{"count_i_from_mytable", "def", "mydb", "count_i_from_mytable", "PROCEDURE", "", "SQL", "SQL", "SQL", "NO",
-						"READS SQL DATA", "DEFINER", "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY",
+						"READS SQL DATA", "DEFINER", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES",
 						"", "root@localhost", "utf8mb4", "utf8mb4_0900_bin", "utf8mb4_0900_bin"},
 				},
 			},
@@ -1451,6 +1741,150 @@ from information_schema.routines where routine_schema = 'mydb' and routine_type 
 			},
 		},
 	},
+	{
+
+		Name:        "information_schema.st_spatial_reference_systems can be modified",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "create or replace spatial reference system 1234 " +
+					"organization 'test_org' identified by 1234 " +
+					"definition 'test_definition' " +
+					"description 'test_description'",
+				ExpectedErrStr: "missing mandatory attribute NAME",
+			},
+			{
+				Query: "create or replace spatial reference system 1234 " +
+					"name 'test_name' " +
+					"definition 'test_definition' " +
+					"description 'test_description'",
+				ExpectedErrStr: "missing mandatory attribute ORGANIZATION NAME",
+			},
+			{
+				Query: "create or replace spatial reference system 1234 " +
+					"name 'test_name' " +
+					"organization 'test_org' identified by 1234 " +
+					"description 'test_description'",
+				ExpectedErrStr: "missing mandatory attribute DEFINITION",
+			},
+			{
+				Query: "create or replace spatial reference system 1234 " +
+					"name ' test_name ' " +
+					"definition 'test_definition' " +
+					"organization 'test_org' identified by 1234 " +
+					"description 'test_description'",
+				ExpectedErrStr: "the spatial reference system name can't be an empty string or start or end with whitespace",
+			},
+			{
+				Query: "create or replace spatial reference system 1234 " +
+					"name 'test_name' " +
+					"definition 'test_definition' " +
+					"organization ' test_org ' identified by 1234 " +
+					"description 'test_description'",
+				ExpectedErrStr: "the organization name can't be an empty string or start or end with whitespace",
+			},
+			{
+				// TODO: can't reliably test this along with the prepared version as the information_schema is persisted between test runs
+				Skip: true,
+				Query: "create spatial reference system 1234 " +
+					"name 'test_name' " +
+					"organization 'test_org' identified by 1234 " +
+					"definition 'test_definition' " +
+					"description 'test_description'",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "create or replace spatial reference system 1234 " +
+					"name 'test_name' " +
+					"organization 'test_org' identified by 1234 " +
+					"definition 'test_definition' " +
+					"description 'test_description'",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "select srs_id, srs_name, organization, organization_coordsys_id, definition, description from information_schema.st_spatial_reference_systems where srs_id = 1234",
+				Expected: []sql.Row{
+					{uint32(1234), "test_name", "test_org", uint32(1234), "test_definition", "test_description"},
+				},
+			},
+			{
+				Query: "create spatial reference system if not exists 1234 " +
+					"name 'new_test_name' " +
+					"organization 'new_test_org' identified by 1234 " +
+					"definition 'new_test_definition' " +
+					"description 'new_test_description'",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "select srs_id, srs_name, organization, organization_coordsys_id, definition, description from information_schema.st_spatial_reference_systems where srs_id = 1234",
+				Expected: []sql.Row{
+					{uint32(1234), "test_name", "test_org", uint32(1234), "test_definition", "test_description"},
+				},
+			},
+		},
+	},
+	{
+
+		Name: "information_schema.tables has table comments",
+		SetUpScript: []string{
+			"create table t (i int primary key) comment 'this is a table comment';",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select table_comment from information_schema.tables where table_name = 't';",
+				Expected: []sql.Row{
+					{"this is a table comment"},
+				},
+			},
+		},
+	},
+	{
+		Name: "information_schema.columns in expression uses info schema collation",
+		SetUpScript: []string{
+			"create table TEST (COL int);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select table_schema, table_name, column_name table_comment from information_schema.columns where (table_name, column_name) in (('TEST', 'COL'));",
+				Expected: []sql.Row{
+					{"mydb", "TEST", "COL"},
+				},
+			},
+			{
+				Query: "select table_schema, table_name, column_name table_comment from information_schema.columns where (table_name, column_name) in (('test', 'col'));",
+				Expected: []sql.Row{
+					{"mydb", "TEST", "COL"},
+				},
+			},
+		},
+	},
+	{
+		Name: "test information_schema database",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "show databases like 'information_schema';",
+				Expected: []sql.Row{{"information_schema"}},
+			},
+			{
+				Query:       "create database information_schema;",
+				ExpectedErr: sql.ErrDatabaseExists,
+			},
+			{
+				Query:          "drop database information_schema;",
+				ExpectedErrStr: "unable to drop database: information_schema",
+			},
+			{
+				Query:    "show databases like 'information_schema';",
+				Expected: []sql.Row{{"information_schema"}},
+			},
+		},
+	},
 }
 
 var SkippedInfoSchemaScripts = []ScriptTest{
@@ -1471,97 +1905,5 @@ var SkippedInfoSchemaScripts = []ScriptTest{
 				},
 			},
 		},
-	},
-}
-
-var StatisticsQueries = []ScriptTest{
-	{
-		Name: "analyze single int column",
-		SetUpScript: []string{
-			"CREATE TABLE t (i int primary key)",
-			"INSERT INTO t VALUES (1), (2), (3)",
-			"ANALYZE TABLE t",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "SELECT * FROM information_schema.column_statistics",
-				Expected: []sql.Row{
-					{"mydb", "t", "i", types.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"1.00", "1.00", "0.33"}, []interface{}{"2.00", "2.00", "0.33"}, []interface{}{"3.00", "3.00", "0.33"}}}}},
-				},
-			},
-		},
-	},
-	{
-		Name: "analyze two int columns",
-		SetUpScript: []string{
-			"CREATE TABLE t (i int, j int)",
-			"INSERT INTO t VALUES (1, 4), (2, 5), (3, 6)",
-			"ANALYZE TABLE t",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "SELECT * FROM information_schema.column_statistics",
-				Expected: []sql.Row{
-					{"mydb", "t", "i", types.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"1.00", "1.00", "0.33"}, []interface{}{"2.00", "2.00", "0.33"}, []interface{}{"3.00", "3.00", "0.33"}}}}},
-					{"mydb", "t", "j", types.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"4.00", "4.00", "0.33"}, []interface{}{"5.00", "5.00", "0.33"}, []interface{}{"6.00", "6.00", "0.33"}}}}},
-				},
-			},
-		},
-	},
-	{
-		Name: "analyze float columns",
-		SetUpScript: []string{
-			"CREATE TABLE t (i float)",
-			"INSERT INTO t VALUES (1.25), (45.25), (7.5), (10.5)",
-			"ANALYZE TABLE t",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "SELECT * FROM information_schema.column_statistics",
-				Expected: []sql.Row{
-					{"mydb", "t", "i", types.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"1.25", "1.25", "0.25"}, []interface{}{"7.50", "7.50", "0.25"}, []interface{}{"10.50", "10.50", "0.25"}, []interface{}{"45.25", "45.25", "0.25"}}}}},
-				},
-			},
-		},
-	},
-	{
-		Name: "analyze empty table creates stats with 0s",
-		SetUpScript: []string{
-			"CREATE TABLE t (i float)",
-			"ANALYZE TABLE t",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "SELECT * FROM information_schema.column_statistics",
-				Expected: []sql.Row{
-					{"mydb", "t", "i", types.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{}}}},
-				},
-			},
-		},
-	},
-	{
-		Name: "analyze columns that can't be converted to float throws error",
-		SetUpScript: []string{
-			"CREATE TABLE t (t longtext)",
-			"INSERT INTO t VALUES ('not a number')",
-			"ANALYZE TABLE t",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query:    "SELECT * FROM information_schema.column_statistics",
-				Expected: []sql.Row{},
-			},
-		},
-	},
-	{
-		Query: `
-		SELECT
-			COLUMN_NAME,
-			JSON_EXTRACT(HISTOGRAM, '$."number-of-buckets-specified"')
-		FROM information_schema.COLUMN_STATISTICS
-		WHERE SCHEMA_NAME = 'mydb'
-		AND TABLE_NAME = 'mytable'
-		`,
-		Expected: nil,
 	},
 }

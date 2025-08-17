@@ -29,14 +29,28 @@ type FirstValue struct {
 	window *sql.WindowDefinition
 	expression.UnaryExpression
 	pos int
+	id  sql.ColumnId
 }
 
 var _ sql.FunctionExpression = (*FirstValue)(nil)
 var _ sql.WindowAggregation = (*FirstValue)(nil)
 var _ sql.WindowAdaptableExpression = (*FirstValue)(nil)
+var _ sql.CollationCoercible = (*FirstValue)(nil)
 
 func NewFirstValue(e sql.Expression) sql.Expression {
-	return &FirstValue{nil, expression.UnaryExpression{Child: e}, 0}
+	return &FirstValue{UnaryExpression: expression.UnaryExpression{Child: e}}
+}
+
+// Id implements sql.IdExpression
+func (f *FirstValue) Id() sql.ColumnId {
+	return f.id
+}
+
+// WithId implements sql.IdExpression
+func (f *FirstValue) WithId(id sql.ColumnId) sql.IdExpression {
+	ret := *f
+	ret.id = id
+	return &ret
 }
 
 // Description implements sql.FunctionExpression
@@ -84,6 +98,11 @@ func (f *FirstValue) Type() sql.Type {
 	return f.Child.Type()
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (f *FirstValue) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, f.Child)
+}
+
 // IsNullable implements sql.Expression
 func (f *FirstValue) IsNullable() bool {
 	return false
@@ -91,7 +110,7 @@ func (f *FirstValue) IsNullable() bool {
 
 // Eval implements sql.Expression
 func (f *FirstValue) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	panic("eval called on window function")
+	return nil, sql.ErrWindowUnsupported.New(f.FunctionName())
 }
 
 // Children implements sql.Expression
@@ -121,10 +140,10 @@ func (f *FirstValue) WithChildren(children ...sql.Expression) (sql.Expression, e
 }
 
 // WithWindow implements sql.WindowAggregation
-func (f *FirstValue) WithWindow(window *sql.WindowDefinition) (sql.WindowAggregation, error) {
+func (f *FirstValue) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
 	nr := *f
 	nr.window = window
-	return &nr, nil
+	return &nr
 }
 
 func (f *FirstValue) NewWindowFunction() (sql.WindowFunction, error) {

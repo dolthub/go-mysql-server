@@ -15,16 +15,14 @@
 package enginetest
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
-	sqle "github.com/gabereiser/go-mysql-server"
-	"github.com/gabereiser/go-mysql-server/sql"
-	"github.com/gabereiser/go-mysql-server/sql/plan"
-	"github.com/gabereiser/go-mysql-server/sql/transform"
-	"github.com/gabereiser/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type SpatialIndexPlanTestAssertion struct {
@@ -111,7 +109,7 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 				},
 			},
 			{
-				noIdx: true,
+				noIdx: false, // still expect index access using primary key
 				q:     "select pk, st_aswkt(p) from point_tbl_pk where pk = 0 or st_intersects(p, point(1,1)) order by pk",
 				exp: []sql.Row{
 					{0, "POINT(0 0)"},
@@ -297,14 +295,15 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 		setup: []string{
 			"create table t1(g geometry not null srid 0, spatial index (g))",
 			"create table t2(g geometry not null srid 0, spatial index (g))",
-			"insert into t1 values (point(0,0))",
-			"insert into t2 values (point(0,0))",
+			"insert into t1 values (point(0,0)), (point(1,1))",
+			"insert into t2 values (point(0,0)), (point(1,1))",
 		},
 		tests: []SpatialIndexPlanTestAssertion{
 			{
 				q: "select st_aswkt(t1.g), st_aswkt(t2.g) from t1 join t2 where st_intersects(t1.g, point(0,0))",
 				exp: []sql.Row{
 					{"POINT(0 0)", "POINT(0 0)"},
+					{"POINT(0 0)", "POINT(1 1)"},
 				},
 			},
 			{
@@ -312,6 +311,7 @@ var SpatialIndexTests = []SpatialIndexPlanTest{
 				q:     "select st_aswkt(t1.g), st_aswkt(t2.g) from t1 join t2 where st_intersects(t1.g, t2.g)",
 				exp: []sql.Row{
 					{"POINT(0 0)", "POINT(0 0)"},
+					{"POINT(1 1)", "POINT(1 1)"},
 				},
 			},
 		},
@@ -367,145 +367,23 @@ func TestSpatialIndexPlans(t *testing.T, harness Harness) {
 			}
 			for _, tt := range tt.tests {
 				evalSpatialIndexPlanCorrectness(t, harness, e, tt.q, tt.q, tt.exp, tt.skip)
-				evalSpatialIndexPlanTest(t, harness, e, tt.q, tt.skip, tt.noIdx)
-			}
-		})
-	}
-}
-
-func evalSpatialIndexPlanTest(t *testing.T, harness Harness, e *sqle.Engine, query string, skip, noIdx bool) {
-	t.Run(query+" index plan", func(t *testing.T) {
-		if skip {
-			t.Skip()
-		}
-		ctx := NewContext(harness)
-		ctx = ctx.WithQuery(query)
-
-		a, err := e.AnalyzeQuery(ctx, query)
-		require.NoError(t, err)
-
-		hasFilter, hasIndex, hasRightOrder := false, false, false
-		transform.Inspect(a, func(n sql.Node) bool {
-			if n == nil {
-				return false
-			}
-			if _, ok := n.(*plan.Filter); ok {
-				hasFilter = true
-			}
-			if _, ok := n.(*plan.IndexedTableAccess); ok {
-				hasRightOrder = hasFilter
-				hasIndex = true
-			}
-			return true
-		})
-
-		require.True(t, hasFilter, fmt.Sprintf("filter node was missing from plan"))
-		if noIdx {
-			require.False(t, hasIndex, fmt.Sprintf("indextableaccess should not be in plan"))
-		} else {
-			require.True(t, hasIndex, fmt.Sprintf("indextableaccess node was missing from plan"))
-			require.True(t, hasRightOrder, fmt.Sprintf("filter node was not above indextableaccess"))
-		}
-	})
-}
-
-func evalSpatialIndexPlanCorrectness(t *testing.T, harness Harness, e *sqle.Engine, name, q string, exp []sql.Row, skip bool) {
-	t.Run(name, func(t *testing.T) {
-		if skip {
-			t.Skip()
-		}
-
-		ctx := NewContext(harness)
-		ctx = ctx.WithQuery(q)
-
-		sch, iter, err := e.QueryWithBindings(ctx, q, nil)
-		require.NoError(t, err, "Unexpected error for q %s: %s", q, err)
-
-		rows, err := sql.RowIterToRows(ctx, sch, iter)
-		require.NoError(t, err, "Unexpected error for q %s: %s", q, err)
-
-		if exp != nil {
-			checkResults(t, exp, nil, sch, rows, q)
-		}
-
-		require.Equal(t, 0, ctx.Memory.NumCaches())
-		validateEngine(t, ctx, harness, e)
-	})
-}
-
-func TestSpatialIndexPlansPrepared(t *testing.T, harness Harness) {
-	for _, tt := range SpatialIndexTests {
-		t.Run(tt.name, func(t *testing.T) {
-			e := mustNewEngine(t, harness)
-			defer e.Close()
-			for _, statement := range tt.setup {
-				if sh, ok := harness.(SkippingHarness); ok {
-					if sh.SkipQueryTest(statement) {
-						t.Skip()
-					}
+				if !IsServerEngine(e) {
+					evalSpatialIndexPlanTest(t, harness, e, tt.q, tt.skip, tt.noIdx)
 				}
-				ctx := NewContext(harness)
-				RunQueryWithContext(t, e, harness, ctx, statement)
-			}
-			for _, ttt := range tt.tests {
-				evalSpatialIndexPlanCorrectnessPrepared(t, harness, e, ttt.q, ttt.q, ttt.exp, ttt.skip, ttt.skipPrep)
-				evalSpatialIndexPlanTestPrepared(t, harness, e, ttt.q, ttt.skip, ttt.skipPrep, ttt.noIdx)
 			}
 		})
 	}
 }
 
-func evalSpatialIndexPlanCorrectnessPrepared(t *testing.T, harness Harness, e *sqle.Engine, name, q string, exp []sql.Row, skip, skipPrep bool) {
-	t.Run(name, func(t *testing.T) {
-		if skip || skipPrep {
-			t.Skip()
-		}
-
-		ctx := NewContext(harness)
-		ctx = ctx.WithQuery(q)
-
-		bindings, err := injectBindVarsAndPrepare(t, ctx, e, q)
-		require.NoError(t, err)
-
-		sch, iter, err := e.QueryWithBindings(ctx, q, bindings)
-		require.NoError(t, err, "Unexpected error for q %s: %s", q, err)
-
-		rows, err := sql.RowIterToRows(ctx, sch, iter)
-		require.NoError(t, err, "Unexpected error for q %s: %s", q, err)
-
-		if exp != nil {
-			checkResults(t, exp, nil, sch, rows, q)
-		}
-
-		require.Equal(t, 0, ctx.Memory.NumCaches())
-		validateEngine(t, ctx, harness, e)
-	})
-}
-
-func evalSpatialIndexPlanTestPrepared(t *testing.T, harness Harness, e *sqle.Engine, query string, skip, skipPrep, noIdx bool) {
+func evalSpatialIndexPlanTest(t *testing.T, harness Harness, e QueryEngine, query string, skip, noIdx bool) {
 	t.Run(query+" index plan", func(t *testing.T) {
-		if skip || skipPrep {
+		if skip {
 			t.Skip()
 		}
 		ctx := NewContext(harness)
 		ctx = ctx.WithQuery(query)
 
-		bindings, err := injectBindVarsAndPrepare(t, ctx, e, query)
-		require.NoError(t, err)
-
-		p, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query)
-		require.True(t, ok, "prepared statement not found")
-
-		if len(bindings) > 0 {
-			var usedBindings map[string]bool
-			p, usedBindings, err = plan.ApplyBindings(p, bindings)
-			require.NoError(t, err)
-			for binding := range bindings {
-				require.True(t, usedBindings[binding], "unused binding %s", binding)
-			}
-		}
-
-		a, _, err := e.Analyzer.AnalyzePrepared(ctx, p, nil)
+		a, err := analyzeQuery(ctx, e, query)
 		require.NoError(t, err)
 
 		hasFilter, hasIndex, hasRightOrder := false, false, false
@@ -523,12 +401,36 @@ func evalSpatialIndexPlanTestPrepared(t *testing.T, harness Harness, e *sqle.Eng
 			return true
 		})
 
-		require.True(t, hasFilter, fmt.Sprintf("filter node was missing from plan"))
+		require.True(t, hasFilter, "filter node was missing from plan")
 		if noIdx {
-			require.False(t, hasIndex, fmt.Sprintf("indextableaccess should not be in plan"))
+			require.False(t, hasIndex, "indextableaccess should not be in plan")
 		} else {
-			require.True(t, hasIndex, fmt.Sprintf("indextableaccess node was missing from plan"))
-			require.True(t, hasRightOrder, fmt.Sprintf("filter node was not above indextableaccess"))
+			require.True(t, hasIndex, "indextableaccess node was missing from plan:\n %s", sql.DebugString(a))
+			require.True(t, hasRightOrder, "filter node was not above indextableaccess")
 		}
+	})
+}
+
+func evalSpatialIndexPlanCorrectness(t *testing.T, harness Harness, e QueryEngine, name, q string, exp []sql.Row, skip bool) {
+	t.Run(name, func(t *testing.T) {
+		if skip {
+			t.Skip()
+		}
+
+		ctx := NewContext(harness)
+		ctx = ctx.WithQuery(q)
+
+		sch, iter, _, err := e.QueryWithBindings(ctx, q, nil, nil, nil)
+		require.NoError(t, err, "Unexpected error for q %s: %s", q, err)
+
+		rows, err := sql.RowIterToRows(ctx, iter)
+		require.NoError(t, err, "Unexpected error for q %s: %s", q, err)
+
+		if exp != nil {
+			CheckResults(ctx, t, harness, exp, nil, sch, rows, q, e)
+		}
+
+		require.Equal(t, 0, ctx.Memory.NumCaches())
+		validateEngine(t, ctx, harness, e)
 	})
 }

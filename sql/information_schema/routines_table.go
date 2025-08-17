@@ -18,13 +18,14 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/gabereiser/go-mysql-server/sql/mysql_db"
-
-	. "github.com/gabereiser/go-mysql-server/sql"
-	"github.com/gabereiser/go-mysql-server/sql/parse"
-	"github.com/gabereiser/go-mysql-server/sql/plan"
-	"github.com/gabereiser/go-mysql-server/sql/types"
+	. "github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
+
+const defaultRoutinesTableRowCount = 10
 
 type routineTable struct {
 	name       string
@@ -36,39 +37,33 @@ type routineTable struct {
 }
 
 var (
-	_ Table = (*routineTable)(nil)
+	_ Table           = (*routineTable)(nil)
+	_ Databaseable    = (*routineTable)(nil)
+	_ StatisticsTable = (*routineTable)(nil)
 )
 
-var doltProcedureAliasSet = map[string]interface{}{
-	"dadd":                    nil,
-	"dbranch":                 nil,
-	"dcheckout":               nil,
-	"dclean":                  nil,
-	"dcherry_pick":            nil,
-	"dclone":                  nil,
-	"dcommit":                 nil,
-	"dfetch":                  nil,
-	"dgc":                     nil,
-	"dmerge":                  nil,
-	"dpull":                   nil,
-	"dpush":                   nil,
-	"dremote":                 nil,
-	"dreset":                  nil,
-	"drevert":                 nil,
-	"dtag":                    nil,
-	"dverify_constraints":     nil,
-	"dverify_all_constraints": nil,
-}
-
-func (t *routineTable) AssignCatalog(cat Catalog) Table {
-	t.catalog = cat
-	return t
+func (r *routineTable) AssignCatalog(cat Catalog) Table {
+	r.catalog = cat
+	return r
 }
 
 func (r *routineTable) AssignProcedures(p map[string][]*plan.Procedure) Table {
 	// TODO: should also assign functions
 	r.procedures = p
 	return r
+}
+
+// Database implements the sql.Databaseable interface.
+func (r *routineTable) Database() string {
+	return InformationSchemaDatabaseName
+}
+
+func (r *routineTable) DataLength(_ *Context) (uint64, error) {
+	return uint64(len(r.Schema()) * int(types.Text.MaxByteLength()) * defaultRoutinesTableRowCount), nil
+}
+
+func (r *routineTable) RowCount(ctx *Context) (uint64, bool, error) {
+	return defaultRoutinesTableRowCount, false, nil
 }
 
 // Name implements the sql.Table interface.
@@ -143,6 +138,7 @@ func routinesRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) (R
 	if privSet == nil {
 		privSet = mysql_db.NewPrivilegeSet()
 	}
+
 	for dbName, procedures := range p {
 		if !hasRoutinePrivsOnDB(privSet, dbName) {
 			continue
@@ -153,18 +149,16 @@ func routinesRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) (R
 		}
 		dbCollation := plan.GetDatabaseCollation(ctx, db)
 		for _, procedure := range procedures {
-			// Skip dolt procedure aliases to show in this table
-			if _, isAlias := doltProcedureAliasSet[procedure.Name]; isAlias {
-				continue
-			}
 			// We skip external procedures if the variable to show them is set to false
 			if showExternalProcedures.(int8) == 0 && procedure.IsExternal() {
 				continue
 			}
 
-			parsedProcedure, err := parse.Parse(ctx, procedure.CreateProcedureString)
+			// todo shortcircuit routineDef->procedure.CreateProcedureString?
+			// TODO: figure out how auth works in this case
+			parsedProcedure, _, err := planbuilder.Parse(ctx, c, procedure.CreateProcedureString)
 			if err != nil {
-				return nil, err
+				continue
 			}
 			procedurePlan, ok := parsedProcedure.(*plan.CreateProcedure)
 			if !ok {
@@ -259,10 +253,6 @@ func parametersRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) 
 			continue
 		}
 		for _, procedure := range procedures {
-			// Skip dolt procedure aliases to show in this table
-			if _, isAlias := doltProcedureAliasSet[procedure.Name]; isAlias {
-				continue
-			}
 			// We skip external procedures if the variable to show them is set to false
 			if showExternalProcedures.(int8) == 0 && procedure.IsExternal() {
 				continue
@@ -285,7 +275,7 @@ func parametersRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) 
 					parameterMode = "OUT"
 				}
 
-				charName, collName, charMaxLen, charOctetLen := getCharAndCollNamesAndCharMaxAndOctetLens(param.Type)
+				charName, collName, charMaxLen, charOctetLen := getCharAndCollNamesAndCharMaxAndOctetLens(ctx, param.Type)
 				numericPrecision, numericScale := getColumnPrecisionAndScale(param.Type)
 				// float types get nil for numericScale, but it gets 0 for this table
 				if _, ok := param.Type.(NumberType); ok {

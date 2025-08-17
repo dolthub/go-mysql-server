@@ -25,14 +25,28 @@ import (
 type Rank struct {
 	window *sql.WindowDefinition
 	pos    int
+	id     sql.ColumnId
 }
 
 var _ sql.FunctionExpression = (*Rank)(nil)
 var _ sql.WindowAggregation = (*Rank)(nil)
 var _ sql.WindowAdaptableExpression = (*Rank)(nil)
+var _ sql.CollationCoercible = (*Rank)(nil)
 
 func NewRank() sql.Expression {
 	return &Rank{}
+}
+
+// Id implements sql.IdExpression
+func (p *Rank) Id() sql.ColumnId {
+	return p.id
+}
+
+// WithId implements sql.IdExpression
+func (p *Rank) WithId(id sql.ColumnId) sql.IdExpression {
+	ret := *p
+	ret.id = id
+	return &ret
 }
 
 // Description implements sql.FunctionExpression
@@ -79,6 +93,11 @@ func (p *Rank) Type() sql.Type {
 	return types.Uint64
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Rank) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
+}
+
 // IsNullable implements sql.Expression
 func (p *Rank) IsNullable() bool {
 	return false
@@ -86,7 +105,7 @@ func (p *Rank) IsNullable() bool {
 
 // Eval implements sql.Expression
 func (p *Rank) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	panic("eval called on window function")
+	return nil, sql.ErrWindowUnsupported.New(p.FunctionName())
 }
 
 // Children implements sql.Expression
@@ -101,14 +120,14 @@ func (p *Rank) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 		return nil, err
 	}
 
-	return p.WithWindow(window)
+	return p.WithWindow(window), nil
 }
 
 // WithWindow implements sql.WindowAggregation
-func (p *Rank) WithWindow(window *sql.WindowDefinition) (sql.WindowAggregation, error) {
+func (p *Rank) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
 	nr := *p
 	nr.window = window
-	return &nr, nil
+	return &nr
 }
 
 func (p *Rank) NewWindowFunction() (sql.WindowFunction, error) {

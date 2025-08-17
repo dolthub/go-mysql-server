@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"reflect"
 	"strconv"
 	"time"
@@ -38,16 +39,16 @@ var (
 type YearType_ struct{}
 
 // Compare implements Type interface.
-func (t YearType_) Compare(a interface{}, b interface{}) (int, error) {
+func (t YearType_) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
 
-	as, err := t.Convert(a)
+	as, _, err := t.Convert(ctx, a)
 	if err != nil {
 		return 0, err
 	}
-	bs, err := t.Convert(b)
+	bs, _, err := t.Convert(ctx, b)
 	if err != nil {
 		return 0, err
 	}
@@ -64,83 +65,76 @@ func (t YearType_) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t YearType_) Convert(v interface{}) (interface{}, error) {
+func (t YearType_) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
-		return nil, nil
+		return nil, sql.InRange, nil
 	}
 
 	switch value := v.(type) {
 	case int:
-		return t.Convert(int64(value))
+		return t.Convert(ctx, int64(value))
 	case uint:
-		return t.Convert(int64(value))
+		return t.Convert(ctx, int64(value))
 	case int8:
-		return t.Convert(int64(value))
+		return t.Convert(ctx, int64(value))
 	case uint8:
-		return t.Convert(int64(value))
+		return t.Convert(ctx, int64(value))
 	case int16:
-		return t.Convert(int64(value))
+		return t.Convert(ctx, int64(value))
 	case uint16:
-		return t.Convert(int64(value))
+		return t.Convert(ctx, int64(value))
 	case int32:
-		return t.Convert(int64(value))
+		return t.Convert(ctx, int64(value))
 	case uint32:
-		return t.Convert(int64(value))
+		return t.Convert(ctx, int64(value))
 	case int64:
 		if value == 0 {
-			return int16(0), nil
+			return int16(0), sql.InRange, nil
 		}
 		if value >= 1 && value <= 69 {
-			return int16(value + 2000), nil
+			return int16(value + 2000), sql.InRange, nil
 		}
 		if value >= 70 && value <= 99 {
-			return int16(value + 1900), nil
+			return int16(value + 1900), sql.InRange, nil
 		}
 		if value >= 1901 && value <= 2155 {
-			return int16(value), nil
+			return int16(value), sql.InRange, nil
 		}
 	case uint64:
-		return t.Convert(int64(value))
+		return t.Convert(ctx, int64(value))
 	case float32:
-		return t.Convert(int64(value))
+		return t.Convert(ctx, int64(value))
 	case float64:
-		return t.Convert(int64(value))
+		return t.Convert(ctx, int64(value))
 	case decimal.Decimal:
-		return t.Convert(value.IntPart())
+		return t.Convert(ctx, value.IntPart())
 	case decimal.NullDecimal:
 		if !value.Valid {
-			return nil, nil
+			return nil, sql.InRange, nil
 		}
-		return t.Convert(value.Decimal.IntPart())
+		return t.Convert(ctx, value.Decimal.IntPart())
 	case string:
 		valueLength := len(value)
 		if valueLength == 1 || valueLength == 2 || valueLength == 4 {
 			i, err := strconv.ParseInt(value, 10, 64)
 			if err != nil {
-				return nil, err
+				return nil, sql.OutOfRange, err
 			}
 			if i == 0 {
-				return int16(2000), nil
+				return int16(2000), sql.InRange, nil
 			}
-			return t.Convert(i)
+			return t.Convert(ctx, i)
+		} else if f, err := strconv.ParseFloat(value, 64); err == nil {
+			return t.Convert(ctx, f)
 		}
 	case time.Time:
 		year := value.Year()
 		if year == 0 || (year >= 1901 && year <= 2155) {
-			return int16(year), nil
+			return int16(year), sql.InRange, nil
 		}
 	}
 
-	return nil, ErrConvertingToYear.New(v)
-}
-
-// MustConvert implements the Type interface.
-func (t YearType_) MustConvert(v interface{}) interface{} {
-	value, err := t.Convert(v)
-	if err != nil {
-		panic(err)
-	}
-	return value
+	return nil, sql.InRange, ErrConvertingToYear.New(v)
 }
 
 // Equals implements the Type interface.
@@ -150,7 +144,7 @@ func (t YearType_) Equals(otherType sql.Type) bool {
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t YearType_) MaxTextResponseByteLength() uint32 {
+func (t YearType_) MaxTextResponseByteLength(*sql.Context) uint32 {
 	return 4
 }
 
@@ -165,7 +159,7 @@ func (t YearType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.V
 		return sqltypes.NULL, nil
 	}
 
-	v, err := t.Convert(v)
+	v, _, err := t.Convert(ctx, v)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
@@ -195,4 +189,9 @@ func (t YearType_) ValueType() reflect.Type {
 // Zero implements Type interface.
 func (t YearType_) Zero() interface{} {
 	return int16(0)
+}
+
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (YearType_) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }

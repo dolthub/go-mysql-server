@@ -30,12 +30,17 @@ type NamedWindows struct {
 }
 
 var _ sql.Node = (*NamedWindows)(nil)
+var _ sql.CollationCoercible = (*NamedWindows)(nil)
 
 func NewNamedWindows(windowDefs map[string]*sql.WindowDefinition, child sql.Node) *NamedWindows {
 	return &NamedWindows{
 		UnaryNode:  UnaryNode{Child: child},
 		WindowDefs: windowDefs,
 	}
+}
+
+func (n *NamedWindows) IsReadOnly() bool {
+	return n.Child.IsReadOnly()
 }
 
 // String implements sql.Node
@@ -49,7 +54,7 @@ func (n *NamedWindows) String() string {
 	}
 	pr := sql.NewTreePrinter()
 	sb.WriteString(")")
-	_ = pr.WriteNode(sb.String())
+	_ = pr.WriteNode("%s", sb.String())
 	_ = pr.WriteChildren(n.Child.String())
 	return pr.String()
 }
@@ -65,7 +70,7 @@ func (n *NamedWindows) DebugString() string {
 	}
 	pr := sql.NewTreePrinter()
 	sb.WriteString(")")
-	_ = pr.WriteNode(sb.String())
+	_ = pr.WriteNode("%s", sb.String())
 	_ = pr.WriteChildren(sql.DebugString(n.Child))
 	return pr.String()
 }
@@ -83,7 +88,7 @@ func (n *NamedWindows) WithChildren(nodes ...sql.Node) (sql.Node, error) {
 	return NewNamedWindows(n.WindowDefs, nodes[0]), nil
 }
 
-// CheckPrivileges implements sql.Node
-func (n *NamedWindows) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return n.Child.CheckPrivileges(ctx, opChecker)
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (n *NamedWindows) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, n.Child)
 }

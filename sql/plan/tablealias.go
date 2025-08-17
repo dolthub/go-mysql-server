@@ -15,28 +15,73 @@
 package plan
 
 import (
-	"reflect"
-
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
-
-	"github.com/gabereiser/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // TableAlias is a node that acts as a table with a given name.
 type TableAlias struct {
 	*UnaryNode
-	name string
+	name    string
+	comment string
+	id      sql.TableId
+	cols    sql.ColSet
 }
+
+var _ sql.RenameableNode = (*TableAlias)(nil)
+var _ sql.CommentedNode = (*TableAlias)(nil)
+var _ sql.CollationCoercible = (*TableAlias)(nil)
 
 // NewTableAlias returns a new Table alias node.
 func NewTableAlias(name string, node sql.Node) *TableAlias {
-	return &TableAlias{UnaryNode: &UnaryNode{Child: node}, name: name}
+	ret := &TableAlias{UnaryNode: &UnaryNode{Child: node}, name: name}
+	if tin, ok := node.(TableIdNode); ok {
+		ret.id = tin.Id()
+		ret.cols = tin.Columns()
+	}
+	return ret
+}
+
+// WithId implements sql.TableIdNode
+func (t *TableAlias) WithId(id sql.TableId) TableIdNode {
+	ret := *t
+	ret.id = id
+	return &ret
+}
+
+// Id implements sql.TableIdNode
+func (t *TableAlias) Id() sql.TableId {
+	return t.id
+}
+
+// WithColumns implements sql.TableIdNode
+func (t *TableAlias) WithColumns(set sql.ColSet) TableIdNode {
+	ret := *t
+	ret.cols = set
+	return &ret
+}
+
+// Columns implements sql.TableIdNode
+func (t *TableAlias) Columns() sql.ColSet {
+	return t.cols
 }
 
 // Name implements the Nameable interface.
 func (t *TableAlias) Name() string {
 	return t.name
+}
+
+func (t *TableAlias) IsReadOnly() bool {
+	return t.Child.IsReadOnly()
+}
+
+func (t *TableAlias) WithComment(s string) sql.Node {
+	ret := *t
+	ret.comment = s
+	return &ret
+}
+
+func (t *TableAlias) Comment() string {
+	return t.comment
 }
 
 // Schema implements the Node interface. TableAlias alters the schema of its child element to rename the source of
@@ -58,35 +103,19 @@ func (t *TableAlias) WithChildren(children ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 1)
 	}
 
-	return NewTableAlias(t.name, children[0]), nil
+	ret := NewTableAlias(t.name, children[0])
+	ret.comment = t.comment
+	ret.cols = t.cols
+	ret.id = t.id
+	return ret, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (t *TableAlias) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (t *TableAlias) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	if t.UnaryNode != nil {
-		return t.UnaryNode.Child.CheckPrivileges(ctx, opChecker)
+		return sql.GetCoercibility(ctx, t.UnaryNode.Child)
 	}
-	return true
-}
-
-// RowIter implements the Node interface.
-func (t *TableAlias) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	var table string
-	if tbl, ok := t.Child.(sql.Nameable); ok {
-		table = tbl.Name()
-	} else {
-		table = reflect.TypeOf(t.Child).String()
-	}
-
-	span, ctx := ctx.Span("sql.TableAlias", trace.WithAttributes(attribute.String("table", table)))
-
-	iter, err := t.Child.RowIter(ctx, row)
-	if err != nil {
-		span.End()
-		return nil, err
-	}
-
-	return sql.NewSpanIter(span, iter), nil
+	return sql.Collation_binary, 7
 }
 
 func (t TableAlias) String() string {
@@ -103,7 +132,7 @@ func (t TableAlias) DebugString() string {
 	return pr.String()
 }
 
-func (t TableAlias) WithName(name string) *TableAlias {
+func (t TableAlias) WithName(name string) sql.Node {
 	t.name = name
 	return &t
 }

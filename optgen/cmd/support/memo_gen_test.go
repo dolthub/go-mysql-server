@@ -18,88 +18,110 @@ func TestMemoGen(t *testing.T) {
           "github.com/gabereiser/go-mysql-server/sql"
           "github.com/gabereiser/go-mysql-server/sql/plan"
         )
-
-        type hashJoin struct {
-          *joinBase
-          innerAttrs []sql.Expression
-          outerAttrs []sql.Expression
+        
+        type HashJoin struct {
+          *JoinBase
+          InnerAttrs []sql.Expression
+          OuterAttrs []sql.Expression
         }
-
-        var _ relExpr = (*hashJoin)(nil)
-        var _ joinRel = (*hashJoin)(nil)
-
+        
+        var _ RelExpr = (*hashJoin)(nil)
+        var _ JoinRel = (*hashJoin)(nil)
+        
         func (r *hashJoin) String() string {
-          return formatRelExpr(r)
+          return FormatExpr(r)
         }
-
-        func (r *hashJoin) joinPrivate() *joinBase {
-          return r.joinBase
+        
+        func (r *hashJoin) JoinPrivate() *JoinBase {
+          return r.JoinBase
         }
-
-        type tableScan struct {
-          *relBase
-          table *plan.ResolvedTable
+        
+        type TableScan struct {
+          *sourceBase
+          Table *plan.TableNode
         }
-
-        var _ relExpr = (*tableScan)(nil)
-        var _ sourceRel = (*tableScan)(nil)
-
+        
+        var _ RelExpr = (*tableScan)(nil)
+        var _ SourceRel = (*tableScan)(nil)
+        
         func (r *tableScan) String() string {
-          return formatRelExpr(r)
+          return FormatExpr(r)
         }
-
-        func (r *tableScan) name() string {
-          return strings.ToLower(r.table.Name())
+        
+        func (r *tableScan) Name() string {
+          return strings.ToLower(r.Table.Name())
         }
-
-        func (r *tableScan) tableId() TableId {
-          return tableIdForSource(r.g.id)
+        
+        func (r *tableScan) TableId() sql.TableId {
+          return TableIdForSource(r.g.Id)
         }
-
-        func (r *tableScan) children() []*exprGroup {
+        
+        func (r *tableScan) TableIdNode() plan.TableIdNode {
+          return r.Table
+        }
+        
+        func (r *tableScan) OutputCols() sql.Schema {
+          return r.Table.Schema()
+        }
+        
+        func (r *tableScan) Children() []*ExprGroup {
           return nil
         }
-
-        func (r *tableScan) outputCols() sql.Schema {
-          return r.table.Schema()
-        }
-
-        func formatRelExpr(r relExpr) string {
+        
+        func FormatExpr(r exprType) string {
           switch r := r.(type) {
           case *hashJoin:
-            return fmt.Sprintf("hashJoin %d %d", r.left.id, r.right.id)
+            return fmt.Sprintf("hashjoin %d %d", r.Left.Id, r.Right.Id)
           case *tableScan:
-            return fmt.Sprintf("tableScan: %s", r.name())
+            return fmt.Sprintf("tablescan: %s", r.Name())
           default:
-            panic(fmt.Sprintf("unknown relExpr type: %T", r))
+            panic(fmt.Sprintf("unknown RelExpr type: %T", r))
           }
         }
-
-        func buildRelExpr(b *ExecBuilder, r relExpr, input sql.Schema, children ...sql.Node) (sql.Node, error) {
+        
+        func buildRelExpr(b *ExecBuilder, r RelExpr, children ...sql.Node) (sql.Node, error) {
+          var result sql.Node
+          var err error
+        
           switch r := r.(type) {
           case *hashJoin:
-          return b.buildHashJoin(r, input, children...)
+          result, err = b.buildHashJoin(r, children...)
           case *tableScan:
-          return b.buildTableScan(r, input, children...)
+          result, err = b.buildTableScan(r, children...)
           default:
-            panic(fmt.Sprintf("unknown relExpr type: %T", r))
+            panic(fmt.Sprintf("unknown RelExpr type: %T", r))
           }
+        
+          if err != nil {
+            return nil, err
+          }
+        
+          if withDescribeStats, ok := result.(sql.WithDescribeStats); ok {
+            withDescribeStats.SetDescribeStats(*DescribeStats(r))
+          }
+          result, err = r.Group().finalize(result)
+          if err != nil {
+            return nil, err
+          }
+          return result, nil
         }
-		`,
+`,
 	}
 
-	defs := []MemoDef{
-		{
-			Name:   "hashJoin",
-			IsJoin: true,
-			Attrs: [][2]string{
-				{"innerAttrs", "[]sql.Expression"},
-				{"outerAttrs", "[]sql.Expression"},
+	defs := MemoExprs{
+		Exprs: []ExprDef{
+			{
+				Name: "hashJoin",
+				Join: true,
+				Attrs: [][2]string{
+					{"innerAttrs", "[]sql.Expression"},
+					{"outerAttrs", "[]sql.Expression"},
+				},
 			},
-		},
-		{
-			Name:       "tableScan",
-			SourceType: "*plan.ResolvedTable",
+			{
+				Name:       "tableScan",
+				SourceType: "*plan.TableNode",
+			},
 		},
 	}
 	gen := MemoGen{}

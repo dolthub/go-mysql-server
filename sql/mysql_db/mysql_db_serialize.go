@@ -15,7 +15,7 @@
 package mysql_db
 
 import (
-	flatbuffers "github.com/google/flatbuffers/go"
+	flatbuffers "github.com/dolthub/flatbuffers/v23/go"
 
 	"github.com/gabereiser/go-mysql-server/sql"
 	"github.com/gabereiser/go-mysql-server/sql/mysql_db/serial"
@@ -97,6 +97,23 @@ func serializeTables(b *flatbuffers.Builder, tables []PrivilegeSetTable) flatbuf
 	return serializeVectorOffsets(b, serial.PrivilegeSetDatabaseStartTablesVector, offsets)
 }
 
+func serializeRoutines(b *flatbuffers.Builder, routines []PrivilegeSetRoutine) flatbuffers.UOffsetT {
+	offsets := make([]flatbuffers.UOffsetT, len(routines))
+	for i, routine := range routines {
+		name := b.CreateString(routine.RoutineName())
+		privs := serializePrivilegeTypes(b, serial.PrivilegeSetTableStartPrivsVector, routine.ToSlice())
+
+		serial.PrivilegeSetRoutineStart(b)
+		serial.PrivilegeSetRoutineAddName(b, name)
+		serial.PrivilegeSetRoutineAddPrivs(b, privs)
+		serial.PrivilegeSetRoutineAddIsProc(b, routine.isProc)
+
+		offsets[len(offsets)-i-1] = serial.PrivilegeSetRoutineEnd(b)
+	}
+
+	return serializeVectorOffsets(b, serial.PrivilegeSetDatabaseStartRoutinesVector, offsets)
+}
+
 // serializeDatabases writes the given Privilege Set Databases into the flatbuffer Builder, and returns the offset
 func serializeDatabases(b *flatbuffers.Builder, databases []PrivilegeSetDatabase) flatbuffers.UOffsetT {
 	// Write database variables, and save offsets
@@ -105,11 +122,13 @@ func serializeDatabases(b *flatbuffers.Builder, databases []PrivilegeSetDatabase
 		name := b.CreateString(database.Name())
 		privs := serializePrivilegeTypes(b, serial.PrivilegeSetDatabaseStartPrivsVector, database.ToSlice())
 		tables := serializeTables(b, database.getTables())
+		routines := serializeRoutines(b, database.getRoutines())
 
 		serial.PrivilegeSetDatabaseStart(b)
 		serial.PrivilegeSetDatabaseAddName(b, name)
 		serial.PrivilegeSetDatabaseAddPrivs(b, privs)
 		serial.PrivilegeSetDatabaseAddTables(b, tables)
+		serial.PrivilegeSetDatabaseAddRoutines(b, routines)
 		offsets[len(offsets)-i-1] = serial.PrivilegeSetDatabaseEnd(b)
 	}
 
@@ -150,7 +169,7 @@ func serializeUser(b *flatbuffers.Builder, users []*User) flatbuffers.UOffsetT {
 		host := b.CreateString(user.Host)
 		privilegeSet := serializePrivilegeSet(b, &user.PrivilegeSet)
 		plugin := b.CreateString(user.Plugin)
-		password := b.CreateString(user.Password)
+		authString := b.CreateString(user.AuthString)
 		attributes := serializeAttributes(b, user.Attributes)
 		identity := b.CreateString(user.Identity)
 
@@ -159,7 +178,7 @@ func serializeUser(b *flatbuffers.Builder, users []*User) flatbuffers.UOffsetT {
 		serial.UserAddHost(b, host)
 		serial.UserAddPrivilegeSet(b, privilegeSet)
 		serial.UserAddPlugin(b, plugin)
-		serial.UserAddPassword(b, password)
+		serial.UserAddPassword(b, authString)
 		serial.UserAddPasswordLastChanged(b, user.PasswordLastChanged.Unix())
 		serial.UserAddLocked(b, user.Locked)
 		serial.UserAddAttributes(b, attributes)

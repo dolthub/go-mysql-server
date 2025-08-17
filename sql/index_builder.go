@@ -15,6 +15,11 @@
 package sql
 
 import (
+	"fmt"
+	"math"
+	"strings"
+
+	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 )
 
@@ -24,26 +29,30 @@ var (
 	ErrInvalidRangeType    = errors.NewKind("encountered the RangeType_Invalid")
 )
 
-// IndexBuilder builds ranges based on the combination of calls made for the given index, and then relies on the Index
+// MySQLIndexBuilder builds ranges based on the combination of calls made for the given index, and then relies on the Index
 // to return an IndexLookup from the created ranges.
-type IndexBuilder struct {
+type MySQLIndexBuilder struct {
 	idx          Index
 	isInvalid    bool
 	err          error
 	colExprTypes map[string]Type
-	ranges       map[string][]RangeColumnExpr
+	ranges       map[string][]MySQLRangeColumnExpr
 }
 
-// NewIndexBuilder returns a new IndexBuilder. Used internally to construct a range that will later be passed to
+// NewMySQLIndexBuilder returns a new MySQLIndexBuilder. Used internally to construct a range that will later be passed to
 // integrators through the Index function NewLookup.
-func NewIndexBuilder(idx Index) *IndexBuilder {
+func NewMySQLIndexBuilder(idx Index) *MySQLIndexBuilder {
 	colExprTypes := make(map[string]Type)
-	ranges := make(map[string][]RangeColumnExpr)
+	ranges := make(map[string][]MySQLRangeColumnExpr)
 	for _, cet := range idx.ColumnExpressionTypes() {
-		colExprTypes[cet.Expression] = cet.Type
-		ranges[cet.Expression] = []RangeColumnExpr{AllRangeColumnExpr(cet.Type)}
+		typ := cet.Type
+		if _, ok := typ.(StringType); ok {
+			typ = typ.Promote()
+		}
+		colExprTypes[strings.ToLower(cet.Expression)] = typ
+		ranges[strings.ToLower(cet.Expression)] = []MySQLRangeColumnExpr{AllRangeColumnExpr(typ)}
 	}
-	return &IndexBuilder{
+	return &MySQLIndexBuilder{
 		idx:          idx,
 		isInvalid:    false,
 		err:          nil,
@@ -52,8 +61,50 @@ func NewIndexBuilder(idx Index) *IndexBuilder {
 	}
 }
 
+func ceil(val interface{}) interface{} {
+	switch v := val.(type) {
+	case float32:
+		return float32(math.Ceil(float64(v)))
+	case float64:
+		return math.Ceil(v)
+	case decimal.Decimal:
+		return v.Ceil()
+	case string:
+		dec, err := decimal.NewFromString(v)
+		if err != nil {
+			return v
+		}
+		return ceil(dec)
+	case []byte:
+		return ceil(string(v))
+	default:
+		return v
+	}
+}
+
+func floor(val interface{}) interface{} {
+	switch v := val.(type) {
+	case float32:
+		return float32(math.Floor(float64(v)))
+	case float64:
+		return math.Floor(v)
+	case decimal.Decimal:
+		return v.Floor()
+	case string:
+		dec, err := decimal.NewFromString(v)
+		if err != nil {
+			return v
+		}
+		return floor(dec)
+	case []byte:
+		return floor(string(v))
+	default:
+		return v
+	}
+}
+
 // Equals represents colExpr = key. For IN expressions, pass all of them in the same Equals call.
-func (b *IndexBuilder) Equals(ctx *Context, colExpr string, keys ...interface{}) *IndexBuilder {
+func (b *MySQLIndexBuilder) Equals(ctx *Context, colExpr string, keys ...interface{}) *MySQLIndexBuilder {
 	if b.isInvalid {
 		return b
 	}
@@ -63,16 +114,40 @@ func (b *IndexBuilder) Equals(ctx *Context, colExpr string, keys ...interface{})
 		b.err = ErrInvalidColExpr.New(colExpr, b.idx.ID())
 		return b
 	}
-	potentialRanges := make([]RangeColumnExpr, len(keys))
-	for i, key := range keys {
-		potentialRanges[i] = ClosedRangeColumnExpr(key, key, typ)
+	potentialRanges := make([]MySQLRangeColumnExpr, len(keys))
+	for i, k := range keys {
+		// if converting from float to int results in rounding, then it's empty range
+		if t, ok := typ.(NumberType); ok && !t.IsFloat() {
+			f, c := floor(k), ceil(k)
+			switch k.(type) {
+			case float32, float64:
+				if f != c {
+					potentialRanges[i] = EmptyRangeColumnExpr(typ)
+					continue
+				}
+			case decimal.Decimal:
+				if !f.(decimal.Decimal).Equals(c.(decimal.Decimal)) {
+					potentialRanges[i] = EmptyRangeColumnExpr(typ)
+					continue
+				}
+			}
+		}
+
+		var err error
+		k, _, err = typ.Convert(ctx, k)
+		if err != nil {
+			b.isInvalid = true
+			b.err = err
+			return b
+		}
+		potentialRanges[i] = ClosedRangeColumnExpr(k, k, typ)
 	}
 	b.updateCol(ctx, colExpr, potentialRanges...)
 	return b
 }
 
 // NotEquals represents colExpr <> key.
-func (b *IndexBuilder) NotEquals(ctx *Context, colExpr string, key interface{}) *IndexBuilder {
+func (b *MySQLIndexBuilder) NotEquals(ctx *Context, colExpr string, key interface{}) *MySQLIndexBuilder {
 	if b.isInvalid {
 		return b
 	}
@@ -82,6 +157,28 @@ func (b *IndexBuilder) NotEquals(ctx *Context, colExpr string, key interface{}) 
 		b.err = ErrInvalidColExpr.New(colExpr, b.idx.ID())
 		return b
 	}
+	// if converting from float to int results in rounding, then it's entire range (excluding nulls)
+	f, c := floor(key), ceil(key)
+	switch key.(type) {
+	case float32, float64:
+		if f != c {
+			b.updateCol(ctx, colExpr, NotNullRangeColumnExpr(typ))
+			return b
+		}
+	case decimal.Decimal:
+		if !f.(decimal.Decimal).Equals(c.(decimal.Decimal)) {
+			b.updateCol(ctx, colExpr, NotNullRangeColumnExpr(typ))
+			return b
+		}
+	}
+
+	key, _, err := typ.Convert(ctx, key)
+	if err != nil {
+		b.isInvalid = true
+		b.err = err
+		return b
+	}
+
 	b.updateCol(ctx, colExpr, GreaterThanRangeColumnExpr(key, typ), LessThanRangeColumnExpr(key, typ))
 	if !b.isInvalid {
 		ranges, err := SimplifyRangeColumn(b.ranges[colExpr]...)
@@ -100,7 +197,7 @@ func (b *IndexBuilder) NotEquals(ctx *Context, colExpr string, key interface{}) 
 }
 
 // GreaterThan represents colExpr > key.
-func (b *IndexBuilder) GreaterThan(ctx *Context, colExpr string, key interface{}) *IndexBuilder {
+func (b *MySQLIndexBuilder) GreaterThan(ctx *Context, colExpr string, key interface{}) *MySQLIndexBuilder {
 	if b.isInvalid {
 		return b
 	}
@@ -110,12 +207,24 @@ func (b *IndexBuilder) GreaterThan(ctx *Context, colExpr string, key interface{}
 		b.err = ErrInvalidColExpr.New(colExpr, b.idx.ID())
 		return b
 	}
+
+	if t, ok := typ.(NumberType); ok && !t.IsFloat() {
+		key = floor(key)
+	}
+
+	key, _, err := typ.Convert(ctx, key)
+	if err != nil {
+		b.isInvalid = true
+		b.err = err
+		return b
+	}
+
 	b.updateCol(ctx, colExpr, GreaterThanRangeColumnExpr(key, typ))
 	return b
 }
 
 // GreaterOrEqual represents colExpr >= key.
-func (b *IndexBuilder) GreaterOrEqual(ctx *Context, colExpr string, key interface{}) *IndexBuilder {
+func (b *MySQLIndexBuilder) GreaterOrEqual(ctx *Context, colExpr string, key interface{}) *MySQLIndexBuilder {
 	if b.isInvalid {
 		return b
 	}
@@ -125,12 +234,39 @@ func (b *IndexBuilder) GreaterOrEqual(ctx *Context, colExpr string, key interfac
 		b.err = ErrInvalidColExpr.New(colExpr, b.idx.ID())
 		return b
 	}
-	b.updateCol(ctx, colExpr, GreaterOrEqualRangeColumnExpr(key, typ))
+
+	var exclude bool
+	if t, ok := typ.(NumberType); ok && !t.IsFloat() {
+		newKey := floor(key)
+		switch key.(type) {
+		case float32, float64:
+			exclude = key != newKey
+		case decimal.Decimal:
+			exclude = !key.(decimal.Decimal).Equals(newKey.(decimal.Decimal))
+		}
+		key = newKey
+	}
+
+	key, _, err := typ.Convert(ctx, key)
+	if err != nil {
+		b.isInvalid = true
+		b.err = err
+		return b
+	}
+
+	var rangeColExpr MySQLRangeColumnExpr
+	if exclude {
+		rangeColExpr = GreaterThanRangeColumnExpr(key, typ)
+	} else {
+		rangeColExpr = GreaterOrEqualRangeColumnExpr(key, typ)
+	}
+	b.updateCol(ctx, colExpr, rangeColExpr)
+
 	return b
 }
 
 // LessThan represents colExpr < key.
-func (b *IndexBuilder) LessThan(ctx *Context, colExpr string, key interface{}) *IndexBuilder {
+func (b *MySQLIndexBuilder) LessThan(ctx *Context, colExpr string, key interface{}) *MySQLIndexBuilder {
 	if b.isInvalid {
 		return b
 	}
@@ -140,12 +276,23 @@ func (b *IndexBuilder) LessThan(ctx *Context, colExpr string, key interface{}) *
 		b.err = ErrInvalidColExpr.New(colExpr, b.idx.ID())
 		return b
 	}
+
+	if t, ok := typ.(NumberType); ok && !t.IsFloat() {
+		key = ceil(key)
+	}
+	key, _, err := typ.Convert(ctx, key)
+	if err != nil {
+		b.isInvalid = true
+		b.err = err
+		return b
+	}
+
 	b.updateCol(ctx, colExpr, LessThanRangeColumnExpr(key, typ))
 	return b
 }
 
 // LessOrEqual represents colExpr <= key.
-func (b *IndexBuilder) LessOrEqual(ctx *Context, colExpr string, key interface{}) *IndexBuilder {
+func (b *MySQLIndexBuilder) LessOrEqual(ctx *Context, colExpr string, key interface{}) *MySQLIndexBuilder {
 	if b.isInvalid {
 		return b
 	}
@@ -155,12 +302,39 @@ func (b *IndexBuilder) LessOrEqual(ctx *Context, colExpr string, key interface{}
 		b.err = ErrInvalidColExpr.New(colExpr, b.idx.ID())
 		return b
 	}
-	b.updateCol(ctx, colExpr, LessOrEqualRangeColumnExpr(key, typ))
+
+	var exclude bool
+	if t, ok := typ.(NumberType); ok && !t.IsFloat() {
+		newKey := ceil(key)
+		switch key.(type) {
+		case float32, float64:
+			exclude = key != newKey
+		case decimal.Decimal:
+			exclude = !key.(decimal.Decimal).Equals(newKey.(decimal.Decimal))
+		}
+		key = newKey
+	}
+
+	key, _, err := typ.Convert(ctx, key)
+	if err != nil {
+		b.isInvalid = true
+		b.err = err
+		return b
+	}
+
+	var rangeColExpr MySQLRangeColumnExpr
+	if exclude {
+		rangeColExpr = LessThanRangeColumnExpr(key, typ)
+	} else {
+		rangeColExpr = LessOrEqualRangeColumnExpr(key, typ)
+	}
+	b.updateCol(ctx, colExpr, rangeColExpr)
+
 	return b
 }
 
 // IsNull represents colExpr = nil
-func (b *IndexBuilder) IsNull(ctx *Context, colExpr string) *IndexBuilder {
+func (b *MySQLIndexBuilder) IsNull(ctx *Context, colExpr string) *MySQLIndexBuilder {
 	if b.isInvalid {
 		return b
 	}
@@ -176,7 +350,7 @@ func (b *IndexBuilder) IsNull(ctx *Context, colExpr string) *IndexBuilder {
 }
 
 // IsNotNull represents colExpr != nil
-func (b *IndexBuilder) IsNotNull(ctx *Context, colExpr string) *IndexBuilder {
+func (b *MySQLIndexBuilder) IsNotNull(ctx *Context, colExpr string) *MySQLIndexBuilder {
 	if b.isInvalid {
 		return b
 	}
@@ -192,22 +366,26 @@ func (b *IndexBuilder) IsNotNull(ctx *Context, colExpr string) *IndexBuilder {
 }
 
 // Ranges returns all ranges for this index builder. If the builder is in an error state then this returns nil.
-func (b *IndexBuilder) Ranges(ctx *Context) RangeCollection {
+func (b *MySQLIndexBuilder) Ranges(ctx *Context) MySQLRangeCollection {
 	if b.err != nil {
 		return nil
 	}
 	// An invalid builder that did not error got into a state where no columns will ever match, so we return an empty range
 	if b.isInvalid {
 		cets := b.idx.ColumnExpressionTypes()
-		emptyRange := make(Range, len(cets))
+		emptyRange := make(MySQLRange, len(cets))
 		for i, cet := range cets {
-			emptyRange[i] = EmptyRangeColumnExpr(cet.Type)
+			typ := cet.Type
+			if _, ok := typ.(StringType); ok {
+				typ = typ.Promote()
+			}
+			emptyRange[i] = EmptyRangeColumnExpr(typ)
 		}
-		return RangeCollection{emptyRange}
+		return MySQLRangeCollection{emptyRange}
 	}
-	var allColumns [][]RangeColumnExpr
+	var allColumns [][]MySQLRangeColumnExpr
 	for _, colExpr := range b.idx.Expressions() {
-		ranges, ok := b.ranges[colExpr]
+		ranges, ok := b.ranges[strings.ToLower(colExpr)]
 		if !ok {
 			// An index builder is guaranteed to cover the first n expressions, so if we hit an expression that we do
 			// not have an entry for then we've hit all the ranges.
@@ -223,11 +401,11 @@ func (b *IndexBuilder) Ranges(ctx *Context) RangeCollection {
 	for i, rangeColumn := range allColumns {
 		colCounts[i] = len(rangeColumn)
 	}
-	var ranges []Range
+	var ranges MySQLRangeCollection
 	exit := false
 	for !exit {
 		exit = true
-		currentRange := make(Range, len(allColumns))
+		currentRange := make(MySQLRange, len(allColumns))
 		for colIdx, exprCount := range colCounts {
 			permutation[colIdx] = (permutation[colIdx] + 1) % exprCount
 			if permutation[colIdx] != 0 {
@@ -249,17 +427,17 @@ func (b *IndexBuilder) Ranges(ctx *Context) RangeCollection {
 	}
 	if len(ranges) == 0 {
 		cets := b.idx.ColumnExpressionTypes()
-		emptyRange := make(Range, len(cets))
+		emptyRange := make(MySQLRange, len(cets))
 		for i, cet := range cets {
-			emptyRange[i] = EmptyRangeColumnExpr(cet.Type)
+			emptyRange[i] = EmptyRangeColumnExpr(cet.Type.Promote())
 		}
-		return RangeCollection{emptyRange}
+		return MySQLRangeCollection{emptyRange}
 	}
 	return ranges
 }
 
 // Build constructs a new IndexLookup based on the ranges that have been built internally by this builder.
-func (b *IndexBuilder) Build(ctx *Context) (IndexLookup, error) {
+func (b *MySQLIndexBuilder) Build(ctx *Context) (IndexLookup, error) {
 	if b.err != nil {
 		return emptyLookup, b.err
 	} else {
@@ -274,7 +452,7 @@ func (b *IndexBuilder) Build(ctx *Context) (IndexLookup, error) {
 // updateCol updates the internal columns with the given ranges by intersecting each given range with each existing
 // range. That means that each given range is treated as an OR with respect to the other given ranges. If multiple
 // ranges are to be intersected with respect to one another, multiple calls to updateCol should be made.
-func (b *IndexBuilder) updateCol(ctx *Context, colExpr string, potentialRanges ...RangeColumnExpr) {
+func (b *MySQLIndexBuilder) updateCol(ctx *Context, colExpr string, potentialRanges ...MySQLRangeColumnExpr) {
 	if len(potentialRanges) == 0 {
 		return
 	}
@@ -285,7 +463,7 @@ func (b *IndexBuilder) updateCol(ctx *Context, colExpr string, potentialRanges .
 		return
 	}
 
-	var newRanges []RangeColumnExpr
+	var newRanges []MySQLRangeColumnExpr
 	for _, currentRange := range currentRanges {
 		for _, potentialRange := range potentialRanges {
 
@@ -319,11 +497,11 @@ func (b *IndexBuilder) updateCol(ctx *Context, colExpr string, potentialRanges .
 	b.ranges[colExpr] = newRanges
 }
 
-// SpatialIndexBuilder is like the IndexBuilder, but spatial
+// SpatialIndexBuilder is like the MySQLIndexBuilder, but spatial
 type SpatialIndexBuilder struct {
 	idx Index
 	typ Type
-	rng RangeColumnExpr
+	rng MySQLRangeColumnExpr
 }
 
 func NewSpatialIndexBuilder(idx Index) *SpatialIndexBuilder {
@@ -331,7 +509,7 @@ func NewSpatialIndexBuilder(idx Index) *SpatialIndexBuilder {
 }
 
 func (b *SpatialIndexBuilder) AddRange(lower, upper interface{}) *SpatialIndexBuilder {
-	b.rng = RangeColumnExpr{
+	b.rng = MySQLRangeColumnExpr{
 		LowerBound: Below{Key: lower},
 		UpperBound: Above{Key: upper},
 		Typ:        b.typ,
@@ -342,7 +520,72 @@ func (b *SpatialIndexBuilder) AddRange(lower, upper interface{}) *SpatialIndexBu
 func (b *SpatialIndexBuilder) Build() (IndexLookup, error) {
 	return IndexLookup{
 		Index:           b.idx,
-		Ranges:          RangeCollection{{b.rng}},
+		Ranges:          MySQLRangeCollection{{b.rng}},
 		IsSpatialLookup: true,
+	}, nil
+}
+
+// EqualityIndexBuilder is a range builder builds equality expressions
+// more quickly than the default builder
+type EqualityIndexBuilder struct {
+	idx   Index
+	rng   MySQLRange
+	empty bool
+}
+
+func NewEqualityIndexBuilder(idx Index) *EqualityIndexBuilder {
+	return &EqualityIndexBuilder{idx: idx, rng: make(MySQLRange, len(idx.Expressions()))}
+}
+
+// AddEquality represents colExpr = key. For IN expressions, pass all of them in the same AddEquality call.
+func (b *EqualityIndexBuilder) AddEquality(ctx *Context, colIdx int, k interface{}) error {
+	if b.empty {
+		return nil
+	}
+	if colIdx >= len(b.rng) {
+		return fmt.Errorf("invalid index for building index lookup")
+	}
+	if b.rng[colIdx].UpperBound != nil {
+		return fmt.Errorf("redundant restriction on index column")
+	}
+
+	typ := b.idx.ColumnExpressionTypes()[colIdx].Type
+	// if converting from float to int results in rounding, then it's empty range
+	if t, ok := typ.(NumberType); ok && !t.IsFloat() {
+		f, c := floor(k), ceil(k)
+		switch k.(type) {
+		case float32, float64:
+			if f != c {
+				b.empty = true
+				return nil
+			}
+		case decimal.Decimal:
+			if !f.(decimal.Decimal).Equals(c.(decimal.Decimal)) {
+				b.empty = true
+				return nil
+			}
+		}
+	}
+
+	var err error
+	k, _, err = typ.Convert(ctx, k)
+	if err != nil {
+		return err
+	}
+	b.rng[colIdx] = ClosedRangeColumnExpr(k, k, typ)
+
+	return nil
+}
+
+func (b *EqualityIndexBuilder) Build(_ *Context) (IndexLookup, error) {
+	if b.empty {
+		for i, cet := range b.idx.ColumnExpressionTypes() {
+			b.rng[i] = EmptyRangeColumnExpr(cet.Type)
+		}
+	}
+	return IndexLookup{
+		Index:        b.idx,
+		Ranges:       MySQLRangeCollection{b.rng},
+		IsEmptyRange: b.empty,
 	}, nil
 }

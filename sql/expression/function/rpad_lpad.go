@@ -61,6 +61,7 @@ type Pad struct {
 }
 
 var _ sql.FunctionExpression = (*Pad)(nil)
+var _ sql.CollationCoercible = (*Pad)(nil)
 
 // FunctionName implements sql.FunctionExpression
 func (p *Pad) FunctionName() string {
@@ -102,6 +103,13 @@ func (p *Pad) IsNullable() bool {
 // Type implements the Expression interface.
 func (p *Pad) Type() sql.Type { return types.LongText }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (p *Pad) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	leftCollation, leftCoercibility := sql.GetCoercibility(ctx, p.str)
+	rightCollation, rightCoercibility := sql.GetCoercibility(ctx, p.padStr)
+	return sql.ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
+}
+
 func (p *Pad) String() string {
 	if p.padType == lPadType {
 		return fmt.Sprintf("lpad(%s, %s, %s)", p.str, p.length, p.padStr)
@@ -128,7 +136,7 @@ func (p *Pad) Eval(
 		return nil, nil
 	}
 
-	str, err = types.LongText.Convert(str)
+	str, _, err = types.LongText.Convert(ctx, str)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str))
 	}
@@ -142,7 +150,7 @@ func (p *Pad) Eval(
 		return nil, nil
 	}
 
-	length, err = types.Int64.Convert(length)
+	length, _, err = types.Int64.Convert(ctx, length)
 	if err != nil {
 		return nil, err
 	}
@@ -156,12 +164,24 @@ func (p *Pad) Eval(
 		return nil, nil
 	}
 
-	padStr, err = types.LongText.Convert(padStr)
+	padStr, _, err = types.LongText.Convert(ctx, padStr)
 	if err != nil {
 		return nil, err
 	}
 
-	return padString(str.(string), length.(int64), padStr.(string), p.padType)
+	{
+		str, _, err := sql.Unwrap[string](ctx, str)
+		if err != nil {
+			return nil, err
+		}
+
+		padStr, _, err := sql.Unwrap[string](ctx, padStr)
+		if err != nil {
+			return nil, err
+		}
+
+		return padString(str, length.(int64), padStr, p.padType)
+	}
 }
 
 func padString(str string, length int64, padStr string, padType padType) (string, error) {

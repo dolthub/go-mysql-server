@@ -2,9 +2,9 @@ package driver
 
 import (
 	"context"
-	"fmt"
 
-	"github.com/gabereiser/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/memory"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // A SessionBuilder creates SQL sessions.
@@ -13,9 +13,17 @@ type SessionBuilder interface {
 }
 
 // DefaultSessionBuilder creates basic SQL sessions.
-type DefaultSessionBuilder struct{}
+type DefaultSessionBuilder struct {
+	provider sql.DatabaseProvider
+}
+
+func NewDefaultSessionBuilder(provider sql.DatabaseProvider) *DefaultSessionBuilder {
+	return &DefaultSessionBuilder{
+		provider: provider,
+	}
+}
 
 // NewSession calls sql.NewBaseSessionWithClientServer.
-func (DefaultSessionBuilder) NewSession(ctx context.Context, id uint32, conn *Connector) (sql.Session, error) {
-	return sql.NewBaseSessionWithClientServer(conn.Server(), sql.Client{Address: fmt.Sprintf("#%d", id)}, id), nil
+func (d DefaultSessionBuilder) NewSession(ctx context.Context, id uint32, conn *Connector) (sql.Session, error) {
+	return memory.NewSession(sql.NewBaseSession(), d.provider), nil
 }

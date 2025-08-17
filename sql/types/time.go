@@ -15,7 +15,7 @@
 package types
 
 import (
-	"fmt"
+	"context"
 	"math"
 	"reflect"
 	"strconv"
@@ -68,8 +68,11 @@ type TimeType interface {
 
 type TimespanType_ struct{}
 
+var _ TimeType = TimespanType_{}
+var _ sql.CollationCoercible = TimespanType_{}
+
 // MaxTextResponseByteLength implements the Type interface
-func (t TimespanType_) MaxTextResponseByteLength() uint32 {
+func (t TimespanType_) MaxTextResponseByteLength(*sql.Context) uint32 {
 	// 10 digits are required for a text representation without microseconds, but with microseconds
 	// requires 17, so return 17 as an upper limit (i.e. len(+123:00:00.999999"))
 	return 17
@@ -79,7 +82,7 @@ func (t TimespanType_) MaxTextResponseByteLength() uint32 {
 type Timespan int64
 
 // Compare implements Type interface.
-func (t TimespanType_) Compare(a interface{}, b interface{}) (int, error) {
+func (t TimespanType_) Compare(s context.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
@@ -96,21 +99,12 @@ func (t TimespanType_) Compare(a interface{}, b interface{}) (int, error) {
 	return as.Compare(bs), nil
 }
 
-func (t TimespanType_) Convert(v interface{}) (interface{}, error) {
+func (t TimespanType_) Convert(c context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
-		return nil, nil
+		return nil, sql.InRange, nil
 	}
-
-	return t.ConvertToTimespan(v)
-}
-
-// MustConvert implements the Type interface.
-func (t TimespanType_) MustConvert(v interface{}) interface{} {
-	value, err := t.Convert(v)
-	if err != nil {
-		panic(err)
-	}
-	return value
+	ret, err := t.ConvertToTimespan(v)
+	return ret, sql.InRange, err
 }
 
 // ConvertToTimespan converts the given interface value to a Timespan. This follows the conversion rules of MySQL, which
@@ -260,7 +254,7 @@ func (t TimespanType_) Promote() sql.Type {
 }
 
 // SQL implements Type interface.
-func (t TimespanType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
+func (t TimespanType_) SQL(_ *sql.Context, dest []byte, v interface{}) (sqltypes.Value, error) {
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
@@ -269,8 +263,7 @@ func (t TimespanType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltyp
 		return sqltypes.Value{}, err
 	}
 
-	val := AppendAndSliceString(dest, ti.String())
-
+	val := ti.Bytes()
 	return sqltypes.MakeTrusted(sqltypes.Time, val), nil
 }
 
@@ -292,6 +285,11 @@ func (t TimespanType_) ValueType() reflect.Type {
 // Zero implements Type interface.
 func (t TimespanType_) Zero() interface{} {
 	return Timespan(0)
+}
+
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (TimespanType_) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // No built in for absolute values on int64
@@ -455,15 +453,54 @@ func (t Timespan) timespanToUnits() (isNegative bool, hours int16, minutes int8,
 
 // String returns the Timespan formatted as a string (such as for display purposes).
 func (t Timespan) String() string {
+	return string(t.Bytes())
+}
+
+func (t Timespan) Bytes() []byte {
 	isNegative, hours, minutes, seconds, microseconds := t.timespanToUnits()
-	sign := ""
+	sz := 10
+	if microseconds > 0 {
+		sz += 7
+	}
+	ret := make([]byte, sz)
+	i := 0
 	if isNegative {
-		sign = "-"
+		ret[0] = '-'
+		i++
 	}
-	if microseconds == 0 {
-		return fmt.Sprintf("%v%02d:%02d:%02d", sign, hours, minutes, seconds)
+
+	i = appendDigit(int64(hours), 2, ret, i)
+	ret[i] = ':'
+	i++
+	i = appendDigit(int64(minutes), 2, ret, i)
+	ret[i] = ':'
+	i++
+	i = appendDigit(int64(seconds), 2, ret, i)
+	if microseconds > 0 {
+		ret[i] = '.'
+		i++
+		i = appendDigit(int64(microseconds), 6, ret, i)
 	}
-	return fmt.Sprintf("%v%02d:%02d:%02d.%06d", sign, hours, minutes, seconds, microseconds)
+
+	return ret[:i]
+}
+
+// appendDigit format prints 0-entended integer into buffer
+func appendDigit(v int64, extend int, buf []byte, i int) int {
+	cmp := int64(1)
+	for _ = range extend - 1 {
+		cmp *= 10
+	}
+	for cmp > 0 && v < cmp {
+		buf[i] = '0'
+		i++
+		cmp /= 10
+	}
+	if v == 0 {
+		return i
+	}
+	tmpBuf := strconv.AppendInt(buf[i:i], v, 10)
+	return i + len(tmpBuf)
 }
 
 // AsMicroseconds returns the Timespan in microseconds.

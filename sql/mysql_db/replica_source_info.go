@@ -27,6 +27,7 @@ import (
 type ReplicaSourceInfo struct {
 	Host                 string
 	User                 string
+	Ssl                  bool
 	Password             string
 	Port                 uint16
 	Uuid                 string
@@ -34,7 +35,76 @@ type ReplicaSourceInfo struct {
 	ConnectRetryCount    uint64
 }
 
-var _ in_mem_table.Entry = (*ReplicaSourceInfo)(nil)
+func ReplicaSourceInfoToRow(ctx *sql.Context, v *ReplicaSourceInfo) (sql.Row, error) {
+	row := make(sql.Row, len(replicaSourceInfoTblSchema))
+	var err error
+	for i, col := range replicaSourceInfoTblSchema {
+		row[i], err = col.Default.Eval(ctx, nil)
+		if err != nil {
+			panic(err) // Should never happen, schema is static
+		}
+	}
+	//TODO: once the remaining fields are added, fill those in as well
+	if v.Host != "" {
+		row[replicaSourceInfoTblColIndex_Host] = v.Host
+	}
+	if v.User != "" {
+		row[replicaSourceInfoTblColIndex_User_name] = v.User
+	}
+	if v.Uuid != "" {
+		row[replicaSourceInfoTblColIndex_Uuid] = v.Uuid
+	}
+	row[replicaSourceInfoTblColIndex_User_password] = v.Password
+	row[replicaSourceInfoTblColIndex_Port] = v.Port
+	row[replicaSourceInfoTblColIndex_Connect_retry] = v.ConnectRetryInterval
+	row[replicaSourceInfoTblColIndex_Retry_count] = v.ConnectRetryCount
+
+	if v.Ssl {
+		row[replicaSourceInfoTblColIndex_Enabled_ssl] = 1
+	} else {
+		row[replicaSourceInfoTblColIndex_Enabled_ssl] = 0
+	}
+
+	return row, nil
+}
+
+func ReplicaSourceInfoFromRow(ctx *sql.Context, row sql.Row) (*ReplicaSourceInfo, error) {
+	if err := replicaSourceInfoTblSchema.CheckRow(ctx, row); err != nil {
+		return nil, err
+	}
+
+	ssl := row[replicaSourceInfoTblColIndex_Enabled_ssl] == 1
+
+	return &ReplicaSourceInfo{
+		Host:                 row[replicaSourceInfoTblColIndex_Host].(string),
+		User:                 row[replicaSourceInfoTblColIndex_User_name].(string),
+		Ssl:                  ssl,
+		Password:             row[replicaSourceInfoTblColIndex_User_password].(string),
+		Port:                 row[replicaSourceInfoTblColIndex_Port].(uint16),
+		Uuid:                 row[replicaSourceInfoTblColIndex_Uuid].(string),
+		ConnectRetryInterval: row[replicaSourceInfoTblColIndex_Connect_retry].(uint32),
+		ConnectRetryCount:    row[replicaSourceInfoTblColIndex_Retry_count].(uint64),
+	}, nil
+}
+
+func ReplicaSourceInfoEquals(left, right *ReplicaSourceInfo) bool {
+	return left.User == right.User &&
+		left.Ssl == right.Ssl &&
+		left.Host == right.Host &&
+		left.Port == right.Port &&
+		left.Password == right.Password &&
+		left.Uuid == right.Uuid &&
+		left.ConnectRetryInterval == right.ConnectRetryInterval &&
+		left.ConnectRetryCount == right.ConnectRetryCount
+}
+
+var ReplicaSourceInfoOps = in_mem_table.ValueOps[*ReplicaSourceInfo]{
+	ToRow:   ReplicaSourceInfoToRow,
+	FromRow: ReplicaSourceInfoFromRow,
+	UpdateWithRow: func(ctx *sql.Context, row sql.Row, e *ReplicaSourceInfo) (*ReplicaSourceInfo, error) {
+		return ReplicaSourceInfoFromRow(ctx, row)
+	},
+}
 
 // NewReplicaSourceInfo constructs a new ReplicaSourceInfo instance, with defaults applied.
 func NewReplicaSourceInfo() *ReplicaSourceInfo {
@@ -45,89 +115,8 @@ func NewReplicaSourceInfo() *ReplicaSourceInfo {
 	}
 }
 
-// NewFromRow implements the interface in_mem_table.Entry.
-func (r *ReplicaSourceInfo) NewFromRow(_ *sql.Context, row sql.Row) (in_mem_table.Entry, error) {
-	if err := replicaSourceInfoTblSchema.CheckRow(row); err != nil {
-		return nil, err
-	}
-
-	return &ReplicaSourceInfo{
-		Host:                 row[replicaSourceInfoTblColIndex_Host].(string),
-		User:                 row[replicaSourceInfoTblColIndex_User_name].(string),
-		Password:             row[replicaSourceInfoTblColIndex_User_password].(string),
-		Port:                 row[replicaSourceInfoTblColIndex_Port].(uint16),
-		Uuid:                 row[replicaSourceInfoTblColIndex_Uuid].(string),
-		ConnectRetryInterval: row[replicaSourceInfoTblColIndex_Connect_retry].(uint32),
-		ConnectRetryCount:    row[replicaSourceInfoTblColIndex_Retry_count].(uint64),
-	}, nil
-}
-
-// UpdateFromRow implements the interface in_mem_table.Entry.
-func (r *ReplicaSourceInfo) UpdateFromRow(ctx *sql.Context, row sql.Row) (in_mem_table.Entry, error) {
-	updatedEntry, err := r.NewFromRow(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-	return updatedEntry, nil
-}
-
-// ToRow implements the interface in_mem_table.Entry.
-func (r *ReplicaSourceInfo) ToRow(ctx *sql.Context) sql.Row {
-	row := make(sql.Row, len(replicaSourceInfoTblSchema))
-	var err error
-	for i, col := range replicaSourceInfoTblSchema {
-		row[i], err = col.Default.Eval(ctx, nil)
-		if err != nil {
-			panic(err) // Should never happen, schema is static
-		}
-	}
-	//TODO: once the remaining fields are added, fill those in as well
-	if r.Host != "" {
-		row[replicaSourceInfoTblColIndex_Host] = r.Host
-	}
-	if r.User != "" {
-		row[replicaSourceInfoTblColIndex_User_name] = r.User
-	}
-	if r.Uuid != "" {
-		row[replicaSourceInfoTblColIndex_Uuid] = r.Uuid
-	}
-	row[replicaSourceInfoTblColIndex_User_password] = r.Password
-	row[replicaSourceInfoTblColIndex_Port] = r.Port
-	row[replicaSourceInfoTblColIndex_Connect_retry] = r.ConnectRetryInterval
-	row[replicaSourceInfoTblColIndex_Retry_count] = r.ConnectRetryCount
-
-	return row
-}
-
-// Equals implements the interface in_mem_table.Entry.
-func (r *ReplicaSourceInfo) Equals(_ *sql.Context, otherEntry in_mem_table.Entry) bool {
-	other, ok := otherEntry.(*ReplicaSourceInfo)
-	if !ok {
-		return false
-	}
-
-	//TODO: once the remaining fields are added, fill those in as well
-	if r.User != other.User ||
-		r.Host != other.Host ||
-		r.Port != other.Port ||
-		r.Password != other.Password ||
-		r.Uuid != other.Uuid ||
-		r.ConnectRetryInterval != other.ConnectRetryInterval ||
-		r.ConnectRetryCount != other.ConnectRetryCount {
-		return false
-	}
-
-	return true
-}
-
-// Copy implements the interface in_mem_table.Entry.
-func (r *ReplicaSourceInfo) Copy(_ *sql.Context) in_mem_table.Entry {
-	rr := *r
-	return &rr
-}
-
 // FromJson implements the interface in_mem_table.Entry.
-func (r *ReplicaSourceInfo) FromJson(_ *sql.Context, jsonStr string) (in_mem_table.Entry, error) {
+func (r *ReplicaSourceInfo) FromJson(_ *sql.Context, jsonStr string) (*ReplicaSourceInfo, error) {
 	newInstance := &ReplicaSourceInfo{}
 	if err := json.Unmarshal([]byte(jsonStr), newInstance); err != nil {
 		return nil, err

@@ -1,0 +1,82 @@
+exprs:
+- name: "CrossJoin"
+  join: true
+- name: "InnerJoin"
+  join: true
+- name: "LeftJoin"
+  join: true
+- name: "SemiJoin"
+  join: true
+- name: "AntiJoin"
+  join: true
+- name: "LookupJoin"
+  join: true
+  attrs:
+  - [lookup, "*IndexScan"]
+  - [injective, "bool"]
+- name: "RangeHeapJoin"
+  join: true
+  attrs:
+    - [rangeHeap, "*RangeHeap"]
+- name: "ConcatJoin"
+  join: true
+  attrs:
+  - [concat, "[]*IndexScan"]
+- name: "HashJoin"
+  join: true
+  attrs:
+  - [rightAttrs, "[]sql.Expression"]
+  - [leftAttrs, "[]sql.Expression"]
+- name: "MergeJoin"
+  join: true
+  attrs:
+  - [innerScan, "*IndexScan"]
+  - [outerScan, "*IndexScan"]
+  - [swapCmp, "bool"]
+  - [injective, "bool"]
+  - [cmpCnt, "int"]
+- name: "FullOuterJoin"
+  join: true
+- name: "LateralJoin"
+  join: true
+- name: "TableScan"
+  sourceType: "plan.TableIdNode"
+- name: "IndexScan"
+  sourceType: "*plan.IndexedTableAccess"
+  attrs:
+  - [index, "*Index"]
+  - [Alias, "string"]
+  - [Stats, "sql.Statistic"]
+- name: "Values"
+  sourceType: "*plan.ValueDerivedTable"
+- name: "TableAlias"
+  sourceType: "*plan.TableAlias"
+- name: "RecursiveTable"
+  sourceType: "*plan.RecursiveTable"
+- name: "RecursiveCte"
+  sourceType: "*plan.RecursiveCte"
+- name: "SubqueryAlias"
+  sourceType: "*plan.SubqueryAlias"
+- name: "TableFunc"
+  sourceType: "sql.TableFunction"
+  skipTableId: true
+- name: "JSONTable"
+  sourceType: "*plan.JSONTable"
+- name: "EmptyTable"
+  sourceType: "*plan.EmptyTable"
+- name: "SetOp"
+  sourceType: "*plan.SetOp"
+  skipName: true
+- name: "Project"
+  unary: true
+  attrs:
+  - [projections, "[]sql.Expression"]
+- name: "Distinct"
+  unary:  true
+  skipExec: true
+- name: "Max1Row"
+  unary:  true
+- name: "Filter"
+  unary: true
+  attrs:
+  - [ filters, "[]sql.Expression" ]

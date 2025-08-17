@@ -29,6 +29,7 @@ type ExistsSubquery struct {
 }
 
 var _ sql.Expression = (*ExistsSubquery)(nil)
+var _ sql.CollationCoercible = (*ExistsSubquery)(nil)
 
 // NewExistsSubquery created an ExistsSubquery expression.
 func NewExistsSubquery(sq *Subquery) *ExistsSubquery {
@@ -80,7 +81,17 @@ func (e *ExistsSubquery) String() string {
 	return fmt.Sprintf("EXISTS %s", e.Query)
 }
 
+// DebugString implements the Expression interface.
+func (e *ExistsSubquery) DebugString() string {
+	return fmt.Sprintf("EXISTS %s", sql.DebugString(e.Query))
+}
+
 // Type implements the Expression interface.
 func (e *ExistsSubquery) Type() sql.Type {
 	return types.Boolean
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ExistsSubquery) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }

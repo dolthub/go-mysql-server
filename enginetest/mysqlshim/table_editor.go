@@ -29,9 +29,13 @@ type tableEditor struct {
 	sch   sql.Schema
 }
 
-func (t *tableEditor) IndexedAccess(index sql.IndexLookup) sql.IndexedTable {
+func (t *tableEditor) IndexedAccess(ctx *sql.Context, lookup sql.IndexLookup) sql.IndexedTable {
 	//TODO implement me
 	panic("implement me")
+}
+
+func (t *tableEditor) PreciseMatch() bool {
+	return true
 }
 
 func (t *tableEditor) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {

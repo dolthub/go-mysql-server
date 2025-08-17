@@ -41,7 +41,7 @@ func TestUUID(t *testing.T) {
 
 	// validate that generated uuid is legitimate for IsUUID
 	val := NewIsUUID(uuidE)
-	require.Equal(t, int8(1), eval(t, val, sql.Row{nil}))
+	require.Equal(t, true, eval(t, val, sql.Row{nil}))
 
 	// Use a UUID regex as a sanity check
 	re2 := regexp.MustCompile(`\b[0-9a-f]{8}\b-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-\b[0-9a-f]{12}\b`)
@@ -55,14 +55,14 @@ func TestIsUUID(t *testing.T) {
 		value    interface{}
 		expected interface{}
 	}{
-		{"uuid form 1", types.LongText, "{12345678-1234-5678-1234-567812345678}", int8(1)},
-		{"uuid form 2", types.LongText, "12345678123456781234567812345678", int8(1)},
-		{"uuid form 3", types.LongText, "12345678-1234-5678-1234-567812345678", int8(1)},
+		{"uuid form 1", types.LongText, "{12345678-1234-5678-1234-567812345678}", true},
+		{"uuid form 2", types.LongText, "12345678123456781234567812345678", true},
+		{"uuid form 3", types.LongText, "12345678-1234-5678-1234-567812345678", true},
 		{"NULL", types.Null, nil, nil},
-		{"random int", types.Int8, 1, int8(0)},
-		{"random bool", types.Boolean, false, int8(0)},
-		{"random string", types.LongText, "12345678-dasd-fasdf8", int8(0)},
-		{"swapped uuid", types.LongText, "5678-1234-12345678-1234-567812345678", int8(0)},
+		{"random int", types.Int8, 1, false},
+		{"random bool", types.Boolean, false, false},
+		{"random string", types.LongText, "12345678-dasd-fasdf8", false},
+		{"swapped uuid", types.LongText, "5678-1234-12345678-1234-567812345678", false},
 	}
 
 	for _, tt := range testCases {

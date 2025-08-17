@@ -34,26 +34,13 @@ type SessionBuilder func(ctx context.Context, conn *mysql.Conn, addr string) (sq
 // it can be disposed.
 type DoneFunc func()
 
-// DefaultSessionBuilder is a SessionBuilder that returns a base session.
-func DefaultSessionBuilder(ctx context.Context, c *mysql.Conn, addr string) (sql.Session, error) {
-	host := ""
-	user := ""
-	mysqlConnectionUser, ok := c.UserData.(mysql_db.MysqlConnectionUser)
-	if ok {
-		host = mysqlConnectionUser.Host
-		user = mysqlConnectionUser.User
-	}
-	client := sql.Client{Address: host, User: user, Capabilities: c.Capabilities}
-	return sql.NewBaseSessionWithClientServer(addr, client, c.ConnectionID), nil
-}
-
 // SessionManager is in charge of creating new sessions for the given
 // connections and keep track of which sessions are in each connection, so
 // they can be cancelled if the connection is closed.
 type SessionManager struct {
 	addr        string
 	tracer      trace.Tracer
-	hasDBFunc   func(ctx *sql.Context, name string) bool
+	getDbFunc   func(ctx *sql.Context, db string) (sql.Database, error)
 	memory      *sql.MemoryManager
 	processlist sql.ProcessList
 	mu          *sync.Mutex
@@ -61,13 +48,19 @@ type SessionManager struct {
 	sessions    map[uint32]sql.Session
 	connections map[uint32]*mysql.Conn
 	lastPid     uint64
+	ctxFactory  sql.ContextFactory
+	// Implements WaitForClosedConnections(), which is only used
+	// at server shutdown to allow the integrator to ensure that
+	// no connections are being handled by handlers.
+	wg sync.WaitGroup
 }
 
 // NewSessionManager creates a SessionManager with the given SessionBuilder.
 func NewSessionManager(
+	ctxFactory sql.ContextFactory,
 	builder SessionBuilder,
 	tracer trace.Tracer,
-	hasDBFunc func(ctx *sql.Context, name string) bool,
+	getDbFunc func(ctx *sql.Context, db string) (sql.Database, error),
 	memory *sql.MemoryManager,
 	processlist sql.ProcessList,
 	addr string,
@@ -75,13 +68,14 @@ func NewSessionManager(
 	return &SessionManager{
 		addr:        addr,
 		tracer:      tracer,
-		hasDBFunc:   hasDBFunc,
+		getDbFunc:   getDbFunc,
 		memory:      memory,
 		processlist: processlist,
 		mu:          new(sync.Mutex),
 		builder:     builder,
 		sessions:    make(map[uint32]sql.Session),
 		connections: make(map[uint32]*mysql.Conn),
+		ctxFactory:  ctxFactory,
 	}
 }
 
@@ -92,7 +86,14 @@ func (s *SessionManager) nextPid() uint64 {
 	return s.lastPid
 }
 
-// Add a connection to be tracked by the SessionManager. Should be called as
+// Block the calling thread until all known connections are closed. It
+// is an error to call this concurrently while the server might still
+// be accepting new connections.
+func (s *SessionManager) WaitForClosedConnections() {
+	s.wg.Wait()
+}
+
+// AddConn adds a connection to be tracked by the SessionManager. Should be called as
 // soon as possible after the server has accepted the connection. Results in
 // the connection being tracked by ProcessList and being available through
 // KillConnection. The connection will be tracked until RemoveConn is called,
@@ -103,6 +104,7 @@ func (s *SessionManager) AddConn(conn *mysql.Conn) {
 	defer s.mu.Unlock()
 	s.connections[conn.ConnectionID] = conn
 	s.processlist.AddConnection(conn.ConnectionID, conn.RemoteAddr().String())
+	s.wg.Add(1)
 }
 
 // NewSession creates a Session for the given connection and saves it to the session pool.
@@ -115,6 +117,10 @@ func (s *SessionManager) NewSession(ctx context.Context, conn *mysql.Conn) error
 	}
 
 	session.SetConnectionId(conn.ConnectionID)
+
+	if cur, ok := s.sessions[conn.ConnectionID]; ok {
+		sql.SessionEnd(cur)
+	}
 
 	s.sessions[conn.ConnectionID] = session
 
@@ -132,20 +138,53 @@ func (s *SessionManager) NewSession(ctx context.Context, conn *mysql.Conn) error
 	return err
 }
 
-func (s *SessionManager) SetDB(conn *mysql.Conn, db string) error {
-	sess, err := s.getOrCreateSession(context.Background(), conn)
+// SetDB sets the current database of the given connection session.
+// If the session does not exist, it creates a new session with given connection.
+func (s *SessionManager) SetDB(ctx context.Context, conn *mysql.Conn, dbName string) error {
+	sess, err := s.getOrCreateSession(ctx, conn)
 	if err != nil {
 		return err
 	}
 
-	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
-	if db != "" && !s.hasDBFunc(ctx, db) {
-		return sql.ErrDatabaseNotFound.New(db)
+	err = sql.SessionCommandBegin(sess)
+	if err != nil {
+		return err
 	}
-	sess.SetCurrentDatabase(db)
-	s.processlist.ConnectionReady(sess)
+	defer sql.SessionCommandEnd(sess)
 
+	sqlCtx := s.ctxFactory(ctx, sql.WithSession(sess))
+	sqlCtx, err = s.processlist.BeginOperation(sqlCtx)
+	if err != nil {
+		return err
+	}
+	defer s.processlist.EndOperation(sqlCtx)
+	var db sql.Database
+	if dbName != "" {
+		db, err = s.getDbFunc(sqlCtx, dbName)
+		if err != nil {
+			return err
+		}
+	}
+
+	sess.SetCurrentDatabase(dbName)
+	if dbName != "" {
+		if pdb, ok := db.(mysql_db.PrivilegedDatabase); ok {
+			db = pdb.Unwrap()
+		}
+		err = sess.UseDatabase(sqlCtx, db)
+		if err != nil {
+			return err
+		}
+	}
+
+	s.processlist.ConnectionReady(sess)
 	return nil
+}
+
+// GetCurrentDB returns the current database name of the given connection session.
+func (s *SessionManager) GetCurrentDB(conn *mysql.Conn) string {
+	sess := s.session(conn)
+	return sess.GetCurrentDatabase()
 }
 
 // Iter iterates over the active sessions and executes the specified callback function on each one.
@@ -175,11 +214,6 @@ func (s *SessionManager) session(conn *mysql.Conn) sql.Session {
 	return s.sessions[conn.ConnectionID]
 }
 
-// NewContext creates a new context for the session at the given conn.
-func (s *SessionManager) NewContext(conn *mysql.Conn) (*sql.Context, error) {
-	return s.NewContextWithQuery(conn, "")
-}
-
 func (s *SessionManager) getOrCreateSession(ctx context.Context, conn *mysql.Conn) (sql.Session, error) {
 	s.mu.Lock()
 	sess, ok := s.sessions[conn.ConnectionID]
@@ -202,8 +236,7 @@ func (s *SessionManager) getOrCreateSession(ctx context.Context, conn *mysql.Con
 }
 
 // NewContextWithQuery creates a new context for the session at the given conn.
-func (s *SessionManager) NewContextWithQuery(conn *mysql.Conn, query string) (*sql.Context, error) {
-	ctx := context.Background()
+func (s *SessionManager) NewContextWithQuery(ctx context.Context, conn *mysql.Conn, query string) (*sql.Context, error) {
 	sess, err := s.getOrCreateSession(ctx, conn)
 
 	if err != nil {
@@ -212,7 +245,7 @@ func (s *SessionManager) NewContextWithQuery(conn *mysql.Conn, query string) (*s
 
 	ctx, span := s.tracer.Start(ctx, "query")
 
-	context := sql.NewContext(
+	context := s.ctxFactory(
 		ctx,
 		sql.WithSession(sess),
 		sql.WithTracer(s.tracer),
@@ -249,6 +282,10 @@ func (s *SessionManager) KillConnection(connID uint32) error {
 func (s *SessionManager) RemoveConn(conn *mysql.Conn) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.wg.Done()
+	if cur, ok := s.sessions[conn.ConnectionID]; ok {
+		sql.SessionEnd(cur)
+	}
 	delete(s.sessions, conn.ConnectionID)
 	delete(s.connections, conn.ConnectionID)
 	s.processlist.RemoveConnection(conn.ConnectionID)

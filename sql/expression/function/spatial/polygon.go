@@ -32,6 +32,7 @@ type Polygon struct {
 }
 
 var _ sql.FunctionExpression = (*Polygon)(nil)
+var _ sql.CollationCoercible = (*Polygon)(nil)
 
 // NewPolygon creates a new polygon expression.
 func NewPolygon(args ...sql.Expression) (sql.Expression, error) {
@@ -54,6 +55,11 @@ func (p *Polygon) Description() string {
 // Type implements the sql.Expression interface.
 func (p *Polygon) Type() sql.Type {
 	return types.PolygonType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Polygon) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (p *Polygon) String() string {

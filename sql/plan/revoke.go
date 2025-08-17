@@ -26,33 +26,26 @@ import (
 
 // Revoke represents the statement REVOKE [privilege...] ON [item] FROM [user...].
 type Revoke struct {
-	Privileges     []Privilege
-	ObjectType     ObjectType
-	PrivilegeLevel PrivilegeLevel
-	Users          []UserName
-	MySQLDb        sql.Database
+	Privileges        []Privilege
+	ObjectType        ObjectType
+	PrivilegeLevel    PrivilegeLevel
+	Users             []UserName
+	IgnoreUnknownUser bool
+	MySQLDb           sql.Database
 }
 
 var _ sql.Node = (*Revoke)(nil)
 var _ sql.Databaser = (*Revoke)(nil)
-
-// NewRevoke returns a new Revoke node.
-func NewRevoke(privileges []Privilege, objType ObjectType, level PrivilegeLevel, users []UserName, revoker string) (*Revoke, error) {
-	if strings.ToLower(level.Database) == sql.InformationSchemaDatabaseName {
-		return nil, sql.ErrDatabaseAccessDeniedForUser.New(revoker, level.Database)
-	}
-	return &Revoke{
-		Privileges:     privileges,
-		ObjectType:     objType,
-		PrivilegeLevel: level,
-		Users:          users,
-		MySQLDb:        sql.UnresolvedDatabase("mysql"),
-	}, nil
-}
+var _ sql.CollationCoercible = (*Revoke)(nil)
+var _ sql.AuthorizationCheckerNode = (*Revoke)(nil)
 
 // Schema implements the interface sql.Node.
 func (n *Revoke) Schema() sql.Schema {
 	return types.OkResultSchema
+}
+
+func (n *Revoke) IsReadOnly() bool {
+	return false
 }
 
 // String implements the interface sql.Node.
@@ -95,15 +88,16 @@ func (n *Revoke) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return n, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (n *Revoke) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+// CheckAuth implements the interface sql.AuthorizationCheckerNode.
+func (n *Revoke) CheckAuth(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+	subject := sql.PrivilegeCheckSubject{Database: "mysql"}
 	if opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation("mysql", "", "", sql.PrivilegeType_Update)) {
+		sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Update)) {
 		return true
 	}
 	if n.PrivilegeLevel.Database == "*" && n.PrivilegeLevel.TableRoutine == "*" {
 		if n.Privileges[0].Type == PrivilegeType_All {
-			return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation("", "", "",
+			return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(sql.PrivilegeCheckSubject{},
 				sql.PrivilegeType_Select,
 				sql.PrivilegeType_Insert,
 				sql.PrivilegeType_Update,
@@ -137,15 +131,17 @@ func (n *Revoke) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpera
 				sql.PrivilegeType_GrantOption,
 			))
 		}
-		return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation("", "", "",
+		return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(sql.PrivilegeCheckSubject{},
 			convertToSqlPrivilegeType(true, n.Privileges...)...))
 	} else if n.PrivilegeLevel.Database != "*" && n.PrivilegeLevel.TableRoutine == "*" {
 		database := n.PrivilegeLevel.Database
 		if database == "" {
 			database = ctx.GetCurrentDatabase()
 		}
+		subject = sql.PrivilegeCheckSubject{Database: database}
+
 		if n.Privileges[0].Type == PrivilegeType_All {
-			return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(database, "", "",
+			return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject,
 				sql.PrivilegeType_Alter,
 				sql.PrivilegeType_AlterRoutine,
 				sql.PrivilegeType_Create,
@@ -167,13 +163,18 @@ func (n *Revoke) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpera
 				sql.PrivilegeType_GrantOption,
 			))
 		}
-		return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(database, "", "",
+		return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject,
 			convertToSqlPrivilegeType(true, n.Privileges...)...))
 	} else {
 		//TODO: add column checks
+		subject = sql.PrivilegeCheckSubject{
+			Database: n.PrivilegeLevel.Database,
+			Table:    n.PrivilegeLevel.TableRoutine,
+		}
+
 		if n.Privileges[0].Type == PrivilegeType_All {
 			return opChecker.UserHasPrivileges(ctx,
-				sql.NewPrivilegedOperation(n.PrivilegeLevel.Database, n.PrivilegeLevel.TableRoutine, "",
+				sql.NewPrivilegedOperation(subject,
 					sql.PrivilegeType_Alter,
 					sql.PrivilegeType_Create,
 					sql.PrivilegeType_CreateView,
@@ -190,80 +191,18 @@ func (n *Revoke) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOpera
 				))
 		}
 		return opChecker.UserHasPrivileges(ctx,
-			sql.NewPrivilegedOperation(n.PrivilegeLevel.Database, n.PrivilegeLevel.TableRoutine, "",
+			sql.NewPrivilegedOperation(subject,
 				convertToSqlPrivilegeType(true, n.Privileges...)...))
 	}
 }
 
-// RowIter implements the interface sql.Node.
-func (n *Revoke) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
-	if !ok {
-		return nil, sql.ErrDatabaseNotFound.New("mysql")
-	}
-	if n.PrivilegeLevel.Database == "*" && n.PrivilegeLevel.TableRoutine == "*" {
-		if n.ObjectType != ObjectType_Any {
-			return nil, sql.ErrGrantRevokeIllegalPrivilege.New()
-		}
-		for _, revokeUser := range n.Users {
-			user := mysqlDb.GetUser(revokeUser.Name, revokeUser.Host, false)
-			if user == nil {
-				return nil, sql.ErrGrantUserDoesNotExist.New()
-			}
-			if err := n.handleGlobalPrivileges(user); err != nil {
-				return nil, err
-			}
-		}
-	} else if n.PrivilegeLevel.Database != "*" && n.PrivilegeLevel.TableRoutine == "*" {
-		database := n.PrivilegeLevel.Database
-		if database == "" {
-			database = ctx.GetCurrentDatabase()
-			if database == "" {
-				return nil, sql.ErrNoDatabaseSelected.New()
-			}
-		}
-		if n.ObjectType != ObjectType_Any {
-			return nil, sql.ErrGrantRevokeIllegalPrivilege.New()
-		}
-		for _, revokeUser := range n.Users {
-			user := mysqlDb.GetUser(revokeUser.Name, revokeUser.Host, false)
-			if user == nil {
-				return nil, sql.ErrGrantUserDoesNotExist.New()
-			}
-			if err := n.handleDatabasePrivileges(user, database); err != nil {
-				return nil, err
-			}
-		}
-	} else {
-		database := n.PrivilegeLevel.Database
-		if database == "" {
-			database = ctx.GetCurrentDatabase()
-			if database == "" {
-				return nil, sql.ErrNoDatabaseSelected.New()
-			}
-		}
-		if n.ObjectType != ObjectType_Any {
-			//TODO: implement object types
-			return nil, fmt.Errorf("GRANT has not yet implemented object types")
-		}
-		for _, grantUser := range n.Users {
-			user := mysqlDb.GetUser(grantUser.Name, grantUser.Host, false)
-			if user == nil {
-				return nil, sql.ErrGrantUserDoesNotExist.New()
-			}
-			if err := n.handleTablePrivileges(user, database, n.PrivilegeLevel.TableRoutine); err != nil {
-				return nil, err
-			}
-		}
-	}
-	if err := mysqlDb.Persist(ctx); err != nil {
-		return nil, err
-	}
-	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Revoke) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
-// handleGlobalPrivileges handles removing global privileges from a user.
-func (n *Revoke) handleGlobalPrivileges(user *mysql_db.User) error {
+// HandleGlobalPrivileges handles removing global privileges from a user.
+func (n *Revoke) HandleGlobalPrivileges(user *mysql_db.User) error {
 	for i, priv := range n.Privileges {
 		if len(priv.Columns) > 0 {
 			return sql.ErrGrantRevokeIllegalPrivilege.New()
@@ -353,8 +292,8 @@ func (n *Revoke) handleGlobalPrivileges(user *mysql_db.User) error {
 	return nil
 }
 
-// handleDatabasePrivileges  handles removing database privileges from a user.
-func (n *Revoke) handleDatabasePrivileges(user *mysql_db.User, dbName string) error {
+// HandleDatabasePrivileges  handles removing database privileges from a user.
+func (n *Revoke) HandleDatabasePrivileges(user *mysql_db.User, dbName string) error {
 	for i, priv := range n.Privileges {
 		if len(priv.Columns) > 0 {
 			return sql.ErrGrantRevokeIllegalPrivilege.New()
@@ -418,8 +357,8 @@ func (n *Revoke) handleDatabasePrivileges(user *mysql_db.User, dbName string) er
 	return nil
 }
 
-// handleTablePrivileges  handles removing table privileges from a user.
-func (n *Revoke) handleTablePrivileges(user *mysql_db.User, dbName string, tblName string) error {
+// HandleTablePrivileges  handles removing table privileges from a user.
+func (n *Revoke) HandleTablePrivileges(user *mysql_db.User, dbName string, tblName string) error {
 	for i, priv := range n.Privileges {
 		if len(priv.Columns) > 0 {
 			return fmt.Errorf("GRANT has not yet implemented column privileges")
@@ -471,83 +410,44 @@ func (n *Revoke) handleTablePrivileges(user *mysql_db.User, dbName string, tblNa
 	return nil
 }
 
-// RevokeAll represents the statement REVOKE ALL PRIVILEGES.
-type RevokeAll struct {
-	Users []UserName
-}
-
-var _ sql.Node = (*RevokeAll)(nil)
-
-// NewRevokeAll returns a new RevokeAll node.
-func NewRevokeAll(users []UserName) *RevokeAll {
-	return &RevokeAll{
-		Users: users,
+func (n *Revoke) HandleRoutinePrivileges(user *mysql_db.User, dbName string, routineName string, isProcedureType bool) error {
+	for _, priv := range n.Privileges {
+		switch priv.Type {
+		case PrivilegeType_AlterRoutine:
+			user.PrivilegeSet.RemoveRoutine(dbName, routineName, isProcedureType, sql.PrivilegeType_AlterRoutine)
+		case PrivilegeType_Execute:
+			user.PrivilegeSet.RemoveRoutine(dbName, routineName, isProcedureType, sql.PrivilegeType_Execute)
+		case PrivilegeType_GrantOption:
+			user.PrivilegeSet.RemoveRoutine(dbName, routineName, isProcedureType, sql.PrivilegeType_GrantOption)
+		default:
+			return sql.ErrGrantRevokeIllegalPrivilege.New()
+		}
 	}
-}
-
-// Schema implements the interface sql.Node.
-func (n *RevokeAll) Schema() sql.Schema {
-	return types.OkResultSchema
-}
-
-// String implements the interface sql.Node.
-func (n *RevokeAll) String() string {
-	users := make([]string, len(n.Users))
-	for i, user := range n.Users {
-		users[i] = user.String("")
-	}
-	return fmt.Sprintf("RevokeAll(From: %s)", strings.Join(users, ", "))
-}
-
-// Resolved implements the interface sql.Node.
-func (n *RevokeAll) Resolved() bool {
-	return true
-}
-
-// Children implements the interface sql.Node.
-func (n *RevokeAll) Children() []sql.Node {
 	return nil
-}
-
-// WithChildren implements the interface sql.Node.
-func (n *RevokeAll) WithChildren(children ...sql.Node) (sql.Node, error) {
-	if len(children) != 0 {
-		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 0)
-	}
-	return n, nil
-}
-
-// CheckPrivileges implements the interface sql.Node.
-func (n *RevokeAll) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_CreateUser)) ||
-		opChecker.UserHasPrivileges(ctx,
-			sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_Super)) ||
-		opChecker.UserHasPrivileges(ctx,
-			sql.NewPrivilegedOperation("mysql", "", "", sql.PrivilegeType_Update))
-}
-
-// RowIter implements the interface sql.Node.
-func (n *RevokeAll) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return nil, fmt.Errorf("not yet implemented")
 }
 
 // RevokeRole represents the statement REVOKE [role...] FROM [user...].
 type RevokeRole struct {
-	Roles       []UserName
-	TargetUsers []UserName
-	MySQLDb     sql.Database
+	Roles             []UserName
+	TargetUsers       []UserName
+	IfExists          bool
+	IgnoreUnknownUser bool
+	MySQLDb           sql.Database
 }
 
 var _ sql.Node = (*RevokeRole)(nil)
 var _ sql.Databaser = (*RevokeRole)(nil)
+var _ sql.CollationCoercible = (*RevokeRole)(nil)
+var _ sql.AuthorizationCheckerNode = (*RevokeRole)(nil)
 
 // NewRevokeRole returns a new RevokeRole node.
-func NewRevokeRole(roles []UserName, users []UserName) *RevokeRole {
+func NewRevokeRole(roles []UserName, users []UserName, ifExists, ignoreUnknownUser bool) *RevokeRole {
 	return &RevokeRole{
-		Roles:       roles,
-		TargetUsers: users,
-		MySQLDb:     sql.UnresolvedDatabase("mysql"),
+		Roles:             roles,
+		TargetUsers:       users,
+		IfExists:          ifExists,
+		IgnoreUnknownUser: ignoreUnknownUser,
+		MySQLDb:           sql.UnresolvedDatabase("mysql"),
 	}
 }
 
@@ -587,6 +487,10 @@ func (n *RevokeRole) Resolved() bool {
 	return !ok
 }
 
+func (n *RevokeRole) IsReadOnly() bool {
+	return false
+}
+
 // Children implements the interface sql.Node.
 func (n *RevokeRole) Children() []sql.Node {
 	return nil
@@ -600,94 +504,67 @@ func (n *RevokeRole) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return n, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (n *RevokeRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+// CheckAuth implements the interface sql.AuthorizationCheckerNode.
+func (n *RevokeRole) CheckAuth(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	if opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_Super)) {
+		sql.NewPrivilegedOperation(sql.PrivilegeCheckSubject{}, sql.PrivilegeType_Super)) {
 		return true
 	}
 	//TODO: only active roles may be revoked if the SUPER privilege is not held
 	mysqlDb := n.MySQLDb.(*mysql_db.MySQLDb)
 	client := ctx.Session.Client()
-	user := mysqlDb.GetUser(client.User, client.Address, false)
+
+	reader := mysqlDb.Reader()
+	defer reader.Close()
+
+	user := mysqlDb.GetUser(reader, client.User, client.Address, false)
 	if user == nil {
 		return false
 	}
-	roleEntries := mysqlDb.RoleEdgesTable().Data().Get(mysql_db.RoleEdgesToKey{
+	roleEdges := reader.GetToUserRoleEdges(mysql_db.RoleEdgesToKey{
 		ToHost: user.Host,
 		ToUser: user.User,
 	})
+ROLES:
 	for _, roleName := range n.Roles {
-		role := mysqlDb.GetUser(roleName.Name, roleName.Host, true)
+		role := mysqlDb.GetUser(reader, roleName.Name, roleName.Host, true)
 		if role == nil {
 			return false
 		}
-		foundMatch := false
-		for _, roleEntry := range roleEntries {
-			roleEdge := roleEntry.(*mysql_db.RoleEdge)
-			if roleEdge.FromUser == role.User && roleEdge.FromHost == role.Host {
-				if roleEdge.WithAdminOption {
-					foundMatch = true
-				} else {
-					return false
-				}
+		for _, roleEdge := range roleEdges {
+			if roleEdge.FromUser == role.User && roleEdge.FromHost == role.Host && roleEdge.WithAdminOption {
+				continue ROLES
 			}
 		}
-		if !foundMatch {
-			return false
-		}
+		return false
 	}
 	return true
 }
 
-// RowIter implements the interface sql.Node.
-func (n *RevokeRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
-	if !ok {
-		return nil, sql.ErrDatabaseNotFound.New("mysql")
-	}
-	roleEdgesData := mysqlDb.RoleEdgesTable().Data()
-	for _, targetUser := range n.TargetUsers {
-		user := mysqlDb.GetUser(targetUser.Name, targetUser.Host, false)
-		if user == nil {
-			return nil, sql.ErrGrantRevokeRoleDoesNotExist.New(targetUser.String("`"))
-		}
-		for _, targetRole := range n.Roles {
-			role := mysqlDb.GetUser(targetRole.Name, targetRole.Host, true)
-			if role == nil {
-				return nil, sql.ErrGrantRevokeRoleDoesNotExist.New(targetRole.String("`"))
-			}
-			//TODO: if a role is mentioned in the "mandatory_roles" system variable then they cannot be revoked
-			err := roleEdgesData.Remove(ctx, mysql_db.RoleEdgesPrimaryKey{
-				FromHost: role.Host,
-				FromUser: role.User,
-				ToHost:   user.Host,
-				ToUser:   user.User,
-			}, nil)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-	if err := mysqlDb.Persist(ctx); err != nil {
-		return nil, err
-	}
-	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*RevokeRole) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // RevokeProxy represents the statement REVOKE PROXY.
 type RevokeProxy struct {
-	On   UserName
-	From []UserName
+	On                UserName
+	From              []UserName
+	IfExists          bool
+	ignoreUnknownUser bool
 }
 
 var _ sql.Node = (*RevokeProxy)(nil)
+var _ sql.CollationCoercible = (*RevokeProxy)(nil)
+var _ sql.AuthorizationCheckerNode = (*RevokeProxy)(nil)
 
 // NewRevokeProxy returns a new RevokeProxy node.
-func NewRevokeProxy(on UserName, from []UserName) *RevokeProxy {
+func NewRevokeProxy(on UserName, from []UserName, ifExists, ignoreUnknownUser bool) *RevokeProxy {
 	return &RevokeProxy{
-		On:   on,
-		From: from,
+		On:                on,
+		From:              from,
+		IfExists:          ifExists,
+		ignoreUnknownUser: ignoreUnknownUser,
 	}
 }
 
@@ -710,6 +587,10 @@ func (n *RevokeProxy) Resolved() bool {
 	return true
 }
 
+func (n *RevokeProxy) IsReadOnly() bool {
+	return false
+}
+
 // Children implements the interface sql.Node.
 func (n *RevokeProxy) Children() []sql.Node {
 	return nil
@@ -723,10 +604,15 @@ func (n *RevokeProxy) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return n, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (n *RevokeProxy) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+// CheckAuth implements the interface sql.AuthorizationCheckerNode.
+func (n *RevokeProxy) CheckAuth(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
 	//TODO: add this when proxy support is added
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*RevokeProxy) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // RowIter implements the interface sql.Node.

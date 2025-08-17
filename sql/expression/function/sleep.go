@@ -32,6 +32,7 @@ type Sleep struct {
 }
 
 var _ sql.FunctionExpression = (*Sleep)(nil)
+var _ sql.CollationCoercible = (*Sleep)(nil)
 
 // NewSleep creates a new Sleep expression.
 func NewSleep(e sql.Expression) sql.Expression {
@@ -60,7 +61,7 @@ func (s *Sleep) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	child, err = types.Float64.Convert(child)
+	child, _, err = types.Float64.Convert(ctx, child)
 	if err != nil {
 		return nil, err
 	}
@@ -97,4 +98,9 @@ func (s *Sleep) WithChildren(children ...sql.Expression) (sql.Expression, error)
 // Type implements the Expression interface.
 func (s *Sleep) Type() sql.Type {
 	return types.Int32
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Sleep) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }

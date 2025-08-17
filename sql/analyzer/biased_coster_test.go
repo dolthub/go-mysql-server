@@ -20,23 +20,27 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/gabereiser/go-mysql-server/memory"
-	"github.com/gabereiser/go-mysql-server/sql"
-	"github.com/gabereiser/go-mysql-server/sql/expression"
-	"github.com/gabereiser/go-mysql-server/sql/plan"
-	"github.com/gabereiser/go-mysql-server/sql/transform"
-	"github.com/gabereiser/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/memory"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/memo"
+	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func TestBiasedCoster(t *testing.T) {
-	ctx := sql.NewEmptyContext()
+	db := memory.NewDatabase("mydb")
+	db.EnablePrimaryKeyIndexes()
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
 
-	xy := memory.NewFilteredTable("xy", sql.NewPrimaryKeySchema(sql.Schema{
+	xy := memory.NewFilteredTable(db, "xy", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "x", Type: types.Int64, Source: "xy"},
 		{Name: "y", Type: types.Int64, Source: "xy"},
 	}, 0), nil)
 
-	ab := memory.NewFilteredTable("ab", sql.NewPrimaryKeySchema(sql.Schema{
+	ab := memory.NewFilteredTable(db, "ab", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Type: types.Int64, Source: "ab"},
 		{Name: "b", Type: types.Int64, Source: "ab"},
 	}, 0), nil)
@@ -50,45 +54,43 @@ func TestBiasedCoster(t *testing.T) {
 	xy.Insert(ctx, sql.Row{int64(0), int64(0)})
 	xy.Insert(ctx, sql.Row{int64(1), int64(1)})
 
-	db := memory.NewDatabase("mydb")
-	db.EnablePrimaryKeyIndexes()
 	db.AddTable("xy", xy)
 	db.AddTable("ab", ab)
 
 	a := NewDefault(sql.NewDatabaseProvider(db))
 
 	n := plan.NewInnerJoin(
-		plan.NewResolvedTable(xy, db, nil),
-		plan.NewResolvedTable(ab, db, nil),
+		plan.NewResolvedTable(xy, db, nil).WithId(1).WithColumns(sql.NewColSet(1, 2)),
+		plan.NewResolvedTable(ab, db, nil).WithId(2).WithColumns(sql.NewColSet(3, 4)),
 		expression.NewEquals(
-			expression.NewGetFieldWithTable(0, types.Int64, "xy", "x", false),
-			expression.NewGetFieldWithTable(0, types.Int64, "ab", "a", false),
+			expression.NewGetFieldWithTable(1, 1, types.Int64, "db", "xy", "x", false),
+			expression.NewGetFieldWithTable(3, 2, types.Int64, "db", "ab", "a", false),
 		),
 	)
 
 	tests := []struct {
 		name string
-		c    func() Coster
+		c    func() memo.Coster
 		exp  plan.JoinType
 	}{
 		{
 			name: "inner",
-			c:    NewInnerBiasedCoster,
+			c:    memo.NewInnerBiasedCoster,
 			exp:  plan.JoinTypeInner,
 		},
 		{
 			name: "lookup",
-			c:    NewLookupBiasedCoster,
+			c:    memo.NewLookupBiasedCoster,
 			exp:  plan.JoinTypeLookup,
 		},
 		{
 			name: "hash",
-			c:    NewHashBiasedCoster,
+			c:    memo.NewHashBiasedCoster,
 			exp:  plan.JoinTypeHash,
 		},
 		{
 			name: "merge",
-			c:    NewMergeBiasedCoster,
+			c:    memo.NewMergeBiasedCoster,
 			exp:  plan.JoinTypeMerge,
 		},
 	}
@@ -96,7 +98,7 @@ func TestBiasedCoster(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("%s biased coster", tt.name), func(t *testing.T) {
 			a.Coster = tt.c()
-			cmp, err := replanJoin(ctx, n, a, nil)
+			cmp, err := replanJoin(ctx, n, a, nil, nil)
 			require.NoError(t, err)
 			types := collectJoinTypes(cmp)[0]
 			require.Equal(t, tt.exp, types)

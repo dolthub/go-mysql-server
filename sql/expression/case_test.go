@@ -161,8 +161,8 @@ func TestCaseType(t *testing.T) {
 		}
 	}
 
-	decimalType := types.MustCreateDecimalType(65, 10)
-
+	decimalType := types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, types.DecimalTypeMaxScale)
+	uint64DecimalType := types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, 0)
 	testCases := []struct {
 		name string
 		c    *Case
@@ -175,13 +175,13 @@ func TestCaseType(t *testing.T) {
 		},
 		{
 			"unsigned promoted and unsigned",
-			caseExpr(NewLiteral(uint32(0), types.Uint32), NewLiteral(uint32(1), types.Uint32)),
+			caseExpr(NewLiteral(uint32(0), types.Uint32), NewLiteral(uint32(1), types.Uint64)),
 			types.Uint64,
 		},
 		{
 			"signed promoted and signed",
 			caseExpr(NewLiteral(int8(0), types.Int8), NewLiteral(int32(1), types.Int32)),
-			types.Int64,
+			types.Int32,
 		},
 		{
 			"int and float to float",
@@ -216,7 +216,7 @@ func TestCaseType(t *testing.T) {
 		{
 			"uint64 and int8 to decimal",
 			caseExpr(NewLiteral(uint64(10), types.Uint64), NewLiteral(int8(0), types.Int8)),
-			decimalType,
+			uint64DecimalType,
 		},
 		{
 			"int and text to text",
@@ -241,7 +241,7 @@ func TestCaseType(t *testing.T) {
 		{
 			"date and timestamp becomes datetime",
 			caseExpr(NewLiteral("2020-04-07", types.Date), NewLiteral("2020-04-07T00:00:00Z", types.Timestamp)),
-			types.Datetime,
+			types.DatetimeMaxPrecision,
 		},
 	}
 

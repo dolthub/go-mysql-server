@@ -17,8 +17,10 @@ package plan
 import (
 	"fmt"
 
-	"github.com/gabereiser/go-mysql-server/sql"
-	"github.com/gabereiser/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/procedures"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type Call struct {
@@ -27,20 +29,34 @@ type Call struct {
 	Params    []sql.Expression
 	asOf      sql.Expression
 	Procedure *Procedure
-	pRef      *expression.ProcedureReference
+	Pref      *expression.ProcedureReference
+	cat       sql.Catalog
+	Analyzed  bool
+
+	// this will have list of parsed operations to run
+	Runner sql.StatementRunner
+	Ops    []procedures.InterpreterOperation
+
+	// retain the result schema
+	resSch sql.Schema
 }
 
 var _ sql.Node = (*Call)(nil)
+var _ sql.CollationCoercible = (*Call)(nil)
 var _ sql.Expressioner = (*Call)(nil)
+var _ procedures.InterpreterNode = (*Call)(nil)
 var _ Versionable = (*Call)(nil)
 
 // NewCall returns a *Call node.
-func NewCall(db sql.Database, name string, params []sql.Expression, asOf sql.Expression) *Call {
+func NewCall(db sql.Database, name string, params []sql.Expression, proc *Procedure, asOf sql.Expression, catalog sql.Catalog, ops []procedures.InterpreterOperation) *Call {
 	return &Call{
-		db:     db,
-		Name:   name,
-		Params: params,
-		asOf:   asOf,
+		db:        db,
+		Name:      name,
+		Params:    params,
+		Procedure: proc,
+		asOf:      asOf,
+		cat:       catalog,
+		Ops:       ops,
 	}
 }
 
@@ -60,12 +76,22 @@ func (c *Call) Resolved() bool {
 	return true
 }
 
+func (c *Call) IsReadOnly() bool {
+	if c.Procedure == nil {
+		return true
+	}
+	return c.Procedure.IsReadOnly()
+}
+
 // Schema implements the sql.Node interface.
 func (c *Call) Schema() sql.Schema {
+	if c.resSch != nil {
+		return c.resSch
+	}
 	if c.Procedure != nil {
 		return c.Procedure.Schema()
 	}
-	return nil
+	return types.OkResultSchema
 }
 
 // Children implements the sql.Node interface.
@@ -78,10 +104,9 @@ func (c *Call) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(c, children...)
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (c *Call) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(c.Database().Name(), "", "", sql.PrivilegeType_Execute))
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (c *Call) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return c.Procedure.CollationCoercibility(ctx)
 }
 
 // Expressions implements the sql.Expressioner interface.
@@ -122,7 +147,7 @@ func (c *Call) WithProcedure(proc *Procedure) *Call {
 // WithParamReference returns a new *Call containing the given *expression.ProcedureReference.
 func (c *Call) WithParamReference(pRef *expression.ProcedureReference) *Call {
 	nc := *c
-	nc.pRef = pRef
+	nc.Pref = pRef
 	return &nc
 }
 
@@ -157,36 +182,8 @@ func (c *Call) DebugString() string {
 	} else {
 		tp.WriteNode("CALL %s.%s(%s)", c.db.Name(), c.Name, paramStr)
 	}
-	if c.Procedure != nil {
-		tp.WriteChildren(sql.DebugString(c.Procedure.Body))
-	}
 
 	return tp.String()
-}
-
-// RowIter implements the sql.Node interface.
-func (c *Call) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	for i, paramExpr := range c.Params {
-		val, err := paramExpr.Eval(ctx, row)
-		if err != nil {
-			return nil, err
-		}
-		paramName := c.Procedure.Params[i].Name
-		paramType := c.Procedure.Params[i].Type
-		err = c.pRef.InitializeVariable(paramName, paramType, val)
-		if err != nil {
-			return nil, err
-		}
-	}
-	c.pRef.PushScope()
-	innerIter, err := c.Procedure.RowIter(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-	return &callIter{
-		call:      c,
-		innerIter: innerIter,
-	}, nil
 }
 
 // Database implements the sql.Databaser interface.
@@ -210,73 +207,28 @@ func (c *Call) Dispose() {
 	}
 }
 
-// callIter is the row iterator for *Call.
-type callIter struct {
-	call      *Call
-	innerIter sql.RowIter
+// SetStatementRunner implements the sql.InterpreterNode interface.
+func (c *Call) SetStatementRunner(ctx *sql.Context, runner sql.StatementRunner) sql.Node {
+	nc := *c
+	nc.Runner = runner
+	return &nc
 }
 
-// Next implements the sql.RowIter interface.
-func (iter *callIter) Next(ctx *sql.Context) (sql.Row, error) {
-	return iter.innerIter.Next(ctx)
+// GetRunner implements the sql.InterpreterNode interface.
+func (c *Call) GetRunner() sql.StatementRunner {
+	return c.Runner
 }
 
-// Close implements the sql.RowIter interface.
-func (iter *callIter) Close(ctx *sql.Context) error {
-	err := iter.innerIter.Close(ctx)
-	if err != nil {
-		return err
-	}
-	err = iter.call.pRef.CloseAllCursors(ctx)
-	if err != nil {
-		return err
-	}
+func (c *Call) GetAsOf() sql.Expression {
+	return c.asOf
+}
 
-	// Set all user and system variables from INOUT and OUT params
-	for i, param := range iter.call.Procedure.Params {
-		if param.Direction == ProcedureParamDirection_Inout ||
-			(param.Direction == ProcedureParamDirection_Out && iter.call.pRef.VariableHasBeenSet(param.Name)) {
-			val, err := iter.call.pRef.GetVariableValue(param.Name)
-			if err != nil {
-				return err
-			}
+// GetStatements implements the sql.InterpreterNode interface.
+func (c *Call) GetStatements() []*procedures.InterpreterOperation {
+	return c.Procedure.Ops
+}
 
-			typ := iter.call.pRef.GetVariableType(param.Name)
-
-			switch callParam := iter.call.Params[i].(type) {
-			case *expression.UserVar:
-				err = ctx.SetUserVariable(ctx, callParam.Name, val, typ)
-				if err != nil {
-					return err
-				}
-			case *expression.SystemVar:
-				// This should have been caught by the analyzer, so a major bug exists somewhere
-				return fmt.Errorf("unable to set `%s` as it is a system variable", callParam.Name)
-			case *expression.ProcedureParam:
-				err = callParam.Set(val, param.Type)
-				if err != nil {
-					return err
-				}
-			}
-		} else if param.Direction == ProcedureParamDirection_Out { // VariableHasBeenSet was false
-			// For OUT only, if a var was not set within the procedure body, then we set the vars to nil.
-			// If the var had a value before the call then it is basically removed.
-			switch callParam := iter.call.Params[i].(type) {
-			case *expression.UserVar:
-				err = ctx.SetUserVariable(ctx, callParam.Name, nil, iter.call.pRef.GetVariableType(param.Name))
-				if err != nil {
-					return err
-				}
-			case *expression.SystemVar:
-				// This should have been caught by the analyzer, so a major bug exists somewhere
-				return fmt.Errorf("unable to set `%s` as it is a system variable", callParam.Name)
-			case *expression.ProcedureParam:
-				err := callParam.Set(nil, param.Type)
-				if err != nil {
-					return err
-				}
-			}
-		}
-	}
-	return nil
+// SetSchema implements the sql.InterpreterNode interface.
+func (c *Call) SetSchema(sch sql.Schema) {
+	c.resSch = sch
 }

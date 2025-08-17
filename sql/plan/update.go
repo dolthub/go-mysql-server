@@ -19,8 +19,9 @@ import (
 
 	"gopkg.in/src-d/go-errors.v1"
 
-	"github.com/gabereiser/go-mysql-server/sql"
-	"github.com/gabereiser/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 var ErrUpdateNotSupported = errors.NewKind("table doesn't support UPDATE")
@@ -30,11 +31,23 @@ var ErrUpdateUnexpectedSetResult = errors.NewKind("attempted to set field but ex
 // Update is a node for updating rows on tables.
 type Update struct {
 	UnaryNode
-	Checks sql.CheckConstraints
+	checks sql.CheckConstraints
 	Ignore bool
+	// IsJoin is true only for explicit UPDATE JOIN queries. It's possible for Update.IsJoin to be false and
+	// Update.Child to be an UpdateJoin since subqueries are optimized as Joins
+	IsJoin       bool
+	HasSingleRel bool
+	IsProcNested bool
+
+	// Returning is a list of expressions to return after the update operation. This feature is not
+	// supported in MySQL's syntax, but is exposed through PostgreSQL's syntax.
+	Returning []sql.Expression
 }
 
+var _ sql.Node = (*Update)(nil)
 var _ sql.Databaseable = (*Update)(nil)
+var _ sql.CollationCoercible = (*Update)(nil)
+var _ sql.CheckConstraintNode = (*Update)(nil)
 
 // NewUpdate creates an Update node.
 func NewUpdate(n sql.Node, ignore bool, updateExprs []sql.Expression) *Update {
@@ -53,7 +66,7 @@ func GetUpdatable(node sql.Node) (sql.UpdatableTable, error) {
 	case sql.UpdatableTable:
 		return node, nil
 	case *IndexedTableAccess:
-		return GetUpdatable(node.ResolvedTable)
+		return GetUpdatable(node.TableNode)
 	case *ResolvedTable:
 		return getUpdatableTable(node.Table)
 	case *SubqueryAlias:
@@ -88,47 +101,77 @@ func getUpdatableTable(t sql.Table) (sql.UpdatableTable, error) {
 	}
 }
 
-func updateDatabaseHelper(node sql.Node) string {
-	switch node := node.(type) {
-	case sql.UpdatableTable:
-		return ""
-	case *IndexedTableAccess:
-		return updateDatabaseHelper(node.ResolvedTable)
-	case *ResolvedTable:
-		return node.Database.Name()
-	case *UnresolvedTable:
-		return node.Database()
+// Schema implements the sql.Node interface.
+func (u *Update) Schema() sql.Schema {
+	// Postgres allows the returned values of the update statement to be controlled, so if returning
+	// expressions were specified, then we return a different schema.
+	if u.Returning != nil {
+		// We know that returning exprs are resolved here, because you can't call Schema()
+		// safely until Resolved() is true.
+		returningSchema := sql.Schema{}
+		for _, expr := range u.Returning {
+			returningSchema = append(returningSchema, transform.ExpressionToColumn(expr, ""))
+		}
+
+		return returningSchema
 	}
 
-	for _, child := range node.Children() {
-		return updateDatabaseHelper(child)
-	}
+	return u.Child.Schema()
+}
 
-	return ""
+func (u *Update) Checks() sql.CheckConstraints {
+	return u.checks
+}
+
+func (u *Update) WithChecks(checks sql.CheckConstraints) sql.Node {
+	ret := *u
+	ret.checks = checks
+	return &ret
+}
+
+// DB returns the database being updated. |Database| is already used by another interface we implement.
+func (u *Update) DB() sql.Database {
+	return GetDatabase(u.Child)
+}
+
+func (u *Update) IsReadOnly() bool {
+	return false
 }
 
 func (u *Update) Database() string {
-	return updateDatabaseHelper(u.Child)
+	db := GetDatabase(u.Child)
+	if db == nil {
+		return ""
+	}
+	return db.Name()
 }
 
 func (u *Update) Expressions() []sql.Expression {
-	return u.Checks.ToExpressions()
+	exprs := append([]sql.Expression{}, u.checks.ToExpressions()...)
+	exprs = append(exprs, u.Returning...)
+	return exprs
 }
 
 func (u *Update) Resolved() bool {
-	return u.Child.Resolved() && expression.ExpressionsResolved(u.Checks.ToExpressions()...)
+	return u.Child.Resolved() &&
+		expression.ExpressionsResolved(u.checks.ToExpressions()...) &&
+		expression.ExpressionsResolved(u.Returning...)
+
 }
 
 func (u Update) WithExpressions(newExprs ...sql.Expression) (sql.Node, error) {
-	if len(newExprs) != len(u.Checks) {
-		return nil, sql.ErrInvalidChildrenNumber.New(u, len(newExprs), len(u.Checks))
+	expectedLength := len(u.checks) + len(u.Returning)
+	if len(newExprs) != expectedLength {
+		return nil, sql.ErrInvalidChildrenNumber.New(u, len(newExprs), expectedLength)
 	}
 
 	var err error
-	u.Checks, err = u.Checks.FromExpressions(newExprs)
+	u.checks, err = u.checks.FromExpressions(newExprs[:len(u.checks)])
 	if err != nil {
 		return nil, err
 	}
+
+	u.Returning = newExprs[len(u.checks):]
 
 	return &u, nil
 }
@@ -143,160 +186,6 @@ func (ui UpdateInfo) String() string {
 	return fmt.Sprintf("Rows matched: %d  Changed: %d  Warnings: %d", ui.Matched, ui.Updated, ui.Warnings)
 }
 
-type updateIter struct {
-	childIter sql.RowIter
-	schema    sql.Schema
-	updater   sql.RowUpdater
-	checks    sql.CheckConstraints
-	closed    bool
-	ignore    bool
-}
-
-func (u *updateIter) Next(ctx *sql.Context) (sql.Row, error) {
-	oldAndNewRow, err := u.childIter.Next(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	oldRow, newRow := oldAndNewRow[:len(oldAndNewRow)/2], oldAndNewRow[len(oldAndNewRow)/2:]
-	if equals, err := oldRow.Equals(newRow, u.schema); err == nil {
-		if !equals {
-			// apply check constraints
-			for _, check := range u.checks {
-				if !check.Enforced {
-					continue
-				}
-
-				res, err := sql.EvaluateCondition(ctx, check.Expr, newRow)
-				if err != nil {
-					return nil, err
-				}
-
-				if sql.IsFalse(res) {
-					return nil, u.ignoreOrError(ctx, newRow, sql.ErrCheckConstraintViolated.New(check.Name))
-				}
-			}
-
-			err := u.validateNullability(ctx, newRow, u.schema)
-			if err != nil {
-				return nil, u.ignoreOrError(ctx, newRow, err)
-			}
-
-			err = u.updater.Update(ctx, oldRow, newRow)
-			if err != nil {
-				return nil, u.ignoreOrError(ctx, newRow, err)
-			}
-		}
-	} else {
-		return nil, err
-	}
-
-	return oldAndNewRow, nil
-}
-
-// Applies the update expressions given to the row given, returning the new resultant row. In the case that ignore is
-// provided and there is a type conversion error, this function sets the value to the zero value as per the MySQL standard.
-// TODO: a set of update expressions should probably be its own expression type with an Eval method that does this
-func applyUpdateExpressionsWithIgnore(ctx *sql.Context, updateExprs []sql.Expression, tableSchema sql.Schema, row sql.Row, ignore bool) (sql.Row, error) {
-	var ok bool
-	prev := row
-	for _, updateExpr := range updateExprs {
-		val, err := updateExpr.Eval(ctx, prev)
-		if err != nil {
-			wtce, ok2 := err.(sql.WrappedTypeConversionError)
-			if !ok2 || !ignore {
-				return nil, err
-			}
-
-			cpy := prev.Copy()
-			cpy[wtce.OffendingIdx] = wtce.OffendingVal // Needed for strings
-			val = convertDataAndWarn(ctx, tableSchema, cpy, wtce.OffendingIdx, wtce.Err)
-		}
-		prev, ok = val.(sql.Row)
-		if !ok {
-			return nil, ErrUpdateUnexpectedSetResult.New(val)
-		}
-	}
-	return prev, nil
-}
-
-func (u *updateIter) validateNullability(ctx *sql.Context, row sql.Row, schema sql.Schema) error {
-	for idx := 0; idx < len(row); idx++ {
-		col := schema[idx]
-		if !col.Nullable && row[idx] == nil {
-			// In the case of an IGNORE we set the nil value to a default and add a warning
-			if u.ignore {
-				row[idx] = col.Type.Zero()
-				_ = warnOnIgnorableError(ctx, row, sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)) // will always return nil
-			} else {
-				return sql.ErrInsertIntoNonNullableProvidedNull.New(col.Name)
-			}
-
-		}
-	}
-	return nil
-}
-
-func (u *updateIter) Close(ctx *sql.Context) error {
-	if !u.closed {
-		u.closed = true
-		if err := u.updater.Close(ctx); err != nil {
-			return err
-		}
-		return u.childIter.Close(ctx)
-	}
-	return nil
-}
-
-func (u *updateIter) ignoreOrError(ctx *sql.Context, row sql.Row, err error) error {
-	if !u.ignore {
-		return err
-	}
-
-	return warnOnIgnorableError(ctx, row, err)
-}
-
-func newUpdateIter(
-	childIter sql.RowIter,
-	schema sql.Schema,
-	updater sql.RowUpdater,
-	checks sql.CheckConstraints,
-	ignore bool,
-) sql.RowIter {
-	if ignore {
-		return NewCheckpointingTableEditorIter(&updateIter{
-			childIter: childIter,
-			updater:   updater,
-			schema:    schema,
-			checks:    checks,
-			ignore:    true,
-		}, updater)
-	} else {
-		return NewTableEditorIter(&updateIter{
-			childIter: childIter,
-			updater:   updater,
-			schema:    schema,
-			checks:    checks,
-		}, updater)
-	}
-}
-
-// RowIter implements the Node interface.
-func (u *Update) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	updatable, err := GetUpdatable(u.Child)
-	if err != nil {
-		return nil, err
-	}
-	updater := updatable.Updater(ctx)
-
-	iter, err := u.Child.RowIter(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	return newUpdateIter(iter, updatable.Schema(), updater, u.Checks, u.Ignore), nil
-}
-
 // WithChildren implements the Node interface.
 func (u *Update) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
@@ -307,13 +196,9 @@ func (u *Update) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &np, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (u *Update) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	//TODO: If column values are retrieved then the SELECT privilege is required
-	// For example: "UPDATE table SET x = y + 1 WHERE z > 0"
-	// We would need SELECT privileges on both the "y" and "z" columns as they're retrieving values
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(u.Database(), getTableName(u.Child), "", sql.PrivilegeType_Update))
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Update) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func (u *Update) String() string {
@@ -325,7 +210,7 @@ func (u *Update) String() string {
 
 func (u *Update) DebugString() string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode(fmt.Sprintf("Update"))
+	_ = pr.WriteNode("Update")
 	_ = pr.WriteChildren(sql.DebugString(u.Child))
 	return pr.String()
 }

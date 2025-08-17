@@ -16,10 +16,8 @@ package plan
 
 import (
 	"fmt"
-	"io"
 	"strings"
 
-	"github.com/dolthub/vitess/go/mysql"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/gabereiser/go-mysql-server/sql"
@@ -32,10 +30,6 @@ var (
 	ErrIndexActionNotImplemented = errors.NewKind("alter table index action is not implemented: %v")
 	// ErrCreateIndexMissingColumns is returned when a CREATE INDEX statement does not provide any columns
 	ErrCreateIndexMissingColumns = errors.NewKind("cannot create an index without columns")
-	// ErrCreateIndexNonExistentColumn is returned when a key is provided in the index that isn't in the table
-	ErrCreateIndexNonExistentColumn = errors.NewKind("column `%v` does not exist in the table")
-	// ErrCreateIndexDuplicateColumn is returned when a CREATE INDEX statement has the same column multiple times
-	ErrCreateIndexDuplicateColumn = errors.NewKind("cannot have duplicates of columns in an index: `%v`")
 )
 
 type IndexAction byte
@@ -51,13 +45,18 @@ type AlterIndex struct {
 	// Action states whether it's a CREATE, DROP, or RENAME
 	Action IndexAction
 	// ddlNode references to the database that is being operated on
-	ddlNode
+	Db sql.Database
 	// Table is the table that is being referenced
-	Table sql.Node
+	Table sql.TableNode
+	// IfExists indicates if we should error when deleting an index that doesn't exist
+	IfExists bool
+	// IfNotExists indicates if we should error when creating a duplicate index
+	IfNotExists bool
 	// IndexName is the index name, and in the case of a RENAME it represents the new name
 	IndexName string
 	// PreviousIndexName states the old name when renaming an index
 	PreviousIndexName string
+	// TODO: This should just use sql.IndexDef
 	// Using states whether you're using BTREE, HASH, or none
 	Using sql.IndexUsing
 	// Constraint specifies whether this is UNIQUE, FULLTEXT, SPATIAL, or none
@@ -74,43 +73,47 @@ type AlterIndex struct {
 
 var _ sql.SchemaTarget = (*AlterIndex)(nil)
 var _ sql.Expressioner = (*AlterIndex)(nil)
+var _ sql.Node = (*AlterIndex)(nil)
+var _ sql.CollationCoercible = (*AlterIndex)(nil)
 
-func NewAlterCreateIndex(db sql.Database, table sql.Node, indexName string, using sql.IndexUsing, constraint sql.IndexConstraint, columns []sql.IndexColumn, comment string) *AlterIndex {
+func NewAlterCreateIndex(db sql.Database, table sql.TableNode, ifNotExists bool, indexName string, using sql.IndexUsing, constraint sql.IndexConstraint, columns []sql.IndexColumn, comment string) *AlterIndex {
 	return &AlterIndex{
-		Action:     IndexAction_Create,
-		ddlNode:    ddlNode{db: db},
-		Table:      table,
-		IndexName:  indexName,
-		Using:      using,
-		Constraint: constraint,
-		Columns:    columns,
-		Comment:    comment,
+		Action:      IndexAction_Create,
+		Db:          db,
+		Table:       table,
+		IfNotExists: ifNotExists,
+		IndexName:   indexName,
+		Using:       using,
+		Constraint:  constraint,
+		Columns:     columns,
+		Comment:     comment,
 	}
 }
 
-func NewAlterDropIndex(db sql.Database, table sql.Node, indexName string) *AlterIndex {
+func NewAlterDropIndex(db sql.Database, table sql.TableNode, ifExists bool, indexName string) *AlterIndex {
 	return &AlterIndex{
 		Action:    IndexAction_Drop,
-		ddlNode:   ddlNode{db: db},
+		Db:        db,
 		Table:     table,
+		IfExists:  ifExists,
 		IndexName: indexName,
 	}
 }
 
-func NewAlterRenameIndex(db sql.Database, table sql.Node, fromIndexName, toIndexName string) *AlterIndex {
+func NewAlterRenameIndex(db sql.Database, table sql.TableNode, fromIndexName, toIndexName string) *AlterIndex {
 	return &AlterIndex{
 		Action:            IndexAction_Rename,
-		ddlNode:           ddlNode{db: db},
+		Db:                db,
 		Table:             table,
 		IndexName:         toIndexName,
 		PreviousIndexName: fromIndexName,
 	}
 }
 
-func NewAlterDisableEnableKeys(db sql.Database, table sql.Node, disableKeys bool) *AlterIndex {
+func NewAlterDisableEnableKeys(db sql.Database, table sql.TableNode, disableKeys bool) *AlterIndex {
 	return &AlterIndex{
 		Action:      IndexAction_DisableEnableKeys,
-		ddlNode:     ddlNode{db: db},
+		Db:          db,
 		Table:       table,
 		DisableKeys: disableKeys,
 	}
@@ -121,201 +124,44 @@ func (p *AlterIndex) Schema() sql.Schema {
 	return types.OkResultSchema
 }
 
-// Execute inserts the rows in the database.
-func (p *AlterIndex) Execute(ctx *sql.Context) error {
-	// We should refresh the state of the table in case this alter was in a multi alter statement.
-	table, err := getTableFromDatabase(ctx, p.Database(), p.Table)
-	if err != nil {
-		return err
-	}
-
-	indexable, ok := table.(sql.IndexAlterableTable)
-	if !ok {
-		return ErrNotIndexable.New()
-	}
-
-	if err != nil {
-		return err
-	}
-
-	switch p.Action {
-	case IndexAction_Create:
-		if len(p.Columns) == 0 {
-			return ErrCreateIndexMissingColumns.New()
-		}
-
-		// Make sure that all columns are valid, in the table, and there are no duplicates
-		seenCols := make(map[string]bool)
-		for _, col := range indexable.Schema() {
-			seenCols[col.Name] = false
-		}
-		for _, indexCol := range p.Columns {
-			if seen, ok := seenCols[indexCol.Name]; ok {
-				if !seen {
-					seenCols[indexCol.Name] = true
-				} else {
-					return ErrCreateIndexDuplicateColumn.New(indexCol.Name)
-				}
-			} else {
-				return ErrCreateIndexNonExistentColumn.New(indexCol.Name)
-			}
-		}
-
-		indexName := p.IndexName
-		if indexName == "" {
-			indexMap := make(map[string]struct{})
-			// If we can get the other indexes declared on this table then we can ensure that we're creating a unique
-			// index name. In either case, we retain the map search to simplify the logic (it will either be populated
-			// or empty).
-			if indexedTable, ok := indexable.(sql.IndexAddressable); ok {
-				indexes, err := indexedTable.GetIndexes(ctx)
-				if err != nil {
-					return err
-				}
-				for _, index := range indexes {
-					indexMap[strings.ToLower(index.ID())] = struct{}{}
-				}
-			}
-			indexName = strings.Join(p.columnNames(), "")
-			if _, ok := indexMap[strings.ToLower(indexName)]; ok {
-				for i := 0; true; i++ {
-					newIndexName := fmt.Sprintf("%s_%d", indexName, i)
-					if _, ok = indexMap[strings.ToLower(newIndexName)]; !ok {
-						indexName = newIndexName
-						break
-					}
-				}
-			}
-		}
-		err = indexable.CreateIndex(ctx, sql.IndexDef{
-			Name:       indexName,
-			Columns:    p.Columns,
-			Constraint: p.Constraint,
-			Storage:    p.Using,
-			Comment:    p.Comment,
-		})
-		if err != nil {
-			return err
-		}
-		rwt, ok := indexable.(sql.RewritableTable)
-		if !ok || p.Constraint != sql.IndexConstraint_Unique {
-			return nil
-		}
-
-		sch := sql.SchemaToPrimaryKeySchema(table, p.targetSchema)
-		inserter, err := rwt.RewriteInserter(ctx, sch, sch, nil, nil, p.Columns)
-		if err != nil {
-			return err
-		}
-
-		partitions, err := rwt.Partitions(ctx)
-		if err != nil {
-			return err
-		}
-
-		rowIter := sql.NewTableRowIter(ctx, rwt, partitions)
-
-		for {
-			r, err := rowIter.Next(ctx)
-			if err == io.EOF {
-				break
-			} else if err != nil {
-				return err
-			}
-
-			err = inserter.Insert(ctx, r)
-			if err != nil {
-				return err
-			}
-		}
-
-		// TODO: move this into iter.close, probably
-		err = inserter.Close(ctx)
-		if err != nil {
-			return err
-		}
-		return nil
-	case IndexAction_Drop:
-		if fkTable, ok := indexable.(sql.ForeignKeyTable); ok {
-			fks, err := fkTable.GetDeclaredForeignKeys(ctx)
-			if err != nil {
-				return err
-			}
-			for _, fk := range fks {
-				_, ok, err := FindIndexWithPrefix(ctx, fkTable, fk.Columns, p.IndexName)
-				if err != nil {
-					return err
-				}
-				if !ok {
-					return sql.ErrForeignKeyDropIndex.New(p.IndexName, fk.Name)
-				}
-			}
-
-			parentFks, err := fkTable.GetReferencedForeignKeys(ctx)
-			if err != nil {
-				return err
-			}
-			for _, parentFk := range parentFks {
-				_, ok, err := FindIndexWithPrefix(ctx, fkTable, parentFk.ParentColumns, p.IndexName)
-				if err != nil {
-					return err
-				}
-				if !ok {
-					return sql.ErrForeignKeyDropIndex.New(p.IndexName, parentFk.Name)
-				}
-			}
-		}
-		return indexable.DropIndex(ctx, p.IndexName)
-	case IndexAction_Rename:
-		return indexable.RenameIndex(ctx, p.PreviousIndexName, p.IndexName)
-	case IndexAction_DisableEnableKeys:
-		ctx.Session.Warn(&sql.Warning{
-			Level:   "Warning",
-			Code:    mysql.ERNotSupportedYet,
-			Message: fmt.Sprintf("'disable/enable keys' feature is not supported yet"),
-		})
-		return nil
-	default:
-		return ErrIndexActionNotImplemented.New(p.Action)
-	}
-}
-
-// RowIter implements the Node interface.
-func (p *AlterIndex) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	err := p.Execute(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
-}
-
 // WithChildren implements the Node interface. For AlterIndex, the only appropriate input is
 // a single child - The Table.
-func (p AlterIndex) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (p *AlterIndex) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
 
+	child, ok := children[0].(sql.TableNode)
+	if !ok {
+		return nil, fmt.Errorf("AlterIndex.WithChildren requires a TableNode")
+	}
 	switch p.Action {
 	case IndexAction_Create, IndexAction_Drop, IndexAction_Rename, IndexAction_DisableEnableKeys:
-		p.Table = children[0]
-		return &p, nil
+		np := *p
+		np.Table = child
+		return &np, nil
 	default:
 		return nil, ErrIndexActionNotImplemented.New(p.Action)
 	}
 }
 
-func (p AlterIndex) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
-	p.targetSchema = schema
-	return &p, nil
+func (p *AlterIndex) WithColumns(columns []sql.IndexColumn) (sql.Node, error) {
+	np := *p
+	np.Columns = columns
+	return &np, nil
+}
+
+func (p *AlterIndex) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
+	np := *p
+	np.targetSchema = schema
+	return &np, nil
 }
 
 func (p *AlterIndex) TargetSchema() sql.Schema {
 	return p.targetSchema
 }
 
-// Expressions on the AlterIndex object are specifically column default expresions, nothing else.
+// Expressions on the AlterIndex object are specifically column default expresions, Nothing else.
 func (p *AlterIndex) Expressions() []sql.Expression {
 	newExprs := make([]sql.Expression, len(p.TargetSchema()))
 	for i, col := range p.TargetSchema() {
@@ -327,7 +173,7 @@ func (p *AlterIndex) Expressions() []sql.Expression {
 
 // WithExpressions implements the Node Interface. For AlterIndex, expressions represent  column defaults on the
 // targetSchema instance - required to be the same number of columns on the target schema.
-func (p AlterIndex) WithExpressions(expressions ...sql.Expression) (sql.Node, error) {
+func (p *AlterIndex) WithExpressions(expressions ...sql.Expression) (sql.Node, error) {
 	columns := p.TargetSchema().Copy()
 
 	if len(columns) != len(expressions) {
@@ -360,20 +206,19 @@ func (p AlterIndex) WithExpressions(expressions ...sql.Expression) (sql.Node, er
 	return newIdx, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (p *AlterIndex) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(p.ddlNode.Database().Name(), getTableName(p.Table), "", sql.PrivilegeType_Index))
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*AlterIndex) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // WithDatabase implements the sql.Databaser interface.
 func (p *AlterIndex) WithDatabase(database sql.Database) (sql.Node, error) {
 	np := *p
-	np.db = database
+	np.Db = database
 	return &np, nil
 }
 
-func (p AlterIndex) String() string {
+func (p *AlterIndex) String() string {
 	pr := sql.NewTreePrinter()
 	switch p.Action {
 	case IndexAction_Create:
@@ -386,6 +231,8 @@ func (p AlterIndex) String() string {
 			children = append(children, "Constraint(SPATIAL)")
 		case sql.IndexConstraint_Fulltext:
 			children = append(children, "Constraint(FULLTEXT)")
+		case sql.IndexConstraint_Vector:
+			children = append(children, "Constraint(VECTOR)")
 		}
 		switch p.Using {
 		case sql.IndexUsing_BTree, sql.IndexUsing_Default:
@@ -421,7 +268,11 @@ func (p AlterIndex) String() string {
 }
 
 func (p *AlterIndex) Resolved() bool {
-	return p.Table.Resolved() && p.ddlNode.Resolved()
+	return p.Table.Resolved() && p.targetSchema.Resolved()
+}
+
+func (p *AlterIndex) IsReadOnly() bool {
+	return false
 }
 
 // Children implements the sql.Node interface.
@@ -430,7 +281,7 @@ func (p *AlterIndex) Children() []sql.Node {
 }
 
 // ColumnNames returns each column's name without the length property.
-func (p *AlterIndex) columnNames() []string {
+func (p *AlterIndex) ColumnNames() []string {
 	colNames := make([]string, len(p.Columns))
 	for i, col := range p.Columns {
 		colNames[i] = col.Name

@@ -15,6 +15,7 @@
 package variables
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,31 +26,74 @@ import (
 	"github.com/gabereiser/go-mysql-server/sql/types"
 )
 
-var newConn = sql.SystemVariable{
+var newConn = &sql.MysqlSystemVariable{
 	Name:    "max_connections",
-	Scope:   sql.SystemVariableScope_Global,
+	Scope:   sql.GetMysqlScope(sql.SystemVariableScope_Global),
 	Dynamic: true,
 	Type:    types.NewSystemIntType("max_connections", 1, 100000, false),
 	Default: int64(1000),
 }
 
-var newTimeout = sql.SystemVariable{
+var newTimeout = &sql.MysqlSystemVariable{
 	Name:    "net_write_timeout",
-	Scope:   sql.SystemVariableScope_Both,
+	Scope:   sql.GetMysqlScope(sql.SystemVariableScope_Both),
 	Dynamic: true,
 	Type:    types.NewSystemIntType("net_write_timeout", 1, 9223372036854775807, false),
 	Default: int64(1),
 }
 
-var newUnknown = sql.SystemVariable{
+var newUnknown = &sql.MysqlSystemVariable{
 	Name:    "net_write_timeout",
-	Scope:   sql.SystemVariableScope_Both,
+	Scope:   sql.GetMysqlScope(sql.SystemVariableScope_Both),
 	Dynamic: true,
 	Type:    types.NewSystemIntType("net_write_timeout", 1, 9223372036854775807, false),
 	Default: int64(1),
+}
+
+func TestInitSystemVars(t *testing.T) {
+	defer InitSystemVariables()
+
+	tests := []struct {
+		varName string
+		varVal  interface{}
+		err     *errors.Kind
+	}{
+		{
+			varName: "innodb_autoinc_lock_mode",
+			varVal:  0,
+		},
+		{
+			varName: "innodb_autoinc_lock_mode",
+			varVal:  1,
+		},
+		{
+			varName: "innodb_autoinc_lock_mode",
+			varVal:  2,
+		},
+		{
+			varName: "innodb_autoinc_lock_mode",
+			varVal:  3,
+			err:     sql.ErrInvalidSystemVariableValue,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("set %v = %v", test.varName, test.varVal), func(t *testing.T) {
+			InitSystemVariables()
+			err := sql.SystemVariables.AssignValues(map[string]interface{}{test.varName: test.varVal})
+			if test.err != nil {
+				require.Error(t, err)
+				require.True(t, test.err.Is(err))
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestInitSystemVariablesWithDefaults(t *testing.T) {
+	defer InitSystemVariables()
+
 	tests := []struct {
 		name             string
 		persistedGlobals []sql.SystemVariable
@@ -70,20 +114,24 @@ func TestInitSystemVariablesWithDefaults(t *testing.T) {
 			expectedCmp:      []sql.SystemVariable{newUnknown},
 		}, {
 			name: "bad type", // TODO: no checks to prevent incorrect types currently
-			persistedGlobals: []sql.SystemVariable{{
-				Name:    "max_connections",
-				Scope:   sql.SystemVariableScope_Global,
-				Dynamic: true,
-				Type:    types.NewSystemIntType("max_connections", 1, 100000, false),
-				Default: "1000",
-			}},
-			expectedCmp: []sql.SystemVariable{{
-				Name:    "max_connections",
-				Scope:   sql.SystemVariableScope_Global,
-				Dynamic: true,
-				Type:    types.NewSystemIntType("max_connections", 1, 100000, false),
-				Default: "1000",
-			}},
+			persistedGlobals: []sql.SystemVariable{
+				&sql.MysqlSystemVariable{
+					Name:    "max_connections",
+					Scope:   sql.GetMysqlScope(sql.SystemVariableScope_Global),
+					Dynamic: true,
+					Type:    types.NewSystemIntType("max_connections", 1, 100000, false),
+					Default: "1000",
+				},
+			},
+			expectedCmp: []sql.SystemVariable{
+				&sql.MysqlSystemVariable{
+					Name:    "max_connections",
+					Scope:   sql.GetMysqlScope(sql.SystemVariableScope_Global),
+					Dynamic: true,
+					Type:    types.NewSystemIntType("max_connections", 1, 100000, false),
+					Default: "1000",
+				},
+			},
 			err: nil,
 		},
 	}
@@ -94,7 +142,7 @@ func TestInitSystemVariablesWithDefaults(t *testing.T) {
 			sql.SystemVariables.AddSystemVariables(test.persistedGlobals)
 
 			for i, sysVar := range test.persistedGlobals {
-				cmp, _, _ := sql.SystemVariables.GetGlobal(sysVar.Name)
+				cmp, _, _ := sql.SystemVariables.GetGlobal(sysVar.GetName())
 				assert.Equal(t, test.expectedCmp[i], cmp)
 			}
 		})

@@ -25,9 +25,26 @@ import (
 )
 
 func TestDimension(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	t.Run("point is dimension 0", func(t *testing.T) {
 		require := require.New(t)
 		f := NewDimension(expression.NewLiteral(types.Point{X: 1, Y: 2}, types.PointType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(0, v)
+	})
+
+	t.Run("point with srid 4326 is dimension 0", func(t *testing.T) {
+		require := require.New(t)
+		f := NewDimension(expression.NewLiteral(types.Point{SRID: 4326, X: 1, Y: 2}, types.PointType{}))
+		v, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.NoError(err)
+		require.Equal(0, v)
+	})
+
+	t.Run("point with srid 3857 is dimension 0", func(t *testing.T) {
+		require := require.New(t)
+		f := NewDimension(expression.NewLiteral(types.Point{SRID: 3857, X: 1, Y: 2}, types.PointType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(0, v)
@@ -151,7 +168,8 @@ func TestDimension(t *testing.T) {
 		require.NoError(err)
 
 		typ := f.Type()
-		_, err = typ.Convert(v)
+		_, inRange, err := typ.Convert(ctx, v)
+		require.True(bool(inRange))
 		require.NoError(err)
 	})
 }

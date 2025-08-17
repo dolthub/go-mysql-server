@@ -32,6 +32,7 @@ type Distance struct {
 }
 
 var _ sql.FunctionExpression = (*Distance)(nil)
+var _ sql.CollationCoercible = (*Distance)(nil)
 
 // ErrNoUnits is thrown when the specified SRID does not have units
 var ErrNoUnits = errors.NewKind("the geometry passed to function st_distance is in SRID %v, which doesn't specify a length unit. Can't convert to '%v'.")
@@ -57,6 +58,11 @@ func (d *Distance) Description() string {
 // Type implements the sql.Expression interface.
 func (d *Distance) Type() sql.Type {
 	return types.Float64
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Distance) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (d *Distance) String() string {
@@ -164,7 +170,7 @@ func (d *Distance) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, sql.ErrDiffSRIDs.New(d.FunctionName(), srid1, srid2)
 	}
 
-	if srid1 == types.GeoSpatialSRID {
+	if srid1 != types.CartesianSRID {
 		return nil, sql.ErrUnsupportedSRID.New(srid1)
 	}
 

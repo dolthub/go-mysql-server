@@ -23,14 +23,24 @@ import (
 // SubqueryAlias is a node that gives a subquery a name.
 type SubqueryAlias struct {
 	UnaryNode
-	Columns        []string
+	ColumnNames    []string
 	name           string
 	TextDefinition string
 	// OuterScopeVisibility is true when a SubqueryAlias (i.e. derived table) is contained in a subquery
 	// expression and is eligible to have visibility to outer scopes of the query.
 	OuterScopeVisibility bool
-	CanCacheResults      bool
+	Correlated           sql.ColSet
+	Volatile             bool
+	CacheableCTESource   bool
+	IsLateral            bool
+	ScopeMapping         map[sql.ColumnId]sql.Expression
+	id                   sql.TableId
+	cols                 sql.ColSet
 }
+
+var _ sql.Node = (*SubqueryAlias)(nil)
+var _ sql.CollationCoercible = (*SubqueryAlias)(nil)
+var _ sql.RenameableNode = (*SubqueryAlias)(nil)
 
 // NewSubqueryAlias creates a new SubqueryAlias node.
 func NewSubqueryAlias(name, textDefinition string, node sql.Node) *SubqueryAlias {
@@ -42,6 +52,30 @@ func NewSubqueryAlias(name, textDefinition string, node sql.Node) *SubqueryAlias
 	}
 }
 
+// WithId implements sql.TableIdNode
+func (sq *SubqueryAlias) WithId(id sql.TableId) TableIdNode {
+	ret := *sq
+	ret.id = id
+	return &ret
+}
+
+// Id implements sql.TableIdNode
+func (sq *SubqueryAlias) Id() sql.TableId {
+	return sq.id
+}
+
+// WithColumns implements sql.TableIdNode
+func (sq *SubqueryAlias) WithColumns(set sql.ColSet) TableIdNode {
+	ret := *sq
+	ret.cols = set
+	return &ret
+}
+
+// Columns implements sql.TableIdNode
+func (sq *SubqueryAlias) Columns() sql.ColSet {
+	return sq.cols
+}
+
 // AsView returns the view wrapper for this subquery
 func (sq *SubqueryAlias) AsView(createViewStmt string) *sql.View {
 	return sql.NewView(sq.Name(), sq, sq.TextDefinition, createViewStmt)
@@ -50,6 +84,16 @@ func (sq *SubqueryAlias) AsView(createViewStmt string) *sql.View {
 // Name implements the Table interface.
 func (sq *SubqueryAlias) Name() string { return sq.name }
 
+func (sq *SubqueryAlias) WithName(n string) sql.Node {
+	ret := *sq
+	ret.name = n
+	return &ret
+}
+
+func (sq *SubqueryAlias) IsReadOnly() bool {
+	return sq.Child.IsReadOnly()
+}
+
 // Schema implements the Node interface.
 func (sq *SubqueryAlias) Schema() sql.Schema {
 	childSchema := sq.Child.Schema()
@@ -57,29 +101,12 @@ func (sq *SubqueryAlias) Schema() sql.Schema {
 	for i, col := range childSchema {
 		c := *col
 		c.Source = sq.name
-		if len(sq.Columns) > 0 {
-			c.Name = sq.Columns[i]
+		if len(sq.ColumnNames) > 0 {
+			c.Name = sq.ColumnNames[i]
 		}
 		schema[i] = &c
 	}
 	return schema
-}
-
-// RowIter implements the Node interface.
-func (sq *SubqueryAlias) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.SubqueryAlias")
-
-	if !sq.OuterScopeVisibility {
-		row = nil
-	}
-	iter, err := sq.Child.RowIter(ctx, row)
-
-	if err != nil {
-		span.End()
-		return nil, err
-	}
-
-	return sql.NewSpanIter(span, iter), nil
 }
 
 // WithChildren implements the Node interface.
@@ -93,9 +120,9 @@ func (sq *SubqueryAlias) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &nn, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (sq *SubqueryAlias) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return sq.Child.CheckPrivileges(ctx, opChecker)
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (sq *SubqueryAlias) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, sq.Child)
 }
 
 func (sq *SubqueryAlias) WithChild(n sql.Node) *SubqueryAlias {
@@ -104,15 +131,25 @@ func (sq *SubqueryAlias) WithChild(n sql.Node) *SubqueryAlias {
 	return &ret
 }
 
-func (sq *SubqueryAlias) WithName(name string) *SubqueryAlias {
+func (sq *SubqueryAlias) CanCacheResults() bool {
+	return sq.Correlated.Empty() && !sq.Volatile
+}
+
+func (sq *SubqueryAlias) WithCorrelated(cols sql.ColSet) *SubqueryAlias {
 	ret := *sq
-	ret.name = name
+	ret.Correlated = cols
 	return &ret
 }
 
-func (sq *SubqueryAlias) WithCachedResults() *SubqueryAlias {
+func (sq *SubqueryAlias) WithVolatile(v bool) *SubqueryAlias {
 	ret := *sq
-	ret.CanCacheResults = true
+	ret.Volatile = v
+	return &ret
+}
+
+func (sq *SubqueryAlias) WithScopeMapping(cols map[sql.ColumnId]sql.Expression) *SubqueryAlias {
+	ret := *sq
+	ret.ScopeMapping = cols
 	return &ret
 }
 
@@ -124,11 +161,12 @@ func (sq *SubqueryAlias) Opaque() bool {
 func (sq *SubqueryAlias) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("SubqueryAlias")
-	children := make([]string, 4)
+	children := make([]string, 5)
 	children[0] = fmt.Sprintf("name: %s", sq.name)
 	children[1] = fmt.Sprintf("outerVisibility: %t", sq.OuterScopeVisibility)
-	children[2] = fmt.Sprintf("cacheable: %t", sq.CanCacheResults)
-	children[3] = sq.Child.String()
+	children[2] = fmt.Sprintf("isLateral: %t", sq.IsLateral)
+	children[3] = fmt.Sprintf("cacheable: %t", sq.CanCacheResults())
+	children[4] = sq.Child.String()
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
@@ -136,17 +174,20 @@ func (sq *SubqueryAlias) String() string {
 func (sq *SubqueryAlias) DebugString() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("SubqueryAlias")
-	children := make([]string, 4)
+	children := make([]string, 7)
 	children[0] = fmt.Sprintf("name: %s", sq.name)
 	children[1] = fmt.Sprintf("outerVisibility: %t", sq.OuterScopeVisibility)
-	children[2] = fmt.Sprintf("cacheable: %t", sq.CanCacheResults)
-	children[3] = sql.DebugString(sq.Child)
+	children[2] = fmt.Sprintf("isLateral: %t", sq.IsLateral)
+	children[3] = fmt.Sprintf("cacheable: %t", sq.CanCacheResults())
+	children[4] = fmt.Sprintf("colSet: %s", sq.Columns())
+	children[5] = fmt.Sprintf("tableId: %d", sq.Id())
+	children[6] = sql.DebugString(sq.Child)
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
 
-func (sq *SubqueryAlias) WithColumns(columns []string) *SubqueryAlias {
+func (sq *SubqueryAlias) WithColumnNames(columns []string) *SubqueryAlias {
 	ret := *sq
-	ret.Columns = columns
+	ret.ColumnNames = columns
 	return &ret
 }

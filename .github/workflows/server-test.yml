@@ -1,0 +1,27 @@
+name: Test Server Engine
+on: [pull_request]
+
+concurrency:
+  group: server-engine-test-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Test using Server Engine
+        run: go test ./...
+        env:
+          CI_TEST: "true"
+          SERVER_ENGINE_TEST: "true"
+      - name: Test using Server Engine
+        run: go test -race ./...
+        env:
+          CI_TEST: "true"
+          SERVER_ENGINE_TEST: "true"

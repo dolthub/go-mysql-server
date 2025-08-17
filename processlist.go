@@ -47,12 +47,21 @@ func (pl *ProcessList) Processes() []sql.Process {
 	defer pl.mu.RUnlock()
 	var result = make([]sql.Process, 0, len(pl.procs))
 
+	// Make a deep copy of all maps to avoid race
 	for _, proc := range pl.procs {
 		p := *proc
-		var progress = make(map[string]sql.TableProgress, len(p.Progress))
-		for n, p := range p.Progress {
-			progress[n] = p
+		var progMap = make(map[string]sql.TableProgress, len(p.Progress))
+		for progName, prog := range p.Progress {
+			newProg := sql.TableProgress{
+				Progress:           prog.Progress,
+				PartitionsProgress: make(map[string]sql.PartitionProgress, len(prog.PartitionsProgress)),
+			}
+			for partName, partProg := range prog.PartitionsProgress {
+				newProg.PartitionsProgress[partName] = partProg
+			}
+			progMap[progName] = newProg
 		}
+		p.Progress = progMap
 		result = append(result, p)
 	}
 
@@ -60,6 +69,7 @@ func (pl *ProcessList) Processes() []sql.Process {
 }
 
 func (pl *ProcessList) AddConnection(id uint32, addr string) {
+	sql.StatusVariables.IncrementGlobal("Threads_connected", 1)
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
 	pl.procs[id] = &sql.Process{
@@ -80,6 +90,7 @@ func (pl *ProcessList) ConnectionReady(sess sql.Session) {
 		Host:       sess.Client().Address,
 		User:       sess.Client().User,
 		StartedAt:  time.Now(),
+		Database:   sess.GetCurrentDatabase(),
 	}
 }
 
@@ -88,6 +99,7 @@ func (pl *ProcessList) RemoveConnection(connID uint32) {
 	defer pl.mu.Unlock()
 	p := pl.procs[connID]
 	if p != nil {
+		sql.StatusVariables.IncrementGlobal("Threads_connected", -1)
 		if p.Kill != nil {
 			p.Kill()
 		}
@@ -100,8 +112,14 @@ func (pl *ProcessList) BeginQuery(
 	ctx *sql.Context,
 	query string,
 ) (*sql.Context, error) {
+	if ctx.IsInterpreted() {
+		return ctx, nil
+	}
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
+
+	sql.StatusVariables.IncrementGlobal("Threads_running", 1)
+
 	id := ctx.Session.ID()
 	pid := ctx.Pid()
 	p := pl.procs[id]
@@ -128,13 +146,24 @@ func (pl *ProcessList) BeginQuery(
 }
 
 func (pl *ProcessList) EndQuery(ctx *sql.Context) {
+	if ctx.IsInterpreted() {
+		return
+	}
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
 	id := ctx.Session.ID()
 	pid := ctx.Pid()
 	delete(pl.byQueryPid, pid)
 	p := pl.procs[id]
+
 	if p != nil && p.QueryPid == pid {
+		processTime := time.Now().Sub(p.StartedAt)
+		longQueryTime := getLongQueryTime()
+		if longQueryTime > 0 && processTime.Seconds() > longQueryTime {
+			sql.IncrementStatusVariable(ctx, "Slow_queries", 1)
+		}
+
+		sql.StatusVariables.IncrementGlobal("Threads_running", -1)
 		p.Command = sql.ProcessCommandSleep
 		p.Query = ""
 		p.StartedAt = time.Now()
@@ -142,6 +171,46 @@ func (pl *ProcessList) EndQuery(ctx *sql.Context) {
 		p.Kill = nil
 		p.QueryPid = 0
 		p.Progress = nil
+	}
+}
+
+// Registers the process and session associated with |ctx| as performing
+// a long-running operation that should be able to be canceled with Kill.
+//
+// This is not used for Query processing --- the process is still in
+// CommandSleep, it does not have a QueryPid, etc. Must always be
+// bracketed with EndOperation(). Should certainly be used for any
+// Handler callbacks which may access the database, like Prepare.
+func (pl *ProcessList) BeginOperation(ctx *sql.Context) (*sql.Context, error) {
+	if ctx.IsInterpreted() {
+		return ctx, nil
+	}
+	pl.mu.Lock()
+	defer pl.mu.Unlock()
+	id := ctx.Session.ID()
+	p := pl.procs[id]
+	if p == nil {
+		return nil, errors.New("internal error: connection not registered with process list")
+	}
+	if p.Kill != nil {
+		return nil, errors.New("internal error: attempt to begin operation on connection which was already running one")
+	}
+	newCtx, cancel := ctx.NewSubContext()
+	p.Kill = cancel
+	return newCtx, nil
+}
+
+func (pl *ProcessList) EndOperation(ctx *sql.Context) {
+	if ctx.IsInterpreted() {
+		return
+	}
+	pl.mu.Lock()
+	defer pl.mu.Unlock()
+	id := ctx.Session.ID()
+	p := pl.procs[id]
+	if p != nil && p.Kill != nil {
+		p.Kill()
+		p.Kill = nil
 	}
 }
 
@@ -298,7 +367,27 @@ func (pl *ProcessList) Kill(connID uint32) {
 
 	p := pl.procs[connID]
 	if p != nil && p.Kill != nil {
-		logrus.Infof("kill query: pid %d", p.QueryPid)
+		if p.QueryPid != 0 {
+			logrus.Infof("kill query: pid %d", p.QueryPid)
+		} else {
+			logrus.Infof("canceling context: connID %d", connID)
+		}
 		p.Kill()
 	}
+}
+
+// getLongQueryTime returns the value of the long_query_time system variable. If any errors are encountered loading
+// the value, then an error is logged and 0 is returned.
+func getLongQueryTime() float64 {
+	_, longQueryTimeValue, ok := sql.SystemVariables.GetGlobal("long_query_time")
+	if !ok {
+		logrus.Errorf("unable to find long_query_time system variable")
+		return 0
+	}
+	longQueryTime, ok := longQueryTimeValue.(float64)
+	if !ok {
+		logrus.Errorf("unexpected type for value of long_query_time system variable: %T", longQueryTimeValue)
+		return 0
+	}
+	return longQueryTime
 }

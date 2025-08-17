@@ -27,6 +27,7 @@ type Repeat struct {
 var _ sql.Node = (*Repeat)(nil)
 var _ sql.DebugStringer = (*Repeat)(nil)
 var _ sql.Expressioner = (*Repeat)(nil)
+var _ sql.CollationCoercible = (*Repeat)(nil)
 var _ RepresentsLabeledBlock = (*Repeat)(nil)
 
 // NewRepeat returns a new *Repeat node.

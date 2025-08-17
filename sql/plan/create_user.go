@@ -17,11 +17,9 @@ package plan
 import (
 	"fmt"
 	"strings"
-	"time"
 
-	"github.com/gabereiser/go-mysql-server/sql"
-	"github.com/gabereiser/go-mysql-server/sql/mysql_db"
-	"github.com/gabereiser/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // CreateUser represents the statement CREATE USER.
@@ -39,6 +37,7 @@ type CreateUser struct {
 
 var _ sql.Node = (*CreateUser)(nil)
 var _ sql.Databaser = (*CreateUser)(nil)
+var _ sql.CollationCoercible = (*CreateUser)(nil)
 
 // Schema implements the interface sql.Node.
 func (n *CreateUser) Schema() sql.Schema {
@@ -76,6 +75,10 @@ func (n *CreateUser) Resolved() bool {
 	return !ok
 }
 
+func (n *CreateUser) IsReadOnly() bool {
+	return false
+}
+
 // Children implements the interface sql.Node.
 func (n *CreateUser) Children() []sql.Node {
 	return nil
@@ -89,68 +92,7 @@ func (n *CreateUser) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return n, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (n *CreateUser) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_CreateUser))
-}
-
-// RowIter implements the interface sql.Node.
-func (n *CreateUser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
-	if !ok {
-		return nil, sql.ErrDatabaseNotFound.New("mysql")
-	}
-	userTableData := mysqlDb.UserTable().Data()
-	for _, user := range n.Users {
-		// replace empty host with any host
-		if user.UserName.Host == "" {
-			user.UserName.Host = "%"
-		}
-
-		userPk := mysql_db.UserPrimaryKey{
-			Host: user.UserName.Host,
-			User: user.UserName.Name,
-		}
-		existingRows := userTableData.Get(userPk)
-		if len(existingRows) > 0 {
-			if n.IfNotExists {
-				continue
-			}
-			return nil, sql.ErrUserCreationFailure.New(user.UserName.String("'"))
-		}
-
-		plugin := "mysql_native_password"
-		password := ""
-		if user.Auth1 != nil {
-			plugin = user.Auth1.Plugin()
-			password = user.Auth1.Password()
-		}
-		if plugin != "mysql_native_password" {
-			if err := mysqlDb.VerifyPlugin(plugin); err != nil {
-				return nil, sql.ErrUserCreationFailure.New(err)
-			}
-		}
-		// TODO: attributes should probably not be nil, but setting it to &n.Attribute causes unexpected behavior
-		// TODO: validate all of the data
-		err := userTableData.Put(ctx, &mysql_db.User{
-			User:                user.UserName.Name,
-			Host:                user.UserName.Host,
-			PrivilegeSet:        mysql_db.NewPrivilegeSet(),
-			Plugin:              plugin,
-			Password:            password,
-			PasswordLastChanged: time.Now().UTC(),
-			Locked:              false,
-			Attributes:          nil,
-			IsRole:              false,
-			Identity:            user.Identity,
-		})
-		if err != nil {
-			return nil, err
-		}
-	}
-	if err := mysqlDb.Persist(ctx); err != nil {
-		return nil, err
-	}
-	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*CreateUser) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }

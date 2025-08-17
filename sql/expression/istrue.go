@@ -27,6 +27,9 @@ type IsTrue struct {
 	invert bool
 }
 
+var _ sql.Expression = (*IsTrue)(nil)
+var _ sql.CollationCoercible = (*IsTrue)(nil)
+
 const IsTrueStr = "IS TRUE"
 const IsFalseStr = "IS FALSE"
 
@@ -45,6 +48,11 @@ func (*IsTrue) Type() sql.Type {
 	return types.Boolean
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*IsTrue) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
+}
+
 // IsNullable implements the Expression interface.
 func (*IsTrue) IsNullable() bool {
 	return false
@@ -60,11 +68,10 @@ func (e *IsTrue) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	var boolVal interface{}
 	if v == nil {
 		return false, nil
-	} else {
-		boolVal, err = types.ConvertToBool(v)
-		if err != nil {
-			return nil, err
-		}
+	}
+	boolVal, err = sql.ConvertToBool(ctx, v)
+	if err != nil {
+		return nil, err
 	}
 
 	if e.invert {

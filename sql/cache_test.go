@@ -15,6 +15,7 @@
 package sql
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -33,14 +34,14 @@ func TestLRUCache(t *testing.T) {
 
 		_, err = cache.Get(2)
 		require.Error(err)
-		require.True(ErrKeyNotFound.Is(err))
+		require.True(errors.Is(err, ErrKeyNotFound))
 
 		// Free the cache and check previous entry disappeared.
 		cache.Free()
 
 		_, err = cache.Get(1)
 		require.Error(err)
-		require.True(ErrKeyNotFound.Is(err))
+		require.True(errors.Is(err, ErrKeyNotFound))
 
 		cache.Dispose()
 		require.Panics(func() {
@@ -55,7 +56,7 @@ func TestLRUCache(t *testing.T) {
 		require.NoError(cache.Put(1, "foo"))
 		_, err := cache.Get(1)
 		require.Error(err)
-		require.True(ErrKeyNotFound.Is(err))
+		require.True(errors.Is(err, ErrKeyNotFound))
 	})
 
 	t.Run("free required to add entry", func(t *testing.T) {
@@ -94,7 +95,7 @@ func TestHistoryCache(t *testing.T) {
 
 		_, err = cache.Get(2)
 		require.Error(err)
-		require.True(ErrKeyNotFound.Is(err))
+		require.True(errors.Is(err, ErrKeyNotFound))
 
 		cache.Dispose()
 		require.Panics(func() {

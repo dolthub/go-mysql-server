@@ -15,7 +15,9 @@
 package test
 
 import (
-	"github.com/gabereiser/go-mysql-server/sql"
+	"fmt"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 type Catalog struct {
@@ -67,7 +69,21 @@ func (c *Catalog) RemoveDatabase(ctx *sql.Context, dbName string) error {
 	}
 }
 
-func (c *Catalog) HasDB(ctx *sql.Context, db string) bool {
+func (c *Catalog) WithTableFunctions(fns ...sql.TableFunction) (sql.TableFunctionProvider, error) {
+	if tfp, ok := c.provider.(sql.TableFunctionProvider); !ok {
+		return nil, fmt.Errorf("catalog does not implement sql.TableFunctionProvider")
+	} else {
+		ret := *c
+		newProv, err := tfp.WithTableFunctions(fns...)
+		if err != nil {
+			return nil, err
+		}
+		ret.provider = newProv.(sql.DatabaseProvider)
+		return &ret, nil
+	}
+}
+
+func (c *Catalog) HasDatabase(ctx *sql.Context, db string) bool {
 	return c.provider.HasDatabase(ctx, db)
 }
 
@@ -81,6 +97,14 @@ func (c *Catalog) Table(ctx *sql.Context, dbName, tableName string) (sql.Table, 
 	db, err := c.Database(ctx, dbName)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	return c.DatabaseTable(ctx, db, tableName)
+}
+
+func (c *Catalog) DatabaseTable(ctx *sql.Context, db sql.Database, tableName string) (sql.Table, sql.Database, error) {
+	if _, ok := db.(sql.UnresolvedDatabase); ok {
+		return c.Table(ctx, db.Name(), tableName)
 	}
 
 	tbl, ok, err := db.GetTableInsensitive(ctx, tableName)
@@ -97,6 +121,14 @@ func (c *Catalog) TableAsOf(ctx *sql.Context, dbName, tableName string, asOf int
 	db, err := c.Database(ctx, dbName)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	return c.DatabaseTableAsOf(ctx, db, tableName, asOf)
+}
+
+func (c *Catalog) DatabaseTableAsOf(ctx *sql.Context, db sql.Database, tableName string, asOf interface{}) (sql.Table, sql.Database, error) {
+	if _, ok := db.(sql.UnresolvedDatabase); ok {
+		return c.TableAsOf(ctx, db.Name(), tableName, tableName)
 	}
 
 	versionedDb, ok := db.(sql.VersionedDatabase)
@@ -117,8 +149,8 @@ func (c *Catalog) TableAsOf(ctx *sql.Context, dbName, tableName string, asOf int
 
 func (c *Catalog) RegisterFunction(ctx *sql.Context, fns ...sql.Function) {}
 
-func (c *Catalog) Function(ctx *sql.Context, name string) (sql.Function, error) {
-	return nil, sql.ErrFunctionNotFound.New(name)
+func (c *Catalog) Function(ctx *sql.Context, name string) (sql.Function, bool) {
+	return nil, false
 }
 
 func (c *Catalog) LockTable(ctx *sql.Context, table string) {}
@@ -127,6 +159,61 @@ func (c *Catalog) UnlockTables(ctx *sql.Context, id uint32) error {
 	return nil
 }
 
-func (c *Catalog) Statistics(ctx *sql.Context) (sql.StatsReadWriter, error) {
-	return nil, nil
+func (c *Catalog) TableFunction(ctx *sql.Context, name string) (sql.TableFunction, bool) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *Catalog) ExternalStoredProcedure(ctx *sql.Context, name string, numOfParams int) (*sql.ExternalStoredProcedureDetails, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *Catalog) ExternalStoredProcedures(ctx *sql.Context, name string) ([]sql.ExternalStoredProcedureDetails, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *Catalog) GetTableStats(ctx *sql.Context, db string, table sql.Table) ([]sql.Statistic, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *Catalog) AnalyzeTable(ctx *sql.Context, table sql.Table, db string) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *Catalog) SetStats(ctx *sql.Context, stats sql.Statistic) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *Catalog) GetStats(ctx *sql.Context, qual sql.StatQualifier, cols []string) (sql.Statistic, bool) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *Catalog) DropStats(ctx *sql.Context, qual sql.StatQualifier, cols []string) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *Catalog) RowCount(ctx *sql.Context, db string, table sql.Table) (uint64, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *Catalog) DataLength(ctx *sql.Context, db string, table sql.Table) (uint64, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *Catalog) DropDbStats(ctx *sql.Context, db string, flush bool) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (c *Catalog) AuthorizationHandler() sql.AuthorizationHandler {
+	return sql.GetAuthorizationHandlerFactory().CreateHandler(c)
 }

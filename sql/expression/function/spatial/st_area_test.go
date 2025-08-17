@@ -110,4 +110,13 @@ func TestArea(t *testing.T) {
 		require.Equal(nil, v)
 	})
 
+	// TODO: this should eventually work
+	t.Run("block non-cartesian SRID", func(t *testing.T) {
+		require := require.New(t)
+		polygon := types.Polygon{SRID: 3857, Lines: []types.LineString{{SRID: 3857, Points: []types.Point{{SRID: 3857, X: 0, Y: 0}, {SRID: 3857, X: 0, Y: 1}, {SRID: 3857, X: 1, Y: 1}, {SRID: 3857, X: 0, Y: 0}}}}}
+		f := NewArea(expression.NewLiteral(polygon, types.PolygonType{}))
+		_, err := f.Eval(sql.NewEmptyContext(), nil)
+		require.Error(err)
+	})
+
 }

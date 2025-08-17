@@ -25,11 +25,12 @@ import (
 type ShowCreateProcedure struct {
 	db                      sql.Database
 	ProcedureName           string
-	externalStoredProcedure *sql.ExternalStoredProcedureDetails
+	ExternalStoredProcedure *sql.ExternalStoredProcedureDetails
 }
 
 var _ sql.Databaser = (*ShowCreateProcedure)(nil)
 var _ sql.Node = (*ShowCreateProcedure)(nil)
+var _ sql.CollationCoercible = (*ShowCreateProcedure)(nil)
 
 var showCreateProcedureSchema = sql.Schema{
 	&sql.Column{Name: "Procedure", Type: types.LongText, Nullable: false},
@@ -59,6 +60,10 @@ func (s *ShowCreateProcedure) Resolved() bool {
 	return !ok
 }
 
+func (s *ShowCreateProcedure) IsReadOnly() bool {
+	return true
+}
+
 // Children implements the sql.Node interface.
 func (s *ShowCreateProcedure) Children() []sql.Node {
 	return nil
@@ -84,11 +89,11 @@ func (s *ShowCreateProcedure) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter,
 		return nil, err
 	}
 
-	if s.externalStoredProcedure != nil {
+	if s.ExternalStoredProcedure != nil {
 		// If an external stored procedure has been plugged in by the analyzer, use that
-		fakeCreateProcedureStmt := s.externalStoredProcedure.FakeCreateProcedureStmt()
+		fakeCreateProcedureStmt := s.ExternalStoredProcedure.FakeCreateProcedureStmt()
 		return sql.RowsToRowIter(sql.Row{
-			s.externalStoredProcedure.Name, // Procedure
+			s.ExternalStoredProcedure.Name, // Procedure
 			"",                             // sql_mode
 			fakeCreateProcedureStmt,        // Create Procedure
 			characterSetClient,             // character_set_client
@@ -126,16 +131,9 @@ func (s *ShowCreateProcedure) WithChildren(children ...sql.Node) (sql.Node, erro
 	return NillaryWithChildren(s, children...)
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (s *ShowCreateProcedure) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	// TODO: set definer
-	// TODO: dynamic privilege SHOW ROUTINE
-	// According to: https://dev.mysql.com/doc/refman/8.0/en/show-create-procedure.html
-	// Must have SELECT, SHOW_ROUTINE, CREATE_ROUTINE, ALTER_ROUTINE, or EXECUTE privileges.
-	return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_Select)) ||
-		opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(s.db.Name(), "", "", sql.PrivilegeType_CreateRoutine)) ||
-		opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(s.db.Name(), "", "", sql.PrivilegeType_AlterRoutine)) ||
-		opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(s.db.Name(), "", "", sql.PrivilegeType_Execute))
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ShowCreateProcedure) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // Database implements the sql.Databaser interface.
@@ -154,6 +152,6 @@ func (s *ShowCreateProcedure) WithDatabase(db sql.Database) (sql.Node, error) {
 // as the procedure to be shown.
 func (s *ShowCreateProcedure) WithExternalStoredProcedure(procedure sql.ExternalStoredProcedureDetails) sql.Node {
 	ns := *s
-	ns.externalStoredProcedure = &procedure
+	ns.ExternalStoredProcedure = &procedure
 	return &ns
 }

@@ -16,7 +16,6 @@ package plan
 
 import (
 	"strings"
-	"time"
 
 	"github.com/gabereiser/go-mysql-server/sql"
 	"github.com/gabereiser/go-mysql-server/sql/binlogreplication"
@@ -28,20 +27,33 @@ import (
 // ShowReplicaStatus is the plan node for the "SHOW REPLICA STATUS" statement.
 // https://dev.mysql.com/doc/refman/8.0/en/show-replica-status.html
 type ShowReplicaStatus struct {
-	replicaController binlogreplication.BinlogReplicaController
+	ReplicaController binlogreplication.BinlogReplicaController
+	// useDeprecatedColumnNames is used to determine if the column names returned should be the old
+	// and deprecated master/slave column names, or the new source/replica column names.
+	useDeprecatedColumnNames bool
 }
 
 var _ sql.Node = (*ShowReplicaStatus)(nil)
+var _ sql.CollationCoercible = (*ShowReplicaStatus)(nil)
 var _ BinlogReplicaControllerCommand = (*ShowReplicaStatus)(nil)
 
+// NewShowReplicaStatus creates a new ShowReplicaStatus node.
 func NewShowReplicaStatus() *ShowReplicaStatus {
 	return &ShowReplicaStatus{}
+}
+
+// NewShowSlaveStatus creates a new ShowReplicaStatus node configured to use the old, deprecated
+// column names (i.e. master/slave) instead of the new, renamed columns (i.e. source/replica).
+func NewShowSlaveStatus() *ShowReplicaStatus {
+	return &ShowReplicaStatus{
+		useDeprecatedColumnNames: true,
+	}
 }
 
 // WithBinlogReplicaController implements the BinlogReplicaControllerCommand interface.
 func (s *ShowReplicaStatus) WithBinlogReplicaController(controller binlogreplication.BinlogReplicaController) sql.Node {
 	nc := *s
-	nc.replicaController = controller
+	nc.ReplicaController = controller
 	return &nc
 }
 
@@ -50,11 +62,15 @@ func (s *ShowReplicaStatus) Resolved() bool {
 }
 
 func (s *ShowReplicaStatus) String() string {
-	return "SHOW REPLICA STATUS"
+	if s.useDeprecatedColumnNames {
+		return "SHOW SLAVE STATUS"
+	} else {
+		return "SHOW REPLICA STATUS"
+	}
 }
 
 func (s *ShowReplicaStatus) Schema() sql.Schema {
-	return sql.Schema{
+	sch := sql.Schema{
 		{Name: "Replica_IO_State", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
 		{Name: "Source_Host", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 255), Default: nil, Nullable: false},
 		{Name: "Source_User", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
@@ -111,98 +127,23 @@ func (s *ShowReplicaStatus) Schema() sql.Schema {
 		{Name: "Auto_Position", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
 		{Name: "Replicate_Rewrite_DB", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
 	}
+
+	if s.useDeprecatedColumnNames {
+		for i := range sch {
+			sch[i].Name = strings.ReplaceAll(sch[i].Name, "Source", "Master")
+			sch[i].Name = strings.ReplaceAll(sch[i].Name, "Replica", "Slave")
+		}
+	}
+
+	return sch
 }
 
 func (s *ShowReplicaStatus) Children() []sql.Node {
 	return nil
 }
 
-func (s *ShowReplicaStatus) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	if s.replicaController == nil {
-		return sql.RowsToRowIter(), nil
-	}
-
-	status, err := s.replicaController.GetReplicaStatus(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if status == nil {
-		return sql.RowsToRowIter(), nil
-	}
-
-	replicateDoTables := strings.Join(status.ReplicateDoTables, ",")
-	replicateIgnoreTables := strings.Join(status.ReplicateIgnoreTables, ",")
-
-	lastIoErrorTimestamp := formatReplicaStatusTimestamp(status.LastIoErrorTimestamp)
-	lastSqlErrorTimestamp := formatReplicaStatusTimestamp(status.LastSqlErrorTimestamp)
-
-	row = sql.Row{
-		"",                       // Replica_IO_State
-		status.SourceHost,        // Source_Host
-		status.SourceUser,        // Source_User
-		status.SourcePort,        // Source_Port
-		status.ConnectRetry,      // Connect_Retry
-		"INVALID",                // Source_Log_File
-		0,                        // Read_Source_Log_Pos
-		nil,                      // Relay_Log_File
-		nil,                      // Relay_Log_Pos
-		"INVALID",                // Relay_Source_Log_File
-		status.ReplicaIoRunning,  // Replica_IO_Running
-		status.ReplicaSqlRunning, // Replica_SQL_Running
-		nil,                      // Replicate_Do_DB
-		nil,                      // Replicate_Ignore_DB
-		replicateDoTables,        // Replicate_Do_Table
-		replicateIgnoreTables,    // Replicate_Ignore_Table
-		nil,                      // Replicate_Wild_Do_Table
-		nil,                      // Replicate_Wild_Ignore_Table
-		status.LastSqlErrNumber,  // Last_Errno
-		status.LastSqlError,      // Last_Error
-		nil,                      // Skip_Counter
-		0,                        // Exec_Source_Log_Pos
-		nil,                      // Relay_Log_Space
-		"None",                   // Until_Condition
-		nil,                      // Until_Log_File
-		nil,                      // Until_Log_Pos
-		"Ignored",                // Source_SSL_Allowed
-		nil,                      // Source_SSL_CA_File
-		nil,                      // Source_SSL_CA_Path
-		nil,                      // Source_SSL_Cert
-		nil,                      // Source_SSL_Cipher
-		nil,                      // Source_SSL_CRL_File
-		nil,                      // Source_SSL_CRL_Path
-		nil,                      // Source_SSL_Key
-		nil,                      // Source_SSL_Verify_Server_Cert
-		0,                        // Seconds_Behind_Source
-		status.LastIoErrNumber,   // Last_IO_Errno
-		status.LastIoError,       // Last_IO_Error
-		status.LastSqlErrNumber,  // Last_SQL_Errno
-		status.LastSqlError,      // Last_SQL_Error
-		nil,                      // Replicate_Ignore_Server_Ids
-		status.SourceServerId,    // Source_Server_Id
-		status.SourceServerUuid,  // Source_UUID
-		nil,                      // Source_Info_File
-		0,                        // SQL_Delay
-		0,                        // SQL_Remaining_Delay
-		nil,                      // Replica_SQL_Running_State
-		status.SourceRetryCount,  // Source_Retry_Count
-		nil,                      // Source_Bind
-		lastIoErrorTimestamp,     // Last_IO_Error_Timestamp
-		lastSqlErrorTimestamp,    // Last_SQL_Error_Timestamp
-		status.RetrievedGtidSet,  // Retrieved_Gtid_Set
-		status.ExecutedGtidSet,   // Executed_Gtid_Set
-		status.AutoPosition,      // Auto_Position
-		nil,                      // Replicate_Rewrite_DB
-	}
-
-	return sql.RowsToRowIter(row), nil
-}
-
-func formatReplicaStatusTimestamp(t *time.Time) string {
-	if t == nil {
-		return ""
-	}
-
-	return t.Format(time.UnixDate)
+func (s *ShowReplicaStatus) IsReadOnly() bool {
+	return true
 }
 
 func (s *ShowReplicaStatus) WithChildren(children ...sql.Node) (sql.Node, error) {
@@ -214,7 +155,7 @@ func (s *ShowReplicaStatus) WithChildren(children ...sql.Node) (sql.Node, error)
 	return &newNode, nil
 }
 
-func (s *ShowReplicaStatus) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_ReplicationClient))
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ShowReplicaStatus) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }

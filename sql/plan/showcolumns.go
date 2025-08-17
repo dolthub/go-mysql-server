@@ -15,8 +15,6 @@
 package plan
 
 import (
-	"fmt"
-
 	"github.com/dolthub/vitess/go/sqltypes"
 
 	"github.com/gabereiser/go-mysql-server/sql"
@@ -64,6 +62,7 @@ func NewShowColumns(full bool, child sql.Node) *ShowColumns {
 var _ sql.Node = (*ShowColumns)(nil)
 var _ sql.Expressioner = (*ShowColumns)(nil)
 var _ sql.SchemaTarget = (*ShowColumns)(nil)
+var _ sql.CollationCoercible = (*ShowColumns)(nil)
 
 // Schema implements the sql.Node interface.
 func (s *ShowColumns) Schema() sql.Schema {
@@ -75,16 +74,10 @@ func (s *ShowColumns) Schema() sql.Schema {
 
 // Resolved implements the sql.Node interface.
 func (s *ShowColumns) Resolved() bool {
-	if !s.Child.Resolved() {
-		return false
-	}
+	return s.Child.Resolved() && s.targetSchema.Resolved()
+}
 
-	for _, col := range s.targetSchema {
-		if !col.Default.Resolved() {
-			return false
-		}
-	}
-
+func (s *ShowColumns) IsReadOnly() bool {
 	return true
 }
 
@@ -96,14 +89,18 @@ func (s *ShowColumns) Expressions() []sql.Expression {
 	return transform.WrappedColumnDefaults(s.targetSchema)
 }
 
-func (s *ShowColumns) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (s ShowColumns) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != len(s.targetSchema) {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(exprs), len(s.targetSchema))
 	}
 
-	ss := *s
-	ss.targetSchema = transform.SchemaWithDefaults(s.targetSchema, exprs)
-	return &ss, nil
+	sch, err := transform.SchemaWithDefaults(s.targetSchema, exprs)
+	if err != nil {
+		return nil, err
+	}
+
+	s.targetSchema = sch
+	return &s, nil
 }
 
 func (s *ShowColumns) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
@@ -114,89 +111,6 @@ func (s *ShowColumns) WithTargetSchema(schema sql.Schema) (sql.Node, error) {
 
 func (s *ShowColumns) TargetSchema() sql.Schema {
 	return s.targetSchema
-}
-
-// RowIter creates a new ShowColumns node.
-func (s *ShowColumns) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	span, _ := ctx.Span("plan.ShowColumns")
-
-	schema := s.targetSchema
-	var rows = make([]sql.Row, len(schema))
-	for i, col := range schema {
-		var row sql.Row
-		var collation interface{}
-		if types.IsTextOnly(col.Type) {
-			collation = sql.Collation_Default.String()
-		}
-
-		var null = "NO"
-		if col.Nullable {
-			null = "YES"
-		}
-
-		node := s.Child
-		if exchange, ok := node.(*Exchange); ok {
-			node = exchange.Child
-		}
-		key := ""
-		switch table := node.(type) {
-		case *ResolvedTable:
-			if col.PrimaryKey {
-				key = "PRI"
-			} else if s.isFirstColInUniqueKey(col, table) {
-				key = "UNI"
-			} else if s.isFirstColInNonUniqueKey(col, table) {
-				key = "MUL"
-			}
-		case *SubqueryAlias:
-			// no key info for views
-		default:
-			panic(fmt.Sprintf("unexpected type %T", s.Child))
-		}
-
-		var defaultVal string
-		if col.Default != nil {
-			defaultVal = col.Default.String()
-		} else {
-			// From: https://dev.mysql.com/doc/refman/8.0/en/show-columns.html
-			// The default value for the column. This is NULL if the column has an explicit default of NULL,
-			// or if the column definition includes no DEFAULT clause.
-			defaultVal = "NULL"
-		}
-
-		extra := col.Extra
-		// If extra is not defined, fill it here.
-		if extra == "" && !col.Default.IsLiteral() {
-			extra = fmt.Sprintf("DEFAULT_GENERATED")
-		}
-
-		if s.Full {
-			row = sql.Row{
-				col.Name,
-				col.Type.String(),
-				collation,
-				null,
-				key,
-				defaultVal,
-				extra,
-				"", // Privileges
-				col.Comment,
-			}
-		} else {
-			row = sql.Row{
-				col.Name,
-				col.Type.String(),
-				null,
-				key,
-				defaultVal,
-				extra,
-			}
-		}
-
-		rows[i] = row
-	}
-
-	return sql.NewSpanIter(span, sql.RowsToRowIter(rows...)), nil
 }
 
 // WithChildren implements the Node interface.
@@ -210,10 +124,9 @@ func (s *ShowColumns) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &ss, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (s *ShowColumns) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	// The table won't be visible during the resolution step if the user doesn't have the correct privileges
-	return true
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ShowColumns) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func (s *ShowColumns) String() string {
@@ -246,32 +159,14 @@ func (s *ShowColumns) DebugString() string {
 	return tp.String()
 }
 
-func (s *ShowColumns) isFirstColInUniqueKey(col *sql.Column, table sql.Table) bool {
-	for _, idx := range s.Indexes {
-		if !idx.IsUnique() {
-			continue
-		}
-
-		firstIndexCol := GetColumnFromIndexExpr(idx.Expressions()[0], table)
-		if firstIndexCol != nil && firstIndexCol.Name == col.Name {
-			return true
+// GetColumnFromIndexExpr returns column from the table given using the expression string given, in the form
+// "table.column". Returns nil if the expression doesn't represent a column.
+func GetColumnFromIndexExpr(expr string, table sql.Table) *sql.Column {
+	for _, col := range table.Schema() {
+		if col.Source+"."+col.Name == expr {
+			return col
 		}
 	}
 
-	return false
-}
-
-func (s *ShowColumns) isFirstColInNonUniqueKey(col *sql.Column, table sql.Table) bool {
-	for _, idx := range s.Indexes {
-		if idx.IsUnique() {
-			continue
-		}
-
-		firstIndexCol := GetColumnFromIndexExpr(idx.Expressions()[0], table)
-		if firstIndexCol != nil && firstIndexCol.Name == col.Name {
-			return true
-		}
-	}
-
-	return false
+	return nil
 }

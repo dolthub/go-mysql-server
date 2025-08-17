@@ -27,6 +27,7 @@ type Iterate struct {
 }
 
 var _ sql.Node = (*Iterate)(nil)
+var _ sql.CollationCoercible = (*Iterate)(nil)
 
 // NewIterate returns a new *Iterate node.
 func NewIterate(label string) *Iterate {
@@ -37,6 +38,10 @@ func NewIterate(label string) *Iterate {
 
 // Resolved implements the interface sql.Node.
 func (i *Iterate) Resolved() bool {
+	return true
+}
+
+func (i *Iterate) IsReadOnly() bool {
 	return true
 }
 
@@ -60,32 +65,7 @@ func (i *Iterate) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(i, children...)
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (i *Iterate) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
-}
-
-// RowIter implements the interface sql.Node.
-func (i *Iterate) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return &iterateIter{i.Label}, nil
-}
-
-// iterateIter is the sql.RowIter of *Iterate.
-type iterateIter struct {
-	Label string
-}
-
-var _ sql.RowIter = (*iterateIter)(nil)
-
-// Next implements the interface sql.RowIter.
-func (i *iterateIter) Next(ctx *sql.Context) (sql.Row, error) {
-	return nil, loopError{
-		Label:  i.Label,
-		IsExit: false,
-	}
-}
-
-// Close implements the interface sql.RowIter.
-func (i *iterateIter) Close(ctx *sql.Context) error {
-	return nil
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Iterate) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }

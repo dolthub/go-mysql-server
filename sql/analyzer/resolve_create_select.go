@@ -6,30 +6,35 @@ import (
 	"github.com/gabereiser/go-mysql-server/sql/transform"
 )
 
-func resolveCreateSelect(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+// todo this should be split into two rules. The first should be in
+// planbuilder and only bind the child select, strip/merge schemas.
+// a second rule should finalize analysis of the source/dest nodes
+// (skipping passthrough rule).
+func resolveCreateSelect(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	ct, ok := n.(*plan.CreateTable)
 	if !ok || ct.Select() == nil {
 		return n, transform.SameTree, nil
 	}
 
-	analyzedSelect, err := a.Analyze(ctx, ct.Select(), scope)
+	analyzedSelect, err := a.Analyze(ctx, ct.Select(), scope, qFlags)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
-
-	// Get the correct schema of the CREATE TABLE based on the select query
-	inputSpec := ct.TableSpec()
 
 	// We don't want to carry any information about keys, constraints, defaults, etc. from a `create table as select`
 	// statement. When the underlying select node is a table, we must remove all such info from its schema. The only
 	// exception is NOT NULL constraints, which we leave alone.
 	selectSchema := stripSchema(analyzedSelect.Schema())
-	mergedSchema := mergeSchemas(inputSpec.Schema.Schema, selectSchema)
+	mergedSchema := mergeSchemas(ct.PkSchema().Schema, selectSchema)
 	newSch := make(sql.Schema, len(mergedSchema))
 
 	for i, col := range mergedSchema {
 		tempCol := *col
 		tempCol.Source = ct.Name()
+		// replace system variable types with their underlying types
+		if sysType, isSysTyp := tempCol.Type.(sql.SystemVariableType); isSysTyp {
+			tempCol.Type = sysType.UnderlyingType()
+		}
 		newSch[i] = &tempCol
 	}
 
@@ -40,25 +45,24 @@ func resolveCreateSelect(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope
 		}
 	}
 
-	newSpec := inputSpec.WithSchema(sql.NewPrimaryKeySchema(newSch, pkOrdinals...))
-	// CREATE ... SELECT will always inherit the database collation for the table
-	newSpec.Collation = plan.GetDatabaseCollation(ctx, ct.Database())
+	newSpec := &plan.TableSpec{
+		Schema: sql.NewPrimaryKeySchema(newSch, pkOrdinals...),
+	}
 
 	newCreateTable := plan.NewCreateTable(ct.Database(), ct.Name(), ct.IfNotExists(), ct.Temporary(), newSpec)
-	analyzedCreate, err := a.Analyze(ctx, newCreateTable, scope)
+	analyzedCreate, err := a.Analyze(ctx, newCreateTable, scope, qFlags)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
 
-	return plan.NewTableCopier(ct.Database(), StripPassthroughNodes(analyzedCreate), StripPassthroughNodes(analyzedSelect), plan.CopierProps{}), transform.NewTree, nil
+	return plan.NewTableCopier(ct.Database(), analyzedCreate, analyzedSelect, plan.CopierProps{}), transform.NewTree, nil
 }
 
 // stripSchema removes all non-type information from a schema, such as the key info, default value, etc.
 func stripSchema(schema sql.Schema) sql.Schema {
-	sch := make(sql.Schema, len(schema))
+	sch := schema.Copy()
 	for i := range schema {
-		sch[i] = schema[i].Copy()
-		sch[i].Default = nil
+		sch[i].Generated = nil
 		sch[i].AutoIncrement = false
 		sch[i].PrimaryKey = false
 		sch[i].Source = ""

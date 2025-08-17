@@ -34,7 +34,7 @@ func TestUserJson(t *testing.T) {
 		Host:                "localhost",
 		PrivilegeSet:        NewPrivilegeSet(),
 		Plugin:              "mysql_native_password",
-		Password:            "*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19",
+		AuthString:          "*2470C0C06DEE42FD1618BB99005ADCA2EC9D1E19",
 		PasswordLastChanged: time.Unix(184301, 0),
 		Locked:              false,
 		Attributes:          nil,
@@ -48,7 +48,7 @@ func TestUserJson(t *testing.T) {
 	require.NoError(t, err)
 	newUser, err := (User{}).FromJson(ctx, jsonStr)
 	require.NoError(t, err)
-	require.True(t, testUser.Equals(ctx, newUser))
+	require.True(t, UserEquals(testUser, newUser))
 
 	testSlice := []*User{testUser}
 	jsonData, err := json.Marshal(testSlice)
@@ -58,6 +58,6 @@ func TestUserJson(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, newSlice, len(testSlice))
 	for i := range testSlice {
-		require.True(t, testSlice[i].Equals(ctx, newSlice[i]))
+		require.True(t, UserEquals(testSlice[i], newSlice[i]))
 	}
 }

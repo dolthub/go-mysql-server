@@ -15,13 +15,13 @@
 package main
 
 import (
+	"context"
 	"time"
 
-	"github.com/gabereiser/go-mysql-server/driver"
-	"github.com/gabereiser/go-mysql-server/memory"
-	"github.com/gabereiser/go-mysql-server/sql"
-	"github.com/gabereiser/go-mysql-server/sql/information_schema"
-	"github.com/gabereiser/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/driver"
+	"github.com/dolthub/go-mysql-server/memory"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type factory struct{}
@@ -29,7 +29,6 @@ type factory struct{}
 func (factory) Resolve(name string, options *driver.Options) (string, sql.DatabaseProvider, error) {
 	provider := memory.NewDBProvider(
 		createTestDatabase(),
-		information_schema.NewInformationSchemaDatabase(),
 	)
 	return name, provider, nil
 }
@@ -41,7 +40,10 @@ func createTestDatabase() *memory.Database {
 	)
 
 	db := memory.NewDatabase(dbName)
-	table := memory.NewTable(tableName, sql.NewPrimaryKeySchema(sql.Schema{
+	pro := memory.NewDBProvider(db)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
+
+	table := memory.NewTable(db, tableName, sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "name", Type: types.Text, Nullable: false, Source: tableName},
 		{Name: "email", Type: types.Text, Nullable: false, Source: tableName},
 		{Name: "phone_numbers", Type: types.JSON, Nullable: false, Source: tableName},
@@ -49,7 +51,7 @@ func createTestDatabase() *memory.Database {
 	}), nil)
 
 	db.AddTable(tableName, table)
-	ctx := sql.NewEmptyContext()
+
 	table.Insert(ctx, sql.NewRow("John Doe", "john@doe.com", types.JSONDocument{Val: []string{"555-555-555"}}, time.Now()))
 	table.Insert(ctx, sql.NewRow("John Doe", "johnalt@doe.com", types.JSONDocument{Val: []string{}}, time.Now()))
 	table.Insert(ctx, sql.NewRow("Jane Doe", "jane@doe.com", types.JSONDocument{Val: []string{}}, time.Now()))

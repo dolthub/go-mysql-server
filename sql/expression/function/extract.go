@@ -25,17 +25,18 @@ import (
 
 // Extract takes out the specified unit(s) from the time expression.
 type Extract struct {
-	expression.BinaryExpression
+	expression.BinaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*Extract)(nil)
+var _ sql.CollationCoercible = (*Extract)(nil)
 
 // NewExtract creates a new Extract expression.
 func NewExtract(e1, e2 sql.Expression) sql.Expression {
 	return &Extract{
-		expression.BinaryExpression{
-			Left:  e1,
-			Right: e2,
+		expression.BinaryExpressionStub{
+			LeftChild:  e1,
+			RightChild: e2,
 		},
 	}
 }
@@ -53,8 +54,13 @@ func (td *Extract) Description() string {
 // Type implements the Expression interface.
 func (td *Extract) Type() sql.Type { return types.Int64 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Extract) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
+}
+
 func (td *Extract) String() string {
-	return fmt.Sprintf("%s(%s from %s)", td.FunctionName(), td.Left, td.Right)
+	return fmt.Sprintf("%s(%s from %s)", td.FunctionName(), td.LeftChild, td.RightChild)
 }
 
 // WithChildren implements the Expression interface.
@@ -67,11 +73,11 @@ func (td *Extract) WithChildren(children ...sql.Expression) (sql.Expression, err
 
 // Eval implements the Expression interface.
 func (td *Extract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	if td.Left == nil || td.Right == nil {
+	if td.LeftChild == nil || td.RightChild == nil {
 		return nil, nil
 	}
 
-	left, err := td.Left.Eval(ctx, row)
+	left, err := td.LeftChild.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +91,7 @@ func (td *Extract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, fmt.Errorf("unit is not string type")
 	}
 
-	right, err := td.Right.Eval(ctx, row)
+	right, err := td.RightChild.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -94,9 +100,9 @@ func (td *Extract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	right, err = types.Datetime.ConvertWithoutRangeCheck(right)
+	right, err = types.DatetimeMaxPrecision.ConvertWithoutRangeCheck(ctx, right)
 	if err != nil {
-		ctx.Warn(1292, err.Error())
+		ctx.Warn(1292, "%s", err.Error())
 		return nil, nil
 	}
 
@@ -122,7 +128,7 @@ func (td *Extract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case "MONTH":
 		return int(dateTime.Month()), nil
 	case "WEEK":
-		date, err := getDate(ctx, expression.UnaryExpression{Child: td.Right}, row)
+		date, err := getDate(ctx, expression.UnaryExpression{Child: td.RightChild}, row)
 		if err != nil {
 			return nil, err
 		}

@@ -19,10 +19,11 @@ import (
 	"math/rand"
 	"strings"
 
-	"github.com/gabereiser/go-mysql-server/sql"
-	"github.com/gabereiser/go-mysql-server/sql/parse"
-	"github.com/gabereiser/go-mysql-server/sql/plan"
-	"github.com/gabereiser/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
+
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Table represents a table for a local MySQL server.
@@ -46,8 +47,12 @@ var _ sql.CheckTable = Table{}
 var _ sql.StatisticsTable = Table{}
 var _ sql.PrimaryKeyAlterableTable = Table{}
 
-func (t Table) IndexedAccess(sql.IndexLookup) sql.IndexedTable {
+func (t Table) IndexedAccess(*sql.Context, sql.IndexLookup) sql.IndexedTable {
 	panic("not implemented")
+}
+
+func (t Table) PreciseMatch() bool {
+	return true
 }
 
 func (t Table) IndexedPartitions(ctx *sql.Context, _ sql.IndexLookup) (sql.PartitionIter, error) {
@@ -139,7 +144,7 @@ func (t Table) Truncate(ctx *sql.Context) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	rowCount, err := types.Int64.Convert(rows[0][0])
+	rowCount, _, err := types.Int64.Convert(ctx, rows[0][0])
 	if err != nil {
 		return 0, err
 	}
@@ -212,6 +217,8 @@ func (t Table) CreateIndex(ctx *sql.Context, idx sql.IndexDef) error {
 		statement += " FULLTEXT INDEX"
 	case sql.IndexConstraint_Spatial:
 		statement += " SPATIAL INDEX"
+	case sql.IndexConstraint_Vector:
+		statement += " VECTOR INDEX"
 	default:
 		statement += " INDEX"
 	}
@@ -338,7 +345,7 @@ func (t Table) DataLength(ctx *sql.Context) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	rowCount, err := types.Uint64.Convert(rows[0][0])
+	rowCount, _, err := types.Uint64.Convert(ctx, rows[0][0])
 	if err != nil {
 		return 0, err
 	}
@@ -346,8 +353,8 @@ func (t Table) DataLength(ctx *sql.Context) (uint64, error) {
 }
 
 // Cardinality implements the interface sql.StatisticsTable.
-func (t Table) RowCount(ctx *sql.Context) (uint64, error) {
-	return 0, nil
+func (t Table) RowCount(ctx *sql.Context) (uint64, bool, error) {
+	return 0, false, nil
 }
 
 // CreatePrimaryKey implements the interface sql.PrimaryKeyAlterableTable.
@@ -373,7 +380,8 @@ func (t Table) getCreateTable() (*plan.CreateTable, error) {
 	if len(rows) == 0 || len(rows[0]) == 0 {
 		return nil, sql.ErrTableNotFound.New(t.name)
 	}
-	createTableNode, err := parse.Parse(sql.NewEmptyContext(), rows[0][1].(string))
+	// TODO add catalog
+	createTableNode, _, err := planbuilder.Parse(sql.NewEmptyContext(), sql.MapCatalog{Tables: map[string]sql.Table{t.name: t}}, rows[0][1].(string))
 	if err != nil {
 		return nil, err
 	}

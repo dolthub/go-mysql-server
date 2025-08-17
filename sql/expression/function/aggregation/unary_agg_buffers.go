@@ -2,9 +2,10 @@ package aggregation
 
 import (
 	"fmt"
+	"math"
 	"reflect"
 
-	"github.com/mitchellh/hashstructure"
+	"github.com/cespare/xxhash/v2"
 	"github.com/shopspring/decimal"
 
 	"github.com/gabereiser/go-mysql-server/sql"
@@ -71,16 +72,16 @@ func (m *sumBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		return nil
 	}
 
-	m.PerformSum(v)
+	m.PerformSum(ctx, v)
 
 	return nil
 }
 
-func (m *sumBuffer) PerformSum(v interface{}) {
+func (m *sumBuffer) PerformSum(ctx *sql.Context, v interface{}) {
 	// decimal.Decimal values are evaluated to string value even though the Literal expr type is Decimal type,
 	// so convert it to appropriate Decimal type
 	if s, isStr := v.(string); isStr && types.IsDecimal(m.expr.Type()) {
-		val, err := m.expr.Type().Convert(s)
+		val, _, err := m.expr.Type().Convert(ctx, s)
 		if err == nil {
 			v = val
 		}
@@ -98,7 +99,7 @@ func (m *sumBuffer) PerformSum(v interface{}) {
 			m.sum = decimal.NewFromFloat(m.sum.(float64)).Add(n)
 		}
 	default:
-		val, err := types.Float64.Convert(n)
+		val, _, err := types.Float64.Convert(ctx, n)
 		if err != nil {
 			val = float64(0)
 		}
@@ -106,7 +107,7 @@ func (m *sumBuffer) PerformSum(v interface{}) {
 			m.sum = float64(0)
 			m.isnil = false
 		}
-		sum, err := types.Float64.Convert(m.sum)
+		sum, _, err := types.Float64.Convert(ctx, m.sum)
 		if err != nil {
 			sum = float64(0)
 		}
@@ -192,7 +193,7 @@ func (a *avgBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		return nil
 	}
 
-	a.sum.PerformSum(v)
+	a.sum.PerformSum(ctx, v)
 	a.rows += 1
 
 	return nil
@@ -260,7 +261,7 @@ func (b *bitAndBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		return nil
 	}
 
-	v, err = types.Uint64.Convert(v)
+	v, _, err = types.Uint64.Convert(ctx, v)
 	if err != nil {
 		v = uint64(0)
 	}
@@ -307,7 +308,7 @@ func (b *bitOrBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		return nil
 	}
 
-	v, err = types.Uint64.Convert(v)
+	v, _, err = types.Uint64.Convert(ctx, v)
 	if err != nil {
 		v = uint64(0)
 	}
@@ -354,7 +355,7 @@ func (b *bitXorBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		return nil
 	}
 
-	v, err = types.Uint64.Convert(v)
+	v, _, err = types.Uint64.Convert(ctx, v)
 	if err != nil {
 		v = uint64(0)
 	}
@@ -402,7 +403,7 @@ func (c *countDistinctBuffer) Update(ctx *sql.Context, row sql.Row) error {
 	if _, ok := c.exprs[0].(*expression.Star); ok {
 		value = row
 	} else {
-		val := make([]interface{}, len(c.exprs))
+		val := make(sql.Row, len(c.exprs))
 		for i, expr := range c.exprs {
 			v, err := expr.Eval(ctx, row)
 			if err != nil {
@@ -417,12 +418,30 @@ func (c *countDistinctBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		value = val
 	}
 
-	hash, err := hashstructure.Hash(value, nil)
-	if err != nil {
-		return fmt.Errorf("count distinct unable to hash value: %s", err)
+	var str string
+	for _, val := range value.(sql.Row) {
+		// skip nil values
+		if val == nil {
+			return nil
+		}
+		v, _, err := types.Text.Convert(ctx, val)
+		if err != nil {
+			return err
+		}
+		vv, ok := v.(string)
+		if !ok {
+			return fmt.Errorf("count distinct unable to hash value: %s", err)
+		}
+		str += vv + ","
 	}
 
-	c.seen[hash] = struct{}{}
+	hash := xxhash.New()
+	_, err := hash.WriteString(str)
+	if err != nil {
+		return err
+	}
+	h := hash.Sum64()
+	c.seen[h] = struct{}{}
 
 	return nil
 }
@@ -481,17 +500,19 @@ func (c *countBuffer) Dispose() {
 }
 
 type firstBuffer struct {
-	val  interface{}
-	expr sql.Expression
+	val interface{}
+	// writtenNil means that val is supposed to be nil and should not be overwritten
+	writtenNil bool
+	expr       sql.Expression
 }
 
 func NewFirstBuffer(child sql.Expression) *firstBuffer {
-	return &firstBuffer{nil, child}
+	return &firstBuffer{nil, false, child}
 }
 
 // Update implements the AggregationBuffer interface.
 func (f *firstBuffer) Update(ctx *sql.Context, row sql.Row) error {
-	if f.val != nil {
+	if f.val != nil || f.writtenNil {
 		return nil
 	}
 
@@ -501,6 +522,7 @@ func (f *firstBuffer) Update(ctx *sql.Context, row sql.Row) error {
 	}
 
 	if v == nil {
+		f.writtenNil = true
 		return nil
 	}
 
@@ -544,7 +566,7 @@ func (m *maxBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		return nil
 	}
 
-	cmp, err := m.expr.Type().Compare(v, m.val)
+	cmp, err := m.expr.Type().Compare(ctx, v, m.val)
 	if err != nil {
 		return err
 	}
@@ -590,7 +612,7 @@ func (m *minBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		return nil
 	}
 
-	cmp, err := m.expr.Type().Compare(v, m.val)
+	cmp, err := m.expr.Type().Compare(ctx, v, m.val)
 	if err != nil {
 		return err
 	}
@@ -627,13 +649,16 @@ func (j *jsonArrayBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		return err
 	}
 
-	// unwrap JSON values
-	if js, ok := v.(types.JSONValue); ok {
-		doc, err := js.Unmarshall(ctx)
+	// unwrap wrapper values
+	v, err = sql.UnwrapAny(ctx, v)
+	if err != nil {
+		return err
+	}
+	if js, ok := v.(sql.JSONWrapper); ok {
+		v, err = js.ToInterface(ctx)
 		if err != nil {
 			return err
 		}
-		v = doc.Val
 	}
 
 	j.vals = append(j.vals, v)
@@ -648,4 +673,125 @@ func (j *jsonArrayBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 
 // Dispose implements the Disposable interface.
 func (j *jsonArrayBuffer) Dispose() {
+}
+
+type varBaseBuffer struct {
+	vals []interface{}
+	expr sql.Expression
+
+	count uint64
+	mean  float64
+	std2  float64
+}
+
+// Update implements the AggregationBuffer interface.
+func (vb *varBaseBuffer) Update(ctx *sql.Context, row sql.Row) error {
+	v, err := vb.expr.Eval(ctx, row)
+	if err != nil {
+		return err
+	}
+	v, _, err = types.Float64.Convert(ctx, v)
+	if err != nil {
+		v = 0.0
+		ctx.Warn(1292, "Truncated incorrect DOUBLE value: %s", v)
+	}
+	if v == nil {
+		return nil
+	}
+	val := v.(float64)
+
+	vb.count += 1
+	if vb.count == 1 {
+		vb.mean = val
+		return nil
+	}
+
+	newMean := vb.mean + (val-vb.mean)/float64(vb.count)
+	vb.std2 = vb.std2 + (val-vb.mean)*(val-newMean)
+	vb.mean = newMean
+
+	return nil
+}
+
+// Dispose implements the Disposable interface.
+func (vb *varBaseBuffer) Dispose() {}
+
+type stdDevPopBuffer struct {
+	varBaseBuffer
+}
+
+func NewStdDevPopBuffer(child sql.Expression) *stdDevPopBuffer {
+	return &stdDevPopBuffer{
+		varBaseBuffer: varBaseBuffer{
+			expr: child,
+		},
+	}
+}
+
+// Eval implements the AggregationBuffer interface.
+func (s *stdDevPopBuffer) Eval(ctx *sql.Context) (interface{}, error) {
+	if s.count == 0 {
+		return nil, nil
+	}
+	return math.Sqrt(s.std2 / float64(s.count)), nil
+}
+
+type stdDevSampBuffer struct {
+	varBaseBuffer
+}
+
+func NewStdDevSampBuffer(child sql.Expression) *stdDevSampBuffer {
+	return &stdDevSampBuffer{
+		varBaseBuffer: varBaseBuffer{
+			expr: child,
+		},
+	}
+}
+
+// Eval implements the AggregationBuffer interface.
+func (s *stdDevSampBuffer) Eval(ctx *sql.Context) (interface{}, error) {
+	if s.count <= 1 {
+		return nil, nil
+	}
+	return math.Sqrt(s.std2 / float64(s.count-1)), nil
+}
+
+type varPopBuffer struct {
+	varBaseBuffer
+}
+
+func NewVarPopBuffer(child sql.Expression) *varPopBuffer {
+	return &varPopBuffer{
+		varBaseBuffer: varBaseBuffer{
+			expr: child,
+		},
+	}
+}
+
+// Eval implements the AggregationBuffer interface.
+func (vp *varPopBuffer) Eval(ctx *sql.Context) (interface{}, error) {
+	if vp.count == 0 {
+		return nil, nil
+	}
+	return vp.std2 / float64(vp.count), nil
+}
+
+type varSampBuffer struct {
+	varBaseBuffer
+}
+
+func NewVarSampBuffer(child sql.Expression) *varSampBuffer {
+	return &varSampBuffer{
+		varBaseBuffer: varBaseBuffer{
+			expr: child,
+		},
+	}
+}
+
+// Eval implements the AggregationBuffer interface.
+func (vp *varSampBuffer) Eval(ctx *sql.Context) (interface{}, error) {
+	if vp.count <= 1 {
+		return nil, nil
+	}
+	return vp.std2 / float64(vp.count-1), nil
 }

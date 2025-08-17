@@ -15,22 +15,29 @@
 package expression
 
 import (
-	"fmt"
-
-	"github.com/gabereiser/go-mysql-server/sql"
-	"github.com/gabereiser/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // SystemVar is an expression that returns the value of a system variable. It's also used as the expression on the left
 // hand side of a SET statement for a system variable.
 type SystemVar struct {
-	Name  string
-	Scope sql.SystemVariableScope
+	Name           string
+	Collation      sql.CollationID
+	Scope          sql.SystemVariableScope
+	SpecifiedScope string
 }
 
-// NewSystemVar creates a new SystemVar expression.
-func NewSystemVar(name string, scope sql.SystemVariableScope) *SystemVar {
-	return &SystemVar{name, scope}
+var _ sql.Expression = (*SystemVar)(nil)
+var _ sql.CollationCoercible = (*SystemVar)(nil)
+
+// NewSystemVar creates a new SystemVar expression for the system variable named |name| with the specified |scope|.
+// The |specifiedScope| parameter indicates the exact scope that was specified in the original reference to this
+// system variable, and is used to ensure we output a column name in a result set that exactly matches how the
+// system variable was originally referenced. If the |specifiedScope| parameter is empty, then the scope was not
+// originally specified and any scope has been inferred.
+func NewSystemVar(name string, scope sql.SystemVariableScope, specifiedScope string) *SystemVar {
+	return &SystemVar{name, sql.CollationID(0), scope, specifiedScope}
 }
 
 // Children implements the sql.Expression interface.
@@ -38,30 +45,26 @@ func (v *SystemVar) Children() []sql.Expression { return nil }
 
 // Eval implements the sql.Expression interface.
 func (v *SystemVar) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
-	switch v.Scope {
-	case sql.SystemVariableScope_Session:
-		val, err := ctx.GetSessionVariable(ctx, v.Name)
-		if err != nil {
-			return nil, err
-		}
-		return val, nil
-	case sql.SystemVariableScope_Global:
-		_, val, ok := sql.SystemVariables.GetGlobal(v.Name)
-		if !ok {
-			return nil, sql.ErrUnknownSystemVariable.New(v.Name)
-		}
-		return val, nil
-	default: // should never happen
-		return nil, fmt.Errorf("unknown scope `%v` on system variable `%s`", v.Scope, v.Name)
-	}
+	val, err := v.Scope.GetValue(ctx, v.Name, v.Collation)
+	return val, err
 }
 
 // Type implements the sql.Expression interface.
 func (v *SystemVar) Type() sql.Type {
 	if sysVar, _, ok := sql.SystemVariables.GetGlobal(v.Name); ok {
-		return sysVar.Type
+		return sysVar.GetType()
 	}
 	return types.Null
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (v *SystemVar) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	typ := v.Type()
+	if types.IsText(typ) {
+		collation, _ = typ.CollationCoercibility(ctx)
+		return collation, 3
+	}
+	return typ.CollationCoercibility(ctx)
 }
 
 // IsNullable implements the sql.Expression interface.
@@ -72,14 +75,10 @@ func (v *SystemVar) Resolved() bool { return true }
 
 // String implements the sql.Expression interface.
 func (v *SystemVar) String() string {
-	switch v.Scope {
-	case sql.SystemVariableScope_Session:
-		return fmt.Sprintf("@@SESSION.%s", v.Name)
-	case sql.SystemVariableScope_Global:
-		return fmt.Sprintf("@@GLOBAL.%s", v.Name)
-	default: // should never happen
-		return fmt.Sprintf("@@UNKNOWN(%v).%s", v.Scope, v.Name)
+	if sysVar, _, ok := sql.SystemVariables.GetGlobal(v.Name); ok {
+		return sysVar.DisplayString(v.SpecifiedScope)
 	}
+	return ""
 }
 
 // WithChildren implements the Expression interface.
@@ -96,6 +95,9 @@ type UserVar struct {
 	Name     string
 	exprType sql.Type
 }
+
+var _ sql.Expression = (*UserVar)(nil)
+var _ sql.CollationCoercible = (*UserVar)(nil)
 
 // NewUserVar creates a UserVar with a name, but no type information, for use as the left-hand value
 // in a SetField assignment Expression. This method should not be used when the user variable is
@@ -126,6 +128,12 @@ func (v *UserVar) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 // Type implements the sql.Expression interface.
 func (v *UserVar) Type() sql.Type {
 	return v.exprType
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (v *UserVar) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	collation, _ = v.exprType.CollationCoercibility(ctx)
+	return collation, 2
 }
 
 // IsNullable implements the sql.Expression interface.

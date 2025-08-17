@@ -18,24 +18,29 @@ import (
 	"fmt"
 	"strings"
 
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
-
-	"github.com/gabereiser/go-mysql-server/sql"
-	"github.com/gabereiser/go-mysql-server/sql/expression"
-	"github.com/gabereiser/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // Project is a projection of certain expression from the children node.
 type Project struct {
 	UnaryNode
-	// Expression projected.
+	// Projections are the expressions to be projected on the row returned by the child node
 	Projections []sql.Expression
+	// CanDefer is true when the projection evaluation can be deferred to row spooling, which allows us to avoid a
+	// separate iterator for the project node.
+	CanDefer bool
+	// IncludesNestedIters is true when the projection includes nested iterators because of expressions that return
+	// a RowIter.
+	IncludesNestedIters bool
+	deps                sql.ColSet
 }
 
 var _ sql.Expressioner = (*Project)(nil)
 var _ sql.Node = (*Project)(nil)
 var _ sql.Projector = (*Project)(nil)
+var _ sql.CollationCoercible = (*Project)(nil)
 
 // NewProject creates a new projection.
 func NewProject(expressions []sql.Expression, child sql.Node) *Project {
@@ -45,11 +50,84 @@ func NewProject(expressions []sql.Expression, child sql.Node) *Project {
 	}
 }
 
+// findDefault finds the matching GetField in the node's Schema and fills the default value in the column.
+func findDefault(node sql.Node, gf *expression.GetField) *sql.ColumnDefaultValue {
+	colSet := sql.NewColSet()
+	switch n := node.(type) {
+	case TableIdNode:
+		colSet = n.Columns()
+	case *GroupBy:
+		return findDefault(n.Child, gf)
+	case *HashLookup:
+		return findDefault(n.Child, gf)
+	case *Filter:
+		return findDefault(n.Child, gf)
+	case *JoinNode:
+		if defVal := findDefault(n.Left(), gf); defVal != nil {
+			return defVal
+		}
+		if defVal := findDefault(n.Right(), gf); defVal != nil {
+			return defVal
+		}
+		return nil
+	default:
+		return nil
+	}
+
+	if !colSet.Contains(gf.Id()) {
+		return nil
+	}
+	firstColId, ok := colSet.Next(1)
+	if !ok {
+		return nil
+	}
+
+	sch := node.Schema()
+	idx := gf.Id() - firstColId
+	if idx < 0 || int(idx) >= len(sch) {
+		return nil
+	}
+	return sch[idx].Default
+}
+
+func unwrapGetField(expr sql.Expression) *expression.GetField {
+	switch e := expr.(type) {
+	case *expression.GetField:
+		return e
+	case *expression.Alias:
+		return unwrapGetField(e.Child)
+	default:
+		return nil
+	}
+}
+
+// ExprDeps returns a column set of the ids referenced
+// in this list of expressions.
+func ExprDeps(exprs ...sql.Expression) sql.ColSet {
+	var deps sql.ColSet
+	for _, e := range exprs {
+		sql.Inspect(e, func(e sql.Expression) bool {
+			switch e := e.(type) {
+			case sql.IdExpression:
+				deps.Add(e.Id())
+			case *Subquery:
+				deps.Union(e.Correlated())
+			default:
+			}
+			return true
+		})
+	}
+	return deps
+}
+
 // Schema implements the Node interface.
 func (p *Project) Schema() sql.Schema {
 	var s = make(sql.Schema, len(p.Projections))
-	for i, e := range p.Projections {
-		s[i] = transform.ExpressionToColumn(e)
+	for i, expr := range p.Projections {
+		s[i] = transform.ExpressionToColumn(expr, AliasSubqueryString(expr))
+		if gf := unwrapGetField(expr); gf != nil {
+			s[i].Default = findDefault(p.Child, gf)
+		}
 	}
 	return s
 }
@@ -60,47 +138,39 @@ func (p *Project) Resolved() bool {
 		expression.ExpressionsResolved(p.Projections...)
 }
 
-// RowIter implements the Node interface.
-func (p *Project) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.Project", trace.WithAttributes(
-		attribute.Int("projections", len(p.Projections)),
-	))
-
-	i, err := p.Child.RowIter(ctx, row)
-	if err != nil {
-		span.End()
-		return nil, err
-	}
-
-	return sql.NewSpanIter(span, &projectIter{
-		p:         p.Projections,
-		childIter: i,
-	}), nil
+func (p *Project) IsReadOnly() bool {
+	return p.Child.IsReadOnly()
 }
 
+// Describe implements the sql.Describable interface.
+func (p *Project) Describe(options sql.DescribeOptions) string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("Project")
+	var exprs = make([]string, len(p.Projections))
+	for i, expr := range p.Projections {
+		exprs[i] = sql.Describe(expr, options)
+	}
+	columns := fmt.Sprintf("columns: [%s]", strings.Join(exprs, ", "))
+	_ = pr.WriteChildren(columns, sql.Describe(p.Child, options))
+	return pr.String()
+}
+
+// String implements the fmt.Stringer interface.
 func (p *Project) String() string {
-	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("Project")
-	var exprs = make([]string, len(p.Projections))
-	for i, expr := range p.Projections {
-		exprs[i] = expr.String()
-	}
-	columns := fmt.Sprintf("columns: [%s]", strings.Join(exprs, ", "))
-	_ = pr.WriteChildren(columns, p.Child.String())
-	return pr.String()
+	return p.Describe(sql.DescribeOptions{
+		Analyze:   false,
+		Estimates: false,
+		Debug:     false,
+	})
 }
 
+// DebugString implements the sql.DebugStringer interface.
 func (p *Project) DebugString() string {
-	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("Project")
-	var exprs = make([]string, len(p.Projections))
-	for i, expr := range p.Projections {
-		exprs[i] = sql.DebugString(expr)
-	}
-	columns := fmt.Sprintf("columns: [%s]", strings.Join(exprs, ", "))
-	_ = pr.WriteChildren(columns, sql.DebugString(p.Child))
-
-	return pr.String()
+	return p.Describe(sql.DescribeOptions{
+		Analyze:   false,
+		Estimates: false,
+		Debug:     true,
+	})
 }
 
 // Expressions implements the Expressioner interface.
@@ -113,24 +183,19 @@ func (p *Project) ProjectedExprs() []sql.Expression {
 	return p.Projections
 }
 
-// WithProjectedExprs implements sql.Projector
-func (p *Project) WithProjectedExprs(exprs ...sql.Expression) (sql.Projector, error) {
-	node, err := p.WithExpressions(exprs...)
-	return node.(sql.Projector), err
-}
-
 // WithChildren implements the Node interface.
 func (p *Project) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
-
-	return NewProject(p.Projections, children[0]), nil
+	np := *p
+	np.Child = children[0]
+	return &np, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (p *Project) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return p.Child.CheckPrivileges(ctx, opChecker)
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (p *Project) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, p.Child)
 }
 
 // WithExpressions implements the Expressioner interface.
@@ -138,58 +203,22 @@ func (p *Project) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != len(p.Projections) {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(exprs), len(p.Projections))
 	}
-
-	return NewProject(exprs, p.Child), nil
+	np := *p
+	np.Projections = exprs
+	return &np, nil
 }
 
-type projectIter struct {
-	p         []sql.Expression
-	childIter sql.RowIter
+// WithCanDefer returns a new Project with the CanDefer field set to the given value.
+func (p *Project) WithCanDefer(canDefer bool) *Project {
+	np := *p
+	np.CanDefer = canDefer
+	return &np
 }
 
-func (i *projectIter) Next(ctx *sql.Context) (sql.Row, error) {
-	childRow, err := i.childIter.Next(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return ProjectRow(ctx, i.p, childRow)
-}
-
-func (i *projectIter) Close(ctx *sql.Context) error {
-	return i.childIter.Close(ctx)
-}
-
-// ProjectRow evaluates a set of projections.
-func ProjectRow(
-	ctx *sql.Context,
-	projections []sql.Expression,
-	row sql.Row,
-) (sql.Row, error) {
-	var err error
-	var secondPass []int
-	var fields sql.Row
-	for i, expr := range projections {
-		// Default values that are expressions may reference other fields, thus they must evaluate after all other exprs.
-		// Also default expressions may not refer to other columns that come after them if they also have a default expr.
-		// This ensures that all columns referenced by expressions will have already been evaluated.
-		// Since literals do not reference other columns, they're evaluated on the first pass.
-		if defaultVal, ok := expr.(*sql.ColumnDefaultValue); ok && !defaultVal.IsLiteral() {
-			fields = append(fields, nil)
-			secondPass = append(secondPass, i)
-			continue
-		}
-		f, fErr := expr.Eval(ctx, row)
-		if fErr != nil {
-			return nil, fErr
-		}
-		fields = append(fields, f)
-	}
-	for _, index := range secondPass {
-		fields[index], err = projections[index].Eval(ctx, fields)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return sql.NewRow(fields...), nil
+// WithIncludesNestedIters returns a new Project with the IncludesNestedIters field set to the given value.
+func (p *Project) WithIncludesNestedIters(includesNestedIters bool) *Project {
+	np := *p
+	np.IncludesNestedIters = includesNestedIters
+	np.CanDefer = false
+	return &np
 }

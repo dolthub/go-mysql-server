@@ -28,6 +28,7 @@ type SwapXY struct {
 }
 
 var _ sql.FunctionExpression = (*SwapXY)(nil)
+var _ sql.CollationCoercible = (*SwapXY)(nil)
 
 // NewSwapXY creates a new point expression.
 func NewSwapXY(e sql.Expression) sql.Expression {
@@ -52,6 +53,11 @@ func (s *SwapXY) IsNullable() bool {
 // Type implements the sql.Expression interface.
 func (s *SwapXY) Type() sql.Type {
 	return s.Child.Type()
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*SwapXY) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (s *SwapXY) String() string {

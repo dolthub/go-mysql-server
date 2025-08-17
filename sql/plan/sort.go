@@ -15,15 +15,16 @@
 package plan
 
 import (
-	"container/heap"
 	"fmt"
-	"io"
-	"sort"
 	"strings"
 
-	"github.com/gabereiser/go-mysql-server/sql"
-	"github.com/gabereiser/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql"
 )
+
+type Sortable interface {
+	sql.Node
+	GetSortFields() sql.SortFields
+}
 
 // Sort is the sort node.
 type Sort struct {
@@ -41,7 +42,8 @@ func NewSort(sortFields []sql.SortField, child sql.Node) *Sort {
 
 var _ sql.Expressioner = (*Sort)(nil)
 var _ sql.Node = (*Sort)(nil)
-var _ sql.Node2 = (*Sort)(nil)
+var _ sql.CollationCoercible = (*Sort)(nil)
+var _ Sortable = (*Sort)(nil)
 
 // Resolved implements the Resolvable interface.
 func (s *Sort) Resolved() bool {
@@ -53,25 +55,8 @@ func (s *Sort) Resolved() bool {
 	return s.Child.Resolved()
 }
 
-// RowIter implements the Node interface.
-func (s *Sort) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.Sort")
-	i, err := s.UnaryNode.Child.RowIter(ctx, row)
-	if err != nil {
-		span.End()
-		return nil, err
-	}
-	return sql.NewSpanIter(span, newSortIter(s.SortFields, i)), nil
-}
-
-func (s *Sort) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2, error) {
-	span, ctx := ctx.Span("plan.Sort")
-	i, err := s.UnaryNode.Child.(sql.Node2).RowIter2(ctx, f)
-	if err != nil {
-		span.End()
-		return nil, err
-	}
-	return sql.NewSpanIter(span, newSortIter(s.SortFields, i)).(sql.RowIter2), nil
+func (s *Sort) IsReadOnly() bool {
+	return s.Child.IsReadOnly()
 }
 
 func (s *Sort) String() string {
@@ -115,9 +100,9 @@ func (s *Sort) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewSort(s.SortFields, children[0]), nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (s *Sort) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return s.Child.CheckPrivileges(ctx, opChecker)
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (s *Sort) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, s.Child)
 }
 
 // WithExpressions implements the Expressioner interface.
@@ -130,138 +115,8 @@ func (s *Sort) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	return NewSort(fields, s.Child), nil
 }
 
-type sortIter struct {
-	sortFields  sql.SortFields
-	childIter   sql.RowIter
-	childIter2  sql.RowIter2
-	sortedRows  []sql.Row
-	sortedRows2 []sql.Row2
-	idx         int
-}
-
-var _ sql.RowIter = (*sortIter)(nil)
-var _ sql.RowIter2 = (*sortIter)(nil)
-
-func newSortIter(s sql.SortFields, child sql.RowIter) *sortIter {
-	childIter2, _ := child.(sql.RowIter2)
-	return &sortIter{
-		sortFields: s,
-		childIter:  child,
-		childIter2: childIter2,
-		idx:        -1,
-	}
-}
-
-func (i *sortIter) Next(ctx *sql.Context) (sql.Row, error) {
-	if i.idx == -1 {
-		err := i.computeSortedRows(ctx)
-		if err != nil {
-			return nil, err
-		}
-		i.idx = 0
-	}
-
-	if i.idx >= len(i.sortedRows) {
-		return nil, io.EOF
-	}
-	row := i.sortedRows[i.idx]
-	i.idx++
-	return row, nil
-}
-
-func (i *sortIter) Next2(ctx *sql.Context, frame *sql.RowFrame) error {
-	if i.idx == -1 {
-		err := i.computeSortedRows2(ctx)
-		if err != nil {
-			return err
-		}
-		i.idx = 0
-	}
-
-	if i.idx >= len(i.sortedRows2) {
-		return io.EOF
-	}
-
-	row := i.sortedRows2[i.idx]
-	i.idx++
-	frame.Append(row...)
-
-	return nil
-}
-
-func (i *sortIter) Close(ctx *sql.Context) error {
-	i.sortedRows = nil
-	return i.childIter.Close(ctx)
-}
-
-func (i *sortIter) computeSortedRows(ctx *sql.Context) error {
-	cache, dispose := ctx.Memory.NewRowsCache()
-	defer dispose()
-
-	for {
-		row, err := i.childIter.Next(ctx)
-
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
-
-		if err := cache.Add(row); err != nil {
-			return err
-		}
-	}
-
-	rows := cache.Get()
-	sorter := &expression.Sorter{
-		SortFields: i.sortFields,
-		Rows:       rows,
-		LastError:  nil,
-		Ctx:        ctx,
-	}
-	sort.Stable(sorter)
-	if sorter.LastError != nil {
-		return sorter.LastError
-	}
-	i.sortedRows = rows
-	return nil
-}
-
-func (i *sortIter) computeSortedRows2(ctx *sql.Context) error {
-	cache, dispose := ctx.Memory.NewRows2Cache()
-	defer dispose()
-
-	f := sql.NewRowFrame()
-	defer f.Recycle()
-
-	for {
-		f.Clear()
-		err := i.childIter2.Next2(ctx, f)
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
-
-		if err := cache.Add2(f.Row2Copy()); err != nil {
-			return err
-		}
-	}
-
-	rows := cache.Get2()
-	sorter := &expression.Sorter2{
-		SortFields: i.sortFields,
-		Rows:       rows,
-		Ctx:        ctx,
-	}
-	sort.Stable(sorter)
-	if sorter.LastError != nil {
-		return sorter.LastError
-	}
-	i.sortedRows2 = rows
-	return nil
+func (s *Sort) GetSortFields() sql.SortFields {
+	return s.SortFields
 }
 
 // TopN was a sort node that has a limit. It doesn't need to buffer everything,
@@ -282,7 +137,9 @@ func NewTopN(fields sql.SortFields, limit sql.Expression, child sql.Node) *TopN 
 	}
 }
 
+var _ sql.Node = (*TopN)(nil)
 var _ sql.Expressioner = (*TopN)(nil)
+var _ sql.CollationCoercible = (*TopN)(nil)
 
 // Resolved implements the Resolvable interface.
 func (n *TopN) Resolved() bool {
@@ -299,20 +156,8 @@ func (n TopN) WithCalcFoundRows(v bool) *TopN {
 	return &n
 }
 
-// RowIter implements the Node interface.
-func (n *TopN) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.TopN")
-	i, err := n.UnaryNode.Child.RowIter(ctx, row)
-	if err != nil {
-		span.End()
-		return nil, err
-	}
-
-	limit, err := getInt64Value(ctx, n.Limit)
-	if err != nil {
-		return nil, err
-	}
-	return sql.NewSpanIter(span, newTopRowsIter(n.Fields, limit, n.CalcFoundRows, i)), nil
+func (n *TopN) IsReadOnly() bool {
+	return n.Child.IsReadOnly()
 }
 
 func (n *TopN) String() string {
@@ -355,9 +200,9 @@ func (n *TopN) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return topn, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (n *TopN) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return n.Child.CheckPrivileges(ctx, opChecker)
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (n *TopN) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, n.Child)
 }
 
 // WithExpressions implements the Expressioner interface.
@@ -374,82 +219,6 @@ func (n *TopN) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	return topn, nil
 }
 
-type topRowsIter struct {
-	sortFields    sql.SortFields
-	calcFoundRows bool
-	childIter     sql.RowIter
-	limit         int64
-	topRows       []sql.Row
-	numFoundRows  int64
-	idx           int
-}
-
-func newTopRowsIter(s sql.SortFields, limit int64, calcFoundRows bool, child sql.RowIter) *topRowsIter {
-	return &topRowsIter{
-		sortFields:    s,
-		limit:         limit,
-		calcFoundRows: calcFoundRows,
-		childIter:     child,
-		idx:           -1,
-	}
-}
-
-func (i *topRowsIter) Next(ctx *sql.Context) (sql.Row, error) {
-	if i.idx == -1 {
-		err := i.computeTopRows(ctx)
-		if err != nil {
-			return nil, err
-		}
-		i.idx = 0
-	}
-
-	if i.idx >= len(i.topRows) {
-		return nil, io.EOF
-	}
-	row := i.topRows[i.idx]
-	i.idx++
-	return row, nil
-}
-
-func (i *topRowsIter) Close(ctx *sql.Context) error {
-	i.topRows = nil
-
-	if i.calcFoundRows {
-		ctx.SetLastQueryInfo(sql.FoundRows, i.numFoundRows)
-	}
-
-	return i.childIter.Close(ctx)
-}
-
-func (i *topRowsIter) computeTopRows(ctx *sql.Context) error {
-	topRowsHeap := &expression.TopRowsHeap{
-		expression.Sorter{
-			SortFields: i.sortFields,
-			Rows:       []sql.Row{},
-			LastError:  nil,
-			Ctx:        ctx,
-		},
-	}
-	for {
-		row, err := i.childIter.Next(ctx)
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
-		i.numFoundRows++
-
-		heap.Push(topRowsHeap, row)
-		if int64(topRowsHeap.Len()) > i.limit {
-			heap.Pop(topRowsHeap)
-		}
-		if topRowsHeap.LastError != nil {
-			return topRowsHeap.LastError
-		}
-	}
-
-	var err error
-	i.topRows, err = topRowsHeap.Rows()
-	return err
+func (n *TopN) GetSortFields() sql.SortFields {
+	return n.Fields
 }

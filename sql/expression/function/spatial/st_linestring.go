@@ -28,6 +28,7 @@ type StartPoint struct {
 }
 
 var _ sql.FunctionExpression = (*StartPoint)(nil)
+var _ sql.CollationCoercible = (*StartPoint)(nil)
 
 // NewStartPoint creates a new StartPoint expression.
 func NewStartPoint(arg sql.Expression) sql.Expression {
@@ -47,6 +48,11 @@ func (s *StartPoint) Description() string {
 // Type implements the sql.Expression interface.
 func (s *StartPoint) Type() sql.Type {
 	return types.PointType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*StartPoint) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (s *StartPoint) String() string {
@@ -94,6 +100,7 @@ type EndPoint struct {
 }
 
 var _ sql.FunctionExpression = (*EndPoint)(nil)
+var _ sql.CollationCoercible = (*EndPoint)(nil)
 
 // NewEndPoint creates a new EndPoint expression.
 func NewEndPoint(arg sql.Expression) sql.Expression {
@@ -113,6 +120,11 @@ func (e *EndPoint) Description() string {
 // Type implements the sql.Expression interface.
 func (e *EndPoint) Type() sql.Type {
 	return types.PointType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*EndPoint) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
 }
 
 func (e *EndPoint) String() string {
@@ -160,6 +172,7 @@ type IsClosed struct {
 }
 
 var _ sql.FunctionExpression = (*IsClosed)(nil)
+var _ sql.CollationCoercible = (*IsClosed)(nil)
 
 // NewIsClosed creates a new EndPoint expression.
 func NewIsClosed(arg sql.Expression) sql.Expression {
@@ -179,6 +192,11 @@ func (i *IsClosed) Description() string {
 // Type implements the sql.Expression interface.
 func (i *IsClosed) Type() sql.Type {
 	return types.Boolean
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*IsClosed) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (i *IsClosed) String() string {

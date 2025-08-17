@@ -17,9 +17,7 @@ package plan
 import (
 	"fmt"
 
-	"github.com/dolthub/vitess/go/mysql"
-
-	"github.com/gabereiser/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // CaseStatement represents CASE statements, which are different from CASE expressions. These are intended for use in
@@ -34,11 +32,12 @@ type CaseStatement struct {
 var _ sql.Node = (*CaseStatement)(nil)
 var _ sql.DebugStringer = (*CaseStatement)(nil)
 var _ sql.Expressioner = (*CaseStatement)(nil)
+var _ sql.CollationCoercible = (*CaseStatement)(nil)
 
 // NewCaseStatement creates a new *NewCaseStatement or *IfElseBlock node.
 func NewCaseStatement(caseExpr sql.Expression, ifConditionals []*IfConditional, elseStatement sql.Node) sql.Node {
 	if elseStatement == nil {
-		elseStatement = elseCaseError{}
+		elseStatement = ElseCaseError{}
 	}
 	ifElse := &IfElseBlock{
 		IfConditionals: ifConditionals,
@@ -56,6 +55,10 @@ func NewCaseStatement(caseExpr sql.Expression, ifConditionals []*IfConditional, 
 // Resolved implements the interface sql.Node.
 func (c *CaseStatement) Resolved() bool {
 	return c.Expr.Resolved() && c.IfElse.Resolved()
+}
+
+func (c *CaseStatement) IsReadOnly() bool {
+	return c.IfElse.IsReadOnly()
 }
 
 // String implements the interface sql.Node.
@@ -118,106 +121,45 @@ func (c *CaseStatement) WithExpressions(exprs ...sql.Expression) (sql.Node, erro
 	}, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (c *CaseStatement) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return c.IfElse.CheckPrivileges(ctx, opChecker)
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (c *CaseStatement) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return c.IfElse.CollationCoercibility(ctx)
 }
 
-// RowIter implements the interface sql.Node.
-func (c *CaseStatement) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	caseValue, err := c.Expr.Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
+type ElseCaseError struct{}
 
-	for _, ifConditional := range c.IfElse.IfConditionals {
-		whenValue, err := ifConditional.Condition.Eval(ctx, row)
-		if err != nil {
-			return nil, err
-		}
-		comparison, err := c.Expr.Type().Compare(caseValue, whenValue)
-		if err != nil {
-			return nil, err
-		}
-		if comparison != 0 {
-			continue
-		}
-
-		return c.constructRowIter(ctx, row, ifConditional, ifConditional.Body)
-	}
-
-	// All conditions failed so we run the else
-	return c.constructRowIter(ctx, row, c.IfElse.Else, c.IfElse.Else)
-}
-
-// constructRowIter is a helper function to create the sql.RowIter from the RowIter function.
-func (c *CaseStatement) constructRowIter(ctx *sql.Context, row sql.Row, iterNode sql.Node, bodyNode sql.Node) (sql.RowIter, error) {
-	// All conditions failed so we run the else
-	branchIter, err := iterNode.RowIter(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-	// If the branchIter is already a block iter, then we don't need to construct our own, as its contained
-	// node and schema will be a better representation of the iterated rows.
-	if blockRowIter, ok := branchIter.(BlockRowIter); ok {
-		return blockRowIter, nil
-	}
-	return &ifElseIter{
-		branchIter: branchIter,
-		sch:        bodyNode.Schema(),
-		branchNode: bodyNode,
-	}, nil
-}
-
-type elseCaseError struct{}
-
-var _ sql.Node = elseCaseError{}
+var _ sql.Node = ElseCaseError{}
 
 // Resolved implements the interface sql.Node.
-func (e elseCaseError) Resolved() bool {
+func (e ElseCaseError) Resolved() bool {
+	return true
+}
+
+func (e ElseCaseError) IsReadOnly() bool {
 	return true
 }
 
 // String implements the interface sql.Node.
-func (e elseCaseError) String() string {
+func (e ElseCaseError) String() string {
 	return "ELSE CASE ERROR"
 }
 
 // Schema implements the interface sql.Node.
-func (e elseCaseError) Schema() sql.Schema {
+func (e ElseCaseError) Schema() sql.Schema {
 	return nil
 }
 
 // Children implements the interface sql.Node.
-func (e elseCaseError) Children() []sql.Node {
+func (e ElseCaseError) Children() []sql.Node {
 	return nil
 }
 
 // WithChildren implements the interface sql.Node.
-func (e elseCaseError) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (e ElseCaseError) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(e, children...)
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (e elseCaseError) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
-}
-
-// RowIter implements the interface sql.Node.
-func (e elseCaseError) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return elseCaseErrorIter{}, nil
-}
-
-type elseCaseErrorIter struct{}
-
-var _ sql.RowIter = elseCaseErrorIter{}
-
-// Next implements the interface sql.RowIter.
-func (e elseCaseErrorIter) Next(ctx *sql.Context) (sql.Row, error) {
-	return nil, mysql.NewSQLError(1339, "20000", "Case not found for CASE statement")
-}
-
-// Close implements the interface sql.RowIter.
-func (e elseCaseErrorIter) Close(context *sql.Context) error {
-	return nil
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (e ElseCaseError) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }

@@ -31,6 +31,7 @@ var _ sql.Node = (*ProcedureResolvedTable)(nil)
 var _ sql.DebugStringer = (*ProcedureResolvedTable)(nil)
 var _ sql.TableWrapper = (*ProcedureResolvedTable)(nil)
 var _ sql.Table = (*ProcedureResolvedTable)(nil)
+var _ sql.CollationCoercible = (*ProcedureResolvedTable)(nil)
 
 // NewProcedureResolvedTable returns a *ProcedureResolvedTable.
 func NewProcedureResolvedTable(rt *ResolvedTable) *ProcedureResolvedTable {
@@ -40,6 +41,10 @@ func NewProcedureResolvedTable(rt *ResolvedTable) *ProcedureResolvedTable {
 // Resolved implements the sql.Node interface.
 func (t *ProcedureResolvedTable) Resolved() bool {
 	return t.ResolvedTable.Resolved()
+}
+
+func (t *ProcedureResolvedTable) IsReadOnly() bool {
+	return true
 }
 
 // String implements the sql.Node interface.
@@ -57,6 +62,11 @@ func (t *ProcedureResolvedTable) Collation() sql.CollationID {
 	return t.ResolvedTable.Collation()
 }
 
+// Comment implements the sql.CommentedTable interface.
+func (t *ProcedureResolvedTable) Comment() string {
+	return t.ResolvedTable.Comment()
+}
+
 // DebugString implements the sql.DebugStringer interface.
 func (t *ProcedureResolvedTable) DebugString() string {
 	return sql.DebugString(t.ResolvedTable)
@@ -65,15 +75,6 @@ func (t *ProcedureResolvedTable) DebugString() string {
 // Children implements the sql.Node interface.
 func (t *ProcedureResolvedTable) Children() []sql.Node {
 	return []sql.Node{t.ResolvedTable}
-}
-
-// RowIter implements the sql.Node interface.
-func (t *ProcedureResolvedTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	rt, err := t.newestTable(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return rt.RowIter(ctx, row)
 }
 
 // WithChildren implements the sql.Node interface.
@@ -94,9 +95,9 @@ func (t *ProcedureResolvedTable) WithChildren(children ...sql.Node) (sql.Node, e
 	return nt, err
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (t *ProcedureResolvedTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return t.ResolvedTable.CheckPrivileges(ctx, opChecker)
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (t *ProcedureResolvedTable) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return t.ResolvedTable.CollationCoercibility(ctx)
 }
 
 // Underlying implements the sql.TableWrapper interface.
@@ -111,7 +112,7 @@ func (t *ProcedureResolvedTable) Name() string {
 
 // Partitions implements the sql.Table interface.
 func (t *ProcedureResolvedTable) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
-	rt, err := t.newestTable(ctx)
+	rt, err := t.NewestTable(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -120,34 +121,38 @@ func (t *ProcedureResolvedTable) Partitions(ctx *sql.Context) (sql.PartitionIter
 
 // PartitionRows implements the sql.Table interface.
 func (t *ProcedureResolvedTable) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
-	rt, err := t.newestTable(ctx)
+	rt, err := t.NewestTable(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return rt.PartitionRows(ctx, partition)
 }
 
-// newestTable fetches the newest copy of the contained table from the database.
-func (t *ProcedureResolvedTable) newestTable(ctx *sql.Context) (*ResolvedTable, error) {
+// NewestTable fetches the newest copy of the contained table from the database.
+func (t *ProcedureResolvedTable) NewestTable(ctx *sql.Context) (*ResolvedTable, error) {
 	// If no database was given, such as with the "dual" table, then we return the given table as-is.
-	if t.ResolvedTable.Database == nil {
+	if t.ResolvedTable.SqlDatabase == nil {
 		return t.ResolvedTable, nil
 	}
 
 	if IsDualTable(t.ResolvedTable) {
 		return t.ResolvedTable, nil
 	} else if t.ResolvedTable.AsOf == nil {
-		tbl, ok, err := t.ResolvedTable.Database.GetTableInsensitive(ctx, t.ResolvedTable.Table.Name())
+		tbl, ok, err := t.ResolvedTable.SqlDatabase.GetTableInsensitive(ctx, t.ResolvedTable.Table.Name())
 		if err != nil {
 			return nil, err
 		} else if !ok {
 			return nil, sql.ErrTableNotFound.New(t.ResolvedTable.Table.Name())
 		}
-		return t.ResolvedTable.WithTable(tbl)
+		rt, err := t.ResolvedTable.ReplaceTable(tbl)
+		if err != nil {
+			return nil, err
+		}
+		return rt.(*ResolvedTable), nil
 	} else {
-		versionedDb, ok := t.ResolvedTable.Database.(sql.VersionedDatabase)
+		versionedDb, ok := t.ResolvedTable.SqlDatabase.(sql.VersionedDatabase)
 		if !ok {
-			return nil, sql.ErrAsOfNotSupported.New(t.ResolvedTable.Database.Name())
+			return nil, sql.ErrAsOfNotSupported.New(t.ResolvedTable.SqlDatabase.Name())
 		}
 
 		tbl, ok, err := versionedDb.GetTableInsensitiveAsOf(ctx, t.ResolvedTable.Table.Name(), t.ResolvedTable.AsOf)
@@ -156,6 +161,10 @@ func (t *ProcedureResolvedTable) newestTable(ctx *sql.Context) (*ResolvedTable, 
 		} else if !ok {
 			return nil, sql.ErrTableNotFound.New(t.ResolvedTable.Table.Name())
 		}
-		return t.ResolvedTable.WithTable(tbl)
+		rt, err := t.ResolvedTable.ReplaceTable(tbl)
+		if err != nil {
+			return nil, err
+		}
+		return rt.(*ResolvedTable), nil
 	}
 }

@@ -57,3 +57,7 @@ func TestCatalogLockTable(t *testing.T) {
 
 	require.Equal(expected, c.locks)
 }
+
+func NewDatabaseProvider(dbs ...sql.Database) sql.DatabaseProvider {
+	return sql.NewDatabaseProvider(dbs...)
+}

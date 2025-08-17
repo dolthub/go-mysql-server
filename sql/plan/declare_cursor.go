@@ -16,7 +16,6 @@ package plan
 
 import (
 	"fmt"
-	"io"
 
 	"github.com/gabereiser/go-mysql-server/sql/expression"
 
@@ -27,10 +26,11 @@ import (
 type DeclareCursor struct {
 	Name   string
 	Select sql.Node
-	pRef   *expression.ProcedureReference
+	Pref   *expression.ProcedureReference
 }
 
 var _ sql.Node = (*DeclareCursor)(nil)
+var _ sql.CollationCoercible = (*DeclareCursor)(nil)
 var _ sql.DebugStringer = (*DeclareCursor)(nil)
 var _ expression.ProcedureReferencable = (*DeclareCursor)(nil)
 
@@ -45,6 +45,10 @@ func NewDeclareCursor(name string, selectStatement sql.Node) *DeclareCursor {
 // Resolved implements the interface sql.Node.
 func (d *DeclareCursor) Resolved() bool {
 	return d.Select.Resolved()
+}
+
+func (d *DeclareCursor) IsReadOnly() bool {
+	return d.Select.IsReadOnly()
 }
 
 // String implements the interface sql.Node.
@@ -78,37 +82,14 @@ func (d *DeclareCursor) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &nd, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (d *DeclareCursor) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return d.Select.CheckPrivileges(ctx, opChecker)
-}
-
-// RowIter implements the interface sql.Node.
-func (d *DeclareCursor) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return &declareCursorIter{d}, nil
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*DeclareCursor) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // WithParamReference implements the interface expression.ProcedureReferencable.
 func (d *DeclareCursor) WithParamReference(pRef *expression.ProcedureReference) sql.Node {
 	nd := *d
-	nd.pRef = pRef
+	nd.Pref = pRef
 	return &nd
-}
-
-// declareCursorIter is the sql.RowIter of *DeclareCursor.
-type declareCursorIter struct {
-	*DeclareCursor
-}
-
-var _ sql.RowIter = (*declareCursorIter)(nil)
-
-// Next implements the interface sql.RowIter.
-func (d *declareCursorIter) Next(ctx *sql.Context) (sql.Row, error) {
-	d.pRef.InitializeCursor(d.Name, d.Select)
-	return nil, io.EOF
-}
-
-// Close implements the interface sql.RowIter.
-func (d *declareCursorIter) Close(ctx *sql.Context) error {
-	return nil
 }

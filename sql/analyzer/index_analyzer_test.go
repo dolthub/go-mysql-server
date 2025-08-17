@@ -64,18 +64,18 @@ func TestMatchingIndexes(t *testing.T) {
 		registryIdxes:  nil,
 	}
 
-	require.Equal(t, []sql.Index{dummy1, dummy2, dummy3}, ia.MatchingIndexes(ctx, testDb, testTable, v1))
-	require.Equal(t, []sql.Index{dummy3, dummy2}, ia.MatchingIndexes(ctx, testDb, testTable, v2, v1))
-	require.Equal(t, []sql.Index{dummy2, dummy4}, ia.MatchingIndexes(ctx, testDb, testTable, v3, v1))
-	require.Equal(t, []sql.Index{dummy2, dummy4}, ia.MatchingIndexes(ctx, testDb, testTable, v2, v3, v1))
-	require.Equal(t, []sql.Index{dummy4}, ia.MatchingIndexes(ctx, testDb, testTable, v3))
-	require.Equal(t, []sql.Index{dummy4}, ia.MatchingIndexes(ctx, testDb, testTable, v2, v3))
-	require.Equal(t, dummy1, ia.MatchingIndex(ctx, testDb, testTable, v1))
-	require.Equal(t, dummy3, ia.MatchingIndex(ctx, testDb, testTable, v2, v1))
-	require.Equal(t, dummy2, ia.MatchingIndex(ctx, testDb, testTable, v3, v1))
-	require.Equal(t, dummy2, ia.MatchingIndex(ctx, testDb, testTable, v2, v3, v1))
-	require.Equal(t, dummy4, ia.MatchingIndex(ctx, testDb, testTable, v3))
-	require.Equal(t, dummy4, ia.MatchingIndex(ctx, testDb, testTable, v2, v3))
+	require.Equal(t, []sql.Index{dummy1, dummy2, dummy3}, ia.MatchingIndexes(ctx, testTable, testDb, v1))
+	require.Equal(t, []sql.Index{dummy3, dummy2}, ia.MatchingIndexes(ctx, testTable, testDb, v2, v1))
+	require.Equal(t, []sql.Index{dummy2, dummy4}, ia.MatchingIndexes(ctx, testTable, testDb, v3, v1))
+	require.Equal(t, []sql.Index{dummy2, dummy4}, ia.MatchingIndexes(ctx, testTable, testDb, v2, v3, v1))
+	require.Equal(t, []sql.Index{dummy4}, ia.MatchingIndexes(ctx, testTable, testDb, v3))
+	require.Equal(t, []sql.Index{dummy4}, ia.MatchingIndexes(ctx, testTable, testDb, v2, v3))
+	require.Equal(t, dummy1, ia.MatchingIndex(ctx, testTable, testDb, v1))
+	require.Equal(t, dummy3, ia.MatchingIndex(ctx, testTable, testDb, v2, v1))
+	require.Equal(t, dummy2, ia.MatchingIndex(ctx, testTable, testDb, v3, v1))
+	require.Equal(t, dummy2, ia.MatchingIndex(ctx, testTable, testDb, v2, v3, v1))
+	require.Equal(t, dummy4, ia.MatchingIndex(ctx, testTable, testDb, v3))
+	require.Equal(t, dummy4, ia.MatchingIndex(ctx, testTable, testDb, v2, v3))
 }
 
 func TestExpressionsWithIndexesPartialMatching(t *testing.T) {
@@ -131,8 +131,8 @@ type dummyIdx struct {
 
 var _ sql.Index = (*dummyIdx)(nil)
 
-func (i dummyIdx) CanSupport(r ...sql.Range) bool {
-	return false
+func (i dummyIdx) CanSupport(context *sql.Context, r ...sql.Range) bool {
+	return true
 }
 
 func (i dummyIdx) Expressions() []string {
@@ -142,13 +142,17 @@ func (i dummyIdx) Expressions() []string {
 	}
 	return exprs
 }
-func (i *dummyIdx) ID() string              { return i.id }
-func (i *dummyIdx) Database() string        { return i.database }
-func (i *dummyIdx) Table() string           { return i.table }
-func (i *dummyIdx) IsUnique() bool          { return false }
-func (i *dummyIdx) IsSpatial() bool         { return false }
-func (i *dummyIdx) Comment() string         { return "" }
-func (i *dummyIdx) IsGenerated() bool       { return false }
+func (i *dummyIdx) ID() string                            { return i.id }
+func (i *dummyIdx) Database() string                      { return i.database }
+func (i *dummyIdx) Table() string                         { return i.table }
+func (i *dummyIdx) IsUnique() bool                        { return false }
+func (i *dummyIdx) IsSpatial() bool                       { return false }
+func (i *dummyIdx) IsFullText() bool                      { return false }
+func (i *dummyIdx) IsVector() bool                        { return false }
+func (i *dummyIdx) Comment() string                       { return "" }
+func (i *dummyIdx) IsGenerated() bool                     { return false }
+func (i *dummyIdx) CanSupportOrderBy(sql.Expression) bool { return false }
+
 func (i *dummyIdx) IndexType() string       { return "BTREE" }
 func (i *dummyIdx) PrefixLengths() []uint16 { return nil }
 

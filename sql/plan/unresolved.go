@@ -28,23 +28,46 @@ var ErrUnresolvedTable = errors.NewKind("unresolved table")
 // UnresolvedTable is a table that has not been resolved yet but whose name is known.
 type UnresolvedTable struct {
 	name     string
-	database string
+	database sql.Database
 	asOf     sql.Expression
+	comment  string
 }
 
 var _ sql.Node = (*UnresolvedTable)(nil)
 var _ sql.Expressioner = (*UnresolvedTable)(nil)
 var _ sql.UnresolvedTable = (*UnresolvedTable)(nil)
+var _ sql.CollationCoercible = (*UnresolvedTable)(nil)
 var _ Versionable = (*UnresolvedTable)(nil)
+var _ sql.CommentedNode = (*UnresolvedTable)(nil)
 
 // NewUnresolvedTable creates a new Unresolved table.
 func NewUnresolvedTable(name, db string) *UnresolvedTable {
-	return &UnresolvedTable{name, db, nil}
+	return &UnresolvedTable{name, sql.UnresolvedDatabase(db), nil, ""}
+}
+
+// NewUnresolvedTableWithDatabase creates a new Unresolved table with a database provided.
+func NewUnresolvedTableWithDatabase(name string, db sql.Database) *UnresolvedTable {
+	return &UnresolvedTable{name, db, nil, ""}
 }
 
 // NewUnresolvedTableAsOf creates a new Unresolved table with an AS OF expression.
 func NewUnresolvedTableAsOf(name, db string, asOf sql.Expression) *UnresolvedTable {
-	return &UnresolvedTable{name, db, asOf}
+	return &UnresolvedTable{name, sql.UnresolvedDatabase(db), asOf, ""}
+}
+
+// NewUnresolvedTableAsOfWithDatabase creates a new Unresolved table with an AS OF expression and the database provided.
+func NewUnresolvedTableAsOfWithDatabase(name string, db sql.Database, asOf sql.Expression) *UnresolvedTable {
+	return &UnresolvedTable{name, db, asOf, ""}
+}
+
+func (t *UnresolvedTable) WithComment(s string) sql.Node {
+	ret := *t
+	ret.comment = s
+	return &ret
+}
+
+func (t *UnresolvedTable) Comment() string {
+	return t.comment
 }
 
 // Name implements the Nameable interface.
@@ -53,7 +76,7 @@ func (t *UnresolvedTable) Name() string {
 }
 
 // Database implements sql.UnresolvedTable
-func (t *UnresolvedTable) Database() string {
+func (t *UnresolvedTable) Database() sql.Database {
 	return t.database
 }
 
@@ -87,10 +110,13 @@ func (t *UnresolvedTable) AsOf() sql.Expression {
 	return t.asOf
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (t *UnresolvedTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(t.Database(), t.name, "", sql.PrivilegeType_Select))
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*UnresolvedTable) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
+func (t *UnresolvedTable) IsReadOnly() bool {
+	return true
 }
 
 // WithAsOf implements sql.UnresolvedTable
@@ -104,7 +130,7 @@ func (t *UnresolvedTable) WithAsOf(asOf sql.Expression) (sql.Node, error) {
 // WithChildren.
 func (t *UnresolvedTable) WithDatabase(database string) (*UnresolvedTable, error) {
 	t2 := *t
-	t2.database = database
+	t2.database = sql.UnresolvedDatabase(database)
 	return &t2, nil
 }
 
@@ -142,6 +168,7 @@ type DeferredAsOfTable struct {
 var _ sql.Node = (*DeferredAsOfTable)(nil)
 var _ sql.Expressioner = (*DeferredAsOfTable)(nil)
 var _ sql.UnresolvedTable = (*DeferredAsOfTable)(nil)
+var _ sql.CollationCoercible = (*DeferredAsOfTable)(nil)
 var _ Versionable = (*DeferredAsOfTable)(nil)
 
 func NewDeferredAsOfTable(t *ResolvedTable, asOf sql.Expression) *DeferredAsOfTable {
@@ -179,8 +206,8 @@ func (t *DeferredAsOfTable) Name() string {
 }
 
 // Database implements sql.UnresolvedTable
-func (t *DeferredAsOfTable) Database() string {
-	return t.ResolvedTable.Database.Name()
+func (t *DeferredAsOfTable) Database() sql.Database {
+	return t.ResolvedTable.SqlDatabase
 }
 
 // WithAsOf implements sql.UnresolvedTable
@@ -195,11 +222,16 @@ func (t *DeferredAsOfTable) AsOf() sql.Expression {
 	return t.asOf
 }
 
+func (t *DeferredAsOfTable) IsReadOnly() bool {
+	return true
+}
+
 type DeferredFilteredTable struct {
 	*ResolvedTable
 }
 
 var _ sql.Node = (*DeferredFilteredTable)(nil)
+var _ sql.CollationCoercible = (*DeferredFilteredTable)(nil)
 
 func NewDeferredFilteredTable(t *ResolvedTable) *DeferredFilteredTable {
 	return &DeferredFilteredTable{

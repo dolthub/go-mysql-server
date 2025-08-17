@@ -26,11 +26,15 @@ import (
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 
-	"github.com/gabereiser/go-mysql-server/sql"
-	"github.com/gabereiser/go-mysql-server/sql/mysql_db"
-	"github.com/gabereiser/go-mysql-server/sql/transform"
-	"github.com/gabereiser/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
+	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
+
+const defaultColumnsTableRowCount = 1000
 
 var typeToNumericPrecision = map[query.Type]int{
 	sqltypes.Int8:    3,
@@ -50,26 +54,42 @@ var typeToNumericPrecision = map[query.Type]int{
 // ColumnsTable describes the information_schema.columns table. It implements both sql.Node and sql.Table
 // as way to handle resolving column defaults.
 type ColumnsTable struct {
-	name    string
-	schema  sql.Schema
-	catalog sql.Catalog
+	TableName   string
+	TableSchema sql.Schema
+	catalog     sql.Catalog
 	// allColsWithDefaultValue is the full schema of all tables in all databases. We need this during analysis in order
 	// to resolve the default values of some columns, so we pre-compute it.
 	allColsWithDefaultValue sql.Schema
 
-	rowIter func(*sql.Context, sql.Catalog, sql.Schema) (sql.RowIter, error)
+	RowIter func(*sql.Context, sql.Catalog, sql.Schema) (sql.RowIter, error)
 }
 
 var _ sql.Table = (*ColumnsTable)(nil)
+var _ sql.StatisticsTable = (*ColumnsTable)(nil)
+var _ sql.Databaseable = (*ColumnsTable)(nil)
+var _ sql.DynamicColumnsTable = (*ColumnsTable)(nil)
+
+// newMySQLColumnsTable returns a ColumnsTable for MySQL.
+func newMySQLColumnsTable() *ColumnsTable {
+	return &ColumnsTable{
+		TableName:   ColumnsTableName,
+		TableSchema: columnsSchema,
+		RowIter:     columnsRowIter,
+	}
+}
+
+// NewColumnsTable is used by Doltgres to inject its correct schema and row
+// iter. In Dolt, this just returns the current columns table implementation.
+var NewColumnsTable = newMySQLColumnsTable
 
 // String implements the sql.Table interface.
 func (c *ColumnsTable) String() string {
-	return printTable(ColumnsTableName, columnsSchema)
+	return printTable(ColumnsTableName, c.TableSchema)
 }
 
 // Schema implements the sql.Table interface.
 func (c *ColumnsTable) Schema() sql.Schema {
-	return columnsSchema
+	return c.TableSchema
 }
 
 // Collation implements the sql.Table interface.
@@ -82,16 +102,22 @@ func (c *ColumnsTable) Name() string {
 	return ColumnsTableName
 }
 
+// Database implements the sql.Databaseable interface.
+func (c *ColumnsTable) Database() string {
+	return sql.InformationSchemaDatabaseName
+}
+
+func (c *ColumnsTable) DataLength(_ *sql.Context) (uint64, error) {
+	return uint64(len(c.Schema()) * int(types.Text.MaxByteLength()) * defaultColumnsTableRowCount), nil
+}
+
+func (c *ColumnsTable) RowCount(ctx *sql.Context) (uint64, bool, error) {
+	return defaultColumnsTableRowCount, false, nil
+}
+
 func (c *ColumnsTable) AssignCatalog(cat sql.Catalog) sql.Table {
 	c.catalog = cat
 	return c
-}
-
-// WithAllColumns passes in a set of all columns.
-func (c *ColumnsTable) WithAllColumns(cols []*sql.Column) sql.Table {
-	nc := *c
-	nc.allColsWithDefaultValue = cols
-	return &nc
 }
 
 // Partitions implements the sql.Table interface.
@@ -109,7 +135,10 @@ func (c *ColumnsTable) PartitionRows(context *sql.Context, partition sql.Partiti
 		return nil, fmt.Errorf("nil catalog for info schema table %s", c.Name())
 	}
 
-	return columnsRowIter(context, c.catalog, c.allColsWithDefaultValue)
+	return c.RowIter(context, c.catalog, c.allColsWithDefaultValue)
+}
+func (c *ColumnsTable) HasDynamicColumns() bool {
+	return true
 }
 
 // AllColumns returns all columns in the catalog, renamed to reflect their database and table names
@@ -124,12 +153,17 @@ func (c *ColumnsTable) AllColumns(ctx *sql.Context) (sql.Schema, error) {
 
 	var allColumns sql.Schema
 
-	for _, db := range c.catalog.AllDatabases(ctx) {
-		err := sql.DBTableIter(ctx, db, func(t sql.Table) (cont bool, err error) {
+	databases, err := AllDatabasesWithNames(ctx, c.catalog, false)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, db := range databases {
+		err := sql.DBTableIter(ctx, db.Database, func(t sql.Table) (cont bool, err error) {
 			tableSch := t.Schema()
 			for i := range tableSch {
 				newCol := tableSch[i].Copy()
-				newCol.DatabaseSource = db.Name()
+				newCol.DatabaseSource = db.Database.Name()
 				allColumns = append(allColumns, newCol)
 			}
 			return true, nil
@@ -153,7 +187,28 @@ func (c ColumnsTable) WithColumnDefaults(columnDefaults []sql.Expression) (sql.T
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(columnDefaults), len(c.allColsWithDefaultValue))
 	}
 
-	c.allColsWithDefaultValue = transform.SchemaWithDefaults(c.allColsWithDefaultValue, columnDefaults)
+	sch, err := transform.SchemaWithDefaults(c.allColsWithDefaultValue, columnDefaults)
+	if err != nil {
+		return nil, err
+	}
+
+	c.allColsWithDefaultValue = sch
+	return &c, nil
+}
+
+func (c ColumnsTable) WithDefaultsSchema(sch sql.Schema) (sql.Table, error) {
+	if c.allColsWithDefaultValue == nil {
+		return nil, fmt.Errorf("WithColumnDefaults called with nil columns for table %s", c.Name())
+	}
+
+	if len(sch) != len(c.allColsWithDefaultValue) {
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(sch), len(c.allColsWithDefaultValue))
+	}
+
+	// TODO: generated values
+	for i, col := range sch {
+		c.allColsWithDefaultValue[i].Default = col.Default
+	}
 	return &c, nil
 }
 
@@ -170,14 +225,19 @@ func columnsRowIter(ctx *sql.Context, catalog sql.Catalog, allColsWithDefaultVal
 	}
 	globalPrivSetMap = getCurrentPrivSetMapForColumn(privSet.ToSlice(), globalPrivSetMap)
 
-	for _, db := range catalog.AllDatabases(ctx) {
+	databases, err := AllDatabasesWithNames(ctx, catalog, false)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, db := range databases {
 		rs, err := getRowsFromDatabase(ctx, db, privSet, globalPrivSetMap, allColsWithDefaultValue)
 		if err != nil {
 			return nil, err
 		}
 		rows = append(rows, rs...)
 
-		rs, err = getRowsFromViews(ctx, db)
+		rs, err = getRowsFromViews(ctx, catalog, db, privSet, globalPrivSetMap)
 		if err != nil {
 			return nil, err
 		}
@@ -189,7 +249,7 @@ func columnsRowIter(ctx *sql.Context, catalog sql.Catalog, allColsWithDefaultVal
 // getRowFromColumn returns a single row for given column. The arguments passed are used to define all row values.
 // These include the current ordinal position, so this column will get the next position number, sql.Column object,
 // database name, table name, column key and column privileges information through privileges set for the table.
-func getRowFromColumn(ctx *sql.Context, curOrdPos int, col *sql.Column, dbName, tblName, columnKey string, privSetTbl sql.PrivilegeSetTable, privSetMap map[string]struct{}) sql.Row {
+func getRowFromColumn(ctx *sql.Context, curOrdPos int, col *sql.Column, catName, schName, tblName, columnKey string, privSetTbl sql.PrivilegeSetTable, privSetMap map[string]struct{}) sql.Row {
 	var (
 		ordinalPos        = uint32(curOrdPos + 1)
 		nullable          = "NO"
@@ -209,22 +269,22 @@ func getRowFromColumn(ctx *sql.Context, curOrdPos int, col *sql.Column, dbName, 
 		}
 	}
 
-	charName, collName, charMaxLen, charOctetLen := getCharAndCollNamesAndCharMaxAndOctetLens(col.Type)
+	charName, collName, charMaxLen, charOctetLen := getCharAndCollNamesAndCharMaxAndOctetLens(ctx, col.Type)
 
 	numericPrecision, numericScale := getColumnPrecisionAndScale(col.Type)
-	if types.IsDatetimeType(col.Type) || types.IsTimestampType(col.Type) {
-		datetimePrecision = 0
-	} else if types.IsTimespan(col.Type) {
+	if types.IsTimespan(col.Type) {
 		// TODO: TIME length not yet supported
 		datetimePrecision = 6
+	} else if dtType, ok := col.Type.(sql.DatetimeType); ok {
+		datetimePrecision = dtType.Precision()
 	}
 
-	columnDefault := getColumnDefault(ctx, col.Default)
+	columnDefault := GetColumnDefault(ctx, col.Default)
 
 	extra := col.Extra
 	// If extra is not defined, fill it here.
 	if extra == "" && !col.Default.IsLiteral() {
-		extra = fmt.Sprintf("DEFAULT_GENERATED")
+		extra = "DEFAULT_GENERATED"
 	}
 
 	var curColPrivStr []string
@@ -244,8 +304,8 @@ func getRowFromColumn(ctx *sql.Context, curOrdPos int, col *sql.Column, dbName, 
 	privileges := strings.Join(curColPrivStr, ",")
 
 	return sql.Row{
-		"def",             // table_catalog
-		dbName,            // table_schema
+		catName,           // table_catalog
+		schName,           // table_schema
 		tblName,           // table_name
 		col.Name,          // column_name
 		ordinalPos,        // ordinal_position
@@ -270,7 +330,7 @@ func getRowFromColumn(ctx *sql.Context, curOrdPos int, col *sql.Column, dbName, 
 }
 
 // getRowsFromTable returns array of rows for all accessible columns of the given table.
-func getRowsFromTable(ctx *sql.Context, db sql.Database, t sql.Table, privSetDb sql.PrivilegeSetDatabase, privSetMap map[string]struct{}, allColsWithDefaultValue sql.Schema) ([]sql.Row, error) {
+func getRowsFromTable(ctx *sql.Context, db DbWithNames, t sql.Table, privSetDb sql.PrivilegeSetDatabase, privSetMap map[string]struct{}, allColsWithDefaultValue sql.Schema) ([]sql.Row, error) {
 	var rows []sql.Row
 
 	privSetTbl := privSetDb.Table(t.Name())
@@ -282,7 +342,7 @@ func getRowsFromTable(ctx *sql.Context, db sql.Database, t sql.Table, privSetDb 
 	}
 
 	tblName := t.Name()
-	for i, col := range schemaForTable(t, db, allColsWithDefaultValue) {
+	for i, col := range SchemaForTable(t, db.Database, allColsWithDefaultValue) {
 		var columnKey string
 		// Check column PK here first because there are PKs from table implementations that don't implement sql.IndexedTable
 		if col.PrimaryKey {
@@ -296,7 +356,7 @@ func getRowsFromTable(ctx *sql.Context, db sql.Database, t sql.Table, privSetDb 
 			}
 		}
 
-		r := getRowFromColumn(ctx, i, col, db.Name(), tblName, columnKey, privSetTbl, curPrivSetMap)
+		r := getRowFromColumn(ctx, i, col, db.CatalogName, db.SchemaName, tblName, columnKey, privSetTbl, curPrivSetMap)
 		if r != nil {
 			rows = append(rows, r)
 		}
@@ -306,50 +366,40 @@ func getRowsFromTable(ctx *sql.Context, db sql.Database, t sql.Table, privSetDb 
 }
 
 // getRowsFromViews returns array or rows for columns for all views for given database.
-func getRowsFromViews(ctx *sql.Context, db sql.Database) ([]sql.Row, error) {
+func getRowsFromViews(ctx *sql.Context, catalog sql.Catalog, db DbWithNames, privSet sql.PrivilegeSet, privSetMap map[string]struct{}) ([]sql.Row, error) {
 	var rows []sql.Row
-	// TODO: View Definition is lacking information to properly fill out these table
-	// TODO: Should somehow get reference to table(s) view is referencing
-	// TODO: Each column that view references should also show up as unique entries as well
-	views, err := viewsInDatabase(ctx, db)
+	views, err := ViewsInDatabase(ctx, db.Database)
 	if err != nil {
 		return nil, err
 	}
-
+	privSetDb := privSet.Database(db.Database.Name())
 	for _, view := range views {
-		rows = append(rows, sql.Row{
-			"def",     // table_catalog
-			db.Name(), // table_schema
-			view.Name, // table_name
-			"",        // column_name
-			uint32(0), // ordinal_position
-			nil,       // column_default
-			"",        // is_nullable
-			nil,       // data_type
-			nil,       // character_maximum_length
-			nil,       // character_octet_length
-			nil,       // numeric_precision
-			nil,       // numeric_scale
-			nil,       // datetime_precision
-			"",        // character_set_name
-			"",        // collation_name
-			"",        // column_type
-			"",        // column_key
-			"",        // extra
-			"select",  // privileges
-			"",        // column_comment
-			"",        // generation_expression
-			nil,       // srs_id
-		})
+		// TODO: figure out how auth works in this case
+		node, _, err := planbuilder.Parse(ctx, catalog, view.CreateViewStatement)
+		if err != nil {
+			continue // sometimes views contains views from other databases
+		}
+		createViewNode, ok := node.(*plan.CreateView)
+		if !ok {
+			continue
+		}
+		privSetTbl := privSetDb.Table(view.Name)
+		curPrivSetMap := getCurrentPrivSetMapForColumn(privSetDb.ToSlice(), privSetMap)
+		for i, col := range createViewNode.TargetSchema() {
+			r := getRowFromColumn(ctx, i, col, db.CatalogName, db.SchemaName, view.Name, "", privSetTbl, curPrivSetMap)
+			if r != nil {
+				rows = append(rows, r)
+			}
+		}
 	}
 
 	return rows, nil
 }
 
 // getRowsFromDatabase returns array of rows for all accessible columns of accessible table of the given database.
-func getRowsFromDatabase(ctx *sql.Context, db sql.Database, privSet sql.PrivilegeSet, privSetMap map[string]struct{}, allColsWithDefaultValue sql.Schema) ([]sql.Row, error) {
+func getRowsFromDatabase(ctx *sql.Context, db DbWithNames, privSet sql.PrivilegeSet, privSetMap map[string]struct{}, allColsWithDefaultValue sql.Schema) ([]sql.Row, error) {
 	var rows []sql.Row
-	dbName := db.Name()
+	dbName := db.Database.Name()
 
 	privSetDb := privSet.Database(dbName)
 	curPrivSetMap := getCurrentPrivSetMapForColumn(privSetDb.ToSlice(), privSetMap)
@@ -357,7 +407,7 @@ func getRowsFromDatabase(ctx *sql.Context, db sql.Database, privSet sql.Privileg
 		curPrivSetMap["select"] = struct{}{}
 	}
 
-	err := sql.DBTableIter(ctx, db, func(t sql.Table) (cont bool, err error) {
+	err := sql.DBTableIter(ctx, db.Database, func(t sql.Table) (cont bool, err error) {
 		rs, err := getRowsFromTable(ctx, db, t, privSetDb, curPrivSetMap, allColsWithDefaultValue)
 		if err != nil {
 			return false, err
@@ -430,8 +480,8 @@ func getIndexKeyInfo(ctx *sql.Context, t sql.Table) (map[string]string, bool, er
 	return columnKeyMap, hasPK, nil
 }
 
-// getColumnDefault returns the column default value for given sql.ColumnDefaultValue
-func getColumnDefault(ctx *sql.Context, cd *sql.ColumnDefaultValue) interface{} {
+// GetColumnDefault returns the column default value for given sql.ColumnDefaultValue
+func GetColumnDefault(ctx *sql.Context, cd *sql.ColumnDefaultValue) interface{} {
 	if cd == nil {
 		return nil
 	}
@@ -479,7 +529,7 @@ func getColumnDefault(ctx *sql.Context, cd *sql.ColumnDefaultValue) interface{} 
 	return fmt.Sprint(v)
 }
 
-func schemaForTable(t sql.Table, db sql.Database, allColsWithDefaultValue sql.Schema) sql.Schema {
+func SchemaForTable(t sql.Table, db sql.Database, allColsWithDefaultValue sql.Schema) sql.Schema {
 	start, end := -1, -1
 	tableName := strings.ToLower(t.Name())
 
@@ -539,7 +589,7 @@ func getColumnPrecisionAndScale(colType sql.Type) (interface{}, interface{}) {
 	}
 }
 
-func getCharAndCollNamesAndCharMaxAndOctetLens(colType sql.Type) (interface{}, interface{}, interface{}, interface{}) {
+func getCharAndCollNamesAndCharMaxAndOctetLens(ctx *sql.Context, colType sql.Type) (interface{}, interface{}, interface{}, interface{}) {
 	var (
 		charName     interface{}
 		collName     interface{}
@@ -551,8 +601,8 @@ func getCharAndCollNamesAndCharMaxAndOctetLens(colType sql.Type) (interface{}, i
 		collName = colColl.Name()
 		charName = colColl.CharacterSet().String()
 		if types.IsEnum(colType) || types.IsSet(colType) {
-			charOctetLen = int64(colType.MaxTextResponseByteLength())
-			charMaxLen = int64(colType.MaxTextResponseByteLength()) / colColl.CharacterSet().MaxLength()
+			charOctetLen = int64(colType.MaxTextResponseByteLength(ctx))
+			charMaxLen = int64(colType.MaxTextResponseByteLength(ctx)) / colColl.CharacterSet().MaxLength()
 		}
 	}
 	if st, ok := colType.(sql.StringType); ok {

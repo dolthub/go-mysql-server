@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"reflect"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -33,33 +34,28 @@ var (
 
 type nullType struct{}
 
+func (t nullType) IsNullType() bool {
+	return true
+}
+
 // Compare implements Type interface. Note that while this returns 0 (equals)
 // for ordering purposes, in SQL NULL != NULL.
-func (t nullType) Compare(a interface{}, b interface{}) (int, error) {
+func (t nullType) Compare(s context.Context, a interface{}, b interface{}) (int, error) {
 	return 0, nil
 }
 
 // Convert implements Type interface.
-func (t nullType) Convert(v interface{}) (interface{}, error) {
+func (t nullType) Convert(c context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v != nil {
-		return nil, ErrValueNotNil.New(v)
+		return nil, sql.InRange, ErrValueNotNil.New(v)
 	}
 
-	return nil, nil
+	return nil, sql.InRange, nil
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t nullType) MaxTextResponseByteLength() uint32 {
+func (t nullType) MaxTextResponseByteLength(*sql.Context) uint32 {
 	return 0
-}
-
-// MustConvert implements the Type interface.
-func (t nullType) MustConvert(v interface{}) interface{} {
-	value, err := t.Convert(v)
-	if err != nil {
-		panic(err)
-	}
-	return value
 }
 
 // Equals implements the Type interface.
@@ -96,4 +92,9 @@ func (t nullType) ValueType() reflect.Type {
 // Zero implements Type interface.
 func (t nullType) Zero() interface{} {
 	return nil
+}
+
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (nullType) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 6
 }

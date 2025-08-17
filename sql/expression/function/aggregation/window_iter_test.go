@@ -15,25 +15,27 @@
 package aggregation
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/gabereiser/go-mysql-server/sql"
-	"github.com/gabereiser/go-mysql-server/sql/expression"
-	"github.com/gabereiser/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/memory"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var (
 	partitionByX = []sql.Expression{
-		expression.NewGetFieldWithTable(1, types.Text, "a", "x", false),
+		expression.NewGetFieldWithTable(1, 0, types.Text, "mydb", "a", "x", false),
 	}
 	sortByW = sql.SortFields{{
-		Column: expression.NewGetFieldWithTable(0, types.Int64, "a", "w", false),
+		Column: expression.NewGetFieldWithTable(0, 0, types.Int64, "mydb", "a", "w", false),
 	}}
 	sortByWDesc = sql.SortFields{
 		{
-			Column: expression.NewGetFieldWithTable(0, types.Int64, "a", "w", false),
+			Column: expression.NewGetFieldWithTable(0, 0, types.Int64, "mydb", "a", "w", false),
 			Order:  sql.Descending,
 		},
 	}
@@ -87,9 +89,12 @@ func TestWindowIter(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.Name, func(t *testing.T) {
-			ctx := sql.NewEmptyContext()
-			i := NewWindowIter(tt.PartitionIters, tt.OutputOrdinals, mustNewRowIter(t, ctx))
-			res, err := sql.RowIterToRows(ctx, nil, i)
+			db := memory.NewDatabase("test")
+			pro := memory.NewDBProvider(db)
+			ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
+
+			i := NewWindowIter(tt.PartitionIters, tt.OutputOrdinals, mustNewRowIter(t, db, ctx))
+			res, err := sql.RowIterToRows(ctx, i)
 			require.NoError(t, err)
 			require.Equal(t, tt.Expected, res)
 		})

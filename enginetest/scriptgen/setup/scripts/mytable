@@ -20,3 +20,7 @@ create index mytable_i_s on mytable (i,s)
 exec
 create index `idx_si` on mytable (`s`,`i`)
 ----
+
+exec
+create view myview as SELECT * FROM mytable
+----

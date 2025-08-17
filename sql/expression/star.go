@@ -27,6 +27,9 @@ type Star struct {
 	Table string
 }
 
+var _ sql.Expression = (*Star)(nil)
+var _ sql.CollationCoercible = (*Star)(nil)
+
 // NewStar returns a new Star expression.
 func NewStar() *Star {
 	return new(Star)
@@ -49,12 +52,17 @@ func (*Star) Children() []sql.Expression {
 
 // IsNullable implements the Expression interface.
 func (*Star) IsNullable() bool {
-	panic("star is just a placeholder node, but IsNullable was called")
+	return false
 }
 
 // Type implements the Expression interface.
 func (*Star) Type() sql.Type {
 	panic("star is just a placeholder node, but Type was called")
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Star) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func (s *Star) String() string {

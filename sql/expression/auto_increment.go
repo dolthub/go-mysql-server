@@ -36,6 +36,9 @@ type AutoIncrement struct {
 	autoCol *sql.Column
 }
 
+var _ sql.Expression = (*AutoIncrement)(nil)
+var _ sql.CollationCoercible = (*AutoIncrement)(nil)
+
 // NewAutoIncrement creates a new AutoIncrement expression.
 func NewAutoIncrement(ctx *sql.Context, table sql.Table, given sql.Expression) (*AutoIncrement, error) {
 	autoTbl, ok := table.(sql.AutoIncrementTable)
@@ -85,6 +88,11 @@ func (i *AutoIncrement) Type() sql.Type {
 	return i.autoCol.Type
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (i *AutoIncrement) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, i.Child)
+}
+
 // Eval implements the Expression interface.
 func (i *AutoIncrement) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// get value provided by INSERT
@@ -94,15 +102,30 @@ func (i *AutoIncrement) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	}
 
 	// When a row passes in 0 as the auto_increment value it is equivalent to NULL.
-	cmp, err := i.Type().Compare(given, i.Type().Zero())
+	cmp, err := i.Type().Compare(ctx, given, i.Type().Zero())
 	if err != nil {
 		return nil, err
 	}
+
+	// if given is negative, don't do any auto_increment logic
+	if cmp < 0 {
+		ret, _, err := i.Type().Convert(ctx, given)
+		if err != nil {
+			return nil, err
+		}
+		return ret, nil
+	}
+
 	if cmp == 0 {
+		if sql.LoadSqlMode(ctx).ModeEnabled(sql.NoAutoValueOnZero) {
+			ret, _, err := i.Type().Convert(ctx, given)
+			if err != nil {
+				return nil, err
+			}
+			return ret, nil
+		}
+		// if given is 0, it is equivalent to NULL
 		given = nil
-	} else if cmp < 0 {
-		// if given is negative, don't do any auto_increment logic
-		return i.Type().Convert(given)
 	}
 
 	// Update integrator AUTO_INCREMENT sequence with our value
@@ -116,7 +139,14 @@ func (i *AutoIncrement) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		given = seq
 	}
 
-	return i.Type().Convert(given)
+	ret, inRange, err := i.Type().Convert(ctx, given)
+	if err == nil && !inRange {
+		err = sql.ErrValueOutOfRange.New(given, i.Type())
+	}
+	if err != nil {
+		return nil, err
+	}
+	return ret, nil
 }
 
 func (i *AutoIncrement) String() string {

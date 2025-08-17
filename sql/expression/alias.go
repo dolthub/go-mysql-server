@@ -59,6 +59,11 @@ func (a AliasReference) Type() sql.Type {
 	return types.Null
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (AliasReference) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
 func (a AliasReference) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return nil, fmt.Errorf("tried to call eval on an unresolved AliasReference")
 }
@@ -71,21 +76,54 @@ func (a AliasReference) WithChildren(children ...sql.Expression) (sql.Expression
 }
 
 var _ sql.Expression = (*AliasReference)(nil)
+var _ sql.CollationCoercible = (*AliasReference)(nil)
 
 // Alias is a node that gives a name to an expression.
 type Alias struct {
 	UnaryExpression
-	name string
+	name           string
+	unreferencable bool
+	id             sql.ColumnId
 }
+
+var _ sql.Expression = (*Alias)(nil)
+var _ sql.IdExpression = (*Alias)(nil)
+var _ sql.CollationCoercible = (*Alias)(nil)
 
 // NewAlias returns a new Alias node.
 func NewAlias(name string, expr sql.Expression) *Alias {
-	return &Alias{UnaryExpression{expr}, name}
+	return &Alias{UnaryExpression{expr}, name, false, 0}
+}
+
+// AsUnreferencable marks the alias outside of scope referencing
+func (e *Alias) AsUnreferencable() *Alias {
+	ret := *e
+	ret.unreferencable = true
+	return &ret
+}
+
+func (e *Alias) Unreferencable() bool {
+	return e.unreferencable
+}
+
+func (e *Alias) WithId(id sql.ColumnId) sql.IdExpression {
+	ret := *e
+	ret.id = id
+	return &ret
+}
+
+func (e *Alias) Id() sql.ColumnId {
+	return e.id
 }
 
 // Type returns the type of the expression.
 func (e *Alias) Type() sql.Type {
 	return e.Child.Type()
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (e *Alias) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, e.Child)
 }
 
 // Eval implements the Expression interface.
@@ -98,7 +136,11 @@ func (e *Alias) String() string {
 }
 
 func (e *Alias) DebugString() string {
-	return fmt.Sprintf("%s as %s", sql.DebugString(e.Child), e.name)
+	if e.unreferencable {
+		return fmt.Sprintf("%s->%s", e.Child, e.name)
+	} else {
+		return fmt.Sprintf("%s->%s:%d", sql.DebugString(e.Child), e.name, e.id)
+	}
 }
 
 // WithChildren implements the Expression interface.

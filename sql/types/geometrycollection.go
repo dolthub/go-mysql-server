@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"math"
 	"reflect"
 
@@ -41,6 +42,7 @@ type GeomColl struct {
 
 var _ sql.Type = GeomCollType{}
 var _ sql.SpatialColumnType = GeomCollType{}
+var _ sql.CollationCoercible = GeomCollType{}
 var _ GeometryValue = GeomColl{}
 
 var (
@@ -50,15 +52,15 @@ var (
 )
 
 // Compare implements Type interface.
-func (t GeomCollType) Compare(a interface{}, b interface{}) (int, error) {
-	return GeometryType{}.Compare(a, b)
+func (t GeomCollType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
+	return GeometryType{}.Compare(ctx, a, b)
 }
 
 // Convert implements Type interface.
-func (t GeomCollType) Convert(v interface{}) (interface{}, error) {
+func (t GeomCollType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	// Allow null
 	if v == nil {
-		return nil, nil
+		return nil, sql.InRange, nil
 	}
 	// Handle conversions
 	switch val := v.(type) {
@@ -66,27 +68,27 @@ func (t GeomCollType) Convert(v interface{}) (interface{}, error) {
 		// Parse header
 		srid, isBig, geomType, err := DeserializeEWKBHeader(val)
 		if err != nil {
-			return nil, err
+			return nil, sql.OutOfRange, err
 		}
 		// Throw error if not marked as geometry collection
 		if geomType != WKBGeomCollID {
-			return nil, sql.ErrInvalidGISData.New("GeomCollType.Convert")
+			return nil, sql.OutOfRange, sql.ErrInvalidGISData.New("GeomCollType.Convert")
 		}
 		// Parse data section
 		geom, _, err := DeserializeGeomColl(val[EWKBHeaderSize:], isBig, srid)
 		if err != nil {
-			return nil, err
+			return nil, sql.OutOfRange, err
 		}
-		return geom, nil
+		return geom, sql.InRange, nil
 	case string:
-		return t.Convert([]byte(val))
+		return t.Convert(ctx, []byte(val))
 	case GeomColl:
 		if err := t.MatchSRID(val); err != nil {
-			return nil, err
+			return nil, sql.OutOfRange, err
 		}
-		return val, nil
+		return val, sql.InRange, nil
 	default:
-		return nil, sql.ErrSpatialTypeConversion.New()
+		return nil, sql.OutOfRange, sql.ErrSpatialTypeConversion.New()
 	}
 }
 
@@ -97,7 +99,7 @@ func (t GeomCollType) Equals(otherType sql.Type) bool {
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t GeomCollType) MaxTextResponseByteLength() uint32 {
+func (t GeomCollType) MaxTextResponseByteLength(*sql.Context) uint32 {
 	return GeometryMaxByteLength
 }
 
@@ -112,7 +114,7 @@ func (t GeomCollType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 		return sqltypes.NULL, nil
 	}
 
-	v, err := t.Convert(v)
+	v, _, err := t.Convert(ctx, v)
 	if err != nil {
 		return sqltypes.Value{}, nil
 	}
@@ -140,6 +142,11 @@ func (t GeomCollType) Zero() interface{} {
 // ValueType implements Type interface.
 func (t GeomCollType) ValueType() reflect.Type {
 	return geomcollValueType
+}
+
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (GeomCollType) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // GetSpatialTypeSRID implements SpatialColumnType interface.

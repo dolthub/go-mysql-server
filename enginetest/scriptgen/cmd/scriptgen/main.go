@@ -30,6 +30,8 @@ import (
 	"github.com/gabereiser/go-mysql-server/enginetest/scriptgen/setup"
 )
 
+//go:generate go run ./main.go -out ../../setup/setup_data.sg.go -pkg setup setup ../../setup/scripts
+
 var (
 	errInvalidArgCount     = errors.New("invalid number of arguments")
 	errUnrecognizedCommand = errors.New("unrecognized command")

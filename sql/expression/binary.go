@@ -31,6 +31,9 @@ type Binary struct {
 	UnaryExpression
 }
 
+var _ sql.Expression = (*Binary)(nil)
+var _ sql.CollationCoercible = (*Binary)(nil)
+
 func NewBinary(e sql.Expression) sql.Expression {
 	return &Binary{UnaryExpression{Child: e}}
 }
@@ -43,13 +46,18 @@ func (b *Binary) Type() sql.Type {
 	return types.LongBlob
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Binary) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 2
+}
+
 func (b *Binary) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	expr, err := b.Child.Eval(ctx, row)
+	val, err := b.Child.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	return convertValue(expr, ConvertToBinary, b.Child.Type())
+	return convertValue(ctx, val, ConvertToBinary, b.Child.Type(), 0, 0)
 }
 
 func (b *Binary) WithChildren(children ...sql.Expression) (sql.Expression, error) {

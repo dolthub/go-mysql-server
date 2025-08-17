@@ -426,9 +426,13 @@ type dummyIdx struct {
 	table    string
 }
 
+func (i dummyIdx) CanSupportOrderBy(Expression) bool {
+	return false
+}
+
 var _ DriverIndex = (*dummyIdx)(nil)
 
-func (i dummyIdx) CanSupport(r ...Range) bool {
+func (i dummyIdx) CanSupport(context *Context, r ...Range) bool {
 	return false
 }
 
@@ -445,6 +449,8 @@ func (i dummyIdx) Table() string           { return i.table }
 func (i dummyIdx) Driver() string          { return "dummy" }
 func (i dummyIdx) IsUnique() bool          { return false }
 func (i dummyIdx) IsSpatial() bool         { return false }
+func (i dummyIdx) IsFullText() bool        { return false }
+func (i dummyIdx) IsVector() bool          { return false }
 func (i dummyIdx) Comment() string         { return "" }
 func (i dummyIdx) IsGenerated() bool       { return false }
 func (i dummyIdx) IndexType() string       { return "BTREE" }
@@ -463,6 +469,7 @@ type dummyExpr struct {
 }
 
 var _ Expression = (*dummyExpr)(nil)
+var _ CollationCoercible = (*dummyExpr)(nil)
 
 func (dummyExpr) Children() []Expression                  { return nil }
 func (dummyExpr) Eval(*Context, Row) (interface{}, error) { panic("not implemented") }
@@ -475,6 +482,9 @@ func (dummyExpr) Resolved() bool   { return false }
 func (dummyExpr) Type() Type       { panic("not implemented") }
 func (e dummyExpr) WithIndex(idx int) Expression {
 	return &dummyExpr{idx, e.colName}
+}
+func (dummyExpr) CollationCoercibility(ctx *Context) (collation CollationID, coercibility byte) {
+	return Collation_binary, 7
 }
 
 type checksumTable struct {

@@ -15,14 +15,11 @@
 package plan
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 
-	"github.com/oliveagle/jsonpath"
-
-	"github.com/gabereiser/go-mysql-server/sql"
-	"github.com/gabereiser/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 type jsonTablePartition struct {
@@ -56,69 +53,163 @@ func (j *jsonTablePartitionIter) Next(ctx *sql.Context) (sql.Partition, error) {
 	return &jsonTablePartition{key}, nil
 }
 
-type jsonTableRowIter struct {
-	colPaths []string
-	schema   sql.Schema
-	data     []interface{}
-	pos      int
+type JSONTableColOpts struct {
+	Name         string
+	Type         sql.Type
+	ForOrd       bool
+	Exists       bool
+	DefEmptyVal  sql.Expression
+	DefErrorVal  sql.Expression
+	ErrorOnError bool
+	ErrorOnEmpty bool
 }
 
-var _ sql.RowIter = &jsonTableRowIter{}
-
-func (j *jsonTableRowIter) Next(ctx *sql.Context) (sql.Row, error) {
-	if j.pos >= len(j.data) {
-		return nil, io.EOF
-	}
-	obj := j.data[j.pos]
-	j.pos++
-
-	row := make(sql.Row, len(j.colPaths))
-	for i, p := range j.colPaths {
-		var val interface{}
-		if v, err := jsonpath.JsonPathLookup(obj, p); err == nil {
-			val = v
-		}
-
-		value, err := j.schema[i].Type.Convert(val)
-		if err != nil {
-			return nil, err
-		}
-
-		row[i] = value
-	}
-
-	return row, nil
+type JSONTableCol struct {
+	Path       string
+	Opts       *JSONTableColOpts
+	NestedCols []JSONTableCol
 }
 
-func (j *jsonTableRowIter) Close(ctx *sql.Context) error {
+func (c *JSONTableCol) Resolved() bool {
+	for _, col := range c.NestedCols {
+		if !col.Resolved() {
+			return false
+		}
+	}
+
+	return c.Opts == nil || (c.Opts.DefErrorVal.Resolved() && c.Opts.DefEmptyVal.Resolved())
+}
+
+func (c *JSONTableCol) Expressions() []sql.Expression {
+	if c.Opts != nil {
+		return []sql.Expression{c.Opts.DefEmptyVal, c.Opts.DefErrorVal}
+	}
+	var exprs []sql.Expression
+	for _, col := range c.NestedCols {
+		exprs = append(exprs, col.Expressions()...)
+	}
+	return exprs
+}
+
+func (c *JSONTableCol) WithExpressions(exprs []sql.Expression, idx *int) error {
+	i := *idx
+	if i >= len(exprs) {
+		return fmt.Errorf("not enough expressions for JSONTableCol")
+	}
+	if c.Opts != nil {
+		c.Opts.DefEmptyVal = exprs[i]
+		c.Opts.DefErrorVal = exprs[i+1]
+		*idx += 2
+		return nil
+	}
+	for _, col := range c.NestedCols {
+		if err := col.WithExpressions(exprs, idx); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
 type JSONTable struct {
-	dataExpr sql.Expression
-	name     string
-	path     string
-	schema   sql.PrimaryKeySchema
-	colPaths []string
+	DataExpr  sql.Expression
+	TableName string
+	RootPath  string
+	Cols      []JSONTableCol
+	b         sql.NodeExecBuilder
+	id        sql.TableId
+	colset    sql.ColSet
 }
 
-var _ sql.Table = &JSONTable{}
-var _ sql.Node = &JSONTable{}
-var _ sql.Expressioner = &JSONTable{}
+var _ sql.Table = (*JSONTable)(nil)
+var _ sql.Node = (*JSONTable)(nil)
+var _ sql.Expressioner = (*JSONTable)(nil)
+var _ sql.CollationCoercible = (*JSONTable)(nil)
+var _ TableIdNode = (*JSONTable)(nil)
+var _ sql.RenameableNode = (*JSONTable)(nil)
+
+// WithId implements sql.TableIdNode
+func (t *JSONTable) WithId(id sql.TableId) TableIdNode {
+	ret := *t
+	ret.id = id
+	return &ret
+}
+
+// Id implements sql.TableIdNode
+func (t *JSONTable) Id() sql.TableId {
+	return t.id
+}
+
+// WithColumns implements sql.TableIdNode
+func (t *JSONTable) WithColumns(set sql.ColSet) TableIdNode {
+	ret := *t
+	ret.colset = set
+	return &ret
+}
+
+// Columns implements sql.TableIdNode
+func (t *JSONTable) Columns() sql.ColSet {
+	return t.colset
+}
 
 // Name implements the sql.Table interface
 func (t *JSONTable) Name() string {
-	return t.name
+	return t.TableName
+}
+
+func (t *JSONTable) WithName(s string) sql.Node {
+	ret := *t
+	ret.TableName = s
+	return &ret
+}
+
+func (t *JSONTable) IsReadOnly() bool {
+	return true
 }
 
 // String implements the sql.Table interface
 func (t *JSONTable) String() string {
-	return t.name
+	return t.TableName
+}
+
+// DebugString implements the sql.Table interface
+func (t *JSONTable) DebugString() string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("json_table")
+	var cols []string
+	for _, col := range t.Cols {
+		cols = append(cols, col.Path)
+	}
+	children := []string{
+		fmt.Sprintf("name: %s", t.TableName),
+		fmt.Sprintf("root_path: %s", t.RootPath),
+		fmt.Sprintf("data_expr: %s", sql.DebugString(t.DataExpr)),
+		fmt.Sprintf("cols: %s", strings.Join(cols, ", ")),
+	}
+	_ = pr.WriteChildren(children...)
+	return pr.String()
+}
+
+// FlattenSchema returns the flattened schema of a JSONTableCol
+func (t *JSONTable) FlattenSchema(cols []JSONTableCol) sql.Schema {
+	var sch sql.Schema
+	for _, col := range cols {
+		if len(col.NestedCols) == 0 {
+			sch = append(sch, &sql.Column{
+				Source:        t.TableName,
+				Name:          col.Opts.Name,
+				Type:          col.Opts.Type,
+				AutoIncrement: col.Opts.ForOrd,
+			})
+			continue
+		}
+		sch = append(sch, t.FlattenSchema(col.NestedCols)...)
+	}
+	return sch
 }
 
 // Schema implements the sql.Table interface
 func (t *JSONTable) Schema() sql.Schema {
-	return t.schema.Schema
+	return t.FlattenSchema(t.Cols)
 }
 
 // Collation implements the sql.Table interface
@@ -128,7 +219,7 @@ func (t *JSONTable) Collation() sql.CollationID {
 
 // Partitions implements the sql.Table interface
 func (t *JSONTable) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
-	// TODO: this does nothing
+	// TODO: this does Nothing
 	return &jsonTablePartitionIter{
 		keys: [][]byte{{0}},
 	}, nil
@@ -136,12 +227,20 @@ func (t *JSONTable) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
 
 // PartitionRows implements the sql.Table interface
 func (t *JSONTable) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
-	return t.RowIter(ctx, nil)
+	return t.b.Build(ctx, t, nil)
 }
 
 // Resolved implements the sql.Resolvable interface
 func (t *JSONTable) Resolved() bool {
-	return t.dataExpr.Resolved()
+	if !t.DataExpr.Resolved() {
+		return false
+	}
+	for _, col := range t.Cols {
+		if !col.Resolved() {
+			return false
+		}
+	}
+	return true
 }
 
 // Children implements the sql.Node interface
@@ -149,82 +248,52 @@ func (t *JSONTable) Children() []sql.Node {
 	return nil
 }
 
-// RowIter implements the sql.Node interface
-func (t *JSONTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	// data must evaluate to JSON string
-	data, err := t.dataExpr.Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-	strData, err := types.LongBlob.Convert(data)
-	if err != nil {
-		return nil, fmt.Errorf("invalid data type for JSON data in argument 1 to function json_table; a JSON string or JSON type is required")
-	}
-
-	if strData == nil {
-		return &jsonTableRowIter{}, nil
-	}
-
-	var jsonData interface{}
-	if err := json.Unmarshal(strData.([]byte), &jsonData); err != nil {
-		return nil, err
-	}
-
-	// Get data specified from initial path
-	var jsonPathData []interface{}
-	if rootJSONData, err := jsonpath.JsonPathLookup(jsonData, t.path); err == nil {
-		if data, ok := rootJSONData.([]interface{}); ok {
-			jsonPathData = data
-		} else {
-			jsonPathData = []interface{}{rootJSONData}
-		}
-	} else {
-		return nil, err
-	}
-
-	return &jsonTableRowIter{
-		colPaths: t.colPaths,
-		schema:   t.schema.Schema,
-		data:     jsonPathData,
-	}, nil
-}
-
 // WithChildren implements the sql.Node interface
 func (t *JSONTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return t, nil
 }
 
-// CheckPrivileges implements the sql.Node interface
-func (t *JSONTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*JSONTable) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // Expressions implements the sql.Expressioner interface
 func (t *JSONTable) Expressions() []sql.Expression {
-	return []sql.Expression{t.dataExpr}
+	exprs := []sql.Expression{t.DataExpr}
+	for _, col := range t.Cols {
+		innerExprs := col.Expressions()
+		exprs = append(exprs, innerExprs...)
+	}
+	return exprs
 }
 
 // WithExpressions implements the sql.Expressioner interface
 func (t *JSONTable) WithExpressions(expression ...sql.Expression) (sql.Node, error) {
-	if len(expression) != 1 {
-		return nil, sql.ErrInvalidExpressionNumber.New(t, len(expression), 1)
-	}
 	nt := *t
-	nt.dataExpr = expression[0]
+	nt.DataExpr = expression[0]
+	idx := 1
+	for i := range nt.Cols {
+		if err := nt.Cols[i].WithExpressions(expression, &idx); err != nil {
+			return nil, err
+		}
+	}
+	if idx != len(expression) {
+		return nil, fmt.Errorf("too many expressions for JSONTable")
+	}
 	return &nt, nil
 }
 
 // NewJSONTable creates a new in memory table from the JSON formatted data, a jsonpath path string, and table spec.
-func NewJSONTable(ctx *sql.Context, dataExpr sql.Expression, path string, colPaths []string, alias string, schema sql.PrimaryKeySchema) (sql.Node, error) {
+func NewJSONTable(dataExpr sql.Expression, path string, alias string, cols []JSONTableCol) (*JSONTable, error) {
 	if _, ok := dataExpr.(*Subquery); ok {
 		return nil, sql.ErrInvalidArgument.New("JSON_TABLE")
 	}
 
 	return &JSONTable{
-		name:     alias,
-		dataExpr: dataExpr,
-		path:     path,
-		schema:   schema,
-		colPaths: colPaths,
+		TableName: alias,
+		DataExpr:  dataExpr,
+		RootPath:  path,
+		Cols:      cols,
 	}, nil
 }

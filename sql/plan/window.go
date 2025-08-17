@@ -18,10 +18,9 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/gabereiser/go-mysql-server/sql"
-	"github.com/gabereiser/go-mysql-server/sql/expression"
-	"github.com/gabereiser/go-mysql-server/sql/expression/function/aggregation"
-	"github.com/gabereiser/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 var ErrAggregationMissingWindow = errors.New("aggregation missing window expression")
@@ -34,6 +33,7 @@ type Window struct {
 var _ sql.Expressioner = (*Window)(nil)
 var _ sql.Node = (*Window)(nil)
 var _ sql.Projector = (*Window)(nil)
+var _ sql.CollationCoercible = (*Window)(nil)
 
 func NewWindow(selectExprs []sql.Expression, node sql.Node) *Window {
 	return &Window{
@@ -46,6 +46,10 @@ func NewWindow(selectExprs []sql.Expression, node sql.Node) *Window {
 func (w *Window) Resolved() bool {
 	return w.UnaryNode.Child.Resolved() &&
 		expression.ExpressionsResolved(w.SelectExprs...)
+}
+
+func (w *Window) IsReadOnly() bool {
+	return w.Child.IsReadOnly()
 }
 
 func (w *Window) String() string {
@@ -75,7 +79,7 @@ func (w *Window) DebugString() string {
 func (w *Window) Schema() sql.Schema {
 	var s = make(sql.Schema, len(w.SelectExprs))
 	for i, e := range w.SelectExprs {
-		s[i] = transform.ExpressionToColumn(e)
+		s[i] = transform.ExpressionToColumn(e, AliasSubqueryString(e))
 	}
 	return s
 }
@@ -89,9 +93,9 @@ func (w *Window) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewWindow(w.SelectExprs, children[0]), nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (w *Window) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return w.Child.CheckPrivileges(ctx, opChecker)
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (w *Window) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, w.Child)
 }
 
 // Expressions implements sql.Expressioner
@@ -104,13 +108,6 @@ func (w *Window) ProjectedExprs() []sql.Expression {
 	return w.SelectExprs
 }
 
-// WithProjectedExprs implements sql.Projector
-func (w *Window) WithProjectedExprs(exprs ...sql.Expression) (sql.Projector, error) {
-	node, err := w.WithExpressions(exprs...)
-
-	return node.(sql.Projector), err
-}
-
 // WithExpressions implements sql.Expressioner
 func (w *Window) WithExpressions(e ...sql.Expression) (sql.Node, error) {
 	if len(e) != len(w.SelectExprs) {
@@ -118,85 +115,4 @@ func (w *Window) WithExpressions(e ...sql.Expression) (sql.Node, error) {
 	}
 
 	return NewWindow(e, w.Child), nil
-}
-
-// RowIter implements sql.Node
-func (w *Window) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-
-	childIter, err := w.Child.RowIter(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-	blockIters, outputOrdinals, err := windowToIter(w)
-	if err != nil {
-		return nil, err
-	}
-	return aggregation.NewWindowIter(blockIters, outputOrdinals, childIter), nil
-}
-
-// windowToIter transforms a plan.Window into a series
-// of aggregation.WindowPartitionIter and a list of output projection indexes
-// for each window partition.
-// TODO: make partition ordering deterministic
-func windowToIter(w *Window) ([]*aggregation.WindowPartitionIter, [][]int, error) {
-	partIdToOutputIdxs := make(map[uint64][]int, 0)
-	partIdToBlock := make(map[uint64]*aggregation.WindowPartition, 0)
-	var window *sql.WindowDefinition
-	var agg *aggregation.Aggregation
-	var fn sql.WindowFunction
-	var err error
-	// collect functions in hash map keyed by partitioning scheme
-	for i, expr := range w.SelectExprs {
-		if alias, ok := expr.(*expression.Alias); ok {
-			expr = alias.Child
-		}
-		switch e := expr.(type) {
-		case sql.Aggregation:
-			window = e.Window()
-			fn, err = e.NewWindowFunction()
-		case sql.WindowAggregation:
-			window = e.Window()
-			fn, err = e.NewWindowFunction()
-		default:
-			// non window aggregates resolve to LastAgg with empty over clause
-			window = sql.NewWindowDefinition(nil, nil, nil, "", "")
-			fn, err = aggregation.NewLast(e).NewWindowFunction()
-		}
-		if err != nil {
-			return nil, nil, err
-		}
-		agg = aggregation.NewAggregation(fn, fn.DefaultFramer())
-
-		id, err := window.PartitionId()
-		if err != nil {
-			return nil, nil, err
-		}
-
-		if block, ok := partIdToBlock[id]; !ok {
-			if err != nil {
-				return nil, nil, err
-			}
-			partIdToBlock[id] = aggregation.NewWindowPartition(
-				window.PartitionBy,
-				window.OrderBy,
-				[]*aggregation.Aggregation{agg},
-			)
-			partIdToOutputIdxs[id] = []int{i}
-		} else {
-			block.AddAggregation(agg)
-			partIdToOutputIdxs[id] = append(partIdToOutputIdxs[id], i)
-		}
-	}
-
-	// convert partition hash map into list
-	blockIters := make([]*aggregation.WindowPartitionIter, len(partIdToBlock))
-	outputOrdinals := make([][]int, len(partIdToBlock))
-	i := 0
-	for id, block := range partIdToBlock {
-		outputIdx := partIdToOutputIdxs[id]
-		blockIters[i] = aggregation.NewWindowPartitionIter(block)
-		outputOrdinals[i] = outputIdx
-		i++
-	}
-	return blockIters, outputOrdinals, nil
 }

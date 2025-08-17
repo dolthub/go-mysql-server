@@ -26,6 +26,7 @@ type Leave struct {
 }
 
 var _ sql.Node = (*Leave)(nil)
+var _ sql.CollationCoercible = (*Leave)(nil)
 
 // NewLeave returns a new *Leave node.
 func NewLeave(label string) *Leave {
@@ -49,6 +50,10 @@ func (l *Leave) Schema() sql.Schema {
 	return nil
 }
 
+func (l *Leave) IsReadOnly() bool {
+	return true
+}
+
 // Children implements the interface sql.Node.
 func (l *Leave) Children() []sql.Node {
 	return nil
@@ -59,32 +64,7 @@ func (l *Leave) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(l, children...)
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (l *Leave) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
-}
-
-// RowIter implements the interface sql.Node.
-func (l *Leave) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return &leaveIter{l.Label}, nil
-}
-
-// leaveIter is the sql.RowIter of *Leave.
-type leaveIter struct {
-	Label string
-}
-
-var _ sql.RowIter = (*leaveIter)(nil)
-
-// Next implements the interface sql.RowIter.
-func (l *leaveIter) Next(ctx *sql.Context) (sql.Row, error) {
-	return nil, loopError{
-		Label:  l.Label,
-		IsExit: true,
-	}
-}
-
-// Close implements the interface sql.RowIter.
-func (l *leaveIter) Close(ctx *sql.Context) error {
-	return nil
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Leave) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }

@@ -4,10 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/shopspring/decimal"
-
-	"github.com/gabereiser/go-mysql-server/sql"
-	"github.com/gabereiser/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type ValueDerivedTable struct {
@@ -15,7 +13,13 @@ type ValueDerivedTable struct {
 	name    string
 	columns []string
 	sch     sql.Schema
+	id      sql.TableId
+	cols    sql.ColSet
 }
+
+var _ sql.Node = (*ValueDerivedTable)(nil)
+var _ sql.CollationCoercible = (*ValueDerivedTable)(nil)
+var _ TableIdNode = (*ValueDerivedTable)(nil)
 
 func NewValueDerivedTable(values *Values, name string) *ValueDerivedTable {
 	var s sql.Schema
@@ -23,6 +27,30 @@ func NewValueDerivedTable(values *Values, name string) *ValueDerivedTable {
 		s = getSchema(values.ExpressionTuples)
 	}
 	return &ValueDerivedTable{Values: values, name: name, sch: s}
+}
+
+// WithId implements sql.TableIdNode
+func (v *ValueDerivedTable) WithId(id sql.TableId) TableIdNode {
+	ret := *v
+	ret.id = id
+	return &ret
+}
+
+// Id implements sql.TableIdNode
+func (v *ValueDerivedTable) Id() sql.TableId {
+	return v.id
+}
+
+// WithColumns implements sql.TableIdNode
+func (v *ValueDerivedTable) WithColumns(set sql.ColSet) TableIdNode {
+	ret := *v
+	ret.cols = set
+	return &ret
+}
+
+// Columns implements sql.TableIdNode
+func (v *ValueDerivedTable) Columns() sql.ColSet {
+	return v.cols
 }
 
 // Name implements sql.Nameable
@@ -49,34 +77,6 @@ func (v *ValueDerivedTable) Schema() sql.Schema {
 	}
 
 	return schema
-}
-
-// RowIter implements the Node interface.
-func (v *ValueDerivedTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	rows := make([]sql.Row, len(v.ExpressionTuples))
-	for i, et := range v.ExpressionTuples {
-		vals := make([]interface{}, len(et))
-		for j, e := range et {
-			var err error
-			p, err := e.Eval(ctx, row)
-			if err != nil {
-				return nil, err
-			}
-			// cast all row values to the most permissive type
-			vals[j], err = v.sch[j].Type.Convert(p)
-			if err != nil {
-				return nil, err
-			}
-			// decimalType.Convert() does not use the given type precision and scale information
-			if t, ok := v.sch[j].Type.(sql.DecimalType); ok {
-				vals[j] = vals[j].(decimal.Decimal).Round(int32(t.Scale()))
-			}
-		}
-
-		rows[i] = sql.NewRow(vals...)
-	}
-
-	return sql.RowsToRowIter(rows...), nil
 }
 
 // WithChildren implements the Node interface.
@@ -147,7 +147,7 @@ func (v *ValueDerivedTable) DebugString() string {
 	return tp.String()
 }
 
-func (v ValueDerivedTable) WithColumns(columns []string) *ValueDerivedTable {
+func (v ValueDerivedTable) WithColumNames(columns []string) *ValueDerivedTable {
 	v.columns = columns
 	return &v
 }
@@ -173,7 +173,6 @@ func getSchema(rows [][]sql.Expression) sql.Schema {
 					s[i].Nullable = val.IsNullable()
 				}
 			}
-
 		}
 	}
 

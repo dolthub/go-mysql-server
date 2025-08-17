@@ -18,11 +18,24 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gabereiser/go-mysql-server/sql"
-	"github.com/gabereiser/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 var LoadDataScripts = []ScriptTest{
+	{
+		Name: "LOAD DATA applies column defaults when \\N provided",
+		SetUpScript: []string{
+			"create table t (pk int primary key, c1 int default 1, c2 int)",
+			// Explicitly use Windows-style line endings to be robust on Windows CI
+			"LOAD DATA INFILE './testdata/load_defaults_null.csv' INTO TABLE t FIELDS TERMINATED BY ',' LINES TERMINATED BY '\r\n'",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from t",
+				Expected: []sql.Row{{1, 1, 1}},
+			},
+		},
+	},
 	{
 		Name: "Basic load data with enclosed values.",
 		SetUpScript: []string{
@@ -33,6 +46,18 @@ var LoadDataScripts = []ScriptTest{
 			{
 				Query:    "select * from loadtable",
 				Expected: []sql.Row{{int8(1)}, {int8(2)}, {int8(3)}, {int8(4)}},
+			},
+		},
+	},
+	{
+		Name: "Basic load data check error",
+		SetUpScript: []string{
+			"create table loadtable(pk int primary key, check (pk > 1))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "LOAD DATA INFILE './testdata/test1.txt' INTO TABLE loadtable FIELDS ENCLOSED BY '\"'",
+				ExpectedErrStr: "Check constraint \"loadtable_chk_1\" violated",
 			},
 		},
 	},
@@ -205,6 +230,346 @@ var LoadDataScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "Load data can ignore row with existing primary key",
+		SetUpScript: []string{
+			"create table loadtable(pk int primary key, c1 varchar(10))",
+			"insert into loadtable values (1, 'test')",
+			"LOAD DATA INFILE './testdata/test2.csv' IGNORE INTO TABLE loadtable FIELDS TERMINATED BY ',' IGNORE 1 LINES",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from loadtable",
+				Expected: []sql.Row{
+					{1, "test"},
+					{2, "hello"},
+				},
+			},
+		},
+	},
+	{
+		Name: "Load data can replace row with existing primary key",
+		SetUpScript: []string{
+			"create table loadtable(pk int primary key, c1 varchar(10))",
+			"insert into loadtable values (1, 'test')",
+			"LOAD DATA INFILE './testdata/test2.csv' REPLACE INTO TABLE loadtable FIELDS TERMINATED BY ',' IGNORE 1 LINES",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from loadtable",
+				Expected: []sql.Row{
+					{1, "hi"},
+					{2, "hello"},
+				},
+			},
+		},
+	},
+	{
+		Name: "LOAD DATA with set columns no projections",
+		SetUpScript: []string{
+			"create table lt1(i text, j text, k text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt1 FIELDS TERMINATED BY '\t' SET i = '123'",
+			"create table lt2(i text, j text, k text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt2 set i = '123', j = '456'",
+			"create table lt3(i text, j text, k text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt3 set i = '123', j = '456', k = '789'",
+			"create table lt4(i text, j text, k text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt4 set i = '123', i = '321'",
+			"create table lt5(i text, j text, k text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt5 set j = concat(j, j)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from lt1 order by i, j, k",
+				Expected: []sql.Row{
+					{"123", "def", "ghi"},
+					{"123", "mno", "pqr"},
+				},
+			},
+			{
+				Query: "select * from lt2 order by i, j, k",
+				Expected: []sql.Row{
+					{"123", "456", "ghi"},
+					{"123", "456", "pqr"},
+				},
+			},
+			{
+				Query: "select * from lt3 order by i, j, k",
+				Expected: []sql.Row{
+					{"123", "456", "789"},
+					{"123", "456", "789"},
+				},
+			},
+			{
+				Query: "select * from lt4 order by i, j, k",
+				Expected: []sql.Row{
+					{"321", "def", "ghi"},
+					{"321", "mno", "pqr"},
+				},
+			},
+			{
+				Query: "select * from lt5 order by i, j, k",
+				Expected: []sql.Row{
+					{"abc", "defdef", "ghi"},
+					{"jkl", "mnomno", "pqr"},
+				},
+			},
+		},
+	},
+	{
+		Name: "LOAD DATA with set columns with projections",
+		SetUpScript: []string{
+			"create table lt1(i text, j text, k text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt1 (i, j, k) set i = '123'",
+			"create table lt2(i text, j text, k text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt2 (k, i, j) set i = '123'",
+			"create table lt3(i text, j text, k text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt3 (j, k) set i = '123'",
+			"create table lt4(i text, j text, k text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt4 (k, i) set i = '123'",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from lt1 order by i, j, k",
+				Expected: []sql.Row{
+					{"123", "def", "ghi"},
+					{"123", "mno", "pqr"},
+				},
+			},
+			{
+				Query: "select * from lt2 order by i, j, k",
+				Expected: []sql.Row{
+					{"123", "ghi", "abc"},
+					{"123", "pqr", "jkl"},
+				},
+			},
+			{
+				Query: "select * from lt3 order by i, j, k",
+				Expected: []sql.Row{
+					{"123", "abc", "def"},
+					{"123", "jkl", "mno"},
+				},
+			},
+			{
+				Query: "select * from lt4 order by i, j, k",
+				Expected: []sql.Row{
+					{"123", nil, "abc"},
+					{"123", nil, "jkl"},
+				},
+			},
+		},
+	},
+	{
+		Name: "LOAD DATA assign to static User Variables",
+		SetUpScript: []string{
+			"set @i = '123';",
+			"set @j = '456';",
+			"set @k = '789';",
+			"create table lt(i text, j text, k text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt set i = @i",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt set i = @i, j = @j",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt set i = @i, j = @j, k = @k",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from lt order by i, j, k",
+				Expected: []sql.Row{
+					{"123", "456", "789"},
+					{"123", "456", "789"},
+					{"123", "456", "ghi"},
+					{"123", "456", "pqr"},
+					{"123", "def", "ghi"},
+					{"123", "mno", "pqr"},
+				},
+			},
+		},
+	},
+	{
+		Name: "LOAD DATA assign to User Variables",
+		SetUpScript: []string{
+			"create table lt1(i text, j text, k text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt1 (@i, j, k)",
+			"create table lt2(i text, j text, k text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt2 (i, @j, k)",
+			"create table lt3(i text, j text, k text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt3 (i, j, @k)",
+			"create table lt4(i text, j text, k text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt4 (@ii, @jj, @kk)",
+			"create table lt5(i text, j text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt5 (i, j, @trash1)",
+			"create table lt6(j text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt6 (@trash2, j, @trash2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from lt1 order by i, j, k",
+				Expected: []sql.Row{
+					{nil, "def", "ghi"},
+					{nil, "mno", "pqr"},
+				},
+			},
+			{
+				Query: "select * from lt2 order by i, j, k",
+				Expected: []sql.Row{
+					{"abc", nil, "ghi"},
+					{"jkl", nil, "pqr"},
+				},
+			},
+			{
+				Query: "select * from lt3 order by i, j, k",
+				Expected: []sql.Row{
+					{"abc", "def", nil},
+					{"jkl", "mno", nil},
+				},
+			},
+			{
+				Query: "select @i, @j, @k",
+				Expected: []sql.Row{
+					{"jkl", "mno", "pqr"},
+				},
+			},
+			{
+				Query: "select * from lt4 order by i, j, k",
+				Expected: []sql.Row{
+					{nil, nil, nil},
+					{nil, nil, nil},
+				},
+			},
+			{
+				Query: "select @ii, @jj, @kk",
+				Expected: []sql.Row{
+					{"jkl", "mno", "pqr"},
+				},
+			},
+			{
+				Query: "select * from lt5 order by i, j",
+				Expected: []sql.Row{
+					{"abc", "def"},
+					{"jkl", "mno"},
+				},
+			},
+			{
+				Query: "select @trash1",
+				Expected: []sql.Row{
+					{"pqr"},
+				},
+			},
+			{
+				Query: "select * from lt6 order by j",
+				Expected: []sql.Row{
+					{"def"},
+					{"mno"},
+				},
+			},
+			{
+				Query: "select @trash2",
+				Expected: []sql.Row{
+					{"pqr"},
+				},
+			},
+		},
+	},
+	{
+		Name: "LOAD DATA with user vars and set expressions",
+		SetUpScript: []string{
+			"create table lt1(i text, j text, k text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt1 (k, @j, i) set j = @j",
+			"create table lt2(i text, j text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt2 (i, j, @k) set j = concat(@k, @k)",
+			"create table lt3(i text, j text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt3 (i, @j, @k) set j = concat(@j, @k)",
+			"create table lt4(i text, j text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt4 (i, j, @k) set j = concat(j, @k)",
+			"create table lt5(i text, j text);",
+			"LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt5 (@i, @j) set i = @j, j = @i",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from lt1 order by i, j, k",
+				Expected: []sql.Row{
+					{"ghi", "def", "abc"},
+					{"pqr", "mno", "jkl"},
+				},
+			},
+			{
+				Query: "select * from lt2 order by i, j",
+				Expected: []sql.Row{
+					{"abc", "ghighi"},
+					{"jkl", "pqrpqr"},
+				},
+			},
+			{
+				Query: "select * from lt3 order by i, j",
+				Expected: []sql.Row{
+					{"abc", "defghi"},
+					{"jkl", "mnopqr"},
+				},
+			},
+			{
+				Query: "select * from lt4 order by i, j",
+				Expected: []sql.Row{
+					{"abc", "defghi"},
+					{"jkl", "mnopqr"},
+				},
+			},
+			{
+				Query: "select * from lt5 order by i, j",
+				Expected: []sql.Row{
+					{"def", "abc"},
+					{"mno", "jkl"},
+				},
+			},
+		},
+	},
+	{
+		Name: "LOAD DATA with set columns errors",
+		SetUpScript: []string{
+			"create table lt(i text, j text, k text);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt set noti = '123'",
+				ExpectedErr: sql.ErrColumnNotFound,
+			},
+		},
+	},
+	{
+		Name: "LOAD DATA with user var alias edge case",
+		SetUpScript: []string{
+			"create table lt(i text, `@j` text, `@@k` text);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt(@@k)",
+				ExpectedErrStr: "syntax error near '@@k'",
+			},
+			{
+				Skip:  true, // escaped column names are ok
+				Query: "LOAD DATA INFILE './testdata/test9.txt' INTO TABLE lt(i, @j, `@@k`)",
+				Expected: []sql.Row{
+					{"abc", "def", "ghi"},
+					{"jkl", "mno", "pqr"},
+				},
+			},
+		},
+	},
+	{
+		Name: "LOAD DATA with column data larger than 64KB",
+		SetUpScript: []string{
+			"create table t(id int primary key, lt longtext);",
+			"load data infile './testdata/test10.txt' into table t fields terminated by ',' lines terminated by '\n';",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select id, length(lt) from t order by id",
+				Expected: []sql.Row{
+					{1, 65535},
+					{2, 100000},
+					{3, 1000000},
+				},
+			},
+		},
+	},
 }
 
 var LoadDataErrorScripts = []ScriptTest{
@@ -220,7 +585,7 @@ var LoadDataErrorScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:       "LOAD DATA INFILE '/x/ytx' INTO TABLE loadtable",
+				Query:       "LOAD DATA INFILE './bad/doesnotexist.txt' INTO TABLE loadtable",
 				ExpectedErr: sql.ErrLoadDataCannotOpen,
 			},
 		},
@@ -228,12 +593,20 @@ var LoadDataErrorScripts = []ScriptTest{
 	{
 		Name: "Load data with unknown columns throws an error",
 		SetUpScript: []string{
-			"create table loadtable(pk int primary key)",
+			"create table loadtable(pk int primary key, i int)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:       "LOAD DATA INFILE './testdata/test1.txt' INTO TABLE loadtable FIELDS ENCLOSED BY '\"' (bad)",
-				ExpectedErr: plan.ErrInsertIntoNonexistentColumn,
+				Query:       "LOAD DATA INFILE './testdata/test1.txt' INTO TABLE loadtable FIELDS ENCLOSED BY '\"' (fake_col, pk, i)",
+				ExpectedErr: sql.ErrUnknownColumn,
+			},
+			{
+				Query:       "LOAD DATA INFILE './testdata/test1.txt' INTO TABLE loadtable FIELDS ENCLOSED BY '\"' (pk, fake_col, i)",
+				ExpectedErr: sql.ErrUnknownColumn,
+			},
+			{
+				Query:       "LOAD DATA INFILE './testdata/test1.txt' INTO TABLE loadtable FIELDS ENCLOSED BY '\"' (pk, i, fake_col)",
+				ExpectedErr: sql.ErrUnknownColumn,
 			},
 		},
 	},
@@ -245,7 +618,7 @@ var LoadDataErrorScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "LOAD DATA INFILE './testdata/test1.txt' INTO TABLE loadtable FIELDS ESCAPED BY 'xx' (pk)",
-				ExpectedErr: sql.ErrLoadDataCharacterLength,
+				ExpectedErr: sql.ErrUnexpectedSeparator,
 			},
 		},
 	},
@@ -257,7 +630,20 @@ var LoadDataErrorScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:       "LOAD DATA INFILE './testdata/test1.txt' INTO TABLE loadtable FIELDS ENCLOSED BY 'xx' (pk)",
-				ExpectedErr: sql.ErrLoadDataCharacterLength,
+				ExpectedErr: sql.ErrUnexpectedSeparator,
+			},
+		},
+	},
+	{
+		Name: "Load data errors on primary key duplicate",
+		SetUpScript: []string{
+			"create table loadtable(pk int primary key, c1 varchar(10))",
+			"insert into loadtable values (1, 'test')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "LOAD DATA INFILE './testdata/test2.csv' INTO TABLE loadtable FIELDS TERMINATED BY ',' IGNORE 1 LINES",
+				ExpectedErrStr: "duplicate primary key given: [1]",
 			},
 		},
 	},

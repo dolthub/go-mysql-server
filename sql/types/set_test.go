@@ -28,6 +28,7 @@ import (
 )
 
 func TestSetCompare(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	tests := []struct {
 		vals        []string
 		collation   sql.CollationID
@@ -56,7 +57,7 @@ func TestSetCompare(t *testing.T) {
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v %v %v %v", test.vals, test.collation, test.val1, test.val2), func(t *testing.T) {
 			typ := MustCreateSetType(test.vals, test.collation)
-			cmp, err := typ.Compare(test.val1, test.val2)
+			cmp, err := typ.Compare(ctx, test.val1, test.val2)
 			require.NoError(t, err)
 			assert.Equal(t, test.expectedCmp, cmp)
 		})
@@ -64,6 +65,7 @@ func TestSetCompare(t *testing.T) {
 }
 
 func TestSetCompareErrors(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	tests := []struct {
 		vals      []string
 		collation sql.CollationID
@@ -77,7 +79,7 @@ func TestSetCompareErrors(t *testing.T) {
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v %v %v %v", test.vals, test.collation, test.val1, test.val2), func(t *testing.T) {
 			typ := MustCreateSetType(test.vals, test.collation)
-			_, err := typ.Compare(test.val1, test.val2)
+			_, err := typ.Compare(ctx, test.val1, test.val2)
 			require.Error(t, err)
 		})
 	}
@@ -142,6 +144,7 @@ func TestSetCreateTooLarge(t *testing.T) {
 }
 
 func TestSetConvert(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	tests := []struct {
 		vals        []string
 		collation   sql.CollationID
@@ -174,8 +177,8 @@ func TestSetConvert(t *testing.T) {
 		{[]string{"", "one", "two"}, sql.Collation_Default, "", "", false},
 		{[]string{"", "one", "two"}, sql.Collation_Default, ",one,two", ",one,two", false},
 		{[]string{"", "one", "two"}, sql.Collation_Default, "one,,two", ",one,two", false},
+		{[]string{"one", "two"}, sql.Collation_Default, ",one,two", "one,two", false},
 
-		{[]string{"one", "two"}, sql.Collation_Default, ",one,two", nil, true},
 		{[]string{"one", "two"}, sql.Collation_Default, 4, nil, true},
 		{[]string{"one", "two"}, sql.Collation_Default, "three", nil, true},
 		{[]string{"one", "two"}, sql.Collation_Default, "one,two,three", nil, true},
@@ -187,12 +190,12 @@ func TestSetConvert(t *testing.T) {
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v | %v | %v", test.vals, test.collation, test.val), func(t *testing.T) {
 			typ := MustCreateSetType(test.vals, test.collation)
-			val, err := typ.Convert(test.val)
+			val, _, err := typ.Convert(ctx, test.val)
 			if test.expectedErr {
 				assert.Error(t, err)
 			} else {
 				require.NoError(t, err)
-				res, err := typ.Compare(test.expectedVal, val)
+				res, err := typ.Compare(ctx, test.expectedVal, val)
 				require.NoError(t, err)
 				assert.Equal(t, 0, res)
 				if val != nil {
@@ -204,6 +207,7 @@ func TestSetConvert(t *testing.T) {
 }
 
 func TestSetMarshalMax(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	vals := make([]string, 64)
 	for i := range vals {
 		vals[i] = strconv.Itoa(i)
@@ -220,12 +224,12 @@ func TestSetMarshalMax(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v", test), func(t *testing.T) {
-			bits, err := typ.Convert(test)
+			bits, _, err := typ.Convert(ctx, test)
 			require.NoError(t, err)
 			res1, err := typ.BitsToString(bits.(uint64))
 			require.NoError(t, err)
 			require.Equal(t, test, res1)
-			bits2, err := typ.Convert(bits)
+			bits2, _, err := typ.Convert(ctx, bits)
 			require.NoError(t, err)
 			res2, err := typ.BitsToString(bits2.(uint64))
 			require.NoError(t, err)
@@ -268,7 +272,7 @@ func TestSetConvertToString(t *testing.T) {
 		bit         uint64
 		expectedStr string
 	}{
-		{[]string{"", "a", "b", "c"}, sql.Collation_Default, 15, "a,b,c"},
+		{[]string{"", "a", "b", "c"}, sql.Collation_Default, 15, ",a,b,c"},
 		{[]string{"", "a", "b", "c"}, sql.Collation_Default, 14, "a,b,c"},
 	}
 

@@ -31,6 +31,7 @@ type Reverse struct {
 }
 
 var _ sql.FunctionExpression = (*Reverse)(nil)
+var _ sql.CollationCoercible = (*Reverse)(nil)
 
 // NewReverse creates a new Reverse expression.
 func NewReverse(e sql.Expression) sql.Expression {
@@ -58,7 +59,7 @@ func (r *Reverse) Eval(
 		return nil, err
 	}
 
-	v, err = types.LongText.Convert(v)
+	v, _, err = types.LongText.Convert(ctx, v)
 	if err != nil {
 		return nil, err
 	}
@@ -91,18 +92,24 @@ func (r *Reverse) Type() sql.Type {
 	return r.Child.Type()
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (r *Reverse) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, r.Child)
+}
+
 var ErrNegativeRepeatCount = errors.NewKind("negative Repeat count: %v")
 
 // Repeat is a function that returns the string repeated n times.
 type Repeat struct {
-	expression.BinaryExpression
+	expression.BinaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*Repeat)(nil)
+var _ sql.CollationCoercible = (*Repeat)(nil)
 
 // NewRepeat creates a new Repeat expression.
 func NewRepeat(str sql.Expression, count sql.Expression) sql.Expression {
-	return &Repeat{expression.BinaryExpression{Left: str, Right: count}}
+	return &Repeat{expression.BinaryExpressionStub{LeftChild: str, RightChild: count}}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -116,12 +123,19 @@ func (r *Repeat) Description() string {
 }
 
 func (r *Repeat) String() string {
-	return fmt.Sprintf("repeat(%s, %s)", r.Left, r.Right)
+	return fmt.Sprintf("repeat(%s, %s)", r.LeftChild, r.RightChild)
 }
 
 // Type implements the Expression interface.
 func (r *Repeat) Type() sql.Type {
 	return types.LongText
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (r *Repeat) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	leftCollation, leftCoercibility := sql.GetCoercibility(ctx, r.LeftChild)
+	rightCollation, rightCoercibility := sql.GetCoercibility(ctx, r.RightChild)
+	return sql.ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
 }
 
 // WithChildren implements the Expression interface.
@@ -138,22 +152,22 @@ func (r *Repeat) Eval(
 	row sql.Row,
 ) (interface{}, error) {
 	//TODO: handle collations
-	str, err := r.Left.Eval(ctx, row)
+	str, err := r.LeftChild.Eval(ctx, row)
 	if str == nil || err != nil {
 		return nil, err
 	}
 
-	str, err = types.LongText.Convert(str)
+	str, _, err = types.LongText.Convert(ctx, str)
 	if err != nil {
 		return nil, err
 	}
 
-	count, err := r.Right.Eval(ctx, row)
+	count, err := r.RightChild.Eval(ctx, row)
 	if count == nil || err != nil {
 		return nil, err
 	}
 
-	count, err = types.Int32.Convert(count)
+	count, _, err = types.Int32.Convert(ctx, count)
 	if err != nil {
 		return nil, err
 	}
@@ -172,6 +186,7 @@ type Replace struct {
 }
 
 var _ sql.FunctionExpression = (*Replace)(nil)
+var _ sql.CollationCoercible = (*Replace)(nil)
 
 // NewReplace creates a new Replace expression.
 func NewReplace(str sql.Expression, fromStr sql.Expression, toStr sql.Expression) sql.Expression {
@@ -212,6 +227,15 @@ func (r *Replace) Type() sql.Type {
 	return types.LongText
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (r *Replace) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	collation, coercibility = sql.GetCoercibility(ctx, r.str)
+	otherCollation, otherCoercibility := sql.GetCoercibility(ctx, r.fromStr)
+	collation, coercibility = sql.ResolveCoercibility(collation, coercibility, otherCollation, otherCoercibility)
+	otherCollation, otherCoercibility = sql.GetCoercibility(ctx, r.toStr)
+	return sql.ResolveCoercibility(collation, coercibility, otherCollation, otherCoercibility)
+}
+
 // WithChildren implements the Expression interface.
 func (r *Replace) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 3 {
@@ -231,7 +255,7 @@ func (r *Replace) Eval(
 		return nil, err
 	}
 
-	str, err = types.LongText.Convert(str)
+	str, _, err = types.LongText.Convert(ctx, str)
 	if err != nil {
 		return nil, err
 	}
@@ -241,7 +265,7 @@ func (r *Replace) Eval(
 		return nil, err
 	}
 
-	fromStr, err = types.LongText.Convert(fromStr)
+	fromStr, _, err = types.LongText.Convert(ctx, fromStr)
 	if err != nil {
 		return nil, err
 	}
@@ -251,14 +275,31 @@ func (r *Replace) Eval(
 		return nil, err
 	}
 
-	toStr, err = types.LongText.Convert(toStr)
+	toStr, _, err = types.LongText.Convert(ctx, toStr)
 	if err != nil {
 		return nil, err
 	}
 
-	if fromStr.(string) == "" {
-		return str, nil
-	}
+	{
+		str, _, err := sql.Unwrap[string](ctx, str)
+		if err != nil {
+			return nil, err
+		}
 
-	return strings.Replace(str.(string), fromStr.(string), toStr.(string), -1), nil
+		fromStr, _, err := sql.Unwrap[string](ctx, fromStr)
+		if err != nil {
+			return nil, err
+		}
+
+		toStr, _, err := sql.Unwrap[string](ctx, toStr)
+		if err != nil {
+			return nil, err
+		}
+
+		if fromStr == "" {
+			return str, nil
+		}
+
+		return strings.Replace(str, fromStr, toStr, -1), nil
+	}
 }

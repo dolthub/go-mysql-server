@@ -30,11 +30,13 @@ type Lead struct {
 	expression.NaryExpression
 	offset int
 	pos    int
+	id     sql.ColumnId
 }
 
 var _ sql.FunctionExpression = (*Lead)(nil)
 var _ sql.WindowAggregation = (*Lead)(nil)
 var _ sql.WindowAdaptableExpression = (*Lead)(nil)
+var _ sql.CollationCoercible = (*Lead)(nil)
 
 // NewLead accepts variadic arguments to create a new Lead node:
 // If 1 expression, use default values for [default] and [offset]
@@ -60,6 +62,18 @@ func NewLead(e ...sql.Expression) (*Lead, error) {
 		return &Lead{NaryExpression: expression.NaryExpression{ChildExpressions: []sql.Expression{e[0], e[2]}}, offset: offset}, nil
 	}
 	return nil, sql.ErrInvalidArgumentNumber.New("LEAD", "1, 2, or 3", len(e))
+}
+
+// Id implements sql.IdExpression
+func (l *Lead) Id() sql.ColumnId {
+	return l.id
+}
+
+// WithId implements sql.IdExpression
+func (l *Lead) WithId(id sql.ColumnId) sql.IdExpression {
+	ret := *l
+	ret.id = id
+	return &ret
 }
 
 // Description implements sql.FunctionExpression
@@ -119,6 +133,15 @@ func (l *Lead) Type() sql.Type {
 	return l.ChildExpressions[0].Type()
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (l *Lead) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	// We use the first child for the Type, so we'll use the first child for the coercibility as well
+	if l == nil || len(l.ChildExpressions) == 0 {
+		return sql.Collation_binary, 6
+	}
+	return sql.GetCoercibility(ctx, l.ChildExpressions[0])
+}
+
 // IsNullable implements sql.Expression
 func (l *Lead) IsNullable() bool {
 	return true
@@ -126,7 +149,7 @@ func (l *Lead) IsNullable() bool {
 
 // Eval implements sql.Expression
 func (l *Lead) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	panic("eval called on window function")
+	return nil, sql.ErrWindowUnsupported.New(l.FunctionName())
 }
 
 // Children implements sql.Expression
@@ -157,10 +180,10 @@ func (l *Lead) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 }
 
 // WithWindow implements sql.WindowAggregation
-func (l *Lead) WithWindow(window *sql.WindowDefinition) (sql.WindowAggregation, error) {
+func (l *Lead) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
 	nl := *l
 	nl.window = window
-	return &nl, nil
+	return &nl
 }
 
 func (l *Lead) NewWindowFunction() (sql.WindowFunction, error) {

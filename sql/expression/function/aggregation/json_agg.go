@@ -17,14 +17,9 @@ package aggregation
 import (
 	"fmt"
 
-	"gopkg.in/src-d/go-errors.v1"
-
-	"github.com/gabereiser/go-mysql-server/sql"
-	"github.com/gabereiser/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
-
-// ErrUnsupportedJSONFunction is returned when a unsupported JSON function is called.
-var ErrUnsupportedJSONFunction = errors.NewKind("unsupported JSON function: %s")
 
 // JSON_OBJECTAGG(key, value) [over_clause]
 //
@@ -39,15 +34,29 @@ type JSONObjectAgg struct {
 	key    sql.Expression
 	value  sql.Expression
 	window *sql.WindowDefinition
+	id     sql.ColumnId
 }
 
 var _ sql.FunctionExpression = (*JSONObjectAgg)(nil)
 var _ sql.Aggregation = (*JSONObjectAgg)(nil)
 var _ sql.WindowAdaptableExpression = (*JSONObjectAgg)(nil)
+var _ sql.CollationCoercible = (*JSONObjectAgg)(nil)
 
 // NewJSONObjectAgg creates a new JSONObjectAgg function.
 func NewJSONObjectAgg(key, value sql.Expression) sql.Expression {
 	return &JSONObjectAgg{key: key, value: value}
+}
+
+// Id implements the Aggregation interface
+func (j *JSONObjectAgg) Id() sql.ColumnId {
+	return j.id
+}
+
+// WithId implements the Aggregation interface
+func (j *JSONObjectAgg) WithId(id sql.ColumnId) sql.IdExpression {
+	ret := *j
+	ret.id = id
+	return &ret
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -74,6 +83,11 @@ func (j *JSONObjectAgg) Type() sql.Type {
 	return types.JSON
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*JSONObjectAgg) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCharacterSet().BinaryCollation(), 2
+}
+
 // IsNullable implements the Expression interface.
 func (j *JSONObjectAgg) IsNullable() bool {
 	return false
@@ -94,10 +108,10 @@ func (j *JSONObjectAgg) WithChildren(children ...sql.Expression) (sql.Expression
 }
 
 // WithWindow implements sql.Aggregation
-func (j *JSONObjectAgg) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
+func (j *JSONObjectAgg) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
 	nj := *j
 	nj.window = window
-	return &nj, nil
+	return &nj
 }
 
 // Window implements sql.Aggregation
@@ -143,21 +157,25 @@ func (j *jsonObjectBuffer) Update(ctx *sql.Context, row sql.Row) error {
 		return err
 	}
 
-	// unwrap JSON values
-	if js, ok := val.(types.JSONValue); ok {
-		doc, err := js.Unmarshall(ctx)
+	// unwrap wrapper values
+	val, err = sql.UnwrapAny(ctx, val)
+	if err != nil {
+		return err
+	}
+	if js, ok := val.(sql.JSONWrapper); ok {
+		val, err = js.ToInterface(ctx)
 		if err != nil {
 			return err
 		}
-		val = doc.Val
 	}
 
 	// Update the map.
-	keyAsString, err := types.LongText.Convert(key)
+	convertedKey, _, err := types.LongText.Convert(ctx, key)
 	if err != nil {
 		return nil
 	}
-	j.vals[keyAsString.(string)] = val
+	keyAsString, _, err := sql.Unwrap[string](ctx, convertedKey)
+	j.vals[keyAsString] = val
 
 	return nil
 }

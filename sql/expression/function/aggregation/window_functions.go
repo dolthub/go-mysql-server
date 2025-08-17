@@ -15,6 +15,7 @@
 package aggregation
 
 import (
+	"math"
 	"sort"
 	"strings"
 
@@ -79,16 +80,16 @@ func (a *AnyValueAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterv
 	return nil
 }
 
-func (a *AnyValueAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
+func (a *AnyValueAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) (interface{}, error) {
 	for i := interval.Start; i < interval.End; i++ {
 		row := buf[i]
 		v, err := a.expr.Eval(ctx, row)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		return v
+		return v, nil
 	}
-	return nil
+	return nil, nil
 }
 
 type SumAgg struct {
@@ -144,11 +145,11 @@ func (a *SumAgg) NewSlidingFrameInterval(added, dropped sql.WindowInterval) {
 	panic("sliding window interface not implemented yet")
 }
 
-func (a *SumAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
+func (a *SumAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) (interface{}, error) {
 	if interval.End-interval.Start < 1 {
-		return nil
+		return nil, nil
 	}
-	return computePrefixSum(interval, a.partitionStart, a.prefixSum)
+	return computePrefixSum(interval, a.partitionStart, a.prefixSum), nil
 }
 
 func floatPrefixSum(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer, e sql.Expression) ([]float64, []int, error) {
@@ -162,7 +163,7 @@ func floatPrefixSum(ctx *sql.Context, interval sql.WindowInterval, buf sql.Windo
 		if err != nil {
 			continue
 		}
-		val, err := types.Float64.Convert(v)
+		val, _, err := types.Float64.Convert(ctx, v)
 		if err != nil || val == nil {
 			val = float64(0)
 			nullCnt += 1
@@ -243,7 +244,7 @@ func (a *AvgAgg) NewSlidingFrameInterval(added, dropped sql.WindowInterval) {
 	panic("sliding window interface not implemented yet")
 }
 
-func (a *AvgAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
+func (a *AvgAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) (interface{}, error) {
 	startIdx := interval.Start - a.partitionStart - 1
 	endIdx := interval.End - a.partitionStart - 1
 
@@ -256,7 +257,7 @@ func (a *AvgAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.
 		nonNullCnt -= startIdx + 1
 		nonNullCnt += a.nullCnt[startIdx]
 	}
-	return computePrefixSum(interval, a.partitionStart, a.prefixSum) / float64(nonNullCnt)
+	return computePrefixSum(interval, a.partitionStart, a.prefixSum) / float64(nonNullCnt), nil
 }
 
 type BitAndAgg struct {
@@ -303,27 +304,27 @@ func (b *BitAndAgg) NewSlidingFrameInterval(added, dropped sql.WindowInterval) {
 	panic("sliding window interface not implemented yet")
 }
 
-func (b *BitAndAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
+func (b *BitAndAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) (interface{}, error) {
 	res := ^uint64(0) // bitwise not xor, so 0xffff...
 	for i := interval.Start; i < interval.End; i++ {
 		row := buf[i]
 		v, err := b.expr.Eval(ctx, row)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		if v == nil {
 			continue
 		}
 
-		val, err := types.Uint64.Convert(v)
+		val, _, err := types.Uint64.Convert(ctx, v)
 		if err != nil {
-			return 0
+			return nil, err
 		}
 
 		res &= val.(uint64)
 	}
-	return res
+	return res, nil
 }
 
 type BitOrAgg struct {
@@ -370,27 +371,27 @@ func (b *BitOrAgg) NewSlidingFrameInterval(added, dropped sql.WindowInterval) {
 	panic("sliding window interface not implemented yet")
 }
 
-func (b *BitOrAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
+func (b *BitOrAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) (interface{}, error) {
 	var res uint64
 	for i := interval.Start; i < interval.End; i++ {
 		row := buf[i]
 		v, err := b.expr.Eval(ctx, row)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		if v == nil {
 			continue
 		}
 
-		val, err := types.Uint64.Convert(v)
+		val, _, err := types.Uint64.Convert(ctx, v)
 		if err != nil {
-			return 0
+			return nil, err
 		}
 
 		res |= val.(uint64)
 	}
-	return res
+	return res, nil
 }
 
 type BitXorAgg struct {
@@ -437,13 +438,13 @@ func (b *BitXorAgg) NewSlidingFrameInterval(added, dropped sql.WindowInterval) {
 	panic("sliding window interface not implemented yet")
 }
 
-func (b *BitXorAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
+func (b *BitXorAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) (interface{}, error) {
 	var res uint64
 	for i := interval.Start; i < interval.End; i++ {
 		row := buf[i]
 		v, err := b.expr.Eval(ctx, row)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		if v == nil {
@@ -451,14 +452,14 @@ func (b *BitXorAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf s
 		}
 
 		// TODO: handle strings
-		val, err := types.Uint64.Convert(v)
+		val, _, err := types.Uint64.Convert(ctx, v)
 		if err != nil {
-			return 0
+			return nil, err
 		}
 
 		res ^= val.(uint64)
 	}
-	return res
+	return res, nil
 }
 
 type MaxAgg struct {
@@ -505,13 +506,13 @@ func (a *MaxAgg) NewSlidingFrameInterval(added, dropped sql.WindowInterval) {
 	panic("sliding window interface not implemented yet")
 }
 
-func (a *MaxAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buffer sql.WindowBuffer) interface{} {
+func (a *MaxAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buffer sql.WindowBuffer) (interface{}, error) {
 	var max interface{}
 	for i := interval.Start; i < interval.End; i++ {
 		row := buffer[i]
 		v, err := a.expr.Eval(ctx, row)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		if v == nil {
@@ -522,15 +523,15 @@ func (a *MaxAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buffer s
 			max = v
 		}
 
-		cmp, err := a.expr.Type().Compare(v, max)
+		cmp, err := a.expr.Type().Compare(ctx, v, max)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if cmp == 1 {
 			max = v
 		}
 	}
-	return max
+	return max, nil
 }
 
 type MinAgg struct {
@@ -577,12 +578,12 @@ func (a *MinAgg) NewSlidingFrameInterval(added, dropped sql.WindowInterval) {
 	panic("sliding window interface not implemented yet")
 }
 
-func (a *MinAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
+func (a *MinAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) (interface{}, error) {
 	var min interface{}
 	for _, row := range buf[interval.Start:interval.End] {
 		v, err := a.expr.Eval(ctx, row)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		if v == nil {
@@ -594,15 +595,15 @@ func (a *MinAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.
 			continue
 		}
 
-		cmp, err := a.expr.Type().Compare(v, min)
+		cmp, err := a.expr.Type().Compare(ctx, v, min)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if cmp == -1 {
 			min = v
 		}
 	}
-	return min
+	return min, nil
 }
 
 type LastAgg struct {
@@ -649,16 +650,16 @@ func (a *LastAgg) NewSlidingFrameInterval(added, dropped sql.WindowInterval) {
 	panic("sliding window interface not implemented yet")
 }
 
-func (a *LastAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buffer sql.WindowBuffer) interface{} {
+func (a *LastAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buffer sql.WindowBuffer) (interface{}, error) {
 	if interval.End-interval.Start < 1 {
-		return nil
+		return nil, nil
 	}
 	row := buffer[interval.End-1]
 	v, err := a.expr.Eval(ctx, row)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return v
+	return v, nil
 }
 
 type FirstAgg struct {
@@ -707,16 +708,16 @@ func (a *FirstAgg) NewSlidingFrameInterval(added, dropped sql.WindowInterval) {
 	panic("sliding window interface not implemented yet")
 }
 
-func (a *FirstAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buffer sql.WindowBuffer) interface{} {
+func (a *FirstAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buffer sql.WindowBuffer) (interface{}, error) {
 	if interval.End-interval.Start < 1 {
-		return nil
+		return nil, nil
 	}
 	row := buffer[interval.Start]
 	v, err := a.expr.Eval(ctx, row)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return v
+	return v, nil
 }
 
 type CountAgg struct {
@@ -808,9 +809,9 @@ func (a *CountAgg) NewSlidingFrameInterval(added, dropped sql.WindowInterval) {
 	panic("sliding window interface not implemented yet")
 }
 
-func (a *CountAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
+func (a *CountAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) (interface{}, error) {
 	a.pos++
-	return int64(computePrefixSum(sql.WindowInterval{Start: interval.Start, End: interval.End}, a.partitionStart, a.prefixSum))
+	return int64(computePrefixSum(sql.WindowInterval{Start: interval.Start, End: interval.End}, a.partitionStart, a.prefixSum)), nil
 }
 
 func countPrefixSum(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer, expr sql.Expression) ([]float64, error) {
@@ -892,11 +893,11 @@ func (a *GroupConcatAgg) NewSlidingFrameInterval(added, dropped sql.WindowInterv
 	panic("sliding window interface not implemented yet")
 }
 
-func (a *GroupConcatAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
+func (a *GroupConcatAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) (interface{}, error) {
 	rows := a.rows
 
 	if len(rows) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	// Execute the order operation if it exists.
@@ -909,7 +910,7 @@ func (a *GroupConcatAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, 
 
 		sort.Stable(sorter)
 		if sorter.LastError != nil {
-			return nil
+			return nil, nil
 		}
 	}
 
@@ -937,7 +938,7 @@ func (a *GroupConcatAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, 
 	}
 
 	// Add this to handle any one off errors.
-	return ret
+	return ret, nil
 }
 
 func (a *GroupConcatAgg) filterToDistinct(ctx *sql.Context, buf sql.WindowBuffer) ([]sql.Row, map[string]struct{}, error) {
@@ -958,9 +959,9 @@ func (a *GroupConcatAgg) filterToDistinct(ctx *sql.Context, buf sql.WindowBuffer
 
 		var v interface{}
 		if retType == types.Blob {
-			v, err = types.Blob.Convert(evalRow[0])
+			v, _, err = types.Blob.Convert(ctx, evalRow[0])
 		} else {
-			v, err = types.LongText.Convert(evalRow[0])
+			v, _, err = types.LongText.Convert(ctx, evalRow[0])
 		}
 
 		if err != nil {
@@ -1032,12 +1033,12 @@ func (a *WindowedJSONArrayAgg) NewSlidingFrameInterval(added, dropped sql.Window
 	panic("sliding window interface not implemented yet")
 }
 
-func (a *WindowedJSONArrayAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
+func (a *WindowedJSONArrayAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) (interface{}, error) {
 	res, err := a.aggregateVals(ctx, interval, buf)
 	if err != nil {
-		return nil
+		return nil, nil
 	}
-	return types.JSONDocument{Val: res}
+	return types.JSONDocument{Val: res}, nil
 }
 
 func (a *WindowedJSONArrayAgg) aggregateVals(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) ([]interface{}, error) {
@@ -1048,13 +1049,16 @@ func (a *WindowedJSONArrayAgg) aggregateVals(ctx *sql.Context, interval sql.Wind
 			return nil, err
 		}
 
-		// unwrap JSON values
-		if js, ok := v.(types.JSONValue); ok {
-			doc, err := js.Unmarshall(ctx)
+		// unwrap wrapper values
+		v, err = sql.UnwrapAny(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+		if js, ok := v.(sql.JSONWrapper); ok {
+			v, err = js.ToInterface(ctx)
 			if err != nil {
 				return nil, err
 			}
-			v = doc.Val
 		}
 
 		vals = append(vals, v)
@@ -1111,11 +1115,11 @@ func (a *WindowedJSONObjectAgg) NewSlidingFrameInterval(added, dropped sql.Windo
 	panic("sliding window interface not implemented yet")
 }
 
-func (a *WindowedJSONObjectAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
+func (a *WindowedJSONObjectAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) (interface{}, error) {
 	if len(a.vals) == 0 {
-		return nil
+		return nil, nil
 	}
-	return types.JSONDocument{Val: a.vals}
+	return types.JSONDocument{Val: a.vals}, nil
 }
 
 func (a *WindowedJSONObjectAgg) aggregateVals(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) (map[string]interface{}, error) {
@@ -1136,17 +1140,20 @@ func (a *WindowedJSONObjectAgg) aggregateVals(ctx *sql.Context, interval sql.Win
 			return nil, err
 		}
 
-		// unwrap JSON values
-		if js, ok := val.(types.JSONValue); ok {
-			doc, err := js.Unmarshall(ctx)
+		// unwrap wrapper values
+		val, err = sql.UnwrapAny(ctx, val)
+		if err != nil {
+			return nil, err
+		}
+		if js, ok := val.(sql.JSONWrapper); ok {
+			val, err = js.ToInterface(ctx)
 			if err != nil {
 				return nil, err
 			}
-			val = doc.Val
 		}
 
 		// Update the map.
-		keyAsString, err := types.LongText.Convert(key)
+		keyAsString, _, err := types.LongText.Convert(ctx, key)
 		if err != nil {
 			continue
 		}
@@ -1190,12 +1197,12 @@ func (a *RowNumber) NewSlidingFrameInterval(added, dropped sql.WindowInterval) {
 	panic("implement me")
 }
 
-func (a *RowNumber) Compute(ctx *sql.Context, interval sql.WindowInterval, buffer sql.WindowBuffer) interface{} {
+func (a *RowNumber) Compute(ctx *sql.Context, interval sql.WindowInterval, buffer sql.WindowBuffer) (interface{}, error) {
 	if interval.End-interval.Start < 1 {
-		return nil
+		return nil, nil
 	}
 	defer func() { a.pos++ }()
-	return a.pos
+	return a.pos, nil
 }
 
 type rankBase struct {
@@ -1238,18 +1245,18 @@ func (a *rankBase) NewSlidingFrameInterval(added, dropped sql.WindowInterval) {
 // Compute returns the number of elements before the current peer group (rank) + 1.
 // ex: [1, 2, 2, 2, 3, 3, 3, 4, 5, 5, 6] => every 3 returns uint64(5) because
 // there are 4 values less than 3
-func (a *rankBase) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
+func (a *rankBase) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) (interface{}, error) {
 	if interval.End-interval.Start < 1 {
-		return nil
+		return nil, nil
 	}
 	defer func() { a.pos++ }()
 	switch {
 	case a.pos == 0:
-		return uint64(1)
+		return uint64(1), nil
 	case a.partitionEnd-a.partitionStart == 1:
-		return uint64(1)
+		return uint64(1), nil
 	default:
-		return uint64(interval.Start-a.partitionStart) + 1
+		return uint64(interval.Start-a.partitionStart) + 1, nil
 	}
 }
 
@@ -1287,15 +1294,15 @@ func NewPercentRank(orderBy []sql.Expression) *PercentRank {
 // and returns (rank - 1)/(rows - 1).
 // ex: [1, 2, 2, 2, 3, 3, 3, 4, 5, 5, 6] => every 3 returns float64(4) / float64(9), because
 // there are 4 values less than 3, and there are (10 - 1) total rows in the list.
-func (a *PercentRank) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
-	rank := a.rankBase.Compute(ctx, interval, buf)
+func (a *PercentRank) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) (interface{}, error) {
+	rank, _ := a.rankBase.Compute(ctx, interval, buf)
 	if rank == nil {
-		return nil
+		return nil, nil
 	}
 	if a.partitionEnd-a.partitionStart == 1 {
-		return float64(0)
+		return float64(0), nil
 	}
-	return float64(rank.(uint64)-1) / float64(a.partitionEnd-a.partitionStart-1)
+	return float64(rank.(uint64)-1) / float64(a.partitionEnd-a.partitionStart-1), nil
 }
 
 type DenseRank struct {
@@ -1320,10 +1327,10 @@ func NewDenseRank(orderBy []sql.Expression) *DenseRank {
 // Compute returns the number of unique elements before the current peer group (rank) + 1.
 // ex: [1, 2, 2, 2, 3, 3, 3, 4, 5, 5, 6] => every 3 returns uint64(3) because
 // there are 2 unique values less than 3
-func (a *DenseRank) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) interface{} {
-	rank := a.rankBase.Compute(ctx, interval, buf)
+func (a *DenseRank) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) (interface{}, error) {
+	rank, _ := a.rankBase.Compute(ctx, interval, buf)
 	if rank == nil {
-		return nil
+		return nil, nil
 	}
 
 	if rank.(uint64) == 1 {
@@ -1333,7 +1340,95 @@ func (a *DenseRank) Compute(ctx *sql.Context, interval sql.WindowInterval, buf s
 		a.prevRank = rank.(uint64)
 		a.denseRank += 1
 	}
-	return a.denseRank
+	return a.denseRank, nil
+}
+
+type NTile struct {
+	numBucketsExpr sql.Expression
+
+	pos        uint64
+	bucketSize uint64
+	bigBuckets uint64
+	bucket     uint64
+
+	// orderBy tracks peer group increments
+	orderBy []sql.Expression
+}
+
+func NewNTile(expr sql.Expression) *NTile {
+	return &NTile{
+		numBucketsExpr: expr,
+	}
+}
+
+func (n *NTile) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+	na := *n
+	na.orderBy = w.OrderBy.ToExpressions()
+	return &na, nil
+}
+
+func (n *NTile) Dispose() {
+	return
+}
+
+func (n *NTile) DefaultFramer() sql.WindowFramer {
+	return NewPeerGroupFramer(n.orderBy)
+}
+
+func (n *NTile) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
+	n.Dispose()
+	if interval.End < interval.Start {
+		return nil
+	}
+
+	numBucketsVal, err := n.numBucketsExpr.Eval(ctx, nil)
+	if err != nil {
+		return err
+	}
+	numBucketsVal, _, err = types.Int64.Convert(ctx, numBucketsVal)
+	if err != nil {
+		numBucketsVal = uint64(0)
+	}
+	if numBucketsVal == nil {
+		return sql.ErrInvalidArgument.New("NTILE")
+	}
+	if numBucketsVal.(int64) <= 0 {
+		return sql.ErrInvalidArgument.New("NTILE")
+	}
+
+	count := uint64(interval.End - interval.Start)
+	numBuckets := uint64(numBucketsVal.(int64))
+	if numBuckets > count {
+		n.bucketSize = 1
+	} else {
+		n.bucketSize = count / numBuckets
+		n.bigBuckets = count % numBuckets
+	}
+	n.pos = 0
+	n.bucket = 1
+	return nil
+}
+
+// Compute returns the appropriate bucket for the current row.
+func (n *NTile) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) (interface{}, error) {
+	defer func() { n.pos++ }()
+	if n.pos == 0 {
+		return n.bucket, nil
+	}
+
+	// the first n.bigBuckets buckets are of size n.bucketSize + 1
+	// the remaining buckets are of size n.bucketSize
+	if n.bigBuckets > 0 && n.pos%(n.bucketSize+1) == 0 {
+		n.bucket++
+		n.bigBuckets--
+		if n.bigBuckets == 0 {
+			n.pos = 0
+		}
+	} else if n.bigBuckets == 0 && n.pos%n.bucketSize == 0 {
+		n.bucket++
+	}
+
+	return n.bucket, nil
 }
 
 type Lag struct {
@@ -1393,7 +1488,7 @@ func (a *leadLagBase) NewSlidingFrameInterval(added, dropped sql.WindowInterval)
 	panic("implement me")
 }
 
-func (a *leadLagBase) Compute(ctx *sql.Context, interval sql.WindowInterval, buffer sql.WindowBuffer) interface{} {
+func (a *leadLagBase) Compute(ctx *sql.Context, interval sql.WindowInterval, buffer sql.WindowBuffer) (interface{}, error) {
 	var res interface{}
 	var err error
 	idx := a.pos - a.offset
@@ -1405,8 +1500,334 @@ func (a *leadLagBase) Compute(ctx *sql.Context, interval sql.WindowInterval, buf
 		res, err = a.def.Eval(ctx, buffer[a.pos])
 	}
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	a.pos++
-	return res
+	return res, nil
+}
+
+type StdDevPopAgg struct {
+	expr   sql.Expression
+	framer sql.WindowFramer
+
+	partitionStart int
+	partitionEnd   int
+
+	prefixSum []float64
+	nullCnt   []int
+}
+
+func NewStdDevPopAgg(e sql.Expression) *StdDevPopAgg {
+	return &StdDevPopAgg{
+		expr: e,
+	}
+}
+
+func (s *StdDevPopAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+	ns := *s
+	if w.Frame != nil {
+		framer, err := w.Frame.NewFramer(w)
+		if err != nil {
+			return nil, err
+		}
+		ns.framer = framer
+	}
+	return &ns, nil
+}
+
+func (s *StdDevPopAgg) Dispose() {
+	expression.Dispose(s.expr)
+}
+
+// DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
+func (s *StdDevPopAgg) DefaultFramer() sql.WindowFramer {
+	if s.framer != nil {
+		return s.framer
+	}
+	return NewUnboundedPrecedingToCurrentRowFramer()
+}
+
+func (s *StdDevPopAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
+	s.Dispose()
+	s.partitionStart = interval.Start
+	s.partitionEnd = interval.End
+	var err error
+	s.prefixSum, s.nullCnt, err = floatPrefixSum(ctx, interval, buf, s.expr)
+	return err
+}
+
+func computeStd2(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer, expr sql.Expression, m float64) (float64, error) {
+	var v float64
+	for i := interval.Start; i < interval.End; i++ {
+		row := buf[i]
+		val, err := expr.Eval(ctx, row)
+		if err != nil {
+			return 0, err
+		}
+		val, _, err = types.Float64.Convert(ctx, val)
+		if err != nil {
+			val = 0.0
+			ctx.Warn(1292, "Truncated incorrect DOUBLE value: %s", val)
+		}
+		if val == nil {
+			continue
+		}
+		dv := val.(float64) - m
+		v += dv * dv
+	}
+	return v, nil
+}
+
+func (s *StdDevPopAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) (interface{}, error) {
+	startIdx := interval.Start - s.partitionStart - 1
+	endIdx := interval.End - s.partitionStart - 1
+
+	var nonNullCnt int
+	if endIdx >= 0 {
+		nonNullCnt += endIdx + 1
+		nonNullCnt -= s.nullCnt[endIdx]
+	}
+	if startIdx >= 0 {
+		nonNullCnt -= startIdx + 1
+		nonNullCnt += s.nullCnt[startIdx]
+	}
+	if nonNullCnt == 0 {
+		return nil, nil
+	}
+
+	m := computePrefixSum(interval, s.partitionStart, s.prefixSum) / float64(nonNullCnt)
+	s2, err := computeStd2(ctx, interval, buf, s.expr, m)
+	if err != nil {
+		return nil, err
+	}
+
+	return math.Sqrt(s2 / float64(nonNullCnt)), nil
+}
+
+type StdDevSampAgg struct {
+	expr   sql.Expression
+	framer sql.WindowFramer
+
+	partitionStart int
+	partitionEnd   int
+
+	prefixSum []float64
+	nullCnt   []int
+}
+
+func NewStdDevSampAgg(e sql.Expression) *StdDevSampAgg {
+	return &StdDevSampAgg{
+		expr: e,
+	}
+}
+
+func (s *StdDevSampAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+	ns := *s
+	if w.Frame != nil {
+		framer, err := w.Frame.NewFramer(w)
+		if err != nil {
+			return nil, err
+		}
+		ns.framer = framer
+	}
+	return &ns, nil
+}
+
+func (s *StdDevSampAgg) Dispose() {
+	expression.Dispose(s.expr)
+}
+
+// DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
+func (s *StdDevSampAgg) DefaultFramer() sql.WindowFramer {
+	if s.framer != nil {
+		return s.framer
+	}
+	return NewUnboundedPrecedingToCurrentRowFramer()
+}
+
+func (s *StdDevSampAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
+	s.Dispose()
+	s.partitionStart = interval.Start
+	s.partitionEnd = interval.End
+	var err error
+	s.prefixSum, s.nullCnt, err = floatPrefixSum(ctx, interval, buf, s.expr)
+	return err
+}
+
+func (s *StdDevSampAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) (interface{}, error) {
+	startIdx := interval.Start - s.partitionStart - 1
+	endIdx := interval.End - s.partitionStart - 1
+
+	var nonNullCnt int
+	if endIdx >= 0 {
+		nonNullCnt += endIdx + 1
+		nonNullCnt -= s.nullCnt[endIdx]
+	}
+	if startIdx >= 0 {
+		nonNullCnt -= startIdx + 1
+		nonNullCnt += s.nullCnt[startIdx]
+	}
+	if nonNullCnt <= 1 {
+		return nil, nil
+	}
+
+	m := computePrefixSum(interval, s.partitionStart, s.prefixSum) / float64(nonNullCnt)
+	s2, err := computeStd2(ctx, interval, buf, s.expr, m)
+	if err != nil {
+		return nil, err
+	}
+
+	return math.Sqrt(s2 / float64(nonNullCnt-1)), nil
+}
+
+type VarPopAgg struct {
+	expr   sql.Expression
+	framer sql.WindowFramer
+
+	partitionStart int
+	partitionEnd   int
+
+	prefixSum []float64
+	nullCnt   []int
+}
+
+func NewVarPopAgg(e sql.Expression) *VarPopAgg {
+	return &VarPopAgg{
+		expr: e,
+	}
+}
+
+func (v *VarPopAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+	ns := *v
+	if w.Frame != nil {
+		framer, err := w.Frame.NewFramer(w)
+		if err != nil {
+			return nil, err
+		}
+		ns.framer = framer
+	}
+	return &ns, nil
+}
+
+func (v *VarPopAgg) Dispose() {
+	expression.Dispose(v.expr)
+}
+
+// DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
+func (v *VarPopAgg) DefaultFramer() sql.WindowFramer {
+	if v.framer != nil {
+		return v.framer
+	}
+	return NewUnboundedPrecedingToCurrentRowFramer()
+}
+
+func (v *VarPopAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
+	v.Dispose()
+	v.partitionStart = interval.Start
+	v.partitionEnd = interval.End
+	var err error
+	v.prefixSum, v.nullCnt, err = floatPrefixSum(ctx, interval, buf, v.expr)
+	return err
+}
+
+func (v *VarPopAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) (interface{}, error) {
+	startIdx := interval.Start - v.partitionStart - 1
+	endIdx := interval.End - v.partitionStart - 1
+
+	var nonNullCnt int
+	if endIdx >= 0 {
+		nonNullCnt += endIdx + 1
+		nonNullCnt -= v.nullCnt[endIdx]
+	}
+	if startIdx >= 0 {
+		nonNullCnt -= startIdx + 1
+		nonNullCnt += v.nullCnt[startIdx]
+	}
+	if nonNullCnt <= 0 {
+		return nil, nil
+	}
+
+	m := computePrefixSum(interval, v.partitionStart, v.prefixSum) / float64(nonNullCnt)
+	s2, err := computeStd2(ctx, interval, buf, v.expr, m)
+	if err != nil {
+		return nil, err
+	}
+
+	return s2 / float64(nonNullCnt), nil
+}
+
+type VarSampAgg struct {
+	expr   sql.Expression
+	framer sql.WindowFramer
+
+	partitionStart int
+	partitionEnd   int
+
+	prefixSum []float64
+	nullCnt   []int
+}
+
+func NewVarSampAgg(e sql.Expression) *VarSampAgg {
+	return &VarSampAgg{
+		expr: e,
+	}
+}
+
+func (v *VarSampAgg) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
+	ns := *v
+	if w.Frame != nil {
+		framer, err := w.Frame.NewFramer(w)
+		if err != nil {
+			return nil, err
+		}
+		ns.framer = framer
+	}
+	return &ns, nil
+}
+
+func (v *VarSampAgg) Dispose() {
+	expression.Dispose(v.expr)
+}
+
+// DefaultFramer returns a NewUnboundedPrecedingToCurrentRowFramer
+func (v *VarSampAgg) DefaultFramer() sql.WindowFramer {
+	if v.framer != nil {
+		return v.framer
+	}
+	return NewUnboundedPrecedingToCurrentRowFramer()
+}
+
+func (v *VarSampAgg) StartPartition(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) error {
+	v.Dispose()
+	v.partitionStart = interval.Start
+	v.partitionEnd = interval.End
+	var err error
+	v.prefixSum, v.nullCnt, err = floatPrefixSum(ctx, interval, buf, v.expr)
+	return err
+}
+
+func (v *VarSampAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf sql.WindowBuffer) (interface{}, error) {
+	startIdx := interval.Start - v.partitionStart - 1
+	endIdx := interval.End - v.partitionStart - 1
+
+	var nonNullCnt int
+	if endIdx >= 0 {
+		nonNullCnt += endIdx + 1
+		nonNullCnt -= v.nullCnt[endIdx]
+	}
+	if startIdx >= 0 {
+		nonNullCnt -= startIdx + 1
+		nonNullCnt += v.nullCnt[startIdx]
+	}
+	if nonNullCnt <= 1 {
+		return nil, nil
+	}
+
+	m := computePrefixSum(interval, v.partitionStart, v.prefixSum) / float64(nonNullCnt)
+	s2, err := computeStd2(ctx, interval, buf, v.expr, m)
+	if err != nil {
+		return nil, err
+	}
+
+	return s2 / float64(nonNullCnt-1), nil
 }

@@ -21,7 +21,7 @@ import (
 	"github.com/gabereiser/go-mysql-server/sql/transform"
 )
 
-func applyHashIn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func applyHashIn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	return transform.Node(n, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		filter, ok := node.(*plan.Filter)
 		if !ok {
@@ -46,23 +46,23 @@ func applyHashIn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel Ru
 		if same {
 			return node, transform.SameTree, nil
 		}
-		node, err = filter.WithExpressions(e)
-		return node, transform.NewTree, err
+		ret, err := filter.WithExpressions(e)
+		if err != nil {
+			return node, transform.SameTree, nil
+		}
+		return ret, transform.NewTree, err
 	})
 }
 
 // hasSingleOutput checks if an expression evaluates to a single output
 func hasSingleOutput(e sql.Expression) bool {
-	return !transform.InspectExpr(e, func(expr sql.Expression) bool {
+	return transform.InspectExpr(e, func(expr sql.Expression) bool {
 		switch expr.(type) {
-		case expression.Tuple, *expression.Literal, *expression.GetField,
-			expression.Comparer, *expression.Convert, sql.FunctionExpression,
-			*expression.IsTrue, *expression.IsNull, expression.ArithmeticOp:
+		case *plan.Subquery:
 			return false
 		default:
 			return true
 		}
-		return false
 	})
 }
 

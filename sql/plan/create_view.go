@@ -15,12 +15,10 @@
 package plan
 
 import (
-	"fmt"
-	"strings"
-
-	"github.com/gabereiser/go-mysql-server/sql/expression"
-	"github.com/gabereiser/go-mysql-server/sql/mysql_db"
-	"github.com/gabereiser/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/gabereiser/go-mysql-server/sql"
 )
@@ -31,8 +29,9 @@ import (
 type CreateView struct {
 	UnaryNode
 	database         sql.Database
+	targetSchema     sql.Schema
 	Name             string
-	Columns          []string
+	IfNotExists      bool
 	IsReplace        bool
 	Definition       *SubqueryAlias
 	CreateViewString string
@@ -42,21 +41,18 @@ type CreateView struct {
 	CheckOpt         string
 }
 
+var _ sql.Node = (*CreateView)(nil)
+var _ sql.CollationCoercible = (*CreateView)(nil)
+var _ sql.SchemaTarget = (*CreateView)(nil)
+
 // NewCreateView creates a CreateView node with the specified parameters,
 // setting its catalog to nil.
-func NewCreateView(
-	database sql.Database,
-	name string,
-	columns []string,
-	definition *SubqueryAlias,
-	isReplace bool,
-	createViewStr, algorithm, definer, security string,
-) *CreateView {
+func NewCreateView(database sql.Database, name string, definition *SubqueryAlias, ifNotExists, isReplace bool, createViewStr, algorithm, definer, security string) *CreateView {
 	return &CreateView{
 		UnaryNode:        UnaryNode{Child: definition},
 		database:         database,
 		Name:             name,
-		Columns:          columns,
+		IfNotExists:      ifNotExists,
 		IsReplace:        isReplace,
 		Definition:       definition,
 		CreateViewString: createViewStr,
@@ -84,58 +80,20 @@ func (cv *CreateView) Resolved() bool {
 	return !ok && cv.Child.Resolved()
 }
 
-// RowIter implements the Node interface. When executed, this function creates
-// (or replaces) the view. It can error if the CraeteView's IsReplace member is
-// set to false and the view already exists. The RowIter returned is always
-// empty.
-func (cv *CreateView) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	registry := ctx.GetViewRegistry()
-	if cv.IsReplace {
-		if dropper, ok := cv.database.(sql.ViewDatabase); ok {
-			err := dropper.DropView(ctx, cv.Name)
-			if err != nil && !sql.ErrViewDoesNotExist.Is(err) {
-				return sql.RowsToRowIter(), err
-			}
-		} else {
-			err := registry.Delete(cv.database.Name(), cv.Name)
-			if err != nil && !sql.ErrViewDoesNotExist.Is(err) {
-				return sql.RowsToRowIter(), err
-			}
-		}
-	}
-	names, err := cv.database.GetTableNames(ctx)
-	if err != nil {
-		return nil, err
-	}
-	for _, n := range names {
-		if strings.ToLower(n) == strings.ToLower(cv.Name) {
-			return nil, sql.ErrTableAlreadyExists.New(n)
-		}
-	}
-
-	// TODO: isUpdatable should be defined at CREATE VIEW time
-	// isUpdatable := GetIsUpdatableFromCreateView(cv)
-
-	creator, ok := cv.database.(sql.ViewDatabase)
-	if ok {
-		return sql.RowsToRowIter(), creator.CreateView(ctx, cv.Name, cv.Definition.TextDefinition, cv.CreateViewString)
-	} else {
-		return sql.RowsToRowIter(), registry.Register(cv.database.Name(), cv.View())
-	}
+func (cv *CreateView) IsReadOnly() bool {
+	return false
 }
 
-// Schema implements the Node interface. It always returns nil.
-func (cv *CreateView) Schema() sql.Schema { return nil }
+// Schema implements the Node interface. It always returns Query OK result.
+func (cv *CreateView) Schema() sql.Schema {
+	return types.OkResultSchema
+}
 
 // String implements the fmt.Stringer interface, using sql.TreePrinter to
 // generate the string.
 func (cv *CreateView) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("CreateView(%s)", cv.Name)
-	_ = pr.WriteChildren(
-		fmt.Sprintf("Columns (%s)", strings.Join(cv.Columns, ", ")),
-		cv.Child.String(),
-	)
 	return pr.String()
 }
 
@@ -151,11 +109,9 @@ func (cv *CreateView) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &newCreate, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (cv *CreateView) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(cv.database.Name(), "", "", sql.PrivilegeType_CreateView)) &&
-		cv.Child.CheckPrivileges(ctx, opChecker)
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*CreateView) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // Database implements the Databaser interface, and it returns the database in
@@ -173,6 +129,18 @@ func (cv *CreateView) WithDatabase(database sql.Database) (sql.Node, error) {
 	newCreate := *cv
 	newCreate.database = database
 	return &newCreate, nil
+}
+
+// WithTargetSchema implements the SchemaTarget interface.
+func (cv *CreateView) WithTargetSchema(sch sql.Schema) (sql.Node, error) {
+	ncv := *cv
+	ncv.targetSchema = sch
+	return &ncv, nil
+}
+
+// TargetSchema implements the SchemaTarget interface.
+func (cv *CreateView) TargetSchema() sql.Schema {
+	return cv.targetSchema
 }
 
 // GetIsUpdatableFromCreateView returns whether the view is updatable or not.
@@ -193,7 +161,7 @@ func GetIsUpdatableFromCreateView(cv *CreateView) bool {
 		}
 
 		switch nn := n.(type) {
-		case *Distinct, *GroupBy, *Having, *Union:
+		case *Distinct, *GroupBy, *Having, *SetOp:
 			isUpdatable = false
 			return false
 		case *Project:

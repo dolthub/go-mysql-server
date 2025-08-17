@@ -905,231 +905,535 @@ create table FBPKL (
 ----
 
 exec
-update information_schema.statistics set cardinality = 123867 where table_name = 'TPXBU' and table_schema = 'mydb';
+analyze table wgsdc update histogram on (id) using data '{"row_count": 68, "qualifier": {"database": "mydb", "table": "wgsdc", "index": "PRIMARY"}}';
+---
+
+exec
+analyze table wgsdc update histogram on (AVPYF) using data '{"row_count": 68, "qualifier": {"database": "mydb", "table": "wgsdc", "index": "F7H3Y"}}';
+---
+
+exec
+analyze table wgsdc update histogram on (SYPKF) using data '{"row_count": 68, "qualifier": {"database": "mydb", "table": "wgsdc", "index": "M5B5R"}}';
+---
+
+exec
+analyze table wgsdc update histogram on (FZXV5) using data '{"row_count": 68, "qualifier": {"database": "mydb", "table": "wgsdc", "index": "T65YI"}}';
+---
+
+exec
+analyze table wgsdc update histogram on (IDUT2) using data '{"row_count": 68, "qualifier": {"database": "mydb", "table": "wgsdc", "index": "X6K5N"}}';
+---
+
+exec
+analyze table wgsdc update histogram on (DQYGV) using data '{"row_count": 68, "qualifier": {"database": "mydb", "table": "wgsdc", "index": "XRKQ4"}}';
+---
+
+exec
+analyze table wgsdc update histogram on (NOHHR) using data '{"row_count": 68, "qualifier": {"database": "mydb", "table": "wgsdc", "index": "XW5IP"}}';
+---
+
+exec
+analyze table hddvb update histogram on (id) using data '{"row_count": 1112, "qualifier": {"database": "mydb", "table": "hddvb", "index": "PRIMARY"}}';
+---
+
+exec
+analyze table hddvb update histogram on (ETPQV) using data '{"row_count": 1112, "qualifier": {"database": "mydb", "table": "hddvb", "index": "ETPQV"}}';
+---
+
+exec
+analyze table hddvb update histogram on (FV24E) using data '{"row_count": 1112, "qualifier": {"database": "mydb", "table": "hddvb", "index": "FV24E"}}';
+---
+
+exec
+analyze table hddvb update histogram on (M22QN) using data '{"row_count": 1112, "qualifier": {"database": "mydb", "table": "hddvb", "index": "M22QN"}}';
+---
+
+exec
+analyze table hddvb update histogram on (NZ4MQ) using data '{"row_count": 1112, "qualifier": {"database": "mydb", "table": "hddvb", "index": "NZ4MQ"}}';
+---
+
+exec
+analyze table hddvb update histogram on (PRUV2) using data '{"row_count": 1112, "qualifier": {"database": "mydb", "table": "hddvb", "index": "PRUV2"}}';
+---
+
+exec
+analyze table hddvb update histogram on (UJ6XY) using data '{"row_count": 1112, "qualifier": {"database": "mydb", "table": "hddvb", "index": "UJ6XY"}}';
+---
+
+exec
+analyze table epzu6 update histogram on (id) using data '{"row_count": 213, "qualifier": {"database": "mydb", "table": "epzu6", "index": "PRIMARY"}}';
+---
+
+exec
+analyze table epzu6 update histogram on (btxc5) using data '{"row_count": 213, "qualifier": {"database": "mydb", "table": "epzu6", "index": "EUOFY"}}';
+---
+
+exec
+analyze table epzu6 update histogram on (sjyn2) using data '{"row_count": 213, "qualifier": {"database": "mydb", "table": "epzu6", "index": "LJD63"}}';
+---
+
+exec
+analyze table epzu6 update histogram on (fvucx) using data '{"row_count": 213, "qualifier": {"database": "mydb", "table": "epzu6", "index": "LP75T"}}';
+---
+
+exec
+analyze table epzu6 update histogram on (tofpn) using data '{"row_count": 213, "qualifier": {"database": "mydb", "table": "epzu6", "index": "SZ5IY"}}';
+---
+
+exec
+analyze table flqlp update histogram on (id) using data '{"row_count": 14781, "qualifier": {"database": "mydb", "table": "flqlp", "index": "PRIMARY"}}';
+---
+
+exec
+analyze table flqlp update histogram on (fz2r5) using data '{"row_count": 14781, "qualifier": {"database": "mydb", "table": "flqlp", "index": "FZ2R5"}}';
+---
+
+exec
+analyze table flqlp update histogram on (luevy) using data '{"row_count": 14781, "qualifier": {"database": "mydb", "table": "flqlp", "index": "LUEVY"}}';
+---
+
+exec
+analyze table flqlp update histogram on (m22qn) using data '{"row_count": 14781, "qualifier": {"database": "mydb", "table": "flqlp", "index": "M22QN"}}';
+---
+
+exec
+analyze table flqlp update histogram on (nrurt) using data '{"row_count": 14781, "qualifier": {"database": "mydb", "table": "flqlp", "index": "NRURT"}}';
+---
+
+exec
+analyze table flqlp update histogram on (oca7e) using data '{"row_count": 14781, "qualifier": {"database": "mydb", "table": "flqlp", "index": "OCA7E"}}';
+---
+
+exec
+analyze table flqlp update histogram on (ove3e) using data '{"row_count": 14781, "qualifier": {"database": "mydb", "table": "flqlp", "index": "OVE3E"}}';
+---
+
+exec
+analyze table flqlp update histogram on (xmm6q) using data '{"row_count": 14781, "qualifier": {"database": "mydb", "table": "flqlp", "index": "XMM6Q"}}';
+---
+
+exec
+analyze table hu5a5 update histogram on (id) using data '{"row_count": 34, "qualifier": {"database": "mydb", "table": "hu5a5", "index": "PRIMARY"}}';
+---
+
+exec
+analyze table hu5a5 update histogram on (tofpn) using data '{"row_count": 34, "qualifier": {"database": "mydb", "table": "hu5a5", "index": "UYQR2"}}';
+---
+
+exec
+analyze table hu5a5 update histogram on (i3vta) using data '{"row_count": 34, "qualifier": {"database": "mydb", "table": "hu5a5", "index": "Z2WXS"}}';
+---
+
+exec
+analyze table e2i7u update histogram on (id) using data '{"row_count": 3842, "qualifier": {"database": "mydb", "table": "e2i7u", "index": "PRIMARY"}}';
+---
+
+exec
+analyze table e2i7u update histogram on (dkcaj) using data '{"row_count": 3842, "qualifier": {"database": "mydb", "table": "e2i7u", "index": "DKCAJ"}}';
+---
+
+exec
+analyze table e2i7u update histogram on (hpcms) using data '{"row_count": 3842, "qualifier": {"database": "mydb", "table": "e2i7u", "index": "HPCMS"}}';
+---
+
+exec
+analyze table e2i7u update histogram on (kng7t) using data '{"row_count": 3842, "qualifier": {"database": "mydb", "table": "e2i7u", "index": "KNG7T"}}';
+---
+
+exec
+analyze table e2i7u update histogram on (tw55n) using data '{"row_count": 3842, "qualifier": {"database": "mydb", "table": "e2i7u", "index": "SFMWS"}}';
+---
+
+exec
+analyze table e2i7u update histogram on (fgg57) using data '{"row_count": 3842, "qualifier": {"database": "mydb", "table": "e2i7u", "index": "TKKOQ"}}';
+---
+
+exec
+analyze table e2i7u update histogram on (zh72s) using data '{"row_count": 3842, "qualifier": {"database": "mydb", "table": "e2i7u", "index": "URBSA"}}';
+---
+
+exec
+analyze table e2i7u update histogram on (xqdyt) using data '{"row_count": 3842, "qualifier": {"database": "mydb", "table": "e2i7u", "index": "XQDYT"}}';
+---
+
+exec
+analyze table szw6v update histogram on (id) using data '{"row_count": 1, "qualifier": {"database": "mydb", "table": "szw6v", "index": "PRIMARY"}}';
+---
+
+exec
+analyze table szw6v update histogram on (h4dmt) using data '{"row_count": 1, "qualifier": {"database": "mydb", "table": "szw6v", "index": "EMW6Y"}}';
+---
+
+exec
+analyze table szw6v update histogram on (sypkf) using data '{"row_count": 1, "qualifier": {"database": "mydb", "table": "szw6v", "index": "GGI5L"}}';
+---
+
+exec
+analyze table szw6v update histogram on (t4ibq) using data '{"row_count": 1, "qualifier": {"database": "mydb", "table": "szw6v", "index": "SPZMU"}}';
+---
+
+exec
+analyze table szw6v update histogram on (v7ufh) using data '{"row_count": 1, "qualifier": {"database": "mydb", "table": "szw6v", "index": "UTKLA"}}';
+---
+
+exec
+analyze table hgmq6 update histogram on (id) using data '{"row_count": 511969, "qualifier": {"database": "mydb", "table": "hgmq6", "index": "PRIMARY"}}';
+---
+
+exec
+analyze table hgmq6 update histogram on (gxlub) using data '{"row_count": 511969, "qualifier": {"database": "mydb", "table": "hgmq6", "index": "GXLUB"}}';
+---
+
+exec
+analyze table hgmq6 update histogram on (luevy) using data '{"row_count": 511969, "qualifier": {"database": "mydb", "table": "hgmq6", "index": "LUEVY"}}';
+---
+
+exec
+analyze table hgmq6 update histogram on (m22qn) using data '{"row_count": 511969, "qualifier": {"database": "mydb", "table": "hgmq6", "index": "M22QN"}}';
+---
+
+exec
+analyze table hgmq6 update histogram on (qqv4m) using data '{"row_count": 511969, "qualifier": {"database": "mydb", "table": "hgmq6", "index": "QQV4M"}}';
+---
+
+exec
+analyze table hgmq6 update histogram on (teuja) using data '{"row_count": 511969, "qualifier": {"database": "mydb", "table": "hgmq6", "index": "TEUJA"}}';
+---
+
+exec
+analyze table nzkpm update histogram on (fgg57) using data '{"row_count": 18779716, "qualifier": {"database": "mydb", "table": "nzkpm", "index": "FXQHW"}}';
+---
+
+exec
+analyze table nzkpm update histogram on (t4ibq) using data '{"row_count": 18779716, "qualifier": {"database": "mydb", "table": "nzkpm", "index": "UFF3F"}}';
+---
+
+exec
+analyze table TPXBU update histogram on (id) using data '{"row_count": 123867}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 2498 where table_name = 'THNTS' and table_schema = 'mydb';
+analyze table yk2gw update histogram on (nb3qs) using data '{"row_count": 2498, "qualifier": {"database": "mydb", "table": "yk2gw", "index": "C7DFM"}}';
+---
+
+exec
+analyze table yk2gw update histogram on (ftqlq) using data '{"row_count": 2498, "qualifier": {"database": "mydb", "table": "yk2gw", "index": "EZCTT"}}';
+---
+
+exec
+analyze table yk2gw update histogram on (paef5) using data '{"row_count": 2498, "qualifier": {"database": "mydb", "table": "yk2gw", "index": "FEGLT"}}';
+---
+
+exec
+analyze table yk2gw update histogram on (eo7iv) using data '{"row_count": 2498, "qualifier": {"database": "mydb", "table": "yk2gw", "index": "NFJNB"}}';
+---
+
+exec
+analyze table yk2gw update histogram on (tuxml) using data '{"row_count": 2498, "qualifier": {"database": "mydb", "table": "yk2gw", "index": "T3X5H"}}';
+---
+
+exec
+analyze table yk2gw update histogram on (lbl53) using data '{"row_count": 2498, "qualifier": {"database": "mydb", "table": "yk2gw", "index": "TU5AX"}}';
+---
+
+exec
+analyze table yk2gw update histogram on (muhjf) using data '{"row_count": 2498, "qualifier": {"database": "mydb", "table": "yk2gw", "index": "TWFWA"}}';
+---
+
+exec
+analyze table jdlna update histogram on (ftqlq) using data '{"row_count": 399, "qualifier": {"database": "mydb", "table": "jdlna", "index": "XDW7Z"}}';
+---
+
+exec
+analyze table jdlna update histogram on (ftqlq) using data '{"row_count": 399, "qualifier": {"database": "mydb", "table": "jdlna", "index": "XDW7Z"}}';
+---
+
+exec
+analyze table tpxbu update histogram on (btxc5) using data '{"row_count": 123867, "qualifier": {"database": "mydb", "table": "tpxbu", "index": "UZ6GK"}}';
+---
+
+exec
+analyze table sisut update histogram on (t4ibq) using data '{"row_count": 103907130, "qualifier": {"database": "mydb", "table": "sisut", "index": "TTQYJ"}}';
+---
+
+exec
+analyze table sisut update histogram on (zh72s) using data '{"row_count": 103907130, "qualifier": {"database": "mydb", "table": "sisut", "index": "Z7LT5"}}';
+---
+
+exec
+analyze table wrzvo update histogram on (tvnw2) using data '{"row_count": 39091, "qualifier": {"database": "mydb", "table": "wrzvo", "index": "GAG3S"}}';
+---
+
+exec
+analyze table wrzvo update histogram on (zhity) using data '{"row_count": 39091, "qualifier": {"database": "mydb", "table": "wrzvo", "index": "JH666"}}';
+---
+
+exec
+analyze table wrzvo update histogram on (sypkf) using data '{"row_count": 39091, "qualifier": {"database": "mydb", "table": "wrzvo", "index": "QKJKS"}}';
+---
+
+exec
+analyze table wrzvo update histogram on (tvnw2) using data '{"row_count": 39091, "qualifier": {"database": "mydb", "table": "wrzvo", "index": "GAG3S"}}';
+---
+
+exec
+analyze table wrzvo update histogram on (zhity) using data '{"row_count": 39091, "qualifier": {"database": "mydb", "table": "wrzvo", "index": "JH666"}}';
+---
+
+exec
+analyze table wrzvo update histogram on (sypkf) using data '{"row_count": 39091, "qualifier": {"database": "mydb", "table": "wrzvo", "index": "QKJKS"}}';
+---
+
+exec
+analyze table oubdl update histogram on (v5dpx) using data '{"row_count": 18395, "qualifier": {"database": "mydb", "table": "oubdl", "index": "CZWS6"}}';
+---
+
+exec
+analyze table oubdl update histogram on (no52d) using data '{"row_count": 18395, "qualifier": {"database": "mydb", "table": "oubdl", "index": "IRMAC"}}';
+---
+
+exec
+analyze table oubdl update histogram on (zh72s) using data '{"row_count": 18395, "qualifier": {"database": "mydb", "table": "oubdl", "index": "JFRPY"}}';
+---
+
+exec
+analyze table oubdl update histogram on (ftqlq) using data '{"row_count": 18395, "qualifier": {"database": "mydb", "table": "oubdl", "index": "SVIT7"}}';
+---
+
+exec
+analyze table sfegg update histogram on (dkcaj) using data '{"row_count": 380, "qualifier": {"database": "mydb", "table": "sfegg", "index": "DKCAJ"}}';
+---
+
+exec
+analyze table sfegg update histogram on (no52d,vyo5e,dkcaj) using data '{"row_count": 380, "qualifier": {"database": "mydb", "table": "sfegg", "index": "DKRQA"}}';
+---
+
+exec
+analyze table sfegg update histogram on (dkcaj) using data '{"row_count": 380, "qualifier": {"database": "mydb", "table": "sfegg", "index": "DKCAJ"}}';
+---
+
+exec
+analyze table sfegg update histogram on (no52d,vyo5e,dkcaj) using data '{"row_count": 380, "qualifier": {"database": "mydb", "table": "sfegg", "index": "DKRQA"}}';
+---
+
+exec
+analyze table THNTS update histogram on (id) using data '{"row_count": 2498}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 3 where table_name = 'JMRQL' and table_schema = 'mydb';
+analyze table JMRQL update histogram on (id) using data '{"row_count": 3}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 2498 where table_name = 'YK2GW' and table_schema = 'mydb';
+analyze table YK2GW update histogram on (id) using data '{"row_count": 2498}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 5661 where table_name = 'IJLXP' and table_schema = 'mydb';
+analyze table IJLXP update histogram on (id) using data '{"row_count": 5661}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 34 where table_name = 'HU5A5' and table_schema = 'mydb';
+analyze table HU5A5 update histogram on (id) using data '{"row_count": 34}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 213 where table_name = 'EPZU6' and table_schema = 'mydb';
+analyze table EPZU6 update histogram on (id) using data '{"row_count": 213}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 68 where table_name = 'WGSDC' and table_schema = 'mydb';
+analyze table WGSDC update histogram on (id) using data '{"row_count": 68}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 0 where table_name = 'SZW6V' and table_schema = 'mydb';
+analyze table SZW6V update histogram on (id) using data '{"row_count": 1}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 380 where table_name = 'SFEGG' and table_schema = 'mydb';
+analyze table SFEGG update histogram on (id) using data '{"row_count": 380}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 399 where table_name = 'JDLNA' and table_schema = 'mydb';
+analyze table JDLNA update histogram on (id) using data '{"row_count": 399}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 239 where table_name = 'I66GN' and table_schema = 'mydb';
+analyze table I66GN update histogram on (id) using data '{"row_count": 239}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 5148 where table_name = 'BACOW' and table_schema = 'mydb';
+analyze table BACOW update histogram on (id) using data '{"row_count": 5148}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 14781 where table_name = 'FLQLP' and table_schema = 'mydb';
+analyze table FLQLP update histogram on (id) using data '{"row_count": 14781}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 1 where table_name = 'S3FQX' and table_schema = 'mydb';
+analyze table S3FQX update histogram on (id) using data '{"row_count": 1}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 6 where table_name = 'JJGQT' and table_schema = 'mydb';
+analyze table JJGQT update histogram on (id) using data '{"row_count": 6}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 4786678 where table_name = 'AMYXQ' and table_schema = 'mydb';
+analyze table AMYXQ update histogram on (id) using data '{"row_count": 4786678}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 5 where table_name = 'XGSJM' and table_schema = 'mydb';
+analyze table XGSJM update histogram on (id) using data '{"row_count": 5}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 3181 where table_name = 'WE72E' and table_schema = 'mydb';
+analyze table WE72E update histogram on (id) using data '{"row_count": 3181}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 0 where table_name = 'FCBVZ' and table_schema = 'mydb';
+analyze table FCBVZ update histogram on (id) using data '{"row_count": 0}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 226 where table_name = 'RLOHD' and table_schema = 'mydb';
+analyze table RLOHD update histogram on (id) using data '{"row_count": 226}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 10 where table_name = 'T52LX' and table_schema = 'mydb';
+analyze table T52LX update histogram on (id) using data '{"row_count": 10}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 1112 where table_name = 'HDDVB' and table_schema = 'mydb';
+analyze table HDDVB update histogram on (id) using data '{"row_count": 1112}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 12 where table_name = 'YYBCX' and table_schema = 'mydb';
+analyze table YYBCX update histogram on (id) using data '{"row_count": 12}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 56 where table_name = 'FEVH4' and table_schema = 'mydb';
+analyze table FEVH4 update histogram on (id) using data '{"row_count": 56}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 71 where table_name = 'SR2I6' and table_schema = 'mydb';
+analyze table SR2I6 update histogram on (id) using data '{"row_count": 71}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 415 where table_name = 'NMYH3' and table_schema = 'mydb';
+analyze table NMYH3 update histogram on (id) using data '{"row_count": 415}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 6140 where table_name = 'IMJ6V' and table_schema = 'mydb';
+analyze table IMJ6V update histogram on (id) using data '{"row_count": 6140}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 47285 where table_name = 'TDRVG' and table_schema = 'mydb';
+analyze table TDRVG update histogram on (id) using data '{"row_count": 47285}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 13 where table_name = 'IIISV' and table_schema = 'mydb';
+analyze table IIISV update histogram on (id) using data '{"row_count": 13}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 36 where table_name = 'moa' and table_schema = 'mydb';
+analyze table moa update histogram on (id) using data '{"row_count": 36}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 60 where table_name = 'FBPKL' and table_schema = 'mydb';
+analyze table FBPKL update histogram on (id) using data '{"row_count": 60}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 70 where table_name = 'TA5EB' and table_schema = 'mydb';
+analyze table TA5EB update histogram on (id) using data '{"row_count": 70}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 511969 where table_name = 'HGMQ6' and table_schema = 'mydb';
+analyze table HGMQ6 update histogram on (id) using data '{"row_count": 511969}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 535843 where table_name = 'SEQS3' and table_schema = 'mydb';
+analyze table SEQS3 update histogram on (id) using data '{"row_count": 535843}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 3936 where table_name = 'SZQWJ' and table_schema = 'mydb';
+analyze table SZQWJ update histogram on (id) using data '{"row_count": 3936}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 3842 where table_name = 'E2I7U' and table_schema = 'mydb';
+analyze table E2I7U update histogram on (id) using data '{"row_count": 3842}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 291 where table_name = 'ARLV5' and table_schema = 'mydb';
+analyze table ARLV5 update histogram on (id) using data '{"row_count": 291}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 6367 where table_name = 'FEIOE' and table_schema = 'mydb';
+analyze table FEIOE update histogram on (id) using data '{"row_count": 6367}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 5 where table_name = 'TNMXI' and table_schema = 'mydb';
+analyze table TNMXI update histogram on (id) using data '{"row_count": 5}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 5 where table_name = 'F35MI' and table_schema = 'mydb';
+analyze table F35MI update histogram on (id) using data '{"row_count": 5}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 74 where table_name = 'XOAOP' and table_schema = 'mydb';
+analyze table XOAOP update histogram on (id) using data '{"row_count": 74}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 11 where table_name = 'PG27A' and table_schema = 'mydb';
+analyze table PG27A update histogram on (id) using data '{"row_count": 11}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 89 where table_name = 'NPCYY' and table_schema = 'mydb';
+analyze table NPCYY update histogram on (id) using data '{"row_count": 89}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 3 where table_name = 'TTGWX' and table_schema = 'mydb';
+analyze table TTGWX update histogram on (id) using data '{"row_count": 3}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 70692 where table_name = 'QYWQD' and table_schema = 'mydb';
+analyze table QYWQD update histogram on (id) using data '{"row_count": 70692}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 0 where table_name = 'run_metadata' and table_schema = 'mydb';
+analyze table NOXN3 update histogram on (id) using data '{"row_count": 11813}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 11813 where table_name = 'NOXN3' and table_schema = 'mydb';
+analyze table ZYGMF update histogram on (id) using data '{"row_count": 81}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 81 where table_name = 'ZYGMF' and table_schema = 'mydb';
+analyze table TPXHZ update histogram on (id) using data '{"row_count": 16}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 16 where table_name = 'TPXHZ' and table_schema = 'mydb';
+analyze table OUBDL update histogram on (id) using data '{"row_count": 18395}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 18395 where table_name = 'OUBDL' and table_schema = 'mydb';
+analyze table SISUT update histogram on (id) using data '{"row_count": 103907130}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 103907130 where table_name = 'SISUT' and table_schema = 'mydb';
+analyze table WRZVO update histogram on (id) using data '{"row_count": 39091}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 39091 where table_name = 'WRZVO' and table_schema = 'mydb';
+analyze table NZKPM update histogram on (id) using data '{"row_count": 18779716}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 18779716 where table_name = 'NZKPM' and table_schema = 'mydb';
+analyze table FG26Y update histogram on (id) using data '{"row_count": 1001}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 1001 where table_name = 'FG26Y' and table_schema = 'mydb';
+analyze table D34QP update histogram on (id) using data '{"row_count": 36}';
 ----
 
 exec
-update information_schema.statistics set cardinality = 36 where table_name = 'D34QP' and table_schema = 'mydb';
-----
-
-exec
-update information_schema.statistics set cardinality = 64 where table_name = 'ZTFET' and table_schema = 'mydb';
+analyze table ZTFET update histogram on (id) using data '{"row_count": 64}';
 ----
 
 exec

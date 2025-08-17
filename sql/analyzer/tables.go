@@ -15,38 +15,15 @@
 package analyzer
 
 import (
-	"github.com/gabereiser/go-mysql-server/sql"
-	"github.com/gabereiser/go-mysql-server/sql/expression"
-	"github.com/gabereiser/go-mysql-server/sql/plan"
-	"github.com/gabereiser/go-mysql-server/sql/transform"
+	"strings"
+
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
-// Returns the underlying table name for the node given
+// Returns the underlying table name, unaliased, for the node given
 func getTableName(node sql.Node) string {
-	var tableName string
-	transform.Inspect(node, func(node sql.Node) bool {
-		switch node := node.(type) {
-		case *plan.TableAlias:
-			tableName = node.Name()
-			return false
-		case *plan.ResolvedTable:
-			tableName = node.Name()
-			return false
-		case *plan.UnresolvedTable:
-			tableName = node.Name()
-			return false
-		case *plan.IndexedTableAccess:
-			tableName = node.Name()
-			return false
-		}
-		return true
-	})
-
-	return tableName
-}
-
-// Returns the underlying table name for the node given, ignoring table aliases
-func getUnaliasedTableName(node sql.Node) string {
 	var tableName string
 	transform.Inspect(node, func(node sql.Node) bool {
 		switch node := node.(type) {
@@ -69,94 +46,51 @@ func getUnaliasedTableName(node sql.Node) string {
 // Finds first table node that is a descendant of the node given
 func getTable(node sql.Node) sql.Table {
 	var table sql.Table
-	transform.Inspect(node, func(node sql.Node) bool {
+	transform.Inspect(node, func(n sql.Node) bool {
+		// Inspect is called on all children of a node even if an earlier child's call returns false.
+		// We only want the first TableNode match.
 		if table != nil {
 			return false
 		}
-
-		switch n := node.(type) {
-		case *plan.ResolvedTable:
-			table = n.Table
-			// TODO unwinding a table wrapper here causes infinite analyzer recursion
+		switch nn := n.(type) {
+		case sql.TableNode:
+			// TODO: unwinding a table wrapper here causes infinite analyzer recursion
+			table = nn.UnderlyingTable()
 			return false
 		case *plan.IndexedTableAccess:
-			table = n.ResolvedTable.Table
+			table = nn.TableNode.UnderlyingTable()
 			return false
+		default:
+			return true
 		}
-		return true
 	})
 	return table
 }
 
-// Finds first unresolved table node that is a descendant of the node given
-func hasTable(name string, node sql.Node) bool {
-	var found bool
-	transform.Inspect(node, func(node sql.Node) bool {
-		switch n := node.(type) {
-		case *plan.UnresolvedTable:
-			found = found ||
-				name == n.Name()
-		case *plan.TableAlias:
-			switch n := n.Child.(type) {
-			case *plan.UnresolvedTable:
-				found = found || name == n.Name()
-			}
-		default:
-		}
-		return !found
-	})
-	return found
-}
-
-// getResolvedTableAndAlias returns the first resolved table in the specified node tree, along with its aliased name,
-// or the empty string if no table alias has been specified.
-func getResolvedTableAndAlias(node sql.Node) (*plan.ResolvedTable, string) {
-	var table *plan.ResolvedTable
-	var alias string
-
-	transform.Inspect(node, func(node sql.Node) bool {
-		// plan.Inspect will get called on all children of a node even if one of the children's calls returns false. We
-		// only want the first ResolvedTable match.
-		if table != nil {
-			return false
-		}
-
-		switch n := node.(type) {
-		case *plan.TableAlias:
-			table = getResolvedTable(n)
-			alias = n.Name()
-			return false
-		case *plan.ResolvedTable:
-			table = n
-			return false
-		case *plan.IndexedTableAccess:
-			table = n.ResolvedTable
-			return false
-		}
-		return true
-	})
-	return table, alias
-}
-
 // Finds first ResolvedTable node that is a descendant of the node given
+// This function will not look inside SubqueryAliases
 func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 	var table *plan.ResolvedTable
-	transform.Inspect(node, func(node sql.Node) bool {
-		// plan.Inspect will get called on all children of a node even if one of the children's calls returns false. We
-		// only want the first ResolvedTable match.
+	transform.Inspect(node, func(n sql.Node) bool {
+		// Inspect is called on all children of a node even if an earlier child's call returns false.
+		// We only want the first TableNode match.
 		if table != nil {
 			return false
 		}
-
-		switch n := node.(type) {
+		switch nn := n.(type) {
+		case *plan.SubqueryAlias:
+			// We should not be matching with ResolvedTables inside SubqueryAliases
+			return false
 		case *plan.ResolvedTable:
-			if !plan.IsDualTable(n) {
-				table = n
+			if !plan.IsDualTable(nn) {
+				table = nn
 				return false
 			}
 		case *plan.IndexedTableAccess:
-			table = n.ResolvedTable
-			return false
+			if rt, ok := nn.TableNode.(*plan.ResolvedTable); ok {
+				table = rt
+				return false
+			}
 		}
 		return true
 	})
@@ -170,9 +104,13 @@ func getTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
 	transform.Inspect(node, func(node sql.Node) bool {
 		switch n := node.(type) {
 		case *plan.ResolvedTable:
-			ret[n.Table.Name()] = n
+			ret[strings.ToLower(n.Table.Name())] = n
 		case *plan.IndexedTableAccess:
-			ret[n.ResolvedTable.Name()] = n.ResolvedTable
+			rt, ok := n.TableNode.(*plan.ResolvedTable)
+			if ok {
+				ret[strings.ToLower(rt.Name())] = rt
+				return false
+			}
 		case *plan.TableAlias:
 			rt := getResolvedTable(n)
 			if rt != nil {
@@ -184,78 +122,4 @@ func getTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
 	})
 
 	return ret
-}
-
-// Returns the tables used in the expressions given
-func findTables(exprs ...sql.Expression) []string {
-	tables := make(map[string]bool)
-	for _, e := range exprs {
-		sql.Inspect(e, func(e sql.Expression) bool {
-			switch e := e.(type) {
-			case *expression.GetField:
-				tables[e.Table()] = true
-				return false
-			default:
-				return true
-			}
-		})
-	}
-
-	var names []string
-	for table := range tables {
-		names = append(names, table)
-	}
-
-	return names
-}
-
-// Returns a hashmap of tableCol used in the expressions given
-func findCols(exprs ...sql.Expression) []tableCol {
-	columns := make([]tableCol, 0)
-	for _, e := range exprs {
-		sql.Inspect(e, func(e sql.Expression) bool {
-			switch e := e.(type) {
-			case *expression.GetField:
-				columns = append(columns, tableCol{table: e.Table(), col: e.Name()})
-				return false
-			default:
-				return true
-			}
-		})
-	}
-	return columns
-}
-
-// Transforms the node given bottom up by setting resolve tables to reference the table given. Returns an error if more
-// than one table was set in this way.
-func withTable(node sql.Node, table sql.Table) (sql.Node, transform.TreeIdentity, error) {
-	foundTable := false
-	return transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		switch n := n.(type) {
-		case *plan.ResolvedTable:
-			if foundTable {
-				return nil, transform.SameTree, ErrInAnalysis.New("attempted to set more than one table in withTable()")
-			}
-			foundTable = true
-			n, err := n.WithTable(table)
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-			return n, transform.NewTree, nil
-		case *plan.IndexedTableAccess:
-			if foundTable {
-				return nil, transform.SameTree, ErrInAnalysis.New("attempted to set more than one table in withTable()")
-			}
-
-			foundTable = true
-			ita, err := n.WithTable(table)
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-
-			return ita, transform.NewTree, nil
-		default:
-			return n, transform.SameTree, nil
-		}
-	})
 }

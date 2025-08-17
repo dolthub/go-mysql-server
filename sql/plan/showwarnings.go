@@ -22,6 +22,9 @@ import (
 // ShowWarnings is a node that shows the session warnings
 type ShowWarnings []*sql.Warning
 
+var _ sql.Node = (*ShowWarnings)(nil)
+var _ sql.CollationCoercible = (*ShowWarnings)(nil)
+
 // Resolved implements sql.Node interface. The function always returns true.
 func (ShowWarnings) Resolved() bool {
 	return true
@@ -36,14 +39,18 @@ func (sw ShowWarnings) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return sw, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (sw ShowWarnings) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (ShowWarnings) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // String implements the fmt.Stringer interface.
 func (ShowWarnings) String() string {
 	return "SHOW WARNINGS"
+}
+
+func (ShowWarnings) IsReadOnly() bool {
+	return true
 }
 
 // Schema returns a new Schema reference for "SHOW VARIABLES" query.
@@ -57,13 +64,3 @@ func (ShowWarnings) Schema() sql.Schema {
 
 // Children implements sql.Node interface. The function always returns nil.
 func (ShowWarnings) Children() []sql.Node { return nil }
-
-// RowIter implements the sql.Node interface.
-// The function returns an iterator for warnings.
-func (sw ShowWarnings) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	var rows []sql.Row
-	for _, w := range sw {
-		rows = append(rows, sql.NewRow(w.Level, w.Code, w.Message))
-	}
-	return sql.RowsToRowIter(rows...), nil
-}

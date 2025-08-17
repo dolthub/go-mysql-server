@@ -23,10 +23,17 @@ table PrivilegeSetTable {
     columns:[PrivilegeSetColumn];
 }
 
+table PrivilegeSetRoutine {
+    name:string;
+    privs:[int];
+    is_proc:bool;
+}
+
 table PrivilegeSetDatabase {
     name:string;
     privs:[int];
     tables:[PrivilegeSetTable];
+    routines:[PrivilegeSetRoutine];
 }
 
 table PrivilegeSet {
@@ -74,6 +81,10 @@ table MySQLDb {
     user:[User];
     role_edges:[RoleEdge];
     replica_source_info:[ReplicaSourceInfo];
+
+    // Only used in replication, typically the server instance itself will
+    // manage creating bootstrap users.
+    super_user:[User];
 }
 
 root_type MySQLDb;

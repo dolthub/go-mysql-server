@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"math"
 	"reflect"
 
@@ -41,6 +42,7 @@ type MultiPoint struct {
 
 var _ sql.Type = MultiPointType{}
 var _ sql.SpatialColumnType = MultiPointType{}
+var _ sql.CollationCoercible = MultiPointType{}
 var _ GeometryValue = MultiPoint{}
 
 var (
@@ -50,34 +52,34 @@ var (
 )
 
 // Compare implements Type interface.
-func (t MultiPointType) Compare(a interface{}, b interface{}) (int, error) {
-	return GeometryType{}.Compare(a, b)
+func (t MultiPointType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
+	return GeometryType{}.Compare(ctx, a, b)
 }
 
 // Convert implements Type interface.
-func (t MultiPointType) Convert(v interface{}) (interface{}, error) {
+func (t MultiPointType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	switch buf := v.(type) {
 	case nil:
-		return nil, nil
+		return nil, sql.InRange, nil
 	case []byte:
-		multipoint, err := GeometryType{}.Convert(buf)
+		multipoint, _, err := GeometryType{}.Convert(ctx, buf)
 		if err != nil {
-			return nil, err
+			return nil, sql.OutOfRange, err
 		}
 		// TODO: is this even possible?
 		if _, ok := multipoint.(MultiPoint); !ok {
-			return nil, sql.ErrInvalidGISData.New("MultiPointType.Convert")
+			return nil, sql.OutOfRange, sql.ErrInvalidGISData.New("MultiPointType.Convert")
 		}
-		return multipoint, nil
+		return multipoint, sql.InRange, nil
 	case string:
-		return t.Convert([]byte(buf))
+		return t.Convert(ctx, []byte(buf))
 	case MultiPoint:
 		if err := t.MatchSRID(buf); err != nil {
-			return nil, err
+			return nil, sql.OutOfRange, err
 		}
-		return buf, nil
+		return buf, sql.InRange, nil
 	default:
-		return nil, sql.ErrSpatialTypeConversion.New()
+		return nil, sql.OutOfRange, sql.ErrSpatialTypeConversion.New()
 	}
 }
 
@@ -88,7 +90,7 @@ func (t MultiPointType) Equals(otherType sql.Type) bool {
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t MultiPointType) MaxTextResponseByteLength() uint32 {
+func (t MultiPointType) MaxTextResponseByteLength(*sql.Context) uint32 {
 	return GeometryMaxByteLength
 }
 
@@ -103,7 +105,7 @@ func (t MultiPointType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqlty
 		return sqltypes.NULL, nil
 	}
 
-	v, err := t.Convert(v)
+	v, _, err := t.Convert(ctx, v)
 	if err != nil {
 		return sqltypes.Value{}, nil
 	}
@@ -131,6 +133,11 @@ func (t MultiPointType) ValueType() reflect.Type {
 // Zero implements Type interface.
 func (t MultiPointType) Zero() interface{} {
 	return MultiPoint{Points: []Point{{}}}
+}
+
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (MultiPointType) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // GetSpatialTypeSRID implements SpatialColumnType interface.

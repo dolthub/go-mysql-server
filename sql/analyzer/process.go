@@ -35,19 +35,14 @@ func init() {
 
 // trackProcess will wrap the query in a process node and add progress items
 // to the already existing process.
-func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	if !n.Resolved() {
 		return n, transform.SameTree, nil
 	}
-
-	if _, ok := n.(*plan.QueryProcess); ok {
-		return n, transform.SameTree, nil
-	}
-
 	processList := ctx.ProcessList
 
 	var seen = make(map[string]struct{})
-	n, _, err := transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	n, same, err := transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
 		case *plan.ResolvedTable:
 			switch n.Table.(type) {
@@ -97,47 +92,18 @@ func trackProcess(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 				t = plan.NewProcessTable(table, onPartitionDone, onPartitionStart, onRowNext)
 			}
 
-			n, err := n.WithTable(t)
-			return n, transform.NewTree, err
+			rt, err := n.ReplaceTable(t)
+			if err != nil {
+				return nil, false, err
+			}
+			return rt, transform.NewTree, nil
 		default:
 			return n, transform.SameTree, nil
 		}
 	})
+
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
-
-	// Don't wrap CreateIndex in a QueryProcess, as it is a CreateIndexProcess.
-	// CreateIndex will take care of marking the process as done on its own.
-	if _, ok := n.(*plan.CreateIndex); ok {
-		return n, transform.SameTree, nil
-	}
-
-	// Remove QueryProcess nodes from the subqueries and trigger bodies. Otherwise, the process
-	// will be marked as done as soon as a subquery / trigger finishes.
-	node, _, err := transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		if sq, ok := n.(*plan.SubqueryAlias); ok {
-			if qp, ok := sq.Child.(*plan.QueryProcess); ok {
-				n, err := sq.WithChildren(qp.Child())
-				return n, transform.NewTree, err
-			}
-		}
-		if t, ok := n.(*plan.TriggerExecutor); ok {
-			if qp, ok := t.Right().(*plan.QueryProcess); ok {
-				n, err := t.WithChildren(t.Left(), qp.Child())
-				return n, transform.NewTree, err
-			}
-		}
-		return n, transform.SameTree, nil
-	})
-	if err != nil {
-		return nil, transform.SameTree, err
-	}
-
-	return plan.NewQueryProcess(node, func() {
-		processList.EndQuery(ctx)
-		if span := ctx.RootSpan(); span != nil {
-			span.End()
-		}
-	}), transform.NewTree, nil
+	return n, same, nil
 }

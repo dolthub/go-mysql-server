@@ -41,6 +41,7 @@ func NewDropRole(ifExists bool, roles []UserName) *DropRole {
 
 var _ sql.Node = (*DropRole)(nil)
 var _ sql.Databaser = (*DropRole)(nil)
+var _ sql.CollationCoercible = (*DropRole)(nil)
 
 // Schema implements the interface sql.Node.
 func (n *DropRole) Schema() sql.Schema {
@@ -78,6 +79,10 @@ func (n *DropRole) Resolved() bool {
 	return !ok
 }
 
+func (n *DropRole) IsReadOnly() bool {
+	return false
+}
+
 // Children implements the interface sql.Node.
 func (n *DropRole) Children() []sql.Node {
 	return nil
@@ -91,13 +96,9 @@ func (n *DropRole) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return n, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (n *DropRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	// Both DROP ROLE and CREATE USER are valid privileges, so we use an OR
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_DropRole)) ||
-		opChecker.UserHasPrivileges(ctx,
-			sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_CreateUser))
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*DropRole) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // RowIter implements the interface sql.Node.
@@ -106,8 +107,10 @@ func (n *DropRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	if !ok {
 		return nil, sql.ErrDatabaseNotFound.New("mysql")
 	}
-	userTableData := mysqlDb.UserTable().Data()
-	roleEdgesData := mysqlDb.RoleEdgesTable().Data()
+
+	editor := mysqlDb.Editor()
+	defer editor.Close()
+
 	for _, role := range n.Roles {
 		userPk := mysql_db.UserPrimaryKey{
 			Host: role.Host,
@@ -116,36 +119,26 @@ func (n *DropRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		if role.AnyHost {
 			userPk.Host = "%"
 		}
-		existingRows := userTableData.Get(userPk)
-		if len(existingRows) == 0 {
+		existingUser, ok := editor.GetUser(userPk)
+		if !ok {
 			if n.IfExists {
 				continue
 			}
 			return nil, sql.ErrRoleDeletionFailure.New(role.String("'"))
 		}
-		existingUser := existingRows[0].(*mysql_db.User)
 
 		//TODO: if a role is mentioned in the "mandatory_roles" system variable then they cannot be dropped
-		err := userTableData.Remove(ctx, userPk, nil)
-		if err != nil {
-			return nil, err
-		}
-		err = roleEdgesData.Remove(ctx, mysql_db.RoleEdgesFromKey{
+		editor.RemoveUser(userPk)
+		editor.RemoveRoleEdgesFromKey(mysql_db.RoleEdgesFromKey{
 			FromHost: existingUser.Host,
 			FromUser: existingUser.User,
-		}, nil)
-		if err != nil {
-			return nil, err
-		}
-		err = roleEdgesData.Remove(ctx, mysql_db.RoleEdgesToKey{
+		})
+		editor.RemoveRoleEdgesToKey(mysql_db.RoleEdgesToKey{
 			ToHost: existingUser.Host,
 			ToUser: existingUser.User,
-		}, nil)
-		if err != nil {
-			return nil, err
-		}
+		})
 	}
-	if err := mysqlDb.Persist(ctx); err != nil {
+	if err := mysqlDb.Persist(ctx, editor); err != nil {
 		return nil, err
 	}
 	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil

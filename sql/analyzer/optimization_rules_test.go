@@ -15,289 +15,28 @@
 package analyzer
 
 import (
+	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/gabereiser/go-mysql-server/memory"
-	"github.com/gabereiser/go-mysql-server/sql"
-	"github.com/gabereiser/go-mysql-server/sql/expression"
-	"github.com/gabereiser/go-mysql-server/sql/plan"
-	"github.com/gabereiser/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/memory"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function"
+	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func TestEraseProjection(t *testing.T) {
-	require := require.New(t)
-	f := getRule(eraseProjectionId)
-
-	table := memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{{
-		Name: "i", Source: "mytable", Type: types.Int64,
-	}}), nil)
-
-	expected := plan.NewSort(
-		[]sql.SortField{{Column: expression.NewGetField(2, types.Int64, "foo", false)}},
-		plan.NewProject(
-			[]sql.Expression{
-				expression.NewGetFieldWithTable(0, types.Int64, "mytable", "i", false),
-				expression.NewGetField(1, types.Int64, "bar", false),
-				expression.NewAlias("foo", expression.NewLiteral(1, types.Int64)),
-			},
-			plan.NewFilter(
-				expression.NewEquals(
-					expression.NewLiteral(1, types.Int64),
-					expression.NewGetField(1, types.Int64, "bar", false),
-				),
-				plan.NewProject(
-					[]sql.Expression{
-						expression.NewGetFieldWithTable(0, types.Int64, "mytable", "i", false),
-						expression.NewAlias("bar", expression.NewLiteral(2, types.Int64)),
-					},
-					plan.NewResolvedTable(table, nil, nil),
-				),
-			),
-		),
-	)
-
-	node := plan.NewProject(
-		[]sql.Expression{
-			expression.NewGetFieldWithTable(0, types.Int64, "mytable", "i", false),
-			expression.NewGetField(1, types.Int64, "bar", false),
-			expression.NewGetField(2, types.Int64, "foo", false),
-		},
-		expected,
-	)
-
-	result, _, err := f.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
-	require.NoError(err)
-	require.Equal(expected, result)
-
-	result, _, err = f.Apply(sql.NewEmptyContext(), NewDefault(nil), expected, nil, DefaultRuleSelector)
-	require.NoError(err)
-	require.Equal(expected, result)
-}
-
-func TestOptimizeDistinct(t *testing.T) {
-	t1 := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Source: "foo"},
-		{Name: "b", Source: "foo"},
-	}), nil)
-
-	testCases := []struct {
-		name      string
-		child     sql.Node
-		optimized bool
-	}{
-		{
-			"without sort",
-			plan.NewResolvedTable(t1, nil, nil),
-			false,
-		},
-		{
-			"sort but column not projected",
-			plan.NewSort(
-				[]sql.SortField{
-					{Column: gf(0, "foo", "c")},
-				},
-				plan.NewResolvedTable(t1, nil, nil),
-			),
-			false,
-		},
-		{
-			"sort and column projected",
-			plan.NewSort(
-				[]sql.SortField{
-					{Column: gf(0, "foo", "a")},
-				},
-				plan.NewResolvedTable(t1, nil, nil),
-			),
-			true,
-		},
-	}
-
-	rule := getRule(optimizeDistinctId)
-
-	for _, tt := range testCases {
-		t.Run(tt.name, func(t *testing.T) {
-			node, _, err := rule.Apply(sql.NewEmptyContext(), nil, plan.NewDistinct(tt.child), nil, DefaultRuleSelector)
-			require.NoError(t, err)
-
-			_, ok := node.(*plan.OrderedDistinct)
-			require.Equal(t, tt.optimized, ok)
-		})
-	}
-}
-
-func TestMoveJoinConditionsToFilter(t *testing.T) {
-	t1 := memory.NewTable("t1", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Source: "t1", Type: types.Int64},
-		{Name: "b", Source: "t1", Type: types.Int64},
-	}), nil)
-
-	t2 := memory.NewTable("t2", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "c", Source: "t2", Type: types.Int64},
-		{Name: "d", Source: "t2", Type: types.Int64},
-	}), nil)
-
-	t3 := memory.NewTable("t3", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "e", Source: "t3", Type: types.Int64},
-		{Name: "f", Source: "t3", Type: types.Int64},
-	}), nil)
-
-	rule := getRule(moveJoinCondsToFilterId)
-	require := require.New(t)
-
-	node := plan.NewInnerJoin(
-		plan.NewResolvedTable(t1, nil, nil),
-		plan.NewCrossJoin(
-			plan.NewResolvedTable(t2, nil, nil),
-			plan.NewResolvedTable(t3, nil, nil),
-		),
-		expression.JoinAnd(
-			eq(col(0, "t1", "a"), col(2, "t2", "c")),
-			eq(col(0, "t1", "a"), col(4, "t3", "e")),
-			eq(col(2, "t2", "c"), col(4, "t3", "e")),
-			eq(col(0, "t1", "a"), lit(5)),
-		),
-	)
-
-	result, _, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
-	require.NoError(err)
-
-	var expected sql.Node = plan.NewFilter(
-		expression.JoinAnd(
-			eq(col(2, "t2", "c"), col(4, "t3", "e")),
-			eq(col(0, "t1", "a"), lit(5)),
-		),
-		plan.NewInnerJoin(
-			plan.NewResolvedTable(t1, nil, nil),
-			plan.NewCrossJoin(
-				plan.NewResolvedTable(t2, nil, nil),
-				plan.NewResolvedTable(t3, nil, nil),
-			),
-			and(
-				eq(col(0, "t1", "a"), col(2, "t2", "c")),
-				eq(col(0, "t1", "a"), col(4, "t3", "e")),
-			),
-		),
-	)
-
-	assertNodesEqualWithDiff(t, expected, result)
-
-	node = plan.NewInnerJoin(
-		plan.NewResolvedTable(t1, nil, nil),
-		plan.NewCrossJoin(
-			plan.NewResolvedTable(t2, nil, nil),
-			plan.NewResolvedTable(t3, nil, nil),
-		),
-		expression.JoinAnd(
-			eq(col(0, "t2", "c"), col(0, "t3", "e")),
-			eq(col(0, "t1", "a"), lit(5)),
-		),
-	)
-
-	result, _, err = rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
-	require.NoError(err)
-
-	expected = plan.NewFilter(
-		expression.JoinAnd(
-			eq(col(0, "t2", "c"), col(0, "t3", "e")),
-			eq(col(0, "t1", "a"), lit(5)),
-		),
-		plan.NewCrossJoin(
-			plan.NewResolvedTable(t1, nil, nil),
-			plan.NewCrossJoin(
-				plan.NewResolvedTable(t2, nil, nil),
-				plan.NewResolvedTable(t3, nil, nil),
-			),
-		),
-	)
-
-	assertNodesEqualWithDiff(t, expected, result)
-
-	node = plan.NewInnerJoin(
-		plan.NewResolvedTable(t1, nil, nil),
-		plan.NewInnerJoin(
-			plan.NewResolvedTable(t2, nil, nil),
-			plan.NewResolvedTable(t3, nil, nil),
-			expression.JoinAnd(
-				eq(col(0, "t2", "c"), col(0, "t3", "e")),
-				eq(col(0, "t3", "a"), lit(5)),
-			),
-		),
-		expression.JoinAnd(
-			eq(col(0, "t1", "c"), col(0, "t2", "e")),
-			eq(col(0, "t1", "a"), lit(10)),
-		),
-	)
-
-	result, _, err = rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
-	require.NoError(err)
-
-	expected = plan.NewFilter(
-		expression.JoinAnd(
-			eq(col(0, "t3", "a"), lit(5)),
-			eq(col(0, "t1", "a"), lit(10)),
-		),
-		plan.NewInnerJoin(
-			plan.NewResolvedTable(t1, nil, nil),
-			plan.NewInnerJoin(
-				plan.NewResolvedTable(t2, nil, nil),
-				plan.NewResolvedTable(t3, nil, nil),
-				expression.JoinAnd(
-					eq(col(0, "t2", "c"), col(0, "t3", "e")),
-				),
-			),
-			expression.JoinAnd(
-				eq(col(0, "t1", "c"), col(0, "t2", "e")),
-			),
-		),
-	)
-
-	assertNodesEqualWithDiff(t, expected, result)
-
-	node = plan.NewInnerJoin(
-		plan.NewResolvedTable(t1, nil, nil),
-		plan.NewInnerJoin(
-			plan.NewResolvedTable(t2, nil, nil),
-			plan.NewResolvedTable(t3, nil, nil),
-			expression.JoinAnd(
-				eq(col(0, "t2", "c"), col(0, "t3", "e")),
-				eq(col(0, "t3", "a"), lit(5)),
-			),
-		),
-		expression.JoinAnd(
-			eq(col(0, "t1", "c"), col(0, "t2", "e")),
-		),
-	)
-
-	result, _, err = rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
-	require.NoError(err)
-
-	expected = plan.NewFilter(
-		expression.JoinAnd(
-			eq(col(0, "t3", "a"), lit(5)),
-		),
-		plan.NewInnerJoin(
-			plan.NewResolvedTable(t1, nil, nil),
-			plan.NewInnerJoin(
-				plan.NewResolvedTable(t2, nil, nil),
-				plan.NewResolvedTable(t3, nil, nil),
-				expression.JoinAnd(
-					eq(col(0, "t2", "c"), col(0, "t3", "e")),
-				),
-			),
-			expression.JoinAnd(
-				eq(col(0, "t1", "c"), col(0, "t2", "e")),
-			),
-		),
-	)
-
-	assertNodesEqualWithDiff(t, expected, result)
-}
-
 func TestEvalFilter(t *testing.T) {
-	inner := memory.NewTable("foo", sql.PrimaryKeySchema{}, nil)
-	rule := getRule(evalFilterId)
+	db := memory.NewDatabase("db")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
+	inner := memory.NewTable(db, "foo", sql.PrimaryKeySchema{}, nil)
+	rule := getRule(simplifyFiltersId)
 
 	testCases := []struct {
 		filter   sql.Expression
@@ -306,36 +45,48 @@ func TestEvalFilter(t *testing.T) {
 		{
 			and(
 				eq(lit(5), lit(5)),
-				eq(col(0, "foo", "bar"), lit(5)),
+				eq(
+					expression.NewGetFieldWithTable(0, 0, types.Int64, "", "foo", "bar", false),
+					lit(5)),
 			),
 			plan.NewFilter(
-				eq(col(0, "foo", "bar"), lit(5)),
+				eq(
+					expression.NewGetFieldWithTable(0, 0, types.Int64, "", "foo", "bar", false),
+					lit(5)),
 				plan.NewResolvedTable(inner, nil, nil),
 			),
 		},
 		{
 			and(
-				eq(col(0, "foo", "bar"), lit(5)),
+				eq(
+					expression.NewGetFieldWithTable(0, 0, types.Int64, "", "foo", "bar", false),
+					lit(5)),
 				eq(lit(5), lit(5)),
 			),
 			plan.NewFilter(
-				eq(col(0, "foo", "bar"), lit(5)),
+				eq(
+					expression.NewGetFieldWithTable(0, 0, types.Int64, "", "foo", "bar", false),
+					lit(5)),
 				plan.NewResolvedTable(inner, nil, nil),
 			),
 		},
 		{
 			and(
 				eq(lit(5), lit(4)),
-				eq(col(0, "foo", "bar"), lit(5)),
+				eq(
+					expression.NewGetFieldWithTable(0, 0, types.Int64, "", "foo", "bar", false),
+					lit(5)),
 			),
-			plan.EmptyTable,
+			plan.NewEmptyTableWithSchema(inner.Schema()),
 		},
 		{
 			and(
-				eq(col(0, "foo", "bar"), lit(5)),
+				eq(
+					expression.NewGetFieldWithTable(0, 0, types.Int64, "", "foo", "bar", false),
+					lit(5)),
 				eq(lit(5), lit(4)),
 			),
-			plan.EmptyTable,
+			plan.NewEmptyTableWithSchema(inner.Schema()),
 		},
 		{
 			and(
@@ -347,33 +98,45 @@ func TestEvalFilter(t *testing.T) {
 		{
 			or(
 				eq(lit(5), lit(4)),
-				eq(col(0, "foo", "bar"), lit(5)),
+				eq(
+					expression.NewGetFieldWithTable(0, 0, types.Int64, "", "foo", "bar", false),
+					lit(5)),
 			),
 			plan.NewFilter(
-				eq(col(0, "foo", "bar"), lit(5)),
+				eq(
+					expression.NewGetFieldWithTable(0, 0, types.Int64, "", "foo", "bar", false),
+					lit(5)),
 				plan.NewResolvedTable(inner, nil, nil),
 			),
 		},
 		{
 			or(
-				eq(col(0, "foo", "bar"), lit(5)),
+				eq(
+					expression.NewGetFieldWithTable(0, 0, types.Int64, "", "foo", "bar", false),
+					lit(5)),
 				eq(lit(5), lit(4)),
 			),
 			plan.NewFilter(
-				eq(col(0, "foo", "bar"), lit(5)),
+				eq(
+					expression.NewGetFieldWithTable(0, 0, types.Int64, "", "foo", "bar", false),
+					lit(5)),
 				plan.NewResolvedTable(inner, nil, nil),
 			),
 		},
 		{
 			or(
 				eq(lit(5), lit(5)),
-				eq(col(0, "foo", "bar"), lit(5)),
+				eq(
+					expression.NewGetFieldWithTable(0, 0, types.Int64, "", "foo", "bar", false),
+					lit(5)),
 			),
 			plan.NewResolvedTable(inner, nil, nil),
 		},
 		{
 			or(
-				eq(col(0, "foo", "bar"), lit(5)),
+				eq(
+					expression.NewGetFieldWithTable(0, 0, types.Int64, "", "foo", "bar", false),
+					lit(5)),
 				eq(lit(5), lit(5)),
 			),
 			plan.NewResolvedTable(inner, nil, nil),
@@ -383,7 +146,7 @@ func TestEvalFilter(t *testing.T) {
 				eq(lit(5), lit(4)),
 				eq(lit(5), lit(4)),
 			),
-			plan.EmptyTable,
+			plan.NewEmptyTableWithSchema(inner.Schema()),
 		},
 	}
 
@@ -391,58 +154,109 @@ func TestEvalFilter(t *testing.T) {
 		t.Run(tt.filter.String(), func(t *testing.T) {
 			require := require.New(t)
 			node := plan.NewFilter(tt.filter, plan.NewResolvedTable(inner, nil, nil))
-			result, _, err := rule.Apply(sql.NewEmptyContext(), NewDefault(nil), node, nil, DefaultRuleSelector)
+			result, _, err := rule.Apply(ctx, NewDefault(nil), node, nil, DefaultRuleSelector, nil)
 			require.NoError(err)
 			require.Equal(tt.expected, result)
 		})
 	}
 }
 
-func TestRemoveUnnecessaryConverts(t *testing.T) {
-	testCases := []struct {
-		name      string
-		childExpr sql.Expression
-		castType  string
-		expected  sql.Expression
+func TestPushNotFilters(t *testing.T) {
+	tests := []struct {
+		in  string
+		exp string
 	}{
 		{
-			"unnecessary cast",
-			expression.NewLiteral([]byte{}, types.LongBlob),
-			"binary",
-			expression.NewLiteral([]byte{}, types.LongBlob),
+			in:  "NOT(NOT(x IS NULL))",
+			exp: "xy.x IS NULL",
 		},
 		{
-			"necessary cast",
-			expression.NewLiteral("foo", types.LongText),
-			"signed",
-			expression.NewConvert(
-				expression.NewLiteral("foo", types.LongText),
-				"signed",
-			),
+			in:  "NOT(x BETWEEN 0 AND 5)",
+			exp: "((xy.x < 0) OR (xy.x > 5))",
+		},
+		{
+			in:  "NOT(x <= 0)",
+			exp: "(xy.x > 0)",
+		},
+		{
+			in:  "NOT(x < 0)",
+			exp: "(xy.x >= 0)",
+		},
+		{
+			in:  "NOT(x > 0)",
+			exp: "(xy.x <= 0)",
+		},
+		{
+			in:  "NOT(x >= 0)",
+			exp: "(xy.x < 0)",
+		},
+		// TODO this isn't correct for join filters
+		//{
+		//	in:  "NOT(y IS NULL)",
+		//	exp: "((xy.x < NULL) OR (xy.x > NULL))",
+		//},
+		{
+			in:  "NOT (x > 2 AND y > 2)",
+			exp: "((xy.x <= 2) OR (xy.y <= 2))",
+		},
+		{
+			in:  "NOT (x > 2 AND NOT(y > 2))",
+			exp: "((xy.x <= 2) OR (xy.y > 2))",
+		},
+		{
+			in:  "((NOT(x > 1 AND NOT((x > 0) OR (y < 2))) OR (y > 1)) OR NOT(y < 3))",
+			exp: "((((xy.x <= 1) OR ((xy.x > 0) OR (xy.y < 2))) OR (xy.y > 1)) OR (xy.y >= 3))",
 		},
 	}
 
-	for _, tt := range testCases {
-		t.Run(tt.name, func(t *testing.T) {
-			require := require.New(t)
+	// todo dummy catalog and table
+	db := memory.NewDatabase("mydb")
+	cat := newTestCatalog(db)
+	pro := memory.NewDBProvider(db)
+	sess := memory.NewSession(sql.NewBaseSession(), pro)
 
-			node := plan.NewProject([]sql.Expression{
-				expression.NewConvert(tt.childExpr, tt.castType),
-			},
-				plan.NewResolvedTable(memory.NewTable("foo", sql.PrimaryKeySchema{}, nil), nil, nil),
-			)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
+	ctx.SetCurrentDatabase("mydb")
 
-			result, _, err := removeUnnecessaryConverts(
-				sql.NewEmptyContext(),
-				NewDefault(nil),
-				node,
-				nil,
-				DefaultRuleSelector,
-			)
-			require.NoError(err)
+	b := planbuilder.New(ctx, cat, nil, nil)
 
-			resultExpr := result.(*plan.Project).Projections[0]
-			require.Equal(tt.expected, resultExpr)
+	for _, tt := range tests {
+		t.Run(tt.in, func(t *testing.T) {
+			q := fmt.Sprintf("SELECT 1 from xy WHERE %s", tt.in)
+			node, _, _, _, err := b.Parse(q, nil, false)
+			require.NoError(t, err)
+
+			cmp, _, err := pushNotFilters(ctx, nil, node, nil, nil, nil)
+			require.NoError(t, err)
+
+			cmpF := cmp.(*plan.Project).Child.(*plan.Filter).Expression
+			cmpStr := cmpF.String()
+
+			require.Equal(t, tt.exp, cmpStr, fmt.Sprintf("\nexpected: %s\nfound:%s\n", tt.exp, cmpStr))
 		})
 	}
+}
+
+func newTestCatalog(db *memory.Database) *sql.MapCatalog {
+	cat := &sql.MapCatalog{
+		Databases: make(map[string]sql.Database),
+		Tables:    make(map[string]sql.Table),
+	}
+
+	cat.Tables["xy"] = memory.NewTable(db, "xy", sql.NewPrimaryKeySchema(sql.Schema{
+		{Name: "x", Type: types.Int64},
+		{Name: "y", Type: types.Int64},
+		{Name: "z", Type: types.Int64},
+	}, 0), nil)
+	cat.Tables["uv"] = memory.NewTable(db, "uv", sql.NewPrimaryKeySchema(sql.Schema{
+		{Name: "u", Type: types.Int64},
+		{Name: "v", Type: types.Int64},
+		{Name: "w", Type: types.Int64},
+	}, 0), nil)
+
+	db.AddTable("xy", cat.Tables["xy"].(memory.MemTable))
+	db.AddTable("uv", cat.Tables["uv"].(memory.MemTable))
+	cat.Databases["mydb"] = db
+	cat.Funcs = function.NewRegistry()
+	return cat
 }

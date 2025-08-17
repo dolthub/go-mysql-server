@@ -26,6 +26,9 @@ type Not struct {
 	UnaryExpression
 }
 
+var _ sql.Expression = (*Not)(nil)
+var _ sql.CollationCoercible = (*Not)(nil)
+
 // NewNot returns a new Not node.
 func NewNot(child sql.Expression) *Not {
 	return &Not{UnaryExpression{child}}
@@ -33,7 +36,15 @@ func NewNot(child sql.Expression) *Not {
 
 // Type implements the Expression interface.
 func (e *Not) Type() sql.Type {
+	if types.IsNull(e.Child) {
+		return types.Null
+	}
 	return types.Boolean
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Not) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // Eval implements the Expression interface.
@@ -48,7 +59,7 @@ func (e *Not) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	b, ok := v.(bool)
 	if !ok {
-		b, err = types.ConvertToBool(v)
+		b, err = sql.ConvertToBool(ctx, v)
 		if err != nil {
 			return nil, err
 		}

@@ -32,6 +32,7 @@ type Truncate struct {
 
 var _ sql.Node = (*Truncate)(nil)
 var _ sql.DebugStringer = (*Truncate)(nil)
+var _ sql.CollationCoercible = (*Truncate)(nil)
 
 // NewTruncate creates a Truncate node.
 func NewTruncate(db string, table sql.Node) *Truncate {
@@ -46,7 +47,7 @@ func GetTruncatable(node sql.Node) (sql.TruncateableTable, error) {
 	case sql.TruncateableTable:
 		return node, nil
 	case *IndexedTableAccess:
-		return GetTruncatable(node.ResolvedTable)
+		return GetTruncatable(node.TableNode)
 	case *ResolvedTable:
 		return getTruncatableTable(node.Table)
 	case sql.TableWrapper:
@@ -77,39 +78,6 @@ func (p *Truncate) DatabaseName() string {
 	return p.db
 }
 
-// RowIter implements the Node interface.
-func (p *Truncate) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
-	truncatable, err := GetTruncatable(p.Child)
-	if err != nil {
-		return nil, err
-	}
-	//TODO: when performance schema summary tables are added, reset the columns to 0/NULL rather than remove rows
-	//TODO: close all handlers that were opened with "HANDLER OPEN"
-
-	removed, err := truncatable.Truncate(ctx)
-	if err != nil {
-		return nil, err
-	}
-	for _, col := range truncatable.Schema() {
-		if col.AutoIncrement {
-			aiTable, ok := truncatable.(sql.AutoIncrementTable)
-			if ok {
-				setter := aiTable.AutoIncrementSetter(ctx)
-				err = setter.SetAutoIncrementValue(ctx, uint64(1))
-				if err != nil {
-					return nil, err
-				}
-				err = setter.Close(ctx)
-				if err != nil {
-					return nil, err
-				}
-			}
-			break
-		}
-	}
-	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(removed))), nil
-}
-
 // Schema implements the Node interface.
 func (p *Truncate) Schema() sql.Schema {
 	return types.OkResultSchema
@@ -125,10 +93,13 @@ func (p *Truncate) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &nt, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (p *Truncate) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(p.db, getTableName(p.Child), "", sql.PrivilegeType_Drop))
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Truncate) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
+}
+
+func (*Truncate) IsReadOnly() bool {
+	return false
 }
 
 // String implements the Node interface.

@@ -25,17 +25,18 @@ import (
 
 // Intersects is a function that returns true if the two geometries intersect
 type Intersects struct {
-	expression.BinaryExpression
+	expression.BinaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*Intersects)(nil)
+var _ sql.CollationCoercible = (*Intersects)(nil)
 
 // NewIntersects creates a new Intersects expression.
 func NewIntersects(g1, g2 sql.Expression) sql.Expression {
 	return &Intersects{
-		expression.BinaryExpression{
-			Left:  g1,
-			Right: g2,
+		expression.BinaryExpressionStub{
+			LeftChild:  g1,
+			RightChild: g2,
 		},
 	}
 }
@@ -55,8 +56,17 @@ func (i *Intersects) Type() sql.Type {
 	return types.Boolean
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Intersects) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
+}
+
 func (i *Intersects) String() string {
-	return fmt.Sprintf("%s(%s,%s)", i.FunctionName(), i.Left, i.Right)
+	return fmt.Sprintf("%s(%s,%s)", i.FunctionName(), i.LeftChild, i.RightChild)
+}
+
+func (i *Intersects) DebugString() string {
+	return fmt.Sprintf("%s(%s,%s)", i.FunctionName(), sql.DebugString(i.LeftChild), sql.DebugString(i.RightChild))
 }
 
 // WithChildren implements the Expression interface.
@@ -345,11 +355,11 @@ func validateGeomComp(geom1, geom2 interface{}, funcName string) (types.Geometry
 
 // Eval implements the sql.Expression interface.
 func (i *Intersects) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	geom1, err := i.Left.Eval(ctx, row)
+	geom1, err := i.LeftChild.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-	geom2, err := i.Right.Eval(ctx, row)
+	geom2, err := i.RightChild.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}

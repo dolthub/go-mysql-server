@@ -3,18 +3,22 @@ package expression
 import (
 	"fmt"
 
-	"github.com/mitchellh/hashstructure"
+	"github.com/cespare/xxhash/v2"
 
-	"github.com/gabereiser/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type DistinctExpression struct {
 	seen    sql.KeyValueCache
 	dispose sql.DisposeFunc
 	Child   sql.Expression
+	seenNil bool
 }
 
+var _ sql.Expression = (*DistinctExpression)(nil)
 var _ sql.Disposable = (*DistinctExpression)(nil)
+var _ sql.CollationCoercible = (*DistinctExpression)(nil)
 
 func NewDistinctExpression(e sql.Expression) *DistinctExpression {
 	return &DistinctExpression{
@@ -29,16 +33,36 @@ func (de *DistinctExpression) seenValue(ctx *sql.Context, value interface{}) (bo
 		de.dispose = dispose
 	}
 
-	hash, err := hashstructure.Hash(value, nil)
+	// nil values can't be hashed, so we need a member variable to track them
+	if value == nil {
+		if de.seenNil {
+			return false, nil
+		}
+		de.seenNil = true
+		return true, nil
+	}
+
+	v, _, err := types.Text.Convert(ctx, value)
 	if err != nil {
 		return false, err
 	}
+	str, ok := v.(string)
+	if !ok {
+		return false, fmt.Errorf("distinct unable to hash value: %s", err)
+	}
 
-	if _, err := de.seen.Get(hash); err == nil {
+	hash := xxhash.New()
+	_, err = hash.WriteString(str)
+	if err != nil {
+		return false, err
+	}
+	h := hash.Sum64()
+
+	if _, err = de.seen.Get(h); err == nil {
 		return false, nil
 	}
 
-	if err := de.seen.Put(hash, struct{}{}); err != nil {
+	if err = de.seen.Put(h, struct{}{}); err != nil {
 		return false, err
 	}
 
@@ -52,6 +76,7 @@ func (de *DistinctExpression) Dispose() {
 
 	de.dispose = nil
 	de.seen = nil
+	de.seenNil = false
 }
 
 func (de *DistinctExpression) Resolved() bool {
@@ -64,6 +89,11 @@ func (de *DistinctExpression) String() string {
 
 func (de *DistinctExpression) Type() sql.Type {
 	return de.Child.Type()
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (de *DistinctExpression) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, de.Child)
 }
 
 func (de *DistinctExpression) IsNullable() bool {
@@ -99,9 +129,5 @@ func (de *DistinctExpression) WithChildren(children ...sql.Expression) (sql.Expr
 		return nil, fmt.Errorf("DistinctExpression has an invalid number of children")
 	}
 
-	return &DistinctExpression{
-		seen:    nil,
-		dispose: nil,
-		Child:   children[0],
-	}, nil
+	return &DistinctExpression{Child: children[0]}, nil
 }

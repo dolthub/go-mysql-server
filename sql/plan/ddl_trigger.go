@@ -16,8 +16,6 @@ package plan
 
 import (
 	"fmt"
-	"io"
-	"sync"
 	"time"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -43,7 +41,11 @@ type CreateTrigger struct {
 	BodyString          string
 	CreatedAt           time.Time
 	Definer             string
+	SqlMode             string
 }
+
+var _ sql.Node = (*CreateTrigger)(nil)
+var _ sql.CollationCoercible = (*CreateTrigger)(nil)
 
 func NewCreateTrigger(triggerDb sql.Database,
 	triggerName,
@@ -57,7 +59,7 @@ func NewCreateTrigger(triggerDb sql.Database,
 	createdAt time.Time,
 	definer string) *CreateTrigger {
 	return &CreateTrigger{
-		ddlNode:             ddlNode{db: triggerDb},
+		ddlNode:             ddlNode{Db: triggerDb},
 		TriggerName:         triggerName,
 		TriggerTime:         triggerTime,
 		TriggerEvent:        triggerEvent,
@@ -72,12 +74,12 @@ func NewCreateTrigger(triggerDb sql.Database,
 }
 
 func (c *CreateTrigger) Database() sql.Database {
-	return c.db
+	return c.Db
 }
 
 func (c *CreateTrigger) WithDatabase(database sql.Database) (sql.Node, error) {
 	ct := *c
-	ct.db = database
+	ct.Db = database
 	return &ct, nil
 }
 
@@ -86,8 +88,12 @@ func (c *CreateTrigger) Resolved() bool {
 	return c.ddlNode.Resolved() && c.Table.Resolved()
 }
 
+func (c *CreateTrigger) IsReadOnly() bool {
+	return false
+}
+
 func (c *CreateTrigger) Schema() sql.Schema {
-	return nil
+	return types.OkResultSchema
 }
 
 func (c *CreateTrigger) Children() []sql.Node {
@@ -104,10 +110,9 @@ func (c *CreateTrigger) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &nc, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (c *CreateTrigger) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(GetDatabaseName(c.Table), getTableName(c.Table), "", sql.PrivilegeType_Trigger))
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*CreateTrigger) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func (c *CreateTrigger) String() string {
@@ -124,51 +129,6 @@ func (c *CreateTrigger) DebugString() string {
 		order = fmt.Sprintf("%s %s ", c.TriggerOrder.PrecedesOrFollows, c.TriggerOrder.OtherTriggerName)
 	}
 	return fmt.Sprintf("CREATE TRIGGER %s %s %s ON %s FOR EACH ROW %s%s", c.TriggerName, c.TriggerTime, c.TriggerEvent, sql.DebugString(c.Table), order, sql.DebugString(c.Body))
-}
-
-type createTriggerIter struct {
-	once       sync.Once
-	definition sql.TriggerDefinition
-	db         sql.Database
-	ctx        *sql.Context
-}
-
-func (c *createTriggerIter) Next(ctx *sql.Context) (sql.Row, error) {
-	run := false
-	c.once.Do(func() {
-		run = true
-	})
-
-	if !run {
-		return nil, io.EOF
-	}
-
-	tdb, ok := c.db.(sql.TriggerDatabase)
-	if !ok {
-		return nil, sql.ErrTriggersNotSupported.New(c.db.Name())
-	}
-
-	err := tdb.CreateTrigger(ctx, c.definition)
-	if err != nil {
-		return nil, err
-	}
-
-	return sql.Row{types.NewOkResult(0)}, nil
-}
-
-func (c *createTriggerIter) Close(*sql.Context) error {
-	return nil
-}
-
-func (c *CreateTrigger) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return &createTriggerIter{
-		definition: sql.TriggerDefinition{
-			Name:            c.TriggerName,
-			CreateStatement: c.CreateTriggerString,
-			CreatedAt:       c.CreatedAt,
-		},
-		db: c.db,
-	}, nil
 }
 
 // OrderTriggers is a utility method that first sorts triggers into their precedence. It then splits the triggers into

@@ -44,6 +44,19 @@ type CharsetCollationEngineTestQuery struct {
 // engine. Return values should all have the `utf8mb4` encoding, as it's returning the internal encoding type.
 var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 	{
+		Name: "Uppercase and lowercase collations",
+		Queries: []CharsetCollationEngineTestQuery{
+			{
+				Query:    "CREATE TABLE test1 (v1 VARCHAR(255) COLLATE utf16_unicode_ci, v2 VARCHAR(255) COLLATE UTF16_UNICODE_CI);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "CREATE TABLE test2 (v1 VARCHAR(255) CHARACTER SET utf16, v2 VARCHAR(255) CHARACTER SET UTF16);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+		},
+	},
+	{
 		Name: "Insert multiple character sets",
 		SetUpScript: []string{
 			"CREATE TABLE test (v1 VARCHAR(255) COLLATE utf16_unicode_ci);",
@@ -117,15 +130,11 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 				ErrKind: sql.ErrCharSetNotYetImplementedTemp,
 			},
 			{
-				Query:    "CREATE TABLE test3 (pk BIGINT PRIMARY KEY, v1 VARCHAR(255) CHARACTER SET utf16);",
+				Query:    "CREATE TABLE test3 (pk BIGINT PRIMARY KEY, v1 VARCHAR(255) CHARACTER SET utf8mb4);",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:   "ALTER TABLE test3 MODIFY COLUMN v1 VARCHAR(255) COLLATE utf16_croatian_ci;",
-				ErrKind: sql.ErrCollationNotYetImplementedTemp,
-			},
-			{
-				Query:   "CREATE TABLE test4 (pk BIGINT PRIMARY KEY, v1 VARCHAR(255) COLLATE utf16_croatian_ci);",
+				Query:   "ALTER TABLE test3 MODIFY COLUMN v1 VARCHAR(255) COLLATE utf8mb4_sr_latn_0900_as_cs;",
 				ErrKind: sql.ErrCollationNotYetImplementedTemp,
 			},
 		},
@@ -297,19 +306,19 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			{
 				Query: "SHOW CREATE TABLE test1;",
 				Expected: []sql.Row{
-					{"test1", "CREATE TABLE `test1` (\n  `pk` bigint NOT NULL,\n  `v1` varchar(255) CHARACTER SET utf16 COLLATE utf16_unicode_ci,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf16 COLLATE=utf16_unicode_ci"},
+					{"test1", "CREATE TABLE `test1` (\n  `pk` bigint NOT NULL,\n  `v1` varchar(255),\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf16 COLLATE=utf16_unicode_ci"},
 				},
 			},
 			{
 				Query: "SHOW CREATE TABLE test2;",
 				Expected: []sql.Row{
-					{"test2", "CREATE TABLE `test2` (\n  `pk` bigint NOT NULL,\n  `v1` varchar(100) COLLATE utf8mb4_unicode_ci,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"},
+					{"test2", "CREATE TABLE `test2` (\n  `pk` bigint NOT NULL,\n  `v1` varchar(100),\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"},
 				},
 			},
 			{
 				Query: "SHOW CREATE TABLE test3;",
 				Expected: []sql.Row{
-					{"test3", "CREATE TABLE `test3` (\n  `pk` bigint NOT NULL,\n  `v1` varchar(255) COLLATE utf8mb4_unicode_ci,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"},
+					{"test3", "CREATE TABLE `test3` (\n  `pk` bigint NOT NULL,\n  `v1` varchar(255),\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"},
 				},
 			},
 			{
@@ -327,7 +336,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			{
 				Query: "SHOW CREATE TABLE test3;",
 				Expected: []sql.Row{
-					{"test3", "CREATE TABLE `test3` (\n  `pk` bigint NOT NULL,\n  `v1` varchar(255) COLLATE utf8mb4_unicode_ci,\n  `v2` varchar(255) COLLATE utf8mb4_unicode_ci,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"},
+					{"test3", "CREATE TABLE `test3` (\n  `pk` bigint NOT NULL,\n  `v1` varchar(255),\n  `v2` varchar(255),\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"},
 				},
 			},
 			{
@@ -339,7 +348,47 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			{
 				Query: "SHOW CREATE TABLE test2;",
 				Expected: []sql.Row{
-					{"test2", "CREATE TABLE `test2` (\n  `pk` bigint NOT NULL,\n  `v1` varchar(220) COLLATE utf8mb4_unicode_ci,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"},
+					{"test2", "CREATE TABLE `test2` (\n  `pk` bigint NOT NULL,\n  `v1` varchar(220),\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"},
+				},
+			},
+			{
+				Query: "ALTER TABLE test2 CHARACTER SET latin1 COLLATE utf8mb4_bin;",
+				Error: true,
+			},
+			{
+				Query: "ALTER TABLE test2 COLLATE utf8mb4_bin;",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "ALTER TABLE test2 ADD COLUMN v2 VARCHAR(255);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "REPLACE INTO test2 VALUES (1, 'abc', 'abc'), (2, 'ABC', 'ABC'), (3, 'aBc', 'aBc'), (4, 'AbC', 'AbC');",
+				Expected: []sql.Row{
+					{types.NewOkResult(8)},
+				},
+			},
+			{
+				Query: "SELECT v1, pk FROM test2 WHERE v1 <= 'aBc' ORDER BY v1, pk;",
+				Expected: []sql.Row{
+					{"abc", int64(1)}, {"ABC", int64(2)}, {"aBc", int64(3)}, {"AbC", int64(4)},
+				},
+			},
+			{
+				Query: "SELECT v2, pk FROM test2 WHERE v2 <= 'aBc' ORDER BY v2, pk;",
+				Expected: []sql.Row{
+					{"ABC", int64(2)}, {"AbC", int64(4)}, {"aBc", int64(3)},
+				},
+			},
+			{
+				Query: "SHOW CREATE TABLE test2;",
+				Expected: []sql.Row{
+					{"test2", "CREATE TABLE `test2` (\n  `pk` bigint NOT NULL,\n  `v1` varchar(220) COLLATE utf8mb4_unicode_ci,\n  `v2` varchar(255),\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin"},
 				},
 			},
 		},
@@ -367,6 +416,151 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			{
 				Query:   "SELECT 'a' COLLATE utf8mb4_bin;",
 				ErrKind: sql.ErrCollationInvalidForCharSet,
+			},
+		},
+	},
+	{
+		Name: "SET validates character set and collation variables",
+		Queries: []CharsetCollationEngineTestQuery{
+			{
+				Query:   "SET character_set_client = 'am_i_wrong';",
+				ErrKind: sql.ErrCharSetUnknown,
+			},
+			{
+				Query:   "SET character_set_connection = 'to_believe';",
+				ErrKind: sql.ErrCharSetUnknown,
+			},
+			{
+				Query:   "SET character_set_results = 'in_crusty_cheese';",
+				ErrKind: sql.ErrCharSetUnknown,
+			},
+			{
+				Query:   "SET collation_connection = 'is_it_wrong';",
+				ErrKind: sql.ErrCollationUnknown,
+			},
+			{
+				Query:   "SET collation_database = 'to_believe';",
+				ErrKind: sql.ErrCollationUnknown,
+			},
+			{
+				Query:   "SET collation_server = 'in_deez';",
+				ErrKind: sql.ErrCollationUnknown,
+			},
+			{
+				Query:   "SET NAMES things;",
+				ErrKind: sql.ErrCharSetUnknown,
+			},
+		},
+	},
+	{
+		Name: "setting charset/collation sets the other",
+		Queries: []CharsetCollationEngineTestQuery{
+			{
+				Query: "select @@session.character_set_connection, @@session.collation_connection;",
+				Expected: []sql.Row{
+					{"utf8mb4", "utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query:    "set @@session.character_set_connection = 'latin1';",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "select @@session.character_set_connection, @@session.collation_connection;",
+				Expected: []sql.Row{
+					{"latin1", "latin1_swedish_ci"},
+				},
+			},
+			{
+				Query:    "set @@session.collation_connection = 'utf8mb4_0900_bin';",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "select @@session.character_set_connection, @@session.collation_connection;",
+				Expected: []sql.Row{
+					{"utf8mb4", "utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Query: "select @@global.character_set_connection, @@global.collation_connection;",
+				Expected: []sql.Row{
+					{"utf8mb4", "utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query:    "set @@global.character_set_connection = 'latin1';",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "select @@global.character_set_connection, @@global.collation_connection;",
+				Expected: []sql.Row{
+					{"latin1", "latin1_swedish_ci"},
+				},
+			},
+			{
+				Query:    "set @@global.collation_connection = 'utf8mb4_0900_bin';",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "select @@global.character_set_connection, @@global.collation_connection;",
+				Expected: []sql.Row{
+					{"utf8mb4", "utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Query: "select @@session.character_set_server, @@session.collation_server;",
+				Expected: []sql.Row{
+					{"utf8mb4", "utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query:    "set @@session.character_set_server = 'latin1';",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "select @@session.character_set_server, @@session.collation_server;",
+				Expected: []sql.Row{
+					{"latin1", "latin1_swedish_ci"},
+				},
+			},
+			{
+				Query:    "set @@session.collation_server = 'utf8mb4_0900_bin';",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "select @@session.character_set_server, @@session.collation_server;",
+				Expected: []sql.Row{
+					{"utf8mb4", "utf8mb4_0900_bin"},
+				},
+			},
+
+			{
+				Query: "select @@global.character_set_server, @@global.collation_server;",
+				Expected: []sql.Row{
+					{"utf8mb4", "utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query:    "set @@global.character_set_server = 'latin1';",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "select @@global.character_set_server, @@global.collation_server;",
+				Expected: []sql.Row{
+					{"latin1", "latin1_swedish_ci"},
+				},
+			},
+			{
+				Query:    "set @@global.collation_server = 'utf8mb4_0900_bin';",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "select @@global.character_set_server, @@global.collation_server;",
+				Expected: []sql.Row{
+					{"utf8mb4", "utf8mb4_0900_bin"},
+				},
 			},
 		},
 	},
@@ -410,6 +604,10 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 				Expected: []sql.Row{
 					{int64(2), uint16(2)},
 				},
+			},
+			{
+				Query: "create table t (e enum('abc', 'ABC') collate utf8mb4_0900_ai_ci))",
+				Error: true,
 			},
 		},
 	},
@@ -502,7 +700,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			},
 			{
 				Query:    "SET collation_connection = 'utf8mb4_0900_bin';",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "SELECT COUNT(*) FROM test WHERE v1 LIKE 'ABC';",
@@ -562,7 +760,7 @@ var CharsetCollationEngineTests = []CharsetCollationEngineTest{
 			},
 			{
 				Query:    "SET collation_connection = 'utf8mb4_0900_bin';",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "SELECT 'abc' LIKE 'ABC';",

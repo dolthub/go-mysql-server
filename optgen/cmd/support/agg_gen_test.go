@@ -9,22 +9,25 @@ import (
 
 func TestAggGen(t *testing.T) {
 	test := struct {
-		defines  []AggDef
+		defines  AggDefs
 		expected string
 	}{
-		defines: []AggDef{
-			{
-				Name:    "Test",
-				Desc:    "Test description",
-				RetType: "sql.Float64",
+		defines: AggDefs{
+			[]AggDef{
+				{
+					Name:    "Test",
+					Desc:    "Test description",
+					RetType: "sql.Float64",
+				},
 			},
 		},
 		expected: `
-        import (
+         import (
             "fmt"
-            "github.com/gabereiser/go-mysql-server/sql"
-            "github.com/gabereiser/go-mysql-server/sql/expression"
-            "github.com/gabereiser/go-mysql-server/sql/transform"
+            "github.com/dolthub/go-mysql-server/sql/types"
+            "github.com/dolthub/go-mysql-server/sql"
+            "github.com/dolthub/go-mysql-server/sql/expression"
+            "github.com/dolthub/go-mysql-server/sql/transform"
         )
 
         type Test struct{
@@ -75,14 +78,19 @@ func TestAggGen(t *testing.T) {
           return fmt.Sprintf("TEST(%s)", sql.DebugString(a.Child))
         }
 
-        func (a *Test) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
-            res, err := a.unaryAggBase.WithWindow(window)
-            return &Test{unaryAggBase: *res.(*unaryAggBase)}, err
+        func (a *Test) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
+            res := a.unaryAggBase.WithWindow(window)
+            return &Test{unaryAggBase: *res.(*unaryAggBase)}
         }
 
         func (a *Test) WithChildren(children ...sql.Expression) (sql.Expression, error) {
             res, err := a.unaryAggBase.WithChildren(children...)
             return &Test{unaryAggBase: *res.(*unaryAggBase)}, err
+        }
+
+        func (a *Test) WithId(id sql.ColumnId) sql.IdExpression {
+            res := a.unaryAggBase.WithId(id)
+            return &Test{unaryAggBase: *res.(*unaryAggBase)}
         }
 
         func (a *Test) NewBuffer() (sql.AggregationBuffer, error) {

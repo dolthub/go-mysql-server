@@ -157,7 +157,7 @@ func (i *WindowPartitionIter) Next(ctx *sql.Context) (sql.Row, error) {
 	return i.output[i.pos], nil
 }
 
-// materializeInput empties the child iterator int a buffer and sorts by (WPK, WSK). Returns
+// materializeInput empties the child iterator into a buffer and sorts by (WPK, WSK). Returns
 // a sorted sql.WindowBuffer and a list of original row indices for resorting.
 func (i *WindowPartitionIter) materializeInput(ctx *sql.Context) (sql.WindowBuffer, []int, error) {
 	input := make(sql.WindowBuffer, 0)
@@ -275,7 +275,11 @@ func (i *WindowPartitionIter) compute(ctx *sql.Context) (sql.Row, error) {
 				return nil, err
 			}
 		}
-		row[j] = agg.fn.Compute(ctx, interval, i.input)
+		v, err := agg.fn.Compute(ctx, interval, i.input)
+		if err != nil {
+			return nil, err
+		}
+		row[j] = v
 	}
 
 	// TODO: move sort by above aggregation
@@ -369,7 +373,7 @@ func isNewPartition(ctx *sql.Context, partitionBy []sql.Expression, last sql.Row
 	}
 
 	for i, expr := range partitionBy {
-		cmp, err := expr.Type().Compare(lastExp[i], thisExp[i])
+		cmp, err := expr.Type().Compare(ctx, lastExp[i], thisExp[i])
 		if err != nil {
 			return false, err
 		}

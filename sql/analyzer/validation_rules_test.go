@@ -17,15 +17,17 @@ package analyzer
 import (
 	"testing"
 
-	"github.com/gabereiser/go-mysql-server/memory"
-	"github.com/gabereiser/go-mysql-server/sql"
-	"github.com/gabereiser/go-mysql-server/sql/expression"
-	"github.com/gabereiser/go-mysql-server/sql/expression/function"
-	"github.com/gabereiser/go-mysql-server/sql/expression/function/aggregation"
-	"github.com/gabereiser/go-mysql-server/sql/plan"
-	"github.com/gabereiser/go-mysql-server/sql/types"
-
 	"github.com/stretchr/testify/require"
+
+	"github.com/dolthub/go-mysql-server/memory"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
+	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 func TestValidateResolved(t *testing.T) {
@@ -33,10 +35,10 @@ func TestValidateResolved(t *testing.T) {
 
 	vr := getValidationRule(validateResolvedId)
 
-	_, _, err := vr.Apply(sql.NewEmptyContext(), nil, dummyNode{true}, nil, DefaultRuleSelector)
+	_, _, err := vr.Apply(sql.NewEmptyContext(), nil, dummyNode{true}, nil, DefaultRuleSelector, nil)
 	require.NoError(err)
 
-	_, _, err = vr.Apply(sql.NewEmptyContext(), nil, dummyNode{false}, nil, DefaultRuleSelector)
+	_, _, err = vr.Apply(sql.NewEmptyContext(), nil, dummyNode{false}, nil, DefaultRuleSelector, nil)
 	require.Error(err)
 }
 
@@ -45,26 +47,27 @@ func TestValidateOrderBy(t *testing.T) {
 
 	vr := getValidationRule(validateOrderById)
 
-	_, _, err := vr.Apply(sql.NewEmptyContext(), nil, dummyNode{true}, nil, DefaultRuleSelector)
+	_, _, err := vr.Apply(sql.NewEmptyContext(), nil, dummyNode{true}, nil, DefaultRuleSelector, nil)
 	require.NoError(err)
-	_, _, err = vr.Apply(sql.NewEmptyContext(), nil, dummyNode{false}, nil, DefaultRuleSelector)
+	_, _, err = vr.Apply(sql.NewEmptyContext(), nil, dummyNode{false}, nil, DefaultRuleSelector, nil)
 	require.NoError(err)
 
 	_, _, err = vr.Apply(sql.NewEmptyContext(), nil, plan.NewSort(
 		[]sql.SortField{{Column: aggregation.NewCount(nil), Order: sql.Descending}},
 		nil,
-	), nil, DefaultRuleSelector)
+	), nil, DefaultRuleSelector, nil)
 	require.Error(err)
 }
 
 func TestValidateGroupBy(t *testing.T) {
+	variables.InitSystemVariables()
 	require := require.New(t)
 
 	vr := getValidationRule(validateGroupById)
 
-	_, _, err := vr.Apply(sql.NewEmptyContext(), nil, dummyNode{true}, nil, DefaultRuleSelector)
+	_, _, err := vr.Apply(sql.NewEmptyContext(), nil, dummyNode{true}, nil, DefaultRuleSelector, nil)
 	require.NoError(err)
-	_, _, err = vr.Apply(sql.NewEmptyContext(), nil, dummyNode{false}, nil, DefaultRuleSelector)
+	_, _, err = vr.Apply(sql.NewEmptyContext(), nil, dummyNode{false}, nil, DefaultRuleSelector, nil)
 	require.NoError(err)
 
 	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
@@ -72,7 +75,11 @@ func TestValidateGroupBy(t *testing.T) {
 		{Name: "col2", Type: types.Int64},
 	})
 
-	child := memory.NewTable("test", childSchema, nil)
+	db := memory.NewDatabase("db")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
+	child := memory.NewTable(db, "test", childSchema, nil)
 
 	rows := []sql.Row{
 		sql.NewRow("col1_1", int64(1111)),
@@ -83,7 +90,7 @@ func TestValidateGroupBy(t *testing.T) {
 	}
 
 	for _, r := range rows {
-		require.NoError(child.Insert(sql.NewEmptyContext(), r))
+		require.NoError(child.Insert(ctx, r))
 	}
 
 	p := plan.NewGroupBy(
@@ -98,7 +105,7 @@ func TestValidateGroupBy(t *testing.T) {
 		plan.NewResolvedTable(child, nil, nil),
 	)
 
-	_, _, err = vr.Apply(sql.NewEmptyContext(), nil, p, nil, DefaultRuleSelector)
+	_, _, err = vr.Apply(sql.NewEmptyContext(), nil, p, nil, DefaultRuleSelector, nil)
 	require.NoError(err)
 }
 
@@ -106,9 +113,9 @@ func TestValidateGroupByErr(t *testing.T) {
 	require := require.New(t)
 	vr := getValidationRule(validateGroupById)
 
-	_, _, err := vr.Apply(sql.NewEmptyContext(), nil, dummyNode{true}, nil, DefaultRuleSelector)
+	_, _, err := vr.Apply(sql.NewEmptyContext(), nil, dummyNode{true}, nil, DefaultRuleSelector, nil)
 	require.NoError(err)
-	_, _, err = vr.Apply(sql.NewEmptyContext(), nil, dummyNode{false}, nil, DefaultRuleSelector)
+	_, _, err = vr.Apply(sql.NewEmptyContext(), nil, dummyNode{false}, nil, DefaultRuleSelector, nil)
 	require.NoError(err)
 
 	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
@@ -116,7 +123,11 @@ func TestValidateGroupByErr(t *testing.T) {
 		{Name: "col2", Type: types.Int64},
 	})
 
-	child := memory.NewTable("test", childSchema, nil)
+	db := memory.NewDatabase("db")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
+	child := memory.NewTable(db, "test", childSchema, nil)
 
 	rows := []sql.Row{
 		sql.NewRow("col1_1", int64(1111)),
@@ -127,7 +138,7 @@ func TestValidateGroupByErr(t *testing.T) {
 	}
 
 	for _, r := range rows {
-		require.NoError(child.Insert(sql.NewEmptyContext(), r))
+		require.NoError(child.Insert(ctx, r))
 	}
 
 	p := plan.NewGroupBy(
@@ -141,13 +152,17 @@ func TestValidateGroupByErr(t *testing.T) {
 		plan.NewResolvedTable(child, nil, nil),
 	)
 
-	err = sql.SystemVariables.SetGlobal("sql_mode", "STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY")
+	err = sql.SystemVariables.SetGlobal(ctx, "sql_mode", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES")
 	require.NoError(err)
-	_, _, err = vr.Apply(sql.NewEmptyContext(), nil, p, nil, DefaultRuleSelector)
+	_, _, err = vr.Apply(ctx, nil, p, nil, DefaultRuleSelector, nil)
 	require.Error(err)
 }
 
 func TestValidateSchemaSource(t *testing.T) {
+	db := memory.NewDatabase("db")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
 	testCases := []struct {
 		name string
 		node sql.Node
@@ -160,7 +175,7 @@ func TestValidateSchemaSource(t *testing.T) {
 		},
 		{
 			"table with valid schema",
-			plan.NewResolvedTable(memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
+			plan.NewResolvedTable(memory.NewTable(db, "mytable", sql.NewPrimaryKeySchema(sql.Schema{
 				{Name: "foo", Source: "mytable"},
 				{Name: "bar", Source: "mytable"},
 			}), nil), nil, nil),
@@ -168,7 +183,7 @@ func TestValidateSchemaSource(t *testing.T) {
 		},
 		{
 			"table with invalid schema",
-			plan.NewResolvedTable(memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
+			plan.NewResolvedTable(memory.NewTable(db, "mytable", sql.NewPrimaryKeySchema(sql.Schema{
 				{Name: "foo", Source: ""},
 				{Name: "bar", Source: "something"},
 			}), nil), nil, nil),
@@ -176,7 +191,7 @@ func TestValidateSchemaSource(t *testing.T) {
 		},
 		{
 			"table alias with table",
-			plan.NewTableAlias("foo", plan.NewResolvedTable(memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
+			plan.NewTableAlias("foo", plan.NewResolvedTable(memory.NewTable(db, "mytable", sql.NewPrimaryKeySchema(sql.Schema{
 				{Name: "foo", Source: "mytable"},
 			}), nil), nil, nil)),
 			true,
@@ -201,19 +216,23 @@ func TestValidateSchemaSource(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
-			_, _, err := rule.Apply(sql.NewEmptyContext(), nil, tt.node, nil, DefaultRuleSelector)
+			_, _, err := rule.Apply(ctx, nil, tt.node, nil, DefaultRuleSelector, nil)
 			if tt.ok {
 				require.NoError(err)
 			} else {
 				require.Error(err)
-				require.True(ErrValidationSchemaSource.Is(err))
+				require.True(analyzererrors.ErrValidationSchemaSource.Is(err))
 			}
 		})
 	}
 }
 
 func TestValidateUnionSchemasMatch(t *testing.T) {
-	table := plan.NewResolvedTable(memory.NewTable("mytable", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("db")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
+	table := plan.NewResolvedTable(memory.NewTable(db, "mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "foo", Source: "mytable", Type: types.Text},
 		{Name: "bar", Source: "mytable", Type: types.Int64},
 		{Name: "rab", Source: "mytable", Type: types.Text},
@@ -238,91 +257,115 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 		},
 		{
 			"top-level union with matching schemas",
-			plan.NewUnion(plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetField(0, types.Text, "bar", false),
-					expression.NewGetField(1, types.Int64, "baz", false),
-				},
-				table,
-			), plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetField(2, types.Text, "rab", false),
-					expression.NewGetField(3, types.Int64, "zab", false),
-				},
-				table,
-			), false, nil, nil),
+			plan.NewSetOp(
+				plan.UnionType,
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetField(0, types.Text, "bar", false),
+						expression.NewGetField(1, types.Int64, "baz", false),
+					},
+					table,
+				),
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetField(2, types.Text, "rab", false),
+						expression.NewGetField(3, types.Int64, "zab", false),
+					},
+					table,
+				),
+				false, nil, nil, nil,
+			),
 			true,
 		},
 		{
 			"top-level union with longer left schema",
-			plan.NewUnion(plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetField(0, types.Text, "bar", false),
-					expression.NewGetField(1, types.Int64, "baz", false),
-					expression.NewGetField(4, types.Boolean, "quuz", false),
-				},
-				table,
-			), plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetField(2, types.Text, "rab", false),
-					expression.NewGetField(3, types.Int64, "zab", false),
-				},
-				table,
-			), false, nil, nil),
+			plan.NewSetOp(
+				plan.UnionType,
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetField(0, types.Text, "bar", false),
+						expression.NewGetField(1, types.Int64, "baz", false),
+						expression.NewGetField(4, types.Boolean, "quuz", false),
+					},
+					table,
+				),
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetField(2, types.Text, "rab", false),
+						expression.NewGetField(3, types.Int64, "zab", false),
+					},
+					table,
+				),
+				false, nil, nil, nil,
+			),
 			false,
 		},
 		{
 			"top-level union with longer right schema",
-			plan.NewUnion(plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetField(0, types.Text, "bar", false),
-					expression.NewGetField(1, types.Int64, "baz", false),
-				},
-				table,
-			), plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetField(2, types.Text, "rab", false),
-					expression.NewGetField(3, types.Int64, "zab", false),
-					expression.NewGetField(4, types.Boolean, "quuz", false),
-				},
-				table,
-			), false, nil, nil),
+			plan.NewSetOp(
+				plan.UnionType,
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetField(0, types.Text, "bar", false),
+						expression.NewGetField(1, types.Int64, "baz", false),
+					},
+					table,
+				),
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetField(2, types.Text, "rab", false),
+						expression.NewGetField(3, types.Int64, "zab", false),
+						expression.NewGetField(4, types.Boolean, "quuz", false),
+					},
+					table,
+				),
+				false, nil, nil, nil,
+			),
 			false,
 		},
 		{
 			"top-level union with mismatched type in schema",
-			plan.NewUnion(plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetField(0, types.Text, "bar", false),
-					expression.NewGetField(1, types.Int64, "baz", false),
-				},
-				table,
-			), plan.NewProject(
-				[]sql.Expression{
-					expression.NewGetField(2, types.Text, "rab", false),
-					expression.NewGetField(3, types.Boolean, "zab", false),
-				},
-				table,
-			), false, nil, nil),
+			plan.NewSetOp(
+				plan.UnionType,
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetField(0, types.Text, "bar", false),
+						expression.NewGetField(1, types.Int64, "baz", false),
+					},
+					table,
+				),
+				plan.NewProject(
+					[]sql.Expression{
+						expression.NewGetField(2, types.Text, "rab", false),
+						expression.NewGetField(3, types.Boolean, "zab", false),
+					},
+					table,
+				),
+				false, nil, nil, nil,
+			),
 			false,
 		},
 		{
 			"subquery union",
 			plan.NewSubqueryAlias(
 				"aliased", "select bar, baz from mytable union select rab, zab from mytable",
-				plan.NewUnion(plan.NewProject(
-					[]sql.Expression{
-						expression.NewGetField(0, types.Text, "bar", false),
-						expression.NewGetField(1, types.Int64, "baz", false),
-					},
-					table,
-				), plan.NewProject(
-					[]sql.Expression{
-						expression.NewGetField(2, types.Text, "rab", false),
-						expression.NewGetField(3, types.Boolean, "zab", false),
-					},
-					table,
-				), false, nil, nil),
+				plan.NewSetOp(
+					plan.UnionType,
+					plan.NewProject(
+						[]sql.Expression{
+							expression.NewGetField(0, types.Text, "bar", false),
+							expression.NewGetField(1, types.Int64, "baz", false),
+						},
+						table,
+					),
+					plan.NewProject(
+						[]sql.Expression{
+							expression.NewGetField(2, types.Text, "rab", false),
+							expression.NewGetField(3, types.Boolean, "zab", false),
+						},
+						table,
+					),
+					false, nil, nil, nil),
 			),
 			false,
 		},
@@ -332,12 +375,12 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
-			_, _, err := rule.Apply(sql.NewEmptyContext(), nil, tt.node, nil, DefaultRuleSelector)
+			_, _, err := rule.Apply(ctx, nil, tt.node, nil, DefaultRuleSelector, nil)
 			if tt.ok {
 				require.NoError(err)
 			} else {
 				require.Error(err)
-				require.True(ErrUnionSchemasMatch.Is(err))
+				require.True(analyzererrors.ErrUnionSchemasMatch.Is(err))
 			}
 		})
 	}
@@ -440,11 +483,11 @@ func TestValidateOperands(t *testing.T) {
 		},
 	}
 
-	rule := getValidationRule(validateOperandsId)
+	rule := getValidationRule(ValidateOperandsId)
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
-			_, _, err := rule.Apply(sql.NewEmptyContext(), nil, tt.node, nil, DefaultRuleSelector)
+			_, _, err := rule.Apply(sql.NewEmptyContext(), nil, tt.node, nil, DefaultRuleSelector, nil)
 			if tt.ok {
 				require.NoError(err)
 			} else {
@@ -456,7 +499,11 @@ func TestValidateOperands(t *testing.T) {
 }
 
 func TestValidateIndexCreation(t *testing.T) {
-	table := memory.NewTable("foo", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("db")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
+	table := memory.NewTable(db, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo"},
 		{Name: "b", Source: "foo"},
 	}), nil)
@@ -471,8 +518,8 @@ func TestValidateIndexCreation(t *testing.T) {
 			plan.NewCreateIndex(
 				"idx", plan.NewResolvedTable(table, nil, nil),
 				[]sql.Expression{expression.NewEquals(
-					expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
-					expression.NewGetFieldWithTable(0, types.Int64, "bar", "b", false),
+					expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "foo", "a", false),
+					expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "bar", "b", false),
 				)},
 				"",
 				make(map[string]string),
@@ -484,8 +531,8 @@ func TestValidateIndexCreation(t *testing.T) {
 			plan.NewCreateIndex(
 				"idx", plan.NewResolvedTable(table, nil, nil),
 				[]sql.Expression{expression.NewEquals(
-					expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
-					expression.NewGetFieldWithTable(0, types.Int64, "foo", "c", false),
+					expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "foo", "a", false),
+					expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "foo", "c", false),
 				)},
 				"",
 				make(map[string]string),
@@ -497,8 +544,8 @@ func TestValidateIndexCreation(t *testing.T) {
 			plan.NewCreateIndex(
 				"idx", plan.NewResolvedTable(table, nil, nil),
 				[]sql.Expression{expression.NewEquals(
-					expression.NewGetFieldWithTable(0, types.Int64, "foo", "a", false),
-					expression.NewGetFieldWithTable(0, types.Int64, "foo", "b", false),
+					expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "foo", "a", false),
+					expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "foo", "b", false),
 				)},
 				"",
 				make(map[string]string),
@@ -511,12 +558,12 @@ func TestValidateIndexCreation(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
-			_, _, err := rule.Apply(sql.NewEmptyContext(), nil, tt.node, nil, DefaultRuleSelector)
+			_, _, err := rule.Apply(ctx, nil, tt.node, nil, DefaultRuleSelector, nil)
 			if tt.ok {
 				require.NoError(err)
 			} else {
 				require.Error(err)
-				require.True(ErrUnknownIndexColumns.Is(err))
+				require.True(analyzererrors.ErrUnknownIndexColumns.Is(err))
 			}
 		})
 	}
@@ -631,12 +678,13 @@ func TestValidateIntervalUsage(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
 
-			_, _, err := validateIntervalUsage(sql.NewEmptyContext(), nil, tt.node, nil, DefaultRuleSelector)
+			ctx := sql.NewEmptyContext()
+			_, _, err := validateIntervalUsage(ctx, nil, tt.node, nil, DefaultRuleSelector, nil)
 			if tt.ok {
 				require.NoError(err)
 			} else {
 				require.Error(err)
-				require.True(ErrIntervalInvalidUse.Is(err))
+				require.True(analyzererrors.ErrIntervalInvalidUse.Is(err))
 			}
 		})
 	}
@@ -646,12 +694,15 @@ func TestValidateSubqueryColumns(t *testing.T) {
 	t.Skip()
 
 	require := require.New(t)
-	ctx := sql.NewEmptyContext()
 
-	table := memory.NewTable("test", sql.NewPrimaryKeySchema(sql.Schema{
+	db := memory.NewDatabase("db")
+	pro := memory.NewDBProvider(db)
+	ctx := newContext(pro)
+
+	table := memory.NewTable(db, "test", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "foo", Type: types.Text},
 	}), nil)
-	subTable := memory.NewTable("subtest", sql.NewPrimaryKeySchema(sql.Schema{
+	subTable := memory.NewTable(db, "subtest", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "bar", Type: types.Text},
 	}), nil)
 
@@ -668,7 +719,7 @@ func TestValidateSubqueryColumns(t *testing.T) {
 		)), "select bar from subtest where foo > 1"),
 	}, plan.NewResolvedTable(table, nil, nil))
 
-	_, _, err := validateSubqueryColumns(ctx, nil, node, nil, DefaultRuleSelector)
+	_, _, err := validateSubqueryColumns(ctx, nil, node, nil, DefaultRuleSelector, nil)
 	require.NoError(err)
 
 	node = plan.NewProject([]sql.Expression{
@@ -683,9 +734,9 @@ func TestValidateSubqueryColumns(t *testing.T) {
 		)), "select bar from subtest where foo > 1"),
 	}, plan.NewResolvedTable(table, nil, nil))
 
-	_, _, err = validateSubqueryColumns(ctx, nil, node, nil, DefaultRuleSelector)
+	_, _, err = validateSubqueryColumns(ctx, nil, node, nil, DefaultRuleSelector, nil)
 	require.Error(err)
-	require.True(ErrSubqueryFieldIndex.Is(err))
+	require.True(analyzererrors.ErrSubqueryFieldIndex.Is(err))
 
 	node = plan.NewProject([]sql.Expression{
 		plan.NewSubquery(plan.NewProject(
@@ -696,21 +747,25 @@ func TestValidateSubqueryColumns(t *testing.T) {
 		), "select 1"),
 	}, dummyNode{true})
 
-	_, _, err = validateSubqueryColumns(ctx, nil, node, nil, DefaultRuleSelector)
+	_, _, err = validateSubqueryColumns(ctx, nil, node, nil, DefaultRuleSelector, nil)
 	require.NoError(err)
 
 }
 
 type dummyNode struct{ resolved bool }
 
+var _ sql.Node = dummyNode{}
+var _ sql.CollationCoercible = dummyNode{}
+
 func (n dummyNode) String() string                                   { return "dummynode" }
 func (n dummyNode) Resolved() bool                                   { return n.resolved }
+func (dummyNode) IsReadOnly() bool                                   { return true }
 func (dummyNode) Schema() sql.Schema                                 { return nil }
 func (dummyNode) Children() []sql.Node                               { return nil }
 func (dummyNode) RowIter(*sql.Context, sql.Row) (sql.RowIter, error) { return nil, nil }
 func (dummyNode) WithChildren(...sql.Node) (sql.Node, error)         { return nil, nil }
-func (dummyNode) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
+func (dummyNode) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func getValidationRule(id RuleId) Rule {

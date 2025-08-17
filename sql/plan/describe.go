@@ -15,16 +15,19 @@
 package plan
 
 import (
-	"io"
-	"strings"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
-	"github.com/gabereiser/go-mysql-server/sql"
+	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 // Describe is a node that describes its children.
 type Describe struct {
 	UnaryNode
 }
+
+var _ sql.Node = (*Describe)(nil)
+var _ sql.CollationCoercible = (*Describe)(nil)
 
 // NewDescribe creates a new Describe node.
 func NewDescribe(child sql.Node) *Describe {
@@ -42,9 +45,8 @@ func (d *Describe) Schema() sql.Schema {
 	}}
 }
 
-// RowIter implements the Node interface.
-func (d *Describe) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return &describeIter{schema: d.Child.Schema()}, nil
+func (d *Describe) IsReadOnly() bool {
+	return true
 }
 
 // WithChildren implements the Node interface.
@@ -56,9 +58,9 @@ func (d *Describe) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NewDescribe(children[0]), nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (d *Describe) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return d.Child.CheckPrivileges(ctx, opChecker)
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Describe) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func (d Describe) String() string {
@@ -68,33 +70,21 @@ func (d Describe) String() string {
 	return p.String()
 }
 
-type describeIter struct {
-	schema sql.Schema
-	i      int
-}
-
-func (i *describeIter) Next(ctx *sql.Context) (sql.Row, error) {
-	if i.i >= len(i.schema) {
-		return nil, io.EOF
-	}
-
-	f := i.schema[i.i]
-	i.i++
-	return sql.NewRow(f.Name, f.Type.String()), nil
-}
-
-func (i *describeIter) Close(*sql.Context) error {
-	return nil
-}
-
 // DescribeQuery returns the description of the query plan.
 type DescribeQuery struct {
-	child  sql.Node
-	Format string
+	UnaryNode
+	Format sql.DescribeOptions
 }
 
+var _ sql.Node = (*DescribeQuery)(nil)
+var _ sql.CollationCoercible = (*DescribeQuery)(nil)
+
 func (d *DescribeQuery) Resolved() bool {
-	return d.child.Resolved()
+	return d.Child.Resolved()
+}
+
+func (d *DescribeQuery) IsReadOnly() bool {
+	return true
 }
 
 func (d *DescribeQuery) Children() []sql.Node {
@@ -108,68 +98,81 @@ func (d *DescribeQuery) WithChildren(node ...sql.Node) (sql.Node, error) {
 	return d, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (d *DescribeQuery) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return d.child.CheckPrivileges(ctx, opChecker)
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*DescribeQuery) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // DescribeSchema is the schema returned by a DescribeQuery node.
 var DescribeSchema = sql.Schema{
+	{Name: "id", Type: types.Uint64},
+	{Name: "select_type", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 57)},
+	{Name: "table", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 192)},
+	{Name: "partitions", Type: types.Text},
+	{Name: "type", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 30)},
+	{Name: "possible_keys", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 12288)},
+	{Name: "key", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 192)},
+	{Name: "key_len", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 12288)},
+	{Name: "ref", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 3072)},
+	{Name: "rows", Type: types.Uint64},
+	{Name: "filtered", Type: types.Float64},
+	{Name: "Extra", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 765)},
+}
+
+// DescribePlanSchema is the schema returned by a DescribeQuery node.
+var DescribePlanSchema = sql.Schema{
 	{Name: "plan", Type: VarChar25000},
 }
 
 // NewDescribeQuery creates a new DescribeQuery node.
-func NewDescribeQuery(format string, child sql.Node) *DescribeQuery {
-	return &DescribeQuery{child, format}
+func NewDescribeQuery(format sql.DescribeOptions, child sql.Node) *DescribeQuery {
+	return &DescribeQuery{UnaryNode{Child: child}, format}
 }
 
 // Schema implements the Node interface.
 func (d *DescribeQuery) Schema() sql.Schema {
-	return DescribeSchema
+	if d.Format.Plan {
+		return DescribePlanSchema
+	} else {
+		return DescribeSchema
+	}
 }
 
-// RowIter implements the Node interface.
-func (d *DescribeQuery) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	var rows []sql.Row
-	var formatString string
-	if d.Format == "debug" {
-		formatString = sql.DebugString(d.child)
-	} else {
-		formatString = d.child.String()
-	}
+func (d *DescribeQuery) Describe(options sql.DescribeOptions) string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("DescribeQuery(format=%s)", d.Format)
+	options.Estimates = d.Format.Estimates || options.Estimates
+	options.Analyze = d.Format.Analyze || options.Analyze
+	options.Debug = d.Format.Debug || options.Debug
+	_ = pr.WriteChildren(sql.Describe(d.Child, options))
 
-	for _, l := range strings.Split(formatString, "\n") {
-		if strings.TrimSpace(l) != "" {
-			rows = append(rows, sql.NewRow(l))
-		}
-	}
-	return sql.RowsToRowIter(rows...), nil
+	return pr.String()
 }
 
 func (d *DescribeQuery) String() string {
-	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("DescribeQuery(format=%s)", d.Format)
-	if d.Format == "debug" {
-		_ = pr.WriteChildren(sql.DebugString(d.child))
-	} else {
-		_ = pr.WriteChildren(d.child.String())
-	}
-	return pr.String()
+	return d.Describe(sql.DescribeOptions{
+		Analyze:   false,
+		Estimates: false,
+		Debug:     false,
+	})
 }
 
 func (d *DescribeQuery) DebugString() string {
-	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("DescribeQuery(format=%s)", d.Format)
-	_ = pr.WriteChildren(sql.DebugString(d.child))
-	return pr.String()
+	return d.Describe(sql.DescribeOptions{
+		Analyze:   false,
+		Estimates: false,
+		Debug:     true,
+	})
 }
 
 // Query returns the query node being described
 func (d *DescribeQuery) Query() sql.Node {
-	return d.child
+	return d.Child
 }
 
 // WithQuery returns a copy of this node with the query node given
 func (d *DescribeQuery) WithQuery(child sql.Node) sql.Node {
-	return NewDescribeQuery(d.Format, child)
+	res := *d
+	res.Child = child
+	return &res
 }

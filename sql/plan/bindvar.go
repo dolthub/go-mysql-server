@@ -57,7 +57,7 @@ func fixBindings(expr sql.Expression, bindings map[string]sql.Expression) (sql.E
 			return expr, transform.SameTree, nil, nil
 		}
 		usedBindings[t.Name()] = true
-		return expression.NewGetFieldWithTable(e.Index(), val.Type().Promote(), e.Table(), e.Name(), val.IsNullable()), transform.NewTree, usedBindings, nil
+		return expression.NewGetFieldWithTable(e.Index(), int(e.TableId()), val.Type().Promote(), e.Database(), e.Table(), e.Name(), val.IsNullable()), transform.NewTree, usedBindings, nil
 	case *Subquery:
 		// *Subquery is a sql.Expression with a sql.Node not reachable
 		// by the visitor. Manually apply bindings to [Query] field.
@@ -135,4 +135,31 @@ func applyBindingsHelper(n sql.Node, bindings map[string]sql.Expression) (sql.No
 		return transform.NodeExprs(node, fixBindingsTransform)
 	})
 	return newN, same, usedBindings, err
+}
+
+func HasEmptyTable(n sql.Node) bool {
+	found := transform.InspectUp(n, func(n sql.Node) bool {
+		_, ok := n.(*EmptyTable)
+		return ok
+	})
+	if found {
+		return true
+	}
+	ne, ok := n.(sql.Expressioner)
+	if !ok {
+		return false
+	}
+	for _, e := range ne.Expressions() {
+		found := transform.InspectExpr(e, func(e sql.Expression) bool {
+			sq, ok := e.(*Subquery)
+			if ok {
+				return HasEmptyTable(sq.Query)
+			}
+			return false
+		})
+		if found {
+			return true
+		}
+	}
+	return false
 }

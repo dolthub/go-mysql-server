@@ -36,6 +36,7 @@ var _ sql.TableRenamer = Database{}
 var _ sql.TriggerDatabase = Database{}
 var _ sql.StoredProcedureDatabase = Database{}
 var _ sql.ViewDatabase = Database{}
+var _ sql.EventDatabase = Database{}
 
 // Name implements the interface sql.Database.
 func (d Database) Name() string {
@@ -76,7 +77,7 @@ func (d Database) GetTableNames(ctx *sql.Context) ([]string, error) {
 }
 
 // CreateTable implements the interface sql.TableCreator.
-func (d Database) CreateTable(ctx *sql.Context, name string, schema sql.PrimaryKeySchema, collation sql.CollationID) error {
+func (d Database) CreateTable(ctx *sql.Context, name string, schema sql.PrimaryKeySchema, collation sql.CollationID, comment string) error {
 	colStmts := make([]string, len(schema.Schema))
 	var primaryKeyCols []string
 	for i, col := range schema.Schema {
@@ -102,8 +103,8 @@ func (d Database) CreateTable(ctx *sql.Context, name string, schema sql.PrimaryK
 		primaryKey := fmt.Sprintf("  PRIMARY KEY (`%s`)", strings.Join(primaryKeyCols, "`,`"))
 		colStmts = append(colStmts, primaryKey)
 	}
-	return d.shim.Exec(d.name, fmt.Sprintf("CREATE TABLE `%s` (\n%s\n) ENGINE=InnoDB DEFAULT COLLATE=%s;",
-		name, strings.Join(colStmts, ",\n"), sql.Collation_Default.String()))
+	return d.shim.Exec(d.name, fmt.Sprintf("CREATE TABLE `%s` (\n%s\n) ENGINE=InnoDB DEFAULT COLLATE=%s COMMENT='%s';",
+		name, strings.Join(colStmts, ",\n"), sql.Collation_Default.String(), comment))
 }
 
 // DropTable implements the interface sql.TableDropper.
@@ -197,6 +198,74 @@ func (d Database) SaveStoredProcedure(ctx *sql.Context, spd sql.StoredProcedureD
 // DropStoredProcedure implements the interface sql.StoredProcedureDatabase.
 func (d Database) DropStoredProcedure(ctx *sql.Context, name string) error {
 	return d.shim.Exec(d.name, fmt.Sprintf("DROP PROCEDURE `%s`;", name))
+}
+
+// GetEvent implements sql.EventDatabase
+func (d Database) GetEvent(ctx *sql.Context, name string) (sql.EventDefinition, bool, error) {
+	name = strings.ToLower(name)
+	events, _, err := d.GetEvents(ctx)
+	if err != nil {
+		return sql.EventDefinition{}, false, err
+	}
+	for _, event := range events {
+		if name == strings.ToLower(event.Name) {
+			return event, true, nil
+		}
+	}
+	return sql.EventDefinition{}, false, nil
+}
+
+// GetEvents implements sql.EventDatabase
+func (d Database) GetEvents(_ *sql.Context) ([]sql.EventDefinition, interface{}, error) {
+	events, err := d.shim.QueryRows("", fmt.Sprintf("SHOW EVENTS WHERE Db = '%s';", d.name))
+	if err != nil {
+		return nil, nil, err
+	}
+	eventDefinition := make([]sql.EventDefinition, len(events))
+	for i, event := range events {
+		// Db, Name, Definer, Time Zone, Type, ...
+		eventStmt, err := d.shim.QueryRows("", fmt.Sprintf("SHOW CREATE EVENT `%s`.`%s`;", d.name, event[1]))
+		if err != nil {
+			return nil, nil, err
+		}
+		// Event, sql_mode, time_zone, Create Event, ...
+		eventDefinition[i] = sql.EventDefinition{
+			Name: eventStmt[0][0].(string),
+			// TODO: other fields should be added such as Created, LastAltered
+		}
+	}
+	// MySQL shim doesn't support event reloading, so token is always nil
+	return eventDefinition, nil, nil
+}
+
+// SaveEvent implements sql.EventDatabase
+func (d Database) SaveEvent(ctx *sql.Context, event sql.EventDefinition) (bool, error) {
+	return event.Status == sql.EventStatus_Enable.String(), d.shim.Exec(d.name, event.CreateEventStatement())
+}
+
+// DropEvent implements sql.EventDatabase
+func (d Database) DropEvent(ctx *sql.Context, name string) error {
+	return d.shim.Exec(d.name, fmt.Sprintf("DROP EVENT `%s`;", name))
+}
+
+// UpdateEvent implements sql.EventDatabase
+func (d Database) UpdateEvent(_ *sql.Context, originalName string, event sql.EventDefinition) (bool, error) {
+	err := d.shim.Exec(d.name, fmt.Sprintf("DROP EVENT `%s`;", originalName))
+	if err != nil {
+		return false, err
+	}
+	return event.Status == sql.EventStatus_Enable.String(), d.shim.Exec(d.name, event.CreateEventStatement())
+}
+
+// NeedsToReloadEvents implements sql.EventDatabase
+func (d Database) NeedsToReloadEvents(_ *sql.Context, _ interface{}) (bool, error) {
+	// mysqlshim does not support event reloading
+	return false, nil
+}
+
+// UpdateLastExecuted implements sql.EventDatabase
+func (d Database) UpdateLastExecuted(ctx *sql.Context, eventName string, lastExecuted time.Time) error {
+	return nil
 }
 
 // CreateView implements the interface sql.ViewDatabase.

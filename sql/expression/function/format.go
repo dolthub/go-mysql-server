@@ -36,6 +36,7 @@ type Format struct {
 }
 
 var _ sql.FunctionExpression = (*Format)(nil)
+var _ sql.CollationCoercible = (*Format)(nil)
 
 // NewFormat returns a new Format expression.
 func NewFormat(args ...sql.Expression) (sql.Expression, error) {
@@ -67,6 +68,11 @@ func (f *Format) Description() string {
 
 // Type implements the Expression interface.
 func (f *Format) Type() sql.Type { return types.LongText }
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Format) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return ctx.GetCollation(), 4
+}
 
 // IsNullable implements the Expression interface.
 func (f *Format) IsNullable() bool {
@@ -109,13 +115,13 @@ func (f *Format) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
-	numVal, err = types.Float64.Convert(numVal)
+	numVal, _, err = types.Float64.Convert(ctx, numVal)
 	if err != nil {
 		return nil, nil
 	}
 	numValue := numVal.(float64)
 
-	numDP, err = types.Float64.Convert(numDP)
+	numDP, _, err = types.Float64.Convert(ctx, numDP)
 	if err != nil {
 		return nil, nil
 	}

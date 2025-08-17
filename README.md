@@ -1,4 +1,6 @@
-# go-mysql-server
+<img height="240" src="./mascot.png"/>
+
+# A MySQL compatible database engine written in pure Go
 
 **go-mysql-server** is a data-source agnostic SQL engine and server
 which runs queries on data sources you provide, using the MySQL
@@ -10,7 +12,7 @@ implementing your own backend.
 versioning, is the main production database implementation of this
 package.  [Check
 out](https://docs.dolthub.com/introduction/what-is-dolt) that project
-for reference a implementation. Or, hop into the Dolt discord
+for a reference implementation. Or, hop into the Dolt Discord server
 [here](https://discord.com/invite/RFwfYpu) if you want to talk to the
 [core developers](https://www.dolthub.com/team) behind
 **go-mysql-server** and Dolt.
@@ -41,7 +43,7 @@ topic.
 1. Stand-in for MySQL in a golang test environment, using the built-in
    `memory` database implementation.
 
-2. Providing access to aribtrary data sources with SQL queries by
+2. Providing access to arbitrary data sources with SQL queries by
    implementing a handful of interfaces. The most complete real-world
    implementation is [Dolt](https://github.com/dolthub/dolt).
 
@@ -61,6 +63,37 @@ tests. Start the server using the code in the [_example
 directory](_example/main.go), also reproduced below.
 
 ```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/dolthub/vitess/go/vt/proto/query"
+
+	sqle "github.com/dolthub/go-mysql-server"
+	"github.com/dolthub/go-mysql-server/memory"
+	"github.com/dolthub/go-mysql-server/server"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
+)
+
+// This is an example of how to implement a MySQL server.
+// After running the example, you may connect to it using the following:
+//
+// > mysql --host=localhost --port=3306 --user=root mydb --execute="SELECT * FROM mytable;"
+// +----------+-------------------+-------------------------------+----------------------------+
+// | name     | email             | phone_numbers                 | created_at                 |
+// +----------+-------------------+-------------------------------+----------------------------+
+// | Jane Deo | janedeo@gmail.com | ["556-565-566","777-777-777"] | 2022-11-01 12:00:00.000001 |
+// | Jane Doe | jane@doe.com      | []                            | 2022-11-01 12:00:00.000001 |
+// | John Doe | john@doe.com      | ["555-555-555"]               | 2022-11-01 12:00:00.000001 |
+// | John Doe | johnalt@doe.com   | []                            | 2022-11-01 12:00:00.000001 |
+// +----------+-------------------+-------------------------------+----------------------------+
+//
+// The included MySQL client is used in this example, however any MySQL-compatible client will work.
+
 var (
 	dbName    = "mydb"
 	tableName = "mytable"
@@ -69,12 +102,16 @@ var (
 )
 
 func main() {
-	ctx := sql.NewEmptyContext()
-	engine := sqle.NewDefault(
-		memory.NewDBProvider(
-			createTestDatabase(ctx),
-		))
-	
+	pro := createTestDatabase()
+	engine := sqle.NewDefault(pro)
+
+	session := memory.NewSession(sql.NewBaseSession(), pro)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(session))
+	ctx.SetCurrentDatabase(dbName)
+
+	// This variable may be found in the "users_example.go" file. Please refer to that file for a walkthrough on how to
+	// set up the "mysql" database to allow user creation and user checking when establishing connections. This is set
+	// to false for this example, but feel free to play around with it and see how it works.
 	if enableUsers {
 		if err := enableUserAccounts(ctx, engine); err != nil {
 			panic(err)
@@ -85,34 +122,38 @@ func main() {
 		Protocol: "tcp",
 		Address:  fmt.Sprintf("%s:%d", address, port),
 	}
-
-    s, err := server.NewDefaultServer(config, engine)
+	s, err := server.NewServer(config, engine, sql.NewContext, memory.NewSessionBuilder(pro), nil)
 	if err != nil {
 		panic(err)
 	}
-	
-    if err = s.Start(); err != nil {
+	if err = s.Start(); err != nil {
 		panic(err)
 	}
 }
 
-func createTestDatabase(ctx *sql.Context) *memory.Database {
+func createTestDatabase() *memory.DbProvider {
 	db := memory.NewDatabase(dbName)
-	db.EnablePrimaryKeyIndexes()
-	table := memory.NewTable(tableName, sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "name", Type: sql.Text, Nullable: false, Source: tableName, PrimaryKey: true},
-		{Name: "email", Type: sql.Text, Nullable: false, Source: tableName, PrimaryKey: true},
-		{Name: "phone_numbers", Type: sql.JSON, Nullable: false, Source: tableName},
-		{Name: "created_at", Type: sql.Datetime, Nullable: false, Source: tableName},
+	db.BaseDatabase.EnablePrimaryKeyIndexes()
+
+	pro := memory.NewDBProvider(db)
+	session := memory.NewSession(sql.NewBaseSession(), pro)
+	ctx := sql.NewContext(context.Background(), sql.WithSession(session))
+
+	table := memory.NewTable(db, tableName, sql.NewPrimaryKeySchema(sql.Schema{
+		{Name: "name", Type: types.Text, Nullable: false, Source: tableName, PrimaryKey: true},
+		{Name: "email", Type: types.Text, Nullable: false, Source: tableName, PrimaryKey: true},
+		{Name: "phone_numbers", Type: types.JSON, Nullable: false, Source: tableName},
+		{Name: "created_at", Type: types.MustCreateDatetimeType(query.Type_DATETIME, 6), Nullable: false, Source: tableName},
 	}), db.GetForeignKeyCollection())
 	db.AddTable(tableName, table)
 
 	creationTime := time.Unix(0, 1667304000000001000).UTC()
-	_ = table.Insert(ctx, sql.NewRow("Jane Deo", "janedeo@gmail.com", sql.MustJSON(`["556-565-566", "777-777-777"]`), creationTime))
-	_ = table.Insert(ctx, sql.NewRow("Jane Doe", "jane@doe.com", sql.MustJSON(`[]`), creationTime))
-	_ = table.Insert(ctx, sql.NewRow("John Doe", "john@doe.com", sql.MustJSON(`["555-555-555"]`), creationTime))
-	_ = table.Insert(ctx, sql.NewRow("John Doe", "johnalt@doe.com", sql.MustJSON(`[]`), creationTime))
-	return db
+	_ = table.Insert(ctx, sql.NewRow("Jane Deo", "janedeo@gmail.com", types.MustJSON(`["556-565-566", "777-777-777"]`), creationTime))
+	_ = table.Insert(ctx, sql.NewRow("Jane Doe", "jane@doe.com", types.MustJSON(`[]`), creationTime))
+	_ = table.Insert(ctx, sql.NewRow("John Doe", "john@doe.com", types.MustJSON(`["555-555-555"]`), creationTime))
+	_ = table.Insert(ctx, sql.NewRow("John Doe", "johnalt@doe.com", types.MustJSON(`[]`), creationTime))
+
+	return pro
 }
 ```
 
@@ -173,6 +214,14 @@ implementing some interfaces. For detailed instructions, see the
 
 Are you building a database backend using **go-mysql-server**? We
 would like to hear from you and include you in this list.
+
+## Security Policy
+
+[go-mysql-server's security
+policy](https://github.com/dolthub/go-mysql-server/blob/main/SECURITY.md) is
+maintained in this repository. Please follow the disclosure instructions there.
+Please do not initially report security issues in this repository's public
+GitHub issues.
 
 ## Acknowledgements
 

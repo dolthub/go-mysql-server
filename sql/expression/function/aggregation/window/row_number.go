@@ -25,14 +25,28 @@ import (
 type RowNumber struct {
 	window *sql.WindowDefinition
 	pos    int
+	id     sql.ColumnId
 }
 
 var _ sql.FunctionExpression = (*RowNumber)(nil)
 var _ sql.WindowAggregation = (*RowNumber)(nil)
 var _ sql.WindowAdaptableExpression = (*RowNumber)(nil)
+var _ sql.CollationCoercible = (*RowNumber)(nil)
 
 func NewRowNumber() sql.Expression {
 	return &RowNumber{}
+}
+
+// Id implements sql.IdExpression
+func (r *RowNumber) Id() sql.ColumnId {
+	return r.id
+}
+
+// WithId implements sql.IdExpression
+func (r *RowNumber) WithId(id sql.ColumnId) sql.IdExpression {
+	ret := *r
+	ret.id = id
+	return &ret
 }
 
 // Description implements sql.FunctionExpression
@@ -80,6 +94,11 @@ func (r *RowNumber) Type() sql.Type {
 	return types.Int64
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*RowNumber) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
+}
+
 // IsNullable implements sql.Expression
 func (r *RowNumber) IsNullable() bool {
 	return false
@@ -87,7 +106,7 @@ func (r *RowNumber) IsNullable() bool {
 
 // Eval implements sql.Expression
 func (r *RowNumber) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	panic("eval called on window function")
+	return nil, sql.ErrWindowUnsupported.New(r.FunctionName())
 }
 
 // Children implements sql.Expression
@@ -102,14 +121,14 @@ func (r *RowNumber) WithChildren(children ...sql.Expression) (sql.Expression, er
 		return nil, err
 	}
 
-	return r.WithWindow(window)
+	return r.WithWindow(window), nil
 }
 
 // WithWindow implements sql.WindowAggregation
-func (r *RowNumber) WithWindow(window *sql.WindowDefinition) (sql.WindowAggregation, error) {
+func (r *RowNumber) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
 	nr := *r
 	nr.window = window
-	return &nr, nil
+	return &nr
 }
 
 func (r *RowNumber) NewWindowFunction() (sql.WindowFunction, error) {

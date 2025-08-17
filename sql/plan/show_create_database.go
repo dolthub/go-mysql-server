@@ -15,7 +15,6 @@
 package plan
 
 import (
-	"bytes"
 	"fmt"
 
 	"github.com/gabereiser/go-mysql-server/sql"
@@ -38,11 +37,17 @@ func NewShowCreateDatabase(db sql.Database, ifNotExists bool) *ShowCreateDatabas
 	return &ShowCreateDatabase{db, ifNotExists}
 }
 
+var _ sql.Node = (*ShowCreateDatabase)(nil)
 var _ sql.Databaser = (*ShowCreateDatabase)(nil)
+var _ sql.CollationCoercible = (*ShowCreateDatabase)(nil)
 
 // Database implements the sql.Databaser interface.
 func (s *ShowCreateDatabase) Database() sql.Database {
 	return s.db
+}
+
+func (s *ShowCreateDatabase) IsReadOnly() bool {
+	return true
 }
 
 // WithDatabase implements the sql.Databaser interface.
@@ -50,31 +55,6 @@ func (s *ShowCreateDatabase) WithDatabase(db sql.Database) (sql.Node, error) {
 	nc := *s
 	nc.db = db
 	return &nc, nil
-}
-
-// RowIter implements the sql.Node interface.
-func (s *ShowCreateDatabase) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	var name = s.db.Name()
-
-	var buf bytes.Buffer
-
-	buf.WriteString("CREATE DATABASE ")
-	if s.IfNotExists {
-		buf.WriteString("/*!32312 IF NOT EXISTS*/ ")
-	}
-
-	buf.WriteRune('`')
-	buf.WriteString(name)
-	buf.WriteRune('`')
-	buf.WriteString(fmt.Sprintf(
-		" /*!40100 DEFAULT CHARACTER SET %s COLLATE %s */",
-		sql.Collation_Default.CharacterSet().String(),
-		sql.Collation_Default.String(),
-	))
-
-	return sql.RowsToRowIter(
-		sql.NewRow(name, buf.String()),
-	), nil
 }
 
 // Schema implements the sql.Node interface.
@@ -104,8 +84,7 @@ func (s *ShowCreateDatabase) WithChildren(children ...sql.Node) (sql.Node, error
 	return s, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (s *ShowCreateDatabase) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	// The database won't be visible during the resolution step if the user doesn't have the correct privileges
-	return true
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ShowCreateDatabase) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }

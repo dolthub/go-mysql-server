@@ -1,4 +1,4 @@
-// Copyright 2021 Dolthub, Inc.
+// Copyright 2021-2025 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 package function
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -332,25 +333,25 @@ func TestRegexpReplaceWithFlags(t *testing.T) {
 		{
 			"multiline flags",
 			sql.NewRow("abc\r\ndef\r\nghi", `^[a-z].*$`, "X", 1, 0, "m"),
-			"X\nX\nX",
+			"X\r\nX\r\nX",
 			false,
 		},
 		{
 			"insensitive and multiline flags",
 			sql.NewRow("abc\r\nDEF\r\nghi", `^[a-z].*$`, "X", 1, 0, "im"),
-			"X\nX\nX",
+			"X\r\nX\r\nX",
 			false,
 		},
 		{
 			"sensitive and multiline flags",
 			sql.NewRow("abc\r\nDEF\r\nghi", `^[a-z].*$`, "X", 1, 0, "cm"),
-			"X\nDEF\r\nX",
+			"X\r\nDEF\r\nX",
 			false,
 		},
 		{
 			"all flags",
 			sql.NewRow("abc\r\nDEF\r\nghi", `^[a-z].*$`, "X", 1, 0, "icm"),
-			"X\nDEF\r\nX",
+			"X\r\nDEF\r\nX",
 			false,
 		},
 		{
@@ -374,5 +375,40 @@ func TestRegexpReplaceWithFlags(t *testing.T) {
 				require.Equal(tt.expected, val)
 			}
 		})
+	}
+}
+
+// Last Run: 06/17/2025
+// BenchmarkRegexpReplace
+// BenchmarkRegexpReplace-14    	     100	  97385769 ns/op
+// BenchmarkRegexpReplace-14    	   10000	   1012373 ns/op
+func BenchmarkRegexpReplace(b *testing.B) {
+	ctx := sql.NewEmptyContext()
+	// TODO: for some reason large datasets cause this to hang
+	data := make([]sql.Row, 11)
+	for i := range data {
+		data[i] = sql.Row{fmt.Sprintf("test%d", i)}
+	}
+
+	for i := 0; i < b.N; i++ {
+		f, err := NewRegexpReplace(
+			expression.NewGetField(0, types.LongText, "text", false),
+			expression.NewLiteral("^test[0-9]$", types.LongText),
+			expression.NewLiteral("abc", types.LongText),
+		)
+		require.NoError(b, err)
+		var total int
+		for _, row := range data {
+			res, err := f.Eval(ctx, row)
+			if err != nil {
+				require.NoError(b, err)
+			}
+			require.NoError(b, err)
+			if res.(string)[:3] == "abc" {
+				total++
+			}
+		}
+		require.Equal(b, 10, total)
+		f.(*RegexpReplace).Dispose()
 	}
 }

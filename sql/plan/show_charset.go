@@ -26,6 +26,9 @@ type ShowCharset struct {
 	CharacterSetTable sql.Node
 }
 
+var _ sql.Node = (*ShowCharset)(nil)
+var _ sql.CollationCoercible = (*ShowCharset)(nil)
+
 // NewShowCharset returns a new ShowCharset reference.
 func NewShowCharset() *ShowCharset {
 	return &ShowCharset{}
@@ -46,9 +49,13 @@ func (sc *ShowCharset) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return sc, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (sc *ShowCharset) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
+func (sc *ShowCharset) IsReadOnly() bool {
 	return true
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ShowCharset) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func (sc *ShowCharset) String() string {

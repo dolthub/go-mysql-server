@@ -17,16 +17,15 @@ package analyzer
 import (
 	"strings"
 
-	"github.com/gabereiser/go-mysql-server/sql/transform"
-
-	"github.com/gabereiser/go-mysql-server/sql"
-	"github.com/gabereiser/go-mysql-server/sql/parse"
-	"github.com/gabereiser/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
+	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
 // loadTriggers loads any triggers that are required for a plan node to operate properly (except for nodes dealing with
 // trigger execution).
-func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("loadTriggers")
 	defer span.End()
 
@@ -34,7 +33,7 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 		switch node := n.(type) {
 		case *plan.ShowTriggers:
 			newShowTriggers := *node
-			loadedTriggers, err := loadTriggersFromDb(ctx, newShowTriggers.Database())
+			loadedTriggers, err := loadTriggersFromDb(ctx, a, newShowTriggers.Database(), false)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -45,16 +44,16 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 			}
 			return &newShowTriggers, transform.NewTree, nil
 		case *plan.DropTrigger:
-			loadedTriggers, err := loadTriggersFromDb(ctx, node.Database())
+			loadedTriggers, err := loadTriggersFromDb(ctx, a, node.Database(), true)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			lowercasedTriggerName := strings.ToLower(node.TriggerName)
 			for _, trigger := range loadedTriggers {
-				if strings.ToLower(trigger.TriggerName) == lowercasedTriggerName {
+				if strings.EqualFold(node.TriggerName, trigger.TriggerName) {
 					node.TriggerName = trigger.TriggerName
-				} else if trigger.TriggerOrder != nil &&
-					strings.ToLower(trigger.TriggerOrder.OtherTriggerName) == lowercasedTriggerName {
+					continue
+				}
+				if trigger.TriggerOrder != nil && strings.EqualFold(node.TriggerName, trigger.TriggerOrder.OtherTriggerName) {
 					return nil, transform.SameTree, sql.ErrTriggerCannotBeDropped.New(node.TriggerName, trigger.TriggerName)
 				}
 			}
@@ -65,13 +64,13 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 				return node, transform.SameTree, nil
 			}
 
-			// the table has to be ResolvedTable as this rule is executed after resolve-table rule
+			// the table has to be TableNode as this rule is executed after resolve-table rule
 			var dropTableDb sql.Database
 			if t, ok := node.Tables[0].(*plan.ResolvedTable); ok {
-				dropTableDb = t.Database
+				dropTableDb = t.SqlDatabase
 			}
 
-			loadedTriggers, err := loadTriggersFromDb(ctx, dropTableDb)
+			loadedTriggers, err := loadTriggersFromDb(ctx, a, dropTableDb, false)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -85,7 +84,7 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 			}
 			var triggersForTable []string
 			for _, trigger := range loadedTriggers {
-				if _, ok := lowercasedNames[strings.ToLower(trigger.Table.(*plan.UnresolvedTable).Name())]; ok {
+				if _, ok := lowercasedNames[strings.ToLower(trigger.Table.(sql.Nameable).Name())]; ok {
 					triggersForTable = append(triggersForTable, trigger.TriggerName)
 				}
 			}
@@ -96,7 +95,7 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel R
 	})
 }
 
-func loadTriggersFromDb(ctx *sql.Context, db sql.Database) ([]*plan.CreateTrigger, error) {
+func loadTriggersFromDb(ctx *sql.Context, a *Analyzer, db sql.Database, ignoreParseErrors bool) ([]*plan.CreateTrigger, error) {
 	var loadedTriggers []*plan.CreateTrigger
 	if triggerDb, ok := db.(sql.TriggerDatabase); ok {
 		triggers, err := triggerDb.GetTriggers(ctx)
@@ -104,9 +103,22 @@ func loadTriggersFromDb(ctx *sql.Context, db sql.Database) ([]*plan.CreateTrigge
 			return nil, err
 		}
 		for _, trigger := range triggers {
-			parsedTrigger, err := parse.Parse(ctx, trigger.CreateStatement)
+			var parsedTrigger sql.Node
+			sqlMode := sql.NewSqlModeFromString(trigger.SqlMode)
+			// TODO: should perhaps add the auth query handler to the analyzer? does this even use auth?
+			parsedTrigger, _, err = planbuilder.ParseWithOptions(ctx, a.Catalog, trigger.CreateStatement, sqlMode.ParserOptions())
 			if err != nil {
-				return nil, err
+				// We want to be able to drop invalid triggers, so ignore any parser errors and return the name of the trigger
+				if !ignoreParseErrors {
+					return nil, err
+				}
+				// TODO: we won't have TriggerOrder information for this unparseable trigger,
+				//   but it will still be referenced by any valid triggers.
+				fakeTrigger := &plan.CreateTrigger{
+					TriggerName: trigger.Name,
+				}
+				loadedTriggers = append(loadedTriggers, fakeTrigger)
+				continue
 			}
 			triggerPlan, ok := parsedTrigger.(*plan.CreateTrigger)
 			if !ok {

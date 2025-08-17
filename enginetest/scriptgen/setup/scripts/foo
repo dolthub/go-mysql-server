@@ -3,11 +3,11 @@ create database if not exists foo
 ----
 
 exec
-create table foo.other_table (text varchar(20) primary key, number mediumint)
+create table foo.othertable (text varchar(20) primary key, number mediumint)
 ----
 
 exec
-insert into foo.other_table values
+insert into foo.othertable values
     ('a', 4),
     ('b', 2),
     ('c', 0)

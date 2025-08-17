@@ -20,8 +20,16 @@ import (
 	"github.com/gabereiser/go-mysql-server/sql"
 )
 
+// IsBoolean checks if t is a boolean type.
+func IsBoolean(t sql.Type) bool {
+	return t == Boolean
+}
+
 // IsBlobType checks if t is BLOB
 func IsBlobType(t sql.Type) bool {
+	if t == nil {
+		return false
+	}
 	switch t.Type() {
 	case sqltypes.Blob:
 		return true
@@ -36,7 +44,7 @@ func IsBinaryType(t sql.Type) bool {
 		return false
 	}
 	switch t.Type() {
-	case sqltypes.Binary, sqltypes.VarBinary, sqltypes.Blob:
+	case sqltypes.Binary, sqltypes.VarBinary, sqltypes.Blob, sqltypes.TypeJSON, sqltypes.Geometry:
 		return true
 	default:
 		return false
@@ -88,31 +96,52 @@ func IsNull(ex sql.Expression) bool {
 
 // IsNumber checks if t is a number type
 func IsNumber(t sql.Type) bool {
-	switch t.(type) {
-	case NumberTypeImpl_, DecimalType_, BitType_, YearType_, SystemBoolType_:
+	switch typ := t.(type) {
+	case sql.SystemVariableType:
+		return IsNumber(typ.UnderlyingType())
+	case NumberTypeImpl_, DecimalType_, BitType_, YearType_:
 		return true
 	default:
 		return false
 	}
 }
 
+func IsNullType(t sql.Type) bool {
+	nt, ok := t.(sql.NullType)
+	if !ok {
+		return false
+	}
+	return nt.IsNullType()
+}
+
 // IsSigned checks if t is a signed type.
 func IsSigned(t sql.Type) bool {
-	// systemBoolType is Int8
-	if _, ok := t.(SystemBoolType_); ok {
-		return true
+	if svt, ok := t.(sql.SystemVariableType); ok {
+		t = svt.UnderlyingType()
 	}
-	return t == Int8 || t == Int16 || t == Int24 || t == Int32 || t == Int64
+	return t == Int8 || t == Int16 || t == Int24 || t == Int32 || t == Int64 || t == Boolean
 }
 
 // IsText checks if t is a CHAR, VARCHAR, TEXT, BINARY, VARBINARY, or BLOB (including TEXT and BLOB variants).
 func IsText(t sql.Type) bool {
-	_, ok := t.(StringType)
-	return ok
+	switch typ := t.(type) {
+	case sql.SystemVariableType:
+		return IsText(typ.UnderlyingType())
+	case StringType:
+		return true
+	case ExtendedType:
+		_, isString := typ.Zero().(string)
+		return isString
+	default:
+		return false
+	}
 }
 
 // IsTextBlob checks if t is one of the TEXTs or BLOBs.
 func IsTextBlob(t sql.Type) bool {
+	if t == nil {
+		return false
+	}
 	switch t.Type() {
 	case sqltypes.Text, sqltypes.Blob:
 		return true
@@ -166,14 +195,26 @@ func IsTimestampType(t sql.Type) bool {
 
 // IsEnum checks if t is a enum
 func IsEnum(t sql.Type) bool {
-	_, ok := t.(EnumType)
-	return ok
+	switch typ := t.(type) {
+	case sql.SystemVariableType:
+		return IsEnum(typ.UnderlyingType())
+	case EnumType:
+		return true
+	default:
+		return false
+	}
 }
 
 // IsSet checks if t is a set
 func IsSet(t sql.Type) bool {
-	_, ok := t.(SetType)
-	return ok
+	switch typ := t.(type) {
+	case sql.SystemVariableType:
+		return IsSet(typ.UnderlyingType())
+	case SetType:
+		return true
+	default:
+		return false
+	}
 }
 
 // IsTuple checks if t is a tuple type.
@@ -186,5 +227,14 @@ func IsTuple(t sql.Type) bool {
 
 // IsUnsigned checks if t is an unsigned type.
 func IsUnsigned(t sql.Type) bool {
+	if svt, ok := t.(sql.SystemVariableType); ok {
+		t = svt.UnderlyingType()
+	}
 	return t == Uint8 || t == Uint16 || t == Uint24 || t == Uint32 || t == Uint64
+}
+
+// IsYear checks if t is a year type.
+func IsYear(t sql.Type) bool {
+	_, ok := t.(YearType_)
+	return ok
 }

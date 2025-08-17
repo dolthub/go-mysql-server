@@ -20,10 +20,11 @@ import (
 	"strings"
 	"testing"
 
-	sqle "github.com/gabereiser/go-mysql-server"
-	"github.com/gabereiser/go-mysql-server/enginetest"
-	"github.com/gabereiser/go-mysql-server/enginetest/scriptgen/setup"
-	"github.com/gabereiser/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/memory"
+
+	"github.com/dolthub/go-mysql-server/enginetest"
+	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // MySQLHarness is a harness for a local MySQL server. This will modify databases and tables as the tests see fit, which
@@ -51,8 +52,8 @@ func (m *MySQLHarness) Setup(setupData ...[]setup.SetupScript) {
 	return
 }
 
-func (m *MySQLHarness) NewEngine(t *testing.T) (*sqle.Engine, error) {
-	return enginetest.NewEngine(t, m, m.Provider(), m.setupData)
+func (m *MySQLHarness) NewEngine(t *testing.T) (enginetest.QueryEngine, error) {
+	return enginetest.NewEngine(t, m, m.Provider(), m.setupData, memory.NewStatsProv())
 }
 
 func (m *MySQLHarness) NewContextWithClient(client sql.Client) *sql.Context {
@@ -129,7 +130,7 @@ func (m *MySQLHarness) Provider() sql.MutableDatabaseProvider {
 // NewTable implements the interface Harness.
 func (m *MySQLHarness) NewTable(db sql.Database, name string, schema sql.PrimaryKeySchema) (sql.Table, error) {
 	ctx := sql.NewEmptyContext()
-	err := db.(sql.TableCreator).CreateTable(ctx, name, schema, sql.Collation_Default)
+	err := db.(sql.TableCreator).CreateTable(ctx, name, schema, sql.Collation_Default, "")
 	if err != nil {
 		return nil, err
 	}

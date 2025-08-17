@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"reflect"
 	"strconv"
 
@@ -35,6 +36,7 @@ type systemDoubleType struct {
 }
 
 var _ sql.SystemVariableType = systemDoubleType{}
+var _ sql.CollationCoercible = systemDoubleType{}
 
 // NewSystemDoubleType returns a new systemDoubleType.
 func NewSystemDoubleType(varName string, lowerbound, upperbound float64) sql.SystemVariableType {
@@ -42,12 +44,12 @@ func NewSystemDoubleType(varName string, lowerbound, upperbound float64) sql.Sys
 }
 
 // Compare implements Type interface.
-func (t systemDoubleType) Compare(a interface{}, b interface{}) (int, error) {
-	as, err := t.Convert(a)
+func (t systemDoubleType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
+	as, _, err := t.Convert(ctx, a)
 	if err != nil {
 		return 0, err
 	}
-	bs, err := t.Convert(b)
+	bs, _, err := t.Convert(ctx, b)
 	if err != nil {
 		return 0, err
 	}
@@ -64,55 +66,51 @@ func (t systemDoubleType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t systemDoubleType) Convert(v interface{}) (interface{}, error) {
+func (t systemDoubleType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	// String nor nil values are accepted
 	switch value := v.(type) {
 	case int:
-		return t.Convert(float64(value))
+		return t.Convert(ctx, float64(value))
 	case uint:
-		return t.Convert(float64(value))
+		return t.Convert(ctx, float64(value))
 	case int8:
-		return t.Convert(float64(value))
+		return t.Convert(ctx, float64(value))
 	case uint8:
-		return t.Convert(float64(value))
+		return t.Convert(ctx, float64(value))
 	case int16:
-		return t.Convert(float64(value))
+		return t.Convert(ctx, float64(value))
 	case uint16:
-		return t.Convert(float64(value))
+		return t.Convert(ctx, float64(value))
 	case int32:
-		return t.Convert(float64(value))
+		return t.Convert(ctx, float64(value))
 	case uint32:
-		return t.Convert(float64(value))
+		return t.Convert(ctx, float64(value))
 	case int64:
-		return t.Convert(float64(value))
+		return t.Convert(ctx, float64(value))
 	case uint64:
-		return t.Convert(float64(value))
+		return t.Convert(ctx, float64(value))
 	case float32:
-		return t.Convert(float64(value))
+		return t.Convert(ctx, float64(value))
 	case float64:
 		if value >= t.lowerbound && value <= t.upperbound {
-			return value, nil
+			return value, sql.InRange, nil
 		}
 	case decimal.Decimal:
 		f, _ := value.Float64()
-		return t.Convert(f)
+		return t.Convert(ctx, f)
 	case decimal.NullDecimal:
 		if value.Valid {
 			f, _ := value.Decimal.Float64()
-			return t.Convert(f)
+			return t.Convert(ctx, f)
+		}
+	case string:
+		f, err := strconv.ParseFloat(value, 64)
+		if err == nil {
+			return t.Convert(ctx, f)
 		}
 	}
 
-	return nil, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
-}
-
-// MustConvert implements the Type interface.
-func (t systemDoubleType) MustConvert(v interface{}) interface{} {
-	value, err := t.Convert(v)
-	if err != nil {
-		panic(err)
-	}
-	return value
+	return nil, sql.OutOfRange, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
 }
 
 // Equals implements the Type interface.
@@ -124,9 +122,8 @@ func (t systemDoubleType) Equals(otherType sql.Type) bool {
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t systemDoubleType) MaxTextResponseByteLength() uint32 {
-	// system types are not sent directly across the wire
-	return 0
+func (t systemDoubleType) MaxTextResponseByteLength(ctx *sql.Context) uint32 {
+	return t.UnderlyingType().MaxTextResponseByteLength(ctx)
 }
 
 // Promote implements the Type interface.
@@ -140,7 +137,7 @@ func (t systemDoubleType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sql
 		return sqltypes.NULL, nil
 	}
 
-	v, err := t.Convert(v)
+	v, _, err := t.Convert(ctx, v)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
@@ -172,6 +169,11 @@ func (t systemDoubleType) Zero() interface{} {
 	return float64(0)
 }
 
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (systemDoubleType) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
+}
+
 // EncodeValue implements SystemVariableType interface.
 func (t systemDoubleType) EncodeValue(val interface{}) (string, error) {
 	expectedVal, ok := val.(float64)
@@ -191,4 +193,8 @@ func (t systemDoubleType) DecodeValue(val string) (interface{}, error) {
 		return parsedVal, nil
 	}
 	return nil, sql.ErrSystemVariableCodeFail.New(val, t.String())
+}
+
+func (t systemDoubleType) UnderlyingType() sql.Type {
+	return Float64
 }

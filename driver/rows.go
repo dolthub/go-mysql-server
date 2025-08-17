@@ -125,7 +125,7 @@ func (r *Rows) convert(col int, v driver.Value) interface{} {
 			}
 		}
 
-		sqlValue, err := r.cols[col].Type.Convert(v)
+		sqlValue, _, err := r.cols[col].Type.Convert(r.ctx, v)
 		if err != nil {
 			break
 		}
@@ -137,7 +137,7 @@ func (r *Rows) convert(col int, v driver.Value) interface{} {
 			return doc.Val
 		}
 
-		str, err := doc.ToString(r.ctx)
+		str, err := doc.JSONString()
 		if err != nil {
 			break
 		}

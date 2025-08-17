@@ -29,6 +29,7 @@ type AbsVal struct {
 }
 
 var _ sql.FunctionExpression = (*AbsVal)(nil)
+var _ sql.CollationCoercible = (*AbsVal)(nil)
 
 // NewAbsVal creates a new AbsVal expression.
 func NewAbsVal(e sql.Expression) sql.Expression {
@@ -115,6 +116,10 @@ func (t *AbsVal) String() string {
 	return fmt.Sprintf("%s(%s)", t.FunctionName(), t.Child.String())
 }
 
+func (t *AbsVal) DebugString() string {
+	return fmt.Sprintf("%s(%s)", t.FunctionName(), sql.DebugString(t.Child))
+}
+
 // IsNullable implements the Expression interface.
 func (t *AbsVal) IsNullable() bool {
 	return t.Child.IsNullable()
@@ -131,4 +136,9 @@ func (t *AbsVal) WithChildren(children ...sql.Expression) (sql.Expression, error
 // Type implements the Expression interface.
 func (t *AbsVal) Type() sql.Type {
 	return t.Child.Type()
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*AbsVal) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }

@@ -28,11 +28,13 @@ type CountDistinct struct {
 	expression.NaryExpression
 	window *sql.WindowDefinition
 	typ    sql.Type
+	id     sql.ColumnId
 }
 
 var _ sql.FunctionExpression = (*CountDistinct)(nil)
 var _ sql.Aggregation = (*CountDistinct)(nil)
 var _ sql.WindowAdaptableExpression = (*CountDistinct)(nil)
+var _ sql.CollationCoercible = (*CountDistinct)(nil)
 
 func NewCountDistinct(exprs ...sql.Expression) *CountDistinct {
 	return &CountDistinct{
@@ -45,9 +47,26 @@ func (a *CountDistinct) Type() sql.Type {
 	return types.Int64
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*CountDistinct) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
+}
+
 // IsNullable implements the Expression interface.
 func (a *CountDistinct) IsNullable() bool {
 	return false
+}
+
+// Id implements the Aggregation interface
+func (a *CountDistinct) Id() sql.ColumnId {
+	return a.id
+}
+
+// WithId implements the Aggregation interface
+func (a *CountDistinct) WithId(id sql.ColumnId) sql.IdExpression {
+	ret := *a
+	ret.id = id
+	return &ret
 }
 
 // Eval implements the Expression interface.
@@ -89,10 +108,10 @@ func (a *CountDistinct) NewBuffer() (sql.AggregationBuffer, error) {
 }
 
 // WithWindow implements the Aggregation interface.
-func (a *CountDistinct) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
+func (a *CountDistinct) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
 	na := *a
 	na.window = window
-	return &na, nil
+	return &na
 }
 
 // Window implements the Aggregation interface.

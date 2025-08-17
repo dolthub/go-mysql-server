@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strings"
@@ -30,23 +31,24 @@ var tupleValueType = reflect.TypeOf((*[]interface{})(nil)).Elem()
 type TupleType []sql.Type
 
 var _ sql.Type = TupleType{nil}
+var _ sql.CollationCoercible = TupleType{nil}
 
 // CreateTuple returns a new tuple type with the given element types.
 func CreateTuple(types ...sql.Type) sql.Type {
 	return TupleType(types)
 }
 
-func (t TupleType) Compare(a, b interface{}) (int, error) {
+func (t TupleType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
 
-	a, err := t.Convert(a)
+	a, _, err := t.Convert(ctx, a)
 	if err != nil {
 		return 0, err
 	}
 
-	b, err = t.Convert(b)
+	b, _, err = t.Convert(ctx, b)
 	if err != nil {
 		return 0, err
 	}
@@ -54,7 +56,7 @@ func (t TupleType) Compare(a, b interface{}) (int, error) {
 	left := a.([]interface{})
 	right := b.([]interface{})
 	for i := range left {
-		cmp, err := t[i].Compare(left[i], right[i])
+		cmp, err := t[i].Compare(ctx, left[i], right[i])
 		if err != nil {
 			return 0, err
 		}
@@ -67,35 +69,27 @@ func (t TupleType) Compare(a, b interface{}) (int, error) {
 	return 0, nil
 }
 
-func (t TupleType) Convert(v interface{}) (interface{}, error) {
+func (t TupleType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
-		return nil, nil
+		return nil, sql.InRange, nil
 	}
 	if vals, ok := v.([]interface{}); ok {
 		if len(vals) != len(t) {
-			return nil, sql.ErrInvalidColumnNumber.New(len(t), len(vals))
+			return nil, sql.OutOfRange, sql.ErrInvalidColumnNumber.New(len(t), len(vals))
 		}
 
 		var result = make([]interface{}, len(t))
 		for i, typ := range t {
 			var err error
-			result[i], err = typ.Convert(vals[i])
+			result[i], _, err = typ.Convert(ctx, vals[i])
 			if err != nil {
-				return nil, err
+				return nil, sql.OutOfRange, err
 			}
 		}
 
-		return result, nil
+		return result, sql.InRange, nil
 	}
-	return nil, sql.ErrNotTuple.New(v)
-}
-
-func (t TupleType) MustConvert(v interface{}) interface{} {
-	value, err := t.Convert(v)
-	if err != nil {
-		panic(err)
-	}
-	return value
+	return nil, sql.OutOfRange, sql.ErrNotTuple.New(v)
 }
 
 // Equals implements the Type interface.
@@ -112,7 +106,7 @@ func (t TupleType) Equals(otherType sql.Type) bool {
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t TupleType) MaxTextResponseByteLength() uint32 {
+func (t TupleType) MaxTextResponseByteLength(*sql.Context) uint32 {
 	// TupleTypes are never actually sent over the wire directly
 	return 0
 }
@@ -148,4 +142,9 @@ func (t TupleType) Zero() interface{} {
 		zeroes[i] = tt.Zero()
 	}
 	return zeroes
+}
+
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (TupleType) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }

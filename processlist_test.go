@@ -18,20 +18,24 @@ import (
 	"context"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/gabereiser/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 func TestProcessList(t *testing.T) {
 	require := require.New(t)
+	variables.InitStatusVariables()
 
 	clientHostOne := "127.0.0.1:34567"
 	clientHostTwo := "127.0.0.1:34568"
 	p := NewProcessList()
 	p.AddConnection(1, clientHostOne)
 	sess := sql.NewBaseSessionWithClientServer("0.0.0.0:3306", sql.Client{Address: clientHostOne, User: "foo"}, 1)
+	sess.SetCurrentDatabase("test_db")
 	p.ConnectionReady(sess)
 	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithSession(sess))
 	ctx, err := p.BeginQuery(ctx, "SELECT foo")
@@ -55,6 +59,7 @@ func TestProcessList(t *testing.T) {
 		Query:     "SELECT foo",
 		Command:   sql.ProcessCommandQuery,
 		StartedAt: p.procs[1].StartedAt,
+		Database:  "test_db",
 	}
 	require.NotNil(p.procs[1].Kill)
 	p.procs[1].Kill = nil
@@ -164,4 +169,93 @@ func TestKillConnection(t *testing.T) {
 
 	require.True(t, killed[1])
 	require.False(t, killed[2])
+}
+
+func TestBeginEndOperation(t *testing.T) {
+	knownSession := sql.NewBaseSessionWithClientServer("", sql.Client{}, 1)
+	unknownSession := sql.NewBaseSessionWithClientServer("", sql.Client{}, 2)
+
+	pl := NewProcessList()
+	pl.AddConnection(1, "")
+
+	// Begining an operation with an unknown connection returns an error.
+	ctx := sql.NewContext(context.Background(), sql.WithSession(unknownSession))
+	_, err := pl.BeginOperation(ctx)
+	require.Error(t, err)
+
+	// Can begin and end operation before connection is ready.
+	ctx = sql.NewContext(context.Background(), sql.WithSession(knownSession))
+	subCtx, err := pl.BeginOperation(ctx)
+	require.NoError(t, err)
+	pl.EndOperation(subCtx)
+
+	// Can begin and end operation across the connection ready boundary.
+	subCtx, err = pl.BeginOperation(ctx)
+	require.NoError(t, err)
+	pl.ConnectionReady(knownSession)
+	pl.EndOperation(subCtx)
+
+	// Ending the operation cancels the subcontext.
+	subCtx, err = pl.BeginOperation(ctx)
+	require.NoError(t, err)
+	done := make(chan struct{})
+	context.AfterFunc(subCtx, func() {
+		close(done)
+	})
+	pl.EndOperation(subCtx)
+	<-done
+
+	// Kill on the connection cancels the subcontext.
+	subCtx, err = pl.BeginOperation(ctx)
+	require.NoError(t, err)
+	done = make(chan struct{})
+	context.AfterFunc(subCtx, func() {
+		close(done)
+	})
+	pl.Kill(1)
+	<-done
+	pl.EndOperation(subCtx)
+
+	// Beginning an operation while one is outstanding errors.
+	subCtx, err = pl.BeginOperation(ctx)
+	require.NoError(t, err)
+	_, err = pl.BeginOperation(ctx)
+	require.Error(t, err)
+	pl.EndOperation(subCtx)
+}
+
+// TestSlowQueryTracking tests that processes that take longer than @@long_query_time increment the
+// Slow_queries status variable.
+func TestSlowQueryTracking(t *testing.T) {
+	_, value, ok := sql.StatusVariables.GetGlobal("Slow_queries")
+	require.True(t, ok)
+	require.Equal(t, uint64(0), value)
+
+	p := NewProcessList()
+	p.AddConnection(1, "127.0.0.1:34567")
+	sess := sql.NewBaseSessionWithClientServer("0.0.0.0:3306",
+		sql.Client{Address: "127.0.0.1:34567", User: "foo"}, 1)
+	sess.SetCurrentDatabase("test_db")
+	p.ConnectionReady(sess)
+	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithSession(sess))
+	ctx, err := p.BeginQuery(ctx, "SELECT foo")
+	require.NoError(t, err)
+
+	// Change @@long_query_time so we don't have to wait for 10 seconds
+	require.NoError(t, sql.SystemVariables.SetGlobal(ctx, "long_query_time", 1))
+	time.Sleep(1_500 * time.Millisecond)
+	p.EndQuery(ctx)
+
+	// Status variables are updated asynchronously, so try a few times to find the updated value
+	found := false
+	for range 10 {
+		_, value, ok = sql.StatusVariables.GetGlobal("Slow_queries")
+		require.True(t, ok)
+		if value == uint64(1) {
+			found = true
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	require.True(t, found, "Never found Slow_queries value updated")
 }

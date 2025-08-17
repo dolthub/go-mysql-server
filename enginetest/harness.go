@@ -17,10 +17,13 @@ package enginetest
 import (
 	"testing"
 
-	"github.com/gabereiser/go-mysql-server/enginetest/scriptgen/setup"
+	"gopkg.in/src-d/go-errors.v1"
 
-	sqle "github.com/gabereiser/go-mysql-server"
-	"github.com/gabereiser/go-mysql-server/sql"
+	sqle "github.com/dolthub/go-mysql-server"
+	"github.com/dolthub/go-mysql-server/enginetest/queries"
+	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
+	"github.com/dolthub/go-mysql-server/server"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // Harness provides a way for database integrators to validate their implementation against the standard set of queries
@@ -33,11 +36,9 @@ import (
 // times during a single test run, and must return a "fresh" engine instance each time, i.e. an instance that contains
 // exactly the test data provided via other setup methods.
 type Harness interface {
-	// Parallelism returns how many parallel go routines to use when constructing an engine for test.
-	Parallelism() int
 	// NewContext allows a harness to specify any sessions or context variables necessary for the proper functioning of
 	// their engine implementation. Every harnessed engine test uses the context created by this method, with some
-	// additional information (e.g. current DB) set uniformly. To replicated the behavior of tests during setup,
+	// additional information (e.g. current DB) set uniformly. To replicate the behavior of tests during setup,
 	// harnesses should generally dispatch to enginetest.NewContext(harness), rather than calling this method themselves.
 	NewContext() *sql.Context
 	// Setup supplies a test suite's setup scripts, which must be stored and used to create a new Engine on demand via
@@ -45,7 +46,7 @@ type Harness interface {
 	Setup(...[]setup.SetupScript)
 	// NewEngine creates a new sqle.Engine. The state of the engine returned must match what was previous specified
 	// by Setup, with no other data. See enginetest.NewEngine for help creating an engine suitable in tests.
-	NewEngine(*testing.T) (*sqle.Engine, error)
+	NewEngine(*testing.T) (QueryEngine, error)
 }
 
 // ClientHarness allows for integrators to test user privileges, as mock clients are used to test functionality.
@@ -54,6 +55,13 @@ type ClientHarness interface {
 
 	// NewContextWithClient returns a context that will return the given client when requested from the session.
 	NewContextWithClient(client sql.Client) *sql.Context
+}
+
+type ServerHarness interface {
+	Harness
+
+	// SessionBuilder returns a function that creates a new session for connections to a server
+	SessionBuilder() server.SessionBuilder
 }
 
 // SkippingHarness provides a way for integrators to skip tests that are known to be broken. E.g., integrators that
@@ -132,7 +140,7 @@ type ReadOnlyDatabaseHarness interface {
 
 	// NewReadOnlyEngine returns a new engine with read-only versions of the databases supplied by the provider.
 	// TODO: should this and NewEngine actually just be NewProvider?
-	NewReadOnlyEngine(provider sql.DatabaseProvider) (*sqle.Engine, error)
+	NewReadOnlyEngine(provider sql.DatabaseProvider) (QueryEngine, error)
 }
 
 type ValidatingHarness interface {
@@ -140,4 +148,36 @@ type ValidatingHarness interface {
 
 	// ValidateEngine runs post-test assertions against an engine.
 	ValidateEngine(ctx *sql.Context, e *sqle.Engine) error
+}
+
+// ResultEvaluationHarness is a harness that wants to assert more control over how query results are evaluated
+type ResultEvaluationHarness interface {
+	Harness
+
+	// EvaluateQueryResults compares expected query results to actual results and emits failed test assertions in the event
+	// there are any
+	EvaluateQueryResults(
+		t *testing.T,
+		expectedRows []sql.Row,
+		expectedCols []*sql.Column,
+		expectdSch sql.Schema,
+		actualRows []sql.Row,
+		query string,
+		wrapBehavior queries.WrapBehavior,
+	)
+
+	// EvaluateExpectedError compares expected error strings to actual errors and emits failed test assertions in the
+	// event there are any
+	EvaluateExpectedError(t *testing.T, expected string, err error)
+
+	// EvaluateExpectedErrorKind compares expected error kinds to actual errors and emits failed test assertions in the
+	EvaluateExpectedErrorKind(t *testing.T, expected *errors.Kind, err error)
+}
+
+type DialectHarness interface {
+	Harness
+
+	// Dialect returns the dialect that the engine being tested supports. If this harness interface isn't implemented,
+	// the dialect "mysql" is used by engine tests.
+	Dialect() string
 }

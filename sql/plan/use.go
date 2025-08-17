@@ -17,7 +17,8 @@ package plan
 import (
 	"fmt"
 
-	"github.com/gabereiser/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 )
 
 // Use changes the current database.
@@ -33,6 +34,7 @@ func NewUse(db sql.Database) *Use {
 
 var _ sql.Node = (*Use)(nil)
 var _ sql.Databaser = (*Use)(nil)
+var _ sql.CollationCoercible = (*Use)(nil)
 
 // Database implements the sql.Databaser interface.
 func (u *Use) Database() sql.Database {
@@ -55,18 +57,27 @@ func (u *Use) Resolved() bool {
 	return !ok
 }
 
+func (u *Use) IsReadOnly() bool {
+	return true
+}
+
 // Schema implements the sql.Node interface.
 func (Use) Schema() sql.Schema { return nil }
 
 // RowIter implements the sql.Node interface.
 func (u *Use) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	db, err := u.Catalog.Database(ctx, u.db.Name())
+	// We want to return to the session interface the same database instance they gave us, unwrap it if necessary
+	db := u.db
+	if pdb, ok := db.(mysql_db.PrivilegedDatabase); ok {
+		db = pdb.Unwrap()
+	}
+
+	err := ctx.Session.UseDatabase(ctx, db)
 	if err != nil {
 		return nil, err
 	}
 
-	ctx.SetCurrentDatabase(db.Name())
-
+	ctx.SetCurrentDatabase(u.db.Name())
 	return sql.RowsToRowIter(), nil
 }
 
@@ -79,11 +90,9 @@ func (u *Use) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return u, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (u *Use) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	// The given database will not be visible if the user does not have the appropriate privileges, so we can just
-	// return true here.
-	return true
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Use) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // String implements the sql.Node interface.

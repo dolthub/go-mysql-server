@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"reflect"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -28,6 +29,7 @@ type deferredType struct {
 }
 
 var _ sql.DeferredType = (*deferredType)(nil)
+var _ sql.CollationCoercible = (*deferredType)(nil)
 
 func NewDeferredType(name string) sql.Type {
 	return &deferredType{bindVar: name}
@@ -39,32 +41,23 @@ func (t deferredType) Equals(otherType sql.Type) bool {
 
 // Compare implements Type interface. Note that while this returns 0 (equals)
 // for ordering purposes, in SQL NULL != NULL.
-func (t deferredType) Compare(a interface{}, b interface{}) (int, error) {
+func (t deferredType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
 	return 0, nil
 }
 
 // Convert implements Type interface.
-func (t deferredType) Convert(v interface{}) (interface{}, error) {
+func (t deferredType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v != nil {
-		return nil, ErrValueNotNil.New(v)
+		return nil, sql.InRange, ErrValueNotNil.New(v)
 	}
 
-	return nil, nil
+	return nil, sql.InRange, nil
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t deferredType) MaxTextResponseByteLength() uint32 {
+func (t deferredType) MaxTextResponseByteLength(*sql.Context) uint32 {
 	// deferredType is never actually sent over the wire
 	return 0
-}
-
-// MustConvert implements the Type interface.
-func (t deferredType) MustConvert(v interface{}) interface{} {
-	value, err := t.Convert(v)
-	if err != nil {
-		panic(err)
-	}
-	return value
 }
 
 // Promote implements the Type interface.
@@ -95,6 +88,11 @@ func (t deferredType) ValueType() reflect.Type {
 // Zero implements Type interface.
 func (t deferredType) Zero() interface{} {
 	return nil
+}
+
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (deferredType) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func (t deferredType) IsDeferred() bool {

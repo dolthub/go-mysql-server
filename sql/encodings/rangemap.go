@@ -95,6 +95,47 @@ func (rm *RangeMap) Encode(str []byte) ([]byte, bool) {
 	return encodedStr, true
 }
 
+// EncodeReplaceUnknown implements the Encoder interface.
+func (rm *RangeMap) EncodeReplaceUnknown(str []byte) []byte {
+	// There's no way of knowing how large the resulting string will be, but we can at least set it to the same size to
+	// minimize allocations.
+	encodedStr := make([]byte, 0, len(str))
+	for len(str) > 0 {
+		var encodedRune []byte
+		encodedRuneLen := 1
+		// The most common strings for most expected applications will find their result in the first loop, so the
+		// performance here shouldn't be as bad as it may seem.
+		for ; encodedRuneLen <= len(rm.inputEntries) && encodedRuneLen <= len(str); encodedRuneLen++ {
+			var ok bool
+			encodedRune, ok = rm.EncodeRune(str[:encodedRuneLen])
+			if ok {
+				break
+			}
+		}
+		if encodedRuneLen > len(rm.inputEntries) {
+			// The rune is not valid in this character set, so we'll attempt to see if the rune is valid utf8.
+			// If it is, then we want to replace the entire rune with a question mark. If it's not, then we'll
+			// just replace the next byte.
+			_, encodedRuneLen = utf8.DecodeRune(str)
+			if encodedRuneLen == 0 {
+				encodedRuneLen = 1
+			}
+			encodedRune = []byte{'?'}
+		}
+		// Since we do not terminate on invalid sequences, we may end up in a scenario where our count is misaligned, so
+		// we need to catch such instances.
+		if encodedRuneLen >= len(str) {
+			encodedRuneLen = len(str)
+		}
+		if len(encodedRune) == 0 {
+			encodedRune = []byte{'?'}
+		}
+		encodedStr = append(encodedStr, encodedRune...)
+		str = str[encodedRuneLen:]
+	}
+	return encodedStr
+}
+
 // DecodeRune implements the Encoder interface.
 func (rm *RangeMap) DecodeRune(r []byte) ([]byte, bool) {
 	if len(r) > len(rm.inputEntries) {

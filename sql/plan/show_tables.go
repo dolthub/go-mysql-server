@@ -16,10 +16,8 @@ package plan
 
 import (
 	"fmt"
-	"sort"
 
-	"github.com/gabereiser/go-mysql-server/sql/mysql_db"
-	"github.com/gabereiser/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/gabereiser/go-mysql-server/sql"
 	"github.com/gabereiser/go-mysql-server/sql/expression"
@@ -43,11 +41,16 @@ func NewShowTables(database sql.Database, full bool, asOf sql.Expression) *ShowT
 
 var _ sql.Databaser = (*ShowTables)(nil)
 var _ sql.Expressioner = (*ShowTables)(nil)
+var _ sql.CollationCoercible = (*ShowTables)(nil)
 var _ Versionable = (*ShowTables)(nil)
 
 // Database implements the sql.Databaser interface.
 func (p *ShowTables) Database() sql.Database {
 	return p.db
+}
+
+func (p *ShowTables) IsReadOnly() bool {
+	return true
 }
 
 // WithDatabase implements the sql.Databaser interface.
@@ -93,78 +96,6 @@ func (p *ShowTables) AsOf() sql.Expression {
 	return p.asOf
 }
 
-// RowIter implements the Node interface.
-func (p *ShowTables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	var tableNames []string
-
-	// TODO: this entire analysis should really happen in the analyzer, as opposed to at execution time
-	if p.asOf != nil {
-		if vdb, ok := p.db.(sql.VersionedDatabase); ok {
-			asOf, err := p.asOf.Eval(ctx, nil)
-			if err != nil {
-				return nil, err
-			}
-
-			tableNames, err = vdb.GetTableNamesAsOf(ctx, asOf)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			return nil, sql.ErrAsOfNotSupported.New(p.db.Name())
-		}
-	} else {
-		var err error
-		tableNames, err = p.db.GetTableNames(ctx)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	sort.Strings(tableNames)
-
-	var rows []sql.Row
-	for _, tableName := range tableNames {
-		row := sql.Row{tableName}
-		if p.Full {
-			row = append(row, "BASE TABLE")
-		}
-		rows = append(rows, row)
-	}
-
-	// TODO: currently there is no way to see views AS OF a particular time
-	maybeVdb := p.db
-	if privilegedDatabase, ok := maybeVdb.(mysql_db.PrivilegedDatabase); ok {
-		maybeVdb = privilegedDatabase.Unwrap()
-	}
-	if vdb, ok := maybeVdb.(sql.ViewDatabase); ok {
-		views, err := vdb.AllViews(ctx)
-		if err != nil {
-			return nil, err
-		}
-		for _, view := range views {
-			row := sql.Row{view.Name}
-			if p.Full {
-				row = append(row, "VIEW")
-			}
-			rows = append(rows, row)
-		}
-	}
-
-	for _, view := range ctx.GetViewRegistry().ViewsInDatabase(maybeVdb.Name()) {
-		row := sql.Row{view.Name()}
-		if p.Full {
-			row = append(row, "VIEW")
-		}
-		rows = append(rows, row)
-	}
-
-	sort.Slice(rows, func(i, j int) bool {
-		return rows[i][0].(string) < rows[j][0].(string)
-	})
-
-	return sql.RowsToRowIter(rows...), nil
-}
-
 // WithChildren implements the Node interface.
 func (p *ShowTables) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
@@ -174,10 +105,9 @@ func (p *ShowTables) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return p, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (p *ShowTables) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	// Some tables won't be visible during the resolution step if the user doesn't have the correct privileges
-	return true
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ShowTables) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func (p ShowTables) String() string {

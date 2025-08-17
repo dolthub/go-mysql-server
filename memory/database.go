@@ -15,12 +15,16 @@
 package memory
 
 import (
+	"fmt"
 	"strings"
+	"time"
 
-	"github.com/gabereiser/go-mysql-server/sql/expression"
-	"github.com/gabereiser/go-mysql-server/sql/types"
+	"sync"
 
-	"github.com/gabereiser/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/fulltext"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Database is an in-memory database.
@@ -31,7 +35,9 @@ type Database struct {
 
 type MemoryDatabase interface {
 	sql.Database
-	AddTable(name string, t sql.Table)
+	AddTable(name string, t MemTable)
+	DeleteTable(name string)
+	Database() *BaseDatabase
 }
 
 var _ sql.Database = (*Database)(nil)
@@ -41,18 +47,23 @@ var _ sql.TableDropper = (*Database)(nil)
 var _ sql.TableRenamer = (*Database)(nil)
 var _ sql.TriggerDatabase = (*Database)(nil)
 var _ sql.StoredProcedureDatabase = (*Database)(nil)
+var _ sql.EventDatabase = (*Database)(nil)
 var _ sql.ViewDatabase = (*Database)(nil)
 var _ sql.CollatedDatabase = (*Database)(nil)
+var _ fulltext.Database = (*Database)(nil)
+var _ sql.SchemaValidator = (*BaseDatabase)(nil)
 
 // BaseDatabase is an in-memory database that can't store views, only for testing the engine
 type BaseDatabase struct {
 	name              string
-	tables            map[string]sql.Table
+	tables            map[string]MemTable
 	fkColl            *ForeignKeyCollection
 	triggers          []sql.TriggerDefinition
 	storedProcedures  []sql.StoredProcedureDetails
+	events            []sql.EventDefinition
 	primaryKeyIndexes bool
 	collation         sql.CollationID
+	tablesMu          *sync.RWMutex
 }
 
 var _ MemoryDatabase = (*Database)(nil)
@@ -69,15 +80,25 @@ func NewDatabase(name string) *Database {
 // NewViewlessDatabase creates a new database that doesn't persist views. Used only for testing. Use NewDatabase.
 func NewViewlessDatabase(name string) *BaseDatabase {
 	return &BaseDatabase{
-		name:   name,
-		tables: map[string]sql.Table{},
-		fkColl: newForeignKeyCollection(),
+		name:     name,
+		tables:   map[string]MemTable{},
+		fkColl:   newForeignKeyCollection(),
+		tablesMu: &sync.RWMutex{},
 	}
+}
+
+// ValidateSchema implements sql.SchemaValidator
+func (d *BaseDatabase) ValidateSchema(schema sql.Schema) error {
+	return validateMaxRowLength(schema)
 }
 
 // EnablePrimaryKeyIndexes causes every table created in this database to use an index on its primary partitionKeys
 func (d *BaseDatabase) EnablePrimaryKeyIndexes() {
 	d.primaryKeyIndexes = true
+}
+
+func (d *BaseDatabase) Database() *BaseDatabase {
+	return d
 }
 
 // Name returns the database name.
@@ -87,21 +108,85 @@ func (d *BaseDatabase) Name() string {
 
 // Tables returns all tables in the database.
 func (d *BaseDatabase) Tables() map[string]sql.Table {
-	return d.tables
+	d.tablesMu.RLock()
+	defer d.tablesMu.RUnlock()
+	tables := make(map[string]sql.Table, len(d.tables))
+	for name, table := range d.tables {
+		tables[name] = table
+	}
+	return tables
 }
 
 func (d *BaseDatabase) GetTableInsensitive(ctx *sql.Context, tblName string) (sql.Table, bool, error) {
-	tbl, ok := sql.GetTableInsensitive(tblName, d.tables)
-	return tbl, ok, nil
+	tbl, ok := sql.GetTableInsensitive(tblName, d.Tables())
+	if !ok {
+		return nil, false, nil
+	}
+
+	memTable := tbl.(MemTable)
+	if memTable.IgnoreSessionData() {
+		return memTable, ok, nil
+	}
+
+	underlying := memTable.UnderlyingTable()
+	// look in the session for table data. If it's not there, then cache it in the session and return it
+	sess := SessionFromContext(ctx)
+	underlying = underlying.copy()
+	underlying.data = sess.tableData(underlying)
+
+	return underlying, ok, nil
+}
+
+// putTable writes the table given into database storage. A table with this name must already be present.
+func (d *BaseDatabase) putTable(t *Table) {
+	lowerName := strings.ToLower(t.name)
+	d.tablesMu.RLock()
+	for name, table := range d.tables {
+		if strings.ToLower(name) == lowerName {
+			t.name = table.Name()
+			d.tablesMu.RUnlock()
+			d.AddTable(name, t)
+			return
+		}
+	}
+	d.tablesMu.RUnlock()
+	panic(fmt.Sprintf("table %s not found", t.name))
 }
 
 func (d *BaseDatabase) GetTableNames(ctx *sql.Context) ([]string, error) {
+	d.tablesMu.RLock()
+	defer d.tablesMu.RUnlock()
+
 	tblNames := make([]string, 0, len(d.tables))
 	for k := range d.tables {
 		tblNames = append(tblNames, k)
 	}
 
 	return tblNames, nil
+}
+
+func (d *BaseDatabase) CreateFulltextTableNames(ctx *sql.Context, parentTableName string, parentIndexName string) (fulltext.IndexTableNames, error) {
+	d.tablesMu.RLock()
+	defer d.tablesMu.RUnlock()
+
+	var tablePrefix string
+OuterLoop:
+	for i := uint64(0); true; i++ {
+		tablePrefix = strings.ToLower(fmt.Sprintf("%s_%s_%d", parentTableName, parentIndexName, i))
+		for tableName := range d.tables {
+			if strings.HasPrefix(strings.ToLower(tableName), tablePrefix) {
+				continue OuterLoop
+			}
+		}
+		break
+	}
+	return fulltext.IndexTableNames{
+		Config:      fmt.Sprintf("%s_FTS_CONFIG", parentTableName),
+		Position:    fmt.Sprintf("%s_FTS_POSITION", tablePrefix),
+		DocCount:    fmt.Sprintf("%s_FTS_DOC_COUNT", tablePrefix),
+		GlobalCount: fmt.Sprintf("%s_FTS_GLOBAL_COUNT", tablePrefix),
+		RowCount:    fmt.Sprintf("%s_FTS_ROW_COUNT", tablePrefix),
+	}, nil
 }
 
 func (d *BaseDatabase) GetForeignKeyCollection() *ForeignKeyCollection {
@@ -156,107 +241,149 @@ func (db *HistoryDatabase) AddTableAsOf(name string, t sql.Table, asOf interface
 	}
 
 	db.Revisions[strings.ToLower(name)][asOf] = t
-	db.tables[name] = t
+	db.AddTable(name, t.(MemTable))
 }
 
 // AddTable adds a new table to the database.
-func (d *BaseDatabase) AddTable(name string, t sql.Table) {
+func (d *BaseDatabase) AddTable(name string, t MemTable) {
+	d.tablesMu.Lock()
+	defer d.tablesMu.Unlock()
 	d.tables[name] = t
 }
 
+// DeleteTable deletes a table from the database.
+func (d *BaseDatabase) DeleteTable(name string) {
+	d.tablesMu.Lock()
+	defer d.tablesMu.Unlock()
+	delete(d.tables, name)
+}
+
 // CreateTable creates a table with the given name and schema
-func (d *BaseDatabase) CreateTable(ctx *sql.Context, name string, schema sql.PrimaryKeySchema, collation sql.CollationID) error {
+func (d *BaseDatabase) CreateTable(ctx *sql.Context, name string, schema sql.PrimaryKeySchema, collation sql.CollationID, comment string) error {
+	d.tablesMu.RLock()
 	_, ok := d.tables[name]
+	d.tablesMu.RUnlock()
 	if ok {
 		return sql.ErrTableAlreadyExists.New(name)
 	}
 
-	table := NewTableWithCollation(name, schema, d.fkColl, collation)
+	table := NewTableWithCollation(d, name, schema, d.fkColl, collation)
+	table.db = d
+	table.data.comment = comment
 	if d.primaryKeyIndexes {
 		table.EnablePrimaryKeyIndexes()
 	}
-	d.tables[name] = table
+
+	d.AddTable(name, table)
+	sess := SessionFromContext(ctx)
+	sess.putTable(table.data)
+
 	return nil
 }
 
 // CreateIndexedTable creates a table with the given name and schema
 func (d *BaseDatabase) CreateIndexedTable(ctx *sql.Context, name string, sch sql.PrimaryKeySchema, idxDef sql.IndexDef, collation sql.CollationID) error {
+	d.tablesMu.RLock()
 	_, ok := d.tables[name]
+	d.tablesMu.RUnlock()
 	if ok {
 		return sql.ErrTableAlreadyExists.New(name)
 	}
 
-	table := NewTableWithCollation(name, sch, d.fkColl, collation)
+	table := NewTableWithCollation(d, name, sch, d.fkColl, collation)
+	table.db = d
 	if d.primaryKeyIndexes {
 		table.EnablePrimaryKeyIndexes()
 	}
 
 	for _, idxCol := range idxDef.Columns {
-		col := sch.Schema[sch.Schema.IndexOfColName(idxCol.Name)]
+		idx := sch.Schema.IndexOfColName(idxCol.Name)
+		if idx == -1 {
+			return sql.ErrColumnNotFound.New(idxCol.Name)
+		}
+		col := sch.Schema[idx]
 		if col.PrimaryKey && types.IsText(col.Type) && idxCol.Length > 0 {
 			return sql.ErrUnsupportedIndexPrefix.New(col.Name)
 		}
 	}
 
-	d.tables[name] = table
+	d.AddTable(name, table)
 	return nil
 }
 
 // DropTable drops the table with the given name
 func (d *BaseDatabase) DropTable(ctx *sql.Context, name string) error {
-	_, ok := d.tables[name]
+	d.tablesMu.RLock()
+	t, ok := d.tables[name]
+	d.tablesMu.RUnlock()
+
 	if !ok {
 		return sql.ErrTableNotFound.New(name)
 	}
 
-	delete(d.tables, name)
+	SessionFromContext(ctx).dropTable(t.(*Table).data)
+
+	d.DeleteTable(name)
 	return nil
 }
 
 func (d *BaseDatabase) RenameTable(ctx *sql.Context, oldName, newName string) error {
+	d.tablesMu.RLock()
 	tbl, ok := d.tables[oldName]
+	d.tablesMu.RUnlock()
+
 	if !ok {
 		// Should be impossible (engine already checks this condition)
 		return sql.ErrTableNotFound.New(oldName)
 	}
 
+	d.tablesMu.RLock()
 	_, ok = d.tables[newName]
+	d.tablesMu.RUnlock()
+
 	if ok {
 		return sql.ErrTableAlreadyExists.New(newName)
 	}
 
-	memTbl := tbl.(*Table)
+	sess := SessionFromContext(ctx)
+
+	// retrieve table data from session
+	tbl.(*Table).data = sess.tableData(tbl.(*Table))
+	sess.dropTable(tbl.(*Table).data)
+
+	memTbl := tbl.(*Table).copy()
 	memTbl.name = newName
-	for _, col := range memTbl.schema.Schema {
+	for _, col := range memTbl.data.schema.Schema {
 		col.Source = newName
 	}
-	for _, index := range memTbl.indexes {
+	for _, index := range memTbl.data.indexes {
 		memIndex := index.(*Index)
 		for i, expr := range memIndex.Exprs {
 			getField := expr.(*expression.GetField)
-			memIndex.Exprs[i] = expression.NewGetFieldWithTable(i, getField.Type(), newName, getField.Name(), getField.IsNullable())
+			memIndex.Exprs[i] = expression.NewGetFieldWithTable(i, 0, getField.Type(), d.name, newName, getField.Name(), getField.IsNullable())
 		}
 	}
-	d.tables[newName] = tbl
-	delete(d.tables, oldName)
+	memTbl.data.tableName = newName
+
+	d.AddTable(newName, memTbl)
+	d.DeleteTable(oldName)
+	sess.putTable(memTbl.data)
 
 	return nil
 }
 
-func (d *BaseDatabase) GetTriggers(ctx *sql.Context) ([]sql.TriggerDefinition, error) {
+func (d *BaseDatabase) GetTriggers(_ *sql.Context) ([]sql.TriggerDefinition, error) {
 	var triggers []sql.TriggerDefinition
-	for _, def := range d.triggers {
-		triggers = append(triggers, def)
-	}
+	triggers = append(triggers, d.triggers...)
 	return triggers, nil
 }
 
-func (d *BaseDatabase) CreateTrigger(ctx *sql.Context, definition sql.TriggerDefinition) error {
+func (d *BaseDatabase) CreateTrigger(_ *sql.Context, definition sql.TriggerDefinition) error {
 	d.triggers = append(d.triggers, definition)
 	return nil
 }
 
-func (d *BaseDatabase) DropTrigger(ctx *sql.Context, name string) error {
+func (d *BaseDatabase) DropTrigger(_ *sql.Context, name string) error {
 	found := false
 	for i, trigger := range d.triggers {
 		if trigger.Name == name {
@@ -285,9 +412,7 @@ func (d *BaseDatabase) GetStoredProcedure(ctx *sql.Context, name string) (sql.St
 // GetStoredProcedures implements sql.StoredProcedureDatabase
 func (d *BaseDatabase) GetStoredProcedures(ctx *sql.Context) ([]sql.StoredProcedureDetails, error) {
 	var spds []sql.StoredProcedureDetails
-	for _, spd := range d.storedProcedures {
-		spds = append(spds, spd)
-	}
+	spds = append(spds, d.storedProcedures...)
 	return spds, nil
 }
 
@@ -320,6 +445,97 @@ func (d *BaseDatabase) DropStoredProcedure(ctx *sql.Context, name string) error 
 	return nil
 }
 
+// GetEvent implements sql.EventDatabase
+func (d *BaseDatabase) GetEvent(ctx *sql.Context, name string) (sql.EventDefinition, bool, error) {
+	name = strings.ToLower(name)
+	for _, ed := range d.events {
+		if name == strings.ToLower(ed.Name) {
+			return ed, true, nil
+		}
+	}
+	return sql.EventDefinition{}, false, nil
+}
+
+// GetEvents implements sql.EventDatabase
+func (d *BaseDatabase) GetEvents(ctx *sql.Context) ([]sql.EventDefinition, interface{}, error) {
+	var eds []sql.EventDefinition
+	eds = append(eds, d.events...)
+	// memory DB doesn't support event reloading, so token is always nil
+	return eds, nil, nil
+}
+
+// SaveEvent implements sql.EventDatabase
+func (d *BaseDatabase) SaveEvent(_ *sql.Context, event sql.EventDefinition) (bool, error) {
+	loweredName := strings.ToLower(event.Name)
+	for _, existingEvent := range d.events {
+		if strings.ToLower(existingEvent.Name) == loweredName {
+			return false, sql.ErrEventAlreadyExists.New(event.Name)
+		}
+	}
+	d.events = append(d.events, event)
+	return event.Status == sql.EventStatus_Enable.String(), nil
+}
+
+// DropEvent implements sql.EventDatabase
+func (d *BaseDatabase) DropEvent(ctx *sql.Context, name string) error {
+	loweredName := strings.ToLower(name)
+	found := false
+	for i, ed := range d.events {
+		if strings.ToLower(ed.Name) == loweredName {
+			d.events = append(d.events[:i], d.events[i+1:]...)
+			found = true
+			break
+		}
+	}
+	if !found {
+		return sql.ErrEventDoesNotExist.New(name)
+	}
+	return nil
+}
+
+// UpdateEvent implements sql.EventDatabase
+func (d *BaseDatabase) UpdateEvent(_ *sql.Context, originalName string, event sql.EventDefinition) (bool, error) {
+	loweredOriginalName := strings.ToLower(originalName)
+	loweredNewName := strings.ToLower(event.Name)
+	found := false
+	for i, existingEd := range d.events {
+		if loweredOriginalName != loweredNewName && strings.ToLower(existingEd.Name) == loweredNewName {
+			// renaming event to existing name
+			return false, sql.ErrEventAlreadyExists.New(loweredNewName)
+		} else if strings.ToLower(existingEd.Name) == loweredOriginalName {
+			d.events[i] = event
+			found = true
+		}
+	}
+	if !found {
+		return false, sql.ErrEventDoesNotExist.New(event.Name)
+	}
+	return event.Status == sql.EventStatus_Enable.String(), nil
+}
+
+// UpdateLastExecuted implements sql.EventDatabase
+func (d *BaseDatabase) UpdateLastExecuted(ctx *sql.Context, eventName string, lastExecuted time.Time) error {
+	loweredName := strings.ToLower(eventName)
+	found := false
+	for _, existingEd := range d.events {
+		if strings.ToLower(existingEd.Name) == loweredName {
+			found = true
+			existingEd.LastExecuted = lastExecuted
+		}
+	}
+	// this should not happen, but sanity check
+	if !found {
+		return sql.ErrEventDoesNotExist.New(eventName)
+	}
+	return nil
+}
+
+// NeedsToReloadEvents implements sql.EventDatabase
+func (d *Database) NeedsToReloadEvents(_ *sql.Context, token interface{}) (bool, error) {
+	// Event reloading not supported for in-memory database
+	return false, nil
+}
+
 // GetCollation implements sql.CollatedDatabase.
 func (d *BaseDatabase) GetCollation(ctx *sql.Context) sql.CollationID {
 	return d.collation
@@ -331,14 +547,25 @@ func (d *BaseDatabase) SetCollation(ctx *sql.Context, collation sql.CollationID)
 	return nil
 }
 
+func (d *Database) Database() *BaseDatabase {
+	return d.BaseDatabase
+}
+
 // CreateView implements the interface sql.ViewDatabase.
 func (d *Database) CreateView(ctx *sql.Context, name string, selectStatement, createViewStmt string) error {
-	_, ok := d.views[name]
+	_, ok := d.views[strings.ToLower(name)]
 	if ok {
-		return sql.ErrExistingView.New(name)
+		return sql.ErrExistingView.New(d.Name(), name)
 	}
 
-	d.views[name] = sql.ViewDefinition{Name: name, TextDefinition: selectStatement, CreateViewStatement: createViewStmt}
+	sqlMode := sql.LoadSqlMode(ctx)
+
+	d.views[strings.ToLower(name)] = sql.ViewDefinition{
+		Name:                name,
+		TextDefinition:      selectStatement,
+		CreateViewStatement: createViewStmt,
+		SqlMode:             sqlMode.String(),
+	}
 	return nil
 }
 
@@ -346,7 +573,7 @@ func (d *Database) CreateView(ctx *sql.Context, name string, selectStatement, cr
 func (d *Database) DropView(ctx *sql.Context, name string) error {
 	_, ok := d.views[name]
 	if !ok {
-		return sql.ErrViewDoesNotExist.New(name)
+		return sql.ErrViewDoesNotExist.New(d.name, name)
 	}
 
 	delete(d.views, name)
@@ -364,7 +591,7 @@ func (d *Database) AllViews(ctx *sql.Context) ([]sql.ViewDefinition, error) {
 
 // GetViewDefinition implements the interface sql.ViewDatabase.
 func (d *Database) GetViewDefinition(ctx *sql.Context, viewName string) (sql.ViewDefinition, bool, error) {
-	viewDef, ok := d.views[viewName]
+	viewDef, ok := d.views[strings.ToLower(viewName)]
 	return viewDef, ok, nil
 }
 

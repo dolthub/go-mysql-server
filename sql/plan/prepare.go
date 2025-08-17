@@ -17,26 +17,38 @@ package plan
 import (
 	"fmt"
 
-	"github.com/gabereiser/go-mysql-server/sql"
-	"github.com/gabereiser/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
+
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
 // PrepareQuery is a node that prepares the query
 type PrepareQuery struct {
-	Name  string
-	Child sql.Node
+	Name     string
+	Child    sql.Node
+	PrepStmt *sqlparser.Prepare
 }
 
 var _ sql.Node = (*PrepareQuery)(nil)
+var _ sql.CollationCoercible = (*PrepareQuery)(nil)
 
 // NewPrepareQuery creates a new PrepareQuery node.
-func NewPrepareQuery(name string, child sql.Node) *PrepareQuery {
-	return &PrepareQuery{Name: name, Child: child}
+func NewPrepareQuery(name string, child sql.Node, prepStmt *sqlparser.Prepare) *PrepareQuery {
+	return &PrepareQuery{
+		Name:     name,
+		Child:    child,
+		PrepStmt: prepStmt,
+	}
 }
 
 // Schema implements the Node interface.
 func (p *PrepareQuery) Schema() sql.Schema {
 	return types.OkResultSchema
+}
+
+func (p *PrepareQuery) IsReadOnly() bool {
+	return true
 }
 
 // PrepareInfo is the Info for OKResults returned by Update nodes.
@@ -70,9 +82,9 @@ func (p *PrepareQuery) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return p, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (p *PrepareQuery) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return p.Child.CheckPrivileges(ctx, opChecker)
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*PrepareQuery) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func (p *PrepareQuery) String() string {
@@ -86,6 +98,7 @@ type ExecuteQuery struct {
 }
 
 var _ sql.Node = (*ExecuteQuery)(nil)
+var _ sql.CollationCoercible = (*ExecuteQuery)(nil)
 
 // NewExecuteQuery executes a prepared statement
 func NewExecuteQuery(name string, bindVars ...sql.Expression) *ExecuteQuery {
@@ -106,6 +119,10 @@ func (p *ExecuteQuery) Resolved() bool {
 	panic("ExecuteQuery methods shouldn't be used")
 }
 
+func (p *ExecuteQuery) IsReadOnly() bool {
+	panic("ExecuteQuery methods shouldn't be used")
+}
+
 // Children implements the Node interface.
 func (p *ExecuteQuery) Children() []sql.Node {
 	panic("ExecuteQuery methods shouldn't be used")
@@ -116,9 +133,9 @@ func (p *ExecuteQuery) WithChildren(children ...sql.Node) (sql.Node, error) {
 	panic("ExecuteQuery methods shouldn't be used")
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (p *ExecuteQuery) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	panic("ExecuteQuery methods shouldn't be used")
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ExecuteQuery) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func (p *ExecuteQuery) String() string {
@@ -131,6 +148,7 @@ type DeallocateQuery struct {
 }
 
 var _ sql.Node = (*DeallocateQuery)(nil)
+var _ sql.CollationCoercible = (*DeallocateQuery)(nil)
 
 // NewDeallocateQuery executes a prepared statement
 func NewDeallocateQuery(name string) *DeallocateQuery {
@@ -151,6 +169,10 @@ func (p *DeallocateQuery) Resolved() bool {
 	return true
 }
 
+func (p *DeallocateQuery) IsReadOnly() bool {
+	return true
+}
+
 // Children implements the Node interface.
 func (p *DeallocateQuery) Children() []sql.Node {
 	return nil
@@ -164,9 +186,9 @@ func (p *DeallocateQuery) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return p, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (p *DeallocateQuery) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*DeallocateQuery) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func (p *DeallocateQuery) String() string {

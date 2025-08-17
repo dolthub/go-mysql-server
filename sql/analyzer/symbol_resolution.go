@@ -46,7 +46,12 @@ import (
 //     satisfied by tablescans in the subquery
 //   - stars: a tablescan with a qualified star or cannot be pruned. An
 //     unqualified star prevents pruning every child tablescan.
-func pruneTables(ctx *sql.Context, a *Analyzer, n sql.Node, s *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func pruneTables(ctx *sql.Context, a *Analyzer, n sql.Node, s *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
+	// MATCH ... AGAINST ... prevents pruning due to its internal reliance on an expected and consistent schema in all situations
+	if hasMatchAgainstExpr(n) {
+		return n, transform.SameTree, nil
+	}
+
 	// the same table can appear in multiple table scans,
 	// so we use a counter to pin references
 	parentCols := make(map[tableCol]int)
@@ -79,7 +84,12 @@ func pruneTables(ctx *sql.Context, a *Analyzer, n sql.Node, s *Scope, sel RuleSe
 		case *plan.ResolvedTable:
 			return pruneTableCols(n, parentCols, parentStars, unqualifiedStar)
 		case *plan.JoinNode:
-			if n.JoinType().IsPhysical() || n.JoinType().IsNatural() {
+			if n.JoinType().IsPhysical() || n.JoinType().IsUsing() {
+				return n, transform.SameTree, nil
+			}
+			// we cannot push projections past lateral joins as columns not in the projection,
+			// but are in the left subtree can be referenced by the right subtree or parent nodes
+			if sqa, ok := n.Right().(*plan.SubqueryAlias); ok && sqa.IsLateral {
 				return n, transform.SameTree, nil
 			}
 			if _, ok := n.Right().(*plan.JSONTable); ok {
@@ -88,9 +98,9 @@ func pruneTables(ctx *sql.Context, a *Analyzer, n sql.Node, s *Scope, sel RuleSe
 				push(outerCols, outerStars, outerUnq)
 				push(aliasCols, aliasStars, false)
 			}
-		case *plan.Filter, *plan.GroupBy, *plan.Project, *plan.TableAlias,
+		case *plan.Filter, *plan.Distinct, *plan.GroupBy, *plan.Project, *plan.TableAlias,
 			*plan.Window, *plan.Sort, *plan.Limit, *plan.RecursiveCte,
-			*plan.RecursiveTable, *plan.TopN, *plan.Offset, *plan.SelectSingleRel:
+			*plan.RecursiveTable, *plan.TopN, *plan.Offset, *plan.StripRowNode:
 		default:
 			return n, transform.SameTree, nil
 		}
@@ -110,7 +120,10 @@ func pruneTables(ctx *sql.Context, a *Analyzer, n sql.Node, s *Scope, sel RuleSe
 
 		children := n.Children()
 		var newChildren []sql.Node
-		for i, c := range children {
+		for i := len(children) - 1; i >= 0; i-- {
+			// TODO don't push filters too low in join?
+			// join tables scoped left -> right, prune right -> left
+			c := children[i]
 			child, same, _ := pruneWalk(c)
 			if !same {
 				if newChildren == nil {
@@ -157,6 +170,19 @@ func findSubqueryExpr(n sql.Node) *plan.Subquery {
 	return nil
 }
 
+// hasMatchAgainstExpr searches for an *expression.MatchAgainst within the node's expressions
+func hasMatchAgainstExpr(node sql.Node) bool {
+	var foundMatchAgainstExpr bool
+	transform.InspectExpressions(node, func(expr sql.Expression) bool {
+		_, isMatchAgainstExpr := expr.(*expression.MatchAgainst)
+		if isMatchAgainstExpr {
+			foundMatchAgainstExpr = true
+		}
+		return !foundMatchAgainstExpr
+	})
+	return foundMatchAgainstExpr
+}
+
 // pruneTableCols uses a list of parent dependencies columns and stars
 // to prune and return a new table node. We prune a column if no
 // parent references the column, no parent projections this table as a
@@ -168,31 +194,31 @@ func pruneTableCols(
 	unqualifiedStar bool,
 ) (sql.Node, transform.TreeIdentity, error) {
 	table := getTable(n)
-	t, ok := table.(sql.ProjectedTable)
-	if !ok || t.Name() == plan.DualTableName {
+	ptab, isProjTbl := table.(sql.ProjectedTable)
+	if !isProjTbl || plan.IsDualTable(table) {
 		return n, transform.SameTree, nil
 	}
-
-	_, selectStar := parentStars[t.Name()]
-	if unqualifiedStar {
-		selectStar = true
-	}
-
-	tab := getTable(n)
-	ptab, ok := tab.(sql.ProjectedTable)
-	if !ok {
-		return n, transform.SameTree, nil
-	}
-
 	if len(ptab.Projections()) > 0 {
 		return n, transform.SameTree, nil
 	}
 
+	// columns don't need to be pruned if there's a star
+	_, selectStar := parentStars[table.Name()]
+	if selectStar || unqualifiedStar {
+		return n, transform.SameTree, nil
+	}
+
+	// pruning VirtualColumnTable underlying tables causes indexing errors when VirtualColumnTable.Projections (which are sql.Expression)
+	// are evaluated
+	if _, isVCT := n.WrappedTable().(*plan.VirtualColumnTable); isVCT {
+		return n, transform.SameTree, nil
+	}
+
 	cols := make([]string, 0)
-	source := strings.ToLower(t.Name())
-	for _, col := range t.Schema() {
-		c := tableCol{table: strings.ToLower(source), col: strings.ToLower(col.Name)}
-		if selectStar || parentCols[c] > 0 {
+	source := strings.ToLower(table.Name())
+	for _, col := range table.Schema() {
+		c := newTableCol(source, col.Name)
+		if parentCols[c] > 0 {
 			cols = append(cols, c.col)
 		}
 	}
@@ -212,6 +238,7 @@ func gatherOuterCols(n sql.Node) ([]tableCol, []string, bool) {
 	if !ok {
 		return nil, nil, false
 	}
+
 	var cols []tableCol
 	var nodeStars []string
 	var nodeUnqualifiedStar bool
@@ -222,15 +249,15 @@ func gatherOuterCols(n sql.Node) ([]tableCol, []string, bool) {
 			case *expression.Alias:
 				switch e := e.Child.(type) {
 				case *expression.GetField:
-					col = tableCol{table: strings.ToLower(e.Table()), col: strings.ToLower(e.Name())}
+					col = newTableCol(e.Table(), e.Name())
 				case *expression.UnresolvedColumn:
-					col = tableCol{table: strings.ToLower(e.Table()), col: strings.ToLower(e.Name())}
+					col = newTableCol(e.Table(), e.Name())
 				default:
 				}
 			case *expression.GetField:
-				col = tableCol{table: strings.ToLower(e.Table()), col: strings.ToLower(e.Name())}
+				col = newTableCol(e.Table(), e.Name())
 			case *expression.UnresolvedColumn:
-				col = tableCol{table: strings.ToLower(e.Table()), col: strings.ToLower(e.Name())}
+				col = newTableCol(e.Table(), e.Name())
 			case *expression.Star:
 				if len(e.Table) > 0 {
 					nodeStars = append(nodeStars, strings.ToLower(e.Table))
@@ -241,7 +268,6 @@ func gatherOuterCols(n sql.Node) ([]tableCol, []string, bool) {
 			}
 			if col.col != "" {
 				cols = append(cols, col)
-
 			}
 			return false
 		})
@@ -276,8 +302,8 @@ func gatherTableAlias(
 			starred = true
 		}
 		for _, col := range n.Schema() {
-			baseCol := tableCol{table: strings.ToLower(base), col: strings.ToLower(col.Name)}
-			aliasCol := tableCol{table: strings.ToLower(alias), col: strings.ToLower(col.Name)}
+			baseCol := newTableCol(base, col.Name)
+			aliasCol := newTableCol(alias, col.Name)
 			if starred || parentCols[aliasCol] > 0 {
 				// if the outer scope requests an aliased column
 				// a table lower in the tree must provide the source
@@ -293,12 +319,4 @@ func gatherTableAlias(
 	default:
 	}
 	return cols, nodeStars
-}
-
-// todo(max): implement this
-func gatherSubqueryExpression(n sql.Node) ([]tableCol, []string, bool) {
-	if sq := findSubqueryExpr(n); sq != nil {
-		return gatherOuterCols(sq.Query)
-	}
-	return nil, nil, false
 }

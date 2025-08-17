@@ -30,6 +30,7 @@ type MultiPolygon struct {
 }
 
 var _ sql.FunctionExpression = (*MultiPolygon)(nil)
+var _ sql.CollationCoercible = (*MultiPolygon)(nil)
 
 // NewMultiPolygon creates a new multipolygon expression.
 func NewMultiPolygon(args ...sql.Expression) (sql.Expression, error) {
@@ -52,6 +53,11 @@ func (p *MultiPolygon) Description() string {
 // Type implements the sql.Expression interface.
 func (p *MultiPolygon) Type() sql.Type {
 	return types.MultiPolygonType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*MultiPolygon) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (p *MultiPolygon) String() string {

@@ -23,6 +23,9 @@ type TransformedNamedNode struct {
 	name string
 }
 
+var _ sql.Node = (*TransformedNamedNode)(nil)
+var _ sql.CollationCoercible = (*TransformedNamedNode)(nil)
+
 // TransformedNamedNode is a wrapper for arbitrary logic to represent a table
 // factor assembled from other nodes at some point in by the analyzer. See
 // e.g., Concat.
@@ -38,8 +41,8 @@ func (n *TransformedNamedNode) Schema() sql.Schema {
 	return n.Child.Schema()
 }
 
-func (n *TransformedNamedNode) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return n.Child.RowIter(ctx, row)
+func (n *TransformedNamedNode) IsReadOnly() bool {
+	return n.Child.IsReadOnly()
 }
 
 func (n *TransformedNamedNode) WithChildren(children ...sql.Node) (sql.Node, error) {
@@ -49,9 +52,9 @@ func (n *TransformedNamedNode) WithChildren(children ...sql.Node) (sql.Node, err
 	return NewTransformedNamedNode(children[0], n.name), nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (n *TransformedNamedNode) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return n.Child.CheckPrivileges(ctx, opChecker)
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (n *TransformedNamedNode) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, n.Child)
 }
 
 func (n *TransformedNamedNode) String() string {

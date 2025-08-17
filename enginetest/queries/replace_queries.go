@@ -86,8 +86,8 @@ var ReplaceQueries = []WriteQueryTest{
 			int64(999), int8(math.MaxInt8), int16(math.MaxInt16), int32(math.MaxInt32), int64(math.MaxInt64),
 			uint8(math.MaxUint8), uint16(math.MaxUint16), uint32(math.MaxUint32), uint64(math.MaxUint64),
 			float32(math.MaxFloat32), float64(math.MaxFloat64),
-			sql.MustConvert(types.Timestamp.Convert("2037-04-05 12:51:36")), sql.MustConvert(types.Date.Convert("2231-11-07")),
-			"random text", sql.True, types.MustJSON(`{"key":"value"}`), []byte("blobdata"), uint(2), uint(4),
+			sql.MustConvert(types.Timestamp.Convert(sqlCtx, "2037-04-05 12:51:36")), sql.MustConvert(types.Date.Convert(sqlCtx, "2231-11-07")),
+			"random text", sql.True, types.MustJSON(`{"key":"value"}`), []byte("blobdata"), "v1", "v2",
 		}},
 	},
 	{
@@ -104,11 +104,12 @@ var ReplaceQueries = []WriteQueryTest{
 			int64(999), int8(math.MaxInt8), int16(math.MaxInt16), int32(math.MaxInt32), int64(math.MaxInt64),
 			uint8(math.MaxUint8), uint16(math.MaxUint16), uint32(math.MaxUint32), uint64(math.MaxUint64),
 			float32(math.MaxFloat32), float64(math.MaxFloat64),
-			sql.MustConvert(types.Timestamp.Convert("2037-04-05 12:51:36")), sql.MustConvert(types.Date.Convert("2231-11-07")),
-			"random text", sql.True, types.MustJSON(`{"key":"value"}`), []byte("blobdata"), uint(2), uint(4),
+			sql.MustConvert(types.Timestamp.Convert(sqlCtx, "2037-04-05 12:51:36")), sql.MustConvert(types.Date.Convert(sqlCtx, "2231-11-07")),
+			"random text", sql.True, types.MustJSON(`{"key":"value"}`), []byte("blobdata"), "v1", "v2",
 		}},
 	},
 	{
+		SkipServerEngine: true, // the datetime returned is not non-zero
 		WriteQuery: `REPLACE INTO typestable VALUES (
 			999, -128, -32768, -2147483648, -9223372036854775808,
 			0, 0, 0, 0,
@@ -123,10 +124,11 @@ var ReplaceQueries = []WriteQueryTest{
 			uint8(0), uint16(0), uint32(0), uint64(0),
 			float32(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
 			types.Timestamp.Zero(), types.Date.Zero(),
-			"", sql.False, types.MustJSON(`""`), []byte(""), uint(1), uint(0),
+			"", sql.False, types.MustJSON(`""`), []byte(""), "", "",
 		}},
 	},
 	{
+		SkipServerEngine: true, // the datetime returned is not non-zero
 		WriteQuery: `REPLACE INTO typestable SET
 			id = 999, i8 = -128, i16 = -32768, i32 = -2147483648, i64 = -9223372036854775808,
 			u8 = 0, u16 = 0, u32 = 0, u64 = 0,
@@ -141,7 +143,7 @@ var ReplaceQueries = []WriteQueryTest{
 			uint8(0), uint16(0), uint32(0), uint64(0),
 			float32(math.SmallestNonzeroFloat32), float64(math.SmallestNonzeroFloat64),
 			types.Timestamp.Zero(), types.Date.Zero(),
-			"", sql.False, types.MustJSON(`""`), []byte(""), uint(1), uint(0),
+			"", sql.False, types.MustJSON(`""`), []byte(""), "", "",
 		}},
 	},
 	{

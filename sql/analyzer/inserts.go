@@ -15,49 +15,24 @@
 package analyzer
 
 import (
+	"fmt"
 	"strings"
 
-	"github.com/gabereiser/go-mysql-server/sql/transform"
-	"github.com/gabereiser/go-mysql-server/sql/types"
+	"github.com/dolthub/vitess/go/sqltypes"
 
-	"github.com/gabereiser/go-mysql-server/sql"
-	"github.com/gabereiser/go-mysql-server/sql/expression"
-	"github.com/gabereiser/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function"
+	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func setInsertColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	// We capture all INSERTs along the tree, such as those inside of block statements.
-	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		ii, ok := n.(*plan.InsertInto)
-		if !ok {
-			return n, transform.SameTree, nil
-		}
-
-		if !ii.Destination.Resolved() {
-			return n, transform.SameTree, nil
-		}
-
-		schema := ii.Destination.Schema()
-
-		// If no column names were specified in the query, go ahead and fill
-		// them all in now that the destination is resolved.
-		// TODO: setting the plan field directly is not great
-		if len(ii.ColumnNames) == 0 {
-			colNames := make([]string, len(schema))
-			for i, col := range schema {
-				colNames[i] = col.Name
-			}
-			ii.ColumnNames = colNames
-		}
-
-		return ii, transform.NewTree, nil
-	})
-}
-
-func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	if _, ok := n.(*plan.TriggerExecutor); ok {
 		return n, transform.SameTree, nil
-	} else if _, ok := n.(*plan.CreateProcedure); ok {
+	}
+	if _, ok := n.(*plan.CreateProcedure); ok {
 		return n, transform.SameTree, nil
 	}
 	// We capture all INSERTs along the tree, such as those inside of block statements.
@@ -74,32 +49,21 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 			return nil, transform.SameTree, err
 		}
 
-		if insert.IsReplace {
-			var ok bool
-			_, ok = insertable.(sql.ReplaceableTable)
-			if !ok {
-				return nil, transform.SameTree, plan.ErrReplaceIntoNotSupported.New()
-			}
-		}
-
-		if len(insert.OnDupExprs) > 0 {
-			var ok bool
-			_, ok = insertable.(sql.UpdatableTable)
-			if !ok {
-				return nil, transform.SameTree, plan.ErrOnDuplicateKeyUpdateNotSupported.New()
-			}
-		}
-
 		source := insert.Source
 		// TriggerExecutor has already been analyzed
-		if _, ok := insert.Source.(*plan.TriggerExecutor); !ok {
+		if _, isTrigExec := insert.Source.(*plan.TriggerExecutor); !isTrigExec && !insert.LiteralValueSource {
 			// Analyze the source of the insert independently
-			source, _, err = a.analyzeWithSelector(ctx, insert.Source, scope, SelectAllBatches, newInsertSourceSelector(sel))
+			if _, ok := insert.Source.(*plan.Values); ok {
+				scope = scope.NewScope(plan.NewProject(
+					expression.SchemaToGetFields(insert.Source.Schema()[:len(insert.ColumnNames)], sql.ColSet{}),
+					plan.NewSubqueryAlias("dummy", "", insert.Source),
+				))
+			}
+			scope.SetInInsertSource(true)
+			source, _, err = a.analyzeWithSelector(ctx, insert.Source, scope, SelectAllBatches, newInsertSourceSelector(sel), qFlags)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-
-			source = StripPassthroughNodes(source)
 		}
 
 		dstSchema := insertable.Schema()
@@ -116,49 +80,26 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 			for i, f := range dstSchema {
 				columnNames[i] = f.Name
 			}
-		} else {
-			err = validateColumns(columnNames, dstSchema)
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-		}
-
-		err = validateValueCount(columnNames, source)
-		if err != nil {
-			return nil, transform.SameTree, err
 		}
 
 		// The schema of the destination node and the underlying table differ subtly in terms of defaults
-		project, err := wrapRowSource(ctx, source, insertable, insert.Destination.Schema(), columnNames)
+		var deferredDefaults sql.FastIntSet
+		project, firstGeneratedAutoIncRowIdx, deferredDefaults, err := wrapRowSource(
+			ctx,
+			source,
+			insertable,
+			insert.Destination.Schema(),
+			columnNames,
+		)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
 
-		return insert.WithSource(project), transform.NewTree, nil
-	})
-}
-
-// resolvePreparedInsert applies post-optimization
-// rules to Insert.Source for prepared statements.
-func resolvePreparedInsert(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
-	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		ins, ok := n.(*plan.InsertInto)
-		if !ok {
-			return n, transform.SameTree, nil
-		}
-
-		// TriggerExecutor has already been analyzed
-		if _, ok := ins.Source.(*plan.TriggerExecutor); ok {
-			return n, transform.SameTree, nil
-		}
-
-		source, _, err := a.analyzeWithSelector(ctx, ins.Source, scope, SelectAllBatches, postPrepareInsertSourceRuleSelector)
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
-
-		source = StripPassthroughNodes(source)
-		return ins.WithSource(source), transform.NewTree, nil
+		return insert.WithSource(project).
+				WithAutoIncrementIdx(firstGeneratedAutoIncRowIdx).
+				WithDeferredDefaults(deferredDefaults),
+			transform.NewTree,
+			nil
 	})
 }
 
@@ -177,132 +118,246 @@ func existsNonZeroValueCount(values sql.Node) bool {
 	return false
 }
 
-// wrapRowSource wraps the original row source in a projection so that its schema matches the full schema of the
-// underlying table, in the same order.
-func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, schema sql.Schema, columnNames []string) (sql.Node, error) {
+func findColIdx(colName string, colNames []string) int {
+	for i, name := range colNames {
+		if strings.EqualFold(name, colName) {
+			return i
+		}
+	}
+	return -1
+}
+
+// wrapRowSource returns a projection that wraps the original row source so that its schema matches the full schema of
+// the underlying table in the same order. Also, returns an integer value that indicates when this row source will
+// result in an automatically generated value for an auto_increment column.
+func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, schema sql.Schema, columnNames []string) (sql.Node, int, sql.FastIntSet, error) {
 	projExprs := make([]sql.Expression, len(schema))
-	for i, f := range schema {
-		found := false
-		for j, col := range columnNames {
-			if strings.EqualFold(f.Name, col) {
-				projExprs[i] = expression.NewGetField(j, f.Type, f.Name, f.Nullable)
-				found = true
-				break
+	deferredDefaults := sql.NewFastIntSet()
+	firstGeneratedAutoIncRowIdx := -1
+
+	for i, col := range schema {
+		colIdx := findColIdx(col.Name, columnNames)
+		// if column was not explicitly specified, try to substitute with default or generated value
+		if colIdx == -1 {
+			defaultExpr := col.Default
+			if defaultExpr == nil {
+				defaultExpr = col.Generated
 			}
+			if !col.Nullable && defaultExpr == nil && !col.AutoIncrement {
+				deferredDefaults.Add(i)
+			}
+
+			var err error
+			colNameToIdx := make(map[string]int)
+			for i, c := range schema {
+				colNameToIdx[fmt.Sprintf("%s.%s", strings.ToLower(c.Source), strings.ToLower(c.Name))] = i
+			}
+			def, _, err := transform.Expr(defaultExpr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				switch e := e.(type) {
+				case *expression.GetField:
+					idx, ok := colNameToIdx[strings.ToLower(e.WithTable(destTbl.Name()).String())]
+					if !ok {
+						return nil, transform.SameTree, fmt.Errorf("field not found: %s", e.String())
+					}
+					return e.WithIndex(idx), transform.NewTree, nil
+				default:
+					return e, transform.SameTree, nil
+				}
+			})
+			if err != nil {
+				return nil, -1, sql.FastIntSet{}, err
+			}
+			projExprs[i] = def
+		} else {
+			projExprs[i] = expression.NewGetField(colIdx, col.Type, col.Name, col.Nullable)
 		}
 
-		if !found {
-			if !f.Nullable && f.Default == nil && !f.AutoIncrement {
-				return nil, sql.ErrInsertIntoNonNullableDefaultNullColumn.New(f.Name)
-			}
-			projExprs[i] = f.Default
-		}
-
-		if f.AutoIncrement {
+		if col.AutoIncrement {
+			// Regardless of whether the column was explicitly specified, if it is an auto increment column, we need to
+			// wrap it in an AutoIncrement expression.
 			ai, err := expression.NewAutoIncrement(ctx, destTbl, projExprs[i])
 			if err != nil {
-				return nil, err
+				return nil, -1, sql.FastIntSet{}, err
 			}
 			projExprs[i] = ai
-		}
-	}
 
-	err := validateRowSource(insertSource, projExprs)
-	if err != nil {
-		return nil, err
-	}
-
-	return plan.NewProject(projExprs, insertSource), nil
-}
-
-func validateColumns(columnNames []string, dstSchema sql.Schema) error {
-	dstColNames := make(map[string]struct{})
-	for _, dstCol := range dstSchema {
-		dstColNames[strings.ToLower(dstCol.Name)] = struct{}{}
-	}
-	usedNames := make(map[string]struct{})
-	for _, columnName := range columnNames {
-		if _, exists := dstColNames[columnName]; !exists {
-			return plan.ErrInsertIntoNonexistentColumn.New(columnName)
-		}
-		if _, exists := usedNames[columnName]; !exists {
-			usedNames[columnName] = struct{}{}
-		} else {
-			return plan.ErrInsertIntoDuplicateColumn.New(columnName)
-		}
-	}
-	return nil
-}
-
-func validateValueCount(columnNames []string, values sql.Node) error {
-	if exchange, ok := values.(*plan.Exchange); ok {
-		values = exchange.Child
-	}
-
-	switch node := values.(type) {
-	case *plan.Values:
-		for _, exprTuple := range node.ExpressionTuples {
-			if len(exprTuple) != len(columnNames) {
-				return plan.ErrInsertIntoMismatchValueCount.New()
-			}
-		}
-	case *plan.LoadData:
-		dataColLen := len(node.ColumnNames)
-		if dataColLen == 0 {
-			dataColLen = len(node.Schema())
-		}
-		if len(columnNames) != dataColLen {
-			return plan.ErrInsertIntoMismatchValueCount.New()
-		}
-	default:
-		// Parser assures us that this will be some form of SelectStatement, so no need to type check it
-		if len(columnNames) != len(values.Schema()) {
-			return plan.ErrInsertIntoMismatchValueCount.New()
-		}
-	}
-	return nil
-}
-
-func assertCompatibleSchemas(projExprs []sql.Expression, schema sql.Schema) error {
-	for _, expr := range projExprs {
-		switch e := expr.(type) {
-		case *expression.Literal,
-			*expression.AutoIncrement,
-			*sql.ColumnDefaultValue:
-			continue
-		case *expression.GetField:
-			otherCol := schema[e.Index()]
-			// special case: null field type, will get checked at execution time
-			if otherCol.Type == types.Null {
-				continue
-			}
-			exprType := expr.Type()
-			_, err := exprType.Convert(otherCol.Type.Zero())
-			if err != nil {
-				// The zero value will fail when passing string values to ENUM, so we specially handle this case
-				if _, ok := exprType.(sql.EnumType); ok && types.IsText(otherCol.Type) {
-					continue
+			if colIdx == -1 {
+				// Auto increment column was not specified explicitly, so we should increment last_insert_id immediately
+				firstGeneratedAutoIncRowIdx = 0
+			} else {
+				// Additionally, the first NULL, DEFAULT, or empty value is what the last_insert_id should be set to.
+				switch src := insertSource.(type) {
+				case *plan.Values:
+					for ii, tup := range src.ExpressionTuples {
+						expr := tup[colIdx]
+						if unwrap, ok := expr.(*expression.Wrapper); ok {
+							expr = unwrap.Unwrap()
+						}
+						if _, isDef := expr.(*sql.ColumnDefaultValue); isDef {
+							firstGeneratedAutoIncRowIdx = ii
+							break
+						}
+						if lit, isLit := expr.(*expression.Literal); isLit {
+							// If a literal NULL or if 0 is specified and the NO_AUTO_VALUE_ON_ZERO SQL mode is
+							// not active, then MySQL will fill in an auto_increment value.
+							if types.Null.Equals(lit.Type()) ||
+								(!sql.LoadSqlMode(ctx).ModeEnabled(sql.NoAutoValueOnZero) && isZero(ctx, lit)) {
+								firstGeneratedAutoIncRowIdx = ii
+								break
+							}
+						}
+					}
 				}
-				return plan.ErrInsertIntoIncompatibleTypes.New(otherCol.Type.String(), expr.Type().String())
 			}
-		default:
-			return plan.ErrInsertIntoUnsupportedValues.New(expr)
 		}
 	}
+
+	// Handle auto UUID columns
+	autoUuidCol, autoUuidColIdx := findAutoUuidColumn(ctx, schema)
+	if autoUuidCol != nil {
+		if columnDefaultValue, ok := projExprs[autoUuidColIdx].(*sql.ColumnDefaultValue); ok {
+			// If the auto UUID column is being populated through the projection (i.e. it's projecting a
+			// ColumnDefaultValue to create the UUID), then update the project to include the AutoUuid expression.
+			newExpr, identity, err := insertAutoUuidExpression(ctx, columnDefaultValue, autoUuidCol)
+			if err != nil {
+				return nil, -1, sql.FastIntSet{}, err
+			}
+			if identity == transform.NewTree {
+				projExprs[autoUuidColIdx] = newExpr
+			}
+		} else {
+			// Otherwise, if the auto UUID column is not getting populated through the projection, then we
+			// need to look through the tuples to look for the first DEFAULT or UUID() expression and apply
+			// the AutoUuid expression to it.
+			err := wrapAutoUuidInValuesTuples(ctx, autoUuidCol, insertSource, columnNames)
+			if err != nil {
+				return nil, -1, sql.FastIntSet{}, err
+			}
+		}
+	}
+
+	return plan.NewProject(projExprs, insertSource), firstGeneratedAutoIncRowIdx, deferredDefaults, nil
+}
+
+// isZero returns true if the specified literal value |lit| has a value equal to 0.
+func isZero(ctx *sql.Context, lit *expression.Literal) bool {
+	if !types.IsNumber(lit.Type()) {
+		return false
+	}
+
+	convert, inRange, err := types.Int8.Convert(ctx, lit.Value())
+	if err != nil {
+		// Ignore any conversion errors, since that means the value isn't 0
+		// and the values are validated in other parts of the analyzer anyway.
+		return false
+	}
+	return bool(inRange) && convert == int8(0)
+}
+
+// insertAutoUuidExpression transforms the specified |expr| for |autoUuidCol| and inserts an AutoUuid
+// expression above the UUID() function call, so that the auto generated UUID value can be captured and
+// saved to the session's query info.
+func insertAutoUuidExpression(ctx *sql.Context, expr sql.Expression, autoUuidCol *sql.Column) (sql.Expression, transform.TreeIdentity, error) {
+	return transform.Expr(expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		switch e := e.(type) {
+		case *function.UUIDFunc:
+			return expression.NewAutoUuid(ctx, autoUuidCol, e), transform.NewTree, nil
+		default:
+			return e, transform.SameTree, nil
+		}
+	})
+}
+
+// findAutoUuidColumn searches the specified |schema| for a column that meets the requirements of an auto UUID
+// column, and if found, returns the column, as well as its index in the schema. See isAutoUuidColumn() for the
+// requirements on what is considered an auto UUID column.
+func findAutoUuidColumn(_ *sql.Context, schema sql.Schema) (autoUuidCol *sql.Column, autoUuidColIdx int) {
+	for i, col := range schema {
+		if isAutoUuidColumn(col) {
+			return col, i
+		}
+	}
+
+	return nil, -1
+}
+
+// wrapAutoUuidInValuesTuples searches the tuples in the |insertSource| (if it is a *plan.Values) for the first
+// tuple using a DEFAULT() or a UUID() function expression for the |autoUuidCol|, and wraps the UUID() function
+// in an AutoUuid expression so that the generated UUID value can be captured and saved to the session's query info.
+// After finding a first occurrence, this function returns, since only the first generated UUID needs to be saved.
+// The caller must provide the |columnNames| for the insertSource so that this function can identify the index
+// in the value tuples for the auto UUID column.
+func wrapAutoUuidInValuesTuples(ctx *sql.Context, autoUuidCol *sql.Column, insertSource sql.Node, columnNames []string) error {
+	values, ok := insertSource.(*plan.Values)
+	if !ok {
+		// If the insert source isn't value tuples, then we don't need to do anything
+		return nil
+	}
+
+	// Search the column names in the Values tuples to find the right tuple index
+	autoUuidColTupleIdx := -1
+	for i, columnName := range columnNames {
+		if strings.ToLower(autoUuidCol.Name) == strings.ToLower(columnName) {
+			autoUuidColTupleIdx = i
+		}
+	}
+	if autoUuidColTupleIdx == -1 {
+		return nil
+	}
+
+	for _, tuple := range values.ExpressionTuples {
+		expr := tuple[autoUuidColTupleIdx]
+		if wrapper, ok := expr.(*expression.Wrapper); ok {
+			expr = wrapper.Unwrap()
+		}
+
+		switch expr.(type) {
+		case *sql.ColumnDefaultValue, *function.UUIDFunc, *function.UUIDToBin:
+			// Only ColumnDefaultValue, UUIDFunc, and UUIDToBin are valid to use in an auto UUID column
+			newExpr, identity, err := insertAutoUuidExpression(ctx, expr, autoUuidCol)
+			if err != nil {
+				return err
+			}
+			if identity == transform.NewTree {
+				tuple[autoUuidColTupleIdx] = newExpr
+				return nil
+			}
+		}
+	}
+
 	return nil
 }
 
-func validateRowSource(values sql.Node, projExprs []sql.Expression) error {
-	if exchange, ok := values.(*plan.Exchange); ok {
-		values = exchange.Child
+// isAutoUuidColumn returns true if the specified |col| meets the requirements of an auto generated UUID column. To
+// be an auto UUID column, the column must be part of the primary key (it may be a composite primary key), and the
+// type must be either varchar(36), char(36), varbinary(16), or binary(16). It must have a default value set to
+// populate a UUID, either through the UUID() function (for char and varchar columns) or the UUID_TO_BIN(UUID())
+// function (for binary and varbinary columns).
+func isAutoUuidColumn(col *sql.Column) bool {
+	if col.PrimaryKey == false {
+		return false
 	}
 
-	switch n := values.(type) {
-	case *plan.Values, *plan.LoadData:
-		// already verified
-		return nil
-	default:
-		// Parser assures us that this will be some form of SelectStatement, so no need to type check it
-		return assertCompatibleSchemas(projExprs, n.Schema())
+	switch col.Type.Type() {
+	case sqltypes.Char, sqltypes.VarChar:
+		stringType := col.Type.(sql.StringType)
+		if stringType.MaxCharacterLength() != 36 || col.Default == nil {
+			return false
+		}
+		if _, ok := col.Default.Expr.(*function.UUIDFunc); ok {
+			return true
+		}
+	case sqltypes.Binary, sqltypes.VarBinary:
+		stringType := col.Type.(sql.StringType)
+		if stringType.MaxByteLength() != 16 || col.Default == nil {
+			return false
+		}
+		if uuidToBinFunc, ok := col.Default.Expr.(*function.UUIDToBin); ok {
+			if _, ok := uuidToBinFunc.Children()[0].(*function.UUIDFunc); ok {
+				return true
+			}
+		}
 	}
+
+	return false
 }

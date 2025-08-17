@@ -14,9 +14,24 @@
 
 package sql
 
-func MustConvert(val interface{}, err error) interface{} {
+import "net"
+
+func MustConvert(val interface{}, _ ConvertInRange, err error) interface{} {
 	if err != nil {
 		panic(err)
 	}
 	return val
+}
+
+func GetEmptyPort() (int, error) {
+	listener, err := net.Listen("tcp", ":0")
+	if err != nil {
+		return -1, err
+	}
+	port := listener.Addr().(*net.TCPAddr).Port
+	if err = listener.Close(); err != nil {
+		return -1, err
+
+	}
+	return port, nil
 }

@@ -24,6 +24,7 @@ import (
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
@@ -72,16 +73,16 @@ func (v Validator) ComInitDB(c *mysql.Conn, schemaName string) error {
 
 // ComPrepare parses, partially analyzes, and caches a prepared statement's plan
 // with the given [c.ConnectionID].
-func (v Validator) ComPrepare(c *mysql.Conn, query string) ([]*query.Field, error) {
+func (v Validator) ComPrepare(_ context.Context, _ *mysql.Conn, _ string, _ *mysql.PrepareData) ([]*query.Field, error) {
 	return nil, fmt.Errorf("ComPrepare unsupported")
 }
 
-func (v Validator) ComStmtExecute(c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error {
+func (v Validator) ComStmtExecute(ctx context.Context, c *mysql.Conn, prepare *mysql.PrepareData, callback func(*sqltypes.Result) error) error {
 	return fmt.Errorf("ComStmtExecute unsupported")
 }
 
-func (v Validator) ComResetConnection(c *mysql.Conn) {
-	return
+func (v Validator) ComResetConnection(_ *mysql.Conn) error {
+	return nil
 }
 
 // ConnectionClosed reports that a connection has been closed.
@@ -90,21 +91,26 @@ func (v Validator) ConnectionClosed(c *mysql.Conn) {
 	v.golden.ConnectionClosed(c)
 }
 
+func (v Validator) ConnectionAborted(c *mysql.Conn, reason string) error {
+	return nil
+}
+
 func (v Validator) ComMultiQuery(
+	ctx context.Context,
 	c *mysql.Conn,
 	query string,
-	callback func(*sqltypes.Result, bool) error,
+	callback mysql.ResultSpoolFn,
 ) (string, error) {
 	ag := newResultAggregator(callback)
 	var remainder string
 	eg, _ := errgroup.WithContext(context.Background())
 	eg.Go(func() (err error) {
-		remainder, err = v.handler.ComMultiQuery(c, query, ag.processResults)
+		remainder, err = v.handler.ComMultiQuery(ctx, c, query, ag.processResults)
 		return
 	})
 	eg.Go(func() error {
 		// ignore errors from MySQL connection
-		_, _ = v.golden.ComMultiQuery(c, query, ag.processGoldenResults)
+		_, _ = v.golden.ComMultiQuery(ctx, c, query, ag.processGoldenResults)
 		return nil
 	})
 
@@ -119,18 +125,19 @@ func (v Validator) ComMultiQuery(
 
 // ComQuery executes a SQL query on the SQLe engine.
 func (v Validator) ComQuery(
+	ctx context.Context,
 	c *mysql.Conn,
 	query string,
-	callback func(*sqltypes.Result, bool) error,
+	callback mysql.ResultSpoolFn,
 ) error {
 	ag := newResultAggregator(callback)
 	eg, _ := errgroup.WithContext(context.Background())
 	eg.Go(func() error {
-		return v.handler.ComQuery(c, query, ag.processResults)
+		return v.handler.ComQuery(ctx, c, query, ag.processResults)
 	})
 	eg.Go(func() error {
 		// ignore errors from MySQL connection
-		_ = v.golden.ComQuery(c, query, ag.processGoldenResults)
+		_ = v.golden.ComQuery(ctx, c, query, ag.processGoldenResults)
 		return nil
 	})
 
@@ -142,6 +149,17 @@ func (v Validator) ComQuery(
 	return nil
 }
 
+// ComQuery executes a SQL query on the SQLe engine.
+func (v Validator) ComParsedQuery(
+	ctx context.Context,
+	c *mysql.Conn,
+	query string,
+	parsed sqlparser.Statement,
+	callback func(*sqltypes.Result, bool) error,
+) error {
+	return v.ComQuery(ctx, c, query, callback)
+}
+
 // WarningCount is called at the end of each query to obtain
 // the value to be returned to the client in the EOF packet.
 // Note that this will be called either in the context of the
@@ -149,6 +167,10 @@ func (v Validator) ComQuery(
 // or after the last ComQuery call completes.
 func (v Validator) WarningCount(c *mysql.Conn) uint16 {
 	return 0
+}
+
+func (v Validator) ParserOptionsForConnection(_ *mysql.Conn) (sqlparser.ParserOptions, error) {
+	return sqlparser.ParserOptions{}, nil
 }
 
 func (v Validator) getLogger(c *mysql.Conn) *logrus.Entry {

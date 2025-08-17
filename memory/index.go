@@ -17,11 +17,12 @@ package memory
 import (
 	"fmt"
 	"strings"
-	"time"
 
-	"github.com/gabereiser/go-mysql-server/sql"
-	"github.com/gabereiser/go-mysql-server/sql/expression"
-	"github.com/gabereiser/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/expression/function/vector"
+	"github.com/dolthub/go-mysql-server/sql/fulltext"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 const CommentPreventingIndexBuilding = "__FOR TESTING: I cannot be built__"
@@ -35,13 +36,28 @@ type Index struct {
 	Name       string
 	Unique     bool
 	Spatial    bool
-	CommentStr string
-	PrefixLens []uint16
+	Fulltext   bool
+	// If SupportedVectorFunction is non-nil, this index can be used to optimize ORDER BY
+	// expressions on this type of distance function.
+	SupportedVectorFunction vector.DistanceType
+	CommentStr              string
+	PrefixLens              []uint16
+	fulltextInfo
+}
+
+type fulltextInfo struct {
+	PositionTableName    string
+	DocCountTableName    string
+	GlobalCountTableName string
+	RowCountTableName    string
+	fulltext.KeyColumns
 }
 
 var _ sql.Index = (*Index)(nil)
 var _ sql.FilteredIndex = (*Index)(nil)
 var _ sql.OrderedIndex = (*Index)(nil)
+var _ sql.ExtendedIndex = (*Index)(nil)
+var _ fulltext.Index = (*Index)(nil)
 
 func (idx *Index) Database() string                    { return idx.DB }
 func (idx *Index) Driver() string                      { return idx.DriverName }
@@ -57,7 +73,40 @@ func (idx *Index) Expressions() []string {
 	return exprs
 }
 
-func (idx *Index) CanSupport(...sql.Range) bool {
+func (idx *Index) ExtendedExpressions() []string {
+	var exprs []string
+	foundCols := make(map[string]struct{})
+	for _, e := range idx.Exprs {
+		foundCols[strings.ToLower(e.(*expression.GetField).Name())] = struct{}{}
+		exprs = append(exprs, e.String())
+	}
+	for _, ord := range idx.Tbl.data.schema.PkOrdinals {
+		col := idx.Tbl.data.schema.Schema[ord]
+		if _, ok := foundCols[strings.ToLower(col.Name)]; !ok {
+			exprs = append(exprs, fmt.Sprintf("%s.%s", idx.Tbl.name, col.Name))
+		}
+	}
+	return exprs
+}
+
+// ExtendedExprs returns the same information as ExtendedExpressions, but in sql.Expression form.
+func (idx *Index) ExtendedExprs() []sql.Expression {
+	var exprs []sql.Expression
+	foundCols := make(map[string]struct{})
+	for _, e := range idx.Exprs {
+		foundCols[strings.ToLower(e.(*expression.GetField).Name())] = struct{}{}
+		exprs = append(exprs, e)
+	}
+	for _, ord := range idx.Tbl.data.schema.PkOrdinals {
+		col := idx.Tbl.data.schema.Schema[ord]
+		if _, ok := foundCols[strings.ToLower(col.Name)]; !ok {
+			exprs = append(exprs, expression.NewGetFieldWithTable(ord, 0, col.Type, idx.DB, idx.Tbl.name, col.Name, col.Nullable))
+		}
+	}
+	return exprs
+}
+
+func (idx *Index) CanSupport(*sql.Context, ...sql.Range) bool {
 	return true
 }
 
@@ -67,6 +116,22 @@ func (idx *Index) IsUnique() bool {
 
 func (idx *Index) IsSpatial() bool {
 	return idx.Spatial
+}
+
+func (idx *Index) IsFullText() bool {
+	return idx.Fulltext
+}
+
+func (idx *Index) IsVector() bool {
+	return idx.SupportedVectorFunction != nil
+}
+
+func (idx *Index) CanSupportOrderBy(expr sql.Expression) bool {
+	if idx.SupportedVectorFunction == nil {
+		return false
+	}
+	dist, isDist := expr.(*vector.Distance)
+	return isDist && idx.SupportedVectorFunction.CanEval(dist.DistanceType)
 }
 
 func (idx *Index) Comment() string {
@@ -84,86 +149,35 @@ func (idx *Index) IndexType() string {
 	return "BTREE" // fake but so are you
 }
 
-// NewLookup implements the interface sql.Index.
-func (idx *Index) rangeFilterExpr(ranges ...sql.Range) (sql.Expression, error) {
+func (idx *Index) rowToIndexStorage(row sql.Row, partitionName string, rowIdx int) (sql.Row, error) {
+	if idx.Name == "PRIMARY" {
+		return row, nil
+	}
+
+	exprs := idx.ExtendedExprs()
+	newRow := make(sql.Row, len(exprs)+1)
+	for i, expr := range exprs {
+		var err error
+		newRow[i], err = expr.Eval(nil, row)
+		if err != nil {
+			return nil, err
+		}
+	}
+	// The final element of the row is the location of the row in the primary table storage slice.
+	newRow[len(exprs)] = primaryRowLocation{
+		partition: partitionName,
+		idx:       rowIdx,
+	}
+
+	return newRow, nil
+}
+
+func (idx *Index) rangeFilterExpr(ctx *sql.Context, ranges ...sql.MySQLRange) (sql.Expression, error) {
 	if idx.CommentStr == CommentPreventingIndexBuilding {
 		return nil, nil
 	}
-	if len(ranges) == 0 {
-		return nil, nil
-	}
-	if len(ranges[0]) != len(idx.Exprs) {
-		return nil, fmt.Errorf("expected different key count: %s=>%d/%d", idx.Name, len(idx.Exprs), len(ranges[0]))
-	}
 
-	var rangeCollectionExpr sql.Expression
-	for _, rang := range ranges {
-		var rangeExpr sql.Expression
-		for i, rce := range rang {
-			var rangeColumnExpr sql.Expression
-			switch rce.Type() {
-			// Both Empty and All may seem like strange inclusions, but if only one range is given we need some
-			// expression to evaluate, otherwise our expression would be a nil expression which would panic.
-			case sql.RangeType_Empty:
-				rangeColumnExpr = expression.NewEquals(expression.NewLiteral(1, types.Int8), expression.NewLiteral(2, types.Int8))
-			case sql.RangeType_All:
-				rangeColumnExpr = expression.NewEquals(expression.NewLiteral(1, types.Int8), expression.NewLiteral(1, types.Int8))
-			case sql.RangeType_EqualNull:
-				rangeColumnExpr = expression.NewIsNull(idx.Exprs[i])
-			case sql.RangeType_GreaterThan:
-				if sql.RangeCutIsBinding(rce.LowerBound) {
-					rangeColumnExpr = expression.NewGreaterThan(idx.Exprs[i], expression.NewLiteral(sql.GetRangeCutKey(rce.LowerBound), rce.Typ.Promote()))
-				} else {
-					rangeColumnExpr = expression.NewNot(expression.NewIsNull(idx.Exprs[i]))
-				}
-			case sql.RangeType_GreaterOrEqual:
-				rangeColumnExpr = expression.NewGreaterThanOrEqual(idx.Exprs[i], expression.NewLiteral(sql.GetRangeCutKey(rce.LowerBound), rce.Typ.Promote()))
-			case sql.RangeType_LessThanOrNull:
-				rangeColumnExpr = or(
-					expression.NewLessThan(idx.Exprs[i], expression.NewLiteral(sql.GetRangeCutKey(rce.UpperBound), rce.Typ.Promote())),
-					expression.NewIsNull(idx.Exprs[i]),
-				)
-			case sql.RangeType_LessOrEqualOrNull:
-				rangeColumnExpr = or(
-					expression.NewLessThanOrEqual(idx.Exprs[i], expression.NewLiteral(sql.GetRangeCutKey(rce.UpperBound), rce.Typ.Promote())),
-					expression.NewIsNull(idx.Exprs[i]),
-				)
-			case sql.RangeType_ClosedClosed:
-				rangeColumnExpr = and(
-					expression.NewGreaterThanOrEqual(idx.Exprs[i], expression.NewLiteral(sql.GetRangeCutKey(rce.LowerBound), rce.Typ.Promote())),
-					expression.NewLessThanOrEqual(idx.Exprs[i], expression.NewLiteral(sql.GetRangeCutKey(rce.UpperBound), rce.Typ.Promote())),
-				)
-			case sql.RangeType_OpenOpen:
-				if sql.RangeCutIsBinding(rce.LowerBound) {
-					rangeColumnExpr = and(
-						expression.NewGreaterThan(idx.Exprs[i], expression.NewLiteral(sql.GetRangeCutKey(rce.LowerBound), rce.Typ.Promote())),
-						expression.NewLessThan(idx.Exprs[i], expression.NewLiteral(sql.GetRangeCutKey(rce.UpperBound), rce.Typ.Promote())),
-					)
-				} else {
-					// Lower bound is (NULL, ...)
-					rangeColumnExpr = expression.NewLessThan(idx.Exprs[i], expression.NewLiteral(sql.GetRangeCutKey(rce.UpperBound), rce.Typ.Promote()))
-				}
-			case sql.RangeType_OpenClosed:
-				if sql.RangeCutIsBinding(rce.LowerBound) {
-					rangeColumnExpr = and(
-						expression.NewGreaterThan(idx.Exprs[i], expression.NewLiteral(sql.GetRangeCutKey(rce.LowerBound), rce.Typ.Promote())),
-						expression.NewLessThanOrEqual(idx.Exprs[i], expression.NewLiteral(sql.GetRangeCutKey(rce.UpperBound), rce.Typ.Promote())),
-					)
-				} else {
-					// Lower bound is (NULL, ...]
-					rangeColumnExpr = expression.NewLessThanOrEqual(idx.Exprs[i], expression.NewLiteral(sql.GetRangeCutKey(rce.UpperBound), rce.Typ.Promote()))
-				}
-			case sql.RangeType_ClosedOpen:
-				rangeColumnExpr = and(
-					expression.NewGreaterThanOrEqual(idx.Exprs[i], expression.NewLiteral(sql.GetRangeCutKey(rce.LowerBound), rce.Typ.Promote())),
-					expression.NewLessThan(idx.Exprs[i], expression.NewLiteral(sql.GetRangeCutKey(rce.UpperBound), rce.Typ.Promote())),
-				)
-			}
-			rangeExpr = and(rangeExpr, rangeColumnExpr)
-		}
-		rangeCollectionExpr = or(rangeCollectionExpr, rangeExpr)
-	}
-	return rangeCollectionExpr, nil
+	return expression.NewRangeFilterExpr(idx.ExtendedExprs(), ranges)
 }
 
 // ColumnExpressionTypes implements the interface sql.Index.
@@ -176,6 +190,42 @@ func (idx *Index) ColumnExpressionTypes() []sql.ColumnExpressionType {
 		}
 	}
 	return cets
+}
+
+func (idx *Index) ExtendedColumnExpressionTypes() []sql.ColumnExpressionType {
+	cets := make([]sql.ColumnExpressionType, 0, len(idx.Tbl.data.schema.Schema))
+	cetsInExprs := make(map[string]struct{})
+	for _, expr := range idx.Exprs {
+		cetsInExprs[strings.ToLower(expr.(*expression.GetField).Name())] = struct{}{}
+		cets = append(cets, sql.ColumnExpressionType{
+			Expression: expr.String(),
+			Type:       expr.Type(),
+		})
+	}
+	for _, ord := range idx.Tbl.data.schema.PkOrdinals {
+		col := idx.Tbl.data.schema.Schema[ord]
+		if _, ok := cetsInExprs[strings.ToLower(col.Name)]; !ok {
+			cets = append(cets, sql.ColumnExpressionType{
+				Expression: fmt.Sprintf("%s.%s", idx.Tbl.name, col.Name),
+				Type:       col.Type,
+			})
+		}
+	}
+	return cets
+}
+
+func (idx *Index) FullTextTableNames(ctx *sql.Context) (fulltext.IndexTableNames, error) {
+	return fulltext.IndexTableNames{
+		Config:      idx.Tbl.data.fullTextConfigTableName,
+		Position:    idx.fulltextInfo.PositionTableName,
+		DocCount:    idx.fulltextInfo.DocCountTableName,
+		GlobalCount: idx.fulltextInfo.GlobalCountTableName,
+		RowCount:    idx.fulltextInfo.RowCountTableName,
+	}, nil
+}
+
+func (idx *Index) FullTextKeyColumns(ctx *sql.Context) (fulltext.KeyColumns, error) {
+	return idx.fulltextInfo.KeyColumns, nil
 }
 
 func (idx *Index) ID() string {
@@ -202,7 +252,7 @@ func (idx *Index) HandledFilters(filters []sql.Expression) []sql.Expression {
 		return handled
 	}
 	for _, expr := range filters {
-		if expression.ContainsImpreciseComparison(expr) {
+		if !expression.PreciseComparison(expr) {
 			continue
 		}
 		handled = append(handled, expr)
@@ -226,63 +276,65 @@ type ExpressionsIndex interface {
 	ColumnExpressions() []sql.Expression
 }
 
-func getType(val interface{}) (interface{}, sql.Type) {
-	switch val := val.(type) {
-	case int:
-		return int64(val), types.Int64
-	case uint:
-		return int64(val), types.Int64
-	case int8:
-		return int64(val), types.Int64
-	case uint8:
-		return int64(val), types.Int64
-	case int16:
-		return int64(val), types.Int64
-	case uint16:
-		return int64(val), types.Int64
-	case int32:
-		return int64(val), types.Int64
-	case uint32:
-		return int64(val), types.Int64
-	case int64:
-		return int64(val), types.Int64
-	case uint64:
-		return int64(val), types.Int64
-	case float32:
-		return float64(val), types.Float64
-	case float64:
-		return float64(val), types.Float64
-	case string:
-		return val, types.LongText
-	case nil:
-		return nil, types.Null
-	case time.Time:
-		return val, types.Datetime
-	default:
-		panic(fmt.Sprintf("Unsupported type for %v of type %T", val, val))
-	}
-}
-
 func (idx *Index) Order() sql.IndexOrder {
+	// If there are any hash-encoded fields, then we will not have a deterministic order
+	// Even though we don't actually hash hash-encoded fields in the in-memory implementation, we
+	// still honor this here so that we can test this behavior.
+	if len(idx.contentHashedFields()) > 0 {
+		return sql.IndexOrderNone
+	}
+
 	return sql.IndexOrderAsc
 }
 
-func or(expressions ...sql.Expression) sql.Expression {
-	if len(expressions) == 1 {
-		return expressions[0]
+func (idx *Index) Reversible() bool {
+	// If there are any hash-encoded fields, then we will not have a deterministic order
+	// Even though we don't actually hash hash-encoded fields in the in-memory implementation, we
+	// still honor this here so that we can test this behavior.
+	if len(idx.contentHashedFields()) > 0 {
+		return false
 	}
-	if expressions[0] == nil {
-		return or(expressions[1:]...)
-	}
-	return expression.NewOr(expressions[0], or(expressions[1:]...))
+
+	return true
 }
 
-func and(expressions ...sql.Expression) sql.Expression {
-	if len(expressions) == 1 {
-		return expressions[0]
+func (idx Index) copy() *Index {
+	return &idx
+}
+
+// columnIndexes returns the indexes in the given schema for the fields in this index
+func (idx *Index) columnIndexes(schema sql.Schema) []int {
+	indexes := make([]int, len(idx.Exprs))
+	for i, expr := range idx.Exprs {
+		gf, ok := expr.(*expression.GetField)
+		if !ok {
+			panic(fmt.Sprintf("expected GetField expression, got %T", expr))
+		}
+		indexes[i] = schema.IndexOfColName(gf.Name())
 	}
-	if expressions[0] == nil {
-		return and(expressions[1:]...)
+	return indexes
+}
+
+// contentHashedFields returns a slice of field indexes in this secondary index that should be hashed, instead
+// of directly storing their content. This is only applicable to unique secondary indexes.
+func (idx *Index) contentHashedFields() (contentHashedFields []uint) {
+	if !idx.Unique {
+		return nil
 	}
-	return expression.NewAnd(expressions[0], and(expressions[1:]...))
+
+	for i, expr := range idx.Exprs {
+		if !types.IsTextBlob(expr.Type()) {
+			continue
+		}
+
+		prefixLength := uint16(0)
+		if len(idx.PrefixLens) > i {
+			prefixLength = idx.PrefixLens[i]
+		}
+		if prefixLength == 0 {
+			contentHashedFields = append(contentHashedFields, uint(i))
+		}
+	}
+
+	return contentHashedFields
 }

@@ -17,10 +17,8 @@ package plan
 import (
 	"fmt"
 	"strings"
-	"time"
 
-	"github.com/gabereiser/go-mysql-server/sql/mysql_db"
-	"github.com/gabereiser/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/gabereiser/go-mysql-server/sql"
 )
@@ -42,6 +40,7 @@ func NewCreateRole(ifNotExists bool, roles []UserName) *CreateRole {
 }
 
 var _ sql.Node = (*CreateRole)(nil)
+var _ sql.CollationCoercible = (*CreateRole)(nil)
 
 // Schema implements the interface sql.Node.
 func (n *CreateRole) Schema() sql.Schema {
@@ -79,6 +78,10 @@ func (n *CreateRole) Resolved() bool {
 	return !ok
 }
 
+func (n *CreateRole) IsReadOnly() bool {
+	return false
+}
+
 // Children implements the interface sql.Node.
 func (n *CreateRole) Children() []sql.Node {
 	return nil
@@ -92,57 +95,7 @@ func (n *CreateRole) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return n, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (n *CreateRole) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	// Both CREATE ROLE and CREATE USER are valid privileges, so we use an OR
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_CreateRole)) ||
-		opChecker.UserHasPrivileges(ctx,
-			sql.NewPrivilegedOperation("", "", "", sql.PrivilegeType_CreateUser))
-}
-
-// RowIter implements the interface sql.Node.
-func (n *CreateRole) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
-	if !ok {
-		return nil, sql.ErrDatabaseNotFound.New("mysql")
-	}
-
-	userTableData := mysqlDb.UserTable().Data()
-	for _, role := range n.Roles {
-		userPk := mysql_db.UserPrimaryKey{
-			Host: role.Host,
-			User: role.Name,
-		}
-		if role.AnyHost {
-			userPk.Host = "%"
-		}
-		existingRows := userTableData.Get(userPk)
-		if len(existingRows) > 0 {
-			if n.IfNotExists {
-				continue
-			}
-			return nil, sql.ErrRoleCreationFailure.New(role.String("'"))
-		}
-
-		//TODO: When password expiration is implemented, make sure that roles have an expired password on creation
-		err := userTableData.Put(ctx, &mysql_db.User{
-			User:                userPk.User,
-			Host:                userPk.Host,
-			PrivilegeSet:        mysql_db.NewPrivilegeSet(),
-			Plugin:              "mysql_native_password",
-			Password:            "",
-			PasswordLastChanged: time.Now().UTC(),
-			Locked:              true,
-			Attributes:          nil,
-			IsRole:              true,
-		})
-		if err != nil {
-			return nil, err
-		}
-	}
-	if err := mysqlDb.Persist(ctx); err != nil {
-		return nil, err
-	}
-	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*CreateRole) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }

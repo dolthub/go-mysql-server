@@ -23,6 +23,7 @@ import (
 type ShowPrivileges struct{}
 
 var _ sql.Node = (*ShowPrivileges)(nil)
+var _ sql.CollationCoercible = (*ShowPrivileges)(nil)
 
 // NewShowPrivileges returns a new ShowPrivileges node.
 func NewShowPrivileges() *ShowPrivileges {
@@ -48,6 +49,10 @@ func (n *ShowPrivileges) Resolved() bool {
 	return true
 }
 
+func (n *ShowPrivileges) IsReadOnly() bool {
+	return true
+}
+
 // Children implements the interface sql.Node.
 func (n *ShowPrivileges) Children() []sql.Node {
 	return nil
@@ -61,9 +66,9 @@ func (n *ShowPrivileges) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return n, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (n *ShowPrivileges) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ShowPrivileges) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // RowIter implements the interface sql.Node.

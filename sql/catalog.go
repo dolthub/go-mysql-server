@@ -14,20 +14,12 @@
 
 package sql
 
-import (
-	"fmt"
-	"strings"
-)
-
 type Catalog interface {
-	// AllDatabases returns all databases known to this catalog
-	AllDatabases(ctx *Context) []Database
-
-	// HasDB returns whether a db with the name given exists, case-insensitive
-	HasDB(ctx *Context, db string) bool
-
-	// Database returns the database with the name given, case-insensitive, or an error if it doesn't exist
-	Database(ctx *Context, db string) (Database, error)
+	DatabaseProvider
+	FunctionProvider
+	TableFunctionProvider
+	ExternalStoredProcedureProvider
+	StatsProvider
 
 	// CreateDatabase creates a new database, or returns an error if the operation isn't supported or fails.
 	CreateDatabase(ctx *Context, dbName string, collation CollationID) error
@@ -38,15 +30,14 @@ type Catalog interface {
 	// Table returns the table with the name given in the db with the name given
 	Table(ctx *Context, dbName, tableName string) (Table, Database, error)
 
+	// DatabaseTable returns the table with the name given in the db given
+	DatabaseTable(ctx *Context, db Database, tableName string) (Table, Database, error)
+
 	// TableAsOf returns the table with the name given in the db with the name given, as of the given marker
 	TableAsOf(ctx *Context, dbName, tableName string, asOf interface{}) (Table, Database, error)
 
-	// Function returns the function with the name given, or sql.ErrFunctionNotFound if it doesn't exist
-	Function(ctx *Context, name string) (Function, error)
-
-	// RegisterFunction registers the functions given, adding them to the built-in functions.
-	// Integrators with custom functions should typically use the FunctionProvider interface to register their functions.
-	RegisterFunction(ctx *Context, fns ...Function)
+	// DatabaseTableAsOf returns the table with the name given in the db given, as of the given marker
+	DatabaseTableAsOf(ctx *Context, db Database, tableName string, asOf interface{}) (Table, Database, error)
 
 	// LockTable locks the table named
 	LockTable(ctx *Context, table string)
@@ -54,8 +45,8 @@ type Catalog interface {
 	// UnlockTables unlocks all tables locked by the session id given
 	UnlockTables(ctx *Context, id uint32) error
 
-	// Statistics returns a StatsReadWriter for saving and updating table statistics
-	Statistics(ctx *Context) (StatsReadWriter, error)
+	// AuthorizationHandler returns the AuthorizationHandler that is used by the catalog.
+	AuthorizationHandler() AuthorizationHandler
 }
 
 // CatalogTable is a Table that depends on a Catalog.
@@ -64,20 +55,4 @@ type CatalogTable interface {
 
 	// AssignCatalog assigns a Catalog to the table.
 	AssignCatalog(cat Catalog) Table
-}
-
-func NewDbTable(db, table string) DbTable {
-	return DbTable{Db: strings.ToLower(db), Table: strings.ToLower(table)}
-}
-
-type DbTable struct {
-	Db    string
-	Table string
-}
-
-func (dt *DbTable) String() string {
-	if dt.Db == "" {
-		return dt.Table
-	}
-	return fmt.Sprintf("%s.%s", dt.Db, dt.Table)
 }

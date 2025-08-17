@@ -17,10 +17,17 @@ package queries
 import (
 	"math"
 
-	"github.com/gabereiser/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var VariableQueries = []ScriptTest{
+	{
+		Name:        "use string name for foreign_key checks",
+		SetUpScript: []string{},
+		Query:       "set @@foreign_key_checks = off;",
+		Expected:    []sql.Row{{types.NewOkResult(0)}},
+	},
 	{
 		Name: "set system variables",
 		SetUpScript: []string{
@@ -49,19 +56,68 @@ var VariableQueries = []ScriptTest{
 		},
 	},
 	{
+		Name: "variable scope is included in returned column name when explicitly provided",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select @@max_allowed_packet;",
+				Expected: []sql.Row{{1073741824}},
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "@@max_allowed_packet",
+						Type: types.Uint64,
+					},
+				},
+			},
+			{
+				Query:    "select @@session.max_allowed_packet;",
+				Expected: []sql.Row{{1073741824}},
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "@@session.max_allowed_packet",
+						Type: types.Uint64,
+					},
+				},
+			},
+			{
+				Query:    "select @@global.max_allowed_packet;",
+				Expected: []sql.Row{{1073741824}},
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "@@global.max_allowed_packet",
+						Type: types.Uint64,
+					},
+				},
+			},
+			{
+				Query:    "select @@GLoBAL.max_allowed_packet;",
+				Expected: []sql.Row{{1073741824}},
+				ExpectedColumns: sql.Schema{
+					{
+						Name: "@@GLoBAL.max_allowed_packet",
+						Type: types.Uint64,
+					},
+				},
+			},
+		},
+	},
+	{
 		Name: "@@server_id",
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select @@server_id;",
-				Expected: []sql.Row{{0}},
+				Expected: []sql.Row{{uint32(1)}},
 			},
 			{
 				Query:    "set @@server_id=123;",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "set @@GLOBAL.server_id=123;",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "set @@GLOBAL.server_id=0;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 		},
 	},
@@ -155,8 +211,8 @@ var VariableQueries = []ScriptTest{
 	{
 		Name: "set system variable with expressions",
 		SetUpScript: []string{
-			`set lc_messages = "123", @@auto_increment_increment = 1`,
-			`set lc_messages = concat(@@lc_messages, "456"), @@auto_increment_increment = @@auto_increment_increment + 3`,
+			`set lc_messages = '123', @@auto_increment_increment = 1`,
+			`set lc_messages = concat(@@lc_messages, '456'), @@auto_increment_increment = @@auto_increment_increment + 3`,
 		},
 		Query: "SELECT @@lc_messages, @@auto_increment_increment",
 		Expected: []sql.Row{
@@ -226,6 +282,27 @@ var VariableQueries = []ScriptTest{
 		},
 	},
 	{
+		Name: "set multiple variables including 'names'",
+		SetUpScript: []string{
+			"set SESSION sql_mode = 'ANSI'",
+			`SET sql_mode=(SELECT CONCAT(@@sql_mode, ',PIPES_AS_CONCAT,NO_ENGINE_SUBSTITUTION')), time_zone='+00:00', NAMES utf8mb3 COLLATE utf8mb3_bin;`,
+		},
+		Query: "SELECT @@sql_mode, @@time_zone, @@character_set_client, @@character_set_connection, @@character_set_results",
+		Expected: []sql.Row{
+			{"NO_ENGINE_SUBSTITUTION,PIPES_AS_CONCAT,ANSI", "+00:00", "utf8mb3", "utf8mb3", "utf8mb3"},
+		},
+	},
+	{
+		Name: "set multiple variables including 'charset'",
+		SetUpScript: []string{
+			`SET sql_mode=ALLOW_INVALID_DATES, time_zone='+00:00', CHARSET 'utf8'`,
+		},
+		Query: "SELECT @@sql_mode, @@time_zone, @@character_set_client, @@character_set_connection, @@character_set_results",
+		Expected: []sql.Row{
+			{"ALLOW_INVALID_DATES", "+00:00", "utf8", "utf8mb4", "utf8"},
+		},
+	},
+	{
 		Name: "set system variable to bareword",
 		SetUpScript: []string{
 			`set @@sql_mode = ALLOW_INVALID_DATES`,
@@ -246,6 +323,16 @@ var VariableQueries = []ScriptTest{
 		},
 	},
 	{
+		Name: "set system variable to no_auto_create_user, which has been deprecated",
+		SetUpScript: []string{
+			`set sql_mode = NO_AUTO_CREATE_USER`,
+		},
+		Query: "SELECT @@sql_mode",
+		Expected: []sql.Row{
+			{"NO_AUTO_CREATE_USER"},
+		},
+	},
+	{
 		Name: "set sql_mode variable from mysqldump",
 		SetUpScript: []string{
 			`SET sql_mode = 'STRICT_TRANS_TABLES,STRICT_ALL_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,TRADITIONAL,NO_ENGINE_SUBSTITUTION'`,
@@ -253,6 +340,57 @@ var VariableQueries = []ScriptTest{
 		Query: "SELECT @@sql_mode",
 		Expected: []sql.Row{
 			{"ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION,NO_ZERO_DATE,NO_ZERO_IN_DATE,STRICT_ALL_TABLES,STRICT_TRANS_TABLES,TRADITIONAL"},
+		},
+	},
+	{
+		Name: "set sql_mode variable ignores empty strings",
+		SetUpScript: []string{
+			`SET sql_mode = ',,,,STRICT_TRANS_TABLES,,,,,NO_AUTO_VALUE_ON_ZERO,,,,NO_ENGINE_SUBSTITUTION,,,,,,'`,
+		},
+		Query: "SELECT @@sql_mode",
+		Expected: []sql.Row{
+			{"NO_AUTO_VALUE_ON_ZERO,NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES"},
+		},
+	},
+	{
+		Name: "show variables renders enums after set",
+		SetUpScript: []string{
+			`set @@sql_mode='ONLY_FULL_GROUP_BY';`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SHOW VARIABLES LIKE '%sql_mode%'`,
+				Expected: []sql.Row{
+					{"sql_mode", "ONLY_FULL_GROUP_BY"},
+				},
+			},
+		},
+	},
+	{
+		Name:        "innodb autoinc lock mode",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `select @@innodb_autoinc_lock_mode;`,
+				Expected: []sql.Row{
+					{2},
+				},
+			},
+			{
+				Query: `select @@global.innodb_autoinc_lock_mode;`,
+				Expected: []sql.Row{
+					{2},
+				},
+			},
+			{
+				Skip:        true,
+				Query:       `select @@session.innodb_autoinc_lock_mode;`,
+				ExpectedErr: sql.ErrSystemVariableGlobalOnly,
+			},
+			{
+				Query:       `set @@innodb_autoinc_lock_mode = 1;`,
+				ExpectedErr: sql.ErrSystemVariableReadOnly,
+			},
 		},
 	},
 	// User variables
@@ -283,7 +421,7 @@ var VariableQueries = []ScriptTest{
 		},
 		Query: "SELECT @myvar",
 		Expected: []sql.Row{
-			{123.4},
+			{"123.4"},
 		},
 	},
 	{
@@ -293,7 +431,7 @@ var VariableQueries = []ScriptTest{
 		},
 		Query: "SELECT @myvar, @@auto_increment_increment",
 		Expected: []sql.Row{
-			{123.4, 1234},
+			{"123.4", 1234},
 		},
 	},
 	{
@@ -379,7 +517,7 @@ var VariableQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "set transaction isolation level serializable, read only",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "select @@transaction_isolation, @@transaction_read_only",
@@ -387,7 +525,7 @@ var VariableQueries = []ScriptTest{
 			},
 			{
 				Query:    "set transaction read write, isolation level read uncommitted",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "select @@transaction_isolation, @@transaction_read_only",
@@ -395,7 +533,7 @@ var VariableQueries = []ScriptTest{
 			},
 			{
 				Query:    "set transaction isolation level read committed",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "select @@transaction_isolation",
@@ -403,7 +541,7 @@ var VariableQueries = []ScriptTest{
 			},
 			{
 				Query:    "set transaction isolation level repeatable read",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "select @@transaction_isolation",
@@ -411,7 +549,7 @@ var VariableQueries = []ScriptTest{
 			},
 			{
 				Query:    "set session transaction isolation level serializable, read only",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "select @@transaction_isolation, @@transaction_read_only",
@@ -419,7 +557,7 @@ var VariableQueries = []ScriptTest{
 			},
 			{
 				Query:    "set global transaction read write, isolation level read uncommitted",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query:    "select @@transaction_isolation, @@transaction_read_only",
@@ -428,6 +566,64 @@ var VariableQueries = []ScriptTest{
 			{
 				Query:    "select @@global.transaction_isolation, @@global.transaction_read_only",
 				Expected: []sql.Row{{"READ-UNCOMMITTED", 0}},
+			},
+		},
+	},
+	{
+		Name: "locked warnings stay after query",
+		SetUpScript: []string{
+			"set @@lock_warnings = 1",
+			"select 1/0,1/0",
+			"select 1/1",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show warnings",
+				Expected: []sql.Row{
+					{"Warning", 1365, "Division by 0"},
+					{"Warning", 1365, "Division by 0"}},
+			},
+			{
+				Query:            "select 1/0",
+				SkipResultsCheck: true,
+			},
+			{
+				Query: "show warnings",
+				Expected: []sql.Row{
+					{"Warning", 1365, "Division by 0"},
+					{"Warning", 1365, "Division by 0"},
+					{"Warning", 1365, "Division by 0"},
+				},
+			},
+		},
+	},
+	{
+		Name: "unlocked warnings clear after query",
+		SetUpScript: []string{
+			"set @@lock_warnings = 0",
+			"select 1/0,1/0",
+			"select 1/1",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "show warnings",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		Name: "warnings persist after locking between queries",
+		SetUpScript: []string{
+			"select 1/0",
+			"set @@lock_warnings = 1",
+			"select 1/1",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show warnings",
+				Expected: []sql.Row{
+					{"Warning", 1365, "Division by 0"},
+				},
 			},
 		},
 	},
@@ -447,6 +643,10 @@ var VariableQueries = []ScriptTest{
 }
 
 var VariableErrorTests = []QueryErrorTest{
+	{
+		Query:       "select @@GLOBAL.unknown",
+		ExpectedErr: sql.ErrUnknownSystemVariable,
+	},
 	{
 		Query:       "set @@does_not_exist = 100",
 		ExpectedErr: sql.ErrUnknownSystemVariable,

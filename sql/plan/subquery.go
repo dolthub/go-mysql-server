@@ -15,15 +15,14 @@
 package plan
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"sync"
 
-	"github.com/gabereiser/go-mysql-server/sql/transform"
-	"github.com/gabereiser/go-mysql-server/sql/types"
-
-	"github.com/gabereiser/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/hash"
+	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // Subquery is as an expression whose value is derived by executing a subquery. It must be executed for every row in
@@ -34,8 +33,10 @@ type Subquery struct {
 	Query sql.Node
 	// The original verbatim select statement for this subquery
 	QueryString string
-	// Whether it's safe to cache result values for this subquery
-	canCacheResults bool
+	// correlated is a set of the field references in this subquery from out-of-scope
+	correlated sql.ColSet
+	// volatile indicates that the expression contains a non-deterministic function
+	volatile bool
 	// Whether results have been cached
 	resultsCached bool
 	// Cached results, if any
@@ -47,6 +48,10 @@ type Subquery struct {
 	disposeFunc sql.DisposeFunc
 	// Mutex to guard the caches
 	cacheMu sync.Mutex
+	// TODO convert subquery expressions into apply joins
+	// TODO move expression.Eval into an execution package
+	b sql.NodeExecBuilder
+	// TODO analyzer rule to connect builder access
 }
 
 // NewSubquery returns a new subquery expression.
@@ -56,49 +61,35 @@ func NewSubquery(node sql.Node, queryString string) *Subquery {
 
 var _ sql.NonDeterministicExpression = (*Subquery)(nil)
 var _ sql.ExpressionWithNodes = (*Subquery)(nil)
+var _ sql.CollationCoercible = (*Subquery)(nil)
 
 type StripRowNode struct {
 	UnaryNode
-	numCols int
+	NumCols int
 }
 
-type stripRowIter struct {
-	sql.RowIter
-	numCols int
-}
-
-func (sri *stripRowIter) Next(ctx *sql.Context) (sql.Row, error) {
-	r, err := sri.RowIter.Next(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return r[sri.numCols:], nil
-}
-
-func (sri *stripRowIter) Close(ctx *sql.Context) error {
-	return sri.RowIter.Close(ctx)
-}
+var _ sql.Node = (*StripRowNode)(nil)
+var _ sql.CollationCoercible = (*StripRowNode)(nil)
 
 func NewStripRowNode(child sql.Node, numCols int) sql.Node {
-	return &StripRowNode{UnaryNode: UnaryNode{child}, numCols: numCols}
+	return &StripRowNode{UnaryNode: UnaryNode{child}, NumCols: numCols}
 }
 
-func (srn *StripRowNode) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	childIter, err := srn.Child.RowIter(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	return &stripRowIter{
-		childIter,
-		srn.numCols,
-	}, nil
+// Describe implements the sql.Describable interface
+func (srn *StripRowNode) Describe(options sql.DescribeOptions) string {
+	return sql.Describe(srn.Child, options)
 }
 
+// String implements the fmt.Stringer interface
 func (srn *StripRowNode) String() string {
 	return srn.Child.String()
 }
 
+func (srn *StripRowNode) IsReadOnly() bool {
+	return srn.Child.IsReadOnly()
+}
+
+// DebugString implements the sql.DebugStringer interface
 func (srn *StripRowNode) DebugString() string {
 	return sql.DebugString(srn.Child)
 }
@@ -107,76 +98,55 @@ func (srn *StripRowNode) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(srn, len(children), 1)
 	}
-	return &StripRowNode{
-		UnaryNode: UnaryNode{Child: children[0]},
-		numCols:   srn.numCols,
-	}, nil
+	return NewStripRowNode(children[0], srn.NumCols), nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (srn *StripRowNode) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return srn.Child.CheckPrivileges(ctx, opChecker)
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (srn *StripRowNode) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, srn.Child)
 }
 
-// prependNode wraps its child by prepending column values onto any result rows
-type prependNode struct {
+// PrependNode wraps its child by prepending column values onto any result rows
+type PrependNode struct {
 	UnaryNode
-	row sql.Row
+	Row sql.Row
 }
 
-type prependRowIter struct {
-	row       sql.Row
-	childIter sql.RowIter
-}
+var _ sql.Node = (*PrependNode)(nil)
+var _ sql.CollationCoercible = (*PrependNode)(nil)
 
-func (p *prependRowIter) Next(ctx *sql.Context) (sql.Row, error) {
-	next, err := p.childIter.Next(ctx)
-	if err != nil {
-		return next, err
+func NewPrependNode(child sql.Node, row sql.Row) sql.Node {
+	return &PrependNode{
+		UnaryNode: UnaryNode{Child: child},
+		Row:       row,
 	}
-	return p.row.Append(next), nil
 }
 
-func (p *prependRowIter) Close(ctx *sql.Context) error {
-	return p.childIter.Close(ctx)
-}
-
-func (p *prependNode) String() string {
+func (p *PrependNode) String() string {
 	return p.Child.String()
 }
 
-func (p *prependNode) DebugString() string {
+func (p *PrependNode) IsReadOnly() bool {
+	return p.Child.IsReadOnly()
+}
+
+func (p *PrependNode) DebugString() string {
 	tp := sql.NewTreePrinter()
-	_ = tp.WriteNode("Prepend(%s)", sql.FormatRow(p.row))
+	_ = tp.WriteNode("Prepend(%s)", sql.FormatRow(p.Row))
 	_ = tp.WriteChildren(sql.DebugString(p.Child))
 	return tp.String()
 }
 
-func (p *prependNode) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	childIter, err := p.Child.RowIter(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	return &prependRowIter{
-		row:       p.row,
-		childIter: childIter,
-	}, nil
-}
-
-func (p *prependNode) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (p *PrependNode) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
-	return &prependNode{
-		UnaryNode: UnaryNode{Child: children[0]},
-		row:       p.row,
-	}, nil
+	return NewPrependNode(children[0], p.Row), nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (p *prependNode) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return p.Child.CheckPrivileges(ctx, opChecker)
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (p *PrependNode) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, p.Child)
 }
 
 // Eval implements the Expression interface.
@@ -201,7 +171,7 @@ func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, sql.ErrExpectedSingleRow.New()
 	}
 
-	if s.canCacheResults {
+	if s.canCacheResults() {
 		s.cacheMu.Lock()
 		if !s.resultsCached {
 			s.cache, s.resultsCached = rows, true
@@ -215,50 +185,44 @@ func (s *Subquery) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return rows[0], nil
 }
 
-// prependRowInPlan returns a transformation function that prepends the row given to any row source in a query
+// PrependRowInPlan returns a transformation function that prepends the row given to any row source in a query
 // plan. Any source of rows, as well as any node that alters the schema of its children, will be wrapped so that its
 // result rows are prepended with the row given.
-func prependRowInPlan(row sql.Row) func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+func PrependRowInPlan(row sql.Row, lateral bool) func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 	return func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := n.(type) {
-		case sql.Table, sql.Projector, *ValueDerivedTable:
-			return &prependNode{
-				UnaryNode: UnaryNode{Child: n},
-				row:       row,
-			}, transform.NewTree, nil
-		case *Union:
-			newUnion := *n
-			newRight, _, err := transform.Node(n.Right(), prependRowInPlan(row))
+		case sql.Table, sql.Projector, *ValueDerivedTable, *TableCountLookup, sql.TableFunction:
+			return NewPrependNode(n, row), transform.NewTree, nil
+		case *SetOp:
+			newSetOp := *n
+			newRight, _, err := transform.Node(n.Right(), PrependRowInPlan(row, lateral))
 			if err != nil {
 				return n, transform.SameTree, err
 			}
-			newLeft, _, err := transform.Node(n.Left(), prependRowInPlan(row))
+			newLeft, _, err := transform.Node(n.Left(), PrependRowInPlan(row, lateral))
 			if err != nil {
 				return n, transform.SameTree, err
 			}
-			newUnion.left = newLeft
-			newUnion.right = newRight
-			return &newUnion, transform.NewTree, nil
+			newSetOp.left = newLeft
+			newSetOp.right = newRight
+			return &newSetOp, transform.NewTree, nil
 		case *RecursiveCte:
 			newRecursiveCte := *n
-			newUnion, _, err := transform.Node(n.union, prependRowInPlan(row))
-			newRecursiveCte.union = newUnion.(*Union)
+			newUnion, _, err := transform.Node(n.union, PrependRowInPlan(row, lateral))
+			newRecursiveCte.union = newUnion.(*SetOp)
 			return &newRecursiveCte, transform.NewTree, err
 		case *SubqueryAlias:
 			// For SubqueryAliases (i.e. DerivedTables), since they may have visibility to outer scopes, we need to
 			// transform their inner nodes to prepend the outer scope row data. Ideally, we would only do this when
 			// the subquery alias references those outer fields. That will also require updating subquery expression
 			// scope handling to also make the same optimization.
-			if n.OuterScopeVisibility {
+			if n.OuterScopeVisibility || lateral {
 				newSubqueryAlias := *n
-				newChildNode, _, err := transform.Node(n.Child, prependRowInPlan(row))
+				newChildNode, _, err := transform.Node(n.Child, PrependRowInPlan(row, lateral))
 				newSubqueryAlias.Child = newChildNode
 				return &newSubqueryAlias, transform.NewTree, err
 			} else {
-				return &prependNode{
-					UnaryNode: UnaryNode{Child: n},
-					row:       row,
-				}, transform.NewTree, nil
+				return NewPrependNode(n, row), transform.NewTree, nil
 			}
 		}
 
@@ -266,23 +230,37 @@ func prependRowInPlan(row sql.Row) func(n sql.Node) (sql.Node, transform.TreeIde
 	}
 }
 
-func NewMax1Row(n sql.NameableNode) *Max1Row {
-	return &Max1Row{Child: n, mu: &sync.Mutex{}}
+func NewMax1Row(n sql.Node, name string) *Max1Row {
+	return &Max1Row{Child: n, name: name, Mu: &sync.Mutex{}}
 }
 
 // Max1Row throws a runtime error if its child (usually subquery) tries
 // to return more than one row.
 type Max1Row struct {
-	Child       sql.NameableNode
-	result      sql.Row
-	mu          *sync.Mutex
-	emptyResult bool
+	Child       sql.Node
+	name        string
+	Result      sql.Row
+	Mu          *sync.Mutex
+	EmptyResult bool
 }
 
 var _ sql.Node = (*Max1Row)(nil)
+var _ sql.CollationCoercible = (*Max1Row)(nil)
+var _ sql.NameableNode = (*Max1Row)(nil)
+var _ sql.RenameableNode = (*Max1Row)(nil)
+
+func (m *Max1Row) WithName(s string) sql.Node {
+	ret := *m
+	ret.name = s
+	return &ret
+}
 
 func (m *Max1Row) Name() string {
-	return m.Child.Name()
+	return m.name
+}
+
+func (m *Max1Row) IsReadOnly() bool {
+	return m.Child.IsReadOnly()
 }
 
 func (m *Max1Row) Resolved() bool {
@@ -313,56 +291,9 @@ func (m *Max1Row) DebugString() string {
 	return pr.String()
 }
 
-func (m *Max1Row) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	if !m.hasResults() {
-		err := m.populateResults(ctx, row)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	switch {
-	case m.emptyResult:
-		return emptyIter, nil
-	case m.result != nil:
-		return sql.RowsToRowIter(m.result), nil
-	default:
-		return nil, fmt.Errorf("Max1Row failed to load results")
-	}
-}
-
-// populateResults loads and stores the state of its child iter:
-// 1) no rows returned, 2) 1 row returned, or 3) more than 1 row
-// returned
-func (m *Max1Row) populateResults(ctx *sql.Context, row sql.Row) error {
-	i, err := m.Child.RowIter(ctx, row)
-	if err != nil {
-		return err
-	}
-	r1, err := i.Next(ctx)
-	if errors.Is(err, io.EOF) {
-		m.emptyResult = true
-		return nil
-	} else if err != nil {
-		return err
-	}
-
-	_, err = i.Next(ctx)
-	if err == nil {
-		return sql.ErrExpectedSingleRow.New()
-	} else if !errors.Is(err, io.EOF) {
-		return err
-	}
-	m.result = r1
-	return nil
-}
-
-// hasResults returns true after a successful call to populateResults()
-func (m *Max1Row) hasResults() bool {
-	return m.result != nil || m.emptyResult
+// HasResults returns true after a successful call to PopulateResults()
+func (m *Max1Row) HasResults() bool {
+	return m.Result != nil || m.EmptyResult
 }
 
 func (m *Max1Row) WithChildren(children ...sql.Node) (sql.Node, error) {
@@ -371,21 +302,18 @@ func (m *Max1Row) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 	ret := *m
 
-	nn, ok := children[0].(sql.NameableNode)
-	if !ok {
-		return nil, fmt.Errorf("expected *Max1Row child to be sql.NameableNode, found %T", children[0])
-	}
-	ret.Child = nn
+	ret.Child = children[0]
 
 	return &ret, nil
 }
 
-func (m *Max1Row) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return m.Child.CheckPrivileges(ctx, opChecker)
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (m *Max1Row) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, m.Child)
 }
 
 // EvalMultiple returns all rows returned by a subquery.
-func (s *Subquery) EvalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, error) {
+func (s *Subquery) EvalMultiple(ctx *sql.Context, row sql.Row) ([]any, error) {
 	s.cacheMu.Lock()
 	cached := s.resultsCached
 	s.cacheMu.Unlock()
@@ -398,7 +326,7 @@ func (s *Subquery) EvalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, e
 		return nil, err
 	}
 
-	if s.canCacheResults {
+	if s.canCacheResults() {
 		s.cacheMu.Lock()
 		if s.resultsCached == false {
 			s.cache, s.resultsCached = result, true
@@ -409,15 +337,23 @@ func (s *Subquery) EvalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, e
 	return result, nil
 }
 
-func (s *Subquery) evalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, error) {
+func (s *Subquery) canCacheResults() bool {
+	return s.correlated.Empty() && !s.volatile
+}
+
+func (s *Subquery) evalMultiple(ctx *sql.Context, row sql.Row) ([]any, error) {
 	// Any source of rows, as well as any node that alters the schema of its children, needs to be wrapped so that its
 	// result rows are prepended with the scope row.
-	q, _, err := transform.Node(s.Query, prependRowInPlan(row))
+	q, _, err := transform.Node(s.Query, PrependRowInPlan(row, false))
 	if err != nil {
 		return nil, err
 	}
 
-	iter, err := q.RowIter(ctx, row)
+	if s.b == nil {
+		return nil, fmt.Errorf("attempted to evaluate uninitialized subquery")
+	}
+
+	iter, err := s.b.Build(ctx, q, row)
 	if err != nil {
 		return nil, err
 	}
@@ -426,7 +362,7 @@ func (s *Subquery) evalMultiple(ctx *sql.Context, row sql.Row) ([]interface{}, e
 
 	// Reduce the result row to the size of the expected schema. This means chopping off the first len(row) columns.
 	col := len(row)
-	var result []interface{}
+	var result []any
 	for {
 		row, err := iter.Next(ctx)
 		if err == io.EOF {
@@ -466,12 +402,12 @@ func (s *Subquery) HashMultiple(ctx *sql.Context, row sql.Row) (sql.KeyValueCach
 		return nil, err
 	}
 
-	if s.canCacheResults {
+	if s.canCacheResults() {
 		s.cacheMu.Lock()
 		defer s.cacheMu.Unlock()
 		if !s.resultsCached || s.hashCache == nil {
 			hashCache, disposeFn := ctx.Memory.NewHistoryCache()
-			err = putAllRows(hashCache, result)
+			err = putAllRows(ctx, hashCache, s.Query.Schema(), result)
 			if err != nil {
 				return nil, err
 			}
@@ -481,7 +417,11 @@ func (s *Subquery) HashMultiple(ctx *sql.Context, row sql.Row) (sql.KeyValueCach
 	}
 
 	cache := sql.NewMapCache()
-	return cache, putAllRows(cache, result)
+	err = putAllRows(ctx, cache, s.Query.Schema(), result)
+	if err != nil {
+		return nil, err
+	}
+	return cache, nil
 }
 
 // HasResultRow returns whether the subquery has a result set > 0.
@@ -497,12 +437,16 @@ func (s *Subquery) HasResultRow(ctx *sql.Context, row sql.Row) (bool, error) {
 
 	// Any source of rows, as well as any node that alters the schema of its children, needs to be wrapped so that its
 	// result rows are prepended with the scope row.
-	q, _, err := transform.Node(s.Query, prependRowInPlan(row))
+	q, _, err := transform.Node(s.Query, PrependRowInPlan(row, false))
 	if err != nil {
 		return false, err
 	}
 
-	iter, err := q.RowIter(ctx, row)
+	if s.b == nil {
+		return false, fmt.Errorf("attempted to evaluate uninitialized subquery")
+	}
+
+	iter, err := s.b.Build(ctx, q, row)
 	if err != nil {
 		return false, err
 	}
@@ -510,10 +454,9 @@ func (s *Subquery) HasResultRow(ctx *sql.Context, row sql.Row) (bool, error) {
 	// Call the iterator once and see if it has a row. If io.EOF is received return false.
 	_, err = iter.Next(ctx)
 	if err == io.EOF {
-		return false, nil
-	}
-
-	if err != nil {
+		err = iter.Close(ctx)
+		return false, err
+	} else if err != nil {
 		return false, err
 	}
 
@@ -525,13 +468,27 @@ func (s *Subquery) HasResultRow(ctx *sql.Context, row sql.Row) (bool, error) {
 	return true, nil
 }
 
-func putAllRows(cache sql.KeyValueCache, vals []interface{}) error {
+// normalizeValue returns a canonical version of a value for use in a sql.KeyValueCache.
+// Two values that compare equal should have the same canonical version.
+func normalizeForKeyValueCache(ctx *sql.Context, val interface{}) (interface{}, error) {
+	val, err := sql.UnwrapAny(ctx, val)
+	if err != nil {
+		return nil, err
+	}
+	return val, nil
+}
+
+func putAllRows(ctx *sql.Context, cache sql.KeyValueCache, sch sql.Schema, vals []interface{}) error {
 	for _, val := range vals {
-		rowKey, err := sql.HashOf(sql.NewRow(val))
+		normVal, err := normalizeForKeyValueCache(ctx, val)
 		if err != nil {
 			return err
 		}
-		err = cache.Put(rowKey, val)
+		rowKey, err := hash.HashOf(ctx, sch, sql.NewRow(normVal))
+		if err != nil {
+			return err
+		}
+		err = cache.Put(rowKey, normVal)
 		if err != nil {
 			return err
 		}
@@ -547,7 +504,7 @@ func (s *Subquery) IsNullable() bool {
 func (s *Subquery) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Subquery")
-	children := []string{fmt.Sprintf("cacheable: %t", s.canCacheResults), s.Query.String()}
+	children := []string{fmt.Sprintf("cacheable: %t", s.canCacheResults()), s.Query.String()}
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
@@ -555,7 +512,11 @@ func (s *Subquery) String() string {
 func (s *Subquery) DebugString() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Subquery")
-	children := []string{fmt.Sprintf("cacheable: %t", s.canCacheResults), sql.DebugString(s.Query)}
+	children := []string{
+		fmt.Sprintf("cacheable: %t", s.canCacheResults()),
+		fmt.Sprintf("alias-string: %s", s.QueryString),
+		sql.DebugString(s.Query),
+	}
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
@@ -611,19 +572,39 @@ func (s *Subquery) WithQuery(node sql.Node) *Subquery {
 	return &ns
 }
 
-func (s *Subquery) IsNonDeterministic() bool {
-	return !s.canCacheResults
-}
-
-// WithCachedResults returns the subquery with CanCacheResults set to true.
-func (s *Subquery) WithCachedResults() *Subquery {
+// WithExecBuilder returns the subquery with a recursive execution builder.
+func (s *Subquery) WithExecBuilder(b sql.NodeExecBuilder) *Subquery {
 	ns := *s
-	ns.canCacheResults = true
+	ns.b = b
 	return &ns
 }
 
+func (s *Subquery) IsNonDeterministic() bool {
+	return !s.canCacheResults()
+}
+
+func (s *Subquery) Volatile() bool {
+	return s.volatile
+}
+
+func (s *Subquery) WithVolatile() *Subquery {
+	ret := *s
+	ret.volatile = true
+	return &ret
+}
+
+func (s *Subquery) WithCorrelated(cols sql.ColSet) *Subquery {
+	ret := *s
+	ret.correlated = cols
+	return &ret
+}
+
+func (s *Subquery) Correlated() sql.ColSet {
+	return s.correlated
+}
+
 func (s *Subquery) CanCacheResults() bool {
-	return s.canCacheResults
+	return s.canCacheResults()
 }
 
 // Dispose implements sql.Disposable
@@ -633,4 +614,9 @@ func (s *Subquery) Dispose() {
 		s.disposeFunc = nil
 	}
 	disposeNode(s.Query)
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (s *Subquery) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, s.Query)
 }

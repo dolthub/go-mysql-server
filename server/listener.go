@@ -53,7 +53,7 @@ type Listener struct {
 // For unix socket connection, 'unixSocketPath' takes a path for the unix socket file.
 // If 'unixSocketPath' is empty, no need to create the second listener.
 func NewListener(protocol, address string, unixSocketPath string) (*Listener, error) {
-	netl, err := net.Listen(protocol, address)
+	netl, err := newNetListener(protocol, address)
 	if err != nil {
 		return nil, err
 	}

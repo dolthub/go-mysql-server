@@ -16,13 +16,11 @@ package expression
 
 import (
 	"fmt"
-	"sync"
 
 	errors "gopkg.in/src-d/go-errors.v1"
 
-	"github.com/gabereiser/go-mysql-server/internal/regex"
-	"github.com/gabereiser/go-mysql-server/sql"
-	"github.com/gabereiser/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var ErrInvalidRegexp = errors.NewKind("Invalid regular expression: %s")
@@ -38,10 +36,10 @@ type Comparer interface {
 // ErrNilOperand ir returned if some or both of the comparison's operands is nil.
 var ErrNilOperand = errors.NewKind("nil operand found in comparison")
 
-// ContainsImpreciseComparison searches an expression tree for comparison
+// PreciseComparison searches an expression tree for comparison
 // expressions that require a conversion or type promotion.
 // This utility helps determine if filter predicates can be pushed down.
-func ContainsImpreciseComparison(e sql.Expression) bool {
+func PreciseComparison(e sql.Expression) bool {
 	var imprecise bool
 	sql.Inspect(e, func(expr sql.Expression) bool {
 		if cmp, ok := expr.(Comparer); ok {
@@ -49,6 +47,24 @@ func ContainsImpreciseComparison(e sql.Expression) bool {
 
 			// integer comparisons are exact
 			if types.IsInteger(left) && types.IsInteger(right) {
+				return true
+			}
+
+			// string type comparisons are exact
+			if types.IsText(left) && types.IsText(right) {
+				return true
+			}
+
+			if tupType, ok := right.(types.TupleType); ok {
+				if tupleTypesMatch(left, tupType, types.IsInteger) || tupleTypesMatch(left, tupType, types.IsText) {
+					return true
+				}
+				for _, right := range tupType {
+					if !left.Equals(right) {
+						imprecise = true
+						return false
+					}
+				}
 				return true
 			}
 
@@ -60,15 +76,42 @@ func ContainsImpreciseComparison(e sql.Expression) bool {
 		}
 		return true
 	})
-	return imprecise
+	return !imprecise
+}
+
+func tupleTypesMatch(left sql.Type, tup types.TupleType, typeCb func(t sql.Type) bool) bool {
+	if !typeCb(left) {
+		return false
+	}
+	for _, right := range tup {
+		if !typeCb(right) {
+			return false
+		}
+	}
+	return true
 }
 
 type comparison struct {
-	BinaryExpression
+	BinaryExpressionStub
+}
+
+// disableRounding disables rounding for the given expression.
+func disableRounding(expr sql.Expression) {
+	setArithmeticOps(expr, -1)
+	setDivOps(expr, -1)
 }
 
 func newComparison(left, right sql.Expression) comparison {
-	return comparison{BinaryExpression{left, right}}
+	disableRounding(left)
+	disableRounding(right)
+	return comparison{BinaryExpressionStub{left, right}}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (c *comparison) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	leftCollation, leftCoercibility := sql.GetCoercibility(ctx, c.Left())
+	rightCollation, rightCoercibility := sql.GetCoercibility(ctx, c.Right())
+	return sql.ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
 }
 
 // Compare the two given values using the types of the expressions in the comparison.
@@ -84,60 +127,34 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		return 0, ErrNilOperand.New()
 	}
 
+	left, err = sql.UnwrapAny(ctx, left)
+	if err != nil {
+		return 0, err
+	}
+
+	right, err = sql.UnwrapAny(ctx, right)
+	if err != nil {
+		return 0, err
+	}
+
 	if types.TypesEqual(c.Left().Type(), c.Right().Type()) {
-		return c.Left().Type().Compare(left, right)
+		return c.Left().Type().Compare(ctx, left, right)
 	}
 
-	// ENUM, SET, and TIME must be excluded when doing comparisons, as they're too restrictive to use as a comparison
-	// base.
-	//
-	// The best overall method would be to assign type priority. For example, INT would have a higher priority than
-	// TINYINT. This could then be combined with the origin of the value (table column, procedure param, etc.) to
-	// determine the best type for any comparison (tie-breakers can be simple rules such as the current left preference).
-	var compareType sql.Type
-	collationPreference := sql.Collation_Default
-	switch c.Left().(type) {
-	case *GetField, *UserVar, *SystemVar, *ProcedureParam:
-		compareType = c.Left().Type()
-		if twc, ok := compareType.(sql.TypeWithCollation); ok {
-			collationPreference = twc.Collation()
-		}
-	default:
-		switch c.Right().(type) {
-		case *GetField, *UserVar, *SystemVar, *ProcedureParam:
-			compareType = c.Right().Type()
-			if twc, ok := compareType.(sql.TypeWithCollation); ok {
-				collationPreference = twc.Collation()
-			}
-		}
+	l, r, compareType, err := c.castLeftAndRight(ctx, left, right)
+	if err != nil {
+		return 0, err
 	}
-	if compareType != nil {
-		_, isEnum := compareType.(sql.EnumType)
-		_, isSet := compareType.(sql.SetType)
-		_, isTime := compareType.(types.TimeType)
-		if !isEnum && !isSet && !isTime {
-			compareType = nil
-		}
-	}
-	if compareType == nil {
-		left, right, compareType, err = c.castLeftAndRight(left, right)
-		if err != nil {
-			return 0, err
-		}
-	}
-	if types.IsTextOnly(compareType) {
-		leftCollation, leftCoercibility := GetCollationViaCoercion(c.Left())
-		rightCollation, rightCoercibility := GetCollationViaCoercion(c.Right())
-		collationPreference, err = ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
-		if err != nil {
-			return 0, err
-		}
 
-		stringCompareType := compareType.(sql.StringType)
+	// Set comparison relies on empty strings not being converted yet
+	if types.IsSet(compareType) {
+		return compareType.Compare(ctx, left, right)
+	}
+	collationPreference, _ := c.CollationCoercibility(ctx)
+	if stringCompareType, ok := compareType.(sql.StringType); ok && types.IsTextOnly(stringCompareType) {
 		compareType = types.MustCreateString(stringCompareType.Type(), stringCompareType.Length(), collationPreference)
 	}
-
-	return compareType.Compare(left, right)
+	return compareType.Compare(ctx, l, r)
 }
 
 func (c *comparison) evalLeftAndRight(ctx *sql.Context, row sql.Row) (interface{}, interface{}, error) {
@@ -154,24 +171,72 @@ func (c *comparison) evalLeftAndRight(ctx *sql.Context, row sql.Row) (interface{
 	return left, right, nil
 }
 
-func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, interface{}, sql.Type, error) {
+func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right interface{}) (interface{}, interface{}, sql.Type, error) {
 	leftType := c.Left().Type()
 	rightType := c.Right().Type()
+
+	leftIsEnumOrSet := types.IsEnum(leftType) || types.IsSet(leftType)
+	rightIsEnumOrSet := types.IsEnum(rightType) || types.IsSet(rightType)
+	// Only convert if same Enum or Set
+	if leftIsEnumOrSet && rightIsEnumOrSet {
+		if types.TypesEqual(leftType, rightType) {
+			return left, right, leftType, nil
+		}
+	} else {
+		// If right side is convertible to enum/set, convert. Otherwise, convert left side
+		if leftIsEnumOrSet && (types.IsText(rightType) || types.IsNumber(rightType)) {
+			if r, inRange, err := leftType.Convert(ctx, right); inRange && err == nil {
+				return left, r, leftType, nil
+			} else {
+				l, _, err := types.TypeAwareConversion(ctx, left, leftType, rightType)
+				if err != nil {
+					return nil, nil, nil, err
+				}
+				return l, right, rightType, nil
+			}
+		}
+		// If left side is convertible to enum/set, convert. Otherwise, convert right side
+		if rightIsEnumOrSet && (types.IsText(leftType) || types.IsNumber(leftType)) {
+			if l, inRange, err := rightType.Convert(ctx, left); inRange && err == nil {
+				return l, right, rightType, nil
+			} else {
+				r, _, err := types.TypeAwareConversion(ctx, right, rightType, leftType)
+				if err != nil {
+					return nil, nil, nil, err
+				}
+				return left, r, leftType, nil
+			}
+		}
+	}
+
+	if types.IsTimespan(leftType) || types.IsTimespan(rightType) {
+		if l, err := types.Time.ConvertToTimespan(left); err == nil {
+			if r, err := types.Time.ConvertToTimespan(right); err == nil {
+				return l, r, types.Time, nil
+			}
+		}
+	}
+
 	if types.IsTuple(leftType) && types.IsTuple(rightType) {
 		return left, right, c.Left().Type(), nil
 	}
 
 	if types.IsTime(leftType) || types.IsTime(rightType) {
-		l, r, err := convertLeftAndRight(left, right, ConvertToDatetime)
+		l, r, err := convertLeftAndRight(ctx, left, right, ConvertToDatetime)
 		if err != nil {
 			return nil, nil, nil, err
 		}
 
-		return l, r, types.Datetime, nil
+		return l, r, types.DatetimeMaxPrecision, nil
+	}
+
+	// Rely on types.JSON.Compare to handle JSON comparisons
+	if types.IsJSON(leftType) || types.IsJSON(rightType) {
+		return left, right, types.JSON, nil
 	}
 
 	if types.IsBinaryType(leftType) || types.IsBinaryType(rightType) {
-		l, r, err := convertLeftAndRight(left, right, ConvertToBinary)
+		l, r, err := convertLeftAndRight(ctx, left, right, ConvertToBinary)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -181,7 +246,7 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 	if types.IsNumber(leftType) || types.IsNumber(rightType) {
 		if types.IsDecimal(leftType) || types.IsDecimal(rightType) {
 			//TODO: We need to set to the actual DECIMAL type
-			l, r, err := convertLeftAndRight(left, right, ConvertToDecimal)
+			l, r, err := convertLeftAndRight(ctx, left, right, ConvertToDecimal)
 			if err != nil {
 				return nil, nil, nil, err
 			}
@@ -194,7 +259,7 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 		}
 
 		if types.IsFloat(leftType) || types.IsFloat(rightType) {
-			l, r, err := convertLeftAndRight(left, right, ConvertToDouble)
+			l, r, err := convertLeftAndRight(ctx, left, right, ConvertToDouble)
 			if err != nil {
 				return nil, nil, nil, err
 			}
@@ -202,8 +267,8 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 			return l, r, types.Float64, nil
 		}
 
-		if types.IsSigned(leftType) || types.IsSigned(rightType) {
-			l, r, err := convertLeftAndRight(left, right, ConvertToSigned)
+		if types.IsSigned(leftType) && types.IsSigned(rightType) {
+			l, r, err := convertLeftAndRight(ctx, left, right, ConvertToSigned)
 			if err != nil {
 				return nil, nil, nil, err
 			}
@@ -211,15 +276,24 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 			return l, r, types.Int64, nil
 		}
 
-		l, r, err := convertLeftAndRight(left, right, ConvertToUnsigned)
+		if types.IsUnsigned(leftType) && types.IsUnsigned(rightType) {
+			l, r, err := convertLeftAndRight(ctx, left, right, ConvertToUnsigned)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+
+			return l, r, types.Uint64, nil
+		}
+
+		l, r, err := convertLeftAndRight(ctx, left, right, ConvertToDouble)
 		if err != nil {
 			return nil, nil, nil, err
 		}
 
-		return l, r, types.Uint64, nil
+		return l, r, types.Float64, nil
 	}
 
-	left, right, err := convertLeftAndRight(left, right, ConvertToChar)
+	left, right, err := convertLeftAndRight(ctx, left, right, ConvertToChar)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -227,13 +301,13 @@ func (c *comparison) castLeftAndRight(left, right interface{}) (interface{}, int
 	return left, right, types.LongText, nil
 }
 
-func convertLeftAndRight(left, right interface{}, convertTo string) (interface{}, interface{}, error) {
-	l, err := convertValue(left, convertTo, nil)
+func convertLeftAndRight(ctx *sql.Context, left, right interface{}, convertTo string) (interface{}, interface{}, error) {
+	l, err := convertValue(ctx, left, convertTo, nil, 0, 0)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	r, err := convertValue(right, convertTo, nil)
+	r, err := convertValue(ctx, right, convertTo, nil, 0, 0)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -247,19 +321,36 @@ func (*comparison) Type() sql.Type {
 }
 
 // Left implements Comparer interface
-func (c *comparison) Left() sql.Expression { return c.BinaryExpression.Left }
+func (c *comparison) Left() sql.Expression { return c.BinaryExpressionStub.LeftChild }
 
 // Right implements Comparer interface
-func (c *comparison) Right() sql.Expression { return c.BinaryExpression.Right }
+func (c *comparison) Right() sql.Expression { return c.BinaryExpressionStub.RightChild }
+
+// Equality is an expression that may represent equality between two parameters (the equals operator is one such example).
+type Equality interface {
+	BinaryExpression
+	RepresentsEquality() bool
+	SwapParameters(ctx *sql.Context) (Equality, error)
+	ToComparer() (Comparer, error)
+}
 
 // Equals is a comparison that checks an expression is equal to another.
 type Equals struct {
 	comparison
 }
 
+var _ sql.Expression = (*Equals)(nil)
+var _ sql.CollationCoercible = (*Equals)(nil)
+var _ Equality = (*Equals)(nil)
+
 // NewEquals returns a new Equals expression.
 func NewEquals(left sql.Expression, right sql.Expression) *Equals {
 	return &Equals{newComparison(left, right)}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (e *Equals) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // Eval implements the Expression interface.
@@ -302,12 +393,30 @@ func (e *Equals) DebugString() string {
 	return pr.String()
 }
 
+// RepresentsEquality implements the Equality interface.
+func (e *Equals) RepresentsEquality() bool {
+	return true
+}
+
+// SwapParameters implements the Equality interface.
+func (e *Equals) SwapParameters(ctx *sql.Context) (Equality, error) {
+	return NewEquals(e.RightChild, e.LeftChild), nil
+}
+
+// ToComparer implements the Equality interface.
+func (e *Equals) ToComparer() (Comparer, error) {
+	return e, nil
+}
+
 // NullSafeEquals is a comparison that checks an expression is equal to
 // another, where NULLs do not coalesce to NULL and two NULLs compare equal to
 // each other.
 type NullSafeEquals struct {
 	comparison
 }
+
+var _ sql.Expression = (*NullSafeEquals)(nil)
+var _ sql.CollationCoercible = (*NullSafeEquals)(nil)
 
 // NewNullSafeEquals returns a new NullSafeEquals expression.
 func NewNullSafeEquals(left sql.Expression, right sql.Expression) *NullSafeEquals {
@@ -317,6 +426,11 @@ func NewNullSafeEquals(left sql.Expression, right sql.Expression) *NullSafeEqual
 // Type implements the Expression interface.
 func (e *NullSafeEquals) Type() sql.Type {
 	return types.Boolean
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (e *NullSafeEquals) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (e *NullSafeEquals) Compare(ctx *sql.Context, row sql.Row) (int, error) {
@@ -334,16 +448,16 @@ func (e *NullSafeEquals) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 	}
 
 	if types.TypesEqual(e.Left().Type(), e.Right().Type()) {
-		return e.Left().Type().Compare(left, right)
+		return e.Left().Type().Compare(ctx, left, right)
 	}
 
 	var compareType sql.Type
-	left, right, compareType, err = e.castLeftAndRight(left, right)
+	left, right, compareType, err = e.castLeftAndRight(ctx, left, right)
 	if err != nil {
 		return 0, err
 	}
 
-	return compareType.Compare(left, right)
+	return compareType.Compare(ctx, left, right)
 }
 
 // Eval implements the Expression interface.
@@ -372,146 +486,22 @@ func (e *NullSafeEquals) DebugString() string {
 	return fmt.Sprintf("(%s <=> %s)", sql.DebugString(e.Left()), sql.DebugString(e.Right()))
 }
 
-// Regexp is a comparison that checks an expression matches a regexp.
-type Regexp struct {
-	comparison
-	pool   *sync.Pool
-	cached bool
-	once   sync.Once
-}
-
-// NewRegexp creates a new Regexp expression.
-func NewRegexp(left sql.Expression, right sql.Expression) *Regexp {
-	var cached = true
-	sql.Inspect(right, func(e sql.Expression) bool {
-		if _, ok := e.(*GetField); ok {
-			cached = false
-		}
-		return true
-	})
-
-	return &Regexp{
-		comparison: newComparison(left, right),
-		pool:       nil,
-		cached:     cached,
-		once:       sync.Once{},
-	}
-}
-
-// Eval implements the Expression interface.
-func (re *Regexp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	if types.IsText(re.Right().Type()) {
-		return re.compareRegexp(ctx, row)
-	}
-
-	result, err := re.Compare(ctx, row)
-	if err != nil {
-		if ErrNilOperand.Is(err) {
-			return nil, nil
-		}
-
-		return nil, err
-	}
-
-	return result == 0, nil
-}
-
-type matcherErrTuple struct {
-	matcher regex.DisposableMatcher
-	err     error
-}
-
-func (re *Regexp) compareRegexp(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	left, err := re.Left().Eval(ctx, row)
-	if err != nil || left == nil {
-		return nil, err
-	}
-	left, err = types.LongText.Convert(left)
-	if err != nil {
-		return nil, err
-	}
-
-	var matcher regex.DisposableMatcher
-
-	if !re.cached {
-		right, rerr := re.evalRight(ctx, row)
-		if rerr != nil || right == nil {
-			return right, rerr
-		}
-		matcher, err = regex.NewDisposableMatcher(regex.Default(), *right)
-	} else {
-		re.once.Do(func() {
-			right, err := re.evalRight(ctx, row)
-			re.pool = &sync.Pool{
-				New: func() interface{} {
-					if err != nil || right == nil {
-						return matcherErrTuple{nil, err}
-					}
-					m, e := regex.NewDisposableMatcher(regex.Default(), *right)
-					return matcherErrTuple{m, e}
-				},
-			}
-		})
-		met := re.pool.Get().(matcherErrTuple)
-		matcher, err = met.matcher, met.err
-	}
-
-	if err != nil {
-		return nil, ErrInvalidRegexp.New(err.Error())
-	} else if matcher == nil {
-		return nil, nil
-	}
-
-	ok := matcher.Match(left.(string))
-
-	if !re.cached {
-		matcher.Dispose()
-	} else {
-		re.pool.Put(matcherErrTuple{matcher, nil})
-	}
-	return ok, nil
-}
-
-func (re *Regexp) evalRight(ctx *sql.Context, row sql.Row) (*string, error) {
-	right, err := re.Right().Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-	if right == nil {
-		return nil, nil
-	}
-	right, err = types.LongText.Convert(right)
-	if err != nil {
-		return nil, err
-	}
-	s := right.(string)
-	return &s, nil
-}
-
-// WithChildren implements the Expression interface.
-func (re *Regexp) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	if len(children) != 2 {
-		return nil, sql.ErrInvalidChildrenNumber.New(re, len(children), 2)
-	}
-	return NewRegexp(children[0], children[1]), nil
-}
-
-func (re *Regexp) String() string {
-	return fmt.Sprintf("(%s REGEXP %s)", re.Left(), re.Right())
-}
-
-func (re *Regexp) DebugString() string {
-	return fmt.Sprintf("(%s REGEXP %s)", sql.DebugString(re.Left()), sql.DebugString(re.Right()))
-}
-
 // GreaterThan is a comparison that checks an expression is greater than another.
 type GreaterThan struct {
 	comparison
 }
 
+var _ sql.Expression = (*GreaterThan)(nil)
+var _ sql.CollationCoercible = (*GreaterThan)(nil)
+
 // NewGreaterThan creates a new GreaterThan expression.
 func NewGreaterThan(left sql.Expression, right sql.Expression) *GreaterThan {
 	return &GreaterThan{newComparison(left, right)}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (gt *GreaterThan) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // Eval implements the Expression interface.
@@ -553,9 +543,17 @@ type LessThan struct {
 	comparison
 }
 
+var _ sql.Expression = (*LessThan)(nil)
+var _ sql.CollationCoercible = (*LessThan)(nil)
+
 // NewLessThan creates a new LessThan expression.
 func NewLessThan(left sql.Expression, right sql.Expression) *LessThan {
 	return &LessThan{newComparison(left, right)}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (lt *LessThan) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // Eval implements the expression interface.
@@ -598,9 +596,17 @@ type GreaterThanOrEqual struct {
 	comparison
 }
 
+var _ sql.Expression = (*GreaterThanOrEqual)(nil)
+var _ sql.CollationCoercible = (*GreaterThanOrEqual)(nil)
+
 // NewGreaterThanOrEqual creates a new GreaterThanOrEqual
 func NewGreaterThanOrEqual(left sql.Expression, right sql.Expression) *GreaterThanOrEqual {
 	return &GreaterThanOrEqual{newComparison(left, right)}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (gte *GreaterThanOrEqual) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // Eval implements the Expression interface.
@@ -643,9 +649,17 @@ type LessThanOrEqual struct {
 	comparison
 }
 
+var _ sql.Expression = (*LessThanOrEqual)(nil)
+var _ sql.CollationCoercible = (*LessThanOrEqual)(nil)
+
 // NewLessThanOrEqual creates a LessThanOrEqual expression.
 func NewLessThanOrEqual(left sql.Expression, right sql.Expression) *LessThanOrEqual {
 	return &LessThanOrEqual{newComparison(left, right)}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (lte *LessThanOrEqual) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // Eval implements the Expression interface.

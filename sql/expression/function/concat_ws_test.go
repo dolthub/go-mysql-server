@@ -36,7 +36,7 @@ func TestConcatWithSeparator(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal("foo,5,true", v)
+		require.Equal("foo,5,1", v)
 	})
 
 	t.Run("some argument is empty", func(t *testing.T) {
@@ -50,7 +50,7 @@ func TestConcatWithSeparator(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal("foo,,true", v)
+		require.Equal("foo,,1", v)
 	})
 
 	t.Run("some argument is nil", func(t *testing.T) {
@@ -64,7 +64,7 @@ func TestConcatWithSeparator(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal("foo,true", v)
+		require.Equal("foo,1", v)
 	})
 
 	t.Run("separator is nil", func(t *testing.T) {

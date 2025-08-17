@@ -28,6 +28,7 @@ type Point struct {
 }
 
 var _ sql.FunctionExpression = (*Point)(nil)
+var _ sql.CollationCoercible = (*Point)(nil)
 
 // NewPoint creates a new point expression.
 func NewPoint(e1, e2 sql.Expression) sql.Expression {
@@ -64,6 +65,11 @@ func (p *Point) Type() sql.Type {
 	return types.PointType{}
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Point) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
+}
+
 func (p *Point) String() string {
 	return fmt.Sprintf("%s(%s,%s)", p.FunctionName(), p.X.String(), p.Y.String())
 }
@@ -88,7 +94,7 @@ func (p *Point) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Convert to float64
-	_x, err := types.Float64.Convert(x)
+	_x, _, err := types.Float64.Convert(ctx, x)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +109,7 @@ func (p *Point) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Convert to float64
-	_y, err := types.Float64.Convert(y)
+	_y, _, err := types.Float64.Convert(ctx, y)
 	if err != nil {
 		return nil, err
 	}

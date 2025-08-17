@@ -28,7 +28,7 @@ type DbProvider struct {
 type ProviderOption func(*DbProvider)
 
 // NewDBProvider creates a new DbProvider with the default options and the databases specified
-func NewDBProvider(dbs ...sql.Database) sql.MutableDatabaseProvider {
+func NewDBProvider(dbs ...sql.Database) *DbProvider {
 	dbMap := make(map[string]sql.Database, len(dbs))
 	for _, db := range dbs {
 		dbMap[strings.ToLower(db.Name())] = db
@@ -51,10 +51,20 @@ func NewDBProvider(dbs ...sql.Database) sql.MutableDatabaseProvider {
 func NewDBProviderWithOpts(opts ...ProviderOption) sql.MutableDatabaseProvider {
 	pro := NewDBProvider()
 	for _, opt := range opts {
-		opt(pro.(*DbProvider))
+		opt(pro)
 	}
 
 	return pro
+}
+
+func (pro *DbProvider) WithTableFunctions(fns ...sql.TableFunction) (sql.TableFunctionProvider, error) {
+	funcs := make(map[string]sql.TableFunction)
+	for _, fn := range fns {
+		funcs[strings.ToLower(fn.Name())] = fn
+	}
+	cp := *pro
+	cp.tableFunctions = funcs
+	return &cp, nil
 }
 
 // WithOption modifies the provider with the given option
@@ -184,10 +194,10 @@ func (pro *DbProvider) ExternalStoredProcedures(_ *sql.Context, name string) ([]
 }
 
 // TableFunction implements sql.TableFunctionProvider
-func (pro *DbProvider) TableFunction(_ *sql.Context, name string) (sql.TableFunction, error) {
+func (pro *DbProvider) TableFunction(_ *sql.Context, name string) (sql.TableFunction, bool) {
 	if tableFunction, ok := pro.tableFunctions[name]; ok {
-		return tableFunction, nil
+		return tableFunction, true
 	}
 
-	return nil, sql.ErrTableFunctionNotFound.New(name)
+	return nil, false
 }

@@ -27,7 +27,7 @@ const (
 // DatabaseProvider is the fundamental interface to integrate with the engine. It provides access to all databases in
 // a given backend. A DatabaseProvider is provided to the Catalog when the engine is initialized.
 type DatabaseProvider interface {
-	// Database gets a Database from the provider.
+	// Database returns the database with the name given, or sql.ErrDatabaseNotFound if it doesn't exist.
 	Database(ctx *Context, name string) (Database, error)
 	// HasDatabase checks if the Database exists in the provider.
 	HasDatabase(ctx *Context, name string) bool
@@ -57,8 +57,11 @@ type CollatedDatabaseProvider interface {
 // TableFunctionProvider is an interface that allows custom table functions to be provided. It's usually (but not
 // always) implemented by a DatabaseProvider.
 type TableFunctionProvider interface {
-	// TableFunction returns the table function with the name provided, case-insensitive
-	TableFunction(ctx *Context, name string) (TableFunction, error)
+	// TableFunction returns the table function with the name provided, case-insensitive.
+	// It also returns boolean param for whether the table function was found.
+	TableFunction(ctx *Context, name string) (TableFunction, bool)
+	// WithTableFunctions returns a new provider with (only) the list of table functions arguments
+	WithTableFunctions(fns ...TableFunction) (TableFunctionProvider, error)
 }
 
 // Database represents the database. Its primary job is to provide access to all tables.
@@ -71,6 +74,27 @@ type Database interface {
 	// GetTableNames returns the table names of every table in the database. It does not return the names of temporary
 	// tables
 	GetTableNames(ctx *Context) ([]string, error)
+}
+
+// SchemaDatabase is a database comprising multiple schemas that can each be queried for tables.
+type SchemaDatabase interface {
+	Nameable
+	// GetSchema returns the database with the schema name provided, matched case-insensitive.
+	// If the schema does not exist, the boolean return value should be false.
+	GetSchema(ctx *Context, schemaName string) (DatabaseSchema, bool, error)
+	// CreateSchema creates a new schema in the database.
+	// If the schema already exists, should return ErrSchemaAlreadyExists, although the engine checks this as well.
+	CreateSchema(ctx *Context, schemaName string) error
+	// AllSchemas returns all schemas in the database.
+	AllSchemas(ctx *Context) ([]DatabaseSchema, error)
+}
+
+// DatabaseSchema is a schema that can be queried for tables. It is functionally equivalent to a Database
+// (and in MySQL, database and Schema are synonymous). Some providers may have additional schemas.
+type DatabaseSchema interface {
+	Database
+	// SchemaName returns the schema name for Doltgres, or database name if empty for Dolt.
+	SchemaName() string
 }
 
 // Databaser is a node that contains a reference to a database.
@@ -108,8 +132,11 @@ type ReadOnlyDatabase interface {
 // TableCreator is a Database that can create new tables.
 type TableCreator interface {
 	Database
-	// CreateTable creates the table with the given name and schema.
-	CreateTable(ctx *Context, name string, schema PrimaryKeySchema, collation CollationID) error
+	// CreateTable creates the table with the given name, schema, collation, and comment. Integrators are
+	// responsible for persisting all provided table metadata. Comment may be optionally persisted, and if
+	// so, sql.Table implementations should also implement sql.CommentedTable so that the comment may be
+	// retrieved.
+	CreateTable(ctx *Context, name string, schema PrimaryKeySchema, collation CollationID, comment string) error
 }
 
 // IndexedTableCreator is a Database that can create new tables which have a Primary Key with columns that have
@@ -189,6 +216,11 @@ type TriggerDefinition struct {
 	CreateStatement string
 	// The time that the trigger was created.
 	CreatedAt time.Time
+	// SqlMode holds the SQL_MODE that was in use when this trigger was originally defined. It contains information
+	// needed for how to parse the trigger's SQL, such as whether ANSI_QUOTES mode is enabled.
+	SqlMode string
+	// SchemaName is the name of the schema of the trigger, for databases that support schemas.
+	SchemaName string
 }
 
 // TemporaryTableDatabase is a database that can query the session (which manages the temporary table state) to
@@ -222,6 +254,43 @@ type StoredProcedureDatabase interface {
 	DropStoredProcedure(ctx *Context, name string) error
 }
 
+// EventDatabase is a database that supports the creation and execution of events. The engine will
+// handle execution logic for events. Integrators only need to store and retrieve EventDefinition.
+type EventDatabase interface {
+	Database
+	// GetEvent returns the desired EventDefinition and if it exists in the database.
+	// All time values of EventDefinition needs to be converted into appropriate TZ.
+	GetEvent(ctx *Context, name string) (EventDefinition, bool, error)
+	// GetEvents returns all EventDefinition for the database, as well as an opaque token that is used to
+	// track if events need to be reloaded. This token is specific to an EventDatabase and is passed to
+	// NeedsToReloadEvents so that integrators can examine it and signal if events need to be reloaded. If
+	// integrators do not need to implement out-of-band event reloading, then they can simply return nil for
+	// the token. All time values of EventDefinition needs to be converted into appropriate TZ.
+	GetEvents(ctx *Context) (events []EventDefinition, token interface{}, err error)
+	// SaveEvent stores the given EventDefinition to the database. The integrator should verify that
+	// the name of the new event is unique amongst existing events. The time values are converted
+	// into UTC TZ for storage. It returns whether the event status is enabled.
+	SaveEvent(ctx *Context, ed EventDefinition) (bool, error)
+	// DropEvent removes the EventDefinition with the matching name from the database.
+	DropEvent(ctx *Context, name string) error
+	// UpdateEvent updates existing event stored in the database with the given EventDefinition
+	// with the updates. The original name event is required for renaming of an event.
+	// The time values are converted into UTC TZ for storage. It returns whether the event status is enabled.
+	UpdateEvent(ctx *Context, originalName string, ed EventDefinition) (bool, error)
+	// UpdateLastExecuted updated the lastExecuted metadata for the given event.
+	// The lastExecuted time is converted into UTC TZ for storage.
+	UpdateLastExecuted(ctx *Context, eventName string, lastExecuted time.Time) error
+	// NeedsToReloadEvents allows integrators to signal that out-of-band changes have modified an event (i.e. an
+	// event was modified without going through the SaveEvent or UpdateEvent methods in this interface), and that
+	// event definitions need to be reloaded. The event executor will periodically check to see if it needs to reload
+	// the events from a database by calling this method and if this method returns true, then the event executor will
+	// call the ReloadEvents method next to load in the new event definitions. The opaque token is the same token
+	// returned from the last call to GetEvents and integrators are free to use whatever underlying data they
+	// need to track whether an out-of-band event change has occurred. If integrators to do not support events
+	// changing out-of-band, then they can simply return false from this method.
+	NeedsToReloadEvents(ctx *Context, token interface{}) (bool, error)
+}
+
 // ViewDatabase is implemented by databases that persist view definitions
 type ViewDatabase interface {
 	// CreateView persists the definition a view with the name and select statement given. If a view with that name
@@ -244,6 +313,9 @@ type ViewDefinition struct {
 	Name                string
 	TextDefinition      string
 	CreateViewStatement string
+	SqlMode             string
+	// SchemaName is the name of the schema of the view, for databases that support schemas.
+	SchemaName string
 }
 
 // GetTableInsensitive implements a case-insensitive map lookup for tables keyed off of the table name.

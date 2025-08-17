@@ -16,7 +16,8 @@ package plan
 
 import (
 	"fmt"
-	"sort"
+
+	"github.com/dolthub/vitess/go/sqltypes"
 
 	"github.com/gabereiser/go-mysql-server/sql"
 	"github.com/gabereiser/go-mysql-server/sql/types"
@@ -24,15 +25,22 @@ import (
 
 // ShowVariables is a node that shows the global and session variables
 type ShowVariables struct {
-	filter sql.Expression
-	global bool
+	Filter sql.Expression
+	Global bool
 }
+
+const ShowVariablesVariableCol = "Variable_name"
+const ShowVariablesValueCol = "Value"
+
+var _ sql.Node = (*ShowVariables)(nil)
+var _ sql.Expressioner = (*ShowVariables)(nil)
+var _ sql.CollationCoercible = (*ShowVariables)(nil)
 
 // NewShowVariables returns a new ShowVariables reference.
 func NewShowVariables(filter sql.Expression, isGlobal bool) *ShowVariables {
 	return &ShowVariables{
-		filter: filter,
-		global: isGlobal,
+		Filter: filter,
+		Global: isGlobal,
 	}
 }
 
@@ -50,19 +58,19 @@ func (sv *ShowVariables) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return sv, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (sv *ShowVariables) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ShowVariables) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // String implements the fmt.Stringer interface.
 func (sv *ShowVariables) String() string {
 	var f string
-	if sv.filter != nil {
-		f = fmt.Sprintf(" WHERE %s", sv.filter.String())
+	if sv.Filter != nil {
+		f = fmt.Sprintf(" WHERE %s", sv.Filter.String())
 	}
 
-	if sv.global {
+	if sv.Global {
 		return fmt.Sprintf("SHOW GLOBAL VARIABLES%s", f)
 	}
 	return fmt.Sprintf("SHOW VARIABLES%s", f)
@@ -71,42 +79,40 @@ func (sv *ShowVariables) String() string {
 // Schema returns a new Schema reference for "SHOW VARIABLES" query.
 func (*ShowVariables) Schema() sql.Schema {
 	return sql.Schema{
-		&sql.Column{Name: "Variable_name", Type: types.LongText, Nullable: false},
-		&sql.Column{Name: "Value", Type: types.LongText, Nullable: true},
+		{
+			Name: ShowVariablesVariableCol,
+			// MySQL stores session/global variables under special tables
+			// performance_schema.session_table and performance_schema.global_table with case-insensitive collation
+			// We currently don't have these tables, so we modify the schema to emulate the case-insensitive LIKE behavior
+			Type:     types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_utf8mb4_0900_ai_ci),
+			Default:  nil,
+			Nullable: false,
+		},
+		{
+			Name:     ShowVariablesValueCol,
+			Type:     types.MustCreateStringWithDefaults(sqltypes.VarChar, 2048),
+			Default:  nil,
+			Nullable: false,
+		},
 	}
 }
 
 // Children implements sql.Node interface. The function always returns nil.
 func (*ShowVariables) Children() []sql.Node { return nil }
 
-// RowIter implements the sql.Node interface.
-// The function returns an iterator for filtered variables (based on like pattern)
-func (sv *ShowVariables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	var rows []sql.Row
-	var sysVars map[string]interface{}
+func (sv *ShowVariables) Expressions() []sql.Expression {
+	return []sql.Expression{sv.Filter}
+}
 
-	if sv.global {
-		sysVars = sql.SystemVariables.GetAllGlobalVariables()
-	} else {
-		sysVars = ctx.GetAllSessionVariables()
+func (sv *ShowVariables) IsReadOnly() bool {
+	return true
+}
+
+func (sv *ShowVariables) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(sv, len(exprs), 1)
 	}
-
-	for k, v := range sysVars {
-		if sv.filter != nil {
-			res, err := sv.filter.Eval(ctx, sql.Row{k})
-			if err != nil {
-				return nil, err
-			}
-			if !res.(bool) {
-				continue
-			}
-		}
-		rows = append(rows, sql.NewRow(k, v))
-	}
-
-	sort.Slice(rows, func(i, j int) bool {
-		return rows[i][0].(string) < rows[j][0].(string)
-	})
-
-	return sql.RowsToRowIter(rows...), nil
+	ret := *sv
+	ret.Filter = exprs[0]
+	return &ret, nil
 }

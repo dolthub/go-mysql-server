@@ -18,32 +18,106 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gabereiser/go-mysql-server/memory"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 
-	"github.com/gabereiser/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/memory"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // ResolvedTable represents a resolved SQL Table.
 type ResolvedTable struct {
 	sql.Table
-	Database sql.Database
-	AsOf     interface{}
+	SqlDatabase sql.Database
+	AsOf        interface{}
+	comment     string
+	id          sql.TableId
+	cols        sql.ColSet
 }
 
 var _ sql.Node = (*ResolvedTable)(nil)
-var _ sql.Node2 = (*ResolvedTable)(nil)
-
-// Can't embed Table2 like we do Table1 as it's an extension not everyone implements
-var _ sql.Table2 = (*ResolvedTable)(nil)
+var _ sql.TableNode = (*ResolvedTable)(nil)
+var _ sql.Databaser = (*ResolvedTable)(nil)
+var _ sql.CommentedNode = (*ResolvedTable)(nil)
+var _ sql.RenameableNode = (*ResolvedTable)(nil)
+var _ sql.CollationCoercible = (*ResolvedTable)(nil)
+var _ sql.MutableTableNode = (*ResolvedTable)(nil)
+var _ TableIdNode = (*ResolvedTable)(nil)
 
 // NewResolvedTable creates a new instance of ResolvedTable.
 func NewResolvedTable(table sql.Table, db sql.Database, asOf interface{}) *ResolvedTable {
-	return &ResolvedTable{Table: table, Database: db, AsOf: asOf}
+	return &ResolvedTable{Table: table, SqlDatabase: db, AsOf: asOf}
 }
 
 // NewResolvedDualTable creates a new instance of ResolvedTable.
 func NewResolvedDualTable() *ResolvedTable {
-	return &ResolvedTable{Table: NewDualSqlTable(), Database: memory.NewDatabase(""), AsOf: nil}
+	return &ResolvedTable{Table: NewDualSqlTable(), SqlDatabase: memory.NewDatabase(""), AsOf: nil}
+}
+
+// WithId implements sql.TableIdNode
+func (t *ResolvedTable) WithId(id sql.TableId) TableIdNode {
+	ret := *t
+	ret.id = id
+	return &ret
+}
+
+// Id implements sql.TableIdNode
+func (t *ResolvedTable) Id() sql.TableId {
+	return t.id
+}
+
+// WithColumns implements sql.TableIdNode
+func (t *ResolvedTable) WithColumns(set sql.ColSet) TableIdNode {
+	ret := *t
+	ret.cols = set
+	return &ret
+}
+
+// Columns implements sql.TableIdNode
+func (t *ResolvedTable) Columns() sql.ColSet {
+	return t.cols
+}
+
+// UnderlyingTable returns the table wrapped by the ResolvedTable.
+func (t *ResolvedTable) UnderlyingTable() sql.Table {
+	if w, ok := t.Table.(sql.TableWrapper); ok {
+		return w.Underlying()
+	}
+	return t.Table
+}
+
+func (t *ResolvedTable) WrappedTable() sql.Table {
+	return t.Table
+}
+
+func (t *ResolvedTable) Database() sql.Database {
+	return t.SqlDatabase
+}
+
+func (t *ResolvedTable) UnwrappedDatabase() sql.Database {
+	if privDb, ok := t.SqlDatabase.(mysql_db.PrivilegedDatabase); ok {
+		return privDb.Unwrap()
+	}
+	return t.SqlDatabase
+}
+
+func (t *ResolvedTable) WithDatabase(database sql.Database) (sql.Node, error) {
+	newNode := *t
+	t.SqlDatabase = database
+	return &newNode, nil
+}
+
+func (t *ResolvedTable) WithComment(s string) sql.Node {
+	ret := *t
+	ret.comment = s
+	return &ret
+}
+
+func (t *ResolvedTable) Comment() string {
+	return t.comment
+}
+
+func (t *ResolvedTable) WithName(s string) sql.Node {
+	return NewTableAlias(s, t)
 }
 
 // Resolved implements the Resolvable interface.
@@ -51,10 +125,14 @@ func (*ResolvedTable) Resolved() bool {
 	return true
 }
 
+func (*ResolvedTable) IsReadOnly() bool {
+	return true
+}
+
 func (t *ResolvedTable) String() string {
 	pr := sql.NewTreePrinter()
 	pr.WriteNode("Table")
-	table := seethroughTableWrapper(t)
+	table := t.UnderlyingTable()
 	children := []string{fmt.Sprintf("name: %s", t.Name())}
 
 	if pt, ok := table.(sql.ProjectedTable); ok {
@@ -83,10 +161,28 @@ func (t *ResolvedTable) String() string {
 }
 
 func (t *ResolvedTable) DebugString() string {
+	table := t.Table
+	// TableWrappers may want to print their own debug info
+	if wrapper, ok := table.(sql.TableWrapper); ok {
+		if ds, ok := wrapper.(sql.DebugStringer); ok {
+			return sql.DebugString(ds)
+		}
+	}
+
+	var additionalChildren []string
+	if t.comment != "" {
+		additionalChildren = []string{fmt.Sprintf("comment: %s", t.comment)}
+	}
+
+	additionalChildren = append(additionalChildren, fmt.Sprintf("colSet: %s", t.Columns()), fmt.Sprintf("tableId: %d", t.Id()))
+
+	return TableDebugString(table, additionalChildren...)
+}
+
+func TableDebugString(table sql.Table, additionalChildren ...string) string {
 	pr := sql.NewTreePrinter()
 	pr.WriteNode("Table")
-	table := seethroughTableWrapper(t)
-	children := []string{fmt.Sprintf("name: %s", t.Name())}
+	children := []string{fmt.Sprintf("name: %s", table.Name())}
 
 	var columns []string
 	if pt, ok := table.(sql.ProjectedTable); ok && pt.Projections() != nil {
@@ -113,42 +209,12 @@ func (t *ResolvedTable) DebugString() string {
 		}
 	}
 
-	pr.WriteChildren(children...)
+	pr.WriteChildren(append(children, additionalChildren...)...)
 	return pr.String()
 }
 
 // Children implements the Node interface.
 func (*ResolvedTable) Children() []sql.Node { return nil }
-
-// RowIter implements the RowIter interface.
-func (t *ResolvedTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.ResolvedTable")
-
-	partitions, err := t.Table.Partitions(ctx)
-	if err != nil {
-		span.End()
-		return nil, err
-	}
-
-	return sql.NewSpanIter(span, sql.NewTableRowIter(ctx, t.Table, partitions)), nil
-}
-
-func (t *ResolvedTable) RowIter2(ctx *sql.Context, f *sql.RowFrame) (sql.RowIter2, error) {
-	span, ctx := ctx.Span("plan.ResolvedTable")
-
-	partitions, err := t.Table.Partitions(ctx)
-	if err != nil {
-		span.End()
-		return nil, err
-	}
-
-	return sql.NewSpanIter(span, sql.NewTableRowIter(ctx, t.Table, partitions)).(sql.RowIter2), nil
-}
-
-// PartitionRows2 implements sql.Table2. sql.Table methods are embedded in the type.
-func (t *ResolvedTable) PartitionRows2(ctx *sql.Context, part sql.Partition) (sql.RowIter2, error) {
-	return t.Table.(sql.Table2).PartitionRows2(ctx, part)
-}
 
 // WithChildren implements the Node interface.
 func (t *ResolvedTable) WithChildren(children ...sql.Node) (sql.Node, error) {
@@ -159,33 +225,44 @@ func (t *ResolvedTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return t, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (t *ResolvedTable) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	// It is assumed that if we've landed upon this node, then we're doing a SELECT operation. Most other nodes that
-	// may contain a ResolvedTable will have their own privilege checks, so we should only end up here if the parent
-	// nodes are things such as indexed access, filters, limits, etc.
-	if IsDualTable(t) {
-		return true
-	}
-
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(t.Database.Name(), t.Table.Name(), "", sql.PrivilegeType_Select))
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ResolvedTable) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
-// WithTable returns this Node with the given table. The new table should have the same name as the previous table.
-func (t *ResolvedTable) WithTable(table sql.Table) (*ResolvedTable, error) {
+// WithTable returns this Node with the given table, re-wrapping it with any MutableTableWrapper that was
+// wrapping it prior to this call.
+func (t *ResolvedTable) WithTable(table sql.Table) (sql.MutableTableNode, error) {
 	if t.Name() != table.Name() {
-		return nil, fmt.Errorf("attempted to update ResolvedTable `%s` with table `%s`", t.Name(), table.Name())
+		return nil, fmt.Errorf("attempted to update TableNode `%s` with table `%s`", t.Name(), table.Name())
+	}
+
+	nt := *t
+	if mtw, ok := nt.Table.(sql.MutableTableWrapper); ok {
+		nt.Table = mtw.WithUnderlying(table)
+	} else {
+		nt.Table = table
+	}
+
+	return &nt, nil
+}
+
+// ReplaceTable returns this Node with the given table without performing any re-wrapping of any MutableTableWrapper
+func (t *ResolvedTable) ReplaceTable(table sql.Table) (sql.MutableTableNode, error) {
+	if t.Name() != table.Name() {
+		return nil, fmt.Errorf("attempted to update TableNode `%s` with table `%s`", t.Name(), table.Name())
 	}
 	nt := *t
 	nt.Table = table
 	return &nt, nil
 }
 
-func seethroughTableWrapper(n *ResolvedTable) sql.Table {
-	if tw, ok := n.Table.(sql.TableWrapper); ok {
-		return tw.Underlying()
-	} else {
-		return n.Table
-	}
+// TableIdNode is a distinct source of rows associated with a table
+// identifier and set of column identifiers.
+type TableIdNode interface {
+	sql.NameableNode
+	WithId(id sql.TableId) TableIdNode
+	Id() sql.TableId
+	WithColumns(sql.ColSet) TableIdNode
+	Columns() sql.ColSet
 }

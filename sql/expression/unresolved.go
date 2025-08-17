@@ -33,6 +33,7 @@ type UnresolvedColumn struct {
 
 var _ sql.Expression = (*UnresolvedColumn)(nil)
 var _ sql.Expression2 = (*UnresolvedColumn)(nil)
+var _ sql.CollationCoercible = (*UnresolvedColumn)(nil)
 
 // NewUnresolvedColumn creates a new UnresolvedColumn expression.
 func NewUnresolvedColumn(name string) *UnresolvedColumn {
@@ -63,6 +64,11 @@ func (*UnresolvedColumn) IsNullable() bool {
 // Type implements the Expression interface.
 func (*UnresolvedColumn) Type() sql.Type {
 	panic("unresolved column is a placeholder node, but Type was called")
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*UnresolvedColumn) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func (uc *UnresolvedColumn) Eval2(ctx *sql.Context, row sql.Row2) (sql.Value, error) {
@@ -109,9 +115,14 @@ var _ sql.TableFunction = (*UnresolvedTableFunction)(nil)
 // intended to be used.
 type UnresolvedTableFunction struct {
 	name      string
+	Alias     string
 	Arguments []sql.Expression
 	database  sql.Database
 }
+
+var _ sql.Node = (*UnresolvedTableFunction)(nil)
+var _ sql.CollationCoercible = (*UnresolvedTableFunction)(nil)
+var _ sql.RenameableNode = (*UnresolvedTableFunction)(nil)
 
 // NewUnresolvedTableFunction creates a new UnresolvedTableFunction node for a sql plan.
 func NewUnresolvedTableFunction(name string, arguments []sql.Expression) *UnresolvedTableFunction {
@@ -119,6 +130,12 @@ func NewUnresolvedTableFunction(name string, arguments []sql.Expression) *Unreso
 		name:      name,
 		Arguments: arguments,
 	}
+}
+
+func (utf *UnresolvedTableFunction) WithName(s string) sql.Node {
+	ret := *utf
+	ret.name = s
+	return &ret
 }
 
 // NewInstance implements the TableFunction interface
@@ -145,6 +162,10 @@ func (utf *UnresolvedTableFunction) Name() string {
 // Expressions implements the Expressioner interface
 func (utf *UnresolvedTableFunction) Expressions() []sql.Expression {
 	return utf.Arguments
+}
+
+func (utf *UnresolvedTableFunction) IsReadOnly() bool {
+	return true
 }
 
 // WithExpressions implements the Expressioner interface
@@ -182,10 +203,9 @@ func (utf *UnresolvedTableFunction) WithChildren(node ...sql.Node) (sql.Node, er
 	panic("no expected children for unresolved table function")
 }
 
-// CheckPrivileges implements the Node interface
-func (utf UnresolvedTableFunction) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	panic("attempting to check privileges on an unresolved table function")
-	return false
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (UnresolvedTableFunction) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // Resolved implements the Resolvable interface
@@ -204,6 +224,7 @@ func (utf *UnresolvedTableFunction) String() string {
 }
 
 var _ sql.Expression = (*UnresolvedFunction)(nil)
+var _ sql.CollationCoercible = (*UnresolvedFunction)(nil)
 
 // UnresolvedFunction represents a function that is not yet resolved.
 // This is a placeholder node, so its methods Type, IsNullable and Eval are not
@@ -258,6 +279,11 @@ func (*UnresolvedFunction) IsNullable() bool {
 // Type implements the Expression interface.
 func (*UnresolvedFunction) Type() sql.Type {
 	panic("unresolved function is a placeholder node, but Type was called")
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*UnresolvedFunction) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // Name implements the Nameable interface.

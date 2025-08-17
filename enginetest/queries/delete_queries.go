@@ -95,12 +95,6 @@ var DeleteTests = []WriteQueryTest{
 		ExpectedSelect:      []sql.Row{{int64(1), "first row"}, {int64(2), "second row"}, {int64(3), "third row"}},
 	},
 	{
-		WriteQuery:          "DELETE FROM mytable WHERE i = 'invalid';",
-		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
-		SelectQuery:         "SELECT * FROM mytable;",
-		ExpectedSelect:      []sql.Row{{int64(1), "first row"}, {int64(2), "second row"}, {int64(3), "third row"}},
-	},
-	{
 		WriteQuery:          "DELETE FROM mytable ORDER BY i ASC LIMIT 2;",
 		ExpectedWriteResult: []sql.Row{{types.NewOkResult(2)}},
 		SelectQuery:         "SELECT * FROM mytable;",
@@ -363,12 +357,12 @@ var DeleteErrorTests = []ScriptTest{
 			{
 				// targets table function alias
 				Query:          "DELETE jt FROM mytable join tabletest on mytable.i=tabletest.i join JSON_TABLE('[{\"x\": 1},{\"x\": 2}]', '$[*]' COLUMNS (x INT PATH '$.x')) as jt on jt.x=mytable.i;",
-				ExpectedErrStr: "table not found: jt",
+				ExpectedErrStr: "target table jt of the DELETE is not updatable",
 			},
 			{
 				// targets valid table and table function alias
 				Query:          "DELETE mytable, jt FROM mytable join tabletest on mytable.i=tabletest.i join JSON_TABLE('[{\"x\": 1},{\"x\": 2}]', '$[*]' COLUMNS (x INT PATH '$.x')) as jt on jt.x=mytable.i;",
-				ExpectedErrStr: "table not found: jt",
+				ExpectedErrStr: "target table jt of the DELETE is not updatable",
 			},
 		},
 	},

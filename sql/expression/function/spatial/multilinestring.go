@@ -30,6 +30,7 @@ type MultiLineString struct {
 }
 
 var _ sql.FunctionExpression = (*MultiLineString)(nil)
+var _ sql.CollationCoercible = (*MultiLineString)(nil)
 
 // NewMultiLineString creates a new multilinestring expression.
 func NewMultiLineString(args ...sql.Expression) (sql.Expression, error) {
@@ -52,6 +53,11 @@ func (p *MultiLineString) Description() string {
 // Type implements the sql.Expression interface.
 func (p *MultiLineString) Type() sql.Type {
 	return types.MultiLineStringType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*MultiLineString) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (p *MultiLineString) String() string {

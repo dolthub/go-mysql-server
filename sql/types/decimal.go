@@ -15,10 +15,11 @@
 package types
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 	"reflect"
-	"strconv"
+	"strings"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -57,7 +58,7 @@ type DecimalType_ struct {
 var InternalDecimalType sql.DecimalType = DecimalType_{
 	exclusiveUpperBound: decimal.New(1, int32(65)),
 	definesColumn:       false,
-	precision:           95,
+	precision:           65,
 	scale:               30,
 }
 
@@ -120,7 +121,7 @@ func (t DecimalType_) Type() query.Type {
 }
 
 // Compare implements Type interface.
-func (t DecimalType_) Compare(a interface{}, b interface{}) (int, error) {
+func (t DecimalType_) Compare(s context.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
@@ -138,13 +139,13 @@ func (t DecimalType_) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t DecimalType_) Convert(v interface{}) (interface{}, error) {
+func (t DecimalType_) Convert(c context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	dec, err := t.ConvertToNullDecimal(v)
 	if err != nil {
-		return nil, err
+		return nil, sql.OutOfRange, err
 	}
 	if !dec.Valid {
-		return nil, nil
+		return nil, sql.InRange, nil
 	}
 	return t.BoundsCheck(dec.Decimal)
 }
@@ -169,6 +170,12 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 	var res decimal.Decimal
 
 	switch value := v.(type) {
+	case bool:
+		if value {
+			return t.ConvertToNullDecimal(decimal.NewFromInt(1))
+		} else {
+			return t.ConvertToNullDecimal(decimal.NewFromInt(0))
+		}
 	case int:
 		return t.ConvertToNullDecimal(int64(value))
 	case uint:
@@ -182,18 +189,23 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 	case uint16:
 		return t.ConvertToNullDecimal(uint64(value))
 	case int32:
-		res = decimal.NewFromInt32(value)
+		return t.ConvertToNullDecimal(decimal.NewFromInt32(value))
 	case uint32:
 		return t.ConvertToNullDecimal(uint64(value))
 	case int64:
-		res = decimal.NewFromInt(value)
+		return t.ConvertToNullDecimal(decimal.NewFromInt(value))
 	case uint64:
-		res = decimal.NewFromBigInt(new(big.Int).SetUint64(value), 0)
+		return t.ConvertToNullDecimal(decimal.NewFromBigInt(new(big.Int).SetUint64(value), 0))
 	case float32:
-		res = decimal.NewFromFloat32(value)
+		return t.ConvertToNullDecimal(decimal.NewFromFloat32(value))
 	case float64:
-		res = decimal.NewFromFloat(value)
+		return t.ConvertToNullDecimal(decimal.NewFromFloat(value))
 	case string:
+		// TODO: implement truncation here
+		value = strings.Trim(value, numericCutSet)
+		if len(value) == 0 {
+			return t.ConvertToNullDecimal(decimal.NewFromInt(0))
+		}
 		var err error
 		res, err = decimal.NewFromString(value)
 		if err != nil {
@@ -207,6 +219,7 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 				return decimal.NullDecimal{}, err
 			}
 		}
+		return t.ConvertToNullDecimal(res)
 	case *big.Float:
 		return t.ConvertToNullDecimal(value.Text('f', -1))
 	case *big.Int:
@@ -214,19 +227,23 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 	case *big.Rat:
 		return t.ConvertToNullDecimal(new(big.Float).SetRat(value))
 	case decimal.Decimal:
-		res = value
-	case []uint8:
-		val, err := strconv.ParseFloat(string(value), 64)
-		if err != nil {
-			return decimal.NullDecimal{}, err
+		if t.definesColumn && value.Exponent() != int32(t.scale) {
+			val, err := decimal.NewFromString(value.StringFixed(int32(t.scale)))
+			if err != nil {
+				return decimal.NullDecimal{}, err
+			}
+			res = val
+		} else {
+			res = value
 		}
-		res = decimal.NewFromFloat(val)
+	case []uint8:
+		return t.ConvertToNullDecimal(string(value))
 	case decimal.NullDecimal:
 		// This is the equivalent of passing in a nil
 		if !value.Valid {
 			return decimal.NullDecimal{}, nil
 		}
-		res = value.Decimal
+		return t.ConvertToNullDecimal(value.Decimal)
 	case JSONDocument:
 		return t.ConvertToNullDecimal(value.Val)
 	default:
@@ -236,7 +253,7 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 	return decimal.NullDecimal{Decimal: res, Valid: true}, nil
 }
 
-func (t DecimalType_) BoundsCheck(v decimal.Decimal) (decimal.Decimal, error) {
+func (t DecimalType_) BoundsCheck(v decimal.Decimal) (decimal.Decimal, sql.ConvertInRange, error) {
 	if -v.Exponent() > int32(t.scale) {
 		// TODO : add 'Data truncated' warning
 		v = v.Round(int32(t.scale))
@@ -244,18 +261,9 @@ func (t DecimalType_) BoundsCheck(v decimal.Decimal) (decimal.Decimal, error) {
 	// TODO add shortcut for common case
 	// ex: certain num of bits fast tracks OK
 	if !v.Abs().LessThan(t.exclusiveUpperBound) {
-		return decimal.Decimal{}, ErrConvertToDecimalLimit.New()
+		return decimal.Decimal{}, sql.InRange, ErrConvertToDecimalLimit.New()
 	}
-	return v, nil
-}
-
-// MustConvert implements the Type interface.
-func (t DecimalType_) MustConvert(v interface{}) interface{} {
-	value, err := t.Convert(v)
-	if err != nil {
-		panic(err)
-	}
-	return value
+	return v, sql.InRange, nil
 }
 
 // Equals implements the Type interface.
@@ -267,7 +275,7 @@ func (t DecimalType_) Equals(otherType sql.Type) bool {
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t DecimalType_) MaxTextResponseByteLength() uint32 {
+func (t DecimalType_) MaxTextResponseByteLength(*sql.Context) uint32 {
 	if t.scale == 0 {
 		// if no digits are reserved for the right-hand side of the decimal point,
 		// just return precision plus one byte for sign
@@ -295,18 +303,7 @@ func (t DecimalType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
-
-	// decimal type value for valid table column should use scale defined by the column.
-	// if the value is not part of valid table column, the result value should used its
-	// own precision and scale.
-	var val []byte
-	if t.definesColumn {
-		val = AppendAndSliceString(dest, value.Decimal.StringFixed(int32(t.scale)))
-	} else {
-		decStr := value.Decimal.StringFixed(value.Decimal.Exponent() * -1)
-		val = AppendAndSliceString(dest, decStr)
-	}
-
+	val := AppendAndSliceString(dest, t.DecimalValueStringFixed(value.Decimal))
 	return sqltypes.MakeTrusted(sqltypes.Decimal, val), nil
 }
 
@@ -322,7 +319,13 @@ func (t DecimalType_) ValueType() reflect.Type {
 
 // Zero implements Type interface.
 func (t DecimalType_) Zero() interface{} {
-	return decimal.NewFromInt(0)
+	// The zero value should have the same scale as the type
+	return decimal.New(0, -int32(t.scale))
+}
+
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (DecimalType_) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 // ExclusiveUpperBound implements DecimalType interface.
@@ -346,4 +349,17 @@ func (t DecimalType_) Precision() uint8 {
 // Scale implements DecimalType interface.
 func (t DecimalType_) Scale() uint8 {
 	return t.scale
+}
+
+// DecimalValueStringFixed returns string value for the given decimal value. If decimal type value is for valid table column only,
+// it should use scale defined by the column. Otherwise, the result value should use its own precision and scale.
+func (t DecimalType_) DecimalValueStringFixed(v decimal.Decimal) string {
+	if t.definesColumn {
+		if int32(t.scale) != v.Exponent() {
+			return v.StringFixed(int32(t.scale))
+		}
+		return v.String()
+	} else {
+		return v.StringFixed(v.Exponent() * -1)
+	}
 }

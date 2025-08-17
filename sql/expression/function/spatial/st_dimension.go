@@ -28,6 +28,7 @@ type Dimension struct {
 }
 
 var _ sql.FunctionExpression = (*Dimension)(nil)
+var _ sql.CollationCoercible = (*Dimension)(nil)
 
 // NewDimension creates a new point expression.
 func NewDimension(e sql.Expression) sql.Expression {
@@ -52,6 +53,11 @@ func (p *Dimension) IsNullable() bool {
 // Type implements the sql.Expression interface.
 func (p *Dimension) Type() sql.Type {
 	return types.Int32
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Dimension) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (p *Dimension) String() string {

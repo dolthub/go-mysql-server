@@ -31,11 +31,27 @@ type CharsetCollationWireTestQuery struct {
 	Query    string
 	Expected []sql.Row
 	Error    bool
+	// ExpectedCollations is an optional field, and when populated the test framework will assert that
+	// the MySQL field metadata has these expected collation IDs.
+	ExpectedCollations []sql.CollationID
 }
 
 // CharsetCollationWireTests are used to ensure that character sets and collations have the correct behavior over the
 // wire. Return values should all have the table encoding, as it's returning the table's encoding type.
 var CharsetCollationWireTests = []CharsetCollationWireTest{
+	{
+		Name: "Uppercase and lowercase collations",
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query:    "CREATE TABLE test1 (v1 VARCHAR(255) COLLATE utf16_unicode_ci, v2 VARCHAR(255) COLLATE UTF16_UNICODE_CI);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "CREATE TABLE test2 (v1 VARCHAR(255) CHARACTER SET utf16, v2 VARCHAR(255) CHARACTER SET UTF16);",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+		},
+	},
 	{
 		Name: "Insert multiple character sets",
 		SetUpScript: []string{
@@ -232,6 +248,39 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		},
 	},
 	{
+		Name: "SET validates character set and collation variables",
+		Queries: []CharsetCollationWireTestQuery{
+			{
+				Query: "SET character_set_client = 'does_not_exist';",
+				Error: true,
+			},
+			{
+				Query: "SET character_set_connection = 'invalid_charset';",
+				Error: true,
+			},
+			{
+				Query: "SET character_set_results = 'whoops';",
+				Error: true,
+			},
+			{
+				Query: "SET collation_connection = 'cant_be';",
+				Error: true,
+			},
+			{
+				Query: "SET collation_database = 'something_else';",
+				Error: true,
+			},
+			{
+				Query: "SET collation_server = 'why_try';",
+				Error: true,
+			},
+			{
+				Query: "SET NAMES outside_correct;",
+				Error: true,
+			},
+		},
+	},
+	{
 		Name: "Coercibility test using HEX",
 		SetUpScript: []string{
 			"SET NAMES utf8mb4;",
@@ -348,24 +397,36 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 		},
 		Queries: []CharsetCollationWireTestQuery{
 			{
-				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{"\x00h\x00e\x00y"}},
+				Query:              "SELECT * FROM test;",
+				Expected:           []sql.Row{{"\x00h\x00e\x00y"}},
+				ExpectedCollations: []sql.CollationID{sql.Collation_binary},
 			},
 			{
 				Query:    "SET character_set_results = 'utf8mb4';",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{"hey"}},
+				Query:              "SELECT * FROM test;",
+				Expected:           []sql.Row{{"hey"}},
+				ExpectedCollations: []sql.CollationID{sql.Collation_utf8mb4_0900_ai_ci},
 			},
 			{
 				Query:    "SET character_set_results = 'utf32';",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				Query:    "SELECT * FROM test;",
-				Expected: []sql.Row{{"\x00\x00\x00h\x00\x00\x00e\x00\x00\x00y"}},
+				Query:              "SELECT * FROM test;",
+				Expected:           []sql.Row{{"\x00\x00\x00h\x00\x00\x00e\x00\x00\x00y"}},
+				ExpectedCollations: []sql.CollationID{sql.Collation_utf32_general_ci},
+			},
+			{
+				Query:    "SET character_set_results = NULL;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:              "SELECT * FROM test;",
+				Expected:           []sql.Row{{"\x00h\x00e\x00y"}},
+				ExpectedCollations: []sql.CollationID{sql.Collation_utf16_general_ci},
 			},
 		},
 	},
@@ -415,7 +476,7 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 			},
 			{
 				Query:    "SET collation_connection = 'utf8mb4_0900_bin';",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "SELECT COUNT(*) FROM test WHERE v1 LIKE 'ABC';",
@@ -475,7 +536,7 @@ var CharsetCollationWireTests = []CharsetCollationWireTest{
 			},
 			{
 				Query:    "SET collation_connection = 'utf8mb4_0900_bin';",
-				Expected: []sql.Row{{}},
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
 				Query: "SELECT 'abc' LIKE 'ABC';",
@@ -1258,19 +1319,19 @@ var DatabaseCollationWireTests = []CharsetCollationWireTest{
 			{
 				Query: "SHOW CREATE TABLE test_a;",
 				Expected: []sql.Row{
-					{"test_a", "CREATE TABLE `test_a` (\n  `pk` varchar(20) CHARACTER SET utf8mb3 COLLATE utf8mb3_bin NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_bin"},
+					{"test_a", "CREATE TABLE `test_a` (\n  `pk` varchar(20) NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_bin"},
 				},
 			},
 			{
 				Query: "SHOW CREATE TABLE test_b;",
 				Expected: []sql.Row{
-					{"test_b", "CREATE TABLE `test_b` (\n  `pk` varchar(20) CHARACTER SET utf8mb3 COLLATE utf8mb3_unicode_ci NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_unicode_ci"},
+					{"test_b", "CREATE TABLE `test_b` (\n  `pk` varchar(20) NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_unicode_ci"},
 				},
 			},
 			{
 				Query: "SHOW CREATE TABLE test_c;",
 				Expected: []sql.Row{
-					{"test_c", "CREATE TABLE `test_c` (\n  `pk` varchar(20) CHARACTER SET utf8mb3 COLLATE utf8mb3_unicode_ci NOT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_bin"},
+					{"test_c", "CREATE TABLE `test_c` (\n  `pk` varchar(20) COLLATE utf8mb3_unicode_ci NOT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_bin"},
 				},
 			},
 			{
@@ -1286,7 +1347,7 @@ var DatabaseCollationWireTests = []CharsetCollationWireTest{
 			{
 				Query: "SHOW CREATE TABLE test_d;",
 				Expected: []sql.Row{
-					{"test_d", "CREATE TABLE `test_d` (\n  `pk` varchar(20) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci"},
+					{"test_d", "CREATE TABLE `test_d` (\n  `pk` varchar(20) NOT NULL,\n  PRIMARY KEY (`pk`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 COLLATE=utf8mb3_general_ci"},
 				},
 			},
 			{

@@ -15,12 +15,15 @@
 package types
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/dolthub/go-mysql-server/sql"
 
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
@@ -30,6 +33,8 @@ import (
 func TestDecimalAccuracy(t *testing.T) {
 	t.Skip("This runs 821471 tests, which take quite a while. Re-run this if the max precision is ever updated.")
 	precision := 65
+
+	ctx := sql.NewEmptyContext()
 
 	tests := []struct {
 		scale     int
@@ -87,7 +92,7 @@ func TestDecimalAccuracy(t *testing.T) {
 			fullStr := baseStr + fullDecimalStr
 
 			t.Run(fmt.Sprintf("Scale:%v DecVal:%v", test.scale, fullDecimalStr), func(t *testing.T) {
-				res, err := decimalType.Convert(fullStr)
+				res, _, err := decimalType.Convert(ctx, fullStr)
 				require.NoError(t, err)
 				require.Equal(t, fullStr, res.(decimal.Decimal).StringFixed(int32(decimalType.Scale())))
 			})
@@ -126,7 +131,7 @@ func TestDecimalCompare(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v %v", test.val1, test.val2), func(t *testing.T) {
-			cmp, err := MustCreateDecimalType(test.precision, test.scale).Compare(test.val1, test.val2)
+			cmp, err := MustCreateDecimalType(test.precision, test.scale).Compare(context.Background(), test.val1, test.val2)
 			require.NoError(t, err)
 			assert.Equal(t, test.expectedCmp, cmp)
 		})
@@ -276,6 +281,7 @@ func TestCreateColumnDecimal(t *testing.T) {
 }
 
 func TestDecimalConvert(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	tests := []struct {
 		precision   uint8
 		scale       uint8
@@ -284,6 +290,8 @@ func TestDecimalConvert(t *testing.T) {
 		expectedErr bool
 	}{
 		{1, 0, nil, nil, false},
+		{1, 0, true, "1", false},
+		{1, 0, false, "0", false},
 		{1, 0, byte(0), "0", false},
 		{1, 0, int8(3), "3", false},
 		{1, 0, "-3.7e0", "-4", false},
@@ -332,14 +340,14 @@ func TestDecimalConvert(t *testing.T) {
 			"16976349273982359874209023948672021737840592720387475.271912873754", false},
 		{65, 12, "99999999999999999999999999999999999999999999999999999.9999999999999", "", true},
 
-		{20, 10, []byte{32}, nil, true},
+		{20, 10, []byte{32}, "0", false},
 		{20, 10, time.Date(2019, 12, 12, 12, 12, 12, 0, time.UTC), nil, true},
 	}
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v %v %v", test.precision, test.scale, test.val), func(t *testing.T) {
 			typ := MustCreateDecimalType(test.precision, test.scale)
-			val, err := typ.Convert(test.val)
+			val, _, err := typ.Convert(ctx, test.val)
 			if test.expectedErr {
 				assert.Error(t, err)
 			} else {

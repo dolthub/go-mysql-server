@@ -54,14 +54,11 @@ import (
 
 type UUIDFunc struct{}
 
-func (u UUIDFunc) IsNonDeterministic() bool {
-	return true
-}
-
 var _ sql.FunctionExpression = &UUIDFunc{}
+var _ sql.CollationCoercible = &UUIDFunc{}
 
 func NewUUIDFunc() sql.Expression {
-	return UUIDFunc{}
+	return &UUIDFunc{}
 }
 
 // Description implements sql.FunctionExpression
@@ -77,6 +74,11 @@ func (u UUIDFunc) Type() sql.Type {
 	return types.MustCreateStringWithDefaults(sqltypes.VarChar, 36)
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (UUIDFunc) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_utf8mb3_general_ci, 4
+}
+
 func (u UUIDFunc) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return uuid.New().String(), nil
 }
@@ -86,7 +88,7 @@ func (u UUIDFunc) WithChildren(children ...sql.Expression) (sql.Expression, erro
 		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 0)
 	}
 
-	return UUIDFunc{}, nil
+	return &UUIDFunc{}, nil
 }
 
 func (u UUIDFunc) FunctionName() string {
@@ -107,6 +109,10 @@ func (u UUIDFunc) IsNullable() bool {
 	return false
 }
 
+func (u UUIDFunc) IsNonDeterministic() bool {
+	return true
+}
+
 // IS_UUID(string_uuid)
 //
 // Returns 1 if the argument is a valid string-format UUID, 0 if the argument is not a valid UUID, and NULL if the
@@ -120,9 +126,10 @@ type IsUUID struct {
 }
 
 var _ sql.FunctionExpression = &IsUUID{}
+var _ sql.CollationCoercible = &IsUUID{}
 
 func NewIsUUID(arg sql.Expression) sql.Expression {
-	return IsUUID{child: arg}
+	return &IsUUID{child: arg}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -140,13 +147,18 @@ func (u IsUUID) String() string {
 }
 
 func (u IsUUID) Type() sql.Type {
-	return types.Int8
+	return types.Boolean
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (IsUUID) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (u IsUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	str, err := u.child.Eval(ctx, row)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	if str == nil {
@@ -157,19 +169,19 @@ func (u IsUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case string:
 		_, err := uuid.Parse(str)
 		if err != nil {
-			return int8(0), nil
+			return false, nil
 		}
 
-		return int8(1), nil
+		return true, nil
 	case []byte:
 		_, err := uuid.ParseBytes(str)
 		if err != nil {
-			return int8(0), nil
+			return false, nil
 		}
 
-		return int8(1), nil
+		return true, nil
 	default:
-		return int8(0), nil
+		return false, nil
 	}
 }
 
@@ -178,7 +190,7 @@ func (u IsUUID) WithChildren(children ...sql.Expression) (sql.Expression, error)
 		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 1)
 	}
 
-	return IsUUID{child: children[0]}, nil
+	return &IsUUID{child: children[0]}, nil
 }
 
 func (u IsUUID) Resolved() bool {
@@ -224,13 +236,14 @@ type UUIDToBin struct {
 }
 
 var _ sql.FunctionExpression = (*UUIDToBin)(nil)
+var _ sql.CollationCoercible = (*UUIDToBin)(nil)
 
 func NewUUIDToBin(args ...sql.Expression) (sql.Expression, error) {
 	switch len(args) {
 	case 1:
-		return UUIDToBin{inputUUID: args[0]}, nil
+		return &UUIDToBin{inputUUID: args[0]}, nil
 	case 2:
-		return UUIDToBin{inputUUID: args[0], swapFlag: args[1]}, nil
+		return &UUIDToBin{inputUUID: args[0], swapFlag: args[1]}, nil
 	default:
 		return nil, sql.ErrInvalidArgumentNumber.New("UUID_TO_BIN", "1 or 2", len(args))
 	}
@@ -253,14 +266,19 @@ func (ub UUIDToBin) Type() sql.Type {
 	return types.MustCreateBinary(query.Type_VARBINARY, int64(16))
 }
 
-func (ub UUIDToBin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (UUIDToBin) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 4
+}
+
+func (ub *UUIDToBin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	str, err := ub.inputUUID.Eval(ctx, row)
 	if err != nil {
 		return 0, err
 	}
 
 	// Get the inputted uuid as a string.
-	converted, err := types.LongText.Convert(str)
+	converted, _, err := types.LongText.Convert(ctx, str)
 	if err != nil {
 		return nil, err
 	}
@@ -286,7 +304,7 @@ func (ub UUIDToBin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		return string(bt), nil
+		return bt, nil
 	}
 
 	sf, err := ub.swapFlag.Eval(ctx, row)
@@ -294,7 +312,7 @@ func (ub UUIDToBin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	sf, err = types.Int8.Convert(sf)
+	sf, _, err = types.Int8.Convert(ctx, sf)
 	if err != nil {
 		return nil, err
 	}
@@ -306,10 +324,10 @@ func (ub UUIDToBin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 
-		return string(bt), nil
+		return bt, nil
 	} else if sf.(int8) == 1 {
 		encoding := swapUUIDBytes(parsed)
-		return string(encoding), nil
+		return encoding, nil
 	} else {
 		return nil, fmt.Errorf("UUID_TO_BIN received invalid swap flag")
 	}
@@ -379,13 +397,14 @@ type BinToUUID struct {
 }
 
 var _ sql.FunctionExpression = (*BinToUUID)(nil)
+var _ sql.CollationCoercible = (*BinToUUID)(nil)
 
 func NewBinToUUID(args ...sql.Expression) (sql.Expression, error) {
 	switch len(args) {
 	case 1:
-		return BinToUUID{inputBinary: args[0]}, nil
+		return &BinToUUID{inputBinary: args[0]}, nil
 	case 2:
-		return BinToUUID{inputBinary: args[0], swapFlag: args[1]}, nil
+		return &BinToUUID{inputBinary: args[0], swapFlag: args[1]}, nil
 	default:
 		return nil, sql.ErrInvalidArgumentNumber.New("BIN_TO_UUID", "1 or 2", len(args))
 	}
@@ -413,6 +432,11 @@ func (bu BinToUUID) Type() sql.Type {
 	return types.MustCreateStringWithDefaults(sqltypes.VarChar, 36)
 }
 
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (BinToUUID) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_utf8mb3_general_ci, 4
+}
+
 func (bu BinToUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	str, err := bu.inputBinary.Eval(ctx, row)
 	if err != nil {
@@ -424,7 +448,7 @@ func (bu BinToUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Get the inputted uuid as a string.
-	converted, err := types.MustCreateBinary(query.Type_VARBINARY, int64(16)).Convert(str)
+	converted, _, err := types.MustCreateBinary(query.Type_VARBINARY, int64(16)).Convert(ctx, str)
 	if err != nil {
 		return nil, err
 	}
@@ -449,7 +473,7 @@ func (bu BinToUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	sf, err = types.Int8.Convert(sf)
+	sf, _, err = types.Int8.Convert(ctx, sf)
 	if err != nil {
 		return nil, err
 	}

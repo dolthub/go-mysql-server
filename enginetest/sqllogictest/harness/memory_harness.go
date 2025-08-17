@@ -55,12 +55,12 @@ func (h *memoryHarness) Init() error {
 func (h *memoryHarness) ExecuteStatement(statement string) error {
 	ctx := h.newContext()
 
-	_, rowIter, err := h.engine.Query(ctx, statement)
+	_, rowIter, _, err := h.engine.Query(ctx, statement)
 	if err != nil {
 		return err
 	}
 
-	return drainIterator(ctx, rowIter)
+	return enginetest.DrainIterator(ctx, rowIter)
 }
 
 var pid uint32
@@ -85,7 +85,7 @@ func (h *memoryHarness) ExecuteQuery(statement string) (schema string, results [
 		}
 	}()
 
-	sch, rowIter, err = h.engine.Query(ctx, statement)
+	sch, rowIter, _, err = h.engine.Query(ctx, statement)
 	if err != nil {
 		return "", nil, err
 	}
@@ -103,38 +103,6 @@ func (h *memoryHarness) ExecuteQuery(statement string) (schema string, results [
 	return schemaString, results, nil
 }
 
-func drainIterator(ctx *sql.Context, iter sql.RowIter) error {
-	if iter == nil {
-		return nil
-	}
-
-	for {
-		_, err := iter.Next(ctx)
-		if err == io.EOF {
-			break
-		} else if err != nil {
-			return err
-		}
-	}
-
-	return iter.Close(ctx)
-}
-
-// This shouldn't be necessary -- the fact that an iterator can return an error but not clean up after itself in all
-// cases is a bug.
-func drainIteratorIgnoreErrors(ctx *sql.Context, iter sql.RowIter) {
-	if iter == nil {
-		return
-	}
-
-	for {
-		_, err := iter.Next(ctx)
-		if err == io.EOF {
-			return
-		}
-	}
-}
-
 // Returns the rows in the iterator given as an array of their string representations, as expected by the test files
 func rowsToResultStrings(ctx *sql.Context, iter sql.RowIter) ([]string, error) {
 	var results []string
@@ -147,7 +115,7 @@ func rowsToResultStrings(ctx *sql.Context, iter sql.RowIter) ([]string, error) {
 		if err == io.EOF {
 			return results, nil
 		} else if err != nil {
-			drainIteratorIgnoreErrors(ctx, iter)
+			enginetest.DrainIteratorIgnoreErrors(ctx, iter)
 			return nil, err
 		} else {
 			for _, col := range row {

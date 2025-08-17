@@ -27,13 +27,15 @@ import (
 
 // processTruncate is a combination of resolving fields in *plan.DeleteFrom and *plan.Truncate, validating the fields,
 // and in some cases converting *plan.DeleteFrom -> *plan.Truncate
-func processTruncate(ctx *sql.Context, a *Analyzer, node sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+func processTruncate(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	span, ctx := ctx.Span("processTruncate")
 	defer span.End()
 
 	switch n := node.(type) {
 	case *plan.DeleteFrom:
-		if !n.Resolved() {
+		// If there are any returning expressions, then we can't convert to a Truncate operation,
+		// since we need to process all rows and return results.
+		if !n.Resolved() || len(n.Returning) > 0 {
 			return n, transform.SameTree, nil
 		}
 		return deleteToTruncate(ctx, a, n)
@@ -78,7 +80,6 @@ func deleteToTruncate(ctx *sql.Context, a *Analyzer, deletePlan *plan.DeleteFrom
 		}
 	}
 
-	tblFound := false
 	currentDb, err := a.Catalog.Database(ctx, ctx.GetCurrentDatabase())
 	if err != nil {
 		return nil, transform.SameTree, err
@@ -87,6 +88,7 @@ func deleteToTruncate(ctx *sql.Context, a *Analyzer, deletePlan *plan.DeleteFrom
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
+	tblFound := false
 	for _, dbTblName := range dbTblNames {
 		if strings.ToLower(dbTblName) == tblName {
 			if tblFound == false {
@@ -100,7 +102,7 @@ func deleteToTruncate(ctx *sql.Context, a *Analyzer, deletePlan *plan.DeleteFrom
 		return deletePlan, transform.SameTree, nil
 	}
 
-	triggers, err := loadTriggersFromDb(ctx, currentDb)
+	triggers, err := loadTriggersFromDb(ctx, a, currentDb, false)
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
@@ -108,12 +110,16 @@ func deleteToTruncate(ctx *sql.Context, a *Analyzer, deletePlan *plan.DeleteFrom
 		if trigger.TriggerEvent != sqlparser.DeleteStr {
 			continue
 		}
-		triggerTblName, ok := trigger.Table.(*plan.UnresolvedTable)
-		if !ok {
+		var triggerTblName string
+		switch trigger.Table.(type) {
+		case *plan.UnresolvedTable, *plan.ResolvedTable:
+			triggerTblName = trigger.Table.(sql.NameableNode).Name()
+		default:
 			// If we can't determine the name of the table that the trigger is on, we just abort to be safe
+			// TODO error?
 			return deletePlan, transform.SameTree, nil
 		}
-		if strings.ToLower(triggerTblName.Name()) == tblName {
+		if strings.ToLower(triggerTblName) == tblName {
 			// An ON DELETE trigger is present so we can't use TRUNCATE
 			return deletePlan, transform.SameTree, nil
 		}

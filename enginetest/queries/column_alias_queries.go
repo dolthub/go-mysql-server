@@ -28,8 +28,10 @@ var ColumnAliasQueries = []ScriptTest{
 		SetUpScript: []string{
 			"create table xy (x int primary key, y int);",
 			"create table uv (u int primary key, v int);",
+			"create table wz (w int, z int);",
 			"insert into xy values (0,0),(1,1),(2,2),(3,3);",
 			"insert into uv values (0,3),(3,0),(2,1),(1,2);",
+			"insert into wz values (0, 0), (1, 0), (1, 2)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -90,6 +92,17 @@ var ColumnAliasQueries = []ScriptTest{
 				ExpectedErr: sql.ErrAmbiguousColumnOrAliasName,
 			},
 			{
+				// If there is ambiguity between one selected table column and one alias, the table column gets
+				// precedence in the group by clause.
+				Query:    "select w, min(z) as w, max(z) as w from wz group by w;",
+				Expected: []sql.Row{{0, 0, 0}, {1, 0, 2}},
+			},
+			{
+				// GroupBy may use a column that is selected multiple times.
+				Query:    "select w, w from wz group by w;",
+				Expected: []sql.Row{{0, 0}, {1, 1}},
+			},
+			{
 				// GroupBy may use expression aliases in grouping expressions
 				Query: `SELECT s as COL1, SUM(i) COL2 FROM mytable group by col1 order by col2`,
 				ExpectedColumns: sql.Schema{
@@ -99,7 +112,7 @@ var ColumnAliasQueries = []ScriptTest{
 					},
 					{
 						Name: "COL2",
-						Type: types.Int64,
+						Type: types.Float64,
 					},
 				},
 				Expected: []sql.Row{
@@ -128,7 +141,7 @@ var ColumnAliasQueries = []ScriptTest{
 					},
 					{
 						Name: "coL2",
-						Type: types.Int64,
+						Type: types.Float64,
 					},
 				},
 				Expected: []sql.Row{
@@ -147,7 +160,7 @@ var ColumnAliasQueries = []ScriptTest{
 					},
 					{
 						Name: "TimeStamp",
-						Type: types.Int64,
+						Type: types.Float64,
 					},
 				},
 				Expected: []sql.Row{
@@ -236,14 +249,13 @@ var ColumnAliasQueries = []ScriptTest{
 			{
 				// The second query in the union subquery returns "x" instead of mytable.i
 				// https://github.com/dolthub/dolt/issues/4256
-				Skip:     true,
-				Query:    `SELECT *, (select i union select i) as a from mytable;`,
-				Expected: []sql.Row{{1, "first row", 1}, {2, "second row", 2}, {3, "third row", 3}},
+				Query: `SELECT *, (select i union select i) as a from mytable;`,
+				Expected: []sql.Row{
+					{1, "first row", 1},
+					{2, "second row", 2},
+					{3, "third row", 3}},
 			},
 			{
-				// Fails with an unresolved *plan.Project node error
-				// The second Project in the union subquery doens't seem to get its alias reference resolved
-				Skip:     true,
 				Query:    `SELECT 1 as a, (select a union select a) as b;`,
 				Expected: []sql.Row{{1, 1}},
 			},
@@ -257,14 +269,12 @@ var ColumnAliasQueries = []ScriptTest{
 			{
 				// GMS returns "expression 'dt.two' doesn't appear in the group by expressions", but MySQL will execute
 				// this query.
-				Skip:  true,
 				Query: "select 1 as a, one + 1 as mod1, dt.* from mytable as t1, (select 1, 2 from mytable) as dt (one, two) where dt.one > 0 group by one;",
 				// column names:  a, mod1, one, two
 				Expected: []sql.Row{{1, 2, 1, 2}},
 			},
 			{
 				// GMS returns `ambiguous column or alias name "b"` on both cases of `group by b` and `group by 1` inside subquery, but MySQL executes.
-				Skip:     true,
 				Query:    "select 1 as b, (select b group by b order by b) order by 1;",
 				Expected: []sql.Row{{1, 1}},
 			},

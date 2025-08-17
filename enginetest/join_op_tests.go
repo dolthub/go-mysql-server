@@ -18,9 +18,12 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/gabereiser/go-mysql-server/enginetest/scriptgen/setup"
-	"github.com/gabereiser/go-mysql-server/sql"
-	"github.com/gabereiser/go-mysql-server/sql/analyzer"
+	"github.com/stretchr/testify/require"
+
+	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
+	"github.com/dolthub/go-mysql-server/memory"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/memo"
 )
 
 type JoinOpTests struct {
@@ -29,18 +32,21 @@ type JoinOpTests struct {
 	Skip     bool
 }
 
-var biasedCosters = map[string]analyzer.Coster{
-	"inner":  analyzer.NewInnerBiasedCoster(),
-	"lookup": analyzer.NewLookupBiasedCoster(),
-	"hash":   analyzer.NewHashBiasedCoster(),
-	"merge":  analyzer.NewMergeBiasedCoster(),
+var biasedCosters = map[string]memo.Coster{
+	"inner":     memo.NewInnerBiasedCoster(),
+	"lookup":    memo.NewLookupBiasedCoster(),
+	"hash":      memo.NewHashBiasedCoster(),
+	"merge":     memo.NewMergeBiasedCoster(),
+	"partial":   memo.NewPartialBiasedCoster(),
+	"rangeHeap": memo.NewRangeHeapBiasedCoster(),
 }
 
-func TestJoinOps(t *testing.T, harness Harness) {
-	for _, tt := range joinCostTests {
+func TestJoinOps(t *testing.T, harness Harness, tests []joinOpTest) {
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := mustNewEngine(t, harness)
 			defer e.Close()
+
 			for _, setup := range tt.setup {
 				for _, statement := range setup {
 					if sh, ok := harness.(SkippingHarness); ok {
@@ -52,8 +58,15 @@ func TestJoinOps(t *testing.T, harness Harness) {
 					RunQueryWithContext(t, e, harness, ctx, statement)
 				}
 			}
+
+			if pro, ok := e.EngineAnalyzer().Catalog.DbProvider.(*memory.DbProvider); ok {
+				newProv, err := pro.WithTableFunctions(memory.RequiredLookupTable{})
+				require.NoError(t, err)
+				e.EngineAnalyzer().Catalog.DbProvider = newProv.(sql.DatabaseProvider)
+			}
+
 			for k, c := range biasedCosters {
-				e.Analyzer.Coster = c
+				e.EngineAnalyzer().Coster = c
 				for _, tt := range tt.tests {
 					evalJoinCorrectness(t, harness, e, fmt.Sprintf("%s join: %s", k, tt.Query), tt.Query, tt.Expected, tt.Skip)
 				}
@@ -62,38 +75,612 @@ func TestJoinOps(t *testing.T, harness Harness) {
 	}
 }
 
-func TestJoinOpsPrepared(t *testing.T, harness Harness) {
-	for _, tt := range joinCostTests {
-		t.Run(tt.name, func(t *testing.T) {
-			e := mustNewEngine(t, harness)
-			defer e.Close()
-			for _, setup := range tt.setup {
-				for _, statement := range setup {
-					if sh, ok := harness.(SkippingHarness); ok {
-						if sh.SkipQueryTest(statement) {
-							t.Skip()
-						}
-					}
-					ctx := NewContext(harness)
-					RunQueryWithContext(t, e, harness, ctx, statement)
-				}
-			}
-
-			for k, c := range biasedCosters {
-				e.Analyzer.Coster = c
-				for _, tt := range tt.tests {
-					evalJoinCorrectnessPrepared(t, harness, e, fmt.Sprintf("%s join: %s", k, tt.Query), tt.Query, tt.Expected, tt.Skip)
-				}
-			}
-		})
-	}
-}
-
-var joinCostTests = []struct {
+type joinOpTest struct {
 	name  string
 	setup [][]string
 	tests []JoinOpTests
-}{
+}
+
+var EngineOnlyJoinOpTests = []joinOpTest{
+	{
+		name: "required indexes avoid invalid plans",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"CREATE table xy (x int primary key, y int, unique index y_idx(y));",
+				"CREATE table uv (u int primary key, v int);",
+				"insert into xy values (1,0), (2,1), (0,2), (3,3);",
+				"insert into uv values (0,1), (1,1), (2,2), (3,2);",
+				`analyze table xy update histogram on x using data '{"row_count":1000}'`,
+				`analyze table uv update histogram on u using data '{"row_count":1000}'`,
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select * from xy left join required_lookup_table('s', 2) on x = s",
+				Expected: []sql.Row{{0, 2, 0}, {1, 0, 1}, {2, 1, nil}, {3, 3, nil}},
+			},
+		},
+	},
+}
+
+var DefaultJoinOpTests = []joinOpTest{
+	{
+		name: "bug where transitive join edge drops filters",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"CREATE table xy (x int primary key, y int, unique index y_idx(y));",
+				"CREATE table uv (u int primary key, v int);",
+				"CREATE table ab (a int primary key, b int);",
+				"insert into xy values (1,0), (2,1), (0,2), (3,3);",
+				"insert into uv values (0,1), (1,1), (2,2), (3,2);",
+				"insert into ab values (0,2), (1,2), (2,2), (3,1);",
+				`analyze table xy update histogram on x using data '{"row_count":1000}'`,
+				`analyze table ab update histogram on a using data '{"row_count":1000}'`,
+				`analyze table uv update histogram on u using data '{"row_count":1000}'`,
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				// This query is a small repro of a larger query caused by the intersection of several
+				// bugs. The query below should 1) move the filters out of the join condition, and then
+				// 2) push those hoisted filters on top of |uv|, where they are safe for join planning.
+				// At the time of this addition, filters in the middle of join trees are unsafe and
+				// at risk of being lost.
+				Query:    "select /*+ JOIN_ORDER(ab,xy,uv) */ * from xy join uv on (x = u and u in (0,2)) join ab on (x = a and v < 2)",
+				Expected: []sql.Row{{0, 2, 0, 1, 0, 2}},
+			},
+		},
+	},
+	{
+		name: "unique covering source index",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"Create table ab (a int primary key, b int);",
+				"Create table xyz (x int primary key, y int, z int, unique key(y, z));",
+				"insert into ab values (4,0), (7,1)",
+				"insert into xyz values (0,2,4), (1,2,7)",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xyz) */ a from ab join xyz on a = z where y = 2;",
+				Expected: []sql.Row{{4}, {7}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(xyz,ab) */ a from ab join xyz on a = z where y = 2;",
+				Expected: []sql.Row{{4}, {7}},
+			},
+		},
+	},
+	{
+		name: "keyless lookup join indexes",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"CREATE table xy (x int, y int, z int, index y_idx(y));",
+				"CREATE table ab (a int primary key, b int, c int);",
+				"insert into xy values (1,0,3), (1,0,3), (0,2,1),(0,2,1);",
+				"insert into ab values (0,1,1), (1,2,2), (2,3,3), (3,2,2);",
+			},
+		},
+		tests: []JoinOpTests{
+			// covering tablescan
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0}, {0, 0}, {2, 2}, {2, 2}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(xy,ab) */ y,a from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0}, {0, 0}, {2, 2}, {2, 2}},
+			},
+			// covering indexed source
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a from xy join ab on y = a where y = 2",
+				Expected: []sql.Row{{2, 2}, {2, 2}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(xy,ab) */ y,a from xy join ab on y = a where y = 2",
+				Expected: []sql.Row{{2, 2}, {2, 2}},
+			},
+			// non-covering tablescan
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a,z from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0, 3}, {0, 0, 3}, {2, 2, 1}, {2, 2, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(xy,ab) */ y,a,z from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0, 3}, {0, 0, 3}, {2, 2, 1}, {2, 2, 1}},
+			},
+			// non-covering indexed source
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a,z from xy join ab on y = a where y = 2",
+				Expected: []sql.Row{{2, 2, 1}, {2, 2, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(xy,ab) */ y,a,z from xy join ab on y = a where y = 2",
+				Expected: []sql.Row{{2, 2, 1}, {2, 2, 1}},
+			},
+		},
+	},
+	{
+		name: "keyed null lookup join indexes",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"CREATE table xy (x int, y int, z int primary key, index y_idx(y));",
+				"CREATE table ab (a int, b int primary key, c int);",
+				"insert into xy values (1,0,0), (1,null,1), (0,2,2),(0,2,3);",
+				"insert into ab values (0,1,0), (1,2,1), (2,3,2), (null,4,3);",
+			},
+		},
+		tests: []JoinOpTests{
+			// non-covering tablescan
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a,x from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0, 1}, {2, 2, 0}, {2, 2, 0}},
+			},
+			// covering
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a,z from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0, 0}, {2, 2, 2}, {2, 2, 3}},
+			},
+		},
+	},
+	{
+		name: "left join null-filter",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"CREATE table xy (x int primary key, y int, z int, index y_idx(y));",
+				"CREATE table ab (a int primary key, b int, c int);",
+				"insert into xy values (1,0,0), (2,null,1), (3,2,2),(4,2,3);",
+				"insert into ab values (0,1,0), (1,2,1), (2,3,2), (3,4,3);",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ x from xy left join ab on x = a and z = 5 where a is null order by x ",
+				Expected: []sql.Row{{1}, {2}, {3}, {4}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(xy,ab) */ x from xy left join ab on x = a and z = 5 where a is null order by x ",
+				Expected: []sql.Row{{1}, {2}, {3}, {4}},
+			},
+			// partial return
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ x from xy left join ab on x = a and z = 1 where a is null order by x ",
+				Expected: []sql.Row{{1}, {3}, {4}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(xy,ab) */ x from xy left join ab on x = a and z in (1,2) where a is null order by x ",
+				Expected: []sql.Row{{1}, {4}},
+			},
+		},
+	},
+	{
+		name: "type conversion panic bug",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"create table xy (x int primary key, y int, z varchar(10), key (y,z));",
+				"insert into xy values (0,0,'0'), (1,1,'1');",
+				"create table ab (a int primary key, b int);",
+				"insert into ab values (0,0), (1,1);",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				// the literal z should be internally cast to the appropriate string type
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ count(*) from xy join ab on y = a and z = 0",
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
+	{
+		name: "partial key null lookup join indexes",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"CREATE table xy (x int, y int, z int primary key, index y_idx(y,x));",
+				"CREATE table ab (a int, b int primary key, c int);",
+				"insert into xy values (1,0,0), (1,null,1), (0,2,2),(0,2,3);",
+				"insert into ab values (0,1,0), (1,2,1), (2,3,2), (null,4,3);",
+			},
+		},
+		tests: []JoinOpTests{
+			// non-covering tablescan
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a,x from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0, 1}, {2, 2, 0}, {2, 2, 0}},
+			},
+			// covering
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a,z from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0, 0}, {2, 2, 2}, {2, 2, 3}},
+			},
+		},
+	},
+	{
+		name: "keyed lookup join indexes",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"CREATE table xy (x int, y int, z int primary key, index y_idx(y));",
+				"CREATE table ab (a int, b int primary key, c int);",
+				"insert into xy values (1,0,0), (1,0,1), (0,2,2),(0,2,3);",
+				"insert into ab values (0,1,0), (1,2,1), (2,3,2), (3,4,3);",
+			},
+		},
+		tests: []JoinOpTests{
+			// covering tablescan
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0}, {0, 0}, {2, 2}, {2, 2}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(xy,ab) */ y,a from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0}, {0, 0}, {2, 2}, {2, 2}},
+			},
+			// covering indexed source
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a from xy join ab on y = a where y = 2",
+				Expected: []sql.Row{{2, 2}, {2, 2}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(xy,ab) */ y,a from xy join ab on y = a where y = 2",
+				Expected: []sql.Row{{2, 2}, {2, 2}},
+			},
+			// non-covering tablescan
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a,x from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0, 1}, {0, 0, 1}, {2, 2, 0}, {2, 2, 0}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(xy,ab) */ y,a,x from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0, 1}, {0, 0, 1}, {2, 2, 0}, {2, 2, 0}},
+			},
+			// non-covering indexed source
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a,x from xy join ab on y = a where y = 2",
+				Expected: []sql.Row{{2, 2, 0}, {2, 2, 0}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(xy,ab) */ y,a,x from xy join ab on y = a where y = 2",
+				Expected: []sql.Row{{2, 2, 0}, {2, 2, 0}},
+			},
+		},
+	},
+	{
+		name: "multi pk lax lookup join",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"CREATE table wxyz (w int, x int, y int, z int, primary key (x,w), index yw_idx(y,w));",
+				"CREATE table abcd (a int, b int, c int, d int, primary key (a,b), index ca_idx(c,a));",
+				"insert into wxyz values (1,0,0,0), (1,1,1,1), (0,2,2,1),(0,1,3,1);",
+				"insert into abcd values (0,0,0,0), (0,1,1,1), (0,2,2,1),(2,1,3,1);",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select /*+ JOIN_ORDER(abcd,wxyz) */ y,a,z from wxyz join abcd on y = a",
+				Expected: []sql.Row{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {2, 2, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(abcd,wxyz) */ y,a,w from wxyz join abcd on y = a",
+				Expected: []sql.Row{{0, 0, 1}, {0, 0, 1}, {0, 0, 1}, {2, 2, 0}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(wxyz,abcd) */ y,a,d from wxyz join abcd on y = c",
+				Expected: []sql.Row{{0, 0, 0}, {1, 0, 1}, {2, 0, 1}, {3, 2, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(abcd,wxyz) */ y,a,d from wxyz join abcd on y = c",
+				Expected: []sql.Row{{0, 0, 0}, {1, 0, 1}, {2, 0, 1}, {3, 2, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(wxyz,abcd) */ y,a,d from wxyz join abcd on y = c and w = c",
+				Expected: []sql.Row{{1, 0, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(abcd,wxyz) */ y,a,d from wxyz join abcd on y = c and w = c",
+				Expected: []sql.Row{{1, 0, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(wxyz,abcd) */ y,a,d from wxyz join abcd on y = c and w = a",
+				Expected: []sql.Row{{2, 0, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(wxyz,abcd) */ y,a,d from wxyz join abcd on w = c and w = a",
+				Expected: []sql.Row{{3, 0, 0}, {2, 0, 0}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(wxyz,abcd) */ y,a,d from wxyz join abcd on y = c and y = a",
+				Expected: []sql.Row{{0, 0, 0}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(wxyz,abcd) */ y,a,d from wxyz join abcd on y = a and  c = 0",
+				Expected: []sql.Row{{0, 0, 0}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(abcd,wxyz) */ y,a,d from wxyz join abcd on y = a and  c = 0",
+				Expected: []sql.Row{{0, 0, 0}},
+			},
+		},
+	},
+	{
+		name: "multi pk strict lookup join",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"CREATE table wxyz (w int not null, x int, y int not null, z int, primary key (x,w), unique index yw_idx(y,w));",
+				"CREATE table abcd (a int not null, b int, c int not null, d int, primary key (a,b), unique index ca_idx(c,a));",
+				"insert into wxyz values (1,0,0,0), (1,1,1,1), (0,2,2,1),(0,1,3,1);",
+				"insert into abcd values (0,0,0,0), (0,1,1,1), (0,2,2,1),(2,1,3,1);",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select /*+ JOIN_ORDER(abcd,wxyz) */ y,a,z from wxyz join abcd on y = a",
+				Expected: []sql.Row{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {2, 2, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(abcd,wxyz) */ y,a,w from wxyz join abcd on y = a",
+				Expected: []sql.Row{{0, 0, 1}, {0, 0, 1}, {0, 0, 1}, {2, 2, 0}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(abcd,wxyz) */ y,a,d from wxyz join abcd on y = c",
+				Expected: []sql.Row{{0, 0, 0}, {1, 0, 1}, {2, 0, 1}, {3, 2, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(wxyz,abcd) */ y,a,d from wxyz join abcd on y = c",
+				Expected: []sql.Row{{0, 0, 0}, {1, 0, 1}, {2, 0, 1}, {3, 2, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(abcd,wxyz) */ y,a,d from wxyz join abcd on y = c and w = c",
+				Expected: []sql.Row{{1, 0, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(wxyz,abcd) */ y,a,d from wxyz join abcd on y = c and w = a",
+				Expected: []sql.Row{{2, 0, 1}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(wxyz,abcd) */ y,a,d from wxyz join abcd on w = c and w = a",
+				Expected: []sql.Row{{3, 0, 0}, {2, 0, 0}},
+			},
+			{
+				Query:    "select /*+ JOIN_ORDER(wxyz,abcd) */ y,a,d from wxyz join abcd on y = c and y = a",
+				Expected: []sql.Row{{0, 0, 0}},
+			},
+		},
+	},
+	{
+		name: "redundant keyless index",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"CREATE table xy (x int, y int, z int, index y_idx(x,y,z));",
+				"CREATE table ab (a int, b int primary key, c int);",
+				"insert into xy values (1,0,0), (1,0,1), (0,2,2),(0,2,3);",
+				"insert into ab values (0,1,0), (1,2,1), (2,3,2), (3,4,3);",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select /*+ JOIN_ORDER(ab,xy) */ y,a,z from xy join ab on y = a",
+				Expected: []sql.Row{{0, 0, 1}, {0, 0, 0}, {2, 2, 3}, {2, 2, 2}},
+			},
+		},
+	},
+	{
+		name: "empty join tests",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"CREATE table xy (x int primary key, y int);",
+				"CREATE table uv (u int primary key, v int);",
+				"insert into xy values (1,0), (2,1), (0,2), (3,3);",
+				"insert into uv values (0,1), (1,1), (2,2), (3,2);",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select * from xy where y-1 = (select u from uv where u = 4);",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from xy where x = 1 and x != (select u from uv where u = 4);",
+				Expected: []sql.Row{{1, 0}},
+			},
+			{
+				Query:    "select * from xy where x = 1 and x not in (select u from uv where u = 4);",
+				Expected: []sql.Row{{1, 0}},
+			},
+			{
+				Query:    "select * from xy where x = 1 and not exists (select u from uv where u = 4);",
+				Expected: []sql.Row{{1, 0}},
+			},
+		},
+	},
+	{
+		name: "issue 5633, nil comparison in merge join",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"create table xyz (x int primary key, y int, z int, key(y), key(z))",
+				"create table uv (u int primary key, v int, unique key(u,v))",
+				"insert into xyz values (0,0,0),(1,1,1),(2,1,null),(3,2,null)",
+				"insert into uv values (0,0),(1,1),(2,null),(3,null)",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select x,u,z from xyz join uv on z = u where y = 1 order by 1,2",
+				Expected: []sql.Row{{1, 1, 1}},
+			},
+		},
+	},
+	{
+		name: "issue 5633 2, nil comparison in merge join",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"create table xyz (x int primary key, y int, z int, key(y), key(z))",
+				"create table uv (u int primary key, v int, unique key(u,v))",
+				"insert into xyz values (1,1,3),(2,1,2),(3,1,1)",
+				"insert into uv values (1,1),(2,2),(3,3)",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select x,u from xyz join uv on z = u where y = 1 order by 1,2",
+				Expected: []sql.Row{{1, 3}, {2, 2}, {3, 1}},
+			},
+		},
+	},
+	{
+		name: "left join tests",
+		setup: [][]string{
+			{
+				"create table xy (x int primary key, y int)",
+				"create table uv (u int primary key, v int, key(v))",
+				"insert into xy values (0,0),(2,2),(3,3),(4,4),(5,5),(7,7),(8,8),(10,10);",
+				"insert into uv values (0,0),(1,1),(3,3),(5,5),(6,5),(7,7),(9,9),(10,10);",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select x from xy left join uv on x = v",
+				Expected: []sql.Row{{0}, {2}, {3}, {4}, {5}, {5}, {7}, {8}, {10}},
+			},
+		},
+	},
+	{
+		name: "left join on array data",
+		setup: [][]string{
+			{
+				"create table xy (x binary(2) primary key, y binary(2))",
+				"create table uv (u binary(2) primary key, v binary(2))",
+				"insert into xy values (x'F0F0',x'1234'),(x'2345',x'3456');",
+				"insert into uv values (x'fedc',x'F0F0');",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query: "select HEX(x),HEX(u) from xy left join uv on x = v OR y = u",
+				Expected: []sql.Row{
+					{"2345", nil},
+					{"F0F0", "FEDC"},
+				},
+			},
+		},
+	},
+	{
+		name: "point lookups",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"create table uv (u int primary key, v int, unique key(v));",
+				"insert into uv values (1,1),(2,2);",
+				"create table xy (x int primary key, v int);",
+				"insert into xy values (0,0),(1,1);",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select * from xy where x not in (select v from uv)",
+				Expected: []sql.Row{{0, 0}},
+			},
+		},
+	},
+	{
+		name: "ordered distinct",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"create table uv (u int primary key, v int);",
+				"insert into uv values (1,1),(2,2),(3,1),(4,2);",
+				"create table xy (x int primary key, y int);",
+				"insert into xy values (1,1),(2,2);",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    `select /*+ JOIN_ORDER(scalarSubq0,xy) */ count(*) from xy where y in (select distinct v from uv);`,
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query:    `SELECT /*+ JOIN_ORDER(scalarSubq0,xy) */ count(*) from xy where y in (select distinct u from uv);`,
+				Expected: []sql.Row{{2}},
+			},
+		},
+	},
+	{
+		name: "union/intersect/except joins",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"create table uv (u int primary key, v int);",
+				"insert into uv values (1,1),(2,2),(3,1),(4,2);",
+				"create table xy (x int primary key, y int);",
+				"insert into xy values (1,1),(2,2);",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select * from xy where x = 1 and exists (select 1 union select 1)",
+				Expected: []sql.Row{{1, 1}},
+			},
+			{
+				Query:    "select * from xy where x = 1 and x in (select y from xy union select 1)",
+				Expected: []sql.Row{{1, 1}},
+			},
+			{
+				Query:    "select * from xy where x = 1 and x in (select y from xy intersect select 1)",
+				Expected: []sql.Row{{1, 1}},
+			},
+			{
+				Query:    "select * from xy where x = 1 and x in (select y from xy except select 2)",
+				Expected: []sql.Row{{1, 1}},
+			},
+			{
+				Query: "select * from xy where x = 1 intersect select * from uv;",
+				Expected: []sql.Row{
+					{1, 1},
+				},
+			},
+			{
+				Query: "select * from uv where u < 4 except select * from xy;",
+				Expected: []sql.Row{
+					{3, 1},
+				},
+			},
+			{
+				Query: "select * from xy, uv where x = u intersect select * from xy, uv where x = u order by x, y, u, v;",
+				Expected: []sql.Row{
+					{1, 1, 1, 1},
+					{2, 2, 2, 2},
+				},
+			},
+			{
+				Query: "select * from xy, uv where x != u except select * from xy, uv where y != v order by x, y, u, v;",
+				Expected: []sql.Row{
+					{1, 1, 3, 1},
+					{2, 2, 4, 2},
+				},
+			},
+			{
+				Query: "select * from (select * from uv where u < 4 except select * from xy) a, (select * from xy intersect select * from uv) b order by u, v, x, y;",
+				Expected: []sql.Row{
+					{3, 1, 1, 1},
+					{3, 1, 2, 2},
+				},
+			},
+		},
+	},
 	{
 		name: "4-way join tests",
 		setup: [][]string{
@@ -106,6 +693,148 @@ var joinCostTests = []struct {
 			setup.XyData[0],
 		},
 		tests: []JoinOpTests{
+			{
+				Query:    `SELECT * from xy join uv on x = u and y = NOW()`,
+				Expected: []sql.Row{},
+			},
+			{
+				Query: `SELECT xy.x, xy.y
+					FROM xy
+					WHERE EXISTS (
+					SELECT 1 FROM uv WHERE xy.x = uv.v AND (EXISTS (
+					SELECT 1 FROM ab WHERE uv.u = ab.b)))`,
+				Expected: []sql.Row{{1, 0}, {2, 1}},
+			},
+			{
+				// natural join w/ inner join
+				Query: "select * from mytable t1 natural join mytable t2 join othertable t3 on t2.i = t3.i2;",
+				Expected: []sql.Row{
+					{1, "first row", "third", 1},
+					{2, "second row", "second", 2},
+					{3, "third row", "first", 3},
+				},
+			},
+			{
+				Query: `
+SELECT SUM(x) FROM xy WHERE x IN (
+  SELECT u FROM uv WHERE u IN (
+    SELECT a FROM ab WHERE a = 2
+    )
+  ) AND
+  x = 2;`,
+				Expected: []sql.Row{{float64(2)}},
+			},
+			{
+				Query:    "select * from ab left join uv on a = u where exists (select * from uv where false)",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from ab left join (select * from uv where false) s on a = u order by 1;",
+				Expected: []sql.Row{
+					{0, 2, nil, nil},
+					{1, 2, nil, nil},
+					{2, 2, nil, nil},
+					{3, 1, nil, nil},
+				},
+			},
+			{
+				Query:    "select * from ab right join (select * from uv where false) s on a = u order by 1;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from mytable where exists (select * from mytable where i = 1) order by 1;",
+				Expected: []sql.Row{
+					{1, "first row"},
+					{2, "second row"},
+					{3, "third row"},
+				},
+			},
+			// queries that test subquery hoisting
+			{
+				// case 1: condition uses columns from both sides
+				Query: "/*+case1*/ select * from ab where exists (select * from xy where ab.a = xy.x + 3)",
+				Expected: []sql.Row{
+					{3, 1},
+				},
+			},
+			{
+				// case 1N: NOT EXISTS condition uses columns from both sides
+				Query: "/*+case1N*/ select * from ab where not exists (select * from xy where ab.a = xy.x + 3)",
+				Expected: []sql.Row{
+					{0, 2},
+					{1, 2},
+					{2, 2},
+				},
+			},
+			{
+				// case 2: condition uses columns from left side only
+				Query:    "/*+case2*/ select * from ab where exists (select * from xy where a = 1)",
+				Expected: []sql.Row{{1, 2}},
+			},
+			{
+				// case 2N: NOT EXISTS condition uses columns from left side only
+				Query: "/*+case2N*/ select * from ab where not exists (select * from xy where a = 1)",
+				Expected: []sql.Row{
+					{0, 2},
+					{2, 2},
+					{3, 1},
+				},
+			},
+			{
+				// case 3: condition uses columns from right side only
+				Query: "/*+case3*/ select * from ab where exists (select * from xy where 1 = xy.x)",
+				Expected: []sql.Row{
+					{0, 2},
+					{1, 2},
+					{2, 2},
+					{3, 1},
+				},
+			},
+			{
+				// case 3N: NOT EXISTS condition uses columns from right side only
+				Query: "/*+case3N*/ select * from ab where not exists (select * from xy where 10 = xy.x)",
+				Expected: []sql.Row{
+					{0, 2},
+					{1, 2},
+					{2, 2},
+					{3, 1},
+				},
+			},
+			{
+				// case 4a: condition uses no columns from either side, and condition is true
+				Query: "/*+case4a*/ select * from ab where exists (select * from xy where 1 = 1)",
+				Expected: []sql.Row{
+					{0, 2},
+					{1, 2},
+					{2, 2},
+					{3, 1},
+				},
+			},
+			{
+				// case 4aN: NOT EXISTS condition uses no columns from either side, and condition is true
+				Query:    "/*+case4aN*/ select * from ab where not exists (select * from xy where 1 = 1)",
+				Expected: []sql.Row{},
+			},
+			{
+				// case 4b: condition uses no columns from either side, and condition is false
+				Query:    "/*+case4b*/ select * from ab where exists (select * from xy where 1 = 0)",
+				Expected: []sql.Row{},
+			},
+			{
+				// case 4bN: NOT EXISTS condition uses no columns from either side, and condition is false
+				Query:    "/*+case4bN*/ select * from ab where not exists (select * from xy where 1 = 0)",
+				Expected: []sql.Row{{0, 2}, {1, 2}, {2, 2}, {3, 1}},
+			},
+			{
+				// test more complex scopes
+				Query: "select x, 1 in (select a from ab where exists (select * from uv where a = u)) s from xy",
+				Expected: []sql.Row{
+					{0, true},
+					{1, true},
+					{2, true},
+					{3, true},
+				},
+			},
 			{
 				Query:    `select a.i,a.f, b.i2 from niltable a left join niltable b on a.i = b.i2`,
 				Expected: []sql.Row{{1, nil, nil}, {2, nil, 2}, {3, nil, nil}, {4, 4.0, 4}, {5, 5.0, nil}, {6, 6.0, 6}},
@@ -168,12 +897,13 @@ var joinCostTests = []struct {
 					{"not found", 4, nil},
 				},
 			},
+			// re: https://github.com/dolthub/go-mysql-server/pull/2292
 			{
 				Query: `SELECT
 			"testing" AS s,
 			(SELECT max(i)
-			 FROM (SELECT * FROM mytable) mytable
-			 RIGHT JOIN
+			FROM (SELECT * FROM mytable) mytable
+			RIGHT JOIN
 				((SELECT i2, s2 FROM othertable ORDER BY i2 ASC)
 				 UNION ALL
 				 SELECT CAST(4 AS SIGNED) AS i2, "not found" AS s2 FROM DUAL) othertable
@@ -187,8 +917,8 @@ var joinCostTests = []struct {
 				Query: `SELECT
 			"testing" AS s,
 			(SELECT max(i2)
-			 FROM (SELECT * FROM mytable) mytable
-			 RIGHT JOIN
+			FROM (SELECT * FROM mytable) mytable
+			RIGHT JOIN
 				((SELECT i2, s2 FROM othertable ORDER BY i2 ASC)
 				 UNION ALL
 				 SELECT CAST(4 AS SIGNED) AS i2, "not found" AS s2 FROM DUAL) othertable
@@ -198,7 +928,6 @@ var joinCostTests = []struct {
 					{"testing", 4},
 				},
 			},
-
 			{
 				Query: "SELECT substring(mytable.s, 1, 5) AS s FROM mytable INNER JOIN othertable ON (substring(mytable.s, 1, 5) = SUBSTRING(othertable.s2, 1, 5)) GROUP BY 1",
 				Expected: []sql.Row{
@@ -842,9 +1571,9 @@ var joinCostTests = []struct {
 			{
 				Query: "select sum(x.i) + y.i from mytable as x, mytable as y where x.i = y.i GROUP BY x.i",
 				Expected: []sql.Row{
-					{int64(2)},
-					{int64(4)},
-					{int64(6)},
+					{float64(2)},
+					{float64(4)},
+					{float64(6)},
 				},
 			},
 			{
@@ -1122,6 +1851,363 @@ var joinCostTests = []struct {
       					AND EXISTS (SELECT * FROM othertable Alias1 join othertable Alias2 WHERE Alias1.i2 = (mytable.i + 2)))`,
 				Expected: []sql.Row{{1, "first row"}},
 			},
+		},
+	},
+	{
+		name: "primary key range join",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"create table vals (val int primary key)",
+				"create table ranges (min int primary key, max int, unique key(min,max))",
+				"insert into vals values (0), (1), (2), (3), (4), (5), (6)",
+				"insert into ranges values (0,2), (1,3), (2,4), (3,5), (4,6)",
+			},
+		},
+		tests: rangeJoinOpTests,
+	},
+	{
+		name: "keyless range join",
+		setup: [][]string{
+			setup.MydbData[0],
+			{
+				"create table vals (val int)",
+				"create table ranges (min int, max int)",
+				"insert into vals values (0), (1), (2), (3), (4), (5), (6)",
+				"insert into ranges values (0,2), (1,3), (2,4), (3,5), (4,6)",
+			},
+		},
+		tests: rangeJoinOpTests,
+	},
+	{
+		name: "recursive range join",
+		setup: [][]string{
+			setup.MydbData[0],
+		},
+		tests: []JoinOpTests{{
+			Query: "with recursive vals as (select 0 as val union all select val + 1 from vals where val < 6), " +
+				"ranges as (select 0 as min, 2 as max union all select min+1, max+1 from ranges where max < 6) " +
+				"select * from vals join ranges on val > min and val < max",
+			Expected: []sql.Row{
+				{1, 0, 2},
+				{2, 1, 3},
+				{3, 2, 4},
+				{4, 3, 5},
+				{5, 4, 6},
+			},
+		}},
+	},
+	{
+		name: "where x not in (...)",
+		setup: [][]string{
+			setup.XyData[0],
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    `SELECT * from xy_hasnull where y not in (SELECT b from ab_hasnull)`,
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    `SELECT * from xy_hasnull where y not in (SELECT b from ab)`,
+				Expected: []sql.Row{{1, 0}},
+			},
+			{
+				Query:    `SELECT * from xy where y not in (SELECT b from ab_hasnull)`,
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    `SELECT * from xy where null not in (SELECT b from ab)`,
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		name: "where not exists",
+		setup: [][]string{
+			setup.XyData[0],
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    `select * from xy_hasnull x where not exists(select 1 from ab_hasnull a where a.b = x.y)`,
+				Expected: []sql.Row{{1, 0}, {3, nil}},
+			},
+		},
+	},
+	{
+		name: "multi-column merge join",
+		setup: [][]string{
+			setup.Pk_tablesData[0],
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    `SELECT l.pk1, l.pk2, l.c1, r.pk1, r.pk2, r.c1 FROM two_pk l JOIN two_pk r ON l.pk1=r.pk1 AND l.pk2=r.pk2`,
+				Expected: []sql.Row{{0, 0, 0, 0, 0, 0}, {0, 1, 10, 0, 1, 10}, {1, 0, 20, 1, 0, 20}, {1, 1, 30, 1, 1, 30}},
+			},
+			{
+				Query:    `SELECT l.pk, r.pk FROM one_pk_two_idx l JOIN one_pk_two_idx r ON l.v1=r.v1 AND l.v2=r.v2`,
+				Expected: []sql.Row{{0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}, {5, 5}, {6, 6}, {7, 7}},
+			},
+			{
+				Query:    `SELECT l.pk, r.pk FROM one_pk_three_idx l JOIN one_pk_three_idx r ON l.v1=r.v1 AND l.v2=r.v2 AND l.pk=r.v1`,
+				Expected: []sql.Row{{0, 0}, {0, 1}},
+			},
+			{
+				Query:    `SELECT l.pk1, l.pk2, r.pk FROM two_pk l JOIN one_pk_three_idx r ON l.pk2=r.v1 WHERE l.pk1 = 1`,
+				Expected: []sql.Row{{1, 0, 0}, {1, 0, 1}, {1, 0, 2}, {1, 0, 3}, {1, 1, 4}},
+			},
+			{
+				Query:    `SELECT l.pk1, l.pk2, r.pk FROM two_pk l JOIN one_pk_three_idx r ON l.pk1=r.v1 WHERE l.pk2 = 1`,
+				Expected: []sql.Row{{0, 1, 0}, {0, 1, 1}, {0, 1, 2}, {0, 1, 3}, {1, 1, 4}},
+			},
+			{
+				Query:    `SELECT l.pk, r.pk FROM one_pk_three_idx l JOIN one_pk_three_idx r ON l.pk=r.v1 WHERE l.pk = 1`,
+				Expected: []sql.Row{{1, 4}},
+			},
+		},
+	},
+	{
+		name: "case insensitive key column names",
+		setup: [][]string{
+			{
+				"CREATE TABLE DEPARTMENTS (ID VARCHAR(8) PRIMARY KEY, NAME VARCHAR(255));",
+				"CREATE TABLE EMPLOYEES (ID VARCHAR(8) PRIMARY KEY, FIRSTNAME VARCHAR(255), DEPARTMENT_ID VARCHAR(8));",
+				"INSERT INTO DEPARTMENTS (ID, NAME) VALUES ('101', 'Human Resources'), ('102', 'Finance'), ('103', 'IT');",
+				"INSERT INTO EMPLOYEES (ID, FIRSTNAME,DEPARTMENT_ID) VALUES ('001', 'John', '101'), ('002', 'Jane','102'), ('003', 'Emily','103');",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query: "SELECT * FROM EMPLOYEES e INNER JOIN DEPARTMENTS d ON e.DEPARTMENT_ID = d.ID WHERE e.DEPARTMENT_ID = '102';",
+				Expected: []sql.Row{
+					{"002", "Jane", "102", "102", "Finance"},
+				},
+			},
+			{
+				Query: "SELECT * FROM EMPLOYEES e INNER JOIN DEPARTMENTS d ON e.department_id = d.ID WHERE e.department_id = '102';",
+				Expected: []sql.Row{
+					{"002", "Jane", "102", "102", "Finance"},
+				},
+			},
+			{
+				Query: "SELECT * FROM EMPLOYEES e INNER JOIN DEPARTMENTS d ON e.DePaRtMeNt_Id = d.ID WHERE e.dEpArTmEnT_iD = '102';",
+				Expected: []sql.Row{
+					{"002", "Jane", "102", "102", "Finance"},
+				},
+			},
+		},
+	},
+	{
+		name: "string key test",
+		setup: [][]string{
+			{
+				`
+CREATE TABLE testA (
+	id int PRIMARY KEY,
+	supplierkey VARCHAR(100),
+	name VARCHAR(100),
+	product VARCHAR(100),
+	UNIQUE KEY unique_product_supplier_key (product, supplierKey)
+);`,
+				`
+CREATE TABLE testB (
+	id int PRIMARY KEY,
+	vendorkey VARCHAR(100),
+	name VARCHAR(100),
+	supplierkey VARCHAR(100),
+	product VARCHAR(100),
+	UNIQUE KEY unique_product_vendor_key (product,vendorKey)
+);`,
+				"INSERT INTO testA VALUES (1, 'texwin-post-frame', 'Texwin (Post Frame)', 'carports');",
+				"INSERT INTO testA VALUES (2, 'texwin', 'Texwin', 'carports');",
+				"INSERT INTO testB VALUES (1, 'advancebldg', 'Test', 'texwin', 'carports');",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query: `
+SELECT  
+    v.vendorkey AS vendor,
+    v.product,
+    v.supplierkey,
+    s.name      AS supplierName
+FROM   
+    testB AS v
+INNER JOIN 
+    testA AS s
+ON 
+    s.supplierkey = v.supplierkey AND 
+    s.product     = v.product
+WHERE 
+    v.vendorkey = 'advancebldg';
+`,
+				Expected: []sql.Row{
+					{"advancebldg", "carports", "texwin", "Texwin"},
+				},
+			},
+		},
+	},
+}
+
+var rangeJoinOpTests = []JoinOpTests{
+	{
+		Query: "select * from vals join ranges on val between min and max",
+		Expected: []sql.Row{
+			{0, 0, 2},
+			{1, 0, 2},
+			{1, 1, 3},
+			{2, 0, 2},
+			{2, 1, 3},
+			{2, 2, 4},
+			{3, 1, 3},
+			{3, 2, 4},
+			{3, 3, 5},
+			{4, 2, 4},
+			{4, 3, 5},
+			{4, 4, 6},
+			{5, 3, 5},
+			{5, 4, 6},
+			{6, 4, 6},
+		},
+	},
+	{
+		Query: "select * from vals join ranges on val > min and val < max",
+		Expected: []sql.Row{
+			{1, 0, 2},
+			{2, 1, 3},
+			{3, 2, 4},
+			{4, 3, 5},
+			{5, 4, 6},
+		},
+	},
+	{
+		Query: "select * from vals join ranges on min < val and max > val",
+		Expected: []sql.Row{
+			{1, 0, 2},
+			{2, 1, 3},
+			{3, 2, 4},
+			{4, 3, 5},
+			{5, 4, 6},
+		},
+	},
+	{
+		Query: "select * from vals join ranges on val >= min and val < max",
+		Expected: []sql.Row{
+			{0, 0, 2},
+			{1, 0, 2},
+			{1, 1, 3},
+			{2, 1, 3},
+			{2, 2, 4},
+			{3, 2, 4},
+			{3, 3, 5},
+			{4, 3, 5},
+			{4, 4, 6},
+			{5, 4, 6},
+		},
+	},
+	{
+		Query: "select * from vals join ranges on val > min and val <= max",
+		Expected: []sql.Row{
+			{1, 0, 2},
+			{2, 0, 2},
+			{2, 1, 3},
+			{3, 1, 3},
+			{3, 2, 4},
+			{4, 2, 4},
+			{4, 3, 5},
+			{5, 3, 5},
+			{5, 4, 6},
+			{6, 4, 6},
+		},
+	},
+	{
+		Query: "select * from vals join ranges on val >= min and val <= max",
+		Expected: []sql.Row{
+			{0, 0, 2},
+			{1, 0, 2},
+			{1, 1, 3},
+			{2, 0, 2},
+			{2, 1, 3},
+			{2, 2, 4},
+			{3, 1, 3},
+			{3, 2, 4},
+			{3, 3, 5},
+			{4, 2, 4},
+			{4, 3, 5},
+			{4, 4, 6},
+			{5, 3, 5},
+			{5, 4, 6},
+			{6, 4, 6},
+		},
+	},
+	{
+		Query: "select * from vals left join ranges on val > min and val < max",
+		Expected: []sql.Row{
+			{0, nil, nil},
+			{1, 0, 2},
+			{2, 1, 3},
+			{3, 2, 4},
+			{4, 3, 5},
+			{5, 4, 6},
+			{6, nil, nil},
+		},
+	},
+	{
+		Query: "select * from ranges l join ranges r on l.min > r.min and l.min < r.max",
+		Expected: []sql.Row{
+			{1, 3, 0, 2},
+			{2, 4, 1, 3},
+			{3, 5, 2, 4},
+			{4, 6, 3, 5},
+		},
+	},
+	{
+		Query: "select * from vals left join ranges r1 on val > r1.min and val < r1.max left join ranges r2 on r1.min > r2.min and r1.min < r2.max",
+		Expected: []sql.Row{
+			{0, nil, nil, nil, nil},
+			{1, 0, 2, nil, nil},
+			{2, 1, 3, 0, 2},
+			{3, 2, 4, 1, 3},
+			{4, 3, 5, 2, 4},
+			{5, 4, 6, 3, 5},
+			{6, nil, nil, nil, nil},
+		},
+	},
+	{
+		Query: "select * from (select vals.val * 2 as val from vals) as newVals join (select ranges.min * 2 as min, ranges.max * 2 as max from ranges) as newRanges on val > min and val < max;",
+		Expected: []sql.Row{
+			{2, 0, 4},
+			{4, 2, 6},
+			{6, 4, 8},
+			{8, 6, 10},
+			{10, 8, 12},
+		},
+	},
+	{
+		// This tests that the RangeHeapJoin node functions correctly even if its rows are iterated over multiple times.
+		Query: "select * from (select 1 union select 2) as l left join (select * from vals join ranges on val > min and val < max) as r on max = max",
+		Expected: []sql.Row{
+			{1, 1, 0, 2},
+			{1, 2, 1, 3},
+			{1, 3, 2, 4},
+			{1, 4, 3, 5},
+			{1, 5, 4, 6},
+			{2, 1, 0, 2},
+			{2, 2, 1, 3},
+			{2, 3, 2, 4},
+			{2, 4, 3, 5},
+			{2, 5, 4, 6},
+		},
+	},
+	{
+		Query: "select * from vals left join (select * from ranges where 0) as newRanges on val > min and val < max;",
+		Expected: []sql.Row{
+			{0, nil, nil},
+			{1, nil, nil},
+			{2, nil, nil},
+			{3, nil, nil},
+			{4, nil, nil},
+			{5, nil, nil},
+			{6, nil, nil},
 		},
 	},
 }

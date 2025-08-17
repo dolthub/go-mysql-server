@@ -30,6 +30,7 @@ type LineString struct {
 }
 
 var _ sql.FunctionExpression = (*LineString)(nil)
+var _ sql.CollationCoercible = (*LineString)(nil)
 
 // NewLineString creates a new LineString.
 func NewLineString(args ...sql.Expression) (sql.Expression, error) {
@@ -52,6 +53,11 @@ func (l *LineString) Description() string {
 // Type implements the sql.Expression interface.
 func (l *LineString) Type() sql.Type {
 	return types.LineStringType{}
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*LineString) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (l *LineString) String() string {

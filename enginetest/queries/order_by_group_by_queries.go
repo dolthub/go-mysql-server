@@ -15,8 +15,8 @@
 package queries
 
 import (
-	"github.com/gabereiser/go-mysql-server/sql"
-	"github.com/gabereiser/go-mysql-server/sql/analyzer"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
 )
 
 var OrderByGroupByScriptTests = []ScriptTest{
@@ -82,6 +82,38 @@ var OrderByGroupByScriptTests = []ScriptTest{
 				// https://github.com/dolthub/dolt/issues/4723
 				Query:    "SELECT id, (SELECT -1 as id having id < 10) as upper_team FROM members where id < 6;",
 				Expected: []sql.Row{{3, -1}, {4, -1}, {5, -1}},
+			},
+		},
+	},
+	{
+		Name: "Group by BINARY: https://github.com/dolthub/dolt/issues/6179",
+		SetUpScript: []string{
+			"create table t (s varchar(100));",
+			"insert into t values ('abc'), ('def');",
+			"create table t1 (b binary(3));",
+			"insert into t1 values ('abc'), ('abc'), ('def'), ('abc'), ('def');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select binary s from t group by binary s order by binary s",
+				Expected: []sql.Row{
+					{[]uint8("abc")},
+					{[]uint8("def")},
+				},
+			},
+			{
+				Query: "select count(b), b from t1 group by b order by b",
+				Expected: []sql.Row{
+					{3, []uint8("abc")},
+					{2, []uint8("def")},
+				},
+			},
+			{
+				Query: "select binary s from t group by binary s order by s",
+				Expected: []sql.Row{
+					{[]uint8("abc")},
+					{[]uint8("def")},
+				},
 			},
 		},
 	},
@@ -201,13 +233,13 @@ var OrderByGroupByScriptTests = []ScriptTest{
 			{
 				Query: "select @@global.sql_mode",
 				Expected: []sql.Row{
-					{"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY"},
+					{"NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES"},
 				},
 			},
 			{
 				Query: "select @@session.sql_mode",
 				Expected: []sql.Row{
-					{"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY"},
+					{"NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES"},
 				},
 			},
 			{
@@ -234,18 +266,18 @@ var OrderByGroupByScriptTests = []ScriptTest{
 			{
 				Query: "select @@global.sql_mode",
 				Expected: []sql.Row{
-					{"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY"},
+					{"NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES"},
 				},
 			},
 			{
 				Query: "select @@session.sql_mode",
 				Expected: []sql.Row{
-					{"STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY"},
+					{"NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES"},
 				},
 			},
 			{
 				Query:       "select id, team from members group by team",
-				ExpectedErr: analyzer.ErrValidationGroupBy,
+				ExpectedErr: analyzererrors.ErrValidationGroupBy,
 			},
 		},
 	},
@@ -270,6 +302,69 @@ var OrderByGroupByScriptTests = []ScriptTest{
 					{"foo", 2},
 					{nil, 0},
 				},
+			},
+		},
+	},
+	{
+		Name: "Group by true and 1",
+		// https://github.com/dolthub/dolt/issues/9320
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t0(c0 int)",
+			"insert into t0(c0) values(1),(123)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select if(t0.c0 = 123, TRUE, t0.c0) AS ref0, min(t0.c0) as ref1 from t0 group by ref0",
+				Expected: []sql.Row{{1, 1}},
+			},
+		},
+	},
+	{
+		Name: "Group by null = 1",
+		// https://github.com/dolthub/dolt/issues/9035
+		SetUpScript: []string{
+			"create table t0(c0 int, c1 int)",
+			"insert into t0(c0, c1) values(NULL,1),(1,NULL)",
+			"create table t1(id int primary key, c0 int, c1 int)",
+			"insert into t1(id, c0, c1) values(1,NULL,NULL),(2,1,1),(3,1,NULL),(4,2,1),(5,NULL,1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select t0.c0 = t0.c1 as ref0, sum(1) as ref1 from t0 group by ref0",
+				Expected: []sql.Row{
+					{nil, float64(2)},
+				},
+			},
+			{
+				Query: "select t1.c0 = t1.c1 as ref0, sum(1) as ref1 from t1 group by ref0",
+				Expected: []sql.Row{
+					{nil, float64(3)},
+					{true, float64(1)},
+					{false, float64(1)},
+				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9605
+		Name: "Order by wrapped by parentheses",
+		SetUpScript: []string{
+			"create table t(i int, j int)",
+			"insert into t values(2,4),(0,7),(9,10),(4,3)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "with cte(i) as (select i from t) select * from cte order by (i)",
+				Expected: []sql.Row{{0}, {2}, {4}, {9}},
+			},
+			{
+				Query:    "with cte(i) as (select i from t) select * from cte order by (((i)))",
+				Expected: []sql.Row{{0}, {2}, {4}, {9}},
+			},
+			{
+				Query:    "select * from t order by (i * 10 + j)",
+				Expected: []sql.Row{{0, 7}, {2, 4}, {4, 3}, {9, 10}},
 			},
 		},
 	},

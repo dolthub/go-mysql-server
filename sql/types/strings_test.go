@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strings"
@@ -30,6 +31,7 @@ import (
 )
 
 func TestStringCompare(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	tests := []struct {
 		typ         sql.StringType
 		val1        interface{}
@@ -42,13 +44,13 @@ func TestStringCompare(t *testing.T) {
 
 		{MustCreateStringWithDefaults(sqltypes.VarChar, 10), 0, 1, -1},
 		{MustCreateStringWithDefaults(sqltypes.VarChar, 10), []byte{0}, true, -1},
-		{MustCreateStringWithDefaults(sqltypes.VarChar, 10), false, 1, 1},
+		{MustCreateStringWithDefaults(sqltypes.VarChar, 10), false, 1, -1},
 		{MustCreateStringWithDefaults(sqltypes.VarChar, 10), 1, 0, 1},
-		{MustCreateStringWithDefaults(sqltypes.VarChar, 10), true, "false", 1},
-		{MustCreateStringWithDefaults(sqltypes.VarChar, 10), 1, false, -1},
+		{MustCreateStringWithDefaults(sqltypes.VarChar, 10), true, "false", -1},
+		{MustCreateStringWithDefaults(sqltypes.VarChar, 10), 1, false, 1},
 		{MustCreateStringWithDefaults(sqltypes.VarChar, 10), 1, 1, 0},
-		{MustCreateStringWithDefaults(sqltypes.VarChar, 10), true, 1, 1},
-		{MustCreateStringWithDefaults(sqltypes.VarChar, 10), "True", true, -1},
+		{MustCreateStringWithDefaults(sqltypes.VarChar, 10), true, 1, 0},
+		{MustCreateStringWithDefaults(sqltypes.VarChar, 10), "True", true, 1},
 		{MustCreateStringWithDefaults(sqltypes.VarChar, 10), false, true, -1},
 		{MustCreateStringWithDefaults(sqltypes.VarChar, 10), "0x12345de", "0xed54321", -1},
 		{MustCreateStringWithDefaults(sqltypes.VarChar, 10), "0xed54321", "0x12345de", 1},
@@ -58,29 +60,29 @@ func TestStringCompare(t *testing.T) {
 		// Sanity checks that behavior is consistent
 		{MustCreateBinary(sqltypes.Binary, 10), 0, 1, -1},
 		{MustCreateBinary(sqltypes.Binary, 10), []byte{0}, true, -1},
-		{MustCreateBinary(sqltypes.Binary, 10), false, 1, 1},
+		{MustCreateBinary(sqltypes.Binary, 10), false, 1, -1},
 		{MustCreateBinary(sqltypes.Binary, 10), []byte("254"), 254, 0},
 		{MustCreateBinary(sqltypes.Blob, 10), 0, 1, -1},
 		{MustCreateBinary(sqltypes.Blob, 10), []byte{0}, true, -1},
-		{MustCreateBinary(sqltypes.Blob, 10), false, 1, 1},
+		{MustCreateBinary(sqltypes.Blob, 10), false, 1, -1},
 		{MustCreateBinary(sqltypes.Blob, 10), []byte("254"), 254, 0},
 		{MustCreateStringWithDefaults(sqltypes.Char, 10), 0, 1, -1},
 		{MustCreateStringWithDefaults(sqltypes.Char, 10), []byte{0}, true, -1},
-		{MustCreateStringWithDefaults(sqltypes.Char, 10), false, 1, 1},
+		{MustCreateStringWithDefaults(sqltypes.Char, 10), false, 1, -1},
 		{MustCreateStringWithDefaults(sqltypes.Char, 10), []byte("254"), 254, 0},
 		{MustCreateStringWithDefaults(sqltypes.Text, 10), 0, 1, -1},
 		{MustCreateStringWithDefaults(sqltypes.Text, 10), []byte{0}, true, -1},
-		{MustCreateStringWithDefaults(sqltypes.Text, 10), false, 1, 1},
+		{MustCreateStringWithDefaults(sqltypes.Text, 10), false, 1, -1},
 		{MustCreateStringWithDefaults(sqltypes.Text, 10), []byte("254"), 254, 0},
 		{MustCreateBinary(sqltypes.VarBinary, 10), []byte{0}, true, -1},
-		{MustCreateBinary(sqltypes.VarBinary, 10), false, 1, 1},
+		{MustCreateBinary(sqltypes.VarBinary, 10), false, 1, -1},
 		{MustCreateBinary(sqltypes.VarBinary, 10), 0, 1, -1},
 		{MustCreateBinary(sqltypes.VarBinary, 10), []byte("254"), 254, 0},
 	}
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v %v", test.val1, test.val2), func(t *testing.T) {
-			cmp, err := test.typ.Compare(test.val1, test.val2)
+			cmp, err := test.typ.Compare(ctx, test.val1, test.val2)
 			require.NoError(t, err)
 			assert.Equal(t, test.expectedCmp, cmp)
 		})
@@ -95,17 +97,17 @@ func TestStringCreateBlob(t *testing.T) {
 		expectedErr  bool
 	}{
 		{sqltypes.Binary, 10,
-			StringType{sqltypes.Binary, 10, 10, 10, sql.Collation_binary}, false},
+			StringType{sqltypes.Binary, 10, 10, sql.Collation_binary}, false},
 		{sqltypes.Blob, 10,
-			StringType{sqltypes.Blob, TinyTextBlobMax, TinyTextBlobMax, TinyTextBlobMax, sql.Collation_binary}, false},
+			StringType{sqltypes.Blob, TinyTextBlobMax, TinyTextBlobMax, sql.Collation_binary}, false},
 		{sqltypes.Char, 10,
-			StringType{sqltypes.Binary, 10, 10, 10, sql.Collation_binary}, false},
+			StringType{sqltypes.Binary, 10, 10, sql.Collation_binary}, false},
 		{sqltypes.Text, 10,
-			StringType{sqltypes.Blob, TinyTextBlobMax, TinyTextBlobMax, TinyTextBlobMax, sql.Collation_binary}, false},
+			StringType{sqltypes.Blob, TinyTextBlobMax, TinyTextBlobMax, sql.Collation_binary}, false},
 		{sqltypes.VarBinary, 10,
-			StringType{sqltypes.VarBinary, 10, 10, 10, sql.Collation_binary}, false},
+			StringType{sqltypes.VarBinary, 10, 10, sql.Collation_binary}, false},
 		{sqltypes.VarChar, 10,
-			StringType{sqltypes.VarBinary, 10, 10, 10, sql.Collation_binary}, false},
+			StringType{sqltypes.VarBinary, 10, 10, sql.Collation_binary}, false},
 	}
 
 	for _, test := range tests {
@@ -170,51 +172,70 @@ func TestStringCreateBlobInvalidBaseTypes(t *testing.T) {
 
 func TestStringCreateString(t *testing.T) {
 	tests := []struct {
-		baseType     query.Type
-		length       int64
-		collation    sql.CollationID
-		expectedType StringType
-		expectedErr  bool
+		baseType             query.Type
+		length               int64
+		collation            sql.CollationID
+		expectedType         StringType
+		expectedMaxTextBytes uint32
+		expectedErr          bool
 	}{
 		{sqltypes.Binary, 10, sql.Collation_binary,
-			StringType{sqltypes.Binary, 10, 10, 10, sql.Collation_binary}, false},
+			StringType{sqltypes.Binary, 10, 10, sql.Collation_binary},
+			10, false},
 		{sqltypes.Blob, 10, sql.Collation_binary,
-			StringType{sqltypes.Blob, TinyTextBlobMax, TinyTextBlobMax, TinyTextBlobMax, sql.Collation_binary}, false},
+			StringType{sqltypes.Blob, TinyTextBlobMax, TinyTextBlobMax, sql.Collation_binary},
+			TinyTextBlobMax, false},
 		{sqltypes.Char, 10, sql.Collation_Default,
-			StringType{sqltypes.Char, 10, 40, 40, sql.Collation_Default}, false},
+			StringType{sqltypes.Char, 10, 40, sql.Collation_Default},
+			40, false},
 		{sqltypes.Text, 10, sql.Collation_Default,
-			StringType{sqltypes.Text, TinyTextBlobMax / sql.Collation_Default.CharacterSet().MaxLength(), TinyTextBlobMax, uint32(TinyTextBlobMax * sql.Collation_Default.CharacterSet().MaxLength()), sql.Collation_Default}, false},
+			StringType{sqltypes.Text, TinyTextBlobMax / sql.Collation_Default.CharacterSet().MaxLength(), TinyTextBlobMax, sql.Collation_Default},
+			uint32(TinyTextBlobMax * sql.Collation_Default.CharacterSet().MaxLength()), false},
 		{sqltypes.Text, 1000, sql.Collation_Default,
-			StringType{sqltypes.Text, TextBlobMax / sql.Collation_Default.CharacterSet().MaxLength(), TextBlobMax, uint32(TextBlobMax * sql.Collation_Default.CharacterSet().MaxLength()), sql.Collation_Default}, false},
+			StringType{sqltypes.Text, TextBlobMax / sql.Collation_Default.CharacterSet().MaxLength(), TextBlobMax, sql.Collation_Default},
+			uint32(TextBlobMax * sql.Collation_Default.CharacterSet().MaxLength()), false},
 		{sqltypes.Text, 1000000, sql.Collation_Default,
-			StringType{sqltypes.Text, MediumTextBlobMax / sql.Collation_Default.CharacterSet().MaxLength(), MediumTextBlobMax, uint32(MediumTextBlobMax * sql.Collation_Default.CharacterSet().MaxLength()), sql.Collation_Default}, false},
+			StringType{sqltypes.Text, MediumTextBlobMax / sql.Collation_Default.CharacterSet().MaxLength(), MediumTextBlobMax, sql.Collation_Default},
+			uint32(MediumTextBlobMax * sql.Collation_Default.CharacterSet().MaxLength()), false},
 		{sqltypes.Text, LongTextBlobMax, sql.Collation_Default,
-			StringType{sqltypes.Text, LongTextBlobMax / sql.Collation_Default.CharacterSet().MaxLength(), LongTextBlobMax, uint32(LongTextBlobMax), sql.Collation_Default}, false},
+			StringType{sqltypes.Text, LongTextBlobMax / sql.Collation_Default.CharacterSet().MaxLength(), LongTextBlobMax, sql.Collation_Default},
+			uint32(LongTextBlobMax), false},
 		{sqltypes.VarBinary, 10, sql.Collation_binary,
-			StringType{sqltypes.VarBinary, 10, 10, 10, sql.Collation_binary}, false},
+			StringType{sqltypes.VarBinary, 10, 10, sql.Collation_binary},
+			10, false},
 		{sqltypes.VarChar, 10, sql.Collation_Default,
-			StringType{sqltypes.VarChar, 10, 40, 40, sql.Collation_Default}, false},
+			StringType{sqltypes.VarChar, 10, 40, sql.Collation_Default},
+			40, false},
 		{sqltypes.Char, 10, sql.Collation_binary,
-			StringType{sqltypes.Binary, 10, 10, 10, sql.Collation_binary}, false},
+			StringType{sqltypes.Binary, 10, 10, sql.Collation_binary},
+			10, false},
 		{sqltypes.Text, 10, sql.Collation_binary,
-			StringType{sqltypes.Blob, TinyTextBlobMax, TinyTextBlobMax, TinyTextBlobMax, sql.Collation_binary}, false},
+			StringType{sqltypes.Blob, TinyTextBlobMax, TinyTextBlobMax, sql.Collation_binary},
+			TinyTextBlobMax, false},
 		{sqltypes.VarChar, 10, sql.Collation_binary,
-			StringType{sqltypes.VarBinary, 10, 10, 10, sql.Collation_binary}, false},
+			StringType{sqltypes.VarBinary, 10, 10, sql.Collation_binary},
+			10, false},
 
-		{sqltypes.Binary, charBinaryMax + 1, sql.Collation_binary, StringType{}, true},
-		{sqltypes.Blob, LongTextBlobMax + 1, sql.Collation_binary, StringType{}, true},
-		{sqltypes.Char, charBinaryMax + 1, sql.Collation_Default, StringType{}, true},
-		{sqltypes.Text, LongTextBlobMax + 1, sql.Collation_Default, StringType{}, true},
+		// Out of bounds error cases
+		{sqltypes.Binary, charBinaryMax + 1, sql.Collation_binary, StringType{}, 0, true},
+		{sqltypes.Blob, LongTextBlobMax + 1, sql.Collation_binary, StringType{}, 0, true},
+		{sqltypes.Char, charBinaryMax + 1, sql.Collation_Default, StringType{}, 0, true},
+		{sqltypes.Text, LongTextBlobMax + 1, sql.Collation_Default, StringType{}, 0, true},
 
 		// JSON strings can also come in over the wire as VARBINARY types, and JSON allows a much larger length limit (1GB).
-		{sqltypes.VarBinary, MaxJsonFieldByteLength + 1, sql.Collation_binary, StringType{}, true},
-		{sqltypes.VarChar, varcharVarbinaryMax + 1, sql.Collation_Default, StringType{}, true},
+		{sqltypes.VarBinary, MaxJsonFieldByteLength + 1, sql.Collation_binary, StringType{}, 0, true},
+		{sqltypes.VarChar, varcharVarbinaryMax + 1, sql.Collation_Default, StringType{}, 0, true},
 
 		// Default collation is not valid for these types
-		{sqltypes.Binary, 10, sql.Collation_Default, StringType{}, true},
-		{sqltypes.Blob, 10, sql.Collation_Default, StringType{}, true},
-		{sqltypes.VarBinary, 10, sql.Collation_Default, StringType{}, true},
+		{sqltypes.Binary, 10, sql.Collation_Default, StringType{}, 0, true},
+		{sqltypes.Blob, 10, sql.Collation_Default, StringType{}, 0, true},
+		{sqltypes.VarBinary, 10, sql.Collation_Default, StringType{}, 0, true},
 	}
+
+	ctx := sql.NewContext(
+		context.Background(),
+		sql.WithSession(sql.NewBaseSession()),
+	)
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v %v %v", test.baseType, test.length, test.collation), func(t *testing.T) {
@@ -224,6 +245,7 @@ func TestStringCreateString(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				assert.Equal(t, test.expectedType, typ)
+				assert.Equal(t, test.expectedMaxTextBytes, typ.MaxTextResponseByteLength(ctx))
 			}
 		})
 	}
@@ -278,6 +300,7 @@ func TestStringCreateStringInvalidBaseTypes(t *testing.T) {
 }
 
 func TestStringConvert(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	tests := []struct {
 		typ         sql.StringType
 		val         interface{}
@@ -322,11 +345,27 @@ func TestStringConvert(t *testing.T) {
 		{MustCreateBinary(sqltypes.VarBinary, 3), []byte{01, 02, 03, 04}, nil, true},
 		{MustCreateStringWithDefaults(sqltypes.VarChar, 3), []byte("abcd"), nil, true},
 		{MustCreateStringWithDefaults(sqltypes.Char, 20), JSONDocument{Val: nil}, "null", false},
+		{MustCreateStringWithDefaults(sqltypes.Char, 20), JSONDocument{Val: map[string]interface{}{"a": 1}}, `{"a": 1}`, false},
+		{MustCreateStringWithDefaults(sqltypes.Char, 20), NewLazyJSONDocument([]byte(`{"a":1}`)), `{"a": 1}`, false},
+
+		{MustCreateStringWithDefaults(sqltypes.Char, 10), []byte{0x98, 0x76, 0x54}, "", false},
+		{MustCreateStringWithDefaults(sqltypes.VarChar, 10), []byte{0x98, 0x76, 0x54}, "", false},
+		{MustCreateStringWithDefaults(sqltypes.Text, 10), []byte{0x98, 0x76, 0x54}, "", false},
+		{MustCreateBinary(sqltypes.Binary, 10), []byte{0x98, 0x76, 0x54}, []byte{0x98, 0x76, 0x54, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0}, false},
+		{MustCreateBinary(sqltypes.VarBinary, 10), []byte{0x98, 0x76, 0x54}, []byte{0x98, 0x76, 0x54}, false},
+		{MustCreateBinary(sqltypes.Blob, 10), []byte{0x98, 0x76, 0x54}, []byte{0x98, 0x76, 0x54}, false},
+
+		{MustCreateStringWithDefaults(sqltypes.Char, 10), string([]byte{0x98, 0x76, 0x54}), "", false},
+		{MustCreateStringWithDefaults(sqltypes.VarChar, 10), string([]byte{0x98, 0x76, 0x54}), "", false},
+		{MustCreateStringWithDefaults(sqltypes.Text, 10), string([]byte{0x98, 0x76, 0x54}), "", false},
+		{MustCreateBinary(sqltypes.Binary, 10), string([]byte{0x98, 0x76, 0x54}), []byte{0x98, 0x76, 0x54, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0}, false},
+		{MustCreateBinary(sqltypes.VarBinary, 10), string([]byte{0x98, 0x76, 0x54}), []byte{0x98, 0x76, 0x54}, false},
+		{MustCreateBinary(sqltypes.Blob, 10), string([]byte{0x98, 0x76, 0x54}), []byte{0x98, 0x76, 0x54}, false},
 	}
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v %v %v", test.typ, test.val, test.expectedVal), func(t *testing.T) {
-			val, err := test.typ.Convert(test.val)
+			val, _, err := test.typ.Convert(ctx, test.val)
 			if test.expectedErr {
 				assert.Error(t, err)
 			} else {

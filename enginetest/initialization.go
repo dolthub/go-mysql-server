@@ -22,13 +22,11 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	sqle "github.com/gabereiser/go-mysql-server"
-	"github.com/gabereiser/go-mysql-server/enginetest/scriptgen/setup"
-	"github.com/gabereiser/go-mysql-server/sql"
-	"github.com/gabereiser/go-mysql-server/sql/analyzer"
-	"github.com/gabereiser/go-mysql-server/sql/expression"
-	"github.com/gabereiser/go-mysql-server/sql/information_schema"
-	"github.com/gabereiser/go-mysql-server/sql/plan"
+	sqle "github.com/dolthub/go-mysql-server"
+	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/analyzer"
+	"github.com/dolthub/go-mysql-server/sql/information_schema"
 )
 
 func NewContext(harness Harness) *sql.Context {
@@ -39,11 +37,6 @@ func NewContextWithClient(harness ClientHarness, client sql.Client) *sql.Context
 	return newContextSetup(harness.NewContextWithClient(client))
 }
 
-// TODO: remove
-func NewContextWithEngine(harness Harness, engine *sqle.Engine) *sql.Context {
-	return NewContext(harness)
-}
-
 var pid uint64
 
 func newContextSetup(ctx *sql.Context) *sql.Context {
@@ -51,14 +44,6 @@ func newContextSetup(ctx *sql.Context) *sql.Context {
 	if ctx.GetCurrentDatabase() == "" {
 		ctx.SetCurrentDatabase("mydb")
 	}
-
-	// Add our in-session view to the context
-	_ = ctx.GetViewRegistry().Register("mydb",
-		plan.NewSubqueryAlias(
-			"myview",
-			"SELECT * FROM mytable",
-			plan.NewProject([]sql.Expression{expression.NewStar()}, plan.NewUnresolvedTable("mytable", "mydb")),
-		).AsView("CREATE VIEW myview AS SELECT * FROM mytable"))
 
 	ctx.ApplyOpts(sql.WithPid(atomic.AddUint64(&pid, 1)))
 
@@ -81,13 +66,6 @@ func NewSession(harness Harness) *sql.Context {
 		ctx.SetCurrentDatabase(currentDB)
 	}
 
-	_ = ctx.GetViewRegistry().Register(currentDB,
-		plan.NewSubqueryAlias(
-			"myview",
-			"SELECT * FROM mytable",
-			plan.NewProject([]sql.Expression{expression.NewStar()}, plan.NewUnresolvedTable("mytable", "mydb")),
-		).AsView("CREATE VIEW myview AS SELECT * FROM mytable"))
-
 	ctx.ApplyOpts(sql.WithPid(atomic.AddUint64(&pid, 1)))
 
 	return ctx
@@ -101,32 +79,27 @@ func NewBaseSession() *sql.BaseSession {
 
 // NewEngineWithProvider returns a new engine with the specified provider
 func NewEngineWithProvider(_ *testing.T, harness Harness, provider sql.DatabaseProvider) *sqle.Engine {
-	var a *analyzer.Analyzer
-
-	if harness.Parallelism() > 1 {
-		a = analyzer.NewBuilder(provider).WithParallelism(harness.Parallelism()).Build()
-	} else {
-		a = analyzer.NewDefault(provider)
-	}
+	analyzer := analyzer.NewDefault(provider)
 
 	// All tests will run with all privileges on the built-in root account
-	a.Catalog.MySQLDb.AddRootAccount()
+	analyzer.Catalog.MySQLDb.AddRootAccount()
 	// Almost no tests require an information schema that can be updated, but test setup makes it difficult to not
 	// provide everywhere
-	a.Catalog.InfoSchema = information_schema.NewUpdatableInformationSchemaDatabase()
+	analyzer.Catalog.InfoSchema = information_schema.NewInformationSchemaDatabase()
 
-	engine := sqle.New(a, new(sqle.Config))
-
+	engine := sqle.New(analyzer, new(sqle.Config))
 	if idh, ok := harness.(IndexDriverHarness); ok {
 		idh.InitializeIndexDriver(engine.Analyzer.Catalog.AllDatabases(NewContext(harness)))
 	}
+	analyzer.Runner = engine
 
 	return engine
 }
 
 // NewEngine creates an engine and sets it up for testing using harness, provider, and setup data given.
-func NewEngine(t *testing.T, harness Harness, provider sql.DatabaseProvider, setupData []setup.SetupScript) (*sqle.Engine, error) {
-	e := NewEngineWithProvider(t, harness, provider)
+func NewEngine(t *testing.T, harness Harness, dbProvider sql.DatabaseProvider, setupData []setup.SetupScript, statsProvider sql.StatsProvider) (*sqle.Engine, error) {
+	e := NewEngineWithProvider(t, harness, dbProvider)
+	e.Analyzer.Catalog.StatsProvider = statsProvider
 	ctx := NewContext(harness)
 
 	var supportsIndexes bool
@@ -151,11 +124,12 @@ func RunSetupScripts(ctx *sql.Context, e *sqle.Engine, scripts []setup.SetupScri
 				}
 			}
 			// ctx.GetLogger().Warnf("running query %s\n", s)
-			sch, iter, err := e.Query(ctx, s)
+			ctx := ctx.WithQuery(s)
+			_, iter, _, err := e.Query(ctx, s)
 			if err != nil {
 				return nil, err
 			}
-			_, err = sql.RowIterToRows(ctx, sch, iter)
+			_, err = sql.RowIterToRows(ctx, iter)
 			if err != nil {
 				return nil, err
 			}
@@ -164,54 +138,19 @@ func RunSetupScripts(ctx *sql.Context, e *sqle.Engine, scripts []setup.SetupScri
 	return e, nil
 }
 
-func MustQuery(ctx *sql.Context, e *sqle.Engine, q string) (sql.Schema, []sql.Row) {
-	sch, iter, err := e.Query(ctx, q)
+func MustQuery(ctx *sql.Context, e QueryEngine, q string) (sql.Schema, []sql.Row) {
+	sch, iter, _, err := e.Query(ctx, q)
 	if err != nil {
 		panic(fmt.Sprintf("err running query %s: %s", q, err))
 	}
-	rows, err := sql.RowIterToRows(ctx, sch, iter)
+	rows, err := sql.RowIterToRows(ctx, iter)
 	if err != nil {
 		panic(fmt.Sprintf("err running query %s: %s", q, err))
 	}
 	return sch, rows
 }
 
-func MustQueryWithBindings(ctx *sql.Context, e *sqle.Engine, q string, bindings map[string]sql.Expression) (sql.Schema, []sql.Row) {
-	ctx = ctx.WithQuery(q)
-	sch, iter, err := e.QueryWithBindings(ctx, q, bindings)
-	if err != nil {
-		panic(err)
-	}
-
-	rows, err := sql.RowIterToRows(ctx, sch, iter)
-	if err != nil {
-		panic(err)
-	}
-
-	return sch, rows
-}
-
-func MustQueryWithPreBindings(ctx *sql.Context, e *sqle.Engine, q string, bindings map[string]sql.Expression) (sql.Node, sql.Schema, []sql.Row) {
-	ctx = ctx.WithQuery(q)
-	pre, err := e.PrepareQuery(ctx, q)
-	if err != nil {
-		panic(err)
-	}
-
-	sch, iter, err := e.QueryWithBindings(ctx, q, bindings)
-	if err != nil {
-		panic(err)
-	}
-
-	rows, err := sql.RowIterToRows(ctx, sch, iter)
-	if err != nil {
-		panic(err)
-	}
-
-	return pre, sch, rows
-}
-
-func mustNewEngine(t *testing.T, h Harness) *sqle.Engine {
+func mustNewEngine(t *testing.T, h Harness) QueryEngine {
 	e, err := h.NewEngine(t)
 	if err != nil {
 		require.NoError(t, err)

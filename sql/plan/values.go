@@ -23,12 +23,22 @@ import (
 
 // Values represents a set of tuples of expressions.
 type Values struct {
+	AliasName        string
+	ColumnNames      map[string]string
 	ExpressionTuples [][]sql.Expression
 }
 
+var _ sql.Node = (*Values)(nil)
+var _ sql.CollationCoercible = (*Values)(nil)
+
 // NewValues creates a Values node with the given tuples.
 func NewValues(tuples [][]sql.Expression) *Values {
-	return &Values{tuples}
+	return &Values{ExpressionTuples: tuples}
+}
+
+// NewValuesWithAliasName creates a Values node with the given row and column aliases.
+func NewValuesWithAlias(tableName string, columnNames map[string]string, tuples [][]sql.Expression) *Values {
+	return &Values{ExpressionTuples: tuples, AliasName: tableName, ColumnNames: columnNames}
 }
 
 // Schema implements the Node interface.
@@ -69,6 +79,10 @@ func (p *Values) Resolved() bool {
 		}
 	}
 
+	return true
+}
+
+func (p *Values) IsReadOnly() bool {
 	return true
 }
 
@@ -149,9 +163,9 @@ func (p *Values) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return p, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (p *Values) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Values) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // WithExpressions implements the Expressioner interface.
@@ -174,5 +188,5 @@ func (p *Values) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 		}
 	}
 
-	return NewValues(tuples), nil
+	return NewValuesWithAlias(p.AliasName, p.ColumnNames, tuples), nil
 }

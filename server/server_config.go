@@ -16,6 +16,7 @@ package server
 
 import (
 	"crypto/tls"
+	"net"
 	"time"
 
 	"github.com/dolthub/vitess/go/mysql"
@@ -27,11 +28,14 @@ import (
 
 // Server is a MySQL server for SQLe engines.
 type Server struct {
-	Listener   *mysql.Listener
+	Listener   ProtocolListener
 	handler    mysql.Handler
 	sessionMgr *SessionManager
 	Engine     *gms.Engine
 }
+
+// An option to customize the server.
+type Option func(e *gms.Engine, sm *SessionManager, handler mysql.Handler) (*gms.Engine, *SessionManager, mysql.Handler)
 
 // Config for the mysql server.
 type Config struct {
@@ -39,6 +43,9 @@ type Config struct {
 	Protocol string
 	// Address of the server.
 	Address string
+	// Custom listener for the mysql server. Use this if you don't want ports or unix sockets to be opened automatically.
+	// This can be useful in testing by using a pure go net.Conn implementation.
+	Listener net.Listener
 	// Tracer to use in the server. By default, a noop tracer will be used if
 	// no tracer is provided.
 	Tracer trace.Tracer
@@ -50,6 +57,11 @@ type Config struct {
 	ConnWriteTimeout time.Duration
 	// MaxConnections is the maximum number of simultaneous connections that the server will allow.
 	MaxConnections uint64
+	// MaxWaitConnections is the maximum number of simultaneous connections that the server will allow to block waiting
+	// for a connection before new connections result in immediate rejection.
+	MaxWaitConnections uint32
+	// MaxWaitConnectionsTimeout is the maximum amount of time that a connection will block waiting for a connection
+	MaxWaitConnectionsTimeout time.Duration
 	// TLSConfig is the configuration for TLS on this server. If |nil|, TLS is not supported.
 	TLSConfig *tls.Config
 	// RequestSecureTransport will require incoming connections to be TLS. Requires non-|nil| TLSConfig.
@@ -70,6 +82,25 @@ type Config struct {
 	// MaxLoggedQueryLen sets the length at which queries written to the logs are truncated.  A value of 0 will
 	// result in no truncation. A value less than 0 will result in the queries being omitted from the logs completely
 	MaxLoggedQueryLen int
+	// EncodeLoggedQuery determines if logged queries are base64 encoded.
+	// If true, queries will be logged as base64 encoded strings.
+	// If false (default behavior), queries will be logged as strings, but newlines and tabs will be replaced with spaces.
+	EncodeLoggedQuery bool
+	// Options gets a chance to visit and mutate the GMS *Engine,
+	// *server.SessionManager and the mysql.Handler as the server
+	// is being initialized, before the ProtocolListener is
+	// constructed.
+	Options []Option
+	// Used to get the ProtocolListener on server start.
+	// If unset, defaults to MySQLProtocolListenerFactory.
+	ProtocolListenerFactory ProtocolListenerFunc
+
+	// QueryCounter is a metrics.Counter that counts the number of queries executed.
+	QueryCounter Counter
+	// QueryErrorCounter is a metrics.Counter that counts the number of queries that resulted in an error.
+	QueryErrorCounter Counter
+	// QueryHistogram is a metrics.Histogram that measures the duration of queries executed.
+	QueryHistogram Histogram
 }
 
 func (c Config) NewConfig() (Config, error) {
@@ -85,14 +116,14 @@ func (c Config) NewConfig() (Config, error) {
 		if !ok {
 			return Config{}, sql.ErrUnknownSystemVariable.New("net_write_timeout")
 		}
-		c.ConnWriteTimeout = time.Duration(timeout) * time.Millisecond
+		c.ConnWriteTimeout = time.Duration(timeout) * time.Second
 	}
 	if _, val, ok := sql.SystemVariables.GetGlobal("net_read_timeout"); ok {
 		timeout, ok := val.(int64)
 		if !ok {
 			return Config{}, sql.ErrUnknownSystemVariable.New("net_read_timeout")
 		}
-		c.ConnReadTimeout = time.Duration(timeout) * time.Millisecond
+		c.ConnReadTimeout = time.Duration(timeout) * time.Second
 	}
 	return c, nil
 }

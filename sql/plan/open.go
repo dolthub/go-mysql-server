@@ -16,7 +16,6 @@ package plan
 
 import (
 	"fmt"
-	"io"
 
 	"github.com/gabereiser/go-mysql-server/sql/expression"
 
@@ -26,10 +25,11 @@ import (
 // Open represents the OPEN statement, which opens a cursor.
 type Open struct {
 	Name string
-	pRef *expression.ProcedureReference
+	Pref *expression.ProcedureReference
 }
 
 var _ sql.Node = (*Open)(nil)
+var _ sql.CollationCoercible = (*Open)(nil)
 var _ expression.ProcedureReferencable = (*Open)(nil)
 
 // NewOpen returns a new *Open node.
@@ -41,6 +41,10 @@ func NewOpen(name string) *Open {
 
 // Resolved implements the interface sql.Node.
 func (o *Open) Resolved() bool {
+	return true
+}
+
+func (o *Open) IsReadOnly() bool {
 	return true
 }
 
@@ -64,40 +68,14 @@ func (o *Open) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(o, children...)
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (o *Open) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
-}
-
-// RowIter implements the interface sql.Node.
-func (o *Open) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return &openIter{o, row}, nil
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Open) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // WithParamReference implements the interface expression.ProcedureReferencable.
 func (o *Open) WithParamReference(pRef *expression.ProcedureReference) sql.Node {
 	no := *o
-	no.pRef = pRef
+	no.Pref = pRef
 	return &no
-}
-
-// openIter is the sql.RowIter of *Open.
-type openIter struct {
-	*Open
-	row sql.Row
-}
-
-var _ sql.RowIter = (*openIter)(nil)
-
-// Next implements the interface sql.RowIter.
-func (o *openIter) Next(ctx *sql.Context) (sql.Row, error) {
-	if err := o.pRef.OpenCursor(ctx, o.Name, o.row); err != nil {
-		return nil, err
-	}
-	return nil, io.EOF
-}
-
-// Close implements the interface sql.RowIter.
-func (o *openIter) Close(ctx *sql.Context) error {
-	return nil
 }

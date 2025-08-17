@@ -15,19 +15,14 @@
 package plan
 
 import (
-	"fmt"
-	"io"
-	"strings"
-
-	"github.com/gabereiser/go-mysql-server/sql"
-	"github.com/gabereiser/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 // BeginEndBlock represents a BEGIN/END block.
 type BeginEndBlock struct {
 	*Block
 	Label string
-	pRef  *expression.ProcedureReference
 }
 
 // NewBeginEndBlock creates a new *BeginEndBlock node.
@@ -39,6 +34,7 @@ func NewBeginEndBlock(label string, block *Block) *BeginEndBlock {
 }
 
 var _ sql.Node = (*BeginEndBlock)(nil)
+var _ sql.CollationCoercible = (*BeginEndBlock)(nil)
 var _ sql.DebugStringer = (*BeginEndBlock)(nil)
 var _ expression.ProcedureReferencable = (*BeginEndBlock)(nil)
 var _ RepresentsLabeledBlock = (*BeginEndBlock)(nil)
@@ -51,7 +47,7 @@ func (b *BeginEndBlock) String() string {
 		label = b.Label + ": "
 	}
 	p := sql.NewTreePrinter()
-	_ = p.WriteNode(label + "BEGIN .. END")
+	_ = p.WriteNode("%s", label+"BEGIN .. END")
 	var children []string
 	for _, s := range b.statements {
 		children = append(children, s.String())
@@ -67,7 +63,7 @@ func (b *BeginEndBlock) DebugString() string {
 		label = b.Label + ": "
 	}
 	p := sql.NewTreePrinter()
-	_ = p.WriteNode(label + "BEGIN .. END")
+	_ = p.WriteNode("%s", label+"BEGIN .. END")
 	var children []string
 	for _, s := range b.statements {
 		children = append(children, sql.DebugString(s))
@@ -85,15 +81,17 @@ func (b *BeginEndBlock) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &newBeginEndBlock, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (b *BeginEndBlock) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return b.Block.CheckPrivileges(ctx, opChecker)
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (b *BeginEndBlock) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return b.Block.CollationCoercibility(ctx)
 }
 
 // WithParamReference implements the interface expression.ProcedureReferencable.
 func (b *BeginEndBlock) WithParamReference(pRef *expression.ProcedureReference) sql.Node {
 	nb := *b
-	nb.pRef = pRef
+	newBlock := *nb.Block
+	newBlock.Pref = pRef
+	nb.Block = &newBlock
 	return &nb
 }
 
@@ -108,63 +106,4 @@ func (b *BeginEndBlock) GetBlockLabel(ctx *sql.Context) string {
 // RepresentsLoop implements the interface RepresentsLabeledBlock.
 func (b *BeginEndBlock) RepresentsLoop() bool {
 	return false
-}
-
-// RowIter implements the interface sql.Node.
-func (b *BeginEndBlock) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	b.pRef.PushScope()
-	rowIter, err := b.Block.RowIter(ctx, row)
-	if err != nil {
-		if exitErr, ok := err.(expression.ProcedureBlockExitError); ok && b.pRef.CurrentHeight() == int(exitErr) {
-			err = nil
-		} else if controlFlow, ok := err.(loopError); ok && strings.ToLower(controlFlow.Label) == strings.ToLower(b.Label) {
-			if controlFlow.IsExit {
-				err = nil
-			} else {
-				err = fmt.Errorf("encountered ITERATE on BEGIN...END, which should should have been caught by the analyzer")
-			}
-		}
-		if nErr := b.pRef.PopScope(ctx); err == nil && nErr != nil {
-			err = nErr
-		}
-		return sql.RowsToRowIter(), err
-	}
-	return &beginEndIter{
-		BeginEndBlock: b,
-		rowIter:       rowIter,
-	}, nil
-}
-
-// beginEndIter is the sql.RowIter of *BeginEndBlock.
-type beginEndIter struct {
-	*BeginEndBlock
-	rowIter sql.RowIter
-}
-
-var _ sql.RowIter = (*beginEndIter)(nil)
-
-// Next implements the interface sql.RowIter.
-func (b *beginEndIter) Next(ctx *sql.Context) (sql.Row, error) {
-	row, err := b.rowIter.Next(ctx)
-	if err != nil {
-		if exitErr, ok := err.(expression.ProcedureBlockExitError); ok && b.pRef.CurrentHeight() == int(exitErr) {
-			err = io.EOF
-		} else if controlFlow, ok := err.(loopError); ok && strings.ToLower(controlFlow.Label) == strings.ToLower(b.Label) {
-			if controlFlow.IsExit {
-				err = nil
-			} else {
-				err = fmt.Errorf("encountered ITERATE on BEGIN...END, which should should have been caught by the analyzer")
-			}
-		}
-		if nErr := b.pRef.PopScope(ctx); nErr != nil && err == io.EOF {
-			err = nErr
-		}
-		return nil, err
-	}
-	return row, nil
-}
-
-// Close implements the interface sql.RowIter.
-func (b *beginEndIter) Close(ctx *sql.Context) error {
-	return b.rowIter.Close(ctx)
 }

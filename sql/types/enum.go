@@ -15,6 +15,7 @@
 package types
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -41,17 +42,22 @@ const (
 var (
 	ErrConvertingToEnum = errors.NewKind("value %v is not valid for this Enum")
 
+	ErrDataTruncatedForColumn      = errors.NewKind("Data truncated for column '%s'")
+	ErrDataTruncatedForColumnAtRow = errors.NewKind("Data truncated for column '%s' at row %d")
+
 	enumValueType = reflect.TypeOf(uint16(0))
 )
 
 type EnumType struct {
 	collation             sql.CollationID
-	hashedValToIndex      map[uint64]int
-	indexToVal            []string
+	hashedValToIdx        map[uint64]int
+	valToIdx              map[string]int
+	idxToVal              []string
 	maxResponseByteLength uint32
 }
 
 var _ sql.EnumType = EnumType{}
+var _ sql.CollationCoercible = EnumType{}
 var _ sql.TypeWithCollation = EnumType{}
 
 // CreateEnumType creates a EnumType.
@@ -67,7 +73,8 @@ func CreateEnumType(values []string, collation sql.CollationID) (sql.EnumType, e
 	// including accounting for multibyte character representations.
 	var maxResponseByteLength uint32
 	maxCharLength := collation.Collation().CharacterSet.MaxLength()
-	valToIndex := make(map[uint64]int)
+	hashedValToIndex := make(map[uint64]int)
+	valToIdx := make(map[string]int)
 	for i, value := range values {
 		if !collation.Equals(sql.Collation_binary) {
 			// Trailing spaces are automatically deleted from ENUM member values in the table definition when a table
@@ -79,11 +86,12 @@ func CreateEnumType(values []string, collation sql.CollationID) (sql.EnumType, e
 		if err != nil {
 			return nil, err
 		}
-		if _, ok := valToIndex[hashedVal]; ok {
+		if _, ok := hashedValToIndex[hashedVal]; ok {
 			return nil, fmt.Errorf("duplicate entry: %v", value)
 		}
 		// The elements listed in the column specification are assigned index numbers, beginning with 1.
-		valToIndex[hashedVal] = i + 1
+		hashedValToIndex[hashedVal] = i + 1
+		valToIdx[value] = i + 1
 
 		byteLength := uint32(utf8.RuneCountInString(value) * int(maxCharLength))
 		if byteLength > maxResponseByteLength {
@@ -92,8 +100,9 @@ func CreateEnumType(values []string, collation sql.CollationID) (sql.EnumType, e
 	}
 	return EnumType{
 		collation:             collation,
-		hashedValToIndex:      valToIndex,
-		indexToVal:            values,
+		hashedValToIdx:        hashedValToIndex,
+		idxToVal:              values,
+		valToIdx:              valToIdx,
 		maxResponseByteLength: maxResponseByteLength,
 	}, nil
 }
@@ -108,23 +117,23 @@ func MustCreateEnumType(values []string, collation sql.CollationID) sql.EnumType
 }
 
 // MaxTextResponseByteLength implements the Type interface
-func (t EnumType) MaxTextResponseByteLength() uint32 {
+func (t EnumType) MaxTextResponseByteLength(*sql.Context) uint32 {
 	return t.maxResponseByteLength
 }
 
 // Compare implements Type interface.
-func (t EnumType) Compare(a interface{}, b interface{}) (int, error) {
+func (t EnumType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
 
 	// Attempt to convert the values to their enum values, but don't error
 	// out if they aren't valid enum values.
-	ai, err := t.Convert(a)
+	ai, _, err := t.Convert(ctx, a)
 	if err != nil && !ErrConvertingToEnum.Is(err) {
 		return 0, err
 	}
-	bi, err := t.Convert(b)
+	bi, _, err := t.Convert(ctx, b)
 	if err != nil && !ErrConvertingToEnum.Is(err) {
 		return 0, err
 	}
@@ -149,70 +158,74 @@ func (t EnumType) Compare(a interface{}, b interface{}) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t EnumType) Convert(v interface{}) (interface{}, error) {
+func (t EnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
-		return nil, nil
+		return nil, sql.InRange, nil
 	}
 
 	switch value := v.(type) {
 	case int:
-		if _, ok := t.At(value); ok {
-			return uint16(value), nil
+		// MySQL rejects 0 values in strict mode regardless of enum definition
+		if value == 0 {
+			if sqlCtx, ok := ctx.(*sql.Context); ok && sql.ValidateStrictMode(sqlCtx) {
+				return nil, sql.OutOfRange, ErrConvertingToEnum.New(value)
+			}
 		}
+		if _, ok := t.At(value); ok {
+			return uint16(value), sql.InRange, nil
+		}
+		// If value is not a valid enum index, return error
+		return nil, sql.OutOfRange, ErrConvertingToEnum.New(value)
 	case uint:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case int8:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case uint8:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case int16:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case uint16:
-		return t.Convert(int(value))
+		// uint16 values are stored enum indices - allow them without strict mode validation
+		if _, ok := t.At(int(value)); ok {
+			return value, sql.InRange, nil
+		}
+		// If value is not a valid enum index, return error
+		return nil, sql.OutOfRange, ErrConvertingToEnum.New(value)
 	case int32:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case uint32:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case int64:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case uint64:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case float32:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case float64:
-		return t.Convert(int(value))
+		return t.Convert(ctx, int(value))
 	case decimal.Decimal:
-		return t.Convert(value.IntPart())
+		return t.Convert(ctx, value.IntPart())
 	case decimal.NullDecimal:
 		if !value.Valid {
-			return nil, nil
+			return nil, sql.InRange, nil
 		}
-		return t.Convert(value.Decimal.IntPart())
+		return t.Convert(ctx, value.Decimal.IntPart())
 	case string:
 		if index := t.IndexOf(value); index != -1 {
-			return uint16(index), nil
+			return uint16(index), sql.InRange, nil
 		}
 	case []byte:
-		return t.Convert(string(value))
+		return t.Convert(ctx, string(value))
 	}
 
-	return nil, ErrConvertingToEnum.New(v)
-}
-
-// MustConvert implements the Type interface.
-func (t EnumType) MustConvert(v interface{}) interface{} {
-	value, err := t.Convert(v)
-	if err != nil {
-		panic(err)
-	}
-	return value
+	return nil, sql.OutOfRange, ErrConvertingToEnum.New(v)
 }
 
 // Equals implements the Type interface.
 func (t EnumType) Equals(otherType sql.Type) bool {
-	if ot, ok := otherType.(EnumType); ok && t.collation.Equals(ot.collation) && len(t.indexToVal) == len(ot.indexToVal) {
-		for i, val := range t.indexToVal {
-			if ot.indexToVal[i] != val {
+	if ot, ok := otherType.(EnumType); ok && t.collation.Equals(ot.collation) && len(t.idxToVal) == len(ot.idxToVal) {
+		for i, val := range t.idxToVal {
+			if ot.idxToVal[i] != val {
 				return false
 			}
 		}
@@ -231,7 +244,7 @@ func (t EnumType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Va
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
-	convertedValue, err := t.Convert(v)
+	convertedValue, _, err := t.Convert(ctx, v)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
@@ -243,23 +256,21 @@ func (t EnumType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Va
 	}
 	encodedBytes, ok := resultCharset.Encoder().Encode(encodings.StringToBytes(value))
 	if !ok {
-		return sqltypes.Value{}, sql.ErrCharSetFailedToEncode.New(t.collation.CharacterSet().Name())
+		snippet := value
+		if len(snippet) > 50 {
+			snippet = snippet[:50]
+		}
+		snippet = strings.ToValidUTF8(snippet, string(utf8.RuneError))
+		return sqltypes.Value{}, sql.ErrCharSetFailedToEncode.New(resultCharset.Name(), utf8.ValidString(value), snippet)
 	}
-	val := AppendAndSliceBytes(dest, encodedBytes)
+	val := encodedBytes
 
 	return sqltypes.MakeTrusted(sqltypes.Enum, val), nil
 }
 
 // String implements Type interface.
 func (t EnumType) String() string {
-	s := fmt.Sprintf("enum('%v')", strings.Join(t.indexToVal, `','`))
-	if t.CharacterSet() != sql.Collation_Default.CharacterSet() {
-		s += " CHARACTER SET " + t.CharacterSet().String()
-	}
-	if !t.collation.Equals(sql.Collation_Default) {
-		s += " COLLATE " + t.collation.String()
-	}
-	return s
+	return t.StringWithTableCollation(sql.Collation_Default)
 }
 
 // Type implements Type interface.
@@ -272,20 +283,31 @@ func (t EnumType) ValueType() reflect.Type {
 	return enumValueType
 }
 
+// CollationCoercibility implements sql.CollationCoercible interface.
+func (t EnumType) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return t.collation, 4
+}
+
 // Zero implements Type interface.
 func (t EnumType) Zero() interface{} {
-	// / If an ENUM column is declared NOT NULL, its default value is the first element of the list of permitted values.
-	return uint16(1)
+	// TODO: If an ENUM column is declared NOT NULL, its default value is the first element of the list of permitted values.
+	return uint16(0)
 }
 
 // At implements EnumType interface.
-func (t EnumType) At(index int) (string, bool) {
-	// / The elements listed in the column specification are assigned index numbers, beginning with 1.
-	index -= 1
-	if index < 0 || index >= len(t.indexToVal) {
+func (t EnumType) At(idx int) (string, bool) {
+	// for index zero, the value is empty. It's used for insert ignore.
+	if idx < 0 {
 		return "", false
 	}
-	return t.indexToVal[index], true
+	if idx == 0 {
+		return "", true
+	}
+	if idx > len(t.idxToVal) {
+		return "", false
+	}
+	// The elements listed in the column specification are assigned index numbers, beginning with 1.
+	return t.idxToVal[idx-1], true
 }
 
 // CharacterSet implements EnumType interface.
@@ -300,9 +322,12 @@ func (t EnumType) Collation() sql.CollationID {
 
 // IndexOf implements EnumType interface.
 func (t EnumType) IndexOf(v string) int {
+	if idx, ok := t.valToIdx[v]; ok {
+		return idx
+	}
 	hashedVal, err := t.collation.HashToUint(v)
 	if err == nil {
-		if index, ok := t.hashedValToIndex[hashedVal]; ok {
+		if index, ok := t.hashedValToIdx[hashedVal]; ok {
 			return index
 		}
 	}
@@ -316,19 +341,48 @@ func (t EnumType) IndexOf(v string) int {
 	return -1
 }
 
+// IsSubsetOf implements the sql.EnumType interface.
+func (t EnumType) IsSubsetOf(otherType sql.EnumType) bool {
+	if ot, ok := otherType.(EnumType); ok && t.collation.Equals(ot.collation) && len(t.idxToVal) <= len(ot.idxToVal) {
+		for i, val := range t.idxToVal {
+			if ot.idxToVal[i] != val {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
 // NumberOfElements implements EnumType interface.
 func (t EnumType) NumberOfElements() uint16 {
-	return uint16(len(t.indexToVal))
+	return uint16(len(t.idxToVal))
 }
 
 // Values implements EnumType interface.
 func (t EnumType) Values() []string {
-	vals := make([]string, len(t.indexToVal))
-	copy(vals, t.indexToVal)
+	vals := make([]string, len(t.idxToVal))
+	copy(vals, t.idxToVal)
 	return vals
 }
 
-// WithNewCollation implements TypeWithCollation interface.
+// WithNewCollation implements sql.TypeWithCollation interface.
 func (t EnumType) WithNewCollation(collation sql.CollationID) (sql.Type, error) {
-	return CreateEnumType(t.indexToVal, collation)
+	return CreateEnumType(t.idxToVal, collation)
+}
+
+// StringWithTableCollation implements sql.TypeWithCollation interface.
+func (t EnumType) StringWithTableCollation(tableCollation sql.CollationID) string {
+	escapedValues := make([]string, len(t.idxToVal))
+	for i, value := range t.idxToVal {
+		escapedValues[i] = strings.ReplaceAll(value, "'", "''")
+	}
+	s := fmt.Sprintf("enum('%s')", strings.Join(escapedValues, `','`))
+	if t.CharacterSet() != tableCollation.CharacterSet() {
+		s += " CHARACTER SET " + t.CharacterSet().String()
+	}
+	if t.collation != tableCollation {
+		s += " COLLATE " + t.collation.String()
+	}
+	return s
 }

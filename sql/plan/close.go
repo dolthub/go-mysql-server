@@ -16,7 +16,6 @@ package plan
 
 import (
 	"fmt"
-	"io"
 
 	"github.com/gabereiser/go-mysql-server/sql/expression"
 
@@ -26,10 +25,11 @@ import (
 // Close represents the CLOSE statement, which closes a cursor.
 type Close struct {
 	Name string
-	pRef *expression.ProcedureReference
+	Pref *expression.ProcedureReference
 }
 
 var _ sql.Node = (*Close)(nil)
+var _ sql.CollationCoercible = (*Close)(nil)
 var _ expression.ProcedureReferencable = (*Close)(nil)
 
 // NewClose returns a new *Close node.
@@ -59,44 +59,23 @@ func (c *Close) Children() []sql.Node {
 	return nil
 }
 
+func (c *Close) IsReadOnly() bool {
+	return true
+}
+
 // WithChildren implements the interface sql.Node.
 func (c *Close) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(c, children...)
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (c *Close) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
-}
-
-// RowIter implements the interface sql.Node.
-func (c *Close) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return &closeIter{c}, nil
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Close) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // WithParamReference implements the interface expression.ProcedureReferencable.
 func (c *Close) WithParamReference(pRef *expression.ProcedureReference) sql.Node {
 	nc := *c
-	nc.pRef = pRef
+	nc.Pref = pRef
 	return &nc
-}
-
-// closeIter is the sql.RowIter of *Close.
-type closeIter struct {
-	c *Close
-}
-
-var _ sql.RowIter = (*closeIter)(nil)
-
-// Next implements the interface sql.RowIter.
-func (c *closeIter) Next(ctx *sql.Context) (sql.Row, error) {
-	if err := c.c.pRef.CloseCursor(ctx, c.c.Name); err != nil {
-		return nil, err
-	}
-	return nil, io.EOF
-}
-
-// Close implements the interface sql.RowIter.
-func (c *closeIter) Close(ctx *sql.Context) error {
-	return nil
 }

@@ -32,7 +32,6 @@ func comparisonSatisfiesJoinCondition(expr expression.Comparer, j *plan.JoinNode
 	switch e := expr.(type) {
 	case *expression.Equals, *expression.NullSafeEquals, *expression.GreaterThan,
 		*expression.LessThan, *expression.LessThanOrEqual, *expression.GreaterThanOrEqual:
-
 		ce, ok := e.(expression.Comparer)
 		if !ok {
 			return false
@@ -46,6 +45,20 @@ func comparisonSatisfiesJoinCondition(expr expression.Comparer, j *plan.JoinNode
 			return false
 		}
 	default:
+		if e, ok := e.(expression.Equality); ok && e.RepresentsEquality() {
+			ce, ok := e.(expression.Comparer)
+			if !ok {
+				return false
+			}
+			le, ok = ce.Left().(*expression.GetField)
+			if !ok {
+				return false
+			}
+			re, ok = ce.Right().(*expression.GetField)
+			if !ok {
+				return false
+			}
+		}
 		return false
 	}
 
@@ -68,12 +81,11 @@ func expressionCoversJoin(c sql.Expression, j *plan.JoinNode) (found bool) {
 
 // replaceCrossJoins recursively replaces filter nested cross joins with equivalent inner joins.
 // There are 3 phases after we identify a Filter -> ... -> CrossJoin pattern.
-// 1) Build a list of disjunct predicate expressions by top-down splitting conjunctions (AND).
-// 2) For every CrossJoin, check whether a subset of predicates covers as join conditions,
-//    and create a new InnerJoin with the matching predicates.
-// 3) Remove predicates from the parent Filter that have been pushed into InnerJoins.
-
-func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, sel RuleSelector) (sql.Node, transform.TreeIdentity, error) {
+//  1. Build a list of disjunct predicate expressions by top-down splitting conjunctions (AND).
+//  2. For every CrossJoin, check whether a subset of predicates covers as join conditions,
+//     and create a new InnerJoin with the matching predicates.
+//  3. Remove predicates from the parent Filter that have been pushed into InnerJoins.
+func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	if !n.Resolved() {
 		return n, transform.SameTree, nil
 	}
@@ -83,7 +95,7 @@ func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 		if !ok {
 			return n, transform.SameTree, nil
 		}
-		predicates := splitConjunction(f.Expression)
+		predicates := expression.SplitConjunction(f.Expression)
 		movedPredicates := make(map[int]struct{})
 		newF, _, err := transform.Node(f, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 			cj, ok := n.(*plan.JoinNode)
@@ -107,7 +119,9 @@ func replaceCrossJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scope *Scope, 
 				movedPredicates[v] = struct{}{}
 				newExprs[i] = predicates[v]
 			}
-			return plan.NewInnerJoin(cj.Left(), cj.Right(), expression.JoinAnd(newExprs...)), transform.NewTree, nil
+			// retain comment
+			nij := plan.NewInnerJoin(cj.Left(), cj.Right(), expression.JoinAnd(newExprs...))
+			return nij.WithComment(cj.Comment()), transform.NewTree, nil
 		})
 		if err != nil {
 			return f, transform.SameTree, err

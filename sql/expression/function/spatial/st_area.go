@@ -28,6 +28,7 @@ type Area struct {
 }
 
 var _ sql.FunctionExpression = (*Area)(nil)
+var _ sql.CollationCoercible = (*Area)(nil)
 
 // NewArea creates a new Area expression.
 func NewArea(arg sql.Expression) sql.Expression {
@@ -47,6 +48,11 @@ func (a *Area) Description() string {
 // Type implements the sql.Expression interface.
 func (a *Area) Type() sql.Type {
 	return types.Float64
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Area) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
 }
 
 func (a *Area) String() string {
@@ -97,6 +103,9 @@ func (a *Area) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	p, ok := v.(types.Polygon)
 	if !ok {
 		return nil, sql.ErrInvalidArgument.New(a.FunctionName())
+	}
+	if p.SRID != types.CartesianSRID {
+		return nil, sql.ErrUnsupportedSRID.New(p.SRID)
 	}
 
 	var totalArea float64

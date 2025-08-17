@@ -29,7 +29,7 @@ type Row []interface{}
 
 // NewRow creates a row from the given values.
 func NewRow(values ...interface{}) Row {
-	row := make([]interface{}, len(values))
+	row := make(Row, len(values))
 	copy(row, values)
 	return row
 }
@@ -42,9 +42,7 @@ func (r Row) Copy() Row {
 // Append appends all the values in r2 to this row and returns the result
 func (r Row) Append(r2 Row) Row {
 	row := make(Row, len(r)+len(r2))
-	for i := range r {
-		row[i] = r[i]
-	}
+	copy(row, r)
 	for i := range r2 {
 		row[i+len(r)] = r2[i]
 	}
@@ -52,14 +50,14 @@ func (r Row) Append(r2 Row) Row {
 }
 
 // Equals checks whether two rows are equal given a schema.
-func (r Row) Equals(row Row, schema Schema) (bool, error) {
+func (r Row) Equals(ctx *Context, row Row, schema Schema) (bool, error) {
 	if len(row) != len(r) || len(row) != len(schema) {
 		return false, nil
 	}
 
 	for i, colLeft := range r {
 		colRight := row[i]
-		cmp, err := schema[i].Type.Compare(colLeft, colRight)
+		cmp, err := schema[i].Type.Compare(ctx, colLeft, colRight)
 		if err != nil {
 			return false, err
 		}
@@ -94,22 +92,8 @@ type RowIter interface {
 	Closer
 }
 
-// RowIter2 is an iterator that fills a row frame buffer with rows from its source
-type RowIter2 interface {
-	RowIter
-
-	// Next2 produces the next row, and stores it in the RowFrame provided.
-	// It will return io.EOF if it's the last row. After retrieving the
-	// last row, Close will be automatically called.
-	Next2(ctx *Context, frame *RowFrame) error
-}
-
 // RowIterToRows converts a row iterator to a slice of rows.
-func RowIterToRows(ctx *Context, sch Schema, i RowIter) ([]Row, error) {
-	if ri2, ok := i.(RowIterTypeSelector); ok && ri2.IsNode2() && sch != nil {
-		return RowIter2ToRows(ctx, sch, ri2.(RowIter2))
-	}
-
+func RowIterToRows(ctx *Context, i RowIter) ([]Row, error) {
 	var rows []Row
 	for {
 		row, err := i.Next(ctx)
@@ -123,28 +107,6 @@ func RowIterToRows(ctx *Context, sch Schema, i RowIter) ([]Row, error) {
 		}
 
 		rows = append(rows, row)
-	}
-
-	return rows, i.Close(ctx)
-}
-
-func RowIter2ToRows(ctx *Context, sch Schema, i RowIter2) ([]Row, error) {
-	var rows []Row
-
-	for {
-		f := NewRowFrame()
-		err := i.Next2(ctx, f)
-
-		if err == io.EOF {
-			break
-		}
-
-		if err != nil {
-			_ = i.Close(ctx)
-			return nil, err
-		}
-
-		rows = append(rows, rowFromRow2(sch, f.Row2()))
 	}
 
 	return rows, i.Close(ctx)
@@ -215,16 +177,6 @@ func rowFromRow2(sch Schema, r Row2) Row {
 	return row
 }
 
-// NodeToRows converts a node to a slice of rows.
-func NodeToRows(ctx *Context, n Node) ([]Row, error) {
-	i, err := n.RowIter(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return RowIterToRows(ctx, nil, i)
-}
-
 // RowsToRowIter creates a RowIter that iterates over the given rows.
 func RowsToRowIter(rows ...Row) RowIter {
 	return &sliceRowIter{rows: rows}
@@ -250,8 +202,10 @@ func (i *sliceRowIter) Close(*Context) error {
 	return nil
 }
 
-// RowIterTypeSelector is implemented by top-level type-switch nodes that return either a Node or Node2 implementation.
-type RowIterTypeSelector interface {
+// MutableRowIter is an extension of RowIter for integrators that wrap RowIters.
+// It allows for analysis rules to inspect the underlying RowIters.
+type MutableRowIter interface {
 	RowIter
-	IsNode2() bool
+	GetChildIter() RowIter
+	WithChildIter(childIter RowIter) RowIter
 }

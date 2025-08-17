@@ -33,9 +33,11 @@ type unaryAggBase struct {
 	functionName string
 	description  string
 	typ          sql.Type
+	id           sql.ColumnId
 }
 
 var _ sql.Aggregation = (*unaryAggBase)(nil)
+var _ sql.CollationCoercible = (*unaryAggBase)(nil)
 
 func (a *unaryAggBase) NewWindowFunction() (sql.WindowFunction, error) {
 	panic("unaryAggBase is a base type, type must implement NewWindowFunction")
@@ -46,10 +48,10 @@ func (a *unaryAggBase) NewBuffer() (sql.AggregationBuffer, error) {
 }
 
 // WithWindow returns a new unaryAggBase to be embedded in wrapping type
-func (a *unaryAggBase) WithWindow(window *sql.WindowDefinition) (sql.Aggregation, error) {
+func (a *unaryAggBase) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
 	na := *a
 	na.window = window
-	return &na, nil
+	return &na
 }
 
 func (a *unaryAggBase) Window() *sql.WindowDefinition {
@@ -62,6 +64,23 @@ func (a *unaryAggBase) String() string {
 
 func (a *unaryAggBase) Type() sql.Type {
 	return a.typ
+}
+
+// Id implements the Aggregation interface
+func (a *unaryAggBase) Id() sql.ColumnId {
+	return a.id
+}
+
+// WithId implements the Aggregation interface
+func (a *unaryAggBase) WithId(id sql.ColumnId) sql.IdExpression {
+	ret := *a
+	ret.id = id
+	return &ret
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (a *unaryAggBase) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, a.Child)
 }
 
 func (a *unaryAggBase) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -101,16 +120,16 @@ func (a *unaryAggBase) WithChildren(children ...sql.Expression) (sql.Expression,
 		if err != nil {
 			return nil, err
 		}
-		return na.WithWindow(w)
+		return na.WithWindow(w), nil
 	}
 	return &na, nil
 }
 
-func (a unaryAggBase) FunctionName() string {
+func (a *unaryAggBase) FunctionName() string {
 	return a.functionName
 }
 
-func (a unaryAggBase) Description() string {
+func (a *unaryAggBase) Description() string {
 	return a.description
 }
 

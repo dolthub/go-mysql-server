@@ -15,13 +15,7 @@
 package plan
 
 import (
-	"fmt"
-	"io"
-
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
-
-	"github.com/gabereiser/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // Limit is a node that only allows up to N rows to be retrieved.
@@ -30,6 +24,9 @@ type Limit struct {
 	Limit         sql.Expression
 	CalcFoundRows bool
 }
+
+var _ sql.Node = (*Limit)(nil)
+var _ sql.CollationCoercible = (*Limit)(nil)
 
 // NewLimit creates a new Limit node with the given size.
 func NewLimit(size sql.Expression, child sql.Node) *Limit {
@@ -64,61 +61,8 @@ func (l Limit) WithCalcFoundRows(v bool) *Limit {
 	return &l
 }
 
-// RowIter implements the Node interface.
-func (l *Limit) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.Limit", trace.WithAttributes(attribute.Stringer("limit", l.Limit)))
-
-	limit, err := getInt64Value(ctx, l.Limit)
-	if err != nil {
-		span.End()
-		return nil, err
-	}
-
-	childIter, err := l.Child.RowIter(ctx, row)
-	if err != nil {
-		span.End()
-		return nil, err
-	}
-	return sql.NewSpanIter(span, &limitIter{
-		calcFoundRows: l.CalcFoundRows,
-		limit:         limit,
-		childIter:     childIter,
-	}), nil
-}
-
-// getInt64Value returns the int64 literal value in the expression given, or an error with the errStr given if it
-// cannot.
-func getInt64Value(ctx *sql.Context, expr sql.Expression) (int64, error) {
-	i, err := expr.Eval(ctx, nil)
-	if err != nil {
-		return 0, err
-	}
-
-	switch i := i.(type) {
-	case int:
-		return int64(i), nil
-	case int8:
-		return int64(i), nil
-	case int16:
-		return int64(i), nil
-	case int32:
-		return int64(i), nil
-	case int64:
-		return i, nil
-	case uint:
-		return int64(i), nil
-	case uint8:
-		return int64(i), nil
-	case uint16:
-		return int64(i), nil
-	case uint32:
-		return int64(i), nil
-	case uint64:
-		return int64(i), nil
-	default:
-		// analyzer should catch this already
-		panic(fmt.Sprintf("Unsupported type for limit %T", i))
-	}
+func (l Limit) IsReadOnly() bool {
+	return l.Child.IsReadOnly()
 }
 
 // WithChildren implements the Node interface.
@@ -132,9 +76,9 @@ func (l *Limit) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return &nl, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (l *Limit) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return l.Child.CheckPrivileges(ctx, opChecker)
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (l *Limit) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.GetCoercibility(ctx, l.Child)
 }
 
 func (l Limit) String() string {
@@ -149,49 +93,4 @@ func (l Limit) DebugString() string {
 	_ = pr.WriteNode("Limit(%s)", l.Limit)
 	_ = pr.WriteChildren(sql.DebugString(l.Child))
 	return pr.String()
-}
-
-type limitIter struct {
-	calcFoundRows bool
-	currentPos    int64
-	childIter     sql.RowIter
-	limit         int64
-}
-
-func (li *limitIter) Next(ctx *sql.Context) (sql.Row, error) {
-	if li.currentPos >= li.limit {
-		// If we were asked to calc all found rows, then when we are past the limit we iterate over the rest of the
-		// result set to count it
-		if li.calcFoundRows {
-			for {
-				_, err := li.childIter.Next(ctx)
-				if err != nil {
-					return nil, err
-				}
-				li.currentPos++
-			}
-		}
-
-		return nil, io.EOF
-	}
-
-	childRow, err := li.childIter.Next(ctx)
-	li.currentPos++
-	if err != nil {
-		return nil, err
-	}
-
-	return childRow, nil
-}
-
-func (li *limitIter) Close(ctx *sql.Context) error {
-	err := li.childIter.Close(ctx)
-	if err != nil {
-		return err
-	}
-
-	if li.calcFoundRows {
-		ctx.SetLastQueryInfo(sql.FoundRows, li.currentPos)
-	}
-	return nil
 }

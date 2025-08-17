@@ -15,10 +15,12 @@
 package sql
 
 import (
+	"context"
+	"fmt"
 	"strings"
-	"sync"
 	"sync/atomic"
 
+	"github.com/dolthub/vitess/go/mysql"
 	"github.com/sirupsen/logrus"
 )
 
@@ -29,36 +31,33 @@ type BaseSession struct {
 	addr   string
 	client Client
 
-	// TODO(andy): in principle, we shouldn't
-	//   have concurrent access to the session.
-	//   Needs investigation.
-	mu sync.RWMutex
-
-	// |mu| protects the following state
 	logger           *logrus.Entry
 	currentDB        string
 	transactionDb    string
 	systemVars       map[string]SystemVarValue
+	statusVars       map[string]StatusVarValue
 	userVars         SessionUserVariables
 	idxReg           *IndexRegistry
 	viewReg          *ViewRegistry
 	warnings         []*Warning
-	warncnt          uint16
+	warningLock      bool
+	warningCount     uint16 // num of warnings from recent query; does not always equal to len(warnings)
 	locks            map[string]bool
 	queriedDb        string
-	lastQueryInfo    map[string]int64
+	lastQueryInfo    map[string]*atomic.Value
 	tx               Transaction
 	ignoreAutocommit bool
+	charset          CharacterSetID
 
 	// When the MySQL database updates any tables related to privileges, it increments its counter. We then update our
 	// privilege set if our counter doesn't equal the database's counter.
 	privSetCounter uint64
 	privilegeSet   PrivilegeSet
+
+	storedProcParams map[string]*StoredProcParam
 }
 
 func (s *BaseSession) GetLogger() *logrus.Entry {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 
 	if s.logger == nil {
 		s.logger = s.newLogger()
@@ -72,34 +71,24 @@ func (s *BaseSession) newLogger() *logrus.Entry {
 }
 
 func (s *BaseSession) SetLogger(logger *logrus.Entry) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.logger = logger
 }
 
 func (s *BaseSession) SetIgnoreAutoCommit(ignore bool) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.ignoreAutocommit = ignore
 }
 
 func (s *BaseSession) GetIgnoreAutoCommit() bool {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 	return s.ignoreAutocommit
 }
 
 var _ Session = (*BaseSession)(nil)
 
 func (s *BaseSession) SetTransactionDatabase(dbName string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.transactionDb = dbName
 }
 
 func (s *BaseSession) GetTransactionDatabase() string {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 	return s.transactionDb
 }
 
@@ -118,10 +107,16 @@ func (s *BaseSession) SetClient(c Client) {
 // GetAllSessionVariables implements the Session interface.
 func (s *BaseSession) GetAllSessionVariables() map[string]interface{} {
 	m := make(map[string]interface{})
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 
 	for k, v := range s.systemVars {
+		if sysType, ok := v.Var.GetType().(SetType); ok {
+			if sv, ok := v.Val.(uint64); ok {
+				if svStr, err := sysType.BitsToString(sv); err == nil {
+					m[k] = svStr
+				}
+				continue
+			}
+		}
 		m[k] = v.Val
 	}
 	return m
@@ -141,16 +136,16 @@ func (s *BaseSession) SetSessionVariable(ctx *Context, sysVarName string, value 
 			if !ok {
 				return ErrUnknownSystemVariable.New(sysVarName)
 			}
-			return s.setSessVar(ctx, sv, value)
+			return s.setSessVar(ctx, sv, value, false)
 		} else {
 			return ErrUnknownSystemVariable.New(sysVarName)
 		}
 	}
 
-	if !sysVar.Var.Dynamic {
+	if sysVar.Var.IsReadOnly() {
 		return ErrSystemVariableReadOnly.New(sysVarName)
 	}
-	return s.setSessVar(ctx, sysVar.Var, value)
+	return s.setSessVar(ctx, sysVar.Var, value, false)
 }
 
 // InitSessionVariable implements the Session interface and is used to initialize variables (Including read-only variables)
@@ -160,27 +155,33 @@ func (s *BaseSession) InitSessionVariable(ctx *Context, sysVarName string, value
 		return ErrUnknownSystemVariable.New(sysVarName)
 	}
 
-	val, ok := s.systemVars[sysVar.Name]
-	if ok && val.Val != sysVar.Default {
+	sysVarName = strings.ToLower(sysVarName)
+	val, ok := s.systemVars[sysVarName]
+	if ok && val.Val != sysVar.GetDefault() {
 		return ErrSystemVariableReinitialized.New(sysVarName)
 	}
 
-	return s.setSessVar(ctx, sysVar, value)
+	return s.setSessVar(ctx, sysVar, value, true)
 }
 
-func (s *BaseSession) setSessVar(ctx *Context, sysVar SystemVariable, value interface{}) error {
-	if sysVar.Scope == SystemVariableScope_Global {
-		return ErrSystemVariableGlobalOnly.New(sysVar.Name)
+func (s *BaseSession) setSessVar(ctx *Context, sysVar SystemVariable, value interface{}, init bool) error {
+	var svv SystemVarValue
+	var err error
+	if init {
+		svv, err = sysVar.InitValue(ctx, value, false)
+		if err != nil {
+			return err
+		}
+	} else {
+		svv, err = sysVar.SetValue(ctx, value, false)
+		if err != nil {
+			return err
+		}
 	}
-	convertedVal, err := sysVar.Type.Convert(value)
-	if err != nil {
-		return err
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.systemVars[sysVar.Name] = SystemVarValue{
-		Var: sysVar,
-		Val: convertedVal,
+	sysVarName := strings.ToLower(sysVar.GetName())
+	s.systemVars[sysVarName] = svv
+	if sysVarName == characterSetResultsSysVarName {
+		s.charset = CharacterSet_Unspecified
 	}
 	return nil
 }
@@ -192,16 +193,13 @@ func (s *BaseSession) SetUserVariable(ctx *Context, varName string, value interf
 
 // GetSessionVariable implements the Session interface.
 func (s *BaseSession) GetSessionVariable(ctx *Context, sysVarName string) (interface{}, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	sysVarName = strings.ToLower(sysVarName)
 	sysVar, ok := s.systemVars[sysVarName]
 	if !ok {
 		return nil, ErrUnknownSystemVariable.New(sysVarName)
 	}
 	// TODO: this is duplicated from within variables.globalSystemVariables, suggesting the need for an interface
-	if sysType, ok := sysVar.Var.Type.(SetType); ok {
+	if sysType, ok := sysVar.Var.GetType().(SetType); ok {
 		if sv, ok := sysVar.Val.(uint64); ok {
 			return sysType.BitsToString(sv)
 		}
@@ -214,10 +212,80 @@ func (s *BaseSession) GetUserVariable(ctx *Context, varName string) (Type, inter
 	return s.userVars.GetUserVariable(ctx, varName)
 }
 
+// GetStatusVariable implements the Session interface.
+func (s *BaseSession) GetStatusVariable(_ *Context, statVarName string) (interface{}, error) {
+	statVar, ok := s.statusVars[statVarName]
+	if !ok {
+		return nil, ErrUnknownSystemVariable.New(statVarName)
+	}
+	return statVar.Value(), nil
+}
+
+// SetStatusVariable implements the Session interface.
+func (s *BaseSession) SetStatusVariable(_ *Context, statVarName string, val interface{}) error {
+	statVar, ok := s.statusVars[statVarName]
+	if !ok {
+		return ErrUnknownSystemVariable.New(statVarName)
+	}
+	statVar.Set(val)
+	s.statusVars[statVarName] = statVar
+	return nil
+}
+
+// GetAllStatusVariables implements the Session interface.
+func (s *BaseSession) GetAllStatusVariables(_ *Context) map[string]StatusVarValue {
+	m := make(map[string]StatusVarValue)
+	for k, v := range s.statusVars {
+		m[k] = v
+	}
+	return m
+}
+
+// IncrementStatusVariable implements the Session interface.
+func (s *BaseSession) IncrementStatusVariable(ctx *Context, statVarName string, val int) {
+	if _, ok := s.statusVars[statVarName]; !ok {
+		return
+	}
+	if val < 0 {
+		s.statusVars[statVarName].Increment(-(uint64(-val)))
+	} else {
+		s.statusVars[statVarName].Increment((uint64(val)))
+	}
+	return
+}
+
+// NewStoredProcParam creates a new Stored Procedure Parameter in the Session
+func (s *BaseSession) NewStoredProcParam(name string, param *StoredProcParam) *StoredProcParam {
+	name = strings.ToLower(name)
+	if spp, ok := s.storedProcParams[name]; ok {
+		return spp
+	}
+	s.storedProcParams[name] = param
+	return param
+}
+
+// GetStoredProcParam retrieves the named stored procedure parameter, from the Session, returning nil if not found.
+func (s *BaseSession) GetStoredProcParam(name string) *StoredProcParam {
+	name = strings.ToLower(name)
+	if param, ok := s.storedProcParams[name]; ok {
+		return param
+	}
+	return nil
+}
+
+// SetStoredProcParam sets the named Stored Procedure Parameter from the Session to val and marks it as HasSet.
+// If the Parameter has not been initialized, this will throw an error.
+func (s *BaseSession) SetStoredProcParam(name string, val any) error {
+	param := s.GetStoredProcParam(name)
+	if param == nil {
+		return fmt.Errorf("variable `%s` could not be found", name)
+	}
+	param.SetValue(val)
+	return nil
+}
+
 // GetCharacterSet returns the character set for this session (defined by the system variable `character_set_connection`).
 func (s *BaseSession) GetCharacterSet() CharacterSetID {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 	sysVar, _ := s.systemVars[characterSetConnectionSysVarName]
 	if sysVar.Val == nil {
 		return CharacterSet_Unspecified
@@ -231,23 +299,22 @@ func (s *BaseSession) GetCharacterSet() CharacterSetID {
 
 // GetCharacterSetResults returns the result character set for this session (defined by the system variable `character_set_results`).
 func (s *BaseSession) GetCharacterSetResults() CharacterSetID {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	sysVar, _ := s.systemVars[characterSetResultsSysVarName]
-	if sysVar.Val == nil {
-		return CharacterSet_Unspecified
+	if s.charset == CharacterSet_Unspecified {
+		sysVar, _ := s.systemVars[characterSetResultsSysVarName]
+		if sysVar.Val == nil {
+			return CharacterSet_Unspecified
+		}
+		var err error
+		s.charset, err = ParseCharacterSet(sysVar.Val.(string))
+		if err != nil {
+			panic(err) // shouldn't happen
+		}
 	}
-	charSet, err := ParseCharacterSet(sysVar.Val.(string))
-	if err != nil {
-		panic(err) // shouldn't happen
-	}
-	return charSet
+	return s.charset
 }
 
 // GetCollation returns the collation for this session (defined by the system variable `collation_connection`).
 func (s *BaseSession) GetCollation() CollationID {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	sysVar, ok := s.systemVars[collationConnectionSysVarName]
 
 	// In tests, the collation may not be set because the sys vars haven't been initialized
@@ -258,7 +325,7 @@ func (s *BaseSession) GetCollation() CollationID {
 		return Collation_Unspecified
 	}
 	valStr := sysVar.Val.(string)
-	collation, err := ParseCollation(nil, &valStr, false)
+	collation, err := ParseCollation("", valStr, false)
 	if err != nil {
 		panic(err) // shouldn't happen
 	}
@@ -266,27 +333,29 @@ func (s *BaseSession) GetCollation() CollationID {
 }
 
 // ValidateSession provides integrators a chance to do any custom validation of this session before any query is executed in it.
-func (s *BaseSession) ValidateSession(ctx *Context, dbName string) error {
+func (s *BaseSession) ValidateSession(ctx *Context) error {
 	return nil
 }
 
 // GetCurrentDatabase gets the current database for this session
 func (s *BaseSession) GetCurrentDatabase() string {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 	return s.currentDB
 }
 
 // SetCurrentDatabase sets the current database for this session
 func (s *BaseSession) SetCurrentDatabase(dbName string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.currentDB = dbName
 	logger := s.logger
 	if logger == nil {
 		logger = s.newLogger()
 	}
 	s.logger = logger.WithField(ConnectionDbLogField, dbName)
+}
+
+func (s *BaseSession) UseDatabase(ctx *Context, db Database) error {
+	// Nothing to do for default implementation
+	// Integrators should override this method on custom session implementations as necessary
+	return nil
 }
 
 // ID implements the Session interface.
@@ -300,72 +369,66 @@ func (s *BaseSession) SetConnectionId(id uint32) {
 
 // Warn stores the warning in the session.
 func (s *BaseSession) Warn(warn *Warning) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.warnings = append(s.warnings, warn)
+	s.warningCount = uint16(len(s.warnings))
 }
 
 // Warnings returns a copy of session warnings (from the most recent - the last one)
 // The function implements sql.Session interface
 func (s *BaseSession) Warnings() []*Warning {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	n := len(s.warnings)
 	warns := make([]*Warning, n)
 	for i := 0; i < n; i++ {
 		warns[i] = s.warnings[n-i-1]
 	}
-
 	return warns
+}
+
+// LockWarnings locks the session warnings so that they can't be cleared
+func (s *BaseSession) LockWarnings() {
+	s.warningLock = true
+}
+
+// UnlockWarnings locks the session warnings so that they can be cleared
+func (s *BaseSession) UnlockWarnings() {
+	s.warningLock = false
+}
+
+// ClearWarningCount cleans up session warnings
+func (s *BaseSession) ClearWarningCount() {
+	s.warningCount = 0
 }
 
 // ClearWarnings cleans up session warnings
 func (s *BaseSession) ClearWarnings() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	cnt := uint16(len(s.warnings))
-	if s.warncnt == cnt {
-		if s.warnings != nil {
-			s.warnings = s.warnings[:0]
-		}
-		s.warncnt = 0
-	} else {
-		s.warncnt = cnt
+	if s.warningLock {
+		return
 	}
+	if s.warnings != nil {
+		s.warnings = s.warnings[:0]
+	}
+	s.ClearWarningCount()
 }
 
 // WarningCount returns a number of session warnings
 func (s *BaseSession) WarningCount() uint16 {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return uint16(len(s.warnings))
+	return s.warningCount
 }
 
 // AddLock adds a lock to the set of locks owned by this user which will need to be released if this session terminates
 func (s *BaseSession) AddLock(lockName string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	s.locks[lockName] = true
 	return nil
 }
 
 // DelLock removes a lock from the set of locks owned by this user
 func (s *BaseSession) DelLock(lockName string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	delete(s.locks, lockName)
 	return nil
 }
 
 // IterLocks iterates through all locks owned by this user
 func (s *BaseSession) IterLocks(cb func(name string) error) error {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	for name := range s.locks {
 		err := cb(name)
 
@@ -379,63 +442,59 @@ func (s *BaseSession) IterLocks(cb func(name string) error) error {
 
 // GetQueriedDatabase implements the Session interface.
 func (s *BaseSession) GetQueriedDatabase() string {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 	return s.queriedDb
 }
 
 // SetQueriedDatabase implements the Session interface.
 func (s *BaseSession) SetQueriedDatabase(dbName string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.queriedDb = dbName
 }
 
 func (s *BaseSession) GetIndexRegistry() *IndexRegistry {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	return s.idxReg
 }
 
 func (s *BaseSession) GetViewRegistry() *ViewRegistry {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	return s.viewReg
 }
 
 func (s *BaseSession) SetIndexRegistry(reg *IndexRegistry) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.idxReg = reg
 }
 
 func (s *BaseSession) SetViewRegistry(reg *ViewRegistry) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.viewReg = reg
 }
 
-func (s *BaseSession) SetLastQueryInfo(key string, value int64) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.lastQueryInfo[key] = value
+func (s *BaseSession) SetLastQueryInfoInt(key string, value int64) {
+	s.lastQueryInfo[key].Store(value)
 }
 
-func (s *BaseSession) GetLastQueryInfo(key string) int64 {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.lastQueryInfo[key]
+func (s *BaseSession) GetLastQueryInfoInt(key string) int64 {
+	value, ok := s.lastQueryInfo[key].Load().(int64)
+	if !ok {
+		panic(fmt.Sprintf("last query info value stored for %s is not an int64 value, but a %T", key, s.lastQueryInfo[key]))
+	}
+	return value
+}
+
+func (s *BaseSession) SetLastQueryInfoString(key string, value string) {
+	s.lastQueryInfo[key].Store(value)
+}
+
+func (s *BaseSession) GetLastQueryInfoString(key string) string {
+	value, ok := s.lastQueryInfo[key].Load().(string)
+	if !ok {
+		panic(fmt.Sprintf("last query info value stored for %s is not a string value, but a %T", key, s.lastQueryInfo[key]))
+	}
+	return value
 }
 
 func (s *BaseSession) GetTransaction() Transaction {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 	return s.tx
 }
 
 func (s *BaseSession) SetTransaction(tx Transaction) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.tx = tx
 }
 
@@ -448,48 +507,75 @@ func (s *BaseSession) SetPrivilegeSet(newPs PrivilegeSet, counter uint64) {
 	s.privilegeSet = newPs
 }
 
+// BaseSessionFromConnection is a SessionBuilder that returns a base session for the given connection and remote address
+func BaseSessionFromConnection(ctx context.Context, c *mysql.Conn, addr string) (*BaseSession, error) {
+	host := ""
+	user := ""
+	mysqlConnectionUser, ok := c.UserData.(MysqlConnectionUser)
+	if ok {
+		host = mysqlConnectionUser.Host
+		user = mysqlConnectionUser.User
+	}
+	client := Client{Address: host, User: user, Capabilities: c.Capabilities}
+	return NewBaseSessionWithClientServer(addr, client, c.ConnectionID), nil
+}
+
 // NewBaseSessionWithClientServer creates a new session with data.
 func NewBaseSessionWithClientServer(server string, client Client, id uint32) *BaseSession {
 	// TODO: if system variable "activate_all_roles_on_login" if set, activate all roles
-	var sessionVars map[string]SystemVarValue
+	var systemVars map[string]SystemVarValue
 	if SystemVariables != nil {
-		sessionVars = SystemVariables.NewSessionMap()
+		systemVars = SystemVariables.NewSessionMap()
 	} else {
-		sessionVars = make(map[string]SystemVarValue)
+		systemVars = make(map[string]SystemVarValue)
+	}
+	var statusVars map[string]StatusVarValue
+	if StatusVariables != nil {
+		statusVars = StatusVariables.NewSessionMap()
+	} else {
+		statusVars = make(map[string]StatusVarValue)
 	}
 	return &BaseSession{
-		addr:           server,
-		client:         client,
-		id:             id,
-		systemVars:     sessionVars,
-		userVars:       NewUserVars(),
-		idxReg:         NewIndexRegistry(),
-		viewReg:        NewViewRegistry(),
-		mu:             sync.RWMutex{},
-		locks:          make(map[string]bool),
-		lastQueryInfo:  defaultLastQueryInfo(),
-		privSetCounter: 0,
+		addr:             server,
+		client:           client,
+		id:               id,
+		systemVars:       systemVars,
+		statusVars:       statusVars,
+		userVars:         NewUserVars(),
+		storedProcParams: make(map[string]*StoredProcParam),
+		idxReg:           NewIndexRegistry(),
+		viewReg:          NewViewRegistry(),
+		locks:            make(map[string]bool),
+		lastQueryInfo:    defaultLastQueryInfo(),
+		privSetCounter:   0,
 	}
 }
 
 // NewBaseSession creates a new empty session.
 func NewBaseSession() *BaseSession {
 	// TODO: if system variable "activate_all_roles_on_login" if set, activate all roles
-	var sessionVars map[string]SystemVarValue
+	var systemVars map[string]SystemVarValue
 	if SystemVariables != nil {
-		sessionVars = SystemVariables.NewSessionMap()
+		systemVars = SystemVariables.NewSessionMap()
 	} else {
-		sessionVars = make(map[string]SystemVarValue)
+		systemVars = make(map[string]SystemVarValue)
+	}
+	var statusVars map[string]StatusVarValue
+	if StatusVariables != nil {
+		statusVars = StatusVariables.NewSessionMap()
+	} else {
+		statusVars = make(map[string]StatusVarValue)
 	}
 	return &BaseSession{
-		id:             atomic.AddUint32(&autoSessionIDs, 1),
-		systemVars:     sessionVars,
-		userVars:       NewUserVars(),
-		idxReg:         NewIndexRegistry(),
-		viewReg:        NewViewRegistry(),
-		mu:             sync.RWMutex{},
-		locks:          make(map[string]bool),
-		lastQueryInfo:  defaultLastQueryInfo(),
-		privSetCounter: 0,
+		id:               atomic.AddUint32(&autoSessionIDs, 1),
+		systemVars:       systemVars,
+		statusVars:       statusVars,
+		userVars:         NewUserVars(),
+		storedProcParams: make(map[string]*StoredProcParam),
+		idxReg:           NewIndexRegistry(),
+		viewReg:          NewViewRegistry(),
+		locks:            make(map[string]bool),
+		lastQueryInfo:    defaultLastQueryInfo(),
+		privSetCounter:   0,
 	}
 }

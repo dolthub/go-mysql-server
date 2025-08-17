@@ -12,14 +12,15 @@ import (
 // 1) CREATE TABLE SELECT *
 // 2) INSERT INTO SELECT * where the inserted table is empty. // TODO: Implement this optimization
 type TableCopier struct {
-	source      sql.Node
-	destination sql.Node
+	Source      sql.Node
+	Destination sql.Node
 	db          sql.Database
 	options     CopierProps
 }
 
 var _ sql.Databaser = (*TableCopier)(nil)
 var _ sql.Node = (*TableCopier)(nil)
+var _ sql.CollationCoercible = (*TableCopier)(nil)
 
 type CopierProps struct {
 	replace bool
@@ -28,8 +29,8 @@ type CopierProps struct {
 
 func NewTableCopier(db sql.Database, createTableNode sql.Node, source sql.Node, prop CopierProps) *TableCopier {
 	return &TableCopier{
-		source:      source,
-		destination: createTableNode,
+		Source:      source,
+		Destination: createTableNode,
 		db:          db,
 		options:     prop,
 	}
@@ -41,27 +42,18 @@ func (tc *TableCopier) WithDatabase(db sql.Database) (sql.Node, error) {
 	return &ntc, nil
 }
 
+func (tc *TableCopier) IsReadOnly() bool {
+	return false
+}
+
 func (tc *TableCopier) Database() sql.Database {
 	return tc.db
 }
 
-func (tc *TableCopier) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	if _, ok := tc.destination.(*CreateTable); ok {
-		return tc.processCreateTable(ctx, row)
-	}
+func (tc *TableCopier) ProcessCreateTable(ctx *sql.Context, b sql.NodeExecBuilder, row sql.Row) (sql.RowIter, error) {
+	ct := tc.Destination.(*CreateTable)
 
-	drt, ok := tc.destination.(*ResolvedTable)
-	if !ok {
-		return nil, fmt.Errorf("TableCopier only accepts CreateTable or ResolvedTable as the destination")
-	}
-
-	return tc.copyTableOver(ctx, tc.source.Schema()[0].Source, drt.Name())
-}
-
-func (tc *TableCopier) processCreateTable(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	ct := tc.destination.(*CreateTable)
-
-	_, err := ct.RowIter(ctx, row)
+	_, err := b.Build(ctx, ct, row)
 	if err != nil {
 		return sql.RowsToRowIter(), err
 	}
@@ -76,22 +68,19 @@ func (tc *TableCopier) processCreateTable(ctx *sql.Context, row sql.Row) (sql.Ro
 	}
 
 	if tc.createTableSelectCanBeCopied(table) {
-		return tc.copyTableOver(ctx, tc.source.Schema()[0].Source, table.Name())
+		return tc.CopyTableOver(ctx, tc.Source.Schema()[0].Source, table.Name())
 	}
 
 	// TODO: Improve parsing for CREATE TABLE SELECT to allow for IGNORE/REPLACE and custom specs
-	ii := NewInsertInto(tc.db, NewResolvedTable(table, tc.db, nil), tc.source, tc.options.replace, nil, nil, tc.options.ignore)
+	ii := NewInsertInto(tc.db, NewResolvedTable(table, tc.db, nil), tc.Source, tc.options.replace, nil, nil, tc.options.ignore)
 
-	// Wrap the insert into a row update accumulator
-	roa := NewRowUpdateAccumulator(ii, UpdateTypeInsert)
-
-	return roa.RowIter(ctx, row)
+	return b.Build(ctx, ii, row)
 }
 
-// createTableSelectCanBeCopied determines whether the newly created table's data can just be copied from the source table
+// createTableSelectCanBeCopied determines whether the newly created table's data can just be copied from the Source table
 func (tc *TableCopier) createTableSelectCanBeCopied(tableNode sql.Table) bool {
 	// The differences in LIMIT between integrators prevent us from using a copy
-	if _, ok := tc.source.(*Limit); ok {
+	if _, ok := tc.Source.(*Limit); ok {
 		return false
 	}
 
@@ -105,7 +94,7 @@ func (tc *TableCopier) createTableSelectCanBeCopied(tableNode sql.Table) bool {
 	}
 
 	// If there isn't a match in schema we cannot do a direct copy.
-	sourceSchema := tc.source.Schema()
+	sourceSchema := tc.Source.Schema()
 	tableNodeSchema := tableNode.Schema()
 
 	if len(sourceSchema) != len(tableNodeSchema) {
@@ -121,8 +110,8 @@ func (tc *TableCopier) createTableSelectCanBeCopied(tableNode sql.Table) bool {
 	return true
 }
 
-// copyTableOver is used when we can guarantee the destination table will have the same data as the source table.
-func (tc *TableCopier) copyTableOver(ctx *sql.Context, sourceTable string, destinationTable string) (sql.RowIter, error) {
+// CopyTableOver is used when we can guarantee the Destination table will have the same data as the source table.
+func (tc *TableCopier) CopyTableOver(ctx *sql.Context, sourceTable string, destinationTable string) (sql.RowIter, error) {
 	db, ok := tc.db.(sql.TableCopierDatabase)
 	if !ok {
 		return sql.RowsToRowIter(), sql.ErrTableCopyingNotSupported.New()
@@ -137,7 +126,7 @@ func (tc *TableCopier) copyTableOver(ctx *sql.Context, sourceTable string, desti
 }
 
 func (tc *TableCopier) Schema() sql.Schema {
-	return tc.destination.Schema()
+	return tc.Destination.Schema()
 }
 
 func (tc *TableCopier) Children() []sql.Node {
@@ -148,18 +137,15 @@ func (tc *TableCopier) WithChildren(...sql.Node) (sql.Node, error) {
 	return tc, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (tc *TableCopier) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	//TODO: add a new branch when the INSERT optimization is added
-	return opChecker.UserHasPrivileges(ctx,
-		sql.NewPrivilegedOperation(tc.db.Name(), "", "", sql.PrivilegeType_Create)) &&
-		tc.source.CheckPrivileges(ctx, opChecker)
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*TableCopier) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 func (tc *TableCopier) Resolved() bool {
-	return tc.source.Resolved()
+	return tc.Source.Resolved()
 }
 
 func (tc *TableCopier) String() string {
-	return fmt.Sprintf("TABLE_COPY SRC: %s into DST: %s", tc.source, tc.destination)
+	return fmt.Sprintf("TABLE_COPY SRC: %s into DST: %s", tc.Source, tc.Destination)
 }

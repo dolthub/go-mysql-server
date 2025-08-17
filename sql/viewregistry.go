@@ -38,6 +38,13 @@ func (v *View) Name() string {
 	return v.name
 }
 
+// WithDefinition returns a new view with the updated definition
+func (v *View) WithDefinition(def Node) *View {
+	ret := *v
+	ret.definition = def
+	return &ret
+}
+
 // Definition returns the definition of the view.
 func (v *View) Definition() Node {
 	return v.definition

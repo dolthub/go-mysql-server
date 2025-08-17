@@ -40,6 +40,17 @@ type ProcessList interface {
 	// EndQuery transitions a previously transitioned connection from Command "Query" to Command "Sleep".
 	EndQuery(ctx *Context)
 
+	// BeginOperation registers and returns a SubContext for a
+	// long-running operation on the conneciton which does not
+	// change the process's Command state. This SubContext will be
+	// killed by a call to |Kill|, and unregistered by a call to
+	// |EndOperation|.
+	BeginOperation(ctx *Context) (*Context, error)
+
+	// EndOperation cancels and deregisters the SubContext which
+	// BeginOperation registered.
+	EndOperation(ctx *Context)
+
 	// Kill terminates all queries for a given connection id
 	Kill(connID uint32)
 
@@ -166,6 +177,10 @@ func (e EmptyProcessList) BeginQuery(ctx *Context, query string) (*Context, erro
 	return ctx, nil
 }
 func (e EmptyProcessList) EndQuery(ctx *Context) {}
+func (e EmptyProcessList) BeginOperation(ctx *Context) (*Context, error) {
+	return ctx, nil
+}
+func (e EmptyProcessList) EndOperation(ctx *Context) {}
 
 func (e EmptyProcessList) Kill(connID uint32)                                       {}
 func (e EmptyProcessList) Done(pid uint64)                                          {}

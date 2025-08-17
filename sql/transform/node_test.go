@@ -260,6 +260,7 @@ type nodeC struct {
 }
 
 var _ sql.Node = (*nodeA)(nil)
+var _ sql.CollationCoercible = (*nodeA)(nil)
 
 func a(nodes ...sql.Node) *nodeA {
 	return &nodeA{testNode{children: nodes}}
@@ -302,6 +303,7 @@ type testNode struct {
 }
 
 var _ sql.Node = (*testNode)(nil)
+var _ sql.CollationCoercible = (*testNode)(nil)
 
 func (n *testNode) Resolved() bool {
 	return true
@@ -313,6 +315,10 @@ func (n *testNode) String() string {
 
 func (n *testNode) Schema() sql.Schema {
 	return nil
+}
+
+func (n *testNode) IsReadOnly() bool {
+	return true
 }
 
 func (n *testNode) Children() []sql.Node {
@@ -329,6 +335,7 @@ func (n *testNode) WithChildren(nodes ...sql.Node) (sql.Node, error) {
 	return &nn, nil
 }
 
-func (n *testNode) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*testNode) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }

@@ -28,6 +28,7 @@ import (
 type SignalConditionItemName string
 
 const (
+	SignalConditionItemName_Unknown           SignalConditionItemName = ""
 	SignalConditionItemName_ClassOrigin       SignalConditionItemName = "class_origin"
 	SignalConditionItemName_SubclassOrigin    SignalConditionItemName = "subclass_origin"
 	SignalConditionItemName_MessageText       SignalConditionItemName = "message_text"
@@ -80,6 +81,8 @@ type SignalName struct {
 var _ sql.Node = (*Signal)(nil)
 var _ sql.Node = (*SignalName)(nil)
 var _ sql.Expressioner = (*Signal)(nil)
+var _ sql.CollationCoercible = (*Signal)(nil)
+var _ sql.CollationCoercible = (*SignalName)(nil)
 
 // NewSignal returns a *Signal node.
 func NewSignal(sqlstate string, info map[SignalConditionItemName]SignalInfo) *Signal {
@@ -158,6 +161,10 @@ func (s *Signal) String() string {
 		}
 	}
 	return fmt.Sprintf("SIGNAL SQLSTATE '%s'%s", s.SqlStateValue, infoStr)
+}
+
+func (s *Signal) IsReadOnly() bool {
+	return true
 }
 
 // DebugString implements the sql.DebugStringer interface.
@@ -247,9 +254,9 @@ func (s Signal) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	return &s, nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (s *Signal) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*Signal) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // RowIter implements the sql.Node interface.
@@ -286,6 +293,7 @@ func (s *Signal) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 		return nil, mysql.NewSQLError(
 			int(s.Info[SignalConditionItemName_MysqlErrno].IntValue),
 			s.SqlStateValue,
+			"%s",
 			strValue,
 		)
 	}
@@ -318,6 +326,10 @@ func (s *SignalName) Schema() sql.Schema {
 	return nil
 }
 
+func (s *SignalName) IsReadOnly() bool {
+	return true
+}
+
 // Children implements the sql.Node interface.
 func (s *SignalName) Children() []sql.Node {
 	return nil // SignalName is an alternate form of Signal rather than an encapsulating node, thus no children
@@ -328,14 +340,18 @@ func (s *SignalName) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(s, children...)
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (s *SignalName) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*SignalName) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }
 
 // RowIter implements the sql.Node interface.
 func (s *SignalName) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return nil, fmt.Errorf("may not iterate over unresolved node *SignalName")
+}
+
+func (s SignalInfo) IsReadOnly() bool {
+	return true
 }
 
 func (s SignalInfo) String() string {

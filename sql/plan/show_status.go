@@ -15,7 +15,6 @@
 package plan
 
 import (
-	"fmt"
 	"sort"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -24,29 +23,29 @@ import (
 	"github.com/gabereiser/go-mysql-server/sql/types"
 )
 
+const ShowStatusVariableCol = "Variable_name"
+const ShowStatusValueCol = "Value"
+
 // ShowStatus implements the SHOW STATUS MySQL command.
-// TODO: This is just a stub implementation that returns an empty set. The actual functionality needs to be implemented
-// in the future.
 type ShowStatus struct {
-	modifier ShowStatusModifier
+	isGlobal bool
 }
 
 var _ sql.Node = (*ShowStatus)(nil)
-
-type ShowStatusModifier byte
-
-const (
-	ShowStatusModifier_Session ShowStatusModifier = iota
-	ShowStatusModifier_Global
-)
+var _ sql.CollationCoercible = (*ShowStatus)(nil)
 
 // NewShowStatus returns a new ShowStatus reference.
-func NewShowStatus(modifier ShowStatusModifier) *ShowStatus {
-	return &ShowStatus{modifier: modifier}
+func NewShowStatus(isGlobal bool) *ShowStatus {
+	return &ShowStatus{isGlobal: isGlobal}
 }
 
 // Resolved implements sql.Node interface.
 func (s *ShowStatus) Resolved() bool {
+	return true
+}
+
+// IsReadOnly implements sql.Node interface.
+func (s *ShowStatus) IsReadOnly() bool {
 	return true
 }
 
@@ -58,8 +57,21 @@ func (s *ShowStatus) String() string {
 // Schema implements sql.Node interface.
 func (s *ShowStatus) Schema() sql.Schema {
 	return sql.Schema{
-		{Name: "Variable_name", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 64), Default: nil, Nullable: false},
-		{Name: "Value", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 2048), Default: nil, Nullable: false},
+		{
+			Name: ShowStatusVariableCol,
+			// MySQL stores session/global variables under special tables
+			// performance_schema.session_table and performance_schema.global_table with case-insensitive collation
+			// We currently don't have these tables, so we modify the schema to emulate the case-insensitive LIKE behavior
+			Type:     types.MustCreateString(sqltypes.VarChar, 64, sql.Collation_utf8mb4_0900_ai_ci),
+			Default:  nil,
+			Nullable: false,
+		},
+		{
+			Name:     ShowStatusValueCol,
+			Type:     types.MustCreateStringWithDefaults(sqltypes.VarChar, 2048),
+			Default:  nil,
+			Nullable: false,
+		},
 	}
 }
 
@@ -69,37 +81,37 @@ func (s *ShowStatus) Children() []sql.Node {
 }
 
 // RowIter implements sql.Node interface.
-func (s *ShowStatus) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	var names []string
-	for name := range sql.SystemVariables.NewSessionMap() {
+func (s *ShowStatus) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
+	// Session scope has visibility into both GLOBAL and SESSION variables.
+	// Global scope has visibility only into GLOBAL variables.
+	vars := sql.StatusVariables.NewGlobalMap()
+	if !s.isGlobal {
+		// Variables with both GLOBAL and SESSION scope are overridden by SESSION scope.
+		sessVars := ctx.Session.GetAllStatusVariables(ctx)
+		for name, v := range sessVars {
+			vars[name] = v
+		}
+	}
+
+	names := make([]string, 0, len(vars))
+	for name := range vars {
 		names = append(names, name)
 	}
 	sort.Strings(names)
 
-	var rows []sql.Row
-	for _, name := range names {
-		sysVar, val, ok := sql.SystemVariables.GetGlobal(name)
-		if !ok {
-			return nil, fmt.Errorf("missing system variable %s", name)
-		}
-
-		if s.modifier == ShowStatusModifier_Session && sysVar.Scope == sql.SystemVariableScope_Global ||
-			s.modifier == ShowStatusModifier_Global && sysVar.Scope == sql.SystemVariableScope_Session {
-			continue
-		}
-
-		rows = append(rows, sql.Row{name, val})
+	rows := make([]sql.Row, len(names))
+	for i, name := range names {
+		rows[i] = sql.Row{name, vars[name].Value()}
 	}
-
 	return sql.RowsToRowIter(rows...), nil
 }
 
 // WithChildren implements sql.Node interface.
 func (s *ShowStatus) WithChildren(node ...sql.Node) (sql.Node, error) {
-	return NewShowStatus(s.modifier), nil
+	return NewShowStatus(s.isGlobal), nil
 }
 
-// CheckPrivileges implements the interface sql.Node.
-func (s *ShowStatus) CheckPrivileges(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	return true
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*ShowStatus) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 7
 }

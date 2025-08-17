@@ -173,7 +173,7 @@ func TestInTuple(t *testing.T) {
 		},
 		{
 			name: "date on right side; non-dates on left",
-			left: expression.NewLiteral(time.Now(), types.Datetime),
+			left: expression.NewLiteral(time.Now(), types.DatetimeMaxPrecision),
 			right: expression.NewTuple(
 				expression.NewLiteral("hi", types.TinyText),
 				expression.NewLiteral("bye", types.TinyText),
@@ -415,6 +415,23 @@ func TestHashInTuple(t *testing.T) {
 			nil,
 		},
 		{
+			"heterogeneous collations with nested",
+			expression.NewTuple(
+				expression.NewLiteral("ABC", types.MustCreateString(sqltypes.VarChar, 20, sql.Collation_Default)),
+				expression.NewLiteral("def", types.MustCreateString(sqltypes.VarChar, 20, sql.Collation_utf8mb4_0900_ai_ci)),
+			),
+			expression.NewTuple(
+				expression.NewTuple(
+					expression.NewLiteral("ABC", types.MustCreateString(sqltypes.VarChar, 20, sql.Collation_Default)),
+					expression.NewLiteral("DEF", types.MustCreateString(sqltypes.VarChar, 20, sql.Collation_Default)),
+				),
+			),
+			nil,
+			true,
+			nil,
+			nil,
+		},
+		{
 			"left get field tuple is in right",
 			expression.NewTuple(
 				expression.NewGetField(0, types.Int64, "foo", false),
@@ -488,6 +505,36 @@ func TestHashInTuple(t *testing.T) {
 			result: false,
 		},
 		{
+			name: "right values contain zero floats that are equal to the left value",
+			left: expression.NewLiteral(0, types.Uint64),
+			right: expression.NewTuple(
+				expression.NewLiteral(0.0, types.Float64),
+				expression.NewLiteral(1.23, types.Float64),
+			),
+			row:    nil,
+			result: true,
+		},
+		{
+			name: "right values contain floats that are equal to the left value",
+			left: expression.NewLiteral(1, types.Uint64),
+			right: expression.NewTuple(
+				expression.NewLiteral(1.0, types.Float64),
+				expression.NewLiteral(1.23, types.Float64),
+			),
+			row:    nil,
+			result: true,
+		},
+		{
+			name: "right values contain decimals that are equal to the left value",
+			left: expression.NewLiteral(1, types.Uint64),
+			right: expression.NewTuple(
+				expression.NewLiteral(1.0, types.MustCreateDecimalType(10, 5)),
+				expression.NewLiteral(1.23, types.MustCreateDecimalType(10, 5)),
+			),
+			row:    nil,
+			result: true,
+		},
+		{
 			name: "right values contain a different, coercible type, and left value is zero value",
 			left: expression.NewLiteral(0, types.Uint64),
 			right: expression.NewTuple(
@@ -539,7 +586,7 @@ func TestHashInTuple(t *testing.T) {
 		},
 		{
 			name: "date on right side; non-dates on left",
-			left: expression.NewLiteral(time.Now(), types.Datetime),
+			left: expression.NewLiteral(time.Now(), types.DatetimeMaxPrecision),
 			right: expression.NewTuple(
 				expression.NewLiteral("hi", types.TinyText),
 				expression.NewLiteral("bye", types.TinyText),

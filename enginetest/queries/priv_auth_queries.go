@@ -67,6 +67,7 @@ type UserPrivilegeTestAssertion struct {
 // match the non-nil empty row with it, due to the aforementioned distinction.
 //
 // Statements that are run before every test (the state that all tests start with):
+// CREATE USER tester@localhost;
 // CREATE TABLE mydb.test (pk BIGINT PRIMARY KEY, v1 BIGINT);
 // CREATE TABLE mydb.test2 (pk BIGINT PRIMARY KEY, v1 BIGINT);
 // CREATE TABLE otherdb.test (pk BIGINT PRIMARY KEY, v1 BIGINT);
@@ -94,17 +95,38 @@ type ServerAuthenticationTest struct {
 
 // ServerAuthenticationTestAssertion is within a ServerAuthenticationTest to assert functionality.
 type ServerAuthenticationTestAssertion struct {
-	Username        string
-	Password        string
-	Query           string
-	ExpectedErr     bool
-	ExpectedErrKind *errors.Kind
-	ExpectedErrStr  string
+	Username           string
+	Password           string
+	Query              string
+	ExpectedErr        bool
+	ExpectedErrKind    *errors.Kind
+	ExpectedErrStr     string
+	ExpectedAuthPlugin string
 }
 
 // UserPrivTests test the user and privilege systems. These tests always have the root account available, and the root
 // account is used with any queries in the SetUpScript.
 var UserPrivTests = []UserPrivilegeTest{
+	{
+		Name: "Create user limits",
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:        "root",
+				Host:        "localhost",
+				Query:       "create user abcdefghijklmnopqrstuvwxyz0123456789@'localhost' identified by 'abc123';",
+				ExpectedErr: sql.ErrUserNameTooLong,
+			},
+			{
+				User: "root",
+				Host: "localhost",
+				Query: "create user j@'abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+					"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" +
+					"abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz'" +
+					" identified by 'abc123';",
+				ExpectedErr: sql.ErrUserHostTooLong,
+			},
+		},
+	},
 	{
 		Name: "Binlog replication privileges",
 		SetUpScript: []string{
@@ -112,9 +134,9 @@ var UserPrivTests = []UserPrivilegeTest{
 			"CREATE USER 'replica-admin'@localhost;",
 			"CREATE USER 'replica-client'@localhost;",
 			"CREATE USER 'replica-reload'@localhost;",
-			// REPLICATION_SLAVE_ADMIN allows: start replica,
+			// REPLICATION_SLAVE_ADMIN allows: start replica, stop replica, change replication source, change replication filter
 			"GRANT REPLICATION_SLAVE_ADMIN ON *.* TO 'replica-admin'@localhost;",
-			// REPLICATION CLIENT allows: show replica status
+			// REPLICATION CLIENT allows: show replica status, show binary logs, show binary log status
 			"GRANT REPLICATION CLIENT ON *.* to 'replica-client'@localhost;",
 			// RELOAD allows: reset replica
 			"GRANT RELOAD ON *.* TO 'replica-reload'@localhost;",
@@ -251,6 +273,70 @@ var UserPrivTests = []UserPrivilegeTest{
 				Expected: []sql.Row{},
 			},
 
+			// SHOW BINARY LOGS
+			{
+				User:        "user",
+				Host:        "localhost",
+				Query:       "SHOW BINARY LOGS;",
+				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+			},
+			{
+				User:        "replica-admin",
+				Host:        "localhost",
+				Query:       "SHOW BINARY LOGS;",
+				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+			},
+			{
+				User:     "replica-client",
+				Host:     "localhost",
+				Query:    "SHOW BINARY LOGS;",
+				Expected: []sql.Row{},
+			},
+			{
+				User:        "replica-reload",
+				Host:        "localhost",
+				Query:       "SHOW BINARY LOGS;",
+				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "SHOW BINARY LOGS;",
+				Expected: []sql.Row{},
+			},
+
+			// SHOW BINARY LOG STATUS
+			{
+				User:        "user",
+				Host:        "localhost",
+				Query:       "SHOW BINARY LOG STATUS;",
+				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+			},
+			{
+				User:        "replica-admin",
+				Host:        "localhost",
+				Query:       "SHOW BINARY LOG STATUS;",
+				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+			},
+			{
+				User:     "replica-client",
+				Host:     "localhost",
+				Query:    "SHOW BINARY LOG STATUS;",
+				Expected: []sql.Row{},
+			},
+			{
+				User:        "replica-reload",
+				Host:        "localhost",
+				Query:       "SHOW BINARY LOG STATUS;",
+				ExpectedErr: sql.ErrPrivilegeCheckFailed,
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "SHOW BINARY LOG STATUS;",
+				Expected: []sql.Row{},
+			},
+
 			// CHANGE REPLICATION SOURCE
 			{
 				User:        "user",
@@ -322,6 +408,7 @@ var UserPrivTests = []UserPrivilegeTest{
 		Name: "Basic database and table name visibility",
 		SetUpScript: []string{
 			"CREATE TABLE mydb.test (pk BIGINT PRIMARY KEY);",
+			"CREATE TABLE mydb.invis (pk BIGINT PRIMARY KEY);",
 			"INSERT INTO mydb.test VALUES (1);",
 			"CREATE USER tester@localhost;",
 			"CREATE ROLE test_role;",
@@ -332,6 +419,12 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:        "tester",
 				Host:        "localhost",
 				Query:       "SELECT * FROM mydb.test;/*1*/",
+				ExpectedErr: sql.ErrDatabaseAccessDeniedForUser,
+			},
+			{
+				User:        "tester",
+				Host:        "localhost",
+				Query:       "WITH cte AS (SELECT * FROM mydb.test) SELECT * FROM cte;/*1*/",
 				ExpectedErr: sql.ErrDatabaseAccessDeniedForUser,
 			},
 			{
@@ -423,6 +516,24 @@ var UserPrivTests = []UserPrivilegeTest{
 				Host:     "localhost",
 				Query:    "SELECT * FROM mydb.test;/*6*/",
 				Expected: []sql.Row{{1}},
+			},
+			{
+				User:     "tester",
+				Host:     "localhost",
+				Query:    "WITH cte AS (SELECT * FROM mydb.test) SELECT * FROM cte;/*6*/",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				User:        "tester",
+				Host:        "localhost",
+				Query:       "WITH cte AS (SELECT * FROM mydb.test) SELECT * FROM cte JOIN mydb.invis t2 WHERE cte.pk = t2.pk;",
+				ExpectedErr: sql.ErrTableAccessDeniedForUser,
+			},
+			{
+				User:     "tester",
+				Host:     "localhost",
+				Query:    "WITH cte AS (SELECT * FROM mydb.test) SELECT * FROM cte JOIN mydb.test t2 WHERE cte.pk = t2.pk;",
+				Expected: []sql.Row{{1, 1}},
 			},
 			{
 				User:        "tester",
@@ -528,36 +639,36 @@ var UserPrivTests = []UserPrivilegeTest{
 					{
 						"localhost",             // Host
 						"root",                  // User
-						uint16(2),               // Select_priv
-						uint16(2),               // Insert_priv
-						uint16(2),               // Update_priv
-						uint16(2),               // Delete_priv
-						uint16(2),               // Create_priv
-						uint16(2),               // Drop_priv
-						uint16(2),               // Reload_priv
-						uint16(2),               // Shutdown_priv
-						uint16(2),               // Process_priv
-						uint16(2),               // File_priv
-						uint16(2),               // Grant_priv
-						uint16(2),               // References_priv
-						uint16(2),               // Index_priv
-						uint16(2),               // Alter_priv
-						uint16(2),               // Show_db_priv
-						uint16(2),               // Super_priv
-						uint16(2),               // Create_tmp_table_priv
-						uint16(2),               // Lock_tables_priv
-						uint16(2),               // Execute_priv
-						uint16(2),               // Repl_slave_priv
-						uint16(2),               // Repl_client_priv
-						uint16(2),               // Create_view_priv
-						uint16(2),               // Show_view_priv
-						uint16(2),               // Create_routine_priv
-						uint16(2),               // Alter_routine_priv
-						uint16(2),               // Create_user_priv
-						uint16(2),               // Event_priv
-						uint16(2),               // Trigger_priv
-						uint16(2),               // Create_tablespace_priv
-						uint16(1),               // ssl_type
+						"Y",                     // Select_priv
+						"Y",                     // Insert_priv
+						"Y",                     // Update_priv
+						"Y",                     // Delete_priv
+						"Y",                     // Create_priv
+						"Y",                     // Drop_priv
+						"Y",                     // Reload_priv
+						"Y",                     // Shutdown_priv
+						"Y",                     // Process_priv
+						"Y",                     // File_priv
+						"Y",                     // Grant_priv
+						"Y",                     // References_priv
+						"Y",                     // Index_priv
+						"Y",                     // Alter_priv
+						"Y",                     // Show_db_priv
+						"Y",                     // Super_priv
+						"Y",                     // Create_tmp_table_priv
+						"Y",                     // Lock_tables_priv
+						"Y",                     // Execute_priv
+						"Y",                     // Repl_slave_priv
+						"Y",                     // Repl_client_priv
+						"Y",                     // Create_view_priv
+						"Y",                     // Show_view_priv
+						"Y",                     // Create_routine_priv
+						"Y",                     // Alter_routine_priv
+						"Y",                     // Create_user_priv
+						"Y",                     // Event_priv
+						"Y",                     // Trigger_priv
+						"Y",                     // Create_tablespace_priv
+						"",                      // ssl_type
 						[]byte(""),              // ssl_cipher
 						[]byte(""),              // x509_issuer
 						[]byte(""),              // x509_subject
@@ -567,12 +678,12 @@ var UserPrivTests = []UserPrivilegeTest{
 						uint32(0),               // max_user_connections
 						"mysql_native_password", // plugin
 						"",                      // authentication_string
-						uint16(1),               // password_expired
+						"N",                     // password_expired
 						time.Unix(1, 0).UTC(),   // password_last_changed
 						nil,                     // password_lifetime
-						uint16(1),               // account_locked
-						uint16(2),               // Create_role_priv
-						uint16(2),               // Drop_role_priv
+						"N",                     // account_locked
+						"Y",                     // Create_role_priv
+						"Y",                     // Drop_role_priv
 						nil,                     // Password_reuse_history
 						nil,                     // Password_reuse_time
 						nil,                     // Password_require_current
@@ -582,12 +693,82 @@ var UserPrivTests = []UserPrivilegeTest{
 				},
 			},
 			{
-				Query: "SELECT Host, User FROM mysql.user;",
+				Query: "SELECT Host, User, Plugin, length(authentication_string) > 0 FROM mysql.user order by User;",
 				Expected: []sql.Row{
-					{"localhost", "root"},
-					{"localhost", "testuser2"},
-					{"127.0.0.1", "testuser"},
+					{"localhost", "root", "mysql_native_password", false},
+					{"127.0.0.1", "testuser", "mysql_native_password", false},
+					// testuser2 was inserted directly into the table, so it uses the column default
+					// from the plugin field – caching_sha2_password
+					{"localhost", "testuser2", "caching_sha2_password", false},
 				},
+			},
+		},
+	},
+	{
+		Name: "User creation with auth plugin specified: mysql_native_password",
+		SetUpScript: []string{
+			"CREATE USER testuser1@`127.0.0.1` identified with mysql_native_password by 'pass1';",
+			"CREATE USER testuser2@`127.0.0.1` identified with 'mysql_native_password';",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				Query:    "select user, host, plugin, authentication_string from mysql.user where user='testuser1';",
+				Expected: []sql.Row{{"testuser1", "127.0.0.1", "mysql_native_password", "*22A99BA288DB55E8E230679259740873101CD636"}},
+			},
+			{
+				Query:    "select user, host, plugin, authentication_string from mysql.user where user='testuser2';",
+				Expected: []sql.Row{{"testuser2", "127.0.0.1", "mysql_native_password", ""}},
+			},
+		},
+	},
+	{
+		Name: "User creation with auth plugin specified: caching_sha2_password",
+		SetUpScript: []string{
+			"CREATE USER testuser1@`127.0.0.1` identified with caching_sha2_password by 'pass1';",
+			"CREATE USER testuser2@`127.0.0.1` identified with 'caching_sha2_password';",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				// caching_sha2_password auth uses a random salt to create the authentication
+				// string. Since it's not a consistent value during each test run, we just sanity
+				// check the first bytes of metadata (digest type, iterations) in the auth string.
+				Query:    "select user, host, plugin, authentication_string like '$A$005$%' from mysql.user where user='testuser1';",
+				Expected: []sql.Row{{"testuser1", "127.0.0.1", "caching_sha2_password", true}},
+			},
+			{
+				Query:    "select user, host, plugin, authentication_string from mysql.user where user='testuser2';",
+				Expected: []sql.Row{{"testuser2", "127.0.0.1", "caching_sha2_password", ""}},
+			},
+		},
+	},
+	{
+		Name: "Migrate a user from mysql_native_password to caching_sha2_password",
+		SetUpScript: []string{
+			"CREATE USER testuser1@`127.0.0.1` identified with mysql_native_password by 'pass1';",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				Query:    "select user, host, plugin, authentication_string from mysql.user where user='testuser1';",
+				Expected: []sql.Row{{"testuser1", "127.0.0.1", "mysql_native_password", "*22A99BA288DB55E8E230679259740873101CD636"}},
+			},
+			{
+				Query:    "ALTER USER testuser1@`127.0.0.1` IDENTIFIED WITH caching_sha2_password BY 'pass1';",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				// caching_sha2_password auth uses a random salt to create the authentication
+				// string. Since it's not a consistent value during each test run, we just sanity
+				// check the first bytes of metadata (digest type, iterations) in the auth string.
+				Query:    "select user, host, plugin, authentication_string like '$A$005$%' from mysql.user where user='testuser1';",
+				Expected: []sql.Row{{"testuser1", "127.0.0.1", "caching_sha2_password", true}},
+			},
+			{
+				Query:    "ALTER USER testuser1@`127.0.0.1` IDENTIFIED WITH caching_sha2_password;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "select user, host, plugin, authentication_string from mysql.user where user='testuser1';",
+				Expected: []sql.Row{{"testuser1", "127.0.0.1", "caching_sha2_password", ""}},
 			},
 		},
 	},
@@ -596,6 +777,7 @@ var UserPrivTests = []UserPrivilegeTest{
 		SetUpScript: []string{
 			"CREATE USER testuser@localhost;",
 			"GRANT REPLICATION_SLAVE_ADMIN ON *.* TO testuser@localhost;",
+			"GRANT CLONE_ADMIN ON *.* TO testuser@localhost;",
 		},
 		Assertions: []UserPrivilegeTestAssertion{
 			{
@@ -611,7 +793,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				Query: "SHOW GRANTS FOR testuser@localhost;",
 				Expected: []sql.Row{
 					{"GRANT USAGE ON *.* TO `testuser`@`localhost`"},
-					{"GRANT REPLICATION_SLAVE_ADMIN ON *.* TO `testuser`@`localhost`"},
+					{"GRANT CLONE_ADMIN, REPLICATION_SLAVE_ADMIN ON *.* TO `testuser`@`localhost`"},
 				},
 			},
 			{
@@ -677,6 +859,63 @@ var UserPrivTests = []UserPrivilegeTest{
 					{"GRANT SELECT ON `db`.* TO `tester`@`%`"},
 					{"GRANT SELECT ON `db`.`tbl` TO `tester`@`%`"},
 				},
+			},
+		},
+	},
+	{
+		Name: "procedure grants and restrictions",
+		SetUpScript: []string{
+			"CREATE USER granted@localhost",
+			"GRANT EXECUTE ON mydb.* TO granted@localhost",
+			"GRANT EXECUTE ON PROCEDURE mydb.memory_admin_only TO granted@localhost", // Explicit grant on admin only proc
+			"CREATE USER denied@localhost",
+			"GRANT EXECUTE ON mydb.* TO denied@localhost", // Access to DB, but not to admin proc.
+			"CREATE USER targeted@localhost",
+			"GRANT EXECUTE ON PROCEDURE mydb.memory_admin_only TO targeted@localhost", // Explicit grant on admin only proc, even though no access to DB.
+			"CREATE USER noaccess@localhost",                                          // Ensure this user can't run any procedure
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:     "granted",
+				Host:     "localhost",
+				Query:    "CALL mydb.memory_admin_only(1,2)",
+				Expected: []sql.Row{{3}},
+			},
+			{
+				User:     "denied",
+				Host:     "localhost",
+				Query:    "CALL mydb.memory_variadic_add(3,2)", // Verify this user _can_ access non-admin proc
+				Expected: []sql.Row{{5}},
+			},
+			{
+				User:           "denied",
+				Host:           "localhost",
+				Query:          "CALL mydb.memory_admin_only(1,2)",
+				ExpectedErrStr: "command denied to user 'denied'@'localhost'",
+			},
+			{
+				User:           "targeted",
+				Host:           "localhost",
+				Query:          "CALL mydb.memory_variadic_add(3,2)", // Verify this user _can't_ access non-admin proc
+				ExpectedErrStr: "command denied to user 'targeted'@'localhost'",
+			},
+			{
+				User:     "targeted",
+				Host:     "localhost",
+				Query:    "CALL mydb.memory_admin_only(7,2)",
+				Expected: []sql.Row{{9}},
+			},
+			{
+				User:           "noaccess",
+				Host:           "localhost",
+				Query:          "CALL mydb.memory_variadic_add(3,2)", // Verify this user can't access non-admin proc
+				ExpectedErrStr: "Access denied for user 'noaccess'@'localhost' to database 'mydb'",
+			},
+			{
+				User:           "noaccess",
+				Host:           "localhost",
+				Query:          "CALL mydb.memory_admin_only(1,2)",
+				ExpectedErrStr: "Access denied for user 'noaccess'@'localhost' to database 'mydb'",
 			},
 		},
 	},
@@ -768,7 +1007,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mysql.db;",
-				Expected: []sql.Row{{"localhost", "mydb", "tester", uint16(2), uint16(1), uint16(2), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(2), uint16(1), uint16(1)}},
+				Expected: []sql.Row{{"localhost", "mydb", "tester", "Y", "N", "Y", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "Y", "N", "N"}},
 			},
 			{
 				User:     "root",
@@ -780,7 +1019,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mysql.db;",
-				Expected: []sql.Row{{"localhost", "mydb", "tester", uint16(2), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(2), uint16(1), uint16(1)}},
+				Expected: []sql.Row{{"localhost", "mydb", "tester", "Y", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "Y", "N", "N"}},
 			},
 			{
 				User:  "root",
@@ -800,7 +1039,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mysql.db;",
-				Expected: []sql.Row{{"localhost", "mydb", "tester", uint16(2), uint16(2), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(1), uint16(2), uint16(1), uint16(1)}},
+				Expected: []sql.Row{{"localhost", "mydb", "tester", "Y", "Y", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "N", "Y", "N", "N"}},
 			},
 		},
 	},
@@ -821,7 +1060,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mysql.tables_priv;",
-				Expected: []sql.Row{{"localhost", "mydb", "tester", "test", "", time.Unix(1, 0).UTC(), uint64(0b101001), uint64(0)}},
+				Expected: []sql.Row{{"localhost", "mydb", "tester", "test", "", time.Unix(1, 0).UTC(), "Select,Delete,Drop", ""}},
 			},
 			{
 				User:     "root",
@@ -833,7 +1072,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mysql.tables_priv;",
-				Expected: []sql.Row{{"localhost", "mydb", "tester", "test", "", time.Unix(1, 0).UTC(), uint64(0b100001), uint64(0)}},
+				Expected: []sql.Row{{"localhost", "mydb", "tester", "test", "", time.Unix(1, 0).UTC(), "Select,Drop", ""}},
 			},
 			{
 				User:  "root",
@@ -853,7 +1092,102 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mysql.tables_priv;",
-				Expected: []sql.Row{{"localhost", "mydb", "tester", "test", "", time.Unix(1, 0).UTC(), uint64(0b110000000), uint64(0)}},
+				Expected: []sql.Row{{"localhost", "mydb", "tester", "test", "", time.Unix(1, 0).UTC(), "References,Index", ""}},
+			},
+		},
+	},
+	{
+		Name: "GRANT Procedure and function privileges reflect in mysql.procs_priv",
+		SetUpScript: []string{
+			"CREATE USER tester1@localhost;",
+			"CREATE USER tester2@localhost;",
+			"GRANT EXECUTE ON PROCEDURE mydb.proc1 TO tester1@localhost;",
+			"GRANT GRANT OPTION ON PROCEDURE mydb.proc1 TO tester1@localhost;",
+			"GRANT ALTER ROUTINE ON PROCEDURE mydb.proc2 TO tester1@localhost;",
+			"GRANT GRANT OPTION ON PROCEDURE mydb.proc1 TO tester2@localhost;",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:  "root",
+				Host:  "localhost",
+				Query: "SELECT Routine_name,Routine_type,proc_priv from mysql.procs_priv WHERE User = 'tester1'",
+				Expected: []sql.Row{
+					{"proc1", "PROCEDURE", "Grant,Execute"},
+					{"proc2", "PROCEDURE", "Alter Routine"},
+				},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "SELECT Routine_name,Routine_type,proc_priv from mysql.procs_priv WHERE User = 'tester2'",
+				Expected: []sql.Row{{"proc1", "PROCEDURE", "Grant"}},
+			},
+			{
+				User:     "tester1",
+				Host:     "localhost",
+				Query:    "GRANT Execute ON PROCEDURE mydb.proc1 TO tester2@localhost",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				User:           "tester2",
+				Host:           "localhost",
+				Query:          "GRANT Execute ON PROCEDURE mydb.proc2 TO tester1@localhost",
+				ExpectedErrStr: "command denied to user 'tester2'@'localhost'",
+			},
+		},
+	},
+	{
+		Name: "GRANT Procedure and function privileges reflect in mysql.procs_priv",
+		SetUpScript: []string{
+			"CREATE USER tester1@localhost;",
+			"CREATE USER tester2@localhost;",
+			"GRANT EXECUTE ON PROCEDURE mydb.proc1 TO tester1@localhost;",
+			"GRANT GRANT OPTION ON PROCEDURE mydb.proc1 TO tester1@localhost;",
+			"GRANT ALTER ROUTINE ON PROCEDURE mydb.proc2 TO tester1@localhost;",
+			"GRANT GRANT OPTION ON PROCEDURE mydb.proc2 TO tester2@localhost;",
+			"GRANT EXECUTE ON PROCEDURE mydb.proc2 TO tester2@localhost;",
+			"REVOKE EXECUTE ON PROCEDURE mydb.proc1 FROM tester1@localhost;",
+			"REVOKE ALTER ROUTINE ON PROCEDURE mydb.proc2 FROM tester1@localhost;",
+			"REVOKE ALTER ROUTINE ON PROCEDURE mydb.proc2 FROM tester2@localhost;", // Should be no-op.
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "SELECT Routine_name,Routine_type,proc_priv from mysql.procs_priv WHERE User = 'tester1'",
+				Expected: []sql.Row{{"proc1", "PROCEDURE", "Grant"}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "SELECT Routine_name,Routine_type,proc_priv from mysql.procs_priv WHERE User = 'tester2'",
+				Expected: []sql.Row{sql.Row{"proc2", "PROCEDURE", "Grant,Execute"}},
+			},
+		},
+	},
+	{
+		Name: "GRANT function privileges errors",
+		SetUpScript: []string{
+			"CREATE USER tester1@localhost;",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:           "root",
+				Host:           "localhost",
+				Query:          "GRANT GRANT OPTION ON FUNCTION mydb.func1 TO tester1@localhost;",
+				ExpectedErrStr: "fine grain function permissions currently unsupported",
+			},
+			{
+				User:           "root",
+				Host:           "localhost",
+				Query:          "GRANT EXECUTE ON FUNCTION mydb.func1 TO tester1@localhost;",
+				ExpectedErrStr: "fine grain function permissions currently unsupported",
+			},
+			{
+				User:           "root",
+				Host:           "localhost",
+				Query:          "GRANT ALTER ROUTINE ON FUNCTION mydb.func1 TO tester1@localhost;",
+				ExpectedErrStr: "fine grain function permissions currently unsupported",
 			},
 		},
 	},
@@ -876,7 +1210,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT User, Host, Select_priv FROM mysql.user WHERE User = 'tester';",
-				Expected: []sql.Row{{"tester", "localhost", uint16(2)}},
+				Expected: []sql.Row{{"tester", "localhost", "Y"}},
 			},
 			{
 				User:     "root",
@@ -894,7 +1228,28 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT User, Host, Select_priv FROM mysql.user WHERE User = 'tester';",
-				Expected: []sql.Row{{"tester", "localhost", uint16(1)}},
+				Expected: []sql.Row{{"tester", "localhost", "N"}},
+			},
+
+			{
+				// Re-revoking does nothing
+				User:     "root",
+				Host:     "localhost",
+				Query:    "REVOKE SELECT ON *.* FROM tester@localhost;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				// IF EXISTS option does nothing
+				User:     "root",
+				Host:     "localhost",
+				Query:    "REVOKE IF EXISTS SELECT ON *.* FROM tester@localhost;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "SELECT User, Host, Select_priv FROM mysql.user WHERE User = 'tester';",
+				Expected: []sql.Row{{"tester", "localhost", "N"}},
 			},
 		},
 	},
@@ -904,7 +1259,11 @@ var UserPrivTests = []UserPrivilegeTest{
 			"CREATE TABLE test (pk BIGINT PRIMARY KEY);",
 			"INSERT INTO test VALUES (1), (2), (3);",
 			"CREATE USER tester@localhost;",
+			"CREATE USER tester1@localhost;",
+			"CREATE USER tester2@localhost;",
 			"GRANT ALL ON *.* TO tester@localhost;",
+			"GRANT ALL ON *.* TO tester1@localhost WITH GRANT OPTION;",
+			"GRANT ALL ON *.* TO tester2@localhost WITH GRANT OPTION;",
 		},
 		Assertions: []UserPrivilegeTestAssertion{
 			{
@@ -923,7 +1282,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT User, Host, Select_priv, Insert_priv FROM mysql.user WHERE User = 'tester';",
-				Expected: []sql.Row{{"tester", "localhost", uint16(2), uint16(2)}},
+				Expected: []sql.Row{{"tester", "localhost", "Y", "Y"}},
 			},
 			{
 				User:     "root",
@@ -946,8 +1305,79 @@ var UserPrivTests = []UserPrivilegeTest{
 			{
 				User:     "root",
 				Host:     "localhost",
-				Query:    "SELECT User, Host, Select_priv, Insert_priv FROM mysql.user WHERE User = 'tester';",
-				Expected: []sql.Row{{"tester", "localhost", uint16(1), uint16(1)}},
+				Query:    "SELECT User, Host, Select_priv, Insert_priv, Grant_priv FROM mysql.user WHERE User = 'tester';",
+				Expected: []sql.Row{{"tester", "localhost", "N", "N", "N"}},
+			},
+
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "SELECT User, Host, Select_priv, Insert_priv, Grant_priv FROM mysql.user WHERE User = 'tester1';",
+				Expected: []sql.Row{{"tester1", "localhost", "Y", "Y", "Y"}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "REVOKE ALL, GRANT OPTION FROM tester1@localhost;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "SELECT User, Host, Select_priv, Insert_priv, Grant_priv FROM mysql.user WHERE User = 'tester1';",
+				Expected: []sql.Row{{"tester1", "localhost", "N", "N", "N"}},
+			},
+
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "SELECT User, Host, Select_priv, Insert_priv, Grant_priv FROM mysql.user WHERE User = 'tester2';",
+				Expected: []sql.Row{{"tester2", "localhost", "Y", "Y", "Y"}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "REVOKE ALL PRIVILEGES, GRANT OPTION FROM tester2@localhost;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "SELECT User, Host, Select_priv, Insert_priv, Grant_priv FROM mysql.user WHERE User = 'tester2';",
+				Expected: []sql.Row{{"tester2", "localhost", "N", "N", "N"}},
+			},
+			{
+				// Re-revoking does nothing
+				User:     "root",
+				Host:     "localhost",
+				Query:    "REVOKE ALL PRIVILEGES, GRANT OPTION FROM tester2@localhost;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				// IF EXISTS does nothing
+				User:     "root",
+				Host:     "localhost",
+				Query:    "REVOKE IF EXISTS ALL PRIVILEGES, GRANT OPTION FROM tester2@localhost;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				User:     "root",
+				Host:     "localhost",
+				Query:    "SELECT User, Host, Select_priv, Insert_priv, Grant_priv FROM mysql.user WHERE User = 'tester2';",
+				Expected: []sql.Row{{"tester2", "localhost", "N", "N", "N"}},
+			},
+			{
+				User:        "root",
+				Host:        "localhost",
+				Query:       "REVOKE IF EXISTS ALL PRIVILEGES, GRANT OPTION FROM fake1@localhost, fake2@localhost, fake3@localhost;",
+				ExpectedErr: sql.ErrRevokeUserDoesNotExist,
+			},
+			{
+				// TODO: check warnings
+				User:     "root",
+				Host:     "localhost",
+				Query:    "REVOKE IF EXISTS ALL PRIVILEGES, GRANT OPTION FROM fake1@localhost, fake2@localhost, fake3@localhost IGNORE UNKNOWN USER;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 		},
 	},
@@ -961,7 +1391,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT User, Host, account_locked FROM mysql.user WHERE User = 'test_role';",
-				Expected: []sql.Row{{"test_role", "%", uint16(2)}},
+				Expected: []sql.Row{{"test_role", "%", "Y"}},
 			},
 		},
 	},
@@ -998,7 +1428,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mysql.role_edges;",
-				Expected: []sql.Row{{"%", "test_role", "localhost", "tester", uint16(1)}},
+				Expected: []sql.Row{{"%", "test_role", "localhost", "tester", "N"}},
 			},
 			{
 				User:     "tester",
@@ -1010,7 +1440,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT User, Host, Select_priv FROM mysql.user WHERE User = 'tester';",
-				Expected: []sql.Row{{"tester", "localhost", uint16(1)}},
+				Expected: []sql.Row{{"tester", "localhost", "N"}},
 			},
 		},
 	},
@@ -1036,7 +1466,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mysql.role_edges;",
-				Expected: []sql.Row{{"%", "test_role", "localhost", "tester", uint16(1)}},
+				Expected: []sql.Row{{"%", "test_role", "localhost", "tester", "N"}},
 			},
 			{
 				User:     "root",
@@ -1068,6 +1498,32 @@ var UserPrivTests = []UserPrivilegeTest{
 				Query:    "SELECT COUNT(*) FROM mysql.user WHERE User = 'tester';",
 				Expected: []sql.Row{{1}},
 			},
+			{
+				User:        "root",
+				Host:        "localhost",
+				Query:       "REVOKE fake_role FROM tester@localhost;",
+				ExpectedErr: sql.ErrGrantRevokeRoleDoesNotExist,
+			},
+			{
+				// TODO: check for warning
+				User:     "root",
+				Host:     "localhost",
+				Query:    "REVOKE IF EXISTS fake_role FROM tester@localhost;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				User:        "root",
+				Host:        "localhost",
+				Query:       "REVOKE test_role FROM fake_user@localhost;",
+				ExpectedErr: sql.ErrGrantRevokeRoleDoesNotExist,
+			},
+			{
+				// TODO: check for warning
+				User:     "root",
+				Host:     "localhost",
+				Query:    "REVOKE test_role FROM fake_user@localhost IGNORE UNKNOWN USER;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
 		},
 	},
 	{
@@ -1092,7 +1548,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mysql.role_edges;",
-				Expected: []sql.Row{{"%", "test_role", "localhost", "tester", uint16(1)}},
+				Expected: []sql.Row{{"%", "test_role", "localhost", "tester", "N"}},
 			},
 			{
 				User:     "root",
@@ -1154,7 +1610,7 @@ var UserPrivTests = []UserPrivilegeTest{
 				User:     "root",
 				Host:     "localhost",
 				Query:    "SELECT * FROM mysql.role_edges;",
-				Expected: []sql.Row{{"%", "test_role", "localhost", "tester", uint16(1)}},
+				Expected: []sql.Row{{"%", "test_role", "localhost", "tester", "N"}},
 			},
 			{
 				User:     "root",
@@ -1543,10 +1999,10 @@ var UserPrivTests = []UserPrivilegeTest{
 				},
 			},
 			{
-				User:        "rand_user1",
-				Host:        "54.244.85.252",
-				Query:       "SELECT * FROM mydb.test;",
-				ExpectedErr: sql.ErrDatabaseAccessDeniedForUser,
+				User:           "rand_user1",
+				Host:           "54.244.85.252",
+				Query:          "SELECT * FROM mydb.test;",
+				ExpectedErrStr: "Access denied for user 'rand_user1' (errno 1045) (sqlstate 28000)",
 			},
 			{
 				User:  "rand_user2",
@@ -1567,10 +2023,10 @@ var UserPrivTests = []UserPrivilegeTest{
 				},
 			},
 			{
-				User:        "rand_user2",
-				Host:        "54.244.85.252",
-				Query:       "SELECT * FROM mydb.test2;",
-				ExpectedErr: sql.ErrDatabaseAccessDeniedForUser,
+				User:           "rand_user2",
+				Host:           "54.244.85.252",
+				Query:          "SELECT * FROM mydb.test2;",
+				ExpectedErrStr: "Access denied for user 'rand_user2' (errno 1045) (sqlstate 28000)",
 			},
 		},
 	},
@@ -1672,9 +2128,9 @@ var UserPrivTests = []UserPrivilegeTest{
 	{
 		Name: "information_schema.column_statistics shows columns with privileges only",
 		SetUpScript: []string{
-			"CREATE TABLE two (i int primary key, j int)",
+			"CREATE TABLE two (i bigint primary key, j bigint, key(j))",
 			"INSERT INTO two VALUES (1, 4), (2, 5), (3, 6)",
-			"CREATE TABLE one (f float)",
+			"CREATE TABLE one (f double primary key)",
 			"INSERT INTO one VALUES (1.25), (45.25), (7.5), (10.5)",
 			"ANALYZE TABLE one",
 			"ANALYZE TABLE two",
@@ -1688,10 +2144,12 @@ var UserPrivTests = []UserPrivilegeTest{
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
-				User:     "tester",
-				Host:     "localhost",
-				Query:    "SELECT * FROM information_schema.column_statistics where schema_name = 'mydb';",
-				Expected: []sql.Row{{"mydb", "one", "f", types.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"1.25", "1.25", "0.25"}, []interface{}{"7.50", "7.50", "0.25"}, []interface{}{"10.50", "10.50", "0.25"}, []interface{}{"45.25", "45.25", "0.25"}}}}}},
+				User:  "tester",
+				Host:  "localhost",
+				Query: "SELECT table_name, column_name FROM information_schema.column_statistics where schema_name = 'mydb';",
+				Expected: []sql.Row{
+					{"one", "f"},
+				},
 			},
 			{
 				User:     "root",
@@ -1702,10 +2160,12 @@ var UserPrivTests = []UserPrivilegeTest{
 			{
 				User:  "tester",
 				Host:  "localhost",
-				Query: "SELECT * FROM information_schema.column_statistics where schema_name = 'mydb';",
-				Expected: []sql.Row{{"mydb", "one", "f", types.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"1.25", "1.25", "0.25"}, []interface{}{"7.50", "7.50", "0.25"}, []interface{}{"10.50", "10.50", "0.25"}, []interface{}{"45.25", "45.25", "0.25"}}}}},
-					{"mydb", "two", "i", types.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"1.00", "1.00", "0.33"}, []interface{}{"2.00", "2.00", "0.33"}, []interface{}{"3.00", "3.00", "0.33"}}}}},
-					{"mydb", "two", "j", types.JSONDocument{Val: map[string]interface{}{"buckets": []interface{}{[]interface{}{"4.00", "4.00", "0.33"}, []interface{}{"5.00", "5.00", "0.33"}, []interface{}{"6.00", "6.00", "0.33"}}}}}},
+				Query: "SELECT table_name, column_name FROM information_schema.column_statistics where schema_name = 'mydb';",
+				Expected: []sql.Row{
+					{"one", "f"},
+					{"two", "i"},
+					{"two", "j"},
+				},
 			},
 		},
 	},
@@ -1976,6 +2436,75 @@ var UserPrivTests = []UserPrivilegeTest{
 			},
 		},
 	},
+	{
+		Name: "information schema is queryable",
+		SetUpScript: []string{
+			"CREATE DATABASE testdb;",
+			"CREATE USER testadmin@'%';",
+			"GRANT ALL ON testdb.* TO testadmin@'%';",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:     "testadmin",
+				Host:     "%",
+				Query:    "USE testdb;",
+				Expected: []sql.Row{},
+			},
+			{
+				User:     "testadmin",
+				Host:     "%",
+				Query:    `SELECT SUM(found) FROM ((SELECT 1 as found FROM information_schema.tables) UNION (SELECT 1 as found FROM information_schema.events)) as all_found;`,
+				Expected: []sql.Row{{1.0}},
+			},
+			{
+				User:     "testadmin",
+				Host:     "%",
+				Query:    `(SELECT 1 as found FROM information_schema.tables) UNION (SELECT 1 as found FROM information_schema.events);`,
+				Expected: []sql.Row{{1}},
+			},
+			{
+				User:     "testadmin",
+				Host:     "%",
+				Query:    `SELECT SUM(found) FROM ((SELECT 1 as found FROM dual) UNION (SELECT 1 as found FROM dual)) as all_found;`,
+				Expected: []sql.Row{{1.0}},
+			},
+			{
+				User: "testadmin",
+				Host: "%",
+				Query: `SELECT SUM(found)
+FROM ((SELECT 1 as found FROM information_schema.tables WHERE table_schema = 'testdb')
+      UNION ALL
+      (SELECT 1 as found FROM information_schema.views WHERE table_schema = 'testdb' LIMIT 1)
+      UNION ALL
+      (SELECT 1 as found FROM information_schema.table_constraints WHERE table_schema = 'testdb' LIMIT 1)
+      UNION ALL
+      (SELECT 1 as found FROM information_schema.triggers WHERE event_object_schema = 'testdb' LIMIT 1)
+      UNION ALL
+      (SELECT 1 as found FROM information_schema.routines WHERE routine_schema = 'testdb' LIMIT 1)
+      UNION ALL
+      (SELECT 1 as found FROM information_schema.events WHERE event_schema = 'testdb' LIMIT 1)) as all_found;`,
+				Expected: []sql.Row{{nil}},
+			},
+		},
+	},
+	{
+		Name: "Test user creation with hashed password",
+		SetUpScript: []string{
+			"CREATE USER 'lol'@'%' IDENTIFIED WITH mysql_native_password AS '*91D9861DFC07DD967611B8C96953474EF270AD5E';",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				Query: "SELECT User, plugin, authentication_string FROM mysql.user WHERE User = 'lol';",
+				Expected: []sql.Row{
+					{
+						"lol",                   // User
+						"mysql_native_password", // plugin
+						"*91D9861DFC07DD967611B8C96953474EF270AD5E", // authentication_string
+					},
+				},
+			},
+		},
+	},
 }
 
 // NoopPlaintextPlugin is used to authenticate plaintext user plugins
@@ -1991,13 +2520,186 @@ func (p *NoopPlaintextPlugin) Authenticate(db *mysql_db.MySQLDb, user string, us
 // root account is used with any queries in the SetUpScript, along as being set to the context passed to SetUpFunc.
 var ServerAuthTests = []ServerAuthenticationTest{
 	{
+		Name: "ALTER USER can change passwords",
+		Assertions: []ServerAuthenticationTestAssertion{
+			// Create test users, privileges, etc
+			{
+				Username:    "root",
+				Password:    "",
+				Query:       "CREATE TABLE mydb.test (pk BIGINT PRIMARY KEY);",
+				ExpectedErr: false,
+			}, {
+				// Create a user with CREATE USER privileges
+				Username:    "root",
+				Password:    "",
+				Query:       "CREATE USER `createUserUser`@`localhost` IDENTIFIED BY '';",
+				ExpectedErr: false,
+			}, {
+				Username:    "root",
+				Password:    "",
+				Query:       "GRANT CREATE USER ON *.* TO `createUserUser`@`localhost`;",
+				ExpectedErr: false,
+			}, {
+				// Create a user with UPDATE privileges on the mysql database
+				Username:    "root",
+				Password:    "",
+				Query:       "CREATE USER `updateUser`@`localhost` IDENTIFIED BY '';",
+				ExpectedErr: false,
+			}, {
+				Username:    "root",
+				Password:    "",
+				Query:       "GRANT UPDATE ON mysql.* TO `updateUser`@`localhost`;",
+				ExpectedErr: false,
+			}, {
+				// Create a regular user named user1 with SELECT privileges
+				Username:    "root",
+				Password:    "",
+				Query:       "CREATE USER `user1`@`localhost` IDENTIFIED BY '';",
+				ExpectedErr: false,
+			}, {
+				Username:    "root",
+				Password:    "",
+				Query:       "GRANT SELECT ON *.* TO `user1`@`localhost`;",
+				ExpectedErr: false,
+			}, {
+				// Create a regular user named user2 with SELECT privileges
+				Username:    "root",
+				Password:    "",
+				Query:       "CREATE USER `user2`@`localhost` IDENTIFIED BY '';",
+				ExpectedErr: false,
+			}, {
+				Username:    "root",
+				Password:    "",
+				Query:       "GRANT SELECT ON *.* TO `user2`@`localhost`;",
+				ExpectedErr: false,
+			},
+
+			// When IF EXISTS is specified, an error isn't returned if the user doesn't exist
+			{
+				Username:    "root",
+				Password:    "",
+				Query:       "ALTER USER IF EXISTS nobody@localhost IDENTIFIED BY 'password';",
+				ExpectedErr: false,
+			}, {
+				Username:       "root",
+				Password:       "",
+				Query:          "ALTER USER nobody@localhost IDENTIFIED BY 'password';",
+				ExpectedErr:    true,
+				ExpectedErrStr: "Error 1105 (HY000): Operation ALTER USER failed for 'nobody'@'localhost'",
+			},
+
+			// RANDOM PASSWORD is not supported yet, so an error should be returned
+			{
+				Username:    "root",
+				Password:    "",
+				Query:       "ALTER USER user2@localhost IDENTIFIED BY RANDOM PASSWORD;",
+				ExpectedErr: true,
+				ExpectedErrStr: "Error 1105 (HY000): random password generation is not currently supported; " +
+					"you can request support at https://github.com/dolthub/dolt/issues/new",
+			},
+
+			// root super user can change other account passwords
+			{
+				Username:    "root",
+				Password:    "",
+				Query:       "ALTER USER `user1`@`localhost` IDENTIFIED BY 'password1';",
+				ExpectedErr: false,
+			}, {
+				Username:    "user1",
+				Password:    "",
+				Query:       "SELECT * FROM mydb.test;",
+				ExpectedErr: true,
+			}, {
+				Username:    "user1",
+				Password:    "password1",
+				Query:       "SELECT * FROM mydb.test;",
+				ExpectedErr: false,
+			},
+
+			// Accounts with the CREATE USER privilege can change other account passwords
+			{
+				Username:    "createUserUser",
+				Password:    "",
+				Query:       "ALTER USER `user1`@`localhost` IDENTIFIED BY 'password2';",
+				ExpectedErr: false,
+			}, {
+				Username:    "user1",
+				Password:    "",
+				Query:       "SELECT * FROM mydb.test;",
+				ExpectedErr: true,
+			}, {
+				Username:    "user1",
+				Password:    "password2",
+				Query:       "SELECT * FROM mydb.test;",
+				ExpectedErr: false,
+			},
+
+			// Accounts with the UPDATE privilege on the mysql db can change other account passwords
+			{
+				Username:    "updateUser",
+				Password:    "",
+				Query:       "ALTER USER `user2`@`localhost` IDENTIFIED BY 'password3';",
+				ExpectedErr: false,
+			}, {
+				Username:    "user2",
+				Password:    "",
+				Query:       "SELECT * FROM mydb.test;",
+				ExpectedErr: true,
+			}, {
+				Username:    "user2",
+				Password:    "password3",
+				Query:       "SELECT * FROM mydb.test;",
+				ExpectedErr: false,
+			},
+
+			// Accounts can change their own password
+			{
+				Username:    "user1",
+				Password:    "password2",
+				Query:       "ALTER USER `user1`@`localhost` IDENTIFIED BY 'password4';",
+				ExpectedErr: false,
+			}, {
+				Username:    "user1",
+				Password:    "",
+				Query:       "SELECT * FROM mydb.test;",
+				ExpectedErr: true,
+			}, {
+				Username:    "user1",
+				Password:    "password4",
+				Query:       "SELECT * FROM mydb.test;",
+				ExpectedErr: false,
+			},
+
+			// Accounts CANNOT change another account's password (without the CREATE USER or UPDATE privilege)
+			{
+				Username:    "user1",
+				Password:    "password2",
+				Query:       "ALTER USER `user2`@`localhost` IDENTIFIED BY 'password5';",
+				ExpectedErr: true,
+			},
+		},
+	},
+	{
 		Name: "DROP USER reports correct string for missing address",
 		Assertions: []ServerAuthenticationTestAssertion{
 			{
 				Username:       "root",
 				Password:       "",
 				Query:          "DROP USER xyz;",
-				ExpectedErrStr: "Error 1105: Operation DROP USER failed for 'xyz'@'%'",
+				ExpectedErrStr: "Error 1105 (HY000): Operation DROP USER failed for 'xyz'@'%'",
+			},
+		},
+	},
+	{
+		Name: "CREATE USER with a random password is not supported",
+		Assertions: []ServerAuthenticationTestAssertion{
+			{
+				Username:    "root",
+				Password:    "",
+				Query:       "CREATE USER foo1@localhost IDENTIFIED BY RANDOM PASSWORD;",
+				ExpectedErr: true,
+				ExpectedErrStr: "Error 1105 (HY000): random password generation is not currently supported; " +
+					"you can request support at https://github.com/dolthub/dolt/issues/new",
 			},
 		},
 	},
@@ -2055,10 +2757,10 @@ var ServerAuthTests = []ServerAuthenticationTest{
 		},
 		Assertions: []ServerAuthenticationTestAssertion{
 			{
-				Username:    "rand_user",
-				Password:    "rand_pass",
-				Query:       "SELECT * FROM mysql.user;",
-				ExpectedErr: false,
+				Username:           "rand_user",
+				Password:           "rand_pass",
+				Query:              "SELECT * FROM mysql.user;",
+				ExpectedAuthPlugin: "mysql_native_password",
 			},
 			{
 				Username:    "rand_user",
@@ -2081,17 +2783,17 @@ var ServerAuthTests = []ServerAuthenticationTest{
 		},
 	},
 	{
-		Name: "Create User with plugin specification",
+		Name: "Create User explicitly with mysql_native_password plugin",
 		SetUpScript: []string{
 			"CREATE USER ranuse@localhost IDENTIFIED WITH mysql_native_password BY 'ranpas';",
 			"GRANT ALL ON *.* TO ranuse@localhost WITH GRANT OPTION;",
 		},
 		Assertions: []ServerAuthenticationTestAssertion{
 			{
-				Username:    "ranuse",
-				Password:    "ranpas",
-				Query:       "SELECT * FROM mysql.user;",
-				ExpectedErr: false,
+				Username:           "ranuse",
+				Password:           "ranpas",
+				Query:              "SELECT * FROM mysql.user;",
+				ExpectedAuthPlugin: "mysql_native_password",
 			},
 			{
 				Username:    "ranuse",
@@ -2104,6 +2806,103 @@ var ServerAuthTests = []ServerAuthenticationTest{
 				Password:    "",
 				Query:       "SELECT * FROM mysql.user;",
 				ExpectedErr: true,
+			},
+		},
+	},
+	{
+		Name: "Create User explicitly with caching_sha2_password plugin",
+		SetUpScript: []string{
+			// testuser1 is created with a password
+			"CREATE USER testuser1@localhost IDENTIFIED WITH caching_sha2_password BY 'mypassword3';",
+			"GRANT ALL ON *.* TO testuser1@localhost WITH GRANT OPTION;",
+			// testuser2 is created without a password
+			"CREATE USER testuser2@localhost IDENTIFIED WITH caching_sha2_password;",
+			"GRANT ALL ON *.* TO testuser2@localhost WITH GRANT OPTION;",
+		},
+		Assertions: []ServerAuthenticationTestAssertion{
+			{
+				Username:           "testuser1",
+				Password:           "mypassword3",
+				Query:              "SELECT * FROM mysql.user;",
+				ExpectedAuthPlugin: "caching_sha2_password",
+			},
+			{
+				Username:       "testuser1",
+				Password:       "what",
+				Query:          "SELECT * FROM mysql.user;",
+				ExpectedErr:    true,
+				ExpectedErrStr: "Error 1045 (28000): Access denied for user 'testuser1'",
+			},
+			{
+				Username:       "testuser1",
+				Password:       "",
+				Query:          "SELECT * FROM mysql.user;",
+				ExpectedErr:    true,
+				ExpectedErrStr: "Error 1045 (28000): Access denied for user 'testuser1'",
+			},
+			{
+				Username:       "testuser2",
+				Password:       "wrong",
+				Query:          "SELECT * FROM mysql.user;",
+				ExpectedErr:    true,
+				ExpectedErrStr: "Error 1045 (28000): Access denied for user 'testuser2'",
+			},
+			{
+				Username:           "testuser2",
+				Password:           "",
+				Query:              "SELECT * FROM mysql.user;",
+				ExpectedErr:        false,
+				ExpectedAuthPlugin: "caching_sha2_password",
+			},
+		},
+	},
+	{
+		Name: "Migrate user from mysql_native_password to caching_sha2_password",
+		SetUpScript: []string{
+			// testuser1 is created with a password
+			"CREATE USER testuser1@localhost IDENTIFIED WITH mysql_native_password BY 'mypassword3';",
+			"GRANT ALL ON *.* TO testuser1@localhost WITH GRANT OPTION;",
+		},
+		Assertions: []ServerAuthenticationTestAssertion{
+			{
+				Username:           "testuser1",
+				Password:           "mypassword3",
+				Query:              "SELECT * FROM mysql.user;",
+				ExpectedAuthPlugin: "mysql_native_password",
+			},
+			{
+				Username: "root",
+				Query:    "ALTER USER testuser1@localhost IDENTIFIED WITH caching_sha2_password BY 'pass1';",
+			},
+			{
+				Username:           "testuser1",
+				Password:           "pass1",
+				Query:              "SELECT * FROM mysql.user;",
+				ExpectedAuthPlugin: "caching_sha2_password",
+			},
+			{
+				Username:       "testuser1",
+				Password:       "wrong",
+				Query:          "SELECT * FROM mysql.user;",
+				ExpectedErr:    true,
+				ExpectedErrStr: "Error 1045 (28000): Access denied for user 'testuser1'",
+			},
+			{
+				Username: "root",
+				Query:    "ALTER USER testuser1@localhost IDENTIFIED WITH caching_sha2_password;",
+			},
+			{
+				Username:           "testuser1",
+				Password:           "",
+				Query:              "SELECT * FROM mysql.user;",
+				ExpectedAuthPlugin: "caching_sha2_password",
+			},
+			{
+				Username:       "testuser1",
+				Password:       "wrong",
+				Query:          "SELECT * FROM mysql.user;",
+				ExpectedErr:    true,
+				ExpectedErrStr: "Error 1045 (28000): Access denied for user 'testuser1'",
 			},
 		},
 	},
@@ -2115,33 +2914,38 @@ var ServerAuthTests = []ServerAuthenticationTest{
 		},
 		SetUpFunc: func(ctx *sql.Context, t *testing.T, engine *sqle.Engine) {
 			plugins := map[string]mysql_db.PlaintextAuthPlugin{"authentication_dolt_jwt": &NoopPlaintextPlugin{}}
-			engine.Analyzer.Catalog.MySQLDb.SetPlugins(plugins)
+			engine.EngineAnalyzer().Catalog.MySQLDb.SetPlugins(plugins)
 		},
 		Assertions: []ServerAuthenticationTestAssertion{
 			{
-				Username:    "test-user",
-				Password:    "what",
-				Query:       "SELECT * FROM mysql.user;",
-				ExpectedErr: true,
+				Username:       "test-user",
+				Password:       "what",
+				Query:          "SELECT * FROM mysql.user;",
+				ExpectedErr:    true,
+				ExpectedErrStr: "Error 1045 (28000): Access denied for user 'test-user'",
 			},
 			{
-				Username:    "test-user",
-				Password:    "",
-				Query:       "SELECT * FROM mysql.user;",
-				ExpectedErr: true,
+				Username:       "test-user",
+				Password:       "",
+				Query:          "SELECT * FROM mysql.user;",
+				ExpectedErr:    true,
+				ExpectedErrStr: "Error 1045 (28000): Access denied for user 'test-user'",
 			},
 			{
-				Username:    "test-user",
-				Password:    "right-password",
-				Query:       "SELECT * FROM mysql.user;",
-				ExpectedErr: false,
+
+				Username:           "test-user",
+				Password:           "right-password",
+				Query:              "SELECT * FROM mysql.user;",
+				ExpectedAuthPlugin: "authentication_dolt_jwt",
 			},
 		},
 	},
 	{
 		Name: "Adding a Super User directly",
 		SetUpFunc: func(ctx *sql.Context, t *testing.T, engine *sqle.Engine) {
-			engine.Analyzer.Catalog.MySQLDb.AddSuperUser("bestuser", "localhost", "the_pass")
+			ed := engine.EngineAnalyzer().Catalog.MySQLDb.Editor()
+			defer ed.Close()
+			engine.EngineAnalyzer().Catalog.MySQLDb.AddSuperUser(ed, "bestuser", "localhost", "the_pass")
 		},
 		Assertions: []ServerAuthenticationTestAssertion{
 			{

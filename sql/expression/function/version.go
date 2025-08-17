@@ -21,8 +21,6 @@ import (
 	"github.com/gabereiser/go-mysql-server/sql/types"
 )
 
-const mysqlVersion = "8.0.11"
-
 // Version is a function that returns server version.
 type Version string
 
@@ -32,6 +30,7 @@ func (f Version) IsNonDeterministic() bool {
 }
 
 var _ sql.FunctionExpression = (Version)("")
+var _ sql.CollationCoercible = (Version)("")
 
 // NewVersion creates a new Version UDF.
 func NewVersion(versionPostfix string) func(...sql.Expression) (sql.Expression, error) {
@@ -52,6 +51,11 @@ func (f Version) Description() string {
 
 // Type implements the Expression interface.
 func (f Version) Type() sql.Type { return types.LongText }
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (Version) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_utf8mb3_general_ci, 3
+}
 
 // IsNullable implements the Expression interface.
 func (f Version) IsNullable() bool {
@@ -80,9 +84,12 @@ func (f Version) Children() []sql.Expression { return nil }
 
 // Eval implements the Expression interface.
 func (f Version) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	if f == "" {
-		return mysqlVersion, nil
+	v, err := ctx.Session.GetSessionVariable(ctx, "version")
+	if err != nil {
+		return nil, err
 	}
-
-	return fmt.Sprintf("%s-%s", mysqlVersion, string(f)), nil
+	if f == "" {
+		return v, nil
+	}
+	return fmt.Sprintf("%s-%s", v, string(f)), nil
 }

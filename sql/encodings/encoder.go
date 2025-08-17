@@ -33,6 +33,12 @@ type Encoder interface {
 	// EncodeRune. Do note that the string parameter is NOT modified in any way. Refer to IsReturnSafe to check if the
 	// returned byte slice must be copied before modifications may be made.
 	Encode(str []byte) ([]byte, bool)
+	// EncodeReplaceUnknown converts from Go's string encoding (utf8mb4-equivalent) to the encoding represented by this Encoder.
+	// This is intended for encoding whole strings (that are represented as byte slices), to encode individual codepoints use
+	// EncodeRune. Do note that the string parameter is NOT modified in any way. Refer to IsReturnSafe to check if the
+	// returned byte slice must be copied before modifications may be made. Unlike the standard Encode function, this will
+	// replace unknown sequences with a question mark (?), meaning that all encodings will return a result.
+	EncodeReplaceUnknown(str []byte) []byte
 	// DecodeRune converts from the encoding represented by this Encoder to Go's rune encoding (utf8mb4-equivalent).
 	// Refer to IsReturnSafe to check if the returned byte slice must be copied before modifications may be made.
 	DecodeRune(r []byte) ([]byte, bool)

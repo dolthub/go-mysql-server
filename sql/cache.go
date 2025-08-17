@@ -18,26 +18,11 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/cespare/xxhash"
-
 	lru "github.com/hashicorp/golang-lru"
-	errors "gopkg.in/src-d/go-errors.v1"
 )
 
-// HashOf returns a hash of the given value to be used as key in a cache.
-func HashOf(v Row) (uint64, error) {
-	hash := xxhash.New()
-	for _, x := range v {
-		// TODO: probably much faster to do this with a type switch
-		if _, err := hash.Write([]byte(fmt.Sprintf("%v,", x))); err != nil {
-			return 0, err
-		}
-	}
-	return hash.Sum64(), nil
-}
-
 // ErrKeyNotFound is returned when the key could not be found in the cache.
-var ErrKeyNotFound = errors.NewKind("memory: key %d not found in cache")
+var ErrKeyNotFound = fmt.Errorf("memory: key not found in cache")
 
 type lruCache struct {
 	memory   Freeable
@@ -65,7 +50,7 @@ func (l *lruCache) Put(k uint64, v interface{}) error {
 func (l *lruCache) Get(k uint64) (interface{}, error) {
 	v, ok := l.cache.Get(k)
 	if !ok {
-		return nil, ErrKeyNotFound.New(k)
+		return nil, ErrKeyNotFound
 	}
 
 	return v, nil
@@ -133,7 +118,7 @@ func (m mapCache) Put(u uint64, i interface{}) error {
 func (m mapCache) Get(u uint64) (interface{}, error) {
 	v, ok := m.cache[u]
 	if !ok {
-		return nil, ErrKeyNotFound.New(u)
+		return nil, ErrKeyNotFound
 	}
 	return v, nil
 }
@@ -173,7 +158,7 @@ func (h *historyCache) Put(k uint64, v interface{}) error {
 func (h *historyCache) Get(k uint64) (interface{}, error) {
 	v, ok := h.cache[k]
 	if !ok {
-		return nil, ErrKeyNotFound.New(k)
+		return nil, ErrKeyNotFound
 	}
 	return v, nil
 }

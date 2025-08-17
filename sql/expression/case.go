@@ -35,68 +35,32 @@ type Case struct {
 	Else     sql.Expression
 }
 
+var _ sql.Expression = (*Case)(nil)
+var _ sql.CollationCoercible = (*Case)(nil)
+
 // NewCase returns an new Case expression.
 func NewCase(expr sql.Expression, branches []CaseBranch, elseExpr sql.Expression) *Case {
 	return &Case{expr, branches, elseExpr}
 }
 
-// From the description of operator typing here:
-// https://dev.mysql.com/doc/refman/8.0/en/flow-control-functions.html#operator_case
-func combinedCaseBranchType(left, right sql.Type) sql.Type {
-	if left == types.Null {
-		return right
-	}
-	if right == types.Null {
-		return left
-	}
-	if types.IsTextOnly(left) && types.IsTextOnly(right) {
-		return types.LongText
-	}
-	if types.IsTextBlob(left) && types.IsTextBlob(right) {
-		return types.LongBlob
-	}
-	if types.IsTime(left) && types.IsTime(right) {
-		if left == right {
-			return left
-		}
-		return types.Datetime
-	}
-	if types.IsNumber(left) && types.IsNumber(right) {
-		if left == types.Float64 || right == types.Float64 {
-			return types.Float64
-		}
-		if left == types.Float32 || right == types.Float32 {
-			return types.Float32
-		}
-		if types.IsDecimal(left) || types.IsDecimal(right) {
-			return types.MustCreateDecimalType(65, 10)
-		}
-		if left == types.Uint64 && types.IsSigned(right) ||
-			right == types.Uint64 && types.IsSigned(left) {
-			return types.MustCreateDecimalType(65, 10)
-		}
-		if !types.IsSigned(left) && !types.IsSigned(right) {
-			return types.Uint64
-		} else {
-			return types.Int64
-		}
-	}
-	if types.IsJSON(left) && types.IsJSON(right) {
-		return types.JSON
-	}
-	return types.LongText
-}
-
 // Type implements the sql.Expression interface.
 func (c *Case) Type() sql.Type {
-	curr := types.Null
+	var curr sql.Type
+	curr = types.Null
 	for _, b := range c.Branches {
-		curr = combinedCaseBranchType(curr, b.Value.Type())
+		curr = types.GeneralizeTypes(curr, b.Value.Type())
 	}
 	if c.Else != nil {
-		curr = combinedCaseBranchType(curr, c.Else.Type())
+		curr = types.GeneralizeTypes(curr, c.Else.Type())
 	}
 	return curr
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (c *Case) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	// This should be calculated during the expression's evaluation, but that's not possible with the
+	// current abstraction
+	return c.Type().CollationCoercibility(ctx)
 }
 
 // IsNullable implements the sql.Expression interface.
@@ -170,7 +134,12 @@ func (c *Case) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			if err != nil {
 				return nil, err
 			}
-			return t.Convert(bval)
+			// When unable to convert to the type of the case, return the original value
+			// A common error here is "Out of bounds value for decimal type"
+			if ret, inRange, err := types.TypeAwareConversion(ctx, bval, b.Value.Type(), t); inRange && err == nil {
+				return ret, nil
+			}
+			return bval, nil
 		}
 	}
 
@@ -179,7 +148,13 @@ func (c *Case) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		return t.Convert(val)
+		// When unable to convert to the type of the case, return the original value
+		// A common error here is "Out of bounds value for decimal type"
+		if ret, inRange, err := types.TypeAwareConversion(ctx, val, c.Else.Type(), t); inRange && err == nil {
+			return ret, nil
+		}
+		return val, nil
+
 	}
 
 	return nil, nil
