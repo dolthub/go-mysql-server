@@ -72,11 +72,11 @@ import (
 
 	"github.com/dolthub/vitess/go/vt/proto/query"
 
-	sqle "github.com/dolthub/go-mysql-server"
-	"github.com/dolthub/go-mysql-server/memory"
-	"github.com/dolthub/go-mysql-server/server"
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/types"
+	sqle "github.com/gabereiser/go-mysql-server"
+	"github.com/gabereiser/go-mysql-server/memory"
+	"github.com/gabereiser/go-mysql-server/server"
+	"github.com/gabereiser/go-mysql-server/sql"
+	"github.com/gabereiser/go-mysql-server/sql/types"
 )
 
 // This is an example of how to implement a MySQL server.
@@ -218,7 +218,7 @@ would like to hear from you and include you in this list.
 ## Security Policy
 
 [go-mysql-server's security
-policy](https://github.com/dolthub/go-mysql-server/blob/main/SECURITY.md) is
+policy](https://github.com/gabereiser/go-mysql-server/blob/main/SECURITY.md) is
 maintained in this repository. Please follow the disclosure instructions there.
 Please do not initially report security issues in this repository's public
 GitHub issues.
