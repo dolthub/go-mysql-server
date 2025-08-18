@@ -415,6 +415,7 @@ func (b *Builder) getIndexDefs(table sql.Table) sql.IndexDefs {
 		exprs := idx.Expressions()
 		columns := make([]sql.IndexColumn, len(exprs))
 		for i, col := range exprs {
+			col = col[strings.IndexByte(col, '.')+1:]
 			columns[i] = sql.IndexColumn{Name: col}
 		}
 		idxDefs = append(idxDefs, &sql.IndexDef{
