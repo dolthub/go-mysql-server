@@ -140,7 +140,7 @@ func (g *GroupBy) String() string {
 	}
 
 	_ = pr.WriteChildren(
-		fmt.Sprintf("Select Dependencies(%s)", strings.Join(selectDeps, ", ")),
+		fmt.Sprintf("SelectDeps(%s)", strings.Join(selectDeps, ", ")),
 		fmt.Sprintf("Grouping(%s)", strings.Join(grouping, ", ")),
 		g.Child.String(),
 	)

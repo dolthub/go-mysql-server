@@ -253,7 +253,6 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	checkParent := false
 	var project *plan.Project
 	var having *plan.Having
-	var filter *plan.Filter
 	transform.Inspect(n, func(n sql.Node) bool {
 		defer func() {
 			parent = n
@@ -290,17 +289,16 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 			exprs := make([]sql.Expression, 0)
 			exprs = append(exprs, n.GroupByExprs...)
 			if having != nil {
-				if eq, ok := having.Cond.(*expression.Equals); ok {
-					exprs = append(exprs, eq.Children()...)
-				}
+				exprs = append(exprs, getEqualsDependencies(having.Cond)...)
 			}
-			if filter != nil {
+			possibleJoin := n.Child
+			if filter, ok := n.Child.(*plan.Filter); ok {
+				possibleJoin = filter.Child
+				exprs = append(exprs, getEqualsDependencies(filter.Expression)...)
 			}
-			if join, ok := n.Child.(*plan.JoinNode); ok {
+			if join, ok := possibleJoin.(*plan.JoinNode); ok {
 				isJoin = true
-				if eq, ok := join.Filter.(*expression.Equals); ok {
-					exprs = append(exprs, eq.Children()...)
-				}
+				exprs = append(exprs, getEqualsDependencies(join.Filter)...)
 			}
 			for _, expr := range exprs {
 				sql.Inspect(expr, func(expr sql.Expression) bool {
@@ -310,6 +308,9 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 					}
 					groupBys[exprStr] = true
 
+					if nameable, ok := expr.(sql.Nameable); ok {
+						groupBys[strings.ToLower(nameable.Name())] = true
+					}
 					_, isAlias := expr.(*expression.Alias)
 					return isAlias
 				})
@@ -334,8 +335,6 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 			}
 		case *plan.Project:
 			project = n
-		case *plan.Filter:
-			filter = n
 		case *plan.Having:
 			having = n
 		}
@@ -343,6 +342,26 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	})
 
 	return n, transform.SameTree, err
+}
+
+func getEqualsDependencies(expr sql.Expression) []sql.Expression {
+	exprs := make([]sql.Expression, 0)
+	sql.Inspect(expr, func(expr sql.Expression) bool {
+		switch expr := expr.(type) {
+		case *expression.And:
+			return true
+		case *expression.Equals:
+			for _, e := range expr.Children() {
+				if and, ok := e.(*expression.And); ok {
+					exprs = append(exprs, getEqualsDependencies(and)...)
+				} else if _, ok := e.(*expression.Literal); !ok {
+					exprs = append(exprs, e)
+				}
+			}
+		}
+		return false
+	})
+	return exprs
 }
 
 func getSelectExprs(project *plan.Project, selectDeps []sql.Expression, groupBys map[string]bool) []sql.Expression {
@@ -390,6 +409,12 @@ func expressionReferencesOnlyGroupBys(groupBys map[string]bool, expr sql.Express
 		default:
 			if groupBys[strings.ToLower(expr.String())] {
 				return false
+			}
+
+			if nameable, ok := expr.(sql.Nameable); ok {
+				if groupBys[strings.ToLower(nameable.Name())] {
+					return false
+				}
 			}
 
 			if len(expr.Children()) == 0 {

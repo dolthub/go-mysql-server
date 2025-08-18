@@ -129,7 +129,7 @@ var SysbenchPlanTests = []QueryPlanTest{
 			"",
 	},
 	{
-		Query: `SELECT year_col, count(year_col), max(big_int_col), avg(small_int_col) FROM sbtest1 WHERE big_int_col > 0 GROUP BY set_col ORDER BY year_col`,
+		Query: `SELECT year_col, count(year_col), max(big_int_col), avg(small_int_col) FROM sbtest1 WHERE big_int_col > 0 GROUP BY id ORDER BY year_col`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [sbtest1.year_col:3!null, count(sbtest1.year_col):1!null->count(year_col):0, max(sbtest1.big_int_col):2!null->max(big_int_col):0, avg(sbtest1.small_int_col):0->avg(small_int_col):0]\n" +
 			" └─ Sort(sbtest1.year_col:3!null ASC nullsFirst)\n" +
