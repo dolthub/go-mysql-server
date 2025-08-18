@@ -251,7 +251,9 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	var err error
 	var parent sql.Node
 	checkParent := false
-	var projectParent *plan.Project
+	var project *plan.Project
+	var having *plan.Having
+	var filter *plan.Filter
 	transform.Inspect(n, func(n sql.Node) bool {
 		defer func() {
 			parent = n
@@ -282,16 +284,31 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 				}
 			}
 
-			// TODO set groupBys to equalsExpr
 			groupBys := make(map[string]bool)
 			groupByPrimaryKeys := 0
-			for _, expr := range n.GroupByExprs {
+			isJoin := false
+			exprs := make([]sql.Expression, 0)
+			exprs = append(exprs, n.GroupByExprs...)
+			if having != nil {
+				if eq, ok := having.Cond.(*expression.Equals); ok {
+					exprs = append(exprs, eq.Children()...)
+				}
+			}
+			if filter != nil {
+			}
+			if join, ok := n.Child.(*plan.JoinNode); ok {
+				isJoin = true
+				if eq, ok := join.Filter.(*expression.Equals); ok {
+					exprs = append(exprs, eq.Children()...)
+				}
+			}
+			for _, expr := range exprs {
 				sql.Inspect(expr, func(expr sql.Expression) bool {
 					exprStr := strings.ToLower(expr.String())
-					groupBys[exprStr] = true
-					if primaryKeys[exprStr] {
+					if primaryKeys[exprStr] && !groupBys[exprStr] {
 						groupByPrimaryKeys++
 					}
+					groupBys[exprStr] = true
 
 					_, isAlias := expr.(*expression.Alias)
 					return isAlias
@@ -299,11 +316,13 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 			}
 
 			// TODO: also allow grouping by unique non-nullable columns
-			if len(primaryKeys) != 0 && groupByPrimaryKeys == len(primaryKeys) {
+			// TODO: There's currently no way to tell whether or not a primary key column is part of a multi-column
+			//  primary key.
+			if len(primaryKeys) != 0 && (groupByPrimaryKeys == len(primaryKeys) || (isJoin && groupByPrimaryKeys > 0)) {
 				return true
 			}
 
-			selectExprs := getSelectExprs(projectParent, n.SelectDeps, groupBys)
+			selectExprs := getSelectExprs(project, n.SelectDeps, groupBys)
 
 			for _, expr := range selectExprs {
 				if !expressionReferencesOnlyGroupBys(groupBys, expr) {
@@ -314,10 +333,11 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 				}
 			}
 		case *plan.Project:
-			projectParent = n
-		case *plan.Filter, *plan.Having:
-			// TODO inspect for equals and add GetField (if direct child) to equalsExprs
-			// make sure filter hasn't been pushed down yet
+			project = n
+		case *plan.Filter:
+			filter = n
+		case *plan.Having:
+			having = n
 		}
 		return true
 	})
