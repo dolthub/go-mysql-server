@@ -692,7 +692,18 @@ func GeneralizeTypes(a, b sql.Type) sql.Type {
 		// TODO: match blob length to max of the blob lengths
 		return LongBlob
 	}
-
+	aIsBit := IsBit(a)
+	bIsBit := IsBit(b)
+	if aIsBit && bIsBit {
+		// TODO: match max bits to max of max bits between a and b
+		return a.Promote()
+	}
+	if aIsBit {
+		a = Int64
+	}
+	if bIsBit {
+		b = Int64
+	}
 	aIsYear := IsYear(a)
 	bIsYear := IsYear(b)
 	if aIsYear && bIsYear {

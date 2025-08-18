@@ -378,6 +378,16 @@ func rowIterForGoSqlRows(ctx *sql.Context, sch sql.Schema, rows *gosql.Rows) (sq
 func convertValue(ctx *sql.Context, sch sql.Schema, row sql.Row) sql.Row {
 	for i, col := range sch {
 		switch col.Type.Type() {
+		case query.Type_BIT:
+			if row[i] != nil {
+				if bytes, ok := row[i].([]byte); ok {
+					if bt, ok := col.Type.(types.BitType); ok {
+						if v, _, err := bt.Convert(ctx, bytes); err == nil {
+							row[i] = v
+						}
+					}
+				}
+			}
 		case query.Type_GEOMETRY:
 			if row[i] != nil {
 				r, _, err := types.GeometryType{}.Convert(ctx, row[i].([]byte))
@@ -562,9 +572,12 @@ func emptyRowForSchema(sch sql.Schema) ([]any, error) {
 func emptyValuePointerForType(t sql.Type) (any, error) {
 	switch t.Type() {
 	case query.Type_INT8, query.Type_INT16, query.Type_INT24, query.Type_INT64,
-		query.Type_BIT, query.Type_YEAR:
+		query.Type_YEAR:
 		var i gosql.NullInt64
 		return &i, nil
+	case query.Type_BIT:
+		var b []byte
+		return &b, nil
 	case query.Type_INT32:
 		var i gosql.NullInt32
 		return &i, nil
@@ -624,8 +637,10 @@ func schemaForRows(rows *gosql.Rows) (sql.Schema, error) {
 
 func convertGoSqlType(columnType *gosql.ColumnType) (sql.Type, error) {
 	switch strings.ToLower(columnType.DatabaseTypeName()) {
-	case "tinyint", "smallint", "mediumint", "int", "bigint", "bit":
+	case "tinyint", "smallint", "mediumint", "int", "bigint":
 		return types.Int64, nil
+	case "bit":
+		return types.MustCreateBitType(1), nil
 	case "unsigned tinyint", "unsigned smallint", "unsigned mediumint", "unsigned int", "unsigned bigint":
 		return types.Uint64, nil
 	case "float", "double":
