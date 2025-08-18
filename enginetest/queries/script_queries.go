@@ -196,10 +196,10 @@ var ScriptTests = []ScriptTest{
 			"insert into t values (1)",
 		},
 		Assertions: []ScriptTestAssertion{
-            {
-                Query:  "select * from t;",
-                Expected: []sql.Row{{uint64(1)}},
-            },
+			{
+				Query:    "select * from t;",
+				Expected: []sql.Row{{uint64(1)}},
+			},
 		},
 	},
 	{
