@@ -189,6 +189,20 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
+		Name:    "bits don't work on server",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (b bit(1));",
+			"insert into t values (1)",
+		},
+		Assertions: []ScriptTestAssertion{
+            {
+                Query:  "select * from t;",
+                Expected: []sql.Row{{uint64(1)}},
+            },
+		},
+	},
+	{
 		Name: "outer join finish unmatched right side",
 		SetUpScript: []string{
 			`
