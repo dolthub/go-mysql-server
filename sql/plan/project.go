@@ -194,6 +194,7 @@ func (p *Project) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 	np := *p
 	np.Child = children[0]
+	np.sch = nil
 	return &np, nil
 }
 
@@ -209,6 +210,7 @@ func (p *Project) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	}
 	np := *p
 	np.Projections = exprs
+	np.sch = nil
 	return &np, nil
 }
 
