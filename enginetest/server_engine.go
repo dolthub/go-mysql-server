@@ -16,6 +16,7 @@ package enginetest
 
 import (
 	gosql "database/sql"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -397,6 +398,11 @@ func convertValue(ctx *sql.Context, sch sql.Schema, row sql.Row) sql.Row {
 					row[i] = r
 				}
 			}
+		case query.Type_VECTOR:
+			r := row[i].([]byte)
+			dimensions := len(r) / 4
+			row[i] = make([]float32, dimensions)
+			binary.Decode(r, binary.LittleEndian, row[i])
 		case query.Type_TIME:
 			if row[i] != nil {
 				r, _, err := types.TimespanType_{}.Convert(ctx, string(row[i].([]byte)))
@@ -584,7 +590,7 @@ func emptyValuePointerForType(t sql.Type) (any, error) {
 	case query.Type_FLOAT32, query.Type_FLOAT64:
 		var f gosql.NullFloat64
 		return &f, nil
-	case query.Type_JSON, query.Type_BLOB, query.Type_TIME, query.Type_GEOMETRY:
+	case query.Type_JSON, query.Type_BLOB, query.Type_TIME, query.Type_GEOMETRY, query.Type_VECTOR:
 		var f []byte
 		return &f, nil
 	case query.Type_NULL_TYPE:
@@ -677,6 +683,9 @@ func convertGoSqlType(columnType *gosql.ColumnType) (sql.Type, error) {
 		return types.Null, nil
 	case "geometry":
 		return types.GeometryType{}, nil
+	case "vector":
+		length, _ := columnType.Length()
+		return types.VectorType{Dimensions: int(length)}, nil
 	default:
 		return nil, fmt.Errorf("unhandled type %s", columnType.DatabaseTypeName())
 	}

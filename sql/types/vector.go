@@ -33,6 +33,9 @@ var vectorValueType = reflect.TypeOf([]float32{})
 // VectorType represents the VECTOR(N) type.
 // It stores a fixed-length array of N floating point numbers.
 type VectorType struct {
+	// The number of floats in the vector.
+	// If Dimensions is 0, then the type can hold a variable number of floats, but this is only used
+	// as the return type of some functions, and in values sent over the wire.
 	Dimensions int
 }
 
@@ -99,15 +102,15 @@ func (t VectorType) Convert(ctx context.Context, v interface{}) (interface{}, sq
 		}
 		return result, sql.InRange, nil
 	case []float32:
-		if len(val) != t.Dimensions {
+		if t.Dimensions != 0 && len(val) != t.Dimensions {
 			return nil, sql.OutOfRange, fmt.Errorf("VECTOR dimension mismatch: expected %d, got %d", t.Dimensions, len(val))
 		}
 		return val, sql.InRange, nil
 	case []interface{}:
-		if len(val) != t.Dimensions {
+		if t.Dimensions != 0 && len(val) != t.Dimensions {
 			return nil, sql.OutOfRange, fmt.Errorf("VECTOR dimension mismatch: expected %d, got %d", t.Dimensions, len(val))
 		}
-		result := make([]float32, t.Dimensions)
+		result := make([]float32, len(val))
 		for i, elem := range val {
 			switch e := elem.(type) {
 			case float64:
@@ -182,7 +185,7 @@ func (t VectorType) String() string {
 
 // Type implements Type interface.
 func (t VectorType) Type() query.Type {
-	return sqltypes.TypeJSON
+	return sqltypes.Vector
 }
 
 // ValueType implements Type interface.
