@@ -134,11 +134,12 @@ func newRelProps(rel RelExpr) *relProps {
 // Identifiers are ambiguous.
 func idxExprsColumns(idx sql.Index) []string {
 	exprs := idx.Expressions()
+	columns := make([]string, len(exprs))
 	for i, e := range exprs {
-		colName := e[strings.IndexByte(e, '.')+1:]
-		exprs[i] = strings.ToLower(colName)
+		colName := e[strings.IndexRune(e, '.')+1:]
+		columns[i] = strings.ToLower(colName)
 	}
-	return exprs
+	return columns
 }
 
 func (p *relProps) SetStats(s sql.Statistic) {
