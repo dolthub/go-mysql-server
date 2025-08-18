@@ -188,14 +188,6 @@ func (i testIndex) Expressions() []string {
 	return res
 }
 
-func (i testIndex) UnqualifiedExpressions() []string {
-	res := make([]string, i.numcols)
-	for i := range res {
-		res[i] = fmt.Sprintf("column_%d", i)
-	}
-	return res
-}
-
 func (testIndex) IsUnique() bool {
 	return false
 }

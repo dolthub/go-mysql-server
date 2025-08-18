@@ -412,7 +412,7 @@ func (b *Builder) getIndexDefs(table sql.Table) sql.IndexDefs {
 				constraint = sql.IndexConstraint_Unique
 			}
 		}
-		exprs := idx.UnqualifiedExpressions()
+		exprs := idx.Expressions()
 		columns := make([]sql.IndexColumn, len(exprs))
 		for i, col := range exprs {
 			columns[i] = sql.IndexColumn{Name: col}

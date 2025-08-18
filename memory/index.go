@@ -73,15 +73,6 @@ func (idx *Index) Expressions() []string {
 	return exprs
 }
 
-func (idx *Index) UnqualifiedExpressions() []string {
-	exprs := make([]string, len(idx.Exprs))
-	for i, e := range idx.Exprs {
-		str := e.String()
-		exprs[i] = str[strings.IndexByte(str, '.')+1:]
-	}
-	return exprs
-}
-
 func (idx *Index) ExtendedExpressions() []string {
 	var exprs []string
 	foundCols := make(map[string]struct{})

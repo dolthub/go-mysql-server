@@ -15,7 +15,6 @@
 package analyzer
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -132,11 +131,11 @@ type dummyIdx struct {
 
 var _ sql.Index = (*dummyIdx)(nil)
 
-func (i dummyIdx) CanSupport(context *sql.Context, r ...sql.Range) bool {
+func (i *dummyIdx) CanSupport(context *sql.Context, r ...sql.Range) bool {
 	return true
 }
 
-func (i dummyIdx) Expressions() []string {
+func (i *dummyIdx) Expressions() []string {
 	var exprs []string
 	for _, e := range i.expr {
 		exprs = append(exprs, e.String())
@@ -144,14 +143,6 @@ func (i dummyIdx) Expressions() []string {
 	return exprs
 }
 
-func (i dummyIdx) UnqualifiedExpressions() []string {
-	exprs := make([]string, len(i.expr))
-	for i, e := range i.expr {
-		str := e.String()
-		exprs[i] = str[strings.IndexByte(str, '.')+1:]
-	}
-	return exprs
-}
 func (i *dummyIdx) ID() string                            { return i.id }
 func (i *dummyIdx) Database() string                      { return i.database }
 func (i *dummyIdx) Table() string                         { return i.table }

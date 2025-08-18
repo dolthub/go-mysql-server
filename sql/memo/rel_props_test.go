@@ -2,7 +2,6 @@ package memo
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -216,14 +215,6 @@ func (dummyIndex) Table() string {
 
 func (i dummyIndex) Expressions() []string {
 	return i.cols
-}
-
-func (i dummyIndex) UnqualifiedExpressions() []string {
-	res := make([]string, len(i.cols))
-	for idx, col := range i.cols {
-		res[idx] = col[strings.IndexByte(col, '.')+1:]
-	}
-	return res
 }
 
 func (dummyIndex) IsUnique() bool {
