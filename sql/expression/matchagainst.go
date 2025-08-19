@@ -44,7 +44,7 @@ type MatchAgainst struct {
 	RowCountTable    sql.IndexAddressableTable
 
 	Expr sql.Expression
-	
+
 	evaluatedString string
 	Columns         []sql.Expression
 	KeyCols         fulltext.KeyColumns

@@ -84,7 +84,7 @@ type Procedure struct {
 	Definer               string
 	Comment               string
 	CreateProcedureString string
-	
+
 	Params          []ProcedureParam
 	Characteristics []Characteristic
 	Ops             []*procedures.InterpreterOperation

@@ -40,7 +40,7 @@ type CreateIndex struct {
 	Table   sql.Node
 	Catalog sql.Catalog
 	Config  map[string]string
-	
+
 	Name            string
 	Driver          string
 	CurrentDatabase string

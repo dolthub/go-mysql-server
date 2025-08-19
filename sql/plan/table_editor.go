@@ -25,7 +25,7 @@ import (
 type TableEditorIter struct {
 	inner            sql.RowIter
 	errorEncountered error
-	
+
 	once          *sync.Once
 	onceCtx       *sql.Context
 	openerClosers []sql.EditOpenerCloser

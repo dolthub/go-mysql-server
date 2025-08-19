@@ -88,7 +88,7 @@ type PasswordOptions struct {
 	ReuseInterval  *int64
 	FailedAttempts *int64
 	LockTime       *int64
-	
+
 	RequireCurrentOptional bool
 }
 

@@ -63,7 +63,7 @@ type InsertInto struct {
 	Destination      sql.Node
 	Source           sql.Node
 	DeferredDefaults sql.FastIntSet
-	
+
 	ColumnNames []string
 
 	checks     sql.CheckConstraints

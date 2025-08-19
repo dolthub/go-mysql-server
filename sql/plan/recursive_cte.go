@@ -50,7 +50,7 @@ type RecursiveCte struct {
 
 	name        string
 	ColumnNames []string
-	
+
 	schema sql.Schema
 	id     sql.TableId
 }
