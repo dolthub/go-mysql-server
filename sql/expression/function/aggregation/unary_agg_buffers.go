@@ -52,13 +52,17 @@ func (a *anyValueBuffer) Dispose() {
 }
 
 type sumBuffer struct {
-	isnil bool
-	sum   interface{} // sum is either decimal.Decimal or float64
+	sum   interface{}
 	expr  sql.Expression
+	isnil bool
 }
 
 func NewSumBuffer(child sql.Expression) *sumBuffer {
-	return &sumBuffer{true, float64(0), child}
+	return &sumBuffer{
+		expr:  child,
+		sum:   float64(0),
+		isnil: true,
+	}
 }
 
 // Update implements the AggregationBuffer interface.
@@ -169,9 +173,9 @@ func (l *lastBuffer) Dispose() {
 }
 
 type avgBuffer struct {
-	sum  *sumBuffer // sum is either decimal.Decimal or float64
-	rows int64
 	expr sql.Expression
+	sum  *sumBuffer
+	rows int64
 }
 
 func NewAvgBuffer(child sql.Expression) *avgBuffer {
@@ -179,7 +183,11 @@ func NewAvgBuffer(child sql.Expression) *avgBuffer {
 		rows = int64(0)
 	)
 
-	return &avgBuffer{NewSumBuffer(child), rows, child}
+	return &avgBuffer{
+		expr: child,
+		sum:  NewSumBuffer(child),
+		rows: rows,
+	}
 }
 
 // Update implements the AggregationBuffer interface.
@@ -236,9 +244,9 @@ func (a *avgBuffer) Dispose() {
 }
 
 type bitAndBuffer struct {
+	expr sql.Expression
 	res  uint64
 	rows uint64
-	expr sql.Expression
 }
 
 func NewBitAndBuffer(child sql.Expression) *bitAndBuffer {
@@ -247,7 +255,11 @@ func NewBitAndBuffer(child sql.Expression) *bitAndBuffer {
 		rows = uint64(0)
 	)
 
-	return &bitAndBuffer{res, rows, child}
+	return &bitAndBuffer{
+		expr: child,
+		res:  res,
+		rows: rows,
+	}
 }
 
 // Update implements the AggregationBuffer interface.
@@ -283,9 +295,9 @@ func (b *bitAndBuffer) Dispose() {
 }
 
 type bitOrBuffer struct {
+	expr sql.Expression
 	res  uint64
 	rows uint64
-	expr sql.Expression
 }
 
 func NewBitOrBuffer(child sql.Expression) *bitOrBuffer {
@@ -294,7 +306,11 @@ func NewBitOrBuffer(child sql.Expression) *bitOrBuffer {
 		rows = uint64(0)
 	)
 
-	return &bitOrBuffer{res, rows, child}
+	return &bitOrBuffer{
+		expr: child,
+		res:  res,
+		rows: rows,
+	}
 }
 
 // Update implements the AggregationBuffer interface.
@@ -330,9 +346,9 @@ func (b *bitOrBuffer) Dispose() {
 }
 
 type bitXorBuffer struct {
+	expr sql.Expression
 	res  uint64
 	rows uint64
-	expr sql.Expression
 }
 
 func NewBitXorBuffer(child sql.Expression) *bitXorBuffer {
@@ -341,7 +357,11 @@ func NewBitXorBuffer(child sql.Expression) *bitXorBuffer {
 		rows = uint64(0)
 	)
 
-	return &bitXorBuffer{res, rows, child}
+	return &bitXorBuffer{
+		expr: child,
+		res:  res,
+		rows: rows,
+	}
 }
 
 // Update implements the AggregationBuffer interface.
@@ -458,12 +478,14 @@ func (c *countDistinctBuffer) Dispose() {
 }
 
 type countBuffer struct {
-	cnt  int64
 	expr sql.Expression
+	cnt  int64
 }
 
 func NewCountBuffer(child sql.Expression) *countBuffer {
-	return &countBuffer{0, child}
+	return &countBuffer{
+		expr: child,
+	}
 }
 
 // Update implements the AggregationBuffer interface.
@@ -500,14 +522,15 @@ func (c *countBuffer) Dispose() {
 }
 
 type firstBuffer struct {
-	val interface{}
-	// writtenNil means that val is supposed to be nil and should not be overwritten
-	writtenNil bool
+	val        interface{}
 	expr       sql.Expression
+	writtenNil bool
 }
 
 func NewFirstBuffer(child sql.Expression) *firstBuffer {
-	return &firstBuffer{nil, false, child}
+	return &firstBuffer{
+		expr: child,
+	}
 }
 
 // Update implements the AggregationBuffer interface.
@@ -634,12 +657,14 @@ func (m *minBuffer) Dispose() {
 }
 
 type jsonArrayBuffer struct {
-	vals []interface{}
 	expr sql.Expression
+	vals []interface{}
 }
 
 func NewJsonArrayBuffer(child sql.Expression) *jsonArrayBuffer {
-	return &jsonArrayBuffer{nil, child}
+	return &jsonArrayBuffer{
+		expr: child,
+	}
 }
 
 // Update implements the AggregationBuffer interface.
@@ -676,9 +701,8 @@ func (j *jsonArrayBuffer) Dispose() {
 }
 
 type varBaseBuffer struct {
-	vals []interface{}
-	expr sql.Expression
-
+	expr  sql.Expression
+	vals  []interface{}
 	count uint64
 	mean  float64
 	std2  float64
