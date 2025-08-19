@@ -21,12 +21,11 @@ import (
 // TableAlias is a node that acts as a table with a given name.
 type TableAlias struct {
 	*UnaryNode
-	name      string
-	comment   string
-	id        sql.TableId
-	cols      sql.ColSet
-	sch       sql.Schema
-	cachedSch bool
+	name    string
+	comment string
+	id      sql.TableId
+	cols    sql.ColSet
+	sch     sql.Schema
 }
 
 var _ sql.RenameableNode = (*TableAlias)(nil)
