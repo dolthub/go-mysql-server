@@ -54,14 +54,13 @@ var typeToNumericPrecision = map[query.Type]int{
 // ColumnsTable describes the information_schema.columns table. It implements both sql.Node and sql.Table
 // as way to handle resolving column defaults.
 type ColumnsTable struct {
+	catalog     sql.Catalog
+	RowIter     func(*sql.Context, sql.Catalog, sql.Schema) (sql.RowIter, error)
 	TableName   string
 	TableSchema sql.Schema
-	catalog     sql.Catalog
 	// allColsWithDefaultValue is the full schema of all tables in all databases. We need this during analysis in order
 	// to resolve the default values of some columns, so we pre-compute it.
 	allColsWithDefaultValue sql.Schema
-
-	RowIter func(*sql.Context, sql.Catalog, sql.Schema) (sql.RowIter, error)
 }
 
 var _ sql.Table = (*ColumnsTable)(nil)
