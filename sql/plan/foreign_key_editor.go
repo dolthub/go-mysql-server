@@ -41,8 +41,8 @@ type ChildParentMapping []int
 type ForeignKeyRefActionData struct {
 	RowMapper          *ForeignKeyRowMapper
 	Editor             *ForeignKeyEditor
-	ForeignKey         sql.ForeignKeyConstraint
 	ChildParentMapping ChildParentMapping
+	ForeignKey         sql.ForeignKeyConstraint
 }
 
 // ForeignKeyEditor handles update and delete operations, as they may have referential actions on other tables (such as
@@ -483,8 +483,8 @@ func (fkEditor *ForeignKeyEditor) Close(ctx *sql.Context) error {
 // ForeignKeyReferenceHandler handles references to any parent rows to verify they exist.
 type ForeignKeyReferenceHandler struct {
 	SelfCols   map[string]int
-	ForeignKey sql.ForeignKeyConstraint
 	RowMapper  ForeignKeyRowMapper
+	ForeignKey sql.ForeignKeyConstraint
 }
 
 // IsInitialized returns whether this reference handler has been initialized.
