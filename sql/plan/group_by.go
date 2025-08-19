@@ -151,9 +151,9 @@ func (g *GroupBy) DebugString() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("GroupBy")
 
-	var selectedExprs = make([]string, len(g.SelectDeps))
+	var selectDeps = make([]string, len(g.SelectDeps))
 	for i, e := range g.SelectDeps {
-		selectedExprs[i] = sql.DebugString(e)
+		selectDeps[i] = sql.DebugString(e)
 	}
 
 	var grouping = make([]string, len(g.GroupByExprs))
@@ -162,7 +162,7 @@ func (g *GroupBy) DebugString() string {
 	}
 
 	_ = pr.WriteChildren(
-		fmt.Sprintf("select: %s", strings.Join(selectedExprs, ", ")),
+		fmt.Sprintf("select: %s", strings.Join(selectDeps, ", ")),
 		fmt.Sprintf("group: %s", strings.Join(grouping, ", ")),
 		sql.DebugString(g.Child),
 	)
