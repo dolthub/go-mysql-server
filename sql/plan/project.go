@@ -26,8 +26,8 @@ import (
 // Project is a projection of certain expression from the children node.
 type Project struct {
 	UnaryNode
-	deps                sql.ColSet
-	sch sql.Schema
+	deps sql.ColSet
+	sch  sql.Schema
 
 	// Projections are the expressions to be projected on the row returned by the child node
 	Projections []sql.Expression
