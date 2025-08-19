@@ -32,10 +32,10 @@ import (
 var _ ast.Expr = (*aggregateInfo)(nil)
 
 type groupBy struct {
-	inCols   []scopeColumn
 	outScope *scope
 	aggs     map[string]scopeColumn
 	grouping map[string]bool
+	inCols   []scopeColumn
 }
 
 func (g *groupBy) addInCol(c scopeColumn) {
