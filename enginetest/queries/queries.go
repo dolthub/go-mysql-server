@@ -10408,24 +10408,13 @@ var BrokenErrorQueries = []QueryErrorTest{
 		Query:       "WITH Numbers AS ( SELECT n = 1 UNION ALL SELECT n + 1 FROM Numbers WHERE n+1 <= 10) SELECT n FROM Numbers;",
 		ExpectedErr: sql.ErrTableNotFound,
 	},
-
-	// Our behavior in when sql_mode = ONLY_FULL_GROUP_BY is inconsistent with MySQL. This is because we skip validation
-	// for GroupBys wrapped in a Project since we are not able to validate selected expressions that get optimized as an
-	// alias.
-	// Relevant issue: https://github.com/dolthub/dolt/issues/4998
-	{
-		Query:       "SELECT col0, floor(col1) FROM tab1 GROUP by col0;",
-		ExpectedErr: analyzererrors.ErrValidationGroupBy,
-	},
-	{
-		Query:       "SELECT floor(cor0.col1) * ceil(cor0.col0) AS col2 FROM tab1 AS cor0 GROUP BY cor0.col0",
-		ExpectedErr: analyzererrors.ErrValidationGroupBy,
-	},
+	// This gives an error in MySQL but doesn't in GMS. But according to MySQL documentation, it shouldn't. Might be a
+	// bug in MySQL.
 	{
 		Query: `SELECT any_value(pk), (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x
 						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) > 0
 						GROUP BY (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) ORDER BY x`,
-		// No error, but we get opk.pk does not exist (aliasing error)
+		ExpectedErr: analyzererrors.ErrValidationGroupBy,
 	},
 	// Unimplemented JSON functions
 	{
