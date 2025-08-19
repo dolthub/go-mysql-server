@@ -131,17 +131,18 @@ type dummyIdx struct {
 
 var _ sql.Index = (*dummyIdx)(nil)
 
-func (i dummyIdx) CanSupport(context *sql.Context, r ...sql.Range) bool {
+func (i *dummyIdx) CanSupport(context *sql.Context, r ...sql.Range) bool {
 	return true
 }
 
-func (i dummyIdx) Expressions() []string {
+func (i *dummyIdx) Expressions() []string {
 	var exprs []string
 	for _, e := range i.expr {
 		exprs = append(exprs, e.String())
 	}
 	return exprs
 }
+
 func (i *dummyIdx) ID() string                            { return i.id }
 func (i *dummyIdx) Database() string                      { return i.database }
 func (i *dummyIdx) Table() string                         { return i.table }
