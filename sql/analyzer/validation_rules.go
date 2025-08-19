@@ -249,28 +249,13 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	}
 
 	var err error
-	var parent sql.Node
-	checkParent := false
 	var project *plan.Project
 	var having *plan.Having
 	transform.Inspect(n, func(n sql.Node) bool {
-		defer func() {
-			parent = n
-		}()
-
 		// Allow the parser use the GroupBy node to eval the aggregation functions
 		// for sql statements that don't make use of the GROUP BY expression.
 		switch n := n.(type) {
 		case *plan.GroupBy:
-			if checkParent {
-				switch parent.(type) {
-				case *plan.Having, *plan.Project, *plan.Sort:
-					// TODO: these shouldn't be skipped but we currently aren't able to validate GroupBys with selected aliased
-					// expressions and a lot of our tests group by aliases
-					// https://github.com/dolthub/dolt/issues/4998
-					return true
-				}
-			}
 
 			if len(n.GroupByExprs) == 0 {
 				return true
@@ -316,9 +301,10 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 				})
 			}
 
-			// TODO: also allow grouping by unique non-nullable columns
+			// TODO: also allow grouping by unique non-nullable columns https://github.com/dolthub/dolt/issues/9700
 			// TODO: There's currently no way to tell whether or not a primary key column is part of a multi-column
-			//  primary key.
+			//  primary key. When there is a join, we only check if one primary key column is referenced, meaning we
+			//  sometimes incorrectly validate group bys when a joined table has a multi-column primary key.
 			if len(primaryKeys) != 0 && (groupByPrimaryKeys == len(primaryKeys) || (isJoin && groupByPrimaryKeys > 0)) {
 				return true
 			}
@@ -327,8 +313,6 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 
 			for _, expr := range selectExprs {
 				if !expressionReferencesOnlyGroupBys(groupBys, expr) {
-					// TODO: this is currently too restrictive. Dependent columns are fine to reference
-					// https://dev.mysql.com/doc/refman/8.4/en/group-by-functional-dependence.html
 					err = analyzererrors.ErrValidationGroupBy.New(expr.String())
 					return false
 				}
