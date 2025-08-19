@@ -55,15 +55,15 @@ var _ sql.SchemaValidator = (*BaseDatabase)(nil)
 
 // BaseDatabase is an in-memory database that can't store views, only for testing the engine
 type BaseDatabase struct {
-	name              string
 	tables            map[string]MemTable
 	fkColl            *ForeignKeyCollection
+	tablesMu          *sync.RWMutex
+	name              string
 	triggers          []sql.TriggerDefinition
 	storedProcedures  []sql.StoredProcedureDetails
 	events            []sql.EventDefinition
-	primaryKeyIndexes bool
 	collation         sql.CollationID
-	tablesMu          *sync.RWMutex
+	primaryKeyIndexes bool
 }
 
 var _ MemoryDatabase = (*Database)(nil)
