@@ -36,7 +36,7 @@ var _ sql.CollationCoercible = ConnectionID{}
 
 func NewConnectionID() sql.Expression {
 	return ConnectionID{
-		NoArgFunc: NoArgFunc{"connection_id", types.Uint32},
+		NoArgFunc: NoArgFunc{Name: "connection_id", SQLType: types.Uint32},
 	}
 }
 
@@ -96,13 +96,13 @@ func (User) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, 
 
 func NewUser() sql.Expression {
 	return User{
-		NoArgFunc: NoArgFunc{"user", types.LongText},
+		NoArgFunc: NoArgFunc{Name: "user", SQLType: types.LongText},
 	}
 }
 
 func NewCurrentUser() sql.Expression {
 	return User{
-		NoArgFunc: NoArgFunc{"current_user", types.LongText},
+		NoArgFunc: NoArgFunc{Name: "current_user", SQLType: types.LongText},
 	}
 }
 

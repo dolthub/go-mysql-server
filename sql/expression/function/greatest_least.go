@@ -203,8 +203,8 @@ func compRetType(args ...sql.Expression) (sql.Type, error) {
 // convertible strings or integers mixed with floats. When ints or floats
 // are mixed with non numerically convertible strings, those are ignored.
 type Greatest struct {
-	Args       []sql.Expression
 	returnType sql.Type
+	Args       []sql.Expression
 }
 
 var _ sql.FunctionExpression = (*Greatest)(nil)
@@ -316,8 +316,8 @@ func (f *Greatest) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 // convertible strings or integers mixed with floats. When ints or floats
 // are mixed with non numerically convertible strings, those are ignored.
 type Least struct {
-	Args       []sql.Expression
 	returnType sql.Type
+	Args       []sql.Expression
 }
 
 var _ sql.FunctionExpression = (*Least)(nil)

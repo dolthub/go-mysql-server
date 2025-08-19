@@ -26,8 +26,8 @@ import (
 
 // Coalesce returns the first non-NULL value in the list, or NULL if there are no non-NULL values.
 type Coalesce struct {
-	args []sql.Expression
 	typ  sql.Type
+	args []sql.Expression
 }
 
 var _ sql.FunctionExpression = (*Coalesce)(nil)
