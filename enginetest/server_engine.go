@@ -399,10 +399,12 @@ func convertValue(ctx *sql.Context, sch sql.Schema, row sql.Row) sql.Row {
 				}
 			}
 		case query.Type_VECTOR:
-			r := row[i].([]byte)
-			dimensions := len(r) / 4
-			row[i] = make([]float32, dimensions)
-			binary.Decode(r, binary.LittleEndian, row[i])
+			if row[i] != nil {
+				r := row[i].([]byte)
+				dimensions := len(r) / 4
+				row[i] = make([]float32, dimensions)
+				binary.Decode(r, binary.LittleEndian, row[i])
+			}
 		case query.Type_TIME:
 			if row[i] != nil {
 				r, _, err := types.TimespanType_{}.Convert(ctx, string(row[i].([]byte)))
