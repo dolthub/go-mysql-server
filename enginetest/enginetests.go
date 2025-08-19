@@ -865,7 +865,7 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 			}
 		}
 		require.Equal(t, rowCount, 3)
-		
+
 		AssertErr(t, e, harness, "select id, team from members group by team order by id", nil, analyzererrors.ErrValidationGroupBy)
 	})
 }
