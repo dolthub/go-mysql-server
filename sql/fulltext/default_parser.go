@@ -36,12 +36,12 @@ const (
 // the input document, such as the occurrence of any given word. Such statistics may later be used when calculating the
 // relevancy within a MatchAgainst expression.
 type DefaultParser struct {
+	uniqueMap map[uint64]uint32
 	document  string
 	words     []parserWord
-	wordsIdx  int
 	unique    []string
+	wordsIdx  int
 	uniqueIdx int
-	uniqueMap map[uint64]uint32
 	collation sql.CollationID
 }
 
