@@ -308,9 +308,9 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 
 			selectExprs := getSelectExprs(project, n.SelectDeps, groupBys)
 
-			for _, expr := range selectExprs {
+			for i, expr := range selectExprs {
 				if !expressionReferencesOnlyGroupBys(groupBys, expr) {
-					err = analyzererrors.ErrValidationGroupBy.New(expr.String())
+					err = analyzererrors.ErrValidationGroupBy.New(i + 1)
 					return false
 				}
 			}

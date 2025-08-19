@@ -24,7 +24,10 @@ var (
 	ErrValidationOrderBy = errors.NewKind("OrderBy does not support aggregation expressions")
 	// ErrValidationGroupBy is returned when the aggregation expression does not
 	// appear in the grouping columns.
-	ErrValidationGroupBy = errors.NewKind("expression '%v' doesn't appear in the group by expressions")
+	ErrValidationGroupBy = errors.NewKind(
+		"Expression #%d of SELECT list is not in GROUP BY clause; " +
+			"this is incompatible with sql_mode=only_full_group_by",
+	)
 	// ErrValidationSchemaSource is returned when there is any column source
 	// that does not match the table name.
 	ErrValidationSchemaSource = errors.NewKind("one or more schema sources are empty")
