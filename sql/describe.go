@@ -34,12 +34,12 @@ type DescribeStats struct {
 }
 
 // GetEstimatedRowCount implements WithDescribeStats
-func (e DescribeStats) GetEstimatedRowCount() uint64 {
+func (e *DescribeStats) GetEstimatedRowCount() uint64 {
 	return e.EstimatedRowCount
 }
 
 // GetEstimatedCost implements WithDescribeStats
-func (e DescribeStats) GetEstimatedCost() float64 {
+func (e *DescribeStats) GetEstimatedCost() float64 {
 	return e.Cost
 }
 
