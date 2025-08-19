@@ -336,9 +336,9 @@ func prepareCreateEventDefinitionNode(definition sql.Node) sql.Node {
 
 // createEventIter is the row iterator for *CreateEvent.
 type createEventIter struct {
-	event          sql.EventDefinition
 	eventDb        sql.EventDatabase
 	eventScheduler sql.EventScheduler
+	event          sql.EventDefinition
 	once           sync.Once
 	ifNotExists    bool
 }

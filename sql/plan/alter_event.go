@@ -32,24 +32,24 @@ var _ sql.Expressioner = (*AlterEvent)(nil)
 var _ sql.Databaser = (*AlterEvent)(nil)
 
 type AlterEvent struct {
-	Event          sql.EventDefinition
 	DefinitionNode sql.Node
 	scheduler      sql.EventScheduler
 
 	ddlNode
 
-	At     *OnScheduleTimestamp
-	Every  *expression.Interval
 	Starts *OnScheduleTimestamp
 	Ends   *OnScheduleTimestamp
+	At     *OnScheduleTimestamp
+	Every  *expression.Interval
 
+	RenameToDb       string
 	EventName        string
 	Definer          string
-	RenameToDb       string
 	RenameToName     string
 	DefinitionString string
 	Comment          string
 
+	Event  sql.EventDefinition
 	Status sql.EventStatus
 
 	AlterName       bool
@@ -388,14 +388,11 @@ func (a *AlterEvent) WithExpressions(e ...sql.Expression) (sql.Node, error) {
 
 // alterEventIter is the row iterator for *CreateEvent.
 type alterEventIter struct {
-	event     sql.EventDefinition
-	eventDb   sql.EventDatabase
-	scheduler sql.EventScheduler
-
-	originalName string
-
-	once sync.Once
-
+	eventDb       sql.EventDatabase
+	scheduler     sql.EventScheduler
+	originalName  string
+	event         sql.EventDefinition
+	once          sync.Once
 	alterSchedule bool
 	alterStatus   bool
 }
