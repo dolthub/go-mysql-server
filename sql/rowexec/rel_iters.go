@@ -97,8 +97,8 @@ func windowToIter(w *plan.Window) ([]*aggregation.WindowPartitionIter, [][]int, 
 }
 
 type offsetIter struct {
-	skip      int64
 	childIter sql.RowIter
+	skip      int64
 }
 
 func (i *offsetIter) Next(ctx *sql.Context) (sql.Row, error) {
@@ -127,11 +127,11 @@ func (i *offsetIter) Close(ctx *sql.Context) error {
 var _ sql.RowIter = &iters.JsonTableRowIter{}
 
 type ProjectIter struct {
+	childIter      sql.RowIter
+	nestedState    *nestedIterState
 	projs          []sql.Expression
 	canDefer       bool
 	hasNestedIters bool
-	nestedState    *nestedIterState
-	childIter      sql.RowIter
 }
 
 type nestedIterState struct {
@@ -552,26 +552,16 @@ const cteRecursionLimit = 10001
 // relation [rec] populated by an [init] base case.
 // Refer to RecursiveCte for more details.
 type recursiveCteIter struct {
-	// base sql.Project
-	init sql.Node
-	// recursive sql.Project
-	rec sql.Node
-	// anchor to recursive table to repopulate with [temp]
-	working *plan.RecursiveTable
-	// true if UNION, false if UNION ALL
+	init        sql.Node
+	rec         sql.Node
+	iter        sql.RowIter
+	cache       sql.KeyValueCache
+	working     *plan.RecursiveTable
+	b           *BaseBuilder
+	row         sql.Row
+	temp        []sql.Row
+	cycle       int
 	deduplicate bool
-	// parent iter initialization state
-	row sql.Row
-
-	// active iterator, either [init].RowIter or [rec].RowIter
-	iter sql.RowIter
-	// number of recursive iterations finished
-	cycle int
-	// buffer to collect intermediate results for next recursion
-	temp []sql.Row
-	// duplicate lookup if [deduplicated] set
-	cache sql.KeyValueCache
-	b     *BaseBuilder
 }
 
 var _ sql.RowIter = (*recursiveCteIter)(nil)

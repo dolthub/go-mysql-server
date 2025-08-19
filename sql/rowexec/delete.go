@@ -64,12 +64,12 @@ func findSourcePosition(schema sql.Schema, name string) (uint, uint, error) {
 // but in more complex scenarios when there are columns contributed by outer scopes and for DELETE FROM JOIN statements
 // the child iterator will return a row that is composed of rows from multiple table sources.
 type deleteIter struct {
-	deleters     []schemaPositionDeleter
-	schema       sql.Schema
 	childIter    sql.RowIter
-	closed       bool
+	deleters     []schemaPositionDeleter
 	returnExprs  []sql.Expression
+	schema       sql.Schema
 	returnSchema sql.Schema
+	closed       bool
 }
 
 func (d *deleteIter) Next(ctx *sql.Context) (sql.Row, error) {
