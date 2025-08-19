@@ -406,7 +406,7 @@ func TestGeomFromGeoJSON(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(types.Polygon{SRID: 4326, Lines: []types.LineString{{4326, []types.Point{{4326, 0, 0}, {4326, 1, 1}, {4326, 0, 1}, {4326, 0, 0}}}}}, v)
+		require.Equal(types.Polygon{SRID: 4326, Lines: []types.LineString{{[]types.Point{{4326, 0, 0}, {4326, 1, 1}, {4326, 0, 1}, {4326, 0, 0}}, 4326}}}, v)
 	})
 	t.Run("convert multipoint from geojson", func(t *testing.T) {
 		require := require.New(t)
@@ -424,7 +424,7 @@ func TestGeomFromGeoJSON(t *testing.T) {
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal(types.MultiLineString{SRID: 4326, Lines: []types.LineString{{4326, []types.Point{{4326, 0, 0}, {4326, 1, 1}, {4326, 0, 1}, {4326, 0, 0}}}}}, v)
+		require.Equal(types.MultiLineString{SRID: 4326, Lines: []types.LineString{{[]types.Point{{4326, 0, 0}, {4326, 1, 1}, {4326, 0, 1}, {4326, 0, 0}}, 4326}}}, v)
 	})
 	t.Run("convert mutlipolygon from geojson", func(t *testing.T) {
 		require := require.New(t)
@@ -529,7 +529,7 @@ func TestGeomFromGeoJSON(t *testing.T) {
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
-		require.Equal(types.Polygon{SRID: 4326, Lines: []types.LineString{{4326, []types.Point{{4326, 0, 0}, {4326, 1, 1}, {4326, 0, 1}, {4326, 0, 0}}}}}, v)
+		require.Equal(types.Polygon{SRID: 4326, Lines: []types.LineString{{[]types.Point{{4326, 0, 0}, {4326, 1, 1}, {4326, 0, 1}, {4326, 0, 0}}, 4326}}}, v)
 	})
 	t.Run("srid 0 swaps x and y", func(t *testing.T) {
 		require := require.New(t)
@@ -565,7 +565,7 @@ func TestGeomFromGeoJSON(t *testing.T) {
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
-		require.Equal(types.Polygon{SRID: 0, Lines: []types.LineString{{0, []types.Point{{0, 0, 0}, {0, 1, 1}, {0, 0, 1}, {0, 0, 0}}}}}, v)
+		require.Equal(types.Polygon{SRID: 0, Lines: []types.LineString{{[]types.Point{{0, 0, 0}, {0, 1, 1}, {0, 0, 1}, {0, 0, 0}}, 0}}}, v)
 	})
 	t.Run("check return type", func(t *testing.T) {
 		require := require.New(t)

@@ -117,5 +117,10 @@ func (s *Stmt) query(ctx context.Context, bindings map[string]sqlparser.Expr) (d
 		return nil, err
 	}
 
-	return &Rows{s.conn.options, qctx, cols, rows}, nil
+	return &Rows{
+		options: s.conn.options,
+		ctx:     qctx,
+		cols:    cols,
+		rows:    rows,
+	}, nil
 }
