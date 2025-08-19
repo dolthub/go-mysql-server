@@ -122,6 +122,12 @@ import (
 //
 // TODO: null rejecting tables
 type joinOrderBuilder struct {
+	// plans maps from a set of base relations to the memo group for the join tree
+	// that contains those relations (and only those relations). As an example,
+	// the group for [xy, ab, uv] might contain the join trees (xy, (ab, uv)),
+	// ((xy, ab), uv), (ab, (xy, uv)), etc.
+	//
+	// The group for a single base relation is the base relation itself.
 	m                         *Memo
 	innerEdges                edgeSet
 	nonInnerEdges             edgeSet
@@ -362,7 +368,7 @@ func (j *joinOrderBuilder) ensureClosure(grp *ExprGroup) {
 
 // hasEqEdge returns true if the inner edges include a direct equality between
 // the two given columns (e.g. x = a).
-func (j joinOrderBuilder) hasEqEdge(leftCol, rightCol sql.ColumnId) bool {
+func (j *joinOrderBuilder) hasEqEdge(leftCol, rightCol sql.ColumnId) bool {
 	for idx, ok := j.innerEdges.Next(0); ok; idx, ok = j.innerEdges.Next(idx + 1) {
 		for _, f := range j.edges[idx].filters {
 			var l *expression.GetField
@@ -839,24 +845,49 @@ func (j *joinOrderBuilder) allEdges() edgeSet {
 // tree. It is used in calculating the total eligibility sets for edges from any
 // 'parent' joins which were originally above this one in the tree.
 type operator struct {
-	leftEdges     edgeSet
-	rightEdges    edgeSet
-	leftVertices  vertexSet
+	// leftEdges is the set of edges that were constructed from join operators
+	// that were in the left input of the original join operator.
+	leftEdges edgeSet
+	// rightEdgers is the set of edges that were constructed from join operators
+	// that were in the right input of the original join operator.
+	rightEdges edgeSet
+	// leftVertices is the set of vertexes (base relations) that were in the left
+	// input of the original join operator.
+	leftVertices vertexSet
+	// rightVertices is the set of vertexes (base relations) that were in the
+	// right input of the original join operator.
 	rightVertices vertexSet
-	joinType      plan.JoinType
+	// joinType is the operator type of the original join operator.
+	joinType plan.JoinType
 }
 
 // edge is a generalization of a join edge that embeds rules for
 // determining the applicability of arbitrary subtrees. An edge is added to the
 // join graph when a new plan can be constructed between two vertexSet.
 type edge struct {
-	freeVars         sql.ColSet
-	op               *operator
-	filters          []sql.Expression
-	rules            []conflictRule
+	freeVars sql.ColSet
+	// op is the original join node source for the edge. there are multiple edges
+	// per op for inner joins with conjunct-predicate join conditions. Different predicates
+	// will have different conflict rules.
+	op *operator
+	// filters is the set of join filters that will be used to construct new join
+	// ON conditions.
+	filters []sql.Expression
+	// rules is a set of conflict rules which must evaluate to true in order for
+	// a join between two sets of vertexes to be valid.
+	rules []conflictRule
+	// nullRejectedRels is the set of vertexes on which nulls are rejected by the
+	// filters. We do not set any nullRejectedRels currently, which is not accurate
+	// but prevents potentially invalid transformations.
 	nullRejectedRels vertexSet
-	ses              vertexSet
-	tes              vertexSet
+	// ses is the syntactic eligibility set of the edge; in other words, it is the
+	// set of base relations (tables) referenced by the filters field.
+	ses vertexSet
+	// tes is the total eligibility set of the edge. The TES gives the set of base
+	// relations (vertexes) that must be in the input of any join that uses the
+	// filters from this edge in its ON condition. The TES is initialized with the
+	// SES, and then expanded by the conflict detection algorithm.
+	tes vertexSet
 }
 
 func (e *edge) populateEdgeProps(tableIds []sql.TableId, edges []edge) {

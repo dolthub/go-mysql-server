@@ -500,9 +500,16 @@ type lookupBuilderKey []interface{}
 // IndexedTableAccess nodes below an indexed join, for example. This struct is
 // also used to implement Expressioner on the IndexedTableAccess node.
 type LookupBuilder struct {
-	index           sql.Index
-	keyExprs        []sql.Expression
-	keyExprs2       []sql.Expression2
+	index     sql.Index
+	keyExprs  []sql.Expression
+	keyExprs2 []sql.Expression2
+	// When building the lookup, we will use an MySQLIndexBuilder. If the
+	// extracted lookup value is NULL, but we have a non-NULL safe
+	// comparison, then the lookup should return no values. But if the
+	// comparison is NULL-safe, then the lookup should returns indexed
+	// values having that value <=> NULL. For each |keyExpr|, this field
+	// contains |true| if the lookup should also match NULLs, and |false|
+	// otherwise.
 	matchesNullMask []bool
 
 	key  lookupBuilderKey

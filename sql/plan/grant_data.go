@@ -23,7 +23,7 @@ import (
 
 // Privilege specifies a privilege to be used in a GRANT or REVOKE statement.
 type Privilege struct {
-	Dynamic string
+	Dynamic string // PrivilegeType_Dynamic will set this string to the correct lowercased value
 	Columns []string
 	Type    PrivilegeType
 }

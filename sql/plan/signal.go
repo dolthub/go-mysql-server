@@ -69,7 +69,7 @@ type SignalInfo struct {
 // Signal represents the SIGNAL statement with a set SQLSTATE.
 type Signal struct {
 	Info          map[SignalConditionItemName]SignalInfo
-	SqlStateValue string
+	SqlStateValue string // Will always be a string with length 5
 }
 
 // SignalName represents the SIGNAL statement with a condition name.

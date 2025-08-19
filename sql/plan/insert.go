@@ -59,21 +59,27 @@ var IgnorableErrors = []*errors.Kind{sql.ErrInsertIntoNonNullableProvidedNull,
 // InsertInto is the top level node for INSERT INTO statements. It has a source for rows and a destination to insert
 // them into.
 type InsertInto struct {
-	db               sql.Database
-	Destination      sql.Node
-	Source           sql.Node
+	db          sql.Database
+	Destination sql.Node
+	Source      sql.Node
+	// DeferredDefaults marks which columns in the destination schema are expected to have default values.
 	DeferredDefaults sql.FastIntSet
 
 	ColumnNames []string
 
 	checks     sql.CheckConstraints
 	OnDupExprs []sql.Expression
-	Returning  []sql.Expression
+	// Returning is a list of expressions to return after the insert operation. This feature is not supported
+	// in MySQL's syntax, but is exposed through PostgreSQL's and MariaDB's syntax.
+	Returning []sql.Expression
 
+	// FirstGenerateAutoIncRowIdx is the index of the first row inserted that increments last_insert_id.
 	FirstGeneratedAutoIncRowIdx int
 
-	IsReplace          bool
-	Ignore             bool
+	IsReplace bool
+	Ignore    bool
+	// LiteralValueSource is set to |true| when |Source| is
+	// a |Values| node with only literal expressions.
 	LiteralValueSource bool
 }
 

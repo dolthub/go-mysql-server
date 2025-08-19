@@ -52,7 +52,7 @@ func (a *anyValueBuffer) Dispose() {
 }
 
 type sumBuffer struct {
-	sum   interface{}
+	sum   interface{} // sum is either decimal.Decimal or float64
 	expr  sql.Expression
 	isnil bool
 }

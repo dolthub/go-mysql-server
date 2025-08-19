@@ -26,19 +26,35 @@ import (
 //	A column is a named component of a table. It has a data type, a default,
 //	and a nullability characteristic.
 type Column struct {
-	Type           Type
-	Generated      *ColumnDefaultValue
-	Default        *ColumnDefaultValue
-	OnUpdate       *ColumnDefaultValue
-	Name           string
-	Source         string
+	// Type is the data type of the column.
+	Type Type
+	// Default contains the default value of the column or nil if it was not explicitly defined.
+	Default *ColumnDefaultValue
+	// Generated is non-nil if the column is defined with a generated value. Mutually exclusive with Default
+	Generated *ColumnDefaultValue
+	// OnUpdate contains the on update value of the column or nil if it was not explicitly defined.
+	OnUpdate *ColumnDefaultValue
+	// Name is the name of the column.
+	Name string
+	// Source is the name of the table this column came from.
+	Source string
+	// DatabaseSource is the name of the database this column came from.
 	DatabaseSource string
-	Comment        string
-	Extra          string
-	PrimaryKey     bool
-	Nullable       bool
-	Virtual        bool
-	AutoIncrement  bool
+	// Comment contains the string comment for this column.
+	Comment string
+	// Extra contains any additional information to put in the `extra` column under `information_schema.columns`.
+	Extra string
+	// PrimaryKey is true if the column is part of the primary key for its table.
+	PrimaryKey bool
+	// Nullable is true if the column can contain NULL values, or false
+	// otherwise.
+	Nullable bool
+	// Virtual is true if the column is defined as a virtual column. Generated must be non-nil in this case.
+	// Virtual column values will be provided for write operations, in case integrators need to use them to update
+	// indexes, but must not be returned in rows from tables that include them.
+	Virtual bool
+	// AutoIncrement is true if the column auto-increments.
+	AutoIncrement bool
 }
 
 // Check ensures the value is correct for this column.
