@@ -7,7 +7,7 @@ require (
 	github.com/dolthub/jsonpath v0.0.2-0.20240227200619-19675ab05c71
 	github.com/dolthub/sqllogictest/go v0.0.0-20201107003712-816f3ae12d81
 	github.com/dolthub/vitess v0.0.0-20250814204310-c749d213f235
-	github.com/go-sql-driver/mysql v1.7.2-0.20231213112541-0004702b931d
+	github.com/go-sql-driver/mysql v1.9.3
 	github.com/gocraft/dbr/v2 v2.7.2
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/golang-lru v0.5.4
