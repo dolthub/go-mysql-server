@@ -33,29 +33,21 @@ import (
 // freely as needed for different views on a table (column projections, index lookups, filters, etc.) but the
 // storage of underlying data lives here.
 type TableData struct {
-	dbName    string
-	tableName string
-	comment   string
-
-	// Schema / config data
-	schema                  sql.PrimaryKeySchema
 	indexes                 map[string]sql.Index
 	fkColl                  *ForeignKeyCollection
-	checks                  []sql.CheckDefinition
-	collation               sql.CollationID
-	autoColIdx              int
-	primaryKeyIndexes       bool
+	secondaryIndexStorage   map[indexName][]sql.Row
+	partitions              map[string][]sql.Row
 	fullTextConfigTableName string
-
-	// Data storage
-	partitions    map[string][]sql.Row
-	partitionKeys [][]byte
-	autoIncVal    uint64
-
-	// Indexes are implemented as an unordered slice of rows. The first N elements in the row are the values of the
-	// indexed columns, and the final value is the location of the row in the primary storage.
-	// TODO: we could make these much more performant by using a tree or other ordered collection
-	secondaryIndexStorage map[indexName][]sql.Row
+	tableName               string
+	comment                 string
+	dbName                  string
+	schema                  sql.PrimaryKeySchema
+	checks                  []sql.CheckDefinition
+	partitionKeys           [][]byte
+	autoColIdx              int
+	autoIncVal              uint64
+	collation               sql.CollationID
+	primaryKeyIndexes       bool
 }
 
 type indexName string
@@ -374,7 +366,7 @@ func (td *TableData) sortRows(ctx *sql.Context) {
 	for _, column := range td.schema.Schema {
 		if column.PrimaryKey {
 			idx, col := td.getColumnOrdinal(column.Name)
-			pk = append(pk, pkfield{idx, col})
+			pk = append(pk, pkfield{i: idx, c: col})
 		}
 	}
 
