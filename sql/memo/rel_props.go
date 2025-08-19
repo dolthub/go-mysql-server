@@ -131,13 +131,13 @@ func newRelProps(rel RelExpr) *relProps {
 }
 
 // idxExprsColumns returns the column names used in an index's expressions.
-// TODO: this is unstable as long as periods in Index.Expressions()
-// identifiers are ambiguous.
+// Identifiers are ambiguous.
 func idxExprsColumns(idx sql.Index) []string {
-	columns := make([]string, len(idx.Expressions()))
-	for i, e := range idx.Expressions() {
-		parts := strings.Split(e, ".")
-		columns[i] = strings.ToLower(parts[1])
+	exprs := idx.Expressions()
+	columns := make([]string, len(exprs))
+	for i, e := range exprs {
+		colName := e[strings.IndexRune(e, '.')+1:]
+		columns[i] = strings.ToLower(colName)
 	}
 	return columns
 }
@@ -793,15 +793,12 @@ func sortedColsForRel(rel RelExpr) sql.Schema {
 		var ret sql.Schema
 		for _, e := range r.InnerScan.Table.Index().Expressions() {
 			// TODO columns can have "." characters, this will miss cases
-			parts := strings.Split(e, ".")
-			var name string
-			if len(parts) == 2 {
-				name = parts[1]
-			} else {
+			idx := strings.IndexRune(e, '.')
+			if idx == -1 {
 				return nil
 			}
 			ret = append(ret, &sql.Column{
-				Name:     strings.ToLower(name),
+				Name:     strings.ToLower(e[idx+1:]),
 				Source:   strings.ToLower(r.InnerScan.Table.Name()),
 				Nullable: true},
 			)
