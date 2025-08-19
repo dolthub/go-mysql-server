@@ -36,8 +36,6 @@ type Context struct {
 	Node sql.Node
 	// Parent is the current parent of the transforming node.
 	Parent sql.Node
-	// ChildNum is the index of Node in Parent.Children().
-	ChildNum int
 	// SchemaPrefix is the concatenation of the Parent's SchemaPrefix with
 	// child.Schema() for all child with an index < ChildNum in
 	// Parent.Children(). For many Node, this represents the schema of the
@@ -45,6 +43,8 @@ type Context struct {
 	// parent in a RowIter() call. This field is only non-nil if the entire
 	// in-order traversal of the tree up to this point is Resolved().
 	SchemaPrefix sql.Schema
+	// ChildNum is the index of Node in Parent.Children().
+	ChildNum int
 }
 
 // CtxFunc is a function which will return new sql.Node values for a given
