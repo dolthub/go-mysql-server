@@ -231,9 +231,9 @@ func (dt *datetime) isEmpty() bool {
 // ParseSpecifierErr defines a error when attempting to parse
 // the date string input according to a specified format directive.
 type ParseSpecifierErr struct {
-	Specifier byte
-	Tokens    string
 	err       error
+	Tokens    string
+	Specifier byte
 }
 
 func (p ParseSpecifierErr) Unwrap() error { return p.err }
@@ -246,9 +246,9 @@ func (p ParseSpecifierErr) Error() string {
 // the date string input according to a literal character specified
 // in the format string.
 type ParseLiteralErr struct {
-	Literal byte
-	Tokens  string
 	err     error
+	Tokens  string
+	Literal byte
 }
 
 func (p ParseLiteralErr) Unwrap() error { return p.err }

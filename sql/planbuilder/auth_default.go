@@ -28,11 +28,11 @@ import (
 
 // defaultAuthorizationQueryState contains query-specific state for defaultAuthorizationHandler.
 type defaultAuthorizationQueryState struct {
-	enabled bool
-	db      *mysql_db.MySQLDb
-	user    *mysql_db.User
 	privSet mysql_db.PrivilegeSet
 	err     error
+	db      *mysql_db.MySQLDb
+	user    *mysql_db.User
+	enabled bool
 }
 
 var _ sql.AuthorizationQueryState = defaultAuthorizationQueryState{}
