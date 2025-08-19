@@ -1257,14 +1257,14 @@ func (d *Date) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 // UnaryDatetimeFunc is a sql.Function which takes a single datetime argument
 type UnaryDatetimeFunc struct {
 	expression.UnaryExpression
-	// Name is the name of the function
-	Name string
 	// SQLType is the return type of the function
 	SQLType sql.Type
+	// Name is the name of the function
+	Name string
 }
 
 func NewUnaryDatetimeFunc(arg sql.Expression, name string, sqlType sql.Type) *UnaryDatetimeFunc {
-	return &UnaryDatetimeFunc{expression.UnaryExpression{Child: arg}, name, sqlType}
+	return &UnaryDatetimeFunc{UnaryExpression: expression.UnaryExpression{Child: arg}, Name: name, SQLType: sqlType}
 }
 
 // FunctionName implements sql.FunctionExpression
