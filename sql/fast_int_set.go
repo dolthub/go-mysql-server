@@ -47,11 +47,8 @@ import (
 // FastIntSet keeps track of a set of integers. It does not perform any
 // allocations when the values are small. It is not thread-safe.
 type FastIntSet struct {
-	// We use a uint64 as long as all elements are between 0 and 63. If we add an
-	// element outside of this range, we switch to Sparse. We don't just use the
-	// latter directly because it's larger and can't be passed around by value.
-	small uint64
 	large *intsets.Sparse
+	small uint64
 }
 
 // NewFastIntSet returns a set initialized with the given values.

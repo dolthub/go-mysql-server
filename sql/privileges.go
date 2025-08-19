@@ -20,9 +20,9 @@ type PrivilegedOperation struct {
 	Table             string
 	Column            string
 	Routine           string
-	IsProcedure       bool // true if the routine is a procedure, false if it's a function
 	StaticPrivileges  []PrivilegeType
 	DynamicPrivileges []string
+	IsProcedure       bool
 }
 
 // PrivilegeCheckSubject is a struct that contains the entity information for an access check. It's specifically what

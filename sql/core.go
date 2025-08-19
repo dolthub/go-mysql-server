@@ -479,37 +479,14 @@ var _ SystemVariable = (*MysqlSystemVariable)(nil)
 
 // MysqlSystemVariable represents a mysql system variable.
 type MysqlSystemVariable struct {
-	// Name is the name of the system variable.
-	Name string
-	// Scope defines the scope of the system variable, which is either Global, Session, or Both.
-	Scope *MysqlScope
-	// Dynamic defines whether the variable may be written to during runtime. Variables with this set to `false` will
-	// return an error if a user attempts to set a value.
-	Dynamic bool
-	// SetVarHintApplies defines if the variable may be set for a single query using SET_VAR().
-	// https://dev.mysql.com/doc/refman/8.0/en/optimizer-hints.html#optimizer-hints-set-var
+	Type              Type
+	Default           interface{}
+	Scope             *MysqlScope
+	NotifyChanged     func(*Context, SystemVariableScope, SystemVarValue) error
+	ValueFunction     func() (interface{}, error)
+	Name              string
+	Dynamic           bool
 	SetVarHintApplies bool
-	// Type defines the type of the system variable. This may be a special type not accessible to standard MySQL operations.
-	Type Type
-	// Default defines the default value of the system variable.
-	Default interface{}
-	// NotifyChanged is called by the engine if the value of this variable
-	// changes during runtime.  It is typically |nil|, but can be used for
-	// system variables which control the behavior of the running server.
-	// For example, replication threads might need to be started or stopped
-	// when replication is enabled or disabled. This provides a scalable
-	// alternative to polling.
-	//
-	// Calls to NotifyChanged are serialized for a given system variable in
-	// the global context and in a particular session. They should never
-	// block.  NotifyChanged is not called when a new system variable is
-	// registered.
-	NotifyChanged func(*Context, SystemVariableScope, SystemVarValue) error
-	// ValueFunction defines an optional function that is executed to provide
-	// the value of this system variable whenever it is requested. System variables
-	// that provide a ValueFunction should also set Dynamic to false, since they
-	// cannot be assigned a value and will return a read-only error if tried.
-	ValueFunction func() (interface{}, error)
 }
 
 // GetName implements SystemVariable.
@@ -799,10 +776,10 @@ type StatusVariable interface {
 
 // MySQLStatusVariable represents a mysql status variable.
 type MySQLStatusVariable struct {
-	Name    string
-	Scope   StatusVariableScope
 	Type    Type
 	Default interface{}
+	Name    string
+	Scope   StatusVariableScope
 }
 
 var _ StatusVariable = (*MySQLStatusVariable)(nil)
@@ -910,8 +887,8 @@ func IncrementStatusVariable(ctx *Context, name string, val int) {
 type StoredProcParam struct {
 	Type       Type
 	Value      any
-	HasBeenSet bool
 	Reference  *StoredProcParam
+	HasBeenSet bool
 }
 
 // SetValue saves val to the StoredProcParam, and set HasBeenSet to true.

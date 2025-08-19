@@ -44,6 +44,16 @@ type EventScheduler interface {
 
 // EventDefinition describes a scheduled event.
 type EventDefinition struct {
+	// The time at which the event was created.
+	CreatedAt time.Time
+	// The time at which the event was last altered.
+	LastAltered time.Time
+	// The time at which the event was last executed.
+	LastExecuted time.Time
+	ExecuteAt    time.Time
+	Starts       time.Time // STARTS is always defined when EVERY is defined.
+	Ends         time.Time
+
 	// The name of this event. Event names in a database are unique.
 	Name string
 	// The SQL statements to be executed when this event is executed.
@@ -56,22 +66,13 @@ type EventDefinition struct {
 	Definer string
 	// The SQL_MODE in effect when this event was created.
 	SqlMode string
-	// The time at which the event was created.
-	CreatedAt time.Time
-	// The time at which the event was last altered.
-	LastAltered time.Time
-	// The time at which the event was last executed.
-	LastExecuted time.Time
 
 	/* Fields parsed from the CREATE EVENT statement */
 	Comment              string
+	ExecuteEvery         string
 	OnCompletionPreserve bool
 	HasExecuteAt         bool
-	ExecuteAt            time.Time
-	ExecuteEvery         string
-	Starts               time.Time // STARTS is always defined when EVERY is defined.
 	HasEnds              bool
-	Ends                 time.Time
 }
 
 // ConvertTimesFromUTCToTz returns a new EventDefinition with all its time values converted
