@@ -189,7 +189,7 @@ func OneNodeExpressions(n sql.Node, f ExprFunc) (sql.Node, TreeIdentity, error) 
 // each node to |f|. If |s| is non-nil, does not descend into children where
 // |s| returns false.
 func NodeWithCtx(n sql.Node, s SelectorFunc, f CtxFunc) (sql.Node, TreeIdentity, error) {
-	return nodeWithCtxHelper(Context{n, nil, -1, sql.Schema{}}, s, f)
+	return nodeWithCtxHelper(Context{Node: n, SchemaPrefix: sql.Schema{}, ChildNum: -1}, s, f)
 }
 
 func nodeWithCtxHelper(c Context, s SelectorFunc, f CtxFunc) (sql.Node, TreeIdentity, error) {
@@ -210,7 +210,7 @@ func nodeWithCtxHelper(c Context, s SelectorFunc, f CtxFunc) (sql.Node, TreeIden
 	)
 	for i := range children {
 		child := children[i]
-		cc := Context{child, node, i, nil}
+		cc := Context{Node: child, Parent: node, ChildNum: i}
 		if s == nil || s(cc) {
 			child, same, err := nodeWithCtxHelper(cc, s, f)
 			if err != nil {
@@ -235,7 +235,7 @@ func nodeWithCtxHelper(c Context, s SelectorFunc, f CtxFunc) (sql.Node, TreeIden
 		}
 	}
 
-	node, sameN, err := f(Context{node, c.Parent, c.ChildNum, c.SchemaPrefix})
+	node, sameN, err := f(Context{Node: node, Parent: c.Parent, SchemaPrefix: c.SchemaPrefix, ChildNum: c.ChildNum})
 	if err != nil {
 		return nil, SameTree, err
 	}
@@ -246,7 +246,7 @@ func nodeWithCtxHelper(c Context, s SelectorFunc, f CtxFunc) (sql.Node, TreeIden
 // each node to |f|. If |s| is non-nil, does not descend into children where
 // |s| returns false.
 func NodeWithPrefixSchema(n sql.Node, s SelectorFunc, f CtxFunc) (sql.Node, TreeIdentity, error) {
-	return transformUpWithPrefixSchemaHelper(Context{n, nil, -1, sql.Schema{}}, s, f)
+	return transformUpWithPrefixSchemaHelper(Context{Node: n, SchemaPrefix: sql.Schema{}, ChildNum: -1}, s, f)
 }
 
 func transformUpWithPrefixSchemaHelper(c Context, s SelectorFunc, f CtxFunc) (sql.Node, TreeIdentity, error) {
@@ -269,7 +269,7 @@ func transformUpWithPrefixSchemaHelper(c Context, s SelectorFunc, f CtxFunc) (sq
 	childPrefix := append(sql.Schema{}, c.SchemaPrefix...)
 	for i := range children {
 		child := children[i]
-		cc := Context{child, node, i, childPrefix}
+		cc := Context{Node: child, Parent: node, SchemaPrefix: childPrefix, ChildNum: i}
 		if s == nil || s(cc) {
 			child, same, err := transformUpWithPrefixSchemaHelper(cc, s, f)
 			if err != nil {
@@ -300,7 +300,7 @@ func transformUpWithPrefixSchemaHelper(c Context, s SelectorFunc, f CtxFunc) (sq
 		}
 	}
 
-	node, sameN, err := f(Context{node, c.Parent, c.ChildNum, c.SchemaPrefix})
+	node, sameN, err := f(Context{Node: node, Parent: c.Parent, SchemaPrefix: c.SchemaPrefix, ChildNum: c.ChildNum})
 	if err != nil {
 		return nil, SameTree, err
 	}

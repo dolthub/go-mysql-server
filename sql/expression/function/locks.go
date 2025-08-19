@@ -382,8 +382,8 @@ func (*GetLock) CollationCoercibility(ctx *sql.Context) (collation sql.Collation
 }
 
 type ReleaseAllLocks struct {
-	NoArgFunc
 	ls *sql.LockSubsystem
+	NoArgFunc
 }
 
 var _ sql.FunctionExpression = ReleaseAllLocks{}
