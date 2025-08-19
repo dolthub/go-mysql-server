@@ -36,8 +36,8 @@ type PolygonType struct {
 
 // Polygon is the value type returned from PolygonType. Implements GeometryValue.
 type Polygon struct {
-	SRID  uint32
 	Lines []LineString
+	SRID  uint32
 }
 
 var _ sql.Type = PolygonType{}

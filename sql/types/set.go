@@ -42,11 +42,11 @@ var (
 )
 
 type SetType struct {
-	collation             sql.CollationID
 	hashedValToBit        map[uint64]uint64
 	bitToVal              map[uint64]string
 	valToBit              map[string]uint64
 	maxResponseByteLength uint32
+	collation             sql.CollationID
 }
 
 var _ sql.SetType = SetType{}

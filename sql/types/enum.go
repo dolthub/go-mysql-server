@@ -49,11 +49,11 @@ var (
 )
 
 type EnumType struct {
-	collation             sql.CollationID
 	hashedValToIdx        map[uint64]int
 	valToIdx              map[string]int
 	idxToVal              []string
 	maxResponseByteLength uint32
+	collation             sql.CollationID
 }
 
 var _ sql.EnumType = EnumType{}

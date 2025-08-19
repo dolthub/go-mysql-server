@@ -165,8 +165,8 @@ func (doc JSONDocument) Clone(context.Context) sql.JSONWrapper {
 // LazyJSONDocument is an implementation of sql.JSONWrapper that wraps a JSON string and defers deserializing
 // it unless needed. This is more efficient for queries that interact with JSON values but don't care about their structure.
 type LazyJSONDocument struct {
-	Bytes         []byte
 	interfaceFunc func() (interface{}, error)
+	Bytes         []byte
 }
 
 var _ sql.JSONWrapper = &LazyJSONDocument{}

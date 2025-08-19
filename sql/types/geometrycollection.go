@@ -36,8 +36,8 @@ type GeomCollType struct {
 
 // GeomColl is the value type returned from GeomCollType. Implements GeometryValue.
 type GeomColl struct {
-	SRID  uint32
 	Geoms []GeometryValue
+	SRID  uint32
 }
 
 var _ sql.Type = GeomCollType{}
