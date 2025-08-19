@@ -45,8 +45,8 @@ const (
 )
 
 type Hint struct {
-	Typ  HintType
 	Args []string
+	Typ  HintType
 }
 
 func (h Hint) String() string {
@@ -283,8 +283,9 @@ func (o joinOrderHint) isCompact(s1, s2 vertexSet) bool {
 // joinOpHint encodes a hint for a physical operator between
 // two relations.
 type joinOpHint struct {
-	op   HintType
-	l, r sql.FastIntSet
+	l  sql.FastIntSet
+	r  sql.FastIntSet
+	op HintType
 }
 
 func newjoinOpHint(op HintType, left, right sql.TableId) joinOpHint {
@@ -375,8 +376,8 @@ func (o joinOpHint) typeMatches(n RelExpr) bool {
 // joinHints wraps a collection of join hints. The memo
 // interfaces with this object during costing.
 type joinHints struct {
-	ops              []joinOpHint
 	order            *joinOrderHint
+	ops              []joinOpHint
 	leftDeep         bool
 	disableMergeJoin bool
 }
