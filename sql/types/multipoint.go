@@ -36,8 +36,8 @@ type MultiPointType struct {
 
 // MultiPoint is the value type returned from MultiPointType. Implements GeometryValue.
 type MultiPoint struct {
-	SRID   uint32
 	Points []Point
+	SRID   uint32
 }
 
 var _ sql.Type = MultiPointType{}
