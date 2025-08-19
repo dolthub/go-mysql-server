@@ -34,7 +34,7 @@ type Subquery struct {
 	hashCache   sql.KeyValueCache
 	b           sql.NodeExecBuilder
 	disposeFunc sql.DisposeFunc
-	
+
 	QueryString string
 
 	cache   []interface{}
