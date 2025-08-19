@@ -37,9 +37,9 @@ import (
 
 type MySqlProxy struct {
 	ctx     *sql.Context
-	connStr string
 	logger  *logrus.Logger
 	conns   map[uint32]proxyConn
+	connStr string
 }
 
 var _ mysql.Handler = MySqlProxy{}
