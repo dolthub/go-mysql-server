@@ -63,7 +63,7 @@ var userValueOps = ValueOps[*user]{
 func TestTableEditorInsert(t *testing.T) {
 	t.Run("InsertRow", func(t *testing.T) {
 		set := NewIndexedSet(ueq, keyers)
-		ed := &IndexedSetTableEditor[*user]{set, userValueOps}
+		ed := &IndexedSetTableEditor[*user]{Set: set, Ops: userValueOps}
 		ed.StatementBegin(nil)
 		require.NoError(t, ed.Insert(nil, sql.Row{"aaron", "aaron@dolthub.com"}))
 		require.NoError(t, ed.StatementComplete(nil))
@@ -72,14 +72,14 @@ func TestTableEditorInsert(t *testing.T) {
 	})
 	t.Run("InsertDuplicateRow", func(t *testing.T) {
 		set := NewIndexedSet(ueq, keyers)
-		ed := &IndexedSetTableEditor[*user]{set, userValueOps}
+		ed := &IndexedSetTableEditor[*user]{Set: set, Ops: userValueOps}
 		ed.StatementBegin(nil)
 		require.NoError(t, ed.Insert(nil, sql.Row{"aaron", "aaron@dolthub.com"}))
 		require.Error(t, ed.Insert(nil, sql.Row{"aaron", "aaron@dolthub.com"}))
 	})
 	t.Run("InsertBadSchema", func(t *testing.T) {
 		set := NewIndexedSet(ueq, keyers)
-		ed := &IndexedSetTableEditor[*user]{set, userValueOps}
+		ed := &IndexedSetTableEditor[*user]{Set: set, Ops: userValueOps}
 		ed.StatementBegin(nil)
 		require.Error(t, ed.Insert(nil, sql.Row{"aaron", "aaron@dolthub.com", "extra value"}))
 		require.Error(t, ed.Insert(nil, sql.Row{123, "aaron@dolthub.com"}))
@@ -92,7 +92,7 @@ func TestTableEditorDelete(t *testing.T) {
 		set := NewIndexedSet(ueq, keyers)
 		set.Put(&user{"aaron", "aaron@dolthub.com", 0})
 		set.Put(&user{"brian", "brian@dolthub.com", 0})
-		ed := &IndexedSetTableEditor[*user]{set, userValueOps}
+		ed := &IndexedSetTableEditor[*user]{Set: set, Ops: userValueOps}
 		ed.StatementBegin(nil)
 		require.NoError(t, ed.Delete(nil, sql.Row{"aaron", "aaron@dolthub.com"}))
 		require.NoError(t, ed.StatementComplete(nil))
@@ -103,7 +103,7 @@ func TestTableEditorDelete(t *testing.T) {
 		set := NewIndexedSet(ueq, keyers)
 		set.Put(&user{"aaron", "aaron@dolthub.com", 0})
 		set.Put(&user{"brian", "brian@dolthub.com", 0})
-		ed := &IndexedSetTableEditor[*user]{set, userValueOps}
+		ed := &IndexedSetTableEditor[*user]{Set: set, Ops: userValueOps}
 		ed.StatementBegin(nil)
 		require.NoError(t, ed.Delete(nil, sql.Row{"jason", "jason@dolthub.com"}))
 		require.NoError(t, ed.StatementComplete(nil))
@@ -115,7 +115,7 @@ func TestTableEditorDelete(t *testing.T) {
 		set := NewIndexedSet(ueq, keyers)
 		set.Put(&user{"aaron", "aaron@dolthub.com", 0})
 		set.Put(&user{"brian", "brian@dolthub.com", 0})
-		ed := &IndexedSetTableEditor[*user]{set, userValueOps}
+		ed := &IndexedSetTableEditor[*user]{Set: set, Ops: userValueOps}
 		ed.StatementBegin(nil)
 		require.NoError(t, ed.Delete(nil, sql.Row{"aaron", "aaron+alternative@dolthub.com"}))
 		require.NoError(t, ed.StatementComplete(nil))
@@ -130,7 +130,7 @@ func TestTableEditorUpdate(t *testing.T) {
 		set := NewIndexedSet(ueq, keyers)
 		set.Put(&user{"aaron", "aaron@dolthub.com", 0})
 		set.Put(&user{"brian", "brian@dolthub.com", 0})
-		ed := &IndexedSetTableEditor[*user]{set, userValueOps}
+		ed := &IndexedSetTableEditor[*user]{Set: set, Ops: userValueOps}
 		ed.StatementBegin(nil)
 		require.NoError(t, ed.Update(nil, sql.Row{"aaron", "aaron@dolthub.com"}, sql.Row{"aaron", "aaron+new@dolthub.com"}))
 		require.NoError(t, ed.StatementComplete(nil))
@@ -144,7 +144,7 @@ func TestTableEditorUpdate(t *testing.T) {
 		set := NewIndexedSet(ueq, keyers)
 		set.Put(&user{"aaron", "aaron@dolthub.com", 0})
 		set.Put(&user{"brian", "brian@dolthub.com", 0})
-		ed := &IndexedSetTableEditor[*user]{set, userValueOps}
+		ed := &IndexedSetTableEditor[*user]{Set: set, Ops: userValueOps}
 		ed.StatementBegin(nil)
 		require.NoError(t, ed.Update(nil, sql.Row{"aaron", "aaron@dolthub.com"}, sql.Row{"aaron.son", "aaron+new@dolthub.com"}))
 		require.NoError(t, ed.StatementComplete(nil))
@@ -163,7 +163,7 @@ func TestTableEditorUpdate(t *testing.T) {
 		set := NewIndexedSet(ueq, keyers)
 		set.Put(&user{"aaron", "aaron@dolthub.com", 0})
 		set.Put(&user{"brian", "brian@dolthub.com", 1})
-		ed := &IndexedSetTableEditor[*user]{set, userValueOps}
+		ed := &IndexedSetTableEditor[*user]{Set: set, Ops: userValueOps}
 		ed.StatementBegin(nil)
 		require.NoError(t, ed.Update(nil, sql.Row{"brian", "brian@dolthub.com"}, sql.Row{"brian", "brian+new@dolthub.com"}))
 		require.NoError(t, ed.StatementComplete(nil))
@@ -272,7 +272,7 @@ func TestMultiTableEditorInsert(t *testing.T) {
 	t.Run("InsertRow", func(t *testing.T) {
 		set := NewIndexedSet(ueq, keyers)
 		set.Put(&user{"aaron", "aaron@dolthub.com", 0})
-		ed := &MultiIndexedSetTableEditor[*user]{set, userPetsMultiValueOps}
+		ed := &MultiIndexedSetTableEditor[*user]{Set: set, Ops: userPetsMultiValueOps}
 		ed.StatementBegin(nil)
 		require.NoError(t, ed.Insert(nil, sql.Row{"aaron", "aaron@dolthub.com", "dog"}))
 		require.NoError(t, ed.Insert(nil, sql.Row{"aaron", "aaron@dolthub.com", "fish"}))
@@ -288,7 +288,7 @@ func TestMultiTableEditorDelete(t *testing.T) {
 	t.Run("DeleteRow", func(t *testing.T) {
 		set := NewIndexedSet(ueq, keyers)
 		set.Put(&user{"aaron", "aaron@dolthub.com", userPetDog | userPetFish})
-		ed := &MultiIndexedSetTableEditor[*user]{set, userPetsMultiValueOps}
+		ed := &MultiIndexedSetTableEditor[*user]{Set: set, Ops: userPetsMultiValueOps}
 		ed.StatementBegin(nil)
 		require.NoError(t, ed.Delete(nil, sql.Row{"aaron", "aaron@dolthub.com", "fish"}))
 		require.NoError(t, ed.Delete(nil, sql.Row{"aaron", "aaron@dolthub.com", "cat"}))
@@ -311,7 +311,7 @@ func TestMultiTableEditorUpdate(t *testing.T) {
 
 		set := NewIndexedSet(ueq, keyers)
 		set.Put(&user{"aaron", "aaron@dolthub.com", userPetDog | userPetFish})
-		ed := &MultiIndexedSetTableEditor[*user]{set, userPetsMultiValueOps}
+		ed := &MultiIndexedSetTableEditor[*user]{Set: set, Ops: userPetsMultiValueOps}
 		ed.StatementBegin(nil)
 		require.NoError(t, ed.Update(nil, sql.Row{"aaron", "aaron@dolthub.com", "dog"}, sql.Row{"aaron", "aaron+new@dolthub.com", "cat"}))
 		require.NoError(t, ed.StatementComplete(nil))
@@ -328,7 +328,7 @@ func TestMultiTableEditorUpdate(t *testing.T) {
 		// exist.
 		set = NewIndexedSet(ueq, keyers)
 		set.Put(&user{"aaron", "aaron@dolthub.com", userPetDog | userPetFish})
-		ed = &MultiIndexedSetTableEditor[*user]{set, userPetsMultiValueOps}
+		ed = &MultiIndexedSetTableEditor[*user]{Set: set, Ops: userPetsMultiValueOps}
 		ed.StatementBegin(nil)
 		require.Error(t, ed.Update(nil, sql.Row{"aaron", "aaron@dolthub.com", "dog"}, sql.Row{"aaron.son", "aaron@dolthub.com", "cat"}))
 
@@ -337,7 +337,7 @@ func TestMultiTableEditorUpdate(t *testing.T) {
 		set = NewIndexedSet(ueq, keyers)
 		set.Put(&user{"aaron", "aaron@dolthub.com", userPetDog | userPetCat})
 		set.Put(&user{"brian", "brian@dolthub.com", userPetDog})
-		ed = &MultiIndexedSetTableEditor[*user]{set, userPetsMultiValueOps}
+		ed = &MultiIndexedSetTableEditor[*user]{Set: set, Ops: userPetsMultiValueOps}
 		ed.StatementBegin(nil)
 		require.NoError(t, ed.Update(nil, sql.Row{"aaron", "aaron@dolthub.com", "dog"}, sql.Row{"brian", "brian@dolthub.com", "cat"}))
 		require.NoError(t, ed.StatementComplete(nil))
