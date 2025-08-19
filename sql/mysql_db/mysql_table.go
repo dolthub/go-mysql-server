@@ -24,9 +24,9 @@ var errPrimaryKeyUnknownEntry = errors.NewKind("the primary key for the `%s` tab
 var errPrimaryKeyUnknownSchema = errors.NewKind("the primary key for the `%s` table was given a row belonging to an unknown schema")
 
 type mysqlTable struct {
+	db   *MySQLDb
 	name string
 	sch  sql.Schema
-	db   *MySQLDb
 }
 
 var _ sql.Table = (*mysqlTable)(nil)

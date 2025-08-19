@@ -27,12 +27,12 @@ import (
 type ReplicaSourceInfo struct {
 	Host                 string
 	User                 string
-	Ssl                  bool
 	Password             string
-	Port                 uint16
 	Uuid                 string
-	ConnectRetryInterval uint32
 	ConnectRetryCount    uint64
+	ConnectRetryInterval uint32
+	Port                 uint16
+	Ssl                  bool
 }
 
 func ReplicaSourceInfoToRow(ctx *sql.Context, v *ReplicaSourceInfo) (sql.Row, error) {
