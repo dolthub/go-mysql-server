@@ -93,12 +93,11 @@ func (a *AnyValueAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf
 }
 
 type SumAgg struct {
-	partitionStart, partitionEnd int
-	expr                         sql.Expression
-	framer                       sql.WindowFramer
-
-	// use prefix sums to quickly calculate arbitrary frame sum within partition
-	prefixSum []float64
+	expr           sql.Expression
+	framer         sql.WindowFramer
+	prefixSum      []float64 // use prefix sums to quickly calculate arbitrary frame sum within partition
+	partitionStart int
+	partitionEnd   int
 }
 
 func NewSumAgg(e sql.Expression) *SumAgg {
@@ -190,15 +189,17 @@ func computePrefixSum(interval sql.WindowInterval, partitionStart int, prefixSum
 }
 
 type AvgAgg struct {
-	partitionStart int
-	partitionEnd   int
-	expr           sql.Expression
-	framer         sql.WindowFramer
+	expr   sql.Expression
+	framer sql.WindowFramer
 
 	// use prefix sums to quickly calculate arbitrary frame sum within partition
 	prefixSum []float64
+
 	// exclude nulls in average denominator
 	nullCnt []int
+
+	partitionStart int
+	partitionEnd   int
 }
 
 func NewAvgAgg(e sql.Expression) *AvgAgg {
@@ -663,9 +664,10 @@ func (a *LastAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buffer 
 }
 
 type FirstAgg struct {
-	partitionStart, partitionEnd int
-	expr                         sql.Expression
-	framer                       sql.WindowFramer
+	expr           sql.Expression
+	framer         sql.WindowFramer
+	partitionStart int
+	partitionEnd   int
 }
 
 func NewFirstAgg(e sql.Expression) *FirstAgg {
@@ -721,19 +723,15 @@ func (a *FirstAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buffer
 }
 
 type CountAgg struct {
+	expr      sql.Expression
+	framer    sql.WindowFramer
+	prefixSum []float64
+	orderBy   []sql.Expression
+	peerGroup sql.WindowInterval
+
+	pos            int
 	partitionStart int
 	partitionEnd   int
-	expr           sql.Expression
-	framer         sql.WindowFramer
-
-	// use prefix sums to quickly calculate arbitrary a frame's row cnt within partition
-	prefixSum []float64
-	// orderBy tracks peer group increments
-	orderBy []sql.Expression
-	// pos increments every iteration
-	pos int
-	// peerGroup tracks value increments
-	peerGroup sql.WindowInterval
 }
 
 func NewCountAgg(e sql.Expression) *CountAgg {
@@ -1206,14 +1204,15 @@ func (a *RowNumber) Compute(ctx *sql.Context, interval sql.WindowInterval, buffe
 }
 
 type rankBase struct {
-	partitionStart, partitionEnd int
-
 	// orderBy tracks peer group increments
 	orderBy []sql.Expression
-	// pos increments every iteration
-	pos int
+
 	// peerGroup tracks value increments
 	peerGroup sql.WindowInterval
+
+	partitionStart int
+	partitionEnd   int
+	pos            int
 }
 
 func (a *rankBase) WithWindow(w *sql.WindowDefinition) (sql.WindowFunction, error) {
@@ -1346,13 +1345,13 @@ func (a *DenseRank) Compute(ctx *sql.Context, interval sql.WindowInterval, buf s
 type NTile struct {
 	numBucketsExpr sql.Expression
 
+	// orderBy tracks peer group increments
+	orderBy []sql.Expression
+
 	pos        uint64
 	bucketSize uint64
 	bigBuckets uint64
 	bucket     uint64
-
-	// orderBy tracks peer group increments
-	orderBy []sql.Expression
 }
 
 func NewNTile(expr sql.Expression) *NTile {
@@ -1507,14 +1506,12 @@ func (a *leadLagBase) Compute(ctx *sql.Context, interval sql.WindowInterval, buf
 }
 
 type StdDevPopAgg struct {
-	expr   sql.Expression
-	framer sql.WindowFramer
-
+	expr           sql.Expression
+	framer         sql.WindowFramer
+	prefixSum      []float64
+	nullCnt        []int
 	partitionStart int
 	partitionEnd   int
-
-	prefixSum []float64
-	nullCnt   []int
 }
 
 func NewStdDevPopAgg(e sql.Expression) *StdDevPopAgg {
@@ -1605,14 +1602,12 @@ func (s *StdDevPopAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, bu
 }
 
 type StdDevSampAgg struct {
-	expr   sql.Expression
-	framer sql.WindowFramer
-
+	expr           sql.Expression
+	framer         sql.WindowFramer
+	prefixSum      []float64
+	nullCnt        []int
 	partitionStart int
 	partitionEnd   int
-
-	prefixSum []float64
-	nullCnt   []int
 }
 
 func NewStdDevSampAgg(e sql.Expression) *StdDevSampAgg {
@@ -1681,14 +1676,12 @@ func (s *StdDevSampAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, b
 }
 
 type VarPopAgg struct {
-	expr   sql.Expression
-	framer sql.WindowFramer
-
+	expr           sql.Expression
+	framer         sql.WindowFramer
+	prefixSum      []float64
+	nullCnt        []int
 	partitionStart int
 	partitionEnd   int
-
-	prefixSum []float64
-	nullCnt   []int
 }
 
 func NewVarPopAgg(e sql.Expression) *VarPopAgg {
@@ -1757,14 +1750,12 @@ func (v *VarPopAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf s
 }
 
 type VarSampAgg struct {
-	expr   sql.Expression
-	framer sql.WindowFramer
-
+	expr           sql.Expression
+	framer         sql.WindowFramer
+	prefixSum      []float64
+	nullCnt        []int
 	partitionStart int
 	partitionEnd   int
-
-	prefixSum []float64
-	nullCnt   []int
 }
 
 func NewVarSampAgg(e sql.Expression) *VarSampAgg {

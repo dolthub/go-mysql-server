@@ -30,9 +30,9 @@ import (
 //
 // We assume [outputOrdinals] is appropriately sized for [partitionIters].
 type WindowIter struct {
+	iter           sql.RowIter
 	partitionIters []*WindowPartitionIter
 	outputOrdinals [][]int
-	iter           sql.RowIter
 	initialized    bool
 }
 

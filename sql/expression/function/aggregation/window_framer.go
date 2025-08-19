@@ -127,11 +127,12 @@ func NewGroupByFramer() *GroupByFramer {
 }
 
 type GroupByFramer struct {
-	evaluated                    bool
-	partitionStart, partitionEnd int
-
-	frameStart, frameEnd int
-	partitionSet         bool
+	partitionStart int
+	partitionEnd   int
+	frameStart     int
+	frameEnd       int
+	evaluated      bool
+	partitionSet   bool
 }
 
 func (f *GroupByFramer) NewFramer(interval sql.WindowInterval) (sql.WindowFramer, error) {
@@ -187,31 +188,33 @@ func (f *GroupByFramer) SlidingInterval(ctx sql.Context) (sql.WindowInterval, sq
 // frame:  {0,2}, {1,3}, {2,4}, {3,5}, {4,6}, {4,5}
 // rows:   [0,1], [1,2], [2,3], [3,4], [4,5], [5]
 type rowFramerBase struct {
-	idx            int
-	partitionStart int
-	partitionEnd   int
-	frameStart     int
-	frameEnd       int
-	partitionSet   bool
+	idx             int
+	partitionStart  int
+	partitionEnd    int
+	frameStart      int
+	frameEnd        int
+	startNPreceding int
+	endNPreceding   int
+	startNFollowing int
+	endNFollowing   int
 
 	// add [startOffset] to current [idx] to find start index
 	// is set unless [unboundedPreceding] is true
 	startOffset int
+
 	// add [endOffset] to current [idx] to find end index
 	// is set unless [unboundedFollowing] is true
 	endOffset int
 
-	// optional start fields; one is set
-	startCurrentRow    bool
-	startNPreceding    int
-	startNFollowing    int
+	partitionSet       bool
 	unboundedPreceding bool
+	unboundedFollowing bool
+
+	// optional start fields; one is set
+	startCurrentRow bool
 
 	// optional end fields; one is set
-	endCurrentRow      bool
-	unboundedFollowing bool
-	endNPreceding      int
-	endNFollowing      int
+	endCurrentRow bool
 }
 
 func (f *rowFramerBase) NewFramer(interval sql.WindowInterval) (sql.WindowFramer, error) {
@@ -316,32 +319,24 @@ func (f *rowFramerBase) Interval() (sql.WindowInterval, error) {
 // frame:  {0,3},   {1,3}, {2,3}, {3,5},   {3,5},   {4,5}
 // rows:   [0,1,2], [1,2], [2],   [4,4,5], [4,4,5], [5]
 type rangeFramerBase struct {
-	idx                          int
-	partitionStart, partitionEnd int
-	frameStart, frameEnd         int
-	partitionSet                 bool
+	startNFollowing sql.Expression
+	endNFollowing   sql.Expression
+	startNPreceding sql.Expression
+	endNPreceding   sql.Expression
+	startInclusion  sql.Expression
+	endInclusion    sql.Expression
+	orderBy         sql.Expression
 
-	// reference expression for boundary calculation
-	orderBy sql.Expression
-
-	// boundary arithmetic on [orderBy] for range start value
-	// is set unless [unboundedPreceding] is true
-	startInclusion sql.Expression
-	// boundary arithmetic on [orderBy] for range end value
-	// is set unless [unboundedFollowing] is true
-	endInclusion sql.Expression
-
-	// optional start fields; one is set
+	idx                int
+	partitionEnd       int
+	frameStart         int
+	frameEnd           int
+	partitionStart     int
 	startCurrentRow    bool
-	unboundedPreceding bool
-	startNPreceding    sql.Expression
-	startNFollowing    sql.Expression
-
-	// optional end fields; one is set
 	endCurrentRow      bool
 	unboundedFollowing bool
-	endNPreceding      sql.Expression
-	endNFollowing      sql.Expression
+	unboundedPreceding bool
+	partitionSet       bool
 }
 
 func (f *rangeFramerBase) NewFramer(interval sql.WindowInterval) (sql.WindowFramer, error) {
@@ -494,13 +489,13 @@ func (f *rangeFramerBase) Interval() (sql.WindowInterval, error) {
 }
 
 type PeerGroupFramer struct {
-	idx                          int
-	partitionStart, partitionEnd int
-	frameStart, frameEnd         int
-	partitionSet                 bool
-
-	// reference for peer calculation
-	orderBy []sql.Expression
+	orderBy        []sql.Expression
+	idx            int
+	partitionStart int
+	partitionEnd   int
+	frameStart     int
+	frameEnd       int
+	partitionSet   bool
 }
 
 func NewPeerGroupFramer(orderBy []sql.Expression) *PeerGroupFramer {

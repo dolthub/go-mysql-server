@@ -23,14 +23,12 @@ import (
 )
 
 type NTile struct {
-	pos   uint64
-	count uint64
-
 	bucketExpr sql.Expression
+	window     *sql.WindowDefinition
+	pos        uint64
+	count      uint64
 	bucketSize uint64
-
-	id     sql.ColumnId
-	window *sql.WindowDefinition
+	id         sql.ColumnId
 }
 
 var _ sql.FunctionExpression = (*NTile)(nil)
