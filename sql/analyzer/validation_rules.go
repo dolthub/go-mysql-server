@@ -235,6 +235,8 @@ func validateDeleteFrom(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 	}
 }
 
+// validateGroupBy makes sure that all selected expressions are functionally dependent on group by expressions when
+// ONLY_FULL_GROUP_BY mode is on https://dev.mysql.com/doc/refman/8.4/en/group-by-functional-dependence.html
 func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	if !FlagIsSet(qFlags, sql.QFlagAggregation) {
 		return n, transform.SameTree, nil
@@ -250,13 +252,11 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 
 	var err error
 	var project *plan.Project
-	var having *plan.Having
 	transform.Inspect(n, func(n sql.Node) bool {
-		// Allow the parser use the GroupBy node to eval the aggregation functions
-		// for sql statements that don't make use of the GROUP BY expression.
 		switch n := n.(type) {
 		case *plan.GroupBy:
-
+			// Allow the parser use the GroupBy node to eval the aggregation functions for sql statements that don't
+			// make use of the GROUP BY expression.
 			if len(n.GroupByExprs) == 0 {
 				return true
 			}
@@ -273,9 +273,6 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 			isJoin := false
 			exprs := make([]sql.Expression, 0)
 			exprs = append(exprs, n.GroupByExprs...)
-			if having != nil {
-				exprs = append(exprs, getEqualsDependencies(having.Cond)...)
-			}
 			possibleJoin := n.Child
 			if filter, ok := n.Child.(*plan.Filter); ok {
 				possibleJoin = filter.Child
@@ -319,8 +316,6 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 			}
 		case *plan.Project:
 			project = n
-		case *plan.Having:
-			having = n
 		}
 		return true
 	})
@@ -328,6 +323,7 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	return n, transform.SameTree, err
 }
 
+// getEqualsDependencies looks for Equals expressions and gets any non-literal arguments
 func getEqualsDependencies(expr sql.Expression) []sql.Expression {
 	exprs := make([]sql.Expression, 0)
 	sql.Inspect(expr, func(expr sql.Expression) bool {
@@ -348,6 +344,8 @@ func getEqualsDependencies(expr sql.Expression) []sql.Expression {
 	return exprs
 }
 
+// getSelectExprs transforms the projection expressions from a Project node such that it uses the appropriate select
+// dependency expressions.
 func getSelectExprs(project *plan.Project, selectDeps []sql.Expression, groupBys map[string]bool) []sql.Expression {
 	if project == nil {
 		return selectDeps
@@ -384,6 +382,7 @@ func getSelectExprs(project *plan.Project, selectDeps []sql.Expression, groupBys
 	}
 }
 
+// expressionReferencesOnlyGroupBys validates that an expression is dependent on only group by expressions
 func expressionReferencesOnlyGroupBys(groupBys map[string]bool, expr sql.Expression) bool {
 	valid := true
 	sql.Inspect(expr, func(expr sql.Expression) bool {
