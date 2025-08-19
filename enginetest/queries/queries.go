@@ -9366,6 +9366,14 @@ from typestable`,
 		Query:    "select y + 1 as z from xy group by (z) having AVG(z) > 1",
 		Expected: []sql.Row{{2}, {3}, {4}},
 	},
+	{
+		Query:    "select c1, c2 from one_pk where pk = 0 group by c1",
+		Expected: []sql.Row{{0, 1}},
+	},
+	{
+		Query:    "select c1, c2 from one_pk where c2 = 1 group by c1",
+		Expected: []sql.Row{{0, 1}},
+	},
 }
 
 var KeylessQueries = []QueryTest{
