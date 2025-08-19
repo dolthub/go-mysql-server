@@ -482,9 +482,9 @@ func (fkEditor *ForeignKeyEditor) Close(ctx *sql.Context) error {
 
 // ForeignKeyReferenceHandler handles references to any parent rows to verify they exist.
 type ForeignKeyReferenceHandler struct {
+	SelfCols   map[string]int
 	ForeignKey sql.ForeignKeyConstraint
 	RowMapper  ForeignKeyRowMapper
-	SelfCols   map[string]int // SelfCols are used for self-referential fks to refer to a col position given a col name
 }
 
 // IsInitialized returns whether this reference handler has been initialized.

@@ -34,20 +34,19 @@ var _ sql.Databaser = (*CreateEvent)(nil)
 
 type CreateEvent struct {
 	ddlNode
-	EventName        string
-	Definer          string
-	At               *OnScheduleTimestamp
+	scheduler        sql.EventScheduler
+	DefinitionNode   sql.Node
+	Ends             *OnScheduleTimestamp
 	Every            *expression.Interval
 	Starts           *OnScheduleTimestamp
-	Ends             *OnScheduleTimestamp
-	OnCompPreserve   bool
-	Status           sql.EventStatus
+	At               *OnScheduleTimestamp
 	Comment          string
 	DefinitionString string
-	DefinitionNode   sql.Node
+	Definer          string
+	EventName        string
+	OnCompPreserve   bool
+	Status           sql.EventStatus
 	IfNotExists      bool
-	// scheduler is used to notify EventSchedulerStatus of the event creation
-	scheduler sql.EventScheduler
 }
 
 // NewCreateEvent returns a *CreateEvent node.
@@ -337,11 +336,11 @@ func prepareCreateEventDefinitionNode(definition sql.Node) sql.Node {
 
 // createEventIter is the row iterator for *CreateEvent.
 type createEventIter struct {
-	once           sync.Once
 	event          sql.EventDefinition
 	eventDb        sql.EventDatabase
-	ifNotExists    bool
 	eventScheduler sql.EventScheduler
+	once           sync.Once
+	ifNotExists    bool
 }
 
 // Next implements the sql.RowIter interface.
@@ -569,10 +568,9 @@ var _ sql.Databaser = (*DropEvent)(nil)
 
 type DropEvent struct {
 	ddlNode
+	scheduler sql.EventScheduler
 	EventName string
 	IfExists  bool
-	// eventScheduler is used to notify EventSchedulerStatus of the event deletion
-	scheduler sql.EventScheduler
 }
 
 // NewDropEvent creates a new *DropEvent node.

@@ -21,31 +21,21 @@ import (
 
 // Scope of the analysis being performed, used when analyzing subqueries to give such analysis access to outer scope.
 type Scope struct {
-	// Stack of nested node scopes, with innermost scope first. A scope node is the node in which the subquery is
-	// defined, or an appropriate sibling, NOT the child node of the Subquery node.
-	nodes []sql.Node
-	// Memo nodes are nodes in the execution context that shouldn't be considered for name resolution, but are still
-	// important for analysis.
-	Memos []sql.Node
-	// recursionDepth tracks how many times we've recursed with analysis, to avoid stack overflows from infinite recursion
-	recursionDepth int
-	// CurrentNodeIsFromSubqueryExpression is true when the last scope (i.e. the most inner of the outer scope levels) has been
-	// created by a subquery expression. This is needed in order to calculate outer scope visibility for derived tables.
-	CurrentNodeIsFromSubqueryExpression bool
-	// EnforceReadOnly causes analysis to block all modification operations, as though a database is read only.
-	EnforceReadOnly bool
-
+	corr       sql.ColSet
 	Procedures *ProcedureCache
 
-	// corr is the aggregated set of correlated columns tracked by the subquery
-	// chain that produced this scope.
-	corr          sql.ColSet
-	inJoin        bool
-	inLateralJoin bool
-	joinSiblings  []sql.Node
-	JoinTrees     []string
+	Memos        []sql.Node
+	nodes        []sql.Node
+	joinSiblings []sql.Node
+	JoinTrees    []string
 
-	inInsertSource bool
+	recursionDepth int
+
+	CurrentNodeIsFromSubqueryExpression bool
+	EnforceReadOnly                     bool
+	inJoin                              bool
+	inLateralJoin                       bool
+	inInsertSource                      bool
 }
 
 func (s *Scope) IsEmpty() bool {

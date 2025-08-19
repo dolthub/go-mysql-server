@@ -26,8 +26,8 @@ var ErrTruncateNotSupported = errors.NewKind("table doesn't support TRUNCATE")
 
 // Truncate is a node describing the deletion of all rows from some table.
 type Truncate struct {
-	db string
 	UnaryNode
+	db string
 }
 
 var _ sql.Node = (*Truncate)(nil)

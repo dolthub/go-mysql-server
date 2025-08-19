@@ -24,8 +24,8 @@ import (
 
 // Close represents the CLOSE statement, which closes a cursor.
 type Close struct {
-	Name string
 	Pref *expression.ProcedureReference
+	Name string
 }
 
 var _ sql.Node = (*Close)(nil)

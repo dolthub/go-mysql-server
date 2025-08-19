@@ -24,10 +24,10 @@ import (
 
 // DeclareVariables represents the DECLARE statement for local variables.
 type DeclareVariables struct {
-	Names      []string
 	Type       sql.Type
 	DefaultVal *sql.ColumnDefaultValue
 	Pref       *expression.ProcedureReference
+	Names      []string
 }
 
 var _ sql.Node = (*DeclareVariables)(nil)

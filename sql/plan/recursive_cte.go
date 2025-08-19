@@ -43,16 +43,16 @@ import (
 // projection count and types. [Init] will be resolved before
 // [Rec] or [RecursiveCte] to share schema types.
 type RecursiveCte struct {
-	union *SetOp
-	// ColumnNames used to name lazily-loaded schema fields
-	ColumnNames []string
-	// schema will match the types of [Init.Schema()], names of [Columns]
-	schema sql.Schema
-	// Working is a handle to our refreshable intermediate table
+	cols sql.ColSet
+
+	union   *SetOp
 	Working *RecursiveTable
-	name    string
-	id      sql.TableId
-	cols    sql.ColSet
+
+	name        string
+	ColumnNames []string
+	
+	schema sql.Schema
+	id     sql.TableId
 }
 
 var _ sql.Node = (*RecursiveCte)(nil)
@@ -234,11 +234,11 @@ func NewRecursiveTable(n string, s sql.Schema) *RecursiveTable {
 // RecursiveTable is a thin wrapper around an in memory
 // buffer for use with recursiveCteIter.
 type RecursiveTable struct {
+	cols   sql.ColSet
 	name   string
 	schema sql.Schema
 	Buf    []sql.Row
 	id     sql.TableId
-	cols   sql.ColSet
 }
 
 var _ sql.Node = (*RecursiveTable)(nil)

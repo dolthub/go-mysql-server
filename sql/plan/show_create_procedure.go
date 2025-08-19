@@ -24,8 +24,8 @@ import (
 
 type ShowCreateProcedure struct {
 	db                      sql.Database
-	ProcedureName           string
 	ExternalStoredProcedure *sql.ExternalStoredProcedureDetails
+	ProcedureName           string
 }
 
 var _ sql.Databaser = (*ShowCreateProcedure)(nil)

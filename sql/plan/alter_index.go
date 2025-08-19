@@ -42,33 +42,22 @@ const (
 )
 
 type AlterIndex struct {
-	// Action states whether it's a CREATE, DROP, or RENAME
-	Action IndexAction
-	// ddlNode references to the database that is being operated on
-	Db sql.Database
-	// Table is the table that is being referenced
+	Db    sql.Database
 	Table sql.TableNode
-	// IfExists indicates if we should error when deleting an index that doesn't exist
-	IfExists bool
-	// IfNotExists indicates if we should error when creating a duplicate index
-	IfNotExists bool
-	// IndexName is the index name, and in the case of a RENAME it represents the new name
-	IndexName string
-	// PreviousIndexName states the old name when renaming an index
+
+	IndexName         string
 	PreviousIndexName string
-	// TODO: This should just use sql.IndexDef
-	// Using states whether you're using BTREE, HASH, or none
-	Using sql.IndexUsing
-	// Constraint specifies whether this is UNIQUE, FULLTEXT, SPATIAL, or none
-	Constraint sql.IndexConstraint
-	// Columns contains the column names (and possibly lengths) when creating an index
-	Columns []sql.IndexColumn
-	// Comment is the comment that was left at index creation, if any
-	Comment string
-	// DisableKeys determines whether to DISABLE KEYS if true or ENABLE KEYS if false
-	DisableKeys bool
-	// TargetSchema Analyzer state.
+	Comment           string
+
 	targetSchema sql.Schema
+	Columns      []sql.IndexColumn
+	Using        sql.IndexUsing
+	Constraint   sql.IndexConstraint
+
+	Action      IndexAction
+	IfExists    bool
+	IfNotExists bool
+	DisableKeys bool
 }
 
 var _ sql.SchemaTarget = (*AlterIndex)(nil)
