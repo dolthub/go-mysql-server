@@ -25,10 +25,10 @@ import (
 )
 
 type analyzeTableIter struct {
-	idx    int
+	stats  sql.StatsProvider
 	db     string
 	tables []sql.Table
-	stats  sql.StatsProvider
+	idx    int
 }
 
 var _ sql.RowIter = &analyzeTableIter{}
@@ -56,11 +56,11 @@ func (itr *analyzeTableIter) Close(ctx *sql.Context) error {
 }
 
 type updateHistogramIter struct {
+	stats   sql.Statistic
+	prov    sql.StatsProvider
 	db      string
 	table   string
 	columns []string
-	stats   sql.Statistic
-	prov    sql.StatsProvider
 	done    bool
 }
 
@@ -85,11 +85,11 @@ func (itr *updateHistogramIter) Close(_ *sql.Context) error {
 }
 
 type dropHistogramIter struct {
+	prov    sql.StatsProvider
 	db      string
 	schema  string
 	table   string
 	columns []string
-	prov    sql.StatsProvider
 	done    bool
 }
 
@@ -145,8 +145,8 @@ func (i *blockIter) Schema() sql.Schema {
 }
 
 type prependRowIter struct {
-	row       sql.Row
 	childIter sql.RowIter
+	row       sql.Row
 }
 
 func (p *prependRowIter) Next(ctx *sql.Context) (sql.Row, error) {

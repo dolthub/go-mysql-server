@@ -110,17 +110,15 @@ func (i *groupByIter) Dispose() {
 }
 
 type groupByGroupingIter struct {
-	selectedExprs []sql.Expression
-	groupByExprs  []sql.Expression
 	aggregations  sql.KeyValueCache
-	keys          []uint64
-	pos           int
 	child         sql.RowIter
 	dispose       sql.DisposeFunc
-
-	// buffers to reduce slice allocations
-	keyRow sql.Row
-	keySch sql.Schema
+	selectedExprs []sql.Expression
+	groupByExprs  []sql.Expression
+	keys          []uint64
+	keyRow        sql.Row
+	keySch        sql.Schema
+	pos           int
 }
 
 func newGroupByGroupingIter(

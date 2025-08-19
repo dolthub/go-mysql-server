@@ -30,8 +30,8 @@ import (
 // ifElseIter is the row iterator for *IfElseBlock.
 type ifElseIter struct {
 	branchIter sql.RowIter
-	sch        sql.Schema
 	branchNode sql.Node
+	sch        sql.Schema
 }
 
 var _ plan.BlockRowIter = (*ifElseIter)(nil)
@@ -214,10 +214,10 @@ func (e elseCaseErrorIter) Close(context *sql.Context) error {
 
 // openIter is the sql.RowIter of *Open.
 type openIter struct {
+	b    *BaseBuilder
 	pRef *expression.ProcedureReference
 	name string
 	row  sql.Row
-	b    *BaseBuilder
 }
 
 var _ sql.RowIter = (*openIter)(nil)

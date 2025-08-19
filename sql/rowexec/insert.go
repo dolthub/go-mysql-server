@@ -31,26 +31,27 @@ import (
 )
 
 type insertIter struct {
-	schema       sql.Schema
-	inserter     sql.RowInserter
-	replacer     sql.RowReplacer
-	updater      sql.RowUpdater
-	rowSource    sql.RowIter
-	unlocker     func()
-	ctx          *sql.Context
-	insertExprs  []sql.Expression
-	updateExprs  []sql.Expression
-	checks       sql.CheckConstraints
-	tableNode    sql.Node
-	closed       bool
-	ignore       bool
-	returnExprs  []sql.Expression
-	returnSchema sql.Schema
+	ctx *sql.Context
 
-	firstGeneratedAutoIncRowIdx int
+	tableNode sql.Node
+	inserter  sql.RowInserter
+	replacer  sql.RowReplacer
+	updater   sql.RowUpdater
+	rowSource sql.RowIter
 
 	deferredDefaults sql.FastIntSet
-	rowNumber        int64
+	unlocker         func()
+
+	insertExprs                 []sql.Expression
+	updateExprs                 []sql.Expression
+	returnExprs                 []sql.Expression
+	checks                      sql.CheckConstraints
+	schema                      sql.Schema
+	returnSchema                sql.Schema
+	firstGeneratedAutoIncRowIdx int
+	rowNumber                   int64
+	closed                      bool
+	ignore                      bool
 }
 
 func getInsertExpressions(values sql.Node) []sql.Expression {
