@@ -93,9 +93,10 @@ func (a *AnyValueAgg) Compute(ctx *sql.Context, interval sql.WindowInterval, buf
 }
 
 type SumAgg struct {
-	expr           sql.Expression
-	framer         sql.WindowFramer
-	prefixSum      []float64 // use prefix sums to quickly calculate arbitrary frame sum within partition
+	expr   sql.Expression
+	framer sql.WindowFramer
+	// use prefix sums to quickly calculate arbitrary frame sum within partition
+	prefixSum      []float64
 	partitionStart int
 	partitionEnd   int
 }
