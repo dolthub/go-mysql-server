@@ -24,11 +24,8 @@ github.com/dolthub/vitess v0.0.0-20250813175212-45844169a751 h1:BBQKyvyODewdQxS+
 github.com/dolthub/vitess v0.0.0-20250813175212-45844169a751/go.mod h1:1gQZs/byeHLMSul3Lvl3MzioMtOW1je79QYGyi2fd70=
 github.com/dolthub/vitess v0.0.0-20250814204310-c749d213f235 h1:uXrK+xn8rCwz/8jWDKaDyqZG1HbZI9F4V4HJ7zXFPMY=
 github.com/dolthub/vitess v0.0.0-20250814204310-c749d213f235/go.mod h1:1gQZs/byeHLMSul3Lvl3MzioMtOW1je79QYGyi2fd70=
-github.com/go-sql-driver/mysql v1.4.1/go.mod h1:zAC/RDZ24gD3HViQzih4MyKcchzm+sOG5ZlKdlhCg5w=
-github.com/go-sql-driver/mysql v1.5.0/go.mod h1:DCzpHaOWr8IXmIStZouvnhqoel9Qv2LBy8hT2VhHyBg=
-github.com/go-sql-driver/mysql v1.6.0/go.mod h1:DCzpHaOWr8IXmIStZouvnhqoel9Qv2LBy8hT2VhHyBg=
-github.com/go-sql-driver/mysql v1.7.2-0.20231213112541-0004702b931d h1:QQP1nE4qh5aHTGvI1LgOFxZYVxYoGeMfbNHikogPyoA=
-github.com/go-sql-driver/mysql v1.7.2-0.20231213112541-0004702b931d/go.mod h1:wEBSXgmK//2ZFJyE+qWnIsVGmvmEKlqwuVSjsCm7DZg=
+github.com/go-sql-driver/mysql v1.9.3 h1:U/N249h2WzJ3Ukj8SowVFjdtZKfu9vlLZxjPXV1aweo=
+github.com/go-sql-driver/mysql v1.9.3/go.mod h1:qn46aNg1333BRMNU69Lq93t8du/dwxI64Gl8i5p1WMU=
 github.com/gocraft/dbr/v2 v2.7.2 h1:ccUxMuz6RdZvD7VPhMRRMSS/ECF3gytPhPtcavjktHk=
 github.com/gocraft/dbr/v2 v2.7.2/go.mod h1:5bCqyIXO5fYn3jEp/L06QF4K1siFdhxChMjdNu6YJrg=
 github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe h1:lXe2qZdvpiX5WZkZR4hgp4KJVfY3nMkvmwbVkpv1rVY=
