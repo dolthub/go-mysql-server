@@ -69,17 +69,16 @@ const (
 
 // Handler is a connection handler for a SQLe engine, implementing the Vitess mysql.Handler interface.
 type Handler struct {
-	e                 *sqle.Engine
-	sm                *SessionManager
-	readTimeout       time.Duration
-	disableMultiStmts bool
-	maxLoggedQueryLen int
-	encodeLoggedQuery bool
 	sel               ServerEventListener
-
 	queryCounter      Counter
 	queryErrorCounter Counter
 	queryHistogram    Histogram
+	e                 *sqle.Engine
+	sm                *SessionManager
+	readTimeout       time.Duration
+	maxLoggedQueryLen int
+	disableMultiStmts bool
+	encodeLoggedQuery bool
 }
 
 var _ mysql.Handler = (*Handler)(nil)
