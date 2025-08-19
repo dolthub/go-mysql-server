@@ -37,15 +37,15 @@ func NewStatsIter(ctx *sql.Context, dStats ...sql.Statistic) (*statsIter, error)
 // todo: make a JSON compatible container for sql.Row w/ types so that we
 // can eagerly convert to sql.Row without sacrificing string printing.
 type statsIter struct {
-	dStats        []sql.Statistic
-	i             int
-	j             int
-	types         []sql.Type
+	createdAt     time.Time
 	qual          sql.StatQualifier
 	typesStr      string
 	colsStr       string
 	lowerBoundStr string
-	createdAt     time.Time
+	dStats        []sql.Statistic
+	types         []sql.Type
+	i             int
+	j             int
 }
 
 var _ sql.RowIter = (*statsIter)(nil)
