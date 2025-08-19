@@ -39,19 +39,19 @@ type Builder struct {
 	parser          sql.Parser
 	currentDatabase sql.Database
 
-	ctx    *sql.Context
-	qFlags *sql.QueryFlags
-
 	f          *factory
 	viewCtx    *ViewContext
 	procCtx    *ProcContext
 	triggerCtx *TriggerContext
 	bindCtx    *BindvarContext
+	ctx        *sql.Context
+	qFlags     *sql.QueryFlags
+
+	nesting int
 
 	tabId sql.TableId
 	colId columnId
 
-	nesting      int
 	authEnabled  bool
 	multiDDL     bool
 	insertActive bool
