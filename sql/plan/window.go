@@ -26,8 +26,8 @@ import (
 var ErrAggregationMissingWindow = errors.New("aggregation missing window expression")
 
 type Window struct {
-	SelectExprs []sql.Expression
 	UnaryNode
+	SelectExprs []sql.Expression
 }
 
 var _ sql.Expressioner = (*Window)(nil)

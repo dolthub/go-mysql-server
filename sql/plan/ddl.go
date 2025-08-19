@@ -49,33 +49,30 @@ func (c *ddlNode) Children() []sql.Node { return nil }
 
 // TableSpec is a node describing the schema of a table.
 type TableSpec struct {
+	TableOpts map[string]interface{}
+	Comment   string
 	Schema    sql.PrimaryKeySchema
 	FkDefs    sql.ForeignKeyConstraints
 	ChDefs    sql.CheckConstraints
 	IdxDefs   sql.IndexDefs
 	Collation sql.CollationID
-	TableOpts map[string]interface{}
-	Comment   string
 }
 
 // CreateTable is a node describing the creation of some table.
 type CreateTable struct {
+	like sql.Node
 	ddlNode
+	selectNode   sql.Node
+	TableOpts    map[string]interface{}
 	name         string
 	pkSch        sql.PrimaryKeySchema
 	fkDefs       sql.ForeignKeyConstraints
-	fkParentTbls sql.ForeignKeyTables
-	checks       sql.CheckConstraints
 	idxDefs      sql.IndexDefs
-
-	ifNotExists bool
-	temporary   bool
-
-	like       sql.Node
-	selectNode sql.Node
-
-	Collation sql.CollationID
-	TableOpts map[string]interface{}
+	checks       sql.CheckConstraints
+	fkParentTbls sql.ForeignKeyTables
+	Collation    sql.CollationID
+	ifNotExists  bool
+	temporary    bool
 }
 
 var _ sql.Databaser = (*CreateTable)(nil)
@@ -478,8 +475,8 @@ func (c *CreateTable) ValidateDefaultPosition() error {
 // DropTable is a node describing dropping one or more tables
 type DropTable struct {
 	Tables       []sql.Node
-	ifExists     bool
 	TriggerNames []string
+	ifExists     bool
 }
 
 var _ sql.Node = (*DropTable)(nil)

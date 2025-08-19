@@ -31,14 +31,14 @@ const (
 // SetOp is a node that returns everything in Left and then everything in Right
 type SetOp struct {
 	BinaryNode
-	SetOpType  int
-	Distinct   bool
 	Limit      sql.Expression
 	Offset     sql.Expression
+	cols       sql.ColSet
 	SortFields sql.SortFields
 	dispose    []sql.DisposeFunc
+	SetOpType  int
 	id         sql.TableId
-	cols       sql.ColSet
+	Distinct   bool
 }
 
 var _ sql.Node = (*SetOp)(nil)

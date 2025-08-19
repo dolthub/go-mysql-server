@@ -24,10 +24,10 @@ import (
 
 // ShowGrants represents the statement SHOW GRANTS.
 type ShowGrants struct {
-	CurrentUser bool
+	MySQLDb     sql.Database
 	For         *UserName
 	Using       []UserName
-	MySQLDb     sql.Database
+	CurrentUser bool
 }
 
 var _ sql.Node = (*ShowGrants)(nil)

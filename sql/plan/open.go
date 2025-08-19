@@ -24,8 +24,8 @@ import (
 
 // Open represents the OPEN statement, which opens a cursor.
 type Open struct {
-	Name string
 	Pref *expression.ProcedureReference
+	Name string
 }
 
 var _ sql.Node = (*Open)(nil)

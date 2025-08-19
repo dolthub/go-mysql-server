@@ -25,8 +25,8 @@ import (
 
 type DropProcedure struct {
 	Db            sql.Database
-	IfExists      bool
 	ProcedureName string
+	IfExists      bool
 }
 
 var _ sql.Databaser = (*DropProcedure)(nil)

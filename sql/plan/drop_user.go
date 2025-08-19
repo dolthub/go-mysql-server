@@ -26,9 +26,9 @@ import (
 
 // DropUser represents the statement DROP USER.
 type DropUser struct {
-	IfExists bool
-	Users    []UserName
 	MySQLDb  sql.Database
+	Users    []UserName
+	IfExists bool
 }
 
 var _ sql.Node = (*DropUser)(nil)

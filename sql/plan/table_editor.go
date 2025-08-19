@@ -23,11 +23,12 @@ import (
 
 // TableEditorIter wraps the given iterator and calls the Begin and Complete functions on the given table.
 type TableEditorIter struct {
-	once             *sync.Once
-	onceCtx          *sql.Context
-	openerClosers    []sql.EditOpenerCloser
 	inner            sql.RowIter
 	errorEncountered error
+	
+	once          *sync.Once
+	onceCtx       *sql.Context
+	openerClosers []sql.EditOpenerCloser
 }
 
 var _ sql.RowIter = (*TableEditorIter)(nil)

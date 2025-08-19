@@ -24,15 +24,15 @@ import (
 
 // CreateUser represents the statement CREATE USER.
 type CreateUser struct {
-	IfNotExists     bool
-	Users           []AuthenticatedUser
-	DefaultRoles    []UserName
+	MySQLDb         sql.Database
 	TLSOptions      *TLSOptions
 	AccountLimits   *AccountLimits
 	PasswordOptions *PasswordOptions
-	Locked          bool
 	Attribute       string
-	MySQLDb         sql.Database
+	Users           []AuthenticatedUser
+	DefaultRoles    []UserName
+	IfNotExists     bool
+	Locked          bool
 }
 
 var _ sql.Node = (*CreateUser)(nil)
