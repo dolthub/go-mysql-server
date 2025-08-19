@@ -82,12 +82,11 @@ type ProviderWithSessionBuilder interface {
 // A Driver exposes an engine as a stdlib SQL driver.
 type Driver struct {
 	provider Provider
-	options  *Options
 	sessions SessionBuilder
 	contexts ContextBuilder
-
-	mu  sync.Mutex
-	dbs map[string]*dbConn
+	options  *Options
+	dbs      map[string]*dbConn
+	mu       sync.Mutex
 }
 
 // New returns a driver using the specified provider.
@@ -223,9 +222,9 @@ func (c *dbConn) close() error {
 type Connector struct {
 	driver     *Driver
 	options    *Options
+	dbConn     *dbConn
 	serverName string
 	dsn        string
-	dbConn     *dbConn
 }
 
 // Driver returns the driver.
