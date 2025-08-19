@@ -116,10 +116,10 @@ func pushdownIndexToTable(ctx *sql.Context, a *Analyzer, tableNode sql.NameableN
 }
 
 type subqueryIndexLookup struct {
+	index    sql.Index
 	table    string
 	keyExpr  []sql.Expression
 	nullmask []bool
-	index    sql.Index
 }
 
 func getOuterScopeIndexes(

@@ -436,20 +436,22 @@ func newIndexCoster(ctx *sql.Context, underlyingName string) *indexCoster {
 
 type indexCoster struct {
 	ctx *sql.Context
-	i   indexScanId
-	// idToExpr is a record of conj decomposition so we can remove duplicates later
-	idToExpr map[indexScanId]sql.Expression
 	// bestStat is the lowest cardinality indexScan option
 	bestStat sql.Statistic
-	bestHist []sql.HistogramBucket
-	bestCnt  uint64
+	// idToExpr is a record of conj decomposition so we can remove duplicates later
+	idToExpr map[indexScanId]sql.Expression
 	// bestFilters is the set of conjunctions used to create bestStat
 	bestFilters sql.FastIntSet
 	// bestConstant are the constant best filters
 	bestConstant sql.FastIntSet
-	// prefix key of the best indexScan
-	bestPrefix     int
+
 	underlyingName string
+
+	bestHist []sql.HistogramBucket
+	bestCnt  uint64
+	// prefix key of the best indexScan
+	bestPrefix int
+	i          indexScanId
 	// whether the column following the prefix key is limited to a subrange
 	hasRange bool
 }
@@ -805,15 +807,15 @@ func newIndexScanRangeBuilder(ctx *sql.Context, idx sql.Index, include, imprecis
 }
 
 type indexScanRangeBuilder struct {
-	ctx       *sql.Context
 	idx       sql.Index
-	include   sql.FastIntSet
-	imprecise sql.FastIntSet
+	ctx       *sql.Context
 	idToExpr  map[indexScanId]sql.Expression
 	conjIb    *sql.MySQLIndexBuilder
+	include   sql.FastIntSet
+	imprecise sql.FastIntSet
+	tableName string
 	allRanges []sql.MySQLRange
 	leftover  []sql.Expression
-	tableName string
 }
 
 // buildRangeCollection converts our representation of the best index scan
@@ -1064,13 +1066,13 @@ type indexFilter interface {
 }
 
 type iScanLeaf struct {
-	op            IndexScanOp
-	id            indexScanId
+	litValue      interface{}
 	gf            *expression.GetField
 	underlying    string
-	litValue      interface{}
-	setValues     []interface{}
 	fulltextIndex string
+	setValues     []interface{}
+	id            indexScanId
+	op            IndexScanOp
 }
 
 func (l *iScanLeaf) normString() string {
@@ -1089,8 +1091,8 @@ func (l *iScanLeaf) Op() IndexScanOp {
 }
 
 type iScanOr struct {
-	id       indexScanId
 	children []indexFilter
+	id       indexScanId
 }
 
 func (o *iScanOr) Id() indexScanId {
@@ -1108,10 +1110,10 @@ func newIScanAnd(id indexScanId) *iScanAnd {
 }
 
 type iScanAnd struct {
-	id           indexScanId
 	leafChildren map[string][]*iScanLeaf
 	orChildren   []indexFilter
 	cnt          int
+	id           indexScanId
 }
 
 func (a *iScanAnd) Op() IndexScanOp {
@@ -1694,14 +1696,14 @@ func newConjCollector(s sql.Statistic, hist []sql.HistogramBucket, ordinals map[
 // an index histogram for a list of conjugate filters
 type conjCollector struct {
 	stat          sql.Statistic
-	hist          []sql.HistogramBucket
 	ordinals      map[string]int
-	missingPrefix int
 	constant      sql.FastIntSet
 	ineqCols      sql.FastIntSet
+	applied       sql.FastIntSet
+	hist          []sql.HistogramBucket
 	eqVals        []interface{}
 	nullable      []bool
-	applied       sql.FastIntSet
+	missingPrefix int
 	isFalse       bool
 }
 
