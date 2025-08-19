@@ -21,10 +21,10 @@ import (
 // TableAlias is a node that acts as a table with a given name.
 type TableAlias struct {
 	*UnaryNode
-	cols sql.ColSet
-	sch     sql.Schema
+	cols    sql.ColSet
 	name    string
 	comment string
+	sch     sql.Schema
 	id      sql.TableId
 }
 
