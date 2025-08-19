@@ -31,27 +31,28 @@ import (
 // tables provided by the expression to reduce the searchable set of tables, however this is performed as a separate step
 // that is not directly tied to this expression. This expression's purpose is solely to calculate relevancy values.
 type MatchAgainst struct {
-	Columns        []sql.Expression
-	Expr           sql.Expression
-	SearchModifier fulltext.SearchModifier
-
 	ftIndex          fulltext.Index
-	KeyCols          fulltext.KeyColumns
-	ParentTable      sql.IndexAddressableTable
+	rowCountIndex    sql.Index
+	globalCountIndex sql.Index
+	docCountIndex    sql.Index
+
 	ConfigTable      sql.IndexAddressableTable
+	ParentTable      sql.IndexAddressableTable
 	PositionTable    sql.IndexAddressableTable
 	DocCountTable    sql.IndexAddressableTable
 	GlobalCountTable sql.IndexAddressableTable
 	RowCountTable    sql.IndexAddressableTable
 
-	once             sync.Once
-	expectedRowLen   int
-	evaluatedString  string
-	parser           fulltext.DefaultParser
-	docCountIndex    sql.Index
-	globalCountIndex sql.Index
-	rowCountIndex    sql.Index
-	parentRowCount   uint64
+	Expr sql.Expression
+	
+	evaluatedString string
+	Columns         []sql.Expression
+	KeyCols         fulltext.KeyColumns
+	parser          fulltext.DefaultParser
+	expectedRowLen  int
+	parentRowCount  uint64
+	once            sync.Once
+	SearchModifier  fulltext.SearchModifier
 }
 
 var _ sql.Expression = (*MatchAgainst)(nil)
