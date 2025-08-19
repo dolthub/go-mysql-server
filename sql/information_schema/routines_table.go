@@ -28,12 +28,11 @@ import (
 const defaultRoutinesTableRowCount = 10
 
 type routineTable struct {
-	name       string
-	schema     Schema
 	catalog    Catalog
 	procedures map[string][]*plan.Procedure
-	// functions
-	rowIter func(*Context, Catalog, map[string][]*plan.Procedure) (RowIter, error)
+	rowIter    func(*Context, Catalog, map[string][]*plan.Procedure) (RowIter, error)
+	name       string
+	schema     Schema
 }
 
 var (
