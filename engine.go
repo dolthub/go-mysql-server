@@ -51,10 +51,17 @@ func init() {
 
 // Config for the Engine.
 type Config struct {
-	VersionPostfix     string
-	TemporaryUsers     []TemporaryUser
-	IsReadOnly         bool
-	IsServerLocked     bool
+	// VersionPostfix to display with the `VERSION()` UDF.
+	VersionPostfix string
+	// TemporaryUsers adds any users that should be included when the engine is created. By default, authentication is
+	// disabled, and including any users here will enable authentication. All users in this list will have full access.
+	// This field is only temporary, and will be removed as development on users and authentication continues.
+	TemporaryUsers []TemporaryUser
+	// IsReadOnly sets the engine to disallow modification queries.
+	IsReadOnly     bool
+	IsServerLocked bool
+	// IncludeRootAccount adds the root account (with no password) to the list of accounts, and also enables
+	// authentication.
 	IncludeRootAccount bool
 }
 
