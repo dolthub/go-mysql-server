@@ -100,7 +100,7 @@ func (p *procFd) iterFdDir() {
 				}
 				z := bytes.SplitN(buf[:n], []byte(" "), 3)
 				name := getProcName(z[1])
-				p.p = &process{p.pid, name}
+				p.p = &process{name: name, pid: p.pid}
 			}
 			sk.Process = p.p
 		}
