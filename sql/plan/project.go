@@ -38,7 +38,7 @@ type Project struct {
 	// AliasDeps maps string representations of projected GetField expressions to whether it is projected alias
 	// dependency
 	AliasDeps map[string]bool
-	sch sql.Schema
+	sch       sql.Schema
 }
 
 var _ sql.Expressioner = (*Project)(nil)
