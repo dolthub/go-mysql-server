@@ -46,23 +46,21 @@ const (
 // This way, a Range is deconstructed and sorted by its column expressions, but may easily be retrieved by walking down
 // a tree and all of its inner trees.
 type MySQLRangeColumnExprTree struct {
+	typ  Type
 	root *rangeColumnExprTreeNode
 	size int
-	typ  Type
 }
 
 // rangeColumnExprTreeNode is a node within a MySQLRangeColumnExprTree.
 type rangeColumnExprTreeNode struct {
-	color rangeTreeColor
-
 	LowerBound    MySQLRangeCut
 	UpperBound    MySQLRangeCut
 	MaxUpperbound MySQLRangeCut
-
-	Inner  *MySQLRangeColumnExprTree
-	Left   *rangeColumnExprTreeNode
-	Right  *rangeColumnExprTreeNode
-	Parent *rangeColumnExprTreeNode
+	Inner         *MySQLRangeColumnExprTree
+	Parent        *rangeColumnExprTreeNode
+	Left          *rangeColumnExprTreeNode
+	Right         *rangeColumnExprTreeNode
+	color         rangeTreeColor
 }
 
 // GetColExprTypes returns a list of MySQLRangeColumnExpr

@@ -251,16 +251,16 @@ var autoSessionIDs uint32 = 1
 
 // Context of the query execution.
 type Context struct {
+	queryTime time.Time
 	context.Context
 	Session
-	Memory      *MemoryManager
 	ProcessList ProcessList
 	services    Services
-	pid         uint64
-	query       string
-	queryTime   time.Time
 	tracer      trace.Tracer
 	rootSpan    trace.Span
+	Memory      *MemoryManager
+	query       string
+	pid         uint64
 	interpreted bool
 	Version     AnalyzerVersion
 }
