@@ -18,13 +18,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/values"
 	trace2 "runtime/trace"
 	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
 	"unsafe"
+
+	"github.com/dolthub/go-mysql-server/sql/values"
 
 	"github.com/shopspring/decimal"
 )
