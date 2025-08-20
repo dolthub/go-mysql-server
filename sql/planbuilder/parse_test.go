@@ -60,7 +60,7 @@ Project
  │   ├─ cacheable: true
  │   ├─ alias-string: select SUM(x) from cte
  │   └─ Project
- │       ├─ columns: [sum(cte.x)->SUM(x)]
+ │       ├─ columns: [sum(cte.x):13!null->SUM(x)]
  │       └─ GroupBy
  │           ├─ select: SUM(cte.x:10!null)
  │           ├─ group: 
@@ -84,7 +84,7 @@ Project
      │   ├─ cacheable: true
      │   ├─ alias-string: select SUM(x) from cte
      │   └─ Project
-     │       ├─ columns: [sum(cte.x)->SUM(x)]
+     │       ├─ columns: [sum(cte.x):13!null->SUM(x)]
      │       └─ GroupBy
      │           ├─ select: SUM(cte.x:10!null)
      │           ├─ group: 
@@ -339,7 +339,7 @@ update histogram  xy.(x,y) using {"statistic":{"avg_size":0,"buckets":[],"column
 			Query: "SELECT b.y as s1, a.y as s2, first_value(a.z) over (partition by a.y) from xy a join xy b on a.y = b.y",
 			ExpectedPlan: `
 Project
- ├─ columns: [b.y:5!null->s1:7, a.y:2!null->s2:8, first_value(a.z) over ( partition by a.y rows between unbounded preceding and unbounded following)->first_value(a.z) over (partition by a.y)]
+ ├─ columns: [b.y:5!null->s1:7, a.y:2!null->s2:8, first_value(a.z) over ( partition by a.y rows between unbounded preceding and unbounded following):9!null->first_value(a.z) over (partition by a.y)]
  └─ Window
      ├─ first_value(a.z) over ( partition by a.y ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
      ├─ b.y:5!null
@@ -657,7 +657,7 @@ SubqueryAlias
 			Query: "select x, sum(y) from xy group by x order by x - count(y)",
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:1!null, sum(xy.y)->sum(y)]
+ ├─ columns: [xy.x:1!null, sum(xy.y):4!null->sum(y)]
  └─ Sort((xy.x:1!null - count(xy.y):5!null) ASC nullsFirst)
      └─ GroupBy
          ├─ select: COUNT(xy.y:2!null), SUM(xy.y:2!null), xy.x:1!null
@@ -673,7 +673,7 @@ Project
 			Query: "select sum(x) from xy group by x order by y",
 			ExpectedPlan: `
 Project
- ├─ columns: [sum(xy.x)->sum(x)]
+ ├─ columns: [sum(xy.x):4!null->sum(x)]
  └─ Sort(xy.y:2!null ASC nullsFirst)
      └─ GroupBy
          ├─ select: SUM(xy.x:1!null), xy.y:2!null
@@ -689,7 +689,7 @@ Project
 			Query: "SELECT y, count(x) FROM xy GROUP BY y ORDER BY count(x) DESC",
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.y:2!null, count(xy.x)->count(x)]
+ ├─ columns: [xy.y:2!null, count(xy.x):4!null->count(x)]
  └─ Sort(count(xy.x):4!null DESC nullsFirst)
      └─ GroupBy
          ├─ select: COUNT(xy.x:1!null), xy.y:2!null
@@ -705,7 +705,7 @@ Project
 			Query: "select count(x) from xy",
 			ExpectedPlan: `
 Project
- ├─ columns: [count(xy.x)->count(x)]
+ ├─ columns: [count(xy.x):4!null->count(x)]
  └─ GroupBy
      ├─ select: COUNT(xy.x:1!null)
      ├─ group: 
@@ -720,7 +720,7 @@ Project
 			Query: "SELECT y, count(x) FROM xy GROUP BY y ORDER BY y DESC",
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.y:2!null, count(xy.x)->count(x)]
+ ├─ columns: [xy.y:2!null, count(xy.x):4!null->count(x)]
  └─ Sort(xy.y:2!null DESC nullsFirst)
      └─ GroupBy
          ├─ select: COUNT(xy.x:1!null), xy.y:2!null
@@ -736,7 +736,7 @@ Project
 			Query: "SELECT y, count(x) FROM xy GROUP BY y ORDER BY y",
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.y:2!null, count(xy.x)->count(x)]
+ ├─ columns: [xy.y:2!null, count(xy.x):4!null->count(x)]
  └─ Sort(xy.y:2!null ASC nullsFirst)
      └─ GroupBy
          ├─ select: COUNT(xy.x:1!null), xy.y:2!null
@@ -795,7 +795,7 @@ Project
 			Query: "select count(*) from (select count(*) from xy) dt",
 			ExpectedPlan: `
 Project
- ├─ columns: [count(1)->count(*)]
+ ├─ columns: [count(1):6!null->count(*)]
  └─ GroupBy
      ├─ select: COUNT(1 (bigint))
      ├─ group: 
@@ -807,7 +807,7 @@ Project
          ├─ colSet: (5)
          ├─ tableId: 2
          └─ Project
-             ├─ columns: [count(1)->count(*)]
+             ├─ columns: [count(1):4!null->count(*)]
              └─ GroupBy
                  ├─ select: COUNT(1 (bigint))
                  ├─ group: 
@@ -844,7 +844,7 @@ SubqueryAlias
 			Query: "SELECT count(*), x+y AS r FROM xy GROUP BY x, y",
 			ExpectedPlan: `
 Project
- ├─ columns: [count(1)->count(*), (xy.x:1!null + xy.y:2!null)->r:5]
+ ├─ columns: [count(1):4!null->count(*), (xy.x:1!null + xy.y:2!null)->r:5]
  └─ GroupBy
      ├─ select: COUNT(1 (bigint)), xy.x:1!null, xy.y:2!null
      ├─ group: xy.x:1!null, xy.y:2!null
@@ -859,7 +859,7 @@ Project
 			Query: "SELECT count(*), x+y AS r FROM xy GROUP BY x+y",
 			ExpectedPlan: `
 Project
- ├─ columns: [count(1)->count(*), (xy.x:1!null + xy.y:2!null)->r:5]
+ ├─ columns: [count(1):4!null->count(*), (xy.x:1!null + xy.y:2!null)->r:5]
  └─ GroupBy
      ├─ select: COUNT(1 (bigint)), xy.x:1!null, xy.y:2!null
      ├─ group: (xy.x:1!null + xy.y:2!null)
@@ -874,7 +874,7 @@ Project
 			Query: "SELECT count(*) FROM xy GROUP BY 1+2",
 			ExpectedPlan: `
 Project
- ├─ columns: [count(1)->count(*)]
+ ├─ columns: [count(1):4!null->count(*)]
  └─ GroupBy
      ├─ select: COUNT(1 (bigint))
      ├─ group: (1 (tinyint) + 2 (tinyint))
@@ -889,7 +889,7 @@ Project
 			Query: "SELECT count(*), upper(x) FROM xy GROUP BY upper(x)",
 			ExpectedPlan: `
 Project
- ├─ columns: [count(1)->count(*), upper(xy.x)->upper(x)]
+ ├─ columns: [count(1):4!null->count(*), upper(xy.x)->upper(x)]
  └─ GroupBy
      ├─ select: COUNT(1 (bigint)), xy.x:1!null
      ├─ group: upper(xy.x)
@@ -904,7 +904,7 @@ Project
 			Query: "SELECT y, count(*), z FROM xy GROUP BY 1, 3",
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.y:2!null, count(1)->count(*), xy.z:3!null]
+ ├─ columns: [xy.y:2!null, count(1):4!null->count(*), xy.z:3!null]
  └─ GroupBy
      ├─ select: COUNT(1 (bigint)), xy.y:2!null, xy.z:3!null
      ├─ group: xy.y:2!null, xy.z:3!null
@@ -919,7 +919,7 @@ Project
 			Query: "SELECT x, sum(x) FROM xy group by 1 having avg(x) > 1 order by 1",
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:1!null, sum(xy.x)->sum(x)]
+ ├─ columns: [xy.x:1!null, sum(xy.x):4!null->sum(x)]
  └─ Sort(xy.x:1!null ASC nullsFirst)
      └─ Having
          ├─ GreaterThan
@@ -939,7 +939,7 @@ Project
 			Query: "SELECT y, SUM(x) FROM xy GROUP BY y ORDER BY SUM(x) + 1 ASC",
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.y:2!null, sum(xy.x)->SUM(x)]
+ ├─ columns: [xy.y:2!null, sum(xy.x):4!null->SUM(x)]
  └─ Sort((sum(xy.x):4!null + 1 (tinyint)) ASC nullsFirst)
      └─ GroupBy
          ├─ select: SUM(xy.x:1!null), xy.y:2!null
@@ -955,7 +955,7 @@ Project
 			Query: "SELECT y, SUM(x) FROM xy GROUP BY y ORDER BY COUNT(*) ASC",
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.y:2!null, sum(xy.x)->SUM(x)]
+ ├─ columns: [xy.y:2!null, sum(xy.x):4!null->SUM(x)]
  └─ Sort(count(1):5!null ASC nullsFirst)
      └─ GroupBy
          ├─ select: COUNT(1 (bigint)), SUM(xy.x:1!null), xy.y:2!null
@@ -971,7 +971,7 @@ Project
 			Query: "SELECT y, SUM(x) FROM xy GROUP BY y ORDER BY SUM(x) % 2, SUM(x), AVG(x) ASC",
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.y:2!null, sum(xy.x)->SUM(x)]
+ ├─ columns: [xy.y:2!null, sum(xy.x):4!null->SUM(x)]
  └─ Sort((sum(xy.x):4!null % 2 (tinyint)) ASC nullsFirst, sum(xy.x):4!null ASC nullsFirst, avg(xy.x):7 ASC nullsFirst)
      └─ GroupBy
          ├─ select: AVG(xy.x:1!null), SUM(xy.x:1!null), xy.y:2!null
@@ -987,7 +987,7 @@ Project
 			Query: "SELECT y, SUM(x) FROM xy GROUP BY y ORDER BY AVG(x) ASC",
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.y:2!null, sum(xy.x)->SUM(x)]
+ ├─ columns: [xy.y:2!null, sum(xy.x):4!null->SUM(x)]
  └─ Sort(avg(xy.x):5 ASC nullsFirst)
      └─ GroupBy
          ├─ select: AVG(xy.x:1!null), SUM(xy.x:1!null), xy.y:2!null
@@ -1003,8 +1003,8 @@ Project
 			Query: "SELECT x, sum(x) FROM xy group by 1 having avg(x) > 1 order by 2",
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:1!null, sum(xy.x)->sum(x)]
- └─ Sort(sum(xy.x)->sum(x) ASC nullsFirst)
+ ├─ columns: [xy.x:1!null, sum(xy.x):4!null->sum(x)]
+ └─ Sort(sum(xy.x):4!null->sum(x) ASC nullsFirst)
      └─ Having
          ├─ GreaterThan
          │   ├─ avg(xy.x):5
@@ -1023,7 +1023,7 @@ Project
 			Query: "SELECT x, sum(y * z) FROM xy group by x having sum(y * z) > 1",
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:1!null, sum((xy.y * xy.z))->sum(y * z)]
+ ├─ columns: [xy.x:1!null, sum((xy.y * xy.z)):4!null->sum(y * z)]
  └─ Having
      ├─ GreaterThan
      │   ├─ sum((xy.y * xy.z)):4!null
@@ -1042,7 +1042,21 @@ Project
 			Query: "select (select u from uv where x = u) from xy group by (select u from uv where x = u), x;",
 			ExpectedPlan: `
 Project
- ├─ columns: [Subquery(select u from uv where x = u)->(select u from uv where x = u)]
+ ├─ columns: [Subquery
+ │   ├─ cacheable: false
+ │   ├─ alias-string: select u from uv where x = u
+ │   └─ Project
+ │       ├─ columns: [uv.u:4!null]
+ │       └─ Filter
+ │           ├─ Eq
+ │           │   ├─ xy.x:1!null
+ │           │   └─ uv.u:4!null
+ │           └─ Table
+ │               ├─ name: uv
+ │               ├─ columns: [u v w]
+ │               ├─ colSet: (4-6)
+ │               └─ tableId: 2
+ │  ->(select u from uv where x = u)]
  └─ GroupBy
      ├─ select: 
      ├─ group: Subquery
@@ -1143,7 +1157,28 @@ Project
 			Query: "SELECT (SELECT dt.z FROM (SELECT uv.u AS z FROM uv WHERE uv.v = xy.y) dt) FROM xy;",
 			ExpectedPlan: `
 Project
- ├─ columns: [Subquery(select dt.z from (select uv.u as z from uv where uv.v = xy.y) as dt)->(SELECT dt.z FROM (SELECT uv.u AS z FROM uv WHERE uv.v = xy.y) dt)]
+ ├─ columns: [Subquery
+ │   ├─ cacheable: false
+ │   ├─ alias-string: select dt.z from (select uv.u as z from uv where uv.v = xy.y) as dt
+ │   └─ SubqueryAlias
+ │       ├─ name: dt
+ │       ├─ outerVisibility: false
+ │       ├─ isLateral: false
+ │       ├─ cacheable: false
+ │       ├─ colSet: (8)
+ │       ├─ tableId: 3
+ │       └─ Project
+ │           ├─ columns: [uv.u:4!null->z:7]
+ │           └─ Filter
+ │               ├─ Eq
+ │               │   ├─ uv.v:5!null
+ │               │   └─ xy.y:2!null
+ │               └─ Table
+ │                   ├─ name: uv
+ │                   ├─ columns: [u v w]
+ │                   ├─ colSet: (4-6)
+ │                   └─ tableId: 2
+ │  ->(SELECT dt.z FROM (SELECT uv.u AS z FROM uv WHERE uv.v = xy.y) dt)]
  └─ Table
      ├─ name: xy
      ├─ columns: [x y z]
@@ -1155,7 +1190,33 @@ Project
 			Query: "SELECT (SELECT max(dt.z) FROM (SELECT uv.u AS z FROM uv WHERE uv.v = xy.y) dt) FROM xy;",
 			ExpectedPlan: `
 Project
- ├─ columns: [Subquery(select max(dt.z) from (select uv.u as z from uv where uv.v = xy.y) as dt)->(SELECT max(dt.z) FROM (SELECT uv.u AS z FROM uv WHERE uv.v = xy.y) dt)]
+ ├─ columns: [Subquery
+ │   ├─ cacheable: false
+ │   ├─ alias-string: select max(dt.z) from (select uv.u as z from uv where uv.v = xy.y) as dt
+ │   └─ Project
+ │       ├─ columns: [max(dt.z):9!null]
+ │       └─ GroupBy
+ │           ├─ select: MAX(dt.z:8!null)
+ │           ├─ group: 
+ │           └─ SubqueryAlias
+ │               ├─ name: dt
+ │               ├─ outerVisibility: false
+ │               ├─ isLateral: false
+ │               ├─ cacheable: false
+ │               ├─ colSet: (8)
+ │               ├─ tableId: 3
+ │               └─ Project
+ │                   ├─ columns: [uv.u:4!null->z:7]
+ │                   └─ Filter
+ │                       ├─ Eq
+ │                       │   ├─ uv.v:5!null
+ │                       │   └─ xy.y:2!null
+ │                       └─ Table
+ │                           ├─ name: uv
+ │                           ├─ columns: [u v w]
+ │                           ├─ colSet: (4-6)
+ │                           └─ tableId: 2
+ │  ->(SELECT max(dt.z) FROM (SELECT uv.u AS z FROM uv WHERE uv.v = xy.y) dt)]
  └─ Table
      ├─ name: xy
      ├─ columns: [x y z]
@@ -1167,7 +1228,33 @@ Project
 			Query: "SELECT xy.*, (SELECT max(dt.u) FROM (SELECT uv.u AS u FROM uv WHERE uv.v = xy.y) dt) FROM xy;",
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, Subquery(select max(dt.u) from (select uv.u as u from uv where uv.v = xy.y) as dt)->(SELECT max(dt.u) FROM (SELECT uv.u AS u FROM uv WHERE uv.v = xy.y) dt)]
+ ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, Subquery
+ │   ├─ cacheable: false
+ │   ├─ alias-string: select max(dt.u) from (select uv.u as u from uv where uv.v = xy.y) as dt
+ │   └─ Project
+ │       ├─ columns: [max(dt.u):9!null]
+ │       └─ GroupBy
+ │           ├─ select: MAX(dt.u:8!null)
+ │           ├─ group: 
+ │           └─ SubqueryAlias
+ │               ├─ name: dt
+ │               ├─ outerVisibility: false
+ │               ├─ isLateral: false
+ │               ├─ cacheable: false
+ │               ├─ colSet: (8)
+ │               ├─ tableId: 3
+ │               └─ Project
+ │                   ├─ columns: [uv.u:4!null->u:7]
+ │                   └─ Filter
+ │                       ├─ Eq
+ │                       │   ├─ uv.v:5!null
+ │                       │   └─ xy.y:2!null
+ │                       └─ Table
+ │                           ├─ name: uv
+ │                           ├─ columns: [u v w]
+ │                           ├─ colSet: (4-6)
+ │                           └─ tableId: 2
+ │  ->(SELECT max(dt.u) FROM (SELECT uv.u AS u FROM uv WHERE uv.v = xy.y) dt)]
  └─ Table
      ├─ name: xy
      ├─ columns: [x y z]
@@ -1282,7 +1369,7 @@ Project
 			from xy`,
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:1!null, (xy.x * xy.y)->x*y, row_number() over ( partition by xy.x rows between unbounded preceding and unbounded following):4!null->row_num1:5, sum
+ ├─ columns: [xy.x:1!null, (xy.x:1!null * xy.y:2!null)->x*y, row_number() over ( partition by xy.x rows between unbounded preceding and unbounded following):4!null->row_num1:5, sum
  │   ├─ over ( partition by xy.y order by xy.x asc)
  │   └─ xy.x
  │  :6!null->sum:7]
@@ -1365,7 +1452,7 @@ Project
 			Query: "select x, row_number() over (w3) from xy window w1 as (w2), w2 as (), w3 as (w1)",
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:1!null, row_number() over ( rows between unbounded preceding and unbounded following)->row_number() over (w3)]
+ ├─ columns: [xy.x:1!null, row_number() over ( rows between unbounded preceding and unbounded following):4!null->row_number() over (w3)]
  └─ Window
      ├─ row_number() over ( ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
      ├─ xy.x:1!null
@@ -1380,7 +1467,7 @@ Project
 			Query: "SELECT x, first_value(z) over (partition by y) FROM xy order by x*y,x",
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:1!null, first_value(xy.z) over ( partition by xy.y rows between unbounded preceding and unbounded following)->first_value(z) over (partition by y)]
+ ├─ columns: [xy.x:1!null, first_value(xy.z) over ( partition by xy.y rows between unbounded preceding and unbounded following):4!null->first_value(z) over (partition by y)]
  └─ Sort((xy.x:1!null * xy.y:2!null) ASC nullsFirst, xy.x:1!null ASC nullsFirst)
      └─ Window
          ├─ first_value(xy.z) over ( partition by xy.y ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)
@@ -1397,7 +1484,7 @@ Project
 			Query: "SELECT x, avg(x) FROM xy group by x order by sum(x)",
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:1!null, avg(xy.x)->avg(x)]
+ ├─ columns: [xy.x:1!null, avg(xy.x):4->avg(x)]
  └─ Sort(sum(xy.x):5!null ASC nullsFirst)
      └─ GroupBy
          ├─ select: AVG(xy.x:1!null), SUM(xy.x:1!null), xy.x:1!null
@@ -1413,7 +1500,7 @@ Project
 			Query: "SELECT x, avg(x) FROM xy group by x order by avg(x)",
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:1!null, avg(xy.x)->avg(x)]
+ ├─ columns: [xy.x:1!null, avg(xy.x):4->avg(x)]
  └─ Sort(avg(xy.x):4 ASC nullsFirst)
      └─ GroupBy
          ├─ select: AVG(xy.x:1!null), xy.x:1!null
@@ -1429,7 +1516,7 @@ Project
 			Query: "SELECT x, avg(x) FROM xy group by x order by avg(y)",
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:1!null, avg(xy.x)->avg(x)]
+ ├─ columns: [xy.x:1!null, avg(xy.x):4->avg(x)]
  └─ Sort(avg(xy.y):5 ASC nullsFirst)
      └─ GroupBy
          ├─ select: AVG(xy.x:1!null), AVG(xy.y:2!null), xy.x:1!null
@@ -1445,7 +1532,7 @@ Project
 			Query: "SELECT x, avg(x) FROM xy group by x order by avg(y)+y",
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:1!null, avg(xy.x)->avg(x)]
+ ├─ columns: [xy.x:1!null, avg(xy.x):4->avg(x)]
  └─ Sort((avg(xy.y):5 + xy.y:2!null) ASC nullsFirst)
      └─ GroupBy
          ├─ select: AVG(xy.x:1!null), AVG(xy.y:2!null), xy.x:1!null, xy.y:2!null
@@ -1461,7 +1548,7 @@ Project
 			Query: "SELECT x, lead(x) over (partition by y order by x) FROM xy order by x;",
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:1!null, lead(xy.x, 1) over ( partition by xy.y order by xy.x asc)->lead(x) over (partition by y order by x)]
+ ├─ columns: [xy.x:1!null, lead(xy.x, 1) over ( partition by xy.y order by xy.x asc):4->lead(x) over (partition by y order by x)]
  └─ Sort(xy.x:1!null ASC nullsFirst)
      └─ Window
          ├─ lead(xy.x, 1) over ( partition by xy.y order by xy.x ASC)
@@ -1477,7 +1564,11 @@ Project
 			Query: "SELECT CAST(10.56789 as CHAR(3));",
 			ExpectedPlan: `
 Project
- ├─ columns: [convert(10.56789, char(3))->CAST(10.56789 as CHAR(3))]
+ ├─ columns: [convert
+ │   ├─ type: char
+ │   ├─ typeLength: 3
+ │   └─ 10.56789 (decimal(7,5))
+ │  ->CAST(10.56789 as CHAR(3))]
  └─ Table
      ├─ name: 
      ├─ columns: []
@@ -1514,7 +1605,7 @@ Project
  ├─ columns: [xy.x:1!null, count
  │   ├─ over ( order by xy.y asc)
  │   └─ 1
- │  ->count(*) over (order by y)]
+ │  :4!null->count(*) over (order by y)]
  └─ Sort(xy.x:1!null ASC nullsFirst)
      └─ Window
          ├─ COUNT
@@ -1719,7 +1810,24 @@ Project
 			Query: "SELECT x as alias1, (SELECT alias1+1 group by alias1 having alias1 > 0) FROM xy where x > 1;",
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:1!null->alias1:4, Subquery(select alias1 + 1 group by alias1 having alias1 > 0)->(SELECT alias1+1 group by alias1 having alias1 > 0)]
+ ├─ columns: [xy.x:1!null->alias1:4, Subquery
+ │   ├─ cacheable: false
+ │   ├─ alias-string: select alias1 + 1 group by alias1 having alias1 > 0
+ │   └─ Project
+ │       ├─ columns: [(alias1:4!null + 1 (tinyint))->alias1+1]
+ │       └─ Having
+ │           ├─ GreaterThan
+ │           │   ├─ alias1:4!null
+ │           │   └─ 0 (bigint)
+ │           └─ GroupBy
+ │               ├─ select: alias1:4!null
+ │               ├─ group: xy.x:1!null->alias1:4
+ │               └─ Table
+ │                   ├─ name: 
+ │                   ├─ columns: []
+ │                   ├─ colSet: ()
+ │                   └─ tableId: 0
+ │  ->(SELECT alias1+1 group by alias1 having alias1 > 0)]
  └─ Project
      ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, xy.x:1!null->alias1:4]
      └─ Filter
@@ -1737,7 +1845,7 @@ Project
 			Query: "select count(*) from xy group by x having count(*) < x",
 			ExpectedPlan: `
 Project
- ├─ columns: [count(1)->count(*)]
+ ├─ columns: [count(1):4!null->count(*)]
  └─ Having
      ├─ LessThan
      │   ├─ count(1):4!null
@@ -1786,7 +1894,17 @@ Project
 			Query: "select x+1 as x, (select x) from xy;",
 			ExpectedPlan: `
 Project
- ├─ columns: [(xy.x:1!null + 1 (tinyint))->x:4, Subquery(select x)->(select x)]
+ ├─ columns: [(xy.x:1!null + 1 (tinyint))->x:4, Subquery
+ │   ├─ cacheable: false
+ │   ├─ alias-string: select x
+ │   └─ Project
+ │       ├─ columns: [xy.x:1!null]
+ │       └─ Table
+ │           ├─ name: 
+ │           ├─ columns: []
+ │           ├─ colSet: ()
+ │           └─ tableId: 0
+ │  ->(select x)]
  └─ Project
      ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, (xy.x:1!null + 1 (tinyint))->x:4]
      └─ Table
@@ -1806,7 +1924,7 @@ Project
 		ORDER BY COUNT(*) ASC, fi`,
 			ExpectedPlan: `
 Project
- ├─ columns: [t.fi:5!null, count(1)->COUNT(*)]
+ ├─ columns: [t.fi:5!null, count(1):6!null->COUNT(*)]
  └─ Sort(count(1):6!null ASC nullsFirst, t.fi:5!null ASC nullsFirst)
      └─ GroupBy
          ├─ select: COUNT(1 (bigint)), t.fi:5!null
@@ -1856,7 +1974,7 @@ Project
  ├─ columns: [sum
  │   ├─ over ( partition by xy.z order by xy.x asc rows between unbounded preceding and unbounded following)
  │   └─ xy.y
- │  ->sum(y) over w]
+ │  :4!null->sum(y) over w]
  └─ Sort(xy.x:1!null ASC nullsFirst)
      └─ Window
          ├─ SUM
@@ -1908,7 +2026,7 @@ Project
 			Query: "SELECT max(x), (select max(dt.a) from (SELECT x as a) as dt(a)) as a1 from xy group by a1;",
 			ExpectedPlan: `
 Project
- ├─ columns: [max(xy.x)->max(x), Subquery
+ ├─ columns: [max(xy.x):4!null->max(x), Subquery
  │   ├─ cacheable: false
  │   ├─ alias-string: select max(dt.a) from (select x as a) as dt (a)
  │   └─ Project
@@ -2489,7 +2607,7 @@ Project
 			Query: "select icu_version();",
 			ExpectedPlan: `
 Project
- ├─ columns: ['73.1'->icu_version()]
+ ├─ columns: [73.1 (varchar(4))->icu_version()]
  └─ Table
      ├─ name: 
      ├─ columns: []

@@ -131,16 +131,28 @@ func (e *Alias) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return e.Child.Eval(ctx, row)
 }
 
+// Describe implements the sql.Describable interface
+func (e *Alias) Describe(options sql.DescribeOptions) string {
+	if options.Debug {
+		if e.unreferencable {
+			return fmt.Sprintf("%s->%s", sql.Describe(e.Child, options), e.name)
+		} else {
+			return fmt.Sprintf("%s->%s:%d", sql.Describe(e.Child, options), e.name, e.id)
+		}
+	}
+	return fmt.Sprintf("%s as %s", sql.Describe(e.Child, options), e.name)
+}
+
 func (e *Alias) String() string {
-	return fmt.Sprintf("%s as %s", e.Child, e.name)
+	return e.Describe(sql.DescribeOptions{
+		Debug: false,
+	})
 }
 
 func (e *Alias) DebugString() string {
-	if e.unreferencable {
-		return fmt.Sprintf("%s->%s", e.Child, e.name)
-	} else {
-		return fmt.Sprintf("%s->%s:%d", sql.DebugString(e.Child), e.name, e.id)
-	}
+	return e.Describe(sql.DescribeOptions{
+		Debug: true,
+	})
 }
 
 // WithChildren implements the Expression interface.
