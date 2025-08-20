@@ -102,7 +102,7 @@ type InterpreterHandler struct {
 	Statement ast.Statement
 	Condition ast.DeclareHandlerConditionValue
 	Action    ast.DeclareHandlerAction
-	Counter   int
+	Counter   int // This is used to track the current position in the stack for the handler
 }
 
 // InterpreterVariable is a variable that lives on the stack.

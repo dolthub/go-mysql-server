@@ -29,19 +29,34 @@ import (
 // the outer result set. It's in the plan package instead of the expression package because it functions more like a
 // plan Node than an expression.
 type Subquery struct {
-	Query       sql.Node
-	correlated  sql.ColSet
-	hashCache   sql.KeyValueCache
-	b           sql.NodeExecBuilder
+	// The subquery to execute for each row in the outer result set
+	Query sql.Node
+	// correlated is a set of the field references in this subquery from out-of-scope
+	correlated sql.ColSet
+	// Cached hash results, if any
+	hashCache sql.KeyValueCache
+
+	// TODO: convert subquery expressions into apply joins
+	// TODO: move expression.Eval into an execution package
+	// TODO: analyzer rule to connect builder access
+	b sql.NodeExecBuilder
+
+	// Dispose function for the cache, if any. This would appear to violate the rule that nodes must be comparable by
+	// reflect.DeepEquals, but it's safe in practice because the function is always nil until execution.
 	disposeFunc sql.DisposeFunc
 
+	// The original verbatim select statement for this subquery
 	QueryString string
 
-	cache   []interface{}
+	// Cached results, if any
+	cache []interface{}
+	// Mutex to guard the caches
 	cacheMu sync.Mutex
-
-	volatile      bool
+	// Whether results have been cached
 	resultsCached bool
+
+	// volatile indicates that the expression contains a non-deterministic function
+	volatile bool
 }
 
 // NewSubquery returns a new subquery expression.

@@ -92,6 +92,7 @@ const (
 
 // Process represents a process in the SQL server.
 type Process struct {
+	// The time of the last Command transition
 	StartedAt  time.Time
 	Progress   map[string]TableProgress
 	Kill       context.CancelFunc

@@ -552,15 +552,25 @@ const cteRecursionLimit = 10001
 // relation [rec] populated by an [init] base case.
 // Refer to RecursiveCte for more details.
 type recursiveCteIter struct {
-	init        sql.Node
-	rec         sql.Node
-	iter        sql.RowIter
-	cache       sql.KeyValueCache
-	working     *plan.RecursiveTable
-	b           *BaseBuilder
-	row         sql.Row
-	temp        []sql.Row
-	cycle       int
+	// base sql.Project
+	init sql.Node
+	// recursive sql.Project
+	rec sql.Node
+	// active iterator, either [init].RowIter or [rec].RowIter
+	iter sql.RowIter
+	// duplicate lookup if [deduplicated] set
+	cache sql.KeyValueCache
+	// anchor to recursive table to repopulate with [temp]
+	working *plan.RecursiveTable
+	
+	b *BaseBuilder
+	// parent iter initialization state
+	row sql.Row
+	// buffer to collect intermediate results for next recursion
+	temp []sql.Row
+	// number of recursive iterations finishe
+	cycle int
+	// true if UNION, false if UNION ALL
 	deduplicate bool
 }
 

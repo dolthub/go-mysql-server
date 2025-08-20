@@ -93,15 +93,19 @@ func newMergeJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode,
 // not provide a directional ordering signal for index iteration
 // are evaluated separately.
 type mergeJoinIter struct {
+	// cmp is a directional indicator for row iter increments
+	cmp   expression.Comparer
 	left  sql.RowIter
 	right sql.RowIter
-	cmp   expression.Comparer
 
-	filters   []sql.Expression
+	// filters is the remaining set of join conditions
+	filters []sql.Expression
+
+	// match lookahead buffers and state tracking (private to match)
 	rightBuf  []sql.Row
+	rightPeek sql.Row
 	leftPeek  sql.Row
 	fullRow   sql.Row
-	rightPeek sql.Row
 
 	bufI        int
 	parentLen   int
@@ -109,15 +113,21 @@ type mergeJoinIter struct {
 	rightRowLen int
 	scopeLen    int
 
+	leftDone  bool
+	rightDone bool
+
+	// lifecycle maintenance
 	init           bool
-	leftDone       bool
-	rightDone      bool
 	leftExhausted  bool
 	rightExhausted bool
-	isReversed     bool
-	leftMatched    bool
-	matchIncLeft   bool
-	typ            plan.JoinType
+	// leftMatched indicates whether the current left in |i.fullRow| has satisfied the join condition.
+	leftMatched bool
+	// matchIncLeft indicates whether the most recent |i.incMatch| call incremented the left row.
+	matchIncLeft bool
+	// isReversed indicates if this join is over two reversed indexes.
+	isReversed bool
+
+	typ plan.JoinType
 }
 
 var _ sql.RowIter = (*mergeJoinIter)(nil)
