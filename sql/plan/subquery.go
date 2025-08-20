@@ -501,20 +501,35 @@ func (s *Subquery) IsNullable() bool {
 	return true
 }
 
+// Describe implements the sql.Describable interface
+func (s *Subquery) Describe(options sql.DescribeOptions) string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("Subquery")
+	var children []string
+	if options.Debug {
+		children = []string{
+			fmt.Sprintf("cacheable: %t", s.canCacheResults()),
+			fmt.Sprintf("alias-string: %s", s.QueryString),
+			sql.Describe(s.Query, options),
+		}
+	} else {
+		children = []string{
+			fmt.Sprintf("cacheable: %t", s.canCacheResults()),
+			sql.Describe(s.Query, options),
+		}
+	}
+	_ = pr.WriteChildren(children...)
+	return pr.String()
+}
+
 func (s *Subquery) String() string {
 	return fmt.Sprintf("Subquery(%s)", s.QueryString)
 }
 
 func (s *Subquery) DebugString() string {
-	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("Subquery")
-	children := []string{
-		fmt.Sprintf("cacheable: %t", s.canCacheResults()),
-		fmt.Sprintf("alias-string: %s", s.QueryString),
-		sql.DebugString(s.Query),
-	}
-	_ = pr.WriteChildren(children...)
-	return pr.String()
+	return s.Describe(sql.DescribeOptions{
+		Debug: true,
+	})
 }
 
 // Resolved implements the Expression interface.
