@@ -52,7 +52,7 @@ var OnceBeforeDefault = []Rule{
 	{Id: simplifyFiltersId, Apply: simplifyFilters}, //TODO inline?
 	{Id: pushNotFiltersId, Apply: pushNotFilters},   //TODO inline?
 	{Id: hoistOutOfScopeFiltersId, Apply: hoistOutOfScopeFilters},
-	{validateGroupById, validateGroupBy},
+	{Id: validateGroupById, Apply: validateGroupBy},
 }
 
 // AlwaysBeforeDefault contains the rules to be applied just once before the
