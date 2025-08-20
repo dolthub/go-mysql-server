@@ -31,12 +31,15 @@ var ErrUpdateUnexpectedSetResult = errors.NewKind("attempted to set field but ex
 // Update is a node for updating rows on tables.
 type Update struct {
 	UnaryNode
-	checks       sql.CheckConstraints
-	Returning    []sql.Expression
-	Ignore       bool
+	checks sql.CheckConstraints
+	// supported in MySQL's syntax, but is exposed through PostgreSQL's syntax.
+	Returning []sql.Expression
+	// IsJoin is true only for explicit UPDATE JOIN queries. It's possible for Update.IsJoin to be false and
+	// Update.Child to be an UpdateJoin since subqueries are optimized as Joins
 	IsJoin       bool
 	HasSingleRel bool
 	IsProcNested bool
+	Ignore       bool
 }
 
 var _ sql.Node = (*Update)(nil)

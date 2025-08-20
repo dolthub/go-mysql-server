@@ -28,26 +28,45 @@ import (
 // scope tracks relational dependencies necessary to type check expressions,
 // resolve name definitions, and build relational nodes.
 type scope struct {
-	node                sql.Node
-	colset              sql.ColSet
-	ast                 ast.SQLNode
-	exprs               map[string]columnId
-	proc                *procCtx
+	node   sql.Node
+	colset sql.ColSet
+	ast    ast.SQLNode
+
+	// exprs collects unique expression ids for reference
+	exprs map[string]columnId
+
+	// tables are the list of table definitions in this scope
+	tables              map[string]sql.TableId
+	windowDefs          map[string]*sql.WindowDefinition
 	selectAliases       map[string]sql.Expression
 	insertColumnAliases map[string]string
-	parent              *scope
-	activeSubquery      *subquery
-	redirectCol         map[string]scopeColumn
-	tables              map[string]sql.TableId
-	ctes                map[string]*scope
-	groupBy             *groupBy
-	b                   *Builder
-	windowDefs          map[string]*sql.WindowDefinition
-	insertTableAlias    string
-	windowFuncs         []scopeColumn
-	extraCols           []scopeColumn
-	cols                []scopeColumn
-	refsSubquery        bool
+
+	// redirectCol is used for using and natural joins right-table
+	// attributes that redirect to the left table intersection
+	redirectCol map[string]scopeColumn
+
+	// ctes are common table expressions defined in this scope
+	// TODO: these should be case-sensitive
+	ctes map[string]*scope
+
+	b              *Builder
+	proc           *procCtx
+	parent         *scope
+	activeSubquery *subquery
+	
+	// groupBy collects aggregation functions and inputs
+	groupBy *groupBy
+
+	insertTableAlias string
+
+	// cols are definitions provided by this scope
+	cols []scopeColumn
+	// extraCols are auxillary output columns required for sorting or grouping
+	extraCols []scopeColumn
+	// windowFuncs is a list of window functions in the current scope
+	windowFuncs []scopeColumn
+
+	refsSubquery bool
 }
 
 // resolveColumn matches a variable use to a column definition with a unique

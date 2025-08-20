@@ -33,6 +33,8 @@ var BinderFactory = &sync.Pool{New: func() interface{} {
 }}
 
 type Builder struct {
+	// EventScheduler is used to communicate with the event scheduler
+	// for any EVENT related statements. It can be nil if EventScheduler is not defined.
 	scheduler       sql.EventScheduler
 	cat             sql.Catalog
 	authQueryState  sql.AuthorizationQueryState

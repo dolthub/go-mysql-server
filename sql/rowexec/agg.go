@@ -116,9 +116,10 @@ type groupByGroupingIter struct {
 	selectedExprs []sql.Expression
 	groupByExprs  []sql.Expression
 	keys          []uint64
-	keyRow        sql.Row
-	keySch        sql.Schema
-	pos           int
+	// buffers to reduce slice allocations
+	keyRow sql.Row
+	keySch sql.Schema
+	pos    int
 }
 
 func newGroupByGroupingIter(

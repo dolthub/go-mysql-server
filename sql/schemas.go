@@ -232,8 +232,8 @@ func SchemaToPrimaryKeySchema(table Table, sch Schema, renames ...ColumnRename) 
 
 // ColumnOrder is used in ALTER TABLE statements to change the order of inserted / modified columns.
 type ColumnOrder struct {
-	AfterColumn string
-	First       bool
+	AfterColumn string // Set to the name of the column after which this column should appear
+	First       bool   // True if this column should come first
 }
 
 type ColumnRename struct {
