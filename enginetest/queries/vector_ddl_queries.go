@@ -109,6 +109,11 @@ var VectorDDLQueries = []ScriptTest{
 				ExpectedErrStr: "can't convert JSON to vector; expected array, got string",
 			},
 			{
+				// Value exceeds float32 max
+				Query:          `INSERT INTO error_vectors VALUES (6, STRING_TO_VECTOR('[1e40]'))`,
+				ExpectedErrStr: "data cannot be converted to a valid vector: 1e40",
+			},
+			{
 				Query:          `CREATE TABLE error_vectors (id INT PRIMARY KEY, vec3 VECTOR(-3))`,
 				ExpectedErrStr: "syntax error at position 62 near 'VECTOR'",
 			},

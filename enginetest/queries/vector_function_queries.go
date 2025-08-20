@@ -122,6 +122,16 @@ var VectorFunctionQueries = []ScriptTest{
 				Expected: []sql.Row{{floatsToBytes(1.0, 2.0)}},
 			},
 			{
+				// Example that tests the actual bytes instead of using floatsToBytes
+				Query:    `SELECT STRING_TO_VECTOR("[0.0]");`,
+				Expected: []sql.Row{{[]byte{0x0, 0x0, 0x0, 0x0}}},
+			},
+			{
+				// Example that tests the actual bytes instead of using floatsToBytes
+				Query:    `SELECT STRING_TO_VECTOR("[123456.78e2, -8765432.0]");`,
+				Expected: []sql.Row{{[]byte{0x4e, 0x61, 0x3c, 0x4b, 0xf8, 0xbf, 0x05, 0xcb}}},
+			},
+			{
 				Query:    `SELECT VECTOR_TO_STRING(STRING_TO_VECTOR("[1.0, 2.0]"));`,
 				Expected: []sql.Row{{"[1, 2]"}},
 			},

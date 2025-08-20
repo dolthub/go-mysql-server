@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	trace2 "runtime/trace"
 	"strconv"
 	"strings"
@@ -373,6 +374,9 @@ func convertJsonInterfaceToVector(val interface{}) ([]float32, error) {
 		case float32:
 			res[i] = v
 		case float64:
+			if v > math.MaxFloat32 || v < -math.MaxFloat32 {
+				return nil, fmt.Errorf("data cannot be converted to a valid vector: %d", v)
+			}
 			res[i] = float32(v)
 		case int64:
 			res[i] = float32(v)
