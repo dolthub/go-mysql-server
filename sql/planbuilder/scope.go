@@ -53,7 +53,7 @@ type scope struct {
 	proc           *procCtx
 	parent         *scope
 	activeSubquery *subquery
-	
+
 	// groupBy collects aggregation functions and inputs
 	groupBy *groupBy
 
