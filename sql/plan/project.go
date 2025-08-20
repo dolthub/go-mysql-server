@@ -26,9 +26,11 @@ import (
 // Project is a projection of certain expression from the children node.
 type Project struct {
 	UnaryNode
-	deps sql.ColSet
-	sch  sql.Schema
-
+	// AliasDeps maps string representations of projected GetField expressions to whether it is projected alias
+	// dependency
+	AliasDeps map[string]bool
+	deps      sql.ColSet
+	sch       sql.Schema
 	// Projections are the expressions to be projected on the row returned by the child node
 	Projections []sql.Expression
 	// CanDefer is true when the projection evaluation can be deferred to row spooling, which allows us to avoid a
@@ -37,9 +39,6 @@ type Project struct {
 	// IncludesNestedIters is true when the projection includes nested iterators because of expressions that return
 	// a RowIter.
 	IncludesNestedIters bool
-	// AliasDeps maps string representations of projected GetField expressions to whether it is projected alias
-	// dependency
-	AliasDeps map[string]bool
 }
 
 var _ sql.Expressioner = (*Project)(nil)
