@@ -562,7 +562,7 @@ type recursiveCteIter struct {
 	cache sql.KeyValueCache
 	// anchor to recursive table to repopulate with [temp]
 	working *plan.RecursiveTable
-	
+
 	b *BaseBuilder
 	// parent iter initialization state
 	row sql.Row
