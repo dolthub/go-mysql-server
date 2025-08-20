@@ -231,6 +231,8 @@ func (p *Project) WithIncludesNestedIters(includesNestedIters bool) *Project {
 	return &np
 }
 
+// WithAliasDeps returns a new Project with the AliasDeps field set to the given map.AliasDeps maps string
+// representations of projected GetField expressions to whether it is projected alias dependency
 func (p *Project) WithAliasDeps(aliasDeps map[string]bool) *Project {
 	np := *p
 	np.AliasDeps = aliasDeps
