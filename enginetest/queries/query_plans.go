@@ -4276,7 +4276,7 @@ Select * from (
 	{
 		Query: `SELECT count(*), i, concat(i, i), 123, 'abc', concat('abc', 'def') FROM emptytable;`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [count(1):0!null->count(*):0, emptytable.i:1!null, concat(emptytable.i:1!null,emptytable.i:1!null)->concat(i, i):0, 123 (tinyint), abc (longtext), concat('abc','def')->concat('abc', 'def')]\n" +
+			" ├─ columns: [count(1):0!null->count(*):0, emptytable.i:1!null, concat(emptytable.i:1!null,emptytable.i:1!null)->concat(i, i):0, 123 (tinyint), abc (longtext), concat(abc (longtext),def (longtext))->concat('abc', 'def')]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNT(1 (bigint)), emptytable.i:0!null\n" +
 			"     ├─ group: \n" +
@@ -4307,7 +4307,7 @@ Select * from (
 	{
 		Query: `SELECT count(*), i, concat(i, i), 123, 'abc', concat('abc', 'def') FROM mytable where false;`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [count(1):0!null->count(*):0, mytable.i:1!null, concat(mytable.i:1!null,mytable.i:1!null)->concat(i, i):0, 123 (tinyint), abc (longtext), concat('abc','def')->concat('abc', 'def')]\n" +
+			" ├─ columns: [count(1):0!null->count(*):0, mytable.i:1!null, concat(mytable.i:1!null,mytable.i:1!null)->concat(i, i):0, 123 (tinyint), abc (longtext), concat(abc (longtext),def (longtext))->concat('abc', 'def')]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNT(1 (bigint)), mytable.i:0!null\n" +
 			"     ├─ group: \n" +
