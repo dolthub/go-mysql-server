@@ -46,7 +46,7 @@ var InfoSchemaQueries = []QueryTest{
      table_name, index_name, comment, non_unique, GROUP_CONCAT(column_name ORDER BY seq_in_index) AS COLUMNS 
    FROM information_schema.statistics 
    WHERE table_schema='mydb' AND table_name='mytable' AND index_name!="PRIMARY" 
-   GROUP BY index_name;`,
+   GROUP BY index_name, comment, non_unique;`,
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "TABLE_NAME",
@@ -274,7 +274,7 @@ var InfoSchemaQueries = []QueryTest{
 		WHERE FILE_TYPE = 'UNDO LOG'
 			AND FILE_NAME IS NOT NULL
 			AND LOGFILE_GROUP_NAME IS NOT NULL
-		GROUP BY LOGFILE_GROUP_NAME, FILE_NAME, ENGINE, TOTAL_EXTENTS, INITIAL_SIZE
+		GROUP BY LOGFILE_GROUP_NAME, FILE_NAME, ENGINE, TOTAL_EXTENTS, INITIAL_SIZE, EXTRA
 		ORDER BY LOGFILE_GROUP_NAME
 		`,
 		Expected: nil,

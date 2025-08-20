@@ -230,9 +230,9 @@ Project
      │   ├─ avg(cte.x):5
      │   └─ 0 (tinyint)
      └─ Project
-         ├─ columns: [avg(cte.x):5, cte.x:3!null, 1 (tinyint)->x:4]
+         ├─ columns: [avg(cte.x):5, 1 (tinyint)->x:4]
          └─ GroupBy
-             ├─ select: AVG(cte.x:3!null), cte.x:3!null
+             ├─ select: AVG(cte.x:3!null)
              ├─ group: 
              └─ SubqueryAlias
                  ├─ name: cte
@@ -260,9 +260,9 @@ Project
      │   ├─ avg(xy.x):5
      │   └─ 0 (tinyint)
      └─ Project
-         ├─ columns: [avg(xy.x):5, xy.x:1!null, 1 (tinyint)->x:4]
+         ├─ columns: [avg(xy.x):5, 1 (tinyint)->x:4]
          └─ GroupBy
-             ├─ select: AVG(xy.x:1!null), xy.x:1!null
+             ├─ select: AVG(xy.x:1!null)
              ├─ group: 
              └─ Table
                  ├─ name: xy
@@ -1029,7 +1029,7 @@ Project
      │   ├─ sum((xy.y * xy.z)):4!null
      │   └─ 1 (tinyint)
      └─ GroupBy
-         ├─ select: SUM((xy.y:2!null * xy.z:3!null)), xy.x:1!null, xy.y:2!null, xy.z:3!null
+         ├─ select: SUM((xy.y:2!null * xy.z:3!null)), xy.x:1!null
          ├─ group: xy.x:1!null
          └─ Table
              ├─ name: xy
@@ -1042,15 +1042,7 @@ Project
 			Query: "select (select u from uv where x = u) from xy group by (select u from uv where x = u), x;",
 			ExpectedPlan: `
 Project
- ├─ columns: [Subquery
- │   ├─ cacheable: false
- │   └─ Project
- │       ├─ columns: [uv.u]
- │       └─ Filter
- │           ├─ (xy.x = uv.u)
- │           └─ Table
- │               └─ name: uv
- │  ->(select u from uv where x = u)]
+ ├─ columns: [Subquery(select u from uv where x = u)->(select u from uv where x = u)]
  └─ GroupBy
      ├─ select: 
      ├─ group: Subquery
@@ -1151,20 +1143,7 @@ Project
 			Query: "SELECT (SELECT dt.z FROM (SELECT uv.u AS z FROM uv WHERE uv.v = xy.y) dt) FROM xy;",
 			ExpectedPlan: `
 Project
- ├─ columns: [Subquery
- │   ├─ cacheable: false
- │   └─ SubqueryAlias
- │       ├─ name: dt
- │       ├─ outerVisibility: false
- │       ├─ isLateral: false
- │       ├─ cacheable: false
- │       └─ Project
- │           ├─ columns: [uv.u as z]
- │           └─ Filter
- │               ├─ (uv.v = xy.y)
- │               └─ Table
- │                   └─ name: uv
- │  ->(SELECT dt.z FROM (SELECT uv.u AS z FROM uv WHERE uv.v = xy.y) dt)]
+ ├─ columns: [Subquery(select dt.z from (select uv.u as z from uv where uv.v = xy.y) as dt)->(SELECT dt.z FROM (SELECT uv.u AS z FROM uv WHERE uv.v = xy.y) dt)]
  └─ Table
      ├─ name: xy
      ├─ columns: [x y z]
@@ -1176,25 +1155,7 @@ Project
 			Query: "SELECT (SELECT max(dt.z) FROM (SELECT uv.u AS z FROM uv WHERE uv.v = xy.y) dt) FROM xy;",
 			ExpectedPlan: `
 Project
- ├─ columns: [Subquery
- │   ├─ cacheable: false
- │   └─ Project
- │       ├─ columns: [max(dt.z)]
- │       └─ GroupBy
- │           ├─ SelectedExprs(MAX(dt.z))
- │           ├─ Grouping()
- │           └─ SubqueryAlias
- │               ├─ name: dt
- │               ├─ outerVisibility: false
- │               ├─ isLateral: false
- │               ├─ cacheable: false
- │               └─ Project
- │                   ├─ columns: [uv.u as z]
- │                   └─ Filter
- │                       ├─ (uv.v = xy.y)
- │                       └─ Table
- │                           └─ name: uv
- │  ->(SELECT max(dt.z) FROM (SELECT uv.u AS z FROM uv WHERE uv.v = xy.y) dt)]
+ ├─ columns: [Subquery(select max(dt.z) from (select uv.u as z from uv where uv.v = xy.y) as dt)->(SELECT max(dt.z) FROM (SELECT uv.u AS z FROM uv WHERE uv.v = xy.y) dt)]
  └─ Table
      ├─ name: xy
      ├─ columns: [x y z]
@@ -1206,25 +1167,7 @@ Project
 			Query: "SELECT xy.*, (SELECT max(dt.u) FROM (SELECT uv.u AS u FROM uv WHERE uv.v = xy.y) dt) FROM xy;",
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, Subquery
- │   ├─ cacheable: false
- │   └─ Project
- │       ├─ columns: [max(dt.u)]
- │       └─ GroupBy
- │           ├─ SelectedExprs(MAX(dt.u))
- │           ├─ Grouping()
- │           └─ SubqueryAlias
- │               ├─ name: dt
- │               ├─ outerVisibility: false
- │               ├─ isLateral: false
- │               ├─ cacheable: false
- │               └─ Project
- │                   ├─ columns: [uv.u as u]
- │                   └─ Filter
- │                       ├─ (uv.v = xy.y)
- │                       └─ Table
- │                           └─ name: uv
- │  ->(SELECT max(dt.u) FROM (SELECT uv.u AS u FROM uv WHERE uv.v = xy.y) dt)]
+ ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, Subquery(select max(dt.u) from (select uv.u as u from uv where uv.v = xy.y) as dt)->(SELECT max(dt.u) FROM (SELECT uv.u AS u FROM uv WHERE uv.v = xy.y) dt)]
  └─ Table
      ├─ name: xy
      ├─ columns: [x y z]
@@ -1657,9 +1600,9 @@ Project
      │           │   ├─ count(uv.u):7!null
      │           │   └─ 1 (bigint)
      │           └─ Project
-     │               ├─ columns: [count(uv.u):7!null, uv.u:4!null, count(uv.u):7!null->count_1:8]
+     │               ├─ columns: [count(uv.u):7!null, count(uv.u):7!null->count_1:8]
      │               └─ GroupBy
-     │                   ├─ select: COUNT(uv.u:4!null), uv.u:4!null
+     │                   ├─ select: COUNT(uv.u:4!null)
      │                   ├─ group: uv.u:4!null
      │                   └─ Filter
      │                       ├─ Eq
@@ -1776,17 +1719,7 @@ Project
 			Query: "SELECT x as alias1, (SELECT alias1+1 group by alias1 having alias1 > 0) FROM xy where x > 1;",
 			ExpectedPlan: `
 Project
- ├─ columns: [xy.x:1!null->alias1:4, Subquery
- │   ├─ cacheable: false
- │   └─ Project
- │       ├─ columns: [(alias1 + 1) as alias1+1]
- │       └─ Having((alias1 > 0))
- │           └─ GroupBy
- │               ├─ SelectedExprs(alias1)
- │               ├─ Grouping(xy.x as alias1)
- │               └─ Table
- │                   └─ name: 
- │  ->(SELECT alias1+1 group by alias1 having alias1 > 0)]
+ ├─ columns: [xy.x:1!null->alias1:4, Subquery(select alias1 + 1 group by alias1 having alias1 > 0)->(SELECT alias1+1 group by alias1 having alias1 > 0)]
  └─ Project
      ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, xy.x:1!null->alias1:4]
      └─ Filter
@@ -1853,13 +1786,7 @@ Project
 			Query: "select x+1 as x, (select x) from xy;",
 			ExpectedPlan: `
 Project
- ├─ columns: [(xy.x:1!null + 1 (tinyint))->x:4, Subquery
- │   ├─ cacheable: false
- │   └─ Project
- │       ├─ columns: [xy.x]
- │       └─ Table
- │           └─ name: 
- │  ->(select x)]
+ ├─ columns: [(xy.x:1!null + 1 (tinyint))->x:4, Subquery(select x)->(select x)]
  └─ Project
      ├─ columns: [xy.x:1!null, xy.y:2!null, xy.z:3!null, (xy.x:1!null + 1 (tinyint))->x:4]
      └─ Table
@@ -2111,9 +2038,9 @@ Project
      ├─ NOT
      │   └─ avg(-xy.y):5 IS NULL
      └─ Project
-         ├─ columns: [avg(-xy.y):5, xy.x:1!null, xy.y:2!null, xy.x:1!null->y:4]
+         ├─ columns: [avg(-xy.y):5, xy.x:1!null, xy.x:1!null->y:4]
          └─ GroupBy
-             ├─ select: AVG(-xy.y), xy.x:1!null, xy.y:2!null
+             ├─ select: AVG(-xy.y), xy.x:1!null
              ├─ group: xy.x:1!null
              └─ Table
                  ├─ name: xy

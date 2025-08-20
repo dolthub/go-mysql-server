@@ -25,6 +25,7 @@ const (
 	validateReadOnlyTransactionId               // validateReadOnlyTransaction
 	validateDatabaseSetId                       // validateDatabaseSet
 	validatePrivilegesId                        // validatePrivileges
+	validateGroupById                           // validateGroupBy
 
 	// default
 	flattenTableAliasesId          // flattenTableAliases
@@ -70,7 +71,6 @@ const (
 	// validate
 	validateResolvedId          // validateResolved
 	validateOrderById           // validateOrderBy
-	validateGroupById           // validateGroupBy
 	validateSchemaSourceId      // validateSchemaSource
 	validateIndexCreationId     // validateIndexCreation
 	ValidateOperandsId          // validateOperands

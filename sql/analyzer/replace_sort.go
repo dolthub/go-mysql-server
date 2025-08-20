@@ -291,7 +291,7 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 			return n, transform.SameTree, nil
 		}
 		// TODO: optimize when there are multiple aggregations; use LATERAL JOINS
-		if len(gb.SelectedExprs) != 1 || len(gb.GroupByExprs) != 0 {
+		if len(gb.SelectDeps) != 1 || len(gb.GroupByExprs) != 0 {
 			return n, transform.SameTree, nil
 		}
 
@@ -327,7 +327,7 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 
 		// generate sort fields from aggregations
 		var sf sql.SortField
-		switch agg := gb.SelectedExprs[0].(type) {
+		switch agg := gb.SelectDeps[0].(type) {
 		case *aggregation.Max:
 			gf, ok := agg.UnaryExpression.Child.(*expression.GetField)
 			if !ok {
@@ -358,7 +358,7 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 		}
 
 		// replace all aggs in proj.Projections with GetField
-		name := gb.SelectedExprs[0].String()
+		name := gb.SelectDeps[0].String()
 		newProjs, _, err := transform.Exprs(proj.Projections, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			if strings.EqualFold(e.String(), name) {
 				return sf.Column, transform.NewTree, nil

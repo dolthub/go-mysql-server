@@ -502,11 +502,7 @@ func (s *Subquery) IsNullable() bool {
 }
 
 func (s *Subquery) String() string {
-	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("Subquery")
-	children := []string{fmt.Sprintf("cacheable: %t", s.canCacheResults()), s.Query.String()}
-	_ = pr.WriteChildren(children...)
-	return pr.String()
+	return fmt.Sprintf("Subquery(%s)", s.QueryString)
 }
 
 func (s *Subquery) DebugString() string {

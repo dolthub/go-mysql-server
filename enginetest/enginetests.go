@@ -866,43 +866,7 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 		}
 		require.Equal(t, rowCount, 3)
 
-		// TODO: this should error; the order by doesn't count towards ONLY_FULL_GROUP_BY
-		_, rowIter, _, err = e.Query(ctx, "select id, team from members group by team order by id")
-		require.NoError(t, err)
-		rowCount = 0
-		for {
-			row, err = rowIter.Next(ctx)
-			if err == io.EOF {
-				break
-			}
-			rowCount++
-			require.NoError(t, err)
-
-			var val int64
-			switch v := row[0].(type) {
-			case int64:
-				val = v
-			case int32:
-				val = int64(v)
-			default:
-				panic(fmt.Sprintf("unexpected type %T", v))
-			}
-
-			team, ok, err := sql.Unwrap[string](ctx, row[1])
-			require.True(t, ok)
-			require.NoError(t, err)
-			switch team {
-			case "red":
-				require.True(t, val == 3 || val == 4)
-			case "orange":
-				require.True(t, val == 5 || val == 6 || val == 7)
-			case "purple":
-				require.True(t, val == 8)
-			default:
-				panic("received non-existent team")
-			}
-		}
-		require.Equal(t, rowCount, 3)
+		AssertErr(t, e, harness, "select id, team from members group by team order by id", nil, analyzererrors.ErrValidationGroupBy)
 	})
 }
 

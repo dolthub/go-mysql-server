@@ -52,6 +52,7 @@ var OnceBeforeDefault = []Rule{
 	{simplifyFiltersId, simplifyFilters}, //TODO inline?
 	{pushNotFiltersId, pushNotFilters},   //TODO inline?
 	{hoistOutOfScopeFiltersId, hoistOutOfScopeFilters},
+	{validateGroupById, validateGroupBy},
 }
 
 // AlwaysBeforeDefault contains the rules to be applied just once before the
@@ -99,7 +100,6 @@ var OnceAfterDefault = []Rule{
 var DefaultValidationRules = []Rule{
 	{validateResolvedId, validateResolved},
 	{validateOrderById, validateOrderBy},
-	{validateGroupById, validateGroupBy},
 	{validateSchemaSourceId, validateSchemaSource},
 	{validateIndexCreationId, validateIndexCreation},
 	{ValidateOperandsId, validateOperands},
