@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/values"
 	"reflect"
 	"strconv"
 
@@ -26,6 +25,7 @@ import (
 	"github.com/dolthub/vitess/go/vt/proto/query"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/values"
 )
 
 // VectorType represents the VECTOR(N) type.
