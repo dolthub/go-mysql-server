@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/values"
 	"reflect"
 	"strconv"
 
@@ -79,8 +80,8 @@ func (t VectorType) Convert(ctx context.Context, v interface{}) (interface{}, sq
 
 	switch val := v.(type) {
 	case []byte:
-		if t.Dimensions != 0 && len(val) != 4*t.Dimensions {
-			if len(val)%4 != 0 {
+		if t.Dimensions != 0 && len(val) != int(values.Float32Size)*t.Dimensions {
+			if len(val)%int(values.Float32Size) != 0 {
 				return nil, sql.OutOfRange, fmt.Errorf("cannot convert BINARY(%d) to VECTOR(%d), need BINARY(%d)", len(val), t.Dimensions, 4*t.Dimensions)
 			}
 			return nil, sql.OutOfRange, fmt.Errorf("VECTOR dimension mismatch: expected %d, got %d", t.Dimensions, len(val)/4)
