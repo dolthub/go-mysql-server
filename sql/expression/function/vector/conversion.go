@@ -71,7 +71,13 @@ func (s *StringToVector) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 		return nil, nil
 	}
 
-	return sql.ConvertToVector(ctx, val)
+	// TODO: Instead of using the JSON parser and then encoding, it would be more efficient to parse and encode
+	// in a single step
+	floats, err := sql.ConvertToVector(ctx, val)
+	if err != nil {
+		return nil, err
+	}
+	return sql.EncodeVector(floats), nil
 }
 
 // VectorToString converts a vector to a JSON string representation
@@ -122,5 +128,9 @@ func (v *VectorToString) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 	if val == nil {
 		return nil, nil
 	}
-	return types.JSONDocument{Val: val}.JSONString()
+	b, ok := val.([]byte)
+	if !ok {
+		return nil, fmt.Errorf("incorrect argument to VECTOR_TO_STRING: expected a vector, got %T", val)
+	}
+	return types.JSONDocument{Val: sql.DecodeVector(b)}.JSONString()
 }

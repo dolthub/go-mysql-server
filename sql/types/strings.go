@@ -16,7 +16,6 @@ package types
 
 import (
 	"context"
-	"encoding/binary"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -414,9 +413,6 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 		// We'll check for that below, immediately before extending the slice.
 		val = s
 		start = 0
-	case []float32:
-		val = make([]byte, 4*len(s))
-		binary.Encode(val, binary.LittleEndian, s)
 	case time.Time:
 		val = s.AppendFormat(dest, sql.TimestampDatetimeLayout)
 	case decimal.Decimal:

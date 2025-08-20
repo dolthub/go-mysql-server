@@ -15,8 +15,6 @@
 package queries
 
 import (
-	"encoding/binary"
-
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -30,9 +28,11 @@ type TypeWireTest struct {
 }
 
 func floatsToString(fs ...float32) string {
-	result := make([]byte, 4*len(fs))
-	binary.Encode(result, binary.LittleEndian, fs)
-	return string(result)
+	return string(sql.EncodeVector(fs))
+}
+
+func floatsToBytes(fs ...float32) []byte {
+	return sql.EncodeVector(fs)
 }
 
 // TypeWireTests are used to ensure that types are properly represented over the wire (vs being directly returned from

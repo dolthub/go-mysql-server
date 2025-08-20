@@ -16,7 +16,6 @@ package enginetest
 
 import (
 	gosql "database/sql"
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -397,13 +396,6 @@ func convertValue(ctx *sql.Context, sch sql.Schema, row sql.Row) sql.Row {
 				} else {
 					row[i] = r
 				}
-			}
-		case query.Type_VECTOR:
-			if row[i] != nil {
-				r := row[i].([]byte)
-				dimensions := len(r) / 4
-				row[i] = make([]float32, dimensions)
-				binary.Decode(r, binary.LittleEndian, row[i])
 			}
 		case query.Type_TIME:
 			if row[i] != nil {

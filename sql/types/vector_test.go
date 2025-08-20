@@ -16,6 +16,7 @@ package types
 
 import (
 	"context"
+	"github.com/dolthub/go-mysql-server/sql"
 	"testing"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -33,7 +34,7 @@ func TestVectorConversion(t *testing.T) {
 	tests := []struct {
 		name      string
 		input     interface{}
-		expected  []float32
+		expected  []byte
 		expectErr bool
 	}{
 		{
@@ -42,14 +43,19 @@ func TestVectorConversion(t *testing.T) {
 			expectErr: true,
 		},
 		{
-			name:     "float32_slice",
-			input:    []float32{1.5, 2.5, 3.5},
-			expected: []float32{1.5, 2.5, 3.5},
+			name:     "binary_slice",
+			input:    floatsToBytes(1.5, 2.5, 3.5),
+			expected: floatsToBytes(1.5, 2.5, 3.5),
+		},
+		{
+			name:      "invalid_binary_slice",
+			input:     []byte{0x00},
+			expectErr: true,
 		},
 		{
 			name:     "interface_slice",
 			input:    []interface{}{1.0, 2.0, 3.0},
-			expected: []float32{1.0, 2.0, 3.0},
+			expected: floatsToBytes(1.0, 2.0, 3.0),
 		},
 		{
 			name:      "wrong_dimensions",
@@ -59,7 +65,7 @@ func TestVectorConversion(t *testing.T) {
 		{
 			name:     "byte_array",
 			input:    []byte{0x00, 0x00, 0x80, 0x3f, 0x00, 0x00, 0x00, 0x40, 0x00, 0x00, 0x40, 0x40},
-			expected: []float32{1.0, 2.0, 3.0},
+			expected: floatsToBytes(1.0, 2.0, 3.0),
 		},
 	}
 
@@ -80,6 +86,10 @@ func TestVectorConversion(t *testing.T) {
 	}
 }
 
+func floatsToBytes(fs ...float32) []byte {
+	return sql.EncodeVector(fs)
+}
+
 func TestVectorCompare(t *testing.T) {
 	vecType, err := CreateVectorType(3)
 	require.NoError(t, err)
@@ -96,32 +106,38 @@ func TestVectorCompare(t *testing.T) {
 	}{
 		{
 			name:     "equal_vectors",
-			a:        []float32{1.0, 2.0, 3.0},
-			b:        []float32{1.0, 2.0, 3.0},
+			a:        floatsToBytes(1.0, 2.0, 3.0),
+			b:        floatsToBytes(1.0, 2.0, 3.0),
 			expected: 0,
 		},
 		{
 			name:     "a_less_than_b",
-			a:        []float32{258, 0, 0}, // 0x00, 0x00, 0x81, 0x43
-			b:        []float32{257, 0, 0}, // 0x00, 0x80, 0x80, 0x43
+			a:        floatsToBytes(258, 0, 0), // 0x00, 0x00, 0x81, 0x43
+			b:        floatsToBytes(257, 0, 0), // 0x00, 0x80, 0x80, 0x43
 			expected: -1,
 		},
 		{
 			name:     "a_greater_than_b",
-			a:        []float32{1.0, 257, 3.0},
-			b:        []float32{1.0, 258, 3.0},
+			a:        floatsToBytes(1.0, 257, 3.0),
+			b:        floatsToBytes(1.0, 258, 3.0),
 			expected: 1,
 		},
 		{
 			name:      "different_dimensions",
-			a:         []float32{1.0, 2.0},
-			b:         []float32{1.0, 2.0, 3.0},
+			a:         floatsToBytes(1.0, 2.0),
+			b:         floatsToBytes(1.0, 2.0, 3.0),
 			expectErr: true,
 		},
 		{
 			name:      "wrong_types",
 			a:         "string",
-			b:         []float32{1.0, 2.0, 3.0},
+			b:         floatsToBytes(1.0, 2.0, 3.0),
+			expectErr: true,
+		},
+		{
+			name:      "not_valid_vector",
+			a:         []byte{0x00},
+			b:         floatsToBytes(1.0, 2.0, 3.0),
 			expectErr: true,
 		},
 	}

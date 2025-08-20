@@ -111,20 +111,25 @@ var VectorFunctionQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    `SELECT STRING_TO_VECTOR("[1.0, 2.0]");`,
-				Expected: []sql.Row{{[]float32{1.0, 2.0}}},
+				Expected: []sql.Row{{floatsToBytes(1.0, 2.0)}},
 			},
 			{
 				Query:    `SELECT TO_VECTOR("[1.0, 2.0]");`,
-				Expected: []sql.Row{{[]float32{1.0, 2.0}}},
+				Expected: []sql.Row{{floatsToBytes(1.0, 2.0)}},
 			},
 			{
 				Query:    `SELECT VEC_FromText("[1.0, 2.0]");`,
-				Expected: []sql.Row{{[]float32{1.0, 2.0}}},
+				Expected: []sql.Row{{floatsToBytes(1.0, 2.0)}},
 			},
 			{
 				Query:    `SELECT VECTOR_TO_STRING(STRING_TO_VECTOR("[1.0, 2.0]"));`,
 				Expected: []sql.Row{{"[1, 2]"}},
 			},
+			{
+				Query:    `select VECTOR_TO_STRING(0x0000803F);`,
+				Expected: []sql.Row{{"[1]"}},
+			},
+
 			{
 				Query:    `SELECT FROM_VECTOR(TO_VECTOR("[1.0, 2.0]"));`,
 				Expected: []sql.Row{{"[1, 2]"}},

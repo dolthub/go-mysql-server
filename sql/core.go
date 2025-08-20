@@ -18,11 +18,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/values"
 	trace2 "runtime/trace"
 	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
+	"unsafe"
 
 	"github.com/shopspring/decimal"
 )
@@ -325,10 +327,22 @@ func ConvertToBool(ctx *Context, v interface{}) (bool, error) {
 	}
 }
 
+// DecodeVector decodes a byte slice that represents a vector. This is needed for distance functions.
+func DecodeVector(buf []byte) []float32 {
+	return unsafe.Slice((*float32)(unsafe.Pointer(&buf[0])), len(buf)/int(values.Float32Size))
+}
+
+// EncodeVector encodes a byte slice that represents a vector.
+func EncodeVector(floats []float32) []byte {
+	return unsafe.Slice((*byte)(unsafe.Pointer(&floats[0])), len(floats)*int(values.Float32Size))
+}
+
 func ConvertToVector(ctx context.Context, v interface{}) ([]float32, error) {
 	switch b := v.(type) {
 	case []float32:
 		return b, nil
+	case []byte:
+		return DecodeVector(b), nil
 	case string:
 		var val interface{}
 		err := json.Unmarshal([]byte(b), &val)

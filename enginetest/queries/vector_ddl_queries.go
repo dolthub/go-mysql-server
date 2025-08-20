@@ -43,17 +43,17 @@ var VectorDDLQueries = []ScriptTest{
 			},
 			{
 				Query:    `SELECT id, small_vec, medium_vec FROM test_vectors WHERE id = 2`,
-				Expected: []sql.Row{{2, []float32{3.5, 4.5}, nil}},
+				Expected: []sql.Row{{2, floatsToBytes(3.5, 4.5), nil}},
 			},
 			{
 				Query:    `SELECT id, small_vec, medium_vec FROM test_vectors WHERE id = 1`,
-				Expected: []sql.Row{{1, []float32{1.0, 2.0}, []float32{1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0}}},
+				Expected: []sql.Row{{1, floatsToBytes(1.0, 2.0), floatsToBytes(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0)}},
 			},
 			{
 				Query: `SELECT id, small_vec FROM test_vectors ORDER BY id`,
 				Expected: []sql.Row{
-					{1, []float32{1.0, 2.0}},
-					{2, []float32{3.5, 4.5}},
+					{1, floatsToBytes(1.0, 2.0)},
+					{2, floatsToBytes(3.5, 4.5)},
 				},
 			},
 			{
@@ -62,7 +62,7 @@ var VectorDDLQueries = []ScriptTest{
 			},
 			{
 				Query:    `SELECT small_vec FROM test_vectors WHERE id = 1`,
-				Expected: []sql.Row{{[]float32{10.0, 20.0}}},
+				Expected: []sql.Row{{floatsToBytes(10.0, 20.0)}},
 			},
 			{
 				Query:    `INSERT INTO test_vectors VALUES (3, 0x0000204100002041, NULL, NULL)`, // [10.0, 10.0]
@@ -70,7 +70,7 @@ var VectorDDLQueries = []ScriptTest{
 			},
 			{
 				Query:    `SELECT small_vec FROM test_vectors WHERE id = 3`,
-				Expected: []sql.Row{{[]float32{10.0, 10.0}}},
+				Expected: []sql.Row{{floatsToBytes(10.0, 10.0)}},
 			},
 		},
 	},
@@ -138,9 +138,9 @@ var VectorDDLQueries = []ScriptTest{
 			{
 				Query: `SELECT id, vec2 FROM format_vectors ORDER BY id`,
 				Expected: []sql.Row{
-					{1, []float32{1.0, 2.0}},
-					{2, []float32{3.0, 4.0}},
-					{3, []float32{5.5, 6700}},
+					{1, floatsToBytes(1.0, 2.0)},
+					{2, floatsToBytes(3.0, 4.0)},
+					{3, floatsToBytes(5.5, 6700)},
 				},
 			},
 		},

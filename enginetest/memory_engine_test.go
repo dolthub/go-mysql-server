@@ -1001,9 +1001,6 @@ func TestDatabaseCollationWire(t *testing.T) {
 }
 
 func TestTypesOverWire(t *testing.T) {
-	if _, ok := os.LookupEnv("CI_TEST"); !ok {
-		t.Skip("Skipping test that requires CI_TEST=true")
-	}
 	harness := enginetest.NewDefaultMemoryHarness()
 	enginetest.TestTypesOverWire(t, harness, harness.SessionBuilder())
 }

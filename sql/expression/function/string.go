@@ -16,7 +16,6 @@ package function
 
 import (
 	"bytes"
-	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"math"
@@ -256,11 +255,6 @@ func (h *Hex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 		return hexForString(string(b)), nil
-
-	case []float32:
-		buf := make([]byte, 4*len(val))
-		binary.Encode(buf, binary.LittleEndian, val)
-		return hexForString(string(buf)), nil
 
 	case types.GeometryValue:
 		return hexForString(string(val.Serialize())), nil
@@ -607,8 +601,8 @@ func (h *Bitlength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return 64, nil
 	case string:
 		return 8 * len([]byte(val)), nil
-	case []float32:
-		return 32 * len(val), nil
+	case []byte:
+		return 8 * len(val), nil
 	case time.Time:
 		return 128, nil
 	}

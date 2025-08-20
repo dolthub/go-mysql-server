@@ -17,7 +17,6 @@ package types
 import (
 	"bytes"
 	"context"
-	"encoding/binary"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -27,8 +26,6 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
-
-var vectorValueType = reflect.TypeOf([]float32{})
 
 // VectorType represents the VECTOR(N) type.
 // It stores a fixed-length array of N floating point numbers.
@@ -68,21 +65,10 @@ func (t VectorType) Compare(ctx context.Context, a interface{}, b interface{}) (
 		return 0, err
 	}
 
-	avec := av.([]float32)
-	bvec := bv.([]float32)
+	avec := av.([]byte)
+	bvec := bv.([]byte)
 
-	aBytes := make([]byte, 4)
-	bBytes := make([]byte, 4)
-
-	for i := 0; i < len(avec); i++ {
-		binary.Encode(aBytes, binary.LittleEndian, avec[i])
-		binary.Encode(bBytes, binary.LittleEndian, bvec[i])
-		cmp := bytes.Compare(aBytes, bBytes)
-		if cmp != 0 {
-			return cmp, nil
-		}
-	}
-	return 0, nil
+	return bytes.Compare(avec, bvec), nil
 }
 
 // Convert implements Type interface.
@@ -93,19 +79,19 @@ func (t VectorType) Convert(ctx context.Context, v interface{}) (interface{}, sq
 
 	switch val := v.(type) {
 	case []byte:
-		if len(val) != 4*t.Dimensions {
-			return nil, sql.OutOfRange, fmt.Errorf("cannot convert BINARY(%d) to VECTOR(%d), need BINARY(%d)", len(val), t.Dimensions, 4*t.Dimensions)
-		}
-		result := make([]float32, t.Dimensions)
-		for i := range result {
-			binary.Decode(val[4*i:4*(i+1)], binary.LittleEndian, &result[i])
-		}
-		return result, sql.InRange, nil
-	case []float32:
-		if t.Dimensions != 0 && len(val) != t.Dimensions {
-			return nil, sql.OutOfRange, fmt.Errorf("VECTOR dimension mismatch: expected %d, got %d", t.Dimensions, len(val))
+		if t.Dimensions != 0 && len(val) != 4*t.Dimensions {
+			if len(val)%4 != 0 {
+				return nil, sql.OutOfRange, fmt.Errorf("cannot convert BINARY(%d) to VECTOR(%d), need BINARY(%d)", len(val), t.Dimensions, 4*t.Dimensions)
+			}
+			return nil, sql.OutOfRange, fmt.Errorf("VECTOR dimension mismatch: expected %d, got %d", t.Dimensions, len(val)/4)
 		}
 		return val, sql.InRange, nil
+	case sql.JSONWrapper:
+		unwrapped, err := val.ToInterface(ctx)
+		if err != nil {
+			return nil, sql.OutOfRange, err
+		}
+		return t.Convert(ctx, unwrapped)
 	case []interface{}:
 		if t.Dimensions != 0 && len(val) != t.Dimensions {
 			return nil, sql.OutOfRange, fmt.Errorf("VECTOR dimension mismatch: expected %d, got %d", t.Dimensions, len(val))
@@ -135,7 +121,7 @@ func (t VectorType) Convert(ctx context.Context, v interface{}) (interface{}, sq
 				}
 			}
 		}
-		return result, sql.InRange, nil
+		return sql.EncodeVector(result), sql.InRange, nil
 	default:
 		return nil, sql.OutOfRange, fmt.Errorf("value of type %T cannot be converted to 'vector' type", v)
 	}
@@ -190,7 +176,7 @@ func (t VectorType) Type() query.Type {
 
 // ValueType implements Type interface.
 func (t VectorType) ValueType() reflect.Type {
-	return vectorValueType
+	return byteValueType
 }
 
 // Zero implements Type interface.
@@ -201,4 +187,18 @@ func (t VectorType) Zero() interface{} {
 // CollationCoercibility implements sql.CollationCoercible interface.
 func (VectorType) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 5
+}
+
+var _ sql.TypeWithCollation = VectorType{}
+
+func (VectorType) Collation() sql.CollationID {
+	return sql.Collation_binary
+}
+
+func (VectorType) WithNewCollation(sql.CollationID) (sql.Type, error) {
+	return nil, fmt.Errorf("cannot change collation of binary types")
+}
+
+func (t VectorType) StringWithTableCollation(sql.CollationID) string {
+	return fmt.Sprintf("VECTOR(%d)", t.Dimensions)
 }
