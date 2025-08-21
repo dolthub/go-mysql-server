@@ -16,6 +16,7 @@ package sql
 
 import (
 	"io"
+	"sync"
 )
 
 // TableRowIter is an iterator over the partitions in a table.
@@ -24,6 +25,11 @@ type TableRowIter struct {
 	partitions PartitionIter
 	partition  Partition
 	rows       RowIter
+
+	currChan int
+	rowChans []<-chan Row
+	errChans []<-chan error
+	once     sync.Once
 }
 
 var _ RowIter = (*TableRowIter)(nil)
@@ -33,12 +39,86 @@ func NewTableRowIter(ctx *Context, table Table, partitions PartitionIter) *Table
 	return &TableRowIter{table: table, partitions: partitions}
 }
 
+func (i *TableRowIter) start(ctx *Context) {
+	i.once.Do(func() {
+		for {
+			partition, err := i.partitions.Next(ctx)
+			if err != nil {
+				if err == io.EOF {
+					//continue
+					break
+				}
+			}
+
+			rowChan := make(chan Row, 128)
+			errChan := make(chan error, 1)
+
+			i.rowChans = append(i.rowChans, rowChan)
+			i.errChans = append(i.errChans, errChan)
+
+			go func() {
+				defer close(rowChan)
+				defer close(errChan)
+
+				rowIter, riErr := i.table.PartitionRows(ctx, partition)
+				if riErr != nil {
+					errChan <- riErr
+					return
+				}
+				defer rowIter.Close(ctx) // TODO: handle error
+
+				for {
+					row, rErr := rowIter.Next(ctx)
+					if rErr != nil {
+						if rErr == io.EOF {
+							return
+						}
+						errChan <- rErr
+						return
+					}
+					select {
+					case rowChan <- row:
+					case <-ctx.Done():
+						return
+					}
+				}
+			}()
+		}
+	})
+}
+
 func (i *TableRowIter) Next(ctx *Context) (Row, error) {
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	default:
 	}
+
+	i.start(ctx)
+
+	for i.currChan < len(i.rowChans) {
+		rowChan := i.rowChans[i.currChan]
+		errChan := i.errChans[i.currChan]
+
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case err := <-errChan:
+			if err != nil {
+				return nil, err
+			}
+		case row, ok := <-rowChan:
+			if !ok {
+				i.currChan++
+				continue
+			}
+			return row, nil
+		}
+	}
+
+	return nil, io.EOF
+
+	// TODO: multithread partitions?
 	if i.partition == nil {
 		partition, err := i.partitions.Next(ctx)
 		if err != nil {
