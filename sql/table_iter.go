@@ -26,10 +26,9 @@ type TableRowIter struct {
 	partition  Partition
 	rows       RowIter
 
-	currChan int
-	rowChans []<-chan Row
-	errChans []<-chan error
-	once     sync.Once
+	rowChan chan Row
+	errChan chan error
+	once    sync.Once
 }
 
 var _ RowIter = (*TableRowIter)(nil)
@@ -41,79 +40,64 @@ func NewTableRowIter(ctx *Context, table Table, partitions PartitionIter) *Table
 
 func (i *TableRowIter) start(ctx *Context) {
 	i.once.Do(func() {
-		for {
+		i.rowChan = make(chan Row, 1024)
+		i.errChan = make(chan error, 1)
+
+		go func() {
+			defer close(i.rowChan)
+			defer close(i.errChan)
+
 			partition, err := i.partitions.Next(ctx)
 			if err != nil {
 				if err == io.EOF {
-					//continue
-					break
-				}
-			}
-
-			rowChan := make(chan Row, 128)
-			errChan := make(chan error, 1)
-
-			i.rowChans = append(i.rowChans, rowChan)
-			i.errChans = append(i.errChans, errChan)
-
-			go func() {
-				defer close(rowChan)
-				defer close(errChan)
-
-				rowIter, riErr := i.table.PartitionRows(ctx, partition)
-				if riErr != nil {
-					errChan <- riErr
+					i.partitions.Close(ctx)
 					return
 				}
-				defer rowIter.Close(ctx) // TODO: handle error
+				i.errChan <- err
+				return
+			}
 
-				for {
-					row, rErr := rowIter.Next(ctx)
-					if rErr != nil {
-						if rErr == io.EOF {
-							return
-						}
-						errChan <- rErr
+			rowIter, riErr := i.table.PartitionRows(ctx, partition)
+			if riErr != nil {
+				i.errChan <- riErr
+				return
+			}
+
+			for {
+				row, rErr := rowIter.Next(ctx)
+				if rErr != nil {
+					if rErr == io.EOF {
+						rowIter.Close(ctx)
 						return
 					}
-					select {
-					case rowChan <- row:
-					case <-ctx.Done():
-						return
-					}
+					i.errChan <- rErr
+					return
 				}
-			}()
-		}
+				select {
+				case i.rowChan <- row:
+				case <-ctx.Done():
+					return
+				}
+			}
+		}()
 	})
 }
 
 func (i *TableRowIter) Next(ctx *Context) (Row, error) {
+	i.start(ctx)
+
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	default:
-	}
-
-	i.start(ctx)
-
-	for i.currChan < len(i.rowChans) {
-		rowChan := i.rowChans[i.currChan]
-		errChan := i.errChans[i.currChan]
-
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case err := <-errChan:
-			if err != nil {
-				return nil, err
-			}
-		case row, ok := <-rowChan:
-			if !ok {
-				i.currChan++
-				continue
-			}
-			return row, nil
+	case err := <-i.errChan:
+		if err != nil {
+			return nil, err
 		}
+	case row, ok := <-i.rowChan:
+		if !ok {
+			return nil, io.EOF
+		}
+		return row, nil
 	}
 
 	return nil, io.EOF
