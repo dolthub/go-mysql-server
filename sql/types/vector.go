@@ -44,9 +44,9 @@ const DefaultVectorDimensions = 2048
 const MaxVectorDimensions = 16383
 
 // CreateVectorType creates a VECTOR type with the specified number of dimensions.
-func CreateVectorType(dimensions int) (sql.Type, error) {
+func CreateVectorType(dimensions int) (VectorType, error) {
 	if dimensions < 1 || dimensions > MaxVectorDimensions {
-		return nil, fmt.Errorf("VECTOR dimension must be between 1 and %d, got %d", MaxVectorDimensions, dimensions)
+		return VectorType{}, fmt.Errorf("VECTOR dimension must be between 1 and %d, got %d", MaxVectorDimensions, dimensions)
 	}
 	return VectorType{Dimensions: dimensions}, nil
 }
