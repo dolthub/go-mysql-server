@@ -238,3 +238,16 @@ func IsYear(t sql.Type) bool {
 	_, ok := t.(YearType_)
 	return ok
 }
+
+// IsVectorConvertable checks if t can be implicitly converted to a vector of floats.
+func IsVectorConvertable(t sql.Type) bool {
+	if t == nil {
+		return false
+	}
+	switch t.Type() {
+	case sqltypes.TypeJSON, sqltypes.Vector, sqltypes.Binary:
+		return true
+	default:
+		return false
+	}
+}
