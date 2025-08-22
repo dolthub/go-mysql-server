@@ -26,6 +26,9 @@ type TableRowIter struct {
 	partition  Partition
 	rows       RowIter
 
+	parts    []Partition
+	currPart int
+
 	rowChan chan Row
 	errChan chan error
 	once    sync.Once
@@ -40,31 +43,38 @@ func NewTableRowIter(ctx *Context, table Table, partitions PartitionIter) *Table
 
 func (i *TableRowIter) start(ctx *Context) {
 	i.once.Do(func() {
-		i.rowChan = make(chan Row, 1024)
+		i.rowChan = make(chan Row, 128)
 		i.errChan = make(chan error)
+		i.parts = make([]Partition, 0)
+
+		for {
+			partition, err := i.partitions.Next(ctx)
+			if err != nil {
+				if err == io.EOF {
+					if err = i.partitions.Close(ctx); err != nil {
+						panic(err)
+					}
+					break
+				}
+				panic(err)
+				return
+			}
+			i.parts = append(i.parts, partition)
+		}
+
+		// TODO: if very few partitions, just read sequentially
+		if len(i.parts) < 2 {
+			return
+		}
 
 		go func() {
 			defer close(i.rowChan)
-
-			for {
-				partition, err := i.partitions.Next(ctx)
-				if err != nil {
-					if err == io.EOF {
-						if err = i.partitions.Close(ctx); err != nil {
-							i.errChan <- err
-						}
-						return
-					}
-					i.errChan <- err
-					return
-				}
-
-				rowIter, riErr := i.table.PartitionRows(ctx, partition)
+			for idx := 0; idx < len(i.parts); idx++ {
+				rowIter, riErr := i.table.PartitionRows(ctx, i.parts[idx])
 				if riErr != nil {
 					i.errChan <- riErr
 					return
 				}
-
 				for {
 					row, rErr := rowIter.Next(ctx)
 					if rErr != nil {
@@ -92,6 +102,33 @@ func (i *TableRowIter) start(ctx *Context) {
 func (i *TableRowIter) Next(ctx *Context) (Row, error) {
 	i.start(ctx)
 
+	if len(i.parts) < 2 {
+		for i.currPart < len(i.parts) {
+			if i.partition == nil {
+				i.partition = i.parts[i.currPart]
+			}
+			if i.rows == nil {
+				rows, err := i.table.PartitionRows(ctx, i.partition)
+				if err != nil {
+					return nil, err
+				}
+				i.rows = rows
+			}
+			row, err := i.rows.Next(ctx)
+			if err != nil && err == io.EOF {
+				if err = i.rows.Close(ctx); err != nil {
+					return nil, err
+				}
+				i.partition = nil
+				i.rows = nil
+				i.currPart++
+				continue
+			}
+			return row, err
+		}
+		return nil, io.EOF
+	}
+
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -103,44 +140,6 @@ func (i *TableRowIter) Next(ctx *Context) (Row, error) {
 		}
 		return row, nil
 	}
-	return nil, io.EOF
-
-	// TODO: multithread partitions?
-	if i.partition == nil {
-		partition, err := i.partitions.Next(ctx)
-		if err != nil {
-			if err == io.EOF {
-				if e := i.partitions.Close(ctx); e != nil {
-					return nil, e
-				}
-			}
-
-			return nil, err
-		}
-
-		i.partition = partition
-	}
-
-	if i.rows == nil {
-		rows, err := i.table.PartitionRows(ctx, i.partition)
-		if err != nil {
-			return nil, err
-		}
-
-		i.rows = rows
-	}
-
-	row, err := i.rows.Next(ctx)
-	if err != nil && err == io.EOF {
-		if err = i.rows.Close(ctx); err != nil {
-			return nil, err
-		}
-
-		i.partition = nil
-		i.rows = nil
-		row, err = i.Next(ctx)
-	}
-	return row, err
 }
 
 func (i *TableRowIter) Close(ctx *Context) error {
