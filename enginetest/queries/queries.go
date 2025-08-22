@@ -9374,6 +9374,24 @@ from typestable`,
 		Query:    "select c1, c2 from one_pk where c2 = 1 group by c1",
 		Expected: []sql.Row{{0, 1}},
 	},
+	// https://github.com/dolthub/dolt/issues/9699
+	// Correlated columns in subqueries are included in select dependencies
+	{
+		Query:    "select any_value(pk), (select max(pk) from one_pk where pk < opk.pk) as x from one_pk opk",
+		Expected: []sql.Row{{0, nil}, {1, 0}, {2, 1}, {3, 2}},
+	},
+	{
+		Query:    "SELECT any_value(pk), (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) > 0;",
+		Expected: []sql.Row{{2, 1}, {3, 2}},
+	},
+	{
+		Query:    "select any_value(pk), (select max(pk) from one_pk where pk < (opk.c1 - 10)) as x from one_pk opk",
+		Expected: []sql.Row{{0, nil}, {1, nil}, {2, 3}, {3, 3}},
+	},
+	{
+		Query:    "select pk, (select max(pk) from one_pk where pk < opk.pk) as x from one_pk opk",
+		Expected: []sql.Row{{0, nil}, {1, 0}, {2, 1}, {3, 2}},
+	},
 }
 
 var KeylessQueries = []QueryTest{
