@@ -1058,7 +1058,7 @@ Project
  │               └─ tableId: 2
  │  ->(select u from uv where x = u)]
  └─ GroupBy
-     ├─ select: 
+     ├─ select: xy.x:1!null
      ├─ group: Subquery
      │   ├─ cacheable: false
      │   ├─ alias-string: select u from uv where x = u
@@ -2050,7 +2050,7 @@ Project
  │                       └─ tableId: 0
  │  ->a1:8]
  └─ Project
-     ├─ columns: [max(xy.x):4!null, Subquery
+     ├─ columns: [max(xy.x):4!null, xy.x:1!null, Subquery
      │   ├─ cacheable: false
      │   ├─ alias-string: select max(dt.a) from (select x as a) as dt (a)
      │   └─ Project
@@ -2074,7 +2074,7 @@ Project
      │                       └─ tableId: 0
      │  ->a1:8]
      └─ GroupBy
-         ├─ select: MAX(xy.x:1!null)
+         ├─ select: MAX(xy.x:1!null), xy.x:1!null
          ├─ group: Subquery
          │   ├─ cacheable: false
          │   ├─ alias-string: select max(dt.a) from (select x as a) as dt (a)
