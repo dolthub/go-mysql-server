@@ -5076,19 +5076,19 @@ SELECT * FROM cte WHERE  d = 2;`,
 	{
 		Query: `SHOW VARIABLES WHERE Variable_name = 'version' || variable_name = 'autocommit'`,
 		Expected: []sql.Row{
-			{"autocommit", 1}, {"version", "8.0.31"},
+			{"autocommit", "ON"}, {"version", "8.0.31"},
 		},
 	},
 	{
 		Query: `SHOW VARIABLES WHERE Variable_name > 'version' and variable_name like '%_%'`,
 		Expected: []sql.Row{
-			{"version_comment", "Dolt"}, {"version_compile_machine", ""}, {"version_compile_os", ""}, {"version_compile_zlib", ""}, {"wait_timeout", 28800}, {"windowing_use_high_precision", 1},
+			{"version_comment", "Dolt"}, {"version_compile_machine", ""}, {"version_compile_os", ""}, {"version_compile_zlib", ""}, {"wait_timeout", 28800}, {"windowing_use_high_precision", "ON"},
 		},
 	},
 	{
 		Query: `SHOW VARIABLES WHERE "1" and variable_name = 'autocommit'`,
 		Expected: []sql.Row{
-			{"autocommit", 1},
+			{"autocommit", "ON"},
 		},
 	},
 	{
@@ -5105,8 +5105,8 @@ SELECT * FROM cte WHERE  d = 2;`,
 			{"block_encryption_mode", "aes-128-ecb"},
 			{"gtid_mode", "OFF"},
 			{"innodb_autoinc_lock_mode", int64(2)},
-			{"offline_mode", int64(0)},
-			{"pseudo_slave_mode", int64(0)},
+			{"offline_mode", "OFF"},
+			{"pseudo_slave_mode", "OFF"},
 			{"rbr_exec_mode", "STRICT"},
 			{"sql_mode", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES"},
 			{"ssl_fips_mode", "OFF"},

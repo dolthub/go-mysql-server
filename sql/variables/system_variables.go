@@ -1286,6 +1286,24 @@ var systemVars = map[string]sql.SystemVariable{
 		//       Integrators who provide binary logging may change this default.
 		Default: int8(0),
 	},
+	"log_replica_updates": &sql.MysqlSystemVariable{
+		Name:              "log_replica_updates",
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Persist),
+		Dynamic:           true,
+		SetVarHintApplies: false,
+		Type:              types.NewSystemBoolType("log_replica_updates"),
+		Default:           int8(1),
+	},
+	"log_slave_updates": &sql.MysqlSystemVariable{
+		// TODO: This var should be an *alias* for log_replica_updates, but
+		//       we don't support system variable aliases yet.
+		Name:              "log_slave_updates",
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Persist),
+		Dynamic:           true,
+		SetVarHintApplies: false,
+		Type:              types.NewSystemBoolType("log_slave_updates"),
+		Default:           int8(1),
+	},
 	"log_error": &sql.MysqlSystemVariable{
 		Name:              "log_error",
 		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
@@ -2041,7 +2059,7 @@ var systemVars = map[string]sql.SystemVariable{
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemUintType("query_cache_size", 0, 18446744073709551615),
-		Default:           int8(1),
+		Default:           1,
 	},
 	"query_cache_type": &sql.MysqlSystemVariable{
 		Name:              "query_cache_type",
@@ -2933,7 +2951,7 @@ var systemVars = map[string]sql.SystemVariable{
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("validate_password.length", 0, 2147483647, false),
-		Default:           int8(8),
+		Default:           8,
 	},
 	"validate_password.number_count": &sql.MysqlSystemVariable{
 		Name:              "validate_password.number_count",
@@ -2941,7 +2959,7 @@ var systemVars = map[string]sql.SystemVariable{
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("validate_password.number_count", 0, 2147483647, false),
-		Default:           int8(1),
+		Default:           1,
 	},
 	"validate_password.mixed_case_count": &sql.MysqlSystemVariable{
 		Name:              "validate_password.mixed_case_count",
@@ -2949,7 +2967,7 @@ var systemVars = map[string]sql.SystemVariable{
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("validate_password.mixed_case_count", 0, 2147483647, false),
-		Default:           int8(1),
+		Default:           1,
 	},
 	"validate_password.special_char_count": &sql.MysqlSystemVariable{
 		Name:              "validate_password.special_char_count",
@@ -2957,7 +2975,7 @@ var systemVars = map[string]sql.SystemVariable{
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("validate_password.special_char_count", 0, 2147483647, false),
-		Default:           int8(1),
+		Default:           1,
 	},
 	"validate_user_plugins": &sql.MysqlSystemVariable{
 		Name:              "validate_user_plugins",

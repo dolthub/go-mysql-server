@@ -44,7 +44,19 @@ func TestShowVariables(t *testing.T) {
 
 		t.Logf("key: %s\tval: %v\n", key, val)
 
-		require.Equal(vars[key], val)
+		// int8 values are interpreted as boolean values
+		if int8Val, isInt8 := vars[key].(int8); isInt8 {
+			if int8Val == 0 {
+				require.Equal("OFF", val)
+			} else if int8Val == 1 {
+				require.Equal("ON", val)
+			} else {
+				require.Failf("unexpected value for int8 system variable: %s: %v", key, val)
+			}
+		} else {
+			require.Equal(vars[key], val)
+		}
+
 		delete(vars, key)
 	}
 	if err != io.EOF {
