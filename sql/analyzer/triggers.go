@@ -15,7 +15,6 @@
 package analyzer
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
@@ -450,15 +449,21 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 	})
 }
 
-func getUpdateJoinSource(n sql.Node) *plan.UpdateSource {
+// getUpdateJoinSource looks for an UpdateJoin child in an Update node and get the UpdateSource and a map of table
+// aliases
+func getUpdateJoinSource(n sql.Node) (*plan.UpdateSource, map[string]string) {
 	if updateNode, isUpdate := n.(*plan.Update); isUpdate {
 		if updateJoin, isUpdateJoin := updateNode.Child.(*plan.UpdateJoin); isUpdateJoin {
 			if updateSrc, isUpdateSrc := updateJoin.Child.(*plan.UpdateSource); isUpdateSrc {
-				return updateSrc
+				tableAliases := make(map[string]string)
+				for alias, updateTarget := range updateJoin.UpdateTargets {
+					tableAliases[alias] = getTableName(updateTarget)
+				}
+				return updateSrc, tableAliases
 			}
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 // getTriggerLogic analyzes and returns the Node representing the trigger body for the trigger given, applied to the
@@ -481,7 +486,7 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 		triggerLogic, _, err = a.analyzeWithSelector(ctx, trigger.Body, s, SelectAllBatches, DefaultRuleSelector, qFlags)
 	case sqlparser.UpdateStr:
 		var scopeNode *plan.Project
-		if updateSrc := getUpdateJoinSource(n); updateSrc == nil {
+		if updateSrc, tableAliases := getUpdateJoinSource(n); updateSrc == nil {
 			scopeNode = plan.NewProject(
 				[]sql.Expression{expression.NewStar()},
 				plan.NewCrossJoin(
@@ -490,18 +495,24 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 				),
 			)
 		} else {
-			// TODO: We should be able to handle duplicate column names by masking columns that aren't part of the
-			// triggered table https://github.com/dolthub/dolt/issues/9403
-			err = validateNoConflictingColumnNames(updateSrc.Child.Schema())
-			if err != nil {
-				return nil, err
+			updateSrcCols := updateSrc.Child.Schema()
+			triggerTableName := getTableName(trigger.Table)
+			maskedColNames := make([]string, len(updateSrcCols))
+			for i, col := range updateSrcCols {
+				// To avoid confusion when joined tables share a column name, we mask the column names from
+				// non-triggered tables
+				if col.Source == triggerTableName || tableAliases[col.Source] == triggerTableName {
+					maskedColNames[i] = col.Name
+				} else {
+					maskedColNames[i] = ""
+				}
 			}
-			// The scopeNode for an UpdateJoin should contain every node in the updateSource as new and old.
+			// The scopeNode for an UpdateJoin should contain every column in the updateSource as new and old.
 			scopeNode = plan.NewProject(
 				[]sql.Expression{expression.NewStar()},
 				plan.NewCrossJoin(
-					plan.NewSubqueryAlias("old", "", updateSrc.Child),
-					plan.NewSubqueryAlias("new", "", updateSrc.Child),
+					plan.NewSubqueryAlias("old", "", updateSrc.Child).WithColumnNames(maskedColNames),
+					plan.NewSubqueryAlias("new", "", updateSrc.Child).WithColumnNames(maskedColNames),
 				),
 			)
 		}
@@ -519,19 +530,6 @@ func getTriggerLogic(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	}
 
 	return triggerLogic, err
-}
-
-// validateNoConflictingColumnNames checks the columns of a joined table to make sure there are no conflicting column
-// names
-func validateNoConflictingColumnNames(sch sql.Schema) error {
-	columnNames := make(map[string]struct{})
-	for _, col := range sch {
-		if _, ok := columnNames[col.Name]; ok {
-			return errors.New("Unable to apply triggers when joined tables have columns with the same name")
-		}
-		columnNames[col.Name] = struct{}{}
-	}
-	return nil
 }
 
 // validateNoCircularUpdates returns an error if the trigger logic attempts to update the table that invoked it (or any

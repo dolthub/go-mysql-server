@@ -598,7 +598,8 @@ var UpdateScriptTests = []ScriptTest{
 	},
 	{
 		Dialect: "mysql",
-		Name:    "UPDATE join – multiple tables with same column names with triggers",
+		// https://github.com/dolthub/dolt/issues/9403
+		Name: "UPDATE join – multiple tables with same column names with triggers",
 		SetUpScript: []string{
 			"create table customers (id int primary key, name text, tier text)",
 			"create table orders (id int primary key, customer_id int, status text)",
@@ -615,19 +616,11 @@ var UpdateScriptTests = []ScriptTest{
 					end;`,
 			"insert into customers values(1, 'Alice', 'silver'), (2, 'Bob', 'gold');",
 			"insert into orders values (101, 1, 'pending'), (102, 2, 'pending');",
+			"update customers c join orders o on c.id = o.customer_id " +
+				"set c.tier = 'platinum', o.status = 'shipped' where o.status = 'pending'",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "update customers c join orders o on c.id = o.customer_id " +
-					"set c.tier = 'platinum', o.status = 'shipped' where o.status = 'pending'",
-				// TODO: we shouldn't expect an error once we're able to handle conflicting column names
-				// https://github.com/dolthub/dolt/issues/9403
-				ExpectedErrStr: "Unable to apply triggers when joined tables have columns with the same name",
-			},
-			{
-				// TODO: unskip once we're able to handle conflicting column names
-				// https://github.com/dolthub/dolt/issues/9403
-				Skip:  true,
 				Query: "SELECT * FROM trigger_log order by msg;",
 				Expected: []sql.Row{
 					{"Customer 1 tier changed from silver to platinum"},
