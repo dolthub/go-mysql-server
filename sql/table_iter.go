@@ -41,7 +41,7 @@ func NewTableRowIter(ctx *Context, table Table, partitions PartitionIter) *Table
 func (i *TableRowIter) start(ctx *Context) {
 	i.once.Do(func() {
 		i.rowChan = make(chan Row, 1024)
-		i.errChan = make(chan error, 1)
+		i.errChan = make(chan error)
 
 		go func() {
 			defer close(i.rowChan)
@@ -89,15 +89,16 @@ func (i *TableRowIter) Next(ctx *Context) (Row, error) {
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	case err := <-i.errChan:
-		if err != nil {
-			return nil, err
-		}
 	case row, ok := <-i.rowChan:
-		if !ok {
-			return nil, io.EOF
+		if ok {
+			return row, nil
 		}
-		return row, nil
+		select {
+		case err := <-i.errChan:
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	return nil, io.EOF
