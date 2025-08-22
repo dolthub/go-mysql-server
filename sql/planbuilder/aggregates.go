@@ -197,9 +197,7 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 
 	group := fromScope.groupBy
 	outScope := group.outScope
-	// select columns:
-	//  - aggs
-	//  - extra columns needed by having, order by, select
+	// Select dependencies include aggregations and table columns needed for projections, having, and sort (order by)
 	var selectDeps []sql.Expression
 	var selectGfs []sql.Expression
 	selectStr := make(map[string]bool)
@@ -252,7 +250,6 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 			return false
 		}
 
-		// projection dependencies -> table cols needed above
 		transform.InspectExpr(col.scalar, findSelectDeps)
 	}
 	for _, e := range fromScope.extraCols {
