@@ -45,38 +45,44 @@ func (i *TableRowIter) start(ctx *Context) {
 
 		go func() {
 			defer close(i.rowChan)
-			defer close(i.errChan)
-
-			partition, err := i.partitions.Next(ctx)
-			if err != nil {
-				if err == io.EOF {
-					i.partitions.Close(ctx)
-					return
-				}
-				i.errChan <- err
-				return
-			}
-
-			rowIter, riErr := i.table.PartitionRows(ctx, partition)
-			if riErr != nil {
-				i.errChan <- riErr
-				return
-			}
 
 			for {
-				row, rErr := rowIter.Next(ctx)
-				if rErr != nil {
-					if rErr == io.EOF {
-						rowIter.Close(ctx)
+				partition, err := i.partitions.Next(ctx)
+				if err != nil {
+					if err == io.EOF {
+						if err = i.partitions.Close(ctx); err != nil {
+							i.errChan <- err
+						}
 						return
 					}
-					i.errChan <- rErr
+					i.errChan <- err
 					return
 				}
-				select {
-				case i.rowChan <- row:
-				case <-ctx.Done():
+
+				rowIter, riErr := i.table.PartitionRows(ctx, partition)
+				if riErr != nil {
+					i.errChan <- riErr
 					return
+				}
+
+				for {
+					row, rErr := rowIter.Next(ctx)
+					if rErr != nil {
+						if rErr == io.EOF {
+							if rErr = rowIter.Close(ctx); rErr != nil {
+								i.errChan <- rErr
+								return
+							}
+							break
+						}
+						i.errChan <- rErr
+						return
+					}
+					select {
+					case i.rowChan <- row:
+					case <-ctx.Done():
+						return
+					}
 				}
 			}
 		}()
@@ -89,18 +95,14 @@ func (i *TableRowIter) Next(ctx *Context) (Row, error) {
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
+	case err := <-i.errChan:
+		return nil, err
 	case row, ok := <-i.rowChan:
-		if ok {
-			return row, nil
+		if !ok {
+			return nil, io.EOF
 		}
-		select {
-		case err := <-i.errChan:
-			if err != nil {
-				return nil, err
-			}
-		}
+		return row, nil
 	}
-
 	return nil, io.EOF
 
 	// TODO: multithread partitions?
@@ -142,6 +144,7 @@ func (i *TableRowIter) Next(ctx *Context) (Row, error) {
 }
 
 func (i *TableRowIter) Close(ctx *Context) error {
+	return nil
 	if i.rows != nil {
 		if err := i.rows.Close(ctx); err != nil {
 			_ = i.partitions.Close(ctx)
