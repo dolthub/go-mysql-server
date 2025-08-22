@@ -224,8 +224,8 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 		default:
 		}
 
-		// projection dependencies -> table cols needed above
-		transform.InspectExpr(col.scalar, func(e sql.Expression) bool {
+		var findSelectDeps func(sql.Expression) bool
+		findSelectDeps = func(e sql.Expression) bool {
 			switch e := e.(type) {
 			case *expression.GetField:
 				colName := strings.ToLower(e.String())
@@ -241,10 +241,19 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 				} else if isAliasDep && !inAlias {
 					aliasDeps[exprStr] = false
 				}
+			case *plan.Subquery:
+				e.Correlated().ForEach(func(colId sql.ColumnId) {
+					if correlated, found := projScope.parent.getCol(colId); found {
+						findSelectDeps(correlated.scalarGf())
+					}
+				})
 			default:
 			}
 			return false
-		})
+		}
+
+		// projection dependencies -> table cols needed above
+		transform.InspectExpr(col.scalar, findSelectDeps)
 	}
 	for _, e := range fromScope.extraCols {
 		// accessory cols used by ORDER_BY, HAVING

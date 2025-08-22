@@ -149,6 +149,18 @@ func (s *scope) resolveColumn(db, table, col string, checkParent, chooseFirst bo
 	return c, true
 }
 
+// getCol gets a scopeColumn based on a columnId
+func (s *scope) getCol(colId sql.ColumnId) (scopeColumn, bool) {
+	if s.colset.Contains(colId) {
+		for _, c := range s.cols {
+			if sql.ColumnId(c.id) == colId {
+				return c, true
+			}
+		}
+	}
+	return scopeColumn{}, false
+}
+
 func (s *scope) hasTable(table string) bool {
 	_, ok := s.tables[strings.ToLower(table)]
 	if ok {
