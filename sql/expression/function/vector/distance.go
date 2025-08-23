@@ -17,6 +17,8 @@ package vector
 import (
 	"context"
 	"fmt"
+	"math"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -25,7 +27,7 @@ import (
 
 type DistanceType interface {
 	String() string
-	Eval(left []float64, right []float64) (float64, error)
+	Eval(left []float32, right []float32) (float64, error)
 	CanEval(distanceType DistanceType) bool
 	FunctionName() string
 	Description() string
@@ -40,14 +42,14 @@ func (d DistanceL2Squared) String() string {
 	return "VEC_DISTANCE_L2_SQUARED"
 }
 
-func (d DistanceL2Squared) Eval(left []float64, right []float64) (float64, error) {
+func (d DistanceL2Squared) Eval(left []float32, right []float32) (float64, error) {
 	if len(left) != len(right) {
 		return 0, fmt.Errorf("attempting to find distance between vectors of different lengths: %d vs %d", len(left), len(right))
 	}
 	var total float64 = 0
 	for i, l := range left {
 		r := right[i]
-		total += (l - r) * (l - r)
+		total += float64(l-r) * float64(l-r)
 	}
 	return total, nil
 }
@@ -62,6 +64,89 @@ func (d DistanceL2Squared) FunctionName() string {
 
 func (d DistanceL2Squared) Description() string {
 	return "returns the squared l2 norm (euclidian distance) between two vectors"
+}
+
+type DistanceEuclidean struct{}
+
+var _ fmt.Stringer = DistanceEuclidean{}
+var _ DistanceType = DistanceEuclidean{}
+
+func (d DistanceEuclidean) String() string {
+	return "VEC_DISTANCE_EUCLIDEAN"
+}
+
+func (d DistanceEuclidean) Eval(left []float32, right []float32) (float64, error) {
+	if len(left) != len(right) {
+		return 0, fmt.Errorf("attempting to find distance between vectors of different lengths: %d vs %d", len(left), len(right))
+	}
+	var total float64 = 0
+	for i, l := range left {
+		r := right[i]
+		total += float64(l-r) * float64(l-r)
+	}
+	return math.Sqrt(total), nil
+}
+
+func (d DistanceEuclidean) CanEval(other DistanceType) bool {
+	return other == DistanceEuclidean{}
+}
+
+func (d DistanceEuclidean) FunctionName() string {
+	return "vec_distance_euclidean"
+}
+
+func (d DistanceEuclidean) Description() string {
+	return "returns the euclidean (l2) distance between two vectors"
+}
+
+type DistanceCosine struct{}
+
+var _ fmt.Stringer = DistanceCosine{}
+var _ DistanceType = DistanceCosine{}
+
+func (d DistanceCosine) String() string {
+	return "VEC_DISTANCE_COSINE"
+}
+
+func (d DistanceCosine) Eval(left []float32, right []float32) (float64, error) {
+	if len(left) != len(right) {
+		return 0, fmt.Errorf("attempting to find distance between vectors of different lengths: %d vs %d", len(left), len(right))
+	}
+
+	var dotProduct float64 = 0
+	var leftMagnitudeSquared float64 = 0
+	var rightMagnitudeSquared float64 = 0
+
+	for i, l := range left {
+		r := right[i]
+		dotProduct += float64(l * r)
+		leftMagnitudeSquared += float64(l * l)
+		rightMagnitudeSquared += float64(r * r)
+	}
+
+	leftMagnitude := math.Sqrt(leftMagnitudeSquared)
+	rightMagnitude := math.Sqrt(rightMagnitudeSquared)
+
+	if leftMagnitude == 0 || rightMagnitude == 0 {
+		return 0, nil
+	}
+
+	// Cosine similarity = dot product / (magnitude1 * magnitude2)
+	// Cosine distance = 1 - cosine similarity
+	cosineSimilarity := dotProduct / (leftMagnitude * rightMagnitude)
+	return 1 - cosineSimilarity, nil
+}
+
+func (d DistanceCosine) CanEval(other DistanceType) bool {
+	return other == DistanceCosine{}
+}
+
+func (d DistanceCosine) FunctionName() string {
+	return "vec_distance_cosine"
+}
+
+func (d DistanceCosine) Description() string {
+	return "returns the cosine distance between two vectors"
 }
 
 type Distance struct {
@@ -90,6 +175,18 @@ var _ sql.CreateFunc2Args = NewL2SquaredDistance
 
 func NewL2SquaredDistance(left, right sql.Expression) sql.Expression {
 	return NewDistance(DistanceL2Squared{}, left, right)
+}
+
+var _ sql.CreateFunc2Args = NewEuclideanDistance
+
+func NewEuclideanDistance(left, right sql.Expression) sql.Expression {
+	return NewDistance(DistanceEuclidean{}, left, right)
+}
+
+var _ sql.CreateFunc2Args = NewCosineDistance
+
+func NewCosineDistance(left, right sql.Expression) sql.Expression {
+	return NewDistance(DistanceCosine{}, left, right)
 }
 
 func (d Distance) CollationCoercibility(_ *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -148,4 +245,96 @@ func MeasureDistance(ctx context.Context, left, right interface{}, distanceType 
 	}
 
 	return distanceType.Eval(leftVec, rightVec)
+}
+
+// GenericDistance is the DISTANCE function that takes a parameter to determine the distance metric
+type GenericDistance struct {
+	expression.NaryExpression
+}
+
+var _ sql.Expression = (*GenericDistance)(nil)
+var _ sql.FunctionExpression = (*GenericDistance)(nil)
+var _ sql.CollationCoercible = (*GenericDistance)(nil)
+
+func NewGenericDistance(args ...sql.Expression) (sql.Expression, error) {
+	if len(args) != 3 {
+		return nil, sql.ErrInvalidArgumentNumber.New("DISTANCE", "3", len(args))
+	}
+	return &GenericDistance{NaryExpression: expression.NaryExpression{ChildExpressions: args}}, nil
+}
+
+func (g *GenericDistance) FunctionName() string {
+	return "distance"
+}
+
+func (g *GenericDistance) Description() string {
+	return "returns the distance between two vectors using the specified metric (EUCLIDEAN or COSINE)"
+}
+
+func (g *GenericDistance) Type() sql.Type {
+	return types.Float64
+}
+
+func (g *GenericDistance) CollationCoercibility(_ *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
+}
+
+func (g *GenericDistance) String() string {
+	children := g.Children()
+	return fmt.Sprintf("DISTANCE(%s, %s, %s)", children[0], children[1], children[2])
+}
+
+func (g *GenericDistance) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 3 {
+		return nil, sql.ErrInvalidChildrenNumber.New(g, len(children), 3)
+	}
+	newDist, err := NewGenericDistance(children...)
+	return newDist, err
+}
+
+func (g *GenericDistance) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	children := g.Children()
+
+	lval, err := children[0].Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	if lval == nil {
+		return nil, nil
+	}
+
+	rval, err := children[1].Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	if rval == nil {
+		return nil, nil
+	}
+
+	metricVal, err := children[2].Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	if metricVal == nil {
+		return nil, fmt.Errorf(`DISTANCE must be "EUCLIDEAN", "L2_SQUARED", or "COSINE", got NULL`)
+	}
+
+	metricStr, ok := metricVal.(string)
+	if !ok {
+		return nil, fmt.Errorf(`DISTANCE must be "EUCLIDEAN", "L2_SQUARED", or "COSINE", got %T`, metricVal)
+	}
+
+	var distanceType DistanceType
+	switch strings.ToUpper(metricStr) {
+	case "EUCLIDEAN":
+		distanceType = DistanceEuclidean{}
+	case "COSINE":
+		distanceType = DistanceCosine{}
+	case "L2_SQUARED":
+		distanceType = DistanceL2Squared{}
+	default:
+		return nil, fmt.Errorf(`DISTANCE must be "EUCLIDEAN", "L2_SQUARED", or "COSINE", got %s`, metricStr)
+	}
+
+	return MeasureDistance(ctx, lval, rval, distanceType)
 }

@@ -2008,6 +2008,22 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 			return nil
 		}
 
+		if indexDef.IsVector() {
+			// Validate that the type is exactly one column and it's something we can make a vector index of.
+			if len(indexDef.Columns) != 1 {
+				return fmt.Errorf("a vector index must have exactly one column")
+			}
+			indexColNameLower := strings.ToLower(indexDef.Columns[0].Name)
+			for _, tblCol := range idxAltTbl.Schema() {
+				if indexColNameLower == strings.ToLower(tblCol.Name) {
+					if !types.IsVectorConvertable(tblCol.Type) {
+						return sql.ErrVectorInvalidColumnType.New()
+					}
+					break
+				}
+			}
+		}
+
 		err = idxAltTbl.CreateIndex(ctx, indexDef)
 		if err != nil {
 			if sql.ErrDuplicateKey.Is(err) && n.IfNotExists {
