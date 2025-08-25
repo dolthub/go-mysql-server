@@ -47,37 +47,37 @@ func NewStatistic(rowCount, distinctCount, nullCount, avgSize uint64, createdAt 
 }
 
 type Statistic struct {
+	RowCnt      uint64            `json:"row_count"`
+	DistinctCnt uint64            `json:"distinct_count"`
+	NullCnt     uint64            `json:"null_count"`
+	AvgRowSize  uint64            `json:"avg_size"`
 	Created     time.Time         `json:"created_at"`
-	Fds         *sql.FuncDepSet   `json:"-"`
 	Qual        sql.StatQualifier `json:"qualifier"`
-	Colset      sql.ColSet        `json:"-"`
-	Hist        sql.Histogram     `json:"buckets"`
-	LowerBnd    sql.Row           `json:"lower_bound"`
 	Cols        []string          `json:"columns"`
 	Typs        []sql.Type        `json:"-"`
-	AvgRowSize  uint64            `json:"avg_size"`
-	RowCnt      uint64            `json:"row_count"`
-	NullCnt     uint64            `json:"null_count"`
-	DistinctCnt uint64            `json:"distinct_count"`
+	Hist        sql.Histogram     `json:"buckets"`
 	IdxClass    uint8             `json:"index_class"`
+	LowerBnd    sql.Row           `json:"lower_bound"`
+	Fds         *sql.FuncDepSet   `json:"-"`
+	Colset      sql.ColSet        `json:"-"`
 }
 
 // StatisticJSON is used as an intermediary to deserialize the memory stats
 // object. Otherwise, the histogram would have to be deserialized separately.
 type StatisticJSON struct {
+	RowCnt      uint64            `json:"row_count"`
+	DistinctCnt uint64            `json:"distinct_count"`
+	NullCnt     uint64            `json:"null_count"`
+	AvgRowSize  uint64            `json:"avg_size"`
 	Created     time.Time         `json:"created_at"`
-	Fds         *sql.FuncDepSet   `json:"-"`
 	Qual        sql.StatQualifier `json:"qualifier"`
-	Colset      sql.ColSet        `json:"-"`
-	Hist        []*Bucket         `json:"buckets"`
-	LowerBnd    sql.Row           `json:"lower_bound"`
 	Cols        []string          `json:"columns"`
 	Typs        []sql.Type        `json:"-"`
-	AvgRowSize  uint64            `json:"avg_size"`
-	RowCnt      uint64            `json:"row_count"`
-	NullCnt     uint64            `json:"null_count"`
-	DistinctCnt uint64            `json:"distinct_count"`
+	Hist        []*Bucket         `json:"buckets"`
 	IdxClass    uint8             `json:"index_class"`
+	LowerBnd    sql.Row           `json:"lower_bound"`
+	Fds         *sql.FuncDepSet   `json:"-"`
+	Colset      sql.ColSet        `json:"-"`
 }
 
 func (j *StatisticJSON) ToStatistic() *Statistic {
@@ -291,13 +291,13 @@ func NewHistogramBucket(rowCount, distinctCount, nullCount, boundCount uint64, b
 }
 
 type Bucket struct {
-	McvsCnt     []uint64  `json:"mcv_counts"`
-	BoundVal    sql.Row   `json:"upper_bound"`
-	McvVals     []sql.Row `json:"mcvs"`
 	RowCnt      uint64    `json:"row_count"`
 	DistinctCnt uint64    `json:"distinct_count"`
 	NullCnt     uint64    `json:"null_count"`
+	McvsCnt     []uint64  `json:"mcv_counts"`
 	BoundCnt    uint64    `json:"bound_count"`
+	BoundVal    sql.Row   `json:"upper_bound"`
+	McvVals     []sql.Row `json:"mcvs"`
 }
 
 var _ sql.HistogramBucket = (*Bucket)(nil)
