@@ -26,11 +26,11 @@ import (
 
 // enabledEvent is used for storing a list of events that are enabled in EventScheduler.
 type enabledEvent struct {
-	edb             sql.EventDatabase
-	event           sql.EventDefinition
 	nextExecutionAt time.Time
+	edb             sql.EventDatabase
 	username        string
 	address         string
+	event           sql.EventDefinition
 }
 
 var _ fmt.Stringer = (*enabledEvent)(nil)

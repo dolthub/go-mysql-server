@@ -23,24 +23,24 @@ import (
 )
 
 type LoadData struct {
-	Local     bool
-	File      string
-	DestSch   sql.Schema
-	ColNames  []string
-	SetExprs  []sql.Expression
-	UserVars  []sql.Expression
-	IgnoreNum int64
-	IsIgnore  bool
-	IsReplace bool
-	Charset   string
+	File               string
+	FieldsEscapedBy    string
+	LinesTerminatedBy  string
+	LinesStartingBy    string
+	Charset            string
+	FieldsTerminatedBy string
+	FieldsEnclosedBy   string
 
-	FieldsTerminatedBy  string
-	FieldsEnclosedBy    string
+	DestSch  sql.Schema
+	ColNames []string
+	SetExprs []sql.Expression
+	UserVars []sql.Expression
+
+	IgnoreNum           int64
+	Local               bool
 	FieldsEnclosedByOpt bool
-	FieldsEscapedBy     string
-
-	LinesStartingBy   string
-	LinesTerminatedBy string
+	IsIgnore            bool
+	IsReplace           bool
 }
 
 var _ sql.Node = (*LoadData)(nil)

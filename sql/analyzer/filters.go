@@ -92,11 +92,11 @@ func exprToTableFilters(expr sql.Expression) filtersByTable {
 }
 
 type filterSet struct {
-	filterPredicates    []sql.Expression
 	filtersByTable      filtersByTable
+	tableAliases        TableAliases
+	filterPredicates    []sql.Expression
 	handledFilters      []sql.Expression
 	handledIndexFilters []string
-	tableAliases        TableAliases
 }
 
 // newFilterSet returns a new filter set that will track available filters with the filters and aliases given. Aliases

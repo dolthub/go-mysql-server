@@ -44,11 +44,6 @@ type StoredProcedureDetails struct {
 // or deleted by a user. In addition, they're implemented as a function taking standard parameters, compared to stored
 // procedures being implemented as expressions.
 type ExternalStoredProcedureDetails struct {
-	// Name is the name of the external stored procedure. If two external stored procedures share a name, then they're
-	// considered overloaded. Standard stored procedures do not support overloading.
-	Name string
-	// Schema describes the row layout of the RowIter returned from Function.
-	Schema Schema
 	// Function is the implementation of the external stored procedure. All functions should have the following definition:
 	// `func(*Context, <PARAMETERS>) (RowIter, error)`. The <PARAMETERS> may be any of the following types: `bool`,
 	// `string`, `[]byte`, `int8`-`int64`, `uint8`-`uint64`, `float32`, `float64`, `time.Time`, or `Decimal`
@@ -73,6 +68,11 @@ type ExternalStoredProcedureDetails struct {
 	// to the usage of the integer-max for the parameter count, only one variadic function is allowed per function name.
 	// The type of the variadic parameter may not have a pointer type.
 	Function interface{}
+	// Name is the name of the external stored procedure. If two external stored procedures share a name, then they're
+	// considered overloaded. Standard stored procedures do not support overloading.
+	Name string
+	// Schema describes the row layout of the RowIter returned from Function.
+	Schema Schema
 	// If true, the procedure is ReadOnly and can be run against a locked or read-only server.
 	ReadOnly bool
 	// If true, then this procedure's access control requires that the user must have explicit Execute permissions

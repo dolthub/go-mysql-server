@@ -40,8 +40,8 @@ func (r Row2) Len() int {
 
 // Value is a logical index into a Row2. For efficiency reasons, use sparingly.
 type Value struct {
-	Typ querypb.Type
 	Val ValueBytes
+	Typ querypb.Type
 }
 
 // IsNull returns whether this value represents NULL

@@ -26,13 +26,13 @@ import (
 // don't overlap, the amortized complexity is O(1) for each result row.
 type RangeHeap struct {
 	UnaryNode
-	ValueColumnIndex   int
-	MinColumnIndex     int
-	MaxColumnIndex     int
 	ValueColumnGf      sql.Expression
 	MinColumnGf        sql.Expression
 	MaxColumnGf        sql.Expression
 	ComparisonType     sql.Type
+	ValueColumnIndex   int
+	MinColumnIndex     int
+	MaxColumnIndex     int
 	RangeIsClosedBelow bool
 	RangeIsClosedAbove bool
 }

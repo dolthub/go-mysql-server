@@ -53,10 +53,10 @@ const (
 
 // ProcedureParam represents the parameter of a stored procedure.
 type ProcedureParam struct {
-	Direction ProcedureParamDirection // Direction is the direction of the parameter.
-	Name      string                  // Name is the name of the parameter.
-	Type      sql.Type                // Type is the SQL type of the parameter.
-	Variadic  bool                    // Variadic states whether the parameter is variadic.
+	Type      sql.Type
+	Name      string
+	Direction ProcedureParamDirection
+	Variadic  bool
 }
 
 // Characteristic represents a characteristic that is defined on either a stored procedure or stored function.
@@ -74,18 +74,21 @@ const (
 
 // Procedure is a stored procedure that may be executed using the CALL statement.
 type Procedure struct {
+	CreatedAt    time.Time
+	ModifiedAt   time.Time
+	ExternalProc sql.Node
+
+	ValidationError error
+
 	Name                  string
 	Definer               string
-	Params                []ProcedureParam
-	SecurityContext       ProcedureSecurityContext
 	Comment               string
-	Characteristics       []Characteristic
 	CreateProcedureString string
-	Ops                   []*procedures.InterpreterOperation
-	ExternalProc          sql.Node
-	CreatedAt             time.Time
-	ModifiedAt            time.Time
-	ValidationError       error
+
+	Params          []ProcedureParam
+	Characteristics []Characteristic
+	Ops             []*procedures.InterpreterOperation
+	SecurityContext ProcedureSecurityContext
 }
 
 var _ sql.Node = (*Procedure)(nil)

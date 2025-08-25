@@ -29,24 +29,23 @@ import (
 )
 
 type Catalog struct {
-	MySQLDb       *mysql_db.MySQLDb
 	InfoSchema    sql.Database
 	StatsProvider sql.StatsProvider
-
-	DbProvider       sql.DatabaseProvider
-	AuthHandler      sql.AuthorizationHandler
-	builtInFunctions function.Registry
+	DbProvider    sql.DatabaseProvider
+	AuthHandler   sql.AuthorizationHandler
 
 	// BinlogReplicaController holds an optional controller that receives forwarded binlog
 	// replication messages (e.g. "start replica").
 	BinlogReplicaController binlogreplication.BinlogReplicaController
-
 	// BinlogPrimaryController holds an optional controller that receives forwarded binlog
 	// replication messages (e.g. "show replicas") and commands (e.g. COM_REGISTER_REPLICA).
 	BinlogPrimaryController binlogreplication.BinlogPrimaryController
 
-	mu    sync.RWMutex
+	MySQLDb          *mysql_db.MySQLDb
+	builtInFunctions function.Registry
+
 	locks sessionLocks
+	mu    sync.RWMutex
 }
 
 func (c *Catalog) DropDbStats(ctx *sql.Context, db string, flush bool) error {

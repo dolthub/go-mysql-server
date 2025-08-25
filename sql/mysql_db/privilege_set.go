@@ -407,10 +407,10 @@ type routineKey struct {
 
 // PrivilegeSetDatabase is a set containing database-level privileges.
 type PrivilegeSetDatabase struct {
-	name     string
 	privs    map[sql.PrivilegeType]struct{}
 	tables   map[string]PrivilegeSetTable
 	routines map[routineKey]PrivilegeSetRoutine
+	name     string
 }
 
 var _ sql.PrivilegeSetDatabase = PrivilegeSetDatabase{}
@@ -639,9 +639,9 @@ func (ps PrivilegeSetDatabase) clear() {
 
 // PrivilegeSetTable is a set containing table-level privileges.
 type PrivilegeSetTable struct {
-	name    string
 	privs   map[sql.PrivilegeType]struct{}
 	columns map[string]PrivilegeSetColumn
+	name    string
 }
 
 var _ sql.PrivilegeSetTable = PrivilegeSetTable{}
@@ -789,8 +789,8 @@ func (ps PrivilegeSetTable) clear() {
 
 // PrivilegeSetColumn is a set containing column privileges.
 type PrivilegeSetColumn struct {
-	name  string
 	privs map[sql.PrivilegeType]struct{}
+	name  string
 }
 
 var _ sql.PrivilegeSetColumn = PrivilegeSetColumn{}
@@ -861,9 +861,9 @@ func (ps PrivilegeSetColumn) clear() {
 }
 
 type PrivilegeSetRoutine struct {
-	name   string
-	isProc bool // true = procedure, false = function
 	privs  map[sql.PrivilegeType]struct{}
+	name   string
+	isProc bool
 }
 
 // unionWith merges the given set of privileges to the calling set of privileges.

@@ -39,8 +39,8 @@ var _ sql.Expression = (*Like)(nil)
 var _ sql.CollationCoercible = (*Like)(nil)
 
 type likeMatcherErrTuple struct {
-	matcher LikeMatcher
 	err     error
+	matcher LikeMatcher
 }
 
 // NewLike creates a new LIKE expression.
@@ -112,7 +112,7 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 				New: func() interface{} {
 					collation, _ := l.CollationCoercibility(ctx)
 					m, e := ConstructLikeMatcher(collation, *right, escape)
-					return likeMatcherErrTuple{m, e}
+					return likeMatcherErrTuple{matcher: m, err: e}
 				},
 			}
 		})
@@ -125,7 +125,7 @@ func (l *Like) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	ok := lm.Match(left.(string))
 	if l.cached {
-		l.pool.Put(likeMatcherErrTuple{lm, nil})
+		l.pool.Put(likeMatcherErrTuple{matcher: lm})
 	}
 	return ok, nil
 }

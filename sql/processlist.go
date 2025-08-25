@@ -92,19 +92,17 @@ const (
 
 // Process represents a process in the SQL server.
 type Process struct {
-	Connection uint32
+	// The time of the last Command transition
+	StartedAt  time.Time
+	Progress   map[string]TableProgress
+	Kill       context.CancelFunc
 	Host       string
 	Database   string
 	User       string
 	Command    ProcessCommand
-
-	// The time of the last Command transition...
-	StartedAt time.Time
-
-	QueryPid uint64
-	Query    string
-	Progress map[string]TableProgress
-	Kill     context.CancelFunc
+	Query      string
+	QueryPid   uint64
+	Connection uint32
 }
 
 // Done needs to be called when this process has finished.
@@ -132,8 +130,8 @@ func (p Progress) totalString() string {
 
 // TableProgress keeps track of a table progress, and for each of its partitions
 type TableProgress struct {
-	Progress
 	PartitionsProgress map[string]PartitionProgress
+	Progress
 }
 
 func NewTableProgress(name string, total int64) TableProgress {

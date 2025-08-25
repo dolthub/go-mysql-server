@@ -29,16 +29,16 @@ import (
 type CreateView struct {
 	UnaryNode
 	database         sql.Database
-	targetSchema     sql.Schema
-	Name             string
-	IfNotExists      bool
-	IsReplace        bool
 	Definition       *SubqueryAlias
+	Name             string
 	CreateViewString string
 	Algorithm        string
 	Definer          string
 	Security         string
 	CheckOpt         string
+	targetSchema     sql.Schema
+	IfNotExists      bool
+	IsReplace        bool
 }
 
 var _ sql.Node = (*CreateView)(nil)

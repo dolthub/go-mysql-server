@@ -26,14 +26,14 @@ import (
 
 // Grant represents the statement GRANT [privilege...] ON [item] TO [user...].
 type Grant struct {
-	Privileges      []Privilege
-	ObjectType      ObjectType
-	PrivilegeLevel  PrivilegeLevel
-	Users           []UserName
-	WithGrantOption bool
-	As              *GrantUserAssumption
 	MySQLDb         sql.Database
 	Catalog         sql.Catalog
+	As              *GrantUserAssumption
+	PrivilegeLevel  PrivilegeLevel
+	Privileges      []Privilege
+	Users           []UserName
+	ObjectType      ObjectType
+	WithGrantOption bool
 }
 
 var _ sql.Node = (*Grant)(nil)
@@ -540,10 +540,10 @@ func (n *Grant) HandleRoutinePrivileges(user *mysql_db.User, dbName string, rout
 
 // GrantRole represents the statement GRANT [role...] TO [user...].
 type GrantRole struct {
+	MySQLDb         sql.Database
 	Roles           []UserName
 	TargetUsers     []UserName
 	WithAdminOption bool
-	MySQLDb         sql.Database
 }
 
 var _ sql.Node = (*GrantRole)(nil)

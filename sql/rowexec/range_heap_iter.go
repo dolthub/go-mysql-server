@@ -16,26 +16,28 @@ import (
 // joinIter is an iterator that iterates over every row in the primary table and performs an index lookup in
 // the secondary table for each value
 type rangeHeapJoinIter struct {
-	ctx      *sql.Context
-	err      error
-	b        sql.NodeExecBuilder
-	joinType plan.JoinType
-	cond     sql.Expression
+	b   sql.NodeExecBuilder
+	err error
 
-	primary        sql.RowIter
-	primaryRow     sql.Row
-	loadPrimaryRow bool
+	cond         sql.Expression
+	primary      sql.RowIter
+	secondary    sql.RowIter
+	childRowIter sql.RowIter
 
-	secondary  sql.RowIter
-	foundMatch bool
-	rowSize    int
-	scopeLen   int
-	parentLen  int
-
+	ctx           *sql.Context
 	rangeHeapPlan *plan.RangeHeap
-	childRowIter  sql.RowIter
-	pendingRow    sql.Row
-	activeRanges  []sql.Row
+
+	activeRanges []sql.Row
+	pendingRow   sql.Row
+	primaryRow   sql.Row
+
+	scopeLen  int
+	parentLen int
+	rowSize   int
+
+	foundMatch     bool
+	loadPrimaryRow bool
+	joinType       plan.JoinType
 }
 
 func newRangeHeapJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode, row sql.Row) (sql.RowIter, error) {

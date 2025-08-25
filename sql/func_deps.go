@@ -59,9 +59,9 @@ func (e *EquivSets) String() string {
 
 // Key maintains a strict or lax dependency
 type Key struct {
-	strict  bool
 	cols    ColSet
 	allCols ColSet
+	strict  bool
 }
 
 func (k *Key) Empty() bool {

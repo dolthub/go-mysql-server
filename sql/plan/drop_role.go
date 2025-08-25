@@ -25,9 +25,9 @@ import (
 
 // DropRole represents the statement DROP ROLE.
 type DropRole struct {
-	IfExists bool
-	Roles    []UserName
 	MySQLDb  sql.Database
+	Roles    []UserName
+	IfExists bool
 }
 
 // NewDropRole returns a new DropRole node.

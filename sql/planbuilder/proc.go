@@ -41,11 +41,11 @@ const (
 
 type procCtx struct {
 	s          *scope
-	handlers   []*plan.DeclareHandler
 	conditions map[string]*plan.DeclareCondition
 	vars       map[string]scopeColumn
 	cursors    map[string]struct{}
 	labels     map[string]bool
+	handlers   []*plan.DeclareHandler
 	lastState  declareState
 }
 

@@ -20,9 +20,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dolthub/vitess/go/mysql"
-
 	"github.com/dolthub/go-mysql-server/sql"
+
+	"github.com/dolthub/vitess/go/mysql"
 )
 
 // BinlogReplicaController allows callers to control a binlog replica. Providers built on go-mysql-server may optionally
@@ -114,42 +114,37 @@ type BinaryLogFileMetadata struct {
 // by the server.
 // https://dev.mysql.com/doc/refman/8.3/en/show-binary-log-status.html
 type BinaryLogStatus struct {
-	// The filename of the binary log file.
-	File string
-	// The latest byte position in the binary log file.
-	Position uint
-	// Names of the databases whose changes are being tracked in this binary log.
-	DoDbs string
-	// Names of the databases whose changes are NOT being included in this binary log.
-	IgnoreDbs string
-	// The set of GTIDs that have been executed on this server.
+	File          string
+	DoDbs         string
+	IgnoreDbs     string
 	ExecutedGtids string
+	Position      uint
 }
 
 // ReplicaStatus stores the status of a single binlog replica and is returned by `SHOW REPLICA STATUS`.
 // https://dev.mysql.com/doc/refman/8.0/en/show-replica-status.html
 type ReplicaStatus struct {
-	SourceHost            string
-	SourceUser            string
-	SourceSsl             bool
-	SourcePort            uint
-	ConnectRetry          uint32
-	SourceRetryCount      uint64
-	ReplicaIoRunning      string
-	ReplicaSqlRunning     string
-	LastSqlErrNumber      uint   // Alias for LastErrNumber
-	LastSqlError          string // Alias for LastError
-	LastIoErrNumber       uint
-	LastIoError           string
-	SourceServerId        string
-	SourceServerUuid      string
 	LastSqlErrorTimestamp *time.Time
 	LastIoErrorTimestamp  *time.Time
+	LastSqlError          string // Alias for LastError
+	LastIoError           string
+	SourceHost            string
+	SourceUser            string
+	SourceServerId        string
+	SourceServerUuid      string
 	RetrievedGtidSet      string
 	ExecutedGtidSet       string
-	AutoPosition          bool
+	ReplicaIoRunning      string
+	ReplicaSqlRunning     string
 	ReplicateDoTables     []string
 	ReplicateIgnoreTables []string
+	SourceRetryCount      uint64
+	SourcePort            uint
+	LastIoErrNumber       uint
+	LastSqlErrNumber      uint // Alias for LastErrNumber
+	ConnectRetry          uint32
+	AutoPosition          bool
+	SourceSsl             bool
 }
 
 // BinlogReplicaCatalog extends the Catalog interface and provides methods for accessing a BinlogReplicaController
@@ -181,8 +176,8 @@ const (
 // ReplicationOption represents a single option for replication configuration, as specified through the
 // CHANGE REPLICATION SOURCE TO command: https://dev.mysql.com/doc/refman/8.0/en/change-replication-source-to.html
 type ReplicationOption struct {
-	Name  string
 	Value ReplicationOptionValue
+	Name  string
 }
 
 // ReplicationOptionValue defines an interface for configuration option values for binlog replication. It holds the

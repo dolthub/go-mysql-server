@@ -33,27 +33,31 @@ var BinderFactory = &sync.Pool{New: func() interface{} {
 }}
 
 type Builder struct {
-	ctx             *sql.Context
-	cat             sql.Catalog
-	parserOpts      ast.ParserOptions
-	f               *factory
-	currentDatabase sql.Database
-	colId           columnId
-	tabId           sql.TableId
-	multiDDL        bool
-	viewCtx         *ViewContext
-	procCtx         *ProcContext
-	triggerCtx      *TriggerContext
-	bindCtx         *BindvarContext
-	insertActive    bool
-	nesting         int
 	// EventScheduler is used to communicate with the event scheduler
 	// for any EVENT related statements. It can be nil if EventScheduler is not defined.
-	scheduler      sql.EventScheduler
-	parser         sql.Parser
-	qFlags         *sql.QueryFlags
-	authEnabled    bool
-	authQueryState sql.AuthorizationQueryState
+	scheduler       sql.EventScheduler
+	cat             sql.Catalog
+	authQueryState  sql.AuthorizationQueryState
+	parser          sql.Parser
+	currentDatabase sql.Database
+
+	f          *factory
+	viewCtx    *ViewContext
+	procCtx    *ProcContext
+	triggerCtx *TriggerContext
+	bindCtx    *BindvarContext
+	ctx        *sql.Context
+	qFlags     *sql.QueryFlags
+
+	nesting int
+
+	tabId sql.TableId
+	colId columnId
+
+	authEnabled  bool
+	multiDDL     bool
+	insertActive bool
+	parserOpts   ast.ParserOptions
 }
 
 // BindvarContext holds bind variable replacement literals.
@@ -95,10 +99,10 @@ type ViewContext struct {
 }
 
 type TriggerContext struct {
+	ResolveErr       error
+	UnresolvedTables []string
 	Active           bool
 	Call             bool
-	UnresolvedTables []string
-	ResolveErr       error
 }
 
 // ProcContext allows nested CALLs to use the same database for resolving

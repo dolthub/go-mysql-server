@@ -30,19 +30,18 @@ import (
 // RegexpReplace implements the REGEXP_REPLACE function.
 // https://dev.mysql.com/doc/refman/8.0/en/regexp.html#function_regexp-replace
 type RegexpReplace struct {
-	Text       sql.Expression
-	Pattern    sql.Expression
-	RText      sql.Expression
-	Position   sql.Expression
-	Occurrence sql.Expression
-	Flags      sql.Expression
-
-	cacheVal    bool
+	Text        sql.Expression
+	Pattern     sql.Expression
+	RText       sql.Expression
+	Position    sql.Expression
+	Occurrence  sql.Expression
+	Flags       sql.Expression
 	cachedVal   any
-	cacheRegex  bool
 	re          regex.Regex
-	compileOnce sync.Once
 	compileErr  error
+	compileOnce sync.Once
+	cacheVal    bool
+	cacheRegex  bool
 }
 
 var _ sql.FunctionExpression = (*RegexpReplace)(nil)

@@ -26,12 +26,12 @@ import (
 
 // Revoke represents the statement REVOKE [privilege...] ON [item] FROM [user...].
 type Revoke struct {
-	Privileges        []Privilege
-	ObjectType        ObjectType
-	PrivilegeLevel    PrivilegeLevel
-	Users             []UserName
-	IgnoreUnknownUser bool
 	MySQLDb           sql.Database
+	PrivilegeLevel    PrivilegeLevel
+	Privileges        []Privilege
+	Users             []UserName
+	ObjectType        ObjectType
+	IgnoreUnknownUser bool
 }
 
 var _ sql.Node = (*Revoke)(nil)
@@ -428,11 +428,11 @@ func (n *Revoke) HandleRoutinePrivileges(user *mysql_db.User, dbName string, rou
 
 // RevokeRole represents the statement REVOKE [role...] FROM [user...].
 type RevokeRole struct {
+	MySQLDb           sql.Database
 	Roles             []UserName
 	TargetUsers       []UserName
 	IfExists          bool
 	IgnoreUnknownUser bool
-	MySQLDb           sql.Database
 }
 
 var _ sql.Node = (*RevokeRole)(nil)

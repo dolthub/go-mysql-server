@@ -55,23 +55,21 @@ type PlaintextAuthPlugin interface {
 
 // MySQLDb are the collection of tables that are in the MySQL database
 type MySQLDb struct {
+	persister MySQLDbPersistence
 	*authServer
 
-	enabled atomic.Bool
-
-	user                *in_mem_table.IndexedSetTable[*User]
 	role_edges          *in_mem_table.IndexedSetTable[*RoleEdge]
 	replica_source_info *in_mem_table.IndexedSetTable[*ReplicaSourceInfo]
+	user                *in_mem_table.IndexedSetTable[*User]
+	db                  *in_mem_table.MultiIndexedSetTable[*User]
+	tables_priv         *in_mem_table.MultiIndexedSetTable[*User]
+	procs_priv          *in_mem_table.MultiIndexedSetTable[*User]
+	global_grants       *in_mem_table.MultiIndexedSetTable[*User]
 
+	help_relation *mysqlTable
 	help_topic    *mysqlTable
 	help_keyword  *mysqlTable
 	help_category *mysqlTable
-	help_relation *mysqlTable
-
-	db            *in_mem_table.MultiIndexedSetTable[*User]
-	tables_priv   *in_mem_table.MultiIndexedSetTable[*User]
-	procs_priv    *in_mem_table.MultiIndexedSetTable[*User]
-	global_grants *in_mem_table.MultiIndexedSetTable[*User]
 
 	//TODO: add the rest of these tables
 	//columns_priv     *mysqlTable
@@ -79,11 +77,10 @@ type MySQLDb struct {
 	//default_roles    *mysqlTable
 	//password_history *mysqlTable
 
-	persister MySQLDbPersistence
-	plugins   map[string]PlaintextAuthPlugin
-
-	lock          sync.RWMutex
+	plugins       map[string]PlaintextAuthPlugin
 	updateCounter atomic.Uint64
+	lock          sync.RWMutex
+	enabled       atomic.Bool
 }
 
 var _ sql.Database = (*MySQLDb)(nil)
@@ -134,11 +131,10 @@ func CreateEmptyMySQLDb() *MySQLDb {
 }
 
 type Reader struct {
+	close             func()
 	users             in_mem_table.IndexedSet[*User]
 	roleEdges         in_mem_table.IndexedSet[*RoleEdge]
 	replicaSourceInfo in_mem_table.IndexedSet[*ReplicaSourceInfo]
-
-	close func()
 }
 
 type UserFetcher interface {
@@ -289,20 +285,19 @@ func (ed *Editor) Close() {
 
 func (db *MySQLDb) unlockedReader() *Reader {
 	return &Reader{
-		db.user.Set(),
-		db.role_edges.Set(),
-		db.replica_source_info.Set(),
-		nil,
+		users:             db.user.Set(),
+		roleEdges:         db.role_edges.Set(),
+		replicaSourceInfo: db.replica_source_info.Set(),
 	}
 }
 
 func (db *MySQLDb) Reader() *Reader {
 	db.lock.RLock()
 	return &Reader{
-		db.user.Set(),
-		db.role_edges.Set(),
-		db.replica_source_info.Set(),
-		func() {
+		users:             db.user.Set(),
+		roleEdges:         db.role_edges.Set(),
+		replicaSourceInfo: db.replica_source_info.Set(),
+		close: func() {
 			db.lock.RUnlock()
 		},
 	}

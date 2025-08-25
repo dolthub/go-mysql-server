@@ -25,9 +25,9 @@ import (
 
 // CreateRole represents the statement CREATE ROLE.
 type CreateRole struct {
-	IfNotExists bool
-	Roles       []UserName
 	MySQLDb     sql.Database
+	Roles       []UserName
+	IfNotExists bool
 }
 
 // NewCreateRole returns a new CreateRole node.

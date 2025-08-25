@@ -15,12 +15,12 @@ func NewUpdateHistogram(db, table, index string, cols []string, stats sql.Statis
 }
 
 type UpdateHistogram struct {
+	stats sql.Statistic
+	prov  sql.StatsProvider
 	db    string
 	table string
 	index string
 	cols  []string
-	stats sql.Statistic
-	prov  sql.StatsProvider
 }
 
 var _ sql.Node = (*UpdateHistogram)(nil)
@@ -85,11 +85,11 @@ func NewDropHistogram(db, schema, table string, cols []string) *DropHistogram {
 }
 
 type DropHistogram struct {
+	prov   sql.StatsProvider
 	db     string
 	schema string
 	table  string
 	cols   []string
-	prov   sql.StatsProvider
 }
 
 var _ sql.Node = (*DropHistogram)(nil)

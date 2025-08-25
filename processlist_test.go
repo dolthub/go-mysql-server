@@ -52,8 +52,14 @@ func TestProcessList(t *testing.T) {
 		Connection: 1,
 		Host:       clientHostOne,
 		Progress: map[string]sql.TableProgress{
-			"a": {sql.Progress{Name: "a", Done: 0, Total: 5}, map[string]sql.PartitionProgress{}},
-			"b": {sql.Progress{Name: "b", Done: 0, Total: 6}, map[string]sql.PartitionProgress{}},
+			"a": {
+				PartitionsProgress: map[string]sql.PartitionProgress{},
+				Progress:           sql.Progress{Name: "a", Done: 0, Total: 5},
+			},
+			"b": {
+				PartitionsProgress: map[string]sql.PartitionProgress{},
+				Progress:           sql.Progress{Name: "b", Done: 0, Total: 6},
+			},
 		},
 		User:      "foo",
 		Query:     "SELECT foo",
@@ -74,11 +80,17 @@ func TestProcessList(t *testing.T) {
 	p.RemovePartitionProgress(ctx.Pid(), "b", "b-3")
 
 	expectedProgress := map[string]sql.TableProgress{
-		"a": {sql.Progress{Name: "a", Total: 5}, map[string]sql.PartitionProgress{}},
-		"b": {sql.Progress{Name: "b", Total: 6}, map[string]sql.PartitionProgress{
-			"b-1": {sql.Progress{Name: "b-1", Done: 0, Total: -1}},
-			"b-2": {sql.Progress{Name: "b-2", Done: 1, Total: -1}},
-		}},
+		"a": {
+			PartitionsProgress: map[string]sql.PartitionProgress{},
+			Progress:           sql.Progress{Name: "a", Total: 5},
+		},
+		"b": {
+			PartitionsProgress: map[string]sql.PartitionProgress{
+				"b-1": {sql.Progress{Name: "b-1", Done: 0, Total: -1}},
+				"b-2": {sql.Progress{Name: "b-2", Done: 1, Total: -1}},
+			},
+			Progress: sql.Progress{Name: "b", Total: 6},
+		},
 	}
 	require.Equal(expectedProgress, p.procs[1].Progress)
 

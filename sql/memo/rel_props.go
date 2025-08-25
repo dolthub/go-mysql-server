@@ -30,20 +30,17 @@ import (
 // relProps are relational attributes shared by all plans in an expression
 // group (see: ExprGroup).
 type relProps struct {
-	grp *ExprGroup
-
-	fds          *sql.FuncDepSet
 	outputCols   sql.ColSet
 	reqIdxCols   sql.ColSet
 	inputTables  sql.FastIntSet
 	outputTables sql.FastIntSet
+	stat         sql.Statistic
+	Limit        sql.Expression
+	grp          *ExprGroup
+	fds          *sql.FuncDepSet
 	tableNodes   []plan.TableIdNode
-
-	stat sql.Statistic
-
-	Distinct distinctOp
-	Limit    sql.Expression
-	sort     sql.SortFields
+	sort         sql.SortFields
+	Distinct     distinctOp
 }
 
 func newRelProps(rel RelExpr) *relProps {

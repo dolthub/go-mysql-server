@@ -50,9 +50,9 @@ var _ sql.EventScheduler = (*EventScheduler)(nil)
 
 // EventScheduler is responsible for SQL events execution.
 type EventScheduler struct {
-	status        SchedulerStatus
 	executor      *eventExecutor
 	ctxGetterFunc func() (*sql.Context, error)
+	status        SchedulerStatus
 }
 
 // InitEventScheduler is called at the start of the server. This function returns EventScheduler object

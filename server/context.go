@@ -38,21 +38,21 @@ type DoneFunc func()
 // connections and keep track of which sessions are in each connection, so
 // they can be cancelled if the connection is closed.
 type SessionManager struct {
-	addr        string
 	tracer      trace.Tracer
+	processlist sql.ProcessList
 	getDbFunc   func(ctx *sql.Context, db string) (sql.Database, error)
 	memory      *sql.MemoryManager
-	processlist sql.ProcessList
 	mu          *sync.Mutex
 	builder     SessionBuilder
 	sessions    map[uint32]sql.Session
 	connections map[uint32]*mysql.Conn
-	lastPid     uint64
 	ctxFactory  sql.ContextFactory
+	addr        string
 	// Implements WaitForClosedConnections(), which is only used
 	// at server shutdown to allow the integrator to ensure that
 	// no connections are being handled by handlers.
-	wg sync.WaitGroup
+	wg      sync.WaitGroup
+	lastPid uint64
 }
 
 // NewSessionManager creates a SessionManager with the given SessionBuilder.

@@ -21,10 +21,10 @@ import (
 
 type IndexDef struct {
 	Name       string
+	Comment    string
 	Columns    []IndexColumn
 	Constraint IndexConstraint
 	Storage    IndexUsing
-	Comment    string
 }
 
 func (i *IndexDef) String() string {
@@ -151,17 +151,13 @@ type ExtendedIndex interface {
 // information to retrieve exactly the rows in the table as specified by the ranges given to their parent index.
 // Implementors are responsible for all semantics of correctly returning rows that match an index lookup.
 type IndexLookup struct {
-	Index  Index
-	Ranges RangeCollection
-	// IsPointLookup is true if the lookup will return one or zero
-	// values; the range is null safe, the index is unique, every index
-	// column has a range expression, and every range expression is an
-	// exact equality.
+	Index               Index
+	Ranges              RangeCollection
+	VectorOrderAndLimit OrderAndLimit
 	IsPointLookup       bool
 	IsEmptyRange        bool
 	IsSpatialLookup     bool
 	IsReverse           bool
-	VectorOrderAndLimit OrderAndLimit
 }
 
 var emptyLookup = IndexLookup{}
@@ -229,8 +225,8 @@ type OrderedIndex interface {
 
 // ColumnExpressionType returns a column expression along with its Type.
 type ColumnExpressionType struct {
-	Expression string
 	Type       Type
+	Expression string
 }
 
 // ValidatePrimaryKeyDrop validates that a primary key may be dropped. If any validation error is returned, then it

@@ -49,14 +49,14 @@ const (
 	KeyType_None
 )
 
-// KeyColumns contains all of the information needed to create key columns for each Full-Text table.
+// KeyColumns contains all the information needed to create key columns for each Full-Text table.
 type KeyColumns struct {
-	// Type refers to the type of key that the columns belong to.
-	Type KeyType
 	// Name is the name of the key. Only unique keys will have a name.
 	Name string
 	// Positions represents the schema index positions for primary keys and unique keys.
 	Positions []int
+	// Type refers to the type of key that the columns belong to.
+	Type KeyType
 }
 
 // Database allows a database to return a set of unique names that will be used for the pseudo-index tables with

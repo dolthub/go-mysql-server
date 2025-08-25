@@ -507,8 +507,8 @@ func OrderedCuts(l, r MySQLRangeCut, typ Type) (MySQLRangeCut, MySQLRangeCut, er
 
 // rangeColumnExprSlice is a sortable slice of RangeColumnExprs.
 type rangeColumnExprSlice struct {
-	ranges []MySQLRangeColumnExpr
 	err    error
+	ranges []MySQLRangeColumnExpr
 }
 
 func (r *rangeColumnExprSlice) Len() int      { return len(r.ranges) }

@@ -32,12 +32,11 @@ type DeleteFrom struct {
 	// single source table, targets do NOT need to be explicitly specified and will not be set here. For DELETE FROM JOIN
 	// statements, targets MUST be explicitly specified by the user and will be populated here.
 	explicitTargets []sql.Node
-	RefsSingleRel   bool
-	IsProcNested    bool
-
 	// Returning is a list of expressions to return after the delete operation. This feature is not
 	// supported in MySQL's syntax, but is exposed through PostgreSQL's syntax.
-	Returning []sql.Expression
+	Returning     []sql.Expression
+	RefsSingleRel bool
+	IsProcNested  bool
 }
 
 var _ sql.Databaseable = (*DeleteFrom)(nil)

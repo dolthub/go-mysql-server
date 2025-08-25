@@ -16,43 +16,43 @@ package analyzer
 
 func init() {
 	OnceAfterAll = []Rule{
-		{assignExecIndexesId, assignExecIndexes},
+		{Id: assignExecIndexesId, Apply: assignExecIndexes},
 		// resolveInsertRows inserts a projection wrapping values that cannot be seen by fixup
-		{resolveInsertRowsId, resolveInsertRows},
-		{applyTriggersId, applyTriggers},
-		{applyProceduresId, applyProcedures},
-		{inlineSubqueryAliasRefsId, inlineSubqueryAliasRefs},
-		{cacheSubqueryAliasesInJoinsId, cacheSubqueryAliasesInJoins},
-		{QuoteDefaultColumnValueNamesId, quoteDefaultColumnValueNames},
-		{TrackProcessId, trackProcess},
+		{Id: resolveInsertRowsId, Apply: resolveInsertRows},
+		{Id: applyTriggersId, Apply: applyTriggers},
+		{Id: applyProceduresId, Apply: applyProcedures},
+		{Id: inlineSubqueryAliasRefsId, Apply: inlineSubqueryAliasRefs},
+		{Id: cacheSubqueryAliasesInJoinsId, Apply: cacheSubqueryAliasesInJoins},
+		{Id: QuoteDefaultColumnValueNamesId, Apply: quoteDefaultColumnValueNames},
+		{Id: TrackProcessId, Apply: trackProcess},
 	}
 }
 
 // OnceBeforeDefault contains the rules to be applied just once before the
 // DefaultRules.
 var OnceBeforeDefault = []Rule{
-	{applyDefaultSelectLimitId, applyDefaultSelectLimit},
-	{replaceCountStarId, replaceCountStar},
-	{validateOffsetAndLimitId, validateOffsetAndLimit},
-	{ValidateCreateTableId, validateCreateTable},
-	{validateAlterTableId, validateAlterTable},
-	{validateExprSemId, validateExprSem},
-	{resolveDropConstraintId, resolveDropConstraint},
-	{ResolveAlterColumnId, resolveAlterColumn},
-	{validateDropTablesId, validateDropTables},
-	{resolveCreateSelectId, resolveCreateSelect},
-	{validateDropConstraintId, validateDropConstraint},
-	{resolveUnionsId, resolveUnions},
-	{validateCreateTriggerId, validateCreateTrigger},
-	{ValidateColumnDefaultsId, validateColumnDefaults},
-	{validateReadOnlyDatabaseId, validateReadOnlyDatabase},
-	{validateReadOnlyTransactionId, validateReadOnlyTransaction},
-	{validateDatabaseSetId, validateDatabaseSet},
-	{validateDeleteFromId, validateDeleteFrom},
-	{simplifyFiltersId, simplifyFilters}, //TODO inline?
-	{pushNotFiltersId, pushNotFilters},   //TODO inline?
-	{hoistOutOfScopeFiltersId, hoistOutOfScopeFilters},
-	{validateGroupById, validateGroupBy},
+	{Id: applyDefaultSelectLimitId, Apply: applyDefaultSelectLimit},
+	{Id: replaceCountStarId, Apply: replaceCountStar},
+	{Id: validateOffsetAndLimitId, Apply: validateOffsetAndLimit},
+	{Id: ValidateCreateTableId, Apply: validateCreateTable},
+	{Id: validateAlterTableId, Apply: validateAlterTable},
+	{Id: validateExprSemId, Apply: validateExprSem},
+	{Id: resolveDropConstraintId, Apply: resolveDropConstraint},
+	{Id: ResolveAlterColumnId, Apply: resolveAlterColumn},
+	{Id: validateDropTablesId, Apply: validateDropTables},
+	{Id: resolveCreateSelectId, Apply: resolveCreateSelect},
+	{Id: validateDropConstraintId, Apply: validateDropConstraint},
+	{Id: resolveUnionsId, Apply: resolveUnions},
+	{Id: validateCreateTriggerId, Apply: validateCreateTrigger},
+	{Id: ValidateColumnDefaultsId, Apply: validateColumnDefaults},
+	{Id: validateReadOnlyDatabaseId, Apply: validateReadOnlyDatabase},
+	{Id: validateReadOnlyTransactionId, Apply: validateReadOnlyTransaction},
+	{Id: validateDatabaseSetId, Apply: validateDatabaseSet},
+	{Id: validateDeleteFromId, Apply: validateDeleteFrom},
+	{Id: simplifyFiltersId, Apply: simplifyFilters}, //TODO inline?
+	{Id: pushNotFiltersId, Apply: pushNotFilters},   //TODO inline?
+	{Id: hoistOutOfScopeFiltersId, Apply: hoistOutOfScopeFilters},
+	{Id: validateGroupById, Apply: validateGroupBy},
 }
 
 // AlwaysBeforeDefault contains the rules to be applied just once before the
@@ -63,50 +63,50 @@ var AlwaysBeforeDefault []Rule
 
 // DefaultRules to apply when analyzing nodes.
 var DefaultRules = []Rule{
-	{validateStarExpressionsId, validateStarExpressions}, //TODO
-	{pushdownSubqueryAliasFiltersId, pushdownSubqueryAliasFilters},
-	{pruneTablesId, pruneTables},
-	{validateCheckConstraintId, validateCheckConstraints},
-	{unnestInSubqueriesId, unnestInSubqueries},
-	{resolveSubqueriesId, resolveSubqueries},
-	{replaceCrossJoinsId, replaceCrossJoins},
+	{Id: validateStarExpressionsId, Apply: validateStarExpressions}, //TODO
+	{Id: pushdownSubqueryAliasFiltersId, Apply: pushdownSubqueryAliasFilters},
+	{Id: pruneTablesId, Apply: pruneTables},
+	{Id: validateCheckConstraintId, Apply: validateCheckConstraints},
+	{Id: unnestInSubqueriesId, Apply: unnestInSubqueries},
+	{Id: resolveSubqueriesId, Apply: resolveSubqueries},
+	{Id: replaceCrossJoinsId, Apply: replaceCrossJoins},
 }
 
 var OnceAfterDefault = []Rule{
-	{unnestExistsSubqueriesId, unnestExistsSubqueries},
-	{moveJoinCondsToFilterId, moveJoinConditionsToFilter},
-	{finalizeUnionsId, finalizeUnions},
-	{loadTriggersId, loadTriggers},
-	{processTruncateId, processTruncate},
-	{stripTableNameInDefaultsId, stripTableNamesFromColumnDefaults},
-	{pushFiltersId, pushFilters},
-	{optimizeJoinsId, optimizeJoins},
-	{finalizeSubqueriesId, finalizeSubqueries},
-	{applyIndexesFromOuterScopeId, applyIndexesFromOuterScope},
-	{replaceAggId, replaceAgg},
-	{replaceIdxSortId, replaceIdxSort},
-	{eraseProjectionId, eraseProjection},
-	{flattenDistinctId, flattenDistinct},
-	{insertTopNId, insertTopNNodes},
-	{replaceIdxOrderByDistanceId, replaceIdxOrderByDistance},
-	{applyHashInId, applyHashIn},
-	{assignRoutinesId, assignRoutines},
-	{modifyUpdateExprsForJoinId, modifyUpdateExprsForJoin},
-	{applyForeignKeysId, applyForeignKeys},
-	{interpreterId, interpreter},
+	{Id: unnestExistsSubqueriesId, Apply: unnestExistsSubqueries},
+	{Id: moveJoinCondsToFilterId, Apply: moveJoinConditionsToFilter},
+	{Id: finalizeUnionsId, Apply: finalizeUnions},
+	{Id: loadTriggersId, Apply: loadTriggers},
+	{Id: processTruncateId, Apply: processTruncate},
+	{Id: stripTableNameInDefaultsId, Apply: stripTableNamesFromColumnDefaults},
+	{Id: pushFiltersId, Apply: pushFilters},
+	{Id: optimizeJoinsId, Apply: optimizeJoins},
+	{Id: finalizeSubqueriesId, Apply: finalizeSubqueries},
+	{Id: applyIndexesFromOuterScopeId, Apply: applyIndexesFromOuterScope},
+	{Id: replaceAggId, Apply: replaceAgg},
+	{Id: replaceIdxSortId, Apply: replaceIdxSort},
+	{Id: eraseProjectionId, Apply: eraseProjection},
+	{Id: flattenDistinctId, Apply: flattenDistinct},
+	{Id: insertTopNId, Apply: insertTopNNodes},
+	{Id: replaceIdxOrderByDistanceId, Apply: replaceIdxOrderByDistance},
+	{Id: applyHashInId, Apply: applyHashIn},
+	{Id: assignRoutinesId, Apply: assignRoutines},
+	{Id: modifyUpdateExprsForJoinId, Apply: modifyUpdateExprsForJoin},
+	{Id: applyForeignKeysId, Apply: applyForeignKeys},
+	{Id: interpreterId, Apply: interpreter},
 }
 
 // DefaultValidationRules to apply while analyzing nodes.
 var DefaultValidationRules = []Rule{
-	{validateResolvedId, validateResolved},
-	{validateOrderById, validateOrderBy},
-	{validateSchemaSourceId, validateSchemaSource},
-	{validateIndexCreationId, validateIndexCreation},
-	{ValidateOperandsId, validateOperands},
-	{validateIntervalUsageId, validateIntervalUsage},
-	{validateSubqueryColumnsId, validateSubqueryColumns},
-	{validateUnionSchemasMatchId, validateUnionSchemasMatch},
-	{validateAggregationsId, validateAggregations},
+	{Id: validateResolvedId, Apply: validateResolved},
+	{Id: validateOrderById, Apply: validateOrderBy},
+	{Id: validateSchemaSourceId, Apply: validateSchemaSource},
+	{Id: validateIndexCreationId, Apply: validateIndexCreation},
+	{Id: ValidateOperandsId, Apply: validateOperands},
+	{Id: validateIntervalUsageId, Apply: validateIntervalUsage},
+	{Id: validateSubqueryColumnsId, Apply: validateSubqueryColumns},
+	{Id: validateUnionSchemasMatchId, Apply: validateUnionSchemasMatch},
+	{Id: validateAggregationsId, Apply: validateAggregations},
 }
 
 var OnceAfterAll []Rule

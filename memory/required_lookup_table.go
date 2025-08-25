@@ -18,8 +18,8 @@ var _ sql.IndexRequired = RequiredLookupTable{}
 
 // RequiredLookupTable is a table that will error if not executed as an index lookup
 type RequiredLookupTable struct {
-	indexOk bool
 	IntSequenceTable
+	indexOk bool
 }
 
 func (s RequiredLookupTable) RequiredPredicates() []string {

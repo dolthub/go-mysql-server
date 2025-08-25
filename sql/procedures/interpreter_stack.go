@@ -99,9 +99,9 @@ type InterpreterCursor struct {
 
 // InterpreterHandler is a declare handler that specifies an Action during an error Condition.
 type InterpreterHandler struct {
+	Statement ast.Statement
 	Condition ast.DeclareHandlerConditionValue
 	Action    ast.DeclareHandlerAction
-	Statement ast.Statement
 	Counter   int // This is used to track the current position in the stack for the handler
 }
 
@@ -147,7 +147,6 @@ func (iv *InterpreterVariable) ToAST() ast.Expr {
 type InterpreterScopeDetails struct {
 	conditions map[string]*InterpreterCondition
 	cursors    map[string]*InterpreterCursor
-	handlers   []*InterpreterHandler
 	variables  map[string]*InterpreterVariable
 
 	// labels mark the counter of the start of a loop or block.
@@ -155,6 +154,8 @@ type InterpreterScopeDetails struct {
 
 	// database is the current database for this scope.
 	database string
+
+	handlers []*InterpreterHandler
 }
 
 // InterpreterStack represents the working information that an interpreter will use during execution. It is not exactly

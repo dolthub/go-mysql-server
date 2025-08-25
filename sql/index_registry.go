@@ -26,21 +26,18 @@ import (
 
 // IndexRegistry keeps track of all driver-provided indexes in the engine.
 type IndexRegistry struct {
-	// Root path where all the data of the indexes is stored on disk.
-	Root string
-
-	mut        sync.RWMutex
-	indexes    map[indexKey]DriverIndex
-	indexOrder []indexKey
-	statuses   map[indexKey]IndexStatus
-
-	driversMut sync.RWMutex
-	drivers    map[string]IndexDriver
-
-	rcmut            sync.RWMutex
+	indexes          map[indexKey]DriverIndex
+	statuses         map[indexKey]IndexStatus
+	drivers          map[string]IndexDriver
 	refCounts        map[indexKey]int
 	deleteIndexQueue map[indexKey]chan<- struct{}
 	indexLoaders     map[dbTableTuple][]func(ctx *Context) error
+	// Root path where all the data of the indexes is stored on disk.
+	Root       string
+	indexOrder []indexKey
+	mut        sync.RWMutex
+	driversMut sync.RWMutex
+	rcmut      sync.RWMutex
 }
 
 // NewIndexRegistry returns a new Index Registry.

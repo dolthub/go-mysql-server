@@ -155,9 +155,8 @@ func TestCaseType(t *testing.T) {
 			})
 		}
 		return &Case{
-			nil,
-			branches,
-			values[len(values)-1],
+			Branches: branches,
+			Else:     values[len(values)-1],
 		}
 	}
 

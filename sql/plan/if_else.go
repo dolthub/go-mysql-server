@@ -112,8 +112,8 @@ func (ic *IfConditional) implementsRepresentsBlock() {}
 
 // IfElseBlock represents IF/ELSE IF/ELSE statements.
 type IfElseBlock struct {
-	IfConditionals []*IfConditional
 	Else           sql.Node
+	IfConditionals []*IfConditional
 }
 
 var _ sql.CollationCoercible = (*IfElseBlock)(nil)

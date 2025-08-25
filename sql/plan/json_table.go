@@ -54,12 +54,12 @@ func (j *jsonTablePartitionIter) Next(ctx *sql.Context) (sql.Partition, error) {
 }
 
 type JSONTableColOpts struct {
-	Name         string
 	Type         sql.Type
-	ForOrd       bool
-	Exists       bool
 	DefEmptyVal  sql.Expression
 	DefErrorVal  sql.Expression
+	Name         string
+	ForOrd       bool
+	Exists       bool
 	ErrorOnError bool
 	ErrorOnEmpty bool
 }
@@ -112,12 +112,12 @@ func (c *JSONTableCol) WithExpressions(exprs []sql.Expression, idx *int) error {
 
 type JSONTable struct {
 	DataExpr  sql.Expression
+	b         sql.NodeExecBuilder
+	colset    sql.ColSet
 	TableName string
 	RootPath  string
 	Cols      []JSONTableCol
-	b         sql.NodeExecBuilder
 	id        sql.TableId
-	colset    sql.ColSet
 }
 
 var _ sql.Table = (*JSONTable)(nil)

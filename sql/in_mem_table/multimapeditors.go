@@ -89,8 +89,8 @@ func Update[V any](ctx *sql.Context, ops *ValueOps[V], is IndexedSet[V], old, ne
 var _ sql.TableEditor = (*IndexedSetTableEditor[string])(nil)
 
 type IndexedSetTableEditor[V any] struct {
-	Set IndexedSet[V]
 	Ops ValueOps[V]
+	Set IndexedSet[V]
 }
 
 func (e *IndexedSetTableEditor[V]) StatementBegin(ctx *sql.Context) {
@@ -178,8 +178,8 @@ func MultiUpdate[V any](ctx *sql.Context, ops *MultiValueOps[V], is IndexedSet[V
 var _ sql.TableEditor = (*MultiIndexedSetTableEditor[string])(nil)
 
 type MultiIndexedSetTableEditor[V any] struct {
-	Set IndexedSet[V]
 	Ops MultiValueOps[V]
+	Set IndexedSet[V]
 }
 
 func (e *MultiIndexedSetTableEditor[V]) StatementBegin(ctx *sql.Context) {

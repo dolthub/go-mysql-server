@@ -17,12 +17,12 @@ var _ sql.ExternalStoredProcedureProvider = (*DbProvider)(nil)
 // DbProvider is a provider for in-memory databases
 type DbProvider struct {
 	dbs                       map[string]sql.Database
+	tableFunctions            map[string]sql.TableFunction
+	externalProcedureRegistry sql.ExternalStoredProcedureRegistry
+	mu                        *sync.RWMutex
 	history                   bool
 	readOnly                  bool
 	nativeIndexes             bool
-	mu                        *sync.RWMutex
-	tableFunctions            map[string]sql.TableFunction
-	externalProcedureRegistry sql.ExternalStoredProcedureRegistry
 }
 
 type ProviderOption func(*DbProvider)

@@ -22,10 +22,10 @@ import (
 // SystemVar is an expression that returns the value of a system variable. It's also used as the expression on the left
 // hand side of a SET statement for a system variable.
 type SystemVar struct {
-	Name           string
-	Collation      sql.CollationID
 	Scope          sql.SystemVariableScope
+	Name           string
 	SpecifiedScope string
+	Collation      sql.CollationID
 }
 
 var _ sql.Expression = (*SystemVar)(nil)
@@ -37,7 +37,7 @@ var _ sql.CollationCoercible = (*SystemVar)(nil)
 // system variable was originally referenced. If the |specifiedScope| parameter is empty, then the scope was not
 // originally specified and any scope has been inferred.
 func NewSystemVar(name string, scope sql.SystemVariableScope, specifiedScope string) *SystemVar {
-	return &SystemVar{name, sql.CollationID(0), scope, specifiedScope}
+	return &SystemVar{Scope: scope, Name: name, SpecifiedScope: specifiedScope}
 }
 
 // Children implements the sql.Expression interface.
@@ -92,8 +92,8 @@ func (v *SystemVar) WithChildren(children ...sql.Expression) (sql.Expression, er
 // UserVar is an expression that returns the value of a user variable. It's also used as the expression on the left hand
 // side of a SET statement for a user var.
 type UserVar struct {
-	Name     string
 	exprType sql.Type
+	Name     string
 }
 
 var _ sql.Expression = (*UserVar)(nil)

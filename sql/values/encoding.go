@@ -21,8 +21,8 @@ import (
 )
 
 type Type struct {
-	Enc      Encoding
 	Coll     Collation
+	Enc      Encoding
 	Nullable bool
 }
 

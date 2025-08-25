@@ -85,17 +85,16 @@ func (w *WindowPartition) AddAggregation(agg *Aggregation) {
 // Next currently materializes [i.input] and [i.output] before
 // returning the first result, regardless of Limit or other expressions.
 type WindowPartitionIter struct {
-	w             *WindowPartition
-	child         sql.RowIter
-	input, output sql.WindowBuffer
-
+	child             sql.RowIter
+	w                 *WindowPartition
+	input             sql.WindowBuffer
+	output            sql.WindowBuffer
+	outputOrdering    []int
+	partitions        []sql.WindowInterval
+	currentPartition  sql.WindowInterval
 	pos               int
 	outputOrderingPos int
-	outputOrdering    []int
-
-	partitions       []sql.WindowInterval
-	currentPartition sql.WindowInterval
-	partitionIdx     int
+	partitionIdx      int
 }
 
 var _ sql.RowIter = (*WindowPartitionIter)(nil)

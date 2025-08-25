@@ -23,8 +23,8 @@ import (
 // NoArgFunc is a helper type to reduce boilerplate in functions that take no arguments. Implements most of
 // sql.FunctionExpression.
 type NoArgFunc struct {
-	Name    string
 	SQLType sql.Type
+	Name    string
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -46,7 +46,7 @@ func (fn NoArgFunc) Resolved() bool { return true }
 // Children implements the Expression interface.
 func (fn NoArgFunc) Children() []sql.Expression { return nil }
 
-// WithChildren implements the Expression interface.
+// NoArgFuncWithChildren implements the Expression interface.
 func NoArgFuncWithChildren(fn sql.Expression, children []sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(fn, len(children), 0)

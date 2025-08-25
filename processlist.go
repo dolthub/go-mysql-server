@@ -28,9 +28,9 @@ import (
 // ProcessList is a structure that keeps track of all the processes and their
 // status.
 type ProcessList struct {
-	mu         sync.RWMutex
 	procs      map[uint32]*sql.Process
 	byQueryPid map[uint64]uint32
+	mu         sync.RWMutex
 }
 
 // NewProcessList creates a new process list.

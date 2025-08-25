@@ -9,12 +9,13 @@ import (
 )
 
 type ValueDerivedTable struct {
+	cols sql.ColSet
+
 	*Values
 	name    string
 	columns []string
 	sch     sql.Schema
 	id      sql.TableId
-	cols    sql.ColSet
 }
 
 var _ sql.Node = (*ValueDerivedTable)(nil)

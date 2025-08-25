@@ -135,7 +135,10 @@ func (b *BaseBuilder) buildOffset(ctx *sql.Context, n *plan.Offset, row sql.Row)
 		span.End()
 		return nil, err
 	}
-	return sql.NewSpanIter(span, &offsetIter{offset, it}), nil
+	return sql.NewSpanIter(span, &offsetIter{
+		childIter: it,
+		skip:      offset,
+	}), nil
 }
 
 func (b *BaseBuilder) buildJSONTableCols(ctx *sql.Context, jtCols []plan.JSONTableCol, row sql.Row) ([]*iters.JsonTableCol, error) {

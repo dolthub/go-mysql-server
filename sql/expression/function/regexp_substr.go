@@ -29,18 +29,17 @@ import (
 // RegexpSubstr implements the REGEXP_SUBSTR function.
 // https://dev.mysql.com/doc/refman/8.0/en/regexp.html#function_regexp-substr
 type RegexpSubstr struct {
-	Text       sql.Expression
-	Pattern    sql.Expression
-	Position   sql.Expression
-	Occurrence sql.Expression
-	Flags      sql.Expression
-
+	Text        sql.Expression
+	Pattern     sql.Expression
+	Position    sql.Expression
+	Occurrence  sql.Expression
+	Flags       sql.Expression
 	cachedVal   any
+	re          regex.Regex
+	compileErr  error
+	compileOnce sync.Once
 	cacheVal    bool
 	cacheRegex  bool
-	re          regex.Regex
-	compileOnce sync.Once
-	compileErr  error
 }
 
 var _ sql.FunctionExpression = (*RegexpSubstr)(nil)

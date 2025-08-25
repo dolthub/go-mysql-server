@@ -77,18 +77,18 @@ func (s *sockAddr) String() string {
 
 // sockTabEntry type represents each line of the /proc/net/tcp
 type sockTabEntry struct {
-	Ino        string
 	LocalAddr  *sockAddr
 	RemoteAddr *sockAddr
-	State      skState
-	UID        uint32
 	Process    *process
+	Ino        string
+	UID        uint32
+	State      skState
 }
 
 // process holds the PID and process name to which each socket belongs
 type process struct {
-	pid  int
 	name string
+	pid  int
 }
 
 func (p *process) String() string {

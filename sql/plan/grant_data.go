@@ -23,9 +23,9 @@ import (
 
 // Privilege specifies a privilege to be used in a GRANT or REVOKE statement.
 type Privilege struct {
-	Type    PrivilegeType
-	Columns []string
 	Dynamic string // PrivilegeType_Dynamic will set this string to the correct lowercased value
+	Columns []string
+	Type    PrivilegeType
 }
 
 // PrivilegeLevel defines the level that a privilege applies to.
@@ -179,9 +179,9 @@ const (
 
 // GrantUserAssumption represents the target user that the user executing the GRANT statement will assume the identity of.
 type GrantUserAssumption struct {
-	Type  GrantUserAssumptionType
 	User  UserName
 	Roles []UserName
+	Type  GrantUserAssumptionType
 }
 
 // String returns the Privilege as a formatted string.

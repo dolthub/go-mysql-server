@@ -27,34 +27,29 @@ import (
 // BaseSession is the basic session implementation. Integrators should typically embed this type into their custom
 // session implementations to get base functionality.
 type BaseSession struct {
-	id     uint32
-	addr   string
-	client Client
-
+	tx               Transaction
+	privilegeSet     PrivilegeSet
+	userVars         SessionUserVariables
 	logger           *logrus.Entry
-	currentDB        string
-	transactionDb    string
+	locks            map[string]bool
+	storedProcParams map[string]*StoredProcParam
+	lastQueryInfo    map[string]*atomic.Value
 	systemVars       map[string]SystemVarValue
 	statusVars       map[string]StatusVarValue
-	userVars         SessionUserVariables
 	idxReg           *IndexRegistry
 	viewReg          *ViewRegistry
-	warnings         []*Warning
-	warningLock      bool
-	warningCount     uint16 // num of warnings from recent query; does not always equal to len(warnings)
-	locks            map[string]bool
+	transactionDb    string
 	queriedDb        string
-	lastQueryInfo    map[string]*atomic.Value
-	tx               Transaction
-	ignoreAutocommit bool
+	currentDB        string
+	addr             string
+	client           Client
+	warnings         []*Warning
+	privSetCounter   uint64
+	id               uint32
+	warningCount     uint16
 	charset          CharacterSetID
-
-	// When the MySQL database updates any tables related to privileges, it increments its counter. We then update our
-	// privilege set if our counter doesn't equal the database's counter.
-	privSetCounter uint64
-	privilegeSet   PrivilegeSet
-
-	storedProcParams map[string]*StoredProcParam
+	warningLock      bool
+	ignoreAutocommit bool
 }
 
 func (s *BaseSession) GetLogger() *logrus.Entry {
