@@ -35,6 +35,7 @@ func TestShowTableStatus(t *testing.T) {
 	db2 := memory.NewDatabase("b")
 	db2.AddTable("t3", memory.NewTable(db2, "t3", sql.PrimaryKeySchema{}, db2.GetForeignKeyCollection()))
 	db2.AddTable("t4", memory.NewTable(db2, "t4", sql.PrimaryKeySchema{}, db2.GetForeignKeyCollection()))
+	db2.AddTable("t5", memory.NewPartitionedTableWithCollation(db2.Database(), "t5", sql.PrimaryKeySchema{}, db2.GetForeignKeyCollection(), 0, sql.Collation_Default, "table comment"))
 
 	catalog := test.NewCatalog(sql.NewDatabaseProvider(db1, db2))
 	pro := memory.NewDBProvider(db1, db2)
@@ -51,8 +52,8 @@ func TestShowTableStatus(t *testing.T) {
 	require.NoError(err)
 
 	expected := []sql.Row{
-		{"t1", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, sql.Collation_Default.String(), nil, nil, nil},
-		{"t2", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, sql.Collation_Default.String(), nil, nil, nil},
+		{"t1", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, sql.Collation_Default.String(), nil, nil, ""},
+		{"t2", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, sql.Collation_Default.String(), nil, nil, ""},
 	}
 
 	require.ElementsMatch(expected, rows)
@@ -66,8 +67,9 @@ func TestShowTableStatus(t *testing.T) {
 	require.NoError(err)
 
 	expected = []sql.Row{
-		{"t3", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, sql.Collation_Default.String(), nil, nil, nil},
-		{"t4", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, sql.Collation_Default.String(), nil, nil, nil},
+		{"t3", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, sql.Collation_Default.String(), nil, nil, ""},
+		{"t4", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, sql.Collation_Default.String(), nil, nil, ""},
+		{"t5", "InnoDB", "10", "Fixed", uint64(0), uint64(0), uint64(0), uint64(0), int64(0), int64(0), nil, nil, nil, nil, sql.Collation_Default.String(), nil, nil, "table comment"},
 	}
 
 	require.ElementsMatch(expected, rows)
