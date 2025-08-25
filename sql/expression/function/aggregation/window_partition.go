@@ -170,7 +170,7 @@ func (i *WindowPartitionIter) materializeInput(ctx *sql.Context) (sql.WindowBuff
 			}
 			return nil, nil, err
 		}
-		input = append(input, append(row, j))
+		input = append(input, append(append(sql.Row(nil), row...), j))
 		j++
 	}
 

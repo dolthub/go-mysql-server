@@ -97,7 +97,7 @@ func (b *BaseBuilder) buildValues(ctx *sql.Context, n *plan.Values, row sql.Row)
 			// For the values node, the relevant values to evaluate are the tuple itself. We may need to project
 			// DEFAULT values onto them, which ProjectRow handles correctly (could require multiple passes)
 			var err error
-			vals, err = ProjectRow(ctx, et, vals)
+			vals, err = ProjectRow(ctx, et, vals, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -315,6 +315,7 @@ func (b *BaseBuilder) buildProject(ctx *sql.Context, n *plan.Project, row sql.Ro
 		canDefer:       n.CanDefer,
 		hasNestedIters: n.IncludesNestedIters,
 		childIter:      i,
+		rowBuffer:      sql.RowBufPool.Get().(*sql.RowBuffer),
 	}), nil
 }
 
@@ -326,6 +327,7 @@ func (b *BaseBuilder) buildVirtualColumnTable(ctx *sql.Context, n *plan.VirtualC
 	return sql.NewSpanIter(span, &ProjectIter{
 		projs:     n.Projections,
 		childIter: tableIter,
+		rowBuffer: sql.RowBufPool.Get().(*sql.RowBuffer),
 	}), nil
 }
 

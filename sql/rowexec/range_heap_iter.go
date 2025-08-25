@@ -36,6 +36,8 @@ type rangeHeapJoinIter struct {
 	childRowIter  sql.RowIter
 	pendingRow    sql.Row
 	activeRanges  []sql.Row
+
+	rowBuffer *sql.RowBuffer
 }
 
 func newRangeHeapJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode, row sql.Row) (sql.RowIter, error) {
@@ -68,9 +70,11 @@ func newRangeHeapJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinN
 		return nil, errors.New("right side of join must be a range heap")
 	}
 
+	rowBuffer := sql.RowBufPool.Get().(*sql.RowBuffer)
+
 	parentLen := len(row)
 
-	primaryRow := make(sql.Row, parentLen+len(j.Left().Schema()))
+	primaryRow := rowBuffer.Get(parentLen + len(j.Left().Schema()))
 	copy(primaryRow, row)
 
 	return sql.NewSpanIter(span, &rangeHeapJoinIter{
@@ -88,6 +92,8 @@ func newRangeHeapJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinN
 		parentLen: parentLen,
 
 		rangeHeapPlan: rhp,
+
+		rowBuffer: rowBuffer,
 	}), nil
 }
 
@@ -202,13 +208,16 @@ func (iter *rangeHeapJoinIter) removeParentRow(r sql.Row) sql.Row {
 
 // buildRow builds the result set row using the rows from the primary and secondary tables
 func (iter *rangeHeapJoinIter) buildRow(primary, secondary sql.Row) sql.Row {
-	row := make(sql.Row, iter.rowSize)
+	row := iter.rowBuffer.Get(iter.rowSize)
 	copy(row, primary)
 	copy(row[len(primary):], secondary)
 	return row
 }
 
 func (iter *rangeHeapJoinIter) Close(ctx *sql.Context) (err error) {
+	iter.rowBuffer.Reset()
+	sql.RowBufPool.Put(iter.rowBuffer)
+
 	if iter.primary != nil {
 		if err = iter.primary.Close(ctx); err != nil {
 			if iter.secondary != nil {

@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 
 	"github.com/dolthub/vitess/go/vt/proto/query"
 
@@ -83,6 +84,52 @@ func FormatRow(row Row) string {
 	return sb.String()
 }
 
+const defaultRowBufCap = 128
+
+type RowBuffer struct {
+	i   int
+	buf Row
+}
+
+func NewRowBuffer() *RowBuffer {
+	return &RowBuffer{
+		buf: make(Row, 0, defaultRowBufCap),
+	}
+}
+
+func (b *RowBuffer) Get(n int) (res Row) {
+	newI := b.i + n
+	if newI >= cap(b.buf) {
+		buf := make(Row, newI*2) // Golang is stupid, don't let it decide the new capacity
+		copy(buf, b.buf)
+		b.buf = buf
+	}
+	b.buf = b.buf[:newI]
+	for i := b.i; i < newI; i++ {
+		b.buf[i] = nil
+	}
+	res = b.buf[b.i:newI]
+	b.i = newI
+	return
+}
+
+func (b *RowBuffer) Reset() {
+	for i := 0; i < b.i; i++ {
+		b.buf[i] = nil
+	}
+	b.i = 0
+}
+
+func (b *RowBuffer) Erase(i int) {
+	b.i -= i
+}
+
+var RowBufPool = sync.Pool{
+	New: func() any {
+		return NewRowBuffer()
+	},
+}
+
 // RowIter is an iterator that produces rows.
 // TODO: most row iters need to be Disposable for CachedResult safety
 type RowIter interface {
@@ -106,7 +153,7 @@ func RowIterToRows(ctx *Context, i RowIter) ([]Row, error) {
 			return nil, err
 		}
 
-		rows = append(rows, row)
+		rows = append(rows, row.Copy())
 	}
 
 	return rows, i.Close(ctx)
@@ -179,7 +226,11 @@ func rowFromRow2(sch Schema, r Row2) Row {
 
 // RowsToRowIter creates a RowIter that iterates over the given rows.
 func RowsToRowIter(rows ...Row) RowIter {
-	return &sliceRowIter{rows: rows}
+	allRows := make([]Row, len(rows))
+	for i, row := range rows {
+		allRows[i] = row.Copy()
+	}
+	return &sliceRowIter{rows: allRows}
 }
 
 type sliceRowIter struct {
@@ -191,10 +242,9 @@ func (i *sliceRowIter) Next(*Context) (Row, error) {
 	if i.idx >= len(i.rows) {
 		return nil, io.EOF
 	}
-
 	r := i.rows[i.idx]
 	i.idx++
-	return r.Copy(), nil
+	return r, nil
 }
 
 func (i *sliceRowIter) Close(*Context) error {
