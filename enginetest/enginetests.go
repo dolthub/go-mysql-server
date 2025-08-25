@@ -4550,8 +4550,8 @@ func TestPreparedStatements(t *testing.T, harness Harness) {
 	e := mustNewEngine(t, harness)
 	defer e.Close()
 
-	for _, query := range queries.PreparedScriptTests {
-		TestScript(t, harness, query)
+	for _, script := range queries.PreparedScriptTests {
+		TestScript(t, harness, script)
 	}
 }
 
@@ -4560,6 +4560,9 @@ func TestShowTableStatus(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.OthertableData)
 	for _, tt := range queries.ShowTableStatusQueries {
 		TestQuery(t, harness, tt.Query, tt.Expected, nil, nil)
+	}
+	for _, script := range queries.ShowTableStatusScripts {
+		TestScript(t, harness, script)
 	}
 }
 

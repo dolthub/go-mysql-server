@@ -170,22 +170,10 @@ func (b *BaseBuilder) buildShowTableStatus(ctx *sql.Context, n *plan.ShowTableSt
 			return nil, err
 		}
 
-		var numRows uint64
-		var dataLength uint64
-
-		if st, ok := table.(sql.StatisticsTable); ok {
-			numRows, _, err = st.RowCount(ctx)
-			if err != nil {
-				return nil, err
-			}
-
-			dataLength, err = st.DataLength(ctx)
-			if err != nil {
-				return nil, err
-			}
+		rows[i], err = tableToStatusRow(ctx, table)
+		if err != nil {
+			return nil, err
 		}
-
-		rows[i] = tableToStatusRow(tName, numRows, dataLength, table.Collation())
 	}
 
 	return sql.RowsToRowIter(rows...), nil
