@@ -24,6 +24,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -1537,7 +1538,7 @@ func convertToFloat64(t NumberTypeImpl_, v interface{}) (float64, error) {
 		}
 		return float64(i), nil
 	case string:
-		v = strings.Trim(v, numericCutSet)
+		v = trimStringToNumber(v)
 		i, err := strconv.ParseFloat(v, 64)
 		if err != nil {
 			// parse the first longest valid numbers
@@ -1748,4 +1749,19 @@ func convertUintToUint32(v uint64) (uint32, sql.ConvertInRange, error) {
 		return uint32(math.MaxUint32), sql.OutOfRange, nil
 	}
 	return uint32(v), sql.InRange, nil
+}
+
+func trimStringToNumber(s string) string {
+	s = strings.TrimSpace(s)
+	seenDecimal := false
+
+	for i, char := range s {
+		if char == '.' && !seenDecimal {
+			seenDecimal = true
+		} else if !(unicode.IsDigit(char) || ((i == 0) && (char == '+' || char == '-'))) {
+			return s[:i]
+		}
+	}
+
+	return s
 }
