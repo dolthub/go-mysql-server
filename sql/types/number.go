@@ -992,7 +992,7 @@ func convertToInt64(t NumberTypeImpl_, v interface{}) (int64, sql.ConvertInRange
 		}
 		return i, sql.InRange, nil
 	case string:
-		v = strings.Trim(v, intCutSet)
+		v = trimStringToNumberPrefix(v, false)
 		if v == "" {
 			// StringType{}.Zero() returns empty string, but should represent "0" for number value
 			return 0, sql.InRange, nil
@@ -1179,7 +1179,7 @@ func convertToUint64(t NumberTypeImpl_, v interface{}) (uint64, sql.ConvertInRan
 		}
 		return i, sql.InRange, nil
 	case string:
-		v = strings.Trim(v, intCutSet)
+		v = trimStringToNumberPrefix(v, false)
 		if i, err := strconv.ParseUint(v, 10, 64); err == nil {
 			return i, sql.InRange, nil
 		} else if err == strconv.ErrRange {
@@ -1538,7 +1538,7 @@ func convertToFloat64(t NumberTypeImpl_, v interface{}) (float64, error) {
 		}
 		return float64(i), nil
 	case string:
-		v = trimStringToNumber(v)
+		v = trimStringToNumberPrefix(v, true)
 		i, err := strconv.ParseFloat(v, 64)
 		if err != nil {
 			// parse the first longest valid numbers
@@ -1751,17 +1751,27 @@ func convertUintToUint32(v uint64) (uint32, sql.ConvertInRange, error) {
 	return uint32(v), sql.InRange, nil
 }
 
-func trimStringToNumber(s string) string {
+func trimStringToNumberPrefix(s string, isFloat bool) string {
 	s = strings.TrimSpace(s)
-	seenDecimal := false
 
-	for i, char := range s {
-		if char == '.' && !seenDecimal {
-			seenDecimal = true
-		} else if !(unicode.IsDigit(char) || ((i == 0) && (char == '+' || char == '-'))) {
+	seenDigit := false
+	seenDot := false
+	seenExp := false
+	signIndex := 0
+
+	for i := 0; i < len(s); i++ {
+		char := rune(s[i])
+
+		if unicode.IsDigit(char) {
+			seenDigit = true
+		} else if char == '.' && !seenDot && isFloat {
+			seenDot = true
+		} else if (char == 'e' || char == 'E') && !seenExp && seenDigit && isFloat {
+			seenExp = true
+			signIndex = i + 1
+		} else if !((char == '-' || char == '+') && i == signIndex) {
 			return s[:i]
 		}
 	}
-
 	return s
 }
