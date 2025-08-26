@@ -24,7 +24,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -89,12 +88,12 @@ var (
 )
 
 const (
-	// intCutSet is the set of characters that should be trimmed from the beginning and end of a string
+	// IntCutSet is the set of characters that should be trimmed from the beginning and end of a string
 	//   when converting to a signed or unsigned integer
-	intCutSet = " \t"
+	IntCutSet = " \t"
 
-	// numericCutSet is the set of characters to trim from a string before converting it to a number.
-	numericCutSet = " \t\n\r"
+	// NumericCutSet is the set of characters to trim from a string before converting it to a number.
+	NumericCutSet = " \t\n\r"
 )
 
 type NumberTypeImpl_ struct {
@@ -992,7 +991,7 @@ func convertToInt64(t NumberTypeImpl_, v interface{}) (int64, sql.ConvertInRange
 		}
 		return i, sql.InRange, nil
 	case string:
-		v = trimStringToNumberPrefix(v, false)
+		v = strings.Trim(v, IntCutSet)
 		if v == "" {
 			// StringType{}.Zero() returns empty string, but should represent "0" for number value
 			return 0, sql.InRange, nil
@@ -1179,7 +1178,7 @@ func convertToUint64(t NumberTypeImpl_, v interface{}) (uint64, sql.ConvertInRan
 		}
 		return i, sql.InRange, nil
 	case string:
-		v = trimStringToNumberPrefix(v, false)
+		v = strings.Trim(v, IntCutSet)
 		if i, err := strconv.ParseUint(v, 10, 64); err == nil {
 			return i, sql.InRange, nil
 		} else if err == strconv.ErrRange {
@@ -1282,7 +1281,7 @@ func convertToUint32(t NumberTypeImpl_, v interface{}) (uint32, sql.ConvertInRan
 		}
 		return uint32(i), sql.InRange, nil
 	case string:
-		v = strings.Trim(v, intCutSet)
+		v = strings.Trim(v, IntCutSet)
 		if i, err := strconv.ParseUint(v, 10, 32); err == nil {
 			return uint32(i), sql.InRange, nil
 		}
@@ -1378,7 +1377,7 @@ func convertToUint16(t NumberTypeImpl_, v interface{}) (uint16, sql.ConvertInRan
 		}
 		return uint16(i), sql.InRange, nil
 	case string:
-		v = strings.Trim(v, intCutSet)
+		v = strings.Trim(v, IntCutSet)
 		if i, err := strconv.ParseUint(v, 10, 16); err == nil {
 			return uint16(i), sql.InRange, nil
 		}
@@ -1478,7 +1477,7 @@ func convertToUint8(t NumberTypeImpl_, v interface{}) (uint8, sql.ConvertInRange
 		}
 		return uint8(i), sql.InRange, nil
 	case string:
-		v = strings.Trim(v, intCutSet)
+		v = strings.Trim(v, IntCutSet)
 		if i, err := strconv.ParseUint(v, 10, 8); err == nil {
 			return uint8(i), sql.InRange, nil
 		}
@@ -1538,7 +1537,7 @@ func convertToFloat64(t NumberTypeImpl_, v interface{}) (float64, error) {
 		}
 		return float64(i), nil
 	case string:
-		v = trimStringToNumberPrefix(v, true)
+		v = strings.Trim(v, NumericCutSet)
 		i, err := strconv.ParseFloat(v, 64)
 		if err != nil {
 			// parse the first longest valid numbers
@@ -1749,29 +1748,4 @@ func convertUintToUint32(v uint64) (uint32, sql.ConvertInRange, error) {
 		return uint32(math.MaxUint32), sql.OutOfRange, nil
 	}
 	return uint32(v), sql.InRange, nil
-}
-
-func trimStringToNumberPrefix(s string, isFloat bool) string {
-	s = strings.TrimSpace(s)
-
-	seenDigit := false
-	seenDot := false
-	seenExp := false
-	signIndex := 0
-
-	for i := 0; i < len(s); i++ {
-		char := rune(s[i])
-
-		if unicode.IsDigit(char) {
-			seenDigit = true
-		} else if char == '.' && !seenDot && isFloat {
-			seenDot = true
-		} else if (char == 'e' || char == 'E') && !seenExp && seenDigit && isFloat {
-			seenExp = true
-			signIndex = i + 1
-		} else if !((char == '-' || char == '+') && i == signIndex) {
-			return s[:i]
-		}
-	}
-	return s
 }
