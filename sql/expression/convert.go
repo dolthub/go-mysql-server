@@ -343,7 +343,7 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 		}
 		return d, nil
 	case ConvertToDecimal:
-		value, err := convertHexBlobToDecimalForNumericContext(val, originType)
+		value, err := prepareForNumericContext(val, originType, false)
 		if err != nil {
 			return nil, err
 		}
