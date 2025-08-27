@@ -18,7 +18,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"gopkg.in/src-d/go-errors.v1"
 	"math"
 	trace2 "runtime/trace"
 	"strconv"
@@ -27,9 +26,10 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/dolthub/go-mysql-server/sql/values"
-
 	"github.com/shopspring/decimal"
+	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/dolthub/go-mysql-server/sql/values"
 )
 
 // Expression is a combination of one or more SQL expressions.
