@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/sirupsen/logrus"
@@ -342,7 +343,7 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 		}
 		return d, nil
 	case ConvertToDecimal:
-		value, err := convertHexBlobToDecimalForNumericContext(val, originType)
+		value, err := prepareForNumericContext(val, originType, false)
 		if err != nil {
 			return nil, err
 		}
@@ -353,7 +354,7 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 		}
 		return d, nil
 	case ConvertToFloat:
-		value, err := convertHexBlobToDecimalForNumericContext(val, originType)
+		value, err := prepareForNumericContext(val, originType, false)
 		if err != nil {
 			return nil, err
 		}
@@ -363,7 +364,7 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 		}
 		return d, nil
 	case ConvertToDouble, ConvertToReal:
-		value, err := convertHexBlobToDecimalForNumericContext(val, originType)
+		value, err := prepareForNumericContext(val, originType, false)
 		if err != nil {
 			return nil, err
 		}
@@ -379,7 +380,7 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 		}
 		return js, nil
 	case ConvertToSigned:
-		value, err := convertHexBlobToDecimalForNumericContext(val, originType)
+		value, err := prepareForNumericContext(val, originType, true)
 		if err != nil {
 			return nil, err
 		}
@@ -396,7 +397,7 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 		}
 		return t, nil
 	case ConvertToUnsigned:
-		value, err := convertHexBlobToDecimalForNumericContext(val, originType)
+		value, err := prepareForNumericContext(val, originType, true)
 		if err != nil {
 			return nil, err
 		}
@@ -471,6 +472,44 @@ func createConvertedDecimalType(length, scale int, logErrors bool) sql.DecimalTy
 		return dt
 	}
 	return types.InternalDecimalType
+}
+
+// prepareForNumberContext makes necessary preparations to strings and byte arrays for conversions to numbers
+func prepareForNumericContext(val interface{}, originType sql.Type, isInt bool) (interface{}, error) {
+	if s, isString := val.(string); isString && types.IsTextOnly(originType) {
+		return trimStringToNumberPrefix(s, isInt), nil
+	}
+	return convertHexBlobToDecimalForNumericContext(val, originType)
+}
+
+// trimStringToNumberPrefix trims a string to the appropriate number prefix
+func trimStringToNumberPrefix(s string, isInt bool) string {
+	if isInt {
+		s = strings.TrimLeft(s, types.IntCutSet)
+	} else {
+		s = strings.TrimLeft(s, types.NumericCutSet)
+	}
+
+	seenDigit := false
+	seenDot := false
+	seenExp := false
+	signIndex := 0
+
+	for i := 0; i < len(s); i++ {
+		char := rune(s[i])
+
+		if unicode.IsDigit(char) {
+			seenDigit = true
+		} else if char == '.' && !seenDot && !isInt {
+			seenDot = true
+		} else if (char == 'e' || char == 'E') && !seenExp && seenDigit && !isInt {
+			seenExp = true
+			signIndex = i + 1
+		} else if !((char == '-' || char == '+') && i == signIndex) {
+			return s[:i]
+		}
+	}
+	return s
 }
 
 // convertHexBlobToDecimalForNumericContext converts byte array value to unsigned int value if originType is BLOB type.
