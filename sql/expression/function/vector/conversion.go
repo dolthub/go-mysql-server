@@ -135,5 +135,9 @@ func (v *VectorToString) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 	if !ok {
 		return nil, fmt.Errorf("incorrect argument to VECTOR_TO_STRING: expected a vector, got %T", val)
 	}
-	return types.JSONDocument{Val: sql.DecodeVector(b)}.JSONString()
+	vectorVal, err := sql.DecodeVector(b)
+	if err != nil {
+		return nil, err
+	}
+	return types.JSONDocument{Val: vectorVal}.JSONString()
 }

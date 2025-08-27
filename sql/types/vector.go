@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"gopkg.in/src-d/go-errors.v1"
 	"reflect"
 	"strconv"
 
@@ -42,6 +43,8 @@ var _ sql.CollationCoercible = VectorType{}
 
 const DefaultVectorDimensions = 2048
 const MaxVectorDimensions = 16383
+
+var ErrVectorWrongDimensions = errors.NewKind("VECTOR dimension mismatch: expected %d, got %d")
 
 // CreateVectorType creates a VECTOR type with the specified number of dimensions.
 func CreateVectorType(dimensions int) (VectorType, error) {
@@ -82,9 +85,9 @@ func (t VectorType) Convert(ctx context.Context, v interface{}) (interface{}, sq
 	case []byte:
 		if t.Dimensions != 0 && len(val) != int(values.Float32Size)*t.Dimensions {
 			if len(val)%int(values.Float32Size) != 0 {
-				return nil, sql.OutOfRange, fmt.Errorf("cannot convert BINARY(%d) to VECTOR(%d), need BINARY(%d)", len(val), t.Dimensions, 4*t.Dimensions)
+				return nil, sql.OutOfRange, sql.ErrVectorInvalidBinaryLength.New(len(val))
 			}
-			return nil, sql.OutOfRange, fmt.Errorf("VECTOR dimension mismatch: expected %d, got %d", t.Dimensions, len(val)/4)
+			return nil, sql.OutOfRange, ErrVectorWrongDimensions.New(t.Dimensions, len(val)/4)
 		}
 		return val, sql.InRange, nil
 	case sql.JSONWrapper:
@@ -95,7 +98,7 @@ func (t VectorType) Convert(ctx context.Context, v interface{}) (interface{}, sq
 		return t.Convert(ctx, unwrapped)
 	case []interface{}:
 		if t.Dimensions != 0 && len(val) != t.Dimensions {
-			return nil, sql.OutOfRange, fmt.Errorf("VECTOR dimension mismatch: expected %d, got %d", t.Dimensions, len(val))
+			return nil, sql.OutOfRange, ErrVectorWrongDimensions.New(t.Dimensions, len(val))
 		}
 		result := make([]float32, len(val))
 		for i, elem := range val {

@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"gopkg.in/src-d/go-errors.v1"
 	"math"
 	trace2 "runtime/trace"
 	"strconv"
@@ -329,9 +330,14 @@ func ConvertToBool(ctx *Context, v interface{}) (bool, error) {
 	}
 }
 
+var ErrVectorInvalidBinaryLength = errors.NewKind("cannot convert BINARY(%d) to vector, byte length must be a multiple of 4 bytes")
+
 // DecodeVector decodes a byte slice that represents a vector. This is needed for distance functions.
-func DecodeVector(buf []byte) []float32 {
-	return unsafe.Slice((*float32)(unsafe.Pointer(&buf[0])), len(buf)/int(values.Float32Size))
+func DecodeVector(buf []byte) ([]float32, error) {
+	if len(buf)%int(values.Float32Size) != 0 {
+		return nil, ErrVectorInvalidBinaryLength.New(len(buf))
+	}
+	return unsafe.Slice((*float32)(unsafe.Pointer(&buf[0])), len(buf)/int(values.Float32Size)), true
 }
 
 // EncodeVector encodes a byte slice that represents a vector.
@@ -349,7 +355,7 @@ func ConvertToVector(ctx context.Context, v interface{}) ([]float32, error) {
 	case []float32:
 		return b, nil
 	case []byte:
-		return DecodeVector(b), nil
+		return DecodeVector(b)
 	case string:
 		var val interface{}
 		err := json.Unmarshal([]byte(b), &val)
