@@ -11440,7 +11440,8 @@ select * from t1 except (
 		},
 	},
 	{
-		// https://github.com/dolthub/go-mysql-server/pull/3176
+		// https://github.com/dolthub/dolt/issues/9733
+		// https://github.com/dolthub/dolt/issues/9739
 		Name: "strings cast to numbers",
 		SetUpScript: []string{
 			"create table test01(pk varchar(20) primary key)",
@@ -11568,6 +11569,45 @@ select * from t1 except (
 					{"5.932887e7", "59328870.000"},
 					{"5.932887e7abc", "59328870.000"},
 					{"a1a1", "0.000"},
+				},
+			},
+			{
+				Query:    "select * from test01 where pk in ('11')",
+				Expected: []sql.Row{{"11"}},
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/9739
+				Skip:    true,
+				Dialect: "mysql",
+				Query:   "select * from test01 where pk in (11)",
+				Expected: []sql.Row{
+					{"11"},
+					{"11d"},
+					{"11wha?"},
+				},
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/9739
+				Skip:    true,
+				Dialect: "mysql",
+				Query:   "select * from test01 where pk=3",
+				Expected: []sql.Row{
+					{"  3 12 4"},
+					{"  3. 12 4"},
+					{"3. 12 4"},
+				},
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/9739
+				Skip:    true,
+				Dialect: "mysql",
+				Query:   "select * from test01 where pk>=3 and pk < 4",
+				Expected: []sql.Row{
+					{"  3 12 4"},
+					{"  3. 12 4"},
+					{"  3.2 12 4"},
+					{"+3.1234"},
+					{"3. 12 4"},
 				},
 			},
 		},
