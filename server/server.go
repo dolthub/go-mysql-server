@@ -30,7 +30,7 @@ import (
 type ServerEventListener interface {
 	ClientConnected()
 	ClientDisconnected()
-	QueryStarted()
+	QueryStarted(query string)
 	QueryCompleted(query string, success bool, duration time.Duration)
 }
 
