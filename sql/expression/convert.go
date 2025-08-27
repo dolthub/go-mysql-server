@@ -474,6 +474,7 @@ func createConvertedDecimalType(length, scale int, logErrors bool) sql.DecimalTy
 	return types.InternalDecimalType
 }
 
+// prepareForNumberContext makes necessary preparations to strings and byte arrays for conversions to numbers
 func prepareForNumericContext(val interface{}, originType sql.Type, isInt bool) (interface{}, error) {
 	if s, isString := val.(string); isString && types.IsTextOnly(originType) {
 		return trimStringToNumberPrefix(s, isInt), nil
@@ -481,11 +482,12 @@ func prepareForNumericContext(val interface{}, originType sql.Type, isInt bool) 
 	return convertHexBlobToDecimalForNumericContext(val, originType)
 }
 
+// trimStringToNumberPrefix trims a string to the appropriate number prefix
 func trimStringToNumberPrefix(s string, isInt bool) string {
 	if isInt {
-		s = strings.Trim(s, types.IntCutSet)
+		s = strings.TrimLeft(s, types.IntCutSet)
 	} else {
-		s = strings.Trim(s, types.NumericCutSet)
+		s = strings.TrimLeft(s, types.NumericCutSet)
 	}
 
 	seenDigit := false
