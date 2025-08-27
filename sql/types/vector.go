@@ -87,7 +87,7 @@ func (t VectorType) Convert(ctx context.Context, v interface{}) (interface{}, sq
 			if len(val)%int(values.Float32Size) != 0 {
 				return nil, sql.OutOfRange, sql.ErrVectorInvalidBinaryLength.New(len(val))
 			}
-			return nil, sql.OutOfRange, ErrVectorWrongDimensions.New(t.Dimensions, len(val)/4)
+			return nil, sql.OutOfRange, ErrVectorWrongDimensions.New(t.Dimensions, len(val)/int(values.Float32Size))
 		}
 		return val, sql.InRange, nil
 	case sql.JSONWrapper:
