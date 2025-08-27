@@ -233,9 +233,7 @@ func (i *WindowPartitionIter) initializePartitions(ctx *sql.Context) ([]sql.Wind
 // At this stage, result rows are appended with the original row index for resorting. The size of
 // [i.output] will be smaller than [i.input] if the outer sql.Node is a plan.GroupBy with fewer partitions than rows.
 func (i *WindowPartitionIter) materializeOutput(ctx *sql.Context) (sql.WindowBuffer, error) {
-	// handle nil input specially if no partition clause
-	// ex: COUNT(*) on nil rows returns 0, not nil
-	if len(i.input) == 0 && len(i.w.PartitionBy) > 0 {
+	if len(i.input) == 0 {
 		return nil, io.EOF
 	}
 
