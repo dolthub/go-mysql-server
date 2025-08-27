@@ -11451,7 +11451,8 @@ select * from t1 except (
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select pk, cast(pk as float) from test01",
+				Dialect: "mysql",
+				Query:   "select pk, cast(pk as float) from test01",
 				Expected: []sql.Row{
 					{"  3 12 4", float32(3)},
 					{"  3.2 12 4", float32(3.2)},
@@ -11474,7 +11475,8 @@ select * from t1 except (
 				},
 			},
 			{
-				Query: "select pk, cast(pk as double) from test01",
+				Dialect: "mysql",
+				Query:   "select pk, cast(pk as double) from test01",
 				Expected: []sql.Row{
 					{"  3 12 4", 3.0},
 					{"  3.2 12 4", 3.2},
@@ -11497,7 +11499,8 @@ select * from t1 except (
 				},
 			},
 			{
-				Query: "select pk, cast(pk as signed) from test01",
+				Dialect: "mysql",
+				Query:   "select pk, cast(pk as signed) from test01",
 				Expected: []sql.Row{
 					{"  3 12 4", 3},
 					{"  3.2 12 4", 3},
@@ -11520,7 +11523,8 @@ select * from t1 except (
 				},
 			},
 			{
-				Query: "select pk, cast(pk as unsigned) from test01",
+				Dialect: "mysql",
+				Query:   "select pk, cast(pk as unsigned) from test01",
 				Expected: []sql.Row{
 					{"  3 12 4", uint64(3)},
 					{"  3.2 12 4", uint64(3)},
@@ -11543,7 +11547,8 @@ select * from t1 except (
 				},
 			},
 			{
-				Query: "select pk, cast(pk as decimal(12,3)) from test01",
+				Dialect: "mysql",
+				Query:   "select pk, cast(pk as decimal(12,3)) from test01",
 				Expected: []sql.Row{
 					{"  3 12 4", "3.000"},
 					{"  3.2 12 4", "3.200"},
