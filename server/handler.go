@@ -618,7 +618,7 @@ func (h *Handler) errorWrappedDoQuery(
 ) (string, error) {
 	start := time.Now()
 	if h.sel != nil {
-		h.sel.QueryStarted()
+		h.sel.QueryStarted(query)
 	}
 
 	remainder, err := h.doQuery(c, query, mode, bindings, callback)
