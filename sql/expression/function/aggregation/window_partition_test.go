@@ -23,7 +23,6 @@ import (
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -233,23 +232,23 @@ func TestWindowPartition_MaterializeOutput(t *testing.T) {
 		require.ElementsMatch(t, nil, output)
 	})
 
-	t.Skip("nil input no partition by", func(t *testing.T) {
-		ctx := sql.NewEmptyContext()
-		i := NewWindowPartitionIter(
-			&WindowPartition{
-				PartitionBy: nil,
-				Aggs: []*Aggregation{
-					NewAggregation(NewCountAgg(expression.NewGetField(0, types.Int64, "z", true)), NewGroupByFramer()),
-				},
-			})
-		i.input = []sql.Row{}
-		i.partitions = []sql.WindowInterval{{0, 0}}
-		i.outputOrdering = nil
-		output, err := i.materializeOutput(ctx)
-		require.NoError(t, err)
-		expOutput := []sql.Row{{int64(0), nil}}
-		require.ElementsMatch(t, expOutput, output)
-	})
+	//t.Run("nil input no partition by", func(t *testing.T) {
+	//	ctx := sql.NewEmptyContext()
+	//	i := NewWindowPartitionIter(
+	//		&WindowPartition{
+	//			PartitionBy: nil,
+	//			Aggs: []*Aggregation{
+	//				NewAggregation(NewCountAgg(expression.NewGetField(0, types.Int64, "z", true)), NewGroupByFramer()),
+	//			},
+	//		})
+	//	i.input = []sql.Row{}
+	//	i.partitions = []sql.WindowInterval{{0, 0}}
+	//	i.outputOrdering = nil
+	//	output, err := i.materializeOutput(ctx)
+	//	require.NoError(t, err)
+	//	expOutput := []sql.Row{{int64(0), nil}}
+	//	require.ElementsMatch(t, expOutput, output)
+	//})
 }
 
 func TestWindowPartition_SortAndFilterOutput(t *testing.T) {
