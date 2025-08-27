@@ -340,6 +340,11 @@ func EncodeVector(floats []float32) []byte {
 }
 
 func ConvertToVector(ctx context.Context, v interface{}) ([]float32, error) {
+	var err error
+	v, err = UnwrapAny(ctx, v)
+	if err != nil {
+		return nil, err
+	}
 	switch b := v.(type) {
 	case []float32:
 		return b, nil

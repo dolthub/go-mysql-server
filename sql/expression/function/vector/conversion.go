@@ -128,7 +128,10 @@ func (v *VectorToString) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 	if val == nil {
 		return nil, nil
 	}
-	b, ok := val.([]byte)
+	b, ok, err := sql.Unwrap[[]byte](ctx, val)
+	if err != nil {
+		return nil, err
+	}
 	if !ok {
 		return nil, fmt.Errorf("incorrect argument to VECTOR_TO_STRING: expected a vector, got %T", val)
 	}
