@@ -337,7 +337,7 @@ func DecodeVector(buf []byte) ([]float32, error) {
 	if len(buf)%int(values.Float32Size) != 0 {
 		return nil, ErrVectorInvalidBinaryLength.New(len(buf))
 	}
-	return unsafe.Slice((*float32)(unsafe.Pointer(&buf[0])), len(buf)/int(values.Float32Size)), true
+	return unsafe.Slice((*float32)(unsafe.Pointer(&buf[0])), len(buf)/int(values.Float32Size)), nil
 }
 
 // EncodeVector encodes a byte slice that represents a vector.
@@ -386,7 +386,7 @@ func convertJsonInterfaceToVector(val interface{}) ([]float32, error) {
 			res[i] = v
 		case float64:
 			if v > math.MaxFloat32 || v < -math.MaxFloat32 {
-				return nil, fmt.Errorf("data cannot be converted to a valid vector: %d", v)
+				return nil, fmt.Errorf("data cannot be converted to a valid vector: %v", v)
 			}
 			res[i] = float32(v)
 		case int64:
