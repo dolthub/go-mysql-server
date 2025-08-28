@@ -11584,6 +11584,7 @@ select * from t1 except (
 				Query:   "select * from test01 where pk in (11)",
 				Expected: []sql.Row{
 					{"11"},
+					{"11-5"},
 					{"11d"},
 					{"11wha?"},
 				},
@@ -11625,6 +11626,71 @@ select * from t1 except (
 				Dialect:  "mysql",
 				Query:    "select * from test02 where pk='11.12asdf'",
 				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/6899
+		Name: "window function tests",
+		SetUpScript: []string{
+			"CREATE TABLE c (c_id INT PRIMARY KEY, bill TEXT);",
+			"CREATE TABLE o (o_id INT PRIMARY KEY, c_id INT, ship TEXT);",
+			"INSERT INTO c VALUES (1, 'CA'), (2, 'TX'), (3, 'MA'), (4, 'TX'), (5, NULL), (6, 'FL');",
+			"INSERT INTO o VALUES (10, 1, 'CA'), (20, 1, 'CA'), (30, 1, 'CA'), (40, 2, 'CA'), (50, 2, 'TX'), (60, 2, NULL), (70, 4, 'WY'), (80, 4, NULL), (90, 6, 'WA');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select row_number() over () as rn from o where c_id=-999",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select row_number() over () as rn from o where c_id=1",
+				Expected: []sql.Row{{1}, {2}, {3}},
+			},
+			{
+				Query:    "select rank() over() as rnk from o where c_id=-999",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select o_id, c_id, rank() over(order by o_id) as rnk from o where c_id=1",
+				Expected: []sql.Row{
+					{10, 1, uint64(1)},
+					{20, 1, uint64(2)},
+					{30, 1, uint64(3)},
+				},
+			},
+			{
+				Query:    "select dense_rank() over() as rnk from o where c_id=-999",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select ship, dense_rank() over (order by ship) as drnk from o where c_id in (1, 2) order by ship",
+				Expected: []sql.Row{
+					{nil, uint64(1)},
+					{"CA", uint64(2)},
+					{"CA", uint64(2)},
+					{"CA", uint64(2)},
+					{"CA", uint64(2)},
+					{"TX", uint64(3)},
+				},
+			},
+			{
+				Query:    "select count(*) from o where c_id=-999",
+				Expected: []sql.Row{{0}},
+			},
+			{
+				Query: "SELECT * FROM (SELECT c_id AS c_c_id, bill FROM c) sq1, LATERAL (SELECT row_number() OVER () AS rownum FROM o WHERE c_id = c_c_id) sq2 ORDER BY c_c_id, bill, rownum;",
+				Expected: []sql.Row{
+					{1, "CA", 1},
+					{1, "CA", 2},
+					{1, "CA", 3},
+					{2, "TX", 1},
+					{2, "TX", 2},
+					{2, "TX", 3},
+					{4, "TX", 1},
+					{4, "TX", 2},
+					{6, "FL", 1},
+				},
 			},
 		},
 	},
