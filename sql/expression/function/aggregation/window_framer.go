@@ -16,11 +16,9 @@ package aggregation
 
 import (
 	"errors"
-	"io"
-	"reflect"
-
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 	sqlerr "gopkg.in/src-d/go-errors.v1"
+	"io"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -599,7 +597,11 @@ func isNewOrderByValue(ctx *sql.Context, orderByExprs []sql.Expression, last sql
 	}
 
 	for i := range lastExp {
-		if !reflect.DeepEqual(lastExp[i], thisExp[i]) {
+		compare, err := orderByExprs[i].Type().Compare(ctx, lastExp[i], thisExp[i])
+		if err != nil {
+			return false, err
+		}
+		if compare != 0 {
 			return true, nil
 		}
 	}
