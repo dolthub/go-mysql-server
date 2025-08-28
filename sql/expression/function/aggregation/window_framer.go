@@ -16,9 +16,10 @@ package aggregation
 
 import (
 	"errors"
+	"io"
+
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 	sqlerr "gopkg.in/src-d/go-errors.v1"
-	"io"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
