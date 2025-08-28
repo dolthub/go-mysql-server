@@ -598,7 +598,11 @@ func isNewOrderByValue(ctx *sql.Context, orderByExprs []sql.Expression, last sql
 	}
 
 	for i := range lastExp {
-		if lastExp[i] != thisExp[i] {
+		compare, err := orderByExprs[i].Type().Compare(ctx, lastExp[i], thisExp[i])
+		if err != nil {
+			return false, err
+		}
+		if compare != 0 {
 			return true, nil
 		}
 	}
