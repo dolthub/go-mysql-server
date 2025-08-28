@@ -160,7 +160,7 @@ type JsonTableColOpts struct {
 type JsonTableCol struct {
 	err      error
 	Opts     *JsonTableColOpts
-	Path     string // if there are nested columns, this is a schema Path, otherwise it is a col Path
+	Path     string          // if there are nested columns, this is a schema Path, otherwise it is a col Path
 	Cols     []*JsonTableCol // nested columns
 	data     []interface{}
 	pos      int

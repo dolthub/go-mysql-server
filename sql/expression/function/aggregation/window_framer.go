@@ -325,12 +325,12 @@ type rangeFramerBase struct {
 	endNPreceding   sql.Expression // optional
 	// boundary arithmetic on [orderBy] for range start value
 	// is set unless [unboundedPreceding] is true
-	startInclusion  sql.Expression
+	startInclusion sql.Expression
 	// boundary arithmetic on [orderBy] for range end value
 	// is set unless [unboundedFollowing] is true
-	endInclusion    sql.Expression
+	endInclusion sql.Expression
 	// reference expression for boundary calculation
-	orderBy         sql.Expression
+	orderBy sql.Expression
 
 	idx                int
 	partitionStart     int
