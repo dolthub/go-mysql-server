@@ -15,9 +15,10 @@
 package queries
 
 import (
+	"time"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"time"
 )
 
 var ViewScripts = []ScriptTest{
