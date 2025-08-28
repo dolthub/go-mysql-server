@@ -11644,6 +11644,8 @@ select * from t1 except (
 				Expected: []sql.Row{},
 			},
 			{
+				// TODO: valid query in Postgres. https://github.com/dolthub/doltgresql/issues/1796
+				Dialect:  "mysql",
 				Query:    "select row_number() over () as rn from o where c_id=1",
 				Expected: []sql.Row{{1}, {2}, {3}},
 			},
@@ -11652,7 +11654,9 @@ select * from t1 except (
 				Expected: []sql.Row{},
 			},
 			{
-				Query: "select o_id, c_id, rank() over(order by o_id) as rnk from o where c_id=1",
+				// TODO: valid query in Postgres. https://github.com/dolthub/doltgresql/issues/1796
+				Dialect: "mysql",
+				Query:   "select o_id, c_id, rank() over(order by o_id) as rnk from o where c_id=1",
 				Expected: []sql.Row{
 					{10, 1, uint64(1)},
 					{20, 1, uint64(2)},
@@ -11664,7 +11668,10 @@ select * from t1 except (
 				Expected: []sql.Row{},
 			},
 			{
-				Query: "select ship, dense_rank() over (order by ship) as drnk from o where c_id in (1, 2) order by ship",
+				// TODO: valid query in Postgres. But Postgres orders nil at the end. Maybe rewrite query to filter out
+				//  ship=null https://github.com/dolthub/doltgresql/issues/1796
+				Dialect: "mysql",
+				Query:   "select ship, dense_rank() over (order by ship) as drnk from o where c_id in (1, 2) order by ship",
 				Expected: []sql.Row{
 					{nil, uint64(1)},
 					{"CA", uint64(2)},
@@ -11680,6 +11687,8 @@ select * from t1 except (
 			},
 			{
 				Query: "SELECT * FROM (SELECT c_id AS c_c_id, bill FROM c) sq1, LATERAL (SELECT row_number() OVER () AS rownum FROM o WHERE c_id = c_c_id) sq2 ORDER BY c_c_id, bill, rownum;",
+				// TODO: valid query in Postgres. https://github.com/dolthub/doltgresql/issues/1796
+				Dialect: "mysql",
 				Expected: []sql.Row{
 					{1, "CA", 1},
 					{1, "CA", 2},
