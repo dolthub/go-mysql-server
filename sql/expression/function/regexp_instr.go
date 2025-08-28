@@ -35,13 +35,12 @@ type RegexpInstr struct {
 	Occurrence   sql.Expression
 	ReturnOption sql.Expression
 	Flags        sql.Expression
-
-	cachedVal   any
-	cacheRegex  bool
-	cacheVal    bool
-	re          regex.Regex
-	compileOnce sync.Once
-	compileErr  error
+	cachedVal    any
+	re           regex.Regex
+	compileErr   error
+	compileOnce  sync.Once
+	cacheRegex   bool
+	cacheVal     bool
 }
 
 var _ sql.FunctionExpression = (*RegexpInstr)(nil)

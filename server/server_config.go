@@ -39,31 +39,52 @@ type Option func(e *gms.Engine, sm *SessionManager, handler mysql.Handler) (*gms
 
 // Config for the mysql server.
 type Config struct {
-	// Protocol for the connection.
-	Protocol string
-	// Address of the server.
-	Address string
 	// Custom listener for the mysql server. Use this if you don't want ports or unix sockets to be opened automatically.
 	// This can be useful in testing by using a pure go net.Conn implementation.
 	Listener net.Listener
 	// Tracer to use in the server. By default, a noop tracer will be used if
 	// no tracer is provided.
 	Tracer trace.Tracer
+	// QueryCounter is a metrics.Counter that counts the number of queries executed.
+	QueryCounter Counter
+	// QueryErrorCounter is a metrics.Counter that counts the number of queries that resulted in an error.
+	QueryErrorCounter Counter
+	// QueryHistogram is a metrics.Histogram that measures the duration of queries executed.
+	QueryHistogram Histogram
+	// Used to get the ProtocolListener on server start.
+	// If unset, defaults to MySQLProtocolListenerFactory.
+	ProtocolListenerFactory ProtocolListenerFunc
+	TLSConfig               *tls.Config
+
+	// Protocol for the connection.
+	Protocol string
+	// Address of the server.
+	Address string
+	// Socket is a path to unix socket file
+	Socket string
 	// Version string to advertise in running server
 	Version string
+
+	// Options gets a chance to visit and mutate the GMS *Engine,
+	// *server.SessionManager and the mysql.Handler as the server
+	// is being initialized, before the ProtocolListener is
+	// constructed.
+	Options []Option
 	// ConnReadTimeout is the server's read timeout
 	ConnReadTimeout time.Duration
 	// ConnWriteTimeout is the server's write timeout
 	ConnWriteTimeout time.Duration
+	// MaxWaitConnectionsTimeout is the maximum amount of time that a connection will block waiting for a connection
+	MaxWaitConnectionsTimeout time.Duration
+
+	// MaxLoggedQueryLen sets the length at which queries written to the logs are truncated.  A value of 0 will
+	// result in no truncation. A value less than 0 will result in the queries being omitted from the logs completely
+	MaxLoggedQueryLen int
 	// MaxConnections is the maximum number of simultaneous connections that the server will allow.
 	MaxConnections uint64
 	// MaxWaitConnections is the maximum number of simultaneous connections that the server will allow to block waiting
 	// for a connection before new connections result in immediate rejection.
 	MaxWaitConnections uint32
-	// MaxWaitConnectionsTimeout is the maximum amount of time that a connection will block waiting for a connection
-	MaxWaitConnectionsTimeout time.Duration
-	// TLSConfig is the configuration for TLS on this server. If |nil|, TLS is not supported.
-	TLSConfig *tls.Config
 	// RequestSecureTransport will require incoming connections to be TLS. Requires non-|nil| TLSConfig.
 	RequireSecureTransport bool
 	// DisableClientMultiStatements will prevent processing of incoming
@@ -76,31 +97,11 @@ type Config struct {
 	DisableClientMultiStatements bool
 	// NoDefaults prevents using persisted configuration for new server sessions
 	NoDefaults bool
-	// Socket is a path to unix socket file
-	Socket                   string
-	AllowClearTextWithoutTLS bool
-	// MaxLoggedQueryLen sets the length at which queries written to the logs are truncated.  A value of 0 will
-	// result in no truncation. A value less than 0 will result in the queries being omitted from the logs completely
-	MaxLoggedQueryLen int
 	// EncodeLoggedQuery determines if logged queries are base64 encoded.
 	// If true, queries will be logged as base64 encoded strings.
 	// If false (default behavior), queries will be logged as strings, but newlines and tabs will be replaced with spaces.
-	EncodeLoggedQuery bool
-	// Options gets a chance to visit and mutate the GMS *Engine,
-	// *server.SessionManager and the mysql.Handler as the server
-	// is being initialized, before the ProtocolListener is
-	// constructed.
-	Options []Option
-	// Used to get the ProtocolListener on server start.
-	// If unset, defaults to MySQLProtocolListenerFactory.
-	ProtocolListenerFactory ProtocolListenerFunc
-
-	// QueryCounter is a metrics.Counter that counts the number of queries executed.
-	QueryCounter Counter
-	// QueryErrorCounter is a metrics.Counter that counts the number of queries that resulted in an error.
-	QueryErrorCounter Counter
-	// QueryHistogram is a metrics.Histogram that measures the duration of queries executed.
-	QueryHistogram Histogram
+	EncodeLoggedQuery        bool
+	AllowClearTextWithoutTLS bool
 }
 
 func (c Config) NewConfig() (Config, error) {

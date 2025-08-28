@@ -29,10 +29,10 @@ var ErrEvalUnsupportedOnAggregation = errors.NewKind("Unimplemented %s.Eval(). T
 // uses to codegen single expression aggregate functions.
 type unaryAggBase struct {
 	expression.UnaryExpression
+	typ          sql.Type
 	window       *sql.WindowDefinition
 	functionName string
 	description  string
-	typ          sql.Type
 	id           sql.ColumnId
 }
 

@@ -25,9 +25,9 @@ import (
 // ShowColumns shows the columns details of a table.
 type ShowColumns struct {
 	UnaryNode
-	Full         bool
 	Indexes      []sql.Index
 	targetSchema sql.Schema
+	Full         bool
 }
 
 var VarChar25000 = types.MustCreateStringWithDefaults(sqltypes.VarChar, 25_000)

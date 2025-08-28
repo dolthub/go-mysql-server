@@ -26,10 +26,10 @@ import (
 
 type applyJoin struct {
 	l        sql.Expression
-	r        *plan.Subquery
-	op       plan.JoinType
 	filter   sql.Expression
 	original sql.Expression
+	r        *plan.Subquery
+	op       plan.JoinType
 	max1     bool
 }
 

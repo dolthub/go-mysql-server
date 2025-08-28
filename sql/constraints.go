@@ -53,20 +53,20 @@ type ForeignKeyConstraint struct {
 	SchemaName string
 	// Table is the name of the table with the constraint
 	Table string
-	// Columns is the list of columns in the table that are part of the foreign key
-	Columns []string
 	// ParentDatabase is the name of the database of the parent table
 	ParentDatabase string
 	// ParentSchema is the name of the schema of the parent table, for databases that support schemas.
 	ParentSchema string
 	// ParentTable is the name of the parent table
 	ParentTable string
-	// ParentColumns is the list of columns in the parent table that are part of the foreign key
-	ParentColumns []string
 	// OnUpdate is the action to take when the constraint is violated when a row in the parent table is updated
 	OnUpdate ForeignKeyReferentialAction
 	// OnDelete is the action to take when the constraint is violated when a row in the parent table is deleted
 	OnDelete ForeignKeyReferentialAction
+	// Columns is the list of columns in the table that are part of the foreign key
+	Columns []string
+	// ParentColumns is the list of columns in the parent table that are part of the foreign key
+	ParentColumns []string
 	// IsResolved is true if the foreign key has been resolved, false otherwise
 	IsResolved bool
 }
@@ -101,8 +101,8 @@ type CheckDefinition struct {
 
 // CheckConstraint declares a boolean-eval constraint.
 type CheckConstraint struct {
-	Name     string
 	Expr     Expression
+	Name     string
 	Enforced bool
 }
 

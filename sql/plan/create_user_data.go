@@ -56,21 +56,21 @@ type Authentication interface {
 
 // AuthenticatedUser represents a user with the relevant methods of authentication.
 type AuthenticatedUser struct {
-	UserName
 	Auth1       Authentication
 	Auth2       Authentication
 	Auth3       Authentication
 	AuthInitial Authentication
 	Identity    string
+	UserName
 }
 
 // TLSOptions represents a user's TLS options.
 type TLSOptions struct {
-	SSL     bool
-	X509    bool
 	Cipher  string
 	Issuer  string
 	Subject string
+	SSL     bool
+	X509    bool
 }
 
 // AccountLimits represents the limits imposed upon an account.
@@ -83,13 +83,13 @@ type AccountLimits struct {
 
 // PasswordOptions states how to handle a user's passwords.
 type PasswordOptions struct {
-	RequireCurrentOptional bool
-
 	ExpirationTime *int64
 	History        *int64
 	ReuseInterval  *int64
 	FailedAttempts *int64
 	LockTime       *int64
+
+	RequireCurrentOptional bool
 }
 
 // CachingSha2PasswordAuthentication implements the Authentication interface for the

@@ -47,9 +47,9 @@ func (nl *NamedLockFunction) evalLockLogic(ctx *sql.Context, fn lockFuncLogic, r
 // NamedLockFunction is a sql function that takes just the name of a lock as an argument
 type NamedLockFunction struct {
 	expression.UnaryExpression
+	retType  sql.Type
 	ls       *sql.LockSubsystem
 	funcName string
-	retType  sql.Type
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -382,8 +382,8 @@ func (*GetLock) CollationCoercibility(ctx *sql.Context) (collation sql.Collation
 }
 
 type ReleaseAllLocks struct {
-	NoArgFunc
 	ls *sql.LockSubsystem
+	NoArgFunc
 }
 
 var _ sql.FunctionExpression = ReleaseAllLocks{}
@@ -392,7 +392,7 @@ var _ sql.CollationCoercible = ReleaseAllLocks{}
 func NewReleaseAllLocks(ls *sql.LockSubsystem) func() sql.Expression {
 	return func() sql.Expression {
 		return ReleaseAllLocks{
-			NoArgFunc: NoArgFunc{"release_all_locks", types.Int32},
+			NoArgFunc: NoArgFunc{Name: "release_all_locks", SQLType: types.Int32},
 			ls:        ls,
 		}
 	}

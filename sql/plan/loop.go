@@ -22,10 +22,10 @@ import (
 
 // Loop represents the LOOP statement, which loops over a set of statements.
 type Loop struct {
-	Label          string
-	Condition      sql.Expression // We continue looping until the condition returns false
-	OnceBeforeEval bool           // Whether to run through the statements first before evaluating the condition
+	Condition sql.Expression // We continue looping until the condition returns false
 	*Block
+	Label          string
+	OnceBeforeEval bool // Whether to run through the statements first before evaluating the condition
 }
 
 var _ sql.Node = (*Loop)(nil)

@@ -36,8 +36,8 @@ type MultiPolygonType struct {
 
 // MultiPolygon is the value type returned from MultiPolygonType. Implements GeometryValue.
 type MultiPolygon struct {
-	SRID     uint32
 	Polygons []Polygon
+	SRID     uint32
 }
 
 var (

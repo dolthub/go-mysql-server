@@ -24,10 +24,10 @@ import (
 
 type UnaryFunc struct {
 	expression.UnaryExpression
-	// Name is the name of the function
-	Name string
 	// The type returned by the function
 	RetType sql.Type
+	// Name is the name of the function
+	Name string
 }
 
 func NewUnaryFunc(arg sql.Expression, name string, returnType sql.Type) *UnaryFunc {

@@ -226,11 +226,11 @@ const (
 type TrackedRowIter struct {
 	node               sql.Node
 	iter               sql.RowIter
+	onDone             NotifyFunc
+	onNext             NotifyFunc
 	numRows            int64
 	QueryType          queryType
 	ShouldSetFoundRows bool
-	onDone             NotifyFunc
-	onNext             NotifyFunc
 }
 
 func NewTrackedRowIter(

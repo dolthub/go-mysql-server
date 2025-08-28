@@ -78,9 +78,9 @@ var (
 )
 
 type StringType struct {
-	baseType      query.Type
 	maxCharLength int64
 	maxByteLength int64
+	baseType      query.Type
 	collation     sql.CollationID
 }
 
@@ -182,7 +182,12 @@ func CreateString(baseType query.Type, length int64, collation sql.CollationID) 
 		}
 	}
 
-	return StringType{baseType, maxCharLength, maxByteLength, collation}, nil
+	return StringType{
+		maxCharLength: maxCharLength,
+		maxByteLength: maxByteLength,
+		baseType:      baseType,
+		collation:     collation,
+	}, nil
 }
 
 // MustCreateString is the same as CreateString except it panics on errors.

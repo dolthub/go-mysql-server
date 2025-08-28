@@ -27,8 +27,8 @@ var ErrKeyNotFound = fmt.Errorf("memory: key not found in cache")
 type lruCache struct {
 	memory   Freeable
 	reporter Reporter
-	size     int
 	cache    *lru.Cache
+	size     int
 }
 
 func (l *lruCache) Size() int {
@@ -37,7 +37,12 @@ func (l *lruCache) Size() int {
 
 func newLRUCache(memory Freeable, r Reporter, size uint) *lruCache {
 	lru, _ := lru.New(int(size))
-	return &lruCache{memory, r, int(size), lru}
+	return &lruCache{
+		memory:   memory,
+		reporter: r,
+		cache:    lru,
+		size:     int(size),
+	}
 }
 
 func (l *lruCache) Put(k uint64, v interface{}) error {

@@ -35,9 +35,9 @@ var _ sql.DeletableTable = (*EmptyTable)(nil)
 var _ sql.RenameableNode = (*EmptyTable)(nil)
 
 type EmptyTable struct {
+	cols   sql.ColSet
 	schema sql.Schema
 	id     sql.TableId
-	cols   sql.ColSet
 }
 
 // WithId implements sql.TableIdNode

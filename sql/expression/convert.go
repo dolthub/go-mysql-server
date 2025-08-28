@@ -67,16 +67,18 @@ const (
 // Convert represent a CAST(x AS T) or CONVERT(x, T) operation that casts x expression to type T.
 type Convert struct {
 	UnaryExpression
+
+	// cachedDecimalType is the cached Decimal type for this convert expression. Because new Decimal types
+	// must be created with their specific scale and precision values, unlike other types, we cache the created
+	// type to avoid re-creating it on every call to Type().
+	cachedDecimalType sql.DecimalType
+
 	// castToType is a string representation of the base type to which we are casting (e.g. "char", "float", "decimal")
 	castToType string
 	// typeLength is the optional length parameter for types that support it (e.g. "char(10)")
 	typeLength int
 	// typeScale is the optional scale parameter for types that support it (e.g. "decimal(10, 2)")
 	typeScale int
-	// cachedDecimalType is the cached Decimal type for this convert expression. Because new Decimal types
-	// must be created with their specific scale and precision values, unlike other types, we cache the created
-	// type to avoid re-creating it on every call to Type().
-	cachedDecimalType sql.DecimalType
 }
 
 var _ sql.Expression = (*Convert)(nil)

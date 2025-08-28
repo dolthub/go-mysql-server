@@ -27,8 +27,8 @@ var ByteBufPool = sync.Pool{
 }
 
 type ByteBuffer struct {
-	i   int
 	buf []byte
+	i   int
 }
 
 func NewByteBuffer(initCap int) *ByteBuffer {

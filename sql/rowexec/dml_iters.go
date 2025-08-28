@@ -96,10 +96,10 @@ func (t *triggerRollbackIter) Close(ctx *sql.Context) error {
 
 // triggerBlockIter is the sql.RowIter for TRIGGER BEGIN/END blocks, which operate differently than normal blocks.
 type triggerBlockIter struct {
+	b          *BaseBuilder
+	once       *sync.Once
 	statements []sql.Node
 	row        sql.Row
-	once       *sync.Once
-	b          *BaseBuilder
 }
 
 var _ sql.RowIter = (*triggerBlockIter)(nil)
@@ -178,10 +178,10 @@ func (i *triggerBlockIter) Close(*sql.Context) error {
 type triggerIter struct {
 	child          sql.RowIter
 	executionLogic sql.Node
-	triggerTime    plan.TriggerTime
-	triggerEvent   plan.TriggerEvent
 	ctx            *sql.Context
 	b              *BaseBuilder
+	triggerTime    plan.TriggerTime
+	triggerEvent   plan.TriggerEvent
 }
 
 // prependRowInPlanForTriggerExecution returns a transformation function that prepends the row given to any row source in a query
@@ -348,10 +348,10 @@ type updateIgnoreAccumulatorRowHandler interface {
 }
 
 type insertRowHandler struct {
+	lastInsertIdGetter        func(row sql.Row) int64
 	rowsAffected              int
 	lastInsertId              uint64
 	updatedAutoIncrementValue bool
-	lastInsertIdGetter        func(row sql.Row) int64
 }
 
 func (i *insertRowHandler) handleRowUpdate(ctx *sql.Context, row sql.Row) error {
@@ -399,8 +399,8 @@ func (r *replaceRowHandler) okResult() types.OkResult {
 }
 
 type onDuplicateUpdateHandler struct {
-	rowsAffected              int
 	schema                    sql.Schema
+	rowsAffected              int
 	clientFoundRowsCapability bool
 }
 
@@ -436,9 +436,9 @@ func (o *onDuplicateUpdateHandler) okResult() types.OkResult {
 }
 
 type updateRowHandler struct {
+	schema                    sql.Schema
 	rowsMatched               int
 	rowsAffected              int
-	schema                    sql.Schema
 	clientFoundRowsCapability bool
 }
 
@@ -486,11 +486,11 @@ func (u *updateRowHandler) RowsMatched() int64 {
 
 // updateJoinRowHandler handles row update count for all UPDATEs that use a JOIN.
 type updateJoinRowHandler struct {
+	tableMap     map[string]sql.Schema
+	updaterMap   map[string]sql.RowUpdater
+	joinSchema   sql.Schema
 	rowsMatched  int
 	rowsAffected int
-	joinSchema   sql.Schema
-	tableMap     map[string]sql.Schema // Needs to only be the tables that can be updated.
-	updaterMap   map[string]sql.RowUpdater
 }
 
 // handleRowMatched is called when an update join's source returns a row
@@ -549,8 +549,8 @@ func (u *deleteRowHandler) okResult() types.OkResult {
 
 type accumulatorIter struct {
 	iter             sql.RowIter
-	once             sync.Once
 	updateRowHandler accumulatorRowHandler
+	once             sync.Once
 }
 
 func getRowHandler(clientFoundRowsToggled bool, iter sql.RowIter) accumulatorRowHandler {
