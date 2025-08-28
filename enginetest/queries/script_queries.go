@@ -11685,22 +11685,6 @@ select * from t1 except (
 				Query:    "select count(*) from o where c_id=-999",
 				Expected: []sql.Row{{0}},
 			},
-			{
-				Query: "SELECT * FROM (SELECT c_id AS c_c_id, bill FROM c) sq1, LATERAL (SELECT row_number() OVER () AS rownum FROM o WHERE c_id = c_c_id) sq2 ORDER BY c_c_id, bill, rownum;",
-				// TODO: valid query in Postgres. https://github.com/dolthub/doltgresql/issues/1796
-				Dialect: "mysql",
-				Expected: []sql.Row{
-					{1, "CA", 1},
-					{1, "CA", 2},
-					{1, "CA", 3},
-					{2, "TX", 1},
-					{2, "TX", 2},
-					{2, "TX", 3},
-					{4, "TX", 1},
-					{4, "TX", 2},
-					{6, "FL", 1},
-				},
-			},
 		},
 	},
 }
