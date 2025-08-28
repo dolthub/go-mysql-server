@@ -22,10 +22,10 @@ import (
 
 // Sorter is a sorter implementation for Row slices using SortFields for the comparison
 type Sorter struct {
-	SortFields []sql.SortField
-	Rows       []sql.Row
 	LastError  error
 	Ctx        *sql.Context
+	SortFields []sql.SortField
+	Rows       []sql.Row
 }
 
 func (s *Sorter) Len() int {
@@ -88,10 +88,10 @@ func (s *Sorter) Less(i, j int) bool {
 
 // Sorter2 is a version of Sorter that operates on Row2
 type Sorter2 struct {
-	SortFields []sql.SortField
-	Rows       []sql.Row2
 	LastError  error
 	Ctx        *sql.Context
+	SortFields []sql.SortField
+	Rows       []sql.Row2
 }
 
 func (s *Sorter2) Len() int {

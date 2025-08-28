@@ -23,19 +23,22 @@ import (
 // SubqueryAlias is a node that gives a subquery a name.
 type SubqueryAlias struct {
 	UnaryNode
-	ColumnNames    []string
+	Correlated   sql.ColSet
+	cols         sql.ColSet
+	ScopeMapping map[sql.ColumnId]sql.Expression
+
 	name           string
 	TextDefinition string
+	ColumnNames    []string
+
+	id sql.TableId
+
 	// OuterScopeVisibility is true when a SubqueryAlias (i.e. derived table) is contained in a subquery
 	// expression and is eligible to have visibility to outer scopes of the query.
 	OuterScopeVisibility bool
-	Correlated           sql.ColSet
 	Volatile             bool
 	CacheableCTESource   bool
 	IsLateral            bool
-	ScopeMapping         map[sql.ColumnId]sql.Expression
-	id                   sql.TableId
-	cols                 sql.ColSet
 }
 
 var _ sql.Node = (*SubqueryAlias)(nil)

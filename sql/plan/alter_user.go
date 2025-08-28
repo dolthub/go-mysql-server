@@ -23,9 +23,9 @@ import (
 
 // AlterUser represents the statement ALTER USER.
 type AlterUser struct {
-	IfExists bool
-	User     AuthenticatedUser
 	MySQLDb  sql.Database
+	User     AuthenticatedUser
+	IfExists bool
 }
 
 var _ sql.Node = (*AlterUser)(nil)

@@ -45,14 +45,14 @@ func (i *describeIter) Close(*sql.Context) error {
 }
 
 type process struct {
-	id      int64
 	user    string
 	host    string
 	db      string
 	command string
-	time    int64
 	state   string
 	info    string
+	id      int64
+	time    int64
 }
 
 func (p process) toRow() sql.Row {
@@ -344,12 +344,12 @@ func (i *showIndexesIter) Close(*sql.Context) error {
 
 type showCreateTablesIter struct {
 	table        sql.Node
+	pkSchema     sql.PrimaryKeySchema
 	schema       sql.Schema
-	didIteration bool
-	isView       bool
 	indexes      []sql.Index
 	checks       sql.CheckConstraints
-	pkSchema     sql.PrimaryKeySchema
+	didIteration bool
+	isView       bool
 }
 
 func (i *showCreateTablesIter) Next(ctx *sql.Context) (sql.Row, error) {

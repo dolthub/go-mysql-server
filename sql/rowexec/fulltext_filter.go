@@ -178,12 +178,12 @@ func (f *fulltextFilterTablePartitionIter) Close(*sql.Context) error {
 // fulltextFilterTableRowIter is a row iterator that is used exclusively by FulltextFilterTable. Handles the
 // communication between multiple tables to function similarly to a regular indexed table row iterator.
 type fulltextFilterTableRowIter struct {
-	matchAgainst  *expression.MatchAgainst
-	parser        fulltext.DefaultParser
 	parentIndex   sql.Index
 	docCountIndex sql.Index
+	matchAgainst  *expression.MatchAgainst
 	parentIter    *sql.TableRowIter
 	docCountIter  *sql.TableRowIter
+	parser        fulltext.DefaultParser
 }
 
 var _ sql.RowIter = (*fulltextFilterTableRowIter)(nil)

@@ -25,8 +25,8 @@ import (
 
 type DropTrigger struct {
 	Db          sql.Database
-	IfExists    bool
 	TriggerName string
+	IfExists    bool
 }
 
 var _ sql.Databaser = (*DropTrigger)(nil)

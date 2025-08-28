@@ -23,10 +23,10 @@ import (
 
 // DeclareHandler represents the DECLARE ... HANDLER statement.
 type DeclareHandler struct {
-	Action    expression.DeclareHandlerAction
 	Statement sql.Node
 	Pref      *expression.ProcedureReference
 	Condition expression.HandlerCondition
+	Action    expression.DeclareHandlerAction
 }
 
 var _ sql.Node = (*DeclareHandler)(nil)

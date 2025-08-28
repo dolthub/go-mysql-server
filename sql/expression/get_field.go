@@ -25,24 +25,25 @@ import (
 
 // GetField is an expression to get the field of a table.
 type GetField struct {
-	db         string
-	table      string
-	fieldIndex int
-	// exprId lets the lifecycle of getFields be idempotent. We can re-index
-	// or re-apply scope/caching optimizations without worrying about losing
-	// the reference to the unique id.
-	exprId     sql.ColumnId
-	tableId    sql.TableId
-	name       string
 	fieldType  sql.Type
 	fieldType2 sql.Type2
-	nullable   bool
-
 	// schemaFormatter is the schemaFormatter used to quote field names
 	schemaFormatter sql.SchemaFormatter
 
+	db         string
+	table      string
+	name       string
+	fieldIndex int
+
+	// exprId lets the lifecycle of getFields be idempotent. We can re-index
+	// or re-apply scope/caching optimizations without worrying about losing
+	// the reference to the unique id.
+	exprId  sql.ColumnId
+	tableId sql.TableId
+
 	// quoteName indicates whether the field name should be quoted when printed with String()
 	quoteName bool
+	nullable  bool
 }
 
 var _ sql.Expression = (*GetField)(nil)

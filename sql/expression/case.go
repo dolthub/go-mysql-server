@@ -31,8 +31,8 @@ type CaseBranch struct {
 // condition is met.
 type Case struct {
 	Expr     sql.Expression
-	Branches []CaseBranch
 	Else     sql.Expression
+	Branches []CaseBranch
 }
 
 var _ sql.Expression = (*Case)(nil)
@@ -40,7 +40,7 @@ var _ sql.CollationCoercible = (*Case)(nil)
 
 // NewCase returns an new Case expression.
 func NewCase(expr sql.Expression, branches []CaseBranch, elseExpr sql.Expression) *Case {
-	return &Case{expr, branches, elseExpr}
+	return &Case{Expr: expr, Branches: branches, Else: elseExpr}
 }
 
 // Type implements the sql.Expression interface.

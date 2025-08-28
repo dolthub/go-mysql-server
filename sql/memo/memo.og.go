@@ -234,11 +234,11 @@ func (r *TableScan) Children() []*ExprGroup {
 }
 
 type IndexScan struct {
+	Stats sql.Statistic
 	*sourceBase
 	Table *plan.IndexedTableAccess
 	Index *Index
 	Alias string
-	Stats sql.Statistic
 }
 
 var _ RelExpr = (*IndexScan)(nil)

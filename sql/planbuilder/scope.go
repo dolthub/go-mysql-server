@@ -28,41 +28,45 @@ import (
 // scope tracks relational dependencies necessary to type check expressions,
 // resolve name definitions, and build relational nodes.
 type scope struct {
-	b      *Builder
-	parent *scope
-	ast    ast.SQLNode
 	node   sql.Node
-
-	activeSubquery *subquery
-	refsSubquery   bool
-
-	// cols are definitions provided by this scope
-	cols   []scopeColumn
 	colset sql.ColSet
-	// extraCols are auxillary output columns required
-	// for sorting or grouping
-	extraCols []scopeColumn
+	ast    ast.SQLNode
+
+	// exprs collects unique expression ids for reference
+	exprs map[string]columnId
+
+	// tables are the list of table definitions in this scope
+	tables              map[string]sql.TableId
+	windowDefs          map[string]*sql.WindowDefinition
+	selectAliases       map[string]sql.Expression
+	insertColumnAliases map[string]string
+
 	// redirectCol is used for using and natural joins right-table
 	// attributes that redirect to the left table intersection
 	redirectCol map[string]scopeColumn
-	// tables are the list of table definitions in this scope
-	tables map[string]sql.TableId
+
 	// ctes are common table expressions defined in this scope
-	// TODO these should be case-sensitive
+	// TODO: these should be case-sensitive
 	ctes map[string]*scope
+
+	b              *Builder
+	proc           *procCtx
+	parent         *scope
+	activeSubquery *subquery
+
 	// groupBy collects aggregation functions and inputs
 	groupBy *groupBy
+
+	insertTableAlias string
+
+	// cols are definitions provided by this scope
+	cols []scopeColumn
+	// extraCols are auxillary output columns required for sorting or grouping
+	extraCols []scopeColumn
 	// windowFuncs is a list of window functions in the current scope
 	windowFuncs []scopeColumn
-	windowDefs  map[string]*sql.WindowDefinition
-	// exprs collects unique expression ids for reference
-	exprs map[string]columnId
-	proc  *procCtx
 
-	insertTableAlias    string
-	insertColumnAliases map[string]string
-
-	selectAliases map[string]sql.Expression
+	refsSubquery bool
 }
 
 // resolveColumn matches a variable use to a column definition with a unique
@@ -611,17 +615,17 @@ type tableId uint16
 type columnId uint16
 
 type scopeColumn struct {
-	nullable    bool
-	descending  bool
-	outOfScope  bool
-	id          columnId
 	typ         sql.Type
 	scalar      sql.Expression
-	tableId     sql.TableId
 	db          string
 	table       string
 	col         string
 	originalCol string
+	id          columnId
+	tableId     sql.TableId
+	nullable    bool
+	descending  bool
+	outOfScope  bool
 }
 
 // empty returns true if a scopeColumn is the null value

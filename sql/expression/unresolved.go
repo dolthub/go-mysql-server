@@ -114,10 +114,10 @@ var _ sql.TableFunction = (*UnresolvedTableFunction)(nil)
 // This is a placeholder node, so methods such as Schema, RowIter, etc, are not
 // intended to be used.
 type UnresolvedTableFunction struct {
+	database  sql.Database
 	name      string
 	Alias     string
 	Arguments []sql.Expression
-	database  sql.Database
 }
 
 var _ sql.Node = (*UnresolvedTableFunction)(nil)
@@ -230,13 +230,10 @@ var _ sql.CollationCoercible = (*UnresolvedFunction)(nil)
 // This is a placeholder node, so its methods Type, IsNullable and Eval are not
 // supposed to be called.
 type UnresolvedFunction struct {
-	name string
-	// IsAggregate or not.
+	Window      *sql.WindowDefinition
+	name        string
+	Arguments   []sql.Expression
 	IsAggregate bool
-	// Window is the window for this function, if present
-	Window *sql.WindowDefinition
-	// Children of the expression.
-	Arguments []sql.Expression
 }
 
 // NewUnresolvedFunction creates a new UnresolvedFunction expression.
