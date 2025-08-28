@@ -33,6 +33,7 @@ type SubqueryAlias struct {
 
 	id sql.TableId
 
+	// OuterScopeVisibility is true when a SubqueryAlias (i.e. derived table) is contained in a subquery
 	// expression and is eligible to have visibility to outer scopes of the query.
 	OuterScopeVisibility bool
 	Volatile             bool

@@ -32,6 +32,7 @@ var ErrUpdateUnexpectedSetResult = errors.NewKind("attempted to set field but ex
 type Update struct {
 	UnaryNode
 	checks sql.CheckConstraints
+	// Returning is a list of expressions to return after the update operation. This feature is not
 	// supported in MySQL's syntax, but is exposed through PostgreSQL's syntax.
 	Returning []sql.Expression
 	// IsJoin is true only for explicit UPDATE JOIN queries. It's possible for Update.IsJoin to be false and

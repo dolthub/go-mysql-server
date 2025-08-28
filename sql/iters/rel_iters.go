@@ -160,12 +160,12 @@ type JsonTableColOpts struct {
 type JsonTableCol struct {
 	err      error
 	Opts     *JsonTableColOpts
-	Path     string
-	Cols     []*JsonTableCol
+	Path     string // if there are nested columns, this is a schema Path, otherwise it is a col Path
+	Cols     []*JsonTableCol // nested columns
 	data     []interface{}
 	pos      int
 	currSib  int
-	finished bool
+	finished bool // exhausted all rows in data
 }
 
 // IsSibling returns if the jsonTableCol contains multiple columns

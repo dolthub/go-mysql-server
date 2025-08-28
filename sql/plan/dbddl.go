@@ -113,6 +113,8 @@ func (c *CreateSchema) WithChildren(children ...sql.Node) (sql.Node, error) {
 // DropDB removes a databases from the Catalog and updates the active database if it gets removed itself.
 type DropDB struct {
 	Catalog   sql.Catalog
+	// EventScheduler is used to notify EventSchedulerStatus of database deletion,
+	// so the events of this database in the scheduler will be removed.
 	Scheduler sql.EventScheduler
 	DbName    string
 	IfExists  bool

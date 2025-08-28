@@ -319,23 +319,28 @@ func (f *rowFramerBase) Interval() (sql.WindowInterval, error) {
 // frame:  {0,3},   {1,3}, {2,3}, {3,5},   {3,5},   {4,5}
 // rows:   [0,1,2], [1,2], [2],   [4,4,5], [4,4,5], [5]
 type rangeFramerBase struct {
-	startNFollowing sql.Expression
-	endNFollowing   sql.Expression
-	startNPreceding sql.Expression
-	endNPreceding   sql.Expression
+	startNFollowing sql.Expression // optional
+	endNFollowing   sql.Expression // optional
+	startNPreceding sql.Expression // optional
+	endNPreceding   sql.Expression // optional
+	// boundary arithmetic on [orderBy] for range start value
+	// is set unless [unboundedPreceding] is true
 	startInclusion  sql.Expression
+	// boundary arithmetic on [orderBy] for range end value
+	// is set unless [unboundedFollowing] is true
 	endInclusion    sql.Expression
+	// reference expression for boundary calculation
 	orderBy         sql.Expression
 
 	idx                int
-	partitionEnd       int
-	frameStart         int
-	frameEnd           int
 	partitionStart     int
-	startCurrentRow    bool
-	endCurrentRow      bool
-	unboundedFollowing bool
-	unboundedPreceding bool
+	partitionEnd       int
+	frameStart         int  // optional
+	frameEnd           int  // optional
+	startCurrentRow    bool // optional
+	endCurrentRow      bool // optional
+	unboundedFollowing bool // optional
+	unboundedPreceding bool // optional
 	partitionSet       bool
 }
 
