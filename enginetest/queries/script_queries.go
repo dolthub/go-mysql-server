@@ -4693,7 +4693,7 @@ CREATE TABLE tab3 (
 			{
 				Query: "select COLUMN_NAME, DATA_TYPE from INFORMATION_SCHEMA.COLUMNS where TABLE_NAME='c';",
 				Expected: []sql.Row{
-					{"coalesce(NULL,1)", "int"},
+					{"coalesce(NULL, 1)", "int"},
 				},
 			},
 		},
