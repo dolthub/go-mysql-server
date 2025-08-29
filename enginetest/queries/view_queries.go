@@ -15,6 +15,8 @@
 package queries
 
 import (
+	"time"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -363,6 +365,47 @@ var ViewCreateInSubroutineTests = []ScriptTest{
 				Query: "CREATE EVENT foo ON SCHEDULE EVERY 1 YEAR DO CREATE VIEW bar AS SELECT 1;",
 			},
 		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9738
+		Name: "CREATE VIEW with parentheses around SELECT",
+		SetUpScript: []string{
+			"CREATE TABLE test_table (id INT, name VARCHAR(50), active BOOLEAN);",
+			"INSERT INTO test_table VALUES (1, 'Alice', true), (2, 'Bob', false), (3, 'Charlie', true);",
+			"CREATE TABLE task_history (id INT, task VARCHAR(100), db_id INT, started_at DATETIME, ended_at DATETIME, duration INT, task_details TEXT);",
+			"INSERT INTO task_history VALUES (1, 'Task 1', 1, '2023-01-01 10:00:00', '2023-01-01 11:00:00', 3600000, 'Task details 1'), (2, 'Task 2', 2, '2023-01-02 10:00:00', '2023-01-02 12:00:00', 7200000, 'Task details 2');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CREATE VIEW simple_view AS (SELECT id, name FROM test_table WHERE active = true);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query:    "SELECT * FROM simple_view ORDER BY id;",
+				Expected: []sql.Row{{1, "Alice"}, {3, "Charlie"}},
+			},
+			{
+				Query: "CREATE VIEW complex_view AS (SELECT id, name, CONCAT('user_', id) AS user_id FROM test_table WHERE active = true);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query:    "SELECT * FROM complex_view ORDER BY id;",
+				Expected: []sql.Row{{1, "Alice", "user_1"}, {3, "Charlie", "user_3"}},
+			},
+			{
+				Query: "CREATE OR REPLACE VIEW v_tasks AS (SELECT id, task, CONCAT('database_', db_id) AS database_qualified_id, started_at, ended_at, CAST(duration AS DOUBLE) / 1000 AS duration_seconds, task_details AS details FROM task_history);",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query:    "SELECT * FROM v_tasks ORDER BY id;",
+				Expected: []sql.Row{{1, "Task 1", "database_1", time.Date(2023, time.January, 1, 10, 0, 0, 0, time.UTC), time.Date(2023, time.January, 1, 11, 0, 0, 0, time.UTC), 3600.0, "Task details 1"}, {2, "Task 2", "database_2", time.Date(2023, time.January, 2, 10, 0, 0, 0, time.UTC), time.Date(2023, time.January, 2, 12, 0, 0, 0, time.UTC), 7200.0, "Task details 2"}},
+			}},
 	},
 	{
 		Name: "trigger contains CREATE VIEW AS",
