@@ -837,7 +837,7 @@ var CreateTableScriptTests = []ScriptTest{
 				Query: "show create table t4;",
 				Expected: []sql.Row{
 					{"t4", "CREATE TABLE `t4` (\n" +
-						"  `(a.j + 1)` bigint\n" +
+						"  `j + 1` bigint\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
@@ -995,7 +995,7 @@ var CreateTableScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "show create table t2;",
-				// TODO: MySQL has the column type as 'decimal(32,0) DEFAULT NULL'
+				// TODO: MySQL has the column type as 'decimal(32,0) DEFAULT NULL' https://github.com/dolthub/dolt/issues/9754
 				Expected: []sql.Row{{"t2", "CREATE TABLE `t2` (\n  `sum(i)` double NOT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
