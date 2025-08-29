@@ -15,6 +15,7 @@
 package queries
 
 import (
+	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -982,6 +983,21 @@ var CreateTableScriptTests = []ScriptTest{
 						"  `u` int\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
+			},
+		},
+	},
+	{
+		Name: "create table column from aggregate function",
+		SetUpScript: []string{
+			"create table t1 (i int)",
+			"insert into t1 values (1)",
+			"create table t2 select sum(i) from t1",
+		},
+		Assertions: []queries.ScriptTestAssertion{
+			{
+				Query: "show create table t2;",
+				// TODO: MySQL has the column type as 'decimal(32,0) DEFAULT NULL'
+				Expected: []sql.Row{{"t2", "CREATE TABLE `t2` (\n  `sum(i)` double NOT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 			},
 		},
 	},
