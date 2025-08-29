@@ -993,7 +993,7 @@ var CreateTableScriptTests = []ScriptTest{
 			"insert into t1 values (1)",
 			"create table t2 select sum(i) from t1",
 		},
-		Assertions: []queries.ScriptTestAssertion{
+		Assertions: []ScriptTestAssertion{
 			{
 				Query: "show create table t2;",
 				// TODO: MySQL has the column type as 'decimal(32,0) DEFAULT NULL'
