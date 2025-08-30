@@ -20,6 +20,12 @@ jobs:
         env:
           CI_TEST: "true"
           SERVER_ENGINE_TEST: "true"
+      - name: Test using Server Engine (32 bit)
+        run: go test ./...
+        env:
+          GOARCH: "386"
+          CI_TEST: "true"
+          SERVER_ENGINE_TEST: "true"
       - name: Test using Server Engine
         run: go test -race ./...
         env:
