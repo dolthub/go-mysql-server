@@ -22,8 +22,8 @@ import (
 
 // FlushPrivileges reads privileges from mysql tables and registers any unregistered privileges found.
 type FlushPrivileges struct {
-	writesToBinlog bool
 	MysqlDb        sql.Database
+	writesToBinlog bool
 }
 
 var _ sql.Node = (*FlushPrivileges)(nil)

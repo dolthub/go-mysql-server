@@ -843,7 +843,7 @@ var CreateTableScriptTests = []ScriptTest{
 				Query: "show create table t4;",
 				Expected: []sql.Row{
 					{"t4", "CREATE TABLE `t4` (\n" +
-						"  `(a.j + 1)` bigint\n" +
+						"  `j + 1` bigint\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
@@ -986,6 +986,28 @@ var CreateTableScriptTests = []ScriptTest{
 						"  `p` int NOT NULL,\n" +
 						"  `q` int DEFAULT '300',\n" +
 						"  `u` int\n" +
+						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+		},
+	},
+	{
+		Name: "create table columns from aggregate functions",
+		SetUpScript: []string{
+			"create table t1 (i int)",
+			"insert into t1 values (1)",
+			"create table t2 select sum(i), max(i), min(i), avg(i) from t1",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show create table t2;",
+				// TODO: MySQL column types are different https://github.com/dolthub/dolt/issues/9754
+				Expected: []sql.Row{
+					{"t2", "CREATE TABLE `t2` (\n" +
+						"  `sum(i)` double NOT NULL,\n" +
+						"  `max(i)` int NOT NULL,\n" +
+						"  `min(i)` int NOT NULL,\n" +
+						"  `avg(i)` double\n" +
 						") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},

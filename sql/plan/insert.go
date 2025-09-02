@@ -62,15 +62,13 @@ type InsertInto struct {
 	db          sql.Database
 	Destination sql.Node
 	Source      sql.Node
-	ColumnNames []string
-	IsReplace   bool
-	OnDupExprs  []sql.Expression
-	checks      sql.CheckConstraints
-	Ignore      bool
-	// LiteralValueSource is set to |true| when |Source| is
-	// a |Values| node with only literal expressions.
-	LiteralValueSource bool
+	// DeferredDefaults marks which columns in the destination schema are expected to have default values.
+	DeferredDefaults sql.FastIntSet
 
+	ColumnNames []string
+
+	checks     sql.CheckConstraints
+	OnDupExprs []sql.Expression
 	// Returning is a list of expressions to return after the insert operation. This feature is not supported
 	// in MySQL's syntax, but is exposed through PostgreSQL's and MariaDB's syntax.
 	Returning []sql.Expression
@@ -78,8 +76,11 @@ type InsertInto struct {
 	// FirstGenerateAutoIncRowIdx is the index of the first row inserted that increments last_insert_id.
 	FirstGeneratedAutoIncRowIdx int
 
-	// DeferredDefaults marks which columns in the destination schema are expected to have default values.
-	DeferredDefaults sql.FastIntSet
+	IsReplace bool
+	Ignore    bool
+	// LiteralValueSource is set to |true| when |Source| is
+	// a |Values| node with only literal expressions.
+	LiteralValueSource bool
 }
 
 var _ sql.Databaser = (*InsertInto)(nil)

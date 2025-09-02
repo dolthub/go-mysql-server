@@ -512,7 +512,7 @@ order by 1;`,
 			},
 			{
 				// group by doesn't transform
-				q:     "select * from xy where y-1 in (select u from uv group by v having v = 2 order by 1) order by 1;",
+				q:     "select * from xy where y-1 in (select u from uv group by u having u = 2 order by 1) order by 1;",
 				types: []plan.JoinType{plan.JoinTypeSemi},
 				exp:   []sql.Row{{3, 3}},
 			},

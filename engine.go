@@ -53,16 +53,16 @@ func init() {
 type Config struct {
 	// VersionPostfix to display with the `VERSION()` UDF.
 	VersionPostfix string
+	// TemporaryUsers adds any users that should be included when the engine is created. By default, authentication is
+	// disabled, and including any users here will enable authentication. All users in this list will have full access.
+	// This field is only temporary, and will be removed as development on users and authentication continues.
+	TemporaryUsers []TemporaryUser
 	// IsReadOnly sets the engine to disallow modification queries.
 	IsReadOnly     bool
 	IsServerLocked bool
 	// IncludeRootAccount adds the root account (with no password) to the list of accounts, and also enables
 	// authentication.
 	IncludeRootAccount bool
-	// TemporaryUsers adds any users that should be included when the engine is created. By default, authentication is
-	// disabled, and including any users here will enable authentication. All users in this list will have full access.
-	// This field is only temporary, and will be removed as development on users and authentication continues.
-	TemporaryUsers []TemporaryUser
 }
 
 // TemporaryUser is a user that will be added to the engine. This is for temporary use while the remaining features
@@ -136,18 +136,18 @@ func (p *PreparedDataCache) UncacheStmt(sessId uint32, query string) {
 
 // Engine is a SQL engine.
 type Engine struct {
+	Parser            sql.Parser
+	ProcessList       sql.ProcessList
 	Analyzer          *analyzer.Analyzer
 	LS                *sql.LockSubsystem
-	ProcessList       sql.ProcessList
 	MemoryManager     *sql.MemoryManager
 	BackgroundThreads *sql.BackgroundThreads
-	ReadOnly          atomic.Bool
-	IsServerLocked    bool
 	PreparedDataCache *PreparedDataCache
 	mu                *sync.Mutex
-	Version           sql.AnalyzerVersion
 	EventScheduler    *eventscheduler.EventScheduler
-	Parser            sql.Parser
+	ReadOnly          atomic.Bool
+	IsServerLocked    bool
+	Version           sql.AnalyzerVersion
 }
 
 var _ sql.StatementRunner = (*Engine)(nil)

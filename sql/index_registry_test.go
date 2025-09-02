@@ -443,6 +443,7 @@ func (i dummyIdx) Expressions() []string {
 	}
 	return exprs
 }
+
 func (i dummyIdx) ID() string              { return i.id }
 func (i dummyIdx) Database() string        { return i.database }
 func (i dummyIdx) Table() string           { return i.table }

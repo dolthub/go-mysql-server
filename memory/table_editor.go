@@ -28,16 +28,13 @@ import (
 
 // tableEditor manages the edits that a targetTable receives.
 type tableEditor struct {
-	editedTable  *Table
-	initialTable *Table
-
-	discardChanges bool
 	ea             tableEditAccumulator
-
-	// array of key ordinals for each unique index defined on the targetTable
-	uniqueIdxCols [][]int
-	prefixLengths [][]uint16
-	fkTable       *Table
+	editedTable    *Table
+	initialTable   *Table
+	fkTable        *Table
+	uniqueIdxCols  [][]int
+	prefixLengths  [][]uint16
+	discardChanges bool
 }
 
 var _ sql.Table = (*tableEditor)(nil)

@@ -26,6 +26,11 @@ import (
 // Project is a projection of certain expression from the children node.
 type Project struct {
 	UnaryNode
+	// AliasDeps maps string representations of projected GetField expressions to whether it is projected alias
+	// dependency
+	AliasDeps map[string]bool
+	deps      sql.ColSet
+	sch       sql.Schema
 	// Projections are the expressions to be projected on the row returned by the child node
 	Projections []sql.Expression
 	// CanDefer is true when the projection evaluation can be deferred to row spooling, which allows us to avoid a
@@ -34,7 +39,6 @@ type Project struct {
 	// IncludesNestedIters is true when the projection includes nested iterators because of expressions that return
 	// a RowIter.
 	IncludesNestedIters bool
-	deps                sql.ColSet
 }
 
 var _ sql.Expressioner = (*Project)(nil)
@@ -122,14 +126,16 @@ func ExprDeps(exprs ...sql.Expression) sql.ColSet {
 
 // Schema implements the Node interface.
 func (p *Project) Schema() sql.Schema {
-	var s = make(sql.Schema, len(p.Projections))
-	for i, expr := range p.Projections {
-		s[i] = transform.ExpressionToColumn(expr, AliasSubqueryString(expr))
-		if gf := unwrapGetField(expr); gf != nil {
-			s[i].Default = findDefault(p.Child, gf)
+	if p.sch == nil {
+		p.sch = make(sql.Schema, len(p.Projections))
+		for i, expr := range p.Projections {
+			p.sch[i] = transform.ExpressionToColumn(expr, AliasSubqueryString(expr))
+			if gf := unwrapGetField(expr); gf != nil {
+				p.sch[i].Default = findDefault(p.Child, gf)
+			}
 		}
 	}
-	return s
+	return p.sch
 }
 
 // Resolved implements the Resolvable interface.
@@ -190,6 +196,7 @@ func (p *Project) WithChildren(children ...sql.Node) (sql.Node, error) {
 	}
 	np := *p
 	np.Child = children[0]
+	np.sch = nil
 	return &np, nil
 }
 
@@ -205,6 +212,7 @@ func (p *Project) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	}
 	np := *p
 	np.Projections = exprs
+	np.sch = nil
 	return &np, nil
 }
 
@@ -220,5 +228,13 @@ func (p *Project) WithIncludesNestedIters(includesNestedIters bool) *Project {
 	np := *p
 	np.IncludesNestedIters = includesNestedIters
 	np.CanDefer = false
+	return &np
+}
+
+// WithAliasDeps returns a new Project with the AliasDeps field set to the given map.AliasDeps maps string
+// representations of projected GetField expressions to whether it is projected alias dependency
+func (p *Project) WithAliasDeps(aliasDeps map[string]bool) *Project {
+	np := *p
+	np.AliasDeps = aliasDeps
 	return &np
 }

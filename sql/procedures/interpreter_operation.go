@@ -35,10 +35,10 @@ const (
 
 // InterpreterOperation is an operation that will be performed by the interpreter.
 type InterpreterOperation struct {
-	OpCode        OpCode
 	PrimaryData   ast.Statement // This will represent the "main" data, such as the query for PERFORM, expression for IF, etc.
-	SecondaryData []string      // This represents auxiliary data, such as bindings, strictness, etc.
-	Target        string        // This is the variable that will store the results (if applicable)
-	Index         int           // This is the index that should be set for operations that move the function counter
 	Error         error         // This is the error that should be returned for OpCode_Exception
+	Target        string        // This is the variable that will store the results (if applicable)
+	SecondaryData []string      // This represents auxiliary data, such as bindings, strictness, etc.
+	Index         int           // This is the index that should be set for operations that move the function counter
+	OpCode        OpCode
 }

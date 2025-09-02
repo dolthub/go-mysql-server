@@ -129,13 +129,13 @@ var SysbenchPlanTests = []QueryPlanTest{
 			"",
 	},
 	{
-		Query: `SELECT year_col, count(year_col), max(big_int_col), avg(small_int_col) FROM sbtest1 WHERE big_int_col > 0 GROUP BY set_col ORDER BY year_col`,
+		Query: `SELECT year_col, count(year_col), max(big_int_col), avg(small_int_col) FROM sbtest1 WHERE big_int_col > 0 GROUP BY id ORDER BY year_col`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [sbtest1.year_col:3!null, count(sbtest1.year_col):1!null->count(year_col):0, max(sbtest1.big_int_col):2!null->max(big_int_col):0, avg(sbtest1.small_int_col):0->avg(small_int_col):0]\n" +
 			" └─ Sort(sbtest1.year_col:3!null ASC nullsFirst)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ select: AVG(sbtest1.small_int_col:0!null), COUNT(sbtest1.year_col:3!null), MAX(sbtest1.big_int_col:1!null), sbtest1.year_col:3!null\n" +
-			"         ├─ group: sbtest1.set_col:2!null\n" +
+			"         ├─ select: AVG(sbtest1.small_int_col:1!null), COUNT(sbtest1.year_col:3!null), MAX(sbtest1.big_int_col:2!null), sbtest1.year_col:3!null\n" +
+			"         ├─ group: sbtest1.id:0!null\n" +
 			"         └─ IndexedTableAccess(sbtest1)\n" +
 			"             ├─ index: [sbtest1.big_int_col]\n" +
 			"             ├─ static: [{(0, ∞)}]\n" +
@@ -143,29 +143,29 @@ var SysbenchPlanTests = []QueryPlanTest{
 			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: sbtest1\n" +
-			"                 └─ columns: [small_int_col big_int_col set_col year_col]\n" +
+			"                 └─ columns: [id small_int_col big_int_col year_col]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [sbtest1.year_col, count(sbtest1.year_col) as count(year_col), max(sbtest1.big_int_col) as max(big_int_col), avg(sbtest1.small_int_col) as avg(small_int_col)]\n" +
 			" └─ Sort(sbtest1.year_col ASC)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ SelectedExprs(AVG(sbtest1.small_int_col), COUNT(sbtest1.year_col), MAX(sbtest1.big_int_col), sbtest1.year_col)\n" +
-			"         ├─ Grouping(sbtest1.set_col)\n" +
+			"         ├─ SelectDeps(AVG(sbtest1.small_int_col), COUNT(sbtest1.year_col), MAX(sbtest1.big_int_col), sbtest1.year_col)\n" +
+			"         ├─ Grouping(sbtest1.id)\n" +
 			"         └─ IndexedTableAccess(sbtest1)\n" +
 			"             ├─ index: [sbtest1.big_int_col]\n" +
 			"             ├─ filters: [{(0, ∞)}]\n" +
-			"             └─ columns: [small_int_col big_int_col set_col year_col]\n" +
+			"             └─ columns: [id small_int_col big_int_col year_col]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [sbtest1.year_col, count(sbtest1.year_col) as count(year_col), max(sbtest1.big_int_col) as max(big_int_col), avg(sbtest1.small_int_col) as avg(small_int_col)]\n" +
 			" └─ Sort(sbtest1.year_col ASC)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ SelectedExprs(AVG(sbtest1.small_int_col), COUNT(sbtest1.year_col), MAX(sbtest1.big_int_col), sbtest1.year_col)\n" +
-			"         ├─ Grouping(sbtest1.set_col)\n" +
+			"         ├─ SelectDeps(AVG(sbtest1.small_int_col), COUNT(sbtest1.year_col), MAX(sbtest1.big_int_col), sbtest1.year_col)\n" +
+			"         ├─ Grouping(sbtest1.id)\n" +
 			"         └─ IndexedTableAccess(sbtest1)\n" +
 			"             ├─ index: [sbtest1.big_int_col]\n" +
 			"             ├─ filters: [{(0, ∞)}]\n" +
-			"             └─ columns: [small_int_col big_int_col set_col year_col]\n" +
+			"             └─ columns: [id small_int_col big_int_col year_col]\n" +
 			"",
 	},
 	{
@@ -187,7 +187,7 @@ var SysbenchPlanTests = []QueryPlanTest{
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(sbtest1.id) as count(id)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(sbtest1.id))\n" +
+			"     ├─ SelectDeps(COUNT(sbtest1.id))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ IndexedTableAccess(sbtest1)\n" +
 			"         ├─ index: [sbtest1.big_int_col]\n" +
@@ -197,7 +197,7 @@ var SysbenchPlanTests = []QueryPlanTest{
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(sbtest1.id) as count(id)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(sbtest1.id))\n" +
+			"     ├─ SelectDeps(COUNT(sbtest1.id))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ IndexedTableAccess(sbtest1)\n" +
 			"         ├─ index: [sbtest1.big_int_col]\n" +

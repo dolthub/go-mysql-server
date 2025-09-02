@@ -26,8 +26,8 @@ import (
 // ShowTables is a node that shows the database tables.
 type ShowTables struct {
 	db   sql.Database
-	Full bool
 	asOf sql.Expression
+	Full bool
 }
 
 // NewShowTables creates a new show tables node given a database.

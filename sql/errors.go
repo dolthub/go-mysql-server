@@ -1050,8 +1050,8 @@ func UnwrapError(err error) error {
 
 type UniqueKeyError struct {
 	keyStr   string
-	IsPK     bool
 	Existing Row
+	IsPK     bool
 }
 
 func NewUniqueKeyErr(keyStr string, isPK bool, existing Row) error {
@@ -1073,8 +1073,8 @@ func (ue UniqueKeyError) Error() string {
 }
 
 type WrappedInsertError struct {
-	OffendingRow Row
 	Cause        error
+	OffendingRow Row
 }
 
 func NewWrappedInsertError(r Row, err error) WrappedInsertError {
@@ -1113,8 +1113,8 @@ func (e IgnorableError) Error() string {
 
 type WrappedTypeConversionError struct {
 	OffendingVal interface{}
-	OffendingIdx int
 	Err          error
+	OffendingIdx int
 }
 
 func NewWrappedTypeConversionError(offendingVal interface{}, idx int, err error) WrappedTypeConversionError {

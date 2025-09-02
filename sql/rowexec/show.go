@@ -170,22 +170,10 @@ func (b *BaseBuilder) buildShowTableStatus(ctx *sql.Context, n *plan.ShowTableSt
 			return nil, err
 		}
 
-		var numRows uint64
-		var dataLength uint64
-
-		if st, ok := table.(sql.StatisticsTable); ok {
-			numRows, _, err = st.RowCount(ctx)
-			if err != nil {
-				return nil, err
-			}
-
-			dataLength, err = st.DataLength(ctx)
-			if err != nil {
-				return nil, err
-			}
+		rows[i], err = tableToStatusRow(ctx, table)
+		if err != nil {
+			return nil, err
 		}
-
-		rows[i] = tableToStatusRow(tName, numRows, dataLength, table.Collation())
 	}
 
 	return sql.RowsToRowIter(rows...), nil
@@ -557,7 +545,20 @@ func (b *BaseBuilder) buildShowVariables(ctx *sql.Context, n *plan.ShowVariables
 				continue
 			}
 		}
-		rows = append(rows, sql.NewRow(k, v))
+
+		// SHOW VARIABLES displays boolean values as "ON" or "OFF".
+		if boolVal, isBoolVal := v.(int8); isBoolVal {
+			switch boolVal {
+			case 0:
+				rows = append(rows, sql.NewRow(k, "OFF"))
+			case 1:
+				rows = append(rows, sql.NewRow(k, "ON"))
+			default:
+				rows = append(rows, sql.NewRow(k, v))
+			}
+		} else {
+			rows = append(rows, sql.NewRow(k, v))
+		}
 	}
 
 	sort.Slice(rows, func(i, j int) bool {

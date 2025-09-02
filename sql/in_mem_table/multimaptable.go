@@ -66,26 +66,24 @@ var _ sql.ReplaceableTable = (*IndexedSetTable[string])(nil)
 var _ sql.TruncateableTable = (*IndexedSetTable[string])(nil)
 
 type IndexedSetTable[V any] struct {
+	ops    ValueOps[V]
+	lock   sync.Locker
+	rlock  sync.Locker
 	name   string
+	set    IndexedSet[V]
 	schema sql.Schema
 	coll   sql.CollationID
-
-	set IndexedSet[V]
-	ops ValueOps[V]
-
-	lock  sync.Locker
-	rlock sync.Locker
 }
 
 func NewIndexedSetTable[V any](name string, schema sql.Schema, coll sql.CollationID, set IndexedSet[V], ops ValueOps[V], lock, rlock sync.Locker) *IndexedSetTable[V] {
 	return &IndexedSetTable[V]{
-		name,
-		schema,
-		coll,
-		set,
-		ops,
-		lock,
-		rlock,
+		name:   name,
+		schema: schema,
+		coll:   coll,
+		set:    set,
+		ops:    ops,
+		lock:   lock,
+		rlock:  rlock,
 	}
 }
 
@@ -162,8 +160,8 @@ func (t *IndexedSetTable[V]) Editor() editor {
 	return OperationLockingTableEditor{
 		t.lock,
 		&IndexedSetTableEditor[V]{
-			t.set,
-			t.ops,
+			Set: t.set,
+			Ops: t.ops,
 		},
 	}
 }
@@ -175,26 +173,25 @@ var _ sql.DeletableTable = (*MultiIndexedSetTable[string])(nil)
 var _ sql.ReplaceableTable = (*MultiIndexedSetTable[string])(nil)
 
 type MultiIndexedSetTable[V any] struct {
+	ops   MultiValueOps[V]
+	set   IndexedSet[V]
+	lock  sync.Locker
+	rlock sync.Locker
+
 	name   string
 	schema sql.Schema
 	coll   sql.CollationID
-
-	set IndexedSet[V]
-	ops MultiValueOps[V]
-
-	lock  sync.Locker
-	rlock sync.Locker
 }
 
 func NewMultiIndexedSetTable[V any](name string, schema sql.Schema, coll sql.CollationID, set IndexedSet[V], ops MultiValueOps[V], lock, rlock sync.Locker) *MultiIndexedSetTable[V] {
 	return &MultiIndexedSetTable[V]{
-		name,
-		schema,
-		coll,
-		set,
-		ops,
-		lock,
-		rlock,
+		name:   name,
+		schema: schema,
+		coll:   coll,
+		set:    set,
+		ops:    ops,
+		lock:   lock,
+		rlock:  rlock,
 	}
 }
 
@@ -252,8 +249,8 @@ func (t *MultiIndexedSetTable[V]) Editor() editor {
 	return OperationLockingTableEditor{
 		t.lock,
 		&MultiIndexedSetTableEditor[V]{
-			t.set,
-			t.ops,
+			Set: t.set,
+			Ops: t.ops,
 		},
 	}
 }

@@ -32,10 +32,10 @@ import (
 var _ ast.Expr = (*aggregateInfo)(nil)
 
 type groupBy struct {
-	inCols   []scopeColumn
 	outScope *scope
 	aggs     map[string]scopeColumn
 	grouping map[string]bool
+	inCols   []scopeColumn
 }
 
 func (g *groupBy) addInCol(c scopeColumn) {
@@ -197,59 +197,75 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 
 	group := fromScope.groupBy
 	outScope := group.outScope
-	// select columns:
-	//  - aggs
-	//  - extra columns needed by having, order by, select
-	var selectExprs []sql.Expression
+	// Select dependencies include aggregations and table columns needed for projections, having, and sort (order by)
+	var selectDeps []sql.Expression
 	var selectGfs []sql.Expression
 	selectStr := make(map[string]bool)
+	aliasDeps := make(map[string]bool)
 	for _, e := range group.aggregations() {
 		if !selectStr[strings.ToLower(e.String())] {
-			selectExprs = append(selectExprs, e.scalar)
+			selectDeps = append(selectDeps, e.scalar)
 			selectGfs = append(selectGfs, e.scalarGf())
 			selectStr[strings.ToLower(e.String())] = true
 		}
 	}
 	var aliases []sql.Expression
 	for _, col := range projScope.cols {
+		inAlias := false
 		// eval aliases in project scope
 		switch e := col.scalar.(type) {
 		case *expression.Alias:
 			if !e.Unreferencable() {
 				aliases = append(aliases, e.WithId(sql.ColumnId(col.id)).(*expression.Alias))
+				inAlias = true
 			}
 		default:
 		}
 
-		// projection dependencies -> table cols needed above
-		transform.InspectExpr(col.scalar, func(e sql.Expression) bool {
+		var findSelectDeps func(sql.Expression) bool
+		findSelectDeps = func(e sql.Expression) bool {
 			switch e := e.(type) {
 			case *expression.GetField:
 				colName := strings.ToLower(e.String())
 				if !selectStr[colName] {
-					selectExprs = append(selectExprs, e)
+					selectDeps = append(selectDeps, e)
 					selectGfs = append(selectGfs, e)
 					selectStr[colName] = true
 				}
+
+				exprStr := strings.ToLower(e.String())
+				if isAliasDep, ok := aliasDeps[exprStr]; !ok && inAlias {
+					aliasDeps[exprStr] = true
+				} else if isAliasDep && !inAlias {
+					aliasDeps[exprStr] = false
+				}
+			case *plan.Subquery:
+				e.Correlated().ForEach(func(colId sql.ColumnId) {
+					if correlated, found := projScope.parent.getCol(colId); found {
+						findSelectDeps(correlated.scalarGf())
+					}
+				})
 			default:
 			}
 			return false
-		})
+		}
+
+		transform.InspectExpr(col.scalar, findSelectDeps)
 	}
 	for _, e := range fromScope.extraCols {
 		// accessory cols used by ORDER_BY, HAVING
 		if !selectStr[e.String()] {
-			selectExprs = append(selectExprs, e.scalarGf())
+			selectDeps = append(selectDeps, e.scalarGf())
 			selectGfs = append(selectGfs, e.scalarGf())
 
 			selectStr[e.String()] = true
 		}
 	}
-	gb := plan.NewGroupBy(selectExprs, groupingCols, fromScope.node)
+	gb := plan.NewGroupBy(selectDeps, groupingCols, fromScope.node)
 	outScope.node = gb
 
 	if len(aliases) > 0 {
-		outScope.node = plan.NewProject(append(selectGfs, aliases...), outScope.node)
+		outScope.node = plan.NewProject(append(selectGfs, aliases...), outScope.node).WithAliasDeps(aliasDeps)
 	}
 	return outScope
 }
@@ -869,6 +885,7 @@ func (b *Builder) analyzeHaving(fromScope, projScope *scope, having *ast.Where) 
 				// record aggregate
 				// TODO: this should get projScope as well
 				_ = b.buildAggregateFunc(fromScope, name, n)
+				return false, nil
 			} else if isWindowFunc(name) {
 				_ = b.buildWindowFunc(fromScope, name, n, (*ast.WindowDef)(n.Over))
 			}

@@ -31,27 +31,32 @@ import (
 type Subquery struct {
 	// The subquery to execute for each row in the outer result set
 	Query sql.Node
-	// The original verbatim select statement for this subquery
-	QueryString string
 	// correlated is a set of the field references in this subquery from out-of-scope
 	correlated sql.ColSet
-	// volatile indicates that the expression contains a non-deterministic function
-	volatile bool
-	// Whether results have been cached
-	resultsCached bool
-	// Cached results, if any
-	cache []interface{}
 	// Cached hash results, if any
 	hashCache sql.KeyValueCache
+
+	// TODO: convert subquery expressions into apply joins
+	// TODO: move expression.Eval into an execution package
+	// TODO: analyzer rule to connect builder access
+	b sql.NodeExecBuilder
+
 	// Dispose function for the cache, if any. This would appear to violate the rule that nodes must be comparable by
 	// reflect.DeepEquals, but it's safe in practice because the function is always nil until execution.
 	disposeFunc sql.DisposeFunc
+
+	// The original verbatim select statement for this subquery
+	QueryString string
+
+	// Cached results, if any
+	cache []interface{}
 	// Mutex to guard the caches
 	cacheMu sync.Mutex
-	// TODO convert subquery expressions into apply joins
-	// TODO move expression.Eval into an execution package
-	b sql.NodeExecBuilder
-	// TODO analyzer rule to connect builder access
+	// Whether results have been cached
+	resultsCached bool
+
+	// volatile indicates that the expression contains a non-deterministic function
+	volatile bool
 }
 
 // NewSubquery returns a new subquery expression.
@@ -238,9 +243,9 @@ func NewMax1Row(n sql.Node, name string) *Max1Row {
 // to return more than one row.
 type Max1Row struct {
 	Child       sql.Node
+	Mu          *sync.Mutex
 	name        string
 	Result      sql.Row
-	Mu          *sync.Mutex
 	EmptyResult bool
 }
 
@@ -501,24 +506,35 @@ func (s *Subquery) IsNullable() bool {
 	return true
 }
 
-func (s *Subquery) String() string {
+// Describe implements the sql.Describable interface
+func (s *Subquery) Describe(options sql.DescribeOptions) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Subquery")
-	children := []string{fmt.Sprintf("cacheable: %t", s.canCacheResults()), s.Query.String()}
+	var children []string
+	if options.Debug {
+		children = []string{
+			fmt.Sprintf("cacheable: %t", s.canCacheResults()),
+			fmt.Sprintf("alias-string: %s", s.QueryString),
+			sql.Describe(s.Query, options),
+		}
+	} else {
+		children = []string{
+			fmt.Sprintf("cacheable: %t", s.canCacheResults()),
+			sql.Describe(s.Query, options),
+		}
+	}
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
 
+func (s *Subquery) String() string {
+	return fmt.Sprintf("Subquery(%s)", s.QueryString)
+}
+
 func (s *Subquery) DebugString() string {
-	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("Subquery")
-	children := []string{
-		fmt.Sprintf("cacheable: %t", s.canCacheResults()),
-		fmt.Sprintf("alias-string: %s", s.QueryString),
-		sql.DebugString(s.Query),
-	}
-	_ = pr.WriteChildren(children...)
-	return pr.String()
+	return s.Describe(sql.DescribeOptions{
+		Debug: true,
+	})
 }
 
 // Resolved implements the Expression interface.

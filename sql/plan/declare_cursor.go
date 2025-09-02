@@ -24,9 +24,9 @@ import (
 
 // DeclareCursor represents the DECLARE ... CURSOR statement.
 type DeclareCursor struct {
-	Name   string
 	Select sql.Node
 	Pref   *expression.ProcedureReference
+	Name   string
 }
 
 var _ sql.Node = (*DeclareCursor)(nil)

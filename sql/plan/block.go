@@ -21,9 +21,9 @@ import (
 
 // Block represents a collection of statements that should be executed in sequence.
 type Block struct {
-	statements []sql.Node
-	rowIterSch sql.Schema // This is set during RowIter, as the schema is unknown until iterating over the statements.
 	Pref       *expression.ProcedureReference
+	statements []sql.Node
+	rowIterSch sql.Schema
 }
 
 // RepresentsBlock is an interface that defines whether a node contains a Block node, or contains multiple child

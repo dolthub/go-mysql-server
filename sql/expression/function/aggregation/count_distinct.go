@@ -25,10 +25,10 @@ import (
 )
 
 type CountDistinct struct {
-	expression.NaryExpression
-	window *sql.WindowDefinition
 	typ    sql.Type
-	id     sql.ColumnId
+	window *sql.WindowDefinition
+	expression.NaryExpression
+	id sql.ColumnId
 }
 
 var _ sql.FunctionExpression = (*CountDistinct)(nil)

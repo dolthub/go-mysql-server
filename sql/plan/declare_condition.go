@@ -23,8 +23,8 @@ import (
 // DeclareCondition represents the DECLARE ... CONDITION statement.
 type DeclareCondition struct {
 	Name          string
-	MysqlErrCode  int64
 	SqlStateValue string
+	MysqlErrCode  int64
 }
 
 var _ sql.Node = (*DeclareCondition)(nil)

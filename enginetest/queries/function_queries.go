@@ -1529,3 +1529,16 @@ var FunctionQueryTests = []QueryTest{
 		},
 	},
 }
+
+// BrokenFunctionQueryTests contains SQL function call queries that don't match MySQL behavior
+var BrokenFunctionQueryTests = []QueryTest{
+	// https://github.com/dolthub/dolt/issues/9735
+	{
+		Query:    "select log('10asdf', '100f')",
+		Expected: []sql.Row{{float64(2)}},
+	},
+	{
+		Query:    "select log('a10asdf', 'b100f')",
+		Expected: []sql.Row{{nil}},
+	},
+}

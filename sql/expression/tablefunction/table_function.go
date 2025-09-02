@@ -28,10 +28,9 @@ var _ sql.ExecSourceRel = &TableFunctionWrapper{}
 // regular function. It allows using regular function as table function.
 type TableFunctionWrapper struct {
 	underlyingFunc sql.Function
-
-	args     []sql.Expression
-	database sql.Database
-	funcExpr sql.Expression
+	database       sql.Database
+	funcExpr       sql.Expression
+	args           []sql.Expression
 }
 
 // NewTableFunctionWrapper creates new TableFunction

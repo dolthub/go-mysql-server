@@ -28,10 +28,8 @@ type RuleSelector func(RuleId) bool
 
 // Rule to transform nodes.
 type Rule struct {
-	// Name of the rule.
-	Id RuleId
-	// Apply transforms a node.
 	Apply RuleFunc
+	Id    RuleId
 }
 
 // BatchSelector filters analysis batches by name
@@ -42,8 +40,8 @@ type BatchSelector func(string) bool
 // and ErrMaxAnalysisIters is returned.
 type Batch struct {
 	Desc       string
-	Iterations int
 	Rules      []Rule
+	Iterations int
 }
 
 // Eval executes the rules of the batch. On any error, the partially transformed node is returned along with the error.

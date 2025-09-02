@@ -132,7 +132,7 @@ WHERE ci.note LIKE '%(voice)%'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(chn.name) as uncredited_voiced_character, min(t.title) as russian_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(chn.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(chn.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mc.movie_id) AND (t.id = ci.movie_id))\n" +
@@ -184,7 +184,7 @@ WHERE ci.note LIKE '%(voice)%'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(chn.name) as uncredited_voiced_character, min(t.title) as russian_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(chn.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(chn.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mc.movie_id) AND (t.id = ci.movie_id))\n" +
@@ -345,7 +345,7 @@ WHERE ci.note LIKE '%(voice)%'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(chn.name) as character, min(t.title) as russian_mov_with_actor_producer]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(chn.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(chn.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mc.movie_id) AND (t.id = ci.movie_id))\n" +
@@ -397,7 +397,7 @@ WHERE ci.note LIKE '%(voice)%'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(chn.name) as character, min(t.title) as russian_mov_with_actor_producer]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(chn.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(chn.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mc.movie_id) AND (t.id = ci.movie_id))\n" +
@@ -553,7 +553,7 @@ WHERE ci.note LIKE '%(voice)%'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(chn.name) as character, min(t.title) as movie_with_american_producer]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(chn.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(chn.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mc.movie_id) AND (t.id = ci.movie_id))\n" +
@@ -603,7 +603,7 @@ WHERE ci.note LIKE '%(voice)%'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(chn.name) as character, min(t.title) as movie_with_american_producer]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(chn.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(chn.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mc.movie_id) AND (t.id = ci.movie_id))\n" +
@@ -805,7 +805,7 @@ WHERE cn.country_code !='[pl]'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(cn.name) as from_company, min(lt.link) as movie_link_type, min(t.title) as non_polish_sequel_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(lt.link), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(lt.link), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((ml.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -866,7 +866,7 @@ WHERE cn.country_code !='[pl]'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(cn.name) as from_company, min(lt.link) as movie_link_type, min(t.title) as non_polish_sequel_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(lt.link), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(lt.link), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((ml.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -1078,7 +1078,7 @@ WHERE cn.country_code !='[pl]'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(cn.name) as from_company, min(lt.link) as movie_link_type, min(t.title) as sequel_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(lt.link), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(lt.link), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((ml.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -1139,7 +1139,7 @@ WHERE cn.country_code !='[pl]'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(cn.name) as from_company, min(lt.link) as movie_link_type, min(t.title) as sequel_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(lt.link), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(lt.link), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((ml.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -1365,7 +1365,7 @@ WHERE cn.country_code !='[pl]'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(cn.name) as from_company, min(mc.note) as production_note, min(t.title) as movie_based_on_book]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(mc.note), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(mc.note), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((ml.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -1424,7 +1424,7 @@ WHERE cn.country_code !='[pl]'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(cn.name) as from_company, min(mc.note) as production_note, min(t.title) as movie_based_on_book]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(mc.note), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(mc.note), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((ml.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -1630,7 +1630,7 @@ WHERE cn.country_code !='[pl]'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(cn.name) as from_company, min(mc.note) as production_note, min(t.title) as movie_based_on_book]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(mc.note), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(mc.note), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((ml.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -1689,7 +1689,7 @@ WHERE cn.country_code !='[pl]'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(cn.name) as from_company, min(mc.note) as production_note, min(t.title) as movie_based_on_book]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(mc.note), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(mc.note), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((ml.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -1904,7 +1904,7 @@ WHERE cn.country_code = '[us]'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(cn.name) as movie_company, min(mi_idx.info) as rating, min(t.title) as drama_horror_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((t.id = mi.movie_id) AND (t.id = mi_idx.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -1967,7 +1967,7 @@ WHERE cn.country_code = '[us]'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(cn.name) as movie_company, min(mi_idx.info) as rating, min(t.title) as drama_horror_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((t.id = mi.movie_id) AND (t.id = mi_idx.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -2191,7 +2191,7 @@ WHERE cn.country_code ='[us]'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mi.info) as budget, min(t.title) as unsuccsessful_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((t.id = mi.movie_id) AND (t.id = mi_idx.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -2250,7 +2250,7 @@ WHERE cn.country_code ='[us]'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(mi.info) as budget, min(t.title) as unsuccsessful_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((t.id = mi.movie_id) AND (t.id = mi_idx.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -2467,7 +2467,7 @@ WHERE cn.country_code = '[us]'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(cn.name) as movie_company, min(mi_idx.info) as rating, min(t.title) as mainstream_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((t.id = mi.movie_id) AND (t.id = mi_idx.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -2530,7 +2530,7 @@ WHERE cn.country_code = '[us]'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(cn.name) as movie_company, min(mi_idx.info) as rating, min(t.title) as mainstream_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((t.id = mi.movie_id) AND (t.id = mi_idx.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -2746,7 +2746,7 @@ WHERE cn.country_code ='[de]'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mi.info) as release_date, min(miidx.info) as rating, min(t.title) as german_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi.info), MIN(miidx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi.info), MIN(miidx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((mi.movie_id = t.id) AND (kt.id = t.kind_id)) AND (mc.movie_id = t.id)) AND (miidx.movie_id = t.id))\n" +
@@ -2810,7 +2810,7 @@ WHERE cn.country_code ='[de]'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(mi.info) as release_date, min(miidx.info) as rating, min(t.title) as german_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi.info), MIN(miidx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi.info), MIN(miidx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((mi.movie_id = t.id) AND (kt.id = t.kind_id)) AND (mc.movie_id = t.id)) AND (miidx.movie_id = t.id))\n" +
@@ -3039,7 +3039,7 @@ WHERE cn.country_code ='[us]'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(cn.name) as producing_company, min(miidx.info) as rating, min(t.title) as movie_about_winning]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(miidx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(miidx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((mi.movie_id = t.id) AND (kt.id = t.kind_id)) AND (mc.movie_id = t.id)) AND (miidx.movie_id = t.id))\n" +
@@ -3105,7 +3105,7 @@ WHERE cn.country_code ='[us]'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(cn.name) as producing_company, min(miidx.info) as rating, min(t.title) as movie_about_winning]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(miidx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(miidx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((mi.movie_id = t.id) AND (kt.id = t.kind_id)) AND (mc.movie_id = t.id)) AND (miidx.movie_id = t.id))\n" +
@@ -3348,7 +3348,7 @@ WHERE cn.country_code ='[us]'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(cn.name) as producing_company, min(miidx.info) as rating, min(t.title) as movie_about_winning]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(miidx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(miidx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((mi.movie_id = t.id) AND (kt.id = t.kind_id)) AND (mc.movie_id = t.id)) AND (miidx.movie_id = t.id))\n" +
@@ -3414,7 +3414,7 @@ WHERE cn.country_code ='[us]'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(cn.name) as producing_company, min(miidx.info) as rating, min(t.title) as movie_about_winning]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(miidx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(miidx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((mi.movie_id = t.id) AND (kt.id = t.kind_id)) AND (mc.movie_id = t.id)) AND (miidx.movie_id = t.id))\n" +
@@ -3633,7 +3633,7 @@ WHERE cn.country_code ='[us]'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(cn.name) as producing_company, min(miidx.info) as rating, min(t.title) as movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(miidx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(miidx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((mi.movie_id = t.id) AND (kt.id = t.kind_id)) AND (mc.movie_id = t.id)) AND (miidx.movie_id = t.id))\n" +
@@ -3697,7 +3697,7 @@ WHERE cn.country_code ='[us]'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(cn.name) as producing_company, min(miidx.info) as rating, min(t.title) as movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(miidx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(miidx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((mi.movie_id = t.id) AND (kt.id = t.kind_id)) AND (mc.movie_id = t.id)) AND (miidx.movie_id = t.id))\n" +
@@ -3923,7 +3923,7 @@ WHERE it1.info = 'countries'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mi_idx.info) as rating, min(t.title) as northern_dark_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((kt.id = t.kind_id) AND (t.id = mi.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mi_idx.movie_id))\n" +
@@ -3986,7 +3986,7 @@ WHERE it1.info = 'countries'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(mi_idx.info) as rating, min(t.title) as northern_dark_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((kt.id = t.kind_id) AND (t.id = mi.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mi_idx.movie_id))\n" +
@@ -4218,7 +4218,7 @@ WHERE it1.info = 'countries'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mi_idx.info) as rating, min(t.title) as western_dark_production]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((kt.id = t.kind_id) AND (t.id = mi.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mi_idx.movie_id))\n" +
@@ -4281,7 +4281,7 @@ WHERE it1.info = 'countries'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(mi_idx.info) as rating, min(t.title) as western_dark_production]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((kt.id = t.kind_id) AND (t.id = mi.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mi_idx.movie_id))\n" +
@@ -4511,7 +4511,7 @@ WHERE it1.info = 'countries'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mi_idx.info) as rating, min(t.title) as north_european_dark_production]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((kt.id = t.kind_id) AND (t.id = mi.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mi_idx.movie_id))\n" +
@@ -4574,7 +4574,7 @@ WHERE it1.info = 'countries'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(mi_idx.info) as rating, min(t.title) as north_european_dark_production]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((kt.id = t.kind_id) AND (t.id = mi.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mi_idx.movie_id))\n" +
@@ -4805,7 +4805,7 @@ WHERE cn.country_code = '[us]'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mi.info) as release_date, min(t.title) as internet_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((t.id = at.movie_id) AND (t.id = mi.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -4869,7 +4869,7 @@ WHERE cn.country_code = '[us]'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(mi.info) as release_date, min(t.title) as internet_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((t.id = at.movie_id) AND (t.id = mi.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -5110,7 +5110,7 @@ WHERE cn.country_code = '[us]'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mi.info) as release_date, min(t.title) as youtube_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((t.id = at.movie_id) AND (t.id = mi.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -5174,7 +5174,7 @@ WHERE cn.country_code = '[us]'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(mi.info) as release_date, min(t.title) as youtube_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((t.id = at.movie_id) AND (t.id = mi.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -5407,7 +5407,7 @@ WHERE cn.country_code = '[us]'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mi.info) as release_date, min(t.title) as modern_american_internet_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((t.id = at.movie_id) AND (t.id = mi.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -5469,7 +5469,7 @@ WHERE cn.country_code = '[us]'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(mi.info) as release_date, min(t.title) as modern_american_internet_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((t.id = at.movie_id) AND (t.id = mi.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -5690,7 +5690,7 @@ WHERE cn.country_code = '[us]'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(at.title) as aka_title, min(t.title) as internet_movie_title]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(at.title), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(at.title), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((t.id = at.movie_id) AND (t.id = mi.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -5752,7 +5752,7 @@ WHERE cn.country_code = '[us]'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(at.title) as aka_title, min(t.title) as internet_movie_title]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(at.title), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(at.title), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((t.id = at.movie_id) AND (t.id = mi.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -5953,7 +5953,7 @@ WHERE cn.country_code ='[us]'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(an.name) as cool_actor_pseudonym, min(t.title) as series_named_after_char]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(an.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(an.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((ci.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -6009,7 +6009,7 @@ WHERE cn.country_code ='[us]'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(an.name) as cool_actor_pseudonym, min(t.title) as series_named_after_char]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(an.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(an.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((ci.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -6194,7 +6194,7 @@ WHERE cn.country_code ='[us]'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(an.name) as cool_actor_pseudonym, min(t.title) as series_named_after_char]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(an.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(an.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((ci.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -6248,7 +6248,7 @@ WHERE cn.country_code ='[us]'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(an.name) as cool_actor_pseudonym, min(t.title) as series_named_after_char]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(an.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(an.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((ci.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -6436,7 +6436,7 @@ WHERE cn.country_code ='[us]'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(an.name) as cool_actor_pseudonym, min(t.title) as series_named_after_char]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(an.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(an.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((ci.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -6492,7 +6492,7 @@ WHERE cn.country_code ='[us]'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(an.name) as cool_actor_pseudonym, min(t.title) as series_named_after_char]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(an.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(an.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((ci.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -6687,7 +6687,7 @@ WHERE cn.country_code ='[us]'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(an.name) as cool_actor_pseudonym, min(t.title) as series_named_after_char]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(an.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(an.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((ci.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -6743,7 +6743,7 @@ WHERE cn.country_code ='[us]'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(an.name) as cool_actor_pseudonym, min(t.title) as series_named_after_char]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(an.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(an.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((ci.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -6920,7 +6920,7 @@ WHERE cn.country_code ='[us]'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(n.name) as member_in_charnamed_american_movie, min(n.name) as a1]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(n.name))\n" +
+			"     ├─ SelectDeps(MIN(n.name))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((ci.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -6970,7 +6970,7 @@ WHERE cn.country_code ='[us]'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(n.name) as member_in_charnamed_american_movie, min(n.name) as a1]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(n.name))\n" +
+			"     ├─ SelectDeps(MIN(n.name))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((ci.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -7136,7 +7136,7 @@ WHERE k.keyword ='character-name-in-title'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(n.name) as member_in_charnamed_movie, min(n.name) as a1]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(n.name))\n" +
+			"     ├─ SelectDeps(MIN(n.name))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((ci.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -7184,7 +7184,7 @@ WHERE k.keyword ='character-name-in-title'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(n.name) as member_in_charnamed_movie, min(n.name) as a1]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(n.name))\n" +
+			"     ├─ SelectDeps(MIN(n.name))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((ci.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -7348,7 +7348,7 @@ WHERE k.keyword ='character-name-in-title'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(n.name) as member_in_charnamed_movie, min(n.name) as a1]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(n.name))\n" +
+			"     ├─ SelectDeps(MIN(n.name))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((ci.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -7396,7 +7396,7 @@ WHERE k.keyword ='character-name-in-title'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(n.name) as member_in_charnamed_movie, min(n.name) as a1]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(n.name))\n" +
+			"     ├─ SelectDeps(MIN(n.name))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((ci.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -7553,7 +7553,7 @@ WHERE k.keyword ='character-name-in-title'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(n.name) as member_in_charnamed_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(n.name))\n" +
+			"     ├─ SelectDeps(MIN(n.name))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((ci.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -7601,7 +7601,7 @@ WHERE k.keyword ='character-name-in-title'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(n.name) as member_in_charnamed_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(n.name))\n" +
+			"     ├─ SelectDeps(MIN(n.name))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((ci.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -7760,7 +7760,7 @@ WHERE cn.country_code ='[us]'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(n.name) as member_in_charnamed_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(n.name))\n" +
+			"     ├─ SelectDeps(MIN(n.name))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((ci.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -7808,7 +7808,7 @@ WHERE cn.country_code ='[us]'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(n.name) as member_in_charnamed_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(n.name))\n" +
+			"     ├─ SelectDeps(MIN(n.name))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((ci.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -7965,7 +7965,7 @@ WHERE k.keyword ='character-name-in-title'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(n.name) as member_in_charnamed_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(n.name))\n" +
+			"     ├─ SelectDeps(MIN(n.name))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((ci.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -8013,7 +8013,7 @@ WHERE k.keyword ='character-name-in-title'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(n.name) as member_in_charnamed_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(n.name))\n" +
+			"     ├─ SelectDeps(MIN(n.name))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((ci.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -8189,7 +8189,7 @@ WHERE ci.note IN ('(producer)',
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mi.info) as movie_budget, min(mi_idx.info) as movie_votes, min(t.title) as movie_title]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi.info), MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi.info), MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((t.id = mi.movie_id) AND (t.id = mi_idx.movie_id)) AND (t.id = ci.movie_id))\n" +
@@ -8241,7 +8241,7 @@ WHERE ci.note IN ('(producer)',
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(mi.info) as movie_budget, min(mi_idx.info) as movie_votes, min(t.title) as movie_title]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi.info), MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi.info), MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((t.id = mi.movie_id) AND (t.id = mi_idx.movie_id)) AND (t.id = ci.movie_id))\n" +
@@ -8448,7 +8448,7 @@ WHERE ci.note IN ('(writer)',
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mi.info) as movie_budget, min(mi_idx.info) as movie_votes, min(t.title) as movie_title]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi.info), MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi.info), MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((t.id = mi.movie_id) AND (t.id = mi_idx.movie_id)) AND (t.id = ci.movie_id))\n" +
@@ -8506,7 +8506,7 @@ WHERE ci.note IN ('(writer)',
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(mi.info) as movie_budget, min(mi_idx.info) as movie_votes, min(t.title) as movie_title]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi.info), MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi.info), MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((t.id = mi.movie_id) AND (t.id = mi_idx.movie_id)) AND (t.id = ci.movie_id))\n" +
@@ -8702,7 +8702,7 @@ WHERE ci.note IN ('(writer)',
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mi.info) as movie_budget, min(mi_idx.info) as movie_votes, min(t.title) as movie_title]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi.info), MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi.info), MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((t.id = mi.movie_id) AND (t.id = mi_idx.movie_id)) AND (t.id = ci.movie_id))\n" +
@@ -8756,7 +8756,7 @@ WHERE ci.note IN ('(writer)',
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(mi.info) as movie_budget, min(mi_idx.info) as movie_votes, min(t.title) as movie_title]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi.info), MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi.info), MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((t.id = mi.movie_id) AND (t.id = mi_idx.movie_id)) AND (t.id = ci.movie_id))\n" +
@@ -9011,7 +9011,7 @@ WHERE ci.note IN ('(voice)',
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(n.name) as voicing_actress, min(t.title) as voiced_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((t.id = mi.movie_id) AND (t.id = mc.movie_id)) AND (t.id = ci.movie_id))\n" +
@@ -9089,7 +9089,7 @@ WHERE ci.note IN ('(voice)',
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(n.name) as voicing_actress, min(t.title) as voiced_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((t.id = mi.movie_id) AND (t.id = mc.movie_id)) AND (t.id = ci.movie_id))\n" +
@@ -9367,7 +9367,7 @@ WHERE ci.note = '(voice)'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(n.name) as voicing_actress, min(t.title) as kung_fu_panda]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((t.id = mi.movie_id) AND (t.id = mc.movie_id)) AND (t.id = ci.movie_id))\n" +
@@ -9445,7 +9445,7 @@ WHERE ci.note = '(voice)'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(n.name) as voicing_actress, min(t.title) as kung_fu_panda]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((t.id = mi.movie_id) AND (t.id = mc.movie_id)) AND (t.id = ci.movie_id))\n" +
@@ -9710,7 +9710,7 @@ WHERE ci.note IN ('(voice)',
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(n.name) as voicing_actress, min(t.title) as jap_engl_voiced_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((t.id = mi.movie_id) AND (t.id = mc.movie_id)) AND (t.id = ci.movie_id))\n" +
@@ -9786,7 +9786,7 @@ WHERE ci.note IN ('(voice)',
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(n.name) as voicing_actress, min(t.title) as jap_engl_voiced_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((t.id = mi.movie_id) AND (t.id = mc.movie_id)) AND (t.id = ci.movie_id))\n" +
@@ -10036,7 +10036,7 @@ WHERE ci.note IN ('(voice)',
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(n.name) as voicing_actress, min(t.title) as jap_engl_voiced_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((t.id = mi.movie_id) AND (t.id = mc.movie_id)) AND (t.id = ci.movie_id))\n" +
@@ -10110,7 +10110,7 @@ WHERE ci.note IN ('(voice)',
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(n.name) as voicing_actress, min(t.title) as jap_engl_voiced_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((t.id = mi.movie_id) AND (t.id = mc.movie_id)) AND (t.id = ci.movie_id))\n" +
@@ -10274,7 +10274,7 @@ WHERE ct.kind = 'production companies'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mc.note) as production_note, min(t.title) as movie_title, min(t.production_year) as movie_year]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mc.note), MIN(t.production_year), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mc.note), MIN(t.production_year), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mc.movie_id) AND (t.id = mi_idx.movie_id))\n" +
@@ -10313,7 +10313,7 @@ WHERE ct.kind = 'production companies'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(mc.note) as production_note, min(t.title) as movie_title, min(t.production_year) as movie_year]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mc.note), MIN(t.production_year), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mc.note), MIN(t.production_year), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mc.movie_id) AND (t.id = mi_idx.movie_id))\n" +
@@ -10445,7 +10445,7 @@ WHERE ct.kind = 'production companies'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mc.note) as production_note, min(t.title) as movie_title, min(t.production_year) as movie_year]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mc.note), MIN(t.production_year), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mc.note), MIN(t.production_year), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mc.movie_id) AND (t.id = mi_idx.movie_id))\n" +
@@ -10486,7 +10486,7 @@ WHERE ct.kind = 'production companies'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(mc.note) as production_note, min(t.title) as movie_title, min(t.production_year) as movie_year]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mc.note), MIN(t.production_year), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mc.note), MIN(t.production_year), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mc.movie_id) AND (t.id = mi_idx.movie_id))\n" +
@@ -10619,7 +10619,7 @@ WHERE ct.kind = 'production companies'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mc.note) as production_note, min(t.title) as movie_title, min(t.production_year) as movie_year]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mc.note), MIN(t.production_year), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mc.note), MIN(t.production_year), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mc.movie_id) AND (t.id = mi_idx.movie_id))\n" +
@@ -10660,7 +10660,7 @@ WHERE ct.kind = 'production companies'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(mc.note) as production_note, min(t.title) as movie_title, min(t.production_year) as movie_year]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mc.note), MIN(t.production_year), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mc.note), MIN(t.production_year), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mc.movie_id) AND (t.id = mi_idx.movie_id))\n" +
@@ -10790,7 +10790,7 @@ WHERE ct.kind = 'production companies'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mc.note) as production_note, min(t.title) as movie_title, min(t.production_year) as movie_year]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mc.note), MIN(t.production_year), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mc.note), MIN(t.production_year), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mc.movie_id) AND (t.id = mi_idx.movie_id))\n" +
@@ -10831,7 +10831,7 @@ WHERE ct.kind = 'production companies'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(mc.note) as production_note, min(t.title) as movie_title, min(t.production_year) as movie_year]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mc.note), MIN(t.production_year), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mc.note), MIN(t.production_year), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mc.movie_id) AND (t.id = mi_idx.movie_id))\n" +
@@ -11048,7 +11048,7 @@ WHERE cct1.kind = 'cast'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(t.title) as complete_downey_ironman_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((kt.id = t.kind_id) AND (t.id = mk.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = cc.movie_id))\n" +
@@ -11121,7 +11121,7 @@ WHERE cct1.kind = 'cast'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(t.title) as complete_downey_ironman_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((kt.id = t.kind_id) AND (t.id = mk.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = cc.movie_id))\n" +
@@ -11373,7 +11373,7 @@ WHERE cct1.kind = 'cast'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(t.title) as complete_downey_ironman_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((kt.id = t.kind_id) AND (t.id = mk.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = cc.movie_id))\n" +
@@ -11448,7 +11448,7 @@ WHERE cct1.kind = 'cast'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(t.title) as complete_downey_ironman_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((kt.id = t.kind_id) AND (t.id = mk.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = cc.movie_id))\n" +
@@ -11702,7 +11702,7 @@ WHERE cct1.kind = 'cast'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(n.name) as cast_member, min(t.title) as complete_dynamic_hero_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((kt.id = t.kind_id) AND (t.id = mk.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = cc.movie_id))\n" +
@@ -11775,7 +11775,7 @@ WHERE cct1.kind = 'cast'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(n.name) as cast_member, min(t.title) as complete_dynamic_hero_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((kt.id = t.kind_id) AND (t.id = mk.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = cc.movie_id))\n" +
@@ -12038,7 +12038,7 @@ WHERE cn.country_code !='[pl]'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(cn.name) as company_name, min(lt.link) as link_type, min(t.title) as western_follow_up]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(lt.link), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(lt.link), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((ml.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id)) AND (mi.movie_id = t.id))\n" +
@@ -12107,7 +12107,7 @@ WHERE cn.country_code !='[pl]'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(cn.name) as company_name, min(lt.link) as link_type, min(t.title) as western_follow_up]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(lt.link), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(lt.link), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((ml.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id)) AND (mi.movie_id = t.id))\n" +
@@ -12360,7 +12360,7 @@ WHERE cn.country_code !='[pl]'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(cn.name) as company_name, min(lt.link) as link_type, min(t.title) as german_follow_up]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(lt.link), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(lt.link), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((ml.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id)) AND (mi.movie_id = t.id))\n" +
@@ -12429,7 +12429,7 @@ WHERE cn.country_code !='[pl]'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(cn.name) as company_name, min(lt.link) as link_type, min(t.title) as german_follow_up]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(lt.link), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(lt.link), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((ml.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id)) AND (mi.movie_id = t.id))\n" +
@@ -12689,7 +12689,7 @@ WHERE cn.country_code !='[pl]'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(cn.name) as company_name, min(lt.link) as link_type, min(t.title) as western_follow_up]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(lt.link), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(lt.link), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((ml.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id)) AND (mi.movie_id = t.id))\n" +
@@ -12758,7 +12758,7 @@ WHERE cn.country_code !='[pl]'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(cn.name) as company_name, min(lt.link) as link_type, min(t.title) as western_follow_up]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(lt.link), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(lt.link), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((ml.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id)) AND (mi.movie_id = t.id))\n" +
@@ -13048,7 +13048,7 @@ WHERE cn.country_code != '[us]'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(cn.name) as movie_company, min(mi_idx.info) as rating, min(t.title) as western_violent_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((kt.id = t.kind_id) AND (t.id = mi.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mi_idx.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -13131,7 +13131,7 @@ WHERE cn.country_code != '[us]'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(cn.name) as movie_company, min(mi_idx.info) as rating, min(t.title) as western_violent_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((kt.id = t.kind_id) AND (t.id = mi.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mi_idx.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -13435,7 +13435,7 @@ WHERE cn.country_code != '[us]'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(cn.name) as movie_company, min(mi_idx.info) as rating, min(t.title) as western_violent_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((kt.id = t.kind_id) AND (t.id = mi.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mi_idx.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -13518,7 +13518,7 @@ WHERE cn.country_code != '[us]'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(cn.name) as movie_company, min(mi_idx.info) as rating, min(t.title) as western_violent_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((kt.id = t.kind_id) AND (t.id = mi.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mi_idx.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -13828,7 +13828,7 @@ WHERE cn.country_code != '[us]'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(cn.name) as movie_company, min(mi_idx.info) as rating, min(t.title) as western_violent_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((kt.id = t.kind_id) AND (t.id = mi.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mi_idx.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -13911,7 +13911,7 @@ WHERE cn.country_code != '[us]'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(cn.name) as movie_company, min(mi_idx.info) as rating, min(t.title) as western_violent_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((kt.id = t.kind_id) AND (t.id = mi.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mi_idx.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -14214,7 +14214,7 @@ WHERE cn.country_code != '[us]'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(cn.name) as movie_company, min(mi_idx.info) as rating, min(t.title) as western_violent_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((kt.id = t.kind_id) AND (t.id = mi.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mi_idx.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -14295,7 +14295,7 @@ WHERE cn.country_code != '[us]'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(cn.name) as movie_company, min(mi_idx.info) as rating, min(t.title) as western_violent_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((kt.id = t.kind_id) AND (t.id = mi.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mi_idx.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -14578,7 +14578,7 @@ WHERE cct1.kind = 'complete+verified'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(kt.kind) as movie_kind, min(t.title) as complete_us_internet_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(kt.kind), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(kt.kind), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((kt.id = t.kind_id) AND (t.id = mi.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id)) AND (t.id = cc.movie_id))\n" +
@@ -14655,7 +14655,7 @@ WHERE cct1.kind = 'complete+verified'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(kt.kind) as movie_kind, min(t.title) as complete_us_internet_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(kt.kind), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(kt.kind), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((kt.id = t.kind_id) AND (t.id = mi.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id)) AND (t.id = cc.movie_id))\n" +
@@ -14935,7 +14935,7 @@ WHERE cct1.kind = 'complete+verified'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(kt.kind) as movie_kind, min(t.title) as complete_nerdy_internet_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(kt.kind), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(kt.kind), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((kt.id = t.kind_id) AND (t.id = mi.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id)) AND (t.id = cc.movie_id))\n" +
@@ -15014,7 +15014,7 @@ WHERE cct1.kind = 'complete+verified'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(kt.kind) as movie_kind, min(t.title) as complete_nerdy_internet_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(kt.kind), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(kt.kind), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((kt.id = t.kind_id) AND (t.id = mi.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id)) AND (t.id = cc.movie_id))\n" +
@@ -15298,7 +15298,7 @@ WHERE cct1.kind = 'complete+verified'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(kt.kind) as movie_kind, min(t.title) as complete_us_internet_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(kt.kind), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(kt.kind), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((kt.id = t.kind_id) AND (t.id = mi.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id)) AND (t.id = cc.movie_id))\n" +
@@ -15375,7 +15375,7 @@ WHERE cct1.kind = 'complete+verified'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(kt.kind) as movie_kind, min(t.title) as complete_us_internet_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(kt.kind), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(kt.kind), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((kt.id = t.kind_id) AND (t.id = mi.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id)) AND (t.id = cc.movie_id))\n" +
@@ -15685,7 +15685,7 @@ WHERE ci.note IN ('(voice)',
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(chn.name) as voiced_char_name, min(n.name) as voicing_actress_name, min(t.title) as voiced_action_movie_jap_eng]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(chn.name), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(chn.name), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((t.id = mi.movie_id) AND (t.id = mc.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id))\n" +
@@ -15774,7 +15774,7 @@ WHERE ci.note IN ('(voice)',
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(chn.name) as voiced_char_name, min(n.name) as voicing_actress_name, min(t.title) as voiced_action_movie_jap_eng]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(chn.name), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(chn.name), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((t.id = mi.movie_id) AND (t.id = mc.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id))\n" +
@@ -16111,7 +16111,7 @@ WHERE ci.note IN ('(voice)',
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(chn.name) as voiced_char_name, min(n.name) as voicing_actress_name, min(t.title) as kung_fu_panda]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(chn.name), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(chn.name), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((t.id = mi.movie_id) AND (t.id = mc.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id))\n" +
@@ -16200,7 +16200,7 @@ WHERE ci.note IN ('(voice)',
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(chn.name) as voiced_char_name, min(n.name) as voicing_actress_name, min(t.title) as kung_fu_panda]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(chn.name), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(chn.name), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((t.id = mi.movie_id) AND (t.id = mc.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id))\n" +
@@ -16470,7 +16470,7 @@ WHERE ci.note IN ('(writer)',
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mi.info) as movie_budget, min(mi_idx.info) as movie_votes, min(n.name) as male_writer, min(t.title) as violent_movie_title]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((t.id = mi.movie_id) AND (t.id = mi_idx.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id))\n" +
@@ -16537,7 +16537,7 @@ WHERE ci.note IN ('(writer)',
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(mi.info) as movie_budget, min(mi_idx.info) as movie_votes, min(n.name) as male_writer, min(t.title) as violent_movie_title]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((t.id = mi.movie_id) AND (t.id = mi_idx.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id))\n" +
@@ -16799,7 +16799,7 @@ WHERE ci.note IN ('(writer)',
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mi.info) as movie_budget, min(mi_idx.info) as movie_votes, min(n.name) as male_writer, min(t.title) as violent_movie_title]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((t.id = mi.movie_id) AND (t.id = mi_idx.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id))\n" +
@@ -16868,7 +16868,7 @@ WHERE ci.note IN ('(writer)',
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(mi.info) as movie_budget, min(mi_idx.info) as movie_votes, min(n.name) as male_writer, min(t.title) as violent_movie_title]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((t.id = mi.movie_id) AND (t.id = mi_idx.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id))\n" +
@@ -17125,7 +17125,7 @@ WHERE ci.note IN ('(writer)',
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mi.info) as movie_budget, min(mi_idx.info) as movie_votes, min(n.name) as male_writer, min(t.title) as violent_movie_title]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((t.id = mi.movie_id) AND (t.id = mi_idx.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id))\n" +
@@ -17192,7 +17192,7 @@ WHERE ci.note IN ('(writer)',
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(mi.info) as movie_budget, min(mi_idx.info) as movie_votes, min(n.name) as male_writer, min(t.title) as violent_movie_title]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((t.id = mi.movie_id) AND (t.id = mi_idx.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id))\n" +
@@ -17488,7 +17488,7 @@ WHERE cct1.kind = 'cast'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(chn.name) as character_name, min(mi_idx.info) as rating, min(n.name) as playing_actor, min(t.title) as complete_hero_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(chn.name), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(chn.name), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((kt.id = t.kind_id) AND (t.id = mk.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = cc.movie_id)) AND (t.id = mi_idx.movie_id))\n" +
@@ -17576,7 +17576,7 @@ WHERE cct1.kind = 'cast'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(chn.name) as character_name, min(mi_idx.info) as rating, min(n.name) as playing_actor, min(t.title) as complete_hero_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(chn.name), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(chn.name), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((kt.id = t.kind_id) AND (t.id = mk.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = cc.movie_id)) AND (t.id = mi_idx.movie_id))\n" +
@@ -17886,7 +17886,7 @@ WHERE cct1.kind = 'cast'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(chn.name) as character_name, min(mi_idx.info) as rating, min(t.title) as complete_hero_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(chn.name), MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(chn.name), MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((kt.id = t.kind_id) AND (t.id = mk.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = cc.movie_id)) AND (t.id = mi_idx.movie_id))\n" +
@@ -17974,7 +17974,7 @@ WHERE cct1.kind = 'cast'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(chn.name) as character_name, min(mi_idx.info) as rating, min(t.title) as complete_hero_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(chn.name), MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(chn.name), MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((kt.id = t.kind_id) AND (t.id = mk.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = cc.movie_id)) AND (t.id = mi_idx.movie_id))\n" +
@@ -18285,7 +18285,7 @@ WHERE cct1.kind = 'cast'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(chn.name) as character_name, min(mi_idx.info) as rating, min(t.title) as complete_hero_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(chn.name), MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(chn.name), MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((kt.id = t.kind_id) AND (t.id = mk.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = cc.movie_id)) AND (t.id = mi_idx.movie_id))\n" +
@@ -18371,7 +18371,7 @@ WHERE cct1.kind = 'cast'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(chn.name) as character_name, min(mi_idx.info) as rating, min(t.title) as complete_hero_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(chn.name), MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(chn.name), MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((kt.id = t.kind_id) AND (t.id = mk.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = cc.movie_id)) AND (t.id = mi_idx.movie_id))\n" +
@@ -18709,7 +18709,7 @@ WHERE cct1.kind IN ('cast',
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(cn.name) as producing_company, min(lt.link) as link_type, min(t.title) as complete_western_sequel]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(lt.link), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(lt.link), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((ml.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id)) AND (mi.movie_id = t.id)) AND (t.id = cc.movie_id))\n" +
@@ -18799,7 +18799,7 @@ WHERE cct1.kind IN ('cast',
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(cn.name) as producing_company, min(lt.link) as link_type, min(t.title) as complete_western_sequel]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(lt.link), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(lt.link), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((ml.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id)) AND (mi.movie_id = t.id)) AND (t.id = cc.movie_id))\n" +
@@ -19137,7 +19137,7 @@ WHERE cct1.kind IN ('cast',
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(cn.name) as producing_company, min(lt.link) as link_type, min(t.title) as complete_western_sequel]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(lt.link), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(lt.link), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((ml.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id)) AND (mi.movie_id = t.id)) AND (t.id = cc.movie_id))\n" +
@@ -19227,7 +19227,7 @@ WHERE cct1.kind IN ('cast',
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(cn.name) as producing_company, min(lt.link) as link_type, min(t.title) as complete_western_sequel]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(lt.link), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(lt.link), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((ml.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id)) AND (mi.movie_id = t.id)) AND (t.id = cc.movie_id))\n" +
@@ -19577,7 +19577,7 @@ WHERE cct1.kind = 'cast'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(cn.name) as producing_company, min(lt.link) as link_type, min(t.title) as complete_western_sequel]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(lt.link), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(lt.link), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((ml.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id)) AND (mi.movie_id = t.id)) AND (t.id = cc.movie_id))\n" +
@@ -19667,7 +19667,7 @@ WHERE cct1.kind = 'cast'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(cn.name) as producing_company, min(lt.link) as link_type, min(t.title) as complete_western_sequel]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(lt.link), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(lt.link), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((ml.movie_id = t.id) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id)) AND (mi.movie_id = t.id)) AND (t.id = cc.movie_id))\n" +
@@ -20050,7 +20050,7 @@ WHERE cct1.kind = 'crew'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(cn.name) as movie_company, min(mi_idx.info) as rating, min(t.title) as complete_euro_dark_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((((kt.id = t.kind_id) AND (t.id = mi.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mi_idx.movie_id)) AND (t.id = mc.movie_id)) AND (t.id = cc.movie_id))\n" +
@@ -20154,7 +20154,7 @@ WHERE cct1.kind = 'crew'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(cn.name) as movie_company, min(mi_idx.info) as rating, min(t.title) as complete_euro_dark_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((((kt.id = t.kind_id) AND (t.id = mi.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mi_idx.movie_id)) AND (t.id = mc.movie_id)) AND (t.id = cc.movie_id))\n" +
@@ -20545,7 +20545,7 @@ WHERE cct1.kind = 'crew'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(cn.name) as movie_company, min(mi_idx.info) as rating, min(t.title) as complete_euro_dark_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((((kt.id = t.kind_id) AND (t.id = mi.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mi_idx.movie_id)) AND (t.id = mc.movie_id)) AND (t.id = cc.movie_id))\n" +
@@ -20649,7 +20649,7 @@ WHERE cct1.kind = 'crew'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(cn.name) as movie_company, min(mi_idx.info) as rating, min(t.title) as complete_euro_dark_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((((kt.id = t.kind_id) AND (t.id = mi.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mi_idx.movie_id)) AND (t.id = mc.movie_id)) AND (t.id = cc.movie_id))\n" +
@@ -21045,7 +21045,7 @@ WHERE cct1.kind = 'cast'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(cn.name) as movie_company, min(mi_idx.info) as rating, min(t.title) as complete_euro_dark_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((((kt.id = t.kind_id) AND (t.id = mi.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mi_idx.movie_id)) AND (t.id = mc.movie_id)) AND (t.id = cc.movie_id))\n" +
@@ -21149,7 +21149,7 @@ WHERE cct1.kind = 'cast'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(cn.name) as movie_company, min(mi_idx.info) as rating, min(t.title) as complete_euro_dark_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn.name), MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(cn.name), MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((((kt.id = t.kind_id) AND (t.id = mi.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mi_idx.movie_id)) AND (t.id = mc.movie_id)) AND (t.id = cc.movie_id))\n" +
@@ -21596,7 +21596,7 @@ WHERE cct1.kind ='cast'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(chn.name) as voiced_char, min(n.name) as voicing_actress, min(t.title) as voiced_animation]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(chn.name), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(chn.name), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((t.id = mi.movie_id) AND (t.id = mc.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = cc.movie_id))\n" +
@@ -21720,7 +21720,7 @@ WHERE cct1.kind ='cast'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(chn.name) as voiced_char, min(n.name) as voicing_actress, min(t.title) as voiced_animation]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(chn.name), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(chn.name), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((t.id = mi.movie_id) AND (t.id = mc.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = cc.movie_id))\n" +
@@ -22180,7 +22180,7 @@ WHERE cct1.kind ='cast'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(chn.name) as voiced_char, min(n.name) as voicing_actress, min(t.title) as voiced_animation]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(chn.name), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(chn.name), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((t.id = mi.movie_id) AND (t.id = mc.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = cc.movie_id))\n" +
@@ -22304,7 +22304,7 @@ WHERE cct1.kind ='cast'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(chn.name) as voiced_char, min(n.name) as voicing_actress, min(t.title) as voiced_animation]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(chn.name), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(chn.name), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((t.id = mi.movie_id) AND (t.id = mc.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = cc.movie_id))\n" +
@@ -22762,7 +22762,7 @@ WHERE cct1.kind ='cast'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(chn.name) as voiced_char, min(n.name) as voicing_actress, min(t.title) as voiced_animation]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(chn.name), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(chn.name), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((t.id = mi.movie_id) AND (t.id = mc.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = cc.movie_id))\n" +
@@ -22884,7 +22884,7 @@ WHERE cct1.kind ='cast'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(chn.name) as voiced_char, min(n.name) as voicing_actress, min(t.title) as voiced_animation]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(chn.name), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(chn.name), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((t.id = mi.movie_id) AND (t.id = mc.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = cc.movie_id))\n" +
@@ -23084,7 +23084,7 @@ WHERE cn.country_code ='[de]'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(t.title) as movie_title]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((mc.movie_id = t.id) AND (t.id = mk.movie_id))\n" +
@@ -23121,7 +23121,7 @@ WHERE cn.country_code ='[de]'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(t.title) as movie_title]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((mc.movie_id = t.id) AND (t.id = mk.movie_id))\n" +
@@ -23236,7 +23236,7 @@ WHERE cn.country_code ='[nl]'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(t.title) as movie_title]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((mc.movie_id = t.id) AND (t.id = mk.movie_id))\n" +
@@ -23273,7 +23273,7 @@ WHERE cn.country_code ='[nl]'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(t.title) as movie_title]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((mc.movie_id = t.id) AND (t.id = mk.movie_id))\n" +
@@ -23388,7 +23388,7 @@ WHERE cn.country_code ='[sm]'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(t.title) as movie_title]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((mc.movie_id = t.id) AND (t.id = mk.movie_id))\n" +
@@ -23425,7 +23425,7 @@ WHERE cn.country_code ='[sm]'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(t.title) as movie_title]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((mc.movie_id = t.id) AND (t.id = mk.movie_id))\n" +
@@ -23540,7 +23540,7 @@ WHERE cn.country_code ='[us]'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(t.title) as movie_title]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((mc.movie_id = t.id) AND (t.id = mk.movie_id))\n" +
@@ -23577,7 +23577,7 @@ WHERE cn.country_code ='[us]'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(t.title) as movie_title]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((mc.movie_id = t.id) AND (t.id = mk.movie_id))\n" +
@@ -23868,7 +23868,7 @@ WHERE cct1.kind IN ('cast',
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mi.info) as movie_budget, min(mi_idx.info) as movie_votes, min(n.name) as writer, min(t.title) as complete_violent_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((t.id = mi.movie_id) AND (t.id = mi_idx.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = cc.movie_id))\n" +
@@ -23959,7 +23959,7 @@ WHERE cct1.kind IN ('cast',
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(mi.info) as movie_budget, min(mi_idx.info) as movie_votes, min(n.name) as writer, min(t.title) as complete_violent_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((t.id = mi.movie_id) AND (t.id = mi_idx.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = cc.movie_id))\n" +
@@ -24319,7 +24319,7 @@ WHERE cct1.kind IN ('cast',
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mi.info) as movie_budget, min(mi_idx.info) as movie_votes, min(n.name) as writer, min(t.title) as complete_gore_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((t.id = mi.movie_id) AND (t.id = mi_idx.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = cc.movie_id))\n" +
@@ -24410,7 +24410,7 @@ WHERE cct1.kind IN ('cast',
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(mi.info) as movie_budget, min(mi_idx.info) as movie_votes, min(n.name) as writer, min(t.title) as complete_gore_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((t.id = mi.movie_id) AND (t.id = mi_idx.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = cc.movie_id))\n" +
@@ -24753,7 +24753,7 @@ WHERE cct1.kind = 'cast'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mi.info) as movie_budget, min(mi_idx.info) as movie_votes, min(n.name) as writer, min(t.title) as complete_violent_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((t.id = mi.movie_id) AND (t.id = mi_idx.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = cc.movie_id))\n" +
@@ -24842,7 +24842,7 @@ WHERE cct1.kind = 'cast'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(mi.info) as movie_budget, min(mi_idx.info) as movie_votes, min(n.name) as writer, min(t.title) as complete_violent_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((t.id = mi.movie_id) AND (t.id = mi_idx.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = cc.movie_id))\n" +
@@ -25167,7 +25167,7 @@ WHERE ci.note IN ('(writer)',
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mi.info) as movie_budget, min(mi_idx.info) as movie_votes, min(n.name) as writer, min(t.title) as violent_liongate_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((t.id = mi.movie_id) AND (t.id = mi_idx.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -25247,7 +25247,7 @@ WHERE ci.note IN ('(writer)',
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(mi.info) as movie_budget, min(mi_idx.info) as movie_votes, min(n.name) as writer, min(t.title) as violent_liongate_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((t.id = mi.movie_id) AND (t.id = mi_idx.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -25586,7 +25586,7 @@ WHERE ci.note IN ('(writer)',
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mi.info) as movie_budget, min(mi_idx.info) as movie_votes, min(n.name) as writer, min(t.title) as violent_liongate_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((t.id = mi.movie_id) AND (t.id = mi_idx.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -25670,7 +25670,7 @@ WHERE ci.note IN ('(writer)',
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(mi.info) as movie_budget, min(mi_idx.info) as movie_votes, min(n.name) as writer, min(t.title) as violent_liongate_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((t.id = mi.movie_id) AND (t.id = mi_idx.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -25989,7 +25989,7 @@ WHERE ci.note IN ('(writer)',
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mi.info) as movie_budget, min(mi_idx.info) as movie_votes, min(n.name) as writer, min(t.title) as violent_liongate_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((t.id = mi.movie_id) AND (t.id = mi_idx.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -26067,7 +26067,7 @@ WHERE ci.note IN ('(writer)',
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(mi.info) as movie_budget, min(mi_idx.info) as movie_votes, min(n.name) as writer, min(t.title) as violent_liongate_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi.info), MIN(mi_idx.info), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((t.id = mi.movie_id) AND (t.id = mi_idx.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = mc.movie_id))\n" +
@@ -26236,7 +26236,7 @@ WHERE k.keyword ='10,000-mile-club'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(lt.link) as link_type, min(t1.title) as first_movie, min(t2.title) as second_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(lt.link), MIN(t1.title), MIN(t2.title))\n" +
+			"     ├─ SelectDeps(MIN(lt.link), MIN(t1.title), MIN(t2.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (ml.linked_movie_id = t2.id)\n" +
@@ -26277,7 +26277,7 @@ WHERE k.keyword ='10,000-mile-club'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(lt.link) as link_type, min(t1.title) as first_movie, min(t2.title) as second_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(lt.link), MIN(t1.title), MIN(t2.title))\n" +
+			"     ├─ SelectDeps(MIN(lt.link), MIN(t1.title), MIN(t2.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (ml.linked_movie_id = t2.id)\n" +
@@ -26409,7 +26409,7 @@ WHERE k.keyword ='character-name-in-title'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(lt.link) as link_type, min(t1.title) as first_movie, min(t2.title) as second_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(lt.link), MIN(t1.title), MIN(t2.title))\n" +
+			"     ├─ SelectDeps(MIN(lt.link), MIN(t1.title), MIN(t2.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (ml.linked_movie_id = t2.id)\n" +
@@ -26450,7 +26450,7 @@ WHERE k.keyword ='character-name-in-title'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(lt.link) as link_type, min(t1.title) as first_movie, min(t2.title) as second_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(lt.link), MIN(t1.title), MIN(t2.title))\n" +
+			"     ├─ SelectDeps(MIN(lt.link), MIN(t1.title), MIN(t2.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (ml.linked_movie_id = t2.id)\n" +
@@ -26745,7 +26745,7 @@ WHERE cn1.country_code = '[us]'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(cn1.name) as first_company, min(cn2.name) as second_company, min(mi_idx1.info) as first_rating, min(mi_idx2.info) as second_rating, min(t1.title) as first_movie, min(t2.title) as second_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn1.name), MIN(cn2.name), MIN(mi_idx1.info), MIN(mi_idx2.info), MIN(t1.title), MIN(t2.title))\n" +
+			"     ├─ SelectDeps(MIN(cn1.name), MIN(cn2.name), MIN(mi_idx1.info), MIN(mi_idx2.info), MIN(t1.title), MIN(t2.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((t2.id = ml.linked_movie_id) AND (t2.id = mi_idx2.movie_id)) AND (kt2.id = t2.kind_id)) AND (t2.id = mc2.movie_id))\n" +
@@ -26843,7 +26843,7 @@ WHERE cn1.country_code = '[us]'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(cn1.name) as first_company, min(cn2.name) as second_company, min(mi_idx1.info) as first_rating, min(mi_idx2.info) as second_rating, min(t1.title) as first_movie, min(t2.title) as second_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn1.name), MIN(cn2.name), MIN(mi_idx1.info), MIN(mi_idx2.info), MIN(t1.title), MIN(t2.title))\n" +
+			"     ├─ SelectDeps(MIN(cn1.name), MIN(cn2.name), MIN(mi_idx1.info), MIN(mi_idx2.info), MIN(t1.title), MIN(t2.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((t2.id = ml.linked_movie_id) AND (t2.id = mi_idx2.movie_id)) AND (kt2.id = t2.kind_id)) AND (t2.id = mc2.movie_id))\n" +
@@ -27187,7 +27187,7 @@ WHERE cn1.country_code = '[nl]'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(cn1.name) as first_company, min(cn2.name) as second_company, min(mi_idx1.info) as first_rating, min(mi_idx2.info) as second_rating, min(t1.title) as first_movie, min(t2.title) as second_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn1.name), MIN(cn2.name), MIN(mi_idx1.info), MIN(mi_idx2.info), MIN(t1.title), MIN(t2.title))\n" +
+			"     ├─ SelectDeps(MIN(cn1.name), MIN(cn2.name), MIN(mi_idx1.info), MIN(mi_idx2.info), MIN(t1.title), MIN(t2.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((t2.id = ml.linked_movie_id) AND (t2.id = mi_idx2.movie_id)) AND (kt2.id = t2.kind_id)) AND (t2.id = mc2.movie_id))\n" +
@@ -27285,7 +27285,7 @@ WHERE cn1.country_code = '[nl]'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(cn1.name) as first_company, min(cn2.name) as second_company, min(mi_idx1.info) as first_rating, min(mi_idx2.info) as second_rating, min(t1.title) as first_movie, min(t2.title) as second_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn1.name), MIN(cn2.name), MIN(mi_idx1.info), MIN(mi_idx2.info), MIN(t1.title), MIN(t2.title))\n" +
+			"     ├─ SelectDeps(MIN(cn1.name), MIN(cn2.name), MIN(mi_idx1.info), MIN(mi_idx2.info), MIN(t1.title), MIN(t2.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((t2.id = ml.linked_movie_id) AND (t2.id = mi_idx2.movie_id)) AND (kt2.id = t2.kind_id)) AND (t2.id = mc2.movie_id))\n" +
@@ -27640,7 +27640,7 @@ WHERE cn1.country_code != '[us]'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(cn1.name) as first_company, min(cn2.name) as second_company, min(mi_idx1.info) as first_rating, min(mi_idx2.info) as second_rating, min(t1.title) as first_movie, min(t2.title) as second_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn1.name), MIN(cn2.name), MIN(mi_idx1.info), MIN(mi_idx2.info), MIN(t1.title), MIN(t2.title))\n" +
+			"     ├─ SelectDeps(MIN(cn1.name), MIN(cn2.name), MIN(mi_idx1.info), MIN(mi_idx2.info), MIN(t1.title), MIN(t2.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((t2.id = ml.linked_movie_id) AND (t2.id = mi_idx2.movie_id)) AND (kt2.id = t2.kind_id)) AND (t2.id = mc2.movie_id))\n" +
@@ -27738,7 +27738,7 @@ WHERE cn1.country_code != '[us]'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(cn1.name) as first_company, min(cn2.name) as second_company, min(mi_idx1.info) as first_rating, min(mi_idx2.info) as second_rating, min(t1.title) as first_movie, min(t2.title) as second_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(cn1.name), MIN(cn2.name), MIN(mi_idx1.info), MIN(mi_idx2.info), MIN(t1.title), MIN(t2.title))\n" +
+			"     ├─ SelectDeps(MIN(cn1.name), MIN(cn2.name), MIN(mi_idx1.info), MIN(mi_idx2.info), MIN(t1.title), MIN(t2.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((((t2.id = ml.linked_movie_id) AND (t2.id = mi_idx2.movie_id)) AND (kt2.id = t2.kind_id)) AND (t2.id = mc2.movie_id))\n" +
@@ -27913,7 +27913,7 @@ WHERE k.keyword LIKE '%sequel%'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(t.title) as movie_title]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mi.movie_id) AND (t.id = mk.movie_id))\n" +
@@ -27946,7 +27946,7 @@ WHERE k.keyword LIKE '%sequel%'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(t.title) as movie_title]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mi.movie_id) AND (t.id = mk.movie_id))\n" +
@@ -28049,7 +28049,7 @@ WHERE k.keyword LIKE '%sequel%'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(t.title) as movie_title]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mi.movie_id) AND (t.id = mk.movie_id))\n" +
@@ -28082,7 +28082,7 @@ WHERE k.keyword LIKE '%sequel%'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(t.title) as movie_title]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mi.movie_id) AND (t.id = mk.movie_id))\n" +
@@ -28194,7 +28194,7 @@ WHERE k.keyword LIKE '%sequel%'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(t.title) as movie_title]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mi.movie_id) AND (t.id = mk.movie_id))\n" +
@@ -28227,7 +28227,7 @@ WHERE k.keyword LIKE '%sequel%'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(t.title) as movie_title]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mi.movie_id) AND (t.id = mk.movie_id))\n" +
@@ -28347,7 +28347,7 @@ WHERE it.info ='rating'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mi_idx.info) as rating, min(t.title) as movie_title]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mi_idx.movie_id) AND (t.id = mk.movie_id))\n" +
@@ -28388,7 +28388,7 @@ WHERE it.info ='rating'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(mi_idx.info) as rating, min(t.title) as movie_title]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mi_idx.movie_id) AND (t.id = mk.movie_id))\n" +
@@ -28516,7 +28516,7 @@ WHERE it.info ='rating'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mi_idx.info) as rating, min(t.title) as movie_title]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mi_idx.movie_id) AND (t.id = mk.movie_id))\n" +
@@ -28557,7 +28557,7 @@ WHERE it.info ='rating'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(mi_idx.info) as rating, min(t.title) as movie_title]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mi_idx.movie_id) AND (t.id = mk.movie_id))\n" +
@@ -28685,7 +28685,7 @@ WHERE it.info ='rating'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(mi_idx.info) as rating, min(t.title) as movie_title]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mi_idx.movie_id) AND (t.id = mk.movie_id))\n" +
@@ -28726,7 +28726,7 @@ WHERE it.info ='rating'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(mi_idx.info) as rating, min(t.title) as movie_title]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(mi_idx.info), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(mi_idx.info), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mi_idx.movie_id) AND (t.id = mk.movie_id))\n" +
@@ -28863,7 +28863,7 @@ WHERE ct.kind = 'production companies'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(t.title) as typical_european_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mi.movie_id) AND (t.id = mc.movie_id))\n" +
@@ -28904,7 +28904,7 @@ WHERE ct.kind = 'production companies'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(t.title) as typical_european_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mi.movie_id) AND (t.id = mc.movie_id))\n" +
@@ -29038,7 +29038,7 @@ WHERE ct.kind = 'production companies'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(t.title) as american_vhs_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mi.movie_id) AND (t.id = mc.movie_id))\n" +
@@ -29079,7 +29079,7 @@ WHERE ct.kind = 'production companies'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(t.title) as american_vhs_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mi.movie_id) AND (t.id = mc.movie_id))\n" +
@@ -29219,7 +29219,7 @@ WHERE ct.kind = 'production companies'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(t.title) as american_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mi.movie_id) AND (t.id = mc.movie_id))\n" +
@@ -29260,7 +29260,7 @@ WHERE ct.kind = 'production companies'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(t.title) as american_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mi.movie_id) AND (t.id = mc.movie_id))\n" +
@@ -29384,7 +29384,7 @@ WHERE k.keyword = 'marvel-cinematic-universe'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(k.keyword) as movie_keyword, min(n.name) as actor_name, min(t.title) as marvel_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(k.keyword), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(k.keyword), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mk.movie_id) AND (t.id = ci.movie_id))\n" +
@@ -29423,7 +29423,7 @@ WHERE k.keyword = 'marvel-cinematic-universe'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(k.keyword) as movie_keyword, min(n.name) as actor_name, min(t.title) as marvel_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(k.keyword), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(k.keyword), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mk.movie_id) AND (t.id = ci.movie_id))\n" +
@@ -29552,7 +29552,7 @@ WHERE k.keyword IN ('superhero',
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(k.keyword) as movie_keyword, min(n.name) as actor_name, min(t.title) as hero_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(k.keyword), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(k.keyword), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mk.movie_id) AND (t.id = ci.movie_id))\n" +
@@ -29591,7 +29591,7 @@ WHERE k.keyword IN ('superhero',
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(k.keyword) as movie_keyword, min(n.name) as actor_name, min(t.title) as hero_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(k.keyword), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(k.keyword), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mk.movie_id) AND (t.id = ci.movie_id))\n" +
@@ -29713,7 +29713,7 @@ WHERE k.keyword = 'marvel-cinematic-universe'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(k.keyword) as movie_keyword, min(n.name) as actor_name, min(t.title) as marvel_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(k.keyword), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(k.keyword), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mk.movie_id) AND (t.id = ci.movie_id))\n" +
@@ -29752,7 +29752,7 @@ WHERE k.keyword = 'marvel-cinematic-universe'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(k.keyword) as movie_keyword, min(n.name) as actor_name, min(t.title) as marvel_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(k.keyword), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(k.keyword), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mk.movie_id) AND (t.id = ci.movie_id))\n" +
@@ -29881,7 +29881,7 @@ WHERE k.keyword IN ('superhero',
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(k.keyword) as movie_keyword, min(n.name) as actor_name, min(t.title) as hero_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(k.keyword), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(k.keyword), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mk.movie_id) AND (t.id = ci.movie_id))\n" +
@@ -29920,7 +29920,7 @@ WHERE k.keyword IN ('superhero',
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(k.keyword) as movie_keyword, min(n.name) as actor_name, min(t.title) as hero_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(k.keyword), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(k.keyword), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mk.movie_id) AND (t.id = ci.movie_id))\n" +
@@ -30042,7 +30042,7 @@ WHERE k.keyword = 'marvel-cinematic-universe'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(k.keyword) as movie_keyword, min(n.name) as actor_name, min(t.title) as marvel_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(k.keyword), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(k.keyword), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mk.movie_id) AND (t.id = ci.movie_id))\n" +
@@ -30081,7 +30081,7 @@ WHERE k.keyword = 'marvel-cinematic-universe'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(k.keyword) as movie_keyword, min(n.name) as actor_name, min(t.title) as marvel_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(k.keyword), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(k.keyword), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mk.movie_id) AND (t.id = ci.movie_id))\n" +
@@ -30207,7 +30207,7 @@ WHERE k.keyword IN ('superhero',
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(k.keyword) as movie_keyword, min(n.name) as actor_name, min(t.title) as hero_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(k.keyword), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(k.keyword), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mk.movie_id) AND (t.id = ci.movie_id))\n" +
@@ -30244,7 +30244,7 @@ WHERE k.keyword IN ('superhero',
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(k.keyword) as movie_keyword, min(n.name) as actor_name, min(t.title) as hero_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(k.keyword), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(k.keyword), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = mk.movie_id) AND (t.id = ci.movie_id))\n" +
@@ -30444,7 +30444,7 @@ WHERE an.name LIKE '%a%'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(n.name) as of_person, min(t.title) as biography_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ LookupJoin\n" +
 			"         ├─ ((n.id = an.person_id) AND (pi.person_id = an.person_id))\n" +
@@ -30509,7 +30509,7 @@ WHERE an.name LIKE '%a%'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(n.name) as of_person, min(t.title) as biography_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ LookupJoin\n" +
 			"         ├─ ((n.id = an.person_id) AND (pi.person_id = an.person_id))\n" +
@@ -30723,7 +30723,7 @@ WHERE an.name LIKE '%a%'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(n.name) as of_person, min(t.title) as biography_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ LookupJoin\n" +
 			"         ├─ ((n.id = an.person_id) AND (pi.person_id = an.person_id))\n" +
@@ -30788,7 +30788,7 @@ WHERE an.name LIKE '%a%'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(n.name) as of_person, min(t.title) as biography_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ LookupJoin\n" +
 			"         ├─ ((n.id = an.person_id) AND (pi.person_id = an.person_id))\n" +
@@ -31042,7 +31042,7 @@ WHERE an.name IS NOT NULL
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(n.name) as cast_member_name, min(pi.info) as cast_member_info]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(n.name), MIN(pi.info))\n" +
+			"     ├─ SelectDeps(MIN(n.name), MIN(pi.info))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = ci.movie_id) AND (ml.linked_movie_id = t.id))\n" +
@@ -31104,7 +31104,7 @@ WHERE an.name IS NOT NULL
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(n.name) as cast_member_name, min(pi.info) as cast_member_info]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(n.name), MIN(pi.info))\n" +
+			"     ├─ SelectDeps(MIN(n.name), MIN(pi.info))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((t.id = ci.movie_id) AND (ml.linked_movie_id = t.id))\n" +
@@ -31292,7 +31292,7 @@ WHERE ci.note ='(voice: English version)'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(an1.name) as actress_pseudonym, min(t.title) as japanese_movie_dubbed]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(an1.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(an1.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((ci.movie_id = t.id) AND (t.id = mc.movie_id))\n" +
@@ -31347,7 +31347,7 @@ WHERE ci.note ='(voice: English version)'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(an1.name) as actress_pseudonym, min(t.title) as japanese_movie_dubbed]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(an1.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(an1.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((ci.movie_id = t.id) AND (t.id = mc.movie_id))\n" +
@@ -31561,7 +31561,7 @@ WHERE ci.note ='(voice: English version)'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(an.name) as acress_pseudonym, min(t.title) as japanese_anime_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(an.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(an.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((ci.movie_id = t.id) AND (t.id = mc.movie_id))\n" +
@@ -31618,7 +31618,7 @@ WHERE ci.note ='(voice: English version)'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(an.name) as acress_pseudonym, min(t.title) as japanese_anime_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(an.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(an.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((ci.movie_id = t.id) AND (t.id = mc.movie_id))\n" +
@@ -31782,7 +31782,7 @@ WHERE cn.country_code ='[us]'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(a1.name) as writer_pseudo_name, min(t.title) as movie_title]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(a1.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(a1.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((ci.movie_id = t.id) AND (t.id = mc.movie_id))\n" +
@@ -31831,7 +31831,7 @@ WHERE cn.country_code ='[us]'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(a1.name) as writer_pseudo_name, min(t.title) as movie_title]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(a1.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(a1.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((ci.movie_id = t.id) AND (t.id = mc.movie_id))\n" +
@@ -31987,7 +31987,7 @@ WHERE cn.country_code ='[us]'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(an1.name) as costume_designer_pseudo, min(t.title) as movie_with_costumes]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(an1.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(an1.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((ci.movie_id = t.id) AND (t.id = mc.movie_id))\n" +
@@ -32036,7 +32036,7 @@ WHERE cn.country_code ='[us]'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(an1.name) as costume_designer_pseudo, min(t.title) as movie_with_costumes]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(an1.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(an1.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((ci.movie_id = t.id) AND (t.id = mc.movie_id))\n" +
@@ -32239,7 +32239,7 @@ WHERE ci.note IN ('(voice)',
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(an.name) as alternative_name, min(chn.name) as character_name, min(t.title) as movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(an.name), MIN(chn.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(an.name), MIN(chn.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((ci.movie_id = t.id) AND (t.id = mc.movie_id))\n" +
@@ -32302,7 +32302,7 @@ WHERE ci.note IN ('(voice)',
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(an.name) as alternative_name, min(chn.name) as character_name, min(t.title) as movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(an.name), MIN(chn.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(an.name), MIN(chn.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((ci.movie_id = t.id) AND (t.id = mc.movie_id))\n" +
@@ -32516,7 +32516,7 @@ WHERE ci.note = '(voice)'
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(an.name) as alternative_name, min(chn.name) as voiced_character, min(n.name) as voicing_actress, min(t.title) as american_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(an.name), MIN(chn.name), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(an.name), MIN(chn.name), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((ci.movie_id = t.id) AND (t.id = mc.movie_id))\n" +
@@ -32579,7 +32579,7 @@ WHERE ci.note = '(voice)'
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(an.name) as alternative_name, min(chn.name) as voiced_character, min(n.name) as voicing_actress, min(t.title) as american_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(an.name), MIN(chn.name), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(an.name), MIN(chn.name), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((ci.movie_id = t.id) AND (t.id = mc.movie_id))\n" +
@@ -32778,7 +32778,7 @@ WHERE ci.note IN ('(voice)',
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(an.name) as alternative_name, min(chn.name) as voiced_character_name, min(n.name) as voicing_actress, min(t.title) as american_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(an.name), MIN(chn.name), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(an.name), MIN(chn.name), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((ci.movie_id = t.id) AND (t.id = mc.movie_id))\n" +
@@ -32837,7 +32837,7 @@ WHERE ci.note IN ('(voice)',
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(an.name) as alternative_name, min(chn.name) as voiced_character_name, min(n.name) as voicing_actress, min(t.title) as american_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(an.name), MIN(chn.name), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(an.name), MIN(chn.name), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((ci.movie_id = t.id) AND (t.id = mc.movie_id))\n" +
@@ -33029,7 +33029,7 @@ WHERE ci.note IN ('(voice)',
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(an.name) as alternative_name, min(chn.name) as voiced_char_name, min(n.name) as voicing_actress, min(t.title) as american_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(an.name), MIN(chn.name), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(an.name), MIN(chn.name), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((ci.movie_id = t.id) AND (t.id = mc.movie_id))\n" +
@@ -33088,7 +33088,7 @@ WHERE ci.note IN ('(voice)',
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(an.name) as alternative_name, min(chn.name) as voiced_char_name, min(n.name) as voicing_actress, min(t.title) as american_movie]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(an.name), MIN(chn.name), MIN(n.name), MIN(t.title))\n" +
+			"     ├─ SelectDeps(MIN(an.name), MIN(chn.name), MIN(n.name), MIN(t.title))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ ((ci.movie_id = t.id) AND (t.id = mc.movie_id))\n" +

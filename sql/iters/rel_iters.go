@@ -29,13 +29,13 @@ import (
 )
 
 type topRowsIter struct {
-	sortFields    sql.SortFields
-	calcFoundRows bool
 	childIter     sql.RowIter
-	limit         int64
+	sortFields    sql.SortFields
 	topRows       []sql.Row
-	numFoundRows  int64
 	idx           int
+	limit         int64
+	numFoundRows  int64
+	calcFoundRows bool
 }
 
 func NewTopRowsIter(s sql.SortFields, limit int64, calcFoundRows bool, child sql.RowIter, childSchemaLen int) *topRowsIter {
@@ -146,27 +146,26 @@ func GetInt64Value(ctx *sql.Context, expr sql.Expression) (int64, error) {
 }
 
 type JsonTableColOpts struct {
-	Name      string
 	Typ       sql.Type
-	ForOrd    bool
-	Exists    bool
 	DefErrVal interface{}
 	DefEmpVal interface{}
+	Name      string
+	ForOrd    bool
+	Exists    bool
 	ErrOnErr  bool
 	ErrOnEmp  bool
 }
 
 // JsonTableCol represents a column in a json table.
 type JsonTableCol struct {
-	Path string // if there are nested columns, this is a schema Path, otherwise it is a col Path
-	Opts *JsonTableColOpts
-	Cols []*JsonTableCol // nested columns
-
-	data     []interface{}
 	err      error
+	Opts     *JsonTableColOpts
+	Path     string          // if there are nested columns, this is a schema Path, otherwise it is a col Path
+	Cols     []*JsonTableCol // nested columns
+	data     []interface{}
 	pos      int
-	finished bool // exhausted all rows in data
 	currSib  int
+	finished bool // exhausted all rows in data
 }
 
 // IsSibling returns if the jsonTableCol contains multiple columns
@@ -306,8 +305,8 @@ func (c *JsonTableCol) Next(ctx *sql.Context, obj interface{}, pass bool, ord in
 
 type JsonTableRowIter struct {
 	Data    []interface{}
-	pos     int
 	Cols    []*JsonTableCol
+	pos     int
 	currSib int
 }
 
@@ -405,8 +404,8 @@ func (di *orderedDistinctIter) Close(ctx *sql.Context) error {
 
 // TODO a queue is probably more optimal
 type RecursiveTableIter struct {
-	pos int
 	Buf []sql.Row
+	pos int
 }
 
 var _ sql.RowIter = (*RecursiveTableIter)(nil)
@@ -425,10 +424,10 @@ func (r *RecursiveTableIter) Close(ctx *sql.Context) error {
 }
 
 type LimitIter struct {
-	CalcFoundRows bool
-	currentPos    int64
 	ChildIter     sql.RowIter
+	currentPos    int64
 	Limit         int64
+	CalcFoundRows bool
 }
 
 func (li *LimitIter) Next(ctx *sql.Context) (sql.Row, error) {
@@ -634,9 +633,10 @@ func (ui *UnionIter) Close(ctx *sql.Context) error {
 }
 
 type IntersectIter struct {
-	LIter, RIter sql.RowIter
-	cached       bool
-	cache        map[uint64]int
+	LIter  sql.RowIter
+	RIter  sql.RowIter
+	cache  map[uint64]int
+	cached bool
 }
 
 func (ii *IntersectIter) Next(ctx *sql.Context) (sql.Row, error) {
@@ -700,9 +700,10 @@ func (ii *IntersectIter) Close(ctx *sql.Context) error {
 }
 
 type ExceptIter struct {
-	LIter, RIter sql.RowIter
-	cached       bool
-	cache        map[uint64]int
+	LIter  sql.RowIter
+	RIter  sql.RowIter
+	cache  map[uint64]int
+	cached bool
 }
 
 func (ei *ExceptIter) Next(ctx *sql.Context) (sql.Row, error) {

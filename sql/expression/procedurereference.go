@@ -37,24 +37,24 @@ type procedureScope struct {
 }
 
 type procedureVariableReferenceValue struct {
-	Name       string
 	Value      interface{}
 	SqlType    sql.Type
+	Name       string
 	HasBeenSet bool
 }
 
 type procedureCursorReferenceValue struct {
-	Name       string
 	SelectStmt sql.Node
 	RowIter    sql.RowIter
+	Name       string
 }
 
 type procedureHandlerReferenceValue struct {
 	Stmt        sql.Node
-	IsExit      bool
-	Action      DeclareHandlerAction
 	Cond        HandlerCondition
 	ScopeHeight int
+	IsExit      bool
+	Action      DeclareHandlerAction
 }
 
 // ProcedureReferencable indicates that a sql.Node takes a *ProcedureReference returns a new copy with the reference set.
@@ -299,9 +299,9 @@ func NewProcedureReference() *ProcedureReference {
 
 // ProcedureParam represents the parameter of a stored procedure or stored function.
 type ProcedureParam struct {
-	name       string
-	pRef       *ProcedureReference
 	typ        sql.Type
+	pRef       *ProcedureReference
+	name       string
 	hasBeenSet bool
 }
 

@@ -33,10 +33,10 @@ var (
 // to return an IndexLookup from the created ranges.
 type MySQLIndexBuilder struct {
 	idx          Index
-	isInvalid    bool
 	err          error
 	colExprTypes map[string]Type
 	ranges       map[string][]MySQLRangeColumnExpr
+	isInvalid    bool
 }
 
 // NewMySQLIndexBuilder returns a new MySQLIndexBuilder. Used internally to construct a range that will later be passed to
