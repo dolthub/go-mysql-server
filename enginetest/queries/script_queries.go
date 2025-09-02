@@ -11687,6 +11687,32 @@ select * from t1 except (
 			},
 		},
 	},
+	{
+		Name: "aggregate function with match",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk INT PRIMARY KEY, doc TEXT, FULLTEXT idx (doc));",
+			"INSERT INTO test VALUES (2, 'g hhhh aaaab ooooo aaaa'), (1, 'bbbb ff cccc ddd eee'), (4, 'AAAA aaaa aaaac aaaa Aaaa aaaa'), (3, 'aaaA ff j kkkk llllllll');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// https://github.com/dolthub/dolt/issues/9761
+				Skip:  true,
+				Query: "SELECT pk, count(pk), MATCH(doc) AGAINST('aaaa') AS relevancy FROM test ORDER BY relevancy DESC;",
+				// TODO: replace with corresponding error once validation for aggregated query without group by
+				//  has been implemented https://github.com/dolthub/dolt/issues/9761
+				ExpectedErr: nil,
+			},
+			{
+				Query:    "SET SESSION sql_mode = REPLACE(@@SESSION.sql_mode, 'ONLY_FULL_GROUP_BY', '');",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+
+			{
+				Query:    "SELECT pk, count(pk), MATCH(doc) AGAINST('aaaa') AS relevancy FROM test ORDER BY relevancy DESC;",
+				Expected: []sql.Row{{1, 4, float64(0)}},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
