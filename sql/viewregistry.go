@@ -74,8 +74,8 @@ func NewViewKey(databaseName, viewName string) ViewKey {
 // view registry by default. Integrators that want views to persist across sessions should either implement
 // sql.ViewDatabase, or construct their sessions to reuse the same ViewRegistry for each session.
 type ViewRegistry struct {
-	mutex sync.RWMutex
 	views map[ViewKey]*View
+	mutex sync.RWMutex
 }
 
 // NewViewRegistry creates an empty ViewRegistry.

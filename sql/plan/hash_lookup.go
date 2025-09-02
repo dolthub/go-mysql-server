@@ -50,8 +50,8 @@ type HashLookup struct {
 	LeftProbeKey  sql.Expression
 	Mutex         *sync.Mutex
 	Lookup        *map[interface{}][]sql.Row
-	JoinType      JoinType
 	leftKeySch    sql.Schema
+	JoinType      JoinType
 }
 
 var _ sql.Node = (*HashLookup)(nil)

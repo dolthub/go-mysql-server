@@ -63,7 +63,7 @@ func TestValidateGroupBy(t *testing.T) {
 	variables.InitSystemVariables()
 	require := require.New(t)
 
-	vr := getValidationRule(validateGroupById)
+	vr := getRule(validateGroupById)
 
 	_, _, err := vr.Apply(sql.NewEmptyContext(), nil, dummyNode{true}, nil, DefaultRuleSelector, nil)
 	require.NoError(err)
@@ -111,7 +111,7 @@ func TestValidateGroupBy(t *testing.T) {
 
 func TestValidateGroupByErr(t *testing.T) {
 	require := require.New(t)
-	vr := getValidationRule(validateGroupById)
+	vr := getRule(validateGroupById)
 
 	_, _, err := vr.Apply(sql.NewEmptyContext(), nil, dummyNode{true}, nil, DefaultRuleSelector, nil)
 	require.NoError(err)
@@ -768,11 +768,6 @@ func (dummyNode) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 	return sql.Collation_binary, 7
 }
 
-func getValidationRule(id RuleId) Rule {
-	for _, rule := range DefaultValidationRules {
-		if rule.Id == id {
-			return rule
-		}
-	}
-	panic("missing rule")
+func getValidationRule(id RuleId) *Rule {
+	return getRuleFrom(DefaultValidationRules, id)
 }

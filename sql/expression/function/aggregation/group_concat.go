@@ -27,13 +27,13 @@ import (
 )
 
 type GroupConcat struct {
-	distinct    string
-	sf          sql.SortFields
-	separator   string
-	selectExprs []sql.Expression
-	maxLen      int
 	returnType  sql.Type
 	window      *sql.WindowDefinition
+	distinct    string
+	separator   string
+	selectExprs []sql.Expression
+	sf          sql.SortFields
+	maxLen      int
 	id          sql.ColumnId
 }
 
@@ -88,7 +88,11 @@ func (g *GroupConcat) Window() *sql.WindowDefinition {
 func (g *GroupConcat) NewBuffer() (sql.AggregationBuffer, error) {
 	var rows []sql.Row
 	distinctSet := make(map[string]bool)
-	return &groupConcatBuffer{g, rows, distinctSet}, nil
+	return &groupConcatBuffer{
+		gc:          g,
+		distinctSet: distinctSet,
+		rows:        rows,
+	}, nil
 }
 
 // NewWindowFunctionAggregation implements sql.WindowAdaptableExpression
@@ -237,8 +241,8 @@ func (g *GroupConcat) OutputExpressions() []sql.Expression {
 
 type groupConcatBuffer struct {
 	gc          *GroupConcat
-	rows        []sql.Row
 	distinctSet map[string]bool
+	rows        []sql.Row
 }
 
 // Update implements the AggregationBuffer interface.

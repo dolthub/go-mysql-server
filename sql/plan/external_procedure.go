@@ -30,9 +30,9 @@ var (
 
 // ExternalProcedure is the sql.Node container for sql.ExternalStoredProcedureDetails.
 type ExternalProcedure struct {
-	sql.ExternalStoredProcedureDetails
 	ParamDefinitions []ProcedureParam
 	Params           []*expression.ProcedureParam
+	sql.ExternalStoredProcedureDetails
 }
 
 var _ sql.Node = (*ExternalProcedure)(nil)

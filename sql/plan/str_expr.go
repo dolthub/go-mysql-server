@@ -35,8 +35,8 @@ func AliasSubqueryString(e sql.Expression) string {
 // StrExpr is used exclusively for overriding the .String()
 // method of a subquery expression for efficiency and display purposes.
 type StrExpr struct {
-	s        string
 	original *Subquery
+	s        string
 }
 
 var _ sql.Node = (*StrExpr)(nil)

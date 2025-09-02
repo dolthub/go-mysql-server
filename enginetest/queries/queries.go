@@ -5076,19 +5076,19 @@ SELECT * FROM cte WHERE  d = 2;`,
 	{
 		Query: `SHOW VARIABLES WHERE Variable_name = 'version' || variable_name = 'autocommit'`,
 		Expected: []sql.Row{
-			{"autocommit", 1}, {"version", "8.0.31"},
+			{"autocommit", "ON"}, {"version", "8.0.31"},
 		},
 	},
 	{
 		Query: `SHOW VARIABLES WHERE Variable_name > 'version' and variable_name like '%_%'`,
 		Expected: []sql.Row{
-			{"version_comment", "Dolt"}, {"version_compile_machine", ""}, {"version_compile_os", ""}, {"version_compile_zlib", ""}, {"wait_timeout", 28800}, {"windowing_use_high_precision", 1},
+			{"version_comment", "Dolt"}, {"version_compile_machine", ""}, {"version_compile_os", ""}, {"version_compile_zlib", ""}, {"wait_timeout", 28800}, {"windowing_use_high_precision", "ON"},
 		},
 	},
 	{
 		Query: `SHOW VARIABLES WHERE "1" and variable_name = 'autocommit'`,
 		Expected: []sql.Row{
-			{"autocommit", 1},
+			{"autocommit", "ON"},
 		},
 	},
 	{
@@ -5105,8 +5105,8 @@ SELECT * FROM cte WHERE  d = 2;`,
 			{"block_encryption_mode", "aes-128-ecb"},
 			{"gtid_mode", "OFF"},
 			{"innodb_autoinc_lock_mode", int64(2)},
-			{"offline_mode", int64(0)},
-			{"pseudo_slave_mode", int64(0)},
+			{"offline_mode", "OFF"},
+			{"pseudo_slave_mode", "OFF"},
 			{"rbr_exec_mode", "STRICT"},
 			{"sql_mode", "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES"},
 			{"ssl_fips_mode", "OFF"},
@@ -6265,7 +6265,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 		},
 	},
 	{
-		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x FROM one_pk opk GROUP BY x ORDER BY x`,
+		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x FROM one_pk opk GROUP BY pk, x ORDER BY x`,
 		Expected: []sql.Row{
 			{0, nil},
 			{1, 0},
@@ -6394,7 +6394,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 	{
 		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x
 						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) > 0
-						GROUP BY x ORDER BY x`,
+						GROUP BY pk, x ORDER BY x`,
 		Expected: []sql.Row{
 			{2, 1},
 			{3, 2},
@@ -6403,7 +6403,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 	{
 		Query: `SELECT pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x
 						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) > 0
-						GROUP BY (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) ORDER BY x`,
+						GROUP BY pk, (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) ORDER BY x`,
 		Expected: []sql.Row{
 			{2, 1},
 			{3, 2},
@@ -9366,6 +9366,32 @@ from typestable`,
 		Query:    "select y + 1 as z from xy group by (z) having AVG(z) > 1",
 		Expected: []sql.Row{{2}, {3}, {4}},
 	},
+	{
+		Query:    "select c1, c2 from one_pk where pk = 0 group by c1",
+		Expected: []sql.Row{{0, 1}},
+	},
+	{
+		Query:    "select c1, c2 from one_pk where c2 = 1 group by c1",
+		Expected: []sql.Row{{0, 1}},
+	},
+	// https://github.com/dolthub/dolt/issues/9699
+	// Correlated columns in subqueries are included in select dependencies
+	{
+		Query:    "select any_value(pk), (select max(pk) from one_pk where pk < opk.pk) as x from one_pk opk",
+		Expected: []sql.Row{{0, nil}, {1, 0}, {2, 1}, {3, 2}},
+	},
+	{
+		Query:    "SELECT any_value(pk), (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) > 0;",
+		Expected: []sql.Row{{2, 1}, {3, 2}},
+	},
+	{
+		Query:    "select any_value(pk), (select max(pk) from one_pk where pk < (opk.c1 - 10)) as x from one_pk opk",
+		Expected: []sql.Row{{0, nil}, {1, nil}, {2, 3}, {3, 3}},
+	},
+	{
+		Query:    "select pk, (select max(pk) from one_pk where pk < opk.pk) as x from one_pk opk",
+		Expected: []sql.Row{{0, nil}, {1, 0}, {2, 1}, {3, 2}},
+	},
 }
 
 var KeylessQueries = []QueryTest{
@@ -10408,24 +10434,13 @@ var BrokenErrorQueries = []QueryErrorTest{
 		Query:       "WITH Numbers AS ( SELECT n = 1 UNION ALL SELECT n + 1 FROM Numbers WHERE n+1 <= 10) SELECT n FROM Numbers;",
 		ExpectedErr: sql.ErrTableNotFound,
 	},
-
-	// Our behavior in when sql_mode = ONLY_FULL_GROUP_BY is inconsistent with MySQL. This is because we skip validation
-	// for GroupBys wrapped in a Project since we are not able to validate selected expressions that get optimized as an
-	// alias.
-	// Relevant issue: https://github.com/dolthub/dolt/issues/4998
-	{
-		Query:       "SELECT col0, floor(col1) FROM tab1 GROUP by col0;",
-		ExpectedErr: analyzererrors.ErrValidationGroupBy,
-	},
-	{
-		Query:       "SELECT floor(cor0.col1) * ceil(cor0.col0) AS col2 FROM tab1 AS cor0 GROUP BY cor0.col0",
-		ExpectedErr: analyzererrors.ErrValidationGroupBy,
-	},
+	// This gives an error in MySQL but doesn't in GMS. But according to MySQL documentation, it shouldn't. Might be a
+	// bug in MySQL.
 	{
 		Query: `SELECT any_value(pk), (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) AS x
 						FROM one_pk opk WHERE (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) > 0
 						GROUP BY (SELECT max(pk) FROM one_pk WHERE pk < opk.pk) ORDER BY x`,
-		// No error, but we get opk.pk does not exist (aliasing error)
+		ExpectedErr: analyzererrors.ErrValidationGroupBy,
 	},
 	// Unimplemented JSON functions
 	{
@@ -10796,48 +10811,6 @@ var VersionedViewTests = []QueryTest{
 			sql.NewRow("myview3"),
 			sql.NewRow("myview4"),
 			sql.NewRow("myview5"),
-		},
-	},
-}
-
-var ShowTableStatusQueries = []QueryTest{
-	{
-		Query: `SHOW TABLE STATUS FROM mydb`,
-		Expected: []sql.Row{
-			{"mytable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
-			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
-		},
-	},
-	{
-		Query: `SHOW TABLE STATUS LIKE '%table'`,
-		Expected: []sql.Row{
-			{"mytable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
-			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
-		},
-	},
-	{
-		Query: `SHOW TABLE STATUS FROM mydb LIKE 'othertable'`,
-		Expected: []sql.Row{
-			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
-		},
-	},
-	{
-		Query: `SHOW TABLE STATUS WHERE Name = 'mytable'`,
-		Expected: []sql.Row{
-			{"mytable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
-		},
-	},
-	{
-		Query: `SHOW TABLE STATUS`,
-		Expected: []sql.Row{
-			{"mytable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
-			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
-		},
-	},
-	{
-		Query: `SHOW TABLE STATUS FROM mydb LIKE 'othertable'`,
-		Expected: []sql.Row{
-			{"othertable", "InnoDB", "10", "Fixed", uint64(3), uint64(88), uint64(264), uint64(0), int64(0), int64(0), nil, nil, nil, nil, "utf8mb4_0900_bin", nil, nil, nil},
 		},
 	},
 }

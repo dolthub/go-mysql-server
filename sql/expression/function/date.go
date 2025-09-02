@@ -469,13 +469,13 @@ func (c CurrDate) Description() string {
 
 func NewCurrDate() sql.Expression {
 	return CurrDate{
-		NoArgFunc: NoArgFunc{"curdate", types.LongText},
+		NoArgFunc: NoArgFunc{Name: "curdate", SQLType: types.LongText},
 	}
 }
 
 func NewCurrentDate() sql.Expression {
 	return CurrDate{
-		NoArgFunc: NoArgFunc{"current_date", types.LongText},
+		NoArgFunc: NoArgFunc{Name: "current_date", SQLType: types.LongText},
 	}
 }
 

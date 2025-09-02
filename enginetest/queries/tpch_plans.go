@@ -60,7 +60,7 @@ order by
 			" ├─ columns: [lineitem.l_returnflag, lineitem.l_linestatus, sum(lineitem.l_quantity) as sum_qty, sum(lineitem.l_extendedprice) as sum_base_price, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as sum_disc_price, sum(((lineitem.l_extendedprice * (1 - lineitem.l_discount)) * (1 + lineitem.l_tax))) as sum_charge, avg(lineitem.l_quantity) as avg_qty, avg(lineitem.l_extendedprice) as avg_price, avg(lineitem.l_discount) as avg_disc, count(1) as count_order]\n" +
 			" └─ Sort(lineitem.l_returnflag ASC, lineitem.l_linestatus ASC)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ SelectedExprs(AVG(lineitem.l_discount), AVG(lineitem.l_extendedprice), AVG(lineitem.l_quantity), COUNT(1), SUM(((lineitem.l_extendedprice * (1 - lineitem.l_discount)) * (1 + lineitem.l_tax))), SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), SUM(lineitem.l_extendedprice), SUM(lineitem.l_quantity), lineitem.l_returnflag, lineitem.l_linestatus)\n" +
+			"         ├─ SelectDeps(AVG(lineitem.l_discount), AVG(lineitem.l_extendedprice), AVG(lineitem.l_quantity), COUNT(1), SUM(((lineitem.l_extendedprice * (1 - lineitem.l_discount)) * (1 + lineitem.l_tax))), SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), SUM(lineitem.l_extendedprice), SUM(lineitem.l_quantity), lineitem.l_returnflag, lineitem.l_linestatus)\n" +
 			"         ├─ Grouping(lineitem.l_returnflag, lineitem.l_linestatus)\n" +
 			"         └─ Filter\n" +
 			"             ├─ (lineitem.l_shipdate <= 1998-09-02 00:00:00 +0000 UTC)\n" +
@@ -72,7 +72,7 @@ order by
 			" ├─ columns: [lineitem.l_returnflag, lineitem.l_linestatus, sum(lineitem.l_quantity) as sum_qty, sum(lineitem.l_extendedprice) as sum_base_price, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as sum_disc_price, sum(((lineitem.l_extendedprice * (1 - lineitem.l_discount)) * (1 + lineitem.l_tax))) as sum_charge, avg(lineitem.l_quantity) as avg_qty, avg(lineitem.l_extendedprice) as avg_price, avg(lineitem.l_discount) as avg_disc, count(1) as count_order]\n" +
 			" └─ Sort(lineitem.l_returnflag ASC, lineitem.l_linestatus ASC)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ SelectedExprs(AVG(lineitem.l_discount), AVG(lineitem.l_extendedprice), AVG(lineitem.l_quantity), COUNT(1), SUM(((lineitem.l_extendedprice * (1 - lineitem.l_discount)) * (1 + lineitem.l_tax))), SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), SUM(lineitem.l_extendedprice), SUM(lineitem.l_quantity), lineitem.l_returnflag, lineitem.l_linestatus)\n" +
+			"         ├─ SelectDeps(AVG(lineitem.l_discount), AVG(lineitem.l_extendedprice), AVG(lineitem.l_quantity), COUNT(1), SUM(((lineitem.l_extendedprice * (1 - lineitem.l_discount)) * (1 + lineitem.l_tax))), SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), SUM(lineitem.l_extendedprice), SUM(lineitem.l_quantity), lineitem.l_returnflag, lineitem.l_linestatus)\n" +
 			"         ├─ Grouping(lineitem.l_returnflag, lineitem.l_linestatus)\n" +
 			"         └─ Filter\n" +
 			"             ├─ (lineitem.l_shipdate <= 1998-09-02 00:00:00 +0000 UTC)\n" +
@@ -243,36 +243,7 @@ order by
 			" ├─ columns: [supplier.s_acctbal, supplier.s_name, nation.n_name, part.p_partkey, part.p_mfgr, supplier.s_address, supplier.s_phone, supplier.s_comment]\n" +
 			" └─ Sort(supplier.s_acctbal DESC, nation.n_name ASC, supplier.s_name ASC, part.p_partkey ASC)\n" +
 			"     └─ Filter\n" +
-			"         ├─ (partsupp.ps_supplycost = Subquery\n" +
-			"         │   ├─ cacheable: false\n" +
-			"         │   └─ Project\n" +
-			"         │       ├─ columns: [min(partsupp.ps_supplycost) as min(ps_supplycost)]\n" +
-			"         │       └─ GroupBy\n" +
-			"         │           ├─ SelectedExprs(MIN(partsupp.ps_supplycost))\n" +
-			"         │           ├─ Grouping()\n" +
-			"         │           └─ Filter\n" +
-			"         │               ├─ (part.p_partkey = partsupp.ps_partkey)\n" +
-			"         │               └─ LookupJoin\n" +
-			"         │                   ├─ LookupJoin\n" +
-			"         │                   │   ├─ LookupJoin\n" +
-			"         │                   │   │   ├─ Table\n" +
-			"         │                   │   │   │   ├─ name: partsupp\n" +
-			"         │                   │   │   │   └─ columns: [ps_partkey ps_suppkey ps_supplycost]\n" +
-			"         │                   │   │   └─ IndexedTableAccess(supplier)\n" +
-			"         │                   │   │       ├─ index: [supplier.S_SUPPKEY]\n" +
-			"         │                   │   │       ├─ columns: [s_suppkey s_nationkey]\n" +
-			"         │                   │   │       └─ keys: partsupp.ps_suppkey\n" +
-			"         │                   │   └─ IndexedTableAccess(nation)\n" +
-			"         │                   │       ├─ index: [nation.N_NATIONKEY]\n" +
-			"         │                   │       ├─ columns: [n_nationkey n_regionkey]\n" +
-			"         │                   │       └─ keys: supplier.s_nationkey\n" +
-			"         │                   └─ Filter\n" +
-			"         │                       ├─ (region.r_name = 'EUROPE')\n" +
-			"         │                       └─ IndexedTableAccess(region)\n" +
-			"         │                           ├─ index: [region.R_REGIONKEY]\n" +
-			"         │                           ├─ columns: [r_regionkey r_name]\n" +
-			"         │                           └─ keys: nation.n_regionkey\n" +
-			"         │  )\n" +
+			"         ├─ (partsupp.ps_supplycost = Subquery(select min(ps_supplycost) from partsupp, supplier, nation, region where p_partkey = ps_partkey and s_suppkey = ps_suppkey and s_nationkey = n_nationkey and n_regionkey = r_regionkey and r_name = 'EUROPE'))\n" +
 			"         └─ LookupJoin\n" +
 			"             ├─ LookupJoin\n" +
 			"             │   ├─ LookupJoin\n" +
@@ -302,36 +273,7 @@ order by
 			" ├─ columns: [supplier.s_acctbal, supplier.s_name, nation.n_name, part.p_partkey, part.p_mfgr, supplier.s_address, supplier.s_phone, supplier.s_comment]\n" +
 			" └─ Sort(supplier.s_acctbal DESC, nation.n_name ASC, supplier.s_name ASC, part.p_partkey ASC)\n" +
 			"     └─ Filter\n" +
-			"         ├─ (partsupp.ps_supplycost = Subquery\n" +
-			"         │   ├─ cacheable: false\n" +
-			"         │   └─ Project\n" +
-			"         │       ├─ columns: [min(partsupp.ps_supplycost) as min(ps_supplycost)]\n" +
-			"         │       └─ GroupBy\n" +
-			"         │           ├─ SelectedExprs(MIN(partsupp.ps_supplycost))\n" +
-			"         │           ├─ Grouping()\n" +
-			"         │           └─ Filter\n" +
-			"         │               ├─ (part.p_partkey = partsupp.ps_partkey)\n" +
-			"         │               └─ LookupJoin\n" +
-			"         │                   ├─ LookupJoin\n" +
-			"         │                   │   ├─ LookupJoin\n" +
-			"         │                   │   │   ├─ Table\n" +
-			"         │                   │   │   │   ├─ name: partsupp\n" +
-			"         │                   │   │   │   └─ columns: [ps_partkey ps_suppkey ps_supplycost]\n" +
-			"         │                   │   │   └─ IndexedTableAccess(supplier)\n" +
-			"         │                   │   │       ├─ index: [supplier.S_SUPPKEY]\n" +
-			"         │                   │   │       ├─ columns: [s_suppkey s_nationkey]\n" +
-			"         │                   │   │       └─ keys: partsupp.ps_suppkey\n" +
-			"         │                   │   └─ IndexedTableAccess(nation)\n" +
-			"         │                   │       ├─ index: [nation.N_NATIONKEY]\n" +
-			"         │                   │       ├─ columns: [n_nationkey n_regionkey]\n" +
-			"         │                   │       └─ keys: supplier.s_nationkey\n" +
-			"         │                   └─ Filter\n" +
-			"         │                       ├─ (region.r_name = 'EUROPE')\n" +
-			"         │                       └─ IndexedTableAccess(region)\n" +
-			"         │                           ├─ index: [region.R_REGIONKEY]\n" +
-			"         │                           ├─ columns: [r_regionkey r_name]\n" +
-			"         │                           └─ keys: nation.n_regionkey\n" +
-			"         │  )\n" +
+			"         ├─ (partsupp.ps_supplycost = Subquery(select min(ps_supplycost) from partsupp, supplier, nation, region where p_partkey = ps_partkey and s_suppkey = ps_suppkey and s_nationkey = n_nationkey and n_regionkey = r_regionkey and r_name = 'EUROPE'))\n" +
 			"         └─ LookupJoin\n" +
 			"             ├─ LookupJoin\n" +
 			"             │   ├─ LookupJoin\n" +
@@ -439,7 +381,7 @@ order by
 			"     └─ Project\n" +
 			"         ├─ columns: [sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))), lineitem.l_orderkey, orders.o_orderdate, orders.o_shippriority, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as revenue]\n" +
 			"         └─ GroupBy\n" +
-			"             ├─ SelectedExprs(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), lineitem.l_orderkey, orders.o_orderdate, orders.o_shippriority)\n" +
+			"             ├─ SelectDeps(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), lineitem.l_orderkey, orders.o_orderdate, orders.o_shippriority)\n" +
 			"             ├─ Grouping(lineitem.l_orderkey, orders.o_orderdate, orders.o_shippriority)\n" +
 			"             └─ LookupJoin\n" +
 			"                 ├─ MergeJoin\n" +
@@ -469,7 +411,7 @@ order by
 			"     └─ Project\n" +
 			"         ├─ columns: [sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))), lineitem.l_orderkey, orders.o_orderdate, orders.o_shippriority, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as revenue]\n" +
 			"         └─ GroupBy\n" +
-			"             ├─ SelectedExprs(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), lineitem.l_orderkey, orders.o_orderdate, orders.o_shippriority)\n" +
+			"             ├─ SelectDeps(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), lineitem.l_orderkey, orders.o_orderdate, orders.o_shippriority)\n" +
 			"             ├─ Grouping(lineitem.l_orderkey, orders.o_orderdate, orders.o_shippriority)\n" +
 			"             └─ LookupJoin\n" +
 			"                 ├─ MergeJoin\n" +
@@ -565,7 +507,7 @@ order by
 			" ├─ columns: [orders.o_orderpriority, count(1) as order_count]\n" +
 			" └─ Sort(orders.o_orderpriority ASC)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ SelectedExprs(COUNT(1), orders.o_orderpriority)\n" +
+			"         ├─ SelectDeps(COUNT(1), orders.o_orderpriority)\n" +
 			"         ├─ Grouping(orders.o_orderpriority)\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [orders.O_ORDERKEY, orders.O_CUSTKEY, orders.O_ORDERSTATUS, orders.O_TOTALPRICE, orders.O_ORDERDATE, orders.O_ORDERPRIORITY, orders.O_CLERK, orders.O_SHIPPRIORITY, orders.O_COMMENT]\n" +
@@ -589,7 +531,7 @@ order by
 			" ├─ columns: [orders.o_orderpriority, count(1) as order_count]\n" +
 			" └─ Sort(orders.o_orderpriority ASC)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ SelectedExprs(COUNT(1), orders.o_orderpriority)\n" +
+			"         ├─ SelectDeps(COUNT(1), orders.o_orderpriority)\n" +
 			"         ├─ Grouping(orders.o_orderpriority)\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [orders.O_ORDERKEY, orders.O_CUSTKEY, orders.O_ORDERSTATUS, orders.O_TOTALPRICE, orders.O_ORDERDATE, orders.O_ORDERPRIORITY, orders.O_CLERK, orders.O_SHIPPRIORITY, orders.O_COMMENT]\n" +
@@ -720,7 +662,7 @@ order by
 			"     └─ Project\n" +
 			"         ├─ columns: [sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))), nation.n_name, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as revenue]\n" +
 			"         └─ GroupBy\n" +
-			"             ├─ SelectedExprs(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), nation.n_name)\n" +
+			"             ├─ SelectDeps(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), nation.n_name)\n" +
 			"             ├─ Grouping(nation.n_name)\n" +
 			"             └─ LookupJoin\n" +
 			"                 ├─ ((customer.c_nationkey = supplier.s_nationkey) AND (supplier.s_nationkey = nation.n_nationkey))\n" +
@@ -762,7 +704,7 @@ order by
 			"     └─ Project\n" +
 			"         ├─ columns: [sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))), nation.n_name, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as revenue]\n" +
 			"         └─ GroupBy\n" +
-			"             ├─ SelectedExprs(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), nation.n_name)\n" +
+			"             ├─ SelectDeps(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), nation.n_name)\n" +
 			"             ├─ Grouping(nation.n_name)\n" +
 			"             └─ LookupJoin\n" +
 			"                 ├─ ((customer.c_nationkey = supplier.s_nationkey) AND (supplier.s_nationkey = nation.n_nationkey))\n" +
@@ -844,7 +786,7 @@ where
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [sum((lineitem.l_extendedprice * lineitem.l_discount)) as revenue]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(SUM((lineitem.l_extendedprice * lineitem.l_discount)))\n" +
+			"     ├─ SelectDeps(SUM((lineitem.l_extendedprice * lineitem.l_discount)))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ Filter\n" +
 			"         ├─ ((((lineitem.l_shipdate >= '1994-01-01') AND (lineitem.l_shipdate < 1995-01-01 00:00:00 +0000 UTC)) AND ((lineitem.l_discount >= 0.05) AND (lineitem.l_discount <= 0.07))) AND (lineitem.l_quantity < 24))\n" +
@@ -855,7 +797,7 @@ where
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [sum((lineitem.l_extendedprice * lineitem.l_discount)) as revenue]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(SUM((lineitem.l_extendedprice * lineitem.l_discount)))\n" +
+			"     ├─ SelectDeps(SUM((lineitem.l_extendedprice * lineitem.l_discount)))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ Filter\n" +
 			"         ├─ ((((lineitem.l_shipdate >= '1994-01-01') AND (lineitem.l_shipdate < 1995-01-01 00:00:00 +0000 UTC)) AND ((lineitem.l_discount >= 0.05) AND (lineitem.l_discount <= 0.07))) AND (lineitem.l_quantity < 24))\n" +
@@ -1008,7 +950,7 @@ order by
 			" ├─ columns: [shipping.supp_nation, shipping.cust_nation, shipping.l_year, sum(shipping.volume) as revenue]\n" +
 			" └─ Sort(shipping.supp_nation ASC, shipping.cust_nation ASC, shipping.l_year ASC)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ SelectedExprs(SUM(shipping.volume), shipping.supp_nation, shipping.cust_nation, shipping.l_year)\n" +
+			"         ├─ SelectDeps(SUM(shipping.volume), shipping.supp_nation, shipping.cust_nation, shipping.l_year)\n" +
 			"         ├─ Grouping(shipping.supp_nation, shipping.cust_nation, shipping.l_year)\n" +
 			"         └─ SubqueryAlias\n" +
 			"             ├─ name: shipping\n" +
@@ -1058,7 +1000,7 @@ order by
 			" ├─ columns: [shipping.supp_nation, shipping.cust_nation, shipping.l_year, sum(shipping.volume) as revenue]\n" +
 			" └─ Sort(shipping.supp_nation ASC, shipping.cust_nation ASC, shipping.l_year ASC)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ SelectedExprs(SUM(shipping.volume), shipping.supp_nation, shipping.cust_nation, shipping.l_year)\n" +
+			"         ├─ SelectDeps(SUM(shipping.volume), shipping.supp_nation, shipping.cust_nation, shipping.l_year)\n" +
 			"         ├─ Grouping(shipping.supp_nation, shipping.cust_nation, shipping.l_year)\n" +
 			"         └─ SubqueryAlias\n" +
 			"             ├─ name: shipping\n" +
@@ -1254,7 +1196,7 @@ order by
 			" ├─ columns: [all_nations.o_year, (sum(case  when (all_nations.nation = 'brazil') then all_nations.volume else 0 end) / sum(all_nations.volume)) as mkt_share]\n" +
 			" └─ Sort(all_nations.o_year ASC)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ SelectedExprs(SUM(CASE  WHEN (all_nations.nation = 'BRAZIL') THEN all_nations.volume ELSE 0 END), SUM(all_nations.volume), all_nations.o_year)\n" +
+			"         ├─ SelectDeps(SUM(CASE  WHEN (all_nations.nation = 'BRAZIL') THEN all_nations.volume ELSE 0 END), SUM(all_nations.volume), all_nations.o_year)\n" +
 			"         ├─ Grouping(all_nations.o_year)\n" +
 			"         └─ SubqueryAlias\n" +
 			"             ├─ name: all_nations\n" +
@@ -1314,7 +1256,7 @@ order by
 			" ├─ columns: [all_nations.o_year, (sum(case  when (all_nations.nation = 'brazil') then all_nations.volume else 0 end) / sum(all_nations.volume)) as mkt_share]\n" +
 			" └─ Sort(all_nations.o_year ASC)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ SelectedExprs(SUM(CASE  WHEN (all_nations.nation = 'BRAZIL') THEN all_nations.volume ELSE 0 END), SUM(all_nations.volume), all_nations.o_year)\n" +
+			"         ├─ SelectDeps(SUM(CASE  WHEN (all_nations.nation = 'BRAZIL') THEN all_nations.volume ELSE 0 END), SUM(all_nations.volume), all_nations.o_year)\n" +
 			"         ├─ Grouping(all_nations.o_year)\n" +
 			"         └─ SubqueryAlias\n" +
 			"             ├─ name: all_nations\n" +
@@ -1505,7 +1447,7 @@ order by
 			" ├─ columns: [profit.nation, profit.o_year, sum(profit.amount) as sum_profit]\n" +
 			" └─ Sort(profit.nation ASC, profit.o_year DESC)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ SelectedExprs(SUM(profit.amount), profit.nation, profit.o_year)\n" +
+			"         ├─ SelectDeps(SUM(profit.amount), profit.nation, profit.o_year)\n" +
 			"         ├─ Grouping(profit.nation, profit.o_year)\n" +
 			"         └─ SubqueryAlias\n" +
 			"             ├─ name: profit\n" +
@@ -1556,7 +1498,7 @@ order by
 			" ├─ columns: [profit.nation, profit.o_year, sum(profit.amount) as sum_profit]\n" +
 			" └─ Sort(profit.nation ASC, profit.o_year DESC)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ SelectedExprs(SUM(profit.amount), profit.nation, profit.o_year)\n" +
+			"         ├─ SelectDeps(SUM(profit.amount), profit.nation, profit.o_year)\n" +
 			"         ├─ Grouping(profit.nation, profit.o_year)\n" +
 			"         └─ SubqueryAlias\n" +
 			"             ├─ name: profit\n" +
@@ -1703,7 +1645,7 @@ order by
 			"     └─ Project\n" +
 			"         ├─ columns: [sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))), customer.c_custkey, customer.c_name, customer.c_acctbal, nation.n_name, customer.c_address, customer.c_phone, customer.c_comment, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as revenue]\n" +
 			"         └─ GroupBy\n" +
-			"             ├─ SelectedExprs(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), customer.c_custkey, customer.c_name, customer.c_acctbal, nation.n_name, customer.c_address, customer.c_phone, customer.c_comment)\n" +
+			"             ├─ SelectDeps(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), customer.c_custkey, customer.c_name, customer.c_acctbal, nation.n_name, customer.c_address, customer.c_phone, customer.c_comment)\n" +
 			"             ├─ Grouping(customer.c_custkey, customer.c_name, customer.c_acctbal, customer.c_phone, nation.n_name, customer.c_address, customer.c_comment)\n" +
 			"             └─ LookupJoin\n" +
 			"                 ├─ LookupJoin\n" +
@@ -1736,7 +1678,7 @@ order by
 			"     └─ Project\n" +
 			"         ├─ columns: [sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))), customer.c_custkey, customer.c_name, customer.c_acctbal, nation.n_name, customer.c_address, customer.c_phone, customer.c_comment, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as revenue]\n" +
 			"         └─ GroupBy\n" +
-			"             ├─ SelectedExprs(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), customer.c_custkey, customer.c_name, customer.c_acctbal, nation.n_name, customer.c_address, customer.c_phone, customer.c_comment)\n" +
+			"             ├─ SelectDeps(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), customer.c_custkey, customer.c_name, customer.c_acctbal, nation.n_name, customer.c_address, customer.c_phone, customer.c_comment)\n" +
 			"             ├─ Grouping(customer.c_custkey, customer.c_name, customer.c_acctbal, customer.c_phone, nation.n_name, customer.c_address, customer.c_comment)\n" +
 			"             └─ LookupJoin\n" +
 			"                 ├─ LookupJoin\n" +
@@ -1796,7 +1738,7 @@ order by
 	value desc;`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [partsupp.ps_partkey:1!null, sum((partsupp.ps_supplycost * partsupp.ps_availqty)):0!null->value:0]\n" +
-			" └─ Sort(value:4!null DESC nullsFirst)\n" +
+			" └─ Sort(value:2!null DESC nullsFirst)\n" +
 			"     └─ Having\n" +
 			"         ├─ GreaterThan\n" +
 			"         │   ├─ sum((partsupp.ps_supplycost * partsupp.ps_availqty)):0!null\n" +
@@ -1814,7 +1756,7 @@ order by
 			"         │               │   │   └─ tableId: 4\n" +
 			"         │               │   └─ IndexedTableAccess(supplier)\n" +
 			"         │               │       ├─ index: [supplier.S_SUPPKEY]\n" +
-			"         │               │       ├─ keys: [partsupp.ps_suppkey:5!null]\n" +
+			"         │               │       ├─ keys: [partsupp.ps_suppkey:3!null]\n" +
 			"         │               │       ├─ colSet: (24-30)\n" +
 			"         │               │       ├─ tableId: 5\n" +
 			"         │               │       └─ Table\n" +
@@ -1822,20 +1764,20 @@ order by
 			"         │               │           └─ columns: [s_suppkey s_nationkey]\n" +
 			"         │               └─ Filter\n" +
 			"         │                   ├─ Eq\n" +
-			"         │                   │   ├─ nation.n_name:6!null\n" +
+			"         │                   │   ├─ nation.n_name:4!null\n" +
 			"         │                   │   └─ GERMANY (longtext)\n" +
 			"         │                   └─ IndexedTableAccess(nation)\n" +
 			"         │                       ├─ index: [nation.N_NATIONKEY]\n" +
-			"         │                       ├─ keys: [supplier.s_nationkey:7!null]\n" +
+			"         │                       ├─ keys: [supplier.s_nationkey:5!null]\n" +
 			"         │                       ├─ colSet: (31-34)\n" +
 			"         │                       ├─ tableId: 6\n" +
 			"         │                       └─ Table\n" +
 			"         │                           ├─ name: nation\n" +
 			"         │                           └─ columns: [n_nationkey n_name]\n" +
 			"         └─ Project\n" +
-			"             ├─ columns: [sum((partsupp.ps_supplycost * partsupp.ps_availqty)):0!null, partsupp.ps_partkey:1!null, partsupp.PS_SUPPLYCOST:2!null, partsupp.PS_AVAILQTY:3!null, sum((partsupp.ps_supplycost * partsupp.ps_availqty)):0!null->value:0]\n" +
+			"             ├─ columns: [sum((partsupp.ps_supplycost * partsupp.ps_availqty)):0!null, partsupp.ps_partkey:1!null, sum((partsupp.ps_supplycost * partsupp.ps_availqty)):0!null->value:0]\n" +
 			"             └─ GroupBy\n" +
-			"                 ├─ select: SUM((partsupp.ps_supplycost:3!null * partsupp.ps_availqty:2!null)), partsupp.ps_partkey:0!null, partsupp.PS_SUPPLYCOST:3!null, partsupp.PS_AVAILQTY:2!null\n" +
+			"                 ├─ select: SUM((partsupp.ps_supplycost:3!null * partsupp.ps_availqty:2!null)), partsupp.ps_partkey:0!null\n" +
 			"                 ├─ group: partsupp.ps_partkey:0!null\n" +
 			"                 └─ LookupJoin\n" +
 			"                     ├─ LookupJoin\n" +
@@ -1867,30 +1809,11 @@ order by
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [partsupp.ps_partkey, sum((partsupp.ps_supplycost * partsupp.ps_availqty)) as value]\n" +
 			" └─ Sort(value DESC)\n" +
-			"     └─ Having((sum((partsupp.ps_supplycost * partsupp.ps_availqty)) > Subquery\n" +
-			"         ├─ cacheable: true\n" +
+			"     └─ Having((sum((partsupp.ps_supplycost * partsupp.ps_availqty)) > Subquery(select sum(ps_supplycost * ps_availqty) * 0.0001000000 from partsupp, supplier, nation where ps_suppkey = s_suppkey and s_nationkey = n_nationkey and n_name = 'GERMANY')))\n" +
 			"         └─ Project\n" +
-			"             ├─ columns: [(sum((partsupp.ps_supplycost * partsupp.ps_availqty)) * 0.0001000000) as sum(ps_supplycost * ps_availqty) * 0.0001000000]\n" +
-			"             └─ LookupJoin\n" +
-			"                 ├─ LookupJoin\n" +
-			"                 │   ├─ Table\n" +
-			"                 │   │   ├─ name: partsupp\n" +
-			"                 │   │   └─ columns: [ps_suppkey]\n" +
-			"                 │   └─ IndexedTableAccess(supplier)\n" +
-			"                 │       ├─ index: [supplier.S_SUPPKEY]\n" +
-			"                 │       ├─ columns: [s_suppkey s_nationkey]\n" +
-			"                 │       └─ keys: partsupp.ps_suppkey\n" +
-			"                 └─ Filter\n" +
-			"                     ├─ (nation.n_name = 'GERMANY')\n" +
-			"                     └─ IndexedTableAccess(nation)\n" +
-			"                         ├─ index: [nation.N_NATIONKEY]\n" +
-			"                         ├─ columns: [n_nationkey n_name]\n" +
-			"                         └─ keys: supplier.s_nationkey\n" +
-			"        ))\n" +
-			"         └─ Project\n" +
-			"             ├─ columns: [sum((partsupp.ps_supplycost * partsupp.ps_availqty)), partsupp.ps_partkey, partsupp.PS_SUPPLYCOST, partsupp.PS_AVAILQTY, sum((partsupp.ps_supplycost * partsupp.ps_availqty)) as value]\n" +
+			"             ├─ columns: [sum((partsupp.ps_supplycost * partsupp.ps_availqty)), partsupp.ps_partkey, sum((partsupp.ps_supplycost * partsupp.ps_availqty)) as value]\n" +
 			"             └─ GroupBy\n" +
-			"                 ├─ SelectedExprs(SUM((partsupp.ps_supplycost * partsupp.ps_availqty)), partsupp.ps_partkey, partsupp.PS_SUPPLYCOST, partsupp.PS_AVAILQTY)\n" +
+			"                 ├─ SelectDeps(SUM((partsupp.ps_supplycost * partsupp.ps_availqty)), partsupp.ps_partkey)\n" +
 			"                 ├─ Grouping(partsupp.ps_partkey)\n" +
 			"                 └─ LookupJoin\n" +
 			"                     ├─ LookupJoin\n" +
@@ -1908,30 +1831,11 @@ order by
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [partsupp.ps_partkey, sum((partsupp.ps_supplycost * partsupp.ps_availqty)) as value]\n" +
 			" └─ Sort(value DESC)\n" +
-			"     └─ Having((sum((partsupp.ps_supplycost * partsupp.ps_availqty)) > Subquery\n" +
-			"         ├─ cacheable: true\n" +
+			"     └─ Having((sum((partsupp.ps_supplycost * partsupp.ps_availqty)) > Subquery(select sum(ps_supplycost * ps_availqty) * 0.0001000000 from partsupp, supplier, nation where ps_suppkey = s_suppkey and s_nationkey = n_nationkey and n_name = 'GERMANY')))\n" +
 			"         └─ Project\n" +
-			"             ├─ columns: [(sum((partsupp.ps_supplycost * partsupp.ps_availqty)) * 0.0001000000) as sum(ps_supplycost * ps_availqty) * 0.0001000000]\n" +
-			"             └─ LookupJoin\n" +
-			"                 ├─ LookupJoin\n" +
-			"                 │   ├─ Table\n" +
-			"                 │   │   ├─ name: partsupp\n" +
-			"                 │   │   └─ columns: [ps_suppkey]\n" +
-			"                 │   └─ IndexedTableAccess(supplier)\n" +
-			"                 │       ├─ index: [supplier.S_SUPPKEY]\n" +
-			"                 │       ├─ columns: [s_suppkey s_nationkey]\n" +
-			"                 │       └─ keys: partsupp.ps_suppkey\n" +
-			"                 └─ Filter\n" +
-			"                     ├─ (nation.n_name = 'GERMANY')\n" +
-			"                     └─ IndexedTableAccess(nation)\n" +
-			"                         ├─ index: [nation.N_NATIONKEY]\n" +
-			"                         ├─ columns: [n_nationkey n_name]\n" +
-			"                         └─ keys: supplier.s_nationkey\n" +
-			"        ))\n" +
-			"         └─ Project\n" +
-			"             ├─ columns: [sum((partsupp.ps_supplycost * partsupp.ps_availqty)), partsupp.ps_partkey, partsupp.PS_SUPPLYCOST, partsupp.PS_AVAILQTY, sum((partsupp.ps_supplycost * partsupp.ps_availqty)) as value]\n" +
+			"             ├─ columns: [sum((partsupp.ps_supplycost * partsupp.ps_availqty)), partsupp.ps_partkey, sum((partsupp.ps_supplycost * partsupp.ps_availqty)) as value]\n" +
 			"             └─ GroupBy\n" +
-			"                 ├─ SelectedExprs(SUM((partsupp.ps_supplycost * partsupp.ps_availqty)), partsupp.ps_partkey, partsupp.PS_SUPPLYCOST, partsupp.PS_AVAILQTY)\n" +
+			"                 ├─ SelectDeps(SUM((partsupp.ps_supplycost * partsupp.ps_availqty)), partsupp.ps_partkey)\n" +
 			"                 ├─ Grouping(partsupp.ps_partkey)\n" +
 			"                 └─ LookupJoin\n" +
 			"                     ├─ LookupJoin\n" +
@@ -2045,7 +1949,7 @@ order by
 			" ├─ columns: [lineitem.l_shipmode, sum(case  when ((orders.o_orderpriority = '1-urgent') or (orders.o_orderpriority = '2-high')) then 1 else 0 end) as high_line_count, sum(case  when ((not((orders.o_orderpriority = '1-urgent'))) and (not((orders.o_orderpriority = '2-high')))) then 1 else 0 end) as low_line_count]\n" +
 			" └─ Sort(lineitem.l_shipmode ASC)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ SelectedExprs(SUM(CASE  WHEN ((NOT((orders.o_orderpriority = '1-URGENT'))) AND (NOT((orders.o_orderpriority = '2-HIGH')))) THEN 1 ELSE 0 END), SUM(CASE  WHEN ((orders.o_orderpriority = '1-URGENT') OR (orders.o_orderpriority = '2-HIGH')) THEN 1 ELSE 0 END), lineitem.l_shipmode)\n" +
+			"         ├─ SelectDeps(SUM(CASE  WHEN ((NOT((orders.o_orderpriority = '1-URGENT'))) AND (NOT((orders.o_orderpriority = '2-HIGH')))) THEN 1 ELSE 0 END), SUM(CASE  WHEN ((orders.o_orderpriority = '1-URGENT') OR (orders.o_orderpriority = '2-HIGH')) THEN 1 ELSE 0 END), lineitem.l_shipmode)\n" +
 			"         ├─ Grouping(lineitem.l_shipmode)\n" +
 			"         └─ MergeJoin\n" +
 			"             ├─ cmp: (orders.o_orderkey = lineitem.l_orderkey)\n" +
@@ -2064,7 +1968,7 @@ order by
 			" ├─ columns: [lineitem.l_shipmode, sum(case  when ((orders.o_orderpriority = '1-urgent') or (orders.o_orderpriority = '2-high')) then 1 else 0 end) as high_line_count, sum(case  when ((not((orders.o_orderpriority = '1-urgent'))) and (not((orders.o_orderpriority = '2-high')))) then 1 else 0 end) as low_line_count]\n" +
 			" └─ Sort(lineitem.l_shipmode ASC)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ SelectedExprs(SUM(CASE  WHEN ((NOT((orders.o_orderpriority = '1-URGENT'))) AND (NOT((orders.o_orderpriority = '2-HIGH')))) THEN 1 ELSE 0 END), SUM(CASE  WHEN ((orders.o_orderpriority = '1-URGENT') OR (orders.o_orderpriority = '2-HIGH')) THEN 1 ELSE 0 END), lineitem.l_shipmode)\n" +
+			"         ├─ SelectDeps(SUM(CASE  WHEN ((NOT((orders.o_orderpriority = '1-URGENT'))) AND (NOT((orders.o_orderpriority = '2-HIGH')))) THEN 1 ELSE 0 END), SUM(CASE  WHEN ((orders.o_orderpriority = '1-URGENT') OR (orders.o_orderpriority = '2-HIGH')) THEN 1 ELSE 0 END), lineitem.l_shipmode)\n" +
 			"         ├─ Grouping(lineitem.l_shipmode)\n" +
 			"         └─ MergeJoin\n" +
 			"             ├─ cmp: (orders.o_orderkey = lineitem.l_orderkey)\n" +
@@ -2147,7 +2051,7 @@ order by
 			"     └─ Project\n" +
 			"         ├─ columns: [count(1), c_orders.c_count, count(1) as custdist]\n" +
 			"         └─ GroupBy\n" +
-			"             ├─ SelectedExprs(COUNT(1), c_orders.c_count)\n" +
+			"             ├─ SelectDeps(COUNT(1), c_orders.c_count)\n" +
 			"             ├─ Grouping(c_orders.c_count)\n" +
 			"             └─ SubqueryAlias\n" +
 			"                 ├─ name: c_orders\n" +
@@ -2157,7 +2061,7 @@ order by
 			"                 └─ Project\n" +
 			"                     ├─ columns: [customer.c_custkey, count(orders.o_orderkey) as count(o_orderkey)]\n" +
 			"                     └─ GroupBy\n" +
-			"                         ├─ SelectedExprs(COUNT(orders.o_orderkey), customer.c_custkey)\n" +
+			"                         ├─ SelectDeps(COUNT(orders.o_orderkey), customer.c_custkey)\n" +
 			"                         ├─ Grouping(customer.c_custkey)\n" +
 			"                         └─ LeftOuterJoin\n" +
 			"                             ├─ ((customer.c_custkey = orders.o_custkey) AND (NOT(orders.o_comment LIKE '%special%requests%')))\n" +
@@ -2174,7 +2078,7 @@ order by
 			"     └─ Project\n" +
 			"         ├─ columns: [count(1), c_orders.c_count, count(1) as custdist]\n" +
 			"         └─ GroupBy\n" +
-			"             ├─ SelectedExprs(COUNT(1), c_orders.c_count)\n" +
+			"             ├─ SelectDeps(COUNT(1), c_orders.c_count)\n" +
 			"             ├─ Grouping(c_orders.c_count)\n" +
 			"             └─ SubqueryAlias\n" +
 			"                 ├─ name: c_orders\n" +
@@ -2184,7 +2088,7 @@ order by
 			"                 └─ Project\n" +
 			"                     ├─ columns: [customer.c_custkey, count(orders.o_orderkey) as count(o_orderkey)]\n" +
 			"                     └─ GroupBy\n" +
-			"                         ├─ SelectedExprs(COUNT(orders.o_orderkey), customer.c_custkey)\n" +
+			"                         ├─ SelectDeps(COUNT(orders.o_orderkey), customer.c_custkey)\n" +
 			"                         ├─ Grouping(customer.c_custkey)\n" +
 			"                         └─ LeftOuterJoin\n" +
 			"                             ├─ ((customer.c_custkey = orders.o_custkey) AND (NOT(orders.o_comment LIKE '%special%requests%')))\n" +
@@ -2242,7 +2146,7 @@ where
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [((100.00 * sum(case  when part.p_type like 'promo%' then (lineitem.l_extendedprice * (1 - lineitem.l_discount)) else 0 end)) / sum((lineitem.l_extendedprice * (1 - lineitem.l_discount)))) as promo_revenue]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), SUM(CASE  WHEN part.p_type LIKE 'PROMO%' THEN (lineitem.l_extendedprice * (1 - lineitem.l_discount)) ELSE 0 END))\n" +
+			"     ├─ SelectDeps(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), SUM(CASE  WHEN part.p_type LIKE 'PROMO%' THEN (lineitem.l_extendedprice * (1 - lineitem.l_discount)) ELSE 0 END))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ LookupJoin\n" +
 			"         ├─ Filter\n" +
@@ -2258,7 +2162,7 @@ where
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [((100.00 * sum(case  when part.p_type like 'promo%' then (lineitem.l_extendedprice * (1 - lineitem.l_discount)) else 0 end)) / sum((lineitem.l_extendedprice * (1 - lineitem.l_discount)))) as promo_revenue]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), SUM(CASE  WHEN part.p_type LIKE 'PROMO%' THEN (lineitem.l_extendedprice * (1 - lineitem.l_discount)) ELSE 0 END))\n" +
+			"     ├─ SelectDeps(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), SUM(CASE  WHEN part.p_type LIKE 'PROMO%' THEN (lineitem.l_extendedprice * (1 - lineitem.l_discount)) ELSE 0 END))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ LookupJoin\n" +
 			"         ├─ Filter\n" +
@@ -2383,29 +2287,7 @@ order by
 			" ├─ columns: [supplier.s_suppkey, supplier.s_name, supplier.s_address, supplier.s_phone, revenue0.total_revenue]\n" +
 			" └─ Sort(supplier.s_suppkey ASC)\n" +
 			"     └─ Filter\n" +
-			"         ├─ (revenue0.total_revenue = Subquery\n" +
-			"         │   ├─ cacheable: true\n" +
-			"         │   └─ Project\n" +
-			"         │       ├─ columns: [max(revenue0.total_revenue) as max(total_revenue)]\n" +
-			"         │       └─ GroupBy\n" +
-			"         │           ├─ SelectedExprs(MAX(revenue0.total_revenue))\n" +
-			"         │           ├─ Grouping()\n" +
-			"         │           └─ SubqueryAlias\n" +
-			"         │               ├─ name: revenue0\n" +
-			"         │               ├─ outerVisibility: true\n" +
-			"         │               ├─ isLateral: false\n" +
-			"         │               ├─ cacheable: true\n" +
-			"         │               └─ Project\n" +
-			"         │                   ├─ columns: [lineitem.l_suppkey, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as sum(l_extendedprice * (1 - l_discount))]\n" +
-			"         │                   └─ GroupBy\n" +
-			"         │                       ├─ SelectedExprs(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), lineitem.l_suppkey)\n" +
-			"         │                       ├─ Grouping(lineitem.l_suppkey)\n" +
-			"         │                       └─ Filter\n" +
-			"         │                           ├─ ((lineitem.l_shipdate >= '1996-01-01') AND (lineitem.l_shipdate < 1996-04-01 00:00:00 +0000 UTC))\n" +
-			"         │                           └─ Table\n" +
-			"         │                               ├─ name: lineitem\n" +
-			"         │                               └─ columns: [l_suppkey l_extendedprice l_discount l_shipdate]\n" +
-			"         │  )\n" +
+			"         ├─ (revenue0.total_revenue = Subquery(select max(total_revenue) from revenue0))\n" +
 			"         └─ LookupJoin\n" +
 			"             ├─ SubqueryAlias\n" +
 			"             │   ├─ name: revenue0\n" +
@@ -2415,7 +2297,7 @@ order by
 			"             │   └─ Project\n" +
 			"             │       ├─ columns: [lineitem.l_suppkey, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as sum(l_extendedprice * (1 - l_discount))]\n" +
 			"             │       └─ GroupBy\n" +
-			"             │           ├─ SelectedExprs(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), lineitem.l_suppkey)\n" +
+			"             │           ├─ SelectDeps(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), lineitem.l_suppkey)\n" +
 			"             │           ├─ Grouping(lineitem.l_suppkey)\n" +
 			"             │           └─ Filter\n" +
 			"             │               ├─ ((lineitem.l_shipdate >= '1996-01-01') AND (lineitem.l_shipdate < 1996-04-01 00:00:00 +0000 UTC))\n" +
@@ -2430,29 +2312,7 @@ order by
 			" ├─ columns: [supplier.s_suppkey, supplier.s_name, supplier.s_address, supplier.s_phone, revenue0.total_revenue]\n" +
 			" └─ Sort(supplier.s_suppkey ASC)\n" +
 			"     └─ Filter\n" +
-			"         ├─ (revenue0.total_revenue = Subquery\n" +
-			"         │   ├─ cacheable: true\n" +
-			"         │   └─ Project\n" +
-			"         │       ├─ columns: [max(revenue0.total_revenue) as max(total_revenue)]\n" +
-			"         │       └─ GroupBy\n" +
-			"         │           ├─ SelectedExprs(MAX(revenue0.total_revenue))\n" +
-			"         │           ├─ Grouping()\n" +
-			"         │           └─ SubqueryAlias\n" +
-			"         │               ├─ name: revenue0\n" +
-			"         │               ├─ outerVisibility: true\n" +
-			"         │               ├─ isLateral: false\n" +
-			"         │               ├─ cacheable: true\n" +
-			"         │               └─ Project\n" +
-			"         │                   ├─ columns: [lineitem.l_suppkey, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as sum(l_extendedprice * (1 - l_discount))]\n" +
-			"         │                   └─ GroupBy\n" +
-			"         │                       ├─ SelectedExprs(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), lineitem.l_suppkey)\n" +
-			"         │                       ├─ Grouping(lineitem.l_suppkey)\n" +
-			"         │                       └─ Filter\n" +
-			"         │                           ├─ ((lineitem.l_shipdate >= '1996-01-01') AND (lineitem.l_shipdate < 1996-04-01 00:00:00 +0000 UTC))\n" +
-			"         │                           └─ Table\n" +
-			"         │                               ├─ name: lineitem\n" +
-			"         │                               └─ columns: [l_suppkey l_extendedprice l_discount l_shipdate]\n" +
-			"         │  )\n" +
+			"         ├─ (revenue0.total_revenue = Subquery(select max(total_revenue) from revenue0))\n" +
 			"         └─ LookupJoin\n" +
 			"             ├─ SubqueryAlias\n" +
 			"             │   ├─ name: revenue0\n" +
@@ -2462,7 +2322,7 @@ order by
 			"             │   └─ Project\n" +
 			"             │       ├─ columns: [lineitem.l_suppkey, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as sum(l_extendedprice * (1 - l_discount))]\n" +
 			"             │       └─ GroupBy\n" +
-			"             │           ├─ SelectedExprs(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), lineitem.l_suppkey)\n" +
+			"             │           ├─ SelectDeps(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), lineitem.l_suppkey)\n" +
 			"             │           ├─ Grouping(lineitem.l_suppkey)\n" +
 			"             │           └─ Filter\n" +
 			"             │               ├─ ((lineitem.l_shipdate >= '1996-01-01') AND (lineitem.l_shipdate < 1996-04-01 00:00:00 +0000 UTC))\n" +
@@ -2576,7 +2436,7 @@ order by
 			"     └─ Project\n" +
 			"         ├─ columns: [countdistinct([partsupp.ps_suppkey]), part.p_brand, part.p_type, part.p_size, countdistinct([partsupp.ps_suppkey]) as supplier_cnt]\n" +
 			"         └─ GroupBy\n" +
-			"             ├─ SelectedExprs(COUNTDISTINCT([partsupp.ps_suppkey]), part.p_brand, part.p_type, part.p_size)\n" +
+			"             ├─ SelectDeps(COUNTDISTINCT([partsupp.ps_suppkey]), part.p_brand, part.p_type, part.p_size)\n" +
 			"             ├─ Grouping(part.p_brand, part.p_type, part.p_size)\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [partsupp.PS_PARTKEY, partsupp.PS_SUPPKEY, partsupp.PS_AVAILQTY, partsupp.PS_SUPPLYCOST, partsupp.PS_COMMENT, part.P_PARTKEY, part.P_NAME, part.P_MFGR, part.P_BRAND, part.P_TYPE, part.P_SIZE, part.P_CONTAINER, part.P_RETAILPRICE, part.P_COMMENT]\n" +
@@ -2607,7 +2467,7 @@ order by
 			"     └─ Project\n" +
 			"         ├─ columns: [countdistinct([partsupp.ps_suppkey]), part.p_brand, part.p_type, part.p_size, countdistinct([partsupp.ps_suppkey]) as supplier_cnt]\n" +
 			"         └─ GroupBy\n" +
-			"             ├─ SelectedExprs(COUNTDISTINCT([partsupp.ps_suppkey]), part.p_brand, part.p_type, part.p_size)\n" +
+			"             ├─ SelectDeps(COUNTDISTINCT([partsupp.ps_suppkey]), part.p_brand, part.p_type, part.p_size)\n" +
 			"             ├─ Grouping(part.p_brand, part.p_type, part.p_size)\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [partsupp.PS_PARTKEY, partsupp.PS_SUPPKEY, partsupp.PS_AVAILQTY, partsupp.PS_SUPPLYCOST, partsupp.PS_COMMENT, part.P_PARTKEY, part.P_NAME, part.P_MFGR, part.P_BRAND, part.P_TYPE, part.P_SIZE, part.P_CONTAINER, part.P_RETAILPRICE, part.P_COMMENT]\n" +
@@ -2703,22 +2563,10 @@ where
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [(sum(lineitem.l_extendedprice) / 7.0) as avg_yearly]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(SUM(lineitem.l_extendedprice))\n" +
+			"     ├─ SelectDeps(SUM(lineitem.l_extendedprice))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ Filter\n" +
-			"         ├─ (lineitem.l_quantity < Subquery\n" +
-			"         │   ├─ cacheable: false\n" +
-			"         │   └─ Project\n" +
-			"         │       ├─ columns: [(0.2 * avg(lineitem.l_quantity)) as 0.2 * avg(l_quantity)]\n" +
-			"         │       └─ GroupBy\n" +
-			"         │           ├─ SelectedExprs(AVG(lineitem.l_quantity))\n" +
-			"         │           ├─ Grouping()\n" +
-			"         │           └─ Filter\n" +
-			"         │               ├─ (lineitem.l_partkey = part.p_partkey)\n" +
-			"         │               └─ Table\n" +
-			"         │                   ├─ name: lineitem\n" +
-			"         │                   └─ columns: [l_partkey l_quantity]\n" +
-			"         │  )\n" +
+			"         ├─ (lineitem.l_quantity < Subquery(select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey))\n" +
 			"         └─ LookupJoin\n" +
 			"             ├─ Table\n" +
 			"             │   └─ name: lineitem\n" +
@@ -2731,22 +2579,10 @@ where
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [(sum(lineitem.l_extendedprice) / 7.0) as avg_yearly]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(SUM(lineitem.l_extendedprice))\n" +
+			"     ├─ SelectDeps(SUM(lineitem.l_extendedprice))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ Filter\n" +
-			"         ├─ (lineitem.l_quantity < Subquery\n" +
-			"         │   ├─ cacheable: false\n" +
-			"         │   └─ Project\n" +
-			"         │       ├─ columns: [(0.2 * avg(lineitem.l_quantity)) as 0.2 * avg(l_quantity)]\n" +
-			"         │       └─ GroupBy\n" +
-			"         │           ├─ SelectedExprs(AVG(lineitem.l_quantity))\n" +
-			"         │           ├─ Grouping()\n" +
-			"         │           └─ Filter\n" +
-			"         │               ├─ (lineitem.l_partkey = part.p_partkey)\n" +
-			"         │               └─ Table\n" +
-			"         │                   ├─ name: lineitem\n" +
-			"         │                   └─ columns: [l_partkey l_quantity]\n" +
-			"         │  )\n" +
+			"         ├─ (lineitem.l_quantity < Subquery(select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey))\n" +
 			"         └─ LookupJoin\n" +
 			"             ├─ Table\n" +
 			"             │   └─ name: lineitem\n" +
@@ -2829,7 +2665,7 @@ order by
 			"                     │   ├─ sum(lineitem.l_quantity):0!null\n" +
 			"                     │   └─ 300 (smallint)\n" +
 			"                     └─ GroupBy\n" +
-			"                         ├─ select: SUM(lineitem_1.l_quantity:4!null), lineitem_1.l_orderkey:0!null, lineitem_1.L_QUANTITY:4!null\n" +
+			"                         ├─ select: SUM(lineitem_1.l_quantity:4!null), lineitem_1.l_orderkey:0!null\n" +
 			"                         ├─ group: lineitem_1.l_orderkey:0!null\n" +
 			"                         └─ TableAlias(lineitem_1)\n" +
 			"                             └─ Table\n" +
@@ -2842,7 +2678,7 @@ order by
 			" ├─ columns: [customer.c_name, customer.c_custkey, orders.o_orderkey, orders.o_orderdate, orders.o_totalprice, sum(lineitem.l_quantity) as sum(l_quantity)]\n" +
 			" └─ Sort(orders.o_totalprice DESC, orders.o_orderdate ASC)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ SelectedExprs(SUM(lineitem.l_quantity), customer.c_name, customer.c_custkey, orders.o_orderkey, orders.o_orderdate, orders.o_totalprice)\n" +
+			"         ├─ SelectDeps(SUM(lineitem.l_quantity), customer.c_name, customer.c_custkey, orders.o_orderkey, orders.o_orderdate, orders.o_totalprice)\n" +
 			"         ├─ Grouping(customer.c_name, customer.c_custkey, orders.o_orderkey, orders.o_orderdate, orders.o_totalprice)\n" +
 			"         └─ SemiJoin\n" +
 			"             ├─ (orders.o_orderkey = lineitem_1.l_orderkey)\n" +
@@ -2860,7 +2696,7 @@ order by
 			"                 ├─ columns: [lineitem_1.l_orderkey]\n" +
 			"                 └─ Having((sum(lineitem.l_quantity) > 300))\n" +
 			"                     └─ GroupBy\n" +
-			"                         ├─ SelectedExprs(SUM(lineitem_1.l_quantity), lineitem_1.l_orderkey, lineitem_1.L_QUANTITY)\n" +
+			"                         ├─ SelectDeps(SUM(lineitem_1.l_quantity), lineitem_1.l_orderkey)\n" +
 			"                         ├─ Grouping(lineitem_1.l_orderkey)\n" +
 			"                         └─ TableAlias(lineitem_1)\n" +
 			"                             └─ Table\n" +
@@ -2870,7 +2706,7 @@ order by
 			" ├─ columns: [customer.c_name, customer.c_custkey, orders.o_orderkey, orders.o_orderdate, orders.o_totalprice, sum(lineitem.l_quantity) as sum(l_quantity)]\n" +
 			" └─ Sort(orders.o_totalprice DESC, orders.o_orderdate ASC)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ SelectedExprs(SUM(lineitem.l_quantity), customer.c_name, customer.c_custkey, orders.o_orderkey, orders.o_orderdate, orders.o_totalprice)\n" +
+			"         ├─ SelectDeps(SUM(lineitem.l_quantity), customer.c_name, customer.c_custkey, orders.o_orderkey, orders.o_orderdate, orders.o_totalprice)\n" +
 			"         ├─ Grouping(customer.c_name, customer.c_custkey, orders.o_orderkey, orders.o_orderdate, orders.o_totalprice)\n" +
 			"         └─ SemiJoin\n" +
 			"             ├─ (orders.o_orderkey = lineitem_1.l_orderkey)\n" +
@@ -2888,7 +2724,7 @@ order by
 			"                 ├─ columns: [lineitem_1.l_orderkey]\n" +
 			"                 └─ Having((sum(lineitem.l_quantity) > 300))\n" +
 			"                     └─ GroupBy\n" +
-			"                         ├─ SelectedExprs(SUM(lineitem_1.l_quantity), lineitem_1.l_orderkey, lineitem_1.L_QUANTITY)\n" +
+			"                         ├─ SelectDeps(SUM(lineitem_1.l_quantity), lineitem_1.l_orderkey)\n" +
 			"                         ├─ Grouping(lineitem_1.l_orderkey)\n" +
 			"                         └─ TableAlias(lineitem_1)\n" +
 			"                             └─ Table\n" +
@@ -3080,7 +2916,7 @@ where
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as revenue]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))))\n" +
+			"     ├─ SelectDeps(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ LookupJoin\n" +
 			"         ├─ ((((((((((part.p_partkey = lineitem.l_partkey) AND (part.p_brand = 'Brand#12')) AND (part.p_container IN ('SM CASE', 'SM BOX', 'SM PACK', 'SM PKG'))) AND (lineitem.l_quantity >= 1)) AND (lineitem.l_quantity <= 11)) AND ((part.p_size >= 1) AND (part.p_size <= 5))) AND (lineitem.l_shipmode IN ('AIR', 'AIR REG'))) AND (lineitem.l_shipinstruct = 'DELIVER IN PERSON')) OR ((((((((part.p_partkey = lineitem.l_partkey) AND (part.p_brand = 'Brand#23')) AND (part.p_container IN ('MED BAG', 'MED BOX', 'MED PKG', 'MED PACK'))) AND (lineitem.l_quantity >= 10)) AND (lineitem.l_quantity <= 20)) AND ((part.p_size >= 1) AND (part.p_size <= 10))) AND (lineitem.l_shipmode IN ('AIR', 'AIR REG'))) AND (lineitem.l_shipinstruct = 'DELIVER IN PERSON'))) OR ((((((((part.p_partkey = lineitem.l_partkey) AND (part.p_brand = 'Brand#34')) AND (part.p_container IN ('LG CASE', 'LG BOX', 'LG PACK', 'LG PKG'))) AND (lineitem.l_quantity >= 20)) AND (lineitem.l_quantity <= 30)) AND ((part.p_size >= 1) AND (part.p_size <= 15))) AND (lineitem.l_shipmode IN ('AIR', 'AIR REG'))) AND (lineitem.l_shipinstruct = 'DELIVER IN PERSON')))\n" +
@@ -3105,7 +2941,7 @@ where
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as revenue]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))))\n" +
+			"     ├─ SelectDeps(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ LookupJoin\n" +
 			"         ├─ ((((((((((part.p_partkey = lineitem.l_partkey) AND (part.p_brand = 'Brand#12')) AND (part.p_container IN ('SM CASE', 'SM BOX', 'SM PACK', 'SM PKG'))) AND (lineitem.l_quantity >= 1)) AND (lineitem.l_quantity <= 11)) AND ((part.p_size >= 1) AND (part.p_size <= 5))) AND (lineitem.l_shipmode IN ('AIR', 'AIR REG'))) AND (lineitem.l_shipinstruct = 'DELIVER IN PERSON')) OR ((((((((part.p_partkey = lineitem.l_partkey) AND (part.p_brand = 'Brand#23')) AND (part.p_container IN ('MED BAG', 'MED BOX', 'MED PKG', 'MED PACK'))) AND (lineitem.l_quantity >= 10)) AND (lineitem.l_quantity <= 20)) AND ((part.p_size >= 1) AND (part.p_size <= 10))) AND (lineitem.l_shipmode IN ('AIR', 'AIR REG'))) AND (lineitem.l_shipinstruct = 'DELIVER IN PERSON'))) OR ((((((((part.p_partkey = lineitem.l_partkey) AND (part.p_brand = 'Brand#34')) AND (part.p_container IN ('LG CASE', 'LG BOX', 'LG PACK', 'LG PKG'))) AND (lineitem.l_quantity >= 20)) AND (lineitem.l_quantity <= 30)) AND ((part.p_size >= 1) AND (part.p_size <= 15))) AND (lineitem.l_shipmode IN ('AIR', 'AIR REG'))) AND (lineitem.l_shipinstruct = 'DELIVER IN PERSON')))\n" +
@@ -3298,19 +3134,7 @@ order by
 			"         │   │   └─ Project\n" +
 			"         │   │       ├─ columns: [partsupp.ps_suppkey]\n" +
 			"         │   │       └─ Filter\n" +
-			"         │   │           ├─ (partsupp.ps_availqty > Subquery\n" +
-			"         │   │           │   ├─ cacheable: false\n" +
-			"         │   │           │   └─ Project\n" +
-			"         │   │           │       ├─ columns: [(0.5 * sum(lineitem.l_quantity)) as 0.5 * sum(l_quantity)]\n" +
-			"         │   │           │       └─ GroupBy\n" +
-			"         │   │           │           ├─ SelectedExprs(SUM(lineitem.l_quantity))\n" +
-			"         │   │           │           ├─ Grouping()\n" +
-			"         │   │           │           └─ Filter\n" +
-			"         │   │           │               ├─ ((((lineitem.l_partkey = partsupp.ps_partkey) AND (lineitem.l_suppkey = partsupp.ps_suppkey)) AND (lineitem.l_shipdate >= '1994-01-01')) AND (lineitem.l_shipdate < 1995-01-01 00:00:00 +0000 UTC))\n" +
-			"         │   │           │               └─ Table\n" +
-			"         │   │           │                   ├─ name: lineitem\n" +
-			"         │   │           │                   └─ columns: [l_partkey l_suppkey l_quantity l_shipdate]\n" +
-			"         │   │           │  )\n" +
+			"         │   │           ├─ (partsupp.ps_availqty > Subquery(select 0.5 * sum(l_quantity) from lineitem where l_partkey = ps_partkey and l_suppkey = ps_suppkey and l_shipdate >= '1994-01-01' and l_shipdate < '1994-01-01' + interval '1' year))\n" +
 			"         │   │           └─ Project\n" +
 			"         │   │               ├─ columns: [partsupp.PS_PARTKEY, partsupp.PS_SUPPKEY, partsupp.PS_AVAILQTY, partsupp.PS_SUPPLYCOST, partsupp.PS_COMMENT]\n" +
 			"         │   │               └─ MergeJoin\n" +
@@ -3344,19 +3168,7 @@ order by
 			"         │   │   └─ Project\n" +
 			"         │   │       ├─ columns: [partsupp.ps_suppkey]\n" +
 			"         │   │       └─ Filter\n" +
-			"         │   │           ├─ (partsupp.ps_availqty > Subquery\n" +
-			"         │   │           │   ├─ cacheable: false\n" +
-			"         │   │           │   └─ Project\n" +
-			"         │   │           │       ├─ columns: [(0.5 * sum(lineitem.l_quantity)) as 0.5 * sum(l_quantity)]\n" +
-			"         │   │           │       └─ GroupBy\n" +
-			"         │   │           │           ├─ SelectedExprs(SUM(lineitem.l_quantity))\n" +
-			"         │   │           │           ├─ Grouping()\n" +
-			"         │   │           │           └─ Filter\n" +
-			"         │   │           │               ├─ ((((lineitem.l_partkey = partsupp.ps_partkey) AND (lineitem.l_suppkey = partsupp.ps_suppkey)) AND (lineitem.l_shipdate >= '1994-01-01')) AND (lineitem.l_shipdate < 1995-01-01 00:00:00 +0000 UTC))\n" +
-			"         │   │           │               └─ Table\n" +
-			"         │   │           │                   ├─ name: lineitem\n" +
-			"         │   │           │                   └─ columns: [l_partkey l_suppkey l_quantity l_shipdate]\n" +
-			"         │   │           │  )\n" +
+			"         │   │           ├─ (partsupp.ps_availqty > Subquery(select 0.5 * sum(l_quantity) from lineitem where l_partkey = ps_partkey and l_suppkey = ps_suppkey and l_shipdate >= '1994-01-01' and l_shipdate < '1994-01-01' + interval '1' year))\n" +
 			"         │   │           └─ Project\n" +
 			"         │   │               ├─ columns: [partsupp.PS_PARTKEY, partsupp.PS_SUPPKEY, partsupp.PS_AVAILQTY, partsupp.PS_SUPPLYCOST, partsupp.PS_COMMENT]\n" +
 			"         │   │               └─ MergeJoin\n" +
@@ -3521,7 +3333,7 @@ order by
 			"     └─ Project\n" +
 			"         ├─ columns: [count(1), supplier.s_name, count(1) as numwait]\n" +
 			"         └─ GroupBy\n" +
-			"             ├─ SelectedExprs(COUNT(1), supplier.s_name)\n" +
+			"             ├─ SelectDeps(COUNT(1), supplier.s_name)\n" +
 			"             ├─ Grouping(supplier.s_name)\n" +
 			"             └─ SemiLookupJoin\n" +
 			"                 ├─ (NOT((l2.l_suppkey = l1.l_suppkey)))\n" +
@@ -3568,7 +3380,7 @@ order by
 			"     └─ Project\n" +
 			"         ├─ columns: [count(1), supplier.s_name, count(1) as numwait]\n" +
 			"         └─ GroupBy\n" +
-			"             ├─ SelectedExprs(COUNT(1), supplier.s_name)\n" +
+			"             ├─ SelectDeps(COUNT(1), supplier.s_name)\n" +
 			"             ├─ Grouping(supplier.s_name)\n" +
 			"             └─ SemiLookupJoin\n" +
 			"                 ├─ (NOT((l2.l_suppkey = l1.l_suppkey)))\n" +
@@ -3721,7 +3533,7 @@ order by
 			" ├─ columns: [custsale.cntrycode, count(1) as numcust, sum(custsale.c_acctbal) as totacctbal]\n" +
 			" └─ Sort(custsale.cntrycode ASC)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ SelectedExprs(COUNT(1), SUM(custsale.c_acctbal), custsale.cntrycode)\n" +
+			"         ├─ SelectDeps(COUNT(1), SUM(custsale.c_acctbal), custsale.cntrycode)\n" +
 			"         ├─ Grouping(custsale.cntrycode)\n" +
 			"         └─ SubqueryAlias\n" +
 			"             ├─ name: custsale\n" +
@@ -3731,19 +3543,7 @@ order by
 			"             └─ Project\n" +
 			"                 ├─ columns: [SUBSTRING(customer.c_phone, 1, 2) as cntrycode, customer.c_acctbal]\n" +
 			"                 └─ Filter\n" +
-			"                     ├─ (customer.c_acctbal > Subquery\n" +
-			"                     │   ├─ cacheable: true\n" +
-			"                     │   └─ Project\n" +
-			"                     │       ├─ columns: [avg(customer.c_acctbal) as avg(c_acctbal)]\n" +
-			"                     │       └─ GroupBy\n" +
-			"                     │           ├─ SelectedExprs(AVG(customer.c_acctbal))\n" +
-			"                     │           ├─ Grouping()\n" +
-			"                     │           └─ Filter\n" +
-			"                     │               ├─ ((customer.c_acctbal > 0.00) AND (SUBSTRING(customer.c_phone, 1, 2) HASH IN ('13', '31', '23', '29', '30', '18', '17')))\n" +
-			"                     │               └─ Table\n" +
-			"                     │                   ├─ name: customer\n" +
-			"                     │                   └─ columns: [c_phone c_acctbal]\n" +
-			"                     │  )\n" +
+			"                     ├─ (customer.c_acctbal > Subquery(select avg(c_acctbal) from customer where c_acctbal > 0.00 and substr(c_phone, 1, 2) in ('13', '31', '23', '29', '30', '18', '17')))\n" +
 			"                     └─ Project\n" +
 			"                         ├─ columns: [customer.C_CUSTKEY, customer.C_NAME, customer.C_ADDRESS, customer.C_NATIONKEY, customer.C_PHONE, customer.C_ACCTBAL, customer.C_MKTSEGMENT, customer.C_COMMENT]\n" +
 			"                         └─ Filter\n" +
@@ -3767,7 +3567,7 @@ order by
 			" ├─ columns: [custsale.cntrycode, count(1) as numcust, sum(custsale.c_acctbal) as totacctbal]\n" +
 			" └─ Sort(custsale.cntrycode ASC)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ SelectedExprs(COUNT(1), SUM(custsale.c_acctbal), custsale.cntrycode)\n" +
+			"         ├─ SelectDeps(COUNT(1), SUM(custsale.c_acctbal), custsale.cntrycode)\n" +
 			"         ├─ Grouping(custsale.cntrycode)\n" +
 			"         └─ SubqueryAlias\n" +
 			"             ├─ name: custsale\n" +
@@ -3777,19 +3577,7 @@ order by
 			"             └─ Project\n" +
 			"                 ├─ columns: [SUBSTRING(customer.c_phone, 1, 2) as cntrycode, customer.c_acctbal]\n" +
 			"                 └─ Filter\n" +
-			"                     ├─ (customer.c_acctbal > Subquery\n" +
-			"                     │   ├─ cacheable: true\n" +
-			"                     │   └─ Project\n" +
-			"                     │       ├─ columns: [avg(customer.c_acctbal) as avg(c_acctbal)]\n" +
-			"                     │       └─ GroupBy\n" +
-			"                     │           ├─ SelectedExprs(AVG(customer.c_acctbal))\n" +
-			"                     │           ├─ Grouping()\n" +
-			"                     │           └─ Filter\n" +
-			"                     │               ├─ ((customer.c_acctbal > 0.00) AND (SUBSTRING(customer.c_phone, 1, 2) HASH IN ('13', '31', '23', '29', '30', '18', '17')))\n" +
-			"                     │               └─ Table\n" +
-			"                     │                   ├─ name: customer\n" +
-			"                     │                   └─ columns: [c_phone c_acctbal]\n" +
-			"                     │  )\n" +
+			"                     ├─ (customer.c_acctbal > Subquery(select avg(c_acctbal) from customer where c_acctbal > 0.00 and substr(c_phone, 1, 2) in ('13', '31', '23', '29', '30', '18', '17')))\n" +
 			"                     └─ Project\n" +
 			"                         ├─ columns: [customer.C_CUSTKEY, customer.C_NAME, customer.C_ADDRESS, customer.C_NATIONKEY, customer.C_PHONE, customer.C_ACCTBAL, customer.C_MKTSEGMENT, customer.C_COMMENT]\n" +
 			"                         └─ Filter\n" +

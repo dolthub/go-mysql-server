@@ -26,24 +26,26 @@ import (
 
 // User represents a user from the user Grant Table.
 type User struct {
-	User                string
-	Host                string
 	PrivilegeSet        PrivilegeSet
-	Plugin              string
-	AuthString          string
 	PasswordLastChanged time.Time
-	Locked              bool
-	Attributes          *string
-	Identity            string
-	IsSuperUser         bool
+
+	Attributes *string
+	User       string
+	Host       string
+	Plugin     string
+	AuthString string
+	Identity   string
+
+	Locked      bool
+	IsSuperUser bool
 	// IsEphemeral is true if this user is ephemeral, meaning it will only exist
 	// for the lifetime of the server process and will not be persisted to disk.
 	IsEphemeral bool
-	//TODO: add the remaining fields
 
 	// IsRole is an additional field that states whether the User represents a role or user. In MySQL this must be a
 	// hidden column, therefore it's represented here as an additional field.
 	IsRole bool
+	// TODO: add the remaining fields
 }
 
 func UserToRow(ctx *sql.Context, u *User) (sql.Row, error) {

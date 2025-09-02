@@ -45,14 +45,14 @@ func (i *describeIter) Close(*sql.Context) error {
 }
 
 type process struct {
-	id      int64
 	user    string
 	host    string
 	db      string
 	command string
-	time    int64
 	state   string
 	info    string
+	id      int64
+	time    int64
 }
 
 func (p process) toRow() sql.Row {
@@ -73,34 +73,54 @@ func (p process) toRow() sql.Row {
 }
 
 // cc here: https://dev.mysql.com/doc/refman/8.0/en/show-table-status.html
-func tableToStatusRow(table string, numRows uint64, dataLength uint64, collation sql.CollationID) sql.Row {
+func tableToStatusRow(ctx *sql.Context, table sql.Table) (sql.Row, error) {
+	var numRows uint64
+	var dataLength uint64
+	var err error
+	if st, ok := table.(sql.StatisticsTable); ok {
+		numRows, _, err = st.RowCount(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		dataLength, err = st.DataLength(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
 	var avgLength float64 = 0
 	if numRows > 0 {
 		avgLength = float64(dataLength) / float64(numRows)
 	}
+
+	var comment string
+	if ct, ok := table.(sql.CommentedTable); ok {
+		comment = ct.Comment()
+	}
+
 	return sql.NewRow(
-		table,    // Name
-		"InnoDB", // Engine
+		table.Name(), // Name
+		"InnoDB",     // Engine
 		// This column is unused. With the removal of .frm files in MySQL 8.0, this
 		// column now reports a hardcoded value of 10, which is the last .frm file
 		// version used in MySQL 5.7.
-		"10",               // Version
-		"Fixed",            // Row_format
-		numRows,            // Rows
-		uint64(avgLength),  // Avg_row_length
-		dataLength,         // Data_length
-		uint64(0),          // Max_data_length (Unused for InnoDB)
-		int64(0),           // Index_length
-		int64(0),           // Data_free
-		nil,                // Auto_increment (always null)
-		nil,                // Create_time
-		nil,                // Update_time
-		nil,                // Check_time
-		collation.String(), // Collation
-		nil,                // Checksum
-		nil,                // Create_options
-		nil,                // Comments
-	)
+		"10",                       // Version
+		"Fixed",                    // Row_format
+		numRows,                    // Rows
+		uint64(avgLength),          // Avg_row_length
+		dataLength,                 // Data_length
+		uint64(0),                  // Max_data_length (Unused for InnoDB)
+		int64(0),                   // Index_length
+		int64(0),                   // Data_free
+		nil,                        // Auto_increment (always null)
+		nil,                        // Create_time
+		nil,                        // Update_time
+		nil,                        // Check_time
+		table.Collation().String(), // Collation
+		nil,                        // Checksum
+		nil,                        // Create_options
+		comment,                    // Comment
+	), nil
 }
 
 // generatePrivStrings creates a formatted GRANT <privilege_list> on <global/database/table> to <user@host> string
@@ -324,12 +344,12 @@ func (i *showIndexesIter) Close(*sql.Context) error {
 
 type showCreateTablesIter struct {
 	table        sql.Node
+	pkSchema     sql.PrimaryKeySchema
 	schema       sql.Schema
-	didIteration bool
-	isView       bool
 	indexes      []sql.Index
 	checks       sql.CheckConstraints
-	pkSchema     sql.PrimaryKeySchema
+	didIteration bool
+	isView       bool
 }
 
 func (i *showCreateTablesIter) Next(ctx *sql.Context) (sql.Row, error) {

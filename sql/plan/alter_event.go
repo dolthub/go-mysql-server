@@ -32,38 +32,33 @@ var _ sql.Expressioner = (*AlterEvent)(nil)
 var _ sql.Databaser = (*AlterEvent)(nil)
 
 type AlterEvent struct {
+	DefinitionNode sql.Node
+	scheduler      sql.EventScheduler
+
 	ddlNode
-	EventName string
-	Definer   string
 
-	AlterOnSchedule bool
-	At              *OnScheduleTimestamp
-	Every           *expression.Interval
-	Starts          *OnScheduleTimestamp
-	Ends            *OnScheduleTimestamp
+	Starts *OnScheduleTimestamp
+	Ends   *OnScheduleTimestamp
+	At     *OnScheduleTimestamp
+	Every  *expression.Interval
 
-	AlterOnComp    bool
-	OnCompPreserve bool
-
-	AlterName    bool
-	RenameToDb   string
-	RenameToName string
-
-	AlterStatus bool
-	Status      sql.EventStatus
-
-	AlterComment bool
-	Comment      string
-
-	AlterDefinition  bool
+	RenameToDb       string
+	EventName        string
+	Definer          string
+	RenameToName     string
 	DefinitionString string
-	DefinitionNode   sql.Node
+	Comment          string
 
-	// Event will be set during analysis
-	Event sql.EventDefinition
+	Event  sql.EventDefinition
+	Status sql.EventStatus
 
-	// scheduler is used to notify EventSchedulerStatus of the event update
-	scheduler sql.EventScheduler
+	AlterName       bool
+	AlterStatus     bool
+	AlterComment    bool
+	AlterDefinition bool
+	AlterOnSchedule bool
+	AlterOnComp     bool
+	OnCompPreserve  bool
 }
 
 // NewAlterEvent returns a *AlterEvent node.
@@ -393,13 +388,13 @@ func (a *AlterEvent) WithExpressions(e ...sql.Expression) (sql.Node, error) {
 
 // alterEventIter is the row iterator for *CreateEvent.
 type alterEventIter struct {
-	once          sync.Once
-	originalName  string
-	alterSchedule bool
-	alterStatus   bool
-	event         sql.EventDefinition
 	eventDb       sql.EventDatabase
 	scheduler     sql.EventScheduler
+	originalName  string
+	event         sql.EventDefinition
+	once          sync.Once
+	alterSchedule bool
+	alterStatus   bool
 }
 
 // Next implements the sql.RowIter interface.

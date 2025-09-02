@@ -516,7 +516,7 @@ var JsonScripts = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT pk, JSON_ARRAYAGG(field) FROM (SELECT * FROM j ORDER BY pk) as sub GROUP BY field ORDER BY pk",
+				Query: "SELECT pk, JSON_ARRAYAGG(field) FROM (SELECT * FROM j ORDER BY pk) as sub GROUP BY pk, field ORDER BY pk",
 				Expected: []sql.Row{
 					{1, types.MustJSON(`[{"key1": {"key": "value"}}]`)},
 					{2, types.MustJSON(`[{"key1": "value1", "key2": "value2"}]`)},

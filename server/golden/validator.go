@@ -34,8 +34,8 @@ import (
 
 type Validator struct {
 	handler mysql.Handler
-	golden  MySqlProxy
 	logger  *logrus.Logger
+	golden  MySqlProxy
 }
 
 // NewValidatingHandler creates a new Validator wrapping a MySQL connection.
@@ -179,9 +179,9 @@ func (v Validator) getLogger(c *mysql.Conn) *logrus.Entry {
 }
 
 type aggregator struct {
+	callback func(*sqltypes.Result, bool) error
 	results  []*sqltypes.Result
 	golden   []*sqltypes.Result
-	callback func(*sqltypes.Result, bool) error
 }
 
 const maxRows = 1024

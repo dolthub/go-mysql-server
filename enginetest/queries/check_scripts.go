@@ -540,16 +540,36 @@ var ChecksOnUpdateScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "UPDATE sales JOIN (SELECT year_built FROM sales) AS t ON sales.year_built = t.year_built SET sales.year_built = 1901;",
-				Expected: []sql.Row{{types.OkResult{1, 0, plan.UpdateInfo{1, 1, 0}}}},
+				Query: "UPDATE sales JOIN (SELECT year_built FROM sales) AS t ON sales.year_built = t.year_built SET sales.year_built = 1901;",
+				Expected: []sql.Row{
+					{
+						types.OkResult{
+							RowsAffected: 1,
+							Info: plan.UpdateInfo{
+								Matched: 1,
+								Updated: 1,
+							},
+						},
+					},
+				},
 			},
 			{
 				Query:    "select * from sales;",
 				Expected: []sql.Row{{1901}},
 			},
 			{
-				Query:    "UPDATE sales as s1 JOIN (SELECT year_built FROM sales) AS t SET S1.year_built = 1902;",
-				Expected: []sql.Row{{types.OkResult{1, 0, plan.UpdateInfo{1, 1, 0}}}},
+				Query: "UPDATE sales as s1 JOIN (SELECT year_built FROM sales) AS t SET S1.year_built = 1902;",
+				Expected: []sql.Row{
+					{
+						types.OkResult{
+							RowsAffected: 1,
+							Info: plan.UpdateInfo{
+								Matched: 1,
+								Updated: 1,
+							},
+						},
+					},
+				},
 			},
 			{
 				Query:    "select * from sales;",
@@ -599,8 +619,18 @@ var ChecksOnUpdateScriptTests = []ScriptTest{
 				Expected: []sql.Row{{"WA"}},
 			},
 			{
-				Query:    "UPDATE sales JOIN locations SET sales.year_built = 2000, locations.state = 'CA';",
-				Expected: []sql.Row{{types.OkResult{2, 0, plan.UpdateInfo{2, 2, 0}}}},
+				Query: "UPDATE sales JOIN locations SET sales.year_built = 2000, locations.state = 'CA';",
+				Expected: []sql.Row{
+					{
+						types.OkResult{
+							RowsAffected: 2,
+							Info: plan.UpdateInfo{
+								Matched: 2,
+								Updated: 2,
+							},
+						},
+					},
+				},
 			},
 			{
 				Query:    "select * from sales;",

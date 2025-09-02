@@ -235,6 +235,8 @@ func validateDeleteFrom(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 	}
 }
 
+// validateGroupBy makes sure that all selected expressions are functionally dependent on group by expressions when
+// ONLY_FULL_GROUP_BY mode is on https://dev.mysql.com/doc/refman/8.4/en/group-by-functional-dependence.html
 func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	if !FlagIsSet(qFlags, sql.QFlagAggregation) {
 		return n, transform.SameTree, nil
@@ -249,60 +251,71 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	}
 
 	var err error
-	var parent sql.Node
+	var project *plan.Project
 	transform.Inspect(n, func(n sql.Node) bool {
-		defer func() {
-			parent = n
-		}()
-
-		gb, ok := n.(*plan.GroupBy)
-		if !ok {
-			return true
-		}
-
-		switch parent.(type) {
-		case *plan.Having, *plan.Project, *plan.Sort:
-			// TODO: these shouldn't be skipped but we currently aren't able to validate GroupBys with selected aliased
-			// expressions and a lot of our tests group by aliases
-			// https://github.com/dolthub/dolt/issues/4998
-			return true
-		}
-
-		// Allow the parser use the GroupBy node to eval the aggregation functions
-		// for sql statements that don't make use of the GROUP BY expression.
-		if len(gb.GroupByExprs) == 0 {
-			return true
-		}
-
-		primaryKeys := make(map[string]bool)
-		for _, col := range gb.Child.Schema() {
-			if col.PrimaryKey {
-				primaryKeys[strings.ToLower(col.String())] = true
+		switch n := n.(type) {
+		case *plan.GroupBy:
+			// Allow the parser use the GroupBy node to eval the aggregation functions for sql statements that don't
+			// make use of the GROUP BY expression.
+			if len(n.GroupByExprs) == 0 {
+				return true
 			}
-		}
 
-		groupBys := make(map[string]bool)
-		groupByPrimaryKeys := 0
-		for _, expr := range gb.GroupByExprs {
-			exprStr := strings.ToLower(expr.String())
-			groupBys[exprStr] = true
-			if primaryKeys[exprStr] {
-				groupByPrimaryKeys++
+			primaryKeys := make(map[string]bool)
+			for _, col := range n.Child.Schema() {
+				if col.PrimaryKey {
+					primaryKeys[strings.ToLower(col.String())] = true
+				}
 			}
-		}
 
-		// TODO: also allow grouping by unique non-nullable columns
-		if len(primaryKeys) != 0 && groupByPrimaryKeys == len(primaryKeys) {
-			return true
-		}
-
-		for _, expr := range gb.SelectedExprs {
-			if !expressionReferencesOnlyGroupBys(groupBys, expr) {
-				// TODO: this is currently too restrictive. Dependent columns are fine to reference
-				// https://dev.mysql.com/doc/refman/8.4/en/group-by-functional-dependence.html
-				err = analyzererrors.ErrValidationGroupBy.New(expr.String())
-				return false
+			groupBys := make(map[string]bool)
+			groupByPrimaryKeys := 0
+			isJoin := false
+			exprs := make([]sql.Expression, 0)
+			exprs = append(exprs, n.GroupByExprs...)
+			possibleJoin := n.Child
+			if filter, ok := n.Child.(*plan.Filter); ok {
+				possibleJoin = filter.Child
+				exprs = append(exprs, getEqualsDependencies(filter.Expression)...)
 			}
+			if join, ok := possibleJoin.(*plan.JoinNode); ok {
+				isJoin = true
+				exprs = append(exprs, getEqualsDependencies(join.Filter)...)
+			}
+			for _, expr := range exprs {
+				sql.Inspect(expr, func(expr sql.Expression) bool {
+					exprStr := strings.ToLower(expr.String())
+					if primaryKeys[exprStr] && !groupBys[exprStr] {
+						groupByPrimaryKeys++
+					}
+					groupBys[exprStr] = true
+
+					if nameable, ok := expr.(sql.Nameable); ok {
+						groupBys[strings.ToLower(nameable.Name())] = true
+					}
+					_, isAlias := expr.(*expression.Alias)
+					return isAlias
+				})
+			}
+
+			// TODO: also allow grouping by unique non-nullable columns https://github.com/dolthub/dolt/issues/9700
+			// TODO: There's currently no way to tell whether or not a primary key column is part of a multi-column
+			//  primary key. When there is a join, we only check if one primary key column is referenced, meaning we
+			//  sometimes incorrectly validate group bys when a joined table has a multi-column primary key.
+			if len(primaryKeys) != 0 && (groupByPrimaryKeys == len(primaryKeys) || (isJoin && groupByPrimaryKeys > 0)) {
+				return true
+			}
+
+			selectExprs := getSelectExprs(project, n.SelectDeps, groupBys)
+
+			for i, expr := range selectExprs {
+				if !expressionReferencesOnlyGroupBys(groupBys, expr) {
+					err = analyzererrors.ErrValidationGroupBy.New(i + 1)
+					return false
+				}
+			}
+		case *plan.Project:
+			project = n
 		}
 		return true
 	})
@@ -310,6 +323,66 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	return n, transform.SameTree, err
 }
 
+// getEqualsDependencies looks for Equals expressions and gets any non-literal arguments
+func getEqualsDependencies(expr sql.Expression) []sql.Expression {
+	exprs := make([]sql.Expression, 0)
+	sql.Inspect(expr, func(expr sql.Expression) bool {
+		switch expr := expr.(type) {
+		case *expression.And:
+			return true
+		case *expression.Equals:
+			for _, e := range expr.Children() {
+				if and, ok := e.(*expression.And); ok {
+					exprs = append(exprs, getEqualsDependencies(and)...)
+				} else if _, ok := e.(*expression.Literal); !ok {
+					exprs = append(exprs, e)
+				}
+			}
+		}
+		return false
+	})
+	return exprs
+}
+
+// getSelectExprs transforms the projection expressions from a Project node such that it uses the appropriate select
+// dependency expressions.
+func getSelectExprs(project *plan.Project, selectDeps []sql.Expression, groupBys map[string]bool) []sql.Expression {
+	if project == nil {
+		return selectDeps
+	} else {
+		sd := make(map[string]sql.Expression, len(selectDeps))
+		for _, dep := range selectDeps {
+			sd[strings.ToLower(dep.String())] = dep
+		}
+
+		selectExprs := make([]sql.Expression, 0)
+
+		for _, expr := range project.Projections {
+			if !project.AliasDeps[strings.ToLower(expr.String())] {
+				resolvedExpr, _, _ := transform.Expr(expr, func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+					if groupBys[strings.ToLower(expr.String())] {
+						return expr, transform.SameTree, nil
+					}
+					switch expr := expr.(type) {
+					case *expression.Alias:
+						if dep, ok := sd[strings.ToLower(expr.Child.String())]; ok {
+							return dep, transform.NewTree, nil
+						}
+					case *expression.GetField:
+						if dep, ok := sd[strings.ToLower(expr.String())]; ok {
+							return dep, transform.NewTree, nil
+						}
+					}
+					return expr, transform.SameTree, nil
+				})
+				selectExprs = append(selectExprs, resolvedExpr)
+			}
+		}
+		return selectExprs
+	}
+}
+
+// expressionReferencesOnlyGroupBys validates that an expression is dependent on only group by expressions
 func expressionReferencesOnlyGroupBys(groupBys map[string]bool, expr sql.Expression) bool {
 	valid := true
 	sql.Inspect(expr, func(expr sql.Expression) bool {
@@ -319,6 +392,12 @@ func expressionReferencesOnlyGroupBys(groupBys map[string]bool, expr sql.Express
 		default:
 			if groupBys[strings.ToLower(expr.String())] {
 				return false
+			}
+
+			if nameable, ok := expr.(sql.Nameable); ok {
+				if groupBys[strings.ToLower(nameable.Name())] {
+					return false
+				}
 			}
 
 			if len(expr.Children()) == 0 {

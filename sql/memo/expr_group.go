@@ -26,14 +26,13 @@ import (
 // defined by row count and schema.
 type ExprGroup struct {
 	m         *Memo
-	_children []*ExprGroup
 	RelProps  *relProps
 	First     RelExpr
 	Best      RelExpr
+	_children []*ExprGroup
+	Cost      float64
 
-	Id GroupId
-
-	Cost   float64
+	Id     GroupId
 	Done   bool
 	HintOk bool
 }

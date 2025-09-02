@@ -26,13 +26,13 @@ import (
 
 type updateIter struct {
 	childIter    sql.RowIter
-	schema       sql.Schema
 	updater      sql.RowUpdater
 	checks       sql.CheckConstraints
+	returnExprs  []sql.Expression
+	schema       sql.Schema
+	returnSchema sql.Schema
 	closed       bool
 	ignore       bool
-	returnExprs  []sql.Expression
-	returnSchema sql.Schema
 }
 
 func (u *updateIter) Next(ctx *sql.Context) (sql.Row, error) {
@@ -209,12 +209,12 @@ func newUpdateIter(
 // done once.
 type updateJoinIter struct {
 	updateSourceIter sql.RowIter
-	joinSchema       sql.Schema
+	joinNode         sql.Node
 	updaters         map[string]sql.RowUpdater
 	caches           map[string]sql.KeyValueCache
 	disposals        map[string]sql.DisposeFunc
-	joinNode         sql.Node
 	accumulator      *updateJoinRowHandler
+	joinSchema       sql.Schema
 }
 
 var _ sql.RowIter = (*updateJoinIter)(nil)

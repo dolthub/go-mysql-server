@@ -28,21 +28,23 @@ import (
 const CommentPreventingIndexBuilding = "__FOR TESTING: I cannot be built__"
 
 type Index struct {
-	DB         string // required for engine tests with driver
-	DriverName string // required for engine tests with driver
-	Tbl        *Table // required for engine tests with driver
-	TableName  string
-	Exprs      []sql.Expression
-	Name       string
-	Unique     bool
-	Spatial    bool
-	Fulltext   bool
 	// If SupportedVectorFunction is non-nil, this index can be used to optimize ORDER BY
 	// expressions on this type of distance function.
 	SupportedVectorFunction vector.DistanceType
-	CommentStr              string
-	PrefixLens              []uint16
+
+	Tbl        *Table // required for engine tests with driver
+	DriverName string // required for engine tests with driver
+	DB         string // required for engine tests with driver
+	TableName  string
+	Name       string
+	CommentStr string
+
+	Exprs      []sql.Expression
+	PrefixLens []uint16
 	fulltextInfo
+	Unique   bool
+	Spatial  bool
+	Fulltext bool
 }
 
 type fulltextInfo struct {
@@ -298,8 +300,9 @@ func (idx *Index) Reversible() bool {
 	return true
 }
 
-func (idx Index) copy() *Index {
-	return &idx
+func (idx *Index) copy() *Index {
+	newIdx := *idx
+	return &newIdx
 }
 
 // columnIndexes returns the indexes in the given schema for the fields in this index

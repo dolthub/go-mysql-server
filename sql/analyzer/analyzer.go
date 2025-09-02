@@ -64,6 +64,7 @@ func SetPreparedStmts(v bool) {
 
 // Builder provides an easy way to generate Analyzer with custom rules and options.
 type Builder struct {
+	provider            sql.DatabaseProvider
 	preAnalyzeRules     []Rule
 	postAnalyzeRules    []Rule
 	preValidationRules  []Rule
@@ -73,12 +74,11 @@ type Builder struct {
 	onceAfterRules      []Rule
 	validationRules     []Rule
 	afterAllRules       []Rule
-	provider            sql.DatabaseProvider
 	debug               bool
 }
 
 // NewBuilder creates a new Builder from a specific catalog.
-// This builder allow us add custom Rules and modify some internal properties.
+// This builder allow us to add custom Rules and modify some internal properties.
 func NewBuilder(pro sql.DatabaseProvider) *Builder {
 	allBeforeDefault := make([]Rule, len(OnceBeforeDefault)+len(AlwaysBeforeDefault))
 	copy(allBeforeDefault, OnceBeforeDefault)
@@ -102,28 +102,28 @@ func (ab *Builder) WithDebug() *Builder {
 
 // AddPreAnalyzeRule adds a new rule to the analyze before the standard analyzer rules.
 func (ab *Builder) AddPreAnalyzeRule(id RuleId, fn RuleFunc) *Builder {
-	ab.preAnalyzeRules = append(ab.preAnalyzeRules, Rule{id, fn})
+	ab.preAnalyzeRules = append(ab.preAnalyzeRules, Rule{Id: id, Apply: fn})
 
 	return ab
 }
 
 // AddPostAnalyzeRule adds a new rule to the analyzer after standard analyzer rules.
 func (ab *Builder) AddPostAnalyzeRule(id RuleId, fn RuleFunc) *Builder {
-	ab.postAnalyzeRules = append(ab.postAnalyzeRules, Rule{id, fn})
+	ab.postAnalyzeRules = append(ab.postAnalyzeRules, Rule{Id: id, Apply: fn})
 
 	return ab
 }
 
 // AddPreValidationRule adds a new rule to the analyzer before standard validation rules.
 func (ab *Builder) AddPreValidationRule(id RuleId, fn RuleFunc) *Builder {
-	ab.preValidationRules = append(ab.preValidationRules, Rule{id, fn})
+	ab.preValidationRules = append(ab.preValidationRules, Rule{Id: id, Apply: fn})
 
 	return ab
 }
 
 // AddPostValidationRule adds a new rule to the analyzer after standard validation rules.
 func (ab *Builder) AddPostValidationRule(id RuleId, fn RuleFunc) *Builder {
-	ab.postValidationRules = append(ab.postValidationRules, Rule{id, fn})
+	ab.postValidationRules = append(ab.postValidationRules, Rule{Id: id, Apply: fn})
 
 	return ab
 }
@@ -279,26 +279,26 @@ func (ab *Builder) Build() *Analyzer {
 // Analyzer analyzes nodes of the execution plan and applies rules and validations
 // to them.
 type Analyzer struct {
-	// Whether to log various debugging messages
-	Debug bool
-	// Whether to output the query plan at each step of the analyzer
-	Verbose bool
-	// A stack of debugger context. See PushDebugContext, PopDebugContext
-	contextStack []string
-	// Batches of Rules to apply.
-	Batches []*Batch
-	// Catalog of databases and registered functions.
-	Catalog *Catalog
 	// Coster estimates the incremental CPU+memory cost for execution operators.
 	Coster memo.Coster
+	// Parser is the parser used to parse SQL statements.
+	Parser sql.Parser
 	// ExecBuilder converts a sql.Node tree into an executable iterator.
 	ExecBuilder sql.NodeExecBuilder
 	// Runner represents the engine, which is represented as a separate interface to work around circular dependencies
 	Runner sql.StatementRunner
-	// Parser is the parser used to parse SQL statements.
-	Parser sql.Parser
 	// SchemaFormatter is used to format the schema of a node to a string.
 	SchemaFormatter sql.SchemaFormatter
+	// Catalog of databases and registered functions.
+	Catalog *Catalog
+	// A stack of debugger context. See PushDebugContext, PopDebugContext
+	contextStack []string
+	// Batches of Rules to apply.
+	Batches []*Batch
+	// Whether to log various debugging messages
+	Debug bool
+	// Whether to output the query plan at each step of the analyzer
+	Verbose bool
 }
 
 // NewDefault creates a default Analyzer instance with all default Rules and configuration.

@@ -143,15 +143,15 @@ var sqlModeSetType = types.MustCreateSetType([]string{
 var _ Database = (*informationSchemaDatabase)(nil)
 
 type informationSchemaDatabase struct {
-	name   string
 	tables map[string]Table
+	name   string
 }
 
 type InformationSchemaTable struct {
-	TableName   string
-	TableSchema Schema
 	catalog     Catalog
 	Reader      func(*Context, Catalog) (RowIter, error)
+	TableName   string
+	TableSchema Schema
 }
 
 type informationSchemaPartition struct {

@@ -45,23 +45,15 @@ type MemTable interface {
 
 // Table represents an in-memory database table.
 type Table struct {
-	name string
-
-	// Schema and related info
-	data *TableData
-	// ignoreSessionData is used to ignore session data for versioned tables (smoke tests only), unused otherwise
+	data              *TableData
+	db                *BaseDatabase
+	name              string
+	projection        []string
+	projectedSchema   sql.Schema
+	columns           []int
+	filters           []sql.Expression
 	ignoreSessionData bool
-
-	// Projection info and settings
-	pkIndexesEnabled bool
-	projection       []string
-	projectedSchema  sql.Schema
-	columns          []int
-
-	// filters is used for primary index scans with an index lookup
-	filters []sql.Expression
-
-	db *BaseDatabase
+	pkIndexesEnabled  bool
 }
 
 var _ sql.Table = (*Table)(nil)
@@ -301,16 +293,16 @@ func (i rangePartitionIter) Next(ctx *sql.Context) (sql.Partition, error) {
 
 // indexScanPartitionIter is a partition iterator that returns a single partition for an index scan
 type indexScanPartitionIter struct {
-	once   sync.Once
 	index  *Index
 	ranges sql.Expression
 	lookup sql.IndexLookup
+	once   sync.Once
 }
 
 type indexScanPartition struct {
 	index  *Index
-	lookup sql.IndexLookup
 	ranges sql.Expression
+	lookup sql.IndexLookup
 }
 
 func (i indexScanPartition) Key() []byte {
@@ -414,17 +406,18 @@ func (t *Table) PartitionCount(ctx *sql.Context) (int64, error) {
 }
 
 type indexScanRowIter struct {
-	i             int
+	index     *Index
+	ranges    sql.Expression
+	lookup    sql.IndexLookup
+	indexRows []sql.Row
+
 	incrementFunc func()
-	index         *Index
-	lookup        sql.IndexLookup
-	ranges        sql.Expression
 	primaryRows   map[string][]sql.Row
-	indexRows     []sql.Row
 
 	columns     []int
-	numColumns  int
 	virtualCols []int
+	i           int
+	numColumns  int
 }
 
 func newIndexScanRowIter(
@@ -677,13 +670,12 @@ func (p *partitionIter) Next(*sql.Context) (sql.Partition, error) {
 func (p *partitionIter) Close(*sql.Context) error { return nil }
 
 type tableIter struct {
+	indexValues sql.IndexValueIter
+	rows        []sql.Row
+	filters     []sql.Expression
 	columns     []int
 	virtualCols []int
 	numColumns  int
-
-	rows        []sql.Row
-	filters     []sql.Expression
-	indexValues sql.IndexValueIter
 	pos         int
 }
 
@@ -2240,8 +2232,8 @@ func (t *Table) CreatePrimaryKey(ctx *sql.Context, columns []sql.IndexColumn) er
 }
 
 type pkfield struct {
-	i int
 	c *sql.Column
+	i int
 }
 
 type partitionRow struct {
@@ -2250,11 +2242,11 @@ type partitionRow struct {
 }
 
 type partitionssort struct {
-	pk      []pkfield
-	ps      map[string][]sql.Row
-	allRows []partitionRow
-	indexes map[indexName][]sql.Row
 	ctx     *sql.Context
+	ps      map[string][]sql.Row
+	indexes map[indexName][]sql.Row
+	pk      []pkfield
+	allRows []partitionRow
 }
 
 func (ps partitionssort) Len() int {

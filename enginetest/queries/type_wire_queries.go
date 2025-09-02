@@ -808,7 +808,7 @@ var TypeWireTests = []TypeWireTest{
 		Queries: []string{
 			`SELECT * FROM test ORDER BY pk;`,
 			`SELECT v1, pk FROM test ORDER BY pk;`,
-			`SELECT pk, JSON_ARRAYAGG(v1) FROM (SELECT * FROM test ORDER BY pk) as sub GROUP BY v1 ORDER BY pk;`,
+			`SELECT pk, JSON_ARRAYAGG(v1) FROM (SELECT * FROM test ORDER BY pk) as sub GROUP BY pk, v1 ORDER BY pk;`,
 		},
 		Results: [][]sql.Row{
 			{{"1", "[\"a\",1]"}, {"2", "{\"key1\":\"value1\",\"key2\":\"value2\"}"}},

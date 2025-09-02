@@ -421,7 +421,7 @@ UPDATE warehouse2 SET w_ytd = w_ytd + 1767 WHERE w_id = 1`,
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(customer2.c_id) as namecnt]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(customer2.c_id))\n" +
+			"     ├─ SelectDeps(COUNT(customer2.c_id))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ IndexedTableAccess(customer2)\n" +
 			"         ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
@@ -431,7 +431,7 @@ UPDATE warehouse2 SET w_ytd = w_ytd + 1767 WHERE w_id = 1`,
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(customer2.c_id) as namecnt]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(customer2.c_id))\n" +
+			"     ├─ SelectDeps(COUNT(customer2.c_id))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ IndexedTableAccess(customer2)\n" +
 			"         ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
@@ -546,7 +546,7 @@ SELECT count(c_id) namecnt FROM customer2 WHERE c_w_id = 1 AND c_d_id= 1 AND c_l
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(customer2.c_id) as namecnt]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(customer2.c_id))\n" +
+			"     ├─ SelectDeps(COUNT(customer2.c_id))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ IndexedTableAccess(customer2)\n" +
 			"         ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
@@ -556,7 +556,7 @@ SELECT count(c_id) namecnt FROM customer2 WHERE c_w_id = 1 AND c_d_id= 1 AND c_l
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(customer2.c_id) as namecnt]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(customer2.c_id))\n" +
+			"     ├─ SelectDeps(COUNT(customer2.c_id))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ IndexedTableAccess(customer2)\n" +
 			"         ├─ index: [customer2.c_w_id,customer2.c_d_id,customer2.c_last,customer2.c_first]\n" +
@@ -720,7 +720,7 @@ SELECT d_next_o_id FROM district2 WHERE d_id = 5 AND d_w_id= 1`,
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [countdistinct([stock2.s_i_id]) as COUNT(DISTINCT (s_i_id))]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNTDISTINCT([stock2.s_i_id]))\n" +
+			"     ├─ SelectDeps(COUNTDISTINCT([stock2.s_i_id]))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ LookupJoin\n" +
 			"         ├─ IndexedTableAccess(order_line2)\n" +
@@ -737,7 +737,7 @@ SELECT d_next_o_id FROM district2 WHERE d_id = 5 AND d_w_id= 1`,
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [countdistinct([stock2.s_i_id]) as COUNT(DISTINCT (s_i_id))]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNTDISTINCT([stock2.s_i_id]))\n" +
+			"     ├─ SelectDeps(COUNTDISTINCT([stock2.s_i_id]))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ LookupJoin\n" +
 			"         ├─ IndexedTableAccess(order_line2)\n" +
@@ -795,18 +795,7 @@ WHERE
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [orders2.o_id, orders2.o_entry_d, coalesce(orders2.o_carrier_id,0) as COALESCE(o_carrier_id,0)]\n" +
 			" └─ Filter\n" +
-			"     ├─ (orders2.o_id = Subquery\n" +
-			"     │   ├─ cacheable: true\n" +
-			"     │   └─ Project\n" +
-			"     │       ├─ columns: [max(orders2.o_id) as MAX(o_id)]\n" +
-			"     │       └─ GroupBy\n" +
-			"     │           ├─ SelectedExprs(MAX(orders2.o_id))\n" +
-			"     │           ├─ Grouping()\n" +
-			"     │           └─ IndexedTableAccess(orders2)\n" +
-			"     │               ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
-			"     │               ├─ filters: [{[1, 1], [3, 3], [20001, 20001], [NULL, ∞)}]\n" +
-			"     │               └─ columns: [o_id o_d_id o_w_id o_c_id]\n" +
-			"     │  )\n" +
+			"     ├─ (orders2.o_id = Subquery(select MAX(o_id) from orders2 where o_w_id = 1 and o_d_id = 3 and o_c_id = 20001))\n" +
 			"     └─ IndexedTableAccess(orders2)\n" +
 			"         ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
 			"         └─ filters: [{[1, 1], [3, 3], [20001, 20001], [NULL, ∞)}]\n" +
@@ -814,18 +803,7 @@ WHERE
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [orders2.o_id, orders2.o_entry_d, coalesce(orders2.o_carrier_id,0) as COALESCE(o_carrier_id,0)]\n" +
 			" └─ Filter\n" +
-			"     ├─ (orders2.o_id = Subquery\n" +
-			"     │   ├─ cacheable: true\n" +
-			"     │   └─ Project\n" +
-			"     │       ├─ columns: [max(orders2.o_id) as MAX(o_id)]\n" +
-			"     │       └─ GroupBy\n" +
-			"     │           ├─ SelectedExprs(MAX(orders2.o_id))\n" +
-			"     │           ├─ Grouping()\n" +
-			"     │           └─ IndexedTableAccess(orders2)\n" +
-			"     │               ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
-			"     │               ├─ filters: [{[1, 1], [3, 3], [20001, 20001], [NULL, ∞)}]\n" +
-			"     │               └─ columns: [o_id o_d_id o_w_id o_c_id]\n" +
-			"     │  )\n" +
+			"     ├─ (orders2.o_id = Subquery(select MAX(o_id) from orders2 where o_w_id = 1 and o_d_id = 3 and o_c_id = 20001))\n" +
 			"     └─ IndexedTableAccess(orders2)\n" +
 			"         ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_c_id,orders2.o_id]\n" +
 			"         └─ filters: [{[1, 1], [3, 3], [20001, 20001], [NULL, ∞)}]\n" +
@@ -868,7 +846,7 @@ from
 			"         │               │   ├─ countdistinct([orders2.o_id]):0!null\n" +
 			"         │               │   └─ 1 (bigint)\n" +
 			"         │               └─ GroupBy\n" +
-			"         │                   ├─ select: COUNTDISTINCT([orders2.o_id]), orders2.o_c_id:3, orders2.o_w_id:2!null, orders2.o_d_id:1!null, orders2.o_id:0!null\n" +
+			"         │                   ├─ select: COUNTDISTINCT([orders2.o_id]), orders2.o_c_id:3, orders2.o_w_id:2!null, orders2.o_d_id:1!null\n" +
 			"         │                   ├─ group: orders2.o_c_id:3, orders2.o_d_id:1!null, orders2.o_w_id:2!null\n" +
 			"         │                   └─ IndexedTableAccess(orders2)\n" +
 			"         │                       ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
@@ -902,7 +880,7 @@ from
 			"         │           ├─ columns: [orders2.o_c_id, orders2.o_w_id, orders2.o_d_id, countdistinct([orders2.o_id]) as count(distinct o_id)]\n" +
 			"         │           └─ Having((countdistinct([orders2.o_id]) > 1))\n" +
 			"         │               └─ GroupBy\n" +
-			"         │                   ├─ SelectedExprs(COUNTDISTINCT([orders2.o_id]), orders2.o_c_id, orders2.o_w_id, orders2.o_d_id, orders2.o_id)\n" +
+			"         │                   ├─ SelectDeps(COUNTDISTINCT([orders2.o_id]), orders2.o_c_id, orders2.o_w_id, orders2.o_d_id)\n" +
 			"         │                   ├─ Grouping(orders2.o_c_id, orders2.o_d_id, orders2.o_w_id)\n" +
 			"         │                   └─ IndexedTableAccess(orders2)\n" +
 			"         │                       ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
@@ -927,7 +905,7 @@ from
 			"         │           ├─ columns: [orders2.o_c_id, orders2.o_w_id, orders2.o_d_id, countdistinct([orders2.o_id]) as count(distinct o_id)]\n" +
 			"         │           └─ Having((countdistinct([orders2.o_id]) > 1))\n" +
 			"         │               └─ GroupBy\n" +
-			"         │                   ├─ SelectedExprs(COUNTDISTINCT([orders2.o_id]), orders2.o_c_id, orders2.o_w_id, orders2.o_d_id, orders2.o_id)\n" +
+			"         │                   ├─ SelectDeps(COUNTDISTINCT([orders2.o_id]), orders2.o_c_id, orders2.o_w_id, orders2.o_d_id)\n" +
 			"         │                   ├─ Grouping(orders2.o_c_id, orders2.o_d_id, orders2.o_w_id)\n" +
 			"         │                   └─ IndexedTableAccess(orders2)\n" +
 			"         │                       ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +

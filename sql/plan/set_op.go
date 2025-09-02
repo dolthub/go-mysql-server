@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 const (
@@ -30,14 +31,14 @@ const (
 // SetOp is a node that returns everything in Left and then everything in Right
 type SetOp struct {
 	BinaryNode
-	SetOpType  int
-	Distinct   bool
 	Limit      sql.Expression
 	Offset     sql.Expression
+	cols       sql.ColSet
 	SortFields sql.SortFields
 	dispose    []sql.DisposeFunc
+	SetOpType  int
 	id         sql.TableId
-	cols       sql.ColSet
+	Distinct   bool
 }
 
 var _ sql.Node = (*SetOp)(nil)
@@ -100,6 +101,7 @@ func (s *SetOp) Schema() sql.Schema {
 	for i := range ls {
 		c := *ls[i]
 		if i < len(rs) {
+			c.Type = types.GeneralizeTypes(ls[i].Type, rs[i].Type)
 			c.Nullable = ls[i].Nullable || rs[i].Nullable
 		}
 		ret[i] = &c

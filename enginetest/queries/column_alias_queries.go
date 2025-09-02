@@ -211,6 +211,10 @@ var ColumnAliasQueries = []ScriptTest{
 				Expected: []sql.Row{{1, 1}},
 			},
 			{
+				Query:    `SELECT 1 as a, (select a union select a) as b;`,
+				Expected: []sql.Row{{1, 1}},
+			},
+			{
 				Query:    "SELECT 1 as a, (select a) as b from dual;",
 				Expected: []sql.Row{{1, 1}},
 			},
@@ -225,6 +229,22 @@ var ColumnAliasQueries = []ScriptTest{
 			{
 				Query:    "SELECT 1 as a, (select a) from xy;",
 				Expected: []sql.Row{{1, 1}, {1, 1}, {1, 1}, {1, 1}},
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/4256
+				Query: `SELECT *, (select i union select i) as a from mytable;`,
+				Expected: []sql.Row{
+					{1, "first row", 1},
+					{2, "second row", 2},
+					{3, "third row", 3}},
+			},
+			{
+				Query:    "select 1 as b, (select b group by b order by b) order by 1;",
+				Expected: []sql.Row{{1, 1}},
+			},
+			{
+				Query:       `select 1 as a, (select b), 0 as b;`,
+				ExpectedErr: sql.ErrColumnNotFound,
 			},
 		},
 	},
@@ -245,38 +265,14 @@ var ColumnAliasQueries = []ScriptTest{
 	},
 	{
 		Name: "various broken alias queries",
+		Skip: true,
 		Assertions: []ScriptTestAssertion{
-			{
-				// The second query in the union subquery returns "x" instead of mytable.i
-				// https://github.com/dolthub/dolt/issues/4256
-				Query: `SELECT *, (select i union select i) as a from mytable;`,
-				Expected: []sql.Row{
-					{1, "first row", 1},
-					{2, "second row", 2},
-					{3, "third row", 3}},
-			},
-			{
-				Query:    `SELECT 1 as a, (select a union select a) as b;`,
-				Expected: []sql.Row{{1, 1}},
-			},
-			{
-				// GMS executes this query, but it is not valid because of the forward ref of alias b.
-				// GMS should return an error about an invalid forward-ref.
-				Skip:        true,
-				Query:       `select 1 as a, (select b), 0 as b;`,
-				ExpectedErr: sql.ErrColumnNotFound,
-			},
 			{
 				// GMS returns "expression 'dt.two' doesn't appear in the group by expressions", but MySQL will execute
 				// this query.
 				Query: "select 1 as a, one + 1 as mod1, dt.* from mytable as t1, (select 1, 2 from mytable) as dt (one, two) where dt.one > 0 group by one;",
 				// column names:  a, mod1, one, two
 				Expected: []sql.Row{{1, 2, 1, 2}},
-			},
-			{
-				// GMS returns `ambiguous column or alias name "b"` on both cases of `group by b` and `group by 1` inside subquery, but MySQL executes.
-				Query:    "select 1 as b, (select b group by b order by b) order by 1;",
-				Expected: []sql.Row{{1, 1}},
 			},
 		},
 	},

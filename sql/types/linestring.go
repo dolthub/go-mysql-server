@@ -35,8 +35,8 @@ type LineStringType struct {
 
 // LineString is the value type returned from LineStringType. Implements GeometryValue.
 type LineString struct {
-	SRID   uint32
 	Points []Point
+	SRID   uint32
 }
 
 var _ sql.Type = LineStringType{}

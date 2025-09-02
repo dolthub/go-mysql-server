@@ -36,8 +36,8 @@ type MultiLineStringType struct {
 
 // MultiLineString is the value type returned from MultiLineStringType. Implements GeometryValue.
 type MultiLineString struct {
-	SRID  uint32
 	Lines []LineString
+	SRID  uint32
 }
 
 var (

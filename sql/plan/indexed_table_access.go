@@ -36,12 +36,12 @@ var ErrInvalidLookupForIndexedTable = errors.NewKind("indexable table does not s
 // the indexed table is provided in RowIter(), or during static analysis.
 type IndexedTableAccess struct {
 	TableNode sql.TableNode
+	Table     sql.IndexedTable
+	cols      sql.ColSet
 	lb        *LookupBuilder
 	lookup    sql.IndexLookup
-	Table     sql.IndexedTable
-	Typ       itaType
 	id        sql.TableId
-	cols      sql.ColSet
+	Typ       itaType
 }
 
 var _ sql.Table = (*IndexedTableAccess)(nil)
@@ -500,9 +500,9 @@ type lookupBuilderKey []interface{}
 // IndexedTableAccess nodes below an indexed join, for example. This struct is
 // also used to implement Expressioner on the IndexedTableAccess node.
 type LookupBuilder struct {
+	index     sql.Index
 	keyExprs  []sql.Expression
 	keyExprs2 []sql.Expression2
-
 	// When building the lookup, we will use an MySQLIndexBuilder. If the
 	// extracted lookup value is NULL, but we have a non-NULL safe
 	// comparison, then the lookup should return no values. But if the
@@ -512,14 +512,13 @@ type LookupBuilder struct {
 	// otherwise.
 	matchesNullMask []bool
 
-	index sql.Index
+	key  lookupBuilderKey
+	rang sql.MySQLRange
+	cets []sql.ColumnExpressionType
 
-	key           lookupBuilderKey
-	rang          sql.MySQLRange
 	nullSafe      bool
 	isPointLookup bool
 	emptyRange    bool
-	cets          []sql.ColumnExpressionType
 }
 
 func NewLookupBuilder(index sql.Index, keyExprs []sql.Expression, matchesNullMask []bool) *LookupBuilder {

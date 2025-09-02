@@ -245,7 +245,7 @@ WHERE
 			"     │               └─ Project\n" +
 			"     │                   ├─ columns: [count(ccefl.zh72s), min(ccefl.wgbrl), sum(ccefl.wgbrl), ccefl.ZH72S, ccefl.ZH72S as ZH72S, count(ccefl.zh72s) as JTOA7, min(ccefl.wgbrl) as TTDPM, sum(ccefl.wgbrl) as FBSRS]\n" +
 			"     │                   └─ GroupBy\n" +
-			"     │                       ├─ SelectedExprs(COUNT(ccefl.ZH72S), MIN(ccefl.WGBRL), SUM(ccefl.WGBRL), ccefl.ZH72S)\n" +
+			"     │                       ├─ SelectDeps(COUNT(ccefl.ZH72S), MIN(ccefl.WGBRL), SUM(ccefl.WGBRL), ccefl.ZH72S)\n" +
 			"     │                       ├─ Grouping(ccefl.ZH72S)\n" +
 			"     │                       └─ SubqueryAlias\n" +
 			"     │                           ├─ name: ccefl\n" +
@@ -258,7 +258,7 @@ WHERE
 			"     │                               │   └─ Project\n" +
 			"     │                               │       ├─ columns: [count(1) as COUNT(*)]\n" +
 			"     │                               │       └─ GroupBy\n" +
-			"     │                               │           ├─ SelectedExprs(COUNT(1))\n" +
+			"     │                               │           ├─ SelectDeps(COUNT(1))\n" +
 			"     │                               │           ├─ Grouping()\n" +
 			"     │                               │           └─ Filter\n" +
 			"     │                               │               ├─ (hddvb.UJ6XY = nd.id)\n" +
@@ -273,7 +273,7 @@ WHERE
 			"     │                                   │   └─ Project\n" +
 			"     │                                   │       ├─ columns: [count(1) as COUNT(*)]\n" +
 			"     │                                   │       └─ GroupBy\n" +
-			"     │                                   │           ├─ SelectedExprs(COUNT(1))\n" +
+			"     │                                   │           ├─ SelectDeps(COUNT(1))\n" +
 			"     │                                   │           ├─ Grouping()\n" +
 			"     │                                   │           └─ Filter\n" +
 			"     │                                   │               ├─ (hddvb.UJ6XY = nd.id)\n" +
@@ -309,7 +309,7 @@ WHERE
 			"     │               └─ Project\n" +
 			"     │                   ├─ columns: [count(ccefl.zh72s), min(ccefl.wgbrl), sum(ccefl.wgbrl), ccefl.ZH72S, ccefl.ZH72S as ZH72S, count(ccefl.zh72s) as JTOA7, min(ccefl.wgbrl) as TTDPM, sum(ccefl.wgbrl) as FBSRS]\n" +
 			"     │                   └─ GroupBy\n" +
-			"     │                       ├─ SelectedExprs(COUNT(ccefl.ZH72S), MIN(ccefl.WGBRL), SUM(ccefl.WGBRL), ccefl.ZH72S)\n" +
+			"     │                       ├─ SelectDeps(COUNT(ccefl.ZH72S), MIN(ccefl.WGBRL), SUM(ccefl.WGBRL), ccefl.ZH72S)\n" +
 			"     │                       ├─ Grouping(ccefl.ZH72S)\n" +
 			"     │                       └─ SubqueryAlias\n" +
 			"     │                           ├─ name: ccefl\n" +
@@ -322,7 +322,7 @@ WHERE
 			"     │                               │   └─ Project\n" +
 			"     │                               │       ├─ columns: [count(1) as COUNT(*)]\n" +
 			"     │                               │       └─ GroupBy\n" +
-			"     │                               │           ├─ SelectedExprs(COUNT(1))\n" +
+			"     │                               │           ├─ SelectDeps(COUNT(1))\n" +
 			"     │                               │           ├─ Grouping()\n" +
 			"     │                               │           └─ Filter\n" +
 			"     │                               │               ├─ (hddvb.UJ6XY = nd.id)\n" +
@@ -337,7 +337,7 @@ WHERE
 			"     │                                   │   └─ Project\n" +
 			"     │                                   │       ├─ columns: [count(1) as COUNT(*)]\n" +
 			"     │                                   │       └─ GroupBy\n" +
-			"     │                                   │           ├─ SelectedExprs(COUNT(1))\n" +
+			"     │                                   │           ├─ SelectDeps(COUNT(1))\n" +
 			"     │                                   │           ├─ Grouping()\n" +
 			"     │                                   │           └─ Filter\n" +
 			"     │                                   │               ├─ (hddvb.UJ6XY = nd.id)\n" +
@@ -588,58 +588,7 @@ WHERE
 			"             └─ columns: [id fv24e uj6xy m22qn nz4mq etpqv pruv2 ykssu fhcyt]\n" +
 			"",
 		ExpectedEstimates: "Filter\n" +
-			" ├─ (((NOT(ism.PRUV2 IS NULL)) AND ((Subquery\n" +
-			" │   ├─ cacheable: false\n" +
-			" │   └─ Project\n" +
-			" │       ├─ columns: [nhmxw.SWCQV]\n" +
-			" │       └─ Filter\n" +
-			" │           ├─ (nhmxw.id = ism.PRUV2)\n" +
-			" │           └─ TableAlias(nhmxw)\n" +
-			" │               └─ IndexedTableAccess(WGSDC)\n" +
-			" │                   ├─ index: [WGSDC.id]\n" +
-			" │                   ├─ columns: [id swcqv]\n" +
-			" │                   └─ keys: ism.PRUV2\n" +
-			" │   = 1) OR (((NOT(ism.FV24E IS NULL)) AND (NOT((Subquery\n" +
-			" │   ├─ cacheable: false\n" +
-			" │   └─ Project\n" +
-			" │       ├─ columns: [nd.id]\n" +
-			" │       └─ Filter\n" +
-			" │           ├─ (nd.TW55N = Subquery\n" +
-			" │           │   ├─ cacheable: false\n" +
-			" │           │   └─ Project\n" +
-			" │           │       ├─ columns: [nhmxw.FZXV5]\n" +
-			" │           │       └─ Filter\n" +
-			" │           │           ├─ (nhmxw.id = ism.PRUV2)\n" +
-			" │           │           └─ TableAlias(nhmxw)\n" +
-			" │           │               └─ IndexedTableAccess(WGSDC)\n" +
-			" │           │                   ├─ index: [WGSDC.id]\n" +
-			" │           │                   ├─ columns: [id fzxv5]\n" +
-			" │           │                   └─ keys: ism.PRUV2\n" +
-			" │           │  )\n" +
-			" │           └─ TableAlias(nd)\n" +
-			" │               └─ Table\n" +
-			" │                   └─ name: E2I7U\n" +
-			" │   = ism.FV24E)))) OR ((NOT(ism.UJ6XY IS NULL)) AND (NOT((Subquery\n" +
-			" │   ├─ cacheable: false\n" +
-			" │   └─ Project\n" +
-			" │       ├─ columns: [nd.id]\n" +
-			" │       └─ Filter\n" +
-			" │           ├─ (nd.TW55N = Subquery\n" +
-			" │           │   ├─ cacheable: false\n" +
-			" │           │   └─ Project\n" +
-			" │           │       ├─ columns: [nhmxw.DQYGV]\n" +
-			" │           │       └─ Filter\n" +
-			" │           │           ├─ (nhmxw.id = ism.PRUV2)\n" +
-			" │           │           └─ TableAlias(nhmxw)\n" +
-			" │           │               └─ IndexedTableAccess(WGSDC)\n" +
-			" │           │                   ├─ index: [WGSDC.id]\n" +
-			" │           │                   ├─ columns: [id dqygv]\n" +
-			" │           │                   └─ keys: ism.PRUV2\n" +
-			" │           │  )\n" +
-			" │           └─ TableAlias(nd)\n" +
-			" │               └─ Table\n" +
-			" │                   └─ name: E2I7U\n" +
-			" │   = ism.UJ6XY))))))) OR ((NOT(ism.ETPQV IS NULL)) AND InSubquery\n" +
+			" ├─ (((NOT(ism.PRUV2 IS NULL)) AND ((Subquery(select NHMXW.SWCQV from WGSDC as NHMXW where NHMXW.id = ism.PRUV2) = 1) OR (((NOT(ism.FV24E IS NULL)) AND (NOT((Subquery(select nd.id from E2I7U as nd where nd.TW55N = (select NHMXW.FZXV5 from WGSDC as NHMXW where NHMXW.id = ism.PRUV2)) = ism.FV24E)))) OR ((NOT(ism.UJ6XY IS NULL)) AND (NOT((Subquery(select nd.id from E2I7U as nd where nd.TW55N = (select NHMXW.DQYGV from WGSDC as NHMXW where NHMXW.id = ism.PRUV2)) = ism.UJ6XY))))))) OR ((NOT(ism.ETPQV IS NULL)) AND InSubquery\n" +
 			" │   ├─ left: ism.ETPQV\n" +
 			" │   └─ right: Subquery\n" +
 			" │       ├─ cacheable: true\n" +
@@ -675,58 +624,7 @@ WHERE
 			"         └─ name: HDDVB\n" +
 			"",
 		ExpectedAnalysis: "Filter\n" +
-			" ├─ (((NOT(ism.PRUV2 IS NULL)) AND ((Subquery\n" +
-			" │   ├─ cacheable: false\n" +
-			" │   └─ Project\n" +
-			" │       ├─ columns: [nhmxw.SWCQV]\n" +
-			" │       └─ Filter\n" +
-			" │           ├─ (nhmxw.id = ism.PRUV2)\n" +
-			" │           └─ TableAlias(nhmxw)\n" +
-			" │               └─ IndexedTableAccess(WGSDC)\n" +
-			" │                   ├─ index: [WGSDC.id]\n" +
-			" │                   ├─ columns: [id swcqv]\n" +
-			" │                   └─ keys: ism.PRUV2\n" +
-			" │   = 1) OR (((NOT(ism.FV24E IS NULL)) AND (NOT((Subquery\n" +
-			" │   ├─ cacheable: false\n" +
-			" │   └─ Project\n" +
-			" │       ├─ columns: [nd.id]\n" +
-			" │       └─ Filter\n" +
-			" │           ├─ (nd.TW55N = Subquery\n" +
-			" │           │   ├─ cacheable: false\n" +
-			" │           │   └─ Project\n" +
-			" │           │       ├─ columns: [nhmxw.FZXV5]\n" +
-			" │           │       └─ Filter\n" +
-			" │           │           ├─ (nhmxw.id = ism.PRUV2)\n" +
-			" │           │           └─ TableAlias(nhmxw)\n" +
-			" │           │               └─ IndexedTableAccess(WGSDC)\n" +
-			" │           │                   ├─ index: [WGSDC.id]\n" +
-			" │           │                   ├─ columns: [id fzxv5]\n" +
-			" │           │                   └─ keys: ism.PRUV2\n" +
-			" │           │  )\n" +
-			" │           └─ TableAlias(nd)\n" +
-			" │               └─ Table\n" +
-			" │                   └─ name: E2I7U\n" +
-			" │   = ism.FV24E)))) OR ((NOT(ism.UJ6XY IS NULL)) AND (NOT((Subquery\n" +
-			" │   ├─ cacheable: false\n" +
-			" │   └─ Project\n" +
-			" │       ├─ columns: [nd.id]\n" +
-			" │       └─ Filter\n" +
-			" │           ├─ (nd.TW55N = Subquery\n" +
-			" │           │   ├─ cacheable: false\n" +
-			" │           │   └─ Project\n" +
-			" │           │       ├─ columns: [nhmxw.DQYGV]\n" +
-			" │           │       └─ Filter\n" +
-			" │           │           ├─ (nhmxw.id = ism.PRUV2)\n" +
-			" │           │           └─ TableAlias(nhmxw)\n" +
-			" │           │               └─ IndexedTableAccess(WGSDC)\n" +
-			" │           │                   ├─ index: [WGSDC.id]\n" +
-			" │           │                   ├─ columns: [id dqygv]\n" +
-			" │           │                   └─ keys: ism.PRUV2\n" +
-			" │           │  )\n" +
-			" │           └─ TableAlias(nd)\n" +
-			" │               └─ Table\n" +
-			" │                   └─ name: E2I7U\n" +
-			" │   = ism.UJ6XY))))))) OR ((NOT(ism.ETPQV IS NULL)) AND InSubquery\n" +
+			" ├─ (((NOT(ism.PRUV2 IS NULL)) AND ((Subquery(select NHMXW.SWCQV from WGSDC as NHMXW where NHMXW.id = ism.PRUV2) = 1) OR (((NOT(ism.FV24E IS NULL)) AND (NOT((Subquery(select nd.id from E2I7U as nd where nd.TW55N = (select NHMXW.FZXV5 from WGSDC as NHMXW where NHMXW.id = ism.PRUV2)) = ism.FV24E)))) OR ((NOT(ism.UJ6XY IS NULL)) AND (NOT((Subquery(select nd.id from E2I7U as nd where nd.TW55N = (select NHMXW.DQYGV from WGSDC as NHMXW where NHMXW.id = ism.PRUV2)) = ism.UJ6XY))))))) OR ((NOT(ism.ETPQV IS NULL)) AND InSubquery\n" +
 			" │   ├─ left: ism.ETPQV\n" +
 			" │   └─ right: Subquery\n" +
 			" │       ├─ cacheable: true\n" +
@@ -1333,7 +1231,7 @@ WHERE
 			"     │               └─ Project\n" +
 			"     │                   ├─ columns: [count(wooj5.zh72s), min(wooj5.lea4j), sum(wooj5.lea4j), wooj5.ZH72S, wooj5.ZH72S as ZH72S, count(wooj5.zh72s) as JTOA7, min(wooj5.lea4j) as BADTB, sum(wooj5.lea4j) as FLHXH]\n" +
 			"     │                   └─ GroupBy\n" +
-			"     │                       ├─ SelectedExprs(COUNT(wooj5.ZH72S), MIN(wooj5.LEA4J), SUM(wooj5.LEA4J), wooj5.ZH72S)\n" +
+			"     │                       ├─ SelectDeps(COUNT(wooj5.ZH72S), MIN(wooj5.LEA4J), SUM(wooj5.LEA4J), wooj5.ZH72S)\n" +
 			"     │                       ├─ Grouping(wooj5.ZH72S)\n" +
 			"     │                       └─ SubqueryAlias\n" +
 			"     │                           ├─ name: wooj5\n" +
@@ -1346,7 +1244,7 @@ WHERE
 			"     │                               │   └─ Project\n" +
 			"     │                               │       ├─ columns: [count(1) as COUNT(*)]\n" +
 			"     │                               │       └─ GroupBy\n" +
-			"     │                               │           ├─ SelectedExprs(COUNT(1))\n" +
+			"     │                               │           ├─ SelectDeps(COUNT(1))\n" +
 			"     │                               │           ├─ Grouping()\n" +
 			"     │                               │           └─ Filter\n" +
 			"     │                               │               ├─ (flqlp.LUEVY = nd.id)\n" +
@@ -1361,7 +1259,7 @@ WHERE
 			"     │                                   │   └─ Project\n" +
 			"     │                                   │       ├─ columns: [count(1) as COUNT(*)]\n" +
 			"     │                                   │       └─ GroupBy\n" +
-			"     │                                   │           ├─ SelectedExprs(COUNT(1))\n" +
+			"     │                                   │           ├─ SelectDeps(COUNT(1))\n" +
 			"     │                                   │           ├─ Grouping()\n" +
 			"     │                                   │           └─ Filter\n" +
 			"     │                                   │               ├─ (flqlp.LUEVY = nd.id)\n" +
@@ -1397,7 +1295,7 @@ WHERE
 			"     │               └─ Project\n" +
 			"     │                   ├─ columns: [count(wooj5.zh72s), min(wooj5.lea4j), sum(wooj5.lea4j), wooj5.ZH72S, wooj5.ZH72S as ZH72S, count(wooj5.zh72s) as JTOA7, min(wooj5.lea4j) as BADTB, sum(wooj5.lea4j) as FLHXH]\n" +
 			"     │                   └─ GroupBy\n" +
-			"     │                       ├─ SelectedExprs(COUNT(wooj5.ZH72S), MIN(wooj5.LEA4J), SUM(wooj5.LEA4J), wooj5.ZH72S)\n" +
+			"     │                       ├─ SelectDeps(COUNT(wooj5.ZH72S), MIN(wooj5.LEA4J), SUM(wooj5.LEA4J), wooj5.ZH72S)\n" +
 			"     │                       ├─ Grouping(wooj5.ZH72S)\n" +
 			"     │                       └─ SubqueryAlias\n" +
 			"     │                           ├─ name: wooj5\n" +
@@ -1410,7 +1308,7 @@ WHERE
 			"     │                               │   └─ Project\n" +
 			"     │                               │       ├─ columns: [count(1) as COUNT(*)]\n" +
 			"     │                               │       └─ GroupBy\n" +
-			"     │                               │           ├─ SelectedExprs(COUNT(1))\n" +
+			"     │                               │           ├─ SelectDeps(COUNT(1))\n" +
 			"     │                               │           ├─ Grouping()\n" +
 			"     │                               │           └─ Filter\n" +
 			"     │                               │               ├─ (flqlp.LUEVY = nd.id)\n" +
@@ -1425,7 +1323,7 @@ WHERE
 			"     │                                   │   └─ Project\n" +
 			"     │                                   │       ├─ columns: [count(1) as COUNT(*)]\n" +
 			"     │                                   │       └─ GroupBy\n" +
-			"     │                                   │           ├─ SelectedExprs(COUNT(1))\n" +
+			"     │                                   │           ├─ SelectDeps(COUNT(1))\n" +
 			"     │                                   │           ├─ Grouping()\n" +
 			"     │                                   │           └─ Filter\n" +
 			"     │                                   │               ├─ (flqlp.LUEVY = nd.id)\n" +
@@ -1674,38 +1572,7 @@ WHERE
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [ct.id as id, ci.FTQLQ as VCGT3, nd.TW55N as UWBAI, aac.BTXC5 as TPXBU, ct.V5DPX as V5DPX, ct.S3Q3Y as S3Q3Y, ct.ZRV3B as ZRV3B]\n" +
 			" └─ Filter\n" +
-			"     ├─ (((NOT(ct.OCA7E IS NULL)) AND ((Subquery\n" +
-			"     │   ├─ cacheable: false\n" +
-			"     │   └─ Project\n" +
-			"     │       ├─ columns: [i7hcr.SWCQV]\n" +
-			"     │       └─ Filter\n" +
-			"     │           ├─ (i7hcr.id = ct.OCA7E)\n" +
-			"     │           └─ TableAlias(i7hcr)\n" +
-			"     │               └─ IndexedTableAccess(EPZU6)\n" +
-			"     │                   ├─ index: [EPZU6.id]\n" +
-			"     │                   ├─ columns: [id swcqv]\n" +
-			"     │                   └─ keys: ct.OCA7E\n" +
-			"     │   = 1) OR (NOT((Subquery\n" +
-			"     │   ├─ cacheable: false\n" +
-			"     │   └─ Project\n" +
-			"     │       ├─ columns: [nd.id]\n" +
-			"     │       └─ Filter\n" +
-			"     │           ├─ (nd.TW55N = Subquery\n" +
-			"     │           │   ├─ cacheable: false\n" +
-			"     │           │   └─ Project\n" +
-			"     │           │       ├─ columns: [i7hcr.FVUCX]\n" +
-			"     │           │       └─ Filter\n" +
-			"     │           │           ├─ (i7hcr.id = ct.OCA7E)\n" +
-			"     │           │           └─ TableAlias(i7hcr)\n" +
-			"     │           │               └─ IndexedTableAccess(EPZU6)\n" +
-			"     │           │                   ├─ index: [EPZU6.id]\n" +
-			"     │           │                   ├─ columns: [id fvucx]\n" +
-			"     │           │                   └─ keys: ct.OCA7E\n" +
-			"     │           │  )\n" +
-			"     │           └─ TableAlias(nd)\n" +
-			"     │               └─ Table\n" +
-			"     │                   └─ name: E2I7U\n" +
-			"     │   = ct.LUEVY))))) OR ((NOT(ct.NRURT IS NULL)) AND InSubquery\n" +
+			"     ├─ (((NOT(ct.OCA7E IS NULL)) AND ((Subquery(select I7HCR.SWCQV from EPZU6 as I7HCR where I7HCR.id = ct.OCA7E) = 1) OR (NOT((Subquery(select nd.id from E2I7U as nd where nd.TW55N = (select I7HCR.FVUCX from EPZU6 as I7HCR where I7HCR.id = ct.OCA7E)) = ct.LUEVY))))) OR ((NOT(ct.NRURT IS NULL)) AND InSubquery\n" +
 			"     │   ├─ left: ct.NRURT\n" +
 			"     │   └─ right: Subquery\n" +
 			"     │       ├─ cacheable: true\n" +
@@ -1763,38 +1630,7 @@ WHERE
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [ct.id as id, ci.FTQLQ as VCGT3, nd.TW55N as UWBAI, aac.BTXC5 as TPXBU, ct.V5DPX as V5DPX, ct.S3Q3Y as S3Q3Y, ct.ZRV3B as ZRV3B]\n" +
 			" └─ Filter\n" +
-			"     ├─ (((NOT(ct.OCA7E IS NULL)) AND ((Subquery\n" +
-			"     │   ├─ cacheable: false\n" +
-			"     │   └─ Project\n" +
-			"     │       ├─ columns: [i7hcr.SWCQV]\n" +
-			"     │       └─ Filter\n" +
-			"     │           ├─ (i7hcr.id = ct.OCA7E)\n" +
-			"     │           └─ TableAlias(i7hcr)\n" +
-			"     │               └─ IndexedTableAccess(EPZU6)\n" +
-			"     │                   ├─ index: [EPZU6.id]\n" +
-			"     │                   ├─ columns: [id swcqv]\n" +
-			"     │                   └─ keys: ct.OCA7E\n" +
-			"     │   = 1) OR (NOT((Subquery\n" +
-			"     │   ├─ cacheable: false\n" +
-			"     │   └─ Project\n" +
-			"     │       ├─ columns: [nd.id]\n" +
-			"     │       └─ Filter\n" +
-			"     │           ├─ (nd.TW55N = Subquery\n" +
-			"     │           │   ├─ cacheable: false\n" +
-			"     │           │   └─ Project\n" +
-			"     │           │       ├─ columns: [i7hcr.FVUCX]\n" +
-			"     │           │       └─ Filter\n" +
-			"     │           │           ├─ (i7hcr.id = ct.OCA7E)\n" +
-			"     │           │           └─ TableAlias(i7hcr)\n" +
-			"     │           │               └─ IndexedTableAccess(EPZU6)\n" +
-			"     │           │                   ├─ index: [EPZU6.id]\n" +
-			"     │           │                   ├─ columns: [id fvucx]\n" +
-			"     │           │                   └─ keys: ct.OCA7E\n" +
-			"     │           │  )\n" +
-			"     │           └─ TableAlias(nd)\n" +
-			"     │               └─ Table\n" +
-			"     │                   └─ name: E2I7U\n" +
-			"     │   = ct.LUEVY))))) OR ((NOT(ct.NRURT IS NULL)) AND InSubquery\n" +
+			"     ├─ (((NOT(ct.OCA7E IS NULL)) AND ((Subquery(select I7HCR.SWCQV from EPZU6 as I7HCR where I7HCR.id = ct.OCA7E) = 1) OR (NOT((Subquery(select nd.id from E2I7U as nd where nd.TW55N = (select I7HCR.FVUCX from EPZU6 as I7HCR where I7HCR.id = ct.OCA7E)) = ct.LUEVY))))) OR ((NOT(ct.NRURT IS NULL)) AND InSubquery\n" +
 			"     │   ├─ left: ct.NRURT\n" +
 			"     │   └─ right: Subquery\n" +
 			"     │       ├─ cacheable: true\n" +
@@ -3046,7 +2882,7 @@ WHERE
 			"     │                   ├─ columns: [s7byt.SSHPJ, s7byt.SFJ6L]\n" +
 			"     │                   └─ Filter\n" +
 			"     │                       ├─ we72e.SSHPJ IS NULL\n" +
-			"     │                       └─ LeftOuterLookupJoin\n" +
+			"     │                       └─ LeftOuterLookupJoin (estimated cost=405.900 rows=124)\n" +
 			"     │                           ├─ SubqueryAlias\n" +
 			"     │                           │   ├─ name: s7byt\n" +
 			"     │                           │   ├─ outerVisibility: true\n" +
@@ -3111,7 +2947,7 @@ WHERE
 			"     │                   ├─ columns: [s7byt.SSHPJ, s7byt.SFJ6L]\n" +
 			"     │                   └─ Filter\n" +
 			"     │                       ├─ we72e.SSHPJ IS NULL\n" +
-			"     │                       └─ LeftOuterLookupJoin\n" +
+			"     │                       └─ LeftOuterLookupJoin (estimated cost=405.900 rows=124)\n" +
 			"     │                           ├─ SubqueryAlias\n" +
 			"     │                           │   ├─ name: s7byt\n" +
 			"     │                           │   ├─ outerVisibility: true\n" +
@@ -3293,7 +3129,7 @@ WHERE
 			"     │               └─ Project\n" +
 			"     │                   ├─ columns: [count(tq57w.zh72s), min(tq57w.tj66d), sum(tq57w.tj66d), tq57w.ZH72S, tq57w.ZH72S as ZH72S, count(tq57w.zh72s) as JTOA7, min(tq57w.tj66d) as B4OVH, sum(tq57w.tj66d) as R5CKX]\n" +
 			"     │                   └─ GroupBy\n" +
-			"     │                       ├─ SelectedExprs(COUNT(tq57w.ZH72S), MIN(tq57w.TJ66D), SUM(tq57w.TJ66D), tq57w.ZH72S)\n" +
+			"     │                       ├─ SelectDeps(COUNT(tq57w.ZH72S), MIN(tq57w.TJ66D), SUM(tq57w.TJ66D), tq57w.ZH72S)\n" +
 			"     │                       ├─ Grouping(tq57w.ZH72S)\n" +
 			"     │                       └─ SubqueryAlias\n" +
 			"     │                           ├─ name: tq57w\n" +
@@ -3306,7 +3142,7 @@ WHERE
 			"     │                               │   └─ Project\n" +
 			"     │                               │       ├─ columns: [count(1) as COUNT(*)]\n" +
 			"     │                               │       └─ GroupBy\n" +
-			"     │                               │           ├─ SelectedExprs(COUNT(1))\n" +
+			"     │                               │           ├─ SelectDeps(COUNT(1))\n" +
 			"     │                               │           ├─ Grouping()\n" +
 			"     │                               │           └─ Filter\n" +
 			"     │                               │               ├─ (amyxq.LUEVY = nd.id)\n" +
@@ -3321,7 +3157,7 @@ WHERE
 			"     │                                   │   └─ Project\n" +
 			"     │                                   │       ├─ columns: [count(1) as COUNT(*)]\n" +
 			"     │                                   │       └─ GroupBy\n" +
-			"     │                                   │           ├─ SelectedExprs(COUNT(1))\n" +
+			"     │                                   │           ├─ SelectDeps(COUNT(1))\n" +
 			"     │                                   │           ├─ Grouping()\n" +
 			"     │                                   │           └─ Filter\n" +
 			"     │                                   │               ├─ (amyxq.LUEVY = nd.id)\n" +
@@ -3357,7 +3193,7 @@ WHERE
 			"     │               └─ Project\n" +
 			"     │                   ├─ columns: [count(tq57w.zh72s), min(tq57w.tj66d), sum(tq57w.tj66d), tq57w.ZH72S, tq57w.ZH72S as ZH72S, count(tq57w.zh72s) as JTOA7, min(tq57w.tj66d) as B4OVH, sum(tq57w.tj66d) as R5CKX]\n" +
 			"     │                   └─ GroupBy\n" +
-			"     │                       ├─ SelectedExprs(COUNT(tq57w.ZH72S), MIN(tq57w.TJ66D), SUM(tq57w.TJ66D), tq57w.ZH72S)\n" +
+			"     │                       ├─ SelectDeps(COUNT(tq57w.ZH72S), MIN(tq57w.TJ66D), SUM(tq57w.TJ66D), tq57w.ZH72S)\n" +
 			"     │                       ├─ Grouping(tq57w.ZH72S)\n" +
 			"     │                       └─ SubqueryAlias\n" +
 			"     │                           ├─ name: tq57w\n" +
@@ -3370,7 +3206,7 @@ WHERE
 			"     │                               │   └─ Project\n" +
 			"     │                               │       ├─ columns: [count(1) as COUNT(*)]\n" +
 			"     │                               │       └─ GroupBy\n" +
-			"     │                               │           ├─ SelectedExprs(COUNT(1))\n" +
+			"     │                               │           ├─ SelectDeps(COUNT(1))\n" +
 			"     │                               │           ├─ Grouping()\n" +
 			"     │                               │           └─ Filter\n" +
 			"     │                               │               ├─ (amyxq.LUEVY = nd.id)\n" +
@@ -3385,7 +3221,7 @@ WHERE
 			"     │                                   │   └─ Project\n" +
 			"     │                                   │       ├─ columns: [count(1) as COUNT(*)]\n" +
 			"     │                                   │       └─ GroupBy\n" +
-			"     │                                   │           ├─ SelectedExprs(COUNT(1))\n" +
+			"     │                                   │           ├─ SelectDeps(COUNT(1))\n" +
 			"     │                                   │           ├─ Grouping()\n" +
 			"     │                                   │           └─ Filter\n" +
 			"     │                                   │               ├─ (amyxq.LUEVY = nd.id)\n" +
@@ -4043,38 +3879,7 @@ WHERE
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [mf.id as id, cla.FTQLQ as T4IBQ, nd.TW55N as UWBAI, aac.BTXC5 as TPXBU, mf.FSDY2 as FSDY2]\n" +
 			" └─ Filter\n" +
-			"     ├─ (((NOT(mf.QQV4M IS NULL)) AND ((Subquery\n" +
-			"     │   ├─ cacheable: false\n" +
-			"     │   └─ Project\n" +
-			"     │       ├─ columns: [tj5d2.SWCQV]\n" +
-			"     │       └─ Filter\n" +
-			"     │           ├─ (tj5d2.id = mf.QQV4M)\n" +
-			"     │           └─ TableAlias(tj5d2)\n" +
-			"     │               └─ IndexedTableAccess(SZW6V)\n" +
-			"     │                   ├─ index: [SZW6V.id]\n" +
-			"     │                   ├─ columns: [id swcqv]\n" +
-			"     │                   └─ keys: mf.QQV4M\n" +
-			"     │   = 1) OR (NOT((Subquery\n" +
-			"     │   ├─ cacheable: false\n" +
-			"     │   └─ Project\n" +
-			"     │       ├─ columns: [nd.id]\n" +
-			"     │       └─ Filter\n" +
-			"     │           ├─ (nd.TW55N = Subquery\n" +
-			"     │           │   ├─ cacheable: false\n" +
-			"     │           │   └─ Project\n" +
-			"     │           │       ├─ columns: [tj5d2.H4DMT]\n" +
-			"     │           │       └─ Filter\n" +
-			"     │           │           ├─ (tj5d2.id = mf.QQV4M)\n" +
-			"     │           │           └─ TableAlias(tj5d2)\n" +
-			"     │           │               └─ IndexedTableAccess(SZW6V)\n" +
-			"     │           │                   ├─ index: [SZW6V.id]\n" +
-			"     │           │                   ├─ columns: [id h4dmt]\n" +
-			"     │           │                   └─ keys: mf.QQV4M\n" +
-			"     │           │  )\n" +
-			"     │           └─ TableAlias(nd)\n" +
-			"     │               └─ Table\n" +
-			"     │                   └─ name: E2I7U\n" +
-			"     │   = mf.LUEVY))))) OR ((NOT(mf.TEUJA IS NULL)) AND InSubquery\n" +
+			"     ├─ (((NOT(mf.QQV4M IS NULL)) AND ((Subquery(select TJ5D2.SWCQV from SZW6V as TJ5D2 where TJ5D2.id = mf.QQV4M) = 1) OR (NOT((Subquery(select nd.id from E2I7U as nd where nd.TW55N = (select TJ5D2.H4DMT from SZW6V as TJ5D2 where TJ5D2.id = mf.QQV4M)) = mf.LUEVY))))) OR ((NOT(mf.TEUJA IS NULL)) AND InSubquery\n" +
 			"     │   ├─ left: mf.TEUJA\n" +
 			"     │   └─ right: Subquery\n" +
 			"     │       ├─ cacheable: true\n" +
@@ -4140,38 +3945,7 @@ WHERE
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [mf.id as id, cla.FTQLQ as T4IBQ, nd.TW55N as UWBAI, aac.BTXC5 as TPXBU, mf.FSDY2 as FSDY2]\n" +
 			" └─ Filter\n" +
-			"     ├─ (((NOT(mf.QQV4M IS NULL)) AND ((Subquery\n" +
-			"     │   ├─ cacheable: false\n" +
-			"     │   └─ Project\n" +
-			"     │       ├─ columns: [tj5d2.SWCQV]\n" +
-			"     │       └─ Filter\n" +
-			"     │           ├─ (tj5d2.id = mf.QQV4M)\n" +
-			"     │           └─ TableAlias(tj5d2)\n" +
-			"     │               └─ IndexedTableAccess(SZW6V)\n" +
-			"     │                   ├─ index: [SZW6V.id]\n" +
-			"     │                   ├─ columns: [id swcqv]\n" +
-			"     │                   └─ keys: mf.QQV4M\n" +
-			"     │   = 1) OR (NOT((Subquery\n" +
-			"     │   ├─ cacheable: false\n" +
-			"     │   └─ Project\n" +
-			"     │       ├─ columns: [nd.id]\n" +
-			"     │       └─ Filter\n" +
-			"     │           ├─ (nd.TW55N = Subquery\n" +
-			"     │           │   ├─ cacheable: false\n" +
-			"     │           │   └─ Project\n" +
-			"     │           │       ├─ columns: [tj5d2.H4DMT]\n" +
-			"     │           │       └─ Filter\n" +
-			"     │           │           ├─ (tj5d2.id = mf.QQV4M)\n" +
-			"     │           │           └─ TableAlias(tj5d2)\n" +
-			"     │           │               └─ IndexedTableAccess(SZW6V)\n" +
-			"     │           │                   ├─ index: [SZW6V.id]\n" +
-			"     │           │                   ├─ columns: [id h4dmt]\n" +
-			"     │           │                   └─ keys: mf.QQV4M\n" +
-			"     │           │  )\n" +
-			"     │           └─ TableAlias(nd)\n" +
-			"     │               └─ Table\n" +
-			"     │                   └─ name: E2I7U\n" +
-			"     │   = mf.LUEVY))))) OR ((NOT(mf.TEUJA IS NULL)) AND InSubquery\n" +
+			"     ├─ (((NOT(mf.QQV4M IS NULL)) AND ((Subquery(select TJ5D2.SWCQV from SZW6V as TJ5D2 where TJ5D2.id = mf.QQV4M) = 1) OR (NOT((Subquery(select nd.id from E2I7U as nd where nd.TW55N = (select TJ5D2.H4DMT from SZW6V as TJ5D2 where TJ5D2.id = mf.QQV4M)) = mf.LUEVY))))) OR ((NOT(mf.TEUJA IS NULL)) AND InSubquery\n" +
 			"     │   ├─ left: mf.TEUJA\n" +
 			"     │   └─ right: Subquery\n" +
 			"     │       ├─ cacheable: true\n" +
@@ -5029,16 +4803,7 @@ WHERE
 			"             │               │           │   ├─ (ci.id = ct.FZ2R5)\n" +
 			"             │               │           │   ├─ MergeJoin\n" +
 			"             │               │           │   │   ├─ cmp: (sn.BRQP2 = ct.LUEVY)\n" +
-			"             │               │           │   │   ├─ sel: (ct.M22QN = Subquery\n" +
-			"             │               │           │   │   │   ├─ cacheable: true\n" +
-			"             │               │           │   │   │   └─ Project\n" +
-			"             │               │           │   │   │       ├─ columns: [aac.id]\n" +
-			"             │               │           │   │   │       └─ TableAlias(aac)\n" +
-			"             │               │           │   │   │           └─ IndexedTableAccess(TPXBU)\n" +
-			"             │               │           │   │   │               ├─ index: [TPXBU.BTXC5]\n" +
-			"             │               │           │   │   │               ├─ filters: [{[WT, WT]}]\n" +
-			"             │               │           │   │   │               └─ columns: [id btxc5]\n" +
-			"             │               │           │   │   │  )\n" +
+			"             │               │           │   │   ├─ sel: (ct.M22QN = Subquery(select aac.id from TPXBU as aac where BTXC5 = 'WT'))\n" +
 			"             │               │           │   │   ├─ TableAlias(sn)\n" +
 			"             │               │           │   │   │   └─ IndexedTableAccess(NOXN3)\n" +
 			"             │               │           │   │   │       ├─ index: [NOXN3.BRQP2]\n" +
@@ -5246,16 +5011,7 @@ WHERE
 			"             │               │           │   ├─ (ci.id = ct.FZ2R5)\n" +
 			"             │               │           │   ├─ MergeJoin\n" +
 			"             │               │           │   │   ├─ cmp: (sn.BRQP2 = ct.LUEVY)\n" +
-			"             │               │           │   │   ├─ sel: (ct.M22QN = Subquery\n" +
-			"             │               │           │   │   │   ├─ cacheable: true\n" +
-			"             │               │           │   │   │   └─ Project\n" +
-			"             │               │           │   │   │       ├─ columns: [aac.id]\n" +
-			"             │               │           │   │   │       └─ TableAlias(aac)\n" +
-			"             │               │           │   │   │           └─ IndexedTableAccess(TPXBU)\n" +
-			"             │               │           │   │   │               ├─ index: [TPXBU.BTXC5]\n" +
-			"             │               │           │   │   │               ├─ filters: [{[WT, WT]}]\n" +
-			"             │               │           │   │   │               └─ columns: [id btxc5]\n" +
-			"             │               │           │   │   │  )\n" +
+			"             │               │           │   │   ├─ sel: (ct.M22QN = Subquery(select aac.id from TPXBU as aac where BTXC5 = 'WT'))\n" +
 			"             │               │           │   │   ├─ TableAlias(sn)\n" +
 			"             │               │           │   │   │   └─ IndexedTableAccess(NOXN3)\n" +
 			"             │               │           │   │   │       ├─ index: [NOXN3.BRQP2]\n" +
@@ -5893,16 +5649,7 @@ WHERE
 			"             │               │           │   ├─ (ci.id = ct.FZ2R5)\n" +
 			"             │               │           │   ├─ MergeJoin\n" +
 			"             │               │           │   │   ├─ cmp: (sn.BRQP2 = ct.LUEVY)\n" +
-			"             │               │           │   │   ├─ sel: (ct.M22QN = Subquery\n" +
-			"             │               │           │   │   │   ├─ cacheable: true\n" +
-			"             │               │           │   │   │   └─ Project\n" +
-			"             │               │           │   │   │       ├─ columns: [aac.id]\n" +
-			"             │               │           │   │   │       └─ TableAlias(aac)\n" +
-			"             │               │           │   │   │           └─ IndexedTableAccess(TPXBU)\n" +
-			"             │               │           │   │   │               ├─ index: [TPXBU.BTXC5]\n" +
-			"             │               │           │   │   │               ├─ filters: [{[WT, WT]}]\n" +
-			"             │               │           │   │   │               └─ columns: [id btxc5]\n" +
-			"             │               │           │   │   │  )\n" +
+			"             │               │           │   │   ├─ sel: (ct.M22QN = Subquery(select aac.id from TPXBU as aac where BTXC5 = 'WT'))\n" +
 			"             │               │           │   │   ├─ TableAlias(sn)\n" +
 			"             │               │           │   │   │   └─ IndexedTableAccess(NOXN3)\n" +
 			"             │               │           │   │   │       ├─ index: [NOXN3.BRQP2]\n" +
@@ -6104,16 +5851,7 @@ WHERE
 			"             │               │           │   ├─ (ci.id = ct.FZ2R5)\n" +
 			"             │               │           │   ├─ MergeJoin\n" +
 			"             │               │           │   │   ├─ cmp: (sn.BRQP2 = ct.LUEVY)\n" +
-			"             │               │           │   │   ├─ sel: (ct.M22QN = Subquery\n" +
-			"             │               │           │   │   │   ├─ cacheable: true\n" +
-			"             │               │           │   │   │   └─ Project\n" +
-			"             │               │           │   │   │       ├─ columns: [aac.id]\n" +
-			"             │               │           │   │   │       └─ TableAlias(aac)\n" +
-			"             │               │           │   │   │           └─ IndexedTableAccess(TPXBU)\n" +
-			"             │               │           │   │   │               ├─ index: [TPXBU.BTXC5]\n" +
-			"             │               │           │   │   │               ├─ filters: [{[WT, WT]}]\n" +
-			"             │               │           │   │   │               └─ columns: [id btxc5]\n" +
-			"             │               │           │   │   │  )\n" +
+			"             │               │           │   │   ├─ sel: (ct.M22QN = Subquery(select aac.id from TPXBU as aac where BTXC5 = 'WT'))\n" +
 			"             │               │           │   │   ├─ TableAlias(sn)\n" +
 			"             │               │           │   │   │   └─ IndexedTableAccess(NOXN3)\n" +
 			"             │               │           │   │   │       ├─ index: [NOXN3.BRQP2]\n" +
@@ -7124,7 +6862,7 @@ WHERE
 	           YHYLK
 	       FROM
 	           AX7FV) NRFJ3
-	   GROUP BY T4IBQ, ECUWU, GSTQA
+	   GROUP BY T4IBQ, ECUWU, GSTQA, B5OUF
 	) XPRW6
 	GROUP BY T4IBQ, ECUWU`,
 		ExpectedPlan: "Project\n" +
@@ -7150,7 +6888,7 @@ WHERE
 			"                 │       ├─ nrfj3.YHYLK:6\n" +
 			"                 │       └─ 0 (tinyint)\n" +
 			"                 │   THEN 1 (tinyint) ELSE 0 (tinyint) END), nrfj3.T4IBQ:0!null, nrfj3.ECUWU:1!null, nrfj3.GSTQA:2!null, nrfj3.B5OUF:3\n" +
-			"                 ├─ group: nrfj3.T4IBQ:0!null, nrfj3.ECUWU:1!null, nrfj3.GSTQA:2!null\n" +
+			"                 ├─ group: nrfj3.T4IBQ:0!null, nrfj3.ECUWU:1!null, nrfj3.GSTQA:2!null, nrfj3.B5OUF:3\n" +
 			"                 └─ SubqueryAlias\n" +
 			"                     ├─ name: nrfj3\n" +
 			"                     ├─ outerVisibility: false\n" +
@@ -7509,7 +7247,7 @@ WHERE
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [xprw6.T4IBQ as T4IBQ, xprw6.ECUWU as ECUWU, sum(xprw6.b5ouf) as B5OUF, sum(xprw6.sp4si) as SP4SI]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(SUM(xprw6.B5OUF), SUM(xprw6.SP4SI), xprw6.T4IBQ, xprw6.ECUWU)\n" +
+			"     ├─ SelectDeps(SUM(xprw6.B5OUF), SUM(xprw6.SP4SI), xprw6.T4IBQ, xprw6.ECUWU)\n" +
 			"     ├─ Grouping(xprw6.T4IBQ, xprw6.ECUWU)\n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: xprw6\n" +
@@ -7519,8 +7257,8 @@ WHERE
 			"         └─ Project\n" +
 			"             ├─ columns: [nrfj3.T4IBQ as T4IBQ, nrfj3.ECUWU as ECUWU, nrfj3.GSTQA as GSTQA, nrfj3.B5OUF as B5OUF, sum(case  when ((nrfj3.oztqf < 0.5) or (nrfj3.yhylk = 0)) then 1 else 0 end) as SP4SI]\n" +
 			"             └─ GroupBy\n" +
-			"                 ├─ SelectedExprs(SUM(CASE  WHEN ((nrfj3.OZTQF < 0.5) OR (nrfj3.YHYLK = 0)) THEN 1 ELSE 0 END), nrfj3.T4IBQ, nrfj3.ECUWU, nrfj3.GSTQA, nrfj3.B5OUF)\n" +
-			"                 ├─ Grouping(nrfj3.T4IBQ, nrfj3.ECUWU, nrfj3.GSTQA)\n" +
+			"                 ├─ SelectDeps(SUM(CASE  WHEN ((nrfj3.OZTQF < 0.5) OR (nrfj3.YHYLK = 0)) THEN 1 ELSE 0 END), nrfj3.T4IBQ, nrfj3.ECUWU, nrfj3.GSTQA, nrfj3.B5OUF)\n" +
+			"                 ├─ Grouping(nrfj3.T4IBQ, nrfj3.ECUWU, nrfj3.GSTQA, nrfj3.B5OUF)\n" +
 			"                 └─ SubqueryAlias\n" +
 			"                     ├─ name: nrfj3\n" +
 			"                     ├─ outerVisibility: false\n" +
@@ -7700,7 +7438,7 @@ WHERE
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [xprw6.T4IBQ as T4IBQ, xprw6.ECUWU as ECUWU, sum(xprw6.b5ouf) as B5OUF, sum(xprw6.sp4si) as SP4SI]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(SUM(xprw6.B5OUF), SUM(xprw6.SP4SI), xprw6.T4IBQ, xprw6.ECUWU)\n" +
+			"     ├─ SelectDeps(SUM(xprw6.B5OUF), SUM(xprw6.SP4SI), xprw6.T4IBQ, xprw6.ECUWU)\n" +
 			"     ├─ Grouping(xprw6.T4IBQ, xprw6.ECUWU)\n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: xprw6\n" +
@@ -7710,8 +7448,8 @@ WHERE
 			"         └─ Project\n" +
 			"             ├─ columns: [nrfj3.T4IBQ as T4IBQ, nrfj3.ECUWU as ECUWU, nrfj3.GSTQA as GSTQA, nrfj3.B5OUF as B5OUF, sum(case  when ((nrfj3.oztqf < 0.5) or (nrfj3.yhylk = 0)) then 1 else 0 end) as SP4SI]\n" +
 			"             └─ GroupBy\n" +
-			"                 ├─ SelectedExprs(SUM(CASE  WHEN ((nrfj3.OZTQF < 0.5) OR (nrfj3.YHYLK = 0)) THEN 1 ELSE 0 END), nrfj3.T4IBQ, nrfj3.ECUWU, nrfj3.GSTQA, nrfj3.B5OUF)\n" +
-			"                 ├─ Grouping(nrfj3.T4IBQ, nrfj3.ECUWU, nrfj3.GSTQA)\n" +
+			"                 ├─ SelectDeps(SUM(CASE  WHEN ((nrfj3.OZTQF < 0.5) OR (nrfj3.YHYLK = 0)) THEN 1 ELSE 0 END), nrfj3.T4IBQ, nrfj3.ECUWU, nrfj3.GSTQA, nrfj3.B5OUF)\n" +
+			"                 ├─ Grouping(nrfj3.T4IBQ, nrfj3.ECUWU, nrfj3.GSTQA, nrfj3.B5OUF)\n" +
 			"                 └─ SubqueryAlias\n" +
 			"                     ├─ name: nrfj3\n" +
 			"                     ├─ outerVisibility: false\n" +
@@ -7999,7 +7737,7 @@ WHERE
 	           YHYLK
 	       FROM
 	           AX7FV) NRFJ3
-	   GROUP BY T4IBQ, ECUWU, GSTQA
+	   GROUP BY T4IBQ, ECUWU, GSTQA, B5OUF
 	) XPRW6
 	GROUP BY T4IBQ, ECUWU`,
 		ExpectedPlan: "Project\n" +
@@ -8025,7 +7763,7 @@ WHERE
 			"                 │       ├─ nrfj3.YHYLK:6\n" +
 			"                 │       └─ 0 (tinyint)\n" +
 			"                 │   THEN 1 (tinyint) ELSE 0 (tinyint) END), nrfj3.T4IBQ:0!null, nrfj3.ECUWU:1!null, nrfj3.GSTQA:2!null, nrfj3.B5OUF:3\n" +
-			"                 ├─ group: nrfj3.T4IBQ:0!null, nrfj3.ECUWU:1!null, nrfj3.GSTQA:2!null\n" +
+			"                 ├─ group: nrfj3.T4IBQ:0!null, nrfj3.ECUWU:1!null, nrfj3.GSTQA:2!null, nrfj3.B5OUF:3\n" +
 			"                 └─ SubqueryAlias\n" +
 			"                     ├─ name: nrfj3\n" +
 			"                     ├─ outerVisibility: false\n" +
@@ -8383,7 +8121,7 @@ WHERE
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [xprw6.T4IBQ as T4IBQ, xprw6.ECUWU as ECUWU, sum(xprw6.b5ouf) as B5OUF, sum(xprw6.sp4si) as SP4SI]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(SUM(xprw6.B5OUF), SUM(xprw6.SP4SI), xprw6.T4IBQ, xprw6.ECUWU)\n" +
+			"     ├─ SelectDeps(SUM(xprw6.B5OUF), SUM(xprw6.SP4SI), xprw6.T4IBQ, xprw6.ECUWU)\n" +
 			"     ├─ Grouping(xprw6.T4IBQ, xprw6.ECUWU)\n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: xprw6\n" +
@@ -8393,8 +8131,8 @@ WHERE
 			"         └─ Project\n" +
 			"             ├─ columns: [nrfj3.T4IBQ as T4IBQ, nrfj3.ECUWU as ECUWU, nrfj3.GSTQA as GSTQA, nrfj3.B5OUF as B5OUF, sum(case  when ((nrfj3.oztqf < 0.5) or (nrfj3.yhylk = 0)) then 1 else 0 end) as SP4SI]\n" +
 			"             └─ GroupBy\n" +
-			"                 ├─ SelectedExprs(SUM(CASE  WHEN ((nrfj3.OZTQF < 0.5) OR (nrfj3.YHYLK = 0)) THEN 1 ELSE 0 END), nrfj3.T4IBQ, nrfj3.ECUWU, nrfj3.GSTQA, nrfj3.B5OUF)\n" +
-			"                 ├─ Grouping(nrfj3.T4IBQ, nrfj3.ECUWU, nrfj3.GSTQA)\n" +
+			"                 ├─ SelectDeps(SUM(CASE  WHEN ((nrfj3.OZTQF < 0.5) OR (nrfj3.YHYLK = 0)) THEN 1 ELSE 0 END), nrfj3.T4IBQ, nrfj3.ECUWU, nrfj3.GSTQA, nrfj3.B5OUF)\n" +
+			"                 ├─ Grouping(nrfj3.T4IBQ, nrfj3.ECUWU, nrfj3.GSTQA, nrfj3.B5OUF)\n" +
 			"                 └─ SubqueryAlias\n" +
 			"                     ├─ name: nrfj3\n" +
 			"                     ├─ outerVisibility: false\n" +
@@ -8575,7 +8313,7 @@ WHERE
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [xprw6.T4IBQ as T4IBQ, xprw6.ECUWU as ECUWU, sum(xprw6.b5ouf) as B5OUF, sum(xprw6.sp4si) as SP4SI]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(SUM(xprw6.B5OUF), SUM(xprw6.SP4SI), xprw6.T4IBQ, xprw6.ECUWU)\n" +
+			"     ├─ SelectDeps(SUM(xprw6.B5OUF), SUM(xprw6.SP4SI), xprw6.T4IBQ, xprw6.ECUWU)\n" +
 			"     ├─ Grouping(xprw6.T4IBQ, xprw6.ECUWU)\n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: xprw6\n" +
@@ -8585,8 +8323,8 @@ WHERE
 			"         └─ Project\n" +
 			"             ├─ columns: [nrfj3.T4IBQ as T4IBQ, nrfj3.ECUWU as ECUWU, nrfj3.GSTQA as GSTQA, nrfj3.B5OUF as B5OUF, sum(case  when ((nrfj3.oztqf < 0.5) or (nrfj3.yhylk = 0)) then 1 else 0 end) as SP4SI]\n" +
 			"             └─ GroupBy\n" +
-			"                 ├─ SelectedExprs(SUM(CASE  WHEN ((nrfj3.OZTQF < 0.5) OR (nrfj3.YHYLK = 0)) THEN 1 ELSE 0 END), nrfj3.T4IBQ, nrfj3.ECUWU, nrfj3.GSTQA, nrfj3.B5OUF)\n" +
-			"                 ├─ Grouping(nrfj3.T4IBQ, nrfj3.ECUWU, nrfj3.GSTQA)\n" +
+			"                 ├─ SelectDeps(SUM(CASE  WHEN ((nrfj3.OZTQF < 0.5) OR (nrfj3.YHYLK = 0)) THEN 1 ELSE 0 END), nrfj3.T4IBQ, nrfj3.ECUWU, nrfj3.GSTQA, nrfj3.B5OUF)\n" +
+			"                 ├─ Grouping(nrfj3.T4IBQ, nrfj3.ECUWU, nrfj3.GSTQA, nrfj3.B5OUF)\n" +
 			"                 └─ SubqueryAlias\n" +
 			"                     ├─ name: nrfj3\n" +
 			"                     ├─ outerVisibility: false\n" +
@@ -9031,7 +8769,7 @@ WHERE
 			"                         └─ Project\n" +
 			"                             ├─ columns: [amyxq.LUEVY as ZPAIK, max(amyxq.z35gy) as Z35GY]\n" +
 			"                             └─ GroupBy\n" +
-			"                                 ├─ SelectedExprs(MAX(amyxq.Z35GY), amyxq.LUEVY)\n" +
+			"                                 ├─ SelectDeps(MAX(amyxq.Z35GY), amyxq.LUEVY)\n" +
 			"                                 ├─ Grouping(amyxq.luevy)\n" +
 			"                                 └─ Table\n" +
 			"                                     ├─ name: AMYXQ\n" +
@@ -9070,7 +8808,7 @@ WHERE
 			"                         └─ Project\n" +
 			"                             ├─ columns: [amyxq.LUEVY as ZPAIK, max(amyxq.z35gy) as Z35GY]\n" +
 			"                             └─ GroupBy\n" +
-			"                                 ├─ SelectedExprs(MAX(amyxq.Z35GY), amyxq.LUEVY)\n" +
+			"                                 ├─ SelectDeps(MAX(amyxq.Z35GY), amyxq.LUEVY)\n" +
 			"                                 ├─ Grouping(amyxq.luevy)\n" +
 			"                                 └─ Table\n" +
 			"                                     ├─ name: AMYXQ\n" +
@@ -11053,77 +10791,9 @@ WHERE
 			"                     └─ tableId: 25\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [mf.FTQLQ as T4IBQ, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery\n" +
-			" │   ├─ cacheable: false\n" +
-			" │   └─ Project\n" +
-			" │       ├─ columns: [ei.M6T2N]\n" +
-			" │       └─ Filter\n" +
-			" │           ├─ (ei.id = mjr3d.QNI57)\n" +
-			" │           └─ SubqueryAlias\n" +
-			" │               ├─ name: ei\n" +
-			" │               ├─ outerVisibility: true\n" +
-			" │               ├─ isLateral: false\n" +
-			" │               ├─ cacheable: true\n" +
-			" │               └─ Project\n" +
-			" │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			" │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			" │                       └─ Table\n" +
-			" │                           ├─ name: NOXN3\n" +
-			" │                           └─ columns: [id]\n" +
-			" │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
-			" │   ├─ cacheable: false\n" +
-			" │   └─ Project\n" +
-			" │       ├─ columns: [ei.M6T2N]\n" +
-			" │       └─ Filter\n" +
-			" │           ├─ (ei.id = mjr3d.TDEIU)\n" +
-			" │           └─ SubqueryAlias\n" +
-			" │               ├─ name: ei\n" +
-			" │               ├─ outerVisibility: true\n" +
-			" │               ├─ isLateral: false\n" +
-			" │               ├─ cacheable: true\n" +
-			" │               └─ Project\n" +
-			" │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			" │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			" │                       └─ Table\n" +
-			" │                           ├─ name: NOXN3\n" +
-			" │                           └─ columns: [id]\n" +
-			" │   END as M6T2N, mjr3d.GE5EL as GE5EL, mjr3d.F7A4Q as F7A4Q, mjr3d.CC4AX as CC4AX, mjr3d.SL76B as SL76B, aac.BTXC5 as YEBDJ, mjr3d.PSMU6]\n" +
+			" ├─ columns: [mf.FTQLQ as T4IBQ, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.QNI57) WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.TDEIU) END as M6T2N, mjr3d.GE5EL as GE5EL, mjr3d.F7A4Q as F7A4Q, mjr3d.CC4AX as CC4AX, mjr3d.SL76B as SL76B, aac.BTXC5 as YEBDJ, mjr3d.PSMU6]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [mjr3d.FJDP5, mjr3d.BJUF2, mjr3d.PSMU6, mjr3d.M22QN, mjr3d.GE5EL, mjr3d.F7A4Q, mjr3d.ESFVY, mjr3d.CC4AX, mjr3d.SL76B, mjr3d.QNI57, mjr3d.TDEIU, sn.id, sn.BRQP2, sn.FFTBJ, sn.A7XO2, sn.KBO7R, sn.ECDKM, sn.NUMK2, sn.LETOE, sn.YKSSU, sn.FHCYT, mf.FTQLQ, mf.LUEVY, mf.M22QN, aac.id, aac.BTXC5, aac.FHCYT, mf.FTQLQ as T4IBQ, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery\n" +
-			"     │   ├─ cacheable: false\n" +
-			"     │   └─ Project\n" +
-			"     │       ├─ columns: [ei.M6T2N]\n" +
-			"     │       └─ Filter\n" +
-			"     │           ├─ (ei.id = mjr3d.QNI57)\n" +
-			"     │           └─ SubqueryAlias\n" +
-			"     │               ├─ name: ei\n" +
-			"     │               ├─ outerVisibility: true\n" +
-			"     │               ├─ isLateral: false\n" +
-			"     │               ├─ cacheable: true\n" +
-			"     │               └─ Project\n" +
-			"     │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			"     │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"     │                       └─ Table\n" +
-			"     │                           ├─ name: NOXN3\n" +
-			"     │                           └─ columns: [id]\n" +
-			"     │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
-			"     │   ├─ cacheable: false\n" +
-			"     │   └─ Project\n" +
-			"     │       ├─ columns: [ei.M6T2N]\n" +
-			"     │       └─ Filter\n" +
-			"     │           ├─ (ei.id = mjr3d.TDEIU)\n" +
-			"     │           └─ SubqueryAlias\n" +
-			"     │               ├─ name: ei\n" +
-			"     │               ├─ outerVisibility: true\n" +
-			"     │               ├─ isLateral: false\n" +
-			"     │               ├─ cacheable: true\n" +
-			"     │               └─ Project\n" +
-			"     │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			"     │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"     │                       └─ Table\n" +
-			"     │                           ├─ name: NOXN3\n" +
-			"     │                           └─ columns: [id]\n" +
-			"     │   END as M6T2N, mjr3d.GE5EL as GE5EL, mjr3d.F7A4Q as F7A4Q, mjr3d.CC4AX as CC4AX, mjr3d.SL76B as SL76B, aac.BTXC5 as YEBDJ]\n" +
+			"     ├─ columns: [mjr3d.FJDP5, mjr3d.BJUF2, mjr3d.PSMU6, mjr3d.M22QN, mjr3d.GE5EL, mjr3d.F7A4Q, mjr3d.ESFVY, mjr3d.CC4AX, mjr3d.SL76B, mjr3d.QNI57, mjr3d.TDEIU, sn.id, sn.BRQP2, sn.FFTBJ, sn.A7XO2, sn.KBO7R, sn.ECDKM, sn.NUMK2, sn.LETOE, sn.YKSSU, sn.FHCYT, mf.FTQLQ, mf.LUEVY, mf.M22QN, aac.id, aac.BTXC5, aac.FHCYT, mf.FTQLQ as T4IBQ, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.QNI57) WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.TDEIU) END as M6T2N, mjr3d.GE5EL as GE5EL, mjr3d.F7A4Q as F7A4Q, mjr3d.CC4AX as CC4AX, mjr3d.SL76B as SL76B, aac.BTXC5 as YEBDJ]\n" +
 			"     └─ HashJoin (estimated cost=427.500 rows=125)\n" +
 			"         ├─ (aac.id = mjr3d.M22QN)\n" +
 			"         ├─ HashJoin (estimated cost=427.500 rows=125)\n" +
@@ -11396,77 +11066,9 @@ WHERE
 			"                     └─ columns: [id btxc5 fhcyt]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [mf.FTQLQ as T4IBQ, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery\n" +
-			" │   ├─ cacheable: false\n" +
-			" │   └─ Project\n" +
-			" │       ├─ columns: [ei.M6T2N]\n" +
-			" │       └─ Filter\n" +
-			" │           ├─ (ei.id = mjr3d.QNI57)\n" +
-			" │           └─ SubqueryAlias\n" +
-			" │               ├─ name: ei\n" +
-			" │               ├─ outerVisibility: true\n" +
-			" │               ├─ isLateral: false\n" +
-			" │               ├─ cacheable: true\n" +
-			" │               └─ Project\n" +
-			" │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			" │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			" │                       └─ Table\n" +
-			" │                           ├─ name: NOXN3\n" +
-			" │                           └─ columns: [id]\n" +
-			" │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
-			" │   ├─ cacheable: false\n" +
-			" │   └─ Project\n" +
-			" │       ├─ columns: [ei.M6T2N]\n" +
-			" │       └─ Filter\n" +
-			" │           ├─ (ei.id = mjr3d.TDEIU)\n" +
-			" │           └─ SubqueryAlias\n" +
-			" │               ├─ name: ei\n" +
-			" │               ├─ outerVisibility: true\n" +
-			" │               ├─ isLateral: false\n" +
-			" │               ├─ cacheable: true\n" +
-			" │               └─ Project\n" +
-			" │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			" │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			" │                       └─ Table\n" +
-			" │                           ├─ name: NOXN3\n" +
-			" │                           └─ columns: [id]\n" +
-			" │   END as M6T2N, mjr3d.GE5EL as GE5EL, mjr3d.F7A4Q as F7A4Q, mjr3d.CC4AX as CC4AX, mjr3d.SL76B as SL76B, aac.BTXC5 as YEBDJ, mjr3d.PSMU6]\n" +
+			" ├─ columns: [mf.FTQLQ as T4IBQ, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.QNI57) WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.TDEIU) END as M6T2N, mjr3d.GE5EL as GE5EL, mjr3d.F7A4Q as F7A4Q, mjr3d.CC4AX as CC4AX, mjr3d.SL76B as SL76B, aac.BTXC5 as YEBDJ, mjr3d.PSMU6]\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [mjr3d.FJDP5, mjr3d.BJUF2, mjr3d.PSMU6, mjr3d.M22QN, mjr3d.GE5EL, mjr3d.F7A4Q, mjr3d.ESFVY, mjr3d.CC4AX, mjr3d.SL76B, mjr3d.QNI57, mjr3d.TDEIU, sn.id, sn.BRQP2, sn.FFTBJ, sn.A7XO2, sn.KBO7R, sn.ECDKM, sn.NUMK2, sn.LETOE, sn.YKSSU, sn.FHCYT, mf.FTQLQ, mf.LUEVY, mf.M22QN, aac.id, aac.BTXC5, aac.FHCYT, mf.FTQLQ as T4IBQ, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery\n" +
-			"     │   ├─ cacheable: false\n" +
-			"     │   └─ Project\n" +
-			"     │       ├─ columns: [ei.M6T2N]\n" +
-			"     │       └─ Filter\n" +
-			"     │           ├─ (ei.id = mjr3d.QNI57)\n" +
-			"     │           └─ SubqueryAlias\n" +
-			"     │               ├─ name: ei\n" +
-			"     │               ├─ outerVisibility: true\n" +
-			"     │               ├─ isLateral: false\n" +
-			"     │               ├─ cacheable: true\n" +
-			"     │               └─ Project\n" +
-			"     │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			"     │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"     │                       └─ Table\n" +
-			"     │                           ├─ name: NOXN3\n" +
-			"     │                           └─ columns: [id]\n" +
-			"     │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
-			"     │   ├─ cacheable: false\n" +
-			"     │   └─ Project\n" +
-			"     │       ├─ columns: [ei.M6T2N]\n" +
-			"     │       └─ Filter\n" +
-			"     │           ├─ (ei.id = mjr3d.TDEIU)\n" +
-			"     │           └─ SubqueryAlias\n" +
-			"     │               ├─ name: ei\n" +
-			"     │               ├─ outerVisibility: true\n" +
-			"     │               ├─ isLateral: false\n" +
-			"     │               ├─ cacheable: true\n" +
-			"     │               └─ Project\n" +
-			"     │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			"     │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"     │                       └─ Table\n" +
-			"     │                           ├─ name: NOXN3\n" +
-			"     │                           └─ columns: [id]\n" +
-			"     │   END as M6T2N, mjr3d.GE5EL as GE5EL, mjr3d.F7A4Q as F7A4Q, mjr3d.CC4AX as CC4AX, mjr3d.SL76B as SL76B, aac.BTXC5 as YEBDJ]\n" +
+			"     ├─ columns: [mjr3d.FJDP5, mjr3d.BJUF2, mjr3d.PSMU6, mjr3d.M22QN, mjr3d.GE5EL, mjr3d.F7A4Q, mjr3d.ESFVY, mjr3d.CC4AX, mjr3d.SL76B, mjr3d.QNI57, mjr3d.TDEIU, sn.id, sn.BRQP2, sn.FFTBJ, sn.A7XO2, sn.KBO7R, sn.ECDKM, sn.NUMK2, sn.LETOE, sn.YKSSU, sn.FHCYT, mf.FTQLQ, mf.LUEVY, mf.M22QN, aac.id, aac.BTXC5, aac.FHCYT, mf.FTQLQ as T4IBQ, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.QNI57) WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.TDEIU) END as M6T2N, mjr3d.GE5EL as GE5EL, mjr3d.F7A4Q as F7A4Q, mjr3d.CC4AX as CC4AX, mjr3d.SL76B as SL76B, aac.BTXC5 as YEBDJ]\n" +
 			"     └─ HashJoin (estimated cost=427.500 rows=125) (actual rows=0 loops=1)\n" +
 			"         ├─ (aac.id = mjr3d.M22QN)\n" +
 			"         ├─ HashJoin (estimated cost=427.500 rows=125) (actual rows=0 loops=1)\n" +
@@ -12771,77 +12373,9 @@ WHERE
 			"             │           │               ├─ isLateral: false\n" +
 			"             │           │               ├─ cacheable: true\n" +
 			"             │           │               └─ Project\n" +
-			"             │           │                   ├─ columns: [CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery\n" +
-			"             │           │                   │   ├─ cacheable: false\n" +
-			"             │           │                   │   └─ Project\n" +
-			"             │           │                   │       ├─ columns: [ei.M6T2N]\n" +
-			"             │           │                   │       └─ Filter\n" +
-			"             │           │                   │           ├─ (ei.id = mjr3d.QNI57)\n" +
-			"             │           │                   │           └─ SubqueryAlias\n" +
-			"             │           │                   │               ├─ name: ei\n" +
-			"             │           │                   │               ├─ outerVisibility: true\n" +
-			"             │           │                   │               ├─ isLateral: false\n" +
-			"             │           │                   │               ├─ cacheable: true\n" +
-			"             │           │                   │               └─ Project\n" +
-			"             │           │                   │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			"             │           │                   │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"             │           │                   │                       └─ Table\n" +
-			"             │           │                   │                           ├─ name: NOXN3\n" +
-			"             │           │                   │                           └─ columns: [id]\n" +
-			"             │           │                   │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
-			"             │           │                   │   ├─ cacheable: false\n" +
-			"             │           │                   │   └─ Project\n" +
-			"             │           │                   │       ├─ columns: [ei.M6T2N]\n" +
-			"             │           │                   │       └─ Filter\n" +
-			"             │           │                   │           ├─ (ei.id = mjr3d.TDEIU)\n" +
-			"             │           │                   │           └─ SubqueryAlias\n" +
-			"             │           │                   │               ├─ name: ei\n" +
-			"             │           │                   │               ├─ outerVisibility: true\n" +
-			"             │           │                   │               ├─ isLateral: false\n" +
-			"             │           │                   │               ├─ cacheable: true\n" +
-			"             │           │                   │               └─ Project\n" +
-			"             │           │                   │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			"             │           │                   │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"             │           │                   │                       └─ Table\n" +
-			"             │           │                   │                           ├─ name: NOXN3\n" +
-			"             │           │                   │                           └─ columns: [id]\n" +
-			"             │           │                   │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
+			"             │           │                   ├─ columns: [CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.QNI57) WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.TDEIU) END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"             │           │                   └─ Project\n" +
-			"             │           │                       ├─ columns: [mjr3d.FJDP5, mjr3d.BJUF2, mjr3d.M22QN, mjr3d.TUV25, mjr3d.ESFVY, mjr3d.QNI57, mjr3d.TDEIU, aac.id, aac.BTXC5, aac.FHCYT, sn.id, sn.BRQP2, sn.FFTBJ, sn.A7XO2, sn.KBO7R, sn.ECDKM, sn.NUMK2, sn.LETOE, sn.YKSSU, sn.FHCYT, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery\n" +
-			"             │           │                       │   ├─ cacheable: false\n" +
-			"             │           │                       │   └─ Project\n" +
-			"             │           │                       │       ├─ columns: [ei.M6T2N]\n" +
-			"             │           │                       │       └─ Filter\n" +
-			"             │           │                       │           ├─ (ei.id = mjr3d.QNI57)\n" +
-			"             │           │                       │           └─ SubqueryAlias\n" +
-			"             │           │                       │               ├─ name: ei\n" +
-			"             │           │                       │               ├─ outerVisibility: true\n" +
-			"             │           │                       │               ├─ isLateral: false\n" +
-			"             │           │                       │               ├─ cacheable: true\n" +
-			"             │           │                       │               └─ Project\n" +
-			"             │           │                       │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			"             │           │                       │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"             │           │                       │                       └─ Table\n" +
-			"             │           │                       │                           ├─ name: NOXN3\n" +
-			"             │           │                       │                           └─ columns: [id]\n" +
-			"             │           │                       │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
-			"             │           │                       │   ├─ cacheable: false\n" +
-			"             │           │                       │   └─ Project\n" +
-			"             │           │                       │       ├─ columns: [ei.M6T2N]\n" +
-			"             │           │                       │       └─ Filter\n" +
-			"             │           │                       │           ├─ (ei.id = mjr3d.TDEIU)\n" +
-			"             │           │                       │           └─ SubqueryAlias\n" +
-			"             │           │                       │               ├─ name: ei\n" +
-			"             │           │                       │               ├─ outerVisibility: true\n" +
-			"             │           │                       │               ├─ isLateral: false\n" +
-			"             │           │                       │               ├─ cacheable: true\n" +
-			"             │           │                       │               └─ Project\n" +
-			"             │           │                       │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			"             │           │                       │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"             │           │                       │                       └─ Table\n" +
-			"             │           │                       │                           ├─ name: NOXN3\n" +
-			"             │           │                       │                           └─ columns: [id]\n" +
-			"             │           │                       │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
+			"             │           │                       ├─ columns: [mjr3d.FJDP5, mjr3d.BJUF2, mjr3d.M22QN, mjr3d.TUV25, mjr3d.ESFVY, mjr3d.QNI57, mjr3d.TDEIU, aac.id, aac.BTXC5, aac.FHCYT, sn.id, sn.BRQP2, sn.FFTBJ, sn.A7XO2, sn.KBO7R, sn.ECDKM, sn.NUMK2, sn.LETOE, sn.YKSSU, sn.FHCYT, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.QNI57) WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.TDEIU) END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"             │           │                       └─ LeftOuterJoin\n" +
 			"             │           │                           ├─ ((((((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id = mjr3d.QNI57)) AND mjr3d.BJUF2 IS NULL) OR (((NOT(mjr3d.QNI57 IS NULL)) AND InSubquery\n" +
 			"             │           │                           │   ├─ left: sn.id\n" +
@@ -13056,77 +12590,9 @@ WHERE
 			"                                             ├─ isLateral: false\n" +
 			"                                             ├─ cacheable: true\n" +
 			"                                             └─ Project\n" +
-			"                                                 ├─ columns: [CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery\n" +
-			"                                                 │   ├─ cacheable: false\n" +
-			"                                                 │   └─ Project\n" +
-			"                                                 │       ├─ columns: [ei.M6T2N]\n" +
-			"                                                 │       └─ Filter\n" +
-			"                                                 │           ├─ (ei.id = mjr3d.QNI57)\n" +
-			"                                                 │           └─ SubqueryAlias\n" +
-			"                                                 │               ├─ name: ei\n" +
-			"                                                 │               ├─ outerVisibility: true\n" +
-			"                                                 │               ├─ isLateral: false\n" +
-			"                                                 │               ├─ cacheable: true\n" +
-			"                                                 │               └─ Project\n" +
-			"                                                 │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			"                                                 │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"                                                 │                       └─ Table\n" +
-			"                                                 │                           ├─ name: NOXN3\n" +
-			"                                                 │                           └─ columns: [id]\n" +
-			"                                                 │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
-			"                                                 │   ├─ cacheable: false\n" +
-			"                                                 │   └─ Project\n" +
-			"                                                 │       ├─ columns: [ei.M6T2N]\n" +
-			"                                                 │       └─ Filter\n" +
-			"                                                 │           ├─ (ei.id = mjr3d.TDEIU)\n" +
-			"                                                 │           └─ SubqueryAlias\n" +
-			"                                                 │               ├─ name: ei\n" +
-			"                                                 │               ├─ outerVisibility: true\n" +
-			"                                                 │               ├─ isLateral: false\n" +
-			"                                                 │               ├─ cacheable: true\n" +
-			"                                                 │               └─ Project\n" +
-			"                                                 │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			"                                                 │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"                                                 │                       └─ Table\n" +
-			"                                                 │                           ├─ name: NOXN3\n" +
-			"                                                 │                           └─ columns: [id]\n" +
-			"                                                 │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
+			"                                                 ├─ columns: [CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.QNI57) WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.TDEIU) END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"                                                 └─ Project\n" +
-			"                                                     ├─ columns: [mjr3d.FJDP5, mjr3d.BJUF2, mjr3d.M22QN, mjr3d.TUV25, mjr3d.ESFVY, mjr3d.QNI57, mjr3d.TDEIU, aac.id, aac.BTXC5, aac.FHCYT, sn.id, sn.BRQP2, sn.FFTBJ, sn.A7XO2, sn.KBO7R, sn.ECDKM, sn.NUMK2, sn.LETOE, sn.YKSSU, sn.FHCYT, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery\n" +
-			"                                                     │   ├─ cacheable: false\n" +
-			"                                                     │   └─ Project\n" +
-			"                                                     │       ├─ columns: [ei.M6T2N]\n" +
-			"                                                     │       └─ Filter\n" +
-			"                                                     │           ├─ (ei.id = mjr3d.QNI57)\n" +
-			"                                                     │           └─ SubqueryAlias\n" +
-			"                                                     │               ├─ name: ei\n" +
-			"                                                     │               ├─ outerVisibility: true\n" +
-			"                                                     │               ├─ isLateral: false\n" +
-			"                                                     │               ├─ cacheable: true\n" +
-			"                                                     │               └─ Project\n" +
-			"                                                     │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			"                                                     │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"                                                     │                       └─ Table\n" +
-			"                                                     │                           ├─ name: NOXN3\n" +
-			"                                                     │                           └─ columns: [id]\n" +
-			"                                                     │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
-			"                                                     │   ├─ cacheable: false\n" +
-			"                                                     │   └─ Project\n" +
-			"                                                     │       ├─ columns: [ei.M6T2N]\n" +
-			"                                                     │       └─ Filter\n" +
-			"                                                     │           ├─ (ei.id = mjr3d.TDEIU)\n" +
-			"                                                     │           └─ SubqueryAlias\n" +
-			"                                                     │               ├─ name: ei\n" +
-			"                                                     │               ├─ outerVisibility: true\n" +
-			"                                                     │               ├─ isLateral: false\n" +
-			"                                                     │               ├─ cacheable: true\n" +
-			"                                                     │               └─ Project\n" +
-			"                                                     │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			"                                                     │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"                                                     │                       └─ Table\n" +
-			"                                                     │                           ├─ name: NOXN3\n" +
-			"                                                     │                           └─ columns: [id]\n" +
-			"                                                     │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
+			"                                                     ├─ columns: [mjr3d.FJDP5, mjr3d.BJUF2, mjr3d.M22QN, mjr3d.TUV25, mjr3d.ESFVY, mjr3d.QNI57, mjr3d.TDEIU, aac.id, aac.BTXC5, aac.FHCYT, sn.id, sn.BRQP2, sn.FFTBJ, sn.A7XO2, sn.KBO7R, sn.ECDKM, sn.NUMK2, sn.LETOE, sn.YKSSU, sn.FHCYT, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.QNI57) WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.TDEIU) END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"                                                     └─ LeftOuterJoin\n" +
 			"                                                         ├─ ((((((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id = mjr3d.QNI57)) AND mjr3d.BJUF2 IS NULL) OR (((NOT(mjr3d.QNI57 IS NULL)) AND InSubquery\n" +
 			"                                                         │   ├─ left: sn.id\n" +
@@ -13261,77 +12727,9 @@ WHERE
 			"             │           │               ├─ isLateral: false\n" +
 			"             │           │               ├─ cacheable: true\n" +
 			"             │           │               └─ Project\n" +
-			"             │           │                   ├─ columns: [CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery\n" +
-			"             │           │                   │   ├─ cacheable: false\n" +
-			"             │           │                   │   └─ Project\n" +
-			"             │           │                   │       ├─ columns: [ei.M6T2N]\n" +
-			"             │           │                   │       └─ Filter\n" +
-			"             │           │                   │           ├─ (ei.id = mjr3d.QNI57)\n" +
-			"             │           │                   │           └─ SubqueryAlias\n" +
-			"             │           │                   │               ├─ name: ei\n" +
-			"             │           │                   │               ├─ outerVisibility: true\n" +
-			"             │           │                   │               ├─ isLateral: false\n" +
-			"             │           │                   │               ├─ cacheable: true\n" +
-			"             │           │                   │               └─ Project\n" +
-			"             │           │                   │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			"             │           │                   │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"             │           │                   │                       └─ Table\n" +
-			"             │           │                   │                           ├─ name: NOXN3\n" +
-			"             │           │                   │                           └─ columns: [id]\n" +
-			"             │           │                   │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
-			"             │           │                   │   ├─ cacheable: false\n" +
-			"             │           │                   │   └─ Project\n" +
-			"             │           │                   │       ├─ columns: [ei.M6T2N]\n" +
-			"             │           │                   │       └─ Filter\n" +
-			"             │           │                   │           ├─ (ei.id = mjr3d.TDEIU)\n" +
-			"             │           │                   │           └─ SubqueryAlias\n" +
-			"             │           │                   │               ├─ name: ei\n" +
-			"             │           │                   │               ├─ outerVisibility: true\n" +
-			"             │           │                   │               ├─ isLateral: false\n" +
-			"             │           │                   │               ├─ cacheable: true\n" +
-			"             │           │                   │               └─ Project\n" +
-			"             │           │                   │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			"             │           │                   │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"             │           │                   │                       └─ Table\n" +
-			"             │           │                   │                           ├─ name: NOXN3\n" +
-			"             │           │                   │                           └─ columns: [id]\n" +
-			"             │           │                   │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
+			"             │           │                   ├─ columns: [CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.QNI57) WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.TDEIU) END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"             │           │                   └─ Project\n" +
-			"             │           │                       ├─ columns: [mjr3d.FJDP5, mjr3d.BJUF2, mjr3d.M22QN, mjr3d.TUV25, mjr3d.ESFVY, mjr3d.QNI57, mjr3d.TDEIU, aac.id, aac.BTXC5, aac.FHCYT, sn.id, sn.BRQP2, sn.FFTBJ, sn.A7XO2, sn.KBO7R, sn.ECDKM, sn.NUMK2, sn.LETOE, sn.YKSSU, sn.FHCYT, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery\n" +
-			"             │           │                       │   ├─ cacheable: false\n" +
-			"             │           │                       │   └─ Project\n" +
-			"             │           │                       │       ├─ columns: [ei.M6T2N]\n" +
-			"             │           │                       │       └─ Filter\n" +
-			"             │           │                       │           ├─ (ei.id = mjr3d.QNI57)\n" +
-			"             │           │                       │           └─ SubqueryAlias\n" +
-			"             │           │                       │               ├─ name: ei\n" +
-			"             │           │                       │               ├─ outerVisibility: true\n" +
-			"             │           │                       │               ├─ isLateral: false\n" +
-			"             │           │                       │               ├─ cacheable: true\n" +
-			"             │           │                       │               └─ Project\n" +
-			"             │           │                       │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			"             │           │                       │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"             │           │                       │                       └─ Table\n" +
-			"             │           │                       │                           ├─ name: NOXN3\n" +
-			"             │           │                       │                           └─ columns: [id]\n" +
-			"             │           │                       │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
-			"             │           │                       │   ├─ cacheable: false\n" +
-			"             │           │                       │   └─ Project\n" +
-			"             │           │                       │       ├─ columns: [ei.M6T2N]\n" +
-			"             │           │                       │       └─ Filter\n" +
-			"             │           │                       │           ├─ (ei.id = mjr3d.TDEIU)\n" +
-			"             │           │                       │           └─ SubqueryAlias\n" +
-			"             │           │                       │               ├─ name: ei\n" +
-			"             │           │                       │               ├─ outerVisibility: true\n" +
-			"             │           │                       │               ├─ isLateral: false\n" +
-			"             │           │                       │               ├─ cacheable: true\n" +
-			"             │           │                       │               └─ Project\n" +
-			"             │           │                       │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			"             │           │                       │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"             │           │                       │                       └─ Table\n" +
-			"             │           │                       │                           ├─ name: NOXN3\n" +
-			"             │           │                       │                           └─ columns: [id]\n" +
-			"             │           │                       │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
+			"             │           │                       ├─ columns: [mjr3d.FJDP5, mjr3d.BJUF2, mjr3d.M22QN, mjr3d.TUV25, mjr3d.ESFVY, mjr3d.QNI57, mjr3d.TDEIU, aac.id, aac.BTXC5, aac.FHCYT, sn.id, sn.BRQP2, sn.FFTBJ, sn.A7XO2, sn.KBO7R, sn.ECDKM, sn.NUMK2, sn.LETOE, sn.YKSSU, sn.FHCYT, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.QNI57) WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.TDEIU) END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"             │           │                       └─ LeftOuterJoin\n" +
 			"             │           │                           ├─ ((((((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id = mjr3d.QNI57)) AND mjr3d.BJUF2 IS NULL) OR (((NOT(mjr3d.QNI57 IS NULL)) AND InSubquery\n" +
 			"             │           │                           │   ├─ left: sn.id\n" +
@@ -13546,77 +12944,9 @@ WHERE
 			"                                             ├─ isLateral: false\n" +
 			"                                             ├─ cacheable: true\n" +
 			"                                             └─ Project\n" +
-			"                                                 ├─ columns: [CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery\n" +
-			"                                                 │   ├─ cacheable: false\n" +
-			"                                                 │   └─ Project\n" +
-			"                                                 │       ├─ columns: [ei.M6T2N]\n" +
-			"                                                 │       └─ Filter\n" +
-			"                                                 │           ├─ (ei.id = mjr3d.QNI57)\n" +
-			"                                                 │           └─ SubqueryAlias\n" +
-			"                                                 │               ├─ name: ei\n" +
-			"                                                 │               ├─ outerVisibility: true\n" +
-			"                                                 │               ├─ isLateral: false\n" +
-			"                                                 │               ├─ cacheable: true\n" +
-			"                                                 │               └─ Project\n" +
-			"                                                 │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			"                                                 │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"                                                 │                       └─ Table\n" +
-			"                                                 │                           ├─ name: NOXN3\n" +
-			"                                                 │                           └─ columns: [id]\n" +
-			"                                                 │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
-			"                                                 │   ├─ cacheable: false\n" +
-			"                                                 │   └─ Project\n" +
-			"                                                 │       ├─ columns: [ei.M6T2N]\n" +
-			"                                                 │       └─ Filter\n" +
-			"                                                 │           ├─ (ei.id = mjr3d.TDEIU)\n" +
-			"                                                 │           └─ SubqueryAlias\n" +
-			"                                                 │               ├─ name: ei\n" +
-			"                                                 │               ├─ outerVisibility: true\n" +
-			"                                                 │               ├─ isLateral: false\n" +
-			"                                                 │               ├─ cacheable: true\n" +
-			"                                                 │               └─ Project\n" +
-			"                                                 │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			"                                                 │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"                                                 │                       └─ Table\n" +
-			"                                                 │                           ├─ name: NOXN3\n" +
-			"                                                 │                           └─ columns: [id]\n" +
-			"                                                 │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
+			"                                                 ├─ columns: [CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.QNI57) WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.TDEIU) END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"                                                 └─ Project\n" +
-			"                                                     ├─ columns: [mjr3d.FJDP5, mjr3d.BJUF2, mjr3d.M22QN, mjr3d.TUV25, mjr3d.ESFVY, mjr3d.QNI57, mjr3d.TDEIU, aac.id, aac.BTXC5, aac.FHCYT, sn.id, sn.BRQP2, sn.FFTBJ, sn.A7XO2, sn.KBO7R, sn.ECDKM, sn.NUMK2, sn.LETOE, sn.YKSSU, sn.FHCYT, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery\n" +
-			"                                                     │   ├─ cacheable: false\n" +
-			"                                                     │   └─ Project\n" +
-			"                                                     │       ├─ columns: [ei.M6T2N]\n" +
-			"                                                     │       └─ Filter\n" +
-			"                                                     │           ├─ (ei.id = mjr3d.QNI57)\n" +
-			"                                                     │           └─ SubqueryAlias\n" +
-			"                                                     │               ├─ name: ei\n" +
-			"                                                     │               ├─ outerVisibility: true\n" +
-			"                                                     │               ├─ isLateral: false\n" +
-			"                                                     │               ├─ cacheable: true\n" +
-			"                                                     │               └─ Project\n" +
-			"                                                     │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			"                                                     │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"                                                     │                       └─ Table\n" +
-			"                                                     │                           ├─ name: NOXN3\n" +
-			"                                                     │                           └─ columns: [id]\n" +
-			"                                                     │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
-			"                                                     │   ├─ cacheable: false\n" +
-			"                                                     │   └─ Project\n" +
-			"                                                     │       ├─ columns: [ei.M6T2N]\n" +
-			"                                                     │       └─ Filter\n" +
-			"                                                     │           ├─ (ei.id = mjr3d.TDEIU)\n" +
-			"                                                     │           └─ SubqueryAlias\n" +
-			"                                                     │               ├─ name: ei\n" +
-			"                                                     │               ├─ outerVisibility: true\n" +
-			"                                                     │               ├─ isLateral: false\n" +
-			"                                                     │               ├─ cacheable: true\n" +
-			"                                                     │               └─ Project\n" +
-			"                                                     │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			"                                                     │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"                                                     │                       └─ Table\n" +
-			"                                                     │                           ├─ name: NOXN3\n" +
-			"                                                     │                           └─ columns: [id]\n" +
-			"                                                     │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
+			"                                                     ├─ columns: [mjr3d.FJDP5, mjr3d.BJUF2, mjr3d.M22QN, mjr3d.TUV25, mjr3d.ESFVY, mjr3d.QNI57, mjr3d.TDEIU, aac.id, aac.BTXC5, aac.FHCYT, sn.id, sn.BRQP2, sn.FFTBJ, sn.A7XO2, sn.KBO7R, sn.ECDKM, sn.NUMK2, sn.LETOE, sn.YKSSU, sn.FHCYT, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.QNI57) WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.TDEIU) END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"                                                     └─ LeftOuterJoin\n" +
 			"                                                         ├─ ((((((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id = mjr3d.QNI57)) AND mjr3d.BJUF2 IS NULL) OR (((NOT(mjr3d.QNI57 IS NULL)) AND InSubquery\n" +
 			"                                                         │   ├─ left: sn.id\n" +
@@ -14743,77 +14073,9 @@ WHERE
 			"             │           │               ├─ isLateral: false\n" +
 			"             │           │               ├─ cacheable: true\n" +
 			"             │           │               └─ Project\n" +
-			"             │           │                   ├─ columns: [CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery\n" +
-			"             │           │                   │   ├─ cacheable: false\n" +
-			"             │           │                   │   └─ Project\n" +
-			"             │           │                   │       ├─ columns: [ei.M6T2N]\n" +
-			"             │           │                   │       └─ Filter\n" +
-			"             │           │                   │           ├─ (ei.id = mjr3d.QNI57)\n" +
-			"             │           │                   │           └─ SubqueryAlias\n" +
-			"             │           │                   │               ├─ name: ei\n" +
-			"             │           │                   │               ├─ outerVisibility: true\n" +
-			"             │           │                   │               ├─ isLateral: false\n" +
-			"             │           │                   │               ├─ cacheable: true\n" +
-			"             │           │                   │               └─ Project\n" +
-			"             │           │                   │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			"             │           │                   │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"             │           │                   │                       └─ Table\n" +
-			"             │           │                   │                           ├─ name: NOXN3\n" +
-			"             │           │                   │                           └─ columns: [id]\n" +
-			"             │           │                   │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
-			"             │           │                   │   ├─ cacheable: false\n" +
-			"             │           │                   │   └─ Project\n" +
-			"             │           │                   │       ├─ columns: [ei.M6T2N]\n" +
-			"             │           │                   │       └─ Filter\n" +
-			"             │           │                   │           ├─ (ei.id = mjr3d.TDEIU)\n" +
-			"             │           │                   │           └─ SubqueryAlias\n" +
-			"             │           │                   │               ├─ name: ei\n" +
-			"             │           │                   │               ├─ outerVisibility: true\n" +
-			"             │           │                   │               ├─ isLateral: false\n" +
-			"             │           │                   │               ├─ cacheable: true\n" +
-			"             │           │                   │               └─ Project\n" +
-			"             │           │                   │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			"             │           │                   │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"             │           │                   │                       └─ Table\n" +
-			"             │           │                   │                           ├─ name: NOXN3\n" +
-			"             │           │                   │                           └─ columns: [id]\n" +
-			"             │           │                   │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
+			"             │           │                   ├─ columns: [CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.QNI57) WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.TDEIU) END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"             │           │                   └─ Project\n" +
-			"             │           │                       ├─ columns: [mjr3d.FJDP5, mjr3d.BJUF2, mjr3d.M22QN, mjr3d.TUV25, mjr3d.ESFVY, mjr3d.QNI57, mjr3d.TDEIU, aac.id, aac.BTXC5, aac.FHCYT, sn.id, sn.BRQP2, sn.FFTBJ, sn.A7XO2, sn.KBO7R, sn.ECDKM, sn.NUMK2, sn.LETOE, sn.YKSSU, sn.FHCYT, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery\n" +
-			"             │           │                       │   ├─ cacheable: false\n" +
-			"             │           │                       │   └─ Project\n" +
-			"             │           │                       │       ├─ columns: [ei.M6T2N]\n" +
-			"             │           │                       │       └─ Filter\n" +
-			"             │           │                       │           ├─ (ei.id = mjr3d.QNI57)\n" +
-			"             │           │                       │           └─ SubqueryAlias\n" +
-			"             │           │                       │               ├─ name: ei\n" +
-			"             │           │                       │               ├─ outerVisibility: true\n" +
-			"             │           │                       │               ├─ isLateral: false\n" +
-			"             │           │                       │               ├─ cacheable: true\n" +
-			"             │           │                       │               └─ Project\n" +
-			"             │           │                       │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			"             │           │                       │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"             │           │                       │                       └─ Table\n" +
-			"             │           │                       │                           ├─ name: NOXN3\n" +
-			"             │           │                       │                           └─ columns: [id]\n" +
-			"             │           │                       │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
-			"             │           │                       │   ├─ cacheable: false\n" +
-			"             │           │                       │   └─ Project\n" +
-			"             │           │                       │       ├─ columns: [ei.M6T2N]\n" +
-			"             │           │                       │       └─ Filter\n" +
-			"             │           │                       │           ├─ (ei.id = mjr3d.TDEIU)\n" +
-			"             │           │                       │           └─ SubqueryAlias\n" +
-			"             │           │                       │               ├─ name: ei\n" +
-			"             │           │                       │               ├─ outerVisibility: true\n" +
-			"             │           │                       │               ├─ isLateral: false\n" +
-			"             │           │                       │               ├─ cacheable: true\n" +
-			"             │           │                       │               └─ Project\n" +
-			"             │           │                       │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			"             │           │                       │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"             │           │                       │                       └─ Table\n" +
-			"             │           │                       │                           ├─ name: NOXN3\n" +
-			"             │           │                       │                           └─ columns: [id]\n" +
-			"             │           │                       │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
+			"             │           │                       ├─ columns: [mjr3d.FJDP5, mjr3d.BJUF2, mjr3d.M22QN, mjr3d.TUV25, mjr3d.ESFVY, mjr3d.QNI57, mjr3d.TDEIU, aac.id, aac.BTXC5, aac.FHCYT, sn.id, sn.BRQP2, sn.FFTBJ, sn.A7XO2, sn.KBO7R, sn.ECDKM, sn.NUMK2, sn.LETOE, sn.YKSSU, sn.FHCYT, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.QNI57) WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.TDEIU) END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"             │           │                       └─ LeftOuterJoin\n" +
 			"             │           │                           ├─ ((((((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id = mjr3d.QNI57)) AND mjr3d.BJUF2 IS NULL) OR (((NOT(mjr3d.QNI57 IS NULL)) AND InSubquery\n" +
 			"             │           │                           │   ├─ left: sn.id\n" +
@@ -15024,77 +14286,9 @@ WHERE
 			"                                             ├─ isLateral: false\n" +
 			"                                             ├─ cacheable: true\n" +
 			"                                             └─ Project\n" +
-			"                                                 ├─ columns: [CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery\n" +
-			"                                                 │   ├─ cacheable: false\n" +
-			"                                                 │   └─ Project\n" +
-			"                                                 │       ├─ columns: [ei.M6T2N]\n" +
-			"                                                 │       └─ Filter\n" +
-			"                                                 │           ├─ (ei.id = mjr3d.QNI57)\n" +
-			"                                                 │           └─ SubqueryAlias\n" +
-			"                                                 │               ├─ name: ei\n" +
-			"                                                 │               ├─ outerVisibility: true\n" +
-			"                                                 │               ├─ isLateral: false\n" +
-			"                                                 │               ├─ cacheable: true\n" +
-			"                                                 │               └─ Project\n" +
-			"                                                 │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			"                                                 │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"                                                 │                       └─ Table\n" +
-			"                                                 │                           ├─ name: NOXN3\n" +
-			"                                                 │                           └─ columns: [id]\n" +
-			"                                                 │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
-			"                                                 │   ├─ cacheable: false\n" +
-			"                                                 │   └─ Project\n" +
-			"                                                 │       ├─ columns: [ei.M6T2N]\n" +
-			"                                                 │       └─ Filter\n" +
-			"                                                 │           ├─ (ei.id = mjr3d.TDEIU)\n" +
-			"                                                 │           └─ SubqueryAlias\n" +
-			"                                                 │               ├─ name: ei\n" +
-			"                                                 │               ├─ outerVisibility: true\n" +
-			"                                                 │               ├─ isLateral: false\n" +
-			"                                                 │               ├─ cacheable: true\n" +
-			"                                                 │               └─ Project\n" +
-			"                                                 │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			"                                                 │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"                                                 │                       └─ Table\n" +
-			"                                                 │                           ├─ name: NOXN3\n" +
-			"                                                 │                           └─ columns: [id]\n" +
-			"                                                 │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
+			"                                                 ├─ columns: [CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.QNI57) WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.TDEIU) END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"                                                 └─ Project\n" +
-			"                                                     ├─ columns: [mjr3d.FJDP5, mjr3d.BJUF2, mjr3d.M22QN, mjr3d.TUV25, mjr3d.ESFVY, mjr3d.QNI57, mjr3d.TDEIU, aac.id, aac.BTXC5, aac.FHCYT, sn.id, sn.BRQP2, sn.FFTBJ, sn.A7XO2, sn.KBO7R, sn.ECDKM, sn.NUMK2, sn.LETOE, sn.YKSSU, sn.FHCYT, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery\n" +
-			"                                                     │   ├─ cacheable: false\n" +
-			"                                                     │   └─ Project\n" +
-			"                                                     │       ├─ columns: [ei.M6T2N]\n" +
-			"                                                     │       └─ Filter\n" +
-			"                                                     │           ├─ (ei.id = mjr3d.QNI57)\n" +
-			"                                                     │           └─ SubqueryAlias\n" +
-			"                                                     │               ├─ name: ei\n" +
-			"                                                     │               ├─ outerVisibility: true\n" +
-			"                                                     │               ├─ isLateral: false\n" +
-			"                                                     │               ├─ cacheable: true\n" +
-			"                                                     │               └─ Project\n" +
-			"                                                     │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			"                                                     │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"                                                     │                       └─ Table\n" +
-			"                                                     │                           ├─ name: NOXN3\n" +
-			"                                                     │                           └─ columns: [id]\n" +
-			"                                                     │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
-			"                                                     │   ├─ cacheable: false\n" +
-			"                                                     │   └─ Project\n" +
-			"                                                     │       ├─ columns: [ei.M6T2N]\n" +
-			"                                                     │       └─ Filter\n" +
-			"                                                     │           ├─ (ei.id = mjr3d.TDEIU)\n" +
-			"                                                     │           └─ SubqueryAlias\n" +
-			"                                                     │               ├─ name: ei\n" +
-			"                                                     │               ├─ outerVisibility: true\n" +
-			"                                                     │               ├─ isLateral: false\n" +
-			"                                                     │               ├─ cacheable: true\n" +
-			"                                                     │               └─ Project\n" +
-			"                                                     │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			"                                                     │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"                                                     │                       └─ Table\n" +
-			"                                                     │                           ├─ name: NOXN3\n" +
-			"                                                     │                           └─ columns: [id]\n" +
-			"                                                     │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
+			"                                                     ├─ columns: [mjr3d.FJDP5, mjr3d.BJUF2, mjr3d.M22QN, mjr3d.TUV25, mjr3d.ESFVY, mjr3d.QNI57, mjr3d.TDEIU, aac.id, aac.BTXC5, aac.FHCYT, sn.id, sn.BRQP2, sn.FFTBJ, sn.A7XO2, sn.KBO7R, sn.ECDKM, sn.NUMK2, sn.LETOE, sn.YKSSU, sn.FHCYT, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.QNI57) WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.TDEIU) END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"                                                     └─ LeftOuterJoin\n" +
 			"                                                         ├─ ((((((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id = mjr3d.QNI57)) AND mjr3d.BJUF2 IS NULL) OR (((NOT(mjr3d.QNI57 IS NULL)) AND InSubquery\n" +
 			"                                                         │   ├─ left: sn.id\n" +
@@ -15229,77 +14423,9 @@ WHERE
 			"             │           │               ├─ isLateral: false\n" +
 			"             │           │               ├─ cacheable: true\n" +
 			"             │           │               └─ Project\n" +
-			"             │           │                   ├─ columns: [CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery\n" +
-			"             │           │                   │   ├─ cacheable: false\n" +
-			"             │           │                   │   └─ Project\n" +
-			"             │           │                   │       ├─ columns: [ei.M6T2N]\n" +
-			"             │           │                   │       └─ Filter\n" +
-			"             │           │                   │           ├─ (ei.id = mjr3d.QNI57)\n" +
-			"             │           │                   │           └─ SubqueryAlias\n" +
-			"             │           │                   │               ├─ name: ei\n" +
-			"             │           │                   │               ├─ outerVisibility: true\n" +
-			"             │           │                   │               ├─ isLateral: false\n" +
-			"             │           │                   │               ├─ cacheable: true\n" +
-			"             │           │                   │               └─ Project\n" +
-			"             │           │                   │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			"             │           │                   │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"             │           │                   │                       └─ Table\n" +
-			"             │           │                   │                           ├─ name: NOXN3\n" +
-			"             │           │                   │                           └─ columns: [id]\n" +
-			"             │           │                   │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
-			"             │           │                   │   ├─ cacheable: false\n" +
-			"             │           │                   │   └─ Project\n" +
-			"             │           │                   │       ├─ columns: [ei.M6T2N]\n" +
-			"             │           │                   │       └─ Filter\n" +
-			"             │           │                   │           ├─ (ei.id = mjr3d.TDEIU)\n" +
-			"             │           │                   │           └─ SubqueryAlias\n" +
-			"             │           │                   │               ├─ name: ei\n" +
-			"             │           │                   │               ├─ outerVisibility: true\n" +
-			"             │           │                   │               ├─ isLateral: false\n" +
-			"             │           │                   │               ├─ cacheable: true\n" +
-			"             │           │                   │               └─ Project\n" +
-			"             │           │                   │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			"             │           │                   │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"             │           │                   │                       └─ Table\n" +
-			"             │           │                   │                           ├─ name: NOXN3\n" +
-			"             │           │                   │                           └─ columns: [id]\n" +
-			"             │           │                   │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
+			"             │           │                   ├─ columns: [CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.QNI57) WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.TDEIU) END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"             │           │                   └─ Project\n" +
-			"             │           │                       ├─ columns: [mjr3d.FJDP5, mjr3d.BJUF2, mjr3d.M22QN, mjr3d.TUV25, mjr3d.ESFVY, mjr3d.QNI57, mjr3d.TDEIU, aac.id, aac.BTXC5, aac.FHCYT, sn.id, sn.BRQP2, sn.FFTBJ, sn.A7XO2, sn.KBO7R, sn.ECDKM, sn.NUMK2, sn.LETOE, sn.YKSSU, sn.FHCYT, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery\n" +
-			"             │           │                       │   ├─ cacheable: false\n" +
-			"             │           │                       │   └─ Project\n" +
-			"             │           │                       │       ├─ columns: [ei.M6T2N]\n" +
-			"             │           │                       │       └─ Filter\n" +
-			"             │           │                       │           ├─ (ei.id = mjr3d.QNI57)\n" +
-			"             │           │                       │           └─ SubqueryAlias\n" +
-			"             │           │                       │               ├─ name: ei\n" +
-			"             │           │                       │               ├─ outerVisibility: true\n" +
-			"             │           │                       │               ├─ isLateral: false\n" +
-			"             │           │                       │               ├─ cacheable: true\n" +
-			"             │           │                       │               └─ Project\n" +
-			"             │           │                       │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			"             │           │                       │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"             │           │                       │                       └─ Table\n" +
-			"             │           │                       │                           ├─ name: NOXN3\n" +
-			"             │           │                       │                           └─ columns: [id]\n" +
-			"             │           │                       │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
-			"             │           │                       │   ├─ cacheable: false\n" +
-			"             │           │                       │   └─ Project\n" +
-			"             │           │                       │       ├─ columns: [ei.M6T2N]\n" +
-			"             │           │                       │       └─ Filter\n" +
-			"             │           │                       │           ├─ (ei.id = mjr3d.TDEIU)\n" +
-			"             │           │                       │           └─ SubqueryAlias\n" +
-			"             │           │                       │               ├─ name: ei\n" +
-			"             │           │                       │               ├─ outerVisibility: true\n" +
-			"             │           │                       │               ├─ isLateral: false\n" +
-			"             │           │                       │               ├─ cacheable: true\n" +
-			"             │           │                       │               └─ Project\n" +
-			"             │           │                       │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			"             │           │                       │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"             │           │                       │                       └─ Table\n" +
-			"             │           │                       │                           ├─ name: NOXN3\n" +
-			"             │           │                       │                           └─ columns: [id]\n" +
-			"             │           │                       │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
+			"             │           │                       ├─ columns: [mjr3d.FJDP5, mjr3d.BJUF2, mjr3d.M22QN, mjr3d.TUV25, mjr3d.ESFVY, mjr3d.QNI57, mjr3d.TDEIU, aac.id, aac.BTXC5, aac.FHCYT, sn.id, sn.BRQP2, sn.FFTBJ, sn.A7XO2, sn.KBO7R, sn.ECDKM, sn.NUMK2, sn.LETOE, sn.YKSSU, sn.FHCYT, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.QNI57) WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.TDEIU) END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"             │           │                       └─ LeftOuterJoin\n" +
 			"             │           │                           ├─ ((((((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id = mjr3d.QNI57)) AND mjr3d.BJUF2 IS NULL) OR (((NOT(mjr3d.QNI57 IS NULL)) AND InSubquery\n" +
 			"             │           │                           │   ├─ left: sn.id\n" +
@@ -15510,77 +14636,9 @@ WHERE
 			"                                             ├─ isLateral: false\n" +
 			"                                             ├─ cacheable: true\n" +
 			"                                             └─ Project\n" +
-			"                                                 ├─ columns: [CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery\n" +
-			"                                                 │   ├─ cacheable: false\n" +
-			"                                                 │   └─ Project\n" +
-			"                                                 │       ├─ columns: [ei.M6T2N]\n" +
-			"                                                 │       └─ Filter\n" +
-			"                                                 │           ├─ (ei.id = mjr3d.QNI57)\n" +
-			"                                                 │           └─ SubqueryAlias\n" +
-			"                                                 │               ├─ name: ei\n" +
-			"                                                 │               ├─ outerVisibility: true\n" +
-			"                                                 │               ├─ isLateral: false\n" +
-			"                                                 │               ├─ cacheable: true\n" +
-			"                                                 │               └─ Project\n" +
-			"                                                 │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			"                                                 │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"                                                 │                       └─ Table\n" +
-			"                                                 │                           ├─ name: NOXN3\n" +
-			"                                                 │                           └─ columns: [id]\n" +
-			"                                                 │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
-			"                                                 │   ├─ cacheable: false\n" +
-			"                                                 │   └─ Project\n" +
-			"                                                 │       ├─ columns: [ei.M6T2N]\n" +
-			"                                                 │       └─ Filter\n" +
-			"                                                 │           ├─ (ei.id = mjr3d.TDEIU)\n" +
-			"                                                 │           └─ SubqueryAlias\n" +
-			"                                                 │               ├─ name: ei\n" +
-			"                                                 │               ├─ outerVisibility: true\n" +
-			"                                                 │               ├─ isLateral: false\n" +
-			"                                                 │               ├─ cacheable: true\n" +
-			"                                                 │               └─ Project\n" +
-			"                                                 │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			"                                                 │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"                                                 │                       └─ Table\n" +
-			"                                                 │                           ├─ name: NOXN3\n" +
-			"                                                 │                           └─ columns: [id]\n" +
-			"                                                 │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
+			"                                                 ├─ columns: [CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.QNI57) WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.TDEIU) END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"                                                 └─ Project\n" +
-			"                                                     ├─ columns: [mjr3d.FJDP5, mjr3d.BJUF2, mjr3d.M22QN, mjr3d.TUV25, mjr3d.ESFVY, mjr3d.QNI57, mjr3d.TDEIU, aac.id, aac.BTXC5, aac.FHCYT, sn.id, sn.BRQP2, sn.FFTBJ, sn.A7XO2, sn.KBO7R, sn.ECDKM, sn.NUMK2, sn.LETOE, sn.YKSSU, sn.FHCYT, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery\n" +
-			"                                                     │   ├─ cacheable: false\n" +
-			"                                                     │   └─ Project\n" +
-			"                                                     │       ├─ columns: [ei.M6T2N]\n" +
-			"                                                     │       └─ Filter\n" +
-			"                                                     │           ├─ (ei.id = mjr3d.QNI57)\n" +
-			"                                                     │           └─ SubqueryAlias\n" +
-			"                                                     │               ├─ name: ei\n" +
-			"                                                     │               ├─ outerVisibility: true\n" +
-			"                                                     │               ├─ isLateral: false\n" +
-			"                                                     │               ├─ cacheable: true\n" +
-			"                                                     │               └─ Project\n" +
-			"                                                     │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			"                                                     │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"                                                     │                       └─ Table\n" +
-			"                                                     │                           ├─ name: NOXN3\n" +
-			"                                                     │                           └─ columns: [id]\n" +
-			"                                                     │   WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery\n" +
-			"                                                     │   ├─ cacheable: false\n" +
-			"                                                     │   └─ Project\n" +
-			"                                                     │       ├─ columns: [ei.M6T2N]\n" +
-			"                                                     │       └─ Filter\n" +
-			"                                                     │           ├─ (ei.id = mjr3d.TDEIU)\n" +
-			"                                                     │           └─ SubqueryAlias\n" +
-			"                                                     │               ├─ name: ei\n" +
-			"                                                     │               ├─ outerVisibility: true\n" +
-			"                                                     │               ├─ isLateral: false\n" +
-			"                                                     │               ├─ cacheable: true\n" +
-			"                                                     │               └─ Project\n" +
-			"                                                     │                   ├─ columns: [noxn3.id, (row_number() over ( order by noxn3.id asc) - 1) as M6T2N]\n" +
-			"                                                     │                   └─ Window(row_number() over ( order by noxn3.id ASC), noxn3.id)\n" +
-			"                                                     │                       └─ Table\n" +
-			"                                                     │                           ├─ name: NOXN3\n" +
-			"                                                     │                           └─ columns: [id]\n" +
-			"                                                     │   END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
+			"                                                     ├─ columns: [mjr3d.FJDP5, mjr3d.BJUF2, mjr3d.M22QN, mjr3d.TUV25, mjr3d.ESFVY, mjr3d.QNI57, mjr3d.TDEIU, aac.id, aac.BTXC5, aac.FHCYT, sn.id, sn.BRQP2, sn.FFTBJ, sn.A7XO2, sn.KBO7R, sn.ECDKM, sn.NUMK2, sn.LETOE, sn.YKSSU, sn.FHCYT, CASE  WHEN (NOT(mjr3d.QNI57 IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.QNI57) WHEN (NOT(mjr3d.TDEIU IS NULL)) THEN Subquery(select ei.M6T2N from FZFVD as ei where ei.id = MJR3D.TDEIU) END as M6T2N, aac.BTXC5 as BTXC5, aac.id as NTOFG, sn.id as LWQ6O, mjr3d.TUV25 as TUV25]\n" +
 			"                                                     └─ LeftOuterJoin\n" +
 			"                                                         ├─ ((((((NOT(mjr3d.QNI57 IS NULL)) AND (sn.id = mjr3d.QNI57)) AND mjr3d.BJUF2 IS NULL) OR (((NOT(mjr3d.QNI57 IS NULL)) AND InSubquery\n" +
 			"                                                         │   ├─ left: sn.id\n" +

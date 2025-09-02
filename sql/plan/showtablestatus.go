@@ -62,7 +62,7 @@ var showTableStatusSchema = sql.Schema{
 	{Name: "Collation", Type: types.LongText},
 	{Name: "Checksum", Type: types.LongText, Nullable: true},
 	{Name: "Create_options", Type: types.LongText, Nullable: true},
-	{Name: "Comments", Type: types.LongText, Nullable: true},
+	{Name: "Comment", Type: types.LongText, Nullable: true},
 }
 
 // Children implements the sql.Node interface.

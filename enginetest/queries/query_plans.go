@@ -150,7 +150,7 @@ offset 1;`,
 			" │   └─ Project\n" +
 			" │       ├─ columns: [sum(cte.x) as SUM(x)]\n" +
 			" │       └─ GroupBy\n" +
-			" │           ├─ SelectedExprs(SUM(cte.x))\n" +
+			" │           ├─ SelectDeps(SUM(cte.x))\n" +
 			" │           ├─ Grouping()\n" +
 			" │           └─ SubqueryAlias\n" +
 			" │               ├─ name: cte\n" +
@@ -176,7 +176,7 @@ offset 1;`,
 			" │   └─ Project\n" +
 			" │       ├─ columns: [sum(cte.x) as SUM(x)]\n" +
 			" │       └─ GroupBy\n" +
-			" │           ├─ SelectedExprs(SUM(cte.x))\n" +
+			" │           ├─ SelectDeps(SUM(cte.x))\n" +
 			" │           ├─ Grouping()\n" +
 			" │           └─ SubqueryAlias\n" +
 			" │               ├─ name: cte\n" +
@@ -266,7 +266,7 @@ offset 1;`,
 			"     │       ├─ cacheable: false\n" +
 			"     │       └─ Project\n" +
 			"     │           ├─ columns: [xy.x]\n" +
-			"     │           └─ CrossHashJoin\n" +
+			"     │           └─ CrossHashJoin (estimated cost=1311.250 rows=125)\n" +
 			"     │               ├─ Table\n" +
 			"     │               │   ├─ name: xy\n" +
 			"     │               │   └─ columns: [x]\n" +
@@ -281,17 +281,7 @@ offset 1;`,
 			"     │                       └─ Project\n" +
 			"     │                           ├─ columns: [t2.y]\n" +
 			"     │                           └─ Filter\n" +
-			"     │                               ├─ EXISTS Subquery\n" +
-			"     │                               │   ├─ cacheable: false\n" +
-			"     │                               │   └─ Project\n" +
-			"     │                               │       ├─ columns: [t3.y]\n" +
-			"     │                               │       └─ Filter\n" +
-			"     │                               │           ├─ (t3.y = xy.x)\n" +
-			"     │                               │           └─ TableAlias(t3)\n" +
-			"     │                               │               └─ IndexedTableAccess(xy)\n" +
-			"     │                               │                   ├─ index: [xy.y]\n" +
-			"     │                               │                   ├─ columns: [x y]\n" +
-			"     │                               │                   └─ keys: xy.x\n" +
+			"     │                               ├─ EXISTS Subquery(select t3.y from xy as t3 where t3.y = xy.x)\n" +
 			"     │                               └─ TableAlias(t2)\n" +
 			"     │                                   └─ Table\n" +
 			"     │                                       └─ name: xy\n" +
@@ -307,7 +297,7 @@ offset 1;`,
 			"     │       ├─ cacheable: false\n" +
 			"     │       └─ Project\n" +
 			"     │           ├─ columns: [xy.x]\n" +
-			"     │           └─ CrossHashJoin\n" +
+			"     │           └─ CrossHashJoin (estimated cost=1311.250 rows=125)\n" +
 			"     │               ├─ Table\n" +
 			"     │               │   ├─ name: xy\n" +
 			"     │               │   └─ columns: [x]\n" +
@@ -322,17 +312,7 @@ offset 1;`,
 			"     │                       └─ Project\n" +
 			"     │                           ├─ columns: [t2.y]\n" +
 			"     │                           └─ Filter\n" +
-			"     │                               ├─ EXISTS Subquery\n" +
-			"     │                               │   ├─ cacheable: false\n" +
-			"     │                               │   └─ Project\n" +
-			"     │                               │       ├─ columns: [t3.y]\n" +
-			"     │                               │       └─ Filter\n" +
-			"     │                               │           ├─ (t3.y = xy.x)\n" +
-			"     │                               │           └─ TableAlias(t3)\n" +
-			"     │                               │               └─ IndexedTableAccess(xy)\n" +
-			"     │                               │                   ├─ index: [xy.y]\n" +
-			"     │                               │                   ├─ columns: [x y]\n" +
-			"     │                               │                   └─ keys: xy.x\n" +
+			"     │                               ├─ EXISTS Subquery(select t3.y from xy as t3 where t3.y = xy.x)\n" +
 			"     │                               └─ TableAlias(t2)\n" +
 			"     │                                   └─ Table\n" +
 			"     │                                       └─ name: xy\n" +
@@ -376,7 +356,7 @@ offset 1;`,
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(two_pk.pk1) as count(pk1)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(two_pk.pk1))\n" +
+			"     ├─ SelectDeps(COUNT(two_pk.pk1))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ Table\n" +
 			"         ├─ name: two_pk\n" +
@@ -385,7 +365,7 @@ offset 1;`,
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(two_pk.pk1) as count(pk1)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(two_pk.pk1))\n" +
+			"     ├─ SelectDeps(COUNT(two_pk.pk1))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ Table\n" +
 			"         ├─ name: two_pk\n" +
@@ -765,7 +745,7 @@ From xy;`,
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(1) as count(*)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(1))\n" +
+			"     ├─ SelectDeps(COUNT(1))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [xy.x, xy.y]\n" +
@@ -782,7 +762,7 @@ From xy;`,
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(1) as count(*)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(1))\n" +
+			"     ├─ SelectDeps(COUNT(1))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [xy.x, xy.y]\n" +
@@ -827,7 +807,7 @@ From xy;`,
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(1) as count(*)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(1))\n" +
+			"     ├─ SelectDeps(COUNT(1))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ LookupJoin\n" +
 			"         ├─ (xy.y = uv.u)\n" +
@@ -843,7 +823,7 @@ From xy;`,
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(1) as count(*)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(1))\n" +
+			"     ├─ SelectDeps(COUNT(1))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ LookupJoin\n" +
 			"         ├─ (xy.y = uv.u)\n" +
@@ -914,7 +894,7 @@ From xy;`,
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(1) as count(*)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(1))\n" +
+			"     ├─ SelectDeps(COUNT(1))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ Table\n" +
 			"         ├─ name: keyless\n" +
@@ -923,7 +903,7 @@ From xy;`,
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(1) as count(*)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(1))\n" +
+			"     ├─ SelectDeps(COUNT(1))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ Table\n" +
 			"         ├─ name: keyless\n" +
@@ -1013,7 +993,7 @@ From xy;`,
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(1)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(1))\n" +
+			"     ├─ SelectDeps(COUNT(1))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ CrossJoin\n" +
 			"         ├─ Table\n" +
@@ -1026,7 +1006,7 @@ From xy;`,
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(1)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(1))\n" +
+			"     ├─ SelectDeps(COUNT(1))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ CrossJoin\n" +
 			"         ├─ Table\n" +
@@ -1258,7 +1238,7 @@ WHERE
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [countdistinct([stock1.s_i_id]) as COUNT(DISTINCT (s_i_id))]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNTDISTINCT([stock1.s_i_id]))\n" +
+			"     ├─ SelectDeps(COUNTDISTINCT([stock1.s_i_id]))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ HashJoin\n" +
 			"         ├─ (stock1.s_i_id = order_line1.ol_i_id)\n" +
@@ -1279,7 +1259,7 @@ WHERE
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [countdistinct([stock1.s_i_id]) as COUNT(DISTINCT (s_i_id))]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNTDISTINCT([stock1.s_i_id]))\n" +
+			"     ├─ SelectDeps(COUNTDISTINCT([stock1.s_i_id]))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ HashJoin\n" +
 			"         ├─ (stock1.s_i_id = order_line1.ol_i_id)\n" +
@@ -1731,7 +1711,7 @@ where
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [included_parts.sub_part, sum(included_parts.quantity) as total_quantity]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(SUM(included_parts.quantity), included_parts.sub_part)\n" +
+			"     ├─ SelectDeps(SUM(included_parts.quantity), included_parts.sub_part)\n" +
 			"     ├─ Grouping(included_parts.sub_part)\n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: included_parts\n" +
@@ -1769,7 +1749,7 @@ where
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [included_parts.sub_part, sum(included_parts.quantity) as total_quantity]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(SUM(included_parts.quantity), included_parts.sub_part)\n" +
+			"     ├─ SelectDeps(SUM(included_parts.quantity), included_parts.sub_part)\n" +
 			"     ├─ Grouping(included_parts.sub_part)\n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: included_parts\n" +
@@ -2486,24 +2466,14 @@ Select * from (
 			"         └─ columns: [x y]\n" +
 			"",
 		ExpectedEstimates: "AntiJoinIncludingNulls (estimated cost=2024.000 rows=5)\n" +
-			" ├─ ((NOT(EXISTS Subquery\n" +
-			" │   ├─ cacheable: true\n" +
-			" │   └─ Table\n" +
-			" │       ├─ name: xy\n" +
-			" │       └─ columns: [x y]\n" +
-			" │  )) OR (uv.u = 1))\n" +
+			" ├─ ((NOT(EXISTS Subquery(select * from xy where not (u = 1)))) OR (uv.u = 1))\n" +
 			" ├─ Table\n" +
 			" │   └─ name: uv\n" +
 			" └─ Table\n" +
 			"     └─ name: xy\n" +
 			"",
 		ExpectedAnalysis: "AntiJoinIncludingNulls (estimated cost=2024.000 rows=5) (actual rows=3 loops=1)\n" +
-			" ├─ ((NOT(EXISTS Subquery\n" +
-			" │   ├─ cacheable: true\n" +
-			" │   └─ Table\n" +
-			" │       ├─ name: xy\n" +
-			" │       └─ columns: [x y]\n" +
-			" │  )) OR (uv.u = 1))\n" +
+			" ├─ ((NOT(EXISTS Subquery(select * from xy where not (u = 1)))) OR (uv.u = 1))\n" +
 			" ├─ Table\n" +
 			" │   └─ name: uv\n" +
 			" └─ Table\n" +
@@ -3384,23 +3354,7 @@ Select * from (
 			" ├─ columns: [ab.a, ab.b]\n" +
 			" └─ Sort(ab.a ASC)\n" +
 			"     └─ Filter\n" +
-			"         ├─ (ab.b = Subquery\n" +
-			"         │   ├─ cacheable: false\n" +
-			"         │   └─ Project\n" +
-			"         │       ├─ columns: [xy.y]\n" +
-			"         │       └─ Filter\n" +
-			"         │           ├─ InSubquery\n" +
-			"         │           │   ├─ left: xy.y\n" +
-			"         │           │   └─ right: Subquery\n" +
-			"         │           │       ├─ cacheable: false\n" +
-			"         │           │       └─ Filter\n" +
-			"         │           │           ├─ (uv.v = ab.b)\n" +
-			"         │           │           └─ Table\n" +
-			"         │           │               ├─ name: uv\n" +
-			"         │           │               └─ columns: [v]\n" +
-			"         │           └─ Table\n" +
-			"         │               └─ name: xy\n" +
-			"         │  )\n" +
+			"         ├─ (ab.b = Subquery(select y from xy where y in (select v from uv where v = b)))\n" +
 			"         └─ LookupJoin\n" +
 			"             ├─ Table\n" +
 			"             │   └─ name: pq\n" +
@@ -3412,23 +3366,7 @@ Select * from (
 			" ├─ columns: [ab.a, ab.b]\n" +
 			" └─ Sort(ab.a ASC)\n" +
 			"     └─ Filter\n" +
-			"         ├─ (ab.b = Subquery\n" +
-			"         │   ├─ cacheable: false\n" +
-			"         │   └─ Project\n" +
-			"         │       ├─ columns: [xy.y]\n" +
-			"         │       └─ Filter\n" +
-			"         │           ├─ InSubquery\n" +
-			"         │           │   ├─ left: xy.y\n" +
-			"         │           │   └─ right: Subquery\n" +
-			"         │           │       ├─ cacheable: false\n" +
-			"         │           │       └─ Filter\n" +
-			"         │           │           ├─ (uv.v = ab.b)\n" +
-			"         │           │           └─ Table\n" +
-			"         │           │               ├─ name: uv\n" +
-			"         │           │               └─ columns: [v]\n" +
-			"         │           └─ Table\n" +
-			"         │               └─ name: xy\n" +
-			"         │  )\n" +
+			"         ├─ (ab.b = Subquery(select y from xy where y in (select v from uv where v = b)))\n" +
 			"         └─ LookupJoin\n" +
 			"             ├─ Table\n" +
 			"             │   └─ name: pq\n" +
@@ -4593,7 +4531,7 @@ Select * from (
 			" │       ├─ cacheable: true\n" +
 			" │       └─ Project\n" +
 			" │           ├─ columns: [ab.a]\n" +
-			" │           └─ LookupJoin\n" +
+			" │           └─ LookupJoin (estimated cost=13.200 rows=4)\n" +
 			" │               ├─ (ab.a = uv.u)\n" +
 			" │               ├─ OrderedDistinct\n" +
 			" │               │   └─ Project\n" +
@@ -4612,7 +4550,7 @@ Select * from (
 			"     │       ├─ cacheable: true\n" +
 			"     │       └─ Project\n" +
 			"     │           ├─ columns: [ab.a]\n" +
-			"     │           └─ LookupJoin\n" +
+			"     │           └─ LookupJoin (estimated cost=13.200 rows=4)\n" +
 			"     │               ├─ (ab.a = uv.u)\n" +
 			"     │               ├─ OrderedDistinct\n" +
 			"     │               │   └─ Project\n" +
@@ -4634,7 +4572,7 @@ Select * from (
 			" │       ├─ cacheable: true\n" +
 			" │       └─ Project\n" +
 			" │           ├─ columns: [ab.a]\n" +
-			" │           └─ LookupJoin\n" +
+			" │           └─ LookupJoin (estimated cost=13.200 rows=4)\n" +
 			" │               ├─ (ab.a = uv.u)\n" +
 			" │               ├─ OrderedDistinct\n" +
 			" │               │   └─ Project\n" +
@@ -4653,7 +4591,7 @@ Select * from (
 			"     │       ├─ cacheable: true\n" +
 			"     │       └─ Project\n" +
 			"     │           ├─ columns: [ab.a]\n" +
-			"     │           └─ LookupJoin\n" +
+			"     │           └─ LookupJoin (estimated cost=13.200 rows=4)\n" +
 			"     │               ├─ (ab.a = uv.u)\n" +
 			"     │               ├─ OrderedDistinct\n" +
 			"     │               │   └─ Project\n" +
@@ -4866,7 +4804,7 @@ Select * from (
 	{
 		Query: `SELECT count(*), i, concat(i, i), 123, 'abc', concat('abc', 'def') FROM emptytable;`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [count(1):0!null->count(*):0, emptytable.i:1!null, concat(emptytable.i:1!null,emptytable.i:1!null)->concat(i, i):0, 123 (tinyint), abc (longtext), concat('abc','def')->concat('abc', 'def')]\n" +
+			" ├─ columns: [count(1):0!null->count(*):0, emptytable.i:1!null, concat(emptytable.i:1!null,emptytable.i:1!null)->concat(i, i):0, 123 (tinyint), abc (longtext), concat(abc (longtext),def (longtext))->concat('abc', 'def')]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNT(1 (bigint)), emptytable.i:0!null\n" +
 			"     ├─ group: \n" +
@@ -4878,7 +4816,7 @@ Select * from (
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(1) as count(*), emptytable.i, concat(emptytable.i,emptytable.i) as concat(i, i), 123, 'abc', concat('abc','def') as concat('abc', 'def')]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(1), emptytable.i)\n" +
+			"     ├─ SelectDeps(COUNT(1), emptytable.i)\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ Table\n" +
 			"         ├─ name: emptytable\n" +
@@ -4887,7 +4825,7 @@ Select * from (
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(1) as count(*), emptytable.i, concat(emptytable.i,emptytable.i) as concat(i, i), 123, 'abc', concat('abc','def') as concat('abc', 'def')]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(1), emptytable.i)\n" +
+			"     ├─ SelectDeps(COUNT(1), emptytable.i)\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ Table\n" +
 			"         ├─ name: emptytable\n" +
@@ -4897,7 +4835,7 @@ Select * from (
 	{
 		Query: `SELECT count(*), i, concat(i, i), 123, 'abc', concat('abc', 'def') FROM mytable where false;`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [count(1):0!null->count(*):0, mytable.i:1!null, concat(mytable.i:1!null,mytable.i:1!null)->concat(i, i):0, 123 (tinyint), abc (longtext), concat('abc','def')->concat('abc', 'def')]\n" +
+			" ├─ columns: [count(1):0!null->count(*):0, mytable.i:1!null, concat(mytable.i:1!null,mytable.i:1!null)->concat(i, i):0, 123 (tinyint), abc (longtext), concat(abc (longtext),def (longtext))->concat('abc', 'def')]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNT(1 (bigint)), mytable.i:0!null\n" +
 			"     ├─ group: \n" +
@@ -4906,14 +4844,14 @@ Select * from (
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(1) as count(*), mytable.i, concat(mytable.i,mytable.i) as concat(i, i), 123, 'abc', concat('abc','def') as concat('abc', 'def')]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(1), mytable.i)\n" +
+			"     ├─ SelectDeps(COUNT(1), mytable.i)\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ EmptyTable\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(1) as count(*), mytable.i, concat(mytable.i,mytable.i) as concat(i, i), 123, 'abc', concat('abc','def') as concat('abc', 'def')]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(1), mytable.i)\n" +
+			"     ├─ SelectDeps(COUNT(1), mytable.i)\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ EmptyTable\n" +
 			"",
@@ -4953,7 +4891,7 @@ Select * from (
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(1) as cnt]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(1))\n" +
+			"     ├─ SelectDeps(COUNT(1))\n" +
 			"     ├─ Grouping(ab.a)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [ab.a, ab.b]\n" +
@@ -4972,7 +4910,7 @@ Select * from (
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(1) as cnt]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(1))\n" +
+			"     ├─ SelectDeps(COUNT(1))\n" +
 			"     ├─ Grouping(ab.a)\n" +
 			"     └─ Project\n" +
 			"         ├─ columns: [ab.a, ab.b]\n" +
@@ -5101,7 +5039,7 @@ Select * from (
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [count(1) as u, 123 as v]\n" +
 			"     │       └─ GroupBy\n" +
-			"     │           ├─ SelectedExprs(COUNT(1))\n" +
+			"     │           ├─ SelectDeps(COUNT(1))\n" +
 			"     │           ├─ Grouping()\n" +
 			"     │           └─ EmptyTable\n" +
 			"     └─ HashLookup\n" +
@@ -5123,7 +5061,7 @@ Select * from (
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [count(1) as u, 123 as v]\n" +
 			"     │       └─ GroupBy\n" +
-			"     │           ├─ SelectedExprs(COUNT(1))\n" +
+			"     │           ├─ SelectDeps(COUNT(1))\n" +
 			"     │           ├─ Grouping()\n" +
 			"     │           └─ EmptyTable\n" +
 			"     └─ HashLookup\n" +
@@ -5216,7 +5154,7 @@ Select * from (
 			"     │       └─ Project\n" +
 			"     │           ├─ columns: [count(1) as u, 123 as v]\n" +
 			"     │           └─ GroupBy\n" +
-			"     │               ├─ SelectedExprs(COUNT(1))\n" +
+			"     │               ├─ SelectDeps(COUNT(1))\n" +
 			"     │               ├─ Grouping()\n" +
 			"     │               └─ EmptyTable\n" +
 			"     └─ Table\n" +
@@ -5232,7 +5170,7 @@ Select * from (
 			"     │       └─ Project\n" +
 			"     │           ├─ columns: [count(1) as u, 123 as v]\n" +
 			"     │           └─ GroupBy\n" +
-			"     │               ├─ SelectedExprs(COUNT(1))\n" +
+			"     │               ├─ SelectDeps(COUNT(1))\n" +
 			"     │               ├─ Grouping()\n" +
 			"     │               └─ EmptyTable\n" +
 			"     └─ Table\n" +
@@ -5336,7 +5274,7 @@ Select * from (
 			" ├─ columns: [count(1) as count(*), Subquery\n" +
 			" │   ├─ cacheable: true\n" +
 			" │   └─ GroupBy\n" +
-			" │       ├─ SelectedExprs(mytable.i)\n" +
+			" │       ├─ SelectDeps(mytable.i)\n" +
 			" │       ├─ Grouping(mytable.i)\n" +
 			" │       └─ IndexedTableAccess(mytable)\n" +
 			" │           ├─ index: [mytable.i]\n" +
@@ -5344,7 +5282,7 @@ Select * from (
 			" │           └─ columns: [i]\n" +
 			" │   as (SELECT i FROM mytable WHERE i = 1 group by i)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(1))\n" +
+			"     ├─ SelectDeps(COUNT(1))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ Table\n" +
 			"         └─ name: \n" +
@@ -5353,7 +5291,7 @@ Select * from (
 			" ├─ columns: [count(1) as count(*), Subquery\n" +
 			" │   ├─ cacheable: true\n" +
 			" │   └─ GroupBy\n" +
-			" │       ├─ SelectedExprs(mytable.i)\n" +
+			" │       ├─ SelectDeps(mytable.i)\n" +
 			" │       ├─ Grouping(mytable.i)\n" +
 			" │       └─ IndexedTableAccess(mytable)\n" +
 			" │           ├─ index: [mytable.i]\n" +
@@ -5361,7 +5299,7 @@ Select * from (
 			" │           └─ columns: [i]\n" +
 			" │   as (SELECT i FROM mytable WHERE i = 1 group by i)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(1))\n" +
+			"     ├─ SelectDeps(COUNT(1))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ Table\n" +
 			"         └─ name: \n" +
@@ -16524,23 +16462,7 @@ inner join pq on true
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [mt.i]\n" +
 			" └─ Filter\n" +
-			"     ├─ ((NOT(Subquery\n" +
-			"     │   ├─ cacheable: false\n" +
-			"     │   └─ Filter\n" +
-			"     │       ├─ (mytable.i = mt.i)\n" +
-			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ index: [mytable.i]\n" +
-			"     │           ├─ filters: [{(2, ∞)}]\n" +
-			"     │           └─ columns: [i]\n" +
-			"     │   IS NULL)) AND (NOT(Subquery\n" +
-			"     │   ├─ cacheable: false\n" +
-			"     │   └─ Filter\n" +
-			"     │       ├─ (othertable.i2 = mt.i)\n" +
-			"     │       └─ IndexedTableAccess(othertable)\n" +
-			"     │           ├─ index: [othertable.i2]\n" +
-			"     │           ├─ columns: [i2]\n" +
-			"     │           └─ keys: mt.i\n" +
-			"     │   IS NULL)))\n" +
+			"     ├─ ((NOT(Subquery(select i from mytable where i = mt.i and i > 2) IS NULL)) AND (NOT(Subquery(select i2 from othertable where i2 = i) IS NULL)))\n" +
 			"     └─ TableAlias(mt)\n" +
 			"         └─ Table\n" +
 			"             └─ name: mytable\n" +
@@ -16548,23 +16470,7 @@ inner join pq on true
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [mt.i]\n" +
 			" └─ Filter\n" +
-			"     ├─ ((NOT(Subquery\n" +
-			"     │   ├─ cacheable: false\n" +
-			"     │   └─ Filter\n" +
-			"     │       ├─ (mytable.i = mt.i)\n" +
-			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ index: [mytable.i]\n" +
-			"     │           ├─ filters: [{(2, ∞)}]\n" +
-			"     │           └─ columns: [i]\n" +
-			"     │   IS NULL)) AND (NOT(Subquery\n" +
-			"     │   ├─ cacheable: false\n" +
-			"     │   └─ Filter\n" +
-			"     │       ├─ (othertable.i2 = mt.i)\n" +
-			"     │       └─ IndexedTableAccess(othertable)\n" +
-			"     │           ├─ index: [othertable.i2]\n" +
-			"     │           ├─ columns: [i2]\n" +
-			"     │           └─ keys: mt.i\n" +
-			"     │   IS NULL)))\n" +
+			"     ├─ ((NOT(Subquery(select i from mytable where i = mt.i and i > 2) IS NULL)) AND (NOT(Subquery(select i2 from othertable where i2 = i) IS NULL)))\n" +
 			"     └─ TableAlias(mt)\n" +
 			"         └─ Table\n" +
 			"             └─ name: mytable\n" +
@@ -16625,23 +16531,7 @@ inner join pq on true
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [mt.i]\n" +
 			" └─ Filter\n" +
-			"     ├─ ((NOT(Subquery\n" +
-			"     │   ├─ cacheable: false\n" +
-			"     │   └─ Filter\n" +
-			"     │       ├─ (mytable.i = mt.i)\n" +
-			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ index: [mytable.i]\n" +
-			"     │           ├─ columns: [i]\n" +
-			"     │           └─ keys: mt.i\n" +
-			"     │   IS NULL)) AND (NOT(Subquery\n" +
-			"     │   ├─ cacheable: false\n" +
-			"     │   └─ Filter\n" +
-			"     │       ├─ ((othertable.i2 = mt.i) AND (mt.i > 2))\n" +
-			"     │       └─ IndexedTableAccess(othertable)\n" +
-			"     │           ├─ index: [othertable.i2]\n" +
-			"     │           ├─ columns: [i2]\n" +
-			"     │           └─ keys: mt.i\n" +
-			"     │   IS NULL)))\n" +
+			"     ├─ ((NOT(Subquery(select i from mytable where i = mt.i) IS NULL)) AND (NOT(Subquery(select i2 from othertable where i2 = i and i > 2) IS NULL)))\n" +
 			"     └─ TableAlias(mt)\n" +
 			"         └─ Table\n" +
 			"             └─ name: mytable\n" +
@@ -16649,23 +16539,7 @@ inner join pq on true
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [mt.i]\n" +
 			" └─ Filter\n" +
-			"     ├─ ((NOT(Subquery\n" +
-			"     │   ├─ cacheable: false\n" +
-			"     │   └─ Filter\n" +
-			"     │       ├─ (mytable.i = mt.i)\n" +
-			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ index: [mytable.i]\n" +
-			"     │           ├─ columns: [i]\n" +
-			"     │           └─ keys: mt.i\n" +
-			"     │   IS NULL)) AND (NOT(Subquery\n" +
-			"     │   ├─ cacheable: false\n" +
-			"     │   └─ Filter\n" +
-			"     │       ├─ ((othertable.i2 = mt.i) AND (mt.i > 2))\n" +
-			"     │       └─ IndexedTableAccess(othertable)\n" +
-			"     │           ├─ index: [othertable.i2]\n" +
-			"     │           ├─ columns: [i2]\n" +
-			"     │           └─ keys: mt.i\n" +
-			"     │   IS NULL)))\n" +
+			"     ├─ ((NOT(Subquery(select i from mytable where i = mt.i) IS NULL)) AND (NOT(Subquery(select i2 from othertable where i2 = i and i > 2) IS NULL)))\n" +
 			"     └─ TableAlias(mt)\n" +
 			"         └─ Table\n" +
 			"             └─ name: mytable\n" +
@@ -20146,7 +20020,7 @@ inner join pq on true
 			" │           └─ Table\n" +
 			" │               └─ name: \n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(a.x)\n" +
+			"     ├─ SelectDeps(a.x)\n" +
 			"     ├─ Grouping(a.x)\n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: a\n" +
@@ -20179,7 +20053,7 @@ inner join pq on true
 			" │           └─ Table\n" +
 			" │               └─ name: \n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(a.x)\n" +
+			"     ├─ SelectDeps(a.x)\n" +
 			"     ├─ Grouping(a.x)\n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: a\n" +
@@ -20344,7 +20218,7 @@ inner join pq on true
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(n.i) as count(i)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(n.i))\n" +
+			"     ├─ SelectDeps(COUNT(n.i))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: n\n" +
@@ -20367,7 +20241,7 @@ inner join pq on true
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(n.i) as count(i)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(n.i))\n" +
+			"     ├─ SelectDeps(COUNT(n.i))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: n\n" +
@@ -20425,7 +20299,7 @@ inner join pq on true
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(n.i) as count(i)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(n.i))\n" +
+			"     ├─ SelectDeps(COUNT(n.i))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: n\n" +
@@ -20442,14 +20316,14 @@ inner join pq on true
 			"                     ├─ columns: [(n.i + 1) as i + 1]\n" +
 			"                     └─ Having(((n.i + 1) <= 10))\n" +
 			"                         └─ GroupBy\n" +
-			"                             ├─ SelectedExprs(n.i)\n" +
+			"                             ├─ SelectDeps(n.i)\n" +
 			"                             ├─ Grouping(n.i)\n" +
 			"                             └─ RecursiveTable(n)\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(n.i) as count(i)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(n.i))\n" +
+			"     ├─ SelectDeps(COUNT(n.i))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: n\n" +
@@ -20466,7 +20340,7 @@ inner join pq on true
 			"                     ├─ columns: [(n.i + 1) as i + 1]\n" +
 			"                     └─ Having(((n.i + 1) <= 10))\n" +
 			"                         └─ GroupBy\n" +
-			"                             ├─ SelectedExprs(n.i)\n" +
+			"                             ├─ SelectDeps(n.i)\n" +
 			"                             ├─ Grouping(n.i)\n" +
 			"                             └─ RecursiveTable(n)\n" +
 			"",
@@ -20506,7 +20380,7 @@ inner join pq on true
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(n.i) as count(i)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(n.i))\n" +
+			"     ├─ SelectDeps(COUNT(n.i))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: n\n" +
@@ -20529,7 +20403,7 @@ inner join pq on true
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(n.i) as count(i)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(n.i))\n" +
+			"     ├─ SelectDeps(COUNT(n.i))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: n\n" +
@@ -20896,7 +20770,7 @@ inner join pq on true
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(1) as count(*)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(1))\n" +
+			"     ├─ SelectDeps(COUNT(1))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: a\n" +
@@ -20938,7 +20812,7 @@ inner join pq on true
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(1) as count(*)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(1))\n" +
+			"     ├─ SelectDeps(COUNT(1))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: a\n" +
@@ -22866,7 +22740,7 @@ WHERE keyless.c0 IN (
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(1) as COUNT(*)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(1))\n" +
+			"     ├─ SelectDeps(COUNT(1))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ Filter\n" +
 			"         ├─ InSubquery\n" +
@@ -22915,7 +22789,7 @@ WHERE keyless.c0 IN (
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(1) as COUNT(*)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(1))\n" +
+			"     ├─ SelectDeps(COUNT(1))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ Filter\n" +
 			"         ├─ InSubquery\n" +
@@ -23052,7 +22926,7 @@ WHERE keyless.c0 IN (
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(1) as COUNT(*)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(1))\n" +
+			"     ├─ SelectDeps(COUNT(1))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ Filter\n" +
 			"         ├─ InSubquery\n" +
@@ -23101,7 +22975,7 @@ WHERE keyless.c0 IN (
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(1) as COUNT(*)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(COUNT(1))\n" +
+			"     ├─ SelectDeps(COUNT(1))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ Filter\n" +
 			"         ├─ InSubquery\n" +
@@ -23289,7 +23163,7 @@ WHERE keyless.c0 IN (
 			"",
 		ExpectedEstimates: "Sort(two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(two_pk.pk1, two_pk.pk2)\n" +
+			"     ├─ SelectDeps(two_pk.pk1, two_pk.pk2)\n" +
 			"     ├─ Grouping(two_pk.pk1, two_pk.pk2)\n" +
 			"     └─ Table\n" +
 			"         ├─ name: two_pk\n" +
@@ -23297,7 +23171,7 @@ WHERE keyless.c0 IN (
 			"",
 		ExpectedAnalysis: "Sort(two_pk.pk1 ASC, two_pk.pk2 ASC)\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(two_pk.pk1, two_pk.pk2)\n" +
+			"     ├─ SelectDeps(two_pk.pk1, two_pk.pk2)\n" +
 			"     ├─ Grouping(two_pk.pk1, two_pk.pk2)\n" +
 			"     └─ Table\n" +
 			"         ├─ name: two_pk\n" +
@@ -23317,7 +23191,7 @@ WHERE keyless.c0 IN (
 			"",
 		ExpectedEstimates: "Sort(two_pk.pk1 DESC, two_pk.pk2 DESC)\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(two_pk.pk1, two_pk.pk2)\n" +
+			"     ├─ SelectDeps(two_pk.pk1, two_pk.pk2)\n" +
 			"     ├─ Grouping(two_pk.pk1, two_pk.pk2)\n" +
 			"     └─ Table\n" +
 			"         ├─ name: two_pk\n" +
@@ -23325,7 +23199,7 @@ WHERE keyless.c0 IN (
 			"",
 		ExpectedAnalysis: "Sort(two_pk.pk1 DESC, two_pk.pk2 DESC)\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(two_pk.pk1, two_pk.pk2)\n" +
+			"     ├─ SelectDeps(two_pk.pk1, two_pk.pk2)\n" +
 			"     ├─ Grouping(two_pk.pk1, two_pk.pk2)\n" +
 			"     └─ Table\n" +
 			"         ├─ name: two_pk\n" +
@@ -23932,7 +23806,7 @@ WHERE keyless.c0 IN (
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [max(xy.y) as max(y)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MAX(xy.y))\n" +
+			"     ├─ SelectDeps(MAX(xy.y))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ Table\n" +
 			"         ├─ name: xy\n" +
@@ -23941,7 +23815,7 @@ WHERE keyless.c0 IN (
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [max(xy.y) as max(y)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MAX(xy.y))\n" +
+			"     ├─ SelectDeps(MAX(xy.y))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ Table\n" +
 			"         ├─ name: xy\n" +
@@ -24134,7 +24008,7 @@ WHERE keyless.c0 IN (
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(xy.x) as min(x)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(xy.x))\n" +
+			"     ├─ SelectDeps(MIN(xy.x))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.y]\n" +
@@ -24144,7 +24018,7 @@ WHERE keyless.c0 IN (
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(xy.x) as min(x)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MIN(xy.x))\n" +
+			"     ├─ SelectDeps(MIN(xy.x))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.y]\n" +
@@ -24171,7 +24045,7 @@ WHERE keyless.c0 IN (
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [max(xy.x) as max(x)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MAX(xy.x))\n" +
+			"     ├─ SelectDeps(MAX(xy.x))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.y]\n" +
@@ -24181,7 +24055,7 @@ WHERE keyless.c0 IN (
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [max(xy.x) as max(x)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MAX(xy.x))\n" +
+			"     ├─ SelectDeps(MAX(xy.x))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.y]\n" +
@@ -24320,7 +24194,7 @@ WHERE keyless.c0 IN (
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [max(cte.i) as max(i)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MAX(cte.i))\n" +
+			"     ├─ SelectDeps(MAX(cte.i))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: cte\n" +
@@ -24334,7 +24208,7 @@ WHERE keyless.c0 IN (
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [max(cte.i) as max(i)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MAX(cte.i))\n" +
+			"     ├─ SelectDeps(MAX(cte.i))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: cte\n" +
@@ -24361,7 +24235,7 @@ WHERE keyless.c0 IN (
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [max(xy.x) as max(x)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MAX(xy.x))\n" +
+			"     ├─ SelectDeps(MAX(xy.x))\n" +
 			"     ├─ Grouping(xy.y)\n" +
 			"     └─ Table\n" +
 			"         ├─ name: xy\n" +
@@ -24370,7 +24244,7 @@ WHERE keyless.c0 IN (
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [max(xy.x) as max(x)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MAX(xy.x))\n" +
+			"     ├─ SelectDeps(MAX(xy.x))\n" +
 			"     ├─ Grouping(xy.y)\n" +
 			"     └─ Table\n" +
 			"         ├─ name: xy\n" +
@@ -24401,7 +24275,7 @@ WHERE keyless.c0 IN (
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [max(xy.x) as max(x)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MAX(xy.x))\n" +
+			"     ├─ SelectDeps(MAX(xy.x))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ LookupJoin\n" +
 			"         ├─ Table\n" +
@@ -24415,7 +24289,7 @@ WHERE keyless.c0 IN (
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [max(xy.x) as max(x)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectedExprs(MAX(xy.x))\n" +
+			"     ├─ SelectDeps(MAX(xy.x))\n" +
 			"     ├─ Grouping()\n" +
 			"     └─ LookupJoin\n" +
 			"         ├─ Table\n" +
@@ -24748,20 +24622,7 @@ order by xy.x, xy.y, uv.u, uv.v;`,
 			" ├─ columns: [xy.x, xy.y, uv.u, uv.v]\n" +
 			" └─ Sort(xy.x ASC, xy.y ASC, uv.u ASC, uv.v ASC)\n" +
 			"     └─ LookupJoin\n" +
-			"         ├─ (uv.v = Subquery\n" +
-			"         │   ├─ cacheable: false\n" +
-			"         │   └─ Project\n" +
-			"         │       ├─ columns: [max(uv.v) as max(v)]\n" +
-			"         │       └─ GroupBy\n" +
-			"         │           ├─ SelectedExprs(MAX(uv.v))\n" +
-			"         │           ├─ Grouping()\n" +
-			"         │           └─ Filter\n" +
-			"         │               ├─ (xy.x = uv.u)\n" +
-			"         │               └─ IndexedTableAccess(uv)\n" +
-			"         │                   ├─ index: [uv.u]\n" +
-			"         │                   ├─ columns: [u v]\n" +
-			"         │                   └─ keys: xy.x\n" +
-			"         │  )\n" +
+			"         ├─ (uv.v = Subquery(select max(v) from uv where xy.x = uv.u))\n" +
 			"         ├─ Table\n" +
 			"         │   └─ name: uv\n" +
 			"         └─ IndexedTableAccess(xy)\n" +
@@ -24772,20 +24633,7 @@ order by xy.x, xy.y, uv.u, uv.v;`,
 			" ├─ columns: [xy.x, xy.y, uv.u, uv.v]\n" +
 			" └─ Sort(xy.x ASC, xy.y ASC, uv.u ASC, uv.v ASC)\n" +
 			"     └─ LookupJoin\n" +
-			"         ├─ (uv.v = Subquery\n" +
-			"         │   ├─ cacheable: false\n" +
-			"         │   └─ Project\n" +
-			"         │       ├─ columns: [max(uv.v) as max(v)]\n" +
-			"         │       └─ GroupBy\n" +
-			"         │           ├─ SelectedExprs(MAX(uv.v))\n" +
-			"         │           ├─ Grouping()\n" +
-			"         │           └─ Filter\n" +
-			"         │               ├─ (xy.x = uv.u)\n" +
-			"         │               └─ IndexedTableAccess(uv)\n" +
-			"         │                   ├─ index: [uv.u]\n" +
-			"         │                   ├─ columns: [u v]\n" +
-			"         │                   └─ keys: xy.x\n" +
-			"         │  )\n" +
+			"         ├─ (uv.v = Subquery(select max(v) from uv where xy.x = uv.u))\n" +
 			"         ├─ Table\n" +
 			"         │   └─ name: uv\n" +
 			"         └─ IndexedTableAccess(xy)\n" +
@@ -24842,19 +24690,7 @@ where exists (
 			"     └─ tableId: 2\n" +
 			"",
 		ExpectedEstimates: "SemiJoin (estimated cost=506000.000 rows=1250)\n" +
-			" ├─ (ab.b = Subquery\n" +
-			" │   ├─ cacheable: false\n" +
-			" │   └─ Project\n" +
-			" │       ├─ columns: [max(uv.v) as max(v)]\n" +
-			" │       └─ GroupBy\n" +
-			" │           ├─ SelectedExprs(MAX(uv.v))\n" +
-			" │           ├─ Grouping()\n" +
-			" │           └─ Filter\n" +
-			" │               ├─ ((uv.v = ab2.a) AND (uv.v = ab.a))\n" +
-			" │               └─ Table\n" +
-			" │                   ├─ name: uv\n" +
-			" │                   └─ columns: [v]\n" +
-			" │  )\n" +
+			" ├─ (ab.b = Subquery(select max(v) from uv where uv.v = ab2.a and uv.v = ab.a))\n" +
 			" ├─ TableAlias(ab2)\n" +
 			" │   └─ Table\n" +
 			" │       └─ name: ab\n" +
@@ -24862,19 +24698,7 @@ where exists (
 			"     └─ name: ab\n" +
 			"",
 		ExpectedAnalysis: "SemiJoin (estimated cost=506000.000 rows=1250) (actual rows=1 loops=1)\n" +
-			" ├─ (ab.b = Subquery\n" +
-			" │   ├─ cacheable: false\n" +
-			" │   └─ Project\n" +
-			" │       ├─ columns: [max(uv.v) as max(v)]\n" +
-			" │       └─ GroupBy\n" +
-			" │           ├─ SelectedExprs(MAX(uv.v))\n" +
-			" │           ├─ Grouping()\n" +
-			" │           └─ Filter\n" +
-			" │               ├─ ((uv.v = ab2.a) AND (uv.v = ab.a))\n" +
-			" │               └─ Table\n" +
-			" │                   ├─ name: uv\n" +
-			" │                   └─ columns: [v]\n" +
-			" │  )\n" +
+			" ├─ (ab.b = Subquery(select max(v) from uv where uv.v = ab2.a and uv.v = ab.a))\n" +
 			" ├─ TableAlias(ab2)\n" +
 			" │   └─ Table\n" +
 			" │       └─ name: ab\n" +
@@ -24935,19 +24759,7 @@ order by x, y;
 			"",
 		ExpectedEstimates: "Sort(xy2.x ASC, xy2.y ASC)\n" +
 			" └─ SemiJoin\n" +
-			"     ├─ (xy.y = Subquery\n" +
-			"     │   ├─ cacheable: false\n" +
-			"     │   └─ Project\n" +
-			"     │       ├─ columns: [max(uv.v) as max(v)]\n" +
-			"     │       └─ GroupBy\n" +
-			"     │           ├─ SelectedExprs(MAX(uv.v))\n" +
-			"     │           ├─ Grouping()\n" +
-			"     │           └─ Filter\n" +
-			"     │               ├─ ((uv.v = xy2.x) AND (uv.v = xy.x))\n" +
-			"     │               └─ Table\n" +
-			"     │                   ├─ name: uv\n" +
-			"     │                   └─ columns: [v]\n" +
-			"     │  )\n" +
+			"     ├─ (xy.y = Subquery(select max(v) from uv where uv.v = xy2.x and uv.v = xy.x))\n" +
 			"     ├─ TableAlias(xy2)\n" +
 			"     │   └─ Table\n" +
 			"     │       └─ name: xy\n" +
@@ -24956,19 +24768,7 @@ order by x, y;
 			"",
 		ExpectedAnalysis: "Sort(xy2.x ASC, xy2.y ASC)\n" +
 			" └─ SemiJoin\n" +
-			"     ├─ (xy.y = Subquery\n" +
-			"     │   ├─ cacheable: false\n" +
-			"     │   └─ Project\n" +
-			"     │       ├─ columns: [max(uv.v) as max(v)]\n" +
-			"     │       └─ GroupBy\n" +
-			"     │           ├─ SelectedExprs(MAX(uv.v))\n" +
-			"     │           ├─ Grouping()\n" +
-			"     │           └─ Filter\n" +
-			"     │               ├─ ((uv.v = xy2.x) AND (uv.v = xy.x))\n" +
-			"     │               └─ Table\n" +
-			"     │                   ├─ name: uv\n" +
-			"     │                   └─ columns: [v]\n" +
-			"     │  )\n" +
+			"     ├─ (xy.y = Subquery(select max(v) from uv where uv.v = xy2.x and uv.v = xy.x))\n" +
 			"     ├─ TableAlias(xy2)\n" +
 			"     │   └─ Table\n" +
 			"     │       └─ name: xy\n" +

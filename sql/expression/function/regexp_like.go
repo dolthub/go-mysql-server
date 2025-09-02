@@ -30,16 +30,15 @@ import (
 // RegexpLike implements the REGEXP_LIKE function.
 // https://dev.mysql.com/doc/refman/8.0/en/regexp.html#function_regexp-like
 type RegexpLike struct {
-	Text    sql.Expression
-	Pattern sql.Expression
-	Flags   sql.Expression
-
-	cacheVal    bool
+	Text        sql.Expression
+	Pattern     sql.Expression
+	Flags       sql.Expression
 	cachedVal   any
-	cacheRegex  bool
 	re          regex.Regex
-	compileOnce sync.Once
 	compileErr  error
+	compileOnce sync.Once
+	cacheVal    bool
+	cacheRegex  bool
 }
 
 var _ sql.FunctionExpression = (*RegexpLike)(nil)
