@@ -24,6 +24,8 @@ github.com/dolthub/vitess v0.0.0-20250813175212-45844169a751 h1:BBQKyvyODewdQxS+
 github.com/dolthub/vitess v0.0.0-20250813175212-45844169a751/go.mod h1:1gQZs/byeHLMSul3Lvl3MzioMtOW1je79QYGyi2fd70=
 github.com/dolthub/vitess v0.0.0-20250814204310-c749d213f235 h1:uXrK+xn8rCwz/8jWDKaDyqZG1HbZI9F4V4HJ7zXFPMY=
 github.com/dolthub/vitess v0.0.0-20250814204310-c749d213f235/go.mod h1:1gQZs/byeHLMSul3Lvl3MzioMtOW1je79QYGyi2fd70=
+github.com/dolthub/vitess v0.0.0-20250902185630-90811959cbd1 h1:sCpjbwm7rIV5o9OQDWsqGSzNXGSxpeAk3kX5gjPQlQI=
+github.com/dolthub/vitess v0.0.0-20250902185630-90811959cbd1/go.mod h1:tV3BrIVyDWVkkYy8dKt2o6hjJ89cHb5opY5FpCyhncQ=
 github.com/go-sql-driver/mysql v1.9.3 h1:U/N249h2WzJ3Ukj8SowVFjdtZKfu9vlLZxjPXV1aweo=
 github.com/go-sql-driver/mysql v1.9.3/go.mod h1:qn46aNg1333BRMNU69Lq93t8du/dwxI64Gl8i5p1WMU=
 github.com/gocraft/dbr/v2 v2.7.2 h1:ccUxMuz6RdZvD7VPhMRRMSS/ECF3gytPhPtcavjktHk=
