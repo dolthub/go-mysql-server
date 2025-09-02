@@ -11688,7 +11688,8 @@ select * from t1 except (
 		},
 	},
 	{
-		Name: "aggregate function with match",
+		Name:    "aggregate function with match",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, doc TEXT, FULLTEXT idx (doc));",
 			"INSERT INTO test VALUES (2, 'g hhhh aaaab ooooo aaaa'), (1, 'bbbb ff cccc ddd eee'), (4, 'AAAA aaaa aaaac aaaa Aaaa aaaa'), (3, 'aaaA ff j kkkk llllllll');",
