@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"math"
 	"strings"
-
+	
 	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 )

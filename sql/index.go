@@ -166,6 +166,51 @@ type IndexLookup struct {
 
 var emptyLookup = IndexLookup{}
 
+type IndexComparisonExpression interface {
+	// TODO: IndexScanOp probably needs to be moved into this package as well
+	IndexScanOperation() (IndexScanOp, Expression, Expression, bool)
+	
+}
+
+type IndexScanOp uint8
+
+//go:generate stringer -type=IndexScanOp -linecomment
+
+const (
+	IndexScanOpEq         IndexScanOp = iota // =
+	IndexScanOpNullSafeEq                    // <=>
+	IndexScanOpInSet                         // =
+	IndexScanOpNotInSet                      // !=
+	IndexScanOpNotEq                         // !=
+	IndexScanOpGt                            // >
+	IndexScanOpGte                           // >=
+	IndexScanOpLt                            // <
+	IndexScanOpLte                           // <=
+	IndexScanOpAnd                           // &&
+	IndexScanOpOr                            // ||
+	IndexScanOpIsNull                        // IS NULL
+	IndexScanOpIsNotNull                     // IS NOT NULL
+	IndexScanOpSpatialEq                     // SpatialEq
+	IndexScanOpFulltextEq                    // FulltextEq
+)
+
+// Swap returns the identity op for swapping a comparison's LHS and RHS
+func (o IndexScanOp) Swap() IndexScanOp {
+	switch o {
+	case IndexScanOpGt:
+		return IndexScanOpLt
+	case IndexScanOpGte:
+		return IndexScanOpLte
+	case IndexScanOpLt:
+		return IndexScanOpGt
+	case IndexScanOpLte:
+		return IndexScanOpGte
+	default:
+		return o
+	}
+}
+
+
 func NewIndexLookup(idx Index, ranges MySQLRangeCollection, isPointLookup, isEmptyRange, isSpatialLookup, isReverse bool) IndexLookup {
 	if isReverse {
 		for i, j := 0, len(ranges)-1; i < j; i, j = i+1, j-1 {
