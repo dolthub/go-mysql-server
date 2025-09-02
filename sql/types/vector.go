@@ -81,6 +81,12 @@ func (t VectorType) Convert(ctx context.Context, v interface{}) (interface{}, sq
 		return nil, sql.InRange, nil
 	}
 
+	var err error
+	v, err = sql.UnwrapAny(ctx, v)
+	if err != nil {
+		return nil, sql.OutOfRange, err
+	}
+
 	switch val := v.(type) {
 	case []byte:
 		if t.Dimensions != 0 && len(val) != int(values.Float32Size)*t.Dimensions {
