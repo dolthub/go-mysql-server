@@ -922,6 +922,10 @@ func TestVectorFunctions(t *testing.T) {
 	enginetest.TestVectorFunctions(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestVectorType(t *testing.T) {
+	enginetest.TestVectorType(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestIndexPrefix(t *testing.T) {
 	enginetest.TestIndexPrefix(t, enginetest.NewDefaultMemoryHarness())
 }
@@ -997,9 +1001,6 @@ func TestDatabaseCollationWire(t *testing.T) {
 }
 
 func TestTypesOverWire(t *testing.T) {
-	if _, ok := os.LookupEnv("CI_TEST"); !ok {
-		t.Skip("Skipping test that requires CI_TEST=true")
-	}
 	harness := enginetest.NewDefaultMemoryHarness()
 	enginetest.TestTypesOverWire(t, harness, harness.SessionBuilder())
 }

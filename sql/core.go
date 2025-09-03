@@ -18,13 +18,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	trace2 "runtime/trace"
 	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
+	"unsafe"
 
 	"github.com/shopspring/decimal"
+	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/dolthub/go-mysql-server/sql/values"
 )
 
 // Expression is a combination of one or more SQL expressions.
@@ -325,15 +330,37 @@ func ConvertToBool(ctx *Context, v interface{}) (bool, error) {
 	}
 }
 
-func ConvertToVector(ctx context.Context, v interface{}) ([]float64, error) {
+var ErrVectorInvalidBinaryLength = errors.NewKind("cannot convert BINARY(%d) to vector, byte length must be a multiple of 4 bytes")
+
+// DecodeVector decodes a byte slice that represents a vector. This is needed for distance functions.
+func DecodeVector(buf []byte) ([]float32, error) {
+	if len(buf)%int(values.Float32Size) != 0 {
+		return nil, ErrVectorInvalidBinaryLength.New(len(buf))
+	}
+	return unsafe.Slice((*float32)(unsafe.Pointer(&buf[0])), len(buf)/int(values.Float32Size)), nil
+}
+
+// EncodeVector encodes a byte slice that represents a vector.
+func EncodeVector(floats []float32) []byte {
+	return unsafe.Slice((*byte)(unsafe.Pointer(&floats[0])), len(floats)*int(values.Float32Size))
+}
+
+func ConvertToVector(ctx context.Context, v interface{}) ([]float32, error) {
+	var err error
+	v, err = UnwrapAny(ctx, v)
+	if err != nil {
+		return nil, err
+	}
 	switch b := v.(type) {
-	case []float64:
+	case []float32:
 		return b, nil
+	case []byte:
+		return DecodeVector(b)
 	case string:
 		var val interface{}
 		err := json.Unmarshal([]byte(b), &val)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("can't convert JSON to vector: %w", err)
 		}
 		return convertJsonInterfaceToVector(val)
 	case JSONWrapper:
@@ -347,18 +374,28 @@ func ConvertToVector(ctx context.Context, v interface{}) ([]float64, error) {
 	}
 }
 
-func convertJsonInterfaceToVector(val interface{}) ([]float64, error) {
+func convertJsonInterfaceToVector(val interface{}) ([]float32, error) {
 	array, ok := val.([]interface{})
 	if !ok {
-		return nil, fmt.Errorf("can't convert JSON to vector; expected array, got %v", val)
+		return nil, fmt.Errorf("can't convert JSON to vector; expected array, got %T", val)
 	}
-	res := make([]float64, len(array))
+	res := make([]float32, len(array))
 	for i, elem := range array {
-		floatElem, ok := elem.(float64)
-		if !ok {
-			return nil, fmt.Errorf("can't convert JSON to vector; expected array of floats, got %v", elem)
+		switch v := elem.(type) {
+		case float32:
+			res[i] = v
+		case float64:
+			if v > math.MaxFloat32 || v < -math.MaxFloat32 {
+				return nil, fmt.Errorf("data cannot be converted to a valid vector: %v", v)
+			}
+			res[i] = float32(v)
+		case int64:
+			res[i] = float32(v)
+		case int32:
+			res[i] = float32(v)
+		default:
+			return nil, fmt.Errorf("can't convert JSON to vector; expected array of floats, but array contained %T", elem)
 		}
-		res[i] = floatElem
 	}
 	return res, nil
 }
