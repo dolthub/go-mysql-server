@@ -44,6 +44,7 @@ type SubqueryAlias struct {
 var _ sql.Node = (*SubqueryAlias)(nil)
 var _ sql.CollationCoercible = (*SubqueryAlias)(nil)
 var _ sql.RenameableNode = (*SubqueryAlias)(nil)
+var _ sql.OpaqueNode = (*SubqueryAlias)(nil)
 
 // NewSubqueryAlias creates a new SubqueryAlias node.
 func NewSubqueryAlias(name, textDefinition string, node sql.Node) *SubqueryAlias {

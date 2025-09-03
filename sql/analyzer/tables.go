@@ -100,8 +100,10 @@ func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 // getTablesByName takes a node and returns all found resolved tables in a map.
 func getTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
 	ret := make(map[string]*plan.ResolvedTable)
-
-	transform.Inspect(node, func(node sql.Node) bool {
+	// TODO: We should change transform.Inspect to not walk the children of sql.OpaqueNodes (like transform.Node)
+	//  and add a transform.InspectWithOpaque that does.
+	//  Using transform.Node here achieves the same result without a large refactor.
+	transform.Node(node, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := node.(type) {
 		case *plan.ResolvedTable:
 			ret[strings.ToLower(n.Table.Name())] = n
@@ -109,17 +111,15 @@ func getTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
 			rt, ok := n.TableNode.(*plan.ResolvedTable)
 			if ok {
 				ret[strings.ToLower(rt.Name())] = rt
-				return false
+				return nil, transform.SameTree, nil
 			}
 		case *plan.TableAlias:
 			rt := getResolvedTable(n)
 			if rt != nil {
 				ret[n.Name()] = rt
 			}
-		default:
 		}
-		return true
+		return nil, transform.SameTree, nil
 	})
-
 	return ret
 }

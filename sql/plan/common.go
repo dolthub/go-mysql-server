@@ -164,7 +164,7 @@ func getTableName(nodeToSearch sql.Node) string {
 	return ""
 }
 
-// GetTablesToBeUpdated takes a node and looks for the tables to modified by a SetField.
+// GetTablesToBeUpdated takes a node and looks for the tables modified by a SetField.
 func GetTablesToBeUpdated(node sql.Node) map[string]struct{} {
 	ret := make(map[string]struct{})
 

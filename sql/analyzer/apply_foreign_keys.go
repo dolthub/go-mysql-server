@@ -127,8 +127,7 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 			fkHandlerMap := make(map[string]sql.Node, len(updateTargets))
 			for tableName, updateTarget := range updateTargets {
 				fkHandlerMap[tableName] = updateTarget
-				fkHandler, err :=
-					getForeignKeyHandlerFromUpdateTarget(ctx, a, updateTarget, cache, fkChain)
+				fkHandler, err := getForeignKeyHandlerFromUpdateTarget(ctx, a, updateTarget, cache, fkChain)
 				if err != nil {
 					return nil, transform.SameTree, err
 				}
