@@ -650,13 +650,13 @@ left join
         t1.id
     from
         child t1
-    ) sqa
-    on
-        t1.id = sqa.id
-    join
-        child t2
-    set
-    t1.oid = t2.pid;`,
+) sqa
+on
+    t1.id = sqa.id
+join
+    child t2
+set
+t1.oid = t2.pid;`,
 				Expected: []sql.Row{
 					{types.OkResult{
 						RowsAffected: 3,
