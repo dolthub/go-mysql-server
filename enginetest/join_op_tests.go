@@ -2046,6 +2046,44 @@ WHERE
 			},
 		},
 	},
+	{
+		name: "joining on decimals",
+		setup: [][]string{
+			{
+				"create table t1(c0 decimal(6,3))",
+				"create table t2(c0 decimal(5,2))",
+				"insert into t1 values (10.000),(20.505),(30.000)",
+				"insert into t2 values (20.5), (25.0), (30.0)",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select * from t1 join t2 on t1.c0 = t2.c0",
+				Expected: []sql.Row{{"30.000", "30.00"}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9777
+		name: "join with % condition",
+		setup: [][]string{
+			{
+				"create table t1(c0 int)",
+				"create table t2(c0 int)",
+				"insert into t1 values (1),(2)",
+				"insert into t2 values (3),(4)",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query: "select * from t1 join t2 on (t1.c0 % 2) = (t2.c0 % 2)",
+				Expected: []sql.Row{
+					{1, 3},
+					{2, 4},
+				},
+			},
+		},
+	},
 }
 
 var rangeJoinOpTests = []JoinOpTests{
