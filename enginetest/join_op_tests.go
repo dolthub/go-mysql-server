@@ -2064,6 +2064,7 @@ WHERE
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/9777
 		name: "join with % condition",
 		setup: [][]string{
 			{
