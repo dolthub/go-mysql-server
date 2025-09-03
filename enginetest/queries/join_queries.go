@@ -187,7 +187,7 @@ inner join pq on true order by 1,2,3,4,5,6,7,8 limit 5;`,
 	},
 	{
 		// test cross join used as projected subquery expression
-		Query:    "select 1 as exprAlias, 2, 3, (select exprAlias + count(*) from one_pk_three_idx a cross join one_pk_three_idx b);",
+		Query:    "select 1, 2, 3, (select 1 + count(*) from one_pk_three_idx a cross join one_pk_three_idx b);",
 		Expected: []sql.Row{{1, 2, 3, 65}},
 	},
 	{

@@ -2795,7 +2795,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				// Test with subquery using multiple columns errors
-				Query:       "SELECT category, GROUP_CONCAT(name ORDER BY (SELECT AVG(value), name FROM complex_test c2 WHERE c2.id <= complex_test.id HAVING AVG(value) > 50) DESC) FROM complex_test GROUP BY category ORDER BY category",
+				Query:       "SELECT category, GROUP_CONCAT(name ORDER BY (SELECT value, name FROM complex_test c2 WHERE c2.id <= complex_test.id) DESC) FROM complex_test GROUP BY category ORDER BY category",
 				ExpectedErr: sql.ErrInvalidOperandColumns,
 			},
 			{

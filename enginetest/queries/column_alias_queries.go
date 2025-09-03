@@ -269,10 +269,16 @@ var ColumnAliasQueries = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				// GMS returns "expression 'dt.two' doesn't appear in the group by expressions", but MySQL will execute
-				// this query.
+				// this query. https://github.com/dolthub/dolt/issues/9717
 				Query: "select 1 as a, one + 1 as mod1, dt.* from mytable as t1, (select 1, 2 from mytable) as dt (one, two) where dt.one > 0 group by one;",
 				// column names:  a, mod1, one, two
 				Expected: []sql.Row{{1, 2, 1, 2}},
+			},
+			{
+				// MySQL will execute this query but group by validation isn't able to recognize that exprAlias is a
+				// literal https://github.com/dolthub/dolt/issues/9717
+				Query:    "select 1 as exprAlias, 2, 3, (select exprAlias + count(*) from one_pk_three_idx a cross join one_pk_three_idx b);",
+				Expected: []sql.Row{{1, 2, 3, 65}},
 			},
 		},
 	},
