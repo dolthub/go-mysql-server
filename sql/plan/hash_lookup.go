@@ -16,8 +16,9 @@ package plan
 
 import (
 	"fmt"
-	"github.com/shopspring/decimal"
 	"sync"
+
+	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/hash"
