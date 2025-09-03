@@ -199,9 +199,6 @@ var OrderByGroupByScriptTests = []ScriptTest{
 				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
 			},
 			{
-				// GMS currently allows this query to execute and chooses the first result for val.
-				// To match MySQL's behavior, GMS should be throwing an ErrNonAggregatedColumnWithoutGroupBy error.
-				Skip:        true,
 				Query:       "select AVG(val), val from t;",
 				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
 			},
