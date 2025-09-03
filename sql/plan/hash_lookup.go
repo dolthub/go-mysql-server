@@ -18,8 +18,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/shopspring/decimal"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/hash"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -124,7 +122,8 @@ func (n *HashLookup) GetHashKey(ctx *sql.Context, e sql.Expression, row sql.Row)
 	if err != nil {
 		return nil, err
 	}
-	key, _, err = n.LeftProbeKey.Type().Convert(ctx, key)
+	typ := n.LeftProbeKey.Type()
+	key, _, err = typ.Convert(ctx, key)
 	if types.ErrValueNotNil.Is(err) {
 		// The LHS expression was NullType. This is allowed.
 		return nil, nil
@@ -137,13 +136,10 @@ func (n *HashLookup) GetHashKey(ctx *sql.Context, e sql.Expression, row sql.Row)
 	}
 	// byte slices are not hashable
 	if k, ok := key.([]byte); ok {
-		key = string(k)
+		return string(k), nil
 	}
-	// decimals are not hashable
-	if d, ok := key.(decimal.Decimal); ok {
-		key = d.String()
-	}
-	return key, nil
+
+	return hash.HashOfSimple(ctx, key, typ)
 }
 
 func (n *HashLookup) Dispose() {
