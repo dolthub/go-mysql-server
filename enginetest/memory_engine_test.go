@@ -200,105 +200,23 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	// t.Skip()
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "join on empty",
-			SetUpScript: []string{
-				"create table t(c int)",
-				"insert into t values (1)",
-			},
-			Assertions: []queries.ScriptTestAssertion{
-				{
-					Query:    "select t.c from t left join (select t2.c from t as t2 where false) as subq on true",
-					Expected: []sql.Row{{1}},
-				},
-				{
-					Query:    "select t.c from t natural left join (select t2.c from t as t2 where false) as subq",
-					Expected: []sql.Row{{1}},
-				},
-				{
-					Query:    "select t.c from (select t.c from t where false) as subq right join t on true",
-					Expected: []sql.Row{{1}},
-				},
-				{
-					Query:    "select t.c from (select t.c from t where false) as subq natural right join t",
-					Expected: []sql.Row{{1}},
-				},
-			},
-		},
-		{
-			Skip: true,
-			Assertions: []queries.ScriptTestAssertion{
-				{
-					// test cross join used as projected subquery expression
-					Query:    "select 1 as exprAlias, 2, 3, (select exprAlias + count(*) from one_pk_three_idx a cross join one_pk_three_idx b);",
-					Expected: []sql.Row{{1, 2, 3, 65}},
-				},
-				{
-					Query: "SELECT count(*), (SELECT i FROM mytable WHERE i = 1 group by i);",
-					Expected: []sql.Row{
-						{1, 1},
-					},
-				},
-			},
-		},
-		{
-			Skip:        true,
-			Name:        "strings cast to numbers in log",
+			Name:        "AS OF propagates to nested CALLs",
 			SetUpScript: []string{},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "select (11 + '11asdf')",
-					Expected: []sql.Row{{float64(22)}},
+					Query: "create procedure create_proc() create table t (i int primary key, j int);",
+					Expected: []sql.Row{
+						{types.NewOkResult(0)},
+					},
 				},
 				{
-					Skip:     true,
-					Query:    "select log('10asdf', '100f')",
-					Expected: []sql.Row{{float64(2)}},
-				},
-				{
-					Skip:     true,
-					Query:    "select log('a10asdf', 'b100f')",
-					Expected: []sql.Row{{nil}},
-				},
-			},
-		},
-		{
-			Skip: true,
-			Name: "strings cast to numbers",
-			SetUpScript: []string{
-				//"create table test01(pk varchar(20) primary key)",
-				"create table test01(pk varchar(30))",
-				`insert into test01 values ('  3 12 4'),
-                          ('  3.2 12 4'),('-3.1234'),('-3.1a'),('-5+8'),('+3.1234'),
-                          ('11d'),('11wha?'),('11'),('12'),('1a1'),('a1a1'),('11-5'),
-                          ('3. 12 4'),('5.932887e+07'),('5.932887e+07abc'),('5.932887e7'),('5.932887e7abc')`,
-			},
-			Assertions: []queries.ScriptTestAssertion{
-				{
-					Skip:     true,
-					Query:    "select pk from test01 where pk=11 order by pk",
-					Expected: []sql.Row{{"11"}, {"11-5"}, {"11d"}, {"11wha?"}},
-				},
-				{
-					Query:    "select pk from test01 where pk in (11) order by pk",
-					Expected: []sql.Row{{"11"}, {"11-5"}, {"11d"}, {"11wha?"}},
-				},
-				{
-					Skip:     true,
-					Query:    "select pk from test01 where pk in ('11')",
-					Expected: []sql.Row{{"11"}},
-				},
-				{
-					Skip:     true,
-					Query:    "select log('10asdf', '100f')",
-					Expected: []sql.Row{{float64(2)}},
-				},
-				{
-					Skip:     true,
-					Query:    "select log('a10asdf', 'b100f')",
-					Expected: []sql.Row{{nil}},
+					Query: "call create_proc()",
+					Expected: []sql.Row{
+						{types.NewOkResult(0)},
+					},
 				},
 			},
 		},
@@ -306,16 +224,14 @@ func TestSingleScript(t *testing.T) {
 
 	for _, test := range scripts {
 		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-		harness.Setup(setup.SimpleSetup...)
-		// harness.UseServer()
+		//harness.UseServer()
 		engine, err := harness.NewEngine(t)
-		// engine.EngineAnalyzer().Coster = memo.NewLookupBiasedCoster()
 		if err != nil {
 			panic(err)
 		}
 
-		engine.EngineAnalyzer().Debug = true
-		engine.EngineAnalyzer().Verbose = true
+		//engine.EngineAnalyzer().Debug = true
+		//engine.EngineAnalyzer().Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
@@ -1006,6 +922,10 @@ func TestVectorFunctions(t *testing.T) {
 	enginetest.TestVectorFunctions(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestVectorType(t *testing.T) {
+	enginetest.TestVectorType(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestIndexPrefix(t *testing.T) {
 	enginetest.TestIndexPrefix(t, enginetest.NewDefaultMemoryHarness())
 }
@@ -1081,9 +1001,6 @@ func TestDatabaseCollationWire(t *testing.T) {
 }
 
 func TestTypesOverWire(t *testing.T) {
-	if _, ok := os.LookupEnv("CI_TEST"); !ok {
-		// t.Skip("Skipping test that requires CI_TEST=true")
-	}
 	harness := enginetest.NewDefaultMemoryHarness()
 	enginetest.TestTypesOverWire(t, harness, harness.SessionBuilder())
 }
