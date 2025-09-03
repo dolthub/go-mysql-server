@@ -104,7 +104,7 @@ func floor(val interface{}) interface{} {
 }
 
 // Equals represents colExpr = key. For IN expressions, pass all of them in the same Equals call.
-func (b *MySQLIndexBuilder) Equals(ctx *Context, colExpr string, keys ...interface{}) *MySQLIndexBuilder {
+func (b *MySQLIndexBuilder) Equals(ctx *Context, colExpr string, keyTypes []Type, keys ...interface{}) *MySQLIndexBuilder {
 	if b.isInvalid {
 		return b
 	}
@@ -134,6 +134,9 @@ func (b *MySQLIndexBuilder) Equals(ctx *Context, colExpr string, keys ...interfa
 		}
 
 		var err error
+
+		// x, ok := typ.(ExtendedTy)
+		
 		k, _, err = typ.Convert(ctx, k)
 		if err != nil {
 			b.isInvalid = true

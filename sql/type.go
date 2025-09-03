@@ -261,3 +261,30 @@ type SystemVariableType interface {
 	// UnderlyingType returns the underlying type that this system variable type is based on.
 	UnderlyingType() Type
 }
+
+// ExtendedType is a serializable type that offers an extended interface for interacting with types in a wider context.
+type ExtendedType interface {
+	Type
+	// SerializedCompare compares two byte slices that each represent a serialized value, without first deserializing
+	// the value. This should return the same result as the Compare function.
+	SerializedCompare(ctx context.Context, v1 []byte, v2 []byte) (int, error)
+	// SerializeValue converts the given value into a binary representation.
+	SerializeValue(ctx context.Context, val any) ([]byte, error)
+	// DeserializeValue converts a binary representation of a value into its canonical type.
+	DeserializeValue(ctx context.Context, val []byte) (any, error)
+	// FormatValue returns a string version of the value. Primarily intended for display.
+	FormatValue(val any) (string, error)
+	// MaxSerializedWidth returns the maximum size that the serialized value may represent.
+	MaxSerializedWidth() ExtendedTypeSerializedWidth
+	// ConvertToType converts the given value of the given type to this type, or returns an error if
+	// no conversion is possible.
+	ConvertToType(ctx *Context, typ ExtendedType, val any) (any, error)
+}
+
+type ExtendedTypeSerializedWidth uint8
+
+const (
+	ExtendedTypeSerializedWidth_64K       ExtendedTypeSerializedWidth = iota // Represents a variably-sized value. The maximum number of bytes is (2^16)-1.
+	ExtendedTypeSerializedWidth_Unbounded                                    // Represents a variably-sized value. The maximum number of bytes is (2^64)-1, which is practically unbounded.
+)
+

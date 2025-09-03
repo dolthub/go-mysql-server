@@ -1010,7 +1010,7 @@ func (b *indexScanRangeBuilder) rangeBuildDefaultLeaf(bb *sql.MySQLIndexBuilder,
 	name := f.normString()
 	switch f.Op() {
 	case sql.IndexScanOpEq:
-		bb.Equals(b.ctx, name, f.litValue)
+		bb.Equals(b.ctx, name, f.gf.Type(), f.litValue)
 	case sql.IndexScanOpNotEq:
 		bb.NotEquals(b.ctx, name, f.litValue)
 	case sql.IndexScanOpInSet:
