@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"github.com/shopspring/decimal"
 	"sync"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -136,6 +137,10 @@ func (n *HashLookup) GetHashKey(ctx *sql.Context, e sql.Expression, row sql.Row)
 	// byte slices are not hashable
 	if k, ok := key.([]byte); ok {
 		key = string(k)
+	}
+	// decimals are not hashable
+	if d, ok := key.(decimal.Decimal); ok {
+		key = d.String()
 	}
 	return key, nil
 }
