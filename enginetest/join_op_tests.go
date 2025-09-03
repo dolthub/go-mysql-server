@@ -2084,6 +2084,34 @@ WHERE
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/9782
+		name: "joining with subquery on empty table",
+		setup: [][]string{
+			{
+				"CREATE TABLE t(c INT);",
+				"INSERT INTO t VALUES (1);",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "SELECT t.c FROM t LEFT JOIN (SELECT t.c FROM t WHERE FALSE) AS subq ON TRUE;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT t.c FROM t NATURAL LEFT JOIN (SELECT t.c FROM t WHERE FALSE) AS subq;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT t.c FROM (SELECT t.c FROM t WHERE FALSE) AS subq RIGHT JOIN t ON TRUE;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT t.c FROM (SELECT t.c FROM t WHERE FALSE) AS subq NATURAL RIGHT JOIN t;",
+				Expected: []sql.Row{{1}},
+			},
+		},
+	},
 }
 
 var rangeJoinOpTests = []JoinOpTests{
