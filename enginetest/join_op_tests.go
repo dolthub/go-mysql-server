@@ -2046,6 +2046,9 @@ WHERE
 			},
 		},
 	},
+	{
+		name: "joining with subquery on empty table",
+	},
 }
 
 var rangeJoinOpTests = []JoinOpTests{
