@@ -601,6 +601,8 @@ func (h *Bitlength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return 64, nil
 	case string:
 		return 8 * len([]byte(val)), nil
+	case []byte:
+		return 8 * len(val), nil
 	case time.Time:
 		return 128, nil
 	}

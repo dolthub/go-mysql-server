@@ -14,7 +14,9 @@
 
 package queries
 
-import "github.com/dolthub/go-mysql-server/sql"
+import (
+	"github.com/dolthub/go-mysql-server/sql"
+)
 
 // TypeWireTest is used to ensure that types are properly represented over the wire (vs being directly returned from the
 // engine).
@@ -23,6 +25,14 @@ type TypeWireTest struct {
 	SetUpScript []string
 	Queries     []string
 	Results     [][]sql.Row
+}
+
+func floatsToString(fs ...float32) string {
+	return string(sql.EncodeVector(fs))
+}
+
+func floatsToBytes(fs ...float32) []byte {
+	return sql.EncodeVector(fs)
 }
 
 // TypeWireTests are used to ensure that types are properly represented over the wire (vs being directly returned from
@@ -814,6 +824,23 @@ var TypeWireTests = []TypeWireTest{
 			{{"1", "[\"a\",1]"}, {"2", "{\"key1\":\"value1\",\"key2\":\"value2\"}"}},
 			{{"[\"a\",1]", "1"}, {"{\"key1\":\"value1\",\"key2\":\"value2\"}", "2"}},
 			{{"1", "[[\"a\",1]]"}, {"2", "[{\"key1\":\"value1\",\"key2\":\"value2\"}]"}},
+		},
+	},
+	{
+		Name: "VECTOR",
+		SetUpScript: []string{
+			`CREATE TABLE test (pk INT PRIMARY KEY, v1 VECTOR(2), v2 VECTOR(3));`,
+			`INSERT INTO test VALUES (1, VEC_FROMTEXT('[1.0, 2.0]'), VEC_FROMTEXT('[1.0, 2.0, 3.0]')), (2, VEC_FROMTEXT('[4.0, 5.0]'), VEC_FROMTEXT('[4.0, 5.0, 6.0]'));`,
+		},
+		Queries: []string{
+			`SELECT * FROM test ORDER BY pk;`,
+			`SELECT v1, v2 FROM test ORDER BY pk;`,
+			`SELECT pk, v1 FROM test WHERE pk = 1;`,
+		},
+		Results: [][]sql.Row{
+			{{"1", floatsToString(1, 2), floatsToString(1, 2, 3)}, {"2", floatsToString(4, 5), floatsToString(4, 5, 6)}},
+			{{floatsToString(1, 2), floatsToString(1, 2, 3)}, {floatsToString(4, 5), floatsToString(4, 5, 6)}},
+			{{"1", floatsToString(1, 2)}},
 		},
 	},
 }
