@@ -44,7 +44,7 @@ func IsBinaryType(t sql.Type) bool {
 		return false
 	}
 	switch t.Type() {
-	case sqltypes.Binary, sqltypes.VarBinary, sqltypes.Blob, sqltypes.TypeJSON, sqltypes.Geometry:
+	case sqltypes.Binary, sqltypes.VarBinary, sqltypes.Blob, sqltypes.TypeJSON, sqltypes.Geometry, sqltypes.Vector:
 		return true
 	default:
 		return false
@@ -237,4 +237,17 @@ func IsUnsigned(t sql.Type) bool {
 func IsYear(t sql.Type) bool {
 	_, ok := t.(YearType_)
 	return ok
+}
+
+// IsVectorConvertable checks if t can be implicitly converted to a vector of floats.
+func IsVectorConvertable(t sql.Type) bool {
+	if t == nil {
+		return false
+	}
+	switch t.Type() {
+	case sqltypes.TypeJSON, sqltypes.Vector, sqltypes.Binary:
+		return true
+	default:
+		return false
+	}
 }

@@ -78,6 +78,13 @@ func (b *Builder) isUsingJoin(te *ast.JoinTableExpr) bool {
 		strings.EqualFold(te.Join, ast.NaturalRightJoinStr)
 }
 
+func (b *Builder) canConvertToCrossJoin(te *ast.JoinTableExpr) bool {
+	return !strings.EqualFold(te.Join, ast.LeftJoinStr) &&
+		!strings.EqualFold(te.Join, ast.RightJoinStr) &&
+		(te.Condition.On == nil || te.Condition.On == ast.BoolVal(true)) &&
+		te.Condition.Using == nil
+}
+
 func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *scope) {
 	b.qFlags.Set(sql.QFlagInnerJoin)
 
@@ -101,7 +108,7 @@ func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *sc
 	outScope.appendColumnsFromScope(rightScope)
 
 	// cross join
-	if (te.Condition.On == nil || te.Condition.On == ast.BoolVal(true)) && te.Condition.Using == nil {
+	if b.canConvertToCrossJoin(te) {
 		if rast, ok := te.RightExpr.(*ast.AliasedTableExpr); ok && rast.Lateral {
 			var err error
 			outScope.node, err = b.f.buildJoin(leftScope.node, rightScope.node, plan.JoinTypeLateralCross, expression.NewLiteral(true, types.Boolean))
