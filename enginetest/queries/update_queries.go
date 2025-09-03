@@ -597,9 +597,9 @@ var UpdateScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Dialect: "mysql",
 		// https://github.com/dolthub/dolt/issues/9403
-		Name: "UPDATE join – multiple tables with same column names with triggers",
+		Dialect: "mysql",
+		Name:    "UPDATE join – multiple tables with same column names with triggers",
 		SetUpScript: []string{
 			"create table customers (id int primary key, name text, tier text)",
 			"create table orders (id int primary key, customer_id int, status text)",
@@ -632,8 +632,54 @@ var UpdateScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "UPDATE with subquery in keyless tables",
+		Dialect: "mysql",
+		Name:    "UPDATE join - conflicting alias in Subquery Alias",
+		SetUpScript: []string{
+			"create table parent (id int primary key);",
+			"insert into parent values (1), (2), (3);",
+			"create table child (id int primary key, pid int, foreign key (pid) references parent(id), oid int);",
+			"insert into child values (1, 1, 0), (2, 2, 0), (3, 3, 0);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `
+update child t1
+left join 
+(
+    select
+        t1.id
+    from
+        child t1
+) sqa
+on
+    t1.id = sqa.id
+join
+    child t2
+set
+t1.oid = t2.pid;`,
+				Expected: []sql.Row{
+					{types.OkResult{
+						RowsAffected: 3,
+						Info: plan.UpdateInfo{
+							Matched: 3,
+							Updated: 3,
+						},
+					}},
+				},
+			},
+			{
+				Query: "select * from child;",
+				Expected: []sql.Row{
+					{1, 1, 1},
+					{2, 2, 1},
+					{3, 3, 1},
+				},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/9334
+		Name: "UPDATE with subquery in keyless tables",
 		SetUpScript: []string{
 			"create table t (i int)",
 			"insert into t values (1)",
