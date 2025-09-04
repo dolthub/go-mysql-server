@@ -11713,7 +11713,8 @@ select * from t1 except (
 		},
 	},
 	{
-		Name: "nonaggregated column in aggregated query",
+		Name:    "nonaggregated column in aggregated query",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table emptytable(i mediumint primary key, s varchar(20))",
 			"create table mytable(i bigint primary key, s varchar(20))",
