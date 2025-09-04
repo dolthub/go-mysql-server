@@ -37,20 +37,17 @@ type TableAndColumn struct {
 // an exprGroup, produce the same rows (possibly unordered) and schema.
 // Physical plans are stored in a linked list within an expression group.
 type Memo struct {
-	cnt  uint16
-	root *ExprGroup
-
-	hints *joinHints
-
-	c         Coster
-	statsProv sql.StatsProvider
-	Ctx       *sql.Context
-	scope     *plan.Scope
-	scopeLen  int
-	Debug     bool
-
+	c          Coster
+	statsProv  sql.StatsProvider
+	root       *ExprGroup
+	hints      *joinHints
+	Ctx        *sql.Context
+	scope      *plan.Scope
 	TableProps *tableProps
 	QFlags     *sql.QueryFlags
+	scopeLen   int
+	cnt        uint16
+	Debug      bool
 }
 
 func NewMemo(ctx *sql.Context, stats sql.StatsProvider, s *plan.Scope, scopeLen int, cost Coster, qFlags *sql.QueryFlags) *Memo {
@@ -755,11 +752,9 @@ type SourceRel interface {
 }
 
 type Index struct {
-	// ordered list of index columns
-	cols []sql.ColumnId
-	// unordered column set
 	set   sql.ColSet
 	idx   sql.Index
+	cols  []sql.ColumnId
 	order sql.IndexOrder
 }
 
@@ -812,11 +807,10 @@ var _ JoinRel = (*SemiJoin)(nil)
 
 type JoinBase struct {
 	*relBase
-
-	Op     plan.JoinType
-	Filter []sql.Expression
 	Left   *ExprGroup
 	Right  *ExprGroup
+	Filter []sql.Expression
+	Op     plan.JoinType
 }
 
 func (r *JoinBase) Children() []*ExprGroup {
@@ -854,16 +848,14 @@ func (r *LookupJoin) Children() []*ExprGroup {
 // of MinIndex and MinExpr is non-nil. If the index is non-nil, we will use it to construct
 // a plan.IndexedTableAccess. Otherwise we use the expression to construct a plan.Sort.
 type RangeHeap struct {
-	ValueIndex *IndexScan
-	ValueExpr  sql.Expression
-
-	MinIndex *IndexScan
-	MinExpr  sql.Expression
-
+	ValueExpr               sql.Expression
+	MinExpr                 sql.Expression
+	ValueIndex              *IndexScan
+	MinIndex                *IndexScan
 	ValueCol                *expression.GetField
 	MinColRef               *expression.GetField
 	MaxColRef               *expression.GetField
+	Parent                  *JoinBase
 	RangeClosedOnLowerBound bool
 	RangeClosedOnUpperBound bool
-	Parent                  *JoinBase
 }

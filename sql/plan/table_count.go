@@ -10,9 +10,9 @@ import (
 // TableCountLookup short-circuits `select count(*) from table`
 // using the sql.StatisticsTable interface.
 type TableCountLookup struct {
-	aliasName string
 	db        sql.Database
 	table     sql.StatisticsTable
+	aliasName string
 	cnt       uint64
 	id        sql.ColumnId
 }

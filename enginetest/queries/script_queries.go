@@ -2795,7 +2795,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				// Test with subquery using multiple columns errors
-				Query:       "SELECT category, GROUP_CONCAT(name ORDER BY (SELECT AVG(value), name FROM complex_test c2 WHERE c2.id <= complex_test.id HAVING AVG(value) > 50) DESC) FROM complex_test GROUP BY category ORDER BY category",
+				Query:       "SELECT category, GROUP_CONCAT(name ORDER BY (SELECT value, name FROM complex_test c2 WHERE c2.id <= complex_test.id) DESC) FROM complex_test GROUP BY category ORDER BY category",
 				ExpectedErr: sql.ErrInvalidOperandColumns,
 			},
 			{
@@ -4693,7 +4693,7 @@ CREATE TABLE tab3 (
 			{
 				Query: "select COLUMN_NAME, DATA_TYPE from INFORMATION_SCHEMA.COLUMNS where TABLE_NAME='c';",
 				Expected: []sql.Row{
-					{"coalesce(NULL,1)", "int"},
+					{"coalesce(NULL, 1)", "int"},
 				},
 			},
 		},
@@ -11436,6 +11436,324 @@ select * from t1 except (
 				Expected: []sql.Row{
 					{1},
 				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9733
+		// https://github.com/dolthub/dolt/issues/9739
+		Name: "strings cast to numbers",
+		SetUpScript: []string{
+			"create table test01(pk varchar(20) primary key)",
+			`insert into test01 values ('  3 12 4'),
+                          ('  3.2 12 4'),('-3.1234'),('-3.1a'),('-5+8'),('+3.1234'),
+                          ('11d'),('11wha?'),('11'),('12'),('1a1'),('a1a1'),('11-5'),
+                          ('3. 12 4'),('5.932887e+07'),('5.932887e+07abc'),('5.932887e7'),('5.932887e7abc')`,
+			"create table test02(pk int primary key)",
+			"insert into test02 values(11),(12),(13),(14),(15)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Dialect: "mysql",
+				Query:   "select pk, cast(pk as float) from test01",
+				Expected: []sql.Row{
+					{"  3 12 4", float32(3)},
+					{"  3.2 12 4", float32(3.2)},
+					{"-3.1234", float32(-3.1234)},
+					{"-3.1a", float32(-3.1)},
+					{"-5+8", float32(-5)},
+					{"+3.1234", float32(3.1234)},
+					{"11", float32(11)},
+					{"11-5", float32(11)},
+					{"11d", float32(11)},
+					{"11wha?", float32(11)},
+					{"12", float32(12)},
+					{"1a1", float32(1)},
+					{"3. 12 4", float32(3)},
+					{"5.932887e+07", float32(5.932887e+07)},
+					{"5.932887e+07abc", float32(5.932887e+07)},
+					{"5.932887e7", float32(5.932887e+07)},
+					{"5.932887e7abc", float32(5.932887e+07)},
+					{"a1a1", float32(0)},
+				},
+			},
+			{
+				Dialect: "mysql",
+				Query:   "select pk, cast(pk as double) from test01",
+				Expected: []sql.Row{
+					{"  3 12 4", 3.0},
+					{"  3.2 12 4", 3.2},
+					{"-3.1234", -3.1234},
+					{"-3.1a", -3.1},
+					{"-5+8", -5.0},
+					{"+3.1234", 3.1234},
+					{"11", 11.0},
+					{"11-5", 11.0},
+					{"11d", 11.0},
+					{"11wha?", 11.0},
+					{"12", 12.0},
+					{"1a1", 1.0},
+					{"3. 12 4", 3.0},
+					{"5.932887e+07", 5.932887e+07},
+					{"5.932887e+07abc", 5.932887e+07},
+					{"5.932887e7", 5.932887e+07},
+					{"5.932887e7abc", 5.932887e+07},
+					{"a1a1", 0.0},
+				},
+			},
+			{
+				Dialect: "mysql",
+				Query:   "select pk, cast(pk as signed) from test01",
+				Expected: []sql.Row{
+					{"  3 12 4", 3},
+					{"  3.2 12 4", 3},
+					{"-3.1234", -3},
+					{"-3.1a", -3},
+					{"-5+8", -5},
+					{"+3.1234", 3},
+					{"11", 11},
+					{"11-5", 11},
+					{"11d", 11},
+					{"11wha?", 11},
+					{"12", 12},
+					{"1a1", 1},
+					{"3. 12 4", 3},
+					{"5.932887e+07", 5},
+					{"5.932887e+07abc", 5},
+					{"5.932887e7", 5},
+					{"5.932887e7abc", 5},
+					{"a1a1", 0},
+				},
+			},
+			{
+				Dialect: "mysql",
+				Query:   "select pk, cast(pk as unsigned) from test01",
+				Expected: []sql.Row{
+					{"  3 12 4", uint64(3)},
+					{"  3.2 12 4", uint64(3)},
+					{"-3.1234", uint64(18446744073709551613)},
+					{"-3.1a", uint64(18446744073709551613)},
+					{"-5+8", uint64(18446744073709551611)},
+					{"+3.1234", uint64(3)},
+					{"11", uint64(11)},
+					{"11-5", uint64(11)},
+					{"11d", uint64(11)},
+					{"11wha?", uint64(11)},
+					{"12", uint64(12)},
+					{"1a1", uint64(1)},
+					{"3. 12 4", uint64(3)},
+					{"5.932887e+07", uint64(5)},
+					{"5.932887e+07abc", uint64(5)},
+					{"5.932887e7", uint64(5)},
+					{"5.932887e7abc", uint64(5)},
+					{"a1a1", uint64(0)},
+				},
+			},
+			{
+				Dialect: "mysql",
+				Query:   "select pk, cast(pk as decimal(12,3)) from test01",
+				Expected: []sql.Row{
+					{"  3 12 4", "3.000"},
+					{"  3.2 12 4", "3.200"},
+					{"-3.1234", "-3.123"},
+					{"-3.1a", "-3.100"},
+					{"-5+8", "-5.000"},
+					{"+3.1234", "3.123"},
+					{"11", "11.000"},
+					{"11-5", "11.000"},
+					{"11d", "11.000"},
+					{"11wha?", "11.000"},
+					{"12", "12.000"},
+					{"1a1", "1.000"},
+					{"3. 12 4", "3.000"},
+					{"5.932887e+07", "59328870.000"},
+					{"5.932887e+07abc", "59328870.000"},
+					{"5.932887e7", "59328870.000"},
+					{"5.932887e7abc", "59328870.000"},
+					{"a1a1", "0.000"},
+				},
+			},
+			{
+				Query:    "select * from test01 where pk in ('11')",
+				Expected: []sql.Row{{"11"}},
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/9739
+				Skip:    true,
+				Dialect: "mysql",
+				Query:   "select * from test01 where pk in (11)",
+				Expected: []sql.Row{
+					{"11"},
+					{"11-5"},
+					{"11d"},
+					{"11wha?"},
+				},
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/9739
+				Skip:    true,
+				Dialect: "mysql",
+				Query:   "select * from test01 where pk=3",
+				Expected: []sql.Row{
+					{"  3 12 4"},
+					{"  3. 12 4"},
+					{"3. 12 4"},
+				},
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/9739
+				Skip:    true,
+				Dialect: "mysql",
+				Query:   "select * from test01 where pk>=3 and pk < 4",
+				Expected: []sql.Row{
+					{"  3 12 4"},
+					{"  3. 12 4"},
+					{"  3.2 12 4"},
+					{"+3.1234"},
+					{"3. 12 4"},
+				},
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/9739
+				Skip:     true,
+				Dialect:  "mysql",
+				Query:    "select * from test02 where pk in ('11asdf')",
+				Expected: []sql.Row{{"11"}},
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/9739
+				Skip:     true,
+				Dialect:  "mysql",
+				Query:    "select * from test02 where pk='11.12asdf'",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/6899
+		Name: "window function tests",
+		SetUpScript: []string{
+			"CREATE TABLE c (c_id INT PRIMARY KEY, bill TEXT);",
+			"CREATE TABLE o (o_id INT PRIMARY KEY, c_id INT, ship TEXT);",
+			"INSERT INTO c VALUES (1, 'CA'), (2, 'TX'), (3, 'MA'), (4, 'TX'), (5, NULL), (6, 'FL');",
+			"INSERT INTO o VALUES (10, 1, 'CA'), (20, 1, 'CA'), (30, 1, 'CA'), (40, 2, 'CA'), (50, 2, 'TX'), (60, 2, NULL), (70, 4, 'WY'), (80, 4, NULL), (90, 6, 'WA');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select row_number() over () as rn from o where c_id=-999",
+				Expected: []sql.Row{},
+			},
+			{
+				// TODO: valid query in Postgres. https://github.com/dolthub/doltgresql/issues/1796
+				Dialect:  "mysql",
+				Query:    "select row_number() over () as rn from o where c_id=1",
+				Expected: []sql.Row{{1}, {2}, {3}},
+			},
+			{
+				Query:    "select rank() over() as rnk from o where c_id=-999",
+				Expected: []sql.Row{},
+			},
+			{
+				// TODO: valid query in Postgres. https://github.com/dolthub/doltgresql/issues/1796
+				Dialect: "mysql",
+				Query:   "select o_id, c_id, rank() over(order by o_id) as rnk from o where c_id=1",
+				Expected: []sql.Row{
+					{10, 1, uint64(1)},
+					{20, 1, uint64(2)},
+					{30, 1, uint64(3)},
+				},
+			},
+			{
+				Query:    "select dense_rank() over() as rnk from o where c_id=-999",
+				Expected: []sql.Row{},
+			},
+			{
+				// TODO: valid query in Postgres. But Postgres orders nil at the end. Maybe rewrite query to filter out
+				//  ship=null https://github.com/dolthub/doltgresql/issues/1796
+				Dialect: "mysql",
+				Query:   "select ship, dense_rank() over (order by ship) as drnk from o where c_id in (1, 2) order by ship",
+				Expected: []sql.Row{
+					{nil, uint64(1)},
+					{"CA", uint64(2)},
+					{"CA", uint64(2)},
+					{"CA", uint64(2)},
+					{"CA", uint64(2)},
+					{"TX", uint64(3)},
+				},
+			},
+			{
+				Query:    "select count(*) from o where c_id=-999",
+				Expected: []sql.Row{{0}},
+			},
+		},
+	},
+	{
+		Name:    "aggregate function with match",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE test (pk INT PRIMARY KEY, doc TEXT, FULLTEXT idx (doc));",
+			"INSERT INTO test VALUES (2, 'g hhhh aaaab ooooo aaaa'), (1, 'bbbb ff cccc ddd eee'), (4, 'AAAA aaaa aaaac aaaa Aaaa aaaa'), (3, 'aaaA ff j kkkk llllllll');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// https://github.com/dolthub/dolt/issues/9761
+				Skip:        true,
+				Query:       "SELECT pk, count(pk), MATCH(doc) AGAINST('aaaa') AS relevancy FROM test ORDER BY relevancy DESC;",
+				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
+			{
+				Query:    "SET SESSION sql_mode = REPLACE(@@SESSION.sql_mode, 'ONLY_FULL_GROUP_BY', '');",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+
+			{
+				Query:    "SELECT pk, count(pk), MATCH(doc) AGAINST('aaaa') AS relevancy FROM test ORDER BY relevancy DESC;",
+				Expected: []sql.Row{{1, 4, float64(0)}},
+			},
+		},
+	},
+	{
+		Name:    "nonaggregated column in aggregated query",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table emptytable(i mediumint primary key, s varchar(20))",
+			"create table mytable(i bigint primary key, s varchar(20))",
+			"insert into mytable values (1, 'first'), (2, 'second'), (3, 'third');",
+			"create table two_pk (pk1 tinyint, pk2 tinyint, c1 tinyint NOT NULL, primary key (pk1, pk2))",
+			"insert into two_pk values (0,0,0), (0,1,10), (1,0,20), (1,1,30)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "SELECT count(*), i, concat(i, i), 123, 'abc', concat('abc', 'def') FROM emptytable;",
+				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
+			{
+				Query:       "SELECT count(*), i, concat(i, i), 123, 'abc', concat('abc', 'def') FROM mytable where false;",
+				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
+			{
+				Query:       "SELECT pk1, SUM(c1) FROM two_pk",
+				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
+			{
+				Query:    "SET SESSION sql_mode = REPLACE(@@SESSION.sql_mode, 'ONLY_FULL_GROUP_BY', '');",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "SELECT count(*), i, concat(i, i), 123, 'abc', concat('abc', 'def') FROM emptytable;",
+				Expected: []sql.Row{
+					{0, nil, nil, 123, "abc", "abcdef"},
+				},
+			},
+			{
+				Query: "SELECT count(*), i, concat(i, i), 123, 'abc', concat('abc', 'def') FROM mytable where false;",
+				Expected: []sql.Row{
+					{0, nil, nil, 123, "abc", "abcdef"},
+				},
+			},
+			{
+				Query:    "SELECT pk1, SUM(c1) FROM two_pk",
+				Expected: []sql.Row{{0, 60.0}},
 			},
 		},
 	},

@@ -33,21 +33,18 @@ import (
 // joinIter is an iterator that iterates over every row in the primary table and performs an index lookup in
 // the secondary table for each value
 type joinIter struct {
-	b        sql.NodeExecBuilder
-	joinType plan.JoinType
-	cond     sql.Expression
-
-	primary        sql.RowIter
-	primaryRow     sql.Row
-	loadPrimaryRow bool
-
+	b                 sql.NodeExecBuilder
+	cond              sql.Expression
+	primary           sql.RowIter
 	secondaryProvider sql.Node
 	secondary         sql.RowIter
-
-	foundMatch bool
-	rowSize    int
-	scopeLen   int
-	parentLen  int
+	primaryRow        sql.Row
+	rowSize           int
+	scopeLen          int
+	parentLen         int
+	joinType          plan.JoinType
+	loadPrimaryRow    bool
+	foundMatch        bool
 }
 
 func newJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode, row sql.Row) (sql.RowIter, error) {
@@ -255,20 +252,16 @@ func newExistsIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode, ro
 }
 
 type existsIter struct {
-	b    sql.NodeExecBuilder
-	typ  plan.JoinType
-	cond sql.Expression
-
-	primary    sql.RowIter
-	primaryRow sql.Row
-	fullRow    sql.Row
-
+	b                 sql.NodeExecBuilder
+	cond              sql.Expression
+	primary           sql.RowIter
 	secondaryProvider sql.Node
-
-	parentLen int
-	scopeLen  int
-	rowSize   int
-
+	primaryRow        sql.Row
+	fullRow           sql.Row
+	parentLen         int
+	scopeLen          int
+	rowSize           int
+	typ               plan.JoinType
 	nullRej           bool
 	rightIterNonEmpty bool
 }
@@ -435,22 +428,20 @@ func newFullJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode, 
 // FJ(A,B) => U(LJ(A,B), RJ(A,B)). The current algorithm will have a
 // runtime and memory complexity O(m+n).
 type fullJoinIter struct {
-	l    sql.RowIter
-	rp   sql.Node
-	b    sql.NodeExecBuilder
-	r    sql.RowIter
-	cond sql.Expression
-
-	parentRow sql.Row
+	rp        sql.Node
+	b         sql.NodeExecBuilder
+	r         sql.RowIter
+	cond      sql.Expression
+	l         sql.RowIter
+	seenLeft  map[uint64]struct{}
+	seenRight map[uint64]struct{}
 	leftRow   sql.Row
-	scopeLen  int
+	parentRow sql.Row
 	rowSize   int
 	leftLen   int
 	rightLen  int
-
+	scopeLen  int
 	leftDone  bool
-	seenLeft  map[uint64]struct{}
-	seenRight map[uint64]struct{}
 }
 
 func (i *fullJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
@@ -719,21 +710,18 @@ func (i *crossJoinIterator) Close(ctx *sql.Context) (err error) {
 // +---+---+
 // cond is passed to the filter iter to be evaluated.
 type lateralJoinIterator struct {
-	pRow  sql.Row
-	lRow  sql.Row
-	rRow  sql.Row
-	lIter sql.RowIter
-	rIter sql.RowIter
-	rNode sql.Node
-	cond  sql.Expression
-	jType plan.JoinType
-
-	rowSize  int
-	scopeLen int
-
+	lIter      sql.RowIter
+	rIter      sql.RowIter
+	rNode      sql.Node
+	cond       sql.Expression
+	b          sql.NodeExecBuilder
+	pRow       sql.Row
+	lRow       sql.Row
+	rRow       sql.Row
+	rowSize    int
+	scopeLen   int
+	jType      plan.JoinType
 	foundMatch bool
-
-	b sql.NodeExecBuilder
 }
 
 func newLateralJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode, row sql.Row) (sql.RowIter, error) {

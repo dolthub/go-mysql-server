@@ -255,10 +255,11 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	transform.Inspect(n, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.GroupBy:
+			var noGroupBy bool
 			// Allow the parser use the GroupBy node to eval the aggregation functions for sql statements that don't
 			// make use of the GROUP BY expression.
 			if len(n.GroupByExprs) == 0 {
-				return true
+				noGroupBy = true
 			}
 
 			primaryKeys := make(map[string]bool)
@@ -309,8 +310,12 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 			selectExprs := getSelectExprs(project, n.SelectDeps, groupBys)
 
 			for i, expr := range selectExprs {
-				if !expressionReferencesOnlyGroupBys(groupBys, expr) {
-					err = analyzererrors.ErrValidationGroupBy.New(i + 1)
+				if valid, col := expressionReferencesOnlyGroupBys(groupBys, expr, noGroupBy); !valid {
+					if noGroupBy {
+						err = sql.ErrNonAggregatedColumnWithoutGroupBy.New(i+1, col)
+					} else {
+						err = analyzererrors.ErrValidationGroupBy.New(i + 1)
+					}
 					return false
 				}
 			}
@@ -383,7 +388,8 @@ func getSelectExprs(project *plan.Project, selectDeps []sql.Expression, groupBys
 }
 
 // expressionReferencesOnlyGroupBys validates that an expression is dependent on only group by expressions
-func expressionReferencesOnlyGroupBys(groupBys map[string]bool, expr sql.Expression) bool {
+func expressionReferencesOnlyGroupBys(groupBys map[string]bool, expr sql.Expression, noGroupBy bool) (bool, string) {
+	var col string
 	valid := true
 	sql.Inspect(expr, func(expr sql.Expression) bool {
 		switch expr := expr.(type) {
@@ -401,7 +407,12 @@ func expressionReferencesOnlyGroupBys(groupBys map[string]bool, expr sql.Express
 			}
 
 			if len(expr.Children()) == 0 {
-				valid = false
+				// Allow non-matching subqueries when no explicit group by clause. If the subquery returns more than
+				// one row for an aggregated query, we will error out later on.
+				if _, isSubquery := expr.(*plan.Subquery); !(isSubquery && noGroupBy) {
+					valid = false
+					col = expr.String()
+				}
 				return false
 			}
 
@@ -409,7 +420,7 @@ func expressionReferencesOnlyGroupBys(groupBys map[string]bool, expr sql.Express
 		}
 	})
 
-	return valid
+	return valid, col
 }
 
 func validateSchemaSource(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {

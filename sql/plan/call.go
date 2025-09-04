@@ -24,21 +24,20 @@ import (
 )
 
 type Call struct {
-	db        sql.Database
-	Name      string
-	Params    []sql.Expression
-	asOf      sql.Expression
+	db     sql.Database
+	asOf   sql.Expression
+	cat    sql.Catalog
+	Runner sql.StatementRunner
+
 	Procedure *Procedure
 	Pref      *expression.ProcedureReference
-	cat       sql.Catalog
-	Analyzed  bool
 
-	// this will have list of parsed operations to run
-	Runner sql.StatementRunner
+	Name   string
+	Params []sql.Expression
 	Ops    []procedures.InterpreterOperation
-
-	// retain the result schema
 	resSch sql.Schema
+
+	Analyzed bool
 }
 
 var _ sql.Node = (*Call)(nil)

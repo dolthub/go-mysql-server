@@ -25,19 +25,16 @@ import (
 // variables given
 type Into struct {
 	UnaryNode
-	IntoVars []sql.Expression
-	Dumpfile string
-	Outfile  string
-
-	Charset string
-
+	Dumpfile            string
+	Outfile             string
+	Charset             string
 	FieldsTerminatedBy  string
 	FieldsEnclosedBy    string
-	FieldsEnclosedByOpt bool
 	FieldsEscapedBy     string
-
-	LinesStartingBy   string
-	LinesTerminatedBy string
+	LinesStartingBy     string
+	LinesTerminatedBy   string
+	IntoVars            []sql.Expression
+	FieldsEnclosedByOpt bool
 }
 
 var _ sql.Node = (*Into)(nil)

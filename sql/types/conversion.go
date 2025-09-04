@@ -437,6 +437,19 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (sql.Type, error) {
 		return PolygonType{}, nil
 	case "multipolygon":
 		return MultiPolygonType{}, nil
+	case "vector":
+		dimensions := int64(DefaultVectorDimensions)
+		if ct.Length != nil {
+			var err error
+			dimensions, err = strconv.ParseInt(string(ct.Length.Val), 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("invalid VECTOR dimension: %v", err)
+			}
+		}
+		if dimensions < 1 || dimensions > MaxVectorDimensions {
+			return nil, sql.ErrInvalidColTypeDefinition.New(ct.String(), fmt.Sprintf("VECTOR dimension must be between 1 and %d", MaxVectorDimensions))
+		}
+		return CreateVectorType(int(dimensions))
 	default:
 		return nil, fmt.Errorf("unknown type: %v", ct.Type)
 	}
@@ -748,4 +761,41 @@ func TypeAwareConversion(ctx *sql.Context, val interface{}, originalType sql.Typ
 		}
 	}
 	return convertedType.Convert(ctx, val)
+}
+
+// ConvertOrTruncate converts the value |i| to type |t| and returns the converted value; if the value does not convert
+// cleanly and the type is automatically coerced (i.e. string and numeric types), then a warning is logged and the
+// value is truncated to the Zero value for type |t|. If the value does not convert and the type is not automatically
+// coerced, then an error is returned.
+func ConvertOrTruncate(ctx *sql.Context, i interface{}, t sql.Type) (interface{}, error) {
+	converted, _, err := t.Convert(ctx, i)
+	if err == nil {
+		return converted, nil
+	}
+
+	// If a value can't be converted to an enum or set type, truncate it to a value that is guaranteed
+	// to not match any enum value.
+	if IsEnum(t) || IsSet(t) {
+		return nil, nil
+	}
+
+	// Values for numeric and string types are automatically coerced. For all other types, if they
+	// don't convert cleanly, it's an error.
+	if err != nil && !(IsNumber(t) || IsTextOnly(t)) {
+		return nil, err
+	}
+
+	// For numeric and string types, if the value can't be cleanly converted, truncate to the zero value for
+	// the type and log a warning in the session.
+	warning := sql.Warning{
+		Level:   "Warning",
+		Message: fmt.Sprintf("Truncated incorrect %s value: %v", t.String(), i),
+		Code:    1292,
+	}
+
+	if ctx != nil && ctx.Session != nil {
+		ctx.Session.Warn(&warning)
+	}
+
+	return t.Zero(), nil
 }

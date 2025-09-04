@@ -303,12 +303,12 @@ func (i JoinType) AsLateral() JoinType {
 // JoinNode contains all the common data fields and implements the common sql.Node getters for all join types.
 type JoinNode struct {
 	BinaryNode
-	sql.DescribeStats
 	Filter     sql.Expression
-	Op         JoinType
 	CommentStr string
-	ScopeLen   int
 	UsingCols  []string
+	sql.DescribeStats
+	ScopeLen   int
+	Op         JoinType
 	IsReversed bool
 }
 

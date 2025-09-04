@@ -138,10 +138,10 @@ func HasAvailableMemory(r Reporter) bool {
 // in memory. There should only be one instance of a memory manager running at the
 // same time in each process.
 type MemoryManager struct {
-	mu       sync.RWMutex
 	reporter Reporter
 	caches   map[uint64]Disposable
 	token    uint64
+	mu       sync.RWMutex
 }
 
 // NewMemoryManager creates a new manager with the given memory reporter. If nil is given,

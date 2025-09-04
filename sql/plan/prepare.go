@@ -25,9 +25,9 @@ import (
 
 // PrepareQuery is a node that prepares the query
 type PrepareQuery struct {
-	Name     string
 	Child    sql.Node
 	PrepStmt *sqlparser.Prepare
+	Name     string
 }
 
 var _ sql.Node = (*PrepareQuery)(nil)

@@ -60,16 +60,16 @@ var SignalItems = []SignalConditionItemName{
 
 // SignalInfo represents a piece of information for a SIGNAL statement.
 type SignalInfo struct {
-	ConditionItemName SignalConditionItemName
-	IntValue          int64
-	StrValue          string
 	ExprVal           sql.Expression
+	ConditionItemName SignalConditionItemName
+	StrValue          string
+	IntValue          int64
 }
 
 // Signal represents the SIGNAL statement with a set SQLSTATE.
 type Signal struct {
-	SqlStateValue string // Will always be a string with length 5
 	Info          map[SignalConditionItemName]SignalInfo
+	SqlStateValue string // Will always be a string with length 5
 }
 
 // SignalName represents the SIGNAL statement with a condition name.

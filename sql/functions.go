@@ -44,50 +44,50 @@ type CreateFuncNArgs func(args ...Expression) (Expression, error)
 type (
 	// Function0 is a function with 0 arguments.
 	Function0 struct {
-		Name string
 		Fn   CreateFunc0Args
+		Name string
 	}
 	// Function1 is a function with 1 argument.
 	Function1 struct {
-		Name string
 		Fn   CreateFunc1Args
+		Name string
 	}
 	// Function2 is a function with 2 arguments.
 	Function2 struct {
-		Name string
 		Fn   CreateFunc2Args
+		Name string
 	}
 	// Function3 is a function with 3 arguments.
 	Function3 struct {
-		Name string
 		Fn   CreateFunc3Args
+		Name string
 	}
 	// Function4 is a function with 4 arguments.
 	Function4 struct {
-		Name string
 		Fn   CreateFunc4Args
+		Name string
 	}
 	// Function5 is a function with 5 arguments.
 	Function5 struct {
-		Name string
 		Fn   CreateFunc5Args
+		Name string
 	}
 	// Function6 is a function with 6 arguments.
 	Function6 struct {
-		Name string
 		Fn   CreateFunc6Args
+		Name string
 	}
 	// Function7 is a function with 7 arguments.
 	Function7 struct {
-		Name string
 		Fn   CreateFunc7Args
+		Name string
 	}
 	// FunctionN is a function with variable number of arguments. This function
 	// is expected to return ErrInvalidArgumentNumber if the arity does not
 	// match, since the check has to be done in the implementation.
 	FunctionN struct {
-		Name string
 		Fn   CreateFuncNArgs
+		Name string
 	}
 )
 

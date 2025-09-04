@@ -28,13 +28,13 @@ var ErrNotView = errors.NewKind("'%' is not VIEW")
 
 // ShowCreateTable is a node that shows the CREATE TABLE statement for a table.
 type ShowCreateTable struct {
+	asOf sql.Expression
 	*UnaryNode
-	IsView           bool
+	PrimaryKeySchema sql.PrimaryKeySchema
 	Indexes          []sql.Index
 	checks           sql.CheckConstraints
 	targetSchema     sql.Schema
-	PrimaryKeySchema sql.PrimaryKeySchema
-	asOf             sql.Expression
+	IsView           bool
 }
 
 var _ sql.Node = (*ShowCreateTable)(nil)

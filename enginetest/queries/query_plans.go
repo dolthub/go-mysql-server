@@ -4802,61 +4802,6 @@ Select * from (
 			"",
 	},
 	{
-		Query: `SELECT count(*), i, concat(i, i), 123, 'abc', concat('abc', 'def') FROM emptytable;`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [count(1):0!null->count(*):0, emptytable.i:1!null, concat(emptytable.i:1!null,emptytable.i:1!null)->concat(i, i):0, 123 (tinyint), abc (longtext), concat(abc (longtext),def (longtext))->concat('abc', 'def')]\n" +
-			" └─ GroupBy\n" +
-			"     ├─ select: COUNT(1 (bigint)), emptytable.i:0!null\n" +
-			"     ├─ group: \n" +
-			"     └─ ProcessTable\n" +
-			"         └─ Table\n" +
-			"             ├─ name: emptytable\n" +
-			"             └─ columns: [i]\n" +
-			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [count(1) as count(*), emptytable.i, concat(emptytable.i,emptytable.i) as concat(i, i), 123, 'abc', concat('abc','def') as concat('abc', 'def')]\n" +
-			" └─ GroupBy\n" +
-			"     ├─ SelectDeps(COUNT(1), emptytable.i)\n" +
-			"     ├─ Grouping()\n" +
-			"     └─ Table\n" +
-			"         ├─ name: emptytable\n" +
-			"         └─ columns: [i]\n" +
-			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [count(1) as count(*), emptytable.i, concat(emptytable.i,emptytable.i) as concat(i, i), 123, 'abc', concat('abc','def') as concat('abc', 'def')]\n" +
-			" └─ GroupBy\n" +
-			"     ├─ SelectDeps(COUNT(1), emptytable.i)\n" +
-			"     ├─ Grouping()\n" +
-			"     └─ Table\n" +
-			"         ├─ name: emptytable\n" +
-			"         └─ columns: [i]\n" +
-			"",
-	},
-	{
-		Query: `SELECT count(*), i, concat(i, i), 123, 'abc', concat('abc', 'def') FROM mytable where false;`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [count(1):0!null->count(*):0, mytable.i:1!null, concat(mytable.i:1!null,mytable.i:1!null)->concat(i, i):0, 123 (tinyint), abc (longtext), concat(abc (longtext),def (longtext))->concat('abc', 'def')]\n" +
-			" └─ GroupBy\n" +
-			"     ├─ select: COUNT(1 (bigint)), mytable.i:0!null\n" +
-			"     ├─ group: \n" +
-			"     └─ EmptyTable\n" +
-			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [count(1) as count(*), mytable.i, concat(mytable.i,mytable.i) as concat(i, i), 123, 'abc', concat('abc','def') as concat('abc', 'def')]\n" +
-			" └─ GroupBy\n" +
-			"     ├─ SelectDeps(COUNT(1), mytable.i)\n" +
-			"     ├─ Grouping()\n" +
-			"     └─ EmptyTable\n" +
-			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [count(1) as count(*), mytable.i, concat(mytable.i,mytable.i) as concat(i, i), 123, 'abc', concat('abc','def') as concat('abc', 'def')]\n" +
-			" └─ GroupBy\n" +
-			"     ├─ SelectDeps(COUNT(1), mytable.i)\n" +
-			"     ├─ Grouping()\n" +
-			"     └─ EmptyTable\n" +
-			"",
-	},
-	{
 		Query: `select count(*) cnt from ab where exists (select * from xy where x = a) group by a`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [count(1):0!null->cnt:0]\n" +

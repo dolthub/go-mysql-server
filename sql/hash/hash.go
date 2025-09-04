@@ -16,6 +16,7 @@ package hash
 
 import (
 	"fmt"
+	"strconv"
 	"sync"
 
 	"github.com/cespare/xxhash/v2"
@@ -41,7 +42,7 @@ func ExprsToSchema(exprs ...sql.Expression) sql.Schema {
 	return sch
 }
 
-// HashOf returns a hash of the given value to be used as key in a cache.
+// HashOf returns a hash of the given row to be used as key in a cache.
 func HashOf(ctx *sql.Context, sch sql.Schema, row sql.Row) (uint64, error) {
 	hash := digestPool.Get().(*xxhash.Digest)
 	hash.Reset()
@@ -96,4 +97,65 @@ func HashOf(ctx *sql.Context, sch sql.Schema, row sql.Row) (uint64, error) {
 		}
 	}
 	return hash.Sum64(), nil
+}
+
+// HashOfSimple returns a hash for a single interface value
+func HashOfSimple(ctx *sql.Context, i interface{}, t sql.Type) (uint64, error) {
+	if i == nil {
+		return 0, nil
+	}
+
+	var str string
+	coll := sql.Collation_Default
+	if types.IsTuple(t) {
+		tup := i.([]interface{})
+		tupType := t.(types.TupleType)
+		hashes := make([]uint64, len(tup))
+		for idx, v := range tup {
+			h, err := HashOfSimple(ctx, v, tupType[idx])
+			if err != nil {
+				return 0, err
+			}
+			hashes[idx] = h
+		}
+		str = fmt.Sprintf("%v", hashes)
+	} else if types.IsTextOnly(t) {
+		coll = t.(sql.StringType).Collation()
+		if s, ok := i.(string); ok {
+			str = s
+		} else {
+			converted, err := types.ConvertOrTruncate(ctx, i, t)
+			if err != nil {
+				return 0, err
+			}
+			str, _, err = sql.Unwrap[string](ctx, converted)
+			if err != nil {
+				return 0, err
+			}
+		}
+	} else {
+		x, err := types.ConvertOrTruncate(ctx, i, t.Promote())
+		if err != nil {
+			return 0, err
+		}
+
+		// Remove trailing 0s from floats
+		switch v := x.(type) {
+		case float32:
+			str = strconv.FormatFloat(float64(v), 'f', -1, 32)
+			if str == "-0" {
+				str = "0"
+			}
+		case float64:
+			str = strconv.FormatFloat(v, 'f', -1, 64)
+			if str == "-0" {
+				str = "0"
+			}
+		default:
+			str = fmt.Sprintf("%v", v)
+		}
+	}
+
+	// Collated strings that are equivalent may have different runes, so we must make them hash to the same value
+	return coll.HashToUint(str)
 }

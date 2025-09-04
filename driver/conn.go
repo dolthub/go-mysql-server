@@ -23,13 +23,13 @@ import (
 
 // Conn is a connection to a database.
 type Conn struct {
-	dsn      string
-	options  *Options
-	dbConn   *dbConn
 	session  sql.Session
 	contexts ContextBuilder
+	options  *Options
+	dbConn   *dbConn
 	indexes  *sql.IndexRegistry
 	views    *sql.ViewRegistry
+	dsn      string
 }
 
 // DSN returns the driver connection string.

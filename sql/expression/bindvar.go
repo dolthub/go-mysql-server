@@ -20,8 +20,8 @@ import (
 )
 
 type BindVar struct {
-	Name string
 	Typ  sql.Type
+	Name string
 }
 
 var _ sql.Expression = (*BindVar)(nil)

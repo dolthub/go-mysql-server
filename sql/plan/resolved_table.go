@@ -29,9 +29,9 @@ type ResolvedTable struct {
 	sql.Table
 	SqlDatabase sql.Database
 	AsOf        interface{}
+	cols        sql.ColSet
 	comment     string
 	id          sql.TableId
-	cols        sql.ColSet
 }
 
 var _ sql.Node = (*ResolvedTable)(nil)

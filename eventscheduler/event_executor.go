@@ -30,15 +30,15 @@ import (
 // to update the enabled events list in the eventExecutor. It also handles updating the event
 // metadata in the database or dropping it from the database after its execution.
 type eventExecutor struct {
+	catalog             sql.Catalog
 	bThreads            *sql.BackgroundThreads
 	list                *enabledEventsList
 	runningEventsStatus *runningEventsStatus
 	ctxGetterFunc       func() (*sql.Context, error)
 	queryRunFunc        func(ctx *sql.Context, dbName, query, username, address string) error
-	stop                atomic.Bool
-	catalog             sql.Catalog
 	tokenTracker        *tokenTracker
 	period              int
+	stop                atomic.Bool
 }
 
 // newEventExecutor returns a new eventExecutor instance with an empty enabled events list.

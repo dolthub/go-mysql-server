@@ -33,11 +33,11 @@ func NewWindowDefinition(partitionBy []Expression, orderBy SortFields, frame Win
 
 // A WindowDefinition specifies the window parameters of a window function
 type WindowDefinition struct {
-	PartitionBy []Expression
-	OrderBy     SortFields
 	Frame       WindowFrame
 	Ref         string
 	Name        string
+	PartitionBy []Expression
+	OrderBy     SortFields
 	id          uint64
 }
 

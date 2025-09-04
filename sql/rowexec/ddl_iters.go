@@ -38,24 +38,22 @@ import (
 )
 
 type loadDataIter struct {
-	scanner *bufio.Scanner
 	reader  io.ReadCloser
+	scanner *bufio.Scanner
 
-	destSch       sql.Schema
-	colCount      int
-	fieldToColMap []int
-	setExprs      []sql.Expression
-	userVars      []sql.Expression
+	fieldsTerminatedBy string
+	linesTerminatedBy  string
+	linesStartingBy    string
+	fieldsEscapedBy    string
+	fieldsEnclosedBy   string
 
-	ignoreNum int64
-
-	fieldsTerminatedBy  string
-	fieldsEnclosedBy    string
+	userVars            []sql.Expression
+	setExprs            []sql.Expression
+	fieldToColMap       []int
+	destSch             sql.Schema
+	ignoreNum           int64
+	colCount            int
 	fieldsEnclosedByOpt bool
-	fieldsEscapedBy     string
-
-	linesStartingBy   string
-	linesTerminatedBy string
 }
 
 var _ sql.RowIter = (*loadDataIter)(nil)
@@ -1045,10 +1043,10 @@ func GetColumnsAndPrepareExpressions(
 }
 
 type createPkIter struct {
+	db           sql.Database
+	pkAlterable  sql.PrimaryKeyAlterableTable
 	targetSchema sql.Schema
 	columns      []sql.IndexColumn
-	pkAlterable  sql.PrimaryKeyAlterableTable
-	db           sql.Database
 	runOnce      bool
 }
 
@@ -1150,9 +1148,9 @@ func addKeyToSchema(tableName string, schema sql.Schema, columns []sql.IndexColu
 }
 
 type dropPkIter struct {
-	targetSchema sql.Schema
-	pkAlterable  sql.PrimaryKeyAlterableTable
 	db           sql.Database
+	pkAlterable  sql.PrimaryKeyAlterableTable
+	targetSchema sql.Schema
 	runOnce      bool
 }
 
@@ -1251,10 +1249,10 @@ func dropKeyFromSchema(schema sql.Schema) sql.PrimaryKeySchema {
 }
 
 type addColumnIter struct {
-	a         *plan.AddColumn
 	alterable sql.AlterableTable
-	runOnce   bool
+	a         *plan.AddColumn
 	b         *BaseBuilder
+	runOnce   bool
 }
 
 func (i *addColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
@@ -1578,9 +1576,9 @@ func addColumnToSchema(schema sql.Schema, column *sql.Column, order *sql.ColumnO
 
 // createProcedureIter is the row iterator for *CreateProcedure.
 type createProcedureIter struct {
-	once sync.Once
-	spd  sql.StoredProcedureDetails
 	db   sql.Database
+	spd  sql.StoredProcedureDetails
+	once sync.Once
 }
 
 // Next implements the sql.RowIter interface.
@@ -1612,10 +1610,10 @@ func (c *createProcedureIter) Close(ctx *sql.Context) error {
 }
 
 type createTriggerIter struct {
-	once       sync.Once
-	definition sql.TriggerDefinition
-	db         sql.Database
 	ctx        *sql.Context
+	db         sql.Database
+	definition sql.TriggerDefinition
+	once       sync.Once
 }
 
 func (c *createTriggerIter) Next(ctx *sql.Context) (sql.Row, error) {
@@ -2006,6 +2004,22 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 				return err
 			}
 			return nil
+		}
+
+		if indexDef.IsVector() {
+			// Validate that the type is exactly one column and it's something we can make a vector index of.
+			if len(indexDef.Columns) != 1 {
+				return fmt.Errorf("a vector index must have exactly one column")
+			}
+			indexColNameLower := strings.ToLower(indexDef.Columns[0].Name)
+			for _, tblCol := range idxAltTbl.Schema() {
+				if indexColNameLower == strings.ToLower(tblCol.Name) {
+					if !types.IsVectorConvertable(tblCol.Type) {
+						return sql.ErrVectorInvalidColumnType.New()
+					}
+					break
+				}
+			}
 		}
 
 		err = idxAltTbl.CreateIndex(ctx, indexDef)
