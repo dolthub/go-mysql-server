@@ -1505,6 +1505,21 @@ func IndexLeafChildren(e sql.Expression) (sql.IndexScanOp, sql.Expression, sql.E
 			op = sql.IndexScanOpNotInSet
 			right = e.Right()
 			left = e.Left()
+		case sql.IndexComparisonExpression:
+			ok := false
+			if !ok {
+				return 0, nil, nil, false
+			}
+
+			op, left, right, ok = e.IndexScanOperation()
+			switch op {
+			case sql.IndexScanOpEq:
+				op = sql.IndexScanOpNotEq
+			case sql.IndexScanOpInSet:
+				op = sql.IndexScanOpNotInSet
+			default:
+				return 0, nil, nil, false
+			}
 		default:
 			return 0, nil, nil, false
 		}
