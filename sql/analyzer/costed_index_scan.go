@@ -1012,21 +1012,21 @@ func (b *indexScanRangeBuilder) rangeBuildDefaultLeaf(bb *sql.MySQLIndexBuilder,
 	case sql.IndexScanOpEq:
 		bb.Equals(b.ctx, name, f.gf.Type(), f.litValue)
 	case sql.IndexScanOpNotEq:
-		bb.NotEquals(b.ctx, name, f.litValue)
+		bb.NotEquals(b.ctx, name, f.gf.Type(), f.litValue)
 	case sql.IndexScanOpInSet:
 		bb.Equals(b.ctx, name, f.gf.Type(), f.setValues...)
 	case sql.IndexScanOpNotInSet:
 		for _, v := range f.setValues {
-			bb.NotEquals(b.ctx, name, v)
+			bb.NotEquals(b.ctx, name, f.gf.Type(), v)
 		}
 	case sql.IndexScanOpGt:
-		bb.GreaterThan(b.ctx, name, f.litValue)
+		bb.GreaterThan(b.ctx, name, f.gf.Type(), f.litValue)
 	case sql.IndexScanOpGte:
-		bb.GreaterOrEqual(b.ctx, name, f.litValue)
+		bb.GreaterOrEqual(b.ctx, name, f.gf.Type(), f.litValue)
 	case sql.IndexScanOpLt:
-		bb.LessThan(b.ctx, name, f.litValue)
+		bb.LessThan(b.ctx, name, f.gf.Type(), f.litValue)
 	case sql.IndexScanOpLte:
-		bb.LessOrEqual(b.ctx, name, f.litValue)
+		bb.LessOrEqual(b.ctx, name, f.gf.Type(), f.litValue)
 	case sql.IndexScanOpIsNotNull:
 		bb.IsNotNull(b.ctx, name)
 	case sql.IndexScanOpIsNull:
