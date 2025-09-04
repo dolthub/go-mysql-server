@@ -245,8 +245,8 @@ func (j *joinOrderBuilder) buildSingleLookupPlan() bool {
 		return false
 	}
 	for _, edge := range j.edges {
-		if !edge.op.joinType.IsInner() {
-			// This optimization currently only supports inner joins.
+		if edge.op.joinType.IsFullOuter() || edge.op.joinType.IsAnti() {
+			// This optimization doesn't support outer joins or anti joins.
 			return false
 		}
 	}
@@ -277,11 +277,8 @@ func (j *joinOrderBuilder) buildSingleLookupPlan() bool {
 			if removedEdges.Contains(i) {
 				continue
 			}
-			if len(edge.filters) == 0 {
-				continue
-			}
 			if len(edge.filters) != 1 {
-				panic("Found an edge with multiple filters (that was previously validated as an inner join.) This shouldn't be possible.")
+				continue
 			}
 			filter := edge.filters[0]
 			_, tables, _ := getExprScalarProps(filter)
@@ -292,23 +289,17 @@ func (j *joinOrderBuilder) buildSingleLookupPlan() bool {
 			}
 			firstTab, _ := tables.Next(1)
 			secondTab, _ := tables.Next(firstTab + 1)
-			if currentlyJoinedTables.Contains(firstTab) {
+			if currentlyJoinedTables.Contains(firstTab) && !edge.op.joinType.IsRightOuter() {
 				joinCandidates = append(joinCandidates, joinCandidate{
 					nextEdgeIdx: i,
 					nextTableId: sql.TableId(secondTab),
 				})
-			} else if currentlyJoinedTables.Contains(secondTab) {
+			} else if currentlyJoinedTables.Contains(secondTab) && !edge.op.joinType.IsLeftOuter() {
 				joinCandidates = append(joinCandidates, joinCandidate{
 					nextEdgeIdx: i,
 					nextTableId: sql.TableId(firstTab),
 				})
 			}
-		}
-
-		if len(joinCandidates) > 1 {
-			// We end up here if there are multiple possible choices for the next join.
-			// This could happen if there are redundant rules. For now, we bail out if this happens.
-			return false
 		}
 
 		if len(joinCandidates) == 0 {
@@ -324,6 +315,9 @@ func (j *joinOrderBuilder) buildSingleLookupPlan() bool {
 			return false
 		}
 
+		// If there are multiple filter choices for the next join, pick one arbitrarily.
+		// This means that for complex joins, there may be an optimal join that we fail to find.
+		// But for other complex joins, the choice may not matter.
 		nextEdgeIdx := joinCandidates[0].nextEdgeIdx
 		nextTableId := joinCandidates[0].nextTableId
 
