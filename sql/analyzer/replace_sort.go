@@ -145,8 +145,10 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 	}
 
 	allSame := transform.SameTree
-	newChildren := make([]sql.Node, len(node.Children()))
-	for i, child := range node.Children() {
+	children := node.Children()
+	newChildren := make([]sql.Node, len(children))
+	copy(newChildren, children)
+	for i, child := range children {
 		var err error
 		same := transform.SameTree
 		switch c := child.(type) {
@@ -213,14 +215,11 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 					c.IsReversed = true
 				}
 			}
-
 			newChildren[i], err = c.WithChildren(newLeft, newRight)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
 			allSame = false
-		default:
-			newChildren[i] = c
 		}
 		if err != nil {
 			return nil, transform.SameTree, err
