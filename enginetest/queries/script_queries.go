@@ -2795,7 +2795,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				// Test with subquery using multiple columns errors
-				Query:       "SELECT category, GROUP_CONCAT(name ORDER BY (SELECT AVG(value), name FROM complex_test c2 WHERE c2.id <= complex_test.id HAVING AVG(value) > 50) DESC) FROM complex_test GROUP BY category ORDER BY category",
+				Query:       "SELECT category, GROUP_CONCAT(name ORDER BY (SELECT value, name FROM complex_test c2 WHERE c2.id <= complex_test.id) DESC) FROM complex_test GROUP BY category ORDER BY category",
 				ExpectedErr: sql.ErrInvalidOperandColumns,
 			},
 			{
@@ -11697,11 +11697,9 @@ select * from t1 except (
 		Assertions: []ScriptTestAssertion{
 			{
 				// https://github.com/dolthub/dolt/issues/9761
-				Skip:  true,
-				Query: "SELECT pk, count(pk), MATCH(doc) AGAINST('aaaa') AS relevancy FROM test ORDER BY relevancy DESC;",
-				// TODO: replace with corresponding error once validation for aggregated query without group by
-				//  has been implemented https://github.com/dolthub/dolt/issues/9761
-				ExpectedErr: nil,
+				Skip:        true,
+				Query:       "SELECT pk, count(pk), MATCH(doc) AGAINST('aaaa') AS relevancy FROM test ORDER BY relevancy DESC;",
+				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
 			},
 			{
 				Query:    "SET SESSION sql_mode = REPLACE(@@SESSION.sql_mode, 'ONLY_FULL_GROUP_BY', '');",
@@ -11711,6 +11709,51 @@ select * from t1 except (
 			{
 				Query:    "SELECT pk, count(pk), MATCH(doc) AGAINST('aaaa') AS relevancy FROM test ORDER BY relevancy DESC;",
 				Expected: []sql.Row{{1, 4, float64(0)}},
+			},
+		},
+	},
+	{
+		Name:    "nonaggregated column in aggregated query",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table emptytable(i mediumint primary key, s varchar(20))",
+			"create table mytable(i bigint primary key, s varchar(20))",
+			"insert into mytable values (1, 'first'), (2, 'second'), (3, 'third');",
+			"create table two_pk (pk1 tinyint, pk2 tinyint, c1 tinyint NOT NULL, primary key (pk1, pk2))",
+			"insert into two_pk values (0,0,0), (0,1,10), (1,0,20), (1,1,30)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "SELECT count(*), i, concat(i, i), 123, 'abc', concat('abc', 'def') FROM emptytable;",
+				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
+			{
+				Query:       "SELECT count(*), i, concat(i, i), 123, 'abc', concat('abc', 'def') FROM mytable where false;",
+				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
+			{
+				Query:       "SELECT pk1, SUM(c1) FROM two_pk",
+				ExpectedErr: sql.ErrNonAggregatedColumnWithoutGroupBy,
+			},
+			{
+				Query:    "SET SESSION sql_mode = REPLACE(@@SESSION.sql_mode, 'ONLY_FULL_GROUP_BY', '');",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query: "SELECT count(*), i, concat(i, i), 123, 'abc', concat('abc', 'def') FROM emptytable;",
+				Expected: []sql.Row{
+					{0, nil, nil, 123, "abc", "abcdef"},
+				},
+			},
+			{
+				Query: "SELECT count(*), i, concat(i, i), 123, 'abc', concat('abc', 'def') FROM mytable where false;",
+				Expected: []sql.Row{
+					{0, nil, nil, 123, "abc", "abcdef"},
+				},
+			},
+			{
+				Query:    "SELECT pk1, SUM(c1) FROM two_pk",
+				Expected: []sql.Row{{0, 60.0}},
 			},
 		},
 	},

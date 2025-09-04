@@ -1239,18 +1239,6 @@ SELECT * FROM cte WHERE  d = 2;`,
 		},
 	},
 	{
-		Query: "SELECT count(*), i, concat(i, i), 123, 'abc', concat('abc', 'def') FROM emptytable;",
-		Expected: []sql.Row{
-			{0, nil, nil, 123, "abc", "abcdef"},
-		},
-	},
-	{
-		Query: "SELECT count(*), i, concat(i, i), 123, 'abc', concat('abc', 'def') FROM mytable where false;",
-		Expected: []sql.Row{
-			{0, nil, nil, 123, "abc", "abcdef"},
-		},
-	},
-	{
 		Query: "SELECT pk, u, v FROM one_pk JOIN (SELECT count(*) AS u, 123 AS v FROM emptytable) uv WHERE pk = u;",
 		Expected: []sql.Row{
 			{0, 0, 123},
@@ -7876,10 +7864,6 @@ SELECT * FROM ladder;`,
 		// mysql overwrites outer CTEs on seeing inner CTE definition
 		Query:    "with a(j) as (select 1) ( with c(k) as (select 3) select k from c union select 6) union select k from c;",
 		Expected: []sql.Row{{3}, {6}},
-	},
-	{
-		Query:    "SELECT pk1, SUM(c1) FROM two_pk",
-		Expected: []sql.Row{{0, 60.0}},
 	},
 	{
 		Query: `SELECT pk,
