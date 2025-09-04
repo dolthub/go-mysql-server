@@ -1014,7 +1014,7 @@ func (b *indexScanRangeBuilder) rangeBuildDefaultLeaf(bb *sql.MySQLIndexBuilder,
 	case sql.IndexScanOpNotEq:
 		bb.NotEquals(b.ctx, name, f.litValue)
 	case sql.IndexScanOpInSet:
-		bb.Equals(b.ctx, name, f.setValues...)
+		bb.Equals(b.ctx, name, f.gf.Type(), f.setValues...)
 	case sql.IndexScanOpNotInSet:
 		for _, v := range f.setValues {
 			bb.NotEquals(b.ctx, name, v)
@@ -1035,7 +1035,7 @@ func (b *indexScanRangeBuilder) rangeBuildDefaultLeaf(bb *sql.MySQLIndexBuilder,
 		if f.litValue == nil {
 			bb.IsNull(b.ctx, name)
 		} else {
-			bb.Equals(b.ctx, name, f.litValue)
+			bb.Equals(b.ctx, name, f.gf.Type(), f.litValue)
 		}
 	default:
 		panic(fmt.Sprintf("unknown IndexScanOp: %d", f.Op()))

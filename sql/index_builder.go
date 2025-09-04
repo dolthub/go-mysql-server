@@ -104,11 +104,11 @@ func floor(val interface{}) interface{} {
 }
 
 // Equals represents colExpr = key. For IN expressions, pass all of them in the same Equals call.
-func (b *MySQLIndexBuilder) Equals(ctx *Context, colExpr string, keyTypes []Type, keys ...interface{}) *MySQLIndexBuilder {
+func (b *MySQLIndexBuilder) Equals(ctx *Context, colExpr string, keyType Type, keys ...interface{}) *MySQLIndexBuilder {
 	if b.isInvalid {
 		return b
 	}
-	typ, ok := b.colExprTypes[colExpr]
+	colTyp, ok := b.colExprTypes[colExpr]
 	if !ok {
 		b.isInvalid = true
 		b.err = ErrInvalidColExpr.New(colExpr, b.idx.ID())
@@ -117,33 +117,34 @@ func (b *MySQLIndexBuilder) Equals(ctx *Context, colExpr string, keyTypes []Type
 	potentialRanges := make([]MySQLRangeColumnExpr, len(keys))
 	for i, k := range keys {
 		// if converting from float to int results in rounding, then it's empty range
-		if t, ok := typ.(NumberType); ok && !t.IsFloat() {
+		if t, ok := colTyp.(NumberType); ok && !t.IsFloat() {
 			f, c := floor(k), ceil(k)
 			switch k.(type) {
 			case float32, float64:
 				if f != c {
-					potentialRanges[i] = EmptyRangeColumnExpr(typ)
+					potentialRanges[i] = EmptyRangeColumnExpr(colTyp)
 					continue
 				}
 			case decimal.Decimal:
 				if !f.(decimal.Decimal).Equals(c.(decimal.Decimal)) {
-					potentialRanges[i] = EmptyRangeColumnExpr(typ)
+					potentialRanges[i] = EmptyRangeColumnExpr(colTyp)
 					continue
 				}
 			}
 		}
 
 		var err error
-
-		// x, ok := typ.(ExtendedTy)
-		
-		k, _, err = typ.Convert(ctx, k)
+		if et, ok := keyType.(ExtendedType); ok {
+			k, err = et.ConvertToType(ctx, colTyp.(ExtendedType), k)
+		} else {
+			k, _, err = colTyp.Convert(ctx, k)
+		}
 		if err != nil {
 			b.isInvalid = true
 			b.err = err
 			return b
 		}
-		potentialRanges[i] = ClosedRangeColumnExpr(k, k, typ)
+		potentialRanges[i] = ClosedRangeColumnExpr(k, k, colTyp)
 	}
 	b.updateCol(ctx, colExpr, potentialRanges...)
 	return b
