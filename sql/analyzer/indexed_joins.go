@@ -467,12 +467,11 @@ func convertSemiToInnerJoin(m *memo.Memo) error {
 
 		// project is a new group
 		rightGrp := m.MemoizeProject(nil, semi.Right, projectExpressions)
-		if _, ok := semi.Right.First.(*memo.Distinct); !ok {
-			rightGrp.RelProps.Distinct = memo.HashDistinctOp
-		}
 
 		// join and its commute are a new group
 		joinGrp := m.MemoizeInnerJoin(nil, semi.Left, rightGrp, plan.JoinTypeInner, semi.Filter)
+		// Ensure DISTINCT operation to prevent duplicate rows in SemiJoin to InnerJoin conversion
+		joinGrp.RelProps.Distinct = memo.HashDistinctOp
 		// TODO: can't commute if right SubqueryAlias references outside scope (OuterScopeVisibility/IsLateral)
 		m.MemoizeInnerJoin(joinGrp, rightGrp, semi.Left, plan.JoinTypeInner, semi.Filter)
 

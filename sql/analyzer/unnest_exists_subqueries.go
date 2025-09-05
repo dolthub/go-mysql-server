@@ -193,8 +193,12 @@ func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, fil
 				ret = plan.NewAntiJoinIncludingNulls(ret, s.inner, cond).WithComment(comment)
 				qFlags.Set(sql.QFlagInnerJoin)
 			case plan.JoinTypeSemi:
-				ret = plan.NewCrossJoin(ret, s.inner).WithComment(comment)
-				qFlags.Set(sql.QFlagCrossJoin)
+				// Use SemiJoin with TRUE condition instead of CrossJoin to preserve EXISTS semantics
+				// CrossJoin would emit each outer row once per inner row, but EXISTS should emit
+				// each outer row at most once when there's at least one inner row
+				cond := expression.NewLiteral(true, types.Boolean)
+				ret = plan.NewSemiJoin(ret, s.inner, cond).WithComment(comment)
+				qFlags.Set(sql.QFlagInnerJoin)
 			default:
 				return filter, transform.SameTree, fmt.Errorf("hoistSelectExists failed on unexpected join type")
 			}
