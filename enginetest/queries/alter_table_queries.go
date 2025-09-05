@@ -2119,6 +2119,14 @@ var AddColumnScripts = []ScriptTest{
 				// TODO: this should be 1 rowsAffected https://github.com/dolthub/dolt/issues/9606
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
+			{
+				Query:       "alter table t add column l int check (l is not null)",
+				ExpectedErr: sql.ErrCheckConstraintViolated,
+			},
+			{
+				Query:       "alter table t add column m int default 0 check (m != 0)",
+				ExpectedErr: sql.ErrCheckConstraintViolated,
+			},
 		},
 	},
 	{
