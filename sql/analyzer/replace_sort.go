@@ -146,8 +146,7 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 
 	allSame := transform.SameTree
 	children := node.Children()
-	newChildren := make([]sql.Node, len(children))
-	copy(newChildren, children)
+	newChildren := node.Children()
 	for i, child := range children {
 		var err error
 		same := transform.SameTree
