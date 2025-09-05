@@ -1425,14 +1425,25 @@ func newLeaf(ctx *sql.Context, id indexScanId, e sql.Expression, underlying stri
 	if op == sql.IndexScanOpInSet || op == sql.IndexScanOpNotInSet {
 		tup := right.(expression.Tuple)
 		var litSet []interface{}
+		var litType sql.Type
 		for _, lit := range tup {
 			value, err := lit.Eval(ctx, nil)
 			if err != nil {
 				return nil, false
 			}
 			litSet = append(litSet, value)
+			if litType == nil {
+				litType = lit.Type()
+			}
 		}
-		return &iScanLeaf{id: id, gf: gf, op: op, setValues: litSet, underlying: underlying}, true
+		return &iScanLeaf{
+			id: id,
+			gf: gf,
+			op: op,
+			setValues: litSet,
+			litType: litType,
+			underlying: underlying,
+		}, true
 	}
 
 	value, err := right.Eval(ctx, nil)
