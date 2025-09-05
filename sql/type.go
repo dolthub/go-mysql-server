@@ -287,4 +287,3 @@ const (
 	ExtendedTypeSerializedWidth_64K       ExtendedTypeSerializedWidth = iota // Represents a variably-sized value. The maximum number of bytes is (2^16)-1.
 	ExtendedTypeSerializedWidth_Unbounded                                    // Represents a variably-sized value. The maximum number of bytes is (2^64)-1, which is practically unbounded.
 )
-

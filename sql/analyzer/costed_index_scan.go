@@ -1414,7 +1414,7 @@ func newLeaf(ctx *sql.Context, id indexScanId, e sql.Expression, underlying stri
 		return nil, false
 	}
 
-	if op == sql.IndexScanOpIsNull || op == sql.IndexScanOpIsNotNull  {
+	if op == sql.IndexScanOpIsNull || op == sql.IndexScanOpIsNotNull {
 		return &iScanLeaf{id: id, gf: gf, op: op, underlying: underlying}, true
 	}
 
@@ -1437,11 +1437,11 @@ func newLeaf(ctx *sql.Context, id indexScanId, e sql.Expression, underlying stri
 			}
 		}
 		return &iScanLeaf{
-			id: id,
-			gf: gf,
-			op: op,
-			setValues: litSet,
-			litType: litType,
+			id:         id,
+			gf:         gf,
+			op:         op,
+			setValues:  litSet,
+			litType:    litType,
 			underlying: underlying,
 		}, true
 	}
@@ -1452,11 +1452,11 @@ func newLeaf(ctx *sql.Context, id indexScanId, e sql.Expression, underlying stri
 	}
 
 	return &iScanLeaf{
-		id: id,
-		gf: gf,
-		op: op,
-		litValue: value,
-		litType: right.Type(),
+		id:         id,
+		gf:         gf,
+		op:         op,
+		litValue:   value,
+		litType:    right.Type(),
 		underlying: underlying,
 	}, true
 }
@@ -1467,7 +1467,7 @@ func IndexLeafChildren(e sql.Expression) (sql.IndexScanOp, sql.Expression, sql.E
 	var left sql.Expression
 	var right sql.Expression
 	switch e := e.(type) {
-	// TODO: we need to extract an interface here so that pg expressions can use them as well 
+	// TODO: we need to extract an interface here so that pg expressions can use them as well
 	case *expression.NullSafeEquals:
 		op = sql.IndexScanOpNullSafeEq
 		right = e.Right()
@@ -1555,7 +1555,7 @@ func IndexLeafChildren(e sql.Expression) (sql.IndexScanOp, sql.Expression, sql.E
 		ok := false
 		op, left, right, ok = e.IndexScanOperation()
 		if !ok {
-			return 0, nil, nil, false	
+			return 0, nil, nil, false
 		}
 	default:
 		return 0, nil, nil, false

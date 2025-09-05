@@ -169,7 +169,6 @@ var emptyLookup = IndexLookup{}
 type IndexComparisonExpression interface {
 	// TODO: IndexScanOp probably needs to be moved into this package as well
 	IndexScanOperation() (IndexScanOp, Expression, Expression, bool)
-	
 }
 
 type IndexScanOp uint8
@@ -209,7 +208,6 @@ func (o IndexScanOp) Swap() IndexScanOp {
 		return o
 	}
 }
-
 
 func NewIndexLookup(idx Index, ranges MySQLRangeCollection, isPointLookup, isEmptyRange, isSpatialLookup, isReverse bool) IndexLookup {
 	if isReverse {
