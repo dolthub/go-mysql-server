@@ -2112,6 +2112,47 @@ WHERE
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/9793
+		name: "outer join on false",
+		setup: [][]string{
+			{
+				"create table t1(c0 int)",
+				"create table t2(c0 int)",
+				"insert into t1 values (1)",
+				"insert into t2 values (1)",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query: "select * from t1 full outer join t2 on false",
+				Expected: []sql.Row{
+					{1, nil},
+					{nil, 1},
+				},
+			},
+			{
+				Query:    "select * from t1 full outer join t2 on false where t2.c0 is not null and t1.c0 is not null",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from t1 left outer join t2 on false",
+				Expected: []sql.Row{{1, nil}},
+			},
+			{
+				Query:    "select * from t1 left outer join t2 on false where t2.c0 is not null",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from t1 right outer join t2 on false",
+				Expected: []sql.Row{{nil, 1}},
+			},
+			{
+				Query:    "select * from t1 right outer join t2 on false where t1.c0 is not null",
+				Expected: []sql.Row{},
+			},
+		},
+	},
 }
 
 var rangeJoinOpTests = []JoinOpTests{
