@@ -1012,23 +1012,23 @@ func (b *indexScanRangeBuilder) rangeBuildDefaultLeaf(bb *sql.MySQLIndexBuilder,
 	name := f.normString()
 	switch f.Op() {
 	case sql.IndexScanOpEq:
-		bb.Equals(b.ctx, name, f.gf.Type(), f.litValue)
+		bb.Equals(b.ctx, name, f.litType, f.litValue)
 	case sql.IndexScanOpNotEq:
-		bb.NotEquals(b.ctx, name, f.gf.Type(), f.litValue)
+		bb.NotEquals(b.ctx, name, f.litType, f.litValue)
 	case sql.IndexScanOpInSet:
-		bb.Equals(b.ctx, name, f.gf.Type(), f.setValues...)
+		bb.Equals(b.ctx, name, f.litType, f.setValues...)
 	case sql.IndexScanOpNotInSet:
 		for _, v := range f.setValues {
-			bb.NotEquals(b.ctx, name, f.gf.Type(), v)
+			bb.NotEquals(b.ctx, name, f.litType, v)
 		}
 	case sql.IndexScanOpGt:
-		bb.GreaterThan(b.ctx, name, f.gf.Type(), f.litValue)
+		bb.GreaterThan(b.ctx, name, f.litType, f.litValue)
 	case sql.IndexScanOpGte:
-		bb.GreaterOrEqual(b.ctx, name, f.gf.Type(), f.litValue)
+		bb.GreaterOrEqual(b.ctx, name, f.litType, f.litValue)
 	case sql.IndexScanOpLt:
-		bb.LessThan(b.ctx, name, f.gf.Type(), f.litValue)
+		bb.LessThan(b.ctx, name, f.litType, f.litValue)
 	case sql.IndexScanOpLte:
-		bb.LessOrEqual(b.ctx, name, f.gf.Type(), f.litValue)
+		bb.LessOrEqual(b.ctx, name, f.litType, f.litValue)
 	case sql.IndexScanOpIsNotNull:
 		bb.IsNotNull(b.ctx, name)
 	case sql.IndexScanOpIsNull:
@@ -1037,7 +1037,7 @@ func (b *indexScanRangeBuilder) rangeBuildDefaultLeaf(bb *sql.MySQLIndexBuilder,
 		if f.litValue == nil {
 			bb.IsNull(b.ctx, name)
 		} else {
-			bb.Equals(b.ctx, name, f.gf.Type(), f.litValue)
+			bb.Equals(b.ctx, name, f.litType, f.litValue)
 		}
 	default:
 		panic(fmt.Sprintf("unknown IndexScanOp: %d", f.Op()))
@@ -1070,6 +1070,7 @@ type indexFilter interface {
 
 type iScanLeaf struct {
 	litValue      interface{}
+	litType       sql.Type
 	gf            *expression.GetField
 	underlying    string
 	fulltextIndex string
@@ -1439,7 +1440,14 @@ func newLeaf(ctx *sql.Context, id indexScanId, e sql.Expression, underlying stri
 		return nil, false
 	}
 
-	return &iScanLeaf{id: id, gf: gf, op: op, litValue: value, underlying: underlying}, true
+	return &iScanLeaf{
+		id: id,
+		gf: gf,
+		op: op,
+		litValue: value,
+		litType: right.Type(),
+		underlying: underlying,
+	}, true
 }
 
 // IndexLeafChildren handles the struct types that may be found on a leaf node while creating indexes.

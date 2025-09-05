@@ -134,11 +134,8 @@ func (b *MySQLIndexBuilder) Equals(ctx *Context, colExpr string, keyType Type, k
 		}
 
 		var err error
-		if et, ok := keyType.(ExtendedType); ok {
-			k, err = et.ConvertToType(ctx, colTyp.(ExtendedType), k)
-		} else {
-			k, _, err = colTyp.Convert(ctx, k)
-		}
+		k, err = b.convertKey(ctx, colTyp, keyType, k)
+
 		if err != nil {
 			b.isInvalid = true
 			b.err = err
@@ -228,8 +225,8 @@ func (b *MySQLIndexBuilder) GreaterThan(ctx *Context, colExpr string, keyType Ty
 }
 
 func (b *MySQLIndexBuilder) convertKey(ctx *Context, colType Type, keyType Type, key interface{}) (interface{}, error) {
-	if et, ok := keyType.(ExtendedType); ok {
-		return et.ConvertToType(ctx, colType.(ExtendedType), key)
+	if et, ok := colType.(ExtendedType); ok {
+		return et.ConvertToType(ctx, keyType.(ExtendedType), key)
 	} else {
 		key, _, err := colType.Convert(ctx, key)
 		return key, err
