@@ -185,7 +185,7 @@ func (i *joinIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 
 		i.foundMatch = true
-		
+
 		// For semi joins, close secondary iterator and move to next primary row after first match
 		// This ensures each primary row is emitted at most once (semi join semantics)
 		if i.joinType.IsSemi() {
@@ -198,7 +198,7 @@ func (i *joinIter) Next(ctx *sql.Context) (sql.Row, error) {
 			// For semi joins, return only the primary row, not the combined row
 			return i.removeParentRow(i.buildRow(primary, nil)), nil
 		}
-		
+
 		return i.removeParentRow(row), nil
 	}
 }
