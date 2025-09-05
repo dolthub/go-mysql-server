@@ -64,6 +64,12 @@ func (r *Reverse) Eval(
 		return nil, err
 	}
 
+	// Handle Dolt's TextStorage wrapper that doesn't convert to plain string
+	v, err = sql.UnwrapAny(ctx, v)
+	if err != nil {
+		return nil, err
+	}
+
 	return reverseString(v.(string)), nil
 }
 
@@ -158,6 +164,12 @@ func (r *Repeat) Eval(
 	}
 
 	str, _, err = types.LongText.Convert(ctx, str)
+	if err != nil {
+		return nil, err
+	}
+
+	// Handle Dolt's TextStorage wrapper that doesn't convert to plain string
+	str, err = sql.UnwrapAny(ctx, str)
 	if err != nil {
 		return nil, err
 	}

@@ -89,6 +89,12 @@ func (s *Substring) Eval(
 		return nil, err
 	}
 
+	// Handle Dolt's TextStorage wrapper that doesn't convert to plain string
+	str, err = sql.UnwrapAny(ctx, str)
+	if err != nil {
+		return nil, err
+	}
+
 	var text []rune
 	switch str := str.(type) {
 	case string:
