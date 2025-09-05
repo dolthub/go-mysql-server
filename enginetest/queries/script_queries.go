@@ -11757,6 +11757,29 @@ select * from t1 except (
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/9789
+		Name: "order by on empty set from joins",
+		SetUpScript: []string{
+			"create table t0(c0 int, primary key(c0))",
+			"create table t1(c0 int)",
+			"create table t2(c0 int)",
+			"create table t3(c0 int)",
+			"insert into t0 values (1)",
+			"insert into t1 values (1)",
+			"insert into t2 values (1)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from t2, t3, t0, t1",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from t2, t3, t0, t1 order by t0.c0",
+				Expected: []sql.Row{},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
