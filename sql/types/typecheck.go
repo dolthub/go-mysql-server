@@ -129,7 +129,7 @@ func IsText(t sql.Type) bool {
 		return IsText(typ.UnderlyingType())
 	case StringType:
 		return true
-	case ExtendedType:
+	case sql.ExtendedType:
 		_, isString := typ.Zero().(string)
 		return isString
 	default:

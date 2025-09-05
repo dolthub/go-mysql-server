@@ -18,8 +18,6 @@ import (
 	"errors"
 	"io"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/hash"
@@ -251,7 +249,7 @@ func (i *groupByGroupingIter) groupingKey(ctx *sql.Context, exprs []sql.Expressi
 
 		// TODO: this should be moved into hash.HashOf
 		typ := expr.Type()
-		if extTyp, isExtTyp := typ.(types.ExtendedType); isExtTyp {
+		if extTyp, isExtTyp := typ.(sql.ExtendedType); isExtTyp {
 			val, vErr := extTyp.SerializeValue(ctx, v)
 			if vErr != nil {
 				return 0, vErr

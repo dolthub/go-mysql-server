@@ -124,12 +124,15 @@ func indexSearchableLookup(ctx *sql.Context, n sql.Node, rt sql.TableNode, looku
 	return ret, transform.NewTree, nil
 }
 
+var SplitConjunction func(expr sql.Expression) []sql.Expression = expression.SplitConjunction
+
 func costedIndexLookup(ctx *sql.Context, n sql.Node, a *Analyzer, iat sql.IndexAddressableTable, rt sql.TableNode, aliasName string, oldFilter sql.Expression, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	indexes, err := iat.GetIndexes(ctx)
 	if err != nil {
 		return n, transform.SameTree, err
 	}
-	ita, stats, filters, err := getCostedIndexScan(ctx, a.Catalog, rt, indexes, expression.SplitConjunction(oldFilter), qFlags)
+	// TODO(next): this is getting a GMSCast node and not getting an index assigned here
+	ita, stats, filters, err := getCostedIndexScan(ctx, a.Catalog, rt, indexes, SplitConjunction(oldFilter), qFlags)
 	if err != nil || ita == nil {
 		return n, transform.SameTree, err
 	}
@@ -873,7 +876,7 @@ func (b *indexScanRangeBuilder) rangeBuildAnd(f *iScanAnd, inScan bool) (sql.MyS
 	partBuilder := sql.NewMySQLIndexBuilder(b.idx)
 	for _, leaf := range f.leaves() {
 		switch leaf.Op() {
-		case IndexScanOpSpatialEq:
+		case sql.IndexScanOpSpatialEq:
 			ranges, err := b.rangeBuildSpatialLeaf(leaf, inScan)
 			if err != nil {
 				return nil, err
@@ -884,7 +887,7 @@ func (b *indexScanRangeBuilder) rangeBuildAnd(f *iScanAnd, inScan bool) (sql.MyS
 					return nil, err
 				}
 			}
-		case IndexScanOpFulltextEq:
+		case sql.IndexScanOpFulltextEq:
 			ranges, err := b.rangeBuildFulltextLeaf(leaf, inScan)
 			if err != nil {
 				return nil, err
@@ -984,9 +987,9 @@ func (b *indexScanRangeBuilder) rangeBuildFulltextLeaf(f *iScanLeaf, inScan bool
 
 func (b *indexScanRangeBuilder) rangeBuildLeaf(f *iScanLeaf, inScan bool) (sql.MySQLRangeCollection, error) {
 	switch f.Op() {
-	case IndexScanOpSpatialEq:
+	case sql.IndexScanOpSpatialEq:
 		return b.rangeBuildSpatialLeaf(f, inScan)
-	case IndexScanOpFulltextEq:
+	case sql.IndexScanOpFulltextEq:
 		return b.rangeBuildFulltextLeaf(f, inScan)
 	default:
 		bb := sql.NewMySQLIndexBuilder(b.idx)
@@ -1008,33 +1011,33 @@ func (b *indexScanRangeBuilder) rangeBuildDefaultLeaf(bb *sql.MySQLIndexBuilder,
 
 	name := f.normString()
 	switch f.Op() {
-	case IndexScanOpEq:
-		bb.Equals(b.ctx, name, f.litValue)
-	case IndexScanOpNotEq:
-		bb.NotEquals(b.ctx, name, f.litValue)
-	case IndexScanOpInSet:
-		bb.Equals(b.ctx, name, f.setValues...)
-	case IndexScanOpNotInSet:
+	case sql.IndexScanOpEq:
+		bb.Equals(b.ctx, name, f.litType, f.litValue)
+	case sql.IndexScanOpNotEq:
+		bb.NotEquals(b.ctx, name, f.litType, f.litValue)
+	case sql.IndexScanOpInSet:
+		bb.Equals(b.ctx, name, f.litType, f.setValues...)
+	case sql.IndexScanOpNotInSet:
 		for _, v := range f.setValues {
-			bb.NotEquals(b.ctx, name, v)
+			bb.NotEquals(b.ctx, name, f.litType, v)
 		}
-	case IndexScanOpGt:
-		bb.GreaterThan(b.ctx, name, f.litValue)
-	case IndexScanOpGte:
-		bb.GreaterOrEqual(b.ctx, name, f.litValue)
-	case IndexScanOpLt:
-		bb.LessThan(b.ctx, name, f.litValue)
-	case IndexScanOpLte:
-		bb.LessOrEqual(b.ctx, name, f.litValue)
-	case IndexScanOpIsNotNull:
+	case sql.IndexScanOpGt:
+		bb.GreaterThan(b.ctx, name, f.litType, f.litValue)
+	case sql.IndexScanOpGte:
+		bb.GreaterOrEqual(b.ctx, name, f.litType, f.litValue)
+	case sql.IndexScanOpLt:
+		bb.LessThan(b.ctx, name, f.litType, f.litValue)
+	case sql.IndexScanOpLte:
+		bb.LessOrEqual(b.ctx, name, f.litType, f.litValue)
+	case sql.IndexScanOpIsNotNull:
 		bb.IsNotNull(b.ctx, name)
-	case IndexScanOpIsNull:
+	case sql.IndexScanOpIsNull:
 		bb.IsNull(b.ctx, name)
-	case IndexScanOpNullSafeEq:
+	case sql.IndexScanOpNullSafeEq:
 		if f.litValue == nil {
 			bb.IsNull(b.ctx, name)
 		} else {
-			bb.Equals(b.ctx, name, f.litValue)
+			bb.Equals(b.ctx, name, f.litType, f.litValue)
 		}
 	default:
 		panic(fmt.Sprintf("unknown IndexScanOp: %d", f.Op()))
@@ -1061,18 +1064,19 @@ func (b *indexScanRangeBuilder) markImprecise(f indexFilter) {
 // indexFilter decomposes filter conjunction into a format
 // amenable for checking index prefix alignment
 type indexFilter interface {
-	Op() IndexScanOp
+	Op() sql.IndexScanOp
 	Id() indexScanId
 }
 
 type iScanLeaf struct {
 	litValue      interface{}
+	litType       sql.Type
 	gf            *expression.GetField
 	underlying    string
 	fulltextIndex string
 	setValues     []interface{}
 	id            indexScanId
-	op            IndexScanOp
+	op            sql.IndexScanOp
 }
 
 func (l *iScanLeaf) normString() string {
@@ -1086,7 +1090,7 @@ func (l *iScanLeaf) Id() indexScanId {
 	return l.id
 }
 
-func (l *iScanLeaf) Op() IndexScanOp {
+func (l *iScanLeaf) Op() sql.IndexScanOp {
 	return l.op
 }
 
@@ -1099,8 +1103,8 @@ func (o *iScanOr) Id() indexScanId {
 	return o.id
 }
 
-func (o *iScanOr) Op() IndexScanOp {
-	return IndexScanOpOr
+func (o *iScanOr) Op() sql.IndexScanOp {
+	return sql.IndexScanOpOr
 }
 
 func newIScanAnd(id indexScanId) *iScanAnd {
@@ -1116,8 +1120,8 @@ type iScanAnd struct {
 	id           indexScanId
 }
 
-func (a *iScanAnd) Op() IndexScanOp {
-	return IndexScanOpAnd
+func (a *iScanAnd) Op() sql.IndexScanOp {
+	return sql.IndexScanOpAnd
 }
 
 func (a *iScanAnd) Id() indexScanId {
@@ -1201,9 +1205,9 @@ func formatIndexFilterRec(b *strings.Builder, nesting int, f indexFilter) {
 			b.WriteString("  ")
 		}
 		switch f.Op() {
-		case IndexScanOpIsNull, IndexScanOpIsNotNull:
+		case sql.IndexScanOpIsNull, sql.IndexScanOpIsNotNull:
 			fmt.Fprintf(b, "(%d: %s %s)", f.Id(), f.gf, f.Op())
-		case IndexScanOpInSet, IndexScanOpNotInSet:
+		case sql.IndexScanOpInSet, sql.IndexScanOpNotInSet:
 			var valStrs []string
 			for _, v := range f.setValues {
 				valStrs = append(valStrs, fmt.Sprintf("%v", v))
@@ -1354,17 +1358,17 @@ func (c *indexCoster) costIndexScanLeaf(filter *iScanLeaf, s sql.Statistic, buck
 	// but can't be used for other comparisons, such as less than or greater than.
 	if indexHasContentHashedFieldForFilter(filter, idx, ordinals) {
 		switch filter.op {
-		case IndexScanOpEq, IndexScanOpNotEq, IndexScanOpNullSafeEq, IndexScanOpIsNull, IndexScanOpIsNotNull:
+		case sql.IndexScanOpEq, sql.IndexScanOpNotEq, sql.IndexScanOpNullSafeEq, sql.IndexScanOpIsNull, sql.IndexScanOpIsNotNull:
 		default:
 			return nil, nil, false, 0, nil
 		}
 	}
 
 	switch filter.op {
-	case IndexScanOpSpatialEq:
+	case sql.IndexScanOpSpatialEq:
 		stat, ok, err := c.costSpatial(filter, s, ord)
 		return buckets, stat.FuncDeps(), ok, 0, err
-	case IndexScanOpFulltextEq:
+	case sql.IndexScanOpFulltextEq:
 		stat, ok, err := c.costFulltext(filter, s, ord)
 		return buckets, stat.FuncDeps(), ok, 0, err
 	default:
@@ -1387,44 +1391,6 @@ func (c *indexCoster) costFulltext(filter *iScanLeaf, s sql.Statistic, ordinal i
 	return s, s.IndexClass() == sql.IndexClassFulltext && s.Qualifier().Index() == filter.fulltextIndex, nil
 }
 
-type IndexScanOp uint8
-
-//go:generate stringer -type=IndexScanOp -linecomment
-
-const (
-	IndexScanOpEq         IndexScanOp = iota // =
-	IndexScanOpNullSafeEq                    // <=>
-	IndexScanOpInSet                         // =
-	IndexScanOpNotInSet                      // !=
-	IndexScanOpNotEq                         // !=
-	IndexScanOpGt                            // >
-	IndexScanOpGte                           // >=
-	IndexScanOpLt                            // <
-	IndexScanOpLte                           // <=
-	IndexScanOpAnd                           // &&
-	IndexScanOpOr                            // ||
-	IndexScanOpIsNull                        // IS NULL
-	IndexScanOpIsNotNull                     // IS NOT NULL
-	IndexScanOpSpatialEq                     // SpatialEq
-	IndexScanOpFulltextEq                    // FulltextEq
-)
-
-// Swap returns the identity op for swapping a comparison's LHS and RHS
-func (o IndexScanOp) Swap() IndexScanOp {
-	switch o {
-	case IndexScanOpGt:
-		return IndexScanOpLt
-	case IndexScanOpGte:
-		return IndexScanOpLte
-	case IndexScanOpLt:
-		return IndexScanOpGt
-	case IndexScanOpLte:
-		return IndexScanOpGte
-	default:
-		return o
-	}
-}
-
 // newLeaf tries to convert an expression into the intermediate
 // representation that facilitates index column matching. We return
 // a metadata enriched *iScanLeaf, or nil and a false value if the
@@ -1434,7 +1400,7 @@ func newLeaf(ctx *sql.Context, id indexScanId, e sql.Expression, underlying stri
 	if !ok {
 		return nil, false
 	}
-	if op == IndexScanOpFulltextEq {
+	if op == sql.IndexScanOpFulltextEq {
 		e := e.(*expression.MatchAgainst)
 		return &iScanLeaf{id: id, op: op, gf: e.Columns[0].(*expression.GetField), underlying: underlying, fulltextIndex: e.GetIndex().ID()}, true
 	}
@@ -1448,7 +1414,7 @@ func newLeaf(ctx *sql.Context, id indexScanId, e sql.Expression, underlying stri
 		return nil, false
 	}
 
-	if op == IndexScanOpIsNull || op == IndexScanOpIsNotNull {
+	if op == sql.IndexScanOpIsNull || op == sql.IndexScanOpIsNotNull {
 		return &iScanLeaf{id: id, gf: gf, op: op, underlying: underlying}, true
 	}
 
@@ -1456,17 +1422,28 @@ func newLeaf(ctx *sql.Context, id indexScanId, e sql.Expression, underlying stri
 		return nil, false
 	}
 
-	if op == IndexScanOpInSet || op == IndexScanOpNotInSet {
+	if op == sql.IndexScanOpInSet || op == sql.IndexScanOpNotInSet {
 		tup := right.(expression.Tuple)
 		var litSet []interface{}
+		var litType sql.Type
 		for _, lit := range tup {
 			value, err := lit.Eval(ctx, nil)
 			if err != nil {
 				return nil, false
 			}
 			litSet = append(litSet, value)
+			if litType == nil {
+				litType = lit.Type()
+			}
 		}
-		return &iScanLeaf{id: id, gf: gf, op: op, setValues: litSet, underlying: underlying}, true
+		return &iScanLeaf{
+			id:         id,
+			gf:         gf,
+			op:         op,
+			setValues:  litSet,
+			litType:    litType,
+			underlying: underlying,
+		}, true
 	}
 
 	value, err := right.Eval(ctx, nil)
@@ -1474,83 +1451,112 @@ func newLeaf(ctx *sql.Context, id indexScanId, e sql.Expression, underlying stri
 		return nil, false
 	}
 
-	return &iScanLeaf{id: id, gf: gf, op: op, litValue: value, underlying: underlying}, true
+	return &iScanLeaf{
+		id:         id,
+		gf:         gf,
+		op:         op,
+		litValue:   value,
+		litType:    right.Type(),
+		underlying: underlying,
+	}, true
 }
 
 // IndexLeafChildren handles the struct types that may be found on a leaf node while creating indexes.
-func IndexLeafChildren(e sql.Expression) (IndexScanOp, sql.Expression, sql.Expression, bool) {
-	var op IndexScanOp
+func IndexLeafChildren(e sql.Expression) (sql.IndexScanOp, sql.Expression, sql.Expression, bool) {
+	var op sql.IndexScanOp
 	var left sql.Expression
 	var right sql.Expression
 	switch e := e.(type) {
+	// TODO: we need to extract an interface here so that pg expressions can use them as well
 	case *expression.NullSafeEquals:
-		op = IndexScanOpNullSafeEq
+		op = sql.IndexScanOpNullSafeEq
 		right = e.Right()
 		left = e.Left()
 	case *expression.Equals:
-		op = IndexScanOpEq
+		op = sql.IndexScanOpEq
 		right = e.Right()
 		left = e.Left()
 	case *expression.InTuple:
-		op = IndexScanOpInSet
+		op = sql.IndexScanOpInSet
 		right = e.Right()
 		left = e.Left()
 	case *expression.HashInTuple:
-		op = IndexScanOpInSet
+		op = sql.IndexScanOpInSet
 		right = e.Right()
 		left = e.Left()
 	case *expression.LessThan:
 		left = e.Left()
 		right = e.Right()
-		op = IndexScanOpLt
+		op = sql.IndexScanOpLt
 	case *expression.GreaterThanOrEqual:
 		left = e.Left()
 		right = e.Right()
-		op = IndexScanOpGte
+		op = sql.IndexScanOpGte
 	case *expression.GreaterThan:
 		left = e.Left()
 		right = e.Right()
-		op = IndexScanOpGt
+		op = sql.IndexScanOpGt
 	case *expression.LessThanOrEqual:
 		left = e.Left()
 		right = e.Right()
-		op = IndexScanOpLte
+		op = sql.IndexScanOpLte
 	case sql.IsNullExpression:
 		left = e.Children()[0]
-		op = IndexScanOpIsNull
+		op = sql.IndexScanOpIsNull
 	case sql.IsNotNullExpression:
 		left = e.Children()[0]
-		op = IndexScanOpIsNotNull
+		op = sql.IndexScanOpIsNotNull
 	case *expression.Not:
 		switch e := e.Child.(type) {
 		case sql.IsNullExpression:
 			left = e.Children()[0]
-			op = IndexScanOpIsNotNull
+			op = sql.IndexScanOpIsNotNull
 			// TODO: In Postgres, Not(IS NULL) is valid, but doesn't necessarily always mean the
 			//       same thing as IS NOT NULL, particularly for the case of records or composite
 			//       values.
 		case *expression.Equals:
 			left = e.Left()
 			right = e.Right()
-			op = IndexScanOpNotEq
+			op = sql.IndexScanOpNotEq
 		case *expression.InTuple:
-			op = IndexScanOpNotInSet
+			op = sql.IndexScanOpNotInSet
 			right = e.Right()
 			left = e.Left()
 		case *expression.HashInTuple:
-			op = IndexScanOpNotInSet
+			op = sql.IndexScanOpNotInSet
 			right = e.Right()
 			left = e.Left()
+		case sql.IndexComparisonExpression:
+			ok := false
+			if !ok {
+				return 0, nil, nil, false
+			}
+
+			op, left, right, ok = e.IndexScanOperation()
+			switch op {
+			case sql.IndexScanOpEq:
+				op = sql.IndexScanOpNotEq
+			case sql.IndexScanOpInSet:
+				op = sql.IndexScanOpNotInSet
+			default:
+				return 0, nil, nil, false
+			}
 		default:
 			return 0, nil, nil, false
 		}
 	case *spatial.Intersects, *spatial.Within, *spatial.STEquals:
-		op = IndexScanOpSpatialEq
+		op = sql.IndexScanOpSpatialEq
 		children := e.Children()
 		left = children[0]
 		right = children[1]
 	case *expression.MatchAgainst:
-		op = IndexScanOpFulltextEq
+		op = sql.IndexScanOpFulltextEq
+	case sql.IndexComparisonExpression:
+		ok := false
+		op, left, right, ok = e.IndexScanOperation()
+		if !ok {
+			return 0, nil, nil, false
+		}
 	default:
 		return 0, nil, nil, false
 	}
@@ -1711,11 +1717,11 @@ func (c *conjCollector) add(ctx *sql.Context, f *iScanLeaf) error {
 	c.applied.Add(int(f.Id()))
 	var err error
 	switch f.Op() {
-	case IndexScanOpNullSafeEq:
+	case sql.IndexScanOpNullSafeEq:
 		err = c.addEq(ctx, f.gf.Name(), f.litValue, true)
-	case IndexScanOpEq:
+	case sql.IndexScanOpEq:
 		err = c.addEq(ctx, f.gf.Name(), f.litValue, false)
-	case IndexScanOpInSet:
+	case sql.IndexScanOpInSet:
 		// TODO cost UNION of equals
 		err = c.addEq(ctx, f.gf.Name(), f.setValues[0], false)
 	default:
@@ -1767,7 +1773,7 @@ func (c *conjCollector) addEq(ctx *sql.Context, col string, val interface{}, nul
 	return nil
 }
 
-func (c *conjCollector) addIneq(ctx *sql.Context, op IndexScanOp, col string, val interface{}) error {
+func (c *conjCollector) addIneq(ctx *sql.Context, op sql.IndexScanOp, col string, val interface{}) error {
 	ord := c.ordinals[col]
 	c.ineqCols.Add(ord)
 	if ord > 0 {
@@ -1782,7 +1788,7 @@ func (c *conjCollector) addIneq(ctx *sql.Context, op IndexScanOp, col string, va
 
 // cmpFirstCol checks whether we should try to range truncate the first
 // column in the index
-func (c *conjCollector) cmpFirstCol(ctx *sql.Context, op IndexScanOp, val interface{}) error {
+func (c *conjCollector) cmpFirstCol(ctx *sql.Context, op sql.IndexScanOp, val interface{}) error {
 	// check if first col already constant
 	// otherwise attempt to truncate histogram
 	var err error
@@ -1790,39 +1796,39 @@ func (c *conjCollector) cmpFirstCol(ctx *sql.Context, op IndexScanOp, val interf
 		return nil
 	}
 	switch op {
-	case IndexScanOpNotEq:
+	case sql.IndexScanOpNotEq:
 		// todo notEq
 		c.hist, err = stats.PrefixGt(ctx, c.hist, c.stat.Types(), val)
-	case IndexScanOpGt:
+	case sql.IndexScanOpGt:
 		c.hist, err = stats.PrefixGt(ctx, c.hist, c.stat.Types(), val)
-	case IndexScanOpGte:
+	case sql.IndexScanOpGte:
 		c.hist, err = stats.PrefixGte(ctx, c.hist, c.stat.Types(), val)
-	case IndexScanOpLt:
+	case sql.IndexScanOpLt:
 		c.hist, err = stats.PrefixLt(ctx, c.hist, c.stat.Types(), val)
-	case IndexScanOpLte:
+	case sql.IndexScanOpLte:
 		c.hist, err = stats.PrefixLte(ctx, c.hist, c.stat.Types(), val)
-	case IndexScanOpIsNull:
+	case sql.IndexScanOpIsNull:
 		c.hist, err = stats.PrefixIsNull(c.hist)
-	case IndexScanOpIsNotNull:
+	case sql.IndexScanOpIsNotNull:
 		c.hist, err = stats.PrefixIsNotNull(c.hist)
 	}
 	return err
 }
 
-func (c *conjCollector) truncateMcvs(i int, op IndexScanOp, val interface{}) error {
+func (c *conjCollector) truncateMcvs(i int, op sql.IndexScanOp, val interface{}) error {
 	var err error
 	switch op {
-	case IndexScanOpGt:
+	case sql.IndexScanOpGt:
 		c.stat, err = stats.McvPrefixGt(c.stat, i, val)
-	case IndexScanOpGte:
+	case sql.IndexScanOpGte:
 		c.stat, err = stats.McvPrefixGte(c.stat, i, val)
-	case IndexScanOpLt:
+	case sql.IndexScanOpLt:
 		c.stat, err = stats.McvPrefixLt(c.stat, i, val)
-	case IndexScanOpLte:
+	case sql.IndexScanOpLte:
 		c.stat, err = stats.McvPrefixLte(c.stat, i, val)
-	case IndexScanOpIsNull:
+	case sql.IndexScanOpIsNull:
 		c.stat, err = stats.McvPrefixIsNull(c.stat, i, val)
-	case IndexScanOpIsNotNull:
+	case sql.IndexScanOpIsNotNull:
 		c.stat, err = stats.McvPrefixIsNotNull(c.stat, i, val)
 	}
 	return err
