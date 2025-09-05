@@ -16,7 +16,6 @@ package function
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 
 	"gopkg.in/src-d/go-errors.v1"
@@ -65,18 +64,7 @@ func (r *Reverse) Eval(
 		return nil, err
 	}
 
-	// Handle Dolt's TextStorage and other wrapper types that don't convert to plain strings
-	v, err = sql.UnwrapAny(ctx, v)
-	if err != nil {
-		return nil, err
-	}
-
-	s, ok := v.(string)
-	if !ok {
-		return nil, sql.ErrInvalidType.New(reflect.TypeOf(v).String())
-	}
-
-	return reverseString(s), nil
+	return reverseString(v.(string)), nil
 }
 
 func reverseString(s string) string {
@@ -174,17 +162,6 @@ func (r *Repeat) Eval(
 		return nil, err
 	}
 
-	// Handle Dolt's TextStorage and other wrapper types that don't convert to plain strings
-	str, err = sql.UnwrapAny(ctx, str)
-	if err != nil {
-		return nil, err
-	}
-
-	strVal, ok := str.(string)
-	if !ok {
-		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str).String())
-	}
-
 	count, err := r.RightChild.Eval(ctx, row)
 	if count == nil || err != nil {
 		return nil, err
@@ -194,14 +171,10 @@ func (r *Repeat) Eval(
 	if err != nil {
 		return nil, err
 	}
-	countVal, ok := count.(int32)
-	if !ok {
-		return nil, sql.ErrInvalidType.New(reflect.TypeOf(count).String())
-	}
-	if countVal < 0 {
+	if count.(int32) < 0 {
 		return nil, ErrNegativeRepeatCount.New(count)
 	}
-	return strings.Repeat(strVal, int(countVal)), nil
+	return strings.Repeat(str.(string), int(count.(int32))), nil
 }
 
 // Replace is a function that returns a string with all occurrences of fromStr replaced by the

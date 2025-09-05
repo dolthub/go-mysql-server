@@ -104,6 +104,11 @@ func (l *Locate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
+	substrVal, _, err = types.LongText.Convert(ctx, substrVal)
+	if err != nil {
+		return nil, err
+	}
+
 	substr, ok := substrVal.(string)
 	if !ok {
 		return nil, sql.ErrInvalidArgumentDetails.New("locate", "substring must be a string")
@@ -116,6 +121,11 @@ func (l *Locate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	if strVal == nil {
 		return nil, nil
+	}
+
+	strVal, _, err = types.LongText.Convert(ctx, strVal)
+	if err != nil {
+		return nil, err
 	}
 
 	str, ok := strVal.(string)

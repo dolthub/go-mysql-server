@@ -62,16 +62,10 @@ func (t *Trim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	// Convert pat into string
+	// Convert pat into string and unwrap automatically
 	pat, _, err = types.LongText.Convert(ctx, pat)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(pat).String())
-	}
-
-	// Handle Dolt's TextStorage and other wrapper types that don't convert to plain strings
-	pat, err = sql.UnwrapAny(ctx, pat)
-	if err != nil {
-		return nil, err
 	}
 
 	// Evaluate string value
@@ -85,31 +79,15 @@ func (t *Trim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	// Convert str to text type (may still be wrapped)
+	// Convert str to text type and unwrap automatically
 	str, _, err = types.LongText.Convert(ctx, str)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str).String())
 	}
 
-	// Handle Dolt's TextStorage and other wrapper types that don't convert to plain strings
-	str, err = sql.UnwrapAny(ctx, str)
-	if err != nil {
-		return nil, err
-	}
-
-	strVal, ok := str.(string)
-	if !ok {
-		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str).String())
-	}
-
-	patVal, ok := pat.(string)
-	if !ok {
-		return nil, sql.ErrInvalidType.New(reflect.TypeOf(pat).String())
-	}
-
 	start := 0
-	end := len(strVal)
-	n := len(patVal)
+	end := len(str.(string))
+	n := len(pat.(string))
 
 	// Empty pattern, do nothing
 	if n == 0 {
@@ -118,19 +96,19 @@ func (t *Trim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// Trim Leading
 	if t.dir == sqlparser.Leading || t.dir == sqlparser.Both {
-		for start+n <= end && strVal[start:start+n] == patVal {
+		for start+n <= end && str.(string)[start:start+n] == pat {
 			start += n
 		}
 	}
 
 	// Trim Trailing
 	if t.dir == sqlparser.Trailing || t.dir == sqlparser.Both {
-		for start+n <= end && strVal[end-n:end] == patVal {
+		for start+n <= end && str.(string)[end-n:end] == pat {
 			end -= n
 		}
 	}
 
-	return strVal[start:end], nil
+	return str.(string)[start:end], nil
 }
 
 // IsNullable implements the Expression interface.

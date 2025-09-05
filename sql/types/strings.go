@@ -340,6 +340,10 @@ func (t StringType) Convert(ctx context.Context, v interface{}) (interface{}, sq
 	switch v := v.(type) {
 	case sql.StringWrapper:
 		if t.baseType == sqltypes.Text && t.maxByteLength >= v.MaxByteLength() {
+			// Unwrap the wrapper to get the actual string value  
+			if unwrapped, err := sql.UnwrapAny(ctx, v); err == nil {
+				return unwrapped, sql.InRange, nil
+			}
 			return v, sql.InRange, nil
 		}
 	case sql.BytesWrapper:

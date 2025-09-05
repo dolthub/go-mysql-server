@@ -84,12 +84,7 @@ func (s *Substring) Eval(
 		return nil, err
 	}
 
-	if str == nil {
-		return nil, nil
-	}
-
-	// Handle Dolt's TextStorage and other wrapper types that don't convert to plain strings
-	str, err = sql.UnwrapAny(ctx, str)
+	str, _, err = types.LongText.Convert(ctx, str)
 	if err != nil {
 		return nil, err
 	}
@@ -100,6 +95,8 @@ func (s *Substring) Eval(
 		text = []rune(str)
 	case []byte:
 		text = []rune(string(str))
+	case nil:
+		return nil, nil
 	default:
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str).String())
 	}
