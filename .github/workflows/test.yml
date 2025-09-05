@@ -18,9 +18,29 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version-file: go.mod
+    - name: Install ICU4C (MacOS)
+      if: ${{ matrix.platform == 'macos-latest' }}
+      run: |
+        dir=$(brew --cellar icu4c)
+        dir="$dir"/$(ls "$dir")
+        echo CGO_CPPFLAGS=-I$dir/include >> $GITHUB_ENV
+        echo CGO_LDFLAGS=-L$dir/lib >> $GITHUB_ENV
+    - name: Install ICU4C (Windows)
+      if: ${{ matrix.platform == 'windows-latest' }}
+      uses: msys2/setup-msys2@v2
+      with:
+        path-type: inherit
+        msystem: UCRT64
+        pacboy: icu:p toolchain:p pkg-config:p
     - name: Test
-      if: ${{ matrix.platform != 'ubuntu-latest' }}
+      if: ${{ matrix.platform == 'macos-latest' }}
       run: go test ./...
+      env:
+        CI_TEST: "true"
+    - name: Test
+      if: ${{ matrix.platform == 'windows-latest' }}
+      shell: msys2 {0}
+      run: go.exe test ./...
       env:
         CI_TEST: "true"
     - name: Test
