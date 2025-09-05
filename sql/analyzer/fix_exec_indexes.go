@@ -160,7 +160,7 @@ type idxScope struct {
 	ids           []sql.ColumnId
 	columns       []string
 	// Columns added from AddColumn are not included in the ResolvedTable yet. For columns that are added with a
-	// constraint, we need to add the new columns to the scope so CreateConstraint gets the right exec index
+	// constraint, we need to add the new columns to the scope so CreateCheck gets the right exec index
 	addedColumns sql.Schema
 	children     []sql.Node
 	expressions  []sql.Expression
