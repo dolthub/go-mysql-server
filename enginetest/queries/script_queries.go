@@ -140,7 +140,8 @@ var ScriptTests = []ScriptTest{
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/9794
-		Name: "String functions with TextStorage (comprehensive test)",
+		Name:    "String functions with TextStorage (comprehensive test)",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table test_strings (id int primary key, content text);",
 			"insert into test_strings values (1, '  Hello World  '), (2, 'Test String'), (3, 'LOWERCASE'), (4, 'abc123def');",
