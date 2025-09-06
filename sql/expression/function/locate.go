@@ -109,6 +109,12 @@ func (l *Locate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
+	// Handle Dolt's TextStorage wrapper that doesn't convert to plain string
+	substrVal, err = sql.UnwrapAny(ctx, substrVal)
+	if err != nil {
+		return nil, err
+	}
+
 	substr, ok := substrVal.(string)
 	if !ok {
 		return nil, sql.ErrInvalidArgumentDetails.New("locate", "substring must be a string")
@@ -124,6 +130,12 @@ func (l *Locate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	strVal, _, err = types.LongText.Convert(ctx, strVal)
+	if err != nil {
+		return nil, err
+	}
+
+	// Handle Dolt's TextStorage wrapper that doesn't convert to plain string
+	strVal, err = sql.UnwrapAny(ctx, strVal)
 	if err != nil {
 		return nil, err
 	}

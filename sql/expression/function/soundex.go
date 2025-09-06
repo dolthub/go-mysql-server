@@ -66,6 +66,12 @@ func (s *Soundex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
+	// Handle Dolt's TextStorage wrapper that doesn't convert to plain string
+	v, err = sql.UnwrapAny(ctx, v)
+	if err != nil {
+		return nil, err
+	}
+
 	var b strings.Builder
 	var last rune
 	for _, c := range strings.ToUpper(v.(string)) {

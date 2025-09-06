@@ -127,6 +127,12 @@ func (f *ConcatWithSeparator) Eval(ctx *sql.Context, row sql.Row) (interface{}, 
 			return nil, err
 		}
 
+		// Handle Dolt's TextStorage wrapper that doesn't convert to plain string
+		val, err = sql.UnwrapAny(ctx, val)
+		if err != nil {
+			return nil, err
+		}
+
 		parts = append(parts, val.(string))
 	}
 

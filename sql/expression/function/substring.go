@@ -234,6 +234,13 @@ func (s *SubstringIndex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 	if err != nil {
 		return nil, err
 	}
+
+	// Handle Dolt's TextStorage wrapper that doesn't convert to plain string
+	ex, err = sql.UnwrapAny(ctx, ex)
+	if err != nil {
+		return nil, err
+	}
+
 	str, ok := ex.(string)
 	if !ok {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(ex).String())
@@ -247,6 +254,13 @@ func (s *SubstringIndex) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 	if err != nil {
 		return nil, err
 	}
+
+	// Handle Dolt's TextStorage wrapper that doesn't convert to plain string
+	ex, err = sql.UnwrapAny(ctx, ex)
+	if err != nil {
+		return nil, err
+	}
+
 	delim, ok := ex.(string)
 	if !ok {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(ex).String())
