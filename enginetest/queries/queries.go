@@ -893,23 +893,23 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{"0"}},
 	},
 	{
-		Query: "select 'abc' = false",
+		Query:    "select 'abc' = false",
 		Expected: []sql.Row{{true}},
 	},
 	{
-		Query: "select '123abc' = 123",
+		Query:    "select '123abc' = 123",
 		Expected: []sql.Row{{true}},
 	},
 	{
-		Query: "select '1abc' = true",
+		Query:    "select '1abc' = true",
 		Expected: []sql.Row{{true}},
 	},
 	{
-		Query: "select '123abc' = false",
+		Query:    "select '123abc' = false",
 		Expected: []sql.Row{{false}},
 	},
 	{
-		Query: "select '123abc' = true",
+		Query:    "select '123abc' = true",
 		Expected: []sql.Row{{false}},
 	},
 	{
