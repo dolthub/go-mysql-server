@@ -530,7 +530,7 @@ func (t NumberTypeImpl_) SQLUint64(ctx *sql.Context, dest []byte, v interface{})
 
 func (t NumberTypeImpl_) SQLFloat64(ctx *sql.Context, dest []byte, v interface{}) ([]byte, error) {
 	num, err := convertToFloat64(t, v)
-	if err != nil {
+	if err != nil && !sql.ErrDoubleTypeTruncated.Is(err) {
 		return nil, err
 	}
 	dest = strconv.AppendFloat(dest, num, 'g', -1, 64)
