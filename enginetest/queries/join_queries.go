@@ -1200,6 +1200,37 @@ var JoinScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "HashLookup with type int8 and string type conversions",
+		SetUpScript: []string{
+			"create table t1 (c1 boolean);",
+			"create table t2 (c2 varchar(500));",
+			"insert into t1 values (true), (false);",
+			"insert into t2 values ('abc'), ('def');", // will be converted to float64(0) and match false
+			"insert into t2 values ('1asdf');",        // will be converted to '1' and match true
+			"insert into t2 values ('5five');",        // will be converted to '5' and match nothing
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// TODO: our warnings don't align with MySQL
+				Query: "select /*+ HASH_JOIN(t1, t2) */ * from t1 join t2 where c1 = c2 order by c1, c2;",
+				Expected: []sql.Row{
+					{0, "abc"},
+					{0, "def"},
+					{1, "1asdf"},
+				},
+			},
+			{
+				// TODO: our warnings don't align with MySQL
+				Query: "select /*+ INNER_JOIN(t1, t2) */ * from t1 join t2 where c1 = c2 order by c1, c2;",
+				Expected: []sql.Row{
+					{0, "abc"},
+					{0, "def"},
+					{1, "1asdf"},
+				},
+			},
+		},
+	},
 }
 
 var LateralJoinScriptTests = []ScriptTest{
