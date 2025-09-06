@@ -121,6 +121,175 @@ type ScriptTestAssertion struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
+		// https://github.com/dolthub/dolt/issues/9794
+		Name: "UPDATE with TRIM function on TEXT column",
+		SetUpScript: []string{
+			"create table my_table (txt text);",
+			"insert into my_table values('foobar');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:            "update my_table set txt = trim(txt);",
+				SkipResultsCheck: true,
+			},
+			{
+				Query:    "select txt from my_table;",
+				Expected: []sql.Row{{"foobar"}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9794
+		Name:    "String functions with TextStorage (comprehensive test)",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table test_strings (id int primary key, content text);",
+			"insert into test_strings values (1, '  Hello World  '), (2, 'Test String'), (3, 'LOWERCASE'), (4, 'abc123def');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select id, trim(content) from test_strings order by id;",
+				Expected: []sql.Row{{1, "Hello World"}, {2, "Test String"}, {3, "LOWERCASE"}, {4, "abc123def"}},
+			},
+			{
+				Query:    "select id, upper(content) from test_strings order by id;",
+				Expected: []sql.Row{{1, "  HELLO WORLD  "}, {2, "TEST STRING"}, {3, "LOWERCASE"}, {4, "ABC123DEF"}},
+			},
+			{
+				Query:    "select id, lower(content) from test_strings order by id;",
+				Expected: []sql.Row{{1, "  hello world  "}, {2, "test string"}, {3, "lowercase"}, {4, "abc123def"}},
+			},
+			{
+				Query:    "select id, reverse(content) from test_strings order by id;",
+				Expected: []sql.Row{{1, "  dlroW olleH  "}, {2, "gnirtS tseT"}, {3, "ESACREWOL"}, {4, "fed321cba"}},
+			},
+			{
+				Query:    "select id, substring(content, 1, 5) from test_strings order by id;",
+				Expected: []sql.Row{{1, "  Hel"}, {2, "Test "}, {3, "LOWER"}, {4, "abc12"}},
+			},
+			{
+				Query:    "select id, length(content) from test_strings order by id;",
+				Expected: []sql.Row{{1, 15}, {2, 11}, {3, 9}, {4, 9}},
+			},
+			{
+				Query:    "select id, left(content, 3) from test_strings order by id;",
+				Expected: []sql.Row{{1, "  H"}, {2, "Tes"}, {3, "LOW"}, {4, "abc"}},
+			},
+			{
+				Query:    "select id, right(content, 3) from test_strings order by id;",
+				Expected: []sql.Row{{1, "d  "}, {2, "ing"}, {3, "ASE"}, {4, "def"}},
+			},
+			{
+				Query:    "select id, ltrim(content) from test_strings order by id;",
+				Expected: []sql.Row{{1, "Hello World  "}, {2, "Test String"}, {3, "LOWERCASE"}, {4, "abc123def"}},
+			},
+			{
+				Query:    "select id, rtrim(content) from test_strings order by id;",
+				Expected: []sql.Row{{1, "  Hello World"}, {2, "Test String"}, {3, "LOWERCASE"}, {4, "abc123def"}},
+			},
+			{
+				Query:    "select id, replace(content, 'e', 'X') from test_strings order by id;",
+				Expected: []sql.Row{{1, "  HXllo World  "}, {2, "TXst String"}, {3, "LOWERCASE"}, {4, "abc123dXf"}},
+			},
+			{
+				Query:    "select id, repeat(substring(content, 1, 2), 2) from test_strings order by id;",
+				Expected: []sql.Row{{1, "    "}, {2, "TeTe"}, {3, "LOLO"}, {4, "abab"}},
+			},
+			{
+				Query:    "select id, lpad(content, 12, '*') from test_strings where id = 4;",
+				Expected: []sql.Row{{4, "***abc123def"}},
+			},
+			{
+				Query:    "select id, rpad(content, 12, '*') from test_strings where id = 4;",
+				Expected: []sql.Row{{4, "abc123def***"}},
+			},
+			{
+				Query:    "select id, locate('o', content) from test_strings order by id;",
+				Expected: []sql.Row{{1, 7}, {2, 0}, {3, 2}, {4, 0}},
+			},
+			{
+				Query:    "select id, position('o' in content) from test_strings order by id;",
+				Expected: []sql.Row{{1, 7}, {2, 0}, {3, 2}, {4, 0}},
+			},
+			{
+				Query:    "select id, substr(content, 2, 4) from test_strings order by id;",
+				Expected: []sql.Row{{1, " Hel"}, {2, "est "}, {3, "OWER"}, {4, "bc12"}},
+			},
+			{
+				Query:    "select id, mid(content, 3, 3) from test_strings order by id;",
+				Expected: []sql.Row{{1, "Hel"}, {2, "st "}, {3, "WER"}, {4, "c12"}},
+			},
+			{
+				Query:    "select id, char_length(content) from test_strings order by id;",
+				Expected: []sql.Row{{1, 15}, {2, 11}, {3, 9}, {4, 9}},
+			},
+			{
+				Query:    "select id, character_length(content) from test_strings order by id;",
+				Expected: []sql.Row{{1, 15}, {2, 11}, {3, 9}, {4, 9}},
+			},
+			{
+				Query:    "select id, octet_length(content) from test_strings order by id;",
+				Expected: []sql.Row{{1, 15}, {2, 11}, {3, 9}, {4, 9}},
+			},
+			{
+				Query:    "select id, lcase(content) from test_strings order by id;",
+				Expected: []sql.Row{{1, "  hello world  "}, {2, "test string"}, {3, "lowercase"}, {4, "abc123def"}},
+			},
+			{
+				Query:    "select id, ucase(content) from test_strings order by id;",
+				Expected: []sql.Row{{1, "  HELLO WORLD  "}, {2, "TEST STRING"}, {3, "LOWERCASE"}, {4, "ABC123DEF"}},
+			},
+			{
+				Query:    "select id, ascii(content) from test_strings order by id;",
+				Expected: []sql.Row{{1, uint64(32)}, {2, uint64(84)}, {3, uint64(76)}, {4, uint64(97)}},
+			},
+			{
+				Query:    "select id, hex(content) from test_strings where id = 4;",
+				Expected: []sql.Row{{4, "616263313233646566"}},
+			},
+			{
+				Query:    "select id, unhex(hex(content)) = content from test_strings where id = 4;",
+				Expected: []sql.Row{{4, true}},
+			},
+			{
+				Query:    "select id, substring_index(content, 'e', 1) from test_strings order by id;",
+				Expected: []sql.Row{{1, "  H"}, {2, "T"}, {3, "LOWERCASE"}, {4, "abc123d"}},
+			},
+			{
+				Query:    "select id, insert(content, 2, 3, 'XYZ') from test_strings where id = 4;",
+				Expected: []sql.Row{{4, "aXYZ23def"}},
+			},
+			{
+				Query:            "update test_strings set content = concat(trim(content), '!');",
+				SkipResultsCheck: true,
+			},
+			{
+				Query:    "select id, content from test_strings order by id;",
+				Expected: []sql.Row{{1, "Hello World!"}, {2, "Test String!"}, {3, "LOWERCASE!"}, {4, "abc123def!"}},
+			},
+			{
+				Query:    "SELECT CONCAT_WS(',', content, 'suffix') FROM test_strings WHERE id = 2;",
+				Expected: []sql.Row{{"Test String!,suffix"}},
+			},
+			{
+				Query:    "SELECT EXPORT_SET(5, content, 'off') FROM test_strings WHERE id = 2;",
+				Expected: []sql.Row{{"Test String!,off,Test String!,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off"}},
+			},
+			{
+				Query:    "SELECT FIND_IN_SET('String', content) FROM test_strings WHERE id = 2;",
+				Expected: []sql.Row{{int32(0)}},
+			},
+			{
+				Query:    "SELECT MAKE_SET(3, content, 'second', 'third') FROM test_strings WHERE id = 2;",
+				Expected: []sql.Row{{"Test String!,second"}},
+			},
+			{
+				Query:    "SELECT SOUNDEX(content) FROM test_strings WHERE id = 2;",
+				Expected: []sql.Row{{"T2323652"}},
+			},
+		},
+	},
+	{
 		// Regression test for https://github.com/dolthub/dolt/issues/9641
 		Name: "bit union max1err dolt#9641",
 		SetUpScript: []string{

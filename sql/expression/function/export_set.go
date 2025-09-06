@@ -171,6 +171,13 @@ func (e *ExportSet) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		// Handle Dolt's TextStorage wrapper that doesn't convert to plain string
+		sepStr, err = sql.UnwrapAny(ctx, sepStr)
+		if err != nil {
+			return nil, err
+		}
+
 		separatorVal = sepStr.(string)
 	}
 
@@ -206,7 +213,19 @@ func (e *ExportSet) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
+	// Handle Dolt's TextStorage wrapper that doesn't convert to plain string
+	onStr, err = sql.UnwrapAny(ctx, onStr)
+	if err != nil {
+		return nil, err
+	}
+
 	offStr, _, err := types.LongText.Convert(ctx, offVal)
+	if err != nil {
+		return nil, err
+	}
+
+	// Handle Dolt's TextStorage wrapper that doesn't convert to plain string
+	offStr, err = sql.UnwrapAny(ctx, offStr)
 	if err != nil {
 		return nil, err
 	}
