@@ -1201,7 +1201,7 @@ var JoinScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name:        "HashLookup with type int8 and string type conversions",
+		Name: "HashLookup with type int8 and string type conversions",
 		SetUpScript: []string{
 			"create table t1 (c1 boolean);",
 			"create table t2 (c2 varchar(500));",
