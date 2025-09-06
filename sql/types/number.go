@@ -1543,7 +1543,7 @@ func convertToFloat64(t NumberTypeImpl_, v interface{}) (float64, error) {
 			// parse the first longest valid numbers
 			s := numre.FindString(v)
 			i, _ = strconv.ParseFloat(s, 64)
-			return i, sql.ErrInvalidValue.New(v, t.String())
+			return i, sql.ErrDoubleTypeTruncated.New(v)
 		}
 		return i, nil
 	case bool:
