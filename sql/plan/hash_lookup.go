@@ -64,6 +64,7 @@ var _ sql.CollationCoercible = (*HashLookup)(nil)
 // GetCompareType returns the type to use when comparing values of types left and right.
 func GetCompareType(left, right sql.Type) sql.Type {
 	// TODO: much of this logic is very similar to castLeftAndRight() from sql/expression/comparison.go
+	//  consider consolidating
 	if left.Equals(right) {
 		return left
 	}
