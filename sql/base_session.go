@@ -159,21 +159,25 @@ func (s *BaseSession) InitSessionVariable(ctx *Context, sysVarName string, value
 	return s.setSessVar(ctx, sysVar, value, true)
 }
 
-func (s *BaseSession) setSessVar(ctx *Context, sysVar SystemVariable, value interface{}, init bool) error {
+func (s *BaseSession) setSessVar(ctx *Context, sysVar SystemVariable, newVal interface{}, init bool) error {
 	var svv SystemVarValue
 	var err error
+	sysVarName := strings.ToLower(sysVar.GetName())
+	var currVal = sysVar.GetDefault()
+	if ov, ok := s.systemVars[sysVarName]; ok {
+		currVal = ov.Val
+	}
 	if init {
-		svv, err = sysVar.InitValue(ctx, value, false)
+		svv, err = sysVar.InitValue(ctx, currVal, newVal, false)
 		if err != nil {
 			return err
 		}
 	} else {
-		svv, err = sysVar.SetValue(ctx, value, false)
+		svv, err = sysVar.SetValue(ctx, currVal, newVal, false)
 		if err != nil {
 			return err
 		}
 	}
-	sysVarName := strings.ToLower(sysVar.GetName())
 	s.systemVars[sysVarName] = svv
 	if sysVarName == characterSetResultsSysVarName {
 		s.charset = CharacterSet_Unspecified
