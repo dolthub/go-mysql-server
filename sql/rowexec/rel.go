@@ -282,7 +282,7 @@ func (b *BaseBuilder) buildJoinNode(ctx *sql.Context, n *plan.JoinNode, row sql.
 	case n.Op.IsRange():
 		return newRangeHeapJoinIter(ctx, b, n, row)
 	default:
-			return newJoinIter(ctx, b, n, row)
+		return newJoinIter(ctx, b, n, row)
 	}
 }
 

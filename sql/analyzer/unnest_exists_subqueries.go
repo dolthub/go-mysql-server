@@ -151,7 +151,6 @@ func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, fil
 			retFilters = append(retFilters, f)
 			continue
 		}
-		
 
 		// recurse
 		if s.inner != nil {
