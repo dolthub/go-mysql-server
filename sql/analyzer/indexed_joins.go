@@ -472,9 +472,9 @@ func convertSemiToInnerJoin(m *memo.Memo) error {
 		}
 
 		// join and its commute are a new group
-		joinGrp := m.MemoizeInnerJoin(nil, semi.Left, rightGrp, plan.JoinTypeInner, semi.Filter)
+		joinGrp := m.MemoizeInnerJoin(nil, semi.Left, rightGrp, plan.JoinTypeSemi, semi.Filter)
 		// TODO: can't commute if right SubqueryAlias references outside scope (OuterScopeVisibility/IsLateral)
-		m.MemoizeInnerJoin(joinGrp, rightGrp, semi.Left, plan.JoinTypeInner, semi.Filter)
+		m.MemoizeInnerJoin(joinGrp, rightGrp, semi.Left, plan.JoinTypeSemi, semi.Filter)
 
 		// project belongs to the original group
 		leftCols := semi.Left.RelProps.OutputCols()
@@ -1105,7 +1105,7 @@ func addMergeJoins(ctx *sql.Context, m *memo.Memo) error {
 					}
 					if rightIndexMatchesFilters(rIndex, join.Left.RelProps.FuncDeps().Constants(), matchedEqFilters) {
 						jb := join.Copy()
-						if d, ok := jb.Left.First.(*memo.Distinct); ok && lIndex.SqlIdx().IsUnique() {
+									if d, ok := jb.Left.First.(*memo.Distinct); ok && lIndex.SqlIdx().IsUnique() {
 							jb.Left = d.Child
 						}
 						if d, ok := jb.Right.First.(*memo.Distinct); ok && rIndex.SqlIdx().IsUnique() {

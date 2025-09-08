@@ -588,3 +588,4 @@ func (i *mergeJoinIter) Close(ctx *sql.Context) (err error) {
 
 	return err
 }
+

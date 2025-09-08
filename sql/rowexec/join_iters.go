@@ -367,6 +367,10 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 				nextState = esIncRight
 			}
 		case esRet:
+			if i.typ.IsSemi() {
+				// For semi-joins, after returning a match, move to next left row
+				nextState = esIncLeft
+			}
 			return i.removeParentRow(i.primaryRow.Copy()), nil
 		default:
 			return nil, fmt.Errorf("invalid exists join state")
