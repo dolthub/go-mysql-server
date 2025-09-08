@@ -769,6 +769,11 @@ func TypeAwareConversion(ctx *sql.Context, val interface{}, originalType sql.Typ
 // value is truncated to the Zero value for type |t|. If the value does not convert and the type is not automatically
 // coerced, then return an error.
 func ConvertOrTruncate(ctx *sql.Context, i interface{}, t sql.Type) (interface{}, error) {
+	// Do nothing if type is no provided.
+	if t == nil {
+		return i, nil
+	}
+
 	converted, _, err := t.Convert(ctx, i)
 	if err == nil {
 		return converted, nil
