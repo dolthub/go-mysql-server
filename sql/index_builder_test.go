@@ -54,7 +54,7 @@ func TestIndexBuilderRanges(t *testing.T) {
 
 	t.Run("NotEquals2=(NULL,2),(2,Inf)", func(t *testing.T) {
 		builder := sql.NewMySQLIndexBuilder(testIndex{1})
-		builder = builder.NotEquals(ctx, "column_0", nil,2)
+		builder = builder.NotEquals(ctx, "column_0", nil, 2)
 		ranges := builder.Ranges(ctx)
 		assert.NotNil(t, ranges)
 		assert.Equal(t, sql.MySQLRangeCollection{sql.MySQLRange{sql.GreaterThanRangeColumnExpr(int8(2), types.Int8)}, sql.MySQLRange{sql.LessThanRangeColumnExpr(int8(2), types.Int8)}}, ranges)
@@ -62,7 +62,7 @@ func TestIndexBuilderRanges(t *testing.T) {
 
 	t.Run("NotEquals2,Equals2=(Inf,Inf)", func(t *testing.T) {
 		builder := sql.NewMySQLIndexBuilder(testIndex{1})
-		builder = builder.NotEquals(ctx, "column_0", nil,2)
+		builder = builder.NotEquals(ctx, "column_0", nil, 2)
 		builder = builder.Equals(ctx, "column_0", nil, 2)
 		ranges := builder.Ranges(ctx)
 		assert.NotNil(t, ranges)
@@ -97,7 +97,7 @@ func TestIndexBuilderRanges(t *testing.T) {
 
 	t.Run("GT2,GT6=(4,Inf)", func(t *testing.T) {
 		builder := sql.NewMySQLIndexBuilder(testIndex{1})
-		builder = builder.GreaterThan(ctx, "column_0", nil,2)
+		builder = builder.GreaterThan(ctx, "column_0", nil, 2)
 		builder = builder.GreaterThan(ctx, "column_0", nil, 6)
 		ranges := builder.Ranges(ctx)
 		assert.NotNil(t, ranges)
