@@ -813,7 +813,7 @@ var JoinScriptTests = []ScriptTest{
 		Name: "FULL OUTER JOIN with empty tables",
 		SetUpScript: []string{
 			"CREATE TABLE t1 (i INT);",
-			"CREATE TABLE t2 (j INT);", 
+			"CREATE TABLE t2 (j INT);",
 			"INSERT INTO t2 VALUES (1);",
 		},
 		Assertions: []ScriptTestAssertion{
