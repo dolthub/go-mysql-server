@@ -224,6 +224,7 @@ func (b *MySQLIndexBuilder) GreaterThan(ctx *Context, colExpr string, keyType Ty
 	return b
 }
 
+// convertKey converts the given key from keyType to colType, returning an error if the conversion fails.
 func (b *MySQLIndexBuilder) convertKey(ctx *Context, colType Type, keyType Type, key interface{}) (interface{}, error) {
 	if et, ok := colType.(ExtendedType); ok {
 		return et.ConvertToType(ctx, keyType.(ExtendedType), key)
