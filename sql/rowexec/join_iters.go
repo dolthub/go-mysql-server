@@ -487,6 +487,10 @@ func (i *fullJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 			}
 			i.r = nil
 			i.leftRow = nil
+			continue
+		}
+		if err != nil {
+			return nil, err
 		}
 
 		row := i.buildRow(i.leftRow, rightRow)
@@ -512,7 +516,9 @@ func (i *fullJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 	for {
 		if i.r == nil {
-			iter, err := i.b.Build(ctx, i.rp, i.leftRow)
+			// Phase 2 of FULL OUTER JOIN: return unmatched right rows as (null, rightRow).
+			// Use parentRow instead of leftRow since leftRow is nil when left side is empty.
+			iter, err := i.b.Build(ctx, i.rp, i.parentRow)
 			if err != nil {
 				return nil, err
 			}

@@ -106,6 +106,61 @@ var EngineOnlyJoinOpTests = []joinOpTest{
 
 var DefaultJoinOpTests = []joinOpTest{
 	{
+		// https://github.com/dolthub/dolt/issues/9807
+		name: "FULL OUTER JOIN fails with empty subquery",
+		setup: [][]string{
+			{
+				"CREATE TABLE t(c BOOLEAN);",
+				"INSERT INTO t VALUES (FALSE);",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query: "SELECT * FROM ( SELECT c FROM t WHERE c ) sub1 FULL OUTER JOIN ( SELECT 1 AS c ) sub2 ON 1=1;",
+				Expected: []sql.Row{
+					{nil, 1},
+				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9807
+		name: "FULL OUTER JOIN with empty tables",
+		setup: [][]string{
+			{
+				"CREATE TABLE t1 (i INT);",
+				"CREATE TABLE t2 (j INT);",
+				"INSERT INTO t2 VALUES (1);",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query: "SELECT i, j FROM t1 FULL OUTER JOIN t2 ON 1=1;",
+				Expected: []sql.Row{
+					{nil, 1},
+				},
+			},
+			{
+				Query: "SELECT j, i FROM t2 FULL OUTER JOIN t1 ON 1=1;",
+				Expected: []sql.Row{
+					{1, nil},
+				},
+			},
+			{
+				Query: "SELECT i, j FROM t1 FULL OUTER JOIN t2 ON 1=0;",
+				Expected: []sql.Row{
+					{nil, 1},
+				},
+			},
+			{
+				Query: "SELECT j, i FROM t2 FULL OUTER JOIN t1 ON 1=0;",
+				Expected: []sql.Row{
+					{1, nil},
+				},
+			},
+		},
+	},
+	{
 		name: "bug where transitive join edge drops filters",
 		setup: [][]string{
 			setup.MydbData[0],
