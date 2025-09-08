@@ -366,7 +366,8 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 		}
 		return d, nil
 	case ConvertToDouble, ConvertToReal:
-		value, err := prepareForNumericContext(val, originType, false)
+		//value, err := prepareForNumericContext(val, originType, false)
+		value, err := types.ConvertOrTruncate(ctx, val, originType)
 		if err != nil {
 			return nil, err
 		}
