@@ -71,7 +71,7 @@ func HashOf(ctx *sql.Context, sch sql.Schema, row sql.Row) (uint64, error) {
 		}
 
 		switch typ := sch[i].Type.(type) {
-		case types.ExtendedType:
+		case sql.ExtendedType:
 			// TODO: Doltgres follows Postgres conventions which don't align with the expectations of MySQL,
 			//  so we're using the old (probably incorrect) behavior for now
 			_, err = fmt.Fprintf(hash, "%v", v)

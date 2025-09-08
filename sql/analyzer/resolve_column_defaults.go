@@ -479,7 +479,7 @@ func normalizeDefault(ctx *sql.Context, colDefault *sql.ColumnDefaultValue) (sql
 // serialization before being passed to the integrator for table creation
 func skipDefaultNormalizationForType(typ sql.Type) bool {
 	// Extended types handle their own serialization concerns
-	if _, ok := typ.(types.ExtendedType); ok {
+	if _, ok := typ.(sql.ExtendedType); ok {
 		return true
 	}
 	return types.IsTime(typ) || types.IsTimespan(typ) || types.IsEnum(typ) || types.IsSet(typ) || types.IsJSON(typ)
