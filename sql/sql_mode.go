@@ -30,6 +30,7 @@ const (
 	NoAutoValueOnZero    = "NO_AUTO_VALUE_ON_ZERO"
 	NoEngineSubstitution = "NO_ENGINE_SUBSTITUTION"
 	StrictTransTables    = "STRICT_TRANS_TABLES"
+	PipesAsConcat        = "PIPES_AS_CONCAT"
 	DefaultSqlMode       = "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES"
 )
 
@@ -96,6 +97,11 @@ func NewSqlModeFromString(sqlModeString string) *SqlMode {
 // includes ANSI_QUOTES and other options, so if ANSI or ANSI_QUOTES is enabled, this function will return true.
 func (s *SqlMode) AnsiQuotes() bool {
 	return s.ModeEnabled(ANSIQuotes) || s.ModeEnabled(ANSI)
+}
+
+// PipesAsConcat returns true if PIPES_AS_CONCAT SQL mode is enabled.
+func (s *SqlMode) PipesAsConcat() bool {
+	return s.ModeEnabled(PipesAsConcat)
 }
 
 // ModeEnabled returns true if |mode| was explicitly specified in the SQL_MODE string that was used to
