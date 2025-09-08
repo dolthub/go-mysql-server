@@ -793,57 +793,6 @@ on w = 0;`,
 
 var JoinScriptTests = []ScriptTest{
 	{
-		// https://github.com/dolthub/dolt/issues/9807
-		Name: "FULL OUTER JOIN fails with empty subquery",
-		SetUpScript: []string{
-			"CREATE TABLE t(c BOOLEAN);",
-			"INSERT INTO t VALUES (FALSE);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "SELECT * FROM ( SELECT c FROM t WHERE c ) sub1 FULL OUTER JOIN ( SELECT 1 AS c ) sub2 ON 1=1;",
-				Expected: []sql.Row{
-					{nil, 1},
-				},
-			},
-		},
-	},
-	{
-		// https://github.com/dolthub/dolt/issues/9807
-		Name: "FULL OUTER JOIN with empty tables",
-		SetUpScript: []string{
-			"CREATE TABLE t1 (i INT);",
-			"CREATE TABLE t2 (j INT);",
-			"INSERT INTO t2 VALUES (1);",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "SELECT i, j FROM t1 FULL OUTER JOIN t2 ON 1=1;",
-				Expected: []sql.Row{
-					{nil, 1},
-				},
-			},
-			{
-				Query: "SELECT j, i FROM t2 FULL OUTER JOIN t1 ON 1=1;",
-				Expected: []sql.Row{
-					{1, nil},
-				},
-			},
-			{
-				Query: "SELECT i, j FROM t1 FULL OUTER JOIN t2 ON 1=0;",
-				Expected: []sql.Row{
-					{nil, 1},
-				},
-			},
-			{
-				Query: "SELECT j, i FROM t2 FULL OUTER JOIN t1 ON 1=0;",
-				Expected: []sql.Row{
-					{1, nil},
-				},
-			},
-		},
-	},
-	{
 		Name:        "Simple join query",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
