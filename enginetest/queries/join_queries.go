@@ -793,6 +793,22 @@ on w = 0;`,
 
 var JoinScriptTests = []ScriptTest{
 	{
+		// https://github.com/dolthub/dolt/issues/9807
+		Name: "FULL OUTER JOIN fails with empty subquery",
+		SetUpScript: []string{
+			"CREATE TABLE t(c BOOLEAN);",
+			"INSERT INTO t VALUES (FALSE);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM ( SELECT c FROM t WHERE c ) sub1 FULL OUTER JOIN ( SELECT 1 AS c ) sub2 ON 1=1;",
+				Expected: []sql.Row{
+					{nil, 1},
+				},
+			},
+		},
+	},
+	{
 		Name:        "Simple join query",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
