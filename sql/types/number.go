@@ -990,6 +990,7 @@ func convertToInt64(t NumberTypeImpl_, v interface{}) (int64, sql.ConvertInRange
 		}
 		return i, sql.InRange, nil
 	case string:
+
 		if len(v) == 0 {
 			// StringType{}.Zero() returns empty string, but should represent "0" for number value
 			return 0, sql.InRange, nil
