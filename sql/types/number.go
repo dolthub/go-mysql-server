@@ -530,7 +530,7 @@ func (t NumberTypeImpl_) SQLUint64(ctx *sql.Context, dest []byte, v interface{})
 
 func (t NumberTypeImpl_) SQLFloat64(ctx *sql.Context, dest []byte, v interface{}) ([]byte, error) {
 	num, err := convertToFloat64(t, v)
-	if err != nil {
+	if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
 		return nil, err
 	}
 	dest = strconv.AppendFloat(dest, num, 'g', -1, 64)
@@ -1543,7 +1543,7 @@ func convertToFloat64(t NumberTypeImpl_, v interface{}) (float64, error) {
 			// parse the first longest valid numbers
 			s := numre.FindString(v)
 			i, _ = strconv.ParseFloat(s, 64)
-			return i, sql.ErrInvalidValue.New(v, t.String())
+			return i, sql.ErrTruncatedIncorrect.New(t.String(), v)
 		}
 		return i, nil
 	case bool:
