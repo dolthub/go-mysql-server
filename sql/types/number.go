@@ -1537,7 +1537,6 @@ func convertToFloat64(t NumberTypeImpl_, v interface{}) (float64, error) {
 		}
 		return float64(i), nil
 	case string:
-		// TODO: just trimStringToPrefix here
 		v = strings.Trim(v, NumericCutSet)
 		i, err := strconv.ParseFloat(v, 64)
 		if err != nil {
