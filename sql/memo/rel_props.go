@@ -543,7 +543,7 @@ func isSimpleEquality(expr sql.Expression) bool {
 	transform.InspectExpr(expr, func(e sql.Expression) bool {
 		switch e.(type) {
 		case *expression.GetField:
-		case *expression.Equals:
+		case *expression.Equals, *expression.NullSafeEquals:
 		default:
 			hasOnlyEquals = false
 			return true
