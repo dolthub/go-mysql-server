@@ -356,10 +356,6 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 	case ConvertToDouble, ConvertToReal:
 		d, _, err := types.Float64.Convert(ctx, val)
 		if err != nil {
-			return nil, err
-		}
-		d, _, err := types.Float64.Convert(ctx, value)
-		if err != nil {
 			if sql.ErrTruncatedIncorrect.Is(err) {
 				ctx.Warn(1265, "%s", err.Error())
 				return d, nil
