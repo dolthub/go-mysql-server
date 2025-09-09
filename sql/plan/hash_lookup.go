@@ -170,7 +170,7 @@ func (n *HashLookup) GetHashKey(ctx *sql.Context, e sql.Expression, row sql.Row)
 		// The LHS expression was NullType. This is allowed.
 		return nil, nil
 	}
-	if err != nil && !sql.ErrDoubleTypeTruncated.Is(err) {
+	if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
 		// Truncated warning is already thrown elsewhere.
 		return nil, err
 	}

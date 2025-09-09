@@ -948,9 +948,8 @@ var (
 
 	ErrEnumTypeTruncated = errors.NewKind("new enum type change truncates value")
 
-	// ErrDoubleTypeTruncated is thrown when trying to convert a bad value to a double
-	// TODO: MySQL's exact error message is "Data truncated for column '%s' at row %d"
-	ErrDoubleTypeTruncated = errors.NewKind("data truncated for '%v'")
+	// ErrTruncatedIncorrect is thrown when converting a value results in portions of the data to be trimmed.
+	ErrTruncatedIncorrect = errors.NewKind("Truncated incorrect %s value: %v")
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the
