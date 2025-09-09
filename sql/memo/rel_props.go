@@ -541,7 +541,10 @@ func getExprScalarProps(e sql.Expression) (sql.ColSet, sql.FastIntSet, bool) {
 func isSimpleEquality(expr sql.Expression) bool {
 	hasOnlyEquals := true
 	transform.InspectExpr(expr, func(e sql.Expression) bool {
-		if _, isEq := e.(*expression.Equals); !isEq {
+		switch e.(type) {
+		case *expression.GetField:
+		case *expression.Equals:
+		default:
 			hasOnlyEquals = false
 			return true
 		}
