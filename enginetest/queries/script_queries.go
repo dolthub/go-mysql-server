@@ -121,6 +121,24 @@ type ScriptTestAssertion struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
+		// https://github.com/dolthub/dolt/issues/9812
+		Name: "String-to-number comparison operators should behave consistently",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:                 "SELECT ('A') = (0)",
+				Expected:              []sql.Row{{true}},
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       1292,
+			},
+			{
+				Query:                 "SELECT ('A') IN (0)",
+				Expected:              []sql.Row{{true}},
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       1292,
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/9794
 		Name: "UPDATE with TRIM function on TEXT column",
 		SetUpScript: []string{

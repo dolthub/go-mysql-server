@@ -61,8 +61,7 @@ func NewInTuple(left sql.Expression, right sql.Expression) *InTuple {
 
 // Eval implements the Expression interface.
 func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	typ := in.Left().Type().Promote()
-	leftElems := types.NumColumns(typ)
+	leftElems := types.NumColumns(in.Left().Type())
 	originalLeft, err := in.Left().Eval(ctx, row)
 	if err != nil {
 		return nil, err
@@ -77,11 +76,6 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// To comply with the SQL standard, IN() returns NULL not only if the expression on the left hand side is NULL, but
 	// also if no match is found in the list and one of the expressions in the list is NULL.
 	rightNull := false
-
-	left, _, err := typ.Convert(ctx, originalLeft)
-	if err != nil {
-		return nil, err
-	}
 
 	switch right := in.Right().(type) {
 	case Tuple:
@@ -102,31 +96,14 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 				continue
 			}
 
-			var cmp int
-			elType := el.Type()
-			if types.IsDecimal(elType) || types.IsFloat(elType) {
-				rtyp := el.Type().Promote()
-				left, err := types.ConvertOrTruncate(ctx, left, rtyp)
-				if err != nil {
-					return nil, err
-				}
-				right, err := types.ConvertOrTruncate(ctx, originalRight, rtyp)
-				if err != nil {
-					return nil, err
-				}
-				cmp, err = rtyp.Compare(ctx, left, right)
-				if err != nil {
-					return nil, err
-				}
-			} else {
-				right, err := types.ConvertOrTruncate(ctx, originalRight, typ)
-				if err != nil {
-					return nil, err
-				}
-				cmp, err = typ.Compare(ctx, left, right)
-				if err != nil {
-					return nil, err
-				}
+			comp := newComparison(NewLiteral(originalLeft, in.Left().Type()), NewLiteral(originalRight, el.Type()))
+			l, r, compareType, err := comp.CastLeftAndRight(ctx, originalLeft, originalRight)
+			if err != nil {
+				return nil, err
+			}
+			cmp, err := compareType.Compare(ctx, l, r)
+			if err != nil {
+				return nil, err
 			}
 
 			if cmp == 0 {
@@ -174,6 +151,7 @@ func (in *InTuple) Children() []sql.Expression {
 func NewNotInTuple(left sql.Expression, right sql.Expression) sql.Expression {
 	return NewNot(NewInTuple(left, right))
 }
+
 
 // HashInTuple is an expression that checks an expression is inside a list of expressions using a hashmap.
 type HashInTuple struct {
