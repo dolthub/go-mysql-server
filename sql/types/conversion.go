@@ -15,11 +15,13 @@
 package types
 
 import (
+	"encoding/hex"
 	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -769,7 +771,7 @@ func TypeAwareConversion(ctx *sql.Context, val interface{}, originalType sql.Typ
 // value is truncated to the Zero value for type |t|. If the value does not convert and the type is not automatically
 // coerced, then return an error.
 func ConvertOrTruncate(ctx *sql.Context, i interface{}, t sql.Type) (interface{}, error) {
-	// Do nothing if type is no provided.
+	// Do nothing if type is not provided.
 	if t == nil {
 		return i, nil
 	}
@@ -804,4 +806,49 @@ func ConvertOrTruncate(ctx *sql.Context, i interface{}, t sql.Type) (interface{}
 	}
 
 	return t.Zero(), nil
+}
+
+// ConvertHexBlobToUint converts byte array value to unsigned int value if originType is BLOB type.
+// This function is called when convertTo type is number type only. The hex literal values are parsed into blobs as
+// binary string as default, but for numeric context, the value should be a number.
+// Byte arrays of other SQL types are not handled here.
+func ConvertHexBlobToUint(val interface{}, originType sql.Type) (interface{}, error) {
+	var err error
+	if bin, isBinary := val.([]byte); isBinary && IsBlobType(originType) {
+		stringVal := hex.EncodeToString(bin)
+		val, err = strconv.ParseUint(stringVal, 16, 64)
+		if err != nil {
+			return nil, errors.NewKind("failed to convert hex blob value to unsigned int").New()
+		}
+	}
+	return val, nil
+}
+
+// TruncateStringToNumber truncates a string to the appropriate number prefix
+func TruncateStringToNumber(s string, isInt bool) string {
+	if isInt {
+		s = strings.TrimLeft(s, IntCutSet)
+	} else {
+		s = strings.TrimLeft(s, NumericCutSet)
+	}
+
+	seenDigit := false
+	seenDot := false
+	seenExp := false
+	signIndex := 0
+
+	for i := 0; i < len(s); i++ {
+		char := rune(s[i])
+		if unicode.IsDigit(char) {
+			seenDigit = true
+		} else if char == '.' && !seenDot && !isInt {
+			seenDot = true
+		} else if (char == 'e' || char == 'E') && !seenExp && seenDigit && !isInt {
+			seenExp = true
+			signIndex = i + 1
+		} else if !((char == '-' || char == '+') && i == signIndex) {
+			return s[:i]
+		}
+	}
+	return s
 }
