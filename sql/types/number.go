@@ -22,7 +22,6 @@ import (
 	"reflect"
 	"regexp"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -328,7 +327,7 @@ func (t NumberTypeImpl_) Convert(ctx context.Context, v interface{}) (interface{
 		return convertToUint64(t, v)
 	case sqltypes.Float32:
 		num, err := convertToFloat64(t, v)
-		if err != nil {
+		if err != nil && !sql.ErrTruncatedType.Is(err) {
 			return nil, sql.OutOfRange, err
 		}
 		if num > math.MaxFloat32 {
@@ -336,7 +335,7 @@ func (t NumberTypeImpl_) Convert(ctx context.Context, v interface{}) (interface{
 		} else if num < -math.MaxFloat32 {
 			return float32(-math.MaxFloat32), sql.OutOfRange, nil
 		}
-		return float32(num), sql.InRange, nil
+		return float32(num), sql.InRange, nil // TODO: pass up error for warning?
 	case sqltypes.Float64:
 		ret, err := convertToFloat64(t, v)
 		return ret, sql.InRange, err
@@ -991,23 +990,29 @@ func convertToInt64(t NumberTypeImpl_, v interface{}) (int64, sql.ConvertInRange
 		}
 		return i, sql.InRange, nil
 	case string:
-		v = strings.Trim(v, IntCutSet)
-		if v == "" {
+		if len(v) == 0 {
 			// StringType{}.Zero() returns empty string, but should represent "0" for number value
 			return 0, sql.InRange, nil
 		}
 		// Parse first an integer, which allows for more values than float64
-		i, err := strconv.ParseInt(v, 10, 64)
-		if err == nil {
+		if i, err := strconv.ParseInt(v, 10, 64); err == nil {
 			return i, sql.InRange, nil
 		}
-		// If that fails, try as a float and truncate it to integral
-		f, err := strconv.ParseFloat(v, 64)
-		if err != nil {
-			return 0, sql.OutOfRange, sql.ErrInvalidValue.New(v, t.String())
+		// If that fails, try as a float and round to integral
+		if f, err := strconv.ParseFloat(v, 64); err == nil {
+			f = math.Round(f)
+			return int64(f), sql.InRange, nil
 		}
-		f = math.Round(f)
-		return int64(f), sql.InRange, nil
+		// If that fails, truncate the string and parse as int
+		// TODO: throw error / warning?
+		v = TruncateStringToNumber(v, true)
+		if len(v) == 0 {
+			return 0, sql.InRange, nil
+		}
+		if i, err := strconv.ParseInt(v, 10, 64); err == nil {
+			return i, sql.InRange, nil
+		}
+		return 0, sql.OutOfRange, sql.ErrInvalidValue.New(v, t.String())
 	case bool:
 		if v {
 			return 1, sql.InRange, nil
@@ -1150,21 +1155,24 @@ func convertToUint64(t NumberTypeImpl_, v interface{}) (uint64, sql.ConvertInRan
 	case float32:
 		if v > float32(math.MaxInt64) {
 			return math.MaxUint64, sql.OutOfRange, nil
-		} else if v < 0 {
+		}
+		if v < 0 {
 			return uint64(math.MaxUint64 - v), sql.OutOfRange, nil
 		}
 		return uint64(math.Round(float64(v))), sql.InRange, nil
 	case float64:
 		if v >= float64(math.MaxUint64) {
 			return math.MaxUint64, sql.OutOfRange, nil
-		} else if v <= 0 {
+		}
+		if v <= 0 {
 			return uint64(math.MaxUint64 - v), sql.OutOfRange, nil
 		}
 		return uint64(math.Round(v)), sql.InRange, nil
 	case decimal.Decimal:
 		if v.GreaterThan(dec_uint64_max) {
 			return math.MaxUint64, sql.OutOfRange, nil
-		} else if v.LessThan(dec_zero) {
+		}
+		if v.LessThan(dec_zero) {
 			ret, _ := dec_uint64_max.Sub(v).Float64()
 			return uint64(math.Round(ret)), sql.OutOfRange, nil
 		}
@@ -1178,17 +1186,15 @@ func convertToUint64(t NumberTypeImpl_, v interface{}) (uint64, sql.ConvertInRan
 		}
 		return i, sql.InRange, nil
 	case string:
-		v = strings.Trim(v, IntCutSet)
 		if i, err := strconv.ParseUint(v, 10, 64); err == nil {
 			return i, sql.InRange, nil
 		} else if err == strconv.ErrRange {
 			// Number is too large for uint64, return max value and OutOfRange
 			return math.MaxUint64, sql.OutOfRange, nil
 		}
+		// If that fails, try as a float and round to integral
 		if f, err := strconv.ParseFloat(v, 64); err == nil {
-			if val, inRange, err := convertToUint64(t, f); err == nil && inRange {
-				return val, inRange, err
-			}
+			return convertToUint64(t, f)
 		}
 		return 0, sql.OutOfRange, sql.ErrInvalidValue.New(v, t.String())
 	case bool:
@@ -1281,14 +1287,15 @@ func convertToUint32(t NumberTypeImpl_, v interface{}) (uint32, sql.ConvertInRan
 		}
 		return uint32(i), sql.InRange, nil
 	case string:
-		v = strings.Trim(v, IntCutSet)
 		if i, err := strconv.ParseUint(v, 10, 32); err == nil {
 			return uint32(i), sql.InRange, nil
 		}
 		if f, err := strconv.ParseFloat(v, 64); err == nil {
-			if val, inRange, err := convertToUint32(t, f); err == nil && inRange {
-				return val, inRange, err
-			}
+			return convertToUint32(t, f)
+		}
+		v = TruncateStringToNumber(v, true)
+		if i, err := strconv.ParseUint(v, 10, 32); err == nil {
+			return uint32(i), sql.InRange, nil
 		}
 		return 0, sql.OutOfRange, sql.ErrInvalidValue.New(v, t.String())
 	case bool:
@@ -1377,14 +1384,15 @@ func convertToUint16(t NumberTypeImpl_, v interface{}) (uint16, sql.ConvertInRan
 		}
 		return uint16(i), sql.InRange, nil
 	case string:
-		v = strings.Trim(v, IntCutSet)
 		if i, err := strconv.ParseUint(v, 10, 16); err == nil {
 			return uint16(i), sql.InRange, nil
 		}
 		if f, err := strconv.ParseFloat(v, 64); err == nil {
-			if val, inRange, err := convertToUint16(t, f); err == nil && inRange {
-				return val, inRange, err
-			}
+			return convertToUint16(t, f)
+		}
+		v = TruncateStringToNumber(v, true)
+		if i, err := strconv.ParseUint(v, 10, 16); err == nil {
+			return uint16(i), sql.InRange, nil
 		}
 		return 0, sql.OutOfRange, sql.ErrInvalidValue.New(v, t.String())
 	case bool:
@@ -1477,14 +1485,15 @@ func convertToUint8(t NumberTypeImpl_, v interface{}) (uint8, sql.ConvertInRange
 		}
 		return uint8(i), sql.InRange, nil
 	case string:
-		v = strings.Trim(v, IntCutSet)
 		if i, err := strconv.ParseUint(v, 10, 8); err == nil {
 			return uint8(i), sql.InRange, nil
 		}
 		if f, err := strconv.ParseFloat(v, 64); err == nil {
-			if val, inRange, err := convertToUint8(t, f); err == nil && inRange {
-				return val, inRange, err
-			}
+			return convertToUint8(t, f)
+		}
+		v = TruncateStringToNumber(v, true)
+		if i, err := strconv.ParseUint(v, 10, 8); err == nil {
+			return uint8(i), sql.InRange, nil
 		}
 		return 0, sql.OutOfRange, sql.ErrInvalidValue.New(v, t.String())
 	case bool:
@@ -1537,8 +1546,6 @@ func convertToFloat64(t NumberTypeImpl_, v interface{}) (float64, error) {
 		}
 		return float64(i), nil
 	case string:
-		// TODO: just trimStringToPrefix here
-		v = strings.Trim(v, NumericCutSet)
 		i, err := strconv.ParseFloat(v, 64)
 		if err != nil {
 			// parse the first longest valid numbers

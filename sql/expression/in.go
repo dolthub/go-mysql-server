@@ -106,11 +106,11 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			elType := el.Type()
 			if types.IsDecimal(elType) || types.IsFloat(elType) {
 				rtyp := el.Type().Promote()
-				left, err := types.ConvertOrTruncate(ctx, left, rtyp)
+				left, _, err := rtyp.Convert(ctx, left)
 				if err != nil {
 					return nil, err
 				}
-				right, err := types.ConvertOrTruncate(ctx, originalRight, rtyp)
+				right, _, err := rtyp.Convert(ctx, originalRight)
 				if err != nil {
 					return nil, err
 				}
@@ -119,7 +119,7 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 					return nil, err
 				}
 			} else {
-				right, err := types.ConvertOrTruncate(ctx, originalRight, typ)
+				right, _, err := typ.Convert(ctx, originalRight)
 				if err != nil {
 					return nil, err
 				}

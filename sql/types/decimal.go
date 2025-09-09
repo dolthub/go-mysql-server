@@ -17,14 +17,12 @@ package types
 import (
 	"context"
 	"fmt"
-	"math/big"
-	"reflect"
-	"strings"
-
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
+	"math/big"
+	"reflect"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -202,24 +200,29 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 		return t.ConvertToNullDecimal(decimal.NewFromFloat(value))
 	case string:
 		// TODO: implement truncation here
-		value = strings.Trim(value, NumericCutSet)
 		if len(value) == 0 {
 			return t.ConvertToNullDecimal(decimal.NewFromInt(0))
 		}
-		var err error
-		res, err = decimal.NewFromString(value)
-		if err != nil {
-			// The decimal library cannot handle all of the different formats
-			bf, _, err := new(big.Float).SetPrec(217).Parse(value, 0)
-			if err != nil {
-				return decimal.NullDecimal{}, err
-			}
-			res, err = decimal.NewFromString(bf.Text('f', -1))
-			if err != nil {
-				return decimal.NullDecimal{}, err
+		if dec, err := decimal.NewFromString(value); err == nil {
+			return t.ConvertToNullDecimal(dec)
+		}
+		// The decimal library cannot handle all the different formats
+		if bf, _, err := new(big.Float).SetPrec(217).Parse(value, 0); err == nil {
+			if res, err = decimal.NewFromString(bf.Text('f', -1)); err == nil {
+				return t.ConvertToNullDecimal(res)
 			}
 		}
-		return t.ConvertToNullDecimal(res)
+
+		// TODO: how do we know that it is a hex number and not string?
+		value = TruncateStringToNumber(value, false)
+		if len(value) == 0 {
+			return t.ConvertToNullDecimal(decimal.NewFromInt(0))
+		}
+		dec, err := decimal.NewFromString(value)
+		if err != nil {
+			return decimal.NullDecimal{}, err
+		}
+		return t.ConvertToNullDecimal(dec)
 	case *big.Float:
 		return t.ConvertToNullDecimal(value.Text('f', -1))
 	case *big.Int:
