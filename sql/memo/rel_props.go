@@ -538,6 +538,18 @@ func getExprScalarProps(e sql.Expression) (sql.ColSet, sql.FastIntSet, bool) {
 	return cols, tables, nullRej
 }
 
+func isSimpleEquality(expr sql.Expression) bool {
+	hasOnlyEquals := true
+	transform.InspectExpr(expr, func(e sql.Expression) bool {
+		if _, isEq := e.(*expression.Equals); !isEq {
+			hasOnlyEquals = false
+			return true
+		}
+		return false
+	})
+	return hasOnlyEquals
+}
+
 // allTableCols returns the full schema of a table ignoring
 // declared projections.
 func allTableCols(rel SourceRel) sql.Schema {

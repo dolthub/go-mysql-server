@@ -200,22 +200,30 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name:        "AS OF propagates to nested CALLs",
-			SetUpScript: []string{},
+			Name: "test",
+			SetUpScript: []string{
+				"create table t1 (i int primary key);",
+				"create table t2 (j int);",
+				"create table t3 (k int);",
+				"insert into t1 values (1), (2);",
+				"insert into t2 values (1), (2);",
+				"insert into t3 values (3);",
+			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "create procedure create_proc() create table t (i int primary key, j int);",
-					Expected: []sql.Row{
-						{types.NewOkResult(0)},
-					},
+					Query:    "select * from t1 cross join t2 join (select * from t3) v3 on v3.k = t2.j;",
+					Expected: []sql.Row{},
 				},
 				{
-					Query: "call create_proc()",
+					Query: "select * from t1 cross join t2 join (select * from t3) v3 on v3.k >= t2.j order by i, j, k;",
 					Expected: []sql.Row{
-						{types.NewOkResult(0)},
+						{1, 1, 3},
+						{1, 2, 3},
+						{2, 1, 3},
+						{2, 2, 3},
 					},
 				},
 			},
@@ -230,8 +238,8 @@ func TestSingleScript(t *testing.T) {
 			panic(err)
 		}
 
-		//engine.EngineAnalyzer().Debug = true
-		//engine.EngineAnalyzer().Verbose = true
+		engine.EngineAnalyzer().Debug = true
+		engine.EngineAnalyzer().Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
