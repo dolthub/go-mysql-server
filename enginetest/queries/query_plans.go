@@ -9396,7 +9396,7 @@ inner join pq on true
 			" ├─ HashIn\n" +
 			" │   ├─ Eq\n" +
 			" │   │   ├─ mytable.i:0!null\n" +
-			" │   │   └─ 1 (bigint)\n" +
+			" │   │   └─ 1 (bigint unsigned)\n" +
 			" │   └─ TUPLE(true (tinyint(1)))\n" +
 			" └─ ProcessTable\n" +
 			"     └─ Table\n" +
@@ -9422,7 +9422,7 @@ inner join pq on true
 			" ├─ HashIn\n" +
 			" │   ├─ Eq\n" +
 			" │   │   ├─ mytable.i:0!null\n" +
-			" │   │   └─ 0 (bigint)\n" +
+			" │   │   └─ 0 (bigint unsigned)\n" +
 			" │   └─ TUPLE(true (tinyint(1)))\n" +
 			" └─ ProcessTable\n" +
 			"     └─ Table\n" +
