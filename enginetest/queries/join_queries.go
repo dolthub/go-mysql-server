@@ -1429,4 +1429,20 @@ LATERAL (
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/9820
+		Name: "lateral cross join with subquery",
+		SetUpScript: []string{
+			"create table t0(c0 boolean)",
+			"create table t1(c0 int)",
+			"insert into t0 values (true)",
+			"insert into t1 values(0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select v.c0, t1.c0 from t0 cross join lateral (select 1 as c0) as v join t1 on v.c0 > t1.c0)",
+				Expected: []sql.Row{{1, 0}},
+			},
+		},
+	},
 }
