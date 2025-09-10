@@ -163,7 +163,7 @@ func (b *BitOp) convertLeftRight(ctx *sql.Context, left interface{}, right inter
 	var typ sql.Type
 	lTyp := b.LeftChild.Type()
 	rTyp := b.RightChild.Type()
-	
+
 	if types.IsText(lTyp) || types.IsText(rTyp) {
 		typ = types.Float64
 	} else if types.IsUnsigned(lTyp) && types.IsUnsigned(rTyp) {
