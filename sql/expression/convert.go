@@ -377,7 +377,7 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 			return d, nil
 		}
 		if sql.ErrTruncatedIncorrect.Is(err) {
-			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
+			ctx.Warn(1265, "%s", err.Error())
 			return d, nil
 		}
 		return types.Float64.Zero(), nil
