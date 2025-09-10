@@ -94,14 +94,7 @@ func (k *Key) implies(other Key) bool {
 //
 // We use an abbreviated form to represent functional dependencies.
 // Normally, we would encode determinant and dependency sets like
-// (det)-->(dep). I only keep track of determinant sets, that are
-// assumed to represent keys into the entire relation. This works
-// for simple cases where fractional functional dependencies can
-// be discarded. The limitation is clear when you consider joins,
-// whose FD sets can include keys that only implicitly determine
-// a fraction of the total input set. The first key always determines
-// the entire relation, which seems good enough for many cases.
-// Maintaining partials sets also requires much less bookkeeping.
+// (det)-->(dep).
 //
 // TODO: We used to not track dependency sets and only add keys that
 // determined the entire relation. One observed downside of that approach
@@ -144,6 +137,22 @@ func (f *FuncDepSet) StrictKey() (ColSet, bool) {
 		return ColSet{}, false
 	}
 	return f.keys[0].cols, true
+}
+
+// StrictKeys returns all strict keys that determine the entire relation.
+func (f *FuncDepSet) StrictKeys() (result []ColSet) {
+	// The first key always determines the entire relation.
+	if len(f.keys) == 0 || !f.keys[0].strict {
+		return nil
+	}
+	allCols := f.keys[0].allCols
+	result = append(result, f.keys[0].cols)
+	for _, key := range f.keys[1:] {
+		if key.strict && key.allCols.Equals(allCols) {
+			result = append(result, key.cols)
+		}
+	}
+	return result
 }
 
 // LaxKey returns a set of columns that act as a null-safe row identifier.
@@ -620,9 +629,14 @@ func NewLeftJoinFDs(left, right *FuncDepSet, filters [][2]ColumnId) *FuncDepSet 
 	leftKey, leftStrict := left.StrictKey()
 	leftColsAreInnerJoinKey := false
 	if leftStrict {
-		// leftcols are strict key
+		// Check whether there is an FDS key consisting entirely of
+		// left-side columns.
 		j := NewInnerJoinFDs(left, right, filters)
-		leftColsAreInnerJoinKey = j.inClosureOf(j.keys[0].cols, left.all, nil)
+		for _, cols := range j.StrictKeys() {
+			if j.inClosureOf(cols, left.all, nil) {
+				leftColsAreInnerJoinKey = true
+			}
+		}
 	}
 
 	leftKeys := left.CopyKeys()
