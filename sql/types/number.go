@@ -1080,8 +1080,7 @@ func convertToInt64(t NumberTypeImpl_, v any, round bool) (int64, sql.ConvertInR
 	case []byte:
 		return convertToInt64(t, string(v), round)
 	case string:
-
-// When round = true, truncation rules are less strict
+		// When round = true, truncation rules are less strict
 		// Integers will accept valid float notation without truncation error
 		var err error
 		if round {

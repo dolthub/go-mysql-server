@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
+	"strings"
 
 	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
