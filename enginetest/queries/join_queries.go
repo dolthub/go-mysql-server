@@ -1440,7 +1440,7 @@ LATERAL (
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "select v.c0, t1.c0 from t0 cross join lateral (select 1 as c0) as v join t1 on v.c0 > t1.c0)",
+				Query:    "select v.c0, t1.c0 from t0 cross join lateral (select 1 as c0) as v join t1 on v.c0 > t1.c0",
 				Expected: []sql.Row{{1, 0}},
 			},
 		},
