@@ -688,7 +688,7 @@ func (i *crossJoinIterator) Close(ctx *sql.Context) (err error) {
 	return err
 }
 
-// lateralJoinIter is an iterator that performs a lateral join.
+// lateralJoinIterator is an iterator that performs a lateral join.
 // A LateralJoin is a join where the right side is a subquery that can reference the left side, like through a filter.
 // MySQL Docs: https://dev.mysql.com/doc/refman/8.0/en/lateral-derived-tables.html
 // Example:
@@ -806,8 +806,9 @@ func (i *lateralJoinIterator) loadSecondary(ctx *sql.Context) error {
 
 func (i *lateralJoinIterator) buildRow(primaryRow, secondaryRow sql.Row) sql.Row {
 	row := make(sql.Row, i.rowSize)
-	copy(row, primaryRow)
-	copy(row[len(primaryRow):], secondaryRow)
+	copy(row, i.parentRow)
+	copy(row[len(i.parentRow):], primaryRow)
+	copy(row[len(i.parentRow)+len(primaryRow):], secondaryRow)
 	return row
 }
 
