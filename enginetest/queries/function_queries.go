@@ -582,6 +582,14 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{{152}},
 	},
 	{
+		Query:    "select bit_length(-10)",
+		Expected: []sql.Row{{24}},
+	},
+	{
+		Query:    "select bit_length(true)",
+		Expected: []sql.Row{{8}},
+	},
+	{
 		Query: "select date_format(datetime_col, '%D') from datetime_table order by 1",
 		Expected: []sql.Row{
 			{"1st"},
