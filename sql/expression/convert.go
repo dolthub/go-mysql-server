@@ -361,14 +361,14 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 		return d, nil
 	case ConvertToDouble, ConvertToReal:
 		d, _, err := types.Float64.Convert(ctx, val)
-		if err != nil {
-			if sql.ErrTruncatedIncorrect.Is(err) {
-				ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
-				return d, nil
-			}
-			return types.Float64.Zero(), nil
+		if err == nil {
+			return d, nil
 		}
-		return d, nil
+		if sql.ErrTruncatedIncorrect.Is(err) {
+			ctx.Warn(1265, "%s", err.Error())
+			return d, nil
+		}
+		return types.Float64.Zero(), nil
 	case ConvertToJSON:
 		js, _, err := types.JSON.Convert(ctx, val)
 		if err != nil {
@@ -377,10 +377,14 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 		return js, nil
 	case ConvertToSigned:
 		num, _, err := types.Int64.Convert(ctx, val)
-		if err != nil {
-			return types.Int64.Zero(), nil
+		if err == nil {
+			return num, nil
 		}
-		return num, nil
+		if sql.ErrTruncatedIncorrect.Is(err) {
+			ctx.Warn(1265, "%s", err.Error())
+			return num, nil
+		}
+		return types.Int64.Zero(), nil
 	case ConvertToTime:
 		t, _, err := types.Time.Convert(ctx, val)
 		if err != nil {
@@ -389,14 +393,14 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 		return t, nil
 	case ConvertToUnsigned:
 		num, _, err := types.Uint64.Convert(ctx, val)
-		if err != nil {
-			num, _, err = types.Int64.Convert(ctx, val)
-			if err != nil {
-				return types.Uint64.Zero(), nil
-			}
-			return uint64(num.(int64)), nil
+		if err == nil {
+			return num, nil
 		}
-		return num, nil
+		num, _, err = types.Int64.Convert(ctx, val)
+		if err != nil {
+			return types.Uint64.Zero(), nil
+		}
+		return uint64(num.(int64)), nil
 	case ConvertToYear:
 		value, err := types.ConvertHexBlobToUint(val, originType)
 		if err != nil {

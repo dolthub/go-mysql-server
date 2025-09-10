@@ -826,6 +826,7 @@ func ConvertHexBlobToUint(val interface{}, originType sql.Type) (interface{}, er
 
 // TruncateStringToNumber truncates a string to the appropriate number prefix.
 // This function expects whitespace to already be properly trimmed.
+// TODO: separate logic for ints and floating point?
 func TruncateStringToNumber(s string, isInt bool) string {
 	seenDigit := false
 	seenDot := false
