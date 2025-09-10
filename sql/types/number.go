@@ -996,15 +996,17 @@ func convertToInt64(t NumberTypeImpl_, v interface{}) (int64, sql.ConvertInRange
 			// StringType{}.Zero() returns empty string, but should represent "0" for number value
 			return 0, sql.InRange, nil
 		}
+		// TODO: always attempt to truncate and only error if truncation did something
 		// Parse first an integer, which allows for more values than float64
 		if i, err := strconv.ParseInt(v, 10, 64); err == nil {
 			return i, sql.InRange, nil
 		}
+		// TODO: convert for insert should just be an entirely new function
 		// If that fails, try as a float and round to integral
-		if f, err := strconv.ParseFloat(v, 64); err == nil {
-			f = math.Round(f) // TODO: inserting rounds up, while casting truncates
-			return int64(f), sql.InRange, nil
-		}
+		//if f, err := strconv.ParseFloat(v, 64); err == nil {
+		//	f = math.Round(f) // TODO: inserting rounds up, while casting truncates
+		//	return int64(f), sql.InRange, nil
+		//}
 		// If that fails, truncate the string and parse as int
 		v = TruncateStringToNumber(v, true)
 		if len(v) == 0 {
@@ -1553,8 +1555,9 @@ func convertToFloat64(t NumberTypeImpl_, v interface{}) (float64, error) {
 			return i, nil
 		}
 		// TODO: what's the difference between this and TruncateStringToNumber?
+		//   the difference is that this doesn't work lmao
 		// parse the first longest valid numbers
-		s := numre.FindString(v)
+		s := TruncateStringToNumber(v, false)
 		i, _ := strconv.ParseFloat(s, 64)
 		return i, sql.ErrTruncatedIncorrect.New(t.String(), v)
 	case bool:
