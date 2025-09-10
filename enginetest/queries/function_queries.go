@@ -569,7 +569,7 @@ var FunctionQueryTests = []QueryTest{
 	{
 		Query: "SELECT BIT_LENGTH(i) from mytable order by i limit 1",
 		Expected: []sql.Row{
-			{64},
+			{8},
 		},
 	},
 	{

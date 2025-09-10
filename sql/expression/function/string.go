@@ -552,7 +552,7 @@ func (h *Bin) convertToInt64(v interface{}) (int64, error) {
 	}
 }
 
-// Bitlength implements the sql function "bit_length" which returns the data length of the argument in bits
+// Bitlength implements the sql function "bit_length" which returns the length of a string in bits
 type Bitlength struct {
 	*UnaryFunc
 }
@@ -590,24 +590,12 @@ func (h *Bitlength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	switch val := arg.(type) {
-	case uint8, int8, bool:
-		return 8, nil
-	case uint16, int16:
-		return 16, nil
-	case int, uint, uint32, int32, float32:
-		return 32, nil
-	case uint64, int64, float64:
-		return 64, nil
-	case string:
-		return 8 * len([]byte(val)), nil
-	case []byte:
-		return 8 * len(val), nil
-	case time.Time:
-		return 128, nil
+	content, _, err := types.ConvertToCollatedString(ctx, arg, h.Child.Type())
+	if err != nil {
+		return nil, err
 	}
 
-	return nil, sql.ErrInvalidArgumentDetails.New("bit_length", fmt.Sprint(arg))
+	return 8 * len(content), nil
 }
 
 // WithChildren implements the sql.Expression interface
