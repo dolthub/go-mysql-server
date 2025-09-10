@@ -573,6 +573,15 @@ var FunctionQueryTests = []QueryTest{
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/9818
+		Query:    "select bit_length(10)",
+		Expected: []sql.Row{{16}},
+	},
+	{
+		Query:    "select bit_length(now())",
+		Expected: []sql.Row{{152}},
+	},
+	{
 		Query: "select date_format(datetime_col, '%D') from datetime_table order by 1",
 		Expected: []sql.Row{
 			{"1st"},

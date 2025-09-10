@@ -9467,6 +9467,14 @@ where
 				},
 			},
 			{
+				Query: "select e, bit_length(e) from t order by e;",
+				Expected: []sql.Row{
+					{"abc", 24},
+					{"defg", 32},
+					{"hijkl", 40},
+				},
+			},
+			{
 				Query: "select e, concat(e, 'test') from t order by e;",
 				Expected: []sql.Row{
 					{"abc", "abctest"},
@@ -10127,6 +10135,15 @@ where
 					{"defg", 4},
 					{"abc,defg", 8},
 					{"abc,defg,hijkl", 14},
+				},
+			},
+			{
+				Query: "select s, bit_length(s) from t order by s;",
+				Expected: []sql.Row{
+					{"abc", 24},
+					{"defg", 32},
+					{"abc,defg", 64},
+					{"abc,defg,hijkl", 112},
 				},
 			},
 			{
