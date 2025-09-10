@@ -22,6 +22,7 @@ import (
 	"reflect"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -990,7 +991,7 @@ func convertToInt64(t NumberTypeImpl_, v interface{}) (int64, sql.ConvertInRange
 		}
 		return i, sql.InRange, nil
 	case string:
-
+		v = strings.Trim(v, IntCutSet)
 		if len(v) == 0 {
 			// StringType{}.Zero() returns empty string, but should represent "0" for number value
 			return 0, sql.InRange, nil
@@ -1001,18 +1002,18 @@ func convertToInt64(t NumberTypeImpl_, v interface{}) (int64, sql.ConvertInRange
 		}
 		// If that fails, try as a float and round to integral
 		if f, err := strconv.ParseFloat(v, 64); err == nil {
-			f = math.Round(f)
+			f = math.Round(f) // TODO: inserting rounds up, while casting truncates
 			return int64(f), sql.InRange, nil
 		}
 		// If that fails, truncate the string and parse as int
-		// TODO: throw error / warning?
 		v = TruncateStringToNumber(v, true)
 		if len(v) == 0 {
-			return 0, sql.InRange, nil
+			return 0, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
 		}
 		if i, err := strconv.ParseInt(v, 10, 64); err == nil {
-			return i, sql.InRange, nil
+			return i, sql.InRange, sql.ErrTruncatedIncorrect.New(t.String(), v)
 		}
+		// TODO: what should this error be?
 		return 0, sql.OutOfRange, sql.ErrInvalidValue.New(v, t.String())
 	case bool:
 		if v {
@@ -1547,14 +1548,15 @@ func convertToFloat64(t NumberTypeImpl_, v interface{}) (float64, error) {
 		}
 		return float64(i), nil
 	case string:
-		i, err := strconv.ParseFloat(v, 64)
-		if err != nil {
-			// parse the first longest valid numbers
-			s := numre.FindString(v)
-			i, _ = strconv.ParseFloat(s, 64)
-			return i, sql.ErrTruncatedIncorrect.New(t.String(), v)
+		v = strings.Trim(v, NumericCutSet)
+		if i, err := strconv.ParseFloat(v, 64); err == nil {
+			return i, nil
 		}
-		return i, nil
+		// TODO: what's the difference between this and TruncateStringToNumber?
+		// parse the first longest valid numbers
+		s := numre.FindString(v)
+		i, _ := strconv.ParseFloat(s, 64)
+		return i, sql.ErrTruncatedIncorrect.New(t.String(), v)
 	case bool:
 		if v {
 			return 1, nil

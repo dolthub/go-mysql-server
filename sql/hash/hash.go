@@ -142,7 +142,8 @@ func HashOfSimple(ctx *sql.Context, i interface{}, t sql.Type) (uint64, error) {
 		}
 	} else {
 		x, _, err := t.Promote().Convert(ctx, i)
-		if err != nil {
+		// TODO: throw warning?
+		if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
 			return 0, err
 		}
 
