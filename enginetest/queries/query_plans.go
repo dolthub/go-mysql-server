@@ -17331,35 +17331,32 @@ inner join pq on true
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [a.pk:2!null, a.c1:3, a.c2:4, a.c3:5, a.c4:6, a.c5:7]\n" +
 			" └─ LookupJoin\n" +
-			"     ├─ Eq\n" +
-			"     │   ├─ a.pk:2!null\n" +
-			"     │   └─ c.pk:0!null\n" +
 			"     ├─ MergeJoin\n" +
 			"     │   ├─ cmp: Eq\n" +
-			"     │   │   ├─ c.pk:0!null\n" +
-			"     │   │   └─ b.pk:1!null\n" +
-			"     │   ├─ TableAlias(c)\n" +
+			"     │   │   ├─ b.pk:0!null\n" +
+			"     │   │   └─ c.pk:1!null\n" +
+			"     │   ├─ TableAlias(b)\n" +
 			"     │   │   └─ IndexedTableAccess(one_pk)\n" +
 			"     │   │       ├─ index: [one_pk.pk]\n" +
 			"     │   │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │       ├─ colSet: (7-12)\n" +
-			"     │   │       ├─ tableId: 2\n" +
+			"     │   │       ├─ colSet: (13-18)\n" +
+			"     │   │       ├─ tableId: 3\n" +
 			"     │   │       └─ Table\n" +
 			"     │   │           ├─ name: one_pk\n" +
 			"     │   │           └─ columns: [pk]\n" +
-			"     │   └─ TableAlias(b)\n" +
+			"     │   └─ TableAlias(c)\n" +
 			"     │       └─ IndexedTableAccess(one_pk)\n" +
 			"     │           ├─ index: [one_pk.pk]\n" +
 			"     │           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │           ├─ colSet: (13-18)\n" +
-			"     │           ├─ tableId: 3\n" +
+			"     │           ├─ colSet: (7-12)\n" +
+			"     │           ├─ tableId: 2\n" +
 			"     │           └─ Table\n" +
 			"     │               ├─ name: one_pk\n" +
 			"     │               └─ columns: [pk]\n" +
 			"     └─ TableAlias(a)\n" +
 			"         └─ IndexedTableAccess(one_pk)\n" +
 			"             ├─ index: [one_pk.pk]\n" +
-			"             ├─ keys: [b.pk:1!null]\n" +
+			"             ├─ keys: [b.pk:0!null]\n" +
 			"             ├─ colSet: (1-6)\n" +
 			"             ├─ tableId: 1\n" +
 			"             └─ Table\n" +
@@ -17369,15 +17366,14 @@ inner join pq on true
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.pk, a.c1, a.c2, a.c3, a.c4, a.c5]\n" +
 			" └─ LookupJoin (estimated cost=13.200 rows=4)\n" +
-			"     ├─ (a.pk = c.pk)\n" +
 			"     ├─ MergeJoin (estimated cost=8.120 rows=4)\n" +
-			"     │   ├─ cmp: (c.pk = b.pk)\n" +
-			"     │   ├─ TableAlias(c)\n" +
+			"     │   ├─ cmp: (b.pk = c.pk)\n" +
+			"     │   ├─ TableAlias(b)\n" +
 			"     │   │   └─ IndexedTableAccess(one_pk)\n" +
 			"     │   │       ├─ index: [one_pk.pk]\n" +
 			"     │   │       ├─ filters: [{[NULL, ∞)}]\n" +
 			"     │   │       └─ columns: [pk]\n" +
-			"     │   └─ TableAlias(b)\n" +
+			"     │   └─ TableAlias(c)\n" +
 			"     │       └─ IndexedTableAccess(one_pk)\n" +
 			"     │           ├─ index: [one_pk.pk]\n" +
 			"     │           ├─ filters: [{[NULL, ∞)}]\n" +
@@ -17391,15 +17387,14 @@ inner join pq on true
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.pk, a.c1, a.c2, a.c3, a.c4, a.c5]\n" +
 			" └─ LookupJoin (estimated cost=13.200 rows=4) (actual rows=4 loops=1)\n" +
-			"     ├─ (a.pk = c.pk)\n" +
 			"     ├─ MergeJoin (estimated cost=8.120 rows=4) (actual rows=4 loops=1)\n" +
-			"     │   ├─ cmp: (c.pk = b.pk)\n" +
-			"     │   ├─ TableAlias(c)\n" +
+			"     │   ├─ cmp: (b.pk = c.pk)\n" +
+			"     │   ├─ TableAlias(b)\n" +
 			"     │   │   └─ IndexedTableAccess(one_pk)\n" +
 			"     │   │       ├─ index: [one_pk.pk]\n" +
 			"     │   │       ├─ filters: [{[NULL, ∞)}]\n" +
 			"     │   │       └─ columns: [pk]\n" +
-			"     │   └─ TableAlias(b)\n" +
+			"     │   └─ TableAlias(c)\n" +
 			"     │       └─ IndexedTableAccess(one_pk)\n" +
 			"     │           ├─ index: [one_pk.pk]\n" +
 			"     │           ├─ filters: [{[NULL, ∞)}]\n" +
