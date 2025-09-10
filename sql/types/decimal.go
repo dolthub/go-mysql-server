@@ -23,6 +23,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 	"math/big"
 	"reflect"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -199,7 +200,7 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 	case float64:
 		return t.ConvertToNullDecimal(decimal.NewFromFloat(value))
 	case string:
-		// TODO: implement truncation here
+		value = strings.Trim(value, NumericCutSet)
 		if len(value) == 0 {
 			return t.ConvertToNullDecimal(decimal.NewFromInt(0))
 		}
@@ -213,7 +214,7 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 			}
 		}
 
-		// TODO: how do we know that it is a hex number and not string?
+		// TODO: hex strings should not make it this far as numbers
 		value = TruncateStringToNumber(value, false)
 		if len(value) == 0 {
 			return t.ConvertToNullDecimal(decimal.NewFromInt(0))
