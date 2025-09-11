@@ -85,18 +85,20 @@ func (c *Char) CollationCoercibility(ctx *sql.Context) (collation sql.CollationI
 	return sql.Collation_binary, 5
 }
 
-// char converts num into a byte array
-// This function is essentially converting the number to base 256
-func char(num uint32) []byte {
-	if num == 0 {
-		return []byte{0}
+// encodeUInt32 converts uint32 `num` into a []byte using the fewest number of bytes in big endian (no leading 0s)
+func encodeUInt32(num uint32) []byte {
+	res := make([]byte, 0, 4)
+	if x := byte(num >> 24); x > 0 {
+		res = append(res, x)
 	}
-	res := byte(num & 255)
-	nextNum := num >> 8
-	if nextNum == 0 {
-		return []byte{res}
+	if x := byte(num >> 16); x > 0 {
+		res = append(res, x)
 	}
-	return append(char(num>>8), res)
+	if x := byte(num >> 8); x > 0 {
+		res = append(res, x)
+	}
+	res = append(res, byte(num))
+	return res
 }
 
 // Eval implements the sql.Expression interface
@@ -106,16 +108,13 @@ func (c *Char) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if arg == nil {
 			continue
 		}
-
 		val, err := arg.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
-
 		if val == nil {
 			continue
 		}
-
 		v, _, err := types.Uint32.Convert(ctx, val)
 		if err != nil {
 			if !sql.ErrTruncatedIncorrect.Is(err) {
@@ -123,7 +122,7 @@ func (c *Char) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			}
 			ctx.Warn(1292, "%s", err.Error())
 		}
-		res = append(res, char(v.(uint32))...)
+		res = append(res, encodeUInt32(v.(uint32))...)
 	}
 
 	result, _, err := c.Type().Convert(ctx, res)
