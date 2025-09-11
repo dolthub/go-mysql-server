@@ -71,12 +71,12 @@ func (f *If) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if e == nil {
 		asBool = false
 	} else {
-		asBool, err = sql.ConvertToBool(ctx, e)
-		if err != nil {
+		val, _, err := types.Boolean.Convert(ctx, e)
+		if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
 			return nil, err
 		}
+		asBool = val.(int8) == 1
 	}
-
 	var eval interface{}
 	if asBool {
 		eval, err = f.ifTrue.Eval(ctx, row)
