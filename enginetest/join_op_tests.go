@@ -1980,11 +1980,20 @@ SELECT SUM(x) FROM xy WHERE x IN (
 		name: "where not exists",
 		setup: [][]string{
 			setup.XyData[0],
+			{
+				"create table t(c varchar(500))",
+				"insert into t values ('a'),('a')",
+			},
 		},
 		tests: []JoinOpTests{
 			{
 				Query:    `select * from xy_hasnull x where not exists(select 1 from ab_hasnull a where a.b = x.y)`,
 				Expected: []sql.Row{{1, 0}, {3, nil}},
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/9828
+				Query:    "with v as (select 'a' as c where false) select null from t where not exists (select 1 from v where v.c <> t.c);",
+				Expected: []sql.Row{{nil}, {nil}},
 			},
 		},
 	},
