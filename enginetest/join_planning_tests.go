@@ -1943,24 +1943,28 @@ func evalIndexTest(t *testing.T, harness Harness, e QueryEngine, q string, index
 	})
 }
 
-func evalJoinCorrectness(t *testing.T, harness Harness, e QueryEngine, name, q string, exp []sql.Row, skipOld bool) {
-	t.Run(name, func(t *testing.T) {
-		ctx := NewContext(harness)
-		ctx = ctx.WithQuery(q)
+func evalJoinCorrectness(t *testing.T, harness Harness, e QueryEngine, name, q string, exp []sql.Row, skip bool) {
+	if skip {
+		t.Skip()
+	} else {
+		t.Run(name, func(t *testing.T) {
+			ctx := NewContext(harness)
+			ctx = ctx.WithQuery(q)
 
-		sch, iter, _, err := e.QueryWithBindings(ctx, q, nil, nil, nil)
-		require.NoError(t, err, "Unexpected error for query %s: %s", q, err)
+			sch, iter, _, err := e.QueryWithBindings(ctx, q, nil, nil, nil)
+			require.NoError(t, err, "Unexpected error for query %s: %s", q, err)
 
-		rows, err := sql.RowIterToRows(ctx, iter)
-		require.NoError(t, err, "Unexpected error for query %s: %s", q, err)
+			rows, err := sql.RowIterToRows(ctx, iter)
+			require.NoError(t, err, "Unexpected error for query %s: %s", q, err)
 
-		if exp != nil {
-			CheckResults(ctx, t, harness, exp, nil, sch, rows, q, e)
-		}
+			if exp != nil {
+				CheckResults(ctx, t, harness, exp, nil, sch, rows, q, e)
+			}
 
-		require.Equal(t, 0, ctx.Memory.NumCaches())
-		validateEngine(t, ctx, harness, e)
-	})
+			require.Equal(t, 0, ctx.Memory.NumCaches())
+			validateEngine(t, ctx, harness, e)
+		})
+	}
 }
 
 func collectJoinTypes(n sql.Node) []plan.JoinType {

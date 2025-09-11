@@ -1977,14 +1977,57 @@ SELECT SUM(x) FROM xy WHERE x IN (
 		},
 	},
 	{
-		name: "where not exists",
+		name: "where exists and where not exists",
 		setup: [][]string{
 			setup.XyData[0],
+			{
+				"create table t(c varchar(500))",
+				"insert into t values ('a'),('a')",
+				"create table u(c0 int, c1 int, primary key(c0, c1))",
+				"insert into u values (1, 1),(2,2),(2,3)",
+			},
 		},
 		tests: []JoinOpTests{
 			{
 				Query:    `select * from xy_hasnull x where not exists(select 1 from ab_hasnull a where a.b = x.y)`,
 				Expected: []sql.Row{{1, 0}, {3, nil}},
+			},
+			{
+				Query:    "select x from xy where exists (select 1 from ab where ab.b = -1)",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select x from xy where exists (select 1 from ab where ab.b = xy.y)",
+				Expected: []sql.Row{{0}, {2}},
+			},
+			{
+				Query:    "select x from xy where not exists (select 1 from ab where ab.b = xy.y)",
+				Expected: []sql.Row{{1}, {3}},
+			},
+			{
+				Query:    "select x from xy_hasnull where not exists(select 1 from ab_hasnull where ab_hasnull.b <> xy_hasnull.y)",
+				Expected: []sql.Row{{3}},
+			},
+			{
+				// TODO: this fails as a merge join. it seems related to https://github.com/dolthub/dolt/issues/9797
+				Skip:     true,
+				Query:    "select x from xy_hasnull_idx where exists(select 1 from rs where rs.s = xy_hasnull_idx.y)",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "select x from xy_hasnull_idx where not exists(select 1 from rs where rs.s = xy_hasnull_idx.y)",
+				Expected: []sql.Row{{2}, {0}, {3}},
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/9828
+				Query:    "with v as (select 'a' as c where false) select null from t where not exists (select 1 from v where v.c <> t.c);",
+				Expected: []sql.Row{{nil}, {nil}},
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/9797
+				Skip:     true,
+				Query:    "select * from u where exists (select 1 from u as x where x.c0 = u.c0)",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {2, 3}},
 			},
 		},
 	},
