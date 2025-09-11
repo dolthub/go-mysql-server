@@ -1788,6 +1788,34 @@ join uv d on d.u = c.x`,
 			},
 		},
 	},
+	{
+		name: "single look up plan does not drop complex equality filters",
+		setup: []string{
+			"create table t1 (i int primary key);",
+			"create table t2 (j int);",
+			"create table t3 (k int);",
+			"insert into t1 values (1), (2);",
+			"insert into t2 values (1), (2);",
+			"insert into t3 values (3);",
+		},
+		tests: []JoinPlanTest{
+			{
+				q:     "select * from t1 cross join t2 join (select * from t3) v3 on v3.k = t2.j;",
+				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeCross},
+				exp:   []sql.Row{},
+			},
+			{
+				q:     "select * from t1 cross join t2 join (select * from t3) v3 on v3.k >= t2.j order by i, j, k;",
+				types: []plan.JoinType{plan.JoinTypeInner, plan.JoinTypeCross},
+				exp: []sql.Row{
+					{1, 1, 3},
+					{1, 2, 3},
+					{2, 1, 3},
+					{2, 2, 3},
+				},
+			},
+		},
+	},
 }
 
 func TestJoinPlanning(t *testing.T, harness Harness) {

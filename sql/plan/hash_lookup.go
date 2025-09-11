@@ -34,10 +34,12 @@ import (
 // simply delegates to the child.
 func NewHashLookup(n sql.Node, rightEntryKey sql.Expression, leftProbeKey sql.Expression, joinType JoinType) *HashLookup {
 	leftKeySch := hash.ExprsToSchema(leftProbeKey)
+	compareType := GetCompareType(leftProbeKey.Type(), rightEntryKey.Type())
 	return &HashLookup{
 		UnaryNode:     UnaryNode{n},
 		RightEntryKey: rightEntryKey,
 		LeftProbeKey:  leftProbeKey,
+		CompareType:   compareType,
 		Mutex:         new(sync.Mutex),
 		JoinType:      joinType,
 		leftKeySch:    leftKeySch,
@@ -48,6 +50,7 @@ type HashLookup struct {
 	UnaryNode
 	RightEntryKey sql.Expression
 	LeftProbeKey  sql.Expression
+	CompareType   sql.Type
 	Mutex         *sync.Mutex
 	Lookup        *map[interface{}][]sql.Row
 	leftKeySch    sql.Schema
@@ -57,6 +60,46 @@ type HashLookup struct {
 var _ sql.Node = (*HashLookup)(nil)
 var _ sql.Expressioner = (*HashLookup)(nil)
 var _ sql.CollationCoercible = (*HashLookup)(nil)
+
+// GetCompareType returns the type to use when comparing values of types left and right.
+func GetCompareType(left, right sql.Type) sql.Type {
+	// TODO: much of this logic is very similar to castLeftAndRight() from sql/expression/comparison.go
+	//  consider consolidating
+	if left.Equals(right) {
+		return left
+	}
+	if types.IsTuple(left) && types.IsTuple(right) {
+		return left
+	}
+	if types.IsTime(left) || types.IsTime(right) {
+		return types.DatetimeMaxPrecision
+	}
+	if types.IsJSON(left) || types.IsJSON(right) {
+		return types.JSON
+	}
+	if types.IsBinaryType(left) || types.IsBinaryType(right) {
+		return types.LongBlob
+	}
+	if types.IsNumber(left) || types.IsNumber(right) {
+		if types.IsDecimal(left) {
+			return left
+		}
+		if types.IsDecimal(right) {
+			return right
+		}
+		if types.IsFloat(left) || types.IsFloat(right) {
+			return types.Float64
+		}
+		if types.IsSigned(left) && types.IsSigned(right) {
+			return types.Int64
+		}
+		if types.IsUnsigned(left) && types.IsUnsigned(right) {
+			return types.Uint64
+		}
+		return types.Float64
+	}
+	return types.LongText
+}
 
 func (n *HashLookup) Expressions() []sql.Expression {
 	return []sql.Expression{n.RightEntryKey, n.LeftProbeKey}
@@ -113,7 +156,7 @@ func (n *HashLookup) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 	return sql.GetCoercibility(ctx, n.Child)
 }
 
-// Convert a tuple expression returning []interface{} into something comparable.
+// GetHashKey converts a tuple expression returning []interface{} into something comparable.
 // Fast paths a few smaller slices into fixed size arrays, puts everything else
 // through string serialization and a hash for now. It is OK to hash lossy here
 // as the join condition is still evaluated after the matching rows are returned.
@@ -122,13 +165,13 @@ func (n *HashLookup) GetHashKey(ctx *sql.Context, e sql.Expression, row sql.Row)
 	if err != nil {
 		return nil, err
 	}
-	typ := n.LeftProbeKey.Type()
-	key, _, err = typ.Convert(ctx, key)
+	key, _, err = n.CompareType.Convert(ctx, key)
 	if types.ErrValueNotNil.Is(err) {
 		// The LHS expression was NullType. This is allowed.
 		return nil, nil
 	}
-	if err != nil {
+	if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
+		// Truncated warning is already thrown elsewhere.
 		return nil, err
 	}
 	if s, ok := key.([]interface{}); ok {
@@ -139,7 +182,7 @@ func (n *HashLookup) GetHashKey(ctx *sql.Context, e sql.Expression, row sql.Row)
 		return string(k), nil
 	}
 
-	return hash.HashOfSimple(ctx, key, typ)
+	return hash.HashOfSimple(ctx, key, n.CompareType)
 }
 
 func (n *HashLookup) Dispose() {

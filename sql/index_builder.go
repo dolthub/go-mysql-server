@@ -104,11 +104,11 @@ func floor(val interface{}) interface{} {
 }
 
 // Equals represents colExpr = key. For IN expressions, pass all of them in the same Equals call.
-func (b *MySQLIndexBuilder) Equals(ctx *Context, colExpr string, keys ...interface{}) *MySQLIndexBuilder {
+func (b *MySQLIndexBuilder) Equals(ctx *Context, colExpr string, keyType Type, keys ...interface{}) *MySQLIndexBuilder {
 	if b.isInvalid {
 		return b
 	}
-	typ, ok := b.colExprTypes[colExpr]
+	colTyp, ok := b.colExprTypes[colExpr]
 	if !ok {
 		b.isInvalid = true
 		b.err = ErrInvalidColExpr.New(colExpr, b.idx.ID())
@@ -117,37 +117,38 @@ func (b *MySQLIndexBuilder) Equals(ctx *Context, colExpr string, keys ...interfa
 	potentialRanges := make([]MySQLRangeColumnExpr, len(keys))
 	for i, k := range keys {
 		// if converting from float to int results in rounding, then it's empty range
-		if t, ok := typ.(NumberType); ok && !t.IsFloat() {
+		if t, ok := colTyp.(NumberType); ok && !t.IsFloat() {
 			f, c := floor(k), ceil(k)
 			switch k.(type) {
 			case float32, float64:
 				if f != c {
-					potentialRanges[i] = EmptyRangeColumnExpr(typ)
+					potentialRanges[i] = EmptyRangeColumnExpr(colTyp)
 					continue
 				}
 			case decimal.Decimal:
 				if !f.(decimal.Decimal).Equals(c.(decimal.Decimal)) {
-					potentialRanges[i] = EmptyRangeColumnExpr(typ)
+					potentialRanges[i] = EmptyRangeColumnExpr(colTyp)
 					continue
 				}
 			}
 		}
 
 		var err error
-		k, _, err = typ.Convert(ctx, k)
+		k, err = b.convertKey(ctx, colTyp, keyType, k)
+
 		if err != nil {
 			b.isInvalid = true
 			b.err = err
 			return b
 		}
-		potentialRanges[i] = ClosedRangeColumnExpr(k, k, typ)
+		potentialRanges[i] = ClosedRangeColumnExpr(k, k, colTyp)
 	}
 	b.updateCol(ctx, colExpr, potentialRanges...)
 	return b
 }
 
 // NotEquals represents colExpr <> key.
-func (b *MySQLIndexBuilder) NotEquals(ctx *Context, colExpr string, key interface{}) *MySQLIndexBuilder {
+func (b *MySQLIndexBuilder) NotEquals(ctx *Context, colExpr string, keyType Type, key interface{}) *MySQLIndexBuilder {
 	if b.isInvalid {
 		return b
 	}
@@ -172,7 +173,7 @@ func (b *MySQLIndexBuilder) NotEquals(ctx *Context, colExpr string, key interfac
 		}
 	}
 
-	key, _, err := typ.Convert(ctx, key)
+	key, err := b.convertKey(ctx, typ, keyType, key)
 	if err != nil {
 		b.isInvalid = true
 		b.err = err
@@ -197,7 +198,7 @@ func (b *MySQLIndexBuilder) NotEquals(ctx *Context, colExpr string, key interfac
 }
 
 // GreaterThan represents colExpr > key.
-func (b *MySQLIndexBuilder) GreaterThan(ctx *Context, colExpr string, key interface{}) *MySQLIndexBuilder {
+func (b *MySQLIndexBuilder) GreaterThan(ctx *Context, colExpr string, keyType Type, key interface{}) *MySQLIndexBuilder {
 	if b.isInvalid {
 		return b
 	}
@@ -212,7 +213,7 @@ func (b *MySQLIndexBuilder) GreaterThan(ctx *Context, colExpr string, key interf
 		key = floor(key)
 	}
 
-	key, _, err := typ.Convert(ctx, key)
+	key, err := b.convertKey(ctx, typ, keyType, key)
 	if err != nil {
 		b.isInvalid = true
 		b.err = err
@@ -223,8 +224,18 @@ func (b *MySQLIndexBuilder) GreaterThan(ctx *Context, colExpr string, key interf
 	return b
 }
 
+// convertKey converts the given key from keyType to colType, returning an error if the conversion fails.
+func (b *MySQLIndexBuilder) convertKey(ctx *Context, colType Type, keyType Type, key interface{}) (interface{}, error) {
+	if et, ok := colType.(ExtendedType); ok {
+		return et.ConvertToType(ctx, keyType.(ExtendedType), key)
+	} else {
+		key, _, err := colType.Convert(ctx, key)
+		return key, err
+	}
+}
+
 // GreaterOrEqual represents colExpr >= key.
-func (b *MySQLIndexBuilder) GreaterOrEqual(ctx *Context, colExpr string, key interface{}) *MySQLIndexBuilder {
+func (b *MySQLIndexBuilder) GreaterOrEqual(ctx *Context, colExpr string, keyType Type, key interface{}) *MySQLIndexBuilder {
 	if b.isInvalid {
 		return b
 	}
@@ -247,7 +258,7 @@ func (b *MySQLIndexBuilder) GreaterOrEqual(ctx *Context, colExpr string, key int
 		key = newKey
 	}
 
-	key, _, err := typ.Convert(ctx, key)
+	key, err := b.convertKey(ctx, typ, keyType, key)
 	if err != nil {
 		b.isInvalid = true
 		b.err = err
@@ -266,7 +277,7 @@ func (b *MySQLIndexBuilder) GreaterOrEqual(ctx *Context, colExpr string, key int
 }
 
 // LessThan represents colExpr < key.
-func (b *MySQLIndexBuilder) LessThan(ctx *Context, colExpr string, key interface{}) *MySQLIndexBuilder {
+func (b *MySQLIndexBuilder) LessThan(ctx *Context, colExpr string, keyType Type, key interface{}) *MySQLIndexBuilder {
 	if b.isInvalid {
 		return b
 	}
@@ -280,7 +291,8 @@ func (b *MySQLIndexBuilder) LessThan(ctx *Context, colExpr string, key interface
 	if t, ok := typ.(NumberType); ok && !t.IsFloat() {
 		key = ceil(key)
 	}
-	key, _, err := typ.Convert(ctx, key)
+
+	key, err := b.convertKey(ctx, typ, keyType, key)
 	if err != nil {
 		b.isInvalid = true
 		b.err = err
@@ -292,7 +304,7 @@ func (b *MySQLIndexBuilder) LessThan(ctx *Context, colExpr string, key interface
 }
 
 // LessOrEqual represents colExpr <= key.
-func (b *MySQLIndexBuilder) LessOrEqual(ctx *Context, colExpr string, key interface{}) *MySQLIndexBuilder {
+func (b *MySQLIndexBuilder) LessOrEqual(ctx *Context, colExpr string, keyType Type, key interface{}) *MySQLIndexBuilder {
 	if b.isInvalid {
 		return b
 	}
@@ -315,7 +327,7 @@ func (b *MySQLIndexBuilder) LessOrEqual(ctx *Context, colExpr string, key interf
 		key = newKey
 	}
 
-	key, _, err := typ.Convert(ctx, key)
+	key, err := b.convertKey(ctx, typ, keyType, key)
 	if err != nil {
 		b.isInvalid = true
 		b.err = err

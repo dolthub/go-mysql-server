@@ -1200,6 +1200,37 @@ var JoinScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "HashLookup with type int8 and string type conversions",
+		SetUpScript: []string{
+			"create table t1 (c1 boolean);",
+			"create table t2 (c2 varchar(500));",
+			"insert into t1 values (true), (false);",
+			"insert into t2 values ('abc'), ('def');", // will be converted to float64(0) and match false
+			"insert into t2 values ('1asdf');",        // will be converted to '1' and match true
+			"insert into t2 values ('5five');",        // will be converted to '5' and match nothing
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// TODO: our warnings don't align with MySQL
+				Query: "select /*+ HASH_JOIN(t1, t2) */ * from t1 join t2 where c1 = c2 order by c1, c2;",
+				Expected: []sql.Row{
+					{0, "abc"},
+					{0, "def"},
+					{1, "1asdf"},
+				},
+			},
+			{
+				// TODO: our warnings don't align with MySQL
+				Query: "select /*+ INNER_JOIN(t1, t2) */ * from t1 join t2 where c1 = c2 order by c1, c2;",
+				Expected: []sql.Row{
+					{0, "abc"},
+					{0, "def"},
+					{1, "1asdf"},
+				},
+			},
+		},
+	},
 }
 
 var LateralJoinScriptTests = []ScriptTest{
@@ -1395,6 +1426,22 @@ LATERAL (
 					{3, 2},
 					{4, 3},
 				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9820
+		Name: "lateral cross join with subquery",
+		SetUpScript: []string{
+			"create table t0(c0 boolean)",
+			"create table t1(c0 int)",
+			"insert into t0 values (true)",
+			"insert into t1 values(0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select v.c0, t1.c0 from t0 cross join lateral (select 1 as c0) as v join t1 on v.c0 > t1.c0",
+				Expected: []sql.Row{{1, 0}},
 			},
 		},
 	},

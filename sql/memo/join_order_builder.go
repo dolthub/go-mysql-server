@@ -285,7 +285,7 @@ func (j *joinOrderBuilder) buildSingleLookupPlan() bool {
 			}
 			filter := edge.filters[0]
 			_, tables, _ := getExprScalarProps(filter)
-			if tables.Len() != 2 {
+			if tables.Len() != 2 || !isSimpleEquality(filter) {
 				// We have encountered a filter condition more complicated than a simple equality check.
 				// We probably can't optimize this, so bail out.
 				return false
@@ -319,7 +319,6 @@ func (j *joinOrderBuilder) buildSingleLookupPlan() bool {
 			for idx, ok := remainingVertexes.next(0); ok; idx, ok = remainingVertexes.next(idx + 1) {
 				nextVertex := newBitSet(idx)
 				j.addJoin(plan.JoinTypeCross, currentlyJoinedVertexes, nextVertex, nil, nil, false)
-
 				currentlyJoinedVertexes = currentlyJoinedVertexes.union(nextVertex)
 			}
 			return false

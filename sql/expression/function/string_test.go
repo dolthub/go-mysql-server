@@ -143,24 +143,14 @@ func TestBinFunc(t *testing.T) {
 }
 
 func TestBitLength(t *testing.T) {
-	f := sql.Function1{Name: "bin", Fn: NewBitlength}
+	f := sql.Function1{Name: "bit_length", Fn: NewBitlength}
 	tf := NewTestFactory(f.Fn)
 	tf.AddSucceeding(nil, nil)
 	tf.AddSucceeding(32, "test")
 	tf.AddSucceeding(8, true)
-	tf.AddSucceeding(8, int8(0))
-	tf.AddSucceeding(8, uint8(0))
-	tf.AddSucceeding(16, int16(0))
-	tf.AddSucceeding(16, uint16(0))
-	tf.AddSucceeding(32, uint32(0))
-	tf.AddSucceeding(32, int32(0))
-	tf.AddSucceeding(32, uint(0))
-	tf.AddSucceeding(32, 0)
-	tf.AddSucceeding(64, uint64(0))
-	tf.AddSucceeding(64, int64(0))
-	tf.AddSucceeding(64, float64(0))
-	tf.AddSucceeding(32, float32(0))
-	tf.AddSucceeding(128, time.Now())
+	tf.AddSucceeding(8, 0)
+	tf.AddSucceeding(16, 10)
+	tf.AddSucceeding(24, -10)
 	tf.Test(t, nil, nil)
 }
 
