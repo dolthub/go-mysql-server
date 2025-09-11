@@ -241,7 +241,7 @@ func (s *SessionManager) InitSessionDefaultVariable(ctx context.Context, conn *m
 	if err != nil {
 		return err
 	}
-	return sess.InitSessionDefaultVariable(s.ctxFactory(ctx, sql.WithSession(sess)), name, value)
+	return sess.InitSessionVariableDefault(s.ctxFactory(ctx, sql.WithSession(sess)), name, value)
 }
 
 // NewContextWithQuery creates a new context for the session at the given conn.
