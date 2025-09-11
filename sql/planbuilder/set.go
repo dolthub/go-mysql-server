@@ -341,8 +341,9 @@ func (b *Builder) simplifySetExpr(name *ast.ColName, varScope ast.SetScope, val 
 
 		switch varScope {
 		case ast.SetScope_None, ast.SetScope_Session, ast.SetScope_Global:
-			_, value, ok := sql.SystemVariables.GetGlobal(varName)
-			if ok {
+			// cannot use sql.SystemVariables.GetGlobal as the default value can be defined at session start runtime.
+			value, err := b.ctx.GetSessionVariableDefault(b.ctx, varName)
+			if err == nil {
 				return expression.NewLiteral(value, types.ApproximateTypeFromValue(value)), true
 			}
 			err = sql.ErrUnknownSystemVariable.New(varName)
