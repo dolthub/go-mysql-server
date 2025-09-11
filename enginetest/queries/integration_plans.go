@@ -15422,31 +15422,22 @@ ORDER BY cla.FTQLQ ASC`,
 			"                 │   └─ Project\n" +
 			"                 │       ├─ columns: [bs.IXUXU:2]\n" +
 			"                 │       └─ SemiLookupJoin\n" +
-			"                 │           ├─ Project\n" +
-			"                 │           │   ├─ columns: [bs.id:0!null, bs.NFRYN:1!null, bs.IXUXU:2, bs.FHCYT:3]\n" +
-			"                 │           │   └─ MergeJoin\n" +
-			"                 │           │       ├─ cmp: Eq\n" +
-			"                 │           │       │   ├─ bs.id:0!null\n" +
-			"                 │           │       │   └─ hgmq6.GXLUB:4!null\n" +
-			"                 │           │       ├─ TableAlias(bs)\n" +
-			"                 │           │       │   └─ IndexedTableAccess(THNTS)\n" +
-			"                 │           │       │       ├─ index: [THNTS.id]\n" +
-			"                 │           │       │       ├─ static: [{[NULL, ∞)}]\n" +
-			"                 │           │       │       ├─ colSet: (31-34)\n" +
-			"                 │           │       │       ├─ tableId: 2\n" +
-			"                 │           │       │       └─ Table\n" +
-			"                 │           │       │           ├─ name: THNTS\n" +
-			"                 │           │       │           └─ columns: [id nfryn ixuxu fhcyt]\n" +
-			"                 │           │       └─ Project\n" +
-			"                 │           │           ├─ columns: [hgmq6.GXLUB:1!null]\n" +
-			"                 │           │           └─ IndexedTableAccess(HGMQ6)\n" +
-			"                 │           │               ├─ index: [HGMQ6.GXLUB]\n" +
-			"                 │           │               ├─ static: [{[NULL, ∞)}]\n" +
-			"                 │           │               ├─ colSet: (35-51)\n" +
-			"                 │           │               ├─ tableId: 3\n" +
-			"                 │           │               └─ Table\n" +
-			"                 │           │                   ├─ name: HGMQ6\n" +
-			"                 │           │                   └─ columns: [id gxlub luevy m22qn tjpt7 arn5p xosd4 ide43 hmw4h zbt6r fsdy2 lt7k6 sppyd qcgts teuja qqv4m fhcyt]\n" +
+			"                 │           ├─ SemiLookupJoin\n" +
+			"                 │           │   ├─ TableAlias(bs)\n" +
+			"                 │           │   │   └─ ProcessTable\n" +
+			"                 │           │   │       └─ Table\n" +
+			"                 │           │   │           ├─ name: THNTS\n" +
+			"                 │           │   │           └─ columns: [id nfryn ixuxu fhcyt]\n" +
+			"                 │           │   └─ Project\n" +
+			"                 │           │       ├─ columns: [hgmq6.GXLUB:1!null]\n" +
+			"                 │           │       └─ IndexedTableAccess(HGMQ6)\n" +
+			"                 │           │           ├─ index: [HGMQ6.GXLUB]\n" +
+			"                 │           │           ├─ keys: [bs.id:0!null]\n" +
+			"                 │           │           ├─ colSet: (35-51)\n" +
+			"                 │           │           ├─ tableId: 3\n" +
+			"                 │           │           └─ Table\n" +
+			"                 │           │               ├─ name: HGMQ6\n" +
+			"                 │           │               └─ columns: [id gxlub luevy m22qn tjpt7 arn5p xosd4 ide43 hmw4h zbt6r fsdy2 lt7k6 sppyd qcgts teuja qqv4m fhcyt]\n" +
 			"                 │           └─ Project\n" +
 			"                 │               ├─ columns: [amyxq.GXLUB:1!null]\n" +
 			"                 │               └─ IndexedTableAccess(AMYXQ)\n" +
@@ -15478,19 +15469,15 @@ ORDER BY cla.FTQLQ ASC`,
 			"                 │   └─ Project\n" +
 			"                 │       ├─ columns: [bs.IXUXU]\n" +
 			"                 │       └─ SemiLookupJoin\n" +
-			"                 │           ├─ Project\n" +
-			"                 │           │   ├─ columns: [bs.id, bs.NFRYN, bs.IXUXU, bs.FHCYT]\n" +
-			"                 │           │   └─ MergeJoin\n" +
-			"                 │           │       ├─ cmp: (bs.id = hgmq6.GXLUB)\n" +
-			"                 │           │       ├─ TableAlias(bs)\n" +
-			"                 │           │       │   └─ IndexedTableAccess(THNTS)\n" +
-			"                 │           │       │       ├─ index: [THNTS.id]\n" +
-			"                 │           │       │       └─ filters: [{[NULL, ∞)}]\n" +
-			"                 │           │       └─ Project\n" +
-			"                 │           │           ├─ columns: [hgmq6.GXLUB]\n" +
-			"                 │           │           └─ IndexedTableAccess(HGMQ6)\n" +
-			"                 │           │               ├─ index: [HGMQ6.GXLUB]\n" +
-			"                 │           │               └─ filters: [{[NULL, ∞)}]\n" +
+			"                 │           ├─ SemiLookupJoin\n" +
+			"                 │           │   ├─ TableAlias(bs)\n" +
+			"                 │           │   │   └─ Table\n" +
+			"                 │           │   │       └─ name: THNTS\n" +
+			"                 │           │   └─ Project\n" +
+			"                 │           │       ├─ columns: [hgmq6.GXLUB]\n" +
+			"                 │           │       └─ IndexedTableAccess(HGMQ6)\n" +
+			"                 │           │           ├─ index: [HGMQ6.GXLUB]\n" +
+			"                 │           │           └─ keys: bs.id\n" +
 			"                 │           └─ Project\n" +
 			"                 │               ├─ columns: [amyxq.GXLUB]\n" +
 			"                 │               └─ IndexedTableAccess(AMYXQ)\n" +
@@ -15515,19 +15502,15 @@ ORDER BY cla.FTQLQ ASC`,
 			"                 │   └─ Project\n" +
 			"                 │       ├─ columns: [bs.IXUXU]\n" +
 			"                 │       └─ SemiLookupJoin\n" +
-			"                 │           ├─ Project\n" +
-			"                 │           │   ├─ columns: [bs.id, bs.NFRYN, bs.IXUXU, bs.FHCYT]\n" +
-			"                 │           │   └─ MergeJoin\n" +
-			"                 │           │       ├─ cmp: (bs.id = hgmq6.GXLUB)\n" +
-			"                 │           │       ├─ TableAlias(bs)\n" +
-			"                 │           │       │   └─ IndexedTableAccess(THNTS)\n" +
-			"                 │           │       │       ├─ index: [THNTS.id]\n" +
-			"                 │           │       │       └─ filters: [{[NULL, ∞)}]\n" +
-			"                 │           │       └─ Project\n" +
-			"                 │           │           ├─ columns: [hgmq6.GXLUB]\n" +
-			"                 │           │           └─ IndexedTableAccess(HGMQ6)\n" +
-			"                 │           │               ├─ index: [HGMQ6.GXLUB]\n" +
-			"                 │           │               └─ filters: [{[NULL, ∞)}]\n" +
+			"                 │           ├─ SemiLookupJoin\n" +
+			"                 │           │   ├─ TableAlias(bs)\n" +
+			"                 │           │   │   └─ Table\n" +
+			"                 │           │   │       └─ name: THNTS\n" +
+			"                 │           │   └─ Project\n" +
+			"                 │           │       ├─ columns: [hgmq6.GXLUB]\n" +
+			"                 │           │       └─ IndexedTableAccess(HGMQ6)\n" +
+			"                 │           │           ├─ index: [HGMQ6.GXLUB]\n" +
+			"                 │           │           └─ keys: bs.id\n" +
 			"                 │           └─ Project\n" +
 			"                 │               ├─ columns: [amyxq.GXLUB]\n" +
 			"                 │               └─ IndexedTableAccess(AMYXQ)\n" +
@@ -15665,31 +15648,22 @@ ORDER BY cla.FTQLQ ASC`,
 			"                 ├─ Distinct\n" +
 			"                 │   └─ Project\n" +
 			"                 │       ├─ columns: [bs.IXUXU:2]\n" +
-			"                 │       └─ Project\n" +
-			"                 │           ├─ columns: [bs.id:0!null, bs.NFRYN:1!null, bs.IXUXU:2, bs.FHCYT:3]\n" +
-			"                 │           └─ MergeJoin\n" +
-			"                 │               ├─ cmp: Eq\n" +
-			"                 │               │   ├─ bs.id:0!null\n" +
-			"                 │               │   └─ amyxq.GXLUB:4!null\n" +
-			"                 │               ├─ TableAlias(bs)\n" +
-			"                 │               │   └─ IndexedTableAccess(THNTS)\n" +
-			"                 │               │       ├─ index: [THNTS.id]\n" +
-			"                 │               │       ├─ static: [{[NULL, ∞)}]\n" +
-			"                 │               │       ├─ colSet: (31-34)\n" +
-			"                 │               │       ├─ tableId: 2\n" +
-			"                 │               │       └─ Table\n" +
-			"                 │               │           ├─ name: THNTS\n" +
-			"                 │               │           └─ columns: [id nfryn ixuxu fhcyt]\n" +
-			"                 │               └─ Project\n" +
-			"                 │                   ├─ columns: [amyxq.GXLUB:1!null]\n" +
-			"                 │                   └─ IndexedTableAccess(AMYXQ)\n" +
-			"                 │                       ├─ index: [AMYXQ.GXLUB,AMYXQ.LUEVY]\n" +
-			"                 │                       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                 │                       ├─ colSet: (35-42)\n" +
-			"                 │                       ├─ tableId: 3\n" +
-			"                 │                       └─ Table\n" +
-			"                 │                           ├─ name: AMYXQ\n" +
-			"                 │                           └─ columns: [id gxlub luevy xqdyt amyxq oztqf z35gy kkgn5]\n" +
+			"                 │       └─ SemiLookupJoin\n" +
+			"                 │           ├─ TableAlias(bs)\n" +
+			"                 │           │   └─ ProcessTable\n" +
+			"                 │           │       └─ Table\n" +
+			"                 │           │           ├─ name: THNTS\n" +
+			"                 │           │           └─ columns: [id nfryn ixuxu fhcyt]\n" +
+			"                 │           └─ Project\n" +
+			"                 │               ├─ columns: [amyxq.GXLUB:1!null]\n" +
+			"                 │               └─ IndexedTableAccess(AMYXQ)\n" +
+			"                 │                   ├─ index: [AMYXQ.GXLUB]\n" +
+			"                 │                   ├─ keys: [bs.id:0!null]\n" +
+			"                 │                   ├─ colSet: (35-42)\n" +
+			"                 │                   ├─ tableId: 3\n" +
+			"                 │                   └─ Table\n" +
+			"                 │                       ├─ name: AMYXQ\n" +
+			"                 │                       └─ columns: [id gxlub luevy xqdyt amyxq oztqf z35gy kkgn5]\n" +
 			"                 └─ HashLookup\n" +
 			"                     ├─ left-key: TUPLE(bs.IXUXU:0)\n" +
 			"                     ├─ right-key: TUPLE(cla.id:0!null)\n" +
@@ -15710,19 +15684,15 @@ ORDER BY cla.FTQLQ ASC`,
 			"                 ├─ Distinct\n" +
 			"                 │   └─ Project\n" +
 			"                 │       ├─ columns: [bs.IXUXU]\n" +
-			"                 │       └─ Project\n" +
-			"                 │           ├─ columns: [bs.id, bs.NFRYN, bs.IXUXU, bs.FHCYT]\n" +
-			"                 │           └─ MergeJoin\n" +
-			"                 │               ├─ cmp: (bs.id = amyxq.GXLUB)\n" +
-			"                 │               ├─ TableAlias(bs)\n" +
-			"                 │               │   └─ IndexedTableAccess(THNTS)\n" +
-			"                 │               │       ├─ index: [THNTS.id]\n" +
-			"                 │               │       └─ filters: [{[NULL, ∞)}]\n" +
-			"                 │               └─ Project\n" +
-			"                 │                   ├─ columns: [amyxq.GXLUB]\n" +
-			"                 │                   └─ IndexedTableAccess(AMYXQ)\n" +
-			"                 │                       ├─ index: [AMYXQ.GXLUB,AMYXQ.LUEVY]\n" +
-			"                 │                       └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 │       └─ SemiLookupJoin\n" +
+			"                 │           ├─ TableAlias(bs)\n" +
+			"                 │           │   └─ Table\n" +
+			"                 │           │       └─ name: THNTS\n" +
+			"                 │           └─ Project\n" +
+			"                 │               ├─ columns: [amyxq.GXLUB]\n" +
+			"                 │               └─ IndexedTableAccess(AMYXQ)\n" +
+			"                 │                   ├─ index: [AMYXQ.GXLUB]\n" +
+			"                 │                   └─ keys: bs.id\n" +
 			"                 └─ HashLookup\n" +
 			"                     ├─ left-key: (bs.IXUXU)\n" +
 			"                     ├─ right-key: (cla.id)\n" +
@@ -15741,19 +15711,15 @@ ORDER BY cla.FTQLQ ASC`,
 			"                 ├─ Distinct\n" +
 			"                 │   └─ Project\n" +
 			"                 │       ├─ columns: [bs.IXUXU]\n" +
-			"                 │       └─ Project\n" +
-			"                 │           ├─ columns: [bs.id, bs.NFRYN, bs.IXUXU, bs.FHCYT]\n" +
-			"                 │           └─ MergeJoin\n" +
-			"                 │               ├─ cmp: (bs.id = amyxq.GXLUB)\n" +
-			"                 │               ├─ TableAlias(bs)\n" +
-			"                 │               │   └─ IndexedTableAccess(THNTS)\n" +
-			"                 │               │       ├─ index: [THNTS.id]\n" +
-			"                 │               │       └─ filters: [{[NULL, ∞)}]\n" +
-			"                 │               └─ Project\n" +
-			"                 │                   ├─ columns: [amyxq.GXLUB]\n" +
-			"                 │                   └─ IndexedTableAccess(AMYXQ)\n" +
-			"                 │                       ├─ index: [AMYXQ.GXLUB,AMYXQ.LUEVY]\n" +
-			"                 │                       └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                 │       └─ SemiLookupJoin\n" +
+			"                 │           ├─ TableAlias(bs)\n" +
+			"                 │           │   └─ Table\n" +
+			"                 │           │       └─ name: THNTS\n" +
+			"                 │           └─ Project\n" +
+			"                 │               ├─ columns: [amyxq.GXLUB]\n" +
+			"                 │               └─ IndexedTableAccess(AMYXQ)\n" +
+			"                 │                   ├─ index: [AMYXQ.GXLUB]\n" +
+			"                 │                   └─ keys: bs.id\n" +
 			"                 └─ HashLookup\n" +
 			"                     ├─ left-key: (bs.IXUXU)\n" +
 			"                     ├─ right-key: (cla.id)\n" +
