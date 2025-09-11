@@ -235,13 +235,13 @@ func (s *SessionManager) getOrCreateSession(ctx context.Context, conn *mysql.Con
 	return sess, nil
 }
 
-// InitSessionVariable sets a value to a parameter of a session at start.
-func (s *SessionManager) InitSessionVariable(ctx context.Context, conn *mysql.Conn, name, value string) error {
+// InitSessionDefaultVariable sets a default value to a parameter of a session at start.
+func (s *SessionManager) InitSessionDefaultVariable(ctx context.Context, conn *mysql.Conn, name, value string) error {
 	sess, err := s.getOrCreateSession(ctx, conn)
 	if err != nil {
 		return err
 	}
-	return sess.InitSessionVariable(s.ctxFactory(ctx, sql.WithSession(sess)), name, value)
+	return sess.InitSessionDefaultVariable(s.ctxFactory(ctx, sql.WithSession(sess)), name, value)
 }
 
 // NewContextWithQuery creates a new context for the session at the given conn.

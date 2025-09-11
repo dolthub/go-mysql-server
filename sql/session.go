@@ -66,6 +66,8 @@ type Session interface {
 	Client() Client
 	// SetClient returns a new session with the given client.
 	SetClient(Client)
+	// InitSessionDefaultVariable sets the given value as the default value of given system variable for this session.
+	InitSessionDefaultVariable(ctx *Context, sysVarName string, value interface{}) error
 	// SetSessionVariable sets the given system variable to the value given for this session.
 	SetSessionVariable(ctx *Context, sysVarName string, value interface{}) error
 	// InitSessionVariable sets the given system variable to the value given for this session and will allow for

@@ -159,6 +159,30 @@ func (s *BaseSession) InitSessionVariable(ctx *Context, sysVarName string, value
 	return s.setSessVar(ctx, sysVar, value, true)
 }
 
+// InitSessionDefaultVariable implements the Session interface and is used to initialize variables (Including read-only variables)
+func (s *BaseSession) InitSessionDefaultVariable(ctx *Context, sysVarName string, value interface{}) error {
+	sysVar, _, ok := SystemVariables.GetGlobal(sysVarName)
+	if !ok {
+		return ErrUnknownSystemVariable.New(sysVarName)
+	}
+
+	sysVarName = strings.ToLower(sysVarName)
+	val, ok := s.systemVars[sysVarName]
+	if ok && val.Val != sysVar.GetDefault() {
+		return ErrSystemVariableReinitialized.New(sysVarName)
+	}
+	svv, err := sysVar.InitValue(ctx, "", value, false)
+	if err != nil {
+		return err
+	}
+	svv.Var.SetDefault(value)
+	s.systemVars[sysVarName] = svv
+	if sysVarName == characterSetResultsSysVarName {
+		s.charset = CharacterSet_Unspecified
+	}
+	return nil
+}
+
 func (s *BaseSession) setSessVar(ctx *Context, sysVar SystemVariable, newVal interface{}, init bool) error {
 	var svv SystemVarValue
 	var err error
