@@ -311,10 +311,10 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 					if i.nullRej {
 						// Filter is null-rejecting: need to run condition once with nil right so NULL can propagate
 						// and row may be excluded
-						nextState = esRet
+						nextState = esCompare
 					} else {
 						// Filter is not null-rejecting: no matches possible, row passes
-						nextState = esCompare
+						nextState = esRet
 					}
 				default:
 					nextState = esCompare
