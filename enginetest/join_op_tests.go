@@ -2009,8 +2009,6 @@ SELECT SUM(x) FROM xy WHERE x IN (
 				Expected: []sql.Row{{3}},
 			},
 			{
-				// TODO: this fails as a merge join. it seems related to https://github.com/dolthub/dolt/issues/9797
-				Skip:     true,
 				Query:    "select x from xy_hasnull_idx where exists(select 1 from rs where rs.s = xy_hasnull_idx.y)",
 				Expected: []sql.Row{{1}},
 			},
@@ -2025,7 +2023,6 @@ SELECT SUM(x) FROM xy WHERE x IN (
 			},
 			{
 				// https://github.com/dolthub/dolt/issues/9797
-				Skip:     true,
 				Query:    "select * from u where exists (select 1 from u as x where x.c0 = u.c0)",
 				Expected: []sql.Row{{1, 1}, {2, 2}, {2, 3}},
 			},

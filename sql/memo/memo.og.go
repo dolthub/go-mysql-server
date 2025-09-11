@@ -234,11 +234,11 @@ func (r *TableScan) Children() []*ExprGroup {
 }
 
 type IndexScan struct {
-	Stats sql.Statistic
 	*sourceBase
 	Table *plan.IndexedTableAccess
 	Index *Index
 	Alias string
+	Stats sql.Statistic
 }
 
 var _ RelExpr = (*IndexScan)(nil)
@@ -751,6 +751,8 @@ func buildRelExpr(b *ExecBuilder, r RelExpr, children ...sql.Node) (sql.Node, er
 		result, err = b.buildSetOp(r, children...)
 	case *Project:
 		result, err = b.buildProject(r, children...)
+	case *Distinct:
+		result, err = b.buildDistinct(r, children...)
 	case *Max1Row:
 		result, err = b.buildMax1Row(r, children...)
 	case *Filter:

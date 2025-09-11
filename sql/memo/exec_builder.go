@@ -21,7 +21,8 @@ func (b *ExecBuilder) buildRel(r RelExpr, children ...sql.Node) (sql.Node, error
 		return nil, err
 	}
 
-	return b.buildDistinct(n, r.Distinct())
+	// TODO: distinctOp doesn't seem to be propagated through all the time
+	return b.buildDistinctWrapper(n, r.Distinct())
 }
 
 func (b *ExecBuilder) buildInnerJoin(j *InnerJoin, children ...sql.Node) (sql.Node, error) {
@@ -356,12 +357,16 @@ func (b *ExecBuilder) buildProject(r *Project, children ...sql.Node) (sql.Node, 
 	return plan.NewProject(proj, children[0]), nil
 }
 
+func (b *ExecBuilder) buildDistinct(r *Distinct, children ...sql.Node) (sql.Node, error) {
+	return plan.NewDistinct(children[0]), nil
+}
+
 func (b *ExecBuilder) buildFilter(r *Filter, children ...sql.Node) (sql.Node, error) {
 	ret := plan.NewFilter(expression.JoinAnd(r.Filters...), children[0])
 	return ret, nil
 }
 
-func (b *ExecBuilder) buildDistinct(n sql.Node, d distinctOp) (sql.Node, error) {
+func (b *ExecBuilder) buildDistinctWrapper(n sql.Node, d distinctOp) (sql.Node, error) {
 	switch d {
 	case HashDistinctOp:
 		return plan.NewDistinct(n), nil
