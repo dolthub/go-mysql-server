@@ -89,9 +89,14 @@ func (c *Char) CollationCoercibility(ctx *sql.Context) (collation sql.CollationI
 // This function is essentially converting the number to base 256
 func char(num uint32) []byte {
 	if num == 0 {
-		return []byte{}
+		return []byte{0}
 	}
-	return append(char(num>>8), byte(num&255))
+	res := byte(num & 255)
+	nextNum := num >> 8
+	if nextNum == 0 {
+		return []byte{res}
+	}
+	return append(char(num>>8), res)
 }
 
 // Eval implements the sql.Expression interface
@@ -113,11 +118,11 @@ func (c *Char) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 		v, _, err := types.Uint32.Convert(ctx, val)
 		if err != nil {
-			ctx.Warn(1292, "Truncated incorrect INTEGER value: '%v'", val)
-			res = append(res, 0)
-			continue
+			if !sql.ErrTruncatedIncorrect.Is(err) {
+				return nil, err
+			}
+			ctx.Warn(1292, "%s", err.Error())
 		}
-
 		res = append(res, char(v.(uint32))...)
 	}
 

@@ -826,25 +826,41 @@ func ConvertHexBlobToUint(val interface{}, originType sql.Type) (interface{}, er
 
 // TruncateStringToNumber truncates a string to the appropriate number prefix.
 // This function expects whitespace to already be properly trimmed.
-// TODO: separate logic for ints and floating point?
-func TruncateStringToNumber(s string, isInt bool) string {
+func TruncateStringToNumber(s string) (string, bool) {
 	seenDigit := false
 	seenDot := false
 	seenExp := false
 	signIndex := 0
 
+	s = strings.Trim(s, NumericCutSet)
 	for i := 0; i < len(s); i++ {
 		char := rune(s[i])
 		if unicode.IsDigit(char) {
 			seenDigit = true
-		} else if char == '.' && !seenDot && !isInt {
+		} else if char == '.' && !seenDot {
 			seenDot = true
-		} else if (char == 'e' || char == 'E') && !seenExp && seenDigit && !isInt {
+		} else if (char == 'e' || char == 'E') && !seenExp && seenDigit {
 			seenExp = true
 			signIndex = i + 1
 		} else if !((char == '-' || char == '+') && i == signIndex) {
-			return s[:i]
+			return s[:i], true
 		}
 	}
-	return s
+	return s, false
+}
+
+// TruncateStringToInt will trim any whitespace from s, then keep the prefix that can be properly parsed into an
+// integer. This will return a flag indicating if truncation occurred.
+func TruncateStringToInt(s string) (string, bool) {
+	s = strings.Trim(s, IntCutSet)
+	for i := 0; i < len(s); i++ {
+		char := rune(s[i])
+		if !unicode.IsDigit(char) {
+			if (char == '-' || char == '+') && i == 0 {
+				continue
+			}
+			return s[:i], true
+		}
+	}
+	return s, false
 }

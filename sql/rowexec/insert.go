@@ -120,6 +120,8 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 			ctxWithValues := context.WithValue(ctx.Context, types.ColumnNameKey, col.Name)
 			ctxWithValues = context.WithValue(ctxWithValues, types.RowNumberKey, i.rowNumber)
 			ctxWithColumnInfo := ctx.WithContext(ctxWithValues)
+			// TODO: add a ConvertForInsert?
+			// TODO: check mysql strict mode
 			converted, inRange, cErr := col.Type.Convert(ctxWithColumnInfo, row[idx])
 			if cErr == nil && !inRange {
 				cErr = sql.ErrValueOutOfRange.New(row[idx], col.Type)

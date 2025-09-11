@@ -396,6 +396,10 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 		if err == nil {
 			return num, nil
 		}
+		if sql.ErrTruncatedIncorrect.Is(err) {
+			ctx.Warn(1265, "%s", err.Error())
+			return num, nil
+		}
 		num, _, err = types.Int64.Convert(ctx, val)
 		if err != nil {
 			return types.Uint64.Zero(), nil
