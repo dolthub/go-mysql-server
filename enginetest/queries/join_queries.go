@@ -1445,4 +1445,22 @@ LATERAL (
 			},
 		},
 	},
+	{
+		Name: "full outer join as child of cross join",
+		SetUpScript: []string{
+			"CREATE  TABLE  t1(c0 VARCHAR(500) , c1 INT , c2 BOOLEAN);",
+			"CREATE  TABLE  t2(c0 INT , c1 VARCHAR(500) , c2 BOOLEAN);",
+			"CREATE  TABLE  t3(c0 VARCHAR(500) , c1 INT);",
+			"INSERT INTO t1 VALUES ('UjhU', 9, TRUE);",
+			"INSERT INTO t2 VALUES (5, 'ao', TRUE);",
+			"INSERT INTO t3 VALUES ('4GD', 6);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT t2.c0, t2.c1, t2.c2 FROM t2 FULL OUTER JOIN t3 ON LEFT(t2.c1, 2) = t2.c1 CROSS JOIN (SELECT t1.c0 AS c0 FROM t1) AS vtable0;",
+				// TODO: possible type mismatch; 1 should be true
+				Expected: []sql.Row{{5, "ao", 1}},
+			},
+		},
+	},
 }
