@@ -347,6 +347,12 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 		}
 		return d, nil
 	case ConvertToDecimal:
+		// TODO: HexBlobs shouldn't make it this far
+		var err error
+		val, err = types.ConvertHexBlobToUint(val, originType)
+		if err != nil {
+			return nil, err
+		}
 		dt := createConvertedDecimalType(typeLength, typeScale, false)
 		d, _, err := dt.Convert(ctx, val)
 		if err != nil {

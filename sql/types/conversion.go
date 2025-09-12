@@ -33,7 +33,7 @@ import (
 )
 
 // ApproximateTypeFromValue returns the closest matching type to the given value. For example, an int16 will return SMALLINT.
-func ApproximateTypeFromValue(val interface{}) sql.Type {
+func ApproximateTypeFromValue(val any) sql.Type {
 	switch v := val.(type) {
 	case bool:
 		return Boolean
@@ -460,7 +460,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (sql.Type, error) {
 // CompareNulls compares two values, and returns true if either is null.
 // The returned integer represents the ordering, with a rule that states nulls
 // as being ordered before non-nulls.
-func CompareNulls(a interface{}, b interface{}) (bool, int) {
+func CompareNulls(a any, b any) (bool, int) {
 	aIsNull := a == nil
 	bIsNull := b == nil
 	if aIsNull && bIsNull {
@@ -751,7 +751,7 @@ func GeneralizeTypes(a, b sql.Type) sql.Type {
 // TypeAwareConversion converts a value to a specified type, with awareness of the value's original type. This is
 // necessary because some types, such as EnumType and SetType, are stored as ints and require information from the
 // original type to properly convert to strings.
-func TypeAwareConversion(ctx *sql.Context, val interface{}, originalType sql.Type, convertedType sql.Type) (interface{}, sql.ConvertInRange, error) {
+func TypeAwareConversion(ctx *sql.Context, val any, originalType sql.Type, convertedType sql.Type) (any, sql.ConvertInRange, error) {
 	if val == nil {
 		return nil, sql.InRange, nil
 	}
@@ -770,7 +770,7 @@ func TypeAwareConversion(ctx *sql.Context, val interface{}, originalType sql.Typ
 // cleanly and the type is automatically coerced (i.e. string and numeric types), then a warning is logged and the
 // value is truncated to the Zero value for type |t|. If the value does not convert and the type is not automatically
 // coerced, then return an error.
-func ConvertOrTruncate(ctx *sql.Context, i interface{}, t sql.Type) (interface{}, error) {
+func ConvertOrTruncate(ctx *sql.Context, i any, t sql.Type) (any, error) {
 	// Do nothing if type is not provided.
 	if t == nil {
 		return i, nil
@@ -812,7 +812,7 @@ func ConvertOrTruncate(ctx *sql.Context, i interface{}, t sql.Type) (interface{}
 // This function is called when convertTo type is number type only. The hex literal values are parsed into blobs as
 // binary string as default, but for numeric context, the value should be a number.
 // Byte arrays of other SQL types are not handled here.
-func ConvertHexBlobToUint(val interface{}, originType sql.Type) (interface{}, error) {
+func ConvertHexBlobToUint(val any, originType sql.Type) (any, error) {
 	var err error
 	if bin, isBinary := val.([]byte); isBinary && IsBlobType(originType) {
 		stringVal := hex.EncodeToString(bin)
