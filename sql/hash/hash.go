@@ -124,7 +124,7 @@ func HashOfSimple(ctx *sql.Context, i interface{}, t sql.Type) (uint64, error) {
 		if s, ok := i.(string); ok {
 			str = s
 		} else {
-			converted, err := types.ConvertOrTruncate(ctx, i, t)
+			converted, _, err := t.Convert(ctx, i)
 			if err != nil {
 				return 0, err
 			}
@@ -133,9 +133,17 @@ func HashOfSimple(ctx *sql.Context, i interface{}, t sql.Type) (uint64, error) {
 				return 0, err
 			}
 		}
-	} else {
-		x, err := types.ConvertOrTruncate(ctx, i, t.Promote())
+	} else if types.IsEnum(t) || types.IsSet(t) {
+		converted, _, err := t.Convert(ctx, i)
 		if err != nil {
+			str = fmt.Sprintf("%v", nil)
+		} else {
+			str = fmt.Sprintf("%v", converted)
+		}
+	} else {
+		x, _, err := t.Promote().Convert(ctx, i)
+		// TODO: throw warning?
+		if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
 			return 0, err
 		}
 

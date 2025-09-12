@@ -15,11 +15,13 @@
 package types
 
 import (
+	"encoding/hex"
 	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -31,7 +33,7 @@ import (
 )
 
 // ApproximateTypeFromValue returns the closest matching type to the given value. For example, an int16 will return SMALLINT.
-func ApproximateTypeFromValue(val interface{}) sql.Type {
+func ApproximateTypeFromValue(val any) sql.Type {
 	switch v := val.(type) {
 	case bool:
 		return Boolean
@@ -458,7 +460,7 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (sql.Type, error) {
 // CompareNulls compares two values, and returns true if either is null.
 // The returned integer represents the ordering, with a rule that states nulls
 // as being ordered before non-nulls.
-func CompareNulls(a interface{}, b interface{}) (bool, int) {
+func CompareNulls(a any, b any) (bool, int) {
 	aIsNull := a == nil
 	bIsNull := b == nil
 	if aIsNull && bIsNull {
@@ -749,7 +751,7 @@ func GeneralizeTypes(a, b sql.Type) sql.Type {
 // TypeAwareConversion converts a value to a specified type, with awareness of the value's original type. This is
 // necessary because some types, such as EnumType and SetType, are stored as ints and require information from the
 // original type to properly convert to strings.
-func TypeAwareConversion(ctx *sql.Context, val interface{}, originalType sql.Type, convertedType sql.Type) (interface{}, sql.ConvertInRange, error) {
+func TypeAwareConversion(ctx *sql.Context, val any, originalType sql.Type, convertedType sql.Type) (any, sql.ConvertInRange, error) {
 	if val == nil {
 		return nil, sql.InRange, nil
 	}
@@ -767,7 +769,12 @@ func TypeAwareConversion(ctx *sql.Context, val interface{}, originalType sql.Typ
 // cleanly and the type is automatically coerced (i.e. string and numeric types), then a warning is logged and the
 // value is truncated to the Zero value for type |t|. If the value does not convert and the type is not automatically
 // coerced, then return an error.
-func ConvertOrTruncate(ctx *sql.Context, i interface{}, t sql.Type) (interface{}, error) {
+func ConvertOrTruncate(ctx *sql.Context, i any, t sql.Type) (any, error) {
+	// Do nothing if type is not provided.
+	if t == nil {
+		return i, nil
+	}
+
 	converted, _, err := t.Convert(ctx, i)
 	if err == nil {
 		return converted, nil
@@ -798,4 +805,61 @@ func ConvertOrTruncate(ctx *sql.Context, i interface{}, t sql.Type) (interface{}
 	}
 
 	return t.Zero(), nil
+}
+
+// ConvertHexBlobToUint converts byte array value to unsigned int value if originType is BLOB type.
+// This function is called when convertTo type is number type only. The hex literal values are parsed into blobs as
+// binary string as default, but for numeric context, the value should be a number.
+// Byte arrays of other SQL types are not handled here.
+func ConvertHexBlobToUint(val any, originType sql.Type) (any, error) {
+	var err error
+	if bin, isBinary := val.([]byte); isBinary && IsBlobType(originType) {
+		stringVal := hex.EncodeToString(bin)
+		val, err = strconv.ParseUint(stringVal, 16, 64)
+		if err != nil {
+			return nil, errors.NewKind("failed to convert hex blob value to unsigned int").New()
+		}
+	}
+	return val, nil
+}
+
+// TruncateStringToNumber truncates a string to the appropriate number prefix.
+// This function expects whitespace to already be properly trimmed.
+func TruncateStringToNumber(s string) (string, bool) {
+	seenDigit := false
+	seenDot := false
+	seenExp := false
+	signIndex := 0
+
+	s = strings.Trim(s, NumericCutSet)
+	for i := 0; i < len(s); i++ {
+		char := rune(s[i])
+		if unicode.IsDigit(char) {
+			seenDigit = true
+		} else if char == '.' && !seenDot {
+			seenDot = true
+		} else if (char == 'e' || char == 'E') && !seenExp && seenDigit {
+			seenExp = true
+			signIndex = i + 1
+		} else if !((char == '-' || char == '+') && i == signIndex) {
+			return s[:i], true
+		}
+	}
+	return s, false
+}
+
+// TruncateStringToInt will trim any whitespace from s, then keep the prefix that can be properly parsed into an
+// integer. This will return a flag indicating if truncation occurred.
+func TruncateStringToInt(s string) (string, bool) {
+	s = strings.Trim(s, IntCutSet)
+	for i := 0; i < len(s); i++ {
+		char := rune(s[i])
+		if !unicode.IsDigit(char) {
+			if (char == '-' || char == '+') && i == 0 {
+				continue
+			}
+			return s[:i], true
+		}
+	}
+	return s, false
 }

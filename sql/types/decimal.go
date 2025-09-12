@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
-	"strings"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -141,7 +140,7 @@ func (t DecimalType_) Compare(s context.Context, a interface{}, b interface{}) (
 // Convert implements Type interface.
 func (t DecimalType_) Convert(c context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	dec, err := t.ConvertToNullDecimal(v)
-	if err != nil {
+	if err != nil && !sql.ErrIncorrectValue.Is(err) {
 		return nil, sql.OutOfRange, err
 	}
 	if !dec.Valid {
@@ -163,13 +162,10 @@ func (t DecimalType_) ConvertNoBoundsCheck(v interface{}) (decimal.Decimal, erro
 
 // ConvertToNullDecimal implements DecimalType interface.
 func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, error) {
-	if v == nil {
-		return decimal.NullDecimal{}, nil
-	}
-
 	var res decimal.Decimal
-
 	switch value := v.(type) {
+	case nil:
+		return decimal.NullDecimal{}, nil
 	case bool:
 		if value {
 			return t.ConvertToNullDecimal(decimal.NewFromInt(1))
@@ -201,25 +197,30 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 	case float64:
 		return t.ConvertToNullDecimal(decimal.NewFromFloat(value))
 	case string:
-		// TODO: implement truncation here
-		value = strings.Trim(value, NumericCutSet)
-		if len(value) == 0 {
-			return t.ConvertToNullDecimal(decimal.NewFromInt(0))
-		}
+		// TODO: hex strings should not make it this far as numbers
 		var err error
-		res, err = decimal.NewFromString(value)
-		if err != nil {
-			// The decimal library cannot handle all of the different formats
-			bf, _, err := new(big.Float).SetPrec(217).Parse(value, 0)
-			if err != nil {
-				return decimal.NullDecimal{}, err
-			}
-			res, err = decimal.NewFromString(bf.Text('f', -1))
-			if err != nil {
-				return decimal.NullDecimal{}, err
-			}
+		truncStr, didTrunc := TruncateStringToNumber(value)
+		if didTrunc {
+			err = sql.ErrIncorrectValue.New(t.String(), value)
 		}
-		return t.ConvertToNullDecimal(res)
+		var dec decimal.Decimal
+		if len(truncStr) == 0 {
+			dec = decimal.NewFromInt(0)
+		} else if d, err := decimal.NewFromString(truncStr); err == nil {
+			dec = d
+		} else if bf, _, err := new(big.Float).SetPrec(217).Parse(truncStr, 0); err == nil {
+			// The decimal library cannot handle all the different formats
+			if d, err = decimal.NewFromString(bf.Text('f', -1)); err == nil {
+				dec = d
+			}
+		} else {
+			return decimal.NullDecimal{}, err
+		}
+		decRes, convErr := t.ConvertToNullDecimal(dec)
+		if convErr != nil {
+			return decRes, convErr
+		}
+		return decRes, err
 	case *big.Float:
 		return t.ConvertToNullDecimal(value.Text('f', -1))
 	case *big.Int:
@@ -249,7 +250,6 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 	default:
 		return decimal.NullDecimal{}, ErrConvertingToDecimal.New(v)
 	}
-
 	return decimal.NullDecimal{Decimal: res, Valid: true}, nil
 }
 
