@@ -82,9 +82,15 @@ func (e *ColumnDefaultValue) Eval(ctx *Context, r Row) (interface{}, error) {
 
 	if e.OutType != nil {
 		var inRange ConvertInRange
-		if val, inRange, err = e.OutType.Convert(ctx, val); err != nil {
+		if roundType, isRoundType := e.OutType.(RoundingNumberType); isRoundType {
+			val, inRange, err = roundType.ConvertRound(ctx, val)
+		} else {
+			val, inRange, err = e.OutType.Convert(ctx, val)
+		}
+		if err != nil {
 			return nil, ErrIncompatibleDefaultType.New()
-		} else if !inRange {
+		}
+		if !inRange {
 			return nil, ErrValueOutOfRange.New(val, e.OutType)
 		}
 	}
@@ -228,7 +234,7 @@ func (e *ColumnDefaultValue) CheckType(ctx *Context) error {
 			return ErrIncompatibleDefaultType.New()
 		}
 		_, inRange, err := e.OutType.Convert(ctx, val)
-		if err != nil {
+		if err != nil && !ErrTruncatedIncorrect.Is(err) {
 			return ErrIncompatibleDefaultType.Wrap(err)
 		} else if !inRange {
 			return ErrIncompatibleDefaultType.Wrap(ErrValueOutOfRange.New(val, e.Expr))

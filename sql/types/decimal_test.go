@@ -317,8 +317,8 @@ func TestDecimalConvert(t *testing.T) {
 		{5, 0, "7742", "7742", false},
 		{5, 0, new(big.Float).SetFloat64(-4723.875), "-4724", false},
 		{5, 0, 99999, "99999", false},
-		{5, 0, "0xf8e1", "63713", false},
-		{5, 0, "0b1001110101100110", "40294", false},
+		{5, 0, "0xf8e1", "0", false},
+		{5, 0, "0b1001110101100110", "0", false},
 		{5, 0, new(big.Rat).SetFrac64(999999, 10), "", true},
 		{5, 0, 673927, "", true},
 

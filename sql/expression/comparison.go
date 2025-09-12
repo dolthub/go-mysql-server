@@ -188,7 +188,7 @@ func (c *comparison) CastLeftAndRight(ctx *sql.Context, left, right interface{})
 			if r, inRange, err := leftType.Convert(ctx, right); inRange && err == nil {
 				return left, r, leftType, nil
 			} else {
-				l, _, err := types.TypeAwareConversion(ctx, left, leftType, rightType)
+				l, _, err := types.TypeAwareConversion(ctx, left, leftType, rightType, false)
 				if err != nil {
 					return nil, nil, nil, err
 				}
@@ -200,7 +200,7 @@ func (c *comparison) CastLeftAndRight(ctx *sql.Context, left, right interface{})
 			if l, inRange, err := rightType.Convert(ctx, left); inRange && err == nil {
 				return l, right, rightType, nil
 			} else {
-				r, _, err := types.TypeAwareConversion(ctx, right, rightType, leftType)
+				r, _, err := types.TypeAwareConversion(ctx, right, rightType, leftType, false)
 				if err != nil {
 					return nil, nil, nil, err
 				}

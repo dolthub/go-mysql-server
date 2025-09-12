@@ -299,7 +299,7 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 	}
 	switch strings.ToLower(castTo) {
 	case ConvertToBinary:
-		b, _, err := types.TypeAwareConversion(ctx, val, originType, types.LongBlob)
+		b, _, err := types.TypeAwareConversion(ctx, val, originType, types.LongBlob, false)
 		if err != nil {
 			return nil, nil
 		}
@@ -317,7 +317,7 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 		}
 		return truncateConvertedValue(b, typeLength)
 	case ConvertToChar, ConvertToNChar:
-		s, _, err := types.TypeAwareConversion(ctx, val, originType, types.LongText)
+		s, _, err := types.TypeAwareConversion(ctx, val, originType, types.LongText, false)
 		if err != nil {
 			return nil, nil
 		}

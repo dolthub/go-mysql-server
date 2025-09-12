@@ -289,7 +289,7 @@ func (t NumberTypeImpl_) Convert(ctx context.Context, v any) (any, sql.ConvertIn
 		} else if num < math.MinInt32 {
 			return int32(math.MinInt32), sql.OutOfRange, nil
 		}
-		return int32(num), sql.InRange, nil
+		return int32(num), sql.InRange, err
 	case sqltypes.Uint32:
 		return convertToUint32(t, v, false)
 	case sqltypes.Int64:
@@ -320,68 +320,62 @@ func (t NumberTypeImpl_) ConvertRound(ctx context.Context, v any) (any, sql.Conv
 	switch t.baseType {
 	case sqltypes.Int8, sqltypes.Int16, sqltypes.Int24, sqltypes.Int32, sqltypes.Int64:
 		switch v.(type) {
-		case float32, float64:
+		case float32, float64, string:
 			num, inRange, err := convertToInt64(t, v, true)
-			if err != nil {
+			if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
 				return nil, sql.OutOfRange, err
 			}
 			// TODO: write helper method?
 			switch t.baseType {
 			case sqltypes.Int8:
 				if num > math.MaxInt8 {
-					return int8(math.MaxInt8), sql.OutOfRange, nil
+					return int8(math.MaxInt8), sql.OutOfRange, err
 				}
 				if num < math.MinInt8 {
-					return int8(math.MinInt8), sql.OutOfRange, nil
+					return int8(math.MinInt8), sql.OutOfRange, err
 				}
-				return int8(num), sql.InRange, nil
+				return int8(num), sql.InRange, err
 			case sqltypes.Int16:
 				if num > math.MaxInt16 {
-					return int16(math.MaxInt16), sql.OutOfRange, nil
+					return int16(math.MaxInt16), sql.OutOfRange, err
 				}
 				if num < math.MinInt16 {
-					return int16(math.MinInt16), sql.OutOfRange, nil
+					return int16(math.MinInt16), sql.OutOfRange, err
 				}
-				return int16(num), sql.InRange, nil
+				return int16(num), sql.InRange, err
 			case sqltypes.Int24:
 				if num > (1<<23 - 1) {
-					return int32(1<<23 - 1), sql.OutOfRange, nil
+					return int32(1<<23 - 1), sql.OutOfRange, err
 				}
 				if num < (-1 << 23) {
-					return int32(-1 << 23), sql.OutOfRange, nil
+					return int32(-1 << 23), sql.OutOfRange, err
 				}
-				return int32(num), sql.InRange, nil
+				return int32(num), sql.InRange, err
 			case sqltypes.Int32:
 				if num > math.MaxInt32 {
-					return int32(math.MaxInt32), sql.OutOfRange, nil
+					return int32(math.MaxInt32), sql.OutOfRange, err
 				}
 				if num < math.MinInt32 {
-					return int32(math.MinInt32), sql.OutOfRange, nil
+					return int32(math.MinInt32), sql.OutOfRange, err
 				}
-				return int32(num), sql.InRange, nil
+				return int32(num), sql.InRange, err
 			default:
-				return num, inRange, nil
+				return num, inRange, err
 			}
-		default:
-			return t.Convert(ctx, v)
 		}
 	case sqltypes.Uint8:
 		switch v.(type) {
-		case float32, float64:
+		case float32, float64, string:
 			convertToUint8(t, v, true)
-		default:
-			return t.Convert(ctx, v)
 		}
 	case sqltypes.Uint16:
 		switch v.(type) {
-		case float32, float64:
+		case float32, float64, string:
 			convertToUint16(t, v, true)
-		default:
-			return t.Convert(ctx, v)
 		}
 	case sqltypes.Uint24:
 		switch v.(type) {
-		case float32, float64:
+		case float32, float64, string:
 			num, _, err := convertToInt64(t, v, true)
 			if err != nil {
 				return nil, sql.OutOfRange, err
@@ -392,22 +386,16 @@ func (t NumberTypeImpl_) ConvertRound(ctx context.Context, v any) (any, sql.Conv
 				return uint32(1<<24 - int32(-num)), sql.OutOfRange, nil
 			}
 			return uint32(num), sql.InRange, nil
-		default:
-			return t.Convert(ctx, v)
 		}
 	case sqltypes.Uint32:
 		switch v.(type) {
-		case float32, float64:
+		case float32, float64, string:
 			return convertToUint32(t, v, true)
-		default:
-			return t.Convert(ctx, v)
 		}
 	case sqltypes.Uint64:
 		switch v.(type) {
-		case float32, float64:
+		case float32, float64, string:
 			return convertToUint64(t, v, true)
-		default:
-			return t.Convert(ctx, v)
 		}
 	}
 	return t.Convert(ctx, v)
@@ -664,7 +652,7 @@ func (t NumberTypeImpl_) SQL(ctx *sql.Context, dest []byte, v any) (sqltypes.Val
 		return sqltypes.Value{}, sql.ErrInvalidType.New(t.baseType.String())
 	}
 
-	if sql.ErrInvalidValue.Is(err) {
+	if sql.ErrInvalidValue.Is(err) || sql.ErrTruncatedIncorrect.Is(err) {
 		switch str := v.(type) {
 		case []byte:
 			dest = str
@@ -1065,8 +1053,22 @@ func convertToInt64(t NumberTypeImpl_, v any, round bool) (int64, sql.ConvertInR
 	case []byte:
 		return convertToInt64(t, string(v), round)
 	case string:
-		// TODO: round?
+		// When round = true, truncation rules are less strict
+		// Integers will accept valid float notation without truncation error
 		var err error
+		if round {
+			truncStr, didTrunc := TruncateStringToNumber(v)
+			if didTrunc {
+				err = sql.ErrTruncatedIncorrect.New(t.String(), v)
+			}
+			// TODO: might not be necessary
+			// Parse as int first
+			if i, pErr := strconv.ParseInt(truncStr, 10, 64); pErr == nil {
+				return i, sql.InRange, nil
+			}
+			f, _ := strconv.ParseFloat(v, 64)
+			return int64(math.Round(f)), sql.InRange, err
+		}
 		truncStr, didTrunc := TruncateStringToInt(v)
 		if didTrunc {
 			err = sql.ErrTruncatedIncorrect.New(t.String(), v)
