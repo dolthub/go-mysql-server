@@ -76,7 +76,7 @@ func TestMakeSet(t *testing.T) {
 
 		// Large numbers
 		{"max uint64 bits", []interface{}{^uint64(0), "a", "b", "c"}, "a,b,c", false},
-		{"large positive number", []interface{}{4294967295, "a", "b", "c"}, "a,b,c", false},
+		{"large positive number", []interface{}{int64(4294967295), "a", "b", "c"}, "a,b,c", false},
 
 		// Empty strings
 		{"empty string values", []interface{}{3, "", "test", ""}, ",test", false},

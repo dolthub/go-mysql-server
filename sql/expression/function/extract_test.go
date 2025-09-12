@@ -132,7 +132,7 @@ func TestExtract(t *testing.T) {
 			name:     "get day_microsecond",
 			unit:     "DAY_MICROSECOND",
 			dateTime: "2023-11-12 11:22:33.445566",
-			expected: 12112233445566,
+			expected: int64(12112233445566),
 		},
 		{
 			name:     "get hour_minute",
@@ -150,7 +150,7 @@ func TestExtract(t *testing.T) {
 			name:     "get hour_microsecond",
 			unit:     "HOUR_MICROSECOND",
 			dateTime: "2023-11-12 11:22:33.445566",
-			expected: 112233445566,
+			expected: int64(112233445566),
 		},
 		{
 			name:     "get minute_second",
@@ -162,7 +162,7 @@ func TestExtract(t *testing.T) {
 			name:     "get minute_microsecond",
 			unit:     "MINUTE_MICROSECOND",
 			dateTime: "2023-11-12 11:22:33.445566",
-			expected: 2233445566,
+			expected: int64(2233445566),
 		},
 		{
 			name:     "get second_microsecond",
