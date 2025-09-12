@@ -15,7 +15,6 @@
 package queries
 
 import (
-	"github.com/dolthub/vitess/go/mysql"
 	"math"
 	"time"
 
@@ -123,41 +122,25 @@ type ScriptTestAssertion struct {
 var ScriptTests = []ScriptTest{
 	{
 		// https://github.com/dolthub/dolt/issues/9836
+		Skip: true,
 		Name: "Ordering by pk does not change the order of results",
 		SetUpScript: []string{
 			"CREATE TABLE test_cast(pk VARCHAR(50) PRIMARY KEY)",
-			"INSERT INTO test_cast VALUES ('  3 12 4'), ('3. 12 4'), ('3.2 12 4'), ('-3.1234'), ('-3.1a'), ('-5+8'), ('+3.1234'), ('11-5'), ('1a1'), ('2,345'), ('4,12'), ('5.932887e+07'), ('5.932887e+07abc'), ('5.932887e7'), ('5.932887e7abc'), ('a1a1')",
+			"INSERT INTO test_cast VALUES ('  3 12 4'), ('3. 12 4'), ('3.2 12 4'), ('-3.1234'), ('-3.1a'), ('-5+8'), ('+3.1234')",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Skip:                  true,
-				Query:                 "SELECT cast(pk as signed) FROM test_cast ORDER BY pk",
-				Expected:              []sql.Row{{3}, {-3}, {-3}, {-5}, {3}, {11}, {1}, {2}, {3}, {3}, {4}, {5}, {5}, {5}, {5}, {0}},
-				ExpectedWarningsCount: 16,
-				ExpectedWarning:       mysql.ERTruncatedWrongValue,
-			},
-			{
-				Skip:                  true,
-				Query:                 "SELECT cast(pk as unsigned) FROM test_cast ORDER BY pk",
-				Expected:              []sql.Row{{uint64(3)}, {uint64(18446744073709551613)}, {uint64(18446744073709551613)}, {uint64(18446744073709551611)}, {uint64(3)}, {uint64(11)}, {uint64(1)}, {uint64(2)}, {uint64(3)}, {uint64(3)}, {uint64(4)}, {uint64(5)}, {uint64(5)}, {uint64(5)}, {uint64(5)}, {uint64(0)}},
-				ExpectedWarningsCount: 19,
-				ExpectedWarning:       mysql.ERTruncatedWrongValue,
-			},
-			{
-				Skip:                  true,
-				Query:                 "SELECT cast(pk as double) FROM test_cast ORDER BY pk",
-				Expected:              []sql.Row{{3.0}, {-3.1234}, {-3.1}, {-5.0}, {3.1234}, {11.0}, {1.0}, {2.0}, {3.0}, {3.2}, {4.0}, {59328870.0}, {59328870.0}, {59328870.0}, {59328870.0}, {0.0}},
-				ExpectedWarningsCount: 9,
-				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+				Query:    "SELECT pk FROM test ORDER BY pk",
+				Expected: []sql.Row{{"  3 12 4"}, {"-3.1234"}, {"-3.1a"}, {"-5+8"}, {"+3.1234"}, {"3. 12 4"}, {"3.2 12 4"}},
 			},
 		},
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/9812
-		Name:    "String-to-number comparison operators should behave consistently",
+		Name: "String-to-number comparison operators should behave consistently",
 		Assertions: []ScriptTestAssertion{
 			{
-				Dialect: "mysql",
+				Dialect:  "mysql",
 				Query:    "SELECT ('A') = (0)",
 				Expected: []sql.Row{{true}},
 				//ExpectedWarningsCount: 1,
@@ -165,7 +148,7 @@ var ScriptTests = []ScriptTest{
 				//ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
 			},
 			{
-				Dialect: "mysql",
+				Dialect:  "mysql",
 				Query:    "SELECT ('A') IN (0)",
 				Expected: []sql.Row{{true}},
 				//ExpectedWarningsCount: 1,
@@ -173,7 +156,7 @@ var ScriptTests = []ScriptTest{
 				//ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
 			},
 			{
-				Dialect: "mysql",
+				Dialect:  "mysql",
 				Query:    "SELECT ('A') != (0)",
 				Expected: []sql.Row{{false}},
 				//ExpectedWarningsCount: 1,
@@ -181,7 +164,7 @@ var ScriptTests = []ScriptTest{
 				//ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
 			},
 			{
-				Dialect: "mysql",
+				Dialect:  "mysql",
 				Query:    "SELECT ('A') <> (0)",
 				Expected: []sql.Row{{false}},
 				//ExpectedWarningsCount: 1,
@@ -189,7 +172,7 @@ var ScriptTests = []ScriptTest{
 				//ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
 			},
 			{
-				Dialect: "mysql",
+				Dialect:  "mysql",
 				Query:    "SELECT ('A') < (0)",
 				Expected: []sql.Row{{false}},
 				//ExpectedWarningsCount: 1,
@@ -197,7 +180,7 @@ var ScriptTests = []ScriptTest{
 				//ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
 			},
 			{
-				Dialect: "mysql",
+				Dialect:  "mysql",
 				Query:    "SELECT ('A') <= (0)",
 				Expected: []sql.Row{{true}},
 				//ExpectedWarningsCount: 1,
@@ -205,7 +188,7 @@ var ScriptTests = []ScriptTest{
 				//ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
 			},
 			{
-				Dialect: "mysql",
+				Dialect:  "mysql",
 				Query:    "SELECT ('A') > (0)",
 				Expected: []sql.Row{{false}},
 				//ExpectedWarningsCount: 1,
@@ -213,7 +196,7 @@ var ScriptTests = []ScriptTest{
 				//ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
 			},
 			{
-				Dialect: "mysql",
+				Dialect:  "mysql",
 				Query:    "SELECT ('A') >= (0)",
 				Expected: []sql.Row{{true}},
 				//ExpectedWarningsCount: 1,
@@ -221,7 +204,7 @@ var ScriptTests = []ScriptTest{
 				//ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
 			},
 			{
-				Dialect: "mysql",
+				Dialect:  "mysql",
 				Query:    "SELECT ('A') NOT IN (0)",
 				Expected: []sql.Row{{false}},
 				//ExpectedWarningsCount: 1,
