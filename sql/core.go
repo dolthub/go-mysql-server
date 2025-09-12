@@ -18,12 +18,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"math"
 	trace2 "runtime/trace"
 	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
+	"unicode"
 	"unsafe"
 
 	"github.com/shopspring/decimal"
@@ -314,10 +316,8 @@ func ConvertToBool(ctx *Context, v interface{}) (bool, error) {
 	case float64:
 		return b != 0, nil
 	case string:
-		bFloat, err := strconv.ParseFloat(b, 64)
+		bFloat, err := strconv.ParseFloat(TrimStringToNumberPrefix(ctx, b, false), 64)
 		if err != nil {
-			// In MySQL, if the string does not represent a float then it's false
-			ctx.Warn(1292, "Truncated incorrect DOUBLE value: '%s'", b)
 			return false, nil
 		}
 		return bFloat != 0, nil
@@ -328,6 +328,40 @@ func ConvertToBool(ctx *Context, v interface{}) (bool, error) {
 	default:
 		return false, fmt.Errorf("unable to cast %#v of type %T to bool", v, v)
 	}
+}
+
+func TrimStringToNumberPrefix(ctx *Context, s string, isInt bool) string {
+	if isInt {
+		s = strings.TrimLeft(s, types.IntCutSet)
+	} else {
+		s = strings.TrimLeft(s, types.NumericCutSet)
+	}
+
+	seenDigit := false
+	seenDot := false
+	seenExp := false
+	signIndex := 0
+
+	for i := 0; i < len(s); i++ {
+		char := rune(s[i])
+
+		if unicode.IsDigit(char) {
+			seenDigit = true
+		} else if char == '.' && !seenDot && !isInt {
+			seenDot = true
+		} else if (char == 'e' || char == 'E') && !seenExp && seenDigit && !isInt {
+			seenExp = true
+			signIndex = i + 1
+		} else if !((char == '-' || char == '+') && i == signIndex) {
+			if isInt {
+				ctx.Warn(1292, "Truncated incorrect INTEGER value: '%s'", s)
+			} else {
+				ctx.Warn(1292, "Truncated incorrect DOUBLE value: '%s'", s)
+			}
+			return s[:i]
+		}
+	}
+	return s
 }
 
 var ErrVectorInvalidBinaryLength = errors.NewKind("cannot convert BINARY(%d) to vector, byte length must be a multiple of 4 bytes")
