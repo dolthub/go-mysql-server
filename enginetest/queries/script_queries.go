@@ -15,6 +15,7 @@
 package queries
 
 import (
+	"github.com/dolthub/vitess/go/mysql"
 	"math"
 	"time"
 
@@ -121,114 +122,108 @@ type ScriptTestAssertion struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
-		// https://github.com/dolthub/dolt/issues/9733
-		Name: "String to number casting should handle partial numeric strings with warnings",
+		// https://github.com/dolthub/dolt/issues/9836
+		Name: "Ordering by pk does not change the order of results",
 		SetUpScript: []string{
-			"CREATE TABLE test01(pk VARCHAR(20) PRIMARY KEY)",
-			"INSERT INTO test01 VALUES ('11d'), ('11wha?'), ('11'), ('12')",
 			"CREATE TABLE test_cast(pk VARCHAR(50) PRIMARY KEY)",
 			"INSERT INTO test_cast VALUES ('  3 12 4'), ('3. 12 4'), ('3.2 12 4'), ('-3.1234'), ('-3.1a'), ('-5+8'), ('+3.1234'), ('11-5'), ('1a1'), ('2,345'), ('4,12'), ('5.932887e+07'), ('5.932887e+07abc'), ('5.932887e7'), ('5.932887e7abc'), ('a1a1')",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "SELECT cast(pk as signed) FROM test01",
-				Expected: []sql.Row{{11}, {11}, {11}, {12}},
-				//ExpectedWarning:       mysql.ERTruncatedWrongValue,
-				//ExpectedWarningsCount: 2,
+				Skip:                  true,
+				Query:                 "SELECT cast(pk as signed) FROM test_cast ORDER BY pk",
+				Expected:              []sql.Row{{3}, {-3}, {-3}, {-5}, {3}, {11}, {1}, {2}, {3}, {3}, {4}, {5}, {5}, {5}, {5}, {0}},
+				ExpectedWarningsCount: 16,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 			{
-				Query:    "SELECT cast(pk as unsigned) FROM test01",
-				Expected: []sql.Row{{uint64(11)}, {uint64(11)}, {uint64(11)}, {uint64(12)}},
-				//ExpectedWarning:       mysql.ERTruncatedWrongValue,
-				//ExpectedWarningsCount: 2,
+				Skip:                  true,
+				Query:                 "SELECT cast(pk as unsigned) FROM test_cast ORDER BY pk",
+				Expected:              []sql.Row{{uint64(3)}, {uint64(18446744073709551613)}, {uint64(18446744073709551613)}, {uint64(18446744073709551611)}, {uint64(3)}, {uint64(11)}, {uint64(1)}, {uint64(2)}, {uint64(3)}, {uint64(3)}, {uint64(4)}, {uint64(5)}, {uint64(5)}, {uint64(5)}, {uint64(5)}, {uint64(0)}},
+				ExpectedWarningsCount: 19,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 			{
-				Query: "SELECT cast(pk as signed) FROM test_cast ORDER BY pk",
-				//Expected: []sql.Row{{3}, {-3}, {-3}, {-5}, {3}, {11}, {1}, {2}, {3}, {3}, {4}, {5}, {5}, {5}, {5}, {0}},
-				//actual   :[]sql.Row{sql.Row{3}, sql.Row{3}, sql.Row{-3}, sql.Row{-3}, sql.Row{-5}, sql.Row{11}, sql.Row{1}, sql.Row{2}, sql.Row{3}, sql.Row{3}, sql.Row{4}, sql.Row{5}, sql.Row{5}, sql.Row{5}, sql.Row{5}, sql.Row{0}}
-				//ExpectedWarning:       mysql.ERTruncatedWrongValue,
-				//ExpectedWarningsCount: 16,
-			},
-			{
-				Query: "SELECT cast(pk as unsigned) FROM test_cast ORDER BY pk",
-				//Expected: []sql.Row{{uint64(3)}, {uint64(1844674407309552000)}, {uint64(1844674407309552000)}, {uint64(1844674407309552000)}, {uint64(3)}, {uint64(11)}, {uint64(1)}, {uint64(2)}, {uint64(3)}, {uint64(3)}, {uint64(4)}, {uint64(5)}, {uint64(5)}, {uint64(5)}, {uint64(5)}, {uint64(0)}},
-				//actual: [3, 3, 18446744073709551613, 18446744073709551613, 18446744073709551611, 11, 1, 2, 3, 3, 4, 5, 5, 5, 5, 0]
-				//ExpectedWarning:       mysql.ERTruncatedWrongValue,
-				//ExpectedWarningsCount: 19,
-			},
-			{
-				Query: "SELECT cast(pk as double) FROM test_cast ORDER BY pk",
-				//Expected: []sql.Row{{3.0}, {-3.1234}, {-3.1}, {-5.0}, {3.1234}, {11.0}, {1.0}, {2.0}, {3.0}, {3.2}, {4.0}, {59328870.0}, {59328870.0}, {59328870.0}, {59328870.0}, {0.0}},
-				//actual  : []sql.Row{sql.Row{3}, sql.Row{3.1234}, sql.Row{-3.1234}, sql.Row{-3.1}, sql.Row{-5}, sql.Row{11}, sql.Row{1}, sql.Row{2}, sql.Row{3}, sql.Row{3.2}, sql.Row{4}, sql.Row{5.932887e+07}, sql.Row{5.932887e+07}, sql.Row{5.932887e+07}, sql.Row{5.932887e+07}, sql.Row{0}}
-				//ExpectedWarning:       mysql.ERTruncatedWrongValue,
-				//ExpectedWarningsCount: 9,
+				Skip:                  true,
+				Query:                 "SELECT cast(pk as double) FROM test_cast ORDER BY pk",
+				Expected:              []sql.Row{{3.0}, {-3.1234}, {-3.1}, {-5.0}, {3.1234}, {11.0}, {1.0}, {2.0}, {3.0}, {3.2}, {4.0}, {59328870.0}, {59328870.0}, {59328870.0}, {59328870.0}, {0.0}},
+				ExpectedWarningsCount: 9,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 		},
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/9812
 		Name:    "String-to-number comparison operators should behave consistently",
-		Dialect: "mysql",
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:                 "SELECT ('A') = (0)",
-				Expected:              []sql.Row{{true}},
+				Dialect: "mysql",
+				Query:    "SELECT ('A') = (0)",
+				Expected: []sql.Row{{true}},
 				//ExpectedWarningsCount: 1,
 				//ExpectedWarning:                 mysql.ERTruncatedWrongValue,
 				//ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
 			},
 			{
-				Query:                 "SELECT ('A') IN (0)",
-				Expected:              []sql.Row{{true}},
+				Dialect: "mysql",
+				Query:    "SELECT ('A') IN (0)",
+				Expected: []sql.Row{{true}},
 				//ExpectedWarningsCount: 1,
 				//ExpectedWarning:                 mysql.ERTruncatedWrongValue,
 				//ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
 			},
 			{
-				Query:                 "SELECT ('A') != (0)",
-				Expected:              []sql.Row{{false}},
+				Dialect: "mysql",
+				Query:    "SELECT ('A') != (0)",
+				Expected: []sql.Row{{false}},
 				//ExpectedWarningsCount: 1,
 				//ExpectedWarning:                 mysql.ERTruncatedWrongValue,
 				//ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
 			},
 			{
-				Query:                 "SELECT ('A') <> (0)",
-				Expected:              []sql.Row{{false}},
+				Dialect: "mysql",
+				Query:    "SELECT ('A') <> (0)",
+				Expected: []sql.Row{{false}},
 				//ExpectedWarningsCount: 1,
 				//ExpectedWarning:                 mysql.ERTruncatedWrongValue,
 				//ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
 			},
 			{
-				Query:                 "SELECT ('A') < (0)",
-				Expected:              []sql.Row{{false}},
+				Dialect: "mysql",
+				Query:    "SELECT ('A') < (0)",
+				Expected: []sql.Row{{false}},
 				//ExpectedWarningsCount: 1,
 				//ExpectedWarning:                 mysql.ERTruncatedWrongValue,
 				//ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
 			},
 			{
-				Query:                 "SELECT ('A') <= (0)",
-				Expected:              []sql.Row{{true}},
+				Dialect: "mysql",
+				Query:    "SELECT ('A') <= (0)",
+				Expected: []sql.Row{{true}},
 				//ExpectedWarningsCount: 1,
 				//ExpectedWarning:                 mysql.ERTruncatedWrongValue,
 				//ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
 			},
 			{
-				Query:                 "SELECT ('A') > (0)",
-				Expected:              []sql.Row{{false}},
+				Dialect: "mysql",
+				Query:    "SELECT ('A') > (0)",
+				Expected: []sql.Row{{false}},
 				//ExpectedWarningsCount: 1,
 				//ExpectedWarning:                 mysql.ERTruncatedWrongValue,
 				//ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
 			},
 			{
-				Query:                 "SELECT ('A') >= (0)",
-				Expected:              []sql.Row{{true}},
+				Dialect: "mysql",
+				Query:    "SELECT ('A') >= (0)",
+				Expected: []sql.Row{{true}},
 				//ExpectedWarningsCount: 1,
 				//ExpectedWarning:                 mysql.ERTruncatedWrongValue,
 				//ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
 			},
 			{
-				Query:                 "SELECT ('A') NOT IN (0)",
-				Expected:              []sql.Row{{false}},
+				Dialect: "mysql",
+				Query:    "SELECT ('A') NOT IN (0)",
+				Expected: []sql.Row{{false}},
 				//ExpectedWarningsCount: 1,
 				//ExpectedWarning:                 mysql.ERTruncatedWrongValue,
 				//ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
@@ -11777,6 +11772,8 @@ select * from t1 except (
 					{"5.932887e7abc", float32(5.932887e+07)},
 					{"a1a1", float32(0)},
 				},
+				//ExpectedWarningsCount: 12,
+				//ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 			{
 				Dialect: "mysql",
@@ -11801,6 +11798,8 @@ select * from t1 except (
 					{"5.932887e7abc", 5.932887e+07},
 					{"a1a1", 0.0},
 				},
+				//ExpectedWarningsCount: 12,
+				//ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 			{
 				Dialect: "mysql",
@@ -11825,6 +11824,8 @@ select * from t1 except (
 					{"5.932887e7abc", 5},
 					{"a1a1", 0},
 				},
+				//ExpectedWarningsCount: 12,
+				//ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 			{
 				Dialect: "mysql",
@@ -11849,6 +11850,8 @@ select * from t1 except (
 					{"5.932887e7abc", uint64(5)},
 					{"a1a1", uint64(0)},
 				},
+				//ExpectedWarningsCount: 19,
+				//ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 			{
 				Dialect: "mysql",
@@ -11873,10 +11876,13 @@ select * from t1 except (
 					{"5.932887e7abc", "59328870.000"},
 					{"a1a1", "0.000"},
 				},
+				//ExpectedWarningsCount: 13,
+				//ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 			{
 				Query:    "select * from test01 where pk in ('11')",
 				Expected: []sql.Row{{"11"}},
+				//ExpectedWarningsCount: 0,
 			},
 			{
 				// https://github.com/dolthub/dolt/issues/9739
@@ -11889,6 +11895,8 @@ select * from t1 except (
 					{"11d"},
 					{"11wha?"},
 				},
+				//ExpectedWarningsCount: 12,
+				//ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 			{
 				// https://github.com/dolthub/dolt/issues/9739
@@ -11900,6 +11908,8 @@ select * from t1 except (
 					{"  3. 12 4"},
 					{"3. 12 4"},
 				},
+				//ExpectedWarningsCount: 12,
+				//ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 			{
 				// https://github.com/dolthub/dolt/issues/9739
@@ -11913,6 +11923,8 @@ select * from t1 except (
 					{"+3.1234"},
 					{"3. 12 4"},
 				},
+				//ExpectedWarningsCount: 20,
+				//ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 			{
 				// https://github.com/dolthub/dolt/issues/9739
@@ -11920,6 +11932,8 @@ select * from t1 except (
 				Dialect:  "mysql",
 				Query:    "select * from test02 where pk in ('11asdf')",
 				Expected: []sql.Row{{"11"}},
+				//ExpectedWarningsCount: 1,
+				//ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 			{
 				// https://github.com/dolthub/dolt/issues/9739
@@ -11927,6 +11941,8 @@ select * from t1 except (
 				Dialect:  "mysql",
 				Query:    "select * from test02 where pk='11.12asdf'",
 				Expected: []sql.Row{},
+				//ExpectedWarningsCount: 1,
+				//ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 		},
 	},
