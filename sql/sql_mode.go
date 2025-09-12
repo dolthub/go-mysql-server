@@ -117,7 +117,8 @@ func (s *SqlMode) ModeEnabled(mode string) bool {
 // ParserOptions returns a ParserOptions struct, with options set based on what SQL modes are enabled.
 func (s *SqlMode) ParserOptions() sqlparser.ParserOptions {
 	return sqlparser.ParserOptions{
-		AnsiQuotes: s.AnsiQuotes(),
+		AnsiQuotes:    s.AnsiQuotes(),
+		PipesAsConcat: s.PipesAsConcat(),
 	}
 }
 

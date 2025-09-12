@@ -11780,6 +11780,51 @@ select * from t1 except (
 			},
 		},
 	},
+	{
+		Name: "pipes as concat mode",
+		SetUpScript: []string{
+			"create table names(first_name varchar(20), last_name varchar(20))",
+			"insert into names values ('john', 'smith'), ('bob','burger')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select '0' || '0'",
+				Expected: []sql.Row{{false}},
+			},
+			{
+				Query:    "select 'Hello' || ' ' || 'World'",
+				Expected: []sql.Row{{false}},
+			},
+			{
+				Query:    "select 1 || 0",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "select first_name || ' ' || last_name as full_name from names order by full_name",
+				Expected: []sql.Row{{false}, {false}},
+			},
+			{
+				Query:    "SET SESSION sql_mode = CONCAT(@@SESSION.sql_mode, ',PIPES_AS_CONCAT');",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "select '0' || '0'",
+				Expected: []sql.Row{{"00"}},
+			},
+			{
+				Query:    "select 'Hello' || ' ' || 'World'",
+				Expected: []sql.Row{{"Hello World"}},
+			},
+			{
+				Query:    "select 1 || 0",
+				Expected: []sql.Row{{"10"}},
+			},
+			{
+				Query:    "select first_name || ' ' || last_name as full_name from names order by full_name",
+				Expected: []sql.Row{{"bob burger"}, {"john smith"}},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
