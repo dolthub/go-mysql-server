@@ -177,7 +177,7 @@ func (i JoinType) IsPartial() bool {
 	switch i {
 	case JoinTypeSemi, JoinTypeAnti, JoinTypeAntiIncludeNulls, JoinTypeSemiHash,
 		JoinTypeAntiHash, JoinTypeAntiHashIncludeNulls, JoinTypeAntiLookup, JoinTypeAntiLookupIncludeNulls,
-		JoinTypeSemiLookup:
+		JoinTypeSemiLookup, JoinTypeSemiMerge, JoinTypeAntiMerge, JoinTypeAntiMergeIncludeNulls:
 		return true
 	default:
 		return false

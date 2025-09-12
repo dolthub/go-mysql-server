@@ -121,6 +121,26 @@ type ScriptTestAssertion struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
+		// https://github.com/dolthub/dolt/issues/9797
+		Name: "EXISTS subquery returns duplicate rows with PRIMARY KEY",
+		SetUpScript: []string{
+			"CREATE TABLE t(c0 INT, c1 INT, PRIMARY KEY(c0, c1));",
+			"INSERT INTO t VALUES (1, 1);",
+			"INSERT INTO t VALUES (2, 2);",
+			"INSERT INTO t VALUES (2, 3);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM t WHERE EXISTS (SELECT 1 FROM t AS x WHERE x.c0 = t.c0);",
+				Expected: []sql.Row{
+					{1, 1},
+					{2, 2},
+					{2, 3},
+				},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/9794
 		Name: "UPDATE with TRIM function on TEXT column",
 		SetUpScript: []string{

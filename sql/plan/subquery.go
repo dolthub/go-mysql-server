@@ -431,6 +431,7 @@ func (s *Subquery) HashMultiple(ctx *sql.Context, row sql.Row) (sql.KeyValueCach
 
 // HasResultRow returns whether the subquery has a result set > 0.
 func (s *Subquery) HasResultRow(ctx *sql.Context, row sql.Row) (bool, error) {
+
 	// First check if the query was cached.
 	s.cacheMu.Lock()
 	cached := s.resultsCached

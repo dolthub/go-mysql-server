@@ -473,9 +473,9 @@ func convertSemiToInnerJoin(m *memo.Memo) error {
 		}
 
 		// join and its commute are a new group
-		joinGrp := m.MemoizeInnerJoin(nil, semi.Left, rightGrp, plan.JoinTypeInner, semi.Filter)
+		joinGrp := m.MemoizeInnerJoin(nil, semi.Left, rightGrp, plan.JoinTypeSemi, semi.Filter)
 		// TODO: can't commute if right SubqueryAlias references outside scope (OuterScopeVisibility/IsLateral)
-		m.MemoizeInnerJoin(joinGrp, rightGrp, semi.Left, plan.JoinTypeInner, semi.Filter)
+		m.MemoizeInnerJoin(joinGrp, rightGrp, semi.Left, plan.JoinTypeSemi, semi.Filter)
 
 		// project belongs to the original group
 		leftCols := semi.Left.RelProps.OutputCols()
