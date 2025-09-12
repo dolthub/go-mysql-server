@@ -751,7 +751,7 @@ func GeneralizeTypes(a, b sql.Type) sql.Type {
 // TypeAwareConversion converts a value to a specified type, with awareness of the value's original type. This is
 // necessary because some types, such as EnumType and SetType, are stored as ints and require information from the
 // original type to properly convert to strings.
-func TypeAwareConversion(ctx *sql.Context, val any, originalType sql.Type, convertedType sql.Type) (any, sql.ConvertInRange, error) {
+func TypeAwareConversion(ctx *sql.Context, val any, originalType sql.Type, convertedType sql.Type, round bool) (any, sql.ConvertInRange, error) {
 	if val == nil {
 		return nil, sql.InRange, nil
 	}
@@ -760,6 +760,11 @@ func TypeAwareConversion(ctx *sql.Context, val any, originalType sql.Type, conve
 		val, _, err = ConvertToCollatedString(ctx, val, originalType)
 		if err != nil {
 			return nil, sql.OutOfRange, err
+		}
+	}
+	if round {
+		if roundTyp, isRoundType := convertedType.(sql.RoundingNumberType); isRoundType {
+			return roundTyp.ConvertRound(ctx, val)
 		}
 	}
 	return convertedType.Convert(ctx, val)

@@ -73,6 +73,9 @@ func (s *SetField) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 	if val != nil {
 		convertedVal, _, err := getField.fieldType.Convert(ctx, val)
+		if sql.ErrTruncatedIncorrect.Is(err) {
+			err = sql.ErrInvalidValue.New(val, getField.fieldType)
+		}
 		if err != nil {
 			// Fill in error with information
 			if types.ErrLengthBeyondLimit.Is(err) {

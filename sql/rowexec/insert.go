@@ -120,11 +120,25 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 			ctxWithValues := context.WithValue(ctx.Context, types.ColumnNameKey, col.Name)
 			ctxWithValues = context.WithValue(ctxWithValues, types.RowNumberKey, i.rowNumber)
 			ctxWithColumnInfo := ctx.WithContext(ctxWithValues)
-			// TODO: add a ConvertForInsert?
 			// TODO: check mysql strict mode
-			converted, inRange, cErr := col.Type.Convert(ctxWithColumnInfo, row[idx])
+			var converted any
+			var inRange sql.ConvertInRange
+			var cErr error
+			// Hex strings shouldn't make it this far
+			val, cErr := types.ConvertHexBlobToUint(row[idx], col.Type)
+			if cErr != nil {
+				return nil, i.ignoreOrClose(ctx, origRow, cErr)
+			}
+			if typ, ok := col.Type.(sql.RoundingNumberType); ok {
+				converted, inRange, cErr = typ.ConvertRound(ctx, val)
+			} else {
+				converted, inRange, cErr = col.Type.Convert(ctxWithColumnInfo, val)
+			}
 			if cErr == nil && !inRange {
 				cErr = sql.ErrValueOutOfRange.New(row[idx], col.Type)
+			}
+			if sql.ErrTruncatedIncorrect.Is(cErr) {
+				cErr = sql.ErrInvalidValue.New(row[idx], col.Type)
 			}
 			if cErr != nil {
 				// Ignore individual column errors when INSERT IGNORE, UPDATE IGNORE, etc. is specified.

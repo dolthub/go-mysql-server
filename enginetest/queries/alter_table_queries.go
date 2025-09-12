@@ -1011,9 +1011,9 @@ var AlterTableScripts = []ScriptTest{
 		Name: "alter modify column type float to bigint",
 		SetUpScript: []string{
 			"create table t1 (pk int primary key, c1 float);",
-			"insert into t1 values (1, 0.0)",
-			"insert into t1 values (2, 127.9)",
-			"insert into t1 values (3, 42.1)",
+			"insert into t1 values (1, 0.0);",
+			"insert into t1 values (2, 127.9);",
+			"insert into t1 values (3, 42.1);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
