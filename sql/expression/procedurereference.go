@@ -68,6 +68,9 @@ func (ppr *ProcedureReference) InitializeVariable(ctx *sql.Context, name string,
 		return fmt.Errorf("cannot initialize variable `%s` in an empty procedure reference", name)
 	}
 	convertedVal, _, err := sqlType.Convert(ctx, val)
+	if sql.ErrTruncatedIncorrect.Is(err) {
+		return sql.ErrInvalidValue.New(val, sqlType)
+	}
 	if err != nil {
 		return err
 	}

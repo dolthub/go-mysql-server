@@ -139,7 +139,7 @@ func (i *Interval) EvalDelta(ctx *sql.Context, row sql.Row) (*TimeDelta, error) 
 		}
 	} else {
 		val, _, err = types.Int64.Convert(ctx, val)
-		if err != nil {
+		if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
 			return nil, err
 		}
 

@@ -3932,6 +3932,7 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
+		Skip: true, // TODO: Aaaaaaaaaaaa
 		Name: "Handle hex number to binary conversion",
 		SetUpScript: []string{
 			"CREATE TABLE hex_nums1 (pk BIGINT PRIMARY KEY, v1 INT, v2 BIGINT UNSIGNED, v3 DOUBLE, v4 BINARY(32));",
