@@ -18,7 +18,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/types"
 	"math"
 	trace2 "runtime/trace"
 	"strconv"
@@ -31,6 +30,7 @@ import (
 	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/go-mysql-server/sql/values"
 )
 
