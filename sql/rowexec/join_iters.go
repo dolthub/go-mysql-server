@@ -570,8 +570,9 @@ func (i *fullJoinIter) removeParentRow(r sql.Row) sql.Row {
 // buildRow builds the result set row using the rows from the primary and secondary tables
 func (i *fullJoinIter) buildRow(primary, secondary sql.Row) sql.Row {
 	row := make(sql.Row, i.rowSize)
-	copy(row, primary)
-	copy(row[len(primary):], secondary)
+	copy(row, i.parentRow)
+	copy(row[len(i.parentRow):], primary)
+	copy(row[len(i.parentRow)+len(primary):], secondary)
 	return row
 }
 
