@@ -11781,7 +11781,8 @@ select * from t1 except (
 		},
 	},
 	{
-		Name: "pipes as concat mode",
+		Name:    "pipes as concat mode",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table names(first_name varchar(20), last_name varchar(20))",
 			"insert into names values ('john', 'smith'), ('bob','burger')",
