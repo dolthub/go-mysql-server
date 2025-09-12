@@ -125,8 +125,8 @@ var ScriptTests = []ScriptTest{
 		Skip: true,
 		Name: "Ordering by pk does not change the order of results",
 		SetUpScript: []string{
-			"CREATE TABLE test_cast(pk VARCHAR(50) PRIMARY KEY)",
-			"INSERT INTO test_cast VALUES ('  3 12 4'), ('3. 12 4'), ('3.2 12 4'), ('-3.1234'), ('-3.1a'), ('-5+8'), ('+3.1234')",
+			"CREATE TABLE test(pk VARCHAR(50) PRIMARY KEY)",
+			"INSERT INTO test VALUES ('  3 12 4'), ('3. 12 4'), ('3.2 12 4'), ('-3.1234'), ('-3.1a'), ('-5+8'), ('+3.1234')",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
