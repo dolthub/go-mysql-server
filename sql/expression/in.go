@@ -152,7 +152,6 @@ func NewNotInTuple(left sql.Expression, right sql.Expression) sql.Expression {
 	return NewNot(NewInTuple(left, right))
 }
 
-
 // HashInTuple is an expression that checks an expression is inside a list of expressions using a hashmap.
 type HashInTuple struct {
 	in      *InTuple

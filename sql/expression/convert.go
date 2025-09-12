@@ -488,7 +488,6 @@ func prepareForNumericContext(val interface{}, originType sql.Type, isInt bool) 
 	return convertHexBlobToDecimalForNumericContext(val, originType)
 }
 
-
 // trimStringToNumberPrefix trims a string to the appropriate number prefix
 func trimStringToNumberPrefix(s string, isInt bool) string {
 	if isInt {
