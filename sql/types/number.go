@@ -1258,22 +1258,22 @@ func convertToUint64(t NumberTypeImpl_, v any, round bool) (uint64, sql.ConvertI
 		return i, sql.InRange, nil
 	case string:
 		var err error
-		s, ok := TruncateStringToInt(v)
-		if ok {
+		truncStr, didTrunc := TruncateStringToInt(v)
+		if didTrunc {
 			err = sql.ErrTruncatedIncorrect.New(t.String(), v)
 		}
-		if len(s) == 0 {
+		if len(truncStr) == 0 {
 			return 0, sql.InRange, err
 		}
 		// Trim leading sign
 		neg := false
-		if s[0] == '+' {
-			s = s[1:]
-		} else if s[0] == '-' {
+		if truncStr[0] == '+' {
+			truncStr = truncStr[1:]
+		} else if truncStr[0] == '-' {
 			neg = true
-			s = s[1:]
+			truncStr = truncStr[1:]
 		}
-		i, pErr := strconv.ParseUint(s, 10, 64)
+		i, pErr := strconv.ParseUint(truncStr, 10, 64)
 		if errors.Is(pErr, strconv.ErrRange) {
 			// Number is too large for uint64, return max value and OutOfRange
 			return math.MaxUint64, sql.OutOfRange, err
@@ -1386,7 +1386,22 @@ func convertToUint32(t NumberTypeImpl_, v any, round bool) (uint32, sql.ConvertI
 		if len(truncStr) == 0 {
 			return 0, sql.InRange, err
 		}
-		i, _ := strconv.ParseInt(truncStr, 10, 32)
+		// Trim leading sign
+		neg := false
+		if truncStr[0] == '+' {
+			truncStr = truncStr[1:]
+		} else if truncStr[0] == '-' {
+			neg = true
+			truncStr = truncStr[1:]
+		}
+		i, pErr := strconv.ParseUint(truncStr, 10, 32)
+		if errors.Is(pErr, strconv.ErrRange) || i > math.MaxUint32 {
+			// Number is too large for uint32, return max value and OutOfRange
+			return math.MaxUint32, sql.OutOfRange, err
+		}
+		if neg {
+			return uint32(math.MaxUint32 - i + 1), sql.OutOfRange, err
+		}
 		return uint32(i), sql.InRange, err
 	case bool:
 		if v {
