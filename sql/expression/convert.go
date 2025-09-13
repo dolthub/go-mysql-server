@@ -345,7 +345,7 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 		}
 		return d, nil
 	case ConvertToDecimal:
-		value, err := prepareForNumericContext(val, originType, false)
+		value, err := prepareForNumericContext(ctx, val, originType, false)
 		if err != nil {
 			return nil, err
 		}
@@ -356,7 +356,7 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 		}
 		return d, nil
 	case ConvertToFloat:
-		value, err := prepareForNumericContext(val, originType, false)
+		value, err := prepareForNumericContext(ctx, val, originType, false)
 		if err != nil {
 			return nil, err
 		}
@@ -366,7 +366,7 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 		}
 		return d, nil
 	case ConvertToDouble, ConvertToReal:
-		value, err := prepareForNumericContext(val, originType, false)
+		value, err := prepareForNumericContext(ctx, val, originType, false)
 		if err != nil {
 			return nil, err
 		}
@@ -386,7 +386,7 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 		}
 		return js, nil
 	case ConvertToSigned:
-		value, err := prepareForNumericContext(val, originType, true)
+		value, err := prepareForNumericContext(ctx, val, originType, true)
 		if err != nil {
 			return nil, err
 		}
@@ -403,7 +403,7 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 		}
 		return t, nil
 	case ConvertToUnsigned:
-		value, err := prepareForNumericContext(val, originType, true)
+		value, err := prepareForNumericContext(ctx, val, originType, true)
 		if err != nil {
 			return nil, err
 		}
@@ -481,9 +481,9 @@ func createConvertedDecimalType(length, scale int, logErrors bool) sql.DecimalTy
 }
 
 // prepareForNumberContext makes necessary preparations to strings and byte arrays for conversions to numbers
-func prepareForNumericContext(val interface{}, originType sql.Type, isInt bool) (interface{}, error) {
+func prepareForNumericContext(ctx *sql.Context, val interface{}, originType sql.Type, isInt bool) (interface{}, error) {
 	if s, isString := val.(string); isString && types.IsTextOnly(originType) {
-		return trimStringToNumberPrefix(s, isInt), nil
+		return sql.TrimStringToNumberPrefix(ctx, s, isInt), nil
 	}
 	return convertHexBlobToDecimalForNumericContext(val, originType)
 }
