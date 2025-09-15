@@ -11938,18 +11938,21 @@ select * from t1 except (
 		Name: "strings convert to booleans",
 		Assertions: []ScriptTestAssertion{
 			{
+				Dialect:               "mysql",
 				Query:                 `select '3bxu' and true`,
 				Expected:              []sql.Row{{true}},
 				ExpectedWarning:       mysql.ERTruncatedWrongValue,
 				ExpectedWarningsCount: 1,
 			},
 			{
+				Dialect:               "mysql",
 				Query:                 "select '3bxu' or false",
 				Expected:              []sql.Row{{true}},
 				ExpectedWarning:       mysql.ERTruncatedWrongValue,
 				ExpectedWarningsCount: 1,
 			},
 			{
+				Dialect:               "mysql",
 				Query:                 "select '3bxu' xor false",
 				Expected:              []sql.Row{{true}},
 				ExpectedWarning:       mysql.ERTruncatedWrongValue,
@@ -11971,12 +11974,14 @@ select * from t1 except (
 				ExpectedWarningsCount: 0,
 			},
 			{
+				Dialect:               "mysql",
 				Query:                 "select '00asdf' or false",
 				Expected:              []sql.Row{{false}},
 				ExpectedWarning:       mysql.ERTruncatedWrongValue,
 				ExpectedWarningsCount: 1,
 			},
 			{
+				Dialect:               "mysql",
 				Query:                 "select 'asdf' or false",
 				Expected:              []sql.Row{{false}},
 				ExpectedWarning:       mysql.ERTruncatedWrongValue,
