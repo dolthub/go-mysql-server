@@ -120,6 +120,10 @@ func GetConvertToType(l, r sql.Type) string {
 	}
 
 	if !types.IsNumber(l) || !types.IsNumber(r) {
+		// Special handling for BLOB types - preserve binary data
+		if types.IsBlobType(l) || types.IsBlobType(r) {
+			return ConvertToBinary
+		}
 		return ConvertToChar
 	}
 
