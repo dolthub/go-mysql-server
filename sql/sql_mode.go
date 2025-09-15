@@ -30,6 +30,7 @@ const (
 	NoAutoValueOnZero    = "NO_AUTO_VALUE_ON_ZERO"
 	NoEngineSubstitution = "NO_ENGINE_SUBSTITUTION"
 	StrictTransTables    = "STRICT_TRANS_TABLES"
+	PipesAsConcat        = "PIPES_AS_CONCAT"
 	DefaultSqlMode       = "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES"
 )
 
@@ -98,6 +99,11 @@ func (s *SqlMode) AnsiQuotes() bool {
 	return s.ModeEnabled(ANSIQuotes) || s.ModeEnabled(ANSI)
 }
 
+// PipesAsConcat returns true if PIPES_AS_CONCAT SQL mode is enabled.
+func (s *SqlMode) PipesAsConcat() bool {
+	return s.ModeEnabled(PipesAsConcat)
+}
+
 // ModeEnabled returns true if |mode| was explicitly specified in the SQL_MODE string that was used to
 // create this SqlMode instance. Note this function does not support expanding compound modes into the
 // individual modes they contain (e.g. if "ANSI" is the SQL_MODE string, then this function will not
@@ -111,7 +117,8 @@ func (s *SqlMode) ModeEnabled(mode string) bool {
 // ParserOptions returns a ParserOptions struct, with options set based on what SQL modes are enabled.
 func (s *SqlMode) ParserOptions() sqlparser.ParserOptions {
 	return sqlparser.ParserOptions{
-		AnsiQuotes: s.AnsiQuotes(),
+		AnsiQuotes:    s.AnsiQuotes(),
+		PipesAsConcat: s.PipesAsConcat(),
 	}
 }
 
