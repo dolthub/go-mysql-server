@@ -18,7 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/shopspring/decimal"
 	"math"
 	trace2 "runtime/trace"
 	"strconv"
@@ -28,7 +28,6 @@ import (
 	"unicode"
 	"unsafe"
 
-	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql/values"
@@ -330,11 +329,20 @@ func ConvertToBool(ctx *Context, v interface{}) (bool, error) {
 	}
 }
 
+const (
+	// IntCutSet is the set of characters that should be trimmed from the beginning and end of a string
+	//   when converting to a signed or unsigned integer
+	IntCutSet = " \t"
+
+	// NumericCutSet is the set of characters to trim from a string before converting it to a number.
+	NumericCutSet = " \t\n\r"
+)
+
 func TrimStringToNumberPrefix(ctx *Context, s string, isInt bool) string {
 	if isInt {
-		s = strings.TrimLeft(s, types.IntCutSet)
+		s = strings.TrimLeft(s, IntCutSet)
 	} else {
-		s = strings.TrimLeft(s, types.NumericCutSet)
+		s = strings.TrimLeft(s, NumericCutSet)
 	}
 
 	seenDigit := false
