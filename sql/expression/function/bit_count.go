@@ -97,7 +97,7 @@ func (b *BitCount) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			res += countBits(uint64(v))
 		}
 	default:
-		num, _, err := types.Int64.Convert(ctx, child)
+		num, _, err := types.Int64.(sql.RoundingNumberType).ConvertRound(ctx, child)
 		if err != nil {
 			if !sql.ErrTruncatedIncorrect.Is(err) {
 				return nil, err
