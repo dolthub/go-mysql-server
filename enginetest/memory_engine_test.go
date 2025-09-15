@@ -203,174 +203,18 @@ func TestSingleScript(t *testing.T) {
 	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Skip:        true,
-			Name:        "asdf",
+			Name:        "test",
 			SetUpScript: []string{},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "select cast('-3.1a' as signed);",
+					Query: "select bit_count('2.99a');",
 					Expected: []sql.Row{
 						{-3},
 					},
 				},
 			},
 		},
-		{
-			// https://github.com/dolthub/dolt/issues/9733
-			// https://github.com/dolthub/dolt/issues/9739
-			//Skip: true,
-			Name: "strings cast to numbers",
-			SetUpScript: []string{
-				"create table test01(pk varchar(20) primary key);",
-				`insert into test01 values 
-                       ('  3 12 4'),
-                       ('  3.2 12 4'),
-                       ('-3.1234'),
-                       ('-3.1a'),
-                       ('-5+8'),
-                       ('+3.1234'),
-                       ('11d'),
-                       ('11wha?'),
-                       ('11'),
-                       ('12'),
-                       ('1a1'),
-                       ('a1a1'),
-                       ('11-5'),
-                       ('3. 12 4'),
-                       ('5.932887e+07'),
-                       ('5.932887e+07abc'),
-                       ('5.932887e7'),
-                       ('5.932887e7abc');`,
-			},
-			Assertions: []queries.ScriptTestAssertion{
-				{
-					Dialect: "mysql",
-					Query:   "select pk, cast(pk as signed) from test01",
-					Expected: []sql.Row{
-						{"  3 12 4", 3},
-						{"  3.2 12 4", 3},
-						{"-3.1234", -3},
-						{"-3.1a", -3},
-						{"-5+8", -5},
-						{"+3.1234", 3},
-						{"11", 11},
-						{"11-5", 11},
-						{"11d", 11},
-						{"11wha?", 11},
-						{"12", 12},
-						{"1a1", 1},
-						{"3. 12 4", 3},
-						{"5.932887e+07", 5},
-						{"5.932887e+07abc", 5},
-						{"5.932887e7", 5},
-						{"5.932887e7abc", 5},
-						{"a1a1", 0},
-					},
-				},
-				{
-					Dialect: "mysql",
-					Query:   "select pk, cast(pk as unsigned) from test01",
-					Expected: []sql.Row{
-						{"  3 12 4", uint64(3)},
-						{"  3.2 12 4", uint64(3)},
-						{"-3.1234", uint64(18446744073709551613)},
-						{"-3.1a", uint64(18446744073709551613)},
-						{"-5+8", uint64(18446744073709551611)},
-						{"+3.1234", uint64(3)},
-						{"11", uint64(11)},
-						{"11-5", uint64(11)},
-						{"11d", uint64(11)},
-						{"11wha?", uint64(11)},
-						{"12", uint64(12)},
-						{"1a1", uint64(1)},
-						{"3. 12 4", uint64(3)},
-						{"5.932887e+07", uint64(5)},
-						{"5.932887e+07abc", uint64(5)},
-						{"5.932887e7", uint64(5)},
-						{"5.932887e7abc", uint64(5)},
-						{"a1a1", uint64(0)},
-					},
-				},
-				{
-					Dialect: "mysql",
-					Query:   "select pk, cast(pk as decimal(12,3)) from test01",
-					Expected: []sql.Row{
-						{"  3 12 4", "3.000"},
-						{"  3.2 12 4", "3.200"},
-						{"-3.1234", "-3.123"},
-						{"-3.1a", "-3.100"},
-						{"-5+8", "-5.000"},
-						{"+3.1234", "3.123"},
-						{"11", "11.000"},
-						{"11-5", "11.000"},
-						{"11d", "11.000"},
-						{"11wha?", "11.000"},
-						{"12", "12.000"},
-						{"1a1", "1.000"},
-						{"3. 12 4", "3.000"},
-						{"5.932887e+07", "59328870.000"},
-						{"5.932887e+07abc", "59328870.000"},
-						{"5.932887e7", "59328870.000"},
-						{"5.932887e7abc", "59328870.000"},
-						{"a1a1", "0.000"},
-					},
-				},
-				{
-					Query:    "select * from test01 where pk in ('11')",
-					Expected: []sql.Row{{"11"}},
-				},
-				{
-					// https://github.com/dolthub/dolt/issues/9739
-					Skip:    true,
-					Dialect: "mysql",
-					Query:   "select * from test01 where pk in (11)",
-					Expected: []sql.Row{
-						{"11"},
-						{"11-5"},
-						{"11d"},
-						{"11wha?"},
-					},
-				},
-				{
-					// https://github.com/dolthub/dolt/issues/9739
-					Skip:    true,
-					Dialect: "mysql",
-					Query:   "select * from test01 where pk=3",
-					Expected: []sql.Row{
-						{"  3 12 4"},
-						{"  3. 12 4"},
-						{"3. 12 4"},
-					},
-				},
-				{
-					// https://github.com/dolthub/dolt/issues/9739
-					Skip:    true,
-					Dialect: "mysql",
-					Query:   "select * from test01 where pk>=3 and pk < 4",
-					Expected: []sql.Row{
-						{"  3 12 4"},
-						{"  3. 12 4"},
-						{"  3.2 12 4"},
-						{"+3.1234"},
-						{"3. 12 4"},
-					},
-				},
-				//{
-				//	// https://github.com/dolthub/dolt/issues/9739
-				//	Skip:     true,
-				//	Dialect:  "mysql",
-				//	Query:    "select * from test02 where pk in ('11asdf')",
-				//	Expected: []sql.Row{{"11"}},
-				//},
-				//{
-				//	// https://github.com/dolthub/dolt/issues/9739
-				//	Skip:     true,
-				//	Dialect:  "mysql",
-				//	Query:    "select * from test02 where pk='11.12asdf'",
-				//	Expected: []sql.Row{},
-				//},
-			},
-		},
+
 		//{
 		//	Name:        "AS OF propagates to nested CALLs",
 		//	SetUpScript: []string{},

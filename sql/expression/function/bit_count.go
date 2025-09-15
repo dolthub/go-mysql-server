@@ -97,12 +97,13 @@ func (b *BitCount) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			res += countBits(uint64(v))
 		}
 	default:
-		num, _, err := types.Int64.Convert(ctx, child)
+		num, _, err := types.Int64.(sql.RoundingNumberType).ConvertRound(ctx, child)
 		if err != nil {
-			ctx.Warn(1292, "Truncated incorrect INTEGER value: '%v'", child)
-			num = int64(0)
+			if !sql.ErrTruncatedIncorrect.Is(err) {
+				return nil, err
+			}
+			ctx.Warn(1292, "%s", err.Error())
 		}
-
 		// Must convert to unsigned because shifting a negative signed value fills with 1s
 		res = countBits(uint64(num.(int64)))
 	}
