@@ -362,6 +362,7 @@ func TrimStringToNumberPrefix(ctx *Context, s string, isInt bool) string {
 			seenExp = true
 			signIndex = i + 1
 		} else if !((char == '-' || char == '+') && i == signIndex) {
+			// TODO add different warning for DECIMAL conversion
 			if isInt {
 				ctx.Warn(mysql.ERTruncatedWrongValue, "Truncated incorrect INTEGER value: '%s'", s)
 			} else {

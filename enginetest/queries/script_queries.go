@@ -11835,7 +11835,7 @@ select * from t1 except (
 					{"a1a1", uint64(0)},
 				},
 				// TODO: Should be 19. Missing warnings for "Cast to unsigned converted negative integer to its positive
-				//  complement" (1105)
+				//  complement" (1105) https://github.com/dolthub/dolt/issues/9840
 				ExpectedWarningsCount: 16,
 				ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
