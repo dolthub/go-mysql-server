@@ -202,7 +202,7 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 		return t.ConvertToNullDecimal(decimal.NewFromFloat(value))
 	case string:
 		// TODO: implement truncation here
-		value = strings.Trim(value, NumericCutSet)
+		value = strings.Trim(value, sql.NumericCutSet)
 		if len(value) == 0 {
 			return t.ConvertToNullDecimal(decimal.NewFromInt(0))
 		}
