@@ -17,13 +17,14 @@ package expression
 import (
 	"encoding/hex"
 	"fmt"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-errors.v1"
-	"strconv"
-	"strings"
-	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
