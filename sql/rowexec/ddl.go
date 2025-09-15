@@ -405,8 +405,8 @@ func (b *BaseBuilder) buildCreateDB(ctx *sql.Context, n *plan.CreateDB, row sql.
 
 func (b *BaseBuilder) buildCreateSchema(ctx *sql.Context, n *plan.CreateSchema, row sql.Row) (sql.RowIter, error) {
 	database := ctx.GetCurrentDatabase()
-	
-	// If no database is selected, first try to fall back to CREATE DATABASE behavior
+
+	// If no database is selected, first try to fall back to CREATE DATABASE
 	// since CREATE SCHEMA is a synonym for CREATE DATABASE in MySQL
 	// https://dev.mysql.com/doc/refman/8.4/en/create-database.html
 	if database == "" {
