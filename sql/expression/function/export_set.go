@@ -205,7 +205,10 @@ func (e *ExportSet) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Convert arguments to proper types
 	bitsInt, _, err := types.Uint64.Convert(ctx, bitsVal)
 	if err != nil {
-		return nil, err
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
+		ctx.Warn(1292, "%s", err.Error())
 	}
 
 	onStr, _, err := types.LongText.Convert(ctx, onVal)

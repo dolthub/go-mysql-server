@@ -87,18 +87,19 @@ func (c *Char) CollationCoercibility(ctx *sql.Context) (collation sql.CollationI
 
 // encodeUInt32 converts uint32 `num` into a []byte using the fewest number of bytes in big endian (no leading 0s)
 func encodeUInt32(num uint32) []byte {
-	res := make([]byte, 0, 4)
-	if x := byte(num >> 24); x > 0 {
-		res = append(res, x)
+	res := []byte{
+		byte(num >> 24),
+		byte(num >> 16),
+		byte(num >> 8),
+		byte(num),
 	}
-	if x := byte(num >> 16); x > 0 {
-		res = append(res, x)
+	var i int
+	for i = 0; i < 3; i++ {
+		if res[i] != 0 {
+			break
+		}
 	}
-	if x := byte(num >> 8); x > 0 {
-		res = append(res, x)
-	}
-	res = append(res, byte(num))
-	return res
+	return res[i:]
 }
 
 // Eval implements the sql.Expression interface

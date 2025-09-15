@@ -1026,10 +1026,7 @@ func convertToInt64(t NumberTypeImpl_, v any, round bool) (int64, sql.ConvertInR
 		if v < float32(math.MinInt64) {
 			return math.MinInt64, sql.OutOfRange, nil
 		}
-		if round {
-			return int64(math.Round(float64(v))), sql.InRange, nil
-		}
-		return int64(v), sql.InRange, nil
+		return int64(math.Round(float64(v))), sql.InRange, nil
 	case float64:
 		if v > float64(math.MaxInt64) {
 			return math.MaxInt64, sql.OutOfRange, nil
@@ -1037,10 +1034,7 @@ func convertToInt64(t NumberTypeImpl_, v any, round bool) (int64, sql.ConvertInR
 		if v < float64(math.MinInt64) {
 			return math.MinInt64, sql.OutOfRange, nil
 		}
-		if round {
-			return int64(math.Round(v)), sql.InRange, nil
-		}
-		return int64(v), sql.InRange, nil
+		return int64(math.Round(v)), sql.InRange, nil
 	case decimal.Decimal:
 		// TODO: round?
 		if v.GreaterThan(dec_int64_max) {
@@ -1061,13 +1055,12 @@ func convertToInt64(t NumberTypeImpl_, v any, round bool) (int64, sql.ConvertInR
 			if didTrunc {
 				err = sql.ErrTruncatedIncorrect.New(t.String(), v)
 			}
-			// TODO: might not be necessary
 			// Parse as int first
 			if i, pErr := strconv.ParseInt(truncStr, 10, 64); pErr == nil {
 				return i, sql.InRange, nil
 			}
 			f, _ := strconv.ParseFloat(truncStr, 64)
-			return int64(math.Round(f)), sql.InRange, err
+			return convertToInt64(t, f, round)
 		}
 		truncStr, didTrunc := TruncateStringToInt(v)
 		if didTrunc {
@@ -1224,10 +1217,7 @@ func convertToUint64(t NumberTypeImpl_, v any, round bool) (uint64, sql.ConvertI
 		if v < 0 {
 			return uint64(math.MaxUint64 - v), sql.OutOfRange, nil
 		}
-		if round {
-			return uint64(math.Round(float64(v))), sql.InRange, nil
-		}
-		return uint64(v), sql.InRange, nil
+		return uint64(math.Round(float64(v))), sql.InRange, nil
 	case float64:
 		if v >= float64(math.MaxUint64) {
 			return math.MaxUint64, sql.OutOfRange, nil
@@ -1235,10 +1225,7 @@ func convertToUint64(t NumberTypeImpl_, v any, round bool) (uint64, sql.ConvertI
 		if v < 0 {
 			return uint64(math.MaxUint64 - v), sql.OutOfRange, nil
 		}
-		if round {
-			return uint64(math.Round(v)), sql.InRange, nil
-		}
-		return uint64(v), sql.InRange, nil
+		return uint64(math.Round(v)), sql.InRange, nil
 	case decimal.Decimal:
 		if v.GreaterThan(dec_uint64_max) {
 			return math.MaxUint64, sql.OutOfRange, nil
