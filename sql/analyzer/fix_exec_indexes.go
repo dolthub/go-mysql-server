@@ -159,9 +159,12 @@ type idxScope struct {
 	childScopes   []*idxScope
 	ids           []sql.ColumnId
 	columns       []string
-	children      []sql.Node
-	expressions   []sql.Expression
-	checks        sql.CheckConstraints
+	// Columns added from AddColumn are not included in the ResolvedTable yet. For columns that are added with a
+	// constraint, we need to add the new columns to the scope so CreateCheck gets the right exec index
+	addedColumns sql.Schema
+	children     []sql.Node
+	expressions  []sql.Expression
+	checks       sql.CheckConstraints
 
 	triggerScope      bool
 	insertSourceScope bool
@@ -301,6 +304,7 @@ func (s *idxScope) copy() *idxScope {
 		parentScopes:      parentCopy,
 		columns:           varsCopy,
 		ids:               idsCopy,
+		addedColumns:      s.addedColumns,
 		subqueryScope:     s.subqueryScope,
 		triggerScope:      s.triggerScope,
 		insertSourceScope: s.insertSourceScope,
@@ -398,6 +402,9 @@ func (s *idxScope) visitChildren(n sql.Node) error {
 			newC, cScope, err := assignIndexesHelper(c, s)
 			if err != nil {
 				return err
+			}
+			if ac, ok := c.(*plan.AddColumn); ok {
+				s.addedColumns = append(s.addedColumns, ac.Column())
 			}
 			s.childScopes = append(s.childScopes, cScope)
 			s.children = append(s.children, newC)
@@ -565,6 +572,11 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 			newDef := fixExprToScope(sql.Expression(col.Default), scope)
 			n.DestSch[colIdx].Default = newDef.(*sql.ColumnDefaultValue)
 		}
+	case *plan.CreateCheck:
+		addedScope := &idxScope{}
+		addedScope.addSchema(s.addedColumns)
+		scope := append(append(s.parentScopes, s.childScopes...), addedScope)
+		s.expressions = append(s.expressions, fixExprToScope(n.Check.Expr, scope...))
 	default:
 		// Group By and Window functions already account for the new/old columns present from triggers
 		// This means that when indexing the Projections, we should not include the trigger scope(s), which are

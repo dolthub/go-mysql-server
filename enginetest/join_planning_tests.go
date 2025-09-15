@@ -1788,6 +1788,34 @@ join uv d on d.u = c.x`,
 			},
 		},
 	},
+	{
+		name: "single look up plan does not drop complex equality filters",
+		setup: []string{
+			"create table t1 (i int primary key);",
+			"create table t2 (j int);",
+			"create table t3 (k int);",
+			"insert into t1 values (1), (2);",
+			"insert into t2 values (1), (2);",
+			"insert into t3 values (3);",
+		},
+		tests: []JoinPlanTest{
+			{
+				q:     "select * from t1 cross join t2 join (select * from t3) v3 on v3.k = t2.j;",
+				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeCross},
+				exp:   []sql.Row{},
+			},
+			{
+				q:     "select * from t1 cross join t2 join (select * from t3) v3 on v3.k >= t2.j order by i, j, k;",
+				types: []plan.JoinType{plan.JoinTypeInner, plan.JoinTypeCross},
+				exp: []sql.Row{
+					{1, 1, 3},
+					{1, 2, 3},
+					{2, 1, 3},
+					{2, 2, 3},
+				},
+			},
+		},
+	},
 }
 
 func TestJoinPlanning(t *testing.T, harness Harness) {
@@ -1915,24 +1943,28 @@ func evalIndexTest(t *testing.T, harness Harness, e QueryEngine, q string, index
 	})
 }
 
-func evalJoinCorrectness(t *testing.T, harness Harness, e QueryEngine, name, q string, exp []sql.Row, skipOld bool) {
-	t.Run(name, func(t *testing.T) {
-		ctx := NewContext(harness)
-		ctx = ctx.WithQuery(q)
+func evalJoinCorrectness(t *testing.T, harness Harness, e QueryEngine, name, q string, exp []sql.Row, skip bool) {
+	if skip {
+		t.Skip()
+	} else {
+		t.Run(name, func(t *testing.T) {
+			ctx := NewContext(harness)
+			ctx = ctx.WithQuery(q)
 
-		sch, iter, _, err := e.QueryWithBindings(ctx, q, nil, nil, nil)
-		require.NoError(t, err, "Unexpected error for query %s: %s", q, err)
+			sch, iter, _, err := e.QueryWithBindings(ctx, q, nil, nil, nil)
+			require.NoError(t, err, "Unexpected error for query %s: %s", q, err)
 
-		rows, err := sql.RowIterToRows(ctx, iter)
-		require.NoError(t, err, "Unexpected error for query %s: %s", q, err)
+			rows, err := sql.RowIterToRows(ctx, iter)
+			require.NoError(t, err, "Unexpected error for query %s: %s", q, err)
 
-		if exp != nil {
-			CheckResults(ctx, t, harness, exp, nil, sch, rows, q, e)
-		}
+			if exp != nil {
+				CheckResults(ctx, t, harness, exp, nil, sch, rows, q, e)
+			}
 
-		require.Equal(t, 0, ctx.Memory.NumCaches())
-		validateEngine(t, ctx, harness, e)
-	})
+			require.Equal(t, 0, ctx.Memory.NumCaches())
+			validateEngine(t, ctx, harness, e)
+		})
+	}
 }
 
 func collectJoinTypes(n sql.Node) []plan.JoinType {

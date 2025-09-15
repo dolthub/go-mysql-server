@@ -488,20 +488,21 @@ order by
 			"                 │       └─ Table\n" +
 			"                 │           ├─ name: orders\n" +
 			"                 │           └─ columns: [o_orderkey o_custkey o_orderstatus o_totalprice o_orderdate o_orderpriority o_clerk o_shippriority o_comment]\n" +
-			"                 └─ Project\n" +
-			"                     ├─ columns: [lineitem.l_orderkey:0!null]\n" +
-			"                     └─ Filter\n" +
-			"                         ├─ LessThan\n" +
-			"                         │   ├─ lineitem.l_commitdate:11!null\n" +
-			"                         │   └─ lineitem.l_receiptdate:12!null\n" +
-			"                         └─ IndexedTableAccess(lineitem)\n" +
-			"                             ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
-			"                             ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                             ├─ colSet: (10-25)\n" +
-			"                             ├─ tableId: 2\n" +
-			"                             └─ Table\n" +
-			"                                 ├─ name: lineitem\n" +
-			"                                 └─ columns: [l_orderkey l_partkey l_suppkey l_linenumber l_quantity l_extendedprice l_discount l_tax l_returnflag l_linestatus l_shipdate l_commitdate l_receiptdate l_shipinstruct l_shipmode l_comment]\n" +
+			"                 └─ Distinct\n" +
+			"                     └─ Project\n" +
+			"                         ├─ columns: [lineitem.l_orderkey:0!null]\n" +
+			"                         └─ Filter\n" +
+			"                             ├─ LessThan\n" +
+			"                             │   ├─ lineitem.l_commitdate:11!null\n" +
+			"                             │   └─ lineitem.l_receiptdate:12!null\n" +
+			"                             └─ IndexedTableAccess(lineitem)\n" +
+			"                                 ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
+			"                                 ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                                 ├─ colSet: (10-25)\n" +
+			"                                 ├─ tableId: 2\n" +
+			"                                 └─ Table\n" +
+			"                                     ├─ name: lineitem\n" +
+			"                                     └─ columns: [l_orderkey l_partkey l_suppkey l_linenumber l_quantity l_extendedprice l_discount l_tax l_returnflag l_linestatus l_shipdate l_commitdate l_receiptdate l_shipinstruct l_shipmode l_comment]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [orders.o_orderpriority, count(1) as order_count]\n" +
@@ -518,14 +519,15 @@ order by
 			"                 │   └─ IndexedTableAccess(orders)\n" +
 			"                 │       ├─ index: [orders.O_ORDERKEY]\n" +
 			"                 │       └─ filters: [{[NULL, ∞)}]\n" +
-			"                 └─ Project\n" +
-			"                     ├─ columns: [lineitem.l_orderkey]\n" +
-			"                     └─ Filter\n" +
-			"                         ├─ (lineitem.l_commitdate < lineitem.l_receiptdate)\n" +
-			"                         └─ IndexedTableAccess(lineitem)\n" +
-			"                             ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
-			"                             ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                             └─ columns: [l_orderkey l_partkey l_suppkey l_linenumber l_quantity l_extendedprice l_discount l_tax l_returnflag l_linestatus l_shipdate l_commitdate l_receiptdate l_shipinstruct l_shipmode l_comment]\n" +
+			"                 └─ Distinct\n" +
+			"                     └─ Project\n" +
+			"                         ├─ columns: [lineitem.l_orderkey]\n" +
+			"                         └─ Filter\n" +
+			"                             ├─ (lineitem.l_commitdate < lineitem.l_receiptdate)\n" +
+			"                             └─ IndexedTableAccess(lineitem)\n" +
+			"                                 ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
+			"                                 ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                                 └─ columns: [l_orderkey l_partkey l_suppkey l_linenumber l_quantity l_extendedprice l_discount l_tax l_returnflag l_linestatus l_shipdate l_commitdate l_receiptdate l_shipinstruct l_shipmode l_comment]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [orders.o_orderpriority, count(1) as order_count]\n" +
@@ -542,14 +544,15 @@ order by
 			"                 │   └─ IndexedTableAccess(orders)\n" +
 			"                 │       ├─ index: [orders.O_ORDERKEY]\n" +
 			"                 │       └─ filters: [{[NULL, ∞)}]\n" +
-			"                 └─ Project\n" +
-			"                     ├─ columns: [lineitem.l_orderkey]\n" +
-			"                     └─ Filter\n" +
-			"                         ├─ (lineitem.l_commitdate < lineitem.l_receiptdate)\n" +
-			"                         └─ IndexedTableAccess(lineitem)\n" +
-			"                             ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
-			"                             ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"                             └─ columns: [l_orderkey l_partkey l_suppkey l_linenumber l_quantity l_extendedprice l_discount l_tax l_returnflag l_linestatus l_shipdate l_commitdate l_receiptdate l_shipinstruct l_shipmode l_comment]\n" +
+			"                 └─ Distinct\n" +
+			"                     └─ Project\n" +
+			"                         ├─ columns: [lineitem.l_orderkey]\n" +
+			"                         └─ Filter\n" +
+			"                             ├─ (lineitem.l_commitdate < lineitem.l_receiptdate)\n" +
+			"                             └─ IndexedTableAccess(lineitem)\n" +
+			"                                 ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
+			"                                 ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"                                 └─ columns: [l_orderkey l_partkey l_suppkey l_linenumber l_quantity l_extendedprice l_discount l_tax l_returnflag l_linestatus l_shipdate l_commitdate l_receiptdate l_shipinstruct l_shipmode l_comment]\n" +
 			"",
 	},
 	{
@@ -3061,48 +3064,49 @@ order by
 			"         │   │                   │   └─ Table\n" +
 			"         │   │                   │       ├─ name: partsupp\n" +
 			"         │   │                   │       └─ columns: [ps_partkey ps_suppkey ps_availqty ps_supplycost ps_comment]\n" +
-			"         │   │                   └─ Project\n" +
-			"         │   │                       ├─ columns: [part.p_partkey:0!null]\n" +
-			"         │   │                       └─ Filter\n" +
-			"         │   │                           ├─ AND\n" +
-			"         │   │                           │   ├─ AND\n" +
-			"         │   │                           │   │   ├─ AND\n" +
-			"         │   │                           │   │   │   ├─ AND\n" +
-			"         │   │                           │   │   │   │   ├─ AND\n" +
-			"         │   │                           │   │   │   │   │   ├─ AND\n" +
-			"         │   │                           │   │   │   │   │   │   ├─ AND\n" +
-			"         │   │                           │   │   │   │   │   │   │   ├─ GreaterThanOrEqual\n" +
-			"         │   │                           │   │   │   │   │   │   │   │   ├─ part.p_name:1!null\n" +
-			"         │   │                           │   │   │   │   │   │   │   │   └─ forest (longtext)\n" +
-			"         │   │                           │   │   │   │   │   │   │   └─ LessThanOrEqual\n" +
-			"         │   │                           │   │   │   │   │   │   │       ├─ part.p_name:1!null\n" +
-			"         │   │                           │   │   │   │   │   │   │       └─ forestÿ (longtext)\n" +
-			"         │   │                           │   │   │   │   │   │   └─ GreaterThanOrEqual\n" +
-			"         │   │                           │   │   │   │   │   │       ├─ part.p_name:1!null\n" +
-			"         │   │                           │   │   │   │   │   │       └─ forest (longtext)\n" +
-			"         │   │                           │   │   │   │   │   └─ LessThanOrEqual\n" +
-			"         │   │                           │   │   │   │   │       ├─ part.p_name:1!null\n" +
-			"         │   │                           │   │   │   │   │       └─ forestÿ (longtext)\n" +
-			"         │   │                           │   │   │   │   └─ GreaterThanOrEqual\n" +
-			"         │   │                           │   │   │   │       ├─ part.p_name:1!null\n" +
-			"         │   │                           │   │   │   │       └─ forest (longtext)\n" +
-			"         │   │                           │   │   │   └─ LessThanOrEqual\n" +
-			"         │   │                           │   │   │       ├─ part.p_name:1!null\n" +
-			"         │   │                           │   │   │       └─ forestÿ (longtext)\n" +
-			"         │   │                           │   │   └─ GreaterThanOrEqual\n" +
-			"         │   │                           │   │       ├─ part.p_name:1!null\n" +
-			"         │   │                           │   │       └─ forest (longtext)\n" +
-			"         │   │                           │   └─ LessThanOrEqual\n" +
-			"         │   │                           │       ├─ part.p_name:1!null\n" +
-			"         │   │                           │       └─ forestÿ (longtext)\n" +
-			"         │   │                           └─ IndexedTableAccess(part)\n" +
-			"         │   │                               ├─ index: [part.P_PARTKEY]\n" +
-			"         │   │                               ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   │                               ├─ colSet: (17-25)\n" +
-			"         │   │                               ├─ tableId: 4\n" +
-			"         │   │                               └─ Table\n" +
-			"         │   │                                   ├─ name: part\n" +
-			"         │   │                                   └─ columns: [p_partkey p_name p_mfgr p_brand p_type p_size p_container p_retailprice p_comment]\n" +
+			"         │   │                   └─ Distinct\n" +
+			"         │   │                       └─ Project\n" +
+			"         │   │                           ├─ columns: [part.p_partkey:0!null]\n" +
+			"         │   │                           └─ Filter\n" +
+			"         │   │                               ├─ AND\n" +
+			"         │   │                               │   ├─ AND\n" +
+			"         │   │                               │   │   ├─ AND\n" +
+			"         │   │                               │   │   │   ├─ AND\n" +
+			"         │   │                               │   │   │   │   ├─ AND\n" +
+			"         │   │                               │   │   │   │   │   ├─ AND\n" +
+			"         │   │                               │   │   │   │   │   │   ├─ AND\n" +
+			"         │   │                               │   │   │   │   │   │   │   ├─ GreaterThanOrEqual\n" +
+			"         │   │                               │   │   │   │   │   │   │   │   ├─ part.p_name:1!null\n" +
+			"         │   │                               │   │   │   │   │   │   │   │   └─ forest (longtext)\n" +
+			"         │   │                               │   │   │   │   │   │   │   └─ LessThanOrEqual\n" +
+			"         │   │                               │   │   │   │   │   │   │       ├─ part.p_name:1!null\n" +
+			"         │   │                               │   │   │   │   │   │   │       └─ forestÿ (longtext)\n" +
+			"         │   │                               │   │   │   │   │   │   └─ GreaterThanOrEqual\n" +
+			"         │   │                               │   │   │   │   │   │       ├─ part.p_name:1!null\n" +
+			"         │   │                               │   │   │   │   │   │       └─ forest (longtext)\n" +
+			"         │   │                               │   │   │   │   │   └─ LessThanOrEqual\n" +
+			"         │   │                               │   │   │   │   │       ├─ part.p_name:1!null\n" +
+			"         │   │                               │   │   │   │   │       └─ forestÿ (longtext)\n" +
+			"         │   │                               │   │   │   │   └─ GreaterThanOrEqual\n" +
+			"         │   │                               │   │   │   │       ├─ part.p_name:1!null\n" +
+			"         │   │                               │   │   │   │       └─ forest (longtext)\n" +
+			"         │   │                               │   │   │   └─ LessThanOrEqual\n" +
+			"         │   │                               │   │   │       ├─ part.p_name:1!null\n" +
+			"         │   │                               │   │   │       └─ forestÿ (longtext)\n" +
+			"         │   │                               │   │   └─ GreaterThanOrEqual\n" +
+			"         │   │                               │   │       ├─ part.p_name:1!null\n" +
+			"         │   │                               │   │       └─ forest (longtext)\n" +
+			"         │   │                               │   └─ LessThanOrEqual\n" +
+			"         │   │                               │       ├─ part.p_name:1!null\n" +
+			"         │   │                               │       └─ forestÿ (longtext)\n" +
+			"         │   │                               └─ IndexedTableAccess(part)\n" +
+			"         │   │                                   ├─ index: [part.P_PARTKEY]\n" +
+			"         │   │                                   ├─ static: [{[NULL, ∞)}]\n" +
+			"         │   │                                   ├─ colSet: (17-25)\n" +
+			"         │   │                                   ├─ tableId: 4\n" +
+			"         │   │                                   └─ Table\n" +
+			"         │   │                                       ├─ name: part\n" +
+			"         │   │                                       └─ columns: [p_partkey p_name p_mfgr p_brand p_type p_size p_container p_retailprice p_comment]\n" +
 			"         │   └─ IndexedTableAccess(supplier)\n" +
 			"         │       ├─ index: [supplier.S_SUPPKEY]\n" +
 			"         │       ├─ keys: [partsupp.ps_suppkey:0!null]\n" +
@@ -3142,13 +3146,14 @@ order by
 			"         │   │                   ├─ IndexedTableAccess(partsupp)\n" +
 			"         │   │                   │   ├─ index: [partsupp.PS_PARTKEY,partsupp.PS_SUPPKEY]\n" +
 			"         │   │                   │   └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"         │   │                   └─ Project\n" +
-			"         │   │                       ├─ columns: [part.p_partkey]\n" +
-			"         │   │                       └─ Filter\n" +
-			"         │   │                           ├─ ((((((((part.p_name >= 'forest') AND (part.p_name <= 'forestÿ')) AND (part.p_name >= 'forest')) AND (part.p_name <= 'forestÿ')) AND (part.p_name >= 'forest')) AND (part.p_name <= 'forestÿ')) AND (part.p_name >= 'forest')) AND (part.p_name <= 'forestÿ'))\n" +
-			"         │   │                           └─ IndexedTableAccess(part)\n" +
-			"         │   │                               ├─ index: [part.P_PARTKEY]\n" +
-			"         │   │                               └─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │                   └─ Distinct\n" +
+			"         │   │                       └─ Project\n" +
+			"         │   │                           ├─ columns: [part.p_partkey]\n" +
+			"         │   │                           └─ Filter\n" +
+			"         │   │                               ├─ ((((((((part.p_name >= 'forest') AND (part.p_name <= 'forestÿ')) AND (part.p_name >= 'forest')) AND (part.p_name <= 'forestÿ')) AND (part.p_name >= 'forest')) AND (part.p_name <= 'forestÿ')) AND (part.p_name >= 'forest')) AND (part.p_name <= 'forestÿ'))\n" +
+			"         │   │                               └─ IndexedTableAccess(part)\n" +
+			"         │   │                                   ├─ index: [part.P_PARTKEY]\n" +
+			"         │   │                                   └─ filters: [{[NULL, ∞)}]\n" +
 			"         │   └─ IndexedTableAccess(supplier)\n" +
 			"         │       ├─ index: [supplier.S_SUPPKEY]\n" +
 			"         │       └─ keys: partsupp.ps_suppkey\n" +
@@ -3176,13 +3181,14 @@ order by
 			"         │   │                   ├─ IndexedTableAccess(partsupp)\n" +
 			"         │   │                   │   ├─ index: [partsupp.PS_PARTKEY,partsupp.PS_SUPPKEY]\n" +
 			"         │   │                   │   └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"         │   │                   └─ Project\n" +
-			"         │   │                       ├─ columns: [part.p_partkey]\n" +
-			"         │   │                       └─ Filter\n" +
-			"         │   │                           ├─ ((((((((part.p_name >= 'forest') AND (part.p_name <= 'forestÿ')) AND (part.p_name >= 'forest')) AND (part.p_name <= 'forestÿ')) AND (part.p_name >= 'forest')) AND (part.p_name <= 'forestÿ')) AND (part.p_name >= 'forest')) AND (part.p_name <= 'forestÿ'))\n" +
-			"         │   │                           └─ IndexedTableAccess(part)\n" +
-			"         │   │                               ├─ index: [part.P_PARTKEY]\n" +
-			"         │   │                               └─ filters: [{[NULL, ∞)}]\n" +
+			"         │   │                   └─ Distinct\n" +
+			"         │   │                       └─ Project\n" +
+			"         │   │                           ├─ columns: [part.p_partkey]\n" +
+			"         │   │                           └─ Filter\n" +
+			"         │   │                               ├─ ((((((((part.p_name >= 'forest') AND (part.p_name <= 'forestÿ')) AND (part.p_name >= 'forest')) AND (part.p_name <= 'forestÿ')) AND (part.p_name >= 'forest')) AND (part.p_name <= 'forestÿ')) AND (part.p_name >= 'forest')) AND (part.p_name <= 'forestÿ'))\n" +
+			"         │   │                               └─ IndexedTableAccess(part)\n" +
+			"         │   │                                   ├─ index: [part.P_PARTKEY]\n" +
+			"         │   │                                   └─ filters: [{[NULL, ∞)}]\n" +
 			"         │   └─ IndexedTableAccess(supplier)\n" +
 			"         │       ├─ index: [supplier.S_SUPPKEY]\n" +
 			"         │       └─ keys: partsupp.ps_suppkey\n" +

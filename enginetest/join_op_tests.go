@@ -106,6 +106,61 @@ var EngineOnlyJoinOpTests = []joinOpTest{
 
 var DefaultJoinOpTests = []joinOpTest{
 	{
+		// https://github.com/dolthub/dolt/issues/9807
+		name: "FULL OUTER JOIN fails with empty subquery",
+		setup: [][]string{
+			{
+				"CREATE TABLE t(c BOOLEAN);",
+				"INSERT INTO t VALUES (FALSE);",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query: "SELECT * FROM ( SELECT c FROM t WHERE c ) sub1 FULL OUTER JOIN ( SELECT 1 AS c ) sub2 ON 1=1;",
+				Expected: []sql.Row{
+					{nil, 1},
+				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9807
+		name: "FULL OUTER JOIN with empty tables",
+		setup: [][]string{
+			{
+				"CREATE TABLE t1 (i INT);",
+				"CREATE TABLE t2 (j INT);",
+				"INSERT INTO t2 VALUES (1);",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query: "SELECT i, j FROM t1 FULL OUTER JOIN t2 ON 1=1;",
+				Expected: []sql.Row{
+					{nil, 1},
+				},
+			},
+			{
+				Query: "SELECT j, i FROM t2 FULL OUTER JOIN t1 ON 1=1;",
+				Expected: []sql.Row{
+					{1, nil},
+				},
+			},
+			{
+				Query: "SELECT i, j FROM t1 FULL OUTER JOIN t2 ON 1=0;",
+				Expected: []sql.Row{
+					{nil, 1},
+				},
+			},
+			{
+				Query: "SELECT j, i FROM t2 FULL OUTER JOIN t1 ON 1=0;",
+				Expected: []sql.Row{
+					{1, nil},
+				},
+			},
+		},
+	},
+	{
 		name: "bug where transitive join edge drops filters",
 		setup: [][]string{
 			setup.MydbData[0],
@@ -1922,14 +1977,54 @@ SELECT SUM(x) FROM xy WHERE x IN (
 		},
 	},
 	{
-		name: "where not exists",
+		name: "where exists and where not exists",
 		setup: [][]string{
 			setup.XyData[0],
+			{
+				"create table t(c varchar(500))",
+				"insert into t values ('a'),('a')",
+				"create table u(c0 int, c1 int, primary key(c0, c1))",
+				"insert into u values (1, 1),(2,2),(2,3)",
+			},
 		},
 		tests: []JoinOpTests{
 			{
 				Query:    `select * from xy_hasnull x where not exists(select 1 from ab_hasnull a where a.b = x.y)`,
 				Expected: []sql.Row{{1, 0}, {3, nil}},
+			},
+			{
+				Query:    "select x from xy where exists (select 1 from ab where ab.b = -1)",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select x from xy where exists (select 1 from ab where ab.b = xy.y)",
+				Expected: []sql.Row{{0}, {2}},
+			},
+			{
+				Query:    "select x from xy where not exists (select 1 from ab where ab.b = xy.y)",
+				Expected: []sql.Row{{1}, {3}},
+			},
+			{
+				Query:    "select x from xy_hasnull where not exists(select 1 from ab_hasnull where ab_hasnull.b <> xy_hasnull.y)",
+				Expected: []sql.Row{{3}},
+			},
+			{
+				Query:    "select x from xy_hasnull_idx where exists(select 1 from rs where rs.s = xy_hasnull_idx.y)",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "select x from xy_hasnull_idx where not exists(select 1 from rs where rs.s = xy_hasnull_idx.y)",
+				Expected: []sql.Row{{2}, {0}, {3}},
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/9828
+				Query:    "with v as (select 'a' as c where false) select null from t where not exists (select 1 from v where v.c <> t.c);",
+				Expected: []sql.Row{{nil}, {nil}},
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/9797
+				Query:    "select * from u where exists (select 1 from u as x where x.c0 = u.c0)",
+				Expected: []sql.Row{{1, 1}, {2, 2}, {2, 3}},
 			},
 		},
 	},

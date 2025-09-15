@@ -763,14 +763,14 @@ func GetForeignKeyTypeConversions(
 		childType := childSch[childIndex].Type
 		parentType := parentSch[parentIndex].Type
 
-		childExtendedType, ok := childType.(types.ExtendedType)
+		childExtendedType, ok := childType.(sql.ExtendedType)
 		// if even one of the types is not an extended type, then we can't transform any values
 		if !ok {
 			return nil, nil
 		}
 
 		if !childType.Equals(parentType) {
-			parentExtendedType, ok := parentType.(types.ExtendedType)
+			parentExtendedType, ok := parentType.(sql.ExtendedType)
 			if !ok {
 				// this should be impossible (child and parent should both be extended types), but just in case
 				return nil, nil

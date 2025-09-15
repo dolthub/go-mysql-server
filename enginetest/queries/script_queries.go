@@ -18,6 +18,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"gopkg.in/src-d/go-errors.v1"
@@ -120,6 +121,268 @@ type ScriptTestAssertion struct {
 // Unlike other engine tests, ScriptTests must be self-contained. No other tables are created outside the definition of
 // the tests.
 var ScriptTests = []ScriptTest{
+	{
+		// https://github.com/dolthub/dolt/issues/9836
+		Skip: true,
+		Name: "Ordering by pk does not change the order of results",
+		SetUpScript: []string{
+			"CREATE TABLE test(pk VARCHAR(50) PRIMARY KEY)",
+			"INSERT INTO test VALUES ('  3 12 4'), ('3. 12 4'), ('3.2 12 4'), ('-3.1234'), ('-3.1a'), ('-5+8'), ('+3.1234')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT pk FROM test ORDER BY pk",
+				Expected: []sql.Row{{"  3 12 4"}, {"-3.1234"}, {"-3.1a"}, {"-5+8"}, {"+3.1234"}, {"3. 12 4"}, {"3.2 12 4"}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9812
+		Name: "String-to-number comparison operators should behave consistently",
+		Assertions: []ScriptTestAssertion{
+			{
+				Dialect:                         "mysql",
+				Query:                           "SELECT ('A') = (0)",
+				Expected:                        []sql.Row{{true}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
+			},
+			{
+				Dialect:                         "mysql",
+				Query:                           "SELECT ('A') IN (0)",
+				Expected:                        []sql.Row{{true}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
+			},
+			{
+				Dialect:                         "mysql",
+				Query:                           "SELECT ('A') != (0)",
+				Expected:                        []sql.Row{{false}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
+			},
+			{
+				Dialect:                         "mysql",
+				Query:                           "SELECT ('A') <> (0)",
+				Expected:                        []sql.Row{{false}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
+			},
+			{
+				Dialect:                         "mysql",
+				Query:                           "SELECT ('A') < (0)",
+				Expected:                        []sql.Row{{false}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
+			},
+			{
+				Dialect:                         "mysql",
+				Query:                           "SELECT ('A') <= (0)",
+				Expected:                        []sql.Row{{true}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
+			},
+			{
+				Dialect:                         "mysql",
+				Query:                           "SELECT ('A') > (0)",
+				Expected:                        []sql.Row{{false}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
+			},
+			{
+				Dialect:                         "mysql",
+				Query:                           "SELECT ('A') >= (0)",
+				Expected:                        []sql.Row{{true}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
+			},
+			{
+				Dialect:                         "mysql",
+				Query:                           "SELECT ('A') NOT IN (0)",
+				Expected:                        []sql.Row{{false}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9794
+		Name: "UPDATE with TRIM function on TEXT column",
+		SetUpScript: []string{
+			"create table my_table (txt text);",
+			"insert into my_table values('foobar');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:            "update my_table set txt = trim(txt);",
+				SkipResultsCheck: true,
+			},
+			{
+				Query:    "select txt from my_table;",
+				Expected: []sql.Row{{"foobar"}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9794
+		Name:    "String functions with TextStorage (comprehensive test)",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table test_strings (id int primary key, content text);",
+			"insert into test_strings values (1, '  Hello World  '), (2, 'Test String'), (3, 'LOWERCASE'), (4, 'abc123def');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select id, trim(content) from test_strings order by id;",
+				Expected: []sql.Row{{1, "Hello World"}, {2, "Test String"}, {3, "LOWERCASE"}, {4, "abc123def"}},
+			},
+			{
+				Query:    "select id, upper(content) from test_strings order by id;",
+				Expected: []sql.Row{{1, "  HELLO WORLD  "}, {2, "TEST STRING"}, {3, "LOWERCASE"}, {4, "ABC123DEF"}},
+			},
+			{
+				Query:    "select id, lower(content) from test_strings order by id;",
+				Expected: []sql.Row{{1, "  hello world  "}, {2, "test string"}, {3, "lowercase"}, {4, "abc123def"}},
+			},
+			{
+				Query:    "select id, reverse(content) from test_strings order by id;",
+				Expected: []sql.Row{{1, "  dlroW olleH  "}, {2, "gnirtS tseT"}, {3, "ESACREWOL"}, {4, "fed321cba"}},
+			},
+			{
+				Query:    "select id, substring(content, 1, 5) from test_strings order by id;",
+				Expected: []sql.Row{{1, "  Hel"}, {2, "Test "}, {3, "LOWER"}, {4, "abc12"}},
+			},
+			{
+				Query:    "select id, length(content) from test_strings order by id;",
+				Expected: []sql.Row{{1, 15}, {2, 11}, {3, 9}, {4, 9}},
+			},
+			{
+				Query:    "select id, left(content, 3) from test_strings order by id;",
+				Expected: []sql.Row{{1, "  H"}, {2, "Tes"}, {3, "LOW"}, {4, "abc"}},
+			},
+			{
+				Query:    "select id, right(content, 3) from test_strings order by id;",
+				Expected: []sql.Row{{1, "d  "}, {2, "ing"}, {3, "ASE"}, {4, "def"}},
+			},
+			{
+				Query:    "select id, ltrim(content) from test_strings order by id;",
+				Expected: []sql.Row{{1, "Hello World  "}, {2, "Test String"}, {3, "LOWERCASE"}, {4, "abc123def"}},
+			},
+			{
+				Query:    "select id, rtrim(content) from test_strings order by id;",
+				Expected: []sql.Row{{1, "  Hello World"}, {2, "Test String"}, {3, "LOWERCASE"}, {4, "abc123def"}},
+			},
+			{
+				Query:    "select id, replace(content, 'e', 'X') from test_strings order by id;",
+				Expected: []sql.Row{{1, "  HXllo World  "}, {2, "TXst String"}, {3, "LOWERCASE"}, {4, "abc123dXf"}},
+			},
+			{
+				Query:    "select id, repeat(substring(content, 1, 2), 2) from test_strings order by id;",
+				Expected: []sql.Row{{1, "    "}, {2, "TeTe"}, {3, "LOLO"}, {4, "abab"}},
+			},
+			{
+				Query:    "select id, lpad(content, 12, '*') from test_strings where id = 4;",
+				Expected: []sql.Row{{4, "***abc123def"}},
+			},
+			{
+				Query:    "select id, rpad(content, 12, '*') from test_strings where id = 4;",
+				Expected: []sql.Row{{4, "abc123def***"}},
+			},
+			{
+				Query:    "select id, locate('o', content) from test_strings order by id;",
+				Expected: []sql.Row{{1, 7}, {2, 0}, {3, 2}, {4, 0}},
+			},
+			{
+				Query:    "select id, position('o' in content) from test_strings order by id;",
+				Expected: []sql.Row{{1, 7}, {2, 0}, {3, 2}, {4, 0}},
+			},
+			{
+				Query:    "select id, substr(content, 2, 4) from test_strings order by id;",
+				Expected: []sql.Row{{1, " Hel"}, {2, "est "}, {3, "OWER"}, {4, "bc12"}},
+			},
+			{
+				Query:    "select id, mid(content, 3, 3) from test_strings order by id;",
+				Expected: []sql.Row{{1, "Hel"}, {2, "st "}, {3, "WER"}, {4, "c12"}},
+			},
+			{
+				Query:    "select id, char_length(content) from test_strings order by id;",
+				Expected: []sql.Row{{1, 15}, {2, 11}, {3, 9}, {4, 9}},
+			},
+			{
+				Query:    "select id, character_length(content) from test_strings order by id;",
+				Expected: []sql.Row{{1, 15}, {2, 11}, {3, 9}, {4, 9}},
+			},
+			{
+				Query:    "select id, octet_length(content) from test_strings order by id;",
+				Expected: []sql.Row{{1, 15}, {2, 11}, {3, 9}, {4, 9}},
+			},
+			{
+				Query:    "select id, lcase(content) from test_strings order by id;",
+				Expected: []sql.Row{{1, "  hello world  "}, {2, "test string"}, {3, "lowercase"}, {4, "abc123def"}},
+			},
+			{
+				Query:    "select id, ucase(content) from test_strings order by id;",
+				Expected: []sql.Row{{1, "  HELLO WORLD  "}, {2, "TEST STRING"}, {3, "LOWERCASE"}, {4, "ABC123DEF"}},
+			},
+			{
+				Query:    "select id, ascii(content) from test_strings order by id;",
+				Expected: []sql.Row{{1, uint64(32)}, {2, uint64(84)}, {3, uint64(76)}, {4, uint64(97)}},
+			},
+			{
+				Query:    "select id, hex(content) from test_strings where id = 4;",
+				Expected: []sql.Row{{4, "616263313233646566"}},
+			},
+			{
+				Query:    "select id, unhex(hex(content)) = content from test_strings where id = 4;",
+				Expected: []sql.Row{{4, true}},
+			},
+			{
+				Query:    "select id, substring_index(content, 'e', 1) from test_strings order by id;",
+				Expected: []sql.Row{{1, "  H"}, {2, "T"}, {3, "LOWERCASE"}, {4, "abc123d"}},
+			},
+			{
+				Query:    "select id, insert(content, 2, 3, 'XYZ') from test_strings where id = 4;",
+				Expected: []sql.Row{{4, "aXYZ23def"}},
+			},
+			{
+				Query:            "update test_strings set content = concat(trim(content), '!');",
+				SkipResultsCheck: true,
+			},
+			{
+				Query:    "select id, content from test_strings order by id;",
+				Expected: []sql.Row{{1, "Hello World!"}, {2, "Test String!"}, {3, "LOWERCASE!"}, {4, "abc123def!"}},
+			},
+			{
+				Query:    "SELECT CONCAT_WS(',', content, 'suffix') FROM test_strings WHERE id = 2;",
+				Expected: []sql.Row{{"Test String!,suffix"}},
+			},
+			{
+				Query:    "SELECT EXPORT_SET(5, content, 'off') FROM test_strings WHERE id = 2;",
+				Expected: []sql.Row{{"Test String!,off,Test String!,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off,off"}},
+			},
+			{
+				Query:    "SELECT FIND_IN_SET('String', content) FROM test_strings WHERE id = 2;",
+				Expected: []sql.Row{{int32(0)}},
+			},
+			{
+				Query:    "SELECT MAKE_SET(3, content, 'second', 'third') FROM test_strings WHERE id = 2;",
+				Expected: []sql.Row{{"Test String!,second"}},
+			},
+			{
+				Query:    "SELECT SOUNDEX(content) FROM test_strings WHERE id = 2;",
+				Expected: []sql.Row{{"T2323652"}},
+			},
+		},
+	},
 	{
 		// Regression test for https://github.com/dolthub/dolt/issues/9641
 		Name: "bit union max1err dolt#9641",
@@ -9298,6 +9561,14 @@ where
 				},
 			},
 			{
+				Query: "select e, bit_length(e) from t order by e;",
+				Expected: []sql.Row{
+					{"abc", 24},
+					{"defg", 32},
+					{"hijkl", 40},
+				},
+			},
+			{
 				Query: "select e, concat(e, 'test') from t order by e;",
 				Expected: []sql.Row{
 					{"abc", "abctest"},
@@ -9958,6 +10229,15 @@ where
 					{"defg", 4},
 					{"abc,defg", 8},
 					{"abc,defg,hijkl", 14},
+				},
+			},
+			{
+				Query: "select s, bit_length(s) from t order by s;",
+				Expected: []sql.Row{
+					{"abc", 24},
+					{"defg", 32},
+					{"abc,defg", 64},
+					{"abc,defg,hijkl", 112},
 				},
 			},
 			{
@@ -11476,6 +11756,8 @@ select * from t1 except (
 					{"5.932887e7abc", float32(5.932887e+07)},
 					{"a1a1", float32(0)},
 				},
+				ExpectedWarningsCount: 12,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 			{
 				Dialect: "mysql",
@@ -11500,6 +11782,8 @@ select * from t1 except (
 					{"5.932887e7abc", 5.932887e+07},
 					{"a1a1", 0.0},
 				},
+				ExpectedWarningsCount: 12,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 			{
 				Dialect: "mysql",
@@ -11524,6 +11808,8 @@ select * from t1 except (
 					{"5.932887e7abc", 5},
 					{"a1a1", 0},
 				},
+				ExpectedWarningsCount: 16,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 			{
 				Dialect: "mysql",
@@ -11548,6 +11834,10 @@ select * from t1 except (
 					{"5.932887e7abc", uint64(5)},
 					{"a1a1", uint64(0)},
 				},
+				// TODO: Should be 19. Missing warnings for "Cast to unsigned converted negative integer to its positive
+				//  complement" (1105) https://github.com/dolthub/dolt/issues/9840
+				ExpectedWarningsCount: 16,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 			{
 				Dialect: "mysql",
@@ -11572,10 +11862,14 @@ select * from t1 except (
 					{"5.932887e7abc", "59328870.000"},
 					{"a1a1", "0.000"},
 				},
+				// TODO: should be 13. Missing warning for "Incorrect DECIMAL value: '0' for column '' at row -1" (1366)
+				ExpectedWarningsCount: 12,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 			{
-				Query:    "select * from test01 where pk in ('11')",
-				Expected: []sql.Row{{"11"}},
+				Query:                 "select * from test01 where pk in ('11')",
+				Expected:              []sql.Row{{"11"}},
+				ExpectedWarningsCount: 0,
 			},
 			{
 				// https://github.com/dolthub/dolt/issues/9739
@@ -11588,6 +11882,8 @@ select * from t1 except (
 					{"11d"},
 					{"11wha?"},
 				},
+				ExpectedWarningsCount: 12,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 			{
 				// https://github.com/dolthub/dolt/issues/9739
@@ -11599,6 +11895,8 @@ select * from t1 except (
 					{"  3. 12 4"},
 					{"3. 12 4"},
 				},
+				ExpectedWarningsCount: 12,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 			{
 				// https://github.com/dolthub/dolt/issues/9739
@@ -11612,20 +11910,82 @@ select * from t1 except (
 					{"+3.1234"},
 					{"3. 12 4"},
 				},
+				ExpectedWarningsCount: 20,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 			{
 				// https://github.com/dolthub/dolt/issues/9739
-				Skip:     true,
-				Dialect:  "mysql",
-				Query:    "select * from test02 where pk in ('11asdf')",
-				Expected: []sql.Row{{"11"}},
+				Skip:                  true,
+				Dialect:               "mysql",
+				Query:                 "select * from test02 where pk in ('11asdf')",
+				Expected:              []sql.Row{{"11"}},
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 			{
 				// https://github.com/dolthub/dolt/issues/9739
-				Skip:     true,
-				Dialect:  "mysql",
-				Query:    "select * from test02 where pk='11.12asdf'",
-				Expected: []sql.Row{},
+				Skip:                  true,
+				Dialect:               "mysql",
+				Query:                 "select * from test02 where pk='11.12asdf'",
+				Expected:              []sql.Row{},
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9821
+		Name: "strings convert to booleans",
+		Assertions: []ScriptTestAssertion{
+			{
+				Dialect:               "mysql",
+				Query:                 `select '3bxu' and true`,
+				Expected:              []sql.Row{{true}},
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+				ExpectedWarningsCount: 1,
+			},
+			{
+				Dialect:               "mysql",
+				Query:                 "select '3bxu' or false",
+				Expected:              []sql.Row{{true}},
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+				ExpectedWarningsCount: 1,
+			},
+			{
+				Dialect:               "mysql",
+				Query:                 "select '3bxu' xor false",
+				Expected:              []sql.Row{{true}},
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+				ExpectedWarningsCount: 1,
+			},
+			{
+				Query:                 "select '' or false",
+				Expected:              []sql.Row{{false}},
+				ExpectedWarningsCount: 0,
+			},
+			{
+				Query:                 "select '0' or false",
+				Expected:              []sql.Row{{false}},
+				ExpectedWarningsCount: 0,
+			},
+			{
+				Query:                 "select '00' or false",
+				Expected:              []sql.Row{{false}},
+				ExpectedWarningsCount: 0,
+			},
+			{
+				Dialect:               "mysql",
+				Query:                 "select '00asdf' or false",
+				Expected:              []sql.Row{{false}},
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+				ExpectedWarningsCount: 1,
+			},
+			{
+				Dialect:               "mysql",
+				Query:                 "select 'asdf' or false",
+				Expected:              []sql.Row{{false}},
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+				ExpectedWarningsCount: 1,
 			},
 		},
 	},

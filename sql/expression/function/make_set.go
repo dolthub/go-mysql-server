@@ -143,6 +143,13 @@ func (m *MakeSet) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 				if err != nil {
 					return nil, err
 				}
+
+				// Handle Dolt's TextStorage wrapper that doesn't convert to plain string
+				valStr, err = sql.UnwrapAny(ctx, valStr)
+				if err != nil {
+					return nil, err
+				}
+
 				result = append(result, valStr.(string))
 			}
 		}

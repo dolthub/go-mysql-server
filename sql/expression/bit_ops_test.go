@@ -196,3 +196,44 @@ func TestAllUint64(t *testing.T) {
 		})
 	}
 }
+
+func TestBitOpType(t *testing.T) {
+	testCases := []struct {
+		name         string
+		leftType     sql.Type
+		rightType    sql.Type
+		expectedType sql.Type
+		description  string
+	}{
+		{"unsigned & unsigned", types.Uint64, types.Uint64, types.Uint64, "Both operands are unsigned"},
+		{"signed & signed", types.Int64, types.Int64, types.Uint64, "Both operands are signed - should return Uint64"},
+		{"mixed signed & unsigned", types.Int64, types.Uint64, types.Uint64, "Mixed signed/unsigned operands"},
+		{"text & text", types.Text, types.Text, types.Uint64, "Text operands should return Float64"},
+		{"text & int", types.Text, types.Int64, types.Uint64, "Mixed text and numeric operands"},
+		{"float & float", types.Float64, types.Float64, types.Uint64, "Float operands should return Uint64"},
+	}
+
+	operations := []struct {
+		name string
+		op   func(left, right sql.Expression) *BitOp
+	}{
+		{"BitAnd", NewBitAnd},
+		{"BitOr", NewBitOr},
+		{"BitXor", NewBitXor},
+		{"ShiftLeft", NewShiftLeft},
+		{"ShiftRight", NewShiftRight},
+	}
+
+	for _, tt := range testCases {
+		for _, op := range operations {
+			t.Run(tt.name+"_"+op.name, func(t *testing.T) {
+				require := require.New(t)
+				bitOp := op.op(NewLiteral(1, tt.leftType), NewLiteral(1, tt.rightType))
+				actualType := bitOp.Type()
+				require.Equal(tt.expectedType, actualType,
+					"BitOp.Type() should return %v for %s: %s",
+					tt.expectedType, tt.name, tt.description)
+			})
+		}
+	}
+}

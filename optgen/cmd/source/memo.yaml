@@ -73,7 +73,6 @@ exprs:
   - [projections, "[]sql.Expression"]
 - name: "Distinct"
   unary:  true
-  skipExec: true
 - name: "Max1Row"
   unary:  true
 - name: "Filter"

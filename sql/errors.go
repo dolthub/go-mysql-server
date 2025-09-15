@@ -947,6 +947,9 @@ var (
 	ErrColumnSpecifiedTwice = errors.NewKind("column '%v' specified twice")
 
 	ErrEnumTypeTruncated = errors.NewKind("new enum type change truncates value")
+
+	// ErrTruncatedIncorrect is thrown when converting a value results in portions of the data to be trimmed.
+	ErrTruncatedIncorrect = errors.NewKind("Truncated incorrect %s value: %v")
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the

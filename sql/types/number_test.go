@@ -253,7 +253,7 @@ func TestNumberSQL_NumberFromString(t *testing.T) {
 
 	val, err = Float64.SQL(sql.NewEmptyContext(), nil, "also not a number")
 	require.NoError(t, err)
-	assert.Equal(t, "also not a number", val.ToString())
+	assert.Equal(t, "0", val.ToString())
 }
 
 func TestNumberString(t *testing.T) {

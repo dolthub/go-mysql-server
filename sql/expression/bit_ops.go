@@ -91,17 +91,8 @@ func (b *BitOp) Type() sql.Type {
 		return lTyp
 	}
 
-	if types.IsText(lTyp) || types.IsText(rTyp) {
-		return types.Float64
-	}
-
-	if types.IsUnsigned(lTyp) && types.IsUnsigned(rTyp) {
-		return types.Uint64
-	} else if types.IsSigned(lTyp) && types.IsSigned(rTyp) {
-		return types.Int64
-	}
-
-	return types.Float64
+	// MySQL bitwise operations always return unsigned results, even for signed operands.
+	return types.Uint64
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -168,7 +159,20 @@ func (b *BitOp) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, inter
 }
 
 func (b *BitOp) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}, error) {
-	typ := b.Type()
+	// Determine the appropriate conversion type based on operand types
+	var typ sql.Type
+	lTyp := b.LeftChild.Type()
+	rTyp := b.RightChild.Type()
+
+	if types.IsText(lTyp) || types.IsText(rTyp) {
+		typ = types.Float64
+	} else if types.IsUnsigned(lTyp) && types.IsUnsigned(rTyp) {
+		typ = types.Uint64
+	} else if types.IsSigned(lTyp) && types.IsSigned(rTyp) {
+		typ = types.Int64
+	} else {
+		typ = types.Float64
+	}
 
 	left = convertValueToType(ctx, typ, left, types.IsTime(b.LeftChild.Type()))
 	right = convertValueToType(ctx, typ, right, types.IsTime(b.RightChild.Type()))

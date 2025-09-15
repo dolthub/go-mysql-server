@@ -127,6 +127,12 @@ func (i *Insert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
+	// Handle Dolt's TextStorage wrapper that doesn't convert to plain string
+	strVal, err = sql.UnwrapAny(ctx, strVal)
+	if err != nil {
+		return nil, err
+	}
+
 	posVal, _, err := types.Int64.Convert(ctx, pos)
 	if err != nil {
 		return nil, err
@@ -138,6 +144,12 @@ func (i *Insert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	newStrVal, _, err := types.LongText.Convert(ctx, newStr)
+	if err != nil {
+		return nil, err
+	}
+
+	// Handle Dolt's TextStorage wrapper that doesn't convert to plain string
+	newStrVal, err = sql.UnwrapAny(ctx, newStrVal)
 	if err != nil {
 		return nil, err
 	}

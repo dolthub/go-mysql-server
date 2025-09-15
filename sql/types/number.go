@@ -87,15 +87,6 @@ var (
 	numre = regexp.MustCompile(`^[ ]*[0-9]*\.?[0-9]+`)
 )
 
-const (
-	// IntCutSet is the set of characters that should be trimmed from the beginning and end of a string
-	//   when converting to a signed or unsigned integer
-	IntCutSet = " \t"
-
-	// NumericCutSet is the set of characters to trim from a string before converting it to a number.
-	NumericCutSet = " \t\n\r"
-)
-
 type NumberTypeImpl_ struct {
 	baseType     query.Type
 	displayWidth int
@@ -530,7 +521,7 @@ func (t NumberTypeImpl_) SQLUint64(ctx *sql.Context, dest []byte, v interface{})
 
 func (t NumberTypeImpl_) SQLFloat64(ctx *sql.Context, dest []byte, v interface{}) ([]byte, error) {
 	num, err := convertToFloat64(t, v)
-	if err != nil {
+	if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
 		return nil, err
 	}
 	dest = strconv.AppendFloat(dest, num, 'g', -1, 64)
@@ -991,7 +982,7 @@ func convertToInt64(t NumberTypeImpl_, v interface{}) (int64, sql.ConvertInRange
 		}
 		return i, sql.InRange, nil
 	case string:
-		v = strings.Trim(v, IntCutSet)
+		v = strings.Trim(v, sql.IntCutSet)
 		if v == "" {
 			// StringType{}.Zero() returns empty string, but should represent "0" for number value
 			return 0, sql.InRange, nil
@@ -1178,7 +1169,7 @@ func convertToUint64(t NumberTypeImpl_, v interface{}) (uint64, sql.ConvertInRan
 		}
 		return i, sql.InRange, nil
 	case string:
-		v = strings.Trim(v, IntCutSet)
+		v = strings.Trim(v, sql.IntCutSet)
 		if i, err := strconv.ParseUint(v, 10, 64); err == nil {
 			return i, sql.InRange, nil
 		} else if err == strconv.ErrRange {
@@ -1281,7 +1272,7 @@ func convertToUint32(t NumberTypeImpl_, v interface{}) (uint32, sql.ConvertInRan
 		}
 		return uint32(i), sql.InRange, nil
 	case string:
-		v = strings.Trim(v, IntCutSet)
+		v = strings.Trim(v, sql.IntCutSet)
 		if i, err := strconv.ParseUint(v, 10, 32); err == nil {
 			return uint32(i), sql.InRange, nil
 		}
@@ -1377,7 +1368,7 @@ func convertToUint16(t NumberTypeImpl_, v interface{}) (uint16, sql.ConvertInRan
 		}
 		return uint16(i), sql.InRange, nil
 	case string:
-		v = strings.Trim(v, IntCutSet)
+		v = strings.Trim(v, sql.IntCutSet)
 		if i, err := strconv.ParseUint(v, 10, 16); err == nil {
 			return uint16(i), sql.InRange, nil
 		}
@@ -1477,7 +1468,7 @@ func convertToUint8(t NumberTypeImpl_, v interface{}) (uint8, sql.ConvertInRange
 		}
 		return uint8(i), sql.InRange, nil
 	case string:
-		v = strings.Trim(v, IntCutSet)
+		v = strings.Trim(v, sql.IntCutSet)
 		if i, err := strconv.ParseUint(v, 10, 8); err == nil {
 			return uint8(i), sql.InRange, nil
 		}
@@ -1537,13 +1528,13 @@ func convertToFloat64(t NumberTypeImpl_, v interface{}) (float64, error) {
 		}
 		return float64(i), nil
 	case string:
-		v = strings.Trim(v, NumericCutSet)
+		v = strings.Trim(v, sql.NumericCutSet)
 		i, err := strconv.ParseFloat(v, 64)
 		if err != nil {
 			// parse the first longest valid numbers
 			s := numre.FindString(v)
 			i, _ = strconv.ParseFloat(s, 64)
-			return i, sql.ErrInvalidValue.New(v, t.String())
+			return i, sql.ErrTruncatedIncorrect.New(t.String(), v)
 		}
 		return i, nil
 	case bool:

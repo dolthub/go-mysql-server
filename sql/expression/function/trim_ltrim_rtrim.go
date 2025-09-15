@@ -62,10 +62,16 @@ func (t *Trim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	// Convert pat into string
+	// Convert pat into string and unwrap automatically
 	pat, _, err = types.LongText.Convert(ctx, pat)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(pat).String())
+	}
+
+	// Handle Dolt's TextStorage wrapper that doesn't convert to plain string
+	pat, err = sql.UnwrapAny(ctx, pat)
+	if err != nil {
+		return nil, err
 	}
 
 	// Evaluate string value
@@ -79,10 +85,16 @@ func (t *Trim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	// Convert pat into string
+	// Convert str to text type and unwrap automatically
 	str, _, err = types.LongText.Convert(ctx, str)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str).String())
+	}
+
+	// Handle Dolt's TextStorage wrapper that doesn't convert to plain string
+	str, err = sql.UnwrapAny(ctx, str)
+	if err != nil {
+		return nil, err
 	}
 
 	start := 0
@@ -207,6 +219,12 @@ func (t *LeftTrim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str))
 	}
 
+	// Handle Dolt's TextStorage wrapper that doesn't convert to plain string
+	str, err = sql.UnwrapAny(ctx, str)
+	if err != nil {
+		return nil, err
+	}
+
 	return strings.TrimLeftFunc(str.(string), func(r rune) bool {
 		return r == ' '
 	}), nil
@@ -268,6 +286,12 @@ func (t *RightTrim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	str, _, err = types.LongText.Convert(ctx, str)
 	if err != nil {
 		return nil, sql.ErrInvalidType.New(reflect.TypeOf(str))
+	}
+
+	// Handle Dolt's TextStorage wrapper that doesn't convert to plain string
+	str, err = sql.UnwrapAny(ctx, str)
+	if err != nil {
+		return nil, err
 	}
 
 	return strings.TrimRightFunc(str.(string), func(r rune) bool {
