@@ -11789,6 +11789,10 @@ select * from t1 except (
 		},
 		Assertions: []ScriptTestAssertion{
 			{
+				Query:    "select true || false",
+				Expected: []sql.Row{{true}},
+			},
+			{
 				Query:    "select '0' || '0'",
 				Expected: []sql.Row{{false}},
 			},
@@ -11805,8 +11809,36 @@ select * from t1 except (
 				Expected: []sql.Row{{false}, {false}},
 			},
 			{
+				Query:    "select 1 + 2 || 3 + 4",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "select true || 1 || 'abc'",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "select (1 || 2) || (3 || 4)",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "select (1 + 2) || (3 + 4)",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "select ((1 || 2) || 3) || 4",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "select ((1 + 2) || 3) + 4",
+				Expected: []sql.Row{{5}},
+			},
+			{
 				Query:    "SET SESSION sql_mode = CONCAT(@@SESSION.sql_mode, ',PIPES_AS_CONCAT');",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "select true || false",
+				Expected: []sql.Row{{"10"}},
 			},
 			{
 				Query:    "select '0' || '0'",
@@ -11823,6 +11855,30 @@ select * from t1 except (
 			{
 				Query:    "select first_name || ' ' || last_name as full_name from names order by full_name",
 				Expected: []sql.Row{{"bob burger"}, {"john smith"}},
+			},
+			{
+				Query:    "select 1 + 2 || 3 + 4",
+				Expected: []sql.Row{{float64(28)}},
+			},
+			{
+				Query:    "select true || 1 || 'abc'",
+				Expected: []sql.Row{{"11abc"}},
+			},
+			{
+				Query:    "select (1 || 2) || (3 || 4)",
+				Expected: []sql.Row{{"1234"}},
+			},
+			{
+				Query:    "select (1 + 2) || (3 + 4)",
+				Expected: []sql.Row{{"37"}},
+			},
+			{
+				Query:    "select ((1 || 2) || 3) || 4",
+				Expected: []sql.Row{{"1234"}},
+			},
+			{
+				Query:    "select ((1 + 2) || 3) + 4",
+				Expected: []sql.Row{{float64(37)}},
 			},
 		},
 	},
