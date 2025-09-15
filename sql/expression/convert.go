@@ -17,14 +17,12 @@ package expression
 import (
 	"encoding/hex"
 	"fmt"
-	"strconv"
-	"strings"
-	"time"
-	"unicode"
-
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-errors.v1"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -486,36 +484,6 @@ func prepareForNumericContext(ctx *sql.Context, val interface{}, originType sql.
 		return sql.TrimStringToNumberPrefix(ctx, s, isInt), nil
 	}
 	return convertHexBlobToDecimalForNumericContext(val, originType)
-}
-
-// trimStringToNumberPrefix trims a string to the appropriate number prefix
-func trimStringToNumberPrefix(s string, isInt bool) string {
-	if isInt {
-		s = strings.TrimLeft(s, types.IntCutSet)
-	} else {
-		s = strings.TrimLeft(s, types.NumericCutSet)
-	}
-
-	seenDigit := false
-	seenDot := false
-	seenExp := false
-	signIndex := 0
-
-	for i := 0; i < len(s); i++ {
-		char := rune(s[i])
-
-		if unicode.IsDigit(char) {
-			seenDigit = true
-		} else if char == '.' && !seenDot && !isInt {
-			seenDot = true
-		} else if (char == 'e' || char == 'E') && !seenExp && seenDigit && !isInt {
-			seenExp = true
-			signIndex = i + 1
-		} else if !((char == '-' || char == '+') && i == signIndex) {
-			return s[:i]
-		}
-	}
-	return s
 }
 
 // convertHexBlobToDecimalForNumericContext converts byte array value to unsigned int value if originType is BLOB type.
