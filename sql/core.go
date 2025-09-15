@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/dolthub/vitess/go/mysql"
 	"math"
 	trace2 "runtime/trace"
 	"strconv"
@@ -362,12 +363,19 @@ func TrimStringToNumberPrefix(ctx *Context, s string, isInt bool) string {
 			signIndex = i + 1
 		} else if !((char == '-' || char == '+') && i == signIndex) {
 			if isInt {
-				ctx.Warn(1292, "Truncated incorrect INTEGER value: '%s'", s)
+				ctx.Warn(mysql.ERTruncatedWrongValue, "Truncated incorrect INTEGER value: '%s'", s)
 			} else {
-				ctx.Warn(1292, "Truncated incorrect DOUBLE value: '%s'", s)
+				ctx.Warn(mysql.ERTruncatedWrongValue, "Truncated incorrect DOUBLE value: '%s'", s)
 			}
-			return s[:i]
+			return convertEmptyStringToZero(s[:i])
 		}
+	}
+	return convertEmptyStringToZero(s)
+}
+
+func convertEmptyStringToZero(s string) string {
+	if s == "" {
+		return "0"
 	}
 	return s
 }

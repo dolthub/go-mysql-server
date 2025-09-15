@@ -17,6 +17,7 @@ package expression
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/src-d/go-errors.v1"
@@ -371,7 +372,7 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 		d, _, err := types.Float64.Convert(ctx, value)
 		if err != nil {
 			if sql.ErrTruncatedIncorrect.Is(err) {
-				ctx.Warn(1265, "%s", err.Error())
+				ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 				return d, nil
 			}
 			return types.Float64.Zero(), nil
