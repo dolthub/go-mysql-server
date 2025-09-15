@@ -1060,7 +1060,11 @@ func convertToInt64(t NumberTypeImpl_, v any, round bool) (int64, sql.ConvertInR
 				return i, sql.InRange, nil
 			}
 			f, _ := strconv.ParseFloat(truncStr, 64)
-			return convertToInt64(t, f, round)
+			res, outOfRange, cErr := convertToInt64(t, f, round)
+			if cErr != nil {
+				err = cErr
+			}
+			return res, outOfRange, err
 		}
 		truncStr, didTrunc := TruncateStringToInt(v)
 		if didTrunc {
