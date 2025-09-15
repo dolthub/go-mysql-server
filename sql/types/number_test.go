@@ -189,7 +189,7 @@ func TestNumberConvert(t *testing.T) {
 		{typ: Int64, inp: false, exp: int64(0), err: false, inRange: sql.InRange},
 		{typ: Uint8, inp: int64(34), exp: uint8(34), err: false, inRange: sql.InRange},
 		{typ: Uint16, inp: int16(35), exp: uint16(35), err: false, inRange: sql.InRange},
-		{typ: Uint24, inp: 36.756, exp: uint32(36), err: false, inRange: sql.InRange},
+		{typ: Uint24, inp: 36.756, exp: uint32(37), err: false, inRange: sql.InRange},
 		{typ: Uint32, inp: uint8(37), exp: uint32(37), err: false, inRange: sql.InRange},
 		{typ: Uint64, inp: time.Date(2009, 1, 2, 3, 4, 5, 0, time.UTC), exp: uint64(time.Date(2009, 1, 2, 3, 4, 5, 0, time.UTC).Unix()), err: false, inRange: sql.InRange},
 		{typ: Uint64, inp: "01000", exp: uint64(1000), err: false, inRange: sql.InRange},
