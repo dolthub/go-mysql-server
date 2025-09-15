@@ -122,6 +122,60 @@ type ScriptTestAssertion struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
+		// https://github.com/dolthub/go-mysql-server/issues/3216
+		Name: "UNION ALL with BLOB columns",
+		SetUpScript: []string{
+			"CREATE TABLE a(name VARCHAR(255), data BLOB)",
+			"CREATE TABLE b(name VARCHAR(255), data BLOB)",
+			"INSERT INTO a VALUES ('a-data', UNHEX('deadbeef'))",
+			"INSERT INTO b VALUES ('b-nodata', NULL)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT name, data FROM a UNION ALL SELECT name, data FROM b",
+				Expected: []sql.Row{
+					{"a-data", []byte{0xde, 0xad, 0xbe, 0xef}},
+					{"b-nodata", nil},
+				},
+			},
+			{
+				Query: "SELECT name, HEX(data) as data_hex FROM a UNION ALL SELECT name, HEX(data) as data_hex FROM b",
+				Expected: []sql.Row{
+					{"a-data", "DEADBEEF"},
+					{"b-nodata", nil},
+				},
+			},
+			{
+				Query: "SELECT name, data FROM a UNION ALL SELECT name, NULL FROM b",
+				Expected: []sql.Row{
+					{"a-data", []byte{0xde, 0xad, 0xbe, 0xef}},
+					{"b-nodata", nil},
+				},
+			},
+			{
+				Query: "SELECT name, HEX(data) as data_hex FROM a UNION ALL SELECT name, HEX(NULL) as data_hex FROM b",
+				Expected: []sql.Row{
+					{"a-data", "DEADBEEF"},
+					{"b-nodata", nil},
+				},
+			},
+			{
+				Query: "SELECT name, data FROM a UNION ALL SELECT name, UNHEX('') FROM b",
+				Expected: []sql.Row{
+					{"a-data", []byte{0xde, 0xad, 0xbe, 0xef}},
+					{"b-nodata", []byte{}},
+				},
+			},
+			{
+				Query: "SELECT name, HEX(data) as data_hex FROM a UNION ALL SELECT name, HEX(UNHEX('')) as data_hex FROM b",
+				Expected: []sql.Row{
+					{"a-data", "DEADBEEF"},
+					{"b-nodata", ""},
+				},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/9836
 		Skip: true,
 		Name: "Ordering by pk does not change the order of results",
