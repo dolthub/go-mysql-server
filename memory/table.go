@@ -1430,7 +1430,6 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 			oldRowWithoutVal = append(oldRowWithoutVal, row[:oldIdx]...)
 			oldRowWithoutVal = append(oldRowWithoutVal, row[oldIdx+1:]...)
 			oldType := data.schema.Schema[oldIdx].Type
-			// TODO: this needs to call the rounding conversion thing
 			newVal, inRange, err := types.TypeAwareConversion(ctx, row[oldIdx], oldType, column.Type, true)
 			if err != nil {
 				if sql.ErrNotMatchingSRID.Is(err) {

@@ -571,6 +571,7 @@ var ColumnDefaultTests = []ScriptTest{
 		},
 	},
 	{
+		// Technically, MySQL does NOT allow BLOB/JSON/TEXT types to have a literal default value, and requires them
 		// to be specified as an expression (i.e. wrapped in parens). We diverge from this behavior and allow it, for
 		// compatibility with MariaDB. For more context, see: https://github.com/dolthub/dolt/issues/7033
 		Name: "BLOB types can define defaults with literals",
