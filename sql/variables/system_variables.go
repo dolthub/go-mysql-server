@@ -78,7 +78,7 @@ func (sv *globalSystemVariables) AssignValues(vals map[string]interface{}) error
 		if !ok {
 			return sql.ErrUnknownSystemVariable.New(varName)
 		}
-		svv, err := sysVar.InitValue(ctx, sysVar.GetDefault(), val, true)
+		svv, err := sysVar.InitValue(ctx, val, true)
 		if err != nil {
 			return err
 		}
@@ -137,7 +137,7 @@ func (sv *globalSystemVariables) GetGlobal(name string) (sql.SystemVariable, int
 // Only global dynamic variables may be set through this function, as it is intended for use through the SET GLOBAL
 // statement. To set session system variables, use the appropriate function on the session context. To set values
 // directly (such as when loading persisted values), use AssignValues. Case-insensitive.
-func (sv *globalSystemVariables) SetGlobal(ctx *sql.Context, name string, newVal interface{}) error {
+func (sv *globalSystemVariables) SetGlobal(ctx *sql.Context, name string, val interface{}) error {
 	sv.mutex.Lock()
 	defer sv.mutex.Unlock()
 	name = strings.ToLower(name)
@@ -145,11 +145,7 @@ func (sv *globalSystemVariables) SetGlobal(ctx *sql.Context, name string, newVal
 	if !ok {
 		return sql.ErrUnknownSystemVariable.New(name)
 	}
-	var currVal = sysVar.GetDefault()
-	if sysVarVal, exists := sv.sysVarVals[name]; exists {
-		currVal = sysVarVal.Val
-	}
-	svv, err := sysVar.SetValue(ctx, currVal, newVal, true)
+	svv, err := sysVar.SetValue(ctx, val, true)
 	if err != nil {
 		return err
 	}
