@@ -303,6 +303,32 @@ func (c *comparison) CastLeftAndRight(ctx *sql.Context, left, right interface{})
 
 	lType := c.Left().Type()
 	rType := c.Right().Type()
+
+	//lIsEnumOrSet := types.IsEnum(lType) || types.IsSet(lType)
+	//rIsEnumOrSet := types.IsEnum(rType) || types.IsSet(rType)
+	//// If right side is convertible to enum/set, convert. Otherwise, convert left side
+	//if lIsEnumOrSet && (types.IsText(rType) || types.IsNumber(rType)) {
+	//	if r, inRange, err := lType.Convert(ctx, right); inRange && err == nil {
+	//		return left, r, lType, nil
+	//	}
+	//	l, _, err := types.TypeAwareConversion(ctx, left, lType, rType, false)
+	//	if err != nil {
+	//		return nil, nil, nil, err
+	//	}
+	//	return l, right, rType, nil
+	//}
+	//// If left side is convertible to enum/set, convert. Otherwise, convert right side
+	//if rIsEnumOrSet && (types.IsText(lType) || types.IsNumber(lType)) {
+	//	if l, inRange, err := rType.Convert(ctx, left); inRange && err == nil {
+	//		return l, right, rType, nil
+	//	}
+	//	r, _, err := types.TypeAwareConversion(ctx, right, rType, lType, false)
+	//	if err != nil {
+	//		return nil, nil, nil, err
+	//	}
+	//	return left, r, lType, nil
+	//}
+
 	compType := types.GetCompareType(lType, rType)
 
 	// Special case for JSON types

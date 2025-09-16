@@ -200,18 +200,19 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "asdfasdfasdf",
+			Name: "sets",
 			SetUpScript: []string{
-				"create table parent (e enum('a', 'b', 'c') primary key);",
-				"insert into parent values (1), (2);",
-				"create table child1 (e enum('x', 'y', 'z'), foreign key (e) references parent (e));",
+				`CREATE TABLE test (pk SET("a","b","c") PRIMARY KEY, v1 SET("w","x","y","z"));`,
+				`INSERT INTO test VALUES (0, 1), ("b", "y"), ("b,c", "z,z"), ("a,c,b", 10);`,
+				`UPDATE test SET v1 = "y,x,w" WHERE pk >= 4`,
+				`DELETE FROM test WHERE pk > "b,c";`,
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "insert into child1 values (1), (2);",
+					Query: `SELECT * FROM test ORDER BY pk;`,
 					Expected: []sql.Row{
 						{types.NewOkResult(2)},
 					},
@@ -242,7 +243,7 @@ func TestSingleScript(t *testing.T) {
 
 	for _, test := range scripts {
 		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-		//harness.UseServer()
+		harness.UseServer()
 		engine, err := harness.NewEngine(t)
 		if err != nil {
 			panic(err)

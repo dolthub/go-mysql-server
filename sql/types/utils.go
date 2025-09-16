@@ -16,12 +16,22 @@ package types
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+
 )
 
 // GetCompareType returns the type to use when comparing values of types left and right.
 func GetCompareType(left, right sql.Type) sql.Type {
 	if left.Equals(right) {
 		return left
+	}
+
+	// Left and right are both Enum types, but not the same, so use uint16 representation for comparison
+	if IsEnum(left) && IsEnum(right) {
+		return Uint16
+	}
+	// Left and right are both Set types, but not the same, so use uint16 representation for comparison
+	if IsSet(left) && IsSet(right) {
+		return Uint16
 	}
 
 	if IsTimespan(left) || IsTimespan(right) {
