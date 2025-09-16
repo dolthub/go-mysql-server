@@ -109,11 +109,8 @@ var OrderByGroupByScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "select binary s from t group by binary s order by s",
-				Expected: []sql.Row{
-					{[]uint8("abc")},
-					{[]uint8("def")},
-				},
+				Query:       "select binary s from t group by binary s order by s",
+				ExpectedErr: analyzererrors.ErrValidationGroupByOrderBy,
 			},
 		},
 	},

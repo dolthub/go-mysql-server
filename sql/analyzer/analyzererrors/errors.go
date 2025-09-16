@@ -22,10 +22,17 @@ var (
 	// ErrValidationOrderBy is returned when the order by contains aggregation
 	// expressions.
 	ErrValidationOrderBy = errors.NewKind("OrderBy does not support aggregation expressions")
-	// ErrValidationGroupBy is returned when the aggregation expression does not
-	// appear in the grouping columns.
+	// ErrValidationGroupBy is returned when a selected expression contains a nonaggregated column that does not appear
+	// in the group by clauses.
 	ErrValidationGroupBy = errors.NewKind(
-		"Expression #%d of SELECT list is not in GROUP BY clause; " +
+		"Expression #%d of SELECT list is not in GROUP BY clause and contains nonaggregated column '%s' which " +
+			"is not functionally dependent on columns in GROUP BY clause; " +
+			"this is incompatible with sql_mode=only_full_group_by",
+	)
+
+	ErrValidationGroupByOrderBy = errors.NewKind(
+		"Expression #%d of ORDER BY clause is not in GROUP BY clause and contains nonaggregated column '%s' which " +
+			"is not functionally dependent on columns in GROUP BY clause; " +
 			"this is incompatible with sql_mode=only_full_group_by",
 	)
 	// ErrValidationSchemaSource is returned when there is any column source

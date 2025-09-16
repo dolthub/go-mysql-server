@@ -828,7 +828,7 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 		// group by with any_value or non-strict are non-deterministic (unless there's only one value), so we must accept multiple
 		// group by with any_value()
 
-		_, rowIter, _, err = e.Query(ctx, "select any_value(id), team from members group by team order by id")
+		_, rowIter, _, err = e.Query(ctx, "select any_value(id), team from members group by team")
 		require.NoError(t, err)
 		rowCount = 0
 
@@ -867,6 +867,7 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 		require.Equal(t, rowCount, 3)
 
 		AssertErr(t, e, harness, "select id, team from members group by team order by id", nil, analyzererrors.ErrValidationGroupBy)
+		AssertErr(t, e, harness, "select any_value(id), team from members group by team order by id", nil, analyzererrors.ErrValidationGroupByOrderBy)
 	})
 }
 
