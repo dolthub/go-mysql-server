@@ -1070,7 +1070,6 @@ func convertToInt64(t NumberTypeImpl_, v any, round bool) (int64, sql.ConvertInR
 		}
 		return int64(math.Round(v)), sql.InRange, nil
 	case decimal.Decimal:
-		// TODO: round?
 		if v.GreaterThan(dec_int64_max) {
 			return dec_int64_max.IntPart(), sql.OutOfRange, nil
 		}
