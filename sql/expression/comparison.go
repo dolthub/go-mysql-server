@@ -16,6 +16,7 @@ package expression
 
 import (
 	"fmt"
+
 	"github.com/dolthub/vitess/go/mysql"
 	errors "gopkg.in/src-d/go-errors.v1"
 
