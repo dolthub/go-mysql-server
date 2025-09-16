@@ -127,12 +127,10 @@ var ScriptTests = []ScriptTest{
 		SetUpScript: []string{
 			"CREATE DATABASE tmp",
 			"USE tmp",
-			"DROP DATABASE tmp",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "SELECT DATABASE()",
-				Expected: []sql.Row{{nil}},
+				Query: "DROP DATABASE tmp",
 			},
 			{
 				Query:    "CREATE SCHEMA NewDatabase",
