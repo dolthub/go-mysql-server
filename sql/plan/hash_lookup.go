@@ -34,7 +34,7 @@ import (
 // simply delegates to the child.
 func NewHashLookup(n sql.Node, rightEntryKey sql.Expression, leftProbeKey sql.Expression, joinType JoinType) *HashLookup {
 	leftKeySch := hash.ExprsToSchema(leftProbeKey)
-	compareType := GetCompareType(leftProbeKey.Type(), rightEntryKey.Type())
+	compareType := types.GetCompareType(leftProbeKey.Type(), rightEntryKey.Type())
 	return &HashLookup{
 		UnaryNode:     UnaryNode{n},
 		RightEntryKey: rightEntryKey,
@@ -60,46 +60,6 @@ type HashLookup struct {
 var _ sql.Node = (*HashLookup)(nil)
 var _ sql.Expressioner = (*HashLookup)(nil)
 var _ sql.CollationCoercible = (*HashLookup)(nil)
-
-// GetCompareType returns the type to use when comparing values of types left and right.
-func GetCompareType(left, right sql.Type) sql.Type {
-	// TODO: much of this logic is very similar to castLeftAndRight() from sql/expression/comparison.go
-	//  consider consolidating
-	if left.Equals(right) {
-		return left
-	}
-	if types.IsTuple(left) && types.IsTuple(right) {
-		return left
-	}
-	if types.IsTime(left) || types.IsTime(right) {
-		return types.DatetimeMaxPrecision
-	}
-	if types.IsJSON(left) || types.IsJSON(right) {
-		return types.JSON
-	}
-	if types.IsBinaryType(left) || types.IsBinaryType(right) {
-		return types.LongBlob
-	}
-	if types.IsNumber(left) || types.IsNumber(right) {
-		if types.IsDecimal(left) {
-			return left
-		}
-		if types.IsDecimal(right) {
-			return right
-		}
-		if types.IsFloat(left) || types.IsFloat(right) {
-			return types.Float64
-		}
-		if types.IsSigned(left) && types.IsSigned(right) {
-			return types.Int64
-		}
-		if types.IsUnsigned(left) && types.IsUnsigned(right) {
-			return types.Uint64
-		}
-		return types.Float64
-	}
-	return types.LongText
-}
 
 func (n *HashLookup) Expressions() []sql.Expression {
 	return []sql.Expression{n.RightEntryKey, n.LeftProbeKey}

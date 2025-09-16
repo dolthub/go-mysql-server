@@ -140,13 +140,17 @@ func (t DecimalType_) Compare(s context.Context, a interface{}, b interface{}) (
 // Convert implements Type interface.
 func (t DecimalType_) Convert(c context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	dec, err := t.ConvertToNullDecimal(v)
-	if err != nil && !sql.ErrIncorrectValue.Is(err) {
+	if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
 		return nil, sql.OutOfRange, err
 	}
 	if !dec.Valid {
 		return nil, sql.InRange, nil
 	}
-	return t.BoundsCheck(dec.Decimal)
+	d, inRange, bErr := t.BoundsCheck(dec.Decimal)
+	if bErr != nil {
+		err = bErr
+	}
+	return d, inRange, err
 }
 
 func (t DecimalType_) ConvertNoBoundsCheck(v interface{}) (decimal.Decimal, error) {
@@ -201,7 +205,7 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 		var err error
 		truncStr, didTrunc := TruncateStringToNumber(value)
 		if didTrunc {
-			err = sql.ErrIncorrectValue.New(t.String(), value)
+			err = sql.ErrTruncatedIncorrect.New(t.String(), value)
 		}
 		var dec decimal.Decimal
 		if len(truncStr) == 0 {

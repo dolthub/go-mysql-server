@@ -16,6 +16,7 @@ package expression
 
 import (
 	"fmt"
+	"github.com/dolthub/vitess/go/mysql"
 	"strings"
 	"time"
 
@@ -355,13 +356,19 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 		dt := createConvertedDecimalType(typeLength, typeScale, false)
 		d, _, err := dt.Convert(ctx, val)
 		if err != nil {
-			return dt.Zero(), nil
+			if !sql.ErrTruncatedIncorrect.Is(err) {
+				return dt.Zero(), nil
+			}
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		}
 		return d, nil
 	case ConvertToFloat:
 		d, _, err := types.Float32.Convert(ctx, val)
 		if err != nil {
-			return types.Float32.Zero(), nil
+			if !sql.ErrTruncatedIncorrect.Is(err) {
+				return types.Float32.Zero(), nil
+			}
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		}
 		return d, nil
 	case ConvertToDouble, ConvertToReal:
@@ -370,7 +377,7 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 			return d, nil
 		}
 		if sql.ErrTruncatedIncorrect.Is(err) {
-			ctx.Warn(1265, "%s", err.Error())
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 			return d, nil
 		}
 		return types.Float64.Zero(), nil
@@ -386,7 +393,7 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 			return num, nil
 		}
 		if sql.ErrTruncatedIncorrect.Is(err) {
-			ctx.Warn(1265, "%s", err.Error())
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 			return num, nil
 		}
 		return types.Int64.Zero(), nil
@@ -402,7 +409,7 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 			return num, nil
 		}
 		if sql.ErrTruncatedIncorrect.Is(err) {
-			ctx.Warn(1265, "%s", err.Error())
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 			return num, nil
 		}
 		num, _, err = types.Int64.Convert(ctx, val)

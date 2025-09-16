@@ -203,13 +203,17 @@ func TestSingleScript(t *testing.T) {
 	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name:        "test",
-			SetUpScript: []string{},
+			Name: "asdfasdfasdf",
+			SetUpScript: []string{
+				"create table parent (e enum('a', 'b', 'c') primary key);",
+				"insert into parent values (1), (2);",
+				"create table child1 (e enum('x', 'y', 'z'), foreign key (e) references parent (e));",
+			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "select bit_count('2.99a');",
+					Query: "insert into child1 values (1), (2);",
 					Expected: []sql.Row{
-						{-3},
+						{types.NewOkResult(2)},
 					},
 				},
 			},

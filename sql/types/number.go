@@ -307,7 +307,7 @@ func (t NumberTypeImpl_) Convert(ctx context.Context, v any) (any, sql.ConvertIn
 		if num < -math.MaxFloat32 {
 			return float32(-math.MaxFloat32), sql.OutOfRange, nil
 		}
-		return float32(num), sql.InRange, nil // TODO: pass up error for warning?
+		return float32(num), sql.InRange, err
 	case sqltypes.Float64:
 		ret, err := convertToFloat64(t, v)
 		return ret, sql.InRange, err
@@ -1036,7 +1036,6 @@ func convertToInt64(t NumberTypeImpl_, v any, round bool) (int64, sql.ConvertInR
 		}
 		return int64(math.Round(v)), sql.InRange, nil
 	case decimal.Decimal:
-		// TODO: round?
 		if v.GreaterThan(dec_int64_max) {
 			return dec_int64_max.IntPart(), sql.OutOfRange, nil
 		}
