@@ -16,7 +16,6 @@ package types
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
-
 )
 
 // GetCompareType returns the type to use when comparing values of types left and right.
