@@ -167,7 +167,7 @@ func (t EnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.
 	case int:
 		// MySQL rejects 0 values in strict mode regardless of enum definition
 		if value == 0 {
-			if sqlCtx, ok := ctx.(*sql.Context); ok && sql.ValidateStrictMode(sqlCtx) {
+			if sqlCtx, ok := ctx.(*sql.Context); ok && sql.LoadSqlMode(sqlCtx).Strict() {
 				return nil, sql.OutOfRange, ErrConvertingToEnum.New(value)
 			}
 		}

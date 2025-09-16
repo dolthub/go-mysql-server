@@ -305,6 +305,25 @@ func (m *Memo) MemoizeProject(grp, child *ExprGroup, projections []sql.Expressio
 	return grp
 }
 
+func (m *Memo) MemoizeDistinctProject(grp, child *ExprGroup, projections []sql.Expression) *ExprGroup {
+	proj := &Project{
+		relBase:     &relBase{},
+		Child:       child,
+		Projections: projections,
+	}
+	projGrp := m.NewExprGroup(proj)
+	distinct := &Distinct{
+		relBase: &relBase{},
+		Child:   projGrp,
+	}
+	if grp == nil {
+		return m.NewExprGroup(distinct)
+	}
+	distinct.g = grp
+	grp.Prepend(distinct)
+	return grp
+}
+
 // memoizeIndexScan creates a source node that uses a specific index to
 // access data
 func (m *Memo) memoizeIndexScan(grp *ExprGroup, ita *plan.IndexedTableAccess, alias string, index *Index, stat sql.Statistic) *ExprGroup {

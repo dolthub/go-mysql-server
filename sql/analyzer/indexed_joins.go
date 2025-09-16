@@ -465,10 +465,11 @@ func convertSemiToInnerJoin(m *memo.Memo) error {
 			projectExpressions = append(projectExpressions, p)
 		}
 
-		// project is a new group
-		rightGrp := m.MemoizeProject(nil, semi.Right, projectExpressions)
-		if _, ok := semi.Right.First.(*memo.Distinct); !ok {
-			rightGrp.RelProps.Distinct = memo.HashDistinctOp
+		var rightGrp *memo.ExprGroup
+		if _, ok := semi.Right.First.(*memo.Distinct); ok {
+			rightGrp = m.MemoizeProject(nil, semi.Right, projectExpressions)
+		} else {
+			rightGrp = m.MemoizeDistinctProject(nil, semi.Right, projectExpressions)
 		}
 
 		// join and its commute are a new group

@@ -383,32 +383,23 @@ offset 1;`,
 			"     ├─ Distinct\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [xy_1.x:0!null]\n" +
-			"     │       └─ Project\n" +
-			"     │           ├─ columns: [xy_1.x:0!null, xy_1.y:1]\n" +
-			"     │           └─ MergeJoin\n" +
-			"     │               ├─ cmp: Eq\n" +
-			"     │               │   ├─ xy_1.x:0!null\n" +
-			"     │               │   └─ xy_2.y:2\n" +
-			"     │               ├─ TableAlias(xy_1)\n" +
-			"     │               │   └─ IndexedTableAccess(xy)\n" +
-			"     │               │       ├─ index: [xy.x]\n" +
-			"     │               │       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │               │       ├─ colSet: (3,4)\n" +
-			"     │               │       ├─ tableId: 2\n" +
-			"     │               │       └─ Table\n" +
-			"     │               │           ├─ name: xy\n" +
-			"     │               │           └─ columns: [x y]\n" +
-			"     │               └─ Project\n" +
-			"     │                   ├─ columns: [xy_2.y:1]\n" +
-			"     │                   └─ TableAlias(xy_2)\n" +
-			"     │                       └─ IndexedTableAccess(xy)\n" +
-			"     │                           ├─ index: [xy.y]\n" +
-			"     │                           ├─ static: [{[NULL, ∞)}]\n" +
-			"     │                           ├─ colSet: (5,6)\n" +
-			"     │                           ├─ tableId: 3\n" +
-			"     │                           └─ Table\n" +
-			"     │                               ├─ name: xy\n" +
-			"     │                               └─ columns: [x y]\n" +
+			"     │       └─ SemiLookupJoin\n" +
+			"     │           ├─ TableAlias(xy_1)\n" +
+			"     │           │   └─ ProcessTable\n" +
+			"     │           │       └─ Table\n" +
+			"     │           │           ├─ name: xy\n" +
+			"     │           │           └─ columns: [x y]\n" +
+			"     │           └─ Project\n" +
+			"     │               ├─ columns: [xy_2.y:1]\n" +
+			"     │               └─ TableAlias(xy_2)\n" +
+			"     │                   └─ IndexedTableAccess(xy)\n" +
+			"     │                       ├─ index: [xy.y]\n" +
+			"     │                       ├─ keys: [xy_1.x:0!null]\n" +
+			"     │                       ├─ colSet: (5,6)\n" +
+			"     │                       ├─ tableId: 3\n" +
+			"     │                       └─ Table\n" +
+			"     │                           ├─ name: xy\n" +
+			"     │                           └─ columns: [x y]\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.y]\n" +
 			"         ├─ keys: [xy_1.x:0!null]\n" +
@@ -425,20 +416,16 @@ offset 1;`,
 			"     ├─ Distinct\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [xy_1.x]\n" +
-			"     │       └─ Project\n" +
-			"     │           ├─ columns: [xy_1.x, xy_1.y]\n" +
-			"     │           └─ MergeJoin (estimated cost=2030.000 rows=1000)\n" +
-			"     │               ├─ cmp: (xy_1.x = xy_2.y)\n" +
-			"     │               ├─ TableAlias(xy_1)\n" +
-			"     │               │   └─ IndexedTableAccess(xy)\n" +
-			"     │               │       ├─ index: [xy.x]\n" +
-			"     │               │       └─ filters: [{[NULL, ∞)}]\n" +
-			"     │               └─ Project\n" +
-			"     │                   ├─ columns: [xy_2.y]\n" +
-			"     │                   └─ TableAlias(xy_2)\n" +
-			"     │                       └─ IndexedTableAccess(xy)\n" +
-			"     │                           ├─ index: [xy.y]\n" +
-			"     │                           └─ filters: [{[NULL, ∞)}]\n" +
+			"     │       └─ SemiLookupJoin (estimated cost=3300.000 rows=1000)\n" +
+			"     │           ├─ TableAlias(xy_1)\n" +
+			"     │           │   └─ Table\n" +
+			"     │           │       └─ name: xy\n" +
+			"     │           └─ Project\n" +
+			"     │               ├─ columns: [xy_2.y]\n" +
+			"     │               └─ TableAlias(xy_2)\n" +
+			"     │                   └─ IndexedTableAccess(xy)\n" +
+			"     │                       ├─ index: [xy.y]\n" +
+			"     │                       └─ keys: xy_1.x\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.y]\n" +
 			"         └─ keys: xy_1.x\n" +
@@ -450,20 +437,16 @@ offset 1;`,
 			"     ├─ Distinct\n" +
 			"     │   └─ Project\n" +
 			"     │       ├─ columns: [xy_1.x]\n" +
-			"     │       └─ Project\n" +
-			"     │           ├─ columns: [xy_1.x, xy_1.y]\n" +
-			"     │           └─ MergeJoin (estimated cost=2030.000 rows=1000) (actual rows=4 loops=1)\n" +
-			"     │               ├─ cmp: (xy_1.x = xy_2.y)\n" +
-			"     │               ├─ TableAlias(xy_1)\n" +
-			"     │               │   └─ IndexedTableAccess(xy)\n" +
-			"     │               │       ├─ index: [xy.x]\n" +
-			"     │               │       └─ filters: [{[NULL, ∞)}]\n" +
-			"     │               └─ Project\n" +
-			"     │                   ├─ columns: [xy_2.y]\n" +
-			"     │                   └─ TableAlias(xy_2)\n" +
-			"     │                       └─ IndexedTableAccess(xy)\n" +
-			"     │                           ├─ index: [xy.y]\n" +
-			"     │                           └─ filters: [{[NULL, ∞)}]\n" +
+			"     │       └─ SemiLookupJoin (estimated cost=3300.000 rows=1000) (actual rows=4 loops=1)\n" +
+			"     │           ├─ TableAlias(xy_1)\n" +
+			"     │           │   └─ Table\n" +
+			"     │           │       └─ name: xy\n" +
+			"     │           └─ Project\n" +
+			"     │               ├─ columns: [xy_2.y]\n" +
+			"     │               └─ TableAlias(xy_2)\n" +
+			"     │                   └─ IndexedTableAccess(xy)\n" +
+			"     │                       ├─ index: [xy.y]\n" +
+			"     │                       └─ keys: xy_1.x\n" +
 			"     └─ IndexedTableAccess(xy)\n" +
 			"         ├─ index: [xy.y]\n" +
 			"         └─ keys: xy_1.x\n" +
@@ -2305,56 +2288,39 @@ Select * from (
 	},
 	{
 		Query: `select /*+ LOOKUP_JOIN(xy,scalarSubq0) */ * from xy where x in (select a from ab);`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [xy.x:0!null, xy.y:1]\n" +
-			" └─ MergeJoin\n" +
-			"     ├─ cmp: Eq\n" +
-			"     │   ├─ xy.x:0!null\n" +
-			"     │   └─ ab.a:2!null\n" +
-			"     ├─ IndexedTableAccess(xy)\n" +
-			"     │   ├─ index: [xy.x]\n" +
-			"     │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   ├─ colSet: (1,2)\n" +
-			"     │   ├─ tableId: 1\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: xy\n" +
-			"     │       └─ columns: [x y]\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [ab.a:0!null]\n" +
-			"         └─ IndexedTableAccess(ab)\n" +
-			"             ├─ index: [ab.a]\n" +
-			"             ├─ static: [{[NULL, ∞)}]\n" +
-			"             ├─ colSet: (3,4)\n" +
-			"             ├─ tableId: 2\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: ab\n" +
-			"                 └─ columns: [a b]\n" +
+		ExpectedPlan: "SemiLookupJoin\n" +
+			" ├─ ProcessTable\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: xy\n" +
+			" │       └─ columns: [x y]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [ab.a:0!null]\n" +
+			"     └─ IndexedTableAccess(ab)\n" +
+			"         ├─ index: [ab.a]\n" +
+			"         ├─ keys: [xy.x:0!null]\n" +
+			"         ├─ colSet: (3,4)\n" +
+			"         ├─ tableId: 2\n" +
+			"         └─ Table\n" +
+			"             ├─ name: ab\n" +
+			"             └─ columns: [a b]\n" +
 			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [xy.x, xy.y]\n" +
-			" └─ MergeJoin (estimated cost=2030.000 rows=1000)\n" +
-			"     ├─ cmp: (xy.x = ab.a)\n" +
-			"     ├─ IndexedTableAccess(xy)\n" +
-			"     │   ├─ index: [xy.x]\n" +
-			"     │   └─ filters: [{[NULL, ∞)}]\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [ab.a]\n" +
-			"         └─ IndexedTableAccess(ab)\n" +
-			"             ├─ index: [ab.a]\n" +
-			"             └─ filters: [{[NULL, ∞)}]\n" +
+		ExpectedEstimates: "SemiLookupJoin (estimated cost=3300.000 rows=1000)\n" +
+			" ├─ Table\n" +
+			" │   └─ name: xy\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [ab.a]\n" +
+			"     └─ IndexedTableAccess(ab)\n" +
+			"         ├─ index: [ab.a]\n" +
+			"         └─ keys: xy.x\n" +
 			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [xy.x, xy.y]\n" +
-			" └─ MergeJoin (estimated cost=2030.000 rows=1000) (actual rows=4 loops=1)\n" +
-			"     ├─ cmp: (xy.x = ab.a)\n" +
-			"     ├─ IndexedTableAccess(xy)\n" +
-			"     │   ├─ index: [xy.x]\n" +
-			"     │   └─ filters: [{[NULL, ∞)}]\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [ab.a]\n" +
-			"         └─ IndexedTableAccess(ab)\n" +
-			"             ├─ index: [ab.a]\n" +
-			"             └─ filters: [{[NULL, ∞)}]\n" +
+		ExpectedAnalysis: "SemiLookupJoin (estimated cost=3300.000 rows=1000) (actual rows=4 loops=1)\n" +
+			" ├─ Table\n" +
+			" │   └─ name: xy\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [ab.a]\n" +
+			"     └─ IndexedTableAccess(ab)\n" +
+			"         ├─ index: [ab.a]\n" +
+			"         └─ keys: xy.x\n" +
 			"",
 	},
 	{
@@ -4817,68 +4783,45 @@ Select * from (
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNT(1 (bigint))\n" +
 			"     ├─ group: ab.a:0!null\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [ab.a:0!null, ab.b:1]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: Eq\n" +
-			"             │   ├─ ab.a:0!null\n" +
-			"             │   └─ xy.x:2!null\n" +
-			"             ├─ IndexedTableAccess(ab)\n" +
-			"             │   ├─ index: [ab.a]\n" +
-			"             │   ├─ static: [{[NULL, ∞)}]\n" +
-			"             │   ├─ colSet: (1,2)\n" +
-			"             │   ├─ tableId: 1\n" +
-			"             │   └─ Table\n" +
-			"             │       ├─ name: ab\n" +
-			"             │       └─ columns: [a b]\n" +
-			"             └─ Project\n" +
-			"                 ├─ columns: [xy.x:0!null]\n" +
-			"                 └─ IndexedTableAccess(xy)\n" +
-			"                     ├─ index: [xy.x]\n" +
-			"                     ├─ static: [{[NULL, ∞)}]\n" +
-			"                     ├─ colSet: (3,4)\n" +
-			"                     ├─ tableId: 2\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: xy\n" +
-			"                         └─ columns: [x y]\n" +
+			"     └─ SemiLookupJoin\n" +
+			"         ├─ ProcessTable\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: ab\n" +
+			"         │       └─ columns: [a b]\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.x]\n" +
+			"             ├─ keys: [ab.a:0!null]\n" +
+			"             ├─ colSet: (3,4)\n" +
+			"             ├─ tableId: 2\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: xy\n" +
+			"                 └─ columns: [x y]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(1) as cnt]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ SelectDeps(COUNT(1))\n" +
 			"     ├─ Grouping(ab.a)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [ab.a, ab.b]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: (ab.a = xy.x)\n" +
-			"             ├─ IndexedTableAccess(ab)\n" +
-			"             │   ├─ index: [ab.a]\n" +
-			"             │   └─ filters: [{[NULL, ∞)}]\n" +
-			"             └─ Project\n" +
-			"                 ├─ columns: [xy.x]\n" +
-			"                 └─ IndexedTableAccess(xy)\n" +
-			"                     ├─ index: [xy.x]\n" +
-			"                     ├─ filters: [{[NULL, ∞)}]\n" +
-			"                     └─ columns: [x y]\n" +
+			"     └─ SemiLookupJoin\n" +
+			"         ├─ Table\n" +
+			"         │   └─ name: ab\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.x]\n" +
+			"             ├─ columns: [x y]\n" +
+			"             └─ keys: ab.a\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(1) as cnt]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ SelectDeps(COUNT(1))\n" +
 			"     ├─ Grouping(ab.a)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [ab.a, ab.b]\n" +
-			"         └─ MergeJoin\n" +
-			"             ├─ cmp: (ab.a = xy.x)\n" +
-			"             ├─ IndexedTableAccess(ab)\n" +
-			"             │   ├─ index: [ab.a]\n" +
-			"             │   └─ filters: [{[NULL, ∞)}]\n" +
-			"             └─ Project\n" +
-			"                 ├─ columns: [xy.x]\n" +
-			"                 └─ IndexedTableAccess(xy)\n" +
-			"                     ├─ index: [xy.x]\n" +
-			"                     ├─ filters: [{[NULL, ∞)}]\n" +
-			"                     └─ columns: [x y]\n" +
+			"     └─ SemiLookupJoin\n" +
+			"         ├─ Table\n" +
+			"         │   └─ name: ab\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.x]\n" +
+			"             ├─ columns: [x y]\n" +
+			"             └─ keys: ab.a\n" +
 			"",
 	},
 	{
@@ -5332,117 +5275,77 @@ Select * from (
 	},
 	{
 		Query: `select * from xy where exists (select * from ab where a = x) order by x`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [xy.x:0!null, xy.y:1]\n" +
-			" └─ MergeJoin\n" +
-			"     ├─ cmp: Eq\n" +
-			"     │   ├─ xy.x:0!null\n" +
-			"     │   └─ ab.a:2!null\n" +
-			"     ├─ IndexedTableAccess(xy)\n" +
-			"     │   ├─ index: [xy.x]\n" +
-			"     │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   ├─ colSet: (1,2)\n" +
-			"     │   ├─ tableId: 1\n" +
+		ExpectedPlan: "Sort(xy.x:0!null ASC nullsFirst)\n" +
+			" └─ SemiLookupJoin\n" +
+			"     ├─ ProcessTable\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: xy\n" +
 			"     │       └─ columns: [x y]\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [ab.a:0!null]\n" +
+			"     └─ IndexedTableAccess(ab)\n" +
+			"         ├─ index: [ab.a]\n" +
+			"         ├─ keys: [xy.x:0!null]\n" +
+			"         ├─ colSet: (3,4)\n" +
+			"         ├─ tableId: 2\n" +
+			"         └─ Table\n" +
+			"             ├─ name: ab\n" +
+			"             └─ columns: [a b]\n" +
+			"",
+		ExpectedEstimates: "Sort(xy.x ASC)\n" +
+			" └─ SemiLookupJoin\n" +
+			"     ├─ Table\n" +
+			"     │   └─ name: xy\n" +
+			"     └─ IndexedTableAccess(ab)\n" +
+			"         ├─ index: [ab.a]\n" +
+			"         ├─ columns: [a b]\n" +
+			"         └─ keys: xy.x\n" +
+			"",
+		ExpectedAnalysis: "Sort(xy.x ASC)\n" +
+			" └─ SemiLookupJoin\n" +
+			"     ├─ Table\n" +
+			"     │   └─ name: xy\n" +
+			"     └─ IndexedTableAccess(ab)\n" +
+			"         ├─ index: [ab.a]\n" +
+			"         ├─ columns: [a b]\n" +
+			"         └─ keys: xy.x\n" +
+			"",
+	},
+	{
+		Query: `select * from xy where exists (select * from ab where a = x order by a limit 2) order by x limit 5`,
+		ExpectedPlan: "Limit(5)\n" +
+			" └─ TopN(Limit: [5 (bigint)]; xy.x:0!null ASC nullsFirst)\n" +
+			"     └─ SemiLookupJoin\n" +
+			"         ├─ ProcessTable\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: xy\n" +
+			"         │       └─ columns: [x y]\n" +
 			"         └─ IndexedTableAccess(ab)\n" +
 			"             ├─ index: [ab.a]\n" +
-			"             ├─ static: [{[NULL, ∞)}]\n" +
+			"             ├─ keys: [xy.x:0!null]\n" +
 			"             ├─ colSet: (3,4)\n" +
 			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: ab\n" +
 			"                 └─ columns: [a b]\n" +
 			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [xy.x, xy.y]\n" +
-			" └─ MergeJoin (estimated cost=2030.000 rows=1000)\n" +
-			"     ├─ cmp: (xy.x = ab.a)\n" +
-			"     ├─ IndexedTableAccess(xy)\n" +
-			"     │   ├─ index: [xy.x]\n" +
-			"     │   └─ filters: [{[NULL, ∞)}]\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [ab.a]\n" +
-			"         └─ IndexedTableAccess(ab)\n" +
-			"             ├─ index: [ab.a]\n" +
-			"             ├─ filters: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [a b]\n" +
-			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [xy.x, xy.y]\n" +
-			" └─ MergeJoin (estimated cost=2030.000 rows=1000) (actual rows=4 loops=1)\n" +
-			"     ├─ cmp: (xy.x = ab.a)\n" +
-			"     ├─ IndexedTableAccess(xy)\n" +
-			"     │   ├─ index: [xy.x]\n" +
-			"     │   └─ filters: [{[NULL, ∞)}]\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [ab.a]\n" +
-			"         └─ IndexedTableAccess(ab)\n" +
-			"             ├─ index: [ab.a]\n" +
-			"             ├─ filters: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [a b]\n" +
-			"",
-	},
-	{
-		Query: `select * from xy where exists (select * from ab where a = x order by a limit 2) order by x limit 5`,
-		ExpectedPlan: "Limit(5)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [xy.x:0!null, xy.y:1]\n" +
-			"     └─ MergeJoin\n" +
-			"         ├─ cmp: Eq\n" +
-			"         │   ├─ xy.x:0!null\n" +
-			"         │   └─ ab.a:2!null\n" +
-			"         ├─ IndexedTableAccess(xy)\n" +
-			"         │   ├─ index: [xy.x]\n" +
-			"         │   ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   ├─ colSet: (1,2)\n" +
-			"         │   ├─ tableId: 1\n" +
-			"         │   └─ Table\n" +
-			"         │       ├─ name: xy\n" +
-			"         │       └─ columns: [x y]\n" +
-			"         └─ Project\n" +
-			"             ├─ columns: [ab.a:0!null]\n" +
-			"             └─ IndexedTableAccess(ab)\n" +
-			"                 ├─ index: [ab.a]\n" +
-			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 ├─ colSet: (3,4)\n" +
-			"                 ├─ tableId: 2\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: ab\n" +
-			"                     └─ columns: [a b]\n" +
-			"",
 		ExpectedEstimates: "Limit(5)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [xy.x, xy.y]\n" +
-			"     └─ MergeJoin\n" +
-			"         ├─ cmp: (xy.x = ab.a)\n" +
-			"         ├─ IndexedTableAccess(xy)\n" +
-			"         │   ├─ index: [xy.x]\n" +
-			"         │   └─ filters: [{[NULL, ∞)}]\n" +
-			"         └─ Project\n" +
-			"             ├─ columns: [ab.a]\n" +
-			"             └─ IndexedTableAccess(ab)\n" +
-			"                 ├─ index: [ab.a]\n" +
-			"                 ├─ filters: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [a b]\n" +
+			" └─ TopN(Limit: [5]; xy.x ASC)\n" +
+			"     └─ SemiLookupJoin\n" +
+			"         ├─ Table\n" +
+			"         │   └─ name: xy\n" +
+			"         └─ IndexedTableAccess(ab)\n" +
+			"             ├─ index: [ab.a]\n" +
+			"             ├─ columns: [a b]\n" +
+			"             └─ keys: xy.x\n" +
 			"",
 		ExpectedAnalysis: "Limit(5)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [xy.x, xy.y]\n" +
-			"     └─ MergeJoin\n" +
-			"         ├─ cmp: (xy.x = ab.a)\n" +
-			"         ├─ IndexedTableAccess(xy)\n" +
-			"         │   ├─ index: [xy.x]\n" +
-			"         │   └─ filters: [{[NULL, ∞)}]\n" +
-			"         └─ Project\n" +
-			"             ├─ columns: [ab.a]\n" +
-			"             └─ IndexedTableAccess(ab)\n" +
-			"                 ├─ index: [ab.a]\n" +
-			"                 ├─ filters: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [a b]\n" +
+			" └─ TopN(Limit: [5]; xy.x ASC)\n" +
+			"     └─ SemiLookupJoin\n" +
+			"         ├─ Table\n" +
+			"         │   └─ name: xy\n" +
+			"         └─ IndexedTableAccess(ab)\n" +
+			"             ├─ index: [ab.a]\n" +
+			"             ├─ columns: [a b]\n" +
+			"             └─ keys: xy.x\n" +
 			"",
 	},
 	{
@@ -5696,7 +5599,7 @@ where exists (select * from pq where a = p)
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: TUPLE(alias1.a:0!null)\n" +
 			"         ├─ right-key: TUPLE(pq.p:0!null)\n" +
-			"         └─ OrderedDistinct\n" +
+			"         └─ Distinct\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [pq.p:0!null]\n" +
 			"                 └─ ProcessTable\n" +
@@ -5731,7 +5634,7 @@ where exists (select * from pq where a = p)
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: (alias1.a)\n" +
 			"         ├─ right-key: (pq.p)\n" +
-			"         └─ OrderedDistinct\n" +
+			"         └─ Distinct\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [pq.p]\n" +
 			"                 └─ Table\n" +
@@ -5765,7 +5668,7 @@ where exists (select * from pq where a = p)
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: (alias1.a)\n" +
 			"         ├─ right-key: (pq.p)\n" +
-			"         └─ OrderedDistinct\n" +
+			"         └─ Distinct\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [pq.p]\n" +
 			"                 └─ Table\n" +
@@ -6082,62 +5985,45 @@ inner join pq on true
 		Query: `select i from mytable a where exists (select 1 from mytable b where a.i = b.i)`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [a.i:0!null]\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [a.i:0!null, a.s:1!null]\n" +
-			"     └─ MergeJoin\n" +
-			"         ├─ cmp: Eq\n" +
-			"         │   ├─ a.i:0!null\n" +
-			"         │   └─ b.i:2!null\n" +
-			"         ├─ TableAlias(a)\n" +
-			"         │   └─ IndexedTableAccess(mytable)\n" +
-			"         │       ├─ index: [mytable.i,mytable.s]\n" +
-			"         │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"         │       ├─ colSet: (1,2)\n" +
-			"         │       ├─ tableId: 1\n" +
-			"         │       └─ Table\n" +
-			"         │           ├─ name: mytable\n" +
-			"         │           └─ columns: [i s]\n" +
-			"         └─ TableAlias(b)\n" +
-			"             └─ IndexedTableAccess(mytable)\n" +
-			"                 ├─ index: [mytable.i]\n" +
-			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 ├─ colSet: (3,4)\n" +
-			"                 ├─ tableId: 2\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: mytable\n" +
-			"                     └─ columns: [i]\n" +
+			" └─ SemiJoin\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ a.i:0!null\n" +
+			"     │   └─ b.i:2!null\n" +
+			"     ├─ TableAlias(a)\n" +
+			"     │   └─ ProcessTable\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: mytable\n" +
+			"     │           └─ columns: [i s]\n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             ├─ columns: [i]\n" +
+			"             ├─ colSet: (3,4)\n" +
+			"             └─ tableId: 2\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.i]\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [a.i, a.s]\n" +
-			"     └─ MergeJoin (estimated cost=6.090 rows=3)\n" +
-			"         ├─ cmp: (a.i = b.i)\n" +
-			"         ├─ TableAlias(a)\n" +
-			"         │   └─ IndexedTableAccess(mytable)\n" +
-			"         │       ├─ index: [mytable.i,mytable.s]\n" +
-			"         │       └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"         └─ TableAlias(b)\n" +
-			"             └─ IndexedTableAccess(mytable)\n" +
-			"                 ├─ index: [mytable.i]\n" +
-			"                 ├─ filters: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [i]\n" +
+			" └─ SemiJoin (estimated cost=7.545 rows=3)\n" +
+			"     ├─ (a.i = b.i)\n" +
+			"     ├─ TableAlias(a)\n" +
+			"     │   └─ Table\n" +
+			"     │       └─ name: mytable\n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.i]\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [a.i, a.s]\n" +
-			"     └─ MergeJoin (estimated cost=6.090 rows=3) (actual rows=3 loops=1)\n" +
-			"         ├─ cmp: (a.i = b.i)\n" +
-			"         ├─ TableAlias(a)\n" +
-			"         │   └─ IndexedTableAccess(mytable)\n" +
-			"         │       ├─ index: [mytable.i,mytable.s]\n" +
-			"         │       └─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"         └─ TableAlias(b)\n" +
-			"             └─ IndexedTableAccess(mytable)\n" +
-			"                 ├─ index: [mytable.i]\n" +
-			"                 ├─ filters: [{[NULL, ∞)}]\n" +
-			"                 └─ columns: [i]\n" +
+			" └─ SemiJoin (estimated cost=7.545 rows=3) (actual rows=3 loops=1)\n" +
+			"     ├─ (a.i = b.i)\n" +
+			"     ├─ TableAlias(a)\n" +
+			"     │   └─ Table\n" +
+			"     │       └─ name: mytable\n" +
+			"     └─ TableAlias(b)\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i]\n" +
 			"",
 	},
 	{

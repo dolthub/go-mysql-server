@@ -502,7 +502,7 @@ func ConvertToBytes(ctx context.Context, v interface{}, t sql.StringType, dest [
 	if !IsBinaryType(t) && !utf8.Valid(bytesVal) {
 		charset := t.CharacterSet()
 		if charset == sql.CharacterSet_utf8mb4 {
-			if sqlCtx, ok := ctx.(*sql.Context); ok && sql.ValidateStrictMode(sqlCtx) {
+			if sqlCtx, ok := ctx.(*sql.Context); ok && sql.LoadSqlMode(sqlCtx).Strict() {
 				// Strict mode: reject invalid UTF8
 				invalidByte := formatInvalidByteForError(bytesVal)
 				colName, rowNum := getColumnContext(ctx)

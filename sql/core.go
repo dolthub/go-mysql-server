@@ -24,8 +24,10 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
+	"unicode"
 	"unsafe"
 
+	"github.com/dolthub/vitess/go/mysql"
 	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -314,10 +316,8 @@ func ConvertToBool(ctx *Context, v interface{}) (bool, error) {
 	case float64:
 		return b != 0, nil
 	case string:
-		bFloat, err := strconv.ParseFloat(b, 64)
+		bFloat, err := strconv.ParseFloat(TrimStringToNumberPrefix(ctx, b, false), 64)
 		if err != nil {
-			// In MySQL, if the string does not represent a float then it's false
-			ctx.Warn(1292, "Truncated incorrect DOUBLE value: '%s'", b)
 			return false, nil
 		}
 		return bFloat != 0, nil
@@ -328,6 +328,57 @@ func ConvertToBool(ctx *Context, v interface{}) (bool, error) {
 	default:
 		return false, fmt.Errorf("unable to cast %#v of type %T to bool", v, v)
 	}
+}
+
+const (
+	// IntCutSet is the set of characters that should be trimmed from the beginning and end of a string
+	//   when converting to a signed or unsigned integer
+	IntCutSet = " \t"
+
+	// NumericCutSet is the set of characters to trim from a string before converting it to a number.
+	NumericCutSet = " \t\n\r"
+)
+
+func TrimStringToNumberPrefix(ctx *Context, s string, isInt bool) string {
+	if isInt {
+		s = strings.TrimLeft(s, IntCutSet)
+	} else {
+		s = strings.TrimLeft(s, NumericCutSet)
+	}
+
+	seenDigit := false
+	seenDot := false
+	seenExp := false
+	signIndex := 0
+
+	for i := 0; i < len(s); i++ {
+		char := rune(s[i])
+
+		if unicode.IsDigit(char) {
+			seenDigit = true
+		} else if char == '.' && !seenDot && !isInt {
+			seenDot = true
+		} else if (char == 'e' || char == 'E') && !seenExp && seenDigit && !isInt {
+			seenExp = true
+			signIndex = i + 1
+		} else if !((char == '-' || char == '+') && i == signIndex) {
+			// TODO add different warning for DECIMAL conversion
+			if isInt {
+				ctx.Warn(mysql.ERTruncatedWrongValue, "Truncated incorrect INTEGER value: '%s'", s)
+			} else {
+				ctx.Warn(mysql.ERTruncatedWrongValue, "Truncated incorrect DOUBLE value: '%s'", s)
+			}
+			return convertEmptyStringToZero(s[:i])
+		}
+	}
+	return convertEmptyStringToZero(s)
+}
+
+func convertEmptyStringToZero(s string) string {
+	if s == "" {
+		return "0"
+	}
+	return s
 }
 
 var ErrVectorInvalidBinaryLength = errors.NewKind("cannot convert BINARY(%d) to vector, byte length must be a multiple of 4 bytes")

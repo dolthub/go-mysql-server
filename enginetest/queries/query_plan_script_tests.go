@@ -170,19 +170,20 @@ var QueryPlanScriptTests = []ScriptTest{
 					"     │   └─ Table\n" +
 					"     │       ├─ name: t1\n" +
 					"     │       └─ columns: [i]\n" +
-					"     └─ Filter\n" +
-					"         ├─ GreaterThan\n" +
-					"         │   ├─ t2.j:0!null\n" +
-					"         │   └─ 2 (int)\n" +
-					"         └─ IndexedTableAccess(t2)\n" +
-					"             ├─ index: [t2.j]\n" +
-					"             ├─ static: [{[NULL, ∞)}]\n" +
-					"             ├─ reverse: true\n" +
-					"             ├─ colSet: (2)\n" +
-					"             ├─ tableId: 2\n" +
-					"             └─ Table\n" +
-					"                 ├─ name: t2\n" +
-					"                 └─ columns: [j]\n" +
+					"     └─ Distinct\n" +
+					"         └─ Filter\n" +
+					"             ├─ GreaterThan\n" +
+					"             │   ├─ t2.j:0!null\n" +
+					"             │   └─ 2 (int)\n" +
+					"             └─ IndexedTableAccess(t2)\n" +
+					"                 ├─ index: [t2.j]\n" +
+					"                 ├─ static: [{[NULL, ∞)}]\n" +
+					"                 ├─ reverse: true\n" +
+					"                 ├─ colSet: (2)\n" +
+					"                 ├─ tableId: 2\n" +
+					"                 └─ Table\n" +
+					"                     ├─ name: t2\n" +
+					"                     └─ columns: [j]\n" +
 					"",
 			},
 			{

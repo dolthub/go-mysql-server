@@ -18,6 +18,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"gopkg.in/src-d/go-errors.v1"
@@ -120,6 +121,153 @@ type ScriptTestAssertion struct {
 // Unlike other engine tests, ScriptTests must be self-contained. No other tables are created outside the definition of
 // the tests.
 var ScriptTests = []ScriptTest{
+	{
+		// https://github.com/dolthub/go-mysql-server/issues/3216
+		Name: "UNION ALL with BLOB columns",
+		SetUpScript: []string{
+			"CREATE TABLE a(name VARCHAR(255), data BLOB)",
+			"CREATE TABLE b(name VARCHAR(255), data BLOB)",
+			"INSERT INTO a VALUES ('a-data', UNHEX('deadbeef'))",
+			"INSERT INTO b VALUES ('b-nodata', NULL)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT name, data FROM a UNION ALL SELECT name, data FROM b",
+				Expected: []sql.Row{
+					{"a-data", []byte{0xde, 0xad, 0xbe, 0xef}},
+					{"b-nodata", nil},
+				},
+			},
+			{
+				Query: "SELECT name, HEX(data) as data_hex FROM a UNION ALL SELECT name, HEX(data) as data_hex FROM b",
+				Expected: []sql.Row{
+					{"a-data", "DEADBEEF"},
+					{"b-nodata", nil},
+				},
+			},
+			{
+				Query: "SELECT name, data FROM a UNION ALL SELECT name, NULL FROM b",
+				Expected: []sql.Row{
+					{"a-data", []byte{0xde, 0xad, 0xbe, 0xef}},
+					{"b-nodata", nil},
+				},
+			},
+			{
+				Query: "SELECT name, HEX(data) as data_hex FROM a UNION ALL SELECT name, HEX(NULL) as data_hex FROM b",
+				Expected: []sql.Row{
+					{"a-data", "DEADBEEF"},
+					{"b-nodata", nil},
+				},
+			},
+			{
+				Query: "SELECT name, data FROM a UNION ALL SELECT name, UNHEX('') FROM b",
+				Expected: []sql.Row{
+					{"a-data", []byte{0xde, 0xad, 0xbe, 0xef}},
+					{"b-nodata", []byte{}},
+				},
+			},
+			{
+				Query: "SELECT name, HEX(data) as data_hex FROM a UNION ALL SELECT name, HEX(UNHEX('')) as data_hex FROM b",
+				Expected: []sql.Row{
+					{"a-data", "DEADBEEF"},
+					{"b-nodata", ""},
+				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9836
+		Skip: true,
+		Name: "Ordering by pk does not change the order of results",
+		SetUpScript: []string{
+			"CREATE TABLE test(pk VARCHAR(50) PRIMARY KEY)",
+			"INSERT INTO test VALUES ('  3 12 4'), ('3. 12 4'), ('3.2 12 4'), ('-3.1234'), ('-3.1a'), ('-5+8'), ('+3.1234')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT pk FROM test ORDER BY pk",
+				Expected: []sql.Row{{"  3 12 4"}, {"-3.1234"}, {"-3.1a"}, {"-5+8"}, {"+3.1234"}, {"3. 12 4"}, {"3.2 12 4"}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9812
+		Name: "String-to-number comparison operators should behave consistently",
+		Assertions: []ScriptTestAssertion{
+			{
+				Dialect:                         "mysql",
+				Query:                           "SELECT ('A') = (0)",
+				Expected:                        []sql.Row{{true}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
+			},
+			{
+				Dialect:                         "mysql",
+				Query:                           "SELECT ('A') IN (0)",
+				Expected:                        []sql.Row{{true}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
+			},
+			{
+				Dialect:                         "mysql",
+				Query:                           "SELECT ('A') != (0)",
+				Expected:                        []sql.Row{{false}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
+			},
+			{
+				Dialect:                         "mysql",
+				Query:                           "SELECT ('A') <> (0)",
+				Expected:                        []sql.Row{{false}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
+			},
+			{
+				Dialect:                         "mysql",
+				Query:                           "SELECT ('A') < (0)",
+				Expected:                        []sql.Row{{false}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
+			},
+			{
+				Dialect:                         "mysql",
+				Query:                           "SELECT ('A') <= (0)",
+				Expected:                        []sql.Row{{true}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
+			},
+			{
+				Dialect:                         "mysql",
+				Query:                           "SELECT ('A') > (0)",
+				Expected:                        []sql.Row{{false}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
+			},
+			{
+				Dialect:                         "mysql",
+				Query:                           "SELECT ('A') >= (0)",
+				Expected:                        []sql.Row{{true}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
+			},
+			{
+				Dialect:                         "mysql",
+				Query:                           "SELECT ('A') NOT IN (0)",
+				Expected:                        []sql.Row{{false}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
+			},
+		},
+	},
 	{
 		// https://github.com/dolthub/dolt/issues/9794
 		Name: "UPDATE with TRIM function on TEXT column",
@@ -11662,6 +11810,8 @@ select * from t1 except (
 					{"5.932887e7abc", float32(5.932887e+07)},
 					{"a1a1", float32(0)},
 				},
+				ExpectedWarningsCount: 12,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 			{
 				Dialect: "mysql",
@@ -11686,6 +11836,8 @@ select * from t1 except (
 					{"5.932887e7abc", 5.932887e+07},
 					{"a1a1", 0.0},
 				},
+				ExpectedWarningsCount: 12,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 			{
 				Dialect: "mysql",
@@ -11710,6 +11862,8 @@ select * from t1 except (
 					{"5.932887e7abc", 5},
 					{"a1a1", 0},
 				},
+				ExpectedWarningsCount: 16,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 			{
 				Dialect: "mysql",
@@ -11734,6 +11888,10 @@ select * from t1 except (
 					{"5.932887e7abc", uint64(5)},
 					{"a1a1", uint64(0)},
 				},
+				// TODO: Should be 19. Missing warnings for "Cast to unsigned converted negative integer to its positive
+				//  complement" (1105) https://github.com/dolthub/dolt/issues/9840
+				ExpectedWarningsCount: 16,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 			{
 				Dialect: "mysql",
@@ -11758,10 +11916,14 @@ select * from t1 except (
 					{"5.932887e7abc", "59328870.000"},
 					{"a1a1", "0.000"},
 				},
+				// TODO: should be 13. Missing warning for "Incorrect DECIMAL value: '0' for column '' at row -1" (1366)
+				ExpectedWarningsCount: 12,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 			{
-				Query:    "select * from test01 where pk in ('11')",
-				Expected: []sql.Row{{"11"}},
+				Query:                 "select * from test01 where pk in ('11')",
+				Expected:              []sql.Row{{"11"}},
+				ExpectedWarningsCount: 0,
 			},
 			{
 				// https://github.com/dolthub/dolt/issues/9739
@@ -11774,6 +11936,8 @@ select * from t1 except (
 					{"11d"},
 					{"11wha?"},
 				},
+				ExpectedWarningsCount: 12,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 			{
 				// https://github.com/dolthub/dolt/issues/9739
@@ -11785,6 +11949,8 @@ select * from t1 except (
 					{"  3. 12 4"},
 					{"3. 12 4"},
 				},
+				ExpectedWarningsCount: 12,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 			{
 				// https://github.com/dolthub/dolt/issues/9739
@@ -11798,20 +11964,82 @@ select * from t1 except (
 					{"+3.1234"},
 					{"3. 12 4"},
 				},
+				ExpectedWarningsCount: 20,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 			{
 				// https://github.com/dolthub/dolt/issues/9739
-				Skip:     true,
-				Dialect:  "mysql",
-				Query:    "select * from test02 where pk in ('11asdf')",
-				Expected: []sql.Row{{"11"}},
+				Skip:                  true,
+				Dialect:               "mysql",
+				Query:                 "select * from test02 where pk in ('11asdf')",
+				Expected:              []sql.Row{{"11"}},
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 			{
 				// https://github.com/dolthub/dolt/issues/9739
-				Skip:     true,
-				Dialect:  "mysql",
-				Query:    "select * from test02 where pk='11.12asdf'",
-				Expected: []sql.Row{},
+				Skip:                  true,
+				Dialect:               "mysql",
+				Query:                 "select * from test02 where pk='11.12asdf'",
+				Expected:              []sql.Row{},
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9821
+		Name: "strings convert to booleans",
+		Assertions: []ScriptTestAssertion{
+			{
+				Dialect:               "mysql",
+				Query:                 `select '3bxu' and true`,
+				Expected:              []sql.Row{{true}},
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+				ExpectedWarningsCount: 1,
+			},
+			{
+				Dialect:               "mysql",
+				Query:                 "select '3bxu' or false",
+				Expected:              []sql.Row{{true}},
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+				ExpectedWarningsCount: 1,
+			},
+			{
+				Dialect:               "mysql",
+				Query:                 "select '3bxu' xor false",
+				Expected:              []sql.Row{{true}},
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+				ExpectedWarningsCount: 1,
+			},
+			{
+				Query:                 "select '' or false",
+				Expected:              []sql.Row{{false}},
+				ExpectedWarningsCount: 0,
+			},
+			{
+				Query:                 "select '0' or false",
+				Expected:              []sql.Row{{false}},
+				ExpectedWarningsCount: 0,
+			},
+			{
+				Query:                 "select '00' or false",
+				Expected:              []sql.Row{{false}},
+				ExpectedWarningsCount: 0,
+			},
+			{
+				Dialect:               "mysql",
+				Query:                 "select '00asdf' or false",
+				Expected:              []sql.Row{{false}},
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+				ExpectedWarningsCount: 1,
+			},
+			{
+				Dialect:               "mysql",
+				Query:                 "select 'asdf' or false",
+				Expected:              []sql.Row{{false}},
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+				ExpectedWarningsCount: 1,
 			},
 		},
 	},
@@ -11963,6 +12191,108 @@ select * from t1 except (
 			{
 				Query:    "select * from t2, t3, t0, t1 order by t0.c0",
 				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
+		Name:    "pipes as concat mode",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table names(first_name varchar(20), last_name varchar(20))",
+			"insert into names values ('john', 'smith'), ('bob','burger')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select true || false",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "select '0' || '0'",
+				Expected: []sql.Row{{false}},
+			},
+			{
+				Query:    "select 'Hello' || ' ' || 'World'",
+				Expected: []sql.Row{{false}},
+			},
+			{
+				Query:    "select 1 || 0",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "select first_name || ' ' || last_name as full_name from names order by full_name",
+				Expected: []sql.Row{{false}, {false}},
+			},
+			{
+				Query:    "select 1 + 2 || 3 + 4",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "select true || 1 || 'abc'",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "select (1 || 2) || (3 || 4)",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "select (1 + 2) || (3 + 4)",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "select ((1 || 2) || 3) || 4",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "select ((1 + 2) || 3) + 4",
+				Expected: []sql.Row{{5}},
+			},
+			{
+				Query:    "SET SESSION sql_mode = CONCAT(@@SESSION.sql_mode, ',PIPES_AS_CONCAT');",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "select true || false",
+				Expected: []sql.Row{{"10"}},
+			},
+			{
+				Query:    "select '0' || '0'",
+				Expected: []sql.Row{{"00"}},
+			},
+			{
+				Query:    "select 'Hello' || ' ' || 'World'",
+				Expected: []sql.Row{{"Hello World"}},
+			},
+			{
+				Query:    "select 1 || 0",
+				Expected: []sql.Row{{"10"}},
+			},
+			{
+				Query:    "select first_name || ' ' || last_name as full_name from names order by full_name",
+				Expected: []sql.Row{{"bob burger"}, {"john smith"}},
+			},
+			{
+				Query:    "select 1 + 2 || 3 + 4",
+				Expected: []sql.Row{{float64(28)}},
+			},
+			{
+				Query:    "select true || 1 || 'abc'",
+				Expected: []sql.Row{{"11abc"}},
+			},
+			{
+				Query:    "select (1 || 2) || (3 || 4)",
+				Expected: []sql.Row{{"1234"}},
+			},
+			{
+				Query:    "select (1 + 2) || (3 + 4)",
+				Expected: []sql.Row{{"37"}},
+			},
+			{
+				Query:    "select ((1 || 2) || 3) || 4",
+				Expected: []sql.Row{{"1234"}},
+			},
+			{
+				Query:    "select ((1 + 2) || 3) + 4",
+				Expected: []sql.Row{{float64(37)}},
 			},
 		},
 	},

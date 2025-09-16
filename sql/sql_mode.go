@@ -24,13 +24,31 @@ import (
 const (
 	SqlModeSessionVar = "SQL_MODE"
 
-	ANSI                 = "ANSI"
-	ANSIQuotes           = "ANSI_QUOTES"
-	OnlyFullGroupBy      = "ONLY_FULL_GROUP_BY"
-	NoAutoValueOnZero    = "NO_AUTO_VALUE_ON_ZERO"
-	NoEngineSubstitution = "NO_ENGINE_SUBSTITUTION"
-	StrictTransTables    = "STRICT_TRANS_TABLES"
-	DefaultSqlMode       = "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES"
+	AllowInvalidDates      = "ALLOW_INVALID_DATES"
+	ANSIQuotes             = "ANSI_QUOTES"
+	ErrorForDivisionByZero = "ERROR_FOR_DIVISION_BY_ZERO"
+	HighNotPrecedence      = "HIGH_NOT_PRECEDENCE"
+	IgnoreSpaces           = "IGNORE_SPACE"
+	NoAutoValueOnZero      = "NO_AUTO_VALUE_ON_ZERO"
+	NoBackslashEscapes     = "NO_BACKSLASH_ESCAPES"
+	NoDirInCreate          = "NO_DIR_IN_CREATE"
+	NoEngineSubstitution   = "NO_ENGINE_SUBSTITUTION"
+	NoUnsignedSubtraction  = "NO_UNSIGNED_SUBTRACTION"
+	NoZeroInDate           = "NO_ZERO_IN_DATE"
+	OnlyFullGroupBy        = "ONLY_FULL_GROUP_BY"
+	PadCharToFullLength    = "PAD_CHAR_TO_FULL_LENGTH"
+	PipesAsConcat          = "PIPES_AS_CONCAT"
+	RealAsFloat            = "REAL_AS_FLOAT"
+	StrictTransTables      = "STRICT_TRANS_TABLES"
+	StrictAllTables        = "STRICT_ALL_TABLES"
+	TimeTruncateFractional = "TIME_TRUNCATE_FRACTIONAL"
+
+	// ANSI mode includes REAL_AS_FLOAT, PIPES_AS_CONCAT, ANSI_QUOTES, IGNORE_SPACE, and ONLY_FULL_GROUP_BY
+	ANSI = "ANSI"
+	// Traditional mode includes STRICT_TRANS_TABLES, STRICT_ALL_TABLES, NO_ZERO_IN_DATE, ERROR_FOR_DIVISION_BY_ZERO,
+	// and NO_ENGINE_SUBSTITUTION
+	Traditional    = "TRADITIONAL"
+	DefaultSqlMode = "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES"
 )
 
 var defaultMode *SqlMode
@@ -73,7 +91,7 @@ func LoadSqlMode(ctx *Context) *SqlMode {
 }
 
 // NewSqlModeFromString returns a new SqlMode instance, constructed from the specified |sqlModeString| that
-// has a comma delimited list of SQL modes (e.g. "ONLY_FULLY_GROUP_BY,ANSI_QUOTES").
+// has a comma-delimited list of SQL modes (e.g. "ONLY_FULLY_GROUP_BY,ANSI_QUOTES").
 func NewSqlModeFromString(sqlModeString string) *SqlMode {
 	if sqlModeString == DefaultSqlMode {
 		return defaultMode
@@ -98,6 +116,38 @@ func (s *SqlMode) AnsiQuotes() bool {
 	return s.ModeEnabled(ANSIQuotes) || s.ModeEnabled(ANSI)
 }
 
+// OnlyFullGroupBy returns true is ONLY_TRUE_GROUP_BY SQL mode is enabled. Note that ANSI mode is a compound mode that
+// includes ONLY_FULL_GROUP_BY and other options, so if ANSI or ONLY_TRUE_GROUP_BY is enabled, this function will
+// return true.
+func (s *SqlMode) OnlyFullGroupBy() bool {
+	return s.ModeEnabled(OnlyFullGroupBy) || s.ModeEnabled(ANSI)
+}
+
+// PipesAsConcat returns true if PIPES_AS_CONCAT SQL mode is enabled. Note that ANSI mode is a compound mode that
+// includes PIPES_AS_CONCAT and other options, so if ANSI or PIPES_AS_CONCAT is enabled, this function will return true.
+func (s *SqlMode) PipesAsConcat() bool {
+	return s.ModeEnabled(PipesAsConcat) || s.ModeEnabled(ANSI)
+}
+
+// StrictTransTables returns true if STRICT_TRANS_TABLES SQL mode is enabled. Note that TRADITIONAL mode is a compound
+// mode that includes STRICT_TRANS_TABLES and other options, so if TRADITIONAL or STRICT_TRANS_TABLES is enabled, this
+// function will return true.
+func (s *SqlMode) StrictTransTables() bool {
+	return s.ModeEnabled(StrictTransTables) || s.ModeEnabled(Traditional)
+}
+
+// StrictAllTables returns true if STRICT_ALL_TABLES SQL mode is enabled. Note that TRADITIONAL mode is a compound
+// mode that includes STRICT_ALL_TABLES and other options, so if TRADITIONAL or STRICT_ALL_TABLES is enabled, this
+// function will return true.
+func (s *SqlMode) StrictAllTables() bool {
+	return s.ModeEnabled(StrictAllTables) || s.ModeEnabled(Traditional)
+}
+
+// Strict mode is enabled when either STRICT_TRANS_TABLES or STRICT_ALL_TABLES is enabled.
+func (s *SqlMode) Strict() bool {
+	return s.StrictAllTables() || s.StrictTransTables()
+}
+
 // ModeEnabled returns true if |mode| was explicitly specified in the SQL_MODE string that was used to
 // create this SqlMode instance. Note this function does not support expanding compound modes into the
 // individual modes they contain (e.g. if "ANSI" is the SQL_MODE string, then this function will not
@@ -111,20 +161,12 @@ func (s *SqlMode) ModeEnabled(mode string) bool {
 // ParserOptions returns a ParserOptions struct, with options set based on what SQL modes are enabled.
 func (s *SqlMode) ParserOptions() sqlparser.ParserOptions {
 	return sqlparser.ParserOptions{
-		AnsiQuotes: s.AnsiQuotes(),
+		AnsiQuotes:    s.AnsiQuotes(),
+		PipesAsConcat: s.PipesAsConcat(),
 	}
 }
 
 // String returns the SQL_MODE string representing this SqlMode instance.
 func (s *SqlMode) String() string {
 	return s.modeString
-}
-
-// ValidateStrictMode returns true if either STRICT_TRANS_TABLES or STRICT_ALL_TABLES is enabled
-func ValidateStrictMode(ctx *Context) bool {
-	if ctx == nil {
-		return false
-	}
-	sqlMode := LoadSqlMode(ctx)
-	return sqlMode.ModeEnabled("STRICT_TRANS_TABLES") || sqlMode.ModeEnabled("STRICT_ALL_TABLES")
 }
