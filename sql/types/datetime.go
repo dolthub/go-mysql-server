@@ -186,6 +186,7 @@ func (t datetimeType) Convert(ctx context.Context, v interface{}) (interface{}, 
 	if v == nil {
 		return nil, sql.InRange, nil
 	}
+	// TODO: implement datetime truncation
 	res, err := ConvertToTime(ctx, v, t)
 	if err != nil {
 		return nil, sql.OutOfRange, err

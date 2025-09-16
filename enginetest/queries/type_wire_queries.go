@@ -685,8 +685,8 @@ var TypeWireTests = []TypeWireTest{
 		SetUpScript: []string{
 			`CREATE TABLE test (pk SET("a","b","c") PRIMARY KEY, v1 SET("w","x","y","z"));`,
 			`INSERT INTO test VALUES (0, 1), ("b", "y"), ("b,c", "z,z"), ("a,c,b", 10);`,
-			`UPDATE test SET v1 = "y,x,w" WHERE pk >= 4`,
-			`DELETE FROM test WHERE pk > "b,c";`,
+			`UPDATE test SET v1 = "y,x,w" WHERE pk >= 4;`,
+			`DELETE FROM test WHERE pk = "a,b,c";`,
 		},
 		Queries: []string{
 			`SELECT * FROM test ORDER BY pk;`,
