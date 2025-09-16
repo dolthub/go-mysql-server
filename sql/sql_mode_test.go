@@ -21,16 +21,16 @@ import (
 )
 
 func TestSqlMode(t *testing.T) {
-	// Test that ANSI mode includes ANSI_QUOTES mode
-	sqlMode := NewSqlModeFromString("only_full_group_by,ansi")
+	// Test that ANSI mode includes ANSI_QUOTES, PIPES_AS_CONCAT, and ONLY_FULL_GROUP_BY mode
+	sqlMode := NewSqlModeFromString("ansi")
 	assert.True(t, sqlMode.AnsiQuotes())
 	assert.True(t, sqlMode.ModeEnabled("ansi"))
 	assert.True(t, sqlMode.ModeEnabled("ANSI"))
-	assert.True(t, sqlMode.ModeEnabled("ONLY_FULL_GROUP_BY"))
 	assert.False(t, sqlMode.ModeEnabled("fake_mode"))
 	assert.True(t, sqlMode.ParserOptions().AnsiQuotes)
-	assert.Equal(t, "ANSI,ONLY_FULL_GROUP_BY", sqlMode.String())
-	assert.False(t, sqlMode.PipesAsConcat())
+	assert.Equal(t, "ANSI", sqlMode.String())
+	assert.True(t, sqlMode.PipesAsConcat())   // PIPES_AS_CONCAT is included in ANSI mode
+	assert.True(t, sqlMode.OnlyFullGroupBy()) // ONLY_FULL_GROUP_BY is included in ANSI mode
 	assert.False(t, sqlMode.ModeEnabled("pipes_as_concat"))
 
 	// Test a mixed case SQL_MODE string where only ANSI_QUOTES is enabled
@@ -44,7 +44,7 @@ func TestSqlMode(t *testing.T) {
 	assert.False(t, sqlMode.PipesAsConcat())
 	assert.False(t, sqlMode.ModeEnabled("pipes_as_concat"))
 
-	// Test when SQL_MODE does not include ANSI_QUOTES, includes PIPES_AS_CONCAT
+	// Test when SQL_MODE does not include ANSI_QUOTES, includes PIPES_AS_CONCAT and STRICT_TRANS_TABLES
 	sqlMode = NewSqlModeFromString("ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,PIPES_AS_CONCAT")
 	assert.False(t, sqlMode.AnsiQuotes())
 	assert.True(t, sqlMode.ModeEnabled("STRICT_TRANS_TABLES"))
@@ -52,5 +52,6 @@ func TestSqlMode(t *testing.T) {
 	assert.False(t, sqlMode.ParserOptions().AnsiQuotes)
 	assert.True(t, sqlMode.PipesAsConcat())
 	assert.True(t, sqlMode.ModeEnabled("pipes_as_concat"))
+	assert.True(t, sqlMode.Strict())
 	assert.Equal(t, "ONLY_FULL_GROUP_BY,PIPES_AS_CONCAT,STRICT_TRANS_TABLES", sqlMode.String())
 }
