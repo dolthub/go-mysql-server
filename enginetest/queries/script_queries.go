@@ -128,6 +128,7 @@ var ScriptTests = []ScriptTest{
 			"CREATE DATABASE tmp",
 			"USE tmp",
 		},
+		Dialect: "mysql",
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "DROP DATABASE tmp",
