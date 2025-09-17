@@ -125,12 +125,6 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 			var converted any
 			var inRange sql.ConvertInRange
 			var cErr error
-			// TODO: AAAAHHH
-			// Hex strings shouldn't make it this far
-			//val, cErr = types.ConvertHexBlobToUint(row[idx], col.Type)
-			//if cErr != nil {
-			//	return nil, i.ignoreOrClose(ctx, origRow, cErr)
-			//}
 			if typ, ok := col.Type.(sql.RoundingNumberType); ok {
 				converted, inRange, cErr = typ.ConvertRound(ctx, val)
 			} else {

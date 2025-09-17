@@ -142,10 +142,7 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		return c.Left().Type().Compare(ctx, left, right)
 	}
 
-	l, r, compareType, err := c.CastLeftAndRight(ctx, left, right)
-	if err != nil {
-		return 0, err
-	}
+	l, r, compareType := c.castLeftAndRight(ctx, left, right)
 
 	// Set comparison relies on empty strings not being converted yet
 	if types.IsSet(compareType) {
@@ -172,168 +169,16 @@ func (c *comparison) evalLeftAndRight(ctx *sql.Context, row sql.Row) (interface{
 	return left, right, nil
 }
 
-func (c *comparison) CastLeftAndRight(ctx *sql.Context, left, right interface{}) (interface{}, interface{}, sql.Type, error) {
-	//leftType := c.Left().Type()
-	//rightType := c.Right().Type()
-	//
-	//leftIsEnumOrSet := types.IsEnum(leftType) || types.IsSet(leftType)
-	//rightIsEnumOrSet := types.IsEnum(rightType) || types.IsSet(rightType)
-	//// Only convert if same Enum or Set
-	//if leftIsEnumOrSet && rightIsEnumOrSet {
-	//	if types.TypesEqual(leftType, rightType) {
-	//		return left, right, leftType, nil
-	//	}
-	//} else {
-	//	// If right side is convertible to enum/set, convert. Otherwise, convert left side
-	//	if leftIsEnumOrSet && (types.IsText(rightType) || types.IsNumber(rightType)) {
-	//		if r, inRange, err := leftType.Convert(ctx, right); inRange && err == nil {
-	//			return left, r, leftType, nil
-	//		} else {
-	//			l, _, err := types.TypeAwareConversion(ctx, left, leftType, rightType, false)
-	//			if err != nil {
-	//				return nil, nil, nil, err
-	//			}
-	//			return l, right, rightType, nil
-	//		}
-	//	}
-	//	// If left side is convertible to enum/set, convert. Otherwise, convert right side
-	//	if rightIsEnumOrSet && (types.IsText(leftType) || types.IsNumber(leftType)) {
-	//		if l, inRange, err := rightType.Convert(ctx, left); inRange && err == nil {
-	//			return l, right, rightType, nil
-	//		} else {
-	//			r, _, err := types.TypeAwareConversion(ctx, right, rightType, leftType, false)
-	//			if err != nil {
-	//				return nil, nil, nil, err
-	//			}
-	//			return left, r, leftType, nil
-	//		}
-	//	}
-	//}
-	//
-	//if types.IsTimespan(leftType) || types.IsTimespan(rightType) {
-	//	if l, err := types.Time.ConvertToTimespan(left); err == nil {
-	//		if r, err := types.Time.ConvertToTimespan(right); err == nil {
-	//			return l, r, types.Time, nil
-	//		}
-	//	}
-	//}
-	//
-	//if types.IsTuple(leftType) && types.IsTuple(rightType) {
-	//	return left, right, c.Left().Type(), nil
-	//}
-	//
-	//if types.IsTime(leftType) || types.IsTime(rightType) {
-	//	l, r, err := convertLeftAndRight(ctx, left, right, ConvertToDatetime)
-	//	if err != nil {
-	//		return nil, nil, nil, err
-	//	}
-	//
-	//	return l, r, types.DatetimeMaxPrecision, nil
-	//}
-	//
-	//// Rely on types.JSON.Compare to handle JSON comparisons
-	//if types.IsJSON(leftType) || types.IsJSON(rightType) {
-	//	return left, right, types.JSON, nil
-	//}
-	//
-	//if types.IsBinaryType(leftType) || types.IsBinaryType(rightType) {
-	//	l, r, err := convertLeftAndRight(ctx, left, right, ConvertToBinary)
-	//	if err != nil {
-	//		return nil, nil, nil, err
-	//	}
-	//	return l, r, types.LongBlob, nil
-	//}
-	//
-	//if types.IsNumber(leftType) || types.IsNumber(rightType) {
-	//	if types.IsDecimal(leftType) || types.IsDecimal(rightType) {
-	//		//TODO: We need to set to the actual DECIMAL type
-	//		l, r, err := convertLeftAndRight(ctx, left, right, ConvertToDecimal)
-	//		if err != nil {
-	//			return nil, nil, nil, err
-	//		}
-	//
-	//		if types.IsDecimal(leftType) {
-	//			return l, r, leftType, nil
-	//		} else {
-	//			return l, r, rightType, nil
-	//		}
-	//	}
-	//
-	//	if types.IsFloat(leftType) || types.IsFloat(rightType) {
-	//		l, r, err := convertLeftAndRight(ctx, left, right, ConvertToDouble)
-	//		if err != nil {
-	//			return nil, nil, nil, err
-	//		}
-	//
-	//		return l, r, types.Float64, nil
-	//	}
-	//
-	//	if types.IsSigned(leftType) && types.IsSigned(rightType) {
-	//		l, r, err := convertLeftAndRight(ctx, left, right, ConvertToSigned)
-	//		if err != nil {
-	//			return nil, nil, nil, err
-	//		}
-	//
-	//		return l, r, types.Int64, nil
-	//	}
-	//
-	//	if types.IsUnsigned(leftType) && types.IsUnsigned(rightType) {
-	//		l, r, err := convertLeftAndRight(ctx, left, right, ConvertToUnsigned)
-	//		if err != nil {
-	//			return nil, nil, nil, err
-	//		}
-	//
-	//		return l, r, types.Uint64, nil
-	//	}
-	//
-	//	l, r, err := convertLeftAndRight(ctx, left, right, ConvertToDouble)
-	//	if err != nil {
-	//		return nil, nil, nil, err
-	//	}
-	//
-	//	return l, r, types.Float64, nil
-	//}
-	//
-	//left, right, err := convertLeftAndRight(ctx, left, right, ConvertToChar)
-	//if err != nil {
-	//	return nil, nil, nil, err
-	//}
-	//
-	//return left, right, types.LongText, nil
-
+// castLeftAndRight will find the appropriate type to cast both left and right to for comparison.
+// All errors are ignored, except for warnings about truncation.
+func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right interface{}) (interface{}, interface{}, sql.Type) {
 	lType := c.Left().Type()
 	rType := c.Right().Type()
-
-	//lIsEnumOrSet := types.IsEnum(lType) || types.IsSet(lType)
-	//rIsEnumOrSet := types.IsEnum(rType) || types.IsSet(rType)
-	//// If right side is convertible to enum/set, convert. Otherwise, convert left side
-	//if lIsEnumOrSet && (types.IsText(rType) || types.IsNumber(rType)) {
-	//	if r, inRange, err := lType.Convert(ctx, right); inRange && err == nil {
-	//		return left, r, lType, nil
-	//	}
-	//	l, _, err := types.TypeAwareConversion(ctx, left, lType, rType, false)
-	//	if err != nil {
-	//		return nil, nil, nil, err
-	//	}
-	//	return l, right, rType, nil
-	//}
-	//// If left side is convertible to enum/set, convert. Otherwise, convert right side
-	//if rIsEnumOrSet && (types.IsText(lType) || types.IsNumber(lType)) {
-	//	if l, inRange, err := rType.Convert(ctx, left); inRange && err == nil {
-	//		return l, right, rType, nil
-	//	}
-	//	r, _, err := types.TypeAwareConversion(ctx, right, rType, lType, false)
-	//	if err != nil {
-	//		return nil, nil, nil, err
-	//	}
-	//	return left, r, lType, nil
-	//}
-
 	compType := types.GetCompareType(lType, rType)
 
 	// Special case for JSON types
 	if types.IsJSON(compType) {
-		return left, right, compType, nil
+		return left, right, compType
 	}
 
 	l, _, err := types.TypeAwareConversion(ctx, left, lType, compType, false)
@@ -341,31 +186,14 @@ func (c *comparison) CastLeftAndRight(ctx *sql.Context, left, right interface{})
 		if sql.ErrTruncatedIncorrect.Is(err) {
 			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		}
-		// TODO: ignore all other errors?
 	}
 	r, _, err := types.TypeAwareConversion(ctx, right, rType, compType, false)
 	if err != nil {
 		if sql.ErrTruncatedIncorrect.Is(err) {
 			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		}
-		// TODO: ignore all other errors?
 	}
-	return l, r, compType, nil
-}
-
-// TODO: delete if everything else works out
-func convertLeftAndRight(ctx *sql.Context, left, right interface{}, convertTo string) (interface{}, interface{}, error) {
-	l, err := convertValue(ctx, left, convertTo, nil, 0, 0)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	r, err := convertValue(ctx, right, convertTo, nil, 0, 0)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return l, r, nil
+	return l, r, compType
 }
 
 // Type implements the Expression interface.
@@ -500,15 +328,7 @@ func (e *NullSafeEquals) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		return -1, nil
 	}
 
-	if types.TypesEqual(e.Left().Type(), e.Right().Type()) {
-		return e.Left().Type().Compare(ctx, left, right)
-	}
-
-	var compareType sql.Type
-	left, right, compareType, err = e.CastLeftAndRight(ctx, left, right)
-	if err != nil {
-		return 0, err
-	}
+	left, right, compareType := e.castLeftAndRight(ctx, left, right)
 
 	return compareType.Compare(ctx, left, right)
 }

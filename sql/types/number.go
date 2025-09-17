@@ -213,7 +213,6 @@ func (t NumberTypeImpl_) Compare(ctx context.Context, a any, b any) (int, error)
 
 // Convert implements Type interface.
 func (t NumberTypeImpl_) Convert(ctx context.Context, v any) (any, sql.ConvertInRange, error) {
-	var err error
 	if v == nil {
 		return nil, sql.InRange, nil
 	}
@@ -223,6 +222,7 @@ func (t NumberTypeImpl_) Convert(ctx context.Context, v any) (any, sql.ConvertIn
 	}
 
 	if jv, ok := v.(sql.JSONWrapper); ok {
+		var err error
 		v, err = jv.ToInterface(ctx)
 		if err != nil {
 			return nil, sql.OutOfRange, err
@@ -236,62 +236,96 @@ func (t NumberTypeImpl_) Convert(ctx context.Context, v any) (any, sql.ConvertIn
 			return 0, sql.OutOfRange, err
 		}
 		if num > math.MaxInt8 {
-			return int8(math.MaxInt8), sql.OutOfRange, nil
-		} else if num < math.MinInt8 {
-			return int8(math.MinInt8), sql.OutOfRange, nil
+			return int8(math.MaxInt8), sql.OutOfRange, err
 		}
-		return int8(num), sql.InRange, nil
+		if num < math.MinInt8 {
+			return int8(math.MinInt8), sql.OutOfRange, err
+		}
+		return int8(num), sql.InRange, err
 	case sqltypes.Uint8:
-		// TODO: convertToUint8 is unnecessary, we can just use convertToInt64 and handle overflow logic here
-		return convertToUint8(t, v, false)
+		num, _, err := convertToInt64(t, v, false)
+		if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
+			return 0, sql.OutOfRange, err
+		}
+		if num > math.MaxUint8 {
+			return uint8(math.MaxUint8), sql.OutOfRange, err
+		}
+		if num < 0 {
+			return uint8(math.MaxUint8 + num + 1), sql.OutOfRange, err
+		}
+		return uint8(num), sql.InRange, err
 	case sqltypes.Int16:
 		num, _, err := convertToInt64(t, v, false)
 		if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
 			return 0, sql.OutOfRange, err
 		}
 		if num > math.MaxInt16 {
-			return int16(math.MaxInt16), sql.OutOfRange, nil
-		} else if num < math.MinInt16 {
-			return int16(math.MinInt16), sql.OutOfRange, nil
+			return int16(math.MaxInt16), sql.OutOfRange, err
 		}
-		return int16(num), sql.InRange, nil
+		if num < math.MinInt16 {
+			return int16(math.MinInt16), sql.OutOfRange, err
+		}
+		return int16(num), sql.InRange, err
 	case sqltypes.Uint16:
-		return convertToUint16(t, v, false)
+		num, _, err := convertToInt64(t, v, false)
+		if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
+			return 0, sql.OutOfRange, err
+		}
+		if num > math.MaxUint16 {
+			return uint16(math.MaxUint16), sql.OutOfRange, err
+		}
+		if num < 0 {
+			return uint16(math.MaxUint16 + num + 1), sql.OutOfRange, err
+		}
+		return uint16(num), sql.InRange, nil
 	case sqltypes.Int24:
 		num, _, err := convertToInt64(t, v, false)
 		if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
 			return 0, sql.OutOfRange, err
 		}
 		if num > (1<<23 - 1) {
-			return int32(1<<23 - 1), sql.OutOfRange, nil
-		} else if num < (-1 << 23) {
-			return int32(-1 << 23), sql.OutOfRange, nil
+			return int32(1<<23 - 1), sql.OutOfRange, err
 		}
-		return int32(num), sql.InRange, nil
+		if num < (-1 << 23) {
+			return int32(-1 << 23), sql.OutOfRange, err
+		}
+		return int32(num), sql.InRange, err
 	case sqltypes.Uint24:
 		num, _, err := convertToInt64(t, v, false)
 		if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
 			return 0, sql.OutOfRange, err
 		}
 		if num >= (1 << 24) {
-			return uint32(1<<24 - 1), sql.OutOfRange, nil
-		} else if num < 0 {
-			return uint32(1<<24 - int32(-num)), sql.OutOfRange, nil
+			return uint32(1<<24 - 1), sql.OutOfRange, err
 		}
-		return uint32(num), sql.InRange, nil
+		if num < 0 {
+			return uint32(1<<24 - int32(-num)), sql.OutOfRange, err
+		}
+		return uint32(num), sql.InRange, err
 	case sqltypes.Int32:
 		num, _, err := convertToInt64(t, v, false)
 		if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
 			return 0, sql.OutOfRange, err
 		}
 		if num > math.MaxInt32 {
-			return int32(math.MaxInt32), sql.OutOfRange, nil
-		} else if num < math.MinInt32 {
-			return int32(math.MinInt32), sql.OutOfRange, nil
+			return int32(math.MaxInt32), sql.OutOfRange, err
+		}
+		if num < math.MinInt32 {
+			return int32(math.MinInt32), sql.OutOfRange, err
 		}
 		return int32(num), sql.InRange, err
 	case sqltypes.Uint32:
-		return convertToUint32(t, v, false)
+		num, _, err := convertToInt64(t, v, false)
+		if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
+			return 0, sql.OutOfRange, err
+		}
+		if num > math.MaxUint32 {
+			return uint32(math.MaxUint32), sql.OutOfRange, err
+		}
+		if num < 0 {
+			return uint32(math.MaxUint32 + num + 1), sql.OutOfRange, err
+		}
+		return uint32(num), sql.InRange, err
 	case sqltypes.Int64:
 		return convertToInt64(t, v, false)
 	case sqltypes.Uint64:
@@ -366,12 +400,12 @@ func (t NumberTypeImpl_) ConvertRound(ctx context.Context, v any) (any, sql.Conv
 	case sqltypes.Uint8:
 		switch v.(type) {
 		case float32, float64, string:
-			convertToUint8(t, v, true)
+			return convertToUint8(t, v, true)
 		}
 	case sqltypes.Uint16:
 		switch v.(type) {
 		case float32, float64, string:
-			convertToUint16(t, v, true)
+			return convertToUint16(t, v, true)
 		}
 	case sqltypes.Uint24:
 		switch v.(type) {
@@ -1247,7 +1281,25 @@ func convertToUint64(t NumberTypeImpl_, v any, round bool) (uint64, sql.ConvertI
 		}
 		return i, sql.InRange, nil
 	case string:
+		// When round = true, truncation rules are less strict
+		// Integers will accept valid float notation without truncation error
 		var err error
+		if round {
+			truncStr, didTrunc := TruncateStringToNumber(v)
+			if didTrunc {
+				err = sql.ErrTruncatedIncorrect.New(t.String(), v)
+			}
+			// Parse as int first
+			if i, pErr := strconv.ParseUint(truncStr, 10, 64); pErr == nil {
+				return i, sql.InRange, nil
+			}
+			f, _ := strconv.ParseFloat(truncStr, 64)
+			res, inRange, cErr := convertToUint64(t, f, round)
+			if cErr != nil {
+				err = cErr
+			}
+			return res, inRange, err
+		}
 		truncStr, didTrunc := TruncateStringToInt(v)
 		if didTrunc {
 			err = sql.ErrTruncatedIncorrect.New(t.String(), v)
@@ -1265,11 +1317,10 @@ func convertToUint64(t NumberTypeImpl_, v any, round bool) (uint64, sql.ConvertI
 		}
 		i, pErr := strconv.ParseUint(truncStr, 10, 64)
 		if errors.Is(pErr, strconv.ErrRange) {
-			// Number is too large for uint64, return max value and OutOfRange
 			return math.MaxUint64, sql.OutOfRange, err
 		}
 		if neg {
-			i = math.MaxUint64 - i + 1
+			return math.MaxUint64 - i + 1, sql.OutOfRange, err
 		}
 		return i, sql.InRange, err
 	case bool:
@@ -1368,7 +1419,25 @@ func convertToUint32(t NumberTypeImpl_, v any, round bool) (uint32, sql.ConvertI
 		}
 		return uint32(i), sql.InRange, nil
 	case string:
+		// When round = true, truncation rules are less strict
+		// Integers will accept valid float notation without truncation error
 		var err error
+		if round {
+			truncStr, didTrunc := TruncateStringToNumber(v)
+			if didTrunc {
+				err = sql.ErrTruncatedIncorrect.New(t.String(), v)
+			}
+			// Parse as int first
+			if i, pErr := strconv.ParseUint(truncStr, 10, 32); pErr == nil {
+				return uint32(i), sql.InRange, nil
+			}
+			f, _ := strconv.ParseFloat(truncStr, 64)
+			res, inRange, cErr := convertToUint32(t, f, round)
+			if cErr != nil {
+				err = cErr
+			}
+			return res, inRange, err
+		}
 		truncStr, didTrunc := TruncateStringToInt(v)
 		if didTrunc {
 			err = sql.ErrTruncatedIncorrect.New(t.String(), v)
@@ -1467,10 +1536,7 @@ func convertToUint16(t NumberTypeImpl_, v any, round bool) (uint16, sql.ConvertI
 		if v < 0 {
 			return uint16(math.MaxUint16 - v), sql.OutOfRange, nil
 		}
-		if round {
-			return uint16(math.Round(float64(v))), sql.InRange, nil
-		}
-		return uint16(v), sql.InRange, nil
+		return uint16(math.Round(float64(v))), sql.InRange, nil
 	case float64:
 		if v >= float64(math.MaxUint16) {
 			return math.MaxUint16, sql.OutOfRange, nil
@@ -1478,10 +1544,7 @@ func convertToUint16(t NumberTypeImpl_, v any, round bool) (uint16, sql.ConvertI
 		if v <= 0 {
 			return uint16(math.MaxUint16 - v), sql.OutOfRange, nil
 		}
-		if round {
-			return uint16(math.Round(float64(v))), sql.InRange, nil
-		}
-		return uint16(v), sql.InRange, nil
+		return uint16(math.Round(float64(v))), sql.InRange, nil
 	case decimal.Decimal:
 		if v.GreaterThan(dec_uint16_max) {
 			return math.MaxUint16, sql.InRange, nil
@@ -1500,7 +1563,25 @@ func convertToUint16(t NumberTypeImpl_, v any, round bool) (uint16, sql.ConvertI
 		}
 		return uint16(i), sql.InRange, nil
 	case string:
+		// When round = true, truncation rules are less strict
+		// Integers will accept valid float notation without truncation error
 		var err error
+		if round {
+			truncStr, didTrunc := TruncateStringToNumber(v)
+			if didTrunc {
+				err = sql.ErrTruncatedIncorrect.New(t.String(), v)
+			}
+			// Parse as int first
+			if i, pErr := strconv.ParseUint(truncStr, 10, 16); pErr == nil {
+				return uint16(i), sql.InRange, nil
+			}
+			f, _ := strconv.ParseFloat(truncStr, 64)
+			res, inRange, cErr := convertToUint16(t, f, round)
+			if cErr != nil {
+				err = cErr
+			}
+			return res, inRange, err
+		}
 		truncStr, didTrunc := TruncateStringToNumber(v)
 		if didTrunc {
 			err = sql.ErrTruncatedIncorrect.New(t.String(), v)
@@ -1593,10 +1674,7 @@ func convertToUint8(t NumberTypeImpl_, v any, round bool) (uint8, sql.ConvertInR
 		if v < 0 {
 			return uint8(math.MaxUint8 - v), sql.OutOfRange, nil
 		}
-		if round {
-			return uint8(math.Round(float64(v))), sql.InRange, nil
-		}
-		return uint8(v), sql.InRange, nil
+		return uint8(math.Round(float64(v))), sql.InRange, nil
 	case float64:
 		if v >= float64(math.MaxUint8) {
 			return math.MaxUint8, sql.OutOfRange, nil
@@ -1604,10 +1682,7 @@ func convertToUint8(t NumberTypeImpl_, v any, round bool) (uint8, sql.ConvertInR
 		if v <= 0 {
 			return uint8(math.MaxUint8 - v), sql.OutOfRange, nil
 		}
-		if round {
-			return uint8(math.Round(v)), sql.InRange, nil
-		}
-		return uint8(v), sql.InRange, nil
+		return uint8(math.Round(v)), sql.InRange, nil
 	case decimal.Decimal:
 		if v.GreaterThan(dec_uint8_max) {
 			return math.MaxUint8, sql.InRange, nil
@@ -1626,7 +1701,25 @@ func convertToUint8(t NumberTypeImpl_, v any, round bool) (uint8, sql.ConvertInR
 		}
 		return uint8(i), sql.InRange, nil
 	case string:
+		// When round = true, truncation rules are less strict
+		// Integers will accept valid float notation without truncation error
 		var err error
+		if round {
+			truncStr, didTrunc := TruncateStringToNumber(v)
+			if didTrunc {
+				err = sql.ErrTruncatedIncorrect.New(t.String(), v)
+			}
+			// Parse as int first
+			if i, pErr := strconv.ParseUint(truncStr, 10, 8); pErr == nil {
+				return uint8(i), sql.InRange, nil
+			}
+			f, _ := strconv.ParseFloat(truncStr, 64)
+			res, inRange, cErr := convertToUint8(t, f, round)
+			if cErr != nil {
+				err = cErr
+			}
+			return res, inRange, err
+		}
 		truncStr, didTrunc := TruncateStringToInt(v)
 		if didTrunc {
 			err = sql.ErrTruncatedIncorrect.New(t.String(), v)
