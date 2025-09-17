@@ -19,9 +19,11 @@ import "gopkg.in/src-d/go-errors.v1"
 var (
 	// ErrValidationResolved is returned when the plan can not be resolved.
 	ErrValidationResolved = errors.NewKind("plan is not resolved because of node '%T'")
+
 	// ErrValidationOrderBy is returned when the order by contains aggregation
 	// expressions.
 	ErrValidationOrderBy = errors.NewKind("OrderBy does not support aggregation expressions")
+
 	// ErrValidationGroupBy is returned when a selected expression contains a nonaggregated column that does not appear
 	// in the group by clause
 	ErrValidationGroupBy = errors.NewKind(
@@ -37,24 +39,29 @@ var (
 			"is not functionally dependent on columns in GROUP BY clause; " +
 			"this is incompatible with sql_mode=only_full_group_by",
 	)
+
 	// ErrValidationSchemaSource is returned when there is any column source
 	// that does not match the table name.
 	ErrValidationSchemaSource = errors.NewKind("one or more schema sources are empty")
+
 	// ErrUnknownIndexColumns is returned when there are columns in the expr
 	// to index that are unknown in the table.
 	ErrUnknownIndexColumns = errors.NewKind("unknown columns to index for table %q: %s")
+
 	// ErrCaseResultType is returned when one or more of the types of the values in
 	// a case expression don't match.
 	ErrCaseResultType = errors.NewKind(
 		"expecting all case branches to return values of type %s, " +
 			"but found value %q of type %s on %s",
 	)
+
 	// ErrIntervalInvalidUse is returned when an interval expression is not
 	// correctly used.
 	ErrIntervalInvalidUse = errors.NewKind(
 		"invalid use of an interval, which can only be used with DATE_ADD, " +
 			"DATE_SUB and +/- operators to subtract from or add to a date",
 	)
+
 	// ErrExplodeInvalidUse is returned when an EXPLODE function is used
 	// outside a Project node.
 	ErrExplodeInvalidUse = errors.NewKind(
