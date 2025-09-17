@@ -320,10 +320,11 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 					return false
 				}
 			}
-			// According to MySQL documentation, we should still be validating ORDER BY expressions ("If a query has
-			// aggregate functions and no GROUP BY clause, it cannot have nonaggregated columns in the select list, HAVING
-			// condition, or ORDER BY list with ONLY_FULL_GROUP_BY enabled"). But when testing actual queries in MySQL,
-			// it doesn't seem like they validate ORDER BY expressions in aggregate queries without an explicit GROUP BY
+			// According to MySQL documentation, we should still be validating ORDER BY expressions when there's not an
+			// explicit GROUP BY in the query ("If a query has aggregate functions and no GROUP BY clause, it cannot
+			// have nonaggregated columns in the select list, HAVING  condition, or ORDER BY list with
+			// ONLY_FULL_GROUP_BY enabled"). But when testing queries in MySQL, it doesn't seem like they actually
+			// validate ORDER BY expressions in aggregate queries without an explicit GROUP BY
 			if !noGroupBy {
 				for i, expr := range orderByExprs {
 					if valid, col := expressionReferencesOnlyGroupBys(groupBys, expr, noGroupBy); !valid {
