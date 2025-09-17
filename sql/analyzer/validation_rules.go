@@ -370,7 +370,7 @@ func getEqualsDependencies(expr sql.Expression) []sql.Expression {
 // dependency expressions.
 func getSelectAndOrderByExprs(project *plan.Project, orderBy *plan.Sort, selectDeps []sql.Expression, groupBys map[string]bool) ([]sql.Expression, []sql.Expression) {
 	if project == nil && orderBy == nil {
-		return selectDeps, make([]sql.Expression, 0)
+		return selectDeps, nil
 	} else {
 		sd := make(map[string]sql.Expression, len(selectDeps))
 		for _, dep := range selectDeps {
