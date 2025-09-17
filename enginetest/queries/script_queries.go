@@ -122,52 +122,6 @@ type ScriptTestAssertion struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
-		// https://github.com/dolthub/dolt/pull/9830
-		Name: "CREATE SCHEMA without database selection falls back to CREATE DATABASE",
-		SetUpScript: []string{
-			"CREATE DATABASE tmp",
-			"USE tmp",
-		},
-		Dialect: "mysql",
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "DROP DATABASE tmp",
-			},
-			{
-				Query:    "CREATE SCHEMA NewDatabase",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
-			},
-			{
-				Query:    "SHOW DATABASES",
-				Expected: []sql.Row{{"NewDatabase"}, {"information_schema"}, {"mydb"}, {"mysql"}},
-			},
-			{
-				Query:    "USE NewDatabase",
-				Expected: []sql.Row{},
-			},
-			{
-				Query:    "SELECT DATABASE()",
-				Expected: []sql.Row{{"NewDatabase"}},
-			},
-			{
-				Query:    "CREATE TABLE test_table (id INT PRIMARY KEY)",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
-			},
-			{
-				Query:    "SHOW TABLES",
-				Expected: []sql.Row{{"test_table"}},
-			},
-			{
-				Query:    "USE mydb",
-				Expected: []sql.Row{},
-			},
-			{
-				Query:    "DROP DATABASE NewDatabase",
-				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
-			},
-		},
-	},
-	{
 		// https://github.com/dolthub/go-mysql-server/issues/3216
 		Name: "UNION ALL with BLOB columns",
 		SetUpScript: []string{
@@ -13565,6 +13519,52 @@ var BrokenScriptTests = []ScriptTest{
 }
 
 var CreateDatabaseScripts = []ScriptTest{
+	{
+		// https://github.com/dolthub/dolt/pull/9830
+		Name: "CREATE SCHEMA without database selection falls back to CREATE DATABASE",
+		SetUpScript: []string{
+			"CREATE DATABASE tmp",
+			"USE tmp",
+		},
+		Dialect: "mysql",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "DROP DATABASE tmp",
+			},
+			{
+				Query:    "CREATE SCHEMA NewDatabase",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "SHOW DATABASES",
+				Expected: []sql.Row{{"NewDatabase"}, {"information_schema"}, {"mydb"}, {"mysql"}},
+			},
+			{
+				Query:    "USE NewDatabase",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT DATABASE()",
+				Expected: []sql.Row{{"NewDatabase"}},
+			},
+			{
+				Query:    "CREATE TABLE test_table (id INT PRIMARY KEY)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query:    "SHOW TABLES",
+				Expected: []sql.Row{{"test_table"}},
+			},
+			{
+				Query:    "USE mydb",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "DROP DATABASE NewDatabase",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+		},
+	},
 	{
 		Name: "CREATE DATABASE and create table",
 		Assertions: []ScriptTestAssertion{

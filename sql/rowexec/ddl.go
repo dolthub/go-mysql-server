@@ -409,6 +409,7 @@ func (b *BaseBuilder) buildCreateSchema(ctx *sql.Context, n *plan.CreateSchema, 
 	// If no database is selected, first try to fall back to CREATE DATABASE
 	// since CREATE SCHEMA is a synonym for CREATE DATABASE in MySQL
 	// https://dev.mysql.com/doc/refman/8.4/en/create-database.html
+	// TODO: For PostgreSQL, return an error if no database is selected.
 	if database == "" {
 		return b.buildCreateDB(ctx, &plan.CreateDB{
 			Catalog:     n.Catalog,
