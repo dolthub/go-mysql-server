@@ -263,44 +263,64 @@ func (j *joinOrderBuilder) buildSingleLookupPlan() bool {
 		}
 	}
 
+	// Collect all filters
+
 	// removedEdges contains the edges that have already been incorporated into the new plan, so we don't repeat them.
 	var succ bool
 	removedEdges := edgeSet{}
 	for removedEdges.Len() < len(j.vertices)-1 {
 		type joinCandidate struct {
 			nextEdgeIdx int
-			nextTableId sql.TableId
+			joinFilers  []sql.Expression
+			selFilters  []sql.Expression
 		}
-		var joinCandidates []joinCandidate
+		joinCandidates := make(map[sql.TableId]joinCandidate)
 
+		// TODO: Preemptively remove cross joins?
 		// Find all possible filters that could be used for the next join in the sequence.
 		// Store their corresponding edge and table ids in `joinCandidates`.
+		// Plan: For each vertex candidate, find the edges that will needed to be added for that vertex to be next.
+		// Also find non-join edges that are now part of it so they remain pushed down.
+		// For cycles we need to add them in the right order.
+
+		// To identify the next table to join, we iterate over all the edges and look for edges that reference exactly one
+		// table not yet in the join. If that edge also references other tables already in the join, it's a join filter.
+		// Otherwise it's a select filter.
 		for i, edge := range j.edges {
 			if removedEdges.Contains(i) {
 				continue
 			}
-			if len(edge.filters) != 1 {
+			if len(edge.filters) == 0 {
 				continue
 			}
-			filter := edge.filters[0]
-			_, tables, _ := getExprScalarProps(filter)
-			if tables.Len() != 2 || !isSimpleEquality(filter) {
-				// We have encountered a filter condition more complicated than a simple equality check.
-				// We probably can't optimize this, so bail out.
-				return false
-			}
-			firstTab, _ := tables.Next(1)
-			secondTab, _ := tables.Next(firstTab + 1)
-			if currentlyJoinedTables.Contains(firstTab) && !edge.op.joinType.IsRightOuter() {
-				joinCandidates = append(joinCandidates, joinCandidate{
-					nextEdgeIdx: i,
-					nextTableId: sql.TableId(secondTab),
-				})
-			} else if currentlyJoinedTables.Contains(secondTab) && !edge.op.joinType.IsLeftOuter() {
-				joinCandidates = append(joinCandidates, joinCandidate{
-					nextEdgeIdx: i,
-					nextTableId: sql.TableId(firstTab),
-				})
+			for _, filter := range edge.filters {
+				_, tables, _ := getExprScalarProps(filter)
+				tableId, ok := tables.Next(1)
+				// TODO: How do we determine table order for left/right joins?
+				candidateTableId := -1
+				containsExistingTableId := false
+				isGoodCandidate := true
+				for ok {
+					if currentlyJoinedTables.Contains(tableId) {
+						containsExistingTableId = true
+					} else if candidateTableId != -1 {
+						// There are multiple new tables in this join edge. We can't use it to guide the join order yet.
+						isGoodCandidate = false
+						break
+					} else {
+						candidateTableId = tableId
+					}
+					tableId, ok = tables.Next(tableId + 1)
+				}
+				if isGoodCandidate && candidateTableId != -1 {
+					candidate := joinCandidates[sql.TableId(candidateTableId)]
+					if containsExistingTableId {
+						candidate.joinFilers = append(candidate.joinFilers, filter)
+					} else {
+						candidate.selFilters = append(candidate.selFilters, filter)
+					}
+					joinCandidates[sql.TableId(candidateTableId)] = candidate
+				}
 			}
 		}
 
@@ -320,8 +340,11 @@ func (j *joinOrderBuilder) buildSingleLookupPlan() bool {
 		// If there are multiple filter choices for the next join, pick one arbitrarily.
 		// This means that for complex joins, there may be an optimal join that we fail to find.
 		// But for other complex joins, the choice may not matter.
-		nextEdgeIdx := joinCandidates[0].nextEdgeIdx
-		nextTableId := joinCandidates[0].nextTableId
+		var join joinCandidate
+		var nextTableId sql.TableId
+		for nextTableId, join = range joinCandidates {
+			break
+		}
 
 		var nextVertex vertexSet
 		for i, id := range j.vertexTableIds {
@@ -331,16 +354,13 @@ func (j *joinOrderBuilder) buildSingleLookupPlan() bool {
 			}
 		}
 
-		edge := j.edges[nextEdgeIdx]
-
-		isRedundant := edge.joinIsRedundant(currentlyJoinedVertexes, nextVertex)
-		j.addJoin(plan.JoinTypeInner, currentlyJoinedVertexes, nextVertex, j.edges[nextEdgeIdx].filters, nil, isRedundant)
+		j.addJoin(plan.JoinTypeInner, currentlyJoinedVertexes, nextVertex, join.joinFilers, join.selFilters, false)
 
 		currentlyJoinedVertexes = currentlyJoinedVertexes.union(nextVertex)
 		currentlyJoinedTables.Add(int(nextTableId))
-		removedEdges.Add(nextEdgeIdx)
 		succ = true
 	}
+	// What to do if there are remaining edges?
 	return succ
 }
 

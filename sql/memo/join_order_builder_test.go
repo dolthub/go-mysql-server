@@ -181,6 +181,98 @@ func TestJoinOrderBuilder(t *testing.T) {
 └── G8: (innerjoin 5 3) (innerjoin 3 5)
 `,
 		},
+		{
+			name: "test fast reorder with left join",
+			// Optimized plan appears as G11 - (innerjoin 1 12)
+			in: plan.NewLeftOuterJoin(
+				plan.NewLeftOuterJoin(
+					tableNode(db, "a"),
+					tableNode(db, "c"),
+					newEq("a.z = c.x"),
+				),
+				tableNode(db, "b"),
+				newEq("b.x = c.z"),
+			),
+
+			forceFastReorder: true,
+			plans: `memo:
+├── G1: (tablescan: a)
+├── G2: (tablescan: c)
+├── G3: (crossjoin 1 2)
+├── G4: (tablescan: b)
+├── G5: (innerjoin 1 6) (innerjoin 6 1) (innerjoin 3 4)
+└── G6: (innerjoin 4 2) (innerjoin 2 4)
+`,
+		},
+		{
+			name: "test fast reorder with left join reusing key",
+			// Optimized plan appears as G11 - (innerjoin 1 12)
+			in: plan.NewLeftOuterJoin(
+				plan.NewLeftOuterJoin(
+					tableNode(db, "a"),
+					tableNode(db, "c"),
+					newEq("a.z = c.x"),
+				),
+				tableNode(db, "b"),
+				newEq("b.x = c.x"),
+			),
+
+			forceFastReorder: true,
+			plans: `memo:
+├── G1: (tablescan: a)
+├── G2: (tablescan: c)
+├── G3: (crossjoin 1 2)
+├── G4: (tablescan: b)
+├── G5: (innerjoin 1 6) (innerjoin 6 1) (innerjoin 3 4)
+└── G6: (innerjoin 4 2) (innerjoin 2 4)
+`,
+		},
+		{
+			name: "test fast reorder with right join",
+			// Optimized plan appears as G11 - (innerjoin 1 12)
+			in: plan.NewRightOuterJoin(
+				tableNode(db, "b"),
+				plan.NewRightOuterJoin(
+					tableNode(db, "a"),
+					tableNode(db, "c"),
+					newEq("a.x = c.z"),
+				),
+				newEq("b.x = a.z"),
+			),
+
+			forceFastReorder: true,
+			plans: `memo:
+├── G1: (tablescan: a)
+├── G2: (tablescan: c)
+├── G3: (crossjoin 1 2)
+├── G4: (tablescan: b)
+├── G5: (innerjoin 1 6) (innerjoin 6 1) (innerjoin 3 4)
+└── G6: (innerjoin 4 2) (innerjoin 2 4)
+`,
+		},
+		{
+			name: "test fast reorder with left and right join",
+			// Optimized plan appears as G11 - (innerjoin 1 12)
+			in: plan.NewLeftOuterJoin(
+				plan.NewRightOuterJoin(
+					tableNode(db, "a"),
+					tableNode(db, "c"),
+					newEq("a.x = c.z"),
+				),
+				tableNode(db, "b"),
+				newEq("b.x = a.z"),
+			),
+
+			forceFastReorder: true,
+			plans: `memo:
+├── G1: (tablescan: a)
+├── G2: (tablescan: c)
+├── G3: (crossjoin 1 2)
+├── G4: (tablescan: b)
+├── G5: (innerjoin 1 6) (innerjoin 6 1) (innerjoin 3 4)
+└── G6: (innerjoin 4 2) (innerjoin 2 4)
+`,
+		},
 	}
 
 	for _, tt := range tests {
