@@ -64,6 +64,7 @@ type QueryTest struct {
 }
 
 type QueryPlanTest struct {
+	Name              string
 	Query             string
 	ExpectedPlan      string
 	ExpectedEstimates string

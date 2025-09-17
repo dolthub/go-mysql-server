@@ -181,6 +181,10 @@ func generatePlansForSuite(spec PlanSpec, w *bytes.Buffer) error {
 	for _, tt := range queries {
 		_, _ = w.WriteString("\t{\n")
 
+		if tt.Name != "" {
+			_, _ = w.WriteString(fmt.Sprintf("Name: `%s`,\n", tt.Name))
+		}
+
 		if strings.Contains(tt.Query, "`") {
 			_, _ = w.WriteString("Query: ")
 			for i, line := range strings.Split(strings.TrimSpace(tt.Query), "\n") {
