@@ -38,6 +38,7 @@ var (
 	XySetup              = [][]SetupScript{MydbData, XyData}
 	JoinsSetup           = [][]SetupScript{MydbData, JoinData}
 	IntegrationPlanSetup = [][]SetupScript{MydbData, Integration_testData}
+	FastJoinPlanSetup    = [][]SetupScript{MydbData, Comp_index_tablesData}
 
 	SpecialSetup = [][]SetupScript{
 		MydbData,

@@ -152,11 +152,13 @@ func NewJoinOrderBuilder(memo *Memo) *joinOrderBuilder {
 
 var ErrUnsupportedReorderNode = errors.New("unsupported join reorder node")
 
+var ForceFastDFSLookupForTest = false
+
 // useFastReorder determines whether to skip the current brute force join planning and use an alternate
 // planning algorithm that analyzes the join tree to find a sequence that can be implemented purely as lookup joins.
 // Currently, we only use it for large joins (15+ tables) with no join hints.
 func (j *joinOrderBuilder) useFastReorder() bool {
-	if j.forceFastDFSLookupForTest {
+	if j.forceFastDFSLookupForTest || ForceFastDFSLookupForTest {
 		return true
 	}
 	if j.m.hints.order != nil {

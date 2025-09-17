@@ -636,6 +636,15 @@ func TestTpcdsPlans(t *testing.T, harness Harness) {
 	}
 }
 
+func TestFastJoinQueryPlans(t *testing.T, harness Harness, planTests []queries.QueryPlanTest) {
+	harness.Setup(setup.ComplexIndexSetup...)
+	e := mustNewEngine(t, harness)
+	defer e.Close()
+	for _, tt := range planTests {
+		TestQueryPlan(t, harness, e, tt)
+	}
+}
+
 func TestIndexQueryPlans(t *testing.T, harness Harness) {
 	harness.Setup(setup.ComplexIndexSetup...)
 	e := mustNewEngine(t, harness)

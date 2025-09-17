@@ -324,6 +324,8 @@ func specSetup(name string) [][]setup.SetupScript {
 		return setup.GeneratedColumnSetup
 	case "SysbenchPlanTests":
 		return setup.SysbenchSetup
+	case "FastJoinPlanTests":
+		return setup.FastJoinPlanSetup
 	default:
 		exit(fmt.Errorf("setup not found for plan suite: %s", name))
 		return nil
@@ -350,6 +352,8 @@ func specQueries(name string) []queries.QueryPlanTest {
 		return queries.GeneratedColumnPlanTests
 	case "SysbenchPlanTests":
 		return queries.SysbenchPlanTests
+	case "FastJoinPlanTests":
+		return queries.FastJoinPlanTests
 	default:
 		exit(fmt.Errorf("queries not found for plan suite: %s", name))
 		return nil

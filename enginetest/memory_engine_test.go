@@ -16,6 +16,7 @@ package enginetest_test
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/memo"
 	"log"
 	"os"
 	"testing"
@@ -504,6 +505,24 @@ func TestIndexQueryPlans(t *testing.T) {
 		t.Run(indexInit.name, func(t *testing.T) {
 			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 2, indexInit.nativeIndexes, indexInit.driverInitializer)
 			enginetest.TestIndexQueryPlans(t, harness)
+		})
+	}
+}
+
+// Tests of choosing the correct execution plan independent of result correctness. Mostly useful for confirming that
+// the right indexes are being used for joining tables.
+func TestFastJoinQueryPlans(t *testing.T) {
+	indexBehaviors := []*indexBehaviorTestParams{
+		{"nativeIndexes", nil, true},
+		{"nativeAndMergable", mergableIndexDriver, true},
+	}
+
+	memo.ForceFastDFSLookupForTest = true
+	for _, indexInit := range indexBehaviors {
+		t.Run(indexInit.name, func(t *testing.T) {
+			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 2, indexInit.nativeIndexes, indexInit.driverInitializer)
+
+			enginetest.TestFastJoinQueryPlans(t, harness, queries.FastJoinPlanTests)
 		})
 	}
 }
