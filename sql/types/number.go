@@ -1536,10 +1536,7 @@ func convertToUint16(t NumberTypeImpl_, v any, round bool) (uint16, sql.ConvertI
 		if v < 0 {
 			return uint16(math.MaxUint16 - v), sql.OutOfRange, nil
 		}
-		if round {
-			return uint16(math.Round(float64(v))), sql.InRange, nil
-		}
-		return uint16(v), sql.InRange, nil
+		return uint16(math.Round(float64(v))), sql.InRange, nil
 	case float64:
 		if v >= float64(math.MaxUint16) {
 			return math.MaxUint16, sql.OutOfRange, nil
@@ -1677,10 +1674,7 @@ func convertToUint8(t NumberTypeImpl_, v any, round bool) (uint8, sql.ConvertInR
 		if v < 0 {
 			return uint8(math.MaxUint8 - v), sql.OutOfRange, nil
 		}
-		if round {
-			return uint8(math.Round(float64(v))), sql.InRange, nil
-		}
-		return uint8(v), sql.InRange, nil
+		return uint8(math.Round(float64(v))), sql.InRange, nil
 	case float64:
 		if v >= float64(math.MaxUint8) {
 			return math.MaxUint8, sql.OutOfRange, nil
@@ -1688,10 +1682,7 @@ func convertToUint8(t NumberTypeImpl_, v any, round bool) (uint8, sql.ConvertInR
 		if v <= 0 {
 			return uint8(math.MaxUint8 - v), sql.OutOfRange, nil
 		}
-		if round {
-			return uint8(math.Round(v)), sql.InRange, nil
-		}
-		return uint8(v), sql.InRange, nil
+		return uint8(math.Round(v)), sql.InRange, nil
 	case decimal.Decimal:
 		if v.GreaterThan(dec_uint8_max) {
 			return math.MaxUint8, sql.InRange, nil
