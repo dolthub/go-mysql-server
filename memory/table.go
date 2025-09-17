@@ -1435,6 +1435,9 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 				if sql.ErrNotMatchingSRID.Is(err) {
 					err = sql.ErrNotMatchingSRIDWithColName.New(columnName, err)
 				}
+				if sql.ErrTruncatedIncorrect.Is(err) {
+					err = sql.ErrInvalidValue.New(row[oldIdx], column.Type)
+				}
 				return err
 			}
 			if !inRange {
