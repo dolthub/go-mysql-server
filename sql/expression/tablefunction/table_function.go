@@ -68,7 +68,7 @@ func (t *TableFunctionWrapper) Expressions() []sql.Expression {
 	if t.funcExpr == nil {
 		return nil
 	}
-	return t.funcExpr.Children()
+	return []sql.Expression{t.funcExpr}
 }
 
 func (t *TableFunctionWrapper) IsReadOnly() bool {
