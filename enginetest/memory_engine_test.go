@@ -203,44 +203,19 @@ func TestSingleScript(t *testing.T) {
 	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			// https://github.com/dolthub/dolt/issues/9857
-			Name:        "UUID_SHORT() function returns 64-bit unsigned integers with proper construction",
+			Name:        "AS OF propagates to nested CALLs",
 			SetUpScript: []string{},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "SELECT UUID_SHORT() > 0",
+					Query: "create procedure create_proc() create table t (i int primary key, j int);",
 					Expected: []sql.Row{
-						{true}, // Should return positive values
+						{types.NewOkResult(0)},
 					},
 				},
 				{
-					Query: "SELECT UUID_SHORT() != UUID_SHORT()",
+					Query: "call create_proc()",
 					Expected: []sql.Row{
-						{true}, // Should return different values on each call
-					},
-				},
-				{
-					Query: "SELECT UUID_SHORT() + 0 > 0",
-					Expected: []sql.Row{
-						{true}, // Should work in arithmetic expressions
-					},
-				},
-				{
-					Query: "SELECT CAST(UUID_SHORT() AS CHAR) != ''",
-					Expected: []sql.Row{
-						{true}, // Should cast to non-empty string
-					},
-				},
-				{
-					Query: "SELECT UUID_SHORT() BETWEEN 1 AND 18446744073709551615",
-					Expected: []sql.Row{
-						{true}, // Should be within uint64 range
-					},
-				},
-				{
-					Query: "SELECT (UUID_SHORT() & 0xFF00000000000000) >> 56 BETWEEN 0 AND 255",
-					Expected: []sql.Row{
-						{true}, // Server ID should be 0-255
+						{types.NewOkResult(0)},
 					},
 				},
 			},

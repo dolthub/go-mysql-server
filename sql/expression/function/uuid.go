@@ -29,10 +29,9 @@ import (
 
 // Global state for UUID_SHORT function
 var (
-	uuidShortMu        sync.Mutex
-	uuidShortCounter   uint64
-	uuidShortStartup   = uint64(time.Now().Unix())
-	uuidShortServerID  = uint64(1) // Default server ID
+	uuidShortMu      sync.Mutex
+	uuidShortCounter uint64
+	uuidShortStartup = uint64(time.Now().Unix())
 )
 
 // UUID()
@@ -546,8 +545,6 @@ func (bu BinToUUID) IsNullable() bool {
 // of UUID_SHORT() is guaranteed to be unique if the following conditions hold:
 //
 // The server_id value of the current server is between 0 and 255 and is unique among your set of source and replica servers
-// You do not set back the system time for your server host between mysqld restarts
-// You invoke UUID_SHORT() on average fewer than 16 million times per second between mysqld restarts
 //
 // The UUID_SHORT() return value is constructed this way:
 //   (server_id & 255) << 56
@@ -587,13 +584,19 @@ func (UUIDShortFunc) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 func (u *UUIDShortFunc) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	uuidShortMu.Lock()
 	defer uuidShortMu.Unlock()
-	
+
 	uuidShortCounter++
-	
+
+	serverID := uint64(1) // Default fallback
+	if _, val, ok := sql.SystemVariables.GetGlobal("server_id"); ok {
+		if serverIDVal, ok := val.(uint32); ok {
+			serverID = uint64(serverIDVal)
+		}
+	}
+
 	// Construct the UUID_SHORT value according to MySQL specification:
-	// (server_id & 255) << 56 + (server_startup_time_in_seconds << 24) + incremented_variable
-	result := ((uuidShortServerID & 255) << 56) + (uuidShortStartup << 24) + uuidShortCounter
-	
+	result := ((serverID & 255) << 56) + (uuidShortStartup << 24) + uuidShortCounter
+
 	return result, nil
 }
 
