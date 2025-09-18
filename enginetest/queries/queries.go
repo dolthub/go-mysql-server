@@ -10423,6 +10423,10 @@ var ErrorQueries = []QueryErrorTest{
 		Query:       "select * from two_pk group by pk1 + 1, mod(pk2, 2)",
 		ExpectedErr: analyzererrors.ErrValidationGroupBy,
 	},
+	{
+		Query:       `select s from mytable group by s order by i`,
+		ExpectedErr: analyzererrors.ErrValidationGroupByOrderBy,
+	},
 }
 
 var BrokenErrorQueries = []QueryErrorTest{

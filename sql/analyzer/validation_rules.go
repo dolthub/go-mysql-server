@@ -252,6 +252,7 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 
 	var err error
 	var project *plan.Project
+	var orderBy *plan.Sort
 	transform.Inspect(n, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.GroupBy:
@@ -307,20 +308,36 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 				return true
 			}
 
-			selectExprs := getSelectExprs(project, n.SelectDeps, groupBys)
+			selectExprs, orderByExprs := getSelectAndOrderByExprs(project, orderBy, n.SelectDeps, groupBys)
 
 			for i, expr := range selectExprs {
 				if valid, col := expressionReferencesOnlyGroupBys(groupBys, expr, noGroupBy); !valid {
 					if noGroupBy {
 						err = sql.ErrNonAggregatedColumnWithoutGroupBy.New(i+1, col)
 					} else {
-						err = analyzererrors.ErrValidationGroupBy.New(i + 1)
+						err = analyzererrors.ErrValidationGroupBy.New(i+1, col)
 					}
 					return false
 				}
 			}
+			// According to MySQL documentation, we should still be validating ORDER BY expressions when there's not an
+			// explicit GROUP BY in the query ("If a query has aggregate functions and no GROUP BY clause, it cannot
+			// have nonaggregated columns in the select list, HAVING  condition, or ORDER BY list with
+			// ONLY_FULL_GROUP_BY enabled"). But when testing queries in MySQL, it doesn't seem like they actually
+			// validate ORDER BY expressions in aggregate queries without an explicit GROUP BY
+			if !noGroupBy {
+				for i, expr := range orderByExprs {
+					if valid, col := expressionReferencesOnlyGroupBys(groupBys, expr, noGroupBy); !valid {
+						err = analyzererrors.ErrValidationGroupByOrderBy.New(i+1, col)
+						return false
+					}
+				}
+			}
 		case *plan.Project:
 			project = n
+			orderBy = nil
+		case *plan.Sort:
+			orderBy = n
 		}
 		return true
 	})
@@ -351,9 +368,9 @@ func getEqualsDependencies(expr sql.Expression) []sql.Expression {
 
 // getSelectExprs transforms the projection expressions from a Project node such that it uses the appropriate select
 // dependency expressions.
-func getSelectExprs(project *plan.Project, selectDeps []sql.Expression, groupBys map[string]bool) []sql.Expression {
-	if project == nil {
-		return selectDeps
+func getSelectAndOrderByExprs(project *plan.Project, orderBy *plan.Sort, selectDeps []sql.Expression, groupBys map[string]bool) ([]sql.Expression, []sql.Expression) {
+	if project == nil && orderBy == nil {
+		return selectDeps, nil
 	} else {
 		sd := make(map[string]sql.Expression, len(selectDeps))
 		for _, dep := range selectDeps {
@@ -361,30 +378,44 @@ func getSelectExprs(project *plan.Project, selectDeps []sql.Expression, groupBys
 		}
 
 		selectExprs := make([]sql.Expression, 0)
+		orderByExprs := make([]sql.Expression, 0)
 
 		for _, expr := range project.Projections {
 			if !project.AliasDeps[strings.ToLower(expr.String())] {
-				resolvedExpr, _, _ := transform.Expr(expr, func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-					if groupBys[strings.ToLower(expr.String())] {
-						return expr, transform.SameTree, nil
-					}
-					switch expr := expr.(type) {
-					case *expression.Alias:
-						if dep, ok := sd[strings.ToLower(expr.Child.String())]; ok {
-							return dep, transform.NewTree, nil
-						}
-					case *expression.GetField:
-						if dep, ok := sd[strings.ToLower(expr.String())]; ok {
-							return dep, transform.NewTree, nil
-						}
-					}
-					return expr, transform.SameTree, nil
-				})
+				resolvedExpr := resolveExpr(expr, sd, groupBys)
 				selectExprs = append(selectExprs, resolvedExpr)
 			}
 		}
-		return selectExprs
+
+		if orderBy != nil {
+			for _, expr := range orderBy.Expressions() {
+				resolvedExpr := resolveExpr(expr, sd, groupBys)
+				orderByExprs = append(orderByExprs, resolvedExpr)
+			}
+		}
+
+		return selectExprs, orderByExprs
 	}
+}
+
+func resolveExpr(expr sql.Expression, selectDeps map[string]sql.Expression, groupBys map[string]bool) sql.Expression {
+	resolvedExpr, _, _ := transform.Expr(expr, func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		if groupBys[strings.ToLower(expr.String())] {
+			return expr, transform.SameTree, nil
+		}
+		switch expr := expr.(type) {
+		case *expression.Alias:
+			if dep, ok := selectDeps[strings.ToLower(expr.Child.String())]; ok {
+				return dep, transform.NewTree, nil
+			}
+		case *expression.GetField:
+			if dep, ok := selectDeps[strings.ToLower(expr.String())]; ok {
+				return dep, transform.NewTree, nil
+			}
+		}
+		return expr, transform.SameTree, nil
+	})
+	return resolvedExpr
 }
 
 // expressionReferencesOnlyGroupBys validates that an expression is dependent on only group by expressions
