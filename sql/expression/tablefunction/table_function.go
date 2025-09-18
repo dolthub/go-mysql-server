@@ -130,15 +130,10 @@ func (t *TableFunctionWrapper) WithExpressions(exprs ...sql.Expression) (sql.Nod
 			return nil, sql.ErrInvalidChildrenNumber.New(t, len(exprs), 0)
 		}
 	}
-	l := len(t.funcExpr.Children())
-	if len(exprs) != l {
-		return nil, sql.ErrInvalidChildrenNumber.New(t, len(exprs), l)
+	if len(exprs) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(t, len(exprs), 1)
 	}
 	nt := *t
-	nf, err := nt.funcExpr.WithChildren(exprs...)
-	if err != nil {
-		return nil, err
-	}
-	nt.funcExpr = nf
+	nt.funcExpr = exprs[0]
 	return &nt, nil
 }
