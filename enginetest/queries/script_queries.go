@@ -174,6 +174,12 @@ var ScriptTests = []ScriptTest{
 					{true}, // server time won't let us pin this down further
 				},
 			},
+			{
+				Query: "SET @@global.server_id = 1",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
 		},
 	},
 	{
