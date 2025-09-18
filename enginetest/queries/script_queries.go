@@ -124,8 +124,9 @@ var ScriptTests = []ScriptTest{
 	{
 		// https://github.com/dolthub/dolt/issues/9857
 		Name:        "UUID_SHORT() function returns 64-bit unsigned integers with proper construction",
+		Dialect:	 "mysql",
 		SetUpScript: []string{},
-		Assertions: []ScriptTestAssertion{
+		Assertions:  []ScriptTestAssertion{
 			{
 				Query: "SELECT UUID_SHORT() > 0",
 				Expected: []sql.Row{
