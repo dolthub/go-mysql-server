@@ -18,7 +18,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/dolthub/vitess/go/mysql"
 	"math"
 	trace2 "runtime/trace"
 	"strconv"
@@ -27,6 +26,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/dolthub/vitess/go/mysql"
 	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 
