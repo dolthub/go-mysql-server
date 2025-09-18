@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/dolthub/vitess/go/mysql"
 	"math"
 	trace2 "runtime/trace"
 	"strconv"
@@ -27,7 +28,6 @@ import (
 	"unicode"
 	"unsafe"
 
-	"github.com/dolthub/vitess/go/mysql"
 	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -281,6 +281,7 @@ type Lockable interface {
 }
 
 // ConvertToBool converts a value to a boolean. nil is considered false.
+// TODO: the logic here should be merged with types.Boolean.Convert()
 func ConvertToBool(ctx *Context, v interface{}) (bool, error) {
 	switch b := v.(type) {
 	case []uint8:
@@ -339,6 +340,7 @@ const (
 	NumericCutSet = " \t\n\r"
 )
 
+// TODO: type processing logic should all be in the types package
 func TrimStringToNumberPrefix(ctx *Context, s string, isInt bool) string {
 	if isInt {
 		s = strings.TrimLeft(s, IntCutSet)
@@ -353,7 +355,6 @@ func TrimStringToNumberPrefix(ctx *Context, s string, isInt bool) string {
 
 	for i := 0; i < len(s); i++ {
 		char := rune(s[i])
-
 		if unicode.IsDigit(char) {
 			seenDigit = true
 		} else if char == '.' && !seenDot && !isInt {
@@ -362,7 +363,7 @@ func TrimStringToNumberPrefix(ctx *Context, s string, isInt bool) string {
 			seenExp = true
 			signIndex = i + 1
 		} else if !((char == '-' || char == '+') && i == signIndex) {
-			// TODO add different warning for DECIMAL conversion
+			// TODO: this should not happen here, and it should use sql.ErrIncorrectTruncation
 			if isInt {
 				ctx.Warn(mysql.ERTruncatedWrongValue, "Truncated incorrect INTEGER value: '%s'", s)
 			} else {
