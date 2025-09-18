@@ -16,6 +16,8 @@ package function
 
 import (
 	"fmt"
+	"sync"
+	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -23,6 +25,14 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
+)
+
+// Global state for UUID_SHORT function
+var (
+	uuidShortMu        sync.Mutex
+	uuidShortCounter   uint64
+	uuidShortStartup   = uint64(time.Now().Unix())
+	uuidShortServerID  = uint64(1) // Default server ID
 )
 
 // UUID()
@@ -527,4 +537,92 @@ func (bu BinToUUID) Children() []sql.Expression {
 // IsNullable returns whether the expression can be null.
 func (bu BinToUUID) IsNullable() bool {
 	return false
+}
+
+// UUID_SHORT()
+//
+// Returns a "short" universal identifier as a 64-bit unsigned integer. Values returned by UUID_SHORT() differ from the
+// string-format 128-bit identifiers returned by the UUID() function and have different uniqueness properties. The value
+// of UUID_SHORT() is guaranteed to be unique if the following conditions hold:
+//
+// The server_id value of the current server is between 0 and 255 and is unique among your set of source and replica servers
+// You do not set back the system time for your server host between mysqld restarts
+// You invoke UUID_SHORT() on average fewer than 16 million times per second between mysqld restarts
+//
+// The UUID_SHORT() return value is constructed this way:
+//   (server_id & 255) << 56
+// + (server_startup_time_in_seconds << 24)
+// + incremented_variable++;
+//
+// Note: UUID_SHORT() does not work with statement-based replication.
+// https://dev.mysql.com/doc/refman/8.4/en/miscellaneous-functions.html#function_uuid-short
+
+type UUIDShortFunc struct{}
+
+var _ sql.FunctionExpression = &UUIDShortFunc{}
+var _ sql.CollationCoercible = &UUIDShortFunc{}
+
+func NewUUIDShortFunc() sql.Expression {
+	return &UUIDShortFunc{}
+}
+
+// Description implements sql.FunctionExpression
+func (u UUIDShortFunc) Description() string {
+	return "returns a short universal identifier as a 64-bit unsigned integer."
+}
+
+func (u UUIDShortFunc) String() string {
+	return "UUID_SHORT()"
+}
+
+func (u UUIDShortFunc) Type() sql.Type {
+	return types.Uint64
+}
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (UUIDShortFunc) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
+}
+
+func (u *UUIDShortFunc) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	uuidShortMu.Lock()
+	defer uuidShortMu.Unlock()
+	
+	uuidShortCounter++
+	
+	// Construct the UUID_SHORT value according to MySQL specification:
+	// (server_id & 255) << 56 + (server_startup_time_in_seconds << 24) + incremented_variable
+	result := ((uuidShortServerID & 255) << 56) + (uuidShortStartup << 24) + uuidShortCounter
+	
+	return result, nil
+}
+
+func (u UUIDShortFunc) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	if len(children) != 0 {
+		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 0)
+	}
+
+	return &UUIDShortFunc{}, nil
+}
+
+func (u UUIDShortFunc) FunctionName() string {
+	return "UUID_SHORT"
+}
+
+func (u UUIDShortFunc) Resolved() bool {
+	return true
+}
+
+// Children returns the children expressions of this expression.
+func (u UUIDShortFunc) Children() []sql.Expression {
+	return nil
+}
+
+// IsNullable returns whether the expression can be null.
+func (u UUIDShortFunc) IsNullable() bool {
+	return false
+}
+
+func (u UUIDShortFunc) IsNonDeterministic() bool {
+	return true
 }

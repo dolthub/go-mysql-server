@@ -215,3 +215,81 @@ func TestBinToUUIDFailing(t *testing.T) {
 		})
 	}
 }
+
+func TestUUIDShort(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	uuidShortE := NewUUIDShortFunc()
+
+	// Test that UUID_SHORT returns sequential values
+	result1, err := uuidShortE.Eval(ctx, sql.Row{nil})
+	require.NoError(t, err)
+	require.IsType(t, uint64(0), result1)
+
+	result2, err := uuidShortE.Eval(ctx, sql.Row{nil})
+	require.NoError(t, err)
+	require.IsType(t, uint64(0), result2)
+
+	result3, err := uuidShortE.Eval(ctx, sql.Row{nil})
+	require.NoError(t, err)
+	require.IsType(t, uint64(0), result3)
+
+	// Values should be sequential (incrementing by 1)
+	require.Equal(t, result1.(uint64)+1, result2.(uint64))
+	require.Equal(t, result2.(uint64)+1, result3.(uint64))
+
+	// Test that values are 64-bit unsigned integers
+	require.Greater(t, result1.(uint64), uint64(0))
+	require.Greater(t, result2.(uint64), uint64(0))
+	require.Greater(t, result3.(uint64), uint64(0))
+}
+
+func TestUUIDShortMultipleInstances(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	
+	// Create multiple instances to test that they share the global counter (like MySQL)
+	uuidShort1 := NewUUIDShortFunc()
+	uuidShort2 := NewUUIDShortFunc()
+
+	result1, err := uuidShort1.Eval(ctx, sql.Row{nil})
+	require.NoError(t, err)
+
+	result2, err := uuidShort2.Eval(ctx, sql.Row{nil})
+	require.NoError(t, err)
+
+	// Both should return sequential values from the global counter
+	require.IsType(t, uint64(0), result1)
+	require.IsType(t, uint64(0), result2)
+	require.Greater(t, result1.(uint64), uint64(0))
+	require.Greater(t, result2.(uint64), uint64(0))
+	
+	// Values should be sequential (global counter)
+	require.Equal(t, result1.(uint64)+1, result2.(uint64))
+}
+
+func TestUUIDShortWithChildren(t *testing.T) {
+	uuidShortE := NewUUIDShortFunc()
+
+	// Test WithChildren with no arguments (should work)
+	newExpr, err := uuidShortE.WithChildren()
+	require.NoError(t, err)
+	require.NotNil(t, newExpr)
+
+	// Test WithChildren with arguments (should fail)
+	_, err = uuidShortE.WithChildren(expression.NewLiteral(1, types.Int64))
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid children number")
+}
+
+func TestUUIDShortProperties(t *testing.T) {
+	uuidShortE := NewUUIDShortFunc().(*UUIDShortFunc)
+
+	// Test function properties
+	require.Equal(t, "UUID_SHORT", uuidShortE.FunctionName())
+	require.Equal(t, "returns a short universal identifier as a 64-bit unsigned integer.", uuidShortE.Description())
+	require.Equal(t, "UUID_SHORT()", uuidShortE.String())
+	require.Equal(t, types.Uint64, uuidShortE.Type())
+	require.True(t, uuidShortE.Resolved())
+	require.False(t, uuidShortE.IsNullable())
+	require.True(t, uuidShortE.IsNonDeterministic())
+	require.Nil(t, uuidShortE.Children())
+}

@@ -318,6 +318,7 @@ var BuiltIns = []sql.Function{
 	sql.NewFunction0("user", NewUser),
 	sql.FunctionN{Name: "utc_timestamp", Fn: NewUTCTimestamp},
 	sql.Function0{Name: "uuid", Fn: NewUUIDFunc},
+	sql.Function0{Name: "uuid_short", Fn: NewUUIDShortFunc},
 	sql.FunctionN{Name: "uuid_to_bin", Fn: NewUUIDToBin},
 	sql.FunctionN{Name: "week", Fn: NewWeek},
 	sql.Function1{Name: "values", Fn: NewValues},
