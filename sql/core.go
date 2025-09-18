@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/dolthub/vitess/go/mysql"
 	"math"
 	trace2 "runtime/trace"
 	"strconv"
