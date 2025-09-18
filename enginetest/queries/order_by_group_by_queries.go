@@ -396,6 +396,7 @@ var OrderByGroupByScriptTests = []ScriptTest{
 			},
 			{
 				// order by functionally dependent column
+				Dialect:  "mysql",
 				Query:    "select c1 from t0 where c2 = 3 group by c1 order by c2",
 				Expected: []sql.Row{{1}},
 			},
