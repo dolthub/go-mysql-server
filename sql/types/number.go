@@ -238,7 +238,7 @@ func (t NumberTypeImpl_) Convert(ctx context.Context, v interface{}) (interface{
 			return nil, sql.OutOfRange, err
 		}
 		if num > math.MaxUint8 {
-			return math.MaxUint8, sql.OutOfRange, nil
+			return uint8(math.MaxUint8), sql.OutOfRange, nil
 		}
 		if num < 0 {
 			return uint8(math.MaxUint8 + num + 1), sql.OutOfRange, nil
@@ -262,7 +262,7 @@ func (t NumberTypeImpl_) Convert(ctx context.Context, v interface{}) (interface{
 			return nil, sql.OutOfRange, err
 		}
 		if num > math.MaxUint16 {
-			return math.MaxUint16, sql.OutOfRange, nil
+			return uint16(math.MaxUint16), sql.OutOfRange, nil
 		}
 		if num < 0 {
 			return uint16(math.MaxUint16 + num + 1), sql.OutOfRange, nil
@@ -310,7 +310,7 @@ func (t NumberTypeImpl_) Convert(ctx context.Context, v interface{}) (interface{
 			return nil, sql.OutOfRange, err
 		}
 		if num > math.MaxUint32 {
-			return math.MaxUint32, sql.OutOfRange, nil
+			return uint32(math.MaxUint32), sql.OutOfRange, nil
 		}
 		if num < 0 {
 			return uint32(math.MaxUint32 + num + 1), sql.OutOfRange, nil
@@ -327,7 +327,8 @@ func (t NumberTypeImpl_) Convert(ctx context.Context, v interface{}) (interface{
 		}
 		if num > math.MaxFloat32 {
 			return float32(math.MaxFloat32), sql.OutOfRange, nil
-		} else if num < -math.MaxFloat32 {
+		}
+		if num < -math.MaxFloat32 {
 			return float32(-math.MaxFloat32), sql.OutOfRange, nil
 		}
 		return float32(num), sql.InRange, nil
