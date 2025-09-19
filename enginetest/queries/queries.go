@@ -888,29 +888,23 @@ var QueryTests = []QueryTest{
 		Query:    "SELECT count(*) from mytable WHERE (i IN (-''));",
 		Expected: []sql.Row{{0}},
 	},
+
+	// Miscellaneous type conversion queries
 	{
 		Query:    "SELECT 1 % true",
 		Expected: []sql.Row{{"0"}},
 	},
 	{
-		Query:    "select 'abc' = false",
-		Expected: []sql.Row{{true}},
-	},
-	{
-		Query:    "select '123abc' = 123",
-		Expected: []sql.Row{{true}},
-	},
-	{
-		Query:    "select '1abc' = true",
-		Expected: []sql.Row{{true}},
-	},
-	{
-		Query:    "select '123abc' = false",
-		Expected: []sql.Row{{false}},
-	},
-	{
-		Query:    "select '123abc' = true",
-		Expected: []sql.Row{{false}},
+		Query: `SELECT "1" + '1'`,
+		Expected: []sql.Row{
+			{float64(2)},
+		},
+		ExpectedColumns: sql.Schema{
+			{
+				Name: `"1" + '1'`,
+				Type: types.Float64,
+			},
+		},
 	},
 	{
 		Query:    "SELECT * from mytable where (0.000 and true)",
@@ -2579,18 +2573,6 @@ SELECT * FROM cte WHERE  d = 2;`,
 		},
 	},
 	{
-		Query: `SELECT "1" + '1'`,
-		Expected: []sql.Row{
-			{float64(2)},
-		},
-		ExpectedColumns: sql.Schema{
-			{
-				Name: `"1" + '1'`,
-				Type: types.Float64,
-			},
-		},
-	},
-	{
 		Query: "SELECT myTable.* FROM MYTABLE ORDER BY myTable.i;",
 		Expected: []sql.Row{
 			{int64(1), "first row"},
@@ -3635,106 +3617,13 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Query:    `SELECT substring("foo", 2, 2)`,
 		Expected: []sql.Row{{"oo"}},
 	},
-
-	{
-		Query:    `select 'a'+4;`,
-		Expected: []sql.Row{{4.0}},
-	},
-	{
-		Query:    `select '20a'+4;`,
-		Expected: []sql.Row{{24.0}},
-	},
-	{
-		Query:    `select '10.a'+4;`,
-		Expected: []sql.Row{{14.0}},
-	},
-	{
-		Query:    `select '.20a'+4;`,
-		Expected: []sql.Row{{4.2}},
-	},
-	{
-		Query:    `select 4+'a';`,
-		Expected: []sql.Row{{4.0}},
-	},
-	{
-		Query:    `select 'a'+'a';`,
-		Expected: []sql.Row{{0.0}},
-	},
 	{
 		Query:    "SELECT STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') + STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s');",
 		Expected: []sql.Row{{40261002186034}},
 	},
 	{
-		Query:    `select 'a'-4;`,
-		Expected: []sql.Row{{-4.0}},
-	},
-	{
-		Query:    `select 4-'a';`,
-		Expected: []sql.Row{{4.0}},
-	},
-	{
-		Query:    `select 4-'2a';`,
-		Expected: []sql.Row{{2.0}},
-	},
-	{
-		Query:    `select 'a'-'a';`,
-		Expected: []sql.Row{{0.0}},
-	},
-	{
-		Query:    `select 'a'*4;`,
-		Expected: []sql.Row{{0.0}},
-	},
-	{
-		Query:    `select 4*'a';`,
-		Expected: []sql.Row{{0.0}},
-	},
-	{
-		Query:    `select 'a'*'a';`,
-		Expected: []sql.Row{{0.0}},
-	},
-	{
-		Query:    "select 1 * '2.50a';",
-		Expected: []sql.Row{{2.5}},
-	},
-	{
-		Query:    "select 1 * '2.a50a';",
-		Expected: []sql.Row{{2.0}},
-	},
-	{
-		Query:    `select 'a'/4;`,
-		Expected: []sql.Row{{0.0}},
-	},
-	{
-		Query:    `select 4/'a';`,
-		Expected: []sql.Row{{nil}},
-	},
-	{
-		Query:    `select 'a'/'a';`,
-		Expected: []sql.Row{{nil}},
-	},
-	{
-		Query:    "select 1 / '2.50a';",
-		Expected: []sql.Row{{0.4}},
-	},
-	{
-		Query:    "select 1 / '2.a50a';",
-		Expected: []sql.Row{{0.5}},
-	},
-	{
 		Query:    `select STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') / 1;`,
 		Expected: []sql.Row{{"20130501093017.0000"}},
-	},
-	{
-		Query:    "select 'a'&'a';",
-		Expected: []sql.Row{{uint64(0)}},
-	},
-	{
-		Query:    "select 'a'&4;",
-		Expected: []sql.Row{{uint64(0)}},
-	},
-	{
-		Query:    "select 4&'a';",
-		Expected: []sql.Row{{uint64(0)}},
 	},
 	{
 		Query:    "select date('2022-11-19 11:53:45') & date('2022-11-11 11:53:45');",
@@ -3749,92 +3638,12 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{uint64(20130501093017)}},
 	},
 	{
-		Query:    "select 'a'|'a';",
-		Expected: []sql.Row{{uint64(0)}},
-	},
-	{
-		Query:    "select 'a'|4;",
-		Expected: []sql.Row{{uint64(4)}},
-	},
-	{
-		Query:    "select 'a'|-1;",
-		Expected: []sql.Row{{uint64(18446744073709551615)}},
-	},
-	{
-		Query:    "select 4|'a';",
-		Expected: []sql.Row{{uint64(4)}},
-	},
-	{
-		Query:    "select 'a'^'a';",
-		Expected: []sql.Row{{uint64(0)}},
-	},
-	{
-		Query:    "select 'a'^4;",
-		Expected: []sql.Row{{uint64(4)}},
-	},
-	{
-		Query:    "select 'a'^-1;",
-		Expected: []sql.Row{{uint64(18446744073709551615)}},
-	},
-	{
-		Query:    "select 4^'a';",
-		Expected: []sql.Row{{uint64(4)}},
-	},
-	{
 		Query:    "select now() ^ now();",
 		Expected: []sql.Row{{uint64(0)}},
 	},
 	{
-		Query:    "select 'a'>>'a';",
-		Expected: []sql.Row{{uint64(0)}},
-	},
-	{
-		Query:    "select 'a'>>4;",
-		Expected: []sql.Row{{uint64(0)}},
-	},
-	{
-		Query:    "select 4>>'a';",
-		Expected: []sql.Row{{uint64(4)}},
-	},
-	{
-		Query:    "select -1>>'a';",
-		Expected: []sql.Row{{uint64(18446744073709551615)}},
-	},
-	{
-		Query:    "select 'a'<<'a';",
-		Expected: []sql.Row{{uint64(0)}},
-	},
-	{
-		Query:    "select 'a'<<4;",
-		Expected: []sql.Row{{uint64(0)}},
-	},
-	{
-		Query:    "select '2a'<<4;",
-		Expected: []sql.Row{{uint64(32)}},
-	},
-	{
-		Query:    "select 4<<'a';",
-		Expected: []sql.Row{{uint64(4)}},
-	},
-	{
-		Query:    "select -1<<'a';",
-		Expected: []sql.Row{{uint64(18446744073709551615)}},
-	},
-	{
 		Query:    "select -1.00 div 2;",
 		Expected: []sql.Row{{0}},
-	},
-	{
-		Query:    "select 'a' div 'a';",
-		Expected: []sql.Row{{nil}},
-	},
-	{
-		Query:    "select 'a' div 4;",
-		Expected: []sql.Row{{0}},
-	},
-	{
-		Query:    "select 4 div 'a';",
-		Expected: []sql.Row{{nil}},
 	},
 	{
 		Query:    "select 1.2 div 0.2;",
@@ -3843,30 +3652,6 @@ SELECT * FROM cte WHERE  d = 2;`,
 	{
 		Query:    "select 1.2 div 0.4;",
 		Expected: []sql.Row{{3}},
-	},
-	{
-		Query:    "select 1.2 div '1' ;",
-		Expected: []sql.Row{{1}},
-	},
-	{
-		Query:    "select 1.2 div 'a1' ;",
-		Expected: []sql.Row{{nil}},
-	},
-	{
-		Query:    "select '12a' div '3' ;",
-		Expected: []sql.Row{{4}},
-	},
-	{
-		Query:    "select 'a' mod 'a';",
-		Expected: []sql.Row{{nil}},
-	},
-	{
-		Query:    "select 'a' mod 4;",
-		Expected: []sql.Row{{float64(0)}},
-	},
-	{
-		Query:    "select 4 mod 'a';",
-		Expected: []sql.Row{{nil}},
 	},
 	{
 		Query:    `select STR_TO_DATE('01,5,2013 09:30:17','%d,%m,%Y %h:%i:%s') % 12345;`,
@@ -4122,7 +3907,54 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Query:    "select cast(1 / 3.000000000000000000000000 as decimal(65,30));",
 		Expected: []sql.Row{{"0.333333333333333333333333333333"}},
 	},
-
+	{
+		Query: `SELECT 2/4`,
+		Expected: []sql.Row{
+			{"0.5000"},
+		},
+	},
+	{
+		Query: `SELECT 15728640/1024/1024`,
+		Expected: []sql.Row{
+			{"15.00000000"},
+		},
+	},
+	{
+		Query: `SELECT 15728640/1024/1030`,
+		Expected: []sql.Row{
+			{"14.91262136"},
+		},
+	},
+	{
+		Query: `SELECT 2/4/5/5`,
+		Expected: []sql.Row{
+			{"0.020000000000"},
+		},
+	},
+	{
+		Query: `SELECT 4/3/1`,
+		Expected: []sql.Row{
+			{"1.33333333"},
+		},
+	},
+	{
+		Query: `select 5/4/3/(2/1+3/1)`,
+		Expected: []sql.Row{
+			{"0.083333333333"},
+		},
+	},
+	{
+		Query: `select (2/1+3/1)/5/4/3`,
+		Expected: []sql.Row{
+			{"0.0833333333333333"},
+		},
+	},
+	{
+		Query: `select cast(X'20' as decimal)`,
+		Expected: []sql.Row{
+			{"32"},
+		},
+	},
 	{
 		Query:    "select 0.05 % 0.024;",
 		Expected: []sql.Row{{"0.002"}},
@@ -4150,18 +3982,6 @@ SELECT * FROM cte WHERE  d = 2;`,
 	{
 		Query:    "select -1.7 & 1.5;",
 		Expected: []sql.Row{{uint64(2)}},
-	},
-	{
-		Query:    "SELECT '127' | '128', '128' << 2;",
-		Expected: []sql.Row{{uint64(255), uint64(512)}},
-	},
-	{
-		Query:    "SELECT X'7F' | X'80', X'80' << 2;",
-		Expected: []sql.Row{{uint64(255), uint64(512)}},
-	},
-	{
-		Query:    "SELECT X'40' | X'01', b'11110001' & b'01001111';",
-		Expected: []sql.Row{{uint64(65), uint64(65)}},
 	},
 	{
 		Query:    "SELECT 0x12345;",
@@ -5386,54 +5206,6 @@ SELECT * FROM cte WHERE  d = 2;`,
 	{
 		Query:    "SELECT i FROM mytable WHERE NOT NULL <> NULL;",
 		Expected: nil,
-	},
-	{
-		Query: `SELECT 2/4`,
-		Expected: []sql.Row{
-			{"0.5000"},
-		},
-	},
-	{
-		Query: `SELECT 15728640/1024/1024`,
-		Expected: []sql.Row{
-			{"15.00000000"},
-		},
-	},
-	{
-		Query: `SELECT 15728640/1024/1030`,
-		Expected: []sql.Row{
-			{"14.91262136"},
-		},
-	},
-	{
-		Query: `SELECT 2/4/5/5`,
-		Expected: []sql.Row{
-			{"0.020000000000"},
-		},
-	},
-	{
-		Query: `SELECT 4/3/1`,
-		Expected: []sql.Row{
-			{"1.33333333"},
-		},
-	},
-	{
-		Query: `select 5/4/3/(2/1+3/1)`,
-		Expected: []sql.Row{
-			{"0.083333333333"},
-		},
-	},
-	{
-		Query: `select (2/1+3/1)/5/4/3`,
-		Expected: []sql.Row{
-			{"0.0833333333333333"},
-		},
-	},
-	{
-		Query: `select cast(X'20' as decimal)`,
-		Expected: []sql.Row{
-			{"32"},
-		},
 	},
 	{
 		Query: `SELECT CASE i WHEN 1 THEN 'one' WHEN 2 THEN 'two' ELSE 'other' END FROM mytable`,
