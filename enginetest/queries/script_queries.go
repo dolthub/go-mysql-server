@@ -305,6 +305,24 @@ var ScriptTests = []ScriptTest{
 				Expected: []sql.Row{{true}},
 			},
 			{
+				Skip:     true,
+				Query:    "SELECT '1.9a' = 1.9;",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Skip:     true,
+				Query:    "SELECT 1 where '1.9a' = 1.9;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				// Valid float strings used as arguments to functions are truncated not rounded
+				Skip:                  true,
+				Query:                 "SELECT LENGTH(SPACE('1.9'));",
+				Expected:              []sql.Row{{1}},
+				ExpectedWarningsCount: 2, // MySQL throws two warnings for some reason
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+			},
+			{
 				// TODO: 123.456 is converted to a DECIMAL by Builder.ConvertVal, when it should be a DOUBLE
 				Skip:                            true,
 				Query:                           "SELECT -'+123.456ABC' = -123.456",
@@ -730,6 +748,11 @@ var ScriptTests = []ScriptTest{
 			{
 				Query:    "SELECT X'40' | X'01', b'11110001' & b'01001111';",
 				Expected: []sql.Row{{uint64(65), uint64(65)}},
+			},
+			{
+				Skip:     true,
+				Query:    "SELECT 0x1 = 1;",
+				Expected: []sql.Row{{true}},
 			},
 		},
 	},
