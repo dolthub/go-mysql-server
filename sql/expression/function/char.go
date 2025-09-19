@@ -124,6 +124,11 @@ func (c *Char) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			ctx.Warn(1292, "Truncated incorrect INTEGER value: '%v'", val)
 		}
 
+		if v == nil {
+			res = append(res, 0)
+			continue
+		}
+
 		res = append(res, encodeUint32(v.(uint32))...)
 	}
 
