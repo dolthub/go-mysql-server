@@ -768,7 +768,7 @@ func TypeAwareConversion(ctx *sql.Context, val interface{}, originalType sql.Typ
 // cleanly and the type is automatically coerced (i.e. string and numeric types), then a warning is logged and the
 // value is truncated to the Zero value for type |t|. If the value does not convert and the type is not automatically
 // coerced, then return an error.
-// TODO: This logic should be in types.Convert()
+// TODO: Should truncate to number prefix instead of Zero.
 func ConvertOrTruncate(ctx *sql.Context, i interface{}, t sql.Type) (interface{}, error) {
 	converted, _, err := t.Convert(ctx, i)
 	if err == nil {
