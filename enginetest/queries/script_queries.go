@@ -517,6 +517,24 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 				Expected: []sql.Row{{true}},
 			},
 			{
+				Skip:     true,
+				Query:    "SELECT '1.9a' = 1.9;",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Skip:     true,
+				Query:    "SELECT 1 where '1.9a' = 1.9;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				// Valid float strings used as arguments to functions are truncated not rounded
+				Skip:                  true,
+				Query:                 "SELECT LENGTH(SPACE('1.9'));",
+				Expected:              []sql.Row{{1}},
+				ExpectedWarningsCount: 2, // MySQL throws two warnings for some reason
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+			},
+			{
 				// TODO: 123.456 is converted to a DECIMAL by Builder.ConvertVal, when it should be a DOUBLE
 				Skip:                            true,
 				Query:                           "SELECT -'+123.456ABC' = -123.456",
