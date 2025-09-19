@@ -178,7 +178,6 @@ func TestInTuple(t *testing.T) {
 				expression.NewLiteral("hi", types.TinyText),
 				expression.NewLiteral("bye", types.TinyText),
 			),
-			err:    types.ErrConvertingToTime,
 			row:    nil,
 			result: false,
 		}}

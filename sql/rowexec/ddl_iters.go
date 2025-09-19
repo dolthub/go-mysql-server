@@ -922,10 +922,13 @@ func projectRowWithTypes(ctx *sql.Context, oldSchema, newSchema sql.Schema, proj
 	}
 
 	for i := range newRow {
-		converted, inRange, err := types.TypeAwareConversion(ctx, newRow[i], oldSchema[i].Type, newSchema[i].Type)
+		converted, inRange, err := types.TypeAwareConversion(ctx, newRow[i], oldSchema[i].Type, newSchema[i].Type, false)
 		if err != nil {
 			if sql.ErrNotMatchingSRID.Is(err) {
 				err = sql.ErrNotMatchingSRIDWithColName.New(newSchema[i].Name, err)
+			}
+			if sql.ErrTruncatedIncorrect.Is(err) {
+				err = sql.ErrInvalidValue.New(newRow[i], newSchema[i].Type)
 			}
 			return nil, err
 		} else if !inRange {

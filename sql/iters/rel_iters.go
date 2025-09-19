@@ -290,11 +290,17 @@ func (c *JsonTableCol) Next(ctx *sql.Context, obj interface{}, pass bool, ord in
 	val, _, err = c.Opts.Typ.Convert(ctx, val)
 	if err != nil {
 		if c.Opts.ErrOnErr {
-			return nil, err
+			if sql.ErrTruncatedIncorrect.Is(err) {
+				return nil, sql.ErrInvalidJSONText.New(c.pos+1, "JSON_TABLE", "Invalid value.")
+			}
+			return nil, sql.ErrInvalidJSONText.New(c.pos+1, "JSON_TABLE", err.Error())
 		}
 		val, _, err = c.Opts.Typ.Convert(ctx, c.Opts.DefErrVal)
 		if err != nil {
-			return nil, err
+			if sql.ErrTruncatedIncorrect.Is(err) {
+				return nil, sql.ErrInvalidJSONText.New(c.pos+1, "JSON_TABLE", "Invalid value.")
+			}
+			return nil, sql.ErrInvalidJSONText.New(c.pos+1, "JSON_TABLE", err.Error())
 		}
 	}
 

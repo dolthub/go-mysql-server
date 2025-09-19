@@ -169,7 +169,6 @@ func (t datetimeType) Compare(ctx context.Context, a interface{}, b interface{})
 		if err != nil {
 			return 0, err
 		}
-
 	} else if t.baseType == sqltypes.Date {
 		bt = bt.Truncate(24 * time.Hour)
 	}
@@ -187,6 +186,7 @@ func (t datetimeType) Convert(ctx context.Context, v interface{}) (interface{}, 
 	if v == nil {
 		return nil, sql.InRange, nil
 	}
+	// TODO: implement datetime truncation
 	res, err := ConvertToTime(ctx, v, t)
 	if err != nil {
 		return nil, sql.OutOfRange, err

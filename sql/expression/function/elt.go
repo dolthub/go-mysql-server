@@ -116,11 +116,13 @@ func (e *Elt) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	indexInt, _, err := types.Int64.Convert(ctx, index)
+	// TODO: aaaaaaaaaaaaahhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
+	indexInt, _, err := types.Int64.(sql.RoundingNumberType).ConvertRound(ctx, index)
 	if err != nil {
-		// TODO: truncate
-		ctx.Warn(1292, "Truncated incorrect INTEGER value: '%v'", index)
-		indexInt = int64(0)
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
+		ctx.Warn(1292, "%s", err.Error())
 	}
 
 	idx := int(indexInt.(int64))

@@ -465,7 +465,7 @@ func normalizeDefault(ctx *sql.Context, colDefault *sql.ColumnDefaultValue) (sql
 	}
 	val, err := colDefault.Eval(ctx, nil)
 	if err != nil {
-		return colDefault, transform.SameTree, nil
+		return nil, transform.SameTree, err
 	}
 
 	newDefault, err := colDefault.WithChildren(expression.NewLiteral(val, typ))

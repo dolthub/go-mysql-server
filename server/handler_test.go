@@ -1572,7 +1572,7 @@ func TestStatusVariableMaxUsedConnections(t *testing.T) {
 	}
 
 	checkGlobalStatVar(t, "Max_used_connections", uint64(0))
-	checkGlobalStatVar(t, "Max_used_connections_time", "")
+	checkGlobalStatVar(t, "Max_used_connections_time", uint64(0))
 
 	conn1 := newConn(1)
 	handler.NewConnection(conn1)

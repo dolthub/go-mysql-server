@@ -38,6 +38,7 @@ func TestInsertIgnoreConversions(t *testing.T) {
 		err       bool
 	}{
 		{
+			// TODO: this only works when sql_mode does not have STRICT_TRANS_TABLES / STRICT_ALL_TABLES
 			name:      "inserting a string into a integer defaults to a 0",
 			colType:   types.Int64,
 			value:     "dadasd",

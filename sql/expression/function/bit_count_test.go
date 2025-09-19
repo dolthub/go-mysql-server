@@ -130,13 +130,16 @@ func TestBitCount(t *testing.T) {
 			err:  false,
 		},
 		{
-			// we don't do truncation yet
-			// https://github.com/dolthub/dolt/issues/7302
+			name: "valid float strings do not round",
+			arg:  expression.NewLiteral("2.99", types.Text),
+			exp:  int32(1),
+			err:  false,
+		},
+		{
 			name: "scientific string is truncated",
 			arg:  expression.NewLiteral("1e1", types.Text),
 			exp:  int32(1),
 			err:  false,
-			skip: true,
 		},
 	}
 

@@ -43,6 +43,7 @@ func TestNumberCompare(t *testing.T) {
 		{Float64, nil, nil, 0},
 
 		{Boolean, 0, 1, -1},
+		{Boolean, 0, 1, -1},
 		{Int8, -1, 2, -1},
 		{Int16, -2, 3, -1},
 		{Int24, -3, 4, -1},
@@ -181,8 +182,8 @@ func TestNumberConvert(t *testing.T) {
 		{typ: Int32, inp: nil, exp: nil, err: false, inRange: sql.InRange},
 		{typ: Int32, inp: 2147483647, exp: int32(2147483647), err: false, inRange: sql.InRange},
 		{typ: Int64, inp: "33", exp: int64(33), err: false, inRange: sql.InRange},
-		{typ: Int64, inp: "33.0", exp: int64(33), err: false, inRange: sql.InRange},
-		{typ: Int64, inp: "33.1", exp: int64(33), err: false, inRange: sql.InRange},
+		{typ: Int64, inp: "33.0", exp: int64(33), err: true, inRange: sql.InRange},
+		{typ: Int64, inp: "33.1", exp: int64(33), err: true, inRange: sql.InRange},
 		{typ: Int64, inp: strconv.FormatInt(math.MaxInt64, 10), exp: int64(math.MaxInt64), err: false, inRange: sql.InRange},
 		{typ: Int64, inp: true, exp: int64(1), err: false, inRange: sql.InRange},
 		{typ: Int64, inp: false, exp: int64(0), err: false, inRange: sql.InRange},

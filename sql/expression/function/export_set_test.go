@@ -72,7 +72,9 @@ func TestExportSet(t *testing.T) {
 		{"null number of bits", []interface{}{5, "1", "0", ",", nil}, nil, false},
 
 		// Type conversion
-		{"string number", []interface{}{"5", "1", "0", ",", 4}, "1,0,1,0", false},
+		{"string integer", []interface{}{"5", "1", "0", ",", 4}, "1,0,1,0", false},
+		{"string float 5.99", []interface{}{"5.99", "1", "0", ",", 4}, "1,0,1,0", false},
+		{"string float 5.01", []interface{}{"5.01", "1", "0", ",", 4}, "1,0,1,0", false},
 		{"float number", []interface{}{5.7, "1", "0", ",", 4}, "0,1,1,0", false},
 		{"negative number", []interface{}{-1, "1", "0", ",", 4}, "1,1,1,1", false},
 	}

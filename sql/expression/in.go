@@ -85,6 +85,7 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			}
 		}
 
+		leftLit := NewLiteral(originalLeft, in.Left().Type())
 		for _, el := range right {
 			originalRight, err := el.Eval(ctx, row)
 			if err != nil {
@@ -96,17 +97,13 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 				continue
 			}
 
-			comp := newComparison(NewLiteral(originalLeft, in.Left().Type()), NewLiteral(originalRight, el.Type()))
-			l, r, compareType, err := comp.CastLeftAndRight(ctx, originalLeft, originalRight)
+			// TODO: determine comparison type
+			comp := newComparison(leftLit, NewLiteral(originalRight, el.Type()))
+			res, err := comp.Compare(ctx, nil)
 			if err != nil {
 				return nil, err
 			}
-			cmp, err := compareType.Compare(ctx, l, r)
-			if err != nil {
-				return nil, err
-			}
-
-			if cmp == 0 {
+			if res == 0 {
 				return true, nil
 			}
 		}

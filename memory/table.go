@@ -1430,10 +1430,13 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 			oldRowWithoutVal = append(oldRowWithoutVal, row[:oldIdx]...)
 			oldRowWithoutVal = append(oldRowWithoutVal, row[oldIdx+1:]...)
 			oldType := data.schema.Schema[oldIdx].Type
-			newVal, inRange, err := types.TypeAwareConversion(ctx, row[oldIdx], oldType, column.Type)
+			newVal, inRange, err := types.TypeAwareConversion(ctx, row[oldIdx], oldType, column.Type, true)
 			if err != nil {
 				if sql.ErrNotMatchingSRID.Is(err) {
 					err = sql.ErrNotMatchingSRIDWithColName.New(columnName, err)
+				}
+				if sql.ErrTruncatedIncorrect.Is(err) {
+					err = sql.ErrInvalidValue.New(row[oldIdx], column.Type)
 				}
 				return err
 			}

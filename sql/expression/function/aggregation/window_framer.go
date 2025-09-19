@@ -453,6 +453,9 @@ const (
 // candidate. This is used as a sliding window algorithm for value ranges.
 func findInclusionBoundary(ctx *sql.Context, pos, searchStart, partitionEnd int, inclusion, expr sql.Expression, buf sql.WindowBuffer, stopCond stopCond) (int, error) {
 	cur, err := inclusion.Eval(ctx, buf[pos])
+	if sql.ErrTruncatedIncorrect.Is(err) {
+		return 0, nil
+	}
 	if err != nil {
 		return 0, err
 	}
