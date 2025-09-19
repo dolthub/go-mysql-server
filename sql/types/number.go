@@ -1145,21 +1145,24 @@ func convertToUint64(t NumberTypeImpl_, v interface{}) (uint64, sql.ConvertInRan
 	case float32:
 		if v > float32(math.MaxInt64) {
 			return math.MaxUint64, sql.OutOfRange, nil
-		} else if v < 0 {
+		}
+		if v < 0 {
 			return uint64(math.MaxUint64 - v), sql.OutOfRange, nil
 		}
 		return uint64(math.Round(float64(v))), sql.InRange, nil
 	case float64:
 		if v >= float64(math.MaxUint64) {
 			return math.MaxUint64, sql.OutOfRange, nil
-		} else if v <= 0 {
+		}
+		if v <= 0 {
 			return uint64(math.MaxUint64 - v), sql.OutOfRange, nil
 		}
 		return uint64(math.Round(v)), sql.InRange, nil
 	case decimal.Decimal:
 		if v.GreaterThan(dec_uint64_max) {
 			return math.MaxUint64, sql.OutOfRange, nil
-		} else if v.LessThan(dec_zero) {
+		}
+		if v.LessThan(dec_zero) {
 			ret, _ := dec_uint64_max.Sub(v).Float64()
 			return uint64(math.Round(ret)), sql.OutOfRange, nil
 		}
