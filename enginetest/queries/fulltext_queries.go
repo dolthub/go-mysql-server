@@ -733,7 +733,7 @@ var FulltextTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE test MODIFY COLUMN v3 FLOAT AFTER pk;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(5)}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
@@ -751,7 +751,7 @@ var FulltextTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "ALTER TABLE test MODIFY COLUMN v2 TEXT;",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(5)}},
 			},
 			{
 				Query:              "SELECT * FROM test WHERE MATCH(v1, v2) AGAINST ('ghi');",
