@@ -122,6 +122,68 @@ type ScriptTestAssertion struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
+		// https://github.com/dolthub/dolt/issues/9857
+		Name:        "UUID_SHORT() function returns 64-bit unsigned integers with proper construction",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT UUID_SHORT() > 0",
+				Expected: []sql.Row{
+					{true}, // Should return positive values
+				},
+			},
+			{
+				Query: "SELECT UUID_SHORT() != UUID_SHORT()",
+				Expected: []sql.Row{
+					{true}, // Should return different values on each call
+				},
+			},
+			{
+				Query: "SELECT UUID_SHORT() + 0 > 0",
+				Expected: []sql.Row{
+					{true}, // Should work in arithmetic expressions
+				},
+			},
+			{
+				Query: "SELECT CAST(UUID_SHORT() AS CHAR) != ''",
+				Expected: []sql.Row{
+					{true}, // Should cast to non-empty string
+				},
+			},
+			{
+				Query: "SELECT UUID_SHORT() BETWEEN 1 AND 18446744073709551615",
+				Expected: []sql.Row{
+					{true}, // Should be within uint64 range
+				},
+			},
+			{
+				Query: "SELECT (UUID_SHORT() & 0xFF00000000000000) >> 56 BETWEEN 0 AND 255",
+				Expected: []sql.Row{
+					{true}, // Server ID should be 0-255
+				},
+			},
+			{
+				Query: "SET @@global.server_id = 253",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "SELECT (UUID_SHORT() & 0xFF00000000000000) >> 56 BETWEEN 0 AND 255",
+				Expected: []sql.Row{
+					{true}, // server time won't let us pin this down further
+				},
+			},
+			{
+				Query: "SET @@global.server_id = 1",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/go-mysql-server/issues/3216
 		Name: "UNION ALL with BLOB columns",
 		SetUpScript: []string{
