@@ -229,6 +229,7 @@ func (b *MySQLIndexBuilder) convertKey(ctx *Context, colType Type, keyType Type,
 	if et, ok := colType.(ExtendedType); ok {
 		return et.ConvertToType(ctx, keyType.(ExtendedType), key)
 	} else {
+		// TODO: would it make more sense for colType.Convert to handle the truncation or just do it here?
 		key, _, err := colType.Convert(ctx, key)
 		return key, err
 	}
