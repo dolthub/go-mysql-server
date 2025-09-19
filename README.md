@@ -1,6 +1,6 @@
 <img height="240" src="./mascot.png"/>
 
-# A MySQL compatible database engine written in pure Go
+# A MySQL compatible database engine written in Go
 
 **go-mysql-server** is a data-source agnostic SQL engine and server
 which runs queries on data sources you provide, using the MySQL
@@ -55,6 +55,13 @@ directory with the `go.mod` file, run:
 ```
 go get github.com/dolthub/go-mysql-server@latest
 ```
+
+To implement ICU-compatible regexes, `go-mysql-server` has a dependency on
+[go-icu-regex](github.com/dolthub/go-icu-regex), which has a cgo dependency on
+[ICU4C](https://unicode-org.github.io/icu/userguide/icu4c/). To build a project
+which depends on `go-mysql-server`, you should have a C/C++ toolchain, you
+should build with Cgo enabled, and you should have libicu-dev, or the
+equivalent for your environment, installed and available to your C++ toolchain.
 
 ## Using the in-memory test server
 
