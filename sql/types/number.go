@@ -1105,27 +1105,27 @@ func convertToUint64(t NumberTypeImpl_, v interface{}) (uint64, sql.ConvertInRan
 		return uint64(v.UTC().Unix()), sql.InRange, nil
 	case int:
 		if v < 0 {
-			return uint64(math.MaxUint64 - uint(-v-1)), sql.OutOfRange, nil
+			return math.MaxUint64 - uint64(-v-1), sql.OutOfRange, nil
 		}
 		return uint64(v), sql.InRange, nil
 	case int8:
 		if v < 0 {
-			return uint64(math.MaxUint64 - uint(-v-1)), sql.OutOfRange, nil
+			return math.MaxUint64 - uint64(-v-1), sql.OutOfRange, nil
 		}
 		return uint64(v), sql.InRange, nil
 	case int16:
 		if v < 0 {
-			return uint64(math.MaxUint64 - uint(-v-1)), sql.OutOfRange, nil
+			return math.MaxUint64 - uint64(-v-1), sql.OutOfRange, nil
 		}
 		return uint64(v), sql.InRange, nil
 	case int32:
 		if v < 0 {
-			return uint64(math.MaxUint64 - uint(-v-1)), sql.OutOfRange, nil
+			return math.MaxUint64 - uint64(-v-1), sql.OutOfRange, nil
 		}
 		return uint64(v), sql.InRange, nil
 	case int64:
 		if v < 0 {
-			return uint64(math.MaxUint64 - uint(-v-1)), sql.OutOfRange, nil
+			return math.MaxUint64 - uint64(-v-1), sql.OutOfRange, nil
 		}
 		return uint64(v), sql.InRange, nil
 	case uint:
@@ -1199,28 +1199,28 @@ func convertToUint32(t NumberTypeImpl_, v interface{}) (uint32, sql.ConvertInRan
 	case int:
 		if v < 0 {
 			return uint32(math.MaxUint32 - uint(-v-1)), sql.OutOfRange, nil
-		} else if v > math.MaxUint32 {
+		} else if v > min(math.MaxUint32, math.MaxInt) {
 			return uint32(math.MaxUint32), sql.OutOfRange, nil
 		}
 		return uint32(v), sql.InRange, nil
 	case int8:
 		if v < 0 {
 			return uint32(math.MaxUint32 - uint(-v-1)), sql.OutOfRange, nil
-		} else if int(v) > math.MaxUint32 {
+		} else if int(v) > min(math.MaxUint32, math.MaxInt) {
 			return uint32(math.MaxUint32), sql.OutOfRange, nil
 		}
 		return uint32(v), sql.InRange, nil
 	case int16:
 		if v < 0 {
 			return uint32(math.MaxUint32 - uint(-v-1)), sql.OutOfRange, nil
-		} else if int(v) > math.MaxUint32 {
+		} else if int(v) > min(math.MaxUint32, math.MaxInt) {
 			return uint32(math.MaxUint32), sql.OutOfRange, nil
 		}
 		return uint32(v), sql.InRange, nil
 	case int32:
 		if v < 0 {
 			return uint32(math.MaxUint32 - uint(-v-1)), sql.OutOfRange, nil
-		} else if int(v) > math.MaxUint32 {
+		} else if int(v) > min(math.MaxUint32, math.MaxInt) {
 			return uint32(math.MaxUint32), sql.OutOfRange, nil
 		}
 		return uint32(v), sql.InRange, nil

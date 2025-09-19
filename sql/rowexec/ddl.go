@@ -18,6 +18,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"strings"
 	"time"
@@ -94,7 +95,7 @@ func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.
 	}
 
 	scanner := bufio.NewScanner(reader)
-	scanner.Buffer(nil, int(types.LongTextBlobMax))
+	scanner.Buffer(nil, int(min(types.LongTextBlobMax, math.MaxInt)))
 	scanner.Split(n.SplitLines)
 
 	sch := n.Schema()

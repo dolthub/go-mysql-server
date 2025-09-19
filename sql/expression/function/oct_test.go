@@ -57,8 +57,8 @@ func TestOct(t *testing.T) {
 		// Edge cases
 		{"max int32", types.Int32, sql.NewRow(math.MaxInt32), "17777777777"},
 		{"min int32", types.Int32, sql.NewRow(math.MinInt32), "1777777777760000000000"},
-		{"max int64", types.Int64, sql.NewRow(math.MaxInt64), "777777777777777777777"},
-		{"min int64", types.Int64, sql.NewRow(math.MinInt64), "1000000000000000000000"},
+		{"max int64", types.Int64, sql.NewRow(int64(math.MaxInt64)), "777777777777777777777"},
+		{"min int64", types.Int64, sql.NewRow(int64(math.MinInt64)), "1000000000000000000000"},
 
 		// Decimal numbers
 		{"decimal", types.Float64, sql.NewRow(15.5), "17"},
