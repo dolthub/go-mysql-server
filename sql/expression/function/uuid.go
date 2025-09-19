@@ -17,8 +17,8 @@ package function
 import (
 	"fmt"
 	"sync"
-	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/variables"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/google/uuid"
@@ -31,7 +31,6 @@ import (
 var (
 	uuidShortMu      sync.Mutex
 	uuidShortCounter uint64
-	uuidShortStartup = uint64(time.Now().Unix())
 )
 
 // UUID()
@@ -563,24 +562,27 @@ func NewUUIDShortFunc() sql.Expression {
 	return &UUIDShortFunc{}
 }
 
-// Description implements sql.FunctionExpression
-func (u UUIDShortFunc) Description() string {
+// Description returns a human-readable description of the UUID_SHORT function.
+func (u *UUIDShortFunc) Description() string {
 	return "returns a short universal identifier as a 64-bit unsigned integer."
 }
 
-func (u UUIDShortFunc) String() string {
+// String returns a string representation of the UUID_SHORT function call.
+func (u *UUIDShortFunc) String() string {
 	return "UUID_SHORT()"
 }
 
-func (u UUIDShortFunc) Type() sql.Type {
+// Type returns the data type of the UUID_SHORT function result (Uint64).
+func (u *UUIDShortFunc) Type() sql.Type {
 	return types.Uint64
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
-func (UUIDShortFunc) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+func (u *UUIDShortFunc) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 5
 }
 
+// Eval generates a 64-bit UUID_SHORT value using server_id, startup time, and counter.
 func (u *UUIDShortFunc) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	uuidShortMu.Lock()
 	defer uuidShortMu.Unlock()
@@ -595,12 +597,12 @@ func (u *UUIDShortFunc) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	}
 
 	// Construct the UUID_SHORT value according to MySQL specification:
-	result := ((serverID & 255) << 56) + (uuidShortStartup << 24) + uuidShortCounter
-
+	result := ((serverID & 255) << 56) + (uint64(variables.ServerStartUpTime.Unix()) << 24) + uuidShortCounter
 	return result, nil
 }
 
-func (u UUIDShortFunc) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+// WithChildren returns a new UUID_SHORT function with the given children (must be empty).
+func (u *UUIDShortFunc) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 0)
 	}
@@ -608,24 +610,27 @@ func (u UUIDShortFunc) WithChildren(children ...sql.Expression) (sql.Expression,
 	return &UUIDShortFunc{}, nil
 }
 
-func (u UUIDShortFunc) FunctionName() string {
+// FunctionName returns the name of the UUID_SHORT function.
+func (u *UUIDShortFunc) FunctionName() string {
 	return "UUID_SHORT"
 }
 
-func (u UUIDShortFunc) Resolved() bool {
+// Resolved returns true since UUID_SHORT has no dependencies to resolve.
+func (u *UUIDShortFunc) Resolved() bool {
 	return true
 }
 
 // Children returns the children expressions of this expression.
-func (u UUIDShortFunc) Children() []sql.Expression {
+func (u *UUIDShortFunc) Children() []sql.Expression {
 	return nil
 }
 
-// IsNullable returns whether the expression can be null.
-func (u UUIDShortFunc) IsNullable() bool {
+// IsNullable returns false since UUID_SHORT always returns a value.
+func (u *UUIDShortFunc) IsNullable() bool {
 	return false
 }
 
-func (u UUIDShortFunc) IsNonDeterministic() bool {
+// IsNonDeterministic returns true since UUID_SHORT generates different values on each call.
+func (u *UUIDShortFunc) IsNonDeterministic() bool {
 	return true
 }
