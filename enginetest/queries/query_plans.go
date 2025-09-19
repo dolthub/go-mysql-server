@@ -1190,75 +1190,86 @@ WHERE
 			" └─ GroupBy\n" +
 			"     ├─ select: COUNTDISTINCT([stock1.s_i_id])\n" +
 			"     ├─ group: \n" +
-			"     └─ HashJoin\n" +
+			"     └─ LookupJoin\n" +
 			"         ├─ Eq\n" +
-			"         │   ├─ stock1.s_i_id:4!null\n" +
-			"         │   └─ order_line1.ol_i_id:3\n" +
-			"         ├─ IndexedTableAccess(order_line1)\n" +
-			"         │   ├─ index: [order_line1.ol_w_id,order_line1.ol_d_id,order_line1.ol_o_id,order_line1.ol_number]\n" +
-			"         │   ├─ static: [{[5, 5], [2, 2], [2981, 3001), [NULL, ∞)}]\n" +
-			"         │   ├─ colSet: (1-10)\n" +
-			"         │   ├─ tableId: 1\n" +
-			"         │   └─ Table\n" +
-			"         │       ├─ name: order_line1\n" +
-			"         │       └─ columns: [ol_o_id ol_d_id ol_w_id ol_i_id]\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: TUPLE(order_line1.ol_i_id:3)\n" +
-			"             ├─ right-key: TUPLE(stock1.s_i_id:0!null)\n" +
-			"             └─ Filter\n" +
-			"                 ├─ LessThan\n" +
-			"                 │   ├─ stock1.s_quantity:2\n" +
-			"                 │   └─ 15 (smallint)\n" +
-			"                 └─ IndexedTableAccess(stock1)\n" +
-			"                     ├─ index: [stock1.s_w_id,stock1.s_i_id]\n" +
-			"                     ├─ static: [{[5, 5], [NULL, ∞)}]\n" +
-			"                     ├─ colSet: (11-27)\n" +
-			"                     ├─ tableId: 2\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: stock1\n" +
-			"                         └─ columns: [s_i_id s_w_id s_quantity]\n" +
+			"         │   ├─ stock1.s_i_id:0!null\n" +
+			"         │   └─ order_line1.ol_i_id:6\n" +
+			"         ├─ Filter\n" +
+			"         │   ├─ LessThan\n" +
+			"         │   │   ├─ stock1.s_quantity:2\n" +
+			"         │   │   └─ 15 (smallint)\n" +
+			"         │   └─ IndexedTableAccess(stock1)\n" +
+			"         │       ├─ index: [stock1.s_w_id,stock1.s_i_id]\n" +
+			"         │       ├─ static: [{[5, 5], [NULL, ∞)}]\n" +
+			"         │       ├─ colSet: (11-27)\n" +
+			"         │       ├─ tableId: 2\n" +
+			"         │       └─ Table\n" +
+			"         │           ├─ name: stock1\n" +
+			"         │           └─ columns: [s_i_id s_w_id s_quantity]\n" +
+			"         └─ Filter\n" +
+			"             ├─ AND\n" +
+			"             │   ├─ AND\n" +
+			"             │   │   ├─ AND\n" +
+			"             │   │   │   ├─ Eq\n" +
+			"             │   │   │   │   ├─ order_line1.ol_w_id:2!null\n" +
+			"             │   │   │   │   └─ 5 (smallint)\n" +
+			"             │   │   │   └─ Eq\n" +
+			"             │   │   │       ├─ order_line1.ol_d_id:1!null\n" +
+			"             │   │   │       └─ 2 (tinyint)\n" +
+			"             │   │   └─ LessThan\n" +
+			"             │   │       ├─ order_line1.ol_o_id:0!null\n" +
+			"             │   │       └─ 3001 (int)\n" +
+			"             │   └─ GreaterThanOrEqual\n" +
+			"             │       ├─ order_line1.ol_o_id:0!null\n" +
+			"             │       └─ 2981 (int)\n" +
+			"             └─ IndexedTableAccess(order_line1)\n" +
+			"                 ├─ index: [order_line1.ol_w_id,order_line1.ol_d_id,order_line1.ol_o_id,order_line1.ol_number]\n" +
+			"                 ├─ keys: [5 (smallint) 2 (tinyint)]\n" +
+			"                 ├─ colSet: (1-10)\n" +
+			"                 ├─ tableId: 1\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: order_line1\n" +
+			"                     └─ columns: [ol_o_id ol_d_id ol_w_id ol_i_id]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [countdistinct([stock1.s_i_id]) as COUNT(DISTINCT (s_i_id))]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ SelectDeps(COUNTDISTINCT([stock1.s_i_id]))\n" +
 			"     ├─ Grouping()\n" +
-			"     └─ HashJoin\n" +
+			"     └─ LookupJoin\n" +
 			"         ├─ (stock1.s_i_id = order_line1.ol_i_id)\n" +
-			"         ├─ IndexedTableAccess(order_line1)\n" +
-			"         │   ├─ index: [order_line1.ol_w_id,order_line1.ol_d_id,order_line1.ol_o_id,order_line1.ol_number]\n" +
-			"         │   ├─ filters: [{[5, 5], [2, 2], [2981, 3001), [NULL, ∞)}]\n" +
-			"         │   └─ columns: [ol_o_id ol_d_id ol_w_id ol_i_id]\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: (order_line1.ol_i_id)\n" +
-			"             ├─ right-key: (stock1.s_i_id)\n" +
-			"             └─ Filter\n" +
-			"                 ├─ (stock1.s_quantity < 15)\n" +
-			"                 └─ IndexedTableAccess(stock1)\n" +
-			"                     ├─ index: [stock1.s_w_id,stock1.s_i_id]\n" +
-			"                     ├─ filters: [{[5, 5], [NULL, ∞)}]\n" +
-			"                     └─ columns: [s_i_id s_w_id s_quantity]\n" +
+			"         ├─ Filter\n" +
+			"         │   ├─ (stock1.s_quantity < 15)\n" +
+			"         │   └─ IndexedTableAccess(stock1)\n" +
+			"         │       ├─ index: [stock1.s_w_id,stock1.s_i_id]\n" +
+			"         │       ├─ filters: [{[5, 5], [NULL, ∞)}]\n" +
+			"         │       └─ columns: [s_i_id s_w_id s_quantity]\n" +
+			"         └─ Filter\n" +
+			"             ├─ ((((order_line1.ol_w_id = 5) AND (order_line1.ol_d_id = 2)) AND (order_line1.ol_o_id < 3001)) AND (order_line1.ol_o_id >= 2981))\n" +
+			"             └─ IndexedTableAccess(order_line1)\n" +
+			"                 ├─ index: [order_line1.ol_w_id,order_line1.ol_d_id,order_line1.ol_o_id,order_line1.ol_number]\n" +
+			"                 ├─ columns: [ol_o_id ol_d_id ol_w_id ol_i_id]\n" +
+			"                 └─ keys: 5, 2\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [countdistinct([stock1.s_i_id]) as COUNT(DISTINCT (s_i_id))]\n" +
 			" └─ GroupBy\n" +
 			"     ├─ SelectDeps(COUNTDISTINCT([stock1.s_i_id]))\n" +
 			"     ├─ Grouping()\n" +
-			"     └─ HashJoin\n" +
+			"     └─ LookupJoin\n" +
 			"         ├─ (stock1.s_i_id = order_line1.ol_i_id)\n" +
-			"         ├─ IndexedTableAccess(order_line1)\n" +
-			"         │   ├─ index: [order_line1.ol_w_id,order_line1.ol_d_id,order_line1.ol_o_id,order_line1.ol_number]\n" +
-			"         │   ├─ filters: [{[5, 5], [2, 2], [2981, 3001), [NULL, ∞)}]\n" +
-			"         │   └─ columns: [ol_o_id ol_d_id ol_w_id ol_i_id]\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: (order_line1.ol_i_id)\n" +
-			"             ├─ right-key: (stock1.s_i_id)\n" +
-			"             └─ Filter\n" +
-			"                 ├─ (stock1.s_quantity < 15)\n" +
-			"                 └─ IndexedTableAccess(stock1)\n" +
-			"                     ├─ index: [stock1.s_w_id,stock1.s_i_id]\n" +
-			"                     ├─ filters: [{[5, 5], [NULL, ∞)}]\n" +
-			"                     └─ columns: [s_i_id s_w_id s_quantity]\n" +
+			"         ├─ Filter\n" +
+			"         │   ├─ (stock1.s_quantity < 15)\n" +
+			"         │   └─ IndexedTableAccess(stock1)\n" +
+			"         │       ├─ index: [stock1.s_w_id,stock1.s_i_id]\n" +
+			"         │       ├─ filters: [{[5, 5], [NULL, ∞)}]\n" +
+			"         │       └─ columns: [s_i_id s_w_id s_quantity]\n" +
+			"         └─ Filter\n" +
+			"             ├─ ((((order_line1.ol_w_id = 5) AND (order_line1.ol_d_id = 2)) AND (order_line1.ol_o_id < 3001)) AND (order_line1.ol_o_id >= 2981))\n" +
+			"             └─ IndexedTableAccess(order_line1)\n" +
+			"                 ├─ index: [order_line1.ol_w_id,order_line1.ol_d_id,order_line1.ol_o_id,order_line1.ol_number]\n" +
+			"                 ├─ columns: [ol_o_id ol_d_id ol_w_id ol_i_id]\n" +
+			"                 └─ keys: 5, 2\n" +
 			"",
 	},
 	{
@@ -1402,7 +1413,13 @@ where
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [style.assetId:1]\n" +
 			" └─ LookupJoin\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ style.assetId:1\n" +
+			"     │   └─ color.assetId:9\n" +
 			"     ├─ LookupJoin\n" +
+			"     │   ├─ Eq\n" +
+			"     │   │   ├─ style.assetId:1\n" +
+			"     │   │   └─ dimension.assetId:5\n" +
 			"     │   ├─ TableAlias(style)\n" +
 			"     │   │   └─ IndexedTableAccess(asset)\n" +
 			"     │   │       ├─ index: [asset.orgId,asset.name,asset.val]\n" +
@@ -1426,8 +1443,8 @@ where
 			"     │       │       └─ org1 (longtext)\n" +
 			"     │       └─ TableAlias(dimension)\n" +
 			"     │           └─ IndexedTableAccess(asset)\n" +
-			"     │               ├─ index: [asset.orgId,asset.name,asset.assetId]\n" +
-			"     │               ├─ keys: [org1 (longtext) dimension (longtext) style.assetId:1]\n" +
+			"     │               ├─ index: [asset.orgId,asset.name,asset.val]\n" +
+			"     │               ├─ keys: [org1 (longtext) dimension (longtext) wide (longtext)]\n" +
 			"     │               ├─ colSet: (6-10)\n" +
 			"     │               ├─ tableId: 2\n" +
 			"     │               └─ Table\n" +
@@ -1447,8 +1464,8 @@ where
 			"         │       └─ org1 (longtext)\n" +
 			"         └─ TableAlias(color)\n" +
 			"             └─ IndexedTableAccess(asset)\n" +
-			"                 ├─ index: [asset.orgId,asset.name,asset.assetId]\n" +
-			"                 ├─ keys: [org1 (longtext) color (longtext) style.assetId:1]\n" +
+			"                 ├─ index: [asset.orgId,asset.name,asset.val]\n" +
+			"                 ├─ keys: [org1 (longtext) color (longtext) blue (longtext)]\n" +
 			"                 ├─ colSet: (11-15)\n" +
 			"                 ├─ tableId: 3\n" +
 			"                 └─ Table\n" +
@@ -1457,8 +1474,10 @@ where
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [style.assetId]\n" +
-			" └─ LookupJoin (estimated cost=19.800 rows=6)\n" +
-			"     ├─ LookupJoin (estimated cost=19.800 rows=6)\n" +
+			" └─ LookupJoin (estimated cost=18.900 rows=6)\n" +
+			"     ├─ (style.assetId = color.assetId)\n" +
+			"     ├─ LookupJoin (estimated cost=18.900 rows=6)\n" +
+			"     │   ├─ (style.assetId = dimension.assetId)\n" +
 			"     │   ├─ TableAlias(style)\n" +
 			"     │   │   └─ IndexedTableAccess(asset)\n" +
 			"     │   │       ├─ index: [asset.orgId,asset.name,asset.val]\n" +
@@ -1468,21 +1487,23 @@ where
 			"     │       ├─ (((dimension.val = 'wide') AND (dimension.name = 'dimension')) AND (dimension.orgId = 'org1'))\n" +
 			"     │       └─ TableAlias(dimension)\n" +
 			"     │           └─ IndexedTableAccess(asset)\n" +
-			"     │               ├─ index: [asset.orgId,asset.name,asset.assetId]\n" +
+			"     │               ├─ index: [asset.orgId,asset.name,asset.val]\n" +
 			"     │               ├─ columns: [orgid assetid name val]\n" +
-			"     │               └─ keys: 'org1', 'dimension', style.assetId\n" +
+			"     │               └─ keys: 'org1', 'dimension', 'wide'\n" +
 			"     └─ Filter\n" +
 			"         ├─ (((color.val = 'blue') AND (color.name = 'color')) AND (color.orgId = 'org1'))\n" +
 			"         └─ TableAlias(color)\n" +
 			"             └─ IndexedTableAccess(asset)\n" +
-			"                 ├─ index: [asset.orgId,asset.name,asset.assetId]\n" +
+			"                 ├─ index: [asset.orgId,asset.name,asset.val]\n" +
 			"                 ├─ columns: [orgid assetid name val]\n" +
-			"                 └─ keys: 'org1', 'color', style.assetId\n" +
+			"                 └─ keys: 'org1', 'color', 'blue'\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [style.assetId]\n" +
-			" └─ LookupJoin (estimated cost=19.800 rows=6) (actual rows=1 loops=1)\n" +
-			"     ├─ LookupJoin (estimated cost=19.800 rows=6) (actual rows=1 loops=1)\n" +
+			" └─ LookupJoin (estimated cost=18.900 rows=6) (actual rows=1 loops=1)\n" +
+			"     ├─ (style.assetId = color.assetId)\n" +
+			"     ├─ LookupJoin (estimated cost=18.900 rows=6) (actual rows=1 loops=1)\n" +
+			"     │   ├─ (style.assetId = dimension.assetId)\n" +
 			"     │   ├─ TableAlias(style)\n" +
 			"     │   │   └─ IndexedTableAccess(asset)\n" +
 			"     │   │       ├─ index: [asset.orgId,asset.name,asset.val]\n" +
@@ -1492,16 +1513,16 @@ where
 			"     │       ├─ (((dimension.val = 'wide') AND (dimension.name = 'dimension')) AND (dimension.orgId = 'org1'))\n" +
 			"     │       └─ TableAlias(dimension)\n" +
 			"     │           └─ IndexedTableAccess(asset)\n" +
-			"     │               ├─ index: [asset.orgId,asset.name,asset.assetId]\n" +
+			"     │               ├─ index: [asset.orgId,asset.name,asset.val]\n" +
 			"     │               ├─ columns: [orgid assetid name val]\n" +
-			"     │               └─ keys: 'org1', 'dimension', style.assetId\n" +
+			"     │               └─ keys: 'org1', 'dimension', 'wide'\n" +
 			"     └─ Filter\n" +
 			"         ├─ (((color.val = 'blue') AND (color.name = 'color')) AND (color.orgId = 'org1'))\n" +
 			"         └─ TableAlias(color)\n" +
 			"             └─ IndexedTableAccess(asset)\n" +
-			"                 ├─ index: [asset.orgId,asset.name,asset.assetId]\n" +
+			"                 ├─ index: [asset.orgId,asset.name,asset.val]\n" +
 			"                 ├─ columns: [orgid assetid name val]\n" +
-			"                 └─ keys: 'org1', 'color', style.assetId\n" +
+			"                 └─ keys: 'org1', 'color', 'blue'\n" +
 			"",
 	},
 	{
@@ -2657,21 +2678,14 @@ Select * from (
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [rs.r:0!null, rs.s:1, xy.x:2!null, xy.y:3]\n" +
 			" └─ Sort(rs.r:0!null ASC nullsFirst, xy.x:2!null ASC nullsFirst)\n" +
-			"     └─ LeftOuterMergeJoin\n" +
-			"         ├─ cmp: Eq\n" +
-			"         │   ├─ rs.s:1\n" +
-			"         │   └─ xy.y:3\n" +
-			"         ├─ IndexedTableAccess(rs)\n" +
-			"         │   ├─ index: [rs.s]\n" +
-			"         │   ├─ static: [{[NULL, ∞)}]\n" +
-			"         │   ├─ colSet: (1,2)\n" +
-			"         │   ├─ tableId: 1\n" +
+			"     └─ LeftOuterLookupJoin\n" +
+			"         ├─ ProcessTable\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: rs\n" +
 			"         │       └─ columns: [r s]\n" +
 			"         └─ IndexedTableAccess(xy)\n" +
 			"             ├─ index: [xy.y]\n" +
-			"             ├─ static: [{[NULL, ∞)}]\n" +
+			"             ├─ keys: [rs.s:1]\n" +
 			"             ├─ colSet: (3,4)\n" +
 			"             ├─ tableId: 2\n" +
 			"             └─ Table\n" +
@@ -2681,30 +2695,26 @@ Select * from (
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [rs.r, rs.s, xy.x, xy.y]\n" +
 			" └─ Sort(rs.r ASC, xy.x ASC)\n" +
-			"     └─ LeftOuterMergeJoin\n" +
-			"         ├─ cmp: (rs.s = xy.y)\n" +
-			"         ├─ IndexedTableAccess(rs)\n" +
-			"         │   ├─ index: [rs.s]\n" +
-			"         │   ├─ filters: [{[NULL, ∞)}]\n" +
+			"     └─ LeftOuterLookupJoin\n" +
+			"         ├─ Table\n" +
+			"         │   ├─ name: rs\n" +
 			"         │   └─ columns: [r s]\n" +
 			"         └─ IndexedTableAccess(xy)\n" +
 			"             ├─ index: [xy.y]\n" +
-			"             ├─ filters: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [x y]\n" +
+			"             ├─ columns: [x y]\n" +
+			"             └─ keys: rs.s\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [rs.r, rs.s, xy.x, xy.y]\n" +
 			" └─ Sort(rs.r ASC, xy.x ASC)\n" +
-			"     └─ LeftOuterMergeJoin\n" +
-			"         ├─ cmp: (rs.s = xy.y)\n" +
-			"         ├─ IndexedTableAccess(rs)\n" +
-			"         │   ├─ index: [rs.s]\n" +
-			"         │   ├─ filters: [{[NULL, ∞)}]\n" +
+			"     └─ LeftOuterLookupJoin\n" +
+			"         ├─ Table\n" +
+			"         │   ├─ name: rs\n" +
 			"         │   └─ columns: [r s]\n" +
 			"         └─ IndexedTableAccess(xy)\n" +
 			"             ├─ index: [xy.y]\n" +
-			"             ├─ filters: [{[NULL, ∞)}]\n" +
-			"             └─ columns: [x y]\n" +
+			"             ├─ columns: [x y]\n" +
+			"             └─ keys: rs.s\n" +
 			"",
 	},
 	{
@@ -5876,23 +5886,17 @@ inner join pq on true
 			"     │   │       ├─ columns: [ab.a:0!null, ab.b:1]\n" +
 			"     │   │       └─ Filter\n" +
 			"     │   │           ├─ xy.x:2!null IS NULL\n" +
-			"     │   │           └─ LeftOuterMergeJoin\n" +
-			"     │   │               ├─ cmp: Eq\n" +
-			"     │   │               │   ├─ ab.a:0!null\n" +
-			"     │   │               │   └─ xy.x:2!null\n" +
-			"     │   │               ├─ IndexedTableAccess(ab)\n" +
-			"     │   │               │   ├─ index: [ab.a]\n" +
-			"     │   │               │   ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   │           └─ LeftOuterLookupJoin\n" +
+			"     │   │               ├─ Table\n" +
+			"     │   │               │   ├─ name: ab\n" +
+			"     │   │               │   ├─ columns: [a b]\n" +
 			"     │   │               │   ├─ colSet: (1,2)\n" +
-			"     │   │               │   ├─ tableId: 1\n" +
-			"     │   │               │   └─ Table\n" +
-			"     │   │               │       ├─ name: ab\n" +
-			"     │   │               │       └─ columns: [a b]\n" +
+			"     │   │               │   └─ tableId: 1\n" +
 			"     │   │               └─ Project\n" +
 			"     │   │                   ├─ columns: [xy.x:0!null]\n" +
 			"     │   │                   └─ IndexedTableAccess(xy)\n" +
 			"     │   │                       ├─ index: [xy.x]\n" +
-			"     │   │                       ├─ static: [{[NULL, ∞)}]\n" +
+			"     │   │                       ├─ keys: [ab.a:0!null]\n" +
 			"     │   │                       ├─ colSet: (3,4)\n" +
 			"     │   │                       ├─ tableId: 2\n" +
 			"     │   │                       └─ Table\n" +
@@ -5925,17 +5929,15 @@ inner join pq on true
 			"     │   │       ├─ columns: [ab.a, ab.b]\n" +
 			"     │   │       └─ Filter\n" +
 			"     │   │           ├─ xy.x IS NULL\n" +
-			"     │   │           └─ LeftOuterMergeJoin\n" +
-			"     │   │               ├─ cmp: (ab.a = xy.x)\n" +
-			"     │   │               ├─ IndexedTableAccess(ab)\n" +
-			"     │   │               │   ├─ index: [ab.a]\n" +
-			"     │   │               │   └─ filters: [{[NULL, ∞)}]\n" +
+			"     │   │           └─ LeftOuterLookupJoin\n" +
+			"     │   │               ├─ Table\n" +
+			"     │   │               │   └─ name: ab\n" +
 			"     │   │               └─ Project\n" +
 			"     │   │                   ├─ columns: [xy.x]\n" +
 			"     │   │                   └─ IndexedTableAccess(xy)\n" +
 			"     │   │                       ├─ index: [xy.x]\n" +
-			"     │   │                       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │                       └─ columns: [x y]\n" +
+			"     │   │                       ├─ columns: [x y]\n" +
+			"     │   │                       └─ keys: ab.a\n" +
 			"     │   └─ HashLookup\n" +
 			"     │       ├─ left-key: (alias1.a)\n" +
 			"     │       ├─ right-key: (pq.p)\n" +
@@ -5960,17 +5962,15 @@ inner join pq on true
 			"     │   │       ├─ columns: [ab.a, ab.b]\n" +
 			"     │   │       └─ Filter\n" +
 			"     │   │           ├─ xy.x IS NULL\n" +
-			"     │   │           └─ LeftOuterMergeJoin\n" +
-			"     │   │               ├─ cmp: (ab.a = xy.x)\n" +
-			"     │   │               ├─ IndexedTableAccess(ab)\n" +
-			"     │   │               │   ├─ index: [ab.a]\n" +
-			"     │   │               │   └─ filters: [{[NULL, ∞)}]\n" +
+			"     │   │           └─ LeftOuterLookupJoin\n" +
+			"     │   │               ├─ Table\n" +
+			"     │   │               │   └─ name: ab\n" +
 			"     │   │               └─ Project\n" +
 			"     │   │                   ├─ columns: [xy.x]\n" +
 			"     │   │                   └─ IndexedTableAccess(xy)\n" +
 			"     │   │                       ├─ index: [xy.x]\n" +
-			"     │   │                       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │                       └─ columns: [x y]\n" +
+			"     │   │                       ├─ columns: [x y]\n" +
+			"     │   │                       └─ keys: ab.a\n" +
 			"     │   └─ HashLookup\n" +
 			"     │       ├─ left-key: (alias1.a)\n" +
 			"     │       ├─ right-key: (pq.p)\n" +
@@ -14227,49 +14227,51 @@ inner join pq on true
 	{
 		Query: `SELECT l.i, r.i2 FROM niltable l INNER JOIN niltable r ON l.i2 <=> r.i2 ORDER BY 1 ASC`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [l.i:1!null, r.i2:0]\n" +
-			" └─ Sort(l.i:1!null ASC nullsFirst)\n" +
-			"     └─ InnerJoin\n" +
-			"         ├─ (l.i2:2 <=> r.i2:0)\n" +
-			"         ├─ TableAlias(r)\n" +
+			" ├─ columns: [l.i:0!null, r.i2:2]\n" +
+			" └─ Sort(l.i:0!null ASC nullsFirst)\n" +
+			"     └─ LookupJoin\n" +
+			"         ├─ TableAlias(l)\n" +
 			"         │   └─ ProcessTable\n" +
 			"         │       └─ Table\n" +
 			"         │           ├─ name: niltable\n" +
-			"         │           └─ columns: [i2]\n" +
-			"         └─ TableAlias(l)\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: niltable\n" +
-			"                 ├─ columns: [i i2]\n" +
-			"                 ├─ colSet: (1-4)\n" +
-			"                 └─ tableId: 1\n" +
+			"         │           └─ columns: [i i2]\n" +
+			"         └─ TableAlias(r)\n" +
+			"             └─ IndexedTableAccess(niltable)\n" +
+			"                 ├─ index: [niltable.i2]\n" +
+			"                 ├─ keys: [l.i2:1]\n" +
+			"                 ├─ colSet: (5-8)\n" +
+			"                 ├─ tableId: 2\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: niltable\n" +
+			"                     └─ columns: [i2]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [l.i, r.i2]\n" +
 			" └─ Sort(l.i ASC)\n" +
-			"     └─ InnerJoin\n" +
-			"         ├─ (l.i2 <=> r.i2)\n" +
-			"         ├─ TableAlias(r)\n" +
+			"     └─ LookupJoin\n" +
+			"         ├─ TableAlias(l)\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: niltable\n" +
-			"         │       └─ columns: [i2]\n" +
-			"         └─ TableAlias(l)\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: niltable\n" +
-			"                 └─ columns: [i i2]\n" +
+			"         │       └─ columns: [i i2]\n" +
+			"         └─ TableAlias(r)\n" +
+			"             └─ IndexedTableAccess(niltable)\n" +
+			"                 ├─ index: [niltable.i2]\n" +
+			"                 ├─ columns: [i2]\n" +
+			"                 └─ keys: l.i2\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [l.i, r.i2]\n" +
 			" └─ Sort(l.i ASC)\n" +
-			"     └─ InnerJoin\n" +
-			"         ├─ (l.i2 <=> r.i2)\n" +
-			"         ├─ TableAlias(r)\n" +
+			"     └─ LookupJoin\n" +
+			"         ├─ TableAlias(l)\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: niltable\n" +
-			"         │       └─ columns: [i2]\n" +
-			"         └─ TableAlias(l)\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: niltable\n" +
-			"                 └─ columns: [i i2]\n" +
+			"         │       └─ columns: [i i2]\n" +
+			"         └─ TableAlias(r)\n" +
+			"             └─ IndexedTableAccess(niltable)\n" +
+			"                 ├─ index: [niltable.i2]\n" +
+			"                 ├─ columns: [i2]\n" +
+			"                 └─ keys: l.i2\n" +
 			"",
 	},
 	{
@@ -24793,7 +24795,7 @@ order by x, y;
 			" │       ├─ name: xy\n" +
 			" │       └─ columns: [x y]\n" +
 			" └─ IndexedTableAccess(mytable)\n" +
-			"     ├─ index: [mytable.s]\n" +
+			"     ├─ index: [mytable.s,mytable.i]\n" +
 			"     ├─ keys: [xy.x:0!null]\n" +
 			"     ├─ colSet: (3,4)\n" +
 			"     ├─ tableId: 2\n" +
@@ -24801,21 +24803,21 @@ order by x, y;
 			"         ├─ name: mytable\n" +
 			"         └─ columns: [i s]\n" +
 			"",
-		ExpectedEstimates: "LookupJoin (estimated cost=1006.900 rows=3)\n" +
+		ExpectedEstimates: "LookupJoin (estimated cost=2023.000 rows=3)\n" +
 			" ├─ Table\n" +
 			" │   ├─ name: xy\n" +
 			" │   └─ columns: [x y]\n" +
 			" └─ IndexedTableAccess(mytable)\n" +
-			"     ├─ index: [mytable.s]\n" +
+			"     ├─ index: [mytable.s,mytable.i]\n" +
 			"     ├─ columns: [i s]\n" +
 			"     └─ keys: xy.x\n" +
 			"",
-		ExpectedAnalysis: "LookupJoin (estimated cost=1006.900 rows=3) (actual rows=0 loops=1)\n" +
+		ExpectedAnalysis: "LookupJoin (estimated cost=2023.000 rows=3) (actual rows=0 loops=1)\n" +
 			" ├─ Table\n" +
 			" │   ├─ name: xy\n" +
 			" │   └─ columns: [x y]\n" +
 			" └─ IndexedTableAccess(mytable)\n" +
-			"     ├─ index: [mytable.s]\n" +
+			"     ├─ index: [mytable.s,mytable.i]\n" +
 			"     ├─ columns: [i s]\n" +
 			"     └─ keys: xy.x\n" +
 			"",
