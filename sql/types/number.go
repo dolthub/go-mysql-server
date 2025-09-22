@@ -591,7 +591,7 @@ func (t NumberTypeImpl_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqlt
 		return sqltypes.Value{}, sql.ErrInvalidType.New(t.baseType.String())
 	}
 
-	if sql.ErrInvalidValue.Is(err) {
+	if sql.ErrInvalidValue.Is(err) || sql.ErrTruncatedIncorrect.Is(err) {
 		switch str := v.(type) {
 		case []byte:
 			dest = str
