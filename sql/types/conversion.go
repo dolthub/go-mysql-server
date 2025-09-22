@@ -16,7 +16,6 @@ package types
 
 import (
 	"fmt"
-	"github.com/dolthub/vitess/go/mysql"
 	"reflect"
 	"strconv"
 	"strings"

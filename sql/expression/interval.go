@@ -16,7 +16,6 @@ package expression
 
 import (
 	"fmt"
-	"github.com/dolthub/vitess/go/mysql"
 	"regexp"
 	"strconv"
 	"strings"
