@@ -398,7 +398,6 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 		if err != nil {
 			return types.Int64.Zero(), nil
 		}
-
 		return num, nil
 	case ConvertToTime:
 		t, _, err := types.Time.Convert(ctx, val)

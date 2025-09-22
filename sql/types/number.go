@@ -223,7 +223,7 @@ func (t NumberTypeImpl_) Convert(ctx context.Context, v interface{}) (interface{
 	case sqltypes.Int8:
 		num, _, err := convertToInt64(t, v)
 		if err != nil {
-			return nil, sql.OutOfRange, err
+			return int8(num), sql.OutOfRange, err
 		}
 		if num > math.MaxInt8 {
 			return int8(math.MaxInt8), sql.OutOfRange, nil
@@ -235,7 +235,7 @@ func (t NumberTypeImpl_) Convert(ctx context.Context, v interface{}) (interface{
 	case sqltypes.Uint8:
 		num, _, err := convertToInt64(t, v)
 		if err != nil {
-			return nil, sql.OutOfRange, err
+			return uint8(num), sql.OutOfRange, err
 		}
 		if num > math.MaxUint8 {
 			return uint8(math.MaxUint8), sql.OutOfRange, nil
@@ -247,7 +247,7 @@ func (t NumberTypeImpl_) Convert(ctx context.Context, v interface{}) (interface{
 	case sqltypes.Int16:
 		num, _, err := convertToInt64(t, v)
 		if err != nil {
-			return nil, sql.OutOfRange, err
+			return int16(num), sql.OutOfRange, err
 		}
 		if num > math.MaxInt16 {
 			return int16(math.MaxInt16), sql.OutOfRange, nil
@@ -259,7 +259,7 @@ func (t NumberTypeImpl_) Convert(ctx context.Context, v interface{}) (interface{
 	case sqltypes.Uint16:
 		num, _, err := convertToInt64(t, v)
 		if err != nil {
-			return nil, sql.OutOfRange, err
+			return uint16(num), sql.OutOfRange, err
 		}
 		if num > math.MaxUint16 {
 			return uint16(math.MaxUint16), sql.OutOfRange, nil
@@ -271,7 +271,7 @@ func (t NumberTypeImpl_) Convert(ctx context.Context, v interface{}) (interface{
 	case sqltypes.Int24:
 		num, _, err := convertToInt64(t, v)
 		if err != nil {
-			return nil, sql.OutOfRange, err
+			return int32(num), sql.OutOfRange, err
 		}
 		if num > (1<<23 - 1) {
 			return int32(1<<23 - 1), sql.OutOfRange, nil
@@ -283,7 +283,7 @@ func (t NumberTypeImpl_) Convert(ctx context.Context, v interface{}) (interface{
 	case sqltypes.Uint24:
 		num, _, err := convertToInt64(t, v)
 		if err != nil {
-			return nil, sql.OutOfRange, err
+			return uint32(num), sql.OutOfRange, err
 		}
 		if num >= (1 << 24) {
 			return uint32(1<<24 - 1), sql.OutOfRange, nil
@@ -295,7 +295,7 @@ func (t NumberTypeImpl_) Convert(ctx context.Context, v interface{}) (interface{
 	case sqltypes.Int32:
 		num, _, err := convertToInt64(t, v)
 		if err != nil {
-			return nil, sql.OutOfRange, err
+			return int32(num), sql.OutOfRange, err
 		}
 		if num > math.MaxInt32 {
 			return int32(math.MaxInt32), sql.OutOfRange, nil
@@ -307,7 +307,7 @@ func (t NumberTypeImpl_) Convert(ctx context.Context, v interface{}) (interface{
 	case sqltypes.Uint32:
 		num, _, err := convertToInt64(t, v)
 		if err != nil {
-			return nil, sql.OutOfRange, err
+			return uint32(num), sql.OutOfRange, err
 		}
 		if num > math.MaxUint32 {
 			return uint32(math.MaxUint32), sql.OutOfRange, nil
@@ -1244,6 +1244,7 @@ func convertToFloat64(t NumberTypeImpl_, v interface{}) (float64, error) {
 		}
 		return float64(i), nil
 	case string:
+		// TODO: proper truncation and rounding behavior
 		v = strings.Trim(v, sql.NumericCutSet)
 		i, err := strconv.ParseFloat(v, 64)
 		if err != nil {

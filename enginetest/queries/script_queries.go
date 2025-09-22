@@ -975,13 +975,13 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 		Dialect: "mysql",
 		Name:    "strings cast to numbers",
 		SetUpScript: []string{
-			"create table test01(pk varchar(20) primary key)",
+			"create table test01(pk varchar(20) primary key);",
 			`insert into test01 values ('  3 12 4'),
                           ('  3.2 12 4'),('-3.1234'),('-3.1a'),('-5+8'),('+3.1234'),
                           ('11d'),('11wha?'),('11'),('12'),('1a1'),('a1a1'),('11-5'),
-                          ('3. 12 4'),('5.932887e+07'),('5.932887e+07abc'),('5.932887e7'),('5.932887e7abc')`,
-			"create table test02(pk int primary key)",
-			"insert into test02 values(11),(12),(13),(14),(15)",
+                          ('3. 12 4'),('5.932887e+07'),('5.932887e+07abc'),('5.932887e7'),('5.932887e7abc');`,
+			"create table test02(pk int primary key);",
+			"insert into test02 values(11),(12),(13),(14),(15);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -1164,18 +1164,18 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 			},
 			{
 				// https://github.com/dolthub/dolt/issues/9739
-				Skip:                  true,
+				//Skip:                  true,
 				Dialect:               "mysql",
-				Query:                 "select * from test02 where pk in ('11asdf')",
-				Expected:              []sql.Row{{"11"}},
+				Query:                 "select * from test02 where pk in ('11asdf');",
+				Expected:              []sql.Row{{11}},
 				ExpectedWarningsCount: 1,
 				ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 			{
 				// https://github.com/dolthub/dolt/issues/9739
-				Skip:                  true,
+				//Skip:                  true,
 				Dialect:               "mysql",
-				Query:                 "select * from test02 where pk='11.12asdf'",
+				Query:                 "select * from test02 where pk='11.12asdf';",
 				Expected:              []sql.Row{},
 				ExpectedWarningsCount: 1,
 				ExpectedWarning:       mysql.ERTruncatedWrongValue,
