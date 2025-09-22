@@ -316,7 +316,11 @@ func ConvertToBool(ctx *Context, v interface{}) (bool, error) {
 	case float64:
 		return b != 0, nil
 	case string:
-		bFloat, err := strconv.ParseFloat(TrimStringToNumberPrefix(ctx, b, false), 64)
+		truncStr, didTrunc := TruncateStringToInt(b)
+		if didTrunc {
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", ErrTruncatedIncorrect.New("INTEGER", b))
+		}
+		bFloat, err := strconv.ParseFloat(truncStr, 64)
 		if err != nil {
 			return false, nil
 		}

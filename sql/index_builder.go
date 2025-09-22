@@ -21,6 +21,8 @@ import (
 
 	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/dolthub/vitess/go/mysql"
 )
 
 var (
