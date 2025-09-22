@@ -16,12 +16,12 @@ package expression
 
 import (
 	"fmt"
-	"github.com/dolthub/vitess/go/mysql"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/dolthub/vitess/go/mysql"
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
