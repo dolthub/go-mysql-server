@@ -69,6 +69,9 @@ func (ppr *ProcedureReference) InitializeVariable(ctx *sql.Context, name string,
 	}
 	convertedVal, _, err := sqlType.Convert(ctx, val)
 	if err != nil {
+		if sql.ErrTruncatedIncorrect.Is(err) {
+			return sql.ErrInvalidValue.New(val, sqlType)
+		}
 		return err
 	}
 	lowerName := strings.ToLower(name)

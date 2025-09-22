@@ -421,7 +421,7 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 		}
 		return num, nil
 	case ConvertToYear:
-		value, err := convertHexBlobToDecimalForNumericContext(val, originType)
+		value, err := prepareForNumericContext(ctx, val, originType, true)
 		if err != nil {
 			return nil, err
 		}
