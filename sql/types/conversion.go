@@ -16,6 +16,7 @@ package types
 
 import (
 	"fmt"
+	"github.com/dolthub/vitess/go/mysql"
 	"reflect"
 	"strconv"
 	"strings"
@@ -771,6 +772,10 @@ func TypeAwareConversion(ctx *sql.Context, val interface{}, originalType sql.Typ
 func ConvertOrTruncate(ctx *sql.Context, i interface{}, t sql.Type) (interface{}, error) {
 	converted, _, err := t.Convert(ctx, i)
 	if err == nil {
+		return converted, nil
+	}
+	if sql.ErrTruncatedIncorrect.Is(err) {
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		return converted, nil
 	}
 

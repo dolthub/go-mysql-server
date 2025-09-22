@@ -21,8 +21,6 @@ import (
 
 	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
-
-	"github.com/dolthub/vitess/go/mysql"
 )
 
 var (
@@ -236,7 +234,7 @@ func (b *MySQLIndexBuilder) convertKey(ctx *Context, colType Type, keyType Type,
 			if !ErrTruncatedIncorrect.Is(err) {
 				return nil, err
 			}
-			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
+			//ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		}
 		return k, nil
 	}
