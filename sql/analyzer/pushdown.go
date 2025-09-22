@@ -339,5 +339,14 @@ func removePushedDownPredicates(ctx *sql.Context, a *Analyzer, node *plan.Filter
 		unhandled,
 	)
 
+	if joinChild, ok := node.Child.(*plan.JoinNode); ok && !joinChild.Op.IsOuter() {
+		if joinChild.Op.IsCross() {
+			return plan.NewInnerJoin(joinChild.Left(), joinChild.Right(), expression.JoinAnd(unhandled...))
+		}
+		unhandled = append(unhandled, joinChild.Filter)
+		joinChild.Filter = expression.JoinAnd(unhandled...)
+		return joinChild
+	}
+
 	return plan.NewFilter(expression.JoinAnd(unhandled...), node.Child)
 }
