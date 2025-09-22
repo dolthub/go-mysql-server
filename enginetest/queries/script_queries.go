@@ -528,7 +528,7 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 			},
 			{
 				// Valid float strings used as arguments to functions are truncated not rounded
-				Skip:                  true,
+				//Skip:                  true,
 				Query:                 "SELECT LENGTH(SPACE('1.9'));",
 				Expected:              []sql.Row{{1}},
 				ExpectedWarningsCount: 2, // MySQL throws two warnings for some reason

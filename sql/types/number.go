@@ -17,12 +17,12 @@ package types
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"math"
 	"reflect"
 	"regexp"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -1001,13 +1001,13 @@ func convertToInt64(t NumberTypeImpl_, v interface{}) (int64, sql.ConvertInRange
 		if pErr == nil {
 			return i, sql.InRange, err
 		}
-		// If that fails, try as a float and round it to integral
+		// If that fails, try as a float
 		f, pErr := strconv.ParseFloat(truncStr, 64)
-		if pErr == nil {
-			f = math.Round(f)
-			return int64(f), sql.InRange, err
+		if pErr != nil {
+			return 0, sql.OutOfRange, sql.ErrInvalidValue.New(v, t.String())
 		}
-		return 0, sql.OutOfRange, sql.ErrInvalidValue.New(v, t.String())
+		i, inRange, _ := convertToInt64(t, f)
+		return i, inRange, err
 	case bool:
 		if v {
 			return 1, sql.InRange, nil
@@ -1152,7 +1152,7 @@ func convertToUint64(t NumberTypeImpl_, v interface{}) (uint64, sql.ConvertInRan
 			return math.MaxUint64, sql.OutOfRange, nil
 		}
 		if v < 0 {
-			return uint64(math.MaxUint64 - v), sql.OutOfRange, nil
+			return uint64(math.MaxUint64 - uint(-v-1)), sql.OutOfRange, nil
 		}
 		return uint64(math.Round(float64(v))), sql.InRange, nil
 	case float64:
@@ -1160,7 +1160,7 @@ func convertToUint64(t NumberTypeImpl_, v interface{}) (uint64, sql.ConvertInRan
 			return math.MaxUint64, sql.OutOfRange, nil
 		}
 		if v < 0 {
-			return uint64(math.MaxUint64 - v), sql.OutOfRange, nil
+			return uint64(math.MaxUint64 - uint(-v-1)), sql.OutOfRange, nil
 		}
 		return uint64(math.Round(v)), sql.InRange, nil
 	case decimal.Decimal:
@@ -1181,19 +1181,29 @@ func convertToUint64(t NumberTypeImpl_, v interface{}) (uint64, sql.ConvertInRan
 		}
 		return i, sql.InRange, nil
 	case string:
-		v = strings.Trim(v, sql.IntCutSet)
-		if i, err := strconv.ParseUint(v, 10, 64); err == nil {
-			return i, sql.InRange, nil
-		} else if err == strconv.ErrRange {
-			// Number is too large for uint64, return max value and OutOfRange
+		// TODO: this currently assumes we are always rounding to preserve behavior
+		//   but we should only be rounding on inserts
+		var err error
+		truncStr, didTrunc := sql.TruncateStringToDouble(v)
+		if didTrunc {
+			err = sql.ErrTruncatedIncorrect.New(t, v)
+		}
+		// Parse first as an integer, which allows for more values than float64
+		i, pErr := strconv.ParseUint(truncStr, 10, 64)
+		if pErr == nil {
+			return i, sql.InRange, err
+		}
+		// Number is too large for uint64, return max value and OutOfRange
+		if errors.Is(err, strconv.ErrRange) {
 			return math.MaxUint64, sql.OutOfRange, nil
 		}
-		if f, err := strconv.ParseFloat(v, 64); err == nil {
-			if val, inRange, err := convertToUint64(t, f); err == nil && inRange {
-				return val, inRange, err
-			}
+		// If that fails, try as a float
+		f, pErr := strconv.ParseFloat(truncStr, 64)
+		if pErr != nil {
+			return 0, sql.OutOfRange, sql.ErrInvalidValue.New(v, t.String())
 		}
-		return 0, sql.OutOfRange, sql.ErrInvalidValue.New(v, t.String())
+		i, inRange, _ := convertToUint64(t, f)
+		return i, inRange, err
 	case bool:
 		if v {
 			return 1, sql.InRange, nil
@@ -1244,16 +1254,13 @@ func convertToFloat64(t NumberTypeImpl_, v interface{}) (float64, error) {
 		}
 		return float64(i), nil
 	case string:
-		// TODO: proper truncation and rounding behavior
-		v = strings.Trim(v, sql.NumericCutSet)
-		i, err := strconv.ParseFloat(v, 64)
-		if err != nil {
-			// parse the first longest valid numbers
-			s := numre.FindString(v)
-			i, _ = strconv.ParseFloat(s, 64)
-			return i, sql.ErrTruncatedIncorrect.New(t.String(), v)
+		var err error
+		truncStr, didTrunc := sql.TruncateStringToDouble(v)
+		if didTrunc {
+			err = sql.ErrTruncatedIncorrect.New(t, v)
 		}
-		return i, nil
+		f, _ := strconv.ParseFloat(truncStr, 64)
+		return f, err
 	case bool:
 		if v {
 			return 1, nil
