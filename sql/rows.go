@@ -199,7 +199,7 @@ func (i *sliceRowIter) Next(ctx *Context) (Row, error) {
 
 	if !hasRowIter {
 		i.idx++
-	} else if rowIterEnded && i.idx+1 >= len(i.rows) {
+	} else if rowIterEnded {
 		return nil, io.EOF
 	}
 
