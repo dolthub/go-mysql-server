@@ -109,11 +109,8 @@ var OrderByGroupByScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "select binary s from t group by binary s order by s",
-				Expected: []sql.Row{
-					{[]uint8("abc")},
-					{[]uint8("def")},
-				},
+				Query:       "select binary s from t group by binary s order by s",
+				ExpectedErr: analyzererrors.ErrValidationGroupByOrderBy,
 			},
 		},
 	},
@@ -362,6 +359,46 @@ var OrderByGroupByScriptTests = []ScriptTest{
 			{
 				Query:    "select * from t order by (i * 10 + j)",
 				Expected: []sql.Row{{0, 7}, {2, 4}, {4, 3}, {9, 10}},
+			},
+		},
+	},
+	{
+		Name: "valid group by order by queries",
+		SetUpScript: []string{
+			"create table t0(c0 int primary key, c1 int, c2 int, c3 int)",
+			"insert into t0 values (3, 1, 3, 1), (4, 1, 7, 2), (5, 2, 9, 3),(6,2, 1, 3), (7,2, 2, 2),(8,3,2, 5)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// group by primary key
+				Query:    "select c1 from t0 group by c0 order by c2",
+				Expected: []sql.Row{{2}, {2}, {3}, {1}, {1}, {2}},
+			},
+			{
+				// order by aggregate
+				Query:    "select c1 from t0 group by c1 order by min(c2)",
+				Expected: []sql.Row{{2}, {3}, {1}},
+			},
+			{
+				// order by alias for column in group by clause
+				Query:    "select c1 as col from t0 group by c1 order by col",
+				Expected: []sql.Row{{1}, {2}, {3}},
+			},
+			{
+				// order by alias for aggregate column
+				Query:    "select min(c0) as min, c1 from t0 group by c1 order by min",
+				Expected: []sql.Row{{3, 1}, {5, 2}, {8, 3}},
+			},
+			{
+				// order by multiple columns
+				Query:    "select c1 from t0 group by c1, c2, c3 order by c2, c3",
+				Expected: []sql.Row{{2}, {2}, {3}, {1}, {1}, {2}},
+			},
+			{
+				// order by functionally dependent column
+				Dialect:  "mysql",
+				Query:    "select c1 from t0 where c2 = 3 group by c1 order by c2",
+				Expected: []sql.Row{{1}},
 			},
 		},
 	},
