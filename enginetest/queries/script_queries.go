@@ -1120,8 +1120,8 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 			},
 
 			// TODO: these are not directly testing casting
+			// https://github.com/dolthub/dolt/issues/9739
 			{
-				// https://github.com/dolthub/dolt/issues/9739
 				Skip:    true,
 				Dialect: "mysql",
 				Query:   "select * from test01 where pk in (11)",
@@ -1163,8 +1163,6 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 				ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 			{
-				// https://github.com/dolthub/dolt/issues/9739
-				//Skip:                  true,
 				Dialect:               "mysql",
 				Query:                 "select * from test02 where pk in ('11asdf');",
 				Expected:              []sql.Row{{11}},
@@ -1172,8 +1170,6 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 				ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 			{
-				// https://github.com/dolthub/dolt/issues/9739
-				//Skip:                  true,
 				Dialect:               "mysql",
 				Query:                 "select * from test02 where pk='11.12asdf';",
 				Expected:              []sql.Row{},

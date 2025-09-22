@@ -317,7 +317,7 @@ func ConvertToBool(ctx *Context, v interface{}) (bool, error) {
 	case float64:
 		return b != 0, nil
 	case string:
-		truncStr, didTrunc := TruncateStringToInt(b)
+		truncStr, didTrunc := TruncateStringToDouble(b)
 		if didTrunc {
 			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", ErrTruncatedIncorrect.New("INTEGER", b))
 		}
