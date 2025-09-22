@@ -79,7 +79,7 @@ func (s *SetField) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 				return nil, sql.NewWrappedTypeConversionError(val, getField.fieldIndex, types.ErrLengthBeyondLimit.New(val, getField.Name()))
 			}
 			if sql.ErrTruncatedIncorrect.Is(err) {
-				err = sql.ErrInvalidValue.New(getField.fieldType, val)
+				err = sql.ErrInvalidValue.New(val, getField.fieldType)
 			}
 			return nil, sql.NewWrappedTypeConversionError(val, getField.fieldIndex, err)
 		}
