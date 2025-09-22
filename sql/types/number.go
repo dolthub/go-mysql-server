@@ -961,21 +961,24 @@ func convertToInt64(t NumberTypeImpl_, v interface{}) (int64, sql.ConvertInRange
 	case float32:
 		if v > float32(math.MaxInt64) {
 			return math.MaxInt64, sql.OutOfRange, nil
-		} else if v < float32(math.MinInt64) {
+		}
+		if v < float32(math.MinInt64) {
 			return math.MinInt64, sql.OutOfRange, nil
 		}
 		return int64(math.Round(float64(v))), sql.InRange, nil
 	case float64:
 		if v > float64(math.MaxInt64) {
 			return math.MaxInt64, sql.OutOfRange, nil
-		} else if v < float64(math.MinInt64) {
+		}
+		if v < float64(math.MinInt64) {
 			return math.MinInt64, sql.OutOfRange, nil
 		}
 		return int64(math.Round(v)), sql.InRange, nil
 	case decimal.Decimal:
 		if v.GreaterThan(dec_int64_max) {
 			return dec_int64_max.IntPart(), sql.OutOfRange, nil
-		} else if v.LessThan(dec_int64_min) {
+		}
+		if v.LessThan(dec_int64_min) {
 			return dec_int64_min.IntPart(), sql.OutOfRange, nil
 		}
 		return v.Round(0).IntPart(), sql.InRange, nil
@@ -986,23 +989,25 @@ func convertToInt64(t NumberTypeImpl_, v interface{}) (int64, sql.ConvertInRange
 		}
 		return i, sql.InRange, nil
 	case string:
-		v = strings.Trim(v, sql.IntCutSet)
-		if v == "" {
-			// StringType{}.Zero() returns empty string, but should represent "0" for number value
-			return 0, sql.InRange, nil
+		// TODO: this currently assumes we are always rounding to preserve behavior
+		//   but we should only be rounding on inserts
+		var err error
+		truncStr, didTrunc := sql.TruncateStringToDouble(v)
+		if didTrunc {
+			err = sql.ErrTruncatedIncorrect.New(t, v)
 		}
 		// Parse first an integer, which allows for more values than float64
-		i, err := strconv.ParseInt(v, 10, 64)
-		if err == nil {
-			return i, sql.InRange, nil
+		i, pErr := strconv.ParseInt(truncStr, 10, 64)
+		if pErr == nil {
+			return i, sql.InRange, err
 		}
-		// If that fails, try as a float and truncate it to integral
-		f, err := strconv.ParseFloat(v, 64)
-		if err != nil {
-			return 0, sql.OutOfRange, sql.ErrInvalidValue.New(v, t.String())
+		// If that fails, try as a float and round it to integral
+		f, pErr := strconv.ParseFloat(truncStr, 64)
+		if pErr == nil {
+			f = math.Round(f)
+			return int64(f), sql.InRange, err
 		}
-		f = math.Round(f)
-		return int64(f), sql.InRange, nil
+		return 0, sql.OutOfRange, sql.ErrInvalidValue.New(v, t.String())
 	case bool:
 		if v {
 			return 1, sql.InRange, nil

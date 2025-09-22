@@ -16,6 +16,7 @@ package expression
 
 import (
 	"fmt"
+	"github.com/dolthub/vitess/go/mysql"
 	"regexp"
 	"strconv"
 	"strings"
@@ -140,7 +141,10 @@ func (i *Interval) EvalDelta(ctx *sql.Context, row sql.Row) (*TimeDelta, error) 
 	} else {
 		val, _, err = types.Int64.Convert(ctx, val)
 		if err != nil {
-			return nil, err
+			if !sql.ErrTruncatedIncorrect.Is(err) {
+				return nil, err
+			}
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		}
 
 		num := val.(int64)
