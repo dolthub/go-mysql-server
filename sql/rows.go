@@ -187,14 +187,47 @@ type sliceRowIter struct {
 	idx  int
 }
 
-func (i *sliceRowIter) Next(*Context) (Row, error) {
+func (i *sliceRowIter) Next(ctx *Context) (Row, error) {
 	if i.idx >= len(i.rows) {
 		return nil, io.EOF
 	}
 
-	r := i.rows[i.idx]
-	i.idx++
-	return r.Copy(), nil
+	vals, hasRowIter, rowIterEnded, err := unwrapRowIterAsReturnedResult(ctx, i.rows[i.idx])
+	if err != nil {
+		return nil, err
+	}
+
+	if !hasRowIter {
+		i.idx++
+	} else if rowIterEnded && i.idx+1 >= len(i.rows) {
+		return nil, io.EOF
+	}
+
+	return NewRow(vals...), nil
+}
+
+// unwrapRowIterAsReturnedResult unwraps the row if there is any RowIter in the given Row
+// creating multiple Rows from a single Row.
+func unwrapRowIterAsReturnedResult(ctx *Context, r Row) ([]any, bool, bool, error) {
+	vals := make([]interface{}, len(r))
+	var hasActiveRowIter = false
+	var hasRowIter = false
+	for j, v := range r {
+		if ri, ok := r[j].(RowIter); ok {
+			hasRowIter = true
+			nv, err := ri.Next(ctx)
+			if err == nil {
+				hasActiveRowIter = true
+			}
+			if nv != nil && len(nv) > 0 {
+				// TODO: can set returning iter return multiple values in the row?
+				vals[j] = nv[0]
+			}
+		} else {
+			vals[j] = v
+		}
+	}
+	return vals, hasRowIter, !hasActiveRowIter && hasRowIter, nil
 }
 
 func (i *sliceRowIter) Close(*Context) error {
