@@ -16,12 +16,12 @@ package types
 
 import (
 	"fmt"
-	"github.com/dolthub/vitess/go/mysql"
 	"reflect"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
