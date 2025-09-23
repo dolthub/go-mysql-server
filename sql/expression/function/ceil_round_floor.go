@@ -24,6 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/vitess/go/mysql"
 )
 
 // Ceil returns the smallest integer value not less than X.
@@ -179,7 +180,6 @@ func (f *Floor) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		}
 	}
-
 	// if it's number type and not float value, it does not need ceil-ing
 	switch num := child.(type) {
 	case float32:
