@@ -191,6 +191,18 @@ var ScriptTests = []ScriptTest{
 					{"l", "longtext", "YES", "", nil, ""},
 				},
 			},
+			{
+				Query: "CREATE TABLE d (t TEXT)",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "DESCRIBE d",
+				Expected: []sql.Row{
+					{"t", "text", "YES", "", nil, ""},
+				},
+			},
 		},
 	},
 	{
