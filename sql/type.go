@@ -128,6 +128,13 @@ type NumberType interface {
 	DisplayWidth() int
 }
 
+// RoundingNumberType represents Number Types that implement an additional interface
+// that supports rounding when converting rather than the default truncation.
+type RoundingNumberType interface {
+	NumberType
+	ConvertRound(context.Context, any) (any, ConvertInRange, error)
+}
+
 // StringType represents all string types, including VARCHAR and BLOB.
 // https://dev.mysql.com/doc/refman/8.0/en/char.html
 // https://dev.mysql.com/doc/refman/8.0/en/binary-varbinary.html
