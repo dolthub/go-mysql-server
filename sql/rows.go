@@ -212,8 +212,8 @@ func unwrapRowIterAsReturnedResult(ctx *Context, r Row) ([]any, bool, bool, erro
 	vals := make([]interface{}, len(r))
 	var hasActiveRowIter = false
 	var hasRowIter = false
-	for j, v := range r {
-		if ri, ok := r[j].(RowIter); ok {
+	for i, v := range r {
+		if ri, ok := v.(RowIter); ok {
 			hasRowIter = true
 			nv, err := ri.Next(ctx)
 			if err == nil {
@@ -221,10 +221,10 @@ func unwrapRowIterAsReturnedResult(ctx *Context, r Row) ([]any, bool, bool, erro
 			}
 			if nv != nil && len(nv) > 0 {
 				// TODO: can set returning iter return multiple values in the row?
-				vals[j] = nv[0]
+				vals[i] = nv[0]
 			}
 		} else {
-			vals[j] = v
+			vals[i] = v
 		}
 	}
 	return vals, hasRowIter, !hasActiveRowIter && hasRowIter, nil
