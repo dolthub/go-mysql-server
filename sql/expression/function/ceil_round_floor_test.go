@@ -91,15 +91,16 @@ func TestFloor(t *testing.T) {
 		{"float64 is nil", types.Float64, sql.NewRow(nil), nil, nil},
 		{"float64 is ok", types.Float64, sql.NewRow(5.8), float64(5), nil},
 		{"float32 is nil", types.Float32, sql.NewRow(nil), nil, nil},
-		{"float32 is ok", types.Float32, sql.NewRow(float32(5.8)), float32(5), nil},
+		{"float32 is ok", types.Float32, sql.NewRow(float32(5.8)), float64(5), nil},
 		{"int32 is nil", types.Int32, sql.NewRow(nil), nil, nil},
-		{"int32 is ok", types.Int32, sql.NewRow(int32(6)), int32(6), nil},
+		{"int32 is ok", types.Int32, sql.NewRow(int32(6)), int64(6), nil},
 		{"int64 is nil", types.Int64, sql.NewRow(nil), nil, nil},
 		{"int64 is ok", types.Int64, sql.NewRow(int64(6)), int64(6), nil},
 		{"blob is nil", types.Blob, sql.NewRow(nil), nil, nil},
-		{"blob is ok", types.Blob, sql.NewRow([]byte{1, 2, 3}), int32(66051), nil},
-		{"string int is ok", types.Text, sql.NewRow("1"), int32(1), nil},
-		{"string float is ok", types.Text, sql.NewRow("1.2"), int32(1), nil},
+		{"blob is ok", types.Blob, sql.NewRow([]byte{1, 2, 3}), float64(66051), nil},
+		{"string int is ok", types.Text, sql.NewRow("1"), float64(1), nil},
+		{"string float is ok", types.Text, sql.NewRow("1.2"), float64(1), nil},
+		{"invalid strings are truncated but still ok", types.Text, sql.NewRow("1.2abc"), float64(1), nil},
 	}
 
 	for _, tt := range testCases {
@@ -120,7 +121,15 @@ func TestFloor(t *testing.T) {
 				require.Equal(tt.expected, result)
 			}
 
-			require.True(types.IsInteger(f.Type()))
+			// signed -> signed, unsigned -> unsigned, everything else -> double
+			resType := f.Type()
+			if types.IsSigned(tt.rowType) {
+				require.True(types.IsSigned(resType))
+			} else if types.IsUnsigned(resType) {
+				require.True(types.IsUnsigned(resType))
+			} else {
+				require.True(types.IsFloat(resType))
+			}
 			require.False(f.IsNullable())
 		})
 	}

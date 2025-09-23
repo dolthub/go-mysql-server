@@ -233,7 +233,6 @@ func (e *ColumnDefaultValue) CheckType(ctx *Context) error {
 		if val == nil && !e.ReturnNil {
 			return ErrIncompatibleDefaultType.New()
 		}
-		// TODO: ColumnDefaultValue.Eval() has the same chunk of code; use helper method?
 		var inRange ConvertInRange
 		if roundType, isRoundType := e.OutType.(RoundingNumberType); isRoundType {
 			val, inRange, err = roundType.ConvertRound(ctx, val)
