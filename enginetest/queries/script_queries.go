@@ -125,6 +125,7 @@ var ScriptTests = []ScriptTest{
 		// https://github.com/dolthub/dolt/issues/9872
 		Name:        "TEXT(m) syntax support",
 		SetUpScript: []string{},
+		Dialect:     "mysql",
 		Assertions: []ScriptTestAssertion{
 			{
 				Query: "CREATE TABLE task_instance_note (ti_id VARCHAR(36) NOT NULL, user_id VARCHAR(128), content TEXT(1000), created_at TIMESTAMP(6) NOT NULL, updated_at TIMESTAMP(6) NOT NULL, CONSTRAINT task_instance_note_pkey PRIMARY KEY (ti_id))",
