@@ -268,7 +268,17 @@ func ColumnTypeToType(ct *sqlparser.ColumnType) (sql.Type, error) {
 		if err != nil {
 			return nil, err
 		}
-		return CreateString(sqltypes.Text, length, collation)
+		// MySQL automatically chooses the appropriate TEXT type based on length
+		// TEXT(1) to TEXT(65534) → text (65535 max)
+		// TEXT(65535) to TEXT(16777215) → mediumtext (16777215 max)
+		// TEXT(16777216) to TEXT(4294967295) → longtext (4294967295 max)
+		if length < TextBlobMax {
+			return CreateString(sqltypes.Text, TextBlobMax/collation.CharacterSet().MaxLength(), collation)
+		} else if length <= MediumTextBlobMax {
+			return CreateString(sqltypes.Text, MediumTextBlobMax/collation.CharacterSet().MaxLength(), collation)
+		} else {
+			return CreateString(sqltypes.Text, LongTextBlobMax/collation.CharacterSet().MaxLength(), collation)
+		}
 	case "mediumtext", "mediumblob", "long", "long varchar":
 		collation, err := sql.ParseCollation(ct.Charset, collate, ct.BinaryCollate)
 		if err != nil {
