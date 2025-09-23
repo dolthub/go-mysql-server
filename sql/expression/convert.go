@@ -356,7 +356,10 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 		dt := createConvertedDecimalType(typeLength, typeScale, false)
 		d, _, err := dt.Convert(ctx, value)
 		if err != nil {
-			return dt.Zero(), nil
+			if !sql.ErrTruncatedIncorrect.Is(err) {
+				return dt.Zero(), nil
+			}
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		}
 		return d, nil
 	case ConvertToFloat:
@@ -376,11 +379,10 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 		}
 		d, _, err := types.Float64.Convert(ctx, value)
 		if err != nil {
-			if sql.ErrTruncatedIncorrect.Is(err) {
-				ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
-				return d, nil
+			if !sql.ErrTruncatedIncorrect.Is(err) {
+				return types.Float64.Zero(), nil
 			}
-			return types.Float64.Zero(), nil
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		}
 		return d, nil
 	case ConvertToJSON:
