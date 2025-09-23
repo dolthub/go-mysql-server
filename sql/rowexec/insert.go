@@ -122,7 +122,14 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 			ctxWithColumnInfo := ctx.WithContext(ctxWithValues)
 			val := row[idx]
 			// TODO: check mysql strict sql_mode
-			converted, inRange, cErr := col.Type.Convert(ctxWithColumnInfo, val)
+			var converted any
+			var inRange sql.ConvertInRange
+			var cErr error
+			if typ, ok := col.Type.(sql.RoundingNumberType); ok {
+				converted, inRange, cErr = typ.ConvertRound(ctx, val)
+			} else {
+				converted, inRange, cErr = col.Type.Convert(ctxWithColumnInfo, val)
+			}
 			if cErr == nil && !inRange {
 				cErr = sql.ErrValueOutOfRange.New(val, col.Type)
 			}
