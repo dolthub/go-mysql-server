@@ -87,7 +87,7 @@ func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 
 			// move filter predicates directly above their respective tables in joins
 			ret, same, err := pushdownAboveTables(n, filters)
-			if same || err != nil {
+			if err != nil {
 				return n, transform.SameTree, err
 			}
 
@@ -314,17 +314,30 @@ func pushdownFiltersUnderSubqueryAlias(ctx *sql.Context, a *Analyzer, sa *plan.S
 // removePushedDownPredicates removes all handled filter predicates from the filter given and returns. If all
 // predicates have been handled, it replaces the filter with its child.
 func removePushedDownPredicates(ctx *sql.Context, a *Analyzer, node *plan.Filter, filters *filterSet) sql.Node {
-	if filters.handledCount() == 0 {
-		a.Log("no handled filters, leaving filter untouched")
-		return nil
-	}
-
-	// figure out if the filter's filters were all handled
 	filterExpressions := expression.SplitConjunction(node.Expression)
 	unhandled := subtractExprSet(filterExpressions, filters.handledFilters)
+
 	if len(unhandled) == 0 {
 		a.Log("filter node has no unhandled filters, so it will be removed")
 		return node.Child
+	}
+
+	// push filters into joinChild
+	if joinChild, ok := node.Child.(*plan.JoinNode); ok && !joinChild.Op.IsOuter() {
+		a.Log("pushing filters into join node")
+		if joinChild.Op.IsCross() {
+			return plan.NewInnerJoin(joinChild.Left(), joinChild.Right(), expression.JoinAnd(unhandled...))
+		}
+		if joinChild.Filter != nil {
+			unhandled = append(unhandled, joinChild.Filter)
+		}
+		joinChild.Filter = expression.JoinAnd(unhandled...)
+		return joinChild
+	}
+
+	if filters.handledCount() == 0 {
+		a.Log("no handled filters, leaving filter untouched")
+		return nil
 	}
 
 	if len(unhandled) == len(filterExpressions) {
@@ -338,15 +351,6 @@ func removePushedDownPredicates(ctx *sql.Context, a *Analyzer, node *plan.Filter
 		len(unhandled),
 		unhandled,
 	)
-
-	if joinChild, ok := node.Child.(*plan.JoinNode); ok && !joinChild.Op.IsOuter() {
-		if joinChild.Op.IsCross() {
-			return plan.NewInnerJoin(joinChild.Left(), joinChild.Right(), expression.JoinAnd(unhandled...))
-		}
-		unhandled = append(unhandled, joinChild.Filter)
-		joinChild.Filter = expression.JoinAnd(unhandled...)
-		return joinChild
-	}
 
 	return plan.NewFilter(expression.JoinAnd(unhandled...), node.Child)
 }

@@ -391,10 +391,14 @@ func evalSpatialIndexPlanTest(t *testing.T, harness Harness, e QueryEngine, quer
 			if n == nil {
 				return false
 			}
-			if _, ok := n.(*plan.Filter); ok {
+			switch n := n.(type) {
+			case *plan.Filter:
 				hasFilter = true
-			}
-			if _, ok := n.(*plan.IndexedTableAccess); ok {
+			case *plan.JoinNode:
+				if n.Filter != nil {
+					hasFilter = true
+				}
+			case *plan.IndexedTableAccess:
 				hasRightOrder = hasFilter
 				hasIndex = true
 			}
