@@ -17,6 +17,7 @@ package function
 import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/vitess/go/mysql"
 )
 
 // Space implements the sql function "space" which returns a string with the number of spaces specified by the argument
@@ -55,8 +56,10 @@ func (s *Space) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// TODO: better truncate integer handling
 	v, _, err := types.Int64.Convert(ctx, val)
 	if err != nil {
-		ctx.Warn(1292, "Truncated incorrect INTEGER value: '%v'", val)
-		v = int64(0)
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
 	num := int(v.(int64))
