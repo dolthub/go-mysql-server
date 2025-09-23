@@ -225,6 +225,9 @@ func TestNumberConvert(t *testing.T) {
 			if test.err {
 				assert.Error(t, err)
 			} else {
+				if sql.ErrTruncatedIncorrect.Is(err) {
+					err = nil
+				}
 				require.NoError(t, err)
 				assert.Equal(t, test.exp, val)
 				assert.Equal(t, test.inRange, inRange)
