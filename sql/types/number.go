@@ -149,11 +149,11 @@ func (t NumberTypeImpl_) Compare(s context.Context, a interface{}, b interface{}
 
 	switch t.baseType {
 	case sqltypes.Uint8, sqltypes.Uint16, sqltypes.Uint24, sqltypes.Uint32, sqltypes.Uint64:
-		ca, _, err := convertToUint64(t, a)
+		ca, _, err := convertToUint64(t, a, false)
 		if err != nil {
 			return 0, err
 		}
-		cb, _, err := convertToUint64(t, b)
+		cb, _, err := convertToUint64(t, b, false)
 		if err != nil {
 			return 0, err
 		}
@@ -320,7 +320,7 @@ func (t NumberTypeImpl_) Convert(ctx context.Context, v interface{}) (interface{
 	case sqltypes.Int64:
 		return convertToInt64(t, v, false)
 	case sqltypes.Uint64:
-		return convertToUint64(t, v)
+		return convertToUint64(t, v, false)
 	case sqltypes.Float32:
 		num, err := convertToFloat64(t, v)
 		if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
@@ -445,6 +445,8 @@ func (t NumberTypeImpl_) ConvertRound(ctx context.Context, v interface{}) (any, 
 		return uint32(num), sql.InRange, nil
 	case sqltypes.Int64:
 		return convertToInt64(t, v, true)
+	case sqltypes.Uint64:
+		return convertToUint64(t, v, true)
 	default:
 		return t.Convert(ctx, v)
 	}
@@ -569,7 +571,7 @@ func (t NumberTypeImpl_) SQLInt64(ctx *sql.Context, dest []byte, v interface{}) 
 }
 
 func (t NumberTypeImpl_) SQLUint8(ctx *sql.Context, dest []byte, v interface{}) ([]byte, error) {
-	num, _, err := convertToUint64(t, v)
+	num, _, err := convertToUint64(t, v, false)
 	if err != nil {
 		return nil, err
 	}
@@ -582,7 +584,7 @@ func (t NumberTypeImpl_) SQLUint8(ctx *sql.Context, dest []byte, v interface{}) 
 }
 
 func (t NumberTypeImpl_) SQLUint16(ctx *sql.Context, dest []byte, v interface{}) ([]byte, error) {
-	num, _, err := convertToUint64(t, v)
+	num, _, err := convertToUint64(t, v, false)
 	if err != nil {
 		return nil, err
 	}
@@ -595,7 +597,7 @@ func (t NumberTypeImpl_) SQLUint16(ctx *sql.Context, dest []byte, v interface{})
 }
 
 func (t NumberTypeImpl_) SQLUint24(ctx *sql.Context, dest []byte, v interface{}) ([]byte, error) {
-	num, _, err := convertToUint64(t, v)
+	num, _, err := convertToUint64(t, v, false)
 	if err != nil {
 		return nil, err
 	}
@@ -608,7 +610,7 @@ func (t NumberTypeImpl_) SQLUint24(ctx *sql.Context, dest []byte, v interface{})
 }
 
 func (t NumberTypeImpl_) SQLUint32(ctx *sql.Context, dest []byte, v interface{}) ([]byte, error) {
-	num, _, err := convertToUint64(t, v)
+	num, _, err := convertToUint64(t, v, false)
 	if err != nil {
 		return nil, err
 	}
@@ -621,7 +623,7 @@ func (t NumberTypeImpl_) SQLUint32(ctx *sql.Context, dest []byte, v interface{})
 }
 
 func (t NumberTypeImpl_) SQLUint64(ctx *sql.Context, dest []byte, v interface{}) ([]byte, error) {
-	num, _, err := convertToUint64(t, v)
+	num, _, err := convertToUint64(t, v, false)
 	if err != nil {
 		return nil, err
 	}
@@ -1227,7 +1229,7 @@ func convertValueToUint64(t NumberTypeImpl_, v sql.Value) (uint64, error) {
 	}
 }
 
-func convertToUint64(t NumberTypeImpl_, v interface{}) (uint64, sql.ConvertInRange, error) {
+func convertToUint64(t NumberTypeImpl_, v interface{}, round bool) (uint64, sql.ConvertInRange, error) {
 	switch v := v.(type) {
 	case time.Time:
 		return uint64(v.UTC().Unix()), sql.InRange, nil
@@ -1300,29 +1302,46 @@ func convertToUint64(t NumberTypeImpl_, v interface{}) (uint64, sql.ConvertInRan
 		}
 		return i, sql.InRange, nil
 	case string:
-		// TODO: this currently assumes we are always rounding to preserve behavior
-		//   but we should only be rounding on inserts
 		var err error
-		truncStr, didTrunc := sql.TruncateStringToDouble(v)
+		if round {
+			truncStr, didTrunc := sql.TruncateStringToDouble(v)
+			if didTrunc {
+				err = sql.ErrTruncatedIncorrect.New(t, v)
+			}
+			// Parse first an integer, which allows for more values than float64
+			i, pErr := strconv.ParseUint(truncStr, 10, 64)
+			if pErr == nil {
+				return i, sql.InRange, err
+			}
+			// If that fails, try as a float
+			f, pErr := strconv.ParseFloat(truncStr, 64)
+			if pErr != nil {
+				return 0, sql.OutOfRange, sql.ErrInvalidValue.New(v, t.String())
+			}
+			i, inRange, _ := convertToUint64(t, f, round)
+			return i, inRange, err
+		}
+		truncStr, didTrunc := sql.TruncateStringToInt(v)
 		if didTrunc {
 			err = sql.ErrTruncatedIncorrect.New(t, v)
 		}
+		var neg bool
+		if truncStr[0] == '+' {
+			truncStr = truncStr[1:]
+		} else if truncStr[0] == '-' {
+			truncStr = truncStr[1:]
+			neg = true
+		}
 		// Parse first as an integer, which allows for more values than float64
 		i, pErr := strconv.ParseUint(truncStr, 10, 64)
-		if pErr == nil {
-			return i, sql.InRange, err
-		}
 		// Number is too large for uint64, return max value and OutOfRange
-		if errors.Is(err, strconv.ErrRange) {
+		if errors.Is(pErr, strconv.ErrRange) {
 			return math.MaxUint64, sql.OutOfRange, nil
 		}
-		// If that fails, try as a float
-		f, pErr := strconv.ParseFloat(truncStr, 64)
-		if pErr != nil {
-			return 0, sql.OutOfRange, sql.ErrInvalidValue.New(v, t.String())
+		if neg {
+			return math.MaxUint64 - i + 1, sql.OutOfRange, err
 		}
-		i, inRange, _ := convertToUint64(t, f)
-		return i, inRange, err
+		return i, sql.InRange, err
 	case bool:
 		if v {
 			return 1, sql.InRange, nil

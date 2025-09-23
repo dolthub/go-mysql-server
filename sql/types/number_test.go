@@ -194,6 +194,8 @@ func TestNumberConvert(t *testing.T) {
 		{typ: Uint64, inp: "01000", exp: uint64(1000), err: false, inRange: sql.InRange},
 		{typ: Uint64, inp: true, exp: uint64(1), err: false, inRange: sql.InRange},
 		{typ: Uint64, inp: false, exp: uint64(0), err: false, inRange: sql.InRange},
+		{typ: Uint64, inp: "123.9abc", exp: uint64(123), err: false, inRange: sql.InRange},
+		{typ: Uint64, inp: "+123.9abc", exp: uint64(123), err: false, inRange: sql.InRange},
 		{typ: Float32, inp: "22.25", exp: float32(22.25), err: false, inRange: sql.InRange},
 		{typ: Float32, inp: []byte{90, 140, 228, 206, 116}, exp: float32(388910861940), err: false, inRange: sql.InRange},
 		{typ: Float64, inp: float32(893.875), exp: float64(893.875), err: false, inRange: sql.InRange},
@@ -216,6 +218,7 @@ func TestNumberConvert(t *testing.T) {
 		{typ: Uint32, inp: math.MaxUint32 + 1, exp: uint32(math.MaxUint32), err: false, inRange: sql.OutOfRange},
 		{typ: Uint32, inp: -1, exp: uint32(math.MaxUint32), err: false, inRange: sql.OutOfRange},
 		{typ: Uint64, inp: -1, exp: uint64(math.MaxUint64), err: false, inRange: sql.OutOfRange},
+		{typ: Uint64, inp: "-1", exp: uint64(math.MaxUint64), err: false, inRange: sql.OutOfRange},
 		{typ: Float32, inp: math.MaxFloat32 * 2, exp: float32(math.MaxFloat32), err: false, inRange: sql.OutOfRange},
 	}
 
