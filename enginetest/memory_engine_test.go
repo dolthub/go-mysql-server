@@ -200,101 +200,22 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	// t.Skip()
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name:        "Reproduction test for issue 9872: TEXT(m) syntax support",
+			Name:        "AS OF propagates to nested CALLs",
 			SetUpScript: []string{},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					// https://github.com/dolthub/dolt/issues/9872 - Support for mysql `Text(m)` syntax
-					Query: "CREATE TABLE task_instance_note (ti_id VARCHAR(36) NOT NULL, user_id VARCHAR(128), content TEXT(1000), created_at TIMESTAMP(6) NOT NULL, updated_at TIMESTAMP(6) NOT NULL, CONSTRAINT task_instance_note_pkey PRIMARY KEY (ti_id))",
+					Query: "create procedure create_proc() create table t (i int primary key, j int);",
 					Expected: []sql.Row{
 						{types.NewOkResult(0)},
 					},
 				},
 				{
-					Query: "CREATE TABLE test_text_small (id INT PRIMARY KEY, small_text TEXT(255))",
+					Query: "call create_proc()",
 					Expected: []sql.Row{
 						{types.NewOkResult(0)},
-					},
-				},
-				{
-					Query: "CREATE TABLE test_text_large (id INT PRIMARY KEY, large_text TEXT(65535))",
-					Expected: []sql.Row{
-						{types.NewOkResult(0)},
-					},
-				},
-				{
-					Query: "CREATE TABLE test_text_medium (id INT PRIMARY KEY, medium_text TEXT(16777215))",
-					Expected: []sql.Row{
-						{types.NewOkResult(0)},
-					},
-				},
-				{
-					Query: "CREATE TABLE test_text_10k (id INT PRIMARY KEY, text_10k TEXT(10000))",
-					Expected: []sql.Row{
-						{types.NewOkResult(0)},
-					},
-				},
-				{
-					Query: "CREATE TABLE test_text_100k (id INT PRIMARY KEY, text_100k TEXT(100000))",
-					Expected: []sql.Row{
-						{types.NewOkResult(0)},
-					},
-				},
-				{
-					Query: "CREATE TABLE test_text_1m (id INT PRIMARY KEY, text_1m TEXT(1000000))",
-					Expected: []sql.Row{
-						{types.NewOkResult(0)},
-					},
-				},
-				{
-					Query: "CREATE TABLE test_text_no_length (id INT PRIMARY KEY, text_no_length TEXT)",
-					Expected: []sql.Row{
-						{types.NewOkResult(0)},
-					},
-				},
-				{
-					Query: "DESCRIBE test_text_small",
-					Expected: []sql.Row{
-						{"id", "int", "NO", "PRI", nil, ""},
-						{"small_text", "text", "YES", "", nil, ""},
-					},
-				},
-				{
-					Query: "DESCRIBE test_text_large",
-					Expected: []sql.Row{
-						{"id", "int", "NO", "PRI", nil, ""},
-						{"large_text", "mediumtext", "YES", "", nil, ""},
-					},
-				},
-				{
-					Query: "DESCRIBE test_text_medium",
-					Expected: []sql.Row{
-						{"id", "int", "NO", "PRI", nil, ""},
-						{"medium_text", "longtext", "YES", "", nil, ""},
-					},
-				},
-				{
-					Query: "DESCRIBE test_text_10k",
-					Expected: []sql.Row{
-						{"id", "int", "NO", "PRI", nil, ""},
-						{"text_10k", "text", "YES", "", nil, ""},
-					},
-				},
-				{
-					Query: "DESCRIBE test_text_100k",
-					Expected: []sql.Row{
-						{"id", "int", "NO", "PRI", nil, ""},
-						{"text_100k", "mediumtext", "YES", "", nil, ""},
-					},
-				},
-				{
-					Query: "DESCRIBE test_text_1m",
-					Expected: []sql.Row{
-						{"id", "int", "NO", "PRI", nil, ""},
-						{"text_1m", "mediumtext", "YES", "", nil, ""},
 					},
 				},
 			},
