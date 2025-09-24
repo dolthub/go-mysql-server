@@ -242,6 +242,86 @@ func TestNumberConvert(t *testing.T) {
 	}
 }
 
+func TestNumberConvertRound(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	tests := []struct {
+		typ     sql.Type
+		inp     interface{}
+		exp     interface{}
+		err     bool
+		inRange sql.ConvertInRange
+	}{
+		// Boolean, Int8, Uint8, ... all use convertToInt64
+		{
+			typ:     Int64,
+			inp:     "1.1",
+			exp:     int64(1),
+			err:     false,
+			inRange: sql.InRange,
+		},
+		{
+			typ:     Int64,
+			inp:     "1.9",
+			exp:     int64(2),
+			err:     false,
+			inRange: sql.InRange,
+		},
+		{
+			typ:     Int64,
+			inp:     "100.1ABC",
+			exp:     int64(100),
+			err:     true,
+			inRange: sql.InRange,
+		},
+		{
+			typ:     Int64,
+			inp:     "100.9ABC",
+			exp:     int64(101),
+			err:     true,
+			inRange: sql.InRange,
+		},
+		{
+			typ:     Uint64,
+			inp:     "1.1",
+			exp:     uint64(1),
+			err:     false,
+			inRange: sql.InRange,
+		},
+		{
+			typ:     Uint64,
+			inp:     "1.9",
+			exp:     uint64(2),
+			err:     false,
+			inRange: sql.InRange,
+		},
+		{
+			typ:     Uint64,
+			inp:     "100.1ABC",
+			exp:     uint64(100),
+			err:     true,
+			inRange: sql.InRange,
+		},
+		{
+			typ:     Uint64,
+			inp:     "100.9ABC",
+			exp:     uint64(101),
+			err:     true,
+			inRange: sql.InRange,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v %v %v", test.typ, test.inp, test.exp), func(t *testing.T) {
+			val, inRange, err := test.typ.(sql.RoundingNumberType).ConvertRound(ctx, test.inp)
+			if test.err {
+				assert.True(t, sql.ErrTruncatedIncorrect.Is(err))
+			}
+			assert.Equal(t, test.exp, val)
+			assert.Equal(t, test.inRange, inRange)
+		})
+	}
+}
+
 func TestNumberSQL_BooleanFromBoolean(t *testing.T) {
 	val, err := Boolean.SQL(sql.NewEmptyContext(), nil, true)
 	require.NoError(t, err)
