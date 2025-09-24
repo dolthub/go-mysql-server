@@ -84,6 +84,22 @@ func TestRandWithSeed(t *testing.T) {
 	f642 = f.(float64)
 
 	assert.Equal(t, f64, f642)
+
+	r, _ = NewRand(expression.NewLiteral("10 not a number", types.LongText))
+	assert.Equal(t, `rand('10 not a number')`, r.String())
+
+	f, err = r.Eval(nil, nil)
+	require.NoError(t, err)
+	f64 = f.(float64)
+
+	assert.GreaterOrEqual(t, f64, float64(0))
+	assert.Less(t, f64, float64(1))
+
+	f, err = r.Eval(nil, nil)
+	require.NoError(t, err)
+	f642 = f.(float64)
+
+	assert.Equal(t, f64, f642)
 }
 
 func TestRadians(t *testing.T) {
@@ -94,6 +110,7 @@ func TestRadians(t *testing.T) {
 	tf.AddSucceeding(math.Pi, int16(180))
 	tf.AddSucceeding(math.Pi/2.0, (90))
 	tf.AddSucceeding(2*math.Pi, 360.0)
+	tf.AddSucceeding(math.Pi, "180.0abc")
 	tf.Test(t, nil, nil)
 }
 
@@ -107,6 +124,7 @@ func TestDegrees(t *testing.T) {
 		{"decimal 2pi", decimal.NewFromFloat(2 * math.Pi), 360.0},
 		{"float64 pi/2", math.Pi / 2.0, 90.0},
 		{"float32 3*pi/2", float32(3.0 * math.Pi / 2.0), 270.0},
+		{"string truncates", "3.1415926536ABC", 180.0},
 	}
 
 	f := sql.Function1{Name: "degrees", Fn: NewDegrees}
@@ -395,13 +413,16 @@ func TestExp(t *testing.T) {
 			exp:  math.Exp(10),
 		},
 		{
-			// we don't do truncation yet
-			// https://github.com/dolthub/dolt/issues/7302
-			name: "scientific string is truncated",
+			name: "scientific string is evaluated",
 			arg:  expression.NewLiteral("1e1", types.Text),
-			exp:  "",
+			exp:  math.Exp(10),
 			err:  false,
-			skip: true,
+		},
+		{
+			name: "scientific string is truncated",
+			arg:  expression.NewLiteral("10abc", types.Text),
+			exp:  math.Exp(10),
+			err:  false,
 		},
 	}
 
