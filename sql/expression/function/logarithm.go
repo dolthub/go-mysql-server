@@ -16,13 +16,14 @@ package function
 
 import (
 	"fmt"
-	"gopkg.in/src-d/go-errors.v1"
 	"math"
+
+	"github.com/dolthub/vitess/go/mysql"
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/dolthub/vitess/go/mysql"
 )
 
 // ErrInvalidArgumentForLogarithm is returned when an invalid argument value is passed to a
