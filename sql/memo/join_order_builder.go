@@ -395,15 +395,15 @@ func (j *joinOrderBuilder) hasEqEdge(leftCol, rightCol sql.ColumnId) bool {
 	return false
 }
 
-func (j *joinOrderBuilder) findVertexFromCol(col sql.ColumnId) (vertexIndex, GroupId) {
+func (j *joinOrderBuilder) findVertexFromCol(col sql.ColumnId) (vertexIndex, GroupId, bool) {
 	for i, v := range j.vertices {
 		if t, ok := v.(SourceRel); ok {
 			if t.Group().RelProps.FuncDeps().All().Contains(col) {
-				return vertexIndex(i), t.Group().Id
+				return vertexIndex(i), t.Group().Id, true
 			}
 		}
 	}
-	panic("vertex not found")
+	return 0, 0, false
 }
 
 func (j *joinOrderBuilder) findVertexFromGroup(grp GroupId) vertexIndex {
@@ -421,8 +421,11 @@ func (j *joinOrderBuilder) findVertexFromGroup(grp GroupId) vertexIndex {
 // on an equality filter between two columns.
 func (j *joinOrderBuilder) makeTransitiveEdge(col1, col2 sql.ColumnId) {
 	var vert vertexSet
-	v1, _ := j.findVertexFromCol(col1)
-	v2, _ := j.findVertexFromCol(col2)
+	v1, _, v1found := j.findVertexFromCol(col1)
+	v2, _, v2found := j.findVertexFromCol(col2)
+	if !v1found || !v2found {
+		return
+	}
 	vert = vert.add(v1).add(v2)
 
 	// find edge where the vertices are provided but partitioned

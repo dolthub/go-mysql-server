@@ -3274,7 +3274,7 @@ Select * from (
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [ab.a:2!null, ab.b:3]\n" +
 			" └─ Sort(ab.a:2!null ASC nullsFirst)\n" +
-			"     └─ Filter\n" +
+			"     └─ LookupJoin\n" +
 			"         ├─ Eq\n" +
 			"         │   ├─ ab.b:3\n" +
 			"         │   └─ Subquery\n" +
@@ -3302,43 +3302,40 @@ Select * from (
 			"         │                   ├─ columns: [x y]\n" +
 			"         │                   ├─ colSet: (5,6)\n" +
 			"         │                   └─ tableId: 3\n" +
-			"         └─ LookupJoin\n" +
-			"             ├─ ProcessTable\n" +
-			"             │   └─ Table\n" +
-			"             │       ├─ name: pq\n" +
-			"             │       └─ columns: [p q]\n" +
-			"             └─ IndexedTableAccess(ab)\n" +
-			"                 ├─ index: [ab.a]\n" +
-			"                 ├─ keys: [pq.p:0!null]\n" +
-			"                 ├─ colSet: (1,2)\n" +
-			"                 ├─ tableId: 1\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: ab\n" +
-			"                     └─ columns: [a b]\n" +
+			"         ├─ ProcessTable\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: pq\n" +
+			"         │       └─ columns: [p q]\n" +
+			"         └─ IndexedTableAccess(ab)\n" +
+			"             ├─ index: [ab.a]\n" +
+			"             ├─ keys: [pq.p:0!null]\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             ├─ tableId: 1\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: ab\n" +
+			"                 └─ columns: [a b]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [ab.a, ab.b]\n" +
 			" └─ Sort(ab.a ASC)\n" +
-			"     └─ Filter\n" +
+			"     └─ LookupJoin\n" +
 			"         ├─ (ab.b = Subquery(select y from xy where y in (select v from uv where v = b)))\n" +
-			"         └─ LookupJoin\n" +
-			"             ├─ Table\n" +
-			"             │   └─ name: pq\n" +
-			"             └─ IndexedTableAccess(ab)\n" +
-			"                 ├─ index: [ab.a]\n" +
-			"                 └─ keys: pq.p\n" +
+			"         ├─ Table\n" +
+			"         │   └─ name: pq\n" +
+			"         └─ IndexedTableAccess(ab)\n" +
+			"             ├─ index: [ab.a]\n" +
+			"             └─ keys: pq.p\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [ab.a, ab.b]\n" +
 			" └─ Sort(ab.a ASC)\n" +
-			"     └─ Filter\n" +
+			"     └─ LookupJoin\n" +
 			"         ├─ (ab.b = Subquery(select y from xy where y in (select v from uv where v = b)))\n" +
-			"         └─ LookupJoin\n" +
-			"             ├─ Table\n" +
-			"             │   └─ name: pq\n" +
-			"             └─ IndexedTableAccess(ab)\n" +
-			"                 ├─ index: [ab.a]\n" +
-			"                 └─ keys: pq.p\n" +
+			"         ├─ Table\n" +
+			"         │   └─ name: pq\n" +
+			"         └─ IndexedTableAccess(ab)\n" +
+			"             ├─ index: [ab.a]\n" +
+			"             └─ keys: pq.p\n" +
 			"",
 	},
 	{
@@ -22560,54 +22557,50 @@ WHERE keyless.c0 IN (
 			"         │       ├─ alias-string: with recursive cte (depth, i, j) as (select 0, T1.c0, T1.c1 from keyless as T1 where T1.c0 = 0 union all select cte.depth + 1, cte.i, T2.c1 + 1 from cte, keyless as T2 where cte.depth = T2.c0) select U0.c0 from keyless as U0, cte where cte.j = keyless.c0\n" +
 			"         │       └─ Project\n" +
 			"         │           ├─ columns: [u0.c0:5]\n" +
-			"         │           └─ Filter\n" +
+			"         │           └─ InnerJoin\n" +
 			"         │               ├─ Eq\n" +
 			"         │               │   ├─ cte.j:4\n" +
 			"         │               │   └─ keyless.c0:0\n" +
-			"         │               └─ CrossHashJoin\n" +
-			"         │                   ├─ SubqueryAlias\n" +
-			"         │                   │   ├─ name: cte\n" +
-			"         │                   │   ├─ outerVisibility: true\n" +
-			"         │                   │   ├─ isLateral: false\n" +
-			"         │                   │   ├─ cacheable: true\n" +
-			"         │                   │   ├─ colSet: (16-18)\n" +
-			"         │                   │   ├─ tableId: 5\n" +
-			"         │                   │   └─ RecursiveCTE\n" +
-			"         │                   │       └─ Union all\n" +
-			"         │                   │           ├─ Project\n" +
-			"         │                   │           │   ├─ columns: [0 (tinyint), t1.c0:2, t1.c1:3]\n" +
-			"         │                   │           │   └─ Filter\n" +
-			"         │                   │           │       ├─ Eq\n" +
-			"         │                   │           │       │   ├─ t1.c0:2\n" +
-			"         │                   │           │       │   └─ 0 (bigint)\n" +
-			"         │                   │           │       └─ TableAlias(t1)\n" +
-			"         │                   │           │           └─ Table\n" +
-			"         │                   │           │               ├─ name: keyless\n" +
-			"         │                   │           │               ├─ columns: [c0 c1]\n" +
-			"         │                   │           │               ├─ colSet: (3,4)\n" +
-			"         │                   │           │               └─ tableId: 2\n" +
-			"         │                   │           └─ Project\n" +
-			"         │                   │               ├─ columns: [(cte.depth:4!null + 1 (tinyint))->cte.depth + 1:0, cte.i:5, (t2.c1:3 + 1 (tinyint))->T2.c1 + 1:0]\n" +
-			"         │                   │               └─ InnerJoin\n" +
-			"         │                   │                   ├─ Eq\n" +
-			"         │                   │                   │   ├─ cte.depth:4!null\n" +
-			"         │                   │                   │   └─ t2.c0:2\n" +
-			"         │                   │                   ├─ TableAlias(t2)\n" +
-			"         │                   │                   │   └─ Table\n" +
-			"         │                   │                   │       ├─ name: keyless\n" +
-			"         │                   │                   │       ├─ columns: [c0 c1]\n" +
-			"         │                   │                   │       ├─ colSet: (12,13)\n" +
-			"         │                   │                   │       └─ tableId: 5\n" +
-			"         │                   │                   └─ RecursiveTable(cte)\n" +
-			"         │                   └─ HashLookup\n" +
-			"         │                       ├─ left-key: TUPLE()\n" +
-			"         │                       ├─ right-key: TUPLE()\n" +
-			"         │                       └─ TableAlias(u0)\n" +
-			"         │                           └─ Table\n" +
-			"         │                               ├─ name: keyless\n" +
-			"         │                               ├─ columns: [c0]\n" +
-			"         │                               ├─ colSet: (14,15)\n" +
-			"         │                               └─ tableId: 7\n" +
+			"         │               ├─ SubqueryAlias\n" +
+			"         │               │   ├─ name: cte\n" +
+			"         │               │   ├─ outerVisibility: true\n" +
+			"         │               │   ├─ isLateral: false\n" +
+			"         │               │   ├─ cacheable: true\n" +
+			"         │               │   ├─ colSet: (16-18)\n" +
+			"         │               │   ├─ tableId: 5\n" +
+			"         │               │   └─ RecursiveCTE\n" +
+			"         │               │       └─ Union all\n" +
+			"         │               │           ├─ Project\n" +
+			"         │               │           │   ├─ columns: [0 (tinyint), t1.c0:2, t1.c1:3]\n" +
+			"         │               │           │   └─ Filter\n" +
+			"         │               │           │       ├─ Eq\n" +
+			"         │               │           │       │   ├─ t1.c0:2\n" +
+			"         │               │           │       │   └─ 0 (bigint)\n" +
+			"         │               │           │       └─ TableAlias(t1)\n" +
+			"         │               │           │           └─ Table\n" +
+			"         │               │           │               ├─ name: keyless\n" +
+			"         │               │           │               ├─ columns: [c0 c1]\n" +
+			"         │               │           │               ├─ colSet: (3,4)\n" +
+			"         │               │           │               └─ tableId: 2\n" +
+			"         │               │           └─ Project\n" +
+			"         │               │               ├─ columns: [(cte.depth:4!null + 1 (tinyint))->cte.depth + 1:0, cte.i:5, (t2.c1:3 + 1 (tinyint))->T2.c1 + 1:0]\n" +
+			"         │               │               └─ InnerJoin\n" +
+			"         │               │                   ├─ Eq\n" +
+			"         │               │                   │   ├─ cte.depth:4!null\n" +
+			"         │               │                   │   └─ t2.c0:2\n" +
+			"         │               │                   ├─ TableAlias(t2)\n" +
+			"         │               │                   │   └─ Table\n" +
+			"         │               │                   │       ├─ name: keyless\n" +
+			"         │               │                   │       ├─ columns: [c0 c1]\n" +
+			"         │               │                   │       ├─ colSet: (12,13)\n" +
+			"         │               │                   │       └─ tableId: 5\n" +
+			"         │               │                   └─ RecursiveTable(cte)\n" +
+			"         │               └─ TableAlias(u0)\n" +
+			"         │                   └─ Table\n" +
+			"         │                       ├─ name: keyless\n" +
+			"         │                       ├─ columns: [c0]\n" +
+			"         │                       ├─ colSet: (14,15)\n" +
+			"         │                       └─ tableId: 7\n" +
 			"         └─ ProcessTable\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: keyless\n" +
@@ -22625,40 +22618,36 @@ WHERE keyless.c0 IN (
 			"         │       ├─ cacheable: false\n" +
 			"         │       └─ Project\n" +
 			"         │           ├─ columns: [u0.c0]\n" +
-			"         │           └─ Filter\n" +
+			"         │           └─ InnerJoin\n" +
 			"         │               ├─ (cte.j = keyless.c0)\n" +
-			"         │               └─ CrossHashJoin\n" +
-			"         │                   ├─ SubqueryAlias\n" +
-			"         │                   │   ├─ name: cte\n" +
-			"         │                   │   ├─ outerVisibility: true\n" +
-			"         │                   │   ├─ isLateral: false\n" +
-			"         │                   │   ├─ cacheable: true\n" +
-			"         │                   │   └─ RecursiveCTE\n" +
-			"         │                   │       └─ Union all\n" +
-			"         │                   │           ├─ Project\n" +
-			"         │                   │           │   ├─ columns: [0, t1.c0, t1.c1]\n" +
-			"         │                   │           │   └─ Filter\n" +
-			"         │                   │           │       ├─ (t1.c0 = 0)\n" +
-			"         │                   │           │       └─ TableAlias(t1)\n" +
-			"         │                   │           │           └─ Table\n" +
-			"         │                   │           │               ├─ name: keyless\n" +
-			"         │                   │           │               └─ columns: [c0 c1]\n" +
-			"         │                   │           └─ Project\n" +
-			"         │                   │               ├─ columns: [(cte.depth + 1) as cte.depth + 1, cte.i, (t2.c1 + 1) as T2.c1 + 1]\n" +
-			"         │                   │               └─ InnerJoin\n" +
-			"         │                   │                   ├─ (cte.depth = t2.c0)\n" +
-			"         │                   │                   ├─ TableAlias(t2)\n" +
-			"         │                   │                   │   └─ Table\n" +
-			"         │                   │                   │       ├─ name: keyless\n" +
-			"         │                   │                   │       └─ columns: [c0 c1]\n" +
-			"         │                   │                   └─ RecursiveTable(cte)\n" +
-			"         │                   └─ HashLookup\n" +
-			"         │                       ├─ left-key: ()\n" +
-			"         │                       ├─ right-key: ()\n" +
-			"         │                       └─ TableAlias(u0)\n" +
-			"         │                           └─ Table\n" +
-			"         │                               ├─ name: keyless\n" +
-			"         │                               └─ columns: [c0]\n" +
+			"         │               ├─ SubqueryAlias\n" +
+			"         │               │   ├─ name: cte\n" +
+			"         │               │   ├─ outerVisibility: true\n" +
+			"         │               │   ├─ isLateral: false\n" +
+			"         │               │   ├─ cacheable: true\n" +
+			"         │               │   └─ RecursiveCTE\n" +
+			"         │               │       └─ Union all\n" +
+			"         │               │           ├─ Project\n" +
+			"         │               │           │   ├─ columns: [0, t1.c0, t1.c1]\n" +
+			"         │               │           │   └─ Filter\n" +
+			"         │               │           │       ├─ (t1.c0 = 0)\n" +
+			"         │               │           │       └─ TableAlias(t1)\n" +
+			"         │               │           │           └─ Table\n" +
+			"         │               │           │               ├─ name: keyless\n" +
+			"         │               │           │               └─ columns: [c0 c1]\n" +
+			"         │               │           └─ Project\n" +
+			"         │               │               ├─ columns: [(cte.depth + 1) as cte.depth + 1, cte.i, (t2.c1 + 1) as T2.c1 + 1]\n" +
+			"         │               │               └─ InnerJoin\n" +
+			"         │               │                   ├─ (cte.depth = t2.c0)\n" +
+			"         │               │                   ├─ TableAlias(t2)\n" +
+			"         │               │                   │   └─ Table\n" +
+			"         │               │                   │       ├─ name: keyless\n" +
+			"         │               │                   │       └─ columns: [c0 c1]\n" +
+			"         │               │                   └─ RecursiveTable(cte)\n" +
+			"         │               └─ TableAlias(u0)\n" +
+			"         │                   └─ Table\n" +
+			"         │                       ├─ name: keyless\n" +
+			"         │                       └─ columns: [c0]\n" +
 			"         └─ Table\n" +
 			"             └─ name: keyless\n" +
 			"",
@@ -22674,40 +22663,36 @@ WHERE keyless.c0 IN (
 			"         │       ├─ cacheable: false\n" +
 			"         │       └─ Project\n" +
 			"         │           ├─ columns: [u0.c0]\n" +
-			"         │           └─ Filter\n" +
+			"         │           └─ InnerJoin\n" +
 			"         │               ├─ (cte.j = keyless.c0)\n" +
-			"         │               └─ CrossHashJoin\n" +
-			"         │                   ├─ SubqueryAlias\n" +
-			"         │                   │   ├─ name: cte\n" +
-			"         │                   │   ├─ outerVisibility: true\n" +
-			"         │                   │   ├─ isLateral: false\n" +
-			"         │                   │   ├─ cacheable: true\n" +
-			"         │                   │   └─ RecursiveCTE\n" +
-			"         │                   │       └─ Union all\n" +
-			"         │                   │           ├─ Project\n" +
-			"         │                   │           │   ├─ columns: [0, t1.c0, t1.c1]\n" +
-			"         │                   │           │   └─ Filter\n" +
-			"         │                   │           │       ├─ (t1.c0 = 0)\n" +
-			"         │                   │           │       └─ TableAlias(t1)\n" +
-			"         │                   │           │           └─ Table\n" +
-			"         │                   │           │               ├─ name: keyless\n" +
-			"         │                   │           │               └─ columns: [c0 c1]\n" +
-			"         │                   │           └─ Project\n" +
-			"         │                   │               ├─ columns: [(cte.depth + 1) as cte.depth + 1, cte.i, (t2.c1 + 1) as T2.c1 + 1]\n" +
-			"         │                   │               └─ InnerJoin\n" +
-			"         │                   │                   ├─ (cte.depth = t2.c0)\n" +
-			"         │                   │                   ├─ TableAlias(t2)\n" +
-			"         │                   │                   │   └─ Table\n" +
-			"         │                   │                   │       ├─ name: keyless\n" +
-			"         │                   │                   │       └─ columns: [c0 c1]\n" +
-			"         │                   │                   └─ RecursiveTable(cte)\n" +
-			"         │                   └─ HashLookup\n" +
-			"         │                       ├─ left-key: ()\n" +
-			"         │                       ├─ right-key: ()\n" +
-			"         │                       └─ TableAlias(u0)\n" +
-			"         │                           └─ Table\n" +
-			"         │                               ├─ name: keyless\n" +
-			"         │                               └─ columns: [c0]\n" +
+			"         │               ├─ SubqueryAlias\n" +
+			"         │               │   ├─ name: cte\n" +
+			"         │               │   ├─ outerVisibility: true\n" +
+			"         │               │   ├─ isLateral: false\n" +
+			"         │               │   ├─ cacheable: true\n" +
+			"         │               │   └─ RecursiveCTE\n" +
+			"         │               │       └─ Union all\n" +
+			"         │               │           ├─ Project\n" +
+			"         │               │           │   ├─ columns: [0, t1.c0, t1.c1]\n" +
+			"         │               │           │   └─ Filter\n" +
+			"         │               │           │       ├─ (t1.c0 = 0)\n" +
+			"         │               │           │       └─ TableAlias(t1)\n" +
+			"         │               │           │           └─ Table\n" +
+			"         │               │           │               ├─ name: keyless\n" +
+			"         │               │           │               └─ columns: [c0 c1]\n" +
+			"         │               │           └─ Project\n" +
+			"         │               │               ├─ columns: [(cte.depth + 1) as cte.depth + 1, cte.i, (t2.c1 + 1) as T2.c1 + 1]\n" +
+			"         │               │               └─ InnerJoin\n" +
+			"         │               │                   ├─ (cte.depth = t2.c0)\n" +
+			"         │               │                   ├─ TableAlias(t2)\n" +
+			"         │               │                   │   └─ Table\n" +
+			"         │               │                   │       ├─ name: keyless\n" +
+			"         │               │                   │       └─ columns: [c0 c1]\n" +
+			"         │               │                   └─ RecursiveTable(cte)\n" +
+			"         │               └─ TableAlias(u0)\n" +
+			"         │                   └─ Table\n" +
+			"         │                       ├─ name: keyless\n" +
+			"         │                       └─ columns: [c0]\n" +
 			"         └─ Table\n" +
 			"             └─ name: keyless\n" +
 			"",
@@ -22745,55 +22730,52 @@ WHERE keyless.c0 IN (
 			"         │       ├─ cacheable: false\n" +
 			"         │       ├─ alias-string: with recursive cte (depth, i, j) as (select 0, T1.c0, T1.c1 from keyless as T1 where T1.c0 = 0 union all select cte.depth + 1, cte.i, T2.c1 + 1 from cte, keyless as T2 where cte.depth = T2.c0) select U0.c0 from cte, keyless as U0 where cte.j = keyless.c0\n" +
 			"         │       └─ Project\n" +
-			"         │           ├─ columns: [u0.c0:5]\n" +
-			"         │           └─ Filter\n" +
+			"         │           ├─ columns: [u0.c0:2]\n" +
+			"         │           └─ InnerJoin\n" +
 			"         │               ├─ Eq\n" +
-			"         │               │   ├─ cte.j:4\n" +
+			"         │               │   ├─ cte.j:5\n" +
 			"         │               │   └─ keyless.c0:0\n" +
-			"         │               └─ CrossHashJoin\n" +
-			"         │                   ├─ SubqueryAlias\n" +
-			"         │                   │   ├─ name: cte\n" +
-			"         │                   │   ├─ outerVisibility: true\n" +
-			"         │                   │   ├─ isLateral: false\n" +
-			"         │                   │   ├─ cacheable: true\n" +
-			"         │                   │   ├─ colSet: (14-16)\n" +
-			"         │                   │   ├─ tableId: 5\n" +
-			"         │                   │   └─ RecursiveCTE\n" +
-			"         │                   │       └─ Union all\n" +
-			"         │                   │           ├─ Project\n" +
-			"         │                   │           │   ├─ columns: [0 (tinyint), t1.c0:2, t1.c1:3]\n" +
-			"         │                   │           │   └─ Filter\n" +
-			"         │                   │           │       ├─ Eq\n" +
-			"         │                   │           │       │   ├─ t1.c0:2\n" +
-			"         │                   │           │       │   └─ 0 (bigint)\n" +
-			"         │                   │           │       └─ TableAlias(t1)\n" +
-			"         │                   │           │           └─ Table\n" +
-			"         │                   │           │               ├─ name: keyless\n" +
-			"         │                   │           │               ├─ columns: [c0 c1]\n" +
-			"         │                   │           │               ├─ colSet: (3,4)\n" +
-			"         │                   │           │               └─ tableId: 2\n" +
-			"         │                   │           └─ Project\n" +
-			"         │                   │               ├─ columns: [(cte.depth:4!null + 1 (tinyint))->cte.depth + 1:0, cte.i:5, (t2.c1:3 + 1 (tinyint))->T2.c1 + 1:0]\n" +
-			"         │                   │               └─ InnerJoin\n" +
-			"         │                   │                   ├─ Eq\n" +
-			"         │                   │                   │   ├─ cte.depth:4!null\n" +
-			"         │                   │                   │   └─ t2.c0:2\n" +
-			"         │                   │                   ├─ TableAlias(t2)\n" +
-			"         │                   │                   │   └─ Table\n" +
-			"         │                   │                   │       ├─ name: keyless\n" +
-			"         │                   │                   │       ├─ columns: [c0 c1]\n" +
-			"         │                   │                   │       ├─ colSet: (12,13)\n" +
-			"         │                   │                   │       └─ tableId: 5\n" +
-			"         │                   │                   └─ RecursiveTable(cte)\n" +
-			"         │                   └─ HashLookup\n" +
-			"         │                       ├─ left-key: TUPLE()\n" +
-			"         │                       ├─ right-key: TUPLE()\n" +
-			"         │                       └─ TableAlias(u0)\n" +
-			"         │                           └─ Table\n" +
-			"         │                               ├─ name: keyless\n" +
-			"         │                               ├─ columns: [c0]\n" +
-			"         │                               ├─ colSet: (17,18)\n" +
-			"         │                               └─ tableId: 7\n" +
+			"         │               ├─ TableAlias(u0)\n" +
+			"         │               │   └─ Table\n" +
+			"         │               │       ├─ name: keyless\n" +
+			"         │               │       ├─ columns: [c0]\n" +
+			"         │               │       ├─ colSet: (17,18)\n" +
+			"         │               │       └─ tableId: 7\n" +
+			"         │               └─ CachedResults\n" +
+			"         │                   └─ SubqueryAlias\n" +
+			"         │                       ├─ name: cte\n" +
+			"         │                       ├─ outerVisibility: true\n" +
+			"         │                       ├─ isLateral: false\n" +
+			"         │                       ├─ cacheable: true\n" +
+			"         │                       ├─ colSet: (14-16)\n" +
+			"         │                       ├─ tableId: 5\n" +
+			"         │                       └─ RecursiveCTE\n" +
+			"         │                           └─ Union all\n" +
+			"         │                               ├─ Project\n" +
+			"         │                               │   ├─ columns: [0 (tinyint), t1.c0:2, t1.c1:3]\n" +
+			"         │                               │   └─ Filter\n" +
+			"         │                               │       ├─ Eq\n" +
+			"         │                               │       │   ├─ t1.c0:2\n" +
+			"         │                               │       │   └─ 0 (bigint)\n" +
+			"         │                               │       └─ TableAlias(t1)\n" +
+			"         │                               │           └─ Table\n" +
+			"         │                               │               ├─ name: keyless\n" +
+			"         │                               │               ├─ columns: [c0 c1]\n" +
+			"         │                               │               ├─ colSet: (3,4)\n" +
+			"         │                               │               └─ tableId: 2\n" +
+			"         │                               └─ Project\n" +
+			"         │                                   ├─ columns: [(cte.depth:4!null + 1 (tinyint))->cte.depth + 1:0, cte.i:5, (t2.c1:3 + 1 (tinyint))->T2.c1 + 1:0]\n" +
+			"         │                                   └─ InnerJoin\n" +
+			"         │                                       ├─ Eq\n" +
+			"         │                                       │   ├─ cte.depth:5!null\n" +
+			"         │                                       │   └─ t2.c0:3\n" +
+			"         │                                       ├─ TableAlias(t2)\n" +
+			"         │                                       │   └─ Table\n" +
+			"         │                                       │       ├─ name: keyless\n" +
+			"         │                                       │       ├─ columns: [c0 c1]\n" +
+			"         │                                       │       ├─ colSet: (12,13)\n" +
+			"         │                                       │       └─ tableId: 5\n" +
+			"         │                                       └─ RecursiveTable(cte)\n" +
 			"         └─ ProcessTable\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: keyless\n" +
@@ -22811,40 +22793,37 @@ WHERE keyless.c0 IN (
 			"         │       ├─ cacheable: false\n" +
 			"         │       └─ Project\n" +
 			"         │           ├─ columns: [u0.c0]\n" +
-			"         │           └─ Filter\n" +
+			"         │           └─ InnerJoin\n" +
 			"         │               ├─ (cte.j = keyless.c0)\n" +
-			"         │               └─ CrossHashJoin\n" +
-			"         │                   ├─ SubqueryAlias\n" +
-			"         │                   │   ├─ name: cte\n" +
-			"         │                   │   ├─ outerVisibility: true\n" +
-			"         │                   │   ├─ isLateral: false\n" +
-			"         │                   │   ├─ cacheable: true\n" +
-			"         │                   │   └─ RecursiveCTE\n" +
-			"         │                   │       └─ Union all\n" +
-			"         │                   │           ├─ Project\n" +
-			"         │                   │           │   ├─ columns: [0, t1.c0, t1.c1]\n" +
-			"         │                   │           │   └─ Filter\n" +
-			"         │                   │           │       ├─ (t1.c0 = 0)\n" +
-			"         │                   │           │       └─ TableAlias(t1)\n" +
-			"         │                   │           │           └─ Table\n" +
-			"         │                   │           │               ├─ name: keyless\n" +
-			"         │                   │           │               └─ columns: [c0 c1]\n" +
-			"         │                   │           └─ Project\n" +
-			"         │                   │               ├─ columns: [(cte.depth + 1) as cte.depth + 1, cte.i, (t2.c1 + 1) as T2.c1 + 1]\n" +
-			"         │                   │               └─ InnerJoin\n" +
-			"         │                   │                   ├─ (cte.depth = t2.c0)\n" +
-			"         │                   │                   ├─ TableAlias(t2)\n" +
-			"         │                   │                   │   └─ Table\n" +
-			"         │                   │                   │       ├─ name: keyless\n" +
-			"         │                   │                   │       └─ columns: [c0 c1]\n" +
-			"         │                   │                   └─ RecursiveTable(cte)\n" +
-			"         │                   └─ HashLookup\n" +
-			"         │                       ├─ left-key: ()\n" +
-			"         │                       ├─ right-key: ()\n" +
-			"         │                       └─ TableAlias(u0)\n" +
-			"         │                           └─ Table\n" +
-			"         │                               ├─ name: keyless\n" +
-			"         │                               └─ columns: [c0]\n" +
+			"         │               ├─ TableAlias(u0)\n" +
+			"         │               │   └─ Table\n" +
+			"         │               │       ├─ name: keyless\n" +
+			"         │               │       └─ columns: [c0]\n" +
+			"         │               └─ CachedResults\n" +
+			"         │                   └─ SubqueryAlias\n" +
+			"         │                       ├─ name: cte\n" +
+			"         │                       ├─ outerVisibility: true\n" +
+			"         │                       ├─ isLateral: false\n" +
+			"         │                       ├─ cacheable: true\n" +
+			"         │                       └─ RecursiveCTE\n" +
+			"         │                           └─ Union all\n" +
+			"         │                               ├─ Project\n" +
+			"         │                               │   ├─ columns: [0, t1.c0, t1.c1]\n" +
+			"         │                               │   └─ Filter\n" +
+			"         │                               │       ├─ (t1.c0 = 0)\n" +
+			"         │                               │       └─ TableAlias(t1)\n" +
+			"         │                               │           └─ Table\n" +
+			"         │                               │               ├─ name: keyless\n" +
+			"         │                               │               └─ columns: [c0 c1]\n" +
+			"         │                               └─ Project\n" +
+			"         │                                   ├─ columns: [(cte.depth + 1) as cte.depth + 1, cte.i, (t2.c1 + 1) as T2.c1 + 1]\n" +
+			"         │                                   └─ InnerJoin\n" +
+			"         │                                       ├─ (cte.depth = t2.c0)\n" +
+			"         │                                       ├─ TableAlias(t2)\n" +
+			"         │                                       │   └─ Table\n" +
+			"         │                                       │       ├─ name: keyless\n" +
+			"         │                                       │       └─ columns: [c0 c1]\n" +
+			"         │                                       └─ RecursiveTable(cte)\n" +
 			"         └─ Table\n" +
 			"             └─ name: keyless\n" +
 			"",
@@ -22860,40 +22839,37 @@ WHERE keyless.c0 IN (
 			"         │       ├─ cacheable: false\n" +
 			"         │       └─ Project\n" +
 			"         │           ├─ columns: [u0.c0]\n" +
-			"         │           └─ Filter\n" +
+			"         │           └─ InnerJoin\n" +
 			"         │               ├─ (cte.j = keyless.c0)\n" +
-			"         │               └─ CrossHashJoin\n" +
-			"         │                   ├─ SubqueryAlias\n" +
-			"         │                   │   ├─ name: cte\n" +
-			"         │                   │   ├─ outerVisibility: true\n" +
-			"         │                   │   ├─ isLateral: false\n" +
-			"         │                   │   ├─ cacheable: true\n" +
-			"         │                   │   └─ RecursiveCTE\n" +
-			"         │                   │       └─ Union all\n" +
-			"         │                   │           ├─ Project\n" +
-			"         │                   │           │   ├─ columns: [0, t1.c0, t1.c1]\n" +
-			"         │                   │           │   └─ Filter\n" +
-			"         │                   │           │       ├─ (t1.c0 = 0)\n" +
-			"         │                   │           │       └─ TableAlias(t1)\n" +
-			"         │                   │           │           └─ Table\n" +
-			"         │                   │           │               ├─ name: keyless\n" +
-			"         │                   │           │               └─ columns: [c0 c1]\n" +
-			"         │                   │           └─ Project\n" +
-			"         │                   │               ├─ columns: [(cte.depth + 1) as cte.depth + 1, cte.i, (t2.c1 + 1) as T2.c1 + 1]\n" +
-			"         │                   │               └─ InnerJoin\n" +
-			"         │                   │                   ├─ (cte.depth = t2.c0)\n" +
-			"         │                   │                   ├─ TableAlias(t2)\n" +
-			"         │                   │                   │   └─ Table\n" +
-			"         │                   │                   │       ├─ name: keyless\n" +
-			"         │                   │                   │       └─ columns: [c0 c1]\n" +
-			"         │                   │                   └─ RecursiveTable(cte)\n" +
-			"         │                   └─ HashLookup\n" +
-			"         │                       ├─ left-key: ()\n" +
-			"         │                       ├─ right-key: ()\n" +
-			"         │                       └─ TableAlias(u0)\n" +
-			"         │                           └─ Table\n" +
-			"         │                               ├─ name: keyless\n" +
-			"         │                               └─ columns: [c0]\n" +
+			"         │               ├─ TableAlias(u0)\n" +
+			"         │               │   └─ Table\n" +
+			"         │               │       ├─ name: keyless\n" +
+			"         │               │       └─ columns: [c0]\n" +
+			"         │               └─ CachedResults\n" +
+			"         │                   └─ SubqueryAlias\n" +
+			"         │                       ├─ name: cte\n" +
+			"         │                       ├─ outerVisibility: true\n" +
+			"         │                       ├─ isLateral: false\n" +
+			"         │                       ├─ cacheable: true\n" +
+			"         │                       └─ RecursiveCTE\n" +
+			"         │                           └─ Union all\n" +
+			"         │                               ├─ Project\n" +
+			"         │                               │   ├─ columns: [0, t1.c0, t1.c1]\n" +
+			"         │                               │   └─ Filter\n" +
+			"         │                               │       ├─ (t1.c0 = 0)\n" +
+			"         │                               │       └─ TableAlias(t1)\n" +
+			"         │                               │           └─ Table\n" +
+			"         │                               │               ├─ name: keyless\n" +
+			"         │                               │               └─ columns: [c0 c1]\n" +
+			"         │                               └─ Project\n" +
+			"         │                                   ├─ columns: [(cte.depth + 1) as cte.depth + 1, cte.i, (t2.c1 + 1) as T2.c1 + 1]\n" +
+			"         │                                   └─ InnerJoin\n" +
+			"         │                                       ├─ (cte.depth = t2.c0)\n" +
+			"         │                                       ├─ TableAlias(t2)\n" +
+			"         │                                       │   └─ Table\n" +
+			"         │                                       │       ├─ name: keyless\n" +
+			"         │                                       │       └─ columns: [c0 c1]\n" +
+			"         │                                       └─ RecursiveTable(cte)\n" +
 			"         └─ Table\n" +
 			"             └─ name: keyless\n" +
 			"",
@@ -24194,111 +24170,110 @@ select * from mytable,
 where i = a
 order by i;`,
 		ExpectedPlan: "Sort(mytable.i:0!null ASC nullsFirst)\n" +
-			" └─ Filter\n" +
-			"     ├─ Eq\n" +
-			"     │   ├─ mytable.i:0!null\n" +
-			"     │   └─ sqa.a:2\n" +
-			"     └─ LateralCrossJoin\n" +
-			"         ├─ ProcessTable\n" +
-			"         │   └─ Table\n" +
-			"         │       ├─ name: mytable\n" +
-			"         │       └─ columns: [i s]\n" +
-			"         └─ CachedResults\n" +
+			" └─ LateralCrossJoin\n" +
+			"     ├─ AND\n" +
+			"     │   ├─ Eq\n" +
+			"     │   │   ├─ mytable.i:0!null\n" +
+			"     │   │   └─ sqa.a:2\n" +
+			"     │   └─ true (tinyint(1))\n" +
+			"     ├─ ProcessTable\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: mytable\n" +
+			"     │       └─ columns: [i s]\n" +
+			"     └─ CachedResults\n" +
+			"         └─ SubqueryAlias\n" +
+			"             ├─ name: sqa\n" +
+			"             ├─ outerVisibility: false\n" +
+			"             ├─ isLateral: true\n" +
+			"             ├─ cacheable: true\n" +
+			"             ├─ colSet: (10)\n" +
+			"             ├─ tableId: 7\n" +
 			"             └─ SubqueryAlias\n" +
-			"                 ├─ name: sqa\n" +
+			"                 ├─ name: cte\n" +
 			"                 ├─ outerVisibility: false\n" +
 			"                 ├─ isLateral: true\n" +
 			"                 ├─ cacheable: true\n" +
-			"                 ├─ colSet: (10)\n" +
-			"                 ├─ tableId: 7\n" +
-			"                 └─ SubqueryAlias\n" +
-			"                     ├─ name: cte\n" +
-			"                     ├─ outerVisibility: false\n" +
-			"                     ├─ isLateral: true\n" +
-			"                     ├─ cacheable: true\n" +
-			"                     ├─ colSet: (9)\n" +
-			"                     ├─ tableId: 5\n" +
-			"                     └─ RecursiveCTE\n" +
-			"                         └─ Union distinct\n" +
-			"                             ├─ Table\n" +
-			"                             │   ├─ name: xy\n" +
-			"                             │   ├─ columns: [y]\n" +
-			"                             │   ├─ colSet: (3,4)\n" +
-			"                             │   └─ tableId: 2\n" +
-			"                             └─ Project\n" +
-			"                                 ├─ columns: [xy.x:3!null]\n" +
-			"                                 └─ LookupJoin\n" +
-			"                                     ├─ RecursiveTable(cte)\n" +
-			"                                     └─ IndexedTableAccess(xy)\n" +
-			"                                         ├─ index: [xy.x]\n" +
-			"                                         ├─ keys: [cte.a:2]\n" +
-			"                                         ├─ colSet: (7,8)\n" +
-			"                                         ├─ tableId: 5\n" +
-			"                                         └─ Table\n" +
-			"                                             ├─ name: xy\n" +
-			"                                             └─ columns: [x]\n" +
+			"                 ├─ colSet: (9)\n" +
+			"                 ├─ tableId: 5\n" +
+			"                 └─ RecursiveCTE\n" +
+			"                     └─ Union distinct\n" +
+			"                         ├─ Table\n" +
+			"                         │   ├─ name: xy\n" +
+			"                         │   ├─ columns: [y]\n" +
+			"                         │   ├─ colSet: (3,4)\n" +
+			"                         │   └─ tableId: 2\n" +
+			"                         └─ Project\n" +
+			"                             ├─ columns: [xy.x:3!null]\n" +
+			"                             └─ LookupJoin\n" +
+			"                                 ├─ RecursiveTable(cte)\n" +
+			"                                 └─ IndexedTableAccess(xy)\n" +
+			"                                     ├─ index: [xy.x]\n" +
+			"                                     ├─ keys: [cte.a:2]\n" +
+			"                                     ├─ colSet: (7,8)\n" +
+			"                                     ├─ tableId: 5\n" +
+			"                                     └─ Table\n" +
+			"                                         ├─ name: xy\n" +
+			"                                         └─ columns: [x]\n" +
 			"",
 		ExpectedEstimates: "Sort(mytable.i ASC)\n" +
-			" └─ Filter\n" +
-			"     ├─ (mytable.i = sqa.a)\n" +
-			"     └─ LateralCrossJoin\n" +
-			"         ├─ Table\n" +
-			"         │   └─ name: mytable\n" +
-			"         └─ CachedResults\n" +
+			" └─ LateralCrossJoin\n" +
+			"     ├─ ((mytable.i = sqa.a) AND true)\n" +
+			"     ├─ Table\n" +
+			"     │   └─ name: mytable\n" +
+			"     └─ CachedResults\n" +
+			"         └─ SubqueryAlias\n" +
+			"             ├─ name: sqa\n" +
+			"             ├─ outerVisibility: false\n" +
+			"             ├─ isLateral: true\n" +
+			"             ├─ cacheable: true\n" +
 			"             └─ SubqueryAlias\n" +
-			"                 ├─ name: sqa\n" +
+			"                 ├─ name: cte\n" +
 			"                 ├─ outerVisibility: false\n" +
 			"                 ├─ isLateral: true\n" +
 			"                 ├─ cacheable: true\n" +
-			"                 └─ SubqueryAlias\n" +
-			"                     ├─ name: cte\n" +
-			"                     ├─ outerVisibility: false\n" +
-			"                     ├─ isLateral: true\n" +
-			"                     ├─ cacheable: true\n" +
-			"                     └─ RecursiveCTE\n" +
-			"                         └─ Union distinct\n" +
-			"                             ├─ Table\n" +
-			"                             │   ├─ name: xy\n" +
-			"                             │   └─ columns: [y]\n" +
-			"                             └─ Project\n" +
-			"                                 ├─ columns: [xy.x]\n" +
-			"                                 └─ LookupJoin\n" +
-			"                                     ├─ RecursiveTable(cte)\n" +
-			"                                     └─ IndexedTableAccess(xy)\n" +
-			"                                         ├─ index: [xy.x]\n" +
-			"                                         ├─ columns: [x]\n" +
-			"                                         └─ keys: cte.a\n" +
+			"                 └─ RecursiveCTE\n" +
+			"                     └─ Union distinct\n" +
+			"                         ├─ Table\n" +
+			"                         │   ├─ name: xy\n" +
+			"                         │   └─ columns: [y]\n" +
+			"                         └─ Project\n" +
+			"                             ├─ columns: [xy.x]\n" +
+			"                             └─ LookupJoin\n" +
+			"                                 ├─ RecursiveTable(cte)\n" +
+			"                                 └─ IndexedTableAccess(xy)\n" +
+			"                                     ├─ index: [xy.x]\n" +
+			"                                     ├─ columns: [x]\n" +
+			"                                     └─ keys: cte.a\n" +
 			"",
 		ExpectedAnalysis: "Sort(mytable.i ASC)\n" +
-			" └─ Filter\n" +
-			"     ├─ (mytable.i = sqa.a)\n" +
-			"     └─ LateralCrossJoin\n" +
-			"         ├─ Table\n" +
-			"         │   └─ name: mytable\n" +
-			"         └─ CachedResults\n" +
+			" └─ LateralCrossJoin\n" +
+			"     ├─ ((mytable.i = sqa.a) AND true)\n" +
+			"     ├─ Table\n" +
+			"     │   └─ name: mytable\n" +
+			"     └─ CachedResults\n" +
+			"         └─ SubqueryAlias\n" +
+			"             ├─ name: sqa\n" +
+			"             ├─ outerVisibility: false\n" +
+			"             ├─ isLateral: true\n" +
+			"             ├─ cacheable: true\n" +
 			"             └─ SubqueryAlias\n" +
-			"                 ├─ name: sqa\n" +
+			"                 ├─ name: cte\n" +
 			"                 ├─ outerVisibility: false\n" +
 			"                 ├─ isLateral: true\n" +
 			"                 ├─ cacheable: true\n" +
-			"                 └─ SubqueryAlias\n" +
-			"                     ├─ name: cte\n" +
-			"                     ├─ outerVisibility: false\n" +
-			"                     ├─ isLateral: true\n" +
-			"                     ├─ cacheable: true\n" +
-			"                     └─ RecursiveCTE\n" +
-			"                         └─ Union distinct\n" +
-			"                             ├─ Table\n" +
-			"                             │   ├─ name: xy\n" +
-			"                             │   └─ columns: [y]\n" +
-			"                             └─ Project\n" +
-			"                                 ├─ columns: [xy.x]\n" +
-			"                                 └─ LookupJoin\n" +
-			"                                     ├─ RecursiveTable(cte)\n" +
-			"                                     └─ IndexedTableAccess(xy)\n" +
-			"                                         ├─ index: [xy.x]\n" +
-			"                                         ├─ columns: [x]\n" +
-			"                                         └─ keys: cte.a\n" +
+			"                 └─ RecursiveCTE\n" +
+			"                     └─ Union distinct\n" +
+			"                         ├─ Table\n" +
+			"                         │   ├─ name: xy\n" +
+			"                         │   └─ columns: [y]\n" +
+			"                         └─ Project\n" +
+			"                             ├─ columns: [xy.x]\n" +
+			"                             └─ LookupJoin\n" +
+			"                                 ├─ RecursiveTable(cte)\n" +
+			"                                 └─ IndexedTableAccess(xy)\n" +
+			"                                     ├─ index: [xy.x]\n" +
+			"                                     ├─ columns: [x]\n" +
+			"                                     └─ keys: cte.a\n" +
 			"",
 	},
 	{
@@ -24323,136 +24298,135 @@ select * from mytable,
 where i = a
 order by i;`,
 		ExpectedPlan: "Sort(mytable.i:0!null ASC nullsFirst)\n" +
-			" └─ Filter\n" +
-			"     ├─ Eq\n" +
-			"     │   ├─ mytable.i:0!null\n" +
-			"     │   └─ sqa2.a:2\n" +
-			"     └─ LateralCrossJoin\n" +
-			"         ├─ ProcessTable\n" +
-			"         │   └─ Table\n" +
-			"         │       ├─ name: mytable\n" +
-			"         │       └─ columns: [i s]\n" +
-			"         └─ CachedResults\n" +
+			" └─ LateralCrossJoin\n" +
+			"     ├─ AND\n" +
+			"     │   ├─ Eq\n" +
+			"     │   │   ├─ mytable.i:0!null\n" +
+			"     │   │   └─ sqa2.a:2\n" +
+			"     │   └─ true (tinyint(1))\n" +
+			"     ├─ ProcessTable\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: mytable\n" +
+			"     │       └─ columns: [i s]\n" +
+			"     └─ CachedResults\n" +
+			"         └─ SubqueryAlias\n" +
+			"             ├─ name: sqa2\n" +
+			"             ├─ outerVisibility: false\n" +
+			"             ├─ isLateral: true\n" +
+			"             ├─ cacheable: true\n" +
+			"             ├─ colSet: (12)\n" +
+			"             ├─ tableId: 8\n" +
 			"             └─ SubqueryAlias\n" +
-			"                 ├─ name: sqa2\n" +
+			"                 ├─ name: cte\n" +
 			"                 ├─ outerVisibility: false\n" +
 			"                 ├─ isLateral: true\n" +
 			"                 ├─ cacheable: true\n" +
-			"                 ├─ colSet: (12)\n" +
-			"                 ├─ tableId: 8\n" +
-			"                 └─ SubqueryAlias\n" +
-			"                     ├─ name: cte\n" +
-			"                     ├─ outerVisibility: false\n" +
-			"                     ├─ isLateral: true\n" +
-			"                     ├─ cacheable: true\n" +
-			"                     ├─ colSet: (11)\n" +
-			"                     ├─ tableId: 5\n" +
-			"                     └─ RecursiveCTE\n" +
-			"                         └─ Union distinct\n" +
-			"                             ├─ limit: 3\n" +
-			"                             ├─ Table\n" +
-			"                             │   ├─ name: xy\n" +
-			"                             │   ├─ columns: [y]\n" +
-			"                             │   ├─ colSet: (3,4)\n" +
-			"                             │   └─ tableId: 2\n" +
-			"                             └─ Project\n" +
-			"                                 ├─ columns: [sqa1.x:2!null]\n" +
-			"                                 └─ InnerJoin\n" +
-			"                                     ├─ Eq\n" +
-			"                                     │   ├─ sqa1.x:2!null\n" +
-			"                                     │   └─ cte.a:4\n" +
-			"                                     ├─ SubqueryAlias\n" +
-			"                                     │   ├─ name: sqa1\n" +
-			"                                     │   ├─ outerVisibility: false\n" +
-			"                                     │   ├─ isLateral: true\n" +
-			"                                     │   ├─ cacheable: true\n" +
-			"                                     │   ├─ colSet: (9,10)\n" +
-			"                                     │   ├─ tableId: 6\n" +
-			"                                     │   └─ IndexedTableAccess(xy)\n" +
-			"                                     │       ├─ index: [xy.x]\n" +
-			"                                     │       ├─ static: [{[1, 1]}]\n" +
-			"                                     │       ├─ colSet: (7,8)\n" +
-			"                                     │       ├─ tableId: 5\n" +
-			"                                     │       └─ Table\n" +
-			"                                     │           ├─ name: xy\n" +
-			"                                     │           └─ columns: [x y]\n" +
-			"                                     └─ RecursiveTable(cte)\n" +
+			"                 ├─ colSet: (11)\n" +
+			"                 ├─ tableId: 5\n" +
+			"                 └─ RecursiveCTE\n" +
+			"                     └─ Union distinct\n" +
+			"                         ├─ limit: 3\n" +
+			"                         ├─ Table\n" +
+			"                         │   ├─ name: xy\n" +
+			"                         │   ├─ columns: [y]\n" +
+			"                         │   ├─ colSet: (3,4)\n" +
+			"                         │   └─ tableId: 2\n" +
+			"                         └─ Project\n" +
+			"                             ├─ columns: [sqa1.x:2!null]\n" +
+			"                             └─ InnerJoin\n" +
+			"                                 ├─ Eq\n" +
+			"                                 │   ├─ sqa1.x:2!null\n" +
+			"                                 │   └─ cte.a:4\n" +
+			"                                 ├─ SubqueryAlias\n" +
+			"                                 │   ├─ name: sqa1\n" +
+			"                                 │   ├─ outerVisibility: false\n" +
+			"                                 │   ├─ isLateral: true\n" +
+			"                                 │   ├─ cacheable: true\n" +
+			"                                 │   ├─ colSet: (9,10)\n" +
+			"                                 │   ├─ tableId: 6\n" +
+			"                                 │   └─ IndexedTableAccess(xy)\n" +
+			"                                 │       ├─ index: [xy.x]\n" +
+			"                                 │       ├─ static: [{[1, 1]}]\n" +
+			"                                 │       ├─ colSet: (7,8)\n" +
+			"                                 │       ├─ tableId: 5\n" +
+			"                                 │       └─ Table\n" +
+			"                                 │           ├─ name: xy\n" +
+			"                                 │           └─ columns: [x y]\n" +
+			"                                 └─ RecursiveTable(cte)\n" +
 			"",
 		ExpectedEstimates: "Sort(mytable.i ASC)\n" +
-			" └─ Filter\n" +
-			"     ├─ (mytable.i = sqa2.a)\n" +
-			"     └─ LateralCrossJoin\n" +
-			"         ├─ Table\n" +
-			"         │   └─ name: mytable\n" +
-			"         └─ CachedResults\n" +
+			" └─ LateralCrossJoin\n" +
+			"     ├─ ((mytable.i = sqa2.a) AND true)\n" +
+			"     ├─ Table\n" +
+			"     │   └─ name: mytable\n" +
+			"     └─ CachedResults\n" +
+			"         └─ SubqueryAlias\n" +
+			"             ├─ name: sqa2\n" +
+			"             ├─ outerVisibility: false\n" +
+			"             ├─ isLateral: true\n" +
+			"             ├─ cacheable: true\n" +
 			"             └─ SubqueryAlias\n" +
-			"                 ├─ name: sqa2\n" +
+			"                 ├─ name: cte\n" +
 			"                 ├─ outerVisibility: false\n" +
 			"                 ├─ isLateral: true\n" +
 			"                 ├─ cacheable: true\n" +
-			"                 └─ SubqueryAlias\n" +
-			"                     ├─ name: cte\n" +
-			"                     ├─ outerVisibility: false\n" +
-			"                     ├─ isLateral: true\n" +
-			"                     ├─ cacheable: true\n" +
-			"                     └─ RecursiveCTE\n" +
-			"                         └─ Union distinct\n" +
-			"                             ├─ limit: 3\n" +
-			"                             ├─ Table\n" +
-			"                             │   ├─ name: xy\n" +
-			"                             │   └─ columns: [y]\n" +
-			"                             └─ Project\n" +
-			"                                 ├─ columns: [sqa1.x]\n" +
-			"                                 └─ InnerJoin\n" +
-			"                                     ├─ (sqa1.x = cte.a)\n" +
-			"                                     ├─ SubqueryAlias\n" +
-			"                                     │   ├─ name: sqa1\n" +
-			"                                     │   ├─ outerVisibility: false\n" +
-			"                                     │   ├─ isLateral: true\n" +
-			"                                     │   ├─ cacheable: true\n" +
-			"                                     │   └─ IndexedTableAccess(xy)\n" +
-			"                                     │       ├─ index: [xy.x]\n" +
-			"                                     │       ├─ filters: [{[1, 1]}]\n" +
-			"                                     │       └─ columns: [x y]\n" +
-			"                                     └─ RecursiveTable(cte)\n" +
+			"                 └─ RecursiveCTE\n" +
+			"                     └─ Union distinct\n" +
+			"                         ├─ limit: 3\n" +
+			"                         ├─ Table\n" +
+			"                         │   ├─ name: xy\n" +
+			"                         │   └─ columns: [y]\n" +
+			"                         └─ Project\n" +
+			"                             ├─ columns: [sqa1.x]\n" +
+			"                             └─ InnerJoin\n" +
+			"                                 ├─ (sqa1.x = cte.a)\n" +
+			"                                 ├─ SubqueryAlias\n" +
+			"                                 │   ├─ name: sqa1\n" +
+			"                                 │   ├─ outerVisibility: false\n" +
+			"                                 │   ├─ isLateral: true\n" +
+			"                                 │   ├─ cacheable: true\n" +
+			"                                 │   └─ IndexedTableAccess(xy)\n" +
+			"                                 │       ├─ index: [xy.x]\n" +
+			"                                 │       ├─ filters: [{[1, 1]}]\n" +
+			"                                 │       └─ columns: [x y]\n" +
+			"                                 └─ RecursiveTable(cte)\n" +
 			"",
 		ExpectedAnalysis: "Sort(mytable.i ASC)\n" +
-			" └─ Filter\n" +
-			"     ├─ (mytable.i = sqa2.a)\n" +
-			"     └─ LateralCrossJoin\n" +
-			"         ├─ Table\n" +
-			"         │   └─ name: mytable\n" +
-			"         └─ CachedResults\n" +
+			" └─ LateralCrossJoin\n" +
+			"     ├─ ((mytable.i = sqa2.a) AND true)\n" +
+			"     ├─ Table\n" +
+			"     │   └─ name: mytable\n" +
+			"     └─ CachedResults\n" +
+			"         └─ SubqueryAlias\n" +
+			"             ├─ name: sqa2\n" +
+			"             ├─ outerVisibility: false\n" +
+			"             ├─ isLateral: true\n" +
+			"             ├─ cacheable: true\n" +
 			"             └─ SubqueryAlias\n" +
-			"                 ├─ name: sqa2\n" +
+			"                 ├─ name: cte\n" +
 			"                 ├─ outerVisibility: false\n" +
 			"                 ├─ isLateral: true\n" +
 			"                 ├─ cacheable: true\n" +
-			"                 └─ SubqueryAlias\n" +
-			"                     ├─ name: cte\n" +
-			"                     ├─ outerVisibility: false\n" +
-			"                     ├─ isLateral: true\n" +
-			"                     ├─ cacheable: true\n" +
-			"                     └─ RecursiveCTE\n" +
-			"                         └─ Union distinct\n" +
-			"                             ├─ limit: 3\n" +
-			"                             ├─ Table\n" +
-			"                             │   ├─ name: xy\n" +
-			"                             │   └─ columns: [y]\n" +
-			"                             └─ Project\n" +
-			"                                 ├─ columns: [sqa1.x]\n" +
-			"                                 └─ InnerJoin\n" +
-			"                                     ├─ (sqa1.x = cte.a)\n" +
-			"                                     ├─ SubqueryAlias\n" +
-			"                                     │   ├─ name: sqa1\n" +
-			"                                     │   ├─ outerVisibility: false\n" +
-			"                                     │   ├─ isLateral: true\n" +
-			"                                     │   ├─ cacheable: true\n" +
-			"                                     │   └─ IndexedTableAccess(xy)\n" +
-			"                                     │       ├─ index: [xy.x]\n" +
-			"                                     │       ├─ filters: [{[1, 1]}]\n" +
-			"                                     │       └─ columns: [x y]\n" +
-			"                                     └─ RecursiveTable(cte)\n" +
+			"                 └─ RecursiveCTE\n" +
+			"                     └─ Union distinct\n" +
+			"                         ├─ limit: 3\n" +
+			"                         ├─ Table\n" +
+			"                         │   ├─ name: xy\n" +
+			"                         │   └─ columns: [y]\n" +
+			"                         └─ Project\n" +
+			"                             ├─ columns: [sqa1.x]\n" +
+			"                             └─ InnerJoin\n" +
+			"                                 ├─ (sqa1.x = cte.a)\n" +
+			"                                 ├─ SubqueryAlias\n" +
+			"                                 │   ├─ name: sqa1\n" +
+			"                                 │   ├─ outerVisibility: false\n" +
+			"                                 │   ├─ isLateral: true\n" +
+			"                                 │   ├─ cacheable: true\n" +
+			"                                 │   └─ IndexedTableAccess(xy)\n" +
+			"                                 │       ├─ index: [xy.x]\n" +
+			"                                 │       ├─ filters: [{[1, 1]}]\n" +
+			"                                 │       └─ columns: [x y]\n" +
+			"                                 └─ RecursiveTable(cte)\n" +
 			"",
 	},
 	{
@@ -25181,6 +25155,158 @@ order by x, y;
 			"         └─ Table\n" +
 			"             ├─ name: two_pk\n" +
 			"             └─ columns: [pk2]\n" +
+			"",
+	},
+	{
+		// Regression test ensuring that filters are not dropped after join optimization
+		// https://github.com/dolthub/dolt/issues/9868
+		Query: `select * from comp_index_t0 c join comp_index_t0 b join comp_index_t0 a on a.v2 = b.pk and b.v2 = c.pk and c.v2 = 1`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [c.pk:6!null, c.v1:7, c.v2:8, b.pk:3!null, b.v1:4, b.v2:5, a.pk:0!null, a.v1:1, a.v2:2]\n" +
+			" └─ LookupJoin\n" +
+			"     ├─ LookupJoin\n" +
+			"     │   ├─ TableAlias(a)\n" +
+			"     │   │   └─ ProcessTable\n" +
+			"     │   │       └─ Table\n" +
+			"     │   │           ├─ name: comp_index_t0\n" +
+			"     │   │           └─ columns: [pk v1 v2]\n" +
+			"     │   └─ TableAlias(b)\n" +
+			"     │       └─ IndexedTableAccess(comp_index_t0)\n" +
+			"     │           ├─ index: [comp_index_t0.pk]\n" +
+			"     │           ├─ keys: [a.v2:2]\n" +
+			"     │           ├─ colSet: (4-6)\n" +
+			"     │           ├─ tableId: 2\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: comp_index_t0\n" +
+			"     │               └─ columns: [pk v1 v2]\n" +
+			"     └─ Filter\n" +
+			"         ├─ Eq\n" +
+			"         │   ├─ c.v2:2\n" +
+			"         │   └─ 1 (bigint)\n" +
+			"         └─ TableAlias(c)\n" +
+			"             └─ IndexedTableAccess(comp_index_t0)\n" +
+			"                 ├─ index: [comp_index_t0.pk]\n" +
+			"                 ├─ keys: [b.v2:5]\n" +
+			"                 ├─ colSet: (1-3)\n" +
+			"                 ├─ tableId: 1\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: comp_index_t0\n" +
+			"                     └─ columns: [pk v1 v2]\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [c.pk, c.v1, c.v2, b.pk, b.v1, b.v2, a.pk, a.v1, a.v2]\n" +
+			" └─ LookupJoin (estimated cost=333.300 rows=101)\n" +
+			"     ├─ LookupJoin (estimated cost=333.300 rows=101)\n" +
+			"     │   ├─ TableAlias(a)\n" +
+			"     │   │   └─ Table\n" +
+			"     │   │       ├─ name: comp_index_t0\n" +
+			"     │   │       └─ columns: [pk v1 v2]\n" +
+			"     │   └─ TableAlias(b)\n" +
+			"     │       └─ IndexedTableAccess(comp_index_t0)\n" +
+			"     │           ├─ index: [comp_index_t0.pk]\n" +
+			"     │           ├─ columns: [pk v1 v2]\n" +
+			"     │           └─ keys: a.v2\n" +
+			"     └─ Filter\n" +
+			"         ├─ (c.v2 = 1)\n" +
+			"         └─ TableAlias(c)\n" +
+			"             └─ IndexedTableAccess(comp_index_t0)\n" +
+			"                 ├─ index: [comp_index_t0.pk]\n" +
+			"                 ├─ columns: [pk v1 v2]\n" +
+			"                 └─ keys: b.v2\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [c.pk, c.v1, c.v2, b.pk, b.v1, b.v2, a.pk, a.v1, a.v2]\n" +
+			" └─ LookupJoin (estimated cost=333.300 rows=101) (actual rows=0 loops=1)\n" +
+			"     ├─ LookupJoin (estimated cost=333.300 rows=101) (actual rows=101 loops=1)\n" +
+			"     │   ├─ TableAlias(a)\n" +
+			"     │   │   └─ Table\n" +
+			"     │   │       ├─ name: comp_index_t0\n" +
+			"     │   │       └─ columns: [pk v1 v2]\n" +
+			"     │   └─ TableAlias(b)\n" +
+			"     │       └─ IndexedTableAccess(comp_index_t0)\n" +
+			"     │           ├─ index: [comp_index_t0.pk]\n" +
+			"     │           ├─ columns: [pk v1 v2]\n" +
+			"     │           └─ keys: a.v2\n" +
+			"     └─ Filter\n" +
+			"         ├─ (c.v2 = 1)\n" +
+			"         └─ TableAlias(c)\n" +
+			"             └─ IndexedTableAccess(comp_index_t0)\n" +
+			"                 ├─ index: [comp_index_t0.pk]\n" +
+			"                 ├─ columns: [pk v1 v2]\n" +
+			"                 └─ keys: b.v2\n" +
+			"",
+	},
+	{
+		// Regression test ensuring that filters are not dropped after join optimization
+		// https://github.com/dolthub/dolt/issues/9868
+		Query: `select * from comp_index_t0 a join comp_index_t0 b join comp_index_t0 c on a.v2 = b.pk and b.v2 = c.pk and c.v2 = 5`,
+		ExpectedPlan: "LookupJoin\n" +
+			" ├─ LookupJoin\n" +
+			" │   ├─ TableAlias(a)\n" +
+			" │   │   └─ ProcessTable\n" +
+			" │   │       └─ Table\n" +
+			" │   │           ├─ name: comp_index_t0\n" +
+			" │   │           └─ columns: [pk v1 v2]\n" +
+			" │   └─ TableAlias(b)\n" +
+			" │       └─ IndexedTableAccess(comp_index_t0)\n" +
+			" │           ├─ index: [comp_index_t0.pk]\n" +
+			" │           ├─ keys: [a.v2:2]\n" +
+			" │           ├─ colSet: (4-6)\n" +
+			" │           ├─ tableId: 2\n" +
+			" │           └─ Table\n" +
+			" │               ├─ name: comp_index_t0\n" +
+			" │               └─ columns: [pk v1 v2]\n" +
+			" └─ Filter\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ c.v2:2\n" +
+			"     │   └─ 5 (bigint)\n" +
+			"     └─ TableAlias(c)\n" +
+			"         └─ IndexedTableAccess(comp_index_t0)\n" +
+			"             ├─ index: [comp_index_t0.pk]\n" +
+			"             ├─ keys: [b.v2:5]\n" +
+			"             ├─ colSet: (7-9)\n" +
+			"             ├─ tableId: 3\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: comp_index_t0\n" +
+			"                 └─ columns: [pk v1 v2]\n" +
+			"",
+		ExpectedEstimates: "LookupJoin (estimated cost=333.300 rows=101)\n" +
+			" ├─ LookupJoin (estimated cost=333.300 rows=101)\n" +
+			" │   ├─ TableAlias(a)\n" +
+			" │   │   └─ Table\n" +
+			" │   │       ├─ name: comp_index_t0\n" +
+			" │   │       └─ columns: [pk v1 v2]\n" +
+			" │   └─ TableAlias(b)\n" +
+			" │       └─ IndexedTableAccess(comp_index_t0)\n" +
+			" │           ├─ index: [comp_index_t0.pk]\n" +
+			" │           ├─ columns: [pk v1 v2]\n" +
+			" │           └─ keys: a.v2\n" +
+			" └─ Filter\n" +
+			"     ├─ (c.v2 = 5)\n" +
+			"     └─ TableAlias(c)\n" +
+			"         └─ IndexedTableAccess(comp_index_t0)\n" +
+			"             ├─ index: [comp_index_t0.pk]\n" +
+			"             ├─ columns: [pk v1 v2]\n" +
+			"             └─ keys: b.v2\n" +
+			"",
+		ExpectedAnalysis: "LookupJoin (estimated cost=333.300 rows=101) (actual rows=0 loops=1)\n" +
+			" ├─ LookupJoin (estimated cost=333.300 rows=101) (actual rows=101 loops=1)\n" +
+			" │   ├─ TableAlias(a)\n" +
+			" │   │   └─ Table\n" +
+			" │   │       ├─ name: comp_index_t0\n" +
+			" │   │       └─ columns: [pk v1 v2]\n" +
+			" │   └─ TableAlias(b)\n" +
+			" │       └─ IndexedTableAccess(comp_index_t0)\n" +
+			" │           ├─ index: [comp_index_t0.pk]\n" +
+			" │           ├─ columns: [pk v1 v2]\n" +
+			" │           └─ keys: a.v2\n" +
+			" └─ Filter\n" +
+			"     ├─ (c.v2 = 5)\n" +
+			"     └─ TableAlias(c)\n" +
+			"         └─ IndexedTableAccess(comp_index_t0)\n" +
+			"             ├─ index: [comp_index_t0.pk]\n" +
+			"             ├─ columns: [pk v1 v2]\n" +
+			"             └─ keys: b.v2\n" +
 			"",
 	},
 }

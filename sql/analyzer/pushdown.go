@@ -87,7 +87,7 @@ func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 
 			// move filter predicates directly above their respective tables in joins
 			ret, same, err := pushdownAboveTables(n, filters)
-			if same || err != nil {
+			if err != nil {
 				return n, transform.SameTree, err
 			}
 
@@ -96,7 +96,7 @@ func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 				return n, transform.SameTree, fmt.Errorf("pushdown mistakenly converted filter to non-filter: %T", ret)
 			}
 			// remove handled
-			newF := removePushedDownPredicates(ctx, a, retF, filters)
+			newF := updateFilterNode(ctx, a, retF, filters)
 			if newF != nil {
 				same = transform.NewTree
 				ret = newF
@@ -202,7 +202,7 @@ func transformPushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.
 		return transform.NodeWithCtx(n, filterPushdownChildSelector, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 			switch node := c.Node.(type) {
 			case *plan.Filter:
-				newF := removePushedDownPredicates(ctx, a, node, filters)
+				newF := updateFilterNode(ctx, a, node, filters)
 				if newF == nil {
 					return node, transform.SameTree, nil
 				}
@@ -311,20 +311,36 @@ func pushdownFiltersUnderSubqueryAlias(ctx *sql.Context, a *Analyzer, sa *plan.S
 	return n, transform.NewTree, nil
 }
 
-// removePushedDownPredicates removes all handled filter predicates from the filter given and returns. If all
-// predicates have been handled, it replaces the filter with its child.
-func removePushedDownPredicates(ctx *sql.Context, a *Analyzer, node *plan.Filter, filters *filterSet) sql.Node {
-	if filters.handledCount() == 0 {
-		a.Log("no handled filters, leaving filter untouched")
-		return nil
-	}
-
-	// figure out if the filter's filters were all handled
+// updateFilterNode updates the filter node based on the filter predicates handled. Any handled filter predicates are
+// removed from the filter node. If all filter predicates have been handled and there are no unhandled predicates, the
+// filter node is removed. If there are remaining filter predicates and the immediate child of the filter is a non-outer
+// join, the remaining unhandled filters are pushed into the join node and added to the join filters, and the filter
+// node is removed.
+func updateFilterNode(ctx *sql.Context, a *Analyzer, node *plan.Filter, filters *filterSet) sql.Node {
 	filterExpressions := expression.SplitConjunction(node.Expression)
 	unhandled := subtractExprSet(filterExpressions, filters.handledFilters)
+
 	if len(unhandled) == 0 {
 		a.Log("filter node has no unhandled filters, so it will be removed")
 		return node.Child
+	}
+
+	// push filters into joinChild
+	if joinChild, ok := node.Child.(*plan.JoinNode); ok && !joinChild.Op.IsOuter() {
+		a.Log("pushing filters into join node")
+		if joinChild.Op.IsCross() {
+			return plan.NewInnerJoin(joinChild.Left(), joinChild.Right(), expression.JoinAnd(unhandled...))
+		}
+		if joinChild.Filter != nil {
+			unhandled = append(unhandled, joinChild.Filter)
+		}
+		joinChild.Filter = expression.JoinAnd(unhandled...)
+		return joinChild
+	}
+
+	if filters.handledCount() == 0 {
+		a.Log("no handled filters, leaving filter untouched")
+		return nil
 	}
 
 	if len(unhandled) == len(filterExpressions) {

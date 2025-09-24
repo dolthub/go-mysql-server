@@ -68,6 +68,10 @@ const (
 	JoinTypeLateralRight // LateralLeftJoin
 )
 
+func (i JoinType) IsOuter() bool {
+	return i.IsLeftOuter() || i.IsRightOuter() || i.IsFullOuter()
+}
+
 func (i JoinType) IsLeftOuter() bool {
 	switch i {
 	case JoinTypeLeftOuter, JoinTypeLeftOuterExcludeNulls, JoinTypeLeftOuterLookup, JoinTypeLeftOuterHash, JoinTypeLeftOuterHashExcludeNulls, JoinTypeLeftOuterMerge, JoinTypeLeftOuterRangeHeap:
