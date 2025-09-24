@@ -97,7 +97,11 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			}
 
 			comp := newComparison(leftLit, NewLiteral(originalRight, el.Type()))
-			cmp, err := comp.Compare(ctx, row)
+			l, r, compareType, err := comp.castLeftAndRight(ctx, originalLeft, originalRight)
+			if err != nil {
+				return nil, err
+			}
+			cmp, err := compareType.Compare(ctx, l, r)
 			if err != nil {
 				return nil, err
 			}
