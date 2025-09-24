@@ -36,10 +36,11 @@ func TestSqrt(t *testing.T) {
 		err      bool
 	}{
 		{"null input", sql.NewRow(nil), nil, false},
-		{"invalid string", sql.NewRow("foo"), nil, true},
-		{"valid string", sql.NewRow("9"), float64(3), false},
-		{"number is zero", sql.NewRow(0), float64(0), false},
-		{"positive number", sql.NewRow(8), float64(2.8284271247461903), false},
+		{"invalid string", sql.NewRow("foo"), 0.0, false},
+		{"invalid string truncated", sql.NewRow("123foo"), 11.090536506409418, false},
+		{"valid string", sql.NewRow("9"), 3, false},
+		{"number is zero", sql.NewRow(0), 0, false},
+		{"positive number", sql.NewRow(8), 2.8284271247461903, false},
 		{"negative number", sql.NewRow(-1), nil, false},
 	}
 	for _, tt := range testCases {
@@ -71,13 +72,14 @@ func TestPower(t *testing.T) {
 		{"Base is nil", types.Float64, sql.NewRow(2, nil), nil, false},
 		{"Exp is nil", types.Float64, sql.NewRow(nil, 2), nil, false},
 
-		{"Base is 0", types.Float64, sql.NewRow(0, 2), float64(0), false},
-		{"Base and exp is 0", types.Float64, sql.NewRow(0, 0), float64(1), false},
-		{"Exp is 0", types.Float64, sql.NewRow(2, 0), float64(1), false},
-		{"Base is negative", types.Float64, sql.NewRow(-2, 2), float64(4), false},
-		{"Exp is negative", types.Float64, sql.NewRow(2, -2), float64(0.25), false},
-		{"Base and exp are invalid strings", types.Float64, sql.NewRow("a", "b"), nil, true},
-		{"Base and exp are valid strings", types.Float64, sql.NewRow("2", "2"), float64(4), false},
+		{"Base is 0", types.Float64, sql.NewRow(0, 2), 0.0, false},
+		{"Base and exp is 0", types.Float64, sql.NewRow(0, 0), 1.0, false},
+		{"Exp is 0", types.Float64, sql.NewRow(2, 0), 1.0, false},
+		{"Base is negative", types.Float64, sql.NewRow(-2, 2), 4.0, false},
+		{"Exp is negative", types.Float64, sql.NewRow(2, -2), 0.25, false},
+		{"Base and exp are invalid strings", types.Float64, sql.NewRow("a", "b"), 1.0, false},
+		{"Base and exp are invalid truncated strings", types.Float64, sql.NewRow("2a", "2b"), 4.0, false},
+		{"Base and exp are valid strings", types.Float64, sql.NewRow("2", "2"), 4.0, false},
 		{"positive inf", types.Float64, sql.NewRow(2, math.Inf(1)), nil, false},
 		{"negative inf", types.Float64, sql.NewRow(2, math.Inf(1)), nil, false},
 	}
