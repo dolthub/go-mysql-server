@@ -412,6 +412,7 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 		if err != nil {
 			return nil, err
 		}
+		// TODO: if truncation error and out of range, then throw 2's complement warning
 		num, _, err := types.Uint64.Convert(ctx, value)
 		if err != nil {
 			num, _, err = types.Int64.Convert(ctx, value)
