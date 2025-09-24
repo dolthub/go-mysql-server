@@ -122,6 +122,90 @@ type ScriptTestAssertion struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
+		// https://github.com/dolthub/dolt/issues/9872
+		Name:        "TEXT(m) syntax support",
+		SetUpScript: []string{},
+		Dialect:     "mysql",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CREATE TABLE task_instance_note (ti_id VARCHAR(36) NOT NULL, user_id VARCHAR(128), content TEXT(1000), created_at TIMESTAMP(6) NOT NULL, updated_at TIMESTAMP(6) NOT NULL, CONSTRAINT task_instance_note_pkey PRIMARY KEY (ti_id))",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "DESCRIBE task_instance_note",
+				Expected: []sql.Row{
+					{"ti_id", "varchar(36)", "NO", "PRI", nil, ""},
+					{"user_id", "varchar(128)", "YES", "", nil, ""},
+					{"content", "text", "YES", "", nil, ""},
+					{"created_at", "timestamp(6)", "NO", "", nil, ""},
+					{"updated_at", "timestamp(6)", "NO", "", nil, ""},
+				},
+			},
+			{
+				Query: "CREATE TABLE tiny (t TEXT(255))",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "DESCRIBE tiny",
+				Expected: []sql.Row{
+					{"t", "tinytext", "YES", "", nil, ""},
+				},
+			},
+			{
+				Query: "CREATE TABLE smallt (s TEXT(65535))",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "DESCRIBE smallt",
+				Expected: []sql.Row{
+					{"s", "text", "YES", "", nil, ""},
+				},
+			},
+			{
+				Query: "CREATE TABLE mediumt (m TEXT(16777215))",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "DESCRIBE mediumt",
+				Expected: []sql.Row{
+					{"m", "mediumtext", "YES", "", nil, ""},
+				},
+			},
+			{
+				Query: "CREATE TABLE longt (l TEXT(4294967295))",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "DESCRIBE longt",
+				Expected: []sql.Row{
+					{"l", "longtext", "YES", "", nil, ""},
+				},
+			},
+			{
+				Query: "CREATE TABLE d (t TEXT)",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "DESCRIBE d",
+				Expected: []sql.Row{
+					{"t", "text", "YES", "", nil, ""},
+				},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/9857
 		Name:        "UUID_SHORT() function returns 64-bit unsigned integers with proper construction",
 		Dialect:     "mysql",
