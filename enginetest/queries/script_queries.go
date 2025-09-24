@@ -1080,10 +1080,8 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 					{"5.932887e7abc", uint64(5)},
 					{"a1a1", uint64(0)},
 				},
-				// TODO: Should be 19. Missing warnings for "Cast to unsigned converted negative integer to its positive
-				//  complement" (1105) https://github.com/dolthub/dolt/issues/9840
-				ExpectedWarningsCount: 16,
-				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+				ExpectedWarningsCount: 19,
+				// Can't check multiple different warnings
 			},
 			{
 				Query: "select pk, cast(pk as decimal(12,3)) from test01",
@@ -1117,9 +1115,8 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 				ExpectedWarningsCount: 0,
 			},
 
-			// TODO: these are not directly testing casting
-			// https://github.com/dolthub/dolt/issues/9739
 			{
+				// https://github.com/dolthub/dolt/issues/9739
 				Skip:    true,
 				Dialect: "mysql",
 				Query:   "select * from test01 where pk in (11)",
