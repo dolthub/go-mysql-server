@@ -221,7 +221,14 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 		}
 		truncStr, didTrunc := sql.TruncateStringToDouble(value)
 		if truncStr == "0" {
-			return t.ConvertToNullDecimal(decimal.NewFromInt(0))
+			nullDec, cErr := t.ConvertToNullDecimal(decimal.NewFromInt(0))
+			if cErr != nil {
+				return decimal.NullDecimal{}, cErr
+			}
+			if didTrunc {
+				return nullDec, sql.ErrTruncatedIncorrect.New(t, value)
+			}
+			return nullDec, nil
 		}
 		res, _ = decimal.NewFromString(truncStr)
 		nullDec, cErr := t.ConvertToNullDecimal(res)
