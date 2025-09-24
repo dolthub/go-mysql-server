@@ -299,8 +299,10 @@ func cacheSubqueryAliasesInJoins(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 		var isMax1Row bool
 		switch n := n.(type) {
 		case *plan.JoinNode:
-			inJoin = true
-			leftChild = true
+			if !inJoin {
+				inJoin = true
+				leftChild = true
+			}
 		case *plan.SubqueryAlias:
 			isCacheableSq = n.CanCacheResults() && !leftChild
 		case *plan.CachedResults:
