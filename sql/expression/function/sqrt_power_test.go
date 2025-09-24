@@ -38,8 +38,8 @@ func TestSqrt(t *testing.T) {
 		{"null input", sql.NewRow(nil), nil, false},
 		{"invalid string", sql.NewRow("foo"), 0.0, false},
 		{"invalid string truncated", sql.NewRow("123foo"), 11.090536506409418, false},
-		{"valid string", sql.NewRow("9"), 3, false},
-		{"number is zero", sql.NewRow(0), 0, false},
+		{"valid string", sql.NewRow("9"), 3.0, false},
+		{"number is zero", sql.NewRow(0), 0.0, false},
 		{"positive number", sql.NewRow(8), 2.8284271247461903, false},
 		{"negative number", sql.NewRow(-1), nil, false},
 	}
