@@ -413,13 +413,16 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 			return nil, err
 		}
 		// TODO: if truncation error and out of range, then throw 2's complement warning
-		num, _, err := types.Uint64.Convert(ctx, value)
+		num, inRange, err := types.Uint64.Convert(ctx, value)
 		if err != nil {
-			num, _, err = types.Int64.Convert(ctx, value)
-			if err != nil {
-				return types.Uint64.Zero(), nil
-			}
-			return uint64(num.(int64)), nil
+			//num, inRange, err = types.Int64.Convert(ctx, value)
+			//if err != nil {
+			//	return types.Uint64.Zero(), nil
+			//}
+			//num = uint64(num.(int64))
+		}
+		if !inRange {
+			ctx.Warn(1105, "Cast to unsigned converted negative integer to its positive complement")
 		}
 		return num, nil
 	case ConvertToYear:
