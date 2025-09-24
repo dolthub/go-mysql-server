@@ -621,7 +621,22 @@ func TestRound(t *testing.T) {
 			exp:   123.0,
 		},
 
-		// TODO: tests truncated strings
+		{
+			name:  "text float truncates",
+			xExpr: expression.NewLiteral("123.456abc", types.Text),
+			exp:   123.0,
+		},
+		{
+			name:  "text float truncates",
+			xExpr: expression.NewLiteral("123.999abc", types.Text),
+			exp:   124.0,
+		},
+		{
+			name:  "text float with d truncates",
+			xExpr: expression.NewLiteral("123.456abc", types.Text),
+			dExpr: expression.NewLiteral("1abc", types.Text),
+			exp:   123.5,
+		},
 	}
 
 	for _, tt := range testCases {

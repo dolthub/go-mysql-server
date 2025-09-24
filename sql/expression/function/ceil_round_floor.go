@@ -245,62 +245,58 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	if val == nil {
 		return nil, nil
 	}
 
-	decType := types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, types.DecimalTypeMaxScale)
-	val, _, err = decType.Convert(ctx, val)
-	if err != nil {
-		// TODO: truncate
-		return nil, err
+	val, _, err = types.InternalDecimalType.Convert(ctx, val)
+	if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
 	prec := int32(0)
 	if r.RightChild != nil {
-		var tmp interface{}
+		var tmp any
 		tmp, err = r.RightChild.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
-
 		if tmp == nil {
 			return nil, nil
 		}
-
-		if tmp != nil {
-			tmp, _, err = types.Int32.Convert(ctx, tmp)
-			if err != nil {
-				// TODO: truncate
-				return nil, err
-			}
-			prec = tmp.(int32)
-			// MySQL cuts off at 30 for larger values
-			// TODO: these limits are fine only because we can't handle decimals larger than this
-			if prec > types.DecimalTypeMaxPrecision {
-				prec = types.DecimalTypeMaxPrecision
-			}
-			if prec < -types.DecimalTypeMaxScale {
-				prec = -types.DecimalTypeMaxScale
-			}
+		tmp, _, err = types.Int32.Convert(ctx, tmp)
+		if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
+		}
+		prec = tmp.(int32)
+		// MySQL cuts off at 30 for larger values
+		// TODO: these limits are fine only because we can't handle decimals larger than this
+		if prec > types.DecimalTypeMaxPrecision {
+			prec = types.DecimalTypeMaxPrecision
+		}
+		if prec < -types.DecimalTypeMaxScale {
+			prec = -types.DecimalTypeMaxScale
 		}
 	}
 
 	var res interface{}
 	tmp := val.(decimal.Decimal).Round(prec)
-	if types.IsSigned(r.LeftChild.Type()) {
+	lType := r.LeftChild.Type()
+	if types.IsSigned(lType) {
 		res, _, err = types.Int64.Convert(ctx, tmp)
-	} else if types.IsUnsigned(r.LeftChild.Type()) {
+	} else if types.IsUnsigned(lType) {
 		res, _, err = types.Uint64.Convert(ctx, tmp)
-	} else if types.IsFloat(r.LeftChild.Type()) {
+	} else if types.IsFloat(lType) {
 		res, _, err = types.Float64.Convert(ctx, tmp)
-	} else if types.IsDecimal(r.LeftChild.Type()) {
+	} else if types.IsDecimal(lType) {
 		res = tmp
-	} else if types.IsTextBlob(r.LeftChild.Type()) {
+	} else if types.IsTextBlob(lType) {
 		res, _, err = types.Float64.Convert(ctx, tmp)
 	}
-
+	if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
+		err = nil
+	}
 	return res, err
 }
 
