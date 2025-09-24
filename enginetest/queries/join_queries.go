@@ -790,11 +790,14 @@ on w = 0;`,
 		Expected: []sql.Row{{"a", 4, "third", 1}, {"a", 4, "second", 2}, {"a", 4, "first", 3}},
 	},
 	{
-
-		Query:    `select * from comp_index_t0 c join comp_index_t0 b join comp_index_t0 a on a.v2 = b.pk and b.v2 = c.pk and c.v2 = 1`,
+		// Regression test ensuring that filters are not dropped after join optimization
+		// https://github.com/dolthub/dolt/issues/9868
+		Query:    "select * from comp_index_t0 c join comp_index_t0 b join comp_index_t0 a on a.v2 = b.pk and b.v2 = c.pk and c.v2 = 1",
 		Expected: []sql.Row{},
 	},
 	{
+		// Regression test ensuring that filters are not dropped after join optimization
+		// https://github.com/dolthub/dolt/issues/9868
 		Query:    "select * from comp_index_t0 a join comp_index_t0 b join comp_index_t0 c on a.v2 = b.pk and b.v2 = c.pk and c.v2 = 5",
 		Expected: []sql.Row{},
 	},

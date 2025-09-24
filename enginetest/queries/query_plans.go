@@ -25157,4 +25157,156 @@ order by x, y;
 			"             └─ columns: [pk2]\n" +
 			"",
 	},
+	{
+		// Regression test ensuring that filters are not dropped after join optimization
+		// https://github.com/dolthub/dolt/issues/9868
+		Query: `select * from comp_index_t0 c join comp_index_t0 b join comp_index_t0 a on a.v2 = b.pk and b.v2 = c.pk and c.v2 = 1`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [c.pk:6!null, c.v1:7, c.v2:8, b.pk:3!null, b.v1:4, b.v2:5, a.pk:0!null, a.v1:1, a.v2:2]\n" +
+			" └─ LookupJoin\n" +
+			"     ├─ LookupJoin\n" +
+			"     │   ├─ TableAlias(a)\n" +
+			"     │   │   └─ ProcessTable\n" +
+			"     │   │       └─ Table\n" +
+			"     │   │           ├─ name: comp_index_t0\n" +
+			"     │   │           └─ columns: [pk v1 v2]\n" +
+			"     │   └─ TableAlias(b)\n" +
+			"     │       └─ IndexedTableAccess(comp_index_t0)\n" +
+			"     │           ├─ index: [comp_index_t0.pk]\n" +
+			"     │           ├─ keys: [a.v2:2]\n" +
+			"     │           ├─ colSet: (4-6)\n" +
+			"     │           ├─ tableId: 2\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: comp_index_t0\n" +
+			"     │               └─ columns: [pk v1 v2]\n" +
+			"     └─ Filter\n" +
+			"         ├─ Eq\n" +
+			"         │   ├─ c.v2:2\n" +
+			"         │   └─ 1 (bigint)\n" +
+			"         └─ TableAlias(c)\n" +
+			"             └─ IndexedTableAccess(comp_index_t0)\n" +
+			"                 ├─ index: [comp_index_t0.pk]\n" +
+			"                 ├─ keys: [b.v2:5]\n" +
+			"                 ├─ colSet: (1-3)\n" +
+			"                 ├─ tableId: 1\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: comp_index_t0\n" +
+			"                     └─ columns: [pk v1 v2]\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [c.pk, c.v1, c.v2, b.pk, b.v1, b.v2, a.pk, a.v1, a.v2]\n" +
+			" └─ LookupJoin (estimated cost=333.300 rows=101)\n" +
+			"     ├─ LookupJoin (estimated cost=333.300 rows=101)\n" +
+			"     │   ├─ TableAlias(a)\n" +
+			"     │   │   └─ Table\n" +
+			"     │   │       ├─ name: comp_index_t0\n" +
+			"     │   │       └─ columns: [pk v1 v2]\n" +
+			"     │   └─ TableAlias(b)\n" +
+			"     │       └─ IndexedTableAccess(comp_index_t0)\n" +
+			"     │           ├─ index: [comp_index_t0.pk]\n" +
+			"     │           ├─ columns: [pk v1 v2]\n" +
+			"     │           └─ keys: a.v2\n" +
+			"     └─ Filter\n" +
+			"         ├─ (c.v2 = 1)\n" +
+			"         └─ TableAlias(c)\n" +
+			"             └─ IndexedTableAccess(comp_index_t0)\n" +
+			"                 ├─ index: [comp_index_t0.pk]\n" +
+			"                 ├─ columns: [pk v1 v2]\n" +
+			"                 └─ keys: b.v2\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [c.pk, c.v1, c.v2, b.pk, b.v1, b.v2, a.pk, a.v1, a.v2]\n" +
+			" └─ LookupJoin (estimated cost=333.300 rows=101) (actual rows=0 loops=1)\n" +
+			"     ├─ LookupJoin (estimated cost=333.300 rows=101) (actual rows=101 loops=1)\n" +
+			"     │   ├─ TableAlias(a)\n" +
+			"     │   │   └─ Table\n" +
+			"     │   │       ├─ name: comp_index_t0\n" +
+			"     │   │       └─ columns: [pk v1 v2]\n" +
+			"     │   └─ TableAlias(b)\n" +
+			"     │       └─ IndexedTableAccess(comp_index_t0)\n" +
+			"     │           ├─ index: [comp_index_t0.pk]\n" +
+			"     │           ├─ columns: [pk v1 v2]\n" +
+			"     │           └─ keys: a.v2\n" +
+			"     └─ Filter\n" +
+			"         ├─ (c.v2 = 1)\n" +
+			"         └─ TableAlias(c)\n" +
+			"             └─ IndexedTableAccess(comp_index_t0)\n" +
+			"                 ├─ index: [comp_index_t0.pk]\n" +
+			"                 ├─ columns: [pk v1 v2]\n" +
+			"                 └─ keys: b.v2\n" +
+			"",
+	},
+	{
+		// Regression test ensuring that filters are not dropped after join optimization
+		// https://github.com/dolthub/dolt/issues/9868
+		Query: `select * from comp_index_t0 a join comp_index_t0 b join comp_index_t0 c on a.v2 = b.pk and b.v2 = c.pk and c.v2 = 5`,
+		ExpectedPlan: "LookupJoin\n" +
+			" ├─ LookupJoin\n" +
+			" │   ├─ TableAlias(a)\n" +
+			" │   │   └─ ProcessTable\n" +
+			" │   │       └─ Table\n" +
+			" │   │           ├─ name: comp_index_t0\n" +
+			" │   │           └─ columns: [pk v1 v2]\n" +
+			" │   └─ TableAlias(b)\n" +
+			" │       └─ IndexedTableAccess(comp_index_t0)\n" +
+			" │           ├─ index: [comp_index_t0.pk]\n" +
+			" │           ├─ keys: [a.v2:2]\n" +
+			" │           ├─ colSet: (4-6)\n" +
+			" │           ├─ tableId: 2\n" +
+			" │           └─ Table\n" +
+			" │               ├─ name: comp_index_t0\n" +
+			" │               └─ columns: [pk v1 v2]\n" +
+			" └─ Filter\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ c.v2:2\n" +
+			"     │   └─ 5 (bigint)\n" +
+			"     └─ TableAlias(c)\n" +
+			"         └─ IndexedTableAccess(comp_index_t0)\n" +
+			"             ├─ index: [comp_index_t0.pk]\n" +
+			"             ├─ keys: [b.v2:5]\n" +
+			"             ├─ colSet: (7-9)\n" +
+			"             ├─ tableId: 3\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: comp_index_t0\n" +
+			"                 └─ columns: [pk v1 v2]\n" +
+			"",
+		ExpectedEstimates: "LookupJoin (estimated cost=333.300 rows=101)\n" +
+			" ├─ LookupJoin (estimated cost=333.300 rows=101)\n" +
+			" │   ├─ TableAlias(a)\n" +
+			" │   │   └─ Table\n" +
+			" │   │       ├─ name: comp_index_t0\n" +
+			" │   │       └─ columns: [pk v1 v2]\n" +
+			" │   └─ TableAlias(b)\n" +
+			" │       └─ IndexedTableAccess(comp_index_t0)\n" +
+			" │           ├─ index: [comp_index_t0.pk]\n" +
+			" │           ├─ columns: [pk v1 v2]\n" +
+			" │           └─ keys: a.v2\n" +
+			" └─ Filter\n" +
+			"     ├─ (c.v2 = 5)\n" +
+			"     └─ TableAlias(c)\n" +
+			"         └─ IndexedTableAccess(comp_index_t0)\n" +
+			"             ├─ index: [comp_index_t0.pk]\n" +
+			"             ├─ columns: [pk v1 v2]\n" +
+			"             └─ keys: b.v2\n" +
+			"",
+		ExpectedAnalysis: "LookupJoin (estimated cost=333.300 rows=101) (actual rows=0 loops=1)\n" +
+			" ├─ LookupJoin (estimated cost=333.300 rows=101) (actual rows=101 loops=1)\n" +
+			" │   ├─ TableAlias(a)\n" +
+			" │   │   └─ Table\n" +
+			" │   │       ├─ name: comp_index_t0\n" +
+			" │   │       └─ columns: [pk v1 v2]\n" +
+			" │   └─ TableAlias(b)\n" +
+			" │       └─ IndexedTableAccess(comp_index_t0)\n" +
+			" │           ├─ index: [comp_index_t0.pk]\n" +
+			" │           ├─ columns: [pk v1 v2]\n" +
+			" │           └─ keys: a.v2\n" +
+			" └─ Filter\n" +
+			"     ├─ (c.v2 = 5)\n" +
+			"     └─ TableAlias(c)\n" +
+			"         └─ IndexedTableAccess(comp_index_t0)\n" +
+			"             ├─ index: [comp_index_t0.pk]\n" +
+			"             ├─ columns: [pk v1 v2]\n" +
+			"             └─ keys: b.v2\n" +
+			"",
+	},
 }

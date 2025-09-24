@@ -115,5 +115,6 @@ var (
 		XyData,
 		Invert_pkData,
 		JoinData,
+		Comp_index_tablesData,
 	}
 )
