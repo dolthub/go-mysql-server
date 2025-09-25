@@ -123,9 +123,7 @@ func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 		outScope.node = l
 	}
 
-	if s.Lock != nil {
-		b.buildForUpdateOf(s.Lock, fromScope)
-	}
+	b.buildForUpdateOf(s.Lock, fromScope)
 
 	return
 }
@@ -243,7 +241,10 @@ func (b *Builder) renameSource(scope *scope, table string, cols []string) {
 	}
 }
 
-// buildForUpdateOf builds the FOR UPDATE OF clause. Currently a no-op that validates table names.
+// buildForUpdateOf builds the `FOR UPDATE OF` clause, ensuring that all tables listed are
+// present in the clause. `FOR UPDATE` in general is a no-op, so `FOR UPDATE OF` is
+// also a no-op: https://www.dolthub.com/blog/2023-10-23-hold-my-beer/
+// TODO: implement actual row-level locking for `FOR UPDATE` clauses in general.
 func (b *Builder) buildForUpdateOf(lock *ast.Lock, fromScope *scope) {
 	if lock == nil {
 		return
@@ -257,6 +258,4 @@ func (b *Builder) buildForUpdateOf(lock *ast.Lock, fromScope *scope) {
 			return
 		}
 	}
-
-	// This is currently a no-op: https://www.dolthub.com/blog/2023-10-23-hold-my-beer/
 }
