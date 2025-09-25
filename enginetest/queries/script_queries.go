@@ -125,7 +125,8 @@ var ScriptTests = []ScriptTest{
 	{
 		// https://github.com/dolthub/dolt/issues/9873
 		// TODO: `FOR UPDATE OF` (`FOR UPDATE` in general) is currently a no-op: https://www.dolthub.com/blog/2023-10-23-hold-my-beer/
-		Name: "FOR UPDATE OF syntax support tests",
+		Name:    "FOR UPDATE OF syntax support tests",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE task_instance (id INT PRIMARY KEY, task_id VARCHAR(255), dag_id VARCHAR(255), run_id VARCHAR(255), state VARCHAR(50), queued_by_job_id INT)",
 			"CREATE TABLE job (id INT PRIMARY KEY, state VARCHAR(50))",
