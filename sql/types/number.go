@@ -1482,11 +1482,13 @@ const (
 // TruncateStringToInt trims any whitespace from s, then truncates the string to the left most characters that make
 // up a valid integer. Empty strings are converted "0". Additionally, returns a flag indicating if truncation occurred.
 func TruncateStringToInt(s string) (string, bool) {
+	var seenDigit bool
 	s = strings.Trim(s, IntCutSet)
 	i, n := 0, len(s)
 	for ; i < n; i++ {
 		c := rune(s[i])
 		if unicode.IsDigit(c) {
+			seenDigit = true
 			continue
 		}
 		if i == 0 && (c == '-' || c == '+') {
@@ -1494,7 +1496,7 @@ func TruncateStringToInt(s string) (string, bool) {
 		}
 		break
 	}
-	if i == 0 {
+	if !seenDigit {
 		return "0", i != n
 	}
 	return s[:i], i != n
@@ -1527,7 +1529,7 @@ func TruncateStringToDouble(s string) (string, bool) {
 		}
 		break
 	}
-	if i == 0 {
+	if !seenDigit {
 		return "0", i != n
 	}
 	return s[:i], i != n

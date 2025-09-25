@@ -369,3 +369,204 @@ func TestNumberString(t *testing.T) {
 		})
 	}
 }
+
+func TestTruncateStringToInt(t *testing.T) {
+	tests := []struct {
+		input    string
+		exp      string
+		expTrunc bool
+	}{
+		{
+			input:    "1",
+			exp:      "1",
+			expTrunc: false,
+		},
+		{
+			// Whitespace does not count as truncation
+			input:    " \t   1 \t  ",
+			exp:      "1",
+			expTrunc: false,
+		},
+		{
+			// Newlines do count as part of truncation
+			input:    " \t\n1",
+			exp:      "0",
+			expTrunc: true,
+		},
+		{
+			input:    "123abc",
+			exp:      "123",
+			expTrunc: true,
+		},
+		{
+			input:    "abc",
+			exp:      "0",
+			expTrunc: true,
+		},
+		{
+			// Leading sign is fine
+			input:    "+123",
+			exp:      "+123",
+			expTrunc: false,
+		},
+		{
+			// Leading sign is fine
+			input:    "-123",
+			exp:      "-123",
+			expTrunc: false,
+		},
+		{
+			// Repeated signs
+			input:    "+-+-+-123",
+			exp:      "0",
+			expTrunc: true,
+		},
+		{
+			// Space after sign
+			input:    "+ 123",
+			exp:      "0",
+			expTrunc: true,
+		},
+		{
+			// Valid float strings are not valid ints
+			input:    "1.23",
+			exp:      "1",
+			expTrunc: true,
+		},
+		{
+			// Scientific float notation is not valid
+			input:    "123.456e10",
+			exp:      "123",
+			expTrunc: true,
+		},
+		{
+			// Scientific notation is not valid
+			input:    "123e10",
+			exp:      "123",
+			expTrunc: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v", test.input), func(t *testing.T) {
+			truncStr, didTrunc := TruncateStringToInt(test.input)
+			assert.Equal(t, test.exp, truncStr)
+			assert.Equal(t, test.expTrunc, didTrunc)
+		})
+	}
+}
+
+func TestTruncateStringToDouble(t *testing.T) {
+	tests := []struct {
+		input    string
+		exp      string
+		expTrunc bool
+	}{
+		{
+			input:    "1",
+			exp:      "1",
+			expTrunc: false,
+		},
+		{
+			// Whitespace does not count as truncation
+			input:    " \t\n 1 \t\n ",
+			exp:      "1",
+			expTrunc: false,
+		},
+		{
+			input:    "123abc",
+			exp:      "123",
+			expTrunc: true,
+		},
+		{
+			input:    "abc",
+			exp:      "0",
+			expTrunc: true,
+		},
+		{
+			// Leading sign is fine
+			input:    "+123",
+			exp:      "+123",
+			expTrunc: false,
+		},
+		{
+			// Leading sign is fine
+			input:    "-123",
+			exp:      "-123",
+			expTrunc: false,
+		},
+		{
+			// Repeated signs
+			input:    "+-+-+-123",
+			exp:      "0",
+			expTrunc: true,
+		},
+		{
+			// Space after sign
+			input:    "+ 123",
+			exp:      "0",
+			expTrunc: true,
+		},
+		{
+			// Valid float strings are not valid ints
+			input:    "1.23",
+			exp:      "1.23",
+			expTrunc: false,
+		},
+		{
+			// Scientific notation
+			input:    "123.456e10",
+			exp:      "123.456e10",
+			expTrunc: false,
+		},
+		{
+			// Scientific notation
+			input:    "123e10",
+			exp:      "123e10",
+			expTrunc: false,
+		},
+		{
+			// Scientific notation
+			input:    "+123.456e-10",
+			exp:      "+123.456e-10",
+			expTrunc: false,
+		},
+		{
+			// Scientific notation truncates
+			input:    "+123.456e-10notaumber",
+			exp:      "+123.456e-10",
+			expTrunc: true,
+		},
+		{
+			// Invalid Scientific notation
+			input:    "e123",
+			exp:      "0",
+			expTrunc: true,
+		},
+		{
+			// Invalid Scientific notation
+			input:    ".e1",
+			exp:      "0",
+			expTrunc: true,
+		},
+		{
+			// Invalid Scientific notation
+			input:    "1e2e3",
+			exp:      "1e2",
+			expTrunc: true,
+		},
+		{
+			input:    ".0e123",
+			exp:      ".0e123",
+			expTrunc: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v", test.input), func(t *testing.T) {
+			truncStr, didTrunc := TruncateStringToDouble(test.input)
+			assert.Equal(t, test.exp, truncStr)
+			assert.Equal(t, test.expTrunc, didTrunc)
+		})
+	}
+}
