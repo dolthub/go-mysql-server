@@ -23,7 +23,9 @@ import (
 	"reflect"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
+	"unicode"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -1103,7 +1105,7 @@ func convertToInt64(t NumberTypeImpl_, v interface{}, round bool) (int64, sql.Co
 	case string:
 		var err error
 		if round {
-			truncStr, didTrunc := sql.TruncateStringToDouble(v)
+			truncStr, didTrunc := TruncateStringToDouble(v)
 			if didTrunc {
 				err = sql.ErrTruncatedIncorrect.New(t, v)
 			}
@@ -1120,7 +1122,7 @@ func convertToInt64(t NumberTypeImpl_, v interface{}, round bool) (int64, sql.Co
 			i, inRange, _ := convertToInt64(t, f, round)
 			return i, inRange, err
 		}
-		truncStr, didTrunc := sql.TruncateStringToInt(v)
+		truncStr, didTrunc := TruncateStringToInt(v)
 		if didTrunc {
 			err = sql.ErrTruncatedIncorrect.New(t, v)
 		}
@@ -1304,7 +1306,7 @@ func convertToUint64(t NumberTypeImpl_, v interface{}, round bool) (uint64, sql.
 	case string:
 		var err error
 		if round {
-			truncStr, didTrunc := sql.TruncateStringToDouble(v)
+			truncStr, didTrunc := TruncateStringToDouble(v)
 			if didTrunc {
 				err = sql.ErrTruncatedIncorrect.New(t, v)
 			}
@@ -1321,7 +1323,7 @@ func convertToUint64(t NumberTypeImpl_, v interface{}, round bool) (uint64, sql.
 			i, inRange, _ := convertToUint64(t, f, round)
 			return i, inRange, err
 		}
-		truncStr, didTrunc := sql.TruncateStringToInt(v)
+		truncStr, didTrunc := TruncateStringToInt(v)
 		if didTrunc {
 			err = sql.ErrTruncatedIncorrect.New(t, v)
 		}
@@ -1393,7 +1395,7 @@ func convertToFloat64(t NumberTypeImpl_, v interface{}) (float64, error) {
 		return float64(i), nil
 	case string:
 		var err error
-		truncStr, didTrunc := sql.TruncateStringToDouble(v)
+		truncStr, didTrunc := TruncateStringToDouble(v)
 		if didTrunc {
 			err = sql.ErrTruncatedIncorrect.New(t, v)
 		}
@@ -1466,4 +1468,67 @@ func CoalesceInt(val interface{}) (int, bool) {
 	default:
 		return 0, false
 	}
+}
+
+const (
+	// IntCutSet is the set of characters that should be trimmed from the beginning and end of a string
+	//   when converting to a signed or unsigned integer
+	IntCutSet = " \t"
+
+	// NumericCutSet is the set of characters to trim from a string before converting it to a number.
+	NumericCutSet = " \t\n\r"
+)
+
+// TruncateStringToInt trims any whitespace from s, then truncates the string to the left most characters that make
+// up a valid integer. Empty strings are converted "0". Additionally, returns a flag indicating if truncation occurred.
+func TruncateStringToInt(s string) (string, bool) {
+	s = strings.Trim(s, IntCutSet)
+	i, n := 0, len(s)
+	for ; i < n; i++ {
+		c := rune(s[i])
+		if unicode.IsDigit(c) {
+			continue
+		}
+		if i == 0 && (c == '-' || c == '+') {
+			continue
+		}
+		break
+	}
+	if i == 0 {
+		return "0", i != n
+	}
+	return s[:i], i != n
+}
+
+// TruncateStringToDouble trims any whitespace from s, then truncates the string to the left most characters that make
+// up a valid double. Empty strings are converted "0". Additionally, returns a flag indicating if truncation occurred.
+func TruncateStringToDouble(s string) (string, bool) {
+	var signIndex int
+	var seenDigit, seenDot, seenExp bool
+	s = strings.Trim(s, NumericCutSet)
+	i, n := 0, len(s)
+	for ; i < n; i++ {
+		char := rune(s[i])
+		if unicode.IsDigit(char) {
+			seenDigit = true
+			continue
+		}
+		if char == '.' && !seenDot {
+			seenDot = true
+			continue
+		}
+		if (char == 'e' || char == 'E') && !seenExp && seenDigit {
+			seenExp = true
+			signIndex = i + 1 // allow a sign following exponent
+			continue
+		}
+		if i == signIndex && (char == '-' || char == '+') {
+			continue
+		}
+		break
+	}
+	if i == 0 {
+		return "0", i != n
+	}
+	return s[:i], i != n
 }
