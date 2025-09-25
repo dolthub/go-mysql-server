@@ -40,13 +40,16 @@ func TestLn(t *testing.T) {
 		{"Input value is null", types.Float64, sql.NewRow(nil), nil, nil},
 		{"Input value is zero", types.Float64, sql.NewRow(0), nil, nil},
 		{"Input value is negative", types.Float64, sql.NewRow(-1), nil, nil},
-		{"Input value is valid string", types.Float64, sql.NewRow("2"), 0.6931471805599453, nil},
-		{"Input value is invalid string", types.Float64, sql.NewRow("aaa"), nil, nil},
-		{"Input value is invalid string truncates", types.Float64, sql.NewRow("123.456"), 4.815884817283264, nil},
 		{"Input value is valid float64", types.Float64, sql.NewRow(3), 1.0986122886681096, nil},
 		{"Input value is valid float32", types.Float32, sql.NewRow(float32(6)), 1.791759469228055, nil},
 		{"Input value is valid int64", types.Int64, sql.NewRow(int64(8)), 2.0794415416798357, nil},
 		{"Input value is valid int32", types.Int32, sql.NewRow(int32(10)), 2.302585092994046, nil},
+		{"Input value is empty string", types.Text, sql.NewRow(""), nil, nil},
+		{"Input value is valid string int", types.Text, sql.NewRow("2"), 0.6931471805599453, nil},
+		{"Input value is valid string float", types.Text, sql.NewRow("123.456"), 4.815884817283264, nil},
+		{"Input value is invalid string", types.Text, sql.NewRow("aaa"), nil, nil},
+		{"Input value is truncated string float", types.Text, sql.NewRow("123.456abc"), 4.815884817283264, nil},
+		{"Input value is string using float notation", types.Text, sql.NewRow("1.23456e+2notanumber"), 4.815884817283264, nil},
 	}
 
 	for _, tt := range testCases {
@@ -81,13 +84,16 @@ func TestLog2(t *testing.T) {
 		{"Input value is null", types.Float64, sql.NewRow(nil), nil, nil},
 		{"Input value is zero", types.Float64, sql.NewRow(0), nil, nil},
 		{"Input value is negative", types.Float64, sql.NewRow(-1), nil, nil},
-		{"Input value is valid string", types.Float64, sql.NewRow("2"), float64(1), nil},
-		{"Input value is invalid string", types.Float64, sql.NewRow("aaa"), nil, nil},
-		{"Input value is invalid string truncates", types.Float64, sql.NewRow("123.456"), 6.947853143387016, nil},
 		{"Input value is valid float64", types.Float64, sql.NewRow(3), 1.5849625007211563, nil},
 		{"Input value is valid float32", types.Float32, sql.NewRow(float32(6)), 2.584962500721156, nil},
 		{"Input value is valid int64", types.Int64, sql.NewRow(int64(8)), 3.0, nil},
 		{"Input value is valid int32", types.Int32, sql.NewRow(int32(10)), 3.321928094887362, nil},
+		{"Input value is empty string", types.Text, sql.NewRow(""), nil, nil},
+		{"Input value is valid string int", types.Text, sql.NewRow("123"), 6.94251450533924, nil},
+		{"Input value is valid string float", types.Text, sql.NewRow("123.456"), 6.947853143387016, nil},
+		{"Input value is invalid string", types.Text, sql.NewRow("aaa"), nil, nil},
+		{"Input value is truncated string float", types.Text, sql.NewRow("123.456abc"), 6.947853143387016, nil},
+		{"Input value is is truncated string using float notation", types.Text, sql.NewRow("1.23456e+2notanumber"), 6.947853143387016, nil},
 	}
 
 	for _, tt := range testCases {
@@ -122,13 +128,16 @@ func TestLog10(t *testing.T) {
 		{"Input value is null", types.Float64, sql.NewRow(0), nil, nil},
 		{"Input value is zero", types.Float64, sql.NewRow(0), nil, nil},
 		{"Input value is negative", types.Float64, sql.NewRow(-1), nil, nil},
-		{"Input value is valid string", types.Float64, sql.NewRow("2"), float64(0.3010299956639812), nil},
-		{"Input value is invalid string", types.Float64, sql.NewRow("aaa"), nil, nil},
-		{"Input value is invalid string truncates", types.Float64, sql.NewRow("123.456"), 2.0915122016277716, nil},
 		{"Input value is valid float64", types.Float64, sql.NewRow(3), 0.4771212547196624, nil},
 		{"Input value is valid float32", types.Float32, sql.NewRow(float32(6)), 0.7781512503836436, nil},
 		{"Input value is valid int64", types.Int64, sql.NewRow(int64(8)), 0.9030899869919435, nil},
 		{"Input value is valid int32", types.Int32, sql.NewRow(int32(10)), 1, nil},
+		{"Input value is empty string", types.Text, sql.NewRow(""), nil, nil},
+		{"Input value is valid string int", types.Text, sql.NewRow("2"), 0.3010299956639812, nil},
+		{"Input value is valid string float", types.Text, sql.NewRow("123.456"), 2.0915122016277716, nil},
+		{"Input value is invalid string", types.Text, sql.NewRow("aaa"), nil, nil},
+		{"Input value is truncated string float", types.Text, sql.NewRow("123.456abc"), 2.0915122016277716, nil},
+		{"Input value is is truncated string using float notation", types.Text, sql.NewRow("1.23456e+2notanumber"), 2.0915122016277716, nil},
 	}
 
 	for _, tt := range testCases {
@@ -175,9 +184,13 @@ func TestLog(t *testing.T) {
 		{"Input base is nil", []sql.Expression{expression.NewLiteral(nil, types.Float64), expression.NewLiteral(float64(10), types.Float64)}, nil, nil},
 		{"Input base is zero", []sql.Expression{expression.NewLiteral(float64(0), types.Float64), expression.NewLiteral(float64(10), types.Float64)}, nil, nil},
 		{"Input base is negative", []sql.Expression{expression.NewLiteral(float64(-5), types.Float64), expression.NewLiteral(float64(10), types.Float64)}, nil, nil},
+
 		{"Input base is valid string", []sql.Expression{expression.NewLiteral("4", types.LongText), expression.NewLiteral(float64(10), types.Float64)}, 1.6609640474436813, nil},
 		{"Input base is invalid string", []sql.Expression{expression.NewLiteral("bbb", types.LongText), expression.NewLiteral(float64(10), types.Float64)}, nil, nil},
+		{"Input base is valid string int", []sql.Expression{expression.NewLiteral("2", types.LongText), expression.NewLiteral(float64(10), types.Float64)}, 3.321928094887362, nil},
+		{"Input base is valid string float", []sql.Expression{expression.NewLiteral("1.23", types.LongText), expression.NewLiteral(float64(10), types.Float64)}, 11.122838112203077, nil},
 		{"Input base is invalid string truncates", []sql.Expression{expression.NewLiteral("1.23abc", types.LongText), expression.NewLiteral(float64(10), types.Float64)}, 11.122838112203077, nil},
+		{"Input value is truncated string using float notation", []sql.Expression{expression.NewLiteral("1.23456e+2notanumber", types.LongText), expression.NewLiteral(float64(10), types.Float64)}, 0.4781229577440309, nil},
 
 		{"Input value is null", []sql.Expression{expression.NewLiteral(nil, types.Float64)}, nil, nil},
 		{"Input value is zero", []sql.Expression{expression.NewLiteral(float64(0), types.Float64)}, nil, nil},

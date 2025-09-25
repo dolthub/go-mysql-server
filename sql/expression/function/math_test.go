@@ -403,7 +403,7 @@ func TestExp(t *testing.T) {
 			exp:  math.Exp(0),
 		},
 		{
-			name: "empty string",
+			name: "empty string is 0",
 			arg:  expression.NewLiteral("", types.Text),
 			exp:  math.Exp(0),
 		},
@@ -413,15 +413,21 @@ func TestExp(t *testing.T) {
 			exp:  math.Exp(10),
 		},
 		{
-			name: "scientific string is evaluated",
+			name: "scientific float notation string is evaluated",
 			arg:  expression.NewLiteral("1e1", types.Text),
 			exp:  math.Exp(10),
 			err:  false,
 		},
 		{
-			name: "scientific string is truncated",
+			name: "string is truncated",
 			arg:  expression.NewLiteral("10abc", types.Text),
 			exp:  math.Exp(10),
+			err:  false,
+		},
+		{
+			name: "string is truncated",
+			arg:  expression.NewLiteral("+.123e+1abc", types.Text),
+			exp:  math.Exp(1.23),
 			err:  false,
 		},
 	}

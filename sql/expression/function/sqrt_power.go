@@ -86,7 +86,10 @@ func (s *Sqrt) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	child, _, err = types.Float64.Convert(ctx, child)
-	if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
+	if err != nil {
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
@@ -159,7 +162,10 @@ func (p *Power) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 	left, _, err = types.Float64.Convert(ctx, left)
-	if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
+	if err != nil {
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
@@ -171,7 +177,10 @@ func (p *Power) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 	right, _, err = types.Float64.Convert(ctx, right)
-	if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
+	if err != nil {
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
