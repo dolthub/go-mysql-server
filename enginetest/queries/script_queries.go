@@ -1244,8 +1244,12 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 	{
 		Name: "complicated string to numeric conversion",
 		SetUpScript: []string{
-			"CREATE  TABLE  t2(c0 INT , c1 BOOLEAN , c2 BOOLEAN , c3 INT , placeholder0 INT , placeholder1 VARCHAR(500) , placeholder2 VARCHAR(500) , PRIMARY KEY(placeholder0));",
-			"CREATE  TABLE  t3(c0 INT , c1 VARCHAR(500) , c2 BOOLEAN , c3 VARCHAR(500) , placeholder0 BOOLEAN , placeholder1 INT , placeholder2 VARCHAR(500));",
+			"CREATE TABLE t0(c INT);",
+			"INSERT INTO t0 VALUES (1);",
+			"CREATE TABLE t1(c VARCHAR(500));",
+			"INSERT INTO t1 VALUES ('1a');",
+			"CREATE TABLE t2(c0 INT , c1 BOOLEAN , c2 BOOLEAN , c3 INT , placeholder0 INT , placeholder1 VARCHAR(500) , placeholder2 VARCHAR(500) , PRIMARY KEY(placeholder0));",
+			"CREATE TABLE t3(c0 INT , c1 VARCHAR(500) , c2 BOOLEAN , c3 VARCHAR(500) , placeholder0 BOOLEAN , placeholder1 INT , placeholder2 VARCHAR(500));",
 			"INSERT INTO t3 VALUES (7, '0y4', TRUE, '5y', TRUE, 5, 'p9c');",
 			"INSERT INTO t3 VALUES (1, '4', TRUE, '4H', FALSE, 9, 'Zy4');",
 			"INSERT INTO t3 VALUES (10, '1a', FALSE, 'pYE', FALSE, 3, '0awX');",
@@ -1254,6 +1258,12 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 			"INSERT INTO t2 VALUES (10, TRUE, TRUE, 10, 1, 'rlQT', 'W');",
 		},
 		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM t0, t1 WHERE (t1.c IN (true));",
+				Expected: []sql.Row{
+					{1, "1a"},
+				},
+			},
 			{
 				Query: "SELECT * FROM t3 INNER JOIN t2 ON ((((t3.c0) = ((EXTRACT(YEAR FROM DATE_ADD(DATE '2000-01-01', INTERVAL ( BIT_LENGTH(( MOD(t2.c3 + ( t2.c3 + ( BIT_COUNT(t2.c3) ) * 3 - CAST(( NOT (t2.c0 XOR t2.c2) ) AS SIGNED) ) * 2, 100 + t2.c3) ) ^ t2.c3) ) DAY)) % (t2.c3 + 1))))) >= (((t3.c2) < ((((((('Bs./')OR('wZ')) IN ((('1066274936')OR('')))))OR((((t3.c1 IN (true)))<>(((t3.c0)OR(( COALESCE(NULLIF(t3.c3, ''), t3.c1) ))))))))))));",
 				Expected: []sql.Row{
