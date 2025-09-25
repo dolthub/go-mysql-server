@@ -219,7 +219,7 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 				return t.ConvertToNullDecimal(res)
 			}
 		}
-		truncStr, didTrunc := sql.TruncateStringToDouble(value)
+		truncStr, didTrunc := TruncateStringToDouble(value)
 		if truncStr == "0" {
 			nullDec, cErr := t.ConvertToNullDecimal(decimal.NewFromInt(0))
 			if cErr != nil {

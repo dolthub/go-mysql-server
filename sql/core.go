@@ -317,11 +317,7 @@ func ConvertToBool(ctx *Context, v interface{}) (bool, error) {
 	case float64:
 		return b != 0, nil
 	case string:
-		truncStr, didTrunc := TruncateStringToDouble(b)
-		if didTrunc {
-			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", ErrTruncatedIncorrect.New("INTEGER", b))
-		}
-		bFloat, err := strconv.ParseFloat(truncStr, 64)
+		bFloat, err := strconv.ParseFloat(TrimStringToNumberPrefix(ctx, b, false), 64)
 		if err != nil {
 			return false, nil
 		}
@@ -357,7 +353,8 @@ func TrimStringToNumberPrefix(ctx *Context, s string, isInt bool) string {
 	seenExp := false
 	signIndex := 0
 
-	for i := 0; i < len(s); i++ {
+	var i int
+	for i = 0; i < len(s); i++ {
 		char := rune(s[i])
 		if unicode.IsDigit(char) {
 			seenDigit = true
@@ -373,71 +370,14 @@ func TrimStringToNumberPrefix(ctx *Context, s string, isInt bool) string {
 			} else {
 				ctx.Warn(mysql.ERTruncatedWrongValue, "Truncated incorrect DOUBLE value: '%s'", s)
 			}
-			return convertEmptyStringToZero(s[:i])
+			break
 		}
 	}
-	return convertEmptyStringToZero(s)
-}
-
-func convertEmptyStringToZero(s string) string {
+	s = s[:i]
 	if s == "" {
-		return "0"
+		s = "0"
 	}
 	return s
-}
-
-// TruncateStringToInt trims any whitespace from s, then truncates the string to the left most characters that make
-// up a valid integer. Empty strings are converted "0". Additionally, returns a flag indicating if truncation occurred.
-func TruncateStringToInt(s string) (string, bool) {
-	s = strings.Trim(s, IntCutSet)
-	i, n := 0, len(s)
-	for ; i < n; i++ {
-		c := rune(s[i])
-		if unicode.IsDigit(c) {
-			continue
-		}
-		if i == 0 && (c == '-' || c == '+') {
-			continue
-		}
-		break
-	}
-	if i == 0 {
-		return "0", i != n
-	}
-	return s[:i], i != n
-}
-
-// TruncateStringToDouble trims any whitespace from s, then truncates the string to the left most characters that make
-// up a valid double. Empty strings are converted "0". Additionally, returns a flag indicating if truncation occurred.
-func TruncateStringToDouble(s string) (string, bool) {
-	var signIndex int
-	var seenDigit, seenDot, seenExp bool
-	s = strings.Trim(s, NumericCutSet)
-	i, n := 0, len(s)
-	for ; i < n; i++ {
-		char := rune(s[i])
-		if unicode.IsDigit(char) {
-			seenDigit = true
-			continue
-		}
-		if char == '.' && !seenDot {
-			seenDot = true
-			continue
-		}
-		if (char == 'e' || char == 'E') && !seenExp && seenDigit {
-			seenExp = true
-			signIndex = i + 1 // allow a sign following exponent
-			continue
-		}
-		if i == signIndex && (char == '-' || char == '+') {
-			continue
-		}
-		break
-	}
-	if i == 0 {
-		return "0", i != n
-	}
-	return s[:i], i != n
 }
 
 var ErrVectorInvalidBinaryLength = errors.NewKind("cannot convert BINARY(%d) to vector, byte length must be a multiple of 4 bytes")
