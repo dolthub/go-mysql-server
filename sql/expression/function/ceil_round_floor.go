@@ -91,7 +91,7 @@ func (c *Ceil) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		child, _, err = types.Float64.Convert(ctx, child)
 		if err != nil {
 			if !sql.ErrTruncatedIncorrect.Is(err) {
-				return int32(0), nil
+				return nil, err
 			}
 			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		}
@@ -175,7 +175,7 @@ func (f *Floor) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		child, _, err = types.Float64.Convert(ctx, child)
 		if err != nil {
 			if !sql.ErrTruncatedIncorrect.Is(err) {
-				return int32(0), nil
+				return nil, err
 			}
 			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		}
@@ -265,7 +265,10 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, nil
 		}
 		tmp, _, err = types.Int32.Convert(ctx, tmp)
-		if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
+		if err != nil {
+			if !sql.ErrTruncatedIncorrect.Is(err) {
+				return nil, err
+			}
 			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		}
 		prec = tmp.(int32)

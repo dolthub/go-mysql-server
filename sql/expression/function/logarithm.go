@@ -129,7 +129,10 @@ func (l *LogBase) Eval(
 	}
 
 	val, _, err := types.Float64.Convert(ctx, v)
-	if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
+	if err != nil {
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 	return computeLog(ctx, val.(float64), l.base)
@@ -209,7 +212,10 @@ func (l *Log) Eval(
 		return nil, nil
 	}
 	lhs, _, err := types.Float64.Convert(ctx, left)
-	if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
+	if err != nil {
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
@@ -221,7 +227,10 @@ func (l *Log) Eval(
 		return nil, nil
 	}
 	rhs, _, err := types.Float64.Convert(ctx, right)
-	if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
+	if err != nil {
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 

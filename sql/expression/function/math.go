@@ -131,7 +131,10 @@ func (r *Rand) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	e, _, err = types.Int64.Convert(ctx, e)
-	if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
+	if err != nil {
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
@@ -173,7 +176,10 @@ func (s *Sin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	n, _, err := types.Float64.Convert(ctx, val)
-	if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
+	if err != nil {
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
@@ -222,7 +228,10 @@ func (s *Cos) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	n, _, err := types.Float64.Convert(ctx, val)
-	if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
+	if err != nil {
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
@@ -271,7 +280,10 @@ func (t *Tan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	n, _, err := types.Float64.Convert(ctx, val)
-	if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
+	if err != nil {
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
@@ -325,7 +337,10 @@ func (a *Asin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	n, _, err := types.Float64.Convert(ctx, val)
-	if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
+	if err != nil {
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
@@ -379,7 +394,10 @@ func (a *Acos) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	n, _, err := types.Float64.Convert(ctx, val)
-	if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
+	if err != nil {
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
@@ -488,12 +506,18 @@ func (a *Atan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	nx, _, err := types.Float64.Convert(ctx, xx)
-	if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
+	if err != nil {
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
 	ny, _, err := types.Float64.Convert(ctx, yy)
-	if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
+	if err != nil {
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
@@ -547,7 +571,10 @@ func (c *Cot) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	n, _, err := types.Float64.Convert(ctx, val)
-	if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
+	if err != nil {
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
@@ -611,7 +638,10 @@ func (d *Degrees) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	n, _, err := types.Float64.Convert(ctx, val)
-	if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
+	if err != nil {
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
@@ -660,7 +690,10 @@ func (r *Radians) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	n, _, err := types.Float64.Convert(ctx, val)
-	if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
+	if err != nil {
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
@@ -974,7 +1007,10 @@ func (e *Exp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	v, _, err := types.Float64.Convert(ctx, val)
-	if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
+	if err != nil {
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
