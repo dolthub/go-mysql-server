@@ -517,12 +517,10 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 				Expected: []sql.Row{{true}},
 			},
 			{
-				Skip:     true,
 				Query:    "SELECT '1.9a' = 1.9;",
 				Expected: []sql.Row{{true}},
 			},
 			{
-				Skip:     true,
 				Query:    "SELECT 1 where '1.9a' = 1.9;",
 				Expected: []sql.Row{{1}},
 			},
@@ -590,11 +588,25 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A123",
 			},
 			{
-				Query:                           "SELECT 0 in ('A123');",
+				Query:                           "SELECT '123abc' in ('string', 1, 2, 123);",
+				Expected:                        []sql.Row{{true}},
+				ExpectedWarningsCount:           3, // MySQL only throws 1 warning
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value",
+			},
+			{
+				Query:                           "SELECT 123 in ('string', 1, 2, '123abc');",
+				Expected:                        []sql.Row{{true}},
+				ExpectedWarningsCount:           2,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value",
+			},
+			{
+				Query:                           "SELECT '123A' in (123);",
 				Expected:                        []sql.Row{{true}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
-				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A123",
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 123A",
 			},
 			{
 				Query:    "SELECT '123.456' in (123);",
@@ -1229,6 +1241,48 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 			},
 		},
 	},
+	{
+		Name: "complicated string to numeric conversion",
+		SetUpScript: []string{
+			"CREATE  TABLE  t2(c0 INT , c1 BOOLEAN , c2 BOOLEAN , c3 INT , placeholder0 INT , placeholder1 VARCHAR(500) , placeholder2 VARCHAR(500) , PRIMARY KEY(placeholder0));",
+			"CREATE  TABLE  t3(c0 INT , c1 VARCHAR(500) , c2 BOOLEAN , c3 VARCHAR(500) , placeholder0 BOOLEAN , placeholder1 INT , placeholder2 VARCHAR(500));",
+			"INSERT INTO t3 VALUES (7, '0y4', TRUE, '5y', TRUE, 5, 'p9c');",
+			"INSERT INTO t3 VALUES (1, '4', TRUE, '4H', FALSE, 9, 'Zy4');",
+			"INSERT INTO t3 VALUES (10, '1a', FALSE, 'pYE', FALSE, 3, '0awX');",
+			"INSERT INTO t3 VALUES (8, 'J', TRUE, 'LE', TRUE, 9, 'YEqQ');",
+			"INSERT INTO t2 VALUES (10, FALSE, TRUE, 2, 2, 'nfxF', 'xvC');",
+			"INSERT INTO t2 VALUES (10, TRUE, TRUE, 10, 1, 'rlQT', 'W');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM t3 INNER JOIN t2 ON ((((t3.c0) = ((EXTRACT(YEAR FROM DATE_ADD(DATE '2000-01-01', INTERVAL ( BIT_LENGTH(( MOD(t2.c3 + ( t2.c3 + ( BIT_COUNT(t2.c3) ) * 3 - CAST(( NOT (t2.c0 XOR t2.c2) ) AS SIGNED) ) * 2, 100 + t2.c3) ) ^ t2.c3) ) DAY)) % (t2.c3 + 1))))) >= (((t3.c2) < ((((((('Bs./')OR('wZ')) IN ((('1066274936')OR('')))))OR((((t3.c1 IN (true)))<>(((t3.c0)OR(( COALESCE(NULLIF(t3.c3, ''), t3.c1) ))))))))))));",
+				Expected: []sql.Row{
+					{7, "0y4", 1, "5y", 1, 5, "p9c", 10, 1, 1, 10, 1, "rlQT", "W"},
+					{1, "4", 1, "4H", 0, 9, "Zy4", 10, 1, 1, 10, 1, "rlQT", "W"},
+					{10, "1a", 0, "pYE", 0, 3, "0awX", 10, 1, 1, 10, 1, "rlQT", "W"},
+					{8, "J", 1, "LE", 1, 9, "YEqQ", 10, 1, 1, 10, 1, "rlQT", "W"},
+					{7, "0y4", 1, "5y", 1, 5, "p9c", 10, 0, 1, 2, 2, "nfxF", "xvC"},
+					{1, "4", 1, "4H", 0, 9, "Zy4", 10, 0, 1, 2, 2, "nfxF", "xvC"},
+					{10, "1a", 0, "pYE", 0, 3, "0awX", 10, 0, 1, 2, 2, "nfxF", "xvC"},
+					{8, "J", 1, "LE", 1, 9, "YEqQ", 10, 0, 1, 2, 2, "nfxF", "xvC"},
+				},
+			},
+			{
+				Query: "SELECT * FROM t3 CROSS JOIN t2 WHERE ((((t3.c0) = ((EXTRACT(YEAR FROM DATE_ADD(DATE '2000-01-01', INTERVAL ( BIT_LENGTH(( MOD(t2.c3 + ( t2.c3 + ( BIT_COUNT(t2.c3) ) * 3 - CAST(( NOT (t2.c0 XOR t2.c2) ) AS SIGNED) ) * 2, 100 + t2.c3) ) ^ t2.c3) ) DAY)) % (t2.c3 + 1))))) >= (((t3.c2) < ((((((('Bs./')OR('wZ')) IN ((('1066274936')OR('')))))OR((((t3.c1 IN (true)))<>(((t3.c0)OR(( COALESCE(NULLIF(t3.c3, ''), t3.c1) ))))))))))));",
+				Expected: []sql.Row{
+					{7, "0y4", 1, "5y", 1, 5, "p9c", 10, 1, 1, 10, 1, "rlQT", "W"},
+					{1, "4", 1, "4H", 0, 9, "Zy4", 10, 1, 1, 10, 1, "rlQT", "W"},
+					{10, "1a", 0, "pYE", 0, 3, "0awX", 10, 1, 1, 10, 1, "rlQT", "W"},
+					{8, "J", 1, "LE", 1, 9, "YEqQ", 10, 1, 1, 10, 1, "rlQT", "W"},
+					{7, "0y4", 1, "5y", 1, 5, "p9c", 10, 0, 1, 2, 2, "nfxF", "xvC"},
+					{1, "4", 1, "4H", 0, 9, "Zy4", 10, 0, 1, 2, 2, "nfxF", "xvC"},
+					{10, "1a", 0, "pYE", 0, 3, "0awX", 10, 0, 1, 2, 2, "nfxF", "xvC"},
+					{8, "J", 1, "LE", 1, 9, "YEqQ", 10, 0, 1, 2, 2, "nfxF", "xvC"},
+				},
+			},
+		},
+	},
+
 	{
 		// https://github.com/dolthub/dolt/issues/9794
 		Name: "UPDATE with TRIM function on TEXT column",
