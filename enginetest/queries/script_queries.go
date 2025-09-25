@@ -15,6 +15,7 @@
 package queries
 
 import (
+	"fmt"
 	"math"
 	"time"
 
@@ -121,6 +122,71 @@ type ScriptTestAssertion struct {
 // Unlike other engine tests, ScriptTests must be self-contained. No other tables are created outside the definition of
 // the tests.
 var ScriptTests = []ScriptTest{
+	{
+		// https://github.com/dolthub/dolt/issues/9873
+		// TODO: `FOR UPDATE OF` (`FOR UPDATE` in general) is currently a no-op: https://www.dolthub.com/blog/2023-10-23-hold-my-beer/
+		Name:    "FOR UPDATE OF syntax support tests",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE task_instance (id INT PRIMARY KEY, task_id VARCHAR(255), dag_id VARCHAR(255), run_id VARCHAR(255), state VARCHAR(50), queued_by_job_id INT)",
+			"CREATE TABLE job (id INT PRIMARY KEY, state VARCHAR(50))",
+			"CREATE TABLE dag_run (dag_id VARCHAR(255), run_id VARCHAR(255), state VARCHAR(50))",
+			"CREATE TABLE t (id INT PRIMARY KEY, name VARCHAR(50))",
+			"INSERT INTO task_instance VALUES (1, 'task1', 'dag1', 'run1', 'running', 1)",
+			"INSERT INTO job VALUES (1, 'running')",
+			"INSERT INTO dag_run VALUES ('dag1', 'run1', 'running')",
+			"INSERT INTO t VALUES (1, 'test')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT task_instance.id, task_instance.task_id, task_instance.dag_id, task_instance.run_id
+FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INNER JOIN dag_run ON dag_run.dag_id = task_instance.dag_id AND dag_run.run_id = task_instance.run_id
+ WHERE task_instance.state IN ('running', 'queued', 'scheduled') AND NOT (job.state <=> 'running') AND dag_run.state = 'running' FOR UPDATE OF task_instance SKIP LOCKED`,
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT * FROM t FOR UPDATE",
+				Expected: []sql.Row{{1, "test"}},
+			},
+			{
+				Query:    "SELECT * FROM t FOR UPDATE OF t",
+				Expected: []sql.Row{{1, "test"}},
+			},
+			{
+				Query:    "SELECT * FROM t FOR UPDATE OF t SKIP LOCKED",
+				Expected: []sql.Row{{1, "test"}},
+			},
+			{
+				Query:    "SELECT * FROM t FOR UPDATE OF t NOWAIT",
+				Expected: []sql.Row{{1, "test"}},
+			},
+			{
+				Query:    "SELECT * FROM task_instance t1, job t2 FOR UPDATE OF t1, t2",
+				Expected: []sql.Row{{1, "task1", "dag1", "run1", "running", 1, 1, "running"}},
+			},
+			{
+				Query:       "SELECT * FROM t FOR UPDATE OF nonexistent_table",
+				ExpectedErr: sql.ErrUnresolvedTableLock,
+			},
+			{
+				Query:          "SELECT * FROM t FOR UPDATE OF t, nonexistent_table",
+				ExpectedErr:    sql.ErrUnresolvedTableLock,
+				ExpectedErrStr: fmt.Sprintf(sql.ErrUnresolvedTableLock.Message, "nonexistent_table"),
+			},
+			{
+				Query:       "SELECT * FROM t FOR UPDATE OF",
+				ExpectedErr: sql.ErrSyntaxError,
+			},
+			{
+				Query:       "SELECT * FROM t FOR UPDATE test",
+				ExpectedErr: sql.ErrSyntaxError,
+			},
+			{
+				Query:    "SELECT * FROM t FOR UPDATE",
+				Expected: []sql.Row{{1, "test"}},
+			},
+		},
+	},
 	{
 		// https://github.com/dolthub/dolt/issues/9872
 		Name:        "TEXT(m) syntax support",
