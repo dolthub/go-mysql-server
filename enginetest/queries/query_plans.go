@@ -24795,6 +24795,84 @@ order by x, y;
 			"",
 	},
 	{
+		Query: `SELECT * from mytable where not exists (SELECT l.s from (select s from mytable) l left join othertable on l.s = othertable.s2)`,
+		ExpectedPlan: "AntiJoinIncludingNulls\n" +
+			" ├─ ProcessTable\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: mytable\n" +
+			" │       └─ columns: [i s]\n" +
+			" └─ Limit(1)\n" +
+			"     └─ LeftOuterHashJoin\n" +
+			"         ├─ Eq\n" +
+			"         │   ├─ l.s:2!null\n" +
+			"         │   └─ othertable.s2:3!null\n" +
+			"         ├─ CachedResults\n" +
+			"         │   └─ SubqueryAlias\n" +
+			"         │       ├─ name: l\n" +
+			"         │       ├─ outerVisibility: true\n" +
+			"         │       ├─ isLateral: false\n" +
+			"         │       ├─ cacheable: true\n" +
+			"         │       ├─ colSet: (5)\n" +
+			"         │       ├─ tableId: 3\n" +
+			"         │       └─ Table\n" +
+			"         │           ├─ name: mytable\n" +
+			"         │           ├─ columns: [s]\n" +
+			"         │           ├─ colSet: (3,4)\n" +
+			"         │           └─ tableId: 2\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: TUPLE(l.s:2!null)\n" +
+			"             ├─ right-key: TUPLE(othertable.s2:0!null)\n" +
+			"             └─ ProcessTable\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: othertable\n" +
+			"                     └─ columns: [s2]\n" +
+			"",
+		ExpectedEstimates: "AntiJoinIncludingNulls (estimated cost=7.545 rows=2)\n" +
+			" ├─ Table\n" +
+			" │   └─ name: mytable\n" +
+			" └─ Limit(1)\n" +
+			"     └─ LeftOuterHashJoin\n" +
+			"         ├─ (l.s = othertable.s2)\n" +
+			"         ├─ CachedResults\n" +
+			"         │   └─ SubqueryAlias\n" +
+			"         │       ├─ name: l\n" +
+			"         │       ├─ outerVisibility: true\n" +
+			"         │       ├─ isLateral: false\n" +
+			"         │       ├─ cacheable: true\n" +
+			"         │       └─ Table\n" +
+			"         │           ├─ name: mytable\n" +
+			"         │           └─ columns: [s]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: (l.s)\n" +
+			"             ├─ right-key: (othertable.s2)\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: othertable\n" +
+			"                 └─ columns: [s2]\n" +
+			"",
+		ExpectedAnalysis: "AntiJoinIncludingNulls (estimated cost=7.545 rows=2) (actual rows=0 loops=1)\n" +
+			" ├─ Table\n" +
+			" │   └─ name: mytable\n" +
+			" └─ Limit(1)\n" +
+			"     └─ LeftOuterHashJoin\n" +
+			"         ├─ (l.s = othertable.s2)\n" +
+			"         ├─ CachedResults\n" +
+			"         │   └─ SubqueryAlias\n" +
+			"         │       ├─ name: l\n" +
+			"         │       ├─ outerVisibility: true\n" +
+			"         │       ├─ isLateral: false\n" +
+			"         │       ├─ cacheable: true\n" +
+			"         │       └─ Table\n" +
+			"         │           ├─ name: mytable\n" +
+			"         │           └─ columns: [s]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: (l.s)\n" +
+			"             ├─ right-key: (othertable.s2)\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: othertable\n" +
+			"                 └─ columns: [s2]\n" +
+			"",
+	},
+	{
 		Query: `select * from xy where x = json_object();`,
 		ExpectedPlan: "Filter\n" +
 			" ├─ Eq\n" +
