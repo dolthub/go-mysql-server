@@ -123,6 +123,10 @@ func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 		outScope.node = l
 	}
 
+	if s.Lock != nil {
+		b.buildForUpdateOf(s.Lock, fromScope)
+	}
+
 	return
 }
 
@@ -237,4 +241,22 @@ func (b *Builder) renameSource(scope *scope, table string, cols []string) {
 		c.scalar = nil
 		scope.cols[i] = c
 	}
+}
+
+// buildForUpdateOf builds the FOR UPDATE OF clause. Currently a no-op that validates table names.
+func (b *Builder) buildForUpdateOf(lock *ast.Lock, fromScope *scope) {
+	if lock == nil {
+		return
+	}
+
+	for _, tableName := range lock.Tables {
+		tableNameStr := tableName.Name.String()
+
+		if !fromScope.hasTable(tableNameStr) {
+			b.handleErr(sql.ErrUnresolvedTableLock.New(tableNameStr))
+			return
+		}
+	}
+
+	// This is currently a no-op: https://www.dolthub.com/blog/2023-10-23-hold-my-beer/
 }

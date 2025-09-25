@@ -204,7 +204,7 @@ func TestSingleScript(t *testing.T) {
 	var scripts = []queries.ScriptTest{
 		{
 			// https://github.com/dolthub/dolt/issues/9873
-			Name:        "FOR UPDATE OF syntax support tests",
+			Name: "FOR UPDATE OF syntax support tests",
 			SetUpScript: []string{
 				"CREATE TABLE task_instance (id INT PRIMARY KEY, task_id VARCHAR(255), dag_id VARCHAR(255), run_id VARCHAR(255), state VARCHAR(50), queued_by_job_id INT)",
 				"CREATE TABLE job (id INT PRIMARY KEY, state VARCHAR(50))",
@@ -244,7 +244,24 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 				},
 				{
 					Query:       "SELECT * FROM t FOR UPDATE OF nonexistent_table",
-					ExpectedErr: true,
+					ExpectedErr: sql.ErrUnresolvedTableLock,
+				},
+				{
+					Query:          "SELECT * FROM t FOR UPDATE OF t, nonexistent_table",
+					ExpectedErr:    sql.ErrUnresolvedTableLock,
+					ExpectedErrStr: fmt.Sprintf(sql.ErrUnresolvedTableLock.Message, "nonexistent_table"),
+				},
+				{
+					Query:       "SELECT * FROM t FOR UPDATE OF",
+					ExpectedErr: sql.ErrSyntaxError,
+				},
+				{
+					Query:       "SELECT * FROM t FOR UPDATE test",
+					ExpectedErr: sql.ErrSyntaxError,
+				},
+				{
+					Query:    "SELECT * FROM t FOR UPDATE",
+					Expected: []sql.Row{{1, "test"}},
 				},
 			},
 		},
