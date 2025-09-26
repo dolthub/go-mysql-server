@@ -1569,13 +1569,13 @@ SELECT * FROM cte WHERE  d = 2;`,
 	{
 		Query: `SELECT * FROM (values row(1+1,2+2), row(floor(1.5),concat("a","b"))) a order by 1`,
 		Expected: []sql.Row{
-			{1.0, "ab"},
-			{2.0, "4"},
+			{1, "ab"},
+			{2, "4"},
 		},
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "column_0",
-				Type: types.Float64,
+				Type: types.Int64,
 			},
 			{
 				Name: "column_1",
@@ -1586,13 +1586,13 @@ SELECT * FROM cte WHERE  d = 2;`,
 	{
 		Query: `SELECT * FROM (values row(1+1,2+2), row(floor(1.5),concat("a","b"))) a (c,d) order by 1`,
 		Expected: []sql.Row{
-			{1.0, "ab"},
-			{2.0, "4"},
+			{1, "ab"},
+			{2, "4"},
 		},
 		ExpectedColumns: sql.Schema{
 			{
 				Name: "c",
-				Type: types.Float64,
+				Type: types.Int64,
 			},
 			{
 				Name: "d",
