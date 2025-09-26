@@ -169,10 +169,7 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 		cmp, cErr := cmpType.Compare(ctx, lv, rv)
 		if cErr != nil {
-			if !sql.ErrTruncatedIncorrect.Is(cErr) {
-				return nil, cErr
-			}
-			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", cErr.Error())
+			return nil, cErr
 		}
 		if cmp == 0 {
 			return true, nil
