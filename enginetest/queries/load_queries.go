@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/types"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -123,6 +125,21 @@ var LoadDataScripts = []ScriptTest{
 			{
 				Query:    "select * from loadtable ORDER BY pk",
 				Expected: []sql.Row{{1, nil}, {2, nil}, {3, nil}, {4, nil}},
+			},
+		},
+	},
+	{
+		Name: "Load JSON data. EnclosedBy and EscapedBy are the same.",
+		SetUpScript: []string{
+			"create table loadtable(pk int primary key, j json)",
+			"LOAD DATA INFILE './testdata/simple_json.txt' INTO TABLE loadtable FIELDS TERMINATED BY ',' ENCLOSED BY '\"' ESCAPED BY '\"';",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from loadtable",
+				Expected: []sql.Row{
+					{1, types.MustJSON(`{"foo": "bar"}`)},
+				},
 			},
 		},
 	},
