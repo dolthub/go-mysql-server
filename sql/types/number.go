@@ -1534,3 +1534,19 @@ func TruncateStringToDouble(s string) (string, bool) {
 	}
 	return s[:i], i != n
 }
+
+// ConvertHexBlobToDecimalForNumericContext converts byte array value to unsigned int value if originType is BLOB type.
+// This function is called when convertTo type is number type only. The hex literal values are parsed into blobs as
+// binary string as default, but for numeric context, the value should be a number.
+// Byte arrays of other SQL types are not handled here.
+func ConvertHexBlobToDecimalForNumericContext(val interface{}, originType sql.Type) (interface{}, error) {
+	if bin, isBinary := val.([]byte); isBinary && IsBlobType(originType) {
+		stringVal := hex.EncodeToString(bin)
+		decimalNum, err := strconv.ParseUint(stringVal, 16, 64)
+		if err != nil {
+			return nil, errors.New("failed to convert hex blob value to unsigned int")
+		}
+		val = decimalNum
+	}
+	return val, nil
+}
