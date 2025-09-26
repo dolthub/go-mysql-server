@@ -92,9 +92,9 @@ func TestFloor(t *testing.T) {
 		err      *errors.Kind
 	}{
 		{"float64 is nil", types.Float64, sql.NewRow(nil), nil, nil},
-		{"float64 is ok", types.Float64, sql.NewRow(5.8), float64(5), nil},
+		{"float64 is ok", types.Float64, sql.NewRow(5.8), int64(5), nil},
 		{"float32 is nil", types.Float32, sql.NewRow(nil), nil, nil},
-		{"float32 is ok", types.Float32, sql.NewRow(float32(5.8)), float64(5), nil},
+		{"float32 is ok", types.Float32, sql.NewRow(float32(5.8)), int64(5), nil},
 		{"int32 is nil", types.Int32, sql.NewRow(nil), nil, nil},
 		{"int32 is ok", types.Int32, sql.NewRow(int32(6)), int64(6), nil},
 		{"int64 is nil", types.Int64, sql.NewRow(nil), nil, nil},
