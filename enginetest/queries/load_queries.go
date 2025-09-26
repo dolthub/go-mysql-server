@@ -16,8 +16,9 @@ package queries
 
 import (
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/types"
 	"time"
+
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
