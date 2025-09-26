@@ -590,7 +590,7 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 			{
 				Query:                           "SELECT '123abc' in ('string', 1, 2, 123);",
 				Expected:                        []sql.Row{{true}},
-				ExpectedWarningsCount:           3, // MySQL only throws 1 warning
+				ExpectedWarningsCount:           2, // MySQL only throws 1 warning
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
 				ExpectedWarningMessageSubstring: "Truncated incorrect double value",
 			},
