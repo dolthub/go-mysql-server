@@ -52,11 +52,11 @@ func (c *Ceil) Description() string {
 // Type implements the Expression interface.
 func (c *Ceil) Type() sql.Type {
 	childType := c.Child.Type()
-	if types.IsSigned(childType) {
-		return types.Int64
-	}
 	if types.IsUnsigned(childType) {
 		return types.Uint64
+	}
+	if types.IsNumber(childType) {
+		return types.Int64
 	}
 	return types.Float64
 }
@@ -99,15 +99,14 @@ func (c *Ceil) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// if it's number type and not float value, it does not need ceil-ing
 	switch num := child.(type) {
 	case float32:
-		return math.Ceil(float64(num)), nil
+		child = math.Ceil(float64(num))
 	case float64:
-		return math.Ceil(num), nil
+		child = math.Ceil(num)
 	case decimal.Decimal:
-		return num.Ceil(), nil
-	default:
-		num, _, _ = c.Type().Convert(ctx, child)
-		return num, nil
+		child = num.Ceil()
 	}
+	child, _, _ = c.Type().Convert(ctx, child)
+	return child, nil
 }
 
 // Floor returns the biggest integer value not less than X.
@@ -136,11 +135,11 @@ func (f *Floor) Description() string {
 // Type implements the Expression interface.
 func (f *Floor) Type() sql.Type {
 	childType := f.Child.Type()
-	if types.IsSigned(childType) {
-		return types.Int64
-	}
 	if types.IsUnsigned(childType) {
 		return types.Uint64
+	}
+	if types.IsNumber(childType) {
+		return types.Int64
 	}
 	return types.Float64
 }

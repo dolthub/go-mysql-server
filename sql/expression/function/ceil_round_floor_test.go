@@ -34,9 +34,9 @@ func TestCeil(t *testing.T) {
 		err      *errors.Kind
 	}{
 		{"float64 is nil", types.Float64, sql.NewRow(nil), nil, nil},
-		{"float64 is ok", types.Float64, sql.NewRow(5.8), 6.0, nil},
+		{"float64 is ok", types.Float64, sql.NewRow(5.8), int64(6), nil},
 		{"float32 is nil", types.Float32, sql.NewRow(nil), nil, nil},
-		{"float32 is ok", types.Float32, sql.NewRow(float32(5.8)), 6.0, nil},
+		{"float32 is ok", types.Float32, sql.NewRow(float32(5.8)), int64(6), nil},
 		{"int32 is nil", types.Int32, sql.NewRow(nil), nil, nil},
 		{"int32 is ok", types.Int32, sql.NewRow(int32(6)), int64(6), nil},
 		{"int64 is nil", types.Int64, sql.NewRow(nil), nil, nil},
@@ -69,14 +69,14 @@ func TestCeil(t *testing.T) {
 				require.Equal(tt.expected, result)
 			}
 
-			// signed -> signed, unsigned -> unsigned, everything else -> double
+			// unsigned -> unsigned, signed -> signed, everything else -> double
 			resType := f.Type()
-			if types.IsSigned(tt.rowType) {
-				require.True(types.IsSigned(resType))
-			} else if types.IsUnsigned(resType) {
-				require.True(types.IsUnsigned(resType))
+			if types.IsUnsigned(tt.rowType) {
+				require.True(resType.Equals(types.Uint64))
+			} else if types.IsNumber(tt.rowType) {
+				require.True(resType.Equals(types.Int64))
 			} else {
-				require.True(types.IsFloat(resType))
+				require.True(resType.Equals(types.Float64))
 			}
 			require.False(f.IsNullable())
 		})
@@ -129,12 +129,12 @@ func TestFloor(t *testing.T) {
 
 			// signed -> signed, unsigned -> unsigned, everything else -> double
 			resType := f.Type()
-			if types.IsSigned(tt.rowType) {
-				require.True(types.IsSigned(resType))
-			} else if types.IsUnsigned(resType) {
-				require.True(types.IsUnsigned(resType))
+			if types.IsUnsigned(tt.rowType) {
+				require.True(resType.Equals(types.Uint64))
+			} else if types.IsNumber(tt.rowType) {
+				require.True(resType.Equals(types.Int64))
 			} else {
-				require.True(types.IsFloat(resType))
+				require.True(resType.Equals(types.Float64))
 			}
 			require.False(f.IsNullable())
 		})
