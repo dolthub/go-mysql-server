@@ -150,10 +150,11 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	lv, _, lErr := cmpType.Convert(ctx, leftVal)
 	if lErr != nil {
-		if !sql.ErrTruncatedIncorrect.Is(lErr) {
-			return nil, lErr
+		if sql.ErrTruncatedIncorrect.Is(lErr) {
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", lErr.Error())
+		} else {
+			lv = cmpType.Zero()
 		}
-		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", lErr.Error())
 	}
 
 	for _, rVal := range rVals {
@@ -162,14 +163,15 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 		rv, _, rErr := cmpType.Convert(ctx, rVal)
 		if rErr != nil {
-			if !sql.ErrTruncatedIncorrect.Is(rErr) {
-				return nil, rErr
+			if sql.ErrTruncatedIncorrect.Is(rErr) {
+				ctx.Warn(mysql.ERTruncatedWrongValue, "%s", rErr.Error())
+			} else {
+				rv = cmpType.Zero()
 			}
-			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", rErr.Error())
 		}
 		cmp, cErr := cmpType.Compare(ctx, lv, rv)
 		if cErr != nil {
-			return nil, cErr
+			continue
 		}
 		if cmp == 0 {
 			return true, nil
