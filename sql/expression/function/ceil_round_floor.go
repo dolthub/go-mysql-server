@@ -179,18 +179,18 @@ func (f *Floor) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		}
 	}
-	// if it's number type and not float value, it does not need floor-ing
+
+	// if it's number type and not float value, it does not need ceil-ing
 	switch num := child.(type) {
 	case float32:
-		return math.Floor(float64(num)), nil
+		child = math.Floor(float64(num))
 	case float64:
-		return math.Floor(num), nil
+		child = math.Floor(num)
 	case decimal.Decimal:
-		return num.Floor(), nil
-	default:
-		num, _, _ = f.Type().Convert(ctx, child)
-		return num, nil
+		child = num.Floor()
 	}
+	child, _, _ = f.Type().Convert(ctx, child)
+	return child, nil
 }
 
 // Round returns the number (x) with (d) requested decimal places.
