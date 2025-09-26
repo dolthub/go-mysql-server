@@ -403,8 +403,8 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 		},
 	},
 	{
-		Name:    "string to number comparison correctly truncates",
 		Dialect: "mysql",
+		Name:    "string to number comparison correctly truncates",
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:                           "SELECT 'A' = 0;",
@@ -617,13 +617,12 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 				Expected: []sql.Row{{true}},
 			},
 			{
-				// TODO: 123.456 is converted to a DECIMAL by Builder.ConvertVal, when it should be a DOUBLE
 				SkipResultCheckOnServerEngine:   true, // TODO: warnings do not make it to server engine
 				Query:                           "SELECT '123.456ABC' in (123.456);",
 				Expected:                        []sql.Row{{true}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
-				ExpectedWarningMessageSubstring: "Truncated incorrect decimal(65,30) value: 123.456ABC",
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 123.456ABC",
 			},
 			{
 				Query:    "SELECT '123.456e2' in (12345.6);",
@@ -7337,9 +7336,10 @@ CREATE TABLE tab3 (
 				},
 			},
 			{
-				// This actually matches MySQL behavior
-				Query:    "select * from t where (f in (null, 0.8));",
-				Expected: []sql.Row{},
+				Query: "select count(*) from t where (f in (null, 0.8));",
+				Expected: []sql.Row{
+					{1},
+				},
 			},
 			{
 				// select count to avoid floating point comparison
