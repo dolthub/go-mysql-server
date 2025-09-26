@@ -691,9 +691,12 @@ func (e *UnaryMinus) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if !types.IsNumber(e.Child.Type()) {
-		child, err = decimal.NewFromString(fmt.Sprintf("%v", child))
+		child, _, err = types.InternalDecimalType.Convert(ctx, child)
 		if err != nil {
-			child = 0.0
+			if !sql.ErrTruncatedIncorrect.Is(err) {
+				child = 0.0
+			}
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		}
 	}
 
@@ -735,7 +738,7 @@ func (e *UnaryMinus) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case uint64:
 		return -int64(n), nil
 	case decimal.Decimal:
-		return n.Neg(), err
+		return n.Neg(), nil
 	case string:
 		// try getting int out of string value
 		i, iErr := strconv.ParseInt(n, 10, 64)

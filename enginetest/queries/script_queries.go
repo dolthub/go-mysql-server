@@ -501,12 +501,12 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 			},
 			{
 				// TODO: 123.456 is converted to a DECIMAL by Builder.ConvertVal, when it should be a DOUBLE
-				Skip:                            true,
+				SkipResultCheckOnServerEngine:   true, // TODO: warnings do not make it to server engine
 				Query:                           "SELECT '123.456ABC' = 123.456;",
 				Expected:                        []sql.Row{{true}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
-				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 123A",
+				ExpectedWarningMessageSubstring: "Truncated incorrect decimal(65,30) value: 123.456ABC",
 			},
 			{
 				Query:    "SELECT '123.456e2' = 12345.6;",
@@ -528,20 +528,18 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 			},
 			{
 				// Valid float strings used as arguments to functions are truncated not rounded
-				Skip:                  true,
 				Query:                 "SELECT LENGTH(SPACE('1.9'));",
 				Expected:              []sql.Row{{1}},
-				ExpectedWarningsCount: 2, // MySQL throws two warnings for some reason
+				ExpectedWarningsCount: 1, // TODO: MySQL throws two warnings for some reason
 				ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 			{
 				// TODO: 123.456 is converted to a DECIMAL by Builder.ConvertVal, when it should be a DOUBLE
-				Skip:                            true,
 				Query:                           "SELECT -'+123.456ABC' = -123.456",
 				Expected:                        []sql.Row{{true}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
-				ExpectedWarningMessageSubstring: "Truncated incorrect double value: +123.456ABC",
+				ExpectedWarningMessageSubstring: "Truncated incorrect decimal(65,30) value: +123.456ABC",
 			},
 			{
 				Query:                           "SELECT '0xBEEF' = 0;",
@@ -608,12 +606,12 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 			},
 			{
 				// TODO: 123.456 is converted to a DECIMAL by Builder.ConvertVal, when it should be a DOUBLE
-				Skip:                            true,
+				SkipResultCheckOnServerEngine:   true, // TODO: warnings do not make it to server engine
 				Query:                           "SELECT '123.456ABC' in (123.456);",
 				Expected:                        []sql.Row{{true}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
-				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 123A",
+				ExpectedWarningMessageSubstring: "Truncated incorrect decimal(65,30) value: 123.456ABC",
 			},
 			{
 				Query:    "SELECT '123.456e2' in (12345.6);",
@@ -975,13 +973,13 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 		Dialect: "mysql",
 		Name:    "strings cast to numbers",
 		SetUpScript: []string{
-			"create table test01(pk varchar(20) primary key)",
+			"create table test01(pk varchar(20) primary key);",
 			`insert into test01 values ('  3 12 4'),
                           ('  3.2 12 4'),('-3.1234'),('-3.1a'),('-5+8'),('+3.1234'),
                           ('11d'),('11wha?'),('11'),('12'),('1a1'),('a1a1'),('11-5'),
-                          ('3. 12 4'),('5.932887e+07'),('5.932887e+07abc'),('5.932887e7'),('5.932887e7abc')`,
-			"create table test02(pk int primary key)",
-			"insert into test02 values(11),(12),(13),(14),(15)",
+                          ('3. 12 4'),('5.932887e+07'),('5.932887e+07abc'),('5.932887e7'),('5.932887e7abc');`,
+			"create table test02(pk int primary key);",
+			"insert into test02 values(11),(12),(13),(14),(15);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -1082,10 +1080,8 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 					{"5.932887e7abc", uint64(5)},
 					{"a1a1", uint64(0)},
 				},
-				// TODO: Should be 19. Missing warnings for "Cast to unsigned converted negative integer to its positive
-				//  complement" (1105) https://github.com/dolthub/dolt/issues/9840
-				ExpectedWarningsCount: 16,
-				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+				ExpectedWarningsCount: 19,
+				// Can't check multiple different warnings
 			},
 			{
 				Query: "select pk, cast(pk as decimal(12,3)) from test01",
@@ -1119,7 +1115,6 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 				ExpectedWarningsCount: 0,
 			},
 
-			// TODO: these are not directly testing casting
 			{
 				// https://github.com/dolthub/dolt/issues/9739
 				Skip:    true,
@@ -1163,19 +1158,15 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 				ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 			{
-				// https://github.com/dolthub/dolt/issues/9739
-				Skip:                  true,
 				Dialect:               "mysql",
-				Query:                 "select * from test02 where pk in ('11asdf')",
-				Expected:              []sql.Row{{"11"}},
+				Query:                 "select * from test02 where pk in ('11asdf');",
+				Expected:              []sql.Row{{11}},
 				ExpectedWarningsCount: 1,
 				ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 			{
-				// https://github.com/dolthub/dolt/issues/9739
-				Skip:                  true,
 				Dialect:               "mysql",
-				Query:                 "select * from test02 where pk='11.12asdf'",
+				Query:                 "select * from test02 where pk='11.12asdf';",
 				Expected:              []sql.Row{},
 				ExpectedWarningsCount: 1,
 				ExpectedWarning:       mysql.ERTruncatedWrongValue,

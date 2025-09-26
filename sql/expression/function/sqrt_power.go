@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/dolthub/vitess/go/mysql"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -76,18 +78,19 @@ func (s *Sqrt) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 // Eval implements the Expression interface.
 func (s *Sqrt) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	child, err := s.Child.Eval(ctx, row)
-
 	if err != nil {
 		return nil, err
 	}
-
 	if child == nil {
 		return nil, nil
 	}
 
 	child, _, err = types.Float64.Convert(ctx, child)
 	if err != nil {
-		return nil, err
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
 	res := math.Sqrt(child.(float64))
@@ -155,28 +158,30 @@ func (p *Power) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	if left == nil {
 		return nil, nil
 	}
-
 	left, _, err = types.Float64.Convert(ctx, left)
 	if err != nil {
-		return nil, err
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
 	right, err := p.RightChild.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-
 	if right == nil {
 		return nil, nil
 	}
-
 	right, _, err = types.Float64.Convert(ctx, right)
 	if err != nil {
-		return nil, err
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
 	res := math.Pow(left.(float64), right.(float64))

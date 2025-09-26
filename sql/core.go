@@ -353,7 +353,8 @@ func TrimStringToNumberPrefix(ctx *Context, s string, isInt bool) string {
 	seenExp := false
 	signIndex := 0
 
-	for i := 0; i < len(s); i++ {
+	var i int
+	for i = 0; i < len(s); i++ {
 		char := rune(s[i])
 		if unicode.IsDigit(char) {
 			seenDigit = true
@@ -369,15 +370,12 @@ func TrimStringToNumberPrefix(ctx *Context, s string, isInt bool) string {
 			} else {
 				ctx.Warn(mysql.ERTruncatedWrongValue, "Truncated incorrect DOUBLE value: '%s'", s)
 			}
-			return convertEmptyStringToZero(s[:i])
+			break
 		}
 	}
-	return convertEmptyStringToZero(s)
-}
-
-func convertEmptyStringToZero(s string) string {
+	s = s[:i]
 	if s == "" {
-		return "0"
+		s = "0"
 	}
 	return s
 }

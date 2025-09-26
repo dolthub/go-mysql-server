@@ -15,9 +15,7 @@
 package expression
 
 import (
-	"encoding/hex"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -349,38 +347,43 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 		}
 		return d, nil
 	case ConvertToDecimal:
-		value, err := prepareForNumericContext(ctx, val, originType, false)
+		value, err := types.ConvertHexBlobToDecimalForNumericContext(val, originType)
 		if err != nil {
 			return nil, err
 		}
 		dt := createConvertedDecimalType(typeLength, typeScale, false)
 		d, _, err := dt.Convert(ctx, value)
 		if err != nil {
-			return dt.Zero(), nil
+			if !sql.ErrTruncatedIncorrect.Is(err) {
+				return dt.Zero(), nil
+			}
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		}
 		return d, nil
 	case ConvertToFloat:
-		value, err := prepareForNumericContext(ctx, val, originType, false)
+		value, err := types.ConvertHexBlobToDecimalForNumericContext(val, originType)
 		if err != nil {
 			return nil, err
 		}
 		d, _, err := types.Float32.Convert(ctx, value)
 		if err != nil {
-			return types.Float32.Zero(), nil
+			if !sql.ErrTruncatedIncorrect.Is(err) {
+				return types.Float64.Zero(), nil
+			}
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		}
 		return d, nil
 	case ConvertToDouble, ConvertToReal:
-		value, err := prepareForNumericContext(ctx, val, originType, false)
+		value, err := types.ConvertHexBlobToDecimalForNumericContext(val, originType)
 		if err != nil {
 			return nil, err
 		}
 		d, _, err := types.Float64.Convert(ctx, value)
 		if err != nil {
-			if sql.ErrTruncatedIncorrect.Is(err) {
-				ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
-				return d, nil
+			if !sql.ErrTruncatedIncorrect.Is(err) {
+				return types.Float64.Zero(), nil
 			}
-			return types.Float64.Zero(), nil
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		}
 		return d, nil
 	case ConvertToJSON:
@@ -390,15 +393,17 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 		}
 		return js, nil
 	case ConvertToSigned:
-		value, err := prepareForNumericContext(ctx, val, originType, true)
+		value, err := types.ConvertHexBlobToDecimalForNumericContext(val, originType)
 		if err != nil {
 			return nil, err
 		}
 		num, _, err := types.Int64.Convert(ctx, value)
 		if err != nil {
-			return types.Int64.Zero(), nil
+			if !sql.ErrTruncatedIncorrect.Is(err) {
+				return types.Int64.Zero(), nil
+			}
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		}
-
 		return num, nil
 	case ConvertToTime:
 		t, _, err := types.Time.Convert(ctx, val)
@@ -407,31 +412,32 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 		}
 		return t, nil
 	case ConvertToUnsigned:
-		value, err := prepareForNumericContext(ctx, val, originType, true)
+		value, err := types.ConvertHexBlobToDecimalForNumericContext(val, originType)
 		if err != nil {
 			return nil, err
 		}
-		num, _, err := types.Uint64.Convert(ctx, value)
+		num, inRange, err := types.Uint64.Convert(ctx, value)
 		if err != nil {
-			num, _, err = types.Int64.Convert(ctx, value)
-			if err != nil {
+			if !sql.ErrTruncatedIncorrect.Is(err) {
 				return types.Uint64.Zero(), nil
 			}
-			return uint64(num.(int64)), nil
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
+		}
+		if !inRange {
+			ctx.Warn(1105, "Cast to unsigned converted negative integer to its positive complement")
 		}
 		return num, nil
 	case ConvertToYear:
-		value, err := convertHexBlobToDecimalForNumericContext(val, originType)
+		value, err := types.ConvertHexBlobToDecimalForNumericContext(val, originType)
 		if err != nil {
 			return nil, err
 		}
 		num, _, err := types.Uint64.Convert(ctx, value)
 		if err != nil {
-			num, _, err = types.Int64.Convert(ctx, value)
-			if err != nil {
-				return types.Uint64.Zero(), nil
+			if !sql.ErrTruncatedIncorrect.Is(err) {
+				return types.Float64.Zero(), nil
 			}
-			return uint64(num.(int64)), nil
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		}
 		return num, nil
 	default:
@@ -482,28 +488,4 @@ func createConvertedDecimalType(length, scale int, logErrors bool) sql.DecimalTy
 		return dt
 	}
 	return types.InternalDecimalType
-}
-
-// prepareForNumberContext makes necessary preparations to strings and byte arrays for conversions to numbers
-func prepareForNumericContext(ctx *sql.Context, val interface{}, originType sql.Type, isInt bool) (interface{}, error) {
-	if s, isString := val.(string); isString && types.IsTextOnly(originType) {
-		return sql.TrimStringToNumberPrefix(ctx, s, isInt), nil
-	}
-	return convertHexBlobToDecimalForNumericContext(val, originType)
-}
-
-// convertHexBlobToDecimalForNumericContext converts byte array value to unsigned int value if originType is BLOB type.
-// This function is called when convertTo type is number type only. The hex literal values are parsed into blobs as
-// binary string as default, but for numeric context, the value should be a number.
-// Byte arrays of other SQL types are not handled here.
-func convertHexBlobToDecimalForNumericContext(val interface{}, originType sql.Type) (interface{}, error) {
-	if bin, isBinary := val.([]byte); isBinary && types.IsBlobType(originType) {
-		stringVal := hex.EncodeToString(bin)
-		decimalNum, err := strconv.ParseUint(stringVal, 16, 64)
-		if err != nil {
-			return nil, errors.NewKind("failed to convert hex blob value to unsigned int").New()
-		}
-		val = decimalNum
-	}
-	return val, nil
 }

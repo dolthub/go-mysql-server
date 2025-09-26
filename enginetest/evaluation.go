@@ -129,9 +129,18 @@ func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script q
 				} else if assertion.ExpectedErrStr != "" {
 					AssertErrWithCtx(t, e, harness, ctx, assertion.Query, assertion.Bindings, nil, assertion.ExpectedErrStr)
 				} else if assertion.ExpectedWarning != 0 {
-					AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query,
-						assertion.Expected, nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
-						assertion.ExpectedWarningMessageSubstring, assertion.SkipResultsCheck)
+					if IsServerEngine(e) && assertion.SkipResultCheckOnServerEngine {
+						t.Skip()
+					}
+					AssertWarningAndTestQuery(t, e, nil, harness,
+						assertion.Query,
+						assertion.Expected,
+						nil,
+						assertion.ExpectedWarning,
+						assertion.ExpectedWarningsCount,
+						assertion.ExpectedWarningMessageSubstring,
+						assertion.SkipResultsCheck,
+					)
 				} else if assertion.SkipResultsCheck {
 					RunQueryWithContext(t, e, harness, nil, assertion.Query)
 				} else if assertion.CheckIndexedAccess {

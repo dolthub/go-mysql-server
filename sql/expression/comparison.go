@@ -141,7 +141,7 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		return c.Left().Type().Compare(ctx, left, right)
 	}
 
-	l, r, compareType, err := c.CastLeftAndRight(ctx, left, right)
+	l, r, compareType, err := c.castLeftAndRight(ctx, left, right)
 	if err != nil {
 		return 0, err
 	}
@@ -171,7 +171,7 @@ func (c *comparison) evalLeftAndRight(ctx *sql.Context, row sql.Row) (interface{
 	return left, right, nil
 }
 
-func (c *comparison) CastLeftAndRight(ctx *sql.Context, left, right interface{}) (interface{}, interface{}, sql.Type, error) {
+func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right interface{}) (interface{}, interface{}, sql.Type, error) {
 	leftType := c.Left().Type()
 	rightType := c.Right().Type()
 
@@ -452,7 +452,7 @@ func (e *NullSafeEquals) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 	}
 
 	var compareType sql.Type
-	left, right, compareType, err = e.CastLeftAndRight(ctx, left, right)
+	left, right, compareType, err = e.castLeftAndRight(ctx, left, right)
 	if err != nil {
 		return 0, err
 	}
