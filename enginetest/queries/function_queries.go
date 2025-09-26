@@ -1052,7 +1052,7 @@ var FunctionQueryTests = []QueryTest{
 	{
 		Query: `SELECT FLOOR(15728640/1024/1030)`,
 		Expected: []sql.Row{
-			{"14"},
+			{14},
 		},
 	},
 	{
