@@ -144,7 +144,7 @@ func (l *loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Express
 	// TODO: Support the OPTIONALLY parameter.
 	if l.fieldsEnclosedBy != "" {
 		for i, field := range fields {
-			if string(field[0]) == l.fieldsEnclosedBy && string(field[len(field)-1]) == l.fieldsEnclosedBy {
+			if field[0] == l.fieldsEnclosedBy[0] && field[len(field)-1] == l.fieldsEnclosedBy[0] {
 				fields[i] = field[1 : len(field)-1]
 			} else {
 				return nil, fmt.Errorf("error: field not properly enclosed")
@@ -162,7 +162,22 @@ func (l *loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Express
 			} else if field == "\\0" {
 				fields[i] = fmt.Sprintf("%c", 0) // ASCII 0
 			} else {
-				fields[i] = strings.ReplaceAll(field, l.fieldsEscapedBy, "")
+				// The character immediately following the escaped character remains untouched, even if it is the same
+				// as the escape character
+				newField := make([]byte, 0, len(field))
+				for cIdx := 0; cIdx < len(field); cIdx++ {
+					c := field[cIdx]
+					// skip over escaped character, but always add the following character
+					if c == l.fieldsEscapedBy[0] {
+						cIdx += 1
+						if cIdx < len(field) {
+							newField = append(newField, c)
+						}
+						continue
+					}
+					newField = append(newField, c)
+				}
+				fields[i] = string(newField)
 			}
 		}
 	}
