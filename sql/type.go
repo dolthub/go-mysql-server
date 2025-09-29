@@ -17,11 +17,12 @@ package sql
 import (
 	"context"
 	"fmt"
-	"github.com/dolthub/vitess/go/mysql"
 	"reflect"
 	"strings"
 	"time"
 	"unicode"
+
+	"github.com/dolthub/vitess/go/mysql"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
