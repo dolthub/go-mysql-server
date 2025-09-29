@@ -23,6 +23,7 @@ import (
 	"reflect"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 	"unicode"
 
@@ -454,8 +455,6 @@ func (t NumberTypeImpl_) ConvertRound(ctx context.Context, v interface{}) (any, 
 		return convertToInt64(t, v, ShouldRound)
 	case sqltypes.Uint64:
 		return convertToUint64(t, v, ShouldRound)
-	case sqltypes.Uint64:
-		return convertToUint64(t, v, true)
 	default:
 		return t.Convert(ctx, v)
 	}
