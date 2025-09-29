@@ -5509,11 +5509,11 @@ SELECT * FROM cte WHERE  d = 2;`,
 	},
 	{
 		Query:    "select ceil(i + 0.5) from mytable order by 1",
-		Expected: []sql.Row{{"2"}, {"3"}, {"4"}},
+		Expected: []sql.Row{{2}, {3}, {4}},
 	},
 	{
 		Query:    "select floor(i + 0.5) from mytable order by 1",
-		Expected: []sql.Row{{"1"}, {"2"}, {"3"}},
+		Expected: []sql.Row{{1}, {2}, {3}},
 	},
 	{
 		Query:    "select round(i + 0.55, 1) from mytable order by 1",

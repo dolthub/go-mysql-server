@@ -82,7 +82,7 @@ func (t TupleType) Convert(ctx context.Context, v interface{}) (interface{}, sql
 		for i, typ := range t {
 			var err error
 			result[i], _, err = typ.Convert(ctx, vals[i])
-			if err != nil {
+			if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
 				return nil, sql.OutOfRange, err
 			}
 		}

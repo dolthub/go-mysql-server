@@ -194,6 +194,8 @@ func TestNumberConvert(t *testing.T) {
 		{typ: Uint64, inp: "01000", exp: uint64(1000), err: false, inRange: sql.InRange},
 		{typ: Uint64, inp: true, exp: uint64(1), err: false, inRange: sql.InRange},
 		{typ: Uint64, inp: false, exp: uint64(0), err: false, inRange: sql.InRange},
+		{typ: Uint64, inp: "123.9abc", exp: uint64(123), err: false, inRange: sql.InRange},
+		{typ: Uint64, inp: "+123.9abc", exp: uint64(123), err: false, inRange: sql.InRange},
 		{typ: Float32, inp: "22.25", exp: float32(22.25), err: false, inRange: sql.InRange},
 		{typ: Float32, inp: []byte{90, 140, 228, 206, 116}, exp: float32(388910861940), err: false, inRange: sql.InRange},
 		{typ: Float64, inp: float32(893.875), exp: float64(893.875), err: false, inRange: sql.InRange},
@@ -216,6 +218,7 @@ func TestNumberConvert(t *testing.T) {
 		{typ: Uint32, inp: math.MaxUint32 + 1, exp: uint32(math.MaxUint32), err: false, inRange: sql.OutOfRange},
 		{typ: Uint32, inp: -1, exp: uint32(math.MaxUint32), err: false, inRange: sql.OutOfRange},
 		{typ: Uint64, inp: -1, exp: uint64(math.MaxUint64), err: false, inRange: sql.OutOfRange},
+		{typ: Uint64, inp: "-1", exp: uint64(math.MaxUint64), err: false, inRange: sql.OutOfRange},
 		{typ: Float32, inp: math.MaxFloat32 * 2, exp: float32(math.MaxFloat32), err: false, inRange: sql.OutOfRange},
 	}
 
@@ -225,6 +228,9 @@ func TestNumberConvert(t *testing.T) {
 			if test.err {
 				assert.Error(t, err)
 			} else {
+				if sql.ErrTruncatedIncorrect.Is(err) {
+					err = nil
+				}
 				require.NoError(t, err)
 				assert.Equal(t, test.exp, val)
 				assert.Equal(t, test.inRange, inRange)
@@ -232,6 +238,227 @@ func TestNumberConvert(t *testing.T) {
 					assert.Equal(t, test.typ.ValueType(), reflect.TypeOf(val))
 				}
 			}
+		})
+	}
+}
+
+func TestNumberConvertRound(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	tests := []struct {
+		typ     sql.Type
+		inp     interface{}
+		exp     interface{}
+		err     bool
+		inRange sql.ConvertInRange
+	}{
+		// Boolean, Int8, Uint8, ... all use convertToInt64
+		{
+			typ:     Int64,
+			inp:     "",
+			exp:     int64(0),
+			err:     false,
+			inRange: sql.InRange,
+		},
+		{
+			typ:     Int64,
+			inp:     " \t",
+			exp:     int64(0),
+			err:     false,
+			inRange: sql.InRange,
+		},
+		{
+			typ:     Int64,
+			inp:     "!@#$%^&*()",
+			exp:     int64(0),
+			err:     true,
+			inRange: sql.InRange,
+		},
+		{
+			typ:     Int64,
+			inp:     "1.1",
+			exp:     int64(1),
+			err:     false,
+			inRange: sql.InRange,
+		},
+		{
+			typ:     Int64,
+			inp:     "1.9",
+			exp:     int64(2),
+			err:     false,
+			inRange: sql.InRange,
+		},
+		{
+			typ:     Int64,
+			inp:     "100.1ABC",
+			exp:     int64(100),
+			err:     true,
+			inRange: sql.InRange,
+		},
+		{
+			typ:     Int64,
+			inp:     "100.9ABC",
+			exp:     int64(101),
+			err:     true,
+			inRange: sql.InRange,
+		},
+		{
+			typ:     Int64,
+			inp:     ".123ABC",
+			exp:     int64(0),
+			err:     true,
+			inRange: sql.InRange,
+		},
+		{
+			typ:     Int64,
+			inp:     "1.1.1",
+			exp:     int64(1),
+			err:     true,
+			inRange: sql.InRange,
+		},
+		{
+			typ:     Int64,
+			inp:     "+1",
+			exp:     int64(1),
+			err:     false,
+			inRange: sql.InRange,
+		},
+		{
+			typ:     Int64,
+			inp:     "-1",
+			exp:     int64(-1),
+			err:     false,
+			inRange: sql.InRange,
+		},
+		{
+			typ:     Int64,
+			inp:     "+ 1",
+			exp:     int64(0),
+			err:     true,
+			inRange: sql.InRange,
+		},
+		{
+			typ:     Int64,
+			inp:     "- 1",
+			exp:     int64(0),
+			err:     true,
+			inRange: sql.InRange,
+		},
+		{
+			typ:     Int64,
+			inp:     "+-+-1",
+			exp:     int64(0),
+			err:     false,
+			inRange: sql.InRange,
+		},
+
+		{
+			typ:     Uint64,
+			inp:     "",
+			exp:     uint64(0),
+			err:     false,
+			inRange: sql.InRange,
+		},
+		{
+			typ:     Uint64,
+			inp:     " \t",
+			exp:     uint64(0),
+			err:     false,
+			inRange: sql.InRange,
+		},
+		{
+			typ:     Uint64,
+			inp:     "!@#$%^&*()",
+			exp:     uint64(0),
+			err:     true,
+			inRange: sql.InRange,
+		},
+		{
+			typ:     Uint64,
+			inp:     "1.1",
+			exp:     uint64(1),
+			err:     false,
+			inRange: sql.InRange,
+		},
+		{
+			typ:     Uint64,
+			inp:     "1.9",
+			exp:     uint64(2),
+			err:     false,
+			inRange: sql.InRange,
+		},
+		{
+			typ:     Uint64,
+			inp:     "100.1ABC",
+			exp:     uint64(100),
+			err:     true,
+			inRange: sql.InRange,
+		},
+		{
+			typ:     Uint64,
+			inp:     "100.9ABC",
+			exp:     uint64(101),
+			err:     true,
+			inRange: sql.InRange,
+		},
+		{
+			typ:     Uint64,
+			inp:     ".123ABC",
+			exp:     uint64(0),
+			err:     true,
+			inRange: sql.InRange,
+		},
+		{
+			typ:     Uint64,
+			inp:     "1.1.1",
+			exp:     uint64(1),
+			err:     true,
+			inRange: sql.InRange,
+		},
+		{
+			typ:     Uint64,
+			inp:     "+1",
+			exp:     uint64(1),
+			err:     false,
+			inRange: sql.InRange,
+		},
+		{
+			typ:     Uint64,
+			inp:     "-1",
+			exp:     uint64(math.MaxUint64),
+			err:     false,
+			inRange: sql.OutOfRange,
+		},
+		{
+			typ:     Uint64,
+			inp:     "+ 1",
+			exp:     uint64(0),
+			err:     true,
+			inRange: sql.InRange,
+		},
+		{
+			typ:     Uint64,
+			inp:     "- 1",
+			exp:     uint64(0),
+			err:     true,
+			inRange: sql.InRange,
+		},
+		{
+			typ:     Uint64,
+			inp:     "+-+-1",
+			exp:     uint64(0),
+			err:     false,
+			inRange: sql.InRange,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v %v %v", test.typ, test.inp, test.exp), func(t *testing.T) {
+			val, inRange, err := test.typ.(sql.RoundingNumberType).ConvertRound(ctx, test.inp)
+			if test.err {
+				assert.True(t, sql.ErrTruncatedIncorrect.Is(err))
+			}
+			assert.Equal(t, test.exp, val)
+			assert.Equal(t, test.inRange, inRange)
 		})
 	}
 }
@@ -280,6 +507,207 @@ func TestNumberString(t *testing.T) {
 		t.Run(fmt.Sprintf("%v %v", test.typ, test.expectedStr), func(t *testing.T) {
 			str := test.typ.String()
 			assert.Equal(t, test.expectedStr, str)
+		})
+	}
+}
+
+func TestTruncateStringToInt(t *testing.T) {
+	tests := []struct {
+		input    string
+		exp      string
+		expTrunc bool
+	}{
+		{
+			input:    "1",
+			exp:      "1",
+			expTrunc: false,
+		},
+		{
+			// Whitespace does not count as truncation
+			input:    " \t   1 \t  ",
+			exp:      "1",
+			expTrunc: false,
+		},
+		{
+			// Newlines do count as part of truncation
+			input:    " \t\n1",
+			exp:      "0",
+			expTrunc: true,
+		},
+		{
+			input:    "123abc",
+			exp:      "123",
+			expTrunc: true,
+		},
+		{
+			input:    "abc",
+			exp:      "0",
+			expTrunc: true,
+		},
+		{
+			// Leading sign is fine
+			input:    "+123",
+			exp:      "+123",
+			expTrunc: false,
+		},
+		{
+			// Leading sign is fine
+			input:    "-123",
+			exp:      "-123",
+			expTrunc: false,
+		},
+		{
+			// Repeated signs
+			input:    "+-+-+-123",
+			exp:      "0",
+			expTrunc: true,
+		},
+		{
+			// Space after sign
+			input:    "+ 123",
+			exp:      "0",
+			expTrunc: true,
+		},
+		{
+			// Valid float strings are not valid ints
+			input:    "1.23",
+			exp:      "1",
+			expTrunc: true,
+		},
+		{
+			// Scientific float notation is not valid
+			input:    "123.456e10",
+			exp:      "123",
+			expTrunc: true,
+		},
+		{
+			// Scientific notation is not valid
+			input:    "123e10",
+			exp:      "123",
+			expTrunc: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v", test.input), func(t *testing.T) {
+			truncStr, didTrunc := TruncateStringToInt(test.input)
+			assert.Equal(t, test.exp, truncStr)
+			assert.Equal(t, test.expTrunc, didTrunc)
+		})
+	}
+}
+
+func TestTruncateStringToDouble(t *testing.T) {
+	tests := []struct {
+		input    string
+		exp      string
+		expTrunc bool
+	}{
+		{
+			input:    "1",
+			exp:      "1",
+			expTrunc: false,
+		},
+		{
+			// Whitespace does not count as truncation
+			input:    " \t\n 1 \t\n ",
+			exp:      "1",
+			expTrunc: false,
+		},
+		{
+			input:    "123abc",
+			exp:      "123",
+			expTrunc: true,
+		},
+		{
+			input:    "abc",
+			exp:      "0",
+			expTrunc: true,
+		},
+		{
+			// Leading sign is fine
+			input:    "+123",
+			exp:      "+123",
+			expTrunc: false,
+		},
+		{
+			// Leading sign is fine
+			input:    "-123",
+			exp:      "-123",
+			expTrunc: false,
+		},
+		{
+			// Repeated signs
+			input:    "+-+-+-123",
+			exp:      "0",
+			expTrunc: true,
+		},
+		{
+			// Space after sign
+			input:    "+ 123",
+			exp:      "0",
+			expTrunc: true,
+		},
+		{
+			// Valid float strings are not valid ints
+			input:    "1.23",
+			exp:      "1.23",
+			expTrunc: false,
+		},
+		{
+			// Scientific notation
+			input:    "123.456e10",
+			exp:      "123.456e10",
+			expTrunc: false,
+		},
+		{
+			// Scientific notation
+			input:    "123e10",
+			exp:      "123e10",
+			expTrunc: false,
+		},
+		{
+			// Scientific notation
+			input:    "+123.456e-10",
+			exp:      "+123.456e-10",
+			expTrunc: false,
+		},
+		{
+			// Scientific notation truncates
+			input:    "+123.456e-10notaumber",
+			exp:      "+123.456e-10",
+			expTrunc: true,
+		},
+		{
+			// Invalid Scientific notation
+			input:    "e123",
+			exp:      "0",
+			expTrunc: true,
+		},
+		{
+			// Invalid Scientific notation
+			input:    ".e1",
+			exp:      "0",
+			expTrunc: true,
+		},
+		{
+			// Invalid Scientific notation
+			input:    "1e2e3",
+			exp:      "1e2",
+			expTrunc: true,
+		},
+		{
+			input:    ".0e123",
+			exp:      ".0e123",
+			expTrunc: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v", test.input), func(t *testing.T) {
+			truncStr, didTrunc := TruncateStringToDouble(test.input)
+			assert.Equal(t, test.exp, truncStr)
+			assert.Equal(t, test.expTrunc, didTrunc)
 		})
 	}
 }

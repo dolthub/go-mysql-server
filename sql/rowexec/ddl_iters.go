@@ -942,6 +942,9 @@ func projectRowWithTypes(ctx *sql.Context, oldSchema, newSchema sql.Schema, proj
 			if sql.ErrNotMatchingSRID.Is(err) {
 				err = sql.ErrNotMatchingSRIDWithColName.New(newSchema[i].Name, err)
 			}
+			if sql.ErrTruncatedIncorrect.Is(err) {
+				err = sql.ErrInvalidValue.New(newSchema[i].Type, newRow[i])
+			}
 			return nil, err
 		} else if !inRange {
 			return nil, sql.ErrValueOutOfRange.New(newRow[i], newSchema[i].Type)

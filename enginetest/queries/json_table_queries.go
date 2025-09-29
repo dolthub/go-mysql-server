@@ -571,7 +571,7 @@ var JSONTableScriptTests = []ScriptTest{
 			},
 			{
 				Query:          "SELECT * FROM JSON_TABLE('{\"c1\":\"abc\"}', '$' COLUMNS(c1 INT PATH '$.c1' DEFAULT 'def' ON ERROR)) as jt;",
-				ExpectedErrStr: "error: 'def' is not a valid value for 'int'",
+				ExpectedErrStr: "Invalid JSON text in argument 1 to function JSON_TABLE: \"Invalid value.\"",
 			},
 		},
 	},
@@ -612,7 +612,7 @@ var JSONTableScriptTests = []ScriptTest{
 			},
 			{
 				Query:          "SELECT * FROM JSON_TABLE('{\"c1\":\"abc\"}', '$' COLUMNS(c1 INT PATH '$.c1' ERROR ON ERROR)) as jt;",
-				ExpectedErrStr: "error: 'abc' is not a valid value for 'int'",
+				ExpectedErrStr: "Invalid JSON text in argument 1 to function JSON_TABLE: \"Invalid value.\"",
 			},
 		},
 	},

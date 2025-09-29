@@ -120,9 +120,21 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 			ctxWithValues := context.WithValue(ctx.Context, types.ColumnNameKey, col.Name)
 			ctxWithValues = context.WithValue(ctxWithValues, types.RowNumberKey, i.rowNumber)
 			ctxWithColumnInfo := ctx.WithContext(ctxWithValues)
-			converted, inRange, cErr := col.Type.Convert(ctxWithColumnInfo, row[idx])
+			val := row[idx]
+			// TODO: check mysql strict sql_mode
+			var converted any
+			var inRange sql.ConvertInRange
+			var cErr error
+			if typ, ok := col.Type.(sql.RoundingNumberType); ok {
+				converted, inRange, cErr = typ.ConvertRound(ctx, val)
+			} else {
+				converted, inRange, cErr = col.Type.Convert(ctxWithColumnInfo, val)
+			}
 			if cErr == nil && !inRange {
-				cErr = sql.ErrValueOutOfRange.New(row[idx], col.Type)
+				cErr = sql.ErrValueOutOfRange.New(val, col.Type)
+			}
+			if sql.ErrTruncatedIncorrect.Is(cErr) {
+				cErr = sql.ErrInvalidValue.New(val, col.Type)
 			}
 			if cErr != nil {
 				// Ignore individual column errors when INSERT IGNORE, UPDATE IGNORE, etc. is specified.

@@ -34,17 +34,21 @@ func TestCeil(t *testing.T) {
 		err      *errors.Kind
 	}{
 		{"float64 is nil", types.Float64, sql.NewRow(nil), nil, nil},
-		{"float64 is ok", types.Float64, sql.NewRow(5.8), float64(6), nil},
+		{"float64 is ok", types.Float64, sql.NewRow(5.8), int64(6), nil},
 		{"float32 is nil", types.Float32, sql.NewRow(nil), nil, nil},
-		{"float32 is ok", types.Float32, sql.NewRow(float32(5.8)), float32(6), nil},
+		{"float32 is ok", types.Float32, sql.NewRow(float32(5.8)), int64(6), nil},
 		{"int32 is nil", types.Int32, sql.NewRow(nil), nil, nil},
-		{"int32 is ok", types.Int32, sql.NewRow(int32(6)), int32(6), nil},
+		{"int32 is ok", types.Int32, sql.NewRow(int32(6)), int64(6), nil},
 		{"int64 is nil", types.Int64, sql.NewRow(nil), nil, nil},
 		{"int64 is ok", types.Int64, sql.NewRow(int64(6)), int64(6), nil},
 		{"blob is nil", types.Blob, sql.NewRow(nil), nil, nil},
-		{"blob is ok", types.Blob, sql.NewRow([]byte{1, 2, 3}), int32(66051), nil},
-		{"string int is ok", types.Text, sql.NewRow("1"), int32(1), nil},
-		{"string float is ok", types.Text, sql.NewRow("1.2"), int32(2), nil},
+		{"blob is ok", types.Blob, sql.NewRow([]byte{1, 2, 3}), 66051.0, nil},
+		{"string int is ok", types.Text, sql.NewRow("1"), 1.0, nil},
+		{"string float is ok", types.Text, sql.NewRow("1.2"), 2.0, nil},
+		{"empty string is 0", types.Text, sql.NewRow(""), 0.0, nil},
+		{"strings are truncated", types.Text, sql.NewRow("1.2abc"), 2.0, nil},
+		{"completely invalid string is truncated to 0", types.Text, sql.NewRow("notavalue"), 0.0, nil},
+		{"float notation is properly truncated", types.Text, sql.NewRow("1.234e2blah"), 124.0, nil},
 	}
 
 	for _, tt := range testCases {
@@ -65,7 +69,15 @@ func TestCeil(t *testing.T) {
 				require.Equal(tt.expected, result)
 			}
 
-			require.True(types.IsInteger(f.Type()))
+			// unsigned -> unsigned, signed -> signed, everything else -> double
+			resType := f.Type()
+			if types.IsUnsigned(tt.rowType) {
+				require.True(resType.Equals(types.Uint64))
+			} else if types.IsNumber(tt.rowType) {
+				require.True(resType.Equals(types.Int64))
+			} else {
+				require.True(resType.Equals(types.Float64))
+			}
 			require.False(f.IsNullable())
 		})
 	}
@@ -80,17 +92,21 @@ func TestFloor(t *testing.T) {
 		err      *errors.Kind
 	}{
 		{"float64 is nil", types.Float64, sql.NewRow(nil), nil, nil},
-		{"float64 is ok", types.Float64, sql.NewRow(5.8), float64(5), nil},
+		{"float64 is ok", types.Float64, sql.NewRow(5.8), int64(5), nil},
 		{"float32 is nil", types.Float32, sql.NewRow(nil), nil, nil},
-		{"float32 is ok", types.Float32, sql.NewRow(float32(5.8)), float32(5), nil},
+		{"float32 is ok", types.Float32, sql.NewRow(float32(5.8)), int64(5), nil},
 		{"int32 is nil", types.Int32, sql.NewRow(nil), nil, nil},
-		{"int32 is ok", types.Int32, sql.NewRow(int32(6)), int32(6), nil},
+		{"int32 is ok", types.Int32, sql.NewRow(int32(6)), int64(6), nil},
 		{"int64 is nil", types.Int64, sql.NewRow(nil), nil, nil},
 		{"int64 is ok", types.Int64, sql.NewRow(int64(6)), int64(6), nil},
 		{"blob is nil", types.Blob, sql.NewRow(nil), nil, nil},
-		{"blob is ok", types.Blob, sql.NewRow([]byte{1, 2, 3}), int32(66051), nil},
-		{"string int is ok", types.Text, sql.NewRow("1"), int32(1), nil},
-		{"string float is ok", types.Text, sql.NewRow("1.2"), int32(1), nil},
+		{"blob is ok", types.Blob, sql.NewRow([]byte{1, 2, 3}), float64(66051), nil},
+		{"string int is ok", types.Text, sql.NewRow("1"), float64(1), nil},
+		{"string float is ok", types.Text, sql.NewRow("1.2"), float64(1), nil},
+		{"empty string is 0", types.Text, sql.NewRow(""), 0.0, nil},
+		{"strings are truncated", types.Text, sql.NewRow("1.2abc"), float64(1), nil},
+		{"completely invalid string is truncated to 0", types.Text, sql.NewRow("notavalue"), 0.0, nil},
+		{"float notation is properly truncated", types.Text, sql.NewRow("1.234e2blah"), 123.0, nil},
 	}
 
 	for _, tt := range testCases {
@@ -111,7 +127,15 @@ func TestFloor(t *testing.T) {
 				require.Equal(tt.expected, result)
 			}
 
-			require.True(types.IsInteger(f.Type()))
+			// signed -> signed, unsigned -> unsigned, everything else -> double
+			resType := f.Type()
+			if types.IsUnsigned(tt.rowType) {
+				require.True(resType.Equals(types.Uint64))
+			} else if types.IsNumber(tt.rowType) {
+				require.True(resType.Equals(types.Int64))
+			} else {
+				require.True(resType.Equals(types.Float64))
+			}
 			require.False(f.IsNullable())
 		})
 	}
@@ -603,7 +627,44 @@ func TestRound(t *testing.T) {
 			exp:   123.0,
 		},
 
-		// TODO: tests truncated strings
+		{
+			name:  "invalid text float is just 0.0",
+			xExpr: expression.NewLiteral("notafloat", types.Text),
+			dExpr: expression.NewLiteral("stillnotafloat", types.Text),
+			exp:   0.0,
+		},
+		{
+			name:  "invalid text float with d is just 0.0",
+			xExpr: expression.NewLiteral("notafloat", types.Text),
+			exp:   0.0,
+		},
+		{
+			name:  "text float truncates rounds down",
+			xExpr: expression.NewLiteral("123.456abc", types.Text),
+			exp:   123.0,
+		},
+		{
+			name:  "text float truncates rounds up",
+			xExpr: expression.NewLiteral("123.999abc", types.Text),
+			exp:   124.0,
+		},
+		{
+			name:  "text float with d truncates",
+			xExpr: expression.NewLiteral("123.456abc", types.Text),
+			dExpr: expression.NewLiteral("1abc", types.Text),
+			exp:   123.5,
+		},
+		{
+			name:  "text float signed notation truncates",
+			xExpr: expression.NewLiteral("+1.23456e2abcefg", types.Text),
+			exp:   123.0,
+		},
+		{
+			name:  "text float signed notation with d",
+			xExpr: expression.NewLiteral("+1.23456e2abcde", types.Text),
+			dExpr: expression.NewLiteral("0.2e1abcde", types.Text),
+			exp:   123.0,
+		},
 	}
 
 	for _, tt := range testCases {

@@ -66,7 +66,6 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	if originalLeft == nil {
 		return nil, nil
 	}
@@ -85,6 +84,7 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			}
 		}
 
+		leftLit := NewLiteral(originalLeft, in.Left().Type())
 		for _, el := range right {
 			originalRight, err := el.Eval(ctx, row)
 			if err != nil {
@@ -96,8 +96,8 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 				continue
 			}
 
-			comp := newComparison(NewLiteral(originalLeft, in.Left().Type()), NewLiteral(originalRight, el.Type()))
-			l, r, compareType, err := comp.CastLeftAndRight(ctx, originalLeft, originalRight)
+			comp := newComparison(leftLit, NewLiteral(originalRight, el.Type()))
+			l, r, compareType, err := comp.castLeftAndRight(ctx, originalLeft, originalRight)
 			if err != nil {
 				return nil, err
 			}
@@ -105,7 +105,6 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			if err != nil {
 				return nil, err
 			}
-
 			if cmp == 0 {
 				return true, nil
 			}

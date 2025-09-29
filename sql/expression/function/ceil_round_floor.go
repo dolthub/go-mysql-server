@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/dolthub/vitess/go/mysql"
 	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -51,10 +52,13 @@ func (c *Ceil) Description() string {
 // Type implements the Expression interface.
 func (c *Ceil) Type() sql.Type {
 	childType := c.Child.Type()
-	if types.IsInteger(childType) {
-		return childType
+	if types.IsUnsigned(childType) {
+		return types.Uint64
 	}
-	return types.Int32
+	if types.IsNumber(childType) {
+		return types.Int64
+	}
+	return types.Float64
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -77,36 +81,32 @@ func (c *Ceil) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 // Eval implements the Expression interface.
 func (c *Ceil) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	child, err := c.Child.Eval(ctx, row)
-
 	if err != nil {
 		return nil, err
 	}
-
 	if child == nil {
 		return nil, nil
 	}
-
-	// non number type will be caught here
 	if !types.IsNumber(c.Child.Type()) {
 		child, _, err = types.Float64.Convert(ctx, child)
 		if err != nil {
-			return int32(0), nil
+			if !sql.ErrTruncatedIncorrect.Is(err) {
+				return nil, err
+			}
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		}
-
-		return int32(math.Ceil(child.(float64))), nil
 	}
-
 	// if it's number type and not float value, it does not need ceil-ing
 	switch num := child.(type) {
-	case float64:
-		return math.Ceil(num), nil
 	case float32:
-		return float32(math.Ceil(float64(num))), nil
+		child = math.Ceil(float64(num))
+	case float64:
+		child = math.Ceil(num)
 	case decimal.Decimal:
-		return num.Ceil(), nil
-	default:
-		return child, nil
+		child = num.Ceil()
 	}
+	child, _, _ = c.Type().Convert(ctx, child)
+	return child, nil
 }
 
 // Floor returns the biggest integer value not less than X.
@@ -135,10 +135,13 @@ func (f *Floor) Description() string {
 // Type implements the Expression interface.
 func (f *Floor) Type() sql.Type {
 	childType := f.Child.Type()
-	if types.IsInteger(childType) {
-		return childType
+	if types.IsUnsigned(childType) {
+		return types.Uint64
 	}
-	return types.Int32
+	if types.IsNumber(childType) {
+		return types.Int64
+	}
+	return types.Float64
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -161,36 +164,33 @@ func (f *Floor) WithChildren(children ...sql.Expression) (sql.Expression, error)
 // Eval implements the Expression interface.
 func (f *Floor) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	child, err := f.Child.Eval(ctx, row)
-
 	if err != nil {
 		return nil, err
 	}
-
 	if child == nil {
 		return nil, nil
 	}
-
-	// non number type will be caught here
 	if !types.IsNumber(f.Child.Type()) {
 		child, _, err = types.Float64.Convert(ctx, child)
 		if err != nil {
-			return int32(0), nil
+			if !sql.ErrTruncatedIncorrect.Is(err) {
+				return nil, err
+			}
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		}
-
-		return int32(math.Floor(child.(float64))), nil
 	}
 
-	// if it's number type and not float value, it does not need floor-ing
+	// if it's number type and not float value, it does not need ceil-ing
 	switch num := child.(type) {
-	case float64:
-		return math.Floor(num), nil
 	case float32:
-		return float32(math.Floor(float64(num))), nil
+		child = math.Floor(float64(num))
+	case float64:
+		child = math.Floor(num)
 	case decimal.Decimal:
-		return num.Floor(), nil
-	default:
-		return child, nil
+		child = num.Floor()
 	}
+	child, _, _ = f.Type().Convert(ctx, child)
+	return child, nil
 }
 
 // Round returns the number (x) with (d) requested decimal places.
@@ -244,62 +244,61 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	if val == nil {
 		return nil, nil
 	}
 
-	decType := types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, types.DecimalTypeMaxScale)
-	val, _, err = decType.Convert(ctx, val)
-	if err != nil {
-		// TODO: truncate
-		return nil, err
+	val, _, err = types.InternalDecimalType.Convert(ctx, val)
+	if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
 	prec := int32(0)
 	if r.RightChild != nil {
-		var tmp interface{}
+		var tmp any
 		tmp, err = r.RightChild.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
-
 		if tmp == nil {
 			return nil, nil
 		}
-
-		if tmp != nil {
-			tmp, _, err = types.Int32.Convert(ctx, tmp)
-			if err != nil {
-				// TODO: truncate
+		tmp, _, err = types.Int32.Convert(ctx, tmp)
+		if err != nil {
+			if !sql.ErrTruncatedIncorrect.Is(err) {
 				return nil, err
 			}
-			prec = tmp.(int32)
-			// MySQL cuts off at 30 for larger values
-			// TODO: these limits are fine only because we can't handle decimals larger than this
-			if prec > types.DecimalTypeMaxPrecision {
-				prec = types.DecimalTypeMaxPrecision
-			}
-			if prec < -types.DecimalTypeMaxScale {
-				prec = -types.DecimalTypeMaxScale
-			}
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
+		}
+		prec = tmp.(int32)
+		// MySQL cuts off at 30 for larger values
+		// TODO: these limits are fine only because we can't handle decimals larger than this
+		if prec > types.DecimalTypeMaxPrecision {
+			prec = types.DecimalTypeMaxPrecision
+		}
+		if prec < -types.DecimalTypeMaxScale {
+			prec = -types.DecimalTypeMaxScale
 		}
 	}
 
 	var res interface{}
 	tmp := val.(decimal.Decimal).Round(prec)
-	if types.IsSigned(r.LeftChild.Type()) {
+	lType := r.LeftChild.Type()
+	if types.IsSigned(lType) {
 		res, _, err = types.Int64.Convert(ctx, tmp)
-	} else if types.IsUnsigned(r.LeftChild.Type()) {
+	} else if types.IsUnsigned(lType) {
 		res, _, err = types.Uint64.Convert(ctx, tmp)
-	} else if types.IsFloat(r.LeftChild.Type()) {
+	} else if types.IsFloat(lType) {
 		res, _, err = types.Float64.Convert(ctx, tmp)
-	} else if types.IsDecimal(r.LeftChild.Type()) {
+	} else if types.IsDecimal(lType) {
 		res = tmp
-	} else if types.IsTextBlob(r.LeftChild.Type()) {
+	} else if types.IsTextBlob(lType) {
 		res, _, err = types.Float64.Convert(ctx, tmp)
 	}
-
+	if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
+		err = nil
+	}
 	return res, err
 }
 
