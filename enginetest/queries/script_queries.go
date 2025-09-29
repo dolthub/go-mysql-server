@@ -5099,7 +5099,7 @@ CREATE TABLE tab3 (
 			},
 			{
 				Query:    "ALTER TABLE TEST MODIFY COLUMN pk BIGINT AUTO_INCREMENT, AUTO_INCREMENT = 100",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "INSERT INTO test (v2) values (11)",
@@ -13247,7 +13247,7 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE tab2 CHANGE COLUMN p p POINT NOT NULL",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "INSERT INTO tab2 VALUES (2, ST_GEOMFROMTEXT(ST_ASWKT(POINT(1, 6)), 4326))",
@@ -13267,7 +13267,7 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE tab2 CHANGE COLUMN p p POINT NOT NULL SRID 4326",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "show create table tab2",
@@ -13295,7 +13295,7 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE tab3 MODIFY COLUMN y POLYGON NOT NULL SRID 0",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:       "ALTER TABLE tab3 MODIFY COLUMN y POLYGON NOT NULL SRID 4326",
@@ -13307,7 +13307,7 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE tab3 MODIFY COLUMN y GEOMETRY NULL SRID 0",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "select i, ST_ASWKT(y) FROM tab3",
@@ -13359,7 +13359,7 @@ var SpatialScriptTests = []ScriptTest{
 			},
 			{
 				Query:    "ALTER TABLE table1 CHANGE COLUMN p p geometry srid 4326",
-				Expected: []sql.Row{{types.NewOkResult(0)}},
+				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
 				Query:    "show create table table1",
