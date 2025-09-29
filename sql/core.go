@@ -26,7 +26,6 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/dolthub/vitess/go/mysql"
 	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -316,11 +315,7 @@ func ConvertToBool(ctx *Context, v interface{}) (bool, error) {
 	case float64:
 		return b != 0, nil
 	case string:
-		truncStr, didTrunc := TruncateStringToDouble(b)
-		if didTrunc {
-			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", ErrTruncatedIncorrect.New("INTEGER", b))
-		}
-		bFloat, err := strconv.ParseFloat(truncStr, 64)
+		bFloat, err := strconv.ParseFloat(TrimStringToNumberPrefix(ctx, b, false), 64)
 		if err != nil {
 			return false, nil
 		}
