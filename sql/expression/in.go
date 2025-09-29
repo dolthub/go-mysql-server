@@ -285,7 +285,6 @@ func (hit *HashInTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		return nil, nil
 	}
 
-	// TODO: this needs to pick the same type as right... but there are multiple possibilities??
 	key, err := hash.HashOfSimple(ctx, leftVal, hit.cmpType)
 	if err != nil {
 		return nil, err
