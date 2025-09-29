@@ -17,8 +17,11 @@ package sql
 import (
 	"context"
 	"fmt"
+	"github.com/dolthub/vitess/go/mysql"
 	"reflect"
+	"strings"
 	"time"
+	"unicode"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -99,6 +102,46 @@ type Type interface {
 	// Zero returns the golang zero value for this type
 	Zero() interface{}
 	fmt.Stringer
+}
+
+// TrimStringToNumberPrefix will remove any white space for s and truncate any trailing non-numeric characters.
+func TrimStringToNumberPrefix(ctx *Context, s string, isInt bool) string {
+	if isInt {
+		s = strings.TrimLeft(s, IntCutSet)
+	} else {
+		s = strings.TrimLeft(s, NumericCutSet)
+	}
+
+	seenDigit := false
+	seenDot := false
+	seenExp := false
+	signIndex := 0
+
+	var i int
+	for i = 0; i < len(s); i++ {
+		char := rune(s[i])
+		if unicode.IsDigit(char) {
+			seenDigit = true
+		} else if char == '.' && !seenDot && !isInt {
+			seenDot = true
+		} else if (char == 'e' || char == 'E') && !seenExp && seenDigit && !isInt {
+			seenExp = true
+			signIndex = i + 1
+		} else if !((char == '-' || char == '+') && i == signIndex) {
+			// TODO: this should not happen here, and it should use sql.ErrIncorrectTruncation
+			if isInt {
+				ctx.Warn(mysql.ERTruncatedWrongValue, "Truncated incorrect INTEGER value: '%s'", s)
+			} else {
+				ctx.Warn(mysql.ERTruncatedWrongValue, "Truncated incorrect DOUBLE value: '%s'", s)
+			}
+			break
+		}
+	}
+	s = s[:i]
+	if s == "" {
+		s = "0"
+	}
+	return s
 }
 
 // NullType represents the type of NULL values

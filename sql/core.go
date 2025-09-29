@@ -24,10 +24,8 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
-	"unicode"
 	"unsafe"
 
-	"github.com/dolthub/vitess/go/mysql"
 	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -339,46 +337,6 @@ const (
 	// NumericCutSet is the set of characters to trim from a string before converting it to a number.
 	NumericCutSet = " \t\n\r"
 )
-
-// TODO: type processing logic should all be in the types package
-func TrimStringToNumberPrefix(ctx *Context, s string, isInt bool) string {
-	if isInt {
-		s = strings.TrimLeft(s, IntCutSet)
-	} else {
-		s = strings.TrimLeft(s, NumericCutSet)
-	}
-
-	seenDigit := false
-	seenDot := false
-	seenExp := false
-	signIndex := 0
-
-	var i int
-	for i = 0; i < len(s); i++ {
-		char := rune(s[i])
-		if unicode.IsDigit(char) {
-			seenDigit = true
-		} else if char == '.' && !seenDot && !isInt {
-			seenDot = true
-		} else if (char == 'e' || char == 'E') && !seenExp && seenDigit && !isInt {
-			seenExp = true
-			signIndex = i + 1
-		} else if !((char == '-' || char == '+') && i == signIndex) {
-			// TODO: this should not happen here, and it should use sql.ErrIncorrectTruncation
-			if isInt {
-				ctx.Warn(mysql.ERTruncatedWrongValue, "Truncated incorrect INTEGER value: '%s'", s)
-			} else {
-				ctx.Warn(mysql.ERTruncatedWrongValue, "Truncated incorrect DOUBLE value: '%s'", s)
-			}
-			break
-		}
-	}
-	s = s[:i]
-	if s == "" {
-		s = "0"
-	}
-	return s
-}
 
 var ErrVectorInvalidBinaryLength = errors.NewKind("cannot convert BINARY(%d) to vector, byte length must be a multiple of 4 bytes")
 
