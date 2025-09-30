@@ -7414,6 +7414,32 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
+		Name:    "hash in tuple picks correct type and skips mixed types",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (v varchar(10));",
+			"insert into t values ('abc'), ('def'), ('ghi');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from t where (v in ('xyz')) order by v;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from t where (v in (0, 'xyz')) order by v;",
+				Expected: []sql.Row{
+					{"abc"},
+					{"def"},
+					{"ghi"},
+				},
+			},
+			{
+				Query:    "select * from t where (v in (1, 'xyz')) order by v;",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
 		Name:    "strings in tuple are properly hashed",
 		Dialect: "mysql",
 		SetUpScript: []string{
