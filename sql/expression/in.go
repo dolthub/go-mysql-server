@@ -59,79 +59,17 @@ func NewInTuple(left sql.Expression, right sql.Expression) *InTuple {
 	return &InTuple{BinaryExpressionStub{left, right}}
 }
 
-// validateAndEvalRightTuple will evaluate the right tuple, check if leftType and the right Tuple are comparable,
-// determine what type to use to compare the two sides, and indicate if right Tuple contains any NULL elements.
-// Returns
-//   - slice of the evaluated elements
-//   - sql.Type to convert elements to before hashing
-//   - bool indicating if there are null elements
-//   - error
-func validateAndEvalRightTuple(ctx *sql.Context, lType sql.Type, right Tuple, row sql.Row) ([]any, sql.Type, bool, error) {
-	// The NULL handling for IN expressions is tricky. According to
-	// https://dev.mysql.com/doc/refman/8.0/en/comparison-operators.html#operator_in:
-	// To comply with the SQL standard, IN() returns NULL not only if the expression on the left hand side is NULL, but
-	// also if no match is found in the list and one of the expressions in the list is NULL.
-
-	// If left is StringType and ANY of the right is NumberType, then we should use Double Type for comparison
-	// If left is NumberType and ANT of the left is StringType, then we should use Double Type for comparison
-	lColCount := types.NumColumns(lType)
-	lIsNumType := types.IsNumber(lType)
-	lIsStrType := types.IsText(lType)
-	var rHasNumType, rHasStrType, rHasNull bool
-	rVals := make([]any, len(right))
-	for i, el := range right {
-		rType := el.Type()
-
-		// Nested tuples must have the same number of columns
-		rColCount := types.NumColumns(rType)
-		if rColCount != lColCount {
-			return nil, nil, false, sql.ErrInvalidOperandColumns.New(lColCount, types.NumColumns(el.Type()))
-		}
-
-		if types.IsNumber(rType) {
-			rHasNumType = true
-		} else if types.IsText(rType) {
-			rHasStrType = true
-		}
-
-		// Null elements are not hashed into the Tuple Map
-		if types.IsNullType(rType) {
-			rHasNull = true
-			continue
-		}
-		v, err := el.Eval(ctx, row)
-		if err != nil {
-			return nil, nil, false, err
-		}
-		if v == nil {
-			rHasNull = true
-			continue
-		}
-
-		rVals[i] = v
-	}
-
-	var cmpType sql.Type
-	if (lIsStrType && rHasNumType) || (lIsNumType && rHasStrType) {
-		cmpType = types.Float64
-	} else if types.IsEnum(lType) || types.IsSet(lType) || types.IsText(lType) {
-		cmpType = lType
-	} else {
-		cmpType = lType
-		for _, el := range right {
-			cmpType = types.GetCompareType(cmpType, el.Type())
-		}
-	}
-
-	return rVals, cmpType, rHasNull, nil
-}
-
 // Eval implements the Expression interface.
 func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	lVal, err := in.Left().Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
+
+	// The NULL handling for IN expressions is tricky. According to
+	// https://dev.mysql.com/doc/refman/8.0/en/comparison-operators.html#operator_in:
+	// To comply with the SQL standard, IN() returns NULL not only if the expression on the left hand side is NULL, but
+	// also if no match is found in the list and one of the expressions in the list is NULL.
 	if lVal == nil {
 		return nil, nil
 	}
