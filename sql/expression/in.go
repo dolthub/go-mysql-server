@@ -61,63 +61,65 @@ func NewInTuple(left sql.Expression, right sql.Expression) *InTuple {
 
 // Eval implements the Expression interface.
 func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	leftElems := types.NumColumns(in.Left().Type())
-	originalLeft, err := in.Left().Eval(ctx, row)
+	lVal, err := in.Left().Eval(ctx, row)
 	if err != nil {
 		return nil, err
-	}
-	if originalLeft == nil {
-		return nil, nil
 	}
 
 	// The NULL handling for IN expressions is tricky. According to
 	// https://dev.mysql.com/doc/refman/8.0/en/comparison-operators.html#operator_in:
 	// To comply with the SQL standard, IN() returns NULL not only if the expression on the left hand side is NULL, but
 	// also if no match is found in the list and one of the expressions in the list is NULL.
-	rightNull := false
+	if lVal == nil {
+		return nil, nil
+	}
 
-	switch right := in.Right().(type) {
-	case Tuple:
-		for _, el := range right {
-			if types.NumColumns(el.Type()) != leftElems {
-				return nil, sql.ErrInvalidOperandColumns.New(leftElems, types.NumColumns(el.Type()))
-			}
-		}
+	lType := in.Left().Type()
+	lColCount := types.NumColumns(lType)
+	lLit := NewLiteral(lVal, lType)
 
-		leftLit := NewLiteral(originalLeft, in.Left().Type())
-		for _, el := range right {
-			originalRight, err := el.Eval(ctx, row)
-			if err != nil {
-				return nil, err
-			}
-
-			if !rightNull && originalRight == nil {
-				rightNull = true
-				continue
-			}
-
-			comp := newComparison(leftLit, NewLiteral(originalRight, el.Type()))
-			l, r, compareType, err := comp.castLeftAndRight(ctx, originalLeft, originalRight)
-			if err != nil {
-				return nil, err
-			}
-			cmp, err := compareType.Compare(ctx, l, r)
-			if err != nil {
-				return nil, err
-			}
-			if cmp == 0 {
-				return true, nil
-			}
-		}
-
-		if rightNull {
-			return nil, nil
-		}
-
-		return false, nil
-	default:
+	right, isTuple := in.Right().(Tuple)
+	if !isTuple {
 		return nil, ErrUnsupportedInOperand.New(right)
 	}
+
+	var rHasNull bool
+	for _, el := range right {
+		rType := el.Type()
+		if rType == types.Null {
+			rHasNull = true
+			continue
+		}
+
+		// Nested tuples must have the same number of columns
+		rColCount := types.NumColumns(rType)
+		if rColCount != lColCount {
+			return nil, sql.ErrInvalidOperandColumns.New(lColCount, rColCount)
+		}
+
+		rVal, rErr := el.Eval(ctx, row)
+		if rErr != nil {
+			return nil, rErr
+		}
+		if rVal == nil {
+			rHasNull = true
+			continue
+		}
+
+		cmpExpr := newComparison(lLit, NewLiteral(rVal, rType))
+		res, cErr := cmpExpr.Compare(ctx, nil)
+		if cErr != nil {
+			continue
+		}
+		if res == 0 {
+			return true, nil
+		}
+	}
+
+	if rHasNull {
+		return nil, nil
+	}
+	return false, nil
 }
 
 // WithChildren implements the Expression interface.
@@ -154,7 +156,8 @@ func NewNotInTuple(left sql.Expression, right sql.Expression) sql.Expression {
 // HashInTuple is an expression that checks an expression is inside a list of expressions using a hashmap.
 type HashInTuple struct {
 	in      *InTuple
-	cmp     map[uint64]sql.Expression
+	cmp     map[uint64]struct{}
+	cmpType sql.Type
 	hasNull bool
 }
 
@@ -169,90 +172,98 @@ func NewHashInTuple(ctx *sql.Context, left, right sql.Expression) (*HashInTuple,
 		return nil, ErrUnsupportedInOperand.New(right)
 	}
 
-	cmp, hasNull, err := newInMap(ctx, rightTup, left.Type())
+	cmp, cmpType, hasNull, err := newInMap(ctx, left.Type(), rightTup)
 	if err != nil {
 		return nil, err
 	}
 
-	return &HashInTuple{in: NewInTuple(left, right), cmp: cmp, hasNull: hasNull}, nil
+	return &HashInTuple{
+		in:      NewInTuple(left, right),
+		cmp:     cmp,
+		cmpType: cmpType,
+		hasNull: hasNull,
+	}, nil
 }
 
 // newInMap hashes static expressions in the right child Tuple of a InTuple node
-func newInMap(ctx *sql.Context, right Tuple, lType sql.Type) (map[uint64]sql.Expression, bool, error) {
+// returns
+//   - map of the hashed elements
+//   - sql.Type to convert elements to before hashing
+//   - bool indicating if there are null elements
+//   - error
+func newInMap(ctx *sql.Context, lType sql.Type, right Tuple) (map[uint64]struct{}, sql.Type, bool, error) {
 	if lType == types.Null {
-		return nil, true, nil
+		return nil, nil, true, nil
 	}
-
-	elements := make(map[uint64]sql.Expression)
-	hasNull := false
-	lColumnCount := types.NumColumns(lType)
-
+	lColCount := types.NumColumns(lType)
+	if len(right) == 0 {
+		return nil, nil, false, nil
+	}
+	// only non-nil elements are included
+	rVals := make([]any, 0, len(right))
+	var rHasNull bool
 	for _, el := range right {
-		rType := el.Type().Promote()
-		rColumnCount := types.NumColumns(rType)
-		if rColumnCount != lColumnCount {
-			return nil, false, sql.ErrInvalidOperandColumns.New(lColumnCount, rColumnCount)
+		rType := el.Type()
+		rColCount := types.NumColumns(rType)
+		if lColCount != rColCount {
+			return nil, nil, false, sql.ErrInvalidOperandColumns.New(lColCount, rColCount)
 		}
-
 		if rType == types.Null {
-			hasNull = true
+			rHasNull = true
 			continue
 		}
-		i, err := el.Eval(ctx, sql.Row{})
+		rVal, err := el.Eval(ctx, nil)
 		if err != nil {
-			return nil, hasNull, err
+			return nil, nil, false, err
 		}
-		if i == nil {
-			hasNull = true
+		if rVal == nil {
+			rHasNull = true
 			continue
 		}
-
-		var key uint64
-		if types.IsDecimal(rType) || types.IsFloat(rType) {
-			key, err = hash.HashOfSimple(ctx, i, rType)
-		} else {
-			key, err = hash.HashOfSimple(ctx, i, lType)
-		}
-		if err != nil {
-			return nil, false, err
-		}
-		elements[key] = el
+		rVals = append(rVals, rVal)
 	}
 
-	return elements, hasNull, nil
+	var cmpType sql.Type
+	if types.IsEnum(lType) || types.IsSet(lType) {
+		cmpType = lType
+	} else {
+		// If we've made it this far, we are guaranteed that the right Tuple has a consistent set of types
+		// (all numeric, string, or time), so it is enough to just compare against the first element of the right Tuple
+		cmpType = types.GetCompareType(lType, right[0].Type())
+	}
+	elements := map[uint64]struct{}{}
+	for _, rVal := range rVals {
+		key, hErr := hash.HashOfSimple(ctx, rVal, cmpType)
+		if hErr != nil {
+			return nil, nil, false, hErr
+		}
+		elements[key] = struct{}{}
+	}
+	return elements, cmpType, rHasNull, nil
 }
 
 // Eval implements the Expression interface.
 func (hit *HashInTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	leftElems := types.NumColumns(hit.in.Left().Type().Promote())
-
 	leftVal, err := hit.in.Left().Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-
 	if leftVal == nil {
 		return nil, nil
 	}
 
-	key, err := hash.HashOfSimple(ctx, leftVal, hit.in.Left().Type())
+	key, err := hash.HashOfSimple(ctx, leftVal, hit.cmpType)
 	if err != nil {
 		return nil, err
 	}
 
-	right, ok := hit.cmp[key]
-	if !ok {
-		if hit.hasNull {
-			return nil, nil
-		}
-		return false, nil
+	if _, ok := hit.cmp[key]; ok {
+		return true, nil
 	}
-
-	if types.NumColumns(right.Type().Promote()) != leftElems {
-		return nil, sql.ErrInvalidOperandColumns.New(leftElems, types.NumColumns(right.Type().Promote()))
+	if hit.hasNull {
+		return nil, nil
 	}
-
-	return true, nil
+	return false, nil
 }
 
 func (hit *HashInTuple) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
