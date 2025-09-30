@@ -19,6 +19,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func applyHashIn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
@@ -29,9 +30,7 @@ func applyHashIn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 		}
 
 		e, same, err := transform.Expr(filter.Expression, func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-			if e, ok := expr.(*expression.InTuple); ok &&
-				hasSingleOutput(e.Left()) &&
-				isStatic(e.Right()) {
+			if e, ok := expr.(*expression.InTuple); ok && hasSingleOutput(e.Left()) && isStatic(e.Right()) && isConsistentType(e.Right()) {
 				newe, err := expression.NewHashInTuple(ctx, e.Left(), e.Right())
 				if err != nil {
 					return nil, transform.SameTree, err
@@ -76,4 +75,25 @@ func isStatic(e sql.Expression) bool {
 			return true
 		}
 	})
+}
+
+func isConsistentType(expr sql.Expression) bool {
+	tup, isTup := expr.(expression.Tuple)
+	if !isTup {
+		return true
+	}
+	var hasNumeric, hasString, hasTime bool
+	for _, elem := range tup {
+		eType := elem.Type()
+		if types.IsNumber(eType) {
+			hasNumeric = true
+		} else if types.IsText(eType) {
+			hasString = true
+		} else if types.IsTime(eType) {
+			hasTime = true
+		}
+	}
+	// if there is a mixture of types, we cannot use hash
+	// must have exactly one true
+	return !((hasNumeric && hasString) || (hasNumeric && hasTime) || (hasString && hasTime))
 }

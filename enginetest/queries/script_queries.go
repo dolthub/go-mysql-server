@@ -590,7 +590,7 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 			{
 				Query:                           "SELECT '123abc' in ('string', 1, 2, 123);",
 				Expected:                        []sql.Row{{true}},
-				ExpectedWarningsCount:           2, // MySQL only throws 1 warning
+				ExpectedWarningsCount:           3, // MySQL only throws 1 warning
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
 				ExpectedWarningMessageSubstring: "Truncated incorrect double value",
 			},
@@ -642,7 +642,7 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 				Expected:                        []sql.Row{{true}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
-				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 123.456ABC",
+				ExpectedWarningMessageSubstring: "Truncated incorrect decimal(65,30) value: 123.456ABC",
 			},
 			{
 				Query:    "SELECT '123.456e2' in (12345.6);",
@@ -7356,9 +7356,15 @@ CREATE TABLE tab3 (
 				},
 			},
 			{
+				// This actually matches MySQL behavior
+				Query:    "select * from t where (f in (null, 0.8));",
+				Expected: []sql.Row{},
+			},
+			{
+				// This actually matches MySQL behavior
 				Query: "select count(*) from t where (f in (null, 0.8));",
 				Expected: []sql.Row{
-					{1},
+					{0},
 				},
 			},
 			{

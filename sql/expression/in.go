@@ -17,8 +17,6 @@ package expression
 import (
 	"fmt"
 
-	"github.com/dolthub/vitess/go/mysql"
-
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/hash"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -130,58 +128,59 @@ func validateAndEvalRightTuple(ctx *sql.Context, lType sql.Type, right Tuple, ro
 
 // Eval implements the Expression interface.
 func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	leftVal, err := in.Left().Eval(ctx, row)
+	lVal, err := in.Left().Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-	if leftVal == nil {
+	if lVal == nil {
 		return nil, nil
 	}
+
+	lType := in.Left().Type()
+	lColCount := types.NumColumns(lType)
+	lLit := NewLiteral(lVal, lType)
 
 	right, isTuple := in.Right().(Tuple)
 	if !isTuple {
 		return nil, ErrUnsupportedInOperand.New(right)
 	}
 
-	lType := in.Left().Type()
-	rVals, cmpType, rHasNull, err := validateAndEvalRightTuple(ctx, lType, right, row)
-	if err != nil {
-		return nil, err
-	}
-
-	lv, _, lErr := cmpType.Convert(ctx, leftVal)
-	if lErr != nil {
-		if sql.ErrTruncatedIncorrect.Is(lErr) {
-			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", lErr.Error())
-		} else {
-			lv = cmpType.Zero()
-		}
-	}
-
-	for _, rVal := range rVals {
-		if rVal == nil {
+	var rHasNull bool
+	for _, el := range right {
+		rType := el.Type()
+		if rType == types.Null {
+			rHasNull = true
 			continue
 		}
-		rv, _, rErr := cmpType.Convert(ctx, rVal)
+
+		// Nested tuples must have the same number of columns
+		rColCount := types.NumColumns(rType)
+		if rColCount != lColCount {
+			return nil, sql.ErrInvalidOperandColumns.New(lColCount, rColCount)
+		}
+
+		rVal, rErr := el.Eval(ctx, row)
 		if rErr != nil {
-			if sql.ErrTruncatedIncorrect.Is(rErr) {
-				ctx.Warn(mysql.ERTruncatedWrongValue, "%s", rErr.Error())
-			} else {
-				rv = cmpType.Zero()
-			}
+			return nil, rErr
 		}
-		cmp, cErr := cmpType.Compare(ctx, lv, rv)
-		if cErr != nil {
+		if rVal == nil {
+			rHasNull = true
 			continue
 		}
-		if cmp == 0 {
+
+		cmpExpr := newComparison(lLit, NewLiteral(rVal, rType))
+		res, cErr := cmpExpr.Compare(ctx, nil)
+		if cErr != nil {
+			return nil, cErr
+		}
+		if res == 0 {
 			return true, nil
 		}
 	}
+
 	if rHasNull {
 		return nil, nil
 	}
-
 	return false, nil
 }
 
@@ -258,16 +257,45 @@ func newInMap(ctx *sql.Context, lType sql.Type, right Tuple) (map[uint64]struct{
 	if lType == types.Null {
 		return nil, nil, true, nil
 	}
+	lColCount := types.NumColumns(lType)
 	if len(right) == 0 {
 		return nil, nil, false, nil
 	}
-	rVals, cmpType, rHasNull, err := validateAndEvalRightTuple(ctx, lType, right, nil)
-	if err != nil {
-		return nil, nil, false, err
+	// only non-nil elements are included
+	rVals := make([]any, 0, len(right))
+	var rHasNull bool
+	for _, el := range right {
+		rType := el.Type()
+		rColCount := types.NumColumns(rType)
+		if lColCount != rColCount {
+			return nil, nil, false, sql.ErrInvalidOperandColumns.New(lColCount, rColCount)
+		}
+		if rType == types.Null {
+			rHasNull = true
+			continue
+		}
+		rVal, err := el.Eval(ctx, nil)
+		if err != nil {
+			return nil, nil, false, err
+		}
+		if rVal == nil {
+			rHasNull = true
+			continue
+		}
+		rVals = append(rVals, rVal)
 	}
-	elements := make(map[uint64]struct{})
-	for _, v := range rVals {
-		key, hErr := hash.HashOfSimple(ctx, v, cmpType)
+
+	var cmpType sql.Type
+	if types.IsEnum(lType) || types.IsSet(lType) {
+		cmpType = lType
+	} else {
+		// If we've made it this far, we are guaranteed that the right Tuple has a consistent set of types
+		// (all numeric, string, or time), so it is enough to just compare against the first element of the right Tuple
+		cmpType = types.GetCompareType(lType, right[0].Type())
+	}
+	elements := map[uint64]struct{}{}
+	for _, rVal := range rVals {
+		key, hErr := hash.HashOfSimple(ctx, rVal, cmpType)
 		if hErr != nil {
 			return nil, nil, false, hErr
 		}
