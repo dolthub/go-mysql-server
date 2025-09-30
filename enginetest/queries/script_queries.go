@@ -1261,7 +1261,8 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 		},
 	},
 	{
-		Name: "complicated string to numeric conversion",
+		Dialect: "mysql",
+		Name:    "complicated string to numeric conversion",
 		SetUpScript: []string{
 			"CREATE TABLE t0(c INT);",
 			"INSERT INTO t0 VALUES (1);",
