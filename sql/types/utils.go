@@ -38,11 +38,8 @@ func GetCompareType(left, right sql.Type) sql.Type {
 		return LongBlob
 	}
 	if IsNumber(left) || IsNumber(right) {
-		if IsDecimal(left) {
-			return left
-		}
-		if IsDecimal(right) {
-			return right
+		if IsDecimal(left) || IsDecimal(right) {
+			return InternalDecimalType
 		}
 		if IsFloat(left) || IsFloat(right) {
 			return Float64

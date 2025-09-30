@@ -617,6 +617,26 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 				Expected: []sql.Row{{true}},
 			},
 			{
+				Query:    "SELECT 123.456 in (123.456);",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "SELECT 123.45 in (123.4);",
+				Expected: []sql.Row{{false}},
+			},
+			{
+				Query:    "SELECT 123.45 in (123.5);",
+				Expected: []sql.Row{{false}},
+			},
+			{
+				Query:    "SELECT '123.45a' in (123.5);",
+				Expected: []sql.Row{{false}},
+			},
+			{
+				Query:    "SELECT '123.45a' in (123.4);",
+				Expected: []sql.Row{{false}},
+			},
+			{
 				SkipResultCheckOnServerEngine:   true, // TODO: warnings do not make it to server engine
 				Query:                           "SELECT '123.456ABC' in (123.456);",
 				Expected:                        []sql.Row{{true}},
