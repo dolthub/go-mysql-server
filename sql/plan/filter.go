@@ -15,6 +15,7 @@
 package plan
 
 import (
+	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -129,6 +130,29 @@ func (i *FilterIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 		if sql.IsTrue(res) {
 			return row, nil
+		}
+	}
+}
+
+func (i *FilterIter) Next2(ctx *sql.Context) (sql.Row2, error) {
+	ri2, ok := i.childIter.(sql.RowIter2)
+	if !ok {
+		panic(fmt.Sprintf("%T is not a sql.RowIter2", i.childIter))
+	}
+
+	for {
+		row, err := ri2.Next(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		res, err := sql.EvaluateCondition(ctx, i.cond, row)
+		if err != nil {
+			return nil, err
+		}
+
+		if sql.IsTrue(res) {
+			return nil, nil
 		}
 	}
 }
