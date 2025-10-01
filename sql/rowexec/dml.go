@@ -93,7 +93,7 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		returnExprs:                 ii.Returning,
 		returnSchema:                ii.Schema(),
 		deferredDefaults:            ii.DeferredDefaults,
-		hasTrigger:                  ii.HasTrigger,
+		hasAfterTrigger:             ii.HasAfterTrigger,
 	}
 
 	var ed sql.EditOpenerCloser

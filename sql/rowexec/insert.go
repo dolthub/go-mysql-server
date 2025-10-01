@@ -52,7 +52,7 @@ type insertIter struct {
 	rowNumber                   int64
 	closed                      bool
 	ignore                      bool
-	hasTrigger                  bool
+	hasAfterTrigger             bool
 }
 
 func getInsertExpressions(values sql.Node) []sql.Expression {
@@ -218,7 +218,7 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 
 	i.updateLastInsertId(ctx, row)
 
-	if len(i.returnExprs) > 0 && !i.hasTrigger {
+	if len(i.returnExprs) > 0 && !i.hasAfterTrigger {
 		return i.getReturningRow(ctx, row)
 	}
 

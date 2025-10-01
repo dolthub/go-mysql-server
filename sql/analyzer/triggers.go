@@ -387,7 +387,6 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 		switch n := c.Node.(type) {
 		case *plan.InsertInto:
 			qFlags.Set(sql.QFlagTrigger)
-			n.HasTrigger = true
 			if trigger.TriggerTime == sqlparser.BeforeStr {
 				triggerExecutor := plan.NewTriggerExecutor(n.Source, triggerLogic, plan.InsertTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,
@@ -395,6 +394,7 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 				})
 				return n.WithSource(triggerExecutor), transform.NewTree, nil
 			} else {
+				n.HasAfterTrigger = true
 				return plan.NewTriggerExecutor(n, triggerLogic, plan.InsertTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,
 					CreateStatement: trigger.CreateTriggerString,
@@ -410,6 +410,7 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 				node, err := n.WithChildren(triggerExecutor)
 				return node, transform.NewTree, err
 			} else {
+				// TODO: add HasAfterTrigger flag for Update node
 				return plan.NewTriggerExecutor(n, triggerLogic, plan.UpdateTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,
 					CreateStatement: trigger.CreateTriggerString,
@@ -439,6 +440,7 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 				node, err := n.WithChildren(triggerExecutor)
 				return node, transform.NewTree, err
 			} else {
+				// TODO: add HasAfterTrigger flag for DeleteFrom node
 				return plan.NewTriggerExecutor(n, triggerLogic, plan.DeleteTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,
 					CreateStatement: trigger.CreateTriggerString,
