@@ -317,6 +317,29 @@ func (i *TrackedRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	return row, nil
 }
 
+func (i *TrackedRowIter) Next2(ctx *sql.Context) (sql.Row2, error) {
+	ri2, ok := i.iter.(sql.RowIter2)
+	if !ok {
+		panic(fmt.Sprintf("%T does not implement sql.RowIter2 interface", i.iter))
+	}
+	row, err := ri2.Next2(ctx)
+	if err != nil {
+		return nil, err
+	}
+	i.numRows++
+	if i.onNext != nil {
+		i.onNext()
+	}
+	return row, nil
+}
+
+func (i *TrackedRowIter) IsRowIter2(ctx *sql.Context) bool {
+	if ri2, ok := i.iter.(sql.RowIter2); ok {
+		return ri2.IsRowIter2(ctx)
+	}
+	return false
+}
+
 func (i *TrackedRowIter) Close(ctx *sql.Context) error {
 	err := i.iter.Close(ctx)
 
