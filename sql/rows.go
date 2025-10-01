@@ -92,6 +92,12 @@ type RowIter interface {
 	Closer
 }
 
+type RowIter2 interface {
+	RowIter
+	Next2(ctx *Context) (Row2, error)
+	IsRowIter2(ctx *Context) bool
+}
+
 // RowIterToRows converts a row iterator to a slice of rows.
 func RowIterToRows(ctx *Context, i RowIter) ([]Row, error) {
 	var rows []Row
@@ -112,7 +118,7 @@ func RowIterToRows(ctx *Context, i RowIter) ([]Row, error) {
 	return rows, i.Close(ctx)
 }
 
-func rowFromRow2(sch Schema, r Row2) Row {
+func RowFromRow2(sch Schema, r Row2) Row {
 	row := make(Row, len(sch))
 	for i, col := range sch {
 		switch col.Type.Type() {
