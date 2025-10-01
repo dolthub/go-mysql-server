@@ -15,6 +15,7 @@
 package rowexec
 
 import (
+	"fmt"
 	"io"
 
 	"gopkg.in/src-d/go-errors.v1"
@@ -97,6 +98,21 @@ func AddTransactionCommittingIter(ctx *sql.Context, qFlags *sql.QueryFlags, iter
 
 func (t *TransactionCommittingIter) Next(ctx *sql.Context) (sql.Row, error) {
 	return t.childIter.Next(ctx)
+}
+
+func (t *TransactionCommittingIter) Next2(ctx *sql.Context) (sql.Row2, error) {
+	ri2, ok := t.childIter.(sql.RowIter2)
+	if !ok {
+		panic(fmt.Sprintf("%T does not implement sql.RowIter2 interface", t.childIter))
+	}
+	return ri2.Next2(ctx)
+}
+
+func (t *TransactionCommittingIter) IsRowIter2(ctx *sql.Context) bool {
+	if ri2, ok := t.childIter.(sql.RowIter2); ok {
+		return ri2.IsRowIter2(ctx)
+	}
+	return false
 }
 
 func (t *TransactionCommittingIter) Close(ctx *sql.Context) error {
