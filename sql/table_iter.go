@@ -15,6 +15,7 @@
 package sql
 
 import (
+	"fmt"
 	"io"
 )
 
@@ -24,6 +25,8 @@ type TableRowIter struct {
 	partitions PartitionIter
 	partition  Partition
 	rows       RowIter
+
+	rows2 RowIter2
 }
 
 var _ RowIter = (*TableRowIter)(nil)
@@ -74,6 +77,73 @@ func (i *TableRowIter) Next(ctx *Context) (Row, error) {
 		row, err = i.Next(ctx)
 	}
 	return row, err
+}
+
+func (i *TableRowIter) Next2(ctx *Context) (Row2, error) {
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+	}
+	if i.partition == nil {
+		partition, err := i.partitions.Next(ctx)
+		if err != nil {
+			if err == io.EOF {
+				if e := i.partitions.Close(ctx); e != nil {
+					return nil, e
+				}
+			}
+
+			return nil, err
+		}
+
+		i.partition = partition
+	}
+
+	if i.rows2 == nil {
+		rows, err := i.table.PartitionRows(ctx, i.partition)
+		if err != nil {
+			return nil, err
+		}
+		ri2, ok := rows.(RowIter2)
+		if !ok {
+			panic(fmt.Sprintf("%T does not implement RowIter2", rows))
+		}
+		i.rows2 = ri2
+	}
+
+	row, err := i.rows2.Next2(ctx)
+	if err != nil && err == io.EOF {
+		if err = i.rows2.Close(ctx); err != nil {
+			return nil, err
+		}
+		i.partition = nil
+		i.rows2 = nil
+		row, err = i.Next2(ctx)
+	}
+	return row, err
+}
+
+func (i *TableRowIter) IsRowIter2(ctx *Context) bool {
+	if i.partition == nil {
+		partition, err := i.partitions.Next(ctx)
+		if err != nil {
+			return false
+		}
+		i.partition = partition
+	}
+	if i.rows2 == nil {
+		rows, err := i.table.PartitionRows(ctx, i.partition)
+		if err != nil {
+			return false
+		}
+		ri2, ok := rows.(RowIter2)
+		if !ok {
+			return false
+		}
+		i.rows2 = ri2
+	}
+	return i.rows2.IsRowIter2(ctx)
 }
 
 func (i *TableRowIter) Close(ctx *Context) error {
