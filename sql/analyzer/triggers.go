@@ -394,6 +394,7 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 				})
 				return n.WithSource(triggerExecutor), transform.NewTree, nil
 			} else {
+				n.HasAfterTrigger = true
 				return plan.NewTriggerExecutor(n, triggerLogic, plan.InsertTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,
 					CreateStatement: trigger.CreateTriggerString,
@@ -438,6 +439,7 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 				node, err := n.WithChildren(triggerExecutor)
 				return node, transform.NewTree, err
 			} else {
+				// TODO: add HasAfterTrigger flag for DeleteFrom node once DELETE...RETURNING has been implemented
 				return plan.NewTriggerExecutor(n, triggerLogic, plan.DeleteTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,
 					CreateStatement: trigger.CreateTriggerString,

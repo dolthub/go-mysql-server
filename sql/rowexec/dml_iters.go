@@ -284,6 +284,10 @@ func (t *triggerIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
 		logicRow = row
 	}
 
+	if returnRow, err, ok := t.getReturningRow(ctx, childRow); ok {
+		return returnRow, err
+	}
+
 	// For some logic statements, we want to return the result of the logic operation as our row, e.g. a Set that alters
 	// the fields of the new row
 	if ok, returnRow := shouldUseLogicResult(logic, logicRow); ok {
@@ -291,6 +295,20 @@ func (t *triggerIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
 	}
 
 	return childRow, nil
+}
+
+func (t *triggerIter) getReturningRow(ctx *sql.Context, row sql.Row) (sql.Row, error, bool) {
+	if tableEditor, isTableEditor := t.child.(*plan.TableEditorIter); isTableEditor {
+		// TODO: get returning rows for REPLACE and DELETE once REPLACE...RETURNING and DELETE...RETURNING have been
+		//  implemented
+		if insert, isInsert := tableEditor.InnerIter().(*insertIter); isInsert {
+			if len(insert.returnExprs) > 0 {
+				retRow, err := insert.getReturningRow(ctx, row)
+				return retRow, err, true
+			}
+		}
+	}
+	return nil, nil, false
 }
 
 func shouldUseLogicResult(logic sql.Node, row sql.Row) (bool, sql.Row) {
@@ -624,11 +642,25 @@ func AddAccumulatorIter(ctx *sql.Context, iter sql.RowIter) (sql.RowIter, sql.Sc
 				return innerIter, innerIter.returnSchema
 			}
 		}
-
-		return defaultAccumulatorIter(ctx, iter)
-	default:
-		return defaultAccumulatorIter(ctx, iter)
+	case *triggerIter:
+		if tableEditor, ok := i.child.(*plan.TableEditorIter); ok {
+			switch innerIter := tableEditor.InnerIter().(type) {
+			case *insertIter:
+				if len(innerIter.returnExprs) > 0 {
+					return i, innerIter.returnSchema
+				}
+			case *updateIter:
+				if len(innerIter.returnExprs) > 0 {
+					return i, innerIter.returnSchema
+				}
+			case *deleteIter:
+				if len(innerIter.returnExprs) > 0 {
+					return i, innerIter.returnSchema
+				}
+			}
+		}
 	}
+	return defaultAccumulatorIter(ctx, iter)
 }
 
 // defaultAccumulatorIter returns the default accumulator iter for a DML node
