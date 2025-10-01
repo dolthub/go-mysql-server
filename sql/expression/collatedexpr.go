@@ -16,6 +16,7 @@ package expression
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -85,8 +86,19 @@ func (ce *CollatedExpression) Eval(ctx *sql.Context, row sql.Row) (interface{}, 
 		return nil, sql.ErrCollatedExprWrongType.New()
 	}
 	if ce.collation.CharacterSet() != typ.(sql.TypeWithCollation).Collation().CharacterSet() {
-		return nil, sql.ErrCollationInvalidForCharSet.New(
-			ce.collation.Name(), typ.(sql.TypeWithCollation).Collation().CharacterSet().Name())
+		// We expose information_schema as utf8mb3 but some tools will try to use our default charset of utf8mb4, so we
+		// ignore the collation altogether in these cases. This is added due to tools throwing collations in places
+		// where it's not necessary.
+		shouldIgnore := false
+		if gf, ok := ce.expr.(*GetField); ok {
+			if strings.EqualFold("information_schema", gf.db) {
+				shouldIgnore = true
+			}
+		}
+		if !shouldIgnore {
+			return nil, sql.ErrCollationInvalidForCharSet.New(
+				ce.collation.Name(), typ.(sql.TypeWithCollation).Collation().CharacterSet().Name())
+		}
 	}
 	return ce.expr.Eval(ctx, row)
 }
