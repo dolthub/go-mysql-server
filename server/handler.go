@@ -495,6 +495,8 @@ func (h *Handler) doQuery(
 		r, err = resultForEmptyIter(sqlCtx, rowIter, resultFields)
 	} else if analyzer.FlagIsSet(qFlags, sql.QFlagMax1Row) {
 		r, err = resultForMax1RowIter(sqlCtx, schema, rowIter, resultFields, buf)
+	} else if ri2, ok := rowIter.(sql.RowIter2); ok && ri2.IsRowIter2(sqlCtx) {
+		r, err = h.resultForDefaultIter2(sqlCtx, ri2, resultFields, callback, more)
 	} else {
 		r, processedAtLeastOneBatch, err = h.resultForDefaultIter(sqlCtx, c, schema, rowIter, callback, resultFields, more, buf)
 	}
@@ -766,6 +768,32 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 		return nil, false, err
 	}
 	return r, processedAtLeastOneBatch, nil
+}
+
+func (h *Handler) resultForDefaultIter2(ctx *sql.Context, iter sql.RowIter2, resultFields []*querypb.Field, callback func(*sqltypes.Result, bool) error, more bool) (*sqltypes.Result, error) {
+	res := &sqltypes.Result{Fields: resultFields}
+	for {
+		if res.RowsAffected == rowsBatch {
+			if err := callback(res, more); err != nil {
+				return nil, err
+			}
+			res = nil
+		}
+		row, err := iter.Next2(ctx)
+		if err == io.EOF {
+			return res, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		outRow := make([]sqltypes.Value, len(res.Rows))
+		for i := range row {
+			outRow[i] = sqltypes.MakeTrusted(row[i].Typ, row[i].Val)
+		}
+		res.Rows = append(res.Rows, outRow)
+		res.RowsAffected++
+	}
 }
 
 // See https://dev.mysql.com/doc/internals/en/status-flags.html
