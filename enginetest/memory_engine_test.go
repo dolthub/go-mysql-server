@@ -200,23 +200,74 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	// t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name:        "AS OF propagates to nested CALLs",
-			SetUpScript: []string{},
+			// https://github.com/dolthub/dolt/issues/9895
+			Name: "insert returning works with after triggers",
+			SetUpScript: []string{
+				"create table parent (id int not null auto_increment, primary key (id))",
+				"create table child(parent_id int not null, version_id int not null auto_increment, primary key (version_id))",
+				"insert into parent () values ()",
+				"create trigger trg_child_after_insert after insert on child for each row update parent set id = (id + 1) where id = NEW.parent_id",
+			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "create procedure create_proc() create table t (i int primary key, j int);",
-					Expected: []sql.Row{
-						{types.NewOkResult(0)},
-					},
+					Query:    "insert into child (parent_id) values (1) returning version_id",
+					Expected: []sql.Row{{1}},
 				},
 				{
-					Query: "call create_proc()",
-					Expected: []sql.Row{
-						{types.NewOkResult(0)},
-					},
+					Query:    "select * from parent",
+					Expected: []sql.Row{{2}},
+				},
+				{
+					Query:    "insert into child (parent_id) values (2) returning version_id",
+					Expected: []sql.Row{{2}},
+				},
+				{
+					Query:    "select * from parent",
+					Expected: []sql.Row{{3}},
+				},
+				{
+					// https://github.com/dolthub/dolt/issues/9907
+					Skip:  true,
+					Query: "insert into child (parent_id) values ((select id from parent limit 1)) returning parent_id, version_id",
+					// TODO: update to actual error
+					ExpectedErr: nil,
+				},
+			},
+		},
+		{
+			Name: "insert returning works with before triggers",
+			SetUpScript: []string{
+				"create table parent (id int not null auto_increment, primary key (id))",
+				"create table child(parent_id int not null, version_id int not null auto_increment, primary key (version_id))",
+				"insert into parent () values ()",
+				"create trigger trg_child_before_insert before insert on child for each row update parent set id = (id + 1) where id = NEW.parent_id",
+			},
+			Assertions: []queries.ScriptTestAssertion{
+				{
+					Query:    "insert into child (parent_id) values (1) returning version_id",
+					Expected: []sql.Row{{1}},
+				},
+				{
+					Query:    "select * from parent",
+					Expected: []sql.Row{{2}},
+				},
+				{
+					Query:    "insert into child (parent_id) values (2) returning version_id",
+					Expected: []sql.Row{{2}},
+				},
+				{
+					Query:    "select * from parent",
+					Expected: []sql.Row{{3}},
+				},
+				{
+					//https://github.com/dolthub/dolt/issues/9907
+					Skip:  true,
+					Query: "insert into child (parent_id) values ((select id from parent limit 1)) returning version_id",
+					// TODO: update to actual error
+					ExpectedErr: nil,
 				},
 			},
 		},
@@ -225,13 +276,14 @@ func TestSingleScript(t *testing.T) {
 	for _, test := range scripts {
 		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
 		//harness.UseServer()
+		// harness.Setup(append(setup.ComplexIndexSetup, setup.Pk_tablesData)...)
 		engine, err := harness.NewEngine(t)
 		if err != nil {
 			panic(err)
 		}
 
-		//engine.EngineAnalyzer().Debug = true
-		//engine.EngineAnalyzer().Verbose = true
+		engine.EngineAnalyzer().Debug = true
+		engine.EngineAnalyzer().Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
