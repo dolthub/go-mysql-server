@@ -299,6 +299,8 @@ func (t *triggerIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
 
 func (t *triggerIter) getReturningRow(ctx *sql.Context, row sql.Row) (sql.Row, error, bool) {
 	if tableEditor, isTableEditor := t.child.(*plan.TableEditorIter); isTableEditor {
+		// TODO: get returning rows for REPLACE and DELETE once REPLACE...RETURNING and DELETE...RETURNING have been
+		//  implemented
 		if insert, isInsert := tableEditor.InnerIter().(*insertIter); isInsert {
 			if len(insert.returnExprs) > 0 {
 				retRow, err := insert.getReturningRow(ctx, row)

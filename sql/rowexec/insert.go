@@ -364,9 +364,6 @@ func (i *insertIter) updateLastInsertId(ctx *sql.Context, row sql.Row) {
 func (i *insertIter) getAutoIncVal(row sql.Row) int64 {
 	for i, expr := range i.insertExprs {
 		if _, ok := expr.(*expression.AutoIncrement); ok {
-			if len(row) == 1 && i == 1 {
-				fmt.Println("here")
-			}
 			return toInt64(row[i])
 		}
 	}
