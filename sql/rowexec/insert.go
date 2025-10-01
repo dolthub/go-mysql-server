@@ -52,6 +52,7 @@ type insertIter struct {
 	rowNumber                   int64
 	closed                      bool
 	ignore                      bool
+	hasTrigger                  bool
 }
 
 func getInsertExpressions(values sql.Node) []sql.Expression {
@@ -217,19 +218,23 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 
 	i.updateLastInsertId(ctx, row)
 
-	if len(i.returnExprs) > 0 {
-		var retExprRow sql.Row
-		for _, returnExpr := range i.returnExprs {
-			result, err := returnExpr.Eval(ctx, row)
-			if err != nil {
-				return nil, err
-			}
-			retExprRow = append(retExprRow, result)
-		}
-		return retExprRow, nil
+	if len(i.returnExprs) > 0 && !i.hasTrigger {
+		return i.getReturningRow(ctx, row)
 	}
 
 	return row, nil
+}
+
+func (i *insertIter) getReturningRow(ctx *sql.Context, row sql.Row) (sql.Row, error) {
+	var retExprRow sql.Row
+	for _, returnExpr := range i.returnExprs {
+		result, err := returnExpr.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+		retExprRow = append(retExprRow, result)
+	}
+	return retExprRow, nil
 }
 
 func (i *insertIter) handleOnDuplicateKeyUpdate(ctx *sql.Context, oldRow, newRow sql.Row) (returnRow sql.Row, returnErr error) {
@@ -359,6 +364,9 @@ func (i *insertIter) updateLastInsertId(ctx *sql.Context, row sql.Row) {
 func (i *insertIter) getAutoIncVal(row sql.Row) int64 {
 	for i, expr := range i.insertExprs {
 		if _, ok := expr.(*expression.AutoIncrement); ok {
+			if len(row) == 1 && i == 1 {
+				fmt.Println("here")
+			}
 			return toInt64(row[i])
 		}
 	}

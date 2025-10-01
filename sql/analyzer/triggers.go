@@ -387,6 +387,7 @@ func applyTrigger(ctx *sql.Context, a *Analyzer, originalNode, n sql.Node, scope
 		switch n := c.Node.(type) {
 		case *plan.InsertInto:
 			qFlags.Set(sql.QFlagTrigger)
+			n.HasTrigger = true
 			if trigger.TriggerTime == sqlparser.BeforeStr {
 				triggerExecutor := plan.NewTriggerExecutor(n.Source, triggerLogic, plan.InsertTrigger, plan.TriggerTime(trigger.TriggerTime), sql.TriggerDefinition{
 					Name:            trigger.TriggerName,
