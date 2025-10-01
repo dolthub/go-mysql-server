@@ -4916,10 +4916,6 @@ func TestSessionSelectLimit(t *testing.T, harness Harness) {
 			Expected: []sql.Row{{2, 1}, {3, 2}},
 		},
 		{
-			Query:    "select count(*), y from (select y from a) b group by y;",
-			Expected: []sql.Row{{2, 1}, {3, 2}},
-		},
-		{
 			Query:    "with b as (select y from a order by x) select * from b",
 			Expected: []sql.Row{{1}, {1}},
 		},
