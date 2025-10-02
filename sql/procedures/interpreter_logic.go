@@ -967,7 +967,7 @@ func Call(ctx *sql.Context, iNode InterpreterNode) (sql.RowIter, *InterpreterSta
 		iNode.SetSchema(retSch)
 	} else {
 		// If we have rowIters but no meaningful schema, return OkResult
-		// This ensures CALL statements always return proper result sets for MySQL protocol compatibility
+		// This ensures CALL statements always return proper result sets for MySQL protocol
 		iNode.SetSchema(types.OkResultSchema)
 		rowIters = []sql.RowIter{sql.RowsToRowIter(sql.Row{types.NewOkResult(0)})}
 	}
