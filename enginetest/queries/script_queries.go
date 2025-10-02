@@ -124,7 +124,8 @@ type ScriptTestAssertion struct {
 var ScriptTests = []ScriptTest{
 	{
 		// https://github.com/dolthub/dolt/issues/9865
-		Name: "Stored procedure containing a transaction does not return EOF",
+		Name:    "Stored procedure containing a transaction does not return EOF",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE test_table (id INT PRIMARY KEY, name TEXT)",
 			`CREATE PROCEDURE my_proc()
