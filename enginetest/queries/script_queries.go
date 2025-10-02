@@ -249,7 +249,8 @@ var ScriptTests = []ScriptTest{
 				},
 			},
 			{
-				Query: "SELECT TRUNCATE('123abc',1)",
+				Dialect: "mysql",
+				Query:   "SELECT TRUNCATE('123abc',1)",
 				Expected: []sql.Row{
 					{123.0},
 				},
@@ -258,7 +259,8 @@ var ScriptTests = []ScriptTest{
 				ExpectedWarningMessageSubstring: fmt.Sprintf(sql.ErrTruncatedIncorrect.Message, types.Float64.String(), "123abc"),
 			},
 			{
-				Query: "SELECT TRUNCATE('1.5abc',1)",
+				Dialect: "mysql",
+				Query:   "SELECT TRUNCATE('1.5abc',1)",
 				Expected: []sql.Row{
 					{1.5},
 				},
@@ -267,7 +269,8 @@ var ScriptTests = []ScriptTest{
 				ExpectedWarningMessageSubstring: fmt.Sprintf(sql.ErrTruncatedIncorrect.Message, types.Float64.String(), "1.5abc"),
 			},
 			{
-				Query: "SELECT TRUNCATE('999xyz',2)",
+				Dialect: "mysql",
+				Query:   "SELECT TRUNCATE('999xyz',2)",
 				Expected: []sql.Row{
 					{999.0},
 				},
@@ -276,7 +279,8 @@ var ScriptTests = []ScriptTest{
 				ExpectedWarningMessageSubstring: fmt.Sprintf(sql.ErrTruncatedIncorrect.Message, types.Float64.String(), "999xyz"),
 			},
 			{
-				Query: "SELECT TRUNCATE(1.223,'1.5abc')",
+				Dialect: "mysql",
+				Query:   "SELECT TRUNCATE(1.223,'1.5abc')",
 				Expected: []sql.Row{
 					{"1.2"},
 				},
@@ -285,7 +289,8 @@ var ScriptTests = []ScriptTest{
 				ExpectedWarningMessageSubstring: fmt.Sprintf(sql.ErrTruncatedIncorrect.Message, types.Int32.String(), "1.5abc"),
 			},
 			{
-				Query: "SELECT TRUNCATE(1.223,'0.5')",
+				Dialect: "mysql",
+				Query:   "SELECT TRUNCATE(1.223,'0.5')",
 				Expected: []sql.Row{
 					{"1"},
 				},
@@ -294,7 +299,8 @@ var ScriptTests = []ScriptTest{
 				ExpectedWarningMessageSubstring: fmt.Sprintf(sql.ErrTruncatedIncorrect.Message, types.Int32.String(), "0.5"),
 			},
 			{
-				Query: "SELECT TRUNCATE(1.223,'2.7')",
+				Dialect: "mysql",
+				Query:   "SELECT TRUNCATE(1.223,'2.7')",
 				Expected: []sql.Row{
 					{"1.22"},
 				},
@@ -303,7 +309,8 @@ var ScriptTests = []ScriptTest{
 				ExpectedWarningMessageSubstring: fmt.Sprintf(sql.ErrTruncatedIncorrect.Message, types.Int32.String(), "2.7"),
 			},
 			{
-				Query: "SELECT TRUNCATE(1.223,'invalid_precision')",
+				Dialect: "mysql",
+				Query:   "SELECT TRUNCATE(1.223,'invalid_precision')",
 				Expected: []sql.Row{
 					{"1"},
 				},
