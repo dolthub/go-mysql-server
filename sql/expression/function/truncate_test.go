@@ -163,7 +163,6 @@ func TestTruncate(t *testing.T) {
 			res, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(t, err)
 
-			// Special handling for decimal types
 			if tt.name == "decimal input" {
 				if dec, ok := res.(decimal.Decimal); ok {
 					require.Equal(t, tt.exp, dec.String())
@@ -180,13 +179,11 @@ func TestTruncate(t *testing.T) {
 func TestTruncateWithChildren(t *testing.T) {
 	req := require.New(t)
 
-	// Test WithChildren
 	f := NewTruncate(
 		expression.NewLiteral(1.223, types.Float64),
 		expression.NewLiteral(1, types.Int32),
 	)
 
-	// Test that WithChildren returns a new instance
 	newF, err := f.WithChildren(
 		expression.NewLiteral(2.456, types.Float64),
 		expression.NewLiteral(2, types.Int32),
@@ -194,7 +191,6 @@ func TestTruncateWithChildren(t *testing.T) {
 	req.NoError(err)
 	req.NotEqual(f, newF)
 
-	// Test that the new function works correctly
 	res, err := newF.Eval(sql.NewEmptyContext(), nil)
 	req.NoError(err)
 	req.Equal(2.45, res)
@@ -214,32 +210,28 @@ func TestTruncateString(t *testing.T) {
 func TestTruncateType(t *testing.T) {
 	req := require.New(t)
 
-	// Test with numeric input
 	f := NewTruncate(
 		expression.NewLiteral(1.223, types.Float64),
 		expression.NewLiteral(1, types.Int32),
 	)
 	req.Equal(types.Float64, f.Type())
 
-	// Test with text input
 	f = NewTruncate(
 		expression.NewLiteral("1.223", types.Text),
 		expression.NewLiteral(1, types.Int32),
 	)
-	req.Equal(types.Float64, f.Type()) // Text input should return DOUBLE
+	req.Equal(types.Float64, f.Type())
 }
 
 func TestTruncateIsNullable(t *testing.T) {
 	req := require.New(t)
 
-	// Test with nullable inputs
 	f := NewTruncate(
 		expression.NewLiteral(nil, types.Null),
 		expression.NewLiteral(1, types.Int32),
 	)
 	req.True(f.IsNullable())
 
-	// Test with non-nullable inputs
 	f = NewTruncate(
 		expression.NewLiteral(1.223, types.Float64),
 		expression.NewLiteral(1, types.Int32),
