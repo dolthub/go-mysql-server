@@ -123,6 +123,37 @@ type ScriptTestAssertion struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
+		// https://github.com/dolthub/dolt/issues/9865
+		Name:    "Stored procedure containing a transaction does not return EOF",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE test_table (id INT PRIMARY KEY, name TEXT)",
+			`CREATE PROCEDURE my_proc()
+BEGIN
+    START TRANSACTION;
+    INSERT INTO test_table VALUES (1, 'test');
+    COMMIT;
+END`,
+			`CREATE PROCEDURE empty_procedure()
+BEGIN
+END`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CALL my_proc()",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, InsertID: 0, Info: nil}}},
+			},
+			{
+				Query:    "SELECT * FROM test_table",
+				Expected: []sql.Row{{1, "test"}},
+			},
+			{
+				Query:    "CALL empty_procedure()",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, InsertID: 0, Info: nil}}},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/9873
 		// TODO: `FOR UPDATE OF` (`FOR UPDATE` in general) is currently a no-op: https://www.dolthub.com/blog/2023-10-23-hold-my-beer/
 		Name:    "FOR UPDATE OF syntax support tests",
