@@ -19,6 +19,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -312,15 +313,15 @@ var ScriptTests = []ScriptTest{
 			},
 			{
 				Query:          "SELECT TRUNCATE()",
-				ExpectedErrStr: "syntax error",
+				ExpectedErrStr: fmt.Sprintf(sql.ErrInvalidArgumentNumber.Message, function.TruncateFunctionName, 2, 0),
 			},
 			{
 				Query:          "SELECT TRUNCATE(1)",
-				ExpectedErrStr: "syntax error",
+				ExpectedErrStr: fmt.Sprintf(sql.ErrInvalidArgumentNumber.Message, function.TruncateFunctionName, 2, 1),
 			},
 			{
 				Query:          "SELECT TRUNCATE(1,2,3)",
-				ExpectedErrStr: "syntax error",
+				ExpectedErrStr: fmt.Sprintf(sql.ErrInvalidArgumentNumber.Message, function.TruncateFunctionName, 2, 3),
 			},
 		},
 	},

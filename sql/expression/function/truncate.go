@@ -42,9 +42,11 @@ func NewTruncate(left, right sql.Expression) sql.Expression {
 	return &Truncate{expression.BinaryExpressionStub{LeftChild: left, RightChild: right}}
 }
 
+const TruncateFunctionName = "truncate"
+
 // FunctionName implements sql.FunctionExpression
 func (t *Truncate) FunctionName() string {
-	return "truncate"
+	return TruncateFunctionName
 }
 
 // Description implements sql.FunctionExpression
@@ -69,7 +71,7 @@ func (t *Truncate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
 		ctx.Warn(mysql.ERTruncatedWrongValue, "Truncated incorrect DOUBLE value: '%s'", val)
 	}
-	
+
 	// Then convert to decimal for truncation logic
 	val, _, err = types.InternalDecimalType.Convert(ctx, val)
 	if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
