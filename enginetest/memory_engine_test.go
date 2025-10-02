@@ -203,68 +203,19 @@ func TestSingleScript(t *testing.T) {
 	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			// https://github.com/dolthub/dolt/issues/9916
-			Name:        "TRUNCATE(X,D) function behavior",
+			Name:        "AS OF propagates to nested CALLs",
 			SetUpScript: []string{},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "SELECT TRUNCATE(1.223,1)",
+					Query: "create procedure create_proc() create table t (i int primary key, j int);",
 					Expected: []sql.Row{
-						{"1.2"},
+						{types.NewOkResult(0)},
 					},
 				},
 				{
-					Query: "SELECT TRUNCATE(1.999,1)",
+					Query: "call create_proc()",
 					Expected: []sql.Row{
-						{"1.9"},
-					},
-				},
-				{
-					Query: "SELECT TRUNCATE(1.999,0)",
-					Expected: []sql.Row{
-						{"1"},
-					},
-				},
-				{
-					Query: "SELECT TRUNCATE(-1.999,1)",
-					Expected: []sql.Row{
-						{"-1.9"},
-					},
-				},
-				{
-					Query: "SELECT TRUNCATE(122,-2)",
-					Expected: []sql.Row{
-						{100},
-					},
-				},
-				{
-					Query: "SELECT TRUNCATE(10.28*100,0)",
-					Expected: []sql.Row{
-						{"1028"},
-					},
-				},
-				{
-					Query: "SELECT TRUNCATE(NULL,1)",
-					Expected: []sql.Row{
-						{nil},
-					},
-				},
-				{
-					Query: "SELECT TRUNCATE(1.223,NULL)",
-					Expected: []sql.Row{
-						{nil},
-					},
-				},
-				{
-					Query: "SELECT TRUNCATE(0.5,0)",
-					Expected: []sql.Row{
-						{"0"},
-					},
-				},
-				{
-					Query: "SELECT TRUNCATE(-0.5,0)",
-					Expected: []sql.Row{
-						{"0"},
+						{types.NewOkResult(0)},
 					},
 				},
 			},

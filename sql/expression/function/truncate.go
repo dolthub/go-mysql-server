@@ -38,13 +38,8 @@ var _ sql.FunctionExpression = (*Truncate)(nil)
 var _ sql.CollationCoercible = (*Truncate)(nil)
 
 // NewTruncate returns a new Truncate expression.
-func NewTruncate(args ...sql.Expression) (sql.Expression, error) {
-	argLen := len(args)
-	if argLen != 2 {
-		return nil, sql.ErrInvalidArgumentNumber.New("TRUNCATE", "2", argLen)
-	}
-
-	return &Truncate{expression.BinaryExpressionStub{LeftChild: args[0], RightChild: args[1]}}, nil
+func NewTruncate(left, right sql.Expression) sql.Expression {
+	return &Truncate{expression.BinaryExpressionStub{LeftChild: left, RightChild: right}}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -54,7 +49,7 @@ func (t *Truncate) FunctionName() string {
 
 // Description implements sql.FunctionExpression
 func (t *Truncate) Description() string {
-	return "truncates the number to decimals decimal places."
+	return "truncate to specified number of decimal places"
 }
 
 // Children implements the Expression interface.
@@ -64,25 +59,27 @@ func (t *Truncate) Children() []sql.Expression {
 
 // Eval implements the Expression interface.
 func (t *Truncate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	// Evaluate the value to truncate
 	val, err := t.LeftChild.Eval(ctx, row)
-	if err != nil {
+	if err != nil || val == nil {
 		return nil, err
 	}
-	if val == nil {
-		return nil, nil
+	// Convert to DOUBLE first to match MySQL warning behavior
+	val, _, err = types.Float64.Convert(ctx, val)
+	if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
+		ctx.Warn(mysql.ERTruncatedWrongValue, "Truncated incorrect DOUBLE value: '%s'", val)
 	}
-
+	
+	// Then convert to decimal for truncation logic
 	val, _, err = types.InternalDecimalType.Convert(ctx, val)
 	if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
+	// Evaluate the precision
 	prec, err := t.RightChild.Eval(ctx, row)
-	if err != nil {
+	if err != nil || prec == nil {
 		return nil, err
-	}
-	if prec == nil {
-		return nil, nil
 	}
 	prec, _, err = types.Int32.Convert(ctx, prec)
 	if err != nil {
@@ -92,7 +89,7 @@ func (t *Truncate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 	precision := prec.(int32)
-	
+
 	// MySQL cuts off at 30 for larger values
 	// TODO: these limits are fine only because we can't handle decimals larger than this
 	if precision > types.DecimalTypeMaxPrecision {
@@ -103,22 +100,21 @@ func (t *Truncate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	var res interface{}
-	var tmp decimal.Decimal
-	
+
+	// Truncate the decimal value
+	tmp := val.(decimal.Decimal)
 	if precision < 0 {
 		// For negative precision, we need to truncate digits to the left of decimal point
 		// This is different from the decimal library's Truncate method
 		// We need to divide by 10^|precision|, truncate, then multiply back
-		multiplier := decimal.NewFromInt(1)
-		for i := int32(0); i < -precision; i++ {
-			multiplier = multiplier.Mul(decimal.NewFromInt(10))
-		}
-		tmp = val.(decimal.Decimal).Div(multiplier).Truncate(0).Mul(multiplier)
+		multiplier := decimal.NewFromInt(10).Pow(decimal.NewFromInt(int64(-precision)))
+		tmp = tmp.Div(multiplier).Truncate(0).Mul(multiplier)
 	} else {
 		// For positive precision, use the standard Truncate method
-		tmp = val.(decimal.Decimal).Truncate(precision)
+		tmp = tmp.Truncate(precision)
 	}
-	
+
+	// Convert truncated value back to the appropriate type
 	lType := t.LeftChild.Type()
 	if types.IsSigned(lType) {
 		res, _, err = types.Int64.Convert(ctx, tmp)
@@ -131,13 +127,13 @@ func (t *Truncate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	} else if types.IsTextBlob(lType) {
 		res, _, err = types.Float64.Convert(ctx, tmp)
 	} else {
-		// Default to Float64 for unknown types
 		res, _, err = types.Float64.Convert(ctx, tmp)
 	}
 	if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
 		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		err = nil
 	}
+
 	return res, err
 }
 
@@ -167,5 +163,8 @@ func (*Truncate) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 
 // WithChildren implements the Expression interface.
 func (t *Truncate) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewTruncate(children...)
+	if len(children) != 2 {
+		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 2)
+	}
+	return NewTruncate(children[0], children[1]), nil
 }

@@ -123,6 +123,208 @@ type ScriptTestAssertion struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
+		// https://github.com/dolthub/dolt/issues/9916
+		Name:        "TRUNCATE(X,D) function behavior",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT TRUNCATE(1.223,1)",
+				Expected: []sql.Row{
+					{"1.2"},
+				},
+			},
+			{
+				Query: "SELECT TRUNCATE(1.999,1)",
+				Expected: []sql.Row{
+					{"1.9"},
+				},
+			},
+			{
+				Query: "SELECT TRUNCATE(1.999,0)",
+				Expected: []sql.Row{
+					{"1"},
+				},
+			},
+			{
+				Query: "SELECT TRUNCATE(-1.999,1)",
+				Expected: []sql.Row{
+					{"-1.9"},
+				},
+			},
+			{
+				Query: "SELECT TRUNCATE(122,-2)",
+				Expected: []sql.Row{
+					{100},
+				},
+			},
+			{
+				Query: "SELECT TRUNCATE(10.28*100,0)",
+				Expected: []sql.Row{
+					{"1028"},
+				},
+			},
+			{
+				Query: "SELECT TRUNCATE(NULL,1)",
+				Expected: []sql.Row{
+					{nil},
+				},
+			},
+			{
+				Query: "SELECT TRUNCATE(1.223,NULL)",
+				Expected: []sql.Row{
+					{nil},
+				},
+			},
+			{
+				Query: "SELECT TRUNCATE(0.5,0)",
+				Expected: []sql.Row{
+					{"0"},
+				},
+			},
+			{
+				Query: "SELECT TRUNCATE(-0.5,0)",
+				Expected: []sql.Row{
+					{"0"},
+				},
+			},
+			{
+				Query: "SELECT TRUNCATE(1.223,100)",
+				Expected: []sql.Row{
+					{"1.223"},
+				},
+			},
+			{
+				Query: "SELECT TRUNCATE(1.223,-100)",
+				Expected: []sql.Row{
+					{"0"},
+				},
+			},
+			{
+				Query: "SELECT TRUNCATE('abc',1)",
+				Expected: []sql.Row{
+					{0.0},
+				},
+			},
+			{
+				Query: "SELECT TRUNCATE(1.223,'xyz')",
+				Expected: []sql.Row{
+					{"1"},
+				},
+			},
+			{
+				Query: "SELECT TRUNCATE(1.223,1.5)",
+				Expected: []sql.Row{
+					{"1.22"},
+				},
+			},
+			{
+				Query: "SELECT TRUNCATE(1.223,1.7)",
+				Expected: []sql.Row{
+					{"1.22"},
+				},
+			},
+			{
+				Query: "SELECT TRUNCATE(1.223,0.1)",
+				Expected: []sql.Row{
+					{"1"},
+				},
+			},
+			{
+				Query: "SELECT TRUNCATE(1.223,0.9)",
+				Expected: []sql.Row{
+					{"1.2"},
+				},
+			},
+			{
+				Query: "SELECT TRUNCATE(1.223,-0.5)",
+				Expected: []sql.Row{
+					{"0"},
+				},
+			},
+			{
+				Query: "SELECT TRUNCATE(1.223,-0.9)",
+				Expected: []sql.Row{
+					{"0"},
+				},
+			},
+			{
+				Query: "SELECT TRUNCATE('123abc',1)",
+				Expected: []sql.Row{
+					{123.0},
+				},
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Truncated incorrect DOUBLE value",
+			},
+			{
+				Query: "SELECT TRUNCATE('1.5abc',1)",
+				Expected: []sql.Row{
+					{1.5},
+				},
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Truncated incorrect DOUBLE value",
+			},
+			{
+				Query: "SELECT TRUNCATE('999xyz',2)",
+				Expected: []sql.Row{
+					{999.0},
+				},
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "Truncated incorrect DOUBLE value",
+			},
+			{
+				Query: "SELECT TRUNCATE(1.223,'1.5abc')",
+				Expected: []sql.Row{
+					{"1.2"},
+				},
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningsCount:           2, // Both input and precision conversions generate warnings
+				ExpectedWarningMessageSubstring: "Truncated incorrect int value",
+			},
+			{
+				Query: "SELECT TRUNCATE(1.223,'0.5')",
+				Expected: []sql.Row{
+					{"1"},
+				},
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningsCount:           2, // Both input and precision conversions generate warnings
+				ExpectedWarningMessageSubstring: "Truncated incorrect int value",
+			},
+			{
+				Query: "SELECT TRUNCATE(1.223,'2.7')",
+				Expected: []sql.Row{
+					{"1.22"},
+				},
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningsCount:           2, // Both input and precision conversions generate warnings
+				ExpectedWarningMessageSubstring: "Truncated incorrect int value",
+			},
+			{
+				Query: "SELECT TRUNCATE(1.223,'invalid_precision')",
+				Expected: []sql.Row{
+					{"1"},
+				},
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningsCount:           2, // Both input and precision conversions generate warnings
+				ExpectedWarningMessageSubstring: "Truncated incorrect int value",
+			},
+			{
+				Query:          "SELECT TRUNCATE()",
+				ExpectedErrStr: "syntax error",
+			},
+			{
+				Query:          "SELECT TRUNCATE(1)",
+				ExpectedErrStr: "syntax error",
+			},
+			{
+				Query:          "SELECT TRUNCATE(1,2,3)",
+				ExpectedErrStr: "syntax error",
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/9865
 		Name:    "Stored procedure containing a transaction does not return EOF",
 		Dialect: "mysql",

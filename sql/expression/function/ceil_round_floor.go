@@ -29,20 +29,19 @@ import (
 // numericRetType returns the appropriate return type for numeric functions
 // like ROUND() and TRUNCATE() according to MySQL specification:
 // Integer types return BIGINT
-// Floating-point types or non-numeric types return DOUBLE  
+// Floating-point types or non-numeric types return DOUBLE
 // DECIMAL values return DECIMAL
 func numericRetType(inputType sql.Type) sql.Type {
 	if types.IsSigned(inputType) || types.IsUnsigned(inputType) {
-		return types.Int64 // BIGINT
+		return types.Int64
 	} else if types.IsFloat(inputType) {
-		return types.Float64 // DOUBLE
+		return types.Float64
 	} else if types.IsDecimal(inputType) {
-		return inputType // DECIMAL (same type)
+		return inputType
 	} else if types.IsTextBlob(inputType) {
 		return types.Float64 // DOUBLE for non-numeric types
 	}
-	
-	// Default fallback
+
 	return types.Float64
 }
 
