@@ -1,0 +1,279 @@
+// Copyright 2025 Dolthub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package function
+
+import (
+	"testing"
+
+	"github.com/shopspring/decimal"
+	"github.com/stretchr/testify/require"
+	"gopkg.in/src-d/go-errors.v1"
+
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
+)
+
+func TestTruncate(t *testing.T) {
+	testCases := []struct {
+		name  string
+		xExpr sql.Expression
+		dExpr sql.Expression
+		exp   interface{}
+		err   *errors.Kind
+	}{
+		// https://github.com/dolthub/dolt/issues/9916
+		{
+			name:  "float64 is nil",
+			xExpr: expression.NewLiteral(nil, types.Null),
+			dExpr: expression.NewLiteral(1, types.Int32),
+			exp:   nil,
+		},
+		{
+			name:  "precision is nil",
+			xExpr: expression.NewLiteral(1.223, types.Float64),
+			dExpr: expression.NewLiteral(nil, types.Null),
+			exp:   nil,
+		},
+		{
+			name:  "basic truncate positive precision",
+			xExpr: expression.NewLiteral(1.223, types.Float64),
+			dExpr: expression.NewLiteral(1, types.Int32),
+			exp:   1.2,
+		},
+		{
+			name:  "truncate toward zero",
+			xExpr: expression.NewLiteral(1.999, types.Float64),
+			dExpr: expression.NewLiteral(1, types.Int32),
+			exp:   1.9,
+		},
+		{
+			name:  "truncate to integer",
+			xExpr: expression.NewLiteral(1.999, types.Float64),
+			dExpr: expression.NewLiteral(0, types.Int32),
+			exp:   1.0,
+		},
+		{
+			name:  "negative number truncate",
+			xExpr: expression.NewLiteral(-1.999, types.Float64),
+			dExpr: expression.NewLiteral(1, types.Int32),
+			exp:   -1.9,
+		},
+		{
+			name:  "negative precision truncate",
+			xExpr: expression.NewLiteral(122.0, types.Float64),
+			dExpr: expression.NewLiteral(-2, types.Int32),
+			exp:   100.0,
+		},
+		{
+			name:  "negative precision with integer",
+			xExpr: expression.NewLiteral(122, types.Int64),
+			dExpr: expression.NewLiteral(-2, types.Int32),
+			exp:   int64(100),
+		},
+		{
+			name:  "truncate toward zero for positive",
+			xExpr: expression.NewLiteral(0.5, types.Float64),
+			dExpr: expression.NewLiteral(0, types.Int32),
+			exp:   0.0,
+		},
+		{
+			name:  "truncate toward zero for negative",
+			xExpr: expression.NewLiteral(-0.5, types.Float64),
+			dExpr: expression.NewLiteral(0, types.Int32),
+			exp:   0.0,
+		},
+		{
+			name:  "float32 input",
+			xExpr: expression.NewLiteral(float32(1.223), types.Float32),
+			dExpr: expression.NewLiteral(1, types.Int32),
+			exp:   1.2,
+		},
+		{
+			name:  "int32 input",
+			xExpr: expression.NewLiteral(int32(122), types.Int32),
+			dExpr: expression.NewLiteral(-2, types.Int32),
+			exp:   int64(100),
+		},
+		{
+			name:  "text input",
+			xExpr: expression.NewLiteral("1.223", types.Text),
+			dExpr: expression.NewLiteral(1, types.Int32),
+			exp:   1.2,
+		},
+		{
+			name:  "text input with precision",
+			xExpr: expression.NewLiteral("122", types.Text),
+			dExpr: expression.NewLiteral(-2, types.Int32),
+			exp:   100.0,
+		},
+		{
+			name:  "decimal input",
+			xExpr: expression.NewLiteral("1.999", types.MustCreateDecimalType(4, 3)),
+			dExpr: expression.NewLiteral(1, types.Int32),
+			exp:   "1.9",
+		},
+		{
+			name:  "large precision",
+			xExpr: expression.NewLiteral(1234567890.0987654321, types.Float64),
+			dExpr: expression.NewLiteral(999_999_999, types.Int32),
+			exp:   1234567890.0987654321,
+		},
+		{
+			name:  "large negative precision",
+			xExpr: expression.NewLiteral(52.855, types.Float64),
+			dExpr: expression.NewLiteral(-999_999_999, types.Int32),
+			exp:   0.0,
+		},
+		{
+			name:  "float precision",
+			xExpr: expression.NewLiteral(5.855, types.Float64),
+			dExpr: expression.NewLiteral(2.123, types.Float64),
+			exp:   5.85,
+		},
+		{
+			name:  "float negative precision",
+			xExpr: expression.NewLiteral(52.855, types.Float64),
+			dExpr: expression.NewLiteral(-1.0, types.Float64),
+			exp:   50.0,
+		},
+		{
+			name:  "invalid argument count - too few",
+			xExpr: expression.NewLiteral(1.223, types.Float64),
+			dExpr: nil,
+			err:   sql.ErrInvalidArgumentNumber,
+		},
+		{
+			name:  "invalid argument count - too many",
+			xExpr: expression.NewLiteral(1.223, types.Float64),
+			dExpr: expression.NewLiteral(1, types.Int32),
+			err:   sql.ErrInvalidArgumentNumber,
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			var f sql.Expression
+			var err error
+			
+			if tt.name == "invalid argument count - too few" {
+				// Test invalid argument count - too few
+				f, err = NewTruncate(tt.xExpr)
+			} else if tt.name == "invalid argument count - too many" {
+				// Test invalid argument count - too many
+				f, err = NewTruncate(tt.xExpr, tt.dExpr, expression.NewLiteral(1, types.Int32))
+			} else {
+				f, err = NewTruncate(tt.xExpr, tt.dExpr)
+			}
+			
+			if tt.err != nil {
+				require.Error(t, err)
+				require.True(t, tt.err.Is(err))
+				return
+			}
+			require.NoError(t, err)
+
+			res, err := f.Eval(sql.NewEmptyContext(), nil)
+			require.NoError(t, err)
+			
+			// Special handling for decimal types
+			if tt.name == "decimal input" {
+				if dec, ok := res.(decimal.Decimal); ok {
+					require.Equal(t, tt.exp, dec.String())
+				} else {
+					require.Equal(t, tt.exp, res)
+				}
+			} else {
+				require.Equal(t, tt.exp, res)
+			}
+		})
+	}
+}
+
+func TestTruncateWithChildren(t *testing.T) {
+	require := require.New(t)
+
+	// Test WithChildren
+	f, err := NewTruncate(
+		expression.NewLiteral(1.223, types.Float64),
+		expression.NewLiteral(1, types.Int32),
+	)
+	require.NoError(err)
+
+	// Test that WithChildren returns a new instance
+	newF, err := f.WithChildren(
+		expression.NewLiteral(2.456, types.Float64),
+		expression.NewLiteral(2, types.Int32),
+	)
+	require.NoError(err)
+	require.NotEqual(f, newF)
+
+	// Test that the new function works correctly
+	res, err := newF.Eval(sql.NewEmptyContext(), nil)
+	require.NoError(err)
+	require.Equal(2.45, res)
+}
+
+func TestTruncateString(t *testing.T) {
+	require := require.New(t)
+
+	f, err := NewTruncate(
+		expression.NewLiteral(1.223, types.Float64),
+		expression.NewLiteral(1, types.Int32),
+	)
+	require.NoError(err)
+
+	require.Equal("truncate(1.223,1)", f.String())
+}
+
+func TestTruncateType(t *testing.T) {
+	require := require.New(t)
+
+	// Test with numeric input
+	f, err := NewTruncate(
+		expression.NewLiteral(1.223, types.Float64),
+		expression.NewLiteral(1, types.Int32),
+	)
+	require.NoError(err)
+	require.Equal(types.Float64, f.Type())
+
+	// Test with text input
+	f, err = NewTruncate(
+		expression.NewLiteral("1.223", types.Text),
+		expression.NewLiteral(1, types.Int32),
+	)
+	require.NoError(err)
+	require.Equal(types.Float64, f.Type()) // Text input should return DOUBLE
+}
+
+func TestTruncateIsNullable(t *testing.T) {
+	require := require.New(t)
+
+	// Test with nullable inputs
+	f, err := NewTruncate(
+		expression.NewLiteral(nil, types.Null),
+		expression.NewLiteral(1, types.Int32),
+	)
+	require.NoError(err)
+	require.True(f.IsNullable())
+
+	// Test with non-nullable inputs
+	f, err = NewTruncate(
+		expression.NewLiteral(1.223, types.Float64),
+		expression.NewLiteral(1, types.Int32),
+	)
+	require.NoError(err)
+	require.False(f.IsNullable())
+}

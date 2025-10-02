@@ -333,6 +333,7 @@ var BuiltIns = []sql.Function{
 	sql.FunctionN{Name: "distance", Fn: vector.NewGenericDistance},
 	sql.Function1{Name: "string_to_vector", Fn: vector.NewStringToVector},
 	sql.Function1{Name: "to_vector", Fn: vector.NewStringToVector},
+	sql.FunctionN{Name: "truncate", Fn: NewTruncate},
 	sql.Function1{Name: "vec_fromtext", Fn: vector.NewStringToVector},
 	sql.Function1{Name: "vector_to_string", Fn: vector.NewVectorToString},
 	sql.Function1{Name: "from_vector", Fn: vector.NewVectorToString},
