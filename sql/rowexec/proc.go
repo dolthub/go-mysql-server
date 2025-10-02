@@ -340,6 +340,7 @@ func (b *BaseBuilder) buildLoop(ctx *sql.Context, n *plan.Loop, row sql.Row) (sq
 				return nil, err
 			}
 		}
+		loopBodyIter = withSafepointPeriodicallyIter(loopBodyIter)
 
 		includeResultSet := false
 

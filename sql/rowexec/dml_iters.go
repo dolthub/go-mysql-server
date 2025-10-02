@@ -121,6 +121,7 @@ func (i *triggerBlockIter) Next(ctx *sql.Context) (sql.Row, error) {
 		if err != nil {
 			return nil, err
 		}
+		subIter = withSafepointPeriodicallyIter(subIter)
 
 		for {
 			newRow, err := subIter.Next(ctx)
@@ -143,6 +144,7 @@ func (i *triggerBlockIter) Next(ctx *sql.Context) (sql.Row, error) {
 			}
 		}
 	}
+	sql.SessionCommandSafepoint(ctx.Session)
 
 	return row, nil
 }
@@ -264,6 +266,7 @@ func (t *triggerIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
 	if err != nil {
 		return nil, err
 	}
+	logicIter = withSafepointPeriodicallyIter(logicIter)
 
 	defer func() {
 		err := logicIter.Close(t.ctx)
@@ -613,15 +616,15 @@ func AddAccumulatorIter(ctx *sql.Context, iter sql.RowIter) (sql.RowIter, sql.Sc
 		switch innerIter := i.InnerIter().(type) {
 		case *insertIter:
 			if len(innerIter.returnExprs) > 0 {
-				return innerIter, innerIter.returnSchema
+				return withSafepointPeriodicallyIter(innerIter), innerIter.returnSchema
 			}
 		case *updateIter:
 			if len(innerIter.returnExprs) > 0 {
-				return innerIter, innerIter.returnSchema
+				return withSafepointPeriodicallyIter(innerIter), innerIter.returnSchema
 			}
 		case *deleteIter:
 			if len(innerIter.returnExprs) > 0 {
-				return innerIter, innerIter.returnSchema
+				return withSafepointPeriodicallyIter(innerIter), innerIter.returnSchema
 			}
 		}
 
@@ -629,6 +632,30 @@ func AddAccumulatorIter(ctx *sql.Context, iter sql.RowIter) (sql.RowIter, sql.Sc
 	default:
 		return defaultAccumulatorIter(ctx, iter)
 	}
+}
+
+func withSafepointPeriodicallyIter(child sql.RowIter) *safepointPeriodicallyIter {
+	return &safepointPeriodicallyIter{child: child}
+}
+
+type safepointPeriodicallyIter struct {
+	child sql.RowIter
+	n     int
+}
+
+const safepointEveryNRows = 1024
+
+func (i *safepointPeriodicallyIter) Next(ctx *sql.Context) (r sql.Row, err error) {
+	i.n++
+	if i.n >= safepointEveryNRows {
+		i.n = 0
+		sql.SessionCommandSafepoint(ctx.Session)
+	}
+	return i.child.Next(ctx)
+}
+
+func (i *safepointPeriodicallyIter) Close(ctx *sql.Context) error {
+	return i.child.Close(ctx)
 }
 
 // defaultAccumulatorIter returns the default accumulator iter for a DML node
@@ -639,7 +666,7 @@ func defaultAccumulatorIter(ctx *sql.Context, iter sql.RowIter) (sql.RowIter, sq
 		return iter, nil
 	}
 	return &accumulatorIter{
-		iter:             iter,
+		iter:             withSafepointPeriodicallyIter(iter),
 		updateRowHandler: rowHandler,
 	}, types.OkResultSchema
 }
