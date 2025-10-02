@@ -121,14 +121,20 @@ var _ sql.MutableRowIter = (*callIter)(nil)
 
 // Next implements the sql.RowIter interface.
 func (ci *callIter) Next(ctx *sql.Context) (sql.Row, error) {
+	if ci.innerIter == nil {
+		return nil, io.EOF
+	}
 	return ci.innerIter.Next(ctx)
 }
 
 // Close implements the sql.RowIter interface.
 func (ci *callIter) Close(ctx *sql.Context) error {
-	err := ci.innerIter.Close(ctx)
-	if err != nil {
-		return err
+	var err error
+	if ci.innerIter != nil {
+		err = ci.innerIter.Close(ctx)
+		if err != nil {
+			return err
+		}
 	}
 	err = ci.call.Pref.CloseAllCursors(ctx)
 	if err != nil {

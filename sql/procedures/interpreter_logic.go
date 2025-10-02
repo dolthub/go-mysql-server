@@ -965,6 +965,11 @@ func Call(ctx *sql.Context, iNode InterpreterNode) (sql.RowIter, *InterpreterSta
 		rowIters = append(rowIters, sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}))
 	} else if retSch != nil {
 		iNode.SetSchema(retSch)
+	} else {
+		// If we have rowIters but no meaningful schema, return OkResult
+		// This ensures CALL statements always return proper result sets for MySQL protocol compatibility
+		iNode.SetSchema(types.OkResultSchema)
+		rowIters = []sql.RowIter{sql.RowsToRowIter(sql.Row{types.NewOkResult(0)})}
 	}
 
 	return rowIters[len(rowIters)-1], stack, nil
