@@ -232,7 +232,7 @@ type LifecycleAwareSession interface {
 // An optional Lifecycle callback which a session can receive. This can be
 // delivered periodically during a long running operation, between the
 // CommandBegin and CommandEnd calls. Across the call to this method, the
-// gms.Egnine is not accessing the session or any of its state, such as
+// gms.Engine is not accessing the session or any of its state, such as
 // table editors, database providers, etc.
 type SafepointAwareSession interface {
 	CommandSafepoint()
