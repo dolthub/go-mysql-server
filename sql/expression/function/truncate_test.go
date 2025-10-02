@@ -178,7 +178,7 @@ func TestTruncate(t *testing.T) {
 }
 
 func TestTruncateWithChildren(t *testing.T) {
-	require := require.New(t)
+	req := require.New(t)
 
 	// Test WithChildren
 	f := NewTruncate(
@@ -191,58 +191,58 @@ func TestTruncateWithChildren(t *testing.T) {
 		expression.NewLiteral(2.456, types.Float64),
 		expression.NewLiteral(2, types.Int32),
 	)
-	require.NoError(err)
-	require.NotEqual(f, newF)
+	req.NoError(err)
+	req.NotEqual(f, newF)
 
 	// Test that the new function works correctly
 	res, err := newF.Eval(sql.NewEmptyContext(), nil)
-	require.NoError(err)
-	require.Equal(2.45, res)
+	req.NoError(err)
+	req.Equal(2.45, res)
 }
 
 func TestTruncateString(t *testing.T) {
-	require := require.New(t)
+	req := require.New(t)
 
 	f := NewTruncate(
 		expression.NewLiteral(1.223, types.Float64),
 		expression.NewLiteral(1, types.Int32),
 	)
 
-	require.Equal("truncate(1.223,1)", f.String())
+	req.Equal("truncate(1.223,1)", f.String())
 }
 
 func TestTruncateType(t *testing.T) {
-	require := require.New(t)
+	req := require.New(t)
 
 	// Test with numeric input
 	f := NewTruncate(
 		expression.NewLiteral(1.223, types.Float64),
 		expression.NewLiteral(1, types.Int32),
 	)
-	require.Equal(types.Float64, f.Type())
+	req.Equal(types.Float64, f.Type())
 
 	// Test with text input
 	f = NewTruncate(
 		expression.NewLiteral("1.223", types.Text),
 		expression.NewLiteral(1, types.Int32),
 	)
-	require.Equal(types.Float64, f.Type()) // Text input should return DOUBLE
+	req.Equal(types.Float64, f.Type()) // Text input should return DOUBLE
 }
 
 func TestTruncateIsNullable(t *testing.T) {
-	require := require.New(t)
+	req := require.New(t)
 
 	// Test with nullable inputs
 	f := NewTruncate(
 		expression.NewLiteral(nil, types.Null),
 		expression.NewLiteral(1, types.Int32),
 	)
-	require.True(f.IsNullable())
+	req.True(f.IsNullable())
 
 	// Test with non-nullable inputs
 	f = NewTruncate(
 		expression.NewLiteral(1.223, types.Float64),
 		expression.NewLiteral(1, types.Int32),
 	)
-	require.False(f.IsNullable())
+	req.False(f.IsNullable())
 }
