@@ -19,7 +19,6 @@ import (
 	"math"
 	"time"
 
-	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -27,6 +26,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer/analyzererrors"
+	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -255,7 +255,7 @@ var ScriptTests = []ScriptTest{
 				},
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
 				ExpectedWarningsCount:           1,
-				ExpectedWarningMessageSubstring: "Truncated incorrect DOUBLE value",
+				ExpectedWarningMessageSubstring: fmt.Sprintf(sql.ErrTruncatedIncorrect.Message, types.Float64.String(), "123abc"),
 			},
 			{
 				Query: "SELECT TRUNCATE('1.5abc',1)",
@@ -264,7 +264,7 @@ var ScriptTests = []ScriptTest{
 				},
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
 				ExpectedWarningsCount:           1,
-				ExpectedWarningMessageSubstring: "Truncated incorrect DOUBLE value",
+				ExpectedWarningMessageSubstring: fmt.Sprintf(sql.ErrTruncatedIncorrect.Message, types.Float64.String(), "1.5abc"),
 			},
 			{
 				Query: "SELECT TRUNCATE('999xyz',2)",
@@ -273,7 +273,7 @@ var ScriptTests = []ScriptTest{
 				},
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
 				ExpectedWarningsCount:           1,
-				ExpectedWarningMessageSubstring: "Truncated incorrect DOUBLE value",
+				ExpectedWarningMessageSubstring: fmt.Sprintf(sql.ErrTruncatedIncorrect.Message, types.Float64.String(), "999xyz"),
 			},
 			{
 				Query: "SELECT TRUNCATE(1.223,'1.5abc')",
@@ -282,7 +282,7 @@ var ScriptTests = []ScriptTest{
 				},
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
 				ExpectedWarningsCount:           2, // Both input and precision conversions generate warnings
-				ExpectedWarningMessageSubstring: "Truncated incorrect int value",
+				ExpectedWarningMessageSubstring: fmt.Sprintf(sql.ErrTruncatedIncorrect.Message, types.Int32.String(), "1.5abc"),
 			},
 			{
 				Query: "SELECT TRUNCATE(1.223,'0.5')",
@@ -291,7 +291,7 @@ var ScriptTests = []ScriptTest{
 				},
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
 				ExpectedWarningsCount:           2, // Both input and precision conversions generate warnings
-				ExpectedWarningMessageSubstring: "Truncated incorrect int value",
+				ExpectedWarningMessageSubstring: fmt.Sprintf(sql.ErrTruncatedIncorrect.Message, types.Int32.String(), "0.5"),
 			},
 			{
 				Query: "SELECT TRUNCATE(1.223,'2.7')",
@@ -300,7 +300,7 @@ var ScriptTests = []ScriptTest{
 				},
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
 				ExpectedWarningsCount:           2, // Both input and precision conversions generate warnings
-				ExpectedWarningMessageSubstring: "Truncated incorrect int value",
+				ExpectedWarningMessageSubstring: fmt.Sprintf(sql.ErrTruncatedIncorrect.Message, types.Int32.String(), "2.7"),
 			},
 			{
 				Query: "SELECT TRUNCATE(1.223,'invalid_precision')",
@@ -309,7 +309,7 @@ var ScriptTests = []ScriptTest{
 				},
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
 				ExpectedWarningsCount:           2, // Both input and precision conversions generate warnings
-				ExpectedWarningMessageSubstring: "Truncated incorrect int value",
+				ExpectedWarningMessageSubstring: fmt.Sprintf(sql.ErrTruncatedIncorrect.Message, types.Int32.String(), "invalid_precision"),
 			},
 			{
 				Query:          "SELECT TRUNCATE()",

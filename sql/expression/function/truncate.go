@@ -69,7 +69,7 @@ func (t *Truncate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Convert to DOUBLE first to match MySQL warning behavior
 	val, _, err = types.Float64.Convert(ctx, val)
 	if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
-		ctx.Warn(mysql.ERTruncatedWrongValue, "Truncated incorrect DOUBLE value: '%s'", val)
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
 	// Then convert to decimal for truncation logic
@@ -159,7 +159,7 @@ func (t *Truncate) Type() sql.Type {
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
-func (*Truncate) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+func (*Truncate) CollationCoercibility(*sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 5
 }
 
