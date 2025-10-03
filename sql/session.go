@@ -229,6 +229,15 @@ type LifecycleAwareSession interface {
 	SessionEnd()
 }
 
+// An optional Lifecycle callback which a session can receive. This can be
+// delivered periodically during a long running operation, between the
+// CommandBegin and CommandEnd calls. Across the call to this method, the
+// gms.Engine is not accessing the session or any of its state, such as
+// table editors, database providers, etc.
+type SafepointAwareSession interface {
+	CommandSafepoint()
+}
+
 type (
 	// TypedValue is a value along with its type.
 	TypedValue struct {
@@ -760,6 +769,13 @@ func SessionCommandBegin(s Session) error {
 func SessionCommandEnd(s Session) {
 	if cur, ok := s.(LifecycleAwareSession); ok {
 		cur.CommandEnd()
+	}
+}
+
+// Helper function to call CommandSafepoint on a SafepointAwareSession, or do nothing.
+func SessionCommandSafepoint(s Session) {
+	if cur, ok := s.(SafepointAwareSession); ok {
+		cur.CommandSafepoint()
 	}
 }
 

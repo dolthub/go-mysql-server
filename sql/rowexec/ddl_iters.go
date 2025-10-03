@@ -570,7 +570,8 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 		return false, err
 	}
 
-	rowIter := sql.NewTableRowIter(ctx, rwt, partitions)
+	var rowIter sql.RowIter = sql.NewTableRowIter(ctx, rwt, partitions)
+	rowIter = withSafepointPeriodicallyIter(rowIter)
 	for {
 		r, err := rowIter.Next(ctx)
 		if err == io.EOF {
@@ -1117,7 +1118,8 @@ func (c *createPkIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) e
 		return err
 	}
 
-	rowIter := sql.NewTableRowIter(ctx, rwt, partitions)
+	var rowIter sql.RowIter = sql.NewTableRowIter(ctx, rwt, partitions)
+	rowIter = withSafepointPeriodicallyIter(rowIter)
 
 	for {
 		r, err := rowIter.Next(ctx)
@@ -1221,7 +1223,8 @@ func (d *dropPkIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) err
 		return err
 	}
 
-	rowIter := sql.NewTableRowIter(ctx, rwt, partitions)
+	var rowIter sql.RowIter = sql.NewTableRowIter(ctx, rwt, partitions)
+	rowIter = withSafepointPeriodicallyIter(rowIter)
 
 	for {
 		r, err := rowIter.Next(ctx)
@@ -1329,6 +1332,7 @@ func (i *addColumnIter) UpdateRowsWithDefaults(ctx *sql.Context, table sql.Table
 	if err != nil {
 		return err
 	}
+	tableIter = withSafepointPeriodicallyIter(tableIter)
 
 	schema := updatable.Schema()
 	idx := -1
@@ -1430,7 +1434,8 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 		return false, err
 	}
 
-	rowIter := sql.NewTableRowIter(ctx, rwt, partitions)
+	var rowIter sql.RowIter = sql.NewTableRowIter(ctx, rwt, partitions)
+	rowIter = withSafepointPeriodicallyIter(rowIter)
 
 	var val uint64
 	var autoTbl sql.AutoIncrementTable
@@ -1740,7 +1745,8 @@ func (i *dropColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable)
 		return false, err
 	}
 
-	rowIter := sql.NewTableRowIter(ctx, rwt, partitions)
+	var rowIter sql.RowIter = sql.NewTableRowIter(ctx, rwt, partitions)
+	rowIter = withSafepointPeriodicallyIter(rowIter)
 
 	for {
 		r, err := rowIter.Next(ctx)
@@ -2252,7 +2258,8 @@ func buildIndex(ctx *sql.Context, n *plan.AlterIndex, ibt sql.IndexBuildingTable
 		return err
 	}
 
-	rowIter := sql.NewTableRowIter(ctx, ibt, partitions)
+	var rowIter sql.RowIter = sql.NewTableRowIter(ctx, ibt, partitions)
+	rowIter = withSafepointPeriodicallyIter(rowIter)
 
 	// Our table scan needs to include projections for virtual columns if there are any
 	isVirtual := ibt.Schema().HasVirtualColumns()
@@ -2339,7 +2346,8 @@ func rewriteTableForIndexCreate(ctx *sql.Context, n *plan.AlterIndex, table sql.
 		return err
 	}
 
-	rowIter := sql.NewTableRowIter(ctx, rwt, partitions)
+	var rowIter sql.RowIter = sql.NewTableRowIter(ctx, rwt, partitions)
+	rowIter = withSafepointPeriodicallyIter(rowIter)
 
 	isVirtual := table.Schema().HasVirtualColumns()
 	var projections []sql.Expression

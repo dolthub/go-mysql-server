@@ -121,6 +121,7 @@ func (i *triggerBlockIter) Next(ctx *sql.Context) (sql.Row, error) {
 		if err != nil {
 			return nil, err
 		}
+		subIter = withSafepointPeriodicallyIter(subIter)
 
 		for {
 			newRow, err := subIter.Next(ctx)
@@ -143,6 +144,7 @@ func (i *triggerBlockIter) Next(ctx *sql.Context) (sql.Row, error) {
 			}
 		}
 	}
+	sql.SessionCommandSafepoint(ctx.Session)
 
 	return row, nil
 }
@@ -264,6 +266,7 @@ func (t *triggerIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
 	if err != nil {
 		return nil, err
 	}
+	logicIter = withSafepointPeriodicallyIter(logicIter)
 
 	defer func() {
 		err := logicIter.Close(t.ctx)
@@ -631,15 +634,15 @@ func AddAccumulatorIter(ctx *sql.Context, iter sql.RowIter) (sql.RowIter, sql.Sc
 		switch innerIter := i.InnerIter().(type) {
 		case *insertIter:
 			if len(innerIter.returnExprs) > 0 {
-				return innerIter, innerIter.returnSchema
+				return withSafepointPeriodicallyIter(innerIter), innerIter.returnSchema
 			}
 		case *updateIter:
 			if len(innerIter.returnExprs) > 0 {
-				return innerIter, innerIter.returnSchema
+				return withSafepointPeriodicallyIter(innerIter), innerIter.returnSchema
 			}
 		case *deleteIter:
 			if len(innerIter.returnExprs) > 0 {
-				return innerIter, innerIter.returnSchema
+				return withSafepointPeriodicallyIter(innerIter), innerIter.returnSchema
 			}
 		}
 	case *triggerIter:
@@ -663,6 +666,43 @@ func AddAccumulatorIter(ctx *sql.Context, iter sql.RowIter) (sql.RowIter, sql.Sc
 	return defaultAccumulatorIter(ctx, iter)
 }
 
+func withSafepointPeriodicallyIter(child sql.RowIter) *safepointPeriodicallyIter {
+	return &safepointPeriodicallyIter{child: child}
+}
+
+// A wrapper iterator which calls sql.SessionCommandSafepoint on the
+// ctx.Session periodically while returning rows through calls to
+// |Next|.
+//
+// Should be used to wrap any iterators which are involved in
+// long-running write operations and which are exhausted or iterated
+// by other iterators in the iterator tree, such as accumulatorIter.
+//
+// This iterator makes the assumption that a safepoint, from the
+// Engine's perspective, can be established at any moment we are
+// within a Next() call. This is generally true given the Engine's
+// lack of concurrency on a given Session, but if something like
+// Exchange node came back, this would not necessarily be true.
+type safepointPeriodicallyIter struct {
+	child sql.RowIter
+	n     int
+}
+
+const safepointEveryNRows = 1024
+
+func (i *safepointPeriodicallyIter) Next(ctx *sql.Context) (r sql.Row, err error) {
+	i.n++
+	if i.n >= safepointEveryNRows {
+		i.n = 0
+		sql.SessionCommandSafepoint(ctx.Session)
+	}
+	return i.child.Next(ctx)
+}
+
+func (i *safepointPeriodicallyIter) Close(ctx *sql.Context) error {
+	return i.child.Close(ctx)
+}
+
 // defaultAccumulatorIter returns the default accumulator iter for a DML node
 func defaultAccumulatorIter(ctx *sql.Context, iter sql.RowIter) (sql.RowIter, sql.Schema) {
 	clientFoundRowsToggled := (ctx.Client().Capabilities & mysql.CapabilityClientFoundRows) > 0
@@ -671,7 +711,7 @@ func defaultAccumulatorIter(ctx *sql.Context, iter sql.RowIter) (sql.RowIter, sq
 		return iter, nil
 	}
 	return &accumulatorIter{
-		iter:             iter,
+		iter:             withSafepointPeriodicallyIter(iter),
 		updateRowHandler: rowHandler,
 	}, types.OkResultSchema
 }
