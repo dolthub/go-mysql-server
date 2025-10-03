@@ -29,82 +29,40 @@ offset 1;`,
 		ExpectedPlan: "Union all\n" +
 			" ├─ limit: 1\n" +
 			" ├─ offset: 1\n" +
-			" ├─ Project\n" +
-			" │   ├─ columns: [sq1.x:0!null]\n" +
-			" │   └─ SubqueryAlias\n" +
-			" │       ├─ name: sq1\n" +
-			" │       ├─ outerVisibility: false\n" +
-			" │       ├─ isLateral: false\n" +
-			" │       ├─ cacheable: true\n" +
-			" │       ├─ colSet: (3,4)\n" +
-			" │       ├─ tableId: 2\n" +
+			" ├─ TableAlias(sq1)\n" +
+			" │   └─ ProcessTable\n" +
 			" │       └─ Table\n" +
 			" │           ├─ name: xy\n" +
-			" │           ├─ columns: [x y]\n" +
-			" │           ├─ colSet: (1,2)\n" +
-			" │           └─ tableId: 1\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [sq2.u:0!null]\n" +
-			"     └─ SubqueryAlias\n" +
-			"         ├─ name: sq2\n" +
-			"         ├─ outerVisibility: false\n" +
-			"         ├─ isLateral: false\n" +
-			"         ├─ cacheable: true\n" +
-			"         ├─ colSet: (7,8)\n" +
-			"         ├─ tableId: 4\n" +
+			" │           └─ columns: [x]\n" +
+			" └─ TableAlias(sq2)\n" +
+			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
 			"             ├─ name: uv\n" +
-			"             ├─ columns: [u v]\n" +
-			"             ├─ colSet: (5,6)\n" +
-			"             └─ tableId: 3\n" +
+			"             └─ columns: [u]\n" +
 			"",
 		ExpectedEstimates: "Union all\n" +
 			" ├─ limit: 1\n" +
 			" ├─ offset: 1\n" +
-			" ├─ Project\n" +
-			" │   ├─ columns: [sq1.x]\n" +
-			" │   └─ SubqueryAlias\n" +
-			" │       ├─ name: sq1\n" +
-			" │       ├─ outerVisibility: false\n" +
-			" │       ├─ isLateral: false\n" +
-			" │       ├─ cacheable: true\n" +
-			" │       └─ Table\n" +
-			" │           ├─ name: xy\n" +
-			" │           └─ columns: [x y]\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [sq2.u]\n" +
-			"     └─ SubqueryAlias\n" +
-			"         ├─ name: sq2\n" +
-			"         ├─ outerVisibility: false\n" +
-			"         ├─ isLateral: false\n" +
-			"         ├─ cacheable: true\n" +
-			"         └─ Table\n" +
-			"             ├─ name: uv\n" +
-			"             └─ columns: [u v]\n" +
+			" ├─ TableAlias(sq1)\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: xy\n" +
+			" │       └─ columns: [x]\n" +
+			" └─ TableAlias(sq2)\n" +
+			"     └─ Table\n" +
+			"         ├─ name: uv\n" +
+			"         └─ columns: [u]\n" +
 			"",
 		ExpectedAnalysis: "Union all\n" +
 			" ├─ limit: 1\n" +
 			" ├─ offset: 1\n" +
-			" ├─ Project\n" +
-			" │   ├─ columns: [sq1.x]\n" +
-			" │   └─ SubqueryAlias\n" +
-			" │       ├─ name: sq1\n" +
-			" │       ├─ outerVisibility: false\n" +
-			" │       ├─ isLateral: false\n" +
-			" │       ├─ cacheable: true\n" +
-			" │       └─ Table\n" +
-			" │           ├─ name: xy\n" +
-			" │           └─ columns: [x y]\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [sq2.u]\n" +
-			"     └─ SubqueryAlias\n" +
-			"         ├─ name: sq2\n" +
-			"         ├─ outerVisibility: false\n" +
-			"         ├─ isLateral: false\n" +
-			"         ├─ cacheable: true\n" +
-			"         └─ Table\n" +
-			"             ├─ name: uv\n" +
-			"             └─ columns: [u v]\n" +
+			" ├─ TableAlias(sq1)\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: xy\n" +
+			" │       └─ columns: [x]\n" +
+			" └─ TableAlias(sq2)\n" +
+			"     └─ Table\n" +
+			"         ├─ name: uv\n" +
+			"         └─ columns: [u]\n" +
 			"",
 	},
 	{
@@ -118,31 +76,18 @@ offset 1;`,
 			" │       └─ GroupBy\n" +
 			" │           ├─ select: SUM(cte.x:2!null)\n" +
 			" │           ├─ group: \n" +
-			" │           └─ SubqueryAlias\n" +
-			" │               ├─ name: cte\n" +
-			" │               ├─ outerVisibility: true\n" +
-			" │               ├─ isLateral: false\n" +
-			" │               ├─ cacheable: true\n" +
-			" │               ├─ colSet: (7,8)\n" +
-			" │               ├─ tableId: 4\n" +
+			" │           └─ TableAlias(cte)\n" +
 			" │               └─ Table\n" +
 			" │                   ├─ name: xy\n" +
-			" │                   ├─ columns: [x y]\n" +
+			" │                   ├─ columns: [x]\n" +
 			" │                   ├─ colSet: (1,2)\n" +
 			" │                   └─ tableId: 1\n" +
 			" │  ->xy:0]\n" +
-			" └─ SubqueryAlias\n" +
-			"     ├─ name: cte\n" +
-			"     ├─ outerVisibility: false\n" +
-			"     ├─ isLateral: false\n" +
-			"     ├─ cacheable: true\n" +
-			"     ├─ colSet: (5,6)\n" +
-			"     ├─ tableId: 3\n" +
-			"     └─ Table\n" +
-			"         ├─ name: xy\n" +
-			"         ├─ columns: [x y]\n" +
-			"         ├─ colSet: (1,2)\n" +
-			"         └─ tableId: 1\n" +
+			" └─ TableAlias(cte)\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: xy\n" +
+			"             └─ columns: [x y]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [cte.x, cte.y, Subquery\n" +
@@ -152,23 +97,14 @@ offset 1;`,
 			" │       └─ GroupBy\n" +
 			" │           ├─ SelectDeps(SUM(cte.x))\n" +
 			" │           ├─ Grouping()\n" +
-			" │           └─ SubqueryAlias\n" +
-			" │               ├─ name: cte\n" +
-			" │               ├─ outerVisibility: true\n" +
-			" │               ├─ isLateral: false\n" +
-			" │               ├─ cacheable: true\n" +
+			" │           └─ TableAlias(cte)\n" +
 			" │               └─ Table\n" +
 			" │                   ├─ name: xy\n" +
-			" │                   └─ columns: [x y]\n" +
+			" │                   └─ columns: [x]\n" +
 			" │   as xy]\n" +
-			" └─ SubqueryAlias\n" +
-			"     ├─ name: cte\n" +
-			"     ├─ outerVisibility: false\n" +
-			"     ├─ isLateral: false\n" +
-			"     ├─ cacheable: true\n" +
+			" └─ TableAlias(cte)\n" +
 			"     └─ Table\n" +
-			"         ├─ name: xy\n" +
-			"         └─ columns: [x y]\n" +
+			"         └─ name: xy\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [cte.x, cte.y, Subquery\n" +
@@ -178,23 +114,14 @@ offset 1;`,
 			" │       └─ GroupBy\n" +
 			" │           ├─ SelectDeps(SUM(cte.x))\n" +
 			" │           ├─ Grouping()\n" +
-			" │           └─ SubqueryAlias\n" +
-			" │               ├─ name: cte\n" +
-			" │               ├─ outerVisibility: true\n" +
-			" │               ├─ isLateral: false\n" +
-			" │               ├─ cacheable: true\n" +
+			" │           └─ TableAlias(cte)\n" +
 			" │               └─ Table\n" +
 			" │                   ├─ name: xy\n" +
-			" │                   └─ columns: [x y]\n" +
+			" │                   └─ columns: [x]\n" +
 			" │   as xy]\n" +
-			" └─ SubqueryAlias\n" +
-			"     ├─ name: cte\n" +
-			"     ├─ outerVisibility: false\n" +
-			"     ├─ isLateral: false\n" +
-			"     ├─ cacheable: true\n" +
+			" └─ TableAlias(cte)\n" +
 			"     └─ Table\n" +
-			"         ├─ name: xy\n" +
-			"         └─ columns: [x y]\n" +
+			"         └─ name: xy\n" +
 			"",
 	},
 	{
@@ -1780,82 +1707,40 @@ offset 2;`,
 		ExpectedPlan: "Union all\n" +
 			" ├─ limit: 1\n" +
 			" ├─ offset: 2\n" +
-			" ├─ Project\n" +
-			" │   ├─ columns: [sq1.x:0!null]\n" +
-			" │   └─ SubqueryAlias\n" +
-			" │       ├─ name: sq1\n" +
-			" │       ├─ outerVisibility: false\n" +
-			" │       ├─ isLateral: false\n" +
-			" │       ├─ cacheable: true\n" +
-			" │       ├─ colSet: (3,4)\n" +
-			" │       ├─ tableId: 2\n" +
+			" ├─ TableAlias(sq1)\n" +
+			" │   └─ ProcessTable\n" +
 			" │       └─ Table\n" +
 			" │           ├─ name: xy\n" +
-			" │           ├─ columns: [x y]\n" +
-			" │           ├─ colSet: (1,2)\n" +
-			" │           └─ tableId: 1\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [sq2.u:0!null]\n" +
-			"     └─ SubqueryAlias\n" +
-			"         ├─ name: sq2\n" +
-			"         ├─ outerVisibility: false\n" +
-			"         ├─ isLateral: false\n" +
-			"         ├─ cacheable: true\n" +
-			"         ├─ colSet: (7,8)\n" +
-			"         ├─ tableId: 4\n" +
+			" │           └─ columns: [x]\n" +
+			" └─ TableAlias(sq2)\n" +
+			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
 			"             ├─ name: uv\n" +
-			"             ├─ columns: [u v]\n" +
-			"             ├─ colSet: (5,6)\n" +
-			"             └─ tableId: 3\n" +
+			"             └─ columns: [u]\n" +
 			"",
 		ExpectedEstimates: "Union all\n" +
 			" ├─ limit: 1\n" +
 			" ├─ offset: 2\n" +
-			" ├─ Project\n" +
-			" │   ├─ columns: [sq1.x]\n" +
-			" │   └─ SubqueryAlias\n" +
-			" │       ├─ name: sq1\n" +
-			" │       ├─ outerVisibility: false\n" +
-			" │       ├─ isLateral: false\n" +
-			" │       ├─ cacheable: true\n" +
-			" │       └─ Table\n" +
-			" │           ├─ name: xy\n" +
-			" │           └─ columns: [x y]\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [sq2.u]\n" +
-			"     └─ SubqueryAlias\n" +
-			"         ├─ name: sq2\n" +
-			"         ├─ outerVisibility: false\n" +
-			"         ├─ isLateral: false\n" +
-			"         ├─ cacheable: true\n" +
-			"         └─ Table\n" +
-			"             ├─ name: uv\n" +
-			"             └─ columns: [u v]\n" +
+			" ├─ TableAlias(sq1)\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: xy\n" +
+			" │       └─ columns: [x]\n" +
+			" └─ TableAlias(sq2)\n" +
+			"     └─ Table\n" +
+			"         ├─ name: uv\n" +
+			"         └─ columns: [u]\n" +
 			"",
 		ExpectedAnalysis: "Union all\n" +
 			" ├─ limit: 1\n" +
 			" ├─ offset: 2\n" +
-			" ├─ Project\n" +
-			" │   ├─ columns: [sq1.x]\n" +
-			" │   └─ SubqueryAlias\n" +
-			" │       ├─ name: sq1\n" +
-			" │       ├─ outerVisibility: false\n" +
-			" │       ├─ isLateral: false\n" +
-			" │       ├─ cacheable: true\n" +
-			" │       └─ Table\n" +
-			" │           ├─ name: xy\n" +
-			" │           └─ columns: [x y]\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [sq2.u]\n" +
-			"     └─ SubqueryAlias\n" +
-			"         ├─ name: sq2\n" +
-			"         ├─ outerVisibility: false\n" +
-			"         ├─ isLateral: false\n" +
-			"         ├─ cacheable: true\n" +
-			"         └─ Table\n" +
-			"             ├─ name: uv\n" +
-			"             └─ columns: [u v]\n" +
+			" ├─ TableAlias(sq1)\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: xy\n" +
+			" │       └─ columns: [x]\n" +
+			" └─ TableAlias(sq2)\n" +
+			"     └─ Table\n" +
+			"         ├─ name: uv\n" +
+			"         └─ columns: [u]\n" +
 			"",
 	},
 	{
@@ -2476,13 +2361,7 @@ Select * from (
 			"     │           │               ├─ name: uv\n" +
 			"     │           │               └─ columns: [u]\n" +
 			"     │           │  ->(select u from uv where u = sq.p):0]\n" +
-			"     │           └─ SubqueryAlias\n" +
-			"     │               ├─ name: sq\n" +
-			"     │               ├─ outerVisibility: true\n" +
-			"     │               ├─ isLateral: false\n" +
-			"     │               ├─ cacheable: true\n" +
-			"     │               ├─ colSet: (5)\n" +
-			"     │               ├─ tableId: 3\n" +
+			"     │           └─ TableAlias(sq)\n" +
 			"     │               └─ Table\n" +
 			"     │                   ├─ name: pq\n" +
 			"     │                   ├─ columns: [p]\n" +
@@ -2510,11 +2389,7 @@ Select * from (
 			"     │           │           ├─ columns: [u]\n" +
 			"     │           │           └─ keys: sq.p\n" +
 			"     │           │   as (select u from uv where u = sq.p)]\n" +
-			"     │           └─ SubqueryAlias\n" +
-			"     │               ├─ name: sq\n" +
-			"     │               ├─ outerVisibility: true\n" +
-			"     │               ├─ isLateral: false\n" +
-			"     │               ├─ cacheable: true\n" +
+			"     │           └─ TableAlias(sq)\n" +
 			"     │               └─ Table\n" +
 			"     │                   ├─ name: pq\n" +
 			"     │                   └─ columns: [p]\n" +
@@ -2538,11 +2413,7 @@ Select * from (
 			"     │           │           ├─ columns: [u]\n" +
 			"     │           │           └─ keys: sq.p\n" +
 			"     │           │   as (select u from uv where u = sq.p)]\n" +
-			"     │           └─ SubqueryAlias\n" +
-			"     │               ├─ name: sq\n" +
-			"     │               ├─ outerVisibility: true\n" +
-			"     │               ├─ isLateral: false\n" +
-			"     │               ├─ cacheable: true\n" +
+			"     │           └─ TableAlias(sq)\n" +
 			"     │               └─ Table\n" +
 			"     │                   ├─ name: pq\n" +
 			"     │                   └─ columns: [p]\n" +
@@ -8601,53 +8472,35 @@ inner join pq on true
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
 			"     │       └─ columns: [i]\n" +
-			"     └─ CachedResults\n" +
-			"         └─ SubqueryAlias\n" +
-			"             ├─ name: othertable\n" +
-			"             ├─ outerVisibility: false\n" +
-			"             ├─ isLateral: false\n" +
-			"             ├─ cacheable: true\n" +
-			"             ├─ colSet: (5,6)\n" +
-			"             ├─ tableId: 3\n" +
+			"     └─ TableAlias(othertable)\n" +
+			"         └─ ProcessTable\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: othertable\n" +
-			"                 ├─ columns: [s2 i2]\n" +
-			"                 ├─ colSet: (3,4)\n" +
-			"                 └─ tableId: 2\n" +
+			"                 └─ columns: [s2 i2]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [othertable.s2, othertable.i2, mytable.i]\n" +
-			" └─ InnerJoin (estimated cost=304.000 rows=100)\n" +
+			" └─ InnerJoin (estimated cost=10.090 rows=3)\n" +
 			"     ├─ (othertable.i2 = mytable.i)\n" +
 			"     ├─ Table\n" +
 			"     │   ├─ name: mytable\n" +
 			"     │   └─ columns: [i]\n" +
-			"     └─ CachedResults\n" +
-			"         └─ SubqueryAlias\n" +
+			"     └─ TableAlias(othertable)\n" +
+			"         └─ Table\n" +
 			"             ├─ name: othertable\n" +
-			"             ├─ outerVisibility: false\n" +
-			"             ├─ isLateral: false\n" +
-			"             ├─ cacheable: true\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: othertable\n" +
-			"                 └─ columns: [s2 i2]\n" +
+			"             └─ columns: [s2 i2]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [othertable.s2, othertable.i2, mytable.i]\n" +
-			" └─ InnerJoin (estimated cost=304.000 rows=100) (actual rows=3 loops=1)\n" +
+			" └─ InnerJoin (estimated cost=10.090 rows=3) (actual rows=3 loops=1)\n" +
 			"     ├─ (othertable.i2 = mytable.i)\n" +
 			"     ├─ Table\n" +
 			"     │   ├─ name: mytable\n" +
 			"     │   └─ columns: [i]\n" +
-			"     └─ CachedResults\n" +
-			"         └─ SubqueryAlias\n" +
+			"     └─ TableAlias(othertable)\n" +
+			"         └─ Table\n" +
 			"             ├─ name: othertable\n" +
-			"             ├─ outerVisibility: false\n" +
-			"             ├─ isLateral: false\n" +
-			"             ├─ cacheable: true\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: othertable\n" +
-			"                 └─ columns: [s2 i2]\n" +
+			"             └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
@@ -8662,141 +8515,81 @@ inner join pq on true
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
 			"     │       └─ columns: [i]\n" +
-			"     └─ CachedResults\n" +
-			"         └─ SubqueryAlias\n" +
-			"             ├─ name: othertable\n" +
-			"             ├─ outerVisibility: false\n" +
-			"             ├─ isLateral: false\n" +
-			"             ├─ cacheable: true\n" +
-			"             ├─ colSet: (5,6)\n" +
-			"             ├─ tableId: 3\n" +
+			"     └─ TableAlias(othertable)\n" +
+			"         └─ ProcessTable\n" +
 			"             └─ Table\n" +
 			"                 ├─ name: othertable\n" +
-			"                 ├─ columns: [s2 i2]\n" +
-			"                 ├─ colSet: (3,4)\n" +
-			"                 └─ tableId: 2\n" +
+			"                 └─ columns: [s2 i2]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [othertable.s2, othertable.i2, mytable.i]\n" +
-			" └─ LeftOuterJoin (estimated cost=302.000 rows=3)\n" +
+			" └─ LeftOuterJoin (estimated cost=8.090 rows=3)\n" +
 			"     ├─ (othertable.i2 = mytable.i)\n" +
 			"     ├─ Table\n" +
 			"     │   ├─ name: mytable\n" +
 			"     │   └─ columns: [i]\n" +
-			"     └─ CachedResults\n" +
-			"         └─ SubqueryAlias\n" +
+			"     └─ TableAlias(othertable)\n" +
+			"         └─ Table\n" +
 			"             ├─ name: othertable\n" +
-			"             ├─ outerVisibility: false\n" +
-			"             ├─ isLateral: false\n" +
-			"             ├─ cacheable: true\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: othertable\n" +
-			"                 └─ columns: [s2 i2]\n" +
+			"             └─ columns: [s2 i2]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [othertable.s2, othertable.i2, mytable.i]\n" +
-			" └─ LeftOuterJoin (estimated cost=302.000 rows=3) (actual rows=3 loops=1)\n" +
+			" └─ LeftOuterJoin (estimated cost=8.090 rows=3) (actual rows=3 loops=1)\n" +
 			"     ├─ (othertable.i2 = mytable.i)\n" +
 			"     ├─ Table\n" +
 			"     │   ├─ name: mytable\n" +
 			"     │   └─ columns: [i]\n" +
-			"     └─ CachedResults\n" +
-			"         └─ SubqueryAlias\n" +
+			"     └─ TableAlias(othertable)\n" +
+			"         └─ Table\n" +
 			"             ├─ name: othertable\n" +
-			"             ├─ outerVisibility: false\n" +
-			"             ├─ isLateral: false\n" +
-			"             ├─ cacheable: true\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: othertable\n" +
-			"                 └─ columns: [s2 i2]\n" +
+			"             └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
 		Query: `SELECT s2, i2, i FROM (SELECT * FROM mytable) mytable RIGHT JOIN (SELECT * FROM othertable) othertable ON i2 = i`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [othertable.s2:0!null, othertable.i2:1!null, mytable.i:2!null]\n" +
-			" └─ LeftOuterHashJoin\n" +
+			" └─ LeftOuterJoin\n" +
 			"     ├─ Eq\n" +
 			"     │   ├─ othertable.i2:1!null\n" +
 			"     │   └─ mytable.i:2!null\n" +
-			"     ├─ SubqueryAlias\n" +
-			"     │   ├─ name: othertable\n" +
-			"     │   ├─ outerVisibility: false\n" +
-			"     │   ├─ isLateral: false\n" +
-			"     │   ├─ cacheable: true\n" +
-			"     │   ├─ colSet: (7,8)\n" +
-			"     │   ├─ tableId: 4\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: othertable\n" +
-			"     │       ├─ columns: [s2 i2]\n" +
-			"     │       ├─ colSet: (5,6)\n" +
-			"     │       └─ tableId: 3\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: TUPLE(othertable.i2:1!null)\n" +
-			"         ├─ right-key: TUPLE(mytable.i:0!null)\n" +
-			"         └─ CachedResults\n" +
-			"             └─ SubqueryAlias\n" +
+			"     ├─ TableAlias(othertable)\n" +
+			"     │   └─ ProcessTable\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: othertable\n" +
+			"     │           └─ columns: [s2 i2]\n" +
+			"     └─ TableAlias(mytable)\n" +
+			"         └─ ProcessTable\n" +
+			"             └─ Table\n" +
 			"                 ├─ name: mytable\n" +
-			"                 ├─ outerVisibility: false\n" +
-			"                 ├─ isLateral: false\n" +
-			"                 ├─ cacheable: true\n" +
-			"                 ├─ colSet: (3,4)\n" +
-			"                 ├─ tableId: 2\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: mytable\n" +
-			"                     ├─ columns: [i s]\n" +
-			"                     ├─ colSet: (1,2)\n" +
-			"                     └─ tableId: 1\n" +
+			"                 └─ columns: [i]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [othertable.s2, othertable.i2, mytable.i]\n" +
-			" └─ LeftOuterHashJoin (estimated cost=402.250 rows=125)\n" +
+			" └─ LeftOuterJoin (estimated cost=8.090 rows=3)\n" +
 			"     ├─ (othertable.i2 = mytable.i)\n" +
-			"     ├─ SubqueryAlias\n" +
-			"     │   ├─ name: othertable\n" +
-			"     │   ├─ outerVisibility: false\n" +
-			"     │   ├─ isLateral: false\n" +
-			"     │   ├─ cacheable: true\n" +
+			"     ├─ TableAlias(othertable)\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: othertable\n" +
 			"     │       └─ columns: [s2 i2]\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: (othertable.i2)\n" +
-			"         ├─ right-key: (mytable.i)\n" +
-			"         └─ CachedResults\n" +
-			"             └─ SubqueryAlias\n" +
-			"                 ├─ name: mytable\n" +
-			"                 ├─ outerVisibility: false\n" +
-			"                 ├─ isLateral: false\n" +
-			"                 ├─ cacheable: true\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: mytable\n" +
-			"                     └─ columns: [i s]\n" +
+			"     └─ TableAlias(mytable)\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [othertable.s2, othertable.i2, mytable.i]\n" +
-			" └─ LeftOuterHashJoin (estimated cost=402.250 rows=125) (actual rows=3 loops=1)\n" +
+			" └─ LeftOuterJoin (estimated cost=8.090 rows=3) (actual rows=3 loops=1)\n" +
 			"     ├─ (othertable.i2 = mytable.i)\n" +
-			"     ├─ SubqueryAlias\n" +
-			"     │   ├─ name: othertable\n" +
-			"     │   ├─ outerVisibility: false\n" +
-			"     │   ├─ isLateral: false\n" +
-			"     │   ├─ cacheable: true\n" +
+			"     ├─ TableAlias(othertable)\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: othertable\n" +
 			"     │       └─ columns: [s2 i2]\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: (othertable.i2)\n" +
-			"         ├─ right-key: (mytable.i)\n" +
-			"         └─ CachedResults\n" +
-			"             └─ SubqueryAlias\n" +
-			"                 ├─ name: mytable\n" +
-			"                 ├─ outerVisibility: false\n" +
-			"                 ├─ isLateral: false\n" +
-			"                 ├─ cacheable: true\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: mytable\n" +
-			"                     └─ columns: [i s]\n" +
+			"     └─ TableAlias(mytable)\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -10907,235 +10700,141 @@ inner join pq on true
 			ON lefttable.i = righttable.i AND righttable.s = lefttable.s
 			ORDER BY lefttable.i ASC`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [lefttable.i:0!null, righttable.s:3!null]\n" +
-			" └─ Sort(lefttable.i:0!null ASC nullsFirst)\n" +
-			"     └─ HashJoin\n" +
+			" ├─ columns: [lefttable.i:2!null, righttable.s:1!null]\n" +
+			" └─ Sort(lefttable.i:2!null ASC nullsFirst)\n" +
+			"     └─ InnerJoin\n" +
 			"         ├─ AND\n" +
 			"         │   ├─ Eq\n" +
-			"         │   │   ├─ lefttable.i:0!null\n" +
-			"         │   │   └─ righttable.i:2!null\n" +
+			"         │   │   ├─ lefttable.i:2!null\n" +
+			"         │   │   └─ righttable.i:0!null\n" +
 			"         │   └─ Eq\n" +
-			"         │       ├─ righttable.s:3!null\n" +
-			"         │       └─ lefttable.s:1!null\n" +
-			"         ├─ SubqueryAlias\n" +
-			"         │   ├─ name: lefttable\n" +
-			"         │   ├─ outerVisibility: false\n" +
-			"         │   ├─ isLateral: false\n" +
-			"         │   ├─ cacheable: true\n" +
-			"         │   ├─ colSet: (3,4)\n" +
-			"         │   ├─ tableId: 2\n" +
-			"         │   └─ Table\n" +
-			"         │       ├─ name: mytable\n" +
-			"         │       ├─ columns: [i s]\n" +
-			"         │       ├─ colSet: (1,2)\n" +
-			"         │       └─ tableId: 1\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: TUPLE(lefttable.i:0!null, lefttable.s:1!null)\n" +
-			"             ├─ right-key: TUPLE(righttable.i:0!null, righttable.s:1!null)\n" +
-			"             └─ CachedResults\n" +
-			"                 └─ SubqueryAlias\n" +
-			"                     ├─ name: righttable\n" +
-			"                     ├─ outerVisibility: false\n" +
-			"                     ├─ isLateral: false\n" +
-			"                     ├─ cacheable: true\n" +
-			"                     ├─ colSet: (7,8)\n" +
-			"                     ├─ tableId: 4\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: mytable\n" +
-			"                         ├─ columns: [i s]\n" +
-			"                         ├─ colSet: (5,6)\n" +
-			"                         └─ tableId: 3\n" +
+			"         │       ├─ righttable.s:1!null\n" +
+			"         │       └─ lefttable.s:3!null\n" +
+			"         ├─ TableAlias(righttable)\n" +
+			"         │   └─ ProcessTable\n" +
+			"         │       └─ Table\n" +
+			"         │           ├─ name: mytable\n" +
+			"         │           └─ columns: [i s]\n" +
+			"         └─ TableAlias(lefttable)\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: mytable\n" +
+			"                 ├─ columns: [i s]\n" +
+			"                 ├─ colSet: (1,2)\n" +
+			"                 └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [lefttable.i, righttable.s]\n" +
 			" └─ Sort(lefttable.i ASC)\n" +
-			"     └─ HashJoin\n" +
+			"     └─ InnerJoin\n" +
 			"         ├─ ((lefttable.i = righttable.i) AND (righttable.s = lefttable.s))\n" +
-			"         ├─ SubqueryAlias\n" +
-			"         │   ├─ name: lefttable\n" +
-			"         │   ├─ outerVisibility: false\n" +
-			"         │   ├─ isLateral: false\n" +
-			"         │   ├─ cacheable: true\n" +
+			"         ├─ TableAlias(righttable)\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: mytable\n" +
 			"         │       └─ columns: [i s]\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: (lefttable.i, lefttable.s)\n" +
-			"             ├─ right-key: (righttable.i, righttable.s)\n" +
-			"             └─ CachedResults\n" +
-			"                 └─ SubqueryAlias\n" +
-			"                     ├─ name: righttable\n" +
-			"                     ├─ outerVisibility: false\n" +
-			"                     ├─ isLateral: false\n" +
-			"                     ├─ cacheable: true\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: mytable\n" +
-			"                         └─ columns: [i s]\n" +
+			"         └─ TableAlias(lefttable)\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: mytable\n" +
+			"                 └─ columns: [i s]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [lefttable.i, righttable.s]\n" +
 			" └─ Sort(lefttable.i ASC)\n" +
-			"     └─ HashJoin\n" +
+			"     └─ InnerJoin\n" +
 			"         ├─ ((lefttable.i = righttable.i) AND (righttable.s = lefttable.s))\n" +
-			"         ├─ SubqueryAlias\n" +
-			"         │   ├─ name: lefttable\n" +
-			"         │   ├─ outerVisibility: false\n" +
-			"         │   ├─ isLateral: false\n" +
-			"         │   ├─ cacheable: true\n" +
+			"         ├─ TableAlias(righttable)\n" +
 			"         │   └─ Table\n" +
 			"         │       ├─ name: mytable\n" +
 			"         │       └─ columns: [i s]\n" +
-			"         └─ HashLookup\n" +
-			"             ├─ left-key: (lefttable.i, lefttable.s)\n" +
-			"             ├─ right-key: (righttable.i, righttable.s)\n" +
-			"             └─ CachedResults\n" +
-			"                 └─ SubqueryAlias\n" +
-			"                     ├─ name: righttable\n" +
-			"                     ├─ outerVisibility: false\n" +
-			"                     ├─ isLateral: false\n" +
-			"                     ├─ cacheable: true\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: mytable\n" +
-			"                         └─ columns: [i s]\n" +
+			"         └─ TableAlias(lefttable)\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: mytable\n" +
+			"                 └─ columns: [i s]\n" +
 			"",
 	},
 	{
 		Query: `SELECT s2, i2, i FROM mytable RIGHT JOIN (SELECT * FROM othertable) othertable ON i2 = i`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [othertable.s2:0!null, othertable.i2:1!null, mytable.i:2!null]\n" +
-			" └─ LeftOuterHashJoin\n" +
+			" └─ LeftOuterJoin\n" +
 			"     ├─ Eq\n" +
 			"     │   ├─ othertable.i2:1!null\n" +
 			"     │   └─ mytable.i:2!null\n" +
-			"     ├─ SubqueryAlias\n" +
-			"     │   ├─ name: othertable\n" +
-			"     │   ├─ outerVisibility: false\n" +
-			"     │   ├─ isLateral: false\n" +
-			"     │   ├─ cacheable: true\n" +
-			"     │   ├─ colSet: (5,6)\n" +
-			"     │   ├─ tableId: 3\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: othertable\n" +
-			"     │       ├─ columns: [s2 i2]\n" +
-			"     │       ├─ colSet: (3,4)\n" +
-			"     │       └─ tableId: 2\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: TUPLE(othertable.i2:1!null)\n" +
-			"         ├─ right-key: TUPLE(mytable.i:0!null)\n" +
-			"         └─ ProcessTable\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: mytable\n" +
-			"                 └─ columns: [i]\n" +
-			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [othertable.s2, othertable.i2, mytable.i]\n" +
-			" └─ LeftOuterHashJoin (estimated cost=110.030 rows=3)\n" +
-			"     ├─ (othertable.i2 = mytable.i)\n" +
-			"     ├─ SubqueryAlias\n" +
-			"     │   ├─ name: othertable\n" +
-			"     │   ├─ outerVisibility: false\n" +
-			"     │   ├─ isLateral: false\n" +
-			"     │   ├─ cacheable: true\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: othertable\n" +
-			"     │       └─ columns: [s2 i2]\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: (othertable.i2)\n" +
-			"         ├─ right-key: (mytable.i)\n" +
-			"         └─ Table\n" +
-			"             ├─ name: mytable\n" +
-			"             └─ columns: [i]\n" +
-			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [othertable.s2, othertable.i2, mytable.i]\n" +
-			" └─ LeftOuterHashJoin (estimated cost=110.030 rows=3) (actual rows=3 loops=1)\n" +
-			"     ├─ (othertable.i2 = mytable.i)\n" +
-			"     ├─ SubqueryAlias\n" +
-			"     │   ├─ name: othertable\n" +
-			"     │   ├─ outerVisibility: false\n" +
-			"     │   ├─ isLateral: false\n" +
-			"     │   ├─ cacheable: true\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: othertable\n" +
-			"     │       └─ columns: [s2 i2]\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: (othertable.i2)\n" +
-			"         ├─ right-key: (mytable.i)\n" +
-			"         └─ Table\n" +
-			"             ├─ name: mytable\n" +
-			"             └─ columns: [i]\n" +
-			"",
-	},
-	{
-		Query: `SELECT s2, i2, i FROM mytable INNER JOIN (SELECT * FROM othertable) othertable ON i2 = i`,
-		ExpectedPlan: "HashJoin\n" +
-			" ├─ Eq\n" +
-			" │   ├─ othertable.i2:1!null\n" +
-			" │   └─ mytable.i:2!null\n" +
-			" ├─ SubqueryAlias\n" +
-			" │   ├─ name: othertable\n" +
-			" │   ├─ outerVisibility: false\n" +
-			" │   ├─ isLateral: false\n" +
-			" │   ├─ cacheable: true\n" +
-			" │   ├─ colSet: (5,6)\n" +
-			" │   ├─ tableId: 3\n" +
-			" │   └─ Table\n" +
-			" │       ├─ name: othertable\n" +
-			" │       ├─ columns: [s2 i2]\n" +
-			" │       ├─ colSet: (3,4)\n" +
-			" │       └─ tableId: 2\n" +
-			" └─ HashLookup\n" +
-			"     ├─ left-key: TUPLE(othertable.i2:1!null)\n" +
-			"     ├─ right-key: TUPLE(mytable.i:0!null)\n" +
+			"     ├─ TableAlias(othertable)\n" +
+			"     │   └─ ProcessTable\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: othertable\n" +
+			"     │           └─ columns: [s2 i2]\n" +
 			"     └─ ProcessTable\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
 			"             └─ columns: [i]\n" +
 			"",
-		ExpectedEstimates: "HashJoin (estimated cost=111.000 rows=100)\n" +
-			" ├─ (othertable.i2 = mytable.i)\n" +
-			" ├─ SubqueryAlias\n" +
-			" │   ├─ name: othertable\n" +
-			" │   ├─ outerVisibility: false\n" +
-			" │   ├─ isLateral: false\n" +
-			" │   ├─ cacheable: true\n" +
-			" │   └─ Table\n" +
-			" │       ├─ name: othertable\n" +
-			" │       └─ columns: [s2 i2]\n" +
-			" └─ HashLookup\n" +
-			"     ├─ left-key: (othertable.i2)\n" +
-			"     ├─ right-key: (mytable.i)\n" +
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [othertable.s2, othertable.i2, mytable.i]\n" +
+			" └─ LeftOuterJoin (estimated cost=8.090 rows=3)\n" +
+			"     ├─ (othertable.i2 = mytable.i)\n" +
+			"     ├─ TableAlias(othertable)\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: othertable\n" +
+			"     │       └─ columns: [s2 i2]\n" +
 			"     └─ Table\n" +
 			"         ├─ name: mytable\n" +
 			"         └─ columns: [i]\n" +
 			"",
-		ExpectedAnalysis: "HashJoin (estimated cost=111.000 rows=100) (actual rows=3 loops=1)\n" +
-			" ├─ (othertable.i2 = mytable.i)\n" +
-			" ├─ SubqueryAlias\n" +
-			" │   ├─ name: othertable\n" +
-			" │   ├─ outerVisibility: false\n" +
-			" │   ├─ isLateral: false\n" +
-			" │   ├─ cacheable: true\n" +
-			" │   └─ Table\n" +
-			" │       ├─ name: othertable\n" +
-			" │       └─ columns: [s2 i2]\n" +
-			" └─ HashLookup\n" +
-			"     ├─ left-key: (othertable.i2)\n" +
-			"     ├─ right-key: (mytable.i)\n" +
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [othertable.s2, othertable.i2, mytable.i]\n" +
+			" └─ LeftOuterJoin (estimated cost=8.090 rows=3) (actual rows=3 loops=1)\n" +
+			"     ├─ (othertable.i2 = mytable.i)\n" +
+			"     ├─ TableAlias(othertable)\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: othertable\n" +
+			"     │       └─ columns: [s2 i2]\n" +
 			"     └─ Table\n" +
 			"         ├─ name: mytable\n" +
 			"         └─ columns: [i]\n" +
 			"",
 	},
 	{
+		Query: `SELECT s2, i2, i FROM mytable INNER JOIN (SELECT * FROM othertable) othertable ON i2 = i`,
+		ExpectedPlan: "LookupJoin\n" +
+			" ├─ TableAlias(othertable)\n" +
+			" │   └─ ProcessTable\n" +
+			" │       └─ Table\n" +
+			" │           ├─ name: othertable\n" +
+			" │           └─ columns: [s2 i2]\n" +
+			" └─ IndexedTableAccess(mytable)\n" +
+			"     ├─ index: [mytable.i]\n" +
+			"     ├─ keys: [othertable.i2:1!null]\n" +
+			"     ├─ colSet: (1,2)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: mytable\n" +
+			"         └─ columns: [i]\n" +
+			"",
+		ExpectedEstimates: "LookupJoin (estimated cost=9.900 rows=3)\n" +
+			" ├─ TableAlias(othertable)\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: othertable\n" +
+			" │       └─ columns: [s2 i2]\n" +
+			" └─ IndexedTableAccess(mytable)\n" +
+			"     ├─ index: [mytable.i]\n" +
+			"     ├─ columns: [i]\n" +
+			"     └─ keys: othertable.i2\n" +
+			"",
+		ExpectedAnalysis: "LookupJoin (estimated cost=9.900 rows=3) (actual rows=3 loops=1)\n" +
+			" ├─ TableAlias(othertable)\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: othertable\n" +
+			" │       └─ columns: [s2 i2]\n" +
+			" └─ IndexedTableAccess(mytable)\n" +
+			"     ├─ index: [mytable.i]\n" +
+			"     ├─ columns: [i]\n" +
+			"     └─ keys: othertable.i2\n" +
+			"",
+	},
+	{
 		Query: `SELECT * FROM (SELECT * FROM othertable) othertable_alias WHERE s2 = 'a'`,
-		ExpectedPlan: "SubqueryAlias\n" +
-			" ├─ name: othertable_alias\n" +
-			" ├─ outerVisibility: false\n" +
-			" ├─ isLateral: false\n" +
-			" ├─ cacheable: true\n" +
-			" ├─ colSet: (3,4)\n" +
-			" ├─ tableId: 2\n" +
+		ExpectedPlan: "TableAlias(othertable_alias)\n" +
 			" └─ IndexedTableAccess(othertable)\n" +
 			"     ├─ index: [othertable.s2]\n" +
 			"     ├─ static: [{[a, a]}]\n" +
@@ -11145,21 +10844,13 @@ inner join pq on true
 			"         ├─ name: othertable\n" +
 			"         └─ columns: [s2 i2]\n" +
 			"",
-		ExpectedEstimates: "SubqueryAlias\n" +
-			" ├─ name: othertable_alias\n" +
-			" ├─ outerVisibility: false\n" +
-			" ├─ isLateral: false\n" +
-			" ├─ cacheable: true\n" +
+		ExpectedEstimates: "TableAlias(othertable_alias)\n" +
 			" └─ IndexedTableAccess(othertable)\n" +
 			"     ├─ index: [othertable.s2]\n" +
 			"     ├─ filters: [{[a, a]}]\n" +
 			"     └─ columns: [s2 i2]\n" +
 			"",
-		ExpectedAnalysis: "SubqueryAlias\n" +
-			" ├─ name: othertable_alias\n" +
-			" ├─ outerVisibility: false\n" +
-			" ├─ isLateral: false\n" +
-			" ├─ cacheable: true\n" +
+		ExpectedAnalysis: "TableAlias(othertable_alias)\n" +
 			" └─ IndexedTableAccess(othertable)\n" +
 			"     ├─ index: [othertable.s2]\n" +
 			"     ├─ filters: [{[a, a]}]\n" +
@@ -11168,90 +10859,33 @@ inner join pq on true
 	},
 	{
 		Query: `SELECT * FROM (SELECT * FROM (SELECT * FROM (SELECT * FROM othertable) othertable_one) othertable_two) othertable_three WHERE s2 = 'a'`,
-		ExpectedPlan: "SubqueryAlias\n" +
-			" ├─ name: othertable_three\n" +
-			" ├─ outerVisibility: false\n" +
-			" ├─ isLateral: false\n" +
-			" ├─ cacheable: true\n" +
-			" ├─ colSet: (7,8)\n" +
-			" ├─ tableId: 4\n" +
-			" └─ SubqueryAlias\n" +
-			"     ├─ name: othertable_two\n" +
-			"     ├─ outerVisibility: false\n" +
-			"     ├─ isLateral: false\n" +
-			"     ├─ cacheable: true\n" +
-			"     ├─ colSet: (5,6)\n" +
-			"     ├─ tableId: 3\n" +
-			"     └─ SubqueryAlias\n" +
-			"         ├─ name: othertable_one\n" +
-			"         ├─ outerVisibility: false\n" +
-			"         ├─ isLateral: false\n" +
-			"         ├─ cacheable: true\n" +
-			"         ├─ colSet: (3,4)\n" +
-			"         ├─ tableId: 2\n" +
-			"         └─ IndexedTableAccess(othertable)\n" +
-			"             ├─ index: [othertable.s2]\n" +
-			"             ├─ static: [{[a, a]}]\n" +
-			"             ├─ colSet: (1,2)\n" +
-			"             ├─ tableId: 1\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: othertable\n" +
-			"                 └─ columns: [s2 i2]\n" +
+		ExpectedPlan: "TableAlias(othertable_three)\n" +
+			" └─ IndexedTableAccess(othertable)\n" +
+			"     ├─ index: [othertable.s2]\n" +
+			"     ├─ static: [{[a, a]}]\n" +
+			"     ├─ colSet: (1,2)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: othertable\n" +
+			"         └─ columns: [s2 i2]\n" +
 			"",
-		ExpectedEstimates: "SubqueryAlias\n" +
-			" ├─ name: othertable_three\n" +
-			" ├─ outerVisibility: false\n" +
-			" ├─ isLateral: false\n" +
-			" ├─ cacheable: true\n" +
-			" └─ SubqueryAlias\n" +
-			"     ├─ name: othertable_two\n" +
-			"     ├─ outerVisibility: false\n" +
-			"     ├─ isLateral: false\n" +
-			"     ├─ cacheable: true\n" +
-			"     └─ SubqueryAlias\n" +
-			"         ├─ name: othertable_one\n" +
-			"         ├─ outerVisibility: false\n" +
-			"         ├─ isLateral: false\n" +
-			"         ├─ cacheable: true\n" +
-			"         └─ IndexedTableAccess(othertable)\n" +
-			"             ├─ index: [othertable.s2]\n" +
-			"             ├─ filters: [{[a, a]}]\n" +
-			"             └─ columns: [s2 i2]\n" +
+		ExpectedEstimates: "TableAlias(othertable_three)\n" +
+			" └─ IndexedTableAccess(othertable)\n" +
+			"     ├─ index: [othertable.s2]\n" +
+			"     ├─ filters: [{[a, a]}]\n" +
+			"     └─ columns: [s2 i2]\n" +
 			"",
-		ExpectedAnalysis: "SubqueryAlias\n" +
-			" ├─ name: othertable_three\n" +
-			" ├─ outerVisibility: false\n" +
-			" ├─ isLateral: false\n" +
-			" ├─ cacheable: true\n" +
-			" └─ SubqueryAlias\n" +
-			"     ├─ name: othertable_two\n" +
-			"     ├─ outerVisibility: false\n" +
-			"     ├─ isLateral: false\n" +
-			"     ├─ cacheable: true\n" +
-			"     └─ SubqueryAlias\n" +
-			"         ├─ name: othertable_one\n" +
-			"         ├─ outerVisibility: false\n" +
-			"         ├─ isLateral: false\n" +
-			"         ├─ cacheable: true\n" +
-			"         └─ IndexedTableAccess(othertable)\n" +
-			"             ├─ index: [othertable.s2]\n" +
-			"             ├─ filters: [{[a, a]}]\n" +
-			"             └─ columns: [s2 i2]\n" +
+		ExpectedAnalysis: "TableAlias(othertable_three)\n" +
+			" └─ IndexedTableAccess(othertable)\n" +
+			"     ├─ index: [othertable.s2]\n" +
+			"     ├─ filters: [{[a, a]}]\n" +
+			"     └─ columns: [s2 i2]\n" +
 			"",
 	},
 	{
 		Query: `SELECT othertable.s2, othertable.i2, mytable.i FROM mytable INNER JOIN (SELECT * FROM othertable) othertable ON othertable.i2 = mytable.i WHERE othertable.s2 > 'a'`,
-		ExpectedPlan: "HashJoin\n" +
-			" ├─ Eq\n" +
-			" │   ├─ othertable.i2:1!null\n" +
-			" │   └─ mytable.i:2!null\n" +
-			" ├─ SubqueryAlias\n" +
-			" │   ├─ name: othertable\n" +
-			" │   ├─ outerVisibility: false\n" +
-			" │   ├─ isLateral: false\n" +
-			" │   ├─ cacheable: true\n" +
-			" │   ├─ colSet: (5,6)\n" +
-			" │   ├─ tableId: 3\n" +
+		ExpectedPlan: "LookupJoin\n" +
+			" ├─ TableAlias(othertable)\n" +
 			" │   └─ IndexedTableAccess(othertable)\n" +
 			" │       ├─ index: [othertable.s2]\n" +
 			" │       ├─ static: [{(a, ∞)}]\n" +
@@ -11260,49 +10894,36 @@ inner join pq on true
 			" │       └─ Table\n" +
 			" │           ├─ name: othertable\n" +
 			" │           └─ columns: [s2 i2]\n" +
-			" └─ HashLookup\n" +
-			"     ├─ left-key: TUPLE(othertable.i2:1!null)\n" +
-			"     ├─ right-key: TUPLE(mytable.i:0!null)\n" +
-			"     └─ ProcessTable\n" +
-			"         └─ Table\n" +
-			"             ├─ name: mytable\n" +
-			"             └─ columns: [i]\n" +
-			"",
-		ExpectedEstimates: "HashJoin (estimated cost=111.000 rows=100)\n" +
-			" ├─ (othertable.i2 = mytable.i)\n" +
-			" ├─ SubqueryAlias\n" +
-			" │   ├─ name: othertable\n" +
-			" │   ├─ outerVisibility: false\n" +
-			" │   ├─ isLateral: false\n" +
-			" │   ├─ cacheable: true\n" +
-			" │   └─ IndexedTableAccess(othertable)\n" +
-			" │       ├─ index: [othertable.s2]\n" +
-			" │       ├─ filters: [{(a, ∞)}]\n" +
-			" │       └─ columns: [s2 i2]\n" +
-			" └─ HashLookup\n" +
-			"     ├─ left-key: (othertable.i2)\n" +
-			"     ├─ right-key: (mytable.i)\n" +
+			" └─ IndexedTableAccess(mytable)\n" +
+			"     ├─ index: [mytable.i]\n" +
+			"     ├─ keys: [othertable.i2:1!null]\n" +
+			"     ├─ colSet: (1,2)\n" +
+			"     ├─ tableId: 1\n" +
 			"     └─ Table\n" +
 			"         ├─ name: mytable\n" +
 			"         └─ columns: [i]\n" +
 			"",
-		ExpectedAnalysis: "HashJoin (estimated cost=111.000 rows=100) (actual rows=3 loops=1)\n" +
-			" ├─ (othertable.i2 = mytable.i)\n" +
-			" ├─ SubqueryAlias\n" +
-			" │   ├─ name: othertable\n" +
-			" │   ├─ outerVisibility: false\n" +
-			" │   ├─ isLateral: false\n" +
-			" │   ├─ cacheable: true\n" +
+		ExpectedEstimates: "LookupJoin (estimated cost=3.300 rows=1)\n" +
+			" ├─ TableAlias(othertable)\n" +
 			" │   └─ IndexedTableAccess(othertable)\n" +
 			" │       ├─ index: [othertable.s2]\n" +
 			" │       ├─ filters: [{(a, ∞)}]\n" +
 			" │       └─ columns: [s2 i2]\n" +
-			" └─ HashLookup\n" +
-			"     ├─ left-key: (othertable.i2)\n" +
-			"     ├─ right-key: (mytable.i)\n" +
-			"     └─ Table\n" +
-			"         ├─ name: mytable\n" +
-			"         └─ columns: [i]\n" +
+			" └─ IndexedTableAccess(mytable)\n" +
+			"     ├─ index: [mytable.i]\n" +
+			"     ├─ columns: [i]\n" +
+			"     └─ keys: othertable.i2\n" +
+			"",
+		ExpectedAnalysis: "LookupJoin (estimated cost=3.300 rows=1) (actual rows=3 loops=1)\n" +
+			" ├─ TableAlias(othertable)\n" +
+			" │   └─ IndexedTableAccess(othertable)\n" +
+			" │       ├─ index: [othertable.s2]\n" +
+			" │       ├─ filters: [{(a, ∞)}]\n" +
+			" │       └─ columns: [s2 i2]\n" +
+			" └─ IndexedTableAccess(mytable)\n" +
+			"     ├─ index: [mytable.i]\n" +
+			"     ├─ columns: [i]\n" +
+			"     └─ keys: othertable.i2\n" +
 			"",
 	},
 	{
@@ -12094,13 +11715,7 @@ inner join pq on true
 	},
 	{
 		Query: `SELECT * FROM (SELECT * FROM othertable) othertable_alias WHERE othertable_alias.i2 = 1`,
-		ExpectedPlan: "SubqueryAlias\n" +
-			" ├─ name: othertable_alias\n" +
-			" ├─ outerVisibility: false\n" +
-			" ├─ isLateral: false\n" +
-			" ├─ cacheable: true\n" +
-			" ├─ colSet: (3,4)\n" +
-			" ├─ tableId: 2\n" +
+		ExpectedPlan: "TableAlias(othertable_alias)\n" +
 			" └─ IndexedTableAccess(othertable)\n" +
 			"     ├─ index: [othertable.i2]\n" +
 			"     ├─ static: [{[1, 1]}]\n" +
@@ -12110,21 +11725,13 @@ inner join pq on true
 			"         ├─ name: othertable\n" +
 			"         └─ columns: [s2 i2]\n" +
 			"",
-		ExpectedEstimates: "SubqueryAlias\n" +
-			" ├─ name: othertable_alias\n" +
-			" ├─ outerVisibility: false\n" +
-			" ├─ isLateral: false\n" +
-			" ├─ cacheable: true\n" +
+		ExpectedEstimates: "TableAlias(othertable_alias)\n" +
 			" └─ IndexedTableAccess(othertable)\n" +
 			"     ├─ index: [othertable.i2]\n" +
 			"     ├─ filters: [{[1, 1]}]\n" +
 			"     └─ columns: [s2 i2]\n" +
 			"",
-		ExpectedAnalysis: "SubqueryAlias\n" +
-			" ├─ name: othertable_alias\n" +
-			" ├─ outerVisibility: false\n" +
-			" ├─ isLateral: false\n" +
-			" ├─ cacheable: true\n" +
+		ExpectedAnalysis: "TableAlias(othertable_alias)\n" +
 			" └─ IndexedTableAccess(othertable)\n" +
 			"     ├─ index: [othertable.i2]\n" +
 			"     ├─ filters: [{[1, 1]}]\n" +
@@ -16840,29 +16447,20 @@ inner join pq on true
 			"     └─ UpdateSource(SET one_pk.c1:1 = (one_pk.c1:1 + 1 (tinyint)),SET one_pk.c2:2 = (one_pk.c2:2 + 1 (tinyint)))\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [one_pk.pk:7!null, one_pk.c1:8, one_pk.c2:9, one_pk.c3:10, one_pk.c4:11, one_pk.c5:12, t2.pk1:0!null, t2.pk2:1!null, t2.c1:2!null, t2.c2:3!null, t2.c3:4!null, t2.c4:5!null, t2.c5:6!null]\n" +
-			"             └─ HashJoin\n" +
-			"                 ├─ Eq\n" +
-			"                 │   ├─ one_pk.pk:7!null\n" +
-			"                 │   └─ t2.pk1:0!null\n" +
-			"                 ├─ SubqueryAlias\n" +
-			"                 │   ├─ name: t2\n" +
-			"                 │   ├─ outerVisibility: false\n" +
-			"                 │   ├─ isLateral: false\n" +
-			"                 │   ├─ cacheable: true\n" +
-			"                 │   ├─ colSet: (14-20)\n" +
-			"                 │   ├─ tableId: 3\n" +
-			"                 │   └─ Table\n" +
-			"                 │       ├─ name: two_pk\n" +
-			"                 │       ├─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"                 │       ├─ colSet: (7-13)\n" +
-			"                 │       └─ tableId: 2\n" +
-			"                 └─ HashLookup\n" +
-			"                     ├─ left-key: TUPLE(t2.pk1:0!null)\n" +
-			"                     ├─ right-key: TUPLE(one_pk.pk:0!null)\n" +
-			"                     └─ ProcessTable\n" +
-			"                         └─ Table\n" +
-			"                             ├─ name: one_pk\n" +
-			"                             └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"             └─ LookupJoin\n" +
+			"                 ├─ TableAlias(t2)\n" +
+			"                 │   └─ ProcessTable\n" +
+			"                 │       └─ Table\n" +
+			"                 │           ├─ name: two_pk\n" +
+			"                 │           └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"                 └─ IndexedTableAccess(one_pk)\n" +
+			"                     ├─ index: [one_pk.pk]\n" +
+			"                     ├─ keys: [t2.pk1:0!null]\n" +
+			"                     ├─ colSet: (1-6)\n" +
+			"                     ├─ tableId: 1\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: one_pk\n" +
+			"                         └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -17402,88 +17000,65 @@ inner join pq on true
 	{
 		Query: `SELECT a.* FROM one_pk a CROSS JOIN one_pk c INNER JOIN (select * from one_pk) b ON b.pk = c.pk`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [a.pk:7!null, a.c1:8, a.c2:9, a.c3:10, a.c4:11, a.c5:12]\n" +
-			" └─ HashJoin\n" +
-			"     ├─ Eq\n" +
-			"     │   ├─ b.pk:0!null\n" +
-			"     │   └─ c.pk:6!null\n" +
-			"     ├─ SubqueryAlias\n" +
-			"     │   ├─ name: b\n" +
-			"     │   ├─ outerVisibility: false\n" +
-			"     │   ├─ isLateral: false\n" +
-			"     │   ├─ cacheable: true\n" +
-			"     │   ├─ colSet: (19-24)\n" +
-			"     │   ├─ tableId: 4\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: one_pk\n" +
-			"     │       ├─ columns: [pk c1 c2 c3 c4 c5]\n" +
-			"     │       ├─ colSet: (13-18)\n" +
-			"     │       └─ tableId: 3\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: TUPLE(b.pk:0!null)\n" +
-			"         ├─ right-key: TUPLE(c.pk:0!null)\n" +
-			"         └─ CrossJoin\n" +
-			"             ├─ TableAlias(c)\n" +
-			"             │   └─ ProcessTable\n" +
-			"             │       └─ Table\n" +
-			"             │           ├─ name: one_pk\n" +
-			"             │           └─ columns: [pk]\n" +
-			"             └─ TableAlias(a)\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: one_pk\n" +
-			"                     ├─ columns: [pk c1 c2 c3 c4 c5]\n" +
-			"                     ├─ colSet: (1-6)\n" +
-			"                     └─ tableId: 1\n" +
+			" ├─ columns: [a.pk:2!null, a.c1:3, a.c2:4, a.c3:5, a.c4:6, a.c5:7]\n" +
+			" └─ CrossJoin\n" +
+			"     ├─ LookupJoin\n" +
+			"     │   ├─ TableAlias(b)\n" +
+			"     │   │   └─ ProcessTable\n" +
+			"     │   │       └─ Table\n" +
+			"     │   │           ├─ name: one_pk\n" +
+			"     │   │           └─ columns: [pk]\n" +
+			"     │   └─ TableAlias(c)\n" +
+			"     │       └─ IndexedTableAccess(one_pk)\n" +
+			"     │           ├─ index: [one_pk.pk]\n" +
+			"     │           ├─ keys: [b.pk:0!null]\n" +
+			"     │           ├─ colSet: (7-12)\n" +
+			"     │           ├─ tableId: 2\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: one_pk\n" +
+			"     │               └─ columns: [pk]\n" +
+			"     └─ TableAlias(a)\n" +
+			"         └─ Table\n" +
+			"             ├─ name: one_pk\n" +
+			"             ├─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			"             ├─ colSet: (1-6)\n" +
+			"             └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.pk, a.c1, a.c2, a.c3, a.c4, a.c5]\n" +
-			" └─ HashJoin (estimated cost=116.060 rows=6)\n" +
-			"     ├─ (b.pk = c.pk)\n" +
-			"     ├─ SubqueryAlias\n" +
-			"     │   ├─ name: b\n" +
-			"     │   ├─ outerVisibility: false\n" +
-			"     │   ├─ isLateral: false\n" +
-			"     │   ├─ cacheable: true\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: one_pk\n" +
-			"     │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: (b.pk)\n" +
-			"         ├─ right-key: (c.pk)\n" +
-			"         └─ CrossJoin\n" +
-			"             ├─ TableAlias(c)\n" +
-			"             │   └─ Table\n" +
-			"             │       ├─ name: one_pk\n" +
-			"             │       └─ columns: [pk]\n" +
-			"             └─ TableAlias(a)\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: one_pk\n" +
-			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			" └─ CrossJoin (estimated cost=17.160 rows=5)\n" +
+			"     ├─ LookupJoin (estimated cost=13.200 rows=4)\n" +
+			"     │   ├─ TableAlias(b)\n" +
+			"     │   │   └─ Table\n" +
+			"     │   │       ├─ name: one_pk\n" +
+			"     │   │       └─ columns: [pk]\n" +
+			"     │   └─ TableAlias(c)\n" +
+			"     │       └─ IndexedTableAccess(one_pk)\n" +
+			"     │           ├─ index: [one_pk.pk]\n" +
+			"     │           ├─ columns: [pk]\n" +
+			"     │           └─ keys: b.pk\n" +
+			"     └─ TableAlias(a)\n" +
+			"         └─ Table\n" +
+			"             ├─ name: one_pk\n" +
+			"             └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.pk, a.c1, a.c2, a.c3, a.c4, a.c5]\n" +
-			" └─ HashJoin (estimated cost=116.060 rows=6) (actual rows=16 loops=1)\n" +
-			"     ├─ (b.pk = c.pk)\n" +
-			"     ├─ SubqueryAlias\n" +
-			"     │   ├─ name: b\n" +
-			"     │   ├─ outerVisibility: false\n" +
-			"     │   ├─ isLateral: false\n" +
-			"     │   ├─ cacheable: true\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: one_pk\n" +
-			"     │       └─ columns: [pk c1 c2 c3 c4 c5]\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: (b.pk)\n" +
-			"         ├─ right-key: (c.pk)\n" +
-			"         └─ CrossJoin\n" +
-			"             ├─ TableAlias(c)\n" +
-			"             │   └─ Table\n" +
-			"             │       ├─ name: one_pk\n" +
-			"             │       └─ columns: [pk]\n" +
-			"             └─ TableAlias(a)\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: one_pk\n" +
-			"                     └─ columns: [pk c1 c2 c3 c4 c5]\n" +
+			" └─ CrossJoin (estimated cost=17.160 rows=5) (actual rows=16 loops=1)\n" +
+			"     ├─ LookupJoin (estimated cost=13.200 rows=4) (actual rows=4 loops=1)\n" +
+			"     │   ├─ TableAlias(b)\n" +
+			"     │   │   └─ Table\n" +
+			"     │   │       ├─ name: one_pk\n" +
+			"     │   │       └─ columns: [pk]\n" +
+			"     │   └─ TableAlias(c)\n" +
+			"     │       └─ IndexedTableAccess(one_pk)\n" +
+			"     │           ├─ index: [one_pk.pk]\n" +
+			"     │           ├─ columns: [pk]\n" +
+			"     │           └─ keys: b.pk\n" +
+			"     └─ TableAlias(a)\n" +
+			"         └─ Table\n" +
+			"             ├─ name: one_pk\n" +
+			"             └─ columns: [pk c1 c2 c3 c4 c5]\n" +
 			"",
 	},
 	{
@@ -25236,8 +24811,6 @@ order by x, y;
 			"",
 	},
 	{
-		// Regression test ensuring that filters are not dropped after join optimization
-		// https://github.com/dolthub/dolt/issues/9868
 		Query: `select * from comp_index_t0 c join comp_index_t0 b join comp_index_t0 a on a.v2 = b.pk and b.v2 = c.pk and c.v2 = 1`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [c.pk:6!null, c.v1:7, c.v2:8, b.pk:3!null, b.v1:4, b.v2:5, a.pk:0!null, a.v1:1, a.v2:2]\n" +
@@ -25315,8 +24888,6 @@ order by x, y;
 			"",
 	},
 	{
-		// Regression test ensuring that filters are not dropped after join optimization
-		// https://github.com/dolthub/dolt/issues/9868
 		Query: `select * from comp_index_t0 a join comp_index_t0 b join comp_index_t0 c on a.v2 = b.pk and b.v2 = c.pk and c.v2 = 5`,
 		ExpectedPlan: "LookupJoin\n" +
 			" ├─ LookupJoin\n" +
