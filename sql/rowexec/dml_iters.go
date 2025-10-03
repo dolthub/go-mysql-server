@@ -638,6 +638,19 @@ func withSafepointPeriodicallyIter(child sql.RowIter) *safepointPeriodicallyIter
 	return &safepointPeriodicallyIter{child: child}
 }
 
+// A wrapper iterator which calls sql.SessionCommandSafepoint on the
+// ctx.Session periodically while returning rows through calls to
+// |Next|.
+//
+// Should be used to wrap any iterators which are involved in
+// long-running write operations and which are exhausted or iterated
+// by other iterators in the iterator tree, such as accumulatorIter.
+//
+// This iterator makes the assumption that a safepoint, from the
+// Engine's perspective, can be established at any moment we are
+// within a Next() call. This is generally true given the Engine's
+// lack of concurrency on a given Session, but if something like
+// Exchange node came back, this would not necessarily be true.
 type safepointPeriodicallyIter struct {
 	child sql.RowIter
 	n     int

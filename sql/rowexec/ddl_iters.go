@@ -1855,7 +1855,6 @@ func (b *BaseBuilder) executeCreateCheck(ctx *sql.Context, c *plan.CreateCheck) 
 	if err != nil {
 		return err
 	}
-	rowIter = withSafepointPeriodicallyIter(rowIter)
 
 	for {
 		row, err := rowIter.Next(ctx)
