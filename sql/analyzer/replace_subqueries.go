@@ -32,7 +32,7 @@ func replaceSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 	case *plan.ShowCreateTable, *plan.ShowColumns, *plan.CreateView:
 		return n, transform.SameTree, nil
 	}
-	
+
 	return transform.NodeWithOpaque(n, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if sqa, ok := node.(*plan.SubqueryAlias); ok && len(sqa.ColumnNames) == 0 {
 			switch child := sqa.Child.(type) {
