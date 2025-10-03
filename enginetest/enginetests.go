@@ -83,7 +83,7 @@ func TestQueries(t *testing.T, harness Harness) {
 			if IsServerEngine(e) && tt.SkipServerEngine {
 				t.Skip("skipping for server engine")
 			}
-			TestQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil, nil)
+			TestQueryWithEngine(t, harness, e, tt)
 		})
 	}
 
