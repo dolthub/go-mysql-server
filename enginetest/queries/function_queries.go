@@ -27,7 +27,7 @@ import (
 
 // FunctionQueryTests contains queries that primarily test SQL function calls
 var FunctionQueryTests = []QueryTest{
-	// https://github.com/dolthub/dolt/issues/9916
+	// Truncate function https://github.com/dolthub/dolt/issues/9916
 	{
 		Query: "SELECT TRUNCATE(1.223,1)",
 		Expected: []sql.Row{
