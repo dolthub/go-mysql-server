@@ -24958,4 +24958,63 @@ order by x, y;
 			"             └─ keys: b.v2\n" +
 			"",
 	},
+	{
+		Query: `SELECT * FROM (SELECT * FROM (SELECT * FROM (SELECT * FROM othertable) othertable_one) othertable_two) othertable_three `,
+		ExpectedPlan: "TableAlias(othertable_three)\n" +
+			" └─ ProcessTable\n" +
+			"     └─ Table\n" +
+			"         ├─ name: othertable\n" +
+			"         └─ columns: [s2 i2]\n" +
+			"",
+		ExpectedEstimates: "TableAlias(othertable_three)\n" +
+			" └─ Table\n" +
+			"     └─ name: othertable\n" +
+			"",
+		ExpectedAnalysis: "TableAlias(othertable_three)\n" +
+			" └─ Table\n" +
+			"     └─ name: othertable\n" +
+			"",
+	},
+	{
+		Query: `select pk from one_pk_three_idx where exists (select 1 from (select * from one_pk_three_idx) pk_table where one_pk_three_idx.v1 = pk_table.v2);`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [one_pk_three_idx.pk:0!null]\n" +
+			" └─ SemiJoin\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ one_pk_three_idx.v1:1\n" +
+			"     │   └─ pk_table.v2:5\n" +
+			"     ├─ ProcessTable\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: one_pk_three_idx\n" +
+			"     │       └─ columns: [pk v1 v2 v3]\n" +
+			"     └─ TableAlias(pk_table)\n" +
+			"         └─ Table\n" +
+			"             ├─ name: one_pk_three_idx\n" +
+			"             ├─ columns: [v1 v2]\n" +
+			"             ├─ colSet: (5-8)\n" +
+			"             └─ tableId: 2\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [one_pk_three_idx.pk]\n" +
+			" └─ SemiJoin (estimated cost=40.320 rows=10)\n" +
+			"     ├─ (one_pk_three_idx.v1 = pk_table.v2)\n" +
+			"     ├─ Table\n" +
+			"     │   └─ name: one_pk_three_idx\n" +
+			"     └─ TableAlias(pk_table)\n" +
+			"         └─ Table\n" +
+			"             ├─ name: one_pk_three_idx\n" +
+			"             └─ columns: [v1 v2]\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [one_pk_three_idx.pk]\n" +
+			" └─ SemiJoin (estimated cost=40.320 rows=10) (actual rows=8 loops=1)\n" +
+			"     ├─ (one_pk_three_idx.v1 = pk_table.v2)\n" +
+			"     ├─ Table\n" +
+			"     │   └─ name: one_pk_three_idx\n" +
+			"     └─ TableAlias(pk_table)\n" +
+			"         └─ Table\n" +
+			"             ├─ name: one_pk_three_idx\n" +
+			"             └─ columns: [v1 v2]\n" +
+			"",
+	},
 }
