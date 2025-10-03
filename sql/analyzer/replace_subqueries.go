@@ -44,7 +44,21 @@ func replaceSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 				}
 			case *plan.TableAlias:
 				return plan.NewTableAlias(sqa.Name(), getResolvedTable(child)), transform.NewTree, nil
+			case *plan.SubqueryAlias:
+				colIdMap := make(map[sql.ColumnId]sql.ColumnId)
+				colId, colIdOk := sqa.Columns().Next(1)
+				childColId, childColIdOk := child.Columns().Next(1)
+				for colIdOk && childColIdOk {
+					colIdMap[colId] = childColId
+					colId, colIdOk = sqa.Columns().Next(colId + 1)
+					childColId, childColIdOk = child.Columns().Next(childColId + 1)
+				}
+				for col, _ := range sqa.ScopeMapping {
+					sqa.ScopeMapping[col] = child.ScopeMapping[colIdMap[col]]
+				}
+				return sqa.WithChild(child.Child), transform.NewTree, nil
 			}
+
 		}
 		// TODO: do this for Subqueries too. Subqueries are Expressions, not Nodes so we'll have to consider how to
 		//  transform an Expression into a Node
