@@ -15,14 +15,224 @@
 package queries
 
 import (
+	"fmt"
 	"time"
 
+	"github.com/dolthub/vitess/go/mysql"
+
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // FunctionQueryTests contains queries that primarily test SQL function calls
 var FunctionQueryTests = []QueryTest{
+	// Truncate function https://github.com/dolthub/dolt/issues/9916
+	{
+		Query: "SELECT TRUNCATE(1.223,1)",
+		Expected: []sql.Row{
+			{"1.2"},
+		},
+	},
+	{
+		Query: "SELECT TRUNCATE(1.999,1)",
+		Expected: []sql.Row{
+			{"1.9"},
+		},
+	},
+	{
+		Query: "SELECT TRUNCATE(1.999,0)",
+		Expected: []sql.Row{
+			{"1"},
+		},
+	},
+	{
+		Query: "SELECT TRUNCATE(-1.999,1)",
+		Expected: []sql.Row{
+			{"-1.9"},
+		},
+	},
+	{
+		Query: "SELECT TRUNCATE(122,-2)",
+		Expected: []sql.Row{
+			{100},
+		},
+	},
+	{
+		Query: "SELECT TRUNCATE(10.28*100,0)",
+		Expected: []sql.Row{
+			{"1028"},
+		},
+	},
+	{
+		Query: "SELECT TRUNCATE(NULL,1)",
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
+		Query: "SELECT TRUNCATE(1.223,NULL)",
+		Expected: []sql.Row{
+			{nil},
+		},
+	},
+	{
+		Query: "SELECT TRUNCATE(0.5,0)",
+		Expected: []sql.Row{
+			{"0"},
+		},
+	},
+	{
+		Query: "SELECT TRUNCATE(-0.5,0)",
+		Expected: []sql.Row{
+			{"0"},
+		},
+	},
+	{
+		Query: "SELECT TRUNCATE(1.223,100)",
+		Expected: []sql.Row{
+			{"1.223"},
+		},
+	},
+	{
+		Query: "SELECT TRUNCATE(1.223,-100)",
+		Expected: []sql.Row{
+			{"0"},
+		},
+	},
+	{
+		Query: "SELECT TRUNCATE('abc',1)",
+		Expected: []sql.Row{
+			{0.0},
+		},
+	},
+	{
+		Query: "SELECT TRUNCATE(1.223,'xyz')",
+		Expected: []sql.Row{
+			{"1"},
+		},
+	},
+	{
+		Query: "SELECT TRUNCATE(1.223,1.5)",
+		Expected: []sql.Row{
+			{"1.22"},
+		},
+	},
+	{
+		Query: "SELECT TRUNCATE(1.223,1.7)",
+		Expected: []sql.Row{
+			{"1.22"},
+		},
+	},
+	{
+		Query: "SELECT TRUNCATE(1.223,0.1)",
+		Expected: []sql.Row{
+			{"1"},
+		},
+	},
+	{
+		Query: "SELECT TRUNCATE(1.223,0.9)",
+		Expected: []sql.Row{
+			{"1.2"},
+		},
+	},
+	{
+		Query: "SELECT TRUNCATE(1.223,-0.5)",
+		Expected: []sql.Row{
+			{"0"},
+		},
+	},
+	{
+		Query: "SELECT TRUNCATE(1.223,-0.9)",
+		Expected: []sql.Row{
+			{"0"},
+		},
+	},
+	{
+		Dialect: "mysql",
+		Query:   "SELECT TRUNCATE('123abc',1)",
+		Expected: []sql.Row{
+			{123.0},
+		},
+		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount:           1,
+		ExpectedWarningMessageSubstring: fmt.Sprintf(sql.ErrTruncatedIncorrect.Message, types.Float64.String(), "123abc"),
+	},
+	{
+		Dialect: "mysql",
+		Query:   "SELECT TRUNCATE('1.5abc',1)",
+		Expected: []sql.Row{
+			{1.5},
+		},
+		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount:           1,
+		ExpectedWarningMessageSubstring: fmt.Sprintf(sql.ErrTruncatedIncorrect.Message, types.Float64.String(), "1.5abc"),
+	},
+	{
+		Dialect: "mysql",
+		Query:   "SELECT TRUNCATE('999xyz',2)",
+		Expected: []sql.Row{
+			{999.0},
+		},
+		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount:           1,
+		ExpectedWarningMessageSubstring: fmt.Sprintf(sql.ErrTruncatedIncorrect.Message, types.Float64.String(), "999xyz"),
+	},
+	{
+		Dialect: "mysql",
+		Query:   "SELECT TRUNCATE(1.223,'1.5abc')",
+		Expected: []sql.Row{
+			{"1.2"},
+		},
+		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount:           2, // Both input and precision conversions generate warnings
+		ExpectedWarningMessageSubstring: fmt.Sprintf(sql.ErrTruncatedIncorrect.Message, types.Int32.String(), "1.5abc"),
+	},
+	{
+		Dialect: "mysql",
+		Query:   "SELECT TRUNCATE(1.223,'0.5')",
+		Expected: []sql.Row{
+			{"1"},
+		},
+		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount:           2, // Both input and precision conversions generate warnings
+		ExpectedWarningMessageSubstring: fmt.Sprintf(sql.ErrTruncatedIncorrect.Message, types.Int32.String(), "0.5"),
+	},
+	{
+		Dialect: "mysql",
+		Query:   "SELECT TRUNCATE(1.223,'2.7')",
+		Expected: []sql.Row{
+			{"1.22"},
+		},
+		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount:           2, // Both input and precision conversions generate warnings
+		ExpectedWarningMessageSubstring: fmt.Sprintf(sql.ErrTruncatedIncorrect.Message, types.Int32.String(), "2.7"),
+	},
+	{
+		Dialect: "mysql",
+		Query:   "SELECT TRUNCATE(1.223,'invalid_precision')",
+		Expected: []sql.Row{
+			{"1"},
+		},
+		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount:           2, // Both input and precision conversions generate warnings
+		ExpectedWarningMessageSubstring: fmt.Sprintf(sql.ErrTruncatedIncorrect.Message, types.Int32.String(), "invalid_precision"),
+	},
+	{
+		Query:          "SELECT TRUNCATE()",
+		ExpectedErr:    sql.ErrInvalidArgumentNumber,
+		ExpectedErrStr: fmt.Sprintf(sql.ErrInvalidArgumentNumber.Message, function.TruncateFunctionName, 2, 0),
+	},
+	{
+		Query:          "SELECT TRUNCATE(1)",
+		ExpectedErr:    sql.ErrInvalidArgumentNumber,
+		ExpectedErrStr: fmt.Sprintf(sql.ErrInvalidArgumentNumber.Message, function.TruncateFunctionName, 2, 1),
+	},
+	{
+		Query:          "SELECT TRUNCATE(1,2,3)",
+		ExpectedErr:    sql.ErrInvalidArgumentNumber,
+		ExpectedErrStr: fmt.Sprintf(sql.ErrInvalidArgumentNumber.Message, function.TruncateFunctionName, 2, 3),
+	},
 	// String Functions
 	{
 		Query: `SELECT CONCAT("a", "b", "c")`,
