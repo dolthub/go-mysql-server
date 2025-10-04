@@ -23,8 +23,7 @@ package queries
 import (
 	"gopkg.in/src-d/go-errors.v1"
 
-	regex "github.com/dolthub/go-icu-regex"
-
+	"github.com/dolthub/go-mysql-server/internal/regex"
 	"github.com/dolthub/go-mysql-server/sql"
 )
 

@@ -19,8 +19,7 @@ import (
 	"strings"
 	"sync"
 
-	regex "github.com/dolthub/go-icu-regex"
-
+	"github.com/dolthub/go-mysql-server/internal/regex"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
