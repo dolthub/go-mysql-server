@@ -73,6 +73,9 @@ var (
 	MediumBlob = MustCreateBinary(sqltypes.Blob, MediumTextBlobMax)
 	LongBlob   = MustCreateBinary(sqltypes.Blob, LongTextBlobMax)
 
+	VarChar   = MustCreateStringWithDefaults(sqltypes.VarChar, varcharVarbinaryMax)
+	VarBinary = MustCreateBinary(sqltypes.VarBinary, varcharVarbinaryMax)
+
 	stringValueType = reflect.TypeOf(string(""))
 	byteValueType   = reflect.TypeOf(([]byte)(nil))
 )
