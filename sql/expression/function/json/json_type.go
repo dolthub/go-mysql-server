@@ -106,7 +106,7 @@ func (j JSONType) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	if comparableDoc, ok := doc.(types.ComparableJSON); ok {
-		return comparableDoc.Type(ctx)
+		return comparableDoc.JsonType(ctx)
 	}
 
 	val, err := doc.ToInterface(ctx)

@@ -95,8 +95,8 @@ type SearchableJSON interface {
 
 type ComparableJSON interface {
 	sql.JSONWrapper
-	Compare(other interface{}) (int, error)
-	Type(ctx context.Context) (string, error)
+	Compare(ctx context.Context, other interface{}) (int, error)
+	JsonType(ctx context.Context) (string, error)
 }
 
 // MutableJSON is a JSON value that can be efficiently modified. These modifications return the new value, but they
@@ -510,11 +510,11 @@ func CompareJSON(ctx context.Context, a, b interface{}) (int, error) {
 	}
 
 	if comparableA, ok := a.(ComparableJSON); ok {
-		return comparableA.Compare(b)
+		return comparableA.Compare(ctx, b)
 	}
 
 	if comparableB, ok := b.(ComparableJSON); ok {
-		result, err := comparableB.Compare(a)
+		result, err := comparableB.Compare(ctx, a)
 		return -result, err
 	}
 
