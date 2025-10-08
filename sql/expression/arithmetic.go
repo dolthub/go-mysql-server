@@ -677,7 +677,18 @@ var _ sql.CollationCoercible = (*UnaryMinus)(nil)
 
 // NewUnaryMinus creates a new UnaryMinus expression node.
 func NewUnaryMinus(child sql.Expression) *UnaryMinus {
-	return &UnaryMinus{UnaryExpression{Child: child}, child.Type()}
+	typ := child.Type()
+	switch child.Type() {
+	case types.Int8, types.Int16, types.Int32:
+		typ = types.Int64
+	case types.Int64:
+		if lit, ok := child.(*Literal); ok {
+			if lit.Value().(int64) == math.MinInt64 {
+				typ = types.InternalDecimalType
+			}
+		}
+	}
+	return &UnaryMinus{UnaryExpression{Child: child}, typ}
 }
 
 // Eval implements the sql.Expression interface.
@@ -706,26 +717,12 @@ func (e *UnaryMinus) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return -n, nil
 	case float32:
 		return -n, nil
-	case int:
-		return -n, nil
 	case int8:
-		if n == math.MinInt8 {
-			e.typ = types.Int16 // For non-literals to update
-			return -int16(n), nil
-		}
-		return -n, nil
+		return -int64(n), nil
 	case int16:
-		if n == math.MinInt16 {
-			e.typ = types.Int32
-			return -int32(n), nil
-		}
-		return -n, nil
+		return -int64(n), nil
 	case int32:
-		if n == math.MinInt32 {
-			e.typ = types.Int64
-			return -int64(n), nil
-		}
-		return -n, nil
+		return -int64(n), nil
 	case int64:
 		if n == math.MinInt64 {
 			if _, ok := e.Child.(*Literal); ok {
@@ -766,28 +763,6 @@ func (e *UnaryMinus) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // Type implements the sql.Expression interface.
 func (e *UnaryMinus) Type() sql.Type {
-	// Literals can overflow their types on unary minus, so we need to promote them
-	if lit, ok := e.Child.(*Literal); ok {
-		switch n := lit.Value().(type) {
-		case int8:
-			if n == math.MinInt8 {
-				e.typ = types.Int16
-			}
-		case int16:
-			if n == math.MinInt16 {
-				e.typ = types.Int32
-			}
-		case int32:
-			if n == math.MinInt32 {
-				e.typ = types.Int64
-			}
-		case int64:
-			if n == math.MinInt64 {
-				e.typ = types.InternalDecimalType
-			}
-		}
-	}
-
 	if !types.IsNumber(e.typ) {
 		return types.Float64
 	}

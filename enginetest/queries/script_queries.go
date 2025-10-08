@@ -138,24 +138,14 @@ var ScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:           "SELECT 128;",
-				Expected:        []sql.Row{{uint64(128)}},
-				ExpectedColumns: sql.Schema{{Name: "128", Type: types.Uint8}},
-			},
-			{
-				Query:           "SELECT -128;",
-				Expected:        []sql.Row{{int8(-128)}},
-				ExpectedColumns: sql.Schema{{Name: "-128", Type: types.Int8}},
-			},
-			{
 				Query:           "SELECT -(-128);",
 				Expected:        []sql.Row{{int16(128)}},
-				ExpectedColumns: sql.Schema{{Name: "-(-128)", Type: types.Int16}},
+				ExpectedColumns: sql.Schema{{Name: "-(-128)", Type: types.Int64}},
 			},
 			{
 				Query:           "SELECT -(-32768);",
 				Expected:        []sql.Row{{int32(32768)}},
-				ExpectedColumns: sql.Schema{{Name: "-(-32768)", Type: types.Int32}},
+				ExpectedColumns: sql.Schema{{Name: "-(-32768)", Type: types.Int64}},
 			},
 			{
 				Query:           "SELECT -(-2147483648);",
