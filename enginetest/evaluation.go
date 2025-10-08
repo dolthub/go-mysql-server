@@ -129,9 +129,18 @@ func TestScriptWithEngine(t *testing.T, e QueryEngine, harness Harness, script q
 				} else if assertion.ExpectedErrStr != "" {
 					AssertErrWithCtx(t, e, harness, ctx, assertion.Query, assertion.Bindings, nil, assertion.ExpectedErrStr)
 				} else if assertion.ExpectedWarning != 0 {
-					AssertWarningAndTestQuery(t, e, nil, harness, assertion.Query,
-						assertion.Expected, nil, assertion.ExpectedWarning, assertion.ExpectedWarningsCount,
-						assertion.ExpectedWarningMessageSubstring, assertion.SkipResultsCheck)
+					if IsServerEngine(e) && assertion.SkipResultCheckOnServerEngine {
+						t.Skip()
+					}
+					AssertWarningAndTestQuery(t, e, nil, harness,
+						assertion.Query,
+						assertion.Expected,
+						nil,
+						assertion.ExpectedWarning,
+						assertion.ExpectedWarningsCount,
+						assertion.ExpectedWarningMessageSubstring,
+						assertion.SkipResultsCheck,
+					)
 				} else if assertion.SkipResultsCheck {
 					RunQueryWithContext(t, e, harness, nil, assertion.Query)
 				} else if assertion.CheckIndexedAccess {
@@ -398,7 +407,27 @@ func TestQueryWithEngine(t *testing.T, harness Harness, e QueryEngine, tt querie
 		}
 
 		ctx := NewContext(harness)
-		TestQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, tt.ExpectedColumns, tt.Bindings, nil)
+
+		if tt.ExpectedErr != nil {
+			AssertErr(t, e, harness, tt.Query, tt.Bindings, tt.ExpectedErr)
+		} else if tt.ExpectedErrStr != "" {
+			AssertErrWithCtx(t, e, harness, ctx, tt.Query, tt.Bindings, nil, tt.ExpectedErrStr)
+		} else if tt.ExpectedWarning != 0 {
+			if IsServerEngine(e) && tt.SkipServerEngine {
+				t.Skip()
+			}
+			AssertWarningAndTestQuery(t, e, ctx, harness,
+				tt.Query,
+				tt.Expected,
+				tt.ExpectedColumns,
+				tt.ExpectedWarning,
+				tt.ExpectedWarningsCount,
+				tt.ExpectedWarningMessageSubstring,
+				false,
+			)
+		} else {
+			TestQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, tt.ExpectedColumns, tt.Bindings, nil)
+		}
 	})
 }
 
@@ -530,7 +559,17 @@ func TestPreparedQueryWithEngine(t *testing.T, harness Harness, e QueryEngine, t
 			}
 		}
 		ctx := NewContext(harness)
-		TestPreparedQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil, false)
+
+		if tt.ExpectedErr != nil {
+			AssertErr(t, e, harness, tt.Query, tt.Bindings, tt.ExpectedErr)
+		} else if tt.ExpectedErrStr != "" {
+			AssertErrWithCtx(t, e, harness, ctx, tt.Query, tt.Bindings, nil, tt.ExpectedErrStr)
+		} else if tt.ExpectedWarning != 0 {
+			AssertWarningAndTestPreparedQuery(t, e, ctx, harness, tt.Query, tt.Expected, tt.ExpectedColumns,
+				tt.ExpectedWarning, tt.ExpectedWarningsCount, tt.ExpectedWarningMessageSubstring, false)
+		} else {
+			TestPreparedQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil, false)
+		}
 	})
 }
 
@@ -1103,6 +1142,68 @@ func AssertWarningAndTestQuery(
 		} else {
 			if expectedCode != 0 || len(expectedWarningMessageSubstring) != 0 {
 				require.Fail("Invalid test setup. No warnings expected, but value validation was configured")
+			}
+			assert.Zero(t, len(ctx.Warnings()), "Unexpected warnings")
+		}
+
+		if expectedCode > 0 {
+			// Not ideal. We are only supporting all warning codes being identical in a given test.
+			for _, warning := range ctx.Warnings() {
+				assert.Equal(t, expectedCode, warning.Code, "Unexpected warning code")
+			}
+		}
+		if len(expectedWarningMessageSubstring) > 0 {
+			// Not ideal. All messages must have the same substring for a given test.
+			for _, warning := range ctx.Warnings() {
+				assert.Contains(t, warning.Message, expectedWarningMessageSubstring, "Unexpected warning message")
+			}
+		}
+	}
+
+	if !skipResultsCheck {
+		CheckResults(ctx, t, harness, expected, expectedCols, sch, rows, query, e)
+	}
+	validateEngine(t, ctx, harness, e)
+}
+
+// AssertWarningAndTestPreparedQuery is similar to AssertWarningAndTestQuery but works with prepared statements
+func AssertWarningAndTestPreparedQuery(
+	t *testing.T,
+	e QueryEngine,
+	ctx *sql.Context,
+	harness Harness,
+	query string,
+	expected []sql.Row,
+	expectedCols []*sql.Column,
+	expectedCode int,
+	expectedWarningsCount int,
+	expectedWarningMessageSubstring string,
+	skipResultsCheck bool,
+) {
+	req := require.New(t)
+	if ctx == nil {
+		ctx = NewContext(harness)
+	}
+	ctx.ClearWarnings()
+	ctx = ctx.WithQuery(query)
+
+	sch, iter, _, err := e.QueryWithBindings(ctx, query, nil, nil, nil)
+	req.NoError(err, "Unexpected error for query %s", query)
+
+	rows, err := sql.RowIterToRows(ctx, iter)
+	req.NoError(err, "Unexpected error for query %s", query)
+
+	if !IsServerEngine(e) {
+		// check warnings depend on context, which ServerEngine does not depend on
+		if expectedWarningsCount > 0 {
+			assert.Equal(t, expectedWarningsCount, len(ctx.Warnings()))
+			// Verify that if warnings are expected, we also configured a specific value check.
+			if expectedCode == 0 && len(expectedWarningMessageSubstring) == 0 {
+				req.Fail("Invalid test setup. Warning expected, but no value validation was configured.")
+			}
+		} else {
+			if expectedCode != 0 || len(expectedWarningMessageSubstring) != 0 {
+				req.Fail("Invalid test setup. No warnings expected, but value validation was configured")
 			}
 			assert.Zero(t, len(ctx.Warnings()), "Unexpected warnings")
 		}

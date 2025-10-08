@@ -144,7 +144,7 @@ func (l *loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Express
 	// TODO: Support the OPTIONALLY parameter.
 	if l.fieldsEnclosedBy != "" {
 		for i, field := range fields {
-			if string(field[0]) == l.fieldsEnclosedBy && string(field[len(field)-1]) == l.fieldsEnclosedBy {
+			if field[0] == l.fieldsEnclosedBy[0] && field[len(field)-1] == l.fieldsEnclosedBy[0] {
 				fields[i] = field[1 : len(field)-1]
 			} else {
 				return nil, fmt.Errorf("error: field not properly enclosed")
@@ -162,7 +162,22 @@ func (l *loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Express
 			} else if field == "\\0" {
 				fields[i] = fmt.Sprintf("%c", 0) // ASCII 0
 			} else {
-				fields[i] = strings.ReplaceAll(field, l.fieldsEscapedBy, "")
+				// The character immediately following the escaped character remains untouched, even if it is the same
+				// as the escape character
+				newField := make([]byte, 0, len(field))
+				for cIdx := 0; cIdx < len(field); cIdx++ {
+					c := field[cIdx]
+					// skip over escaped character, but always add the following character
+					if c == l.fieldsEscapedBy[0] {
+						cIdx += 1
+						if cIdx < len(field) {
+							newField = append(newField, c)
+						}
+						continue
+					}
+					newField = append(newField, c)
+				}
+				fields[i] = string(newField)
 			}
 		}
 	}
@@ -555,7 +570,8 @@ func (i *modifyColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTabl
 		return false, err
 	}
 
-	rowIter := sql.NewTableRowIter(ctx, rwt, partitions)
+	var rowIter sql.RowIter = sql.NewTableRowIter(ctx, rwt, partitions)
+	rowIter = withSafepointPeriodicallyIter(rowIter)
 	for {
 		r, err := rowIter.Next(ctx)
 		if err == io.EOF {
@@ -927,6 +943,9 @@ func projectRowWithTypes(ctx *sql.Context, oldSchema, newSchema sql.Schema, proj
 			if sql.ErrNotMatchingSRID.Is(err) {
 				err = sql.ErrNotMatchingSRIDWithColName.New(newSchema[i].Name, err)
 			}
+			if sql.ErrTruncatedIncorrect.Is(err) {
+				err = sql.ErrInvalidValue.New(newSchema[i].Type, newRow[i])
+			}
 			return nil, err
 		} else if !inRange {
 			return nil, sql.ErrValueOutOfRange.New(newRow[i], newSchema[i].Type)
@@ -1099,7 +1118,8 @@ func (c *createPkIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) e
 		return err
 	}
 
-	rowIter := sql.NewTableRowIter(ctx, rwt, partitions)
+	var rowIter sql.RowIter = sql.NewTableRowIter(ctx, rwt, partitions)
+	rowIter = withSafepointPeriodicallyIter(rowIter)
 
 	for {
 		r, err := rowIter.Next(ctx)
@@ -1203,7 +1223,8 @@ func (d *dropPkIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) err
 		return err
 	}
 
-	rowIter := sql.NewTableRowIter(ctx, rwt, partitions)
+	var rowIter sql.RowIter = sql.NewTableRowIter(ctx, rwt, partitions)
+	rowIter = withSafepointPeriodicallyIter(rowIter)
 
 	for {
 		r, err := rowIter.Next(ctx)
@@ -1311,6 +1332,7 @@ func (i *addColumnIter) UpdateRowsWithDefaults(ctx *sql.Context, table sql.Table
 	if err != nil {
 		return err
 	}
+	tableIter = withSafepointPeriodicallyIter(tableIter)
 
 	schema := updatable.Schema()
 	idx := -1
@@ -1412,7 +1434,8 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 		return false, err
 	}
 
-	rowIter := sql.NewTableRowIter(ctx, rwt, partitions)
+	var rowIter sql.RowIter = sql.NewTableRowIter(ctx, rwt, partitions)
+	rowIter = withSafepointPeriodicallyIter(rowIter)
 
 	var val uint64
 	var autoTbl sql.AutoIncrementTable
@@ -1722,7 +1745,8 @@ func (i *dropColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable)
 		return false, err
 	}
 
-	rowIter := sql.NewTableRowIter(ctx, rwt, partitions)
+	var rowIter sql.RowIter = sql.NewTableRowIter(ctx, rwt, partitions)
+	rowIter = withSafepointPeriodicallyIter(rowIter)
 
 	for {
 		r, err := rowIter.Next(ctx)
@@ -2234,7 +2258,8 @@ func buildIndex(ctx *sql.Context, n *plan.AlterIndex, ibt sql.IndexBuildingTable
 		return err
 	}
 
-	rowIter := sql.NewTableRowIter(ctx, ibt, partitions)
+	var rowIter sql.RowIter = sql.NewTableRowIter(ctx, ibt, partitions)
+	rowIter = withSafepointPeriodicallyIter(rowIter)
 
 	// Our table scan needs to include projections for virtual columns if there are any
 	isVirtual := ibt.Schema().HasVirtualColumns()
@@ -2321,7 +2346,8 @@ func rewriteTableForIndexCreate(ctx *sql.Context, n *plan.AlterIndex, table sql.
 		return err
 	}
 
-	rowIter := sql.NewTableRowIter(ctx, rwt, partitions)
+	var rowIter sql.RowIter = sql.NewTableRowIter(ctx, rwt, partitions)
+	rowIter = withSafepointPeriodicallyIter(rowIter)
 
 	isVirtual := table.Schema().HasVirtualColumns()
 	var projections []sql.Expression

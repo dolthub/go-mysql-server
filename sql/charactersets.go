@@ -132,7 +132,7 @@ var characterSetArray = [256]CharacterSet{
 	/*029*/ {},
 	/*030*/ {CharacterSet_latin5, "latin5", Collation_latin5_turkish_ci, Collation_latin5_bin, "ISO 8859-9 Turkish", 1, nil},
 	/*031*/ {},
-	/*032*/ {CharacterSet_armscii8, "armscii8", Collation_armscii8_general_ci, Collation_armscii8_bin, "ARMSCII-8 Armenian", 1, nil},
+	/*032*/ {CharacterSet_armscii8, "armscii8", Collation_armscii8_general_ci, Collation_armscii8_bin, "ARMSCII-8 Armenian", 1, encodings.Armscii8},
 	/*033*/ {CharacterSet_utf8mb3, "utf8mb3", Collation_utf8mb3_general_ci, Collation_utf8mb3_bin, "UTF-8 Unicode", 3, encodings.Utf8mb3},
 	/*034*/ {},
 	/*035*/ {CharacterSet_ucs2, "ucs2", Collation_ucs2_general_ci, Collation_ucs2_bin, "UCS-2 Unicode", 2, nil},

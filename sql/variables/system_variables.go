@@ -34,8 +34,8 @@ import (
 // There's also this page, which shows that a TON of variables are still missing ):
 // https://dev.mysql.com/doc/refman/8.0/en/server-system-variable-reference.html
 
-// serverStartUpTime is needed by uptime status variable
-var serverStartUpTime = time.Now()
+// ServerStartUpTime is needed by uptime status variable
+var ServerStartUpTime = time.Now()
 
 // globalSystemVariables is the underlying type of SystemVariables.
 type globalSystemVariables struct {
@@ -2934,7 +2934,7 @@ var systemVars = map[string]sql.SystemVariable{
 		Type:              types.NewSystemBoolType("updatable_views_with_limit"),
 		Default:           int8(1),
 		ValueFunction: func() (interface{}, error) {
-			return int(time.Now().Sub(serverStartUpTime).Seconds()), nil
+			return int(time.Now().Sub(ServerStartUpTime).Seconds()), nil
 		},
 	},
 	"use_secondary_engine": &sql.MysqlSystemVariable{

@@ -24,10 +24,8 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
-	"unicode"
 	"unsafe"
 
-	"github.com/dolthub/vitess/go/mysql"
 	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 
@@ -281,6 +279,7 @@ type Lockable interface {
 }
 
 // ConvertToBool converts a value to a boolean. nil is considered false.
+// TODO: the logic here should be merged with types.Boolean.Convert()
 func ConvertToBool(ctx *Context, v interface{}) (bool, error) {
 	switch b := v.(type) {
 	case []uint8:
@@ -338,48 +337,6 @@ const (
 	// NumericCutSet is the set of characters to trim from a string before converting it to a number.
 	NumericCutSet = " \t\n\r"
 )
-
-func TrimStringToNumberPrefix(ctx *Context, s string, isInt bool) string {
-	if isInt {
-		s = strings.TrimLeft(s, IntCutSet)
-	} else {
-		s = strings.TrimLeft(s, NumericCutSet)
-	}
-
-	seenDigit := false
-	seenDot := false
-	seenExp := false
-	signIndex := 0
-
-	for i := 0; i < len(s); i++ {
-		char := rune(s[i])
-
-		if unicode.IsDigit(char) {
-			seenDigit = true
-		} else if char == '.' && !seenDot && !isInt {
-			seenDot = true
-		} else if (char == 'e' || char == 'E') && !seenExp && seenDigit && !isInt {
-			seenExp = true
-			signIndex = i + 1
-		} else if !((char == '-' || char == '+') && i == signIndex) {
-			// TODO add different warning for DECIMAL conversion
-			if isInt {
-				ctx.Warn(mysql.ERTruncatedWrongValue, "Truncated incorrect INTEGER value: '%s'", s)
-			} else {
-				ctx.Warn(mysql.ERTruncatedWrongValue, "Truncated incorrect DOUBLE value: '%s'", s)
-			}
-			return convertEmptyStringToZero(s[:i])
-		}
-	}
-	return convertEmptyStringToZero(s)
-}
-
-func convertEmptyStringToZero(s string) string {
-	if s == "" {
-		return "0"
-	}
-	return s
-}
 
 var ErrVectorInvalidBinaryLength = errors.NewKind("cannot convert BINARY(%d) to vector, byte length must be a multiple of 4 bytes")
 

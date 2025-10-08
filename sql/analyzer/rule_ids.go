@@ -5,6 +5,7 @@ package analyzer
 type RuleId int
 
 const (
+	// TODO: these comments don't match how the rules are actually applied
 	// once before
 	applyDefaultSelectLimitId     RuleId = iota // applyDefaultSelectLimit
 	validateOffsetAndLimitId                    // validateOffsetAndLimit
@@ -30,6 +31,7 @@ const (
 	// default
 	flattenTableAliasesId          // flattenTableAliases
 	pushdownSubqueryAliasFiltersId // pushdownSubqueryAliasFilters
+	replaceSubqueriesId            // replaceSubqueries
 	validateCheckConstraintId      // validateCheckConstraints
 	replaceCountStarId             // replaceCountStar
 	replaceCrossJoinsId            // replaceCrossJoins

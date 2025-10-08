@@ -64,6 +64,7 @@ var AlwaysBeforeDefault []Rule
 // DefaultRules to apply when analyzing nodes.
 var DefaultRules = []Rule{
 	{Id: validateStarExpressionsId, Apply: validateStarExpressions}, //TODO
+	{Id: replaceSubqueriesId, Apply: replaceSubqueries},
 	{Id: pushdownSubqueryAliasFiltersId, Apply: pushdownSubqueryAliasFilters},
 	{Id: pruneTablesId, Apply: pruneTables},
 	{Id: validateCheckConstraintId, Apply: validateCheckConstraints},

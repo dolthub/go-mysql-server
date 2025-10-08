@@ -159,16 +159,37 @@ func (s *BaseSession) InitSessionVariable(ctx *Context, sysVarName string, value
 	return s.setSessVar(ctx, sysVar, value, true)
 }
 
-func (s *BaseSession) setSessVar(ctx *Context, sysVar SystemVariable, value interface{}, init bool) error {
+// InitSessionVariableDefault implements the Session interface and is used to initialize variables (Including read-only variables)
+func (s *BaseSession) InitSessionVariableDefault(ctx *Context, sysVarName string, value interface{}) error {
+	sysVar, _, ok := SystemVariables.GetGlobal(sysVarName)
+	if !ok {
+		return ErrUnknownSystemVariable.New(sysVarName)
+	}
+
+	sysVar.SetDefault(value)
+	svv, err := sysVar.InitValue(ctx, value, false)
+	if err != nil {
+		return err
+	}
+
+	sysVarName = strings.ToLower(sysVarName)
+	s.systemVars[sysVarName] = svv
+	if sysVarName == characterSetResultsSysVarName {
+		s.charset = CharacterSet_Unspecified
+	}
+	return nil
+}
+
+func (s *BaseSession) setSessVar(ctx *Context, sysVar SystemVariable, val interface{}, init bool) error {
 	var svv SystemVarValue
 	var err error
 	if init {
-		svv, err = sysVar.InitValue(ctx, value, false)
+		svv, err = sysVar.InitValue(ctx, val, false)
 		if err != nil {
 			return err
 		}
 	} else {
-		svv, err = sysVar.SetValue(ctx, value, false)
+		svv, err = sysVar.SetValue(ctx, val, false)
 		if err != nil {
 			return err
 		}
@@ -200,6 +221,22 @@ func (s *BaseSession) GetSessionVariable(ctx *Context, sysVarName string) (inter
 		}
 	}
 	return sysVar.Val, nil
+}
+
+// GetSessionVariableDefault implements the Session interface.
+func (s *BaseSession) GetSessionVariableDefault(ctx *Context, sysVarName string) (interface{}, error) {
+	sysVarName = strings.ToLower(sysVarName)
+	sysVar, ok := s.systemVars[sysVarName]
+	if !ok {
+		return nil, ErrUnknownSystemVariable.New(sysVarName)
+	}
+	// TODO: this is duplicated from within variables.globalSystemVariables, suggesting the need for an interface
+	if sysType, ok := sysVar.Var.GetType().(SetType); ok {
+		if sv, ok := sysVar.Var.GetDefault().(uint64); ok {
+			return sysType.BitsToString(sv)
+		}
+	}
+	return sysVar.Var.GetDefault(), nil
 }
 
 // GetUserVariable implements the Session interface.

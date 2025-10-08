@@ -18,7 +18,11 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
+	"unicode"
+
+	"github.com/dolthub/vitess/go/mysql"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -101,6 +105,46 @@ type Type interface {
 	fmt.Stringer
 }
 
+// TrimStringToNumberPrefix will remove any white space for s and truncate any trailing non-numeric characters.
+func TrimStringToNumberPrefix(ctx *Context, s string, isInt bool) string {
+	if isInt {
+		s = strings.TrimLeft(s, IntCutSet)
+	} else {
+		s = strings.TrimLeft(s, NumericCutSet)
+	}
+
+	seenDigit := false
+	seenDot := false
+	seenExp := false
+	signIndex := 0
+
+	var i int
+	for i = 0; i < len(s); i++ {
+		char := rune(s[i])
+		if unicode.IsDigit(char) {
+			seenDigit = true
+		} else if char == '.' && !seenDot && !isInt {
+			seenDot = true
+		} else if (char == 'e' || char == 'E') && !seenExp && seenDigit && !isInt {
+			seenExp = true
+			signIndex = i + 1
+		} else if !((char == '-' || char == '+') && i == signIndex) {
+			// TODO: this should not happen here, and it should use sql.ErrIncorrectTruncation
+			if isInt {
+				ctx.Warn(mysql.ERTruncatedWrongValue, "Truncated incorrect INTEGER value: '%s'", s)
+			} else {
+				ctx.Warn(mysql.ERTruncatedWrongValue, "Truncated incorrect DOUBLE value: '%s'", s)
+			}
+			break
+		}
+	}
+	s = s[:i]
+	if s == "" {
+		s = "0"
+	}
+	return s
+}
+
 // NullType represents the type of NULL values
 type NullType interface {
 	Type
@@ -126,6 +170,13 @@ type NumberType interface {
 	IsSigned() bool
 	IsFloat() bool
 	DisplayWidth() int
+}
+
+// RoundingNumberType represents Number Types that implement an additional interface
+// that supports rounding when converting rather than the default truncation.
+type RoundingNumberType interface {
+	NumberType
+	ConvertRound(context.Context, any) (any, ConvertInRange, error)
 }
 
 // StringType represents all string types, including VARCHAR and BLOB.

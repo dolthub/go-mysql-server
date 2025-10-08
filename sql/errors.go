@@ -950,6 +950,9 @@ var (
 
 	// ErrTruncatedIncorrect is thrown when converting a value results in portions of the data to be trimmed.
 	ErrTruncatedIncorrect = errors.NewKind("Truncated incorrect %s value: %v")
+
+	// ErrUnresolvedTableLock is returned when a FOR UPDATE OF clause references a table that doesn't exist in the query context.
+	ErrUnresolvedTableLock = errors.NewKind("unresolved table name `%s` in locking clause.")
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the

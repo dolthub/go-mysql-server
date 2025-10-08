@@ -229,8 +229,11 @@ func (b *MySQLIndexBuilder) convertKey(ctx *Context, colType Type, keyType Type,
 	if et, ok := colType.(ExtendedType); ok {
 		return et.ConvertToType(ctx, keyType.(ExtendedType), key)
 	} else {
-		key, _, err := colType.Convert(ctx, key)
-		return key, err
+		k, _, err := colType.Convert(ctx, key)
+		if err != nil && !ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
+		return k, nil
 	}
 }
 

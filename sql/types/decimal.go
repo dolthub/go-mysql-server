@@ -141,13 +141,17 @@ func (t DecimalType_) Compare(s context.Context, a interface{}, b interface{}) (
 // Convert implements Type interface.
 func (t DecimalType_) Convert(c context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	dec, err := t.ConvertToNullDecimal(v)
-	if err != nil {
+	if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
 		return nil, sql.OutOfRange, err
 	}
 	if !dec.Valid {
 		return nil, sql.InRange, nil
 	}
-	return t.BoundsCheck(dec.Decimal)
+	res, inRange, cErr := t.BoundsCheck(dec.Decimal)
+	if cErr != nil {
+		return nil, sql.OutOfRange, cErr
+	}
+	return res, inRange, err
 }
 
 func (t DecimalType_) ConvertNoBoundsCheck(v interface{}) (decimal.Decimal, error) {
@@ -201,25 +205,40 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 	case float64:
 		return t.ConvertToNullDecimal(decimal.NewFromFloat(value))
 	case string:
-		// TODO: implement truncation here
-		value = strings.Trim(value, sql.NumericCutSet)
-		if len(value) == 0 {
-			return t.ConvertToNullDecimal(decimal.NewFromInt(0))
-		}
 		var err error
-		res, err = decimal.NewFromString(value)
-		if err != nil {
-			// The decimal library cannot handle all of the different formats
-			bf, _, err := new(big.Float).SetPrec(217).Parse(value, 0)
-			if err != nil {
-				return decimal.NullDecimal{}, err
-			}
+		truncStr := strings.Trim(value, sql.NumericCutSet)
+		res, err = decimal.NewFromString(truncStr)
+		if err == nil {
+			return t.ConvertToNullDecimal(res)
+		}
+		// The decimal library cannot handle all the different formats
+		bf, _, err := new(big.Float).SetPrec(217).Parse(truncStr, 0)
+		if err == nil {
 			res, err = decimal.NewFromString(bf.Text('f', -1))
-			if err != nil {
-				return decimal.NullDecimal{}, err
+			if err == nil {
+				return t.ConvertToNullDecimal(res)
 			}
 		}
-		return t.ConvertToNullDecimal(res)
+		truncStr, didTrunc := TruncateStringToDouble(value)
+		if truncStr == "0" {
+			nullDec, cErr := t.ConvertToNullDecimal(decimal.NewFromInt(0))
+			if cErr != nil {
+				return decimal.NullDecimal{}, cErr
+			}
+			if didTrunc {
+				return nullDec, sql.ErrTruncatedIncorrect.New(t, value)
+			}
+			return nullDec, nil
+		}
+		res, _ = decimal.NewFromString(truncStr)
+		nullDec, cErr := t.ConvertToNullDecimal(res)
+		if cErr != nil {
+			return decimal.NullDecimal{}, cErr
+		}
+		if didTrunc {
+			err = sql.ErrTruncatedIncorrect.New(t, value)
+		}
+		return nullDec, err
 	case *big.Float:
 		return t.ConvertToNullDecimal(value.Text('f', -1))
 	case *big.Int:

@@ -81,6 +81,7 @@ type InsertInto struct {
 	// LiteralValueSource is set to |true| when |Source| is
 	// a |Values| node with only literal expressions.
 	LiteralValueSource bool
+	HasAfterTrigger    bool
 }
 
 var _ sql.Databaser = (*InsertInto)(nil)

@@ -52,6 +52,11 @@ func pruneTables(ctx *sql.Context, a *Analyzer, n sql.Node, s *plan.Scope, sel R
 		return n, transform.SameTree, nil
 	}
 
+	switch n := n.(type) {
+	case *plan.TableAlias, *plan.ResolvedTable:
+		return n, transform.SameTree, nil
+	}
+
 	// the same table can appear in multiple table scans,
 	// so we use a counter to pin references
 	parentCols := make(map[tableCol]int)

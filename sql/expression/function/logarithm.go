@@ -17,8 +17,8 @@ package function
 import (
 	"fmt"
 	"math"
-	"reflect"
 
+	"github.com/dolthub/vitess/go/mysql"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -124,14 +124,16 @@ func (l *LogBase) Eval(
 	if err != nil {
 		return nil, err
 	}
-
 	if v == nil {
 		return nil, nil
 	}
 
 	val, _, err := types.Float64.Convert(ctx, v)
 	if err != nil {
-		return nil, sql.ErrInvalidType.New(reflect.TypeOf(v))
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 	return computeLog(ctx, val.(float64), l.base)
 }
@@ -206,28 +208,30 @@ func (l *Log) Eval(
 	if err != nil {
 		return nil, err
 	}
-
 	if left == nil {
 		return nil, nil
 	}
-
 	lhs, _, err := types.Float64.Convert(ctx, left)
 	if err != nil {
-		return nil, sql.ErrInvalidType.New(reflect.TypeOf(left))
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
 	right, err := l.RightChild.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-
 	if right == nil {
 		return nil, nil
 	}
-
 	rhs, _, err := types.Float64.Convert(ctx, right)
 	if err != nil {
-		return nil, sql.ErrInvalidType.New(reflect.TypeOf(right))
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
 	// rhs becomes value, lhs becomes base
@@ -252,6 +256,6 @@ func computeLog(ctx *sql.Context, v float64, base float64) (interface{}, error) 
 		return math.Log(v), nil
 	default:
 		// LOG(BASE,V) is equivalent to LOG(V) / LOG(BASE).
-		return float64(math.Log(v) / math.Log(base)), nil
+		return math.Log(v) / math.Log(base), nil
 	}
 }

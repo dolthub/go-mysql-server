@@ -52,6 +52,7 @@ type insertIter struct {
 	rowNumber                   int64
 	closed                      bool
 	ignore                      bool
+	hasAfterTrigger             bool
 }
 
 func getInsertExpressions(values sql.Node) []sql.Expression {
@@ -120,9 +121,21 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 			ctxWithValues := context.WithValue(ctx.Context, types.ColumnNameKey, col.Name)
 			ctxWithValues = context.WithValue(ctxWithValues, types.RowNumberKey, i.rowNumber)
 			ctxWithColumnInfo := ctx.WithContext(ctxWithValues)
-			converted, inRange, cErr := col.Type.Convert(ctxWithColumnInfo, row[idx])
+			val := row[idx]
+			// TODO: check mysql strict sql_mode
+			var converted any
+			var inRange sql.ConvertInRange
+			var cErr error
+			if typ, ok := col.Type.(sql.RoundingNumberType); ok {
+				converted, inRange, cErr = typ.ConvertRound(ctx, val)
+			} else {
+				converted, inRange, cErr = col.Type.Convert(ctxWithColumnInfo, val)
+			}
 			if cErr == nil && !inRange {
-				cErr = sql.ErrValueOutOfRange.New(row[idx], col.Type)
+				cErr = sql.ErrValueOutOfRange.New(val, col.Type)
+			}
+			if sql.ErrTruncatedIncorrect.Is(cErr) {
+				cErr = sql.ErrInvalidValue.New(val, col.Type)
 			}
 			if cErr != nil {
 				// Ignore individual column errors when INSERT IGNORE, UPDATE IGNORE, etc. is specified.
@@ -205,19 +218,23 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 
 	i.updateLastInsertId(ctx, row)
 
-	if len(i.returnExprs) > 0 {
-		var retExprRow sql.Row
-		for _, returnExpr := range i.returnExprs {
-			result, err := returnExpr.Eval(ctx, row)
-			if err != nil {
-				return nil, err
-			}
-			retExprRow = append(retExprRow, result)
-		}
-		return retExprRow, nil
+	if len(i.returnExprs) > 0 && !i.hasAfterTrigger {
+		return i.getReturningRow(ctx, row)
 	}
 
 	return row, nil
+}
+
+func (i *insertIter) getReturningRow(ctx *sql.Context, row sql.Row) (sql.Row, error) {
+	var retExprRow sql.Row
+	for _, returnExpr := range i.returnExprs {
+		result, err := returnExpr.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+		retExprRow = append(retExprRow, result)
+	}
+	return retExprRow, nil
 }
 
 func (i *insertIter) handleOnDuplicateKeyUpdate(ctx *sql.Context, oldRow, newRow sql.Row) (returnRow sql.Row, returnErr error) {

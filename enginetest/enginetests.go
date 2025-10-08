@@ -83,7 +83,7 @@ func TestQueries(t *testing.T, harness Harness) {
 			if IsServerEngine(e) && tt.SkipServerEngine {
 				t.Skip("skipping for server engine")
 			}
-			TestQueryWithContext(t, ctx, e, harness, tt.Query, tt.Expected, tt.ExpectedColumns, nil, nil)
+			TestQueryWithEngine(t, harness, e, tt)
 		})
 	}
 
@@ -148,7 +148,7 @@ func TestSpatialQueriesPrepared(t *testing.T, harness Harness) {
 
 // TestJoinQueries tests join queries against a provided harness.
 func TestJoinQueries(t *testing.T, harness Harness) {
-	harness.Setup(setup.MydbData, setup.MytableData, setup.Pk_tablesData, setup.OthertableData, setup.NiltableData, setup.XyData, setup.FooData)
+	harness.Setup(setup.MydbData, setup.MytableData, setup.Pk_tablesData, setup.OthertableData, setup.NiltableData, setup.XyData, setup.FooData, setup.Comp_index_tablesData)
 	e, err := harness.NewEngine(t)
 	require.NoError(t, err)
 
@@ -263,7 +263,7 @@ func TestQueriesPrepared(t *testing.T, harness Harness) {
 
 // TestJoinQueriesPrepared tests join queries as prepared statements against a provided harness.
 func TestJoinQueriesPrepared(t *testing.T, harness Harness) {
-	harness.Setup(setup.MydbData, setup.MytableData, setup.Pk_tablesData, setup.OthertableData, setup.NiltableData, setup.XyData, setup.FooData)
+	harness.Setup(setup.MydbData, setup.MytableData, setup.Pk_tablesData, setup.OthertableData, setup.NiltableData, setup.XyData, setup.FooData, setup.Comp_index_tablesData)
 	for _, tt := range queries.JoinQueryTests {
 		if tt.SkipPrepared {
 			continue
@@ -828,7 +828,7 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 		// group by with any_value or non-strict are non-deterministic (unless there's only one value), so we must accept multiple
 		// group by with any_value()
 
-		_, rowIter, _, err = e.Query(ctx, "select any_value(id), team from members group by team order by id")
+		_, rowIter, _, err = e.Query(ctx, "select any_value(id), team from members group by team")
 		require.NoError(t, err)
 		rowCount = 0
 
@@ -867,6 +867,7 @@ func TestOrderByGroupBy(t *testing.T, harness Harness) {
 		require.Equal(t, rowCount, 3)
 
 		AssertErr(t, e, harness, "select id, team from members group by team order by id", nil, analyzererrors.ErrValidationGroupBy)
+		AssertErr(t, e, harness, "select any_value(id), team from members group by team order by id", nil, analyzererrors.ErrValidationGroupByOrderBy)
 	})
 }
 
@@ -3960,9 +3961,9 @@ func TestWindowRangeFrames(t *testing.T, harness Harness) {
 	TestQueryWithContext(t, ctx, e, harness, `SELECT sum(y) over (partition by z order by date range between unbounded preceding and interval '1' DAY following) FROM c order by x`, []sql.Row{{float64(1)}, {float64(1)}, {float64(1)}, {float64(1)}, {float64(5)}, {float64(5)}, {float64(10)}, {float64(10)}, {float64(10)}, {float64(10)}}, nil, nil, nil)
 	TestQueryWithContext(t, ctx, e, harness, `SELECT count(y) over (partition by z order by date range between interval '1' DAY following and interval '2' DAY following) FROM c order by x`, []sql.Row{{1}, {1}, {1}, {1}, {1}, {0}, {2}, {2}, {0}, {0}}, nil, nil, nil)
 	TestQueryWithContext(t, ctx, e, harness, `SELECT count(y) over (partition by z order by date range between interval '1' DAY preceding and interval '2' DAY following) FROM c order by x`, []sql.Row{{4}, {4}, {4}, {5}, {2}, {2}, {4}, {4}, {4}, {4}}, nil, nil, nil)
+	TestQueryWithContext(t, ctx, e, harness, "SELECT sum(y) over (partition by z order by date range interval 'e' DAY preceding) FROM c order by x", []sql.Row{{float64(0)}, {float64(0)}, {float64(0)}, {float64(1)}, {float64(1)}, {float64(3)}, {float64(1)}, {float64(1)}, {float64(4)}, {float64(4)}}, nil, nil, nil)
 
 	AssertErr(t, e, harness, "SELECT sum(y) over (partition by z range between unbounded preceding and interval '1' DAY following) FROM c order by x", nil, aggregation.ErrRangeInvalidOrderBy)
-	AssertErr(t, e, harness, "SELECT sum(y) over (partition by z order by date range interval 'e' DAY preceding) FROM c order by x", nil, sql.ErrInvalidValue)
 }
 
 func TestNamedWindows(t *testing.T, harness Harness) {
@@ -4908,10 +4909,6 @@ func TestSessionSelectLimit(t *testing.T, harness Harness) {
 		},
 		{
 			Query:    "select count(*), y from a group by y;",
-			Expected: []sql.Row{{2, 1}, {3, 2}},
-		},
-		{
-			Query:    "select count(*), y from (select y from a) b group by y;",
 			Expected: []sql.Row{{2, 1}, {3, 2}},
 		},
 		{

@@ -66,6 +66,8 @@ type Session interface {
 	Client() Client
 	// SetClient returns a new session with the given client.
 	SetClient(Client)
+	// InitSessionVariableDefault sets this session's default value of the system variable with the given name.
+	InitSessionVariableDefault(ctx *Context, sysVarName string, value interface{}) error
 	// SetSessionVariable sets the given system variable to the value given for this session.
 	SetSessionVariable(ctx *Context, sysVarName string, value interface{}) error
 	// InitSessionVariable sets the given system variable to the value given for this session and will allow for
@@ -76,6 +78,9 @@ type Session interface {
 	// GetSessionVariable returns this session's value of the system variable with the given name.
 	// To access global scope, use sql.SystemVariables.GetGlobal instead.
 	GetSessionVariable(ctx *Context, sysVarName string) (interface{}, error)
+	// GetSessionVariableDefault returns this session's default value of the system variable with the given name.
+	// To access global scope, use sql.SystemVariables.GetGlobal instead.
+	GetSessionVariableDefault(ctx *Context, sysVarName string) (interface{}, error)
 	// GetUserVariable returns this session's value of the user variable with the given name, along with its most
 	// appropriate type.
 	GetUserVariable(ctx *Context, varName string) (Type, interface{}, error)
@@ -222,6 +227,15 @@ type LifecycleAwareSession interface {
 	CommandBegin() error
 	CommandEnd()
 	SessionEnd()
+}
+
+// An optional Lifecycle callback which a session can receive. This can be
+// delivered periodically during a long running operation, between the
+// CommandBegin and CommandEnd calls. Across the call to this method, the
+// gms.Engine is not accessing the session or any of its state, such as
+// table editors, database providers, etc.
+type SafepointAwareSession interface {
+	CommandSafepoint()
 }
 
 type (
@@ -755,6 +769,13 @@ func SessionCommandBegin(s Session) error {
 func SessionCommandEnd(s Session) {
 	if cur, ok := s.(LifecycleAwareSession); ok {
 		cur.CommandEnd()
+	}
+}
+
+// Helper function to call CommandSafepoint on a SafepointAwareSession, or do nothing.
+func SessionCommandSafepoint(s Session) {
+	if cur, ok := s.(SafepointAwareSession); ok {
+		cur.CommandSafepoint()
 	}
 }
 

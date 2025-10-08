@@ -425,9 +425,9 @@ var JoinPlanningTests = []joinPlanScript{
 				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
 			},
 			{
-				// anti join will be cross-join-right, be passed non-nil parent row
+				// anti join will be cross-join-right, then converted to inner join when filters are pushed down, be passed non-nil parent row
 				q:     "select x,a from ab, (select * from xy where x != (select r from rs where r = 1) order by 1) sq where x = 2 and b = 2 order by 1,2;",
-				types: []plan.JoinType{plan.JoinTypeCrossHash, plan.JoinTypeLeftOuter},
+				types: []plan.JoinType{plan.JoinTypeInner, plan.JoinTypeLeftOuter},
 				exp:   []sql.Row{{2, 0}, {2, 1}, {2, 2}},
 			},
 			{
@@ -1801,12 +1801,12 @@ join uv d on d.u = c.x`,
 		tests: []JoinPlanTest{
 			{
 				q:     "select * from t1 cross join t2 join (select * from t3) v3 on v3.k = t2.j;",
-				types: []plan.JoinType{plan.JoinTypeHash, plan.JoinTypeCross},
+				types: []plan.JoinType{plan.JoinTypeCross, plan.JoinTypeInner},
 				exp:   []sql.Row{},
 			},
 			{
 				q:     "select * from t1 cross join t2 join (select * from t3) v3 on v3.k >= t2.j order by i, j, k;",
-				types: []plan.JoinType{plan.JoinTypeInner, plan.JoinTypeCross},
+				types: []plan.JoinType{plan.JoinTypeCross, plan.JoinTypeInner},
 				exp: []sql.Row{
 					{1, 1, 3},
 					{1, 2, 3},

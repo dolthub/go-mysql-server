@@ -15,6 +15,7 @@
 package queries
 
 import (
+	"fmt"
 	"math"
 	"time"
 
@@ -122,6 +123,248 @@ type ScriptTestAssertion struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
+		// https://github.com/dolthub/dolt/issues/9865
+		Name:    "Stored procedure containing a transaction does not return EOF",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE test_table (id INT PRIMARY KEY, name TEXT)",
+			`CREATE PROCEDURE my_proc()
+BEGIN
+    START TRANSACTION;
+    INSERT INTO test_table VALUES (1, 'test');
+    COMMIT;
+END`,
+			`CREATE PROCEDURE empty_procedure()
+BEGIN
+END`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CALL my_proc()",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, InsertID: 0, Info: nil}}},
+			},
+			{
+				Query:    "SELECT * FROM test_table",
+				Expected: []sql.Row{{1, "test"}},
+			},
+			{
+				Query:    "CALL empty_procedure()",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0, InsertID: 0, Info: nil}}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9873
+		// TODO: `FOR UPDATE OF` (`FOR UPDATE` in general) is currently a no-op: https://www.dolthub.com/blog/2023-10-23-hold-my-beer/
+		Name:    "FOR UPDATE OF syntax support tests",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE task_instance (id INT PRIMARY KEY, task_id VARCHAR(255), dag_id VARCHAR(255), run_id VARCHAR(255), state VARCHAR(50), queued_by_job_id INT)",
+			"CREATE TABLE job (id INT PRIMARY KEY, state VARCHAR(50))",
+			"CREATE TABLE dag_run (dag_id VARCHAR(255), run_id VARCHAR(255), state VARCHAR(50))",
+			"CREATE TABLE t (id INT PRIMARY KEY, name VARCHAR(50))",
+			"INSERT INTO task_instance VALUES (1, 'task1', 'dag1', 'run1', 'running', 1)",
+			"INSERT INTO job VALUES (1, 'running')",
+			"INSERT INTO dag_run VALUES ('dag1', 'run1', 'running')",
+			"INSERT INTO t VALUES (1, 'test')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `SELECT task_instance.id, task_instance.task_id, task_instance.dag_id, task_instance.run_id
+FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INNER JOIN dag_run ON dag_run.dag_id = task_instance.dag_id AND dag_run.run_id = task_instance.run_id
+ WHERE task_instance.state IN ('running', 'queued', 'scheduled') AND NOT (job.state <=> 'running') AND dag_run.state = 'running' FOR UPDATE OF task_instance SKIP LOCKED`,
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT * FROM t FOR UPDATE",
+				Expected: []sql.Row{{1, "test"}},
+			},
+			{
+				Query:    "SELECT * FROM t FOR UPDATE OF t",
+				Expected: []sql.Row{{1, "test"}},
+			},
+			{
+				Query:    "SELECT * FROM t FOR UPDATE OF t SKIP LOCKED",
+				Expected: []sql.Row{{1, "test"}},
+			},
+			{
+				Query:    "SELECT * FROM t FOR UPDATE OF t NOWAIT",
+				Expected: []sql.Row{{1, "test"}},
+			},
+			{
+				Query:    "SELECT * FROM task_instance t1, job t2 FOR UPDATE OF t1, t2",
+				Expected: []sql.Row{{1, "task1", "dag1", "run1", "running", 1, 1, "running"}},
+			},
+			{
+				Query:       "SELECT * FROM t FOR UPDATE OF nonexistent_table",
+				ExpectedErr: sql.ErrUnresolvedTableLock,
+			},
+			{
+				Query:          "SELECT * FROM t FOR UPDATE OF t, nonexistent_table",
+				ExpectedErr:    sql.ErrUnresolvedTableLock,
+				ExpectedErrStr: fmt.Sprintf(sql.ErrUnresolvedTableLock.Message, "nonexistent_table"),
+			},
+			{
+				Query:       "SELECT * FROM t FOR UPDATE OF",
+				ExpectedErr: sql.ErrSyntaxError,
+			},
+			{
+				Query:       "SELECT * FROM t FOR UPDATE test",
+				ExpectedErr: sql.ErrSyntaxError,
+			},
+			{
+				Query:    "SELECT * FROM t FOR UPDATE",
+				Expected: []sql.Row{{1, "test"}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9872
+		Name:        "TEXT(m) syntax support",
+		SetUpScript: []string{},
+		Dialect:     "mysql",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CREATE TABLE task_instance_note (ti_id VARCHAR(36) NOT NULL, user_id VARCHAR(128), content TEXT(1000), created_at TIMESTAMP(6) NOT NULL, updated_at TIMESTAMP(6) NOT NULL, CONSTRAINT task_instance_note_pkey PRIMARY KEY (ti_id))",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "DESCRIBE task_instance_note",
+				Expected: []sql.Row{
+					{"ti_id", "varchar(36)", "NO", "PRI", nil, ""},
+					{"user_id", "varchar(128)", "YES", "", nil, ""},
+					{"content", "text", "YES", "", nil, ""},
+					{"created_at", "timestamp(6)", "NO", "", nil, ""},
+					{"updated_at", "timestamp(6)", "NO", "", nil, ""},
+				},
+			},
+			{
+				Query: "CREATE TABLE tiny (t TEXT(255))",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "DESCRIBE tiny",
+				Expected: []sql.Row{
+					{"t", "tinytext", "YES", "", nil, ""},
+				},
+			},
+			{
+				Query: "CREATE TABLE smallt (s TEXT(65535))",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "DESCRIBE smallt",
+				Expected: []sql.Row{
+					{"s", "text", "YES", "", nil, ""},
+				},
+			},
+			{
+				Query: "CREATE TABLE mediumt (m TEXT(16777215))",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "DESCRIBE mediumt",
+				Expected: []sql.Row{
+					{"m", "mediumtext", "YES", "", nil, ""},
+				},
+			},
+			{
+				Query: "CREATE TABLE longt (l TEXT(4294967295))",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "DESCRIBE longt",
+				Expected: []sql.Row{
+					{"l", "longtext", "YES", "", nil, ""},
+				},
+			},
+			{
+				Query: "CREATE TABLE d (t TEXT)",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "DESCRIBE d",
+				Expected: []sql.Row{
+					{"t", "text", "YES", "", nil, ""},
+				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9857
+		Name:        "UUID_SHORT() function returns 64-bit unsigned integers with proper construction",
+		Dialect:     "mysql",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT UUID_SHORT() > 0",
+				Expected: []sql.Row{
+					{true}, // Should return positive values
+				},
+			},
+			{
+				Query: "SELECT UUID_SHORT() != UUID_SHORT()",
+				Expected: []sql.Row{
+					{true}, // Should return different values on each call
+				},
+			},
+			{
+				Query: "SELECT UUID_SHORT() + 0 > 0",
+				Expected: []sql.Row{
+					{true}, // Should work in arithmetic expressions
+				},
+			},
+			{
+				Query: "SELECT CAST(UUID_SHORT() AS CHAR) != ''",
+				Expected: []sql.Row{
+					{true}, // Should cast to non-empty string
+				},
+			},
+			{
+				Query: "SELECT UUID_SHORT() BETWEEN 1 AND 18446744073709551615",
+				Expected: []sql.Row{
+					{true}, // Should be within uint64 range
+				},
+			},
+			{
+				Query: "SELECT (UUID_SHORT() & 0xFF00000000000000) >> 56 BETWEEN 0 AND 255",
+				Expected: []sql.Row{
+					{true}, // Server ID should be 0-255
+				},
+			},
+			{
+				Query: "SET @@global.server_id = 253",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "SELECT (UUID_SHORT() & 0xFF00000000000000) >> 56 BETWEEN 0 AND 255",
+				Expected: []sql.Row{
+					{true}, // server time won't let us pin this down further
+				},
+			},
+			{
+				Query: "SET @@global.server_id = 1",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/go-mysql-server/issues/3216
 		Name: "UNION ALL with BLOB columns",
 		SetUpScript: []string{
@@ -191,83 +434,916 @@ var ScriptTests = []ScriptTest{
 		},
 	},
 	{
-		// https://github.com/dolthub/dolt/issues/9812
-		Name: "String-to-number comparison operators should behave consistently",
+		Dialect: "mysql",
+		Name:    "string to number comparison correctly truncates",
 		Assertions: []ScriptTestAssertion{
 			{
-				Dialect:                         "mysql",
-				Query:                           "SELECT ('A') = (0)",
+				Query:                           "SELECT 'A' = 0;",
 				Expected:                        []sql.Row{{true}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
 				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
 			},
 			{
-				Dialect:                         "mysql",
-				Query:                           "SELECT ('A') IN (0)",
+				Query:                           "SELECT 'A' != 0;",
+				Expected:                        []sql.Row{{false}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
+			},
+			{
+				Query:                           "SELECT 'A' <> 0;",
+				Expected:                        []sql.Row{{false}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
+			},
+			{
+				Query:                           "SELECT 'A' < 0;",
+				Expected:                        []sql.Row{{false}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
+			},
+			{
+				Query:                           "SELECT 'A' <= 0;",
 				Expected:                        []sql.Row{{true}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
 				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
 			},
 			{
-				Dialect:                         "mysql",
-				Query:                           "SELECT ('A') != (0)",
+				Query:                           "SELECT 'A' > 0;",
 				Expected:                        []sql.Row{{false}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
 				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
 			},
 			{
-				Dialect:                         "mysql",
-				Query:                           "SELECT ('A') <> (0)",
-				Expected:                        []sql.Row{{false}},
-				ExpectedWarningsCount:           1,
-				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
-				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
-			},
-			{
-				Dialect:                         "mysql",
-				Query:                           "SELECT ('A') < (0)",
-				Expected:                        []sql.Row{{false}},
-				ExpectedWarningsCount:           1,
-				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
-				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
-			},
-			{
-				Dialect:                         "mysql",
-				Query:                           "SELECT ('A') <= (0)",
+				Query:                           "SELECT 'A' >= 0;",
 				Expected:                        []sql.Row{{true}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
 				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
 			},
 			{
-				Dialect:                         "mysql",
-				Query:                           "SELECT ('A') > (0)",
-				Expected:                        []sql.Row{{false}},
-				ExpectedWarningsCount:           1,
-				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
-				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
+				Query:    "SELECT '' = 0;",
+				Expected: []sql.Row{{true}},
 			},
 			{
-				Dialect:                         "mysql",
-				Query:                           "SELECT ('A') >= (0)",
+				Query:    "select 'abc' = false",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "select '1abc' = true",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				// Truncates to 123
+				Query:    "select '123abc' = false",
+				Expected: []sql.Row{{false}},
+			},
+			{
+				// Truncates to 123
+				Query:    "select '123abc' = true",
+				Expected: []sql.Row{{false}},
+			},
+			{
+				Query:                           "SELECT '123A' = 123;",
+				Expected:                        []sql.Row{{true}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 123A",
+			},
+			{
+				Query:                           "SELECT 'A123' = 0;",
+				Expected:                        []sql.Row{{true}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A123",
+			},
+			{
+				Query:    "SELECT '123.456' = 123;",
+				Expected: []sql.Row{{false}},
+			},
+			{
+				Query:    "SELECT '123.456' = 123.456;",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				// TODO: 123.456 is converted to a DECIMAL by Builder.ConvertVal, when it should be a DOUBLE
+				SkipResultCheckOnServerEngine:   true, // TODO: warnings do not make it to server engine
+				Query:                           "SELECT '123.456ABC' = 123.456;",
+				Expected:                        []sql.Row{{true}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect decimal(65,30) value: 123.456ABC",
+			},
+			{
+				Query:    "SELECT '123.456e2' = 12345.6;",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "SELECT '123.456e-2' = 1.23456;",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "SELECT '1.9a' = 1.9;",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "SELECT 1 where '1.9a' = 1.9;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				// Valid float strings used as arguments to functions are truncated not rounded
+				Query:                 "SELECT LENGTH(SPACE('1.9'));",
+				Expected:              []sql.Row{{1}},
+				ExpectedWarningsCount: 1, // TODO: MySQL throws two warnings for some reason
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+			},
+			{
+				// TODO: 123.456 is converted to a DECIMAL by Builder.ConvertVal, when it should be a DOUBLE
+				Query:                           "SELECT -'+123.456ABC' = -123.456",
+				Expected:                        []sql.Row{{true}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect decimal(65,30) value: +123.456ABC",
+			},
+			{
+				Query:                           "SELECT '0xBEEF' = 0;",
+				Expected:                        []sql.Row{{true}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 0xBEEF",
+			},
+			{
+				// 'A' is truncated to 0
+				Query:                           "SELECT 'A' IN (0)",
 				Expected:                        []sql.Row{{true}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
 				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
 			},
 			{
-				Dialect:                         "mysql",
-				Query:                           "SELECT ('A') NOT IN (0)",
+				// 'A' is truncated to 0
+				Query:                           "SELECT 'A' NOT IN (0)",
 				Expected:                        []sql.Row{{false}},
 				ExpectedWarningsCount:           1,
 				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
 				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A",
+			},
+			{
+				Query:    "SELECT '' in (0);",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:                           "SELECT '123A' in (123);",
+				Expected:                        []sql.Row{{true}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 123A",
+			},
+			{
+				Query:                           "SELECT 123 in ('123A');",
+				Expected:                        []sql.Row{{true}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 123A",
+			},
+			{
+				Query:                           "SELECT 'A123' in (0);",
+				Expected:                        []sql.Row{{true}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: A123",
+			},
+			{
+				Query:                           "SELECT '123abc' in ('string', 1, 2, 123);",
+				Expected:                        []sql.Row{{true}},
+				ExpectedWarningsCount:           3, // MySQL only throws 1 warning
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value",
+			},
+			{
+				Query:                           "SELECT 123 in ('string', 1, 2, '123abc');",
+				Expected:                        []sql.Row{{true}},
+				ExpectedWarningsCount:           2,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value",
+			},
+			{
+				Query:                           "SELECT '123A' in (123);",
+				Expected:                        []sql.Row{{true}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 123A",
+			},
+			{
+				Query:    "SELECT '123.456' in (123);",
+				Expected: []sql.Row{{false}},
+			},
+			{
+				Query:    "SELECT '123.456' in (123.456);",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "SELECT 123.456 in (123.456);",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "SELECT 123.45 in (123.4);",
+				Expected: []sql.Row{{false}},
+			},
+			{
+				Query:    "SELECT 123.45 in (123.5);",
+				Expected: []sql.Row{{false}},
+			},
+			{
+				Query:    "SELECT '123.45a' in (123.5);",
+				Expected: []sql.Row{{false}},
+			},
+			{
+				Query:    "SELECT '123.45a' in (123.4);",
+				Expected: []sql.Row{{false}},
+			},
+			{
+				SkipResultCheckOnServerEngine:   true, // TODO: warnings do not make it to server engine
+				Query:                           "SELECT '123.456ABC' in (123.456);",
+				Expected:                        []sql.Row{{true}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect decimal(65,30) value: 123.456ABC",
+			},
+			{
+				Query:    "SELECT '123.456e2' in (12345.6);",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "SELECT '123.456e-2' in (1.23456);",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:                           "SELECT '0xBEEF' = 0;",
+				Expected:                        []sql.Row{{true}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 0xBEEF",
+			},
+			{
+				Query:                           `select 'a' + 4;`,
+				Expected:                        []sql.Row{{4.0}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'a'",
+			},
+			{
+				Query:                           `select '20a' + 4;`,
+				Expected:                        []sql.Row{{24.0}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: '20a'",
+			},
+			{
+				Query:                           `select '10.a' + 4;`,
+				Expected:                        []sql.Row{{14.0}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: '10.a'",
+			},
+			{
+				Query:                           `select '.20a' + 4;`,
+				Expected:                        []sql.Row{{4.2}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: '.20a'",
+			},
+			{
+				Query:                           `select 4 + 'a';`,
+				Expected:                        []sql.Row{{4.0}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'a'",
+			},
+			{
+				Query:                 `select 'a' + 'a';`,
+				Expected:              []sql.Row{{0.0}},
+				ExpectedWarningsCount: 2,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+			},
+			{
+				Query:                           `select 'a' - 4;`,
+				Expected:                        []sql.Row{{-4.0}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'a'",
+			},
+			{
+				Query:                           `select 4 - 'a';`,
+				Expected:                        []sql.Row{{4.0}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'a'",
+			},
+			{
+				Query:                           `select 4 - '2a';`,
+				Expected:                        []sql.Row{{2.0}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: '2a'",
+			},
+			{
+				Query:                 `select 'a' - 'a';`,
+				Expected:              []sql.Row{{0.0}},
+				ExpectedWarningsCount: 2,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+			},
+			{
+				Query:                           `select 'a' * 4;`,
+				Expected:                        []sql.Row{{0.0}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'a'",
+			},
+			{
+				Query:                           `select 4 * 'a';`,
+				Expected:                        []sql.Row{{0.0}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'a'",
+			},
+			{
+				Query:                 `select 'a' * 'a';`,
+				Expected:              []sql.Row{{0.0}},
+				ExpectedWarningsCount: 2,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+			},
+			{
+				Query:                           "select 1 * '2.50a';",
+				Expected:                        []sql.Row{{2.5}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: '2.50a'",
+			},
+			{
+				Query:                           "select 1 * '2.a50a';",
+				Expected:                        []sql.Row{{2.0}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: '2.a50a'",
+			},
+			{
+				Query:                           `select 'a' / 4;`,
+				Expected:                        []sql.Row{{0.0}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'a'",
+			},
+			{
+				Query:                 `select 4 / 'a';`,
+				Expected:              []sql.Row{{nil}},
+				ExpectedWarningsCount: 2, // Truncated incorrect value and Divide by Zero
+			},
+			{
+				Query:                 `select 'a' / 'a';`,
+				Expected:              []sql.Row{{nil}},
+				ExpectedWarningsCount: 2, // Truncated incorrect value and Divide by Zero
+			},
+			{
+				Query:                 "select 1 / '2.50a';",
+				Expected:              []sql.Row{{0.4}},
+				ExpectedWarningsCount: 2, // Truncated incorrect value and Divide by Zero
+			},
+			{
+				Query:                 "select 1 / '2.a50a';",
+				Expected:              []sql.Row{{0.5}},
+				ExpectedWarningsCount: 2, // Truncated incorrect value and Divide by Zero
+			},
+			{
+				Query:                           "select 'a' & 'a';",
+				Expected:                        []sql.Row{{uint64(0)}},
+				ExpectedWarningsCount:           2,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'a'",
+			},
+			{
+				Query:                           "select 'a' & 4;",
+				Expected:                        []sql.Row{{uint64(0)}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'a'",
+			},
+			{
+				Query:                           "select 4 & 'a';",
+				Expected:                        []sql.Row{{uint64(0)}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'a'",
+			},
+			{
+				Query:                           "select 'a' | 'a';",
+				Expected:                        []sql.Row{{uint64(0)}},
+				ExpectedWarningsCount:           2,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'a'",
+			},
+			{
+				Query:                           "select 'a' | 4;",
+				Expected:                        []sql.Row{{uint64(4)}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'a'",
+			},
+			{
+				Query:                           "select 'a' | -1;",
+				Expected:                        []sql.Row{{uint64(18446744073709551615)}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'a'",
+			},
+			{
+				Query:                           "select 4 | 'a';",
+				Expected:                        []sql.Row{{uint64(4)}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'a'",
+			},
+			{
+				Query:                           "select 'a' ^ 'a';",
+				Expected:                        []sql.Row{{uint64(0)}},
+				ExpectedWarningsCount:           2,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'a'",
+			},
+			{
+				Query:                           "select 'a' ^ 4;",
+				Expected:                        []sql.Row{{uint64(4)}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'a'",
+			},
+			{
+				Query:                           "select 'a' ^ -1;",
+				Expected:                        []sql.Row{{uint64(18446744073709551615)}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'a'",
+			},
+			{
+				Query:                           "select 4 ^ 'a';",
+				Expected:                        []sql.Row{{uint64(4)}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'a'",
+			},
+			{
+				Query:                           "select 'a' >> 'a';",
+				Expected:                        []sql.Row{{uint64(0)}},
+				ExpectedWarningsCount:           2,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'a'",
+			},
+			{
+				Query:                           "select 'a' >> 4;",
+				Expected:                        []sql.Row{{uint64(0)}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'a'",
+			},
+			{
+				Query:                           "select 4 >> 'a';",
+				Expected:                        []sql.Row{{uint64(4)}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'a'",
+			},
+			{
+				Query:                           "select -1 >> 'a';",
+				Expected:                        []sql.Row{{uint64(18446744073709551615)}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'a'",
+			},
+			{
+				Query:                           "select 'a' << 'a';",
+				Expected:                        []sql.Row{{uint64(0)}},
+				ExpectedWarningsCount:           2,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'a'",
+			},
+			{
+				Query:                           "select 'a' << 4;",
+				Expected:                        []sql.Row{{uint64(0)}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'a'",
+			},
+			{
+				Query:                           "select '2a' << 4;",
+				Expected:                        []sql.Row{{uint64(32)}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: '2a'",
+			},
+			{
+				Query:                           "select 4 << 'a';",
+				Expected:                        []sql.Row{{uint64(4)}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'a'",
+			},
+			{
+				Query:                           "select -1 << 'a';",
+				Expected:                        []sql.Row{{uint64(18446744073709551615)}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'a'",
+			},
+			{
+				Query:                 "select 'a' div 'a';",
+				Expected:              []sql.Row{{nil}},
+				ExpectedWarningsCount: 3, // Truncated incorrect value (2c) and Divide by Zero
+			},
+			{
+				Query:                           "select 'a' div 4;",
+				Expected:                        []sql.Row{{0}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'a'",
+			},
+			{
+				Query:                 "select 4 div 'a';",
+				Expected:              []sql.Row{{nil}},
+				ExpectedWarningsCount: 2, // Truncated incorrect value and Divide by Zero
+			},
+			{
+				Query:    "select 1.2 div '1';",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:                 "select 1.2 div 'a1';",
+				Expected:              []sql.Row{{nil}},
+				ExpectedWarningsCount: 2, // Truncated incorrect value and Divide by Zero
+			},
+			{
+				Query:                           "select '12a' div '3' ;",
+				Expected:                        []sql.Row{{4}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: '12a'",
+			},
+			{
+				Query:                 "select 'a' mod 'a';",
+				Expected:              []sql.Row{{nil}},
+				ExpectedWarningsCount: 2, // Truncated incorrect value and Divide by Zero
+			},
+			{
+				Query:                           "select 'a' mod 4;",
+				Expected:                        []sql.Row{{float64(0)}},
+				ExpectedWarningsCount:           1,
+				ExpectedWarning:                 mysql.ERTruncatedWrongValue,
+				ExpectedWarningMessageSubstring: "Truncated incorrect double value: 'a'",
+			},
+			{
+				Query:                 "select 4 mod 'a';",
+				Expected:              []sql.Row{{nil}},
+				ExpectedWarningsCount: 2, // Truncated incorrect value and Divide by Zero
+			},
+			{
+				Query:    "SELECT '127' | '128', '128' << 2;",
+				Expected: []sql.Row{{uint64(255), uint64(512)}},
+			},
+			{
+				Query:    "SELECT X'7F' | X'80', X'80' << 2;",
+				Expected: []sql.Row{{uint64(255), uint64(512)}},
+			},
+			{
+				Query:    "SELECT X'40' | X'01', b'11110001' & b'01001111';",
+				Expected: []sql.Row{{uint64(65), uint64(65)}},
+			},
+			{
+				Skip:     true,
+				Query:    "SELECT 0x1 = 1;",
+				Expected: []sql.Row{{true}},
 			},
 		},
 	},
+	{
+		// Related Issues:
+		//   https://github.com/dolthub/dolt/issues/9733
+		//   https://github.com/dolthub/dolt/issues/9739
+		Dialect: "mysql",
+		Name:    "strings cast to numbers",
+		SetUpScript: []string{
+			"create table test01(pk varchar(20) primary key);",
+			`insert into test01 values ('  3 12 4'),
+                          ('  3.2 12 4'),('-3.1234'),('-3.1a'),('-5+8'),('+3.1234'),
+                          ('11d'),('11wha?'),('11'),('12'),('1a1'),('a1a1'),('11-5'),
+                          ('3. 12 4'),('5.932887e+07'),('5.932887e+07abc'),('5.932887e7'),('5.932887e7abc');`,
+			"create table test02(pk int primary key);",
+			"insert into test02 values(11),(12),(13),(14),(15);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select pk, cast(pk as float) from test01",
+				Expected: []sql.Row{
+					{"  3 12 4", float32(3)},
+					{"  3.2 12 4", float32(3.2)},
+					{"-3.1234", float32(-3.1234)},
+					{"-3.1a", float32(-3.1)},
+					{"-5+8", float32(-5)},
+					{"+3.1234", float32(3.1234)},
+					{"11", float32(11)},
+					{"11-5", float32(11)},
+					{"11d", float32(11)},
+					{"11wha?", float32(11)},
+					{"12", float32(12)},
+					{"1a1", float32(1)},
+					{"3. 12 4", float32(3)},
+					{"5.932887e+07", float32(5.932887e+07)},
+					{"5.932887e+07abc", float32(5.932887e+07)},
+					{"5.932887e7", float32(5.932887e+07)},
+					{"5.932887e7abc", float32(5.932887e+07)},
+					{"a1a1", float32(0)},
+				},
+				ExpectedWarningsCount: 12,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+			},
+			{
+				Dialect: "mysql",
+				Query:   "select pk, cast(pk as double) from test01",
+				Expected: []sql.Row{
+					{"  3 12 4", 3.0},
+					{"  3.2 12 4", 3.2},
+					{"-3.1234", -3.1234},
+					{"-3.1a", -3.1},
+					{"-5+8", -5.0},
+					{"+3.1234", 3.1234},
+					{"11", 11.0},
+					{"11-5", 11.0},
+					{"11d", 11.0},
+					{"11wha?", 11.0},
+					{"12", 12.0},
+					{"1a1", 1.0},
+					{"3. 12 4", 3.0},
+					{"5.932887e+07", 5.932887e+07},
+					{"5.932887e+07abc", 5.932887e+07},
+					{"5.932887e7", 5.932887e+07},
+					{"5.932887e7abc", 5.932887e+07},
+					{"a1a1", 0.0},
+				},
+				ExpectedWarningsCount: 12,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+			},
+			{
+				Query: "select pk, cast(pk as signed) from test01",
+				Expected: []sql.Row{
+					{"  3 12 4", 3},
+					{"  3.2 12 4", 3},
+					{"-3.1234", -3},
+					{"-3.1a", -3},
+					{"-5+8", -5},
+					{"+3.1234", 3},
+					{"11", 11},
+					{"11-5", 11},
+					{"11d", 11},
+					{"11wha?", 11},
+					{"12", 12},
+					{"1a1", 1},
+					{"3. 12 4", 3},
+					{"5.932887e+07", 5},
+					{"5.932887e+07abc", 5},
+					{"5.932887e7", 5},
+					{"5.932887e7abc", 5},
+					{"a1a1", 0},
+				},
+				ExpectedWarningsCount: 16,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+			},
+			{
+				Query: "select pk, cast(pk as unsigned) from test01",
+				Expected: []sql.Row{
+					{"  3 12 4", uint64(3)},
+					{"  3.2 12 4", uint64(3)},
+					{"-3.1234", uint64(18446744073709551613)},
+					{"-3.1a", uint64(18446744073709551613)},
+					{"-5+8", uint64(18446744073709551611)},
+					{"+3.1234", uint64(3)},
+					{"11", uint64(11)},
+					{"11-5", uint64(11)},
+					{"11d", uint64(11)},
+					{"11wha?", uint64(11)},
+					{"12", uint64(12)},
+					{"1a1", uint64(1)},
+					{"3. 12 4", uint64(3)},
+					{"5.932887e+07", uint64(5)},
+					{"5.932887e+07abc", uint64(5)},
+					{"5.932887e7", uint64(5)},
+					{"5.932887e7abc", uint64(5)},
+					{"a1a1", uint64(0)},
+				},
+				ExpectedWarningsCount: 19,
+				// Can't check multiple different warnings
+			},
+			{
+				Query: "select pk, cast(pk as decimal(12,3)) from test01",
+				Expected: []sql.Row{
+					{"  3 12 4", "3.000"},
+					{"  3.2 12 4", "3.200"},
+					{"-3.1234", "-3.123"},
+					{"-3.1a", "-3.100"},
+					{"-5+8", "-5.000"},
+					{"+3.1234", "3.123"},
+					{"11", "11.000"},
+					{"11-5", "11.000"},
+					{"11d", "11.000"},
+					{"11wha?", "11.000"},
+					{"12", "12.000"},
+					{"1a1", "1.000"},
+					{"3. 12 4", "3.000"},
+					{"5.932887e+07", "59328870.000"},
+					{"5.932887e+07abc", "59328870.000"},
+					{"5.932887e7", "59328870.000"},
+					{"5.932887e7abc", "59328870.000"},
+					{"a1a1", "0.000"},
+				},
+				// TODO: should be 13. Missing warning for "Incorrect DECIMAL value: '0' for column '' at row -1" (1366)
+				ExpectedWarningsCount: 12,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+			},
+			{
+				Query:                 "select * from test01 where pk in ('11')",
+				Expected:              []sql.Row{{"11"}},
+				ExpectedWarningsCount: 0,
+			},
+
+			{
+				// https://github.com/dolthub/dolt/issues/9739
+				Skip:    true,
+				Dialect: "mysql",
+				Query:   "select * from test01 where pk in (11)",
+				Expected: []sql.Row{
+					{"11"},
+					{"11-5"},
+					{"11d"},
+					{"11wha?"},
+				},
+				ExpectedWarningsCount: 12,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/9739
+				Skip:    true,
+				Dialect: "mysql",
+				Query:   "select * from test01 where pk=3",
+				Expected: []sql.Row{
+					{"  3 12 4"},
+					{"  3. 12 4"},
+					{"3. 12 4"},
+				},
+				ExpectedWarningsCount: 12,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/9739
+				Skip:    true,
+				Dialect: "mysql",
+				Query:   "select * from test01 where pk>=3 and pk < 4",
+				Expected: []sql.Row{
+					{"  3 12 4"},
+					{"  3. 12 4"},
+					{"  3.2 12 4"},
+					{"+3.1234"},
+					{"3. 12 4"},
+				},
+				ExpectedWarningsCount: 20,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+			},
+			{
+				Dialect:               "mysql",
+				Query:                 "select * from test02 where pk in ('11asdf');",
+				Expected:              []sql.Row{{11}},
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+			},
+			{
+				Dialect:               "mysql",
+				Query:                 "select * from test02 where pk='11.12asdf';",
+				Expected:              []sql.Row{},
+				ExpectedWarningsCount: 1,
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9821
+		Name: "strings with boolean operators",
+		Assertions: []ScriptTestAssertion{
+			{
+				Dialect:               "mysql",
+				Query:                 `select '3bxu' and true`,
+				Expected:              []sql.Row{{true}},
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+				ExpectedWarningsCount: 1,
+			},
+			{
+				Dialect:               "mysql",
+				Query:                 "select '3bxu' or false",
+				Expected:              []sql.Row{{true}},
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+				ExpectedWarningsCount: 1,
+			},
+			{
+				Dialect:               "mysql",
+				Query:                 "select '3bxu' xor false",
+				Expected:              []sql.Row{{true}},
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+				ExpectedWarningsCount: 1,
+			},
+			{
+				Query:                 "select '' or false",
+				Expected:              []sql.Row{{false}},
+				ExpectedWarningsCount: 0,
+			},
+			{
+				Query:                 "select '0' or false",
+				Expected:              []sql.Row{{false}},
+				ExpectedWarningsCount: 0,
+			},
+			{
+				Query:                 "select '00' or false",
+				Expected:              []sql.Row{{false}},
+				ExpectedWarningsCount: 0,
+			},
+			{
+				Dialect:               "mysql",
+				Query:                 "select '00asdf' or false",
+				Expected:              []sql.Row{{false}},
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+				ExpectedWarningsCount: 1,
+			},
+			{
+				Dialect:               "mysql",
+				Query:                 "select 'asdf' or false",
+				Expected:              []sql.Row{{false}},
+				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+				ExpectedWarningsCount: 1,
+			},
+		},
+	},
+	{
+		Dialect: "mysql",
+		Name:    "complicated string to numeric conversion",
+		SetUpScript: []string{
+			"CREATE TABLE t0(c INT);",
+			"INSERT INTO t0 VALUES (1);",
+			"CREATE TABLE t1(c VARCHAR(500));",
+			"INSERT INTO t1 VALUES ('1a');",
+			"CREATE TABLE t2(c0 INT , c1 BOOLEAN , c2 BOOLEAN , c3 INT , placeholder0 INT , placeholder1 VARCHAR(500) , placeholder2 VARCHAR(500) , PRIMARY KEY(placeholder0));",
+			"CREATE TABLE t3(c0 INT , c1 VARCHAR(500) , c2 BOOLEAN , c3 VARCHAR(500) , placeholder0 BOOLEAN , placeholder1 INT , placeholder2 VARCHAR(500));",
+			"INSERT INTO t3 VALUES (7, '0y4', TRUE, '5y', TRUE, 5, 'p9c');",
+			"INSERT INTO t3 VALUES (1, '4', TRUE, '4H', FALSE, 9, 'Zy4');",
+			"INSERT INTO t3 VALUES (10, '1a', FALSE, 'pYE', FALSE, 3, '0awX');",
+			"INSERT INTO t3 VALUES (8, 'J', TRUE, 'LE', TRUE, 9, 'YEqQ');",
+			"INSERT INTO t2 VALUES (10, FALSE, TRUE, 2, 2, 'nfxF', 'xvC');",
+			"INSERT INTO t2 VALUES (10, TRUE, TRUE, 10, 1, 'rlQT', 'W');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM t0, t1 WHERE (t1.c IN (true));",
+				Expected: []sql.Row{
+					{1, "1a"},
+				},
+			},
+			{
+				Query: "SELECT * FROM t3 INNER JOIN t2 ON ((((t3.c0) = ((EXTRACT(YEAR FROM DATE_ADD(DATE '2000-01-01', INTERVAL ( BIT_LENGTH(( MOD(t2.c3 + ( t2.c3 + ( BIT_COUNT(t2.c3) ) * 3 - CAST(( NOT (t2.c0 XOR t2.c2) ) AS SIGNED) ) * 2, 100 + t2.c3) ) ^ t2.c3) ) DAY)) % (t2.c3 + 1))))) >= (((t3.c2) < ((((((('Bs./')OR('wZ')) IN ((('1066274936')OR('')))))OR((((t3.c1 IN (true)))<>(((t3.c0)OR(( COALESCE(NULLIF(t3.c3, ''), t3.c1) ))))))))))));",
+				Expected: []sql.Row{
+					{7, "0y4", 1, "5y", 1, 5, "p9c", 10, 1, 1, 10, 1, "rlQT", "W"},
+					{1, "4", 1, "4H", 0, 9, "Zy4", 10, 1, 1, 10, 1, "rlQT", "W"},
+					{10, "1a", 0, "pYE", 0, 3, "0awX", 10, 1, 1, 10, 1, "rlQT", "W"},
+					{8, "J", 1, "LE", 1, 9, "YEqQ", 10, 1, 1, 10, 1, "rlQT", "W"},
+					{7, "0y4", 1, "5y", 1, 5, "p9c", 10, 0, 1, 2, 2, "nfxF", "xvC"},
+					{1, "4", 1, "4H", 0, 9, "Zy4", 10, 0, 1, 2, 2, "nfxF", "xvC"},
+					{10, "1a", 0, "pYE", 0, 3, "0awX", 10, 0, 1, 2, 2, "nfxF", "xvC"},
+					{8, "J", 1, "LE", 1, 9, "YEqQ", 10, 0, 1, 2, 2, "nfxF", "xvC"},
+				},
+			},
+			{
+				Query: "SELECT * FROM t3 CROSS JOIN t2 WHERE ((((t3.c0) = ((EXTRACT(YEAR FROM DATE_ADD(DATE '2000-01-01', INTERVAL ( BIT_LENGTH(( MOD(t2.c3 + ( t2.c3 + ( BIT_COUNT(t2.c3) ) * 3 - CAST(( NOT (t2.c0 XOR t2.c2) ) AS SIGNED) ) * 2, 100 + t2.c3) ) ^ t2.c3) ) DAY)) % (t2.c3 + 1))))) >= (((t3.c2) < ((((((('Bs./')OR('wZ')) IN ((('1066274936')OR('')))))OR((((t3.c1 IN (true)))<>(((t3.c0)OR(( COALESCE(NULLIF(t3.c3, ''), t3.c1) ))))))))))));",
+				Expected: []sql.Row{
+					{7, "0y4", 1, "5y", 1, 5, "p9c", 10, 1, 1, 10, 1, "rlQT", "W"},
+					{1, "4", 1, "4H", 0, 9, "Zy4", 10, 1, 1, 10, 1, "rlQT", "W"},
+					{10, "1a", 0, "pYE", 0, 3, "0awX", 10, 1, 1, 10, 1, "rlQT", "W"},
+					{8, "J", 1, "LE", 1, 9, "YEqQ", 10, 1, 1, 10, 1, "rlQT", "W"},
+					{7, "0y4", 1, "5y", 1, 5, "p9c", 10, 0, 1, 2, 2, "nfxF", "xvC"},
+					{1, "4", 1, "4H", 0, 9, "Zy4", 10, 0, 1, 2, 2, "nfxF", "xvC"},
+					{10, "1a", 0, "pYE", 0, 3, "0awX", 10, 0, 1, 2, 2, "nfxF", "xvC"},
+					{8, "J", 1, "LE", 1, 9, "YEqQ", 10, 0, 1, 2, 2, "nfxF", "xvC"},
+				},
+			},
+		},
+	},
+
 	{
 		// https://github.com/dolthub/dolt/issues/9794
 		Name: "UPDATE with TRIM function on TEXT column",
@@ -6317,6 +7393,13 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{},
 			},
 			{
+				// This actually matches MySQL behavior
+				Query: "select count(*) from t where (f in (null, 0.8));",
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+			{
 				// select count to avoid floating point comparison
 				Query: "select count(*) from t where (f in (null, cast(0.8 as float)));",
 				Expected: []sql.Row{
@@ -6359,6 +7442,32 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{
 					{0},
 				},
+			},
+		},
+	},
+	{
+		Name:    "hash in tuple picks correct type and skips mixed types",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t (v varchar(10));",
+			"insert into t values ('abc'), ('def'), ('ghi');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from t where (v in ('xyz')) order by v;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from t where (v in (0, 'xyz')) order by v;",
+				Expected: []sql.Row{
+					{"abc"},
+					{"def"},
+					{"ghi"},
+				},
+			},
+			{
+				Query:    "select * from t where (v in (1, 'xyz')) order by v;",
+				Expected: []sql.Row{},
 			},
 		},
 	},
@@ -11774,276 +12883,6 @@ select * from t1 except (
 		},
 	},
 	{
-		// https://github.com/dolthub/dolt/issues/9733
-		// https://github.com/dolthub/dolt/issues/9739
-		Name: "strings cast to numbers",
-		SetUpScript: []string{
-			"create table test01(pk varchar(20) primary key)",
-			`insert into test01 values ('  3 12 4'),
-                          ('  3.2 12 4'),('-3.1234'),('-3.1a'),('-5+8'),('+3.1234'),
-                          ('11d'),('11wha?'),('11'),('12'),('1a1'),('a1a1'),('11-5'),
-                          ('3. 12 4'),('5.932887e+07'),('5.932887e+07abc'),('5.932887e7'),('5.932887e7abc')`,
-			"create table test02(pk int primary key)",
-			"insert into test02 values(11),(12),(13),(14),(15)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Dialect: "mysql",
-				Query:   "select pk, cast(pk as float) from test01",
-				Expected: []sql.Row{
-					{"  3 12 4", float32(3)},
-					{"  3.2 12 4", float32(3.2)},
-					{"-3.1234", float32(-3.1234)},
-					{"-3.1a", float32(-3.1)},
-					{"-5+8", float32(-5)},
-					{"+3.1234", float32(3.1234)},
-					{"11", float32(11)},
-					{"11-5", float32(11)},
-					{"11d", float32(11)},
-					{"11wha?", float32(11)},
-					{"12", float32(12)},
-					{"1a1", float32(1)},
-					{"3. 12 4", float32(3)},
-					{"5.932887e+07", float32(5.932887e+07)},
-					{"5.932887e+07abc", float32(5.932887e+07)},
-					{"5.932887e7", float32(5.932887e+07)},
-					{"5.932887e7abc", float32(5.932887e+07)},
-					{"a1a1", float32(0)},
-				},
-				ExpectedWarningsCount: 12,
-				ExpectedWarning:       mysql.ERTruncatedWrongValue,
-			},
-			{
-				Dialect: "mysql",
-				Query:   "select pk, cast(pk as double) from test01",
-				Expected: []sql.Row{
-					{"  3 12 4", 3.0},
-					{"  3.2 12 4", 3.2},
-					{"-3.1234", -3.1234},
-					{"-3.1a", -3.1},
-					{"-5+8", -5.0},
-					{"+3.1234", 3.1234},
-					{"11", 11.0},
-					{"11-5", 11.0},
-					{"11d", 11.0},
-					{"11wha?", 11.0},
-					{"12", 12.0},
-					{"1a1", 1.0},
-					{"3. 12 4", 3.0},
-					{"5.932887e+07", 5.932887e+07},
-					{"5.932887e+07abc", 5.932887e+07},
-					{"5.932887e7", 5.932887e+07},
-					{"5.932887e7abc", 5.932887e+07},
-					{"a1a1", 0.0},
-				},
-				ExpectedWarningsCount: 12,
-				ExpectedWarning:       mysql.ERTruncatedWrongValue,
-			},
-			{
-				Dialect: "mysql",
-				Query:   "select pk, cast(pk as signed) from test01",
-				Expected: []sql.Row{
-					{"  3 12 4", 3},
-					{"  3.2 12 4", 3},
-					{"-3.1234", -3},
-					{"-3.1a", -3},
-					{"-5+8", -5},
-					{"+3.1234", 3},
-					{"11", 11},
-					{"11-5", 11},
-					{"11d", 11},
-					{"11wha?", 11},
-					{"12", 12},
-					{"1a1", 1},
-					{"3. 12 4", 3},
-					{"5.932887e+07", 5},
-					{"5.932887e+07abc", 5},
-					{"5.932887e7", 5},
-					{"5.932887e7abc", 5},
-					{"a1a1", 0},
-				},
-				ExpectedWarningsCount: 16,
-				ExpectedWarning:       mysql.ERTruncatedWrongValue,
-			},
-			{
-				Dialect: "mysql",
-				Query:   "select pk, cast(pk as unsigned) from test01",
-				Expected: []sql.Row{
-					{"  3 12 4", uint64(3)},
-					{"  3.2 12 4", uint64(3)},
-					{"-3.1234", uint64(18446744073709551613)},
-					{"-3.1a", uint64(18446744073709551613)},
-					{"-5+8", uint64(18446744073709551611)},
-					{"+3.1234", uint64(3)},
-					{"11", uint64(11)},
-					{"11-5", uint64(11)},
-					{"11d", uint64(11)},
-					{"11wha?", uint64(11)},
-					{"12", uint64(12)},
-					{"1a1", uint64(1)},
-					{"3. 12 4", uint64(3)},
-					{"5.932887e+07", uint64(5)},
-					{"5.932887e+07abc", uint64(5)},
-					{"5.932887e7", uint64(5)},
-					{"5.932887e7abc", uint64(5)},
-					{"a1a1", uint64(0)},
-				},
-				// TODO: Should be 19. Missing warnings for "Cast to unsigned converted negative integer to its positive
-				//  complement" (1105) https://github.com/dolthub/dolt/issues/9840
-				ExpectedWarningsCount: 16,
-				ExpectedWarning:       mysql.ERTruncatedWrongValue,
-			},
-			{
-				Dialect: "mysql",
-				Query:   "select pk, cast(pk as decimal(12,3)) from test01",
-				Expected: []sql.Row{
-					{"  3 12 4", "3.000"},
-					{"  3.2 12 4", "3.200"},
-					{"-3.1234", "-3.123"},
-					{"-3.1a", "-3.100"},
-					{"-5+8", "-5.000"},
-					{"+3.1234", "3.123"},
-					{"11", "11.000"},
-					{"11-5", "11.000"},
-					{"11d", "11.000"},
-					{"11wha?", "11.000"},
-					{"12", "12.000"},
-					{"1a1", "1.000"},
-					{"3. 12 4", "3.000"},
-					{"5.932887e+07", "59328870.000"},
-					{"5.932887e+07abc", "59328870.000"},
-					{"5.932887e7", "59328870.000"},
-					{"5.932887e7abc", "59328870.000"},
-					{"a1a1", "0.000"},
-				},
-				// TODO: should be 13. Missing warning for "Incorrect DECIMAL value: '0' for column '' at row -1" (1366)
-				ExpectedWarningsCount: 12,
-				ExpectedWarning:       mysql.ERTruncatedWrongValue,
-			},
-			{
-				Query:                 "select * from test01 where pk in ('11')",
-				Expected:              []sql.Row{{"11"}},
-				ExpectedWarningsCount: 0,
-			},
-			{
-				// https://github.com/dolthub/dolt/issues/9739
-				Skip:    true,
-				Dialect: "mysql",
-				Query:   "select * from test01 where pk in (11)",
-				Expected: []sql.Row{
-					{"11"},
-					{"11-5"},
-					{"11d"},
-					{"11wha?"},
-				},
-				ExpectedWarningsCount: 12,
-				ExpectedWarning:       mysql.ERTruncatedWrongValue,
-			},
-			{
-				// https://github.com/dolthub/dolt/issues/9739
-				Skip:    true,
-				Dialect: "mysql",
-				Query:   "select * from test01 where pk=3",
-				Expected: []sql.Row{
-					{"  3 12 4"},
-					{"  3. 12 4"},
-					{"3. 12 4"},
-				},
-				ExpectedWarningsCount: 12,
-				ExpectedWarning:       mysql.ERTruncatedWrongValue,
-			},
-			{
-				// https://github.com/dolthub/dolt/issues/9739
-				Skip:    true,
-				Dialect: "mysql",
-				Query:   "select * from test01 where pk>=3 and pk < 4",
-				Expected: []sql.Row{
-					{"  3 12 4"},
-					{"  3. 12 4"},
-					{"  3.2 12 4"},
-					{"+3.1234"},
-					{"3. 12 4"},
-				},
-				ExpectedWarningsCount: 20,
-				ExpectedWarning:       mysql.ERTruncatedWrongValue,
-			},
-			{
-				// https://github.com/dolthub/dolt/issues/9739
-				Skip:                  true,
-				Dialect:               "mysql",
-				Query:                 "select * from test02 where pk in ('11asdf')",
-				Expected:              []sql.Row{{"11"}},
-				ExpectedWarningsCount: 1,
-				ExpectedWarning:       mysql.ERTruncatedWrongValue,
-			},
-			{
-				// https://github.com/dolthub/dolt/issues/9739
-				Skip:                  true,
-				Dialect:               "mysql",
-				Query:                 "select * from test02 where pk='11.12asdf'",
-				Expected:              []sql.Row{},
-				ExpectedWarningsCount: 1,
-				ExpectedWarning:       mysql.ERTruncatedWrongValue,
-			},
-		},
-	},
-	{
-		// https://github.com/dolthub/dolt/issues/9821
-		Name: "strings convert to booleans",
-		Assertions: []ScriptTestAssertion{
-			{
-				Dialect:               "mysql",
-				Query:                 `select '3bxu' and true`,
-				Expected:              []sql.Row{{true}},
-				ExpectedWarning:       mysql.ERTruncatedWrongValue,
-				ExpectedWarningsCount: 1,
-			},
-			{
-				Dialect:               "mysql",
-				Query:                 "select '3bxu' or false",
-				Expected:              []sql.Row{{true}},
-				ExpectedWarning:       mysql.ERTruncatedWrongValue,
-				ExpectedWarningsCount: 1,
-			},
-			{
-				Dialect:               "mysql",
-				Query:                 "select '3bxu' xor false",
-				Expected:              []sql.Row{{true}},
-				ExpectedWarning:       mysql.ERTruncatedWrongValue,
-				ExpectedWarningsCount: 1,
-			},
-			{
-				Query:                 "select '' or false",
-				Expected:              []sql.Row{{false}},
-				ExpectedWarningsCount: 0,
-			},
-			{
-				Query:                 "select '0' or false",
-				Expected:              []sql.Row{{false}},
-				ExpectedWarningsCount: 0,
-			},
-			{
-				Query:                 "select '00' or false",
-				Expected:              []sql.Row{{false}},
-				ExpectedWarningsCount: 0,
-			},
-			{
-				Dialect:               "mysql",
-				Query:                 "select '00asdf' or false",
-				Expected:              []sql.Row{{false}},
-				ExpectedWarning:       mysql.ERTruncatedWrongValue,
-				ExpectedWarningsCount: 1,
-			},
-			{
-				Dialect:               "mysql",
-				Query:                 "select 'asdf' or false",
-				Expected:              []sql.Row{{false}},
-				ExpectedWarning:       mysql.ERTruncatedWrongValue,
-				ExpectedWarningsCount: 1,
-			},
-		},
-	},
-	{
 		// https://github.com/dolthub/dolt/issues/6899
 		Name: "window function tests",
 		SetUpScript: []string{
@@ -13519,6 +14358,52 @@ var BrokenScriptTests = []ScriptTest{
 }
 
 var CreateDatabaseScripts = []ScriptTest{
+	{
+		// https://github.com/dolthub/dolt/pull/9830
+		Name: "CREATE SCHEMA without database selection falls back to CREATE DATABASE",
+		SetUpScript: []string{
+			"CREATE DATABASE tmp",
+			"USE tmp",
+		},
+		Dialect: "mysql",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "DROP DATABASE tmp",
+			},
+			{
+				Query:    "CREATE SCHEMA NewDatabase",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				Query:    "SHOW DATABASES",
+				Expected: []sql.Row{{"NewDatabase"}, {"information_schema"}, {"mydb"}, {"mysql"}},
+			},
+			{
+				Query:    "USE NewDatabase",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT DATABASE()",
+				Expected: []sql.Row{{"NewDatabase"}},
+			},
+			{
+				Query:    "CREATE TABLE test_table (id INT PRIMARY KEY)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
+				Query:    "SHOW TABLES",
+				Expected: []sql.Row{{"test_table"}},
+			},
+			{
+				Query:    "USE mydb",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "DROP DATABASE NewDatabase",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+		},
+	},
 	{
 		Name: "CREATE DATABASE and create table",
 		Assertions: []ScriptTestAssertion{

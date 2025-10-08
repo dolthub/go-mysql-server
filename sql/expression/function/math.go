@@ -24,6 +24,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dolthub/vitess/go/mysql"
 	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -129,15 +130,15 @@ func (r *Rand) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	var seed int64
-	if types.IsNumber(r.Child.Type()) {
-		e, _, err = types.Int64.Convert(ctx, e)
-		if err == nil {
-			seed = e.(int64)
+	e, _, err = types.Int64.Convert(ctx, e)
+	if err != nil {
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
 		}
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
-	return rand.New(rand.NewSource(seed)).Float64(), nil
+	return rand.New(rand.NewSource(e.(int64))).Float64(), nil
 }
 
 // Sin is the SIN function
@@ -176,7 +177,10 @@ func (s *Sin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	n, _, err := types.Float64.Convert(ctx, val)
 	if err != nil {
-		return nil, err
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
 	return math.Sin(n.(float64)), nil
@@ -225,7 +229,10 @@ func (s *Cos) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	n, _, err := types.Float64.Convert(ctx, val)
 	if err != nil {
-		return nil, err
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
 	return math.Cos(n.(float64)), nil
@@ -274,8 +281,12 @@ func (t *Tan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	n, _, err := types.Float64.Convert(ctx, val)
 	if err != nil {
-		return nil, err
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
+
 	res := math.Tan(n.(float64))
 	if math.IsNaN(res) {
 		return nil, nil
@@ -327,7 +338,10 @@ func (a *Asin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	n, _, err := types.Float64.Convert(ctx, val)
 	if err != nil {
-		return nil, err
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
 	res := math.Asin(n.(float64))
@@ -381,7 +395,10 @@ func (a *Acos) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	n, _, err := types.Float64.Convert(ctx, val)
 	if err != nil {
-		return nil, err
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
 	res := math.Acos(n.(float64))
@@ -490,12 +507,18 @@ func (a *Atan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	nx, _, err := types.Float64.Convert(ctx, xx)
 	if err != nil {
-		return nil, err
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
 	ny, _, err := types.Float64.Convert(ctx, yy)
 	if err != nil {
-		return nil, err
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
 	return math.Atan2(ny.(float64), nx.(float64)), nil
@@ -549,7 +572,10 @@ func (c *Cot) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	n, _, err := types.Float64.Convert(ctx, val)
 	if err != nil {
-		return nil, err
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
 	tan := math.Tan(n.(float64))
@@ -613,7 +639,10 @@ func (d *Degrees) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	n, _, err := types.Float64.Convert(ctx, val)
 	if err != nil {
-		return nil, err
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
 	return (n.(float64) * 180.0) / math.Pi, nil
@@ -662,7 +691,10 @@ func (r *Radians) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	n, _, err := types.Float64.Convert(ctx, val)
 	if err != nil {
-		return nil, err
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
 	return (n.(float64) * math.Pi) / 180.0, nil
@@ -976,13 +1008,13 @@ func (e *Exp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	v, _, err := types.Float64.Convert(ctx, val)
 	if err != nil {
-		// TODO: truncate
-		ctx.Warn(1292, "Truncated incorrect DOUBLE value: '%v'", val)
-		v = 0.0
+		if !sql.ErrTruncatedIncorrect.Is(err) {
+			return nil, err
+		}
+		ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 	}
 
-	vv := v.(float64)
-	res := math.Exp(vv)
+	res := math.Exp(v.(float64))
 
 	if math.IsNaN(res) || math.IsInf(res, 0) {
 		return nil, nil
