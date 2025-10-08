@@ -16,6 +16,7 @@ package expression
 
 import (
 	"fmt"
+	"math"
 	"testing"
 	"time"
 
@@ -568,7 +569,9 @@ func TestUnaryMinus(t *testing.T) {
 		typ      sql.Type
 		expected interface{}
 	}{
-		{"int32", int32(1), types.Int32, int32(-1)},
+		{"int8", int8(1), types.Int8, int64(-1)},
+		{"int16", int16(1), types.Int16, int64(-1)},
+		{"int32", int32(1), types.Int32, int64(-1)},
 		{"uint32", uint32(1), types.Uint32, int32(-1)},
 		{"int64", int64(1), types.Int64, int64(-1)},
 		{"uint64", uint64(1), types.Uint64, int64(-1)},
@@ -577,6 +580,10 @@ func TestUnaryMinus(t *testing.T) {
 		{"int text", "1", types.LongText, "-1"},
 		{"float text", "1.2", types.LongText, "-1.2"},
 		{"nil", nil, types.LongText, nil},
+		{"minint8", int8(math.MinInt8), types.Int8, int64(128)},
+		{"minint16", int16(math.MinInt16), types.Int16, int64(32768)},
+		{"minint32", int32(math.MinInt32), types.Int32, int64(2147483648)},
+		{"minint64", int64(math.MinInt64), types.Int64, "9223372036854775808"},
 	}
 
 	for _, tt := range testCases {
