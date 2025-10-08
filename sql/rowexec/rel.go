@@ -15,26 +15,26 @@
 package rowexec
 
 import (
-	"errors"
-	"fmt"
-	"io"
-	"os"
-	"path/filepath"
-	"reflect"
-	"strings"
+    "errors"
+    "fmt"
+    "io"
+    "os"
+    "path/filepath"
+    "reflect"
+    "strings"
 
-	"github.com/dolthub/jsonpath"
-	"github.com/shopspring/decimal"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
+    "github.com/dolthub/jsonpath"
+    "github.com/shopspring/decimal"
+    "go.opentelemetry.io/otel/attribute"
+    "go.opentelemetry.io/otel/trace"
 
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
-	"github.com/dolthub/go-mysql-server/sql/expression/function/json"
-	"github.com/dolthub/go-mysql-server/sql/iters"
-	"github.com/dolthub/go-mysql-server/sql/plan"
-	"github.com/dolthub/go-mysql-server/sql/types"
+    "github.com/dolthub/go-mysql-server/sql"
+    "github.com/dolthub/go-mysql-server/sql/expression"
+    "github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
+    "github.com/dolthub/go-mysql-server/sql/expression/function/json"
+    "github.com/dolthub/go-mysql-server/sql/iters"
+    "github.com/dolthub/go-mysql-server/sql/plan"
+    "github.com/dolthub/go-mysql-server/sql/types"
 )
 
 func (b *BaseBuilder) buildTopN(ctx *sql.Context, n *plan.TopN, row sql.Row) (sql.RowIter, error) {
@@ -307,11 +307,15 @@ func (b *BaseBuilder) buildProject(ctx *sql.Context, n *plan.Project, row sql.Ro
 		attribute.Int("projections", len(n.Projections)),
 	))
 
-	i, err := b.buildNodeExec(ctx, n.Child, row)
+    i, err := b.buildNodeExec(ctx, n.Child, row)
 	if err != nil {
 		span.End()
 		return nil, err
 	}
+
+    if i == nil {
+        ctx.GetLogger().WithField("nodeType", "Project").Debug("child iterator is nil")
+    }
 
 	return sql.NewSpanIter(span, &ProjectIter{
 		projs:          n.Projections,
@@ -475,11 +479,14 @@ func (b *BaseBuilder) buildLimit(ctx *sql.Context, n *plan.Limit, row sql.Row) (
 		return nil, err
 	}
 
-	childIter, err := b.buildNodeExec(ctx, n.Child, row)
+    childIter, err := b.buildNodeExec(ctx, n.Child, row)
 	if err != nil {
 		span.End()
 		return nil, err
 	}
+    if childIter == nil {
+        ctx.GetLogger().WithField("nodeType", "Limit").Debug("child iterator is nil")
+    }
 	return sql.NewSpanIter(span, &iters.LimitIter{
 		CalcFoundRows: n.CalcFoundRows,
 		Limit:         limit,
