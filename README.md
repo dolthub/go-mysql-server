@@ -57,11 +57,18 @@ go get github.com/dolthub/go-mysql-server@latest
 ```
 
 To implement ICU-compatible regexes, `go-mysql-server` has a dependency on
-[go-icu-regex](github.com/dolthub/go-icu-regex), which has a cgo dependency on
+[go-icu-regex](github.com/dolthub/go-icu-regex), which has a Cgo dependency on
 [ICU4C](https://unicode-org.github.io/icu/userguide/icu4c/). To build a project
 which depends on `go-mysql-server`, you should have a C/C++ toolchain, you
 should build with Cgo enabled, and you should have libicu-dev, or the
 equivalent for your environment, installed and available to your C++ toolchain.
+
+For convenience, `go-mysql-server` also includes a non-compatible regex
+implementation based on the Go standard library `regex.Regex`. To build against
+that, instead of the `go-icu-regex` implementation, you must compile with
+`-tags=gms_pure_go`.  Please note that some of go-mysql-server's tests do not
+pass with `-tags=gms_pure_go` and in general `gms_pure_go` is not recommended
+for users seeking MySQL compatibility.
 
 ## Using the in-memory test server
 
