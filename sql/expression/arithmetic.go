@@ -710,16 +710,19 @@ func (e *UnaryMinus) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return -n, nil
 	case int8:
 		if n == math.MinInt8 {
+			e.typ = types.Int16 // For non-literals to update
 			return -int16(n), nil
 		}
 		return -n, nil
 	case int16:
 		if n == math.MinInt16 {
+			e.typ = types.Int32
 			return -int32(n), nil
 		}
 		return -n, nil
 	case int32:
 		if n == math.MinInt32 {
+			e.typ = types.Int64
 			return -int64(n), nil
 		}
 		return -n, nil
