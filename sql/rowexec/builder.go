@@ -15,10 +15,11 @@
 package rowexec
 
 import (
-	"runtime/trace"
+    "fmt"
+    "runtime/trace"
 
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/plan"
+    "github.com/dolthub/go-mysql-server/sql"
+    "github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 var DefaultBuilder = &BaseBuilder{}
@@ -35,13 +36,36 @@ type BaseBuilder struct {
 	override sql.NodeExecBuilder
 }
 
+// panicSafeExecBuilder wraps another sql.NodeExecBuilder and converts panics to errors,
+// preventing server-wide crashes when integrator-provided builders panic.
+type panicSafeExecBuilder struct{
+    inner sql.NodeExecBuilder
+}
+
+func newPanicSafeExecBuilder(inner sql.NodeExecBuilder) sql.NodeExecBuilder {
+    if inner == nil {
+        return nil
+    }
+    return &panicSafeExecBuilder{inner: inner}
+}
+
+func (p *panicSafeExecBuilder) Build(ctx *sql.Context, n sql.Node, r sql.Row) (iter sql.RowIter, err error) {
+    defer func() {
+        if rec := recover(); rec != nil {
+            err = fmt.Errorf("exec builder panic: %v", rec)
+            iter = nil
+        }
+    }()
+    return p.inner.Build(ctx, n, r)
+}
+
 func (b *BaseBuilder) Build(ctx *sql.Context, n sql.Node, r sql.Row) (sql.RowIter, error) {
 	defer trace.StartRegion(ctx, "ExecBuilder.Build").End()
 	return b.buildNodeExec(ctx, n, r)
 }
 
 func NewOverrideBuilder(override sql.NodeExecBuilder) sql.NodeExecBuilder {
-	return &BaseBuilder{override: override}
+    return &BaseBuilder{override: newPanicSafeExecBuilder(override)}
 }
 
 // FinalizeIters applies the final transformations on sql.RowIter before execution.
