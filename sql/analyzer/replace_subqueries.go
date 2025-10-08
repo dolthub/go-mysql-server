@@ -34,17 +34,39 @@ func replaceSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 	}
 
 	return transform.NodeWithOpaque(n, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		if sqa, ok := node.(*plan.SubqueryAlias); ok && len(sqa.ColumnNames) == 0 {
+		if sqa, ok := node.(*plan.SubqueryAlias); ok {
 			switch child := sqa.Child.(type) {
 			case *plan.Project:
-				if table, ok := child.Child.(*plan.ResolvedTable); ok {
-					if child.Schema().Equals(table.Schema()) {
+				if len(sqa.ColumnNames) == 0 {
+					if table, ok := child.Child.(*plan.ResolvedTable); ok && child.Schema().Equals(table.Schema()) {
 						return plan.NewTableAlias(sqa.Name(), table), transform.NewTree, nil
+
 					}
 				}
 			case *plan.TableAlias:
-				return plan.NewTableAlias(sqa.Name(), getResolvedTable(child)), transform.NewTree, nil
+				if len(sqa.ColumnNames) == 0 {
+					return plan.NewTableAlias(sqa.Name(), getResolvedTable(child)), transform.NewTree, nil
+				}
+			case *plan.SubqueryAlias:
+				if sqa.Columns().Len() == child.Columns().Len() {
+					// childColIdMap maps each ColumnId from sqa to the corresponding child ColumnId
+					childColIdMap := make(map[sql.ColumnId]sql.ColumnId)
+					colId, colIdOk := sqa.Columns().Next(1)
+					childColId, childColIdOk := child.Columns().Next(1)
+					for colIdOk && childColIdOk {
+						childColIdMap[colId] = childColId
+						colId, colIdOk = sqa.Columns().Next(colId + 1)
+						childColId, childColIdOk = child.Columns().Next(childColId + 1)
+					}
+					scopeMapping := make(map[sql.ColumnId]sql.Expression)
+					for col, _ := range sqa.ScopeMapping {
+						// remap child scope mapping to sqa scope mapping
+						scopeMapping[col] = child.ScopeMapping[childColIdMap[col]]
+					}
+					return sqa.WithChild(child.Child).WithScopeMapping(scopeMapping), transform.NewTree, nil
+				}
 			}
+
 		}
 		// TODO: do this for Subqueries too. Subqueries are Expressions, not Nodes so we'll have to consider how to
 		//  transform an Expression into a Node

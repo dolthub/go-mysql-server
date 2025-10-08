@@ -21232,164 +21232,147 @@ With c as (
 			" ├─ cacheable: true\n" +
 			" ├─ colSet: (13)\n" +
 			" ├─ tableId: 8\n" +
-			" └─ SubqueryAlias\n" +
-			"     ├─ name: d\n" +
-			"     ├─ outerVisibility: false\n" +
-			"     ├─ isLateral: false\n" +
-			"     ├─ cacheable: true\n" +
-			"     ├─ colSet: (11)\n" +
-			"     ├─ tableId: 6\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [a.s:3!null]\n" +
-			"         └─ HashJoin\n" +
-			"             ├─ Eq\n" +
-			"             │   ├─ b.I:0!null\n" +
-			"             │   └─ e.i:4!null\n" +
-			"             ├─ HashJoin\n" +
-			"             │   ├─ Eq\n" +
-			"             │   │   ├─ a.i:2!null\n" +
-			"             │   │   └─ b.i:0!null\n" +
-			"             │   ├─ SubqueryAlias\n" +
-			"             │   │   ├─ name: b\n" +
-			"             │   │   ├─ outerVisibility: false\n" +
-			"             │   │   ├─ isLateral: false\n" +
-			"             │   │   ├─ cacheable: true\n" +
-			"             │   │   ├─ colSet: (5,6)\n" +
-			"             │   │   ├─ tableId: 3\n" +
-			"             │   │   └─ TableAlias(t2)\n" +
-			"             │   │       └─ IndexedTableAccess(mytable)\n" +
-			"             │   │           ├─ index: [mytable.i]\n" +
-			"             │   │           ├─ static: [{[1, 1]}, {[2, 2]}]\n" +
-			"             │   │           ├─ colSet: (3,4)\n" +
-			"             │   │           ├─ tableId: 2\n" +
-			"             │   │           └─ Table\n" +
-			"             │   │               ├─ name: mytable\n" +
-			"             │   │               └─ columns: [i s]\n" +
-			"             │   └─ HashLookup\n" +
-			"             │       ├─ left-key: TUPLE(b.i:0!null)\n" +
-			"             │       ├─ right-key: TUPLE(a.i:0!null)\n" +
-			"             │       └─ TableAlias(a)\n" +
-			"             │           └─ Table\n" +
-			"             │               ├─ name: mytable\n" +
-			"             │               ├─ columns: [i s]\n" +
-			"             │               ├─ colSet: (1,2)\n" +
-			"             │               └─ tableId: 1\n" +
-			"             └─ HashLookup\n" +
-			"                 ├─ left-key: TUPLE(b.I:0!null)\n" +
-			"                 ├─ right-key: TUPLE(e.i:0!null)\n" +
-			"                 └─ CachedResults\n" +
-			"                     └─ SubqueryAlias\n" +
-			"                         ├─ name: e\n" +
-			"                         ├─ outerVisibility: false\n" +
-			"                         ├─ isLateral: false\n" +
-			"                         ├─ cacheable: true\n" +
-			"                         ├─ colSet: (9,10)\n" +
-			"                         ├─ tableId: 5\n" +
-			"                         └─ TableAlias(t1)\n" +
-			"                             └─ IndexedTableAccess(mytable)\n" +
-			"                                 ├─ index: [mytable.i]\n" +
-			"                                 ├─ static: [{[2, 2]}, {[3, 3]}]\n" +
-			"                                 ├─ colSet: (7,8)\n" +
-			"                                 ├─ tableId: 4\n" +
-			"                                 └─ Table\n" +
-			"                                     ├─ name: mytable\n" +
-			"                                     └─ columns: [i s]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [a.s:3!null]\n" +
+			"     └─ HashJoin\n" +
+			"         ├─ Eq\n" +
+			"         │   ├─ b.I:0!null\n" +
+			"         │   └─ e.i:4!null\n" +
+			"         ├─ HashJoin\n" +
+			"         │   ├─ Eq\n" +
+			"         │   │   ├─ a.i:2!null\n" +
+			"         │   │   └─ b.i:0!null\n" +
+			"         │   ├─ SubqueryAlias\n" +
+			"         │   │   ├─ name: b\n" +
+			"         │   │   ├─ outerVisibility: false\n" +
+			"         │   │   ├─ isLateral: false\n" +
+			"         │   │   ├─ cacheable: true\n" +
+			"         │   │   ├─ colSet: (5,6)\n" +
+			"         │   │   ├─ tableId: 3\n" +
+			"         │   │   └─ TableAlias(t2)\n" +
+			"         │   │       └─ IndexedTableAccess(mytable)\n" +
+			"         │   │           ├─ index: [mytable.i]\n" +
+			"         │   │           ├─ static: [{[1, 1]}, {[2, 2]}]\n" +
+			"         │   │           ├─ colSet: (3,4)\n" +
+			"         │   │           ├─ tableId: 2\n" +
+			"         │   │           └─ Table\n" +
+			"         │   │               ├─ name: mytable\n" +
+			"         │   │               └─ columns: [i s]\n" +
+			"         │   └─ HashLookup\n" +
+			"         │       ├─ left-key: TUPLE(b.i:0!null)\n" +
+			"         │       ├─ right-key: TUPLE(a.i:0!null)\n" +
+			"         │       └─ TableAlias(a)\n" +
+			"         │           └─ Table\n" +
+			"         │               ├─ name: mytable\n" +
+			"         │               ├─ columns: [i s]\n" +
+			"         │               ├─ colSet: (1,2)\n" +
+			"         │               └─ tableId: 1\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: TUPLE(b.I:0!null)\n" +
+			"             ├─ right-key: TUPLE(e.i:0!null)\n" +
+			"             └─ CachedResults\n" +
+			"                 └─ SubqueryAlias\n" +
+			"                     ├─ name: e\n" +
+			"                     ├─ outerVisibility: false\n" +
+			"                     ├─ isLateral: false\n" +
+			"                     ├─ cacheable: true\n" +
+			"                     ├─ colSet: (9,10)\n" +
+			"                     ├─ tableId: 5\n" +
+			"                     └─ TableAlias(t1)\n" +
+			"                         └─ IndexedTableAccess(mytable)\n" +
+			"                             ├─ index: [mytable.i]\n" +
+			"                             ├─ static: [{[2, 2]}, {[3, 3]}]\n" +
+			"                             ├─ colSet: (7,8)\n" +
+			"                             ├─ tableId: 4\n" +
+			"                             └─ Table\n" +
+			"                                 ├─ name: mytable\n" +
+			"                                 └─ columns: [i s]\n" +
 			"",
 		ExpectedEstimates: "SubqueryAlias\n" +
 			" ├─ name: c\n" +
 			" ├─ outerVisibility: false\n" +
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
-			" └─ SubqueryAlias\n" +
-			"     ├─ name: d\n" +
-			"     ├─ outerVisibility: false\n" +
-			"     ├─ isLateral: false\n" +
-			"     ├─ cacheable: true\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [a.s]\n" +
-			"         └─ HashJoin\n" +
-			"             ├─ (b.I = e.i)\n" +
-			"             ├─ HashJoin\n" +
-			"             │   ├─ (a.i = b.i)\n" +
-			"             │   ├─ SubqueryAlias\n" +
-			"             │   │   ├─ name: b\n" +
-			"             │   │   ├─ outerVisibility: false\n" +
-			"             │   │   ├─ isLateral: false\n" +
-			"             │   │   ├─ cacheable: true\n" +
-			"             │   │   └─ TableAlias(t2)\n" +
-			"             │   │       └─ IndexedTableAccess(mytable)\n" +
-			"             │   │           ├─ index: [mytable.i]\n" +
-			"             │   │           ├─ filters: [{[1, 1]}, {[2, 2]}]\n" +
-			"             │   │           └─ columns: [i s]\n" +
-			"             │   └─ HashLookup\n" +
-			"             │       ├─ left-key: (b.i)\n" +
-			"             │       ├─ right-key: (a.i)\n" +
-			"             │       └─ TableAlias(a)\n" +
-			"             │           └─ Table\n" +
-			"             │               ├─ name: mytable\n" +
-			"             │               └─ columns: [i s]\n" +
-			"             └─ HashLookup\n" +
-			"                 ├─ left-key: (b.I)\n" +
-			"                 ├─ right-key: (e.i)\n" +
-			"                 └─ CachedResults\n" +
-			"                     └─ SubqueryAlias\n" +
-			"                         ├─ name: e\n" +
-			"                         ├─ outerVisibility: false\n" +
-			"                         ├─ isLateral: false\n" +
-			"                         ├─ cacheable: true\n" +
-			"                         └─ TableAlias(t1)\n" +
-			"                             └─ IndexedTableAccess(mytable)\n" +
-			"                                 ├─ index: [mytable.i]\n" +
-			"                                 ├─ filters: [{[2, 2]}, {[3, 3]}]\n" +
-			"                                 └─ columns: [i s]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [a.s]\n" +
+			"     └─ HashJoin\n" +
+			"         ├─ (b.I = e.i)\n" +
+			"         ├─ HashJoin\n" +
+			"         │   ├─ (a.i = b.i)\n" +
+			"         │   ├─ SubqueryAlias\n" +
+			"         │   │   ├─ name: b\n" +
+			"         │   │   ├─ outerVisibility: false\n" +
+			"         │   │   ├─ isLateral: false\n" +
+			"         │   │   ├─ cacheable: true\n" +
+			"         │   │   └─ TableAlias(t2)\n" +
+			"         │   │       └─ IndexedTableAccess(mytable)\n" +
+			"         │   │           ├─ index: [mytable.i]\n" +
+			"         │   │           ├─ filters: [{[1, 1]}, {[2, 2]}]\n" +
+			"         │   │           └─ columns: [i s]\n" +
+			"         │   └─ HashLookup\n" +
+			"         │       ├─ left-key: (b.i)\n" +
+			"         │       ├─ right-key: (a.i)\n" +
+			"         │       └─ TableAlias(a)\n" +
+			"         │           └─ Table\n" +
+			"         │               ├─ name: mytable\n" +
+			"         │               └─ columns: [i s]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: (b.I)\n" +
+			"             ├─ right-key: (e.i)\n" +
+			"             └─ CachedResults\n" +
+			"                 └─ SubqueryAlias\n" +
+			"                     ├─ name: e\n" +
+			"                     ├─ outerVisibility: false\n" +
+			"                     ├─ isLateral: false\n" +
+			"                     ├─ cacheable: true\n" +
+			"                     └─ TableAlias(t1)\n" +
+			"                         └─ IndexedTableAccess(mytable)\n" +
+			"                             ├─ index: [mytable.i]\n" +
+			"                             ├─ filters: [{[2, 2]}, {[3, 3]}]\n" +
+			"                             └─ columns: [i s]\n" +
 			"",
 		ExpectedAnalysis: "SubqueryAlias\n" +
 			" ├─ name: c\n" +
 			" ├─ outerVisibility: false\n" +
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
-			" └─ SubqueryAlias\n" +
-			"     ├─ name: d\n" +
-			"     ├─ outerVisibility: false\n" +
-			"     ├─ isLateral: false\n" +
-			"     ├─ cacheable: true\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [a.s]\n" +
-			"         └─ HashJoin\n" +
-			"             ├─ (b.I = e.i)\n" +
-			"             ├─ HashJoin\n" +
-			"             │   ├─ (a.i = b.i)\n" +
-			"             │   ├─ SubqueryAlias\n" +
-			"             │   │   ├─ name: b\n" +
-			"             │   │   ├─ outerVisibility: false\n" +
-			"             │   │   ├─ isLateral: false\n" +
-			"             │   │   ├─ cacheable: true\n" +
-			"             │   │   └─ TableAlias(t2)\n" +
-			"             │   │       └─ IndexedTableAccess(mytable)\n" +
-			"             │   │           ├─ index: [mytable.i]\n" +
-			"             │   │           ├─ filters: [{[1, 1]}, {[2, 2]}]\n" +
-			"             │   │           └─ columns: [i s]\n" +
-			"             │   └─ HashLookup\n" +
-			"             │       ├─ left-key: (b.i)\n" +
-			"             │       ├─ right-key: (a.i)\n" +
-			"             │       └─ TableAlias(a)\n" +
-			"             │           └─ Table\n" +
-			"             │               ├─ name: mytable\n" +
-			"             │               └─ columns: [i s]\n" +
-			"             └─ HashLookup\n" +
-			"                 ├─ left-key: (b.I)\n" +
-			"                 ├─ right-key: (e.i)\n" +
-			"                 └─ CachedResults\n" +
-			"                     └─ SubqueryAlias\n" +
-			"                         ├─ name: e\n" +
-			"                         ├─ outerVisibility: false\n" +
-			"                         ├─ isLateral: false\n" +
-			"                         ├─ cacheable: true\n" +
-			"                         └─ TableAlias(t1)\n" +
-			"                             └─ IndexedTableAccess(mytable)\n" +
-			"                                 ├─ index: [mytable.i]\n" +
-			"                                 ├─ filters: [{[2, 2]}, {[3, 3]}]\n" +
-			"                                 └─ columns: [i s]\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [a.s]\n" +
+			"     └─ HashJoin\n" +
+			"         ├─ (b.I = e.i)\n" +
+			"         ├─ HashJoin\n" +
+			"         │   ├─ (a.i = b.i)\n" +
+			"         │   ├─ SubqueryAlias\n" +
+			"         │   │   ├─ name: b\n" +
+			"         │   │   ├─ outerVisibility: false\n" +
+			"         │   │   ├─ isLateral: false\n" +
+			"         │   │   ├─ cacheable: true\n" +
+			"         │   │   └─ TableAlias(t2)\n" +
+			"         │   │       └─ IndexedTableAccess(mytable)\n" +
+			"         │   │           ├─ index: [mytable.i]\n" +
+			"         │   │           ├─ filters: [{[1, 1]}, {[2, 2]}]\n" +
+			"         │   │           └─ columns: [i s]\n" +
+			"         │   └─ HashLookup\n" +
+			"         │       ├─ left-key: (b.i)\n" +
+			"         │       ├─ right-key: (a.i)\n" +
+			"         │       └─ TableAlias(a)\n" +
+			"         │           └─ Table\n" +
+			"         │               ├─ name: mytable\n" +
+			"         │               └─ columns: [i s]\n" +
+			"         └─ HashLookup\n" +
+			"             ├─ left-key: (b.I)\n" +
+			"             ├─ right-key: (e.i)\n" +
+			"             └─ CachedResults\n" +
+			"                 └─ SubqueryAlias\n" +
+			"                     ├─ name: e\n" +
+			"                     ├─ outerVisibility: false\n" +
+			"                     ├─ isLateral: false\n" +
+			"                     ├─ cacheable: true\n" +
+			"                     └─ TableAlias(t1)\n" +
+			"                         └─ IndexedTableAccess(mytable)\n" +
+			"                             ├─ index: [mytable.i]\n" +
+			"                             ├─ filters: [{[2, 2]}, {[3, 3]}]\n" +
+			"                             └─ columns: [i s]\n" +
 			"",
 	},
 	{
@@ -21446,57 +21429,40 @@ With c as (
 			" ├─ cacheable: true\n" +
 			" ├─ colSet: (4)\n" +
 			" ├─ tableId: 3\n" +
-			" └─ SubqueryAlias\n" +
-			"     ├─ name: sq1\n" +
-			"     ├─ outerVisibility: false\n" +
-			"     ├─ isLateral: false\n" +
-			"     ├─ cacheable: true\n" +
-			"     ├─ colSet: (3)\n" +
-			"     ├─ tableId: 2\n" +
-			"     └─ Filter\n" +
-			"         ├─ Eq\n" +
-			"         │   ├─ mytable.i:0!null\n" +
-			"         │   └─ 3 (bigint)\n" +
-			"         └─ Limit(1)\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: mytable\n" +
-			"                 ├─ columns: [i]\n" +
-			"                 ├─ colSet: (1,2)\n" +
-			"                 └─ tableId: 1\n" +
+			" └─ Filter\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ mytable.i:0!null\n" +
+			"     │   └─ 3 (bigint)\n" +
+			"     └─ Limit(1)\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             ├─ columns: [i]\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "SubqueryAlias\n" +
 			" ├─ name: sq2\n" +
 			" ├─ outerVisibility: false\n" +
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
-			" └─ SubqueryAlias\n" +
-			"     ├─ name: sq1\n" +
-			"     ├─ outerVisibility: false\n" +
-			"     ├─ isLateral: false\n" +
-			"     ├─ cacheable: true\n" +
-			"     └─ Filter\n" +
-			"         ├─ (mytable.i = 3)\n" +
-			"         └─ Limit(1)\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: mytable\n" +
-			"                 └─ columns: [i]\n" +
+			" └─ Filter\n" +
+			"     ├─ (mytable.i = 3)\n" +
+			"     └─ Limit(1)\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i]\n" +
 			"",
 		ExpectedAnalysis: "SubqueryAlias\n" +
 			" ├─ name: sq2\n" +
 			" ├─ outerVisibility: false\n" +
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
-			" └─ SubqueryAlias\n" +
-			"     ├─ name: sq1\n" +
-			"     ├─ outerVisibility: false\n" +
-			"     ├─ isLateral: false\n" +
-			"     ├─ cacheable: true\n" +
-			"     └─ Filter\n" +
-			"         ├─ (mytable.i = 3)\n" +
-			"         └─ Limit(1)\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: mytable\n" +
-			"                 └─ columns: [i]\n" +
+			" └─ Filter\n" +
+			"     ├─ (mytable.i = 3)\n" +
+			"     └─ Limit(1)\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -21561,65 +21527,48 @@ With c as (
 			" ├─ cacheable: true\n" +
 			" ├─ colSet: (4)\n" +
 			" ├─ tableId: 3\n" +
-			" └─ SubqueryAlias\n" +
-			"     ├─ name: sq1\n" +
-			"     ├─ outerVisibility: false\n" +
-			"     ├─ isLateral: false\n" +
-			"     ├─ cacheable: true\n" +
-			"     ├─ colSet: (3)\n" +
-			"     ├─ tableId: 2\n" +
-			"     └─ Filter\n" +
-			"         ├─ Eq\n" +
-			"         │   ├─ mytable.i:0!null\n" +
-			"         │   └─ 3 (bigint)\n" +
-			"         └─ Limit(1)\n" +
-			"             └─ IndexedTableAccess(mytable)\n" +
-			"                 ├─ index: [mytable.i]\n" +
-			"                 ├─ static: [{[NULL, ∞)}]\n" +
-			"                 ├─ reverse: true\n" +
-			"                 ├─ colSet: (1,2)\n" +
-			"                 ├─ tableId: 1\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: mytable\n" +
-			"                     └─ columns: [i]\n" +
+			" └─ Filter\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ mytable.i:0!null\n" +
+			"     │   └─ 3 (bigint)\n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.i]\n" +
+			"             ├─ static: [{[NULL, ∞)}]\n" +
+			"             ├─ reverse: true\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             ├─ tableId: 1\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: mytable\n" +
+			"                 └─ columns: [i]\n" +
 			"",
 		ExpectedEstimates: "SubqueryAlias\n" +
 			" ├─ name: sq2\n" +
 			" ├─ outerVisibility: false\n" +
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
-			" └─ SubqueryAlias\n" +
-			"     ├─ name: sq1\n" +
-			"     ├─ outerVisibility: false\n" +
-			"     ├─ isLateral: false\n" +
-			"     ├─ cacheable: true\n" +
-			"     └─ Filter\n" +
-			"         ├─ (mytable.i = 3)\n" +
-			"         └─ Limit(1)\n" +
-			"             └─ IndexedTableAccess(mytable)\n" +
-			"                 ├─ index: [mytable.i]\n" +
-			"                 ├─ filters: [{[NULL, ∞)}]\n" +
-			"                 ├─ columns: [i]\n" +
-			"                 └─ reverse: true\n" +
+			" └─ Filter\n" +
+			"     ├─ (mytable.i = 3)\n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.i]\n" +
+			"             ├─ filters: [{[NULL, ∞)}]\n" +
+			"             ├─ columns: [i]\n" +
+			"             └─ reverse: true\n" +
 			"",
 		ExpectedAnalysis: "SubqueryAlias\n" +
 			" ├─ name: sq2\n" +
 			" ├─ outerVisibility: false\n" +
 			" ├─ isLateral: false\n" +
 			" ├─ cacheable: true\n" +
-			" └─ SubqueryAlias\n" +
-			"     ├─ name: sq1\n" +
-			"     ├─ outerVisibility: false\n" +
-			"     ├─ isLateral: false\n" +
-			"     ├─ cacheable: true\n" +
-			"     └─ Filter\n" +
-			"         ├─ (mytable.i = 3)\n" +
-			"         └─ Limit(1)\n" +
-			"             └─ IndexedTableAccess(mytable)\n" +
-			"                 ├─ index: [mytable.i]\n" +
-			"                 ├─ filters: [{[NULL, ∞)}]\n" +
-			"                 ├─ columns: [i]\n" +
-			"                 └─ reverse: true\n" +
+			" └─ Filter\n" +
+			"     ├─ (mytable.i = 3)\n" +
+			"     └─ Limit(1)\n" +
+			"         └─ IndexedTableAccess(mytable)\n" +
+			"             ├─ index: [mytable.i]\n" +
+			"             ├─ filters: [{[NULL, ∞)}]\n" +
+			"             ├─ columns: [i]\n" +
+			"             └─ reverse: true\n" +
 			"",
 	},
 	{
@@ -21674,21 +21623,14 @@ With c as (
 			"     ├─ cacheable: true\n" +
 			"     ├─ colSet: (4)\n" +
 			"     ├─ tableId: 3\n" +
-			"     └─ SubqueryAlias\n" +
-			"         ├─ name: sq1\n" +
-			"         ├─ outerVisibility: false\n" +
-			"         ├─ isLateral: false\n" +
-			"         ├─ cacheable: true\n" +
-			"         ├─ colSet: (3)\n" +
-			"         ├─ tableId: 2\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
-			"             ├─ static: [{(1, ∞)}]\n" +
-			"             ├─ colSet: (1,2)\n" +
-			"             ├─ tableId: 1\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: mytable\n" +
-			"                 └─ columns: [i]\n" +
+			"     └─ IndexedTableAccess(mytable)\n" +
+			"         ├─ index: [mytable.i]\n" +
+			"         ├─ static: [{(1, ∞)}]\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i]\n" +
 			"",
 		ExpectedEstimates: "Limit(1)\n" +
 			" └─ SubqueryAlias\n" +
@@ -21696,15 +21638,10 @@ With c as (
 			"     ├─ outerVisibility: false\n" +
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
-			"     └─ SubqueryAlias\n" +
-			"         ├─ name: sq1\n" +
-			"         ├─ outerVisibility: false\n" +
-			"         ├─ isLateral: false\n" +
-			"         ├─ cacheable: true\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
-			"             ├─ filters: [{(1, ∞)}]\n" +
-			"             └─ columns: [i]\n" +
+			"     └─ IndexedTableAccess(mytable)\n" +
+			"         ├─ index: [mytable.i]\n" +
+			"         ├─ filters: [{(1, ∞)}]\n" +
+			"         └─ columns: [i]\n" +
 			"",
 		ExpectedAnalysis: "Limit(1)\n" +
 			" └─ SubqueryAlias\n" +
@@ -21712,15 +21649,10 @@ With c as (
 			"     ├─ outerVisibility: false\n" +
 			"     ├─ isLateral: false\n" +
 			"     ├─ cacheable: true\n" +
-			"     └─ SubqueryAlias\n" +
-			"         ├─ name: sq1\n" +
-			"         ├─ outerVisibility: false\n" +
-			"         ├─ isLateral: false\n" +
-			"         ├─ cacheable: true\n" +
-			"         └─ IndexedTableAccess(mytable)\n" +
-			"             ├─ index: [mytable.i]\n" +
-			"             ├─ filters: [{(1, ∞)}]\n" +
-			"             └─ columns: [i]\n" +
+			"     └─ IndexedTableAccess(mytable)\n" +
+			"         ├─ index: [mytable.i]\n" +
+			"         ├─ filters: [{(1, ∞)}]\n" +
+			"         └─ columns: [i]\n" +
 			"",
 	},
 	{
@@ -23763,32 +23695,25 @@ order by i;`,
 			"             ├─ cacheable: true\n" +
 			"             ├─ colSet: (10)\n" +
 			"             ├─ tableId: 7\n" +
-			"             └─ SubqueryAlias\n" +
-			"                 ├─ name: cte\n" +
-			"                 ├─ outerVisibility: false\n" +
-			"                 ├─ isLateral: true\n" +
-			"                 ├─ cacheable: true\n" +
-			"                 ├─ colSet: (9)\n" +
-			"                 ├─ tableId: 5\n" +
-			"                 └─ RecursiveCTE\n" +
-			"                     └─ Union distinct\n" +
-			"                         ├─ Table\n" +
-			"                         │   ├─ name: xy\n" +
-			"                         │   ├─ columns: [y]\n" +
-			"                         │   ├─ colSet: (3,4)\n" +
-			"                         │   └─ tableId: 2\n" +
-			"                         └─ Project\n" +
-			"                             ├─ columns: [xy.x:3!null]\n" +
-			"                             └─ LookupJoin\n" +
-			"                                 ├─ RecursiveTable(cte)\n" +
-			"                                 └─ IndexedTableAccess(xy)\n" +
-			"                                     ├─ index: [xy.x]\n" +
-			"                                     ├─ keys: [cte.a:2]\n" +
-			"                                     ├─ colSet: (7,8)\n" +
-			"                                     ├─ tableId: 5\n" +
-			"                                     └─ Table\n" +
-			"                                         ├─ name: xy\n" +
-			"                                         └─ columns: [x]\n" +
+			"             └─ RecursiveCTE\n" +
+			"                 └─ Union distinct\n" +
+			"                     ├─ Table\n" +
+			"                     │   ├─ name: xy\n" +
+			"                     │   ├─ columns: [y]\n" +
+			"                     │   ├─ colSet: (3,4)\n" +
+			"                     │   └─ tableId: 2\n" +
+			"                     └─ Project\n" +
+			"                         ├─ columns: [xy.x:3!null]\n" +
+			"                         └─ LookupJoin\n" +
+			"                             ├─ RecursiveTable(cte)\n" +
+			"                             └─ IndexedTableAccess(xy)\n" +
+			"                                 ├─ index: [xy.x]\n" +
+			"                                 ├─ keys: [cte.a:2]\n" +
+			"                                 ├─ colSet: (7,8)\n" +
+			"                                 ├─ tableId: 5\n" +
+			"                                 └─ Table\n" +
+			"                                     ├─ name: xy\n" +
+			"                                     └─ columns: [x]\n" +
 			"",
 		ExpectedEstimates: "Sort(mytable.i ASC)\n" +
 			" └─ LateralCrossJoin\n" +
@@ -23801,24 +23726,19 @@ order by i;`,
 			"             ├─ outerVisibility: false\n" +
 			"             ├─ isLateral: true\n" +
 			"             ├─ cacheable: true\n" +
-			"             └─ SubqueryAlias\n" +
-			"                 ├─ name: cte\n" +
-			"                 ├─ outerVisibility: false\n" +
-			"                 ├─ isLateral: true\n" +
-			"                 ├─ cacheable: true\n" +
-			"                 └─ RecursiveCTE\n" +
-			"                     └─ Union distinct\n" +
-			"                         ├─ Table\n" +
-			"                         │   ├─ name: xy\n" +
-			"                         │   └─ columns: [y]\n" +
-			"                         └─ Project\n" +
-			"                             ├─ columns: [xy.x]\n" +
-			"                             └─ LookupJoin\n" +
-			"                                 ├─ RecursiveTable(cte)\n" +
-			"                                 └─ IndexedTableAccess(xy)\n" +
-			"                                     ├─ index: [xy.x]\n" +
-			"                                     ├─ columns: [x]\n" +
-			"                                     └─ keys: cte.a\n" +
+			"             └─ RecursiveCTE\n" +
+			"                 └─ Union distinct\n" +
+			"                     ├─ Table\n" +
+			"                     │   ├─ name: xy\n" +
+			"                     │   └─ columns: [y]\n" +
+			"                     └─ Project\n" +
+			"                         ├─ columns: [xy.x]\n" +
+			"                         └─ LookupJoin\n" +
+			"                             ├─ RecursiveTable(cte)\n" +
+			"                             └─ IndexedTableAccess(xy)\n" +
+			"                                 ├─ index: [xy.x]\n" +
+			"                                 ├─ columns: [x]\n" +
+			"                                 └─ keys: cte.a\n" +
 			"",
 		ExpectedAnalysis: "Sort(mytable.i ASC)\n" +
 			" └─ LateralCrossJoin\n" +
@@ -23831,24 +23751,19 @@ order by i;`,
 			"             ├─ outerVisibility: false\n" +
 			"             ├─ isLateral: true\n" +
 			"             ├─ cacheable: true\n" +
-			"             └─ SubqueryAlias\n" +
-			"                 ├─ name: cte\n" +
-			"                 ├─ outerVisibility: false\n" +
-			"                 ├─ isLateral: true\n" +
-			"                 ├─ cacheable: true\n" +
-			"                 └─ RecursiveCTE\n" +
-			"                     └─ Union distinct\n" +
-			"                         ├─ Table\n" +
-			"                         │   ├─ name: xy\n" +
-			"                         │   └─ columns: [y]\n" +
-			"                         └─ Project\n" +
-			"                             ├─ columns: [xy.x]\n" +
-			"                             └─ LookupJoin\n" +
-			"                                 ├─ RecursiveTable(cte)\n" +
-			"                                 └─ IndexedTableAccess(xy)\n" +
-			"                                     ├─ index: [xy.x]\n" +
-			"                                     ├─ columns: [x]\n" +
-			"                                     └─ keys: cte.a\n" +
+			"             └─ RecursiveCTE\n" +
+			"                 └─ Union distinct\n" +
+			"                     ├─ Table\n" +
+			"                     │   ├─ name: xy\n" +
+			"                     │   └─ columns: [y]\n" +
+			"                     └─ Project\n" +
+			"                         ├─ columns: [xy.x]\n" +
+			"                         └─ LookupJoin\n" +
+			"                             ├─ RecursiveTable(cte)\n" +
+			"                             └─ IndexedTableAccess(xy)\n" +
+			"                                 ├─ index: [xy.x]\n" +
+			"                                 ├─ columns: [x]\n" +
+			"                                 └─ keys: cte.a\n" +
 			"",
 	},
 	{
@@ -23891,43 +23806,36 @@ order by i;`,
 			"             ├─ cacheable: true\n" +
 			"             ├─ colSet: (12)\n" +
 			"             ├─ tableId: 8\n" +
-			"             └─ SubqueryAlias\n" +
-			"                 ├─ name: cte\n" +
-			"                 ├─ outerVisibility: false\n" +
-			"                 ├─ isLateral: true\n" +
-			"                 ├─ cacheable: true\n" +
-			"                 ├─ colSet: (11)\n" +
-			"                 ├─ tableId: 5\n" +
-			"                 └─ RecursiveCTE\n" +
-			"                     └─ Union distinct\n" +
-			"                         ├─ limit: 3\n" +
-			"                         ├─ Table\n" +
-			"                         │   ├─ name: xy\n" +
-			"                         │   ├─ columns: [y]\n" +
-			"                         │   ├─ colSet: (3,4)\n" +
-			"                         │   └─ tableId: 2\n" +
-			"                         └─ Project\n" +
-			"                             ├─ columns: [sqa1.x:2!null]\n" +
-			"                             └─ InnerJoin\n" +
-			"                                 ├─ Eq\n" +
-			"                                 │   ├─ sqa1.x:2!null\n" +
-			"                                 │   └─ cte.a:4\n" +
-			"                                 ├─ SubqueryAlias\n" +
-			"                                 │   ├─ name: sqa1\n" +
-			"                                 │   ├─ outerVisibility: false\n" +
-			"                                 │   ├─ isLateral: true\n" +
-			"                                 │   ├─ cacheable: true\n" +
-			"                                 │   ├─ colSet: (9,10)\n" +
-			"                                 │   ├─ tableId: 6\n" +
-			"                                 │   └─ IndexedTableAccess(xy)\n" +
-			"                                 │       ├─ index: [xy.x]\n" +
-			"                                 │       ├─ static: [{[1, 1]}]\n" +
-			"                                 │       ├─ colSet: (7,8)\n" +
-			"                                 │       ├─ tableId: 5\n" +
-			"                                 │       └─ Table\n" +
-			"                                 │           ├─ name: xy\n" +
-			"                                 │           └─ columns: [x y]\n" +
-			"                                 └─ RecursiveTable(cte)\n" +
+			"             └─ RecursiveCTE\n" +
+			"                 └─ Union distinct\n" +
+			"                     ├─ limit: 3\n" +
+			"                     ├─ Table\n" +
+			"                     │   ├─ name: xy\n" +
+			"                     │   ├─ columns: [y]\n" +
+			"                     │   ├─ colSet: (3,4)\n" +
+			"                     │   └─ tableId: 2\n" +
+			"                     └─ Project\n" +
+			"                         ├─ columns: [sqa1.x:2!null]\n" +
+			"                         └─ InnerJoin\n" +
+			"                             ├─ Eq\n" +
+			"                             │   ├─ sqa1.x:2!null\n" +
+			"                             │   └─ cte.a:4\n" +
+			"                             ├─ SubqueryAlias\n" +
+			"                             │   ├─ name: sqa1\n" +
+			"                             │   ├─ outerVisibility: false\n" +
+			"                             │   ├─ isLateral: true\n" +
+			"                             │   ├─ cacheable: true\n" +
+			"                             │   ├─ colSet: (9,10)\n" +
+			"                             │   ├─ tableId: 6\n" +
+			"                             │   └─ IndexedTableAccess(xy)\n" +
+			"                             │       ├─ index: [xy.x]\n" +
+			"                             │       ├─ static: [{[1, 1]}]\n" +
+			"                             │       ├─ colSet: (7,8)\n" +
+			"                             │       ├─ tableId: 5\n" +
+			"                             │       └─ Table\n" +
+			"                             │           ├─ name: xy\n" +
+			"                             │           └─ columns: [x y]\n" +
+			"                             └─ RecursiveTable(cte)\n" +
 			"",
 		ExpectedEstimates: "Sort(mytable.i ASC)\n" +
 			" └─ LateralCrossJoin\n" +
@@ -23940,31 +23848,26 @@ order by i;`,
 			"             ├─ outerVisibility: false\n" +
 			"             ├─ isLateral: true\n" +
 			"             ├─ cacheable: true\n" +
-			"             └─ SubqueryAlias\n" +
-			"                 ├─ name: cte\n" +
-			"                 ├─ outerVisibility: false\n" +
-			"                 ├─ isLateral: true\n" +
-			"                 ├─ cacheable: true\n" +
-			"                 └─ RecursiveCTE\n" +
-			"                     └─ Union distinct\n" +
-			"                         ├─ limit: 3\n" +
-			"                         ├─ Table\n" +
-			"                         │   ├─ name: xy\n" +
-			"                         │   └─ columns: [y]\n" +
-			"                         └─ Project\n" +
-			"                             ├─ columns: [sqa1.x]\n" +
-			"                             └─ InnerJoin\n" +
-			"                                 ├─ (sqa1.x = cte.a)\n" +
-			"                                 ├─ SubqueryAlias\n" +
-			"                                 │   ├─ name: sqa1\n" +
-			"                                 │   ├─ outerVisibility: false\n" +
-			"                                 │   ├─ isLateral: true\n" +
-			"                                 │   ├─ cacheable: true\n" +
-			"                                 │   └─ IndexedTableAccess(xy)\n" +
-			"                                 │       ├─ index: [xy.x]\n" +
-			"                                 │       ├─ filters: [{[1, 1]}]\n" +
-			"                                 │       └─ columns: [x y]\n" +
-			"                                 └─ RecursiveTable(cte)\n" +
+			"             └─ RecursiveCTE\n" +
+			"                 └─ Union distinct\n" +
+			"                     ├─ limit: 3\n" +
+			"                     ├─ Table\n" +
+			"                     │   ├─ name: xy\n" +
+			"                     │   └─ columns: [y]\n" +
+			"                     └─ Project\n" +
+			"                         ├─ columns: [sqa1.x]\n" +
+			"                         └─ InnerJoin\n" +
+			"                             ├─ (sqa1.x = cte.a)\n" +
+			"                             ├─ SubqueryAlias\n" +
+			"                             │   ├─ name: sqa1\n" +
+			"                             │   ├─ outerVisibility: false\n" +
+			"                             │   ├─ isLateral: true\n" +
+			"                             │   ├─ cacheable: true\n" +
+			"                             │   └─ IndexedTableAccess(xy)\n" +
+			"                             │       ├─ index: [xy.x]\n" +
+			"                             │       ├─ filters: [{[1, 1]}]\n" +
+			"                             │       └─ columns: [x y]\n" +
+			"                             └─ RecursiveTable(cte)\n" +
 			"",
 		ExpectedAnalysis: "Sort(mytable.i ASC)\n" +
 			" └─ LateralCrossJoin\n" +
@@ -23977,31 +23880,26 @@ order by i;`,
 			"             ├─ outerVisibility: false\n" +
 			"             ├─ isLateral: true\n" +
 			"             ├─ cacheable: true\n" +
-			"             └─ SubqueryAlias\n" +
-			"                 ├─ name: cte\n" +
-			"                 ├─ outerVisibility: false\n" +
-			"                 ├─ isLateral: true\n" +
-			"                 ├─ cacheable: true\n" +
-			"                 └─ RecursiveCTE\n" +
-			"                     └─ Union distinct\n" +
-			"                         ├─ limit: 3\n" +
-			"                         ├─ Table\n" +
-			"                         │   ├─ name: xy\n" +
-			"                         │   └─ columns: [y]\n" +
-			"                         └─ Project\n" +
-			"                             ├─ columns: [sqa1.x]\n" +
-			"                             └─ InnerJoin\n" +
-			"                                 ├─ (sqa1.x = cte.a)\n" +
-			"                                 ├─ SubqueryAlias\n" +
-			"                                 │   ├─ name: sqa1\n" +
-			"                                 │   ├─ outerVisibility: false\n" +
-			"                                 │   ├─ isLateral: true\n" +
-			"                                 │   ├─ cacheable: true\n" +
-			"                                 │   └─ IndexedTableAccess(xy)\n" +
-			"                                 │       ├─ index: [xy.x]\n" +
-			"                                 │       ├─ filters: [{[1, 1]}]\n" +
-			"                                 │       └─ columns: [x y]\n" +
-			"                                 └─ RecursiveTable(cte)\n" +
+			"             └─ RecursiveCTE\n" +
+			"                 └─ Union distinct\n" +
+			"                     ├─ limit: 3\n" +
+			"                     ├─ Table\n" +
+			"                     │   ├─ name: xy\n" +
+			"                     │   └─ columns: [y]\n" +
+			"                     └─ Project\n" +
+			"                         ├─ columns: [sqa1.x]\n" +
+			"                         └─ InnerJoin\n" +
+			"                             ├─ (sqa1.x = cte.a)\n" +
+			"                             ├─ SubqueryAlias\n" +
+			"                             │   ├─ name: sqa1\n" +
+			"                             │   ├─ outerVisibility: false\n" +
+			"                             │   ├─ isLateral: true\n" +
+			"                             │   ├─ cacheable: true\n" +
+			"                             │   └─ IndexedTableAccess(xy)\n" +
+			"                             │       ├─ index: [xy.x]\n" +
+			"                             │       ├─ filters: [{[1, 1]}]\n" +
+			"                             │       └─ columns: [x y]\n" +
+			"                             └─ RecursiveTable(cte)\n" +
 			"",
 	},
 	{
@@ -25015,6 +24913,63 @@ order by x, y;
 			"         └─ Table\n" +
 			"             ├─ name: one_pk_three_idx\n" +
 			"             └─ columns: [v1 v2]\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM (SELECT * FROM (SELECT * FROM (SELECT * FROM othertable join othertable ot) othertable_one) othertable_two) othertable_three `,
+		ExpectedPlan: "SubqueryAlias\n" +
+			" ├─ name: othertable_three\n" +
+			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
+			" ├─ cacheable: true\n" +
+			" ├─ colSet: (13-16)\n" +
+			" ├─ tableId: 5\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [othertable.s2:2!null, othertable.i2:3!null, ot.s2:0!null, ot.i2:1!null]\n" +
+			"     └─ CrossJoin\n" +
+			"         ├─ TableAlias(ot)\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: othertable\n" +
+			"         │       ├─ columns: [s2 i2]\n" +
+			"         │       ├─ colSet: (3,4)\n" +
+			"         │       └─ tableId: 2\n" +
+			"         └─ Table\n" +
+			"             ├─ name: othertable\n" +
+			"             ├─ columns: [s2 i2]\n" +
+			"             ├─ colSet: (1,2)\n" +
+			"             └─ tableId: 1\n" +
+			"",
+		ExpectedEstimates: "SubqueryAlias\n" +
+			" ├─ name: othertable_three\n" +
+			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
+			" ├─ cacheable: true\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [othertable.s2, othertable.i2, ot.s2, ot.i2]\n" +
+			"     └─ CrossJoin\n" +
+			"         ├─ TableAlias(ot)\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: othertable\n" +
+			"         │       └─ columns: [s2 i2]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: othertable\n" +
+			"             └─ columns: [s2 i2]\n" +
+			"",
+		ExpectedAnalysis: "SubqueryAlias\n" +
+			" ├─ name: othertable_three\n" +
+			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
+			" ├─ cacheable: true\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [othertable.s2, othertable.i2, ot.s2, ot.i2]\n" +
+			"     └─ CrossJoin\n" +
+			"         ├─ TableAlias(ot)\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: othertable\n" +
+			"         │       └─ columns: [s2 i2]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: othertable\n" +
+			"             └─ columns: [s2 i2]\n" +
 			"",
 	},
 }
