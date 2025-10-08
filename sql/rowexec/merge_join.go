@@ -46,10 +46,10 @@ func newMergeJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode,
 		return nil, err
 	}
 
-    fullRow := make(sql.Row, len(row)+len(j.Left().Schema())+len(j.Right().Schema()))
-    if len(row) > 0 {
-        copy(fullRow, row)
-    }
+	fullRow := make(sql.Row, len(row)+len(j.Left().Schema())+len(j.Right().Schema()))
+	if len(row) > 0 {
+		copy(fullRow, row)
+	}
 
 	// a merge join's first filter provides direction information
 	// for which iter to update next
@@ -71,16 +71,21 @@ func newMergeJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode,
 	}
 
 	var iter sql.RowIter = &mergeJoinIter{
-		left:        l,
-		right:       r,
-		filters:     filters[1:],
-		cmp:         cmp,
-		typ:         j.Op,
-		fullRow:     fullRow,
-		scopeLen:    j.ScopeLen,
-        // parentLen is the portion of the parent row beyond the current scope.
-        // Clamp to zero to avoid negative offsets when scopeLen > len(row).
-        parentLen:   func() int { if len(row) >= j.ScopeLen { return len(row) - j.ScopeLen }; return 0 }(),
+		left:     l,
+		right:    r,
+		filters:  filters[1:],
+		cmp:      cmp,
+		typ:      j.Op,
+		fullRow:  fullRow,
+		scopeLen: j.ScopeLen,
+		// parentLen is the portion of the parent row beyond the current scope.
+		// Clamp to zero to avoid negative offsets when scopeLen > len(row).
+		parentLen: func() int {
+			if len(row) >= j.ScopeLen {
+				return len(row) - j.ScopeLen
+			}
+			return 0
+		}(),
 		leftRowLen:  len(j.Left().Schema()),
 		rightRowLen: len(j.Right().Schema()),
 		isReversed:  j.IsReversed,
