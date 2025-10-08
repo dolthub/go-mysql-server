@@ -26,7 +26,7 @@ import (
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/shopspring/decimal"
-	errors "gopkg.in/src-d/go-errors.v1"
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -669,6 +669,7 @@ func mult(lval, rval interface{}) (interface{}, error) {
 // UnaryMinus is an unary minus operator.
 type UnaryMinus struct {
 	UnaryExpression
+	typ sql.Type
 }
 
 var _ sql.Expression = (*UnaryMinus)(nil)
@@ -676,7 +677,7 @@ var _ sql.CollationCoercible = (*UnaryMinus)(nil)
 
 // NewUnaryMinus creates a new UnaryMinus expression node.
 func NewUnaryMinus(child sql.Expression) *UnaryMinus {
-	return &UnaryMinus{UnaryExpression{Child: child}}
+	return &UnaryMinus{UnaryExpression{Child: child}, child.Type()}
 }
 
 // Eval implements the sql.Expression interface.
@@ -724,6 +725,9 @@ func (e *UnaryMinus) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return -n, nil
 	case int64:
 		if n == math.MinInt64 {
+			if _, ok := e.Child.(*Literal); ok {
+				return decimal.NewFromInt(n).Neg(), nil
+			}
 			return nil, sql.ErrValueOutOfRange.New("BIGINT", fmt.Sprintf("%d", n))
 		}
 		return -n, nil
@@ -759,20 +763,41 @@ func (e *UnaryMinus) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // Type implements the sql.Expression interface.
 func (e *UnaryMinus) Type() sql.Type {
-	typ := e.Child.Type()
-	if !types.IsNumber(typ) {
+	// Literals can overflow their types on unary minus, so we need to promote them
+	if lit, ok := e.Child.(*Literal); ok {
+		switch n := lit.Value().(type) {
+		case int8:
+			if n == math.MinInt8 {
+				e.typ = types.Int16
+			}
+		case int16:
+			if n == math.MinInt16 {
+				e.typ = types.Int32
+			}
+		case int32:
+			if n == math.MinInt32 {
+				e.typ = types.Int64
+			}
+		case int64:
+			if n == math.MinInt64 {
+				e.typ = types.InternalDecimalType
+			}
+		}
+	}
+
+	if !types.IsNumber(e.typ) {
 		return types.Float64
 	}
 
-	if typ == types.Uint32 {
+	if e.typ == types.Uint32 {
 		return types.Int32
 	}
 
-	if typ == types.Uint64 {
+	if e.typ == types.Uint64 {
 		return types.Int64
 	}
 
-	return e.Child.Type()
+	return e.typ
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
