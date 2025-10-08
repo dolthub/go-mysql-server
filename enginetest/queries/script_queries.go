@@ -123,6 +123,36 @@ type ScriptTestAssertion struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
+		// https://github.com/dolthub/dolt/issues/9935
+		Name: "Incorrect use of negation in AntiJoinIncludingNulls",
+		SetUpScript: []string{
+			"CREATE TABLE t0(c0 INT);",
+			"INSERT INTO t0(c0) VALUES(1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM t0 WHERE (! (1 || (EXISTS (SELECT 1))));",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT * FROM t0 WHERE (! (0 || (EXISTS (SELECT 1))));",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT * FROM t0 WHERE (! (0 || (EXISTS (SELECT 1 FROM t0 WHERE c0 = 2))));",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT * FROM t0 WHERE (! (1 || (EXISTS (SELECT 1 FROM t0 WHERE c0 = 1))));",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT * FROM t0 WHERE (! (0 || (EXISTS (SELECT 1 FROM t0 WHERE c0 = 1))));",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/go-mysql-server/issues/3259
 		Dialect: "mysql",
 		Name:    "Missing column with same name as system variable",

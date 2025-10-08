@@ -123,6 +123,19 @@ func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, fil
 		var s *hoistSubquery
 		var err error
 
+		if not, ok := f.(*expression.Not); ok {
+			if lit, ok := not.Child.(*expression.Literal); ok {
+				val, err := sql.ConvertToBool(ctx, lit.Value())
+				if err != nil {
+					// non-const
+				} else if val {
+					return plan.NewEmptyTableWithSchema(ret.Schema()), transform.NewTree, nil
+				} else {
+					continue // always true
+				}
+			}
+		}
+
 		// match subquery expression
 		joinType := plan.JoinTypeSemi
 		var sq *plan.Subquery
