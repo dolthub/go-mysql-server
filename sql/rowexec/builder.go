@@ -15,11 +15,11 @@
 package rowexec
 
 import (
-    "fmt"
-    "runtime/trace"
+	"fmt"
+	"runtime/trace"
 
-    "github.com/dolthub/go-mysql-server/sql"
-    "github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 var DefaultBuilder = &BaseBuilder{}
@@ -38,25 +38,25 @@ type BaseBuilder struct {
 
 func (b *BaseBuilder) Build(ctx *sql.Context, n sql.Node, r sql.Row) (sql.RowIter, error) {
 	defer trace.StartRegion(ctx, "ExecBuilder.Build").End()
-    logger := ctx.GetLogger().WithField("nodeType", fmt.Sprintf("%T", n))
-    if b.override != nil {
-        logger = logger.WithField("override", true)
-    } else {
-        logger = logger.WithField("override", false)
-    }
-    logger.Debug("building RowIter for node")
+	logger := ctx.GetLogger().WithField("nodeType", fmt.Sprintf("%T", n))
+	if b.override != nil {
+		logger = logger.WithField("override", true)
+	} else {
+		logger = logger.WithField("override", false)
+	}
+	logger.Debug("building RowIter for node")
 
-    iter, err := b.buildNodeExec(ctx, n, r)
-    if err != nil {
-        logger.WithError(err).Debug("buildNodeExec returned error")
-        return nil, err
-    }
-    if iter == nil {
-        logger.Debug("buildNodeExec returned nil iterator")
-        return nil, nil
-    }
-    logger.WithField("iterType", fmt.Sprintf("%T", iter)).Debug("built iterator for node")
-    return iter, nil
+	iter, err := b.buildNodeExec(ctx, n, r)
+	if err != nil {
+		logger.WithError(err).Debug("buildNodeExec returned error")
+		return nil, err
+	}
+	if iter == nil {
+		logger.Debug("buildNodeExec returned nil iterator")
+		return nil, nil
+	}
+	logger.WithField("iterType", fmt.Sprintf("%T", iter)).Debug("built iterator for node")
+	return iter, nil
 }
 
 func NewOverrideBuilder(override sql.NodeExecBuilder) sql.NodeExecBuilder {

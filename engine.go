@@ -446,21 +446,21 @@ func (e *Engine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlpar
 		return nil, nil, nil, err
 	}
 
-    ctx.GetLogger().WithField("planNodeType", fmt.Sprintf("%T", analyzed)).Debug("building exec iterator")
-    iter, err := e.Analyzer.ExecBuilder.Build(ctx, analyzed, nil)
+	ctx.GetLogger().WithField("planNodeType", fmt.Sprintf("%T", analyzed)).Debug("building exec iterator")
+	iter, err := e.Analyzer.ExecBuilder.Build(ctx, analyzed, nil)
 	if err != nil {
-        ctx.GetLogger().WithError(err).Debug("exec builder returned error")
+		ctx.GetLogger().WithError(err).Debug("exec builder returned error")
 		err2 := clearAutocommitTransaction(ctx)
 		if err2 != nil {
 			return nil, nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
 		}
 		return nil, nil, nil, err
 	}
-    if iter == nil {
-        ctx.GetLogger().Debug("exec builder returned nil iterator")
-    } else {
-        ctx.GetLogger().WithField("iterType", fmt.Sprintf("%T", iter)).Debug("built exec iterator")
-    }
+	if iter == nil {
+		ctx.GetLogger().Debug("exec builder returned nil iterator")
+	} else {
+		ctx.GetLogger().WithField("iterType", fmt.Sprintf("%T", iter)).Debug("built exec iterator")
+	}
 
 	var schema sql.Schema
 	iter, schema, err = rowexec.FinalizeIters(ctx, analyzed, qFlags, iter)
@@ -499,21 +499,21 @@ func (e *Engine) PrepQueryPlanForExecution(ctx *sql.Context, _ string, plan sql.
 		return nil, nil, nil, err
 	}
 
-    ctx.GetLogger().WithField("planNodeType", fmt.Sprintf("%T", plan)).Debug("building exec iterator")
-    iter, err := e.Analyzer.ExecBuilder.Build(ctx, plan, nil)
+	ctx.GetLogger().WithField("planNodeType", fmt.Sprintf("%T", plan)).Debug("building exec iterator")
+	iter, err := e.Analyzer.ExecBuilder.Build(ctx, plan, nil)
 	if err != nil {
-        ctx.GetLogger().WithError(err).Debug("exec builder returned error")
+		ctx.GetLogger().WithError(err).Debug("exec builder returned error")
 		err2 := clearAutocommitTransaction(ctx)
 		if err2 != nil {
 			return nil, nil, nil, errors.Wrap(err, "unable to clear autocommit transaction: "+err2.Error())
 		}
 		return nil, nil, nil, err
 	}
-    if iter == nil {
-        ctx.GetLogger().Debug("exec builder returned nil iterator")
-    } else {
-        ctx.GetLogger().WithField("iterType", fmt.Sprintf("%T", iter)).Debug("built exec iterator")
-    }
+	if iter == nil {
+		ctx.GetLogger().Debug("exec builder returned nil iterator")
+	} else {
+		ctx.GetLogger().WithField("iterType", fmt.Sprintf("%T", iter)).Debug("built exec iterator")
+	}
 
 	var schema sql.Schema
 	iter, schema, err = rowexec.FinalizeIters(ctx, plan, qFlags, iter)
@@ -856,21 +856,21 @@ func (e *Engine) executeEvent(ctx *sql.Context, dbName, createEventStatement, us
 	definitionNode := createEventNode.DefinitionNode
 
 	// Build an iterator to execute the event body
-    ctx.GetLogger().WithField("planNodeType", fmt.Sprintf("%T", definitionNode)).Debug("building exec iterator")
-    iter, err := e.Analyzer.ExecBuilder.Build(ctx, definitionNode, nil)
+	ctx.GetLogger().WithField("planNodeType", fmt.Sprintf("%T", definitionNode)).Debug("building exec iterator")
+	iter, err := e.Analyzer.ExecBuilder.Build(ctx, definitionNode, nil)
 	if err != nil {
-        ctx.GetLogger().WithError(err).Debug("exec builder returned error")
+		ctx.GetLogger().WithError(err).Debug("exec builder returned error")
 		clearAutocommitErr := clearAutocommitTransaction(ctx)
 		if clearAutocommitErr != nil {
 			return clearAutocommitErr
 		}
 		return err
 	}
-    if iter == nil {
-        ctx.GetLogger().Debug("exec builder returned nil iterator")
-    } else {
-        ctx.GetLogger().WithField("iterType", fmt.Sprintf("%T", iter)).Debug("built exec iterator")
-    }
+	if iter == nil {
+		ctx.GetLogger().Debug("exec builder returned nil iterator")
+	} else {
+		ctx.GetLogger().WithField("iterType", fmt.Sprintf("%T", iter)).Debug("built exec iterator")
+	}
 
 	iter, _, err = rowexec.FinalizeIters(ctx, definitionNode, nil, iter)
 	if err != nil {
