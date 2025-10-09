@@ -26,7 +26,7 @@ import (
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/shopspring/decimal"
-	errors "gopkg.in/src-d/go-errors.v1"
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -705,25 +705,17 @@ func (e *UnaryMinus) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return -n, nil
 	case float32:
 		return -n, nil
-	case int:
-		return -n, nil
 	case int8:
-		if n == math.MinInt8 {
-			return -int16(n), nil
-		}
-		return -n, nil
+		return -int64(n), nil
 	case int16:
-		if n == math.MinInt16 {
-			return -int32(n), nil
-		}
-		return -n, nil
+		return -int64(n), nil
 	case int32:
-		if n == math.MinInt32 {
-			return -int64(n), nil
-		}
-		return -n, nil
+		return -int64(n), nil
 	case int64:
 		if n == math.MinInt64 {
+			if _, ok := e.Child.(*Literal); ok {
+				return decimal.NewFromInt(n).Neg(), nil
+			}
 			return nil, sql.ErrValueOutOfRange.New("BIGINT", fmt.Sprintf("%d", n))
 		}
 		return -n, nil
@@ -760,6 +752,17 @@ func (e *UnaryMinus) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 // Type implements the sql.Expression interface.
 func (e *UnaryMinus) Type() sql.Type {
 	typ := e.Child.Type()
+	switch typ {
+	case types.Int8, types.Int16, types.Int32:
+		typ = types.Int64
+	case types.Int64:
+		if lit, ok := e.Child.(*Literal); ok {
+			if lit.Value().(int64) == math.MinInt64 {
+				typ = types.InternalDecimalType
+			}
+		}
+	}
+
 	if !types.IsNumber(typ) {
 		return types.Float64
 	}
@@ -772,7 +775,7 @@ func (e *UnaryMinus) Type() sql.Type {
 		return types.Int64
 	}
 
-	return e.Child.Type()
+	return typ
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

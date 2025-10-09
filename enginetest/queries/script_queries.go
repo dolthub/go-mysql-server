@@ -123,6 +123,89 @@ type ScriptTestAssertion struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
+		// https://github.com/dolthub/dolt/issues/9927
+		// https://github.com/dolthub/dolt/issues/9053
+		Name:    "double negation of integer minimum values",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t0(c0 BIGINT);",
+			"INSERT INTO t0(c0) VALUES (-9223372036854775808);",
+			"CREATE TABLE t1(c0 INT);",
+			"INSERT INTO t1(c0) VALUES (-2147483648);",
+			"CREATE TABLE t2(c0 SMALLINT);",
+			"INSERT INTO t2(c0) VALUES (-32768);",
+			"CREATE TABLE t3(c0 TINYINT);",
+			"INSERT INTO t3(c0) VALUES (-128);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:           "SELECT -(-128);",
+				Expected:        []sql.Row{{int16(128)}},
+				ExpectedColumns: sql.Schema{{Name: "-(-128)", Type: types.Int64}},
+			},
+			{
+				Query:           "SELECT -(-32768);",
+				Expected:        []sql.Row{{int32(32768)}},
+				ExpectedColumns: sql.Schema{{Name: "-(-32768)", Type: types.Int64}},
+			},
+			{
+				Query:           "SELECT -(-2147483648);",
+				Expected:        []sql.Row{{int64(2147483648)}},
+				ExpectedColumns: sql.Schema{{Name: "-(-2147483648)", Type: types.Int64}},
+			},
+			{
+				Query:           "SELECT -(-9223372036854775808)",
+				Expected:        []sql.Row{{"9223372036854775808"}},
+				ExpectedColumns: sql.Schema{{Name: "-(-9223372036854775808)", Type: types.InternalDecimalType}},
+			},
+			{
+				Query:       "SELECT -t0.c0 FROM t0;",
+				ExpectedErr: sql.ErrValueOutOfRange,
+			},
+			{
+				Query:    "SELECT -t1.c0 FROM t1;",
+				Expected: []sql.Row{{2147483648}},
+			},
+			{
+				Query:    "SELECT -t2.c0 FROM t2;",
+				Expected: []sql.Row{{32768}},
+			},
+			{
+				Query:    "SELECT -t3.c0 FROM t3;",
+				Expected: []sql.Row{{128}},
+			},
+			{
+				Query:    "SELECT -(-t1.c0 + 1) FROM t1;",
+				Expected: []sql.Row{{-2147483649}},
+			},
+			{
+				Query:    "SELECT -(-(t2.c0 - 1)) FROM t2;",
+				Expected: []sql.Row{{-32769}},
+			},
+			{
+				Query:    "SELECT -(-t3.c0 * 2) FROM t3;",
+				Expected: []sql.Row{{-256}},
+			},
+			{
+				Query:    "SELECT -(-(-128));",
+				Expected: []sql.Row{{int8(-128)}},
+			},
+			{
+				Query:    "SELECT -(-(-(-128)));",
+				Expected: []sql.Row{{int16(128)}},
+			},
+			{
+				Query:    "SELECT -(-NULL);",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:           "SELECT -(-CAST(-128 AS SIGNED));",
+				Expected:        []sql.Row{{int64(-128)}},
+				ExpectedColumns: sql.Schema{{Name: "-(-CAST(-128 AS SIGNED))", Type: types.Int64}},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/9865
 		Name:    "Stored procedure containing a transaction does not return EOF",
 		Dialect: "mysql",
