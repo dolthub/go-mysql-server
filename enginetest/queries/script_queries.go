@@ -124,7 +124,8 @@ type ScriptTestAssertion struct {
 var ScriptTests = []ScriptTest{
 	{
 		// https://github.com/dolthub/go-mysql-server/issues/3259
-		Name: "Missing column with same name as system variable",
+		Dialect: "mysql",
+		Name:    "Missing column with same name as system variable",
 		SetUpScript: []string{
 			"CREATE DATABASE IF NOT EXISTS test_db",
 			"USE test_db",
