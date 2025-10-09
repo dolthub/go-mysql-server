@@ -1032,6 +1032,7 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 		// Related Issues:
 		//   https://github.com/dolthub/dolt/issues/9733
 		//   https://github.com/dolthub/dolt/issues/9739
+		//   https://github.com/dolthub/dolt/issues/9936
 		Dialect: "mysql",
 		Name:    "strings cast to numbers",
 		SetUpScript: []string{
@@ -1042,6 +1043,9 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
                           ('3. 12 4'),('5.932887e+07'),('5.932887e+07abc'),('5.932887e7'),('5.932887e7abc');`,
 			"create table test02(pk int primary key);",
 			"insert into test02 values(11),(12),(13),(14),(15);",
+			"create table t0(c0 varchar(500))",
+			"insert into t0(c0) values (77367106)",
+			"create index i0 using hash on t0(c0) invisible",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -1176,10 +1180,8 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 				Expected:              []sql.Row{{"11"}},
 				ExpectedWarningsCount: 0,
 			},
-
 			{
 				// https://github.com/dolthub/dolt/issues/9739
-				Skip:    true,
 				Dialect: "mysql",
 				Query:   "select * from test01 where pk in (11)",
 				Expected: []sql.Row{
@@ -1193,12 +1195,10 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 			},
 			{
 				// https://github.com/dolthub/dolt/issues/9739
-				Skip:    true,
 				Dialect: "mysql",
 				Query:   "select * from test01 where pk=3",
 				Expected: []sql.Row{
 					{"  3 12 4"},
-					{"  3. 12 4"},
 					{"3. 12 4"},
 				},
 				ExpectedWarningsCount: 12,
@@ -1206,12 +1206,10 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 			},
 			{
 				// https://github.com/dolthub/dolt/issues/9739
-				Skip:    true,
 				Dialect: "mysql",
 				Query:   "select * from test01 where pk>=3 and pk < 4",
 				Expected: []sql.Row{
 					{"  3 12 4"},
-					{"  3. 12 4"},
 					{"  3.2 12 4"},
 					{"+3.1234"},
 					{"3. 12 4"},
@@ -1232,6 +1230,38 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 				Expected:              []sql.Row{},
 				ExpectedWarningsCount: 1,
 				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+			},
+			{
+				Query:    "select c0 from t0 where 1630944823 >= t0.c0",
+				Expected: []sql.Row{{"77367106"}},
+			},
+			{
+				Query:    "select c0 from t0 where 1630944823 <= t0.c0",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select c0 from t0 where '1630944823' >= t0.c0",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select c0 from t0 where '1630944823' <= t0.c0",
+				Expected: []sql.Row{{"77367106"}},
+			},
+			{
+				Query:    "select c0 from t0 where 1630944823.2 >= t0.c0",
+				Expected: []sql.Row{{"77367106"}},
+			},
+			{
+				Query:    "select c0 from t0 where 1630944823.2 <= t0.c0",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select c0 from t0 where '1630944823.2' >= t0.c0",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select c0 from t0 where '1630944823.2' <= t0.c0",
+				Expected: []sql.Row{{"77367106"}},
 			},
 		},
 	},
@@ -7772,6 +7802,7 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/7372
 		Name:    "range query convert int to string zero value",
 		Dialect: "mysql",
 		SetUpScript: []string{
