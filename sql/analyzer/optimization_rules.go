@@ -330,7 +330,7 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 				if lit, ok := e.Child.(*expression.Literal); ok {
 					val, err := sql.ConvertToBool(ctx, lit.Value())
 					if err != nil {
-						// non-const, keep as is
+						// error while converting, keep as is
 						return e, transform.SameTree, nil
 					}
 					return expression.NewLiteral(!val, e.Type()), transform.NewTree, nil
