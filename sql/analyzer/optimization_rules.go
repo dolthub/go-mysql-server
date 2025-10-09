@@ -326,6 +326,16 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 				newRightUpper := expression.NewLiteral(valStr, e.RightChild.Type())
 				newExpr := expression.NewAnd(expression.NewGreaterThanOrEqual(e.LeftChild, newRightLower), expression.NewLessThanOrEqual(e.LeftChild, newRightUpper))
 				return newExpr, transform.NewTree, nil
+			case *expression.Not:
+				if lit, ok := e.Child.(*expression.Literal); ok {
+					val, err := sql.ConvertToBool(ctx, lit.Value())
+					if err != nil {
+						// non-const, keep as is
+						return e, transform.SameTree, nil
+					}
+					return expression.NewLiteral(!val, e.Type()), transform.NewTree, nil
+				}
+				return e, transform.SameTree, nil
 			case *expression.Literal, expression.Tuple, *expression.Interval, *expression.CollatedExpression, *expression.MatchAgainst:
 				return e, transform.SameTree, nil
 			default:
@@ -368,28 +378,26 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 
 func isFalse(e sql.Expression) bool {
 	lit, ok := e.(*expression.Literal)
-	if ok && lit != nil && lit.Type() == types.Boolean && lit.Value() != nil {
-		switch v := lit.Value().(type) {
-		case bool:
-			return !v
-		case int8:
-			return v == sql.False
-		}
+	if !ok || lit == nil || lit.Value() == nil {
+		return false
 	}
-	return false
+	val, err := sql.ConvertToBool(sql.NewEmptyContext(), lit.Value())
+	if err != nil {
+		return false
+	}
+	return !val
 }
 
 func isTrue(e sql.Expression) bool {
 	lit, ok := e.(*expression.Literal)
-	if ok && lit != nil && lit.Type() == types.Boolean && lit.Value() != nil {
-		switch v := lit.Value().(type) {
-		case bool:
-			return v
-		case int8:
-			return v != sql.False
-		}
+	if !ok || lit == nil || lit.Value() == nil {
+		return false
 	}
-	return false
+	val, err := sql.ConvertToBool(sql.NewEmptyContext(), lit.Value())
+	if err != nil {
+		return false
+	}
+	return val
 }
 
 // pushNotFilters applies De'Morgan's laws to push NOT expressions as low

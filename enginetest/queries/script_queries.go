@@ -124,7 +124,8 @@ type ScriptTestAssertion struct {
 var ScriptTests = []ScriptTest{
 	{
 		// https://github.com/dolthub/dolt/issues/9935
-		Name: "Incorrect use of negation in AntiJoinIncludingNulls",
+		Dialect: "mysql",
+		Name:    "Incorrect use of negation in AntiJoinIncludingNulls",
 		SetUpScript: []string{
 			"CREATE TABLE t0(c0 INT);",
 			"INSERT INTO t0(c0) VALUES(1);",
@@ -137,6 +138,22 @@ var ScriptTests = []ScriptTest{
 			{
 				Query:    "SELECT * FROM t0 WHERE (! (0 || (EXISTS (SELECT 1))));",
 				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT * FROM t0 WHERE (! ((EXISTS (SELECT 1)) || 0));",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT * FROM t0 WHERE (! ((EXISTS (SELECT 1)) || 1));",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT * FROM t0 WHERE (! (1 && (EXISTS (SELECT 1))));",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT * FROM t0 WHERE (! (0 && (EXISTS (SELECT 1))));",
+				Expected: []sql.Row{{1}},
 			},
 			{
 				Query:    "SELECT * FROM t0 WHERE (! (0 || (EXISTS (SELECT 1 FROM t0 WHERE c0 = 2))));",
