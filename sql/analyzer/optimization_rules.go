@@ -237,37 +237,37 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 					expression.NewLessThanOrEqual(e.Val, e.Upper),
 				), transform.NewTree, nil
 			case *expression.Or:
-				if isTrue(e.LeftChild) {
+				if isTrue(ctx, e.LeftChild) {
 					return e.LeftChild, transform.NewTree, nil
 				}
 
-				if isTrue(e.RightChild) {
+				if isTrue(ctx, e.RightChild) {
 					return e.RightChild, transform.NewTree, nil
 				}
 
-				if isFalse(e.LeftChild) && types.IsBoolean(e.RightChild.Type()) {
+				if isFalse(ctx, e.LeftChild) && types.IsBoolean(e.RightChild.Type()) {
 					return e.RightChild, transform.NewTree, nil
 				}
 
-				if isFalse(e.RightChild) && types.IsBoolean(e.LeftChild.Type()) {
+				if isFalse(ctx, e.RightChild) && types.IsBoolean(e.LeftChild.Type()) {
 					return e.LeftChild, transform.NewTree, nil
 				}
 
 				return e, transform.SameTree, nil
 			case *expression.And:
-				if isFalse(e.LeftChild) {
+				if isFalse(ctx, e.LeftChild) {
 					return e.LeftChild, transform.NewTree, nil
 				}
 
-				if isFalse(e.RightChild) {
+				if isFalse(ctx, e.RightChild) {
 					return e.RightChild, transform.NewTree, nil
 				}
 
-				if isTrue(e.LeftChild) && types.IsBoolean(e.RightChild.Type()) {
+				if isTrue(ctx, e.LeftChild) && types.IsBoolean(e.RightChild.Type()) {
 					return e.RightChild, transform.NewTree, nil
 				}
 
-				if isTrue(e.RightChild) && types.IsBoolean(e.LeftChild.Type()) {
+				if isTrue(ctx, e.RightChild) && types.IsBoolean(e.LeftChild.Type()) {
 					return e.LeftChild, transform.NewTree, nil
 				}
 
@@ -326,6 +326,16 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 				newRightUpper := expression.NewLiteral(valStr, e.RightChild.Type())
 				newExpr := expression.NewAnd(expression.NewGreaterThanOrEqual(e.LeftChild, newRightLower), expression.NewLessThanOrEqual(e.LeftChild, newRightUpper))
 				return newExpr, transform.NewTree, nil
+			case *expression.Not:
+				if lit, ok := e.Child.(*expression.Literal); ok {
+					val, err := sql.ConvertToBool(ctx, lit.Value())
+					if err != nil {
+						// error while converting, keep as is
+						return e, transform.SameTree, nil
+					}
+					return expression.NewLiteral(!val, e.Type()), transform.NewTree, nil
+				}
+				return e, transform.SameTree, nil
 			case *expression.Literal, expression.Tuple, *expression.Interval, *expression.CollatedExpression, *expression.MatchAgainst:
 				return e, transform.SameTree, nil
 			default:
@@ -350,12 +360,12 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 			return nil, transform.SameTree, err
 		}
 
-		if isFalse(e) {
+		if isFalse(ctx, e) {
 			emptyTable := plan.NewEmptyTableWithSchema(filter.Schema())
 			return emptyTable, transform.NewTree, nil
 		}
 
-		if isTrue(e) {
+		if isTrue(ctx, e) {
 			return filter.Child, transform.NewTree, nil
 		}
 
@@ -366,30 +376,28 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 	})
 }
 
-func isFalse(e sql.Expression) bool {
+func isFalse(ctx *sql.Context, e sql.Expression) bool {
 	lit, ok := e.(*expression.Literal)
-	if ok && lit != nil && lit.Type() == types.Boolean && lit.Value() != nil {
-		switch v := lit.Value().(type) {
-		case bool:
-			return !v
-		case int8:
-			return v == sql.False
-		}
+	if !ok || lit == nil || lit.Value() == nil {
+		return false
 	}
-	return false
+	val, err := sql.ConvertToBool(ctx, lit.Value())
+	if err != nil {
+		return false
+	}
+	return !val
 }
 
-func isTrue(e sql.Expression) bool {
+func isTrue(ctx *sql.Context, e sql.Expression) bool {
 	lit, ok := e.(*expression.Literal)
-	if ok && lit != nil && lit.Type() == types.Boolean && lit.Value() != nil {
-		switch v := lit.Value().(type) {
-		case bool:
-			return v
-		case int8:
-			return v != sql.False
-		}
+	if !ok || lit == nil || lit.Value() == nil {
+		return false
 	}
-	return false
+	val, err := sql.ConvertToBool(ctx, lit.Value())
+	if err != nil {
+		return false
+	}
+	return val
 }
 
 // pushNotFilters applies De'Morgan's laws to push NOT expressions as low
