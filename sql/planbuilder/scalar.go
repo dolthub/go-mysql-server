@@ -126,9 +126,15 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 			if aliasedExpr, ok := inScope.selectAliases[colName]; ok {
 				return aliasedExpr
 			}
-			sysVar, scope, ok := b.buildSysVar(v, ast.SetScope_None)
-			if ok {
-				return sysVar
+			// Only try system variable lookup if there's no table qualifier.
+			// Qualified names like "A.timestamp" are always column references, never system variables.
+			var scope ast.SetScope
+			if tblName == "" && dbName == "" {
+				var sysVar sql.Expression
+				sysVar, scope, ok = b.buildSysVar(v, ast.SetScope_None)
+				if ok {
+					return sysVar
+				}
 			}
 			var err error
 			if scope == ast.SetScope_User || scope == ast.SetScope_Persist || scope == ast.SetScope_PersistOnly {

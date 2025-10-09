@@ -123,6 +123,67 @@ type ScriptTestAssertion struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
+		// https://github.com/dolthub/go-mysql-server/issues/3259
+		Dialect: "mysql",
+		Name:    "Missing column with same name as system variable",
+		SetUpScript: []string{
+			"CREATE DATABASE IF NOT EXISTS test_db",
+			"USE test_db",
+			"CREATE TABLE A (id INT)",
+			"CREATE TABLE B (id INT)",
+			"INSERT INTO A VALUES (1)",
+			"INSERT INTO B VALUES (2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "SELECT UNIX_TIMESTAMP(A.timestamp) FROM A LIMIT 1",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:       "SELECT A.timestamp FROM A",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:       "SELECT A.version FROM A",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:       "SELECT A.max_connections FROM A",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:       "SELECT UPPER(A.sql_mode) FROM A",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:            "SELECT @@timestamp",
+				Expected:         []sql.Row{{float64(0)}},
+				SkipResultsCheck: true, // dynamic var
+			},
+			{
+				Query:            "SELECT @@version",
+				Expected:         []sql.Row{{""}},
+				SkipResultsCheck: true, // dynamic var
+			},
+			{
+				Query:       "SELECT test_db.A.timestamp FROM A",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:       "SELECT test_db.A.version FROM test_db.A",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:       "SELECT a1.timestamp FROM A a1 JOIN B b1 ON a1.id = b1.id",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:       "SELECT b1.max_connections FROM A a1 JOIN B b1 ON a1.id = b1.id",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/9927
 		// https://github.com/dolthub/dolt/issues/9053
 		Name:    "double negation of integer minimum values",
