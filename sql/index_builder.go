@@ -16,6 +16,7 @@ package sql
 
 import (
 	"fmt"
+	// "github.com/dolthub/go-mysql-server/sql/types"
 	"math"
 	"strings"
 
@@ -224,11 +225,22 @@ func (b *MySQLIndexBuilder) GreaterThan(ctx *Context, colExpr string, keyType Ty
 	return b
 }
 
+func isValidKeyType(colType Type, keyType Type) bool {
+	if IsStringType(colType) {
+		return !(IsNumberType(keyType) || IsDecimalType(keyType))
+	}
+	// TODO: check other types
+	return true
+}
+
 // convertKey converts the given key from keyType to colType, returning an error if the conversion fails.
 func (b *MySQLIndexBuilder) convertKey(ctx *Context, colType Type, keyType Type, key interface{}) (interface{}, error) {
 	if et, ok := colType.(ExtendedType); ok {
 		return et.ConvertToType(ctx, keyType.(ExtendedType), key)
 	} else {
+		if !isValidKeyType(colType, keyType) {
+			return nil, ErrInvalidValueType.New(key, colType)
+		}
 		k, _, err := colType.Convert(ctx, key)
 		if err != nil && !ErrTruncatedIncorrect.Is(err) {
 			return nil, err
