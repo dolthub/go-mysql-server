@@ -669,7 +669,6 @@ func mult(lval, rval interface{}) (interface{}, error) {
 // UnaryMinus is an unary minus operator.
 type UnaryMinus struct {
 	UnaryExpression
-	typ sql.Type
 }
 
 var _ sql.Expression = (*UnaryMinus)(nil)
@@ -677,18 +676,7 @@ var _ sql.CollationCoercible = (*UnaryMinus)(nil)
 
 // NewUnaryMinus creates a new UnaryMinus expression node.
 func NewUnaryMinus(child sql.Expression) *UnaryMinus {
-	typ := child.Type()
-	switch child.Type() {
-	case types.Int8, types.Int16, types.Int32:
-		typ = types.Int64
-	case types.Int64:
-		if lit, ok := child.(*Literal); ok {
-			if lit.Value().(int64) == math.MinInt64 {
-				typ = types.InternalDecimalType
-			}
-		}
-	}
-	return &UnaryMinus{UnaryExpression{Child: child}, typ}
+	return &UnaryMinus{UnaryExpression{Child: child}}
 }
 
 // Eval implements the sql.Expression interface.
@@ -763,19 +751,31 @@ func (e *UnaryMinus) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // Type implements the sql.Expression interface.
 func (e *UnaryMinus) Type() sql.Type {
-	if !types.IsNumber(e.typ) {
+	typ := e.Child.Type()
+	switch typ {
+	case types.Int8, types.Int16, types.Int32:
+		typ = types.Int64
+	case types.Int64:
+		if lit, ok := e.Child.(*Literal); ok {
+			if lit.Value().(int64) == math.MinInt64 {
+				typ = types.InternalDecimalType
+			}
+		}
+	}
+
+	if !types.IsNumber(typ) {
 		return types.Float64
 	}
 
-	if e.typ == types.Uint32 {
+	if typ == types.Uint32 {
 		return types.Int32
 	}
 
-	if e.typ == types.Uint64 {
+	if typ == types.Uint64 {
 		return types.Int64
 	}
 
-	return e.typ
+	return typ
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

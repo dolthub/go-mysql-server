@@ -125,7 +125,7 @@ var ScriptTests = []ScriptTest{
 	{
 		// https://github.com/dolthub/dolt/issues/9927
 		// https://github.com/dolthub/dolt/issues/9053
-		Name: "double negation of integer minimum values",
+		Name:    "double negation of integer minimum values",
 		Dialect: "mysql",
 		SetUpScript: []string{
 			"CREATE TABLE t0(c0 BIGINT);",
