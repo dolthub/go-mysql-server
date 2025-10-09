@@ -16,7 +16,6 @@ package sql
 
 import (
 	"fmt"
-	// "github.com/dolthub/go-mysql-server/sql/types"
 	"math"
 	"strings"
 

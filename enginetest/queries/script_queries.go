@@ -1232,34 +1232,42 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 				ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
 			{
+				// https://github.com/dolthub/dolt/issues/9936
 				Query:    "select c0 from t0 where 1630944823 >= t0.c0",
 				Expected: []sql.Row{{"77367106"}},
 			},
 			{
+				// https://github.com/dolthub/dolt/issues/9936
 				Query:    "select c0 from t0 where 1630944823 <= t0.c0",
 				Expected: []sql.Row{},
 			},
 			{
+				// https://github.com/dolthub/dolt/issues/9936
 				Query:    "select c0 from t0 where '1630944823' >= t0.c0",
 				Expected: []sql.Row{},
 			},
 			{
+				// https://github.com/dolthub/dolt/issues/9936
 				Query:    "select c0 from t0 where '1630944823' <= t0.c0",
 				Expected: []sql.Row{{"77367106"}},
 			},
 			{
+				// https://github.com/dolthub/dolt/issues/9936
 				Query:    "select c0 from t0 where 1630944823.2 >= t0.c0",
 				Expected: []sql.Row{{"77367106"}},
 			},
 			{
+				// https://github.com/dolthub/dolt/issues/9936
 				Query:    "select c0 from t0 where 1630944823.2 <= t0.c0",
 				Expected: []sql.Row{},
 			},
 			{
+				// https://github.com/dolthub/dolt/issues/9936
 				Query:    "select c0 from t0 where '1630944823.2' >= t0.c0",
 				Expected: []sql.Row{},
 			},
 			{
+				// https://github.com/dolthub/dolt/issues/9936
 				Query:    "select c0 from t0 where '1630944823.2' <= t0.c0",
 				Expected: []sql.Row{{"77367106"}},
 			},
@@ -7802,7 +7810,6 @@ CREATE TABLE tab3 (
 		},
 	},
 	{
-		// https://github.com/dolthub/dolt/issues/7372
 		Name:    "range query convert int to string zero value",
 		Dialect: "mysql",
 		SetUpScript: []string{
