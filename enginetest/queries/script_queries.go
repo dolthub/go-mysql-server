@@ -1032,7 +1032,6 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 		// Related Issues:
 		//   https://github.com/dolthub/dolt/issues/9733
 		//   https://github.com/dolthub/dolt/issues/9739
-		//   https://github.com/dolthub/dolt/issues/9936
 		Dialect: "mysql",
 		Name:    "strings cast to numbers",
 		SetUpScript: []string{
@@ -1043,9 +1042,6 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
                           ('3. 12 4'),('5.932887e+07'),('5.932887e+07abc'),('5.932887e7'),('5.932887e7abc');`,
 			"create table test02(pk int primary key);",
 			"insert into test02 values(11),(12),(13),(14),(15);",
-			"create table t0(c0 varchar(500))",
-			"insert into t0(c0) values (77367106)",
-			"create index i0 using hash on t0(c0) invisible",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -1232,43 +1228,46 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 				ExpectedWarningsCount: 1,
 				ExpectedWarning:       mysql.ERTruncatedWrongValue,
 			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9936
+		Name: "invisible hash index with different key types",
+		SetUpScript: []string{
+			"create table t0(c0 varchar(500))",
+			"insert into t0(c0) values (77367106)",
+			"create index i0 using hash on t0(c0) invisible",
+		},
+		Assertions: []ScriptTestAssertion{
 			{
-				// https://github.com/dolthub/dolt/issues/9936
 				Query:    "select c0 from t0 where 1630944823 >= t0.c0",
 				Expected: []sql.Row{{"77367106"}},
 			},
 			{
-				// https://github.com/dolthub/dolt/issues/9936
 				Query:    "select c0 from t0 where 1630944823 <= t0.c0",
 				Expected: []sql.Row{},
 			},
 			{
-				// https://github.com/dolthub/dolt/issues/9936
 				Query:    "select c0 from t0 where '1630944823' >= t0.c0",
 				Expected: []sql.Row{},
 			},
 			{
-				// https://github.com/dolthub/dolt/issues/9936
 				Query:    "select c0 from t0 where '1630944823' <= t0.c0",
 				Expected: []sql.Row{{"77367106"}},
 			},
 			{
-				// https://github.com/dolthub/dolt/issues/9936
 				Query:    "select c0 from t0 where 1630944823.2 >= t0.c0",
 				Expected: []sql.Row{{"77367106"}},
 			},
 			{
-				// https://github.com/dolthub/dolt/issues/9936
 				Query:    "select c0 from t0 where 1630944823.2 <= t0.c0",
 				Expected: []sql.Row{},
 			},
 			{
-				// https://github.com/dolthub/dolt/issues/9936
 				Query:    "select c0 from t0 where '1630944823.2' >= t0.c0",
 				Expected: []sql.Row{},
 			},
 			{
-				// https://github.com/dolthub/dolt/issues/9936
 				Query:    "select c0 from t0 where '1630944823.2' <= t0.c0",
 				Expected: []sql.Row{{"77367106"}},
 			},
