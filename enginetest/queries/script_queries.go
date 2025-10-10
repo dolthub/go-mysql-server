@@ -1232,7 +1232,8 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/9936
-		Name: "invisible hash index with different key types",
+		Name:    "invisible hash index with different key types",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t0(c0 varchar(500))",
 			"insert into t0(c0) values (77367106)",
