@@ -495,8 +495,8 @@ func (h *Handler) doQuery(
 		r, err = resultForEmptyIter(sqlCtx, rowIter, resultFields)
 	} else if analyzer.FlagIsSet(qFlags, sql.QFlagMax1Row) {
 		r, err = resultForMax1RowIter(sqlCtx, schema, rowIter, resultFields, buf)
-	} else if ri2, ok := rowIter.(sql.RowIter2); ok && ri2.IsRowIter2(sqlCtx) {
-		r, processedAtLeastOneBatch, err = h.resultForDefaultIter2(sqlCtx, c, ri2, resultFields, callback, more)
+		//} else if ri2, ok := rowIter.(sql.RowIter2); ok && ri2.IsRowIter2(sqlCtx) {
+		//	r, processedAtLeastOneBatch, err = h.resultForDefaultIter2(sqlCtx, c, ri2, resultFields, callback, more)
 	} else {
 		r, processedAtLeastOneBatch, err = h.resultForDefaultIter(sqlCtx, c, schema, rowIter, callback, resultFields, more, buf)
 	}
