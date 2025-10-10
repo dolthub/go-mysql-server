@@ -244,6 +244,8 @@ var ScriptTests = []ScriptTest{
 			"INSERT INTO t2(c0) VALUES (-32768);",
 			"CREATE TABLE t3(c0 TINYINT);",
 			"INSERT INTO t3(c0) VALUES (-128);",
+			"CREATE TABLE tab1 (col4 INT)",
+			"INSERT INTO tab1 VALUES (10), (20), (30)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -310,6 +312,10 @@ var ScriptTests = []ScriptTest{
 				Query:           "SELECT -(-CAST(-128 AS SIGNED));",
 				Expected:        []sql.Row{{int64(-128)}},
 				ExpectedColumns: sql.Schema{{Name: "-(-CAST(-128 AS SIGNED))", Type: types.Int64}},
+			},
+			{
+				Query:    "SELECT * FROM tab1 AS cor0 WHERE NOT - CAST(NULL AS SIGNED) < +35 * +col4 + - -39",
+				Expected: []sql.Row{},
 			},
 		},
 	},
