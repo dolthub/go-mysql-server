@@ -172,6 +172,11 @@ type NumberType interface {
 	DisplayWidth() int
 }
 
+func IsNumberType(t Type) bool {
+	_, ok := t.(NumberType)
+	return ok
+}
+
 // RoundingNumberType represents Number Types that implement an additional interface
 // that supports rounding when converting rather than the default truncation.
 type RoundingNumberType interface {
@@ -195,6 +200,11 @@ type StringType interface {
 	MaxByteLength() int64
 	// Length returns the maximum length, in characters, allowed for this string type.
 	Length() int64
+}
+
+func IsStringType(t Type) bool {
+	_, ok := t.(StringType)
+	return ok
 }
 
 // DatetimeType represents DATE, DATETIME, and TIMESTAMP.
@@ -275,6 +285,11 @@ type DecimalType interface {
 	// Scale returns the scale, or number of digits after the decimal, that may be held.
 	// This will always be less than or equal to the precision.
 	Scale() uint8
+}
+
+func IsDecimalType(t Type) bool {
+	_, ok := t.(DecimalType)
+	return ok
 }
 
 type Type2 interface {

@@ -1367,10 +1367,8 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 				Expected:              []sql.Row{{"11"}},
 				ExpectedWarningsCount: 0,
 			},
-
 			{
 				// https://github.com/dolthub/dolt/issues/9739
-				Skip:    true,
 				Dialect: "mysql",
 				Query:   "select * from test01 where pk in (11)",
 				Expected: []sql.Row{
@@ -1384,12 +1382,11 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 			},
 			{
 				// https://github.com/dolthub/dolt/issues/9739
-				Skip:    true,
+				Skip:    true, // this passes in gms but not dolt
 				Dialect: "mysql",
 				Query:   "select * from test01 where pk=3",
 				Expected: []sql.Row{
 					{"  3 12 4"},
-					{"  3. 12 4"},
 					{"3. 12 4"},
 				},
 				ExpectedWarningsCount: 12,
@@ -1397,12 +1394,10 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 			},
 			{
 				// https://github.com/dolthub/dolt/issues/9739
-				Skip:    true,
 				Dialect: "mysql",
 				Query:   "select * from test01 where pk>=3 and pk < 4",
 				Expected: []sql.Row{
 					{"  3 12 4"},
-					{"  3. 12 4"},
 					{"  3.2 12 4"},
 					{"+3.1234"},
 					{"3. 12 4"},
@@ -1423,6 +1418,50 @@ FROM task_instance INNER JOIN job ON job.id = task_instance.queued_by_job_id INN
 				Expected:              []sql.Row{},
 				ExpectedWarningsCount: 1,
 				ExpectedWarning:       mysql.ERTruncatedWrongValue,
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9936
+		Name:    "invisible hash index with different key types",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t0(c0 varchar(500))",
+			"insert into t0(c0) values (77367106)",
+			"create index i0 using hash on t0(c0) invisible",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select c0 from t0 where 1630944823 >= t0.c0",
+				Expected: []sql.Row{{"77367106"}},
+			},
+			{
+				Query:    "select c0 from t0 where 1630944823 <= t0.c0",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select c0 from t0 where '1630944823' >= t0.c0",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select c0 from t0 where '1630944823' <= t0.c0",
+				Expected: []sql.Row{{"77367106"}},
+			},
+			{
+				Query:    "select c0 from t0 where 1630944823.2 >= t0.c0",
+				Expected: []sql.Row{{"77367106"}},
+			},
+			{
+				Query:    "select c0 from t0 where 1630944823.2 <= t0.c0",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select c0 from t0 where '1630944823.2' >= t0.c0",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select c0 from t0 where '1630944823.2' <= t0.c0",
+				Expected: []sql.Row{{"77367106"}},
 			},
 		},
 	},
