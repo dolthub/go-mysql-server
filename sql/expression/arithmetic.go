@@ -757,8 +757,9 @@ func (e *UnaryMinus) Type() sql.Type {
 		typ = types.Int64
 	case types.Int64:
 		if lit, ok := e.Child.(*Literal); ok {
-			if lit.Value().(int64) == math.MinInt64 {
-				typ = types.InternalDecimalType
+			// lit.Value() can be nil
+			if v, ok := lit.Value().(int64); ok && v == math.MinInt64 {
+				return types.InternalDecimalType
 			}
 		}
 	}
