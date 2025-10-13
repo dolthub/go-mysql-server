@@ -17,8 +17,8 @@ package expression
 import (
 	"bytes"
 	"fmt"
-	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 
+	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
