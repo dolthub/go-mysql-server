@@ -16,8 +16,8 @@ package expression
 
 import (
 	"fmt"
-	"github.com/dolthub/vitess/go/sqltypes"
 
+	"github.com/dolthub/vitess/go/sqltypes"
 	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 	errors "gopkg.in/src-d/go-errors.v1"
 
