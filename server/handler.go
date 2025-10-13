@@ -771,7 +771,7 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 }
 
 func (h *Handler) resultForDefaultIter2(ctx *sql.Context, c *mysql.Conn, iter sql.RowIter2, resultFields []*querypb.Field, callback func(*sqltypes.Result, bool) error, more bool) (*sqltypes.Result, bool, error) {
-	defer trace.StartRegion(ctx, "Handler.resultForDefaultIter").End()
+	defer trace.StartRegion(ctx, "Handler.resultForDefaultIter2").End()
 
 	eg, ctx := ctx.NewErrgroup()
 	pan2err := func(err *error) {
@@ -803,7 +803,34 @@ func (h *Handler) resultForDefaultIter2(ctx *sql.Context, c *mysql.Conn, iter sq
 	defer timer.Stop()
 
 	wg := sync.WaitGroup{}
-	wg.Add(1)
+	wg.Add(2)
+
+	// TODO: this should be merged below go func
+	var rowChan = make(chan sql.Row2, 512)
+	eg.Go(func() (err error) {
+		defer pan2err(&err)
+		defer wg.Done()
+		defer close(rowChan)
+		for {
+			select {
+			case <-ctx.Done():
+				return context.Cause(ctx)
+			default:
+				row, err := iter.Next2(ctx)
+				if err == io.EOF {
+					return nil
+				}
+				if err != nil {
+					return err
+				}
+				select {
+				case rowChan <- row:
+				case <-ctx.Done():
+					return nil
+				}
+			}
+		}
+	})
 
 	var res *sqltypes.Result
 	var processedAtLeastOneBatch bool
@@ -813,7 +840,10 @@ func (h *Handler) resultForDefaultIter2(ctx *sql.Context, c *mysql.Conn, iter sq
 		defer wg.Done()
 		for {
 			if res == nil {
-				res = &sqltypes.Result{Fields: resultFields}
+				res = &sqltypes.Result{
+					Fields: resultFields,
+					Rows:   make([][]sqltypes.Value, 0, rowsBatch),
+				}
 			}
 			if res.RowsAffected == rowsBatch {
 				if err := callback(res, more); err != nil {
@@ -834,14 +864,12 @@ func (h *Handler) resultForDefaultIter2(ctx *sql.Context, c *mysql.Conn, iter sq
 					ctx.GetLogger().Tracef("connection timeout")
 					return ErrRowTimeout.New()
 				}
-			default:
-				row, err := iter.Next2(ctx)
-				if err == io.EOF {
+			case row, ok := <-rowChan:
+				if !ok {
 					return nil
 				}
-				if err != nil {
-					return err
-				}
+				// TODO: we can avoid deep copy here by redefining sql.Row2
+				ctx.GetLogger().Tracef("spooling result row %s", row)
 				outRow := make([]sqltypes.Value, len(row))
 				for i := range row {
 					outRow[i] = sqltypes.MakeTrusted(row[i].Typ, row[i].Val)
