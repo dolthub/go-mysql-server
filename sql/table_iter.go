@@ -106,7 +106,7 @@ func (i *TableRowIter) Next2(ctx *Context) (Row2, error) {
 			return nil, err
 		}
 		ri2, ok := rows.(RowIter2)
-		if !ok {
+		if !ok || !ri2.IsRowIter2(ctx) {
 			panic(fmt.Sprintf("%T does not implement RowIter2", rows))
 		}
 		i.rows2 = ri2

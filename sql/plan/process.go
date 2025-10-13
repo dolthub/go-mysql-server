@@ -226,6 +226,7 @@ const (
 type TrackedRowIter struct {
 	node               sql.Node
 	iter               sql.RowIter
+	iter2              sql.RowIter2
 	onDone             NotifyFunc
 	onNext             NotifyFunc
 	numRows            int64
@@ -318,11 +319,7 @@ func (i *TrackedRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 }
 
 func (i *TrackedRowIter) Next2(ctx *sql.Context) (sql.Row2, error) {
-	ri2, ok := i.iter.(sql.RowIter2)
-	if !ok {
-		panic(fmt.Sprintf("%T does not implement sql.RowIter2 interface", i.iter))
-	}
-	row, err := ri2.Next2(ctx)
+	row, err := i.iter2.Next2(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -334,10 +331,12 @@ func (i *TrackedRowIter) Next2(ctx *sql.Context) (sql.Row2, error) {
 }
 
 func (i *TrackedRowIter) IsRowIter2(ctx *sql.Context) bool {
-	if ri2, ok := i.iter.(sql.RowIter2); ok {
-		return ri2.IsRowIter2(ctx)
+	iter, ok := i.iter.(sql.RowIter2)
+	if !ok || !iter.IsRowIter2(ctx) {
+		return false
 	}
-	return false
+	i.iter2 = iter
+	return true
 }
 
 func (i *TrackedRowIter) Close(ctx *sql.Context) error {
