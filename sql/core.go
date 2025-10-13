@@ -467,6 +467,7 @@ type Expression2 interface {
 	Eval2(ctx *Context, row Row2) (Value, error)
 	// Type2 returns the expression type.
 	Type2() Type2
+	IsExpr2() bool
 }
 
 var SystemVariables SystemVariableRegistry

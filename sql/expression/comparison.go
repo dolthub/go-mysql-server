@@ -15,7 +15,9 @@
 package expression
 
 import (
+	"bytes"
 	"fmt"
+	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 
 	errors "gopkg.in/src-d/go-errors.v1"
 
@@ -519,6 +521,60 @@ func (gt *GreaterThan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	}
 
 	return result == 1, nil
+}
+
+func (gt *GreaterThan) Eval2(ctx *sql.Context, row sql.Row2) (sql.Value, error) {
+	l, ok := gt.Left().(sql.Expression2)
+	if !ok {
+		panic(fmt.Sprintf("%T does not implement sql.Expression2", gt.Left()))
+	}
+	r, ok := gt.Right().(sql.Expression2)
+	if !ok {
+		panic(fmt.Sprintf("%T does not implement sql.Expression2", gt.Right()))
+	}
+
+	lv, err := l.Eval2(ctx, row)
+	if err != nil {
+		return sql.Value{}, nil
+	}
+	rv, err := r.Eval2(ctx, row)
+	if err != nil {
+		return sql.Value{}, nil
+	}
+
+	// TODO: better implementation
+	res := bytes.Compare(lv.Val, rv.Val) // TODO: this is probably wrong
+	var rb byte
+	if res == 1 {
+		rb = 1
+	}
+	ret := sql.Value{
+		Val: sql.ValueBytes{rb},
+		Typ: querypb.Type_INT8,
+	}
+	return ret, nil
+}
+
+func (gt *GreaterThan) Type2() sql.Type2 {
+	return nil
+}
+
+func (gt *GreaterThan) IsExpr2() bool {
+	lExpr, isExpr2 := gt.Left().(sql.Expression2)
+	if !isExpr2 {
+		return false
+	}
+	if !lExpr.IsExpr2() {
+		return false
+	}
+	rExpr, isExpr2 := gt.Right().(sql.Expression2)
+	if !isExpr2 {
+		return false
+	}
+	if !rExpr.IsExpr2() {
+		return false
+	}
+	return true
 }
 
 // WithChildren implements the Expression interface.
