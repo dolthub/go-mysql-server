@@ -803,7 +803,34 @@ func (h *Handler) resultForDefaultIter2(ctx *sql.Context, c *mysql.Conn, iter sq
 	defer timer.Stop()
 
 	wg := sync.WaitGroup{}
-	wg.Add(1)
+	wg.Add(2)
+
+	// Read rows from iter and send them off
+	var rowChan = make(chan sql.Row2, 512)
+	eg.Go(func() (err error) {
+		defer pan2err(&err)
+		defer wg.Done()
+		defer close(rowChan)
+		for {
+			select {
+			case <-ctx.Done():
+				return context.Cause(ctx)
+			default:
+				row, err := iter.Next2(ctx)
+				if err == io.EOF {
+					return nil
+				}
+				if err != nil {
+					return err
+				}
+				select {
+				case rowChan <- row:
+				case <-ctx.Done():
+					return nil
+				}
+			}
+		}
+	})
 
 	var res *sqltypes.Result
 	var processedAtLeastOneBatch bool
@@ -831,19 +858,14 @@ func (h *Handler) resultForDefaultIter2(ctx *sql.Context, c *mysql.Conn, iter sq
 			case <-ctx.Done():
 				return context.Cause(ctx)
 			case <-timer.C:
-				// TODO: timer should probably go in its own thread, as rowChan is blocking
 				if h.readTimeout != 0 {
 					// Cancel and return so Vitess can call the CloseConnection callback
 					ctx.GetLogger().Tracef("connection timeout")
 					return ErrRowTimeout.New()
 				}
-			default:
-				row, err := iter.Next2(ctx)
-				if err == io.EOF {
+			case row, ok := <-rowChan:
+				if !ok {
 					return nil
-				}
-				if err != nil {
-					return err
 				}
 				ctx.GetLogger().Tracef("spooling result row %s", row)
 				res.Rows = append(res.Rows, row)
