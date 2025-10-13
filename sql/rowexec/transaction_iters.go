@@ -15,7 +15,6 @@
 package rowexec
 
 import (
-	"fmt"
 	"io"
 
 	"gopkg.in/src-d/go-errors.v1"
@@ -72,6 +71,7 @@ func getLockableTable(table sql.Table) (sql.Lockable, error) {
 // during the Close() operation
 type TransactionCommittingIter struct {
 	childIter           sql.RowIter
+	childIter2          sql.RowIter2
 	transactionDatabase string
 	autoCommit          bool
 	implicitCommit      bool
@@ -101,18 +101,16 @@ func (t *TransactionCommittingIter) Next(ctx *sql.Context) (sql.Row, error) {
 }
 
 func (t *TransactionCommittingIter) Next2(ctx *sql.Context) (sql.Row2, error) {
-	ri2, ok := t.childIter.(sql.RowIter2)
-	if !ok {
-		panic(fmt.Sprintf("%T does not implement sql.RowIter2 interface", t.childIter))
-	}
-	return ri2.Next2(ctx)
+	return t.childIter2.Next2(ctx)
 }
 
 func (t *TransactionCommittingIter) IsRowIter2(ctx *sql.Context) bool {
-	if ri2, ok := t.childIter.(sql.RowIter2); ok {
-		return ri2.IsRowIter2(ctx)
+	childIter, ok := t.childIter.(sql.RowIter2)
+	if !ok || !childIter.IsRowIter2(ctx) {
+		return false
 	}
-	return false
+	t.childIter2 = childIter
+	return true
 }
 
 func (t *TransactionCommittingIter) Close(ctx *sql.Context) error {

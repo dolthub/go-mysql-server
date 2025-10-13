@@ -15,8 +15,6 @@
 package plan
 
 import (
-	"fmt"
-
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -106,6 +104,9 @@ func (f *Filter) Expressions() []sql.Expression {
 type FilterIter struct {
 	cond      sql.Expression
 	childIter sql.RowIter
+
+	cond2      sql.Expression2
+	childIter2 sql.RowIter2
 }
 
 // NewFilterIter creates a new FilterIter.
@@ -136,23 +137,12 @@ func (i *FilterIter) Next(ctx *sql.Context) (sql.Row, error) {
 }
 
 func (i *FilterIter) Next2(ctx *sql.Context) (sql.Row2, error) {
-	ri2, ok := i.childIter.(sql.RowIter2)
-	if !ok {
-		panic(fmt.Sprintf("%T is not a sql.RowIter2", i.childIter))
-	}
-
 	for {
-		row, err := ri2.Next2(ctx)
+		row, err := i.childIter2.Next2(ctx)
 		if err != nil {
 			return nil, err
 		}
-
-		// TODO: write EvaluateCondition2?
-		cond, isCond2 := i.cond.(sql.Expression2)
-		if !isCond2 {
-			panic(fmt.Sprintf("%T does not implement sql.Expression2 interface", i.cond))
-		}
-		res, err := cond.Eval2(ctx, row)
+		res, err := i.cond2.Eval2(ctx, row)
 		if err != nil {
 			return nil, err
 		}
@@ -163,15 +153,17 @@ func (i *FilterIter) Next2(ctx *sql.Context) (sql.Row2, error) {
 }
 
 func (i *FilterIter) IsRowIter2(ctx *sql.Context) bool {
-	if cond, isExpr2 := i.cond.(sql.Expression2); isExpr2 {
-		if !cond.IsExpr2() {
-			return false
-		}
+	cond, ok := i.cond.(sql.Expression2)
+	if !ok || !cond.IsExpr2() {
+		return false
 	}
-	if ri2, ok := i.childIter.(sql.RowIter2); ok {
-		return ri2.IsRowIter2(ctx)
+	childIter, ok := i.childIter.(sql.RowIter2)
+	if !ok || !childIter.IsRowIter2(ctx) {
+		return false
 	}
-	return false
+	i.cond2 = cond
+	i.childIter2 = childIter
+	return true
 }
 
 // Close implements the RowIter interface.
