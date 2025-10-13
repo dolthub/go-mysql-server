@@ -142,20 +142,36 @@ func (i *FilterIter) Next2(ctx *sql.Context) (sql.Row2, error) {
 	}
 
 	for {
-		row, err := ri2.Next(ctx)
+		row, err := ri2.Next2(ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		res, err := sql.EvaluateCondition(ctx, i.cond, row)
+		// TODO: write EvaluateCondition2?
+		cond, isCond2 := i.cond.(sql.Expression2)
+		if !isCond2 {
+			panic(fmt.Sprintf("%T does not implement sql.Expression2 interface", i.cond))
+		}
+		res, err := cond.Eval2(ctx, row)
 		if err != nil {
 			return nil, err
 		}
-
-		if sql.IsTrue(res) {
-			return nil, nil
+		if res.Val[0] == 1 {
+			return row, nil
 		}
 	}
+}
+
+func (i *FilterIter) IsRowIter2(ctx *sql.Context) bool {
+	if cond, isExpr2 := i.cond.(sql.Expression2); isExpr2 {
+		if !cond.IsExpr2() {
+			return false
+		}
+	}
+	if ri2, ok := i.childIter.(sql.RowIter2); ok {
+		return ri2.IsRowIter2(ctx)
+	}
+	return false
 }
 
 // Close implements the RowIter interface.

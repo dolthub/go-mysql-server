@@ -140,6 +140,10 @@ func (lit *Literal) Eval2(ctx *sql.Context, row sql.Row2) (sql.Value, error) {
 	return lit.val2, nil
 }
 
+func (lit *Literal) IsExpr2() bool {
+	return true
+}
+
 func (lit *Literal) Type2() sql.Type2 {
 	t2, ok := lit.Typ.(sql.Type2)
 	if !ok {

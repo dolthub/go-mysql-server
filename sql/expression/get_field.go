@@ -157,6 +157,10 @@ func (p *GetField) Eval2(ctx *sql.Context, row sql.Row2) (sql.Value, error) {
 	return row.GetField(p.fieldIndex), nil
 }
 
+func (p *GetField) IsExpr2() bool {
+	return true
+}
+
 // WithChildren implements the Expression interface.
 func (p *GetField) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
