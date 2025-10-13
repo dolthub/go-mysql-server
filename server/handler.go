@@ -803,34 +803,7 @@ func (h *Handler) resultForDefaultIter2(ctx *sql.Context, c *mysql.Conn, iter sq
 	defer timer.Stop()
 
 	wg := sync.WaitGroup{}
-	wg.Add(2)
-
-	// TODO: this should be merged below go func
-	var rowChan = make(chan sql.Row2, 512)
-	eg.Go(func() (err error) {
-		defer pan2err(&err)
-		defer wg.Done()
-		defer close(rowChan)
-		for {
-			select {
-			case <-ctx.Done():
-				return context.Cause(ctx)
-			default:
-				row, err := iter.Next2(ctx)
-				if err == io.EOF {
-					return nil
-				}
-				if err != nil {
-					return err
-				}
-				select {
-				case rowChan <- row:
-				case <-ctx.Done():
-					return nil
-				}
-			}
-		}
-	})
+	wg.Add(1)
 
 	var res *sqltypes.Result
 	var processedAtLeastOneBatch bool
@@ -864,18 +837,20 @@ func (h *Handler) resultForDefaultIter2(ctx *sql.Context, c *mysql.Conn, iter sq
 					ctx.GetLogger().Tracef("connection timeout")
 					return ErrRowTimeout.New()
 				}
-			case row, ok := <-rowChan:
-				if !ok {
+			default:
+				row, err := iter.Next2(ctx)
+				if err == io.EOF {
 					return nil
 				}
-				// TODO: we can avoid deep copy here by redefining sql.Row2
-				ctx.GetLogger().Tracef("spooling result row %s", row)
-				outRow := make([]sqltypes.Value, len(row))
-				for i := range row {
-					outRow[i] = sqltypes.MakeTrusted(row[i].Typ, row[i].Val)
+				if err != nil {
+					return err
 				}
-				res.Rows = append(res.Rows, outRow)
+				ctx.GetLogger().Tracef("spooling result row %s", row)
+				res.Rows = append(res.Rows, row)
 				res.RowsAffected++
+				if !timer.Stop() {
+					<-timer.C
+				}
 			}
 			timer.Reset(waitTime)
 		}

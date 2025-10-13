@@ -16,6 +16,7 @@ package expression
 
 import (
 	"fmt"
+	"github.com/dolthub/vitess/go/sqltypes"
 	"strings"
 
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -30,7 +31,7 @@ import (
 type Literal struct {
 	Val  interface{}
 	Typ  sql.Type
-	val2 sql.Value
+	val2 sqltypes.Value
 }
 
 var _ sql.Expression = &Literal{}
@@ -136,7 +137,7 @@ func (*Literal) Children() []sql.Expression {
 	return nil
 }
 
-func (lit *Literal) Eval2(ctx *sql.Context, row sql.Row2) (sql.Value, error) {
+func (lit *Literal) Eval2(ctx *sql.Context, row sql.Row2) (sqltypes.Value, error) {
 	return lit.val2, nil
 }
 

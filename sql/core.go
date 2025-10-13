@@ -30,6 +30,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql/values"
+	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 // Expression is a combination of one or more SQL expressions.
@@ -464,7 +465,7 @@ func DebugString(nodeOrExpression interface{}) string {
 type Expression2 interface {
 	Expression
 	// Eval2 evaluates the given row frame and returns a result.
-	Eval2(ctx *Context, row Row2) (Value, error)
+	Eval2(ctx *Context, row Row2) (sqltypes.Value, error)
 	// Type2 returns the expression type.
 	Type2() Type2
 	IsExpr2() bool
