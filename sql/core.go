@@ -26,11 +26,11 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql/values"
-	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 // Expression is a combination of one or more SQL expressions.

@@ -16,9 +16,9 @@ package expression
 
 import (
 	"fmt"
-	"github.com/dolthub/vitess/go/sqltypes"
 	"strings"
 
+	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/shopspring/decimal"
