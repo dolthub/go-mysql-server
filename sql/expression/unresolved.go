@@ -79,6 +79,10 @@ func (uc *UnresolvedColumn) Type2() sql.Type2 {
 	panic("unresolved column is a placeholder node, but Type2 was called")
 }
 
+func (uc *UnresolvedColumn) IsExpr2() bool {
+	panic("unresolved column is a placeholder node, but IsExpr2 was called")
+}
+
 // Name implements the Nameable interface.
 func (uc *UnresolvedColumn) Name() string { return uc.name }
 
