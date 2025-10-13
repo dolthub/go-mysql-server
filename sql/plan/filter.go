@@ -109,6 +109,9 @@ type FilterIter struct {
 	childIter2 sql.RowIter2
 }
 
+var _ sql.RowIter = (*FilterIter)(nil)
+var _ sql.RowIter2 = (*FilterIter)(nil)
+
 // NewFilterIter creates a new FilterIter.
 func NewFilterIter(
 	cond sql.Expression,
@@ -146,7 +149,7 @@ func (i *FilterIter) Next2(ctx *sql.Context) (sql.Row2, error) {
 		if err != nil {
 			return nil, err
 		}
-		if res.Val[0] == 1 {
+		if res.Raw()[0] == 1 {
 			return row, nil
 		}
 	}
