@@ -154,8 +154,8 @@ func (lit *Literal) Type2() sql.Type2 {
 }
 
 // Value returns the literal value.
-func (p *Literal) Value() interface{} {
-	return p.Val
+func (lit *Literal) Value() interface{} {
+	return lit.Val
 }
 
 func (lit *Literal) WithResolvedChildren(children []any) (any, error) {
