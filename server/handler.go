@@ -805,6 +805,7 @@ func (h *Handler) resultForDefaultIter2(ctx *sql.Context, c *mysql.Conn, iter sq
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 
+	// TODO: send results instead of rows?
 	// Read rows from iter and send them off
 	var rowChan = make(chan sql.Row2, 512)
 	eg.Go(func() (err error) {
