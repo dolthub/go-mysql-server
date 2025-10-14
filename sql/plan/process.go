@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql/transform"
+	"github.com/sirupsen/logrus"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -303,8 +304,12 @@ func (i *TrackedRowIter) Dispose() {
 }
 
 func (i *TrackedRowIter) Next(ctx *sql.Context) (sql.Row, error) {
+	fmt.Printf("DUSTIN: TrackedRowIter.Next(): i.iter type: %T\n", i.iter)
+	ctx.GetLogger().Log(logrus.ErrorLevel, "DUSTIN: TrackRowIter.Next(): i.iter type %T\n", i.iter)
 	row, err := i.iter.Next(ctx)
 	if err != nil {
+		fmt.Println("DUSTIN: TrackedRowIter.Next(): i.iter.Next(): err:", err.Error())
+		ctx.GetLogger().Log(logrus.ErrorLevel, "DUSTIN: TrackRowIter.Next(): i.iter.Next(): err:", err.Error())
 		return nil, err
 	}
 
