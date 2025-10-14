@@ -89,7 +89,7 @@ func pruneTables(ctx *sql.Context, a *Analyzer, n sql.Node, s *plan.Scope, sel R
 		case *plan.ResolvedTable:
 			return pruneTableCols(n, parentCols, parentStars, unqualifiedStar)
 		case *plan.JoinNode:
-			if n.JoinType().IsPhysical() || n.JoinType().IsUsing() {
+			if n.JoinType().IsPhysical() || n.JoinType().IsUsing() || n.JoinType().IsSemi() {
 				return n, transform.SameTree, nil
 			}
 			// we cannot push projections past lateral joins as columns not in the projection,
