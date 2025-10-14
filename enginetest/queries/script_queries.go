@@ -13371,6 +13371,19 @@ select * from t1 except (
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/9951
+		Name: "Do not prune tables that are part of a semi-join",
+		SetUpScript: []string{
+			"create table t0(id int primary key, name longtext, description longtext, comment longtext, created_at timestamp(6), archived bit(1))",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from (select id, name, description, archived from t0 as test0 where (id in (select id from t0))) as dummy_alias order by dummy_alias.name asc;",
+				Expected: []sql.Row{},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
