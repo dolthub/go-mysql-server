@@ -15,8 +15,10 @@
 package memory_test
 
 import (
+	"context"
 	"fmt"
 	"io"
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -60,6 +62,91 @@ func TestTableString(t *testing.T) {
 		{Name: "col2", Type: types.Int64, Nullable: false},
 	}), nil)
 	require.Equal("foo", table.String())
+}
+
+func TestTableInsert(t *testing.T) {
+	testCases := []struct {
+		name    string
+		colType sql.Type
+		value   interface{}
+		err     bool
+	}{
+		{
+			name:    "inserting NaN into float results in error",
+			colType: types.Float64,
+			value:   math.NaN(),
+			err:     true,
+		},
+		{
+			name:    "inserting NaN into int results in error",
+			colType: types.Int64,
+			value:   math.NaN(),
+			err:     true,
+		},
+		{
+			name:    "inserting NaN into Decimal results in error",
+			colType: types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, types.DecimalTypeMaxScale),
+			value:   math.NaN(),
+			err:     true,
+		},
+		{
+			name:    "inserting Infinity into float results in error",
+			colType: types.Float64,
+			value:   math.Inf(1),
+			err:     true,
+		},
+		{
+			name:    "inserting Infinity into int results in error",
+			colType: types.Int64,
+			value:   math.Inf(1),
+			err:     true,
+		},
+		{
+			name:    "inserting Infinity into Decimal results in error",
+			colType: types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, types.DecimalTypeMaxScale),
+			value:   math.Inf(1),
+			err:     true,
+		},
+		{
+			name:    "inserting negative Infinity into float results in error",
+			colType: types.Float64,
+			value:   math.Inf(-1),
+			err:     true,
+		},
+		{
+			name:    "inserting negative Infinity into int results in error",
+			colType: types.Int64,
+			value:   math.Inf(-1),
+			err:     true,
+		},
+		{
+			name:    "inserting negative Infinity into Decimal results in error",
+			colType: types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, types.DecimalTypeMaxScale),
+			value:   math.Inf(-1),
+			err:     true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			db := memory.NewDatabase("db")
+
+			provider := memory.NewDBProvider(db)
+			session := memory.NewSession(sql.NewBaseSession(), provider)
+			ctx := sql.NewContext(context.Background(), sql.WithSession(session))
+
+			table := memory.NewTable(db, "test", sql.NewPrimaryKeySchema(sql.Schema{
+				{Name: "col1", Type: tc.colType, Nullable: false},
+			}), nil)
+
+			err := table.Insert(ctx, sql.NewRow(tc.value))
+			if tc.err {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }
 
 type indexKeyValue struct {
