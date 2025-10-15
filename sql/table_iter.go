@@ -175,6 +175,7 @@ func (i *TableRowIter) NextRowFrame(ctx *Context, rowFrame *RowFrame) error {
 		}
 		i.rows2 = rows.(RowIter2)
 	}
+
 	rows, ok := i.rows2.(RowFrameIter)
 	if !ok {
 		panic(fmt.Sprintf("%T does not implement sql.RowFrameIter", i.rows))
@@ -189,7 +190,7 @@ func (i *TableRowIter) NextRowFrame(ctx *Context, rowFrame *RowFrame) error {
 		i.rows2 = nil
 		err = i.NextRowFrame(ctx, rowFrame)
 	}
-	return nil
+	return err
 }
 
 func (i *TableRowIter) Close(ctx *Context) error {
