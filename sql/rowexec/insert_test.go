@@ -112,6 +112,24 @@ func TestInsert(t *testing.T) {
 			value:   math.Inf(1),
 			err:     true,
 		},
+		{
+			name:    "inserting negative Infinity into float results in error",
+			colType: types.Float64,
+			value:   math.Inf(-1),
+			err:     true,
+		},
+		{
+			name:    "inserting negative Infinity into int results in error",
+			colType: types.Int64,
+			value:   math.Inf(-1),
+			err:     true,
+		},
+		{
+			name:    "inserting negative Infinity into Decimal results in error",
+			colType: types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, types.DecimalTypeMaxScale),
+			value:   math.Inf(-1),
+			err:     true,
+		},
 	}
 
 	for _, tc := range testCases {
