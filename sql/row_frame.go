@@ -17,7 +17,6 @@ package sql
 import (
 	"sync"
 
-	"github.com/dolthub/vitess/go/sqltypes"
 	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 )
 
@@ -27,10 +26,10 @@ const (
 )
 
 // Row2 is a slice of values
-type Row2 []sqltypes.Value
+type Row2 []Value
 
 // GetField returns the Value for the ith field in this row.
-func (r Row2) GetField(i int) sqltypes.Value {
+func (r Row2) GetField(i int) Value {
 	return r[i]
 }
 
@@ -98,7 +97,10 @@ func (f *RowFrame) Row2() Row2 {
 
 	rs := make(Row2, len(f.Values))
 	for i := range f.Values {
-		rs[i] = sqltypes.MakeTrusted(f.Types[i], f.Values[i])
+		rs[i] = Value{
+			Val: f.Values[i],
+			Typ: f.Types[i],
+		}
 	}
 	return rs
 }
@@ -111,7 +113,10 @@ func (f *RowFrame) Row2Copy() Row2 {
 	for i := range f.Values {
 		v := make(ValueBytes, len(f.Values[i]))
 		copy(v, f.Values[i])
-		rs[i] = sqltypes.MakeTrusted(f.Types[i], v)
+		rs[i] = Value{
+			Val: v,
+			Typ: f.Types[i],
+		}
 	}
 	return rs
 }

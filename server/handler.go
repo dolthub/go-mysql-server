@@ -868,8 +868,12 @@ func (h *Handler) resultForDefaultIter2(ctx *sql.Context, c *mysql.Conn, iter sq
 				if !ok {
 					return nil
 				}
-				ctx.GetLogger().Tracef("spooling result row %s", row)
-				res.Rows = append(res.Rows, row)
+				resRow := make([]sqltypes.Value, len(row))
+				for i, v := range row {
+					resRow[i] = sqltypes.MakeTrusted(v.Typ, v.Val)
+				}
+				ctx.GetLogger().Tracef("spooling result row %s", resRow)
+				res.Rows = append(res.Rows, resRow)
 				res.RowsAffected++
 				if !timer.Stop() {
 					<-timer.C
