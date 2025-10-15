@@ -17,6 +17,7 @@ package types
 import (
 	"context"
 	"fmt"
+	"math"
 	"math/big"
 	"reflect"
 	"strings"
@@ -203,6 +204,9 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 	case float32:
 		return t.ConvertToNullDecimal(decimal.NewFromFloat32(value))
 	case float64:
+		if math.IsInf(value, 0) || math.IsNaN(value) {
+			return decimal.NullDecimal{}, ErrConvertingToDecimal.New(v)
+		}
 		return t.ConvertToNullDecimal(decimal.NewFromFloat(value))
 	case string:
 		var err error

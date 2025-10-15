@@ -15,6 +15,7 @@
 package rowexec
 
 import (
+	"math"
 	"testing"
 	"time"
 
@@ -28,46 +29,88 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func TestInsertIgnoreConversions(t *testing.T) {
+func TestInsert(t *testing.T) {
 	testCases := []struct {
 		name      string
 		colType   sql.Type
 		value     interface{}
 		valueType sql.Type
 		expected  interface{}
+		warning   bool
+		ignore    bool
 		err       bool
 	}{
 		{
-			name:      "inserting a string into a integer defaults to a 0",
+			name:      "inserting a string into a integer defaults to a 0 (with ignore)",
 			colType:   types.Int64,
 			value:     "dadasd",
 			valueType: types.Text,
 			expected:  int64(0),
-			err:       true,
+			warning:   true,
+			ignore:    true,
 		},
 		{
-			name:      "string too long gets truncated",
+			name:      "string too long gets truncated (with ignore)",
 			colType:   types.MustCreateStringWithDefaults(sqltypes.VarChar, 2),
 			value:     "dadsa",
 			valueType: types.Text,
 			expected:  "da",
-			err:       true,
+			warning:   true,
+			ignore:    true,
 		},
 		{
-			name:      "inserting a string into a datetime results in 0 time",
+			name:      "inserting a string into a datetime results in 0 time (with ignore)",
 			colType:   types.Datetime,
 			value:     "dadasd",
 			valueType: types.Text,
 			expected:  time.Unix(-62167219200, 0).UTC(),
-			err:       true,
+			warning:   true,
+			ignore:    true,
 		},
 		{
-			name:      "inserting a negative into an unsigned int results in 0",
+			name:      "inserting a negative into an unsigned int results in 0 (with ignore)",
 			colType:   types.Uint64,
 			value:     int64(-1),
 			expected:  uint64(1<<64 - 1),
 			valueType: types.Uint64,
-			err:       true,
+			warning:   true,
+			ignore:    true,
+		},
+		{
+			name:    "inserting NaN into float results in error",
+			colType: types.Float64,
+			value:   math.NaN(),
+			err:     true,
+		},
+		{
+			name:    "inserting NaN into int results in error",
+			colType: types.Int64,
+			value:   math.NaN(),
+			err:     true,
+		},
+		{
+			name:    "inserting NaN into Decimal results in error",
+			colType: types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, types.DecimalTypeMaxScale),
+			value:   math.NaN(),
+			err:     true,
+		},
+		{
+			name:    "inserting Infinity into float results in error",
+			colType: types.Float64,
+			value:   math.Inf(1),
+			err:     true,
+		},
+		{
+			name:    "inserting Infinity into int results in error",
+			colType: types.Int64,
+			value:   math.Inf(1),
+			err:     true,
+		},
+		{
+			name:    "inserting Infinity into Decimal results in error",
+			colType: types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, types.DecimalTypeMaxScale),
+			value:   math.Inf(1),
+			err:     true,
 		},
 	}
 
@@ -83,21 +126,25 @@ func TestInsertIgnoreConversions(t *testing.T) {
 
 			insertPlan := plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewResolvedTable(table, nil, nil), plan.NewValues([][]sql.Expression{{
 				expression.NewLiteral(tc.value, tc.valueType),
-			}}), false, []string{"c1"}, []sql.Expression{}, true)
+			}}), false, []string{"c1"}, []sql.Expression{}, tc.ignore)
 
 			ri, err := DefaultBuilder.Build(ctx, insertPlan, nil)
 			require.NoError(t, err)
 
 			row, err := ri.Next(ctx)
-			require.NoError(t, err)
-
-			require.Equal(t, sql.Row{tc.expected}, row)
-
-			var warningCnt int
 			if tc.err {
-				warningCnt = 1
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+
+				require.Equal(t, sql.Row{tc.expected}, row)
+
+				var warningCnt int
+				if tc.warning {
+					warningCnt = 1
+				}
+				require.Equal(t, ctx.WarningCount(), uint16(warningCnt))
 			}
-			require.Equal(t, ctx.WarningCount(), uint16(warningCnt))
 		})
 	}
 }

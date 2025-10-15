@@ -161,13 +161,12 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 					continue
 				} else {
 					// Fill in error with information
-					if types.ErrLengthBeyondLimit.Is(cErr) {
+					switch {
+					case types.ErrLengthBeyondLimit.Is(cErr):
 						cErr = types.ErrLengthBeyondLimit.New(row[idx], col.Name)
-					} else if sql.ErrNotMatchingSRID.Is(cErr) {
+					case sql.ErrNotMatchingSRID.Is(cErr):
 						cErr = sql.ErrNotMatchingSRIDWithColName.New(col.Name, cErr)
-					} else if types.ErrConvertingToEnum.Is(cErr) {
-						cErr = types.ErrDataTruncatedForColumnAtRow.New(col.Name, i.rowNumber)
-					} else if sql.ErrInvalidSetValue.Is(cErr) || sql.ErrConvertingToSet.Is(cErr) {
+					case types.ErrConvertingToEnum.Is(cErr), sql.ErrInvalidSetValue.Is(cErr), sql.ErrConvertingToSet.Is(cErr):
 						cErr = types.ErrDataTruncatedForColumnAtRow.New(col.Name, i.rowNumber)
 					}
 					return nil, sql.NewWrappedInsertError(origRow, cErr)
