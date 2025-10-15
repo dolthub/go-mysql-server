@@ -15,6 +15,7 @@
 package plan
 
 import (
+	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -111,6 +112,7 @@ type FilterIter struct {
 
 var _ sql.RowIter = (*FilterIter)(nil)
 var _ sql.RowIter2 = (*FilterIter)(nil)
+var _ sql.RowFrameIter = (*FilterIter)(nil)
 
 // NewFilterIter creates a new FilterIter.
 func NewFilterIter(
@@ -152,6 +154,29 @@ func (i *FilterIter) Next2(ctx *sql.Context) (sql.Row2, error) {
 		if res.Val[0] == 1 {
 			return row, nil
 		}
+	}
+}
+
+func (i *FilterIter) NextRowFrame(ctx *sql.Context, rowFrame *sql.RowFrame) error {
+	// TODO: this is trickier...
+	childIter, ok := i.childIter.(sql.RowFrameIter)
+	if !ok {
+		panic(fmt.Sprintf("%T does not implement sql.RowFrameIter", i.childIter))
+	}
+	for {
+		err := childIter.NextRowFrame(ctx, rowFrame)
+		if err != nil {
+			return err
+		}
+		row := rowFrame.Row2()
+		res, err := i.cond2.Eval2(ctx, row)
+		if err != nil {
+			return err
+		}
+		if res.Val[0] == 1 {
+			return nil
+		}
+		rowFrame.Clear()
 	}
 }
 

@@ -234,6 +234,10 @@ type TrackedRowIter struct {
 	ShouldSetFoundRows bool
 }
 
+var _ sql.RowIter = (*TrackedRowIter)(nil)
+var _ sql.RowIter2 = (*TrackedRowIter)(nil)
+var _ sql.RowFrameIter = (*TrackedRowIter)(nil)
+
 func NewTrackedRowIter(
 	node sql.Node,
 	iter sql.RowIter,
@@ -337,6 +341,22 @@ func (i *TrackedRowIter) IsRowIter2(ctx *sql.Context) bool {
 	}
 	i.iter2 = iter
 	return true
+}
+
+func (i *TrackedRowIter) NextRowFrame(ctx *sql.Context, rowFrame *sql.RowFrame) error {
+	iter, ok := i.iter.(sql.RowFrameIter)
+	if !ok {
+		panic(fmt.Sprintf("%T does not implement sql.RowFrameIter", i.iter))
+	}
+	err := iter.NextRowFrame(ctx, rowFrame)
+	if err != nil {
+		return err
+	}
+	i.numRows++
+	if i.onNext != nil {
+		i.onNext()
+	}
+	return nil
 }
 
 func (i *TrackedRowIter) Close(ctx *sql.Context) error {

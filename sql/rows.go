@@ -248,3 +248,8 @@ type MutableRowIter interface {
 	GetChildIter() RowIter
 	WithChildIter(childIter RowIter) RowIter
 }
+
+type RowFrameIter interface {
+	RowIter
+	NextRowFrame(ctx *Context, frame *RowFrame) error
+}
