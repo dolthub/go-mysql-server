@@ -251,9 +251,13 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	}
 
 	var err error
+	var parent sql.Node
 	var project *plan.Project
 	var orderBy *plan.Sort
 	transform.Inspect(n, func(n sql.Node) bool {
+		defer func() {
+			parent = n
+		}()
 		switch n := n.(type) {
 		case *plan.GroupBy:
 			var noGroupBy bool
@@ -334,8 +338,10 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 				}
 			}
 		case *plan.Project:
-			project = n
-			orderBy = nil
+			if _, isHaving := parent.(*plan.Having); !isHaving {
+				project = n
+				orderBy = nil
+			}
 		case *plan.Sort:
 			orderBy = n
 		}
@@ -406,6 +412,7 @@ func resolveExpr(expr sql.Expression, selectDeps map[string]sql.Expression, grou
 		switch expr := expr.(type) {
 		case *expression.Alias:
 			if dep, ok := selectDeps[strings.ToLower(expr.Child.String())]; ok {
+				selectDeps[strings.ToLower(expr.Name())] = dep
 				return dep, transform.NewTree, nil
 			}
 		case *expression.GetField:
