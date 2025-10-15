@@ -338,6 +338,8 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 				}
 			}
 		case *plan.Project:
+			// Project nodes that are direct children of Having nodes include aliases for columns that are part of an
+			// aggregate function that aren't necessarily selected expressions and therefore shouldn't be validated
 			if _, isHaving := parent.(*plan.Having); !isHaving {
 				project = n
 				orderBy = nil
