@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/shopspring/decimal"
@@ -31,7 +30,7 @@ import (
 type Literal struct {
 	Val  interface{}
 	Typ  sql.Type
-	val2 sqltypes.Value
+	val2 sql.Value
 }
 
 var _ sql.Expression = &Literal{}
@@ -137,7 +136,7 @@ func (*Literal) Children() []sql.Expression {
 	return nil
 }
 
-func (lit *Literal) Eval2(ctx *sql.Context, row sql.Row2) (sqltypes.Value, error) {
+func (lit *Literal) Eval2(ctx *sql.Context, row sql.Row2) (sql.Value, error) {
 	return lit.val2, nil
 }
 

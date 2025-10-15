@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/vitess/go/sqltypes"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -72,7 +71,7 @@ func (*UnresolvedColumn) CollationCoercibility(ctx *sql.Context) (collation sql.
 	return sql.Collation_binary, 7
 }
 
-func (uc *UnresolvedColumn) Eval2(ctx *sql.Context, row sql.Row2) (sqltypes.Value, error) {
+func (uc *UnresolvedColumn) Eval2(ctx *sql.Context, row sql.Row2) (sql.Value, error) {
 	panic("unresolved column is a placeholder node, but Eval2 was called")
 }
 
