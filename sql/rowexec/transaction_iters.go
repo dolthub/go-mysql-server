@@ -77,6 +77,10 @@ type TransactionCommittingIter struct {
 	implicitCommit      bool
 }
 
+var _ sql.RowIter = (*TransactionCommittingIter)(nil)
+var _ sql.RowIter2 = (*TransactionCommittingIter)(nil)
+var _ sql.RowFrameIter = (*TransactionCommittingIter)(nil)
+
 func AddTransactionCommittingIter(ctx *sql.Context, qFlags *sql.QueryFlags, iter sql.RowIter) (sql.RowIter, error) {
 	// TODO: This is a bit of a hack. Need to figure out better relationship between new transaction node and warnings.
 	if (qFlags != nil && qFlags.IsSet(sql.QFlagShowWarnings)) || ctx.IsInterpreted() {
@@ -111,6 +115,10 @@ func (t *TransactionCommittingIter) IsRowIter2(ctx *sql.Context) bool {
 	}
 	t.childIter2 = childIter
 	return true
+}
+
+func (t *TransactionCommittingIter) NextRowFrame(ctx *sql.Context, rowFrame *sql.RowFrame) error {
+	return t.childIter.(sql.RowFrameIter).NextRowFrame(ctx, rowFrame)
 }
 
 func (t *TransactionCommittingIter) Close(ctx *sql.Context) error {

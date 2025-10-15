@@ -552,7 +552,6 @@ func (gt *GreaterThan) Eval2(ctx *sql.Context, row sql.Row2) (sql.Value, error) 
 	if l64 > r64 {
 		rb = 1
 	}
-
 	ret := sql.Value{
 		Val: []byte{rb},
 		Typ: querypb.Type_INT8,

@@ -57,6 +57,7 @@ type RowFrame struct {
 	// Values are the values this row.
 	Values []ValueBytes
 
+	// TODO: this isn't used anywhere
 	// varr is used as the backing array for the |Values|
 	// slice when len(Values) <= valueArrSize
 	varr [valueArrSize][]ValueBytes
@@ -131,6 +132,7 @@ func (f *RowFrame) Clear() {
 
 // Append appends the values given into this frame.
 func (f *RowFrame) Append(vals ...Value) {
+	// TODO: one big copy here would be better probably, need to benchmark
 	for _, v := range vals {
 		f.append(v)
 	}
@@ -146,11 +148,12 @@ func (f *RowFrame) AppendMany(types []querypb.Type, vals []ValueBytes) {
 
 func (f *RowFrame) append(v Value) {
 	buf := f.getBuffer(v)
-	copy(buf, v.Val)
+	copy(buf, v.Val) // TODO: not necessary if we're not referencing the backing array
 	v.Val = buf
 
 	f.Types = append(f.Types, v.Typ)
 
+	// TODO: do this?
 	// if |f.Values| grows past |len(f.varr)|
 	// we'll allocate a new backing array here
 	f.Values = append(f.Values, v.Val)
@@ -162,6 +165,7 @@ func (f *RowFrame) appendTypeAndVal(typ querypb.Type, val ValueBytes) {
 
 	f.Types = append(f.Types, typ)
 
+	// TODO: do this?
 	// if |f.Values| grows past |len(f.varr)|
 	// we'll allocate a new backing array here
 	f.Values = append(f.Values, v)
@@ -172,11 +176,10 @@ func (f *RowFrame) getBuffer(v Value) (buf []byte) {
 }
 
 func (f *RowFrame) bufferForBytes(v ValueBytes) (buf []byte) {
-	if f.checkCapacity(v) {
+	if f.hasCapacity(v) {
 		start := f.off
 		f.off += uint16(len(v))
-		stop := f.off
-		buf = f.farr[start:stop]
+		buf = f.farr[start:f.off]
 	} else {
 		buf = make([]byte, len(v))
 	}
@@ -184,6 +187,6 @@ func (f *RowFrame) bufferForBytes(v ValueBytes) (buf []byte) {
 	return
 }
 
-func (f *RowFrame) checkCapacity(v ValueBytes) bool {
+func (f *RowFrame) hasCapacity(v ValueBytes) bool {
 	return len(v) <= (len(f.farr) - int(f.off))
 }

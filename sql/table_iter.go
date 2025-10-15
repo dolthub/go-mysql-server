@@ -30,6 +30,8 @@ type TableRowIter struct {
 }
 
 var _ RowIter = (*TableRowIter)(nil)
+var _ RowIter2 = (*TableRowIter)(nil)
+var _ RowFrameIter = (*TableRowIter)(nil)
 
 // NewTableRowIter returns a new iterator over the rows in the partitions of the table given.
 func NewTableRowIter(ctx *Context, table Table, partitions PartitionIter) *TableRowIter {
@@ -144,6 +146,46 @@ func (i *TableRowIter) IsRowIter2(ctx *Context) bool {
 		i.rows2 = ri2
 	}
 	return i.rows2.IsRowIter2(ctx)
+}
+
+func (i *TableRowIter) NextRowFrame(ctx *Context, rowFrame *RowFrame) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
+	if i.partition == nil {
+		partition, err := i.partitions.Next(ctx)
+		if err != nil {
+			if err == io.EOF {
+				if e := i.partitions.Close(ctx); e != nil {
+					return e
+				}
+			}
+			return err
+		}
+		i.partition = partition
+	}
+
+	if i.rows2 == nil {
+		rows, err := i.table.PartitionRows(ctx, i.partition)
+		if err != nil {
+			return err
+		}
+		i.rows2 = rows.(RowIter2)
+	}
+
+	err := i.rows2.(RowFrameIter).NextRowFrame(ctx, rowFrame)
+	if err != nil && err == io.EOF {
+		if err = i.rows2.Close(ctx); err != nil {
+			return err
+		}
+		i.partition = nil
+		i.rows2 = nil
+		err = i.NextRowFrame(ctx, rowFrame)
+	}
+	return nil
 }
 
 func (i *TableRowIter) Close(ctx *Context) error {

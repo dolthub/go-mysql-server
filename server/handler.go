@@ -495,8 +495,8 @@ func (h *Handler) doQuery(
 		r, err = resultForEmptyIter(sqlCtx, rowIter, resultFields)
 	} else if analyzer.FlagIsSet(qFlags, sql.QFlagMax1Row) {
 		r, err = resultForMax1RowIter(sqlCtx, schema, rowIter, resultFields, buf)
-	} else if ri2, ok := rowIter.(sql.RowIter2); ok && ri2.IsRowIter2(sqlCtx) {
-		r, processedAtLeastOneBatch, err = h.resultForDefaultIter2(sqlCtx, c, ri2, resultFields, callback, more)
+	} else if r2, ok := rowIter.(sql.RowIter2); ok && r2.IsRowIter2(sqlCtx) {
+		r, processedAtLeastOneBatch, err = h.resultForDefaultIter2(sqlCtx, c, r2, resultFields, callback, more)
 	} else {
 		r, processedAtLeastOneBatch, err = h.resultForDefaultIter(sqlCtx, c, schema, rowIter, callback, resultFields, more, buf)
 	}
@@ -805,7 +805,6 @@ func (h *Handler) resultForDefaultIter2(ctx *sql.Context, c *mysql.Conn, iter sq
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 
-	// TODO: send results instead of rows?
 	// Read rows from iter and send them off
 	var rowChan = make(chan sql.Row2, 512)
 	eg.Go(func() (err error) {
@@ -872,6 +871,152 @@ func (h *Handler) resultForDefaultIter2(ctx *sql.Context, c *mysql.Conn, iter sq
 				for i, v := range row {
 					resRow[i] = sqltypes.MakeTrusted(v.Typ, v.Val)
 				}
+				ctx.GetLogger().Tracef("spooling result row %s", resRow)
+				res.Rows = append(res.Rows, resRow)
+				res.RowsAffected++
+				if !timer.Stop() {
+					<-timer.C
+				}
+			}
+			timer.Reset(waitTime)
+		}
+	})
+
+	// Close() kills this PID in the process list,
+	// wait until all rows have be sent over the wire
+	eg.Go(func() (err error) {
+		defer pan2err(&err)
+		wg.Wait()
+		return iter.Close(ctx)
+	})
+
+	err := eg.Wait()
+	if err != nil {
+		ctx.GetLogger().WithError(err).Warn("error running query")
+		if verboseErrorLogging {
+			fmt.Printf("Err: %+v", err)
+		}
+		return nil, false, err
+	}
+
+	return res, processedAtLeastOneBatch, nil
+}
+
+func (h *Handler) resultForRowFrameIter(ctx *sql.Context, c *mysql.Conn, iter sql.RowFrameIter, resultFields []*querypb.Field, callback func(*sqltypes.Result, bool) error, more bool) (*sqltypes.Result, bool, error) {
+	defer trace.StartRegion(ctx, "Handler.resultForRowFrameIter").End()
+
+	eg, ctx := ctx.NewErrgroup()
+	pan2err := func(err *error) {
+		if recoveredPanic := recover(); recoveredPanic != nil {
+			stack := debug.Stack()
+			wrappedErr := fmt.Errorf("handler caught panic: %v\n%s", recoveredPanic, stack)
+			*err = goerrors.Join(*err, wrappedErr)
+		}
+	}
+
+	// TODO: poll for closed connections should obviously also run even if
+	// we're doing something with an OK result or a single row result, etc.
+	// This should be in the caller.
+	pollCtx, cancelF := ctx.NewSubContext()
+	eg.Go(func() (err error) {
+		defer pan2err(&err)
+		return h.pollForClosedConnection(pollCtx, c)
+	})
+
+	// Default waitTime is one minute if there is no timeout configured, in which case
+	// it will loop to iterate again unless the socket died by the OS timeout or other problems.
+	// If there is a timeout, it will be enforced to ensure that Vitess has a chance to
+	// call Handler.CloseConnection()
+	waitTime := 1 * time.Minute
+	if h.readTimeout > 0 {
+		waitTime = h.readTimeout
+	}
+	timer := time.NewTimer(waitTime)
+	defer timer.Stop()
+
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+
+	// TODO: send results instead of rows?
+	// Read rows from iter and send them off
+	var rowFrameChan = make(chan sql.Row2, 512)
+	//var rowFrameChan = make(chan *sql.RowFrame, 512)
+	eg.Go(func() (err error) {
+		defer pan2err(&err)
+		defer wg.Done()
+		defer close(rowFrameChan)
+		for {
+			select {
+			case <-ctx.Done():
+				return context.Cause(ctx)
+			default:
+				//rowFrame := sql.NewRowFrame()
+				r2, ok := iter.(sql.RowIter2)
+				if !ok {
+					panic("aaaaaaasdfasdgsdfgsdfghsfgd")
+				}
+				row, err := r2.Next2(ctx)
+				if err == io.EOF {
+					return nil
+				}
+				if err != nil {
+					return err
+				}
+				// DEEP COPY HERE IS IMPORTANT!
+				//row := rowFrame.Row2Copy()
+				// Should be safe to release memory
+				//rowFrame.Recycle()
+				select {
+				case rowFrameChan <- row:
+				case <-ctx.Done():
+					return nil
+				}
+			}
+		}
+	})
+
+	var res *sqltypes.Result
+	var processedAtLeastOneBatch bool
+	eg.Go(func() (err error) {
+		defer pan2err(&err)
+		defer cancelF()
+		defer wg.Done()
+		for {
+			if res == nil {
+				res = &sqltypes.Result{
+					Fields: resultFields,
+					Rows:   make([][]sqltypes.Value, 0, rowsBatch),
+				}
+			}
+			if res.RowsAffected == rowsBatch {
+				if err := callback(res, more); err != nil {
+					return err
+				}
+				res = nil
+				processedAtLeastOneBatch = true
+				continue
+			}
+
+			select {
+			case <-ctx.Done():
+				return context.Cause(ctx)
+			case <-timer.C:
+				if h.readTimeout != 0 {
+					// Cancel and return so Vitess can call the CloseConnection callback
+					ctx.GetLogger().Tracef("connection timeout")
+					return ErrRowTimeout.New()
+				}
+			case rowFrame, ok := <-rowFrameChan:
+				if !ok {
+					return nil
+				}
+				//panic(fmt.Sprintf("TESTING: %v", rowFrame.Types))
+				row := rowFrame
+				resRow := make([]sqltypes.Value, len(row))
+				for i, val := range row {
+					resRow[i] = sqltypes.MakeTrusted(val.Typ, val.Val)
+				}
+				panic("received?")
 				ctx.GetLogger().Tracef("spooling result row %s", resRow)
 				res.Rows = append(res.Rows, resRow)
 				res.RowsAffected++
