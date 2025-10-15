@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/vitess/go/sqltypes"
 	errors "gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -150,9 +149,9 @@ func (p *GetField) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return row[p.fieldIndex], nil
 }
 
-func (p *GetField) Eval2(ctx *sql.Context, row sql.Row2) (sqltypes.Value, error) {
+func (p *GetField) Eval2(ctx *sql.Context, row sql.Row2) (sql.Value, error) {
 	if p.fieldIndex < 0 || p.fieldIndex >= row.Len() {
-		return sqltypes.Value{}, ErrIndexOutOfBounds.New(p.fieldIndex, row.Len())
+		return sql.Value{}, ErrIndexOutOfBounds.New(p.fieldIndex, row.Len())
 	}
 	return row[p.fieldIndex], nil
 }

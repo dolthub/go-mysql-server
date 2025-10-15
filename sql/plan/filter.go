@@ -149,7 +149,7 @@ func (i *FilterIter) Next2(ctx *sql.Context) (sql.Row2, error) {
 		if err != nil {
 			return nil, err
 		}
-		if res.Raw()[0] == 1 {
+		if res.Val[0] == 1 {
 			return row, nil
 		}
 	}

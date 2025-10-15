@@ -17,7 +17,6 @@ package expression
 import (
 	"fmt"
 
-	"github.com/dolthub/vitess/go/sqltypes"
 	querypb "github.com/dolthub/vitess/go/vt/proto/query"
 	errors "gopkg.in/src-d/go-errors.v1"
 
@@ -521,7 +520,7 @@ func (gt *GreaterThan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	return result == 1, nil
 }
 
-func (gt *GreaterThan) Eval2(ctx *sql.Context, row sql.Row2) (sqltypes.Value, error) {
+func (gt *GreaterThan) Eval2(ctx *sql.Context, row sql.Row2) (sql.Value, error) {
 	l, ok := gt.Left().(sql.Expression2)
 	if !ok {
 		panic(fmt.Sprintf("%T does not implement sql.Expression2", gt.Left()))
@@ -533,28 +532,31 @@ func (gt *GreaterThan) Eval2(ctx *sql.Context, row sql.Row2) (sqltypes.Value, er
 
 	lv, err := l.Eval2(ctx, row)
 	if err != nil {
-		return sqltypes.Value{}, err
+		return sql.Value{}, err
 	}
 	rv, err := r.Eval2(ctx, row)
 	if err != nil {
-		return sqltypes.Value{}, err
+		return sql.Value{}, err
 	}
 
 	// TODO: just assume they are int64
 	l64, err := types.ConvertValueToInt64(types.NumberTypeImpl_{}, lv)
 	if err != nil {
-		return sqltypes.Value{}, err
+		return sql.Value{}, err
 	}
 	r64, err := types.ConvertValueToInt64(types.NumberTypeImpl_{}, rv)
 	if err != nil {
-		return sqltypes.Value{}, err
+		return sql.Value{}, err
 	}
 	var rb byte
 	if l64 > r64 {
 		rb = 1
 	}
 
-	ret := sqltypes.MakeTrusted(querypb.Type_INT8, []byte{rb})
+	ret := sql.Value{
+		Val: []byte{rb},
+		Typ: querypb.Type_INT8,
+	}
 	return ret, nil
 }
 
