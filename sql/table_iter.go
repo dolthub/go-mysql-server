@@ -175,8 +175,12 @@ func (i *TableRowIter) NextRowFrame(ctx *Context, rowFrame *RowFrame) error {
 		}
 		i.rows2 = rows.(RowIter2)
 	}
+	rows, ok := i.rows2.(RowFrameIter)
+	if !ok {
+		panic(fmt.Sprintf("%T does not implement sql.RowFrameIter", i.rows))
+	}
 
-	err := i.rows2.(RowFrameIter).NextRowFrame(ctx, rowFrame)
+	err := rows.NextRowFrame(ctx, rowFrame)
 	if err != nil && err == io.EOF {
 		if err = i.rows2.Close(ctx); err != nil {
 			return err

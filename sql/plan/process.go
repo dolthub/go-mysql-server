@@ -344,7 +344,10 @@ func (i *TrackedRowIter) IsRowIter2(ctx *sql.Context) bool {
 }
 
 func (i *TrackedRowIter) NextRowFrame(ctx *sql.Context, rowFrame *sql.RowFrame) error {
-	iter := i.iter.(sql.RowFrameIter)
+	iter, ok := i.iter.(sql.RowFrameIter)
+	if !ok {
+		panic(fmt.Sprintf("%T does not implement sql.RowFrameIter", i.iter))
+	}
 	err := iter.NextRowFrame(ctx, rowFrame)
 	if err != nil {
 		return err

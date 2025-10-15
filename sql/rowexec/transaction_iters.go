@@ -15,6 +15,7 @@
 package rowexec
 
 import (
+	"fmt"
 	"io"
 
 	"gopkg.in/src-d/go-errors.v1"
@@ -118,7 +119,11 @@ func (t *TransactionCommittingIter) IsRowIter2(ctx *sql.Context) bool {
 }
 
 func (t *TransactionCommittingIter) NextRowFrame(ctx *sql.Context, rowFrame *sql.RowFrame) error {
-	return t.childIter.(sql.RowFrameIter).NextRowFrame(ctx, rowFrame)
+	childIter, ok := t.childIter.(sql.RowFrameIter)
+	if !ok {
+		panic(fmt.Sprintf("%T does not implement sql.RowFrameIter", t.childIter))
+	}
+	return childIter.NextRowFrame(ctx, rowFrame)
 }
 
 func (t *TransactionCommittingIter) Close(ctx *sql.Context) error {

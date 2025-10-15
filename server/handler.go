@@ -496,7 +496,11 @@ func (h *Handler) doQuery(
 	} else if analyzer.FlagIsSet(qFlags, sql.QFlagMax1Row) {
 		r, err = resultForMax1RowIter(sqlCtx, schema, rowIter, resultFields, buf)
 	} else if r2, ok := rowIter.(sql.RowIter2); ok && r2.IsRowIter2(sqlCtx) {
-		r, processedAtLeastOneBatch, err = h.resultForDefaultIter2(sqlCtx, c, r2, resultFields, callback, more)
+		if rf, ok := r2.(sql.RowFrameIter); ok {
+			r, processedAtLeastOneBatch, err = h.resultForRowFrameIter(sqlCtx, c, rf, resultFields, callback, more)
+		} else {
+			r, processedAtLeastOneBatch, err = h.resultForDefaultIter2(sqlCtx, c, r2, resultFields, callback, more)
+		}
 	} else {
 		r, processedAtLeastOneBatch, err = h.resultForDefaultIter(sqlCtx, c, schema, rowIter, callback, resultFields, more, buf)
 	}
@@ -939,8 +943,7 @@ func (h *Handler) resultForRowFrameIter(ctx *sql.Context, c *mysql.Conn, iter sq
 
 	// TODO: send results instead of rows?
 	// Read rows from iter and send them off
-	var rowFrameChan = make(chan sql.Row2, 512)
-	//var rowFrameChan = make(chan *sql.RowFrame, 512)
+	var rowFrameChan = make(chan *sql.RowFrame, 512)
 	eg.Go(func() (err error) {
 		defer pan2err(&err)
 		defer wg.Done()
@@ -950,24 +953,16 @@ func (h *Handler) resultForRowFrameIter(ctx *sql.Context, c *mysql.Conn, iter sq
 			case <-ctx.Done():
 				return context.Cause(ctx)
 			default:
-				//rowFrame := sql.NewRowFrame()
-				r2, ok := iter.(sql.RowIter2)
-				if !ok {
-					panic("aaaaaaasdfasdgsdfgsdfghsfgd")
-				}
-				row, err := r2.Next2(ctx)
+				rowFrame := sql.NewRowFrame()
+				err := iter.NextRowFrame(ctx, rowFrame)
 				if err == io.EOF {
 					return nil
 				}
 				if err != nil {
 					return err
 				}
-				// DEEP COPY HERE IS IMPORTANT!
-				//row := rowFrame.Row2Copy()
-				// Should be safe to release memory
-				//rowFrame.Recycle()
 				select {
-				case rowFrameChan <- row:
+				case rowFrameChan <- rowFrame:
 				case <-ctx.Done():
 					return nil
 				}
@@ -1010,13 +1005,16 @@ func (h *Handler) resultForRowFrameIter(ctx *sql.Context, c *mysql.Conn, iter sq
 				if !ok {
 					return nil
 				}
-				//panic(fmt.Sprintf("TESTING: %v", rowFrame.Types))
-				row := rowFrame
+				// DEEP COPY HERE IS IMPORTANT!
+				row := rowFrame.Row2Copy()
 				resRow := make([]sqltypes.Value, len(row))
 				for i, val := range row {
 					resRow[i] = sqltypes.MakeTrusted(val.Typ, val.Val)
 				}
-				panic("received?")
+
+				// Should be safe to release memory
+				rowFrame.Recycle()
+
 				ctx.GetLogger().Tracef("spooling result row %s", resRow)
 				res.Rows = append(res.Rows, resRow)
 				res.RowsAffected++

@@ -15,6 +15,7 @@
 package plan
 
 import (
+	"fmt"
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -158,7 +159,10 @@ func (i *FilterIter) Next2(ctx *sql.Context) (sql.Row2, error) {
 
 func (i *FilterIter) NextRowFrame(ctx *sql.Context, rowFrame *sql.RowFrame) error {
 	// TODO: this is trickier...
-	childIter := i.childIter.(sql.RowFrameIter)
+	childIter, ok := i.childIter.(sql.RowFrameIter)
+	if !ok {
+		panic(fmt.Sprintf("%T does not implement sql.RowFrameIter", i.childIter))
+	}
 	for {
 		err := childIter.NextRowFrame(ctx, rowFrame)
 		if err != nil {
