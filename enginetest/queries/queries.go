@@ -1077,8 +1077,8 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{nil}},
 		ExpectedColumns: sql.Schema{
 			{
-				Name: "s",
-				Type: types.Float64,
+				Name:     "s",
+				Type:     types.Float64,
 				Nullable: true,
 			},
 		},
