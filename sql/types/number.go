@@ -1566,6 +1566,7 @@ func ConvertHexBlobToDecimalForNumericContext(val interface{}, originType sql.Ty
 	return val, nil
 }
 
+// IsValidFloat returns false if a float is NaN or infinity
 func IsValidFloat(f float64) bool {
 	return !math.IsNaN(f) && !math.IsInf(f, 0)
 }
