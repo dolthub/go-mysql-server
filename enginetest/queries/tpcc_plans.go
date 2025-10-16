@@ -846,7 +846,7 @@ from
 			"         │               │   ├─ countdistinct([orders2.o_id]):0!null\n" +
 			"         │               │   └─ 1 (bigint)\n" +
 			"         │               └─ GroupBy\n" +
-			"         │                   ├─ select: COUNTDISTINCT([orders2.o_id]), orders2.o_c_id:3, orders2.o_w_id:2!null, orders2.o_d_id:1!null\n" +
+			"         │                   ├─ select: COUNTDISTINCT([orders2.o_id]), orders2.o_c_id:3, orders2.o_w_id:2!null, orders2.o_d_id:1!null, orders2.o_id:0!null\n" +
 			"         │                   ├─ group: orders2.o_c_id:3, orders2.o_d_id:1!null, orders2.o_w_id:2!null\n" +
 			"         │                   └─ IndexedTableAccess(orders2)\n" +
 			"         │                       ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
@@ -880,7 +880,7 @@ from
 			"         │           ├─ columns: [orders2.o_c_id, orders2.o_w_id, orders2.o_d_id, countdistinct([orders2.o_id]) as count(distinct o_id)]\n" +
 			"         │           └─ Having((countdistinct([orders2.o_id]) > 1))\n" +
 			"         │               └─ GroupBy\n" +
-			"         │                   ├─ SelectDeps(COUNTDISTINCT([orders2.o_id]), orders2.o_c_id, orders2.o_w_id, orders2.o_d_id)\n" +
+			"         │                   ├─ SelectDeps(COUNTDISTINCT([orders2.o_id]), orders2.o_c_id, orders2.o_w_id, orders2.o_d_id, orders2.o_id)\n" +
 			"         │                   ├─ Grouping(orders2.o_c_id, orders2.o_d_id, orders2.o_w_id)\n" +
 			"         │                   └─ IndexedTableAccess(orders2)\n" +
 			"         │                       ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
@@ -905,7 +905,7 @@ from
 			"         │           ├─ columns: [orders2.o_c_id, orders2.o_w_id, orders2.o_d_id, countdistinct([orders2.o_id]) as count(distinct o_id)]\n" +
 			"         │           └─ Having((countdistinct([orders2.o_id]) > 1))\n" +
 			"         │               └─ GroupBy\n" +
-			"         │                   ├─ SelectDeps(COUNTDISTINCT([orders2.o_id]), orders2.o_c_id, orders2.o_w_id, orders2.o_d_id)\n" +
+			"         │                   ├─ SelectDeps(COUNTDISTINCT([orders2.o_id]), orders2.o_c_id, orders2.o_w_id, orders2.o_d_id, orders2.o_id)\n" +
 			"         │                   ├─ Grouping(orders2.o_c_id, orders2.o_d_id, orders2.o_w_id)\n" +
 			"         │                   └─ IndexedTableAccess(orders2)\n" +
 			"         │                       ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +

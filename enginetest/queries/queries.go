@@ -9181,6 +9181,11 @@ from typestable`,
 		Query:    "select pk, (select max(pk) from one_pk where pk < opk.pk) as x from one_pk opk",
 		Expected: []sql.Row{{0, nil}, {1, 0}, {2, 1}, {3, 2}},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/9963
+		Query:    "select max(i) as max_i from mytable having max(i) < 3",
+		Expected: []sql.Row{},
+	},
 }
 
 var KeylessQueries = []QueryTest{

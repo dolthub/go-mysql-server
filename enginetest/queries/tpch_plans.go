@@ -1734,7 +1734,7 @@ order by
 	value desc;`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [partsupp.ps_partkey:1!null, sum((partsupp.ps_supplycost * partsupp.ps_availqty)):0!null->value:0]\n" +
-			" └─ Sort(value:2!null DESC nullsFirst)\n" +
+			" └─ Sort(value:4!null DESC nullsFirst)\n" +
 			"     └─ Having\n" +
 			"         ├─ GreaterThan\n" +
 			"         │   ├─ sum((partsupp.ps_supplycost * partsupp.ps_availqty)):0!null\n" +
@@ -1752,7 +1752,7 @@ order by
 			"         │               │   │   └─ tableId: 4\n" +
 			"         │               │   └─ IndexedTableAccess(supplier)\n" +
 			"         │               │       ├─ index: [supplier.S_SUPPKEY]\n" +
-			"         │               │       ├─ keys: [partsupp.ps_suppkey:3!null]\n" +
+			"         │               │       ├─ keys: [partsupp.ps_suppkey:5!null]\n" +
 			"         │               │       ├─ colSet: (24-30)\n" +
 			"         │               │       ├─ tableId: 5\n" +
 			"         │               │       └─ Table\n" +
@@ -1760,20 +1760,20 @@ order by
 			"         │               │           └─ columns: [s_suppkey s_nationkey]\n" +
 			"         │               └─ Filter\n" +
 			"         │                   ├─ Eq\n" +
-			"         │                   │   ├─ nation.n_name:4!null\n" +
+			"         │                   │   ├─ nation.n_name:6!null\n" +
 			"         │                   │   └─ GERMANY (longtext)\n" +
 			"         │                   └─ IndexedTableAccess(nation)\n" +
 			"         │                       ├─ index: [nation.N_NATIONKEY]\n" +
-			"         │                       ├─ keys: [supplier.s_nationkey:5!null]\n" +
+			"         │                       ├─ keys: [supplier.s_nationkey:7!null]\n" +
 			"         │                       ├─ colSet: (31-34)\n" +
 			"         │                       ├─ tableId: 6\n" +
 			"         │                       └─ Table\n" +
 			"         │                           ├─ name: nation\n" +
 			"         │                           └─ columns: [n_nationkey n_name]\n" +
 			"         └─ Project\n" +
-			"             ├─ columns: [sum((partsupp.ps_supplycost * partsupp.ps_availqty)):0!null, partsupp.ps_partkey:1!null, sum((partsupp.ps_supplycost * partsupp.ps_availqty)):0!null->value:0]\n" +
+			"             ├─ columns: [sum((partsupp.ps_supplycost * partsupp.ps_availqty)):0!null, partsupp.ps_partkey:1!null, partsupp.PS_SUPPLYCOST:2!null, partsupp.PS_AVAILQTY:3!null, sum((partsupp.ps_supplycost * partsupp.ps_availqty)):0!null->value:0]\n" +
 			"             └─ GroupBy\n" +
-			"                 ├─ select: SUM((partsupp.ps_supplycost:3!null * partsupp.ps_availqty:2!null)), partsupp.ps_partkey:0!null\n" +
+			"                 ├─ select: SUM((partsupp.ps_supplycost:3!null * partsupp.ps_availqty:2!null)), partsupp.ps_partkey:0!null, partsupp.PS_SUPPLYCOST:3!null, partsupp.PS_AVAILQTY:2!null\n" +
 			"                 ├─ group: partsupp.ps_partkey:0!null\n" +
 			"                 └─ LookupJoin\n" +
 			"                     ├─ LookupJoin\n" +
@@ -1807,9 +1807,9 @@ order by
 			" └─ Sort(value DESC)\n" +
 			"     └─ Having((sum((partsupp.ps_supplycost * partsupp.ps_availqty)) > Subquery(select sum(ps_supplycost * ps_availqty) * 0.0001000000 from partsupp, supplier, nation where ps_suppkey = s_suppkey and s_nationkey = n_nationkey and n_name = 'GERMANY')))\n" +
 			"         └─ Project\n" +
-			"             ├─ columns: [sum((partsupp.ps_supplycost * partsupp.ps_availqty)), partsupp.ps_partkey, sum((partsupp.ps_supplycost * partsupp.ps_availqty)) as value]\n" +
+			"             ├─ columns: [sum((partsupp.ps_supplycost * partsupp.ps_availqty)), partsupp.ps_partkey, partsupp.PS_SUPPLYCOST, partsupp.PS_AVAILQTY, sum((partsupp.ps_supplycost * partsupp.ps_availqty)) as value]\n" +
 			"             └─ GroupBy\n" +
-			"                 ├─ SelectDeps(SUM((partsupp.ps_supplycost * partsupp.ps_availqty)), partsupp.ps_partkey)\n" +
+			"                 ├─ SelectDeps(SUM((partsupp.ps_supplycost * partsupp.ps_availqty)), partsupp.ps_partkey, partsupp.PS_SUPPLYCOST, partsupp.PS_AVAILQTY)\n" +
 			"                 ├─ Grouping(partsupp.ps_partkey)\n" +
 			"                 └─ LookupJoin\n" +
 			"                     ├─ LookupJoin\n" +
@@ -1829,9 +1829,9 @@ order by
 			" └─ Sort(value DESC)\n" +
 			"     └─ Having((sum((partsupp.ps_supplycost * partsupp.ps_availqty)) > Subquery(select sum(ps_supplycost * ps_availqty) * 0.0001000000 from partsupp, supplier, nation where ps_suppkey = s_suppkey and s_nationkey = n_nationkey and n_name = 'GERMANY')))\n" +
 			"         └─ Project\n" +
-			"             ├─ columns: [sum((partsupp.ps_supplycost * partsupp.ps_availqty)), partsupp.ps_partkey, sum((partsupp.ps_supplycost * partsupp.ps_availqty)) as value]\n" +
+			"             ├─ columns: [sum((partsupp.ps_supplycost * partsupp.ps_availqty)), partsupp.ps_partkey, partsupp.PS_SUPPLYCOST, partsupp.PS_AVAILQTY, sum((partsupp.ps_supplycost * partsupp.ps_availqty)) as value]\n" +
 			"             └─ GroupBy\n" +
-			"                 ├─ SelectDeps(SUM((partsupp.ps_supplycost * partsupp.ps_availqty)), partsupp.ps_partkey)\n" +
+			"                 ├─ SelectDeps(SUM((partsupp.ps_supplycost * partsupp.ps_availqty)), partsupp.ps_partkey, partsupp.PS_SUPPLYCOST, partsupp.PS_AVAILQTY)\n" +
 			"                 ├─ Grouping(partsupp.ps_partkey)\n" +
 			"                 └─ LookupJoin\n" +
 			"                     ├─ LookupJoin\n" +
@@ -2655,7 +2655,7 @@ order by
 			"                     │   ├─ sum(lineitem.l_quantity):0!null\n" +
 			"                     │   └─ 300 (smallint)\n" +
 			"                     └─ GroupBy\n" +
-			"                         ├─ select: SUM(lineitem_1.l_quantity:4!null), lineitem_1.l_orderkey:0!null\n" +
+			"                         ├─ select: SUM(lineitem_1.l_quantity:4!null), lineitem_1.l_orderkey:0!null, lineitem_1.L_QUANTITY:4!null\n" +
 			"                         ├─ group: lineitem_1.l_orderkey:0!null\n" +
 			"                         └─ TableAlias(lineitem_1)\n" +
 			"                             └─ Table\n" +
@@ -2686,7 +2686,7 @@ order by
 			"                 ├─ columns: [lineitem_1.l_orderkey]\n" +
 			"                 └─ Having((sum(lineitem.l_quantity) > 300))\n" +
 			"                     └─ GroupBy\n" +
-			"                         ├─ SelectDeps(SUM(lineitem_1.l_quantity), lineitem_1.l_orderkey)\n" +
+			"                         ├─ SelectDeps(SUM(lineitem_1.l_quantity), lineitem_1.l_orderkey, lineitem_1.L_QUANTITY)\n" +
 			"                         ├─ Grouping(lineitem_1.l_orderkey)\n" +
 			"                         └─ TableAlias(lineitem_1)\n" +
 			"                             └─ Table\n" +
@@ -2714,7 +2714,7 @@ order by
 			"                 ├─ columns: [lineitem_1.l_orderkey]\n" +
 			"                 └─ Having((sum(lineitem.l_quantity) > 300))\n" +
 			"                     └─ GroupBy\n" +
-			"                         ├─ SelectDeps(SUM(lineitem_1.l_quantity), lineitem_1.l_orderkey)\n" +
+			"                         ├─ SelectDeps(SUM(lineitem_1.l_quantity), lineitem_1.l_orderkey, lineitem_1.L_QUANTITY)\n" +
 			"                         ├─ Grouping(lineitem_1.l_orderkey)\n" +
 			"                         └─ TableAlias(lineitem_1)\n" +
 			"                             └─ Table\n" +
