@@ -1566,7 +1566,8 @@ func ConvertHexBlobToDecimalForNumericContext(val interface{}, originType sql.Ty
 	return val, nil
 }
 
-// IsValidFloat returns false if a float is NaN or infinity
-func IsValidFloat(f float64) bool {
+// IsValidFloat returns false in go-mysql-server if a float is NaN or infinity. Since NaN and infinity values are
+// allowed in Doltgres, this function is replaced there.
+var IsValidFloat = func(f float64) bool {
 	return !math.IsNaN(f) && !math.IsInf(f, 0)
 }
