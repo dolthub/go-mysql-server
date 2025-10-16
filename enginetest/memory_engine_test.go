@@ -200,28 +200,22 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "Dolt diff query returns correct tables (regression 1.59.18)",
-			SetUpScript: []string{
-				"SET GLOBAL local_infile=1;",
-				`CREATE TABLE my_table (
-				id int NOT NULL,
-				txt varchar(16) NOT NULL,
-				PRIMARY KEY (id)
-			) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;`,
-				`LOAD DATA INFILE 'C:/Users/Elian/dolt_workspace/db/9969/data'
-				INTO TABLE my_table
-				FIELDS TERMINATED BY ',' ENCLOSED BY '"' ESCAPED BY '"'
-				LINES TERMINATED BY '\n'
-				(id, txt);`,
-			},
+			Name:        "AS OF propagates to nested CALLs",
+			SetUpScript: []string{},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: `SELECT * FROM my_table LIMIT 1`,
+					Query: "create procedure create_proc() create table t (i int primary key, j int);",
 					Expected: []sql.Row{
-						{1, "foo,bar"},
+						{types.NewOkResult(0)},
+					},
+				},
+				{
+					Query: "call create_proc()",
+					Expected: []sql.Row{
+						{types.NewOkResult(0)},
 					},
 				},
 			},

@@ -131,54 +131,112 @@ func (l *loadDataIter) parseLinePrefix(line string) string {
 }
 
 func (l *loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Expression, error) {
-	// Step 1. Start by Searching for prefix if there is one
+	// Start by searching for prefix if there is one
 	line = l.parseLinePrefix(line)
 	if line == "" {
 		return nil, nil
 	}
 
-	// Step 2: Split the lines into fields given the delim
-	fields := strings.Split(line, l.fieldsTerminatedBy)
+	// Split the line into fields. When ENCLOSED BY is specified, fields must be parsed
+	// character-by-character to respect quoted fields that may contain the field terminator.
+	var fields []string
+	if l.fieldsEnclosedBy == "" {
+		fields = strings.Split(line, l.fieldsTerminatedBy)
+	} else {
+		var currentField strings.Builder
+		inEnclosure := false
+		encChar := l.fieldsEnclosedBy[0]
+		escChar := byte(0)
+		if l.fieldsEscapedBy != "" {
+			escChar = l.fieldsEscapedBy[0]
+		}
+		termLen := len(l.fieldsTerminatedBy)
 
-	// Step 3: Go through each field and see if it was enclosed by something
-	// TODO: Support the OPTIONALLY parameter.
-	if l.fieldsEnclosedBy != "" {
-		for i, field := range fields {
-			if field[0] == l.fieldsEnclosedBy[0] && field[len(field)-1] == l.fieldsEnclosedBy[0] {
-				fields[i] = field[1 : len(field)-1]
-			} else {
-				return nil, fmt.Errorf("error: field not properly enclosed")
+		for i := 0; i < len(line); i++ {
+			c := line[i]
+
+			// Handle enclosure character
+			if c == encChar {
+				if inEnclosure {
+					// Check for doubled enclosure (escape mechanism when encChar == escChar)
+					if i+1 < len(line) && line[i+1] == encChar {
+						currentField.WriteByte(encChar)
+						i++
+						continue
+					}
+					inEnclosure = false
+					continue
+				}
+				if currentField.Len() == 0 {
+					inEnclosure = true
+					continue
+				}
 			}
+
+			// Handle escape character (only when different from enclosure character)
+			if escChar != 0 && escChar != encChar && c == escChar && i+1 < len(line) {
+				currentField.WriteByte(c)
+				i++
+				currentField.WriteByte(line[i])
+				continue
+			}
+
+			// Handle field terminator (only outside enclosures)
+			if !inEnclosure && i+termLen <= len(line) && line[i:i+termLen] == l.fieldsTerminatedBy {
+				fields = append(fields, currentField.String())
+				currentField.Reset()
+				i += termLen - 1
+				continue
+			}
+
+			currentField.WriteByte(c)
+		}
+
+		fields = append(fields, currentField.String())
+		if !l.fieldsEnclosedByOpt && inEnclosure {
+			return nil, fmt.Errorf("error: unterminated enclosed field")
 		}
 	}
 
-	// Step 4: Handle the ESCAPED BY parameter.
-	if l.fieldsEscapedBy != "" {
+	// Handle ESCAPED BY parameter for special sequences like \N, \Z, \0, \n, \t, etc.
+	// When ESCAPED BY equals ENCLOSED BY, escaping was already handled via doubling.
+	if l.fieldsEscapedBy != "" && l.fieldsEscapedBy != l.fieldsEnclosedBy {
+		escByte := l.fieldsEscapedBy[0]
 		for i, field := range fields {
-			if field == "\\N" {
-				fields[i] = "NULL"
-			} else if field == "\\Z" {
-				fields[i] = fmt.Sprintf("%c", 26) // ASCII 26
-			} else if field == "\\0" {
-				fields[i] = fmt.Sprintf("%c", 0) // ASCII 0
-			} else {
-				// The character immediately following the escaped character remains untouched, even if it is the same
-				// as the escape character
-				newField := make([]byte, 0, len(field))
-				for cIdx := 0; cIdx < len(field); cIdx++ {
-					c := field[cIdx]
-					// skip over escaped character, but always add the following character
-					if c == l.fieldsEscapedBy[0] {
-						cIdx += 1
-						if cIdx < len(field) {
-							newField = append(newField, c)
-						}
-						continue
-					}
-					newField = append(newField, c)
-				}
-				fields[i] = string(newField)
+			if !strings.ContainsRune(field, rune(escByte)) {
+				continue
 			}
+
+			newField := make([]byte, 0, len(field))
+			for j := 0; j < len(field); j++ {
+				if field[j] != escByte || j+1 >= len(field) {
+					newField = append(newField, field[j])
+					continue
+				}
+
+				j++
+				switch field[j] {
+				case 'N':
+					fields[i] = "NULL"
+					goto nextField
+				case 'Z':
+					newField = append(newField, 26)
+				case '0':
+					newField = append(newField, 0)
+				case 'n':
+					newField = append(newField, '\n')
+				case 't':
+					newField = append(newField, '\t')
+				case 'r':
+					newField = append(newField, '\r')
+				case 'b':
+					newField = append(newField, '\b')
+				default:
+					newField = append(newField, field[j])
+				}
+			}
+			fields[i] = string(newField)
+		nextField:
 		}
 	}
 

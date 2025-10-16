@@ -25,6 +25,68 @@ import (
 
 var LoadDataScripts = []ScriptTest{
 	{
+		// https://github.com/dolthub/dolt/issues/9969
+		Name: "LOAD DATA with ENCLOSED BY and ESCAPED BY parsing",
+		SetUpScript: []string{
+			"create table t1(pk int primary key, c1 longtext)",
+			"LOAD DATA INFILE './testdata/loaddata_9969.dat' INTO TABLE t1 FIELDS TERMINATED BY ',' ENCLOSED BY '\"' ESCAPED BY '\"'",
+			"create table t2(pk int primary key, c1 longtext)",
+			"LOAD DATA INFILE './testdata/loaddata_escape.dat' INTO TABLE t2 FIELDS TERMINATED BY ',' ENCLOSED BY '\"' ESCAPED BY '\\\\'",
+			"create table t3(a varchar(20), b varchar(20))",
+			"LOAD DATA INFILE './testdata/loaddata_enclosed.dat' INTO TABLE t3 FIELDS TERMINATED BY ',' ENCLOSED BY '\"' ESCAPED BY '\"'",
+			"create table t4(a varchar(20), b varchar(20))",
+			"LOAD DATA INFILE './testdata/loaddata_mixed_escapes.dat' INTO TABLE t4 FIELDS TERMINATED BY ',' ENCLOSED BY '\"' ESCAPED BY '\\\\'",
+			"create table t5(a text, b text)",
+			"LOAD DATA INFILE './testdata/loaddata_single_quotes.dat' INTO TABLE t5 FIELDS TERMINATED BY ',' ENCLOSED BY ''''",
+			"create table t6(pk int, a varchar(20), b varchar(20))",
+			"LOAD DATA INFILE './testdata/loaddata_nulls.dat' INTO TABLE t6 FIELDS TERMINATED BY ','",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from t1",
+				Expected: []sql.Row{{1, "foo,bar"}},
+			},
+			{
+				Query:    "select * from t2",
+				Expected: []sql.Row{{1, "foo,bar"}},
+			},
+			{
+				Query: "select * from t3 ORDER BY a",
+				Expected: []sql.Row{
+					{"a\"b", "cd\"ef"},
+					{"field1", "field2"},
+					{"foo,bar", "baz,qux"},
+				},
+			},
+			{
+				Query: "select * from t4",
+				Expected: []sql.Row{
+					{nil, "\x1A"},
+					{"a,b", "c,d"},
+					{"hello\nworld", "foo\tbar"},
+				},
+			},
+			{
+				Query: "select * from t5", // order by a breaks
+				Expected: []sql.Row{
+					{"Field A", "Field B"},
+					{"Field 1", "Field 2"},
+					{"Field 3", "Field 4"},
+					{"Field 5", "Field 6"},
+				},
+			},
+			{
+				Query: "select * from t6 ORDER BY pk",
+				Expected: []sql.Row{
+					{1, "hello", "world"},
+					{2, nil, "test"},
+					{3, "", "empty"},
+					{4, nil, nil},
+				},
+			},
+		},
+	},
+	{
 		Name: "LOAD DATA applies column defaults when \\N provided",
 		SetUpScript: []string{
 			"create table t (pk int primary key, c1 int default 1, c2 int)",
@@ -128,6 +190,7 @@ var LoadDataScripts = []ScriptTest{
 			},
 		},
 	},
+	// https://github.com/dolthub/dolt/issues/9969
 	{
 		Name: "Load JSON data. EnclosedBy and EscapedBy are the same.",
 		SetUpScript: []string{
