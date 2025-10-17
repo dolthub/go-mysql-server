@@ -297,6 +297,8 @@ type Analyzer struct {
 	Batches []*Batch
 	// Whether to log various debugging messages
 	Debug bool
+	// Whether to output detailed trace logging for join planning
+	Trace bool
 	// Whether to output the query plan at each step of the analyzer
 	Verbose bool
 }

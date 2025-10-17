@@ -137,6 +137,7 @@ func recSchemaToGetFields(n sql.Node, sch sql.Schema) []sql.Expression {
 func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Scope, qFlags *sql.QueryFlags) (ret sql.Node, err error) {
 	m := memo.NewMemo(ctx, a.Catalog, scope, len(scope.Schema()), a.Coster, qFlags)
 	m.Debug = a.Debug
+	m.Trace = a.Trace
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -161,45 +162,62 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 	hints := m.SessionHints()
 	hints = append(hints, memo.ExtractJoinHint(n)...)
 
+	m.TraceLog("Adding index scans")
 	err = addIndexScans(ctx, m)
 	if err != nil {
 		return nil, err
 	}
+	
+	m.TraceLog("Converting semi joins to inner joins")
 	err = convertSemiToInnerJoin(m)
 	if err != nil {
 		return nil, err
 	}
+	
+	m.TraceLog("Converting anti joins to left joins")
 	err = convertAntiToLeftJoin(m)
 	if err != nil {
 		return nil, err
 	}
+	
+	m.TraceLog("Adding right semi joins")
 	err = addRightSemiJoins(ctx, m)
 	if err != nil {
 		return nil, err
 	}
 
+	m.TraceLog("Adding lookup joins")
 	err = addLookupJoins(ctx, m)
 	if err != nil {
 		return nil, err
 	}
 
 	if !mergeJoinsDisabled(hints) {
+		m.TraceLog("Adding merge joins")
 		err = addMergeJoins(ctx, m)
 		if err != nil {
 			return nil, err
 		}
+	} else {
+		m.TraceLog("Skipping merge joins (disabled by hints)")
 	}
 
+	m.TraceLog("Computing cardinality for memo groups")
 	memo.CardMemoGroups(ctx, m.Root())
 
+	m.TraceLog("Adding cross hash joins")
 	err = addCrossHashJoins(m)
 	if err != nil {
 		return nil, err
 	}
+	
+	m.TraceLog("Adding hash joins")
 	err = addHashJoins(m)
 	if err != nil {
 		return nil, err
 	}
+	
+	m.TraceLog("Adding range heap joins")
 	err = addRangeHeapJoin(m)
 	if err != nil {
 		return nil, err
@@ -207,14 +225,18 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 
 	// Once we've enumerated all expression groups, we can apply hints. This must be done after expression
 	// groups have been identified, so that the applied hints use the correct metadata.
+	m.TraceLog("Applying %d hints", len(hints))
 	for _, h := range hints {
+		m.TraceLog("Applying hint: %s", h.Typ.String())
 		m.ApplyHint(h)
 	}
 
+	m.TraceLog("Starting cost-based optimization")
 	err = m.OptimizeRoot()
 	if err != nil {
 		return nil, err
 	}
+	m.TraceLog("Completed cost-based optimization")
 
 	if a.Verbose && a.Debug {
 		a.Log("%s", m.String())
@@ -267,10 +289,14 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo) error {
 		}
 
 		if len(join.Filter) == 0 {
+			m.TraceLog("Skipping lookup join for %T - no filters", e)
 			return nil
 		}
 
+		m.TraceLog("Considering lookup join for %T with %d filters", e, len(join.Filter))
+
 		tableId, indexes, extraFilters := lookupCandidates(right.First, false)
+		m.TraceLog("Found %d index candidates for lookup join", len(indexes))
 
 		var rt sql.TableNode
 		var aliasName string
@@ -281,10 +307,12 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo) error {
 			var ok bool
 			rt, ok = n.Child.(sql.TableNode)
 			if !ok {
+				m.TraceLog("Skipping lookup join - table alias child is not TableNode")
 				return nil
 			}
 			aliasName = n.Name()
 		default:
+			m.TraceLog("Skipping lookup join - unsupported table node type: %T", n)
 			return nil
 		}
 
@@ -322,13 +350,17 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo) error {
 			return nil
 		}
 
-		for _, idx := range indexes {
+		for i, idx := range indexes {
 			keyExprs, matchedFilters, nullmask := keyExprsForIndex(tableId, idx.Cols(), append(join.Filter, extraFilters...))
 			if keyExprs == nil {
+				m.TraceLog("Index %d: no matching key expressions found", i)
 				continue
 			}
+			m.TraceLog("Index %d: found %d key expressions, %d matched filters", i, len(keyExprs), len(matchedFilters))
+			
 			ita, err := plan.NewIndexedAccessForTableNode(ctx, rt, plan.NewLookupBuilder(idx.SqlIdx(), keyExprs, nullmask))
 			if err != nil {
+				m.TraceLog("Index %d: failed to create indexed table access: %v", i, err)
 				return err
 			}
 			lookup := &memo.IndexScan{
@@ -350,6 +382,7 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo) error {
 				}
 			}
 
+			m.TraceLog("Adding lookup join with index %d, %d remaining filters", i, len(filters))
 			m.MemoizeLookupJoin(e.Group(), join.Left, join.Right, join.Op, filters, lookup)
 		}
 		return nil
@@ -793,33 +826,42 @@ func addHashJoins(m *memo.Memo) error {
 
 		join := e.(memo.JoinRel).JoinPrivate()
 		if len(join.Filter) == 0 {
+			m.TraceLog("Skipping hash join for %T - no filters", e)
 			return nil
 		}
 
+		m.TraceLog("Considering hash join for %T with %d filters", e, len(join.Filter))
+
 		var fromExpr, toExpr []sql.Expression
-		for _, f := range join.Filter {
+		for i, f := range join.Filter {
 			switch f := f.(type) {
 			case *expression.Equals:
 				if satisfiesScalarRefs(f.Left(), join.Left.RelProps.OutputTables()) &&
 					satisfiesScalarRefs(f.Right(), join.Right.RelProps.OutputTables()) {
 					fromExpr = append(fromExpr, f.Right())
 					toExpr = append(toExpr, f.Left())
+					m.TraceLog("Filter %d: left->right hash key mapping", i)
 				} else if satisfiesScalarRefs(f.Right(), join.Left.RelProps.OutputTables()) &&
 					satisfiesScalarRefs(f.Left(), join.Right.RelProps.OutputTables()) {
 					fromExpr = append(fromExpr, f.Left())
 					toExpr = append(toExpr, f.Right())
+					m.TraceLog("Filter %d: right->left hash key mapping", i)
 				} else {
+					m.TraceLog("Filter %d: does not satisfy scalar refs for hash join", i)
 					return nil
 				}
 			default:
+				m.TraceLog("Filter %d: not an equality expression, skipping hash join", i)
 				return nil
 			}
 		}
 		switch join.Right.First.(type) {
 		case *memo.RecursiveTable:
+			m.TraceLog("Skipping hash join - right side is recursive table")
 			return nil
 		}
 
+		m.TraceLog("Adding hash join with %d key expressions", len(toExpr))
 		m.MemoizeHashJoin(e.Group(), join, toExpr, fromExpr)
 		return nil
 	})
@@ -1027,15 +1069,21 @@ func addMergeJoins(ctx *sql.Context, m *memo.Memo) error {
 		}
 
 		if len(join.Filter) == 0 {
+			m.TraceLog("Skipping merge join for %T - no filters", e)
 			return nil
 		}
+
+		m.TraceLog("Considering merge join for %T with %d filters", e, len(join.Filter))
 
 		leftTabId, lIndexes, lFilters := lookupCandidates(join.Left.First, true)
 		rightTabId, rIndexes, rFilters := lookupCandidates(join.Right.First, true)
 
 		if leftTabId == 0 || rightTabId == 0 {
+			m.TraceLog("Skipping merge join - no valid table candidates found")
 			return nil
 		}
+
+		m.TraceLog("Found %d left indexes, %d right indexes for merge join", len(lIndexes), len(rIndexes))
 
 		leftTab := join.Left.RelProps.TableIdNodes()[0]
 		rightTab := join.Right.RelProps.TableIdNodes()[0]
@@ -1091,20 +1139,25 @@ func addMergeJoins(ctx *sql.Context, m *memo.Memo) error {
 		// While matchedFilters is not empty:
 		//    Check to see if any rIndexes match that set of filters
 		//    Remove the last matched filter
-		for _, lIndex := range lIndexes {
+		for i, lIndex := range lIndexes {
 			if lIndex.Order() == sql.IndexOrderNone {
 				// lookups can be unordered, merge indexes need to
 				// be globally ordered
+				m.TraceLog("Left index %d: skipping - unordered index", i)
 				continue
 			}
 
 			matchedEqFilters := matchedFiltersForLeftIndex(lIndex, join.Left.RelProps.FuncDeps().Constants(), eqFilters)
+			m.TraceLog("Left index %d: matched %d equality filters", i, len(matchedEqFilters))
+			
 			for len(matchedEqFilters) > 0 {
-				for _, rIndex := range rIndexes {
+				for j, rIndex := range rIndexes {
 					if rIndex.Order() == sql.IndexOrderNone {
+						m.TraceLog("Right index %d: skipping - unordered index", j)
 						continue
 					}
 					if rightIndexMatchesFilters(rIndex, join.Left.RelProps.FuncDeps().Constants(), matchedEqFilters) {
+						m.TraceLog("Found matching index pair: left[%d] <-> right[%d]", i, j)
 						jb := join.Copy()
 						if d, ok := jb.Left.First.(*memo.Distinct); ok && lIndex.SqlIdx().IsUnique() {
 							jb.Left = d.Child
@@ -1147,8 +1200,10 @@ func addMergeJoins(ctx *sql.Context, m *memo.Memo) error {
 							return err
 						}
 						if !success {
+							m.TraceLog("Failed to create index scan for right index %d", j)
 							continue
 						}
+						m.TraceLog("Adding merge join with left index %d, right index %d", i, j)
 						m.MemoizeMergeJoin(e.Group(), join.Left, join.Right, lIndexScan, rIndexScan, jb.Op.AsMerge(), newFilters, false)
 					}
 				}
