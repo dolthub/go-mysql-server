@@ -74,7 +74,7 @@ type rowsCache struct {
 	memory   Freeable
 	reporter Reporter
 	rows     []Row
-	rows2    []Row2
+	rows2    []ValueRow
 }
 
 func newRowsCache(memory Freeable, r Reporter) *rowsCache {
@@ -92,7 +92,7 @@ func (c *rowsCache) Add(row Row) error {
 
 func (c *rowsCache) Get() []Row { return c.rows }
 
-func (c *rowsCache) Add2(row2 Row2) error {
+func (c *rowsCache) Add2(row2 ValueRow) error {
 	if !releaseMemoryIfNeeded(c.reporter, c.memory.Free) {
 		return ErrNoMemoryAvailable.New()
 	}
@@ -101,7 +101,7 @@ func (c *rowsCache) Add2(row2 Row2) error {
 	return nil
 }
 
-func (c *rowsCache) Get2() []Row2 {
+func (c *rowsCache) Get2() []ValueRow {
 	return c.rows2
 }
 

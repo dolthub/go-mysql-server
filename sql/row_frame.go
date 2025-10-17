@@ -25,31 +25,21 @@ const (
 	fieldArrSize = 2048
 )
 
-// Row2 is a slice of values
-type Row2 []Value
-
-// GetField returns the Value for the ith field in this row.
-func (r Row2) GetField(i int) Value {
-	return r[i]
-}
-
-// Len returns the number of fields of this row
-func (r Row2) Len() int {
-	return len(r)
-}
-
 type ValueBytes []byte
 
-// Value is a logical index into a Row2. For efficiency reasons, use sparingly.
+// Value is a logical index into a ValueRow. For efficiency reasons, use sparingly.
 type Value struct {
-	Val  ValueBytes
-	Val2 AnyWrapper
-	Typ  querypb.Type // TODO: consider sqltypes.Type instead
+	Val        ValueBytes
+	WrappedVal AnyWrapper
+	Typ        querypb.Type // TODO: consider sqltypes.Type instead
 }
+
+// ValueRow is a slice of values
+type ValueRow []Value
 
 // IsNull returns whether this value represents NULL
 func (v Value) IsNull() bool {
-	return v.Val == nil || v.Typ == querypb.Type_NULL_TYPE
+	return (v.Val == nil && v.WrappedVal == nil) || v.Typ == querypb.Type_NULL_TYPE
 }
 
 type RowFrame struct {
@@ -89,14 +79,14 @@ func (f *RowFrame) Recycle() {
 	framePool.Put(f)
 }
 
-// Row2 returns the underlying row value in this frame. Does not make a deep copy of underlying byte arrays, so
+// ValueRow returns the underlying row value in this frame. Does not make a deep copy of underlying byte arrays, so
 // further modification to this frame may result in the returned value changing as well.
-func (f *RowFrame) Row2() Row2 {
+func (f *RowFrame) Row2() ValueRow {
 	if f == nil {
 		return nil
 	}
 
-	rs := make(Row2, len(f.Values))
+	rs := make(ValueRow, len(f.Values))
 	for i := range f.Values {
 		rs[i] = Value{
 			Val: f.Values[i],
@@ -108,8 +98,8 @@ func (f *RowFrame) Row2() Row2 {
 
 // Row2Copy returns the row in this frame as a deep copy of the underlying byte arrays. Useful when reusing the
 // RowFrame object via Clear()
-func (f *RowFrame) Row2Copy() Row2 {
-	rs := make(Row2, len(f.Values))
+func (f *RowFrame) Row2Copy() ValueRow {
+	rs := make(ValueRow, len(f.Values))
 	// TODO: it would be faster here to just copy the entire value backing array in one pass
 	for i := range f.Values {
 		v := make(ValueBytes, len(f.Values[i]))

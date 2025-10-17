@@ -807,7 +807,7 @@ func (h *Handler) resultForDefaultIter2(ctx *sql.Context, c *mysql.Conn, iter sq
 
 	// TODO: send results instead of rows?
 	// Read rows from iter and send them off
-	var rowChan = make(chan sql.Row2, 512)
+	var rowChan = make(chan sql.ValueRow, 512)
 	eg.Go(func() (err error) {
 		defer pan2err(&err)
 		defer wg.Done()
@@ -870,11 +870,11 @@ func (h *Handler) resultForDefaultIter2(ctx *sql.Context, c *mysql.Conn, iter sq
 				}
 				resRow := make([]sqltypes.Value, len(row))
 				for i, v := range row {
-					if v.Val != nil || v.Val2 == nil {
+					if v.Val != nil || v.WrappedVal == nil {
 						resRow[i] = sqltypes.MakeTrusted(v.Typ, v.Val)
 						continue
 					}
-					dVal, err := v.Val2.UnwrapAny(ctx)
+					dVal, err := v.WrappedVal.UnwrapAny(ctx)
 					if err != nil {
 						return err
 					}

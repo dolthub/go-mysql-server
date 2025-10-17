@@ -136,7 +136,7 @@ func (*Literal) Children() []sql.Expression {
 	return nil
 }
 
-func (lit *Literal) Eval2(ctx *sql.Context, row sql.Row2) (sql.Value, error) {
+func (lit *Literal) Eval2(ctx *sql.Context, row sql.ValueRow) (sql.Value, error) {
 	return lit.val2, nil
 }
 

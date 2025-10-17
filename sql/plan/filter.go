@@ -139,7 +139,7 @@ func (i *FilterIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 }
 
-func (i *FilterIter) Next2(ctx *sql.Context) (sql.Row2, error) {
+func (i *FilterIter) Next2(ctx *sql.Context) (sql.ValueRow, error) {
 	for {
 		row, err := i.childIter2.Next2(ctx)
 		if err != nil {
