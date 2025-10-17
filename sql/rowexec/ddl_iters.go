@@ -137,107 +137,75 @@ func (l *loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Express
 		return nil, nil
 	}
 
-	// Split the line into fields. When ENCLOSED BY is specified, fields must be parsed
-	// character-by-character to respect quoted fields that may contain the field terminator.
+	// line is parsed character-by-character to respect enclosed fields that may contain the field terminator
 	var fields []string
-	if l.fieldsEnclosedBy == "" {
-		fields = strings.Split(line, l.fieldsTerminatedBy)
-	} else {
-		var currentField strings.Builder
-		inEnclosure := false
-		encChar := l.fieldsEnclosedBy[0]
-		escChar := byte(0)
-		if l.fieldsEscapedBy != "" {
-			escChar = l.fieldsEscapedBy[0]
-		}
-		termLen := len(l.fieldsTerminatedBy)
+	var currentField strings.Builder
+	var encChar, escChar byte
+	if l.fieldsEnclosedBy != "" {
+		encChar = l.fieldsEnclosedBy[0]
+	}
+	if l.fieldsEscapedBy != "" {
+		escChar = l.fieldsEscapedBy[0]
+	}
+	termLen := len(l.fieldsTerminatedBy)
+	inEnclosure := false
 
-		for i := 0; i < len(line); i++ {
-			c := line[i]
-
-			// Handle enclosure character
-			if c == encChar {
-				if inEnclosure {
-					// Check for doubled enclosure (escape mechanism when encChar == escChar)
-					if i+1 < len(line) && line[i+1] == encChar {
-						currentField.WriteByte(encChar)
-						i++
-						continue
-					}
-					inEnclosure = false
+	for i := 0; i < len(line); i++ {
+		ch := line[i]
+		if ch == encChar {
+			if inEnclosure {
+				// consume escaped char when encChar = escChar
+				if ch == escChar && i+1 < len(line) && line[i+1] == encChar {
+					currentField.WriteByte(encChar)
+					i++
 					continue
 				}
-				if currentField.Len() == 0 {
-					inEnclosure = true
-					continue
-				}
+				inEnclosure = false
+				continue
 			}
+			if currentField.Len() == 0 {
+				inEnclosure = true
+				continue
+			}
+		}
 
-			// Handle escape character (only when different from enclosure character)
-			if escChar != 0 && escChar != encChar && c == escChar && i+1 < len(line) {
-				currentField.WriteByte(c)
-				i++
+		// we consumed the char above so we don't process when encChar = escChar
+		if escChar != encChar && ch == escChar && i+1 < len(line) {
+			i++
+			switch line[i] {
+			case 'N':
+				currentField.WriteString("NULL")
+			case 'Z':
+				currentField.WriteByte(26)
+			case '0':
+				currentField.WriteByte(0)
+			case 'n':
+				currentField.WriteByte('\n')
+			case 't':
+				currentField.WriteByte('\t')
+			case 'r':
+				currentField.WriteByte('\r')
+			case 'b':
+				currentField.WriteByte('\b')
+			default:
 				currentField.WriteByte(line[i])
-				continue
 			}
-
-			// Handle field terminator (only outside enclosures)
-			if !inEnclosure && i+termLen <= len(line) && line[i:i+termLen] == l.fieldsTerminatedBy {
-				fields = append(fields, currentField.String())
-				currentField.Reset()
-				i += termLen - 1
-				continue
-			}
-
-			currentField.WriteByte(c)
+			continue
 		}
 
-		fields = append(fields, currentField.String())
-		if !l.fieldsEnclosedByOpt && inEnclosure {
-			return nil, fmt.Errorf("error: unterminated enclosed field")
+		if !inEnclosure && i+termLen <= len(line) && line[i:i+termLen] == l.fieldsTerminatedBy {
+			fields = append(fields, currentField.String())
+			currentField.Reset()
+			i += termLen - 1
+			continue
 		}
+
+		currentField.WriteByte(ch)
 	}
 
-	// Handle ESCAPED BY parameter for special sequences like \N, \Z, \0, \n, \t, etc.
-	// When ESCAPED BY equals ENCLOSED BY, escaping was already handled via doubling.
-	if l.fieldsEscapedBy != "" && l.fieldsEscapedBy != l.fieldsEnclosedBy {
-		escByte := l.fieldsEscapedBy[0]
-		for i, field := range fields {
-			if !strings.ContainsRune(field, rune(escByte)) {
-				continue
-			}
-
-			newField := make([]byte, 0, len(field))
-			for j := 0; j < len(field); j++ {
-				if field[j] != escByte || j+1 >= len(field) {
-					newField = append(newField, field[j])
-					continue
-				}
-
-				j++
-				switch field[j] {
-				case 'N':
-					fields[i] = "NULL"
-					goto nextField
-				case 'Z':
-					newField = append(newField, 26)
-				case '0':
-					newField = append(newField, 0)
-				case 'n':
-					newField = append(newField, '\n')
-				case 't':
-					newField = append(newField, '\t')
-				case 'r':
-					newField = append(newField, '\r')
-				case 'b':
-					newField = append(newField, '\b')
-				default:
-					newField = append(newField, field[j])
-				}
-			}
-			fields[i] = string(newField)
-		nextField:
-		}
+	fields = append(fields, currentField.String())
+	if !l.fieldsEnclosedByOpt && inEnclosure {
+		return nil, fmt.Errorf("error: unterminated enclosed field")
 	}
 
 	fieldRow := make(sql.Row, len(fields))

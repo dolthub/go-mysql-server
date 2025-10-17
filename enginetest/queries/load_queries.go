@@ -190,7 +190,6 @@ var LoadDataScripts = []ScriptTest{
 			},
 		},
 	},
-	// https://github.com/dolthub/dolt/issues/9969
 	{
 		Name: "Load JSON data. EnclosedBy and EscapedBy are the same.",
 		SetUpScript: []string{
