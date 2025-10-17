@@ -765,11 +765,11 @@ func (t NumberTypeImpl_) Compare2(a sql.Value, b sql.Value) (int, error) {
 		}
 		return +1, nil
 	default:
-		ca, err := convertValueToInt64(t, a)
+		ca, err := ConvertValueToInt64(t, a)
 		if err != nil {
 			return 0, err
 		}
-		cb, err := convertValueToInt64(t, b)
+		cb, err := ConvertValueToInt64(t, b)
 		if err != nil {
 			return 0, err
 		}
@@ -1152,7 +1152,7 @@ func convertToInt64(t NumberTypeImpl_, v any, round Round) (int64, sql.ConvertIn
 	}
 }
 
-func convertValueToInt64(t NumberTypeImpl_, v sql.Value) (int64, error) {
+func ConvertValueToInt64(t NumberTypeImpl_, v sql.Value) (int64, error) {
 	switch v.Typ {
 	case query.Type_INT8:
 		return int64(values.ReadInt8(v.Val)), nil

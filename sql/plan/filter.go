@@ -104,7 +104,13 @@ func (f *Filter) Expressions() []sql.Expression {
 type FilterIter struct {
 	cond      sql.Expression
 	childIter sql.RowIter
+
+	cond2      sql.Expression2
+	childIter2 sql.RowIter2
 }
+
+var _ sql.RowIter = (*FilterIter)(nil)
+var _ sql.RowIter2 = (*FilterIter)(nil)
 
 // NewFilterIter creates a new FilterIter.
 func NewFilterIter(
@@ -131,6 +137,36 @@ func (i *FilterIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return row, nil
 		}
 	}
+}
+
+func (i *FilterIter) Next2(ctx *sql.Context) (sql.Row2, error) {
+	for {
+		row, err := i.childIter2.Next2(ctx)
+		if err != nil {
+			return nil, err
+		}
+		res, err := i.cond2.Eval2(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+		if res.Val[0] == 1 {
+			return row, nil
+		}
+	}
+}
+
+func (i *FilterIter) IsRowIter2(ctx *sql.Context) bool {
+	cond, ok := i.cond.(sql.Expression2)
+	if !ok || !cond.IsExpr2() {
+		return false
+	}
+	childIter, ok := i.childIter.(sql.RowIter2)
+	if !ok || !childIter.IsRowIter2(ctx) {
+		return false
+	}
+	i.cond2 = cond
+	i.childIter2 = childIter
+	return true
 }
 
 // Close implements the RowIter interface.

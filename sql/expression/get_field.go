@@ -153,8 +153,11 @@ func (p *GetField) Eval2(ctx *sql.Context, row sql.Row2) (sql.Value, error) {
 	if p.fieldIndex < 0 || p.fieldIndex >= row.Len() {
 		return sql.Value{}, ErrIndexOutOfBounds.New(p.fieldIndex, row.Len())
 	}
+	return row[p.fieldIndex], nil
+}
 
-	return row.GetField(p.fieldIndex), nil
+func (p *GetField) IsExpr2() bool {
+	return true
 }
 
 // WithChildren implements the Expression interface.

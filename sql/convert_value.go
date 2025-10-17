@@ -3,9 +3,9 @@ package sql
 import (
 	"fmt"
 
-	"github.com/dolthub/vitess/go/vt/proto/query"
-
 	"github.com/dolthub/go-mysql-server/sql/values"
+
+	"github.com/dolthub/vitess/go/vt/proto/query"
 )
 
 // ConvertToValue converts the interface to a sql value.
@@ -89,12 +89,4 @@ func ConvertToValue(v interface{}) (Value, error) {
 	default:
 		return Value{}, fmt.Errorf("type %T not implemented", v)
 	}
-}
-
-func MustConvertToValue(v interface{}) Value {
-	ret, err := ConvertToValue(v)
-	if err != nil {
-		panic(err)
-	}
-	return ret
 }
