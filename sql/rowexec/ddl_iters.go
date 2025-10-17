@@ -131,55 +131,81 @@ func (l *loadDataIter) parseLinePrefix(line string) string {
 }
 
 func (l *loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Expression, error) {
-	// Step 1. Start by Searching for prefix if there is one
+	// Start by searching for prefix if there is one
 	line = l.parseLinePrefix(line)
 	if line == "" {
 		return nil, nil
 	}
 
-	// Step 2: Split the lines into fields given the delim
-	fields := strings.Split(line, l.fieldsTerminatedBy)
-
-	// Step 3: Go through each field and see if it was enclosed by something
-	// TODO: Support the OPTIONALLY parameter.
+	// line is parsed character-by-character to respect enclosed fields that may contain the field terminator
+	var fields []string
+	var currentField strings.Builder
+	var encChar, escChar byte
 	if l.fieldsEnclosedBy != "" {
-		for i, field := range fields {
-			if field[0] == l.fieldsEnclosedBy[0] && field[len(field)-1] == l.fieldsEnclosedBy[0] {
-				fields[i] = field[1 : len(field)-1]
-			} else {
-				return nil, fmt.Errorf("error: field not properly enclosed")
+		encChar = l.fieldsEnclosedBy[0]
+	}
+	if l.fieldsEscapedBy != "" {
+		escChar = l.fieldsEscapedBy[0]
+	}
+	termLen := len(l.fieldsTerminatedBy)
+	inEnclosure := false
+
+	for i := 0; i < len(line); i++ {
+		ch := line[i]
+		if ch == encChar {
+			if inEnclosure {
+				// consume escaped char when encChar = escChar
+				if ch == escChar && i+1 < len(line) && line[i+1] == encChar {
+					currentField.WriteByte(encChar)
+					i++
+					continue
+				}
+				inEnclosure = false
+				continue
+			}
+			if currentField.Len() == 0 {
+				inEnclosure = true
+				continue
 			}
 		}
+
+		// we consumed the char above so we don't process when encChar = escChar
+		if escChar != encChar && ch == escChar && i+1 < len(line) {
+			i++
+			switch line[i] {
+			case 'N':
+				currentField.WriteString("NULL")
+			case 'Z':
+				currentField.WriteByte(26)
+			case '0':
+				currentField.WriteByte(0)
+			case 'n':
+				currentField.WriteByte('\n')
+			case 't':
+				currentField.WriteByte('\t')
+			case 'r':
+				currentField.WriteByte('\r')
+			case 'b':
+				currentField.WriteByte('\b')
+			default:
+				currentField.WriteByte(line[i])
+			}
+			continue
+		}
+
+		if !inEnclosure && i+termLen <= len(line) && line[i:i+termLen] == l.fieldsTerminatedBy {
+			fields = append(fields, currentField.String())
+			currentField.Reset()
+			i += termLen - 1
+			continue
+		}
+
+		currentField.WriteByte(ch)
 	}
 
-	// Step 4: Handle the ESCAPED BY parameter.
-	if l.fieldsEscapedBy != "" {
-		for i, field := range fields {
-			if field == "\\N" {
-				fields[i] = "NULL"
-			} else if field == "\\Z" {
-				fields[i] = fmt.Sprintf("%c", 26) // ASCII 26
-			} else if field == "\\0" {
-				fields[i] = fmt.Sprintf("%c", 0) // ASCII 0
-			} else {
-				// The character immediately following the escaped character remains untouched, even if it is the same
-				// as the escape character
-				newField := make([]byte, 0, len(field))
-				for cIdx := 0; cIdx < len(field); cIdx++ {
-					c := field[cIdx]
-					// skip over escaped character, but always add the following character
-					if c == l.fieldsEscapedBy[0] {
-						cIdx += 1
-						if cIdx < len(field) {
-							newField = append(newField, c)
-						}
-						continue
-					}
-					newField = append(newField, c)
-				}
-				fields[i] = string(newField)
-			}
-		}
+	fields = append(fields, currentField.String())
+	if !l.fieldsEnclosedByOpt && inEnclosure {
+		return nil, fmt.Errorf("error: unterminated enclosed field")
 	}
 
 	fieldRow := make(sql.Row, len(fields))

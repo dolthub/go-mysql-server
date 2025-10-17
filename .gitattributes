@@ -10,3 +10,9 @@ enginetest/testdata/test8.txt binary
 enginetest/testdata/test9.txt binary
 enginetest/testdata/test10.txt binary
 enginetest/testdata/simple_json.txt binary
+enginetest/testdata/loaddata_9969.dat binary
+enginetest/testdata/loaddata_escape.dat binary
+enginetest/testdata/loaddata_enclosed.dat binary
+enginetest/testdata/loaddata_single_quotes.dat binary
+enginetest/testdata/loaddata_nulls.dat binary
+enginetest/testdata/loaddata_mixed_escapes.dat binary
