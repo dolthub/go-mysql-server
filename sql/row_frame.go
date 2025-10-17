@@ -38,18 +38,19 @@ func (r Row2) Len() int {
 	return len(r)
 }
 
+type ValueBytes []byte
+
 // Value is a logical index into a Row2. For efficiency reasons, use sparingly.
 type Value struct {
-	Val ValueBytes
-	Typ querypb.Type
+	Val  ValueBytes
+	Val2 AnyWrapper
+	Typ  querypb.Type // TODO: consider sqltypes.Type instead
 }
 
 // IsNull returns whether this value represents NULL
 func (v Value) IsNull() bool {
 	return v.Val == nil || v.Typ == querypb.Type_NULL_TYPE
 }
-
-type ValueBytes []byte
 
 type RowFrame struct {
 	Types []querypb.Type
