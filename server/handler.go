@@ -870,7 +870,22 @@ func (h *Handler) resultForDefaultIter2(ctx *sql.Context, c *mysql.Conn, iter sq
 				}
 				resRow := make([]sqltypes.Value, len(row))
 				for i, v := range row {
-					resRow[i] = sqltypes.MakeTrusted(v.Typ, v.Val)
+					if v.Val != nil || v.Val2 == nil {
+						resRow[i] = sqltypes.MakeTrusted(v.Typ, v.Val)
+						continue
+					}
+					dVal, err := v.Val2.UnwrapAny(ctx)
+					if err != nil {
+						return err
+					}
+					switch dVal := dVal.(type) {
+					case []byte:
+						resRow[i] = sqltypes.MakeTrusted(v.Typ, dVal)
+					case string:
+						resRow[i] = sqltypes.MakeTrusted(v.Typ, []byte(dVal))
+					default:
+						panic(fmt.Sprintf("unexpected type %T", dVal))
+					}
 				}
 				ctx.GetLogger().Tracef("spooling result row %s", resRow)
 				res.Rows = append(res.Rows, resRow)
