@@ -64,10 +64,10 @@ var (
 	datetimeMinTime = time.Date(0000, 0, 0, 0, 0, 0, 0, time.UTC)
 
 	DateOnlyLayouts = []string{
-		"20060102",
-		"2006-1-2",
 		"2006-01-02",
 		"2006/01/02",
+		"20060102",
+		"2006-1-2",
 	}
 
 	// TimestampDatetimeLayouts hold extra timestamps allowed for parsing. It does
@@ -76,19 +76,19 @@ var (
 	//
 	// https://github.com/MariaDB/server/blob/mysql-5.5.36/sql-common/my_time.c#L124
 	TimestampDatetimeLayouts = append([]string{
-		time.RFC3339,
+		"2006-01-02 15:04:05.999999999 -0700 MST", // represents standard Time.time.UTC()
 		time.RFC3339Nano,
-		"2006-01-02 15:4",
-		"2006-01-02 15:04",
-		"2006-01-02 15:04:",
-		"2006-01-02 15:04:.",
-		"2006-01-02 15:04:05.",
 		"2006-01-02 15:04:05.999999999",
 		"2006-1-2 15:4:5.999999999",
 		"2006-1-2:15:4:5.999999999",
+		time.RFC3339,
+		"2006-01-02 15:04:05.",
 		"2006-01-02T15:04:05",
+		"2006-01-02 15:04:.",
+		"2006-01-02 15:04:",
+		"2006-01-02 15:04",
+		"2006-01-02 15:4",
 		"20060102150405",
-		"2006-01-02 15:04:05.999999999 -0700 MST", // represents standard Time.time.UTC()
 	}, DateOnlyLayouts...)
 
 	// zeroTime is 0000-01-01 00:00:00 UTC which is the closest Go can get to 0000-00-00 00:00:00
