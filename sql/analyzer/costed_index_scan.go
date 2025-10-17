@@ -334,6 +334,9 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 }
 
 func addIndexScans(ctx *sql.Context, m *memo.Memo) error {
+	m.Tracer.PushDebugContext("addIndexScans")
+	defer m.Tracer.PopDebugContext()
+	
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
 		filter, ok := e.(*memo.Filter)
 		if !ok {

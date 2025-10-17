@@ -48,7 +48,7 @@ type Memo struct {
 	scopeLen   int
 	cnt        uint16
 	Debug      bool
-	Trace      bool
+	Tracer     *TraceLogger
 }
 
 func NewMemo(ctx *sql.Context, stats sql.StatsProvider, s *plan.Scope, scopeLen int, cost Coster, qFlags *sql.QueryFlags) *Memo {
@@ -61,6 +61,7 @@ func NewMemo(ctx *sql.Context, stats sql.StatsProvider, s *plan.Scope, scopeLen 
 		TableProps: newTableProps(),
 		hints:      &joinHints{},
 		QFlags:     qFlags,
+		Tracer:     &TraceLogger{},
 	}
 }
 
@@ -72,15 +73,8 @@ func (m *Memo) HandleErr(err error) {
 	panic(MemoErr{Err: err})
 }
 
-// TraceLog logs a trace message if tracing is enabled
-func (m *Memo) TraceLog(msg string, args ...interface{}) {
-	if m.Trace {
-		if len(args) > 0 {
-			m.Ctx.GetLogger().Debugf("TRACE: %s", fmt.Sprintf(msg, args...))
-		} else {
-			m.Ctx.GetLogger().Debugf("TRACE: %s", msg)
-		}
-	}
+func (m *Memo) EnableTrace(enable bool) {
+	m.Tracer.traceEnabled = enable
 }
 
 func (m *Memo) Root() *ExprGroup {
@@ -411,6 +405,9 @@ func (m *Memo) MemoizeMax1Row(grp, child *ExprGroup) *ExprGroup {
 // OptimizeRoot finds the implementation for the root expression
 // that has the lowest cost.
 func (m *Memo) OptimizeRoot() error {
+	m.Tracer.PushDebugContext("OptimizeRoot")
+	defer m.Tracer.PopDebugContext()
+	
 	err := m.optimizeMemoGroup(m.root)
 	if err != nil {
 		return err
@@ -435,7 +432,7 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 		return nil
 	}
 
-	m.TraceLog("Optimizing group %d", grp.Id)
+	m.Tracer.Log("Optimizing group %d", grp.Id)
 	n := grp.First
 	if _, ok := n.(SourceRel); ok {
 		// We should order the search bottom-up so that physical operators
@@ -447,12 +444,12 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 		grp.HintOk = true
 		grp.Best = grp.First
 		grp.Best.SetDistinct(NoDistinctOp)
-		m.TraceLog("Group %d: source relation, setting as best plan", grp.Id)
+		m.Tracer.Log("Group %d: source relation, setting as best plan", grp.Id)
 		return nil
 	}
 
 	for n != nil {
-		m.TraceLog("Evaluating plan %T in group %d", n, grp.Id)
+		m.Tracer.Log("Evaluating plan %T in group %d", n, grp.Id)
 		var cost float64
 		for _, g := range n.Children() {
 			err := m.optimizeMemoGroup(g)
@@ -469,12 +466,12 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 		if grp.RelProps.Distinct.IsHash() {
 			if sortedInputs(n) {
 				n.SetDistinct(SortedDistinctOp)
-				m.TraceLog("Plan %T: using sorted distinct", n)
+				m.Tracer.Log("Plan %T: using sorted distinct", n)
 			} else {
 				n.SetDistinct(HashDistinctOp)
 				d := &Distinct{Child: grp}
-				relCost += float64(statsForRel(m.Ctx, d).RowCount())
-				m.TraceLog("Plan %T: using hash distinct", n)
+				relCost += float64(m.statsForRel(m.Ctx, d).RowCount())
+				m.Tracer.Log("Plan %T: using hash distinct", n)
 			}
 		} else {
 			n.SetDistinct(NoDistinctOp)
@@ -482,7 +479,7 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 
 		n.SetCost(relCost)
 		cost += relCost
-		m.TraceLog("Plan %T: relCost=%.2f, totalCost=%.2f", n, relCost, cost)
+		m.Tracer.Log("Plan %T: relCost=%.2f, totalCost=%.2f", n, relCost, cost)
 		m.updateBest(grp, n, cost)
 		n = n.Next()
 	}
@@ -501,19 +498,19 @@ func (m *Memo) updateBest(grp *ExprGroup, n RelExpr, cost float64) {
 				grp.Best = n
 				grp.Cost = cost
 				grp.HintOk = true
-				m.TraceLog("Set best plan for group %d to hinted plan %T with cost %.2f", grp.Id, n, cost)
+				m.Tracer.Log("Set best plan for group %d to hinted plan %T with cost %.2f", grp.Id, n, cost)
 				return
 			}
 			grp.updateBest(n, cost)
-			m.TraceLog("Updated best plan for group %d to hinted plan %T with cost %.2f", grp.Id, n, cost)
+			m.Tracer.Log("Updated best plan for group %d to hinted plan %T with cost %.2f", grp.Id, n, cost)
 		} else if grp.Best == nil || !grp.HintOk {
 			grp.updateBest(n, cost)
-			m.TraceLog("Updated best plan for group %d to plan %T with cost %.2f (no hints satisfied)", grp.Id, n, cost)
+			m.Tracer.Log("Updated best plan for group %d to plan %T with cost %.2f (no hints satisfied)", grp.Id, n, cost)
 		}
 		return
 	}
 	grp.updateBest(n, cost)
-	m.TraceLog("Updated best plan for group %d to plan %T with cost %.2f", grp.Id, n, cost)
+	m.Tracer.Log("Updated best plan for group %d to plan %T with cost %.2f", grp.Id, n, cost)
 }
 
 func (m *Memo) BestRootPlan(ctx *sql.Context) (sql.Node, error) {
