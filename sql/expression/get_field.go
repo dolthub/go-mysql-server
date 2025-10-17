@@ -149,9 +149,9 @@ func (p *GetField) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return row[p.fieldIndex], nil
 }
 
-func (p *GetField) Eval2(ctx *sql.Context, row sql.Row2) (sql.Value, error) {
-	if p.fieldIndex < 0 || p.fieldIndex >= row.Len() {
-		return sql.Value{}, ErrIndexOutOfBounds.New(p.fieldIndex, row.Len())
+func (p *GetField) Eval2(ctx *sql.Context, row sql.ValueRow) (sql.Value, error) {
+	if p.fieldIndex < 0 || p.fieldIndex >= len(row) {
+		return sql.Value{}, ErrIndexOutOfBounds.New(p.fieldIndex, len(row))
 	}
 	return row[p.fieldIndex], nil
 }

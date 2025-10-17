@@ -79,7 +79,7 @@ func (i *TableRowIter) Next(ctx *Context) (Row, error) {
 	return row, err
 }
 
-func (i *TableRowIter) Next2(ctx *Context) (Row2, error) {
+func (i *TableRowIter) Next2(ctx *Context) (ValueRow, error) {
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()

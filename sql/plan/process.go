@@ -318,7 +318,7 @@ func (i *TrackedRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	return row, nil
 }
 
-func (i *TrackedRowIter) Next2(ctx *sql.Context) (sql.Row2, error) {
+func (i *TrackedRowIter) Next2(ctx *sql.Context) (sql.ValueRow, error) {
 	row, err := i.iter2.Next2(ctx)
 	if err != nil {
 		return nil, err

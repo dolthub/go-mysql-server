@@ -86,12 +86,12 @@ func (s *Sorter) Less(i, j int) bool {
 	return false
 }
 
-// Sorter2 is a version of Sorter that operates on Row2
+// Sorter2 is a version of Sorter that operates on ValueRow
 type Sorter2 struct {
 	LastError  error
 	Ctx        *sql.Context
 	SortFields []sql.SortField
-	Rows       []sql.Row2
+	Rows       []sql.ValueRow
 }
 
 func (s *Sorter2) Len() int {

@@ -523,7 +523,7 @@ func (gt *GreaterThan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	return result == 1, nil
 }
 
-func (gt *GreaterThan) Eval2(ctx *sql.Context, row sql.Row2) (sql.Value, error) {
+func (gt *GreaterThan) Eval2(ctx *sql.Context, row sql.ValueRow) (sql.Value, error) {
 	l, ok := gt.Left().(sql.Expression2)
 	if !ok {
 		panic(fmt.Sprintf("%T does not implement sql.Expression2", gt.Left()))

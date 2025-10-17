@@ -307,7 +307,7 @@ func (i *IndexedTableAccess) GetLookup(ctx *sql.Context, row sql.Row) (sql.Index
 	return i.lb.GetLookup(ctx, key)
 }
 
-func (i *IndexedTableAccess) getLookup2(ctx *sql.Context, row sql.Row2) (sql.IndexLookup, error) {
+func (i *IndexedTableAccess) getLookup2(ctx *sql.Context, row sql.ValueRow) (sql.IndexLookup, error) {
 	// if the lookup was provided at analysis time (static evaluation), use it.
 	if !i.lookup.IsEmpty() {
 		return i.lookup, nil
@@ -636,7 +636,7 @@ func (lb *LookupBuilder) GetKey(ctx *sql.Context, row sql.Row) (lookupBuilderKey
 	return lb.key, nil
 }
 
-func (lb *LookupBuilder) GetKey2(ctx *sql.Context, row sql.Row2) (lookupBuilderKey, error) {
+func (lb *LookupBuilder) GetKey2(ctx *sql.Context, row sql.ValueRow) (lookupBuilderKey, error) {
 	if lb.key == nil {
 		lb.key = make([]interface{}, len(lb.keyExprs))
 	}

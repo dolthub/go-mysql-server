@@ -100,7 +100,7 @@ func (t *TransactionCommittingIter) Next(ctx *sql.Context) (sql.Row, error) {
 	return t.childIter.Next(ctx)
 }
 
-func (t *TransactionCommittingIter) Next2(ctx *sql.Context) (sql.Row2, error) {
+func (t *TransactionCommittingIter) Next2(ctx *sql.Context) (sql.ValueRow, error) {
 	return t.childIter2.Next2(ctx)
 }
 
