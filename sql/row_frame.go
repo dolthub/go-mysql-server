@@ -30,7 +30,7 @@ type ValueBytes []byte
 // Value is a logical index into a ValueRow. For efficiency reasons, use sparingly.
 type Value struct {
 	Val        ValueBytes
-	WrappedVal AnyWrapper
+	WrappedVal BytesWrapper
 	Typ        querypb.Type // TODO: consider sqltypes.Type instead
 }
 

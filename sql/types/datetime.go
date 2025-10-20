@@ -17,6 +17,7 @@ package types
 import (
 	"context"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/values"
 	"math"
 	"reflect"
 	"time"
@@ -472,6 +473,31 @@ func (t datetimeType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 	valBytes := val
 
 	return sqltypes.MakeTrusted(typ, valBytes), nil
+}
+
+func (t datetimeType) ToSQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes.Value, error) {
+	if v.IsNull() {
+		return sqltypes.NULL, nil
+	}
+	switch t.baseType {
+	case sqltypes.Date:
+		// TODO: move this to values
+		x := values.ReadUint32(v.Val)
+		y := x >> 16
+		m := (x & (255 << 8)) >> 8
+		d := x & 255
+		t := time.Date(int(y), time.Month(m), int(d), 0, 0, 0, 0, time.UTC)
+		dest = t.AppendFormat(dest, sql.TimestampDatetimeLayout)
+
+	case sqltypes.Datetime, sqltypes.Timestamp:
+		x := values.ReadInt64(v.Val)
+		t := time.UnixMicro(x).UTC()
+		dest = t.AppendFormat(dest, sql.TimestampDatetimeLayout)
+
+	default:
+		return sqltypes.Value{}, sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime")
+	}
+	return sqltypes.MakeTrusted(t.baseType, dest), nil
 }
 
 func (t datetimeType) String() string {

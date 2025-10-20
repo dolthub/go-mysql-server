@@ -294,12 +294,7 @@ func IsDecimalType(t Type) bool {
 
 type Type2 interface {
 	Type
-	// Compare2 returns an integer comparing two Values.
-	Compare2(Value, Value) (int, error)
-	// Convert2 converts a value of a compatible type.
-	Convert2(Value) (Value, error)
-	// Zero2 returns the zero Value for this type.
-	Zero2() Value
+	ToSQLValue(*Context, Value, []byte) (sqltypes.Value, error)
 }
 
 // SpatialColumnType is a node that contains a reference to all spatial types.
