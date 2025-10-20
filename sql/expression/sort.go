@@ -102,56 +102,6 @@ func (s *Sorter2) Swap(i, j int) {
 	s.Rows[i], s.Rows[j] = s.Rows[j], s.Rows[i]
 }
 
-func (s *Sorter2) Less(i, j int) bool {
-	if s.LastError != nil {
-		return false
-	}
-
-	a := s.Rows[i]
-	b := s.Rows[j]
-	for _, sf := range s.SortFields {
-		typ := sf.Column2.Type2()
-		av, err := sf.Column2.Eval2(s.Ctx, a)
-		if err != nil {
-			s.LastError = sql.ErrUnableSort.Wrap(err)
-			return false
-		}
-
-		bv, err := sf.Column2.Eval2(s.Ctx, b)
-		if err != nil {
-			s.LastError = sql.ErrUnableSort.Wrap(err)
-			return false
-		}
-
-		if sf.Order == sql.Descending {
-			av, bv = bv, av
-		}
-
-		if av.IsNull() && bv.IsNull() {
-			continue
-		} else if av.IsNull() {
-			return sf.NullOrdering == sql.NullsFirst
-		} else if bv.IsNull() {
-			return sf.NullOrdering != sql.NullsFirst
-		}
-
-		cmp, err := typ.Compare2(av, bv)
-		if err != nil {
-			s.LastError = err
-			return false
-		}
-
-		switch cmp {
-		case -1:
-			return true
-		case 1:
-			return false
-		}
-	}
-
-	return false
-}
-
 // TopRowsHeap implements heap.Interface based on Sorter. It inverts the Less()
 // function so that it can be used to implement TopN. heap.Push() rows into it,
 // and if Len() > MAX; heap.Pop() the current min row. Then, at the end of

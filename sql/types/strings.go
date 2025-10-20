@@ -790,6 +790,26 @@ func (t StringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.
 	return sqltypes.MakeTrusted(t.baseType, val), nil
 }
 
+// ToSQLValue implements ValueType interface.
+func (t StringType) ToSQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes.Value, error) {
+	if v.IsNull() {
+		return sqltypes.NULL, nil
+	}
+
+	// TODO: collations
+	// TODO: deal with casting numbers?
+	// No need to use dest buffer as we have already allocated []byte
+	var err error
+	if v.Val == nil && v.WrappedVal != nil {
+		v.Val, err = v.WrappedVal.Unwrap(ctx)
+		if err != nil {
+			return sqltypes.Value{}, err
+		}
+	}
+
+	return sqltypes.MakeTrusted(t.baseType, v.Val), nil
+}
+
 // String implements Type interface.
 func (t StringType) String() string {
 	return t.StringWithTableCollation(sql.Collation_Default)

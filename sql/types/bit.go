@@ -18,7 +18,9 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/values"
 	"reflect"
+	"strconv"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -209,6 +211,17 @@ func (t BitType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Va
 	val := data
 
 	return sqltypes.MakeTrusted(sqltypes.Bit, val), nil
+}
+
+// ToSQLValue implements Type2 interface.
+func (t BitType_) ToSQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes.Value, error) {
+	if v.IsNull() {
+		return sqltypes.NULL, nil
+	}
+	// Assume this is uint64
+	x := values.ReadUint64(v.Val)
+	dest = strconv.AppendUint(dest, x, 10)
+	return sqltypes.MakeTrusted(sqltypes.Bit, dest), nil
 }
 
 // String implements Type interface.

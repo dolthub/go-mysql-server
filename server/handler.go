@@ -496,7 +496,7 @@ func (h *Handler) doQuery(
 	} else if analyzer.FlagIsSet(qFlags, sql.QFlagMax1Row) {
 		r, err = resultForMax1RowIter(sqlCtx, schema, rowIter, resultFields, buf)
 	} else if ri2, ok := rowIter.(sql.RowIter2); ok && ri2.IsRowIter2(sqlCtx) {
-		r, processedAtLeastOneBatch, err = h.resultForDefaultIter2(sqlCtx, c, ri2, resultFields, callback, more)
+		r, processedAtLeastOneBatch, err = h.resultForDefaultIter2(sqlCtx, c, schema, ri2, resultFields, buf, callback, more)
 	} else {
 		r, processedAtLeastOneBatch, err = h.resultForDefaultIter(sqlCtx, c, schema, rowIter, callback, resultFields, more, buf)
 	}
@@ -770,14 +770,13 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 	return r, processedAtLeastOneBatch, nil
 }
 
-func (h *Handler) resultForDefaultIter2(ctx *sql.Context, c *mysql.Conn, iter sql.RowIter2, resultFields []*querypb.Field, callback func(*sqltypes.Result, bool) error, more bool) (*sqltypes.Result, bool, error) {
+func (h *Handler) resultForDefaultIter2(ctx *sql.Context, c *mysql.Conn, schema sql.Schema, iter sql.RowIter2, resultFields []*querypb.Field, buf *sql.ByteBuffer, callback func(*sqltypes.Result, bool) error, more bool) (*sqltypes.Result, bool, error) {
 	defer trace.StartRegion(ctx, "Handler.resultForDefaultIter2").End()
 
 	eg, ctx := ctx.NewErrgroup()
 	pan2err := func(err *error) {
 		if recoveredPanic := recover(); recoveredPanic != nil {
-			stack := debug.Stack()
-			wrappedErr := fmt.Errorf("handler caught panic: %v\n%s", recoveredPanic, stack)
+			wrappedErr := fmt.Errorf("handler caught panic: %v\n%s", recoveredPanic, debug.Stack())
 			*err = goerrors.Join(*err, wrappedErr)
 		}
 	}
@@ -868,24 +867,9 @@ func (h *Handler) resultForDefaultIter2(ctx *sql.Context, c *mysql.Conn, iter sq
 				if !ok {
 					return nil
 				}
-				resRow := make([]sqltypes.Value, len(row))
-				for i, v := range row {
-					if v.Val != nil || v.WrappedVal == nil {
-						resRow[i] = sqltypes.MakeTrusted(v.Typ, v.Val)
-						continue
-					}
-					dVal, err := v.WrappedVal.UnwrapAny(ctx)
-					if err != nil {
-						return err
-					}
-					switch dVal := dVal.(type) {
-					case []byte:
-						resRow[i] = sqltypes.MakeTrusted(v.Typ, dVal)
-					case string:
-						resRow[i] = sqltypes.MakeTrusted(v.Typ, []byte(dVal))
-					default:
-						panic(fmt.Sprintf("unexpected type %T", dVal))
-					}
+				resRow, err := RowValueToSQLValues(ctx, schema, row, buf)
+				if err != nil {
+					return err
 				}
 				ctx.GetLogger().Tracef("spooling result row %s", resRow)
 				res.Rows = append(res.Rows, resRow)
@@ -1183,6 +1167,35 @@ func RowToSQL(ctx *sql.Context, sch sql.Schema, row sql.Row, projs []sql.Express
 		if err != nil {
 			return nil, err
 		}
+	}
+	return outVals, nil
+}
+
+func RowValueToSQLValues(ctx *sql.Context, sch sql.Schema, row sql.ValueRow, buf *sql.ByteBuffer) ([]sqltypes.Value, error) {
+	if len(sch) == 0 {
+		return []sqltypes.Value{}, nil
+	}
+	var err error
+	outVals := make([]sqltypes.Value, len(sch))
+	for i, col := range sch {
+		// TODO: remove this check once all Types implement this
+		valType, ok := col.Type.(sql.Type2)
+		if !ok {
+			outVals[i] = sqltypes.MakeTrusted(row[i].Typ, row[i].Val)
+			continue
+		}
+		if buf == nil {
+			outVals[i], err = valType.ToSQLValue(ctx, row[i], nil)
+			if err != nil {
+				return nil, err
+			}
+			continue
+		}
+		outVals[i], err = valType.ToSQLValue(ctx, row[i], buf.Get())
+		if err != nil {
+			return nil, err
+		}
+		buf.Grow(outVals[i].Len())
 	}
 	return outVals, nil
 }

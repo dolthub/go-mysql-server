@@ -17,6 +17,7 @@ package values
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"math"
 )
 
@@ -129,13 +130,13 @@ func ReadUint16(val []byte) uint16 {
 }
 
 func ReadInt24(val []byte) (i int32) {
-	expectSize(val, Int24Size)
+	expectSize(val, Int32Size)
 	i = int32(binary.LittleEndian.Uint32([]byte{0, val[0], val[1], val[2]}))
 	return
 }
 
 func ReadUint24(val []byte) (u uint32) {
-	expectSize(val, Int24Size)
+	expectSize(val, Int32Size)
 	var tmp [4]byte
 	// copy |val| to |tmp|
 	tmp[3], tmp[2] = val[3], val[2]
@@ -306,7 +307,7 @@ func WriteBytes(buf, val []byte, coll Collation) []byte {
 
 func expectSize(buf []byte, sz ByteSize) {
 	if ByteSize(len(buf)) != sz {
-		panic("byte slice is not of expected size")
+		panic(fmt.Sprintf("byte slice is length %v expected %v", len(buf), sz))
 	}
 }
 

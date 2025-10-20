@@ -867,55 +867,54 @@ func (t NumberTypeImpl_) Zero2() sql.Value {
 	}
 }
 
-// SQL2 implements Type2 interface.
-func (t NumberTypeImpl_) SQL2(v sql.Value) (sqltypes.Value, error) {
+// ToSQLValue implements Type2 interface.
+func (t NumberTypeImpl_) ToSQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes.Value, error) {
 	if v.IsNull() {
 		return sqltypes.NULL, nil
 	}
 
-	var val []byte
 	switch t.baseType {
 	case sqltypes.Int8:
 		x := values.ReadInt8(v.Val)
-		val = []byte(strconv.FormatInt(int64(x), 10))
+		dest = strconv.AppendInt(dest, int64(x), 10)
 	case sqltypes.Int16:
 		x := values.ReadInt16(v.Val)
-		val = []byte(strconv.FormatInt(int64(x), 10))
+		dest = strconv.AppendInt(dest, int64(x), 10)
 	case sqltypes.Int24:
 		x := values.ReadInt24(v.Val)
-		val = []byte(strconv.FormatInt(int64(x), 10))
+		dest = strconv.AppendInt(dest, int64(x), 10)
 	case sqltypes.Int32:
 		x := values.ReadInt32(v.Val)
-		val = []byte(strconv.FormatInt(int64(x), 10))
+		dest = strconv.AppendInt(dest, int64(x), 10)
 	case sqltypes.Int64:
 		x := values.ReadInt64(v.Val)
-		val = []byte(strconv.FormatInt(x, 10))
+		dest = strconv.AppendInt(dest, x, 10)
 	case sqltypes.Uint8:
 		x := values.ReadUint8(v.Val)
-		val = []byte(strconv.FormatUint(uint64(x), 10))
+		dest = strconv.AppendUint(dest, uint64(x), 10)
 	case sqltypes.Uint16:
 		x := values.ReadUint16(v.Val)
-		val = []byte(strconv.FormatUint(uint64(x), 10))
+		dest = strconv.AppendUint(dest, uint64(x), 10)
 	case sqltypes.Uint24:
 		x := values.ReadUint24(v.Val)
-		val = []byte(strconv.FormatUint(uint64(x), 10))
+		dest = strconv.AppendUint(dest, uint64(x), 10)
 	case sqltypes.Uint32:
 		x := values.ReadUint32(v.Val)
-		val = []byte(strconv.FormatUint(uint64(x), 10))
+		dest = strconv.AppendUint(dest, uint64(x), 10)
 	case sqltypes.Uint64:
 		x := values.ReadUint64(v.Val)
-		val = []byte(strconv.FormatUint(x, 10))
+		dest = strconv.AppendUint(dest, x, 10)
 	case sqltypes.Float32:
 		x := values.ReadFloat32(v.Val)
-		val = []byte(strconv.FormatFloat(float64(x), 'f', -1, 32))
+		dest = strconv.AppendFloat(dest, float64(x), 'f', -1, 32)
 	case sqltypes.Float64:
 		x := values.ReadFloat64(v.Val)
-		val = []byte(strconv.FormatFloat(x, 'f', -1, 64))
+		dest = strconv.AppendFloat(dest, x, 'f', -1, 64)
 	default:
 		panic(sql.ErrInvalidBaseType.New(t.baseType.String(), "number"))
 	}
 
-	return sqltypes.MakeTrusted(t.baseType, val), nil
+	return sqltypes.MakeTrusted(t.baseType, dest), nil
 }
 
 // String implements Type interface.
