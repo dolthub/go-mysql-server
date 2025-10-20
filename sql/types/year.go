@@ -16,7 +16,6 @@ package types
 
 import (
 	"context"
-	"github.com/dolthub/go-mysql-server/sql/values"
 	"reflect"
 	"strconv"
 	"time"
@@ -27,6 +26,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/values"
 )
 
 var (

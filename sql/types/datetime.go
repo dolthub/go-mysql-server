@@ -17,7 +17,6 @@ package types
 import (
 	"context"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/values"
 	"math"
 	"reflect"
 	"time"
@@ -29,6 +28,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/values"
 )
 
 const ZeroDateStr = "0000-00-00"
