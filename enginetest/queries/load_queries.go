@@ -29,7 +29,7 @@ var LoadDataScripts = []ScriptTest{
 		Name: "LOAD DATA with ENCLOSED BY and ESCAPED BY parsing",
 		SetUpScript: []string{
 			"create table t1(pk int primary key, c1 longtext)",
-			"LOAD DATA INFILE './testdata/loaddata_9969.dat' INTO TABLE t1 FIELDS TERMINATED BY ',' ENCLOSED BY '\"' ESCAPED BY '\"'",
+			"LOAD DATA INFILE './testdata/loaddata_term_in_field.dat' INTO TABLE t1 FIELDS TERMINATED BY ',' ENCLOSED BY '\"' ESCAPED BY '\"'",
 			"create table t2(pk int primary key, c1 longtext)",
 			"LOAD DATA INFILE './testdata/loaddata_escape.dat' INTO TABLE t2 FIELDS TERMINATED BY ',' ENCLOSED BY '\"' ESCAPED BY '\\\\'",
 			"create table t3(a varchar(20), b varchar(20))",
@@ -40,6 +40,14 @@ var LoadDataScripts = []ScriptTest{
 			"LOAD DATA INFILE './testdata/loaddata_single_quotes.dat' INTO TABLE t5 FIELDS TERMINATED BY ',' ENCLOSED BY ''''",
 			"create table t6(pk int, a varchar(20), b varchar(20))",
 			"LOAD DATA INFILE './testdata/loaddata_nulls.dat' INTO TABLE t6 FIELDS TERMINATED BY ','",
+			"create table t7(i int, v text)",
+			"LOAD DATA INFILE './testdata/loaddata_eof.dat' INTO TABLE t7 FIELDS TERMINATED BY ',' ENCLOSED BY '$' ESCAPED BY '$'",
+			"create table t8(i int, v text)",
+			"LOAD DATA INFILE './testdata/loaddata_enc_esc_eq.dat' INTO TABLE t8 FIELDS TERMINATED BY ',' ENCLOSED BY '$' ESCAPED BY '$'",
+			"create table t9(i int, v text)",
+			"LOAD DATA INFILE './testdata/loaddata_lborder_null.dat' INTO TABLE t9 FIELDS TERMINATED BY ',' ENCLOSED BY '' ESCAPED BY ''",
+			"create table t10(i int, v text)",
+			"LOAD DATA INFILE './testdata/loaddata_null_in_field.dat' INTO TABLE t10 FIELDS TERMINATED BY ',' ENCLOSED BY '\"' ESCAPED BY ''",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -67,7 +75,7 @@ var LoadDataScripts = []ScriptTest{
 				},
 			},
 			{
-				Query: "select * from t5", // order by a breaks
+				Query: "select * from t5",
 				Expected: []sql.Row{
 					{"Field A", "Field B"},
 					{"Field 1", "Field 2"},
@@ -84,10 +92,36 @@ var LoadDataScripts = []ScriptTest{
 					{4, nil, nil},
 				},
 			},
+			{
+				Query: "select * from t7",
+				Expected: []sql.Row{
+					{1, "foo $0 $b $n $t $Z $N bar"},
+					{2, "$foo $ bar$"},
+				},
+			},
+			{
+				Query: "select * from t8",
+				Expected: []sql.Row{
+					{1, "foo $0 $b $n $t $Z $N bar"},
+					{2, "foo $ bar"},
+				},
+			},
+			{
+				Query: "select * from t9",
+				Expected: []sql.Row{
+					{1, "\x00foo bar"},
+				},
+			},
+			{
+				Query: "select * from t10",
+				Expected: []sql.Row{
+					{1, "foo \x00 bar"},
+				},
+			},
 		},
 	},
 	{
-		Name: "LOAD DATA applies column defaults when \\N provided",
+		Name: "LOAD DATA does not apply column defaults when \\N provided",
 		SetUpScript: []string{
 			"create table t (pk int primary key, c1 int default 1, c2 int)",
 			// Explicitly use Windows-style line endings to be robust on Windows CI
@@ -96,7 +130,7 @@ var LoadDataScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select * from t",
-				Expected: []sql.Row{{1, 1, 1}},
+				Expected: []sql.Row{{1, nil, 1}},
 			},
 		},
 	},

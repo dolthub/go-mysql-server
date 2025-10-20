@@ -130,47 +130,66 @@ func (l *loadDataIter) parseLinePrefix(line string) string {
 	}
 }
 
-func (l *loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Expression, error) {
-	// Start by searching for prefix if there is one
+func (l *loadDataIter) parseFields(ctx *sql.Context, line string) (exprs []sql.Expression, err error) {
+	// Step 1. Start by Searching for prefix if there is one
 	line = l.parseLinePrefix(line)
 	if line == "" {
 		return nil, nil
 	}
 
-	// line is parsed character-by-character to respect enclosed fields that may contain the field terminator
+	// Step 2: Split the lines into fields given the delim, respecting ENCLOSED BY.
+	// Fields enclosed by the enclosure character can contain the field terminator.
+	// TODO: Support the OPTIONALLY parameter.
+
+	// Check if line has terminator (if not, it ended at EOF)
+	hasTerminator := strings.HasSuffix(line, l.linesTerminatedBy)
+	if hasTerminator {
+		line = line[:len(line)-len(l.linesTerminatedBy)]
+	}
+
 	var fields []string
 	var currentField strings.Builder
-	var encChar, escChar byte
-	if l.fieldsEnclosedBy != "" {
-		encChar = l.fieldsEnclosedBy[0]
-	}
-	if l.fieldsEscapedBy != "" {
-		escChar = l.fieldsEscapedBy[0]
-	}
-	termLen := len(l.fieldsTerminatedBy)
 	inEnclosure := false
+	termLen := len(l.fieldsTerminatedBy)
+	hasEnc := l.fieldsEnclosedBy != ""
+	hasEsc := l.fieldsEscapedBy != ""
+	encEqualsEsc := hasEnc && hasEsc && l.fieldsEnclosedBy == l.fieldsEscapedBy
+	// False only at EOF with enc==esc: ambiguous whether final char closes field or is literal data
+	normalLineTerm := hasTerminator || !encEqualsEsc
 
 	for i := 0; i < len(line); i++ {
 		ch := line[i]
-		if ch == encChar {
-			if inEnclosure {
-				// consume escaped char when encChar = escChar
-				if ch == escChar && i+1 < len(line) && line[i+1] == encChar {
-					currentField.WriteByte(encChar)
-					i++
-					continue
-				}
+		isEncChar := hasEnc && ch == l.fieldsEnclosedBy[0]
+		// When enc==esc, doubling handles escaping (e.g., $$ -> $), not escape sequences
+		isEscChar := hasEsc && !encEqualsEsc && ch == l.fieldsEscapedBy[0]
+
+		// Start enclosure at beginning of field
+		if isEncChar && !inEnclosure && currentField.Len() == 0 {
+			inEnclosure = true
+			continue
+		}
+
+		// Special case: escaped enclosure character does not end enclosure and is written literally
+		if isEncChar && inEnclosure && encEqualsEsc && i+1 < len(line) && line[i+1] == l.fieldsEnclosedBy[0] {
+			currentField.WriteByte(l.fieldsEnclosedBy[0])
+			i++
+			continue
+		}
+
+		// Close enclosure if followed by field terminator or at end of line
+		if isEncChar && inEnclosure {
+			followedByTerm := i+1+termLen <= len(line) && line[i+1:i+1+termLen] == l.fieldsTerminatedBy
+			atLineEnd := i+1 >= len(line)
+			if followedByTerm || (atLineEnd && normalLineTerm) {
 				inEnclosure = false
 				continue
 			}
-			if currentField.Len() == 0 {
-				inEnclosure = true
-				continue
-			}
+			// Enclosure char in middle of field, treat as literal
+			currentField.WriteByte(ch)
+			continue
 		}
 
-		// we consumed the char above so we don't process when encChar = escChar
-		if escChar != encChar && ch == escChar && i+1 < len(line) {
+		if isEscChar && i+1 < len(line) {
 			i++
 			switch line[i] {
 			case 'N':
@@ -193,6 +212,7 @@ func (l *loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Express
 			continue
 		}
 
+		// Handle field terminator (only outside enclosures)
 		if !inEnclosure && i+termLen <= len(line) && line[i:i+termLen] == l.fieldsTerminatedBy {
 			fields = append(fields, currentField.String())
 			currentField.Reset()
@@ -203,8 +223,14 @@ func (l *loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Express
 		currentField.WriteByte(ch)
 	}
 
-	fields = append(fields, currentField.String())
-	if !l.fieldsEnclosedByOpt && inEnclosure {
+	lastField := currentField.String()
+	// If still in enclosure at EOF when enc==esc, prepend the opening enclosure that was stripped
+	if inEnclosure && !normalLineTerm {
+		lastField = string(l.fieldsEnclosedBy[0]) + lastField
+	}
+	fields = append(fields, lastField)
+
+	if inEnclosure && normalLineTerm {
 		return nil, fmt.Errorf("error: unterminated enclosed field")
 	}
 
@@ -213,7 +239,7 @@ func (l *loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Express
 		fieldRow[i] = field
 	}
 
-	exprs := make([]sql.Expression, len(l.destSch))
+	exprs = make([]sql.Expression, len(l.destSch))
 	for fieldIdx, exprIdx := 0, 0; fieldIdx < len(fields) && fieldIdx < len(l.userVars); fieldIdx++ {
 		if l.userVars[fieldIdx] != nil {
 			setField := l.userVars[fieldIdx].(*expression.SetField)
@@ -246,19 +272,7 @@ func (l *loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Express
 				}
 			}
 		case "NULL":
-			// For MySQL LOAD DATA semantics, \N (mapped to NULL here) should use the column default
-			// if one exists; otherwise insert NULL.
-			destIdx := l.fieldToColMap[fieldIdx]
-			if destIdx >= 0 {
-				destCol := l.destSch[destIdx]
-				if destCol.Default != nil {
-					exprs[exprIdx] = destCol.Default
-				} else {
-					exprs[exprIdx] = expression.NewLiteral(nil, types.Null)
-				}
-			} else {
-				exprs[exprIdx] = expression.NewLiteral(nil, types.Null)
-			}
+			exprs[exprIdx] = expression.NewLiteral(nil, types.Null)
 		default:
 			exprs[exprIdx] = expression.NewLiteral(field, types.LongText)
 		}
