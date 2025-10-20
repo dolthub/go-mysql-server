@@ -79,10 +79,13 @@ func (b *Builder) isUsingJoin(te *ast.JoinTableExpr) bool {
 }
 
 func (b *Builder) canConvertToCrossJoin(te *ast.JoinTableExpr) bool {
-	return !strings.EqualFold(te.Join, ast.LeftJoinStr) &&
-		!strings.EqualFold(te.Join, ast.RightJoinStr) &&
-		(te.Condition.On == nil || te.Condition.On == ast.BoolVal(true)) &&
-		te.Condition.Using == nil
+	switch te.Join {
+	case ast.LeftJoinStr, ast.RightJoinStr, ast.FullOuterJoinStr:
+		return false
+	default:
+		return (te.Condition.On == nil || te.Condition.On == ast.BoolVal(true)) &&
+			te.Condition.Using == nil
+	}
 }
 
 func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *scope) {
