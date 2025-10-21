@@ -365,10 +365,14 @@ func (t datetimeType) ConvertWithoutRangeCheck(ctx context.Context, v interface{
 }
 
 func parseDatetime(value string) (time.Time, bool) {
-	for _, layout := range TimestampDatetimeLayouts {
-		if t, err := time.Parse(layout, value); err == nil {
-			return t.UTC(), true
+	end := len(value)
+	for end > 0 {
+		for _, layout := range TimestampDatetimeLayouts {
+			if t, err := time.Parse(layout, value[0:end]); err == nil {
+				return t.UTC(), true
+			}
 		}
+		end--
 	}
 	return time.Time{}, false
 }
