@@ -4183,14 +4183,25 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Query:    "SELECT date_add('9999-12-31:23:59:59.99999944444444444-', INTERVAL 0 day);",
 		Expected: []sql.Row{{nil}},
 	},
+	// https://github.com/dolthub/dolt/issues/9917
 	{
-		// https://github.com/dolthub/dolt/issues/9917
 		Query:                 "select cast('2020-01-01 a' as datetime)",
 		ExpectedWarning:       1292,
 		ExpectedWarningsCount: 1,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 0, 0, 0, 0, time.UTC)}},
 	},
-	{},
+	{
+		Query:                 "select cast('2020-01-01 abc123' as datetime)",
+		ExpectedWarning:       1292,
+		ExpectedWarningsCount: 1,
+		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
+		Query:                 "select cast('2020-01-01 12:30asdf123' as datetime)",
+		ExpectedWarning:       1292,
+		ExpectedWarningsCount: 1,
+		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 30, 0, 0, time.UTC)}},
+	},
 	{
 		Query: `SELECT * FROM (SELECT * FROM (SELECT * FROM (SELECT * FROM othertable) othertable_one) othertable_two) othertable_three WHERE s2 = 'first'`,
 		Expected: []sql.Row{

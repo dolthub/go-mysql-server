@@ -17,14 +17,14 @@ package types
 import (
 	"context"
 	"fmt"
-	"math"
-	"reflect"
-	"time"
-
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
+	"math"
+	"reflect"
+	"time"
+	"unicode"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -70,13 +70,14 @@ var (
 		"2006-1-2",
 	}
 
+	TimezoneTimestampDatetimeLayout = "2006-01-02 15:04:05.999999999 -0700 MST" // represents standard Time.time.UTC()
+
 	// TimestampDatetimeLayouts hold extra timestamps allowed for parsing. It does
 	// not have all the layouts supported by mysql. Missing are two digit year
 	// versions of common cases and dates that use non common separators.
 	//
 	// https://github.com/MariaDB/server/blob/mysql-5.5.36/sql-common/my_time.c#L124
 	TimestampDatetimeLayouts = append([]string{
-		"2006-01-02 15:04:05.999999999 -0700 MST", // represents standard Time.time.UTC()
 		time.RFC3339Nano,
 		"2006-01-02 15:04:05.999999999",
 		"2006-1-2 15:4:5.999999999",
@@ -365,8 +366,13 @@ func (t datetimeType) ConvertWithoutRangeCheck(ctx context.Context, v interface{
 }
 
 func (t datetimeType) parseDatetime(value string) (time.Time, bool, error) {
+	if t, err := time.Parse(TimezoneTimestampDatetimeLayout, value); err == nil {
+		return t.UTC(), true, nil
+	}
+
 	valueLen := len(value)
 	end := valueLen
+
 	for end > 0 {
 		for _, layout := range TimestampDatetimeLayouts {
 			if t, err := time.Parse(layout, value[0:end]); err == nil {
@@ -376,9 +382,20 @@ func (t datetimeType) parseDatetime(value string) (time.Time, bool, error) {
 				return t.UTC(), true, err
 			}
 		}
-		end--
+		end = findEnd(value, end-1)
 	}
 	return time.Time{}, false, nil
+}
+
+func findEnd(value string, end int) int {
+	for end > 0 {
+		char := rune(value[end-1])
+		if unicode.IsDigit(char) {
+			return end
+		}
+		end--
+	}
+	return end
 }
 
 // Equals implements the Type interface.
