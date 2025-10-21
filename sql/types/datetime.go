@@ -388,7 +388,8 @@ func (t datetimeType) parseDatetime(value string) (time.Time, bool, error) {
 	return time.Time{}, false, nil
 }
 
-func findEnd(value string, end int) int {
+// findDatetimeEnd returns the index of the last digit before `end`
+func findDatetimeEnd(value string, end int) int {
 	for end > 0 {
 		char := rune(value[end-1])
 		if unicode.IsDigit(char) {
