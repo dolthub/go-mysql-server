@@ -53,7 +53,7 @@ type joinPlanScript struct {
 var JoinPlanningTests = []joinPlanScript{
 	{
 		// https://github.com/dolthub/dolt/issues/9977
-		name: "filters with anti and semi joins",
+		name: "no filter pushdown through anti join",
 		setup: []string{
 			"CREATE table xy (x int, y int, primary key(x,y));",
 			"insert into xy values (1,0), (2,1), (0,2), (3,3);",
