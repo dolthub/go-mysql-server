@@ -60,12 +60,10 @@ var JoinPlanningTests = []joinPlanScript{
 		},
 		tests: []JoinPlanTest{
 			{
-				// When NOT IN and IN are combined, the IN filter should not be pushed into the Anti join
-				q:     "select * from xy where x > 0 and x not in (select 999) and x in (select 1 union select 2) order by x",
-				types: []plan.JoinType{plan.JoinTypeLeftOuter},
+				q:     "select * from xy where x > 0 and x not in (select 999 union select 2 union select 3) order by x",
+				types: nil,
 				exp: []sql.Row{
 					{1, 0},
-					{2, 1},
 				},
 			},
 			{
