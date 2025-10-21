@@ -77,10 +77,11 @@ func (l *LoadData) SplitLines(data []byte, atEOF bool) (advance int, token []byt
 
 	// Find the index of the LINES TERMINATED BY delim.
 	if i := bytes.Index(data, []byte(l.LinesTerminatedBy)); i >= 0 {
-		return i + len(l.LinesTerminatedBy), data[0:i], nil
+		// Include the terminator in the token so parser can detect EOF vs terminated lines
+		return i + len(l.LinesTerminatedBy), data[0 : i+len(l.LinesTerminatedBy)], nil
 	}
 
-	// If at end of file with data return the data.
+	// If at end of file with data return the data (no terminator present = EOF)
 	if atEOF {
 		return len(data), data, nil
 	}

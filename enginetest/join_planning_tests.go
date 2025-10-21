@@ -52,6 +52,28 @@ type joinPlanScript struct {
 
 var JoinPlanningTests = []joinPlanScript{
 	{
+		// https://github.com/dolthub/dolt/issues/9977
+		name: "no filter pushdown through anti join",
+		setup: []string{
+			"CREATE table xy (x int, y int, primary key(x,y));",
+			"insert into xy values (1,0), (2,1), (0,2), (3,3);",
+		},
+		tests: []JoinPlanTest{
+			{
+				q:     "select * from xy where x > 0 and x not in (select 999 union select 2 union select 3) order by x",
+				types: nil,
+				exp: []sql.Row{
+					{1, 0},
+				},
+			},
+			{
+				q:     "select * from xy where x > 0 and x not in (select 999) and x in (select 888 union select 777)",
+				types: []plan.JoinType{plan.JoinTypeLeftOuter},
+				exp:   []sql.Row{},
+			},
+		},
+	},
+	{
 		name: "filter pushdown through join uppercase name",
 		setup: []string{
 			"create database mydb1",

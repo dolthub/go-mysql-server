@@ -3447,48 +3447,57 @@ order by
 			"             ├─ tableId: 4\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [SUBSTRING(customer.c_phone, 1, 2)->cntrycode:0, customer.c_acctbal:5!null]\n" +
-			"                 └─ AntiJoinIncludingNulls\n" +
-			"                     ├─ AND\n" +
-			"                     │   ├─ GreaterThan\n" +
-			"                     │   │   ├─ customer.c_acctbal:5!null\n" +
-			"                     │   │   └─ Subquery\n" +
-			"                     │   │       ├─ cacheable: true\n" +
-			"                     │   │       ├─ alias-string: select avg(c_acctbal) from customer where c_acctbal > 0.00 and substr(c_phone, 1, 2) in ('13', '31', '23', '29', '30', '18', '17')\n" +
-			"                     │   │       └─ Project\n" +
-			"                     │   │           ├─ columns: [avg(customer.c_acctbal):17->avg(c_acctbal):0]\n" +
-			"                     │   │           └─ GroupBy\n" +
-			"                     │   │               ├─ select: AVG(customer.c_acctbal:18!null)\n" +
-			"                     │   │               ├─ group: \n" +
-			"                     │   │               └─ Filter\n" +
-			"                     │   │                   ├─ AND\n" +
-			"                     │   │                   │   ├─ GreaterThan\n" +
-			"                     │   │                   │   │   ├─ customer.c_acctbal:18!null\n" +
-			"                     │   │                   │   │   └─ 0 (decimal(15,2))\n" +
-			"                     │   │                   │   └─ HashIn\n" +
-			"                     │   │                   │       ├─ SUBSTRING(customer.c_phone, 1, 2)\n" +
-			"                     │   │                   │       └─ TUPLE(13 (longtext), 31 (longtext), 23 (longtext), 29 (longtext), 30 (longtext), 18 (longtext), 17 (longtext))\n" +
-			"                     │   │                   └─ Table\n" +
-			"                     │   │                       ├─ name: customer\n" +
-			"                     │   │                       ├─ columns: [c_phone c_acctbal]\n" +
-			"                     │   │                       ├─ colSet: (9-16)\n" +
-			"                     │   │                       └─ tableId: 2\n" +
-			"                     │   └─ Eq\n" +
-			"                     │       ├─ orders.o_custkey:9!null\n" +
-			"                     │       └─ customer.c_custkey:0!null\n" +
-			"                     ├─ Filter\n" +
-			"                     │   ├─ HashIn\n" +
-			"                     │   │   ├─ SUBSTRING(customer.c_phone, 1, 2)\n" +
-			"                     │   │   └─ TUPLE(13 (longtext), 31 (longtext), 23 (longtext), 29 (longtext), 30 (longtext), 18 (longtext), 17 (longtext))\n" +
-			"                     │   └─ Table\n" +
-			"                     │       ├─ name: customer\n" +
-			"                     │       ├─ columns: [c_custkey c_name c_address c_nationkey c_phone c_acctbal c_mktsegment c_comment]\n" +
-			"                     │       ├─ colSet: (1-8)\n" +
-			"                     │       └─ tableId: 1\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: orders\n" +
-			"                         ├─ columns: [o_orderkey o_custkey o_orderstatus o_totalprice o_orderdate o_orderpriority o_clerk o_shippriority o_comment]\n" +
-			"                         ├─ colSet: (18-26)\n" +
-			"                         └─ tableId: 3\n" +
+			"                 └─ Filter\n" +
+			"                     ├─ GreaterThan\n" +
+			"                     │   ├─ customer.c_acctbal:5!null\n" +
+			"                     │   └─ Subquery\n" +
+			"                     │       ├─ cacheable: true\n" +
+			"                     │       ├─ alias-string: select avg(c_acctbal) from customer where c_acctbal > 0.00 and substr(c_phone, 1, 2) in ('13', '31', '23', '29', '30', '18', '17')\n" +
+			"                     │       └─ Project\n" +
+			"                     │           ├─ columns: [avg(customer.c_acctbal):8->avg(c_acctbal):0]\n" +
+			"                     │           └─ GroupBy\n" +
+			"                     │               ├─ select: AVG(customer.c_acctbal:9!null)\n" +
+			"                     │               ├─ group: \n" + // printer adds space sep always
+			"                     │               └─ Filter\n" +
+			"                     │                   ├─ AND\n" +
+			"                     │                   │   ├─ GreaterThan\n" +
+			"                     │                   │   │   ├─ customer.c_acctbal:9!null\n" +
+			"                     │                   │   │   └─ 0 (decimal(15,2))\n" +
+			"                     │                   │   └─ HashIn\n" +
+			"                     │                   │       ├─ SUBSTRING(customer.c_phone, 1, 2)\n" +
+			"                     │                   │       └─ TUPLE(13 (longtext), 31 (longtext), 23 (longtext), 29 (longtext), 30 (longtext), 18 (longtext), 17 (longtext))\n" +
+			"                     │                   └─ Table\n" +
+			"                     │                       ├─ name: customer\n" +
+			"                     │                       ├─ columns: [c_phone c_acctbal]\n" +
+			"                     │                       ├─ colSet: (9-16)\n" +
+			"                     │                       └─ tableId: 2\n" +
+			"                     └─ Project\n" +
+			"                         ├─ columns: [customer.C_CUSTKEY:0!null, customer.C_NAME:1!null, customer.C_ADDRESS:2!null, customer.C_NATIONKEY:3!null, customer.C_PHONE:4!null, customer.C_ACCTBAL:5!null, customer.C_MKTSEGMENT:6!null, customer.C_COMMENT:7!null]\n" +
+			"                         └─ Filter\n" +
+			"                             ├─ orders.o_custkey:8!null IS NULL\n" +
+			"                             └─ LeftOuterHashJoin\n" +
+			"                                 ├─ Eq\n" +
+			"                                 │   ├─ orders.o_custkey:8!null\n" +
+			"                                 │   └─ customer.c_custkey:0!null\n" +
+			"                                 ├─ Filter\n" +
+			"                                 │   ├─ HashIn\n" +
+			"                                 │   │   ├─ SUBSTRING(customer.c_phone, 1, 2)\n" +
+			"                                 │   │   └─ TUPLE(13 (longtext), 31 (longtext), 23 (longtext), 29 (longtext), 30 (longtext), 18 (longtext), 17 (longtext))\n" +
+			"                                 │   └─ Table\n" +
+			"                                 │       ├─ name: customer\n" +
+			"                                 │       ├─ columns: [c_custkey c_name c_address c_nationkey c_phone c_acctbal c_mktsegment c_comment]\n" +
+			"                                 │       ├─ colSet: (1-8)\n" +
+			"                                 │       └─ tableId: 1\n" +
+			"                                 └─ HashLookup\n" +
+			"                                     ├─ left-key: TUPLE(customer.c_custkey:0!null)\n" +
+			"                                     ├─ right-key: TUPLE(orders.o_custkey:0!null)\n" +
+			"                                     └─ Project\n" +
+			"                                         ├─ columns: [orders.o_custkey:1!null]\n" +
+			"                                         └─ Table\n" +
+			"                                             ├─ name: orders\n" +
+			"                                             ├─ columns: [o_orderkey o_custkey o_orderstatus o_totalprice o_orderdate o_orderpriority o_clerk o_shippriority o_comment]\n" +
+			"                                             ├─ colSet: (18-26)\n" +
+			"                                             └─ tableId: 3\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [custsale.cntrycode, count(1) as numcust, sum(custsale.c_acctbal) as totacctbal]\n" +
@@ -3503,15 +3512,26 @@ order by
 			"             ├─ cacheable: true\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [SUBSTRING(customer.c_phone, 1, 2) as cntrycode, customer.c_acctbal]\n" +
-			"                 └─ AntiJoinIncludingNulls\n" +
-			"                     ├─ ((customer.c_acctbal > Subquery(select avg(c_acctbal) from customer where c_acctbal > 0.00 and substr(c_phone, 1, 2) in ('13', '31', '23', '29', '30', '18', '17'))) AND (orders.o_custkey = customer.c_custkey))\n" +
-			"                     ├─ Filter\n" +
-			"                     │   ├─ (SUBSTRING(customer.c_phone, 1, 2) HASH IN ('13', '31', '23', '29', '30', '18', '17'))\n" +
-			"                     │   └─ Table\n" +
-			"                     │       └─ name: customer\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: orders\n" +
-			"                         └─ columns: [o_orderkey o_custkey o_orderstatus o_totalprice o_orderdate o_orderpriority o_clerk o_shippriority o_comment]\n" +
+			"                 └─ Filter\n" +
+			"                     ├─ (customer.c_acctbal > Subquery(select avg(c_acctbal) from customer where c_acctbal > 0.00 and substr(c_phone, 1, 2) in ('13', '31', '23', '29', '30', '18', '17')))\n" +
+			"                     └─ Project\n" +
+			"                         ├─ columns: [customer.C_CUSTKEY, customer.C_NAME, customer.C_ADDRESS, customer.C_NATIONKEY, customer.C_PHONE, customer.C_ACCTBAL, customer.C_MKTSEGMENT, customer.C_COMMENT]\n" +
+			"                         └─ Filter\n" +
+			"                             ├─ orders.o_custkey IS NULL\n" +
+			"                             └─ LeftOuterHashJoin\n" +
+			"                                 ├─ (orders.o_custkey = customer.c_custkey)\n" +
+			"                                 ├─ Filter\n" +
+			"                                 │   ├─ (SUBSTRING(customer.c_phone, 1, 2) HASH IN ('13', '31', '23', '29', '30', '18', '17'))\n" +
+			"                                 │   └─ Table\n" +
+			"                                 │       └─ name: customer\n" +
+			"                                 └─ HashLookup\n" +
+			"                                     ├─ left-key: (customer.c_custkey)\n" +
+			"                                     ├─ right-key: (orders.o_custkey)\n" +
+			"                                     └─ Project\n" +
+			"                                         ├─ columns: [orders.o_custkey]\n" +
+			"                                         └─ Table\n" +
+			"                                             ├─ name: orders\n" +
+			"                                             └─ columns: [o_orderkey o_custkey o_orderstatus o_totalprice o_orderdate o_orderpriority o_clerk o_shippriority o_comment]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [custsale.cntrycode, count(1) as numcust, sum(custsale.c_acctbal) as totacctbal]\n" +
@@ -3526,15 +3546,26 @@ order by
 			"             ├─ cacheable: true\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [SUBSTRING(customer.c_phone, 1, 2) as cntrycode, customer.c_acctbal]\n" +
-			"                 └─ AntiJoinIncludingNulls\n" +
-			"                     ├─ ((customer.c_acctbal > Subquery(select avg(c_acctbal) from customer where c_acctbal > 0.00 and substr(c_phone, 1, 2) in ('13', '31', '23', '29', '30', '18', '17'))) AND (orders.o_custkey = customer.c_custkey))\n" +
-			"                     ├─ Filter\n" +
-			"                     │   ├─ (SUBSTRING(customer.c_phone, 1, 2) HASH IN ('13', '31', '23', '29', '30', '18', '17'))\n" +
-			"                     │   └─ Table\n" +
-			"                     │       └─ name: customer\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: orders\n" +
-			"                         └─ columns: [o_orderkey o_custkey o_orderstatus o_totalprice o_orderdate o_orderpriority o_clerk o_shippriority o_comment]\n" +
+			"                 └─ Filter\n" +
+			"                     ├─ (customer.c_acctbal > Subquery(select avg(c_acctbal) from customer where c_acctbal > 0.00 and substr(c_phone, 1, 2) in ('13', '31', '23', '29', '30', '18', '17')))\n" +
+			"                     └─ Project\n" +
+			"                         ├─ columns: [customer.C_CUSTKEY, customer.C_NAME, customer.C_ADDRESS, customer.C_NATIONKEY, customer.C_PHONE, customer.C_ACCTBAL, customer.C_MKTSEGMENT, customer.C_COMMENT]\n" +
+			"                         └─ Filter\n" +
+			"                             ├─ orders.o_custkey IS NULL\n" +
+			"                             └─ LeftOuterHashJoin\n" +
+			"                                 ├─ (orders.o_custkey = customer.c_custkey)\n" +
+			"                                 ├─ Filter\n" +
+			"                                 │   ├─ (SUBSTRING(customer.c_phone, 1, 2) HASH IN ('13', '31', '23', '29', '30', '18', '17'))\n" +
+			"                                 │   └─ Table\n" +
+			"                                 │       └─ name: customer\n" +
+			"                                 └─ HashLookup\n" +
+			"                                     ├─ left-key: (customer.c_custkey)\n" +
+			"                                     ├─ right-key: (orders.o_custkey)\n" +
+			"                                     └─ Project\n" +
+			"                                         ├─ columns: [orders.o_custkey]\n" +
+			"                                         └─ Table\n" +
+			"                                             ├─ name: orders\n" +
+			"                                             └─ columns: [o_orderkey o_custkey o_orderstatus o_totalprice o_orderdate o_orderpriority o_clerk o_shippriority o_comment]\n" +
 			"",
 	},
 }
