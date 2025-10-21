@@ -796,7 +796,6 @@ func (t StringType) ToSQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqlt
 		return sqltypes.NULL, nil
 	}
 
-	// TODO: collations
 	// TODO: deal with casting numbers?
 	// No need to use dest buffer as we have already allocated []byte
 	var err error
@@ -806,8 +805,20 @@ func (t StringType) ToSQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqlt
 			return sqltypes.Value{}, err
 		}
 	}
+	charset := ctx.GetCharacterSetResults()
+	if charset == sql.CharacterSet_Unspecified || charset == sql.CharacterSet_binary {
+		charset = t.collation.CharacterSet()
+	}
+	res, ok := charset.Encoder().Encode(v.Val)
+	if !ok {
+		if len(v.Val) > 50 {
+			v.Val = v.Val[:50]
+		}
+		snippetStr := strings2.ToValidUTF8(string(v.Val), string(utf8.RuneError))
+		return sqltypes.Value{}, sql.ErrCharSetFailedToEncode.New(charset.Name(), utf8.ValidString(snippetStr), v.Val)
+	}
 
-	return sqltypes.MakeTrusted(t.baseType, v.Val), nil
+	return sqltypes.MakeTrusted(t.baseType, res), nil
 }
 
 // String implements Type interface.

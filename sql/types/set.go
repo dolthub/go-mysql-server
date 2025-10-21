@@ -17,6 +17,7 @@ package types
 import (
 	"context"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/values"
 	"math"
 	"math/bits"
 	"reflect"
@@ -259,6 +260,35 @@ func (t SetType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Val
 	val := encodedBytes
 
 	return sqltypes.MakeTrusted(sqltypes.Set, val), nil
+}
+
+func (t SetType) ToSQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes.Value, error) {
+	if v.IsNull() {
+		return sqltypes.NULL, nil
+	}
+
+	bits := values.ReadUint64(v.Val)
+	value, err := t.BitsToString(bits)
+	if err != nil {
+		return sqltypes.Value{}, err
+	}
+
+	resultCharset := ctx.GetCharacterSetResults()
+	if resultCharset == sql.CharacterSet_Unspecified || resultCharset == sql.CharacterSet_binary {
+		resultCharset = t.collation.CharacterSet()
+	}
+
+	// TODO: write append style encoder
+	res, ok := resultCharset.Encoder().Encode(encodings.StringToBytes(value)) // TODO: use unsafe string to byte
+	if !ok {
+		if len(value) > 50 {
+			value = value[:50]
+		}
+		value = strings.ToValidUTF8(value, string(utf8.RuneError))
+		return sqltypes.Value{}, sql.ErrCharSetFailedToEncode.New(resultCharset.Name(), utf8.ValidString(value), value)
+	}
+
+	return sqltypes.MakeTrusted(sqltypes.Set, res), nil
 }
 
 // String implements Type interface.

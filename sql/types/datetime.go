@@ -481,7 +481,7 @@ func (t datetimeType) ToSQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sq
 	}
 	switch t.baseType {
 	case sqltypes.Date:
-		// TODO: move this to values
+		// TODO: move this to values package
 		x := values.ReadUint32(v.Val)
 		y := x >> 16
 		m := (x & (255 << 8)) >> 8
