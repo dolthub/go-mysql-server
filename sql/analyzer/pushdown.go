@@ -326,7 +326,7 @@ func updateFilterNode(ctx *sql.Context, a *Analyzer, node *plan.Filter, filters 
 	}
 
 	// push filters into joinChild
-	if joinChild, ok := node.Child.(*plan.JoinNode); ok && !joinChild.Op.IsOuter() {
+	if joinChild, ok := node.Child.(*plan.JoinNode); ok && !joinChild.Op.IsOuter() && !joinChild.Op.IsSemi() && !joinChild.Op.IsAnti() {
 		a.Log("pushing filters into join node")
 		if joinChild.Op.IsCross() {
 			return plan.NewInnerJoin(joinChild.Left(), joinChild.Right(), expression.JoinAnd(unhandled...))
