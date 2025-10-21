@@ -106,11 +106,11 @@ type FilterIter struct {
 	childIter sql.RowIter
 
 	cond2      sql.Expression2
-	childIter2 sql.RowIter2
+	childIter2 sql.ValueRowIter
 }
 
 var _ sql.RowIter = (*FilterIter)(nil)
-var _ sql.RowIter2 = (*FilterIter)(nil)
+var _ sql.ValueRowIter = (*FilterIter)(nil)
 
 // NewFilterIter creates a new FilterIter.
 func NewFilterIter(
@@ -139,9 +139,9 @@ func (i *FilterIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 }
 
-func (i *FilterIter) Next2(ctx *sql.Context) (sql.ValueRow, error) {
+func (i *FilterIter) NextValueRow(ctx *sql.Context) (sql.ValueRow, error) {
 	for {
-		row, err := i.childIter2.Next2(ctx)
+		row, err := i.childIter2.NextValueRow(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -155,13 +155,13 @@ func (i *FilterIter) Next2(ctx *sql.Context) (sql.ValueRow, error) {
 	}
 }
 
-func (i *FilterIter) IsRowIter2(ctx *sql.Context) bool {
+func (i *FilterIter) CanSupport(ctx *sql.Context) bool {
 	cond, ok := i.cond.(sql.Expression2)
 	if !ok || !cond.IsExpr2() {
 		return false
 	}
-	childIter, ok := i.childIter.(sql.RowIter2)
-	if !ok || !childIter.IsRowIter2(ctx) {
+	childIter, ok := i.childIter.(sql.ValueRowIter)
+	if !ok || !childIter.CanSupport(ctx) {
 		return false
 	}
 	i.cond2 = cond

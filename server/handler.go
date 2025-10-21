@@ -495,8 +495,8 @@ func (h *Handler) doQuery(
 		r, err = resultForEmptyIter(sqlCtx, rowIter, resultFields)
 	} else if analyzer.FlagIsSet(qFlags, sql.QFlagMax1Row) {
 		r, err = resultForMax1RowIter(sqlCtx, schema, rowIter, resultFields, buf)
-	} else if ri2, ok := rowIter.(sql.RowIter2); ok && ri2.IsRowIter2(sqlCtx) {
-		r, processedAtLeastOneBatch, err = h.resultForDefaultIter2(sqlCtx, c, schema, ri2, resultFields, buf, callback, more)
+	} else if vr, ok := rowIter.(sql.ValueRowIter); ok && vr.CanSupport(sqlCtx) {
+		r, processedAtLeastOneBatch, err = h.resultForValueRowIter(sqlCtx, c, schema, vr, resultFields, buf, callback, more)
 	} else {
 		r, processedAtLeastOneBatch, err = h.resultForDefaultIter(sqlCtx, c, schema, rowIter, callback, resultFields, more, buf)
 	}
@@ -770,8 +770,8 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 	return r, processedAtLeastOneBatch, nil
 }
 
-func (h *Handler) resultForDefaultIter2(ctx *sql.Context, c *mysql.Conn, schema sql.Schema, iter sql.RowIter2, resultFields []*querypb.Field, buf *sql.ByteBuffer, callback func(*sqltypes.Result, bool) error, more bool) (*sqltypes.Result, bool, error) {
-	defer trace.StartRegion(ctx, "Handler.resultForDefaultIter2").End()
+func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema sql.Schema, iter sql.ValueRowIter, resultFields []*querypb.Field, buf *sql.ByteBuffer, callback func(*sqltypes.Result, bool) error, more bool) (*sqltypes.Result, bool, error) {
+	defer trace.StartRegion(ctx, "Handler.resultForValueRowIter").End()
 
 	eg, ctx := ctx.NewErrgroup()
 	pan2err := func(err *error) {
@@ -816,7 +816,7 @@ func (h *Handler) resultForDefaultIter2(ctx *sql.Context, c *mysql.Conn, schema 
 			case <-ctx.Done():
 				return context.Cause(ctx)
 			default:
-				row, err := iter.Next2(ctx)
+				row, err := iter.NextValueRow(ctx)
 				if err == io.EOF {
 					return nil
 				}
