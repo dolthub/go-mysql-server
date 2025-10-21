@@ -4178,7 +4178,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{"9999-12-31 23:59:59.999999"}},
 	},
 	{
-		// This returns nil in MySQL but we are able to truncate the string and convert to a datetime
+		// This returns null in MySQL, but we are able to truncate the string and convert to a datetime
 		Skip:     true,
 		Query:    "SELECT date_add('9999-12-31:23:59:59.99999944444444444-', INTERVAL 0 day);",
 		Expected: []sql.Row{{nil}},
@@ -4201,6 +4201,97 @@ SELECT * FROM cte WHERE  d = 2;`,
 		ExpectedWarning:       1292,
 		ExpectedWarningsCount: 1,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 30, 0, 0, time.UTC)}},
+	},
+	{
+		Query:                 "select cast('2020-01-01 12:34:56abc' as datetime);",
+		ExpectedWarning:       1292,
+		ExpectedWarningsCount: 1,
+		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 0, time.UTC)}},
+	},
+	{
+		Query:                 "select cast('2020-01-01 12:34:56 abc' as datetime);",
+		ExpectedWarning:       1292,
+		ExpectedWarningsCount: 1, // MySQL has 2 warnings, but we don't have a warning for deprecated delimiter
+		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 0, time.UTC)}},
+	},
+	{
+		Query:                 "select cast('2020-01-01 12:34:56.1 abc' as datetime);",
+		ExpectedWarning:       1292,
+		ExpectedWarningsCount: 1, // MySQL has 2 warnings, but we don't have a warning for deprecated delimiter
+		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 0, time.UTC)}},
+	},
+	{
+		Query:                 "select cast('2020-01-01 12:34:56:123456 abc' as datetime);",
+		ExpectedWarning:       1292,
+		ExpectedWarningsCount: 1,
+		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 0, time.UTC)}},
+	},
+	{
+		Query:                 "select cast('2020-01-01 12:34:56...123456 abc' as datetime);",
+		ExpectedWarning:       1292,
+		ExpectedWarningsCount: 1,
+		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 0, time.UTC)}},
+	},
+	{
+		Query:                 "select cast('2020-01-01 12:34:56-123456 abc' as datetime);",
+		ExpectedWarning:       1292,
+		ExpectedWarningsCount: 1,
+		// MySQL returns null, but we are able to truncate and convert
+		Expected: []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 0, time.UTC)}},
+	},
+	{
+		Query:                 "select cast('2020-01-01 12:34:56.123456abc' as datetime(0));",
+		ExpectedWarning:       1292,
+		ExpectedWarningsCount: 1,
+		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 0, time.UTC)}},
+	},
+	{
+		// TODO: implement precision for datetime casting
+		Skip:                  true,
+		Query:                 "select cast('2020-01-01 12:34:56.123456abc' as datetime(1));",
+		ExpectedWarning:       1292,
+		ExpectedWarningsCount: 1,
+		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 100000000, time.UTC)}},
+	},
+	{
+		// TODO: implement precision for datetime casting
+		Skip:                  true,
+		Query:                 "select cast('2020-01-01 12:34:56.123456abc' as datetime(2));",
+		ExpectedWarning:       1292,
+		ExpectedWarningsCount: 1,
+		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 120000000, time.UTC)}},
+	},
+	{
+		// TODO: implement precision for datetime casting
+		Skip:                  true,
+		Query:                 "select cast('2020-01-01 12:34:56.123456abc' as datetime(3));",
+		ExpectedWarning:       1292,
+		ExpectedWarningsCount: 1,
+		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 123000000, time.UTC)}},
+	},
+	{
+		// TODO: implement precision for datetime casting
+		Skip:                  true,
+		Query:                 "select cast('2020-01-01 12:34:56.123456abc' as datetime(4));",
+		ExpectedWarning:       1292,
+		ExpectedWarningsCount: 1,
+		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 123500000, time.UTC)}},
+	},
+	{
+		// TODO: implement precision for datetime casting
+		Skip:                  true,
+		Query:                 "select cast('2020-01-01 12:34:56.123456abc' as datetime(5));",
+		ExpectedWarning:       1292,
+		ExpectedWarningsCount: 1,
+		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 123460000, time.UTC)}},
+	},
+	{
+		// TODO: implement precision for datetime casting
+		Skip:                  true,
+		Query:                 "select cast('2020-01-01 12:34:56.123456abc' as datetime(6));",
+		ExpectedWarning:       1292,
+		ExpectedWarningsCount: 1,
+		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 123456000, time.UTC)}},
 	},
 	{
 		Query: `SELECT * FROM (SELECT * FROM (SELECT * FROM (SELECT * FROM othertable) othertable_one) othertable_two) othertable_three WHERE s2 = 'first'`,

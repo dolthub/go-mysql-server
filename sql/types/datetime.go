@@ -34,6 +34,8 @@ const ZeroDateStr = "0000-00-00"
 
 const ZeroTimestampDatetimeStr = "0000-00-00 00:00:00"
 
+const MinDatetimeStringLength = 8 // length of "2000-1-1"
+
 var (
 	// ErrConvertingToTime is thrown when a value cannot be converted to a Time
 	ErrConvertingToTime = errors.NewKind("Incorrect datetime value: '%v'")
@@ -100,6 +102,8 @@ var (
 	Date = MustCreateDatetimeType(sqltypes.Date, 0)
 	// Datetime is a date and a time with default precision (no fractional seconds).
 	Datetime = MustCreateDatetimeType(sqltypes.Datetime, 0)
+	// DatetimeDefaultPrecision is a date and a time without a specified precision
+	DatetimeDefaultPrecision = MustCreateDatetimeType(sqltypes.Datetime, 0)
 	// DatetimeMaxPrecision is a date and a time with maximum precision
 	DatetimeMaxPrecision = MustCreateDatetimeType(sqltypes.Datetime, 6)
 	// Timestamp is a UNIX timestamp with default precision (no fractional seconds).
@@ -374,7 +378,7 @@ func (t datetimeType) parseDatetime(value string) (time.Time, bool, error) {
 	valueLen := len(value)
 	end := valueLen
 
-	for end > 0 {
+	for end >= MinDatetimeStringLength {
 		for _, layout := range TimestampDatetimeLayouts {
 			if t, err := time.Parse(layout, value[0:end]); err == nil {
 				if end != valueLen {
@@ -383,14 +387,14 @@ func (t datetimeType) parseDatetime(value string) (time.Time, bool, error) {
 				return t.UTC(), true, err
 			}
 		}
-		end = findEnd(value, end-1)
+		end = findDatetimeEnd(value, end-1)
 	}
 	return time.Time{}, false, nil
 }
 
 // findDatetimeEnd returns the index of the last digit before `end`
 func findDatetimeEnd(value string, end int) int {
-	for end > 0 {
+	for end >= MinDatetimeStringLength {
 		char := rune(value[end-1])
 		if unicode.IsDigit(char) {
 			return end
