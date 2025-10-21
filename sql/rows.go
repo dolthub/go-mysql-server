@@ -88,10 +88,10 @@ type RowIter interface {
 	Closer
 }
 
-type RowIter2 interface {
+type ValueRowIter interface {
 	RowIter
-	Next2(ctx *Context) (ValueRow, error)
-	IsRowIter2(ctx *Context) bool
+	NextValueRow(ctx *Context) (ValueRow, error)
+	CanSupport(ctx *Context) bool
 }
 
 // RowIterToRows converts a row iterator to a slice of rows.

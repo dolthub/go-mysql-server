@@ -26,7 +26,7 @@ type TableRowIter struct {
 	partition  Partition
 	rows       RowIter
 
-	rows2 RowIter2
+	rows2 ValueRowIter
 }
 
 var _ RowIter = (*TableRowIter)(nil)
@@ -79,7 +79,7 @@ func (i *TableRowIter) Next(ctx *Context) (Row, error) {
 	return row, err
 }
 
-func (i *TableRowIter) Next2(ctx *Context) (ValueRow, error) {
+func (i *TableRowIter) NextValueRow(ctx *Context) (ValueRow, error) {
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -105,26 +105,26 @@ func (i *TableRowIter) Next2(ctx *Context) (ValueRow, error) {
 		if err != nil {
 			return nil, err
 		}
-		ri2, ok := rows.(RowIter2)
-		if !ok || !ri2.IsRowIter2(ctx) {
-			panic(fmt.Sprintf("%T does not implement RowIter2", rows))
+		ri2, ok := rows.(ValueRowIter)
+		if !ok || !ri2.CanSupport(ctx) {
+			panic(fmt.Sprintf("%T does not implement ValueRowIter", rows))
 		}
 		i.rows2 = ri2
 	}
 
-	row, err := i.rows2.Next2(ctx)
+	row, err := i.rows2.NextValueRow(ctx)
 	if err != nil && err == io.EOF {
 		if err = i.rows2.Close(ctx); err != nil {
 			return nil, err
 		}
 		i.partition = nil
 		i.rows2 = nil
-		row, err = i.Next2(ctx)
+		row, err = i.NextValueRow(ctx)
 	}
 	return row, err
 }
 
-func (i *TableRowIter) IsRowIter2(ctx *Context) bool {
+func (i *TableRowIter) CanSupport(ctx *Context) bool {
 	if i.partition == nil {
 		partition, err := i.partitions.Next(ctx)
 		if err != nil {
@@ -137,13 +137,13 @@ func (i *TableRowIter) IsRowIter2(ctx *Context) bool {
 		if err != nil {
 			return false
 		}
-		ri2, ok := rows.(RowIter2)
+		ri2, ok := rows.(ValueRowIter)
 		if !ok {
 			return false
 		}
 		i.rows2 = ri2
 	}
-	return i.rows2.IsRowIter2(ctx)
+	return i.rows2.CanSupport(ctx)
 }
 
 func (i *TableRowIter) Close(ctx *Context) error {
