@@ -61,10 +61,8 @@ func TestQueries(t *testing.T, harness Harness) {
 	ctx := NewContext(harness)
 	for _, tt := range queries.QueryTests {
 		t.Run(tt.Query, func(t *testing.T) {
-			if sh, ok := harness.(SkippingHarness); ok {
-				if sh.SkipQueryTest(tt.Query) {
-					t.Skipf("Skipping query plan for %s", tt.Query)
-				}
+			if sh, ok := harness.(SkippingHarness); tt.Skip || (ok && sh.SkipQueryTest(tt.Query)) {
+				t.Skipf("Skipping query test for %s", tt.Query)
 			}
 			if IsServerEngine(e) && tt.SkipServerEngine {
 				t.Skip("skipping for server engine")
@@ -222,7 +220,7 @@ func TestQueriesPrepared(t *testing.T, harness Harness) {
 	defer e.Close()
 	t.Run("query prepared tests", func(t *testing.T) {
 		for _, tt := range queries.QueryTests {
-			if tt.SkipPrepared {
+			if tt.Skip || tt.SkipPrepared {
 				continue
 			}
 			t.Run(tt.Query, func(t *testing.T) {
@@ -233,7 +231,7 @@ func TestQueriesPrepared(t *testing.T, harness Harness) {
 
 	t.Run("function query prepared tests", func(t *testing.T) {
 		for _, tt := range queries.FunctionQueryTests {
-			if tt.SkipPrepared {
+			if tt.Skip || tt.SkipPrepared {
 				continue
 			}
 			t.Run(tt.Query, func(t *testing.T) {
@@ -265,7 +263,7 @@ func TestQueriesPrepared(t *testing.T, harness Harness) {
 func TestJoinQueriesPrepared(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.Pk_tablesData, setup.OthertableData, setup.NiltableData, setup.XyData, setup.FooData, setup.Comp_index_tablesData)
 	for _, tt := range queries.JoinQueryTests {
-		if tt.SkipPrepared {
+		if tt.Skip || tt.SkipPrepared {
 			continue
 		}
 		TestPreparedQuery(t, harness, tt.Query, tt.Expected, tt.ExpectedColumns)

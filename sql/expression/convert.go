@@ -341,9 +341,12 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 		if !(isTime || isString || isBinary) {
 			return nil, nil
 		}
-		d, _, err := types.DatetimeMaxPrecision.Convert(ctx, val)
+		d, _, err := types.DatetimeDefaultPrecision.Convert(ctx, val)
 		if err != nil {
-			return nil, err
+			if !sql.ErrTruncatedIncorrect.Is(err) {
+				return nil, err
+			}
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		}
 		return d, nil
 	case ConvertToDecimal:
