@@ -188,10 +188,10 @@ func (t datetimeType) Convert(ctx context.Context, v interface{}) (interface{}, 
 		return nil, sql.InRange, nil
 	}
 	res, err := ConvertToTime(ctx, v, t)
-	if err != nil {
+	if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
 		return nil, sql.OutOfRange, err
 	}
-	return res, sql.InRange, nil
+	return res, sql.InRange, err
 }
 
 // precisionConversion is a conversion ratio to divide time.Second by to truncate the appropriate amount for the
@@ -206,7 +206,7 @@ func ConvertToTime(ctx context.Context, v interface{}, t datetimeType) (time.Tim
 	}
 
 	res, err := t.ConvertWithoutRangeCheck(ctx, v)
-	if err != nil {
+	if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
 		return time.Time{}, err
 	}
 
@@ -227,7 +227,7 @@ func ConvertToTime(ctx context.Context, v interface{}, t datetimeType) (time.Tim
 		if validated == nil {
 			return time.Time{}, ErrConvertingToTimeOutOfRange.New(v, t)
 		}
-		return validated.(time.Time), nil
+		return validated.(time.Time), err
 	}
 
 	switch t.baseType {
@@ -245,7 +245,7 @@ func ConvertToTime(ctx context.Context, v interface{}, t datetimeType) (time.Tim
 		}
 	}
 
-	return res, nil
+	return res, err
 }
 
 // ConvertWithoutRangeCheck converts the parameter to time.Time without checking the range.
@@ -267,7 +267,7 @@ func (t datetimeType) ConvertWithoutRangeCheck(ctx context.Context, v interface{
 		}
 		// TODO: consider not using time.Parse if we want to match MySQL exactly ('2010-06-03 11:22.:.:.:.:' is a valid timestamp)
 		var parsed bool
-		res, parsed = parseDatetime(value)
+		res, parsed, err = t.parseDatetime(value)
 		if !parsed {
 			return zeroTime, ErrConvertingToTime.New(v)
 		}
@@ -361,20 +361,24 @@ func (t datetimeType) ConvertWithoutRangeCheck(ctx context.Context, v interface{
 		res = res.Truncate(24 * time.Hour)
 	}
 
-	return res, nil
+	return res, err
 }
 
-func parseDatetime(value string) (time.Time, bool) {
-	end := len(value)
+func (t datetimeType) parseDatetime(value string) (time.Time, bool, error) {
+	valueLen := len(value)
+	end := valueLen
 	for end > 0 {
 		for _, layout := range TimestampDatetimeLayouts {
 			if t, err := time.Parse(layout, value[0:end]); err == nil {
-				return t.UTC(), true
+				if end != valueLen {
+					err = sql.ErrTruncatedIncorrect.New(t, value)
+				}
+				return t.UTC(), true, err
 			}
 		}
 		end--
 	}
-	return time.Time{}, false
+	return time.Time{}, false, nil
 }
 
 // Equals implements the Type interface.

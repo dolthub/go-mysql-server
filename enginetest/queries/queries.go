@@ -4188,7 +4188,7 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Query:                 "select cast('2020-01-01 a' as datetime)",
 		ExpectedWarning:       1292,
 		ExpectedWarningsCount: 1,
-		Expected:              []sql.Row{{"2020-01-01 00:00:00"}},
+		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 0, 0, 0, 0, time.UTC)}},
 	},
 	{},
 	{
