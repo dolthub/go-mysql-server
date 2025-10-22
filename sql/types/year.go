@@ -176,7 +176,7 @@ func (t YearType_) ToSQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqlty
 	if v.IsNull() {
 		return sqltypes.NULL, nil
 	}
-	x := values.ReadUint8(v.Val)
+	x := values.ReadUint16(v.Val)
 	dest = strconv.AppendInt(dest, int64(x), 10)
 	return sqltypes.MakeTrusted(sqltypes.Year, dest), nil
 }

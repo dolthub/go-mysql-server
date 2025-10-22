@@ -487,7 +487,7 @@ func (t datetimeType) ToSQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sq
 		m := (x & (255 << 8)) >> 8
 		d := x & 255
 		t := time.Date(int(y), time.Month(m), int(d), 0, 0, 0, 0, time.UTC)
-		dest = t.AppendFormat(dest, sql.TimestampDatetimeLayout)
+		dest = t.AppendFormat(dest, sql.DateLayout)
 
 	case sqltypes.Datetime, sqltypes.Timestamp:
 		x := values.ReadInt64(v.Val)

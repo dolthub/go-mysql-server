@@ -131,17 +131,13 @@ func ReadUint16(val []byte) uint16 {
 
 func ReadInt24(val []byte) (i int32) {
 	expectSize(val, Int32Size)
-	i = int32(binary.LittleEndian.Uint32([]byte{0, val[0], val[1], val[2]}))
+	i = int32(binary.LittleEndian.Uint32(val))
 	return
 }
 
 func ReadUint24(val []byte) (u uint32) {
 	expectSize(val, Int32Size)
-	var tmp [4]byte
-	// copy |val| to |tmp|
-	tmp[3], tmp[2] = val[3], val[2]
-	tmp[1], tmp[0] = val[1], val[0]
-	u = binary.LittleEndian.Uint32(tmp[:])
+	u = binary.LittleEndian.Uint32(val)
 	return
 }
 
