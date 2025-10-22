@@ -4246,48 +4246,36 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 0, time.UTC)}},
 	},
 	{
-		// TODO: implement precision for datetime casting
-		Skip:                  true,
 		Query:                 "select cast('2020-01-01 12:34:56.123456abc' as datetime(1));",
 		ExpectedWarning:       1292,
 		ExpectedWarningsCount: 1,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 100000000, time.UTC)}},
 	},
 	{
-		// TODO: implement precision for datetime casting
-		Skip:                  true,
 		Query:                 "select cast('2020-01-01 12:34:56.123456abc' as datetime(2));",
 		ExpectedWarning:       1292,
 		ExpectedWarningsCount: 1,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 120000000, time.UTC)}},
 	},
 	{
-		// TODO: implement precision for datetime casting
-		Skip:                  true,
 		Query:                 "select cast('2020-01-01 12:34:56.123456abc' as datetime(3));",
 		ExpectedWarning:       1292,
 		ExpectedWarningsCount: 1,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 123000000, time.UTC)}},
 	},
 	{
-		// TODO: implement precision for datetime casting
-		Skip:                  true,
 		Query:                 "select cast('2020-01-01 12:34:56.123456abc' as datetime(4));",
 		ExpectedWarning:       1292,
 		ExpectedWarningsCount: 1,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 123500000, time.UTC)}},
 	},
 	{
-		// TODO: implement precision for datetime casting
-		Skip:                  true,
 		Query:                 "select cast('2020-01-01 12:34:56.123456abc' as datetime(5));",
 		ExpectedWarning:       1292,
 		ExpectedWarningsCount: 1,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 123460000, time.UTC)}},
 	},
 	{
-		// TODO: implement precision for datetime casting
-		Skip:                  true,
 		Query:                 "select cast('2020-01-01 12:34:56.123456abc' as datetime(6));",
 		ExpectedWarning:       1292,
 		ExpectedWarningsCount: 1,

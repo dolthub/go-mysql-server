@@ -341,7 +341,7 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 		if !(isTime || isString || isBinary) {
 			return nil, nil
 		}
-		d, _, err := types.DatetimeDefaultPrecision.Convert(ctx, val)
+		d, _, err := types.MustCreateDatetimeType(sqltypes.Datetime, typeLength).Convert(ctx, val)
 		if err != nil {
 			if !sql.ErrTruncatedIncorrect.Is(err) {
 				return nil, err
