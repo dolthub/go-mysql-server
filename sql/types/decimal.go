@@ -17,7 +17,6 @@ package types
 import (
 	"context"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/values"
 	"math/big"
 	"reflect"
 	"strings"
@@ -28,6 +27,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/values"
 )
 
 const (

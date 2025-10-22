@@ -18,11 +18,12 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"reflect"
+
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
-	"reflect"
 
 	"github.com/dolthub/go-mysql-server/sql"
 )
