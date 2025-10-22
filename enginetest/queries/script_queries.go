@@ -123,6 +123,30 @@ type ScriptTestAssertion struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
+		// https://github.com/dolthub/dolt/issues/9987
+		Name: "GROUP BY nil pointer dereference in Dispose when Next() never called",
+		SetUpScript: []string{
+			"CREATE TABLE test_table (id INT PRIMARY KEY, value INT, category VARCHAR(50))",
+			"INSERT INTO test_table VALUES (1, 100, 'A'), (2, 200, 'B'), (3, 300, 'A')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// LIMIT 0 causes the iterator to close without ever calling Next() on groupByIter
+				// This leaves all buffer elements as nil, causing panic in Dispose()
+				Query:    "SELECT category, SUM(value) FROM test_table GROUP BY category LIMIT 0",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT category, COUNT(*) FROM test_table GROUP BY category LIMIT 0",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT SUM(value) FROM test_table LIMIT 0",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/9935
 		Dialect: "mysql",
 		Name:    "Incorrect use of negation in AntiJoinIncludingNulls",

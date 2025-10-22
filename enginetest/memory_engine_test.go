@@ -200,29 +200,23 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			// https://github.com/dolthub/dolt/issues/9987
-			Name: "GROUP BY nil pointer dereference in Dispose when Next() never called",
-			SetUpScript: []string{
-				"CREATE TABLE test_table (id INT PRIMARY KEY, value INT, category VARCHAR(50))",
-				"INSERT INTO test_table VALUES (1, 100, 'A'), (2, 200, 'B'), (3, 300, 'A')",
-			},
+			Name:        "AS OF propagates to nested CALLs",
+			SetUpScript: []string{},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					// LIMIT 0 causes the iterator to close without ever calling Next() on groupByIter
-					// This leaves all buffer elements as nil, causing panic in Dispose()
-					Query:    "SELECT category, SUM(value) FROM test_table GROUP BY category LIMIT 0",
-					Expected: []sql.Row{},
+					Query: "create procedure create_proc() create table t (i int primary key, j int);",
+					Expected: []sql.Row{
+						{types.NewOkResult(0)},
+					},
 				},
 				{
-					Query:    "SELECT category, COUNT(*) FROM test_table GROUP BY category LIMIT 0",
-					Expected: []sql.Row{},
-				},
-				{
-					Query:    "SELECT SUM(value) FROM test_table LIMIT 0",
-					Expected: []sql.Row{},
+					Query: "call create_proc()",
+					Expected: []sql.Row{
+						{types.NewOkResult(0)},
+					},
 				},
 			},
 		},
