@@ -222,11 +222,7 @@ func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right interface{})
 	}
 
 	if types.IsTime(leftType) || types.IsTime(rightType) {
-		l, _, err := types.DatetimeMaxPrecision.Convert(ctx, left)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		r, _, err := types.DatetimeMaxPrecision.Convert(ctx, right)
+		l, r, err := convertLeftAndRight(ctx, left, right, ConvertToDatetime)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -305,13 +301,16 @@ func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right interface{})
 }
 
 func convertLeftAndRight(ctx *sql.Context, left, right interface{}, convertTo string) (interface{}, interface{}, error) {
-	// TODO: typeLength and typeScale should be the actual length and scale of the type to be converted
-	l, err := convertValue(ctx, left, convertTo, nil, 0, 0)
+	typeLength := 0
+	if convertTo == ConvertToDatetime {
+		typeLength = types.MaxDatetimePrecision
+	}
+	l, err := convertValue(ctx, left, convertTo, nil, typeLength, 0)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	r, err := convertValue(ctx, right, convertTo, nil, 0, 0)
+	r, err := convertValue(ctx, right, convertTo, nil, typeLength, 0)
 	if err != nil {
 		return nil, nil, err
 	}
