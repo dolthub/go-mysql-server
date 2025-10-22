@@ -36,6 +36,8 @@ const ZeroTimestampDatetimeStr = "0000-00-00 00:00:00"
 
 const MinDatetimeStringLength = 8 // length of "2000-1-1"
 
+const MaxDatetimePrecision = 6
+
 var (
 	// ErrConvertingToTime is thrown when a value cannot be converted to a Time
 	ErrConvertingToTime = errors.NewKind("Incorrect datetime value: '%v'")
@@ -102,16 +104,14 @@ var (
 	Date = MustCreateDatetimeType(sqltypes.Date, 0)
 	// Datetime is a date and a time with default precision (no fractional seconds).
 	Datetime = MustCreateDatetimeType(sqltypes.Datetime, 0)
-	// DatetimeDefaultPrecision is a date and a time without a specified precision
-	DatetimeDefaultPrecision = MustCreateDatetimeType(sqltypes.Datetime, 0)
 	// DatetimeMaxPrecision is a date and a time with maximum precision
-	DatetimeMaxPrecision = MustCreateDatetimeType(sqltypes.Datetime, 6)
+	DatetimeMaxPrecision = MustCreateDatetimeType(sqltypes.Datetime, MaxDatetimePrecision)
 	// Timestamp is a UNIX timestamp with default precision (no fractional seconds).
 	Timestamp = MustCreateDatetimeType(sqltypes.Timestamp, 0)
 	// TimestampMaxPrecision is a UNIX timestamp with maximum precision
-	TimestampMaxPrecision = MustCreateDatetimeType(sqltypes.Timestamp, 6)
+	TimestampMaxPrecision = MustCreateDatetimeType(sqltypes.Timestamp, MaxDatetimePrecision)
 	// DatetimeMaxRange is a date and a time with maximum precision and maximum range.
-	DatetimeMaxRange = MustCreateDatetimeType(sqltypes.Datetime, 6)
+	DatetimeMaxRange = MustCreateDatetimeType(sqltypes.Datetime, MaxDatetimePrecision)
 
 	datetimeValueType = reflect.TypeOf(time.Time{})
 )
@@ -128,7 +128,7 @@ var _ sql.CollationCoercible = datetimeType{}
 func CreateDatetimeType(baseType query.Type, precision int) (sql.DatetimeType, error) {
 	switch baseType {
 	case sqltypes.Date, sqltypes.Datetime, sqltypes.Timestamp:
-		if precision < 0 || precision > 6 {
+		if precision < 0 || precision > MaxDatetimePrecision {
 			return nil, fmt.Errorf("precision must be between 0 and 6, got %d", precision)
 		}
 		return datetimeType{
@@ -221,7 +221,7 @@ func ConvertToTime(ctx context.Context, v interface{}, t datetimeType) (time.Tim
 	}
 
 	// Round the date to the precision of this type
-	if t.precision < 6 {
+	if t.precision < MaxDatetimePrecision {
 		truncationDuration := time.Second / time.Duration(precisionConversion[t.precision])
 		res = res.Round(truncationDuration)
 	} else {
