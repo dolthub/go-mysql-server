@@ -222,13 +222,15 @@ func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right interface{})
 	}
 
 	if types.IsTime(leftType) || types.IsTime(rightType) {
-		// TODO: We need to set to actual Datetime type
-		l, r, err := convertLeftAndRight(ctx, left, right, ConvertToDatetime)
+		l, _, err := types.DatetimeMaxPrecision.Convert(ctx, left)
 		if err != nil {
 			return nil, nil, nil, err
 		}
-
-		return l, r, types.DatetimeDefaultPrecision, nil
+		r, _, err := types.DatetimeMaxPrecision.Convert(ctx, right)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		return l, r, types.DatetimeMaxPrecision, nil
 	}
 
 	// Rely on types.JSON.Compare to handle JSON comparisons
