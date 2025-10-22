@@ -1181,6 +1181,10 @@ func RowValueToSQLValues(ctx *sql.Context, sch sql.Schema, row sql.ValueRow, buf
 		// TODO: remove this check once all Types implement this
 		valType, ok := col.Type.(sql.Type2)
 		if !ok {
+			if row[i].IsNull() {
+				outVals[i] = sqltypes.NULL
+				continue
+			}
 			outVals[i] = sqltypes.MakeTrusted(row[i].Typ, row[i].Val)
 			continue
 		}
