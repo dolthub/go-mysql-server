@@ -17,6 +17,7 @@ package types
 import (
 	"context"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/values"
 	"math/big"
 	"reflect"
 	"strings"
@@ -326,6 +327,22 @@ func (t DecimalType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 		return sqltypes.Value{}, err
 	}
 	val := AppendAndSliceString(dest, t.DecimalValueStringFixed(value.Decimal))
+	return sqltypes.MakeTrusted(sqltypes.Decimal, val), nil
+}
+
+func (t DecimalType_) ToSQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes.Value, error) {
+	if v.IsNull() {
+		return sqltypes.NULL, nil
+	}
+	// TODO: implement values.ReadDecimal
+	e := values.ReadInt32(v.Val[:values.Int32Size])
+	s := values.ReadInt8(v.Val[values.Int32Size : values.Int32Size+values.Int8Size])
+	b := big.NewInt(0).SetBytes(v.Val[values.Int32Size+values.Int8Size:])
+	if s < 0 {
+		b = b.Neg(b)
+	}
+	d := decimal.NewFromBigInt(b, e)
+	val := AppendAndSliceString(dest, t.DecimalValueStringFixed(d))
 	return sqltypes.MakeTrusted(sqltypes.Decimal, val), nil
 }
 

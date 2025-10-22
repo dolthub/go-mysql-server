@@ -18,16 +18,13 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"reflect"
-	"strconv"
-
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
+	"reflect"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/values"
 )
 
 const (
@@ -218,9 +215,27 @@ func (t BitType_) ToSQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltyp
 	if v.IsNull() {
 		return sqltypes.NULL, nil
 	}
-	// Assume this is uint64
-	x := values.ReadUint64(v.Val)
-	dest = strconv.AppendUint(dest, x, 10)
+
+	numBytes := t.numOfBits / 8
+	if t.numOfBits%8 != 0 {
+		numBytes += 1
+	}
+
+	if uint8(len(v.Val)) < numBytes {
+		// already in little endian, so just pad with trailing 0s
+		for i := uint8(len(v.Val)); i <= t.numOfBits/8; i++ {
+			v.Val = append(v.Val, 0)
+		}
+	} else {
+		v.Val = v.Val[:numBytes]
+	}
+
+	// TODO: for whatever reason, TestTypesOverWire only works when this is a deep copy?
+	dest = append(dest, v.Val...)
+	// want the results in big endian
+	for i, j := 0, len(dest)-1; i < j; i, j = i+1, j-1 {
+		dest[i], dest[j] = dest[j], dest[i]
+	}
 	return sqltypes.MakeTrusted(sqltypes.Bit, dest), nil
 }
 
