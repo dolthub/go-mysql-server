@@ -132,7 +132,7 @@ var ScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				// LIMIT 0 causes the iterator to close without ever calling Next() on groupByIter
-				// This leaves all buffer elements as nil, causing panic in Dispose()
+				// This leaves all buffer elements as nil causing panic in Dispose(), or empty depending data struct
 				Query:    "SELECT category, SUM(value) FROM test_table GROUP BY category LIMIT 0",
 				Expected: []sql.Row{},
 			},

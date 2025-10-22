@@ -236,9 +236,7 @@ func (i *groupByGroupingIter) Dispose() {
 		bs, _ := i.get(k)
 		if bs != nil {
 			for _, b := range bs {
-				if b != nil {
-					b.Dispose()
-				}
+				b.Dispose()
 			}
 		}
 	}
