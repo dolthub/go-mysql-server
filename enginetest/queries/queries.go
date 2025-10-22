@@ -4282,6 +4282,10 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 12, 34, 56, 123456000, time.UTC)}},
 	},
 	{
+		Query:    "select cast('2020-01-01 12:34:56.123456' as datetime(6)) > cast('2020-01-01 12:34:56' as datetime)",
+		Expected: []sql.Row{{true}},
+	},
+	{
 		Query: `SELECT * FROM (SELECT * FROM (SELECT * FROM (SELECT * FROM othertable) othertable_one) othertable_two) othertable_three WHERE s2 = 'first'`,
 		Expected: []sql.Row{
 			{"first", int64(3)},
