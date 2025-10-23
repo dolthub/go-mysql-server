@@ -702,7 +702,10 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 		defer wg.Done()
 		for {
 			if r == nil {
-				r = &sqltypes.Result{Fields: resultFields}
+				r = &sqltypes.Result{
+					Rows:   make([][]sqltypes.Value, 0, rowsBatch),
+					Fields: resultFields,
+				}
 			}
 			if r.RowsAffected == rowsBatch {
 				if err := resetCallback(r, more); err != nil {
