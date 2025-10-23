@@ -1131,7 +1131,7 @@ func toSqlHelper(ctx *sql.Context, typ sql.Type, buf *sql.ByteBuffer, val interf
 		return typ.SQL(ctx, nil, val)
 	}
 	ret, err := typ.SQL(ctx, buf.Get(), val)
-	buf.Grow(ret.Len())
+	buf.Grow(ret.Len()) // TODO: shouldn't we check capacity beforehand?
 	return ret, err
 }
 
@@ -1182,7 +1182,7 @@ func RowValueToSQLValues(ctx *sql.Context, sch sql.Schema, row sql.ValueRow, buf
 	outVals := make([]sqltypes.Value, len(sch))
 	for i, col := range sch {
 		// TODO: remove this check once all Types implement this
-		valType, ok := col.Type.(sql.Type2)
+		valType, ok := col.Type.(sql.ValueType)
 		if !ok {
 			if row[i].IsNull() {
 				outVals[i] = sqltypes.NULL

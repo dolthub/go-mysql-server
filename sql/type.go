@@ -292,7 +292,7 @@ func IsDecimalType(t Type) bool {
 	return ok
 }
 
-type Type2 interface {
+type ValueType interface {
 	Type
 	ToSQLValue(*Context, Value, []byte) (sqltypes.Value, error)
 }
