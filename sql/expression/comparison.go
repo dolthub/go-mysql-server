@@ -16,11 +16,12 @@ package expression
 
 import (
 	"fmt"
+
+	"github.com/dolthub/vitess/go/sqltypes"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 var ErrInvalidRegexp = errors.NewKind("Invalid regular expression: %s")
