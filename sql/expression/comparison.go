@@ -493,7 +493,7 @@ type GreaterThan struct {
 }
 
 var _ sql.Expression = (*GreaterThan)(nil)
-var _ sql.Expression2 = (*GreaterThan)(nil)
+var _ sql.ValueExpression = (*GreaterThan)(nil)
 var _ sql.CollationCoercible = (*GreaterThan)(nil)
 
 // NewGreaterThan creates a new GreaterThan expression.
@@ -520,21 +520,22 @@ func (gt *GreaterThan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	return result == 1, nil
 }
 
-func (gt *GreaterThan) Eval2(ctx *sql.Context, row sql.ValueRow) (sql.Value, error) {
-	l, ok := gt.Left().(sql.Expression2)
+// EvalValue implements the sql.ValueExpression interface.
+func (gt *GreaterThan) EvalValue(ctx *sql.Context, row sql.ValueRow) (sql.Value, error) {
+	l, ok := gt.Left().(sql.ValueExpression)
 	if !ok {
-		panic(fmt.Sprintf("%T does not implement sql.Expression2", gt.Left()))
+		panic(fmt.Sprintf("%T does not implement sql.ValueExpression", gt.Left()))
 	}
-	r, ok := gt.Right().(sql.Expression2)
+	r, ok := gt.Right().(sql.ValueExpression)
 	if !ok {
-		panic(fmt.Sprintf("%T does not implement sql.Expression2", gt.Right()))
+		panic(fmt.Sprintf("%T does not implement sql.ValueExpression", gt.Right()))
 	}
 
-	lv, err := l.Eval2(ctx, row)
+	lv, err := l.EvalValue(ctx, row)
 	if err != nil {
 		return sql.Value{}, err
 	}
-	rv, err := r.Eval2(ctx, row)
+	rv, err := r.EvalValue(ctx, row)
 	if err != nil {
 		return sql.Value{}, err
 	}
@@ -560,23 +561,20 @@ func (gt *GreaterThan) Eval2(ctx *sql.Context, row sql.ValueRow) (sql.Value, err
 	return ret, nil
 }
 
-func (gt *GreaterThan) Type2() sql.Type2 {
-	return nil
-}
-
-func (gt *GreaterThan) IsExpr2() bool {
-	lExpr, isExpr2 := gt.Left().(sql.Expression2)
-	if !isExpr2 {
+// CanSupport implements the ValueExpression interface.
+func (gt *GreaterThan) CanSupport() bool {
+	l, ok := gt.comparison.LeftChild.(sql.ValueExpression)
+	if !ok {
 		return false
 	}
-	if !lExpr.IsExpr2() {
+	if !l.CanSupport() {
 		return false
 	}
-	rExpr, isExpr2 := gt.Right().(sql.Expression2)
-	if !isExpr2 {
+	r, ok := gt.comparison.RightChild.(sql.ValueExpression)
+	if !ok {
 		return false
 	}
-	if !rExpr.IsExpr2() {
+	if !r.CanSupport() {
 		return false
 	}
 	return true

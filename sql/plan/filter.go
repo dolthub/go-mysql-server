@@ -105,7 +105,7 @@ type FilterIter struct {
 	cond      sql.Expression
 	childIter sql.RowIter
 
-	cond2      sql.Expression2
+	cond2      sql.ValueExpression
 	childIter2 sql.ValueRowIter
 }
 
@@ -145,7 +145,7 @@ func (i *FilterIter) NextValueRow(ctx *sql.Context) (sql.ValueRow, error) {
 		if err != nil {
 			return nil, err
 		}
-		res, err := i.cond2.Eval2(ctx, row)
+		res, err := i.cond2.EvalValue(ctx, row)
 		if err != nil {
 			return nil, err
 		}
@@ -156,8 +156,8 @@ func (i *FilterIter) NextValueRow(ctx *sql.Context) (sql.ValueRow, error) {
 }
 
 func (i *FilterIter) CanSupport(ctx *sql.Context) bool {
-	cond, ok := i.cond.(sql.Expression2)
-	if !ok || !cond.IsExpr2() {
+	cond, ok := i.cond.(sql.ValueExpression)
+	if !ok || !cond.CanSupport() {
 		return false
 	}
 	childIter, ok := i.childIter.(sql.ValueRowIter)
