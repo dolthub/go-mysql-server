@@ -136,6 +136,7 @@ func (i *FilterIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 }
 
+// NextValueRow implements the sql.ValueRowIter interface.
 func (i *FilterIter) NextValueRow(ctx *sql.Context) (sql.ValueRow, error) {
 	for {
 		row, err := i.childIter.(sql.ValueRowIter).NextValueRow(ctx)

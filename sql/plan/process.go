@@ -317,6 +317,7 @@ func (i *TrackedRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	return row, nil
 }
 
+// NextValueRow implements the sql.ValueRowIter interface.
 func (i *TrackedRowIter) NextValueRow(ctx *sql.Context) (sql.ValueRow, error) {
 	row, err := i.iter.(sql.ValueRowIter).NextValueRow(ctx)
 	if err != nil {
@@ -329,6 +330,7 @@ func (i *TrackedRowIter) NextValueRow(ctx *sql.Context) (sql.ValueRow, error) {
 	return row, nil
 }
 
+// CanSupport implements the sql.ValueRowIter interface.
 func (i *TrackedRowIter) CanSupport(ctx *sql.Context) bool {
 	iter, ok := i.iter.(sql.ValueRowIter)
 	return ok && iter.CanSupport(ctx)
