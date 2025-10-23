@@ -29,6 +29,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/encodings"
+	"github.com/dolthub/go-mysql-server/sql/values"
 )
 
 const (
@@ -266,6 +267,33 @@ func (t EnumType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Va
 	val := encodedBytes
 
 	return sqltypes.MakeTrusted(sqltypes.Enum, val), nil
+}
+
+func (t EnumType) ToSQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes.Value, error) {
+	if v.IsNull() {
+		return sqltypes.NULL, nil
+	}
+
+	idx := values.ReadUint16(v.Val)
+	value, _ := t.At(int(idx))
+
+	charset := ctx.GetCharacterSetResults()
+	if charset == sql.CharacterSet_Unspecified || charset == sql.CharacterSet_binary {
+		charset = t.collation.CharacterSet()
+	}
+
+	// TODO: write append style encoder
+	res, ok := charset.Encoder().Encode(encodings.StringToBytes(value)) // TODO: use unsafe string to byte
+	if !ok {
+		// return snippet of the converted value
+		if len(value) > 50 {
+			value = value[:50]
+		}
+		value = strings.ToValidUTF8(value, string(utf8.RuneError))
+		return sqltypes.Value{}, sql.ErrCharSetFailedToEncode.New(charset.Name(), utf8.ValidString(value), value)
+	}
+
+	return sqltypes.MakeTrusted(sqltypes.Enum, res), nil
 }
 
 // String implements Type interface.

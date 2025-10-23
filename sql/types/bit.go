@@ -211,6 +211,31 @@ func (t BitType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Va
 	return sqltypes.MakeTrusted(sqltypes.Bit, val), nil
 }
 
+// ToSQLValue implements ValueType interface.
+func (t BitType_) ToSQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes.Value, error) {
+	if v.IsNull() {
+		return sqltypes.NULL, nil
+	}
+
+	// Trim/Pad result to the appropriate length
+	numBytes := t.numOfBits / 8
+	if t.numOfBits%8 != 0 {
+		numBytes += 1
+	}
+	for i := uint8(len(v.Val)); i < numBytes; i++ {
+		v.Val = append(v.Val, 0)
+	}
+	v.Val = v.Val[:numBytes]
+
+	// TODO: for whatever reason TestTypesOverWire only works when this is a deep copy?
+	dest = append(dest, v.Val...)
+	// want the results in big endian
+	for i, j := 0, len(dest)-1; i < j; i, j = i+1, j-1 {
+		dest[i], dest[j] = dest[j], dest[i]
+	}
+	return sqltypes.MakeTrusted(sqltypes.Bit, dest), nil
+}
+
 // String implements Type interface.
 func (t BitType_) String() string {
 	return fmt.Sprintf("bit(%v)", t.numOfBits)

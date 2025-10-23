@@ -17,7 +17,8 @@ package expression
 import (
 	"fmt"
 
-	errors "gopkg.in/src-d/go-errors.v1"
+	"github.com/dolthub/vitess/go/sqltypes"
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -495,6 +496,7 @@ type GreaterThan struct {
 }
 
 var _ sql.Expression = (*GreaterThan)(nil)
+var _ sql.ValueExpression = (*GreaterThan)(nil)
 var _ sql.CollationCoercible = (*GreaterThan)(nil)
 
 // NewGreaterThan creates a new GreaterThan expression.
@@ -519,6 +521,71 @@ func (gt *GreaterThan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	}
 
 	return result == 1, nil
+}
+
+// EvalValue implements the sql.ValueExpression interface.
+func (gt *GreaterThan) EvalValue(ctx *sql.Context, row sql.ValueRow) (sql.Value, error) {
+	lv, err := gt.comparison.LeftChild.(sql.ValueExpression).EvalValue(ctx, row)
+	if err != nil {
+		return sql.Value{}, err
+	}
+	rv, err := gt.comparison.RightChild.(sql.ValueExpression).EvalValue(ctx, row)
+	if err != nil {
+		return sql.Value{}, err
+	}
+
+	// TODO: move this logic into comparison
+	var cmp byte
+	if sqltypes.IsUnsigned(lv.Typ) && sqltypes.IsUnsigned(rv.Typ) {
+		l, cErr := types.ConvertValueToUint64(lv)
+		if cErr != nil {
+			return sql.Value{}, cErr
+		}
+		r, cErr := types.ConvertValueToUint64(rv)
+		if cErr != nil {
+			return sql.Value{}, cErr
+		}
+		if l > r {
+			cmp = 1
+		}
+	} else {
+		l, cErr := types.ConvertValueToInt64(lv)
+		if cErr != nil {
+			return sql.Value{}, cErr
+		}
+		r, cErr := types.ConvertValueToInt64(rv)
+		if cErr != nil {
+			return sql.Value{}, cErr
+		}
+		if l > r {
+			cmp = 1
+		}
+	}
+
+	res := sql.Value{
+		Val: []byte{cmp},
+		Typ: sqltypes.Int8,
+	}
+	return res, nil
+}
+
+// CanSupport implements the ValueExpression interface.
+func (gt *GreaterThan) CanSupport() bool {
+	l, ok := gt.comparison.LeftChild.(sql.ValueExpression)
+	if !ok {
+		return false
+	}
+	if !l.CanSupport() {
+		return false
+	}
+	r, ok := gt.comparison.RightChild.(sql.ValueExpression)
+	if !ok {
+		return false
+	}
+	if !r.CanSupport() {
+		return false
+	}
+	return true
 }
 
 // WithChildren implements the Expression interface.

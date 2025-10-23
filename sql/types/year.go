@@ -26,6 +26,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/values"
 )
 
 var (
@@ -169,6 +170,15 @@ func (t YearType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.V
 	val := dest[stop:]
 
 	return sqltypes.MakeTrusted(sqltypes.Year, val), nil
+}
+
+func (t YearType_) ToSQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes.Value, error) {
+	if v.IsNull() {
+		return sqltypes.NULL, nil
+	}
+	x := values.ReadUint16(v.Val)
+	dest = strconv.AppendInt(dest, int64(x), 10)
+	return sqltypes.MakeTrusted(sqltypes.Year, dest), nil
 }
 
 // String implements Type interface.

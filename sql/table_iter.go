@@ -76,6 +76,69 @@ func (i *TableRowIter) Next(ctx *Context) (Row, error) {
 	return row, err
 }
 
+// NextValueRow implements the sql.ValueRowIter interface
+func (i *TableRowIter) NextValueRow(ctx *Context) (ValueRow, error) {
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+	}
+	if i.partition == nil {
+		partition, err := i.partitions.Next(ctx)
+		if err != nil {
+			if err == io.EOF {
+				if e := i.partitions.Close(ctx); e != nil {
+					return nil, e
+				}
+			}
+			return nil, err
+		}
+		i.partition = partition
+	}
+
+	if i.rows == nil {
+		rows, err := i.table.PartitionRows(ctx, i.partition)
+		if err != nil {
+			return nil, err
+		}
+		i.rows = rows
+	}
+
+	row, err := i.rows.(ValueRowIter).NextValueRow(ctx)
+	if err != nil && err == io.EOF {
+		if err = i.rows.Close(ctx); err != nil {
+			return nil, err
+		}
+		i.partition = nil
+		i.rows = nil
+		row, err = i.NextValueRow(ctx)
+	}
+	return row, err
+}
+
+// CanSupport implements the sql.ValueRowIter interface.
+func (i *TableRowIter) CanSupport(ctx *Context) bool {
+	if i.partition == nil {
+		partition, err := i.partitions.Next(ctx)
+		if err != nil {
+			return false
+		}
+		i.partition = partition
+	}
+	if i.rows == nil {
+		rows, err := i.table.PartitionRows(ctx, i.partition)
+		if err != nil {
+			return false
+		}
+		valRowIter, ok := rows.(ValueRowIter)
+		if !ok {
+			return false
+		}
+		i.rows = valRowIter
+	}
+	return i.rows.(ValueRowIter).CanSupport(ctx)
+}
+
 func (i *TableRowIter) Close(ctx *Context) error {
 	if i.rows != nil {
 		if err := i.rows.Close(ctx); err != nil {

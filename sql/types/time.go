@@ -28,6 +28,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/values"
 )
 
 var (
@@ -265,6 +266,16 @@ func (t TimespanType_) SQL(_ *sql.Context, dest []byte, v interface{}) (sqltypes
 
 	val := ti.Bytes()
 	return sqltypes.MakeTrusted(sqltypes.Time, val), nil
+}
+
+func (t TimespanType_) ToSQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes.Value, error) {
+	if v.IsNull() {
+		return sqltypes.NULL, nil
+	}
+	x := values.ReadInt64(v.Val)
+	// TODO: write version of this that takes advantage of dest
+	v.Val = Timespan(x).Bytes()
+	return sqltypes.MakeTrusted(sqltypes.Time, v.Val), nil
 }
 
 // String implements Type interface.
