@@ -143,7 +143,7 @@ func (lit *Literal) EvalValue(ctx *sql.Context, row sql.ValueRow) (sql.Value, er
 
 // CanSupport implements the ValueExpression interface.
 func (lit *Literal) CanSupport() bool {
-	return true
+	return types.IsInteger(lit.Typ)
 }
 
 // Value returns the literal value.

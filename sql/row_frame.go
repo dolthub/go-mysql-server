@@ -17,7 +17,7 @@ package sql
 import (
 	"sync"
 
-	querypb "github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/dolthub/vitess/go/vt/proto/query"
 )
 
 const (
@@ -31,7 +31,7 @@ type ValueBytes []byte
 type Value struct {
 	Val        ValueBytes
 	WrappedVal BytesWrapper
-	Typ        querypb.Type // TODO: consider sqltypes.Type instead
+	Typ        query.Type
 }
 
 // ValueRow is a slice of values
@@ -39,11 +39,11 @@ type ValueRow []Value
 
 // IsNull returns whether this value represents NULL
 func (v Value) IsNull() bool {
-	return (v.Val == nil && v.WrappedVal == nil) || v.Typ == querypb.Type_NULL_TYPE
+	return (v.Val == nil && v.WrappedVal == nil) || v.Typ == query.Type_NULL_TYPE
 }
 
 type RowFrame struct {
-	Types []querypb.Type
+	Types []query.Type
 
 	// Values are the values this row.
 	Values []ValueBytes
@@ -128,7 +128,7 @@ func (f *RowFrame) Append(vals ...Value) {
 }
 
 // AppendMany appends the types and values given, as two parallel arrays, into this frame.
-func (f *RowFrame) AppendMany(types []querypb.Type, vals []ValueBytes) {
+func (f *RowFrame) AppendMany(types []query.Type, vals []ValueBytes) {
 	// TODO: one big copy here would be better probably, need to benchmark
 	for i := range vals {
 		f.appendTypeAndVal(types[i], vals[i])
@@ -147,7 +147,7 @@ func (f *RowFrame) append(v Value) {
 	f.Values = append(f.Values, v.Val)
 }
 
-func (f *RowFrame) appendTypeAndVal(typ querypb.Type, val ValueBytes) {
+func (f *RowFrame) appendTypeAndVal(typ query.Type, val ValueBytes) {
 	v := f.bufferForBytes(val)
 	copy(v, val)
 

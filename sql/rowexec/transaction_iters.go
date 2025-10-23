@@ -71,7 +71,6 @@ func getLockableTable(table sql.Table) (sql.Lockable, error) {
 // during the Close() operation
 type TransactionCommittingIter struct {
 	childIter           sql.RowIter
-	childIter2          sql.ValueRowIter
 	transactionDatabase string
 	autoCommit          bool
 	implicitCommit      bool
@@ -101,16 +100,12 @@ func (t *TransactionCommittingIter) Next(ctx *sql.Context) (sql.Row, error) {
 }
 
 func (t *TransactionCommittingIter) NextValueRow(ctx *sql.Context) (sql.ValueRow, error) {
-	return t.childIter2.NextValueRow(ctx)
+	return t.childIter.(sql.ValueRowIter).NextValueRow(ctx)
 }
 
 func (t *TransactionCommittingIter) CanSupport(ctx *sql.Context) bool {
 	childIter, ok := t.childIter.(sql.ValueRowIter)
-	if !ok || !childIter.CanSupport(ctx) {
-		return false
-	}
-	t.childIter2 = childIter
-	return true
+	return ok && childIter.CanSupport(ctx)
 }
 
 func (t *TransactionCommittingIter) Close(ctx *sql.Context) error {

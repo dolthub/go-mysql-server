@@ -226,7 +226,6 @@ const (
 type TrackedRowIter struct {
 	node               sql.Node
 	iter               sql.RowIter
-	iter2              sql.ValueRowIter
 	onDone             NotifyFunc
 	onNext             NotifyFunc
 	numRows            int64
@@ -319,7 +318,7 @@ func (i *TrackedRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 }
 
 func (i *TrackedRowIter) NextValueRow(ctx *sql.Context) (sql.ValueRow, error) {
-	row, err := i.iter2.NextValueRow(ctx)
+	row, err := i.iter.(sql.ValueRowIter).NextValueRow(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -332,11 +331,7 @@ func (i *TrackedRowIter) NextValueRow(ctx *sql.Context) (sql.ValueRow, error) {
 
 func (i *TrackedRowIter) CanSupport(ctx *sql.Context) bool {
 	iter, ok := i.iter.(sql.ValueRowIter)
-	if !ok || !iter.CanSupport(ctx) {
-		return false
-	}
-	i.iter2 = iter
-	return true
+	return ok && iter.CanSupport(ctx)
 }
 
 func (i *TrackedRowIter) Close(ctx *sql.Context) error {

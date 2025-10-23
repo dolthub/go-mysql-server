@@ -104,9 +104,6 @@ func (f *Filter) Expressions() []sql.Expression {
 type FilterIter struct {
 	cond      sql.Expression
 	childIter sql.RowIter
-
-	cond2      sql.ValueExpression
-	childIter2 sql.ValueRowIter
 }
 
 var _ sql.RowIter = (*FilterIter)(nil)
@@ -141,11 +138,11 @@ func (i *FilterIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 func (i *FilterIter) NextValueRow(ctx *sql.Context) (sql.ValueRow, error) {
 	for {
-		row, err := i.childIter2.NextValueRow(ctx)
+		row, err := i.childIter.(sql.ValueRowIter).NextValueRow(ctx)
 		if err != nil {
 			return nil, err
 		}
-		res, err := i.cond2.EvalValue(ctx, row)
+		res, err := i.cond.(sql.ValueExpression).EvalValue(ctx, row)
 		if err != nil {
 			return nil, err
 		}
@@ -155,6 +152,7 @@ func (i *FilterIter) NextValueRow(ctx *sql.Context) (sql.ValueRow, error) {
 	}
 }
 
+// CanSupport implements the sql.ValueRowIter interface.
 func (i *FilterIter) CanSupport(ctx *sql.Context) bool {
 	cond, ok := i.cond.(sql.ValueExpression)
 	if !ok || !cond.CanSupport() {
@@ -164,8 +162,6 @@ func (i *FilterIter) CanSupport(ctx *sql.Context) bool {
 	if !ok || !childIter.CanSupport(ctx) {
 		return false
 	}
-	i.cond2 = cond
-	i.childIter2 = childIter
 	return true
 }
 

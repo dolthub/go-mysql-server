@@ -15,7 +15,6 @@
 package sql
 
 import (
-	"fmt"
 	"io"
 )
 
@@ -25,8 +24,6 @@ type TableRowIter struct {
 	partitions PartitionIter
 	partition  Partition
 	rows       RowIter
-
-	rows2 ValueRowIter
 }
 
 var _ RowIter = (*TableRowIter)(nil)
@@ -79,6 +76,7 @@ func (i *TableRowIter) Next(ctx *Context) (Row, error) {
 	return row, err
 }
 
+// NextValueRow implements the sql.ValueRowIter interface
 func (i *TableRowIter) NextValueRow(ctx *Context) (ValueRow, error) {
 	select {
 	case <-ctx.Done():
@@ -93,32 +91,26 @@ func (i *TableRowIter) NextValueRow(ctx *Context) (ValueRow, error) {
 					return nil, e
 				}
 			}
-
 			return nil, err
 		}
-
 		i.partition = partition
 	}
 
-	if i.rows2 == nil {
+	if i.rows == nil {
 		rows, err := i.table.PartitionRows(ctx, i.partition)
 		if err != nil {
 			return nil, err
 		}
-		ri2, ok := rows.(ValueRowIter)
-		if !ok || !ri2.CanSupport(ctx) {
-			panic(fmt.Sprintf("%T does not implement ValueRowIter", rows))
-		}
-		i.rows2 = ri2
+		i.rows = rows
 	}
 
-	row, err := i.rows2.NextValueRow(ctx)
+	row, err := i.rows.(ValueRowIter).NextValueRow(ctx)
 	if err != nil && err == io.EOF {
-		if err = i.rows2.Close(ctx); err != nil {
+		if err = i.rows.Close(ctx); err != nil {
 			return nil, err
 		}
 		i.partition = nil
-		i.rows2 = nil
+		i.rows = nil
 		row, err = i.NextValueRow(ctx)
 	}
 	return row, err
@@ -132,18 +124,18 @@ func (i *TableRowIter) CanSupport(ctx *Context) bool {
 		}
 		i.partition = partition
 	}
-	if i.rows2 == nil {
+	if i.rows == nil {
 		rows, err := i.table.PartitionRows(ctx, i.partition)
 		if err != nil {
 			return false
 		}
-		ri2, ok := rows.(ValueRowIter)
+		valRowIter, ok := rows.(ValueRowIter)
 		if !ok {
 			return false
 		}
-		i.rows2 = ri2
+		i.rows = valRowIter
 	}
-	return i.rows2.CanSupport(ctx)
+	return i.rows.(ValueRowIter).CanSupport(ctx)
 }
 
 func (i *TableRowIter) Close(ctx *Context) error {

@@ -16,12 +16,11 @@ package expression
 
 import (
 	"fmt"
-
-	querypb "github.com/dolthub/vitess/go/vt/proto/query"
-	errors "gopkg.in/src-d/go-errors.v1"
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/vitess/go/sqltypes"
 )
 
 var ErrInvalidRegexp = errors.NewKind("Invalid regular expression: %s")
@@ -522,43 +521,48 @@ func (gt *GreaterThan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 
 // EvalValue implements the sql.ValueExpression interface.
 func (gt *GreaterThan) EvalValue(ctx *sql.Context, row sql.ValueRow) (sql.Value, error) {
-	l, ok := gt.Left().(sql.ValueExpression)
-	if !ok {
-		panic(fmt.Sprintf("%T does not implement sql.ValueExpression", gt.Left()))
-	}
-	r, ok := gt.Right().(sql.ValueExpression)
-	if !ok {
-		panic(fmt.Sprintf("%T does not implement sql.ValueExpression", gt.Right()))
-	}
-
-	lv, err := l.EvalValue(ctx, row)
+	lv, err := gt.comparison.LeftChild.(sql.ValueExpression).EvalValue(ctx, row)
 	if err != nil {
 		return sql.Value{}, err
 	}
-	rv, err := r.EvalValue(ctx, row)
+	rv, err := gt.comparison.RightChild.(sql.ValueExpression).EvalValue(ctx, row)
 	if err != nil {
 		return sql.Value{}, err
 	}
 
-	// TODO: just assume they are int64
-	l64, err := types.ConvertValueToInt64(types.NumberTypeImpl_{}, lv)
-	if err != nil {
-		return sql.Value{}, err
-	}
-	r64, err := types.ConvertValueToInt64(types.NumberTypeImpl_{}, rv)
-	if err != nil {
-		return sql.Value{}, err
-	}
-	var rb byte
-	if l64 > r64 {
-		rb = 1
+	// TODO: move this logic into comparison
+	var cmp byte
+	if sqltypes.IsUnsigned(lv.Typ) && sqltypes.IsUnsigned(rv.Typ) {
+		l, cErr := types.ConvertValueToUint64(lv)
+		if cErr != nil {
+			return sql.Value{}, cErr
+		}
+		r, cErr := types.ConvertValueToUint64(rv)
+		if cErr != nil {
+			return sql.Value{}, cErr
+		}
+		if l > r {
+			cmp = 1
+		}
+	} else {
+		l, cErr := types.ConvertValueToInt64(lv)
+		if cErr != nil {
+			return sql.Value{}, cErr
+		}
+		r, cErr := types.ConvertValueToInt64(rv)
+		if cErr != nil {
+			return sql.Value{}, cErr
+		}
+		if l > r {
+			cmp = 1
+		}
 	}
 
-	ret := sql.Value{
-		Val: []byte{rb},
-		Typ: querypb.Type_INT8,
+	res := sql.Value{
+		Val: []byte{cmp},
+		Typ: sqltypes.Int8,
 	}
-	return ret, nil
+	return res, nil
 }
 
 // CanSupport implements the ValueExpression interface.
