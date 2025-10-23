@@ -807,6 +807,17 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 
+	// Wrap the callback to include a BytesBuffer.Reset() for non-cursor requests, to
+	// clean out rows that have already been spooled.
+	resetCallback := func(r *sqltypes.Result, more bool) error {
+		// A server-side cursor allows the caller to fetch results cached on the server-side,
+		// so if a cursor exists, we can't release the buffer memory yet.
+		if c.StatusFlags&uint16(mysql.ServerCursorExists) != 0 {
+			defer buf.Reset()
+		}
+		return callback(r, more)
+	}
+
 	// TODO: send results instead of rows?
 	// Read rows from iter and send them off
 	var rowChan = make(chan sql.ValueRow, 512)
@@ -849,7 +860,7 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 				}
 			}
 			if res.RowsAffected == rowsBatch {
-				if err := callback(res, more); err != nil {
+				if err := resetCallback(res, more); err != nil {
 					return err
 				}
 				res = nil
