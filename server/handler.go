@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"os"
 	"regexp"
 	"runtime/debug"
 	"runtime/trace"
@@ -67,8 +66,6 @@ const (
 	MultiStmtModeOff MultiStmtMode = 0
 	MultiStmtModeOn  MultiStmtMode = 1
 )
-
-var enableRowValue = os.Getenv("DOLT_EXPERIMENTAL_VALUE_ROW") != ""
 
 // Handler is a connection handler for a SQLe engine, implementing the Vitess mysql.Handler interface.
 type Handler struct {
@@ -498,7 +495,7 @@ func (h *Handler) doQuery(
 		r, err = resultForEmptyIter(sqlCtx, rowIter, resultFields)
 	} else if analyzer.FlagIsSet(qFlags, sql.QFlagMax1Row) {
 		r, err = resultForMax1RowIter(sqlCtx, schema, rowIter, resultFields, buf)
-	} else if vr, ok := rowIter.(sql.ValueRowIter); enableRowValue && ok && vr.CanSupport(sqlCtx) {
+	} else if vr, ok := rowIter.(sql.ValueRowIter); ok && vr.CanSupport(sqlCtx) {
 		r, processedAtLeastOneBatch, err = h.resultForValueRowIter(sqlCtx, c, schema, vr, resultFields, buf, callback, more)
 	} else {
 		r, processedAtLeastOneBatch, err = h.resultForDefaultIter(sqlCtx, c, schema, rowIter, callback, resultFields, more, buf)
