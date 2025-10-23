@@ -25,8 +25,7 @@ import (
 
 // GetField is an expression to get the field of a table.
 type GetField struct {
-	fieldType  sql.Type
-	fieldType2 sql.Type2
+	fieldType sql.Type
 	// schemaFormatter is the schemaFormatter used to quote field names
 	schemaFormatter sql.SchemaFormatter
 
@@ -58,13 +57,11 @@ func NewGetField(index int, fieldType sql.Type, fieldName string, nullable bool)
 
 // NewGetFieldWithTable creates a GetField expression with table name. The table name may be an alias.
 func NewGetFieldWithTable(index, tableId int, fieldType sql.Type, db, table, fieldName string, nullable bool) *GetField {
-	fieldType2, _ := fieldType.(sql.Type2)
 	return &GetField{
 		db:         db,
 		table:      table,
 		fieldIndex: index,
 		fieldType:  fieldType,
-		fieldType2: fieldType2,
 		name:       fieldName,
 		nullable:   nullable,
 		exprId:     sql.ColumnId(index),

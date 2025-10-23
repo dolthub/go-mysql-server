@@ -102,7 +102,7 @@ type NumberTypeImpl_ struct {
 }
 
 var _ sql.Type = NumberTypeImpl_{}
-var _ sql.Type2 = NumberTypeImpl_{}
+var _ sql.ValueType = NumberTypeImpl_{}
 var _ sql.CollationCoercible = NumberTypeImpl_{}
 var _ sql.NumberType = NumberTypeImpl_{}
 var _ sql.RoundingNumberType = NumberTypeImpl_{}
@@ -867,7 +867,7 @@ func (t NumberTypeImpl_) Zero2() sql.Value {
 	}
 }
 
-// ToSQLValue implements Type2 interface.
+// ToSQLValue implements ValueType interface.
 func (t NumberTypeImpl_) ToSQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes.Value, error) {
 	if v.IsNull() {
 		return sqltypes.NULL, nil
