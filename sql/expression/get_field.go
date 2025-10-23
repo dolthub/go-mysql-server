@@ -47,7 +47,7 @@ type GetField struct {
 }
 
 var _ sql.Expression = (*GetField)(nil)
-var _ sql.Expression2 = (*GetField)(nil)
+var _ sql.ValueExpression = (*GetField)(nil)
 var _ sql.CollationCoercible = (*GetField)(nil)
 var _ sql.IdExpression = (*GetField)(nil)
 
@@ -133,11 +133,6 @@ func (p *GetField) Type() sql.Type {
 	return p.fieldType
 }
 
-// Type2 returns the type of the field, if this field has a sql.Type2.
-func (p *GetField) Type2() sql.Type2 {
-	return p.fieldType2
-}
-
 // ErrIndexOutOfBounds is returned when the field index is out of the bounds.
 var ErrIndexOutOfBounds = errors.NewKind("unable to find field with index %d in row of %d columns")
 
@@ -149,14 +144,16 @@ func (p *GetField) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return row[p.fieldIndex], nil
 }
 
-func (p *GetField) Eval2(ctx *sql.Context, row sql.ValueRow) (sql.Value, error) {
+// EvalValue implements the ValueExpression interface.
+func (p *GetField) EvalValue(ctx *sql.Context, row sql.ValueRow) (sql.Value, error) {
 	if p.fieldIndex < 0 || p.fieldIndex >= len(row) {
 		return sql.Value{}, ErrIndexOutOfBounds.New(p.fieldIndex, len(row))
 	}
 	return row[p.fieldIndex], nil
 }
 
-func (p *GetField) IsExpr2() bool {
+// CanSupport implements the ValueExpression interface.
+func (p *GetField) CanSupport() bool {
 	return true
 }
 

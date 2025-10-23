@@ -502,7 +502,7 @@ type lookupBuilderKey []interface{}
 type LookupBuilder struct {
 	index     sql.Index
 	keyExprs  []sql.Expression
-	keyExprs2 []sql.Expression2
+	keyExprs2 []sql.ValueExpression
 	// When building the lookup, we will use an MySQLIndexBuilder. If the
 	// extracted lookup value is NULL, but we have a non-NULL safe
 	// comparison, then the lookup should return no values. But if the
@@ -642,7 +642,7 @@ func (lb *LookupBuilder) GetKey2(ctx *sql.Context, row sql.ValueRow) (lookupBuil
 	}
 	for i := range lb.keyExprs {
 		var err error
-		lb.key[i], err = lb.keyExprs2[i].Eval2(ctx, row)
+		lb.key[i], err = lb.keyExprs2[i].EvalValue(ctx, row)
 		if err != nil {
 			return nil, err
 		}

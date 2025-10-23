@@ -34,7 +34,7 @@ type Literal struct {
 }
 
 var _ sql.Expression = &Literal{}
-var _ sql.Expression2 = &Literal{}
+var _ sql.ValueExpression = &Literal{}
 var _ sql.CollationCoercible = &Literal{}
 var _ sqlparser.Injectable = &Literal{}
 
@@ -136,20 +136,14 @@ func (*Literal) Children() []sql.Expression {
 	return nil
 }
 
-func (lit *Literal) Eval2(ctx *sql.Context, row sql.ValueRow) (sql.Value, error) {
+// EvalValue implements the sql.ValueExpression interface.
+func (lit *Literal) EvalValue(ctx *sql.Context, row sql.ValueRow) (sql.Value, error) {
 	return lit.val2, nil
 }
 
-func (lit *Literal) IsExpr2() bool {
+// CanSupport implements the ValueExpression interface.
+func (lit *Literal) CanSupport() bool {
 	return true
-}
-
-func (lit *Literal) Type2() sql.Type2 {
-	t2, ok := lit.Typ.(sql.Type2)
-	if !ok {
-		panic(fmt.Errorf("expected Type2, but was %T", lit.Typ))
-	}
-	return t2
 }
 
 // Value returns the literal value.
