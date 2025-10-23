@@ -401,6 +401,9 @@ func (b *Builder) buildSubquery(inScope *scope, stmt ast.Statement, subQuery str
 		return b.buildDeallocate(inScope, n)
 	case ast.InjectedStatement:
 		return b.buildInjectedStatement(inScope, n)
+	case *ast.Binlog:
+		outScope = inScope.push()
+		outScope.node = plan.NewBinlog(n.Base64Str)
 	}
 	return
 }

@@ -972,3 +972,40 @@ type TypeWithCollation interface {
 	// whether to include the character set and/or collation information.
 	StringWithTableCollation(tableCollation CollationID) string
 }
+
+// ConvertCollationID converts numeric collation IDs to their string names.
+func ConvertCollationID(val any) (any, error) {
+	if _, ok := val.(string); ok {
+		return val, nil
+	}
+
+	var collationID uint64
+	switch v := val.(type) {
+	case int8:
+		collationID = uint64(v)
+	case int16:
+		collationID = uint64(v)
+	case int:
+		collationID = uint64(v)
+	case int32:
+		collationID = uint64(v)
+	case int64:
+		collationID = uint64(v)
+	case uint8:
+		collationID = uint64(v)
+	case uint16:
+		collationID = uint64(v)
+	case uint:
+		collationID = uint64(v)
+	case uint32:
+		collationID = uint64(v)
+	case uint64:
+		collationID = v
+	default:
+		return val, nil
+	}
+
+	// Convert numeric ID to collation name
+	collation := CollationID(collationID).Collation()
+	return collation.Name, nil
+}
