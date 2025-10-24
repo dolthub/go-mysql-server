@@ -912,7 +912,7 @@ func FormatExpr(r exprType) string {
 	case *AntiJoin:
 		return fmt.Sprintf("antijoin %d %d", r.Left.Id, r.Right.Id)
 	case *LookupJoin:
-		return fmt.Sprintf("lookupjoin %d %d", r.Left.Id, r.Right.Id)
+		return fmt.Sprintf("lookupjoin %d %d on %s", r.Left.Id, r.Right.Id, r.Lookup.Index.idx.ID())
 	case *RangeHeapJoin:
 		return fmt.Sprintf("rangeheapjoin %d %d", r.Left.Id, r.Right.Id)
 	case *ConcatJoin:
@@ -929,9 +929,9 @@ func FormatExpr(r exprType) string {
 		return fmt.Sprintf("tablescan: %s", r.Name())
 	case *IndexScan:
 		if r.Alias != "" {
-			return fmt.Sprintf("indexscan: %s", r.Alias)
+			return fmt.Sprintf("indexscan on %s: %s", r.Index.SqlIdx().ID(), r.Alias)
 		}
-		return fmt.Sprintf("indexscan: %s", r.Name())
+		return fmt.Sprintf("indexscan on %s: %s", r.Index.SqlIdx().ID(), r.Name())
 	case *Values:
 		return fmt.Sprintf("values: %s", r.Name())
 	case *TableAlias:
