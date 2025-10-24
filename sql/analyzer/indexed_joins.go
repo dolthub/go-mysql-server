@@ -181,7 +181,7 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 	if err != nil {
 		return nil, err
 	}
-	
+
 	err = addLookupJoins(ctx, m)
 	if err != nil {
 		return nil, err
@@ -216,7 +216,7 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 	// Once we've enumerated all expression groups, we can apply hints. This must be done after expression
 	// groups have been identified, so that the applied hints use the correct metadata.
 	for _, h := range hints {
-		m.Tracer.Log("Applying hint: %s", []interface{}{h.Typ.String()}...)
+		m.Tracer.Log("Applying hint: %s", h.Typ.String())
 		m.ApplyHint(h)
 	}
 
@@ -257,7 +257,7 @@ func mergeJoinsDisabled(hints []memo.Hint) bool {
 func addLookupJoins(ctx *sql.Context, m *memo.Memo) error {
 	m.Tracer.PushDebugContext("addLookupJoins")
 	defer m.Tracer.PopDebugContext()
-	
+
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
 		var right *memo.ExprGroup
 		var join *memo.JoinBase
@@ -281,14 +281,14 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo) error {
 		}
 
 		if len(join.Filter) == 0 {
-			m.Tracer.Log("Skipping lookup join for %T - no filters", []interface{}{e}...)
+			m.Tracer.Log("Skipping lookup join for %T - no filters", e)
 			return nil
 		}
 
-		m.Tracer.Log("Considering lookup join for %T with %d filters", []interface{}{e, len(join.Filter)}...)
+		m.Tracer.Log("Considering lookup join for %T with %d filters", e, len(join.Filter))
 
 		tableId, indexes, extraFilters := lookupCandidates(right.First, false)
-		m.Tracer.Log("Found %d index candidates for lookup join", []interface{}{len(indexes)}...)
+		m.Tracer.Log("Found %d index candidates for lookup join", len(indexes))
 
 		var rt sql.TableNode
 		var aliasName string
@@ -304,7 +304,7 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo) error {
 			}
 			aliasName = n.Name()
 		default:
-			m.Tracer.Log("Skipping lookup join - unsupported table node type: %T", []interface{}{n}...)
+			m.Tracer.Log("Skipping lookup join - unsupported table node type: %T", n)
 			return nil
 		}
 
@@ -345,14 +345,14 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo) error {
 		for i, idx := range indexes {
 			keyExprs, matchedFilters, nullmask := keyExprsForIndex(tableId, idx.Cols(), append(join.Filter, extraFilters...))
 			if keyExprs == nil {
-				m.Tracer.Log("Index %d: no matching key expressions found", []interface{}{i}...)
+				m.Tracer.Log("Index %d: no matching key expressions found", i)
 				continue
 			}
-			m.Tracer.Log("Index %d: found %d key expressions, %d matched filters", []interface{}{i, len(keyExprs), len(matchedFilters)}...)
+			m.Tracer.Log("Index %d: found %d key expressions, %d matched filters", i, len(keyExprs), len(matchedFilters))
 
 			ita, err := plan.NewIndexedAccessForTableNode(ctx, rt, plan.NewLookupBuilder(idx.SqlIdx(), keyExprs, nullmask))
 			if err != nil {
-				m.Tracer.Log("Index %d: failed to create indexed table access: %v", []interface{}{i, err}...)
+				m.Tracer.Log("Index %d: failed to create indexed table access: %v", i, err)
 				return err
 			}
 			lookup := &memo.IndexScan{
@@ -374,7 +374,7 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo) error {
 				}
 			}
 
-			m.Tracer.Log("Adding lookup join with index %d, %d remaining filters", []interface{}{i, len(filters)}...)
+			m.Tracer.Log("Adding lookup join with index %d, %d remaining filters", i, len(filters))
 			m.MemoizeLookupJoin(e.Group(), join.Left, join.Right, join.Op, filters, lookup)
 		}
 		return nil
@@ -460,7 +460,7 @@ func exprRefsTable(e sql.Expression, tableId sql.TableId) bool {
 func convertSemiToInnerJoin(m *memo.Memo) error {
 	m.Tracer.PushDebugContext("convertSemiToInnerJoin")
 	defer m.Tracer.PopDebugContext()
-	
+
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
 		semi, ok := e.(*memo.SemiJoin)
 		if !ok {
@@ -553,7 +553,7 @@ func convertSemiToInnerJoin(m *memo.Memo) error {
 func convertAntiToLeftJoin(m *memo.Memo) error {
 	m.Tracer.PushDebugContext("convertAntiToLeftJoin")
 	defer m.Tracer.PopDebugContext()
-	
+
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
 		anti, ok := e.(*memo.AntiJoin)
 		if !ok {
@@ -660,7 +660,7 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 func addRightSemiJoins(ctx *sql.Context, m *memo.Memo) error {
 	m.Tracer.PushDebugContext("addRightSemiJoins")
 	defer m.Tracer.PopDebugContext()
-	
+
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
 		semi, ok := e.(*memo.SemiJoin)
 		if !ok {
@@ -784,7 +784,7 @@ func dfsLookupCandidates(rel memo.RelExpr, limitOk bool) (sql.TableId, []*memo.I
 func addCrossHashJoins(m *memo.Memo) error {
 	m.Tracer.PushDebugContext("addCrossHashJoins")
 	defer m.Tracer.PopDebugContext()
-	
+
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
 		switch e.(type) {
 		case *memo.CrossJoin:
@@ -823,7 +823,7 @@ func addCrossHashJoins(m *memo.Memo) error {
 func addHashJoins(m *memo.Memo) error {
 	m.Tracer.PushDebugContext("addHashJoins")
 	defer m.Tracer.PopDebugContext()
-	
+
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
 		switch e.(type) {
 		case *memo.InnerJoin, *memo.LeftJoin:
@@ -833,11 +833,11 @@ func addHashJoins(m *memo.Memo) error {
 
 		join := e.(memo.JoinRel).JoinPrivate()
 		if len(join.Filter) == 0 {
-			m.Tracer.Log("Skipping hash join for %T - no filters", []interface{}{e}...)
+			m.Tracer.Log("Skipping hash join for %T - no filters", e)
 			return nil
 		}
 
-		m.Tracer.Log("Considering hash join for %T with %d filters", []interface{}{e, len(join.Filter)}...)
+		m.Tracer.Log("Considering hash join for %T with %d filters", e, len(join.Filter))
 
 		var fromExpr, toExpr []sql.Expression
 		for i, f := range join.Filter {
@@ -847,18 +847,18 @@ func addHashJoins(m *memo.Memo) error {
 						satisfiesScalarRefs(f.Right(), join.Right.RelProps.OutputTables()) {
 					fromExpr = append(fromExpr, f.Right())
 					toExpr = append(toExpr, f.Left())
-					m.Tracer.Log("Filter %d: left->right hash key mapping", []interface{}{i}...)
+					m.Tracer.Log("Filter %d: left->right hash key mapping", i)
 				} else if satisfiesScalarRefs(f.Right(), join.Left.RelProps.OutputTables()) &&
 						satisfiesScalarRefs(f.Left(), join.Right.RelProps.OutputTables()) {
 					fromExpr = append(fromExpr, f.Left())
 					toExpr = append(toExpr, f.Right())
-					m.Tracer.Log("Filter %d: right->left hash key mapping", []interface{}{i}...)
+					m.Tracer.Log("Filter %d: right->left hash key mapping", i)
 				} else {
-					m.Tracer.Log("Filter %d: does not satisfy scalar refs for hash join", []interface{}{i}...)
+					m.Tracer.Log("Filter %d: does not satisfy scalar refs for hash join", i)
 					return nil
 				}
 			default:
-				m.Tracer.Log("Filter %d: not an equality expression, skipping hash join", []interface{}{i}...)
+				m.Tracer.Log("Filter %d: not an equality expression, skipping hash join", i)
 				return nil
 			}
 		}
@@ -868,7 +868,7 @@ func addHashJoins(m *memo.Memo) error {
 			return nil
 		}
 
-		m.Tracer.Log("Adding hash join with %d key expressions", []interface{}{len(toExpr)}...)
+		m.Tracer.Log("Adding hash join with %d key expressions", len(toExpr))
 		m.MemoizeHashJoin(e.Group(), join, toExpr, fromExpr)
 		return nil
 	})
@@ -960,7 +960,7 @@ func getRangeFilters(filters []sql.Expression) (ranges []rangeFilter) {
 func addRangeHeapJoin(m *memo.Memo) error {
 	m.Tracer.PushDebugContext("addRangeHeapJoin")
 	defer m.Tracer.PopDebugContext()
-	
+
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
 		switch e.(type) {
 		case *memo.InnerJoin, *memo.LeftJoin:
@@ -985,8 +985,8 @@ func addRangeHeapJoin(m *memo.Memo) error {
 
 		for _, filter := range getRangeFilters(join.Filter) {
 			if !(satisfiesScalarRefs(filter.value, join.Left.RelProps.OutputTables()) &&
-				satisfiesScalarRefs(filter.min, join.Right.RelProps.OutputTables()) &&
-				satisfiesScalarRefs(filter.max, join.Right.RelProps.OutputTables())) {
+					satisfiesScalarRefs(filter.min, join.Right.RelProps.OutputTables()) &&
+					satisfiesScalarRefs(filter.max, join.Right.RelProps.OutputTables())) {
 				return nil
 			}
 			// For now, only match expressions that are exactly a column reference.
@@ -1068,7 +1068,7 @@ func satisfiesScalarRefs(e sql.Expression, tables sql.FastIntSet) bool {
 func addMergeJoins(ctx *sql.Context, m *memo.Memo) error {
 	m.Tracer.PushDebugContext("addMergeJoins")
 	defer m.Tracer.PopDebugContext()
-	
+
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
 		var join *memo.JoinBase
 		switch e := e.(type) {
@@ -1082,11 +1082,11 @@ func addMergeJoins(ctx *sql.Context, m *memo.Memo) error {
 		}
 
 		if len(join.Filter) == 0 {
-			m.Tracer.Log("Skipping merge join for %T - no filters", []interface{}{e}...)
+			m.Tracer.Log("Skipping merge join for %T - no filters", e)
 			return nil
 		}
 
-		m.Tracer.Log("Considering merge join for %T with %d filters", []interface{}{e, len(join.Filter)}...)
+		m.Tracer.Log("Considering merge join for %T with %d filters", e, len(join.Filter))
 
 		leftTabId, lIndexes, lFilters := lookupCandidates(join.Left.First, true)
 		rightTabId, rIndexes, rFilters := lookupCandidates(join.Right.First, true)
@@ -1096,7 +1096,7 @@ func addMergeJoins(ctx *sql.Context, m *memo.Memo) error {
 			return nil
 		}
 
-		m.Tracer.Log("Found %d left indexes, %d right indexes for merge join", []interface{}{len(lIndexes), len(rIndexes)}...)
+		m.Tracer.Log("Found %d left indexes, %d right indexes for merge join", len(lIndexes), len(rIndexes))
 
 		leftTab := join.Left.RelProps.TableIdNodes()[0]
 		rightTab := join.Right.RelProps.TableIdNodes()[0]
@@ -1156,21 +1156,21 @@ func addMergeJoins(ctx *sql.Context, m *memo.Memo) error {
 			if lIndex.Order() == sql.IndexOrderNone {
 				// lookups can be unordered, merge indexes need to
 				// be globally ordered
-				m.Tracer.Log("Left index %d: skipping - unordered index", []interface{}{i}...)
+				m.Tracer.Log("Left index %d: skipping - unordered index", i)
 				continue
 			}
 
 			matchedEqFilters := matchedFiltersForLeftIndex(lIndex, join.Left.RelProps.FuncDeps().Constants(), eqFilters)
-			m.Tracer.Log("Left index %d: matched %d equality filters", []interface{}{i, len(matchedEqFilters)}...)
+			m.Tracer.Log("Left index %d: matched %d equality filters", i, len(matchedEqFilters))
 
 			for len(matchedEqFilters) > 0 {
 				for j, rIndex := range rIndexes {
 					if rIndex.Order() == sql.IndexOrderNone {
-						m.Tracer.Log("Right index %d: skipping - unordered index", []interface{}{j}...)
+						m.Tracer.Log("Right index %d: skipping - unordered index", j)
 						continue
 					}
 					if rightIndexMatchesFilters(rIndex, join.Left.RelProps.FuncDeps().Constants(), matchedEqFilters) {
-						m.Tracer.Log("Found matching index pair: left[%d] <-> right[%d]", []interface{}{i, j}...)
+						m.Tracer.Log("Found matching index pair: left[%d] <-> right[%d]", i, j)
 						jb := join.Copy()
 						if d, ok := jb.Left.First.(*memo.Distinct); ok && lIndex.SqlIdx().IsUnique() {
 							jb.Left = d.Child
@@ -1213,10 +1213,10 @@ func addMergeJoins(ctx *sql.Context, m *memo.Memo) error {
 							return err
 						}
 						if !success {
-							m.Tracer.Log("Failed to create index scan for right index %d", []interface{}{j}...)
+							m.Tracer.Log("Failed to create index scan for right index %d", j)
 							continue
 						}
-						m.Tracer.Log("Adding merge join with left index %d, right index %d", []interface{}{i, j}...)
+						m.Tracer.Log("Adding merge join with left index %d, right index %d", i, j)
 						m.MemoizeMergeJoin(e.Group(), join.Left, join.Right, lIndexScan, rIndexScan, jb.Op.AsMerge(), newFilters, false)
 					}
 				}
