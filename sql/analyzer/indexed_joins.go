@@ -285,8 +285,6 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo) error {
 			return nil
 		}
 
-		m.Tracer.Log("Considering lookup join for %T with %d filters", e, len(join.Filter))
-
 		tableId, indexes, extraFilters := lookupCandidates(right.First, false)
 		m.Tracer.Log("Found %d index candidates for lookup join", len(indexes))
 
@@ -342,17 +340,17 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo) error {
 			return nil
 		}
 
-		for i, idx := range indexes {
+		for _, idx := range indexes {
 			keyExprs, matchedFilters, nullmask := keyExprsForIndex(tableId, idx.Cols(), append(join.Filter, extraFilters...))
 			if keyExprs == nil {
-				m.Tracer.Log("Index %d: no matching key expressions found", i)
+				m.Tracer.Log("Index %s: no matching key expressions found", idx.SqlIdx().ID())
 				continue
 			}
-			m.Tracer.Log("Index %d: found %d key expressions, %d matched filters", i, len(keyExprs), len(matchedFilters))
+			m.Tracer.Log("Index %s: found %d key expressions, %d matched filters", idx.SqlIdx().ID(), len(keyExprs), len(matchedFilters))
 
 			ita, err := plan.NewIndexedAccessForTableNode(ctx, rt, plan.NewLookupBuilder(idx.SqlIdx(), keyExprs, nullmask))
 			if err != nil {
-				m.Tracer.Log("Index %d: failed to create indexed table access: %v", i, err)
+				m.Tracer.Log("Index %s: failed to create indexed table access: %v", idx.SqlIdx().ID(), err)
 				return err
 			}
 			lookup := &memo.IndexScan{
@@ -374,7 +372,7 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo) error {
 				}
 			}
 
-			m.Tracer.Log("Adding lookup join with index %d, %d remaining filters", i, len(filters))
+			m.Tracer.Log("Adding lookup join with index %s, %d remaining filters", idx.SqlIdx().ID(), len(filters))
 			m.MemoizeLookupJoin(e.Group(), join.Left, join.Right, join.Op, filters, lookup)
 		}
 		return nil
@@ -840,25 +838,25 @@ func addHashJoins(m *memo.Memo) error {
 		m.Tracer.Log("Considering hash join for %T with %d filters", e, len(join.Filter))
 
 		var fromExpr, toExpr []sql.Expression
-		for i, f := range join.Filter {
+		for _, f := range join.Filter {
 			switch f := f.(type) {
 			case *expression.Equals:
 				if satisfiesScalarRefs(f.Left(), join.Left.RelProps.OutputTables()) &&
 						satisfiesScalarRefs(f.Right(), join.Right.RelProps.OutputTables()) {
 					fromExpr = append(fromExpr, f.Right())
 					toExpr = append(toExpr, f.Left())
-					m.Tracer.Log("Filter %d: left->right hash key mapping", i)
+					m.Tracer.Log("Filter %s: left->right hash key mapping", f.String())
 				} else if satisfiesScalarRefs(f.Right(), join.Left.RelProps.OutputTables()) &&
 						satisfiesScalarRefs(f.Left(), join.Right.RelProps.OutputTables()) {
 					fromExpr = append(fromExpr, f.Left())
 					toExpr = append(toExpr, f.Right())
-					m.Tracer.Log("Filter %d: right->left hash key mapping", i)
+					m.Tracer.Log("Filter %s: right->left hash key mapping", f.String())
 				} else {
-					m.Tracer.Log("Filter %d: does not satisfy scalar refs for hash join", i)
+					m.Tracer.Log("Filter %s: does not satisfy scalar refs for hash join", f.String())
 					return nil
 				}
 			default:
-				m.Tracer.Log("Filter %d: not an equality expression, skipping hash join", i)
+				m.Tracer.Log("Filter %s: not an equality expression, skipping hash join", f.String())
 				return nil
 			}
 		}
@@ -1152,25 +1150,25 @@ func addMergeJoins(ctx *sql.Context, m *memo.Memo) error {
 		// While matchedFilters is not empty:
 		//    Check to see if any rIndexes match that set of filters
 		//    Remove the last matched filter
-		for i, lIndex := range lIndexes {
+		for _, lIndex := range lIndexes {
 			if lIndex.Order() == sql.IndexOrderNone {
 				// lookups can be unordered, merge indexes need to
 				// be globally ordered
-				m.Tracer.Log("Left index %d: skipping - unordered index", i)
+				m.Tracer.Log("Left index %s: skipping - unordered index", lIndex.SqlIdx().ID())
 				continue
 			}
 
 			matchedEqFilters := matchedFiltersForLeftIndex(lIndex, join.Left.RelProps.FuncDeps().Constants(), eqFilters)
-			m.Tracer.Log("Left index %d: matched %d equality filters", i, len(matchedEqFilters))
+			m.Tracer.Log("Left index %s: matched %d equality filters", lIndex.SqlIdx().ID(), len(matchedEqFilters))
 
 			for len(matchedEqFilters) > 0 {
-				for j, rIndex := range rIndexes {
+				for _, rIndex := range rIndexes {
 					if rIndex.Order() == sql.IndexOrderNone {
-						m.Tracer.Log("Right index %d: skipping - unordered index", j)
+						m.Tracer.Log("Right index %s: skipping - unordered index", rIndex.SqlIdx().ID())
 						continue
 					}
 					if rightIndexMatchesFilters(rIndex, join.Left.RelProps.FuncDeps().Constants(), matchedEqFilters) {
-						m.Tracer.Log("Found matching index pair: left[%d] <-> right[%d]", i, j)
+						m.Tracer.Log("Found matching index pair: left[%s] <-> right[%s]", lIndex.SqlIdx().ID(), rIndex.SqlIdx().ID())
 						jb := join.Copy()
 						if d, ok := jb.Left.First.(*memo.Distinct); ok && lIndex.SqlIdx().IsUnique() {
 							jb.Left = d.Child
@@ -1213,10 +1211,10 @@ func addMergeJoins(ctx *sql.Context, m *memo.Memo) error {
 							return err
 						}
 						if !success {
-							m.Tracer.Log("Failed to create index scan for right index %d", j)
+							m.Tracer.Log("Failed to create index scan for right index %s", rIndex.SqlIdx().ID())
 							continue
 						}
-						m.Tracer.Log("Adding merge join with left index %d, right index %d", i, j)
+						m.Tracer.Log("Adding merge join with left index %s, right index %s", lIndex.SqlIdx().ID(), rIndex.SqlIdx().ID())
 						m.MemoizeMergeJoin(e.Group(), join.Left, join.Right, lIndexScan, rIndexScan, jb.Op.AsMerge(), newFilters, false)
 					}
 				}
