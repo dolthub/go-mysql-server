@@ -331,7 +331,10 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 		}
 		d, _, err := types.Date.Convert(ctx, val)
 		if err != nil {
-			return nil, err
+			if !sql.ErrTruncatedIncorrect.Is(err) {
+				return nil, err
+			}
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		}
 		return d, nil
 	case ConvertToDatetime:
