@@ -407,7 +407,7 @@ func (m *Memo) MemoizeMax1Row(grp, child *ExprGroup) *ExprGroup {
 func (m *Memo) OptimizeRoot() error {
 	m.Tracer.PushDebugContext("OptimizeRoot")
 	defer m.Tracer.PopDebugContext()
-	
+
 	err := m.optimizeMemoGroup(m.root)
 	if err != nil {
 		return err
@@ -432,7 +432,7 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 		return nil
 	}
 
-	m.Tracer.Log("Optimizing group %d", grp.Id)
+	m.Tracer.Log("Optimizing group %d (%s)", grp.Id, grp.String())
 	n := grp.First
 	if _, ok := n.(SourceRel); ok {
 		// We should order the search bottom-up so that physical operators
@@ -449,7 +449,7 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 	}
 
 	for n != nil {
-		m.Tracer.Log("Evaluating plan %T in group %d", n, grp.Id)
+		m.Tracer.Log("Evaluating plan %s in group %d", n.String(), grp.Id)
 		var cost float64
 		for _, g := range n.Children() {
 			err := m.optimizeMemoGroup(g)
@@ -466,12 +466,12 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 		if grp.RelProps.Distinct.IsHash() {
 			if sortedInputs(n) {
 				n.SetDistinct(SortedDistinctOp)
-				m.Tracer.Log("Plan %T: using sorted distinct", n)
+				m.Tracer.Log("Plan %s: using sorted distinct", n.String())
 			} else {
 				n.SetDistinct(HashDistinctOp)
 				d := &Distinct{Child: grp}
 				relCost += float64(m.statsForRel(m.Ctx, d).RowCount())
-				m.Tracer.Log("Plan %T: using hash distinct", n)
+				m.Tracer.Log("Plan %s: using hash distinct", n.String())
 			}
 		} else {
 			n.SetDistinct(NoDistinctOp)
@@ -896,4 +896,69 @@ type RangeHeap struct {
 	Parent                  *JoinBase
 	RangeClosedOnLowerBound bool
 	RangeClosedOnUpperBound bool
+}
+
+// FormatExpr returns a string representation of a relExpr for debugging purposes.
+func FormatExpr(r exprType) string {
+	switch r := r.(type) {
+	case *CrossJoin:
+		return fmt.Sprintf("crossjoin %d %d", r.Left.Id, r.Right.Id)
+	case *InnerJoin:
+		return fmt.Sprintf("innerjoin %d %d", r.Left.Id, r.Right.Id)
+	case *LeftJoin:
+		return fmt.Sprintf("leftjoin %d %d", r.Left.Id, r.Right.Id)
+	case *SemiJoin:
+		return fmt.Sprintf("semijoin %d %d", r.Left.Id, r.Right.Id)
+	case *AntiJoin:
+		return fmt.Sprintf("antijoin %d %d", r.Left.Id, r.Right.Id)
+	case *LookupJoin:
+		return fmt.Sprintf("lookupjoin %d %d", r.Left.Id, r.Right.Id)
+	case *RangeHeapJoin:
+		return fmt.Sprintf("rangeheapjoin %d %d", r.Left.Id, r.Right.Id)
+	case *ConcatJoin:
+		return fmt.Sprintf("concatjoin %d %d", r.Left.Id, r.Right.Id)
+	case *HashJoin:
+		return fmt.Sprintf("hashjoin %d %d", r.Left.Id, r.Right.Id)
+	case *MergeJoin:
+		return fmt.Sprintf("mergejoin %d %d", r.Left.Id, r.Right.Id)
+	case *FullOuterJoin:
+		return fmt.Sprintf("fullouterjoin %d %d", r.Left.Id, r.Right.Id)
+	case *LateralJoin:
+		return fmt.Sprintf("lateraljoin %d %d", r.Left.Id, r.Right.Id)
+	case *TableScan:
+		return fmt.Sprintf("tablescan: %s", r.Name())
+	case *IndexScan:
+		if r.Alias != "" {
+			return fmt.Sprintf("indexscan: %s", r.Alias)
+		}
+		return fmt.Sprintf("indexscan: %s", r.Name())
+	case *Values:
+		return fmt.Sprintf("values: %s", r.Name())
+	case *TableAlias:
+		return fmt.Sprintf("tablealias: %s", r.Name())
+	case *RecursiveTable:
+		return fmt.Sprintf("recursivetable: %s", r.Name())
+	case *RecursiveCte:
+		return fmt.Sprintf("recursivecte: %s", r.Name())
+	case *SubqueryAlias:
+		return fmt.Sprintf("subqueryalias: %s", r.Name())
+	case *TableFunc:
+		return fmt.Sprintf("tablefunc: %s", r.Name())
+	case *JSONTable:
+		return fmt.Sprintf("jsontable: %s", r.Name())
+	case *EmptyTable:
+		return fmt.Sprintf("emptytable: %s", r.Name())
+	case *SetOp:
+		return fmt.Sprintf("setop: %s", r.Name())
+	case *Project:
+		return fmt.Sprintf("project: %d", r.Child.Id)
+	case *Distinct:
+		return fmt.Sprintf("distinct: %d", r.Child.Id)
+	case *Max1Row:
+		return fmt.Sprintf("max1row: %d", r.Child.Id)
+	case *Filter:
+		return fmt.Sprintf("filter: %d", r.Child.Id)
+	default:
+		panic(fmt.Sprintf("unknown RelExpr type: %T", r))
+	}
 }
