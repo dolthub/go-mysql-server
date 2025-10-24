@@ -2715,6 +2715,14 @@ var InsertErrorScripts = []ScriptTest{
 		Query:       "insert into t values ('2020-01-01 a')",
 		ExpectedErr: sql.ErrInvalidValue,
 	},
+	{
+		Name: "try inserting incorrect date value",
+		SetUpScript: []string{
+			"create table t (d date)",
+		},
+		Query:       "insert into t values ('2020-01-01 a')",
+		ExpectedErr: sql.ErrInvalidValue,
+	},
 }
 
 var InsertIgnoreScripts = []ScriptTest{
