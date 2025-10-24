@@ -4286,6 +4286,12 @@ SELECT * FROM cte WHERE  d = 2;`,
 		Expected: []sql.Row{{true}},
 	},
 	{
+		Query:                 "select cast('2020-01-01 a' as date)",
+		ExpectedWarning:       1292,
+		ExpectedWarningsCount: 1,
+		Expected:              []sql.Row{{time.Date(2020, time.January, 1, 0, 0, 0, 0, time.UTC)}},
+	},
+	{
 		Query: `SELECT * FROM (SELECT * FROM (SELECT * FROM (SELECT * FROM othertable) othertable_one) othertable_two) othertable_three WHERE s2 = 'first'`,
 		Expected: []sql.Row{
 			{"first", int64(3)},
