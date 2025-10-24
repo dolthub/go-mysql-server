@@ -210,7 +210,11 @@ func (h defaultAuthorizationHandler) HandleAuth(ctx *sql.Context, aqs sql.Author
 			state.db.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_AlterRoutine)) ||
 			state.db.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Execute))
 	case ast.AuthType_SUPER:
-		privilegeTypes = []sql.PrivilegeType{sql.PrivilegeType_Super}
+		// Check for SUPER privilege (also checks for BINLOG_ADMIN and REPLICATION_APPLIER dynamic privileges)
+		// This is used by statements like BINLOG, KILL, and various SET operations
+		hasPrivileges = state.db.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(sql.PrivilegeCheckSubject{}, sql.PrivilegeType_Super)) ||
+			state.db.UserHasPrivileges(ctx, sql.NewDynamicPrivilegedOperation("binlog_admin")) ||
+			state.db.UserHasPrivileges(ctx, sql.NewDynamicPrivilegedOperation("replication_applier"))
 	case ast.AuthType_TRIGGER:
 		privilegeTypes = []sql.PrivilegeType{sql.PrivilegeType_Trigger}
 	case ast.AuthType_UPDATE:
