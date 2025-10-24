@@ -401,6 +401,15 @@ func (b *Builder) buildSubquery(inScope *scope, stmt ast.Statement, subQuery str
 		return b.buildDeallocate(inScope, n)
 	case ast.InjectedStatement:
 		return b.buildInjectedStatement(inScope, n)
+	case *ast.Binlog:
+		// Check authorization before executing BINLOG statement
+		if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, n.Auth); err != nil && b.authEnabled {
+			b.handleErr(err)
+		}
+		outScope = inScope.push()
+		binlogNode := plan.NewBinlog(n.Base64Str)
+		binlogNode.Catalog = b.cat
+		outScope.node = binlogNode
 	}
 	return
 }

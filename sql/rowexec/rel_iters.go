@@ -16,6 +16,7 @@ package rowexec
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 
@@ -392,18 +393,22 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 	if err != nil {
 		return err
 	}
+
 	err = validateSystemVariableValue(sysVar.Name, val)
-	if err != nil {
-		return err
-	}
-	err = sysVar.Scope.SetValue(ctx, sysVar.Name, val)
 	if err != nil {
 		return err
 	}
 
 	// Setting `character_set_connection` and `collation_connection` will set the corresponding variable
 	// Setting `character_set_server` and `collation_server` will set the corresponding variable
+	// Handle MariaDB binlog numeric conversions for sql_mode and collation IDs
 	switch strings.ToLower(sysVar.Name) {
+	case "sql_mode":
+		val, err = sql.ConvertSqlModeBitmask(val)
+		if err != nil {
+			return err
+		}
+		return sysVar.Scope.SetValue(ctx, sysVar.Name, val)
 	case "character_set_connection":
 		if val == nil {
 			return sysVar.Scope.SetValue(ctx, "collation_connection", val)
@@ -420,8 +425,17 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 		collationName := charset.DefaultCollation().Name()
 		return sysVar.Scope.SetValue(ctx, "collation_connection", collationName)
 	case "collation_connection":
+		// Convert numeric collation ID to name (from MariaDB binlogs)
+		val, err = sql.ConvertCollationID(val)
+		if err != nil {
+			return err
+		}
+		err = sysVar.Scope.SetValue(ctx, sysVar.Name, val)
+		if err != nil {
+			return err
+		}
 		if val == nil {
-			return sysVar.Scope.SetValue(ctx, "character_set_connection", val)
+			return sysVar.Scope.SetValue(ctx, "character_set_connection", nil)
 		}
 		valStr, ok := val.(string)
 		if !ok {
@@ -450,8 +464,17 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 		collationName := charset.DefaultCollation().Name()
 		return sysVar.Scope.SetValue(ctx, "collation_server", collationName)
 	case "collation_server":
+		// Convert numeric collation ID to name (from MariaDB binlogs)
+		val, err = sql.ConvertCollationID(val)
+		if err != nil {
+			return err
+		}
+		err = sysVar.Scope.SetValue(ctx, sysVar.Name, val)
+		if err != nil {
+			return err
+		}
 		if val == nil {
-			return sysVar.Scope.SetValue(ctx, "character_set_server", val)
+			return sysVar.Scope.SetValue(ctx, "character_set_server", nil)
 		}
 		valStr, ok := val.(string)
 		if !ok {
@@ -464,8 +487,23 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 		}
 		charsetName := collation.CharacterSet().Name()
 		return sysVar.Scope.SetValue(ctx, "character_set_server", charsetName)
+	case "collation_database":
+		// Convert numeric collation ID to name (from MariaDB binlogs)
+		val, err = sql.ConvertCollationID(val)
+		if err != nil {
+			return err
+		}
+		return sysVar.Scope.SetValue(ctx, sysVar.Name, val)
+	case "lc_time_names":
+		// TODO: convert numeric locale ID to locale name
+		switch val.(type) {
+		case int8, int16, int, int32, int64, uint8, uint16, uint, uint32, uint64:
+			val = fmt.Sprintf("%v", val)
+		}
+		return sysVar.Scope.SetValue(ctx, sysVar.Name, val)
+	default:
+		return sysVar.Scope.SetValue(ctx, sysVar.Name, val)
 	}
-	return nil
 }
 
 func validateSystemVariableValue(sysVarName string, val interface{}) error {
