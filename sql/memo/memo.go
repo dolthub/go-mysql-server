@@ -511,8 +511,9 @@ func (m *Memo) updateBest(grp *ExprGroup, n RelExpr, cost float64) {
 		}
 		return
 	}
-	grp.updateBest(n, cost)
-	m.Tracer.Log("Updated best plan for group %d to plan %s with cost %.2f", grp.Id, n.String(), cost)
+	if grp.updateBest(n, cost) {
+		m.Tracer.Log("Updated best plan for group %d to plan %s with cost %.2f", grp.Id, n.String(), cost)
+	}
 }
 
 func (m *Memo) BestRootPlan(ctx *sql.Context) (sql.Node, error) {
