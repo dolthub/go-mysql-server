@@ -501,11 +501,13 @@ func (m *Memo) updateBest(grp *ExprGroup, n RelExpr, cost float64) {
 				m.Tracer.Log("Set best plan for group %d to hinted plan %s with cost %.2f", grp.Id, n.String(), cost)
 				return
 			}
-			grp.updateBest(n, cost)
-			m.Tracer.Log("Updated best plan for group %d to hinted plan %s with cost %.2f", grp.Id, n.String(), cost)
+			if grp.updateBest(n, cost) {
+				m.Tracer.Log("Updated best plan for group %d to hinted plan %s with cost %.2f", grp.Id, n.String(), cost)
+			}
 		} else if grp.Best == nil || !grp.HintOk {
-			grp.updateBest(n, cost)
-			m.Tracer.Log("Updated best plan for group %d to plan %s with cost %.2f (no hints satisfied)", grp.Id, n.String(), cost)
+			if grp.updateBest(n, cost) {
+				m.Tracer.Log("Updated best plan for group %d to plan %s with cost %.2f (no hints satisfied)", grp.Id, n.String(), cost)
+			}
 		}
 		return
 	}

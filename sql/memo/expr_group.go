@@ -77,14 +77,15 @@ func (e *ExprGroup) children() []*ExprGroup {
 	return children
 }
 
-// updateBest updates a group's Best to the given expression or a hinted
-// operator if the hinted plan is not found. Join operator is applied as
-// a local rather than global property.
-func (e *ExprGroup) updateBest(n RelExpr, grpCost float64) {
+// updateBest updates a group's Best to the given expression if the cost is lower than the current best.
+// Returns whether the best plan was updated.
+func (e *ExprGroup) updateBest(n RelExpr, grpCost float64) bool {
 	if e.Best == nil || grpCost < e.Cost {
 		e.Best = n
 		e.Cost = grpCost
+		return true
 	}
+	return false
 }
 
 func (e *ExprGroup) finalize(node sql.Node) (sql.Node, error) {
