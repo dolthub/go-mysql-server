@@ -795,3 +795,80 @@ func (r *Filter) Children() []*ExprGroup {
 func (r *Filter) outputCols() sql.ColSet {
 	return r.Child.RelProps.OutputCols()
 }
+
+func buildRelExpr(b *ExecBuilder, r RelExpr, children ...sql.Node) (sql.Node, error) {
+	var result sql.Node
+	var err error
+
+	switch r := r.(type) {
+	case *CrossJoin:
+		result, err = b.buildCrossJoin(r, children...)
+	case *InnerJoin:
+		result, err = b.buildInnerJoin(r, children...)
+	case *LeftJoin:
+		result, err = b.buildLeftJoin(r, children...)
+	case *SemiJoin:
+		result, err = b.buildSemiJoin(r, children...)
+	case *AntiJoin:
+		result, err = b.buildAntiJoin(r, children...)
+	case *LookupJoin:
+		result, err = b.buildLookupJoin(r, children...)
+	case *RangeHeapJoin:
+		result, err = b.buildRangeHeapJoin(r, children...)
+	case *ConcatJoin:
+		result, err = b.buildConcatJoin(r, children...)
+	case *HashJoin:
+		result, err = b.buildHashJoin(r, children...)
+	case *MergeJoin:
+		result, err = b.buildMergeJoin(r, children...)
+	case *FullOuterJoin:
+		result, err = b.buildFullOuterJoin(r, children...)
+	case *LateralJoin:
+		result, err = b.buildLateralJoin(r, children...)
+	case *TableScan:
+		result, err = b.buildTableScan(r, children...)
+	case *IndexScan:
+		result, err = b.buildIndexScan(r, children...)
+	case *Values:
+		result, err = b.buildValues(r, children...)
+	case *TableAlias:
+		result, err = b.buildTableAlias(r, children...)
+	case *RecursiveTable:
+		result, err = b.buildRecursiveTable(r, children...)
+	case *RecursiveCte:
+		result, err = b.buildRecursiveCte(r, children...)
+	case *SubqueryAlias:
+		result, err = b.buildSubqueryAlias(r, children...)
+	case *TableFunc:
+		result, err = b.buildTableFunc(r, children...)
+	case *JSONTable:
+		result, err = b.buildJSONTable(r, children...)
+	case *EmptyTable:
+		result, err = b.buildEmptyTable(r, children...)
+	case *SetOp:
+		result, err = b.buildSetOp(r, children...)
+	case *Project:
+		result, err = b.buildProject(r, children...)
+	case *Distinct:
+		result, err = b.buildDistinct(r, children...)
+	case *Max1Row:
+		result, err = b.buildMax1Row(r, children...)
+	case *Filter:
+		result, err = b.buildFilter(r, children...)
+	default:
+		panic(fmt.Sprintf("unknown RelExpr type: %T", r))
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	if withDescribeStats, ok := result.(sql.WithDescribeStats); ok {
+		withDescribeStats.SetDescribeStats(*DescribeStats(r))
+	}
+	result, err = r.Group().finalize(result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}

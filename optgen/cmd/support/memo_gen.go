@@ -71,6 +71,7 @@ func (g *MemoGen) Generate(defns GenDefs, w io.Writer) {
 			g.genChildlessGroupInterface(defn)
 		}
 	}
+	g.genBuildRelExpr(g.defns)
 }
 
 func (g *MemoGen) genImport() {
@@ -200,5 +201,33 @@ func (g *MemoGen) genUnaryGroupInterface(defn ExprDef) {
 	}
 
 	fmt.Fprintf(g.w, "}\n\n")
+}
 
+func (g *MemoGen) genBuildRelExpr(defns []ExprDef) {
+	fmt.Fprintf(g.w, "func buildRelExpr(b *ExecBuilder, r RelExpr, children ...sql.Node) (sql.Node, error) {\n")
+	fmt.Fprintf(g.w, "  var result sql.Node\n")
+	fmt.Fprintf(g.w, "  var err error\n\n")
+	fmt.Fprintf(g.w, "  switch r := r.(type) {\n")
+	for _, d := range defns {
+		if d.SkipExec {
+			continue
+		}
+		fmt.Fprintf(g.w, "  case *%s:\n", d.Name)
+		fmt.Fprintf(g.w, "  result, err = b.build%s(r, children...)\n", strings.Title(d.Name))
+	}
+	fmt.Fprintf(g.w, "  default:\n")
+	fmt.Fprintf(g.w, "    panic(fmt.Sprintf(\"unknown RelExpr type: %%T\", r))\n")
+	fmt.Fprintf(g.w, "  }\n\n")
+	fmt.Fprintf(g.w, "  if err != nil {\n")
+	fmt.Fprintf(g.w, "    return nil, err\n")
+	fmt.Fprintf(g.w, "  }\n\n")
+	fmt.Fprintf(g.w, "if withDescribeStats, ok := result.(sql.WithDescribeStats); ok {\n")
+	fmt.Fprintf(g.w, "	withDescribeStats.SetDescribeStats(*DescribeStats(r))\n")
+	fmt.Fprintf(g.w, "}\n")
+	fmt.Fprintf(g.w, "  result, err = r.Group().finalize(result)\n")
+	fmt.Fprintf(g.w, "  if err != nil {\n")
+	fmt.Fprintf(g.w, "    return nil, err\n")
+	fmt.Fprintf(g.w, "  }\n")
+	fmt.Fprintf(g.w, "  return result, nil\n")
+	fmt.Fprintf(g.w, "}\n\n")
 }
