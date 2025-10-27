@@ -220,7 +220,7 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 		m.ApplyHint(h)
 	}
 
-	m.Tracer.Log("Starting cost-based optimization")
+	m.Tracer.Log("Starting cost-based optimization for groups %s", m)
 	err = m.OptimizeRoot()
 	if err != nil {
 		return nil, err
@@ -835,7 +835,7 @@ func addHashJoins(m *memo.Memo) error {
 			return nil
 		}
 
-		m.Tracer.Log("Considering hash join for %T with %d filters", e, len(join.Filter))
+		m.Tracer.Log("Considering hash join with %d filters", len(join.Filter))
 
 		var fromExpr, toExpr []sql.Expression
 		for _, f := range join.Filter {
@@ -845,12 +845,12 @@ func addHashJoins(m *memo.Memo) error {
 						satisfiesScalarRefs(f.Right(), join.Right.RelProps.OutputTables()) {
 					fromExpr = append(fromExpr, f.Right())
 					toExpr = append(toExpr, f.Left())
-					m.Tracer.Log("Filter %s: left->right hash key mapping", f.String())
+					m.Tracer.Log("Filter %s: found a left->right hash key mapping", f.String())
 				} else if satisfiesScalarRefs(f.Right(), join.Left.RelProps.OutputTables()) &&
 						satisfiesScalarRefs(f.Left(), join.Right.RelProps.OutputTables()) {
 					fromExpr = append(fromExpr, f.Left())
 					toExpr = append(toExpr, f.Right())
-					m.Tracer.Log("Filter %s: right->left hash key mapping", f.String())
+					m.Tracer.Log("Filter %s: found a right->left hash key mapping", f.String())
 				} else {
 					m.Tracer.Log("Filter %s: does not satisfy scalar refs for hash join", f.String())
 					return nil

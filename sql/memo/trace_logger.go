@@ -15,6 +15,7 @@
 package memo
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -48,9 +49,9 @@ func (a *TraceLogger) Log(msg string, args ...interface{}) {
 	if a != nil && a.traceEnabled {
 		if len(a.contextStack) > 0 {
 			ctx := strings.Join(a.contextStack, "/")
-			log.Infof("%s: "+msg, append([]interface{}{ctx}, args...)...)
+			fmt.Printf("%s: "+msg+"\n", append([]interface{}{ctx}, args...)...)
 		} else {
-			log.Infof(msg, args...)
+			fmt.Printf(msg+"\n", args...)
 		}
 	}
 }

@@ -607,6 +607,10 @@ func (m *Memo) SetJoinOp(op HintType, left, right string) {
 	m.hints.ops = append(m.hints.ops, hint)
 }
 
+var _ fmt.Stringer = (*Memo)(nil)
+
+// var _ fmt.Formatter = (*Memo)(nil)
+
 func (m *Memo) String() string {
 	exprs := make([]string, m.cnt)
 	groups := make([]*ExprGroup, 0)
@@ -640,6 +644,10 @@ func (m *Memo) String() string {
 	}
 	return b.String()
 }
+
+// func (m *Memo) Format(f fmt.State, verb rune) {
+// 	return m.String()
+// }
 
 type tableProps struct {
 	grpToName map[GroupId]string
