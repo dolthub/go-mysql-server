@@ -1,5 +1,3 @@
-//go:build gms_pure_go
-
 package regex
 
 import (
