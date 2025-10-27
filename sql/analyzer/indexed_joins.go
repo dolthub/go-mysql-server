@@ -826,6 +826,9 @@ func addHashJoins(m *memo.Memo) error {
 	defer m.Tracer.PopDebugContext()
 
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
+		m.Tracer.PushDebugContext(e.String())
+		defer m.Tracer.PopDebugContext()
+
 		switch e.(type) {
 		case *memo.InnerJoin, *memo.LeftJoin:
 		default:
@@ -848,18 +851,18 @@ func addHashJoins(m *memo.Memo) error {
 						satisfiesScalarRefs(f.Right(), join.Right.RelProps.OutputTables()) {
 					fromExpr = append(fromExpr, f.Right())
 					toExpr = append(toExpr, f.Left())
-					m.Tracer.Log("Filter %s: found a left->right hash key mapping", f.String())
+					m.Tracer.Log("Filter %s: found a left->right hash key mapping", f)
 				} else if satisfiesScalarRefs(f.Right(), join.Left.RelProps.OutputTables()) &&
 						satisfiesScalarRefs(f.Left(), join.Right.RelProps.OutputTables()) {
 					fromExpr = append(fromExpr, f.Left())
 					toExpr = append(toExpr, f.Right())
-					m.Tracer.Log("Filter %s: found a right->left hash key mapping", f.String())
+					m.Tracer.Log("Filter %s: found a right->left hash key mapping", f)
 				} else {
-					m.Tracer.Log("Filter %s: does not satisfy scalar refs for hash join", f.String())
+					m.Tracer.Log("Filter %s: does not satisfy scalar refs for hash join", f)
 					return nil
 				}
 			default:
-				m.Tracer.Log("Filter %s: not an equality expression, skipping hash join", f.String())
+				m.Tracer.Log("Filter %s: not an equality expression, skipping hash join", f)
 				return nil
 			}
 		}
@@ -1071,6 +1074,9 @@ func addMergeJoins(ctx *sql.Context, m *memo.Memo) error {
 	defer m.Tracer.PopDebugContext()
 
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
+		m.Tracer.PushDebugContext(e.String())
+		defer m.Tracer.PopDebugContext()
+
 		var join *memo.JoinBase
 		switch e := e.(type) {
 		case *memo.InnerJoin:
