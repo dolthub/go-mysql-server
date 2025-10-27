@@ -401,7 +401,6 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 
 	// Setting `character_set_connection` and `collation_connection` will set the corresponding variable
 	// Setting `character_set_server` and `collation_server` will set the corresponding variable
-	// Handle MariaDB binlog numeric conversions for sql_mode and collation IDs
 	switch strings.ToLower(sysVar.Name) {
 	case "sql_mode":
 		val, err = sql.ConvertSqlModeBitmask(val)
@@ -425,7 +424,6 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 		collationName := charset.DefaultCollation().Name()
 		return sysVar.Scope.SetValue(ctx, "collation_connection", collationName)
 	case "collation_connection":
-		// Convert numeric collation ID to name (from MariaDB binlogs)
 		val, err = sql.ConvertCollationID(val)
 		if err != nil {
 			return err
@@ -464,7 +462,6 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 		collationName := charset.DefaultCollation().Name()
 		return sysVar.Scope.SetValue(ctx, "collation_server", collationName)
 	case "collation_server":
-		// Convert numeric collation ID to name (from MariaDB binlogs)
 		val, err = sql.ConvertCollationID(val)
 		if err != nil {
 			return err
@@ -488,7 +485,6 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 		charsetName := collation.CharacterSet().Name()
 		return sysVar.Scope.SetValue(ctx, "character_set_server", charsetName)
 	case "collation_database":
-		// Convert numeric collation ID to name (from MariaDB binlogs)
 		val, err = sql.ConvertCollationID(val)
 		if err != nil {
 			return err
@@ -501,9 +497,8 @@ func setSystemVar(ctx *sql.Context, sysVar *expression.SystemVar, right sql.Expr
 			val = fmt.Sprintf("%v", val)
 		}
 		return sysVar.Scope.SetValue(ctx, sysVar.Name, val)
-	default:
-		return sysVar.Scope.SetValue(ctx, sysVar.Name, val)
 	}
+	return nil
 }
 
 func validateSystemVariableValue(sysVarName string, val interface{}) error {

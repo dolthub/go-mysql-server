@@ -191,7 +191,7 @@ func (h defaultAuthorizationHandler) HandleAuth(ctx *sql.Context, aqs sql.Author
 	case ast.AuthType_REPLACE:
 		privilegeTypes = []sql.PrivilegeType{sql.PrivilegeType_Insert, sql.PrivilegeType_Delete}
 	case ast.AuthType_REPLICATION:
-		hasPrivileges = state.db.UserHasPrivileges(ctx, sql.NewDynamicPrivilegedOperation(plan.DynamicPrivilege_ReplicationSlaveAdmin))
+		hasPrivileges = state.db.UserHasPrivileges(ctx, sql.NewDynamicPrivilegedOperation("replication_slave_admin"))
 	case ast.AuthType_REPLICATION_CLIENT:
 		privilegeTypes = []sql.PrivilegeType{sql.PrivilegeType_ReplicationClient}
 	case ast.AuthType_REVOKE_ALL:
@@ -215,7 +215,7 @@ func (h defaultAuthorizationHandler) HandleAuth(ctx *sql.Context, aqs sql.Author
 			state.db.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_AlterRoutine)) ||
 			state.db.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Execute))
 	case ast.AuthType_SUPER:
-		hasPrivileges = state.db.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(sql.PrivilegeCheckSubject{}, sql.PrivilegeType_Super))
+		privilegeTypes = []sql.PrivilegeType{sql.PrivilegeType_Super}
 	case ast.AuthType_TRIGGER:
 		privilegeTypes = []sql.PrivilegeType{sql.PrivilegeType_Trigger}
 	case ast.AuthType_UPDATE:
