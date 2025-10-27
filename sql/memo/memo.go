@@ -16,6 +16,7 @@ package memo
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -449,7 +450,7 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 	}
 
 	for n != nil {
-		m.Tracer.Log("Evaluating plan %s in group %d", n.String(), grp.Id)
+		m.Tracer.Log("Evaluating plan %s in group %d", n, grp.Id)
 		var cost float64
 		for _, g := range n.Children() {
 			err := m.optimizeMemoGroup(g)
@@ -466,12 +467,12 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 		if grp.RelProps.Distinct.IsHash() {
 			if sortedInputs(n) {
 				n.SetDistinct(SortedDistinctOp)
-				m.Tracer.Log("Plan %s: using sorted distinct", n.String())
+				m.Tracer.Log("Plan %s: using sorted distinct", n)
 			} else {
 				n.SetDistinct(HashDistinctOp)
 				d := &Distinct{Child: grp}
 				relCost += float64(m.statsForRel(m.Ctx, d).RowCount())
-				m.Tracer.Log("Plan %s: using hash distinct", n.String())
+				m.Tracer.Log("Plan %s: using hash distinct", n)
 			}
 		} else {
 			n.SetDistinct(NoDistinctOp)
@@ -479,7 +480,7 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 
 		n.SetCost(relCost)
 		cost += relCost
-		m.Tracer.Log("Plan %T: relCost=%.2f, totalCost=%.2f", n, relCost, cost)
+		m.Tracer.Log("Plan %s: relCost=%.2f, totalCost=%.2f", n, relCost, cost)
 		m.updateBest(grp, n, cost)
 		n = n.Next()
 	}
@@ -910,66 +911,91 @@ type RangeHeap struct {
 }
 
 // FormatExpr returns a string representation of a relExpr for debugging purposes.
-func FormatExpr(r exprType) string {
+func FormatExpr(r exprType, s fmt.State, verb rune) {
 	switch r := r.(type) {
 	case *CrossJoin:
-		return fmt.Sprintf("crossjoin %d %d", r.Left.Id, r.Right.Id)
+		io.WriteString(s, fmt.Sprintf("crossjoin %d %d", r.Left.Id, r.Right.Id))
 	case *InnerJoin:
-		return fmt.Sprintf("innerjoin %d %d", r.Left.Id, r.Right.Id)
+		io.WriteString(s, fmt.Sprintf("innerjoin %d %d", r.Left.Id, r.Right.Id))
 	case *LeftJoin:
-		return fmt.Sprintf("leftjoin %d %d", r.Left.Id, r.Right.Id)
+		io.WriteString(s, fmt.Sprintf("leftjoin %d %d", r.Left.Id, r.Right.Id))
 	case *SemiJoin:
-		return fmt.Sprintf("semijoin %d %d", r.Left.Id, r.Right.Id)
+		io.WriteString(s, fmt.Sprintf("semijoin %d %d", r.Left.Id, r.Right.Id))
 	case *AntiJoin:
-		return fmt.Sprintf("antijoin %d %d", r.Left.Id, r.Right.Id)
+		io.WriteString(s, fmt.Sprintf("antijoin %d %d", r.Left.Id, r.Right.Id))
 	case *LookupJoin:
-		return fmt.Sprintf("lookupjoin %d %d on %s", r.Left.Id, r.Right.Id, r.Lookup.Index.idx.ID())
+		io.WriteString(s, fmt.Sprintf("lookupjoin %d %d on %s", r.Left.Id, r.Right.Id, r.Lookup.Index.idx.ID()))
 	case *RangeHeapJoin:
-		return fmt.Sprintf("rangeheapjoin %d %d", r.Left.Id, r.Right.Id)
+		io.WriteString(s, fmt.Sprintf("rangeheapjoin %d %d", r.Left.Id, r.Right.Id))
 	case *ConcatJoin:
-		return fmt.Sprintf("concatjoin %d %d", r.Left.Id, r.Right.Id)
+		io.WriteString(s, fmt.Sprintf("concatjoin %d %d", r.Left.Id, r.Right.Id))
 	case *HashJoin:
-		return fmt.Sprintf("hashjoin %d %d", r.Left.Id, r.Right.Id)
+		io.WriteString(s, fmt.Sprintf("hashjoin %d %d", r.Left.Id, r.Right.Id))
 	case *MergeJoin:
-		return fmt.Sprintf("mergejoin %d %d", r.Left.Id, r.Right.Id)
+		io.WriteString(s, fmt.Sprintf("mergejoin %d %d", r.Left.Id, r.Right.Id))
 	case *FullOuterJoin:
-		return fmt.Sprintf("fullouterjoin %d %d", r.Left.Id, r.Right.Id)
+		io.WriteString(s, fmt.Sprintf("fullouterjoin %d %d", r.Left.Id, r.Right.Id))
 	case *LateralJoin:
-		return fmt.Sprintf("lateraljoin %d %d", r.Left.Id, r.Right.Id)
+		io.WriteString(s, fmt.Sprintf("lateraljoin %d %d", r.Left.Id, r.Right.Id))
 	case *TableScan:
-		return fmt.Sprintf("tablescan: %s", r.Name())
+		io.WriteString(s, fmt.Sprintf("tablescan: %s", r.Name()))
 	case *IndexScan:
 		if r.Alias != "" {
-			return fmt.Sprintf("indexscan on %s: %s", r.Index.SqlIdx().ID(), r.Alias)
+			io.WriteString(s, fmt.Sprintf("indexscan on %s: %s", r.Index.SqlIdx().ID(), r.Alias))
 		}
-		return fmt.Sprintf("indexscan on %s: %s", r.Index.SqlIdx().ID(), r.Name())
+		io.WriteString(s, fmt.Sprintf("indexscan on %s: %s", r.Index.SqlIdx().ID(), r.Name()))
 	case *Values:
-		return fmt.Sprintf("values: %s", r.Name())
+		io.WriteString(s, fmt.Sprintf("values: %s", r.Name()))
 	case *TableAlias:
-		return fmt.Sprintf("tablealias: %s", r.Name())
+		io.WriteString(s, fmt.Sprintf("tablealias: %s", r.Name()))
 	case *RecursiveTable:
-		return fmt.Sprintf("recursivetable: %s", r.Name())
+		io.WriteString(s, fmt.Sprintf("recursivetable: %s", r.Name()))
 	case *RecursiveCte:
-		return fmt.Sprintf("recursivecte: %s", r.Name())
+		io.WriteString(s, fmt.Sprintf("recursivecte: %s", r.Name()))
 	case *SubqueryAlias:
-		return fmt.Sprintf("subqueryalias: %s", r.Name())
+		io.WriteString(s, fmt.Sprintf("subqueryalias: %s", r.Name()))
 	case *TableFunc:
-		return fmt.Sprintf("tablefunc: %s", r.Name())
+		io.WriteString(s, fmt.Sprintf("tablefunc: %s", r.Name()))
 	case *JSONTable:
-		return fmt.Sprintf("jsontable: %s", r.Name())
+		io.WriteString(s, fmt.Sprintf("jsontable: %s", r.Name()))
 	case *EmptyTable:
-		return fmt.Sprintf("emptytable: %s", r.Name())
+		io.WriteString(s, fmt.Sprintf("emptytable: %s", r.Name()))
 	case *SetOp:
-		return fmt.Sprintf("setop: %s", r.Name())
+		io.WriteString(s, fmt.Sprintf("setop: %s", r.Name()))
 	case *Project:
-		return fmt.Sprintf("project: %d", r.Child.Id)
+		io.WriteString(s, fmt.Sprintf("project: %d", r.Child.Id))
 	case *Distinct:
-		return fmt.Sprintf("distinct: %d", r.Child.Id)
+		io.WriteString(s, fmt.Sprintf("distinct: %d", r.Child.Id))
 	case *Max1Row:
-		return fmt.Sprintf("max1row: %d", r.Child.Id)
+		io.WriteString(s, fmt.Sprintf("max1row: %d", r.Child.Id))
 	case *Filter:
-		return fmt.Sprintf("filter: %d", r.Child.Id)
+		io.WriteString(s, fmt.Sprintf("filter: %d", r.Child.Id))
 	default:
 		panic(fmt.Sprintf("unknown RelExpr type: %T", r))
 	}
 }
+
+// Format implements fmt.Formatter and can be formatted by the fmt package. The
+// following verbs are supported
+//
+//	%s    print the error. If the error has a Cause it will be
+//	      printed recursively
+//	%v    see %s
+//	%+v   extended format. Each Frame of the error's StackTrace will
+//	      be printed in detail.
+// func FormatExpr(s fmt.State, verb rune) {
+// 	switch verb {
+// 	case 'v':
+// 		if s.Flag('+') {
+// 			io.WriteString(s, err.Error()+"\n")
+// 			err.stack.Format(s, verb)
+// 			return
+// 		}
+//
+// 		fallthrough
+// 	case 's':
+// 		io.WriteString(s, err.Error())
+// 	case 'q':
+// 		fmt.Fprintf(s, "%q", err.Error())
+// 	}
+// }

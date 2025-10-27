@@ -259,6 +259,9 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo) error {
 	defer m.Tracer.PopDebugContext()
 
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
+		m.Tracer.PushDebugContext(e.String())
+		defer m.Tracer.PopDebugContext()
+
 		var right *memo.ExprGroup
 		var join *memo.JoinBase
 

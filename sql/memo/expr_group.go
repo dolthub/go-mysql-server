@@ -169,7 +169,7 @@ func (e *ExprGroup) String() string {
 	sep := ""
 	for n != nil {
 		b.WriteString(sep)
-		b.WriteString(fmt.Sprintf("(%s", FormatExpr(n)))
+		b.WriteString(fmt.Sprintf("(%s", n))
 		if e.Best != nil {
 			cost := n.Cost()
 			if cost == 0 {
