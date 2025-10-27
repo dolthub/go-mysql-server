@@ -153,7 +153,7 @@ func (i *FilterIter) NextValueRow(ctx *sql.Context) (sql.ValueRow, error) {
 	}
 }
 
-// CanSupport implements the sql.ValueRowIter interface.
+// IsValueRowIter implements the sql.ValueRowIter interface.
 func (i *FilterIter) IsValueRowIter(ctx *sql.Context) bool {
 	cond, ok := i.cond.(sql.ValueExpression)
 	if !ok || !cond.IsValueExpression() {
