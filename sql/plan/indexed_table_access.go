@@ -313,7 +313,7 @@ func (i *IndexedTableAccess) getLookup2(ctx *sql.Context, row sql.ValueRow) (sql
 		return i.lookup, nil
 	}
 
-	key, err := i.lb.GetKey2(ctx, row)
+	key, err := i.lb.GetValueRowKey(ctx, row)
 	if err != nil {
 		return sql.IndexLookup{}, err
 	}
@@ -500,9 +500,9 @@ type lookupBuilderKey []interface{}
 // IndexedTableAccess nodes below an indexed join, for example. This struct is
 // also used to implement Expressioner on the IndexedTableAccess node.
 type LookupBuilder struct {
-	index     sql.Index
-	keyExprs  []sql.Expression
-	keyExprs2 []sql.ValueExpression
+	index       sql.Index
+	keyExprs    []sql.Expression
+	keyValExprs []sql.ValueExpression
 	// When building the lookup, we will use an MySQLIndexBuilder. If the
 	// extracted lookup value is NULL, but we have a non-NULL safe
 	// comparison, then the lookup should return no values. But if the
@@ -636,13 +636,13 @@ func (lb *LookupBuilder) GetKey(ctx *sql.Context, row sql.Row) (lookupBuilderKey
 	return lb.key, nil
 }
 
-func (lb *LookupBuilder) GetKey2(ctx *sql.Context, row sql.ValueRow) (lookupBuilderKey, error) {
+func (lb *LookupBuilder) GetValueRowKey(ctx *sql.Context, row sql.ValueRow) (lookupBuilderKey, error) {
 	if lb.key == nil {
 		lb.key = make([]interface{}, len(lb.keyExprs))
 	}
 	for i := range lb.keyExprs {
 		var err error
-		lb.key[i], err = lb.keyExprs2[i].EvalValue(ctx, row)
+		lb.key[i], err = lb.keyValExprs[i].EvalValue(ctx, row)
 		if err != nil {
 			return nil, err
 		}

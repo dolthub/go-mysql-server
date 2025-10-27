@@ -141,8 +141,8 @@ func (lit *Literal) EvalValue(ctx *sql.Context, row sql.ValueRow) (sql.Value, er
 	return lit.val2, nil
 }
 
-// CanSupport implements the ValueExpression interface.
-func (lit *Literal) CanSupport() bool {
+// IsValueRowIter implements the ValueExpression interface.
+func (lit *Literal) IsValueExpression() bool {
 	return types.IsInteger(lit.Typ)
 }
 

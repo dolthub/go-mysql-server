@@ -149,8 +149,8 @@ func (p *GetField) EvalValue(ctx *sql.Context, row sql.ValueRow) (sql.Value, err
 	return row[p.fieldIndex], nil
 }
 
-// CanSupport implements the ValueExpression interface.
-func (p *GetField) CanSupport() bool {
+// IsValueRowIter implements the ValueExpression interface.
+func (p *GetField) IsValueExpression() bool {
 	return true
 }
 

@@ -465,8 +465,8 @@ type ValueExpression interface {
 	Expression
 	// EvalValue evaluates the given row frame and returns a result.
 	EvalValue(ctx *Context, row ValueRow) (Value, error)
-	// CanSupport indicates whether this expression and all its children support ValueExpression.
-	CanSupport() bool
+	// IsValueExpression indicates whether this expression and all its children support ValueExpression.
+	IsValueExpression() bool
 }
 
 var SystemVariables SystemVariableRegistry

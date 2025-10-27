@@ -269,7 +269,7 @@ func (t EnumType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Va
 	return sqltypes.MakeTrusted(sqltypes.Enum, val), nil
 }
 
-func (t EnumType) ToSQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes.Value, error) {
+func (t EnumType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes.Value, error) {
 	if v.IsNull() {
 		return sqltypes.NULL, nil
 	}
@@ -285,7 +285,6 @@ func (t EnumType) ToSQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltyp
 	// TODO: write append style encoder
 	res, ok := charset.Encoder().Encode(encodings.StringToBytes(value)) // TODO: use unsafe string to byte
 	if !ok {
-		// return snippet of the converted value
 		if len(value) > 50 {
 			value = value[:50]
 		}

@@ -70,9 +70,9 @@ type Rows2Cache interface {
 	// Add2 a new row to the cache. If there is no memory available, it will try to
 	// free some memory. If after that there is still no memory available, it
 	// will return an error and erase all the content of the cache.
-	Add2(ValueRow) error
+	AddValueRow(ValueRow) error
 	// Get2 gets all rows.
-	Get2() []ValueRow
+	GetValueRow() []ValueRow
 }
 
 // ErrNoMemoryAvailable is returned when there is no more available memory.

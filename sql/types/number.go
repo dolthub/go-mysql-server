@@ -868,7 +868,7 @@ func (t NumberTypeImpl_) Zero2() sql.Value {
 }
 
 // ToSQLValue implements ValueType interface.
-func (t NumberTypeImpl_) ToSQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes.Value, error) {
+func (t NumberTypeImpl_) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes.Value, error) {
 	if v.IsNull() {
 		return sqltypes.NULL, nil
 	}

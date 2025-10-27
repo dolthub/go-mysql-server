@@ -105,9 +105,9 @@ func (t *TransactionCommittingIter) NextValueRow(ctx *sql.Context) (sql.ValueRow
 }
 
 // CanSupport implements the sql.ValueRowIter interface.
-func (t *TransactionCommittingIter) CanSupport(ctx *sql.Context) bool {
+func (t *TransactionCommittingIter) IsValueRowIter(ctx *sql.Context) bool {
 	childIter, ok := t.childIter.(sql.ValueRowIter)
-	return ok && childIter.CanSupport(ctx)
+	return ok && childIter.IsValueRowIter(ctx)
 }
 
 func (t *TransactionCommittingIter) Close(ctx *sql.Context) error {
