@@ -475,7 +475,7 @@ func (t datetimeType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 	return sqltypes.MakeTrusted(typ, valBytes), nil
 }
 
-func (t datetimeType) ToSQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes.Value, error) {
+func (t datetimeType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes.Value, error) {
 	if v.IsNull() {
 		return sqltypes.NULL, nil
 	}

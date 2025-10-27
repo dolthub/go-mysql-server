@@ -83,15 +83,19 @@ func FormatRow(row Row) string {
 // TODO: most row iters need to be Disposable for CachedResult safety
 type RowIter interface {
 	// Next retrieves the next row. It will return io.EOF if it's the last row.
-	// After retrieving the last row, Close will be automatically closed.
+	// After retrieving the last row, Close will be automatically called.
 	Next(ctx *Context) (Row, error)
 	Closer
 }
 
+// ValueRowIter is an iterator that produces sql.ValueRows.
 type ValueRowIter interface {
-	RowIter
+	// NextValueRow retrieves the next ValueRow. It will return io.EOF if it's the last ValueRow.
+	// After retrieving the last ValueRow, Close will be automatically called.
 	NextValueRow(ctx *Context) (ValueRow, error)
-	CanSupport(ctx *Context) bool
+	// IsValueRowIter checks whether this implementor and all its children support ValueRowIter.
+	IsValueRowIter(ctx *Context) bool
+	Closer
 }
 
 // RowIterToRows converts a row iterator to a slice of rows.

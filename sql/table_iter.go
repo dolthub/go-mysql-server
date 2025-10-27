@@ -117,7 +117,7 @@ func (i *TableRowIter) NextValueRow(ctx *Context) (ValueRow, error) {
 }
 
 // CanSupport implements the sql.ValueRowIter interface.
-func (i *TableRowIter) CanSupport(ctx *Context) bool {
+func (i *TableRowIter) IsValueRowIter(ctx *Context) bool {
 	if i.partition == nil {
 		partition, err := i.partitions.Next(ctx)
 		if err != nil {
@@ -136,7 +136,7 @@ func (i *TableRowIter) CanSupport(ctx *Context) bool {
 		}
 		i.rows = valRowIter
 	}
-	return i.rows.(ValueRowIter).CanSupport(ctx)
+	return i.rows.(ValueRowIter).IsValueRowIter(ctx)
 }
 
 func (i *TableRowIter) Close(ctx *Context) error {

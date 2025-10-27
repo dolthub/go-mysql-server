@@ -1805,7 +1805,7 @@ func TestParse(t *testing.T) {
 	//				[]sql.SortField{
 	//					{
 	//						Column:       expression.NewUnresolvedColumn("baz"),
-	//						Column2:      expression.NewUnresolvedColumn("baz"),
+	//						ValueExprColumn:      expression.NewUnresolvedColumn("baz"),
 	//						Order:        sql.Descending,
 	//						NullOrdering: sql.NullsFirst,
 	//					},
@@ -1844,7 +1844,7 @@ func TestParse(t *testing.T) {
 	//					[]sql.SortField{
 	//						{
 	//							Column:       expression.NewUnresolvedColumn("baz"),
-	//							Column2:      expression.NewUnresolvedColumn("baz"),
+	//							ValueExprColumn:      expression.NewUnresolvedColumn("baz"),
 	//							Order:        sql.Descending,
 	//							NullOrdering: sql.NullsFirst,
 	//						},
@@ -1866,7 +1866,7 @@ func TestParse(t *testing.T) {
 	//					[]sql.SortField{
 	//						{
 	//							Column:       expression.NewUnresolvedColumn("baz"),
-	//							Column2:      expression.NewUnresolvedColumn("baz"),
+	//							ValueExprColumn:      expression.NewUnresolvedColumn("baz"),
 	//							Order:        sql.Descending,
 	//							NullOrdering: sql.NullsFirst,
 	//						},
@@ -2634,13 +2634,13 @@ func TestParse(t *testing.T) {
 	//				[]sql.SortField{
 	//					{
 	//						Column:       expression.NewLiteral(int8(2), types.Int8),
-	//						Column2:      expression.NewLiteral(int8(2), types.Int8),
+	//						ValueExprColumn:      expression.NewLiteral(int8(2), types.Int8),
 	//						Order:        sql.Ascending,
 	//						NullOrdering: sql.NullsFirst,
 	//					},
 	//					{
 	//						Column:       expression.NewLiteral(int8(1), types.Int8),
-	//						Column2:      expression.NewLiteral(int8(1), types.Int8),
+	//						ValueExprColumn:      expression.NewLiteral(int8(1), types.Int8),
 	//						Order:        sql.Ascending,
 	//						NullOrdering: sql.NullsFirst,
 	//					},
@@ -3863,7 +3863,7 @@ func TestParse(t *testing.T) {
 	//						}, sql.SortFields{
 	//							{
 	//								Column:       expression.NewUnresolvedColumn("x"),
-	//								Column2:      expression.NewUnresolvedColumn("x"),
+	//								ValueExprColumn:      expression.NewUnresolvedColumn("x"),
 	//								Order:        sql.Ascending,
 	//								NullOrdering: sql.NullsFirst,
 	//							},
@@ -3896,7 +3896,7 @@ func TestParse(t *testing.T) {
 	//						expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{}, sql.SortFields{
 	//							{
 	//								Column:       expression.NewUnresolvedColumn("x"),
-	//								Column2:      expression.NewUnresolvedColumn("x"),
+	//								ValueExprColumn:      expression.NewUnresolvedColumn("x"),
 	//								Order:        sql.Ascending,
 	//								NullOrdering: sql.NullsFirst,
 	//							},
@@ -3920,7 +3920,7 @@ func TestParse(t *testing.T) {
 	//						expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{}, sql.SortFields{
 	//							{
 	//								Column:       expression.NewUnresolvedColumn("x"),
-	//								Column2:      expression.NewUnresolvedColumn("x"),
+	//								ValueExprColumn:      expression.NewUnresolvedColumn("x"),
 	//								Order:        sql.Ascending,
 	//								NullOrdering: sql.NullsFirst,
 	//							},
@@ -3986,7 +3986,7 @@ func TestParse(t *testing.T) {
 	//						expression.NewUnresolvedFunction("count", true, sql.NewWindowDefinition([]sql.Expression{}, sql.SortFields{
 	//							{
 	//								Column:       expression.NewUnresolvedColumn("x"),
-	//								Column2:      expression.NewUnresolvedColumn("x"),
+	//								ValueExprColumn:      expression.NewUnresolvedColumn("x"),
 	//								Order:        sql.Ascending,
 	//								NullOrdering: sql.NullsFirst,
 	//							},
@@ -4023,7 +4023,7 @@ func TestParse(t *testing.T) {
 	//						expression.NewUnresolvedFunction("row_number", true, sql.NewWindowDefinition([]sql.Expression{}, sql.SortFields{
 	//							{
 	//								Column:       expression.NewUnresolvedColumn("a"),
-	//								Column2:      expression.NewUnresolvedColumn("a"),
+	//								ValueExprColumn:      expression.NewUnresolvedColumn("a"),
 	//								Order:        sql.Ascending,
 	//								NullOrdering: sql.NullsFirst,
 	//							},
@@ -4299,7 +4299,7 @@ func TestParse(t *testing.T) {
 	//					"w1": sql.NewWindowDefinition([]sql.Expression{}, sql.SortFields{
 	//						{
 	//							Column:       expression.NewUnresolvedColumn("x"),
-	//							Column2:      expression.NewUnresolvedColumn("x"),
+	//							ValueExprColumn:      expression.NewUnresolvedColumn("x"),
 	//							Order:        sql.Ascending,
 	//							NullOrdering: sql.NullsFirst,
 	//						},
@@ -4329,7 +4329,7 @@ func TestParse(t *testing.T) {
 	//					"w1": sql.NewWindowDefinition([]sql.Expression{}, sql.SortFields{
 	//						{
 	//							Column:       expression.NewUnresolvedColumn("x"),
-	//							Column2:      expression.NewUnresolvedColumn("x"),
+	//							ValueExprColumn:      expression.NewUnresolvedColumn("x"),
 	//							Order:        sql.Ascending,
 	//							NullOrdering: sql.NullsFirst,
 	//						},
@@ -4838,7 +4838,7 @@ func TestParse(t *testing.T) {
 	//				), true, nil, nil, []sql.SortField{
 	//					{
 	//						Column:       expression.NewLiteral(int8(2), types.Int8),
-	//						Column2:      expression.NewLiteral(int8(2), types.Int8),
+	//						ValueExprColumn:      expression.NewLiteral(int8(2), types.Int8),
 	//						Order:        sql.Ascending,
 	//						NullOrdering: sql.NullsFirst,
 	//					},

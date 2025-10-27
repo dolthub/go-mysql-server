@@ -105,6 +105,15 @@ type Type interface {
 	fmt.Stringer
 }
 
+// ValueType is an extension of the Type interface, that operates over sql.Values.
+type ValueType interface {
+	Type
+	// SQLValue returns the sqltypes.Value for the given sql.Value.
+	// Implementations can optionally use |dest| to append
+	// serialized data, but should not mutate existing data.
+	SQLValue(*Context, Value, []byte) (sqltypes.Value, error)
+}
+
 // TrimStringToNumberPrefix will remove any white space for s and truncate any trailing non-numeric characters.
 func TrimStringToNumberPrefix(ctx *Context, s string, isInt bool) string {
 	if isInt {
@@ -290,11 +299,6 @@ type DecimalType interface {
 func IsDecimalType(t Type) bool {
 	_, ok := t.(DecimalType)
 	return ok
-}
-
-type ValueType interface {
-	Type
-	ToSQLValue(*Context, Value, []byte) (sqltypes.Value, error)
 }
 
 // SpatialColumnType is a node that contains a reference to all spatial types.

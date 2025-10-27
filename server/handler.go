@@ -495,7 +495,7 @@ func (h *Handler) doQuery(
 		r, err = resultForEmptyIter(sqlCtx, rowIter, resultFields)
 	} else if analyzer.FlagIsSet(qFlags, sql.QFlagMax1Row) {
 		r, err = resultForMax1RowIter(sqlCtx, schema, rowIter, resultFields, buf)
-	} else if vr, ok := rowIter.(sql.ValueRowIter); ok && vr.CanSupport(sqlCtx) {
+	} else if vr, ok := rowIter.(sql.ValueRowIter); ok && vr.IsValueRowIter(sqlCtx) {
 		r, processedAtLeastOneBatch, err = h.resultForValueRowIter(sqlCtx, c, schema, vr, resultFields, buf, callback, more)
 	} else {
 		r, processedAtLeastOneBatch, err = h.resultForDefaultIter(sqlCtx, c, schema, rowIter, callback, resultFields, more, buf)
@@ -702,10 +702,7 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 		defer wg.Done()
 		for {
 			if r == nil {
-				r = &sqltypes.Result{
-					Rows:   make([][]sqltypes.Value, 0, rowsBatch),
-					Fields: resultFields,
-				}
+				r = &sqltypes.Result{Fields: resultFields}
 			}
 			if r.RowsAffected == rowsBatch {
 				if err := resetCallback(r, more); err != nil {
@@ -1203,13 +1200,13 @@ func RowValueToSQLValues(ctx *sql.Context, sch sql.Schema, row sql.ValueRow, buf
 			continue
 		}
 		if buf == nil {
-			outVals[i], err = valType.ToSQLValue(ctx, row[i], nil)
+			outVals[i], err = valType.SQLValue(ctx, row[i], nil)
 			if err != nil {
 				return nil, err
 			}
 			continue
 		}
-		outVals[i], err = valType.ToSQLValue(ctx, row[i], buf.Get())
+		outVals[i], err = valType.SQLValue(ctx, row[i], buf.Get())
 		if err != nil {
 			return nil, err
 		}

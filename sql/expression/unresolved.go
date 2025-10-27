@@ -76,9 +76,9 @@ func (uc *UnresolvedColumn) EvalValue(ctx *sql.Context, row sql.ValueRow) (sql.V
 	panic("unresolved column is a placeholder node, but EvalValue was called")
 }
 
-// CanSupport implements the ValueExpression interface.
-func (uc *UnresolvedColumn) CanSupport() bool {
-	panic("unresolved column is a placeholder node, but CanSupport was called")
+// IsValueRowIter implements the ValueExpression interface.
+func (uc *UnresolvedColumn) IsValueExpression() bool {
+	panic("unresolved column is a placeholder node, but IsValueExpression was called")
 }
 
 // Name implements the Nameable interface.

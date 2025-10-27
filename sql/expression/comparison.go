@@ -569,20 +569,20 @@ func (gt *GreaterThan) EvalValue(ctx *sql.Context, row sql.ValueRow) (sql.Value,
 	return res, nil
 }
 
-// CanSupport implements the ValueExpression interface.
-func (gt *GreaterThan) CanSupport() bool {
+// IsValueRowIter implements the ValueExpression interface.
+func (gt *GreaterThan) IsValueExpression() bool {
 	l, ok := gt.comparison.LeftChild.(sql.ValueExpression)
 	if !ok {
 		return false
 	}
-	if !l.CanSupport() {
+	if !l.IsValueExpression() {
 		return false
 	}
 	r, ok := gt.comparison.RightChild.(sql.ValueExpression)
 	if !ok {
 		return false
 	}
-	if !r.CanSupport() {
+	if !r.IsValueExpression() {
 		return false
 	}
 	return true

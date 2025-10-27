@@ -86,19 +86,19 @@ func (s *Sorter) Less(i, j int) bool {
 	return false
 }
 
-// Sorter2 is a version of Sorter that operates on ValueRow
-type Sorter2 struct {
+// ValueRowSorter is a version of Sorter that operates on ValueRow
+type ValueRowSorter struct {
 	LastError  error
 	Ctx        *sql.Context
 	SortFields []sql.SortField
 	Rows       []sql.ValueRow
 }
 
-func (s *Sorter2) Len() int {
+func (s *ValueRowSorter) Len() int {
 	return len(s.Rows)
 }
 
-func (s *Sorter2) Swap(i, j int) {
+func (s *ValueRowSorter) Swap(i, j int) {
 	s.Rows[i], s.Rows[j] = s.Rows[j], s.Rows[i]
 }
 

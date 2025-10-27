@@ -79,9 +79,9 @@ func (f *RowFrame) Recycle() {
 	framePool.Put(f)
 }
 
-// ValueRow returns the underlying row value in this frame. Does not make a deep copy of underlying byte arrays, so
+// AsValueRow returns the underlying row value in this frame. Does not make a deep copy of underlying byte arrays, so
 // further modification to this frame may result in the returned value changing as well.
-func (f *RowFrame) Row2() ValueRow {
+func (f *RowFrame) AsValueRow() ValueRow {
 	if f == nil {
 		return nil
 	}
@@ -96,9 +96,9 @@ func (f *RowFrame) Row2() ValueRow {
 	return rs
 }
 
-// Row2Copy returns the row in this frame as a deep copy of the underlying byte arrays. Useful when reusing the
+// ValueRowCopy returns the row in this frame as a deep copy of the underlying byte arrays. Useful when reusing the
 // RowFrame object via Clear()
-func (f *RowFrame) Row2Copy() ValueRow {
+func (f *RowFrame) ValueRowCopy() ValueRow {
 	rs := make(ValueRow, len(f.Values))
 	// TODO: it would be faster here to just copy the entire value backing array in one pass
 	for i := range f.Values {

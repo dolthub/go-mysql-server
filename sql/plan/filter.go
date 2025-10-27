@@ -154,13 +154,13 @@ func (i *FilterIter) NextValueRow(ctx *sql.Context) (sql.ValueRow, error) {
 }
 
 // CanSupport implements the sql.ValueRowIter interface.
-func (i *FilterIter) CanSupport(ctx *sql.Context) bool {
+func (i *FilterIter) IsValueRowIter(ctx *sql.Context) bool {
 	cond, ok := i.cond.(sql.ValueExpression)
-	if !ok || !cond.CanSupport() {
+	if !ok || !cond.IsValueExpression() {
 		return false
 	}
 	childIter, ok := i.childIter.(sql.ValueRowIter)
-	if !ok || !childIter.CanSupport(ctx) {
+	if !ok || !childIter.IsValueRowIter(ctx) {
 		return false
 	}
 	return true
