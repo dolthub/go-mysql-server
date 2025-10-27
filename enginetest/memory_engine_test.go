@@ -607,6 +607,10 @@ func TestLoadDataFailing(t *testing.T) {
 	enginetest.TestLoadDataFailing(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestBinlog(t *testing.T) {
+	enginetest.TestBinlog(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestSelectIntoFile(t *testing.T) {
 	enginetest.TestSelectIntoFile(t, enginetest.NewDefaultMemoryHarness())
 }

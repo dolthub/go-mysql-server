@@ -953,6 +953,15 @@ var (
 
 	// ErrUnresolvedTableLock is returned when a FOR UPDATE OF clause references a table that doesn't exist in the query context.
 	ErrUnresolvedTableLock = errors.NewKind("unresolved table name `%s` in locking clause.")
+
+	// ErrBase64DecodeError is returned when decoding a base64 string fails.
+	ErrBase64DecodeError = errors.NewKind("Decoding of base64 string failed")
+
+	// ErrNoFormatDescriptionEventBeforeBinlogStatement is returned when a BINLOG statement is not preceded by a format description event.
+	ErrNoFormatDescriptionEventBeforeBinlogStatement = errors.NewKind("The BINLOG statement of type `%s` was not preceded by a format description BINLOG statement.")
+
+	// ErrOnlyFDAndRBREventsAllowedInBinlogStatement is returned when an unsupported event type is used in a BINLOG statement.
+	ErrOnlyFDAndRBREventsAllowedInBinlogStatement = errors.NewKind("Only Format_description_log_event and row events are allowed in BINLOG statements (but %s was provided)")
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the
@@ -1034,6 +1043,12 @@ func CastSQLError(err error) *mysql.SQLError {
 		// 	https://en.wikipedia.org/wiki/SQLSTATE
 		code = mysql.ERLockDeadlock
 		sqlState = mysql.SSLockDeadlock
+	case ErrBase64DecodeError.Is(err):
+		code = mysql.ERBase64DecodeError
+	case ErrNoFormatDescriptionEventBeforeBinlogStatement.Is(err):
+		code = mysql.ERNoFormatDescriptionEventBeforeBinlogStatement
+	case ErrOnlyFDAndRBREventsAllowedInBinlogStatement.Is(err):
+		code = mysql.EROnlyFDAndRBREventsAllowedInBinlogStatement
 	default:
 		code = mysql.ERUnknownError
 	}

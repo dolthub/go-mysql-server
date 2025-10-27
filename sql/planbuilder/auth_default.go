@@ -24,6 +24,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 // defaultAuthorizationQueryState contains query-specific state for defaultAuthorizationHandler.
@@ -131,6 +132,10 @@ func (h defaultAuthorizationHandler) HandleAuth(ctx *sql.Context, aqs sql.Author
 		hasPrivileges = state.db.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(sql.PrivilegeCheckSubject{Database: "mysql"}, sql.PrivilegeType_Update)) ||
 			state.db.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(sql.PrivilegeCheckSubject{}, sql.PrivilegeType_CreateUser)) ||
 			state.user.User == auth.TargetNames[0]
+	case ast.AuthType_BINLOG:
+		hasPrivileges = state.db.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(sql.PrivilegeCheckSubject{}, sql.PrivilegeType_Super)) ||
+			state.db.UserHasPrivileges(ctx, sql.NewDynamicPrivilegedOperation(plan.DynamicPrivilege_BinlogAdmin)) ||
+			state.db.UserHasPrivileges(ctx, sql.NewDynamicPrivilegedOperation(plan.DynamicPrivilege_ReplicationApplier))
 	case ast.AuthType_CALL:
 		hasPrivileges, err = h.call(ctx, state, auth)
 		if err != nil {
@@ -186,7 +191,7 @@ func (h defaultAuthorizationHandler) HandleAuth(ctx *sql.Context, aqs sql.Author
 	case ast.AuthType_REPLACE:
 		privilegeTypes = []sql.PrivilegeType{sql.PrivilegeType_Insert, sql.PrivilegeType_Delete}
 	case ast.AuthType_REPLICATION:
-		hasPrivileges = state.db.UserHasPrivileges(ctx, sql.NewDynamicPrivilegedOperation("replication_slave_admin"))
+		hasPrivileges = state.db.UserHasPrivileges(ctx, sql.NewDynamicPrivilegedOperation(plan.DynamicPrivilege_ReplicationSlaveAdmin))
 	case ast.AuthType_REPLICATION_CLIENT:
 		privilegeTypes = []sql.PrivilegeType{sql.PrivilegeType_ReplicationClient}
 	case ast.AuthType_REVOKE_ALL:
@@ -210,11 +215,7 @@ func (h defaultAuthorizationHandler) HandleAuth(ctx *sql.Context, aqs sql.Author
 			state.db.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_AlterRoutine)) ||
 			state.db.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject, sql.PrivilegeType_Execute))
 	case ast.AuthType_SUPER:
-		// Check for SUPER privilege (also checks for BINLOG_ADMIN and REPLICATION_APPLIER dynamic privileges)
-		// This is used by statements like BINLOG, KILL, and various SET operations
-		hasPrivileges = state.db.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(sql.PrivilegeCheckSubject{}, sql.PrivilegeType_Super)) ||
-			state.db.UserHasPrivileges(ctx, sql.NewDynamicPrivilegedOperation("binlog_admin")) ||
-			state.db.UserHasPrivileges(ctx, sql.NewDynamicPrivilegedOperation("replication_applier"))
+		hasPrivileges = state.db.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(sql.PrivilegeCheckSubject{}, sql.PrivilegeType_Super))
 	case ast.AuthType_TRIGGER:
 		privilegeTypes = []sql.PrivilegeType{sql.PrivilegeType_Trigger}
 	case ast.AuthType_UPDATE:
