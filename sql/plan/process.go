@@ -330,7 +330,7 @@ func (i *TrackedRowIter) NextValueRow(ctx *sql.Context) (sql.ValueRow, error) {
 	return row, nil
 }
 
-// CanSupport implements the sql.ValueRowIter interface.
+// IsValueRowIter implements the sql.ValueRowIter interface.
 func (i *TrackedRowIter) IsValueRowIter(ctx *sql.Context) bool {
 	iter, ok := i.iter.(sql.ValueRowIter)
 	return ok && iter.IsValueRowIter(ctx)
