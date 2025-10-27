@@ -24,6 +24,7 @@ type TableRowIter struct {
 	partitions PartitionIter
 	partition  Partition
 	rows       RowIter
+	valueRows  ValueRowIter
 }
 
 var _ RowIter = (*TableRowIter)(nil)
@@ -83,6 +84,7 @@ func (i *TableRowIter) NextValueRow(ctx *Context) (ValueRow, error) {
 		return nil, ctx.Err()
 	default:
 	}
+
 	if i.partition == nil {
 		partition, err := i.partitions.Next(ctx)
 		if err != nil {
@@ -96,27 +98,27 @@ func (i *TableRowIter) NextValueRow(ctx *Context) (ValueRow, error) {
 		i.partition = partition
 	}
 
-	if i.rows == nil {
+	if i.valueRows == nil {
 		rows, err := i.table.PartitionRows(ctx, i.partition)
 		if err != nil {
 			return nil, err
 		}
-		i.rows = rows
+		i.valueRows = rows.(ValueRowIter)
 	}
 
-	row, err := i.rows.(ValueRowIter).NextValueRow(ctx)
+	row, err := i.valueRows.NextValueRow(ctx)
 	if err != nil && err == io.EOF {
 		if err = i.rows.Close(ctx); err != nil {
 			return nil, err
 		}
 		i.partition = nil
-		i.rows = nil
+		i.valueRows = nil
 		row, err = i.NextValueRow(ctx)
 	}
 	return row, err
 }
 
-// CanSupport implements the sql.ValueRowIter interface.
+// IsValueRowIter implements the sql.ValueRowIter interface.
 func (i *TableRowIter) IsValueRowIter(ctx *Context) bool {
 	if i.partition == nil {
 		partition, err := i.partitions.Next(ctx)
@@ -125,7 +127,7 @@ func (i *TableRowIter) IsValueRowIter(ctx *Context) bool {
 		}
 		i.partition = partition
 	}
-	if i.rows == nil {
+	if i.valueRows == nil {
 		rows, err := i.table.PartitionRows(ctx, i.partition)
 		if err != nil {
 			return false
@@ -134,14 +136,20 @@ func (i *TableRowIter) IsValueRowIter(ctx *Context) bool {
 		if !ok {
 			return false
 		}
-		i.rows = valRowIter
+		i.valueRows = valRowIter
 	}
-	return i.rows.(ValueRowIter).IsValueRowIter(ctx)
+	return i.valueRows.IsValueRowIter(ctx)
 }
 
 func (i *TableRowIter) Close(ctx *Context) error {
 	if i.rows != nil {
 		if err := i.rows.Close(ctx); err != nil {
+			_ = i.partitions.Close(ctx)
+			return err
+		}
+	}
+	if i.valueRows != nil {
+		if err := i.valueRows.Close(ctx); err != nil {
 			_ = i.partitions.Close(ctx)
 			return err
 		}
