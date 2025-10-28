@@ -154,6 +154,36 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 		case *plan.Sort, *plan.IndexedTableAccess, *plan.ResolvedTable,
 			*plan.Project, *plan.Filter, *plan.Limit, *plan.Offset, *plan.Distinct, *plan.TableAlias:
 			newChildren[i], same, err = replaceIdxSortHelper(ctx, scope, child, sortNode)
+		case *plan.SubqueryAlias:
+			if sortNode == nil {
+				continue
+			}
+			sortFields := sortNode.SortFields
+			for i, sortField := range sortNode.SortFields {
+				col, sameExpr, _ := transform.Expr(sortField.Column, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+					if gt, ok := e.(*expression.GetField); ok {
+						if gf, ok := c.ScopeMapping[gt.Id()]; ok {
+							return gf, transform.NewTree, nil
+						}
+					}
+					return e, transform.SameTree, nil
+				})
+				if !sameExpr {
+					col2, _ := col.(sql.Expression2)
+					sortFields[i] = sql.SortField{
+						Column:       col,
+						Column2:      col2,
+						NullOrdering: sortField.NullOrdering,
+						Order:        sortField.Order,
+					}
+				}
+			}
+			newSort := sortNode.WithSortFields(sortFields)
+			newSort.Child = c.Child
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+			newChildren[i], same, err = replaceIdxSortHelper(ctx, scope, child, newSort)
 		case *plan.JoinNode:
 			// It's (probably) not possible to have Sort as child of Join without Subquery/SubqueryAlias,
 			//  and in the case where there is a Subq/SQA it's taken care of through finalizeSubqueries

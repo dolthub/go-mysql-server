@@ -115,6 +115,12 @@ func (s *Sort) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	return NewSort(fields, s.Child), nil
 }
 
+func (s *Sort) WithSortFields(sf sql.SortFields) *Sort {
+	ret := *s
+	ret.SortFields = sf
+	return &ret
+}
+
 func (s *Sort) GetSortFields() sql.SortFields {
 	return s.SortFields
 }
