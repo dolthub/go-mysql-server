@@ -433,7 +433,9 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 		return nil
 	}
 
-	m.Tracer.Log("Optimizing group %d (%s)", grp.Id, grp.String())
+	m.Tracer.PushDebugContext(fmt.Sprintf("optimizeMemoGroup/%d", grp.Id))
+	defer m.Tracer.PopDebugContext()
+
 	n := grp.First
 	if _, ok := n.(SourceRel); ok {
 		// We should order the search bottom-up so that physical operators
@@ -445,12 +447,12 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 		grp.HintOk = true
 		grp.Best = grp.First
 		grp.Best.SetDistinct(NoDistinctOp)
-		m.Tracer.Log("Group %d: source relation, setting as best plan", grp.Id)
+		m.Tracer.Log("source relation, setting as best plan", grp)
 		return nil
 	}
 
 	for n != nil {
-		m.Tracer.Log("Evaluating plan %s in group %d", n, grp.Id)
+		m.Tracer.Log("Evaluating plan (%+v)", n)
 		var cost float64
 		for _, g := range n.Children() {
 			err := m.optimizeMemoGroup(g)
@@ -480,7 +482,7 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 
 		n.SetCost(relCost)
 		cost += relCost
-		m.Tracer.Log("Plan %s: relCost=%.2f, totalCost=%.2f", n, relCost, cost)
+		m.Tracer.Log("Plan %+v: relCost=%.2f, totalCost=%.2f", n, relCost, cost)
 		m.updateBest(grp, n, cost)
 		n = n.Next()
 	}

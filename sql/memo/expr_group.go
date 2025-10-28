@@ -40,7 +40,6 @@ type ExprGroup struct {
 
 // Format implements the fmt.Formatter interface.
 func (e *ExprGroup) Format(f fmt.State, verb rune) {
-	// TODO: is e.First the right thing to print here?
 	expr := e.Best
 	if expr == nil {
 		expr = e.First
@@ -68,7 +67,11 @@ func (e *ExprGroup) Format(f fmt.State, verb rune) {
 			io.WriteString(f, "]")
 		}
 	default:
-		io.WriteString(f, fmt.Sprintf("%d", ex.Group().Id))
+		verbString := fmt.Sprintf("%%%c", verb)
+		if verb == 'v' && f.Flag('+') {
+			verbString = "%+v"
+		}
+		io.WriteString(f, fmt.Sprintf("%d ("+verbString+")", ex.Group().Id, ex))
 	}
 }
 
