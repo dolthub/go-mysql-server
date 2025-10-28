@@ -73,9 +73,9 @@ var BinlogScripts = []ScriptTest{
 			"CREATE TABLE users (id INT PRIMARY KEY, name VARCHAR(50), email VARCHAR(100))",
 		},
 		Assertions: []ScriptTestAssertion{
-			{Query: binlogInsertStmts[0], Expected: []sql.Row{}},
-			{Query: binlogInsertStmts[1], Expected: []sql.Row{}},
-			{Query: binlogInsertStmts[2], Expected: []sql.Row{}},
+			{Query: binlogInsertStmts[0], Expected: []sql.Row{{types.OkResult{}}}},
+			{Query: binlogInsertStmts[1], Expected: []sql.Row{{types.OkResult{}}}},
+			{Query: binlogInsertStmts[2], Expected: []sql.Row{{types.OkResult{}}}},
 			{
 				Query: "SELECT * FROM users ORDER BY id",
 				Expected: []sql.Row{
@@ -93,8 +93,8 @@ var BinlogScripts = []ScriptTest{
 			"INSERT INTO users VALUES (2, 'Bob', 'bob@example.com')",
 		},
 		Assertions: []ScriptTestAssertion{
-			{Query: binlogUpdateStmts[0], Expected: []sql.Row{}},
-			{Query: binlogUpdateStmts[1], Expected: []sql.Row{}},
+			{Query: binlogUpdateStmts[0], Expected: []sql.Row{{types.OkResult{}}}},
+			{Query: binlogUpdateStmts[1], Expected: []sql.Row{{types.OkResult{}}}},
 			{
 				Query: "SELECT name FROM users WHERE id = 1",
 				Expected: []sql.Row{
@@ -111,8 +111,8 @@ var BinlogScripts = []ScriptTest{
 			"INSERT INTO users VALUES (2, 'Bob', 'bob@example.com')",
 		},
 		Assertions: []ScriptTestAssertion{
-			{Query: binlogDeleteStmts[0], Expected: []sql.Row{}},
-			{Query: binlogDeleteStmts[1], Expected: []sql.Row{}},
+			{Query: binlogDeleteStmts[0], Expected: []sql.Row{{types.OkResult{}}}},
+			{Query: binlogDeleteStmts[1], Expected: []sql.Row{{types.OkResult{}}}},
 			{
 				Query: "SELECT COUNT(*) FROM users",
 				Expected: []sql.Row{
@@ -130,7 +130,7 @@ var BinlogScripts = []ScriptTest{
 	{
 		Name: "BINLOG with FORMAT_DESCRIPTION only",
 		Assertions: []ScriptTestAssertion{
-			{Query: binlogFormatDescStmts[0], Expected: []sql.Row{}},
+			{Query: binlogFormatDescStmts[0], Expected: []sql.Row{{types.OkResult{}}}},
 		},
 	},
 	{
@@ -139,12 +139,12 @@ var BinlogScripts = []ScriptTest{
 			"CREATE TABLE multi_op_test (id INT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(100), value DECIMAL(10,2), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
 		},
 		Assertions: []ScriptTestAssertion{
-			{Query: binlogTransactionMultiOps[0], Expected: []sql.Row{}},
-			{Query: binlogTransactionMultiOps[1], Expected: []sql.Row{}},
-			{Query: binlogTransactionMultiOps[2], Expected: []sql.Row{}},
-			{Query: binlogTransactionMultiOps[3], Expected: []sql.Row{}},
-			{Query: binlogTransactionMultiOps[4], Expected: []sql.Row{}},
-			{Query: binlogTransactionMultiOps[5], Expected: []sql.Row{}},
+			{Query: binlogTransactionMultiOps[0], Expected: []sql.Row{{types.OkResult{}}}},
+			{Query: binlogTransactionMultiOps[1], Expected: []sql.Row{{types.OkResult{}}}},
+			{Query: binlogTransactionMultiOps[2], Expected: []sql.Row{{types.OkResult{}}}},
+			{Query: binlogTransactionMultiOps[3], Expected: []sql.Row{{types.OkResult{}}}},
+			{Query: binlogTransactionMultiOps[4], Expected: []sql.Row{{types.OkResult{}}}},
+			{Query: binlogTransactionMultiOps[5], Expected: []sql.Row{{types.OkResult{}}}},
 			{
 				Query: "SELECT COUNT(*) FROM multi_op_test",
 				Expected: []sql.Row{
