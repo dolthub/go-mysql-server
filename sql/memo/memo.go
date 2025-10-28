@@ -910,33 +910,38 @@ type RangeHeap struct {
 	RangeClosedOnUpperBound bool
 }
 
-// FormatExpr returns a string representation of a relExpr for debugging purposes.
+// FormatExpr formats an exprType for debugging purposes, compatible with fmt.Formatter
 func FormatExpr(r exprType, s fmt.State, verb rune) {
+	verbString := fmt.Sprintf("%%%c", verb)
+	if verb == 'v' && s.Flag('+') {
+		verbString = "%+v"
+	}
 	switch r := r.(type) {
 	case *CrossJoin:
-		io.WriteString(s, fmt.Sprintf("crossjoin %d %d", r.Left.Id, r.Right.Id))
+		io.WriteString(s, fmt.Sprintf("crossjoin "+verbString+" "+verbString, r.Left, r.Right))
 	case *InnerJoin:
-		io.WriteString(s, fmt.Sprintf("innerjoin %d %d", r.Left.Id, r.Right.Id))
+		io.WriteString(s, fmt.Sprintf("innerjoin "+verbString+" "+verbString, r.Left, r.Right))
 	case *LeftJoin:
-		io.WriteString(s, fmt.Sprintf("leftjoin %d %d", r.Left.Id, r.Right.Id))
+		io.WriteString(s, fmt.Sprintf("leftjoin "+verbString+" "+verbString, r.Left, r.Right))
 	case *SemiJoin:
-		io.WriteString(s, fmt.Sprintf("semijoin %d %d", r.Left.Id, r.Right.Id))
+		io.WriteString(s, fmt.Sprintf("semijoin "+verbString+" "+verbString, r.Left, r.Right))
 	case *AntiJoin:
-		io.WriteString(s, fmt.Sprintf("antijoin %d %d", r.Left.Id, r.Right.Id))
+		io.WriteString(s, fmt.Sprintf("antijoin "+verbString+" "+verbString, r.Left, r.Right))
 	case *LookupJoin:
-		io.WriteString(s, fmt.Sprintf("lookupjoin %d %d on %s", r.Left.Id, r.Right.Id, r.Lookup.Index.idx.ID()))
+		io.WriteString(s, fmt.Sprintf("lookupjoin "+verbString+" "+verbString+" on %s",
+			r.Left, r.Right, r.Lookup.Index.idx.ID()))
 	case *RangeHeapJoin:
-		io.WriteString(s, fmt.Sprintf("rangeheapjoin %d %d", r.Left.Id, r.Right.Id))
+		io.WriteString(s, fmt.Sprintf("rangeheapjoin "+verbString+" "+verbString, r.Left, r.Right))
 	case *ConcatJoin:
-		io.WriteString(s, fmt.Sprintf("concatjoin %d %d", r.Left.Id, r.Right.Id))
+		io.WriteString(s, fmt.Sprintf("concatjoin "+verbString+" "+verbString, r.Left, r.Right))
 	case *HashJoin:
-		io.WriteString(s, fmt.Sprintf("hashjoin %d %d", r.Left.Id, r.Right.Id))
+		io.WriteString(s, fmt.Sprintf("hashjoin "+verbString+" "+verbString, r.Left, r.Right))
 	case *MergeJoin:
-		io.WriteString(s, fmt.Sprintf("mergejoin %d %d", r.Left.Id, r.Right.Id))
+		io.WriteString(s, fmt.Sprintf("mergejoin "+verbString+" "+verbString, r.Left, r.Right))
 	case *FullOuterJoin:
-		io.WriteString(s, fmt.Sprintf("fullouterjoin %d %d", r.Left.Id, r.Right.Id))
+		io.WriteString(s, fmt.Sprintf("fullouterjoin "+verbString+" "+verbString, r.Left, r.Right))
 	case *LateralJoin:
-		io.WriteString(s, fmt.Sprintf("lateraljoin %d %d", r.Left.Id, r.Right.Id))
+		io.WriteString(s, fmt.Sprintf("lateraljoin "+verbString+" "+verbString, r.Left, r.Right))
 	case *TableScan:
 		io.WriteString(s, fmt.Sprintf("tablescan: %s", r.Name()))
 	case *IndexScan:

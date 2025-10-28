@@ -16,6 +16,7 @@ package memo
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -36,6 +37,42 @@ type ExprGroup struct {
 	Done   bool
 	HintOk bool
 }
+
+// Format implements the fmt.Formatter interface.
+func (e *ExprGroup) Format(f fmt.State, verb rune) {
+	// TODO: is e.First the right thing to print here?
+	expr := e.Best
+	if expr == nil {
+		expr = e.First
+	}
+	switch ex := expr.(type) {
+	case *TableAlias:
+		io.WriteString(f, fmt.Sprintf("%d", ex.Group().Id))
+		if verb == 'v' && f.Flag('+') {
+			io.WriteString(f, "[")
+			io.WriteString(f, ex.Name())
+			io.WriteString(f, "]")
+		}
+	case *TableScan:
+		io.WriteString(f, fmt.Sprintf("%d", ex.Group().Id))
+		if verb == 'v' && f.Flag('+') {
+			io.WriteString(f, "[")
+			io.WriteString(f, ex.Name())
+			io.WriteString(f, "]")
+		}
+	case *SubqueryAlias:
+		io.WriteString(f, fmt.Sprintf("%d", ex.Group().Id))
+		if verb == 'v' && f.Flag('+') {
+			io.WriteString(f, "[")
+			io.WriteString(f, ex.Name())
+			io.WriteString(f, "]")
+		}
+	default:
+		io.WriteString(f, fmt.Sprintf("%d", ex.Group().Id))
+	}
+}
+
+var _ fmt.Formatter = (*ExprGroup)(nil)
 
 func newExprGroup(m *Memo, id GroupId, expr exprType) *ExprGroup {
 	// bit of circularity: |grp| references |rel|, |rel| references |grp|,

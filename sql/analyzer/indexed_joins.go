@@ -259,7 +259,7 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo) error {
 	defer m.Tracer.PopDebugContext()
 
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
-		m.Tracer.PushDebugContext(e.String())
+		m.Tracer.PushDebugContext(fmt.Sprintf("%+v", e))
 		defer m.Tracer.PopDebugContext()
 
 		var right *memo.ExprGroup
@@ -663,6 +663,9 @@ func addRightSemiJoins(ctx *sql.Context, m *memo.Memo) error {
 	defer m.Tracer.PopDebugContext()
 
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
+		m.Tracer.PushDebugContext(fmt.Sprintf("%+v", e))
+		defer m.Tracer.PopDebugContext()
+
 		semi, ok := e.(*memo.SemiJoin)
 		if !ok {
 			return nil
@@ -826,7 +829,7 @@ func addHashJoins(m *memo.Memo) error {
 	defer m.Tracer.PopDebugContext()
 
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
-		m.Tracer.PushDebugContext(e.String())
+		m.Tracer.PushDebugContext(fmt.Sprintf("%+v", e))
 		defer m.Tracer.PopDebugContext()
 
 		switch e.(type) {
@@ -966,6 +969,9 @@ func addRangeHeapJoin(m *memo.Memo) error {
 	defer m.Tracer.PopDebugContext()
 
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
+		m.Tracer.PushDebugContext(fmt.Sprintf("%+v", e))
+		defer m.Tracer.PopDebugContext()
+
 		switch e.(type) {
 		case *memo.InnerJoin, *memo.LeftJoin:
 		default:
@@ -1074,7 +1080,7 @@ func addMergeJoins(ctx *sql.Context, m *memo.Memo) error {
 	defer m.Tracer.PopDebugContext()
 
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
-		m.Tracer.PushDebugContext(e.String())
+		m.Tracer.PushDebugContext(fmt.Sprintf("%+v", e))
 		defer m.Tracer.PopDebugContext()
 
 		var join *memo.JoinBase

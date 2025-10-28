@@ -191,9 +191,7 @@ func (j *joinOrderBuilder) ReorderJoin(n sql.Node) {
 	// TODO: consider if buildSingleLookupPlan can/should run after ensureClosure. This could allow us to use analysis
 	// from ensureClosure in buildSingleLookupPlan, but the equivalence sets could create multiple possible join orders
 	// for the single-lookup plan, which would complicate things.
-	j.m.Tracer.Log("Building transitive closure for %d edges", len(j.edges))
 	j.ensureClosure(j.m.root)
-	j.m.Tracer.Log("Starting exhaustive subset enumeration")
 	j.dpEnumerateSubsets()
 	j.m.Tracer.Log("Completed join reordering")
 	return
@@ -435,6 +433,9 @@ func (j *joinOrderBuilder) findVertexFromGroup(grp GroupId) vertexIndex {
 // makeTransitiveEdge constructs a new join tree edge and memo group
 // on an equality filter between two columns.
 func (j *joinOrderBuilder) makeTransitiveEdge(col1, col2 sql.ColumnId) {
+	j.m.Tracer.PushDebugContext("makeTransitiveEdge")
+	defer j.m.Tracer.PopDebugContext()
+
 	var vert vertexSet
 	v1, _, v1found := j.findVertexFromCol(col1)
 	v2, _, v2found := j.findVertexFromCol(col2)
@@ -483,9 +484,10 @@ func (j *joinOrderBuilder) makeTransitiveEdge(col1, col2 sql.ColumnId) {
 		return
 	}
 
-	j.edges = append(j.edges, *j.makeEdge(op, expression.NewEquals(gf1, gf2)))
+	eq := expression.NewEquals(gf1, gf2)
+	j.m.Tracer.Log("adding edge %s", eq)
+	j.edges = append(j.edges, *j.makeEdge(op, eq))
 	j.innerEdges.Add(len(j.edges) - 1)
-
 }
 
 func (j *joinOrderBuilder) buildJoinOp(n *plan.JoinNode) *ExprGroup {
