@@ -179,10 +179,8 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 				}
 			}
 			newSort := sortNode.WithSortFields(sortFields)
+			// The sort node is used to find table aliases and we need to get the table aliases inside the SubqueryAlias
 			newSort.Child = c.Child
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
 			newChildren[i], same, err = replaceIdxSortHelper(ctx, scope, child, newSort)
 		case *plan.JoinNode:
 			// It's (probably) not possible to have Sort as child of Join without Subquery/SubqueryAlias,
