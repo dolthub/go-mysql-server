@@ -17,6 +17,7 @@ package memo
 import (
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -47,31 +48,25 @@ func (e *ExprGroup) Format(f fmt.State, verb rune) {
 	switch ex := expr.(type) {
 	case *TableAlias:
 		io.WriteString(f, fmt.Sprintf("%d", ex.Group().Id))
-		if verb == 'v' && f.Flag('+') {
-			io.WriteString(f, "[")
-			io.WriteString(f, ex.Name())
-			io.WriteString(f, "]")
-		}
+		io.WriteString(f, "[")
+		io.WriteString(f, ex.Name())
+		io.WriteString(f, "]")
 	case *TableScan:
 		io.WriteString(f, fmt.Sprintf("%d", ex.Group().Id))
-		if verb == 'v' && f.Flag('+') {
-			io.WriteString(f, "[")
-			io.WriteString(f, ex.Name())
-			io.WriteString(f, "]")
-		}
+		io.WriteString(f, "[")
+		io.WriteString(f, ex.Name())
+		io.WriteString(f, "]")
 	case *SubqueryAlias:
 		io.WriteString(f, fmt.Sprintf("%d", ex.Group().Id))
-		if verb == 'v' && f.Flag('+') {
-			io.WriteString(f, "[")
-			io.WriteString(f, ex.Name())
-			io.WriteString(f, "]")
-		}
+		io.WriteString(f, "[")
+		io.WriteString(f, ex.Name())
+		io.WriteString(f, "]")
 	default:
-		verbString := fmt.Sprintf("%%%c", verb)
 		if verb == 'v' && f.Flag('+') {
-			verbString = "%+v"
+			io.WriteString(f, fmt.Sprintf("%d{%+v}", ex.Group().Id, ex))
+		} else {
+			io.WriteString(f, fmt.Sprintf("%d", ex.Group().Id))
 		}
-		io.WriteString(f, fmt.Sprintf("%d ("+verbString+")", ex.Group().Id, ex))
 	}
 }
 
@@ -108,11 +103,9 @@ func (e *ExprGroup) children() []*ExprGroup {
 	if !ok {
 		return e.children()
 	}
-	n := relExpr
 	children := make([]*ExprGroup, 0)
-	for n != nil {
+	for n := relExpr; n != nil; n = n.Next() {
 		children = append(children, n.Children()...)
-		n = n.Next()
 	}
 	return children
 }
@@ -216,7 +209,7 @@ func (e *ExprGroup) String() string {
 				// if source relation we want the cardinality
 				cost = float64(n.Group().RelProps.GetStats().RowCount())
 			}
-			b.WriteString(fmt.Sprintf(" %.1f", n.Cost()))
+			b.WriteString(fmt.Sprintf(" %.1f", cost))
 
 			childCost := 0.0
 			for _, c := range n.Children() {
@@ -233,5 +226,40 @@ func (e *ExprGroup) String() string {
 		sep = " "
 		n = n.Next()
 	}
+	return b.String()
+}
+
+// CostTreeString returns a string representation of the expression group for use in cost debug printing
+func (e *ExprGroup) CostTreeString(prefix string) string {
+	b := strings.Builder{}
+	n := e.First
+	costSortedGroups := make([]RelExpr, 0)
+	for n != nil {
+		costSortedGroups = append(costSortedGroups, n)
+		n = n.Next()
+	}
+	sort.Slice(costSortedGroups, func(i, j int) bool {
+		return costSortedGroups[i].Cost() < costSortedGroups[j].Cost()
+	})
+
+	for i, n := range costSortedGroups {
+		b.WriteString("\n")
+
+		beg := prefix + "├── "
+		if i == len(costSortedGroups)-1 {
+			beg = prefix + "└── "
+		}
+		b.WriteString(fmt.Sprintf("%s(%s", beg, n))
+		if e.Best != nil {
+			cost := n.Cost()
+			if cost == 0 {
+				// if source relation we want the cardinality
+				cost = float64(n.Group().RelProps.GetStats().RowCount())
+			}
+			b.WriteString(fmt.Sprintf(" %.1f", cost))
+		}
+		b.WriteString(")")
+	}
+
 	return b.String()
 }

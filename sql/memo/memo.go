@@ -452,7 +452,7 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 	}
 
 	for n != nil {
-		m.Tracer.Log("Evaluating plan (%+v)", n)
+		m.Tracer.Log("Evaluating plan (%s)", n)
 		var cost float64
 		for _, g := range n.Children() {
 			err := m.optimizeMemoGroup(g)
@@ -482,7 +482,7 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 
 		n.SetCost(relCost)
 		cost += relCost
-		m.Tracer.Log("Plan %+v: relCost=%.2f, totalCost=%.2f", n, relCost, cost)
+		m.Tracer.Log("Plan %s: relCost=%.2f, totalCost=%.2f", n, relCost, cost)
 		m.updateBest(grp, n, cost)
 		n = n.Next()
 	}
@@ -612,17 +612,13 @@ func (m *Memo) SetJoinOp(op HintType, left, right string) {
 
 var _ fmt.Stringer = (*Memo)(nil)
 
-// var _ fmt.Formatter = (*Memo)(nil)
-
 func (m *Memo) String() string {
 	exprs := make([]string, m.cnt)
 	groups := make([]*ExprGroup, 0)
 	if m.root != nil {
-		r := m.root.First
-		for r != nil {
+		for r := m.root.First; r != nil; r = r.Next() {
 			groups = append(groups, r.Group())
 			groups = append(groups, r.Children()...)
-			r = r.Next()
 		}
 	}
 	for len(groups) > 0 {
@@ -648,9 +644,43 @@ func (m *Memo) String() string {
 	return b.String()
 }
 
-// func (m *Memo) Format(f fmt.State, verb rune) {
-// 	return m.String()
-// }
+func (m *Memo) CostDebugString() interface{} {
+	exprs := make([]string, m.cnt)
+	groups := make([]*ExprGroup, 0)
+	if m.root != nil {
+		for r := m.root.First; r != nil; r = r.Next() {
+			groups = append(groups, r.Group())
+			groups = append(groups, r.Children()...)
+		}
+	}
+	for len(groups) > 0 {
+		newGroups := make([]*ExprGroup, 0)
+		for _, g := range groups {
+			if exprs[int(TableIdForSource(g.Id))] != "" {
+				continue
+			}
+
+			prefix := "|   "
+			if len(groups) == 1 {
+				prefix = "    "
+			}
+
+			exprs[int(TableIdForSource(g.Id))] = g.CostTreeString(prefix)
+			newGroups = append(newGroups, g.children()...)
+		}
+		groups = newGroups
+	}
+	b := strings.Builder{}
+	b.WriteString("costed memo:\n")
+	beg := "├──"
+	for i, g := range exprs {
+		if i == len(exprs)-1 {
+			beg = "└──"
+		}
+		b.WriteString(fmt.Sprintf("%s G%d: %s\n", beg, i+1, g))
+	}
+	return b.String()
+}
 
 type tableProps struct {
 	grpToName map[GroupId]string
@@ -981,28 +1011,3 @@ func FormatExpr(r exprType, s fmt.State, verb rune) {
 		panic(fmt.Sprintf("unknown RelExpr type: %T", r))
 	}
 }
-
-// Format implements fmt.Formatter and can be formatted by the fmt package. The
-// following verbs are supported
-//
-//	%s    print the error. If the error has a Cause it will be
-//	      printed recursively
-//	%v    see %s
-//	%+v   extended format. Each Frame of the error's StackTrace will
-//	      be printed in detail.
-// func FormatExpr(s fmt.State, verb rune) {
-// 	switch verb {
-// 	case 'v':
-// 		if s.Flag('+') {
-// 			io.WriteString(s, err.Error()+"\n")
-// 			err.stack.Format(s, verb)
-// 			return
-// 		}
-//
-// 		fallthrough
-// 	case 's':
-// 		io.WriteString(s, err.Error())
-// 	case 'q':
-// 		fmt.Fprintf(s, "%q", err.Error())
-// 	}
-// }

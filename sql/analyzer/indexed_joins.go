@@ -225,7 +225,7 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 	if err != nil {
 		return nil, err
 	}
-	m.Tracer.Log("Completed cost-based optimization")
+	m.Tracer.Log("Completed cost-based optimization: %s", m.CostDebugString())
 
 	if a.Verbose && a.Debug {
 		a.Log("%s", m.String())
