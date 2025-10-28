@@ -16,6 +16,7 @@ package plan
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // DynamicPrivilege_BinlogAdmin enables binary log control by means of the PURGE BINARY LOGS and BINLOG statements.
@@ -76,7 +77,7 @@ func (b *Binlog) Resolved() bool {
 }
 
 func (b *Binlog) Schema() sql.Schema {
-	return nil
+	return types.OkResultSchema
 }
 
 func (b *Binlog) Children() []sql.Node {

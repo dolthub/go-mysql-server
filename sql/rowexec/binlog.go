@@ -23,6 +23,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -83,6 +84,7 @@ var binlogSess = &struct {
 	tableMapByID: make(map[uint64]*mysql.TableMap),
 }
 
+// binlogSessClearTableMaps removes all table mappings from the session cache.
 func binlogSessClearTableMaps() {
 	for k := range binlogSess.tableMapByID {
 		delete(binlogSess.tableMapByID, k)
@@ -120,6 +122,7 @@ func (b *BaseBuilder) buildBinlog(ctx *sql.Context, n *plan.Binlog, row sql.Row)
 	}, nil
 }
 
+// binlogIter iterates through decoded binlog events and returns a single OkResult row after processing all events.
 type binlogIter struct {
 	catalog sql.Catalog
 	decoded []byte
@@ -128,8 +131,14 @@ type binlogIter struct {
 
 var _ sql.RowIter = (*binlogIter)(nil)
 
+// Next processes binlog events recursively and returns a single OkResult row after all events are processed.
 func (bi *binlogIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if bi.offset >= len(bi.decoded) {
+		// All events processed, return OkResult once, then EOF
+		if bi.offset == len(bi.decoded) {
+			bi.offset++ // Mark OkResult as returned
+			return sql.Row{types.OkResult{}}, nil
+		}
 		return nil, io.EOF
 	}
 
@@ -156,6 +165,7 @@ func (bi *binlogIter) Next(ctx *sql.Context) (sql.Row, error) {
 	return bi.Next(ctx)
 }
 
+// Close implements sql.RowIter.
 func (bi *binlogIter) Close(ctx *sql.Context) error {
 	return nil
 }

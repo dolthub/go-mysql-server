@@ -33,7 +33,7 @@ var ErrNoReplicationController = errors.NewKind("no replication controller avail
 const DynamicPrivilege_ReplicationSlaveAdmin = "replication_slave_admin"
 
 // DynamicPrivilege_ReplicationApplier is a dynamic privilege that permits executing BINLOG statements.
-// https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_replication-applier
+// See https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_replication-applier
 const DynamicPrivilege_ReplicationApplier = "replication_applier"
 
 // BinlogReplicaControllerCommand represents a SQL statement that requires a BinlogReplicaController
