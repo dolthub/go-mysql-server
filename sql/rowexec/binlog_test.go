@@ -17,7 +17,6 @@ package rowexec
 import (
 	"encoding/base64"
 	"encoding/binary"
-	"io"
 	"testing"
 
 	"github.com/dolthub/go-mysql-server/memory"
@@ -53,13 +52,9 @@ func TestBuildBinlog_EmptyString(t *testing.T) {
 
 	binlogNode := plan.NewBinlog("", catalog)
 
-	iter, err := builder.buildBinlog(ctx, binlogNode, nil)
-	require.NoError(t, err)
-	require.NotNil(t, iter)
-
-	row, err := iter.Next(ctx)
-	require.Equal(t, io.EOF, err)
-	require.Nil(t, row)
+	_, err := builder.buildBinlog(ctx, binlogNode, nil)
+	require.Error(t, err)
+	require.True(t, sql.ErrSyntaxError.Is(err))
 }
 
 func TestBuildBinlog_IncompleteEventHeader(t *testing.T) {

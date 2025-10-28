@@ -98,6 +98,10 @@ func binlogSessClearTableMaps() {
 // not in ha_write_row().
 // See https://github.com/MariaDB/server/blob/mariadb-11.4.8/sql/sql_binlog.cc#L267-L428
 func (b *BaseBuilder) buildBinlog(ctx *sql.Context, n *plan.Binlog, row sql.Row) (sql.RowIter, error) {
+	if n.Base64Str == "" {
+		return nil, sql.ErrSyntaxError.New("BINLOG")
+	}
+
 	var decoded []byte
 
 	lines := strings.Split(n.Base64Str, "\n")
