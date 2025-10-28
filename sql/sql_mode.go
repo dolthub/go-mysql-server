@@ -15,7 +15,9 @@
 package sql
 
 import (
+	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -225,13 +227,21 @@ func (s *SqlMode) String() string {
 }
 
 // ConvertSqlModeBitmask converts sql_mode values to their string representation.
-func ConvertSqlModeBitmask(val any) (any, error) {
-	if _, ok := val.(string); ok {
-		return val, nil
-	}
-
+func ConvertSqlModeBitmask(val any) (string, error) {
 	var bitmask uint64
 	switch v := val.(type) {
+	case []byte:
+		if n, err := strconv.ParseUint(string(v), 10, 64); err == nil {
+			bitmask = n
+		} else {
+			return string(v), nil
+		}
+	case string:
+		if n, err := strconv.ParseUint(v, 10, 64); err == nil {
+			bitmask = n
+		} else {
+			return v, nil
+		}
 	case int8:
 		bitmask = uint64(v)
 	case int16:
@@ -253,7 +263,7 @@ func ConvertSqlModeBitmask(val any) (any, error) {
 	case uint64:
 		bitmask = v
 	default:
-		return val, nil
+		return fmt.Sprintf("%v", val), nil
 	}
 
 	var modes []string

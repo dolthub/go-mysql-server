@@ -1,6 +1,8 @@
 #!/usr/bin/env bats
-# Starts MariaDB with binlog enabled, executes operations, and extracts BINLOG statements to .txt files.
-# Run: bats binlog_maker.bats
+# Starts MariaDB with binlog enabled, executes operations, and extracts BINLOG statements to .txt files. `mariadb` and
+# `mariadb-binlog` should be available to use. This is intended to run in a unix environment, (if you're on Windows, run
+# in WSL), the script will find the relative directory to `testdata`. Tests are constructed as follows: query -> flush
+# -> extract_binlog_to_file.
 
 definePORT() {
   local base_port=$((2048 + ($$ % 4096)))

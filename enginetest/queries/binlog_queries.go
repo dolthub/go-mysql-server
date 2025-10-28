@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var (
@@ -30,10 +31,33 @@ var (
 	binlogNoFormatDescStmts   = readBinlogTestFile("./testdata/binlog_no_format_desc.txt")
 )
 
-// BinlogScripts contains test cases for the BINLOG statement. Test data is generated from real MariaDB binlog events by
-// running `bats binlog_maker.bats` in enginetest/testdata.
-// To add tests: add a @test to binlog_maker.bats, generate the .dat file, then add a test case here.
+// BinlogScripts contains test cases for the BINLOG statement. To add tests: add a @test to binlog_maker.bats, generate
+// the .txt file with BINLOG statements, then add a test case here with the corresponding setup.
 var BinlogScripts = []ScriptTest{
+	{
+		Name: "SET sql_mode with numeric bitmask from binlog",
+		Assertions: []ScriptTestAssertion{
+			{Query: "SET @@session.sql_mode=1411383296", Expected: []sql.Row{{types.OkResult{}}}},
+			{Query: "SELECT @@session.sql_mode", Expected: []sql.Row{{"ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES"}}},
+		},
+	},
+	{
+		Name: "SET collation variables with numeric IDs from binlog",
+		Assertions: []ScriptTestAssertion{
+			{Query: "SET @@session.collation_connection=33", Expected: []sql.Row{{types.OkResult{}}}},
+			{Query: "SELECT @@session.collation_connection", Expected: []sql.Row{{"utf8mb3_general_ci"}}},
+			{Query: "SELECT @@session.character_set_connection", Expected: []sql.Row{{"utf8mb3"}}},
+			{Query: "SET @@session.collation_server=8", Expected: []sql.Row{{types.OkResult{}}}},
+			{Query: "SELECT @@session.collation_server", Expected: []sql.Row{{"latin1_swedish_ci"}}},
+			{Query: "SELECT @@session.character_set_server", Expected: []sql.Row{{"latin1"}}},
+			// collation_database always returns the current database's collation. See sql/core.go:729-735
+			{Query: "SET @@session.collation_database=33", Expected: []sql.Row{{types.OkResult{}}}},
+			{Query: "SELECT @@session.collation_database", Expected: []sql.Row{{"utf8mb4_0900_bin"}}},
+			// TODO: lc_time_names no-op
+			{Query: "SET @@session.lc_time_names=0", Expected: []sql.Row{{types.OkResult{}}}},
+			{Query: "SELECT @@session.lc_time_names", Expected: []sql.Row{{"0"}}},
+		},
+	},
 	{
 		Name: "BINLOG requires FORMAT_DESCRIPTION_EVENT first",
 		SetUpScript: []string{
@@ -159,5 +183,13 @@ func readBinlogTestFile(path string) []string {
 		return nil
 	}
 
-	return strings.Split(content, "BINLOG '")
+	parts := strings.Split(content, "BINLOG '")
+	var stmts []string
+	for i, part := range parts {
+		if i == 0 && part == "" {
+			continue
+		}
+		stmts = append(stmts, "BINLOG '"+part)
+	}
+	return stmts
 }

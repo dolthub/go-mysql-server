@@ -17,6 +17,7 @@ package sql
 import (
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"sync"
 	"unicode/utf8"
@@ -974,13 +975,21 @@ type TypeWithCollation interface {
 }
 
 // ConvertCollationID converts numeric collation IDs to their string names.
-func ConvertCollationID(val any) (any, error) {
-	if _, ok := val.(string); ok {
-		return val, nil
-	}
-
+func ConvertCollationID(val any) (string, error) {
 	var collationID uint64
 	switch v := val.(type) {
+	case []byte:
+		if n, err := strconv.ParseUint(string(v), 10, 64); err == nil {
+			collationID = n
+		} else {
+			return string(v), nil
+		}
+	case string:
+		if n, err := strconv.ParseUint(v, 10, 64); err == nil {
+			collationID = n
+		} else {
+			return v, nil
+		}
 	case int8:
 		collationID = uint64(v)
 	case int16:
@@ -1002,10 +1011,9 @@ func ConvertCollationID(val any) (any, error) {
 	case uint64:
 		collationID = v
 	default:
-		return val, nil
+		return fmt.Sprintf("%v", val), nil
 	}
 
-	// Convert numeric ID to collation name
 	collation := CollationID(collationID).Collation()
 	return collation.Name, nil
 }
