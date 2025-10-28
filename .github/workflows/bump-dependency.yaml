@@ -11,18 +11,24 @@ jobs:
       label: ${{ steps.get-label.outputs.label }}
     runs-on: ubuntu-22.04
     steps:
-      - name: Get Label
+      - name: Get Label (allow-listed dependencies only)
         id: get-label
         env:
           REPO: ${{ github.event.client_payload.dependency }}
         run: |
-          if [ "$REPO" == "vitess" ]
-          then
-            echo "label=vitess-bump" >> $GITHUB_OUTPUT
-          else
-            echo "$REPO is unsupported"
-            exit 1
-          fi
+          set -euo pipefail
+          IFS=$'\n\t'
+
+          # allow-list: only 'vitess' at present
+          case "${REPO:-}" in
+            vitess)
+              echo "label=vitess-bump" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Dependency '${REPO:-}' is unsupported"
+              exit 1
+              ;;
+          esac
 
   stale-bump-prs:
     name: Retrieving Stale Bump PRs
@@ -94,47 +100,125 @@ jobs:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.REPO_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
+
       - name: Set up Go 1.x
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - name: Bump dependency
-        run: GOOS=linux go get github.com/dolthub/${{ github.event.client_payload.dependency }}@${{ github.event.client_payload.head_commit_sha }}
-      - name: Get Assignee and Reviewer
-        id: get_reviewer
+
+      - name: Validate & Sanitize Payload
+        id: sanitize
+        env:
+          RAW_DEP:  ${{ github.event.client_payload.dependency }}
+          RAW_SHA:  ${{ github.event.client_payload.head_commit_sha }}
+          RAW_USER: ${{ github.event.client_payload.assignee }}
+          RAW_MAIL: ${{ github.event.client_payload.assignee_email }}
         run: |
-          if [ "${{ github.event.client_payload.assignee }}" == "zachmu" ]
-          then
-            echo "reviewer=Hydrocharged" >> $GITHUB_OUTPUT
-          else
-            echo "reviewer=zachmu" >> $GITHUB_OUTPUT
+          set -euo pipefail
+          IFS=$'\n\t'
+
+          # --- Validate dependency via allow-list and map to module path
+          case "${RAW_DEP:-}" in
+            vitess)
+              MODULE='github.com/dolthub/vitess'
+              ;;
+            *)
+              echo "Unsupported dependency '${RAW_DEP:-}'"
+              exit 1
+              ;;
+          esac
+
+          # --- Validate head SHA/tag (conservative)
+          # allow only hex SHAs or safe tag-ish: letters, digits, dot, dash, underscore, plus
+          if [ -z "${RAW_SHA:-}" ] || ! printf '%s' "$RAW_SHA" | grep -qE '^[A-Za-z0-9._+-]+$'; then
+            echo "Invalid head_commit_sha"
+            exit 1
           fi
-      - name: Get short hash
-        id: short-sha
+
+          # Keep a short 8-char form if it's a hex SHA; otherwise keep original (already validated)
+          if printf '%s' "$RAW_SHA" | grep -qiE '^[0-9a-f]{40}$'; then
+            SHORT_SHA="${RAW_SHA:0:8}"
+          else
+            # derive a short-ish safe token
+            SHORT_SHA="$(printf '%s' "$RAW_SHA" | tr -cd 'A-Za-z0-9._+-' | cut -c1-12)"
+          fi
+
+          # --- Validate assignee username (GitHub-compatible subset)
+          if [ -z "${RAW_USER:-}" ] || ! printf '%s' "$RAW_USER" | grep -qE '^[A-Za-z0-9-]{1,39}$'; then
+            echo "Invalid assignee username"
+            exit 1
+          fi
+
+          # --- Validate email; if invalid, fall back to GitHub noreply
+          if [ -n "${RAW_MAIL:-}" ] && printf '%s' "$RAW_MAIL" | grep -qE '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'; then
+            SAFE_EMAIL="$RAW_MAIL"
+          else
+            SAFE_EMAIL="${RAW_USER}+noreply@users.noreply.github.com"
+          fi
+
+          # --- Build a safe branch name: <assignee>-<short>
+          BRANCH_NAME="$(printf '%s-%s' "$RAW_USER" "$SHORT_SHA" | tr -cd 'A-Za-z0-9._-')"
+
+          # Export for later steps
+          {
+            echo "SAFE_MODULE=$MODULE"
+            echo "SAFE_HEAD=$RAW_SHA"
+            echo "SAFE_ASSIGNEE=$RAW_USER"
+            echo "SAFE_EMAIL=$SAFE_EMAIL"
+            echo "SAFE_BRANCH=$BRANCH_NAME"
+            echo "SAFE_SHORT=$SHORT_SHA"
+          } >> "$GITHUB_ENV"
+
+      - name: Bump dependency (safe)
         run: |
-          commit=${{ github.event.client_payload.head_commit_sha }}
-          short=${commit:0:8}
-          echo "short=$short" >> $GITHUB_OUTPUT
-      - name: Create and Push new branch
+          set -euo pipefail
+          IFS=$'\n\t'
+          echo "Installing ${SAFE_MODULE}@${SAFE_HEAD}"
+          GOOS=linux go get "${SAFE_MODULE}@${SAFE_HEAD}"
+
+      - name: Get Assignee and Reviewer (safe)
+        id: get_reviewer
+        env:
+          ASSIGNEE: ${{ env.SAFE_ASSIGNEE }}
         run: |
-          git config --global --add user.name "${{ github.event.client_payload.assignee }}"
-          git config --global --add user.email "${{ github.event.client_payload.assignee_email }}"
-          branchname=${{ format('{0}-{1}', github.event.client_payload.assignee, steps.short-sha.outputs.short) }}
-          git checkout -b "$branchname"
+          set -euo pipefail
+          if [ "${ASSIGNEE}" = "zachmu" ]; then
+            echo "reviewer=Hydrocharged" >> "$GITHUB_OUTPUT"
+          else
+            echo "reviewer=zachmu" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create and Push new branch (safe)
+        env:
+          GIT_USER:  ${{ env.SAFE_ASSIGNEE }}
+          GIT_MAIL:  ${{ env.SAFE_EMAIL }}
+          BRANCH:    ${{ env.SAFE_BRANCH }}
+          COMMIT_BY: ${{ env.SAFE_ASSIGNEE }}
+        run: |
+          set -euo pipefail
+          IFS=$'\n\t'
+
+          git config --global user.name "${GIT_USER}"
+          git config --global user.email "${GIT_MAIL}"
+
+          git checkout -b "${BRANCH}"
           git add .
-          git commit -m "${{ format('[ga-bump-dep] Bump dependency in GMS by {0}', github.event.client_payload.assignee) }}"
-          git push origin "$branchname"
+
+          # Commit message uses sanitized assignee only
+          git commit -m "[ga-bump-dep] Bump dependency in GMS by ${COMMIT_BY}"
+          git push origin "${BRANCH}"
+
       - name: pull-request
         uses: repo-sync/pull-request@v2
         id: latest-pr
         with:
-          source_branch: ${{ format('{0}-{1}', github.event.client_payload.assignee, steps.short-sha.outputs.short ) }}
+          source_branch: ${{ env.SAFE_BRANCH }}
           destination_branch: "main"
           github_token: ${{ secrets.REPO_ACCESS_TOKEN }}
-          pr_title: "[auto-bump] [no-release-notes] dependency by ${{ github.event.client_payload.assignee }}"
+          pr_title: "[auto-bump] [no-release-notes] dependency by ${{ env.SAFE_ASSIGNEE }}"
           pr_template: ".github/markdown-templates/dep-bump.md"
           pr_reviewer: ${{ steps.get_reviewer.outputs.reviewer }}
-          pr_assignee: ${{ github.event.client_payload.assignee }}
+          pr_assignee: ${{ env.SAFE_ASSIGNEE }}
           pr_label: ${{ needs.get-label.outputs.label }}
 
   comment-on-stale-prs:
