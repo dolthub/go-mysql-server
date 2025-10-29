@@ -225,7 +225,7 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 	if err != nil {
 		return nil, err
 	}
-	m.Tracer.Log("Completed cost-based optimization: %s", m.CostDebugString())
+	m.Tracer.Log("Completed cost-based optimization:\n%s", m.CostDebugString())
 
 	if a.Verbose && a.Debug {
 		a.Log("%s", m.String())
@@ -853,12 +853,12 @@ func addHashJoins(m *memo.Memo) error {
 			switch f := f.(type) {
 			case *expression.Equals:
 				if satisfiesScalarRefs(f.Left(), join.Left.RelProps.OutputTables()) &&
-						satisfiesScalarRefs(f.Right(), join.Right.RelProps.OutputTables()) {
+					satisfiesScalarRefs(f.Right(), join.Right.RelProps.OutputTables()) {
 					fromExpr = append(fromExpr, f.Right())
 					toExpr = append(toExpr, f.Left())
 					m.Tracer.Log("Filter %s: found a left->right hash key mapping", f)
 				} else if satisfiesScalarRefs(f.Right(), join.Left.RelProps.OutputTables()) &&
-						satisfiesScalarRefs(f.Left(), join.Right.RelProps.OutputTables()) {
+					satisfiesScalarRefs(f.Left(), join.Right.RelProps.OutputTables()) {
 					fromExpr = append(fromExpr, f.Left())
 					toExpr = append(toExpr, f.Right())
 					m.Tracer.Log("Filter %s: found a right->left hash key mapping", f)
@@ -997,8 +997,8 @@ func addRangeHeapJoin(m *memo.Memo) error {
 
 		for _, filter := range getRangeFilters(join.Filter) {
 			if !(satisfiesScalarRefs(filter.value, join.Left.RelProps.OutputTables()) &&
-					satisfiesScalarRefs(filter.min, join.Right.RelProps.OutputTables()) &&
-					satisfiesScalarRefs(filter.max, join.Right.RelProps.OutputTables())) {
+				satisfiesScalarRefs(filter.min, join.Right.RelProps.OutputTables()) &&
+				satisfiesScalarRefs(filter.max, join.Right.RelProps.OutputTables())) {
 				return nil
 			}
 			// For now, only match expressions that are exactly a column reference.
@@ -1127,7 +1127,7 @@ func addMergeJoins(ctx *sql.Context, m *memo.Memo) error {
 				r := eq.Right()
 
 				if !expressionReferencesOneColumn(l) ||
-						!expressionReferencesOneColumn(r) {
+					!expressionReferencesOneColumn(r) {
 					continue
 				}
 
@@ -1138,10 +1138,10 @@ func addMergeJoins(ctx *sql.Context, m *memo.Memo) error {
 
 				var swap bool
 				if expressionReferencesTable(l, leftTabId) &&
-						expressionReferencesTable(r, rightTabId) {
+					expressionReferencesTable(r, rightTabId) {
 
 				} else if expressionReferencesTable(r, leftTabId) &&
-						expressionReferencesTable(l, rightTabId) {
+					expressionReferencesTable(l, rightTabId) {
 					swap = true
 					l, r = r, l
 				} else {
