@@ -156,6 +156,11 @@ func (t SetType) Compare(ctx context.Context, a interface{}, b interface{}) (int
 	return 0, nil
 }
 
+// CompareValue implements the ValueType interface
+func (t SetType) CompareValue(ctx *sql.Context, a, b sql.Value) (int, error) {
+	panic("TODO: implement CompareValue for SetType")
+}
+
 // Convert implements Type interface.
 // Returns the string representing the given value if applicable.
 func (t SetType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {

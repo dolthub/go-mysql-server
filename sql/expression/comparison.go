@@ -190,6 +190,7 @@ func (c *comparison) CompareValue(ctx *sql.Context, row sql.ValueRow) (int, erro
 		}
 		return types.Float64.(sql.ValueType).CompareValue(ctx, lv, rv)
 	}
+
 	return lTyp.CompareValue(ctx, lv, rv)
 }
 
@@ -203,10 +204,8 @@ func (c *comparison) IsValueExpression() bool {
 	if !ok {
 		return false
 	}
-	if _, ok := c.LeftChild.Type().(sql.ValueType); !ok {
-		return false
-	}
-	if _, ok := c.RightChild.Type().(sql.ValueType); !ok {
+	// TODO: only allow comparisons between Integers, Floats, Decimals, Bits and Year for now
+	if !types.IsNumber(c.LeftChild.Type()) || !types.IsNumber(c.RightChild.Type()) {
 		return false
 	}
 	return l.IsValueExpression() && r.IsValueExpression()

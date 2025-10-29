@@ -723,18 +723,6 @@ func serializeDecimal(dec decimal.Decimal) []byte {
 	return res
 }
 
-func serializeDate(date time.Time) []byte {
-	var res uint32
-	res += uint32(date.Year() << 16)
-	res += uint32(date.Month() << 8)
-	res += uint32(date.Day())
-	return binary.LittleEndian.AppendUint32(nil, res)
-}
-
-func serializeDatetime(date time.Time) []byte {
-	return binary.LittleEndian.AppendUint64(nil, uint64(date.UnixMicro()))
-}
-
 func TestConvertValueToInt64(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
@@ -742,12 +730,6 @@ func TestConvertValueToInt64(t *testing.T) {
 	testDec := serializeDecimal(decimal.NewFromFloat(123.456))
 	minInt64Dec := serializeDecimal(decimal.NewFromInt(math.MinInt64))
 	maxInt64Dec := serializeDecimal(decimal.NewFromInt(math.MaxInt64))
-
-	zeroDate := serializeDate(time.Unix(0, 0).UTC())
-	testDate := serializeDate(time.Date(2000, 01, 02, 0, 0, 0, 0, time.UTC))
-
-	zeroDatetime := serializeDatetime(time.Unix(0, 0).UTC())
-	testDatetime := serializeDatetime(time.Date(2000, 01, 02, 12, 34, 56, 0, time.UTC))
 
 	tests := []struct {
 		val sql.Value
@@ -1119,6 +1101,36 @@ func TestConvertValueToInt64(t *testing.T) {
 			exp: math.MaxInt64,
 		},
 
+		// Bit -> Int64
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint64(nil, uint64(0)),
+				Typ: sqltypes.Bit,
+			},
+			exp: 0,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint64(nil, uint64(67)),
+				Typ: sqltypes.Bit,
+			},
+			exp: 67,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint64(nil, math.MaxInt64),
+				Typ: sqltypes.Bit,
+			},
+			exp: math.MaxInt64,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint64(nil, math.MaxUint64),
+				Typ: sqltypes.Bit,
+			},
+			exp: math.MaxInt64,
+		},
+
 		// Year -> Int64
 		{
 			val: sql.Value{
@@ -1148,78 +1160,6 @@ func TestConvertValueToInt64(t *testing.T) {
 			},
 			exp: 2155,
 		},
-
-		// Date -> Int64
-		{
-			val: sql.Value{
-				Val: zeroDate,
-				Typ: sqltypes.Date,
-			},
-			exp: 19700101,
-		},
-		{
-			val: sql.Value{
-				Val: testDate,
-				Typ: sqltypes.Date,
-			},
-			exp: 20000102,
-		},
-
-		// Time -> Int64
-		{
-			val: sql.Value{
-				Val: binary.LittleEndian.AppendUint64(nil, uint64(0)),
-				Typ: sqltypes.Time,
-			},
-			exp: 0,
-		},
-		{
-			val: sql.Value{
-				Val: binary.LittleEndian.AppendUint64(nil, uint64(67)),
-				Typ: sqltypes.Time,
-			},
-			exp: 67,
-		},
-		{
-			val: sql.Value{
-				Val: binary.LittleEndian.AppendUint64(nil, math.MaxInt64+1),
-				Typ: sqltypes.Time,
-			},
-			exp: math.MinInt64,
-		},
-		{
-			val: sql.Value{
-				Val: binary.LittleEndian.AppendUint64(nil, math.MaxInt64),
-				Typ: sqltypes.Time,
-			},
-			exp: math.MaxInt64,
-		},
-		{
-			val: sql.Value{
-				Val: binary.LittleEndian.AppendUint64(nil, math.MaxUint64),
-				Typ: sqltypes.Time,
-			},
-			exp: -1,
-		},
-
-		// Datetime/Timestamp -> Int64
-		{
-			val: sql.Value{
-				Val: zeroDatetime,
-				Typ: sqltypes.Datetime,
-			},
-			exp: 19700101000000,
-		},
-		{
-			val: sql.Value{
-				Val: testDatetime,
-				Typ: sqltypes.Datetime,
-			},
-			exp: 20000102123456,
-		},
-
-		// Text -> Int64
-		
 	}
 
 	for _, test := range tests {
@@ -1236,7 +1176,455 @@ func TestConvertValueToInt64(t *testing.T) {
 }
 
 func TestConvertValueToUint64(t *testing.T) {
-	// TODO
+	ctx := sql.NewEmptyContext()
+
+	zeroDec := serializeDecimal(decimal.Zero)
+	testDec := serializeDecimal(decimal.NewFromFloat(123.456))
+	minInt64Dec := serializeDecimal(decimal.NewFromInt(math.MinInt64))
+	maxInt64Dec := serializeDecimal(decimal.NewFromInt(math.MaxInt64))
+
+	tests := []struct {
+		val sql.Value
+		exp uint64
+		err bool
+	}{
+		// Int8 -> Uint64
+		{
+			val: sql.Value{
+				Val: []byte{0},
+				Typ: sqltypes.Int8,
+			},
+			exp: 0,
+		},
+		{
+			val: sql.Value{
+				Val: []byte{67},
+				Typ: sqltypes.Int8,
+			},
+			exp: 67,
+		},
+		{
+			val: sql.Value{
+				Val: []byte{128},
+				Typ: sqltypes.Int8,
+			},
+			exp: 128,
+		},
+		{
+			val: sql.Value{
+				Val: []byte{255},
+				Typ: sqltypes.Int8,
+			},
+			exp: 255,
+		},
+
+		// Int16 -> Uint64
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint16(nil, uint16(0)),
+				Typ: sqltypes.Int16,
+			},
+			exp: 0,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint16(nil, uint16(67)),
+				Typ: sqltypes.Int16,
+			},
+			exp: 67,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint16(nil, math.MaxInt16),
+				Typ: sqltypes.Int16,
+			},
+			exp: math.MaxInt16,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint16(nil, math.MaxInt16+1),
+				Typ: sqltypes.Int16,
+			},
+			exp: math.MaxInt16 + 1,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint16(nil, math.MaxUint16),
+				Typ: sqltypes.Int16,
+			},
+			exp: math.MaxUint16,
+		},
+
+		// Int32 -> Uint64
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint32(nil, uint32(0)),
+				Typ: sqltypes.Int32,
+			},
+			exp: 0,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint32(nil, uint32(67)),
+				Typ: sqltypes.Int32,
+			},
+			exp: 67,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint32(nil, math.MaxInt32),
+				Typ: sqltypes.Int32,
+			},
+			exp: math.MaxInt32,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint32(nil, math.MaxInt32+1),
+				Typ: sqltypes.Int32,
+			},
+			exp: math.MaxInt32 + 1,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint32(nil, math.MaxUint32),
+				Typ: sqltypes.Int32,
+			},
+			exp: math.MaxUint32,
+		},
+
+		// Int64 -> Uint64
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint64(nil, uint64(0)),
+				Typ: sqltypes.Int64,
+			},
+			exp: 0,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint64(nil, uint64(67)),
+				Typ: sqltypes.Int64,
+			},
+			exp: 67,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint64(nil, math.MaxInt64),
+				Typ: sqltypes.Int64,
+			},
+			exp: math.MaxInt64,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint64(nil, math.MaxInt64+1),
+				Typ: sqltypes.Int64,
+			},
+			exp: math.MaxInt64 + 1,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint64(nil, math.MaxUint64),
+				Typ: sqltypes.Int64,
+			},
+			exp: math.MaxUint64,
+		},
+
+		// Uint8 -> Uint64
+		{
+			val: sql.Value{
+				Val: []byte{0},
+				Typ: sqltypes.Uint8,
+			},
+			exp: 0,
+		},
+		{
+			val: sql.Value{
+				Val: []byte{67},
+				Typ: sqltypes.Uint8,
+			},
+			exp: 67,
+		},
+		{
+			val: sql.Value{
+				Val: []byte{128},
+				Typ: sqltypes.Uint8,
+			},
+			exp: 128,
+		},
+		{
+			val: sql.Value{
+				Val: []byte{255},
+				Typ: sqltypes.Uint8,
+			},
+			exp: 255,
+		},
+
+		// Uint16 -> Uint64
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint16(nil, uint16(0)),
+				Typ: sqltypes.Uint16,
+			},
+			exp: 0,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint16(nil, uint16(67)),
+				Typ: sqltypes.Uint16,
+			},
+			exp: 67,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint16(nil, math.MaxInt16),
+				Typ: sqltypes.Uint16,
+			},
+			exp: math.MaxInt16,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint16(nil, math.MaxUint16),
+				Typ: sqltypes.Uint16,
+			},
+			exp: math.MaxUint16,
+		},
+
+		// Uint32 -> Uint64
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint32(nil, uint32(0)),
+				Typ: sqltypes.Uint32,
+			},
+			exp: 0,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint32(nil, uint32(67)),
+				Typ: sqltypes.Uint32,
+			},
+			exp: 67,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint32(nil, math.MaxInt32),
+				Typ: sqltypes.Uint32,
+			},
+			exp: math.MaxInt32,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint32(nil, math.MaxUint32),
+				Typ: sqltypes.Uint32,
+			},
+			exp: math.MaxUint32,
+		},
+
+		// Uint64 -> Uint64
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint64(nil, uint64(0)),
+				Typ: sqltypes.Uint64,
+			},
+			exp: 0,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint64(nil, uint64(67)),
+				Typ: sqltypes.Uint64,
+			},
+			exp: 67,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint64(nil, math.MaxInt64),
+				Typ: sqltypes.Uint64,
+			},
+			exp: math.MaxInt64,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint64(nil, math.MaxUint64),
+				Typ: sqltypes.Uint64,
+			},
+			exp: math.MaxInt64,
+		},
+
+		// Float32 -> Uint64
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint32(nil, math.Float32bits(0)),
+				Typ: sqltypes.Float32,
+			},
+			exp: 0,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint32(nil, math.Float32bits(123.456)),
+				Typ: sqltypes.Float32,
+			},
+			exp: 123,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint32(nil, math.Float32bits(-math.MaxFloat32)),
+				Typ: sqltypes.Float32,
+			},
+			exp: 0,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint32(nil, math.Float32bits(math.MaxFloat32)),
+				Typ: sqltypes.Float32,
+			},
+			exp: math.MaxInt64,
+		},
+
+		// Float64 -> Uint64
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint64(nil, math.Float64bits(0)),
+				Typ: sqltypes.Float64,
+			},
+			exp: 0,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint64(nil, math.Float64bits(123.456)),
+				Typ: sqltypes.Float64,
+			},
+			exp: 123,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint64(nil, math.Float64bits(-math.MaxFloat32)),
+				Typ: sqltypes.Float64,
+			},
+			exp: 0,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint64(nil, math.Float64bits(math.MaxFloat32)),
+				Typ: sqltypes.Float64,
+			},
+			exp: math.MaxInt64,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint64(nil, math.Float64bits(-math.MaxFloat64)),
+				Typ: sqltypes.Float64,
+			},
+			exp: 0,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint64(nil, math.Float64bits(math.MaxFloat64)),
+				Typ: sqltypes.Float64,
+			},
+			exp: math.MaxInt64,
+		},
+
+		// Decimal -> Uint64
+		{
+			val: sql.Value{
+				Val: zeroDec,
+				Typ: sqltypes.Decimal,
+			},
+			exp: 0,
+		},
+		{
+			val: sql.Value{
+				Val: testDec,
+				Typ: sqltypes.Decimal,
+			},
+			exp: 123,
+		},
+		{
+			val: sql.Value{
+				Val: minInt64Dec,
+				Typ: sqltypes.Decimal,
+			},
+			exp: 0,
+		},
+		{
+			val: sql.Value{
+				Val: maxInt64Dec,
+				Typ: sqltypes.Decimal,
+			},
+			exp: math.MaxInt64,
+		},
+
+		// Bit -> Int64
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint64(nil, uint64(0)),
+				Typ: sqltypes.Bit,
+			},
+			exp: 0,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint64(nil, uint64(67)),
+				Typ: sqltypes.Bit,
+			},
+			exp: 67,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint64(nil, math.MaxInt64),
+				Typ: sqltypes.Bit,
+			},
+			exp: math.MaxInt64,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint64(nil, math.MaxUint64),
+				Typ: sqltypes.Bit,
+			},
+			exp: math.MaxInt64,
+		},
+
+		// Year -> Int64
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint16(nil, uint16(0)),
+				Typ: sqltypes.Year,
+			},
+			exp: 0,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint16(nil, uint16(1967)),
+				Typ: sqltypes.Year,
+			},
+			exp: 1967,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint16(nil, uint16(1901)),
+				Typ: sqltypes.Year,
+			},
+			exp: 1901,
+		},
+		{
+			val: sql.Value{
+				Val: binary.LittleEndian.AppendUint16(nil, uint16(2155)),
+				Typ: sqltypes.Year,
+			},
+			exp: 2155,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v", test.val), func(t *testing.T) {
+			res, err := ConvertValueToInt64(ctx, test.val)
+			if test.err {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, test.exp, res)
+		})
+	}
 }
 
 func TestConvertValueToFloat64(t *testing.T) {

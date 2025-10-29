@@ -1126,6 +1126,12 @@ func ConvertValueToInt64(ctx *sql.Context, v sql.Value) (int64, error) {
 			return math.MinInt64, nil
 		}
 		return v.Round(0).IntPart(), nil
+	case sqltypes.Bit:
+		v := values.ReadUint64(v.Val)
+		if v > math.MaxInt64 {
+			return math.MaxInt64, nil
+		}
+		return int64(v), nil
 	case sqltypes.Year:
 		v := values.ReadUint16(v.Val)
 		return int64(v), nil
@@ -1216,6 +1222,8 @@ func ConvertValueToUint64(ctx *sql.Context, v sql.Value) (uint64, error) {
 			return uint64(math.Round(ret)), nil
 		}
 		return uint64(v.Round(0).IntPart()), nil
+	case sqltypes.Bit:
+		return values.ReadUint64(v.Val), nil
 	case sqltypes.Year:
 		v := values.ReadUint16(v.Val)
 		return uint64(v), nil

@@ -158,6 +158,11 @@ func (t EnumType) Compare(ctx context.Context, a interface{}, b interface{}) (in
 	return 0, nil
 }
 
+// CompareValue implements the ValueType interface
+func (t EnumType) CompareValue(ctx *sql.Context, a, b sql.Value) (int, error) {
+	panic("TODO: implement CompareValue for EnumType")
+}
+
 // Convert implements Type interface.
 func (t EnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {

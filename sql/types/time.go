@@ -100,6 +100,11 @@ func (t TimespanType_) Compare(s context.Context, a interface{}, b interface{}) 
 	return as.Compare(bs), nil
 }
 
+// CompareValue implements the ValueType interface
+func (t TimespanType_) CompareValue(ctx *sql.Context, a, b sql.Value) (int, error) {
+	panic("TODO: implement CompareValue for TimespanType")
+}
+
 func (t TimespanType_) Convert(c context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
 		return nil, sql.InRange, nil
