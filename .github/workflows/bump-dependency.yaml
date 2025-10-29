@@ -12,7 +12,7 @@ jobs:
       label:        ${{ steps.sanitize.outputs.label }}
       safe_module:  ${{ steps.sanitize.outputs.safe_module }}
       safe_head:    ${{ steps.sanitize.outputs.safe_head }}
-      safe_assignee:${{ steps.sanitize.outputs.safe_assignee }}
+      safe_assignee: ${{ steps.sanitize.outputs.safe_assignee }}
       safe_email:   ${{ steps.sanitize.outputs.safe_email }}
       safe_branch:  ${{ steps.sanitize.outputs.safe_branch }}
       safe_short:   ${{ steps.sanitize.outputs.safe_short }}
