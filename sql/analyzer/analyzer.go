@@ -36,6 +36,7 @@ import (
 
 const debugAnalyzerKey = "DEBUG_ANALYZER"
 const verboseAnalyzerKey = "VERBOSE_ANALYZER"
+const traceAnalyzerKey = "TRACE_ANALYZER"
 
 const maxAnalysisIterations = 8
 
@@ -215,6 +216,7 @@ func (s simpleLogFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 func (ab *Builder) Build() *Analyzer {
 	_, debug := os.LookupEnv(debugAnalyzerKey)
 	_, verbose := os.LookupEnv(verboseAnalyzerKey)
+	_, trace := os.LookupEnv(traceAnalyzerKey)
 	var batches = []*Batch{
 		{
 			Desc:       "pre-analyzer",
@@ -266,6 +268,7 @@ func (ab *Builder) Build() *Analyzer {
 	return &Analyzer{
 		Debug:           debug || ab.debug,
 		Verbose:         verbose,
+		Trace:           trace,
 		contextStack:    make([]string, 0),
 		Batches:         batches,
 		Catalog:         NewCatalog(ab.provider),
