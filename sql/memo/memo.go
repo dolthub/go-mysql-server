@@ -17,6 +17,7 @@ package memo
 import (
 	"fmt"
 	"io"
+	"iter"
 	"slices"
 	"strings"
 
@@ -617,11 +618,10 @@ func (m *Memo) String() string {
 	exprs := make([]string, m.cnt)
 	groups := make([]*ExprGroup, 0)
 	if m.root != nil {
-		for r := m.root.First; r != nil; r = r.Next() {
-			groups = append(groups, r.Group())
-			groups = append(groups, r.Children()...)
-		}
+		groups = append(groups, m.root.First.Group())
 	}
+
+	// breadth-first traversal of memo groups via their children
 	for len(groups) > 0 {
 		newGroups := make([]*ExprGroup, 0)
 		for _, g := range groups {
@@ -629,7 +629,7 @@ func (m *Memo) String() string {
 				continue
 			}
 			exprs[int(TableIdForSource(g.Id))] = g.String()
-			slices.AppendSeq(newGroups, g.children())
+			newGroups = slices.AppendSeq(newGroups, g.children())
 		}
 		groups = newGroups
 	}
@@ -648,23 +648,15 @@ func (m *Memo) String() string {
 func (m *Memo) CostDebugString() interface{} {
 	exprs := make([]string, m.cnt)
 	groups := make([]*ExprGroup, 0)
-	uniqGroups := make(map[GroupId]bool)
 
 	b := strings.Builder{}
 	b.WriteString(fmt.Sprintf("costed memo (root group %d):\n", m.root.Id))
 
 	if m.root != nil {
-		for r := m.root.First; r != nil; r = r.Next() {
-			groups = append(groups, r.Group())
-			uniqGroups[r.Group().Id] = true
-			for _, c := range r.Children() {
-				uniqGroups[c.Id] = true
-				groups = append(groups, c)
-			}
-		}
+		groups = append(groups, m.root.First.Group())
 	}
 
-	numGroups := len(uniqGroups)
+	// breadth-first traversal of memo groups via their children
 	for len(groups) > 0 {
 		newGroups := make([]*ExprGroup, 0)
 		for _, g := range groups {
@@ -673,12 +665,12 @@ func (m *Memo) CostDebugString() interface{} {
 			}
 
 			prefix := "|   "
-			if int(g.Id) == numGroups {
+			if int(g.Id) == int(m.cnt) {
 				prefix = "    "
 			}
 
 			exprs[int(TableIdForSource(g.Id))] = g.CostTreeString(prefix)
-			slices.AppendSeq(newGroups, g.children())
+			newGroups = slices.AppendSeq(newGroups, g.children())
 		}
 		groups = newGroups
 	}
@@ -765,6 +757,19 @@ func relKey(r RelExpr) uint64 {
 		i *= 1<<16 - 1
 	}
 	return uint64(key)
+}
+
+// IterRelExprs returns an iterator over the linked list of RelExprs beginning at the head e
+func IterRelExprs(e RelExpr) iter.Seq[RelExpr] {
+	curr := e
+	return func(yield func(RelExpr) bool) {
+		for curr != nil {
+			if !yield(curr) {
+				return
+			}
+			curr = curr.Next()
+		}
+	}
 }
 
 type distinctOp uint8

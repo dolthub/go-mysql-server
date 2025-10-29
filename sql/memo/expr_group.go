@@ -101,7 +101,7 @@ func (e *ExprGroup) Prepend(rel RelExpr) {
 // every logical plan in this group.
 func (e *ExprGroup) children() iter.Seq[*ExprGroup] {
 	children := make(map[GroupId]*ExprGroup)
-	for n := e.First; n != nil; n = n.Next() {
+	for n := range IterRelExprs(e.First) {
 		for _, n := range n.Children() {
 			children[n.Id] = n
 		}
@@ -231,11 +231,9 @@ func (e *ExprGroup) String() string {
 // CostTreeString returns a string representation of the expression group for use in cost debug printing
 func (e *ExprGroup) CostTreeString(prefix string) string {
 	b := strings.Builder{}
-	n := e.First
 	costSortedGroups := make([]RelExpr, 0)
-	for n != nil {
+	for n := e.First; n != nil; n = n.Next() {
 		costSortedGroups = append(costSortedGroups, n)
-		n = n.Next()
 	}
 	sort.Slice(costSortedGroups, func(i, j int) bool {
 		return costSortedGroups[i].Cost() < costSortedGroups[j].Cost()
