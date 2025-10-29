@@ -178,10 +178,6 @@ func (c *comparison) CompareValue(ctx *sql.Context, row sql.ValueRow) (int, erro
 		return lTyp.(sql.ValueType).CompareValue(ctx, lv, rv)
 	}
 
-	// TODO: enums
-
-	// TODO: sets
-
 	if types.IsNumber(lTyp) || types.IsNumber(rTyp) {
 		if types.IsUnsigned(lTyp) && types.IsUnsigned(rTyp) {
 			return types.Uint64.(sql.ValueType).CompareValue(ctx, lv, rv)
