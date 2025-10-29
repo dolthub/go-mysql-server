@@ -17,6 +17,7 @@ package types
 import (
 	"context"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/values"
 	"reflect"
 	"strconv"
 	strings2 "strings"
@@ -331,6 +332,110 @@ func (t StringType) Compare(ctx context.Context, a interface{}, b interface{}) (
 		return 1, nil
 	} else {
 		return 0, nil
+	}
+}
+
+// CompareValue implements the sql.ValueType interface.
+func (t StringType) CompareValue(ctx *sql.Context, a, b sql.Value) (int, error) {
+	if hasNulls, res := CompareNullValues(a, b); hasNulls {
+		return res, nil
+	}
+
+	// TODO: Possible to compare binary strings directly?
+	as, err := ConvertValueToString(ctx, a)
+	if err != nil {
+		return 0, err
+	}
+	bs, err := ConvertValueToString(ctx, b)
+	if err != nil {
+		return 0, err
+	}
+
+	encoder := t.collation.CharacterSet().Encoder()
+	getRuneWeight := t.collation.Sorter()
+	for len(as) > 0 && len(bs) > 0 {
+		ar, aRead := encoder.NextRune(as)
+		br, bRead := encoder.NextRune(bs)
+		if aRead == 0 || bRead == 0 || aRead == utf8.RuneError || bRead == utf8.RuneError {
+			return 0, fmt.Errorf("malformed string encountered while comparing")
+		}
+		aWeight := getRuneWeight(ar)
+		bWeight := getRuneWeight(br)
+		if aWeight < bWeight {
+			return -1, nil
+		}
+		if aWeight > bWeight {
+			return 1, nil
+		}
+		as = as[aRead:]
+		bs = bs[bRead:]
+	}
+
+	return 0, nil
+}
+
+func ConvertValueToString(ctx *sql.Context, v sql.Value) (string, error) {
+	// TODO: fix allocation
+	switch v.Typ {
+	case sqltypes.Int8:
+		x := values.ReadInt8(v.Val)
+		return strconv.FormatInt(int64(x), 10), nil
+	case sqltypes.Int16:
+		x := values.ReadInt16(v.Val)
+		return strconv.FormatInt(int64(x), 10), nil
+	case sqltypes.Int24:
+		x := values.ReadInt24(v.Val)
+		return strconv.FormatInt(int64(x), 10), nil
+	case sqltypes.Int32:
+		x := values.ReadInt32(v.Val)
+		return strconv.FormatInt(int64(x), 10), nil
+	case sqltypes.Int64:
+		x := values.ReadInt64(v.Val)
+		return strconv.FormatInt(x, 10), nil
+	case sqltypes.Uint8:
+		x := values.ReadUint8(v.Val)
+		return strconv.FormatUint(uint64(x), 10), nil
+	case sqltypes.Uint16:
+		x := values.ReadUint16(v.Val)
+		return strconv.FormatUint(uint64(x), 10), nil
+	case sqltypes.Uint24:
+		x := values.ReadUint24(v.Val)
+		return strconv.FormatUint(uint64(x), 10), nil
+	case sqltypes.Uint32:
+		x := values.ReadUint32(v.Val)
+		return strconv.FormatUint(uint64(x), 10), nil
+	case sqltypes.Uint64:
+		x := values.ReadUint64(v.Val)
+		return strconv.FormatUint(x, 10), nil
+	case sqltypes.Float32:
+		x := values.ReadFloat32(v.Val)
+		return strconv.FormatFloat(float64(x), 'f', -1, 32), nil
+	case sqltypes.Float64:
+		x := values.ReadFloat64(v.Val)
+		return strconv.FormatFloat(x, 'f', -1, 64), nil
+	case sqltypes.Decimal:
+		x := values.ReadDecimal(v.Val)
+		return x.String(), nil
+	case sqltypes.Year:
+		x := values.ReadInt16(v.Val)
+		return strconv.FormatInt(int64(x), 10), nil
+	case sqltypes.Date:
+		x := values.ReadDate(v.Val)
+		return x.String(), nil
+	case sqltypes.Datetime, sqltypes.Timestamp:
+		x := values.ReadDatetime(v.Val)
+		return x.String(), nil
+	case sqltypes.Text, sqltypes.Blob:
+		var err error
+		if v.Val == nil {
+			v.Val, err = v.WrappedVal.Unwrap(ctx)
+			if err != nil {
+				return "", err
+			}
+		}
+		return values.ReadString(v.Val), nil
+	default:
+		return "", fmt.Errorf("unsupported type %v", v.Typ)
 	}
 }
 
@@ -790,7 +895,7 @@ func (t StringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.
 	return sqltypes.MakeTrusted(t.baseType, val), nil
 }
 
-// ToSQLValue implements ValueType interface.
+// SQLValue implements ValueType interface.
 func (t StringType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes.Value, error) {
 	if v.IsNull() {
 		return sqltypes.NULL, nil

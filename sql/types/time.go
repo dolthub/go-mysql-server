@@ -268,6 +268,7 @@ func (t TimespanType_) SQL(_ *sql.Context, dest []byte, v interface{}) (sqltypes
 	return sqltypes.MakeTrusted(sqltypes.Time, val), nil
 }
 
+// SQLValue implements ValueType interface.
 func (t TimespanType_) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes.Value, error) {
 	if v.IsNull() {
 		return sqltypes.NULL, nil

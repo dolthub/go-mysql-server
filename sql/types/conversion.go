@@ -472,6 +472,24 @@ func CompareNulls(a interface{}, b interface{}) (bool, int) {
 	return false, 0
 }
 
+// CompareNullValues compares two sql.Values, and returns true if either is null.
+// The returned integer represents the ordering, with a rule that states nulls
+// as being ordered before non-nulls.
+func CompareNullValues(a, b sql.Value) (bool, int) {
+	aIsNull := a.IsNull()
+	bIsNull := b.IsNull()
+	switch {
+	case aIsNull && bIsNull:
+		return true, 0
+	case aIsNull && !bIsNull:
+		return false, 1
+	case !aIsNull && bIsNull:
+		return false, -1
+	default:
+		return false, 0
+	}
+}
+
 // NumColumns returns the number of columns in a type. This is one for all
 // types, except tuples.
 func NumColumns(t sql.Type) int {

@@ -17,14 +17,13 @@ package types
 import (
 	"context"
 	"fmt"
-	"math/big"
-	"reflect"
-	"strings"
-
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
+	"math/big"
+	"reflect"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/values"
@@ -137,6 +136,22 @@ func (t DecimalType_) Compare(s context.Context, a interface{}, b interface{}) (
 	}
 
 	return af.Decimal.Cmp(bf.Decimal), nil
+}
+
+// CompareValue implements the ValueType interface
+func (t DecimalType_) CompareValue(ctx *sql.Context, a, b sql.Value) (int, error) {
+	if hasNulls, res := CompareNullValues(a, b); hasNulls {
+		return res, nil
+	}
+	aDec, err := ConvertValueToDecimal(ctx, a)
+	if err != nil {
+		return 0, err
+	}
+	bDec, err := ConvertValueToDecimal(ctx, b)
+	if err != nil {
+		return 0, err
+	}
+	return aDec.Cmp(bDec), nil
 }
 
 // Convert implements Type interface.
@@ -334,14 +349,7 @@ func (t DecimalType_) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqlt
 	if v.IsNull() {
 		return sqltypes.NULL, nil
 	}
-	// TODO: implement values.ReadDecimal
-	e := values.ReadInt32(v.Val[:values.Int32Size])
-	s := values.ReadInt8(v.Val[values.Int32Size : values.Int32Size+values.Int8Size])
-	b := big.NewInt(0).SetBytes(v.Val[values.Int32Size+values.Int8Size:])
-	if s < 0 {
-		b = b.Neg(b)
-	}
-	d := decimal.NewFromBigInt(b, e)
+	d := values.ReadDecimal(v.Val)
 	val := AppendAndSliceString(dest, t.DecimalValueStringFixed(d))
 	return sqltypes.MakeTrusted(sqltypes.Decimal, val), nil
 }
@@ -400,5 +408,74 @@ func (t DecimalType_) DecimalValueStringFixed(v decimal.Decimal) string {
 		return v.String()
 	} else {
 		return v.StringFixed(v.Exponent() * -1)
+	}
+}
+
+// TODO: Should this take in precision and scale?
+func ConvertValueToDecimal(ctx *sql.Context, v sql.Value) (decimal.Decimal, error) {
+	switch v.Typ {
+	case sqltypes.Int8:
+		x := values.ReadInt8(v.Val)
+		return decimal.NewFromInt(int64(x)), nil
+	case sqltypes.Int16:
+		x := values.ReadInt16(v.Val)
+		return decimal.NewFromInt(int64(x)), nil
+	case sqltypes.Int32:
+		x := values.ReadInt32(v.Val)
+		return decimal.NewFromInt(int64(x)), nil
+	case sqltypes.Int64:
+		x := values.ReadInt64(v.Val)
+		return decimal.NewFromInt(x), nil
+	case sqltypes.Uint8:
+		x := values.ReadUint8(v.Val)
+		return decimal.NewFromInt(int64(x)), nil
+	case sqltypes.Uint16:
+		x := values.ReadUint16(v.Val)
+		return decimal.NewFromInt(int64(x)), nil
+	case sqltypes.Uint32:
+		x := values.ReadUint32(v.Val)
+		return decimal.NewFromInt(int64(x)), nil
+	case sqltypes.Uint64:
+		x := values.ReadUint64(v.Val)
+		bi := new(big.Int).SetUint64(x)
+		return decimal.NewFromBigInt(bi, 0), nil
+	case sqltypes.Float32:
+		x := values.ReadFloat32(v.Val)
+		return decimal.NewFromFloat32(x), nil
+	case sqltypes.Float64:
+		x := values.ReadFloat64(v.Val)
+		return decimal.NewFromFloat(x), nil
+	case sqltypes.Decimal:
+		x := values.ReadDecimal(v.Val)
+		return x, nil
+	case sqltypes.Year:
+		x := values.ReadUint16(v.Val)
+		return decimal.NewFromInt(int64(x)), nil
+	case sqltypes.Date:
+		x := values.ReadDate(v.Val)
+		s := x.UTC().Unix()
+		return decimal.NewFromInt(s), nil
+	case sqltypes.Time:
+		x := values.ReadInt64(v.Val)
+		return decimal.NewFromInt(x), nil
+	case sqltypes.Datetime, sqltypes.Timestamp:
+		x := values.ReadDatetime(v.Val)
+		return decimal.NewFromInt(x.UTC().Unix()), nil
+	case sqltypes.Text, sqltypes.Blob:
+		var err error
+		if v.Val == nil {
+			v.Val, err = v.WrappedVal.Unwrap(ctx)
+			if err != nil {
+				return decimal.Decimal{}, err
+			}
+		}
+		x := values.ReadString(v.Val)
+		res, err := decimal.NewFromString(x)
+		if err != nil {
+			return decimal.Decimal{}, err
+		}
+		return res, nil
+	default:
+		return decimal.Decimal{}, ErrConvertingToDecimal.New(v)
 	}
 }

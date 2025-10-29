@@ -262,6 +262,7 @@ func (t SetType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Val
 	return sqltypes.MakeTrusted(sqltypes.Set, val), nil
 }
 
+// SQLValue implements ValueType interface.
 func (t SetType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes.Value, error) {
 	if v.IsNull() {
 		return sqltypes.NULL, nil

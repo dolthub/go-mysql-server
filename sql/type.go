@@ -108,6 +108,9 @@ type Type interface {
 // ValueType is an extension of the Type interface, that operates over sql.Values.
 type ValueType interface {
 	Type
+	// CompareValue returns an integer comparing two sql.Values.
+	// The result will be 0 if a == b, -1 if a < b, and +1 if a > b.
+	CompareValue(*Context, Value, Value) (int, error)
 	// SQLValue returns the sqltypes.Value for the given sql.Value.
 	// Implementations can optionally use |dest| to append
 	// serialized data, but should not mutate existing data.
