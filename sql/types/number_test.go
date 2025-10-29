@@ -17,7 +17,6 @@ package types
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/shopspring/decimal"
 	"math"
 	"reflect"
 	"strconv"
@@ -26,6 +25,7 @@ import (
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
