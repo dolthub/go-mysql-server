@@ -226,6 +226,5 @@ func eval(t *testing.T, e sql.Expression, row sql.Row) interface{} {
 }
 
 func TestValueComparison(t *testing.T) {
-	require := require.New(t)
-
+	// TODO
 }

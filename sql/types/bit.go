@@ -109,11 +109,11 @@ func (t BitType_) CompareValue(ctx *sql.Context, a, b sql.Value) (int, error) {
 		return res, nil
 	}
 
-	av, err := ConvertValueToUint64(ctx, a)
+	av, _, err := convertValueToUint64(ctx, a)
 	if err != nil {
 		return 0, err
 	}
-	bv, err := ConvertValueToUint64(ctx, b)
+	bv, _, err := convertValueToUint64(ctx, b)
 	if err != nil {
 		return 0, err
 	}
