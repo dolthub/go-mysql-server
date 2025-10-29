@@ -16,6 +16,8 @@ package queries
 
 import (
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -23,12 +25,12 @@ import (
 )
 
 var (
-	binlogInsertStmts         = readBinlogTestFile("./testdata/binlog_insert.txt")
-	binlogUpdateStmts         = readBinlogTestFile("./testdata/binlog_update.txt")
-	binlogDeleteStmts         = readBinlogTestFile("./testdata/binlog_delete.txt")
-	binlogFormatDescStmts     = readBinlogTestFile("./testdata/binlog_format_desc.txt")
-	binlogTransactionMultiOps = readBinlogTestFile("./testdata/binlog_transaction_multi_ops.txt")
-	binlogNoFormatDescStmts   = readBinlogTestFile("./testdata/binlog_no_format_desc.txt")
+	binlogInsertStmts         = parseBinlogTestFile("binlog_insert.txt")
+	binlogUpdateStmts         = parseBinlogTestFile("binlog_update.txt")
+	binlogDeleteStmts         = parseBinlogTestFile("binlog_delete.txt")
+	binlogFormatDescStmts     = parseBinlogTestFile("binlog_format_desc.txt")
+	binlogTransactionMultiOps = parseBinlogTestFile("binlog_transaction_multi_ops.txt")
+	binlogNoFormatDescStmts   = parseBinlogTestFile("binlog_no_format_desc.txt")
 )
 
 // BinlogScripts contains test cases for the BINLOG statement. To add tests: add a @test to binlog_maker.bats, generate
@@ -170,10 +172,15 @@ var BinlogScripts = []ScriptTest{
 	},
 }
 
-// readBinlogTestFile reads BINLOG statements from a testdata file. The file is pre-filtered by binlog_maker.bats to
+// parseBinlogTestFile parses BINLOG statements from a testdata file. The file is pre-filtered by binlog_maker.bats to
 // contain only BINLOG statements.
-func readBinlogTestFile(path string) []string {
-	data, err := os.ReadFile(path)
+func parseBinlogTestFile(filename string) []string {
+	_, sourceFile, _, _ := runtime.Caller(0)
+	sourceDir := filepath.Dir(sourceFile)
+
+	testdataPath := filepath.Join(sourceDir, "..", "testdata", filename)
+
+	data, err := os.ReadFile(testdataPath)
 	if err != nil {
 		return nil
 	}
