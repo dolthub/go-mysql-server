@@ -52,8 +52,10 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 		if hasOverlapping(sfExprs, mysqlRanges) {
 			return n, transform.SameTree, nil
 		}
+
+		isReverse := sortNode.SortFields[0].Order == sql.Descending
 		// if the lookup does not need any reversing, do nothing
-		if sortNode.SortFields[0].Order != sql.Descending {
+		if (isReverse && lookup.IsReverse) || (!isReverse && !lookup.IsReverse) {
 			return n, transform.NewTree, nil
 		}
 
@@ -67,7 +69,7 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 			lookup.IsPointLookup,
 			lookup.IsEmptyRange,
 			lookup.IsSpatialLookup,
-			true,
+			isReverse,
 		)
 		newIdxTbl, err := plan.NewStaticIndexedAccessForTableNode(ctx, n.TableNode, lookup)
 		if err != nil {
@@ -158,7 +160,8 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 			if sortNode == nil {
 				continue
 			}
-			sortFields := sortNode.SortFields
+			sortFields := make([]sql.SortField, len(sortNode.SortFields))
+			sameSortFields := true
 			for i, sortField := range sortNode.SortFields {
 				col, sameExpr, _ := transform.Expr(sortField.Column, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 					if gt, ok := e.(*expression.GetField); ok {
@@ -168,7 +171,10 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 					}
 					return e, transform.SameTree, nil
 				})
-				if !sameExpr {
+				if sameExpr {
+					sortFields[i] = sortField
+				} else {
+					sameSortFields = false
 					col2, _ := col.(sql.Expression2)
 					sortFields[i] = sql.SortField{
 						Column:       col,
@@ -178,10 +184,12 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 					}
 				}
 			}
-			newSort := sortNode.WithSortFields(sortFields)
-			// The sort node is used to find table aliases and we need to get the table aliases inside the SubqueryAlias
-			newSort.Child = c.Child
-			newChildren[i], same, err = replaceIdxSortHelper(ctx, scope, child, newSort)
+			if !sameSortFields {
+				// The Sort node is used to find table aliases, but table aliases can't be found inside SubqueryAlias
+				// nodes, so we need to construct a new Sort node with the SubqueryAlias's child
+				newSort := plan.NewSort(sortFields, c.Child)
+				newChildren[i], same, err = replaceIdxSortHelper(ctx, scope, child, newSort)
+			}
 		case *plan.JoinNode:
 			// It's (probably) not possible to have Sort as child of Join without Subquery/SubqueryAlias,
 			//  and in the case where there is a Subq/SQA it's taken care of through finalizeSubqueries
