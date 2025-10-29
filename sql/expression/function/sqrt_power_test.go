@@ -89,8 +89,8 @@ func TestPower(t *testing.T) {
 		{"Base and exp are valid float strings truncated", types.Text, sql.NewRow("1.2abc", "2.3abc"), 1.5209567545525318, false},
 		{"Base and exp are valid scientific float notation strings truncated", types.Text, sql.NewRow("0.12e1asdf", "+23e-1asdf"), 1.5209567545525318, false},
 
-		{"positive inf", types.Float64, sql.NewRow(2, math.Inf(1)), nil, false},
-		{"negative inf", types.Float64, sql.NewRow(2, math.Inf(1)), nil, false},
+		{"positive inf", types.Float64, sql.NewRow(2, math.Inf(1)), nil, true},
+		{"negative inf", types.Float64, sql.NewRow(2, math.Inf(-1)), nil, true},
 	}
 	for _, tt := range testCases {
 		f := NewPower(

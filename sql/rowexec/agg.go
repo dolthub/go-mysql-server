@@ -103,7 +103,9 @@ func (i *groupByIter) Close(ctx *sql.Context) error {
 
 func (i *groupByIter) Dispose() {
 	for _, b := range i.buf {
-		b.Dispose()
+		if b != nil {
+			b.Dispose()
+		}
 	}
 }
 

@@ -400,10 +400,9 @@ func TestQuery2(t *testing.T, harness Harness, e QueryEngine, q string, expected
 // TODO: collapse into TestQuery
 func TestQueryWithEngine(t *testing.T, harness Harness, e QueryEngine, tt queries.QueryTest) {
 	t.Run(tt.Query, func(t *testing.T) {
-		if sh, ok := harness.(SkippingHarness); ok {
-			if sh.SkipQueryTest(tt.Query) {
-				t.Skipf("Skipping query %s", tt.Query)
-			}
+		if sh, ok := harness.(SkippingHarness); tt.Skip || (IsServerEngine(e) && tt.SkipServerEngine) ||
+			(ok && sh.SkipQueryTest(tt.Query)) {
+			t.Skipf("Skipping query %s", tt.Query)
 		}
 
 		ctx := NewContext(harness)
@@ -413,9 +412,6 @@ func TestQueryWithEngine(t *testing.T, harness Harness, e QueryEngine, tt querie
 		} else if tt.ExpectedErrStr != "" {
 			AssertErrWithCtx(t, e, harness, ctx, tt.Query, tt.Bindings, nil, tt.ExpectedErrStr)
 		} else if tt.ExpectedWarning != 0 {
-			if IsServerEngine(e) && tt.SkipServerEngine {
-				t.Skip()
-			}
 			AssertWarningAndTestQuery(t, e, ctx, harness,
 				tt.Query,
 				tt.Expected,

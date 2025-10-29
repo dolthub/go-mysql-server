@@ -2707,6 +2707,22 @@ var InsertErrorScripts = []ScriptTest{
 		Query:       "insert into bad values (repeat('0', 65536))",
 		ExpectedErr: types.ErrLengthBeyondLimit,
 	},
+	{
+		Name: "try inserting incorrect datetime value",
+		SetUpScript: []string{
+			"create table t (d datetime)",
+		},
+		Query:       "insert into t values ('2020-01-01 a')",
+		ExpectedErr: sql.ErrInvalidValue,
+	},
+	{
+		Name: "try inserting incorrect date value",
+		SetUpScript: []string{
+			"create table t (d date)",
+		},
+		Query:       "insert into t values ('2020-01-01 a')",
+		ExpectedErr: sql.ErrInvalidValue,
+	},
 }
 
 var InsertIgnoreScripts = []ScriptTest{

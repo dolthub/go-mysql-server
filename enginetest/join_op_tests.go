@@ -2181,6 +2181,7 @@ WHERE
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/9782
+		// https://github.com/dolthub/dolt/issues/9973
 		name: "joining with subquery on empty table",
 		setup: [][]string{
 			{
@@ -2203,6 +2204,14 @@ WHERE
 			},
 			{
 				Query:    "SELECT t.c FROM (SELECT t.c FROM t WHERE FALSE) AS subq NATURAL RIGHT JOIN t;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT t.c FROM t FULL OUTER JOIN (SELECT t.c FROM t WHERE FALSE) AS subq ON TRUE;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT t.c FROM (SELECT t.c FROM t WHERE FALSE) AS subq FULL OUTER JOIN t ON TRUE;",
 				Expected: []sql.Row{{1}},
 			},
 		},

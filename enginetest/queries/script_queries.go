@@ -123,6 +123,30 @@ type ScriptTestAssertion struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
+		// https://github.com/dolthub/dolt/issues/9987
+		Name: "GROUP BY nil pointer dereference in Dispose when Next() never called",
+		SetUpScript: []string{
+			"CREATE TABLE test_table (id INT PRIMARY KEY, value INT, category VARCHAR(50))",
+			"INSERT INTO test_table VALUES (1, 100, 'A'), (2, 200, 'B'), (3, 300, 'A')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// LIMIT 0 causes the iterator to close without ever calling Next() on groupByIter
+				// This leaves all buffer elements as nil causing panic in Dispose(), or empty depending data struct
+				Query:    "SELECT category, SUM(value) FROM test_table GROUP BY category LIMIT 0",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT category, COUNT(*) FROM test_table GROUP BY category LIMIT 0",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT SUM(value) FROM test_table LIMIT 0",
+				Expected: []sql.Row{},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/9935
 		Dialect: "mysql",
 		Name:    "Incorrect use of negation in AntiJoinIncludingNulls",
@@ -13368,6 +13392,20 @@ select * from t1 except (
 			{
 				Query:    "select ((1 + 2) || 3) + 4",
 				Expected: []sql.Row{{float64(37)}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9951
+		Name: "Do not prune tables that are part of a semi-join",
+		SetUpScript: []string{
+			"create table t0(id int primary key, name longtext, description longtext, comment longtext, created_at timestamp(6), archived bool)",
+			"insert into t0 values (1, 'first', 'abc', 'def', '2025-10-14 10:00:00', b'0')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from (select id, name, description, archived from t0 as test0 where (id in (select id from t0))) as dummy_alias order by dummy_alias.name asc;",
+				Expected: []sql.Row{{1, "first", "abc", 0}},
 			},
 		},
 	},

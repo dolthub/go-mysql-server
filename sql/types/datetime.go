@@ -20,6 +20,7 @@ import (
 	"math"
 	"reflect"
 	"time"
+	"unicode"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -32,6 +33,10 @@ import (
 const ZeroDateStr = "0000-00-00"
 
 const ZeroTimestampDatetimeStr = "0000-00-00 00:00:00"
+
+const MinDatetimeStringLength = 8 // length of "2000-1-1"
+
+const MaxDatetimePrecision = 6
 
 var (
 	// ErrConvertingToTime is thrown when a value cannot be converted to a Time
@@ -64,11 +69,13 @@ var (
 	datetimeMinTime = time.Date(0000, 0, 0, 0, 0, 0, 0, time.UTC)
 
 	DateOnlyLayouts = []string{
-		"20060102",
-		"2006-1-2",
 		"2006-01-02",
 		"2006/01/02",
+		"20060102",
+		"2006-1-2",
 	}
+
+	TimezoneTimestampDatetimeLayout = "2006-01-02 15:04:05.999999999 -0700 MST" // represents standard Time.time.UTC()
 
 	// TimestampDatetimeLayouts hold extra timestamps allowed for parsing. It does
 	// not have all the layouts supported by mysql. Missing are two digit year
@@ -76,19 +83,18 @@ var (
 	//
 	// https://github.com/MariaDB/server/blob/mysql-5.5.36/sql-common/my_time.c#L124
 	TimestampDatetimeLayouts = append([]string{
-		time.RFC3339,
 		time.RFC3339Nano,
-		"2006-01-02 15:4",
-		"2006-01-02 15:04",
-		"2006-01-02 15:04:",
-		"2006-01-02 15:04:.",
-		"2006-01-02 15:04:05.",
 		"2006-01-02 15:04:05.999999999",
 		"2006-1-2 15:4:5.999999999",
 		"2006-1-2:15:4:5.999999999",
+		time.RFC3339,
+		"2006-01-02 15:04:05.",
 		"2006-01-02T15:04:05",
+		"2006-01-02 15:04:.",
+		"2006-01-02 15:04:",
+		"2006-01-02 15:04",
+		"2006-01-02 15:4",
 		"20060102150405",
-		"2006-01-02 15:04:05.999999999 -0700 MST", // represents standard Time.time.UTC()
 	}, DateOnlyLayouts...)
 
 	// zeroTime is 0000-01-01 00:00:00 UTC which is the closest Go can get to 0000-00-00 00:00:00
@@ -99,13 +105,13 @@ var (
 	// Datetime is a date and a time with default precision (no fractional seconds).
 	Datetime = MustCreateDatetimeType(sqltypes.Datetime, 0)
 	// DatetimeMaxPrecision is a date and a time with maximum precision
-	DatetimeMaxPrecision = MustCreateDatetimeType(sqltypes.Datetime, 6)
+	DatetimeMaxPrecision = MustCreateDatetimeType(sqltypes.Datetime, MaxDatetimePrecision)
 	// Timestamp is a UNIX timestamp with default precision (no fractional seconds).
 	Timestamp = MustCreateDatetimeType(sqltypes.Timestamp, 0)
 	// TimestampMaxPrecision is a UNIX timestamp with maximum precision
-	TimestampMaxPrecision = MustCreateDatetimeType(sqltypes.Timestamp, 6)
+	TimestampMaxPrecision = MustCreateDatetimeType(sqltypes.Timestamp, MaxDatetimePrecision)
 	// DatetimeMaxRange is a date and a time with maximum precision and maximum range.
-	DatetimeMaxRange = MustCreateDatetimeType(sqltypes.Datetime, 6)
+	DatetimeMaxRange = MustCreateDatetimeType(sqltypes.Datetime, MaxDatetimePrecision)
 
 	datetimeValueType = reflect.TypeOf(time.Time{})
 )
@@ -122,7 +128,7 @@ var _ sql.CollationCoercible = datetimeType{}
 func CreateDatetimeType(baseType query.Type, precision int) (sql.DatetimeType, error) {
 	switch baseType {
 	case sqltypes.Date, sqltypes.Datetime, sqltypes.Timestamp:
-		if precision < 0 || precision > 6 {
+		if precision < 0 || precision > MaxDatetimePrecision {
 			return nil, fmt.Errorf("precision must be between 0 and 6, got %d", precision)
 		}
 		return datetimeType{
@@ -188,10 +194,10 @@ func (t datetimeType) Convert(ctx context.Context, v interface{}) (interface{}, 
 		return nil, sql.InRange, nil
 	}
 	res, err := ConvertToTime(ctx, v, t)
-	if err != nil {
+	if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
 		return nil, sql.OutOfRange, err
 	}
-	return res, sql.InRange, nil
+	return res, sql.InRange, err
 }
 
 // precisionConversion is a conversion ratio to divide time.Second by to truncate the appropriate amount for the
@@ -206,7 +212,7 @@ func ConvertToTime(ctx context.Context, v interface{}, t datetimeType) (time.Tim
 	}
 
 	res, err := t.ConvertWithoutRangeCheck(ctx, v)
-	if err != nil {
+	if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
 		return time.Time{}, err
 	}
 
@@ -215,7 +221,7 @@ func ConvertToTime(ctx context.Context, v interface{}, t datetimeType) (time.Tim
 	}
 
 	// Round the date to the precision of this type
-	if t.precision < 6 {
+	if t.precision < MaxDatetimePrecision {
 		truncationDuration := time.Second / time.Duration(precisionConversion[t.precision])
 		res = res.Round(truncationDuration)
 	} else {
@@ -227,7 +233,7 @@ func ConvertToTime(ctx context.Context, v interface{}, t datetimeType) (time.Tim
 		if validated == nil {
 			return time.Time{}, ErrConvertingToTimeOutOfRange.New(v, t)
 		}
-		return validated.(time.Time), nil
+		return validated.(time.Time), err
 	}
 
 	switch t.baseType {
@@ -245,7 +251,7 @@ func ConvertToTime(ctx context.Context, v interface{}, t datetimeType) (time.Tim
 		}
 	}
 
-	return res, nil
+	return res, err
 }
 
 // ConvertWithoutRangeCheck converts the parameter to time.Time without checking the range.
@@ -267,7 +273,7 @@ func (t datetimeType) ConvertWithoutRangeCheck(ctx context.Context, v interface{
 		}
 		// TODO: consider not using time.Parse if we want to match MySQL exactly ('2010-06-03 11:22.:.:.:.:' is a valid timestamp)
 		var parsed bool
-		res, parsed = parseDatetime(value)
+		res, parsed, err = t.parseDatetime(value)
 		if !parsed {
 			return zeroTime, ErrConvertingToTime.New(v)
 		}
@@ -361,16 +367,41 @@ func (t datetimeType) ConvertWithoutRangeCheck(ctx context.Context, v interface{
 		res = res.Truncate(24 * time.Hour)
 	}
 
-	return res, nil
+	return res, err
 }
 
-func parseDatetime(value string) (time.Time, bool) {
-	for _, layout := range TimestampDatetimeLayouts {
-		if t, err := time.Parse(layout, value); err == nil {
-			return t.UTC(), true
-		}
+func (t datetimeType) parseDatetime(value string) (time.Time, bool, error) {
+	if t, err := time.Parse(TimezoneTimestampDatetimeLayout, value); err == nil {
+		return t.UTC(), true, nil
 	}
-	return time.Time{}, false
+
+	valueLen := len(value)
+	end := valueLen
+
+	for end >= MinDatetimeStringLength {
+		for _, layout := range TimestampDatetimeLayouts {
+			if t, err := time.Parse(layout, value[0:end]); err == nil {
+				if end != valueLen {
+					err = sql.ErrTruncatedIncorrect.New(t, value)
+				}
+				return t.UTC(), true, err
+			}
+		}
+		end = findDatetimeEnd(value, end-1)
+	}
+	return time.Time{}, false, nil
+}
+
+// findDatetimeEnd returns the index of the last digit before `end`
+func findDatetimeEnd(value string, end int) int {
+	for end >= MinDatetimeStringLength {
+		char := rune(value[end-1])
+		if unicode.IsDigit(char) {
+			return end
+		}
+		end--
+	}
+	return end
 }
 
 // Equals implements the Type interface.

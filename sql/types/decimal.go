@@ -203,6 +203,9 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 	case float32:
 		return t.ConvertToNullDecimal(decimal.NewFromFloat32(value))
 	case float64:
+		if !IsValidFloat(value) {
+			return decimal.NullDecimal{}, ErrConvertingToDecimal.New(value)
+		}
 		return t.ConvertToNullDecimal(decimal.NewFromFloat(value))
 	case string:
 		var err error

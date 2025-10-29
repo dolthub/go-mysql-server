@@ -25,7 +25,103 @@ import (
 
 var LoadDataScripts = []ScriptTest{
 	{
-		Name: "LOAD DATA applies column defaults when \\N provided",
+		// https://github.com/dolthub/dolt/issues/9969
+		Name: "LOAD DATA with ENCLOSED BY and ESCAPED BY parsing",
+		SetUpScript: []string{
+			"create table t1(pk int primary key, c1 longtext)",
+			"LOAD DATA INFILE './testdata/loaddata_term_in_field.dat' INTO TABLE t1 FIELDS TERMINATED BY ',' ENCLOSED BY '\"' ESCAPED BY '\"'",
+			"create table t2(pk int primary key, c1 longtext)",
+			"LOAD DATA INFILE './testdata/loaddata_escape.dat' INTO TABLE t2 FIELDS TERMINATED BY ',' ENCLOSED BY '\"' ESCAPED BY '\\\\'",
+			"create table t3(a varchar(20), b varchar(20))",
+			"LOAD DATA INFILE './testdata/loaddata_enclosed.dat' INTO TABLE t3 FIELDS TERMINATED BY ',' ENCLOSED BY '\"' ESCAPED BY '\"'",
+			"create table t4(a varchar(20), b varchar(20))",
+			"LOAD DATA INFILE './testdata/loaddata_mixed_escapes.dat' INTO TABLE t4 FIELDS TERMINATED BY ',' ENCLOSED BY '\"' ESCAPED BY '\\\\'",
+			"create table t5(a text, b text)",
+			"LOAD DATA INFILE './testdata/loaddata_single_quotes.dat' INTO TABLE t5 FIELDS TERMINATED BY ',' ENCLOSED BY ''''",
+			"create table t6(pk int, a varchar(20), b varchar(20))",
+			"LOAD DATA INFILE './testdata/loaddata_nulls.dat' INTO TABLE t6 FIELDS TERMINATED BY ','",
+			"create table t7(i int, v text)",
+			"LOAD DATA INFILE './testdata/loaddata_eof.dat' INTO TABLE t7 FIELDS TERMINATED BY ',' ENCLOSED BY '$' ESCAPED BY '$'",
+			"create table t8(i int, v text)",
+			"LOAD DATA INFILE './testdata/loaddata_enc_esc_eq.dat' INTO TABLE t8 FIELDS TERMINATED BY ',' ENCLOSED BY '$' ESCAPED BY '$'",
+			"create table t9(i int, v text)",
+			"LOAD DATA INFILE './testdata/loaddata_lborder_null.dat' INTO TABLE t9 FIELDS TERMINATED BY ',' ENCLOSED BY '' ESCAPED BY ''",
+			"create table t10(i int, v text)",
+			"LOAD DATA INFILE './testdata/loaddata_null_in_field.dat' INTO TABLE t10 FIELDS TERMINATED BY ',' ENCLOSED BY '\"' ESCAPED BY ''",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from t1",
+				Expected: []sql.Row{{1, "foo,bar"}},
+			},
+			{
+				Query:    "select * from t2",
+				Expected: []sql.Row{{1, "foo,bar"}},
+			},
+			{
+				Query: "select * from t3 ORDER BY a",
+				Expected: []sql.Row{
+					{"a\"b", "cd\"ef"},
+					{"field1", "field2"},
+					{"foo,bar", "baz,qux"},
+				},
+			},
+			{
+				Query: "select * from t4",
+				Expected: []sql.Row{
+					{nil, "\x1A"},
+					{"a,b", "c,d"},
+					{"hello\nworld", "foo\tbar"},
+				},
+			},
+			{
+				Query: "select * from t5",
+				Expected: []sql.Row{
+					{"Field A", "Field B"},
+					{"Field 1", "Field 2"},
+					{"Field 3", "Field 4"},
+					{"Field 5", "Field 6"},
+				},
+			},
+			{
+				Query: "select * from t6 ORDER BY pk",
+				Expected: []sql.Row{
+					{1, "hello", "world"},
+					{2, nil, "test"},
+					{3, "", "empty"},
+					{4, nil, nil},
+				},
+			},
+			{
+				Query: "select * from t7",
+				Expected: []sql.Row{
+					{1, "foo $0 $b $n $t $Z $N bar"},
+					{2, "$foo $ bar$"},
+				},
+			},
+			{
+				Query: "select * from t8",
+				Expected: []sql.Row{
+					{1, "foo $0 $b $n $t $Z $N bar"},
+					{2, "foo $ bar"},
+				},
+			},
+			{
+				Query: "select * from t9",
+				Expected: []sql.Row{
+					{1, "\x00foo bar"},
+				},
+			},
+			{
+				Query: "select * from t10",
+				Expected: []sql.Row{
+					{1, "foo \x00 bar"},
+				},
+			},
+		},
+	},
+	{
+		Name: "LOAD DATA does not apply column defaults when \\N provided",
 		SetUpScript: []string{
 			"create table t (pk int primary key, c1 int default 1, c2 int)",
 			// Explicitly use Windows-style line endings to be robust on Windows CI
@@ -34,7 +130,7 @@ var LoadDataScripts = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "select * from t",
-				Expected: []sql.Row{{1, 1, 1}},
+				Expected: []sql.Row{{1, nil, 1}},
 			},
 		},
 	},

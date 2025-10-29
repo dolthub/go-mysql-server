@@ -224,6 +224,7 @@ implementing some interfaces. For detailed instructions, see the
 ## Powered by go-mysql-server
 
 * [dolt](https://github.com/dolthub/dolt)
+* [Grafana](https://www.dolthub.com/blog/2025-09-25-grafana-with-go-mysql-server/)
 * [gitbase](https://github.com/src-d/gitbase) (defunct)
 
 Are you building a database backend using **go-mysql-server**? We

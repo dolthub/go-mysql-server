@@ -230,9 +230,9 @@ Project
      │   ├─ avg(cte.x):5
      │   └─ 0 (tinyint)
      └─ Project
-         ├─ columns: [avg(cte.x):5, 1 (tinyint)->x:4]
+         ├─ columns: [avg(cte.x):5, cte.x:3!null, 1 (tinyint)->x:4]
          └─ GroupBy
-             ├─ select: AVG(cte.x:3!null)
+             ├─ select: AVG(cte.x:3!null), cte.x:3!null
              ├─ group: 
              └─ SubqueryAlias
                  ├─ name: cte
@@ -260,9 +260,9 @@ Project
      │   ├─ avg(xy.x):5
      │   └─ 0 (tinyint)
      └─ Project
-         ├─ columns: [avg(xy.x):5, 1 (tinyint)->x:4]
+         ├─ columns: [avg(xy.x):5, xy.x:1!null, 1 (tinyint)->x:4]
          └─ GroupBy
-             ├─ select: AVG(xy.x:1!null)
+             ├─ select: AVG(xy.x:1!null), xy.x:1!null
              ├─ group: 
              └─ Table
                  ├─ name: xy
@@ -1029,7 +1029,7 @@ Project
      │   ├─ sum((xy.y * xy.z)):4!null
      │   └─ 1 (tinyint)
      └─ GroupBy
-         ├─ select: SUM((xy.y:2!null * xy.z:3!null)), xy.x:1!null
+         ├─ select: SUM((xy.y:2!null * xy.z:3!null)), xy.x:1!null, xy.y:2!null, xy.z:3!null
          ├─ group: xy.x:1!null
          └─ Table
              ├─ name: xy
@@ -1691,9 +1691,9 @@ Project
      │           │   ├─ count(uv.u):7!null
      │           │   └─ 1 (bigint)
      │           └─ Project
-     │               ├─ columns: [count(uv.u):7!null, count(uv.u):7!null->count_1:8]
+     │               ├─ columns: [count(uv.u):7!null, uv.u:4!null, count(uv.u):7!null->count_1:8]
      │               └─ GroupBy
-     │                   ├─ select: COUNT(uv.u:4!null)
+     │                   ├─ select: COUNT(uv.u:4!null), uv.u:4!null
      │                   ├─ group: uv.u:4!null
      │                   └─ Filter
      │                       ├─ Eq
@@ -2156,9 +2156,9 @@ Project
      ├─ NOT
      │   └─ avg(-xy.y):5 IS NULL
      └─ Project
-         ├─ columns: [avg(-xy.y):5, xy.x:1!null, xy.x:1!null->y:4]
+         ├─ columns: [avg(-xy.y):5, xy.x:1!null, xy.y:2!null, xy.x:1!null->y:4]
          └─ GroupBy
-             ├─ select: AVG(-xy.y), xy.x:1!null
+             ├─ select: AVG(-xy.y), xy.x:1!null, xy.y:2!null
              ├─ group: xy.x:1!null
              └─ Table
                  ├─ name: xy

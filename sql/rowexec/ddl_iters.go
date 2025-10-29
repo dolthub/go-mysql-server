@@ -130,56 +130,108 @@ func (l *loadDataIter) parseLinePrefix(line string) string {
 	}
 }
 
-func (l *loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Expression, error) {
+func (l *loadDataIter) parseFields(ctx *sql.Context, line string) (exprs []sql.Expression, err error) {
 	// Step 1. Start by Searching for prefix if there is one
 	line = l.parseLinePrefix(line)
 	if line == "" {
 		return nil, nil
 	}
 
-	// Step 2: Split the lines into fields given the delim
-	fields := strings.Split(line, l.fieldsTerminatedBy)
-
-	// Step 3: Go through each field and see if it was enclosed by something
+	// Step 2: Split the lines into fields given the delim, respecting ENCLOSED BY.
+	// Fields enclosed by the enclosure character can contain the field terminator.
 	// TODO: Support the OPTIONALLY parameter.
-	if l.fieldsEnclosedBy != "" {
-		for i, field := range fields {
-			if field[0] == l.fieldsEnclosedBy[0] && field[len(field)-1] == l.fieldsEnclosedBy[0] {
-				fields[i] = field[1 : len(field)-1]
-			} else {
-				return nil, fmt.Errorf("error: field not properly enclosed")
-			}
-		}
+
+	// Check if line has terminator (if not, it ended at EOF)
+	hasTerminator := strings.HasSuffix(line, l.linesTerminatedBy)
+	if hasTerminator {
+		line = line[:len(line)-len(l.linesTerminatedBy)]
 	}
 
-	// Step 4: Handle the ESCAPED BY parameter.
-	if l.fieldsEscapedBy != "" {
-		for i, field := range fields {
-			if field == "\\N" {
-				fields[i] = "NULL"
-			} else if field == "\\Z" {
-				fields[i] = fmt.Sprintf("%c", 26) // ASCII 26
-			} else if field == "\\0" {
-				fields[i] = fmt.Sprintf("%c", 0) // ASCII 0
-			} else {
-				// The character immediately following the escaped character remains untouched, even if it is the same
-				// as the escape character
-				newField := make([]byte, 0, len(field))
-				for cIdx := 0; cIdx < len(field); cIdx++ {
-					c := field[cIdx]
-					// skip over escaped character, but always add the following character
-					if c == l.fieldsEscapedBy[0] {
-						cIdx += 1
-						if cIdx < len(field) {
-							newField = append(newField, c)
-						}
-						continue
-					}
-					newField = append(newField, c)
-				}
-				fields[i] = string(newField)
-			}
+	var fields []string
+	var currentField strings.Builder
+	inEnclosure := false
+	termLen := len(l.fieldsTerminatedBy)
+	hasEnc := l.fieldsEnclosedBy != ""
+	hasEsc := l.fieldsEscapedBy != ""
+	encEqualsEsc := hasEnc && hasEsc && l.fieldsEnclosedBy == l.fieldsEscapedBy
+	// False only at EOF with enc==esc: ambiguous whether final char closes field or is literal data
+	normalLineTerm := hasTerminator || !encEqualsEsc
+
+	for i := 0; i < len(line); i++ {
+		ch := line[i]
+		isEncChar := hasEnc && ch == l.fieldsEnclosedBy[0]
+		// When enc==esc, doubling handles escaping (e.g., $$ -> $), not escape sequences
+		isEscChar := hasEsc && !encEqualsEsc && ch == l.fieldsEscapedBy[0]
+
+		// Start enclosure at beginning of field
+		if isEncChar && !inEnclosure && currentField.Len() == 0 {
+			inEnclosure = true
+			continue
 		}
+
+		// Special case: escaped enclosure character does not end enclosure and is written literally
+		if isEncChar && inEnclosure && encEqualsEsc && i+1 < len(line) && line[i+1] == l.fieldsEnclosedBy[0] {
+			currentField.WriteByte(l.fieldsEnclosedBy[0])
+			i++
+			continue
+		}
+
+		// Close enclosure if followed by field terminator or at end of line
+		if isEncChar && inEnclosure {
+			followedByTerm := i+1+termLen <= len(line) && line[i+1:i+1+termLen] == l.fieldsTerminatedBy
+			atLineEnd := i+1 >= len(line)
+			if followedByTerm || (atLineEnd && normalLineTerm) {
+				inEnclosure = false
+				continue
+			}
+			// Enclosure char in middle of field, treat as literal
+			currentField.WriteByte(ch)
+			continue
+		}
+
+		if isEscChar && i+1 < len(line) {
+			i++
+			switch line[i] {
+			case 'N':
+				currentField.WriteString("NULL")
+			case 'Z':
+				currentField.WriteByte(26)
+			case '0':
+				currentField.WriteByte(0)
+			case 'n':
+				currentField.WriteByte('\n')
+			case 't':
+				currentField.WriteByte('\t')
+			case 'r':
+				currentField.WriteByte('\r')
+			case 'b':
+				currentField.WriteByte('\b')
+			default:
+				currentField.WriteByte(line[i])
+			}
+			continue
+		}
+
+		// Handle field terminator (only outside enclosures)
+		if !inEnclosure && i+termLen <= len(line) && line[i:i+termLen] == l.fieldsTerminatedBy {
+			fields = append(fields, currentField.String())
+			currentField.Reset()
+			i += termLen - 1
+			continue
+		}
+
+		currentField.WriteByte(ch)
+	}
+
+	lastField := currentField.String()
+	// If still in enclosure at EOF when enc==esc, prepend the opening enclosure that was stripped
+	if inEnclosure && !normalLineTerm {
+		lastField = string(l.fieldsEnclosedBy[0]) + lastField
+	}
+	fields = append(fields, lastField)
+
+	if inEnclosure && normalLineTerm {
+		return nil, fmt.Errorf("error: unterminated enclosed field")
 	}
 
 	fieldRow := make(sql.Row, len(fields))
@@ -187,7 +239,7 @@ func (l *loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Express
 		fieldRow[i] = field
 	}
 
-	exprs := make([]sql.Expression, len(l.destSch))
+	exprs = make([]sql.Expression, len(l.destSch))
 	for fieldIdx, exprIdx := 0, 0; fieldIdx < len(fields) && fieldIdx < len(l.userVars); fieldIdx++ {
 		if l.userVars[fieldIdx] != nil {
 			setField := l.userVars[fieldIdx].(*expression.SetField)
@@ -220,19 +272,7 @@ func (l *loadDataIter) parseFields(ctx *sql.Context, line string) ([]sql.Express
 				}
 			}
 		case "NULL":
-			// For MySQL LOAD DATA semantics, \N (mapped to NULL here) should use the column default
-			// if one exists; otherwise insert NULL.
-			destIdx := l.fieldToColMap[fieldIdx]
-			if destIdx >= 0 {
-				destCol := l.destSch[destIdx]
-				if destCol.Default != nil {
-					exprs[exprIdx] = destCol.Default
-				} else {
-					exprs[exprIdx] = expression.NewLiteral(nil, types.Null)
-				}
-			} else {
-				exprs[exprIdx] = expression.NewLiteral(nil, types.Null)
-			}
+			exprs[exprIdx] = expression.NewLiteral(nil, types.Null)
 		default:
 			exprs[exprIdx] = expression.NewLiteral(field, types.LongText)
 		}

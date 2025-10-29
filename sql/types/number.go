@@ -1093,6 +1093,9 @@ func convertToInt64(t NumberTypeImpl_, v any, round Round) (int64, sql.ConvertIn
 		if v < float64(math.MinInt64) {
 			return math.MinInt64, sql.OutOfRange, nil
 		}
+		if !IsValidFloat(v) {
+			return 0, sql.OutOfRange, sql.ErrInvalidValue.New(v, t.String())
+		}
 		return int64(math.Round(v)), sql.InRange, nil
 	case decimal.Decimal:
 		if v.GreaterThan(dec_int64_max) {
@@ -1291,6 +1294,9 @@ func convertToUint64(t NumberTypeImpl_, v any, round Round) (uint64, sql.Convert
 		if v < 0 {
 			return uint64(math.MaxUint64 - uint(-v-1)), sql.OutOfRange, nil
 		}
+		if !IsValidFloat(v) {
+			return 0, sql.OutOfRange, sql.ErrInvalidValue.New(v, t.String())
+		}
 		return uint64(math.Round(v)), sql.InRange, nil
 	case decimal.Decimal:
 		if v.GreaterThan(dec_uint64_max) {
@@ -1389,6 +1395,9 @@ func convertToFloat64(t NumberTypeImpl_, v interface{}) (float64, error) {
 	case float32:
 		return float64(v), nil
 	case float64:
+		if !IsValidFloat(v) {
+			return v, sql.ErrInvalidValue.New(v, t.String())
+		}
 		return v, nil
 	case decimal.Decimal:
 		f, _ := v.Float64()
@@ -1555,4 +1564,10 @@ func ConvertHexBlobToDecimalForNumericContext(val interface{}, originType sql.Ty
 		val = decimalNum
 	}
 	return val, nil
+}
+
+// IsValidFloat returns false in go-mysql-server if a float is NaN or infinity. Since NaN and infinity values are
+// allowed in Doltgres, this function is replaced there.
+var IsValidFloat = func(f float64) bool {
+	return !math.IsNaN(f) && !math.IsInf(f, 0)
 }
