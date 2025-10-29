@@ -3610,28 +3610,45 @@ Select * from (
 			"",
 	},
 	{
-		Query: `SELECT * FROM (select i,s FROM mytable) mt order by i;`,
-		ExpectedPlan: "TableAlias(mt)\n" +
-			" └─ IndexedTableAccess(mytable)\n" +
-			"     ├─ index: [mytable.i]\n" +
-			"     ├─ static: [{[NULL, ∞)}]\n" +
-			"     ├─ colSet: (1,2)\n" +
-			"     ├─ tableId: 1\n" +
-			"     └─ Table\n" +
-			"         ├─ name: mytable\n" +
+		Query: `SELECT * FROM (select t.i,t.s FROM mytable t) mt order by i;`,
+		ExpectedPlan: "SubqueryAlias\n" +
+			" ├─ name: mt\n" +
+			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
+			" ├─ cacheable: true\n" +
+			" ├─ colSet: (3,4)\n" +
+			" ├─ tableId: 2\n" +
+			" └─ TableAlias(t)\n" +
+			"     └─ IndexedTableAccess(mytable)\n" +
+			"         ├─ index: [mytable.i]\n" +
+			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i s]\n" +
+			"",
+		ExpectedEstimates: "SubqueryAlias\n" +
+			" ├─ name: mt\n" +
+			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
+			" ├─ cacheable: true\n" +
+			" └─ TableAlias(t)\n" +
+			"     └─ IndexedTableAccess(mytable)\n" +
+			"         ├─ index: [mytable.i]\n" +
+			"         ├─ filters: [{[NULL, ∞)}]\n" +
 			"         └─ columns: [i s]\n" +
 			"",
-		ExpectedEstimates: "TableAlias(mt)\n" +
-			" └─ IndexedTableAccess(mytable)\n" +
-			"     ├─ index: [mytable.i]\n" +
-			"     ├─ filters: [{[NULL, ∞)}]\n" +
-			"     └─ columns: [i s]\n" +
-			"",
-		ExpectedAnalysis: "TableAlias(mt)\n" +
-			" └─ IndexedTableAccess(mytable)\n" +
-			"     ├─ index: [mytable.i]\n" +
-			"     ├─ filters: [{[NULL, ∞)}]\n" +
-			"     └─ columns: [i s]\n" +
+		ExpectedAnalysis: "SubqueryAlias\n" +
+			" ├─ name: mt\n" +
+			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
+			" ├─ cacheable: true\n" +
+			" └─ TableAlias(t)\n" +
+			"     └─ IndexedTableAccess(mytable)\n" +
+			"         ├─ index: [mytable.i]\n" +
+			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         └─ columns: [i s]\n" +
 			"",
 	},
 	{
