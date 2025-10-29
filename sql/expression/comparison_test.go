@@ -224,3 +224,8 @@ func eval(t *testing.T, e sql.Expression, row sql.Row) interface{} {
 	require.NoError(t, err)
 	return v
 }
+
+func TestValueComparison(t *testing.T) {
+	require := require.New(t)
+
+}

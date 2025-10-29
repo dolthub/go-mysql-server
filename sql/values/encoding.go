@@ -183,7 +183,6 @@ func ReadFloat64(val []byte) float64 {
 }
 
 func ReadDecimal(val []byte) decimal.Decimal {
-	expectSize(val, DecimalSize)
 	e := ReadInt32(val[:Int32Size])
 	s := ReadInt8(val[Int32Size : Int32Size+Int8Size])
 	b := big.NewInt(0).SetBytes(val[Int32Size+Int8Size:])

@@ -1131,13 +1131,24 @@ func ConvertValueToInt64(ctx *sql.Context, v sql.Value) (int64, error) {
 		return int64(v), nil
 	case sqltypes.Date:
 		v := values.ReadDate(v.Val)
-		return v.UTC().Unix(), nil
+		var res int64
+		res += int64(v.Year() * 10000)
+		res += int64(v.Month() * 100)
+		res += int64(v.Day())
+		return res, nil
 	case sqltypes.Time:
 		v := values.ReadInt64(v.Val)
 		return v, nil
 	case sqltypes.Datetime, sqltypes.Timestamp:
 		v := values.ReadDatetime(v.Val)
-		return v.UTC().Unix(), nil
+		var res int64
+		res += int64(v.Year() * 1_00_00_00_00_00)
+		res += int64(v.Month() * 1_00_00_00_00)
+		res += int64(v.Day() * 1_00_00_00)
+		res += int64(v.Hour() * 1_00_00)
+		res += int64(v.Minute() * 1_00)
+		res += int64(v.Second())
+		return res, nil
 	case sqltypes.Text, sqltypes.Blob:
 		var err error
 		if v.Val == nil {
@@ -1156,7 +1167,6 @@ func ConvertValueToInt64(ctx *sql.Context, v sql.Value) (int64, error) {
 			return 0, sql.ErrInvalidValue.New(v, v.Typ.String())
 		}
 		return i, err
-	// TODO: enum, set, json?
 	default:
 		return 0, sql.ErrInvalidBaseType.New(v.Typ.String(), "number")
 	}
