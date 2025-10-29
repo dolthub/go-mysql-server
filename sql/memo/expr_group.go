@@ -19,6 +19,7 @@ import (
 	"io"
 	"iter"
 	"maps"
+	"slices"
 	"sort"
 	"strings"
 
@@ -97,11 +98,16 @@ func (e *ExprGroup) Prepend(rel RelExpr) {
 	rel.SetNext(first)
 }
 
+// Iter returns an iterator over the RelExprs in this ExprGroup.
+func (e *ExprGroup) Iter() iter.Seq[RelExpr] {
+	return IterRelExprs(e.First)
+}
+
 // children returns a unioned list of child ExprGroup for
 // every logical plan in this group.
 func (e *ExprGroup) children() iter.Seq[*ExprGroup] {
 	children := make(map[GroupId]*ExprGroup)
-	for n := range IterRelExprs(e.First) {
+	for n := range e.Iter() {
 		for _, n := range n.Children() {
 			children[n.Id] = n
 		}
@@ -197,9 +203,8 @@ func (e *ExprGroup) fixTableScanPath() bool {
 
 func (e *ExprGroup) String() string {
 	b := strings.Builder{}
-	n := e.First
 	sep := ""
-	for n != nil {
+	for n := range e.Iter() {
 		b.WriteString(sep)
 		b.WriteString(fmt.Sprintf("(%s", n))
 		if e.Best != nil {
@@ -223,7 +228,6 @@ func (e *ExprGroup) String() string {
 			b.WriteString(")")
 		}
 		sep = " "
-		n = n.Next()
 	}
 	return b.String()
 }
@@ -231,10 +235,7 @@ func (e *ExprGroup) String() string {
 // CostTreeString returns a string representation of the expression group for use in cost debug printing
 func (e *ExprGroup) CostTreeString(prefix string) string {
 	b := strings.Builder{}
-	costSortedGroups := make([]RelExpr, 0)
-	for n := e.First; n != nil; n = n.Next() {
-		costSortedGroups = append(costSortedGroups, n)
-	}
+	costSortedGroups := slices.Collect(e.Iter())
 	sort.Slice(costSortedGroups, func(i, j int) bool {
 		return costSortedGroups[i].Cost() < costSortedGroups[j].Cost()
 	})
