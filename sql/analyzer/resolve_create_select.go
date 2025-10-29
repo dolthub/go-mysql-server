@@ -38,27 +38,24 @@ func resolveCreateSelect(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 		newSch[i] = &tempCol
 	}
 
+	colNameToIdx := make(map[string]int, len(newSch))
+	for i, col := range newSch {
+		colNameToIdx[col.Name] = i
+	}
+
 	// Apply primary key constraints from index definitions to the merged schema
 	var nonPkIndexes sql.IndexDefs
+	pkOrdinals := make([]int, 0)
 	for _, idx := range ct.Indexes() {
 		if idx.IsPrimary() {
 			for _, idxCol := range idx.Columns {
-				for i, schCol := range newSch {
-					if schCol.Name == idxCol.Name {
-						newSch[i].PrimaryKey = true
-						break
-					}
+				if i, ok := colNameToIdx[idxCol.Name]; ok {
+					newSch[i].PrimaryKey = true
+					pkOrdinals = append(pkOrdinals, i)
 				}
 			}
 		} else {
 			nonPkIndexes = append(nonPkIndexes, idx)
-		}
-	}
-
-	pkOrdinals := make([]int, 0)
-	for i, col := range newSch {
-		if col.PrimaryKey {
-			pkOrdinals = append(pkOrdinals, i)
 		}
 	}
 

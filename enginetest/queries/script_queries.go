@@ -123,6 +123,146 @@ type ScriptTestAssertion struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
+		// https://github.com/dolthub/dolt/issues/9316
+		Name: "CREATE TABLE with constraints AS SELECT osticket repro",
+		SetUpScript: []string{
+			"CREATE TABLE ost_form_entry (id INT PRIMARY KEY, object_id INT, object_type VARCHAR(1))",
+			"CREATE TABLE ost_form_entry_values (entry_id INT, field_id INT, value VARCHAR(100), value_id INT)",
+			"CREATE TABLE ost_form_field (id INT PRIMARY KEY)",
+			"INSERT INTO ost_form_entry VALUES (1, 100, 'U'), (2, 101, 'U'), (3, 102, 'X')",
+			"INSERT INTO ost_form_entry_values VALUES (1, 1, 'user100@example.com', 1000), (2, 1, 'user101@example.com', 1001), (3, 2, 'other', 2000)",
+			"INSERT INTO ost_form_field VALUES (1), (2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `CREATE TABLE IF NOT EXISTS ost_user__cdata (
+						PRIMARY KEY (user_id)
+					) DEFAULT CHARSET=utf8 AS
+					SELECT
+						entry.object_id as user_id,
+						MAX(IF(field.id='1',coalesce(ans.value_id, ans.value),NULL)) as email
+						FROM ost_form_entry entry
+						JOIN ost_form_entry_values ans
+						ON ans.entry_id = entry.id
+						JOIN ost_form_field field
+						ON field.id=ans.field_id
+						WHERE entry.object_type='U' GROUP BY entry.object_id`,
+			},
+			{
+				Query: "SELECT * FROM ost_user__cdata ORDER BY user_id",
+				Expected: []sql.Row{
+					{100, "1000"},
+					{101, "1001"},
+				},
+			},
+			{
+				Query: "SHOW KEYS FROM ost_user__cdata WHERE Key_name = 'PRIMARY'",
+				Expected: []sql.Row{
+					{"ost_user__cdata", 0, "PRIMARY", 1, "user_id", nil, 0, nil, nil, "YES", "BTREE", "", "", "YES", nil},
+				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/9316
+		Name: "CREATE TABLE with constraints AS SELECT",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (a int not null, b varchar(10))",
+			"INSERT INTO t1 VALUES (1, 'one'), (2, 'two'), (3, 'three')",
+			"CREATE TABLE source (id int, name varchar(20))",
+			"INSERT INTO source VALUES (1, 'alice'), (2, 'bob'), (3, 'charlie')",
+			"CREATE TABLE override_src (a bigint, b int)",
+			"INSERT INTO override_src VALUES (100, 200)",
+			"CREATE TABLE base (a int, b varchar(10))",
+			"INSERT INTO base VALUES (1, 'alpha'), (2, 'beta')",
+			"CREATE TABLE multi_src (id int, email varchar(50), age int)",
+			"INSERT INTO multi_src VALUES (1, 'a@test.com', 25), (2, 'b@test.com', 30)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CREATE TABLE t2 (PRIMARY KEY(a)) SELECT * FROM t1",
+			},
+			{
+				Query: "SELECT * FROM t2 ORDER BY a",
+				Expected: []sql.Row{
+					{1, "one"},
+					{2, "two"},
+					{3, "three"},
+				},
+			},
+			{
+				Query: "SHOW KEYS FROM t2 WHERE Key_name = 'PRIMARY'",
+				Expected: []sql.Row{
+					{"t2", 0, "PRIMARY", 1, "a", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
+				},
+			},
+			{
+				Query: "CREATE TABLE indexed (KEY(name)) SELECT * FROM source",
+			},
+			{
+				Query: "SELECT * FROM indexed ORDER BY id",
+				Expected: []sql.Row{
+					{1, "alice"},
+					{2, "bob"},
+					{3, "charlie"},
+				},
+			},
+			{
+				Query: "SHOW KEYS FROM indexed WHERE Key_name = 'name'",
+				Expected: []sql.Row{
+					{"indexed", 1, "name", 1, "name", nil, 0, nil, nil, "YES", "BTREE", "", "", "YES", nil},
+				},
+			},
+			{
+				Query: "CREATE TABLE override (a TINYINT NOT NULL) SELECT a, b FROM override_src",
+			},
+			{
+				Query: "SELECT * FROM override",
+				Expected: []sql.Row{
+					{int8(100), 200},
+				},
+			},
+			{
+				Query: "SHOW CREATE TABLE override",
+				Expected: []sql.Row{
+					{"override", "CREATE TABLE `override` (\n  `a` tinyint NOT NULL,\n  `b` int\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+				},
+			},
+			{
+				Query: "CREATE TABLE uniq (UNIQUE KEY(a)) SELECT * FROM base",
+			},
+			{
+				Query: "SELECT * FROM uniq ORDER BY a",
+				Expected: []sql.Row{
+					{1, "alpha"},
+					{2, "beta"},
+				},
+			},
+			{
+				Query: "SHOW KEYS FROM uniq WHERE Key_name = 'a'",
+				Expected: []sql.Row{
+					{"uniq", 0, "a", 1, "a", nil, 0, nil, nil, "YES", "BTREE", "", "", "YES", nil},
+				},
+			},
+			{
+				Query: "CREATE TABLE multi_idx (PRIMARY KEY(id), KEY(email), KEY(age)) SELECT * FROM multi_src",
+			},
+			{
+				Query: "SELECT * FROM multi_idx ORDER BY id",
+				Expected: []sql.Row{
+					{1, "a@test.com", 25},
+					{2, "b@test.com", 30},
+				},
+			},
+			{
+				Query: "SELECT COUNT(*) FROM information_schema.statistics WHERE table_name = 'multi_idx'",
+				Expected: []sql.Row{
+					{3},
+				},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/9987
 		Name: "GROUP BY nil pointer dereference in Dispose when Next() never called",
 		SetUpScript: []string{
