@@ -234,6 +234,8 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 		scope.JoinTrees = append(scope.JoinTrees, m.String())
 	}
 
+	m.Tracer.Log("Best root plan: %s", m.BestPlanDebugString())
+	
 	return m.BestRootPlan(ctx)
 }
 

@@ -27,7 +27,7 @@ func dfsRelHelper(grp *ExprGroup, seen map[GroupId]struct{}, cb func(rel RelExpr
 		seen[grp.Id] = struct{}{}
 	}
 
-	for n := range IterRelExprs(grp.First) {
+	for n := range grp.Iter() {
 		for _, c := range n.Children() {
 			err := dfsRelHelper(c, seen, cb)
 			if err != nil {

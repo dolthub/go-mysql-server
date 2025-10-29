@@ -261,3 +261,17 @@ func (e *ExprGroup) CostTreeString(prefix string) string {
 
 	return b.String()
 }
+
+// BestPlanDebugString returns a string representation of the physical best plan for use in cost debug printing
+func (e *ExprGroup) BestPlanDebugString() string {
+	tp := sql.NewTreePrinter()
+	tp.WriteNode(fmt.Sprintf("G%d [%s] Cost: %.1f", e.Id, e.Best))
+	children := e.Best.Children()
+	childrenStrings := make([]string, len(children))
+	for i, c := range children {
+		childrenStrings[i] = c.BestPlanDebugString()
+	}
+
+	tp.WriteChildren(childrenStrings...)
+	return tp.String()
+}
