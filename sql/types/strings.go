@@ -17,7 +17,6 @@ package types
 import (
 	"context"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql/values"
 	"reflect"
 	"strconv"
 	strings2 "strings"
@@ -31,6 +30,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/encodings"
+	"github.com/dolthub/go-mysql-server/sql/values"
 )
 
 const (

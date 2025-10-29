@@ -18,11 +18,12 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/shopspring/decimal"
 	"math"
 	"math/big"
 	"time"
 	"unsafe"
+
+	"github.com/shopspring/decimal"
 )
 
 type Type struct {
