@@ -17,6 +17,7 @@ package memo
 import (
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -628,7 +629,7 @@ func (m *Memo) String() string {
 				continue
 			}
 			exprs[int(TableIdForSource(g.Id))] = g.String()
-			newGroups = append(newGroups, g.children()...)
+			slices.AppendSeq(newGroups, g.children())
 		}
 		groups = newGroups
 	}
@@ -647,12 +648,23 @@ func (m *Memo) String() string {
 func (m *Memo) CostDebugString() interface{} {
 	exprs := make([]string, m.cnt)
 	groups := make([]*ExprGroup, 0)
+	uniqGroups := make(map[GroupId]bool)
+
+	b := strings.Builder{}
+	b.WriteString(fmt.Sprintf("costed memo (root group %d):\n", m.root.Id))
+
 	if m.root != nil {
 		for r := m.root.First; r != nil; r = r.Next() {
 			groups = append(groups, r.Group())
-			groups = append(groups, r.Children()...)
+			uniqGroups[r.Group().Id] = true
+			for _, c := range r.Children() {
+				uniqGroups[c.Id] = true
+				groups = append(groups, c)
+			}
 		}
 	}
+
+	numGroups := len(uniqGroups)
 	for len(groups) > 0 {
 		newGroups := make([]*ExprGroup, 0)
 		for _, g := range groups {
@@ -661,17 +673,16 @@ func (m *Memo) CostDebugString() interface{} {
 			}
 
 			prefix := "|   "
-			if len(groups) == 1 {
+			if int(g.Id) == numGroups {
 				prefix = "    "
 			}
 
 			exprs[int(TableIdForSource(g.Id))] = g.CostTreeString(prefix)
-			newGroups = append(newGroups, g.children()...)
+			slices.AppendSeq(newGroups, g.children())
 		}
 		groups = newGroups
 	}
-	b := strings.Builder{}
-	b.WriteString("costed memo:\n")
+
 	beg := "├──"
 	for i, g := range exprs {
 		if i == len(exprs)-1 {

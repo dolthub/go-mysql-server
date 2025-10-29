@@ -17,6 +17,8 @@ package memo
 import (
 	"fmt"
 	"io"
+	"iter"
+	"maps"
 	"sort"
 	"strings"
 
@@ -27,12 +29,11 @@ import (
 // ExprGroup is a linked list of plans that return the same result set
 // defined by row count and schema.
 type ExprGroup struct {
-	m         *Memo
-	RelProps  *relProps
-	First     RelExpr
-	Best      RelExpr
-	_children []*ExprGroup
-	Cost      float64
+	m        *Memo
+	RelProps *relProps
+	First    RelExpr
+	Best     RelExpr
+	Cost     float64
 
 	Id     GroupId
 	Done   bool
@@ -98,16 +99,14 @@ func (e *ExprGroup) Prepend(rel RelExpr) {
 
 // children returns a unioned list of child ExprGroup for
 // every logical plan in this group.
-func (e *ExprGroup) children() []*ExprGroup {
-	relExpr, ok := e.First.(RelExpr)
-	if !ok {
-		return e.children()
+func (e *ExprGroup) children() iter.Seq[*ExprGroup] {
+	children := make(map[GroupId]*ExprGroup)
+	for n := e.First; n != nil; n = n.Next() {
+		for _, n := range n.Children() {
+			children[n.Id] = n
+		}
 	}
-	children := make([]*ExprGroup, 0)
-	for n := relExpr; n != nil; n = n.Next() {
-		children = append(children, n.Children()...)
-	}
-	return children
+	return maps.Values(children)
 }
 
 // updateBest updates a group's Best to the given expression if the cost is lower than the current best.
