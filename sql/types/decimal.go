@@ -411,7 +411,6 @@ func (t DecimalType_) DecimalValueStringFixed(v decimal.Decimal) string {
 	}
 }
 
-// TODO: Should this take in precision and scale?
 func ConvertValueToDecimal(ctx *sql.Context, v sql.Value) (decimal.Decimal, error) {
 	switch v.Typ {
 	case sqltypes.Int8:

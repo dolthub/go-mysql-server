@@ -207,6 +207,12 @@ func (c *comparison) IsValueExpression() bool {
 	if !ok {
 		return false
 	}
+	if _, ok := c.LeftChild.Type().(sql.ValueType); !ok {
+		return false
+	}
+	if _, ok := c.RightChild.Type().(sql.ValueType); !ok {
+		return false
+	}
 	return l.IsValueExpression() && r.IsValueExpression()
 }
 

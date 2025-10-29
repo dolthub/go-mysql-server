@@ -701,6 +701,6 @@ func ConvertValueToDatetime(ctx *sql.Context, v sql.Value) (time.Time, error) {
 		}
 		return res, err
 	default:
-		return zeroTime, sql.ErrInvalidBaseType.New(v.Typ.String(), "number")
+		return zeroTime, sql.ErrInvalidBaseType.New(v.Typ.String(), "datetime")
 	}
 }
