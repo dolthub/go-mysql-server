@@ -38,15 +38,48 @@ func resolveCreateSelect(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 		newSch[i] = &tempCol
 	}
 
+	// Apply primary key constraints from index definitions to the merged schema
 	pkOrdinals := make([]int, 0)
+	var nonPkIndexes sql.IndexDefs
+	for _, idx := range ct.Indexes() {
+		if idx.IsPrimary() {
+			for _, idxCol := range idx.Columns {
+				for i, schCol := range newSch {
+					if schCol.Name == idxCol.Name {
+						newSch[i].PrimaryKey = true
+						pkOrdinals = append(pkOrdinals, i)
+						break
+					}
+				}
+			}
+		} else {
+			// Keep non-primary key indexes
+			nonPkIndexes = append(nonPkIndexes, idx)
+		}
+	}
+	
+	// Also check for columns already marked as primary key
 	for i, col := range newSch {
 		if col.PrimaryKey {
-			pkOrdinals = append(pkOrdinals, i)
+			found := false
+			for _, pk := range pkOrdinals {
+				if pk == i {
+					found = true
+					break
+				}
+			}
+			if !found {
+				pkOrdinals = append(pkOrdinals, i)
+			}
 		}
 	}
 
 	newSpec := &plan.TableSpec{
-		Schema: sql.NewPrimaryKeySchema(newSch, pkOrdinals...),
+		Schema:    sql.NewPrimaryKeySchema(newSch, pkOrdinals...),
+		IdxDefs:   nonPkIndexes, // Only pass non-PK indexes since PK is in schema
+		FkDefs:    ct.ForeignKeys(),
+		ChDefs:    ct.Checks(),
+		Collation: ct.Collation,
 	}
 
 	newCreateTable := plan.NewCreateTable(ct.Database(), ct.Name(), ct.IfNotExists(), ct.Temporary(), newSpec)
