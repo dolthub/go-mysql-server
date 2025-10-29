@@ -189,6 +189,29 @@ func (t datetimeType) Compare(ctx context.Context, a interface{}, b interface{})
 	return 0, nil
 }
 
+// CompareValue implements the ValueType interface
+func (t datetimeType) CompareValue(ctx *sql.Context, a, b sql.Value) (int, error) {
+	if hasNulls, res := CompareNullValues(a, b); hasNulls {
+		return res, nil
+	}
+	at, err := ConvertValueToDatetime(ctx, a)
+	if err != nil {
+		return 0, err
+	}
+	bt, err := ConvertValueToDatetime(ctx, b)
+	if err != nil {
+		return 0, err
+	}
+	switch {
+	case at.Before(bt):
+		return -1, nil
+	case at.After(bt):
+		return 1, nil
+	default:
+		return 0, nil
+	}
+}
+
 // Convert implements Type interface.
 func (t datetimeType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
@@ -274,14 +297,14 @@ func (t datetimeType) ConvertWithoutRangeCheck(ctx context.Context, v interface{
 		}
 		// TODO: consider not using time.Parse if we want to match MySQL exactly ('2010-06-03 11:22.:.:.:.:' is a valid timestamp)
 		var parsed bool
-		res, parsed, err = t.parseDatetime(value)
+		res, parsed, err = parseDatetime(value)
 		if !parsed {
 			return zeroTime, ErrConvertingToTime.New(v)
 		}
 	case time.Time:
 		res = value.UTC()
-		// For most integer values, we just return an error (but MySQL is more lenient for some of these). A special case
-		// is zero values, which are important when converting from postgres defaults.
+	// For most integer values, we just return an error (but MySQL is more lenient for some of these). A special case
+	// is zero values, which are important when converting from postgres defaults.
 	case int:
 		if value == 0 {
 			return zeroTime, nil
@@ -371,7 +394,7 @@ func (t datetimeType) ConvertWithoutRangeCheck(ctx context.Context, v interface{
 	return res, err
 }
 
-func (t datetimeType) parseDatetime(value string) (time.Time, bool, error) {
+func parseDatetime(value string) (time.Time, bool, error) {
 	if t, err := time.Parse(TimezoneTimestampDatetimeLayout, value); err == nil {
 		return t.UTC(), true, nil
 	}
@@ -475,6 +498,7 @@ func (t datetimeType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 	return sqltypes.MakeTrusted(typ, valBytes), nil
 }
 
+// SQLValue implements the ValueType interface.
 func (t datetimeType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes.Value, error) {
 	if v.IsNull() {
 		return sqltypes.NULL, nil
@@ -482,11 +506,7 @@ func (t datetimeType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqlt
 	switch t.baseType {
 	case sqltypes.Date:
 		// TODO: move this to values package
-		x := values.ReadUint32(v.Val)
-		y := x >> 16
-		m := (x & (255 << 8)) >> 8
-		d := x & 255
-		t := time.Date(int(y), time.Month(m), int(d), 0, 0, 0, 0, time.UTC)
+		t := values.ReadDatetime(v.Val)
 		dest = t.AppendFormat(dest, sql.DateLayout)
 
 	case sqltypes.Datetime, sqltypes.Timestamp:
@@ -570,4 +590,117 @@ func ValidateTimestamp(t time.Time) interface{} {
 		return nil
 	}
 	return t
+}
+
+func ConvertValueToDatetime(ctx *sql.Context, v sql.Value) (time.Time, error) {
+	switch v.Typ {
+	case sqltypes.Int8:
+		x := values.ReadInt8(v.Val)
+		if x == 0 {
+			return zeroTime, nil
+		}
+		return zeroTime, ErrConvertingToTime.New(x)
+	case sqltypes.Int16:
+		x := values.ReadInt16(v.Val)
+		if x == 0 {
+			return zeroTime, nil
+		}
+		return zeroTime, ErrConvertingToTime.New(x)
+	case sqltypes.Int24:
+		x := values.ReadInt24(v.Val)
+		if x == 0 {
+			return zeroTime, nil
+		}
+		return zeroTime, ErrConvertingToTime.New(x)
+	case sqltypes.Int32:
+		x := values.ReadInt32(v.Val)
+		if x == 0 {
+			return zeroTime, nil
+		}
+		return zeroTime, ErrConvertingToTime.New(x)
+	case sqltypes.Int64:
+		x := values.ReadInt64(v.Val)
+		if x == 0 {
+			return zeroTime, nil
+		}
+		return zeroTime, ErrConvertingToTime.New(x)
+	case sqltypes.Uint8:
+		x := values.ReadUint8(v.Val)
+		if x == 0 {
+			return zeroTime, nil
+		}
+		return zeroTime, ErrConvertingToTime.New(x)
+	case sqltypes.Uint16:
+		x := values.ReadUint16(v.Val)
+		if x == 0 {
+			return zeroTime, nil
+		}
+		return zeroTime, ErrConvertingToTime.New(x)
+	case sqltypes.Uint24:
+		x := values.ReadUint24(v.Val)
+		if x == 0 {
+			return zeroTime, nil
+		}
+		return zeroTime, ErrConvertingToTime.New(x)
+	case sqltypes.Uint32:
+		x := values.ReadUint32(v.Val)
+		if x == 0 {
+			return zeroTime, nil
+		}
+		return zeroTime, ErrConvertingToTime.New(x)
+	case sqltypes.Uint64:
+		x := values.ReadUint64(v.Val)
+		if x == 0 {
+			return zeroTime, nil
+		}
+		return zeroTime, ErrConvertingToTime.New(x)
+	case sqltypes.Float32:
+		x := values.ReadFloat32(v.Val)
+		if x == 0 {
+			return zeroTime, nil
+		}
+		return zeroTime, ErrConvertingToTime.New(x)
+	case sqltypes.Float64:
+		x := values.ReadFloat64(v.Val)
+		if x == 0 {
+			return zeroTime, nil
+		}
+		return zeroTime, ErrConvertingToTime.New(x)
+	case sqltypes.Decimal:
+		x := values.ReadDecimal(v.Val)
+		if x.IsZero() {
+			return zeroTime, nil
+		}
+		return zeroTime, ErrConvertingToTime.New(x)
+	case sqltypes.Year:
+		return zeroTime, nil
+	case sqltypes.Date:
+		x := values.ReadDate(v.Val)
+		return x, nil
+	case sqltypes.Time:
+		x := values.ReadInt64(v.Val)
+		if x == 0 {
+			return zeroTime, nil
+		}
+		return zeroTime, ErrConvertingToTime.New(x)
+	case sqltypes.Datetime, sqltypes.Timestamp:
+		x := values.ReadDatetime(v.Val)
+		return x, nil
+	case sqltypes.Text, sqltypes.Blob:
+		var err error
+		if v.Val == nil {
+			v.Val, err = v.WrappedVal.Unwrap(ctx)
+			if err != nil {
+				return zeroTime, err
+			}
+		}
+		val := values.ReadString(v.Val)
+		res, parsed, err := parseDatetime(val)
+		if !parsed {
+			return zeroTime, ErrConvertingToTime.New(v)
+		}
+		return res, err
+	default:
+		return zeroTime, sql.ErrInvalidBaseType.New(v.Typ.String(), "number")
+	}
 }

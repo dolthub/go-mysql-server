@@ -269,6 +269,7 @@ func (t EnumType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Va
 	return sqltypes.MakeTrusted(sqltypes.Enum, val), nil
 }
 
+// SQLValue implements the ValueType interface.
 func (t EnumType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes.Value, error) {
 	if v.IsNull() {
 		return sqltypes.NULL, nil

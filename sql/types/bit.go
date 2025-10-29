@@ -103,6 +103,31 @@ func (t BitType_) Compare(ctx context.Context, a interface{}, b interface{}) (in
 	return 0, nil
 }
 
+// CompareValue implements the ValueType interface
+func (t BitType_) CompareValue(ctx *sql.Context, a, b sql.Value) (int, error) {
+	if hasNulls, res := CompareNullValues(a, b); hasNulls {
+		return res, nil
+	}
+
+	av, err := ConvertValueToUint64(ctx, a)
+	if err != nil {
+		return 0, err
+	}
+	bv, err := ConvertValueToUint64(ctx, b)
+	if err != nil {
+		return 0, err
+	}
+
+	switch {
+	case av < bv:
+		return -1, nil
+	case av > bv:
+		return 1, nil
+	default:
+		return 0, nil
+	}
+}
+
 // Convert implements Type interface.
 func (t BitType_) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
@@ -211,7 +236,7 @@ func (t BitType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Va
 	return sqltypes.MakeTrusted(sqltypes.Bit, val), nil
 }
 
-// ToSQLValue implements ValueType interface.
+// SQLValue implements ValueType interface.
 func (t BitType_) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes.Value, error) {
 	if v.IsNull() {
 		return sqltypes.NULL, nil

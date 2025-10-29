@@ -34,6 +34,16 @@ type Value struct {
 	Typ        query.Type
 }
 
+var NullValue = Value{}
+var FalseValue = Value{
+	Val: []byte{0},
+	Typ: query.Type_INT8,
+}
+var TrueValue = Value{
+	Val: []byte{1},
+	Typ: query.Type_INT8,
+}
+
 // ValueRow is a slice of values
 type ValueRow []Value
 
