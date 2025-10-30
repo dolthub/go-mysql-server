@@ -158,7 +158,7 @@ var ScriptTests = []ScriptTest{
 			{
 				Query: "SHOW KEYS FROM ost_user__cdata WHERE Key_name = 'PRIMARY'",
 				Expected: []sql.Row{
-					{"ost_user__cdata", 0, "PRIMARY", 1, "user_id", nil, 0, nil, nil, "YES", "BTREE", "", "", "YES", nil},
+					{"ost_user__cdata", 0, "PRIMARY", 1, "user_id", nil, 0, nil, nil, "", "BTREE", "", "", "YES", nil},
 				},
 			},
 		},

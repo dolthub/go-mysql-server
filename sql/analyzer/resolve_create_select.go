@@ -50,7 +50,9 @@ func resolveCreateSelect(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 		if idx.IsPrimary() {
 			for _, idxCol := range idx.Columns {
 				if i, ok := colNameToIdx[idxCol.Name]; ok {
+					// https://dev.mysql.com/doc/refman/8.0/en/create-table.html
 					newSch[i].PrimaryKey = true
+					newSch[i].Nullable = false
 					pkOrdinals = append(pkOrdinals, i)
 				}
 			}
