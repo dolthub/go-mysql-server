@@ -3457,7 +3457,7 @@ order by
 			"                     │           ├─ columns: [avg(customer.c_acctbal):8->avg(c_acctbal):0]\n" +
 			"                     │           └─ GroupBy\n" +
 			"                     │               ├─ select: AVG(customer.c_acctbal:9!null)\n" +
-			"                     │               ├─ group: \n" + // printer adds space sep always
+			"                     │               ├─ group: \n" +
 			"                     │               └─ Filter\n" +
 			"                     │                   ├─ AND\n" +
 			"                     │                   │   ├─ GreaterThan\n" +

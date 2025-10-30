@@ -3568,43 +3568,87 @@ Select * from (
 		Query: `SELECT a FROM (select i,s FROM mytable) mt (a,b) order by 1;`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [mt.a:0!null]\n" +
-			" └─ Sort(mt.a:0!null ASC nullsFirst)\n" +
-			"     └─ SubqueryAlias\n" +
-			"         ├─ name: mt\n" +
-			"         ├─ outerVisibility: false\n" +
-			"         ├─ isLateral: false\n" +
-			"         ├─ cacheable: true\n" +
-			"         ├─ colSet: (3,4)\n" +
-			"         ├─ tableId: 2\n" +
+			" └─ SubqueryAlias\n" +
+			"     ├─ name: mt\n" +
+			"     ├─ outerVisibility: false\n" +
+			"     ├─ isLateral: false\n" +
+			"     ├─ cacheable: true\n" +
+			"     ├─ colSet: (3,4)\n" +
+			"     ├─ tableId: 2\n" +
+			"     └─ IndexedTableAccess(mytable)\n" +
+			"         ├─ index: [mytable.i]\n" +
+			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
-			"             ├─ columns: [i s]\n" +
-			"             ├─ colSet: (1,2)\n" +
-			"             └─ tableId: 1\n" +
+			"             └─ columns: [i s]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [mt.a]\n" +
-			" └─ Sort(mt.a ASC)\n" +
-			"     └─ SubqueryAlias\n" +
-			"         ├─ name: mt\n" +
-			"         ├─ outerVisibility: false\n" +
-			"         ├─ isLateral: false\n" +
-			"         ├─ cacheable: true\n" +
+			" └─ SubqueryAlias\n" +
+			"     ├─ name: mt\n" +
+			"     ├─ outerVisibility: false\n" +
+			"     ├─ isLateral: false\n" +
+			"     ├─ cacheable: true\n" +
+			"     └─ IndexedTableAccess(mytable)\n" +
+			"         ├─ index: [mytable.i]\n" +
+			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         └─ columns: [i s]\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [mt.a]\n" +
+			" └─ SubqueryAlias\n" +
+			"     ├─ name: mt\n" +
+			"     ├─ outerVisibility: false\n" +
+			"     ├─ isLateral: false\n" +
+			"     ├─ cacheable: true\n" +
+			"     └─ IndexedTableAccess(mytable)\n" +
+			"         ├─ index: [mytable.i]\n" +
+			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         └─ columns: [i s]\n" +
+			"",
+	},
+	{
+		Query: `SELECT * FROM (select t.i,t.s FROM mytable t) mt order by i;`,
+		ExpectedPlan: "SubqueryAlias\n" +
+			" ├─ name: mt\n" +
+			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
+			" ├─ cacheable: true\n" +
+			" ├─ colSet: (3,4)\n" +
+			" ├─ tableId: 2\n" +
+			" └─ TableAlias(t)\n" +
+			"     └─ IndexedTableAccess(mytable)\n" +
+			"         ├─ index: [mytable.i]\n" +
+			"         ├─ static: [{[NULL, ∞)}]\n" +
+			"         ├─ colSet: (1,2)\n" +
+			"         ├─ tableId: 1\n" +
 			"         └─ Table\n" +
 			"             ├─ name: mytable\n" +
 			"             └─ columns: [i s]\n" +
 			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [mt.a]\n" +
-			" └─ Sort(mt.a ASC)\n" +
-			"     └─ SubqueryAlias\n" +
-			"         ├─ name: mt\n" +
-			"         ├─ outerVisibility: false\n" +
-			"         ├─ isLateral: false\n" +
-			"         ├─ cacheable: true\n" +
-			"         └─ Table\n" +
-			"             ├─ name: mytable\n" +
-			"             └─ columns: [i s]\n" +
+		ExpectedEstimates: "SubqueryAlias\n" +
+			" ├─ name: mt\n" +
+			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
+			" ├─ cacheable: true\n" +
+			" └─ TableAlias(t)\n" +
+			"     └─ IndexedTableAccess(mytable)\n" +
+			"         ├─ index: [mytable.i]\n" +
+			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         └─ columns: [i s]\n" +
+			"",
+		ExpectedAnalysis: "SubqueryAlias\n" +
+			" ├─ name: mt\n" +
+			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
+			" ├─ cacheable: true\n" +
+			" └─ TableAlias(t)\n" +
+			"     └─ IndexedTableAccess(mytable)\n" +
+			"         ├─ index: [mytable.i]\n" +
+			"         ├─ filters: [{[NULL, ∞)}]\n" +
+			"         └─ columns: [i s]\n" +
 			"",
 	},
 	{
