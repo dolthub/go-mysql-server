@@ -289,7 +289,7 @@ func (t EnumType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes
 	}
 
 	// TODO: write append style encoder
-	res, ok := charset.Encoder().Encode(encodings.StringToBytes(value)) // TODO: use unsafe string to byte
+	res, ok := charset.Encoder().Encode([]byte(value))
 	if !ok {
 		if len(value) > 50 {
 			value = value[:50]

@@ -507,30 +507,39 @@ func (t Timespan) AppendBytes(dest []byte) []byte {
 	if microseconds > 0 {
 		sz += 7
 	}
-
-	i := 0
 	if isNegative {
 		dest = append(dest, '-')
-		i++
 	}
 
-	i = appendDigit(int64(hours), 2, dest, i)
-	dest[i] = ':'
-	i++
-	i = appendDigit(int64(minutes), 2, dest, i)
-	dest[i] = ':'
-	i++
-	i = appendDigit(int64(seconds), 2, dest, i)
+	if hours < 10 {
+		dest = append(dest, '0')
+	}
+	dest = strconv.AppendInt(dest, int64(hours), 10)
+	dest = append(dest, ':')
+
+	if minutes < 10 {
+		dest = append(dest, '0')
+	}
+	dest = strconv.AppendInt(dest, int64(minutes), 10)
+	dest = append(dest, ':')
+
+	if seconds < 10 {
+		dest = append(dest, '0')
+	}
+	dest = strconv.AppendInt(dest, int64(seconds), 10)
 	if microseconds > 0 {
-		dest[i] = '.'
-		i++
-		i = appendDigit(int64(microseconds), 6, dest, i)
+		dest = append(dest, '.')
+		cmp := int32(100000)
+		for cmp > 0 && microseconds < cmp {
+			dest = append(dest, '0')
+			cmp /= 10
+		}
+		dest = strconv.AppendInt(dest, int64(microseconds), 10)
 	}
-
-	return dest[:i]
+	return dest
 }
 
-// appendDigit format prints 0-entended integer into buffer
+// appendDigit format prints 0-extended integer into buffer
 func appendDigit(v int64, extend int, buf []byte, i int) int {
 	cmp := int64(1)
 	for _ = range extend - 1 {
