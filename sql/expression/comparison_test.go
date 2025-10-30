@@ -16,9 +16,9 @@ package expression
 
 import (
 	"encoding/binary"
-	"github.com/dolthub/vitess/go/sqltypes"
 	"testing"
 
+	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
