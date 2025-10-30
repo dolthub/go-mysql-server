@@ -138,7 +138,7 @@ jobs:
           git config --global user.name "${GIT_USER}"
           git config --global user.email "${GIT_MAIL}"
 
-          git checkout -b -- "${BRANCH}"
+          git checkout -b "${BRANCH}"
           git add .
 
           # Commit message uses sanitized assignee only
