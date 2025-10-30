@@ -144,11 +144,11 @@ func (t DecimalType_) CompareValue(ctx *sql.Context, a, b sql.Value) (int, error
 	if hasNulls, res := CompareNullValues(a, b); hasNulls {
 		return res, nil
 	}
-	aDec, err := ConvertValueToDecimal(ctx, a)
+	aDec, err := convertValueToDecimal(ctx, a)
 	if err != nil {
 		return 0, err
 	}
-	bDec, err := ConvertValueToDecimal(ctx, b)
+	bDec, err := convertValueToDecimal(ctx, b)
 	if err != nil {
 		return 0, err
 	}
@@ -412,7 +412,7 @@ func (t DecimalType_) DecimalValueStringFixed(v decimal.Decimal) string {
 	}
 }
 
-func ConvertValueToDecimal(ctx *sql.Context, v sql.Value) (decimal.Decimal, error) {
+func convertValueToDecimal(ctx *sql.Context, v sql.Value) (decimal.Decimal, error) {
 	switch v.Typ {
 	case sqltypes.Int8:
 		x := values.ReadInt8(v.Val)
@@ -448,6 +448,10 @@ func ConvertValueToDecimal(ctx *sql.Context, v sql.Value) (decimal.Decimal, erro
 	case sqltypes.Decimal:
 		x := values.ReadDecimal(v.Val)
 		return x, nil
+	case sqltypes.Bit:
+		x := values.ReadUint64(v.Val)
+		bi := new(big.Int).SetUint64(x)
+		return decimal.NewFromBigInt(bi, 0), nil
 	case sqltypes.Year:
 		x := values.ReadUint16(v.Val)
 		return decimal.NewFromInt(int64(x)), nil
