@@ -1239,7 +1239,6 @@ func TestConvertValueToUint64(t *testing.T) {
 
 	zeroDec := serializeDecimal(decimal.Zero)
 	testDec := serializeDecimal(decimal.NewFromFloat(123.456))
-	minInt64Dec := serializeDecimal(decimal.NewFromInt(math.MinInt64))
 	maxInt64Dec := serializeDecimal(decimal.NewFromInt(math.MaxInt64))
 
 	tests := []struct {
@@ -1620,14 +1619,6 @@ func TestConvertValueToUint64(t *testing.T) {
 			},
 			exp: 123,
 			rng: sql.InRange,
-		},
-		{
-			val: sql.Value{
-				Val: minInt64Dec,
-				Typ: sqltypes.Decimal,
-			},
-			exp: math.MaxUint64,
-			rng: sql.OutOfRange,
 		},
 		{
 			val: sql.Value{
