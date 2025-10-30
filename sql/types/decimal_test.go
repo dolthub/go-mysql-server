@@ -701,7 +701,7 @@ func TestConvertValueToDecimal(t *testing.T) {
 				Val: binary.LittleEndian.AppendUint64(nil, math.MaxUint64),
 				Typ: sqltypes.Uint64,
 			},
-			exp: decimal.NewFromBigInt(new(big.Int).SetUint64(math.MaxUint64), 0),
+			exp: decimal.NewFromUint64(math.MaxUint64),
 		},
 
 		// Float32 -> Decimal
@@ -835,7 +835,7 @@ func TestConvertValueToDecimal(t *testing.T) {
 				Val: binary.LittleEndian.AppendUint64(nil, math.MaxUint64),
 				Typ: sqltypes.Bit,
 			},
-			exp: decimal.NewFromBigInt(new(big.Int).SetUint64(math.MaxUint64), 0),
+			exp: decimal.NewFromUint64(math.MaxUint64),
 		},
 
 		// Year -> Decimal

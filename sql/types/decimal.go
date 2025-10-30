@@ -216,7 +216,7 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 	case int64:
 		return t.ConvertToNullDecimal(decimal.NewFromInt(value))
 	case uint64:
-		return t.ConvertToNullDecimal(decimal.NewFromBigInt(new(big.Int).SetUint64(value), 0))
+		return t.ConvertToNullDecimal(decimal.NewFromUint64(value))
 	case float32:
 		return t.ConvertToNullDecimal(decimal.NewFromFloat32(value))
 	case float64:
@@ -351,8 +351,7 @@ func (t DecimalType_) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqlt
 		return sqltypes.NULL, nil
 	}
 	d := values.ReadDecimal(v.Val)
-	val := AppendAndSliceString(dest, t.DecimalValueStringFixed(d))
-	return sqltypes.MakeTrusted(sqltypes.Decimal, val), nil
+	return sqltypes.MakeTrusted(sqltypes.Decimal, []byte(t.DecimalValueStringFixed(d))), nil
 }
 
 // String implements Type interface.
@@ -437,8 +436,7 @@ func convertValueToDecimal(ctx *sql.Context, v sql.Value) (decimal.Decimal, erro
 		return decimal.NewFromInt(int64(x)), nil
 	case sqltypes.Uint64:
 		x := values.ReadUint64(v.Val)
-		bi := new(big.Int).SetUint64(x)
-		return decimal.NewFromBigInt(bi, 0), nil
+		return decimal.NewFromUint64(x), nil
 	case sqltypes.Float32:
 		x := values.ReadFloat32(v.Val)
 		return decimal.NewFromFloat32(x), nil
@@ -450,8 +448,7 @@ func convertValueToDecimal(ctx *sql.Context, v sql.Value) (decimal.Decimal, erro
 		return x, nil
 	case sqltypes.Bit:
 		x := values.ReadUint64(v.Val)
-		bi := new(big.Int).SetUint64(x)
-		return decimal.NewFromBigInt(bi, 0), nil
+		return decimal.NewFromUint64(x), nil
 	case sqltypes.Year:
 		x := values.ReadUint16(v.Val)
 		return decimal.NewFromInt(int64(x)), nil

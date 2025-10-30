@@ -279,9 +279,8 @@ func (t TimespanType_) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sql
 		return sqltypes.NULL, nil
 	}
 	x := values.ReadInt64(v.Val)
-	// TODO: write version of this that takes advantage of dest
-	v.Val = Timespan(x).Bytes()
-	return sqltypes.MakeTrusted(sqltypes.Time, v.Val), nil
+	dest = Timespan(x).AppendBytes(dest)
+	return sqltypes.MakeTrusted(sqltypes.Time, dest), nil
 }
 
 // String implements Type interface.
@@ -500,6 +499,35 @@ func (t Timespan) Bytes() []byte {
 	}
 
 	return ret[:i]
+}
+
+func (t Timespan) AppendBytes(dest []byte) []byte {
+	isNegative, hours, minutes, seconds, microseconds := t.timespanToUnits()
+	sz := 10
+	if microseconds > 0 {
+		sz += 7
+	}
+
+	i := 0
+	if isNegative {
+		dest = append(dest, '-')
+		i++
+	}
+
+	i = appendDigit(int64(hours), 2, dest, i)
+	dest[i] = ':'
+	i++
+	i = appendDigit(int64(minutes), 2, dest, i)
+	dest[i] = ':'
+	i++
+	i = appendDigit(int64(seconds), 2, dest, i)
+	if microseconds > 0 {
+		dest[i] = '.'
+		i++
+		i = appendDigit(int64(microseconds), 6, dest, i)
+	}
+
+	return dest[:i]
 }
 
 // appendDigit format prints 0-entended integer into buffer
