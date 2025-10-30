@@ -108,7 +108,7 @@ func (i *TableRowIter) NextValueRow(ctx *Context) (ValueRow, error) {
 
 	row, err := i.valueRows.NextValueRow(ctx)
 	if err != nil && err == io.EOF {
-		if err = i.rows.Close(ctx); err != nil {
+		if err = i.valueRows.Close(ctx); err != nil {
 			return nil, err
 		}
 		i.partition = nil
