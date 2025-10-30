@@ -18,7 +18,6 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"github.com/dolthub/vitess/go/sqltypes"
 	"math"
 	"math/big"
 	"reflect"
@@ -26,11 +25,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dolthub/go-mysql-server/sql"
-
+	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 func TestDecimalAccuracy(t *testing.T) {
