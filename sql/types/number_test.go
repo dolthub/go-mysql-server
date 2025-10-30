@@ -1566,14 +1566,6 @@ func TestConvertValueToUint64(t *testing.T) {
 				Val: binary.LittleEndian.AppendUint32(nil, math.Float32bits(math.MaxFloat32)),
 				Typ: sqltypes.Float32,
 			},
-			exp: 0,
-			rng: sql.OutOfRange,
-		},
-		{
-			val: sql.Value{
-				Val: binary.LittleEndian.AppendUint32(nil, math.Float32bits(math.MaxFloat32)),
-				Typ: sqltypes.Float32,
-			},
 			exp: math.MaxUint64,
 			rng: sql.OutOfRange,
 		},
