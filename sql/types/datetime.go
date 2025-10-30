@@ -488,7 +488,7 @@ func (t datetimeType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqlt
 	switch t.baseType {
 	case sqltypes.Date:
 		// TODO: move this to values package
-		t := values.ReadDatetime(v.Val)
+		t := values.ReadDate(v.Val)
 		dest = t.AppendFormat(dest, sql.DateLayout)
 
 	case sqltypes.Datetime, sqltypes.Timestamp:
