@@ -16,6 +16,7 @@ package plan
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -27,45 +28,31 @@ const DynamicPrivilege_BinlogAdmin = "binlog_admin"
 // mysqldump, mysqlbinlog, and mariadb-binlog read these binary events from log files and output them as base64-encoded
 // BINLOG statements for replay.
 //
-// This implementation supports row-based replication (RBR) events, which is the modern standard for MySQL/MariaDB
-// replication (default since MySQL 5.7+ and MariaDB 10.2+).
-//
-// The base64 string is split by newlines and decoded into a buffer of raw binlog events. Each event begins with a
-// 19-byte header containing the event type at byte 4 and event length at bytes 9-12. The buffer is processed
-// sequentially, dispatching each event to a handler based on its type.
-//
-// FORMAT_DESCRIPTION_EVENT stores binlog format metadata in session state. This metadata includes header sizes for each
-// event type and the checksum algorithm (OFF, CRC32, or UNDEF). Subsequent events require this metadata to parse their
-// headers and determine whether checksums are present.
-//
-// TABLE_MAP_EVENT creates a mapping from a table ID to the database name, table name, and column metadata. Row events
-// reference tables by ID rather than name for encoding efficiency. The mapping is stored in a global cache for use by
-// subsequent row events.
-//
-// WRITE_ROWS_EVENT, UPDATE_ROWS_EVENT, and DELETE_ROWS_EVENT contain binary-encoded row data. Before parsing row data,
-// any CRC32 checksum appended to the event must be stripped. Checksums verify data integrity during network
-// transmission and disk storage but are not part of the event payload structure.
-//
-// Transaction boundary and metadata events are silently ignored since each BINLOG statement is auto-committed and full
-// replication semantics are not required for mysqldump replay.
-//
-// QUERY_EVENT (statement-based replication) is not currently supported. Statement-based replication is deprecated in
-// favor of row-based replication to correctly support non-deterministic functions.
+// The BINLOG statement execution is delegated to the BinlogReplicaController. The base64-encoded event data is decoded
+// and passed to the controller's ConsumeBinlogEvents method for processing. This allows integrators like Dolt to handle
+// BINLOG statement execution using their existing binlog replication infrastructure.
 //
 // See https://dev.mysql.com/doc/refman/8.4/en/binlog.html for the BINLOG statement specification.
 type Binlog struct {
-	Base64Str string
-	Catalog   sql.Catalog
+	Base64Str         string
+	ReplicaController binlogreplication.BinlogReplicaController
 }
 
 var _ sql.Node = (*Binlog)(nil)
+var _ BinlogReplicaControllerCommand = (*Binlog)(nil)
 
 // NewBinlog creates a new Binlog node.
-func NewBinlog(base64Str string, catalog sql.Catalog) *Binlog {
+func NewBinlog(base64Str string) *Binlog {
 	return &Binlog{
 		Base64Str: base64Str,
-		Catalog:   catalog,
 	}
+}
+
+// WithBinlogReplicaController implements the BinlogReplicaControllerCommand interface.
+func (b *Binlog) WithBinlogReplicaController(controller binlogreplication.BinlogReplicaController) sql.Node {
+	nc := *b
+	nc.ReplicaController = controller
+	return &nc
 }
 
 func (b *Binlog) String() string {

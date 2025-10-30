@@ -62,7 +62,7 @@ type BinlogPrimaryControllerCommand interface {
 // TODO: When PRIVILEGE_CHECKS_USER option is specified, validate that the assigned user account has the
 // REPLICATION_APPLIER privilege. This validation should happen before the option is passed to the integrator's
 // BinlogReplicaController.SetReplicationSourceOptions().
-// See https://github.com/mysql/mysql-server/blob/8.0/sql/rpl_replica.cc (change_master_cmd function)
+// See https://github.com/mysql/mysql-server/blob/8.0/sql/rpl_replica.cc change_master_cmd
 type ChangeReplicationSource struct {
 	ReplicaController binlogreplication.BinlogReplicaController
 	Options           []binlogreplication.ReplicationOption

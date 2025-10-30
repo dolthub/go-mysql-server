@@ -17,398 +17,176 @@ package rowexec
 import (
 	"encoding/base64"
 	"encoding/binary"
+	"io"
 	"testing"
 
-	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/binlogreplication"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/dolthub/go-mysql-server/test"
 	"github.com/dolthub/vitess/go/mysql"
-	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/stretchr/testify/require"
 )
 
 func TestBuildBinlog_InvalidBase64(t *testing.T) {
 	builder := &BaseBuilder{}
 	ctx := sql.NewEmptyContext()
-	db := memory.NewDatabase("test")
-	pro := memory.NewDBProvider(db)
-	catalog := test.NewCatalog(pro)
 
-	binlogNode := plan.NewBinlog("invalid!@#$base64", catalog)
+	binlogNode := plan.NewBinlog("invalid!@#$base64")
 
 	_, err := builder.buildBinlog(ctx, binlogNode, nil)
 	require.Error(t, err)
-	require.True(t, sql.ErrBase64DecodeError.Is(err))
+	require.Contains(t, err.Error(), "BinlogReplicaController")
 }
 
-func TestBuildBinlog_EmptyString(t *testing.T) {
+func TestBuildBinlog_NoBinlogReplicaController(t *testing.T) {
 	builder := &BaseBuilder{}
 	ctx := sql.NewEmptyContext()
-	db := memory.NewDatabase("test")
-	pro := memory.NewDBProvider(db)
-	catalog := test.NewCatalog(pro)
 
-	binlogNode := plan.NewBinlog("", catalog)
+	// Create some valid base64 data
+	eventData := make([]byte, 10)
+	encoded := base64.StdEncoding.EncodeToString(eventData)
+
+	binlogNode := plan.NewBinlog(encoded)
+	// Don't set controller - should get error
 
 	_, err := builder.buildBinlog(ctx, binlogNode, nil)
 	require.Error(t, err)
-	require.True(t, sql.ErrSyntaxError.Is(err))
+	require.Contains(t, err.Error(), "BinlogReplicaController")
 }
 
-func TestBuildBinlog_IncompleteEventHeader(t *testing.T) {
-	builder := &BaseBuilder{}
-	ctx := sql.NewEmptyContext()
-	db := memory.NewDatabase("test")
-	pro := memory.NewDBProvider(db)
-	catalog := test.NewCatalog(pro)
-
-	// Create a buffer with less than eventHeaderSize (19 bytes)
-	shortData := make([]byte, 10)
-	encoded := base64.StdEncoding.EncodeToString(shortData)
-
-	binlogNode := plan.NewBinlog(encoded, catalog)
-
-	iter, err := builder.buildBinlog(ctx, binlogNode, nil)
-	require.NoError(t, err)
-
-	_, err = iter.Next(ctx)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "incomplete event header")
+// mockBinlogReplicaController is a test implementation of BinlogReplicaController
+type mockBinlogReplicaController struct {
+	consumedEvents []mysql.BinlogEvent
+	returnError    error
+	hasFormatDesc  bool
 }
 
-func TestBuildBinlog_IncompleteEvent(t *testing.T) {
+func (m *mockBinlogReplicaController) ConsumeBinlogEvent(ctx *sql.Context, event mysql.BinlogEvent) error {
+	m.consumedEvents = append(m.consumedEvents, event)
+	if event.IsFormatDescription() {
+		m.hasFormatDesc = true
+	}
+	return m.returnError
+}
+
+func (m *mockBinlogReplicaController) HasFormatDescription() bool {
+	return m.hasFormatDesc
+}
+
+func (m *mockBinlogReplicaController) StartReplica(ctx *sql.Context) error {
+	return nil
+}
+
+func (m *mockBinlogReplicaController) StopReplica(ctx *sql.Context) error {
+	return nil
+}
+
+func (m *mockBinlogReplicaController) SetReplicationSourceOptions(ctx *sql.Context, options []binlogreplication.ReplicationOption) error {
+	return nil
+}
+
+func (m *mockBinlogReplicaController) SetReplicationFilterOptions(ctx *sql.Context, options []binlogreplication.ReplicationOption) error {
+	return nil
+}
+
+func (m *mockBinlogReplicaController) GetReplicaStatus(ctx *sql.Context) (*binlogreplication.ReplicaStatus, error) {
+	return nil, nil
+}
+
+func (m *mockBinlogReplicaController) ResetReplica(ctx *sql.Context, resetAll bool) error {
+	return nil
+}
+
+func TestBuildBinlog_WithBinlogReplicaController(t *testing.T) {
 	builder := &BaseBuilder{}
 	ctx := sql.NewEmptyContext()
-	db := memory.NewDatabase("test")
-	pro := memory.NewDBProvider(db)
-	catalog := test.NewCatalog(pro)
 
-	// Create event header with length larger than actual data
-	eventData := make([]byte, eventHeaderSize)
-	// Set event length to 1000 at offset 9
-	binary.LittleEndian.PutUint32(eventData[eventLengthOffset:], 1000)
+	mockController := &mockBinlogReplicaController{}
+
+	// Create a minimal valid binlog event (FORMAT_DESCRIPTION_EVENT)
+	// Event header: timestamp(4) + type(1) + server_id(4) + event_length(4) + next_position(4) + flags(2)
+	eventData := make([]byte, 19)
+	eventData[4] = 0x0f
+	binary.LittleEndian.PutUint32(eventData[9:13], 19) // event length
 
 	encoded := base64.StdEncoding.EncodeToString(eventData)
 
-	binlogNode := plan.NewBinlog(encoded, catalog)
-
-	iter, err := builder.buildBinlog(ctx, binlogNode, nil)
-	require.NoError(t, err)
-
-	_, err = iter.Next(ctx)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "incomplete event")
-	require.Contains(t, err.Error(), "exceeds buffer")
-}
-
-func TestBuildBinlog_MultilineBase64(t *testing.T) {
-	builder := &BaseBuilder{}
-	ctx := sql.NewEmptyContext()
-	db := memory.NewDatabase("test")
-	pro := memory.NewDBProvider(db)
-	catalog := test.NewCatalog(pro)
-
-	eventData := make([]byte, eventHeaderSize)
-	binary.LittleEndian.PutUint32(eventData[eventLengthOffset:], uint32(eventHeaderSize))
-	eventData[eventTypeOffset] = eventWriteRowsV1
-
-	part1 := base64.StdEncoding.EncodeToString(eventData[:10])
-	part2 := base64.StdEncoding.EncodeToString(eventData[10:])
-	multiline := part1 + "\n" + part2
-
-	binlogNode := plan.NewBinlog(multiline, catalog)
+	binlogNode := plan.NewBinlog(encoded).WithBinlogReplicaController(mockController).(*plan.Binlog)
 
 	iter, err := builder.buildBinlog(ctx, binlogNode, nil)
 	require.NoError(t, err)
 	require.NotNil(t, iter)
+
+	row, err := iter.Next(ctx)
+	require.NoError(t, err)
+	require.NotNil(t, row)
+	require.Equal(t, types.OkResult{}, row[0])
+
+	// Verify controller received one event
+	require.Len(t, mockController.consumedEvents, 1)
+
+	// Next call should return EOF
+	_, err = iter.Next(ctx)
+	require.Equal(t, io.EOF, err)
 }
 
-func TestProcessEvent_UnsupportedEventType(t *testing.T) {
+func TestBuildBinlog_MultilineBase64WithController(t *testing.T) {
+	builder := &BaseBuilder{}
 	ctx := sql.NewEmptyContext()
-	db := memory.NewDatabase("test")
-	pro := memory.NewDBProvider(db)
-	catalog := test.NewCatalog(pro)
 
-	// Create event with unsupported type
-	eventData := make([]byte, eventHeaderSize)
-	binary.LittleEndian.PutUint32(eventData[eventLengthOffset:], uint32(eventHeaderSize))
-	eventData[eventTypeOffset] = 4 // ROTATE_EVENT
+	mockController := &mockBinlogReplicaController{}
 
-	err := processEvent(ctx, catalog, 4, eventData)
+	// Create two minimal events
+	event1 := make([]byte, 19)
+	event1[4] = 0x0f // FORMAT_DESCRIPTION_EVENT
+	binary.LittleEndian.PutUint32(event1[9:13], 19)
+
+	event2 := make([]byte, 19)
+	event2[4] = 0x02 // QUERY_EVENT
+	binary.LittleEndian.PutUint32(event2[9:13], 19)
+
+	combined := append(event1, event2...)
+	part1 := base64.StdEncoding.EncodeToString(combined[:10])
+	part2 := base64.StdEncoding.EncodeToString(combined[10:])
+	multiline := part1 + "\n" + part2
+
+	binlogNode := plan.NewBinlog(multiline).WithBinlogReplicaController(mockController).(*plan.Binlog)
+
+	iter, err := builder.buildBinlog(ctx, binlogNode, nil)
+	require.NoError(t, err)
+
+	// Next() processes all events and returns single OkResult
+	row, err := iter.Next(ctx)
+	require.NoError(t, err)
+	require.NotNil(t, row)
+	require.Equal(t, types.OkResult{}, row[0])
+
+	require.Len(t, mockController.consumedEvents, 2)
+
+	_, err = iter.Next(ctx)
+	require.Equal(t, io.EOF, err)
+}
+
+func TestBuildBinlog_ControllerError(t *testing.T) {
+	builder := &BaseBuilder{}
+	ctx := sql.NewEmptyContext()
+
+	mockController := &mockBinlogReplicaController{
+		returnError: sql.ErrUnsupportedFeature.New("test error"),
+	}
+
+	eventData := make([]byte, 19)
+	eventData[4] = 0x0f // FORMAT_DESCRIPTION_EVENT
+	binary.LittleEndian.PutUint32(eventData[9:13], 19)
+	encoded := base64.StdEncoding.EncodeToString(eventData)
+
+	binlogNode := plan.NewBinlog(encoded).WithBinlogReplicaController(mockController).(*plan.Binlog)
+
+	iter, err := builder.buildBinlog(ctx, binlogNode, nil)
+	require.NoError(t, err)
+
+	_, err = iter.Next(ctx)
 	require.Error(t, err)
-	require.True(t, sql.ErrOnlyFDAndRBREventsAllowedInBinlogStatement.Is(err))
-}
-
-func TestProcessEvent_QueryEvent(t *testing.T) {
-	ctx := sql.NewEmptyContext()
-	db := memory.NewDatabase("test")
-	pro := memory.NewDBProvider(db)
-	catalog := test.NewCatalog(pro)
-
-	binlogSess.format = nil
-	binlogSessClearTableMaps()
-
-	eventData := make([]byte, eventHeaderSize)
-	binary.LittleEndian.PutUint32(eventData[eventLengthOffset:], uint32(eventHeaderSize))
-
-	// In the future if QUERY_EVENT(2) support is added, this should fail without FORMAT_DESCRIPTION_EVENT.
-	err := processEvent(ctx, catalog, 2, eventData)
-	require.Error(t, err)
-	require.True(t, sql.ErrOnlyFDAndRBREventsAllowedInBinlogStatement.Is(err))
-}
-
-func TestProcessEvent_NoFormatDescriptionEvent(t *testing.T) {
-	ctx := sql.NewEmptyContext()
-	db := memory.NewDatabase("test")
-	pro := memory.NewDBProvider(db)
-	catalog := test.NewCatalog(pro)
-
-	binlogSess.format = nil
-	binlogSessClearTableMaps()
-
-	eventData := make([]byte, eventHeaderSize+100)
-	binary.LittleEndian.PutUint32(eventData[eventLengthOffset:], uint32(len(eventData)))
-
-	err := processEvent(ctx, catalog, eventWriteRowsV2, eventData)
-	require.Error(t, err)
-	require.True(t, sql.ErrNoFormatDescriptionEventBeforeBinlogStatement.Is(err))
-}
-
-func TestBinlogSessClearTableMaps(t *testing.T) {
-	binlogSess.tableMapByID[1] = nil
-	binlogSess.tableMapByID[2] = nil
-	require.Equal(t, 2, len(binlogSess.tableMapByID))
-
-	binlogSessClearTableMaps()
-	require.Equal(t, 0, len(binlogSess.tableMapByID))
-}
-
-func TestConvertValue_NullValue(t *testing.T) {
-	ctx := sql.NewEmptyContext()
-	col := &sql.Column{
-		Name: "test",
-		Type: types.Int32,
-	}
-
-	nullValue := sqltypes.NULL
-	result, err := convertValue(ctx, nullValue, col)
-	require.NoError(t, err)
-	require.Nil(t, result)
-}
-
-func TestConvertValue_IntegerConversion(t *testing.T) {
-	ctx := sql.NewEmptyContext()
-	col := &sql.Column{
-		Name: "test",
-		Type: types.Int32,
-	}
-
-	value := sqltypes.NewInt32(123)
-	result, err := convertValue(ctx, value, col)
-	require.NoError(t, err)
-	require.Equal(t, int32(123), result)
-}
-
-func TestConvertValue_StringConversion(t *testing.T) {
-	ctx := sql.NewEmptyContext()
-	col := &sql.Column{
-		Name: "test",
-		Type: types.Text,
-	}
-
-	value := sqltypes.NewVarChar("hello")
-	result, err := convertValue(ctx, value, col)
-	require.NoError(t, err)
-	require.Equal(t, "hello", result)
-}
-
-func TestProcessEvent_TableMapEvent_NoTableMapsFound(t *testing.T) {
-	ctx := sql.NewEmptyContext()
-	db := memory.NewDatabase("test")
-	pro := memory.NewDBProvider(db)
-	catalog := test.NewCatalog(pro)
-
-	binlogSess.format = nil
-	binlogSessClearTableMaps()
-
-	eventData := make([]byte, eventHeaderSize+100)
-	binary.LittleEndian.PutUint32(eventData[eventLengthOffset:], uint32(len(eventData)))
-
-	err := processEvent(ctx, catalog, eventTableMap, eventData)
-	require.Error(t, err)
-	require.True(t, sql.ErrNoFormatDescriptionEventBeforeBinlogStatement.Is(err))
-}
-
-func TestProcessEvent_WriteRowsEvent_NoTableMapFound(t *testing.T) {
-	ctx := sql.NewEmptyContext()
-	db := memory.NewDatabase("test")
-	pro := memory.NewDBProvider(db)
-	catalog := test.NewCatalog(pro)
-
-	// Set up a minimal format but no table maps
-	// HeaderSizes needs to be initialized with 256 entries (one per event type)
-	headerSizes := make([]byte, 256)
-	for i := range headerSizes {
-		headerSizes[i] = 8 // Common post-header length for row events
-	}
-	binlogSess.format = &mysql.BinlogFormat{
-		ChecksumAlgorithm: mysql.BinlogChecksumAlgOff,
-		HeaderSizes:       headerSizes,
-	}
-	binlogSessClearTableMaps()
-
-	// Create a minimal WRITE_ROWS event with table ID 1
-	eventData := make([]byte, eventHeaderSize+100)
-	binary.LittleEndian.PutUint32(eventData[eventLengthOffset:], uint32(len(eventData)))
-	// Set table ID to 1 (post-header starts at eventHeaderSize)
-	// Table ID is at offset 0 of post-header for row events (6 bytes, little endian)
-	binary.LittleEndian.PutUint32(eventData[eventHeaderSize:], 1)
-
-	err := processEvent(ctx, catalog, eventWriteRowsV2, eventData)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "no table mapping found for table ID")
-}
-
-func TestProcessEvent_UpdateRowsEvent_NoTableMapFound(t *testing.T) {
-	ctx := sql.NewEmptyContext()
-	db := memory.NewDatabase("test")
-	pro := memory.NewDBProvider(db)
-	catalog := test.NewCatalog(pro)
-
-	headerSizes := make([]byte, 256)
-	for i := range headerSizes {
-		headerSizes[i] = 8
-	}
-	binlogSess.format = &mysql.BinlogFormat{
-		ChecksumAlgorithm: mysql.BinlogChecksumAlgOff,
-		HeaderSizes:       headerSizes,
-	}
-	binlogSessClearTableMaps()
-
-	// Create a minimal UPDATE_ROWS event with table ID 2
-	eventData := make([]byte, eventHeaderSize+100)
-	binary.LittleEndian.PutUint32(eventData[eventLengthOffset:], uint32(len(eventData)))
-	binary.LittleEndian.PutUint32(eventData[eventHeaderSize:], 2)
-
-	err := processEvent(ctx, catalog, eventUpdateRowsV2, eventData)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "no table mapping found for table ID")
-}
-
-func TestProcessEvent_DeleteRowsEvent_NoTableMapFound(t *testing.T) {
-	ctx := sql.NewEmptyContext()
-	db := memory.NewDatabase("test")
-	pro := memory.NewDBProvider(db)
-	catalog := test.NewCatalog(pro)
-
-	headerSizes := make([]byte, 256)
-	for i := range headerSizes {
-		headerSizes[i] = 8
-	}
-	binlogSess.format = &mysql.BinlogFormat{
-		ChecksumAlgorithm: mysql.BinlogChecksumAlgOff,
-		HeaderSizes:       headerSizes,
-	}
-	binlogSessClearTableMaps()
-
-	// Create a minimal DELETE_ROWS event with table ID 3
-	eventData := make([]byte, eventHeaderSize+100)
-	binary.LittleEndian.PutUint32(eventData[eventLengthOffset:], uint32(len(eventData)))
-	binary.LittleEndian.PutUint32(eventData[eventHeaderSize:], 3)
-
-	err := processEvent(ctx, catalog, eventDeleteRowsV2, eventData)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "no table mapping found for table ID")
-}
-
-func TestTableMapByID_MultipleTableMaps(t *testing.T) {
-	binlogSessClearTableMaps()
-
-	tableMap1 := &mysql.TableMap{Database: "db1", Name: "table1"}
-	tableMap2 := &mysql.TableMap{Database: "db2", Name: "table2"}
-	tableMap3 := &mysql.TableMap{Database: "db3", Name: "table3"}
-
-	binlogSess.tableMapByID[100] = tableMap1
-	binlogSess.tableMapByID[200] = tableMap2
-	binlogSess.tableMapByID[300] = tableMap3
-
-	require.Equal(t, 3, len(binlogSess.tableMapByID))
-	require.Equal(t, "table1", binlogSess.tableMapByID[100].Name)
-	require.Equal(t, "table2", binlogSess.tableMapByID[200].Name)
-	require.Equal(t, "table3", binlogSess.tableMapByID[300].Name)
-}
-
-func TestTableMapByID_OverwriteExistingMap(t *testing.T) {
-	binlogSessClearTableMaps()
-
-	tableMap1 := &mysql.TableMap{Database: "db1", Name: "table1"}
-	tableMap2 := &mysql.TableMap{Database: "db2", Name: "table2"}
-
-	binlogSess.tableMapByID[100] = tableMap1
-	require.Equal(t, "table1", binlogSess.tableMapByID[100].Name)
-
-	binlogSess.tableMapByID[100] = tableMap2
-	require.Equal(t, "table2", binlogSess.tableMapByID[100].Name)
-	require.Equal(t, 1, len(binlogSess.tableMapByID))
-}
-
-func TestTableMapByID_RetrievalAfterClear(t *testing.T) {
-	binlogSessClearTableMaps()
-
-	tableMap := &mysql.TableMap{Database: "db1", Name: "table1"}
-	binlogSess.tableMapByID[1] = tableMap
-
-	retrieved, ok := binlogSess.tableMapByID[1]
-	require.True(t, ok)
-	require.NotNil(t, retrieved)
-
-	binlogSessClearTableMaps()
-	retrieved, ok = binlogSess.tableMapByID[1]
-	require.False(t, ok)
-	require.Nil(t, retrieved)
-}
-
-func TestTableMapByID_LargeTableIDs(t *testing.T) {
-	binlogSessClearTableMaps()
-
-	tableMap := &mysql.TableMap{Database: "db1", Name: "table1"}
-	largeID := uint64(0xFFFFFE)
-
-	binlogSess.tableMapByID[largeID] = tableMap
-	retrieved, ok := binlogSess.tableMapByID[largeID]
-	require.True(t, ok)
-	require.Equal(t, "table1", retrieved.Name)
-}
-
-func TestProcessEvent_TransactionBoundaryEvents(t *testing.T) {
-	ctx := sql.NewEmptyContext()
-	db := memory.NewDatabase("test")
-	pro := memory.NewDBProvider(db)
-	catalog := test.NewCatalog(pro)
-
-	eventData := make([]byte, eventHeaderSize)
-	binary.LittleEndian.PutUint32(eventData[eventLengthOffset:], uint32(eventHeaderSize))
-
-	err := processEvent(ctx, catalog, eventXID, eventData)
-	require.NoError(t, err)
-
-	err = processEvent(ctx, catalog, eventGTIDLogEvent, eventData)
-	require.NoError(t, err)
-
-	err = processEvent(ctx, catalog, eventAnonymousGTIDLogEvent, eventData)
-	require.NoError(t, err)
-
-	err = processEvent(ctx, catalog, eventPreviousGTIDsLogEvent, eventData)
-	require.NoError(t, err)
-
-	err = processEvent(ctx, catalog, eventGTIDMariaDB, eventData)
-	require.NoError(t, err)
-
-	err = processEvent(ctx, catalog, eventGTIDList, eventData)
-	require.NoError(t, err)
-
-	err = processEvent(ctx, catalog, eventAnnotateRows, eventData)
-	require.NoError(t, err)
+	require.Contains(t, err.Error(), "test error")
 }

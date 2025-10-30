@@ -27,7 +27,8 @@ import (
 
 // BinlogReplicaController allows callers to control a binlog replica. Providers built on go-mysql-server may optionally
 // implement this interface and use it when constructing a SQL engine in order to receive callbacks when replication
-// statements (e.g. START REPLICA, SHOW REPLICA STATUS) are being handled.
+// statements (e.g. START REPLICA, SHOW REPLICA STATUS) are being handled. This interface also extends BinlogConsumer
+// to allow the same infrastructure to handle BINLOG statement execution.
 type BinlogReplicaController interface {
 	// StartReplica tells the binlog replica controller to start up replication processes for the current replication
 	// configuration. An error is returned if replication was unable to be started. Note the error response only signals
@@ -62,6 +63,12 @@ type BinlogReplicaController interface {
 	// error indicating that replication needs to be stopped before it can be reset. If any errors were encountered
 	// resetting the replica state, an error is returned, otherwise nil is returned if the reset was successful.
 	ResetReplica(ctx *sql.Context, resetAll bool) error
+
+	// ConsumeBinlogEvent processes a single parsed binlog event.
+	ConsumeBinlogEvent(ctx *sql.Context, event mysql.BinlogEvent) error
+
+	// HasFormatDescription returns true if a FORMAT_DESCRIPTION_EVENT has been processed.
+	HasFormatDescription() bool
 }
 
 // BinlogPrimaryController allows an integrator to extend GMS with support for operating as a binlog primary server.
@@ -148,7 +155,7 @@ type ReplicaStatus struct {
 }
 
 // BinlogReplicaCatalog extends the Catalog interface and provides methods for accessing a BinlogReplicaController
-// for a Catalog.
+// for a Catalog. The controller can also be used as a BinlogConsumer for BINLOG statement execution.
 type BinlogReplicaCatalog interface {
 	// HasBinlogReplicaController returns true if a non-nil BinlogReplicaController is available for this BinlogReplicaCatalog.
 	HasBinlogReplicaController() bool

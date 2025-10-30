@@ -406,7 +406,11 @@ func (b *Builder) buildSubquery(inScope *scope, stmt ast.Statement, subQuery str
 			b.handleErr(err)
 		}
 		outScope = inScope.push()
-		outScope.node = plan.NewBinlog(n.Base64Str, b.cat)
+		binlogNode := plan.NewBinlog(n.Base64Str)
+		if binCat, ok := b.cat.(binlogreplication.BinlogReplicaCatalog); ok && binCat.HasBinlogReplicaController() {
+			binlogNode = binlogNode.WithBinlogReplicaController(binCat.GetBinlogReplicaController()).(*plan.Binlog)
+		}
+		outScope.node = binlogNode
 	}
 	return
 }
