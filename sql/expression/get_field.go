@@ -131,7 +131,7 @@ func (p *GetField) Type() sql.Type {
 }
 
 // ErrIndexOutOfBounds is returned when the field index is out of the bounds.
-var ErrIndexOutOfBounds = errors.NewKind("unable to find field with index %d in row of %d columns")
+var ErrIndexOutOfBounds = errors.NewKind("unable to find field with index %d in row of %d columns. \n This is a bug. Please file an issue here: https://github.com/dolthub/dolt/issues")
 
 // Eval implements the Expression interface.
 func (p *GetField) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {

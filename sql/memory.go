@@ -64,14 +64,14 @@ type RowsCache interface {
 	Get() []Row
 }
 
-// Rows2Cache is a cache of Row2s.
-type Rows2Cache interface {
+// ValueRowsCache is a cache of ValueRows.
+type ValueRowsCache interface {
 	RowsCache
-	// Add2 a new row to the cache. If there is no memory available, it will try to
+	// AddValueRow a new row to the cache. If there is no memory available, it will try to
 	// free some memory. If after that there is still no memory available, it
 	// will return an error and erase all the content of the cache.
 	AddValueRow(ValueRow) error
-	// Get2 gets all rows.
+	// GetValueRow gets all rows.
 	GetValueRow() []ValueRow
 }
 
@@ -200,7 +200,7 @@ func (m *MemoryManager) NewRowsCache() (RowsCache, DisposeFunc) {
 
 // NewRowsCache returns an empty rows cache and a function to dispose it when it's
 // no longer needed.
-func (m *MemoryManager) NewRows2Cache() (Rows2Cache, DisposeFunc) {
+func (m *MemoryManager) NewRows2Cache() (ValueRowsCache, DisposeFunc) {
 	c := newRowsCache(m, m.reporter)
 	pos := m.addCache(c)
 	return c, func() {
