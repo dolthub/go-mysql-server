@@ -252,9 +252,8 @@ func (t BitType_) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes
 	}
 	v.Val = v.Val[:numBytes]
 
-	// TODO: for whatever reason TestTypesOverWire only works when this is a deep copy?
-	dest = append(dest, v.Val...)
 	// want the results in big endian
+	dest = append(dest, v.Val...)
 	for i, j := 0, len(dest)-1; i < j; i, j = i+1, j-1 {
 		dest[i], dest[j] = dest[j], dest[i]
 	}
