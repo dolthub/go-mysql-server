@@ -307,7 +307,7 @@ func (i *IndexedTableAccess) GetLookup(ctx *sql.Context, row sql.Row) (sql.Index
 	return i.lb.GetLookup(ctx, key)
 }
 
-func (i *IndexedTableAccess) getLookup2(ctx *sql.Context, row sql.ValueRow) (sql.IndexLookup, error) {
+func (i *IndexedTableAccess) getValueLookup(ctx *sql.Context, row sql.ValueRow) (sql.IndexLookup, error) {
 	// if the lookup was provided at analysis time (static evaluation), use it.
 	if !i.lookup.IsEmpty() {
 		return i.lookup, nil

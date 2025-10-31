@@ -220,7 +220,7 @@ func TestGreaterThan(t *testing.T) {
 }
 
 func TestValueComparison(t *testing.T) {
-	// TODO
+	t.Skip("TODO: write tests for comparison between sql.Values")
 }
 
 // BenchmarkComparison
