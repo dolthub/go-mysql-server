@@ -36,6 +36,15 @@ const DynamicPrivilege_ReplicationSlaveAdmin = "replication_slave_admin"
 // See https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_replication-applier
 const DynamicPrivilege_ReplicationApplier = "replication_applier"
 
+// BinlogConsumerCommand represents a SQL statement that requires a BinlogConsumer
+// (e.g. BINLOG statement).
+type BinlogConsumerCommand interface {
+	sql.Node
+
+	// WithBinlogConsumer returns a new instance of this command, with the binlog consumer configured.
+	WithBinlogConsumer(consumer binlogreplication.BinlogConsumer) sql.Node
+}
+
 // BinlogReplicaControllerCommand represents a SQL statement that requires a BinlogReplicaController
 // (e.g. Start Replica, Show Replica Status).
 type BinlogReplicaControllerCommand interface {

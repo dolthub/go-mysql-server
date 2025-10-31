@@ -34,6 +34,8 @@ type Catalog struct {
 	DbProvider    sql.DatabaseProvider
 	AuthHandler   sql.AuthorizationHandler
 
+	// BinlogConsumer holds an optional consumer that processes binlog events (e.g. for BINLOG statements).
+	BinlogConsumer binlogreplication.BinlogConsumer
 	// BinlogReplicaController holds an optional controller that receives forwarded binlog
 	// replication messages (e.g. "start replica").
 	BinlogReplicaController binlogreplication.BinlogReplicaController
@@ -53,6 +55,7 @@ func (c *Catalog) DropDbStats(ctx *sql.Context, db string, flush bool) error {
 }
 
 var _ sql.Catalog = (*Catalog)(nil)
+var _ binlogreplication.BinlogConsumerCatalog = (*Catalog)(nil)
 var _ binlogreplication.BinlogReplicaCatalog = (*Catalog)(nil)
 var _ binlogreplication.BinlogPrimaryCatalog = (*Catalog)(nil)
 
@@ -74,6 +77,14 @@ func NewCatalog(provider sql.DatabaseProvider) *Catalog {
 	}
 	c.AuthHandler = sql.GetAuthorizationHandlerFactory().CreateHandler(c)
 	return c
+}
+
+func (c *Catalog) HasBinlogConsumer() bool {
+	return c.BinlogConsumer != nil
+}
+
+func (c *Catalog) GetBinlogConsumer() binlogreplication.BinlogConsumer {
+	return c.BinlogConsumer
 }
 
 func (c *Catalog) HasBinlogReplicaController() bool {

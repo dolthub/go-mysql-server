@@ -28,18 +28,18 @@ const DynamicPrivilege_BinlogAdmin = "binlog_admin"
 // mysqldump, mysqlbinlog, and mariadb-binlog read these binary events from log files and output them as base64-encoded
 // BINLOG statements for replay.
 //
-// The BINLOG statement execution is delegated to the BinlogReplicaController. The base64-encoded event data is decoded
-// and passed to the controller's ConsumeBinlogEvents method for processing. This allows integrators like Dolt to handle
-// BINLOG statement execution using their existing binlog replication infrastructure.
+// The BINLOG statement execution is delegated to the BinlogConsumer. The base64-encoded event data is decoded
+// and passed to the consumer's ProcessEvent method for processing. This allows integrators like Dolt to handle
+// BINLOG statement execution using their binlog event processing infrastructure.
 //
 // See https://dev.mysql.com/doc/refman/8.4/en/binlog.html for the BINLOG statement specification.
 type Binlog struct {
-	Base64Str         string
-	ReplicaController binlogreplication.BinlogReplicaController
+	Base64Str string
+	Consumer  binlogreplication.BinlogConsumer
 }
 
 var _ sql.Node = (*Binlog)(nil)
-var _ BinlogReplicaControllerCommand = (*Binlog)(nil)
+var _ BinlogConsumerCommand = (*Binlog)(nil)
 
 // NewBinlog creates a new Binlog node.
 func NewBinlog(base64Str string) *Binlog {
@@ -48,10 +48,10 @@ func NewBinlog(base64Str string) *Binlog {
 	}
 }
 
-// WithBinlogReplicaController implements the BinlogReplicaControllerCommand interface.
-func (b *Binlog) WithBinlogReplicaController(controller binlogreplication.BinlogReplicaController) sql.Node {
+// WithBinlogConsumer implements the BinlogConsumerCommand interface.
+func (b *Binlog) WithBinlogConsumer(consumer binlogreplication.BinlogConsumer) sql.Node {
 	nc := *b
-	nc.ReplicaController = controller
+	nc.Consumer = consumer
 	return &nc
 }
 

@@ -39,8 +39,8 @@ import (
 //
 // See https://dev.mysql.com/doc/refman/8.4/en/binlog.html for the BINLOG statement specification.
 func (b *BaseBuilder) buildBinlog(ctx *sql.Context, n *plan.Binlog, row sql.Row) (sql.RowIter, error) {
-	if n.ReplicaController == nil {
-		return nil, fmt.Errorf("BINLOG statement requires BinlogReplicaController")
+	if n.Consumer == nil {
+		return nil, fmt.Errorf("BINLOG statement requires BinlogConsumer")
 	}
 
 	var decoded []byte
@@ -60,16 +60,16 @@ func (b *BaseBuilder) buildBinlog(ctx *sql.Context, n *plan.Binlog, row sql.Row)
 	}
 
 	return &binlogIter{
-		controller: n.ReplicaController,
-		decoded:    decoded,
+		consumer: n.Consumer,
+		decoded:  decoded,
 	}, nil
 }
 
 // binlogIter processes decoded binlog events one at a time, returning an OkResult when all events are processed.
 type binlogIter struct {
-	controller binlogreplication.BinlogReplicaController
-	decoded    []byte
-	offset     int
+	consumer binlogreplication.BinlogConsumer
+	decoded  []byte
+	offset   int
 }
 
 var _ sql.RowIter = (*binlogIter)(nil)
@@ -119,13 +119,13 @@ func (bi *binlogIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 	// Check that TABLE_MAP and row events have a FORMAT_DESCRIPTION first
 	if event.IsTableMap() || event.IsWriteRows() || event.IsUpdateRows() || event.IsDeleteRows() {
-		if !bi.controller.HasFormatDescription() {
+		if !bi.consumer.HasFormatDescription() {
 			return nil, sql.ErrNoFormatDescriptionEventBeforeBinlogStatement.New(event.TypeName())
 		}
 	}
 
-	// Process this event using the controller
-	err := bi.controller.ConsumeBinlogEvent(ctx, event)
+	// Process this event using the consumer
+	err := bi.consumer.ProcessEvent(ctx, event)
 	if err != nil {
 		return nil, err
 	}

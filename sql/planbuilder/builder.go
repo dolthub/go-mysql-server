@@ -407,8 +407,8 @@ func (b *Builder) buildSubquery(inScope *scope, stmt ast.Statement, subQuery str
 		}
 		outScope = inScope.push()
 		binlogNode := plan.NewBinlog(n.Base64Str)
-		if binCat, ok := b.cat.(binlogreplication.BinlogReplicaCatalog); ok && binCat.HasBinlogReplicaController() {
-			binlogNode = binlogNode.WithBinlogReplicaController(binCat.GetBinlogReplicaController()).(*plan.Binlog)
+		if binCat, ok := b.cat.(binlogreplication.BinlogConsumerCatalog); ok && binCat.HasBinlogConsumer() {
+			binlogNode = binlogNode.WithBinlogConsumer(binCat.GetBinlogConsumer()).(*plan.Binlog)
 		}
 		outScope.node = binlogNode
 	}

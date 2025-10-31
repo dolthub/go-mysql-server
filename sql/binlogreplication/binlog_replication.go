@@ -25,6 +25,17 @@ import (
 	"github.com/dolthub/vitess/go/mysql"
 )
 
+// BinlogConsumer processes binlog events. This interface can be used by any component that needs to consume
+// and apply binlog events, such as BINLOG statement execution, streaming replication, or other binlog processing.
+type BinlogConsumer interface {
+	// ProcessEvent processes a single binlog event.
+	ProcessEvent(ctx *sql.Context, event mysql.BinlogEvent) error
+
+	// HasFormatDescription returns true if a FORMAT_DESCRIPTION_EVENT has been processed.
+	// This is required before processing TABLE_MAP and row events in BINLOG statements.
+	HasFormatDescription() bool
+}
+
 // BinlogReplicaController allows callers to control a binlog replica. Providers built on go-mysql-server may optionally
 // implement this interface and use it when constructing a SQL engine in order to receive callbacks when replication
 // statements (e.g. START REPLICA, SHOW REPLICA STATUS) are being handled.
@@ -62,12 +73,6 @@ type BinlogReplicaController interface {
 	// error indicating that replication needs to be stopped before it can be reset. If any errors were encountered
 	// resetting the replica state, an error is returned, otherwise nil is returned if the reset was successful.
 	ResetReplica(ctx *sql.Context, resetAll bool) error
-
-	// ConsumeBinlogEvent processes a single parsed binlog event.
-	ConsumeBinlogEvent(ctx *sql.Context, event mysql.BinlogEvent) error
-
-	// HasFormatDescription returns true if a FORMAT_DESCRIPTION_EVENT has been processed.
-	HasFormatDescription() bool
 }
 
 // BinlogPrimaryController allows an integrator to extend GMS with support for operating as a binlog primary server.
@@ -151,6 +156,15 @@ type ReplicaStatus struct {
 	ConnectRetry          uint32
 	AutoPosition          bool
 	SourceSsl             bool
+}
+
+// BinlogConsumerCatalog extends the Catalog interface and provides methods for accessing a BinlogConsumer
+// for BINLOG statement execution and other binlog event processing.
+type BinlogConsumerCatalog interface {
+	// HasBinlogConsumer returns true if a non-nil BinlogConsumer is available for this catalog.
+	HasBinlogConsumer() bool
+	// GetBinlogConsumer returns the BinlogConsumer registered with this catalog.
+	GetBinlogConsumer() BinlogConsumer
 }
 
 // BinlogReplicaCatalog extends the Catalog interface and provides methods for accessing a BinlogReplicaController
