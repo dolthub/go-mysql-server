@@ -124,7 +124,8 @@ type ScriptTestAssertion struct {
 var ScriptTests = []ScriptTest{
 	{
 		// https://github.com/dolthub/dolt/issues/9316
-		Name: "CREATE TABLE with constraints AS SELECT osticket repro",
+		Name:         "CREATE TABLE with constraints AS SELECT osticket repro",
+		SkipPrepared: true, // SHOW KEYS with WHERE clause doesn't work with prepared statements
 		SetUpScript: []string{
 			"CREATE TABLE ost_form_entry (id INT PRIMARY KEY, object_id INT, object_type VARCHAR(1))",
 			"CREATE TABLE ost_form_entry_values (entry_id INT, field_id INT, value VARCHAR(100), value_id INT)",
@@ -165,7 +166,8 @@ var ScriptTests = []ScriptTest{
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/9316
-		Name: "CREATE TABLE with constraints AS SELECT",
+		Name:         "CREATE TABLE with constraints AS SELECT",
+		SkipPrepared: true,
 		SetUpScript: []string{
 			"CREATE TABLE t1 (a int not null, b varchar(10))",
 			"INSERT INTO t1 VALUES (1, 'one'), (2, 'two'), (3, 'three')",
