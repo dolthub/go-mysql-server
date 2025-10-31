@@ -635,7 +635,7 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 
 	// Read rows off the row iterator and send them to the row channel.
 	iter, projs := GetDeferredProjections(iter)
-	var rowChan = make(chan sql.Row, 512)
+	var rowChan = make(chan []sqltypes.Value, 512)
 	eg.Go(func() (err error) {
 		defer pan2err(&err)
 		defer wg.Done()
@@ -652,8 +652,22 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 				if err != nil {
 					return err
 				}
+
+				if types.IsOkResult(row) {
+					if len(r.Rows) > 0 {
+						panic("Got OkResult mixed with RowResult")
+					}
+					r = resultFromOkResult(row[0].(types.OkResult))
+					continue
+				}
+
+				outputRow, err := RowToSQL(ctx, schema, row, projs, buf)
+				if err != nil {
+					return err
+				}
+
 				select {
-				case rowChan <- row:
+				case rowChan <- outputRow:
 				case <-ctx.Done():
 					return nil
 				}
@@ -718,21 +732,9 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 				if !ok {
 					return nil
 				}
-				if types.IsOkResult(row) {
-					if len(r.Rows) > 0 {
-						panic("Got OkResult mixed with RowResult")
-					}
-					r = resultFromOkResult(row[0].(types.OkResult))
-					continue
-				}
 
-				outputRow, err := RowToSQL(ctx, schema, row, projs, buf)
-				if err != nil {
-					return err
-				}
-
-				ctx.GetLogger().Tracef("spooling result row %s", outputRow)
-				r.Rows = append(r.Rows, outputRow)
+				ctx.GetLogger().Tracef("spooling result row %s", row)
+				r.Rows = append(r.Rows, row)
 				r.RowsAffected++
 				if !timer.Stop() {
 					<-timer.C
