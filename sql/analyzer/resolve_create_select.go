@@ -38,15 +38,35 @@ func resolveCreateSelect(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 		newSch[i] = &tempCol
 	}
 
-	pkOrdinals := make([]int, 0)
+	colNameToIdx := make(map[string]int, len(newSch))
 	for i, col := range newSch {
-		if col.PrimaryKey {
-			pkOrdinals = append(pkOrdinals, i)
+		colNameToIdx[col.Name] = i
+	}
+
+	// Apply primary key constraints from index definitions to the merged schema
+	var nonPkIndexes sql.IndexDefs
+	pkOrdinals := make([]int, 0)
+	for _, idx := range ct.Indexes() {
+		if idx.IsPrimary() {
+			for _, idxCol := range idx.Columns {
+				if i, ok := colNameToIdx[idxCol.Name]; ok {
+					// https://dev.mysql.com/doc/refman/8.0/en/create-table.html
+					newSch[i].PrimaryKey = true
+					newSch[i].Nullable = false
+					pkOrdinals = append(pkOrdinals, i)
+				}
+			}
+		} else {
+			nonPkIndexes = append(nonPkIndexes, idx)
 		}
 	}
 
 	newSpec := &plan.TableSpec{
-		Schema: sql.NewPrimaryKeySchema(newSch, pkOrdinals...),
+		Schema:    sql.NewPrimaryKeySchema(newSch, pkOrdinals...),
+		IdxDefs:   nonPkIndexes, // Only pass non-PK indexes since PK is in schema
+		FkDefs:    ct.ForeignKeys(),
+		ChDefs:    ct.Checks(),
+		Collation: ct.Collation,
 	}
 
 	newCreateTable := plan.NewCreateTable(ct.Database(), ct.Name(), ct.IfNotExists(), ct.Temporary(), newSpec)
