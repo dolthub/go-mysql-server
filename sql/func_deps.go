@@ -661,9 +661,16 @@ func NewLeftJoinFDs(left, right *FuncDepSet, filters [][2]ColumnId) *FuncDepSet 
 		}
 		ret.AddConstants(leftConst)
 	}
-	// only left equiv holds
+
+	// add left equivs
 	for _, equiv := range left.equivs.Sets() {
 		ret.AddEquivSet(equiv)
+	}
+	// add equiv filters only if right-side column is not null
+	for _, f := range filters {
+		if right.notNull.Contains(f[0]) || right.notNull.Contains(f[1]) {
+			ret.AddEquiv(f[0], f[1])
+		}
 	}
 
 	if leftStrict && leftColsAreInnerJoinKey {
@@ -674,12 +681,6 @@ func NewLeftJoinFDs(left, right *FuncDepSet, filters [][2]ColumnId) *FuncDepSet 
 		}
 	} else {
 		ret.keys = append(ret.keys, jKey)
-	}
-	
-	for _, f := range filters {
-		if right.notNull.Contains(f[0]) || right.notNull.Contains(f[1]) {
-			ret.AddEquiv(f[0], f[1])
-		}
 	}
 
 	// right-side keys become lax unless all non-nullable in original
