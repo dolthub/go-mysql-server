@@ -17,7 +17,7 @@ package expression
 import (
 	"fmt"
 
-	errors "gopkg.in/src-d/go-errors.v1"
+	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -155,6 +155,60 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		compareType = types.MustCreateString(stringCompareType.Type(), stringCompareType.Length(), collationPreference)
 	}
 	return compareType.Compare(ctx, l, r)
+}
+
+// CompareValue the two given values using the types of the expressions in the comparison.
+func (c *comparison) CompareValue(ctx *sql.Context, row sql.ValueRow) (int, error) {
+	// TODO: avoid type assertions
+	lv, err := c.LeftChild.(sql.ValueExpression).EvalValue(ctx, row)
+	if err != nil {
+		return 0, err
+	}
+	rv, err := c.RightChild.(sql.ValueExpression).EvalValue(ctx, row)
+	if err != nil {
+		return 0, err
+	}
+
+	if lv.IsNull() || rv.IsNull() {
+		return 0, nil
+	}
+
+	lTyp, rTyp := c.LeftChild.Type().(sql.ValueType), c.RightChild.Type().(sql.ValueType)
+	if types.TypesEqual(lTyp, rTyp) {
+		return lTyp.(sql.ValueType).CompareValue(ctx, lv, rv)
+	}
+
+	if types.IsNumber(lTyp) || types.IsNumber(rTyp) {
+		if types.IsUnsigned(lTyp) && types.IsUnsigned(rTyp) {
+			return types.Uint64.(sql.ValueType).CompareValue(ctx, lv, rv)
+		}
+		if types.IsSigned(lTyp) && types.IsSigned(rTyp) {
+			return types.Int64.(sql.ValueType).CompareValue(ctx, lv, rv)
+		}
+		if types.IsDecimal(lTyp) || types.IsDecimal(rTyp) {
+			return types.InternalDecimalType.(sql.ValueType).CompareValue(ctx, lv, rv)
+		}
+		return types.Float64.(sql.ValueType).CompareValue(ctx, lv, rv)
+	}
+
+	return lTyp.CompareValue(ctx, lv, rv)
+}
+
+// IsValueExpression returns whether every child supports sql.ValueExpression
+func (c *comparison) IsValueExpression() bool {
+	l, ok := c.LeftChild.(sql.ValueExpression)
+	if !ok {
+		return false
+	}
+	r, ok := c.RightChild.(sql.ValueExpression)
+	if !ok {
+		return false
+	}
+	// TODO: only allow comparisons between Integers, Floats, Decimals, Bits and Year for now
+	if !types.IsNumber(c.LeftChild.Type()) || !types.IsNumber(c.RightChild.Type()) {
+		return false
+	}
+	return l.IsValueExpression() && r.IsValueExpression()
 }
 
 func (c *comparison) evalLeftAndRight(ctx *sql.Context, row sql.Row) (interface{}, interface{}, error) {
@@ -495,6 +549,7 @@ type GreaterThan struct {
 }
 
 var _ sql.Expression = (*GreaterThan)(nil)
+var _ sql.ValueExpression = (*GreaterThan)(nil)
 var _ sql.CollationCoercible = (*GreaterThan)(nil)
 
 // NewGreaterThan creates a new GreaterThan expression.
@@ -541,6 +596,23 @@ func (gt *GreaterThan) DebugString() string {
 	return pr.String()
 }
 
+// EvalValue implements the sql.ValueExpression interface.
+func (gt *GreaterThan) EvalValue(ctx *sql.Context, row sql.ValueRow) (sql.Value, error) {
+	cmp, err := gt.CompareValue(ctx, row)
+	if err != nil {
+		return sql.NullValue, err
+	}
+	if cmp != 1 {
+		return sql.FalseValue, nil
+	}
+	return sql.TrueValue, nil
+}
+
+// IsValueExpression implements the ValueExpression interface.
+func (gt *GreaterThan) IsValueExpression() bool {
+	return gt.comparison.IsValueExpression()
+}
+
 // LessThan is a comparison that checks an expression is less than another.
 type LessThan struct {
 	comparison
@@ -566,10 +638,8 @@ func (lt *LessThan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if ErrNilOperand.Is(err) {
 			return nil, nil
 		}
-
 		return nil, err
 	}
-
 	return result == -1, nil
 }
 
@@ -591,6 +661,23 @@ func (lt *LessThan) DebugString() string {
 	children := []string{sql.DebugString(lt.Left()), sql.DebugString(lt.Right())}
 	_ = pr.WriteChildren(children...)
 	return pr.String()
+}
+
+// EvalValue implements the sql.ValueExpression interface.
+func (lt *LessThan) EvalValue(ctx *sql.Context, row sql.ValueRow) (sql.Value, error) {
+	cmp, err := lt.CompareValue(ctx, row)
+	if err != nil {
+		return sql.NullValue, err
+	}
+	if cmp != -1 {
+		return sql.FalseValue, nil
+	}
+	return sql.TrueValue, nil
+}
+
+// IsValueExpression implements the ValueExpression interface.
+func (lt *LessThan) IsValueExpression() bool {
+	return lt.comparison.IsValueExpression()
 }
 
 // GreaterThanOrEqual is a comparison that checks an expression is greater or equal to
@@ -619,10 +706,8 @@ func (gte *GreaterThanOrEqual) Eval(ctx *sql.Context, row sql.Row) (interface{},
 		if ErrNilOperand.Is(err) {
 			return nil, nil
 		}
-
 		return nil, err
 	}
-
 	return result > -1, nil
 }
 
@@ -644,6 +729,23 @@ func (gte *GreaterThanOrEqual) DebugString() string {
 	children := []string{sql.DebugString(gte.Left()), sql.DebugString(gte.Right())}
 	_ = pr.WriteChildren(children...)
 	return pr.String()
+}
+
+// EvalValue implements the sql.ValueExpression interface.
+func (gte *GreaterThanOrEqual) EvalValue(ctx *sql.Context, row sql.ValueRow) (sql.Value, error) {
+	cmp, err := gte.CompareValue(ctx, row)
+	if err != nil {
+		return sql.NullValue, err
+	}
+	if cmp == -1 {
+		return sql.FalseValue, nil
+	}
+	return sql.TrueValue, nil
+}
+
+// IsValueExpression implements the ValueExpression interface.
+func (gte *GreaterThanOrEqual) IsValueExpression() bool {
+	return gte.comparison.IsValueExpression()
 }
 
 // LessThanOrEqual is a comparison that checks an expression is equal or lower than
@@ -697,6 +799,23 @@ func (lte *LessThanOrEqual) DebugString() string {
 	children := []string{sql.DebugString(lte.Left()), sql.DebugString(lte.Right())}
 	_ = pr.WriteChildren(children...)
 	return pr.String()
+}
+
+// EvalValue implements the sql.ValueExpression interface.
+func (lte *LessThanOrEqual) EvalValue(ctx *sql.Context, row sql.ValueRow) (sql.Value, error) {
+	cmp, err := lte.CompareValue(ctx, row)
+	if err != nil {
+		return sql.NullValue, err
+	}
+	if cmp == 1 {
+		return sql.FalseValue, nil
+	}
+	return sql.TrueValue, nil
+}
+
+// IsValueExpression implements the ValueExpression interface.
+func (lte *LessThanOrEqual) IsValueExpression() bool {
+	return lte.comparison.IsValueExpression()
 }
 
 var (

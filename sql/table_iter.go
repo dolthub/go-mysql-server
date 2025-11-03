@@ -24,6 +24,7 @@ type TableRowIter struct {
 	partitions PartitionIter
 	partition  Partition
 	rows       RowIter
+	valueRows  ValueRowIter
 }
 
 var _ RowIter = (*TableRowIter)(nil)
@@ -76,9 +77,79 @@ func (i *TableRowIter) Next(ctx *Context) (Row, error) {
 	return row, err
 }
 
+// NextValueRow implements the sql.ValueRowIter interface
+func (i *TableRowIter) NextValueRow(ctx *Context) (ValueRow, error) {
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+	}
+
+	if i.partition == nil {
+		partition, err := i.partitions.Next(ctx)
+		if err != nil {
+			if err == io.EOF {
+				if e := i.partitions.Close(ctx); e != nil {
+					return nil, e
+				}
+			}
+			return nil, err
+		}
+		i.partition = partition
+	}
+
+	if i.valueRows == nil {
+		rows, err := i.table.PartitionRows(ctx, i.partition)
+		if err != nil {
+			return nil, err
+		}
+		i.valueRows = rows.(ValueRowIter)
+	}
+
+	row, err := i.valueRows.NextValueRow(ctx)
+	if err != nil && err == io.EOF {
+		if err = i.valueRows.Close(ctx); err != nil {
+			return nil, err
+		}
+		i.partition = nil
+		i.valueRows = nil
+		row, err = i.NextValueRow(ctx)
+	}
+	return row, err
+}
+
+// IsValueRowIter implements the sql.ValueRowIter interface.
+func (i *TableRowIter) IsValueRowIter(ctx *Context) bool {
+	if i.partition == nil {
+		partition, err := i.partitions.Next(ctx)
+		if err != nil {
+			return false
+		}
+		i.partition = partition
+	}
+	if i.valueRows == nil {
+		rows, err := i.table.PartitionRows(ctx, i.partition)
+		if err != nil {
+			return false
+		}
+		valRowIter, ok := rows.(ValueRowIter)
+		if !ok {
+			return false
+		}
+		i.valueRows = valRowIter
+	}
+	return i.valueRows.IsValueRowIter(ctx)
+}
+
 func (i *TableRowIter) Close(ctx *Context) error {
 	if i.rows != nil {
 		if err := i.rows.Close(ctx); err != nil {
+			_ = i.partitions.Close(ctx)
+			return err
+		}
+	}
+	if i.valueRows != nil {
+		if err := i.valueRows.Close(ctx); err != nil {
 			_ = i.partitions.Close(ctx)
 			return err
 		}

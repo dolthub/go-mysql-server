@@ -175,12 +175,12 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 					sortFields[i] = sortField
 				} else {
 					sameSortFields = false
-					col2, _ := col.(sql.Expression2)
+					valCol, _ := col.(sql.ValueExpression)
 					sortFields[i] = sql.SortField{
-						Column:       col,
-						Column2:      col2,
-						NullOrdering: sortField.NullOrdering,
-						Order:        sortField.Order,
+						Column:          col,
+						ValueExprColumn: valCol,
+						NullOrdering:    sortField.NullOrdering,
+						Order:           sortField.Order,
 					}
 				}
 			}

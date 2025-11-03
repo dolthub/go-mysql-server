@@ -32,7 +32,7 @@ type UnresolvedColumn struct {
 }
 
 var _ sql.Expression = (*UnresolvedColumn)(nil)
-var _ sql.Expression2 = (*UnresolvedColumn)(nil)
+var _ sql.ValueExpression = (*UnresolvedColumn)(nil)
 var _ sql.CollationCoercible = (*UnresolvedColumn)(nil)
 
 // NewUnresolvedColumn creates a new UnresolvedColumn expression.
@@ -71,12 +71,14 @@ func (*UnresolvedColumn) CollationCoercibility(ctx *sql.Context) (collation sql.
 	return sql.Collation_binary, 7
 }
 
-func (uc *UnresolvedColumn) Eval2(ctx *sql.Context, row sql.Row2) (sql.Value, error) {
-	panic("unresolved column is a placeholder node, but Eval2 was called")
+// EvalValue implements the sql.ValueExpression interface.
+func (uc *UnresolvedColumn) EvalValue(ctx *sql.Context, row sql.ValueRow) (sql.Value, error) {
+	panic("unresolved column is a placeholder node, but EvalValue was called")
 }
 
-func (uc *UnresolvedColumn) Type2() sql.Type2 {
-	panic("unresolved column is a placeholder node, but Type2 was called")
+// IsValueRowIter implements the ValueExpression interface.
+func (uc *UnresolvedColumn) IsValueExpression() bool {
+	panic("unresolved column is a placeholder node, but IsValueExpression was called")
 }
 
 // Name implements the Nameable interface.

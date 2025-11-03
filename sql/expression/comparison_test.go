@@ -12,15 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package expression_test
+package expression
 
 import (
+	"encoding/binary"
 	"testing"
 
+	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -109,11 +110,11 @@ var likeComparisonCases = map[sql.Type]map[int][][]interface{}{
 func TestEquals(t *testing.T) {
 	require := require.New(t)
 	for resultType, cmpCase := range comparisonCases {
-		get0 := expression.NewGetField(0, resultType, "col1", true)
+		get0 := NewGetField(0, resultType, "col1", true)
 		require.NotNil(get0)
-		get1 := expression.NewGetField(1, resultType, "col2", true)
+		get1 := NewGetField(1, resultType, "col2", true)
 		require.NotNil(get1)
-		eq := expression.NewEquals(get0, get1)
+		eq := NewEquals(get0, get1)
 		require.NotNil(eq)
 		require.Equal(types.Boolean, eq.Type())
 		for cmpResult, cases := range cmpCase {
@@ -136,11 +137,11 @@ func TestEquals(t *testing.T) {
 func TestNullSafeEquals(t *testing.T) {
 	require := require.New(t)
 	for resultType, cmpCase := range comparisonCases {
-		get0 := expression.NewGetField(0, resultType, "col1", true)
+		get0 := NewGetField(0, resultType, "col1", true)
 		require.NotNil(get0)
-		get1 := expression.NewGetField(1, resultType, "col2", true)
+		get1 := NewGetField(1, resultType, "col2", true)
 		require.NotNil(get1)
-		seq := expression.NewNullSafeEquals(get0, get1)
+		seq := NewNullSafeEquals(get0, get1)
 		require.NotNil(seq)
 		require.Equal(types.Boolean, seq.Type())
 		for cmpResult, cases := range cmpCase {
@@ -167,11 +168,11 @@ func TestNullSafeEquals(t *testing.T) {
 func TestLessThan(t *testing.T) {
 	require := require.New(t)
 	for resultType, cmpCase := range comparisonCases {
-		get0 := expression.NewGetField(0, resultType, "col1", true)
+		get0 := NewGetField(0, resultType, "col1", true)
 		require.NotNil(get0)
-		get1 := expression.NewGetField(1, resultType, "col2", true)
+		get1 := NewGetField(1, resultType, "col2", true)
 		require.NotNil(get1)
-		eq := expression.NewLessThan(get0, get1)
+		eq := NewLessThan(get0, get1)
 		require.NotNil(eq)
 		require.Equal(types.Boolean, eq.Type())
 		for cmpResult, cases := range cmpCase {
@@ -194,11 +195,11 @@ func TestLessThan(t *testing.T) {
 func TestGreaterThan(t *testing.T) {
 	require := require.New(t)
 	for resultType, cmpCase := range comparisonCases {
-		get0 := expression.NewGetField(0, resultType, "col1", true)
+		get0 := NewGetField(0, resultType, "col1", true)
 		require.NotNil(get0)
-		get1 := expression.NewGetField(1, resultType, "col2", true)
+		get1 := NewGetField(1, resultType, "col2", true)
 		require.NotNil(get1)
-		eq := expression.NewGreaterThan(get0, get1)
+		eq := NewGreaterThan(get0, get1)
 		require.NotNil(eq)
 		require.Equal(types.Boolean, eq.Type())
 		for cmpResult, cases := range cmpCase {
@@ -218,9 +219,49 @@ func TestGreaterThan(t *testing.T) {
 	}
 }
 
-func eval(t *testing.T, e sql.Expression, row sql.Row) interface{} {
-	t.Helper()
-	v, err := e.Eval(sql.NewEmptyContext(), row)
-	require.NoError(t, err)
-	return v
+func TestValueComparison(t *testing.T) {
+	t.Skip("TODO: write tests for comparison between sql.Values")
+}
+
+// BenchmarkComparison
+// BenchmarkComparison-14    	 4426766	       264.4 ns/op
+func BenchmarkComparison(b *testing.B) {
+	ctx := sql.NewEmptyContext()
+	gf1 := NewGetField(0, types.Int64, "col1", true)
+	gf2 := NewGetField(1, types.Int64, "col2", true)
+	cmp := newComparison(gf1, gf2)
+	row := sql.Row{1, 1}
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		res, err := cmp.Compare(ctx, row)
+		require.NoError(b, err)
+		require.Equal(b, 0, res)
+	}
+}
+
+// BenchmarkValueComparison
+// BenchmarkValueComparison-14    	 4115744	       285.8 ns/op
+func BenchmarkValueComparison(b *testing.B) {
+	ctx := sql.NewEmptyContext()
+	gf1 := NewGetField(0, types.Int64, "col1", true)
+	gf2 := NewGetField(1, types.Int64, "col2", true)
+	cmp := newComparison(gf1, gf2)
+	row := sql.ValueRow{
+		{
+			Val: binary.LittleEndian.AppendUint64(nil, uint64(1)),
+			Typ: sqltypes.Int64,
+		},
+		{
+			Val: binary.LittleEndian.AppendUint64(nil, uint64(1)),
+			Typ: sqltypes.Int64,
+		},
+	}
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		res, err := cmp.CompareValue(ctx, row)
+		require.NoError(b, err)
+		require.Equal(b, 0, res)
+	}
 }

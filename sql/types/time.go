@@ -28,6 +28,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/values"
 )
 
 var (
@@ -97,6 +98,11 @@ func (t TimespanType_) Compare(s context.Context, a interface{}, b interface{}) 
 	}
 
 	return as.Compare(bs), nil
+}
+
+// CompareValue implements the ValueType interface
+func (t TimespanType_) CompareValue(ctx *sql.Context, a, b sql.Value) (int, error) {
+	panic("TODO: implement CompareValue for TimespanType")
 }
 
 func (t TimespanType_) Convert(c context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
@@ -265,6 +271,16 @@ func (t TimespanType_) SQL(_ *sql.Context, dest []byte, v interface{}) (sqltypes
 
 	val := ti.Bytes()
 	return sqltypes.MakeTrusted(sqltypes.Time, val), nil
+}
+
+// SQLValue implements ValueType interface.
+func (t TimespanType_) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes.Value, error) {
+	if v.IsNull() {
+		return sqltypes.NULL, nil
+	}
+	x := values.ReadInt64(v.Val)
+	dest = Timespan(x).AppendBytes(dest)
+	return sqltypes.MakeTrusted(sqltypes.Time, dest), nil
 }
 
 // String implements Type interface.
@@ -485,7 +501,45 @@ func (t Timespan) Bytes() []byte {
 	return ret[:i]
 }
 
-// appendDigit format prints 0-entended integer into buffer
+func (t Timespan) AppendBytes(dest []byte) []byte {
+	isNegative, hours, minutes, seconds, microseconds := t.timespanToUnits()
+	sz := 10
+	if microseconds > 0 {
+		sz += 7
+	}
+	if isNegative {
+		dest = append(dest, '-')
+	}
+
+	if hours < 10 {
+		dest = append(dest, '0')
+	}
+	dest = strconv.AppendInt(dest, int64(hours), 10)
+	dest = append(dest, ':')
+
+	if minutes < 10 {
+		dest = append(dest, '0')
+	}
+	dest = strconv.AppendInt(dest, int64(minutes), 10)
+	dest = append(dest, ':')
+
+	if seconds < 10 {
+		dest = append(dest, '0')
+	}
+	dest = strconv.AppendInt(dest, int64(seconds), 10)
+	if microseconds > 0 {
+		dest = append(dest, '.')
+		cmp := int32(100000)
+		for cmp > 0 && microseconds < cmp {
+			dest = append(dest, '0')
+			cmp /= 10
+		}
+		dest = strconv.AppendInt(dest, int64(microseconds), 10)
+	}
+	return dest
+}
+
+// appendDigit format prints 0-extended integer into buffer
 func appendDigit(v int64, extend int, buf []byte, i int) int {
 	cmp := int64(1)
 	for _ = range extend - 1 {

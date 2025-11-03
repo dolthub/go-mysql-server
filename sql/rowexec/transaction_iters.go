@@ -99,6 +99,17 @@ func (t *TransactionCommittingIter) Next(ctx *sql.Context) (sql.Row, error) {
 	return t.childIter.Next(ctx)
 }
 
+// NextValueRow implements the sql.ValueRowIter interface.
+func (t *TransactionCommittingIter) NextValueRow(ctx *sql.Context) (sql.ValueRow, error) {
+	return t.childIter.(sql.ValueRowIter).NextValueRow(ctx)
+}
+
+// IsValueRowIter implements the sql.ValueRowIter interface.
+func (t *TransactionCommittingIter) IsValueRowIter(ctx *sql.Context) bool {
+	childIter, ok := t.childIter.(sql.ValueRowIter)
+	return ok && childIter.IsValueRowIter(ctx)
+}
+
 func (t *TransactionCommittingIter) Close(ctx *sql.Context) error {
 	var err error
 	if t.childIter != nil {
