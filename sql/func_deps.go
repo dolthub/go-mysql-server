@@ -675,10 +675,12 @@ func NewLeftJoinFDs(left, right *FuncDepSet, filters [][2]ColumnId) *FuncDepSet 
 	} else {
 		ret.keys = append(ret.keys, jKey)
 	}
-
-	// no filter equivs are valid
-	// TODO if right columns are non-nullable in ON filter, equivs hold
-	// technically we could do (r)~~>(l), but is this useful?
+	
+	for _, f := range filters {
+		if right.notNull.Contains(f[0]) || right.notNull.Contains(f[1]) {
+			ret.AddEquiv(f[0], f[1])
+		}
+	}
 
 	// right-side keys become lax unless all non-nullable in original
 	for _, key := range rightKeys {
