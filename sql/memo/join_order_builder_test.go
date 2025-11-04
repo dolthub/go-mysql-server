@@ -79,25 +79,25 @@ func TestJoinOrderBuilder(t *testing.T) {
 					plan.NewLeftOuterJoin(
 						tableNode(db, "a"),
 						tableNode(db, "b"),
-						newEq("a.z = b.z"),
+						newEq("a.x = b.x"),
 					),
 					plan.NewLeftOuterJoin(
 						plan.NewFullOuterJoin(
 							tableNode(db, "c"),
 							tableNode(db, "d"),
-							newEq("c.z = d.z"),
+							newEq("c.x = d.x"),
 						),
 						tableNode(db, "e"),
-						newEq("c.z = e.z"),
+						newEq("c.x = e.x"),
 					),
-					newEq("a.z = e.z"),
+					newEq("a.x = e.x"),
 				),
 				plan.NewInnerJoin(
 					tableNode(db, "f"),
 					tableNode(db, "g"),
-					newEq("f.z = g.z"),
+					newEq("f.x = g.x"),
 				),
-				newEq("e.z = g.z"),
+				newEq("e.x = g.x"),
 			),
 			plans: `memo:
 ├── G1: (tablescan: a)
