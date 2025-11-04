@@ -43,13 +43,17 @@ func (e *EquivSets) Sets() []ColSet {
 }
 
 func (e *EquivSets) String() string {
+	return e.StringWithLabel("equiv")
+}
+
+func (e *EquivSets) StringWithLabel(label string) string {
 	if e == nil {
-		return "equiv()"
+		return fmt.Sprintf("%s()", label)
 	}
 	b := strings.Builder{}
 	sep := ""
 	for i, set := range e.sets {
-		b.WriteString(fmt.Sprintf("%sequiv%s", sep, set))
+		b.WriteString(fmt.Sprintf("%s%s%s", sep, label, set))
 		if i == 0 {
 			sep = "; "
 		}
@@ -203,22 +207,25 @@ func (f *FuncDepSet) String() string {
 		b.WriteString(fmt.Sprintf("%s%s", sep, f.equivs))
 		sep = "; "
 	}
-	if len(f.keys) < 2 {
-		return b.String()
-	}
-	for _, k := range f.keys[1:] {
-		var cols string
-		if k.allCols == f.all {
-			cols = k.cols.String()
-		} else {
-			cols = fmt.Sprintf("%s/%s", k.cols, k.allCols)
-		}
-		if k.strict {
-			b.WriteString(fmt.Sprintf("%sfd%s", sep, cols))
-		} else {
-			b.WriteString(fmt.Sprintf("%slax-fd%s", sep, cols))
-		}
+	if f.partialEquivs.Len() > 0 {
+		b.WriteString(fmt.Sprintf("%s%s", sep, f.partialEquivs.StringWithLabel("partialEquiv")))
 		sep = "; "
+	}
+	if len(f.keys) >= 2 {
+		for _, k := range f.keys[1:] {
+			var cols string
+			if k.allCols == f.all {
+				cols = k.cols.String()
+			} else {
+				cols = fmt.Sprintf("%s/%s", k.cols, k.allCols)
+			}
+			if k.strict {
+				b.WriteString(fmt.Sprintf("%sfd%s", sep, cols))
+			} else {
+				b.WriteString(fmt.Sprintf("%slax-fd%s", sep, cols))
+			}
+			sep = "; "
+		}
 	}
 	return b.String()
 }
