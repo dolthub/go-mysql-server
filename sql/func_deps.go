@@ -666,7 +666,7 @@ func NewLeftJoinFDs(left, right *FuncDepSet, filters [][2]ColumnId) *FuncDepSet 
 	for _, equiv := range left.equivs.Sets() {
 		ret.AddEquivSet(equiv)
 	}
-	// add equiv filters only if right-side column is not null
+	// add equiv filters only if right-side column is not nullable
 	for _, f := range filters {
 		if right.notNull.Contains(f[0]) || right.notNull.Contains(f[1]) {
 			ret.AddEquiv(f[0], f[1])
