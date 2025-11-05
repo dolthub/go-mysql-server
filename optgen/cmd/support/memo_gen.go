@@ -132,7 +132,7 @@ func (g *MemoGen) genScalarInterfaces(defn ExprDef) {
 
 func (g *MemoGen) genStringer(defn ExprDef) {
 	fmt.Fprintf(g.w, "func (r *%s) String() string {\n", defn.Name)
-	fmt.Fprint(g.w, "  return fmt.Sprintf(\"%s\", r)\n")
+	fmt.Fprintf(g.w, "  return fmt.Sprintf(\"%%s\", r)\n")
 	fmt.Fprintf(g.w, "}\n\n")
 }
 
