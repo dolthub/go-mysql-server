@@ -22,6 +22,7 @@ import (
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/encodings"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -769,6 +770,48 @@ var UserPrivTests = []UserPrivilegeTest{
 			{
 				Query:    "select user, host, plugin, authentication_string from mysql.user where user='testuser1';",
 				Expected: []sql.Row{{"testuser1", "127.0.0.1", "caching_sha2_password", ""}},
+			},
+		},
+	},
+	{
+		Name: "User creation with SSL/TLS requirements",
+		SetUpScript: []string{
+			"CREATE USER testuser1@`127.0.0.1` REQUIRE NONE;",
+			"CREATE USER testuser2@`127.0.0.1` REQUIRE SSL;",
+			"CREATE USER testuser3@`127.0.0.1` REQUIRE X509;",
+			"CREATE USER testuser4@`127.0.0.1` IDENTIFIED WITH caching_sha2_password by 'pass1' REQUIRE X509;",
+			"CREATE USER testuser5@`127.0.0.1` REQUIRE SUBJECT 'cert_subject';",
+			"CREATE USER testuser6@`127.0.0.1` REQUIRE ISSUER 'cert_issuer';",
+			"CREATE USER testuser7@`127.0.0.1` REQUIRE CIPHER 'cipher';",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				Query:    "select user, ssl_type, ssl_cipher, x509_issuer, x509_subject from mysql.user where user='testuser1';",
+				Expected: []sql.Row{{"testuser1", "", encodings.StringToBytes(""), encodings.StringToBytes(""), encodings.StringToBytes("")}},
+			},
+			{
+				Query:    "select user, ssl_type, ssl_cipher, x509_issuer, x509_subject from mysql.user where user='testuser2';",
+				Expected: []sql.Row{{"testuser2", "ANY", encodings.StringToBytes(""), encodings.StringToBytes(""), encodings.StringToBytes("")}},
+			},
+			{
+				Query:    "select user, ssl_type, ssl_cipher, x509_issuer, x509_subject  from mysql.user where user='testuser3';",
+				Expected: []sql.Row{{"testuser3", "X509", encodings.StringToBytes(""), encodings.StringToBytes(""), encodings.StringToBytes("")}},
+			},
+			{
+				Query:    "select user, plugin, ssl_type, ssl_cipher, x509_issuer, x509_subject  from mysql.user where user='testuser4';",
+				Expected: []sql.Row{{"testuser4", "caching_sha2_password", "X509", encodings.StringToBytes(""), encodings.StringToBytes(""), encodings.StringToBytes("")}},
+			},
+			{
+				Query:    "select user, ssl_type, ssl_cipher, x509_issuer, x509_subject  from mysql.user where user='testuser5';",
+				Expected: []sql.Row{{"testuser5", "SPECIFIED", encodings.StringToBytes(""), encodings.StringToBytes(""), encodings.StringToBytes("cert_subject")}},
+			},
+			{
+				Query:    "select user, ssl_type, ssl_cipher, x509_issuer, x509_subject  from mysql.user where user='testuser6';",
+				Expected: []sql.Row{{"testuser6", "SPECIFIED", encodings.StringToBytes(""), encodings.StringToBytes("cert_issuer"), encodings.StringToBytes("")}},
+			},
+			{
+				Query:    "select user, ssl_type, ssl_cipher, x509_issuer, x509_subject  from mysql.user where user='testuser7';",
+				Expected: []sql.Row{{"testuser7", "SPECIFIED", encodings.StringToBytes("cipher"), encodings.StringToBytes(""), encodings.StringToBytes("")}},
 			},
 		},
 	},

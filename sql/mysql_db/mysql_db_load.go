@@ -137,6 +137,10 @@ func LoadUser(serialUser *serial.User) *User {
 		Locked:              serialUser.Locked(),
 		Attributes:          attributes,
 		Identity:            string(serialUser.Identity()),
+		SslType:             string(serialUser.SslType()),
+		SslCipher:           string(serialUser.SslCipher()),
+		X509Issuer:          string(serialUser.X509Issuer()),
+		X509Subject:         string(serialUser.X509Subject()),
 	}
 }
 

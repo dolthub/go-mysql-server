@@ -629,6 +629,7 @@ func (b *BaseBuilder) buildCreateUser(ctx *sql.Context, n *plan.CreateUser, _ sq
 
 		// TODO: attributes should probably not be nil, but setting it to &n.Attribute causes unexpected behavior
 		// TODO: validate all of the data
+		sslType, sslCipher, x509Issuer, x509Subject := parseTlsOptions(n.TLSOptions)
 		editor.PutUser(&mysql_db.User{
 			User:                user.UserName.Name,
 			Host:                user.UserName.Host,
@@ -640,12 +641,39 @@ func (b *BaseBuilder) buildCreateUser(ctx *sql.Context, n *plan.CreateUser, _ sq
 			Attributes:          nil,
 			IsRole:              false,
 			Identity:            user.Identity,
+			SslType:             sslType,
+			X509Issuer:          x509Issuer,
+			X509Subject:         x509Subject,
+			SslCipher:           sslCipher,
 		})
 	}
 	if err := mysqlDb.Persist(ctx, editor); err != nil {
 		return nil, err
 	}
 	return rowIterWithOkResultWithZeroRowsAffected(), nil
+}
+
+// parseTlsOptions examples |tlsOptions| and returns the sslType, sslCipher, x509Issuer, and x509Subject values. If |tlsOptions| is nil,
+// then all returned values are empty strings. All returned values are the values MySQL shows in the mysql.user system table, for the
+// columns with the same names.
+func parseTlsOptions(tlsOptions *plan.TLSOptions) (sslType string, sslCipher string, x509Issuer string, x509Subject string) {
+	if tlsOptions == nil {
+		return
+	}
+
+	if tlsOptions.X509 {
+		sslType = "X509"
+	} else if tlsOptions.SSL {
+		sslType = "ANY"
+	}
+	if tlsOptions.Cipher != "" || tlsOptions.Subject != "" || tlsOptions.Issuer != "" {
+		sslType = "SPECIFIED"
+	}
+
+	x509Issuer = tlsOptions.Issuer
+	x509Subject = tlsOptions.Subject
+	sslCipher = tlsOptions.Cipher
+	return
 }
 
 func (b *BaseBuilder) buildAlterPK(ctx *sql.Context, n *plan.AlterPK, row sql.Row) (sql.RowIter, error) {
