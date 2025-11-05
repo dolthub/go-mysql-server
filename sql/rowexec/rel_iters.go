@@ -134,6 +134,9 @@ type ProjectIter struct {
 	hasNestedIters bool
 }
 
+var _ sql.RowIter = &ProjectIter{}
+var _ sql.ValueRowIter = &ProjectIter{}
+
 type nestedIterState struct {
 	projections    []sql.Expression
 	sourceRow      sql.Row
@@ -243,6 +246,43 @@ func (i *ProjectIter) ProjectRowWithNestedIters(
 	i.nestedState.iterEvaluators = rowIterEvaluators
 
 	return i.ProjectRowWithNestedIters(ctx)
+}
+
+// NextValueRow implements the sql.ValueRowIter interface.
+func (i *ProjectIter) NextValueRow(ctx *sql.Context) (sql.ValueRow, error) {
+	childRow, err := i.childIter.(sql.ValueRowIter).NextValueRow(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: support default values
+	var row = make(sql.ValueRow, len(i.projs))
+	for idx, expr := range i.projs {
+		field, fErr := expr.(sql.ValueExpression).EvalValue(ctx, childRow)
+		if fErr != nil {
+			return nil, fErr
+		}
+		row[idx] = field
+	}
+	return row, nil
+}
+
+// IsValueRowIter implements the sql.ValueRowIter interface.
+func (i *ProjectIter) IsValueRowIter(ctx *sql.Context) bool {
+	if i.hasNestedIters {
+		return false
+	}
+	for _, proj := range i.projs {
+		expr, ok := proj.(sql.ValueExpression)
+		if !ok || !expr.IsValueExpression() {
+			return false
+		}
+	}
+	vrIter, ok := i.childIter.(sql.ValueRowIter)
+	if !ok || !vrIter.IsValueRowIter(ctx) {
+		return false
+	}
+	return true
 }
 
 // RowIterEvaluator is an expression that returns the next value from a sql.RowIter each time Eval is called.
