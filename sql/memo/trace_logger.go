@@ -24,21 +24,29 @@ import (
 type TraceLogger struct {
 	// A stack of debugger context. See PushDebugContext, PopDebugContext
 	contextStack []string
-	traceEnabled bool
+	TraceEnabled bool
 }
 
 var log = logrus.New()
 
 // PushDebugContext pushes the given context string onto the context stack, to use when logging debug messages.
 func (a *TraceLogger) PushDebugContext(msg string) {
-	if a != nil && a.traceEnabled {
+	if a != nil && a.TraceEnabled {
 		a.contextStack = append(a.contextStack, msg)
+	}
+}
+
+// PushDebugContextFmt pushes a formatted context string onto the context stack, to use when logging debug messages.
+// Useful to avoid the cost of formatting when tracing is disabled.
+func (a *TraceLogger) PushDebugContextFmt(fmtStr string, args ...any) {
+	if a != nil && a.TraceEnabled {
+		a.contextStack = append(a.contextStack, fmt.Sprintf(fmtStr, args...))
 	}
 }
 
 // PopDebugContext pops a context message off the context stack.
 func (a *TraceLogger) PopDebugContext() {
-	if a != nil && len(a.contextStack) > 0 {
+	if a != nil && a.TraceEnabled && len(a.contextStack) > 0 {
 		a.contextStack = a.contextStack[:len(a.contextStack)-1]
 	}
 }
@@ -46,7 +54,7 @@ func (a *TraceLogger) PopDebugContext() {
 // Log prints an INFO message to stdout with the given message and args
 // if the analyzer is in debug mode.
 func (a *TraceLogger) Log(msg string, args ...interface{}) {
-	if a != nil && a.traceEnabled {
+	if a != nil && a.TraceEnabled {
 		if len(a.contextStack) > 0 {
 			ctx := strings.Join(a.contextStack, "/")
 			fmt.Printf("%s: "+msg+"\n", append([]interface{}{ctx}, args...)...)

@@ -77,7 +77,7 @@ func (m *Memo) HandleErr(err error) {
 }
 
 func (m *Memo) EnableTrace(enable bool) {
-	m.Tracer.traceEnabled = enable
+	m.Tracer.TraceEnabled = enable
 }
 
 func (m *Memo) Root() *ExprGroup {
@@ -435,7 +435,7 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 		return nil
 	}
 
-	m.Tracer.PushDebugContext(fmt.Sprintf("optimizeMemoGroup/%d", grp.Id))
+	m.Tracer.PushDebugContextFmt("optimizeMemoGroup/%d", grp.Id)
 	defer m.Tracer.PopDebugContext()
 
 	n := grp.First
@@ -503,21 +503,21 @@ func (m *Memo) updateBest(grp *ExprGroup, n RelExpr, cost float64) {
 				grp.Best = n
 				grp.Cost = cost
 				grp.HintOk = true
-				m.Tracer.Log("Set best plan for group %d to hinted plan %s with cost %.2f", grp.Id, n.String(), cost)
+				m.Tracer.Log("Set best plan for group %d to hinted plan %s with cost %.2f", grp.Id, n, cost)
 				return
 			}
 			if grp.updateBest(n, cost) {
-				m.Tracer.Log("Updated best plan for group %d to hinted plan %s with cost %.2f", grp.Id, n.String(), cost)
+				m.Tracer.Log("Updated best plan for group %d to hinted plan %s with cost %.2f", grp.Id, n, cost)
 			}
 		} else if grp.Best == nil || !grp.HintOk {
 			if grp.updateBest(n, cost) {
-				m.Tracer.Log("Updated best plan for group %d to plan %s with cost %.2f (no hints satisfied)", grp.Id, n.String(), cost)
+				m.Tracer.Log("Updated best plan for group %d to plan %s with cost %.2f (no hints satisfied)", grp.Id, n, cost)
 			}
 		}
 		return
 	}
 	if grp.updateBest(n, cost) {
-		m.Tracer.Log("Updated best plan for group %d to plan %s with cost %.2f", grp.Id, n.String(), cost)
+		m.Tracer.Log("Updated best plan for group %d to plan %s with cost %.2f", grp.Id, n, cost)
 	}
 }
 

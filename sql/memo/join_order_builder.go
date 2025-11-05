@@ -529,10 +529,10 @@ func (j *joinOrderBuilder) buildJoinOp(n *plan.JoinNode) *ExprGroup {
 	}
 
 	if !isInner {
-		j.m.Tracer.Log("Building non-inner edge for join type: %s", typ.String())
+		j.m.Tracer.Log("Building non-inner edge for join type: %s", typ)
 		j.buildNonInnerEdge(op, filters...)
 	} else {
-		j.m.Tracer.Log("Building inner edge for join type: %s", typ.String())
+		j.m.Tracer.Log("Building inner edge for join type: %s", typ)
 		j.buildInnerEdge(op, filters...)
 	}
 	return group
@@ -700,7 +700,7 @@ func setPrinter(all, s1, s2 vertexSet) {
 
 // addPlans finds operators that let us join (s1 op s2) and (s2 op s1).
 func (j *joinOrderBuilder) addPlans(s1, s2 vertexSet) {
-	j.m.Tracer.PushDebugContext(fmt.Sprintf("addPlans/%s<->%s", s1, s2))
+	j.m.Tracer.PushDebugContextFmt("addPlans/%s<->%s", s1, s2)
 	defer j.m.Tracer.PopDebugContext()
 
 	// all inner filters could be applied
@@ -736,14 +736,14 @@ func (j *joinOrderBuilder) addPlans(s1, s2 vertexSet) {
 	for i, ok := j.nonInnerEdges.Next(0); ok; i, ok = j.nonInnerEdges.Next(i + 1) {
 		e := &j.edges[i]
 		if e.applicable(s1, s2) {
-			j.m.Tracer.Log("Found applicable non-inner edge %d, adding join: %s", i, e.op.joinType.String())
+			j.m.Tracer.Log("Found applicable non-inner edge %d, adding join: %s", i, e.op.joinType)
 			j.addJoin(e.op.joinType, s1, s2, e.filters, innerJoinFilters, e.joinIsRedundant(s1, s2))
 			return
 		}
 		if e.applicable(s2, s1) {
 			// This is necessary because we only iterate s1 up to subset / 2
 			// in DPSube()
-			j.m.Tracer.Log("Found applicable non-inner edge %d (swapped), adding join: %s", i, e.op.joinType.String())
+			j.m.Tracer.Log("Found applicable non-inner edge %d (swapped), adding join: %s", i, e.op.joinType)
 			j.addJoin(e.op.joinType, s2, s1, e.filters, innerJoinFilters, e.joinIsRedundant(s2, s1))
 			return
 		}

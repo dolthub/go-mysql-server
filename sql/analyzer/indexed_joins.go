@@ -216,16 +216,22 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 	// Once we've enumerated all expression groups, we can apply hints. This must be done after expression
 	// groups have been identified, so that the applied hints use the correct metadata.
 	for _, h := range hints {
-		m.Tracer.Log("Applying hint: %s", h.Typ.String())
+		m.Tracer.Log("Applying hint: %s", h.Typ)
 		m.ApplyHint(h)
 	}
 
-	m.Tracer.Log("Starting cost-based optimization for groups %s", m)
+	if m.Tracer.TraceEnabled {
+		m.Tracer.Log("Starting cost-based optimization for groups %s", m)
+	}
+
 	err = m.OptimizeRoot()
 	if err != nil {
 		return nil, err
 	}
-	m.Tracer.Log("Completed cost-based optimization:\n%s", m.CostDebugString())
+
+	if m.Tracer.TraceEnabled {
+		m.Tracer.Log("Completed cost-based optimization:\n%s", m.CostDebugString())
+	}
 
 	if a.Verbose && a.Debug {
 		a.Log("%s", m.String())
@@ -234,7 +240,9 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 		scope.JoinTrees = append(scope.JoinTrees, m.String())
 	}
 
-	m.Tracer.Log("Best root plan:\n%s", m.BestPlanDebugString())
+	if m.Tracer.TraceEnabled {
+		m.Tracer.Log("Best root plan:\n%s", m.BestPlanDebugString())
+	}
 
 	return m.BestRootPlan(ctx)
 }
@@ -261,7 +269,7 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo) error {
 	defer m.Tracer.PopDebugContext()
 
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
-		m.Tracer.PushDebugContext(fmt.Sprintf("%+v", e))
+		m.Tracer.PushDebugContextFmt("%+v", e)
 		defer m.Tracer.PopDebugContext()
 
 		var right *memo.ExprGroup
@@ -665,7 +673,7 @@ func addRightSemiJoins(ctx *sql.Context, m *memo.Memo) error {
 	defer m.Tracer.PopDebugContext()
 
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
-		m.Tracer.PushDebugContext(fmt.Sprintf("%+v", e))
+		m.Tracer.PushDebugContextFmt("%+v", e)
 		defer m.Tracer.PopDebugContext()
 
 		semi, ok := e.(*memo.SemiJoin)
@@ -831,7 +839,7 @@ func addHashJoins(m *memo.Memo) error {
 	defer m.Tracer.PopDebugContext()
 
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
-		m.Tracer.PushDebugContext(fmt.Sprintf("%+v", e))
+		m.Tracer.PushDebugContextFmt("%+v", e)
 		defer m.Tracer.PopDebugContext()
 
 		switch e.(type) {
@@ -971,7 +979,7 @@ func addRangeHeapJoin(m *memo.Memo) error {
 	defer m.Tracer.PopDebugContext()
 
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
-		m.Tracer.PushDebugContext(fmt.Sprintf("%+v", e))
+		m.Tracer.PushDebugContextFmt("%+v", e)
 		defer m.Tracer.PopDebugContext()
 
 		switch e.(type) {
@@ -1082,7 +1090,7 @@ func addMergeJoins(ctx *sql.Context, m *memo.Memo) error {
 	defer m.Tracer.PopDebugContext()
 
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
-		m.Tracer.PushDebugContext(fmt.Sprintf("%+v", e))
+		m.Tracer.PushDebugContextFmt("%+v", e)
 		defer m.Tracer.PopDebugContext()
 
 		var join *memo.JoinBase
