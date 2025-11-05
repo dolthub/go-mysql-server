@@ -12,7 +12,7 @@ func TestMemoGen(t *testing.T) {
 		expected string
 	}{
 		expected: `
-        import (
+ import (
           "fmt"
           "strings"
           "github.com/dolthub/go-mysql-server/sql"
@@ -26,10 +26,16 @@ func TestMemoGen(t *testing.T) {
         }
         
         var _ RelExpr = (*hashJoin)(nil)
+        var _ fmt.Formatter = (*hashJoin)(nil)
+        var _ fmt.Stringer = (*hashJoin)(nil)
         var _ JoinRel = (*hashJoin)(nil)
         
         func (r *hashJoin) String() string {
-          return FormatExpr(r)
+          return fmt.Sprintf("%s", r)
+        }
+        
+        func (r *hashJoin) Format(s fmt.State, verb rune) {
+          FormatExpr(r, s, verb)
         }
         
         func (r *hashJoin) JoinPrivate() *JoinBase {
@@ -42,10 +48,16 @@ func TestMemoGen(t *testing.T) {
         }
         
         var _ RelExpr = (*tableScan)(nil)
+        var _ fmt.Formatter = (*tableScan)(nil)
+        var _ fmt.Stringer = (*tableScan)(nil)
         var _ SourceRel = (*tableScan)(nil)
         
         func (r *tableScan) String() string {
-          return FormatExpr(r)
+          return fmt.Sprintf("%s", r)
+        }
+        
+        func (r *tableScan) Format(s fmt.State, verb rune) {
+          FormatExpr(r, s, verb)
         }
         
         func (r *tableScan) Name() string {
@@ -68,17 +80,6 @@ func TestMemoGen(t *testing.T) {
           return nil
         }
         
-        func FormatExpr(r exprType) string {
-          switch r := r.(type) {
-          case *hashJoin:
-            return fmt.Sprintf("hashjoin %d %d", r.Left.Id, r.Right.Id)
-          case *tableScan:
-            return fmt.Sprintf("tablescan: %s", r.Name())
-          default:
-            panic(fmt.Sprintf("unknown RelExpr type: %T", r))
-          }
-        }
-        
         func buildRelExpr(b *ExecBuilder, r RelExpr, children ...sql.Node) (sql.Node, error) {
           var result sql.Node
           var err error
@@ -96,9 +97,9 @@ func TestMemoGen(t *testing.T) {
             return nil, err
           }
         
-          if withDescribeStats, ok := result.(sql.WithDescribeStats); ok {
-            withDescribeStats.SetDescribeStats(*DescribeStats(r))
-          }
+        if withDescribeStats, ok := result.(sql.WithDescribeStats); ok {
+        	withDescribeStats.SetDescribeStats(*DescribeStats(r))
+        }
           result, err = r.Group().finalize(result)
           if err != nil {
             return nil, err
