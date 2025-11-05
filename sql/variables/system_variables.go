@@ -74,7 +74,7 @@ func (sv *globalSystemVariables) AssignValues(vals map[string]interface{}) error
 	defer sv.mutex.Unlock()
 	for varName, val := range vals {
 		varName = strings.ToLower(varName)
-		sysVar, ok := systemVars[varName]
+		sysVar, ok := getSystemVar(varName)
 		if !ok {
 			return sql.ErrUnknownSystemVariable.New(varName)
 		}
@@ -104,7 +104,7 @@ func (sv *globalSystemVariables) GetGlobal(name string) (sql.SystemVariable, int
 	sv.mutex.RLock()
 	defer sv.mutex.RUnlock()
 	name = strings.ToLower(name)
-	v, ok := systemVars[name]
+	v, ok := getSystemVar(name)
 	if !ok {
 		return nil, nil, false
 	}
@@ -141,7 +141,7 @@ func (sv *globalSystemVariables) SetGlobal(ctx *sql.Context, name string, val in
 	sv.mutex.Lock()
 	defer sv.mutex.Unlock()
 	name = strings.ToLower(name)
-	sysVar, ok := systemVars[name]
+	sysVar, ok := getSystemVar(name)
 	if !ok {
 		return sql.ErrUnknownSystemVariable.New(name)
 	}
@@ -197,6 +197,19 @@ func init() {
 func getHostname() string {
 	hostname, _ := os.Hostname()
 	return hostname
+}
+
+// getSystemVar looks up a system variable by name in both systemVars and mariadbSystemVars.
+// Returns the variable and true if found, or nil and false if not found.
+func getSystemVar(name string) (sql.SystemVariable, bool) {
+	name = strings.ToLower(name)
+	if v, ok := systemVars[name]; ok {
+		return v, true
+	}
+	if v, ok := mariadbSystemVars[name]; ok {
+		return v, true
+	}
+	return nil, false
 }
 
 // systemVars is the internal collection of all MySQL system variables according to the following pages:
