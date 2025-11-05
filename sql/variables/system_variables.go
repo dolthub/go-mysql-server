@@ -16,6 +16,7 @@ package variables
 
 import (
 	"fmt"
+	"maps"
 	"math"
 	"os"
 	"strings"
@@ -184,6 +185,7 @@ func InitSystemVariables() {
 // init initializes SystemVariables as it functions as a global variable.
 // TODO: get rid of me, make this construction the responsibility of the engine
 func init() {
+	maps.Copy(systemVars, mariadbSystemVars)
 	InitSystemVariables()
 }
 
@@ -3041,6 +3043,19 @@ var systemVars = map[string]sql.SystemVariable{
 		Type:              types.NewSystemBoolType("windowing_use_high_precision"),
 		Default:           int8(1),
 	},
+	"insert_id": &sql.MysqlSystemVariable{
+		Name:              "insert_id",
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Session),
+		Dynamic:           true,
+		SetVarHintApplies: false,
+		Type:              types.NewSystemIntType("insert_id", 0, 9223372036854775807, false),
+		Default:           int64(0),
+	},
+}
+
+// mariadbSystemVars contains MariaDB-specific system variables that are not part of MySQL.
+// These variables are merged into systemVars during initialization.
+var mariadbSystemVars = map[string]sql.SystemVariable{
 	"skip_parallel_replication": &sql.MysqlSystemVariable{
 		Name:              "skip_parallel_replication",
 		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Session),
@@ -3088,14 +3103,6 @@ var systemVars = map[string]sql.SystemVariable{
 		SetVarHintApplies: false,
 		Type:              types.NewSystemBoolType("system_versioning_insert_history"),
 		Default:           int8(0),
-	},
-	"insert_id": &sql.MysqlSystemVariable{
-		Name:              "insert_id",
-		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Session),
-		Dynamic:           true,
-		SetVarHintApplies: false,
-		Type:              types.NewSystemIntType("insert_id", 0, 9223372036854775807, false),
-		Default:           int64(0),
 	},
 }
 

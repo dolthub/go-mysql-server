@@ -1098,7 +1098,6 @@ func TestLoadDataFailing(t *testing.T, harness Harness) {
 	}
 }
 
-
 func TestSelectIntoFile(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData, setup.MytableData, setup.EmptytableData, setup.NiltableData)
 	e := mustNewEngine(t, harness)

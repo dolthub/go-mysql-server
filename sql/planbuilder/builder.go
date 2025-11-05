@@ -307,7 +307,7 @@ func (b *Builder) buildSubquery(inScope *scope, stmt ast.Statement, subQuery str
 		}
 		outScope = inScope.push()
 		startRep := plan.NewStartReplica()
-		if binCat, ok := b.cat.(binlogreplication.BinlogReplicaCatalog); ok && binCat.HasBinlogReplicaController() {
+		if binCat, ok := b.cat.(binlogreplication.BinlogReplicaProvider); ok && binCat.HasBinlogReplicaController() {
 			startRep.ReplicaController = binCat.GetBinlogReplicaController()
 		}
 		outScope.node = startRep
@@ -317,7 +317,7 @@ func (b *Builder) buildSubquery(inScope *scope, stmt ast.Statement, subQuery str
 		}
 		outScope = inScope.push()
 		stopRep := plan.NewStopReplica()
-		if binCat, ok := b.cat.(binlogreplication.BinlogReplicaCatalog); ok && binCat.HasBinlogReplicaController() {
+		if binCat, ok := b.cat.(binlogreplication.BinlogReplicaProvider); ok && binCat.HasBinlogReplicaController() {
 			stopRep.ReplicaController = binCat.GetBinlogReplicaController()
 		}
 		outScope.node = stopRep
@@ -327,7 +327,7 @@ func (b *Builder) buildSubquery(inScope *scope, stmt ast.Statement, subQuery str
 		}
 		outScope = inScope.push()
 		resetRep := plan.NewResetReplica(n.All)
-		if binCat, ok := b.cat.(binlogreplication.BinlogReplicaCatalog); ok && binCat.HasBinlogReplicaController() {
+		if binCat, ok := b.cat.(binlogreplication.BinlogReplicaProvider); ok && binCat.HasBinlogReplicaController() {
 			resetRep.ReplicaController = binCat.GetBinlogReplicaController()
 		}
 		outScope.node = resetRep
@@ -407,7 +407,7 @@ func (b *Builder) buildSubquery(inScope *scope, stmt ast.Statement, subQuery str
 		}
 		outScope = inScope.push()
 		binlogNode := plan.NewBinlog(n.Base64Str)
-		if binCat, ok := b.cat.(binlogreplication.BinlogConsumerCatalog); ok && binCat.HasBinlogConsumer() {
+		if binCat, ok := b.cat.(binlogreplication.BinlogConsumerProvider); ok && binCat.HasBinlogConsumer() {
 			binlogNode = binlogNode.WithBinlogConsumer(binCat.GetBinlogConsumer()).(*plan.Binlog)
 		}
 		outScope.node = binlogNode

@@ -158,30 +158,28 @@ type ReplicaStatus struct {
 	SourceSsl             bool
 }
 
-// BinlogConsumerCatalog extends the Catalog interface and provides methods for accessing a BinlogConsumer
-// for BINLOG statement execution and other binlog event processing.
-type BinlogConsumerCatalog interface {
-	// HasBinlogConsumer returns true if a non-nil BinlogConsumer is available for this catalog.
+// BinlogConsumerProvider provides methods for accessing a BinlogConsumer for BINLOG statement execution and other binlog
+// event processing. Typically implemented by sql.Catalog.
+type BinlogConsumerProvider interface {
+	// HasBinlogConsumer returns true if a non-nil BinlogConsumer is available.
 	HasBinlogConsumer() bool
-	// GetBinlogConsumer returns the BinlogConsumer registered with this catalog.
+	// GetBinlogConsumer returns the BinlogConsumer.
 	GetBinlogConsumer() BinlogConsumer
 }
 
-// BinlogReplicaCatalog extends the Catalog interface and provides methods for accessing a BinlogReplicaController
-// for a Catalog.
-type BinlogReplicaCatalog interface {
-	// HasBinlogReplicaController returns true if a non-nil BinlogReplicaController is available for this BinlogReplicaCatalog.
+// BinlogReplicaProvider provides methods for accessing a BinlogReplicaController for binlog replica operations.
+type BinlogReplicaProvider interface {
+	// HasBinlogReplicaController returns true if a non-nil BinlogReplicaController is available.
 	HasBinlogReplicaController() bool
-	// GetBinlogReplicaController returns the BinlogReplicaController registered with this BinlogReplicaCatalog.
+	// GetBinlogReplicaController returns the BinlogReplicaController.
 	GetBinlogReplicaController() BinlogReplicaController
 }
 
-// BinlogPrimaryCatalog extends the Catalog interface and provides methods for accessing a BinlogPrimaryController
-// for a Catalog.
-type BinlogPrimaryCatalog interface {
-	// HasBinlogPrimaryController returns true if a non-nil BinlogPrimaryController is available for this BinlogPrimaryCatalog.
+// BinlogPrimaryProvider provides methods for accessing a BinlogPrimaryController for binlog primary operations.
+type BinlogPrimaryProvider interface {
+	// HasBinlogPrimaryController returns true if a non-nil BinlogPrimaryController is available.
 	HasBinlogPrimaryController() bool
-	// GetBinlogPrimaryController returns the BinlogPrimaryController registered with this BinlogPrimaryCatalog.
+	// GetBinlogPrimaryController returns the BinlogPrimaryController.
 	GetBinlogPrimaryController() BinlogPrimaryController
 }
 

@@ -984,12 +984,6 @@ func ConvertCollationID(val any) (string, error) {
 		} else {
 			return string(v), nil
 		}
-	case string:
-		if n, err := strconv.ParseUint(v, 10, 64); err == nil {
-			collationID = n
-		} else {
-			return v, nil
-		}
 	case int8:
 		collationID = uint64(v)
 	case int16:
@@ -1011,6 +1005,10 @@ func ConvertCollationID(val any) (string, error) {
 	case uint64:
 		collationID = v
 	default:
+		return fmt.Sprintf("%v", val), nil
+	}
+
+	if collationID >= uint64(len(collationArray)) {
 		return fmt.Sprintf("%v", val), nil
 	}
 

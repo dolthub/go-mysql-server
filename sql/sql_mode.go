@@ -51,7 +51,8 @@ const (
 	TimeTruncateFractional = "TIME_TRUNCATE_FRACTIONAL"
 )
 
-// Bits for different SQL modes (from mysql-server/sql/system_variables.h)
+// Bits for different SQL modes
+// https://github.com/mysql/mysql-server/blob/f362272c18e856930c867952a7dd1d840cbdb3b1/sql/system_variables.h#L123-L173
 const (
 	modeRealAsFloat            = 1
 	modePipesAsConcat          = 2
@@ -74,6 +75,21 @@ const (
 	modeNoEngineSubstitution   = modeHighNotPrecedence * 2
 	modePadCharToFullLength    = 1 << 31
 	modeTimeTruncateFractional = 1 << 32
+
+	// modeIgnoredMask contains deprecated/obsolete SQL mode bits that can be safely ignored
+	// during binlog replication. These modes existed in older MySQL versions but are no longer used.
+	// See: https://github.com/mysql/mysql-server/blob/trunk/sql/system_variables.h MODE_IGNORED_MASK
+	modeIgnoredMask = 0x00100 | // was: MODE_POSTGRESQL
+		0x00200 | // was: MODE_ORACLE
+		0x00400 | // was: MODE_MSSQL
+		0x00800 | // was: MODE_DB2
+		0x01000 | // was: MODE_MAXDB
+		0x02000 | // was: MODE_NO_KEY_OPTIONS
+		0x04000 | // was: MODE_NO_TABLE_OPTIONS
+		0x08000 | // was: MODE_NO_FIELD_OPTIONS
+		0x10000 | // was: MODE_MYSQL323
+		0x20000 | // was: MODE_MYSQL40
+		0x10000000 // was: MODE_NO_AUTO_CREATE_USER
 )
 
 // sqlModeBitMap maps SQL mode bit flags to their string names.
@@ -94,6 +110,7 @@ var sqlModeBitMap = map[uint64]string{
 	modeAllowInvalidDates:      AllowInvalidDates,
 	modeErrorForDivisionByZero: ErrorForDivisionByZero,
 	modeTraditional:            Traditional,
+	// Note: modeNoAutoCreateUser is NOT in this map - it's in modeIgnoredMask and filtered out
 	modeHighNotPrecedence:      HighNotPrecedence,
 	modeNoEngineSubstitution:   NoEngineSubstitution,
 	modePadCharToFullLength:    PadCharToFullLength,
@@ -233,14 +250,6 @@ func ConvertSqlModeBitmask(val any) (string, error) {
 	case []byte:
 		if n, err := strconv.ParseUint(string(v), 10, 64); err == nil {
 			bitmask = n
-		} else {
-			return string(v), nil
-		}
-	case string:
-		if n, err := strconv.ParseUint(v, 10, 64); err == nil {
-			bitmask = n
-		} else {
-			return v, nil
 		}
 	case int8:
 		bitmask = uint64(v)
@@ -266,11 +275,19 @@ func ConvertSqlModeBitmask(val any) (string, error) {
 		return fmt.Sprintf("%v", val), nil
 	}
 
+	bitmask = bitmask &^ modeIgnoredMask
+
 	var modes []string
+	var matchedBits uint64
 	for bit, modeName := range sqlModeBitMap {
 		if bitmask&bit != 0 {
 			modes = append(modes, modeName)
+			matchedBits |= bit
 		}
+	}
+
+	if bitmask != 0 && matchedBits != bitmask {
+		return fmt.Sprintf("%v", val), nil
 	}
 
 	if len(modes) == 0 {

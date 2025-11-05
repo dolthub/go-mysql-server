@@ -55,9 +55,9 @@ func (c *Catalog) DropDbStats(ctx *sql.Context, db string, flush bool) error {
 }
 
 var _ sql.Catalog = (*Catalog)(nil)
-var _ binlogreplication.BinlogConsumerCatalog = (*Catalog)(nil)
-var _ binlogreplication.BinlogReplicaCatalog = (*Catalog)(nil)
-var _ binlogreplication.BinlogPrimaryCatalog = (*Catalog)(nil)
+var _ binlogreplication.BinlogConsumerProvider = (*Catalog)(nil)
+var _ binlogreplication.BinlogReplicaProvider = (*Catalog)(nil)
+var _ binlogreplication.BinlogPrimaryProvider = (*Catalog)(nil)
 
 type tableLocks map[string]struct{}
 
