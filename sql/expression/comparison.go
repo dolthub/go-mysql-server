@@ -397,6 +397,7 @@ type Equals struct {
 }
 
 var _ sql.Expression = (*Equals)(nil)
+var _ sql.ValueExpression = (*Equals)(nil)
 var _ sql.CollationCoercible = (*Equals)(nil)
 var _ Equality = (*Equals)(nil)
 
@@ -420,8 +421,21 @@ func (e *Equals) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 		return nil, err
 	}
-
 	return result == 0, nil
+}
+
+// EvalValue implements the sql.ValueExpression interface.
+func (e *Equals) EvalValue(ctx *sql.Context, row sql.ValueRow) (sql.Value, error) {
+	cmp, err := e.CompareValue(ctx, row)
+	if err != nil {
+		if ErrNilOperand.Is(err) {
+			return sql.NullValue, err
+		}
+	}
+	if cmp != 0 {
+		return sql.FalseValue, nil
+	}
+	return sql.TrueValue, nil
 }
 
 // WithChildren implements the Expression interface.

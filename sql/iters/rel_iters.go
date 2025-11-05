@@ -436,6 +436,10 @@ type LimitIter struct {
 	CalcFoundRows bool
 }
 
+var _ sql.RowIter = (*LimitIter)(nil)
+var _ sql.ValueRowIter = (*LimitIter)(nil)
+
+// Next implements the sql.RowIter interface
 func (li *LimitIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if li.currentPos >= li.Limit {
 		// If we were asked to calc all found rows, then when we are past the limit we iterate over the rest of the
@@ -462,6 +466,7 @@ func (li *LimitIter) Next(ctx *sql.Context) (sql.Row, error) {
 	return childRow, nil
 }
 
+// Close implements the sql.RowIter interface
 func (li *LimitIter) Close(ctx *sql.Context) error {
 	err := li.ChildIter.Close(ctx)
 	if err != nil {
@@ -472,6 +477,41 @@ func (li *LimitIter) Close(ctx *sql.Context) error {
 		ctx.SetLastQueryInfoInt(sql.FoundRows, li.currentPos)
 	}
 	return nil
+}
+
+// NextValueRow implements the sql.ValueRowIter interface
+func (li *LimitIter) NextValueRow(ctx *sql.Context) (sql.ValueRow, error) {
+	if li.currentPos >= li.Limit {
+		// If we were asked to calc all found rows, then when we are past the limit we iterate over the rest of the
+		// result set to count it
+		if li.CalcFoundRows {
+			for {
+				_, err := li.ChildIter.(sql.ValueRowIter).NextValueRow(ctx)
+				if err != nil {
+					return nil, err
+				}
+				li.currentPos++
+			}
+		}
+		return nil, io.EOF
+	}
+
+	childRow, err := li.ChildIter.(sql.ValueRowIter).NextValueRow(ctx)
+	if err != nil {
+		return nil, err
+	}
+	li.currentPos++
+
+	return childRow, nil
+}
+
+// IsValueRowIter implements the sql.ValueRowIter interface
+func (li *LimitIter) IsValueRowIter(ctx *sql.Context) bool {
+	child, ok := li.ChildIter.(sql.ValueRowIter)
+	if !ok {
+		return false
+	}
+	return child.IsValueRowIter(ctx)
 }
 
 type sortIter struct {

@@ -71,21 +71,43 @@ type CountingRowIter struct {
 	Stats *DescribeStats
 }
 
-func NewCountingRowIter(iter RowIter, describable WithDescribeStats) CountingRowIter {
+func NewCountingRowIter(iter RowIter, describable WithDescribeStats) *CountingRowIter {
 	stats := describable.getDescribeStats()
 	stats.NumberOfIterations++
-	return CountingRowIter{
+	return &CountingRowIter{
 		RowIter: iter,
 		Stats:   stats,
 	}
 }
 
-func (c CountingRowIter) Next(ctx *Context) (Row, error) {
+var _ RowIter = (*CountingRowIter)(nil)
+var _ ValueRowIter = (*CountingRowIter)(nil)
+
+// Next implements the RowIter interface
+func (c *CountingRowIter) Next(ctx *Context) (Row, error) {
 	res, err := c.RowIter.Next(ctx)
 	if err == nil {
 		c.Stats.ActualRowCount++
 	}
 	return res, err
+}
+
+// NextValueRow implements the ValueRowIter interface
+func (c *CountingRowIter) NextValueRow(ctx *Context) (ValueRow, error) {
+	res, err := c.RowIter.(ValueRowIter).NextValueRow(ctx)
+	if err == nil {
+		c.Stats.ActualRowCount++
+	}
+	return res, err
+}
+
+// IsValueRowIter implements the ValueRowIter interface
+func (c *CountingRowIter) IsValueRowIter(ctx *Context) bool {
+	childIter, ok := c.RowIter.(ValueRowIter)
+	if !ok {
+		return false
+	}
+	return childIter.IsValueRowIter(ctx)
 }
 
 type Describable interface {

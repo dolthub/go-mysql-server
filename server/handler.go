@@ -773,6 +773,8 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema sql.Schema, iter sql.ValueRowIter, resultFields []*querypb.Field, buf *sql.ByteBuffer, callback func(*sqltypes.Result, bool) error, more bool) (*sqltypes.Result, bool, error) {
 	defer trace.StartRegion(ctx, "Handler.resultForValueRowIter").End()
 
+	panic("asdfasdfasdfasdfasd")
+
 	eg, ctx := ctx.NewErrgroup()
 	pan2err := func(err *error) {
 		if recoveredPanic := recover(); recoveredPanic != nil {
