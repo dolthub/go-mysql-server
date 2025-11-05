@@ -24,6 +24,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 // defaultAuthorizationQueryState contains query-specific state for defaultAuthorizationHandler.
@@ -131,6 +132,10 @@ func (h defaultAuthorizationHandler) HandleAuth(ctx *sql.Context, aqs sql.Author
 		hasPrivileges = state.db.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(sql.PrivilegeCheckSubject{Database: "mysql"}, sql.PrivilegeType_Update)) ||
 			state.db.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(sql.PrivilegeCheckSubject{}, sql.PrivilegeType_CreateUser)) ||
 			state.user.User == auth.TargetNames[0]
+	case ast.AuthType_BINLOG:
+		hasPrivileges = state.db.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(sql.PrivilegeCheckSubject{}, sql.PrivilegeType_Super)) ||
+			state.db.UserHasPrivileges(ctx, sql.NewDynamicPrivilegedOperation(plan.DynamicPrivilege_BinlogAdmin)) ||
+			state.db.UserHasPrivileges(ctx, sql.NewDynamicPrivilegedOperation(plan.DynamicPrivilege_ReplicationApplier))
 	case ast.AuthType_CALL:
 		hasPrivileges, err = h.call(ctx, state, auth)
 		if err != nil {

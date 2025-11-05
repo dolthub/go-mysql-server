@@ -15,6 +15,7 @@
 package sql
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -54,4 +55,86 @@ func TestSqlMode(t *testing.T) {
 	assert.True(t, sqlMode.ModeEnabled("pipes_as_concat"))
 	assert.True(t, sqlMode.Strict())
 	assert.Equal(t, "ONLY_FULL_GROUP_BY,PIPES_AS_CONCAT,STRICT_TRANS_TABLES", sqlMode.String())
+}
+
+func TestConvertSqlModeBitmask(t *testing.T) {
+	tests := []struct {
+		input    any
+		expected []string
+	}{
+		{uint64(1411383296), []string{ErrorForDivisionByZero, NoEngineSubstitution, StrictTransTables}},
+		{int64(1411383296), []string{ErrorForDivisionByZero, NoEngineSubstitution, StrictTransTables}},
+		{modeStrictTransTables | modeErrorForDivisionByZero | modeNoEngineSubstitution | 0x1, []string{StrictTransTables, ErrorForDivisionByZero, NoEngineSubstitution}},
+
+		{modeRealAsFloat, []string{RealAsFloat}},
+		{modePipesAsConcat, []string{PipesAsConcat}},
+		{modeAnsiQuotes, []string{ANSIQuotes}},
+		{modeIgnoreSpace, []string{IgnoreSpace}},
+		{modeOnlyFullGroupBy, []string{OnlyFullGroupBy}},
+		{modeNoEngineSubstitution, []string{NoEngineSubstitution}},
+		{uint64(modeNoEngineSubstitution), []string{NoEngineSubstitution}},
+
+		{modeAnsiQuotes | modePipesAsConcat, []string{ANSIQuotes, PipesAsConcat}},
+		{modeAnsiQuotes | modeIgnoreSpace, []string{ANSIQuotes, IgnoreSpace}},
+
+		{modeRealAsFloat | modePipesAsConcat, []string{RealAsFloat, PipesAsConcat}},
+		{modeRealAsFloat | modePipesAsConcat | modeAnsiQuotes, []string{RealAsFloat, PipesAsConcat, ANSIQuotes}},
+		{modeRealAsFloat | modePipesAsConcat | modeAnsiQuotes | modeIgnoreSpace, []string{RealAsFloat, PipesAsConcat, ANSIQuotes, IgnoreSpace}},
+		{modeAnsiQuotes | modeOnlyFullGroupBy, []string{ANSIQuotes, OnlyFullGroupBy}},
+		{modeIgnoreSpace | modeOnlyFullGroupBy, []string{IgnoreSpace, OnlyFullGroupBy}},
+
+		{modeStrictTransTables, []string{StrictTransTables}},
+		{modeStrictTransTables | modeAnsiQuotes, []string{StrictTransTables, ANSIQuotes}},
+		{modeStrictAllTables, []string{StrictAllTables}},
+		{modeNoZeroInDate, []string{NoZeroInDate}},
+		{modeAllowInvalidDates, []string{AllowInvalidDates}},
+		{modeErrorForDivisionByZero, []string{ErrorForDivisionByZero}},
+		{modeNoBackslashEscapes, []string{NoBackslashEscapes}},
+		{modeNoAutoValueOnZero, []string{NoAutoValueOnZero}},
+		{modeNoUnsignedSubtraction, []string{NoUnsignedSubtraction}},
+		{modeNoDirInCreate, []string{NoDirInCreate}},
+		{modeHighNotPrecedence, []string{HighNotPrecedence}},
+		{modePadCharToFullLength, []string{PadCharToFullLength}},
+
+		{0x10000000, []string{}},
+		{modeStrictTransTables | 0x10000000, []string{StrictTransTables}},
+
+		{modeNoEngineSubstitution | modeAnsiQuotes, []string{NoEngineSubstitution, ANSIQuotes}},
+		{modeNoEngineSubstitution | modeOnlyFullGroupBy, []string{NoEngineSubstitution, OnlyFullGroupBy}},
+		{modeStrictTransTables | modeErrorForDivisionByZero | modeNoEngineSubstitution, []string{StrictTransTables, ErrorForDivisionByZero, NoEngineSubstitution}},
+		{modeStrictTransTables | modeNoZeroInDate | modeErrorForDivisionByZero, []string{StrictTransTables, NoZeroInDate, ErrorForDivisionByZero}},
+
+		{uint64(0), []string{}},
+		{int(0), []string{}},
+
+		{int8(4), []string{ANSIQuotes}},
+		{int16(4), []string{ANSIQuotes}},
+		{int32(4), []string{ANSIQuotes}},
+		{uint8(4), []string{ANSIQuotes}},
+		{uint16(4), []string{ANSIQuotes}},
+		{uint32(4), []string{ANSIQuotes}},
+
+		{"TRADITIONAL", []string{"TRADITIONAL"}},
+		{"ANSI", []string{"ANSI"}},
+		{"STRICT_TRANS_TABLES,NO_ZERO_DATE", []string{"STRICT_TRANS_TABLES,NO_ZERO_DATE"}},
+		{"", []string{}},
+
+		{uint64(9999999999), []string{"9999999999"}},
+		{"not_a_number", []string{"not_a_number"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("%T(%v)", tt.input, tt.input), func(t *testing.T) {
+			result, err := ConvertSqlModeBitmask(tt.input)
+			assert.NoError(t, err)
+
+			if len(tt.expected) == 0 {
+				assert.Equal(t, "", result)
+			} else {
+				for _, exp := range tt.expected {
+					assert.Contains(t, result, exp)
+				}
+			}
+		})
+	}
 }

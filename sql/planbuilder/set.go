@@ -151,6 +151,27 @@ func (b *Builder) setExprsToExpressions(inScope *scope, e ast.SetVarExprs) []sql
 			}
 		}
 
+		if sysVar, ok := setVar.(*expression.SystemVar); ok {
+			if sqlVal, ok := setExpr.Expr.(*ast.SQLVal); ok && sqlVal.Type == ast.IntVal {
+				switch strings.ToLower(sysVar.Name) {
+				case "sql_mode":
+					converted, err := sql.ConvertSqlModeBitmask(sqlVal.Val)
+					if err != nil {
+						b.handleErr(err)
+					}
+					setExpr.Expr = ast.NewStrVal([]byte(converted))
+				case "collation_database", "collation_connection", "collation_server":
+					converted, err := sql.ConvertCollationID(sqlVal.Val)
+					if err != nil {
+						b.handleErr(err)
+					}
+					setExpr.Expr = ast.NewStrVal([]byte(converted))
+				case "lc_time_names":
+					setExpr.Expr = ast.NewStrVal(sqlVal.Val)
+				}
+			}
+		}
+
 		sysVarType, _ := setVar.Type().(sql.SystemVariableType)
 		innerExpr, ok := b.simplifySetExpr(setExpr.Name, setScope, setExpr.Expr, sysVarType)
 		if !ok {

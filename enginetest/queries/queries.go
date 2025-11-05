@@ -5031,6 +5031,8 @@ SELECT * FROM cte WHERE  d = 2;`,
 			{"gtid_next", "AUTOMATIC"},
 			{"gtid_owned", ""},
 			{"gtid_purged", ""},
+			{"gtid_domain_id", 0},
+			{"gtid_seq_no", 0},
 		},
 	},
 	{

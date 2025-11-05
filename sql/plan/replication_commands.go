@@ -32,6 +32,19 @@ var ErrNoReplicationController = errors.NewKind("no replication controller avail
 // https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_replication-slave-admin
 const DynamicPrivilege_ReplicationSlaveAdmin = "replication_slave_admin"
 
+// DynamicPrivilege_ReplicationApplier is a dynamic privilege that permits executing BINLOG statements.
+// See https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_replication-applier
+const DynamicPrivilege_ReplicationApplier = "replication_applier"
+
+// BinlogConsumerCommand represents a SQL statement that requires a BinlogConsumer
+// (e.g. BINLOG statement).
+type BinlogConsumerCommand interface {
+	sql.Node
+
+	// WithBinlogConsumer returns a new instance of this command, with the binlog consumer configured.
+	WithBinlogConsumer(consumer binlogreplication.BinlogConsumer) sql.Node
+}
+
 // BinlogReplicaControllerCommand represents a SQL statement that requires a BinlogReplicaController
 // (e.g. Start Replica, Show Replica Status).
 type BinlogReplicaControllerCommand interface {
@@ -54,6 +67,11 @@ type BinlogPrimaryControllerCommand interface {
 
 // ChangeReplicationSource is the plan node for the "CHANGE REPLICATION SOURCE TO" statement.
 // https://dev.mysql.com/doc/refman/8.0/en/change-replication-source-to.html
+//
+// TODO: When PRIVILEGE_CHECKS_USER option is specified, validate that the assigned user account has the
+// REPLICATION_APPLIER privilege. This validation should happen before the option is passed to the integrator's
+// BinlogReplicaController.SetReplicationSourceOptions().
+// See https://github.com/mysql/mysql-server/blob/8.0/sql/rpl_replica.cc change_master_cmd
 type ChangeReplicationSource struct {
 	ReplicaController binlogreplication.BinlogReplicaController
 	Options           []binlogreplication.ReplicationOption

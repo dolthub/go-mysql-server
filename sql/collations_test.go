@@ -69,3 +69,61 @@ func testParseCollation(t *testing.T, charset string, collation string, binaryAt
 		}
 	})
 }
+
+func TestConvertCollationID(t *testing.T) {
+	tests := []struct {
+		input    any
+		expected string
+	}{
+		{uint64(33), "utf8mb3_general_ci"},
+		{int64(33), "utf8mb3_general_ci"},
+		{[]byte("33"), "utf8mb3_general_ci"},
+		{uint64(8), "latin1_swedish_ci"},
+		{int32(8), "latin1_swedish_ci"},
+
+		{45, "utf8mb4_general_ci"},
+		{uint64(46), "utf8mb4_bin"},
+		{255, "utf8mb4_0900_ai_ci"},
+		{uint64(309), "utf8mb4_0900_bin"},
+
+		{83, "utf8mb3_bin"},
+		{uint64(223), "utf8mb3_general_mysql500_ci"},
+
+		{uint64(47), "latin1_bin"},
+		{48, "latin1_general_ci"},
+		{49, "latin1_general_cs"},
+
+		{uint64(63), "binary"},
+
+		{uint64(11), "ascii_general_ci"},
+		{65, "ascii_bin"},
+
+		{uint64(15), "latin1_danish_ci"},
+		{31, "latin1_german2_ci"},
+		{94, "latin1_spanish_ci"},
+
+		{int8(8), "latin1_swedish_ci"},
+		{int16(8), "latin1_swedish_ci"},
+		{int(8), "latin1_swedish_ci"},
+		{uint8(8), "latin1_swedish_ci"},
+		{uint16(8), "latin1_swedish_ci"},
+		{uint(8), "latin1_swedish_ci"},
+		{uint32(8), "latin1_swedish_ci"},
+
+		{"utf8mb4_0900_bin", "utf8mb4_0900_bin"},
+		{"utf8mb3_general_ci", "utf8mb3_general_ci"},
+		{"", ""},
+
+		{uint64(99999), "99999"},
+		{uint64(1000), "1000"},
+		{int(500), "500"},
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("%T(%v)", tt.input, tt.input), func(t *testing.T) {
+			result, err := ConvertCollationID(tt.input)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
