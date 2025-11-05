@@ -16,7 +16,6 @@ package variables
 
 import (
 	"fmt"
-	"maps"
 	"math"
 	"os"
 	"strings"
@@ -167,25 +166,31 @@ func (sv *globalSystemVariables) GetAllGlobalVariables() map[string]interface{} 
 	return m
 }
 
-// InitSystemVariables resets the systemVars singleton in the sql package
+// InitSystemVariables resets the global systemVars singleton in the sql package
 func InitSystemVariables() {
-	vars := &globalSystemVariables{
-		mutex:      &sync.RWMutex{},
-		sysVarVals: make(map[string]sql.SystemVarValue, len(systemVars)),
+	out := &globalSystemVariables{
+		mutex: &sync.RWMutex{},
+		sysVarVals: make(map[string]sql.SystemVarValue,
+			len(systemVars)+len(mariadbSystemVars)),
 	}
-	for _, sysVar := range systemVars {
-		vars.sysVarVals[sysVar.GetName()] = sql.SystemVarValue{
-			Var: sysVar,
-			Val: sysVar.GetDefault(),
+
+	for _, vars := range []map[string]sql.SystemVariable{
+		systemVars,
+		mariadbSystemVars,
+	} {
+		for _, sysVar := range vars {
+			out.sysVarVals[sysVar.GetName()] = sql.SystemVarValue{
+				Var: sysVar,
+				Val: sysVar.GetDefault(),
+			}
 		}
 	}
-	sql.SystemVariables = vars
+	sql.SystemVariables = out
 }
 
 // init initializes SystemVariables as it functions as a global variable.
 // TODO: get rid of me, make this construction the responsibility of the engine
 func init() {
-	maps.Copy(systemVars, mariadbSystemVars)
 	InitSystemVariables()
 }
 
