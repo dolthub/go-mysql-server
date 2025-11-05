@@ -48,18 +48,8 @@ func (e *ExprGroup) Format(f fmt.State, verb rune) {
 		expr = e.First
 	}
 	switch ex := expr.(type) {
-	case *TableAlias:
-		io.WriteString(f, fmt.Sprintf("%d", ex.Group().Id))
-		io.WriteString(f, "[")
-		io.WriteString(f, ex.Name())
-		io.WriteString(f, "]")
-	case *TableScan:
-		io.WriteString(f, fmt.Sprintf("%d", ex.Group().Id))
-		io.WriteString(f, "[")
-		io.WriteString(f, ex.Name())
-		io.WriteString(f, "]")
-	case *SubqueryAlias:
-		io.WriteString(f, fmt.Sprintf("%d", ex.Group().Id))
+	case sql.Nameable:
+		io.WriteString(f, fmt.Sprintf("%d", expr.Group().Id))
 		io.WriteString(f, "[")
 		io.WriteString(f, ex.Name())
 		io.WriteString(f, "]")
