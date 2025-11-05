@@ -40,16 +40,16 @@ func TestHashJoins(t *testing.T) {
 			memo: `memo:
 ├── G1: (tablescan: ab)
 ├── G2: (tablescan: xy)
-├── G3: (hashjoin 1 2) (hashjoin 2 1) (innerjoin 2 1) (innerjoin 1 2)
+├── G3: (hashjoin 1[ab] 2[xy]) (hashjoin 2[xy] 1[ab]) (innerjoin 2[xy] 1[ab]) (innerjoin 1[ab] 2[xy])
 ├── G4: (tablescan: pq)
-├── G5: (hashjoin 3 4) (hashjoin 1 9) (hashjoin 9 1) (hashjoin 2 8) (hashjoin 8 2) (hashjoin 4 3) (innerjoin 4 3) (innerjoin 8 2) (innerjoin 2 8) (innerjoin 9 1) (innerjoin 1 9) (innerjoin 3 4)
+├── G5: (hashjoin 3 4[pq]) (hashjoin 1[ab] 9) (hashjoin 9 1[ab]) (hashjoin 2[xy] 8) (hashjoin 8 2[xy]) (hashjoin 4[pq] 3) (innerjoin 4[pq] 3) (innerjoin 8 2[xy]) (innerjoin 2[xy] 8) (innerjoin 9 1[ab]) (innerjoin 1[ab] 9) (innerjoin 3 4[pq])
 ├── G6: (tablescan: uv)
-├── G7: (hashjoin 5 6) (hashjoin 1 12) (hashjoin 12 1) (hashjoin 2 11) (hashjoin 11 2) (hashjoin 3 10) (hashjoin 10 3) (hashjoin 6 5) (innerjoin 6 5) (innerjoin 10 3) (innerjoin 3 10) (innerjoin 11 2) (innerjoin 2 11) (innerjoin 12 1) (innerjoin 1 12) (innerjoin 5 6)
-├── G8: (hashjoin 1 4) (hashjoin 4 1) (innerjoin 4 1) (innerjoin 1 4)
-├── G9: (hashjoin 2 4) (hashjoin 4 2) (innerjoin 4 2) (innerjoin 2 4)
-├── G10: (hashjoin 4 6) (hashjoin 6 4) (innerjoin 6 4) (innerjoin 4 6)
-├── G11: (hashjoin 1 10) (hashjoin 10 1) (hashjoin 8 6) (hashjoin 6 8) (innerjoin 6 8) (innerjoin 8 6) (innerjoin 10 1) (innerjoin 1 10)
-└── G12: (hashjoin 2 10) (hashjoin 10 2) (hashjoin 9 6) (hashjoin 6 9) (innerjoin 6 9) (innerjoin 9 6) (innerjoin 10 2) (innerjoin 2 10)
+├── G7: (hashjoin 5 6[uv]) (hashjoin 1[ab] 12) (hashjoin 12 1[ab]) (hashjoin 2[xy] 11) (hashjoin 11 2[xy]) (hashjoin 3 10) (hashjoin 10 3) (hashjoin 6[uv] 5) (innerjoin 6[uv] 5) (innerjoin 10 3) (innerjoin 3 10) (innerjoin 11 2[xy]) (innerjoin 2[xy] 11) (innerjoin 12 1[ab]) (innerjoin 1[ab] 12) (innerjoin 5 6[uv])
+├── G8: (hashjoin 1[ab] 4[pq]) (hashjoin 4[pq] 1[ab]) (innerjoin 4[pq] 1[ab]) (innerjoin 1[ab] 4[pq])
+├── G9: (hashjoin 2[xy] 4[pq]) (hashjoin 4[pq] 2[xy]) (innerjoin 4[pq] 2[xy]) (innerjoin 2[xy] 4[pq])
+├── G10: (hashjoin 4[pq] 6[uv]) (hashjoin 6[uv] 4[pq]) (innerjoin 6[uv] 4[pq]) (innerjoin 4[pq] 6[uv])
+├── G11: (hashjoin 1[ab] 10) (hashjoin 10 1[ab]) (hashjoin 8 6[uv]) (hashjoin 6[uv] 8) (innerjoin 6[uv] 8) (innerjoin 8 6[uv]) (innerjoin 10 1[ab]) (innerjoin 1[ab] 10)
+└── G12: (hashjoin 2[xy] 10) (hashjoin 10 2[xy]) (hashjoin 9 6[uv]) (hashjoin 6[uv] 9) (innerjoin 6[uv] 9) (innerjoin 9 6[uv]) (innerjoin 10 2[xy]) (innerjoin 2[xy] 10)
 `,
 		},
 	}
