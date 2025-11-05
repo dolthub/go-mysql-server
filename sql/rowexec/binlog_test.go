@@ -20,11 +20,12 @@ import (
 	"io"
 	"testing"
 
+	"github.com/dolthub/vitess/go/mysql"
+	"github.com/stretchr/testify/require"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/dolthub/vitess/go/mysql"
-	"github.com/stretchr/testify/require"
 )
 
 func TestBuildBinlog_InvalidBase64(t *testing.T) {
