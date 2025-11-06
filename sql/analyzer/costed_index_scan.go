@@ -131,7 +131,7 @@ func costedIndexLookup(ctx *sql.Context, n sql.Node, a *Analyzer, iat sql.IndexA
 	if err != nil {
 		return n, transform.SameTree, err
 	}
-	// TODO(next): this is getting a GMSCast node and not getting an index assigned here
+
 	ita, stats, filters, err := getCostedIndexScan(ctx, a.Catalog, rt, indexes, SplitConjunction(oldFilter), qFlags)
 	if err != nil || ita == nil {
 		return n, transform.SameTree, err
@@ -334,6 +334,9 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 }
 
 func addIndexScans(ctx *sql.Context, m *memo.Memo) error {
+	m.Tracer.PushDebugContext("addIndexScans")
+	defer m.Tracer.PopDebugContext()
+
 	return memo.DfsRel(m.Root(), func(e memo.RelExpr) error {
 		filter, ok := e.(*memo.Filter)
 		if !ok {
@@ -928,7 +931,7 @@ func (b *indexScanRangeBuilder) rangeBuildOr(f *iScanOr, inScan bool) (sql.MySQL
 	// imprecise filters cannot be removed
 	b.markImprecise(f)
 
-	//todo union the or ranges
+	// todo union the or ranges
 	var ret sql.MySQLRangeCollection
 	for _, c := range f.children {
 		var ranges sql.MySQLRangeCollection

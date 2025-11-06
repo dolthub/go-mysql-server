@@ -26,6 +26,10 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
+// SplitConjunction is a pseudo-extension point of expression.SplitConjunction, used to alter the logic
+// for different integrators.
+var SplitConjunction func(expr sql.Expression) []sql.Expression = expression.SplitConjunction
+
 // joinOrderBuilder enumerates valid plans for a join tree.  We build the join
 // tree bottom up, first joining single nodes with join condition "edges", then
 // single nodes to hypernodes (1+n), and finally hyper nodes to
@@ -166,21 +170,34 @@ func (j *joinOrderBuilder) useFastReorder() bool {
 }
 
 func (j *joinOrderBuilder) ReorderJoin(n sql.Node) {
+	j.m.Tracer.PushDebugContext("ReorderJoin")
+	defer j.m.Tracer.PopDebugContext()
+
 	j.populateSubgraph(n)
+
 	if j.useFastReorder() {
-		j.buildSingleLookupPlan()
-		return
-	} else if j.hasCrossJoin {
-		// Rely on FastReorder to avoid plans that drop filters with cross joins
+		j.m.Tracer.Log("Using fast reorder algorithm (large join with %d tables)", len(j.vertices))
 		if j.buildSingleLookupPlan() {
+			j.m.Tracer.Log("Successfully built single lookup plan")
 			return
 		}
+		j.m.Tracer.Log("Failed to build single lookup plan, falling back to exhaustive enumeration")
+	} else if j.hasCrossJoin {
+		j.m.Tracer.Log("Join contains cross joins, attempting single lookup plan first")
+		// Rely on FastReorder to avoid plans that drop filters with cross joins
+		if j.buildSingleLookupPlan() {
+			j.m.Tracer.Log("Successfully built single lookup plan for cross join")
+			return
+		}
+		j.m.Tracer.Log("Failed to build single lookup plan for cross join, using exhaustive enumeration")
 	}
+
 	// TODO: consider if buildSingleLookupPlan can/should run after ensureClosure. This could allow us to use analysis
 	// from ensureClosure in buildSingleLookupPlan, but the equivalence sets could create multiple possible join orders
 	// for the single-lookup plan, which would complicate things.
 	j.ensureClosure(j.m.root)
 	j.dpEnumerateSubsets()
+	j.m.Tracer.Log("Completed join reordering")
 	return
 }
 
@@ -420,6 +437,9 @@ func (j *joinOrderBuilder) findVertexFromGroup(grp GroupId) vertexIndex {
 // makeTransitiveEdge constructs a new join tree edge and memo group
 // on an equality filter between two columns.
 func (j *joinOrderBuilder) makeTransitiveEdge(col1, col2 sql.ColumnId) {
+	j.m.Tracer.PushDebugContext("makeTransitiveEdge")
+	defer j.m.Tracer.PopDebugContext()
+
 	var vert vertexSet
 	v1, _, v1found := j.findVertexFromCol(col1)
 	v2, _, v2found := j.findVertexFromCol(col2)
@@ -468,17 +488,22 @@ func (j *joinOrderBuilder) makeTransitiveEdge(col1, col2 sql.ColumnId) {
 		return
 	}
 
-	j.edges = append(j.edges, *j.makeEdge(op, expression.NewEquals(gf1, gf2)))
+	eq := expression.NewEquals(gf1, gf2)
+	j.m.Tracer.Log("adding edge %s", eq)
+	j.edges = append(j.edges, *j.makeEdge(op, eq))
 	j.innerEdges.Add(len(j.edges) - 1)
-
 }
 
 func (j *joinOrderBuilder) buildJoinOp(n *plan.JoinNode) *ExprGroup {
+	j.m.Tracer.PushDebugContext("buildJoinOp")
+	defer j.m.Tracer.PopDebugContext()
+
 	leftV, leftE, _ := j.populateSubgraph(n.Left())
 	rightV, rightE, _ := j.populateSubgraph(n.Right())
 	typ := n.JoinType()
 	if typ.IsPhysical() {
 		typ = plan.JoinTypeInner
+		j.m.Tracer.Log("Converted physical join type to inner join")
 	}
 	isInner := typ.IsInner()
 	op := &operator{
@@ -489,21 +514,25 @@ func (j *joinOrderBuilder) buildJoinOp(n *plan.JoinNode) *ExprGroup {
 		rightEdges:    rightE,
 	}
 
-	filters := expression.SplitConjunction(n.JoinCond())
+	filters := SplitConjunction(n.JoinCond())
+	j.m.Tracer.Log("Join filters: %v", filters)
 	union := leftV.union(rightV)
 	group, ok := j.plans[union]
 	if !ok {
 		// TODO: memo and root should be initialized prior to join planning
 		left := j.plans[leftV]
 		right := j.plans[rightV]
-		group = j.memoize(op.joinType, left, right, filters, nil)
+		group = j.memoize(op.joinType, left, right, filters)
 		j.plans[union] = group
 		j.m.root = group
+		j.m.Tracer.Log("Created new memo group for join combination")
 	}
 
 	if !isInner {
+		j.m.Tracer.Log("Building non-inner edge for join type: %s", typ)
 		j.buildNonInnerEdge(op, filters...)
 	} else {
+		j.m.Tracer.Log("Building inner edge for join type: %s", typ)
 		j.buildInnerEdge(op, filters...)
 	}
 	return group
@@ -513,7 +542,7 @@ func (j *joinOrderBuilder) buildFilter(child sql.Node, e sql.Expression) (vertex
 	// memoize child
 	childV, childE, childGrp := j.populateSubgraph(child)
 
-	filterGrp := j.m.MemoizeFilter(nil, childGrp, expression.SplitConjunction(e))
+	filterGrp := j.m.MemoizeFilter(nil, childGrp, SplitConjunction(e))
 
 	// filter will absorb child relation for join reordering
 	j.plans[childV] = filterGrp
@@ -633,6 +662,9 @@ func (j *joinOrderBuilder) checkSize() {
 // adding plans to the tree when we find two sets that can
 // be joined
 func (j *joinOrderBuilder) dpEnumerateSubsets() {
+	j.m.Tracer.PushDebugContext("dpEnumerateSubsets")
+	defer j.m.Tracer.PopDebugContext()
+
 	all := j.allVertices()
 	for subset := vertexSet(1); subset <= all; subset++ {
 		if subset.isSingleton() {
@@ -668,16 +700,20 @@ func setPrinter(all, s1, s2 vertexSet) {
 
 // addPlans finds operators that let us join (s1 op s2) and (s2 op s1).
 func (j *joinOrderBuilder) addPlans(s1, s2 vertexSet) {
+	j.m.Tracer.PushDebugContextFmt("addPlans/%s<->%s", s1, s2)
+	defer j.m.Tracer.PopDebugContext()
+
 	// all inner filters could be applied
 	if j.plans[s1] == nil || j.plans[s2] == nil {
 		// Both inputs must have plans.
 		// need this to prevent cross-joins higher in tree
+		j.m.Tracer.Log("Skipping join - one or both input plans are nil")
 		return
 	}
 
-	//TODO collect all inner join filters that can be used as select filters
-	//TODO collect functional dependencies to avoid redundant filters
-	//TODO relational nodes track functional dependencies
+	// TODO collect all inner join filters that can be used as select filters
+	// TODO collect functional dependencies to avoid redundant filters
+	// TODO relational nodes track functional dependencies
 
 	var innerJoinFilters []sql.Expression
 	var addInnerJoin bool
@@ -691,6 +727,7 @@ func (j *joinOrderBuilder) addPlans(s1, s2 vertexSet) {
 			}
 			isRedundant = isRedundant || e.joinIsRedundant(s1, s2)
 			addInnerJoin = true
+			j.m.Tracer.Log("Found applicable inner edge %d with filters: %v", i, e.filters)
 		}
 	}
 
@@ -699,12 +736,14 @@ func (j *joinOrderBuilder) addPlans(s1, s2 vertexSet) {
 	for i, ok := j.nonInnerEdges.Next(0); ok; i, ok = j.nonInnerEdges.Next(i + 1) {
 		e := &j.edges[i]
 		if e.applicable(s1, s2) {
+			j.m.Tracer.Log("Found applicable non-inner edge %d, adding join: %s", i, e.op.joinType)
 			j.addJoin(e.op.joinType, s1, s2, e.filters, innerJoinFilters, e.joinIsRedundant(s1, s2))
 			return
 		}
 		if e.applicable(s2, s1) {
 			// This is necessary because we only iterate s1 up to subset / 2
 			// in DPSube()
+			j.m.Tracer.Log("Found applicable non-inner edge %d (swapped), adding join: %s", i, e.op.joinType)
 			j.addJoin(e.op.joinType, s2, s1, e.filters, innerJoinFilters, e.joinIsRedundant(s2, s1))
 			return
 		}
@@ -715,10 +754,14 @@ func (j *joinOrderBuilder) addPlans(s1, s2 vertexSet) {
 		// already been constructed, because doing so can lead to a case where an
 		// inner join replaces a non-inner join.
 		if innerJoinFilters == nil {
+			j.m.Tracer.Log("Adding cross join")
 			j.addJoin(plan.JoinTypeCross, s1, s2, nil, nil, isRedundant)
 		} else {
+			j.m.Tracer.Log("Adding inner join with filters: %v", innerJoinFilters)
 			j.addJoin(plan.JoinTypeInner, s1, s2, innerJoinFilters, nil, isRedundant)
 		}
+	} else {
+		j.m.Tracer.Log("No applicable edges found for join")
 	}
 }
 
@@ -733,7 +776,7 @@ func (j *joinOrderBuilder) addJoin(op plan.JoinType, s1, s2 vertexSet, joinFilte
 	group, ok := j.plans[union]
 	if !isRedundant {
 		if !ok {
-			group = j.memoize(op, left, right, joinFilter, selFilters)
+			group = j.memoize(op, left, right, joinFilter)
 			j.plans[union] = group
 		} else {
 			j.addJoinToGroup(op, left, right, joinFilter, selFilters, group)
@@ -781,7 +824,6 @@ func (j *joinOrderBuilder) memoize(
 	left *ExprGroup,
 	right *ExprGroup,
 	joinFilter []sql.Expression,
-	selFilter []sql.Expression,
 ) *ExprGroup {
 	rel := j.constructJoin(op, left, right, joinFilter, nil)
 	return j.m.NewExprGroup(rel)
@@ -908,9 +950,9 @@ func (e *edge) populateEdgeProps(tableIds []sql.TableId, edges []edge) {
 	e.freeVars = cols
 
 	// TODO implement, we currently limit transforms assuming no strong null safety
-	//e.nullRejectedRels = e.nullRejectingTables(nullAccepting, allNames, allV)
+	// e.nullRejectedRels = e.nullRejectingTables(nullAccepting, allNames, allV)
 
-	//SES is vertexSet of all tables referenced in cols
+	// SES is vertexSet of all tables referenced in cols
 	e.calcSES(tables, tableIds)
 	// use CD-C to expand dependency sets for operators
 	// front load preventing applicable operators that would push crossjoins

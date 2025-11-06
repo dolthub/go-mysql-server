@@ -16,6 +16,11 @@ package memo
 
 import (
 	"fmt"
+	"io"
+	"iter"
+	"maps"
+	"slices"
+	"sort"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -25,17 +30,39 @@ import (
 // ExprGroup is a linked list of plans that return the same result set
 // defined by row count and schema.
 type ExprGroup struct {
-	m         *Memo
-	RelProps  *relProps
-	First     RelExpr
-	Best      RelExpr
-	_children []*ExprGroup
-	Cost      float64
+	m        *Memo
+	RelProps *relProps
+	First    RelExpr
+	Best     RelExpr
+	Cost     float64
 
 	Id     GroupId
 	Done   bool
 	HintOk bool
 }
+
+// Format implements the fmt.Formatter interface.
+func (e *ExprGroup) Format(f fmt.State, verb rune) {
+	expr := e.Best
+	if expr == nil {
+		expr = e.First
+	}
+	switch ex := expr.(type) {
+	case sql.Nameable:
+		io.WriteString(f, fmt.Sprintf("%d", expr.Group().Id))
+		io.WriteString(f, "[")
+		io.WriteString(f, ex.Name())
+		io.WriteString(f, "]")
+	default:
+		if verb == 'v' && f.Flag('+') {
+			io.WriteString(f, fmt.Sprintf("%d{%+v}", ex.Group().Id, ex))
+		} else {
+			io.WriteString(f, fmt.Sprintf("%d", ex.Group().Id))
+		}
+	}
+}
+
+var _ fmt.Formatter = (*ExprGroup)(nil)
 
 func newExprGroup(m *Memo, id GroupId, expr exprType) *ExprGroup {
 	// bit of circularity: |grp| references |rel|, |rel| references |grp|,
@@ -61,30 +88,32 @@ func (e *ExprGroup) Prepend(rel RelExpr) {
 	rel.SetNext(first)
 }
 
-// children returns a unioned list of child ExprGroup for
-// every logical plan in this group.
-func (e *ExprGroup) children() []*ExprGroup {
-	relExpr, ok := e.First.(RelExpr)
-	if !ok {
-		return e.children()
-	}
-	n := relExpr
-	children := make([]*ExprGroup, 0)
-	for n != nil {
-		children = append(children, n.Children()...)
-		n = n.Next()
-	}
-	return children
+// Iter returns an iterator over the RelExprs in this ExprGroup.
+func (e *ExprGroup) Iter() iter.Seq[RelExpr] {
+	return IterRelExprs(e.First)
 }
 
-// updateBest updates a group's Best to the given expression or a hinted
-// operator if the hinted plan is not found. Join operator is applied as
-// a local rather than global property.
-func (e *ExprGroup) updateBest(n RelExpr, grpCost float64) {
+// children returns a unioned list of child ExprGroup for
+// every logical plan in this group.
+func (e *ExprGroup) children() iter.Seq[*ExprGroup] {
+	children := make(map[GroupId]*ExprGroup)
+	for n := range e.Iter() {
+		for _, n := range n.Children() {
+			children[n.Id] = n
+		}
+	}
+	return maps.Values(children)
+}
+
+// updateBest updates a group's Best to the given expression if the cost is lower than the current best.
+// Returns whether the best plan was updated.
+func (e *ExprGroup) updateBest(n RelExpr, grpCost float64) bool {
 	if e.Best == nil || grpCost < e.Cost {
 		e.Best = n
 		e.Cost = grpCost
+		return true
 	}
+	return false
 }
 
 func (e *ExprGroup) finalize(node sql.Node) (sql.Node, error) {
@@ -164,18 +193,17 @@ func (e *ExprGroup) fixTableScanPath() bool {
 
 func (e *ExprGroup) String() string {
 	b := strings.Builder{}
-	n := e.First
 	sep := ""
-	for n != nil {
+	for n := range e.Iter() {
 		b.WriteString(sep)
-		b.WriteString(fmt.Sprintf("(%s", FormatExpr(n)))
+		b.WriteString(fmt.Sprintf("(%s", n))
 		if e.Best != nil {
 			cost := n.Cost()
 			if cost == 0 {
 				// if source relation we want the cardinality
 				cost = float64(n.Group().RelProps.GetStats().RowCount())
 			}
-			b.WriteString(fmt.Sprintf(" %.1f", n.Cost()))
+			b.WriteString(fmt.Sprintf(" %.1f", cost))
 
 			childCost := 0.0
 			for _, c := range n.Children() {
@@ -190,7 +218,50 @@ func (e *ExprGroup) String() string {
 			b.WriteString(")")
 		}
 		sep = " "
-		n = n.Next()
 	}
 	return b.String()
+}
+
+// CostTreeString returns a string representation of the expression group for use in cost debug printing
+func (e *ExprGroup) CostTreeString(prefix string) string {
+	b := strings.Builder{}
+	costSortedGroups := slices.Collect(e.Iter())
+	sort.Slice(costSortedGroups, func(i, j int) bool {
+		return costSortedGroups[i].Cost() < costSortedGroups[j].Cost()
+	})
+
+	for i, n := range costSortedGroups {
+		b.WriteString("\n")
+
+		beg := prefix + "├── "
+		if i == len(costSortedGroups)-1 {
+			beg = prefix + "└── "
+		}
+		b.WriteString(fmt.Sprintf("%s(%s", beg, n))
+		if e.Best != nil {
+			cost := n.Cost()
+			if cost == 0 {
+				// if source relation we want the cardinality
+				cost = float64(n.Group().RelProps.GetStats().RowCount())
+			}
+			b.WriteString(fmt.Sprintf(" %.1f", cost))
+		}
+		b.WriteString(")")
+	}
+
+	return b.String()
+}
+
+// BestPlanDebugString returns a string representation of the physical best plan for use in cost debug printing
+func (e *ExprGroup) BestPlanDebugString() string {
+	tp := sql.NewTreePrinter()
+	tp.WriteNode("G%d [%s] Cost: %.1f", e.Id, e.Best, e.Best.Cost())
+	children := e.Best.Children()
+	childrenStrings := make([]string, len(children))
+	for i, c := range children {
+		childrenStrings[i] = c.BestPlanDebugString()
+	}
+
+	tp.WriteChildren(childrenStrings...)
+	return tp.String()
 }

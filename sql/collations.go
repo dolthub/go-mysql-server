@@ -17,6 +17,7 @@ package sql
 import (
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"sync"
 	"unicode/utf8"
@@ -971,4 +972,46 @@ type TypeWithCollation interface {
 	// StringWithTableCollation converts this type to a string, however it uses the given table collation to determine
 	// whether to include the character set and/or collation information.
 	StringWithTableCollation(tableCollation CollationID) string
+}
+
+// ConvertCollationID converts numeric collation IDs to their string names.
+func ConvertCollationID(val any) (string, error) {
+	var collationID uint64
+	switch v := val.(type) {
+	case []byte:
+		if n, err := strconv.ParseUint(string(v), 10, 64); err == nil {
+			collationID = n
+		} else {
+			return string(v), nil
+		}
+	case int8:
+		collationID = uint64(v)
+	case int16:
+		collationID = uint64(v)
+	case int:
+		collationID = uint64(v)
+	case int32:
+		collationID = uint64(v)
+	case int64:
+		collationID = uint64(v)
+	case uint8:
+		collationID = uint64(v)
+	case uint16:
+		collationID = uint64(v)
+	case uint:
+		collationID = uint64(v)
+	case uint32:
+		collationID = uint64(v)
+	case uint64:
+		collationID = v
+	default:
+		return fmt.Sprintf("%v", val), nil
+	}
+
+	if collationID >= uint64(len(collationArray)) {
+		return fmt.Sprintf("%v", val), nil
+	}
+
+	collation := CollationID(collationID).Collation()
+	return collation.Name, nil
 }

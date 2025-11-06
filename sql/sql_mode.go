@@ -15,7 +15,9 @@
 package sql
 
 import (
+	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/dolthub/vitess/go/vt/sqlparser"
@@ -24,32 +26,102 @@ import (
 const (
 	SqlModeSessionVar = "SQL_MODE"
 
-	AllowInvalidDates      = "ALLOW_INVALID_DATES"
-	ANSIQuotes             = "ANSI_QUOTES"
-	ErrorForDivisionByZero = "ERROR_FOR_DIVISION_BY_ZERO"
-	HighNotPrecedence      = "HIGH_NOT_PRECEDENCE"
-	IgnoreSpaces           = "IGNORE_SPACE"
+	RealAsFloat           = "REAL_AS_FLOAT"
+	PipesAsConcat         = "PIPES_AS_CONCAT"
+	ANSIQuotes            = "ANSI_QUOTES"
+	IgnoreSpace           = "IGNORE_SPACE"
+	OnlyFullGroupBy       = "ONLY_FULL_GROUP_BY"
+	NoUnsignedSubtraction = "NO_UNSIGNED_SUBTRACTION"
+	NoDirInCreate         = "NO_DIR_IN_CREATE"
+	// ANSI mode includes REAL_AS_FLOAT, PIPES_AS_CONCAT, ANSI_QUOTES, IGNORE_SPACE, and ONLY_FULL_GROUP_BY
+	ANSI                   = "ANSI"
 	NoAutoValueOnZero      = "NO_AUTO_VALUE_ON_ZERO"
 	NoBackslashEscapes     = "NO_BACKSLASH_ESCAPES"
-	NoDirInCreate          = "NO_DIR_IN_CREATE"
-	NoEngineSubstitution   = "NO_ENGINE_SUBSTITUTION"
-	NoUnsignedSubtraction  = "NO_UNSIGNED_SUBTRACTION"
-	NoZeroInDate           = "NO_ZERO_IN_DATE"
-	OnlyFullGroupBy        = "ONLY_FULL_GROUP_BY"
-	PadCharToFullLength    = "PAD_CHAR_TO_FULL_LENGTH"
-	PipesAsConcat          = "PIPES_AS_CONCAT"
-	RealAsFloat            = "REAL_AS_FLOAT"
 	StrictTransTables      = "STRICT_TRANS_TABLES"
 	StrictAllTables        = "STRICT_ALL_TABLES"
-	TimeTruncateFractional = "TIME_TRUNCATE_FRACTIONAL"
-
-	// ANSI mode includes REAL_AS_FLOAT, PIPES_AS_CONCAT, ANSI_QUOTES, IGNORE_SPACE, and ONLY_FULL_GROUP_BY
-	ANSI = "ANSI"
+	NoZeroInDate           = "NO_ZERO_IN_DATE"
+	AllowInvalidDates      = "ALLOW_INVALID_DATES"
+	ErrorForDivisionByZero = "ERROR_FOR_DIVISION_BY_ZERO"
 	// Traditional mode includes STRICT_TRANS_TABLES, STRICT_ALL_TABLES, NO_ZERO_IN_DATE, ERROR_FOR_DIVISION_BY_ZERO,
 	// and NO_ENGINE_SUBSTITUTION
-	Traditional    = "TRADITIONAL"
-	DefaultSqlMode = "NO_ENGINE_SUBSTITUTION,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES"
+	Traditional            = "TRADITIONAL"
+	HighNotPrecedence      = "HIGH_NOT_PRECEDENCE"
+	NoEngineSubstitution   = "NO_ENGINE_SUBSTITUTION"
+	PadCharToFullLength    = "PAD_CHAR_TO_FULL_LENGTH"
+	TimeTruncateFractional = "TIME_TRUNCATE_FRACTIONAL"
 )
+
+// Bits for different SQL modes
+// https://github.com/mysql/mysql-server/blob/f362272c18e856930c867952a7dd1d840cbdb3b1/sql/system_variables.h#L123-L173
+const (
+	modeRealAsFloat            = 1
+	modePipesAsConcat          = 2
+	modeAnsiQuotes             = 4
+	modeIgnoreSpace            = 8
+	modeOnlyFullGroupBy        = 32
+	modeNoUnsignedSubtraction  = 64
+	modeNoDirInCreate          = 128
+	modeAnsi                   = 0x40000
+	modeNoAutoValueOnZero      = modeAnsi * 2
+	modeNoBackslashEscapes     = modeNoAutoValueOnZero * 2
+	modeStrictTransTables      = modeNoBackslashEscapes * 2
+	modeStrictAllTables        = modeStrictTransTables * 2
+	modeNoZeroInDate           = modeStrictAllTables * 2
+	modeNoZeroDate             = modeNoZeroInDate * 2
+	modeAllowInvalidDates      = modeNoZeroDate * 2
+	modeErrorForDivisionByZero = modeAllowInvalidDates * 2
+	modeTraditional            = modeErrorForDivisionByZero * 2
+	modeHighNotPrecedence      = 1 << 29
+	modeNoEngineSubstitution   = modeHighNotPrecedence * 2
+	modePadCharToFullLength    = 1 << 31
+	modeTimeTruncateFractional = 1 << 32
+
+	// modeIgnoredMask contains deprecated/obsolete SQL mode bits that can be safely ignored
+	// during binlog replication. These modes existed in older MySQL versions but are no longer used.
+	// See: https://github.com/mysql/mysql-server/blob/trunk/sql/system_variables.h MODE_IGNORED_MASK
+	modeIgnoredMask = 0x00100 | // was: MODE_POSTGRESQL
+		0x00200 | // was: MODE_ORACLE
+		0x00400 | // was: MODE_MSSQL
+		0x00800 | // was: MODE_DB2
+		0x01000 | // was: MODE_MAXDB
+		0x02000 | // was: MODE_NO_KEY_OPTIONS
+		0x04000 | // was: MODE_NO_TABLE_OPTIONS
+		0x08000 | // was: MODE_NO_FIELD_OPTIONS
+		0x10000 | // was: MODE_MYSQL323
+		0x20000 | // was: MODE_MYSQL40
+		0x10000000 // was: MODE_NO_AUTO_CREATE_USER
+)
+
+// sqlModeBitMap maps SQL mode bit flags to their string names.
+var sqlModeBitMap = map[uint64]string{
+	modeRealAsFloat:            RealAsFloat,
+	modePipesAsConcat:          PipesAsConcat,
+	modeAnsiQuotes:             ANSIQuotes,
+	modeIgnoreSpace:            IgnoreSpace,
+	modeOnlyFullGroupBy:        OnlyFullGroupBy,
+	modeNoUnsignedSubtraction:  NoUnsignedSubtraction,
+	modeNoDirInCreate:          NoDirInCreate,
+	modeAnsi:                   ANSI,
+	modeNoAutoValueOnZero:      NoAutoValueOnZero,
+	modeNoBackslashEscapes:     NoBackslashEscapes,
+	modeStrictTransTables:      StrictTransTables,
+	modeStrictAllTables:        StrictAllTables,
+	modeNoZeroInDate:           NoZeroInDate,
+	modeAllowInvalidDates:      AllowInvalidDates,
+	modeErrorForDivisionByZero: ErrorForDivisionByZero,
+	modeTraditional:            Traditional,
+	// Note: modeNoAutoCreateUser is NOT in this map - it's in modeIgnoredMask and filtered out
+	modeHighNotPrecedence:      HighNotPrecedence,
+	modeNoEngineSubstitution:   NoEngineSubstitution,
+	modePadCharToFullLength:    PadCharToFullLength,
+	modeTimeTruncateFractional: TimeTruncateFractional,
+}
+
+var DefaultSqlMode = strings.Join([]string{
+	NoEngineSubstitution,
+	OnlyFullGroupBy,
+	StrictTransTables,
+}, ",")
 
 var defaultMode *SqlMode
 
@@ -169,4 +241,58 @@ func (s *SqlMode) ParserOptions() sqlparser.ParserOptions {
 // String returns the SQL_MODE string representing this SqlMode instance.
 func (s *SqlMode) String() string {
 	return s.modeString
+}
+
+// ConvertSqlModeBitmask converts sql_mode values to their string representation.
+func ConvertSqlModeBitmask(val any) (string, error) {
+	var bitmask uint64
+	switch v := val.(type) {
+	case []byte:
+		if n, err := strconv.ParseUint(string(v), 10, 64); err == nil {
+			bitmask = n
+		}
+	case int8:
+		bitmask = uint64(v)
+	case int16:
+		bitmask = uint64(v)
+	case int:
+		bitmask = uint64(v)
+	case int32:
+		bitmask = uint64(v)
+	case int64:
+		bitmask = uint64(v)
+	case uint8:
+		bitmask = uint64(v)
+	case uint16:
+		bitmask = uint64(v)
+	case uint:
+		bitmask = uint64(v)
+	case uint32:
+		bitmask = uint64(v)
+	case uint64:
+		bitmask = v
+	default:
+		return fmt.Sprintf("%v", val), nil
+	}
+
+	bitmask = bitmask &^ modeIgnoredMask
+
+	var modes []string
+	var matchedBits uint64
+	for bit, modeName := range sqlModeBitMap {
+		if bitmask&bit != 0 {
+			modes = append(modes, modeName)
+			matchedBits |= bit
+		}
+	}
+
+	if bitmask != 0 && matchedBits != bitmask {
+		return fmt.Sprintf("%v", val), nil
+	}
+
+	if len(modes) == 0 {
+		return "", nil
+	}
+
+	return strings.Join(modes, ","), nil
 }
