@@ -338,6 +338,17 @@ func (m *Memo) statsForRel(ctx *sql.Context, rel RelExpr) sql.Statistic {
 		left := jp.Left.RelProps.GetStats()
 		right := jp.Right.RelProps.GetStats()
 
+		distinct := math.Max(float64(left.DistinctCount()), float64(right.DistinctCount()))
+		if distinct == 0 {
+			m := math.Max(float64(left.RowCount()), float64(right.RowCount()))
+			distinct = m * .80
+		}
+
+		// Assume that the smaller set is surjective onto the larger set, and at least one of the sets is uniformly distributed.
+		// If so, then the odds that a random element of each set matches can be computed as:
+		selectivity := 1.0 / float64(distinct)
+		card := uint64(float64(left.RowCount()*right.RowCount()) * selectivity)
+
 		var injective bool
 		var smallestLeft sql.Statistic
 		var mergeStats sql.Statistic
@@ -346,9 +357,10 @@ func (m *Memo) statsForRel(ctx *sql.Context, rel RelExpr) sql.Statistic {
 		for n != nil && !done {
 			switch n := n.(type) {
 			case *LookupJoin:
-				if n.Injective {
+				leftRows := n.Left.RelProps.GetStats().RowCount()
+				if n.Injective && leftRows < card {
 					injective = true
-					if smallestLeft == nil || n.Left.RelProps.GetStats().RowCount() < smallestLeft.RowCount() {
+					if leftRows < smallestLeft.RowCount() {
 						smallestLeft = n.Left.RelProps.GetStats()
 					}
 				}
@@ -397,18 +409,7 @@ func (m *Memo) statsForRel(ctx *sql.Context, rel RelExpr) sql.Statistic {
 			return mergeStats
 		}
 
-		distinct := math.Max(float64(left.DistinctCount()), float64(right.DistinctCount()))
-		if distinct == 0 {
-			m := math.Max(float64(left.RowCount()), float64(right.RowCount()))
-			distinct = m * .80
-		}
-
-		// Assume that the smaller set is surjective onto the larger set, and at least one of the sets is uniformly distributed.
-		// If so, then the odds that a random element of each set matches can be computed as:
-		selectivity := 1.0 / float64(distinct)
-		card := float64(left.RowCount()*right.RowCount()) * selectivity
-		return &stats.Statistic{RowCnt: uint64(card)}
-
+		return &stats.Statistic{RowCnt: card}
 	case *Max1Row:
 		stat = &stats.Statistic{RowCnt: 1}
 
