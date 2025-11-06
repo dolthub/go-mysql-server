@@ -229,9 +229,7 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 		return nil, err
 	}
 
-	if m.Tracer.TraceEnabled {
-		m.Tracer.Log("Completed cost-based optimization:\n%s", m.CostDebugString())
-	}
+	m.LogCostDebugString()
 
 	if a.Verbose && a.Debug {
 		a.Log("%s", m.String())
@@ -240,9 +238,7 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 		scope.JoinTrees = append(scope.JoinTrees, m.String())
 	}
 
-	if m.Tracer.TraceEnabled {
-		m.Tracer.Log("Best root plan:\n%s", m.BestPlanDebugString())
-	}
+	m.LogBestPlanDebugString()
 
 	return m.BestRootPlan(ctx)
 }

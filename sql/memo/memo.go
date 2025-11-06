@@ -645,10 +645,15 @@ func (m *Memo) String() string {
 	return b.String()
 }
 
-// CostDebugString returns a string representation of the memo with cost
+// LogCostDebugString logs a string representation of the memo with cost
 // information for each expression, ordered by best to worst for each group,
 // displayed in a tree structure.
-func (m *Memo) CostDebugString() interface{} {
+// Only logs if tracing is enabled.
+func (m *Memo) LogCostDebugString() {
+	if m.root == nil || !m.Tracer.TraceEnabled {
+		return
+	}
+
 	exprs := make([]string, m.cnt)
 	groups := make([]*ExprGroup, 0)
 
@@ -685,18 +690,20 @@ func (m *Memo) CostDebugString() interface{} {
 		}
 		b.WriteString(fmt.Sprintf("%s G%d: %s\n", beg, i+1, g))
 	}
-	return b.String()
+
+	m.Tracer.Log("Completed cost-based optimization:\n%s", b.String())
 }
 
-// BestPlanDebugString returns a physical tree representation of the best plan for each group in the tree that is
+// LogBestPlanDebugString logs a physical tree representation of the best plan for each group in the tree that is
 // referenced by the best plan in the root. This differs from other debug strings in that it represents the groups
 // as children of their parents, rather than as a flat list, and only includes groups that are part of the best plan.
-func (m *Memo) BestPlanDebugString() interface{} {
-	if m.root == nil {
-		return ""
+// Only logs if tracing is enabled.
+func (m *Memo) LogBestPlanDebugString() {
+	if m.root == nil || !m.Tracer.TraceEnabled {
+		return
 	}
 
-	return m.root.BestPlanDebugString()
+	m.Tracer.Log("Best root plan:\n%s", m.root.BestPlanDebugString())
 }
 
 type tableProps struct {
