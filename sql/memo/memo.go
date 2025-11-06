@@ -16,6 +16,9 @@ package memo
 
 import (
 	"fmt"
+	"io"
+	"iter"
+	"slices"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -48,6 +51,7 @@ type Memo struct {
 	scopeLen   int
 	cnt        uint16
 	Debug      bool
+	Tracer     *TraceLogger
 }
 
 func NewMemo(ctx *sql.Context, stats sql.StatsProvider, s *plan.Scope, scopeLen int, cost Coster, qFlags *sql.QueryFlags) *Memo {
@@ -60,6 +64,7 @@ func NewMemo(ctx *sql.Context, stats sql.StatsProvider, s *plan.Scope, scopeLen 
 		TableProps: newTableProps(),
 		hints:      &joinHints{},
 		QFlags:     qFlags,
+		Tracer:     &TraceLogger{},
 	}
 }
 
@@ -69,6 +74,10 @@ type MemoErr struct {
 
 func (m *Memo) HandleErr(err error) {
 	panic(MemoErr{Err: err})
+}
+
+func (m *Memo) EnableTrace(enable bool) {
+	m.Tracer.TraceEnabled = enable
 }
 
 func (m *Memo) Root() *ExprGroup {
@@ -399,6 +408,9 @@ func (m *Memo) MemoizeMax1Row(grp, child *ExprGroup) *ExprGroup {
 // OptimizeRoot finds the implementation for the root expression
 // that has the lowest cost.
 func (m *Memo) OptimizeRoot() error {
+	m.Tracer.PushDebugContext("OptimizeRoot")
+	defer m.Tracer.PopDebugContext()
+
 	err := m.optimizeMemoGroup(m.root)
 	if err != nil {
 		return err
@@ -423,6 +435,9 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 		return nil
 	}
 
+	m.Tracer.PushDebugContextFmt("optimizeMemoGroup/%d", grp.Id)
+	defer m.Tracer.PopDebugContext()
+
 	n := grp.First
 	if _, ok := n.(SourceRel); ok {
 		// We should order the search bottom-up so that physical operators
@@ -434,10 +449,12 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 		grp.HintOk = true
 		grp.Best = grp.First
 		grp.Best.SetDistinct(NoDistinctOp)
+		m.Tracer.Log("source relation, setting as best plan", grp)
 		return nil
 	}
 
 	for n != nil {
+		m.Tracer.Log("Evaluating plan (%s)", n)
 		var cost float64
 		for _, g := range n.Children() {
 			err := m.optimizeMemoGroup(g)
@@ -454,10 +471,12 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 		if grp.RelProps.Distinct.IsHash() {
 			if sortedInputs(n) {
 				n.SetDistinct(SortedDistinctOp)
+				m.Tracer.Log("Plan %s: using sorted distinct", n)
 			} else {
 				n.SetDistinct(HashDistinctOp)
 				d := &Distinct{Child: grp}
-				relCost += float64(statsForRel(m.Ctx, d).RowCount())
+				relCost += float64(m.statsForRel(m.Ctx, d).RowCount())
+				m.Tracer.Log("Plan %s: using hash distinct", n)
 			}
 		} else {
 			n.SetDistinct(NoDistinctOp)
@@ -465,6 +484,7 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 
 		n.SetCost(relCost)
 		cost += relCost
+		m.Tracer.Log("Plan %s: relCost=%.2f, totalCost=%.2f", n, relCost, cost)
 		m.updateBest(grp, n, cost)
 		n = n.Next()
 	}
@@ -483,15 +503,22 @@ func (m *Memo) updateBest(grp *ExprGroup, n RelExpr, cost float64) {
 				grp.Best = n
 				grp.Cost = cost
 				grp.HintOk = true
+				m.Tracer.Log("Set best plan for group %d to hinted plan %s with cost %.2f", grp.Id, n, cost)
 				return
 			}
-			grp.updateBest(n, cost)
+			if grp.updateBest(n, cost) {
+				m.Tracer.Log("Updated best plan for group %d to hinted plan %s with cost %.2f", grp.Id, n, cost)
+			}
 		} else if grp.Best == nil || !grp.HintOk {
-			grp.updateBest(n, cost)
+			if grp.updateBest(n, cost) {
+				m.Tracer.Log("Updated best plan for group %d to plan %s with cost %.2f (no hints satisfied)", grp.Id, n, cost)
+			}
 		}
 		return
 	}
-	grp.updateBest(n, cost)
+	if grp.updateBest(n, cost) {
+		m.Tracer.Log("Updated best plan for group %d to plan %s with cost %.2f", grp.Id, n, cost)
+	}
 }
 
 func (m *Memo) BestRootPlan(ctx *sql.Context) (sql.Node, error) {
@@ -585,17 +612,16 @@ func (m *Memo) SetJoinOp(op HintType, left, right string) {
 	m.hints.ops = append(m.hints.ops, hint)
 }
 
+var _ fmt.Stringer = (*Memo)(nil)
+
 func (m *Memo) String() string {
 	exprs := make([]string, m.cnt)
 	groups := make([]*ExprGroup, 0)
 	if m.root != nil {
-		r := m.root.First
-		for r != nil {
-			groups = append(groups, r.Group())
-			groups = append(groups, r.Children()...)
-			r = r.Next()
-		}
+		groups = append(groups, m.root.First.Group())
 	}
+
+	// breadth-first traversal of memo groups via their children
 	for len(groups) > 0 {
 		newGroups := make([]*ExprGroup, 0)
 		for _, g := range groups {
@@ -603,7 +629,7 @@ func (m *Memo) String() string {
 				continue
 			}
 			exprs[int(TableIdForSource(g.Id))] = g.String()
-			newGroups = append(newGroups, g.children()...)
+			newGroups = slices.AppendSeq(newGroups, g.children())
 		}
 		groups = newGroups
 	}
@@ -617,6 +643,67 @@ func (m *Memo) String() string {
 		b.WriteString(fmt.Sprintf("%s G%d: %s\n", beg, i+1, g))
 	}
 	return b.String()
+}
+
+// LogCostDebugString logs a string representation of the memo with cost
+// information for each expression, ordered by best to worst for each group,
+// displayed in a tree structure.
+// Only logs if tracing is enabled.
+func (m *Memo) LogCostDebugString() {
+	if m.root == nil || !m.Tracer.TraceEnabled {
+		return
+	}
+
+	exprs := make([]string, m.cnt)
+	groups := make([]*ExprGroup, 0)
+
+	b := strings.Builder{}
+	b.WriteString(fmt.Sprintf("costed memo (root group %d):\n", m.root.Id))
+
+	if m.root != nil {
+		groups = append(groups, m.root.First.Group())
+	}
+
+	// breadth-first traversal of memo groups via their children
+	for len(groups) > 0 {
+		newGroups := make([]*ExprGroup, 0)
+		for _, g := range groups {
+			if exprs[int(TableIdForSource(g.Id))] != "" {
+				continue
+			}
+
+			prefix := "|   "
+			if int(g.Id) == int(m.cnt) {
+				prefix = "    "
+			}
+
+			exprs[int(TableIdForSource(g.Id))] = g.CostTreeString(prefix)
+			newGroups = slices.AppendSeq(newGroups, g.children())
+		}
+		groups = newGroups
+	}
+
+	beg := "├──"
+	for i, g := range exprs {
+		if i == len(exprs)-1 {
+			beg = "└──"
+		}
+		b.WriteString(fmt.Sprintf("%s G%d: %s\n", beg, i+1, g))
+	}
+
+	m.Tracer.Log("Completed cost-based optimization:\n%s", b.String())
+}
+
+// LogBestPlanDebugString logs a physical tree representation of the best plan for each group in the tree that is
+// referenced by the best plan in the root. This differs from other debug strings in that it represents the groups
+// as children of their parents, rather than as a flat list, and only includes groups that are part of the best plan.
+// Only logs if tracing is enabled.
+func (m *Memo) LogBestPlanDebugString() {
+	if m.root == nil || !m.Tracer.TraceEnabled {
+		return
+	}
+
+	m.Tracer.Log("Best root plan:\n%s", m.root.BestPlanDebugString())
 }
 
 type tableProps struct {
@@ -691,6 +778,19 @@ func relKey(r RelExpr) uint64 {
 		i *= 1<<16 - 1
 	}
 	return uint64(key)
+}
+
+// IterRelExprs returns an iterator over the linked list of RelExprs beginning at the head e
+func IterRelExprs(e RelExpr) iter.Seq[RelExpr] {
+	curr := e
+	return func(yield func(RelExpr) bool) {
+		for curr != nil {
+			if !yield(curr) {
+				return
+			}
+			curr = curr.Next()
+		}
+	}
 }
 
 type distinctOp uint8
@@ -877,4 +977,74 @@ type RangeHeap struct {
 	Parent                  *JoinBase
 	RangeClosedOnLowerBound bool
 	RangeClosedOnUpperBound bool
+}
+
+// FormatExpr formats an exprType for debugging purposes, compatible with fmt.Formatter
+func FormatExpr(r exprType, s fmt.State, verb rune) {
+	verbString := fmt.Sprintf("%%%c", verb)
+	if verb == 'v' && s.Flag('+') {
+		verbString = "%+v"
+	}
+	switch r := r.(type) {
+	case *CrossJoin:
+		io.WriteString(s, fmt.Sprintf("crossjoin "+verbString+" "+verbString, r.Left, r.Right))
+	case *InnerJoin:
+		io.WriteString(s, fmt.Sprintf("innerjoin "+verbString+" "+verbString, r.Left, r.Right))
+	case *LeftJoin:
+		io.WriteString(s, fmt.Sprintf("leftjoin "+verbString+" "+verbString, r.Left, r.Right))
+	case *SemiJoin:
+		io.WriteString(s, fmt.Sprintf("semijoin "+verbString+" "+verbString, r.Left, r.Right))
+	case *AntiJoin:
+		io.WriteString(s, fmt.Sprintf("antijoin "+verbString+" "+verbString, r.Left, r.Right))
+	case *LookupJoin:
+		io.WriteString(s, fmt.Sprintf("lookupjoin "+verbString+" "+verbString+" on %s",
+			r.Left, r.Right, r.Lookup.Index.idx.ID()))
+	case *RangeHeapJoin:
+		io.WriteString(s, fmt.Sprintf("rangeheapjoin "+verbString+" "+verbString, r.Left, r.Right))
+	case *ConcatJoin:
+		io.WriteString(s, fmt.Sprintf("concatjoin "+verbString+" "+verbString, r.Left, r.Right))
+	case *HashJoin:
+		io.WriteString(s, fmt.Sprintf("hashjoin "+verbString+" "+verbString, r.Left, r.Right))
+	case *MergeJoin:
+		io.WriteString(s, fmt.Sprintf("mergejoin "+verbString+" "+verbString, r.Left, r.Right))
+	case *FullOuterJoin:
+		io.WriteString(s, fmt.Sprintf("fullouterjoin "+verbString+" "+verbString, r.Left, r.Right))
+	case *LateralJoin:
+		io.WriteString(s, fmt.Sprintf("lateraljoin "+verbString+" "+verbString, r.Left, r.Right))
+	case *TableScan:
+		io.WriteString(s, fmt.Sprintf("tablescan: %s", r.Name()))
+	case *IndexScan:
+		if r.Alias != "" {
+			io.WriteString(s, fmt.Sprintf("indexscan on %s: %s", r.Index.SqlIdx().ID(), r.Alias))
+		}
+		io.WriteString(s, fmt.Sprintf("indexscan on %s: %s", r.Index.SqlIdx().ID(), r.Name()))
+	case *Values:
+		io.WriteString(s, fmt.Sprintf("values: %s", r.Name()))
+	case *TableAlias:
+		io.WriteString(s, fmt.Sprintf("tablealias: %s", r.Name()))
+	case *RecursiveTable:
+		io.WriteString(s, fmt.Sprintf("recursivetable: %s", r.Name()))
+	case *RecursiveCte:
+		io.WriteString(s, fmt.Sprintf("recursivecte: %s", r.Name()))
+	case *SubqueryAlias:
+		io.WriteString(s, fmt.Sprintf("subqueryalias: %s", r.Name()))
+	case *TableFunc:
+		io.WriteString(s, fmt.Sprintf("tablefunc: %s", r.Name()))
+	case *JSONTable:
+		io.WriteString(s, fmt.Sprintf("jsontable: %s", r.Name()))
+	case *EmptyTable:
+		io.WriteString(s, fmt.Sprintf("emptytable: %s", r.Name()))
+	case *SetOp:
+		io.WriteString(s, fmt.Sprintf("setop: %s", r.Name()))
+	case *Project:
+		io.WriteString(s, fmt.Sprintf("project: %d", r.Child.Id))
+	case *Distinct:
+		io.WriteString(s, fmt.Sprintf("distinct: %d", r.Child.Id))
+	case *Max1Row:
+		io.WriteString(s, fmt.Sprintf("max1row: %d", r.Child.Id))
+	case *Filter:
+		io.WriteString(s, fmt.Sprintf("filter: %d", r.Child.Id))
+	default:
+		panic(fmt.Sprintf("unknown RelExpr type: %T", r))
+	}
 }

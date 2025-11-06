@@ -312,21 +312,24 @@ func (p *relProps) populateFds() {
 	p.fds = fds
 }
 
-func CardMemoGroups(ctx *sql.Context, g *ExprGroup) {
+func (m *Memo) CardMemoGroups(ctx *sql.Context, g *ExprGroup) {
 	// card checking is called after indexScans and lookups joins are generated,
 	// both of which have metadata that makes cardinality estimation more
 	// accurate.
 	if g.RelProps.stat != nil {
 		return
 	}
-	for _, g := range g.children() {
-		CardMemoGroups(ctx, g)
+	for g := range g.children() {
+		m.CardMemoGroups(ctx, g)
 	}
-	s := statsForRel(ctx, g.First)
+	s := m.statsForRel(ctx, g.First)
 	g.RelProps.SetStats(s)
 }
 
-func statsForRel(ctx *sql.Context, rel RelExpr) sql.Statistic {
+func (m *Memo) statsForRel(ctx *sql.Context, rel RelExpr) sql.Statistic {
+	m.Tracer.PushDebugContext("statsForRel")
+	defer m.Tracer.PopDebugContext()
+
 	var stat sql.Statistic
 	switch rel := rel.(type) {
 	case JoinRel:

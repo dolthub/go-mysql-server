@@ -15,10 +15,16 @@ type CrossJoin struct {
 }
 
 var _ RelExpr = (*CrossJoin)(nil)
+var _ fmt.Formatter = (*CrossJoin)(nil)
+var _ fmt.Stringer = (*CrossJoin)(nil)
 var _ JoinRel = (*CrossJoin)(nil)
 
 func (r *CrossJoin) String() string {
-	return FormatExpr(r)
+	return fmt.Sprintf("%s", r)
+}
+
+func (r *CrossJoin) Format(s fmt.State, verb rune) {
+	FormatExpr(r, s, verb)
 }
 
 func (r *CrossJoin) JoinPrivate() *JoinBase {
@@ -30,10 +36,16 @@ type InnerJoin struct {
 }
 
 var _ RelExpr = (*InnerJoin)(nil)
+var _ fmt.Formatter = (*InnerJoin)(nil)
+var _ fmt.Stringer = (*InnerJoin)(nil)
 var _ JoinRel = (*InnerJoin)(nil)
 
 func (r *InnerJoin) String() string {
-	return FormatExpr(r)
+	return fmt.Sprintf("%s", r)
+}
+
+func (r *InnerJoin) Format(s fmt.State, verb rune) {
+	FormatExpr(r, s, verb)
 }
 
 func (r *InnerJoin) JoinPrivate() *JoinBase {
@@ -45,10 +57,16 @@ type LeftJoin struct {
 }
 
 var _ RelExpr = (*LeftJoin)(nil)
+var _ fmt.Formatter = (*LeftJoin)(nil)
+var _ fmt.Stringer = (*LeftJoin)(nil)
 var _ JoinRel = (*LeftJoin)(nil)
 
 func (r *LeftJoin) String() string {
-	return FormatExpr(r)
+	return fmt.Sprintf("%s", r)
+}
+
+func (r *LeftJoin) Format(s fmt.State, verb rune) {
+	FormatExpr(r, s, verb)
 }
 
 func (r *LeftJoin) JoinPrivate() *JoinBase {
@@ -60,10 +78,16 @@ type SemiJoin struct {
 }
 
 var _ RelExpr = (*SemiJoin)(nil)
+var _ fmt.Formatter = (*SemiJoin)(nil)
+var _ fmt.Stringer = (*SemiJoin)(nil)
 var _ JoinRel = (*SemiJoin)(nil)
 
 func (r *SemiJoin) String() string {
-	return FormatExpr(r)
+	return fmt.Sprintf("%s", r)
+}
+
+func (r *SemiJoin) Format(s fmt.State, verb rune) {
+	FormatExpr(r, s, verb)
 }
 
 func (r *SemiJoin) JoinPrivate() *JoinBase {
@@ -75,10 +99,16 @@ type AntiJoin struct {
 }
 
 var _ RelExpr = (*AntiJoin)(nil)
+var _ fmt.Formatter = (*AntiJoin)(nil)
+var _ fmt.Stringer = (*AntiJoin)(nil)
 var _ JoinRel = (*AntiJoin)(nil)
 
 func (r *AntiJoin) String() string {
-	return FormatExpr(r)
+	return fmt.Sprintf("%s", r)
+}
+
+func (r *AntiJoin) Format(s fmt.State, verb rune) {
+	FormatExpr(r, s, verb)
 }
 
 func (r *AntiJoin) JoinPrivate() *JoinBase {
@@ -92,10 +122,16 @@ type LookupJoin struct {
 }
 
 var _ RelExpr = (*LookupJoin)(nil)
+var _ fmt.Formatter = (*LookupJoin)(nil)
+var _ fmt.Stringer = (*LookupJoin)(nil)
 var _ JoinRel = (*LookupJoin)(nil)
 
 func (r *LookupJoin) String() string {
-	return FormatExpr(r)
+	return fmt.Sprintf("%s", r)
+}
+
+func (r *LookupJoin) Format(s fmt.State, verb rune) {
+	FormatExpr(r, s, verb)
 }
 
 func (r *LookupJoin) JoinPrivate() *JoinBase {
@@ -108,10 +144,16 @@ type RangeHeapJoin struct {
 }
 
 var _ RelExpr = (*RangeHeapJoin)(nil)
+var _ fmt.Formatter = (*RangeHeapJoin)(nil)
+var _ fmt.Stringer = (*RangeHeapJoin)(nil)
 var _ JoinRel = (*RangeHeapJoin)(nil)
 
 func (r *RangeHeapJoin) String() string {
-	return FormatExpr(r)
+	return fmt.Sprintf("%s", r)
+}
+
+func (r *RangeHeapJoin) Format(s fmt.State, verb rune) {
+	FormatExpr(r, s, verb)
 }
 
 func (r *RangeHeapJoin) JoinPrivate() *JoinBase {
@@ -124,10 +166,16 @@ type ConcatJoin struct {
 }
 
 var _ RelExpr = (*ConcatJoin)(nil)
+var _ fmt.Formatter = (*ConcatJoin)(nil)
+var _ fmt.Stringer = (*ConcatJoin)(nil)
 var _ JoinRel = (*ConcatJoin)(nil)
 
 func (r *ConcatJoin) String() string {
-	return FormatExpr(r)
+	return fmt.Sprintf("%s", r)
+}
+
+func (r *ConcatJoin) Format(s fmt.State, verb rune) {
+	FormatExpr(r, s, verb)
 }
 
 func (r *ConcatJoin) JoinPrivate() *JoinBase {
@@ -141,10 +189,16 @@ type HashJoin struct {
 }
 
 var _ RelExpr = (*HashJoin)(nil)
+var _ fmt.Formatter = (*HashJoin)(nil)
+var _ fmt.Stringer = (*HashJoin)(nil)
 var _ JoinRel = (*HashJoin)(nil)
 
 func (r *HashJoin) String() string {
-	return FormatExpr(r)
+	return fmt.Sprintf("%s", r)
+}
+
+func (r *HashJoin) Format(s fmt.State, verb rune) {
+	FormatExpr(r, s, verb)
 }
 
 func (r *HashJoin) JoinPrivate() *JoinBase {
@@ -161,10 +215,16 @@ type MergeJoin struct {
 }
 
 var _ RelExpr = (*MergeJoin)(nil)
+var _ fmt.Formatter = (*MergeJoin)(nil)
+var _ fmt.Stringer = (*MergeJoin)(nil)
 var _ JoinRel = (*MergeJoin)(nil)
 
 func (r *MergeJoin) String() string {
-	return FormatExpr(r)
+	return fmt.Sprintf("%s", r)
+}
+
+func (r *MergeJoin) Format(s fmt.State, verb rune) {
+	FormatExpr(r, s, verb)
 }
 
 func (r *MergeJoin) JoinPrivate() *JoinBase {
@@ -176,10 +236,16 @@ type FullOuterJoin struct {
 }
 
 var _ RelExpr = (*FullOuterJoin)(nil)
+var _ fmt.Formatter = (*FullOuterJoin)(nil)
+var _ fmt.Stringer = (*FullOuterJoin)(nil)
 var _ JoinRel = (*FullOuterJoin)(nil)
 
 func (r *FullOuterJoin) String() string {
-	return FormatExpr(r)
+	return fmt.Sprintf("%s", r)
+}
+
+func (r *FullOuterJoin) Format(s fmt.State, verb rune) {
+	FormatExpr(r, s, verb)
 }
 
 func (r *FullOuterJoin) JoinPrivate() *JoinBase {
@@ -191,10 +257,16 @@ type LateralJoin struct {
 }
 
 var _ RelExpr = (*LateralJoin)(nil)
+var _ fmt.Formatter = (*LateralJoin)(nil)
+var _ fmt.Stringer = (*LateralJoin)(nil)
 var _ JoinRel = (*LateralJoin)(nil)
 
 func (r *LateralJoin) String() string {
-	return FormatExpr(r)
+	return fmt.Sprintf("%s", r)
+}
+
+func (r *LateralJoin) Format(s fmt.State, verb rune) {
+	FormatExpr(r, s, verb)
 }
 
 func (r *LateralJoin) JoinPrivate() *JoinBase {
@@ -207,10 +279,16 @@ type TableScan struct {
 }
 
 var _ RelExpr = (*TableScan)(nil)
+var _ fmt.Formatter = (*TableScan)(nil)
+var _ fmt.Stringer = (*TableScan)(nil)
 var _ SourceRel = (*TableScan)(nil)
 
 func (r *TableScan) String() string {
-	return FormatExpr(r)
+	return fmt.Sprintf("%s", r)
+}
+
+func (r *TableScan) Format(s fmt.State, verb rune) {
+	FormatExpr(r, s, verb)
 }
 
 func (r *TableScan) Name() string {
@@ -242,10 +320,16 @@ type IndexScan struct {
 }
 
 var _ RelExpr = (*IndexScan)(nil)
+var _ fmt.Formatter = (*IndexScan)(nil)
+var _ fmt.Stringer = (*IndexScan)(nil)
 var _ SourceRel = (*IndexScan)(nil)
 
 func (r *IndexScan) String() string {
-	return FormatExpr(r)
+	return fmt.Sprintf("%s", r)
+}
+
+func (r *IndexScan) Format(s fmt.State, verb rune) {
+	FormatExpr(r, s, verb)
 }
 
 func (r *IndexScan) Name() string {
@@ -274,10 +358,16 @@ type Values struct {
 }
 
 var _ RelExpr = (*Values)(nil)
+var _ fmt.Formatter = (*Values)(nil)
+var _ fmt.Stringer = (*Values)(nil)
 var _ SourceRel = (*Values)(nil)
 
 func (r *Values) String() string {
-	return FormatExpr(r)
+	return fmt.Sprintf("%s", r)
+}
+
+func (r *Values) Format(s fmt.State, verb rune) {
+	FormatExpr(r, s, verb)
 }
 
 func (r *Values) Name() string {
@@ -306,10 +396,16 @@ type TableAlias struct {
 }
 
 var _ RelExpr = (*TableAlias)(nil)
+var _ fmt.Formatter = (*TableAlias)(nil)
+var _ fmt.Stringer = (*TableAlias)(nil)
 var _ SourceRel = (*TableAlias)(nil)
 
 func (r *TableAlias) String() string {
-	return FormatExpr(r)
+	return fmt.Sprintf("%s", r)
+}
+
+func (r *TableAlias) Format(s fmt.State, verb rune) {
+	FormatExpr(r, s, verb)
 }
 
 func (r *TableAlias) Name() string {
@@ -338,10 +434,16 @@ type RecursiveTable struct {
 }
 
 var _ RelExpr = (*RecursiveTable)(nil)
+var _ fmt.Formatter = (*RecursiveTable)(nil)
+var _ fmt.Stringer = (*RecursiveTable)(nil)
 var _ SourceRel = (*RecursiveTable)(nil)
 
 func (r *RecursiveTable) String() string {
-	return FormatExpr(r)
+	return fmt.Sprintf("%s", r)
+}
+
+func (r *RecursiveTable) Format(s fmt.State, verb rune) {
+	FormatExpr(r, s, verb)
 }
 
 func (r *RecursiveTable) Name() string {
@@ -370,10 +472,16 @@ type RecursiveCte struct {
 }
 
 var _ RelExpr = (*RecursiveCte)(nil)
+var _ fmt.Formatter = (*RecursiveCte)(nil)
+var _ fmt.Stringer = (*RecursiveCte)(nil)
 var _ SourceRel = (*RecursiveCte)(nil)
 
 func (r *RecursiveCte) String() string {
-	return FormatExpr(r)
+	return fmt.Sprintf("%s", r)
+}
+
+func (r *RecursiveCte) Format(s fmt.State, verb rune) {
+	FormatExpr(r, s, verb)
 }
 
 func (r *RecursiveCte) Name() string {
@@ -402,10 +510,16 @@ type SubqueryAlias struct {
 }
 
 var _ RelExpr = (*SubqueryAlias)(nil)
+var _ fmt.Formatter = (*SubqueryAlias)(nil)
+var _ fmt.Stringer = (*SubqueryAlias)(nil)
 var _ SourceRel = (*SubqueryAlias)(nil)
 
 func (r *SubqueryAlias) String() string {
-	return FormatExpr(r)
+	return fmt.Sprintf("%s", r)
+}
+
+func (r *SubqueryAlias) Format(s fmt.State, verb rune) {
+	FormatExpr(r, s, verb)
 }
 
 func (r *SubqueryAlias) Name() string {
@@ -434,10 +548,16 @@ type TableFunc struct {
 }
 
 var _ RelExpr = (*TableFunc)(nil)
+var _ fmt.Formatter = (*TableFunc)(nil)
+var _ fmt.Stringer = (*TableFunc)(nil)
 var _ SourceRel = (*TableFunc)(nil)
 
 func (r *TableFunc) String() string {
-	return FormatExpr(r)
+	return fmt.Sprintf("%s", r)
+}
+
+func (r *TableFunc) Format(s fmt.State, verb rune) {
+	FormatExpr(r, s, verb)
 }
 
 func (r *TableFunc) Name() string {
@@ -466,10 +586,16 @@ type JSONTable struct {
 }
 
 var _ RelExpr = (*JSONTable)(nil)
+var _ fmt.Formatter = (*JSONTable)(nil)
+var _ fmt.Stringer = (*JSONTable)(nil)
 var _ SourceRel = (*JSONTable)(nil)
 
 func (r *JSONTable) String() string {
-	return FormatExpr(r)
+	return fmt.Sprintf("%s", r)
+}
+
+func (r *JSONTable) Format(s fmt.State, verb rune) {
+	FormatExpr(r, s, verb)
 }
 
 func (r *JSONTable) Name() string {
@@ -498,10 +624,16 @@ type EmptyTable struct {
 }
 
 var _ RelExpr = (*EmptyTable)(nil)
+var _ fmt.Formatter = (*EmptyTable)(nil)
+var _ fmt.Stringer = (*EmptyTable)(nil)
 var _ SourceRel = (*EmptyTable)(nil)
 
 func (r *EmptyTable) String() string {
-	return FormatExpr(r)
+	return fmt.Sprintf("%s", r)
+}
+
+func (r *EmptyTable) Format(s fmt.State, verb rune) {
+	FormatExpr(r, s, verb)
 }
 
 func (r *EmptyTable) Name() string {
@@ -530,10 +662,16 @@ type SetOp struct {
 }
 
 var _ RelExpr = (*SetOp)(nil)
+var _ fmt.Formatter = (*SetOp)(nil)
+var _ fmt.Stringer = (*SetOp)(nil)
 var _ SourceRel = (*SetOp)(nil)
 
 func (r *SetOp) String() string {
-	return FormatExpr(r)
+	return fmt.Sprintf("%s", r)
+}
+
+func (r *SetOp) Format(s fmt.State, verb rune) {
+	FormatExpr(r, s, verb)
 }
 
 func (r *SetOp) Name() string {
@@ -563,9 +701,15 @@ type Project struct {
 }
 
 var _ RelExpr = (*Project)(nil)
+var _ fmt.Formatter = (*Project)(nil)
+var _ fmt.Stringer = (*Project)(nil)
 
 func (r *Project) String() string {
-	return FormatExpr(r)
+	return fmt.Sprintf("%s", r)
+}
+
+func (r *Project) Format(s fmt.State, verb rune) {
+	FormatExpr(r, s, verb)
 }
 
 func (r *Project) Children() []*ExprGroup {
@@ -582,9 +726,15 @@ type Distinct struct {
 }
 
 var _ RelExpr = (*Distinct)(nil)
+var _ fmt.Formatter = (*Distinct)(nil)
+var _ fmt.Stringer = (*Distinct)(nil)
 
 func (r *Distinct) String() string {
-	return FormatExpr(r)
+	return fmt.Sprintf("%s", r)
+}
+
+func (r *Distinct) Format(s fmt.State, verb rune) {
+	FormatExpr(r, s, verb)
 }
 
 func (r *Distinct) Children() []*ExprGroup {
@@ -601,9 +751,15 @@ type Max1Row struct {
 }
 
 var _ RelExpr = (*Max1Row)(nil)
+var _ fmt.Formatter = (*Max1Row)(nil)
+var _ fmt.Stringer = (*Max1Row)(nil)
 
 func (r *Max1Row) String() string {
-	return FormatExpr(r)
+	return fmt.Sprintf("%s", r)
+}
+
+func (r *Max1Row) Format(s fmt.State, verb rune) {
+	FormatExpr(r, s, verb)
 }
 
 func (r *Max1Row) Children() []*ExprGroup {
@@ -621,9 +777,15 @@ type Filter struct {
 }
 
 var _ RelExpr = (*Filter)(nil)
+var _ fmt.Formatter = (*Filter)(nil)
+var _ fmt.Stringer = (*Filter)(nil)
 
 func (r *Filter) String() string {
-	return FormatExpr(r)
+	return fmt.Sprintf("%s", r)
+}
+
+func (r *Filter) Format(s fmt.State, verb rune) {
+	FormatExpr(r, s, verb)
 }
 
 func (r *Filter) Children() []*ExprGroup {
@@ -632,70 +794,6 @@ func (r *Filter) Children() []*ExprGroup {
 
 func (r *Filter) outputCols() sql.ColSet {
 	return r.Child.RelProps.OutputCols()
-}
-
-func FormatExpr(r exprType) string {
-	switch r := r.(type) {
-	case *CrossJoin:
-		return fmt.Sprintf("crossjoin %d %d", r.Left.Id, r.Right.Id)
-	case *InnerJoin:
-		return fmt.Sprintf("innerjoin %d %d", r.Left.Id, r.Right.Id)
-	case *LeftJoin:
-		return fmt.Sprintf("leftjoin %d %d", r.Left.Id, r.Right.Id)
-	case *SemiJoin:
-		return fmt.Sprintf("semijoin %d %d", r.Left.Id, r.Right.Id)
-	case *AntiJoin:
-		return fmt.Sprintf("antijoin %d %d", r.Left.Id, r.Right.Id)
-	case *LookupJoin:
-		return fmt.Sprintf("lookupjoin %d %d", r.Left.Id, r.Right.Id)
-	case *RangeHeapJoin:
-		return fmt.Sprintf("rangeheapjoin %d %d", r.Left.Id, r.Right.Id)
-	case *ConcatJoin:
-		return fmt.Sprintf("concatjoin %d %d", r.Left.Id, r.Right.Id)
-	case *HashJoin:
-		return fmt.Sprintf("hashjoin %d %d", r.Left.Id, r.Right.Id)
-	case *MergeJoin:
-		return fmt.Sprintf("mergejoin %d %d", r.Left.Id, r.Right.Id)
-	case *FullOuterJoin:
-		return fmt.Sprintf("fullouterjoin %d %d", r.Left.Id, r.Right.Id)
-	case *LateralJoin:
-		return fmt.Sprintf("lateraljoin %d %d", r.Left.Id, r.Right.Id)
-	case *TableScan:
-		return fmt.Sprintf("tablescan: %s", r.Name())
-	case *IndexScan:
-		if r.Alias != "" {
-			return fmt.Sprintf("indexscan: %s", r.Alias)
-		}
-		return fmt.Sprintf("indexscan: %s", r.Name())
-	case *Values:
-		return fmt.Sprintf("values: %s", r.Name())
-	case *TableAlias:
-		return fmt.Sprintf("tablealias: %s", r.Name())
-	case *RecursiveTable:
-		return fmt.Sprintf("recursivetable: %s", r.Name())
-	case *RecursiveCte:
-		return fmt.Sprintf("recursivecte: %s", r.Name())
-	case *SubqueryAlias:
-		return fmt.Sprintf("subqueryalias: %s", r.Name())
-	case *TableFunc:
-		return fmt.Sprintf("tablefunc: %s", r.Name())
-	case *JSONTable:
-		return fmt.Sprintf("jsontable: %s", r.Name())
-	case *EmptyTable:
-		return fmt.Sprintf("emptytable: %s", r.Name())
-	case *SetOp:
-		return fmt.Sprintf("setop: %s", r.Name())
-	case *Project:
-		return fmt.Sprintf("project: %d", r.Child.Id)
-	case *Distinct:
-		return fmt.Sprintf("distinct: %d", r.Child.Id)
-	case *Max1Row:
-		return fmt.Sprintf("max1row: %d", r.Child.Id)
-	case *Filter:
-		return fmt.Sprintf("filter: %d", r.Child.Id)
-	default:
-		panic(fmt.Sprintf("unknown RelExpr type: %T", r))
-	}
 }
 
 func buildRelExpr(b *ExecBuilder, r RelExpr, children ...sql.Node) (sql.Node, error) {
