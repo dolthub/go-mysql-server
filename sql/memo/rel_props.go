@@ -360,7 +360,7 @@ func (m *Memo) statsForRel(ctx *sql.Context, rel RelExpr) sql.Statistic {
 				leftRows := n.Left.RelProps.GetStats().RowCount()
 				if n.Injective && leftRows < card {
 					injective = true
-					if leftRows < smallestLeft.RowCount() {
+					if smallestLeft == nil || leftRows < smallestLeft.RowCount() {
 						smallestLeft = n.Left.RelProps.GetStats()
 					}
 				}
