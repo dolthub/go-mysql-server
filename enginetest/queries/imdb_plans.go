@@ -21324,7 +21324,7 @@ WHERE cct1.kind ='cast'
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [min(chn.name):0!null->voiced_char:0, min(n.name):1!null->voicing_actress:0, min(t.title):2!null->voiced_animation:0]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ select: MIN(chn.name:9!null), MIN(n.name:31!null), MIN(t.title:38!null)\n" +
+			"     ├─ select: MIN(chn.name:39!null), MIN(n.name:8!null), MIN(t.title:1!null)\n" +
 			"     ├─ group: \n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ AND\n" +
@@ -21332,266 +21332,269 @@ WHERE cct1.kind ='cast'
 			"         │   │   ├─ AND\n" +
 			"         │   │   │   ├─ AND\n" +
 			"         │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   ├─ t.id:37!null\n" +
-			"         │   │   │   │   │   └─ mi.movie_id:25!null\n" +
+			"         │   │   │   │   │   ├─ t.id:0!null\n" +
+			"         │   │   │   │   │   └─ mi.movie_id:12!null\n" +
 			"         │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │       ├─ t.id:37!null\n" +
-			"         │   │   │   │       └─ mc.movie_id:23!null\n" +
+			"         │   │   │   │       ├─ t.id:0!null\n" +
+			"         │   │   │   │       └─ mc.movie_id:15!null\n" +
 			"         │   │   │   └─ Eq\n" +
-			"         │   │   │       ├─ t.id:37!null\n" +
-			"         │   │   │       └─ ci.movie_id:11!null\n" +
+			"         │   │   │       ├─ t.id:0!null\n" +
+			"         │   │   │       └─ ci.movie_id:26!null\n" +
 			"         │   │   └─ Eq\n" +
-			"         │   │       ├─ t.id:37!null\n" +
-			"         │   │       └─ mk.movie_id:28!null\n" +
+			"         │   │       ├─ t.id:0!null\n" +
+			"         │   │       └─ mk.movie_id:10!null\n" +
 			"         │   └─ Eq\n" +
-			"         │       ├─ t.id:37!null\n" +
-			"         │       └─ cc.movie_id:1\n" +
-			"         ├─ InnerJoin\n" +
-			"         │   ├─ Eq\n" +
-			"         │   │   ├─ rt.id:35!null\n" +
-			"         │   │   └─ ci.role_id:14!null\n" +
-			"         │   ├─ InnerJoin\n" +
+			"         │       ├─ t.id:0!null\n" +
+			"         │       └─ cc.movie_id:33\n" +
+			"         ├─ Filter\n" +
+			"         │   ├─ AND\n" +
 			"         │   │   ├─ AND\n" +
-			"         │   │   │   ├─ AND\n" +
-			"         │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   ├─ n.id:30!null\n" +
-			"         │   │   │   │   │   └─ pi.person_id:33!null\n" +
-			"         │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │       ├─ ci.person_id:10!null\n" +
-			"         │   │   │   │       └─ pi.person_id:33!null\n" +
-			"         │   │   │   └─ Eq\n" +
-			"         │   │   │       ├─ it3.id:19!null\n" +
-			"         │   │   │       └─ pi.info_type_id:34!null\n" +
-			"         │   │   ├─ InnerJoin\n" +
-			"         │   │   │   ├─ AND\n" +
-			"         │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   ├─ n.id:30!null\n" +
-			"         │   │   │   │   │   └─ ci.person_id:10!null\n" +
-			"         │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │       ├─ n.id:30!null\n" +
-			"         │   │   │   │       └─ an.person_id:0!null\n" +
-			"         │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   ├─ AND\n" +
-			"         │   │   │   │   │   ├─ AND\n" +
-			"         │   │   │   │   │   │   ├─ AND\n" +
-			"         │   │   │   │   │   │   │   ├─ AND\n" +
-			"         │   │   │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ mc.movie_id:23!null\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ mk.movie_id:28!null\n" +
-			"         │   │   │   │   │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │   │   │   │   │       ├─ mi.movie_id:25!null\n" +
-			"         │   │   │   │   │   │   │   │       └─ mk.movie_id:28!null\n" +
-			"         │   │   │   │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │   │   │   │       ├─ ci.movie_id:11!null\n" +
-			"         │   │   │   │   │   │   │       └─ mk.movie_id:28!null\n" +
-			"         │   │   │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │   │   │       ├─ mk.movie_id:28!null\n" +
-			"         │   │   │   │   │   │       └─ cc.movie_id:1\n" +
-			"         │   │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │   │       ├─ k.id:21!null\n" +
-			"         │   │   │   │   │       └─ mk.keyword_id:29!null\n" +
-			"         │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   ├─ AND\n" +
-			"         │   │   │   │   │   │   ├─ AND\n" +
-			"         │   │   │   │   │   │   │   ├─ AND\n" +
-			"         │   │   │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ mc.movie_id:23!null\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ mi.movie_id:25!null\n" +
-			"         │   │   │   │   │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │   │   │   │   │       ├─ mi.movie_id:25!null\n" +
-			"         │   │   │   │   │   │   │   │       └─ ci.movie_id:11!null\n" +
-			"         │   │   │   │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │   │   │   │       ├─ mi.movie_id:25!null\n" +
-			"         │   │   │   │   │   │   │       └─ cc.movie_id:1\n" +
-			"         │   │   │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │   │   │       ├─ it.id:17!null\n" +
-			"         │   │   │   │   │   │       └─ mi.info_type_id:26!null\n" +
-			"         │   │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   │   ├─ AND\n" +
-			"         │   │   │   │   │   │   │   ├─ AND\n" +
-			"         │   │   │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ mc.movie_id:23!null\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ ci.movie_id:11!null\n" +
-			"         │   │   │   │   │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │   │   │   │   │       ├─ mc.movie_id:23!null\n" +
-			"         │   │   │   │   │   │   │   │       └─ cc.movie_id:1\n" +
-			"         │   │   │   │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │   │   │   │       ├─ cn.id:15!null\n" +
-			"         │   │   │   │   │   │   │       └─ mc.company_id:24!null\n" +
-			"         │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   ├─ AND\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   ├─ AND\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ ci.movie_id:11!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ cc.movie_id:1\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │       ├─ ci.person_id:10!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │       └─ an.person_id:0!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │       ├─ chn.id:8!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │       └─ ci.person_role_id:12\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ cct2.id:6!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ cc.status_id:3!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ cct1.id:4!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ cc.subject_id:2!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ TableAlias(an)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ ProcessTable\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ name: aka_name\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           └─ columns: [person_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ TableAlias(cc)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ ProcessTable\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ name: complete_cast\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │               └─ columns: [movie_id subject_id status_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │       ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │       │   ├─ cct1.kind:1!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │       │   └─ cast (longtext)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(cct1)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │           └─ ProcessTable\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │                   ├─ name: comp_cast_type\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │                   └─ columns: [id kind]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │       ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │       │   ├─ cct2.kind:1!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │       │   └─ complete+verified (longtext)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(cct2)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ name: comp_cast_type\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ columns: [id kind]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ colSet: (15,16)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │               └─ tableId: 4\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │       ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │       │   ├─ chn.name:1!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │       │   └─ Queen (longtext)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(chn)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │           └─ ProcessTable\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │                   ├─ name: char_name\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │                   └─ columns: [id name]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │       ├─ HashIn\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │       │   ├─ ci.note:3\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │       │   └─ TUPLE((voice) (longtext), (voice) (uncredited) (longtext), (voice: English version) (longtext))\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(ci)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │           └─ ProcessTable\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │                   ├─ name: cast_info\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │                   └─ columns: [person_id movie_id person_role_id note role_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │       ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   │       │   ├─ cn.country_code:1\n" +
-			"         │   │   │   │   │   │   │   │   │   │       │   └─ [us] (longtext)\n" +
-			"         │   │   │   │   │   │   │   │   │   │       └─ TableAlias(cn)\n" +
-			"         │   │   │   │   │   │   │   │   │   │           └─ ProcessTable\n" +
-			"         │   │   │   │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │                   ├─ name: company_name\n" +
-			"         │   │   │   │   │   │   │   │   │   │                   └─ columns: [id country_code]\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │       ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │       │   ├─ it.info:1!null\n" +
-			"         │   │   │   │   │   │   │   │   │       │   └─ release dates (longtext)\n" +
-			"         │   │   │   │   │   │   │   │   │       └─ TableAlias(it)\n" +
-			"         │   │   │   │   │   │   │   │   │           └─ ProcessTable\n" +
-			"         │   │   │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │                   ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │   │   │                   └─ columns: [id info]\n" +
-			"         │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │       ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │       │   ├─ it3.info:1!null\n" +
-			"         │   │   │   │   │   │   │   │       │   └─ trivia (longtext)\n" +
-			"         │   │   │   │   │   │   │   │       └─ TableAlias(it3)\n" +
-			"         │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │   │               ├─ columns: [id info]\n" +
-			"         │   │   │   │   │   │   │   │               ├─ colSet: (40,41)\n" +
-			"         │   │   │   │   │   │   │   │               └─ tableId: 9\n" +
-			"         │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │       ├─ Eq\n" +
-			"         │   │   │   │   │   │   │       │   ├─ k.keyword:1!null\n" +
-			"         │   │   │   │   │   │   │       │   └─ computer-animation (longtext)\n" +
-			"         │   │   │   │   │   │   │       └─ TableAlias(k)\n" +
-			"         │   │   │   │   │   │   │           └─ ProcessTable\n" +
-			"         │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │                   ├─ name: keyword\n" +
-			"         │   │   │   │   │   │   │                   └─ columns: [id keyword]\n" +
-			"         │   │   │   │   │   │   └─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │       └─ ProcessTable\n" +
-			"         │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │               ├─ name: movie_companies\n" +
-			"         │   │   │   │   │   │               └─ columns: [movie_id company_id]\n" +
-			"         │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │       ├─ AND\n" +
-			"         │   │   │   │   │       │   ├─ NOT\n" +
-			"         │   │   │   │   │       │   │   └─ mi.info:2!null IS NULL\n" +
-			"         │   │   │   │   │       │   └─ Or\n" +
-			"         │   │   │   │   │       │       ├─ mi.info LIKE 'Japan:%200%'\n" +
-			"         │   │   │   │   │       │       └─ mi.info LIKE 'USA:%200%'\n" +
-			"         │   │   │   │   │       └─ TableAlias(mi)\n" +
-			"         │   │   │   │   │           └─ ProcessTable\n" +
-			"         │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │                   ├─ name: movie_info\n" +
-			"         │   │   │   │   │                   └─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │   │       └─ ProcessTable\n" +
-			"         │   │   │   │           └─ Table\n" +
-			"         │   │   │   │               ├─ name: movie_keyword\n" +
-			"         │   │   │   │               └─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │   └─ Filter\n" +
-			"         │   │   │       ├─ AND\n" +
-			"         │   │   │       │   ├─ Eq\n" +
-			"         │   │   │       │   │   ├─ n.gender:2\n" +
-			"         │   │   │       │   │   └─ f (longtext)\n" +
-			"         │   │   │       │   └─ n.name LIKE '%An%'\n" +
-			"         │   │   │       └─ TableAlias(n)\n" +
-			"         │   │   │           └─ ProcessTable\n" +
-			"         │   │   │               └─ Table\n" +
-			"         │   │   │                   ├─ name: name\n" +
-			"         │   │   │                   └─ columns: [id name gender]\n" +
-			"         │   │   └─ TableAlias(pi)\n" +
-			"         │   │       └─ ProcessTable\n" +
-			"         │   │           └─ Table\n" +
-			"         │   │               ├─ name: person_info\n" +
-			"         │   │               └─ columns: [person_id info_type_id]\n" +
-			"         │   └─ Filter\n" +
-			"         │       ├─ Eq\n" +
-			"         │       │   ├─ rt.role:1!null\n" +
-			"         │       │   └─ actress (longtext)\n" +
-			"         │       └─ TableAlias(rt)\n" +
-			"         │           └─ ProcessTable\n" +
-			"         │               └─ Table\n" +
-			"         │                   ├─ name: role_type\n" +
-			"         │                   └─ columns: [id role]\n" +
-			"         └─ Filter\n" +
-			"             ├─ AND\n" +
-			"             │   ├─ AND\n" +
-			"             │   │   ├─ Eq\n" +
-			"             │   │   │   ├─ t.title:1!null\n" +
-			"             │   │   │   └─ Shrek 2 (longtext)\n" +
-			"             │   │   └─ GreaterThanOrEqual\n" +
-			"             │   │       ├─ t.production_year:2\n" +
-			"             │   │       └─ 2000 (smallint)\n" +
-			"             │   └─ LessThanOrEqual\n" +
-			"             │       ├─ t.production_year:2\n" +
-			"             │       └─ 2010 (smallint)\n" +
-			"             └─ TableAlias(t)\n" +
-			"                 └─ ProcessTable\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: title\n" +
-			"                         └─ columns: [id title production_year]\n" +
+			"         │   │   │   ├─ Eq\n" +
+			"         │   │   │   │   ├─ t.title:1!null\n" +
+			"         │   │   │   │   └─ Shrek 2 (longtext)\n" +
+			"         │   │   │   └─ GreaterThanOrEqual\n" +
+			"         │   │   │       ├─ t.production_year:2\n" +
+			"         │   │   │       └─ 2000 (smallint)\n" +
+			"         │   │   └─ LessThanOrEqual\n" +
+			"         │   │       ├─ t.production_year:2\n" +
+			"         │   │       └─ 2010 (smallint)\n" +
+			"         │   └─ TableAlias(t)\n" +
+			"         │       └─ ProcessTable\n" +
+			"         │           └─ Table\n" +
+			"         │               ├─ name: title\n" +
+			"         │               └─ columns: [id title production_year]\n" +
+			"         └─ InnerJoin\n" +
+			"             ├─ Eq\n" +
+			"             │   ├─ rt.id:3!null\n" +
+			"             │   └─ ci.role_id:29!null\n" +
+			"             ├─ Filter\n" +
+			"             │   ├─ Eq\n" +
+			"             │   │   ├─ rt.role:1!null\n" +
+			"             │   │   └─ actress (longtext)\n" +
+			"             │   └─ TableAlias(rt)\n" +
+			"             │       └─ ProcessTable\n" +
+			"             │           └─ Table\n" +
+			"             │               ├─ name: role_type\n" +
+			"             │               └─ columns: [id role]\n" +
+			"             └─ InnerJoin\n" +
+			"                 ├─ AND\n" +
+			"                 │   ├─ AND\n" +
+			"                 │   │   ├─ AND\n" +
+			"                 │   │   │   ├─ Eq\n" +
+			"                 │   │   │   │   ├─ n.id:7!null\n" +
+			"                 │   │   │   │   └─ pi.person_id:5!null\n" +
+			"                 │   │   │   └─ Eq\n" +
+			"                 │   │   │       ├─ ci.person_id:25!null\n" +
+			"                 │   │   │       └─ pi.person_id:5!null\n" +
+			"                 │   │   └─ Eq\n" +
+			"                 │   │       ├─ it3.id:19!null\n" +
+			"                 │   │       └─ pi.info_type_id:6!null\n" +
+			"                 │   └─ Eq\n" +
+			"                 │       ├─ an.person_id:30!null\n" +
+			"                 │       └─ pi.person_id:5!null\n" +
+			"                 ├─ TableAlias(pi)\n" +
+			"                 │   └─ ProcessTable\n" +
+			"                 │       └─ Table\n" +
+			"                 │           ├─ name: person_info\n" +
+			"                 │           └─ columns: [person_id info_type_id]\n" +
+			"                 └─ InnerJoin\n" +
+			"                     ├─ AND\n" +
+			"                     │   ├─ Eq\n" +
+			"                     │   │   ├─ n.id:7!null\n" +
+			"                     │   │   └─ ci.person_id:25!null\n" +
+			"                     │   └─ Eq\n" +
+			"                     │       ├─ n.id:7!null\n" +
+			"                     │       └─ an.person_id:30!null\n" +
+			"                     ├─ Filter\n" +
+			"                     │   ├─ AND\n" +
+			"                     │   │   ├─ Eq\n" +
+			"                     │   │   │   ├─ n.gender:2\n" +
+			"                     │   │   │   └─ f (longtext)\n" +
+			"                     │   │   └─ n.name LIKE '%An%'\n" +
+			"                     │   └─ TableAlias(n)\n" +
+			"                     │       └─ ProcessTable\n" +
+			"                     │           └─ Table\n" +
+			"                     │               ├─ name: name\n" +
+			"                     │               └─ columns: [id name gender]\n" +
+			"                     └─ InnerJoin\n" +
+			"                         ├─ AND\n" +
+			"                         │   ├─ AND\n" +
+			"                         │   │   ├─ AND\n" +
+			"                         │   │   │   ├─ AND\n" +
+			"                         │   │   │   │   ├─ Eq\n" +
+			"                         │   │   │   │   │   ├─ mc.movie_id:15!null\n" +
+			"                         │   │   │   │   │   └─ mk.movie_id:10!null\n" +
+			"                         │   │   │   │   └─ Eq\n" +
+			"                         │   │   │   │       ├─ mi.movie_id:12!null\n" +
+			"                         │   │   │   │       └─ mk.movie_id:10!null\n" +
+			"                         │   │   │   └─ Eq\n" +
+			"                         │   │   │       ├─ ci.movie_id:26!null\n" +
+			"                         │   │   │       └─ mk.movie_id:10!null\n" +
+			"                         │   │   └─ Eq\n" +
+			"                         │   │       ├─ mk.movie_id:10!null\n" +
+			"                         │   │       └─ cc.movie_id:33\n" +
+			"                         │   └─ Eq\n" +
+			"                         │       ├─ k.id:17!null\n" +
+			"                         │       └─ mk.keyword_id:11!null\n" +
+			"                         ├─ TableAlias(mk)\n" +
+			"                         │   └─ ProcessTable\n" +
+			"                         │       └─ Table\n" +
+			"                         │           ├─ name: movie_keyword\n" +
+			"                         │           └─ columns: [movie_id keyword_id]\n" +
+			"                         └─ InnerJoin\n" +
+			"                             ├─ AND\n" +
+			"                             │   ├─ AND\n" +
+			"                             │   │   ├─ AND\n" +
+			"                             │   │   │   ├─ Eq\n" +
+			"                             │   │   │   │   ├─ mc.movie_id:15!null\n" +
+			"                             │   │   │   │   └─ mi.movie_id:12!null\n" +
+			"                             │   │   │   └─ Eq\n" +
+			"                             │   │   │       ├─ mi.movie_id:12!null\n" +
+			"                             │   │   │       └─ ci.movie_id:26!null\n" +
+			"                             │   │   └─ Eq\n" +
+			"                             │   │       ├─ mi.movie_id:12!null\n" +
+			"                             │   │       └─ cc.movie_id:33\n" +
+			"                             │   └─ Eq\n" +
+			"                             │       ├─ it.id:21!null\n" +
+			"                             │       └─ mi.info_type_id:13!null\n" +
+			"                             ├─ Filter\n" +
+			"                             │   ├─ AND\n" +
+			"                             │   │   ├─ NOT\n" +
+			"                             │   │   │   └─ mi.info:2!null IS NULL\n" +
+			"                             │   │   └─ Or\n" +
+			"                             │   │       ├─ mi.info LIKE 'Japan:%200%'\n" +
+			"                             │   │       └─ mi.info LIKE 'USA:%200%'\n" +
+			"                             │   └─ TableAlias(mi)\n" +
+			"                             │       └─ ProcessTable\n" +
+			"                             │           └─ Table\n" +
+			"                             │               ├─ name: movie_info\n" +
+			"                             │               └─ columns: [movie_id info_type_id info]\n" +
+			"                             └─ InnerJoin\n" +
+			"                                 ├─ AND\n" +
+			"                                 │   ├─ AND\n" +
+			"                                 │   │   ├─ Eq\n" +
+			"                                 │   │   │   ├─ mc.movie_id:15!null\n" +
+			"                                 │   │   │   └─ ci.movie_id:26!null\n" +
+			"                                 │   │   └─ Eq\n" +
+			"                                 │   │       ├─ mc.movie_id:15!null\n" +
+			"                                 │   │       └─ cc.movie_id:33\n" +
+			"                                 │   └─ Eq\n" +
+			"                                 │       ├─ cn.id:23!null\n" +
+			"                                 │       └─ mc.company_id:16!null\n" +
+			"                                 ├─ TableAlias(mc)\n" +
+			"                                 │   └─ ProcessTable\n" +
+			"                                 │       └─ Table\n" +
+			"                                 │           ├─ name: movie_companies\n" +
+			"                                 │           └─ columns: [movie_id company_id]\n" +
+			"                                 └─ CrossJoin\n" +
+			"                                     ├─ Filter\n" +
+			"                                     │   ├─ Eq\n" +
+			"                                     │   │   ├─ k.keyword:1!null\n" +
+			"                                     │   │   └─ computer-animation (longtext)\n" +
+			"                                     │   └─ TableAlias(k)\n" +
+			"                                     │       └─ ProcessTable\n" +
+			"                                     │           └─ Table\n" +
+			"                                     │               ├─ name: keyword\n" +
+			"                                     │               └─ columns: [id keyword]\n" +
+			"                                     └─ CrossJoin\n" +
+			"                                         ├─ Filter\n" +
+			"                                         │   ├─ Eq\n" +
+			"                                         │   │   ├─ it3.info:1!null\n" +
+			"                                         │   │   └─ trivia (longtext)\n" +
+			"                                         │   └─ TableAlias(it3)\n" +
+			"                                         │       └─ ProcessTable\n" +
+			"                                         │           └─ Table\n" +
+			"                                         │               ├─ name: info_type\n" +
+			"                                         │               └─ columns: [id info]\n" +
+			"                                         └─ CrossJoin\n" +
+			"                                             ├─ Filter\n" +
+			"                                             │   ├─ Eq\n" +
+			"                                             │   │   ├─ it.info:1!null\n" +
+			"                                             │   │   └─ release dates (longtext)\n" +
+			"                                             │   └─ TableAlias(it)\n" +
+			"                                             │       └─ Table\n" +
+			"                                             │           ├─ name: info_type\n" +
+			"                                             │           ├─ columns: [id info]\n" +
+			"                                             │           ├─ colSet: (38,39)\n" +
+			"                                             │           └─ tableId: 8\n" +
+			"                                             └─ CrossJoin\n" +
+			"                                                 ├─ Filter\n" +
+			"                                                 │   ├─ Eq\n" +
+			"                                                 │   │   ├─ cn.country_code:1\n" +
+			"                                                 │   │   └─ [us] (longtext)\n" +
+			"                                                 │   └─ TableAlias(cn)\n" +
+			"                                                 │       └─ ProcessTable\n" +
+			"                                                 │           └─ Table\n" +
+			"                                                 │               ├─ name: company_name\n" +
+			"                                                 │               └─ columns: [id country_code]\n" +
+			"                                                 └─ InnerJoin\n" +
+			"                                                     ├─ Eq\n" +
+			"                                                     │   ├─ chn.id:38!null\n" +
+			"                                                     │   └─ ci.person_role_id:27\n" +
+			"                                                     ├─ InnerJoin\n" +
+			"                                                     │   ├─ Eq\n" +
+			"                                                     │   │   ├─ cct2.id:36!null\n" +
+			"                                                     │   │   └─ cc.status_id:35!null\n" +
+			"                                                     │   ├─ InnerJoin\n" +
+			"                                                     │   │   ├─ Eq\n" +
+			"                                                     │   │   │   ├─ ci.movie_id:26!null\n" +
+			"                                                     │   │   │   └─ cc.movie_id:33\n" +
+			"                                                     │   │   ├─ LookupJoin\n" +
+			"                                                     │   │   │   ├─ Filter\n" +
+			"                                                     │   │   │   │   ├─ HashIn\n" +
+			"                                                     │   │   │   │   │   ├─ ci.note:3\n" +
+			"                                                     │   │   │   │   │   └─ TUPLE((voice) (longtext), (voice) (uncredited) (longtext), (voice: English version) (longtext))\n" +
+			"                                                     │   │   │   │   └─ TableAlias(ci)\n" +
+			"                                                     │   │   │   │       └─ ProcessTable\n" +
+			"                                                     │   │   │   │           └─ Table\n" +
+			"                                                     │   │   │   │               ├─ name: cast_info\n" +
+			"                                                     │   │   │   │               └─ columns: [person_id movie_id person_role_id note role_id]\n" +
+			"                                                     │   │   │   └─ TableAlias(an)\n" +
+			"                                                     │   │   │       └─ IndexedTableAccess(aka_name)\n" +
+			"                                                     │   │   │           ├─ index: [aka_name.person_id]\n" +
+			"                                                     │   │   │           ├─ keys: [ci.person_id:25!null]\n" +
+			"                                                     │   │   │           ├─ colSet: (1-8)\n" +
+			"                                                     │   │   │           ├─ tableId: 1\n" +
+			"                                                     │   │   │           └─ Table\n" +
+			"                                                     │   │   │               ├─ name: aka_name\n" +
+			"                                                     │   │   │               └─ columns: [person_id]\n" +
+			"                                                     │   │   └─ InnerJoin\n" +
+			"                                                     │   │       ├─ Eq\n" +
+			"                                                     │   │       │   ├─ cct1.id:31!null\n" +
+			"                                                     │   │       │   └─ cc.subject_id:34!null\n" +
+			"                                                     │   │       ├─ Filter\n" +
+			"                                                     │   │       │   ├─ Eq\n" +
+			"                                                     │   │       │   │   ├─ cct1.kind:1!null\n" +
+			"                                                     │   │       │   │   └─ cast (longtext)\n" +
+			"                                                     │   │       │   └─ TableAlias(cct1)\n" +
+			"                                                     │   │       │       └─ ProcessTable\n" +
+			"                                                     │   │       │           └─ Table\n" +
+			"                                                     │   │       │               ├─ name: comp_cast_type\n" +
+			"                                                     │   │       │               └─ columns: [id kind]\n" +
+			"                                                     │   │       └─ TableAlias(cc)\n" +
+			"                                                     │   │           └─ ProcessTable\n" +
+			"                                                     │   │               └─ Table\n" +
+			"                                                     │   │                   ├─ name: complete_cast\n" +
+			"                                                     │   │                   └─ columns: [movie_id subject_id status_id]\n" +
+			"                                                     │   └─ Filter\n" +
+			"                                                     │       ├─ Eq\n" +
+			"                                                     │       │   ├─ cct2.kind:1!null\n" +
+			"                                                     │       │   └─ complete+verified (longtext)\n" +
+			"                                                     │       └─ TableAlias(cct2)\n" +
+			"                                                     │           └─ Table\n" +
+			"                                                     │               ├─ name: comp_cast_type\n" +
+			"                                                     │               ├─ columns: [id kind]\n" +
+			"                                                     │               ├─ colSet: (15,16)\n" +
+			"                                                     │               └─ tableId: 4\n" +
+			"                                                     └─ Filter\n" +
+			"                                                         ├─ Eq\n" +
+			"                                                         │   ├─ chn.name:1!null\n" +
+			"                                                         │   └─ Queen (longtext)\n" +
+			"                                                         └─ TableAlias(chn)\n" +
+			"                                                             └─ ProcessTable\n" +
+			"                                                                 └─ Table\n" +
+			"                                                                     ├─ name: char_name\n" +
+			"                                                                     └─ columns: [id name]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(chn.name) as voiced_char, min(n.name) as voicing_actress, min(t.title) as voiced_animation]\n" +
@@ -21600,122 +21603,124 @@ WHERE cct1.kind ='cast'
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((t.id = mi.movie_id) AND (t.id = mc.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = cc.movie_id))\n" +
-			"         ├─ InnerJoin\n" +
-			"         │   ├─ (rt.id = ci.role_id)\n" +
-			"         │   ├─ InnerJoin\n" +
-			"         │   │   ├─ (((n.id = pi.person_id) AND (ci.person_id = pi.person_id)) AND (it3.id = pi.info_type_id))\n" +
-			"         │   │   ├─ InnerJoin\n" +
-			"         │   │   │   ├─ ((n.id = ci.person_id) AND (n.id = an.person_id))\n" +
-			"         │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   ├─ (((((mc.movie_id = mk.movie_id) AND (mi.movie_id = mk.movie_id)) AND (ci.movie_id = mk.movie_id)) AND (mk.movie_id = cc.movie_id)) AND (k.id = mk.keyword_id))\n" +
-			"         │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   ├─ ((((mc.movie_id = mi.movie_id) AND (mi.movie_id = ci.movie_id)) AND (mi.movie_id = cc.movie_id)) AND (it.id = mi.info_type_id))\n" +
-			"         │   │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   │   ├─ (((mc.movie_id = ci.movie_id) AND (mc.movie_id = cc.movie_id)) AND (cn.id = mc.company_id))\n" +
-			"         │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   ├─ (((ci.movie_id = cc.movie_id) AND (ci.person_id = an.person_id)) AND (chn.id = ci.person_role_id))\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ (cct2.id = cc.status_id)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ (cct1.id = cc.subject_id)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ TableAlias(an)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       ├─ name: aka_name\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ columns: [person_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ TableAlias(cc)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ name: complete_cast\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           └─ columns: [movie_id subject_id status_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │       ├─ (cct1.kind = 'cast')\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(cct1)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ name: comp_cast_type\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │               └─ columns: [id kind]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │       ├─ (cct2.kind = 'complete+verified')\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(cct2)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ name: comp_cast_type\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │               └─ columns: [id kind]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │       ├─ (chn.name = 'Queen')\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(chn)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │               ├─ name: char_name\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │               └─ columns: [id name]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │       ├─ (ci.note HASH IN ('(voice)', '(voice) (uncredited)', '(voice: English version)'))\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(ci)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │               ├─ name: cast_info\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │               └─ columns: [person_id movie_id person_role_id note role_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │       ├─ (cn.country_code = '[us]')\n" +
-			"         │   │   │   │   │   │   │   │   │   │       └─ TableAlias(cn)\n" +
-			"         │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │               ├─ name: company_name\n" +
-			"         │   │   │   │   │   │   │   │   │   │               └─ columns: [id country_code]\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │       ├─ (it.info = 'release dates')\n" +
-			"         │   │   │   │   │   │   │   │   │       └─ TableAlias(it)\n" +
-			"         │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │   │   │               └─ columns: [id info]\n" +
-			"         │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │       ├─ (it3.info = 'trivia')\n" +
-			"         │   │   │   │   │   │   │   │       └─ TableAlias(it3)\n" +
-			"         │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │   │               └─ columns: [id info]\n" +
-			"         │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │       ├─ (k.keyword = 'computer-animation')\n" +
-			"         │   │   │   │   │   │   │       └─ TableAlias(k)\n" +
-			"         │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │               ├─ name: keyword\n" +
-			"         │   │   │   │   │   │   │               └─ columns: [id keyword]\n" +
-			"         │   │   │   │   │   │   └─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │       └─ Table\n" +
-			"         │   │   │   │   │   │           ├─ name: movie_companies\n" +
-			"         │   │   │   │   │   │           └─ columns: [movie_id company_id]\n" +
-			"         │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │       ├─ ((NOT(mi.info IS NULL)) AND (mi.info LIKE 'Japan:%200%' OR mi.info LIKE 'USA:%200%'))\n" +
-			"         │   │   │   │   │       └─ TableAlias(mi)\n" +
-			"         │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │               ├─ name: movie_info\n" +
-			"         │   │   │   │   │               └─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │   │       └─ Table\n" +
-			"         │   │   │   │           ├─ name: movie_keyword\n" +
-			"         │   │   │   │           └─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │   └─ Filter\n" +
-			"         │   │   │       ├─ ((n.gender = 'f') AND n.name LIKE '%An%')\n" +
-			"         │   │   │       └─ TableAlias(n)\n" +
-			"         │   │   │           └─ Table\n" +
-			"         │   │   │               ├─ name: name\n" +
-			"         │   │   │               └─ columns: [id name gender]\n" +
-			"         │   │   └─ TableAlias(pi)\n" +
-			"         │   │       └─ Table\n" +
-			"         │   │           ├─ name: person_info\n" +
-			"         │   │           └─ columns: [person_id info_type_id]\n" +
-			"         │   └─ Filter\n" +
-			"         │       ├─ (rt.role = 'actress')\n" +
-			"         │       └─ TableAlias(rt)\n" +
-			"         │           └─ Table\n" +
-			"         │               ├─ name: role_type\n" +
-			"         │               └─ columns: [id role]\n" +
-			"         └─ Filter\n" +
-			"             ├─ (((t.title = 'Shrek 2') AND (t.production_year >= 2000)) AND (t.production_year <= 2010))\n" +
-			"             └─ TableAlias(t)\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: title\n" +
-			"                     └─ columns: [id title production_year]\n" +
+			"         ├─ Filter\n" +
+			"         │   ├─ (((t.title = 'Shrek 2') AND (t.production_year >= 2000)) AND (t.production_year <= 2010))\n" +
+			"         │   └─ TableAlias(t)\n" +
+			"         │       └─ Table\n" +
+			"         │           ├─ name: title\n" +
+			"         │           └─ columns: [id title production_year]\n" +
+			"         └─ InnerJoin\n" +
+			"             ├─ (rt.id = ci.role_id)\n" +
+			"             ├─ Filter\n" +
+			"             │   ├─ (rt.role = 'actress')\n" +
+			"             │   └─ TableAlias(rt)\n" +
+			"             │       └─ Table\n" +
+			"             │           ├─ name: role_type\n" +
+			"             │           └─ columns: [id role]\n" +
+			"             └─ InnerJoin\n" +
+			"                 ├─ ((((n.id = pi.person_id) AND (ci.person_id = pi.person_id)) AND (it3.id = pi.info_type_id)) AND (an.person_id = pi.person_id))\n" +
+			"                 ├─ TableAlias(pi)\n" +
+			"                 │   └─ Table\n" +
+			"                 │       ├─ name: person_info\n" +
+			"                 │       └─ columns: [person_id info_type_id]\n" +
+			"                 └─ InnerJoin\n" +
+			"                     ├─ ((n.id = ci.person_id) AND (n.id = an.person_id))\n" +
+			"                     ├─ Filter\n" +
+			"                     │   ├─ ((n.gender = 'f') AND n.name LIKE '%An%')\n" +
+			"                     │   └─ TableAlias(n)\n" +
+			"                     │       └─ Table\n" +
+			"                     │           ├─ name: name\n" +
+			"                     │           └─ columns: [id name gender]\n" +
+			"                     └─ InnerJoin\n" +
+			"                         ├─ (((((mc.movie_id = mk.movie_id) AND (mi.movie_id = mk.movie_id)) AND (ci.movie_id = mk.movie_id)) AND (mk.movie_id = cc.movie_id)) AND (k.id = mk.keyword_id))\n" +
+			"                         ├─ TableAlias(mk)\n" +
+			"                         │   └─ Table\n" +
+			"                         │       ├─ name: movie_keyword\n" +
+			"                         │       └─ columns: [movie_id keyword_id]\n" +
+			"                         └─ InnerJoin\n" +
+			"                             ├─ ((((mc.movie_id = mi.movie_id) AND (mi.movie_id = ci.movie_id)) AND (mi.movie_id = cc.movie_id)) AND (it.id = mi.info_type_id))\n" +
+			"                             ├─ Filter\n" +
+			"                             │   ├─ ((NOT(mi.info IS NULL)) AND (mi.info LIKE 'Japan:%200%' OR mi.info LIKE 'USA:%200%'))\n" +
+			"                             │   └─ TableAlias(mi)\n" +
+			"                             │       └─ Table\n" +
+			"                             │           ├─ name: movie_info\n" +
+			"                             │           └─ columns: [movie_id info_type_id info]\n" +
+			"                             └─ InnerJoin\n" +
+			"                                 ├─ (((mc.movie_id = ci.movie_id) AND (mc.movie_id = cc.movie_id)) AND (cn.id = mc.company_id))\n" +
+			"                                 ├─ TableAlias(mc)\n" +
+			"                                 │   └─ Table\n" +
+			"                                 │       ├─ name: movie_companies\n" +
+			"                                 │       └─ columns: [movie_id company_id]\n" +
+			"                                 └─ CrossJoin\n" +
+			"                                     ├─ Filter\n" +
+			"                                     │   ├─ (k.keyword = 'computer-animation')\n" +
+			"                                     │   └─ TableAlias(k)\n" +
+			"                                     │       └─ Table\n" +
+			"                                     │           ├─ name: keyword\n" +
+			"                                     │           └─ columns: [id keyword]\n" +
+			"                                     └─ CrossJoin\n" +
+			"                                         ├─ Filter\n" +
+			"                                         │   ├─ (it3.info = 'trivia')\n" +
+			"                                         │   └─ TableAlias(it3)\n" +
+			"                                         │       └─ Table\n" +
+			"                                         │           ├─ name: info_type\n" +
+			"                                         │           └─ columns: [id info]\n" +
+			"                                         └─ CrossJoin\n" +
+			"                                             ├─ Filter\n" +
+			"                                             │   ├─ (it.info = 'release dates')\n" +
+			"                                             │   └─ TableAlias(it)\n" +
+			"                                             │       └─ Table\n" +
+			"                                             │           ├─ name: info_type\n" +
+			"                                             │           └─ columns: [id info]\n" +
+			"                                             └─ CrossJoin\n" +
+			"                                                 ├─ Filter\n" +
+			"                                                 │   ├─ (cn.country_code = '[us]')\n" +
+			"                                                 │   └─ TableAlias(cn)\n" +
+			"                                                 │       └─ Table\n" +
+			"                                                 │           ├─ name: company_name\n" +
+			"                                                 │           └─ columns: [id country_code]\n" +
+			"                                                 └─ InnerJoin\n" +
+			"                                                     ├─ (chn.id = ci.person_role_id)\n" +
+			"                                                     ├─ InnerJoin\n" +
+			"                                                     │   ├─ (cct2.id = cc.status_id)\n" +
+			"                                                     │   ├─ InnerJoin\n" +
+			"                                                     │   │   ├─ (ci.movie_id = cc.movie_id)\n" +
+			"                                                     │   │   ├─ LookupJoin\n" +
+			"                                                     │   │   │   ├─ Filter\n" +
+			"                                                     │   │   │   │   ├─ (ci.note HASH IN ('(voice)', '(voice) (uncredited)', '(voice: English version)'))\n" +
+			"                                                     │   │   │   │   └─ TableAlias(ci)\n" +
+			"                                                     │   │   │   │       └─ Table\n" +
+			"                                                     │   │   │   │           ├─ name: cast_info\n" +
+			"                                                     │   │   │   │           └─ columns: [person_id movie_id person_role_id note role_id]\n" +
+			"                                                     │   │   │   └─ TableAlias(an)\n" +
+			"                                                     │   │   │       └─ IndexedTableAccess(aka_name)\n" +
+			"                                                     │   │   │           ├─ index: [aka_name.person_id]\n" +
+			"                                                     │   │   │           ├─ columns: [person_id]\n" +
+			"                                                     │   │   │           └─ keys: ci.person_id\n" +
+			"                                                     │   │   └─ InnerJoin\n" +
+			"                                                     │   │       ├─ (cct1.id = cc.subject_id)\n" +
+			"                                                     │   │       ├─ Filter\n" +
+			"                                                     │   │       │   ├─ (cct1.kind = 'cast')\n" +
+			"                                                     │   │       │   └─ TableAlias(cct1)\n" +
+			"                                                     │   │       │       └─ Table\n" +
+			"                                                     │   │       │           ├─ name: comp_cast_type\n" +
+			"                                                     │   │       │           └─ columns: [id kind]\n" +
+			"                                                     │   │       └─ TableAlias(cc)\n" +
+			"                                                     │   │           └─ Table\n" +
+			"                                                     │   │               ├─ name: complete_cast\n" +
+			"                                                     │   │               └─ columns: [movie_id subject_id status_id]\n" +
+			"                                                     │   └─ Filter\n" +
+			"                                                     │       ├─ (cct2.kind = 'complete+verified')\n" +
+			"                                                     │       └─ TableAlias(cct2)\n" +
+			"                                                     │           └─ Table\n" +
+			"                                                     │               ├─ name: comp_cast_type\n" +
+			"                                                     │               └─ columns: [id kind]\n" +
+			"                                                     └─ Filter\n" +
+			"                                                         ├─ (chn.name = 'Queen')\n" +
+			"                                                         └─ TableAlias(chn)\n" +
+			"                                                             └─ Table\n" +
+			"                                                                 ├─ name: char_name\n" +
+			"                                                                 └─ columns: [id name]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(chn.name) as voiced_char, min(n.name) as voicing_actress, min(t.title) as voiced_animation]\n" +
@@ -21724,122 +21729,124 @@ WHERE cct1.kind ='cast'
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((t.id = mi.movie_id) AND (t.id = mc.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = cc.movie_id))\n" +
-			"         ├─ InnerJoin\n" +
-			"         │   ├─ (rt.id = ci.role_id)\n" +
-			"         │   ├─ InnerJoin\n" +
-			"         │   │   ├─ (((n.id = pi.person_id) AND (ci.person_id = pi.person_id)) AND (it3.id = pi.info_type_id))\n" +
-			"         │   │   ├─ InnerJoin\n" +
-			"         │   │   │   ├─ ((n.id = ci.person_id) AND (n.id = an.person_id))\n" +
-			"         │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   ├─ (((((mc.movie_id = mk.movie_id) AND (mi.movie_id = mk.movie_id)) AND (ci.movie_id = mk.movie_id)) AND (mk.movie_id = cc.movie_id)) AND (k.id = mk.keyword_id))\n" +
-			"         │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   ├─ ((((mc.movie_id = mi.movie_id) AND (mi.movie_id = ci.movie_id)) AND (mi.movie_id = cc.movie_id)) AND (it.id = mi.info_type_id))\n" +
-			"         │   │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   │   ├─ (((mc.movie_id = ci.movie_id) AND (mc.movie_id = cc.movie_id)) AND (cn.id = mc.company_id))\n" +
-			"         │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   ├─ (((ci.movie_id = cc.movie_id) AND (ci.person_id = an.person_id)) AND (chn.id = ci.person_role_id))\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ (cct2.id = cc.status_id)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ (cct1.id = cc.subject_id)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ TableAlias(an)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       ├─ name: aka_name\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ columns: [person_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ TableAlias(cc)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ name: complete_cast\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           └─ columns: [movie_id subject_id status_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │       ├─ (cct1.kind = 'cast')\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(cct1)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ name: comp_cast_type\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │               └─ columns: [id kind]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │       ├─ (cct2.kind = 'complete+verified')\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(cct2)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ name: comp_cast_type\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │               └─ columns: [id kind]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │       ├─ (chn.name = 'Queen')\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(chn)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │               ├─ name: char_name\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │               └─ columns: [id name]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │       ├─ (ci.note HASH IN ('(voice)', '(voice) (uncredited)', '(voice: English version)'))\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(ci)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │               ├─ name: cast_info\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │               └─ columns: [person_id movie_id person_role_id note role_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │       ├─ (cn.country_code = '[us]')\n" +
-			"         │   │   │   │   │   │   │   │   │   │       └─ TableAlias(cn)\n" +
-			"         │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │               ├─ name: company_name\n" +
-			"         │   │   │   │   │   │   │   │   │   │               └─ columns: [id country_code]\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │       ├─ (it.info = 'release dates')\n" +
-			"         │   │   │   │   │   │   │   │   │       └─ TableAlias(it)\n" +
-			"         │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │   │   │               └─ columns: [id info]\n" +
-			"         │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │       ├─ (it3.info = 'trivia')\n" +
-			"         │   │   │   │   │   │   │   │       └─ TableAlias(it3)\n" +
-			"         │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │   │               └─ columns: [id info]\n" +
-			"         │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │       ├─ (k.keyword = 'computer-animation')\n" +
-			"         │   │   │   │   │   │   │       └─ TableAlias(k)\n" +
-			"         │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │               ├─ name: keyword\n" +
-			"         │   │   │   │   │   │   │               └─ columns: [id keyword]\n" +
-			"         │   │   │   │   │   │   └─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │       └─ Table\n" +
-			"         │   │   │   │   │   │           ├─ name: movie_companies\n" +
-			"         │   │   │   │   │   │           └─ columns: [movie_id company_id]\n" +
-			"         │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │       ├─ ((NOT(mi.info IS NULL)) AND (mi.info LIKE 'Japan:%200%' OR mi.info LIKE 'USA:%200%'))\n" +
-			"         │   │   │   │   │       └─ TableAlias(mi)\n" +
-			"         │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │               ├─ name: movie_info\n" +
-			"         │   │   │   │   │               └─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │   │       └─ Table\n" +
-			"         │   │   │   │           ├─ name: movie_keyword\n" +
-			"         │   │   │   │           └─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │   └─ Filter\n" +
-			"         │   │   │       ├─ ((n.gender = 'f') AND n.name LIKE '%An%')\n" +
-			"         │   │   │       └─ TableAlias(n)\n" +
-			"         │   │   │           └─ Table\n" +
-			"         │   │   │               ├─ name: name\n" +
-			"         │   │   │               └─ columns: [id name gender]\n" +
-			"         │   │   └─ TableAlias(pi)\n" +
-			"         │   │       └─ Table\n" +
-			"         │   │           ├─ name: person_info\n" +
-			"         │   │           └─ columns: [person_id info_type_id]\n" +
-			"         │   └─ Filter\n" +
-			"         │       ├─ (rt.role = 'actress')\n" +
-			"         │       └─ TableAlias(rt)\n" +
-			"         │           └─ Table\n" +
-			"         │               ├─ name: role_type\n" +
-			"         │               └─ columns: [id role]\n" +
-			"         └─ Filter\n" +
-			"             ├─ (((t.title = 'Shrek 2') AND (t.production_year >= 2000)) AND (t.production_year <= 2010))\n" +
-			"             └─ TableAlias(t)\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: title\n" +
-			"                     └─ columns: [id title production_year]\n" +
+			"         ├─ Filter\n" +
+			"         │   ├─ (((t.title = 'Shrek 2') AND (t.production_year >= 2000)) AND (t.production_year <= 2010))\n" +
+			"         │   └─ TableAlias(t)\n" +
+			"         │       └─ Table\n" +
+			"         │           ├─ name: title\n" +
+			"         │           └─ columns: [id title production_year]\n" +
+			"         └─ InnerJoin\n" +
+			"             ├─ (rt.id = ci.role_id)\n" +
+			"             ├─ Filter\n" +
+			"             │   ├─ (rt.role = 'actress')\n" +
+			"             │   └─ TableAlias(rt)\n" +
+			"             │       └─ Table\n" +
+			"             │           ├─ name: role_type\n" +
+			"             │           └─ columns: [id role]\n" +
+			"             └─ InnerJoin\n" +
+			"                 ├─ ((((n.id = pi.person_id) AND (ci.person_id = pi.person_id)) AND (it3.id = pi.info_type_id)) AND (an.person_id = pi.person_id))\n" +
+			"                 ├─ TableAlias(pi)\n" +
+			"                 │   └─ Table\n" +
+			"                 │       ├─ name: person_info\n" +
+			"                 │       └─ columns: [person_id info_type_id]\n" +
+			"                 └─ InnerJoin\n" +
+			"                     ├─ ((n.id = ci.person_id) AND (n.id = an.person_id))\n" +
+			"                     ├─ Filter\n" +
+			"                     │   ├─ ((n.gender = 'f') AND n.name LIKE '%An%')\n" +
+			"                     │   └─ TableAlias(n)\n" +
+			"                     │       └─ Table\n" +
+			"                     │           ├─ name: name\n" +
+			"                     │           └─ columns: [id name gender]\n" +
+			"                     └─ InnerJoin\n" +
+			"                         ├─ (((((mc.movie_id = mk.movie_id) AND (mi.movie_id = mk.movie_id)) AND (ci.movie_id = mk.movie_id)) AND (mk.movie_id = cc.movie_id)) AND (k.id = mk.keyword_id))\n" +
+			"                         ├─ TableAlias(mk)\n" +
+			"                         │   └─ Table\n" +
+			"                         │       ├─ name: movie_keyword\n" +
+			"                         │       └─ columns: [movie_id keyword_id]\n" +
+			"                         └─ InnerJoin\n" +
+			"                             ├─ ((((mc.movie_id = mi.movie_id) AND (mi.movie_id = ci.movie_id)) AND (mi.movie_id = cc.movie_id)) AND (it.id = mi.info_type_id))\n" +
+			"                             ├─ Filter\n" +
+			"                             │   ├─ ((NOT(mi.info IS NULL)) AND (mi.info LIKE 'Japan:%200%' OR mi.info LIKE 'USA:%200%'))\n" +
+			"                             │   └─ TableAlias(mi)\n" +
+			"                             │       └─ Table\n" +
+			"                             │           ├─ name: movie_info\n" +
+			"                             │           └─ columns: [movie_id info_type_id info]\n" +
+			"                             └─ InnerJoin\n" +
+			"                                 ├─ (((mc.movie_id = ci.movie_id) AND (mc.movie_id = cc.movie_id)) AND (cn.id = mc.company_id))\n" +
+			"                                 ├─ TableAlias(mc)\n" +
+			"                                 │   └─ Table\n" +
+			"                                 │       ├─ name: movie_companies\n" +
+			"                                 │       └─ columns: [movie_id company_id]\n" +
+			"                                 └─ CrossJoin\n" +
+			"                                     ├─ Filter\n" +
+			"                                     │   ├─ (k.keyword = 'computer-animation')\n" +
+			"                                     │   └─ TableAlias(k)\n" +
+			"                                     │       └─ Table\n" +
+			"                                     │           ├─ name: keyword\n" +
+			"                                     │           └─ columns: [id keyword]\n" +
+			"                                     └─ CrossJoin\n" +
+			"                                         ├─ Filter\n" +
+			"                                         │   ├─ (it3.info = 'trivia')\n" +
+			"                                         │   └─ TableAlias(it3)\n" +
+			"                                         │       └─ Table\n" +
+			"                                         │           ├─ name: info_type\n" +
+			"                                         │           └─ columns: [id info]\n" +
+			"                                         └─ CrossJoin\n" +
+			"                                             ├─ Filter\n" +
+			"                                             │   ├─ (it.info = 'release dates')\n" +
+			"                                             │   └─ TableAlias(it)\n" +
+			"                                             │       └─ Table\n" +
+			"                                             │           ├─ name: info_type\n" +
+			"                                             │           └─ columns: [id info]\n" +
+			"                                             └─ CrossJoin\n" +
+			"                                                 ├─ Filter\n" +
+			"                                                 │   ├─ (cn.country_code = '[us]')\n" +
+			"                                                 │   └─ TableAlias(cn)\n" +
+			"                                                 │       └─ Table\n" +
+			"                                                 │           ├─ name: company_name\n" +
+			"                                                 │           └─ columns: [id country_code]\n" +
+			"                                                 └─ InnerJoin\n" +
+			"                                                     ├─ (chn.id = ci.person_role_id)\n" +
+			"                                                     ├─ InnerJoin\n" +
+			"                                                     │   ├─ (cct2.id = cc.status_id)\n" +
+			"                                                     │   ├─ InnerJoin\n" +
+			"                                                     │   │   ├─ (ci.movie_id = cc.movie_id)\n" +
+			"                                                     │   │   ├─ LookupJoin\n" +
+			"                                                     │   │   │   ├─ Filter\n" +
+			"                                                     │   │   │   │   ├─ (ci.note HASH IN ('(voice)', '(voice) (uncredited)', '(voice: English version)'))\n" +
+			"                                                     │   │   │   │   └─ TableAlias(ci)\n" +
+			"                                                     │   │   │   │       └─ Table\n" +
+			"                                                     │   │   │   │           ├─ name: cast_info\n" +
+			"                                                     │   │   │   │           └─ columns: [person_id movie_id person_role_id note role_id]\n" +
+			"                                                     │   │   │   └─ TableAlias(an)\n" +
+			"                                                     │   │   │       └─ IndexedTableAccess(aka_name)\n" +
+			"                                                     │   │   │           ├─ index: [aka_name.person_id]\n" +
+			"                                                     │   │   │           ├─ columns: [person_id]\n" +
+			"                                                     │   │   │           └─ keys: ci.person_id\n" +
+			"                                                     │   │   └─ InnerJoin\n" +
+			"                                                     │   │       ├─ (cct1.id = cc.subject_id)\n" +
+			"                                                     │   │       ├─ Filter\n" +
+			"                                                     │   │       │   ├─ (cct1.kind = 'cast')\n" +
+			"                                                     │   │       │   └─ TableAlias(cct1)\n" +
+			"                                                     │   │       │       └─ Table\n" +
+			"                                                     │   │       │           ├─ name: comp_cast_type\n" +
+			"                                                     │   │       │           └─ columns: [id kind]\n" +
+			"                                                     │   │       └─ TableAlias(cc)\n" +
+			"                                                     │   │           └─ Table\n" +
+			"                                                     │   │               ├─ name: complete_cast\n" +
+			"                                                     │   │               └─ columns: [movie_id subject_id status_id]\n" +
+			"                                                     │   └─ Filter\n" +
+			"                                                     │       ├─ (cct2.kind = 'complete+verified')\n" +
+			"                                                     │       └─ TableAlias(cct2)\n" +
+			"                                                     │           └─ Table\n" +
+			"                                                     │               ├─ name: comp_cast_type\n" +
+			"                                                     │               └─ columns: [id kind]\n" +
+			"                                                     └─ Filter\n" +
+			"                                                         ├─ (chn.name = 'Queen')\n" +
+			"                                                         └─ TableAlias(chn)\n" +
+			"                                                             └─ Table\n" +
+			"                                                                 ├─ name: char_name\n" +
+			"                                                                 └─ columns: [id name]\n" +
 			"",
 	},
 	{
@@ -21913,7 +21920,7 @@ WHERE cct1.kind ='cast'
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [min(chn.name):0!null->voiced_char:0, min(n.name):1!null->voicing_actress:0, min(t.title):2!null->voiced_animation:0]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ select: MIN(chn.name:9!null), MIN(n.name:31!null), MIN(t.title:38!null)\n" +
+			"     ├─ select: MIN(chn.name:39!null), MIN(n.name:8!null), MIN(t.title:1!null)\n" +
 			"     ├─ group: \n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ AND\n" +
@@ -21921,261 +21928,264 @@ WHERE cct1.kind ='cast'
 			"         │   │   ├─ AND\n" +
 			"         │   │   │   ├─ AND\n" +
 			"         │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   ├─ t.id:37!null\n" +
-			"         │   │   │   │   │   └─ mi.movie_id:25!null\n" +
+			"         │   │   │   │   │   ├─ t.id:0!null\n" +
+			"         │   │   │   │   │   └─ mi.movie_id:12!null\n" +
 			"         │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │       ├─ t.id:37!null\n" +
-			"         │   │   │   │       └─ mc.movie_id:23!null\n" +
+			"         │   │   │   │       ├─ t.id:0!null\n" +
+			"         │   │   │   │       └─ mc.movie_id:15!null\n" +
 			"         │   │   │   └─ Eq\n" +
-			"         │   │   │       ├─ t.id:37!null\n" +
-			"         │   │   │       └─ ci.movie_id:11!null\n" +
+			"         │   │   │       ├─ t.id:0!null\n" +
+			"         │   │   │       └─ ci.movie_id:26!null\n" +
 			"         │   │   └─ Eq\n" +
-			"         │   │       ├─ t.id:37!null\n" +
-			"         │   │       └─ mk.movie_id:28!null\n" +
+			"         │   │       ├─ t.id:0!null\n" +
+			"         │   │       └─ mk.movie_id:10!null\n" +
 			"         │   └─ Eq\n" +
-			"         │       ├─ t.id:37!null\n" +
-			"         │       └─ cc.movie_id:1\n" +
-			"         ├─ InnerJoin\n" +
-			"         │   ├─ Eq\n" +
-			"         │   │   ├─ rt.id:35!null\n" +
-			"         │   │   └─ ci.role_id:14!null\n" +
-			"         │   ├─ InnerJoin\n" +
+			"         │       ├─ t.id:0!null\n" +
+			"         │       └─ cc.movie_id:33\n" +
+			"         ├─ Filter\n" +
+			"         │   ├─ AND\n" +
 			"         │   │   ├─ AND\n" +
-			"         │   │   │   ├─ AND\n" +
-			"         │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   ├─ n.id:30!null\n" +
-			"         │   │   │   │   │   └─ pi.person_id:33!null\n" +
-			"         │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │       ├─ ci.person_id:10!null\n" +
-			"         │   │   │   │       └─ pi.person_id:33!null\n" +
-			"         │   │   │   └─ Eq\n" +
-			"         │   │   │       ├─ it3.id:19!null\n" +
-			"         │   │   │       └─ pi.info_type_id:34!null\n" +
-			"         │   │   ├─ InnerJoin\n" +
-			"         │   │   │   ├─ AND\n" +
-			"         │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   ├─ n.id:30!null\n" +
-			"         │   │   │   │   │   └─ ci.person_id:10!null\n" +
-			"         │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │       ├─ n.id:30!null\n" +
-			"         │   │   │   │       └─ an.person_id:0!null\n" +
-			"         │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   ├─ AND\n" +
-			"         │   │   │   │   │   ├─ AND\n" +
-			"         │   │   │   │   │   │   ├─ AND\n" +
-			"         │   │   │   │   │   │   │   ├─ AND\n" +
-			"         │   │   │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ mc.movie_id:23!null\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ mk.movie_id:28!null\n" +
-			"         │   │   │   │   │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │   │   │   │   │       ├─ mi.movie_id:25!null\n" +
-			"         │   │   │   │   │   │   │   │       └─ mk.movie_id:28!null\n" +
-			"         │   │   │   │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │   │   │   │       ├─ ci.movie_id:11!null\n" +
-			"         │   │   │   │   │   │   │       └─ mk.movie_id:28!null\n" +
-			"         │   │   │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │   │   │       ├─ mk.movie_id:28!null\n" +
-			"         │   │   │   │   │   │       └─ cc.movie_id:1\n" +
-			"         │   │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │   │       ├─ k.id:21!null\n" +
-			"         │   │   │   │   │       └─ mk.keyword_id:29!null\n" +
-			"         │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   ├─ AND\n" +
-			"         │   │   │   │   │   │   ├─ AND\n" +
-			"         │   │   │   │   │   │   │   ├─ AND\n" +
-			"         │   │   │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ mc.movie_id:23!null\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ mi.movie_id:25!null\n" +
-			"         │   │   │   │   │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │   │   │   │   │       ├─ mi.movie_id:25!null\n" +
-			"         │   │   │   │   │   │   │   │       └─ ci.movie_id:11!null\n" +
-			"         │   │   │   │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │   │   │   │       ├─ mi.movie_id:25!null\n" +
-			"         │   │   │   │   │   │   │       └─ cc.movie_id:1\n" +
-			"         │   │   │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │   │   │       ├─ it.id:17!null\n" +
-			"         │   │   │   │   │   │       └─ mi.info_type_id:26!null\n" +
-			"         │   │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   │   ├─ AND\n" +
-			"         │   │   │   │   │   │   │   ├─ AND\n" +
-			"         │   │   │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ mc.movie_id:23!null\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ ci.movie_id:11!null\n" +
-			"         │   │   │   │   │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │   │   │   │   │       ├─ mc.movie_id:23!null\n" +
-			"         │   │   │   │   │   │   │   │       └─ cc.movie_id:1\n" +
-			"         │   │   │   │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │   │   │   │       ├─ cn.id:15!null\n" +
-			"         │   │   │   │   │   │   │       └─ mc.company_id:24!null\n" +
-			"         │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   ├─ AND\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   ├─ AND\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ ci.movie_id:11!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ cc.movie_id:1\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │       ├─ ci.person_id:10!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │       └─ an.person_id:0!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │       ├─ chn.id:8!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │       └─ ci.person_role_id:12\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ cct2.id:6!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ cc.status_id:3!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ cct1.id:4!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ cc.subject_id:2!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ TableAlias(an)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ ProcessTable\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ name: aka_name\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           └─ columns: [person_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ TableAlias(cc)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ ProcessTable\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ name: complete_cast\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │               └─ columns: [movie_id subject_id status_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │       ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │       │   ├─ cct1.kind:1!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │       │   └─ cast (longtext)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(cct1)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │           └─ ProcessTable\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │                   ├─ name: comp_cast_type\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │                   └─ columns: [id kind]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │       ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │       │   ├─ cct2.kind:1!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │       │   └─ complete+verified (longtext)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(cct2)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ name: comp_cast_type\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ columns: [id kind]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ colSet: (15,16)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │               └─ tableId: 4\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │       ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │       │   ├─ chn.name:1!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │       │   └─ Queen (longtext)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(chn)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │           └─ ProcessTable\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │                   ├─ name: char_name\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │                   └─ columns: [id name]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │       ├─ HashIn\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │       │   ├─ ci.note:3\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │       │   └─ TUPLE((voice) (longtext), (voice) (uncredited) (longtext), (voice: English version) (longtext))\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(ci)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │           └─ ProcessTable\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │                   ├─ name: cast_info\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │                   └─ columns: [person_id movie_id person_role_id note role_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │       ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   │       │   ├─ cn.country_code:1\n" +
-			"         │   │   │   │   │   │   │   │   │   │       │   └─ [us] (longtext)\n" +
-			"         │   │   │   │   │   │   │   │   │   │       └─ TableAlias(cn)\n" +
-			"         │   │   │   │   │   │   │   │   │   │           └─ ProcessTable\n" +
-			"         │   │   │   │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │                   ├─ name: company_name\n" +
-			"         │   │   │   │   │   │   │   │   │   │                   └─ columns: [id country_code]\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │       ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │       │   ├─ it.info:1!null\n" +
-			"         │   │   │   │   │   │   │   │   │       │   └─ release dates (longtext)\n" +
-			"         │   │   │   │   │   │   │   │   │       └─ TableAlias(it)\n" +
-			"         │   │   │   │   │   │   │   │   │           └─ ProcessTable\n" +
-			"         │   │   │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │                   ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │   │   │                   └─ columns: [id info]\n" +
-			"         │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │       ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │       │   ├─ it3.info:1!null\n" +
-			"         │   │   │   │   │   │   │   │       │   └─ height (longtext)\n" +
-			"         │   │   │   │   │   │   │   │       └─ TableAlias(it3)\n" +
-			"         │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │   │               ├─ columns: [id info]\n" +
-			"         │   │   │   │   │   │   │   │               ├─ colSet: (40,41)\n" +
-			"         │   │   │   │   │   │   │   │               └─ tableId: 9\n" +
-			"         │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │       ├─ Eq\n" +
-			"         │   │   │   │   │   │   │       │   ├─ k.keyword:1!null\n" +
-			"         │   │   │   │   │   │   │       │   └─ computer-animation (longtext)\n" +
-			"         │   │   │   │   │   │   │       └─ TableAlias(k)\n" +
-			"         │   │   │   │   │   │   │           └─ ProcessTable\n" +
-			"         │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │                   ├─ name: keyword\n" +
-			"         │   │   │   │   │   │   │                   └─ columns: [id keyword]\n" +
-			"         │   │   │   │   │   │   └─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │       └─ ProcessTable\n" +
-			"         │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │               ├─ name: movie_companies\n" +
-			"         │   │   │   │   │   │               └─ columns: [movie_id company_id]\n" +
-			"         │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │       ├─ mi.info LIKE 'USA:%200%'\n" +
-			"         │   │   │   │   │       └─ TableAlias(mi)\n" +
-			"         │   │   │   │   │           └─ ProcessTable\n" +
-			"         │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │                   ├─ name: movie_info\n" +
-			"         │   │   │   │   │                   └─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │   │       └─ ProcessTable\n" +
-			"         │   │   │   │           └─ Table\n" +
-			"         │   │   │   │               ├─ name: movie_keyword\n" +
-			"         │   │   │   │               └─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │   └─ Filter\n" +
-			"         │   │   │       ├─ AND\n" +
-			"         │   │   │       │   ├─ Eq\n" +
-			"         │   │   │       │   │   ├─ n.gender:2\n" +
-			"         │   │   │       │   │   └─ f (longtext)\n" +
-			"         │   │   │       │   └─ n.name LIKE '%An%'\n" +
-			"         │   │   │       └─ TableAlias(n)\n" +
-			"         │   │   │           └─ ProcessTable\n" +
-			"         │   │   │               └─ Table\n" +
-			"         │   │   │                   ├─ name: name\n" +
-			"         │   │   │                   └─ columns: [id name gender]\n" +
-			"         │   │   └─ TableAlias(pi)\n" +
-			"         │   │       └─ ProcessTable\n" +
-			"         │   │           └─ Table\n" +
-			"         │   │               ├─ name: person_info\n" +
-			"         │   │               └─ columns: [person_id info_type_id]\n" +
-			"         │   └─ Filter\n" +
-			"         │       ├─ Eq\n" +
-			"         │       │   ├─ rt.role:1!null\n" +
-			"         │       │   └─ actress (longtext)\n" +
-			"         │       └─ TableAlias(rt)\n" +
-			"         │           └─ ProcessTable\n" +
-			"         │               └─ Table\n" +
-			"         │                   ├─ name: role_type\n" +
-			"         │                   └─ columns: [id role]\n" +
-			"         └─ Filter\n" +
-			"             ├─ AND\n" +
-			"             │   ├─ AND\n" +
-			"             │   │   ├─ Eq\n" +
-			"             │   │   │   ├─ t.title:1!null\n" +
-			"             │   │   │   └─ Shrek 2 (longtext)\n" +
-			"             │   │   └─ GreaterThanOrEqual\n" +
-			"             │   │       ├─ t.production_year:2\n" +
-			"             │   │       └─ 2000 (smallint)\n" +
-			"             │   └─ LessThanOrEqual\n" +
-			"             │       ├─ t.production_year:2\n" +
-			"             │       └─ 2005 (smallint)\n" +
-			"             └─ TableAlias(t)\n" +
-			"                 └─ ProcessTable\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: title\n" +
-			"                         └─ columns: [id title production_year]\n" +
+			"         │   │   │   ├─ Eq\n" +
+			"         │   │   │   │   ├─ t.title:1!null\n" +
+			"         │   │   │   │   └─ Shrek 2 (longtext)\n" +
+			"         │   │   │   └─ GreaterThanOrEqual\n" +
+			"         │   │   │       ├─ t.production_year:2\n" +
+			"         │   │   │       └─ 2000 (smallint)\n" +
+			"         │   │   └─ LessThanOrEqual\n" +
+			"         │   │       ├─ t.production_year:2\n" +
+			"         │   │       └─ 2005 (smallint)\n" +
+			"         │   └─ TableAlias(t)\n" +
+			"         │       └─ ProcessTable\n" +
+			"         │           └─ Table\n" +
+			"         │               ├─ name: title\n" +
+			"         │               └─ columns: [id title production_year]\n" +
+			"         └─ InnerJoin\n" +
+			"             ├─ Eq\n" +
+			"             │   ├─ rt.id:3!null\n" +
+			"             │   └─ ci.role_id:29!null\n" +
+			"             ├─ Filter\n" +
+			"             │   ├─ Eq\n" +
+			"             │   │   ├─ rt.role:1!null\n" +
+			"             │   │   └─ actress (longtext)\n" +
+			"             │   └─ TableAlias(rt)\n" +
+			"             │       └─ ProcessTable\n" +
+			"             │           └─ Table\n" +
+			"             │               ├─ name: role_type\n" +
+			"             │               └─ columns: [id role]\n" +
+			"             └─ InnerJoin\n" +
+			"                 ├─ AND\n" +
+			"                 │   ├─ AND\n" +
+			"                 │   │   ├─ AND\n" +
+			"                 │   │   │   ├─ Eq\n" +
+			"                 │   │   │   │   ├─ n.id:7!null\n" +
+			"                 │   │   │   │   └─ pi.person_id:5!null\n" +
+			"                 │   │   │   └─ Eq\n" +
+			"                 │   │   │       ├─ ci.person_id:25!null\n" +
+			"                 │   │   │       └─ pi.person_id:5!null\n" +
+			"                 │   │   └─ Eq\n" +
+			"                 │   │       ├─ it3.id:19!null\n" +
+			"                 │   │       └─ pi.info_type_id:6!null\n" +
+			"                 │   └─ Eq\n" +
+			"                 │       ├─ an.person_id:30!null\n" +
+			"                 │       └─ pi.person_id:5!null\n" +
+			"                 ├─ TableAlias(pi)\n" +
+			"                 │   └─ ProcessTable\n" +
+			"                 │       └─ Table\n" +
+			"                 │           ├─ name: person_info\n" +
+			"                 │           └─ columns: [person_id info_type_id]\n" +
+			"                 └─ InnerJoin\n" +
+			"                     ├─ AND\n" +
+			"                     │   ├─ Eq\n" +
+			"                     │   │   ├─ n.id:7!null\n" +
+			"                     │   │   └─ ci.person_id:25!null\n" +
+			"                     │   └─ Eq\n" +
+			"                     │       ├─ n.id:7!null\n" +
+			"                     │       └─ an.person_id:30!null\n" +
+			"                     ├─ Filter\n" +
+			"                     │   ├─ AND\n" +
+			"                     │   │   ├─ Eq\n" +
+			"                     │   │   │   ├─ n.gender:2\n" +
+			"                     │   │   │   └─ f (longtext)\n" +
+			"                     │   │   └─ n.name LIKE '%An%'\n" +
+			"                     │   └─ TableAlias(n)\n" +
+			"                     │       └─ ProcessTable\n" +
+			"                     │           └─ Table\n" +
+			"                     │               ├─ name: name\n" +
+			"                     │               └─ columns: [id name gender]\n" +
+			"                     └─ InnerJoin\n" +
+			"                         ├─ AND\n" +
+			"                         │   ├─ AND\n" +
+			"                         │   │   ├─ AND\n" +
+			"                         │   │   │   ├─ AND\n" +
+			"                         │   │   │   │   ├─ Eq\n" +
+			"                         │   │   │   │   │   ├─ mc.movie_id:15!null\n" +
+			"                         │   │   │   │   │   └─ mk.movie_id:10!null\n" +
+			"                         │   │   │   │   └─ Eq\n" +
+			"                         │   │   │   │       ├─ mi.movie_id:12!null\n" +
+			"                         │   │   │   │       └─ mk.movie_id:10!null\n" +
+			"                         │   │   │   └─ Eq\n" +
+			"                         │   │   │       ├─ ci.movie_id:26!null\n" +
+			"                         │   │   │       └─ mk.movie_id:10!null\n" +
+			"                         │   │   └─ Eq\n" +
+			"                         │   │       ├─ mk.movie_id:10!null\n" +
+			"                         │   │       └─ cc.movie_id:33\n" +
+			"                         │   └─ Eq\n" +
+			"                         │       ├─ k.id:17!null\n" +
+			"                         │       └─ mk.keyword_id:11!null\n" +
+			"                         ├─ TableAlias(mk)\n" +
+			"                         │   └─ ProcessTable\n" +
+			"                         │       └─ Table\n" +
+			"                         │           ├─ name: movie_keyword\n" +
+			"                         │           └─ columns: [movie_id keyword_id]\n" +
+			"                         └─ InnerJoin\n" +
+			"                             ├─ AND\n" +
+			"                             │   ├─ AND\n" +
+			"                             │   │   ├─ AND\n" +
+			"                             │   │   │   ├─ Eq\n" +
+			"                             │   │   │   │   ├─ mc.movie_id:15!null\n" +
+			"                             │   │   │   │   └─ mi.movie_id:12!null\n" +
+			"                             │   │   │   └─ Eq\n" +
+			"                             │   │   │       ├─ mi.movie_id:12!null\n" +
+			"                             │   │   │       └─ ci.movie_id:26!null\n" +
+			"                             │   │   └─ Eq\n" +
+			"                             │   │       ├─ mi.movie_id:12!null\n" +
+			"                             │   │       └─ cc.movie_id:33\n" +
+			"                             │   └─ Eq\n" +
+			"                             │       ├─ it.id:21!null\n" +
+			"                             │       └─ mi.info_type_id:13!null\n" +
+			"                             ├─ Filter\n" +
+			"                             │   ├─ mi.info LIKE 'USA:%200%'\n" +
+			"                             │   └─ TableAlias(mi)\n" +
+			"                             │       └─ ProcessTable\n" +
+			"                             │           └─ Table\n" +
+			"                             │               ├─ name: movie_info\n" +
+			"                             │               └─ columns: [movie_id info_type_id info]\n" +
+			"                             └─ InnerJoin\n" +
+			"                                 ├─ AND\n" +
+			"                                 │   ├─ AND\n" +
+			"                                 │   │   ├─ Eq\n" +
+			"                                 │   │   │   ├─ mc.movie_id:15!null\n" +
+			"                                 │   │   │   └─ ci.movie_id:26!null\n" +
+			"                                 │   │   └─ Eq\n" +
+			"                                 │   │       ├─ mc.movie_id:15!null\n" +
+			"                                 │   │       └─ cc.movie_id:33\n" +
+			"                                 │   └─ Eq\n" +
+			"                                 │       ├─ cn.id:23!null\n" +
+			"                                 │       └─ mc.company_id:16!null\n" +
+			"                                 ├─ TableAlias(mc)\n" +
+			"                                 │   └─ ProcessTable\n" +
+			"                                 │       └─ Table\n" +
+			"                                 │           ├─ name: movie_companies\n" +
+			"                                 │           └─ columns: [movie_id company_id]\n" +
+			"                                 └─ CrossJoin\n" +
+			"                                     ├─ Filter\n" +
+			"                                     │   ├─ Eq\n" +
+			"                                     │   │   ├─ k.keyword:1!null\n" +
+			"                                     │   │   └─ computer-animation (longtext)\n" +
+			"                                     │   └─ TableAlias(k)\n" +
+			"                                     │       └─ ProcessTable\n" +
+			"                                     │           └─ Table\n" +
+			"                                     │               ├─ name: keyword\n" +
+			"                                     │               └─ columns: [id keyword]\n" +
+			"                                     └─ CrossJoin\n" +
+			"                                         ├─ Filter\n" +
+			"                                         │   ├─ Eq\n" +
+			"                                         │   │   ├─ it3.info:1!null\n" +
+			"                                         │   │   └─ height (longtext)\n" +
+			"                                         │   └─ TableAlias(it3)\n" +
+			"                                         │       └─ ProcessTable\n" +
+			"                                         │           └─ Table\n" +
+			"                                         │               ├─ name: info_type\n" +
+			"                                         │               └─ columns: [id info]\n" +
+			"                                         └─ CrossJoin\n" +
+			"                                             ├─ Filter\n" +
+			"                                             │   ├─ Eq\n" +
+			"                                             │   │   ├─ it.info:1!null\n" +
+			"                                             │   │   └─ release dates (longtext)\n" +
+			"                                             │   └─ TableAlias(it)\n" +
+			"                                             │       └─ Table\n" +
+			"                                             │           ├─ name: info_type\n" +
+			"                                             │           ├─ columns: [id info]\n" +
+			"                                             │           ├─ colSet: (38,39)\n" +
+			"                                             │           └─ tableId: 8\n" +
+			"                                             └─ CrossJoin\n" +
+			"                                                 ├─ Filter\n" +
+			"                                                 │   ├─ Eq\n" +
+			"                                                 │   │   ├─ cn.country_code:1\n" +
+			"                                                 │   │   └─ [us] (longtext)\n" +
+			"                                                 │   └─ TableAlias(cn)\n" +
+			"                                                 │       └─ ProcessTable\n" +
+			"                                                 │           └─ Table\n" +
+			"                                                 │               ├─ name: company_name\n" +
+			"                                                 │               └─ columns: [id country_code]\n" +
+			"                                                 └─ InnerJoin\n" +
+			"                                                     ├─ Eq\n" +
+			"                                                     │   ├─ chn.id:38!null\n" +
+			"                                                     │   └─ ci.person_role_id:27\n" +
+			"                                                     ├─ InnerJoin\n" +
+			"                                                     │   ├─ Eq\n" +
+			"                                                     │   │   ├─ cct2.id:36!null\n" +
+			"                                                     │   │   └─ cc.status_id:35!null\n" +
+			"                                                     │   ├─ InnerJoin\n" +
+			"                                                     │   │   ├─ Eq\n" +
+			"                                                     │   │   │   ├─ ci.movie_id:26!null\n" +
+			"                                                     │   │   │   └─ cc.movie_id:33\n" +
+			"                                                     │   │   ├─ LookupJoin\n" +
+			"                                                     │   │   │   ├─ Filter\n" +
+			"                                                     │   │   │   │   ├─ HashIn\n" +
+			"                                                     │   │   │   │   │   ├─ ci.note:3\n" +
+			"                                                     │   │   │   │   │   └─ TUPLE((voice) (longtext), (voice) (uncredited) (longtext), (voice: English version) (longtext))\n" +
+			"                                                     │   │   │   │   └─ TableAlias(ci)\n" +
+			"                                                     │   │   │   │       └─ ProcessTable\n" +
+			"                                                     │   │   │   │           └─ Table\n" +
+			"                                                     │   │   │   │               ├─ name: cast_info\n" +
+			"                                                     │   │   │   │               └─ columns: [person_id movie_id person_role_id note role_id]\n" +
+			"                                                     │   │   │   └─ TableAlias(an)\n" +
+			"                                                     │   │   │       └─ IndexedTableAccess(aka_name)\n" +
+			"                                                     │   │   │           ├─ index: [aka_name.person_id]\n" +
+			"                                                     │   │   │           ├─ keys: [ci.person_id:25!null]\n" +
+			"                                                     │   │   │           ├─ colSet: (1-8)\n" +
+			"                                                     │   │   │           ├─ tableId: 1\n" +
+			"                                                     │   │   │           └─ Table\n" +
+			"                                                     │   │   │               ├─ name: aka_name\n" +
+			"                                                     │   │   │               └─ columns: [person_id]\n" +
+			"                                                     │   │   └─ InnerJoin\n" +
+			"                                                     │   │       ├─ Eq\n" +
+			"                                                     │   │       │   ├─ cct1.id:31!null\n" +
+			"                                                     │   │       │   └─ cc.subject_id:34!null\n" +
+			"                                                     │   │       ├─ Filter\n" +
+			"                                                     │   │       │   ├─ Eq\n" +
+			"                                                     │   │       │   │   ├─ cct1.kind:1!null\n" +
+			"                                                     │   │       │   │   └─ cast (longtext)\n" +
+			"                                                     │   │       │   └─ TableAlias(cct1)\n" +
+			"                                                     │   │       │       └─ ProcessTable\n" +
+			"                                                     │   │       │           └─ Table\n" +
+			"                                                     │   │       │               ├─ name: comp_cast_type\n" +
+			"                                                     │   │       │               └─ columns: [id kind]\n" +
+			"                                                     │   │       └─ TableAlias(cc)\n" +
+			"                                                     │   │           └─ ProcessTable\n" +
+			"                                                     │   │               └─ Table\n" +
+			"                                                     │   │                   ├─ name: complete_cast\n" +
+			"                                                     │   │                   └─ columns: [movie_id subject_id status_id]\n" +
+			"                                                     │   └─ Filter\n" +
+			"                                                     │       ├─ Eq\n" +
+			"                                                     │       │   ├─ cct2.kind:1!null\n" +
+			"                                                     │       │   └─ complete+verified (longtext)\n" +
+			"                                                     │       └─ TableAlias(cct2)\n" +
+			"                                                     │           └─ Table\n" +
+			"                                                     │               ├─ name: comp_cast_type\n" +
+			"                                                     │               ├─ columns: [id kind]\n" +
+			"                                                     │               ├─ colSet: (15,16)\n" +
+			"                                                     │               └─ tableId: 4\n" +
+			"                                                     └─ Filter\n" +
+			"                                                         ├─ Eq\n" +
+			"                                                         │   ├─ chn.name:1!null\n" +
+			"                                                         │   └─ Queen (longtext)\n" +
+			"                                                         └─ TableAlias(chn)\n" +
+			"                                                             └─ ProcessTable\n" +
+			"                                                                 └─ Table\n" +
+			"                                                                     ├─ name: char_name\n" +
+			"                                                                     └─ columns: [id name]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(chn.name) as voiced_char, min(n.name) as voicing_actress, min(t.title) as voiced_animation]\n" +
@@ -22184,122 +22194,124 @@ WHERE cct1.kind ='cast'
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((t.id = mi.movie_id) AND (t.id = mc.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = cc.movie_id))\n" +
-			"         ├─ InnerJoin\n" +
-			"         │   ├─ (rt.id = ci.role_id)\n" +
-			"         │   ├─ InnerJoin\n" +
-			"         │   │   ├─ (((n.id = pi.person_id) AND (ci.person_id = pi.person_id)) AND (it3.id = pi.info_type_id))\n" +
-			"         │   │   ├─ InnerJoin\n" +
-			"         │   │   │   ├─ ((n.id = ci.person_id) AND (n.id = an.person_id))\n" +
-			"         │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   ├─ (((((mc.movie_id = mk.movie_id) AND (mi.movie_id = mk.movie_id)) AND (ci.movie_id = mk.movie_id)) AND (mk.movie_id = cc.movie_id)) AND (k.id = mk.keyword_id))\n" +
-			"         │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   ├─ ((((mc.movie_id = mi.movie_id) AND (mi.movie_id = ci.movie_id)) AND (mi.movie_id = cc.movie_id)) AND (it.id = mi.info_type_id))\n" +
-			"         │   │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   │   ├─ (((mc.movie_id = ci.movie_id) AND (mc.movie_id = cc.movie_id)) AND (cn.id = mc.company_id))\n" +
-			"         │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   ├─ (((ci.movie_id = cc.movie_id) AND (ci.person_id = an.person_id)) AND (chn.id = ci.person_role_id))\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ (cct2.id = cc.status_id)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ (cct1.id = cc.subject_id)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ TableAlias(an)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       ├─ name: aka_name\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ columns: [person_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ TableAlias(cc)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ name: complete_cast\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           └─ columns: [movie_id subject_id status_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │       ├─ (cct1.kind = 'cast')\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(cct1)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ name: comp_cast_type\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │               └─ columns: [id kind]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │       ├─ (cct2.kind = 'complete+verified')\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(cct2)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ name: comp_cast_type\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │               └─ columns: [id kind]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │       ├─ (chn.name = 'Queen')\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(chn)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │               ├─ name: char_name\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │               └─ columns: [id name]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │       ├─ (ci.note HASH IN ('(voice)', '(voice) (uncredited)', '(voice: English version)'))\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(ci)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │               ├─ name: cast_info\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │               └─ columns: [person_id movie_id person_role_id note role_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │       ├─ (cn.country_code = '[us]')\n" +
-			"         │   │   │   │   │   │   │   │   │   │       └─ TableAlias(cn)\n" +
-			"         │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │               ├─ name: company_name\n" +
-			"         │   │   │   │   │   │   │   │   │   │               └─ columns: [id country_code]\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │       ├─ (it.info = 'release dates')\n" +
-			"         │   │   │   │   │   │   │   │   │       └─ TableAlias(it)\n" +
-			"         │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │   │   │               └─ columns: [id info]\n" +
-			"         │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │       ├─ (it3.info = 'height')\n" +
-			"         │   │   │   │   │   │   │   │       └─ TableAlias(it3)\n" +
-			"         │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │   │               └─ columns: [id info]\n" +
-			"         │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │       ├─ (k.keyword = 'computer-animation')\n" +
-			"         │   │   │   │   │   │   │       └─ TableAlias(k)\n" +
-			"         │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │               ├─ name: keyword\n" +
-			"         │   │   │   │   │   │   │               └─ columns: [id keyword]\n" +
-			"         │   │   │   │   │   │   └─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │       └─ Table\n" +
-			"         │   │   │   │   │   │           ├─ name: movie_companies\n" +
-			"         │   │   │   │   │   │           └─ columns: [movie_id company_id]\n" +
-			"         │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │       ├─ mi.info LIKE 'USA:%200%'\n" +
-			"         │   │   │   │   │       └─ TableAlias(mi)\n" +
-			"         │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │               ├─ name: movie_info\n" +
-			"         │   │   │   │   │               └─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │   │       └─ Table\n" +
-			"         │   │   │   │           ├─ name: movie_keyword\n" +
-			"         │   │   │   │           └─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │   └─ Filter\n" +
-			"         │   │   │       ├─ ((n.gender = 'f') AND n.name LIKE '%An%')\n" +
-			"         │   │   │       └─ TableAlias(n)\n" +
-			"         │   │   │           └─ Table\n" +
-			"         │   │   │               ├─ name: name\n" +
-			"         │   │   │               └─ columns: [id name gender]\n" +
-			"         │   │   └─ TableAlias(pi)\n" +
-			"         │   │       └─ Table\n" +
-			"         │   │           ├─ name: person_info\n" +
-			"         │   │           └─ columns: [person_id info_type_id]\n" +
-			"         │   └─ Filter\n" +
-			"         │       ├─ (rt.role = 'actress')\n" +
-			"         │       └─ TableAlias(rt)\n" +
-			"         │           └─ Table\n" +
-			"         │               ├─ name: role_type\n" +
-			"         │               └─ columns: [id role]\n" +
-			"         └─ Filter\n" +
-			"             ├─ (((t.title = 'Shrek 2') AND (t.production_year >= 2000)) AND (t.production_year <= 2005))\n" +
-			"             └─ TableAlias(t)\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: title\n" +
-			"                     └─ columns: [id title production_year]\n" +
+			"         ├─ Filter\n" +
+			"         │   ├─ (((t.title = 'Shrek 2') AND (t.production_year >= 2000)) AND (t.production_year <= 2005))\n" +
+			"         │   └─ TableAlias(t)\n" +
+			"         │       └─ Table\n" +
+			"         │           ├─ name: title\n" +
+			"         │           └─ columns: [id title production_year]\n" +
+			"         └─ InnerJoin\n" +
+			"             ├─ (rt.id = ci.role_id)\n" +
+			"             ├─ Filter\n" +
+			"             │   ├─ (rt.role = 'actress')\n" +
+			"             │   └─ TableAlias(rt)\n" +
+			"             │       └─ Table\n" +
+			"             │           ├─ name: role_type\n" +
+			"             │           └─ columns: [id role]\n" +
+			"             └─ InnerJoin\n" +
+			"                 ├─ ((((n.id = pi.person_id) AND (ci.person_id = pi.person_id)) AND (it3.id = pi.info_type_id)) AND (an.person_id = pi.person_id))\n" +
+			"                 ├─ TableAlias(pi)\n" +
+			"                 │   └─ Table\n" +
+			"                 │       ├─ name: person_info\n" +
+			"                 │       └─ columns: [person_id info_type_id]\n" +
+			"                 └─ InnerJoin\n" +
+			"                     ├─ ((n.id = ci.person_id) AND (n.id = an.person_id))\n" +
+			"                     ├─ Filter\n" +
+			"                     │   ├─ ((n.gender = 'f') AND n.name LIKE '%An%')\n" +
+			"                     │   └─ TableAlias(n)\n" +
+			"                     │       └─ Table\n" +
+			"                     │           ├─ name: name\n" +
+			"                     │           └─ columns: [id name gender]\n" +
+			"                     └─ InnerJoin\n" +
+			"                         ├─ (((((mc.movie_id = mk.movie_id) AND (mi.movie_id = mk.movie_id)) AND (ci.movie_id = mk.movie_id)) AND (mk.movie_id = cc.movie_id)) AND (k.id = mk.keyword_id))\n" +
+			"                         ├─ TableAlias(mk)\n" +
+			"                         │   └─ Table\n" +
+			"                         │       ├─ name: movie_keyword\n" +
+			"                         │       └─ columns: [movie_id keyword_id]\n" +
+			"                         └─ InnerJoin\n" +
+			"                             ├─ ((((mc.movie_id = mi.movie_id) AND (mi.movie_id = ci.movie_id)) AND (mi.movie_id = cc.movie_id)) AND (it.id = mi.info_type_id))\n" +
+			"                             ├─ Filter\n" +
+			"                             │   ├─ mi.info LIKE 'USA:%200%'\n" +
+			"                             │   └─ TableAlias(mi)\n" +
+			"                             │       └─ Table\n" +
+			"                             │           ├─ name: movie_info\n" +
+			"                             │           └─ columns: [movie_id info_type_id info]\n" +
+			"                             └─ InnerJoin\n" +
+			"                                 ├─ (((mc.movie_id = ci.movie_id) AND (mc.movie_id = cc.movie_id)) AND (cn.id = mc.company_id))\n" +
+			"                                 ├─ TableAlias(mc)\n" +
+			"                                 │   └─ Table\n" +
+			"                                 │       ├─ name: movie_companies\n" +
+			"                                 │       └─ columns: [movie_id company_id]\n" +
+			"                                 └─ CrossJoin\n" +
+			"                                     ├─ Filter\n" +
+			"                                     │   ├─ (k.keyword = 'computer-animation')\n" +
+			"                                     │   └─ TableAlias(k)\n" +
+			"                                     │       └─ Table\n" +
+			"                                     │           ├─ name: keyword\n" +
+			"                                     │           └─ columns: [id keyword]\n" +
+			"                                     └─ CrossJoin\n" +
+			"                                         ├─ Filter\n" +
+			"                                         │   ├─ (it3.info = 'height')\n" +
+			"                                         │   └─ TableAlias(it3)\n" +
+			"                                         │       └─ Table\n" +
+			"                                         │           ├─ name: info_type\n" +
+			"                                         │           └─ columns: [id info]\n" +
+			"                                         └─ CrossJoin\n" +
+			"                                             ├─ Filter\n" +
+			"                                             │   ├─ (it.info = 'release dates')\n" +
+			"                                             │   └─ TableAlias(it)\n" +
+			"                                             │       └─ Table\n" +
+			"                                             │           ├─ name: info_type\n" +
+			"                                             │           └─ columns: [id info]\n" +
+			"                                             └─ CrossJoin\n" +
+			"                                                 ├─ Filter\n" +
+			"                                                 │   ├─ (cn.country_code = '[us]')\n" +
+			"                                                 │   └─ TableAlias(cn)\n" +
+			"                                                 │       └─ Table\n" +
+			"                                                 │           ├─ name: company_name\n" +
+			"                                                 │           └─ columns: [id country_code]\n" +
+			"                                                 └─ InnerJoin\n" +
+			"                                                     ├─ (chn.id = ci.person_role_id)\n" +
+			"                                                     ├─ InnerJoin\n" +
+			"                                                     │   ├─ (cct2.id = cc.status_id)\n" +
+			"                                                     │   ├─ InnerJoin\n" +
+			"                                                     │   │   ├─ (ci.movie_id = cc.movie_id)\n" +
+			"                                                     │   │   ├─ LookupJoin\n" +
+			"                                                     │   │   │   ├─ Filter\n" +
+			"                                                     │   │   │   │   ├─ (ci.note HASH IN ('(voice)', '(voice) (uncredited)', '(voice: English version)'))\n" +
+			"                                                     │   │   │   │   └─ TableAlias(ci)\n" +
+			"                                                     │   │   │   │       └─ Table\n" +
+			"                                                     │   │   │   │           ├─ name: cast_info\n" +
+			"                                                     │   │   │   │           └─ columns: [person_id movie_id person_role_id note role_id]\n" +
+			"                                                     │   │   │   └─ TableAlias(an)\n" +
+			"                                                     │   │   │       └─ IndexedTableAccess(aka_name)\n" +
+			"                                                     │   │   │           ├─ index: [aka_name.person_id]\n" +
+			"                                                     │   │   │           ├─ columns: [person_id]\n" +
+			"                                                     │   │   │           └─ keys: ci.person_id\n" +
+			"                                                     │   │   └─ InnerJoin\n" +
+			"                                                     │   │       ├─ (cct1.id = cc.subject_id)\n" +
+			"                                                     │   │       ├─ Filter\n" +
+			"                                                     │   │       │   ├─ (cct1.kind = 'cast')\n" +
+			"                                                     │   │       │   └─ TableAlias(cct1)\n" +
+			"                                                     │   │       │       └─ Table\n" +
+			"                                                     │   │       │           ├─ name: comp_cast_type\n" +
+			"                                                     │   │       │           └─ columns: [id kind]\n" +
+			"                                                     │   │       └─ TableAlias(cc)\n" +
+			"                                                     │   │           └─ Table\n" +
+			"                                                     │   │               ├─ name: complete_cast\n" +
+			"                                                     │   │               └─ columns: [movie_id subject_id status_id]\n" +
+			"                                                     │   └─ Filter\n" +
+			"                                                     │       ├─ (cct2.kind = 'complete+verified')\n" +
+			"                                                     │       └─ TableAlias(cct2)\n" +
+			"                                                     │           └─ Table\n" +
+			"                                                     │               ├─ name: comp_cast_type\n" +
+			"                                                     │               └─ columns: [id kind]\n" +
+			"                                                     └─ Filter\n" +
+			"                                                         ├─ (chn.name = 'Queen')\n" +
+			"                                                         └─ TableAlias(chn)\n" +
+			"                                                             └─ Table\n" +
+			"                                                                 ├─ name: char_name\n" +
+			"                                                                 └─ columns: [id name]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(chn.name) as voiced_char, min(n.name) as voicing_actress, min(t.title) as voiced_animation]\n" +
@@ -22308,122 +22320,124 @@ WHERE cct1.kind ='cast'
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((t.id = mi.movie_id) AND (t.id = mc.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = cc.movie_id))\n" +
-			"         ├─ InnerJoin\n" +
-			"         │   ├─ (rt.id = ci.role_id)\n" +
-			"         │   ├─ InnerJoin\n" +
-			"         │   │   ├─ (((n.id = pi.person_id) AND (ci.person_id = pi.person_id)) AND (it3.id = pi.info_type_id))\n" +
-			"         │   │   ├─ InnerJoin\n" +
-			"         │   │   │   ├─ ((n.id = ci.person_id) AND (n.id = an.person_id))\n" +
-			"         │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   ├─ (((((mc.movie_id = mk.movie_id) AND (mi.movie_id = mk.movie_id)) AND (ci.movie_id = mk.movie_id)) AND (mk.movie_id = cc.movie_id)) AND (k.id = mk.keyword_id))\n" +
-			"         │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   ├─ ((((mc.movie_id = mi.movie_id) AND (mi.movie_id = ci.movie_id)) AND (mi.movie_id = cc.movie_id)) AND (it.id = mi.info_type_id))\n" +
-			"         │   │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   │   ├─ (((mc.movie_id = ci.movie_id) AND (mc.movie_id = cc.movie_id)) AND (cn.id = mc.company_id))\n" +
-			"         │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   ├─ (((ci.movie_id = cc.movie_id) AND (ci.person_id = an.person_id)) AND (chn.id = ci.person_role_id))\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ (cct2.id = cc.status_id)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ (cct1.id = cc.subject_id)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ TableAlias(an)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       ├─ name: aka_name\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ columns: [person_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ TableAlias(cc)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ name: complete_cast\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           └─ columns: [movie_id subject_id status_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │       ├─ (cct1.kind = 'cast')\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(cct1)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ name: comp_cast_type\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │               └─ columns: [id kind]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │       ├─ (cct2.kind = 'complete+verified')\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(cct2)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ name: comp_cast_type\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │               └─ columns: [id kind]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │       ├─ (chn.name = 'Queen')\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(chn)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │               ├─ name: char_name\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │               └─ columns: [id name]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │       ├─ (ci.note HASH IN ('(voice)', '(voice) (uncredited)', '(voice: English version)'))\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(ci)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │               ├─ name: cast_info\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │               └─ columns: [person_id movie_id person_role_id note role_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │       ├─ (cn.country_code = '[us]')\n" +
-			"         │   │   │   │   │   │   │   │   │   │       └─ TableAlias(cn)\n" +
-			"         │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │               ├─ name: company_name\n" +
-			"         │   │   │   │   │   │   │   │   │   │               └─ columns: [id country_code]\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │       ├─ (it.info = 'release dates')\n" +
-			"         │   │   │   │   │   │   │   │   │       └─ TableAlias(it)\n" +
-			"         │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │   │   │               └─ columns: [id info]\n" +
-			"         │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │       ├─ (it3.info = 'height')\n" +
-			"         │   │   │   │   │   │   │   │       └─ TableAlias(it3)\n" +
-			"         │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │   │               └─ columns: [id info]\n" +
-			"         │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │       ├─ (k.keyword = 'computer-animation')\n" +
-			"         │   │   │   │   │   │   │       └─ TableAlias(k)\n" +
-			"         │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │               ├─ name: keyword\n" +
-			"         │   │   │   │   │   │   │               └─ columns: [id keyword]\n" +
-			"         │   │   │   │   │   │   └─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │       └─ Table\n" +
-			"         │   │   │   │   │   │           ├─ name: movie_companies\n" +
-			"         │   │   │   │   │   │           └─ columns: [movie_id company_id]\n" +
-			"         │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │       ├─ mi.info LIKE 'USA:%200%'\n" +
-			"         │   │   │   │   │       └─ TableAlias(mi)\n" +
-			"         │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │               ├─ name: movie_info\n" +
-			"         │   │   │   │   │               └─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │   │       └─ Table\n" +
-			"         │   │   │   │           ├─ name: movie_keyword\n" +
-			"         │   │   │   │           └─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │   └─ Filter\n" +
-			"         │   │   │       ├─ ((n.gender = 'f') AND n.name LIKE '%An%')\n" +
-			"         │   │   │       └─ TableAlias(n)\n" +
-			"         │   │   │           └─ Table\n" +
-			"         │   │   │               ├─ name: name\n" +
-			"         │   │   │               └─ columns: [id name gender]\n" +
-			"         │   │   └─ TableAlias(pi)\n" +
-			"         │   │       └─ Table\n" +
-			"         │   │           ├─ name: person_info\n" +
-			"         │   │           └─ columns: [person_id info_type_id]\n" +
-			"         │   └─ Filter\n" +
-			"         │       ├─ (rt.role = 'actress')\n" +
-			"         │       └─ TableAlias(rt)\n" +
-			"         │           └─ Table\n" +
-			"         │               ├─ name: role_type\n" +
-			"         │               └─ columns: [id role]\n" +
-			"         └─ Filter\n" +
-			"             ├─ (((t.title = 'Shrek 2') AND (t.production_year >= 2000)) AND (t.production_year <= 2005))\n" +
-			"             └─ TableAlias(t)\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: title\n" +
-			"                     └─ columns: [id title production_year]\n" +
+			"         ├─ Filter\n" +
+			"         │   ├─ (((t.title = 'Shrek 2') AND (t.production_year >= 2000)) AND (t.production_year <= 2005))\n" +
+			"         │   └─ TableAlias(t)\n" +
+			"         │       └─ Table\n" +
+			"         │           ├─ name: title\n" +
+			"         │           └─ columns: [id title production_year]\n" +
+			"         └─ InnerJoin\n" +
+			"             ├─ (rt.id = ci.role_id)\n" +
+			"             ├─ Filter\n" +
+			"             │   ├─ (rt.role = 'actress')\n" +
+			"             │   └─ TableAlias(rt)\n" +
+			"             │       └─ Table\n" +
+			"             │           ├─ name: role_type\n" +
+			"             │           └─ columns: [id role]\n" +
+			"             └─ InnerJoin\n" +
+			"                 ├─ ((((n.id = pi.person_id) AND (ci.person_id = pi.person_id)) AND (it3.id = pi.info_type_id)) AND (an.person_id = pi.person_id))\n" +
+			"                 ├─ TableAlias(pi)\n" +
+			"                 │   └─ Table\n" +
+			"                 │       ├─ name: person_info\n" +
+			"                 │       └─ columns: [person_id info_type_id]\n" +
+			"                 └─ InnerJoin\n" +
+			"                     ├─ ((n.id = ci.person_id) AND (n.id = an.person_id))\n" +
+			"                     ├─ Filter\n" +
+			"                     │   ├─ ((n.gender = 'f') AND n.name LIKE '%An%')\n" +
+			"                     │   └─ TableAlias(n)\n" +
+			"                     │       └─ Table\n" +
+			"                     │           ├─ name: name\n" +
+			"                     │           └─ columns: [id name gender]\n" +
+			"                     └─ InnerJoin\n" +
+			"                         ├─ (((((mc.movie_id = mk.movie_id) AND (mi.movie_id = mk.movie_id)) AND (ci.movie_id = mk.movie_id)) AND (mk.movie_id = cc.movie_id)) AND (k.id = mk.keyword_id))\n" +
+			"                         ├─ TableAlias(mk)\n" +
+			"                         │   └─ Table\n" +
+			"                         │       ├─ name: movie_keyword\n" +
+			"                         │       └─ columns: [movie_id keyword_id]\n" +
+			"                         └─ InnerJoin\n" +
+			"                             ├─ ((((mc.movie_id = mi.movie_id) AND (mi.movie_id = ci.movie_id)) AND (mi.movie_id = cc.movie_id)) AND (it.id = mi.info_type_id))\n" +
+			"                             ├─ Filter\n" +
+			"                             │   ├─ mi.info LIKE 'USA:%200%'\n" +
+			"                             │   └─ TableAlias(mi)\n" +
+			"                             │       └─ Table\n" +
+			"                             │           ├─ name: movie_info\n" +
+			"                             │           └─ columns: [movie_id info_type_id info]\n" +
+			"                             └─ InnerJoin\n" +
+			"                                 ├─ (((mc.movie_id = ci.movie_id) AND (mc.movie_id = cc.movie_id)) AND (cn.id = mc.company_id))\n" +
+			"                                 ├─ TableAlias(mc)\n" +
+			"                                 │   └─ Table\n" +
+			"                                 │       ├─ name: movie_companies\n" +
+			"                                 │       └─ columns: [movie_id company_id]\n" +
+			"                                 └─ CrossJoin\n" +
+			"                                     ├─ Filter\n" +
+			"                                     │   ├─ (k.keyword = 'computer-animation')\n" +
+			"                                     │   └─ TableAlias(k)\n" +
+			"                                     │       └─ Table\n" +
+			"                                     │           ├─ name: keyword\n" +
+			"                                     │           └─ columns: [id keyword]\n" +
+			"                                     └─ CrossJoin\n" +
+			"                                         ├─ Filter\n" +
+			"                                         │   ├─ (it3.info = 'height')\n" +
+			"                                         │   └─ TableAlias(it3)\n" +
+			"                                         │       └─ Table\n" +
+			"                                         │           ├─ name: info_type\n" +
+			"                                         │           └─ columns: [id info]\n" +
+			"                                         └─ CrossJoin\n" +
+			"                                             ├─ Filter\n" +
+			"                                             │   ├─ (it.info = 'release dates')\n" +
+			"                                             │   └─ TableAlias(it)\n" +
+			"                                             │       └─ Table\n" +
+			"                                             │           ├─ name: info_type\n" +
+			"                                             │           └─ columns: [id info]\n" +
+			"                                             └─ CrossJoin\n" +
+			"                                                 ├─ Filter\n" +
+			"                                                 │   ├─ (cn.country_code = '[us]')\n" +
+			"                                                 │   └─ TableAlias(cn)\n" +
+			"                                                 │       └─ Table\n" +
+			"                                                 │           ├─ name: company_name\n" +
+			"                                                 │           └─ columns: [id country_code]\n" +
+			"                                                 └─ InnerJoin\n" +
+			"                                                     ├─ (chn.id = ci.person_role_id)\n" +
+			"                                                     ├─ InnerJoin\n" +
+			"                                                     │   ├─ (cct2.id = cc.status_id)\n" +
+			"                                                     │   ├─ InnerJoin\n" +
+			"                                                     │   │   ├─ (ci.movie_id = cc.movie_id)\n" +
+			"                                                     │   │   ├─ LookupJoin\n" +
+			"                                                     │   │   │   ├─ Filter\n" +
+			"                                                     │   │   │   │   ├─ (ci.note HASH IN ('(voice)', '(voice) (uncredited)', '(voice: English version)'))\n" +
+			"                                                     │   │   │   │   └─ TableAlias(ci)\n" +
+			"                                                     │   │   │   │       └─ Table\n" +
+			"                                                     │   │   │   │           ├─ name: cast_info\n" +
+			"                                                     │   │   │   │           └─ columns: [person_id movie_id person_role_id note role_id]\n" +
+			"                                                     │   │   │   └─ TableAlias(an)\n" +
+			"                                                     │   │   │       └─ IndexedTableAccess(aka_name)\n" +
+			"                                                     │   │   │           ├─ index: [aka_name.person_id]\n" +
+			"                                                     │   │   │           ├─ columns: [person_id]\n" +
+			"                                                     │   │   │           └─ keys: ci.person_id\n" +
+			"                                                     │   │   └─ InnerJoin\n" +
+			"                                                     │   │       ├─ (cct1.id = cc.subject_id)\n" +
+			"                                                     │   │       ├─ Filter\n" +
+			"                                                     │   │       │   ├─ (cct1.kind = 'cast')\n" +
+			"                                                     │   │       │   └─ TableAlias(cct1)\n" +
+			"                                                     │   │       │       └─ Table\n" +
+			"                                                     │   │       │           ├─ name: comp_cast_type\n" +
+			"                                                     │   │       │           └─ columns: [id kind]\n" +
+			"                                                     │   │       └─ TableAlias(cc)\n" +
+			"                                                     │   │           └─ Table\n" +
+			"                                                     │   │               ├─ name: complete_cast\n" +
+			"                                                     │   │               └─ columns: [movie_id subject_id status_id]\n" +
+			"                                                     │   └─ Filter\n" +
+			"                                                     │       ├─ (cct2.kind = 'complete+verified')\n" +
+			"                                                     │       └─ TableAlias(cct2)\n" +
+			"                                                     │           └─ Table\n" +
+			"                                                     │               ├─ name: comp_cast_type\n" +
+			"                                                     │               └─ columns: [id kind]\n" +
+			"                                                     └─ Filter\n" +
+			"                                                         ├─ (chn.name = 'Queen')\n" +
+			"                                                         └─ TableAlias(chn)\n" +
+			"                                                             └─ Table\n" +
+			"                                                                 ├─ name: char_name\n" +
+			"                                                                 └─ columns: [id name]\n" +
 			"",
 	},
 	{
@@ -22498,7 +22512,7 @@ WHERE cct1.kind ='cast'
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [min(chn.name):0!null->voiced_char:0, min(n.name):1!null->voicing_actress:0, min(t.title):2!null->voiced_animation:0]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ select: MIN(chn.name:9!null), MIN(n.name:31!null), MIN(t.title:38!null)\n" +
+			"     ├─ select: MIN(chn.name:39!null), MIN(n.name:8!null), MIN(t.title:1!null)\n" +
 			"     ├─ group: \n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ AND\n" +
@@ -22506,258 +22520,261 @@ WHERE cct1.kind ='cast'
 			"         │   │   ├─ AND\n" +
 			"         │   │   │   ├─ AND\n" +
 			"         │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   ├─ t.id:37!null\n" +
-			"         │   │   │   │   │   └─ mi.movie_id:25!null\n" +
+			"         │   │   │   │   │   ├─ t.id:0!null\n" +
+			"         │   │   │   │   │   └─ mi.movie_id:12!null\n" +
 			"         │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │       ├─ t.id:37!null\n" +
-			"         │   │   │   │       └─ mc.movie_id:23!null\n" +
+			"         │   │   │   │       ├─ t.id:0!null\n" +
+			"         │   │   │   │       └─ mc.movie_id:15!null\n" +
 			"         │   │   │   └─ Eq\n" +
-			"         │   │   │       ├─ t.id:37!null\n" +
-			"         │   │   │       └─ ci.movie_id:11!null\n" +
+			"         │   │   │       ├─ t.id:0!null\n" +
+			"         │   │   │       └─ ci.movie_id:26!null\n" +
 			"         │   │   └─ Eq\n" +
-			"         │   │       ├─ t.id:37!null\n" +
-			"         │   │       └─ mk.movie_id:28!null\n" +
+			"         │   │       ├─ t.id:0!null\n" +
+			"         │   │       └─ mk.movie_id:10!null\n" +
 			"         │   └─ Eq\n" +
-			"         │       ├─ t.id:37!null\n" +
-			"         │       └─ cc.movie_id:1\n" +
-			"         ├─ InnerJoin\n" +
-			"         │   ├─ Eq\n" +
-			"         │   │   ├─ rt.id:35!null\n" +
-			"         │   │   └─ ci.role_id:14!null\n" +
-			"         │   ├─ InnerJoin\n" +
-			"         │   │   ├─ AND\n" +
-			"         │   │   │   ├─ AND\n" +
-			"         │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   ├─ n.id:30!null\n" +
-			"         │   │   │   │   │   └─ pi.person_id:33!null\n" +
-			"         │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │       ├─ ci.person_id:10!null\n" +
-			"         │   │   │   │       └─ pi.person_id:33!null\n" +
-			"         │   │   │   └─ Eq\n" +
-			"         │   │   │       ├─ it3.id:19!null\n" +
-			"         │   │   │       └─ pi.info_type_id:34!null\n" +
-			"         │   │   ├─ InnerJoin\n" +
-			"         │   │   │   ├─ AND\n" +
-			"         │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   ├─ n.id:30!null\n" +
-			"         │   │   │   │   │   └─ ci.person_id:10!null\n" +
-			"         │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │       ├─ n.id:30!null\n" +
-			"         │   │   │   │       └─ an.person_id:0!null\n" +
-			"         │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   ├─ AND\n" +
-			"         │   │   │   │   │   ├─ AND\n" +
-			"         │   │   │   │   │   │   ├─ AND\n" +
-			"         │   │   │   │   │   │   │   ├─ AND\n" +
-			"         │   │   │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ mc.movie_id:23!null\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ mk.movie_id:28!null\n" +
-			"         │   │   │   │   │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │   │   │   │   │       ├─ mi.movie_id:25!null\n" +
-			"         │   │   │   │   │   │   │   │       └─ mk.movie_id:28!null\n" +
-			"         │   │   │   │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │   │   │   │       ├─ ci.movie_id:11!null\n" +
-			"         │   │   │   │   │   │   │       └─ mk.movie_id:28!null\n" +
-			"         │   │   │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │   │   │       ├─ mk.movie_id:28!null\n" +
-			"         │   │   │   │   │   │       └─ cc.movie_id:1\n" +
-			"         │   │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │   │       ├─ k.id:21!null\n" +
-			"         │   │   │   │   │       └─ mk.keyword_id:29!null\n" +
-			"         │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   ├─ AND\n" +
-			"         │   │   │   │   │   │   ├─ AND\n" +
-			"         │   │   │   │   │   │   │   ├─ AND\n" +
-			"         │   │   │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ mc.movie_id:23!null\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ mi.movie_id:25!null\n" +
-			"         │   │   │   │   │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │   │   │   │   │       ├─ mi.movie_id:25!null\n" +
-			"         │   │   │   │   │   │   │   │       └─ ci.movie_id:11!null\n" +
-			"         │   │   │   │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │   │   │   │       ├─ mi.movie_id:25!null\n" +
-			"         │   │   │   │   │   │   │       └─ cc.movie_id:1\n" +
-			"         │   │   │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │   │   │       ├─ it.id:17!null\n" +
-			"         │   │   │   │   │   │       └─ mi.info_type_id:26!null\n" +
-			"         │   │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   │   ├─ AND\n" +
-			"         │   │   │   │   │   │   │   ├─ AND\n" +
-			"         │   │   │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ mc.movie_id:23!null\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ ci.movie_id:11!null\n" +
-			"         │   │   │   │   │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │   │   │   │   │       ├─ mc.movie_id:23!null\n" +
-			"         │   │   │   │   │   │   │   │       └─ cc.movie_id:1\n" +
-			"         │   │   │   │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │   │   │   │       ├─ cn.id:15!null\n" +
-			"         │   │   │   │   │   │   │       └─ mc.company_id:24!null\n" +
-			"         │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   ├─ AND\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   ├─ AND\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ ci.movie_id:11!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ cc.movie_id:1\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │       ├─ ci.person_id:10!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │       └─ an.person_id:0!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   └─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │       ├─ chn.id:8!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │       └─ ci.person_role_id:12\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ cct2.id:6!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ cc.status_id:3!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ cct1.id:4!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ cc.subject_id:2!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ TableAlias(an)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ ProcessTable\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ name: aka_name\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           └─ columns: [person_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ TableAlias(cc)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ ProcessTable\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ name: complete_cast\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │               └─ columns: [movie_id subject_id status_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │       ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │       │   ├─ cct1.kind:1!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │       │   └─ cast (longtext)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(cct1)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │           └─ ProcessTable\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │                   ├─ name: comp_cast_type\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │                   └─ columns: [id kind]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │       ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │       │   ├─ cct2.kind:1!null\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │       │   └─ complete+verified (longtext)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(cct2)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ name: comp_cast_type\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ columns: [id kind]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ colSet: (15,16)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │               └─ tableId: 4\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   └─ TableAlias(chn)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │       └─ ProcessTable\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │               ├─ name: char_name\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │               └─ columns: [id name]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │       ├─ HashIn\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │       │   ├─ ci.note:3\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │       │   └─ TUPLE((voice) (longtext), (voice: Japanese version) (longtext), (voice) (uncredited) (longtext), (voice: English version) (longtext))\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(ci)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │           └─ ProcessTable\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │                   ├─ name: cast_info\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │                   └─ columns: [person_id movie_id person_role_id note role_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │       ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │   │       │   ├─ cn.country_code:1\n" +
-			"         │   │   │   │   │   │   │   │   │   │       │   └─ [us] (longtext)\n" +
-			"         │   │   │   │   │   │   │   │   │   │       └─ TableAlias(cn)\n" +
-			"         │   │   │   │   │   │   │   │   │   │           └─ ProcessTable\n" +
-			"         │   │   │   │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │                   ├─ name: company_name\n" +
-			"         │   │   │   │   │   │   │   │   │   │                   └─ columns: [id country_code]\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │       ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │   │       │   ├─ it.info:1!null\n" +
-			"         │   │   │   │   │   │   │   │   │       │   └─ release dates (longtext)\n" +
-			"         │   │   │   │   │   │   │   │   │       └─ TableAlias(it)\n" +
-			"         │   │   │   │   │   │   │   │   │           └─ ProcessTable\n" +
-			"         │   │   │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │                   ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │   │   │                   └─ columns: [id info]\n" +
-			"         │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │       ├─ Eq\n" +
-			"         │   │   │   │   │   │   │   │       │   ├─ it3.info:1!null\n" +
-			"         │   │   │   │   │   │   │   │       │   └─ trivia (longtext)\n" +
-			"         │   │   │   │   │   │   │   │       └─ TableAlias(it3)\n" +
-			"         │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │   │               ├─ columns: [id info]\n" +
-			"         │   │   │   │   │   │   │   │               ├─ colSet: (40,41)\n" +
-			"         │   │   │   │   │   │   │   │               └─ tableId: 9\n" +
-			"         │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │       ├─ Eq\n" +
-			"         │   │   │   │   │   │   │       │   ├─ k.keyword:1!null\n" +
-			"         │   │   │   │   │   │   │       │   └─ computer-animation (longtext)\n" +
-			"         │   │   │   │   │   │   │       └─ TableAlias(k)\n" +
-			"         │   │   │   │   │   │   │           └─ ProcessTable\n" +
-			"         │   │   │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │   │   │                   ├─ name: keyword\n" +
-			"         │   │   │   │   │   │   │                   └─ columns: [id keyword]\n" +
-			"         │   │   │   │   │   │   └─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │       └─ ProcessTable\n" +
-			"         │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │               ├─ name: movie_companies\n" +
-			"         │   │   │   │   │   │               └─ columns: [movie_id company_id]\n" +
-			"         │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │       ├─ AND\n" +
-			"         │   │   │   │   │       │   ├─ NOT\n" +
-			"         │   │   │   │   │       │   │   └─ mi.info:2!null IS NULL\n" +
-			"         │   │   │   │   │       │   └─ Or\n" +
-			"         │   │   │   │   │       │       ├─ mi.info LIKE 'Japan:%200%'\n" +
-			"         │   │   │   │   │       │       └─ mi.info LIKE 'USA:%200%'\n" +
-			"         │   │   │   │   │       └─ TableAlias(mi)\n" +
-			"         │   │   │   │   │           └─ ProcessTable\n" +
-			"         │   │   │   │   │               └─ Table\n" +
-			"         │   │   │   │   │                   ├─ name: movie_info\n" +
-			"         │   │   │   │   │                   └─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │   │       └─ ProcessTable\n" +
-			"         │   │   │   │           └─ Table\n" +
-			"         │   │   │   │               ├─ name: movie_keyword\n" +
-			"         │   │   │   │               └─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │   └─ Filter\n" +
-			"         │   │   │       ├─ AND\n" +
-			"         │   │   │       │   ├─ Eq\n" +
-			"         │   │   │       │   │   ├─ n.gender:2\n" +
-			"         │   │   │       │   │   └─ f (longtext)\n" +
-			"         │   │   │       │   └─ n.name LIKE '%An%'\n" +
-			"         │   │   │       └─ TableAlias(n)\n" +
-			"         │   │   │           └─ ProcessTable\n" +
-			"         │   │   │               └─ Table\n" +
-			"         │   │   │                   ├─ name: name\n" +
-			"         │   │   │                   └─ columns: [id name gender]\n" +
-			"         │   │   └─ TableAlias(pi)\n" +
-			"         │   │       └─ ProcessTable\n" +
-			"         │   │           └─ Table\n" +
-			"         │   │               ├─ name: person_info\n" +
-			"         │   │               └─ columns: [person_id info_type_id]\n" +
-			"         │   └─ Filter\n" +
-			"         │       ├─ Eq\n" +
-			"         │       │   ├─ rt.role:1!null\n" +
-			"         │       │   └─ actress (longtext)\n" +
-			"         │       └─ TableAlias(rt)\n" +
-			"         │           └─ ProcessTable\n" +
-			"         │               └─ Table\n" +
-			"         │                   ├─ name: role_type\n" +
-			"         │                   └─ columns: [id role]\n" +
-			"         └─ Filter\n" +
-			"             ├─ AND\n" +
-			"             │   ├─ GreaterThanOrEqual\n" +
-			"             │   │   ├─ t.production_year:2\n" +
-			"             │   │   └─ 2000 (smallint)\n" +
-			"             │   └─ LessThanOrEqual\n" +
-			"             │       ├─ t.production_year:2\n" +
-			"             │       └─ 2010 (smallint)\n" +
-			"             └─ TableAlias(t)\n" +
-			"                 └─ ProcessTable\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: title\n" +
-			"                         └─ columns: [id title production_year]\n" +
+			"         │       ├─ t.id:0!null\n" +
+			"         │       └─ cc.movie_id:33\n" +
+			"         ├─ Filter\n" +
+			"         │   ├─ AND\n" +
+			"         │   │   ├─ GreaterThanOrEqual\n" +
+			"         │   │   │   ├─ t.production_year:2\n" +
+			"         │   │   │   └─ 2000 (smallint)\n" +
+			"         │   │   └─ LessThanOrEqual\n" +
+			"         │   │       ├─ t.production_year:2\n" +
+			"         │   │       └─ 2010 (smallint)\n" +
+			"         │   └─ TableAlias(t)\n" +
+			"         │       └─ ProcessTable\n" +
+			"         │           └─ Table\n" +
+			"         │               ├─ name: title\n" +
+			"         │               └─ columns: [id title production_year]\n" +
+			"         └─ InnerJoin\n" +
+			"             ├─ Eq\n" +
+			"             │   ├─ rt.id:3!null\n" +
+			"             │   └─ ci.role_id:29!null\n" +
+			"             ├─ Filter\n" +
+			"             │   ├─ Eq\n" +
+			"             │   │   ├─ rt.role:1!null\n" +
+			"             │   │   └─ actress (longtext)\n" +
+			"             │   └─ TableAlias(rt)\n" +
+			"             │       └─ ProcessTable\n" +
+			"             │           └─ Table\n" +
+			"             │               ├─ name: role_type\n" +
+			"             │               └─ columns: [id role]\n" +
+			"             └─ InnerJoin\n" +
+			"                 ├─ AND\n" +
+			"                 │   ├─ AND\n" +
+			"                 │   │   ├─ AND\n" +
+			"                 │   │   │   ├─ Eq\n" +
+			"                 │   │   │   │   ├─ n.id:7!null\n" +
+			"                 │   │   │   │   └─ pi.person_id:5!null\n" +
+			"                 │   │   │   └─ Eq\n" +
+			"                 │   │   │       ├─ ci.person_id:25!null\n" +
+			"                 │   │   │       └─ pi.person_id:5!null\n" +
+			"                 │   │   └─ Eq\n" +
+			"                 │   │       ├─ it3.id:19!null\n" +
+			"                 │   │       └─ pi.info_type_id:6!null\n" +
+			"                 │   └─ Eq\n" +
+			"                 │       ├─ an.person_id:30!null\n" +
+			"                 │       └─ pi.person_id:5!null\n" +
+			"                 ├─ TableAlias(pi)\n" +
+			"                 │   └─ ProcessTable\n" +
+			"                 │       └─ Table\n" +
+			"                 │           ├─ name: person_info\n" +
+			"                 │           └─ columns: [person_id info_type_id]\n" +
+			"                 └─ InnerJoin\n" +
+			"                     ├─ AND\n" +
+			"                     │   ├─ Eq\n" +
+			"                     │   │   ├─ n.id:7!null\n" +
+			"                     │   │   └─ ci.person_id:25!null\n" +
+			"                     │   └─ Eq\n" +
+			"                     │       ├─ n.id:7!null\n" +
+			"                     │       └─ an.person_id:30!null\n" +
+			"                     ├─ Filter\n" +
+			"                     │   ├─ AND\n" +
+			"                     │   │   ├─ Eq\n" +
+			"                     │   │   │   ├─ n.gender:2\n" +
+			"                     │   │   │   └─ f (longtext)\n" +
+			"                     │   │   └─ n.name LIKE '%An%'\n" +
+			"                     │   └─ TableAlias(n)\n" +
+			"                     │       └─ ProcessTable\n" +
+			"                     │           └─ Table\n" +
+			"                     │               ├─ name: name\n" +
+			"                     │               └─ columns: [id name gender]\n" +
+			"                     └─ InnerJoin\n" +
+			"                         ├─ AND\n" +
+			"                         │   ├─ AND\n" +
+			"                         │   │   ├─ AND\n" +
+			"                         │   │   │   ├─ AND\n" +
+			"                         │   │   │   │   ├─ Eq\n" +
+			"                         │   │   │   │   │   ├─ mc.movie_id:15!null\n" +
+			"                         │   │   │   │   │   └─ mk.movie_id:10!null\n" +
+			"                         │   │   │   │   └─ Eq\n" +
+			"                         │   │   │   │       ├─ mi.movie_id:12!null\n" +
+			"                         │   │   │   │       └─ mk.movie_id:10!null\n" +
+			"                         │   │   │   └─ Eq\n" +
+			"                         │   │   │       ├─ ci.movie_id:26!null\n" +
+			"                         │   │   │       └─ mk.movie_id:10!null\n" +
+			"                         │   │   └─ Eq\n" +
+			"                         │   │       ├─ mk.movie_id:10!null\n" +
+			"                         │   │       └─ cc.movie_id:33\n" +
+			"                         │   └─ Eq\n" +
+			"                         │       ├─ k.id:17!null\n" +
+			"                         │       └─ mk.keyword_id:11!null\n" +
+			"                         ├─ TableAlias(mk)\n" +
+			"                         │   └─ ProcessTable\n" +
+			"                         │       └─ Table\n" +
+			"                         │           ├─ name: movie_keyword\n" +
+			"                         │           └─ columns: [movie_id keyword_id]\n" +
+			"                         └─ InnerJoin\n" +
+			"                             ├─ AND\n" +
+			"                             │   ├─ AND\n" +
+			"                             │   │   ├─ AND\n" +
+			"                             │   │   │   ├─ Eq\n" +
+			"                             │   │   │   │   ├─ mc.movie_id:15!null\n" +
+			"                             │   │   │   │   └─ mi.movie_id:12!null\n" +
+			"                             │   │   │   └─ Eq\n" +
+			"                             │   │   │       ├─ mi.movie_id:12!null\n" +
+			"                             │   │   │       └─ ci.movie_id:26!null\n" +
+			"                             │   │   └─ Eq\n" +
+			"                             │   │       ├─ mi.movie_id:12!null\n" +
+			"                             │   │       └─ cc.movie_id:33\n" +
+			"                             │   └─ Eq\n" +
+			"                             │       ├─ it.id:21!null\n" +
+			"                             │       └─ mi.info_type_id:13!null\n" +
+			"                             ├─ Filter\n" +
+			"                             │   ├─ AND\n" +
+			"                             │   │   ├─ NOT\n" +
+			"                             │   │   │   └─ mi.info:2!null IS NULL\n" +
+			"                             │   │   └─ Or\n" +
+			"                             │   │       ├─ mi.info LIKE 'Japan:%200%'\n" +
+			"                             │   │       └─ mi.info LIKE 'USA:%200%'\n" +
+			"                             │   └─ TableAlias(mi)\n" +
+			"                             │       └─ ProcessTable\n" +
+			"                             │           └─ Table\n" +
+			"                             │               ├─ name: movie_info\n" +
+			"                             │               └─ columns: [movie_id info_type_id info]\n" +
+			"                             └─ InnerJoin\n" +
+			"                                 ├─ AND\n" +
+			"                                 │   ├─ AND\n" +
+			"                                 │   │   ├─ Eq\n" +
+			"                                 │   │   │   ├─ mc.movie_id:15!null\n" +
+			"                                 │   │   │   └─ ci.movie_id:26!null\n" +
+			"                                 │   │   └─ Eq\n" +
+			"                                 │   │       ├─ mc.movie_id:15!null\n" +
+			"                                 │   │       └─ cc.movie_id:33\n" +
+			"                                 │   └─ Eq\n" +
+			"                                 │       ├─ cn.id:23!null\n" +
+			"                                 │       └─ mc.company_id:16!null\n" +
+			"                                 ├─ TableAlias(mc)\n" +
+			"                                 │   └─ ProcessTable\n" +
+			"                                 │       └─ Table\n" +
+			"                                 │           ├─ name: movie_companies\n" +
+			"                                 │           └─ columns: [movie_id company_id]\n" +
+			"                                 └─ CrossJoin\n" +
+			"                                     ├─ Filter\n" +
+			"                                     │   ├─ Eq\n" +
+			"                                     │   │   ├─ k.keyword:1!null\n" +
+			"                                     │   │   └─ computer-animation (longtext)\n" +
+			"                                     │   └─ TableAlias(k)\n" +
+			"                                     │       └─ ProcessTable\n" +
+			"                                     │           └─ Table\n" +
+			"                                     │               ├─ name: keyword\n" +
+			"                                     │               └─ columns: [id keyword]\n" +
+			"                                     └─ CrossJoin\n" +
+			"                                         ├─ Filter\n" +
+			"                                         │   ├─ Eq\n" +
+			"                                         │   │   ├─ it3.info:1!null\n" +
+			"                                         │   │   └─ trivia (longtext)\n" +
+			"                                         │   └─ TableAlias(it3)\n" +
+			"                                         │       └─ ProcessTable\n" +
+			"                                         │           └─ Table\n" +
+			"                                         │               ├─ name: info_type\n" +
+			"                                         │               └─ columns: [id info]\n" +
+			"                                         └─ CrossJoin\n" +
+			"                                             ├─ Filter\n" +
+			"                                             │   ├─ Eq\n" +
+			"                                             │   │   ├─ it.info:1!null\n" +
+			"                                             │   │   └─ release dates (longtext)\n" +
+			"                                             │   └─ TableAlias(it)\n" +
+			"                                             │       └─ Table\n" +
+			"                                             │           ├─ name: info_type\n" +
+			"                                             │           ├─ columns: [id info]\n" +
+			"                                             │           ├─ colSet: (38,39)\n" +
+			"                                             │           └─ tableId: 8\n" +
+			"                                             └─ CrossJoin\n" +
+			"                                                 ├─ Filter\n" +
+			"                                                 │   ├─ Eq\n" +
+			"                                                 │   │   ├─ cn.country_code:1\n" +
+			"                                                 │   │   └─ [us] (longtext)\n" +
+			"                                                 │   └─ TableAlias(cn)\n" +
+			"                                                 │       └─ ProcessTable\n" +
+			"                                                 │           └─ Table\n" +
+			"                                                 │               ├─ name: company_name\n" +
+			"                                                 │               └─ columns: [id country_code]\n" +
+			"                                                 └─ InnerJoin\n" +
+			"                                                     ├─ Eq\n" +
+			"                                                     │   ├─ chn.id:38!null\n" +
+			"                                                     │   └─ ci.person_role_id:27\n" +
+			"                                                     ├─ InnerJoin\n" +
+			"                                                     │   ├─ Eq\n" +
+			"                                                     │   │   ├─ cct2.id:36!null\n" +
+			"                                                     │   │   └─ cc.status_id:35!null\n" +
+			"                                                     │   ├─ InnerJoin\n" +
+			"                                                     │   │   ├─ Eq\n" +
+			"                                                     │   │   │   ├─ ci.movie_id:26!null\n" +
+			"                                                     │   │   │   └─ cc.movie_id:33\n" +
+			"                                                     │   │   ├─ LookupJoin\n" +
+			"                                                     │   │   │   ├─ Filter\n" +
+			"                                                     │   │   │   │   ├─ HashIn\n" +
+			"                                                     │   │   │   │   │   ├─ ci.note:3\n" +
+			"                                                     │   │   │   │   │   └─ TUPLE((voice) (longtext), (voice: Japanese version) (longtext), (voice) (uncredited) (longtext), (voice: English version) (longtext))\n" +
+			"                                                     │   │   │   │   └─ TableAlias(ci)\n" +
+			"                                                     │   │   │   │       └─ ProcessTable\n" +
+			"                                                     │   │   │   │           └─ Table\n" +
+			"                                                     │   │   │   │               ├─ name: cast_info\n" +
+			"                                                     │   │   │   │               └─ columns: [person_id movie_id person_role_id note role_id]\n" +
+			"                                                     │   │   │   └─ TableAlias(an)\n" +
+			"                                                     │   │   │       └─ IndexedTableAccess(aka_name)\n" +
+			"                                                     │   │   │           ├─ index: [aka_name.person_id]\n" +
+			"                                                     │   │   │           ├─ keys: [ci.person_id:25!null]\n" +
+			"                                                     │   │   │           ├─ colSet: (1-8)\n" +
+			"                                                     │   │   │           ├─ tableId: 1\n" +
+			"                                                     │   │   │           └─ Table\n" +
+			"                                                     │   │   │               ├─ name: aka_name\n" +
+			"                                                     │   │   │               └─ columns: [person_id]\n" +
+			"                                                     │   │   └─ InnerJoin\n" +
+			"                                                     │   │       ├─ Eq\n" +
+			"                                                     │   │       │   ├─ cct1.id:31!null\n" +
+			"                                                     │   │       │   └─ cc.subject_id:34!null\n" +
+			"                                                     │   │       ├─ Filter\n" +
+			"                                                     │   │       │   ├─ Eq\n" +
+			"                                                     │   │       │   │   ├─ cct1.kind:1!null\n" +
+			"                                                     │   │       │   │   └─ cast (longtext)\n" +
+			"                                                     │   │       │   └─ TableAlias(cct1)\n" +
+			"                                                     │   │       │       └─ ProcessTable\n" +
+			"                                                     │   │       │           └─ Table\n" +
+			"                                                     │   │       │               ├─ name: comp_cast_type\n" +
+			"                                                     │   │       │               └─ columns: [id kind]\n" +
+			"                                                     │   │       └─ TableAlias(cc)\n" +
+			"                                                     │   │           └─ ProcessTable\n" +
+			"                                                     │   │               └─ Table\n" +
+			"                                                     │   │                   ├─ name: complete_cast\n" +
+			"                                                     │   │                   └─ columns: [movie_id subject_id status_id]\n" +
+			"                                                     │   └─ Filter\n" +
+			"                                                     │       ├─ Eq\n" +
+			"                                                     │       │   ├─ cct2.kind:1!null\n" +
+			"                                                     │       │   └─ complete+verified (longtext)\n" +
+			"                                                     │       └─ TableAlias(cct2)\n" +
+			"                                                     │           └─ Table\n" +
+			"                                                     │               ├─ name: comp_cast_type\n" +
+			"                                                     │               ├─ columns: [id kind]\n" +
+			"                                                     │               ├─ colSet: (15,16)\n" +
+			"                                                     │               └─ tableId: 4\n" +
+			"                                                     └─ TableAlias(chn)\n" +
+			"                                                         └─ ProcessTable\n" +
+			"                                                             └─ Table\n" +
+			"                                                                 ├─ name: char_name\n" +
+			"                                                                 └─ columns: [id name]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [min(chn.name) as voiced_char, min(n.name) as voicing_actress, min(t.title) as voiced_animation]\n" +
@@ -22766,120 +22783,122 @@ WHERE cct1.kind ='cast'
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((t.id = mi.movie_id) AND (t.id = mc.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = cc.movie_id))\n" +
-			"         ├─ InnerJoin\n" +
-			"         │   ├─ (rt.id = ci.role_id)\n" +
-			"         │   ├─ InnerJoin\n" +
-			"         │   │   ├─ (((n.id = pi.person_id) AND (ci.person_id = pi.person_id)) AND (it3.id = pi.info_type_id))\n" +
-			"         │   │   ├─ InnerJoin\n" +
-			"         │   │   │   ├─ ((n.id = ci.person_id) AND (n.id = an.person_id))\n" +
-			"         │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   ├─ (((((mc.movie_id = mk.movie_id) AND (mi.movie_id = mk.movie_id)) AND (ci.movie_id = mk.movie_id)) AND (mk.movie_id = cc.movie_id)) AND (k.id = mk.keyword_id))\n" +
-			"         │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   ├─ ((((mc.movie_id = mi.movie_id) AND (mi.movie_id = ci.movie_id)) AND (mi.movie_id = cc.movie_id)) AND (it.id = mi.info_type_id))\n" +
-			"         │   │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   │   ├─ (((mc.movie_id = ci.movie_id) AND (mc.movie_id = cc.movie_id)) AND (cn.id = mc.company_id))\n" +
-			"         │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   ├─ (((ci.movie_id = cc.movie_id) AND (ci.person_id = an.person_id)) AND (chn.id = ci.person_role_id))\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ (cct2.id = cc.status_id)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ (cct1.id = cc.subject_id)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ TableAlias(an)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       ├─ name: aka_name\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ columns: [person_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ TableAlias(cc)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ name: complete_cast\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           └─ columns: [movie_id subject_id status_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │       ├─ (cct1.kind = 'cast')\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(cct1)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ name: comp_cast_type\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │               └─ columns: [id kind]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │       ├─ (cct2.kind = 'complete+verified')\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(cct2)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ name: comp_cast_type\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │               └─ columns: [id kind]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   └─ TableAlias(chn)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │       └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │           ├─ name: char_name\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │           └─ columns: [id name]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │       ├─ (ci.note HASH IN ('(voice)', '(voice: Japanese version)', '(voice) (uncredited)', '(voice: English version)'))\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(ci)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │               ├─ name: cast_info\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │               └─ columns: [person_id movie_id person_role_id note role_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │       ├─ (cn.country_code = '[us]')\n" +
-			"         │   │   │   │   │   │   │   │   │   │       └─ TableAlias(cn)\n" +
-			"         │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │               ├─ name: company_name\n" +
-			"         │   │   │   │   │   │   │   │   │   │               └─ columns: [id country_code]\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │       ├─ (it.info = 'release dates')\n" +
-			"         │   │   │   │   │   │   │   │   │       └─ TableAlias(it)\n" +
-			"         │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │   │   │               └─ columns: [id info]\n" +
-			"         │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │       ├─ (it3.info = 'trivia')\n" +
-			"         │   │   │   │   │   │   │   │       └─ TableAlias(it3)\n" +
-			"         │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │   │               └─ columns: [id info]\n" +
-			"         │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │       ├─ (k.keyword = 'computer-animation')\n" +
-			"         │   │   │   │   │   │   │       └─ TableAlias(k)\n" +
-			"         │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │               ├─ name: keyword\n" +
-			"         │   │   │   │   │   │   │               └─ columns: [id keyword]\n" +
-			"         │   │   │   │   │   │   └─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │       └─ Table\n" +
-			"         │   │   │   │   │   │           ├─ name: movie_companies\n" +
-			"         │   │   │   │   │   │           └─ columns: [movie_id company_id]\n" +
-			"         │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │       ├─ ((NOT(mi.info IS NULL)) AND (mi.info LIKE 'Japan:%200%' OR mi.info LIKE 'USA:%200%'))\n" +
-			"         │   │   │   │   │       └─ TableAlias(mi)\n" +
-			"         │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │               ├─ name: movie_info\n" +
-			"         │   │   │   │   │               └─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │   │       └─ Table\n" +
-			"         │   │   │   │           ├─ name: movie_keyword\n" +
-			"         │   │   │   │           └─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │   └─ Filter\n" +
-			"         │   │   │       ├─ ((n.gender = 'f') AND n.name LIKE '%An%')\n" +
-			"         │   │   │       └─ TableAlias(n)\n" +
-			"         │   │   │           └─ Table\n" +
-			"         │   │   │               ├─ name: name\n" +
-			"         │   │   │               └─ columns: [id name gender]\n" +
-			"         │   │   └─ TableAlias(pi)\n" +
-			"         │   │       └─ Table\n" +
-			"         │   │           ├─ name: person_info\n" +
-			"         │   │           └─ columns: [person_id info_type_id]\n" +
-			"         │   └─ Filter\n" +
-			"         │       ├─ (rt.role = 'actress')\n" +
-			"         │       └─ TableAlias(rt)\n" +
-			"         │           └─ Table\n" +
-			"         │               ├─ name: role_type\n" +
-			"         │               └─ columns: [id role]\n" +
-			"         └─ Filter\n" +
-			"             ├─ ((t.production_year >= 2000) AND (t.production_year <= 2010))\n" +
-			"             └─ TableAlias(t)\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: title\n" +
-			"                     └─ columns: [id title production_year]\n" +
+			"         ├─ Filter\n" +
+			"         │   ├─ ((t.production_year >= 2000) AND (t.production_year <= 2010))\n" +
+			"         │   └─ TableAlias(t)\n" +
+			"         │       └─ Table\n" +
+			"         │           ├─ name: title\n" +
+			"         │           └─ columns: [id title production_year]\n" +
+			"         └─ InnerJoin\n" +
+			"             ├─ (rt.id = ci.role_id)\n" +
+			"             ├─ Filter\n" +
+			"             │   ├─ (rt.role = 'actress')\n" +
+			"             │   └─ TableAlias(rt)\n" +
+			"             │       └─ Table\n" +
+			"             │           ├─ name: role_type\n" +
+			"             │           └─ columns: [id role]\n" +
+			"             └─ InnerJoin\n" +
+			"                 ├─ ((((n.id = pi.person_id) AND (ci.person_id = pi.person_id)) AND (it3.id = pi.info_type_id)) AND (an.person_id = pi.person_id))\n" +
+			"                 ├─ TableAlias(pi)\n" +
+			"                 │   └─ Table\n" +
+			"                 │       ├─ name: person_info\n" +
+			"                 │       └─ columns: [person_id info_type_id]\n" +
+			"                 └─ InnerJoin\n" +
+			"                     ├─ ((n.id = ci.person_id) AND (n.id = an.person_id))\n" +
+			"                     ├─ Filter\n" +
+			"                     │   ├─ ((n.gender = 'f') AND n.name LIKE '%An%')\n" +
+			"                     │   └─ TableAlias(n)\n" +
+			"                     │       └─ Table\n" +
+			"                     │           ├─ name: name\n" +
+			"                     │           └─ columns: [id name gender]\n" +
+			"                     └─ InnerJoin\n" +
+			"                         ├─ (((((mc.movie_id = mk.movie_id) AND (mi.movie_id = mk.movie_id)) AND (ci.movie_id = mk.movie_id)) AND (mk.movie_id = cc.movie_id)) AND (k.id = mk.keyword_id))\n" +
+			"                         ├─ TableAlias(mk)\n" +
+			"                         │   └─ Table\n" +
+			"                         │       ├─ name: movie_keyword\n" +
+			"                         │       └─ columns: [movie_id keyword_id]\n" +
+			"                         └─ InnerJoin\n" +
+			"                             ├─ ((((mc.movie_id = mi.movie_id) AND (mi.movie_id = ci.movie_id)) AND (mi.movie_id = cc.movie_id)) AND (it.id = mi.info_type_id))\n" +
+			"                             ├─ Filter\n" +
+			"                             │   ├─ ((NOT(mi.info IS NULL)) AND (mi.info LIKE 'Japan:%200%' OR mi.info LIKE 'USA:%200%'))\n" +
+			"                             │   └─ TableAlias(mi)\n" +
+			"                             │       └─ Table\n" +
+			"                             │           ├─ name: movie_info\n" +
+			"                             │           └─ columns: [movie_id info_type_id info]\n" +
+			"                             └─ InnerJoin\n" +
+			"                                 ├─ (((mc.movie_id = ci.movie_id) AND (mc.movie_id = cc.movie_id)) AND (cn.id = mc.company_id))\n" +
+			"                                 ├─ TableAlias(mc)\n" +
+			"                                 │   └─ Table\n" +
+			"                                 │       ├─ name: movie_companies\n" +
+			"                                 │       └─ columns: [movie_id company_id]\n" +
+			"                                 └─ CrossJoin\n" +
+			"                                     ├─ Filter\n" +
+			"                                     │   ├─ (k.keyword = 'computer-animation')\n" +
+			"                                     │   └─ TableAlias(k)\n" +
+			"                                     │       └─ Table\n" +
+			"                                     │           ├─ name: keyword\n" +
+			"                                     │           └─ columns: [id keyword]\n" +
+			"                                     └─ CrossJoin\n" +
+			"                                         ├─ Filter\n" +
+			"                                         │   ├─ (it3.info = 'trivia')\n" +
+			"                                         │   └─ TableAlias(it3)\n" +
+			"                                         │       └─ Table\n" +
+			"                                         │           ├─ name: info_type\n" +
+			"                                         │           └─ columns: [id info]\n" +
+			"                                         └─ CrossJoin\n" +
+			"                                             ├─ Filter\n" +
+			"                                             │   ├─ (it.info = 'release dates')\n" +
+			"                                             │   └─ TableAlias(it)\n" +
+			"                                             │       └─ Table\n" +
+			"                                             │           ├─ name: info_type\n" +
+			"                                             │           └─ columns: [id info]\n" +
+			"                                             └─ CrossJoin\n" +
+			"                                                 ├─ Filter\n" +
+			"                                                 │   ├─ (cn.country_code = '[us]')\n" +
+			"                                                 │   └─ TableAlias(cn)\n" +
+			"                                                 │       └─ Table\n" +
+			"                                                 │           ├─ name: company_name\n" +
+			"                                                 │           └─ columns: [id country_code]\n" +
+			"                                                 └─ InnerJoin\n" +
+			"                                                     ├─ (chn.id = ci.person_role_id)\n" +
+			"                                                     ├─ InnerJoin\n" +
+			"                                                     │   ├─ (cct2.id = cc.status_id)\n" +
+			"                                                     │   ├─ InnerJoin\n" +
+			"                                                     │   │   ├─ (ci.movie_id = cc.movie_id)\n" +
+			"                                                     │   │   ├─ LookupJoin\n" +
+			"                                                     │   │   │   ├─ Filter\n" +
+			"                                                     │   │   │   │   ├─ (ci.note HASH IN ('(voice)', '(voice: Japanese version)', '(voice) (uncredited)', '(voice: English version)'))\n" +
+			"                                                     │   │   │   │   └─ TableAlias(ci)\n" +
+			"                                                     │   │   │   │       └─ Table\n" +
+			"                                                     │   │   │   │           ├─ name: cast_info\n" +
+			"                                                     │   │   │   │           └─ columns: [person_id movie_id person_role_id note role_id]\n" +
+			"                                                     │   │   │   └─ TableAlias(an)\n" +
+			"                                                     │   │   │       └─ IndexedTableAccess(aka_name)\n" +
+			"                                                     │   │   │           ├─ index: [aka_name.person_id]\n" +
+			"                                                     │   │   │           ├─ columns: [person_id]\n" +
+			"                                                     │   │   │           └─ keys: ci.person_id\n" +
+			"                                                     │   │   └─ InnerJoin\n" +
+			"                                                     │   │       ├─ (cct1.id = cc.subject_id)\n" +
+			"                                                     │   │       ├─ Filter\n" +
+			"                                                     │   │       │   ├─ (cct1.kind = 'cast')\n" +
+			"                                                     │   │       │   └─ TableAlias(cct1)\n" +
+			"                                                     │   │       │       └─ Table\n" +
+			"                                                     │   │       │           ├─ name: comp_cast_type\n" +
+			"                                                     │   │       │           └─ columns: [id kind]\n" +
+			"                                                     │   │       └─ TableAlias(cc)\n" +
+			"                                                     │   │           └─ Table\n" +
+			"                                                     │   │               ├─ name: complete_cast\n" +
+			"                                                     │   │               └─ columns: [movie_id subject_id status_id]\n" +
+			"                                                     │   └─ Filter\n" +
+			"                                                     │       ├─ (cct2.kind = 'complete+verified')\n" +
+			"                                                     │       └─ TableAlias(cct2)\n" +
+			"                                                     │           └─ Table\n" +
+			"                                                     │               ├─ name: comp_cast_type\n" +
+			"                                                     │               └─ columns: [id kind]\n" +
+			"                                                     └─ TableAlias(chn)\n" +
+			"                                                         └─ Table\n" +
+			"                                                             ├─ name: char_name\n" +
+			"                                                             └─ columns: [id name]\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [min(chn.name) as voiced_char, min(n.name) as voicing_actress, min(t.title) as voiced_animation]\n" +
@@ -22888,120 +22907,122 @@ WHERE cct1.kind ='cast'
 			"     ├─ Grouping()\n" +
 			"     └─ InnerJoin\n" +
 			"         ├─ (((((t.id = mi.movie_id) AND (t.id = mc.movie_id)) AND (t.id = ci.movie_id)) AND (t.id = mk.movie_id)) AND (t.id = cc.movie_id))\n" +
-			"         ├─ InnerJoin\n" +
-			"         │   ├─ (rt.id = ci.role_id)\n" +
-			"         │   ├─ InnerJoin\n" +
-			"         │   │   ├─ (((n.id = pi.person_id) AND (ci.person_id = pi.person_id)) AND (it3.id = pi.info_type_id))\n" +
-			"         │   │   ├─ InnerJoin\n" +
-			"         │   │   │   ├─ ((n.id = ci.person_id) AND (n.id = an.person_id))\n" +
-			"         │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   ├─ (((((mc.movie_id = mk.movie_id) AND (mi.movie_id = mk.movie_id)) AND (ci.movie_id = mk.movie_id)) AND (mk.movie_id = cc.movie_id)) AND (k.id = mk.keyword_id))\n" +
-			"         │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   ├─ ((((mc.movie_id = mi.movie_id) AND (mi.movie_id = ci.movie_id)) AND (mi.movie_id = cc.movie_id)) AND (it.id = mi.info_type_id))\n" +
-			"         │   │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   │   ├─ (((mc.movie_id = ci.movie_id) AND (mc.movie_id = cc.movie_id)) AND (cn.id = mc.company_id))\n" +
-			"         │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   ├─ (((ci.movie_id = cc.movie_id) AND (ci.person_id = an.person_id)) AND (chn.id = ci.person_role_id))\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ (cct2.id = cc.status_id)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ InnerJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ (cct1.id = cc.subject_id)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ CrossJoin\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ TableAlias(an)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       ├─ name: aka_name\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ columns: [person_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ TableAlias(cc)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ name: complete_cast\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           └─ columns: [movie_id subject_id status_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │       ├─ (cct1.kind = 'cast')\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(cct1)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ name: comp_cast_type\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   │               └─ columns: [id kind]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │       ├─ (cct2.kind = 'complete+verified')\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(cct2)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ name: comp_cast_type\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   │               └─ columns: [id kind]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │   └─ TableAlias(chn)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │       └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │           ├─ name: char_name\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   │           └─ columns: [id name]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │       ├─ (ci.note HASH IN ('(voice)', '(voice: Japanese version)', '(voice) (uncredited)', '(voice: English version)'))\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │       └─ TableAlias(ci)\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │               ├─ name: cast_info\n" +
-			"         │   │   │   │   │   │   │   │   │   │   │               └─ columns: [person_id movie_id person_role_id note role_id]\n" +
-			"         │   │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │   │       ├─ (cn.country_code = '[us]')\n" +
-			"         │   │   │   │   │   │   │   │   │   │       └─ TableAlias(cn)\n" +
-			"         │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │   │               ├─ name: company_name\n" +
-			"         │   │   │   │   │   │   │   │   │   │               └─ columns: [id country_code]\n" +
-			"         │   │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │   │       ├─ (it.info = 'release dates')\n" +
-			"         │   │   │   │   │   │   │   │   │       └─ TableAlias(it)\n" +
-			"         │   │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │   │   │               └─ columns: [id info]\n" +
-			"         │   │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │   │       ├─ (it3.info = 'trivia')\n" +
-			"         │   │   │   │   │   │   │   │       └─ TableAlias(it3)\n" +
-			"         │   │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │   │               ├─ name: info_type\n" +
-			"         │   │   │   │   │   │   │   │               └─ columns: [id info]\n" +
-			"         │   │   │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │   │   │       ├─ (k.keyword = 'computer-animation')\n" +
-			"         │   │   │   │   │   │   │       └─ TableAlias(k)\n" +
-			"         │   │   │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │   │   │               ├─ name: keyword\n" +
-			"         │   │   │   │   │   │   │               └─ columns: [id keyword]\n" +
-			"         │   │   │   │   │   │   └─ TableAlias(mc)\n" +
-			"         │   │   │   │   │   │       └─ Table\n" +
-			"         │   │   │   │   │   │           ├─ name: movie_companies\n" +
-			"         │   │   │   │   │   │           └─ columns: [movie_id company_id]\n" +
-			"         │   │   │   │   │   └─ Filter\n" +
-			"         │   │   │   │   │       ├─ ((NOT(mi.info IS NULL)) AND (mi.info LIKE 'Japan:%200%' OR mi.info LIKE 'USA:%200%'))\n" +
-			"         │   │   │   │   │       └─ TableAlias(mi)\n" +
-			"         │   │   │   │   │           └─ Table\n" +
-			"         │   │   │   │   │               ├─ name: movie_info\n" +
-			"         │   │   │   │   │               └─ columns: [movie_id info_type_id info]\n" +
-			"         │   │   │   │   └─ TableAlias(mk)\n" +
-			"         │   │   │   │       └─ Table\n" +
-			"         │   │   │   │           ├─ name: movie_keyword\n" +
-			"         │   │   │   │           └─ columns: [movie_id keyword_id]\n" +
-			"         │   │   │   └─ Filter\n" +
-			"         │   │   │       ├─ ((n.gender = 'f') AND n.name LIKE '%An%')\n" +
-			"         │   │   │       └─ TableAlias(n)\n" +
-			"         │   │   │           └─ Table\n" +
-			"         │   │   │               ├─ name: name\n" +
-			"         │   │   │               └─ columns: [id name gender]\n" +
-			"         │   │   └─ TableAlias(pi)\n" +
-			"         │   │       └─ Table\n" +
-			"         │   │           ├─ name: person_info\n" +
-			"         │   │           └─ columns: [person_id info_type_id]\n" +
-			"         │   └─ Filter\n" +
-			"         │       ├─ (rt.role = 'actress')\n" +
-			"         │       └─ TableAlias(rt)\n" +
-			"         │           └─ Table\n" +
-			"         │               ├─ name: role_type\n" +
-			"         │               └─ columns: [id role]\n" +
-			"         └─ Filter\n" +
-			"             ├─ ((t.production_year >= 2000) AND (t.production_year <= 2010))\n" +
-			"             └─ TableAlias(t)\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: title\n" +
-			"                     └─ columns: [id title production_year]\n" +
+			"         ├─ Filter\n" +
+			"         │   ├─ ((t.production_year >= 2000) AND (t.production_year <= 2010))\n" +
+			"         │   └─ TableAlias(t)\n" +
+			"         │       └─ Table\n" +
+			"         │           ├─ name: title\n" +
+			"         │           └─ columns: [id title production_year]\n" +
+			"         └─ InnerJoin\n" +
+			"             ├─ (rt.id = ci.role_id)\n" +
+			"             ├─ Filter\n" +
+			"             │   ├─ (rt.role = 'actress')\n" +
+			"             │   └─ TableAlias(rt)\n" +
+			"             │       └─ Table\n" +
+			"             │           ├─ name: role_type\n" +
+			"             │           └─ columns: [id role]\n" +
+			"             └─ InnerJoin\n" +
+			"                 ├─ ((((n.id = pi.person_id) AND (ci.person_id = pi.person_id)) AND (it3.id = pi.info_type_id)) AND (an.person_id = pi.person_id))\n" +
+			"                 ├─ TableAlias(pi)\n" +
+			"                 │   └─ Table\n" +
+			"                 │       ├─ name: person_info\n" +
+			"                 │       └─ columns: [person_id info_type_id]\n" +
+			"                 └─ InnerJoin\n" +
+			"                     ├─ ((n.id = ci.person_id) AND (n.id = an.person_id))\n" +
+			"                     ├─ Filter\n" +
+			"                     │   ├─ ((n.gender = 'f') AND n.name LIKE '%An%')\n" +
+			"                     │   └─ TableAlias(n)\n" +
+			"                     │       └─ Table\n" +
+			"                     │           ├─ name: name\n" +
+			"                     │           └─ columns: [id name gender]\n" +
+			"                     └─ InnerJoin\n" +
+			"                         ├─ (((((mc.movie_id = mk.movie_id) AND (mi.movie_id = mk.movie_id)) AND (ci.movie_id = mk.movie_id)) AND (mk.movie_id = cc.movie_id)) AND (k.id = mk.keyword_id))\n" +
+			"                         ├─ TableAlias(mk)\n" +
+			"                         │   └─ Table\n" +
+			"                         │       ├─ name: movie_keyword\n" +
+			"                         │       └─ columns: [movie_id keyword_id]\n" +
+			"                         └─ InnerJoin\n" +
+			"                             ├─ ((((mc.movie_id = mi.movie_id) AND (mi.movie_id = ci.movie_id)) AND (mi.movie_id = cc.movie_id)) AND (it.id = mi.info_type_id))\n" +
+			"                             ├─ Filter\n" +
+			"                             │   ├─ ((NOT(mi.info IS NULL)) AND (mi.info LIKE 'Japan:%200%' OR mi.info LIKE 'USA:%200%'))\n" +
+			"                             │   └─ TableAlias(mi)\n" +
+			"                             │       └─ Table\n" +
+			"                             │           ├─ name: movie_info\n" +
+			"                             │           └─ columns: [movie_id info_type_id info]\n" +
+			"                             └─ InnerJoin\n" +
+			"                                 ├─ (((mc.movie_id = ci.movie_id) AND (mc.movie_id = cc.movie_id)) AND (cn.id = mc.company_id))\n" +
+			"                                 ├─ TableAlias(mc)\n" +
+			"                                 │   └─ Table\n" +
+			"                                 │       ├─ name: movie_companies\n" +
+			"                                 │       └─ columns: [movie_id company_id]\n" +
+			"                                 └─ CrossJoin\n" +
+			"                                     ├─ Filter\n" +
+			"                                     │   ├─ (k.keyword = 'computer-animation')\n" +
+			"                                     │   └─ TableAlias(k)\n" +
+			"                                     │       └─ Table\n" +
+			"                                     │           ├─ name: keyword\n" +
+			"                                     │           └─ columns: [id keyword]\n" +
+			"                                     └─ CrossJoin\n" +
+			"                                         ├─ Filter\n" +
+			"                                         │   ├─ (it3.info = 'trivia')\n" +
+			"                                         │   └─ TableAlias(it3)\n" +
+			"                                         │       └─ Table\n" +
+			"                                         │           ├─ name: info_type\n" +
+			"                                         │           └─ columns: [id info]\n" +
+			"                                         └─ CrossJoin\n" +
+			"                                             ├─ Filter\n" +
+			"                                             │   ├─ (it.info = 'release dates')\n" +
+			"                                             │   └─ TableAlias(it)\n" +
+			"                                             │       └─ Table\n" +
+			"                                             │           ├─ name: info_type\n" +
+			"                                             │           └─ columns: [id info]\n" +
+			"                                             └─ CrossJoin\n" +
+			"                                                 ├─ Filter\n" +
+			"                                                 │   ├─ (cn.country_code = '[us]')\n" +
+			"                                                 │   └─ TableAlias(cn)\n" +
+			"                                                 │       └─ Table\n" +
+			"                                                 │           ├─ name: company_name\n" +
+			"                                                 │           └─ columns: [id country_code]\n" +
+			"                                                 └─ InnerJoin\n" +
+			"                                                     ├─ (chn.id = ci.person_role_id)\n" +
+			"                                                     ├─ InnerJoin\n" +
+			"                                                     │   ├─ (cct2.id = cc.status_id)\n" +
+			"                                                     │   ├─ InnerJoin\n" +
+			"                                                     │   │   ├─ (ci.movie_id = cc.movie_id)\n" +
+			"                                                     │   │   ├─ LookupJoin\n" +
+			"                                                     │   │   │   ├─ Filter\n" +
+			"                                                     │   │   │   │   ├─ (ci.note HASH IN ('(voice)', '(voice: Japanese version)', '(voice) (uncredited)', '(voice: English version)'))\n" +
+			"                                                     │   │   │   │   └─ TableAlias(ci)\n" +
+			"                                                     │   │   │   │       └─ Table\n" +
+			"                                                     │   │   │   │           ├─ name: cast_info\n" +
+			"                                                     │   │   │   │           └─ columns: [person_id movie_id person_role_id note role_id]\n" +
+			"                                                     │   │   │   └─ TableAlias(an)\n" +
+			"                                                     │   │   │       └─ IndexedTableAccess(aka_name)\n" +
+			"                                                     │   │   │           ├─ index: [aka_name.person_id]\n" +
+			"                                                     │   │   │           ├─ columns: [person_id]\n" +
+			"                                                     │   │   │           └─ keys: ci.person_id\n" +
+			"                                                     │   │   └─ InnerJoin\n" +
+			"                                                     │   │       ├─ (cct1.id = cc.subject_id)\n" +
+			"                                                     │   │       ├─ Filter\n" +
+			"                                                     │   │       │   ├─ (cct1.kind = 'cast')\n" +
+			"                                                     │   │       │   └─ TableAlias(cct1)\n" +
+			"                                                     │   │       │       └─ Table\n" +
+			"                                                     │   │       │           ├─ name: comp_cast_type\n" +
+			"                                                     │   │       │           └─ columns: [id kind]\n" +
+			"                                                     │   │       └─ TableAlias(cc)\n" +
+			"                                                     │   │           └─ Table\n" +
+			"                                                     │   │               ├─ name: complete_cast\n" +
+			"                                                     │   │               └─ columns: [movie_id subject_id status_id]\n" +
+			"                                                     │   └─ Filter\n" +
+			"                                                     │       ├─ (cct2.kind = 'complete+verified')\n" +
+			"                                                     │       └─ TableAlias(cct2)\n" +
+			"                                                     │           └─ Table\n" +
+			"                                                     │               ├─ name: comp_cast_type\n" +
+			"                                                     │               └─ columns: [id kind]\n" +
+			"                                                     └─ TableAlias(chn)\n" +
+			"                                                         └─ Table\n" +
+			"                                                             ├─ name: char_name\n" +
+			"                                                             └─ columns: [id name]\n" +
 			"",
 	},
 	{
