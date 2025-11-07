@@ -497,14 +497,14 @@ func (t GeometryType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqlt
 	if v.IsNull() {
 		return sqltypes.NULL, nil
 	}
-	if v.Val != nil {
-		return sqltypes.MakeTrusted(sqltypes.Geometry, v.Val), nil
+	if v.Val == nil {
+		var err error
+		v.Val, err = v.WrappedVal.Unwrap(ctx)
+		if err != nil {
+			return sqltypes.Value{}, err
+		}
 	}
-	geomBytes, err := v.WrappedVal.Unwrap(ctx)
-	if err != nil {
-		return sqltypes.Value{}, err
-	}
-	return sqltypes.MakeTrusted(sqltypes.Geometry, geomBytes), nil
+	return sqltypes.MakeTrusted(sqltypes.Geometry, v.Val), nil
 }
 
 // String implements Type interface.
