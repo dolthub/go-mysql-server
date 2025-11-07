@@ -27,6 +27,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/values"
 )
 
 const (
@@ -138,6 +139,22 @@ func (t DecimalType_) Compare(s context.Context, a interface{}, b interface{}) (
 	return af.Decimal.Cmp(bf.Decimal), nil
 }
 
+// CompareValue implements the ValueType interface
+func (t DecimalType_) CompareValue(ctx *sql.Context, a, b sql.Value) (int, error) {
+	if hasNulls, res := CompareNullValues(a, b); hasNulls {
+		return res, nil
+	}
+	aDec, err := convertValueToDecimal(ctx, a)
+	if err != nil {
+		return 0, err
+	}
+	bDec, err := convertValueToDecimal(ctx, b)
+	if err != nil {
+		return 0, err
+	}
+	return aDec.Cmp(bDec), nil
+}
+
 // Convert implements Type interface.
 func (t DecimalType_) Convert(c context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	dec, err := t.ConvertToNullDecimal(v)
@@ -199,7 +216,7 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 	case int64:
 		return t.ConvertToNullDecimal(decimal.NewFromInt(value))
 	case uint64:
-		return t.ConvertToNullDecimal(decimal.NewFromBigInt(new(big.Int).SetUint64(value), 0))
+		return t.ConvertToNullDecimal(decimal.NewFromUint64(value))
 	case float32:
 		return t.ConvertToNullDecimal(decimal.NewFromFloat32(value))
 	case float64:
@@ -329,6 +346,14 @@ func (t DecimalType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 	return sqltypes.MakeTrusted(sqltypes.Decimal, val), nil
 }
 
+func (t DecimalType_) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes.Value, error) {
+	if v.IsNull() {
+		return sqltypes.NULL, nil
+	}
+	d := values.ReadDecimal(v.Val)
+	return sqltypes.MakeTrusted(sqltypes.Decimal, []byte(t.DecimalValueStringFixed(d))), nil
+}
+
 // String implements Type interface.
 func (t DecimalType_) String() string {
 	return fmt.Sprintf("decimal(%v,%v)", t.precision, t.scale)
@@ -383,5 +408,75 @@ func (t DecimalType_) DecimalValueStringFixed(v decimal.Decimal) string {
 		return v.String()
 	} else {
 		return v.StringFixed(v.Exponent() * -1)
+	}
+}
+
+func convertValueToDecimal(ctx *sql.Context, v sql.Value) (decimal.Decimal, error) {
+	switch v.Typ {
+	case sqltypes.Int8:
+		x := values.ReadInt8(v.Val)
+		return decimal.NewFromInt(int64(x)), nil
+	case sqltypes.Int16:
+		x := values.ReadInt16(v.Val)
+		return decimal.NewFromInt(int64(x)), nil
+	case sqltypes.Int32:
+		x := values.ReadInt32(v.Val)
+		return decimal.NewFromInt(int64(x)), nil
+	case sqltypes.Int64:
+		x := values.ReadInt64(v.Val)
+		return decimal.NewFromInt(x), nil
+	case sqltypes.Uint8:
+		x := values.ReadUint8(v.Val)
+		return decimal.NewFromInt(int64(x)), nil
+	case sqltypes.Uint16:
+		x := values.ReadUint16(v.Val)
+		return decimal.NewFromInt(int64(x)), nil
+	case sqltypes.Uint32:
+		x := values.ReadUint32(v.Val)
+		return decimal.NewFromInt(int64(x)), nil
+	case sqltypes.Uint64:
+		x := values.ReadUint64(v.Val)
+		return decimal.NewFromUint64(x), nil
+	case sqltypes.Float32:
+		x := values.ReadFloat32(v.Val)
+		return decimal.NewFromFloat32(x), nil
+	case sqltypes.Float64:
+		x := values.ReadFloat64(v.Val)
+		return decimal.NewFromFloat(x), nil
+	case sqltypes.Decimal:
+		x := values.ReadDecimal(v.Val)
+		return x, nil
+	case sqltypes.Bit:
+		x := values.ReadUint64(v.Val)
+		return decimal.NewFromUint64(x), nil
+	case sqltypes.Year:
+		x := values.ReadUint16(v.Val)
+		return decimal.NewFromInt(int64(x)), nil
+	case sqltypes.Date:
+		x := values.ReadDate(v.Val)
+		s := x.UTC().Unix()
+		return decimal.NewFromInt(s), nil
+	case sqltypes.Time:
+		x := values.ReadInt64(v.Val)
+		return decimal.NewFromInt(x), nil
+	case sqltypes.Datetime, sqltypes.Timestamp:
+		x := values.ReadDatetime(v.Val)
+		return decimal.NewFromInt(x.UTC().Unix()), nil
+	case sqltypes.Text, sqltypes.Blob:
+		var err error
+		if v.Val == nil {
+			v.Val, err = v.WrappedVal.Unwrap(ctx)
+			if err != nil {
+				return decimal.Decimal{}, err
+			}
+		}
+		x := values.ReadString(v.Val)
+		res, err := decimal.NewFromString(x)
+		if err != nil {
+			return decimal.Decimal{}, err
+		}
+		return res, nil
+	default:
+		return decimal.Decimal{}, ErrConvertingToDecimal.New(v)
 	}
 }

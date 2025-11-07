@@ -103,6 +103,31 @@ func (t BitType_) Compare(ctx context.Context, a interface{}, b interface{}) (in
 	return 0, nil
 }
 
+// CompareValue implements the ValueType interface
+func (t BitType_) CompareValue(ctx *sql.Context, a, b sql.Value) (int, error) {
+	if hasNulls, res := CompareNullValues(a, b); hasNulls {
+		return res, nil
+	}
+
+	av, _, err := convertValueToUint64(ctx, a)
+	if err != nil {
+		return 0, err
+	}
+	bv, _, err := convertValueToUint64(ctx, b)
+	if err != nil {
+		return 0, err
+	}
+
+	switch {
+	case av < bv:
+		return -1, nil
+	case av > bv:
+		return 1, nil
+	default:
+		return 0, nil
+	}
+}
+
 // Convert implements Type interface.
 func (t BitType_) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
@@ -209,6 +234,30 @@ func (t BitType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Va
 	val := data
 
 	return sqltypes.MakeTrusted(sqltypes.Bit, val), nil
+}
+
+// SQLValue implements ValueType interface.
+func (t BitType_) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes.Value, error) {
+	if v.IsNull() {
+		return sqltypes.NULL, nil
+	}
+
+	// Trim/Pad result to the appropriate length
+	numBytes := t.numOfBits / 8
+	if t.numOfBits%8 != 0 {
+		numBytes += 1
+	}
+	for i := uint8(len(v.Val)); i < numBytes; i++ {
+		v.Val = append(v.Val, 0)
+	}
+	v.Val = v.Val[:numBytes]
+
+	// want the results in big endian
+	dest = append(dest, v.Val...)
+	for i, j := 0, len(dest)-1; i < j; i, j = i+1, j-1 {
+		dest[i], dest[j] = dest[j], dest[i]
+	}
+	return sqltypes.MakeTrusted(sqltypes.Bit, dest), nil
 }
 
 // String implements Type interface.

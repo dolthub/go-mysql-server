@@ -84,21 +84,21 @@ func (b *Builder) buildShow(inScope *scope, s *ast.Show) (outScope *scope) {
 	case "binary log status":
 		outScope = inScope.push()
 		showRep := plan.NewShowBinlogStatus()
-		if binCat, ok := b.cat.(binlogreplication.BinlogPrimaryCatalog); ok && binCat.HasBinlogPrimaryController() {
+		if binCat, ok := b.cat.(binlogreplication.BinlogPrimaryProvider); ok && binCat.HasBinlogPrimaryController() {
 			showRep.PrimaryController = binCat.GetBinlogPrimaryController()
 		}
 		outScope.node = showRep
 	case "binary logs":
 		outScope = inScope.push()
 		showRep := plan.NewShowBinlogs()
-		if binCat, ok := b.cat.(binlogreplication.BinlogPrimaryCatalog); ok && binCat.HasBinlogPrimaryController() {
+		if binCat, ok := b.cat.(binlogreplication.BinlogPrimaryProvider); ok && binCat.HasBinlogPrimaryController() {
 			showRep.PrimaryController = binCat.GetBinlogPrimaryController()
 		}
 		outScope.node = showRep
 	case "replica status":
 		outScope = inScope.push()
 		showRep := plan.NewShowReplicaStatus()
-		if binCat, ok := b.cat.(binlogreplication.BinlogReplicaCatalog); ok && binCat.HasBinlogReplicaController() {
+		if binCat, ok := b.cat.(binlogreplication.BinlogReplicaProvider); ok && binCat.HasBinlogReplicaController() {
 			showRep.ReplicaController = binCat.GetBinlogReplicaController()
 		}
 		outScope.node = showRep
@@ -107,7 +107,7 @@ func (b *Builder) buildShow(inScope *scope, s *ast.Show) (outScope *scope) {
 		// but uses a schema with different column names so we create the node differently here.
 		outScope = inScope.push()
 		showRep := plan.NewShowSlaveStatus()
-		if binCat, ok := b.cat.(binlogreplication.BinlogReplicaCatalog); ok && binCat.HasBinlogReplicaController() {
+		if binCat, ok := b.cat.(binlogreplication.BinlogReplicaProvider); ok && binCat.HasBinlogReplicaController() {
 			showRep.ReplicaController = binCat.GetBinlogReplicaController()
 		}
 		outScope.node = showRep

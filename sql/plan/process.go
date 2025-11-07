@@ -317,6 +317,25 @@ func (i *TrackedRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 	return row, nil
 }
 
+// NextValueRow implements the sql.ValueRowIter interface.
+func (i *TrackedRowIter) NextValueRow(ctx *sql.Context) (sql.ValueRow, error) {
+	row, err := i.iter.(sql.ValueRowIter).NextValueRow(ctx)
+	if err != nil {
+		return nil, err
+	}
+	i.numRows++
+	if i.onNext != nil {
+		i.onNext()
+	}
+	return row, nil
+}
+
+// IsValueRowIter implements the sql.ValueRowIter interface.
+func (i *TrackedRowIter) IsValueRowIter(ctx *sql.Context) bool {
+	iter, ok := i.iter.(sql.ValueRowIter)
+	return ok && iter.IsValueRowIter(ctx)
+}
+
 func (i *TrackedRowIter) Close(ctx *sql.Context) error {
 	err := i.iter.Close(ctx)
 

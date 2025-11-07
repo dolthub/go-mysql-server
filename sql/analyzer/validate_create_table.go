@@ -38,6 +38,13 @@ func validateCreateTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.
 		return nil, transform.SameTree, err
 	}
 
+	// For CREATE TABLE AS SELECT, skip validation here because the schema isn't complete yet.
+	// The resolveCreateSelect analyzer rule will merge schemas and create a new CreateTable node,
+	// which will be validated separately after the merge.
+	if ct.Select() != nil {
+		return n, transform.SameTree, nil
+	}
+
 	sch := ct.PkSchema().Schema
 	idxs := ct.Indexes()
 

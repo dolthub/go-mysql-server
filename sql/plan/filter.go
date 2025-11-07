@@ -106,6 +106,9 @@ type FilterIter struct {
 	childIter sql.RowIter
 }
 
+var _ sql.RowIter = (*FilterIter)(nil)
+var _ sql.ValueRowIter = (*FilterIter)(nil)
+
 // NewFilterIter creates a new FilterIter.
 func NewFilterIter(
 	cond sql.Expression,
@@ -131,6 +134,36 @@ func (i *FilterIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return row, nil
 		}
 	}
+}
+
+// NextValueRow implements the sql.ValueRowIter interface.
+func (i *FilterIter) NextValueRow(ctx *sql.Context) (sql.ValueRow, error) {
+	for {
+		row, err := i.childIter.(sql.ValueRowIter).NextValueRow(ctx)
+		if err != nil {
+			return nil, err
+		}
+		res, err := i.cond.(sql.ValueExpression).EvalValue(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+		if res.Val[0] == 1 {
+			return row, nil
+		}
+	}
+}
+
+// IsValueRowIter implements the sql.ValueRowIter interface.
+func (i *FilterIter) IsValueRowIter(ctx *sql.Context) bool {
+	cond, ok := i.cond.(sql.ValueExpression)
+	if !ok || !cond.IsValueExpression() {
+		return false
+	}
+	childIter, ok := i.childIter.(sql.ValueRowIter)
+	if !ok || !childIter.IsValueRowIter(ctx) {
+		return false
+	}
+	return true
 }
 
 // Close implements the RowIter interface.

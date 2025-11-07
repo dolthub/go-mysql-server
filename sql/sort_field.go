@@ -24,8 +24,8 @@ import (
 type SortField struct {
 	// Column to order by.
 	Column Expression
-	// Column Expression2 to order by. This is always the same value as Column, but avoids a type cast
-	Column2 Expression2
+	// Column ValueExpression to order by. This is always the same value as Column, but avoids a type cast
+	ValueExprColumn ValueExpression
 	// Order type.
 	Order SortOrder
 	// NullOrdering defining how nulls will be ordered.
@@ -50,12 +50,12 @@ func (sf SortFields) FromExpressions(exprs ...Expression) SortFields {
 	}
 
 	for i, expr := range exprs {
-		expr2, _ := expr.(Expression2)
+		valueExpr, _ := expr.(ValueExpression)
 		fields[i] = SortField{
-			Column:       expr,
-			Column2:      expr2,
-			NullOrdering: sf[i].NullOrdering,
-			Order:        sf[i].Order,
+			Column:          expr,
+			ValueExprColumn: valueExpr,
+			NullOrdering:    sf[i].NullOrdering,
+			Order:           sf[i].Order,
 		}
 	}
 	return fields

@@ -460,13 +460,13 @@ func DebugString(nodeOrExpression interface{}) string {
 	panic(fmt.Sprintf("Expected sql.DebugString or fmt.Stringer for %T", nodeOrExpression))
 }
 
-// Expression2 is an experimental future interface alternative to Expression to provide faster access.
-type Expression2 interface {
+// ValueExpression is an experimental future interface alternative to Expression to provide faster access.
+type ValueExpression interface {
 	Expression
-	// Eval2 evaluates the given row frame and returns a result.
-	Eval2(ctx *Context, row Row2) (Value, error)
-	// Type2 returns the expression type.
-	Type2() Type2
+	// EvalValue evaluates the given row frame and returns a result.
+	EvalValue(ctx *Context, row ValueRow) (Value, error)
+	// IsValueExpression indicates whether this expression and all its children support ValueExpression.
+	IsValueExpression() bool
 }
 
 var SystemVariables SystemVariableRegistry

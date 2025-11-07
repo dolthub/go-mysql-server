@@ -25,8 +25,7 @@ import (
 
 // GetField is an expression to get the field of a table.
 type GetField struct {
-	fieldType  sql.Type
-	fieldType2 sql.Type2
+	fieldType sql.Type
 	// schemaFormatter is the schemaFormatter used to quote field names
 	schemaFormatter sql.SchemaFormatter
 
@@ -47,7 +46,7 @@ type GetField struct {
 }
 
 var _ sql.Expression = (*GetField)(nil)
-var _ sql.Expression2 = (*GetField)(nil)
+var _ sql.ValueExpression = (*GetField)(nil)
 var _ sql.CollationCoercible = (*GetField)(nil)
 var _ sql.IdExpression = (*GetField)(nil)
 
@@ -58,13 +57,11 @@ func NewGetField(index int, fieldType sql.Type, fieldName string, nullable bool)
 
 // NewGetFieldWithTable creates a GetField expression with table name. The table name may be an alias.
 func NewGetFieldWithTable(index, tableId int, fieldType sql.Type, db, table, fieldName string, nullable bool) *GetField {
-	fieldType2, _ := fieldType.(sql.Type2)
 	return &GetField{
 		db:         db,
 		table:      table,
 		fieldIndex: index,
 		fieldType:  fieldType,
-		fieldType2: fieldType2,
 		name:       fieldName,
 		nullable:   nullable,
 		exprId:     sql.ColumnId(index),
@@ -133,13 +130,8 @@ func (p *GetField) Type() sql.Type {
 	return p.fieldType
 }
 
-// Type2 returns the type of the field, if this field has a sql.Type2.
-func (p *GetField) Type2() sql.Type2 {
-	return p.fieldType2
-}
-
 // ErrIndexOutOfBounds is returned when the field index is out of the bounds.
-var ErrIndexOutOfBounds = errors.NewKind("unable to find field with index %d in row of %d columns")
+var ErrIndexOutOfBounds = errors.NewKind("unable to find field with index %d in row of %d columns. \n This is a bug. Please file an issue here: https://github.com/dolthub/dolt/issues")
 
 // Eval implements the Expression interface.
 func (p *GetField) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -149,12 +141,17 @@ func (p *GetField) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return row[p.fieldIndex], nil
 }
 
-func (p *GetField) Eval2(ctx *sql.Context, row sql.Row2) (sql.Value, error) {
-	if p.fieldIndex < 0 || p.fieldIndex >= row.Len() {
-		return sql.Value{}, ErrIndexOutOfBounds.New(p.fieldIndex, row.Len())
+// EvalValue implements the ValueExpression interface.
+func (p *GetField) EvalValue(ctx *sql.Context, row sql.ValueRow) (sql.Value, error) {
+	if p.fieldIndex < 0 || p.fieldIndex >= len(row) {
+		return sql.Value{}, ErrIndexOutOfBounds.New(p.fieldIndex, len(row))
 	}
+	return row[p.fieldIndex], nil
+}
 
-	return row.GetField(p.fieldIndex), nil
+// IsValueRowIter implements the ValueExpression interface.
+func (p *GetField) IsValueExpression() bool {
+	return true
 }
 
 // WithChildren implements the Expression interface.

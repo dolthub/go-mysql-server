@@ -18,10 +18,6 @@ import (
 	"fmt"
 	"io"
 	"strings"
-
-	"github.com/dolthub/vitess/go/vt/proto/query"
-
-	"github.com/dolthub/go-mysql-server/sql/values"
 )
 
 // Row is a tuple of values.
@@ -87,8 +83,18 @@ func FormatRow(row Row) string {
 // TODO: most row iters need to be Disposable for CachedResult safety
 type RowIter interface {
 	// Next retrieves the next row. It will return io.EOF if it's the last row.
-	// After retrieving the last row, Close will be automatically closed.
+	// After retrieving the last row, Close will be automatically called.
 	Next(ctx *Context) (Row, error)
+	Closer
+}
+
+// ValueRowIter is an iterator that produces sql.ValueRows.
+type ValueRowIter interface {
+	// NextValueRow retrieves the next ValueRow. It will return io.EOF if it's the last ValueRow.
+	// After retrieving the last ValueRow, Close will be automatically called.
+	NextValueRow(ctx *Context) (ValueRow, error)
+	// IsValueRowIter checks whether this implementor and all its children support ValueRowIter.
+	IsValueRowIter(ctx *Context) bool
 	Closer
 }
 
@@ -110,71 +116,6 @@ func RowIterToRows(ctx *Context, i RowIter) ([]Row, error) {
 	}
 
 	return rows, i.Close(ctx)
-}
-
-func rowFromRow2(sch Schema, r Row2) Row {
-	row := make(Row, len(sch))
-	for i, col := range sch {
-		switch col.Type.Type() {
-		case query.Type_INT8:
-			row[i] = values.ReadInt8(r.GetField(i).Val)
-		case query.Type_UINT8:
-			row[i] = values.ReadUint8(r.GetField(i).Val)
-		case query.Type_INT16:
-			row[i] = values.ReadInt16(r.GetField(i).Val)
-		case query.Type_UINT16:
-			row[i] = values.ReadUint16(r.GetField(i).Val)
-		case query.Type_INT32:
-			row[i] = values.ReadInt32(r.GetField(i).Val)
-		case query.Type_UINT32:
-			row[i] = values.ReadUint32(r.GetField(i).Val)
-		case query.Type_INT64:
-			row[i] = values.ReadInt64(r.GetField(i).Val)
-		case query.Type_UINT64:
-			row[i] = values.ReadUint64(r.GetField(i).Val)
-		case query.Type_FLOAT32:
-			row[i] = values.ReadFloat32(r.GetField(i).Val)
-		case query.Type_FLOAT64:
-			row[i] = values.ReadFloat64(r.GetField(i).Val)
-		case query.Type_TEXT, query.Type_VARCHAR, query.Type_CHAR:
-			row[i] = values.ReadString(r.GetField(i).Val, values.ByteOrderCollation)
-		case query.Type_BLOB, query.Type_VARBINARY, query.Type_BINARY:
-			row[i] = values.ReadBytes(r.GetField(i).Val, values.ByteOrderCollation)
-		case query.Type_BIT:
-			fallthrough
-		case query.Type_ENUM:
-			fallthrough
-		case query.Type_SET:
-			fallthrough
-		case query.Type_TUPLE:
-			fallthrough
-		case query.Type_GEOMETRY:
-			fallthrough
-		case query.Type_JSON:
-			fallthrough
-		case query.Type_EXPRESSION:
-			fallthrough
-		case query.Type_INT24:
-			fallthrough
-		case query.Type_UINT24:
-			fallthrough
-		case query.Type_TIMESTAMP:
-			fallthrough
-		case query.Type_DATE:
-			fallthrough
-		case query.Type_TIME:
-			fallthrough
-		case query.Type_DATETIME:
-			fallthrough
-		case query.Type_YEAR:
-			fallthrough
-		case query.Type_DECIMAL:
-			panic(fmt.Sprintf("Unimplemented type conversion: %T", col.Type))
-		default:
-			panic(fmt.Sprintf("unknown type %T", col.Type))
-		}
-	}
-	return row
 }
 
 // RowsToRowIter creates a RowIter that iterates over the given rows.

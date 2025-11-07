@@ -26,6 +26,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/values"
 )
 
 var (
@@ -62,6 +63,29 @@ func (t YearType_) Compare(ctx context.Context, a interface{}, b interface{}) (i
 		return -1, nil
 	}
 	return 1, nil
+}
+
+// CompareValue implements the ValueType interface.
+func (t YearType_) CompareValue(ctx *sql.Context, a, b sql.Value) (int, error) {
+	if hasNulls, res := CompareNullValues(a, b); hasNulls {
+		return res, nil
+	}
+	ay, err := ConvertValueToYear(ctx, a)
+	if err != nil {
+		return 0, err
+	}
+	by, err := ConvertValueToYear(ctx, b)
+	if err != nil {
+		return 0, err
+	}
+	switch {
+	case ay < by:
+		return -1, nil
+	case ay > by:
+		return 1, nil
+	default:
+		return 0, nil
+	}
 }
 
 // Convert implements Type interface.
@@ -171,6 +195,16 @@ func (t YearType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.V
 	return sqltypes.MakeTrusted(sqltypes.Year, val), nil
 }
 
+// SQLValue implements ValueType interface.
+func (t YearType_) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes.Value, error) {
+	if v.IsNull() {
+		return sqltypes.NULL, nil
+	}
+	x := values.ReadUint16(v.Val)
+	dest = strconv.AppendInt(dest, int64(x), 10)
+	return sqltypes.MakeTrusted(sqltypes.Year, dest), nil
+}
+
 // String implements Type interface.
 func (t YearType_) String() string {
 	return "year"
@@ -194,4 +228,74 @@ func (t YearType_) Zero() interface{} {
 // CollationCoercibility implements sql.CollationCoercible interface.
 func (YearType_) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 5
+}
+
+func ConvertValueToYear(ctx *sql.Context, v sql.Value) (uint16, error) {
+	switch v.Typ {
+	case sqltypes.Int8:
+		x := values.ReadInt8(v.Val)
+		return uint16(x), nil
+	case sqltypes.Int16:
+		x := values.ReadInt16(v.Val)
+		return uint16(x), nil
+	case sqltypes.Int32:
+		x := values.ReadInt32(v.Val)
+		return uint16(x), nil
+	case sqltypes.Int64:
+		x := values.ReadInt64(v.Val)
+		return uint16(x), nil
+	case sqltypes.Uint8:
+		x := values.ReadUint8(v.Val)
+		return uint16(x), nil
+	case sqltypes.Uint16:
+		x := values.ReadUint16(v.Val)
+		return x, nil
+	case sqltypes.Uint32:
+		x := values.ReadUint32(v.Val)
+		return uint16(x), nil
+	case sqltypes.Uint64:
+		x := values.ReadUint64(v.Val)
+		return uint16(x), nil
+	case sqltypes.Float32:
+		x := values.ReadFloat32(v.Val)
+		return uint16(x), nil
+	case sqltypes.Float64:
+		x := values.ReadFloat64(v.Val)
+		return uint16(x), nil
+	case sqltypes.Decimal:
+		x := values.ReadDecimal(v.Val)
+		return uint16(x.IntPart()), nil
+	case sqltypes.Year:
+		x := values.ReadUint16(v.Val)
+		return x, nil
+	case sqltypes.Date:
+		x := values.ReadDate(v.Val)
+		return uint16(x.UTC().Unix()), nil
+	case sqltypes.Time:
+		x := values.ReadInt64(v.Val)
+		return uint16(x), nil
+	case sqltypes.Datetime, sqltypes.Timestamp:
+		x := values.ReadDatetime(v.Val)
+		return uint16(x.UTC().Unix()), nil
+	case sqltypes.Text, sqltypes.Blob:
+		var err error
+		if v.Val == nil {
+			v.Val, err = v.WrappedVal.Unwrap(ctx)
+			if err != nil {
+				return 0, err
+			}
+		}
+		val := values.ReadString(v.Val)
+		truncStr, didTrunc := TruncateStringToInt(val)
+		if didTrunc {
+			err = sql.ErrTruncatedIncorrect.New(v.Typ, val)
+		}
+		i, pErr := strconv.ParseInt(truncStr, 10, 64)
+		if pErr != nil {
+			return 0, sql.ErrInvalidValue.New(v, v.Typ.String())
+		}
+		return uint16(i), err
+	default:
+		return 0, ErrConvertingToYear.New(v)
+	}
 }

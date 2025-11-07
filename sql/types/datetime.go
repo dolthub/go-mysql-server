@@ -28,6 +28,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/values"
 )
 
 const ZeroDateStr = "0000-00-00"
@@ -188,6 +189,11 @@ func (t datetimeType) Compare(ctx context.Context, a interface{}, b interface{})
 	return 0, nil
 }
 
+// CompareValue implements the ValueType interface
+func (t datetimeType) CompareValue(ctx *sql.Context, a, b sql.Value) (int, error) {
+	panic("TODO: implement CompareValue for DatetimeType")
+}
+
 // Convert implements Type interface.
 func (t datetimeType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
@@ -273,14 +279,14 @@ func (t datetimeType) ConvertWithoutRangeCheck(ctx context.Context, v interface{
 		}
 		// TODO: consider not using time.Parse if we want to match MySQL exactly ('2010-06-03 11:22.:.:.:.:' is a valid timestamp)
 		var parsed bool
-		res, parsed, err = t.parseDatetime(value)
+		res, parsed, err = parseDatetime(value)
 		if !parsed {
 			return zeroTime, ErrConvertingToTime.New(v)
 		}
 	case time.Time:
 		res = value.UTC()
-		// For most integer values, we just return an error (but MySQL is more lenient for some of these). A special case
-		// is zero values, which are important when converting from postgres defaults.
+	// For most integer values, we just return an error (but MySQL is more lenient for some of these). A special case
+	// is zero values, which are important when converting from postgres defaults.
 	case int:
 		if value == 0 {
 			return zeroTime, nil
@@ -370,7 +376,7 @@ func (t datetimeType) ConvertWithoutRangeCheck(ctx context.Context, v interface{
 	return res, err
 }
 
-func (t datetimeType) parseDatetime(value string) (time.Time, bool, error) {
+func parseDatetime(value string) (time.Time, bool, error) {
 	if t, err := time.Parse(TimezoneTimestampDatetimeLayout, value); err == nil {
 		return t.UTC(), true, nil
 	}
@@ -472,6 +478,25 @@ func (t datetimeType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 	valBytes := val
 
 	return sqltypes.MakeTrusted(typ, valBytes), nil
+}
+
+// SQLValue implements the ValueType interface.
+func (t datetimeType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes.Value, error) {
+	if v.IsNull() {
+		return sqltypes.NULL, nil
+	}
+	switch t.baseType {
+	case sqltypes.Date:
+		t := values.ReadDate(v.Val)
+		dest = t.AppendFormat(dest, sql.DateLayout)
+	case sqltypes.Datetime, sqltypes.Timestamp:
+		x := values.ReadInt64(v.Val)
+		t := time.UnixMicro(x).UTC()
+		dest = t.AppendFormat(dest, sql.TimestampDatetimeLayout)
+	default:
+		return sqltypes.Value{}, sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime")
+	}
+	return sqltypes.MakeTrusted(t.baseType, dest), nil
 }
 
 func (t datetimeType) String() string {

@@ -71,10 +71,10 @@ func (l *lruCache) Dispose() {
 }
 
 type rowsCache struct {
-	memory   Freeable
-	reporter Reporter
-	rows     []Row
-	rows2    []Row2
+	memory    Freeable
+	reporter  Reporter
+	rows      []Row
+	valueRows []ValueRow
 }
 
 func newRowsCache(memory Freeable, r Reporter) *rowsCache {
@@ -92,17 +92,17 @@ func (c *rowsCache) Add(row Row) error {
 
 func (c *rowsCache) Get() []Row { return c.rows }
 
-func (c *rowsCache) Add2(row2 Row2) error {
+func (c *rowsCache) AddValueRow(row ValueRow) error {
 	if !releaseMemoryIfNeeded(c.reporter, c.memory.Free) {
 		return ErrNoMemoryAvailable.New()
 	}
 
-	c.rows2 = append(c.rows2, row2)
+	c.valueRows = append(c.valueRows, row)
 	return nil
 }
 
-func (c *rowsCache) Get2() []Row2 {
-	return c.rows2
+func (c *rowsCache) GetValueRow() []ValueRow {
+	return c.valueRows
 }
 
 func (c *rowsCache) Dispose() {

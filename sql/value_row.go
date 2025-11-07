@@ -17,7 +17,7 @@ package sql
 import (
 	"sync"
 
-	querypb "github.com/dolthub/vitess/go/vt/proto/query"
+	"github.com/dolthub/vitess/go/vt/proto/query"
 )
 
 const (
@@ -25,34 +25,35 @@ const (
 	fieldArrSize = 2048
 )
 
-// Row2 is a slice of values
-type Row2 []Value
+type ValueBytes []byte
 
-// GetField returns the Value for the ith field in this row.
-func (r Row2) GetField(i int) Value {
-	return r[i]
-}
-
-// Len returns the number of fields of this row
-func (r Row2) Len() int {
-	return len(r)
-}
-
-// Value is a logical index into a Row2. For efficiency reasons, use sparingly.
+// Value is a logical index into a ValueRow. For efficiency reasons, use sparingly.
 type Value struct {
-	Val ValueBytes
-	Typ querypb.Type
+	Val        ValueBytes
+	WrappedVal BytesWrapper
+	Typ        query.Type
 }
+
+var NullValue = Value{}
+var FalseValue = Value{
+	Val: []byte{0},
+	Typ: query.Type_INT8,
+}
+var TrueValue = Value{
+	Val: []byte{1},
+	Typ: query.Type_INT8,
+}
+
+// ValueRow is a slice of values
+type ValueRow []Value
 
 // IsNull returns whether this value represents NULL
 func (v Value) IsNull() bool {
-	return v.Val == nil || v.Typ == querypb.Type_NULL_TYPE
+	return (v.Val == nil && v.WrappedVal == nil) || v.Typ == query.Type_NULL_TYPE
 }
 
-type ValueBytes []byte
-
 type RowFrame struct {
-	Types []querypb.Type
+	Types []query.Type
 
 	// Values are the values this row.
 	Values []ValueBytes
@@ -88,34 +89,34 @@ func (f *RowFrame) Recycle() {
 	framePool.Put(f)
 }
 
-// Row2 returns the underlying row value in this frame. Does not make a deep copy of underlying byte arrays, so
+// AsValueRow returns the underlying row value in this frame. Does not make a deep copy of underlying byte arrays, so
 // further modification to this frame may result in the returned value changing as well.
-func (f *RowFrame) Row2() Row2 {
+func (f *RowFrame) AsValueRow() ValueRow {
 	if f == nil {
 		return nil
 	}
 
-	rs := make(Row2, len(f.Values))
+	rs := make(ValueRow, len(f.Values))
 	for i := range f.Values {
 		rs[i] = Value{
-			Typ: f.Types[i],
 			Val: f.Values[i],
+			Typ: f.Types[i],
 		}
 	}
 	return rs
 }
 
-// Row2Copy returns the row in this frame as a deep copy of the underlying byte arrays. Useful when reusing the
+// ValueRowCopy returns the row in this frame as a deep copy of the underlying byte arrays. Useful when reusing the
 // RowFrame object via Clear()
-func (f *RowFrame) Row2Copy() Row2 {
-	rs := make(Row2, len(f.Values))
+func (f *RowFrame) ValueRowCopy() ValueRow {
+	rs := make(ValueRow, len(f.Values))
 	// TODO: it would be faster here to just copy the entire value backing array in one pass
 	for i := range f.Values {
 		v := make(ValueBytes, len(f.Values[i]))
 		copy(v, f.Values[i])
 		rs[i] = Value{
-			Typ: f.Types[i],
 			Val: v,
+			Typ: f.Types[i],
 		}
 	}
 	return rs
@@ -137,7 +138,7 @@ func (f *RowFrame) Append(vals ...Value) {
 }
 
 // AppendMany appends the types and values given, as two parallel arrays, into this frame.
-func (f *RowFrame) AppendMany(types []querypb.Type, vals []ValueBytes) {
+func (f *RowFrame) AppendMany(types []query.Type, vals []ValueBytes) {
 	// TODO: one big copy here would be better probably, need to benchmark
 	for i := range vals {
 		f.appendTypeAndVal(types[i], vals[i])
@@ -156,7 +157,7 @@ func (f *RowFrame) append(v Value) {
 	f.Values = append(f.Values, v.Val)
 }
 
-func (f *RowFrame) appendTypeAndVal(typ querypb.Type, val ValueBytes) {
+func (f *RowFrame) appendTypeAndVal(typ query.Type, val ValueBytes) {
 	v := f.bufferForBytes(val)
 	copy(v, val)
 

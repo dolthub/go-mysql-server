@@ -17,7 +17,13 @@ package values
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"math"
+	"math/big"
+	"time"
+	"unsafe"
+
+	"github.com/shopspring/decimal"
 )
 
 type Type struct {
@@ -37,15 +43,18 @@ const (
 	Uint24Size  ByteSize = 3
 	Int32Size   ByteSize = 4
 	Uint32Size  ByteSize = 4
-	Int48Size   ByteSize = 6
-	Uint48Size  ByteSize = 6
 	Int64Size   ByteSize = 8
 	Uint64Size  ByteSize = 8
 	Float32Size ByteSize = 4
 	Float64Size ByteSize = 8
+	DecimalSize ByteSize = 5
+
+	DateSize      ByteSize = 4
+	TimeSize      ByteSize = 8
+	DatetimeSize  ByteSize = 8
+	TimestampSize ByteSize = 8
 )
 
-const maxUint48 = uint64(1<<48 - 1)
 const maxUint24 = uint32(1<<24 - 1)
 
 type Collation uint16
@@ -108,6 +117,7 @@ func ReadBool(val []byte) bool {
 	expectSize(val, Int8Size)
 	return val[0] == 1
 }
+
 func ReadInt8(val []byte) int8 {
 	expectSize(val, Int8Size)
 	return int8(val[0])
@@ -129,22 +139,14 @@ func ReadUint16(val []byte) uint16 {
 }
 
 func ReadInt24(val []byte) (i int32) {
-	expectSize(val, Int24Size)
-	var tmp [4]byte
-	// copy |val| to |tmp|
-	tmp[3], tmp[2] = val[3], val[2]
-	tmp[1], tmp[0] = val[1], val[0]
-	i = int32(binary.LittleEndian.Uint32(tmp[:]))
+	expectSize(val, Int32Size)
+	i = int32(binary.LittleEndian.Uint32(val))
 	return
 }
 
 func ReadUint24(val []byte) (u uint32) {
-	expectSize(val, Int24Size)
-	var tmp [4]byte
-	// copy |val| to |tmp|
-	tmp[3], tmp[2] = val[3], val[2]
-	tmp[1], tmp[0] = val[1], val[0]
-	u = binary.LittleEndian.Uint32(tmp[:])
+	expectSize(val, Int32Size)
+	u = binary.LittleEndian.Uint32(val)
 	return
 }
 
@@ -156,28 +158,6 @@ func ReadInt32(val []byte) int32 {
 func ReadUint32(val []byte) uint32 {
 	expectSize(val, Uint32Size)
 	return binary.LittleEndian.Uint32(val)
-}
-
-func ReadInt48(val []byte) (i int64) {
-	expectSize(val, Int48Size)
-	var tmp [8]byte
-	// copy |val| to |tmp|
-	tmp[5], tmp[4] = val[5], val[4]
-	tmp[3], tmp[2] = val[3], val[2]
-	tmp[1], tmp[0] = val[1], val[0]
-	i = int64(binary.LittleEndian.Uint64(tmp[:]))
-	return
-}
-
-func ReadUint48(val []byte) (u uint64) {
-	expectSize(val, Uint48Size)
-	var tmp [8]byte
-	// copy |val| to |tmp|
-	tmp[5], tmp[4] = val[5], val[4]
-	tmp[3], tmp[2] = val[3], val[2]
-	tmp[1], tmp[0] = val[1], val[0]
-	u = binary.LittleEndian.Uint64(tmp[:])
-	return
 }
 
 func ReadInt64(val []byte) int64 {
@@ -192,20 +172,47 @@ func ReadUint64(val []byte) uint64 {
 
 func ReadFloat32(val []byte) float32 {
 	expectSize(val, Float32Size)
-	return math.Float32frombits(ReadUint32(val))
+	x := binary.LittleEndian.Uint32(val)
+	return math.Float32frombits(x)
 }
 
 func ReadFloat64(val []byte) float64 {
 	expectSize(val, Float64Size)
-	return math.Float64frombits(ReadUint64(val))
+	x := binary.LittleEndian.Uint64(val)
+	return math.Float64frombits(x)
 }
 
-func ReadString(val []byte, coll Collation) string {
-	// todo: fix allocation
-	return string(val)
+func ReadDecimal(val []byte) decimal.Decimal {
+	e := ReadInt32(val[:Int32Size])
+	s := ReadInt8(val[Int32Size : Int32Size+Int8Size])
+	b := big.NewInt(0).SetBytes(val[Int32Size+Int8Size:])
+	if s < 0 {
+		b = b.Neg(b)
+	}
+	return decimal.NewFromBigInt(b, e)
 }
 
-func ReadBytes(val []byte, coll Collation) []byte {
+func ReadDate(val []byte) time.Time {
+	expectSize(val, Uint32Size)
+	x := binary.LittleEndian.Uint32(val)
+	y := x >> 16
+	m := (x & (255 << 8)) >> 8
+	d := x & 255
+	return time.Date(int(y), time.Month(m), int(d), 0, 0, 0, 0, time.UTC)
+}
+
+func ReadDatetime(val []byte) time.Time {
+	expectSize(val, DatetimeSize)
+	ms := int64(binary.LittleEndian.Uint64(val))
+	return time.UnixMicro(ms).UTC()
+}
+
+func ReadString(val []byte) string {
+	// TODO: this is essentially encoding.BytesToString
+	return *(*string)(unsafe.Pointer(&val))
+}
+
+func ReadBytes(val []byte) []byte {
 	// todo: fix collation
 	return val
 }
@@ -243,29 +250,6 @@ func WriteUint16(buf []byte, val uint16) []byte {
 	return buf
 }
 
-func WriteInt24(buf []byte, val int32) []byte {
-	expectSize(buf, Int24Size)
-
-	var tmp [4]byte
-	binary.LittleEndian.PutUint32(tmp[:], uint32(val))
-	// copy |tmp| to |buf|
-	buf[2], buf[1], buf[0] = tmp[2], tmp[1], tmp[0]
-	return buf
-}
-
-func WriteUint24(buf []byte, val uint32) []byte {
-	expectSize(buf, Uint24Size)
-	if val > maxUint24 {
-		panic("uint is greater than max uint24")
-	}
-
-	var tmp [4]byte
-	binary.LittleEndian.PutUint32(tmp[:], uint32(val))
-	// copy |tmp| to |buf|
-	buf[2], buf[1], buf[0] = tmp[2], tmp[1], tmp[0]
-	return buf
-}
-
 func WriteInt32(buf []byte, val int32) []byte {
 	expectSize(buf, Int32Size)
 	binary.LittleEndian.PutUint32(buf, uint32(val))
@@ -275,20 +259,6 @@ func WriteInt32(buf []byte, val int32) []byte {
 func WriteUint32(buf []byte, val uint32) []byte {
 	expectSize(buf, Uint32Size)
 	binary.LittleEndian.PutUint32(buf, val)
-	return buf
-}
-
-func WriteUint48(buf []byte, u uint64) []byte {
-	expectSize(buf, Uint48Size)
-	if u > maxUint48 {
-		panic("uint is greater than max uint48")
-	}
-	var tmp [8]byte
-	binary.LittleEndian.PutUint64(tmp[:], u)
-	// copy |tmp| to |buf|
-	buf[5], buf[4] = tmp[5], tmp[4]
-	buf[3], buf[2] = tmp[3], tmp[2]
-	buf[1], buf[0] = tmp[1], tmp[0]
 	return buf
 }
 
@@ -332,7 +302,7 @@ func WriteBytes(buf, val []byte, coll Collation) []byte {
 
 func expectSize(buf []byte, sz ByteSize) {
 	if ByteSize(len(buf)) != sz {
-		panic("byte slice is not of expected size")
+		panic(fmt.Sprintf("byte slice is length %v expected %v", len(buf), sz))
 	}
 }
 
@@ -378,9 +348,9 @@ func compare(typ Type, left, right []byte) int {
 	case Float64Enc:
 		return compareFloat64(ReadFloat64(left), ReadFloat64(right))
 	case StringEnc:
-		return compareString(ReadString(left, typ.Coll), ReadString(right, typ.Coll), typ.Coll)
+		return compareString(ReadString(left), ReadString(right), typ.Coll)
 	case BytesEnc:
-		return compareBytes(ReadBytes(left, typ.Coll), ReadBytes(right, typ.Coll), typ.Coll)
+		return compareBytes(ReadBytes(left), ReadBytes(right), typ.Coll)
 	default:
 		panic("unknown encoding")
 	}
