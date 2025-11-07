@@ -357,10 +357,7 @@ func TestUnlockTables(t *testing.T) {
 	catalog.LockTable(ctx, "foo")
 	catalog.LockTable(ctx, "bar")
 
-	node := plan.NewUnlockTables()
-	node.Catalog = catalog
-
-	_, err := node.RowIter(ctx, nil)
+	err := catalog.UnlockTables(ctx, ctx.ID())
 	require.NoError(err)
 
 	require.Equal(1, t1.unlocks)
