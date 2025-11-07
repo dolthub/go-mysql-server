@@ -49,6 +49,7 @@ type GeometryValue interface {
 }
 
 var _ sql.Type = GeometryType{}
+var _ sql.ValueType = GeometryType{}
 var _ sql.SpatialColumnType = GeometryType{}
 var _ sql.CollationCoercible = GeometryType{}
 
@@ -484,6 +485,26 @@ func (t GeometryType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 	buf := v.(GeometryValue).Serialize()
 
 	return sqltypes.MakeTrusted(sqltypes.Geometry, buf), nil
+}
+
+// CompareValue implements the ValueType interface
+func (t GeometryType) CompareValue(c *sql.Context, v sql.Value, value2 sql.Value) (int, error) {
+	panic("TODO: implement CompareValue for GeometryType")
+}
+
+// SQLValue implements the ValueType interface
+func (t GeometryType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes.Value, error) {
+	if v.IsNull() {
+		return sqltypes.NULL, nil
+	}
+	if v.Val != nil {
+		return sqltypes.MakeTrusted(sqltypes.Geometry, v.Val), nil
+	}
+	geomBytes, err := v.WrappedVal.Unwrap(ctx)
+	if err != nil {
+		return sqltypes.Value{}, err
+	}
+	return sqltypes.MakeTrusted(sqltypes.Geometry, geomBytes), nil
 }
 
 // String implements Type interface.
