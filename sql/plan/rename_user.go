@@ -80,8 +80,3 @@ func (n *RenameUser) WithChildren(children ...sql.Node) (sql.Node, error) {
 func (*RenameUser) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
 }
-
-// RowIter implements the interface sql.Node.
-func (n *RenameUser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return nil, fmt.Errorf("not yet implemented")
-}

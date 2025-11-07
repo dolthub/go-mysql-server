@@ -16,7 +16,6 @@ package plan
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -36,21 +35,6 @@ func NewFlushPrivileges(ft bool) *FlushPrivileges {
 		writesToBinlog: ft,
 		MysqlDb:        sql.UnresolvedDatabase("mysql"),
 	}
-}
-
-// RowIter implements the interface sql.Node.
-func (f *FlushPrivileges) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
-	gts, ok := f.MysqlDb.(*mysql_db.MySQLDb)
-	if !ok {
-		return nil, sql.ErrDatabaseNotFound.New("mysql")
-	}
-	editor := gts.Editor()
-	defer editor.Close()
-	err := gts.Persist(ctx, editor)
-	if err != nil {
-		return nil, err
-	}
-	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 }
 
 // String implements the interface sql.Node.

@@ -471,10 +471,12 @@ func (j *JoinNode) Describe(options sql.DescribeOptions) string {
 		}
 	}
 	children = append(children, sql.Describe(j.left, options), sql.Describe(j.right, options))
+	comment := j.Comment()
+
 	if options.Estimates {
-		pr.WriteNode("%s %s", j.Op, j.GetDescribeStatsString(options))
+		pr.WriteNode("%s %s%s", j.Op, j.GetDescribeStatsString(options), comment)
 	} else {
-		pr.WriteNode("%s", j.Op)
+		pr.WriteNode("%s%s", j.Op, comment)
 	}
 	pr.WriteChildren(children...)
 	return pr.String()

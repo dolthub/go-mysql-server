@@ -166,7 +166,7 @@ func (n *Revoke) CheckAuth(ctx *sql.Context, opChecker sql.PrivilegedOperationCh
 		return opChecker.UserHasPrivileges(ctx, sql.NewPrivilegedOperation(subject,
 			convertToSqlPrivilegeType(true, n.Privileges...)...))
 	} else {
-		//TODO: add column checks
+		// TODO: add column checks
 		subject = sql.PrivilegeCheckSubject{
 			Database: n.PrivilegeLevel.Database,
 			Table:    n.PrivilegeLevel.TableRoutine,
@@ -510,7 +510,7 @@ func (n *RevokeRole) CheckAuth(ctx *sql.Context, opChecker sql.PrivilegedOperati
 		sql.NewPrivilegedOperation(sql.PrivilegeCheckSubject{}, sql.PrivilegeType_Super)) {
 		return true
 	}
-	//TODO: only active roles may be revoked if the SUPER privilege is not held
+	// TODO: only active roles may be revoked if the SUPER privilege is not held
 	mysqlDb := n.MySQLDb.(*mysql_db.MySQLDb)
 	client := ctx.Session.Client()
 
@@ -606,16 +606,11 @@ func (n *RevokeProxy) WithChildren(children ...sql.Node) (sql.Node, error) {
 
 // CheckAuth implements the interface sql.AuthorizationCheckerNode.
 func (n *RevokeProxy) CheckAuth(ctx *sql.Context, opChecker sql.PrivilegedOperationChecker) bool {
-	//TODO: add this when proxy support is added
+	// TODO: add this when proxy support is added
 	return true
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*RevokeProxy) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
-}
-
-// RowIter implements the interface sql.Node.
-func (n *RevokeProxy) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return nil, fmt.Errorf("not yet implemented")
 }

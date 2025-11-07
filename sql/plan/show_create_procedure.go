@@ -74,58 +74,6 @@ func (s *ShowCreateProcedure) Schema() sql.Schema {
 	return showCreateProcedureSchema
 }
 
-// RowIter implements the sql.Node interface.
-func (s *ShowCreateProcedure) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
-	characterSetClient, err := ctx.GetSessionVariable(ctx, "character_set_client")
-	if err != nil {
-		return nil, err
-	}
-	collationConnection, err := ctx.GetSessionVariable(ctx, "collation_connection")
-	if err != nil {
-		return nil, err
-	}
-	collationServer, err := ctx.GetSessionVariable(ctx, "collation_server")
-	if err != nil {
-		return nil, err
-	}
-
-	if s.ExternalStoredProcedure != nil {
-		// If an external stored procedure has been plugged in by the analyzer, use that
-		fakeCreateProcedureStmt := s.ExternalStoredProcedure.FakeCreateProcedureStmt()
-		return sql.RowsToRowIter(sql.Row{
-			s.ExternalStoredProcedure.Name, // Procedure
-			"",                             // sql_mode
-			fakeCreateProcedureStmt,        // Create Procedure
-			characterSetClient,             // character_set_client
-			collationConnection,            // collation_connection
-			collationServer,                // Database Collation
-		}), nil
-	} else {
-		// Otherwise, search the StoredProcedureDatabase for a user-created stored procedure
-		procedureDb, ok := s.db.(sql.StoredProcedureDatabase)
-		if !ok {
-			return nil, sql.ErrStoredProceduresNotSupported.New(s.db.Name())
-		}
-		procedures, err := procedureDb.GetStoredProcedures(ctx)
-		if err != nil {
-			return nil, err
-		}
-		for _, procedure := range procedures {
-			if strings.ToLower(procedure.Name) == s.ProcedureName {
-				return sql.RowsToRowIter(sql.Row{
-					procedure.Name,            // Procedure
-					"",                        // sql_mode
-					procedure.CreateStatement, // Create Procedure
-					characterSetClient,        // character_set_client
-					collationConnection,       // collation_connection
-					collationServer,           // Database Collation
-				}), nil
-			}
-		}
-		return nil, sql.ErrStoredProcedureDoesNotExist.New(s.ProcedureName)
-	}
-}
-
 // WithChildren implements the sql.Node interface.
 func (s *ShowCreateProcedure) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(s, children...)

@@ -94,7 +94,7 @@ func (b *BaseBuilder) buildFetch(ctx *sql.Context, n *plan.Fetch, row sql.Row) (
 }
 
 func (b *BaseBuilder) buildSignalName(ctx *sql.Context, n *plan.SignalName, row sql.Row) (sql.RowIter, error) {
-	return nil, fmt.Errorf("%T has no exchange iterator", n)
+	return nil, fmt.Errorf("%T has no execution iterator", n)
 }
 
 func (b *BaseBuilder) buildRepeat(ctx *sql.Context, n *plan.Repeat, row sql.Row) (sql.RowIter, error) {

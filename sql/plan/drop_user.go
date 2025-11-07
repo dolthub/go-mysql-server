@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -100,41 +99,4 @@ func (n *DropUser) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*DropUser) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
-}
-
-// RowIter implements the interface sql.Node.
-func (n *DropUser) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	mysqlDb, ok := n.MySQLDb.(*mysql_db.MySQLDb)
-	if !ok {
-		return nil, sql.ErrDatabaseNotFound.New("mysql")
-	}
-	editor := mysqlDb.Editor()
-	defer editor.Close()
-	for _, user := range n.Users {
-		existingUser := mysqlDb.GetUser(editor, user.Name, user.Host, false)
-		if existingUser == nil {
-			if n.IfExists {
-				continue
-			}
-			return nil, sql.ErrUserDeletionFailure.New(user.String("'"))
-		}
-
-		//TODO: if a user is mentioned in the "mandatory_roles" (users and roles are interchangeable) system variable then they cannot be dropped
-		editor.RemoveUser(mysql_db.UserPrimaryKey{
-			Host: existingUser.Host,
-			User: existingUser.User,
-		})
-		editor.RemoveRoleEdgesFromKey(mysql_db.RoleEdgesFromKey{
-			FromHost: existingUser.Host,
-			FromUser: existingUser.User,
-		})
-		editor.RemoveRoleEdgesToKey(mysql_db.RoleEdgesToKey{
-			ToHost: existingUser.Host,
-			ToUser: existingUser.User,
-		})
-	}
-	if err := mysqlDb.Persist(ctx, editor); err != nil {
-		return nil, err
-	}
-	return sql.RowsToRowIter(sql.Row{types.NewOkResult(0)}), nil
 }
