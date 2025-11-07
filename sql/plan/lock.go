@@ -131,18 +131,6 @@ func (t *UnlockTables) IsReadOnly() bool { return true }
 // Schema implements the sql.Node interface.
 func (t *UnlockTables) Schema() sql.Schema { return nil }
 
-// RowIter implements the sql.Node interface.
-func (t *UnlockTables) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	span, ctx := ctx.Span("plan.UnlockTables")
-	defer span.End()
-
-	if err := t.Catalog.UnlockTables(ctx, ctx.ID()); err != nil {
-		return nil, err
-	}
-
-	return sql.RowsToRowIter(), nil
-}
-
 func (t *UnlockTables) String() string {
 	p := sql.NewTreePrinter()
 	_ = p.WriteNode("UnlockTables")
