@@ -123,6 +123,14 @@ type ExecSourceRel interface {
 	RowIter(ctx *Context, r Row) (RowIter, error)
 }
 
+// ExecBuilderNode is a node that has no children and is directly
+// row generating.
+type ExecBuilderNode interface {
+	Node
+	// BuildRowIter builds a RowIter for the node with the builder provided
+	BuildRowIter(ctx *Context, b NodeExecBuilder, r Row) (RowIter, error)
+}
+
 // Nameable is something that has a name.
 type Nameable interface {
 	// Name returns the name.
