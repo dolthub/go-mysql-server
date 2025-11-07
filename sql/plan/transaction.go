@@ -63,36 +63,6 @@ func NewStartTransaction(transactionChar sql.TransactionCharacteristic) *StartTr
 	}
 }
 
-// RowIter implements the sql.Node interface.
-func (s *StartTransaction) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	ts, ok := ctx.Session.(sql.TransactionSession)
-	if !ok {
-		return sql.RowsToRowIter(), nil
-	}
-
-	currentTx := ctx.GetTransaction()
-	// A START TRANSACTION statement commits any pending work before beginning a new tx
-	// TODO: this work is wasted in the case that START TRANSACTION is the first statement after COMMIT
-	//  an isDirty method on the transaction would allow us to avoid this
-	if currentTx != nil {
-		err := ts.CommitTransaction(ctx, currentTx)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	transaction, err := ts.StartTransaction(ctx, s.TransChar)
-	if err != nil {
-		return nil, err
-	}
-
-	ctx.SetTransaction(transaction)
-	// until this transaction is committed or rolled back, don't begin or commit any transactions automatically
-	ctx.SetIgnoreAutoCommit(true)
-
-	return sql.RowsToRowIter(), nil
-}
-
 func (s *StartTransaction) String() string {
 	return "Start Transaction"
 }
@@ -120,30 +90,6 @@ func NewCommit() *Commit {
 	return &Commit{}
 }
 
-// RowIter implements the sql.Node interface.
-func (c *Commit) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
-	ts, ok := ctx.Session.(sql.TransactionSession)
-	if !ok {
-		return sql.RowsToRowIter(), nil
-	}
-
-	transaction := ctx.GetTransaction()
-
-	if transaction == nil {
-		return sql.RowsToRowIter(), nil
-	}
-
-	err := ts.CommitTransaction(ctx, transaction)
-	if err != nil {
-		return nil, err
-	}
-
-	ctx.SetIgnoreAutoCommit(false)
-	ctx.SetTransaction(nil)
-
-	return sql.RowsToRowIter(), nil
-}
-
 func (*Commit) String() string { return "COMMIT" }
 
 // WithChildren implements the Node interface.
@@ -167,31 +113,6 @@ var _ sql.CollationCoercible = (*Rollback)(nil)
 // NewRollback creates a new Rollback node.
 func NewRollback() *Rollback {
 	return &Rollback{}
-}
-
-// RowIter implements the sql.Node interface.
-func (r *Rollback) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
-	ts, ok := ctx.Session.(sql.TransactionSession)
-	if !ok {
-		return sql.RowsToRowIter(), nil
-	}
-
-	transaction := ctx.GetTransaction()
-
-	if transaction == nil {
-		return sql.RowsToRowIter(), nil
-	}
-
-	err := ts.Rollback(ctx, transaction)
-	if err != nil {
-		return nil, err
-	}
-
-	// Like Commit, Rollback ends the current transaction and a new one begins with the next statement
-	ctx.SetIgnoreAutoCommit(false)
-	ctx.SetTransaction(nil)
-
-	return sql.RowsToRowIter(), nil
 }
 
 func (*Rollback) String() string { return "ROLLBACK" }
@@ -218,27 +139,6 @@ var _ sql.CollationCoercible = (*CreateSavepoint)(nil)
 // NewCreateSavepoint creates a new CreateSavepoint node.
 func NewCreateSavepoint(name string) *CreateSavepoint {
 	return &CreateSavepoint{Name: name}
-}
-
-// RowIter implements the sql.Node interface.
-func (c *CreateSavepoint) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
-	ts, ok := ctx.Session.(sql.TransactionSession)
-	if !ok {
-		return sql.RowsToRowIter(), nil
-	}
-
-	transaction := ctx.GetTransaction()
-
-	if transaction == nil {
-		return sql.RowsToRowIter(), nil
-	}
-
-	err := ts.CreateSavepoint(ctx, transaction, c.Name)
-	if err != nil {
-		return nil, err
-	}
-
-	return sql.RowsToRowIter(), nil
 }
 
 func (c *CreateSavepoint) String() string { return fmt.Sprintf("SAVEPOINT %s", c.Name) }
@@ -269,27 +169,6 @@ func NewRollbackSavepoint(name string) *RollbackSavepoint {
 	}
 }
 
-// RowIter implements the sql.Node interface.
-func (r *RollbackSavepoint) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
-	ts, ok := ctx.Session.(sql.TransactionSession)
-	if !ok {
-		return sql.RowsToRowIter(), nil
-	}
-
-	transaction := ctx.GetTransaction()
-
-	if transaction == nil {
-		return sql.RowsToRowIter(), nil
-	}
-
-	err := ts.RollbackToSavepoint(ctx, transaction, r.Name)
-	if err != nil {
-		return nil, err
-	}
-
-	return sql.RowsToRowIter(), nil
-}
-
 func (r *RollbackSavepoint) String() string { return fmt.Sprintf("ROLLBACK TO SAVEPOINT %s", r.Name) }
 
 // WithChildren implements the Node interface.
@@ -316,27 +195,6 @@ func NewReleaseSavepoint(name string) *ReleaseSavepoint {
 	return &ReleaseSavepoint{
 		Name: name,
 	}
-}
-
-// RowIter implements the sql.Node interface.
-func (r *ReleaseSavepoint) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
-	ts, ok := ctx.Session.(sql.TransactionSession)
-	if !ok {
-		return sql.RowsToRowIter(), nil
-	}
-
-	transaction := ctx.GetTransaction()
-
-	if transaction == nil {
-		return sql.RowsToRowIter(), nil
-	}
-
-	err := ts.ReleaseSavepoint(ctx, transaction, r.Name)
-	if err != nil {
-		return nil, err
-	}
-
-	return sql.RowsToRowIter(), nil
 }
 
 func (r *ReleaseSavepoint) String() string { return fmt.Sprintf("RELEASE SAVEPOINT %s", r.Name) }

@@ -19,8 +19,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/dolthub/vitess/go/mysql"
-
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -259,46 +257,6 @@ func (*Signal) CollationCoercibility(ctx *sql.Context) (collation sql.CollationI
 	return sql.Collation_binary, 7
 }
 
-// RowIter implements the sql.Node interface.
-func (s *Signal) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	//TODO: implement CLASS_ORIGIN
-	//TODO: implement SUBCLASS_ORIGIN
-	//TODO: implement CONSTRAINT_CATALOG
-	//TODO: implement CONSTRAINT_SCHEMA
-	//TODO: implement CONSTRAINT_NAME
-	//TODO: implement CATALOG_NAME
-	//TODO: implement SCHEMA_NAME
-	//TODO: implement TABLE_NAME
-	//TODO: implement COLUMN_NAME
-	//TODO: implement CURSOR_NAME
-	if s.SqlStateValue[0:2] == "01" {
-		//TODO: implement warnings
-		return nil, fmt.Errorf("warnings not yet implemented")
-	} else {
-
-		messageItem := s.Info[SignalConditionItemName_MessageText]
-		strValue := messageItem.StrValue
-		if messageItem.ExprVal != nil {
-			exprResult, err := messageItem.ExprVal.Eval(ctx, nil)
-			if err != nil {
-				return nil, err
-			}
-			s, ok := exprResult.(string)
-			if !ok {
-				return nil, fmt.Errorf("message text expression did not evaluate to a string")
-			}
-			strValue = s
-		}
-
-		return nil, mysql.NewSQLError(
-			int(s.Info[SignalConditionItemName_MysqlErrno].IntValue),
-			s.SqlStateValue,
-			"%s",
-			strValue,
-		)
-	}
-}
-
 // Resolved implements the sql.Node interface.
 func (s *SignalName) Resolved() bool {
 	return true
@@ -343,11 +301,6 @@ func (s *SignalName) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*SignalName) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
-}
-
-// RowIter implements the sql.Node interface.
-func (s *SignalName) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	return nil, fmt.Errorf("may not iterate over unresolved node *SignalName")
 }
 
 func (s SignalInfo) IsReadOnly() bool {

@@ -73,10 +73,6 @@ func (w *With) DebugString() string {
 	return pr.String()
 }
 
-func (w *With) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	panic("Cannot call RowIter on With node")
-}
-
 func (w *With) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(w, len(children), 1)

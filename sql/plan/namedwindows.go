@@ -75,11 +75,6 @@ func (n *NamedWindows) DebugString() string {
 	return pr.String()
 }
 
-// RowIter implements sql.Node
-func (n *NamedWindows) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	panic("cannot iterate *plan.NamedWindows")
-}
-
 // WithChildren implements sql.Node
 func (n *NamedWindows) WithChildren(nodes ...sql.Node) (sql.Node, error) {
 	if len(nodes) != 1 {

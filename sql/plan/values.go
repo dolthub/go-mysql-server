@@ -86,25 +86,6 @@ func (p *Values) IsReadOnly() bool {
 	return true
 }
 
-// RowIter implements the Node interface.
-func (p *Values) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	rows := make([]sql.Row, len(p.ExpressionTuples))
-	for i, et := range p.ExpressionTuples {
-		vals := make([]interface{}, len(et))
-		for j, e := range et {
-			var err error
-			vals[j], err = e.Eval(ctx, row)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		rows[i] = sql.NewRow(vals...)
-	}
-
-	return sql.RowsToRowIter(rows...), nil
-}
-
 func (p *Values) String() string {
 	var sb strings.Builder
 	sb.WriteString("Values(")

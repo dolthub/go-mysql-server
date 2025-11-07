@@ -17,7 +17,6 @@ package mysql_db
 import (
 	"bytes"
 	"crypto/sha1"
-	"crypto/x509"
 	"encoding/hex"
 	"net"
 
@@ -108,7 +107,7 @@ var _ mysql.CachingStorage = (*noopCachingStorage)(nil)
 //
 // This implementation also handles authentication when a client doesn't send an auth response and
 // the associated user account does not have a password set.
-func (n noopCachingStorage) UserEntryWithCacheHash(_ []*x509.Certificate, _ []byte, user string, authResponse []byte, remoteAddr net.Addr) (mysql.Getter, mysql.CacheState, error) {
+func (n noopCachingStorage) UserEntryWithCacheHash(_ *mysql.Conn, _ []byte, user string, authResponse []byte, remoteAddr net.Addr) (mysql.Getter, mysql.CacheState, error) {
 	db := n.db
 
 	// If there is no mysql database of user info, then don't approve or reject, since we can't look at
@@ -167,7 +166,7 @@ var _ mysql.PlainTextStorage = (*sha2PlainTextStorage)(nil)
 
 // UserEntryWithPassword implements the mysql.PlainTextStorage interface.
 // The auth framework in Vitess also passes in user certificates, but we don't support that feature yet.
-func (s sha2PlainTextStorage) UserEntryWithPassword(_ []*x509.Certificate, user string, password string, remoteAddr net.Addr) (mysql.Getter, error) {
+func (s sha2PlainTextStorage) UserEntryWithPassword(_ *mysql.Conn, user string, password string, remoteAddr net.Addr) (mysql.Getter, error) {
 	db := s.db
 
 	host, err := extractHostAddress(remoteAddr)
@@ -230,7 +229,7 @@ var _ mysql.PlainTextStorage = (*extendedAuthPlainTextStorage)(nil)
 // UserEntryWithPassword implements the mysql.PlainTextStorage interface. This method is called by the
 // MySQL clear password auth method to authenticate a user with a custom PlaintextAuthPlugin that was
 // previously registered with the MySQLDb instance.
-func (f extendedAuthPlainTextStorage) UserEntryWithPassword(userCerts []*x509.Certificate, user string, password string, remoteAddr net.Addr) (mysql.Getter, error) {
+func (f extendedAuthPlainTextStorage) UserEntryWithPassword(conn *mysql.Conn, user string, password string, remoteAddr net.Addr) (mysql.Getter, error) {
 	db := f.db
 
 	host, err := extractHostAddress(remoteAddr)
@@ -330,7 +329,7 @@ var _ mysql.HashStorage = (*nativePasswordHashStorage)(nil)
 
 // UserEntryWithHash implements the mysql.HashStorage interface. This implementation is called by the MySQL
 // native password auth method to validate a password hash with the user's stored password hash.
-func (nphs *nativePasswordHashStorage) UserEntryWithHash(_ []*x509.Certificate, salt []byte, user string, authResponse []byte, remoteAddr net.Addr) (mysql.Getter, error) {
+func (nphs *nativePasswordHashStorage) UserEntryWithHash(_ *mysql.Conn, salt []byte, user string, authResponse []byte, remoteAddr net.Addr) (mysql.Getter, error) {
 	db := nphs.db
 
 	host, err := extractHostAddress(remoteAddr)
