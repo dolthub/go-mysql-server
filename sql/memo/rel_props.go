@@ -326,6 +326,23 @@ func (m *Memo) CardMemoGroups(ctx *sql.Context, g *ExprGroup) {
 	g.RelProps.SetStats(s)
 }
 
+func estimatedCardinalityStats(jp *JoinBase) sql.Statistic {
+	left := jp.Left.RelProps.GetStats()
+	right := jp.Right.RelProps.GetStats()
+
+	distinct := math.Max(float64(left.DistinctCount()), float64(right.DistinctCount()))
+	if distinct == 0 {
+		m := math.Max(float64(left.RowCount()), float64(right.RowCount()))
+		distinct = m * .80
+	}
+
+	// Assume that the smaller set is surjective onto the larger set, and at least one of the sets is uniformly distributed.
+	// If so, then the odds that a random element of each set matches can be computed as:
+	selectivity := 1.0 / float64(distinct)
+	card := uint64(float64(left.RowCount()*right.RowCount()) * selectivity)
+	return &stats.Statistic{RowCnt: card}
+}
+
 func (m *Memo) statsForRel(ctx *sql.Context, rel RelExpr) sql.Statistic {
 	m.Tracer.PushDebugContext("statsForRel")
 	defer m.Tracer.PopDebugContext()
@@ -333,34 +350,18 @@ func (m *Memo) statsForRel(ctx *sql.Context, rel RelExpr) sql.Statistic {
 	var stat sql.Statistic
 	switch rel := rel.(type) {
 	case JoinRel:
-		// different joins use different ways to estimate cardinality of outputs
-		jp := rel.JoinPrivate()
-		left := jp.Left.RelProps.GetStats()
-		right := jp.Right.RelProps.GetStats()
-
-		distinct := math.Max(float64(left.DistinctCount()), float64(right.DistinctCount()))
-		if distinct == 0 {
-			m := math.Max(float64(left.RowCount()), float64(right.RowCount()))
-			distinct = m * .80
-		}
-
-		// Assume that the smaller set is surjective onto the larger set, and at least one of the sets is uniformly distributed.
-		// If so, then the odds that a random element of each set matches can be computed as:
-		selectivity := 1.0 / float64(distinct)
-		card := uint64(float64(left.RowCount()*right.RowCount()) * selectivity)
-
+		estimatedCardStats := estimatedCardinalityStats(rel.JoinPrivate())
+		smallestLeft := estimatedCardStats
 		var injective bool
-		var smallestLeft sql.Statistic
 		var mergeStats sql.Statistic
 		var n RelExpr = rel
 		var done bool
 		for n != nil && !done {
 			switch n := n.(type) {
 			case *LookupJoin:
-				leftRows := n.Left.RelProps.GetStats().RowCount()
-				if n.Injective && leftRows < card {
+				if n.Injective {
 					injective = true
-					if smallestLeft == nil || leftRows < smallestLeft.RowCount() {
+					if n.Left.RelProps.GetStats().RowCount() < smallestLeft.RowCount() {
 						smallestLeft = n.Left.RelProps.GetStats()
 					}
 				}
@@ -409,7 +410,7 @@ func (m *Memo) statsForRel(ctx *sql.Context, rel RelExpr) sql.Statistic {
 			return mergeStats
 		}
 
-		return &stats.Statistic{RowCnt: card}
+		return estimatedCardStats
 	case *Max1Row:
 		stat = &stats.Statistic{RowCnt: 1}
 
