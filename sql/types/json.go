@@ -68,6 +68,21 @@ func (t JsonType) Convert(c context.Context, v interface{}) (doc interface{}, in
 		if err != nil {
 			return nil, sql.OutOfRange, sql.ErrInvalidJson.New(err.Error())
 		}
+	// Text values may be stored in wrappers (e.g. Dolt's TextStorage), so unwrap to the raw string before decoding.
+	case sql.StringWrapper:
+		str, err := v.Unwrap(c)
+		if err != nil {
+			return nil, sql.OutOfRange, err
+		}
+		charsetMaxLength := sql.Collation_Default.CharacterSet().MaxLength()
+		length := int64(len(str)) * charsetMaxLength
+		if length > MaxJsonFieldByteLength {
+			return nil, sql.InRange, ErrLengthTooLarge.New(length, MaxJsonFieldByteLength)
+		}
+		err = json.Unmarshal([]byte(str), &doc)
+		if err != nil {
+			return nil, sql.OutOfRange, sql.ErrInvalidJson.New(err.Error())
+		}
 	case int8:
 		return JSONDocument{Val: int64(v)}, sql.InRange, nil
 	case int16:
