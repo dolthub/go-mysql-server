@@ -45,7 +45,10 @@ func (t JsonType) Compare(ctx context.Context, a interface{}, b interface{}) (in
 	return CompareJSON(ctx, a, b)
 }
 
-func convertJSONValue(v interface{}) (interface{}, sql.ConvertInRange, error) {
+// convertJSONValue parses JSON-encoded data if the input is a string or []byte, returning the resulting Go value. For
+// other types, the value is returned as-is. The returned value is the raw, unwrapped JSON representation and is later
+// wrapped in a JSONDocument by JsonType.Convert.
+func convertJSONValue(v interface{}) (val interface{}, inRange sql.ConvertInRange, err error) {
 	var data []byte
 	var charsetMaxLength int64 = 1
 	switch x := v.(type) {
@@ -55,19 +58,18 @@ func convertJSONValue(v interface{}) (interface{}, sql.ConvertInRange, error) {
 		data = []byte(x)
 		charsetMaxLength = sql.Collation_Default.CharacterSet().MaxLength()
 	default:
-		return nil, sql.OutOfRange, sql.ErrInvalidJson.New("unsupported JSON input type")
+		return v, sql.InRange, nil
 	}
 
 	if int64(len(data))*charsetMaxLength > MaxJsonFieldByteLength {
 		return nil, sql.InRange, ErrLengthTooLarge.New(len(data), MaxJsonFieldByteLength)
 	}
 
-	var doc interface{}
-	if err := json.Unmarshal(data, &doc); err != nil {
+	if err := json.Unmarshal(data, &val); err != nil {
 		return nil, sql.OutOfRange, sql.ErrInvalidJson.New(err.Error())
 	}
 
-	return doc, sql.InRange, nil
+	return val, sql.InRange, nil
 }
 
 // Convert implements Type interface.
