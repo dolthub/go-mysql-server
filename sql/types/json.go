@@ -58,7 +58,11 @@ func convertJSONValue(v interface{}) (val interface{}, inRange sql.ConvertInRang
 		data = []byte(x)
 		charsetMaxLength = sql.Collation_Default.CharacterSet().MaxLength()
 	default:
-		return v, sql.InRange, nil
+		// if |v| can be marshalled, it contains
+		// a valid JSON document representation
+		if b, berr := json.Marshal(v); berr == nil {
+			data = b
+		}
 	}
 
 	if int64(len(data))*charsetMaxLength > MaxJsonFieldByteLength {
@@ -121,14 +125,7 @@ func (t JsonType) Convert(c context.Context, v interface{}) (doc interface{}, in
 	case decimal.Decimal:
 		return JSONDocument{Val: v}, sql.InRange, nil
 	default:
-		// if |v| can be marshalled, it contains
-		// a valid JSON document representation
-		if b, berr := json.Marshal(v); berr == nil {
-			docVal, inRange, err = convertJSONValue(b)
-			if err != nil {
-				return nil, inRange, err
-			}
-		}
+		docVal, inRange, err = convertJSONValue(v)
 	}
 	if err != nil {
 		return nil, sql.OutOfRange, err
