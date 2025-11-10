@@ -70,9 +70,41 @@ func HashOf(ctx *sql.Context, sch sql.Schema, row sql.Row) (uint64, error) {
 		// TODO: we may not always have the type information available, so we check schema length.
 		//  Then, defer to original behavior
 		if i >= len(sch) {
-			_, err := fmt.Fprintf(hash, "%v", v)
-			if err != nil {
-				return 0, err
+			switch v := v.(type) {
+			case int:
+				hash.WriteString(strconv.FormatInt(int64(v), 10))
+			case int8:
+				hash.WriteString(strconv.FormatInt(int64(v), 10))
+			case int16:
+				hash.WriteString(strconv.FormatInt(int64(v), 10))
+			case int32:
+				hash.WriteString(strconv.FormatInt(int64(v), 10))
+			case int64:
+				hash.WriteString(strconv.FormatInt(v, 10))
+			case uint:
+				hash.WriteString(strconv.FormatUint(uint64(v), 10))
+			case uint8:
+				hash.WriteString(strconv.FormatUint(uint64(v), 10))
+			case uint16:
+				hash.WriteString(strconv.FormatUint(uint64(v), 10))
+			case uint32:
+				hash.WriteString(strconv.FormatUint(uint64(v), 10))
+			case uint64:
+				hash.WriteString(strconv.FormatUint(v, 10))
+			case float32:
+				str := strconv.FormatFloat(float64(v), 'f', -1, 32)
+				if str == "-0" {
+					str = "0"
+				}
+				hash.WriteString(str)
+			case float64:
+				str := strconv.FormatFloat(v, 'f', -1, 64)
+				if str == "-0" {
+					str = "0"
+				}
+				hash.WriteString(str)
+			default:
+				hash.WriteString(fmt.Sprintf("%v", v))
 			}
 			continue
 		}
