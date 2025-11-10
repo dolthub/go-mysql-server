@@ -155,6 +155,14 @@ var TableFunctionScriptTests = []ScriptTest{
 		ExpectedErr: sql.ErrTableNotFound,
 	},
 	{
+		Query:    "select * from sequence_table('x', 2) l join lateral (select * from sequence_table('y', l.x)) r",
+		Expected: []sql.Row{{0}, {1}},
+	},
+	{
+		Query:    "select * from lookup_sequence_table('x', 2) l join lateral (select * from lookup_sequence_table('y', l.x)) r",
+		Expected: []sql.Row{{0}, {1}},
+	},
+	{
 		Query:           "select /*+ MERGE_JOIN(seq1,seq2) JOIN_ORDER(seq2,seq1) */ seq1.x, seq2.y from lookup_sequence_table('x', 5) seq1 join lookup_sequence_table('y', 5) seq2 on seq1.x = seq2.y",
 		Expected:        []sql.Row{{0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}},
 		ExpectedIndexes: []string{"y", "x"},
