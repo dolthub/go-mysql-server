@@ -147,6 +147,10 @@ var TableFunctionScriptTests = []ScriptTest{
 		Expected: []sql.Row{{0}, {1}, {2}, {3}, {4}},
 	},
 	{
+		Query:    "select x from sequence_table('x', 5) where exists (select y from sequence_table('y', 3) where x = y)",
+		Expected: []sql.Row{{0}, {1}, {2}},
+	},
+	{
 		Query:       "select not_seq.x from sequence_table('x', 5) as seq",
 		ExpectedErr: sql.ErrTableNotFound,
 	},
