@@ -76,9 +76,11 @@ func UserToRow(ctx *sql.Context, u *User) (sql.Row, error) {
 		row[userTblColIndex_User_attributes] = *u.Attributes
 	}
 	row[userTblColIndex_ssl_type] = u.SslType
-	row[userTblColIndex_ssl_cipher] = []uint8(u.SslCipher)
-	row[userTblColIndex_x509_issuer] = []uint8(u.X509Issuer)
-	row[userTblColIndex_x509_subject] = []uint8(u.X509Subject)
+	// ssl_cipher, x509_issuer, x509_subject are all represented as BLOBs,
+	// so we must return a byte slice instead of a string.
+	row[userTblColIndex_ssl_cipher] = []byte(u.SslCipher)
+	row[userTblColIndex_x509_issuer] = []byte(u.X509Issuer)
+	row[userTblColIndex_x509_subject] = []byte(u.X509Subject)
 
 	u.privSetToRow(ctx, row)
 	return row, nil
@@ -131,9 +133,9 @@ func UserFromRow(ctx *sql.Context, row sql.Row) (*User, error) {
 		Identity:            row[userTblColIndex_identity].(string),
 		IsRole:              false,
 		SslType:             sslType,
-		SslCipher:           string(row[userTblColIndex_ssl_cipher].([]uint8)),
-		X509Issuer:          string(row[userTblColIndex_x509_issuer].([]uint8)),
-		X509Subject:         string(row[userTblColIndex_x509_subject].([]uint8)),
+		SslCipher:           string(row[userTblColIndex_ssl_cipher].([]byte)),
+		X509Issuer:          string(row[userTblColIndex_x509_issuer].([]byte)),
+		X509Subject:         string(row[userTblColIndex_x509_subject].([]byte)),
 	}, nil
 }
 
