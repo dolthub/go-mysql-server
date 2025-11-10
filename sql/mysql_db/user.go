@@ -42,6 +42,11 @@ type User struct {
 	// for the lifetime of the server process and will not be persisted to disk.
 	IsEphemeral bool
 
+	SslType     string
+	SslCipher   string
+	X509Subject string
+	X509Issuer  string
+
 	// IsRole is an additional field that states whether the User represents a role or user. In MySQL this must be a
 	// hidden column, therefore it's represented here as an additional field.
 	IsRole bool
@@ -70,6 +75,13 @@ func UserToRow(ctx *sql.Context, u *User) (sql.Row, error) {
 	if u.Attributes != nil {
 		row[userTblColIndex_User_attributes] = *u.Attributes
 	}
+	row[userTblColIndex_ssl_type] = u.SslType
+	// ssl_cipher, x509_issuer, x509_subject are all represented as BLOBs,
+	// so we must return a byte slice instead of a string.
+	row[userTblColIndex_ssl_cipher] = []byte(u.SslCipher)
+	row[userTblColIndex_x509_issuer] = []byte(u.X509Issuer)
+	row[userTblColIndex_x509_subject] = []byte(u.X509Subject)
+
 	u.privSetToRow(ctx, row)
 	return row, nil
 }
@@ -87,6 +99,28 @@ func UserFromRow(ctx *sql.Context, row sql.Row) (*User, error) {
 	if val, ok := row[userTblColIndex_password_last_changed].(time.Time); ok {
 		passwordLastChanged = val
 	}
+
+	// NOTE: Depending on whether we connect via a SQL connection or directly through the Go code,
+	//       we seem to get a different type representation for the ssl_type enum value.
+	var sslType string
+	switch row[userTblColIndex_ssl_type].(type) {
+	case string:
+		sslType = row[userTblColIndex_ssl_type].(string)
+	case uint16:
+		sslTypeType := userTblSchema[userTblColIndex_ssl_type].Type
+		sslTypeEnum, ok := sslTypeType.(sql.EnumType)
+		if !ok {
+			return nil, fmt.Errorf("unable to load enum type for ssl_type: %T", sslTypeType)
+		}
+		sslType, ok = sslTypeEnum.At(int(row[userTblColIndex_ssl_type].(uint16)))
+		if !ok {
+			return nil, fmt.Errorf("unable to load enum value for ssl_type with id %v",
+				row[userTblColIndex_ssl_type].(uint16))
+		}
+	default:
+		return nil, fmt.Errorf("unexpected type for ssl_type value: %T", row[userTblColIndex_ssl_type])
+	}
+
 	return &User{
 		User:                row[userTblColIndex_User].(string),
 		Host:                row[userTblColIndex_Host].(string),
@@ -98,6 +132,10 @@ func UserFromRow(ctx *sql.Context, row sql.Row) (*User, error) {
 		Attributes:          attributes,
 		Identity:            row[userTblColIndex_identity].(string),
 		IsRole:              false,
+		SslType:             sslType,
+		SslCipher:           string(row[userTblColIndex_ssl_cipher].([]byte)),
+		X509Issuer:          string(row[userTblColIndex_x509_issuer].([]byte)),
+		X509Subject:         string(row[userTblColIndex_x509_subject].([]byte)),
 	}, nil
 }
 
@@ -129,7 +167,11 @@ func UserEquals(left, right *User) bool {
 		!left.PrivilegeSet.Equals(right.PrivilegeSet) ||
 		left.Attributes == nil && right.Attributes != nil ||
 		left.Attributes != nil && right.Attributes == nil ||
-		(left.Attributes != nil && *left.Attributes != *right.Attributes) {
+		(left.Attributes != nil && *left.Attributes != *right.Attributes) ||
+		left.SslType != right.SslType ||
+		left.X509Issuer != right.X509Issuer ||
+		left.X509Subject != right.X509Subject ||
+		left.SslCipher != right.SslCipher {
 		return false
 	}
 	return true

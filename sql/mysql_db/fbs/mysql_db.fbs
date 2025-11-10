@@ -54,6 +54,10 @@ table User {
     locked:bool;
     attributes:string; // represents *string
     identity:string;
+    ssl_type:string;
+    ssl_cipher:string;
+    x509_issuer:string;
+    x509_subject:string;
 }
 
 // Entries in the role_edges table
