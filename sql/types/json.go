@@ -45,28 +45,49 @@ func (t JsonType) Compare(ctx context.Context, a interface{}, b interface{}) (in
 	return CompareJSON(ctx, a, b)
 }
 
+func convertJSONValue(v interface{}) (interface{}, sql.ConvertInRange, error) {
+	var data []byte
+
+	switch x := v.(type) {
+	case []byte:
+		data = x
+	case string:
+		charsetMaxLength := sql.Collation_Default.CharacterSet().MaxLength()
+		length := int64(len(x)) * charsetMaxLength
+		if length > MaxJsonFieldByteLength {
+			return nil, sql.InRange, ErrLengthTooLarge.New(length, MaxJsonFieldByteLength)
+		}
+		data = []byte(x)
+	default:
+		return nil, sql.OutOfRange, sql.ErrInvalidJson.New("unsupported JSON input type")
+	}
+
+	if int64(len(data)) > MaxJsonFieldByteLength {
+		return nil, sql.InRange, ErrLengthTooLarge.New(len(data), MaxJsonFieldByteLength)
+	}
+
+	var doc interface{}
+	if err := json.Unmarshal(data, &doc); err != nil {
+		return nil, sql.OutOfRange, sql.ErrInvalidJson.New(err.Error())
+	}
+
+	return doc, sql.InRange, nil
+}
+
 // Convert implements Type interface.
 func (t JsonType) Convert(c context.Context, v interface{}) (doc interface{}, inRange sql.ConvertInRange, err error) {
 	switch v := v.(type) {
 	case sql.JSONWrapper:
 		return v, sql.InRange, nil
 	case []byte:
-		if int64(len(v)) > MaxJsonFieldByteLength {
-			return nil, sql.InRange, ErrLengthTooLarge.New(len(v), MaxJsonFieldByteLength)
-		}
-		err = json.Unmarshal(v, &doc)
+		doc, inRange, err = convertJSONValue(v)
 		if err != nil {
-			return nil, sql.OutOfRange, sql.ErrInvalidJson.New(err.Error())
+			return nil, inRange, err
 		}
 	case string:
-		charsetMaxLength := sql.Collation_Default.CharacterSet().MaxLength()
-		length := int64(len(v)) * charsetMaxLength
-		if length > MaxJsonFieldByteLength {
-			return nil, sql.InRange, ErrLengthTooLarge.New(length, MaxJsonFieldByteLength)
-		}
-		err = json.Unmarshal([]byte(v), &doc)
+		doc, inRange, err = convertJSONValue(v)
 		if err != nil {
-			return nil, sql.OutOfRange, sql.ErrInvalidJson.New(err.Error())
+			return nil, inRange, err
 		}
 	// Text values may be stored in wrappers (e.g. Dolt's TextStorage), so unwrap to the raw string before decoding.
 	case sql.StringWrapper:
@@ -74,14 +95,9 @@ func (t JsonType) Convert(c context.Context, v interface{}) (doc interface{}, in
 		if err != nil {
 			return nil, sql.OutOfRange, err
 		}
-		charsetMaxLength := sql.Collation_Default.CharacterSet().MaxLength()
-		length := int64(len(str)) * charsetMaxLength
-		if length > MaxJsonFieldByteLength {
-			return nil, sql.InRange, ErrLengthTooLarge.New(length, MaxJsonFieldByteLength)
-		}
-		err = json.Unmarshal([]byte(str), &doc)
+		doc, inRange, err = convertJSONValue(str)
 		if err != nil {
-			return nil, sql.OutOfRange, sql.ErrInvalidJson.New(err.Error())
+			return nil, inRange, err
 		}
 	case int8:
 		return JSONDocument{Val: int64(v)}, sql.InRange, nil
@@ -109,12 +125,9 @@ func (t JsonType) Convert(c context.Context, v interface{}) (doc interface{}, in
 		// if |v| can be marshalled, it contains
 		// a valid JSON document representation
 		if b, berr := json.Marshal(v); berr == nil {
-			if int64(len(b)) > MaxJsonFieldByteLength {
-				return nil, sql.InRange, ErrLengthTooLarge.New(len(b), MaxJsonFieldByteLength)
-			}
-			err = json.Unmarshal(b, &doc)
+			doc, inRange, err = convertJSONValue(b)
 			if err != nil {
-				return nil, sql.OutOfRange, sql.ErrInvalidJson.New(err.Error())
+				return nil, inRange, err
 			}
 		}
 	}
