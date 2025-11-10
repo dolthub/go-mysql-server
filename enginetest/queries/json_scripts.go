@@ -24,6 +24,7 @@ import (
 
 var JsonScripts = []ScriptTest{
 	{
+		// https://github.com/dolthub/dolt/issues/10050
 		Name: "TextStorage converts to JSON when using dolt wrapper",
 		SetUpScript: []string{
 			"CREATE TABLE pages (id INT PRIMARY KEY, text_col TEXT, text_json JSON)",
