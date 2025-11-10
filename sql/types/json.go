@@ -47,22 +47,18 @@ func (t JsonType) Compare(ctx context.Context, a interface{}, b interface{}) (in
 
 func convertJSONValue(v interface{}) (interface{}, sql.ConvertInRange, error) {
 	var data []byte
-
+	var charsetMaxLength int64 = 1
 	switch x := v.(type) {
 	case []byte:
 		data = x
 	case string:
-		charsetMaxLength := sql.Collation_Default.CharacterSet().MaxLength()
-		length := int64(len(x)) * charsetMaxLength
-		if length > MaxJsonFieldByteLength {
-			return nil, sql.InRange, ErrLengthTooLarge.New(length, MaxJsonFieldByteLength)
-		}
 		data = []byte(x)
+		charsetMaxLength = sql.Collation_Default.CharacterSet().MaxLength()
 	default:
 		return nil, sql.OutOfRange, sql.ErrInvalidJson.New("unsupported JSON input type")
 	}
 
-	if int64(len(data)) > MaxJsonFieldByteLength {
+	if int64(len(data))*charsetMaxLength > MaxJsonFieldByteLength {
 		return nil, sql.InRange, ErrLengthTooLarge.New(len(data), MaxJsonFieldByteLength)
 	}
 
