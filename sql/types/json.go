@@ -74,16 +74,17 @@ func convertJSONValue(v interface{}) (val interface{}, inRange sql.ConvertInRang
 
 // Convert implements Type interface.
 func (t JsonType) Convert(c context.Context, v interface{}) (doc interface{}, inRange sql.ConvertInRange, err error) {
+	docVal := v
 	switch v := v.(type) {
 	case sql.JSONWrapper:
 		return v, sql.InRange, nil
 	case []byte:
-		doc, inRange, err = convertJSONValue(v)
+		docVal, inRange, err = convertJSONValue(v)
 		if err != nil {
 			return nil, inRange, err
 		}
 	case string:
-		doc, inRange, err = convertJSONValue(v)
+		docVal, inRange, err = convertJSONValue(v)
 		if err != nil {
 			return nil, inRange, err
 		}
@@ -93,7 +94,7 @@ func (t JsonType) Convert(c context.Context, v interface{}) (doc interface{}, in
 		if err != nil {
 			return nil, sql.OutOfRange, err
 		}
-		doc, inRange, err = convertJSONValue(str)
+		docVal, inRange, err = convertJSONValue(str)
 		if err != nil {
 			return nil, inRange, err
 		}
@@ -123,7 +124,7 @@ func (t JsonType) Convert(c context.Context, v interface{}) (doc interface{}, in
 		// if |v| can be marshalled, it contains
 		// a valid JSON document representation
 		if b, berr := json.Marshal(v); berr == nil {
-			doc, inRange, err = convertJSONValue(b)
+			docVal, inRange, err = convertJSONValue(b)
 			if err != nil {
 				return nil, inRange, err
 			}
@@ -132,7 +133,7 @@ func (t JsonType) Convert(c context.Context, v interface{}) (doc interface{}, in
 	if err != nil {
 		return nil, sql.OutOfRange, err
 	}
-	return JSONDocument{Val: doc}, sql.InRange, nil
+	return JSONDocument{Val: docVal}, sql.InRange, nil
 }
 
 // Equals implements the Type interface.
