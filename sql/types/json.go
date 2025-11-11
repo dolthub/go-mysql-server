@@ -45,10 +45,9 @@ func (t JsonType) Compare(ctx context.Context, a interface{}, b interface{}) (in
 	return CompareJSON(ctx, a, b)
 }
 
-// convertJSONValue parses JSON-encoded data if the input is a string or []byte, returning the resulting Go value. For
-// other types, the value is returned as-is. The returned value is the raw, unwrapped JSON representation and is later
-// wrapped in a JSONDocument by JsonType.Convert.
-func convertJSONValue(v interface{}) (val interface{}, inRange sql.ConvertInRange, err error) {
+// convertJSONValue parses JSON-encoded data if the input is a string or []byte, returning the resulting JSONDocument. For
+// other types, the value is returned if it can be marshalled.
+func convertJSONValue(v interface{}) (interface{}, sql.ConvertInRange, error) {
 	var data []byte
 	var charsetMaxLength int64 = 1
 	switch x := v.(type) {
@@ -62,46 +61,39 @@ func convertJSONValue(v interface{}) (val interface{}, inRange sql.ConvertInRang
 		// a valid JSON document representation
 		if b, berr := json.Marshal(v); berr == nil {
 			data = b
-		}
+		} else {
+    return JSONDocument{Val: nil}, sql.InRange, nil
+  }
 	}
 
 	if int64(len(data))*charsetMaxLength > MaxJsonFieldByteLength {
-		return nil, sql.InRange, ErrLengthTooLarge.New(len(data), MaxJsonFieldByteLength)
+		return JSONDocument{Val: nil}, sql.InRange, ErrLengthTooLarge.New(len(data), MaxJsonFieldByteLength)
 	}
 
+ var val interface{}
 	if err := json.Unmarshal(data, &val); err != nil {
-		return nil, sql.OutOfRange, sql.ErrInvalidJson.New(err.Error())
+		return JSONDocument{Val: nil}, sql.OutOfRange, sql.ErrInvalidJson.New(err.Error())
 	}
 
-	return val, sql.InRange, nil
+	return JSONDocument{Val: val}, sql.InRange, nil
 }
 
 // Convert implements Type interface.
-func (t JsonType) Convert(c context.Context, v interface{}) (doc interface{}, inRange sql.ConvertInRange, err error) {
-	docVal := v
+func (t JsonType) Convert(c context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	switch v := v.(type) {
 	case sql.JSONWrapper:
 		return v, sql.InRange, nil
 	case []byte:
-		docVal, inRange, err = convertJSONValue(v)
-		if err != nil {
-			return nil, inRange, err
-		}
+		return convertJSONValue(v)
 	case string:
-		docVal, inRange, err = convertJSONValue(v)
-		if err != nil {
-			return nil, inRange, err
-		}
+		return convertJSONValue(v)
 	// Text values may be stored in wrappers (e.g. Dolt's TextStorage), so unwrap to the raw string before decoding.
 	case sql.StringWrapper:
 		str, err := v.Unwrap(c)
 		if err != nil {
 			return nil, sql.OutOfRange, err
 		}
-		docVal, inRange, err = convertJSONValue(str)
-		if err != nil {
-			return nil, inRange, err
-		}
+		return convertJSONValue(str)
 	case int8:
 		return JSONDocument{Val: int64(v)}, sql.InRange, nil
 	case int16:
@@ -125,12 +117,8 @@ func (t JsonType) Convert(c context.Context, v interface{}) (doc interface{}, in
 	case decimal.Decimal:
 		return JSONDocument{Val: v}, sql.InRange, nil
 	default:
-		docVal, inRange, err = convertJSONValue(v)
+		return convertJSONValue(v)
 	}
-	if err != nil {
-		return nil, sql.OutOfRange, err
-	}
-	return JSONDocument{Val: docVal}, sql.InRange, nil
 }
 
 // Equals implements the Type interface.
