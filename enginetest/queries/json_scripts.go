@@ -17,11 +17,35 @@ package queries
 import (
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 
+	"github.com/dolthub/go-mysql-server/sql/plan"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var JsonScripts = []ScriptTest{
+	{
+		// https://github.com/dolthub/dolt/issues/10050
+		Name: "TextStorage converts to JSON when using dolt wrapper",
+		SetUpScript: []string{
+			"CREATE TABLE pages (id INT PRIMARY KEY, text_col TEXT, text_json JSON)",
+			"INSERT INTO pages VALUES (1, '{\"message\":\"hello\"}', NULL)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "UPDATE pages SET text_json = text_col",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 1, Info: plan.UpdateInfo{Matched: 1, Updated: 1}}},
+				},
+			},
+			{
+				Query: "SELECT text_json FROM pages",
+				Expected: []sql.Row{
+					{types.MustJSON("{\"message\":\"hello\"}")},
+				},
+			},
+		},
+	},
 	{
 		Name: "json_type scripts",
 		Assertions: []ScriptTestAssertion{

@@ -28,6 +28,34 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+type mockStringWrapper struct {
+	val string
+}
+
+func (m mockStringWrapper) Unwrap(ctx context.Context) (string, error) {
+	return m.val, nil
+}
+
+func (m mockStringWrapper) UnwrapAny(ctx context.Context) (interface{}, error) {
+	return m.val, nil
+}
+
+func (m mockStringWrapper) IsExactLength() bool {
+	return false
+}
+
+func (m mockStringWrapper) MaxByteLength() int64 {
+	return int64(len(m.val))
+}
+
+func (m mockStringWrapper) Compare(ctx context.Context, other interface{}) (int, bool, error) {
+	return 0, false, nil
+}
+
+func (m mockStringWrapper) Hash() interface{} {
+	return m.val
+}
+
 func TestJsonCompare(t *testing.T) {
 	RunJsonCompareTests(t, JsonCompareTests, func(t *testing.T, left, right interface{}) (interface{}, interface{}) {
 		return ConvertToJson(t, left), ConvertToJson(t, right)
@@ -58,6 +86,7 @@ func TestJsonConvert(t *testing.T) {
 		{types.MustJSON(`{"field":"test"}`), types.MustJSON(`{"field":"test"}`), false},
 		{[]string{}, types.MustJSON(`[]`), false},
 		{[]string{`555-555-5555`}, types.MustJSON(`["555-555-5555"]`), false},
+		{mockStringWrapper{val: `{"c": 1}`}, types.MustJSON(`{"c":1}`), false},
 	}
 
 	for _, test := range tests {
