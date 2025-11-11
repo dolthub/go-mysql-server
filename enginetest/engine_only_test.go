@@ -582,6 +582,7 @@ func TestTableFunctions(t *testing.T) {
 		&databaseProvider,
 		SimpleTableFunction{},
 		memory.IntSequenceTable{},
+		memory.LookupSequenceTable{},
 		memory.PointLookupTable{},
 		memory.TableFunc{},
 		memory.ExponentialDistTable{},

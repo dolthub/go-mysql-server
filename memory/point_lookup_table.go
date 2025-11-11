@@ -18,7 +18,7 @@ var _ sql.TableNode = PointLookupTable{}
 // PointLookupTable is a table whose indexes only support point lookups but not range scans.
 // It's used for testing optimizations on indexes.
 type PointLookupTable struct {
-	IntSequenceTable
+	LookupSequenceTable
 }
 
 func (s PointLookupTable) UnderlyingTable() sql.Table {
@@ -26,8 +26,8 @@ func (s PointLookupTable) UnderlyingTable() sql.Table {
 }
 
 func (s PointLookupTable) NewInstance(ctx *sql.Context, db sql.Database, args []sql.Expression) (sql.Node, error) {
-	node, err := s.IntSequenceTable.NewInstance(ctx, db, args)
-	return PointLookupTable{node.(IntSequenceTable)}, err
+	node, err := s.LookupSequenceTable.NewInstance(ctx, db, args)
+	return PointLookupTable{node.(LookupSequenceTable)}, err
 }
 
 func (s PointLookupTable) String() string {
