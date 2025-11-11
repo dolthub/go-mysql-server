@@ -1796,49 +1796,47 @@ Select * from (
 			"         │  ->x:0]\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [xy.x:0!null]\n" +
-			"             └─ Filter\n" +
-			"                 ├─ InSubquery\n" +
-			"                 │   ├─ left: xy.x:0!null\n" +
-			"                 │   └─ right: Subquery\n" +
-			"                 │       ├─ cacheable: false\n" +
-			"                 │       ├─ alias-string: select * from cte where x = 1\n" +
-			"                 │       └─ Filter\n" +
-			"                 │           ├─ Eq\n" +
-			"                 │           │   ├─ xy.x:0!null\n" +
-			"                 │           │   └─ 1 (int)\n" +
-			"                 │           └─ SubqueryAlias\n" +
-			"                 │               ├─ name: cte\n" +
-			"                 │               ├─ outerVisibility: true\n" +
-			"                 │               ├─ isLateral: false\n" +
-			"                 │               ├─ cacheable: true\n" +
-			"                 │               ├─ colSet: (9)\n" +
-			"                 │               ├─ tableId: 4\n" +
-			"                 │               └─ RecursiveCTE\n" +
-			"                 │                   └─ Union distinct\n" +
-			"                 │                       ├─ Project\n" +
-			"                 │                       │   ├─ columns: [1 (tinyint)]\n" +
-			"                 │                       │   └─ Table\n" +
-			"                 │                       │       ├─ name: \n" +
-			"                 │                       │       ├─ columns: []\n" +
-			"                 │                       │       ├─ colSet: ()\n" +
-			"                 │                       │       └─ tableId: 0\n" +
-			"                 │                       └─ Project\n" +
-			"                 │                           ├─ columns: [xy.x:3!null]\n" +
-			"                 │                           └─ LookupJoin\n" +
-			"                 │                               ├─ RecursiveTable(cte)\n" +
-			"                 │                               └─ IndexedTableAccess(xy)\n" +
-			"                 │                                   ├─ index: [xy.x]\n" +
-			"                 │                                   ├─ keys: [cte.s:2!null]\n" +
-			"                 │                                   ├─ colSet: (3,4)\n" +
-			"                 │                                   ├─ tableId: 3\n" +
-			"                 │                                   └─ Table\n" +
-			"                 │                                       ├─ name: xy\n" +
-			"                 │                                       └─ columns: [x]\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: xy\n" +
-			"                     ├─ columns: [x y]\n" +
-			"                     ├─ colSet: (7,8)\n" +
-			"                     └─ tableId: 5\n" +
+			"             └─ SemiJoin\n" +
+			"                 ├─ Eq\n" +
+			"                 │   ├─ xy.x:0!null\n" +
+			"                 │   └─ cte.s:2!null\n" +
+			"                 ├─ IndexedTableAccess(xy)\n" +
+			"                 │   ├─ index: [xy.x]\n" +
+			"                 │   ├─ static: [{[1, 1]}]\n" +
+			"                 │   ├─ colSet: (7,8)\n" +
+			"                 │   ├─ tableId: 5\n" +
+			"                 │   └─ Table\n" +
+			"                 │       ├─ name: xy\n" +
+			"                 │       └─ columns: [x y]\n" +
+			"                 └─ CachedResults\n" +
+			"                     └─ SubqueryAlias\n" +
+			"                         ├─ name: cte\n" +
+			"                         ├─ outerVisibility: false\n" +
+			"                         ├─ isLateral: false\n" +
+			"                         ├─ cacheable: true\n" +
+			"                         ├─ colSet: (9)\n" +
+			"                         ├─ tableId: 4\n" +
+			"                         └─ RecursiveCTE\n" +
+			"                             └─ Union distinct\n" +
+			"                                 ├─ Project\n" +
+			"                                 │   ├─ columns: [1 (tinyint)]\n" +
+			"                                 │   └─ Table\n" +
+			"                                 │       ├─ name: \n" +
+			"                                 │       ├─ columns: []\n" +
+			"                                 │       ├─ colSet: ()\n" +
+			"                                 │       └─ tableId: 0\n" +
+			"                                 └─ Project\n" +
+			"                                     ├─ columns: [xy.x:1!null]\n" +
+			"                                     └─ LookupJoin\n" +
+			"                                         ├─ RecursiveTable(cte)\n" +
+			"                                         └─ IndexedTableAccess(xy)\n" +
+			"                                             ├─ index: [xy.x]\n" +
+			"                                             ├─ keys: [cte.s:0!null]\n" +
+			"                                             ├─ colSet: (3,4)\n" +
+			"                                             ├─ tableId: 3\n" +
+			"                                             └─ Table\n" +
+			"                                                 ├─ name: xy\n" +
+			"                                                 └─ columns: [x]\n" +
 			"",
 		ExpectedEstimates: "SubqueryAlias\n" +
 			" ├─ name: dt\n" +
@@ -1871,34 +1869,31 @@ Select * from (
 			"         ├─ columns: [convert(xy.x, signed) as x]\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [xy.x]\n" +
-			"             └─ Filter\n" +
-			"                 ├─ InSubquery\n" +
-			"                 │   ├─ left: xy.x\n" +
-			"                 │   └─ right: Subquery\n" +
-			"                 │       ├─ cacheable: false\n" +
-			"                 │       └─ Filter\n" +
-			"                 │           ├─ (xy.x = 1)\n" +
-			"                 │           └─ SubqueryAlias\n" +
-			"                 │               ├─ name: cte\n" +
-			"                 │               ├─ outerVisibility: true\n" +
-			"                 │               ├─ isLateral: false\n" +
-			"                 │               ├─ cacheable: true\n" +
-			"                 │               └─ RecursiveCTE\n" +
-			"                 │                   └─ Union distinct\n" +
-			"                 │                       ├─ Project\n" +
-			"                 │                       │   ├─ columns: [1]\n" +
-			"                 │                       │   └─ Table\n" +
-			"                 │                       │       └─ name: \n" +
-			"                 │                       └─ Project\n" +
-			"                 │                           ├─ columns: [xy.x]\n" +
-			"                 │                           └─ LookupJoin\n" +
-			"                 │                               ├─ RecursiveTable(cte)\n" +
-			"                 │                               └─ IndexedTableAccess(xy)\n" +
-			"                 │                                   ├─ index: [xy.x]\n" +
-			"                 │                                   ├─ columns: [x]\n" +
-			"                 │                                   └─ keys: cte.s\n" +
-			"                 └─ Table\n" +
-			"                     └─ name: xy\n" +
+			"             └─ SemiJoin\n" +
+			"                 ├─ (xy.x = cte.s)\n" +
+			"                 ├─ IndexedTableAccess(xy)\n" +
+			"                 │   ├─ index: [xy.x]\n" +
+			"                 │   └─ filters: [{[1, 1]}]\n" +
+			"                 └─ CachedResults\n" +
+			"                     └─ SubqueryAlias\n" +
+			"                         ├─ name: cte\n" +
+			"                         ├─ outerVisibility: false\n" +
+			"                         ├─ isLateral: false\n" +
+			"                         ├─ cacheable: true\n" +
+			"                         └─ RecursiveCTE\n" +
+			"                             └─ Union distinct\n" +
+			"                                 ├─ Project\n" +
+			"                                 │   ├─ columns: [1]\n" +
+			"                                 │   └─ Table\n" +
+			"                                 │       └─ name: \n" +
+			"                                 └─ Project\n" +
+			"                                     ├─ columns: [xy.x]\n" +
+			"                                     └─ LookupJoin\n" +
+			"                                         ├─ RecursiveTable(cte)\n" +
+			"                                         └─ IndexedTableAccess(xy)\n" +
+			"                                             ├─ index: [xy.x]\n" +
+			"                                             ├─ columns: [x]\n" +
+			"                                             └─ keys: cte.s\n" +
 			"",
 		ExpectedAnalysis: "SubqueryAlias\n" +
 			" ├─ name: dt\n" +
@@ -1931,34 +1926,31 @@ Select * from (
 			"         ├─ columns: [convert(xy.x, signed) as x]\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [xy.x]\n" +
-			"             └─ Filter\n" +
-			"                 ├─ InSubquery\n" +
-			"                 │   ├─ left: xy.x\n" +
-			"                 │   └─ right: Subquery\n" +
-			"                 │       ├─ cacheable: false\n" +
-			"                 │       └─ Filter\n" +
-			"                 │           ├─ (xy.x = 1)\n" +
-			"                 │           └─ SubqueryAlias\n" +
-			"                 │               ├─ name: cte\n" +
-			"                 │               ├─ outerVisibility: true\n" +
-			"                 │               ├─ isLateral: false\n" +
-			"                 │               ├─ cacheable: true\n" +
-			"                 │               └─ RecursiveCTE\n" +
-			"                 │                   └─ Union distinct\n" +
-			"                 │                       ├─ Project\n" +
-			"                 │                       │   ├─ columns: [1]\n" +
-			"                 │                       │   └─ Table\n" +
-			"                 │                       │       └─ name: \n" +
-			"                 │                       └─ Project\n" +
-			"                 │                           ├─ columns: [xy.x]\n" +
-			"                 │                           └─ LookupJoin\n" +
-			"                 │                               ├─ RecursiveTable(cte)\n" +
-			"                 │                               └─ IndexedTableAccess(xy)\n" +
-			"                 │                                   ├─ index: [xy.x]\n" +
-			"                 │                                   ├─ columns: [x]\n" +
-			"                 │                                   └─ keys: cte.s\n" +
-			"                 └─ Table\n" +
-			"                     └─ name: xy\n" +
+			"             └─ SemiJoin\n" +
+			"                 ├─ (xy.x = cte.s)\n" +
+			"                 ├─ IndexedTableAccess(xy)\n" +
+			"                 │   ├─ index: [xy.x]\n" +
+			"                 │   └─ filters: [{[1, 1]}]\n" +
+			"                 └─ CachedResults\n" +
+			"                     └─ SubqueryAlias\n" +
+			"                         ├─ name: cte\n" +
+			"                         ├─ outerVisibility: false\n" +
+			"                         ├─ isLateral: false\n" +
+			"                         ├─ cacheable: true\n" +
+			"                         └─ RecursiveCTE\n" +
+			"                             └─ Union distinct\n" +
+			"                                 ├─ Project\n" +
+			"                                 │   ├─ columns: [1]\n" +
+			"                                 │   └─ Table\n" +
+			"                                 │       └─ name: \n" +
+			"                                 └─ Project\n" +
+			"                                     ├─ columns: [xy.x]\n" +
+			"                                     └─ LookupJoin\n" +
+			"                                         ├─ RecursiveTable(cte)\n" +
+			"                                         └─ IndexedTableAccess(xy)\n" +
+			"                                             ├─ index: [xy.x]\n" +
+			"                                             ├─ columns: [x]\n" +
+			"                                             └─ keys: cte.s\n" +
 			"",
 	},
 	{

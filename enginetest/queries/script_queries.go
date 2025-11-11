@@ -13409,6 +13409,36 @@ select * from t1 except (
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/10064
+		Name: "Hoist out of scope filters for left and right sides of union",
+		SetUpScript: []string{
+			"create table t1(c0 int, c1 varchar(500))",
+			"insert into t1(c1, c0) values ('-1',1),('-2',2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// Ensures that out of scope filters are hoisted
+				Query: "SELECT * FROM t1 WHERE NOT EXISTS (SELECT 1 FROM (SELECT NULL WHERE FALSE) AS sub0 WHERE (t1.c0)*(t1.c0)) union all SELECT * FROM t1 WHERE NOT EXISTS (SELECT 1 FROM (SELECT NULL WHERE FALSE) AS sub0 WHERE (t1.c0)*(t1.c0));",
+				Expected: []sql.Row{
+					{1, "-1"},
+					{2, "-2"},
+					{1, "-1"},
+					{2, "-2"},
+				},
+			},
+			{
+				// Ensures that antijoin iterator works correctly
+				Query: "SELECT * FROM t1 WHERE NOT EXISTS (SELECT 1 FROM (SELECT NULL WHERE FALSE) AS sub0) union all SELECT * FROM t1 WHERE NOT EXISTS (SELECT 1 FROM (SELECT NULL WHERE FALSE) AS sub0);",
+				Expected: []sql.Row{
+					{1, "-1"},
+					{2, "-2"},
+					{1, "-1"},
+					{2, "-2"},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
