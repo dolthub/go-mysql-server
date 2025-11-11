@@ -113,11 +113,16 @@ func (IntSequenceTable) Collation() sql.CollationID {
 }
 
 func (s IntSequenceTable) Expressions() []sql.Expression {
-	return []sql.Expression{}
+	return []sql.Expression{s.Len}
 }
 
 func (s IntSequenceTable) WithExpressions(e ...sql.Expression) (sql.Node, error) {
-	return s, nil
+	if len(e) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(s, len(e), 1)
+	}
+	newSequenceTable := s
+	newSequenceTable.Len = e[0]
+	return newSequenceTable, nil
 }
 
 func (s IntSequenceTable) Database() sql.Database {
