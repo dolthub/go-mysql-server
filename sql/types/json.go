@@ -172,6 +172,26 @@ func (t JsonType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Va
 	return sqltypes.MakeTrusted(sqltypes.TypeJSON, val), nil
 }
 
+// CompareValue implements the ValueType interface
+func (t JsonType) CompareValue(c *sql.Context, v sql.Value, value2 sql.Value) (int, error) {
+	panic("TODO: implement CompareValue for JsonType")
+}
+
+// SQLValue implements the ValueType interface
+func (t JsonType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes.Value, error) {
+	if v.IsNull() {
+		return sqltypes.NULL, nil
+	}
+	if v.Val == nil {
+		var err error
+		v.Val, err = v.WrappedVal.Unwrap(ctx)
+		if err != nil {
+			return sqltypes.Value{}, err
+		}
+	}
+	return sqltypes.MakeTrusted(sqltypes.TypeJSON, v.Val), nil
+}
+
 // String implements Type interface.
 func (t JsonType) String() string {
 	return "json"
