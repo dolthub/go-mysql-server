@@ -62,15 +62,15 @@ func convertJSONValue(v interface{}) (interface{}, sql.ConvertInRange, error) {
 		if b, berr := json.Marshal(v); berr == nil {
 			data = b
 		} else {
-    return JSONDocument{Val: nil}, sql.InRange, nil
-  }
+			return JSONDocument{Val: nil}, sql.InRange, nil
+		}
 	}
 
 	if int64(len(data))*charsetMaxLength > MaxJsonFieldByteLength {
 		return JSONDocument{Val: nil}, sql.InRange, ErrLengthTooLarge.New(len(data), MaxJsonFieldByteLength)
 	}
 
- var val interface{}
+	var val interface{}
 	if err := json.Unmarshal(data, &val); err != nil {
 		return JSONDocument{Val: nil}, sql.OutOfRange, sql.ErrInvalidJson.New(err.Error())
 	}
