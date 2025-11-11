@@ -151,6 +151,14 @@ var TableFunctionScriptTests = []ScriptTest{
 		Expected: []sql.Row{{0}, {1}, {2}},
 	},
 	{
+		Query:    "select * from sequence_table('x', 3) l join lateral (select * from sequence_table('y', l.x)) r",
+		Expected: []sql.Row{{1, 0}, {2, 0}, {2, 1}},
+	},
+	{
+		Query:    "select * from sequence_table('x', 3) l where exists (select * from sequence_table('y', l.x))",
+		Expected: []sql.Row{{1}, {2}},
+	},
+	{
 		Query:       "select not_seq.x from sequence_table('x', 5) as seq",
 		ExpectedErr: sql.ErrTableNotFound,
 	},
