@@ -469,7 +469,12 @@ func GetIndexLookup(ita *IndexedTableAccess) sql.IndexLookup {
 	return ita.lookup
 }
 
-type lookupBuilderKey []interface{}
+type lookupBuilderKeyElement struct {
+	val any
+	typ sql.Type
+}
+
+type lookupBuilderKey []lookupBuilderKeyElement
 
 // LookupBuilder abstracts secondary table access for an LookupJoin.
 // A row from the primary table is first evaluated on the secondary index's
@@ -545,19 +550,19 @@ func (lb *LookupBuilder) initializeRange(key lookupBuilderKey) {
 	lb.isPointLookup = len(key) == len(lb.cets)
 	var i int
 	for i < len(key) {
-		if key[i] == nil {
+		if key[i].val == nil {
 			lb.emptyRange = true
 			lb.isPointLookup = false
 		}
 		if lb.matchesNullMask[i] {
-			if key[i] == nil {
+			if key[i].val == nil {
 				lb.rang[i] = sql.NullRangeColumnExpr(lb.cets[i].Type)
 
 			} else {
 				lb.rang[i] = sql.NotNullRangeColumnExpr(lb.cets[i].Type)
 			}
 		} else {
-			lb.rang[i] = sql.ClosedRangeColumnExpr(key[i], key[i], lb.cets[i].Type)
+			lb.rang[i] = sql.ClosedRangeColumnExpr(key[i].val, key[i].val, lb.cets[i].Type)
 		}
 		i++
 	}
@@ -584,32 +589,36 @@ func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key lookupBuilderKey) (sql.
 	lb.emptyRange = false
 	lb.isPointLookup = len(key) == len(lb.cets)
 	for i := range key {
-		if key[i] == nil {
+		keyCol := key[i]
+		rang := lb.rang[i]
+		colType := rang.Typ
+
+		if keyCol.val == nil {
 			lb.emptyRange = true
 			lb.isPointLookup = false
 		}
+
 		if lb.matchesNullMask[i] {
-			if key[i] == nil {
-				lb.rang[i] = sql.NullRangeColumnExpr(lb.cets[i].Type)
+			if keyCol.val == nil {
+				rang = sql.NullRangeColumnExpr(lb.cets[i].Type)
 			} else {
-				k, _, err := lb.rang[i].Typ.Convert(ctx, key[i])
+				k, err := convertLookupKey(ctx, colType, keyCol)
 				if err != nil {
 					// TODO: throw warning, and this should truncate for strings
-					err = nil
-					k = lb.rang[i].Typ.Zero()
+					//  This is a terrible bug and should be fixed very soon
+					k = colType.Zero()
 				}
-				lb.rang[i].LowerBound = sql.Below{Key: k}
-				lb.rang[i].UpperBound = sql.Above{Key: k}
+				rang.LowerBound = sql.Below{Key: k}
+				rang.UpperBound = sql.Above{Key: k}
 			}
 		} else {
-			k, _, err := lb.rang[i].Typ.Convert(ctx, key[i])
+			k, err := convertLookupKey(ctx, colType, keyCol)
 			if err != nil {
 				// TODO: throw warning, and this should truncate for strings
-				err = nil
-				k = lb.rang[i].Typ.Zero()
+				k = colType.Zero()
 			}
-			lb.rang[i].LowerBound = sql.Below{Key: k}
-			lb.rang[i].UpperBound = sql.Above{Key: k}
+			rang.LowerBound = sql.Below{Key: k}
+			rang.UpperBound = sql.Above{Key: k}
 		}
 	}
 
@@ -622,15 +631,39 @@ func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key lookupBuilderKey) (sql.
 	}, nil
 }
 
+// convertLookupKey converts the value in keyCol to the type colType.
+func convertLookupKey(ctx *sql.Context, colType sql.Type, keyCol lookupBuilderKeyElement) (interface{}, error) {
+	srcType := keyCol.typ
+	destType := colType
+
+	// For extended types, use the rich type conversion methods
+	if srcEt, ok := srcType.(sql.ExtendedType); ok {
+		if destEt, ok := destType.(sql.ExtendedType); ok {
+			converted, err := destEt.ConvertToType(ctx, srcEt, keyCol.val)
+			if err != nil {
+				return nil, err
+			}
+
+			return converted, nil
+		}
+	}
+
+	k, _, err := colType.Convert(ctx, keyCol.val)
+	return k, err
+}
+
 func (lb *LookupBuilder) GetKey(ctx *sql.Context, row sql.Row) (lookupBuilderKey, error) {
 	if lb.key == nil {
-		lb.key = make([]interface{}, len(lb.keyExprs))
+		lb.key = make(lookupBuilderKey, len(lb.keyExprs))
 	}
 	for i := range lb.keyExprs {
-		var err error
-		lb.key[i], err = lb.keyExprs[i].Eval(ctx, row)
+		val, err := lb.keyExprs[i].Eval(ctx, row)
 		if err != nil {
 			return nil, err
+		}
+		lb.key[i] = lookupBuilderKeyElement{
+			val: val,
+			typ: lb.keyExprs[i].Type(),
 		}
 	}
 	return lb.key, nil
@@ -638,13 +671,17 @@ func (lb *LookupBuilder) GetKey(ctx *sql.Context, row sql.Row) (lookupBuilderKey
 
 func (lb *LookupBuilder) GetValueRowKey(ctx *sql.Context, row sql.ValueRow) (lookupBuilderKey, error) {
 	if lb.key == nil {
-		lb.key = make([]interface{}, len(lb.keyExprs))
+		lb.key = make(lookupBuilderKey, len(lb.keyExprs))
 	}
 	for i := range lb.keyExprs {
-		var err error
-		lb.key[i], err = lb.keyValExprs[i].EvalValue(ctx, row)
+		val, err := lb.keyValExprs[i].EvalValue(ctx, row)
 		if err != nil {
 			return nil, err
+		}
+
+		lb.key[i] = lookupBuilderKeyElement{
+			val: val,
+			typ: lb.keyValExprs[i].Type(),
 		}
 	}
 	return lb.key, nil
@@ -653,7 +690,11 @@ func (lb *LookupBuilder) GetValueRowKey(ctx *sql.Context, row sql.ValueRow) (loo
 func (lb *LookupBuilder) GetZeroKey() lookupBuilderKey {
 	key := make(lookupBuilderKey, len(lb.keyExprs))
 	for i, keyExpr := range lb.keyExprs {
-		key[i] = keyExpr.Type().Zero()
+		typ := keyExpr.Type()
+		key[i] = lookupBuilderKeyElement{
+			val: typ.Zero(),
+			typ: typ,
+		}
 	}
 	return key
 }
