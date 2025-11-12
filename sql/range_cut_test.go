@@ -32,20 +32,20 @@ func TestRangeCutCompare(t *testing.T) {
 	for _, testcase := range []tc{
 		{sql.AboveAll{}, sql.BelowNull{}, 1},
 		{sql.AboveAll{}, sql.AboveNull{}, 1},
-		{sql.AboveAll{}, sql.Above{1}, 1},
-		{sql.AboveAll{}, sql.Below{1}, 1},
+		{sql.AboveAll{}, sql.Above{Key: 1}, 1},
+		{sql.AboveAll{}, sql.Below{Key: 1}, 1},
 		{sql.AboveAll{}, sql.AboveAll{}, 0},
 
-		{sql.Above{1}, sql.AboveNull{}, 1},
-		{sql.Above{1}, sql.BelowNull{}, 1},
-		{sql.Above{1}, sql.Above{1}, 0},
-		{sql.Above{1}, sql.Below{1}, 1},
-		{sql.Above{2}, sql.Above{1}, 1},
+		{sql.Above{Key: 1}, sql.AboveNull{}, 1},
+		{sql.Above{Key: 1}, sql.BelowNull{}, 1},
+		{sql.Above{Key: 1}, sql.Above{Key: 1}, 0},
+		{sql.Above{Key: 1}, sql.Below{Key: 1}, 1},
+		{sql.Above{Key: 2}, sql.Above{Key: 1}, 1},
 
-		{sql.Below{1}, sql.AboveNull{}, 1},
-		{sql.Below{1}, sql.BelowNull{}, 1},
-		{sql.Below{1}, sql.Below{1}, 0},
-		{sql.Below{2}, sql.Below{1}, 1},
+		{sql.Below{Key: 1}, sql.AboveNull{}, 1},
+		{sql.Below{Key: 1}, sql.BelowNull{}, 1},
+		{sql.Below{Key: 1}, sql.Below{Key: 1}, 0},
+		{sql.Below{Key: 2}, sql.Below{Key: 1}, 1},
 
 		{sql.AboveNull{}, sql.BelowNull{}, 1},
 

@@ -124,13 +124,14 @@ func GetMySQLRangeCutMin(typ Type, cuts ...MySQLRangeCut) (MySQLRangeCut, error)
 // Above represents the position immediately above the contained key.
 type Above struct {
 	Key interface{}
+	Typ Type
 }
 
 var _ MySQLRangeCut = Above{}
 
 // Compare implements MySQLRangeCut.
 func (a Above) Compare(c MySQLRangeCut, typ Type) (int, error) {
-	//TODO: Add context parameter to MySQLRangeCut.Compare
+	// TODO: Add context parameter to MySQLRangeCut.Compare
 	ctx := context.Background()
 	switch c := c.(type) {
 	case AboveAll:
@@ -201,13 +202,14 @@ func (AboveAll) TypeAsUpperBound() MySQLRangeBoundType {
 // Below represents the position immediately below the contained key.
 type Below struct {
 	Key interface{}
+	Typ Type
 }
 
 var _ MySQLRangeCut = Below{}
 
 // Compare implements MySQLRangeCut.
 func (b Below) Compare(c MySQLRangeCut, typ Type) (int, error) {
-	//TODO: Add context parameter to MySQLRangeCut.Compare
+	// TODO: Add context parameter to MySQLRangeCut.Compare
 	ctx := context.Background()
 	switch c := c.(type) {
 	case AboveAll:

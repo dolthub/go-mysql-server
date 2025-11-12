@@ -607,8 +607,14 @@ func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key lookupBuilderKey) (sql.
 					//  This is a terrible bug and should be fixed very soon
 					k = colType.Zero()
 				}
-				lb.rang[i].LowerBound = sql.Below{Key: k}
-				lb.rang[i].UpperBound = sql.Above{Key: k}
+				lb.rang[i].LowerBound = sql.Below{
+					Key: k,
+					Typ: keyCol.typ,
+				}
+				lb.rang[i].UpperBound = sql.Above{
+					Key: k,
+					Typ: keyCol.typ,
+				}
 			}
 		} else {
 			k, err := convertLookupKey(ctx, colType, keyCol)

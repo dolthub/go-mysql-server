@@ -777,19 +777,43 @@ func notNull() sql.MySQLRangeColumnExpr {
 }
 
 func rcc(lowerbound, upperbound byte) sql.MySQLRangeColumnExpr {
-	return sql.CustomRangeColumnExpr(lowerbound, upperbound, sql.Closed, sql.Closed, rangeType)
+	return newRangeColumnExpr(lowerbound, upperbound, sql.Closed, sql.Closed, rangeType)
 }
 
 func rco(lowerbound, upperbound byte) sql.MySQLRangeColumnExpr {
-	return sql.CustomRangeColumnExpr(lowerbound, upperbound, sql.Closed, sql.Open, rangeType)
+	return newRangeColumnExpr(lowerbound, upperbound, sql.Closed, sql.Open, rangeType)
 }
 
 func roc(lowerbound, upperbound byte) sql.MySQLRangeColumnExpr {
-	return sql.CustomRangeColumnExpr(lowerbound, upperbound, sql.Open, sql.Closed, rangeType)
+	return newRangeColumnExpr(lowerbound, upperbound, sql.Open, sql.Closed, rangeType)
 }
 
 func roo(lowerbound, upperbound byte) sql.MySQLRangeColumnExpr {
-	return sql.CustomRangeColumnExpr(lowerbound, upperbound, sql.Open, sql.Open, rangeType)
+	return newRangeColumnExpr(lowerbound, upperbound, sql.Open, sql.Open, rangeType)
+}
+
+// CustomRangeColumnExpr returns a MySQLRangeColumnExpr defined by the bounds given.
+func newRangeColumnExpr(lower, upper interface{}, lowerBound, upperBound sql.MySQLRangeBoundType, typ sql.Type) sql.MySQLRangeColumnExpr {
+	if lower == nil || upper == nil {
+		return sql.EmptyRangeColumnExpr(typ)
+	}
+	var lCut sql.MySQLRangeCut
+	var uCut sql.MySQLRangeCut
+	if lowerBound == sql.Open {
+		lCut = sql.Above{Key: lower}
+	} else {
+		lCut = sql.Below{Key: lower}
+	}
+	if upperBound == sql.Open {
+		uCut = sql.Below{Key: upper}
+	} else {
+		uCut = sql.Above{Key: upper}
+	}
+	return sql.MySQLRangeColumnExpr{
+		LowerBound: lCut,
+		UpperBound: uCut,
+		Typ:        typ,
+	}
 }
 
 func or(expressions ...sql.Expression) sql.Expression {
@@ -838,147 +862,147 @@ func TestRangeTreeInsert(t *testing.T) {
 			name:      "insert smallest",
 			setupRngs: []sql.MySQLRange{r(req(7)), r(req(3)), r(req(11))},
 			setupExp: "RangeColumnExprTree\n" +
-				"│   ┌── [11, 11] max: Above[11] color: 1\n" +
-				"└── [7, 7] max: Above[11] color: 0\n" +
-				"    └── [3, 3] max: Above[3] color: 1\n" +
-				"",
+					"│   ┌── [11, 11] max: Above[11] color: 1\n" +
+					"└── [7, 7] max: Above[11] color: 0\n" +
+					"    └── [3, 3] max: Above[3] color: 1\n" +
+					"",
 			rng: r(req(0)),
 			exp: "RangeColumnExprTree\n" +
-				"│   ┌── [11, 11] max: Above[11] color: 0\n" +
-				"└── [7, 7] max: Above[11] color: 0\n" +
-				"    └── [3, 3] max: Above[3] color: 0\n" +
-				"        └── [0, 0] max: Above[0] color: 1\n" +
-				"",
+					"│   ┌── [11, 11] max: Above[11] color: 0\n" +
+					"└── [7, 7] max: Above[11] color: 0\n" +
+					"    └── [3, 3] max: Above[3] color: 0\n" +
+					"        └── [0, 0] max: Above[0] color: 1\n" +
+					"",
 		},
 		{
 			name:      "insert largest",
 			setupRngs: []sql.MySQLRange{r(req(7)), r(req(3)), r(req(11))},
 			setupExp: "RangeColumnExprTree\n" +
-				"│   ┌── [11, 11] max: Above[11] color: 1\n" +
-				"└── [7, 7] max: Above[11] color: 0\n" +
-				"    └── [3, 3] max: Above[3] color: 1\n" +
-				"",
+					"│   ┌── [11, 11] max: Above[11] color: 1\n" +
+					"└── [7, 7] max: Above[11] color: 0\n" +
+					"    └── [3, 3] max: Above[3] color: 1\n" +
+					"",
 			rng: r(req(14)),
 			exp: "RangeColumnExprTree\n" +
-				"│       ┌── [14, 14] max: Above[14] color: 1\n" +
-				"│   ┌── [11, 11] max: Above[14] color: 0\n" +
-				"└── [7, 7] max: Above[14] color: 0\n" +
-				"    └── [3, 3] max: Above[3] color: 0\n" +
-				"",
+					"│       ┌── [14, 14] max: Above[14] color: 1\n" +
+					"│   ┌── [11, 11] max: Above[14] color: 0\n" +
+					"└── [7, 7] max: Above[14] color: 0\n" +
+					"    └── [3, 3] max: Above[3] color: 0\n" +
+					"",
 		},
 		{
 			name:      "insert rebalance left child",
 			setupRngs: []sql.MySQLRange{r(req(7)), r(req(3)), r(req(11)), r(req(0))},
 			setupExp: "RangeColumnExprTree\n" +
-				"│   ┌── [11, 11] max: Above[11] color: 0\n" +
-				"└── [7, 7] max: Above[11] color: 0\n" +
-				"    └── [3, 3] max: Above[3] color: 0\n" +
-				"        └── [0, 0] max: Above[0] color: 1\n" +
-				"",
+					"│   ┌── [11, 11] max: Above[11] color: 0\n" +
+					"└── [7, 7] max: Above[11] color: 0\n" +
+					"    └── [3, 3] max: Above[3] color: 0\n" +
+					"        └── [0, 0] max: Above[0] color: 1\n" +
+					"",
 			rng: r(req(1)),
 			exp: "RangeColumnExprTree\n" +
-				"│   ┌── [11, 11] max: Above[11] color: 0\n" +
-				"└── [7, 7] max: Above[11] color: 0\n" +
-				"    │   ┌── [3, 3] max: Above[3] color: 1\n" +
-				"    └── [1, 1] max: Above[3] color: 0\n" +
-				"        └── [0, 0] max: Above[0] color: 1\n" +
-				"",
+					"│   ┌── [11, 11] max: Above[11] color: 0\n" +
+					"└── [7, 7] max: Above[11] color: 0\n" +
+					"    │   ┌── [3, 3] max: Above[3] color: 1\n" +
+					"    └── [1, 1] max: Above[3] color: 0\n" +
+					"        └── [0, 0] max: Above[0] color: 1\n" +
+					"",
 		},
 		{
 			name:      "insert rebalance right child",
 			setupRngs: []sql.MySQLRange{r(req(7)), r(req(3)), r(req(11)), r(req(12))},
 			setupExp: "RangeColumnExprTree\n" +
-				"│       ┌── [12, 12] max: Above[12] color: 1\n" +
-				"│   ┌── [11, 11] max: Above[12] color: 0\n" +
-				"└── [7, 7] max: Above[12] color: 0\n" +
-				"    └── [3, 3] max: Above[3] color: 0\n" +
-				"",
+					"│       ┌── [12, 12] max: Above[12] color: 1\n" +
+					"│   ┌── [11, 11] max: Above[12] color: 0\n" +
+					"└── [7, 7] max: Above[12] color: 0\n" +
+					"    └── [3, 3] max: Above[3] color: 0\n" +
+					"",
 			rng: r(req(13)),
 			exp: "RangeColumnExprTree\n" +
-				"│       ┌── [13, 13] max: Above[13] color: 1\n" +
-				"│   ┌── [12, 12] max: Above[13] color: 0\n" +
-				"│   │   └── [11, 11] max: Above[11] color: 1\n" +
-				"└── [7, 7] max: Above[13] color: 0\n" +
-				"    └── [3, 3] max: Above[3] color: 0\n" +
-				"",
+					"│       ┌── [13, 13] max: Above[13] color: 1\n" +
+					"│   ┌── [12, 12] max: Above[13] color: 0\n" +
+					"│   │   └── [11, 11] max: Above[11] color: 1\n" +
+					"└── [7, 7] max: Above[13] color: 0\n" +
+					"    └── [3, 3] max: Above[3] color: 0\n" +
+					"",
 		},
 		{
 			name:      "insert rebalance root from left",
 			setupRngs: []sql.MySQLRange{r(req(7)), r(req(3)), r(req(11)), r(req(0)), r(req(1)), r(req(2)), r(req(4))},
 			setupExp: "RangeColumnExprTree\n" +
-				"│   ┌── [11, 11] max: Above[11] color: 0\n" +
-				"└── [7, 7] max: Above[11] color: 0\n" +
-				"    │       ┌── [4, 4] max: Above[4] color: 1\n" +
-				"    │   ┌── [3, 3] max: Above[4] color: 0\n" +
-				"    │   │   └── [2, 2] max: Above[2] color: 1\n" +
-				"    └── [1, 1] max: Above[4] color: 1\n" +
-				"        └── [0, 0] max: Above[0] color: 0\n" +
-				"",
+					"│   ┌── [11, 11] max: Above[11] color: 0\n" +
+					"└── [7, 7] max: Above[11] color: 0\n" +
+					"    │       ┌── [4, 4] max: Above[4] color: 1\n" +
+					"    │   ┌── [3, 3] max: Above[4] color: 0\n" +
+					"    │   │   └── [2, 2] max: Above[2] color: 1\n" +
+					"    └── [1, 1] max: Above[4] color: 1\n" +
+					"        └── [0, 0] max: Above[0] color: 0\n" +
+					"",
 			rng: r(req(5)),
 			exp: "RangeColumnExprTree\n" +
-				"│       ┌── [11, 11] max: Above[11] color: 0\n" +
-				"│   ┌── [7, 7] max: Above[11] color: 1\n" +
-				"│   │   │   ┌── [5, 5] max: Above[5] color: 1\n" +
-				"│   │   └── [4, 4] max: Above[5] color: 0\n" +
-				"└── [3, 3] max: Above[11] color: 0\n" +
-				"    │   ┌── [2, 2] max: Above[2] color: 0\n" +
-				"    └── [1, 1] max: Above[2] color: 1\n" +
-				"        └── [0, 0] max: Above[0] color: 0\n" +
-				"",
+					"│       ┌── [11, 11] max: Above[11] color: 0\n" +
+					"│   ┌── [7, 7] max: Above[11] color: 1\n" +
+					"│   │   │   ┌── [5, 5] max: Above[5] color: 1\n" +
+					"│   │   └── [4, 4] max: Above[5] color: 0\n" +
+					"└── [3, 3] max: Above[11] color: 0\n" +
+					"    │   ┌── [2, 2] max: Above[2] color: 0\n" +
+					"    └── [1, 1] max: Above[2] color: 1\n" +
+					"        └── [0, 0] max: Above[0] color: 0\n" +
+					"",
 		},
 		{
 			name:      "insert rebalance root from right",
 			setupRngs: []sql.MySQLRange{r(req(7)), r(req(3)), r(req(11)), r(req(8)), r(req(9)), r(req(10)), r(req(12))},
 			setupExp: "RangeColumnExprTree\n" +
-				"│           ┌── [12, 12] max: Above[12] color: 1\n" +
-				"│       ┌── [11, 11] max: Above[12] color: 0\n" +
-				"│       │   └── [10, 10] max: Above[10] color: 1\n" +
-				"│   ┌── [9, 9] max: Above[12] color: 1\n" +
-				"│   │   └── [8, 8] max: Above[8] color: 0\n" +
-				"└── [7, 7] max: Above[12] color: 0\n" +
-				"    └── [3, 3] max: Above[3] color: 0\n" +
-				"",
+					"│           ┌── [12, 12] max: Above[12] color: 1\n" +
+					"│       ┌── [11, 11] max: Above[12] color: 0\n" +
+					"│       │   └── [10, 10] max: Above[10] color: 1\n" +
+					"│   ┌── [9, 9] max: Above[12] color: 1\n" +
+					"│   │   └── [8, 8] max: Above[8] color: 0\n" +
+					"└── [7, 7] max: Above[12] color: 0\n" +
+					"    └── [3, 3] max: Above[3] color: 0\n" +
+					"",
 			rng: r(req(13)),
 			exp: "RangeColumnExprTree\n" +
-				"│           ┌── [13, 13] max: Above[13] color: 1\n" +
-				"│       ┌── [12, 12] max: Above[13] color: 0\n" +
-				"│   ┌── [11, 11] max: Above[13] color: 1\n" +
-				"│   │   └── [10, 10] max: Above[10] color: 0\n" +
-				"└── [9, 9] max: Above[13] color: 0\n" +
-				"    │   ┌── [8, 8] max: Above[8] color: 0\n" +
-				"    └── [7, 7] max: Above[8] color: 1\n" +
-				"        └── [3, 3] max: Above[3] color: 0\n" +
-				"",
+					"│           ┌── [13, 13] max: Above[13] color: 1\n" +
+					"│       ┌── [12, 12] max: Above[13] color: 0\n" +
+					"│   ┌── [11, 11] max: Above[13] color: 1\n" +
+					"│   │   └── [10, 10] max: Above[10] color: 0\n" +
+					"└── [9, 9] max: Above[13] color: 0\n" +
+					"    │   ┌── [8, 8] max: Above[8] color: 0\n" +
+					"    └── [7, 7] max: Above[8] color: 1\n" +
+					"        └── [3, 3] max: Above[3] color: 0\n" +
+					"",
 		},
 		{
 			name:      "insert smallest",
 			setupRngs: []sql.MySQLRange{r(rcc(4, 6)), r(req(3)), r(req(11))},
 			setupExp: "RangeColumnExprTree\n" +
-				"│   ┌── [11, 11] max: Above[11] color: 1\n" +
-				"└── [4, 6] max: Above[11] color: 0\n" +
-				"    └── [3, 3] max: Above[3] color: 1\n" +
-				"",
+					"│   ┌── [11, 11] max: Above[11] color: 1\n" +
+					"└── [4, 6] max: Above[11] color: 0\n" +
+					"    └── [3, 3] max: Above[3] color: 1\n" +
+					"",
 			rng: r(req(0)),
 			exp: "RangeColumnExprTree\n" +
-				"│   ┌── [11, 11] max: Above[11] color: 0\n" +
-				"└── [4, 6] max: Above[11] color: 0\n" +
-				"    └── [3, 3] max: Above[3] color: 0\n" +
-				"        └── [0, 0] max: Above[0] color: 1\n" +
-				"",
+					"│   ┌── [11, 11] max: Above[11] color: 0\n" +
+					"└── [4, 6] max: Above[11] color: 0\n" +
+					"    └── [3, 3] max: Above[3] color: 0\n" +
+					"        └── [0, 0] max: Above[0] color: 1\n" +
+					"",
 		},
 		{
 			name:      "insert compare above and below",
 			setupRngs: []sql.MySQLRange{r(roo(4, 6)), r(req(4))},
 			setupExp: "RangeColumnExprTree\n" +
-				"└── (4, 6) max: Below[6] color: 0\n" +
-				"    └── [4, 4] max: Above[4] color: 1\n" +
-				"",
+					"└── (4, 6) max: Below[6] color: 0\n" +
+					"    └── [4, 4] max: Above[4] color: 1\n" +
+					"",
 			rng: r(req(6)),
 			exp: "RangeColumnExprTree\n" +
-				"│   ┌── [6, 6] max: Above[6] color: 1\n" +
-				"└── (4, 6) max: Above[6] color: 0\n" +
-				"    └── [4, 4] max: Above[4] color: 1\n" +
-				"",
+					"│   ┌── [6, 6] max: Above[6] color: 1\n" +
+					"└── (4, 6) max: Above[6] color: 0\n" +
+					"    └── [4, 4] max: Above[4] color: 1\n" +
+					"",
 		},
 	}
 
@@ -1007,195 +1031,195 @@ func TestRangeTreeRemove(t *testing.T) {
 			name:      "remove smallest",
 			setupRngs: []sql.MySQLRange{r(req(7)), r(req(3)), r(req(11)), r(req(1)), r(req(5)), r(req(9)), r(req(13))},
 			setupExp: "RangeColumnExprTree\n" +
-				"│       ┌── [13, 13] max: Above[13] color: 1\n" +
-				"│   ┌── [11, 11] max: Above[13] color: 0\n" +
-				"│   │   └── [9, 9] max: Above[9] color: 1\n" +
-				"└── [7, 7] max: Above[13] color: 0\n" +
-				"    │   ┌── [5, 5] max: Above[5] color: 1\n" +
-				"    └── [3, 3] max: Above[5] color: 0\n" +
-				"        └── [1, 1] max: Above[1] color: 1\n" +
-				"",
+					"│       ┌── [13, 13] max: Above[13] color: 1\n" +
+					"│   ┌── [11, 11] max: Above[13] color: 0\n" +
+					"│   │   └── [9, 9] max: Above[9] color: 1\n" +
+					"└── [7, 7] max: Above[13] color: 0\n" +
+					"    │   ┌── [5, 5] max: Above[5] color: 1\n" +
+					"    └── [3, 3] max: Above[5] color: 0\n" +
+					"        └── [1, 1] max: Above[1] color: 1\n" +
+					"",
 			rng: r(req(1)),
 			exp: "RangeColumnExprTree\n" +
-				"│       ┌── [13, 13] max: Above[13] color: 1\n" +
-				"│   ┌── [11, 11] max: Above[13] color: 0\n" +
-				"│   │   └── [9, 9] max: Above[9] color: 1\n" +
-				"└── [7, 7] max: Above[13] color: 0\n" +
-				"    │   ┌── [5, 5] max: Above[5] color: 1\n" +
-				"    └── [3, 3] max: Above[5] color: 0\n" +
-				"",
+					"│       ┌── [13, 13] max: Above[13] color: 1\n" +
+					"│   ┌── [11, 11] max: Above[13] color: 0\n" +
+					"│   │   └── [9, 9] max: Above[9] color: 1\n" +
+					"└── [7, 7] max: Above[13] color: 0\n" +
+					"    │   ┌── [5, 5] max: Above[5] color: 1\n" +
+					"    └── [3, 3] max: Above[5] color: 0\n" +
+					"",
 		},
 		{
 			name:      "remove largest",
 			setupRngs: []sql.MySQLRange{r(req(7)), r(req(3)), r(req(11)), r(req(1)), r(req(5)), r(req(9)), r(req(13))},
 			setupExp: "RangeColumnExprTree\n" +
-				"│       ┌── [13, 13] max: Above[13] color: 1\n" +
-				"│   ┌── [11, 11] max: Above[13] color: 0\n" +
-				"│   │   └── [9, 9] max: Above[9] color: 1\n" +
-				"└── [7, 7] max: Above[13] color: 0\n" +
-				"    │   ┌── [5, 5] max: Above[5] color: 1\n" +
-				"    └── [3, 3] max: Above[5] color: 0\n" +
-				"        └── [1, 1] max: Above[1] color: 1\n" +
-				"",
+					"│       ┌── [13, 13] max: Above[13] color: 1\n" +
+					"│   ┌── [11, 11] max: Above[13] color: 0\n" +
+					"│   │   └── [9, 9] max: Above[9] color: 1\n" +
+					"└── [7, 7] max: Above[13] color: 0\n" +
+					"    │   ┌── [5, 5] max: Above[5] color: 1\n" +
+					"    └── [3, 3] max: Above[5] color: 0\n" +
+					"        └── [1, 1] max: Above[1] color: 1\n" +
+					"",
 			rng: r(req(13)),
 			exp: "RangeColumnExprTree\n" +
-				"│   ┌── [11, 11] max: Above[11] color: 0\n" +
-				"│   │   └── [9, 9] max: Above[9] color: 1\n" +
-				"└── [7, 7] max: Above[11] color: 0\n" +
-				"    │   ┌── [5, 5] max: Above[5] color: 1\n" +
-				"    └── [3, 3] max: Above[5] color: 0\n" +
-				"        └── [1, 1] max: Above[1] color: 1\n" +
-				"",
+					"│   ┌── [11, 11] max: Above[11] color: 0\n" +
+					"│   │   └── [9, 9] max: Above[9] color: 1\n" +
+					"└── [7, 7] max: Above[11] color: 0\n" +
+					"    │   ┌── [5, 5] max: Above[5] color: 1\n" +
+					"    └── [3, 3] max: Above[5] color: 0\n" +
+					"        └── [1, 1] max: Above[1] color: 1\n" +
+					"",
 		},
 		{
 			name:      "remove largest without left child",
 			setupRngs: []sql.MySQLRange{r(req(7)), r(req(3)), r(req(11)), r(req(1)), r(req(5)), r(req(13))},
 			setupExp: "RangeColumnExprTree\n" +
-				"│       ┌── [13, 13] max: Above[13] color: 1\n" +
-				"│   ┌── [11, 11] max: Above[13] color: 0\n" +
-				"└── [7, 7] max: Above[13] color: 0\n" +
-				"    │   ┌── [5, 5] max: Above[5] color: 1\n" +
-				"    └── [3, 3] max: Above[5] color: 0\n" +
-				"        └── [1, 1] max: Above[1] color: 1\n" +
-				"",
+					"│       ┌── [13, 13] max: Above[13] color: 1\n" +
+					"│   ┌── [11, 11] max: Above[13] color: 0\n" +
+					"└── [7, 7] max: Above[13] color: 0\n" +
+					"    │   ┌── [5, 5] max: Above[5] color: 1\n" +
+					"    └── [3, 3] max: Above[5] color: 0\n" +
+					"        └── [1, 1] max: Above[1] color: 1\n" +
+					"",
 			rng: r(req(13)),
 			exp: "RangeColumnExprTree\n" +
-				"│   ┌── [11, 11] max: Above[11] color: 0\n" +
-				"└── [7, 7] max: Above[11] color: 0\n" +
-				"    │   ┌── [5, 5] max: Above[5] color: 1\n" +
-				"    └── [3, 3] max: Above[5] color: 0\n" +
-				"        └── [1, 1] max: Above[1] color: 1\n" +
-				"",
+					"│   ┌── [11, 11] max: Above[11] color: 0\n" +
+					"└── [7, 7] max: Above[11] color: 0\n" +
+					"    │   ┌── [5, 5] max: Above[5] color: 1\n" +
+					"    └── [3, 3] max: Above[5] color: 0\n" +
+					"        └── [1, 1] max: Above[1] color: 1\n" +
+					"",
 		},
 		{
 			name:      "remove left parent",
 			setupRngs: []sql.MySQLRange{r(req(7)), r(req(3)), r(req(11)), r(req(1)), r(req(5)), r(req(9)), r(req(13))},
 			setupExp: "RangeColumnExprTree\n" +
-				"│       ┌── [13, 13] max: Above[13] color: 1\n" +
-				"│   ┌── [11, 11] max: Above[13] color: 0\n" +
-				"│   │   └── [9, 9] max: Above[9] color: 1\n" +
-				"└── [7, 7] max: Above[13] color: 0\n" +
-				"    │   ┌── [5, 5] max: Above[5] color: 1\n" +
-				"    └── [3, 3] max: Above[5] color: 0\n" +
-				"        └── [1, 1] max: Above[1] color: 1\n" +
-				"",
+					"│       ┌── [13, 13] max: Above[13] color: 1\n" +
+					"│   ┌── [11, 11] max: Above[13] color: 0\n" +
+					"│   │   └── [9, 9] max: Above[9] color: 1\n" +
+					"└── [7, 7] max: Above[13] color: 0\n" +
+					"    │   ┌── [5, 5] max: Above[5] color: 1\n" +
+					"    └── [3, 3] max: Above[5] color: 0\n" +
+					"        └── [1, 1] max: Above[1] color: 1\n" +
+					"",
 			rng: r(req(3)),
 			exp: "RangeColumnExprTree\n" +
-				"│       ┌── [13, 13] max: Above[13] color: 1\n" +
-				"│   ┌── [11, 11] max: Above[13] color: 0\n" +
-				"│   │   └── [9, 9] max: Above[9] color: 1\n" +
-				"└── [7, 7] max: Above[13] color: 0\n" +
-				"    │   ┌── [5, 5] max: Above[5] color: 1\n" +
-				"    └── [1, 1] max: Above[5] color: 0\n" +
-				"",
+					"│       ┌── [13, 13] max: Above[13] color: 1\n" +
+					"│   ┌── [11, 11] max: Above[13] color: 0\n" +
+					"│   │   └── [9, 9] max: Above[9] color: 1\n" +
+					"└── [7, 7] max: Above[13] color: 0\n" +
+					"    │   ┌── [5, 5] max: Above[5] color: 1\n" +
+					"    └── [1, 1] max: Above[5] color: 0\n" +
+					"",
 		},
 		{
 			name:      "remove right parent",
 			setupRngs: []sql.MySQLRange{r(req(7)), r(req(3)), r(req(11)), r(req(1)), r(req(5)), r(req(9)), r(req(13))},
 			setupExp: "RangeColumnExprTree\n" +
-				"│       ┌── [13, 13] max: Above[13] color: 1\n" +
-				"│   ┌── [11, 11] max: Above[13] color: 0\n" +
-				"│   │   └── [9, 9] max: Above[9] color: 1\n" +
-				"└── [7, 7] max: Above[13] color: 0\n" +
-				"    │   ┌── [5, 5] max: Above[5] color: 1\n" +
-				"    └── [3, 3] max: Above[5] color: 0\n" +
-				"        └── [1, 1] max: Above[1] color: 1\n" +
-				"",
+					"│       ┌── [13, 13] max: Above[13] color: 1\n" +
+					"│   ┌── [11, 11] max: Above[13] color: 0\n" +
+					"│   │   └── [9, 9] max: Above[9] color: 1\n" +
+					"└── [7, 7] max: Above[13] color: 0\n" +
+					"    │   ┌── [5, 5] max: Above[5] color: 1\n" +
+					"    └── [3, 3] max: Above[5] color: 0\n" +
+					"        └── [1, 1] max: Above[1] color: 1\n" +
+					"",
 			rng: r(req(11)),
 			exp: "RangeColumnExprTree\n" +
-				"│       ┌── [13, 13] max: Above[13] color: 1\n" +
-				"│   ┌── [9, 9] max: Above[13] color: 0\n" +
-				"└── [7, 7] max: Above[13] color: 0\n" +
-				"    │   ┌── [5, 5] max: Above[5] color: 1\n" +
-				"    └── [3, 3] max: Above[5] color: 0\n" +
-				"        └── [1, 1] max: Above[1] color: 1\n" +
-				"",
+					"│       ┌── [13, 13] max: Above[13] color: 1\n" +
+					"│   ┌── [9, 9] max: Above[13] color: 0\n" +
+					"└── [7, 7] max: Above[13] color: 0\n" +
+					"    │   ┌── [5, 5] max: Above[5] color: 1\n" +
+					"    └── [3, 3] max: Above[5] color: 0\n" +
+					"        └── [1, 1] max: Above[1] color: 1\n" +
+					"",
 		},
 		{
 			name:      "remove root",
 			setupRngs: []sql.MySQLRange{r(req(7)), r(req(3)), r(req(11)), r(req(1)), r(req(5)), r(req(9)), r(req(13))},
 			setupExp: "RangeColumnExprTree\n" +
-				"│       ┌── [13, 13] max: Above[13] color: 1\n" +
-				"│   ┌── [11, 11] max: Above[13] color: 0\n" +
-				"│   │   └── [9, 9] max: Above[9] color: 1\n" +
-				"└── [7, 7] max: Above[13] color: 0\n" +
-				"    │   ┌── [5, 5] max: Above[5] color: 1\n" +
-				"    └── [3, 3] max: Above[5] color: 0\n" +
-				"        └── [1, 1] max: Above[1] color: 1\n" +
-				"",
+					"│       ┌── [13, 13] max: Above[13] color: 1\n" +
+					"│   ┌── [11, 11] max: Above[13] color: 0\n" +
+					"│   │   └── [9, 9] max: Above[9] color: 1\n" +
+					"└── [7, 7] max: Above[13] color: 0\n" +
+					"    │   ┌── [5, 5] max: Above[5] color: 1\n" +
+					"    └── [3, 3] max: Above[5] color: 0\n" +
+					"        └── [1, 1] max: Above[1] color: 1\n" +
+					"",
 			rng: r(req(7)),
 			exp: "RangeColumnExprTree\n" +
-				"│       ┌── [13, 13] max: Above[13] color: 1\n" +
-				"│   ┌── [11, 11] max: Above[13] color: 0\n" +
-				"│   │   └── [9, 9] max: Above[9] color: 1\n" +
-				"└── [5, 5] max: Above[13] color: 0\n" +
-				"    └── [3, 3] max: Above[3] color: 0\n" +
-				"        └── [1, 1] max: Above[1] color: 1\n" +
-				"",
+					"│       ┌── [13, 13] max: Above[13] color: 1\n" +
+					"│   ┌── [11, 11] max: Above[13] color: 0\n" +
+					"│   │   └── [9, 9] max: Above[9] color: 1\n" +
+					"└── [5, 5] max: Above[13] color: 0\n" +
+					"    └── [3, 3] max: Above[3] color: 0\n" +
+					"        └── [1, 1] max: Above[1] color: 1\n" +
+					"",
 		},
 		{
 			name:      "remove rotate left",
 			setupRngs: []sql.MySQLRange{r(req(7)), r(req(3)), r(req(11)), r(req(1)), r(req(5))},
 			setupExp: "RangeColumnExprTree\n" +
-				"│   ┌── [11, 11] max: Above[11] color: 0\n" +
-				"└── [7, 7] max: Above[11] color: 0\n" +
-				"    │   ┌── [5, 5] max: Above[5] color: 1\n" +
-				"    └── [3, 3] max: Above[5] color: 0\n" +
-				"        └── [1, 1] max: Above[1] color: 1\n" +
-				"",
+					"│   ┌── [11, 11] max: Above[11] color: 0\n" +
+					"└── [7, 7] max: Above[11] color: 0\n" +
+					"    │   ┌── [5, 5] max: Above[5] color: 1\n" +
+					"    └── [3, 3] max: Above[5] color: 0\n" +
+					"        └── [1, 1] max: Above[1] color: 1\n" +
+					"",
 			rng: r(req(11)),
 			exp: "RangeColumnExprTree\n" +
-				"│   ┌── [7, 7] max: Above[7] color: 0\n" +
-				"│   │   └── [5, 5] max: Above[5] color: 1\n" +
-				"└── [3, 3] max: Above[7] color: 0\n" +
-				"    └── [1, 1] max: Above[1] color: 0\n" +
-				"",
+					"│   ┌── [7, 7] max: Above[7] color: 0\n" +
+					"│   │   └── [5, 5] max: Above[5] color: 1\n" +
+					"└── [3, 3] max: Above[7] color: 0\n" +
+					"    └── [1, 1] max: Above[1] color: 0\n" +
+					"",
 		},
 		{
 			name:      "remove root",
 			setupRngs: []sql.MySQLRange{r(req(7)), r(req(3)), r(req(11)), r(req(9)), r(req(13))},
 			setupExp: "RangeColumnExprTree\n" +
-				"│       ┌── [13, 13] max: Above[13] color: 1\n" +
-				"│   ┌── [11, 11] max: Above[13] color: 0\n" +
-				"│   │   └── [9, 9] max: Above[9] color: 1\n" +
-				"└── [7, 7] max: Above[13] color: 0\n" +
-				"    └── [3, 3] max: Above[3] color: 0\n" +
-				"",
+					"│       ┌── [13, 13] max: Above[13] color: 1\n" +
+					"│   ┌── [11, 11] max: Above[13] color: 0\n" +
+					"│   │   └── [9, 9] max: Above[9] color: 1\n" +
+					"└── [7, 7] max: Above[13] color: 0\n" +
+					"    └── [3, 3] max: Above[3] color: 0\n" +
+					"",
 			rng: r(req(3)),
 			exp: "RangeColumnExprTree\n" +
-				"│   ┌── [13, 13] max: Above[13] color: 0\n" +
-				"└── [11, 11] max: Above[13] color: 0\n" +
-				"    │   ┌── [9, 9] max: Above[9] color: 1\n" +
-				"    └── [7, 7] max: Above[9] color: 0\n" +
-				"",
+					"│   ┌── [13, 13] max: Above[13] color: 0\n" +
+					"└── [11, 11] max: Above[13] color: 0\n" +
+					"    │   ┌── [9, 9] max: Above[9] color: 1\n" +
+					"    └── [7, 7] max: Above[9] color: 0\n" +
+					"",
 		},
 		{
 			name:      "remove ranges",
 			setupRngs: []sql.MySQLRange{r(roo(3, 5)), r(roo(1, 3)), r(roo(5, 7))},
 			setupExp: "RangeColumnExprTree\n" +
-				"│   ┌── (5, 7) max: Below[7] color: 1\n" +
-				"└── (3, 5) max: Below[7] color: 0\n" +
-				"    └── (1, 3) max: Below[3] color: 1\n" +
-				"",
+					"│   ┌── (5, 7) max: Below[7] color: 1\n" +
+					"└── (3, 5) max: Below[7] color: 0\n" +
+					"    └── (1, 3) max: Below[3] color: 1\n" +
+					"",
 			rng: r(roo(1, 3)),
 			exp: "RangeColumnExprTree\n" +
-				"│   ┌── (5, 7) max: Below[7] color: 1\n" +
-				"└── (3, 5) max: Below[7] color: 0\n" +
-				"",
+					"│   ┌── (5, 7) max: Below[7] color: 1\n" +
+					"└── (3, 5) max: Below[7] color: 0\n" +
+					"",
 		},
 		{
 			name:      "remove ranges",
 			setupRngs: []sql.MySQLRange{r(roo(3, 5)), r(roo(1, 3)), r(roo(5, 7))},
 			setupExp: "RangeColumnExprTree\n" +
-				"│   ┌── (5, 7) max: Below[7] color: 1\n" +
-				"└── (3, 5) max: Below[7] color: 0\n" +
-				"    └── (1, 3) max: Below[3] color: 1\n" +
-				"",
+					"│   ┌── (5, 7) max: Below[7] color: 1\n" +
+					"└── (3, 5) max: Below[7] color: 0\n" +
+					"    └── (1, 3) max: Below[3] color: 1\n" +
+					"",
 			rng: r(roo(3, 5)),
 			exp: "RangeColumnExprTree\n" +
-				"│   ┌── (5, 7) max: Below[7] color: 1\n" +
-				"└── (1, 3) max: Below[7] color: 0\n" +
-				"",
+					"│   ┌── (5, 7) max: Below[7] color: 1\n" +
+					"└── (1, 3) max: Below[7] color: 0\n" +
+					"",
 		},
 	}
 

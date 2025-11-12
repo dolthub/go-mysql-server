@@ -969,10 +969,17 @@ func (b *indexScanRangeBuilder) rangeBuildSpatialLeaf(f *iScanLeaf, inScan bool)
 	lower := types.Point{X: minX, Y: minY}
 	upper := types.Point{X: maxX, Y: maxY}
 
+	typ := f.gf.Type()
 	return sql.MySQLRangeCollection{{{
-		LowerBound: sql.Below{Key: lower},
-		UpperBound: sql.Above{Key: upper},
-		Typ:        f.gf.Type(),
+		LowerBound: sql.Below{
+			Key: lower,
+			Typ: typ,
+		},
+		UpperBound: sql.Above{
+			Key: upper,
+			Typ: typ,
+		},
+		Typ: typ,
 	}}}, nil
 }
 
