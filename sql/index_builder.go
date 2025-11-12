@@ -152,7 +152,7 @@ func (b *MySQLIndexBuilder) NotEquals(ctx *Context, colExpr string, keyType Type
 	if b.isInvalid {
 		return b
 	}
-	typ, ok := b.colExprTypes[colExpr]
+	colTyp, ok := b.colExprTypes[colExpr]
 	if !ok {
 		b.isInvalid = true
 		b.err = ErrInvalidColExpr.New(colExpr, b.idx.ID())
@@ -163,24 +163,24 @@ func (b *MySQLIndexBuilder) NotEquals(ctx *Context, colExpr string, keyType Type
 	switch key.(type) {
 	case float32, float64:
 		if f != c {
-			b.updateCol(ctx, colExpr, NotNullRangeColumnExpr(typ))
+			b.updateCol(ctx, colExpr, NotNullRangeColumnExpr(colTyp))
 			return b
 		}
 	case decimal.Decimal:
 		if !f.(decimal.Decimal).Equals(c.(decimal.Decimal)) {
-			b.updateCol(ctx, colExpr, NotNullRangeColumnExpr(typ))
+			b.updateCol(ctx, colExpr, NotNullRangeColumnExpr(colTyp))
 			return b
 		}
 	}
 
-	key, err := b.convertKey(ctx, typ, keyType, key)
+	key, err := b.convertKey(ctx, colTyp, keyType, key)
 	if err != nil {
 		b.isInvalid = true
 		b.err = err
 		return b
 	}
 
-	b.updateCol(ctx, colExpr, GreaterThanRangeColumnExpr(key, typ), LessThanRangeColumnExpr(key, typ))
+	b.updateCol(ctx, colExpr, GreaterThanRangeColumnExpr(key, colTyp), LessThanRangeColumnExpr(key, colTyp))
 	if !b.isInvalid {
 		ranges, err := SimplifyRangeColumn(b.ranges[colExpr]...)
 		if err != nil {
@@ -202,25 +202,25 @@ func (b *MySQLIndexBuilder) GreaterThan(ctx *Context, colExpr string, keyType Ty
 	if b.isInvalid {
 		return b
 	}
-	typ, ok := b.colExprTypes[colExpr]
+	colTyp, ok := b.colExprTypes[colExpr]
 	if !ok {
 		b.isInvalid = true
 		b.err = ErrInvalidColExpr.New(colExpr, b.idx.ID())
 		return b
 	}
 
-	if t, ok := typ.(NumberType); ok && !t.IsFloat() {
+	if t, ok := colTyp.(NumberType); ok && !t.IsFloat() {
 		key = floor(key)
 	}
 
-	key, err := b.convertKey(ctx, typ, keyType, key)
+	key, err := b.convertKey(ctx, colTyp, keyType, key)
 	if err != nil {
 		b.isInvalid = true
 		b.err = err
 		return b
 	}
 
-	b.updateCol(ctx, colExpr, GreaterThanRangeColumnExpr(key, typ))
+	b.updateCol(ctx, colExpr, GreaterThanRangeColumnExpr(key, colTyp))
 	return b
 }
 
@@ -254,7 +254,7 @@ func (b *MySQLIndexBuilder) GreaterOrEqual(ctx *Context, colExpr string, keyType
 	if b.isInvalid {
 		return b
 	}
-	typ, ok := b.colExprTypes[colExpr]
+	colTyp, ok := b.colExprTypes[colExpr]
 	if !ok {
 		b.isInvalid = true
 		b.err = ErrInvalidColExpr.New(colExpr, b.idx.ID())
@@ -262,7 +262,7 @@ func (b *MySQLIndexBuilder) GreaterOrEqual(ctx *Context, colExpr string, keyType
 	}
 
 	var exclude bool
-	if t, ok := typ.(NumberType); ok && !t.IsFloat() {
+	if t, ok := colTyp.(NumberType); ok && !t.IsFloat() {
 		newKey := floor(key)
 		switch key.(type) {
 		case float32, float64:
@@ -273,7 +273,7 @@ func (b *MySQLIndexBuilder) GreaterOrEqual(ctx *Context, colExpr string, keyType
 		key = newKey
 	}
 
-	key, err := b.convertKey(ctx, typ, keyType, key)
+	key, err := b.convertKey(ctx, colTyp, keyType, key)
 	if err != nil {
 		b.isInvalid = true
 		b.err = err
@@ -282,9 +282,9 @@ func (b *MySQLIndexBuilder) GreaterOrEqual(ctx *Context, colExpr string, keyType
 
 	var rangeColExpr MySQLRangeColumnExpr
 	if exclude {
-		rangeColExpr = GreaterThanRangeColumnExpr(key, typ)
+		rangeColExpr = GreaterThanRangeColumnExpr(key, colTyp)
 	} else {
-		rangeColExpr = GreaterOrEqualRangeColumnExpr(key, typ)
+		rangeColExpr = GreaterOrEqualRangeColumnExpr(key, colTyp)
 	}
 	b.updateCol(ctx, colExpr, rangeColExpr)
 
@@ -296,25 +296,25 @@ func (b *MySQLIndexBuilder) LessThan(ctx *Context, colExpr string, keyType Type,
 	if b.isInvalid {
 		return b
 	}
-	typ, ok := b.colExprTypes[colExpr]
+	colType, ok := b.colExprTypes[colExpr]
 	if !ok {
 		b.isInvalid = true
 		b.err = ErrInvalidColExpr.New(colExpr, b.idx.ID())
 		return b
 	}
 
-	if t, ok := typ.(NumberType); ok && !t.IsFloat() {
+	if t, ok := colType.(NumberType); ok && !t.IsFloat() {
 		key = ceil(key)
 	}
 
-	key, err := b.convertKey(ctx, typ, keyType, key)
+	key, err := b.convertKey(ctx, colType, keyType, key)
 	if err != nil {
 		b.isInvalid = true
 		b.err = err
 		return b
 	}
 
-	b.updateCol(ctx, colExpr, LessThanRangeColumnExpr(key, typ))
+	b.updateCol(ctx, colExpr, LessThanRangeColumnExpr(key, colType))
 	return b
 }
 
@@ -323,7 +323,7 @@ func (b *MySQLIndexBuilder) LessOrEqual(ctx *Context, colExpr string, keyType Ty
 	if b.isInvalid {
 		return b
 	}
-	typ, ok := b.colExprTypes[colExpr]
+	colType, ok := b.colExprTypes[colExpr]
 	if !ok {
 		b.isInvalid = true
 		b.err = ErrInvalidColExpr.New(colExpr, b.idx.ID())
@@ -331,7 +331,7 @@ func (b *MySQLIndexBuilder) LessOrEqual(ctx *Context, colExpr string, keyType Ty
 	}
 
 	var exclude bool
-	if t, ok := typ.(NumberType); ok && !t.IsFloat() {
+	if t, ok := colType.(NumberType); ok && !t.IsFloat() {
 		newKey := ceil(key)
 		switch key.(type) {
 		case float32, float64:
@@ -342,7 +342,7 @@ func (b *MySQLIndexBuilder) LessOrEqual(ctx *Context, colExpr string, keyType Ty
 		key = newKey
 	}
 
-	key, err := b.convertKey(ctx, typ, keyType, key)
+	key, err := b.convertKey(ctx, colType, keyType, key)
 	if err != nil {
 		b.isInvalid = true
 		b.err = err
@@ -351,9 +351,9 @@ func (b *MySQLIndexBuilder) LessOrEqual(ctx *Context, colExpr string, keyType Ty
 
 	var rangeColExpr MySQLRangeColumnExpr
 	if exclude {
-		rangeColExpr = LessThanRangeColumnExpr(key, typ)
+		rangeColExpr = LessThanRangeColumnExpr(key, colType)
 	} else {
-		rangeColExpr = LessOrEqualRangeColumnExpr(key, typ)
+		rangeColExpr = LessOrEqualRangeColumnExpr(key, colType)
 	}
 	b.updateCol(ctx, colExpr, rangeColExpr)
 
