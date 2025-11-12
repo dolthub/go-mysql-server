@@ -13439,6 +13439,20 @@ select * from t1 except (
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/10070
+		Name: "NOT EXISTS with nullable filter",
+		SetUpScript: []string{
+			"CREATE TABLE t0(c0 INT , c1 INT);",
+			"INSERT INTO t0(c0, c1) VALUES (1, -2);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    `SELECT * FROM t0 WHERE NOT EXISTS (SELECT 1 FROM (SELECT 1) alias0 WHERE (CASE -1 WHEN t0.c1 THEN false END));`,
+				Expected: []sql.Row{{1, -2}},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
