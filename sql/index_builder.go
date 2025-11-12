@@ -537,9 +537,15 @@ func NewSpatialIndexBuilder(idx Index) *SpatialIndexBuilder {
 
 func (b *SpatialIndexBuilder) AddRange(lower, upper interface{}) *SpatialIndexBuilder {
 	b.rng = MySQLRangeColumnExpr{
-		LowerBound: Below{Key: lower},
-		UpperBound: Above{Key: upper},
-		Typ:        b.typ,
+		LowerBound: Below{
+			Key: lower,
+			Typ: b.typ,
+		},
+		UpperBound: Above{
+			Key: upper,
+			Typ: b.typ,
+		},
+		Typ: b.typ,
 	}
 	return b
 }

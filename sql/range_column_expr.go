@@ -89,7 +89,10 @@ func LessThanRangeColumnExpr(upper interface{}, typ Type) MySQLRangeColumnExpr {
 	}
 	return MySQLRangeColumnExpr{
 		AboveNull{},
-		Below{Key: upper},
+		Below{
+			Key: upper,
+			Typ: typ,
+		},
 		typ,
 	}
 }
@@ -130,7 +133,10 @@ func GreaterOrEqualRangeColumnExpr(lower interface{}, typ Type) MySQLRangeColumn
 		return EmptyRangeColumnExpr(typ)
 	}
 	return MySQLRangeColumnExpr{
-		Below{Key: lower},
+		Below{
+			Key: lower,
+			Typ: typ,
+		},
 		AboveAll{},
 		typ,
 	}

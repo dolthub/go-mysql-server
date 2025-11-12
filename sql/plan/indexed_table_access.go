@@ -589,19 +589,19 @@ func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key lookupBuilderKey) (sql.
 	lb.emptyRange = false
 	lb.isPointLookup = len(key) == len(lb.cets)
 	for i := range key {
-		keyCol := key[i]
+		keyExpr := key[i]
 		colType := lb.rang[i].Typ
 
-		if keyCol.val == nil {
+		if keyExpr.val == nil {
 			lb.emptyRange = true
 			lb.isPointLookup = false
 		}
 
 		if lb.matchesNullMask[i] {
-			if keyCol.val == nil {
+			if keyExpr.val == nil {
 				lb.rang[i] = sql.NullRangeColumnExpr(lb.cets[i].Type)
 			} else {
-				k, err := convertLookupKey(ctx, colType, keyCol)
+				k, err := convertLookupKey(ctx, colType, keyExpr)
 				if err != nil {
 					// TODO: throw warning, and this should truncate for strings
 					//  This is a terrible bug and should be fixed very soon
@@ -609,21 +609,27 @@ func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key lookupBuilderKey) (sql.
 				}
 				lb.rang[i].LowerBound = sql.Below{
 					Key: k,
-					Typ: keyCol.typ,
+					Typ: keyExpr.typ,
 				}
 				lb.rang[i].UpperBound = sql.Above{
 					Key: k,
-					Typ: keyCol.typ,
+					Typ: keyExpr.typ,
 				}
 			}
 		} else {
-			k, err := convertLookupKey(ctx, colType, keyCol)
+			k, err := convertLookupKey(ctx, colType, keyExpr)
 			if err != nil {
 				// TODO: throw warning, and this should truncate for strings
 				k = colType.Zero()
 			}
-			lb.rang[i].LowerBound = sql.Below{Key: k}
-			lb.rang[i].UpperBound = sql.Above{Key: k}
+			lb.rang[i].LowerBound = sql.Below{
+				Key: k,
+				Typ: keyExpr.typ,
+			}
+			lb.rang[i].UpperBound = sql.Above{
+				Key: k,
+				Typ: keyExpr.typ,
+			}
 		}
 	}
 
