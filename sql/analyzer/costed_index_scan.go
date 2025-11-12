@@ -1026,11 +1026,9 @@ func (b *indexScanRangeBuilder) rangeBuildDefaultLeaf(bb *sql.MySQLIndexBuilder,
 	case sql.IndexScanOpNotEq:
 		bb.NotEquals(b.ctx, name, f.litType, f.litValue)
 	case sql.IndexScanOpInSet:
-		bb.Equals(b.ctx, name, f.litType, f.setValues...)
+		bb.In(b.ctx, name, f.setTypes, f.setValues)
 	case sql.IndexScanOpNotInSet:
-		for _, v := range f.setValues {
-			bb.NotEquals(b.ctx, name, f.litType, v)
-		}
+		bb.NotIn(b.ctx, name, f.setTypes, f.setValues)
 	case sql.IndexScanOpGt:
 		bb.GreaterThan(b.ctx, name, f.litType, f.litValue)
 	case sql.IndexScanOpGte:
@@ -1085,6 +1083,7 @@ type iScanLeaf struct {
 	underlying    string
 	fulltextIndex string
 	setValues     []interface{}
+	setTypes      []sql.Type
 	id            indexScanId
 	op            sql.IndexScanOp
 }
@@ -1435,6 +1434,7 @@ func newLeaf(ctx *sql.Context, id indexScanId, e sql.Expression, underlying stri
 	if op == sql.IndexScanOpInSet || op == sql.IndexScanOpNotInSet {
 		tup := right.(expression.Tuple)
 		var litSet []interface{}
+		var setTypes []sql.Type
 		var litType sql.Type
 		for _, lit := range tup {
 			value, err := lit.Eval(ctx, nil)
@@ -1442,6 +1442,7 @@ func newLeaf(ctx *sql.Context, id indexScanId, e sql.Expression, underlying stri
 				return nil, false
 			}
 			litSet = append(litSet, value)
+			setTypes = append(setTypes, lit.Type())
 			if litType == nil {
 				litType = lit.Type()
 			}
@@ -1451,6 +1452,7 @@ func newLeaf(ctx *sql.Context, id indexScanId, e sql.Expression, underlying stri
 			gf:         gf,
 			op:         op,
 			setValues:  litSet,
+			setTypes:   setTypes,
 			litType:    litType,
 			underlying: underlying,
 		}, true

@@ -103,7 +103,7 @@ func floor(val interface{}) interface{} {
 	}
 }
 
-// Equals represents colExpr = key. For IN expressions, pass all of them in the same Equals call.
+// Equals represents colExpr = key
 func (b *MySQLIndexBuilder) Equals(ctx *Context, colExpr string, keyType Type, keys ...interface{}) *MySQLIndexBuilder {
 	if b.isInvalid {
 		return b
@@ -135,6 +135,75 @@ func (b *MySQLIndexBuilder) Equals(ctx *Context, colExpr string, keyType Type, k
 
 		var err error
 		k, err = b.convertKey(ctx, colTyp, keyType, k)
+
+		if err != nil {
+			b.isInvalid = true
+			b.err = err
+			return b
+		}
+		potentialRanges[i] = ClosedRangeColumnExpr(k, k, colTyp)
+	}
+	b.updateCol(ctx, colExpr, potentialRanges...)
+	return b
+}
+
+// NotIn represents colExpr NOT IN (keys...)
+func (b *MySQLIndexBuilder) NotIn(ctx *Context, colExpr string, keyTypes []Type, keys []interface{}) *MySQLIndexBuilder {
+	if b.isInvalid {
+		return b
+	}
+
+	if len(keyTypes) != len(keys) {
+		b.isInvalid = true
+		b.err = fmt.Errorf("number of key types does not match number of keys")
+		return b
+	}
+
+	for i := range keys {
+		b.NotEquals(ctx, colExpr, keyTypes[i], keys[i])
+	}
+	return b
+}
+
+// In represents colExpr IN (keys...)
+func (b *MySQLIndexBuilder) In(ctx *Context, colExpr string, keyTypes []Type, keys []interface{}) *MySQLIndexBuilder {
+	if b.isInvalid {
+		return b
+	}
+
+	if len(keyTypes) != len(keys) {
+		b.isInvalid = true
+		b.err = fmt.Errorf("number of key types does not match number of keys")
+		return b
+	}
+
+	colTyp, ok := b.colExprTypes[colExpr]
+	if !ok {
+		b.isInvalid = true
+		b.err = ErrInvalidColExpr.New(colExpr, b.idx.ID())
+		return b
+	}
+	potentialRanges := make([]MySQLRangeColumnExpr, len(keys))
+	for i, k := range keys {
+		// if converting from float to int results in rounding, then it's empty range
+		if t, ok := colTyp.(NumberType); ok && !t.IsFloat() {
+			f, c := floor(k), ceil(k)
+			switch k.(type) {
+			case float32, float64:
+				if f != c {
+					potentialRanges[i] = EmptyRangeColumnExpr(colTyp)
+					continue
+				}
+			case decimal.Decimal:
+				if !f.(decimal.Decimal).Equals(c.(decimal.Decimal)) {
+					potentialRanges[i] = EmptyRangeColumnExpr(colTyp)
+					continue
+				}
+			}
+		}
+
+		var err error
+		k, err = b.convertKey(ctx, colTyp, keyTypes[i], k)
 
 		if err != nil {
 			b.isInvalid = true
