@@ -47,6 +47,7 @@ var (
 )
 
 var _ sql.Type = MultiLineStringType{}
+var _ sql.ValueType = MultiLineStringType{}
 var _ sql.SpatialColumnType = MultiLineStringType{}
 var _ sql.CollationCoercible = MultiLineStringType{}
 var _ GeometryValue = MultiLineString{}

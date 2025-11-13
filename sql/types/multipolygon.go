@@ -47,6 +47,7 @@ var (
 )
 
 var _ sql.Type = MultiPolygonType{}
+var _ sql.ValueType = MultiPolygonType{}
 var _ sql.SpatialColumnType = MultiPolygonType{}
 var _ sql.CollationCoercible = MultiPolygonType{}
 var _ GeometryValue = MultiPolygon{}

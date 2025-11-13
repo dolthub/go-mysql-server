@@ -41,6 +41,7 @@ type MultiPoint struct {
 }
 
 var _ sql.Type = MultiPointType{}
+var _ sql.ValueType = MultiPointType{}
 var _ sql.SpatialColumnType = MultiPointType{}
 var _ sql.CollationCoercible = MultiPointType{}
 var _ GeometryValue = MultiPoint{}

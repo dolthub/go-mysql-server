@@ -40,6 +40,7 @@ type LineString struct {
 }
 
 var _ sql.Type = LineStringType{}
+var _ sql.ValueType = LineStringType{}
 var _ sql.SpatialColumnType = LineStringType{}
 var _ sql.CollationCoercible = LineStringType{}
 var _ GeometryValue = LineString{}

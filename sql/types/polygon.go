@@ -41,6 +41,7 @@ type Polygon struct {
 }
 
 var _ sql.Type = PolygonType{}
+var _ sql.ValueType = PolygonType{}
 var _ sql.SpatialColumnType = PolygonType{}
 var _ sql.CollationCoercible = PolygonType{}
 var _ GeometryValue = Polygon{}
