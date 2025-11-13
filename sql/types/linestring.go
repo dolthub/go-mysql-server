@@ -108,6 +108,26 @@ func (t LineStringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqlty
 	return sqltypes.MakeTrusted(sqltypes.Geometry, buf), nil
 }
 
+// CompareValue implements the ValueType interface.
+func (t LineStringType) CompareValue(c *sql.Context, value sql.Value, value2 sql.Value) (int, error) {
+	panic("TODO: implement CompareValue for LineStringType")
+}
+
+// SQLValue implements the ValueType interface.
+func (t LineStringType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes.Value, error) {
+	if v.IsNull() {
+		return sqltypes.NULL, nil
+	}
+	if v.Val == nil {
+		var err error
+		v.Val, err = v.WrappedVal.Unwrap(ctx)
+		if err != nil {
+			return sqltypes.Value{}, err
+		}
+	}
+	return sqltypes.MakeTrusted(sqltypes.Geometry, v.Val), nil
+}
+
 // String implements Type interface.
 func (t LineStringType) String() string {
 	return "linestring"

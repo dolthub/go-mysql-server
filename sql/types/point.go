@@ -42,6 +42,7 @@ type Point struct {
 }
 
 var _ sql.Type = PointType{}
+var _ sql.ValueType = PointType{}
 var _ sql.SpatialColumnType = PointType{}
 var _ sql.CollationCoercible = PointType{}
 var _ GeometryValue = Point{}
@@ -121,6 +122,26 @@ func (t PointType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.V
 	buf := v.(Point).Serialize()
 
 	return sqltypes.MakeTrusted(sqltypes.Geometry, buf), nil
+}
+
+// CompareValue implements the ValueType interface.
+func (t PointType) CompareValue(c *sql.Context, value sql.Value, value2 sql.Value) (int, error) {
+	panic("TODO: implement CompareValue for PointType")
+}
+
+// SQLValue implements the ValueType interface.
+func (t PointType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes.Value, error) {
+	if v.IsNull() {
+		return sqltypes.NULL, nil
+	}
+	if v.Val == nil {
+		var err error
+		v.Val, err = v.WrappedVal.Unwrap(ctx)
+		if err != nil {
+			return sqltypes.Value{}, err
+		}
+	}
+	return sqltypes.MakeTrusted(sqltypes.Geometry, v.Val), nil
 }
 
 // String implements Type interface.
