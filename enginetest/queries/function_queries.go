@@ -2084,7 +2084,8 @@ var FunctionQueryTests = []QueryTest{
 		Query:    "select quarter('0000-01-01')",
 		Expected: []sql.Row{{1}},
 	},
+	{
+		Query:    "select date('0000-01-01')",
+		Expected: []sql.Row{{"0000-01-01"}},
+	},
 }
-
-// BrokenFunctionQueryTests contains SQL function call queries that don't match MySQL behavior
-var BrokenFunctionQueryTests = []QueryTest{}
