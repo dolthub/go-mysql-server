@@ -609,11 +609,11 @@ func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key lookupBuilderKey) (sql.
 				}
 				lb.rang[i].LowerBound = sql.Below{
 					Key: k,
-					Typ: keyExpr.typ,
+					Typ: colType,
 				}
 				lb.rang[i].UpperBound = sql.Above{
 					Key: k,
-					Typ: keyExpr.typ,
+					Typ: colType,
 				}
 			}
 		} else {
@@ -624,11 +624,11 @@ func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key lookupBuilderKey) (sql.
 			}
 			lb.rang[i].LowerBound = sql.Below{
 				Key: k,
-				Typ: keyExpr.typ,
+				Typ: colType,
 			}
 			lb.rang[i].UpperBound = sql.Above{
 				Key: k,
-				Typ: keyExpr.typ,
+				Typ: colType,
 			}
 		}
 	}
