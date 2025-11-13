@@ -1601,7 +1601,15 @@ var FunctionQueryTests = []QueryTest{
 		Query:    "select abs(-i) from mytable order by 1",
 		Expected: []sql.Row{{1}, {2}, {3}},
 	},
-
+	// https://github.com/dolthub/dolt/issues/9735
+	{
+		Query:    "select log('10asdf', '100f')",
+		Expected: []sql.Row{{float64(2)}},
+	},
+	{
+		Query:    "select log('a10asdf', 'b100f')",
+		Expected: []sql.Row{{nil}},
+	},
 	// Date Manipulation Function Tests
 	{
 		Query:    "SELECT TIMESTAMPADD(DAY, 1, '2018-05-02')",
@@ -1755,17 +1763,22 @@ var FunctionQueryTests = []QueryTest{
 			{uint32(1000)},
 		},
 	},
+	// date-related functions
+	{
+		Query:    "select day(0)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select day(false)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:                 "select day(true)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
 }
 
 // BrokenFunctionQueryTests contains SQL function call queries that don't match MySQL behavior
-var BrokenFunctionQueryTests = []QueryTest{
-	// https://github.com/dolthub/dolt/issues/9735
-	{
-		Query:    "select log('10asdf', '100f')",
-		Expected: []sql.Row{{float64(2)}},
-	},
-	{
-		Query:    "select log('a10asdf', 'b100f')",
-		Expected: []sql.Row{{nil}},
-	},
-}
+var BrokenFunctionQueryTests = []QueryTest{}
