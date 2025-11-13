@@ -546,7 +546,14 @@ func datePartFunc(fn func(time.Time) int) func(interface{}) interface{} {
 			return nil
 		}
 
-		return int32(fn(v.(time.Time)))
+		if vTime, ok := v.(time.Time); ok {
+			if vTime.Equal(types.ZeroTime) {
+				return 0
+			}
+
+			return int32(fn(vTime))
+		}
+		return nil
 	}
 }
 

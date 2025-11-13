@@ -1779,14 +1779,13 @@ var FunctionQueryTests = []QueryTest{
 		ExpectedWarningsCount: 1,
 	},
 	{
-		Query:                 "select day('0000-00-00')",
-		Expected:              []sql.Row{{nil}},
-		ExpectedWarning:       mysql.ERTruncatedWrongValue,
-		ExpectedWarningsCount: 1,
+		// This is not a valid time string in MySQL but we allow it
+		Query:    "select day('0000-00-00')",
+		Expected: []sql.Row{{0}},
 	},
 	{
 		Query:    "select day('0000-01-01')",
-		Expected: []sql.Row{{0}},
+		Expected: []sql.Row{{1}},
 	},
 	{
 		Query:                 "select dayname(0)",
