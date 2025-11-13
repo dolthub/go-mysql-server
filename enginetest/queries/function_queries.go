@@ -1779,6 +1779,16 @@ var FunctionQueryTests = []QueryTest{
 		ExpectedWarningsCount: 1,
 	},
 	{
+		Query:                 "select day('0000-00-00')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:    "select day('0000-01-01')",
+		Expected: []sql.Row{{0}},
+	},
+	{
 		Query:                 "select dayname(0)",
 		Expected:              []sql.Row{{nil}},
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
@@ -1797,6 +1807,16 @@ var FunctionQueryTests = []QueryTest{
 		ExpectedWarningsCount: 1,
 	},
 	{
+		Query:                 "select dayname('0000-00-00')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:    "select dayname('0000-01-01')",
+		Expected: []sql.Row{{"Sunday"}},
+	},
+	{
 		Query:    "select dayofmonth(0)",
 		Expected: []sql.Row{{0}},
 	},
@@ -1809,6 +1829,16 @@ var FunctionQueryTests = []QueryTest{
 		Expected:              []sql.Row{{nil}},
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select dayofmonth('0000-00-00')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:    "select dayofmonth('0000-01-01')",
+		Expected: []sql.Row{{1}},
 	},
 	{
 		Query:                 "select dayofweek(0)",
@@ -1829,6 +1859,16 @@ var FunctionQueryTests = []QueryTest{
 		ExpectedWarningsCount: 1,
 	},
 	{
+		Query:                 "select dayofweek('0000-00-00')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:    "select dayofweek('0000-01-01')",
+		Expected: []sql.Row{{1}},
+	},
+	{
 		Query:                 "select dayofyear(0)",
 		Expected:              []sql.Row{{nil}},
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
@@ -1847,6 +1887,16 @@ var FunctionQueryTests = []QueryTest{
 		ExpectedWarningsCount: 1,
 	},
 	{
+		Query:                 "select dayofyear('0000-00-00')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:    "select dayofyear('0000-01-01')",
+		Expected: []sql.Row{{1}},
+	},
+	{
 		Query:    "select month(0)",
 		Expected: []sql.Row{{0}},
 	},
@@ -1859,6 +1909,16 @@ var FunctionQueryTests = []QueryTest{
 		Expected:              []sql.Row{{nil}},
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select month('0000-00-00')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:    "select month('0000-01-01')",
+		Expected: []sql.Row{{1}},
 	},
 	{
 		Query:                 "select monthname(0)",
@@ -1879,6 +1939,16 @@ var FunctionQueryTests = []QueryTest{
 		ExpectedWarningsCount: 1,
 	},
 	{
+		Query:                 "select monthname('0000-00-00')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:    "select monthname('0000-01-01')",
+		Expected: []sql.Row{{"January"}},
+	},
+	{
 		Query:                 "select week(0)",
 		Expected:              []sql.Row{{nil}},
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
@@ -1895,6 +1965,16 @@ var FunctionQueryTests = []QueryTest{
 		Expected:              []sql.Row{{nil}},
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select week('0000-00-00')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:    "select week('0000-01-01')",
+		Expected: []sql.Row{{1}},
 	},
 	{
 		Query:                 "select weekday(0)",
@@ -1915,6 +1995,16 @@ var FunctionQueryTests = []QueryTest{
 		ExpectedWarningsCount: 1,
 	},
 	{
+		Query:                 "select weekday('0000-00-00')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:    "select weekday('0000-01-01')",
+		Expected: []sql.Row{{6}},
+	},
+	{
 		Query:                 "select weekofyear(0)",
 		Expected:              []sql.Row{{nil}},
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
@@ -1933,6 +2023,16 @@ var FunctionQueryTests = []QueryTest{
 		ExpectedWarningsCount: 1,
 	},
 	{
+		Query:                 "select weekofyear('0000-00-00')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:    "select weekofyear('0000-01-01')",
+		Expected: []sql.Row{{52}},
+	},
+	{
 		Query:                 "select yearweek(0)",
 		Expected:              []sql.Row{{nil}},
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
@@ -1949,6 +2049,40 @@ var FunctionQueryTests = []QueryTest{
 		Expected:              []sql.Row{{nil}},
 		ExpectedWarning:       mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select yearweek('0000-00-00')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:    "select yearweek('0000-01-01')",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select quarter(0)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select quarter(false)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:                 "select quarter(true)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select quarter('0000-00-00')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:    "select quarter('0000-01-01')",
+		Expected: []sql.Row{{1}},
 	},
 }
 

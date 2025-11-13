@@ -98,8 +98,9 @@ var (
 		"20060102150405",
 	}, DateOnlyLayouts...)
 
-	// zeroTime is 0000-01-01 00:00:00 UTC which is the closest Go can get to 0000-00-00 00:00:00
-	zeroTime = time.Unix(-62167219200, 0).UTC()
+	// zeroTime is -0001-11-30 00:00:00 UTC which is the closest Go can get to 0000-00-00 00:00:00 without conflicting
+	// with a valid timestamp in MySQL
+	zeroTime = time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC)
 
 	// Date is a date with day, month and year.
 	Date = MustCreateDatetimeType(sqltypes.Date, 0)
