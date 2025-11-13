@@ -365,6 +365,11 @@ func (t datetimeType) ConvertWithoutRangeCheck(ctx context.Context, v interface{
 			return zeroTime, ErrConvertingToTime.New(v)
 		}
 		return nowTime.Add(value.AsTimeDuration()), nil
+	case bool:
+		if !value {
+			return zeroTime, nil
+		}
+		return zeroTime, ErrConvertingToTime.New(v)
 	default:
 		return zeroTime, sql.ErrConvertToSQL.New(value, t)
 	}

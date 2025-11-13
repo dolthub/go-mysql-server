@@ -52,7 +52,6 @@ func getDate(ctx *sql.Context,
 	if err != nil {
 		ctx.Warn(1292, "Incorrect datetime value: '%s'", val)
 		return nil, nil
-		//date = types.DatetimeMaxPrecision.Zero().(time.Time)
 	}
 
 	return date, nil
