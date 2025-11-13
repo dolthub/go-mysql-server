@@ -1540,11 +1540,11 @@ func IndexLeafChildren(e sql.Expression) (sql.IndexScanOp, sql.Expression, sql.E
 			left = e.Left()
 		case sql.IndexComparisonExpression:
 			ok := false
+			op, left, right, ok = e.IndexScanOperation()
 			if !ok {
 				return 0, nil, nil, false
 			}
 
-			op, left, right, ok = e.IndexScanOperation()
 			switch op {
 			case sql.IndexScanOpEq:
 				op = sql.IndexScanOpNotEq
