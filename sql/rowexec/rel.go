@@ -777,9 +777,13 @@ func (b *BaseBuilder) buildDistinct(ctx *sql.Context, n *plan.Distinct, row sql.
 func (b *BaseBuilder) buildIndexedTableAccess(ctx *sql.Context, n *plan.IndexedTableAccess, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.IndexedTableAccess")
 
-	lookup, err := n.GetLookup(ctx, row)
+	lookup, inRange, err := n.GetLookup(ctx, row)
 	if err != nil {
 		return nil, err
+	}
+
+	if !inRange {
+		sql.RowsToRowIter()
 	}
 
 	partIter, err := n.Table.LookupPartitions(ctx, lookup)
