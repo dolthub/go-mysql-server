@@ -616,6 +616,13 @@ func (d *YearWeek) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if date == nil {
 		return nil, nil
 	}
+
+	dateTime, ok := date.(time.Time)
+	if !ok || dateTime.Equal(types.ZeroTime) {
+		ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(dateVal).Error())
+		return nil, nil
+	}
+
 	yyyy, ok := year(date).(int)
 	if !ok {
 		return nil, sql.ErrInvalidArgumentDetails.New("YEARWEEK", "invalid year")

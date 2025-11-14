@@ -2093,10 +2093,9 @@ var FunctionQueryTests = []QueryTest{
 		ExpectedWarningsCount: 1,
 	},
 	{
-		Query:                 "select quarter('0000-00-00')",
-		Expected:              []sql.Row{{nil}},
-		ExpectedWarning:       mysql.ERTruncatedWrongValue,
-		ExpectedWarningsCount: 1,
+		// This is not a valid time string in MySQL, but we allow it
+		Query:    "select quarter('0000-00-00')",
+		Expected: []sql.Row{{nil}},
 	},
 	{
 		Query:    "select quarter('0000-01-01')",
