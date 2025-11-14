@@ -19,7 +19,7 @@ var _ sql.ExecSourceRel = IntSequenceTable{}
 type IntSequenceTable struct {
 	db   sql.Database
 	name string
-	Len  int64
+	Len  sql.Expression
 }
 
 func (s IntSequenceTable) NewInstance(ctx *sql.Context, db sql.Database, args []sql.Expression) (sql.Node, error) {
@@ -34,15 +34,11 @@ func (s IntSequenceTable) NewInstance(ctx *sql.Context, db sql.Database, args []
 	if !ok {
 		return nil, fmt.Errorf("sequence table expects 1st argument to be column name")
 	}
-	lenExp, ok := args[1].(*expression.Literal)
-	if !ok {
-		return nil, fmt.Errorf("sequence table expects arguments to be literal expressions")
+	lenExp := args[1]
+	if !sql.IsNumberType(lenExp.Type()) {
+		return nil, fmt.Errorf("sequence table expects length argument to be a number")
 	}
-	length, _, err := types.Int64.Convert(ctx, lenExp.Value())
-	if !ok {
-		return nil, fmt.Errorf("%w; sequence table expects 2nd argument to be a sequence length integer", err)
-	}
-	return IntSequenceTable{db: db, name: name, Len: length.(int64)}, nil
+	return IntSequenceTable{db: db, name: name, Len: lenExp}, nil
 }
 
 func (s IntSequenceTable) Resolved() bool {
@@ -85,8 +81,20 @@ func (s IntSequenceTable) Children() []sql.Node {
 	return []sql.Node{}
 }
 
-func (s IntSequenceTable) RowIter(_ *sql.Context, _ sql.Row) (sql.RowIter, error) {
-	rowIter := &SequenceTableFnRowIter{i: 0, n: s.Len}
+func (s IntSequenceTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	iterLen, err := s.Len.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	iterLenVal, ok, err := types.Int64.Convert(ctx, iterLen)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, fmt.Errorf("sequence table expects integer argument")
+	}
+
+	rowIter := &SequenceTableFnRowIter{i: 0, n: iterLenVal.(int64)}
 	return rowIter, nil
 }
 
@@ -105,11 +113,16 @@ func (IntSequenceTable) Collation() sql.CollationID {
 }
 
 func (s IntSequenceTable) Expressions() []sql.Expression {
-	return []sql.Expression{}
+	return []sql.Expression{s.Len}
 }
 
 func (s IntSequenceTable) WithExpressions(e ...sql.Expression) (sql.Node, error) {
-	return s, nil
+	if len(e) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(s, len(e), 1)
+	}
+	newSequenceTable := s
+	newSequenceTable.Len = e[0]
+	return newSequenceTable, nil
 }
 
 func (s IntSequenceTable) Database() sql.Database {

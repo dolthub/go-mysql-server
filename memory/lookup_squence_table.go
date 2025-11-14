@@ -18,6 +18,7 @@ var _ sql.TableNode = LookupSequenceTable{}
 // LookupSequenceTable is a variation of IntSequenceTable that supports lookups and implements sql.TableNode
 type LookupSequenceTable struct {
 	IntSequenceTable
+	length int64
 }
 
 func (s LookupSequenceTable) UnderlyingTable() sql.Table {
@@ -29,7 +30,15 @@ func (s LookupSequenceTable) NewInstance(ctx *sql.Context, db sql.Database, args
 	if err != nil {
 		return nil, err
 	}
-	return LookupSequenceTable{newIntSequenceTable.(IntSequenceTable)}, nil
+	lenExp, ok := args[1].(*expression.Literal)
+	if !ok {
+		return nil, fmt.Errorf("sequence table expects arguments to be literal expressions")
+	}
+	length, _, err := types.Int64.Convert(ctx, lenExp.Value())
+	if err != nil {
+		return nil, err
+	}
+	return LookupSequenceTable{newIntSequenceTable.(IntSequenceTable), length.(int64)}, nil
 }
 
 func (s LookupSequenceTable) String() string {
@@ -82,7 +91,7 @@ func (s LookupSequenceTable) Description() string {
 
 // Partitions is a sql.Table interface function that returns a partition of the data. This data has a single partition.
 func (s LookupSequenceTable) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
-	return sql.PartitionsToPartitionIter(&sequencePartition{min: 0, max: int64(s.Len) - 1}), nil
+	return sql.PartitionsToPartitionIter(&sequencePartition{min: 0, max: s.length - 1}), nil
 }
 
 // PartitionRows is a sql.Table interface function that takes a partition and returns all rows in that partition.
@@ -90,13 +99,13 @@ func (s LookupSequenceTable) Partitions(ctx *sql.Context) (sql.PartitionIter, er
 func (s LookupSequenceTable) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
 	sp, ok := partition.(*sequencePartition)
 	if !ok {
-		return &SequenceTableFnRowIter{i: 0, n: s.Len}, nil
+		return &SequenceTableFnRowIter{i: 0, n: s.length}, nil
 	}
 	min := int64(0)
 	if sp.min > min {
 		min = sp.min
 	}
-	max := int64(s.Len) - 1
+	max := int64(s.length) - 1
 	if sp.max < max {
 		max = sp.max
 	}

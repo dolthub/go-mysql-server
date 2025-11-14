@@ -8179,6 +8179,12 @@ ORDER BY 1;`,
 		},
 	},
 	{
+		Query: "SELECT * FROM xy JOIN LATERAL (SELECT * FROM uv WHERE xy.x+1 = uv.u) uv2",
+		Expected: []sql.Row{
+			{0, 2, 1, 1}, {1, 0, 2, 2}, {2, 1, 3, 2},
+		},
+	},
+	{
 		Query: `
 select * from mytable,
 	lateral (

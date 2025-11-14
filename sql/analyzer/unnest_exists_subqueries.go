@@ -193,7 +193,11 @@ func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, fil
 				ret = plan.NewAntiJoinIncludingNulls(ret, s.inner, cond).WithComment(comment)
 				qFlags.Set(sql.QFlagInnerJoin)
 			case plan.JoinTypeSemi:
-				ret = plan.NewCrossJoin(ret, s.inner).WithComment(comment)
+				if sq.Correlated().Empty() {
+					ret = plan.NewCrossJoin(ret, s.inner).WithComment(comment)
+				} else {
+					ret = plan.NewLateralCrossJoin(ret, s.inner).WithComment(comment)
+				}
 				qFlags.Set(sql.QFlagCrossJoin)
 			default:
 				return filter, transform.SameTree, fmt.Errorf("hoistSelectExists failed on unexpected join type")

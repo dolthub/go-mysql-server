@@ -147,8 +147,8 @@ func (s *scope) resolveColumn(db, table, col string, checkParent, chooseFirst bo
 		return scopeColumn{}, false
 	}
 
-	if s.parent.activeSubquery != nil {
-		s.parent.activeSubquery.addOutOfScope(c.id)
+	if s.activeSubquery != nil {
+		s.activeSubquery.addOutOfScope(c.id)
 	}
 	return c, true
 }
