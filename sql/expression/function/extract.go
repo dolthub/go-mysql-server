@@ -136,22 +136,23 @@ func (td *Extract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		yyyy, ok := year(date).(int32)
+		yyyy, ok := year(date).(int)
 		if !ok {
 			return nil, sql.ErrInvalidArgumentDetails.New("WEEK", "invalid year")
 		}
-		mm, ok := month(date).(int32)
+		mm, ok := month(date).(int)
 		if !ok {
 			return nil, sql.ErrInvalidArgumentDetails.New("WEEK", "invalid month")
 		}
-		dd, ok := day(date).(int32)
+		dd, ok := day(date).(int)
 		if !ok {
 			return nil, sql.ErrInvalidArgumentDetails.New("WEEK", "invalid day")
 		}
-		yearForWeek, week := calcWeek(yyyy, mm, dd, weekBehaviourYear)
-		if yearForWeek < yyyy {
+		yr := int32(yyyy)
+		yearForWeek, week := calcWeek(yr, int32(mm), int32(dd), weekBehaviourYear)
+		if yearForWeek < yr {
 			week = 0
-		} else if yearForWeek > yyyy {
+		} else if yearForWeek > yr {
 			week = 53
 		}
 		return int(week), nil
