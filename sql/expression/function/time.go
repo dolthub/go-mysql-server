@@ -17,6 +17,7 @@ package function
 import (
 	"context"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -159,7 +160,7 @@ func (q *Quarter) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	return (mon.(int32)-1)/3 + 1, nil
+	return (mon.(int) / 3) + int(math.Ceil(float64(mon.(int))/3)), nil
 }
 
 // WithChildren implements the Expression interface.
@@ -540,20 +541,13 @@ func (d *DayOfYear) WithChildren(children ...sql.Expression) (sql.Expression, er
 	return NewDayOfYear(children[0]), nil
 }
 
-func datePartFunc(fn func(time.Time) int) func(interface{}) interface{} {
+func datePartFunc(fn func(time.Time) interface{}) func(interface{}) interface{} {
 	return func(v interface{}) interface{} {
 		if v == nil {
 			return nil
 		}
 
-		if vTime, ok := v.(time.Time); ok {
-			if vTime.Equal(types.ZeroTime) {
-				return 0
-			}
-
-			return int32(fn(vTime))
-		}
-		return nil
+		return fn(v.(time.Time))
 	}
 }
 
@@ -877,15 +871,45 @@ func calcDaynr(yyyy, mm, dd int32) int32 {
 }
 
 var (
-	year      = datePartFunc((time.Time).Year)
-	month     = datePartFunc(func(t time.Time) int { return int(t.Month()) })
-	day       = datePartFunc((time.Time).Day)
-	weekday   = datePartFunc(func(t time.Time) int { return (int(t.Weekday()) + 6) % 7 })
-	hour      = datePartFunc((time.Time).Hour)
-	minute    = datePartFunc((time.Time).Minute)
-	second    = datePartFunc((time.Time).Second)
-	dayOfWeek = datePartFunc(func(t time.Time) int { return int(t.Weekday()) + 1 })
-	dayOfYear = datePartFunc((time.Time).YearDay)
+	year = datePartFunc(func(t time.Time) interface{} {
+		if t.Equal(types.ZeroTime) {
+			return 0
+		}
+		return t.Year()
+	})
+	month = datePartFunc(func(t time.Time) interface{} {
+		if t.Equal(types.ZeroTime) {
+			return 0
+		}
+		return int(t.Month())
+	})
+	day = datePartFunc(func(t time.Time) interface{} {
+		if t.Equal(types.ZeroTime) {
+			return 0
+		}
+		return t.Day()
+	})
+	weekday = datePartFunc(func(t time.Time) interface{} {
+		if t.Equal(types.ZeroTime) {
+			return nil
+		}
+		return (int(t.Weekday()) + 6) % 7
+	})
+	hour      = datePartFunc(func(t time.Time) interface{} { return t.Hour() })
+	minute    = datePartFunc(func(t time.Time) interface{} { return t.Minute() })
+	second    = datePartFunc(func(t time.Time) interface{} { return t.Second() })
+	dayOfWeek = datePartFunc(func(t time.Time) interface{} {
+		if t.Equal(types.ZeroTime) {
+			return nil
+		}
+		return int(t.Weekday()) + 1
+	})
+	dayOfYear = datePartFunc(func(t time.Time) interface{} {
+		if t.Equal(types.ZeroTime) {
+			return nil
+		}
+		return t.YearDay()
+	})
 )
 
 const maxCurrTimestampPrecision = 6
@@ -1345,7 +1369,7 @@ func (d *DayName) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	t, ok := val.(time.Time)
-	if !ok {
+	if !ok || t.Equal(types.ZeroTime) {
 		ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(val).Error())
 		return nil, nil
 	}
