@@ -1455,11 +1455,16 @@ func (*MonthName) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 func (d *MonthName) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	val, err := d.EvalChild(ctx, row)
 	if err != nil {
-		return nil, err
+		ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(val).Error())
+		return nil, nil
 	}
 
 	switch v := val.(type) {
 	case time.Time:
+		if v.Equal(types.ZeroTime) {
+			ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(val).Error())
+			return nil, nil
+		}
 		return v.Month().String(), nil
 	case nil:
 		return nil, nil
