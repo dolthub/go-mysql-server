@@ -935,6 +935,12 @@ var (
 		}
 		return (int(t.Month())-1)/3 + 1
 	})
+	microsecond = datePartFunc(func(t time.Time) interface{} {
+		if t.Equal(types.ZeroTime) {
+			return 0
+		}
+		return uint64(t.Nanosecond()) / uint64(time.Microsecond)
+	})
 )
 
 const maxCurrTimestampPrecision = 6
@@ -1436,20 +1442,7 @@ func NewMicrosecond(arg sql.Expression) sql.Expression {
 }
 
 func (m *Microsecond) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	val, err := m.EvalChild(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	switch v := val.(type) {
-	case time.Time:
-		return uint64(v.Nanosecond()) / uint64(time.Microsecond), nil
-	case nil:
-		return nil, nil
-	default:
-		ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(val).Error())
-		return nil, nil
-	}
+	return getDatePart(ctx, m.UnaryExpression, row, microsecond)
 }
 
 func (m *Microsecond) WithChildren(children ...sql.Expression) (sql.Expression, error) {

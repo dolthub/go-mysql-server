@@ -226,8 +226,8 @@ func TestTime_Day(t *testing.T) {
 	}{
 		{"null date", sql.NewRow(nil), nil, false},
 		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
-		{"date as string", sql.NewRow(stringDate), int32(2), false},
-		{"date as time", sql.NewRow(time.Now()), int32(time.Now().UTC().Day()), false},
+		{"date as string", sql.NewRow(stringDate), 2, false},
+		{"date as time", sql.NewRow(time.Now()), time.Now().UTC().Day(), false},
 	}
 
 	for _, tt := range testCases {
@@ -256,8 +256,8 @@ func TestTime_Weekday(t *testing.T) {
 	}{
 		{"null date", sql.NewRow(nil), nil, false},
 		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
-		{"date as string", sql.NewRow(stringDate), int32(1), false},
-		{"date as time", sql.NewRow(time.Now()), int32(time.Now().UTC().Weekday()+6) % 7, false},
+		{"date as string", sql.NewRow(stringDate), 1, false},
+		{"date as time", sql.NewRow(time.Now()), int(time.Now().UTC().Weekday()+6) % 7, false},
 	}
 
 	for _, tt := range testCases {
@@ -286,8 +286,8 @@ func TestTime_Hour(t *testing.T) {
 	}{
 		{"null date", sql.NewRow(nil), nil, false},
 		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
-		{"date as string", sql.NewRow(stringDate), int32(14), false},
-		{"date as time", sql.NewRow(time.Now()), int32(time.Now().UTC().Hour()), false},
+		{"date as string", sql.NewRow(stringDate), 14, false},
+		{"date as time", sql.NewRow(time.Now()), time.Now().UTC().Hour(), false},
 	}
 
 	for _, tt := range testCases {
@@ -316,8 +316,8 @@ func TestTime_Minute(t *testing.T) {
 	}{
 		{"null date", sql.NewRow(nil), nil, false},
 		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
-		{"date as string", sql.NewRow(stringDate), int32(15), false},
-		{"date as time", sql.NewRow(time.Now()), int32(time.Now().UTC().Minute()), false},
+		{"date as string", sql.NewRow(stringDate), 15, false},
+		{"date as time", sql.NewRow(time.Now()), time.Now().UTC().Minute(), false},
 	}
 
 	for _, tt := range testCases {
@@ -346,8 +346,8 @@ func TestTime_Second(t *testing.T) {
 	}{
 		{"null date", sql.NewRow(nil), nil, false},
 		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
-		{"date as string", sql.NewRow(stringDate), int32(16), false},
-		{"date as time", sql.NewRow(time.Now()), int32(time.Now().UTC().Second()), false},
+		{"date as string", sql.NewRow(stringDate), 16, false},
+		{"date as time", sql.NewRow(time.Now()), time.Now().UTC().Second(), false},
 	}
 
 	for _, tt := range testCases {
@@ -376,7 +376,7 @@ func TestTime_Microsecond(t *testing.T) {
 		err      bool
 	}{
 		{"null date", sql.NewRow(nil), nil, false},
-		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, true},
+		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
 		{"date as string", sql.NewRow(stringDate), uint64(0), false},
 		{"date as time", sql.NewRow(currTime), uint64(math.Round(float64(currTime.Nanosecond()) / float64(time.Microsecond))), false},
 	}
@@ -407,8 +407,8 @@ func TestTime_DayOfWeek(t *testing.T) {
 	}{
 		{"null date", sql.NewRow(nil), nil, false},
 		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
-		{"date as string", sql.NewRow(stringDate), int32(3), false},
-		{"date as time", sql.NewRow(time.Now()), int32(time.Now().UTC().Weekday() + 1), false},
+		{"date as string", sql.NewRow(stringDate), 3, false},
+		{"date as time", sql.NewRow(time.Now()), int(time.Now().UTC().Weekday() + 1), false},
 	}
 
 	for _, tt := range testCases {
@@ -437,8 +437,8 @@ func TestTime_DayOfYear(t *testing.T) {
 	}{
 		{"null date", sql.NewRow(nil), nil, false},
 		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
-		{"date as string", sql.NewRow(stringDate), int32(2), false},
-		{"date as time", sql.NewRow(time.Now()), int32(time.Now().UTC().YearDay()), false},
+		{"date as string", sql.NewRow(stringDate), 2, false},
+		{"date as time", sql.NewRow(time.Now()), time.Now().UTC().YearDay(), false},
 	}
 
 	for _, tt := range testCases {
@@ -468,7 +468,7 @@ func TestTime_WeekOfYear(t *testing.T) {
 		err      bool
 	}{
 		{"null date", sql.NewRow(nil), nil, false},
-		{"invalid type", sql.NewRow([]byte{0, 1, 2}), int32(1), true},
+		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
 		{"date as string", sql.NewRow(stringDate), 1, false},
 		{"date as time", sql.NewRow(currTime), week, false},
 	}
@@ -822,7 +822,7 @@ func TestTime_MonthName(t *testing.T) {
 		err      bool
 	}{
 		{"null date", sql.NewRow(nil), nil, false},
-		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, true},
+		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
 		{"time as string", sql.NewRow(stringDate), "January", false},
 	}
 
