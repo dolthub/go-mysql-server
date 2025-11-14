@@ -1336,7 +1336,11 @@ func (dtf *UnaryDatetimeFunc) EvalChild(ctx *sql.Context, row sql.Row) (interfac
 	}
 
 	ret, _, err := types.DatetimeMaxPrecision.Convert(ctx, val)
-	return ret, err
+	if err != nil {
+		ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(val).Error())
+		return nil, nil
+	}
+	return ret, nil
 }
 
 // String implements the fmt.Stringer interface.
@@ -1477,8 +1481,7 @@ func (*MonthName) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 func (d *MonthName) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	val, err := d.EvalChild(ctx, row)
 	if err != nil {
-		ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(val).Error())
-		return nil, nil
+		return nil, err
 	}
 
 	switch v := val.(type) {
@@ -1579,6 +1582,10 @@ func (m *WeekOfYear) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	switch v := val.(type) {
 	case time.Time:
+		if v.Equal(types.ZeroTime) {
+			ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(val).Error())
+			return nil, nil
+		}
 		_, wk := v.ISOWeek()
 		return wk, nil
 	case nil:
