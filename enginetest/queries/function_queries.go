@@ -1846,14 +1846,16 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{{1}},
 	},
 	{
-		Query:    "select dayofweek(0)",
-		Expected: []sql.Row{{nil}},
-		// MySQL has a warning
+		Query:                 "select dayofweek(0)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
 	},
 	{
-		Query:    "select dayofweek(false)",
-		Expected: []sql.Row{{nil}},
-		// MySQL has a warning
+		Query:                 "select dayofweek(false)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
 	},
 	{
 		Query:                 "select dayofweek(true)",
@@ -1862,9 +1864,10 @@ var FunctionQueryTests = []QueryTest{
 		ExpectedWarningsCount: 1,
 	},
 	{
-		Query:    "select dayofweek('0000-00-00')",
-		Expected: []sql.Row{{nil}},
-		// MySQL has a warning
+		Query:                 "select dayofweek('0000-00-00')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
 	},
 	{
 		Query: "select dayofweek('0000-01-01')",
@@ -1878,14 +1881,16 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{{5}},
 	},
 	{
-		Query:    "select dayofyear(0)",
-		Expected: []sql.Row{{nil}},
-		// MySQL has a warning
+		Query:                 "select dayofyear(0)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
 	},
 	{
-		Query:    "select dayofyear(false)",
-		Expected: []sql.Row{{nil}},
-		// MySQL has a warning
+		Query:                 "select dayofyear(false)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
 	},
 	{
 		Query:                 "select dayofyear(true)",
@@ -1894,9 +1899,10 @@ var FunctionQueryTests = []QueryTest{
 		ExpectedWarningsCount: 1,
 	},
 	{
-		Query:    "select dayofyear('0000-00-00')",
-		Expected: []sql.Row{{nil}},
-		// MySQL has a warning
+		Query:                 "select dayofyear('0000-00-00')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
 	},
 	{
 		Query:    "select dayofyear('0000-01-01')",
@@ -2006,8 +2012,15 @@ var FunctionQueryTests = []QueryTest{
 		ExpectedWarningsCount: 1,
 	},
 	{
-		Query:    "select weekday('0000-01-01')",
-		Expected: []sql.Row{{6}},
+		Query: "select weekday('0000-01-01')",
+		// This is 6 (Sunday) in MySQL. It seems like Go's time library considers 0000-02-29 a valid date but MySQL does
+		// not. This is why the days of the week are off. 0000 is not a real year anyway. This test is to make sure
+		// 0000-01-01 is not interpreted as zero time
+		Expected: []sql.Row{{5}},
+	},
+	{
+		Query:    "select weekday('2025-11-13')",
+		Expected: []sql.Row{{3}},
 	},
 	{
 		Query:                 "select weekofyear(0)",

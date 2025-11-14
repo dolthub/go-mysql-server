@@ -63,8 +63,15 @@ func getDatePart(ctx *sql.Context,
 	if err != nil {
 		return nil, err
 	}
+	if date == nil {
+		return nil, nil
+	}
 
-	return f(date), nil
+	part := f(date)
+	if part == nil {
+		ctx.Warn(1292, "Incorrect datetime value: '%s'", val)
+	}
+	return part, nil
 }
 
 // Year is a function that returns the year of a date.
