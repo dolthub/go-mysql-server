@@ -936,9 +936,6 @@ var (
 		return (int(t.Month())-1)/3 + 1
 	})
 	microsecond = datePartFunc(func(t time.Time) interface{} {
-		if t.Equal(types.ZeroTime) {
-			return 0
-		}
 		return uint64(t.Nanosecond()) / uint64(time.Microsecond)
 	})
 )
