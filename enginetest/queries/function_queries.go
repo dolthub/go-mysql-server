@@ -2105,4 +2105,12 @@ var FunctionQueryTests = []QueryTest{
 		Query:    "select date('0000-01-01')",
 		Expected: []sql.Row{{"0000-01-01"}},
 	},
+	{
+		Query:    "select date('0000-00-00')",
+		Expected: []sql.Row{{"0000-00-00"}},
+	},
+	{
+		Query:    "select date(0)",
+		Expected: []sql.Row{{"0000-00-00"}},
+	},
 }

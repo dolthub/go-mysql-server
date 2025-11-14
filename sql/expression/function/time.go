@@ -1300,7 +1300,14 @@ func (d *Date) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil
 		}
 
-		return v.(time.Time).Format("2006-01-02")
+		date, ok := v.(time.Time)
+		if !ok {
+			return nil
+		}
+		if date.Equal(types.ZeroTime) {
+			return types.ZeroDateStr
+		}
+		return date.Format("2006-01-02")
 	})
 }
 

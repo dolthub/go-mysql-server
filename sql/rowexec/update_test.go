@@ -15,11 +15,9 @@
 package rowexec
 
 import (
-	"testing"
-	"time"
-
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/stretchr/testify/require"
+	"testing"
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
@@ -55,7 +53,7 @@ func TestUpdateIgnoreConversions(t *testing.T) {
 			colType:   types.Datetime,
 			value:     "dadasd",
 			valueType: types.Text,
-			expected:  time.Unix(-62167219200, 0).UTC(),
+			expected:  types.ZeroTime,
 		},
 		{
 			name:      "inserting a negative into an unsigned int results in 0",
