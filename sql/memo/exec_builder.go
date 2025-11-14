@@ -299,7 +299,7 @@ func (b *ExecBuilder) buildMergeJoin(j *MergeJoin, children ...sql.Node) (sql.No
 
 func (b *ExecBuilder) buildLateralJoin(j *LateralJoin, children ...sql.Node) (sql.Node, error) {
 	if len(j.Filter) == 0 {
-		return plan.NewCrossJoin(children[0], children[1]), nil
+		return plan.NewLateralCrossJoin(children[0], children[1]), nil
 	}
 	filters := b.buildFilterConjunction(j.Filter...)
 	return plan.NewJoin(children[0], children[1], j.Op.AsLateral(), filters), nil
