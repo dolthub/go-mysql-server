@@ -128,7 +128,11 @@ func (td *Extract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case "MONTH":
 		return int(dateTime.Month()), nil
 	case "WEEK":
-		date, err := getDate(ctx, expression.UnaryExpression{Child: td.RightChild}, row)
+		dateVal, err := td.RightChild.Eval(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+		date, err := getDate(ctx, dateVal)
 		if err != nil {
 			return nil, err
 		}

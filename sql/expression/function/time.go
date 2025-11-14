@@ -36,15 +36,7 @@ var ErrUnknownType = errors.NewKind("function '%s' encountered unknown type %T")
 
 var ErrTooHighPrecision = errors.NewKind("Too-big precision %d for '%s'. Maximum is %d.")
 
-func getDate(ctx *sql.Context,
-	u expression.UnaryExpression,
-	row sql.Row) (interface{}, error) {
-
-	val, err := u.Child.Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
+func getDate(ctx *sql.Context, val interface{}) (interface{}, error) {
 	if val == nil {
 		return nil, nil
 	}
@@ -62,8 +54,12 @@ func getDatePart(ctx *sql.Context,
 	u expression.UnaryExpression,
 	row sql.Row,
 	f func(interface{}) interface{}) (interface{}, error) {
+	val, err := u.Child.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
 
-	date, err := getDate(ctx, u, row)
+	date, err := getDate(ctx, val)
 	if err != nil {
 		return nil, err
 	}
@@ -602,22 +598,26 @@ func (*YearWeek) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 
 // Eval implements the Expression interface.
 func (d *YearWeek) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	date, err := getDate(ctx, expression.UnaryExpression{Child: d.date}, row)
+	dateVal, err := d.date.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	date, err := getDate(ctx, dateVal)
 	if err != nil {
 		return nil, err
 	}
 	if date == nil {
 		return nil, nil
 	}
-	yyyy, ok := year(date).(int32)
+	yyyy, ok := year(date).(int)
 	if !ok {
 		return nil, sql.ErrInvalidArgumentDetails.New("YEARWEEK", "invalid year")
 	}
-	mm, ok := month(date).(int32)
+	mm, ok := month(date).(int)
 	if !ok {
 		return nil, sql.ErrInvalidArgumentDetails.New("YEARWEEK", "invalid month")
 	}
-	dd, ok := day(date).(int32)
+	dd, ok := day(date).(int)
 	if !ok {
 		return nil, sql.ErrInvalidArgumentDetails.New("YEARWEEK", "invalid day")
 	}
@@ -634,9 +634,9 @@ func (d *YearWeek) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			}
 		}
 	}
-	yyyy, week := calcWeek(yyyy, mm, dd, weekMode(mode)|weekBehaviourYear)
+	yr, week := calcWeek(int32(yyyy), int32(mm), int32(dd), weekMode(mode)|weekBehaviourYear)
 
-	return (yyyy * 100) + week, nil
+	return (yr * 100) + week, nil
 }
 
 // Resolved implements the Expression interface.
@@ -710,20 +710,34 @@ func (*Week) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID,
 
 // Eval implements the Expression interface.
 func (d *Week) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	date, err := getDate(ctx, expression.UnaryExpression{Child: d.date}, row)
+	dateVal, err := d.date.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	yyyy, ok := year(date).(int32)
+	date, err := getDate(ctx, dateVal)
+	if err != nil {
+		return nil, err
+	}
+	if date == nil {
+		return nil, nil
+	}
+
+	dateTime, ok := date.(time.Time)
+	if !ok || dateTime.Equal(types.ZeroTime) {
+		ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(dateVal).Error())
+		return nil, nil
+	}
+
+	yyyy, ok := year(date).(int)
 	if !ok {
 		return nil, sql.ErrInvalidArgumentDetails.New("WEEK", "invalid year")
 	}
-	mm, ok := month(date).(int32)
+	mm, ok := month(date).(int)
 	if !ok {
 		return nil, sql.ErrInvalidArgumentDetails.New("WEEK", "invalid month")
 	}
-	dd, ok := day(date).(int32)
+	dd, ok := day(date).(int)
 	if !ok {
 		return nil, sql.ErrInvalidArgumentDetails.New("WEEK", "invalid day")
 	}
@@ -741,11 +755,12 @@ func (d *Week) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
-	yearForWeek, week := calcWeek(yyyy, mm, dd, weekMode(mode)|weekBehaviourYear)
+	yr := int32(yyyy)
+	yearForWeek, week := calcWeek(yr, int32(mm), int32(dd), weekMode(mode)|weekBehaviourYear)
 
-	if yearForWeek < yyyy {
+	if yearForWeek < yr {
 		week = 0
-	} else if yearForWeek > yyyy {
+	} else if yearForWeek > yr {
 		week = 53
 	}
 
