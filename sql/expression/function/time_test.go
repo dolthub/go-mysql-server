@@ -45,8 +45,8 @@ func TestTime_Year(t *testing.T) {
 		err      bool
 	}{
 		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
-		{"date as string", sql.NewRow(stringDate), int32(2007), false},
-		{"date as time", sql.NewRow(time.Now()), int32(time.Now().UTC().Year()), false},
+		{"date as string", sql.NewRow(stringDate), 2007, false},
+		{"date as time", sql.NewRow(time.Now()), time.Now().UTC().Year(), false},
 	}
 
 	for _, tt := range testCases {
@@ -75,8 +75,8 @@ func TestTime_Month(t *testing.T) {
 	}{
 		{"null date", sql.NewRow(nil), nil, false},
 		{"invalid type", sql.NewRow([]byte{0, 1, 2}), nil, false},
-		{"date as string", sql.NewRow(stringDate), int32(1), false},
-		{"date as time", sql.NewRow(time.Now()), int32(time.Now().UTC().Month()), false},
+		{"date as string", sql.NewRow(stringDate), 1, false},
+		{"date as time", sql.NewRow(time.Now()), int(time.Now().UTC().Month()), false},
 	}
 
 	for _, tt := range testCases {
@@ -126,77 +126,77 @@ func TestTime_Quarter(t *testing.T) {
 		{
 			name:     "date as string",
 			row:      sql.NewRow(stringDate),
-			expected: int32(1),
+			expected: 1,
 		},
 		{
 			name:     "another date as string",
 			row:      sql.NewRow("2008-08-01"),
-			expected: int32(3),
+			expected: 3,
 		},
 		{
 			name:     "january",
 			row:      sql.NewRow("2008-01-01"),
-			expected: int32(1),
+			expected: 1,
 		},
 		{
 			name:     "february",
 			row:      sql.NewRow("2008-02-01"),
-			expected: int32(1),
+			expected: 1,
 		},
 		{
 			name:     "march",
 			row:      sql.NewRow("2008-03-01"),
-			expected: int32(1),
+			expected: 1,
 		},
 		{
 			name:     "april",
 			row:      sql.NewRow("2008-04-01"),
-			expected: int32(2),
+			expected: 2,
 		},
 		{
 			name:     "may",
 			row:      sql.NewRow("2008-05-01"),
-			expected: int32(2),
+			expected: 2,
 		},
 		{
 			name:     "june",
 			row:      sql.NewRow("2008-06-01"),
-			expected: int32(2),
+			expected: 2,
 		},
 		{
 			name:     "july",
 			row:      sql.NewRow("2008-07-01"),
-			expected: int32(3),
+			expected: 3,
 		},
 		{
 			name:     "august",
 			row:      sql.NewRow("2008-08-01"),
-			expected: int32(3),
+			expected: 3,
 		},
 		{
 			name:     "septemeber",
 			row:      sql.NewRow("2008-09-01"),
-			expected: int32(3),
+			expected: 3,
 		},
 		{
 			name:     "october",
 			row:      sql.NewRow("2008-10-01"),
-			expected: int32(4),
+			expected: 4,
 		},
 		{
 			name:     "november",
 			row:      sql.NewRow("2008-11-01"),
-			expected: int32(4),
+			expected: 4,
 		},
 		{
 			name:     "december",
 			row:      sql.NewRow("2008-12-01"),
-			expected: int32(4),
+			expected: 4,
 		},
 		{
 			name:     "date as time",
 			row:      sql.NewRow(time.Now()),
-			expected: int32((time.Now().UTC().Month()-1)/3 + 1),
+			expected: (int(time.Now().UTC().Month())-1)/3 + 1,
 		},
 	}
 

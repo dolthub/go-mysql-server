@@ -17,7 +17,6 @@ package function
 import (
 	"context"
 	"fmt"
-	"math"
 	"strings"
 	"time"
 
@@ -154,16 +153,7 @@ func (q *Quarter) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 
 // Eval implements the Expression interface.
 func (q *Quarter) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	mon, err := getDatePart(ctx, q.UnaryExpression, row, month)
-	if err != nil {
-		return nil, err
-	}
-
-	if mon == nil {
-		return nil, nil
-	}
-
-	return (mon.(int) / 3) + int(math.Ceil(float64(mon.(int))/3)), nil
+	return getDatePart(ctx, q.UnaryExpression, row, quarter)
 }
 
 // WithChildren implements the Expression interface.
@@ -938,6 +928,12 @@ var (
 			return nil
 		}
 		return t.YearDay()
+	})
+	quarter = datePartFunc(func(t time.Time) interface{} {
+		if t.Equal(types.ZeroTime) {
+			return 0
+		}
+		return (int(t.Month())-1)/3 + 1
 	})
 )
 
