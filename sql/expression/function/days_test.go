@@ -45,7 +45,10 @@ func TestToDays(t *testing.T) {
 			arg: expression.NewLiteral("-10", types.Int32),
 			exp: nil,
 		},
-
+		{
+			arg: expression.NewLiteral("0", types.Int32),
+			exp: nil,
+		},
 		{
 			arg: expression.NewLiteral("0000-00-00", types.Text),
 			exp: nil,
