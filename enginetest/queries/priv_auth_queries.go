@@ -108,6 +108,7 @@ type ServerAuthenticationTestAssertion struct {
 // UserPrivTests test the user and privilege systems. These tests always have the root account available, and the root
 // account is used with any queries in the SetUpScript.
 var UserPrivTests = []UserPrivilegeTest{
+	// https://github.com/dolthub/dolt/issues/10083
 	{
 		Name: "Selecting a view only needs SELECT grants",
 		SetUpScript: []string{
