@@ -43,13 +43,17 @@ func (e *EquivSets) Sets() []ColSet {
 }
 
 func (e *EquivSets) String() string {
+	return e.StringWithLabel("equiv")
+}
+
+func (e *EquivSets) StringWithLabel(label string) string {
 	if e == nil {
-		return "equiv()"
+		return fmt.Sprintf("%s()", label)
 	}
 	b := strings.Builder{}
 	sep := ""
 	for i, set := range e.sets {
-		b.WriteString(fmt.Sprintf("%sequiv%s", sep, set))
+		b.WriteString(fmt.Sprintf("%s%s%s", sep, label, set))
 		if i == 0 {
 			sep = "; "
 		}
@@ -102,18 +106,6 @@ func (k *Key) implies(other Key) bool {
 // a fraction of the total input set. The first key always determines
 // the entire relation, which seems good enough for many cases.
 // Maintaining partials sets also requires much less bookkeeping.
-//
-// TODO: We used to not track dependency sets and only add keys that
-// determined the entire relation. One observed downside of that approach
-// is that left joins fail to convert equivalencies on the null-extended
-// side to lax functional dependencies. For example, in the query below,
-// the left join loses (a) == (m) because (m) can now be NULL:
-//
-// SELECT * from adbcd LEFT_JOIN mnpq WHERE a = m
-//
-// But we could maintain (m)~~>(n), which higher-level null enforcement
-// (ex: GROUPING) can reclaim as equivalence. Although we now track partial
-// dependency sets, this may still not be supported.
 type FuncDepSet struct {
 	// all columns in this relation
 	all ColSet
@@ -123,6 +115,8 @@ type FuncDepSet struct {
 	consts ColSet
 	// tracks in-scope equivalent closure
 	equivs *EquivSets
+	// tracks partial equivalent closure. This is used for left joins, where the right side is null-extended
+	partialEquivs *EquivSets
 	// keys includes the set of primary and secondary keys
 	// accumulated in the relation. The first key is the best
 	// key we have seen so far, where strict > lax and shorter
@@ -213,22 +207,25 @@ func (f *FuncDepSet) String() string {
 		b.WriteString(fmt.Sprintf("%s%s", sep, f.equivs))
 		sep = "; "
 	}
-	if len(f.keys) < 2 {
-		return b.String()
-	}
-	for _, k := range f.keys[1:] {
-		var cols string
-		if k.allCols == f.all {
-			cols = k.cols.String()
-		} else {
-			cols = fmt.Sprintf("%s/%s", k.cols, k.allCols)
-		}
-		if k.strict {
-			b.WriteString(fmt.Sprintf("%sfd%s", sep, cols))
-		} else {
-			b.WriteString(fmt.Sprintf("%slax-fd%s", sep, cols))
-		}
+	if f.partialEquivs.Len() > 0 {
+		b.WriteString(fmt.Sprintf("%s%s", sep, f.partialEquivs.StringWithLabel("partialEquiv")))
 		sep = "; "
+	}
+	if len(f.keys) >= 2 {
+		for _, k := range f.keys[1:] {
+			var cols string
+			if k.allCols == f.all {
+				cols = k.cols.String()
+			} else {
+				cols = fmt.Sprintf("%s/%s", k.cols, k.allCols)
+			}
+			if k.strict {
+				b.WriteString(fmt.Sprintf("%sfd%s", sep, cols))
+			} else {
+				b.WriteString(fmt.Sprintf("%slax-fd%s", sep, cols))
+			}
+			sep = "; "
+		}
 	}
 	return b.String()
 }
@@ -238,7 +235,8 @@ func (f *FuncDepSet) Constants() ColSet {
 }
 
 func (f *FuncDepSet) EquivalenceClosure(cols ColSet) ColSet {
-	for _, set := range f.equivs.Sets() {
+	equivSets := append(f.equivs.Sets(), f.partialEquivs.Sets()...)
+	for _, set := range equivSets {
 		if set.Intersects(cols) {
 			cols = cols.Union(set)
 		}
@@ -257,9 +255,6 @@ func (f *FuncDepSet) AddConstants(cols ColSet) {
 
 func (f *FuncDepSet) AddEquiv(i, j ColumnId) {
 	cols := NewColSet(i, j)
-	if f.equivs == nil {
-		f.equivs = &EquivSets{}
-	}
 	f.AddEquivSet(cols)
 }
 
@@ -274,6 +269,14 @@ func (f *FuncDepSet) AddEquivSet(cols ColSet) {
 			f.AddConstants(set)
 		}
 	}
+}
+
+func (f *FuncDepSet) AddPartialEquiv(i, j ColumnId) {
+	cols := NewColSet(i, j)
+	if f.partialEquivs == nil {
+		f.partialEquivs = &EquivSets{}
+	}
+	f.partialEquivs.Add(cols)
 }
 
 func (f *FuncDepSet) AddKey(k Key) {
@@ -661,9 +664,16 @@ func NewLeftJoinFDs(left, right *FuncDepSet, filters [][2]ColumnId) *FuncDepSet 
 		}
 		ret.AddConstants(leftConst)
 	}
-	// only left equiv holds
+
+	// add left equivs
 	for _, equiv := range left.equivs.Sets() {
 		ret.AddEquivSet(equiv)
+	}
+	// add partial equiv filters if right-side column is not nullable
+	for _, f := range filters {
+		if right.notNull.Contains(f[0]) || right.notNull.Contains(f[1]) {
+			ret.AddPartialEquiv(f[0], f[1])
+		}
 	}
 
 	if leftStrict && leftColsAreInnerJoinKey {
@@ -675,10 +685,6 @@ func NewLeftJoinFDs(left, right *FuncDepSet, filters [][2]ColumnId) *FuncDepSet 
 	} else {
 		ret.keys = append(ret.keys, jKey)
 	}
-
-	// no filter equivs are valid
-	// TODO if right columns are non-nullable in ON filter, equivs hold
-	// technically we could do (r)~~>(l), but is this useful?
 
 	// right-side keys become lax unless all non-nullable in original
 	for _, key := range rightKeys {
