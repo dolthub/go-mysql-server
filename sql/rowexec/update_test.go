@@ -15,9 +15,10 @@
 package rowexec
 
 import (
+	"testing"
+
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/stretchr/testify/require"
-	"testing"
 
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
