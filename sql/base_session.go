@@ -96,7 +96,6 @@ func (s *BaseSession) Client() Client { return s.client }
 // SetClient implements the Session interface.
 func (s *BaseSession) SetClient(c Client) {
 	s.client = c
-	return
 }
 
 // GetAllSessionVariables implements the Session interface.

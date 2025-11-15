@@ -845,6 +845,9 @@ func (b *Builder) resolveView(name string, database sql.Database, asOf interface
 			if err != nil {
 				b.handleErr(err)
 			}
+			// TODO: Once view definers are persisted, load the real definer client
+			restoreInvoker := b.mockDefiner(sql.PrivilegeType_CreateView)
+			defer restoreInvoker()
 			node, _, err := b.bindOnlyWithDatabase(database, stmt, viewDef.CreateViewStatement)
 			if err != nil {
 				// TODO: Need to account for non-existing functions or
