@@ -98,6 +98,9 @@ func (t *ToDays) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 	d := date.(time.Time)
+	if d.Equal(types.ZeroTime) {
+		return nil, nil
+	}
 
 	// Using zeroTime.Sub(date) doesn't work because it overflows time.Duration
 	// so we need to calculate the number of days manually

@@ -17,7 +17,6 @@ package rowexec
 import (
 	"math"
 	"testing"
-	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/stretchr/testify/require"
@@ -63,7 +62,7 @@ func TestInsert(t *testing.T) {
 			colType:   types.Datetime,
 			value:     "dadasd",
 			valueType: types.Text,
-			expected:  time.Unix(-62167219200, 0).UTC(),
+			expected:  types.ZeroTime,
 			warning:   true,
 			ignore:    true,
 		},

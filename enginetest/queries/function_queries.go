@@ -1601,7 +1601,15 @@ var FunctionQueryTests = []QueryTest{
 		Query:    "select abs(-i) from mytable order by 1",
 		Expected: []sql.Row{{1}, {2}, {3}},
 	},
-
+	// https://github.com/dolthub/dolt/issues/9735
+	{
+		Query:    "select log('10asdf', '100f')",
+		Expected: []sql.Row{{float64(2)}},
+	},
+	{
+		Query:    "select log('a10asdf', 'b100f')",
+		Expected: []sql.Row{{nil}},
+	},
 	// Date Manipulation Function Tests
 	{
 		Query:    "SELECT TIMESTAMPADD(DAY, 1, '2018-05-02')",
@@ -1755,17 +1763,354 @@ var FunctionQueryTests = []QueryTest{
 			{uint32(1000)},
 		},
 	},
-}
-
-// BrokenFunctionQueryTests contains SQL function call queries that don't match MySQL behavior
-var BrokenFunctionQueryTests = []QueryTest{
-	// https://github.com/dolthub/dolt/issues/9735
+	// date-related functions
 	{
-		Query:    "select log('10asdf', '100f')",
-		Expected: []sql.Row{{float64(2)}},
+		Query:    "select day(0)",
+		Expected: []sql.Row{{0}},
 	},
 	{
-		Query:    "select log('a10asdf', 'b100f')",
-		Expected: []sql.Row{{nil}},
+		Query:    "select day(false)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:                 "select day(true)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		// This is not a valid time string in MySQL, but we allow it
+		Query:    "select day('0000-00-00')",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select day('0000-01-01')",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:                 "select dayname(0)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select dayname(false)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select dayname(true)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select dayname('0000-00-00')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query: "select dayname('0000-01-01')",
+		// This is Sunday in MySQL. It seems like Go's time library considers 0000-02-29 a valid date but MySQL does
+		// not. This is why the days of the week are off. 0000 is not a real year anyway. This test is to make sure
+		// 0000-01-01 is not interpreted as zero time
+		Expected: []sql.Row{{"Saturday"}},
+	},
+	{
+		Query:    "select dayname('2025-11-13')",
+		Expected: []sql.Row{{"Thursday"}},
+	},
+	{
+		Query:    "select dayofmonth(0)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select dayofmonth(false)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:                 "select dayofmonth(true)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		// This is not a valid time string in MySQL, but we allow it
+		Query:    "select dayofmonth('0000-00-00')",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select dayofmonth('0000-01-01')",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:                 "select dayofweek(0)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select dayofweek(false)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select dayofweek(true)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select dayofweek('0000-00-00')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query: "select dayofweek('0000-01-01')",
+		// This is 1 (Sunday) in MySQL. It seems like Go's time library considers 0000-02-29 a valid date but MySQL does
+		// not. This is why the days of the week are off. 0000 is not a real year anyway. This test is to make sure
+		// 0000-01-01 is not interpreted as zero time
+		Expected: []sql.Row{{7}},
+	},
+	{
+		Query:    "select dayofweek('2025-11-13')",
+		Expected: []sql.Row{{5}},
+	},
+	{
+		Query:                 "select dayofyear(0)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select dayofyear(false)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select dayofyear(true)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select dayofyear('0000-00-00')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:    "select dayofyear('0000-01-01')",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select month(0)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select month(false)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:                 "select month(true)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		// This is not a valid time string in MySQL, but we allow it
+		Query:    "select month('0000-00-00')",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select month('0000-01-01')",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:                 "select monthname(0)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select monthname(false)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select monthname(true)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select monthname('0000-00-00')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:    "select monthname('0000-01-01')",
+		Expected: []sql.Row{{"January"}},
+	},
+	{
+		Query:                 "select week(0)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select week(false)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select week(true)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select week('0000-00-00')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:    "select week('0000-01-01')",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:                 "select weekday(0)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select weekday(false)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select weekday(true)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select weekday('0000-00-00')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query: "select weekday('0000-01-01')",
+		// This is 6 (Sunday) in MySQL. It seems like Go's time library considers 0000-02-29 a valid date but MySQL does
+		// not. This is why the days of the week are off. 0000 is not a real year anyway. This test is to make sure
+		// 0000-01-01 is not interpreted as zero time
+		Expected: []sql.Row{{5}},
+	},
+	{
+		Query:    "select weekday('2025-11-13')",
+		Expected: []sql.Row{{3}},
+	},
+	{
+		Query:                 "select weekofyear(0)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select weekofyear(false)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select weekofyear(true)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select weekofyear('0000-00-00')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:    "select weekofyear('0000-01-01')",
+		Expected: []sql.Row{{52}},
+	},
+	{
+		Query:                 "select yearweek(0)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select yearweek(false)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select yearweek(true)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select yearweek('0000-00-00')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:    "select yearweek('0000-01-01')",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select quarter(0)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select quarter(false)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:                 "select quarter(true)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		// This is not a valid time string in MySQL, but we allow it
+		Query:    "select quarter('0000-00-00')",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select quarter('0000-01-01')",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select date('0000-01-01')",
+		Expected: []sql.Row{{"0000-01-01"}},
+	},
+	{
+		Query:    "select date('0000-00-00')",
+		Expected: []sql.Row{{"0000-00-00"}},
+	},
+	{
+		Query:    "select date(0)",
+		Expected: []sql.Row{{"0000-00-00"}},
 	},
 }
