@@ -19,7 +19,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 )
 
-// mockDefiner temporarily impersonates the view definer during binding. It clones the current authorization state
+// mockDefiner temporarily impersonates the definer during binding. It clones the current authorization state
 // (when available), adds the requested global privileges (e.g. CREATE VIEW), and updates both the session privilege
 // cache and the cached AuthorizationQueryState. Callers must defer the returned restore function.
 func (b *Builder) mockDefiner(privileges ...sql.PrivilegeType) func() {
