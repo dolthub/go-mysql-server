@@ -2322,4 +2322,60 @@ var FunctionQueryTests = []QueryTest{
 		Query:    "select extract(hour_minute from true)",
 		Expected: []sql.Row{{0}},
 	},
+	{
+		Query:    "select extract(microsecond from 0)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select extract(microsecond from false)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/10087
+		Skip:     true,
+		Query:    "select extract(microsecond from true)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select extract(second from 0)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select extract(second from false)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/10087
+		Skip:     true,
+		Query:    "select extract(second from true)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select extract(minute from 0)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select extract(minute from false)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/10087
+		Skip:     true,
+		Query:    "select extract(minute from true)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select extract(hour from 0)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select extract(hour from false)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/10087
+		Skip:     true,
+		Query:    "select extract(hour from true)",
+		Expected: []sql.Row{{0}},
+	},
 }
