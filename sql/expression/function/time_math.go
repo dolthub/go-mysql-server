@@ -248,7 +248,7 @@ func (d *DateAdd) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 	datetime, ok := dateVal.(time.Time)
-	if ok || datetime.Equal(types.ZeroTime) {
+	if !ok || datetime.Equal(types.ZeroTime) {
 		ctx.Warn(1292, "Incorrect datetime value: '%s'", date)
 		return nil, nil
 	}
@@ -401,7 +401,7 @@ func (d *DateSub) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 	datetime, ok := dateVal.(time.Time)
-	if ok || datetime.Equal(types.ZeroTime) {
+	if !ok || datetime.Equal(types.ZeroTime) {
 		ctx.Warn(1292, "Incorrect datetime value: '%s'", date)
 		return nil, nil
 	}
