@@ -2106,12 +2106,28 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{{"0000-01-01"}},
 	},
 	{
-		Query:    "select date('0000-00-00')",
-		Expected: []sql.Row{{"0000-00-00"}},
+		Query:                 "select date('0000-00-00')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
 	},
 	{
-		Query:    "select date(0)",
-		Expected: []sql.Row{{"0000-00-00"}},
+		Query:                 "select date(0)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select date(false)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select date(true)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
 	},
 	{
 		Query:    "select extract(day from 0)",

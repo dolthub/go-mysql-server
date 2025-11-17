@@ -1295,20 +1295,26 @@ func (*Date) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID,
 
 // Eval implements the Expression interface.
 func (d *Date) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return getDatePart(ctx, d.UnaryExpression, row, func(v interface{}) interface{} {
-		if v == nil {
-			return nil
-		}
+	dateVal, err := d.Child.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
 
-		date, ok := v.(time.Time)
-		if !ok {
-			return nil
-		}
-		if date.Equal(types.ZeroTime) {
-			return types.ZeroDateStr
-		}
-		return date.Format("2006-01-02")
-	})
+	date, err := getDate(ctx, dateVal)
+	if err != nil {
+		return nil, err
+	}
+	if date == nil {
+		return nil, nil
+	}
+
+	dateTime, ok := date.(time.Time)
+	if !ok || dateTime.Equal(types.ZeroTime) {
+		ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(dateVal).Error())
+		return nil, nil
+	}
+
+	return dateTime.Format("2006-01-02"), nil
 }
 
 // WithChildren implements the Expression interface.
