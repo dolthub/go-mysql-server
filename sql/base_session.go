@@ -117,6 +117,22 @@ func (s *BaseSession) GetAllSessionVariables() map[string]interface{} {
 	return m
 }
 
+// GetBaseSession implements the Session interface.
+func (s *BaseSession) GetBaseSession() *BaseSession {
+	return s
+}
+
+// SetBaseSession implements the Session interface.
+func (s *BaseSession) SetBaseSession(base *BaseSession) {
+	*s = *base
+}
+
+// Copy implements the Session interface.
+func (s *BaseSession) Copy() Session {
+	cpy := *s
+	return &cpy
+}
+
 // SetSessionVariable implements the Session interface.
 func (s *BaseSession) SetSessionVariable(ctx *Context, sysVarName string, value interface{}) error {
 	sysVarName = strings.ToLower(sysVarName)
