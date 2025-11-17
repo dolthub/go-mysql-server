@@ -2128,6 +2128,22 @@ var FunctionQueryTests = []QueryTest{
 		ExpectedWarningsCount: 1,
 	},
 	{
+		Query: "select extract(week from 0)",
+		// This is 613566757 in MySQL but that value seems related to this bug https://bugs.mysql.com/bug.php?id=71414&files=1
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query: "select extract(week from false)",
+		// This is 613566757 in MySQL but that value seems related to this bug https://bugs.mysql.com/bug.php?id=71414&files=1
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:                 "select extract(week from true)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
 		Query:    "select extract(month from 0)",
 		Expected: []sql.Row{{0}},
 	},
