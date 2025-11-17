@@ -440,6 +440,13 @@ func convertValueToType(ctx *sql.Context, typ sql.Type, val interface{}, isTimeT
 		// the value is interpreted as 0, but we need to match the type of the other valid value
 		// to avoid additional conversion, the nil value is handled in each operation
 	}
+	if types.IsTime(typ) {
+		time, ok := cval.(time.Time)
+		if !ok || time.Equal(types.ZeroTime) {
+			ctx.Warn(1292, "Incorrect datetime value: '%s'", val)
+			return nil
+		}
+	}
 	return cval
 }
 
@@ -462,6 +469,9 @@ func convertTimeTypeToString(val interface{}) interface{} {
 }
 
 func plus(lval, rval interface{}) (interface{}, error) {
+	if lval == nil || rval == nil {
+		return nil, nil
+	}
 	switch l := lval.(type) {
 	case uint8:
 		switch r := rval.(type) {
@@ -536,6 +546,9 @@ func plus(lval, rval interface{}) (interface{}, error) {
 }
 
 func minus(lval, rval interface{}) (interface{}, error) {
+	if lval == nil || rval == nil {
+		return nil, nil
+	}
 	switch l := lval.(type) {
 	case uint8:
 		switch r := rval.(type) {

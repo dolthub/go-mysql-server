@@ -1616,6 +1616,18 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{{"2018-05-03"}},
 	},
 	{
+		Query:                 "select timestampadd(day, 1, '0000-00-00')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select timestampadd(day, 1, 0)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
 		Query:    "SELECT DATE_ADD('2018-05-02', INTERVAL 1 day)",
 		Expected: []sql.Row{{"2018-05-03"}},
 	},
@@ -1626,6 +1638,18 @@ var FunctionQueryTests = []QueryTest{
 	{
 		Query:    "select date_add(time('12:13:14'), interval 1 minute);",
 		Expected: []sql.Row{{types.Timespan(44054000000)}},
+	},
+	{
+		Query:                 "select date_add(0, interval 1 day)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select date_sub(0, interval 1 day)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
 	},
 	{
 		Query:    "SELECT DATE_SUB('2018-05-02', INTERVAL 1 DAY)",
@@ -1670,6 +1694,42 @@ var FunctionQueryTests = []QueryTest{
 	{
 		Query:    "SELECT DATE_ADD('9999-12-31 23:59:59', INTERVAL 1 DAY)",
 		Expected: []sql.Row{{nil}},
+	},
+	{
+		Query:                 "select 0 + interval 1 day",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select 0 - interval 1 day",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select datediff(0, '2020-10-10')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select datediff('0000-00-00', '2020-10-10')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select datediff('2020-10-10', 0)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select datediff('2020-10-10', '0000-00-00')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
 	},
 	{
 		Query:    "SELECT EXTRACT(DAY FROM '9999-12-31 23:59:59')",

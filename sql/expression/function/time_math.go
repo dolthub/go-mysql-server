@@ -82,37 +82,47 @@ func (d *DateDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	expr1, err := d.LeftChild.Eval(ctx, row)
+	val1, err := d.LeftChild.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-	if expr1 == nil {
+	if val1 == nil {
 		return nil, nil
 	}
 
-	expr1, _, err = types.DatetimeMaxPrecision.Convert(ctx, expr1)
+	expr1, _, err := types.DatetimeMaxPrecision.Convert(ctx, val1)
 	if err != nil {
-		return nil, err
+		ctx.Warn(1292, "Incorrect datetime value: '%s'", val1)
+		return nil, nil
 	}
 
 	expr1str := expr1.(time.Time).String()[:10]
 	expr1, _, _ = types.DatetimeMaxPrecision.Convert(ctx, expr1str)
-
-	expr2, err := d.RightChild.Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-	if expr2 == nil {
+	if expr1 == nil {
+		ctx.Warn(1292, "Incorrect datetime value: '%s'", val1)
 		return nil, nil
 	}
 
-	expr2, _, err = types.DatetimeMaxPrecision.Convert(ctx, expr2)
+	val2, err := d.RightChild.Eval(ctx, row)
 	if err != nil {
 		return nil, err
+	}
+	if val2 == nil {
+		return nil, nil
+	}
+
+	expr2, _, err := types.DatetimeMaxPrecision.Convert(ctx, val2)
+	if err != nil {
+		ctx.Warn(1292, "Incorrect datetime value: '%s'", val2)
+		return nil, nil
 	}
 
 	expr2str := expr2.(time.Time).String()[:10]
 	expr2, _, _ = types.DatetimeMaxPrecision.Convert(ctx, expr2str)
+	if expr2 == nil {
+		ctx.Warn(1292, "Incorrect datetime value: '%s'", val2)
+		return nil, nil
+	}
 
 	date1 := expr1.(time.Time)
 	date2 := expr2.(time.Time)
@@ -237,9 +247,14 @@ func (d *DateAdd) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		ctx.Warn(1292, "%s", err.Error())
 		return nil, nil
 	}
+	datetime, ok := dateVal.(time.Time)
+	if ok || datetime.Equal(types.ZeroTime) {
+		ctx.Warn(1292, "Incorrect datetime value: '%s'", date)
+		return nil, nil
+	}
 
 	// return appropriate type
-	res := types.ValidateTime(delta.Add(dateVal.(time.Time)))
+	res := types.ValidateTime(delta.Add(datetime))
 	if res == nil {
 		return nil, nil
 	}
@@ -385,9 +400,14 @@ func (d *DateSub) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		ctx.Warn(1292, "%s", err.Error())
 		return nil, nil
 	}
+	datetime, ok := dateVal.(time.Time)
+	if ok || datetime.Equal(types.ZeroTime) {
+		ctx.Warn(1292, "Incorrect datetime value: '%s'", date)
+		return nil, nil
+	}
 
 	// return appropriate type
-	res := types.ValidateTime(delta.Sub(dateVal.(time.Time)))
+	res := types.ValidateTime(delta.Sub(datetime))
 	if res == nil {
 		return nil, nil
 	}
