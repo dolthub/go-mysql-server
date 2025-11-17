@@ -2113,4 +2113,213 @@ var FunctionQueryTests = []QueryTest{
 		Query:    "select date(0)",
 		Expected: []sql.Row{{"0000-00-00"}},
 	},
+	{
+		Query:    "select extract(day from 0)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select extract(day from false)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:                 "select extract(day from true)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:    "select extract(month from 0)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select extract(month from false)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:                 "select extract(month from true)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:    "select extract(quarter from 0)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select extract(quarter from false)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:                 "select extract(quarter from true)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:    "select extract(year from 0)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select extract(year from false)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:                 "select extract(year from true)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:    "select extract(year_month from 0)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select extract(year_month from false)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:                 "select extract(year_month from true)",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarning:       mysql.ERTruncatedWrongValue,
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:    "select extract(day_microsecond from 0)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select extract(day_microsecond from false)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Skip:     true,
+		Query:    "select extract(day_microsecond from true)",
+		Expected: []sql.Row{{1000000}},
+	},
+	{
+		Query:    "select extract(day_second from 0)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select extract(day_second from false)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/10087
+		Skip:     true,
+		Query:    "select extract(day_second from true)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select extract(day_minute from 0)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select extract(day_minute from false)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/10087
+		Skip:     true,
+		Query:    "select extract(day_minute from true)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select extract(day_hour from 0)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select extract(day_hour from false)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/10087
+		Skip:     true,
+		Query:    "select extract(day_hour from true)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select extract(second_microsecond from 0)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select extract(second_microsecond from false)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/10087
+		Skip:     true,
+		Query:    "select extract(second_microsecond from true)",
+		Expected: []sql.Row{{1000000}},
+	},
+	{
+		Query:    "select extract(minute_microsecond from 0)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select extract(minute_microsecond from false)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/10087
+		Skip:     true,
+		Query:    "select extract(minute_microsecond from true)",
+		Expected: []sql.Row{{1000000}},
+	},
+	{
+		Query:    "select extract(minute_second from 0)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select extract(minute_second from false)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/10087
+		Skip:     true,
+		Query:    "select extract(minute_second from true)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select extract(hour_microsecond from 0)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select extract(hour_microsecond from false)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/10087
+		Skip:     true,
+		Query:    "select extract(hour_microsecond from true)",
+		Expected: []sql.Row{{1000000}},
+	},
+	{
+		Query:    "select extract(hour_second from 0)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select extract(hour_second from false)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/10087
+		Skip:     true,
+		Query:    "select extract(hour_second from true)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select extract(hour_minute from 0)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select extract(hour_minute from false)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/10087
+		Skip:     true,
+		Query:    "select extract(hour_minute from true)",
+		Expected: []sql.Row{{0}},
+	},
 }
