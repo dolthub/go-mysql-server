@@ -1309,9 +1309,12 @@ func (d *Date) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	dateTime, ok := date.(time.Time)
-	if !ok || dateTime.Equal(types.ZeroTime) {
+	if !ok {
 		ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(dateVal).Error())
 		return nil, nil
+	}
+	if dateTime.Equal(types.ZeroTime) {
+		return types.ZeroDateStr, nil
 	}
 
 	return dateTime.Format("2006-01-02"), nil
