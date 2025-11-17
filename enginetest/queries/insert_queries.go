@@ -2350,7 +2350,8 @@ var InsertScripts = []ScriptTest{
 		},
 	},
 	{
-		Name: "inserting zero date",
+		Name:    "inserting zero date",
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t(d date)",
 			"insert into t values ('0000-00-00')",
