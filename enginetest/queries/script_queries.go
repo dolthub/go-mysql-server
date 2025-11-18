@@ -13441,15 +13441,22 @@ select * from t1 except (
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/10070
+		// https://github.com/dolthub/dolt/issues/10092
 		Name: "NOT EXISTS with nullable filter",
 		SetUpScript: []string{
 			"CREATE TABLE t0(c0 INT , c1 INT);",
 			"INSERT INTO t0(c0, c1) VALUES (1, -2);",
+			"create table t1(c0 int, primary key(c0))",
+			"insert into t1 values (1)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    `SELECT * FROM t0 WHERE NOT EXISTS (SELECT 1 FROM (SELECT 1) alias0 WHERE (CASE -1 WHEN t0.c1 THEN false END));`,
 				Expected: []sql.Row{{1, -2}},
+			},
+			{
+				Query:    "select * from t1 where not exists (select 1 from (select 1) as subquery where weekday(t1.c0))",
+				Expected: []sql.Row{{1}},
 			},
 		},
 	},

@@ -63,6 +63,11 @@ func (d *DateDiff) String() string {
 // Type implements the sql.Expression interface.
 func (d *DateDiff) Type() sql.Type { return types.Int64 }
 
+// IsNullable implements the Expression interface
+func (d *DateDiff) IsNullable() bool {
+	return true
+}
+
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*DateDiff) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 5
@@ -600,7 +605,7 @@ func (t *TimestampDiff) Resolved() bool {
 
 // IsNullable implements the sql.Expression interface.
 func (t *TimestampDiff) IsNullable() bool {
-	return t.unit.IsNullable() && t.expr1.IsNullable() && t.expr2.IsNullable()
+	return true
 }
 
 // Type implements the sql.Expression interface.
