@@ -54,6 +54,11 @@ func (td *Extract) Description() string {
 // Type implements the Expression interface.
 func (td *Extract) Type() sql.Type { return types.Int64 }
 
+// IsNullable implements the Expression interface
+func (td *Extract) IsNullable() bool {
+	return true
+}
+
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*Extract) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 5

@@ -146,6 +146,11 @@ func (q *Quarter) String() string { return fmt.Sprintf("%s(%s)", q.FunctionName(
 // Type implements the Expression interface.
 func (q *Quarter) Type() sql.Type { return types.Int32 }
 
+// IsNullable implements the Expression interface
+func (q *Quarter) IsNullable() bool {
+	return true
+}
+
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (q *Quarter) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 5
@@ -191,6 +196,11 @@ func (m *Month) String() string { return fmt.Sprintf("%s(%s)", m.FunctionName(),
 
 // Type implements the Expression interface.
 func (m *Month) Type() sql.Type { return types.Int32 }
+
+// IsNullable implements the Expression interface
+func (d *Month) IsNullable() bool {
+	return true
+}
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*Month) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -238,6 +248,11 @@ func (d *Day) String() string { return fmt.Sprintf("%s(%s)", d.FunctionName(), d
 // Type implements the Expression interface.
 func (d *Day) Type() sql.Type { return types.Int32 }
 
+// IsNullable implements the Expression interface
+func (d *Day) IsNullable() bool {
+	return true
+}
+
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*Day) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 5
@@ -284,6 +299,11 @@ func (d *Weekday) String() string { return fmt.Sprintf("%s(%s)", d.FunctionName(
 
 // Type implements the Expression interface.
 func (d *Weekday) Type() sql.Type { return types.Int32 }
+
+// IsNullable implements the Expression interface
+func (d *Weekday) IsNullable() bool {
+	return true
+}
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*Weekday) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -470,6 +490,11 @@ func (d *DayOfWeek) String() string { return fmt.Sprintf("DAYOFWEEK(%s)", d.Chil
 // Type implements the Expression interface.
 func (d *DayOfWeek) Type() sql.Type { return types.Int32 }
 
+// IsNullable implements the Expression interface
+func (d *DayOfWeek) IsNullable() bool {
+	return true
+}
+
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*DayOfWeek) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 5
@@ -515,6 +540,11 @@ func (d *DayOfYear) String() string { return fmt.Sprintf("DAYOFYEAR(%s)", d.Chil
 
 // Type implements the Expression interface.
 func (d *DayOfYear) Type() sql.Type { return types.Int32 }
+
+// IsNullable implements the Expression interface
+func (d *DayOfYear) IsNullable() bool {
+	return true
+}
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*DayOfYear) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -653,7 +683,7 @@ func (d *YearWeek) Children() []sql.Expression { return []sql.Expression{d.date,
 
 // IsNullable implements the Expression interface.
 func (d *YearWeek) IsNullable() bool {
-	return d.date.IsNullable()
+	return true
 }
 
 // WithChildren implements the Expression interface.
@@ -781,7 +811,7 @@ func (d *Week) Children() []sql.Expression { return []sql.Expression{d.date, d.m
 
 // IsNullable implements the Expression interface.
 func (d *Week) IsNullable() bool {
-	return d.date.IsNullable()
+	return true
 }
 
 // WithChildren implements the Expression interface.
@@ -1288,6 +1318,11 @@ func (d *Date) String() string { return fmt.Sprintf("DATE(%s)", d.Child) }
 // Type implements the Expression interface.
 func (d *Date) Type() sql.Type { return types.Date }
 
+// IsNullable implements the Expression interface
+func (d *Date) IsNullable() bool {
+	return true
+}
+
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*Date) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 5
@@ -1370,6 +1405,11 @@ func (dtf *UnaryDatetimeFunc) String() string {
 	return fmt.Sprintf("%s(%s)", strings.ToUpper(dtf.Name), dtf.Child.String())
 }
 
+// IsNullable implements the Expression interface
+func (dtf *UnaryDatetimeFunc) IsNullable() bool {
+	return true
+}
+
 // Type implements the Expression interface.
 func (dtf *UnaryDatetimeFunc) Type() sql.Type {
 	return dtf.SQLType
@@ -1399,6 +1439,11 @@ func (d *DayName) Description() string {
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*DayName) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return ctx.GetCollation(), 4
+}
+
+// IsNullable implements the Expression interface
+func (d *DayName) IsNullable() bool {
+	return true
 }
 
 func (d *DayName) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -1485,6 +1530,11 @@ func (d *MonthName) Description() string {
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*MonthName) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return ctx.GetCollation(), 4
+}
+
+// IsNullable implements the Expression interface
+func (d *MonthName) IsNullable() bool {
+	return true
 }
 
 func (d *MonthName) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {

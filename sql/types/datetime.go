@@ -66,8 +66,8 @@ var (
 	// datetimeMaxTime is the maximum representable time value, MYSQL: 9999-12-31 23:59:59.999999 (microseconds)
 	datetimeMaxTime = time.Date(9999, 12, 31, 23, 59, 59, 999999000, time.UTC)
 
-	// datetimeMinTime is the minimum representable time value, MYSQL: 0000-01-01 00:00:00.000000 (microseconds)
-	datetimeMinTime = time.Date(0000, 0, 0, 0, 0, 0, 0, time.UTC)
+	// datetimeMinTime is the minimum representable time value, MYSQL: 0000-00-00 00:00:00.000000 (microseconds)
+	datetimeMinTime = ZeroTime
 
 	DateOnlyLayouts = []string{
 		"2006-01-02",
