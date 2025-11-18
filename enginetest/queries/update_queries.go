@@ -1011,7 +1011,7 @@ var UpdateErrorScripts = []ScriptTest{
 	},
 }
 
-var ZeroTime = time.Date(0000, time.January, 1, 0, 0, 0, 0, time.UTC)
+var ZeroTime = time.Date(0000, 0, 0, 0, 0, 0, 0, time.UTC)
 var Jan1Noon = time.Date(2000, time.January, 1, 12, 0, 0, 0, time.UTC)
 var Dec15_1_30 = time.Date(2023, time.December, 15, 1, 30, 0, 0, time.UTC)
 var Oct2Midnight = time.Date(2020, time.October, 2, 0, 0, 0, 0, time.UTC)

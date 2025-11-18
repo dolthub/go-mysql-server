@@ -98,8 +98,9 @@ var (
 		"20060102150405",
 	}, DateOnlyLayouts...)
 
-	// zeroTime is 0000-01-01 00:00:00 UTC which is the closest Go can get to 0000-00-00 00:00:00
-	zeroTime = time.Unix(-62167219200, 0).UTC()
+	// zeroTime is -0001-11-30 00:00:00 UTC which is the closest Go can get to 0000-00-00 00:00:00 without conflicting
+	// with a valid timestamp in MySQL
+	ZeroTime = time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC)
 
 	// Date is a date with day, month and year.
 	Date = MustCreateDatetimeType(sqltypes.Date, 0)
@@ -222,8 +223,8 @@ func ConvertToTime(ctx context.Context, v interface{}, t datetimeType) (time.Tim
 		return time.Time{}, err
 	}
 
-	if res.Equal(zeroTime) {
-		return zeroTime, nil
+	if res.Equal(ZeroTime) {
+		return ZeroTime, nil
 	}
 
 	// Round the date to the precision of this type
@@ -275,13 +276,13 @@ func (t datetimeType) ConvertWithoutRangeCheck(ctx context.Context, v interface{
 	switch value := v.(type) {
 	case string:
 		if value == ZeroDateStr || value == ZeroTimestampDatetimeStr {
-			return zeroTime, nil
+			return ZeroTime, nil
 		}
 		// TODO: consider not using time.Parse if we want to match MySQL exactly ('2010-06-03 11:22.:.:.:.:' is a valid timestamp)
 		var parsed bool
 		res, parsed, err = parseDatetime(value)
 		if !parsed {
-			return zeroTime, ErrConvertingToTime.New(v)
+			return ZeroTime, ErrConvertingToTime.New(v)
 		}
 	case time.Time:
 		res = value.UTC()
@@ -289,84 +290,89 @@ func (t datetimeType) ConvertWithoutRangeCheck(ctx context.Context, v interface{
 	// is zero values, which are important when converting from postgres defaults.
 	case int:
 		if value == 0 {
-			return zeroTime, nil
+			return ZeroTime, nil
 		}
-		return zeroTime, ErrConvertingToTime.New(v)
+		return ZeroTime, ErrConvertingToTime.New(v)
 	case int8:
 		if value == 0 {
-			return zeroTime, nil
+			return ZeroTime, nil
 		}
-		return zeroTime, ErrConvertingToTime.New(v)
+		return ZeroTime, ErrConvertingToTime.New(v)
 	case int16:
 		if value == 0 {
-			return zeroTime, nil
+			return ZeroTime, nil
 		}
-		return zeroTime, ErrConvertingToTime.New(v)
+		return ZeroTime, ErrConvertingToTime.New(v)
 	case int32:
 		if value == 0 {
-			return zeroTime, nil
+			return ZeroTime, nil
 		}
-		return zeroTime, ErrConvertingToTime.New(v)
+		return ZeroTime, ErrConvertingToTime.New(v)
 	case int64:
 		if value == 0 {
-			return zeroTime, nil
+			return ZeroTime, nil
 		}
-		return zeroTime, ErrConvertingToTime.New(v)
+		return ZeroTime, ErrConvertingToTime.New(v)
 	case uint:
 		if value == 0 {
-			return zeroTime, nil
+			return ZeroTime, nil
 		}
-		return zeroTime, ErrConvertingToTime.New(v)
+		return ZeroTime, ErrConvertingToTime.New(v)
 	case uint8:
 		if value == 0 {
-			return zeroTime, nil
+			return ZeroTime, nil
 		}
-		return zeroTime, ErrConvertingToTime.New(v)
+		return ZeroTime, ErrConvertingToTime.New(v)
 	case uint16:
 		if value == 0 {
-			return zeroTime, nil
+			return ZeroTime, nil
 		}
-		return zeroTime, ErrConvertingToTime.New(v)
+		return ZeroTime, ErrConvertingToTime.New(v)
 	case uint32:
 		if value == 0 {
-			return zeroTime, nil
+			return ZeroTime, nil
 		}
-		return zeroTime, ErrConvertingToTime.New(v)
+		return ZeroTime, ErrConvertingToTime.New(v)
 	case uint64:
 		if value == 0 {
-			return zeroTime, nil
+			return ZeroTime, nil
 		}
-		return zeroTime, ErrConvertingToTime.New(v)
+		return ZeroTime, ErrConvertingToTime.New(v)
 	case float32:
 		if value == 0 {
-			return zeroTime, nil
+			return ZeroTime, nil
 		}
-		return zeroTime, ErrConvertingToTime.New(v)
+		return ZeroTime, ErrConvertingToTime.New(v)
 	case float64:
 		if value == 0 {
-			return zeroTime, nil
+			return ZeroTime, nil
 		}
-		return zeroTime, ErrConvertingToTime.New(v)
+		return ZeroTime, ErrConvertingToTime.New(v)
 	case decimal.Decimal:
 		if value.IsZero() {
-			return zeroTime, nil
+			return ZeroTime, nil
 		}
-		return zeroTime, ErrConvertingToTime.New(v)
+		return ZeroTime, ErrConvertingToTime.New(v)
 	case decimal.NullDecimal:
 		if value.Valid && value.Decimal.IsZero() {
-			return zeroTime, nil
+			return ZeroTime, nil
 		}
-		return zeroTime, ErrConvertingToTime.New(v)
+		return ZeroTime, ErrConvertingToTime.New(v)
 	case Timespan:
 		// when receiving TIME, MySQL fills in date with today
 		nowTimeStr := sql.Now().Format("2006-01-02")
 		nowTime, err := time.Parse("2006-01-02", nowTimeStr)
 		if err != nil {
-			return zeroTime, ErrConvertingToTime.New(v)
+			return ZeroTime, ErrConvertingToTime.New(v)
 		}
 		return nowTime.Add(value.AsTimeDuration()), nil
+	case bool:
+		if !value {
+			return ZeroTime, nil
+		}
+		return ZeroTime, ErrConvertingToTime.New(v)
 	default:
-		return zeroTime, sql.ErrConvertToSQL.New(value, t)
+		return ZeroTime, sql.ErrConvertToSQL.New(value, t)
 	}
 
 	if t.baseType == sqltypes.Date {
@@ -452,21 +458,21 @@ func (t datetimeType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 	switch t.baseType {
 	case sqltypes.Date:
 		typ = sqltypes.Date
-		if vt.Equal(zeroTime) {
+		if vt.Equal(ZeroTime) {
 			val = vt.AppendFormat(dest, ZeroDateStr)
 		} else {
 			val = vt.AppendFormat(dest, sql.DateLayout)
 		}
 	case sqltypes.Datetime:
 		typ = sqltypes.Datetime
-		if vt.Equal(zeroTime) {
+		if vt.Equal(ZeroTime) {
 			val = vt.AppendFormat(dest, ZeroTimestampDatetimeStr)
 		} else {
 			val = vt.AppendFormat(dest, sql.TimestampDatetimeLayout)
 		}
 	case sqltypes.Timestamp:
 		typ = sqltypes.Timestamp
-		if vt.Equal(zeroTime) {
+		if vt.Equal(ZeroTime) {
 			val = vt.AppendFormat(dest, ZeroTimestampDatetimeStr)
 		} else {
 			val = vt.AppendFormat(dest, sql.TimestampDatetimeLayout)
@@ -529,7 +535,7 @@ func (t datetimeType) ValueType() reflect.Type {
 }
 
 func (t datetimeType) Zero() interface{} {
-	return zeroTime
+	return ZeroTime
 }
 
 // CollationCoercibility implements sql.CollationCoercible interface.

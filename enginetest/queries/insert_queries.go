@@ -2349,6 +2349,26 @@ var InsertScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name:    "inserting zero date",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t(d date)",
+			"insert into t values ('0000-00-00')",
+			"create table t2(d datetime)",
+			"insert into t2 values ('0000-00-00')",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from t",
+				Expected: []sql.Row{{types.ZeroTime}},
+			},
+			{
+				Query:    "select * from t2",
+				Expected: []sql.Row{{types.ZeroTime}},
+			},
+		},
+	},
 }
 
 var InsertDuplicateKeyKeyless = []ScriptTest{

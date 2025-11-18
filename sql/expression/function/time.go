@@ -35,15 +35,7 @@ var ErrUnknownType = errors.NewKind("function '%s' encountered unknown type %T")
 
 var ErrTooHighPrecision = errors.NewKind("Too-big precision %d for '%s'. Maximum is %d.")
 
-func getDate(ctx *sql.Context,
-	u expression.UnaryExpression,
-	row sql.Row) (interface{}, error) {
-
-	val, err := u.Child.Eval(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
+func getDate(ctx *sql.Context, val interface{}) (interface{}, error) {
 	if val == nil {
 		return nil, nil
 	}
@@ -52,7 +44,6 @@ func getDate(ctx *sql.Context,
 	if err != nil {
 		ctx.Warn(1292, "Incorrect datetime value: '%s'", val)
 		return nil, nil
-		//date = types.DatetimeMaxPrecision.Zero().(time.Time)
 	}
 
 	return date, nil
@@ -62,13 +53,24 @@ func getDatePart(ctx *sql.Context,
 	u expression.UnaryExpression,
 	row sql.Row,
 	f func(interface{}) interface{}) (interface{}, error) {
-
-	date, err := getDate(ctx, u, row)
+	val, err := u.Child.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	return f(date), nil
+	date, err := getDate(ctx, val)
+	if err != nil {
+		return nil, err
+	}
+	if date == nil {
+		return nil, nil
+	}
+
+	part := f(date)
+	if part == nil {
+		ctx.Warn(1292, "Incorrect datetime value: '%s'", val)
+	}
+	return part, nil
 }
 
 // Year is a function that returns the year of a date.
@@ -151,16 +153,7 @@ func (q *Quarter) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 
 // Eval implements the Expression interface.
 func (q *Quarter) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	mon, err := getDatePart(ctx, q.UnaryExpression, row, month)
-	if err != nil {
-		return nil, err
-	}
-
-	if mon == nil {
-		return nil, nil
-	}
-
-	return (mon.(int32)-1)/3 + 1, nil
+	return getDatePart(ctx, q.UnaryExpression, row, quarter)
 }
 
 // WithChildren implements the Expression interface.
@@ -541,13 +534,13 @@ func (d *DayOfYear) WithChildren(children ...sql.Expression) (sql.Expression, er
 	return NewDayOfYear(children[0]), nil
 }
 
-func datePartFunc(fn func(time.Time) int) func(interface{}) interface{} {
+func datePartFunc(fn func(time.Time) interface{}) func(interface{}) interface{} {
 	return func(v interface{}) interface{} {
 		if v == nil {
 			return nil
 		}
 
-		return int32(fn(v.(time.Time)))
+		return fn(v.(time.Time))
 	}
 }
 
@@ -602,22 +595,33 @@ func (*YearWeek) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 
 // Eval implements the Expression interface.
 func (d *YearWeek) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	date, err := getDate(ctx, expression.UnaryExpression{Child: d.date}, row)
+	dateVal, err := d.date.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	date, err := getDate(ctx, dateVal)
 	if err != nil {
 		return nil, err
 	}
 	if date == nil {
 		return nil, nil
 	}
-	yyyy, ok := year(date).(int32)
+
+	dateTime, ok := date.(time.Time)
+	if !ok || dateTime.Equal(types.ZeroTime) {
+		ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(dateVal).Error())
+		return nil, nil
+	}
+
+	yyyy, ok := year(date).(int)
 	if !ok {
 		return nil, sql.ErrInvalidArgumentDetails.New("YEARWEEK", "invalid year")
 	}
-	mm, ok := month(date).(int32)
+	mm, ok := month(date).(int)
 	if !ok {
 		return nil, sql.ErrInvalidArgumentDetails.New("YEARWEEK", "invalid month")
 	}
-	dd, ok := day(date).(int32)
+	dd, ok := day(date).(int)
 	if !ok {
 		return nil, sql.ErrInvalidArgumentDetails.New("YEARWEEK", "invalid day")
 	}
@@ -634,9 +638,9 @@ func (d *YearWeek) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			}
 		}
 	}
-	yyyy, week := calcWeek(yyyy, mm, dd, weekMode(mode)|weekBehaviourYear)
+	yr, week := calcWeek(int32(yyyy), int32(mm), int32(dd), weekMode(mode)|weekBehaviourYear)
 
-	return (yyyy * 100) + week, nil
+	return (yr * 100) + week, nil
 }
 
 // Resolved implements the Expression interface.
@@ -710,20 +714,34 @@ func (*Week) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID,
 
 // Eval implements the Expression interface.
 func (d *Week) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	date, err := getDate(ctx, expression.UnaryExpression{Child: d.date}, row)
+	dateVal, err := d.date.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
 
-	yyyy, ok := year(date).(int32)
+	date, err := getDate(ctx, dateVal)
+	if err != nil {
+		return nil, err
+	}
+	if date == nil {
+		return nil, nil
+	}
+
+	dateTime, ok := date.(time.Time)
+	if !ok || dateTime.Equal(types.ZeroTime) {
+		ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(dateVal).Error())
+		return nil, nil
+	}
+
+	yyyy, ok := year(date).(int)
 	if !ok {
 		return nil, sql.ErrInvalidArgumentDetails.New("WEEK", "invalid year")
 	}
-	mm, ok := month(date).(int32)
+	mm, ok := month(date).(int)
 	if !ok {
 		return nil, sql.ErrInvalidArgumentDetails.New("WEEK", "invalid month")
 	}
-	dd, ok := day(date).(int32)
+	dd, ok := day(date).(int)
 	if !ok {
 		return nil, sql.ErrInvalidArgumentDetails.New("WEEK", "invalid day")
 	}
@@ -741,11 +759,12 @@ func (d *Week) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
-	yearForWeek, week := calcWeek(yyyy, mm, dd, weekMode(mode)|weekBehaviourYear)
+	yr := int32(yyyy)
+	yearForWeek, week := calcWeek(yr, int32(mm), int32(dd), weekMode(mode)|weekBehaviourYear)
 
-	if yearForWeek < yyyy {
+	if yearForWeek < yr {
 		week = 0
-	} else if yearForWeek > yyyy {
+	} else if yearForWeek > yr {
 		week = 53
 	}
 
@@ -871,15 +890,54 @@ func calcDaynr(yyyy, mm, dd int32) int32 {
 }
 
 var (
-	year      = datePartFunc((time.Time).Year)
-	month     = datePartFunc(func(t time.Time) int { return int(t.Month()) })
-	day       = datePartFunc((time.Time).Day)
-	weekday   = datePartFunc(func(t time.Time) int { return (int(t.Weekday()) + 6) % 7 })
-	hour      = datePartFunc((time.Time).Hour)
-	minute    = datePartFunc((time.Time).Minute)
-	second    = datePartFunc((time.Time).Second)
-	dayOfWeek = datePartFunc(func(t time.Time) int { return int(t.Weekday()) + 1 })
-	dayOfYear = datePartFunc((time.Time).YearDay)
+	year = datePartFunc(func(t time.Time) interface{} {
+		if t.Equal(types.ZeroTime) {
+			return 0
+		}
+		return t.Year()
+	})
+	month = datePartFunc(func(t time.Time) interface{} {
+		if t.Equal(types.ZeroTime) {
+			return 0
+		}
+		return int(t.Month())
+	})
+	day = datePartFunc(func(t time.Time) interface{} {
+		if t.Equal(types.ZeroTime) {
+			return 0
+		}
+		return t.Day()
+	})
+	weekday = datePartFunc(func(t time.Time) interface{} {
+		if t.Equal(types.ZeroTime) {
+			return nil
+		}
+		return (int(t.Weekday()) + 6) % 7
+	})
+	hour      = datePartFunc(func(t time.Time) interface{} { return t.Hour() })
+	minute    = datePartFunc(func(t time.Time) interface{} { return t.Minute() })
+	second    = datePartFunc(func(t time.Time) interface{} { return t.Second() })
+	dayOfWeek = datePartFunc(func(t time.Time) interface{} {
+		if t.Equal(types.ZeroTime) {
+			return nil
+		}
+		return int(t.Weekday()) + 1
+	})
+	dayOfYear = datePartFunc(func(t time.Time) interface{} {
+		if t.Equal(types.ZeroTime) {
+			return nil
+		}
+		return t.YearDay()
+	})
+	quarter = datePartFunc(func(t time.Time) interface{} {
+		if t.Equal(types.ZeroTime) {
+			return 0
+		}
+		return (int(t.Month())-1)/3 + 1
+	})
+	microsecond = datePartFunc(func(t time.Time) interface{} {
+		return uint64(t.Nanosecond()) / uint64(time.Microsecond)
+	})
 )
 
 const maxCurrTimestampPrecision = 6
@@ -1237,13 +1295,29 @@ func (*Date) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID,
 
 // Eval implements the Expression interface.
 func (d *Date) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return getDatePart(ctx, d.UnaryExpression, row, func(v interface{}) interface{} {
-		if v == nil {
-			return nil
-		}
+	dateVal, err := d.Child.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
 
-		return v.(time.Time).Format("2006-01-02")
-	})
+	date, err := getDate(ctx, dateVal)
+	if err != nil {
+		return nil, err
+	}
+	if date == nil {
+		return nil, nil
+	}
+
+	dateTime, ok := date.(time.Time)
+	if !ok {
+		ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(dateVal).Error())
+		return nil, nil
+	}
+	if dateTime.Equal(types.ZeroTime) {
+		return types.ZeroDateStr, nil
+	}
+
+	return dateTime.Format("2006-01-02"), nil
 }
 
 // WithChildren implements the Expression interface.
@@ -1284,7 +1358,11 @@ func (dtf *UnaryDatetimeFunc) EvalChild(ctx *sql.Context, row sql.Row) (interfac
 	}
 
 	ret, _, err := types.DatetimeMaxPrecision.Convert(ctx, val)
-	return ret, err
+	if err != nil {
+		ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(val).Error())
+		return nil, nil
+	}
+	return ret, nil
 }
 
 // String implements the fmt.Stringer interface.
@@ -1339,7 +1417,7 @@ func (d *DayName) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	t, ok := val.(time.Time)
-	if !ok {
+	if !ok || t.Equal(types.ZeroTime) {
 		ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(val).Error())
 		return nil, nil
 	}
@@ -1377,20 +1455,7 @@ func NewMicrosecond(arg sql.Expression) sql.Expression {
 }
 
 func (m *Microsecond) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	val, err := m.EvalChild(ctx, row)
-	if err != nil {
-		return nil, err
-	}
-
-	switch v := val.(type) {
-	case time.Time:
-		return uint64(v.Nanosecond()) / uint64(time.Microsecond), nil
-	case nil:
-		return nil, nil
-	default:
-		ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(val).Error())
-		return nil, nil
-	}
+	return getDatePart(ctx, m.UnaryExpression, row, microsecond)
 }
 
 func (m *Microsecond) WithChildren(children ...sql.Expression) (sql.Expression, error) {
@@ -1430,6 +1495,10 @@ func (d *MonthName) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	switch v := val.(type) {
 	case time.Time:
+		if v.Equal(types.ZeroTime) {
+			ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(val).Error())
+			return nil, nil
+		}
 		return v.Month().String(), nil
 	case nil:
 		return nil, nil
@@ -1522,6 +1591,10 @@ func (m *WeekOfYear) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	switch v := val.(type) {
 	case time.Time:
+		if v.Equal(types.ZeroTime) {
+			ctx.Warn(1292, "%s", types.ErrConvertingToTime.New(val).Error())
+			return nil, nil
+		}
 		_, wk := v.ISOWeek()
 		return wk, nil
 	case nil:
