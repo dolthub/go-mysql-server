@@ -108,6 +108,29 @@ type ServerAuthenticationTestAssertion struct {
 // UserPrivTests test the user and privilege systems. These tests always have the root account available, and the root
 // account is used with any queries in the SetUpScript.
 var UserPrivTests = []UserPrivilegeTest{
+	// https://github.com/dolthub/dolt/issues/10083
+	{
+		Name: "Selecting a view only needs SELECT grants",
+		SetUpScript: []string{
+			"CREATE TABLE perms_t (id INT PRIMARY KEY, val VARCHAR(10));",
+			"INSERT INTO perms_t VALUES (1, 'a'), (2, 'b');",
+			"CREATE VIEW perms_v AS SELECT id, val FROM perms_t ORDER BY id;",
+			"CREATE USER 'view_reader'@'localhost' IDENTIFIED BY 'pw';",
+			"GRANT SELECT ON perms_t TO 'view_reader'@'localhost';",
+			"GRANT SELECT ON perms_v TO 'view_reader'@'localhost';",
+		},
+		Assertions: []UserPrivilegeTestAssertion{
+			{
+				User:  "view_reader",
+				Host:  "localhost",
+				Query: "SELECT * FROM perms_v",
+				Expected: []sql.Row{
+					{int64(1), "a"},
+					{int64(2), "b"},
+				},
+			},
+		},
+	},
 	{
 		Name: "Create user limits",
 		Assertions: []UserPrivilegeTestAssertion{
