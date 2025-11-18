@@ -848,11 +848,11 @@ order by
 	cust_nation,
 	l_year;`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [shipping.supp_nation:1!null, shipping.cust_nation:2!null, shipping.l_year:3!null, sum(shipping.volume):0!null->revenue:0]\n" +
-			" └─ Sort(shipping.supp_nation:1!null ASC nullsFirst, shipping.cust_nation:2!null ASC nullsFirst, shipping.l_year:3!null ASC nullsFirst)\n" +
+			" ├─ columns: [shipping.supp_nation:1!null, shipping.cust_nation:2!null, shipping.l_year:3, sum(shipping.volume):0!null->revenue:0]\n" +
+			" └─ Sort(shipping.supp_nation:1!null ASC nullsFirst, shipping.cust_nation:2!null ASC nullsFirst, shipping.l_year:3 ASC nullsFirst)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ select: SUM(shipping.volume:3!null), shipping.supp_nation:0!null, shipping.cust_nation:1!null, shipping.l_year:2!null\n" +
-			"         ├─ group: shipping.supp_nation:0!null, shipping.cust_nation:1!null, shipping.l_year:2!null\n" +
+			"         ├─ select: SUM(shipping.volume:3!null), shipping.supp_nation:0!null, shipping.cust_nation:1!null, shipping.l_year:2\n" +
+			"         ├─ group: shipping.supp_nation:0!null, shipping.cust_nation:1!null, shipping.l_year:2\n" +
 			"         └─ SubqueryAlias\n" +
 			"             ├─ name: shipping\n" +
 			"             ├─ outerVisibility: false\n" +
@@ -1084,14 +1084,14 @@ group by
 order by
 	o_year;`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [all_nations.o_year:2!null, (sum(case  when (all_nations.nation = 'brazil') then all_nations.volume else 0 end):0!null / sum(all_nations.volume):1!null)->mkt_share:0]\n" +
-			" └─ Sort(all_nations.o_year:2!null ASC nullsFirst)\n" +
+			" ├─ columns: [all_nations.o_year:2, (sum(case  when (all_nations.nation = 'brazil') then all_nations.volume else 0 end):0!null / sum(all_nations.volume):1!null)->mkt_share:0]\n" +
+			" └─ Sort(all_nations.o_year:2 ASC nullsFirst)\n" +
 			"     └─ GroupBy\n" +
 			"         ├─ select: SUM(CASE  WHEN Eq\n" +
 			"         │   ├─ all_nations.nation:2!null\n" +
 			"         │   └─ BRAZIL (longtext)\n" +
-			"         │   THEN all_nations.volume:1!null ELSE 0 (tinyint) END), SUM(all_nations.volume:1!null), all_nations.o_year:0!null\n" +
-			"         ├─ group: all_nations.o_year:0!null\n" +
+			"         │   THEN all_nations.volume:1!null ELSE 0 (tinyint) END), SUM(all_nations.volume:1!null), all_nations.o_year:0\n" +
+			"         ├─ group: all_nations.o_year:0\n" +
 			"         └─ SubqueryAlias\n" +
 			"             ├─ name: all_nations\n" +
 			"             ├─ outerVisibility: false\n" +
@@ -1345,11 +1345,11 @@ order by
 	nation,
 	o_year desc;`,
 		ExpectedPlan: "Project\n" +
-			" ├─ columns: [profit.nation:1!null, profit.o_year:2!null, sum(profit.amount):0!null->sum_profit:0]\n" +
-			" └─ Sort(profit.nation:1!null ASC nullsFirst, profit.o_year:2!null DESC nullsFirst)\n" +
+			" ├─ columns: [profit.nation:1!null, profit.o_year:2, sum(profit.amount):0!null->sum_profit:0]\n" +
+			" └─ Sort(profit.nation:1!null ASC nullsFirst, profit.o_year:2 DESC nullsFirst)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ select: SUM(profit.amount:2!null), profit.nation:0!null, profit.o_year:1!null\n" +
-			"         ├─ group: profit.nation:0!null, profit.o_year:1!null\n" +
+			"         ├─ select: SUM(profit.amount:2!null), profit.nation:0!null, profit.o_year:1\n" +
+			"         ├─ group: profit.nation:0!null, profit.o_year:1\n" +
 			"         └─ SubqueryAlias\n" +
 			"             ├─ name: profit\n" +
 			"             ├─ outerVisibility: false\n" +
