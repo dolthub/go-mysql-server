@@ -926,14 +926,7 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 				}
 			}
 
-			// timer has gone off
-			if !timer.Reset(waitTime) {
-				if h.readTimeout != 0 {
-					// Cancel and return so Vitess can call the CloseConnection callback
-					ctx.GetLogger().Warn("connection timeout")
-					return ErrRowTimeout.New()
-				}
-			}
+			timer.Reset(waitTime)
 		}
 	})
 
