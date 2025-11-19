@@ -1086,7 +1086,7 @@ type iScanLeaf struct {
 
 func (l *iScanLeaf) normString() string {
 	if l.underlying != "" {
-		return fmt.Sprintf("%s.%s", strings.ToLower(l.underlying), strings.ToLower(l.gf.Name()))
+		return strings.ToLower(l.underlying) + "." + strings.ToLower(l.gf.Name())
 	}
 	return strings.ToLower(l.gf.String())
 }

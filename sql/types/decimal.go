@@ -27,6 +27,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/encodings"
 	"github.com/dolthub/go-mysql-server/sql/values"
 )
 
@@ -342,7 +343,7 @@ func (t DecimalType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
-	val := AppendAndSliceString(dest, t.DecimalValueStringFixed(value.Decimal))
+	val := encodings.StringToBytes(t.DecimalValueStringFixed(value.Decimal))
 	return sqltypes.MakeTrusted(sqltypes.Decimal, val), nil
 }
 
@@ -351,7 +352,7 @@ func (t DecimalType_) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqlt
 		return sqltypes.NULL, nil
 	}
 	d := values.ReadDecimal(v.Val)
-	return sqltypes.MakeTrusted(sqltypes.Decimal, []byte(t.DecimalValueStringFixed(d))), nil
+	return sqltypes.MakeTrusted(sqltypes.Decimal, encodings.StringToBytes(t.DecimalValueStringFixed(d))), nil
 }
 
 // String implements Type interface.
