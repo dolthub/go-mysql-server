@@ -285,7 +285,7 @@ func (t SetType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes.
 	}
 
 	// TODO: write append style encoder
-	res, ok := resultCharset.Encoder().Encode([]byte(value))
+	res, ok := resultCharset.Encoder().Encode(encodings.StringToBytes(value))
 	if !ok {
 		if len(value) > 50 {
 			value = value[:50]

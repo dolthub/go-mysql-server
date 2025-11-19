@@ -351,7 +351,7 @@ func (t DecimalType_) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqlt
 		return sqltypes.NULL, nil
 	}
 	d := values.ReadDecimal(v.Val)
-	return sqltypes.MakeTrusted(sqltypes.Decimal, []byte(t.DecimalValueStringFixed(d))), nil
+	return sqltypes.MakeTrusted(sqltypes.Decimal, encodings.StringToBytes(t.DecimalValueStringFixed(d))), nil
 }
 
 // String implements Type interface.
