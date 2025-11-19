@@ -483,7 +483,9 @@ func (h *Handler) doQuery(
 	var buf *sql.ByteBuffer
 	var processedAtLeastOneBatch bool
 	defer func() {
-		sql.ByteBufPool.Put(buf)
+		if buf != nil {
+			sql.ByteBufPool.Put(buf)
+		}
 	}()
 
 	// zero/single return schema use spooling shortcut
@@ -745,7 +747,7 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 						return context.Cause(ctx)
 					case resChan <- bufferedResult{res: res, buf: buf}:
 						res = nil
-						buf = nil
+						buf = nil // TODO: not sure if this is necessary to prevent double Put()
 					}
 				}
 			}
