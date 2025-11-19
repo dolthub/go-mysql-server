@@ -499,9 +499,6 @@ func (h *Handler) doQuery(
 		r, processedAtLeastOneBatch, err = h.resultForValueRowIter(sqlCtx, c, schema, vr, resultFields, buf, callback, more)
 	} else {
 		r, processedAtLeastOneBatch, err = h.resultForDefaultIter(sqlCtx, c, schema, rowIter, callback, resultFields, more, buf)
-		if err != nil {
-			return remainder, err
-		}
 	}
 	if err != nil {
 		return remainder, err
@@ -668,8 +665,6 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 
 	wg := sync.WaitGroup{}
 	wg.Add(3)
-
-	iter, projs := GetDeferredProjections(iter)
 
 	// Read rows off the row iterator and send them to the row channel.
 	var rowChan = make(chan sql.Row, 512)
