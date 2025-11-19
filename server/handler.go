@@ -660,7 +660,7 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 	resetCallback := callback
 	if c.StatusFlags&uint16(mysql.ServerCursorExists) != 0 {
 		resetCallback = func(r *sqltypes.Result, more bool) error {
-			buf.Reset()
+			defer buf.Reset()
 			return callback(r, more)
 		}
 	}
@@ -685,8 +685,8 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 				if iErr == io.EOF {
 					return nil
 				}
-				if err != nil {
-					return err
+				if iErr != nil {
+					return iErr
 				}
 				select {
 				case rowChan <- row:
@@ -756,14 +756,7 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 				}
 			}
 
-			// timer has gone off
-			if !timer.Reset(waitTime) {
-				if h.readTimeout != 0 {
-					// Cancel and return so Vitess can call the CloseConnection callback
-					ctx.GetLogger().Tracef("connection timeout")
-					return ErrRowTimeout.New()
-				}
-			}
+			timer.Reset(waitTime)
 		}
 	})
 
@@ -847,7 +840,7 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 	resetCallback := callback
 	if c.StatusFlags&uint16(mysql.ServerCursorExists) != 0 {
 		resetCallback = func(r *sqltypes.Result, more bool) error {
-			buf.Reset()
+			defer buf.Reset()
 			return callback(r, more)
 		}
 	}
@@ -933,14 +926,7 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 				}
 			}
 
-			// timer has gone off
-			if !timer.Reset(waitTime) {
-				if h.readTimeout != 0 {
-					// Cancel and return so Vitess can call the CloseConnection callback
-					ctx.GetLogger().Tracef("connection timeout")
-					return ErrRowTimeout.New()
-				}
-			}
+			timer.Reset(waitTime)
 		}
 	})
 
