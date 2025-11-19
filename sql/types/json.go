@@ -17,6 +17,7 @@ package types
 import (
 	"context"
 	"encoding/json"
+	"github.com/dolthub/go-mysql-server/sql/encodings"
 	"reflect"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -166,7 +167,7 @@ func (t JsonType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Va
 		if err != nil {
 			return sqltypes.NULL, err
 		}
-		val = AppendAndSliceString(dest, str)
+		val = encodings.StringToBytes(str)
 	}
 
 	return sqltypes.MakeTrusted(sqltypes.TypeJSON, val), nil

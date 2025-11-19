@@ -17,14 +17,14 @@ package types
 import (
 	"context"
 	"fmt"
-	"math/big"
-	"reflect"
-	"strings"
-
+	"github.com/dolthub/go-mysql-server/sql/encodings"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
 	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
+	"math/big"
+	"reflect"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/values"
@@ -342,7 +342,7 @@ func (t DecimalType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
-	val := AppendAndSliceString(dest, t.DecimalValueStringFixed(value.Decimal))
+	val := encodings.StringToBytes(t.DecimalValueStringFixed(value.Decimal))
 	return sqltypes.MakeTrusted(sqltypes.Decimal, val), nil
 }
 
