@@ -483,8 +483,8 @@ func (h *Handler) doQuery(
 	var processedAtLeastOneBatch bool
 
 	buf := sql.ByteBufPool.Get().(*sql.ByteBuffer)
+	buf.Reset()
 	defer func() {
-		buf.Reset()
 		sql.ByteBufPool.Put(buf)
 	}()
 
@@ -1196,6 +1196,10 @@ func toSqlHelper(ctx *sql.Context, typ sql.Type, buf *sql.ByteBuffer, val interf
 	if buf == nil {
 		return typ.SQL(ctx, nil, val)
 	}
+	// TODO: possible to predict max amount of space needed in backing array.
+	//  Only number types are written to byte buffer due to strconv.Append...
+	//  String types already create a new []byte, so it's better to not copy to backing array.
+
 	ret, err := typ.SQL(ctx, buf.Get(), val)
 	buf.Grow(ret.Len()) // TODO: shouldn't we check capacity beforehand?
 	return ret, err

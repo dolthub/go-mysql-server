@@ -41,11 +41,10 @@ func NewByteBuffer(initCap int) *ByteBuffer {
 // they expect to be protected.
 func (b *ByteBuffer) Grow(n int) {
 	newI := b.i
-	if b.i+n <= len(b.buf) {
+	if b.i+n <= cap(b.buf) {
 		// Increment |b.i| if no alloc
 		newI += n
-	}
-	if b.i+n >= len(b.buf) {
+	} else if b.i+n >= cap(b.buf) {
 		// No more space, double.
 		// An external allocation doubled the cap using the size of
 		// the override object, which if used could lead to overall
@@ -59,6 +58,7 @@ func (b *ByteBuffer) Grow(n int) {
 // here because the runtime only doubles based on slice
 // length.
 func (b *ByteBuffer) Double() {
+	// TODO: This wastes memory. The first half of b.buf won't be referenced by anything.
 	buf := make([]byte, len(b.buf)*2)
 	copy(buf, b.buf)
 	b.buf = buf
