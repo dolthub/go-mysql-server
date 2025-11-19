@@ -494,7 +494,7 @@ func (h *Handler) doQuery(
 	} else if analyzer.FlagIsSet(qFlags, sql.QFlagMax1Row) {
 		r, err = resultForMax1RowIter(sqlCtx, schema, rowIter, resultFields, buf)
 	} else if vr, ok := rowIter.(sql.ValueRowIter); ok && vr.IsValueRowIter(sqlCtx) {
-		r, processedAtLeastOneBatch, err = h.resultForValueRowIter(sqlCtx, c, schema, vr, resultFields, buf, callback, more)
+		r, buf, processedAtLeastOneBatch, err = h.resultForValueRowIter(sqlCtx, c, schema, vr, resultFields, callback, more)
 	} else {
 		r, buf, processedAtLeastOneBatch, err = h.resultForDefaultIter(sqlCtx, c, schema, rowIter, callback, resultFields, more)
 	}
@@ -768,11 +768,11 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 				if !ok {
 					return nil
 				}
-				processedAtLeastOneBatch = true
 				err = callback(bufRes.res, more)
 				if err != nil {
 					return err
 				}
+				processedAtLeastOneBatch = true
 				// A server-side cursor allows the caller to fetch results cached on the server-side,
 				// so if a cursor exists, we can't release the buffer memory yet.
 				// TODO: In the case of a cursor, we are leaking memory
@@ -802,7 +802,7 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 	return res, buf, processedAtLeastOneBatch, nil
 }
 
-func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema sql.Schema, iter sql.ValueRowIter, resultFields []*querypb.Field, buf *sql.ByteBuffer, callback func(*sqltypes.Result, bool) error, more bool) (*sqltypes.Result, bool, error) {
+func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema sql.Schema, iter sql.ValueRowIter, resultFields []*querypb.Field, callback func(*sqltypes.Result, bool) error, more bool) (*sqltypes.Result, *sql.ByteBuffer, bool, error) {
 	defer trace.StartRegion(ctx, "Handler.resultForValueRowIter").End()
 
 	eg, ctx := ctx.NewErrgroup()
@@ -832,17 +832,6 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 	}
 	timer := time.NewTimer(waitTime)
 	defer timer.Stop()
-
-	// Wrap the callback to include a BytesBuffer.Reset() for non-cursor requests, to
-	// clean out rows that have already been spooled.
-	// A server-side cursor allows the caller to fetch results cached on the server-side,
-	// so if a cursor exists, we can't release the buffer memory yet.
-	if c.StatusFlags&uint16(mysql.ServerCursorExists) != 0 {
-		callback = func(r *sqltypes.Result, more bool) error {
-			defer buf.Reset()
-			return callback(r, more)
-		}
-	}
 
 	wg := sync.WaitGroup{}
 	wg.Add(3)
@@ -875,8 +864,13 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 	})
 
 	// Drain rows from rowChan, convert to wire format, and send to resChan
-	var resChan = make(chan *sqltypes.Result, 4)
+	type bufferedResult struct {
+		res *sqltypes.Result
+		buf *sql.ByteBuffer
+	}
+	var resChan = make(chan bufferedResult, 4)
 	var res *sqltypes.Result
+	var buf *sql.ByteBuffer
 	eg.Go(func() (err error) {
 		defer pan2err(&err)
 		defer close(resChan)
@@ -888,6 +882,8 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 					Fields: resultFields,
 					Rows:   make([][]sqltypes.Value, rowsBatch),
 				}
+				buf = sql.ByteBufPool.Get().(*sql.ByteBuffer)
+				buf.Reset()
 			}
 
 			select {
@@ -919,8 +915,9 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 					select {
 					case <-ctx.Done():
 						return context.Cause(ctx)
-					case resChan <- res:
+					case resChan <- bufferedResult{res: res, buf: buf}:
 						res = nil
+						buf = nil
 					}
 				}
 			}
@@ -939,14 +936,20 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 			select {
 			case <-ctx.Done():
 				return context.Cause(ctx)
-			case r, ok := <-resChan:
+			case bufRes, ok := <-resChan:
 				if !ok {
 					return nil
 				}
-				processedAtLeastOneBatch = true
-				err = resetCallback(r, more)
+				err = callback(bufRes.res, more)
 				if err != nil {
 					return err
+				}
+				processedAtLeastOneBatch = true
+				// A server-side cursor allows the caller to fetch results cached on the server-side,
+				// so if a cursor exists, we can't release the buffer memory yet.
+				// TODO: In the case of a cursor, we are leaking memory
+				if c.StatusFlags&uint16(mysql.ServerCursorExists) != 0 {
+					sql.ByteBufPool.Put(bufRes.buf)
 				}
 			}
 		}
@@ -966,13 +969,14 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 		if verboseErrorLogging {
 			fmt.Printf("Err: %+v", err)
 		}
-		return nil, false, err
+		return nil, nil, false, err
 	}
 
 	if res != nil {
 		res.Rows = res.Rows[:res.RowsAffected]
 	}
-	return res, processedAtLeastOneBatch, err
+	}
+	return res, buf, processedAtLeastOneBatch, err
 }
 
 // See https://dev.mysql.com/doc/internals/en/status-flags.html
