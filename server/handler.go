@@ -654,9 +654,8 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 	// clean out rows that have already been spooled.
 	// A server-side cursor allows the caller to fetch results cached on the server-side,
 	// so if a cursor exists, we can't release the buffer memory yet.
-	resetCallback := callback
 	if c.StatusFlags&uint16(mysql.ServerCursorExists) != 0 {
-		resetCallback = func(r *sqltypes.Result, more bool) error {
+		callback = func(r *sqltypes.Result, more bool) error {
 			defer buf.Reset()
 			return callback(r, more)
 		}
@@ -717,7 +716,7 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 			case <-timer.C:
 				if h.readTimeout != 0 {
 					// Cancel and return so Vitess can call the CloseConnection callback
-					ctx.GetLogger().Tracef("connection timeout")
+					ctx.GetLogger().Warn("connection timeout")
 					return ErrRowTimeout.New()
 				}
 
@@ -757,7 +756,7 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 		}
 	})
 
-	// Drain sqltypes.Result from resChan and call callback (send to client and reset buffer)
+	// Drain sqltypes.Result from resChan and call callback (send to client and potentially reset buffer)
 	var processedAtLeastOneBatch bool
 	eg.Go(func() (err error) {
 		defer pan2err(&err)
@@ -772,7 +771,7 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 					return nil
 				}
 				processedAtLeastOneBatch = true
-				err = resetCallback(r, more)
+				err = callback(r, more)
 				if err != nil {
 					return err
 				}
@@ -834,9 +833,8 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 	// clean out rows that have already been spooled.
 	// A server-side cursor allows the caller to fetch results cached on the server-side,
 	// so if a cursor exists, we can't release the buffer memory yet.
-	resetCallback := callback
 	if c.StatusFlags&uint16(mysql.ServerCursorExists) != 0 {
-		resetCallback = func(r *sqltypes.Result, more bool) error {
+		callback = func(r *sqltypes.Result, more bool) error {
 			defer buf.Reset()
 			return callback(r, more)
 		}
@@ -895,7 +893,7 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 			case <-timer.C:
 				if h.readTimeout != 0 {
 					// Cancel and return so Vitess can call the CloseConnection callback
-					ctx.GetLogger().Tracef("connection timeout")
+					ctx.GetLogger().Warn("connection timeout")
 					return ErrRowTimeout.New()
 				}
 
@@ -942,7 +940,7 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 					return nil
 				}
 				processedAtLeastOneBatch = true
-				err = resetCallback(r, more)
+				err = callback(r, more)
 				if err != nil {
 					return err
 				}
