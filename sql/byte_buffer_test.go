@@ -15,6 +15,8 @@
 package sql
 
 import (
+	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -69,4 +71,25 @@ func TestGrowByteBuffer(t *testing.T) {
 	b.Reset()
 	require.Equal(t, 40, len(b.buf))
 	require.Equal(t, 0, b.i)
+}
+
+func TestByteBufferDoubling(t *testing.T) {
+	bb := NewByteBuffer(5)
+	fmt.Printf("bb.buf: %v, cap: %d\n", bb.buf, cap(bb.buf))
+	fmt.Printf("bb.i:   %v\n", bb.i)
+
+	i0 := bb.Get()
+	i0 = strconv.AppendInt(i0, 12345, 10)
+	bb.Grow(len(i0))
+	fmt.Printf("i0:     %v, cap: %d\n", i0, cap(i0))
+	fmt.Printf("bb.buf: %v, cap: %d\n", bb.buf, cap(bb.buf))
+	fmt.Printf("bb.i:   %v\n", bb.i)
+
+	i5 := bb.Get()
+	i5 = strconv.AppendInt(i5, 678901, 10)
+	bb.Grow(len(i5))
+	fmt.Printf("i0:     %v, cap: %d\n", i0, cap(i0))
+	fmt.Printf("i5:     %v, cap: %d\n", i5, cap(i5))
+	fmt.Printf("bb.buf: %v, cap: %d\n", bb.buf, cap(bb.buf))
+	fmt.Printf("bb.i:   %v\n", bb.i)
 }
