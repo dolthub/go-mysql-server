@@ -59,7 +59,7 @@ func (b *ByteBuffer) Grow(n int) {
 // length.
 func (b *ByteBuffer) Double() {
 	// TODO: This wastes memory. The first half of b.buf won't be referenced by anything.
-	buf := make([]byte, len(b.buf)*2)
+	buf := make([]byte, cap(b.buf)*2)
 	copy(buf, b.buf)
 	b.buf = buf
 }
