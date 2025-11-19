@@ -650,17 +650,6 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 	timer := time.NewTimer(waitTime)
 	defer timer.Stop()
 
-	// Wait for signal on the timer.C channel, and error accordingly
-	eg.Go(func() (err error) {
-		<-timer.C
-		if h.readTimeout != 0 {
-			// Cancel and return so Vitess can call the CloseConnection callback
-			ctx.GetLogger().Tracef("connection timeout")
-			return ErrRowTimeout.New()
-		}
-		return nil
-	})
-
 	// Wrap the callback to include a BytesBuffer.Reset() for non-cursor requests, to
 	// clean out rows that have already been spooled.
 	// A server-side cursor allows the caller to fetch results cached on the server-side,
@@ -676,7 +665,6 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 	wg := sync.WaitGroup{}
 	wg.Add(3)
 
-	var processedAtLeastOneBatch bool
 	iter, projs := GetDeferredProjections(iter)
 
 	// Read rows off the row iterator and send them to the row channel.
@@ -706,8 +694,7 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 		}
 	})
 
-	// TODO: remember to deal with last result differently
-	// Read rows off the row channel and convert to wire format.
+	// Drain rows from rowChan, convert to wire format, and send to resChan
 	var resChan = make(chan *sqltypes.Result, 4)
 	var res *sqltypes.Result
 	eg.Go(func() (err error) {
@@ -749,26 +736,29 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 				res.Rows = append(res.Rows, outRow)
 				res.RowsAffected++
 
-				// timer has fired, so send on the timer channel
-				if !timer.Stop() {
-					<-timer.C
-				}
-
 				if res.RowsAffected == rowsBatch {
 					select {
-					case resChan <- res:
-						res = nil
 					case <-ctx.Done():
 						return context.Cause(ctx)
+					case resChan <- res:
+						res = nil
 					}
 				}
 			}
 
-			timer.Reset(waitTime)
+			// timer has gone off
+			if !timer.Reset(waitTime) {
+				if h.readTimeout != 0 {
+					// Cancel and return so Vitess can call the CloseConnection callback
+					ctx.GetLogger().Tracef("connection timeout")
+					return ErrRowTimeout.New()
+				}
+			}
 		}
 	})
 
-	// Read sqltypes.Result from resChan and send to client
+	// Drain sqltypes.Result from resChan and call callback (send to client and reset buffer)
+	var processedAtLeastOneBatch bool
 	eg.Go(func() (err error) {
 		defer pan2err(&err)
 		defer cancelF()
@@ -777,7 +767,6 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 			select {
 			case <-ctx.Done():
 				return context.Cause(ctx)
-
 			case r, ok := <-resChan:
 				if !ok {
 					return nil
@@ -841,22 +830,22 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 	timer := time.NewTimer(waitTime)
 	defer timer.Stop()
 
-	wg := sync.WaitGroup{}
-	wg.Add(2)
-
 	// Wrap the callback to include a BytesBuffer.Reset() for non-cursor requests, to
 	// clean out rows that have already been spooled.
-	resetCallback := func(r *sqltypes.Result, more bool) error {
-		// A server-side cursor allows the caller to fetch results cached on the server-side,
-		// so if a cursor exists, we can't release the buffer memory yet.
-		if c.StatusFlags&uint16(mysql.ServerCursorExists) != 0 {
-			defer buf.Reset()
+	// A server-side cursor allows the caller to fetch results cached on the server-side,
+	// so if a cursor exists, we can't release the buffer memory yet.
+	resetCallback := callback
+	if c.StatusFlags&uint16(mysql.ServerCursorExists) != 0 {
+		resetCallback = func(r *sqltypes.Result, more bool) error {
+			buf.Reset()
+			return callback(r, more)
 		}
-		return callback(r, more)
 	}
 
-	// TODO: send results instead of rows?
-	// Read rows from iter and send them off
+	wg := sync.WaitGroup{}
+	wg.Add(3)
+
+	// Drain rows from iter and send to rowsChan
 	var rowChan = make(chan sql.ValueRow, 512)
 	eg.Go(func() (err error) {
 		defer pan2err(&err)
@@ -867,12 +856,12 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 			case <-ctx.Done():
 				return context.Cause(ctx)
 			default:
-				row, err := iter.NextValueRow(ctx)
-				if err == io.EOF {
+				row, iErr := iter.NextValueRow(ctx)
+				if iErr == io.EOF {
 					return nil
 				}
-				if err != nil {
-					return err
+				if iErr != nil {
+					return iErr
 				}
 				select {
 				case rowChan <- row:
@@ -883,53 +872,81 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 		}
 	})
 
+	// Drain rows from rowChan, convert to wire format, and send to resChan
+	var resChan = make(chan *sqltypes.Result, 4)
 	var res *sqltypes.Result
+	eg.Go(func() (err error) {
+		defer pan2err(&err)
+		defer close(resChan)
+		defer wg.Done()
+
+		for {
+			if res == nil {
+				res = &sqltypes.Result{
+					Fields: resultFields,
+					Rows:   make([][]sqltypes.Value, rowsBatch),
+				}
+			}
+
+			select {
+			case <-ctx.Done():
+				return context.Cause(ctx)
+
+			case row, ok := <-rowChan:
+				if !ok {
+					return nil
+				}
+
+				outRow, sqlErr := RowValueToSQLValues(ctx, schema, row, buf)
+				if sqlErr != nil {
+					return sqlErr
+				}
+
+				ctx.GetLogger().Tracef("spooling result row %s", outRow)
+				res.Rows[res.RowsAffected] = outRow
+				res.RowsAffected++
+
+				if res.RowsAffected == rowsBatch {
+					select {
+					case <-ctx.Done():
+						return context.Cause(ctx)
+					case resChan <- res:
+						res = nil
+					}
+				}
+			}
+
+			// timer has gone off
+			if !timer.Reset(waitTime) {
+				if h.readTimeout != 0 {
+					// Cancel and return so Vitess can call the CloseConnection callback
+					ctx.GetLogger().Tracef("connection timeout")
+					return ErrRowTimeout.New()
+				}
+			}
+		}
+	})
+
+	// Drain sqltypes.Result from resChan and call callback (send to client and reset buffer)
 	var processedAtLeastOneBatch bool
 	eg.Go(func() (err error) {
 		defer pan2err(&err)
 		defer cancelF()
 		defer wg.Done()
 		for {
-			if res == nil {
-				res = &sqltypes.Result{
-					Fields: resultFields,
-					Rows:   make([][]sqltypes.Value, 0, rowsBatch),
-				}
-			}
-			if res.RowsAffected == rowsBatch {
-				if err := resetCallback(res, more); err != nil {
-					return err
-				}
-				res = nil
-				processedAtLeastOneBatch = true
-				continue
-			}
-
 			select {
 			case <-ctx.Done():
 				return context.Cause(ctx)
-			case <-timer.C:
-				if h.readTimeout != 0 {
-					// Cancel and return so Vitess can call the CloseConnection callback
-					ctx.GetLogger().Tracef("connection timeout")
-					return ErrRowTimeout.New()
-				}
-			case row, ok := <-rowChan:
+			case r, ok := <-resChan:
 				if !ok {
 					return nil
 				}
-				resRow, err := RowValueToSQLValues(ctx, schema, row, buf)
+				processedAtLeastOneBatch = true
+				err = resetCallback(r, more)
 				if err != nil {
 					return err
 				}
-				ctx.GetLogger().Tracef("spooling result row %s", resRow)
-				res.Rows = append(res.Rows, resRow)
-				res.RowsAffected++
-				if !timer.Stop() {
-					<-timer.C
-				}
 			}
-			timer.Reset(waitTime)
 		}
 	})
 
@@ -950,6 +967,7 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 		return nil, false, err
 	}
 
+	res.Rows = res.Rows[:res.RowsAffected]
 	return res, processedAtLeastOneBatch, nil
 }
 
