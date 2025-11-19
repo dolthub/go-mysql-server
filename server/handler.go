@@ -975,7 +975,6 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 	if res != nil {
 		res.Rows = res.Rows[:res.RowsAffected]
 	}
-	}
 	return res, buf, processedAtLeastOneBatch, err
 }
 
