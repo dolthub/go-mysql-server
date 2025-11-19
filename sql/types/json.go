@@ -17,7 +17,6 @@ package types
 import (
 	"context"
 	"encoding/json"
-	"github.com/dolthub/go-mysql-server/sql/encodings"
 	"reflect"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -25,6 +24,7 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/encodings"
 )
 
 var (
