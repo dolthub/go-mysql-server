@@ -499,6 +499,9 @@ func (h *Handler) doQuery(
 		r, processedAtLeastOneBatch, err = h.resultForValueRowIter(sqlCtx, c, schema, vr, resultFields, buf, callback, more)
 	} else {
 		r, processedAtLeastOneBatch, err = h.resultForDefaultIter(sqlCtx, c, schema, rowIter, callback, resultFields, more, buf)
+		if err != nil {
+			return remainder, err
+		}
 	}
 	if err != nil {
 		return remainder, err
@@ -714,6 +717,13 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 			case <-ctx.Done():
 				return context.Cause(ctx)
 
+			case <-timer.C:
+				if h.readTimeout != 0 {
+					// Cancel and return so Vitess can call the CloseConnection callback
+					ctx.GetLogger().Tracef("connection timeout")
+					return ErrRowTimeout.New()
+				}
+
 			case row, ok := <-rowChan:
 				if !ok {
 					return nil
@@ -892,6 +902,13 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 			case <-ctx.Done():
 				return context.Cause(ctx)
 
+			case <-timer.C:
+				if h.readTimeout != 0 {
+					// Cancel and return so Vitess can call the CloseConnection callback
+					ctx.GetLogger().Tracef("connection timeout")
+					return ErrRowTimeout.New()
+				}
+
 			case row, ok := <-rowChan:
 				if !ok {
 					return nil
@@ -968,7 +985,7 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 	}
 
 	res.Rows = res.Rows[:res.RowsAffected]
-	return res, processedAtLeastOneBatch, nil
+	return res, processedAtLeastOneBatch, err
 }
 
 // See https://dev.mysql.com/doc/internals/en/status-flags.html
