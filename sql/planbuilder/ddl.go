@@ -1726,11 +1726,12 @@ func (b *Builder) resolveColumnDefaultExpression(inScope *scope, columnDef *sql.
 
 	// Empty string is a special case, it means the default value is the empty string
 	// TODO: why isn't this serialized as ''
-	if def.String() == "" {
+	defStr := def.String()
+	if defStr == "" {
 		return b.convertDefaultExpression(inScope, &ast.SQLVal{Val: []byte{}, Type: ast.StrVal}, columnDef.Type, columnDef.Nullable)
 	}
 
-	parsed, err := b.parser.ParseSimple(fmt.Sprintf("SELECT %s", def))
+	parsed, err := b.parser.ParseSimple("SELECT " + defStr)
 	if err != nil {
 		err := sql.ErrInvalidColumnDefaultValue.Wrap(err, def)
 		b.handleErr(err)
