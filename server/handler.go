@@ -480,10 +480,8 @@ func (h *Handler) doQuery(
 	// create result before goroutines to avoid |ctx| racing
 	resultFields := schemaToFields(sqlCtx, schema)
 	var r *sqltypes.Result
+	var buf *sql.ByteBuffer
 	var processedAtLeastOneBatch bool
-
-	buf := sql.ByteBufPool.Get().(*sql.ByteBuffer)
-	buf.Reset()
 	defer func() {
 		sql.ByteBufPool.Put(buf)
 	}()
@@ -498,7 +496,7 @@ func (h *Handler) doQuery(
 	} else if vr, ok := rowIter.(sql.ValueRowIter); ok && vr.IsValueRowIter(sqlCtx) {
 		r, processedAtLeastOneBatch, err = h.resultForValueRowIter(sqlCtx, c, schema, vr, resultFields, buf, callback, more)
 	} else {
-		r, processedAtLeastOneBatch, err = h.resultForDefaultIter(sqlCtx, c, schema, rowIter, callback, resultFields, more, buf)
+		r, buf, processedAtLeastOneBatch, err = h.resultForDefaultIter(sqlCtx, c, schema, rowIter, callback, resultFields, more)
 	}
 	if err != nil {
 		return remainder, err
@@ -526,6 +524,8 @@ func (h *Handler) doQuery(
 	if r != nil && (r.RowsAffected == 0 && processedAtLeastOneBatch) {
 		return remainder, nil
 	}
+
+	// TODO: the very last buffer needs to be released
 
 	return remainder, callback(r, more)
 }
@@ -598,7 +598,8 @@ func resultForMax1RowIter(ctx *sql.Context, schema sql.Schema, iter sql.RowIter,
 	row, err := iter.Next(ctx)
 	if err == io.EOF {
 		return &sqltypes.Result{Fields: resultFields}, nil
-	} else if err != nil {
+	}
+	if err != nil {
 		return nil, err
 	}
 
@@ -618,7 +619,7 @@ func resultForMax1RowIter(ctx *sql.Context, schema sql.Schema, iter sql.RowIter,
 
 // resultForDefaultIter reads batches of rows from the iterator
 // and writes results into the callback function.
-func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema sql.Schema, iter sql.RowIter, callback func(*sqltypes.Result, bool) error, resultFields []*querypb.Field, more bool, buf *sql.ByteBuffer) (*sqltypes.Result, bool, error) {
+func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema sql.Schema, iter sql.RowIter, callback func(*sqltypes.Result, bool) error, resultFields []*querypb.Field, more bool) (*sqltypes.Result, *sql.ByteBuffer, bool, error) {
 	defer trace.StartRegion(ctx, "Handler.resultForDefaultIter").End()
 
 	eg, ctx := ctx.NewErrgroup()
@@ -649,17 +650,6 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 	}
 	timer := time.NewTimer(waitTime)
 	defer timer.Stop()
-
-	// Wrap the callback to include a BytesBuffer.Reset() for non-cursor requests, to
-	// clean out rows that have already been spooled.
-	// A server-side cursor allows the caller to fetch results cached on the server-side,
-	// so if a cursor exists, we can't release the buffer memory yet.
-	if c.StatusFlags&uint16(mysql.ServerCursorExists) != 0 {
-		callback = func(r *sqltypes.Result, more bool) error {
-			defer buf.Reset()
-			return callback(r, more)
-		}
-	}
 
 	iter, projs := GetDeferredProjections(iter)
 
@@ -694,8 +684,13 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 	})
 
 	// Drain rows from rowChan, convert to wire format, and send to resChan
-	var resChan = make(chan *sqltypes.Result, 4)
+	type bufferedResult struct {
+		res *sqltypes.Result
+		buf *sql.ByteBuffer
+	}
+	var resChan = make(chan bufferedResult, 4)
 	var res *sqltypes.Result
+	var buf *sql.ByteBuffer
 	eg.Go(func() (err error) {
 		defer pan2err(&err)
 		defer wg.Done()
@@ -707,6 +702,8 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 					Fields: resultFields,
 					Rows:   make([][]sqltypes.Value, 0, rowsBatch),
 				}
+				buf = sql.ByteBufPool.Get().(*sql.ByteBuffer)
+				buf.Reset()
 			}
 
 			select {
@@ -746,8 +743,9 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 					select {
 					case <-ctx.Done():
 						return context.Cause(ctx)
-					case resChan <- res:
+					case resChan <- bufferedResult{res: res, buf: buf}:
 						res = nil
+						buf = nil
 					}
 				}
 			}
@@ -766,14 +764,20 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 			select {
 			case <-ctx.Done():
 				return context.Cause(ctx)
-			case r, ok := <-resChan:
+			case bufRes, ok := <-resChan:
 				if !ok {
 					return nil
 				}
 				processedAtLeastOneBatch = true
-				err = callback(r, more)
+				err = callback(bufRes.res, more)
 				if err != nil {
 					return err
+				}
+				// A server-side cursor allows the caller to fetch results cached on the server-side,
+				// so if a cursor exists, we can't release the buffer memory yet.
+				// TODO: In the case of a cursor, we are leaking memory
+				if c.StatusFlags&uint16(mysql.ServerCursorExists) != 0 {
+					sql.ByteBufPool.Put(bufRes.buf)
 				}
 			}
 		}
@@ -793,9 +797,9 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 		if verboseErrorLogging {
 			fmt.Printf("Err: %+v", err)
 		}
-		return nil, false, err
+		return nil, nil, false, err
 	}
-	return res, processedAtLeastOneBatch, nil
+	return res, buf, processedAtLeastOneBatch, nil
 }
 
 func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema sql.Schema, iter sql.ValueRowIter, resultFields []*querypb.Field, buf *sql.ByteBuffer, callback func(*sqltypes.Result, bool) error, more bool) (*sqltypes.Result, bool, error) {
