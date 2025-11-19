@@ -41,10 +41,10 @@ func NewByteBuffer(initCap int) *ByteBuffer {
 // they expect to be protected.
 func (b *ByteBuffer) Grow(n int) {
 	newI := b.i
-	if b.i+n <= cap(b.buf) {
+	if b.i+n < cap(b.buf) {
 		// Increment |b.i| if no alloc
 		newI += n
-	} else if b.i+n >= cap(b.buf) {
+	} else {
 		// No more space, double.
 		// An external allocation doubled the cap using the size of
 		// the override object, which if used could lead to overall
