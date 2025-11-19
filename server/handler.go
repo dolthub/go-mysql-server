@@ -650,6 +650,17 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 	timer := time.NewTimer(waitTime)
 	defer timer.Stop()
 
+	// Wait for signal on the timer.C channel, and error accordingly
+	eg.Go(func() (err error) {
+		<-timer.C
+		if h.readTimeout != 0 {
+			// Cancel and return so Vitess can call the CloseConnection callback
+			ctx.GetLogger().Tracef("connection timeout")
+			return ErrRowTimeout.New()
+		}
+		return nil
+	})
+
 	// Wrap the callback to include a BytesBuffer.Reset() for non-cursor requests, to
 	// clean out rows that have already been spooled.
 	// A server-side cursor allows the caller to fetch results cached on the server-side,
@@ -766,6 +777,29 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 			select {
 			case <-ctx.Done():
 				return context.Cause(ctx)
+			case r, ok := <-resChan:
+				if !ok {
+					return nil
+				}
+				processedAtLeastOneBatch = true
+				err = callback(r, more)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	})
+
+	// Read sqltypes.Result from resChan and send to client
+	eg.Go(func() (err error) {
+		defer pan2err(&err)
+		defer cancelF()
+		defer wg.Done()
+		for {
+			select {
+			case <-ctx.Done():
+				return context.Cause(ctx)
+
 			case r, ok := <-resChan:
 				if !ok {
 					return nil
@@ -965,7 +999,9 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 		return nil, false, err
 	}
 
-	res.Rows = res.Rows[:res.RowsAffected]
+	if res != nil {
+		res.Rows = res.Rows[:res.RowsAffected]
+	}
 	return res, processedAtLeastOneBatch, err
 }
 
