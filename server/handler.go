@@ -499,6 +499,9 @@ func (h *Handler) doQuery(
 		r, processedAtLeastOneBatch, err = h.resultForValueRowIter(sqlCtx, c, schema, vr, resultFields, buf, callback, more)
 	} else {
 		r, processedAtLeastOneBatch, err = h.resultForDefaultIter(sqlCtx, c, schema, rowIter, callback, resultFields, more, buf)
+		if err != nil {
+			return remainder, err
+		}
 	}
 	if err != nil {
 		return remainder, err
@@ -977,7 +980,7 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 	if res != nil {
 		res.Rows = res.Rows[:res.RowsAffected]
 	}
-	return res, processedAtLeastOneBatch, nil
+	return res, processedAtLeastOneBatch, err
 }
 
 // See https://dev.mysql.com/doc/internals/en/status-flags.html
