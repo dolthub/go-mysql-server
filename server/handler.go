@@ -1261,6 +1261,7 @@ func getMaxTypeCapacity(ctx *sql.Context, typ sql.Type) (res int) {
 	case sqltypes.Bit:
 		res = int(typ.MaxTextResponseByteLength(ctx))
 	default:
+		// TODO: StringType can use backing array depending on the type of
 		// These types do not use sql.ByteBuffer
 		res = 0
 	}
