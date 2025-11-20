@@ -18,58 +18,42 @@ import (
 	"sync"
 )
 
-const defaultByteBuffCap = 4096
+// TODO: find optimal size
+const buffCap = 4096 // 4KB
 
 var ByteBufPool = sync.Pool{
 	New: func() any {
-		return NewByteBuffer(defaultByteBuffCap)
+		return NewByteBuffer()
 	},
 }
 
 type ByteBuffer struct {
-	buf []byte
-	i   int
+	pos uint16
+	buf [buffCap]byte
 }
 
-func NewByteBuffer(initCap int) *ByteBuffer {
-	buf := make([]byte, initCap)
-	return &ByteBuffer{buf: buf}
+func NewByteBuffer() *ByteBuffer {
+	return &ByteBuffer{}
+}
+
+// HasCapacity indicates if this buffer has `n` bytes worth of capacity left
+func (b *ByteBuffer) HasCapacity(n int) bool {
+	return int(b.pos)+n < buffCap
 }
 
 // Grow records the latest used byte position. Callers
 // are responsible for accurately reporting which bytes
 // they expect to be protected.
 func (b *ByteBuffer) Grow(n int) {
-	newI := b.i
-	if b.i+n < cap(b.buf) {
-		// Increment |b.i| if no alloc
-		newI += n
-	} else {
-		// No more space, double.
-		// An external allocation doubled the cap using the size of
-		// the override object, which if used could lead to overall
-		// shrinking behavior.
-		b.Double()
-	}
-	b.i = newI
+	b.pos += uint16(n)
 }
 
-// Double expands the backing array by 2x. We do this
-// here because the runtime only doubles based on slice
-// length.
-func (b *ByteBuffer) Double() {
-	// TODO: This wastes memory. The first half of b.buf won't be referenced by anything.
-	buf := make([]byte, cap(b.buf)*2)
-	copy(buf, b.buf)
-	b.buf = buf
-}
-
-// Get returns a zero length slice beginning at a safe
+// Get returns a zero-length slice beginning at a safe
 // write position.
 func (b *ByteBuffer) Get() []byte {
-	return b.buf[b.i:b.i]
+	return b.buf[b.pos:b.pos]
 }
 
 func (b *ByteBuffer) Reset() {
-	b.i = 0
+	b.pos = 0
 }

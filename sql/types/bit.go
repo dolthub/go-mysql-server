@@ -224,6 +224,7 @@ func (t BitType_) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.Va
 	}
 	bitVal := value.(uint64)
 
+	// TODO: this should append to dest
 	var data []byte
 	for i := uint64(0); i < uint64(t.numOfBits); i += 8 {
 		data = append(data, byte(bitVal>>i))
@@ -252,6 +253,7 @@ func (t BitType_) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes
 	}
 	v.Val = v.Val[:numBytes]
 
+	// TODO: can cut out a loop here by just appending backwards from v.Val
 	// want the results in big endian
 	dest = append(dest, v.Val...)
 	for i, j := 0, len(dest)-1; i < j; i, j = i+1, j-1 {
