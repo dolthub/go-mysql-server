@@ -165,3 +165,52 @@ func (e *Alias) WithChildren(children ...sql.Expression) (sql.Expression, error)
 
 // Name implements the Nameable interface.
 func (e *Alias) Name() string { return e.name }
+
+// TODO: DELETE EVERYTHING UNDER HERE -----------------------------------------------------------------------
+//  ---------------------------------------------------------------------------------------------------------
+//  ---------------------------------------------------------------------------------------------------------
+//  ---------------------------------------------------------------------------------------------------------
+//  ---------------------------------------------------------------------------------------------------------
+
+// This is an expression that will be returned from a Doltgres hook (GMS' hook will return a nil expression to indicate
+// incompatibility). This function is just a stand-in for testing purposes.
+type DoltgresHookExpression struct {
+	args []sql.Expression
+}
+
+var _ sql.Expression = (*DoltgresHookExpression)(nil)
+
+func NewDoltgresHookExpression(args ...sql.Expression) sql.Expression {
+	return &DoltgresHookExpression{args: args}
+}
+
+func (tt *DoltgresHookExpression) String() string { return "temporarytesting2" }
+
+// Type implements the Expression interface.
+func (tt *DoltgresHookExpression) Type() sql.Type { return types.Int32 }
+
+// Eval implements the Expression interface.
+func (tt *DoltgresHookExpression) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	rowLen := len(row)
+	return int32(-rowLen), nil
+}
+
+// Resolved implements the Expression interface.
+func (tt *DoltgresHookExpression) Resolved() bool {
+	return true
+}
+
+// Children implements the Expression interface.
+func (tt *DoltgresHookExpression) Children() []sql.Expression {
+	return tt.args
+}
+
+// IsNullable implements the Expression interface.
+func (tt *DoltgresHookExpression) IsNullable() bool {
+	return false
+}
+
+// WithChildren implements the Expression interface.
+func (*DoltgresHookExpression) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewDoltgresHookExpression(children...), nil
+}

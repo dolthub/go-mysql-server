@@ -25,6 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression/function/json"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/spatial"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/vector"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // ErrFunctionAlreadyRegistered is thrown when a function is already registered
@@ -342,6 +343,7 @@ var BuiltIns = []sql.Function{
 	sql.Function1{Name: "weekofyear", Fn: NewWeekOfYear},
 	sql.Function1{Name: "year", Fn: NewYear},
 	sql.FunctionN{Name: "yearweek", Fn: NewYearWeek},
+	sql.FunctionN{Name: "temporarytesting", Fn: NewTemporaryTesting}, // TODO: DELETE ME
 }
 
 func GetLockingFuncs(ls *sql.LockSubsystem) []sql.Function {
@@ -389,4 +391,66 @@ func (r Registry) mustRegister(fn ...sql.Function) {
 	if err := r.Register(fn...); err != nil {
 		panic(err)
 	}
+}
+
+// TODO: DELETE EVERYTHING UNDER HERE -----------------------------------------------------------------------
+//  ---------------------------------------------------------------------------------------------------------
+//  ---------------------------------------------------------------------------------------------------------
+//  ---------------------------------------------------------------------------------------------------------
+//  ---------------------------------------------------------------------------------------------------------
+
+// This is an example Doltgres function. This exists solely for testing purposes, and will be deleted as noted by the
+// massive comment above this.
+type DoltgresFunction struct {
+	args []sql.Expression
+}
+
+var _ sql.FunctionExpression = (*DoltgresFunction)(nil)
+
+func NewTemporaryTesting(args ...sql.Expression) (sql.Expression, error) {
+	return &DoltgresFunction{args: args}, nil
+}
+
+// FunctionName implements sql.FunctionExpression
+func (tt *DoltgresFunction) FunctionName() string {
+	return "temporarytesting"
+}
+
+// Description implements sql.FunctionExpression
+func (tt *DoltgresFunction) Description() string {
+	return ""
+}
+
+func (tt *DoltgresFunction) String() string { return "temporarytesting()" }
+
+// Type implements the Expression interface.
+func (tt *DoltgresFunction) Type() sql.Type { return types.Int32 }
+
+// CollationCoercibility implements the interface sql.CollationCoercible.
+func (*DoltgresFunction) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
+	return sql.Collation_binary, 5
+}
+
+// Eval implements the Expression interface.
+func (tt *DoltgresFunction) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
+	rowLen := len(row)
+	return int32(rowLen), nil
+}
+
+// Resolved implements the Expression interface.
+func (tt *DoltgresFunction) Resolved() bool {
+	return true
+}
+
+// Children implements the Expression interface.
+func (tt *DoltgresFunction) Children() []sql.Expression { return tt.args }
+
+// IsNullable implements the Expression interface.
+func (tt *DoltgresFunction) IsNullable() bool {
+	return false
+}
+
+// WithChildren implements the Expression interface.
+func (*DoltgresFunction) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+	return NewTemporaryTesting(children...)
 }
