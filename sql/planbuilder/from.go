@@ -751,6 +751,7 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 		})
 		cols.Add(sql.ColumnId(id))
 	}
+	outScope.recordTableAsColumn(db, strings.ToLower(tab.Name()), tabId, rt)
 
 	rt = rt.WithId(tabId).WithColumns(cols).(*plan.ResolvedTable)
 	outScope.node = rt

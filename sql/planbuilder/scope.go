@@ -65,8 +65,20 @@ type scope struct {
 	extraCols []scopeColumn
 	// windowFuncs is a list of window functions in the current scope
 	windowFuncs []scopeColumn
+	// tablesAsColumns allow for using tables in the same scope as columns, which is only valid in Doltgres
+	tablesAsColumns []resolvedScopeTable
 
 	refsSubquery bool
+}
+
+// resolvedScopeTable contains a table that may be resolved as though it were a column by the step that searches the
+// column namespace. Integrators may implement support for treating table names as just another column, although
+// standard MySQL does not allow this.
+type resolvedScopeTable struct {
+	db      string
+	table   string
+	tableId sql.TableId
+	rt      *plan.ResolvedTable
 }
 
 // resolveColumn matches a variable use to a column definition with a unique
@@ -153,6 +165,32 @@ func (s *scope) resolveColumn(db, table, col string, checkParent, chooseFirst bo
 	return c, true
 }
 
+// resolveColumnAsTable resolves a column as though it were a table, by searching the table space. This is not standard
+// in MySQL, and is only used by integrators.
+func (s *scope) resolveColumnAsTable(db, table string) (resolvedScopeTable, bool) {
+	var scopeTable resolvedScopeTable
+	var found bool
+	tabId := s.getTable(table)
+	for _, tab := range s.tablesAsColumns {
+		if tab.tableId == tabId && (strings.EqualFold(tab.db, db) || db == "") {
+			if found {
+				if scopeTable.tableId == tab.tableId {
+					continue
+				}
+				// TODO: fix error being invalid for a table
+				err := sql.ErrAmbiguousColumnName.New(table, []string{tab.table, scopeTable.table})
+				s.handleErr(err)
+			}
+			scopeTable = tab
+			found = true
+		}
+	}
+	if !found && s.parent != nil {
+		return s.parent.resolveColumnAsTable(db, table)
+	}
+	return scopeTable, found
+}
+
 // getCol gets a scopeColumn based on a columnId
 func (s *scope) getCol(colId sql.ColumnId) (scopeColumn, bool) {
 	if s.colset.Contains(colId) {
@@ -174,6 +212,19 @@ func (s *scope) hasTable(table string) bool {
 		return s.parent.hasTable(table)
 	}
 	return false
+}
+
+// getTable returns the table ID matching the given name.
+func (s *scope) getTable(table string) sql.TableId {
+	// TODO: this doesn't take a database, but maybe it doesn't need to? (only care if table name exists at all)
+	id, ok := s.tables[strings.ToLower(table)]
+	if ok {
+		return id
+	}
+	if s.parent != nil {
+		return s.parent.getTable(table)
+	}
+	return 0
 }
 
 // triggerCol is used to hallucinate a new column during trigger DDL
@@ -555,6 +606,16 @@ func (s *scope) addTable(name string) sql.TableId {
 		s.tables[name] = s.b.tabId
 	}
 	return s.tables[name]
+}
+
+// recordTableAsColumn records the properties of a table defined in this scope as a referenceable column
+func (s *scope) recordTableAsColumn(db, table string, tableId sql.TableId, rt *plan.ResolvedTable) {
+	s.tablesAsColumns = append(s.tablesAsColumns, resolvedScopeTable{
+		db:      db,
+		table:   table,
+		tableId: tableId,
+		rt:      rt,
+	})
 }
 
 // addExtraColumn marks an auxiliary column used in an
