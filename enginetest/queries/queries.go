@@ -9346,28 +9346,28 @@ var KeylessQueries = []QueryTest{
 	{
 		Query: "DESCRIBE keyless",
 		Expected: []sql.Row{
-			{"c0", "bigint", "YES", "", nil, ""},
-			{"c1", "bigint", "YES", "", nil, ""},
+			{"c0", "bigint", "YES", "", "NULL", ""},
+			{"c1", "bigint", "YES", "", "NULL", ""},
 		},
 	},
 	{
 		Query: "SHOW COLUMNS FROM keyless",
 		Expected: []sql.Row{
-			{"c0", "bigint", "YES", "", nil, ""},
-			{"c1", "bigint", "YES", "", nil, ""},
+			{"c0", "bigint", "YES", "", "NULL", ""},
+			{"c1", "bigint", "YES", "", "NULL", ""},
 		},
 	},
 	{
 		Query: "SHOW FULL COLUMNS FROM keyless",
 		Expected: []sql.Row{
-			{"c0", "bigint", nil, "YES", "", nil, "", "", ""},
-			{"c1", "bigint", nil, "YES", "", nil, "", "", ""},
+			{"c0", "bigint", nil, "YES", "", "NULL", "", "", ""},
+			{"c1", "bigint", nil, "YES", "", "NULL", "", "", ""},
 		},
 	},
 	{
 		Query: "SHOW CREATE TABLE keyless",
 		Expected: []sql.Row{
-			{"keyless", "CREATE TABLE `keyless` (\n  `c0` bigint,\n  `c1` bigint\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+			{"keyless", "CREATE TABLE `keyless` (\n  `c0` bigint DEFAULT NULL,\n  `c1` bigint DEFAULT NULL\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 		},
 	},
 }
