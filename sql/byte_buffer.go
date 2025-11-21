@@ -30,7 +30,7 @@ type byteBuffer struct {
 var bufferPool = sync.Pool{
 	New: func() any {
 		return &byteBuffer{
-			buf: make([]byte, 4096*128*64),
+			buf: make([]byte, bufCap),
 		}
 	},
 }
