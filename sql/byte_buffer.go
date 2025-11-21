@@ -24,12 +24,14 @@ const bufCap = 4096 // 4KB
 // byteBuffer serves as a statically sized backing array used to the wire methods (types.SQL() and types.SQLValue())
 type byteBuffer struct {
 	pos uint16
-	buf [bufCap]byte
+	buf []byte
 }
 
 var bufferPool = sync.Pool{
 	New: func() any {
-		return &byteBuffer{}
+		return &byteBuffer{
+			buf: make([]byte, bufCap),
+		}
 	},
 }
 
