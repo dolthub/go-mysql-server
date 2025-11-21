@@ -18,58 +18,78 @@ import (
 	"sync"
 )
 
-const defaultByteBuffCap = 4096
+// TODO: find optimal size
+const bufCap = 4096 // 4KB
 
-var ByteBufPool = sync.Pool{
+// byteBuffer serves as a statically sized backing array used to the wire methods (types.SQL() and types.SQLValue())
+type byteBuffer struct {
+	pos uint16
+	buf []byte
+}
+
+var bufferPool = sync.Pool{
 	New: func() any {
-		return NewByteBuffer(defaultByteBuffCap)
+		return &byteBuffer{
+			buf: make([]byte, bufCap),
+		}
 	},
 }
 
-type ByteBuffer struct {
-	buf []byte
-	i   int
+// hasCapacity indicates if this buffer has `cap` bytes worth of capacity left
+func (b *byteBuffer) hasCapacity(cap int) bool {
+	return int(b.pos)+cap < bufCap
 }
 
-func NewByteBuffer(initCap int) *ByteBuffer {
-	buf := make([]byte, initCap)
-	return &ByteBuffer{buf: buf}
+// Grow records the latest used byte position.
+// Callers are responsible for accurately reporting which bytes they expect to be protected.
+func (b *byteBuffer) grow(n int) {
+	b.pos += uint16(n)
 }
 
-// Grow records the latest used byte position. Callers
-// are responsible for accurately reporting which bytes
-// they expect to be protected.
-func (b *ByteBuffer) Grow(n int) {
-	newI := b.i
-	if b.i+n <= len(b.buf) {
-		// Increment |b.i| if no alloc
-		newI += n
+// Get returns a zero-length slice beginning at a safe writing position.
+func (b *byteBuffer) get() []byte {
+	return b.buf[b.pos:b.pos]
+}
+
+func (b *byteBuffer) reset() {
+	b.pos = 0
+}
+
+// ByteBufferManager is responsible for handling all byteBuffers retrieved from byteBufferPool.
+type ByteBufferManager struct {
+	bufs []*byteBuffer
+	cur  *byteBuffer
+}
+
+// NewByteBufferManager returns a ByteBufferManager with one byteBuffer already allocated.
+func NewByteBufferManager() *ByteBufferManager {
+	cur := bufferPool.Get().(*byteBuffer)
+	cur.reset()
+	return &ByteBufferManager{
+		cur: cur,
 	}
-	if b.i+n >= len(b.buf) {
-		// No more space, double.
-		// An external allocation doubled the cap using the size of
-		// the override object, which if used could lead to overall
-		// shrinking behavior.
-		b.Double()
+}
+
+// Get returns a zero-length slice guaranteed to have capacity for `cap` bytes.
+// This function will retrieve any necessary byteBuffers from bufferPool.
+func (b *ByteBufferManager) Get(cap int) []byte {
+	if !b.cur.hasCapacity(cap) {
+		b.bufs = append(b.bufs, b.cur)
+		b.cur = bufferPool.Get().(*byteBuffer)
+		b.cur.reset()
 	}
-	b.i = newI
+	return b.cur.get()
 }
 
-// Double expands the backing array by 2x. We do this
-// here because the runtime only doubles based on slice
-// length.
-func (b *ByteBuffer) Double() {
-	buf := make([]byte, len(b.buf)*2)
-	copy(buf, b.buf)
-	b.buf = buf
+// Grow shifts the safe writing position of the current byteBuffer.
+func (b *ByteBufferManager) Grow(n int) {
+	b.cur.grow(n)
 }
 
-// Get returns a zero length slice beginning at a safe
-// write position.
-func (b *ByteBuffer) Get() []byte {
-	return b.buf[b.i:b.i]
-}
-
-func (b *ByteBuffer) Reset() {
-	b.i = 0
+// PutAll releases all allocated byteBuffers back into bufferPool.
+func (b *ByteBufferManager) PutAll() {
+	for _, buf := range b.bufs {
+		bufferPool.Put(buf)
+	}
+	bufferPool.Put(b.cur)
 }
