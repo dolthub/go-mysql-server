@@ -107,6 +107,19 @@ func (s *SessionManager) AddConn(conn *mysql.Conn) {
 	s.wg.Add(1)
 }
 
+// Called once a connection is authenticated and in a ready
+// state. Responsible for creating the session associated with the
+// connection and registering the session, with appropriate
+// authentication information, with the process list.
+func (s *SessionManager) ConnReady(ctx context.Context, conn *mysql.Conn) error {
+	sess, err := s.getOrCreateSession(ctx, conn)
+	if err != nil {
+		return err
+	}
+	s.processlist.ConnectionReady(sess)
+	return nil
+}
+
 // NewSession creates a Session for the given connection and saves it to the session pool.
 func (s *SessionManager) NewSession(ctx context.Context, conn *mysql.Conn) error {
 	s.mu.Lock()
@@ -177,6 +190,18 @@ func (s *SessionManager) SetDB(ctx context.Context, conn *mysql.Conn, dbName str
 		}
 	}
 
+	// We do this here and in ConnReady.
+	//
+	// Previously, Vitess did not have a ConnectionAuthenticated
+	// callback on the Handler and the only time we updated the
+	// authenticated user information in the processlist was on
+	// ComInitDB. This resulted in "unathenticated user" being
+	// shown in the process list if a connection chose to run
+	// queries without issuing ComInitDB.
+	//
+	// Calling this here makes certain the current database
+	// updates StartedAt and allows the newly selected database to
+	// be correctly reflected in the process list.
 	s.processlist.ConnectionReady(sess)
 	return nil
 }

@@ -104,6 +104,19 @@ func (h *Handler) ConnectionAborted(_ *mysql.Conn, _ string) error {
 	return nil
 }
 
+// Called when a new connection successfully
+// authenticated. Responsible for creating the session associated with
+// the connection in the session manager and updating processlist with
+// the authenticated user and remote address.
+func (h *Handler) ConnectionAuthenticated(c *mysql.Conn) error {
+	err := h.sm.ConnReady(context.Background(), c)
+	if err != nil {
+		logrus.Errorf("unable to register new authenticated connection: %s", err.Error())
+		err = sql.CastSQLError(err)
+	}
+	return err
+}
+
 func (h *Handler) ComInitDB(c *mysql.Conn, schemaName string) error {
 	// SetDB itself handles session and processlist operation lifecycle callbacks.
 	err := h.sm.SetDB(context.Background(), c, schemaName)
