@@ -1264,6 +1264,9 @@ func getMaxTypeCapacity(ctx *sql.Context, typ sql.Type) (res int) {
 	case sqltypes.Float64:
 		// Longest possible 'g' format float64 is len("-1.7976931348623157e+308") = 24
 		res = 24
+	case sqltypes.Year:
+		// Longest possible Year is len("2155") = 4
+		res = 4
 	case sqltypes.Time:
 		// Longest possible Time format is len("-00:00:00.000000") = 16
 		res = 16
@@ -1328,7 +1331,7 @@ func RowToSQL(ctx *sql.Context, sch sql.Schema, row sql.Row, projs []sql.Express
 			outVals[i] = sqltypes.NULL
 			continue
 		}
-		outVals[i], err = toSQL(ctx, col.Type, bm, row[i])
+		outVals[i], err = toSQL(ctx, col.Type, bm, field)
 		if err != nil {
 			return nil, err
 		}
