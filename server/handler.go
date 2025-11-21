@@ -480,13 +480,11 @@ func (h *Handler) doQuery(
 	// create result before goroutines to avoid |ctx| racing
 	resultFields := schemaToFields(sqlCtx, schema)
 	var r *sqltypes.Result
-	var bufs []*sql.ByteBuffer
+	var bm *sql.ByteBufferManager
 	var processedAtLeastOneBatch bool
 	defer func() {
-		// TODO: possible that errors leak memory?
-		for _, buf := range bufs {
-			// TODO: nil check?
-			sql.ByteBufPool.Put(buf)
+		if bm != nil {
+			bm.PutAll()
 		}
 	}()
 
@@ -496,11 +494,11 @@ func (h *Handler) doQuery(
 	} else if schema == nil {
 		r, err = resultForEmptyIter(sqlCtx, rowIter, resultFields)
 	} else if analyzer.FlagIsSet(qFlags, sql.QFlagMax1Row) {
-		r, bufs, err = resultForMax1RowIter(sqlCtx, schema, rowIter, resultFields, bufs)
+		r, bm, err = resultForMax1RowIter(sqlCtx, schema, rowIter, resultFields, bm)
 	} else if vr, ok := rowIter.(sql.ValueRowIter); ok && vr.IsValueRowIter(sqlCtx) {
-		r, bufs, processedAtLeastOneBatch, err = h.resultForValueRowIter(sqlCtx, c, schema, vr, resultFields, callback, more)
+		r, bm, processedAtLeastOneBatch, err = h.resultForValueRowIter(sqlCtx, c, schema, vr, resultFields, callback, more)
 	} else {
-		r, bufs, processedAtLeastOneBatch, err = h.resultForDefaultIter(sqlCtx, c, schema, rowIter, callback, resultFields, more)
+		r, bm, processedAtLeastOneBatch, err = h.resultForDefaultIter(sqlCtx, c, schema, rowIter, callback, resultFields, more)
 	}
 	if err != nil {
 		return remainder, err
@@ -594,14 +592,19 @@ func GetDeferredProjections(iter sql.RowIter) (sql.RowIter, []sql.Expression) {
 }
 
 // resultForMax1RowIter ensures that an empty iterator returns at most one row
-func resultForMax1RowIter(ctx *sql.Context, schema sql.Schema, iter sql.RowIter, resultFields []*querypb.Field, bufs []*sql.ByteBuffer) (*sqltypes.Result, []*sql.ByteBuffer, error) {
+func resultForMax1RowIter(
+	ctx *sql.Context,
+	schema sql.Schema,
+	iter sql.RowIter,
+	resultFields []*querypb.Field,
+	bm *sql.ByteBufferManager,
+) (*sqltypes.Result, *sql.ByteBufferManager, error) {
 	defer trace.StartRegion(ctx, "Handler.resultForMax1RowIter").End()
-
 	defer iter.Close(ctx)
 
 	row, err := iter.Next(ctx)
 	if err == io.EOF {
-		return &sqltypes.Result{Fields: resultFields}, bufs, nil
+		return &sqltypes.Result{Fields: resultFields}, bm, nil
 	}
 	if err != nil {
 		return nil, nil, err
@@ -611,19 +614,29 @@ func resultForMax1RowIter(ctx *sql.Context, schema sql.Schema, iter sql.RowIter,
 		return nil, nil, fmt.Errorf("result max1Row iterator returned more than one row")
 	}
 
-	outputRow, bufs, err := RowToSQL(ctx, schema, row, nil, bufs)
+	bm = sql.NewByteBufferManager()
+	outputRow, err := RowToSQL(ctx, schema, row, nil, bm)
 	if err != nil {
-		return nil, bufs, err
+		// Important to return ByteBufferManager even in error, as we still need to release any allocated memory.
+		return nil, bm, err
 	}
 
 	ctx.GetLogger().Tracef("spooling result row %s", outputRow)
 
-	return &sqltypes.Result{Fields: resultFields, Rows: [][]sqltypes.Value{outputRow}, RowsAffected: 1}, bufs, nil
+	return &sqltypes.Result{Fields: resultFields, Rows: [][]sqltypes.Value{outputRow}, RowsAffected: 1}, bm, nil
 }
 
 // resultForDefaultIter reads batches of rows from the iterator
 // and writes results into the callback function.
-func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema sql.Schema, iter sql.RowIter, callback func(*sqltypes.Result, bool) error, resultFields []*querypb.Field, more bool) (*sqltypes.Result, []*sql.ByteBuffer, bool, error) {
+func (h *Handler) resultForDefaultIter(
+	ctx *sql.Context,
+	c *mysql.Conn,
+	schema sql.Schema,
+	iter sql.RowIter,
+	callback func(*sqltypes.Result, bool) error,
+	resultFields []*querypb.Field,
+	more bool,
+) (*sqltypes.Result, *sql.ByteBufferManager, bool, error) {
 	defer trace.StartRegion(ctx, "Handler.resultForDefaultIter").End()
 
 	eg, ctx := ctx.NewErrgroup()
@@ -688,13 +701,13 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 	})
 
 	// Drain rows from rowChan, convert to wire format, and send to resChan
-	type bufferedResult struct {
-		res  *sqltypes.Result
-		bufs []*sql.ByteBuffer
+	type managedResult struct {
+		res *sqltypes.Result
+		bm  *sql.ByteBufferManager
 	}
-	var resChan = make(chan bufferedResult, 4)
+	var resChan = make(chan managedResult, 4)
 	var res *sqltypes.Result
-	var bufs []*sql.ByteBuffer
+	var bm *sql.ByteBufferManager
 	eg.Go(func() (err error) {
 		defer pan2err(&err)
 		defer wg.Done()
@@ -706,9 +719,7 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 					Fields: resultFields,
 					Rows:   make([][]sqltypes.Value, 0, rowsBatch),
 				}
-				buf := sql.ByteBufPool.Get().(*sql.ByteBuffer)
-				buf.Reset()
-				bufs = append(bufs, buf)
+				bm = sql.NewByteBufferManager()
 			}
 
 			select {
@@ -736,7 +747,7 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 				}
 
 				var outRow []sqltypes.Value
-				outRow, bufs, err = RowToSQL(ctx, schema, row, projs, bufs)
+				outRow, err = RowToSQL(ctx, schema, row, projs, bm)
 				if err != nil {
 					return err
 				}
@@ -749,9 +760,9 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 					select {
 					case <-ctx.Done():
 						return context.Cause(ctx)
-					case resChan <- bufferedResult{res: res, bufs: bufs}:
+					case resChan <- managedResult{res: res, bm: bm}:
 						res = nil
-						bufs = nil
+						bm = nil
 					}
 				}
 			}
@@ -783,9 +794,7 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 				// so if a cursor exists, we can't release the buffer memory yet.
 				// TODO: In the case of a cursor, we are leaking memory
 				if c.StatusFlags&uint16(mysql.ServerCursorExists) != 0 {
-					for _, buf := range bufRes.bufs {
-						sql.ByteBufPool.Put(buf)
-					}
+					bufRes.bm.PutAll() // TODO: recycle buffer manager?
 				}
 			}
 		}
@@ -807,10 +816,17 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 		}
 		return nil, nil, false, err
 	}
-	return res, bufs, processedAtLeastOneBatch, nil
+	return res, bm, processedAtLeastOneBatch, nil
 }
 
-func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema sql.Schema, iter sql.ValueRowIter, resultFields []*querypb.Field, callback func(*sqltypes.Result, bool) error, more bool) (*sqltypes.Result, []*sql.ByteBuffer, bool, error) {
+func (h *Handler) resultForValueRowIter(
+	ctx *sql.Context,
+	c *mysql.Conn,
+	schema sql.Schema,
+	iter sql.ValueRowIter,
+	resultFields []*querypb.Field,
+	callback func(*sqltypes.Result, bool) error, more bool,
+) (*sqltypes.Result, *sql.ByteBufferManager, bool, error) {
 	defer trace.StartRegion(ctx, "Handler.resultForValueRowIter").End()
 
 	eg, ctx := ctx.NewErrgroup()
@@ -873,12 +889,12 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 
 	// Drain rows from rowChan, convert to wire format, and send to resChan
 	type bufferedResult struct {
-		res  *sqltypes.Result
-		bufs []*sql.ByteBuffer
+		res *sqltypes.Result
+		bm  *sql.ByteBufferManager
 	}
 	var resChan = make(chan bufferedResult, 4)
 	var res *sqltypes.Result
-	var bufs []*sql.ByteBuffer
+	var bm *sql.ByteBufferManager
 	eg.Go(func() (err error) {
 		defer pan2err(&err)
 		defer close(resChan)
@@ -890,9 +906,7 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 					Fields: resultFields,
 					Rows:   make([][]sqltypes.Value, rowsBatch),
 				}
-				buf := sql.ByteBufPool.Get().(*sql.ByteBuffer)
-				buf.Reset()
-				bufs = append(bufs, buf)
+				bm = sql.NewByteBufferManager()
 			}
 
 			select {
@@ -912,7 +926,7 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 				}
 
 				var outRow []sqltypes.Value
-				outRow, bufs, err = RowValueToSQLValues(ctx, schema, row, bufs)
+				outRow, err = RowValueToSQLValues(ctx, schema, row, bm)
 				if err != nil {
 					return err
 				}
@@ -925,9 +939,9 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 					select {
 					case <-ctx.Done():
 						return context.Cause(ctx)
-					case resChan <- bufferedResult{res: res, bufs: bufs}:
+					case resChan <- bufferedResult{res: res, bm: bm}:
 						res = nil
-						bufs = nil
+						bm = nil
 					}
 				}
 			}
@@ -959,9 +973,7 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 				// so if a cursor exists, we can't release the buffer memory yet.
 				// TODO: In the case of a cursor, we are leaking memory
 				if c.StatusFlags&uint16(mysql.ServerCursorExists) != 0 {
-					for _, buf := range bufRes.bufs {
-						sql.ByteBufPool.Put(buf)
-					}
+					bm.PutAll()
 				}
 			}
 		}
@@ -987,7 +999,7 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 	if res != nil {
 		res.Rows = res.Rows[:res.RowsAffected]
 	}
-	return res, bufs, processedAtLeastOneBatch, err
+	return res, bm, processedAtLeastOneBatch, err
 }
 
 // See https://dev.mysql.com/doc/internals/en/status-flags.html
@@ -1211,7 +1223,10 @@ func updateMaxUsedConnectionsStatusVariable() {
 	}()
 }
 
+// getMaxTypeCapacity determines the maximum required capacity for sql.Type `typ`.
 func getMaxTypeCapacity(ctx *sql.Context, typ sql.Type) (res int) {
+	// Only numeric types are written to byte buffer through strconv.Append...
+	// String types already have []byte or string allocated, so they should not use a backing array.
 	switch typ.Type() {
 	case sqltypes.Int8:
 		// Longest possible int8 is len("-128") = 4
@@ -1261,41 +1276,31 @@ func getMaxTypeCapacity(ctx *sql.Context, typ sql.Type) (res int) {
 	case sqltypes.Bit:
 		res = int(typ.MaxTextResponseByteLength(ctx))
 	default:
-		// TODO: StringType can use backing array depending on the type of
-		// These types do not use sql.ByteBuffer
+		// TODO: StringType can use backing array depending on the built-in type of the value.
+		// These types do not use sql.byteBuffer
 		res = 0
 	}
 	return
 }
 
-func toSqlHelper(ctx *sql.Context, typ sql.Type, buf *sql.ByteBuffer, val interface{}) (sqltypes.Value, *sql.ByteBuffer, error) {
-	// Determine the maximum required capacity
-	//  Only numeric types are written to byte buffer through strconv.Append...
-	//  String types already have []byte or string allocated, so they should not use a backing array.
+func toSQL(ctx *sql.Context, typ sql.Type, bm *sql.ByteBufferManager, val any) (sqltypes.Value, error) {
 	maxCap := getMaxTypeCapacity(ctx, typ)
 	if maxCap == 0 {
-		ret, err := typ.SQL(ctx, nil, val)
-		return ret, buf, err
+		return typ.SQL(ctx, nil, val)
 	}
-
-	if !buf.HasCapacity(maxCap) {
-		buf = sql.ByteBufPool.Get().(*sql.ByteBuffer)
-		buf.Reset()
+	ret, err := typ.SQL(ctx, bm.Get(maxCap), val)
+	if err != nil {
+		return sqltypes.Value{}, err
 	}
-
-	ret, err := typ.SQL(ctx, buf.Get(), val)
-	buf.Grow(ret.Len())
-	return ret, buf, err
+	bm.Grow(ret.Len())
+	return ret, nil
 }
 
-func RowToSQL(ctx *sql.Context, sch sql.Schema, row sql.Row, projs []sql.Expression, bufs []*sql.ByteBuffer) ([]sqltypes.Value, []*sql.ByteBuffer, error) {
-	// need to make sure the schema is not null as some plan schema is defined as null (e.g. IfElseBlock)
+func RowToSQL(ctx *sql.Context, sch sql.Schema, row sql.Row, projs []sql.Expression, bm *sql.ByteBufferManager) ([]sqltypes.Value, error) {
+	// need to make sure the schema is not null as some plan schema is defined as null (e.g. IfElseBlock) // TODO: do we really?
 	if len(sch) == 0 {
-		return []sqltypes.Value{}, nil, nil
+		return []sqltypes.Value{}, nil
 	}
-
-	// TODO: is it possible for this to utilize more than 1 buffer?
-	buf := bufs[len(bufs)-1]
 
 	outVals := make([]sqltypes.Value, len(sch))
 	var err error
@@ -1305,55 +1310,42 @@ func RowToSQL(ctx *sql.Context, sch sql.Schema, row sql.Row, projs []sql.Express
 				outVals[i] = sqltypes.NULL
 				continue
 			}
-
-			var newBuf *sql.ByteBuffer
-			outVals[i], newBuf, err = toSqlHelper(ctx, col.Type, buf, row[i])
+			outVals[i], err = toSQL(ctx, col.Type, bm, row[i])
 			if err != nil {
-				return nil, nil, err
-			}
-
-			// allocated new backing array
-			if newBuf != nil && newBuf != buf {
-				bufs = append(bufs, newBuf)
+				return nil, err
 			}
 		}
-		return outVals, bufs, nil
+		return outVals, nil
 	}
 
 	for i, col := range sch {
 		var field any
 		field, err = projs[i].Eval(ctx, row)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		if field == nil {
 			outVals[i] = sqltypes.NULL
 			continue
 		}
-
-		var newBuf *sql.ByteBuffer
-		outVals[i], newBuf, err = toSqlHelper(ctx, col.Type, buf, field)
+		outVals[i], err = toSQL(ctx, col.Type, bm, row[i])
 		if err != nil {
-			return nil, nil, err
-		}
-
-		// allocated new backing array
-		if newBuf != nil && newBuf != buf {
-			bufs = append(bufs, newBuf)
+			return nil, err
 		}
 	}
-	return outVals, bufs, nil
+	return outVals, nil
 }
 
-func RowValueToSQLValues(ctx *sql.Context, sch sql.Schema, row sql.ValueRow, bufs []*sql.ByteBuffer) ([]sqltypes.Value, []*sql.ByteBuffer, error) {
+func RowValueToSQLValues(ctx *sql.Context, sch sql.Schema, row sql.ValueRow, bm *sql.ByteBufferManager) ([]sqltypes.Value, error) {
 	// TODO: we check for empty schema in doQuery, shouldn't need to check here
 	if len(sch) == 0 {
-		return []sqltypes.Value{}, nil, nil
+		return []sqltypes.Value{}, nil
 	}
+
 	var err error
 	outVals := make([]sqltypes.Value, len(sch))
 	for i, col := range sch {
-		// TODO: remove this check once all Types implement this
+		// TODO: remove this check once all Types implement sql.ValueType
 		valType, ok := col.Type.(sql.ValueType)
 		if !ok {
 			if row[i].IsNull() {
@@ -1369,26 +1361,18 @@ func RowValueToSQLValues(ctx *sql.Context, sch sql.Schema, row sql.ValueRow, buf
 		if maxCap == 0 {
 			outVals[i], err = valType.SQLValue(ctx, row[i], nil)
 			if err != nil {
-				return nil, nil, err
+				return nil, err
 			}
-			return outVals, bufs, nil
+			continue
 		}
 
-		buf := bufs[len(bufs)-1]
-		if !buf.HasCapacity(maxCap) {
-			buf = sql.ByteBufPool.Get().(*sql.ByteBuffer)
-			buf.Reset()
-			bufs = append(bufs, buf)
-		}
-
-		outVals[i], err = valType.SQLValue(ctx, row[i], buf.Get())
+		outVals[i], err = valType.SQLValue(ctx, row[i], bm.Get(maxCap))
 		if err != nil {
-			// TODO: might be important to return bufs even during err to prevent memory leaks
-			return nil, nil, err
+			return nil, err
 		}
-		buf.Grow(outVals[i].Len())
+		bm.Grow(outVals[i].Len())
 	}
-	return outVals, bufs, nil
+	return outVals, nil
 }
 
 func schemaToFields(ctx *sql.Context, s sql.Schema) []*querypb.Field {

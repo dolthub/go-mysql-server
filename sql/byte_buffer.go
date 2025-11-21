@@ -19,41 +19,76 @@ import (
 )
 
 // TODO: find optimal size
-const buffCap = 4096 // 4KB
+const bufCap = 4096 // 4KB
 
-var ByteBufPool = sync.Pool{
+// byteBuffer serves as a statically sized backing array used to the wire methods (types.SQL() and types.SQLValue())
+type byteBuffer struct {
+	pos uint16
+	buf [bufCap]byte
+}
+
+var bufferPool = sync.Pool{
 	New: func() any {
-		return NewByteBuffer()
+		return &byteBuffer{}
 	},
 }
 
-type ByteBuffer struct {
-	pos uint16
-	buf [buffCap]byte
+// hasCapacity indicates if this buffer has `cap` bytes worth of capacity left
+func (b *byteBuffer) hasCapacity(cap int) bool {
+	return int(b.pos)+cap < bufCap
 }
 
-func NewByteBuffer() *ByteBuffer {
-	return &ByteBuffer{}
-}
-
-// HasCapacity indicates if this buffer has `n` bytes worth of capacity left
-func (b *ByteBuffer) HasCapacity(n int) bool {
-	return int(b.pos)+n < buffCap
-}
-
-// Grow records the latest used byte position. Callers
-// are responsible for accurately reporting which bytes
-// they expect to be protected.
-func (b *ByteBuffer) Grow(n int) {
+// Grow records the latest used byte position.
+// Callers are responsible for accurately reporting which bytes they expect to be protected.
+func (b *byteBuffer) grow(n int) {
 	b.pos += uint16(n)
 }
 
-// Get returns a zero-length slice beginning at a safe
-// write position.
-func (b *ByteBuffer) Get() []byte {
+// Get returns a zero-length slice beginning at a safe writing position.
+func (b *byteBuffer) get() []byte {
 	return b.buf[b.pos:b.pos]
 }
 
-func (b *ByteBuffer) Reset() {
+func (b *byteBuffer) reset() {
 	b.pos = 0
+}
+
+// ByteBufferManager is responsible for handling all byteBuffers retrieved from byteBufferPool.
+type ByteBufferManager struct {
+	bufs []*byteBuffer
+	cur  *byteBuffer
+}
+
+// NewByteBufferManager returns a ByteBufferManager with one byteBuffer already allocated.
+func NewByteBufferManager() *ByteBufferManager {
+	cur := bufferPool.Get().(*byteBuffer)
+	cur.reset()
+	return &ByteBufferManager{
+		cur:  cur,
+		bufs: make([]*byteBuffer, 0),
+	}
+}
+
+// Get returns a zero-length slice guaranteed to have capacity for `cap` bytes.
+// This function will retrieve any necessary byteBuffers from bufferPool.
+func (b *ByteBufferManager) Get(cap int) []byte {
+	if !b.cur.hasCapacity(cap) {
+		b.bufs = append(b.bufs, b.cur)
+		b.cur = bufferPool.Get().(*byteBuffer)
+		b.cur.reset()
+	}
+	return b.cur.get()
+}
+
+// Grow shifts the safe writing position of the current byteBuffer.
+func (b *ByteBufferManager) Grow(n int) {
+	b.cur.grow(n)
+}
+
+// PutAll releases all allocated byteBuffers back into bufferPool.
+func (b *ByteBufferManager) PutAll() {
+	for _, buf := range b.bufs {
+		bufferPool.Put(buf)
+	}
+	bufferPool.Put(b.cur)
 }
