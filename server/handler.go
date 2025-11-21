@@ -906,6 +906,9 @@ func (h *Handler) resultForValueRowIter(
 	var res *sqltypes.Result
 	var bm *sql.ByteBufferManager
 	maxCaps := make([]int, len(schema))
+	for i, col := range schema {
+		maxCaps[i] = getMaxTypeCapacity(ctx, col.Type)
+	}
 	eg.Go(func() (err error) {
 		defer pan2err(&err)
 		defer close(resChan)
