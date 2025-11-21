@@ -491,7 +491,7 @@ func (h *Handler) doQuery(
 	// zero/single return schema use spooling shortcut
 	if types.IsOkResultSchema(schema) {
 		r, err = resultForOkIter(sqlCtx, rowIter)
-	} else if schema == nil {
+	} else if len(schema) == 0 {
 		r, err = resultForEmptyIter(sqlCtx, rowIter, resultFields)
 	} else if analyzer.FlagIsSet(qFlags, sql.QFlagMax1Row) {
 		r, bm, err = resultForMax1RowIter(sqlCtx, schema, rowIter, resultFields, bm)
@@ -615,7 +615,11 @@ func resultForMax1RowIter(
 	}
 
 	bm = sql.NewByteBufferManager()
-	outputRow, err := RowToSQL(ctx, schema, row, nil, bm)
+	maxCaps := make([]int, len(schema))
+	for i, col := range schema {
+		maxCaps[i] = getMaxTypeCapacity(ctx, col.Type)
+	}
+	outputRow, err := RowToSQL(ctx, schema, row, nil, maxCaps, bm)
 	if err != nil {
 		// Important to return ByteBufferManager even in error, as we still need to release any allocated memory.
 		return nil, bm, err
@@ -708,6 +712,12 @@ func (h *Handler) resultForDefaultIter(
 	var resChan = make(chan managedResult, 4)
 	var res *sqltypes.Result
 	var bm *sql.ByteBufferManager
+
+	// TODO: find good place to put this
+	maxCaps := make([]int, len(schema))
+	for i, col := range schema {
+		maxCaps[i] = getMaxTypeCapacity(ctx, col.Type)
+	}
 	eg.Go(func() (err error) {
 		defer pan2err(&err)
 		defer wg.Done()
@@ -747,7 +757,7 @@ func (h *Handler) resultForDefaultIter(
 				}
 
 				var outRow []sqltypes.Value
-				outRow, err = RowToSQL(ctx, schema, row, projs, bm)
+				outRow, err = RowToSQL(ctx, schema, row, projs, maxCaps, bm)
 				if err != nil {
 					return err
 				}
@@ -895,6 +905,7 @@ func (h *Handler) resultForValueRowIter(
 	var resChan = make(chan bufferedResult, 4)
 	var res *sqltypes.Result
 	var bm *sql.ByteBufferManager
+	maxCaps := make([]int, len(schema))
 	eg.Go(func() (err error) {
 		defer pan2err(&err)
 		defer close(resChan)
@@ -926,7 +937,7 @@ func (h *Handler) resultForValueRowIter(
 				}
 
 				var outRow []sqltypes.Value
-				outRow, err = RowValueToSQLValues(ctx, schema, row, bm)
+				outRow, err = RowValueToSQLValues(ctx, schema, row, maxCaps, bm)
 				if err != nil {
 					return err
 				}
@@ -1286,8 +1297,7 @@ func getMaxTypeCapacity(ctx *sql.Context, typ sql.Type) (res int) {
 	return
 }
 
-func toSQL(ctx *sql.Context, typ sql.Type, bm *sql.ByteBufferManager, val any) (sqltypes.Value, error) {
-	maxCap := getMaxTypeCapacity(ctx, typ)
+func toSQL(ctx *sql.Context, typ sql.Type, maxCap int, bm *sql.ByteBufferManager, val any) (sqltypes.Value, error) {
 	if maxCap == 0 {
 		return typ.SQL(ctx, nil, val)
 	}
@@ -1299,7 +1309,7 @@ func toSQL(ctx *sql.Context, typ sql.Type, bm *sql.ByteBufferManager, val any) (
 	return ret, nil
 }
 
-func RowToSQL(ctx *sql.Context, sch sql.Schema, row sql.Row, projs []sql.Expression, bm *sql.ByteBufferManager) ([]sqltypes.Value, error) {
+func RowToSQL(ctx *sql.Context, sch sql.Schema, row sql.Row, projs []sql.Expression, maxCaps []int, bm *sql.ByteBufferManager) ([]sqltypes.Value, error) {
 	// need to make sure the schema is not null as some plan schema is defined as null (e.g. IfElseBlock) // TODO: do we really?
 	if len(sch) == 0 {
 		return []sqltypes.Value{}, nil
@@ -1313,7 +1323,7 @@ func RowToSQL(ctx *sql.Context, sch sql.Schema, row sql.Row, projs []sql.Express
 				outVals[i] = sqltypes.NULL
 				continue
 			}
-			outVals[i], err = toSQL(ctx, col.Type, bm, row[i])
+			outVals[i], err = toSQL(ctx, col.Type, maxCaps[i], bm, row[i])
 			if err != nil {
 				return nil, err
 			}
@@ -1331,7 +1341,7 @@ func RowToSQL(ctx *sql.Context, sch sql.Schema, row sql.Row, projs []sql.Express
 			outVals[i] = sqltypes.NULL
 			continue
 		}
-		outVals[i], err = toSQL(ctx, col.Type, bm, field)
+		outVals[i], err = toSQL(ctx, col.Type, maxCaps[i], bm, field)
 		if err != nil {
 			return nil, err
 		}
@@ -1339,12 +1349,7 @@ func RowToSQL(ctx *sql.Context, sch sql.Schema, row sql.Row, projs []sql.Express
 	return outVals, nil
 }
 
-func RowValueToSQLValues(ctx *sql.Context, sch sql.Schema, row sql.ValueRow, bm *sql.ByteBufferManager) ([]sqltypes.Value, error) {
-	// TODO: we check for empty schema in doQuery, shouldn't need to check here
-	if len(sch) == 0 {
-		return []sqltypes.Value{}, nil
-	}
-
+func RowValueToSQLValues(ctx *sql.Context, sch sql.Schema, row sql.ValueRow, maxCaps []int, bm *sql.ByteBufferManager) ([]sqltypes.Value, error) {
 	var err error
 	outVals := make([]sqltypes.Value, len(sch))
 	for i, col := range sch {
@@ -1359,9 +1364,7 @@ func RowValueToSQLValues(ctx *sql.Context, sch sql.Schema, row sql.ValueRow, bm 
 			continue
 		}
 
-		// TODO: schema remains constant throughout this query, so no need to recalc this every time
-		maxCap := getMaxTypeCapacity(ctx, valType)
-		if maxCap == 0 {
+		if maxCaps[i] == 0 {
 			outVals[i], err = valType.SQLValue(ctx, row[i], nil)
 			if err != nil {
 				return nil, err
@@ -1369,7 +1372,7 @@ func RowValueToSQLValues(ctx *sql.Context, sch sql.Schema, row sql.ValueRow, bm 
 			continue
 		}
 
-		outVals[i], err = valType.SQLValue(ctx, row[i], bm.Get(maxCap))
+		outVals[i], err = valType.SQLValue(ctx, row[i], bm.Get(maxCaps[i]))
 		if err != nil {
 			return nil, err
 		}
