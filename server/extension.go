@@ -156,6 +156,10 @@ func (ih *interceptorHandler) ConnectionClosed(c *mysql.Conn) {
 	ih.h.ConnectionClosed(c)
 }
 
+func (ih *interceptorHandler) ConnectionAuthenticated(c *mysql.Conn) error {
+	return ih.h.ConnectionAuthenticated(c)
+}
+
 func (ih *interceptorHandler) ConnectionAborted(c *mysql.Conn, reason string) error {
 	return ih.h.ConnectionAborted(c, reason)
 }
