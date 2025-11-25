@@ -314,18 +314,16 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 		retFilters = b.leftover
 	}
 
-	// TODO: this block is essentially doing a deep copy of c.bestStat? but why?
-	//var bestStat sql.Statistic
-	//if c.bestStat.FuncDeps().HasMax1Row() {
-	//	bestStat = c.bestStat.WithRowCount(1).WithDistinctCount(1)
-	//} else {
-	//	// TODO: c.cost already does this?
-	//	bestStat, err = c.bestStat.WithHistogram(c.bestHist) // This filters out invalid buckets, but errors?
-	//	if err != nil {
-	//		return nil, nil, nil, err
-	//	}
-	//	bestStat = stats.UpdateCounts(bestStat)
-	//}
+	var bestStat sql.Statistic
+	if c.bestStat.FuncDeps().HasMax1Row() {
+		bestStat = c.bestStat.WithRowCount(1).WithDistinctCount(1)
+	} else {
+		bestStat, err = c.bestStat.WithHistogram(c.bestHist)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		bestStat = stats.UpdateCounts(bestStat)
+	}
 
 	if c.bestStat.FuncDeps().HasMax1Row() && !qFlags.JoinIsSet() && !qFlags.SubqueryIsSet() && lookup.Ranges.Len() == 1 {
 		// Strict index lookup without a join or subquery scope will return
