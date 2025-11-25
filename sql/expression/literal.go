@@ -16,6 +16,7 @@ package expression
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -79,8 +80,26 @@ func (lit *Literal) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 func (lit *Literal) String() string {
 	switch litVal := lit.Val.(type) {
-	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
-		return fmt.Sprintf("%d", litVal)
+	case int:
+		return strconv.FormatInt(int64(litVal), 10)
+	case int8:
+		return strconv.FormatInt(int64(litVal), 10)
+	case int16:
+		return strconv.FormatInt(int64(litVal), 10)
+	case int32:
+		return strconv.FormatInt(int64(litVal), 10)
+	case int64:
+		return strconv.FormatInt(litVal, 10)
+	case uint:
+		return strconv.FormatUint(uint64(litVal), 10)
+	case uint8:
+		return strconv.FormatUint(uint64(litVal), 10)
+	case uint16:
+		return strconv.FormatUint(uint64(litVal), 10)
+	case uint32:
+		return strconv.FormatUint(uint64(litVal), 10)
+	case uint64:
+		return strconv.FormatUint(litVal, 10)
 	case string:
 		switch lit.Typ.Type() {
 		// utf8 charset cannot encode binary string
@@ -91,7 +110,7 @@ func (lit *Literal) String() string {
 		// Backslash chars also need to be replaced.
 		escaped := strings.ReplaceAll(litVal, "'", "''")
 		escaped = strings.ReplaceAll(escaped, "\\", "\\\\")
-		return fmt.Sprintf("'%s'", escaped)
+		return strconv.Quote(escaped)
 	case decimal.Decimal:
 		return litVal.StringFixed(litVal.Exponent() * -1)
 	case []byte:
