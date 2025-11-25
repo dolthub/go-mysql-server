@@ -41,7 +41,7 @@ var _ sqlparser.Injectable = &Literal{}
 
 // NewLiteral creates a new Literal expression.
 func NewLiteral(value interface{}, fieldType sql.Type) *Literal {
-	val2, _ := sql.ConvertToValue(value)
+	val2 := sql.ConvertToValue(value)
 	return &Literal{
 		Val:  value,
 		val2: val2,
