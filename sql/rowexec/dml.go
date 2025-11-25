@@ -22,6 +22,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/fulltext"
+	"github.com/dolthub/go-mysql-server/sql/hooks"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -200,6 +201,11 @@ func (b *BaseBuilder) buildDropTable(ctx *sql.Context, n *plan.DropTable, _ sql.
 	var err error
 	var curdb sql.Database
 
+	dropTableHooks := hooks.Global.Table().Drop()
+	n, err = dropTableHooks.PreSQLExecution(ctx, n)
+	if err != nil {
+		return nil, err
+	}
 	sortedTables, err := sortTablesByFKDependencies(ctx, n.Tables)
 	if err != nil {
 		return nil, err
@@ -264,6 +270,10 @@ func (b *BaseBuilder) buildDropTable(ctx *sql.Context, n *plan.DropTable, _ sql.
 				return nil, err
 			}
 		}
+	}
+
+	if err = dropTableHooks.PostSQLExecution(ctx, n); err != nil {
+		return nil, err
 	}
 
 	return rowIterWithOkResultWithZeroRowsAffected(), nil

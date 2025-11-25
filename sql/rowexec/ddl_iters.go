@@ -31,6 +31,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/fulltext"
+	"github.com/dolthub/go-mysql-server/sql/hooks"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -422,6 +423,9 @@ func (i *modifyColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, err
 		}
 		if rewritten {
+			if err = hooks.Global.TableColumn().Modify().PostSQLExecution(ctx, i.m); err != nil {
+				return nil, err
+			}
 			return sql.NewRow(types.NewOkResult(0)), nil
 		}
 	}
@@ -440,6 +444,9 @@ func (i *modifyColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 		if err = rebuildFullText(ctx, i.alterable.Name(), i.m.Db); err != nil {
 			return nil, err
 		}
+	}
+	if err = hooks.Global.TableColumn().Modify().PostSQLExecution(ctx, i.m); err != nil {
+		return nil, err
 	}
 	return sql.NewRow(types.NewOkResult(0)), nil
 }
@@ -1332,6 +1339,9 @@ func (i *addColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, err
 		}
 		if rewritten {
+			if err = hooks.Global.TableColumn().Add().PostSQLExecution(ctx, i.a); err != nil {
+				return nil, err
+			}
 			return sql.NewRow(types.NewOkResult(0)), nil
 		}
 	}
@@ -1349,6 +1359,9 @@ func (i *addColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 	// We only need to update all table rows if the new column is non-nil
 	if i.a.Column().Nullable && i.a.Column().Default == nil {
+		if err = hooks.Global.TableColumn().Add().PostSQLExecution(ctx, i.a); err != nil {
+			return nil, err
+		}
 		return sql.NewRow(types.NewOkResult(0)), nil
 	}
 
@@ -1357,6 +1370,9 @@ func (i *addColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 
+	if err = hooks.Global.TableColumn().Add().PostSQLExecution(ctx, i.a); err != nil {
+		return nil, err
+	}
 	return sql.NewRow(types.NewOkResult(0)), nil
 }
 
@@ -1735,6 +1751,9 @@ func (i *dropColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, err
 		}
 		if rewritten {
+			if err = hooks.Global.TableColumn().Drop().PostSQLExecution(ctx, i.d); err != nil {
+				return nil, err
+			}
 			return sql.NewRow(types.NewOkResult(0)), nil
 		}
 	}
@@ -1756,6 +1775,9 @@ func (i *dropColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 		if err = rebuildFullText(ctx, i.alterable.Name(), i.d.Db); err != nil {
 			return nil, err
 		}
+	}
+	if err = hooks.Global.TableColumn().Drop().PostSQLExecution(ctx, i.d); err != nil {
+		return nil, err
 	}
 	return sql.NewRow(types.NewOkResult(0)), nil
 }
