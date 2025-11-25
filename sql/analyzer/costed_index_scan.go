@@ -174,7 +174,6 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 		return nil, nil, nil, err
 	}
 
-	// TODO: detect that this table is unchanged and reuse the work from previous index costs
 	iat, ok := rt.UnderlyingTable().(sql.IndexAddressableTable)
 	if !ok {
 		return nil, nil, nil, err
@@ -472,7 +471,6 @@ type indexCoster struct {
 func (c *indexCoster) cost(f indexFilter, stat sql.Statistic, idx sql.Index) error {
 	ordinals := ordinalsForStat(stat)
 
-	// TODO: cache
 	var newHist []sql.HistogramBucket
 	var newFds *sql.FuncDepSet
 	var filters sql.FastIntSet
