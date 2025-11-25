@@ -154,7 +154,7 @@ func (s FastIntSet) Empty() bool {
 }
 
 // Len returns the number of the elements in the set.
-func (s *FastIntSet) Len() int {
+func (s FastIntSet) Len() int {
 	if s.large == nil {
 		return bits.OnesCount64(s.small)
 	}
