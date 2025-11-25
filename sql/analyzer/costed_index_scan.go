@@ -315,7 +315,7 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 	}
 
 	var bestStat sql.Statistic
-	if c.bestStat.FuncDeps().HasMax1Row() {
+	if bestStat.FuncDeps().HasMax1Row() {
 		bestStat = c.bestStat.WithRowCount(1).WithDistinctCount(1)
 	} else {
 		bestStat, err = c.bestStat.WithHistogram(c.bestHist)
@@ -332,7 +332,7 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 		qFlags.Set(sql.QFlagMax1Row)
 	}
 
-	return ret, c.bestStat, retFilters, nil
+	return ret, bestStat, retFilters, nil
 }
 
 func addIndexScans(ctx *sql.Context, m *memo.Memo) error {
