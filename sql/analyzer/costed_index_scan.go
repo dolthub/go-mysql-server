@@ -155,7 +155,7 @@ func costedIndexLookup(ctx *sql.Context, n sql.Node, a *Analyzer, iat sql.IndexA
 }
 
 func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.TableNode, indexes []sql.Index, filters []sql.Expression, qFlags *sql.QueryFlags) (*plan.IndexedTableAccess, sql.Statistic, []sql.Expression, error) {
-	statistics, err := statsProv.GetTableStats(ctx, strings.ToLower(rt.Database().Name()), rt.UnderlyingTable())
+	statistics, err := statsProv.GetTableStats(ctx, rt.Database().Name(), rt.UnderlyingTable())
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -174,6 +174,7 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 		return nil, nil, nil, err
 	}
 
+	// TODO: detect that this table is unchanged and reuse the work from previous index costs
 	iat, ok := rt.UnderlyingTable().(sql.IndexAddressableTable)
 	if !ok {
 		return nil, nil, nil, err
@@ -182,19 +183,19 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 	// run each index through coster, save the cheapest
 	var dbName string
 	if dbTab, ok := rt.UnderlyingTable().(sql.Databaseable); ok {
-		dbName = strings.ToLower(dbTab.Database())
+		dbName = dbTab.Database()
 	}
 	table := rt.UnderlyingTable()
 	var schemaName string
 	if schTab, ok := table.(sql.DatabaseSchemaTable); ok {
-		schemaName = strings.ToLower(schTab.DatabaseSchema().SchemaName())
+		schemaName = schTab.DatabaseSchema().SchemaName()
 	}
-	tableName := strings.ToLower(table.Name())
+	tableName := table.Name()
 
 	if len(qualToStat) > 0 {
 		// don't mix and match real and default stats
 		for _, idx := range indexes {
-			qual := sql.NewStatQualifier(dbName, schemaName, tableName, strings.ToLower(idx.ID()))
+			qual := sql.NewStatQualifier(dbName, schemaName, tableName, idx.ID())
 			_, ok := qualToStat[qual]
 			if !ok {
 				qualToStat = nil
@@ -204,15 +205,15 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 	}
 
 	for _, idx := range indexes {
-		qual := sql.NewStatQualifier(dbName, schemaName, tableName, strings.ToLower(idx.ID()))
+		qual := sql.NewStatQualifier(dbName, schemaName, tableName, idx.ID())
 		stat, ok := qualToStat[qual]
 		if !ok {
 			stat, err = uniformDistStatisticsForIndex(ctx, statsProv, iat, idx)
+			if err != nil {
+				return nil, nil, nil, err
+			}
 		}
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		err := c.cost(root, stat, idx)
+		err = c.cost(root, stat, idx)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -314,25 +315,27 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 		retFilters = b.leftover
 	}
 
-	var bestStat sql.Statistic
-	if c.bestStat.FuncDeps().HasMax1Row() {
-		bestStat = c.bestStat.WithRowCount(1).WithDistinctCount(1)
-	} else {
-		bestStat, err = c.bestStat.WithHistogram(c.bestHist)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		bestStat = stats.UpdateCounts(bestStat)
-	}
+	// TODO: this block is essentially doing a deep copy of c.bestStat? but why?
+	//var bestStat sql.Statistic
+	//if c.bestStat.FuncDeps().HasMax1Row() {
+	//	bestStat = c.bestStat.WithRowCount(1).WithDistinctCount(1)
+	//} else {
+	//	// TODO: c.cost already does this?
+	//	bestStat, err = c.bestStat.WithHistogram(c.bestHist) // This filters out invalid buckets, but errors?
+	//	if err != nil {
+	//		return nil, nil, nil, err
+	//	}
+	//	bestStat = stats.UpdateCounts(bestStat)
+	//}
 
-	if bestStat.FuncDeps().HasMax1Row() && !qFlags.JoinIsSet() && !qFlags.SubqueryIsSet() && lookup.Ranges.Len() == 1 {
+	if c.bestStat.FuncDeps().HasMax1Row() && !qFlags.JoinIsSet() && !qFlags.SubqueryIsSet() && lookup.Ranges.Len() == 1 {
 		// Strict index lookup without a join or subquery scope will return
 		// at most one row. We could also use some sort of scope counting
 		// to check for single scope.
 		qFlags.Set(sql.QFlagMax1Row)
 	}
 
-	return ret, bestStat, retFilters, nil
+	return ret, c.bestStat, retFilters, nil
 }
 
 func addIndexScans(ctx *sql.Context, m *memo.Memo) error {
@@ -469,6 +472,7 @@ type indexCoster struct {
 func (c *indexCoster) cost(f indexFilter, stat sql.Statistic, idx sql.Index) error {
 	ordinals := ordinalsForStat(stat)
 
+	// TODO: cache
 	var newHist []sql.HistogramBucket
 	var newFds *sql.FuncDepSet
 	var filters sql.FastIntSet
@@ -492,6 +496,7 @@ func (c *indexCoster) cost(f indexFilter, stat sql.Statistic, idx sql.Index) err
 		if ok {
 			filters.Add(int(f.id))
 		}
+
 	case *iScanLeaf:
 		newHist, newFds, ok, prefix, err = c.costIndexScanLeaf(f, stat, stat.Histogram(), ordinals, idx)
 		if err != nil {
@@ -500,6 +505,7 @@ func (c *indexCoster) cost(f indexFilter, stat sql.Statistic, idx sql.Index) err
 		if ok {
 			filters.Add(int(f.id))
 		}
+
 	default:
 		panic("unreachable")
 	}
@@ -517,7 +523,7 @@ func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fd
 	if s == nil || filters.Len() == 0 {
 		return
 	}
-	rowCnt, _, _ := stats.GetNewCounts(hist)
+	rowCnt := stats.GetNewRowCounts(hist)
 
 	var update bool
 	defer func() {
@@ -534,16 +540,24 @@ func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fd
 	if c.bestStat == nil {
 		update = true
 		return
-	} else if c.bestStat.FuncDeps().HasMax1Row() {
+	}
+
+	if c.bestStat.FuncDeps().HasMax1Row() {
 		return
-	} else if rowCnt < c.bestCnt {
+	}
+
+	if rowCnt < c.bestCnt {
 		update = true
 		return
-	} else if c.bestPrefix == 0 || prefix == 0 && c.bestPrefix != prefix {
+	}
+
+	if c.bestPrefix == 0 || prefix == 0 && c.bestPrefix != prefix {
 		// any prefix is better than no prefix
 		update = prefix > c.bestPrefix
 		return
-	} else if rowCnt == c.bestCnt {
+	}
+
+	if rowCnt == c.bestCnt {
 		// hand rules when stats don't exist or match exactly
 		cmp := fds
 		best := c.bestStat.FuncDeps()
@@ -554,21 +568,20 @@ func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fd
 
 		// If one index uses a strict superset of the filters of the other, we should always pick the superset.
 		// This is true even if the index with more filters isn't unique.
-		if prefix > c.bestPrefix && slices.Equal(c.bestStat.Columns()[:c.bestPrefix], s.Columns()[:c.bestPrefix]) {
+		bestCols := c.bestStat.Columns()
+		newCols := s.Columns()
+		if prefix > c.bestPrefix && slices.Equal(bestCols[:c.bestPrefix], newCols[:c.bestPrefix]) {
 			update = true
 			return
 		}
-
-		if prefix == c.bestPrefix && slices.Equal(c.bestStat.Columns()[:c.bestPrefix], s.Columns()[:c.bestPrefix]) && hasRange && !c.hasRange {
+		if prefix == c.bestPrefix && slices.Equal(bestCols[:c.bestPrefix], newCols[:c.bestPrefix]) && hasRange && !c.hasRange {
 			update = true
 			return
 		}
-
-		if c.bestPrefix > prefix && slices.Equal(c.bestStat.Columns()[:prefix], s.Columns()[:prefix]) {
+		if c.bestPrefix > prefix && slices.Equal(bestCols[:prefix], newCols[:prefix]) {
 			return
 		}
-
-		if c.bestPrefix == prefix && slices.Equal(c.bestStat.Columns()[:prefix], s.Columns()[:prefix]) && !hasRange && c.hasRange {
+		if c.bestPrefix == prefix && slices.Equal(bestCols[:prefix], newCols[:prefix]) && !hasRange && c.hasRange {
 			return
 		}
 
@@ -600,7 +613,8 @@ func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fd
 			}
 			update = true
 			return
-		} else if cmp.Constants().Len() < best.Constants().Len() {
+		}
+		if cmp.Constants().Len() < best.Constants().Len() {
 			if cmpHasLax && !bestHasLax {
 				// keep unique key
 				update = true
@@ -612,7 +626,6 @@ func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fd
 			update = true
 			return
 		}
-
 		if filters.Len() < c.bestFilters.Len() {
 			return
 		}
@@ -624,32 +637,29 @@ func (c *indexCoster) updateBest(s sql.Statistic, hist []sql.HistogramBucket, fd
 			return
 		}
 
-		{
-			// if no unique keys, prefer equality over ranges
-			bestConst, bestIsNull := c.getConstAndNullFilters(c.bestFilters)
-			cmpConst, cmpIsNull := c.getConstAndNullFilters(filters)
-			if cmpConst.Len() > bestConst.Len() {
-				update = true
-				return
-			}
-			if cmpIsNull.Len() > bestIsNull.Len() {
-				update = true
-				return
-			}
+		// if no unique keys, prefer equality over ranges
+		bestConst, bestIsNull := c.getConstAndNullFilters(c.bestFilters)
+		cmpConst, cmpIsNull := c.getConstAndNullFilters(filters)
+		if cmpConst.Len() > bestConst.Len() {
+			update = true
+			return
+		}
+		if cmpIsNull.Len() > bestIsNull.Len() {
+			update = true
+			return
 		}
 
-		{
-			if strings.EqualFold(s.Qualifier().Index(), "primary") {
-				update = true
-				return
-			} else if strings.EqualFold(c.bestStat.Qualifier().Index(), "primary") {
-				return
-			}
-			if strings.Compare(s.Qualifier().Index(), c.bestStat.Qualifier().Index()) < 0 {
-				// if they are still equal, use index name to make deterministic
-				update = true
-				return
-			}
+		if strings.EqualFold(s.Qualifier().Index(), "primary") {
+			update = true
+			return
+		}
+		if strings.EqualFold(c.bestStat.Qualifier().Index(), "primary") {
+			return
+		}
+		if strings.Compare(s.Qualifier().Index(), c.bestStat.Qualifier().Index()) < 0 {
+			// if they are still equal, use index name to make deterministic
+			update = true
+			return
 		}
 	}
 }

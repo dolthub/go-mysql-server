@@ -158,7 +158,14 @@ func nilSafeCmp(ctx *sql.Context, typ sql.Type, left, right interface{}) (int, e
 	}
 }
 
-func GetNewCounts(buckets []sql.HistogramBucket) (rowCount uint64, distinctCount uint64, nullCount uint64) {
+func GetNewRowCounts(buckets []sql.HistogramBucket) (rowCount uint64) {
+	for _, b := range buckets {
+		rowCount += b.RowCount()
+	}
+	return rowCount
+}
+
+func GetAllNewCounts(buckets []sql.HistogramBucket) (rowCount uint64, distinctCount uint64, nullCount uint64) {
 	if len(buckets) == 0 {
 		return 0, 0, 0
 	}

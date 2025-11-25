@@ -207,7 +207,7 @@ func (s *Statistic) WithLowerBound(r sql.Row) sql.Statistic {
 
 func (s *Statistic) WithHistogram(h sql.Histogram) (sql.Statistic, error) {
 	ret := *s
-	ret.Hist = nil
+	ret.Hist = make(sql.Histogram, 0, len(h))
 	for _, b := range h {
 		sqlB, ok := b.(*Bucket)
 		if !ok {

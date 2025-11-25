@@ -141,7 +141,7 @@ func (s *FastIntSet) Remove(i int) {
 }
 
 // Contains returns true if the set contains the value.
-func (s FastIntSet) Contains(i int) bool {
+func (s *FastIntSet) Contains(i int) bool {
 	if s.large != nil {
 		return s.large.Has(i)
 	}
@@ -149,12 +149,12 @@ func (s FastIntSet) Contains(i int) bool {
 }
 
 // Empty returns true if the set is empty.
-func (s FastIntSet) Empty() bool {
+func (s *FastIntSet) Empty() bool {
 	return s.small == 0 && (s.large == nil || s.large.IsEmpty())
 }
 
 // Len returns the number of the elements in the set.
-func (s FastIntSet) Len() int {
+func (s *FastIntSet) Len() int {
 	if s.large == nil {
 		return bits.OnesCount64(s.small)
 	}
@@ -163,7 +163,7 @@ func (s FastIntSet) Len() int {
 
 // Next returns the first value in the set which is >= startVal. If there is no
 // value, the second return value is false.
-func (s FastIntSet) Next(startVal int) (int, bool) {
+func (s *FastIntSet) Next(startVal int) (int, bool) {
 	if s.large != nil {
 		res := s.large.LowerBound(startVal)
 		return res, res != intsets.MaxInt
@@ -181,7 +181,7 @@ func (s FastIntSet) Next(startVal int) (int, bool) {
 }
 
 // ForEach calls a function for each value in the set (in increasing order).
-func (s FastIntSet) ForEach(f func(i int)) {
+func (s *FastIntSet) ForEach(f func(i int)) {
 	if s.large != nil {
 		for x := s.large.Min(); x != intsets.MaxInt; x = s.large.LowerBound(x + 1) {
 			f(x)
@@ -196,7 +196,7 @@ func (s FastIntSet) ForEach(f func(i int)) {
 }
 
 // Ordered returns a slice with all the integers in the set, in increasing order.
-func (s FastIntSet) Ordered() []int {
+func (s *FastIntSet) Ordered() []int {
 	if s.Empty() {
 		return nil
 	}
@@ -211,7 +211,7 @@ func (s FastIntSet) Ordered() []int {
 }
 
 // Copy returns a copy of s which can be modified independently.
-func (s FastIntSet) Copy() FastIntSet {
+func (s *FastIntSet) Copy() FastIntSet {
 	var c FastIntSet
 	if s.large != nil {
 		c.large = new(intsets.Sparse)
@@ -254,7 +254,7 @@ func (s *FastIntSet) UnionWith(rhs FastIntSet) {
 }
 
 // Union returns the union of s and rhs as a new set.
-func (s FastIntSet) Union(rhs FastIntSet) FastIntSet {
+func (s *FastIntSet) Union(rhs FastIntSet) FastIntSet {
 	r := s.Copy()
 	r.UnionWith(rhs)
 	return r
@@ -278,14 +278,14 @@ func (s *FastIntSet) IntersectionWith(rhs FastIntSet) {
 }
 
 // Intersection returns the intersection of s and rhs as a new set.
-func (s FastIntSet) Intersection(rhs FastIntSet) FastIntSet {
+func (s *FastIntSet) Intersection(rhs FastIntSet) FastIntSet {
 	r := s.Copy()
 	r.IntersectionWith(rhs)
 	return r
 }
 
 // Intersects returns true if s has any elements in common with rhs.
-func (s FastIntSet) Intersects(rhs FastIntSet) bool {
+func (s *FastIntSet) Intersects(rhs FastIntSet) bool {
 	if s.large == nil {
 		// Fast path
 		other := rhs.small
@@ -316,14 +316,14 @@ func (s *FastIntSet) DifferenceWith(rhs FastIntSet) {
 }
 
 // Difference returns the elements of s that are not in rhs as a new set.
-func (s FastIntSet) Difference(rhs FastIntSet) FastIntSet {
+func (s *FastIntSet) Difference(rhs FastIntSet) FastIntSet {
 	r := s.Copy()
 	r.DifferenceWith(rhs)
 	return r
 }
 
 // Equals returns true if the two sets are identical.
-func (s FastIntSet) Equals(rhs FastIntSet) bool {
+func (s *FastIntSet) Equals(rhs FastIntSet) bool {
 	if s.large == nil && rhs.large == nil {
 		return s.small == rhs.small
 	}
@@ -344,7 +344,7 @@ func (s FastIntSet) Equals(rhs FastIntSet) bool {
 }
 
 // SubsetOf returns true if rhs contains all the elements in s.
-func (s FastIntSet) SubsetOf(rhs FastIntSet) bool {
+func (s *FastIntSet) SubsetOf(rhs FastIntSet) bool {
 	if s.large == nil && rhs.large == nil {
 		return (s.small & rhs.small) == s.small
 	}
@@ -394,7 +394,7 @@ func (s *FastIntSet) Shift(delta int) FastIntSet {
 // String returns a list representation of elements. Sequential runs of positive
 // numbers are shown as ranges. For example, for the set {0, 1, 2, 5, 6, 10},
 // the output is "(0-2,5,6,10)".
-func (s FastIntSet) String() string {
+func (s *FastIntSet) String() string {
 	var buf bytes.Buffer
 	buf.WriteByte('(')
 	appendRange := func(start, end int) {
