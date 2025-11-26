@@ -839,6 +839,18 @@ func (b *indexScanRangeBuilder) buildRangeCollection(f indexFilter) (sql.MySQLRa
 	case *iScanOr:
 		ranges, err = b.rangeBuildOr(f, inScan)
 	case *iScanLeaf:
+		// TODO: special case for in set. can skip overlapping ranges since it's a series of equality checks
+		// TODO: sequential integers can be converted to a single partition, but i guess that's harder?
+		if f.Op() == sql.IndexScanOpInSet {
+			bb := sql.NewMySQLIndexBuilder(b.idx)
+			b.rangeBuildDefaultLeaf(bb, f, inScan)
+			if _, err := bb.Build(b.ctx); err != nil {
+				return nil, err
+			}
+			ranges = bb.Ranges(b.ctx)
+			return ranges, nil
+		}
+
 		ranges, err = b.rangeBuildLeaf(f, inScan)
 	default:
 		return nil, fmt.Errorf("unknown indexFilter type: %T", f)
@@ -1429,14 +1441,18 @@ func newLeaf(ctx *sql.Context, id indexScanId, e sql.Expression, underlying stri
 
 	if op == sql.IndexScanOpInSet || op == sql.IndexScanOpNotInSet {
 		tup := right.(expression.Tuple)
-		var litSet []interface{}
+		litSet := make(map[any]struct{}, len(tup))
+		setVals := make([]any, 0, len(tup))
 		var litType sql.Type
 		for _, lit := range tup {
 			value, err := lit.Eval(ctx, nil)
 			if err != nil {
 				return nil, false
 			}
-			litSet = append(litSet, value)
+			if _, ok = litSet[value]; !ok {
+				litSet[value] = struct{}{}
+				setVals = append(setVals, value)
+			}
 			if litType == nil {
 				litType = lit.Type()
 			}
@@ -1445,7 +1461,7 @@ func newLeaf(ctx *sql.Context, id indexScanId, e sql.Expression, underlying stri
 			id:         id,
 			gf:         gf,
 			op:         op,
-			setValues:  litSet,
+			setValues:  setVals,
 			litType:    litType,
 			underlying: underlying,
 		}, true
