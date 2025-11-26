@@ -372,14 +372,12 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 			return values
 		}
 	case *ast.ExistsExpr:
-		sqScope := inScope.push()
-		sqScope.initSubquery()
-		selScope := b.buildSelectStmt(sqScope, v.Subquery.Select)
-		selectString := ast.String(v.Subquery.Select)
-		sq := plan.NewSubquery(selScope.node, selectString)
-		sq = sq.WithCorrelated(sqScope.correlated())
-		b.qFlags.Set(sql.QFlagScalarSubquery)
-		return plan.NewExistsSubquery(sq)
+		sq := b.buildScalar(inScope, v.Subquery)
+		sqPlan, ok := sq.(*plan.Subquery)
+		if !ok {
+			b.handleErr(fmt.Errorf("expected Subquery from ExistsExpr, got %T", sq))
+		}
+		return plan.NewExistsSubquery(sqPlan)
 	case *ast.TimestampFuncExpr:
 		var (
 			unit  sql.Expression

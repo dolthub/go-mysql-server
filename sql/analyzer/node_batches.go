@@ -108,10 +108,6 @@ func getBatchesForNode(node sql.Node) ([]*Batch, bool) {
 							Apply: validateReadOnlyTransaction,
 						},
 						{
-							Id:    resolveSubqueriesId,
-							Apply: resolveSubqueries,
-						},
-						{
 							Id:    processTruncateId,
 							Apply: processTruncate,
 						},

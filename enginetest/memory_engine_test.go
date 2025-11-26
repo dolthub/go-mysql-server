@@ -200,37 +200,23 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	//t.Skip()
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			// https://github.com/dolthub/dolt/issues/10113
-			Name: "DELETE with NOT EXISTS subquery",
-			SetUpScript: []string{
-				`CREATE TABLE IF NOT EXISTS student (
-					id BIGINT AUTO_INCREMENT,
-					name VARCHAR(50) NOT NULL,
-					PRIMARY KEY (id)
-				);`,
-				`CREATE TABLE IF NOT EXISTS student_hobby (
-					id BIGINT AUTO_INCREMENT,
-					student_id BIGINT NOT NULL,
-					hobby VARCHAR(50) NOT NULL,
-					PRIMARY KEY (id)
-				);`,
-				"INSERT INTO student (id, name) VALUES (1, 'test1');",
-				"INSERT INTO student (id, name) VALUES (2, 'test2');",
-				"INSERT INTO student_hobby (id, student_id, hobby) VALUES (1, 1, 'test1');",
-				"INSERT INTO student_hobby (id, student_id, hobby) VALUES (2, 2, 'test2');",
-				"INSERT INTO student_hobby (id, student_id, hobby) VALUES (3, 100, 'test3');",
-				"INSERT INTO student_hobby (id, student_id, hobby) VALUES (4, 100, 'test3');",
-			},
+			Name:        "AS OF propagates to nested CALLs",
+			SetUpScript: []string{},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "delete from student_hobby where not exists (select 1 from student where student.id = student_hobby.student_id);",
+					Query: "create procedure create_proc() create table t (i int primary key, j int);",
+					Expected: []sql.Row{
+						{types.NewOkResult(0)},
+					},
 				},
 				{
-					Query:    "SELECT * FROM student_hobby ORDER BY id;",
-					Expected: []sql.Row{{1, 1, "test1"}, {2, 2, "test2"}},
+					Query: "call create_proc()",
+					Expected: []sql.Row{
+						{types.NewOkResult(0)},
+					},
 				},
 			},
 		},

@@ -447,6 +447,13 @@ func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 	b.qFlags.Set(sql.QFlagDelete)
 
 	outScope = b.buildFrom(inScope, d.TableExprs)
+
+	// Capture the table node for simple DELETEs before buildWhere wraps it
+	var targets []sql.Node
+	if len(d.Targets) == 0 {
+		targets = []sql.Node{outScope.node}
+	}
+
 	b.buildWhere(outScope, d.Where)
 	orderByScope := b.analyzeOrderBy(outScope, outScope, d.OrderBy)
 	b.buildOrderBy(outScope, orderByScope)
@@ -459,7 +466,6 @@ func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 		outScope.node = plan.NewLimit(limit, outScope.node)
 	}
 
-	var targets []sql.Node
 	if len(d.Targets) > 0 {
 		targets = make([]sql.Node, len(d.Targets))
 		for i, tableName := range d.Targets {
