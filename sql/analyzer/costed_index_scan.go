@@ -848,6 +848,18 @@ func (b *indexScanRangeBuilder) buildRangeCollection(f indexFilter) (sql.MySQLRa
 	case *iScanOr:
 		ranges, err = b.rangeBuildOr(f, inScan)
 	case *iScanLeaf:
+		// TODO: special case for in set. can skip overlapping ranges since it's a series of equality checks
+		// TODO: sequential integers can be converted to a single partition, but i guess that's harder?
+		if f.Op() == sql.IndexScanOpInSet {
+			bb := sql.NewMySQLIndexBuilder(b.idx)
+			b.rangeBuildDefaultLeaf(bb, f, inScan)
+			if _, err := bb.Build(b.ctx); err != nil {
+				return nil, err
+			}
+			ranges = bb.Ranges(b.ctx)
+			return ranges, nil
+		}
+
 		ranges, err = b.rangeBuildLeaf(f, inScan)
 	default:
 		return nil, fmt.Errorf("unknown indexFilter type: %T", f)
@@ -1462,7 +1474,7 @@ func newLeaf(ctx *sql.Context, id indexScanId, e sql.Expression, underlying stri
 			id:         id,
 			gf:         gf,
 			op:         op,
-			setValues:  litSet,
+			setValues:  setVals,
 			setTypes:   setTypes,
 			litType:    litType,
 			underlying: underlying,
