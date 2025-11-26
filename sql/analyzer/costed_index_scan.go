@@ -1552,7 +1552,7 @@ func newLeaf(ctx *sql.Context, id indexScanId, e sql.Expression, underlying stri
 			id:         id,
 			gf:         gf,
 			op:         op,
-			setValues:  litSet,
+			setValues:  setVals,
 			setTypes:   setTypes,
 			litType:    litType,
 			underlying: underlying,
