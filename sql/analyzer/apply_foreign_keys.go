@@ -189,11 +189,8 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 		if n.HasExplicitTargets() {
 			return n.WithExplicitTargets(foreignKeyHandlers), transform.NewTree, nil
 		} else {
-			newNode, err := n.WithChildren(foreignKeyHandlers...)
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-			return newNode, transform.NewTree, nil
+			// For simple DELETEs, update the targets array with foreign key handlers.
+			return n.WithTargets(foreignKeyHandlers), transform.NewTree, nil
 		}
 	default:
 		return n, transform.SameTree, nil

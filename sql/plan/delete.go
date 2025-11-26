@@ -70,9 +70,21 @@ func (p *DeleteFrom) WithExplicitTargets(targets []sql.Node) *DeleteFrom {
 	return &copy
 }
 
+// WithTargets returns a new DeleteFrom node instance with the specified |targets| set, preserving the
+// hasExplicitTargets flag. This is used for simple DELETEs where targets need to be updated (e.g., with
+// foreign key handlers) without changing whether they were explicitly specified.
+func (p *DeleteFrom) WithTargets(targets []sql.Node) *DeleteFrom {
+	copy := *p
+	copy.targets = targets
+	return &copy
+}
+
 // GetDeleteTargets returns the sql.Nodes representing the tables from which rows should be deleted.
 func (p *DeleteFrom) GetDeleteTargets() []sql.Node {
-	return p.targets
+	if len(p.targets) > 0 {
+		return p.targets
+	}
+	return []sql.Node{p.Child}
 }
 
 // Schema implements the sql.Node interface.
