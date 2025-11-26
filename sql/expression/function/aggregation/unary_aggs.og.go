@@ -440,7 +440,7 @@ func (a *Count) String() string {
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("COUNT(%s)", a.Child)
+	return "COUNT(" + a.Child.String() + ")"
 }
 
 func (a *Count) DebugString() string {

@@ -110,7 +110,7 @@ func (lit *Literal) String() string {
 		// Backslash chars also need to be replaced.
 		escaped := strings.ReplaceAll(litVal, "'", "''")
 		escaped = strings.ReplaceAll(escaped, "\\", "\\\\")
-		return strconv.Quote(escaped)
+		return "'" + escaped + "'"
 	case decimal.Decimal:
 		return litVal.StringFixed(litVal.Exponent() * -1)
 	case []byte:
