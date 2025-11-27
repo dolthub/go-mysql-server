@@ -5082,7 +5082,7 @@ func TestParseCreateTrigger(t *testing.T) {
 						plan.NewFilter(
 							expression.NewEquals(expression.NewUnresolvedColumn("a"), expression.NewUnresolvedQualifiedColumn("old", "b")),
 							plan.NewUnresolvedTable("baz", ""),
-						), nil),
+						), nil, false),
 					plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewUnresolvedTable("zzz", ""), plan.NewValues([][]sql.Expression{{
 						expression.NewUnresolvedQualifiedColumn("old", "a"),
 						expression.NewUnresolvedQualifiedColumn("old", "b"),

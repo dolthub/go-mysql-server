@@ -53,7 +53,7 @@ func assignExecIndexes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 			}
 		}
 	case *plan.DeleteFrom:
-		if n.RefsSingleRel && !n.HasExplicitTargets() && scope.IsEmpty() && !n.IsProcNested {
+		if n.RefsSingleRel && !n.HasExplicitTargets() && scope.IsEmpty() && !n.IsProcNested && !n.Child.Schema().HasVirtualColumns() {
 			// joins, subqueries, triggers, and procedures preclude fast indexing
 			return offsetAssignIndexes(n), transform.NewTree, nil
 		}

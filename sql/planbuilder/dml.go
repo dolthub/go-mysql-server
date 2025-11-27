@@ -447,6 +447,14 @@ func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 	b.qFlags.Set(sql.QFlagDelete)
 
 	outScope = b.buildFrom(inScope, d.TableExprs)
+
+	// Capture the table node for simple DELETEs before buildWhere wraps it
+	var targets []sql.Node
+	var hasExplicitTargets bool
+	if len(d.Targets) == 0 {
+		targets = []sql.Node{outScope.node}
+	}
+
 	b.buildWhere(outScope, d.Where)
 	orderByScope := b.analyzeOrderBy(outScope, outScope, d.OrderBy)
 	b.buildOrderBy(outScope, orderByScope)
@@ -459,8 +467,8 @@ func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 		outScope.node = plan.NewLimit(limit, outScope.node)
 	}
 
-	var targets []sql.Node
 	if len(d.Targets) > 0 {
+		hasExplicitTargets = true
 		targets = make([]sql.Node, len(d.Targets))
 		for i, tableName := range d.Targets {
 			tabName := tableName.Name.String()
@@ -488,7 +496,7 @@ func (b *Builder) buildDelete(inScope *scope, d *ast.Delete) (outScope *scope) {
 		}
 	}
 
-	del := plan.NewDeleteFrom(outScope.node, targets)
+	del := plan.NewDeleteFrom(outScope.node, targets, hasExplicitTargets)
 	del.RefsSingleRel = !outScope.refsSubquery
 	del.IsProcNested = b.ProcCtx().DbName != ""
 	outScope.node = del

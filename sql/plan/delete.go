@@ -28,10 +28,12 @@ var ErrDeleteFromNotSupported = errors.NewKind("table doesn't support DELETE FRO
 // DeleteFrom is a node describing a deletion from some table.
 type DeleteFrom struct {
 	UnaryNode
-	// targets are the explicitly specified table nodes from which rows should be deleted. For simple DELETES against a
-	// single source table, targets do NOT need to be explicitly specified and will not be set here. For DELETE FROM JOIN
-	// statements, targets MUST be explicitly specified by the user and will be populated here.
-	explicitTargets []sql.Node
+	// targets contains the table nodes from which rows should be deleted. For simple DELETEs, this contains the single
+	// inferred table. For DELETE FROM JOIN, this contains the explicitly specified tables.
+	targets []sql.Node
+	// hasExplicitTargets indicates whether the targets were explicitly specified in SQL (e.g., "DELETE t1, t2 FROM ...
+	// ") vs inferred (e.g., "DELETE FROM table WHERE ...").
+	hasExplicitTargets bool
 	// Returning is a list of expressions to return after the delete operation. This feature is not
 	// supported in MySQL's syntax, but is exposed through PostgreSQL's syntax.
 	Returning     []sql.Expression
@@ -44,37 +46,42 @@ var _ sql.Node = (*DeleteFrom)(nil)
 var _ sql.CollationCoercible = (*DeleteFrom)(nil)
 
 // NewDeleteFrom creates a DeleteFrom node.
-func NewDeleteFrom(n sql.Node, targets []sql.Node) *DeleteFrom {
+func NewDeleteFrom(n sql.Node, targets []sql.Node, hasExplicitTargets bool) *DeleteFrom {
 	return &DeleteFrom{
-		UnaryNode:       UnaryNode{n},
-		explicitTargets: targets,
+		UnaryNode:          UnaryNode{n},
+		targets:            targets,
+		hasExplicitTargets: hasExplicitTargets,
 	}
 }
 
-// HasExplicitTargets returns true if the target delete tables were explicitly specified. This can only happen with
-// DELETE FROM JOIN statements – for DELETE FROM statements using a single source table, the target is NOT explicitly
-// specified and is assumed to be the single source table.
+// HasExplicitTargets returns true if the target delete tables were explicitly specified in SQL. This can only happen
+// with DELETE FROM JOIN statements. For DELETE FROM statements using a single source table, the target is NOT
+// explicitly specified and is assumed to be the single source table.
 func (p *DeleteFrom) HasExplicitTargets() bool {
-	return len(p.explicitTargets) > 0
+	return p.hasExplicitTargets
 }
 
 // WithExplicitTargets returns a new DeleteFrom node instance with the specified |targets| set as the explicitly
 // specified targets of the delete operation.
 func (p *DeleteFrom) WithExplicitTargets(targets []sql.Node) *DeleteFrom {
 	copy := *p
-	copy.explicitTargets = targets
+	copy.targets = targets
+	copy.hasExplicitTargets = true
 	return &copy
 }
 
-// GetDeleteTargets returns the sql.Nodes representing the tables from which rows should be deleted. For a DELETE FROM
-// JOIN statement, this will return the tables explicitly specified by the caller. For a DELETE FROM statement this will
-// return the single table in the DELETE FROM source that is implicitly assumed to be the target of the delete operation.
+// WithTargets returns a new DeleteFrom node instance with the specified |targets| set, preserving the
+// hasExplicitTargets flag. This is used for simple DELETEs where targets need to be updated (e.g., with
+// foreign key handlers) without changing whether they were explicitly specified.
+func (p *DeleteFrom) WithTargets(targets []sql.Node) *DeleteFrom {
+	copy := *p
+	copy.targets = targets
+	return &copy
+}
+
+// GetDeleteTargets returns the sql.Nodes representing the tables from which rows should be deleted.
 func (p *DeleteFrom) GetDeleteTargets() []sql.Node {
-	if len(p.explicitTargets) == 0 {
-		return []sql.Node{p.Child}
-	} else {
-		return p.explicitTargets
-	}
+	return p.targets
 }
 
 // Schema implements the sql.Node interface.
@@ -101,7 +108,7 @@ func (p *DeleteFrom) Resolved() bool {
 		return false
 	}
 
-	for _, target := range p.explicitTargets {
+	for _, target := range p.targets {
 		if target.Resolved() == false {
 			return false
 		}
@@ -155,7 +162,7 @@ func (p *DeleteFrom) WithChildren(children ...sql.Node) (sql.Node, error) {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
 
-	deleteFrom := NewDeleteFrom(children[0], p.explicitTargets)
+	deleteFrom := NewDeleteFrom(children[0], p.targets, p.hasExplicitTargets)
 	deleteFrom.Returning = p.Returning
 	return deleteFrom, nil
 }
