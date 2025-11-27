@@ -81,10 +81,7 @@ func (p *DeleteFrom) WithTargets(targets []sql.Node) *DeleteFrom {
 
 // GetDeleteTargets returns the sql.Nodes representing the tables from which rows should be deleted.
 func (p *DeleteFrom) GetDeleteTargets() []sql.Node {
-	if len(p.targets) > 0 {
-		return p.targets
-	}
-	return []sql.Node{p.Child}
+	return p.targets
 }
 
 // Schema implements the sql.Node interface.
