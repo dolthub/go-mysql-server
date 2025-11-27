@@ -101,9 +101,8 @@ func (s Schema) IndexOf(column, source string) int {
 // IndexOfColName returns the index of the given column in the schema or -1 if it's  not present. Only safe for schemas
 // corresponding to a single table, where the source of the column is irrelevant.
 func (s Schema) IndexOfColName(column string) int {
-	column = strings.ToLower(column)
 	for i, col := range s {
-		if strings.ToLower(col.Name) == column {
+		if strings.EqualFold(col.Name, column) {
 			return i
 		}
 	}

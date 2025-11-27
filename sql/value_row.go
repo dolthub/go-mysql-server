@@ -29,8 +29,8 @@ type ValueBytes []byte
 
 // Value is a logical index into a ValueRow. For efficiency reasons, use sparingly.
 type Value struct {
-	Val        ValueBytes
 	WrappedVal BytesWrapper
+	Val        ValueBytes
 	Typ        query.Type
 }
 
