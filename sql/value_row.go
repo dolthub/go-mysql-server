@@ -55,7 +55,7 @@ func (v Value) IsNull() bool {
 
 var valueRowPool = sync.Pool{
 	New: func() interface{} {
-		return make(ValueRow, valueRowSize)
+		return make(ValueRow, 0, valueRowSize)
 	},
 }
 
