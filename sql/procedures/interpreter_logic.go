@@ -277,7 +277,7 @@ func replaceVariablesInExpr(ctx *sql.Context, stack *InterpreterStack, expr ast.
 		if err != nil {
 			return nil, err
 		}
-		e.Select = newExpr.(*ast.Select)
+		e.Select = newExpr.(ast.SelectStatement)
 	case *ast.SetOp:
 		newLeftExpr, err := replaceVariablesInExpr(ctx, stack, e.Left, asOf)
 		if err != nil {

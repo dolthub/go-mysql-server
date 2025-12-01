@@ -2352,6 +2352,61 @@ end;
 			},
 		},
 	},
+	{
+		Name: "stored procedure with subquery set operations",
+		SetUpScript: []string{
+			`create procedure sub_intersect() select(select 1 intersect select 2);`,
+			`create procedure sub_except() select(select 1 except select 2);`,
+			`
+CREATE PROCEDURE test() 
+	WITH RECURSIVE 
+		data (str) AS (SELECT "test"), 
+		positions (pos, chr) AS (
+			SELECT 
+				1, 
+				LEFT(data.str,1) 
+			FROM 
+				data 
+			UNION ALL 
+			SELECT 
+				pos + 1, 
+				MID(data.str,pos+1,1) 
+			FROM 
+				positions 
+			CROSS JOIN 
+				data 
+			WHERE 
+				pos < LENGTH(data.str)
+		) 
+	SELECT 
+		pos, chr 
+	FROM 
+		positions;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "call sub_intersect();",
+				Expected: []sql.Row{
+					{nil},
+				},
+			},
+			{
+				Query: "call sub_except();",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "call test();",
+				Expected: []sql.Row{
+					{1, "t"},
+					{2, "e"},
+					{3, "s"},
+					{4, "t"},
+				},
+			},
+		},
+	},
 }
 
 var ProcedureCallTests = []ScriptTest{
