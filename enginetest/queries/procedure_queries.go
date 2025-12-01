@@ -2590,6 +2590,31 @@ var ProcedureCallTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "Procedures with TimestampFuncExpr",
+		SetUpScript: []string{
+			`CREATE PROCEDURE after_2000(IN bday DATE) SELECT TIMESTAMPDIFF(YEAR, '2000-01-01', bday);`,
+			`CREATE PROCEDURE add_month(IN bday DATE) SELECT TIMESTAMPADD(MONTH, 1, bday);`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CALL after_2000('2001-09-11')",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "CALL after_2000('2025-01-01')",
+				Expected: []sql.Row{{25}},
+			},
+			{
+				Query:    "CALL add_month('2001-09-11')",
+				Expected: []sql.Row{{"2001-10-11 00:00:00"}},
+			},
+			{
+				Query:    "CALL add_month('2025-01-01')",
+				Expected: []sql.Row{{"2025-02-01 00:00:00"}},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/pull/7947/
 		Name: "Call a procedure that needs subqueries resolved in an if condition",
 		SetUpScript: []string{
