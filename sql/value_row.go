@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	valueRowSize = 24 // TODO: adjust
+	valueRowSize = 48 // TODO: adjust
 	valueArrSize = 64
 	fieldArrSize = 2048
 )
