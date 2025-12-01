@@ -150,6 +150,7 @@ func (i *FilterIter) NextValueRow(ctx *sql.Context) (sql.ValueRow, error) {
 		if res.Val[0] == 1 {
 			return row, nil
 		}
+		sql.ValueRowPoolManager.Put(row)
 	}
 }
 
