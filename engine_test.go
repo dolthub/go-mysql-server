@@ -191,7 +191,7 @@ func TestTrackProcess(t *testing.T) {
 
 	pl := NewProcessList()
 
-	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithProcessList(pl), sql.WithSession(sess))
+	ctx := sql.NewNonEngineContext(context.Background(), sql.WithPid(1), sql.WithProcessList(pl), sql.WithSession(sess))
 	pl.AddConnection(ctx.Session.ID(), "localhost")
 	pl.ConnectionReady(ctx.Session)
 	ctx, err := ctx.ProcessList.BeginQuery(ctx, "SELECT foo")

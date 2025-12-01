@@ -37,7 +37,7 @@ func TestProcessList(t *testing.T) {
 	sess := sql.NewBaseSessionWithClientServer("0.0.0.0:3306", sql.Client{Address: clientHostOne, User: "foo"}, 1)
 	sess.SetCurrentDatabase("test_db")
 	p.ConnectionReady(sess)
-	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithSession(sess))
+	ctx := sql.NewNonEngineContext(context.Background(), sql.WithPid(1), sql.WithSession(sess))
 	ctx, err := p.BeginQuery(ctx, "SELECT foo")
 	require.NoError(err)
 
@@ -97,7 +97,7 @@ func TestProcessList(t *testing.T) {
 	p.AddConnection(2, clientHostTwo)
 	sess = sql.NewBaseSessionWithClientServer("0.0.0.0:3306", sql.Client{Address: clientHostTwo, User: "foo"}, 2)
 	p.ConnectionReady(sess)
-	ctx = sql.NewContext(context.Background(), sql.WithPid(2), sql.WithSession(sess))
+	ctx = sql.NewNonEngineContext(context.Background(), sql.WithPid(2), sql.WithSession(sess))
 	ctx, err = p.BeginQuery(ctx, "SELECT bar")
 	require.NoError(err)
 
@@ -156,13 +156,13 @@ func TestKillConnection(t *testing.T) {
 	pl.ConnectionReady(s2)
 
 	_, err := pl.BeginQuery(
-		sql.NewContext(context.Background(), sql.WithPid(3), sql.WithSession(s1)),
+		sql.NewNonEngineContext(context.Background(), sql.WithPid(3), sql.WithSession(s1)),
 		"foo",
 	)
 	require.NoError(t, err)
 
 	_, err = pl.BeginQuery(
-		sql.NewContext(context.Background(), sql.WithPid(4), sql.WithSession(s2)),
+		sql.NewNonEngineContext(context.Background(), sql.WithPid(4), sql.WithSession(s2)),
 		"foo",
 	)
 	require.NoError(t, err)
@@ -191,12 +191,12 @@ func TestBeginEndOperation(t *testing.T) {
 	pl.AddConnection(1, "")
 
 	// Begining an operation with an unknown connection returns an error.
-	ctx := sql.NewContext(context.Background(), sql.WithSession(unknownSession))
+	ctx := sql.NewNonEngineContext(context.Background(), sql.WithSession(unknownSession))
 	_, err := pl.BeginOperation(ctx)
 	require.Error(t, err)
 
 	// Can begin and end operation before connection is ready.
-	ctx = sql.NewContext(context.Background(), sql.WithSession(knownSession))
+	ctx = sql.NewNonEngineContext(context.Background(), sql.WithSession(knownSession))
 	subCtx, err := pl.BeginOperation(ctx)
 	require.NoError(t, err)
 	pl.EndOperation(subCtx)
@@ -249,7 +249,7 @@ func TestSlowQueryTracking(t *testing.T) {
 		sql.Client{Address: "127.0.0.1:34567", User: "foo"}, 1)
 	sess.SetCurrentDatabase("test_db")
 	p.ConnectionReady(sess)
-	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithSession(sess))
+	ctx := sql.NewNonEngineContext(context.Background(), sql.WithPid(1), sql.WithSession(sess))
 	ctx, err := p.BeginQuery(ctx, "SELECT foo")
 	require.NoError(t, err)
 

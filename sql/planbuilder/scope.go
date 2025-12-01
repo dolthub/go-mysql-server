@@ -15,6 +15,7 @@
 package planbuilder
 
 import (
+	"sort"
 	"strings"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
@@ -153,6 +154,26 @@ func (s *scope) resolveColumn(db, table, col string, checkParent, chooseFirst bo
 	return c, true
 }
 
+// resolveColumnAsTable resolves a column as though it were a table, by searching the table space. This then returns all
+// columns (in their index order) of the table.
+func (s *scope) resolveColumnAsTable(db, table string) []scopeColumn {
+	var tableCols []scopeColumn
+	tabId := s.getTable(table)
+	for _, col := range s.cols {
+		if col.tableId != tabId || (db != "" && !strings.EqualFold(col.db, db)) {
+			continue
+		}
+		tableCols = append(tableCols, col)
+	}
+	if len(tableCols) == 0 && s.parent != nil {
+		return s.parent.resolveColumnAsTable(db, table)
+	}
+	sort.Slice(tableCols, func(i, j int) bool {
+		return tableCols[i].id < tableCols[j].id
+	})
+	return tableCols
+}
+
 // getCol gets a scopeColumn based on a columnId
 func (s *scope) getCol(colId sql.ColumnId) (scopeColumn, bool) {
 	if s.colset.Contains(colId) {
@@ -174,6 +195,18 @@ func (s *scope) hasTable(table string) bool {
 		return s.parent.hasTable(table)
 	}
 	return false
+}
+
+// getTable returns the table ID matching the given name.
+func (s *scope) getTable(table string) sql.TableId {
+	id, ok := s.tables[strings.ToLower(table)]
+	if ok {
+		return id
+	}
+	if s.parent != nil {
+		return s.parent.getTable(table)
+	}
+	return 0
 }
 
 // triggerCol is used to hallucinate a new column during trigger DDL

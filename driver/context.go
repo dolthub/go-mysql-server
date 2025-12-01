@@ -15,7 +15,7 @@ type ContextBuilder interface {
 // DefaultContextBuilder creates basic SQL contexts.
 type DefaultContextBuilder struct{}
 
-// NewContext calls sql.NewContext.
+// NewContext calls sql.NewNonEngineContext.
 func (DefaultContextBuilder) NewContext(ctx context.Context, conn *Conn, opts ...sql.ContextOption) (*sql.Context, error) {
-	return sql.NewContext(ctx, opts...), nil
+	return sql.NewNonEngineContext(ctx, opts...), nil
 }

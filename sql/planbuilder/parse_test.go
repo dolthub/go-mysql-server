@@ -2644,9 +2644,9 @@ Project
 	pro := memory.NewDBProvider(db)
 	sess := memory.NewSession(sql.NewBaseSession(), pro)
 
-	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
+	ctx := sql.NewNonEngineContext(context.Background(), sql.WithSession(sess))
 	ctx.SetCurrentDatabase("mydb")
-	b := New(ctx, cat, nil, nil)
+	b := NewFromContext(ctx, cat)
 
 	for _, tt := range tests {
 		t.Run(tt.Query, func(t *testing.T) {
@@ -3039,9 +3039,9 @@ func TestPlanBuilderErr(t *testing.T) {
 	pro := memory.NewDBProvider(db)
 	sess := memory.NewSession(sql.NewBaseSession(), pro)
 
-	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
+	ctx := sql.NewNonEngineContext(context.Background(), sql.WithSession(sess))
 	ctx.SetCurrentDatabase("mydb")
-	b := New(ctx, cat, nil, nil)
+	b := NewFromContext(ctx, cat)
 
 	for _, tt := range tests {
 		t.Run(tt.Query, func(t *testing.T) {

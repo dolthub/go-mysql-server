@@ -56,7 +56,7 @@ func TestCreateViewWithRegistry(t *testing.T) {
 
 	createView := newCreateView(memory.NewViewlessDatabase("mydb"), false, false)
 
-	ctx := sql.NewContext(context.Background())
+	ctx := sql.NewNonEngineContext(context.Background())
 	_, err := DefaultBuilder.buildNodeExec(ctx, createView, nil)
 	require.NoError(err)
 
@@ -71,16 +71,16 @@ func TestCreateExistingViewNative(t *testing.T) {
 	createView := newCreateView(memory.NewDatabase("mydb"), false, false)
 	createExistingView := newCreateView(memory.NewDatabase("mydb"), true, false)
 
-	ctx := sql.NewContext(context.Background())
+	ctx := sql.NewNonEngineContext(context.Background())
 	_, err := DefaultBuilder.buildNodeExec(ctx, createView, nil)
 	require.NoError(t, err)
 
-	ctx = sql.NewContext(context.Background())
+	ctx = sql.NewNonEngineContext(context.Background())
 	_, err = DefaultBuilder.buildNodeExec(ctx, createView, nil)
 	require.Error(t, err)
 	require.True(t, sql.ErrExistingView.Is(err))
 
-	ctx = sql.NewContext(context.Background())
+	ctx = sql.NewNonEngineContext(context.Background())
 	_, err = DefaultBuilder.buildNodeExec(ctx, createExistingView, nil)
 	require.NoError(t, err)
 }
@@ -91,7 +91,7 @@ func TestReplaceExistingViewNative(t *testing.T) {
 	db := memory.NewDatabase("mydb")
 	createView := newCreateView(db, false, false)
 
-	ctx := sql.NewContext(context.Background())
+	ctx := sql.NewNonEngineContext(context.Background())
 	_, err := DefaultBuilder.buildNodeExec(ctx, createView, nil)
 	require.NoError(t, err)
 
@@ -131,7 +131,7 @@ func TestCreateViewNative(t *testing.T) {
 	db := memory.NewDatabase("mydb")
 	createView := newCreateView(db, false, false)
 
-	ctx := sql.NewContext(context.Background())
+	ctx := sql.NewNonEngineContext(context.Background())
 	_, err := DefaultBuilder.buildNodeExec(ctx, createView, nil)
 	require.NoError(t, err)
 
@@ -155,7 +155,7 @@ func TestCreateExistingViewWithRegistry(t *testing.T) {
 
 	sess := sql.NewBaseSession()
 	sess.SetViewRegistry(viewReg)
-	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
+	ctx := sql.NewNonEngineContext(context.Background(), sql.WithSession(sess))
 	_, err = DefaultBuilder.buildNodeExec(ctx, createView, nil)
 	require.Error(err)
 	require.True(sql.ErrExistingView.Is(err))
@@ -177,7 +177,7 @@ func TestReplaceExistingViewWithRegistry(t *testing.T) {
 
 	sess := sql.NewBaseSession()
 	sess.SetViewRegistry(viewReg)
-	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
+	ctx := sql.NewNonEngineContext(context.Background(), sql.WithSession(sess))
 	_, err = DefaultBuilder.buildNodeExec(ctx, createView, nil)
 	require.NoError(err)
 

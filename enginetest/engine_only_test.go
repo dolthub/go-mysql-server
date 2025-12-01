@@ -247,7 +247,7 @@ func TestShowProcessList(t *testing.T) {
 	p.AddConnection(2, addr2)
 	sess := sql.NewBaseSessionWithClientServer("0.0.0.0:3306", sql.Client{Address: addr1, User: username}, 1)
 	p.ConnectionReady(sess)
-	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithSession(sess), sql.WithProcessList(p))
+	ctx := sql.NewNonEngineContext(context.Background(), sql.WithPid(1), sql.WithSession(sess), sql.WithProcessList(p))
 
 	ctx, err := p.BeginQuery(ctx, "SELECT foo")
 	require.NoError(err)
@@ -257,7 +257,7 @@ func TestShowProcessList(t *testing.T) {
 
 	sess = sql.NewBaseSessionWithClientServer("0.0.0.0:3306", sql.Client{Address: addr2, User: username}, 2)
 	p.ConnectionReady(sess)
-	ctx = sql.NewContext(context.Background(), sql.WithPid(2), sql.WithSession(sess), sql.WithProcessList(p))
+	ctx = sql.NewNonEngineContext(context.Background(), sql.WithPid(2), sql.WithSession(sess), sql.WithProcessList(p))
 	ctx, err = p.BeginQuery(ctx, "SELECT bar")
 	require.NoError(err)
 
@@ -352,7 +352,7 @@ func TestUnlockTables(t *testing.T) {
 
 	catalog := analyzer.NewCatalog(sql.NewDatabaseProvider(db))
 
-	ctx := sql.NewContext(context.Background())
+	ctx := sql.NewNonEngineContext(context.Background())
 	ctx.SetCurrentDatabase("db")
 	catalog.LockTable(ctx, "foo")
 	catalog.LockTable(ctx, "bar")
@@ -438,7 +438,7 @@ func TestAnalyzer_Exp(t *testing.T) {
 			require.NoError(t, err)
 
 			ctx := enginetest.NewContext(harness)
-			b := planbuilder.New(ctx, e.EngineAnalyzer().Catalog, e.EngineEventScheduler(), nil)
+			b := planbuilder.New(ctx, e.EngineAnalyzer().Catalog, e.EngineEventScheduler(), nil, planbuilder.BuilderOverrides{})
 			parsed, _, _, _, err := b.Parse(tt.query, nil, false)
 			require.NoError(t, err)
 
@@ -1078,7 +1078,7 @@ func newDatabase() (*sql2.DB, func()) {
 		Protocol: "tcp",
 		Address:  fmt.Sprintf("localhost:%d", port),
 	}
-	srv, err := server.NewServer(cfg, engine, sql.NewContext, harness.SessionBuilder(), nil)
+	srv, err := server.NewServer(cfg, engine, sql.NewNonEngineContext, harness.SessionBuilder(), nil)
 	if err != nil {
 		panic(err)
 	}

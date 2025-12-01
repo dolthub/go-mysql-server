@@ -27,9 +27,9 @@ func TestCatalogLockTable(t *testing.T) {
 	require := require.New(t)
 	c := NewCatalog(NewDatabaseProvider())
 
-	ctx1 := sql.NewContext(context.Background())
+	ctx1 := sql.NewNonEngineContext(context.Background())
 	ctx1.SetCurrentDatabase("db1")
-	ctx2 := sql.NewContext(context.Background())
+	ctx2 := sql.NewNonEngineContext(context.Background())
 	ctx2.SetCurrentDatabase("db1")
 
 	c.LockTable(ctx1, "foo")

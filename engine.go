@@ -32,6 +32,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
+	_ "github.com/dolthub/go-mysql-server/sql/hooks/noop"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/rowexec"
@@ -63,6 +64,13 @@ type Config struct {
 	// IncludeRootAccount adds the root account (with no password) to the list of accounts, and also enables
 	// authentication.
 	IncludeRootAccount bool
+	Overrides          EngineOverrides
+}
+
+// EngineOverrides contains functions and variables that can replace, supplement, or override functionality within the
+// various engine phases (such as the analysis, node execution, etc.).
+type EngineOverrides struct {
+	Builder planbuilder.BuilderOverrides
 }
 
 // TemporaryUser is a user that will be added to the engine. This is for temporary use while the remaining features
@@ -139,6 +147,7 @@ type Engine struct {
 	Parser            sql.Parser
 	ProcessList       sql.ProcessList
 	Analyzer          *analyzer.Analyzer
+	Overrides         EngineOverrides
 	LS                *sql.LockSubsystem
 	MemoryManager     *sql.MemoryManager
 	BackgroundThreads *sql.BackgroundThreads
@@ -188,6 +197,7 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 		Analyzer:          a,
 		MemoryManager:     sql.NewMemoryManager(sql.ProcessMemory),
 		ProcessList:       NewProcessList(),
+		Overrides:         cfg.Overrides,
 		LS:                ls,
 		BackgroundThreads: sql.NewBackgroundThreads(),
 		IsServerLocked:    cfg.IsServerLocked,
@@ -203,8 +213,7 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 
 // NewDefault creates a new default Engine.
 func NewDefault(pro sql.DatabaseProvider) *Engine {
-	a := analyzer.NewDefaultWithVersion(pro)
-	return New(a, nil)
+	return New(analyzer.NewDefault(pro), nil)
 }
 
 // AnalyzeQuery analyzes a query and returns its sql.Node
@@ -212,7 +221,7 @@ func (e *Engine) AnalyzeQuery(
 	ctx *sql.Context,
 	query string,
 ) (sql.Node, error) {
-	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.EventScheduler, e.Parser)
+	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.EventScheduler, e.Parser, e.Overrides.Builder)
 	parsed, _, _, qFlags, err := binder.Parse(query, nil, false)
 	if err != nil {
 		return nil, err
@@ -243,7 +252,7 @@ func (e *Engine) PrepareParsedQuery(
 	// Make sure there is an active transaction if one hasn't been started yet
 	e.beginTransaction(ctx)
 
-	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.EventScheduler, e.Parser)
+	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.EventScheduler, e.Parser, e.Overrides.Builder)
 	node, _, err := binder.BindOnly(stmt, query, nil)
 
 	if err != nil {
@@ -526,7 +535,7 @@ func (e *Engine) BoundQueryPlan(ctx *sql.Context, query string, parsed sqlparser
 
 	query = sql.RemoveSpaceAndDelimiter(query, ';')
 
-	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.EventScheduler, e.Parser)
+	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.EventScheduler, e.Parser, e.Overrides.Builder)
 	binder.SetBindings(bindings)
 
 	// Begin a transaction if necessary (no-op if one is in flight)
@@ -580,7 +589,7 @@ func (e *Engine) preparedStatement(ctx *sql.Context, query string, parsed sqlpar
 		preparedAst, preparedDataFound = e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query)
 	}
 
-	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.EventScheduler, e.Parser)
+	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.EventScheduler, e.Parser, e.Overrides.Builder)
 	if preparedDataFound {
 		parsed = preparedAst
 		binder.SetBindings(bindings)

@@ -72,7 +72,7 @@ func TestSessionIterator(t *testing.T) {
 	require := require.New(t)
 	octx, cancelFunc := context.WithCancel(context.TODO())
 	defer cancelFunc()
-	ctx := NewContext(octx)
+	ctx := NewNonEngineContext(octx)
 
 	node := &testNode{}
 	iter, err := node.RowIter(ctx)

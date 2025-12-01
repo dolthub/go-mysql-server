@@ -408,7 +408,7 @@ func makeTable(db *memory.Database, name string, tabId sql.TableId, colId sql.Co
 }
 
 func newContext(provider *memory.DbProvider) *sql.Context {
-	return sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), provider)))
+	return sql.NewNonEngineContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), provider)))
 }
 
 func expectedResultSize(ctx *sql.Context, t1, t2 *plan.ResolvedTable, filters []sql.Expression, debug bool) (int, error) {

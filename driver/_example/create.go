@@ -41,7 +41,7 @@ func createTestDatabase() *memory.Database {
 
 	db := memory.NewDatabase(dbName)
 	pro := memory.NewDBProvider(db)
-	ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
+	ctx := sql.NewNonEngineContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
 
 	table := memory.NewTable(db, tableName, sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "name", Type: types.Text, Nullable: false, Source: tableName},

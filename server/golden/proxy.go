@@ -235,7 +235,7 @@ func (h MySqlProxy) processQuery(
 	isMultiStatement bool,
 	callback func(*sqltypes.Result, bool) error,
 ) (string, error) {
-	sqlCtx := sql.NewContext(ctx)
+	sqlCtx := sql.NewNonEngineContext(ctx)
 	var remainder string
 	if isMultiStatement {
 		_, ri, err := sqlparser.ParseOne(ctx, query)

@@ -258,7 +258,7 @@ func (m *MemoryHarness) NewContext() *sql.Context {
 		m.session = m.newSession()
 	}
 
-	return sql.NewContext(
+	return sql.NewNonEngineContext(
 		context.Background(),
 		sql.WithSession(m.session),
 	)
@@ -276,7 +276,7 @@ func (m *MemoryHarness) newSession() *memory.Session {
 func (m *MemoryHarness) NewContextWithClient(client sql.Client) *sql.Context {
 	baseSession := sql.NewBaseSessionWithClientServer("address", client, 1)
 
-	return sql.NewContext(
+	return sql.NewNonEngineContext(
 		context.Background(),
 		sql.WithSession(memory.NewSession(baseSession, m.getProvider())),
 	)

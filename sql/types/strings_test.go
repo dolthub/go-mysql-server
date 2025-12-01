@@ -232,7 +232,7 @@ func TestStringCreateString(t *testing.T) {
 		{sqltypes.VarBinary, 10, sql.Collation_Default, StringType{}, 0, true},
 	}
 
-	ctx := sql.NewContext(
+	ctx := sql.NewNonEngineContext(
 		context.Background(),
 		sql.WithSession(sql.NewBaseSession()),
 	)

@@ -49,7 +49,7 @@ func setupView(t *testing.T, db memory.MemoryDatabase) (*sql.Context, *sql.View)
 
 	createView := plan.NewCreateView(db, subqueryAlias.Name(), subqueryAlias, false, false, "CREATE VIEW myview AS SELECT i FROM mytable", "", "", "")
 
-	ctx := sql.NewContext(context.Background())
+	ctx := sql.NewNonEngineContext(context.Background())
 
 	_, err := DefaultBuilder.Build(ctx, createView, nil)
 	require.NoError(t, err)

@@ -28,6 +28,7 @@ import (
 	"github.com/dolthub/go-mysql-server/internal/similartext"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/fulltext"
+	"github.com/dolthub/go-mysql-server/sql/hooks"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -240,10 +241,46 @@ func (b *BaseBuilder) buildDropCheck(ctx *sql.Context, n *plan.DropCheck, row sq
 }
 
 func (b *BaseBuilder) buildRenameTable(ctx *sql.Context, n *plan.RenameTable, row sql.Row) (sql.RowIter, error) {
-	return n.RowIter(ctx, row)
+	var err error
+	renameTableHooks := hooks.Global.Table().Rename()
+	n, err = renameTableHooks.PreSQLExecution(ctx, n)
+	if err != nil {
+		return nil, err
+	}
+
+	renamer, _ := n.Db.(sql.TableRenamer)
+	viewDb, _ := n.Db.(sql.ViewDatabase)
+	viewRegistry := ctx.GetViewRegistry()
+
+	for i, oldName := range n.OldNames {
+		if tbl, exists := n.TableExists(ctx, oldName); exists {
+			err := n.RenameTable(ctx, renamer, tbl, oldName, n.NewNames[i])
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			success, err := n.RenameView(ctx, viewDb, viewRegistry, oldName, n.NewNames[i])
+			if err != nil {
+				return nil, err
+			} else if !success {
+				return nil, sql.ErrTableNotFound.New(oldName)
+			}
+		}
+	}
+	if err = renameTableHooks.PostSQLExecution(ctx, n); err != nil {
+		return nil, err
+	}
+
+	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
 }
 
 func (b *BaseBuilder) buildModifyColumn(ctx *sql.Context, n *plan.ModifyColumn, row sql.Row) (sql.RowIter, error) {
+	var err error
+	n, err = hooks.Global.TableColumn().Modify().PreSQLExecution(ctx, n)
+	if err != nil {
+		return nil, err
+	}
+
 	tbl, err := getTableFromDatabase(ctx, n.Database(), n.Table)
 	if err != nil {
 		return nil, err
@@ -841,6 +878,13 @@ func (b *BaseBuilder) buildDropDB(ctx *sql.Context, n *plan.DropDB, row sql.Row)
 }
 
 func (b *BaseBuilder) buildRenameColumn(ctx *sql.Context, n *plan.RenameColumn, row sql.Row) (sql.RowIter, error) {
+	var err error
+	renameColumnHooks := hooks.Global.TableColumn().Rename()
+	n, err = renameColumnHooks.PreSQLExecution(ctx, n)
+	if err != nil {
+		return nil, err
+	}
+
 	tbl, err := getTableFromDatabase(ctx, n.Database(), n.Table)
 	if err != nil {
 		return nil, err
@@ -881,11 +925,22 @@ func (b *BaseBuilder) buildRenameColumn(ctx *sql.Context, n *plan.RenameColumn, 
 			}
 		}
 	}
+	if err = alterable.ModifyColumn(ctx, n.ColumnName, col, nil); err != nil {
+		return nil, err
+	}
+	if err = renameColumnHooks.PostSQLExecution(ctx, n); err != nil {
+		return nil, err
+	}
 
-	return rowIterWithOkResultWithZeroRowsAffected(), alterable.ModifyColumn(ctx, n.ColumnName, col, nil)
+	return rowIterWithOkResultWithZeroRowsAffected(), nil
 }
 
 func (b *BaseBuilder) buildAddColumn(ctx *sql.Context, n *plan.AddColumn, row sql.Row) (sql.RowIter, error) {
+	var err error
+	n, err = hooks.Global.TableColumn().Add().PreSQLExecution(ctx, n)
+	if err != nil {
+		return nil, err
+	}
 	table, err := getTableFromDatabase(ctx, n.Database(), n.Table)
 	if err != nil {
 		return nil, err
@@ -963,6 +1018,11 @@ func (b *BaseBuilder) buildAlterDB(ctx *sql.Context, n *plan.AlterDB, row sql.Ro
 
 func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, row sql.Row) (sql.RowIter, error) {
 	var err error
+	createTableHooks := hooks.Global.Table().Create()
+	n, err = createTableHooks.PreSQLExecution(ctx, n)
+	if err != nil {
+		return sql.RowsToRowIter(), err
+	}
 
 	// If it's set to Invalid, then no collation has been explicitly defined
 	if n.Collation == sql.Collation_Unspecified {
@@ -1122,6 +1182,10 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 		}
 	}
 
+	if err = createTableHooks.PostSQLExecution(ctx, n); err != nil {
+		return sql.RowsToRowIter(), err
+	}
+
 	return rowIterWithOkResultWithZeroRowsAffected(), nil
 }
 
@@ -1199,6 +1263,11 @@ func (b *BaseBuilder) buildCreateTrigger(ctx *sql.Context, n *plan.CreateTrigger
 }
 
 func (b *BaseBuilder) buildDropColumn(ctx *sql.Context, n *plan.DropColumn, row sql.Row) (sql.RowIter, error) {
+	var err error
+	n, err = hooks.Global.TableColumn().Drop().PreSQLExecution(ctx, n)
+	if err != nil {
+		return nil, err
+	}
 	tbl, err := getTableFromDatabase(ctx, n.Database(), n.Table)
 	if err != nil {
 		return nil, err
