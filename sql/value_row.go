@@ -21,6 +21,7 @@ import (
 )
 
 const (
+	valueRowSize = 24 // TODO: adjust
 	valueArrSize = 64
 	fieldArrSize = 2048
 )
@@ -51,6 +52,32 @@ type ValueRow []Value
 func (v Value) IsNull() bool {
 	return (v.Val == nil && v.WrappedVal == nil) || v.Typ == query.Type_NULL_TYPE
 }
+
+var valueRowPool = sync.Pool{
+	New: func() interface{} {
+		return make(ValueRow, valueRowSize)
+	},
+}
+
+type valueRowPoolManager struct{}
+
+func (valueRowPoolManager) Get(n int) ValueRow {
+	if n > valueRowSize {
+		return make(ValueRow, n)
+	}
+	res := valueRowPool.Get().(ValueRow)
+	return res[:n]
+}
+
+func (valueRowPoolManager) Put(val ValueRow) {
+	if len(val) > valueRowSize {
+		return
+	}
+	val = val[:0] // TODO: might need more work to properly reset
+	valueRowPool.Put(val)
+}
+
+var ValueRowPoolManager = valueRowPoolManager{}
 
 type RowFrame struct {
 	Types []query.Type
