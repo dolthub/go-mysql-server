@@ -920,6 +920,9 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 					return sqlErr
 				}
 
+				// TODO: hope it's safe to release here
+				sql.ValueRowPoolManager.Put(row)
+
 				ctx.GetLogger().Tracef("spooling result row %s", outRow)
 				res.Rows[res.RowsAffected] = outRow
 				res.RowsAffected++
