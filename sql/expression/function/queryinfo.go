@@ -66,7 +66,7 @@ func (r *RowCount) IsNullable() bool {
 
 // Eval implements sql.Expression
 func (r *RowCount) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return ctx.GetLastQueryInfoInt(sql.RowCount), nil
+	return ctx.GetLastQueryInfo().RowCount.Load(), nil
 }
 
 // Children implements sql.Expression
@@ -126,8 +126,8 @@ func (l *LastInsertUuid) IsNullable() bool {
 }
 
 func (l *LastInsertUuid) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
-	lastInsertUuid := ctx.GetLastQueryInfoString(sql.LastInsertUuid)
-	result, _, err := l.Type().Convert(ctx, lastInsertUuid)
+	lastInsertUUID := ctx.GetLastQueryInfo().LastInsertUUID.Load()
+	result, _, err := l.Type().Convert(ctx, lastInsertUUID)
 	if err != nil {
 		return nil, err
 	}
@@ -204,7 +204,7 @@ func (r *LastInsertId) IsNullable() bool {
 func (r *LastInsertId) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// With no arguments, just return the last insert id for this session
 	if len(r.Children()) == 0 {
-		lastInsertId := ctx.GetLastQueryInfoInt(sql.LastInsertId)
+		lastInsertId := ctx.GetLastQueryInfo().LastInsertId.Load()
 		unsigned, _, err := types.Uint64.Convert(ctx, lastInsertId)
 		if err != nil {
 			return nil, err
@@ -222,7 +222,7 @@ func (r *LastInsertId) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 		return nil, err
 	}
 
-	ctx.SetLastQueryInfoInt(sql.LastInsertId, id.(int64))
+	ctx.GetLastQueryInfo().LastInsertId.Store(id.(int64))
 	return id, nil
 }
 
@@ -296,7 +296,7 @@ func (r *FoundRows) IsNullable() bool {
 
 // Eval implements sql.Expression
 func (r *FoundRows) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	return ctx.GetLastQueryInfoInt(sql.FoundRows), nil
+	return ctx.GetLastQueryInfo().FoundRows.Load(), nil
 }
 
 // Children implements sql.Expression

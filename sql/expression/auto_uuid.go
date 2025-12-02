@@ -77,7 +77,7 @@ func (au *AutoUuid) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		//       read this value too early. We should verify this isn't how MySQL behaves, and then could fix
 		//       by setting a PENDING_LAST_INSERT_UUID value in the session query info, then moving it to
 		//       LAST_INSERT_UUID in the session query info at the end of execution.
-		ctx.Session.SetLastQueryInfoString(sql.LastInsertUuid, uuidValue)
+		ctx.GetLastQueryInfo().LastInsertUUID.Store(uuidValue)
 		au.foundUuid = true
 	}
 
