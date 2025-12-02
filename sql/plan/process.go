@@ -367,7 +367,7 @@ func (i *TrackedRowIter) updateSessionVars(ctx *sql.Context) {
 	}
 
 	if i.ShouldSetFoundRows {
-		ctx.SetRowCount(i.numRows)
+		ctx.SetFoundRows(i.numRows)
 	}
 }
 
