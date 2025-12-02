@@ -454,37 +454,21 @@ func (t datetimeType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 	}
 
 	var typ query.Type
-	var val []byte
-
 	switch t.baseType {
 	case sqltypes.Date:
 		typ = sqltypes.Date
-		if vt.Equal(ZeroTime) {
-			val = vt.AppendFormat(dest, ZeroDateStr)
-		} else {
-			val = vt.AppendFormat(dest, sql.DateLayout)
-		}
+		dest = appendDatetimeFormat(dest, vt)
 	case sqltypes.Datetime:
 		typ = sqltypes.Datetime
-		if vt.Equal(ZeroTime) {
-			val = vt.AppendFormat(dest, ZeroTimestampDatetimeStr)
-		} else {
-			val = vt.AppendFormat(dest, sql.TimestampDatetimeLayout)
-		}
+		dest = appendDatetimeFormat(dest, vt)
 	case sqltypes.Timestamp:
 		typ = sqltypes.Timestamp
-		if vt.Equal(ZeroTime) {
-			val = vt.AppendFormat(dest, ZeroTimestampDatetimeStr)
-		} else {
-			val = vt.AppendFormat(dest, sql.TimestampDatetimeLayout)
-		}
+		dest = appendDatetimeFormat(dest, vt)
 	default:
 		return sqltypes.Value{}, sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime")
 	}
 
-	valBytes := val
-
-	return sqltypes.MakeTrusted(typ, valBytes), nil
+	return sqltypes.MakeTrusted(typ, dest), nil
 }
 
 // SQLValue implements the ValueType interface.
