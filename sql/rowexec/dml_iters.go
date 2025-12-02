@@ -746,14 +746,14 @@ func (a *accumulatorIter) Next(ctx *sql.Context) (r sql.Row, err error) {
 		}
 		if err == io.EOF {
 			// TODO: The information flow here is pretty gnarly. We
-			// set some session variables based on the result, and
-			// we actually use a session variable to set
-			// InsertID. This should be improved.
+			//  set some session variables based on the result, and
+			//  we actually use a session variable to set
+			//  InsertID. This should be improved.
 
 			// UPDATE statements also set FoundRows to the number of rows that
 			// matched the WHERE clause, same as a SELECT.
 			if ma, ok := a.updateRowHandler.(matchingAccumulator); ok {
-				ctx.SetLastQueryInfoInt(sql.FoundRows, ma.RowsMatched())
+				ctx.SetFoundRows(ma.RowsMatched())
 			}
 
 			res := a.updateRowHandler.okResult() // TODO: Should add warnings here
@@ -763,15 +763,14 @@ func (a *accumulatorIter) Next(ctx *sql.Context) (r sql.Row, err error) {
 			// to be fixed. See comment in buildRowUpdateAccumulator in rowexec/dml.go
 			switch rowHandler := a.updateRowHandler.(type) {
 			case *onDuplicateUpdateHandler, *replaceRowHandler:
-				lastInsertId := ctx.Session.GetLastQueryInfoInt(sql.LastInsertId)
+				lastInsertId := ctx.Session.GetLastInsertId()
 				res.InsertID = uint64(lastInsertId)
 			case *insertRowHandler:
 				res.InsertID = rowHandler.lastInsertId
 			}
-
 			// By definition, ROW_COUNT() is equal to RowsAffected.
-			ctx.SetLastQueryInfoInt(sql.RowCount, int64(res.RowsAffected))
-
+			ctx.SetRowCount(int64(res.RowsAffected))
+			
 			return sql.NewRow(res), nil
 		} else if isIg {
 			if ui, ok := a.updateRowHandler.(updateIgnoreAccumulatorRowHandler); ok {

@@ -131,14 +131,22 @@ type Session interface {
 	DelLock(lockName string) error
 	// IterLocks iterates through all locks owned by this user
 	IterLocks(cb func(name string) error) error
-	// SetLastQueryInfoInt sets session-level query info for the key given, applying to the query just executed.
-	SetLastQueryInfoInt(key string, value int64)
-	// GetLastQueryInfoInt returns the session-level query info for the key given, for the query most recently executed.
-	GetLastQueryInfoInt(key string) int64
-	// SetLastQueryInfoString sets session-level query info as a string for the key given, applying to the query just executed.
-	SetLastQueryInfoString(key string, value string)
-	// GetLastQueryInfoString returns the session-level query info as a string for the key given, for the query most recently executed.
-	GetLastQueryInfoString(key string) string
+	// GetRowCount returns session-level row count for the most recently executed query.
+	GetRowCount() int64
+	// SetRowCount sets session-level row count for the most recently executed query.
+	SetRowCount(value int64)
+	// GetFoundRows returns session-level row count for the most recently executed query.
+	GetFoundRows() int64
+	// SetFoundRows sets session-level row count for the most recently executed query.
+	SetFoundRows(value int64)
+	// GetLastInsertId returns session-level row count for the most recently executed query.
+	GetLastInsertId() int64
+	// SetLastInsertId sets session-level row count for the most recently executed query.
+	SetLastInsertId(value int64)
+	// GetLastInsertUUID returns session-level row count for the most recently executed query.
+	GetLastInsertUUID() string
+	// SetLastInsertUUID sets session-level row count for the most recently executed query.
+	SetLastInsertUUID(value string)
 	// GetTransaction returns the active transaction, if any
 	GetTransaction() Transaction
 	// SetTransaction sets the session's transaction
@@ -259,6 +267,22 @@ const (
 	LastInsertId   = "last_insert_id"
 	LastInsertUuid = "last_insert_uuid"
 )
+
+type LastQueryInfo struct {
+	RowCount       atomic.Int64
+	FoundRows      atomic.Int64
+	LastInsertId   atomic.Int64
+	LastInsertUUID atomic.Value
+}
+
+func defaultLastQueryInfo() LastQueryInfo {
+	ret := LastQueryInfo{}
+	ret.RowCount.Store(0)
+	ret.FoundRows.Store(1) // this is kind of a hack -- it handles the case of `select found_rows()` before any select statement is issued
+	ret.LastInsertId.Store(0)
+	ret.LastInsertUUID.Store("")
+	return ret
+}
 
 // Session ID 0 used as invalid SessionID
 var autoSessionIDs uint32 = 1
@@ -701,19 +725,6 @@ func (i *spanIter) Close(ctx *Context) error {
 		i.finish()
 	}
 	return i.iter.Close(ctx)
-}
-
-func defaultLastQueryInfo() map[string]*atomic.Value {
-	ret := make(map[string]*atomic.Value)
-	ret[RowCount] = &atomic.Value{}
-	ret[RowCount].Store(int64(0))
-	ret[FoundRows] = &atomic.Value{}
-	ret[FoundRows].Store(int64(1)) // this is kind of a hack -- it handles the case of `select found_rows()` before any select statement is issue)
-	ret[LastInsertId] = &atomic.Value{}
-	ret[LastInsertId].Store(int64(0))
-	ret[LastInsertUuid] = &atomic.Value{}
-	ret[LastInsertUuid].Store("")
-	return ret
 }
 
 // cc: https://dev.mysql.com/doc/refman/8.0/en/temporary-files.html

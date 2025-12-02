@@ -33,9 +33,9 @@ type BaseSession struct {
 	logger           *logrus.Entry
 	locks            map[string]bool
 	storedProcParams map[string]*StoredProcParam
-	lastQueryInfo    map[string]*atomic.Value
 	systemVars       map[string]SystemVarValue
 	statusVars       map[string]StatusVarValue
+	lastQueryInfo    LastQueryInfo
 	idxReg           *IndexRegistry
 	viewReg          *ViewRegistry
 	transactionDb    string
@@ -497,28 +497,36 @@ func (s *BaseSession) SetViewRegistry(reg *ViewRegistry) {
 	s.viewReg = reg
 }
 
-func (s *BaseSession) SetLastQueryInfoInt(key string, value int64) {
-	s.lastQueryInfo[key].Store(value)
+func (s *BaseSession) GetRowCount() int64 {
+	return s.lastQueryInfo.RowCount.Load()
 }
 
-func (s *BaseSession) GetLastQueryInfoInt(key string) int64 {
-	value, ok := s.lastQueryInfo[key].Load().(int64)
-	if !ok {
-		panic(fmt.Sprintf("last query info value stored for %s is not an int64 value, but a %T", key, s.lastQueryInfo[key]))
-	}
-	return value
+func (s *BaseSession) SetRowCount(value int64) {
+	s.lastQueryInfo.RowCount.Store(value)
 }
 
-func (s *BaseSession) SetLastQueryInfoString(key string, value string) {
-	s.lastQueryInfo[key].Store(value)
+func (s *BaseSession) GetFoundRows() int64 {
+	return s.lastQueryInfo.FoundRows.Load()
 }
 
-func (s *BaseSession) GetLastQueryInfoString(key string) string {
-	value, ok := s.lastQueryInfo[key].Load().(string)
-	if !ok {
-		panic(fmt.Sprintf("last query info value stored for %s is not a string value, but a %T", key, s.lastQueryInfo[key]))
-	}
-	return value
+func (s *BaseSession) SetFoundRows(value int64) {
+	s.lastQueryInfo.FoundRows.Store(value)
+}
+
+func (s *BaseSession) GetLastInsertId() int64 {
+	return s.lastQueryInfo.LastInsertId.Load()
+}
+
+func (s *BaseSession) SetLastInsertId(value int64) {
+	s.lastQueryInfo.LastInsertId.Store(value)
+}
+
+func (s *BaseSession) GetLastInsertUUID() string {
+	return s.lastQueryInfo.LastInsertUUID.Load().(string)
+}
+
+func (s *BaseSession) SetLastInsertUUID(value string) {
+	s.lastQueryInfo.LastInsertUUID.Store(value)
 }
 
 func (s *BaseSession) GetTransaction() Transaction {
