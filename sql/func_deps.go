@@ -218,7 +218,7 @@ func (f *FuncDepSet) String() string {
 		sep = "; "
 	}
 	for conditionalCols, equivSet := range f.conditionalEquivSets {
-		b.WriteString(fmt.Sprintf("%s%s->%s", sep, conditionalCols, equivSet))
+		b.WriteString(fmt.Sprintf("%snonnull%s->%s", sep, conditionalCols, equivSet))
 		sep = "; "
 	}
 	if len(f.keys) >= 2 {
