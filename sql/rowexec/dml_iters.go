@@ -770,7 +770,7 @@ func (a *accumulatorIter) Next(ctx *sql.Context) (r sql.Row, err error) {
 			}
 			// By definition, ROW_COUNT() is equal to RowsAffected.
 			ctx.SetRowCount(int64(res.RowsAffected))
-			
+
 			return sql.NewRow(res), nil
 		} else if isIg {
 			if ui, ok := a.updateRowHandler.(updateIgnoreAccumulatorRowHandler); ok {
