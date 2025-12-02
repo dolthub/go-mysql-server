@@ -25092,4 +25092,79 @@ order by x, y;
 			"             └─ columns: [s2 i2]\n" +
 			"",
 	},
+	{
+		Query: "select * from id_parent child left join id_parent parent on parent.id = child.parent left join id_parent grandparent on grandparent.id = parent.parent where child.id in ('test_0', 'test_5000', 'test_10000')",
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [child.id:0!null, child.parent:1, parent.id:2!null, parent.parent:3, grandparent.id:4!null, grandparent.parent:5]\n" +
+			" └─ LeftOuterLookupJoin\n" +
+			"     ├─ LeftOuterLookupJoin\n" +
+			"     │   ├─ TableAlias(child)\n" +
+			"     │   │   └─ IndexedTableAccess(id_parent)\n" +
+			"     │   │       ├─ index: [id_parent.id]\n" +
+			"     │   │       ├─ static: [{[test_0, test_0]}, {[test_10000, test_10000]}, {[test_5000, test_5000]}]\n" +
+			"     │   │       ├─ colSet: (1,2)\n" +
+			"     │   │       ├─ tableId: 1\n" +
+			"     │   │       └─ Table\n" +
+			"     │   │           ├─ name: id_parent\n" +
+			"     │   │           └─ columns: [id parent]\n" +
+			"     │   └─ TableAlias(parent)\n" +
+			"     │       └─ IndexedTableAccess(id_parent)\n" +
+			"     │           ├─ index: [id_parent.id]\n" +
+			"     │           ├─ keys: [child.parent:1]\n" +
+			"     │           ├─ colSet: (3,4)\n" +
+			"     │           ├─ tableId: 2\n" +
+			"     │           └─ Table\n" +
+			"     │               ├─ name: id_parent\n" +
+			"     │               └─ columns: [id parent]\n" +
+			"     └─ TableAlias(grandparent)\n" +
+			"         └─ IndexedTableAccess(id_parent)\n" +
+			"             ├─ index: [id_parent.id]\n" +
+			"             ├─ keys: [parent.parent:3]\n" +
+			"             ├─ colSet: (5,6)\n" +
+			"             ├─ tableId: 3\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: id_parent\n" +
+			"                 └─ columns: [id parent]\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [child.id, child.parent, parent.id, parent.parent, grandparent.id, grandparent.parent]\n" +
+			" └─ LeftOuterLookupJoin (estimated cost=3.300 rows=1)\n" +
+			"     ├─ LeftOuterLookupJoin (estimated cost=3.300 rows=1)\n" +
+			"     │   ├─ TableAlias(child)\n" +
+			"     │   │   └─ IndexedTableAccess(id_parent)\n" +
+			"     │   │       ├─ index: [id_parent.id]\n" +
+			"     │   │       ├─ filters: [{[test_0, test_0]}, {[test_10000, test_10000]}, {[test_5000, test_5000]}]\n" +
+			"     │   │       └─ columns: [id parent]\n" +
+			"     │   └─ TableAlias(parent)\n" +
+			"     │       └─ IndexedTableAccess(id_parent)\n" +
+			"     │           ├─ index: [id_parent.id]\n" +
+			"     │           ├─ columns: [id parent]\n" +
+			"     │           └─ keys: child.parent\n" +
+			"     └─ TableAlias(grandparent)\n" +
+			"         └─ IndexedTableAccess(id_parent)\n" +
+			"             ├─ index: [id_parent.id]\n" +
+			"             ├─ columns: [id parent]\n" +
+			"             └─ keys: parent.parent\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [child.id, child.parent, parent.id, parent.parent, grandparent.id, grandparent.parent]\n" +
+			" └─ LeftOuterLookupJoin (estimated cost=3.300 rows=1) (actual rows=0 loops=1)\n" +
+			"     ├─ LeftOuterLookupJoin (estimated cost=3.300 rows=1) (actual rows=0 loops=1)\n" +
+			"     │   ├─ TableAlias(child)\n" +
+			"     │   │   └─ IndexedTableAccess(id_parent)\n" +
+			"     │   │       ├─ index: [id_parent.id]\n" +
+			"     │   │       ├─ filters: [{[test_0, test_0]}, {[test_10000, test_10000]}, {[test_5000, test_5000]}]\n" +
+			"     │   │       └─ columns: [id parent]\n" +
+			"     │   └─ TableAlias(parent)\n" +
+			"     │       └─ IndexedTableAccess(id_parent)\n" +
+			"     │           ├─ index: [id_parent.id]\n" +
+			"     │           ├─ columns: [id parent]\n" +
+			"     │           └─ keys: child.parent\n" +
+			"     └─ TableAlias(grandparent)\n" +
+			"         └─ IndexedTableAccess(id_parent)\n" +
+			"             ├─ index: [id_parent.id]\n" +
+			"             ├─ columns: [id parent]\n" +
+			"             └─ keys: parent.parent\n" +
+			"",
+	},
 }
