@@ -503,10 +503,6 @@ func (t Timespan) Bytes() []byte {
 
 func (t Timespan) AppendBytes(dest []byte) []byte {
 	isNegative, hours, minutes, seconds, microseconds := t.timespanToUnits()
-	sz := 10
-	if microseconds > 0 {
-		sz += 7
-	}
 	if isNegative {
 		dest = append(dest, '-')
 	}

@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"strconv"
 	"time"
 	"unicode"
 
@@ -493,16 +494,68 @@ func (t datetimeType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqlt
 	}
 	switch t.baseType {
 	case sqltypes.Date:
-		t := values.ReadDate(v.Val)
-		dest = t.AppendFormat(dest, sql.DateLayout)
+		tt := values.ReadDate(v.Val)
+		dest = appendDateFormat(dest, tt)
 	case sqltypes.Datetime, sqltypes.Timestamp:
 		x := values.ReadInt64(v.Val)
-		t := time.UnixMicro(x).UTC()
-		dest = t.AppendFormat(dest, sql.TimestampDatetimeLayout)
+		tt := time.UnixMicro(x).UTC()
+		dest = appendDatetimeFormat(dest, tt)
 	default:
 		return sqltypes.Value{}, sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime")
 	}
 	return sqltypes.MakeTrusted(t.baseType, dest), nil
+}
+
+func appendDateFormat(dest []byte, t time.Time) []byte {
+	dest = strconv.AppendInt(dest, int64(t.Year()), 10)
+	dest = append(dest, '-')
+	month := int64(t.Month())
+	if month < 10 {
+		dest = append(dest, '0')
+	}
+	dest = strconv.AppendInt(dest, month, 10)
+	day := int64(t.Day())
+	if day < 10 {
+		dest = append(dest, '0')
+	}
+	dest = strconv.AppendInt(dest, day, 10)
+	return dest
+}
+
+func appendDatetimeFormat(dest []byte, t time.Time) []byte {
+	dest = appendDateFormat(dest, t)
+	dest = append(dest, ' ')
+
+	hours := t.Hour()
+	if hours < 10 {
+		dest = append(dest, '0')
+	}
+	dest = strconv.AppendInt(dest, int64(hours), 10)
+	dest = append(dest, ':')
+
+	minutes := t.Minute()
+	if minutes < 10 {
+		dest = append(dest, '0')
+	}
+	dest = strconv.AppendInt(dest, int64(minutes), 10)
+	dest = append(dest, ':')
+
+	seconds := t.Second()
+	if seconds < 10 {
+		dest = append(dest, '0')
+	}
+	dest = strconv.AppendInt(dest, int64(seconds), 10)
+	dest = append(dest, '.')
+
+	microseconds := t.Nanosecond() / 1000
+	cmp := 100000
+	for cmp > 0 && microseconds < cmp {
+		dest = append(dest, '0')
+		cmp /= 10
+	}
+	dest = strconv.AppendInt(dest, int64(microseconds), 10)
+
+	return dest
 }
 
 func (t datetimeType) String() string {
