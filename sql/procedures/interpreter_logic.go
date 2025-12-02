@@ -146,6 +146,17 @@ func replaceVariablesInExpr(ctx *sql.Context, stack *InterpreterStack, expr ast.
 			return nil, err
 		}
 		e.Subquery = newSubquery.(*ast.Subquery)
+	case *ast.TimestampFuncExpr:
+		newExpr1, err := replaceVariablesInExpr(ctx, stack, e.Expr1, asOf)
+		if err != nil {
+			return nil, err
+		}
+		newExpr2, err := replaceVariablesInExpr(ctx, stack, e.Expr2, asOf)
+		if err != nil {
+			return nil, err
+		}
+		e.Expr1 = newExpr1.(ast.Expr)
+		e.Expr2 = newExpr2.(ast.Expr)
 	case *ast.FuncExpr:
 		for i := range e.Exprs {
 			newExpr, err := replaceVariablesInExpr(ctx, stack, e.Exprs[i], asOf)
@@ -266,7 +277,7 @@ func replaceVariablesInExpr(ctx *sql.Context, stack *InterpreterStack, expr ast.
 		if err != nil {
 			return nil, err
 		}
-		e.Select = newExpr.(*ast.Select)
+		e.Select = newExpr.(ast.SelectStatement)
 	case *ast.SetOp:
 		newLeftExpr, err := replaceVariablesInExpr(ctx, stack, e.Left, asOf)
 		if err != nil {
