@@ -264,13 +264,14 @@ func (t TimespanType_) SQL(_ *sql.Context, dest []byte, v interface{}) (sqltypes
 	if v == nil {
 		return sqltypes.NULL, nil
 	}
+
 	ti, err := t.ConvertToTimespan(v)
 	if err != nil {
 		return sqltypes.Value{}, err
 	}
 
-	val := ti.Bytes()
-	return sqltypes.MakeTrusted(sqltypes.Time, val), nil
+	dest = ti.AppendBytes(dest)
+	return sqltypes.MakeTrusted(sqltypes.Time, dest), nil
 }
 
 // SQLValue implements ValueType interface.
@@ -278,6 +279,7 @@ func (t TimespanType_) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sql
 	if v.IsNull() {
 		return sqltypes.NULL, nil
 	}
+
 	x := values.ReadInt64(v.Val)
 	dest = Timespan(x).AppendBytes(dest)
 	return sqltypes.MakeTrusted(sqltypes.Time, dest), nil
@@ -502,39 +504,40 @@ func (t Timespan) Bytes() []byte {
 }
 
 func (t Timespan) AppendBytes(dest []byte) []byte {
-	isNegative, hours, minutes, seconds, microseconds := t.timespanToUnits()
-	sz := 10
-	if microseconds > 0 {
-		sz += 7
-	}
-	if isNegative {
+	isNeg, h, m, s, ms := t.timespanToUnits()
+	if isNeg {
 		dest = append(dest, '-')
 	}
+	dest = appendTimeFormat(dest, int64(h), int64(m), int64(s), int64(ms))
+	return dest
+}
 
-	if hours < 10 {
+func appendTimeFormat(dest []byte, h, m, s, ms int64) []byte {
+	if h < 10 {
 		dest = append(dest, '0')
 	}
-	dest = strconv.AppendInt(dest, int64(hours), 10)
+	dest = strconv.AppendInt(dest, h, 10)
 	dest = append(dest, ':')
 
-	if minutes < 10 {
+	if m < 10 {
 		dest = append(dest, '0')
 	}
-	dest = strconv.AppendInt(dest, int64(minutes), 10)
+	dest = strconv.AppendInt(dest, m, 10)
 	dest = append(dest, ':')
 
-	if seconds < 10 {
+	if s < 10 {
 		dest = append(dest, '0')
 	}
-	dest = strconv.AppendInt(dest, int64(seconds), 10)
-	if microseconds > 0 {
+	dest = strconv.AppendInt(dest, s, 10)
+
+	if ms > 0 {
 		dest = append(dest, '.')
-		cmp := int32(100000)
-		for cmp > 0 && microseconds < cmp {
+		cmp := int64(100000)
+		for cmp > 0 && ms < cmp {
 			dest = append(dest, '0')
 			cmp /= 10
 		}
-		dest = strconv.AppendInt(dest, int64(microseconds), 10)
+		dest = strconv.AppendInt(dest, ms, 10)
 	}
 	return dest
 }

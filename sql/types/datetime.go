@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"strconv"
 	"time"
 	"unicode"
 
@@ -452,38 +453,24 @@ func (t datetimeType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 		return sqltypes.Value{}, err
 	}
 
-	var typ query.Type
-	var val []byte
-
 	switch t.baseType {
 	case sqltypes.Date:
-		typ = sqltypes.Date
 		if vt.Equal(ZeroTime) {
-			val = vt.AppendFormat(dest, ZeroDateStr)
+			dest = append(dest, ZeroDateStr...)
 		} else {
-			val = vt.AppendFormat(dest, sql.DateLayout)
+			dest = appendDateFormat(dest, vt)
 		}
-	case sqltypes.Datetime:
-		typ = sqltypes.Datetime
+	case sqltypes.Datetime, sqltypes.Timestamp:
 		if vt.Equal(ZeroTime) {
-			val = vt.AppendFormat(dest, ZeroTimestampDatetimeStr)
+			dest = append(dest, ZeroTimestampDatetimeStr...)
 		} else {
-			val = vt.AppendFormat(dest, sql.TimestampDatetimeLayout)
-		}
-	case sqltypes.Timestamp:
-		typ = sqltypes.Timestamp
-		if vt.Equal(ZeroTime) {
-			val = vt.AppendFormat(dest, ZeroTimestampDatetimeStr)
-		} else {
-			val = vt.AppendFormat(dest, sql.TimestampDatetimeLayout)
+			dest = appendDatetimeFormat(dest, vt)
 		}
 	default:
 		return sqltypes.Value{}, sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime")
 	}
 
-	valBytes := val
-
-	return sqltypes.MakeTrusted(typ, valBytes), nil
+	return sqltypes.MakeTrusted(t.baseType, dest), nil
 }
 
 // SQLValue implements the ValueType interface.
@@ -491,18 +478,58 @@ func (t datetimeType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqlt
 	if v.IsNull() {
 		return sqltypes.NULL, nil
 	}
+
 	switch t.baseType {
 	case sqltypes.Date:
-		t := values.ReadDate(v.Val)
-		dest = t.AppendFormat(dest, sql.DateLayout)
+		vt := values.ReadDate(v.Val)
+		if vt.Equal(ZeroTime) {
+			dest = append(dest, ZeroDateStr...)
+		} else {
+			dest = appendDateFormat(dest, vt)
+		}
 	case sqltypes.Datetime, sqltypes.Timestamp:
 		x := values.ReadInt64(v.Val)
-		t := time.UnixMicro(x).UTC()
-		dest = t.AppendFormat(dest, sql.TimestampDatetimeLayout)
+		vt := time.UnixMicro(x).UTC()
+		if vt.Equal(ZeroTime) {
+			dest = append(dest, ZeroTimestampDatetimeStr...)
+		} else {
+			dest = appendDatetimeFormat(dest, vt)
+		}
 	default:
 		return sqltypes.Value{}, sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime")
 	}
 	return sqltypes.MakeTrusted(t.baseType, dest), nil
+}
+
+func appendDateFormat(dest []byte, t time.Time) []byte {
+	year := t.Year()
+	if year == 0 {
+		dest = append(dest, '0', '0', '0', '0')
+	} else {
+		dest = strconv.AppendInt(dest, int64(year), 10)
+	}
+	dest = append(dest, '-')
+
+	month := int64(t.Month())
+	if month < 10 {
+		dest = append(dest, '0')
+	}
+	dest = strconv.AppendInt(dest, month, 10)
+	dest = append(dest, '-')
+
+	day := int64(t.Day())
+	if day < 10 {
+		dest = append(dest, '0')
+	}
+	dest = strconv.AppendInt(dest, day, 10)
+	return dest
+}
+
+func appendDatetimeFormat(dest []byte, t time.Time) []byte {
+	dest = appendDateFormat(dest, t)
+	dest = append(dest, ' ')
+	dest = appendTimeFormat(dest, int64(t.Hour()), int64(t.Minute()), int64(t.Second()), int64(t.Nanosecond()/1000))
+	return dest
 }
 
 func (t datetimeType) String() string {
