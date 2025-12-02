@@ -457,7 +457,7 @@ func (t datetimeType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 	switch t.baseType {
 	case sqltypes.Date:
 		typ = sqltypes.Date
-		dest = appendDatetimeFormat(dest, vt)
+		dest = appendDateFormat(dest, vt)
 	case sqltypes.Datetime:
 		typ = sqltypes.Datetime
 		dest = appendDatetimeFormat(dest, vt)
@@ -493,11 +493,14 @@ func (t datetimeType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqlt
 func appendDateFormat(dest []byte, t time.Time) []byte {
 	dest = strconv.AppendInt(dest, int64(t.Year()), 10)
 	dest = append(dest, '-')
+
 	month := int64(t.Month())
 	if month < 10 {
 		dest = append(dest, '0')
 	}
 	dest = strconv.AppendInt(dest, month, 10)
+	dest = append(dest, '-')
+
 	day := int64(t.Day())
 	if day < 10 {
 		dest = append(dest, '0')
@@ -529,15 +532,17 @@ func appendDatetimeFormat(dest []byte, t time.Time) []byte {
 		dest = append(dest, '0')
 	}
 	dest = strconv.AppendInt(dest, int64(seconds), 10)
-	dest = append(dest, '.')
 
 	microseconds := t.Nanosecond() / 1000
-	cmp := 100000
-	for cmp > 0 && microseconds < cmp {
-		dest = append(dest, '0')
-		cmp /= 10
+	if microseconds > 0 {
+		dest = append(dest, '.')
+		cmp := 100000
+		for cmp > 0 && microseconds < cmp {
+			dest = append(dest, '0')
+			cmp /= 10
+		}
+		dest = strconv.AppendInt(dest, int64(microseconds), 10)
 	}
-	dest = strconv.AppendInt(dest, int64(microseconds), 10)
 
 	return dest
 }
