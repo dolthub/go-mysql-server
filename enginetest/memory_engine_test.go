@@ -200,23 +200,18 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name:        "AS OF propagates to nested CALLs",
-			SetUpScript: []string{},
+			Name: "aaaaa",
+			SetUpScript: []string{
+				"create table t (i int primary key, j int);",
+				"insert into t values (1, 1), (2, 2), (3, 3);",
+			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "create procedure create_proc() create table t (i int primary key, j int);",
-					Expected: []sql.Row{
-						{types.NewOkResult(0)},
-					},
-				},
-				{
-					Query: "call create_proc()",
-					Expected: []sql.Row{
-						{types.NewOkResult(0)},
-					},
+					Query:    "select * from t where i in (1, 2, 3)",
+					Expected: []sql.Row{},
 				},
 			},
 		},
