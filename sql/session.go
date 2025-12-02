@@ -248,10 +248,10 @@ type (
 )
 
 type LastQueryInfo struct {
-	RowCount       atomic.Int64
-	FoundRows      atomic.Int64
-	LastInsertId   atomic.Int64
-	LastInsertUUID atomic.Value
+	RowCount       atomic.Int64 // Session-level Row Count for the last executed query
+	FoundRows      atomic.Int64 // Session-level Found Rows for the last executed query
+	LastInsertId   atomic.Int64 // Session-level ID for the last executed insert query
+	LastInsertUUID atomic.Value // Session-level UUID for the last executed insert query
 }
 
 func defaultLastQueryInfo() *LastQueryInfo {
