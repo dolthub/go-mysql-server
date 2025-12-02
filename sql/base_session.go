@@ -35,7 +35,7 @@ type BaseSession struct {
 	storedProcParams map[string]*StoredProcParam
 	systemVars       map[string]SystemVarValue
 	statusVars       map[string]StatusVarValue
-	lastQueryInfo    LastQueryInfo
+	lastQueryInfo    *LastQueryInfo
 	idxReg           *IndexRegistry
 	viewReg          *ViewRegistry
 	transactionDb    string
@@ -497,36 +497,8 @@ func (s *BaseSession) SetViewRegistry(reg *ViewRegistry) {
 	s.viewReg = reg
 }
 
-func (s *BaseSession) GetRowCount() int64 {
-	return s.lastQueryInfo.RowCount.Load()
-}
-
-func (s *BaseSession) SetRowCount(value int64) {
-	s.lastQueryInfo.RowCount.Store(value)
-}
-
-func (s *BaseSession) GetFoundRows() int64 {
-	return s.lastQueryInfo.FoundRows.Load()
-}
-
-func (s *BaseSession) SetFoundRows(value int64) {
-	s.lastQueryInfo.FoundRows.Store(value)
-}
-
-func (s *BaseSession) GetLastInsertId() int64 {
-	return s.lastQueryInfo.LastInsertId.Load()
-}
-
-func (s *BaseSession) SetLastInsertId(value int64) {
-	s.lastQueryInfo.LastInsertId.Store(value)
-}
-
-func (s *BaseSession) GetLastInsertUUID() string {
-	return s.lastQueryInfo.LastInsertUUID.Load().(string)
-}
-
-func (s *BaseSession) SetLastInsertUUID(value string) {
-	s.lastQueryInfo.LastInsertUUID.Store(value)
+func (s *BaseSession) GetLastQueryInfo() *LastQueryInfo {
+	return s.lastQueryInfo
 }
 
 func (s *BaseSession) GetTransaction() Transaction {

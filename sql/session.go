@@ -131,22 +131,8 @@ type Session interface {
 	DelLock(lockName string) error
 	// IterLocks iterates through all locks owned by this user
 	IterLocks(cb func(name string) error) error
-	// GetRowCount returns session-level row count for the most recently executed query.
-	GetRowCount() int64
-	// SetRowCount sets session-level row count for the most recently executed query.
-	SetRowCount(value int64)
-	// GetFoundRows returns session-level row count for the most recently executed query.
-	GetFoundRows() int64
-	// SetFoundRows sets session-level row count for the most recently executed query.
-	SetFoundRows(value int64)
-	// GetLastInsertId returns session-level row count for the most recently executed query.
-	GetLastInsertId() int64
-	// SetLastInsertId sets session-level row count for the most recently executed query.
-	SetLastInsertId(value int64)
-	// GetLastInsertUUID returns session-level row count for the most recently executed query.
-	GetLastInsertUUID() string
-	// SetLastInsertUUID sets session-level row count for the most recently executed query.
-	SetLastInsertUUID(value string)
+	// GetLastQueryInfo returns session-level info for the most recently executed query.
+	GetLastQueryInfo() *LastQueryInfo
 	// GetTransaction returns the active transaction, if any
 	GetTransaction() Transaction
 	// SetTransaction sets the session's transaction
@@ -261,13 +247,6 @@ type (
 	}
 )
 
-const (
-	RowCount       = "row_count"
-	FoundRows      = "found_rows"
-	LastInsertId   = "last_insert_id"
-	LastInsertUuid = "last_insert_uuid"
-)
-
 type LastQueryInfo struct {
 	RowCount       atomic.Int64
 	FoundRows      atomic.Int64
@@ -275,13 +254,13 @@ type LastQueryInfo struct {
 	LastInsertUUID atomic.Value
 }
 
-func defaultLastQueryInfo() LastQueryInfo {
+func defaultLastQueryInfo() *LastQueryInfo {
 	ret := LastQueryInfo{}
 	ret.RowCount.Store(0)
 	ret.FoundRows.Store(1) // this is kind of a hack -- it handles the case of `select found_rows()` before any select statement is issued
 	ret.LastInsertId.Store(0)
 	ret.LastInsertUUID.Store("")
-	return ret
+	return &ret
 }
 
 // Session ID 0 used as invalid SessionID

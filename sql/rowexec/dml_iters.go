@@ -752,8 +752,9 @@ func (a *accumulatorIter) Next(ctx *sql.Context) (r sql.Row, err error) {
 
 			// UPDATE statements also set FoundRows to the number of rows that
 			// matched the WHERE clause, same as a SELECT.
+			lastQueryInfo := ctx.GetLastQueryInfo()
 			if ma, ok := a.updateRowHandler.(matchingAccumulator); ok {
-				ctx.SetFoundRows(ma.RowsMatched())
+				lastQueryInfo.FoundRows.Store(ma.RowsMatched())
 			}
 
 			res := a.updateRowHandler.okResult() // TODO: Should add warnings here
@@ -763,13 +764,13 @@ func (a *accumulatorIter) Next(ctx *sql.Context) (r sql.Row, err error) {
 			// to be fixed. See comment in buildRowUpdateAccumulator in rowexec/dml.go
 			switch rowHandler := a.updateRowHandler.(type) {
 			case *onDuplicateUpdateHandler, *replaceRowHandler:
-				lastInsertId := ctx.Session.GetLastInsertId()
+				lastInsertId := lastQueryInfo.LastInsertId.Load()
 				res.InsertID = uint64(lastInsertId)
 			case *insertRowHandler:
 				res.InsertID = rowHandler.lastInsertId
 			}
 			// By definition, ROW_COUNT() is equal to RowsAffected.
-			ctx.SetRowCount(int64(res.RowsAffected))
+			lastQueryInfo.RowCount.Store(int64(res.RowsAffected))
 
 			return sql.NewRow(res), nil
 		} else if isIg {

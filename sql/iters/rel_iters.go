@@ -68,7 +68,7 @@ func (i *topRowsIter) Next(ctx *sql.Context) (sql.Row, error) {
 func (i *topRowsIter) Close(ctx *sql.Context) error {
 	i.topRows = nil
 	if i.calcFoundRows {
-		ctx.SetFoundRows(i.numFoundRows)
+		ctx.GetLastQueryInfo().FoundRows.Store(i.numFoundRows)
 	}
 	return i.childIter.Close(ctx)
 }
@@ -465,9 +465,8 @@ func (li *LimitIter) Close(ctx *sql.Context) error {
 	if err != nil {
 		return err
 	}
-
 	if li.CalcFoundRows {
-		ctx.SetFoundRows(li.currentPos)
+		ctx.GetLastQueryInfo().FoundRows.Store(li.currentPos)
 	}
 	return nil
 }
