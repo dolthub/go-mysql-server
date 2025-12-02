@@ -453,22 +453,24 @@ func (t datetimeType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 		return sqltypes.Value{}, err
 	}
 
-	var typ query.Type
 	switch t.baseType {
 	case sqltypes.Date:
-		typ = sqltypes.Date
-		dest = appendDateFormat(dest, vt)
-	case sqltypes.Datetime:
-		typ = sqltypes.Datetime
-		dest = appendDatetimeFormat(dest, vt)
-	case sqltypes.Timestamp:
-		typ = sqltypes.Timestamp
-		dest = appendDatetimeFormat(dest, vt)
+		if vt.Equal(ZeroTime) {
+			dest = append(dest, ZeroDateStr...)
+		} else {
+			dest = appendDateFormat(dest, vt)
+		}
+	case sqltypes.Datetime, sqltypes.Timestamp:
+		if vt.Equal(ZeroTime) {
+			dest = append(dest, ZeroTimestampDatetimeStr...)
+		} else {
+			dest = appendDatetimeFormat(dest, vt)
+		}
 	default:
 		return sqltypes.Value{}, sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime")
 	}
 
-	return sqltypes.MakeTrusted(typ, dest), nil
+	return sqltypes.MakeTrusted(t.baseType, dest), nil
 }
 
 // SQLValue implements the ValueType interface.
@@ -476,14 +478,23 @@ func (t datetimeType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqlt
 	if v.IsNull() {
 		return sqltypes.NULL, nil
 	}
+
 	switch t.baseType {
 	case sqltypes.Date:
-		tt := values.ReadDate(v.Val)
-		dest = appendDateFormat(dest, tt)
+		vt := values.ReadDate(v.Val)
+		if vt.Equal(ZeroTime) {
+			dest = append(dest, ZeroDateStr...)
+		} else {
+			dest = appendDateFormat(dest, vt)
+		}
 	case sqltypes.Datetime, sqltypes.Timestamp:
 		x := values.ReadInt64(v.Val)
-		tt := time.UnixMicro(x).UTC()
-		dest = appendDatetimeFormat(dest, tt)
+		vt := time.UnixMicro(x).UTC()
+		if vt.Equal(ZeroTime) {
+			dest = append(dest, ZeroTimestampDatetimeStr...)
+		} else {
+			dest = appendDatetimeFormat(dest, vt)
+		}
 	default:
 		return sqltypes.Value{}, sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime")
 	}
@@ -491,7 +502,12 @@ func (t datetimeType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqlt
 }
 
 func appendDateFormat(dest []byte, t time.Time) []byte {
-	dest = strconv.AppendInt(dest, int64(t.Year()), 10)
+	year := t.Year()
+	if year == 0 {
+		dest = append(dest, '0', '0', '0', '0')
+	} else {
+		dest = strconv.AppendInt(dest, int64(year), 10)
+	}
 	dest = append(dest, '-')
 
 	month := int64(t.Month())
@@ -512,38 +528,7 @@ func appendDateFormat(dest []byte, t time.Time) []byte {
 func appendDatetimeFormat(dest []byte, t time.Time) []byte {
 	dest = appendDateFormat(dest, t)
 	dest = append(dest, ' ')
-
-	hours := t.Hour()
-	if hours < 10 {
-		dest = append(dest, '0')
-	}
-	dest = strconv.AppendInt(dest, int64(hours), 10)
-	dest = append(dest, ':')
-
-	minutes := t.Minute()
-	if minutes < 10 {
-		dest = append(dest, '0')
-	}
-	dest = strconv.AppendInt(dest, int64(minutes), 10)
-	dest = append(dest, ':')
-
-	seconds := t.Second()
-	if seconds < 10 {
-		dest = append(dest, '0')
-	}
-	dest = strconv.AppendInt(dest, int64(seconds), 10)
-
-	microseconds := t.Nanosecond() / 1000
-	if microseconds > 0 {
-		dest = append(dest, '.')
-		cmp := 100000
-		for cmp > 0 && microseconds < cmp {
-			dest = append(dest, '0')
-			cmp /= 10
-		}
-		dest = strconv.AppendInt(dest, int64(microseconds), 10)
-	}
-
+	dest = appendTimeFormat(dest, int64(t.Hour()), int64(t.Minute()), int64(t.Second()), int64(t.Nanosecond()/1000))
 	return dest
 }
 
