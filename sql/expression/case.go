@@ -244,3 +244,27 @@ func (c *Case) DebugString() string {
 	buf.WriteString(" END")
 	return buf.String()
 }
+
+func (c *Case) Describe(options sql.DescribeOptions) string {
+	var buf bytes.Buffer
+
+	buf.WriteString("CASE ")
+	if c.Expr != nil {
+		buf.WriteString(sql.Describe(c.Expr, options))
+	}
+
+	for _, b := range c.Branches {
+		buf.WriteString(" WHEN ")
+		buf.WriteString(sql.Describe(b.Cond, options))
+		buf.WriteString(" THEN ")
+		buf.WriteString(sql.Describe(b.Value, options))
+	}
+
+	if c.Else != nil {
+		buf.WriteString(" ELSE ")
+		buf.WriteString(sql.Describe(c.Else, options))
+	}
+
+	buf.WriteString(" END")
+	return buf.String()
+}
