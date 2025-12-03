@@ -112,7 +112,7 @@ func (*LogBase) CollationCoercibility(ctx *sql.Context) (collation sql.Collation
 
 // IsNullable implements the sql.Expression interface.
 func (l *LogBase) IsNullable() bool {
-	return l.base == float64(1) || l.base <= float64(0) || l.Child.IsNullable()
+	return true
 }
 
 // Eval implements the Expression interface.
@@ -196,7 +196,7 @@ func (*Log) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, 
 
 // IsNullable implements the Expression interface.
 func (l *Log) IsNullable() bool {
-	return l.LeftChild.IsNullable() || l.RightChild.IsNullable()
+	return true
 }
 
 // Eval implements the Expression interface.
