@@ -21,6 +21,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/shopspring/decimal"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/spatial"
@@ -835,6 +837,53 @@ type indexScanRangeBuilder struct {
 	leftover  []sql.Expression
 }
 
+func castToInt64(v any) (int64, bool) {
+	switch v := v.(type) {
+	case int:
+		return int64(v), true
+	case int8:
+		return int64(v), true
+	case int16:
+		return int64(v), true
+	case int32:
+		return int64(v), true
+	case int64:
+		return v, true
+	case float32, float64, decimal.Decimal:
+		// TODO: return an empty range here
+		return 0, false
+	default:
+		return 0, false
+	}
+}
+
+func setToSignedIntRange(setVals []any, colExprTypes []sql.ColumnExpressionType) (sql.MySQLRangeCollection, bool) {
+	if len(colExprTypes) != 1 {
+		return nil, false
+	}
+	typ := colExprTypes[0].Type
+	if !types.IsSigned(typ) {
+		return nil, false
+	}
+	var ok bool
+	keys := make([]int64, len(setVals))
+	for i, val := range setVals {
+		keys[i], ok = castToInt64(val)
+		if !ok {
+			return nil, false
+		}
+	}
+	slices.Sort(keys)
+	slices.Compact(keys)
+	res := make(sql.MySQLRangeCollection, len(keys))
+	for i, key := range keys {
+		res[i] = sql.MySQLRange{
+			sql.ClosedRangeColumnExpr(key, key, typ),
+		}
+	}
+	return res, true
+}
+
 // buildRangeCollection converts our representation of the best index scan
 // into the format that represents an index lookup, a list of sql.Range.
 func (b *indexScanRangeBuilder) buildRangeCollection(f indexFilter) (sql.MySQLRangeCollection, error) {
@@ -848,18 +897,13 @@ func (b *indexScanRangeBuilder) buildRangeCollection(f indexFilter) (sql.MySQLRa
 	case *iScanOr:
 		ranges, err = b.rangeBuildOr(f, inScan)
 	case *iScanLeaf:
-		// TODO: special case for in set. can skip overlapping ranges since it's a series of equality checks
-		// TODO: sequential integers can be converted to a single partition, but i guess that's harder?
+		// TODO: special case for in set. can skip building range tree and overlapping range check since it's a series of equality checks
 		if f.Op() == sql.IndexScanOpInSet {
-			bb := sql.NewMySQLIndexBuilder(b.idx)
-			b.rangeBuildDefaultLeaf(bb, f, inScan)
-			if _, err := bb.Build(b.ctx); err != nil {
-				return nil, err
+			cets := b.idx.ColumnExpressionTypes()
+			if ranges, ok := setToSignedIntRange(f.setValues, cets); ok {
+				return ranges, nil
 			}
-			ranges = bb.Ranges(b.ctx)
-			return ranges, nil
 		}
-
 		ranges, err = b.rangeBuildLeaf(f, inScan)
 	default:
 		return nil, fmt.Errorf("unknown indexFilter type: %T", f)
@@ -1459,7 +1503,7 @@ func newLeaf(ctx *sql.Context, id indexScanId, e sql.Expression, underlying stri
 		var litSet []interface{}
 		var setTypes []sql.Type
 		var litType sql.Type
-		for _, lit := range tup {
+		for i, lit := range tup {
 			value, err := lit.Eval(ctx, nil)
 			if err != nil {
 				return nil, false
@@ -1474,7 +1518,7 @@ func newLeaf(ctx *sql.Context, id indexScanId, e sql.Expression, underlying stri
 			id:         id,
 			gf:         gf,
 			op:         op,
-			setValues:  setVals,
+			setValues:  litSet,
 			setTypes:   setTypes,
 			litType:    litType,
 			underlying: underlying,
