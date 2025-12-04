@@ -107,6 +107,8 @@ var (
 	Date = MustCreateDatetimeType(sqltypes.Date, 0)
 	// Datetime is a date and a time with default precision (no fractional seconds).
 	Datetime = MustCreateDatetimeType(sqltypes.Datetime, 0)
+	// Datetime3 is a date and time with a precision of 3 (fractional seconds to 3 decimal places)
+	Datetime3 = MustCreateDatetimeType(sqltypes.Datetime, 3)
 	// DatetimeMaxPrecision is a date and a time with maximum precision
 	DatetimeMaxPrecision = MustCreateDatetimeType(sqltypes.Datetime, MaxDatetimePrecision)
 	// Timestamp is a UNIX timestamp with default precision (no fractional seconds).
