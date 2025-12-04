@@ -208,30 +208,31 @@ func generatePlansForSuite(spec PlanSpec, w *bytes.Buffer) error {
 			writePlanString(w, planString)
 
 			if node.IsReadOnly() {
-				_, _ = w.WriteString(`ExpectedEstimates: `)
 				var planString string
 				if tt.ExpectedEstimates != "skip" {
+					_, _ = w.WriteString(`ExpectedEstimates: `)
 					planString = sql.Describe(enginetest.ExtractQueryNode(node), sql.DescribeOptions{
 						Estimates: true,
 					})
+					writePlanString(w, planString)
 				} else {
-					planString = "skip"
+					_, _ = w.WriteString("ExpectedEstimates: \"skip\",\n")
 				}
-				writePlanString(w, planString)
+
 				if tt.ExpectedAnalysis != "skip" {
+					_, _ = w.WriteString(`ExpectedAnalysis: `)
 					err = enginetest.ExecuteNode(ctx, engine, node)
 					if err != nil {
 						exit(fmt.Errorf("%w\nfailed to execute query: %s", err, tt.Query))
 					}
-					_, _ = w.WriteString(`ExpectedAnalysis: `)
 					planString = sql.Describe(enginetest.ExtractQueryNode(node), sql.DescribeOptions{
 						Analyze:   true,
 						Estimates: true,
 					})
+					writePlanString(w, planString)
 				} else {
-					planString = "skip"
+					_, _ = w.WriteString("ExpectedAnalysis: \"skip\",\n")
 				}
-				writePlanString(w, planString)
 			}
 		} else {
 			_, _ = w.WriteString(`Skip: true,\n`)
