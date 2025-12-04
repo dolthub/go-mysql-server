@@ -201,15 +201,19 @@ func (b *MySQLIndexBuilder) In(ctx *Context, colExpr string, keyTypes []Type, ke
 	for i, k := range keys {
 		// if converting from float to int results in rounding, then it's empty range
 		if t, ok := colTyp.(NumberType); ok && t.IsNumericType() && !t.IsFloat() {
-			f, c := floor(k), ceil(k)
-			switch k.(type) {
-			case float32, float64:
-				if f != c {
+			switch k := k.(type) {
+			case float32:
+				if float32(int64(k)) != k {
+					potentialRanges[i] = EmptyRangeColumnExpr(colTyp)
+					continue
+				}
+			case float64:
+				if float64(int64(k)) != k {
 					potentialRanges[i] = EmptyRangeColumnExpr(colTyp)
 					continue
 				}
 			case decimal.Decimal:
-				if !f.(decimal.Decimal).Equals(c.(decimal.Decimal)) {
+				if !k.Equal(decimal.NewFromInt(k.IntPart())) {
 					potentialRanges[i] = EmptyRangeColumnExpr(colTyp)
 					continue
 				}
