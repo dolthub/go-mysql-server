@@ -520,7 +520,7 @@ From xy;`,
 			" │               ├─ columns: [xy.x, xy.y]\n" +
 			" │               └─ Filter\n" +
 			" │                   ├─ uv.u IS NULL\n" +
-			" │                   └─ LeftOuterMergeJoin (estimated cost=1014.120 rows=5)\n" +
+			" │                   └─ LeftOuterMergeJoin (estimated cost=1024.070 rows=1000)\n" +
 			" │                       ├─ cmp: (xy.x = uv.u)\n" +
 			" │                       ├─ IndexedTableAccess(xy)\n" +
 			" │                       │   ├─ index: [xy.x]\n" +
@@ -541,7 +541,7 @@ From xy;`,
 			"     │               ├─ columns: [xy.x, xy.y]\n" +
 			"     │               └─ Filter\n" +
 			"     │                   ├─ uv.u IS NULL\n" +
-			"     │                   └─ LeftOuterMergeJoin (estimated cost=1014.120 rows=5)\n" +
+			"     │                   └─ LeftOuterMergeJoin (estimated cost=1024.070 rows=1000)\n" +
 			"     │                       ├─ cmp: (xy.x = uv.u)\n" +
 			"     │                       ├─ IndexedTableAccess(xy)\n" +
 			"     │                       │   ├─ index: [xy.x]\n" +
@@ -565,7 +565,7 @@ From xy;`,
 			" │               ├─ columns: [xy.x, xy.y]\n" +
 			" │               └─ Filter\n" +
 			" │                   ├─ uv.u IS NULL\n" +
-			" │                   └─ LeftOuterMergeJoin (estimated cost=1014.120 rows=5)\n" +
+			" │                   └─ LeftOuterMergeJoin (estimated cost=1024.070 rows=1000)\n" +
 			" │                       ├─ cmp: (xy.x = uv.u)\n" +
 			" │                       ├─ IndexedTableAccess(xy)\n" +
 			" │                       │   ├─ index: [xy.x]\n" +
@@ -586,7 +586,7 @@ From xy;`,
 			"     │               ├─ columns: [xy.x, xy.y]\n" +
 			"     │               └─ Filter\n" +
 			"     │                   ├─ uv.u IS NULL\n" +
-			"     │                   └─ LeftOuterMergeJoin (estimated cost=1014.120 rows=5)\n" +
+			"     │                   └─ LeftOuterMergeJoin (estimated cost=1024.070 rows=1000)\n" +
 			"     │                       ├─ cmp: (xy.x = uv.u)\n" +
 			"     │                       ├─ IndexedTableAccess(xy)\n" +
 			"     │                       │   ├─ index: [xy.x]\n" +
@@ -3867,7 +3867,7 @@ Select * from (
 			"     ├─ columns: [xy.x, xy.y]\n" +
 			"     └─ Filter\n" +
 			"         ├─ cte1.u IS NULL\n" +
-			"         └─ LeftOuterHashJoinExcludingNulls (estimated cost=1311.250 rows=125)\n" +
+			"         └─ LeftOuterHashJoinExcludingNulls (estimated cost=1320.000 rows=1000)\n" +
 			"             ├─ (xy.x = cte1.u)\n" +
 			"             ├─ Table\n" +
 			"             │   └─ name: xy\n" +
@@ -3915,7 +3915,7 @@ Select * from (
 			"     ├─ columns: [xy.x, xy.y]\n" +
 			"     └─ Filter\n" +
 			"         ├─ cte1.u IS NULL\n" +
-			"         └─ LeftOuterHashJoinExcludingNulls (estimated cost=1311.250 rows=125) (actual rows=12 loops=1)\n" +
+			"         └─ LeftOuterHashJoinExcludingNulls (estimated cost=1320.000 rows=1000) (actual rows=12 loops=1)\n" +
 			"             ├─ (xy.x = cte1.u)\n" +
 			"             ├─ Table\n" +
 			"             │   └─ name: xy\n" +
@@ -5351,7 +5351,7 @@ inner join xy on a = x;`,
 			" │   ├─ tableId: 4\n" +
 			" │   └─ Project\n" +
 			" │       ├─ columns: [ab.a:0!null, ab.b:1, uv.u:2!null, uv.v:3]\n" +
-			" │       └─ SemiJoin\n" +
+			" │       └─ HashJoin\n" +
 			" │           ├─ Eq\n" +
 			" │           │   ├─ uv.u:2!null\n" +
 			" │           │   └─ pq.p:4!null\n" +
@@ -5375,11 +5375,17 @@ inner join xy on a = x;`,
 			" │           │       └─ Table\n" +
 			" │           │           ├─ name: uv\n" +
 			" │           │           └─ columns: [u v]\n" +
-			" │           └─ Table\n" +
-			" │               ├─ name: pq\n" +
-			" │               ├─ columns: [p q]\n" +
-			" │               ├─ colSet: (5,6)\n" +
-			" │               └─ tableId: 3\n" +
+			" │           └─ HashLookup\n" +
+			" │               ├─ left-key: TUPLE(uv.u:2!null)\n" +
+			" │               ├─ right-key: TUPLE(pq.p:0!null)\n" +
+			" │               └─ Distinct\n" +
+			" │                   └─ Project\n" +
+			" │                       ├─ columns: [pq.p:0!null]\n" +
+			" │                       └─ Table\n" +
+			" │                           ├─ name: pq\n" +
+			" │                           ├─ columns: [p q]\n" +
+			" │                           ├─ colSet: (5,6)\n" +
+			" │                           └─ tableId: 3\n" +
 			" └─ IndexedTableAccess(xy)\n" +
 			"     ├─ index: [xy.x]\n" +
 			"     ├─ keys: [alias2.a:0!null]\n" +
@@ -5399,9 +5405,9 @@ inner join xy on a = x;`,
 			" │   ├─ tableId: 4\n" +
 			" │   └─ Project\n" +
 			" │       ├─ columns: [ab.a, ab.b, uv.u, uv.v]\n" +
-			" │       └─ SemiJoin (estimated cost=15.100 rows=5)\n" +
+			" │       └─ HashJoin (estimated cost=1032.000 rows=1000)\n" +
 			" │           ├─ (uv.u = pq.p)\n" +
-			" │           ├─ LeftOuterMergeJoin (estimated cost=1014.120 rows=5)\n" +
+			" │           ├─ LeftOuterMergeJoin (estimated cost=1024.070 rows=1000)\n" +
 			" │           │   ├─ cmp: (ab.a = uv.u)\n" +
 			" │           │   ├─ IndexedTableAccess(ab)\n" +
 			" │           │   │   ├─ index: [ab.a]\n" +
@@ -5409,9 +5415,15 @@ inner join xy on a = x;`,
 			" │           │   └─ IndexedTableAccess(uv)\n" +
 			" │           │       ├─ index: [uv.u]\n" +
 			" │           │       └─ filters: [{[NULL, ∞)}]\n" +
-			" │           └─ Table\n" +
-			" │               ├─ name: pq\n" +
-			" │               └─ columns: [p q]\n" +
+			" │           └─ HashLookup\n" +
+			" │               ├─ left-key: (uv.u)\n" +
+			" │               ├─ right-key: (pq.p)\n" +
+			" │               └─ Distinct\n" +
+			" │                   └─ Project\n" +
+			" │                       ├─ columns: [pq.p]\n" +
+			" │                       └─ Table\n" +
+			" │                           ├─ name: pq\n" +
+			" │                           └─ columns: [p q]\n" +
 			" └─ IndexedTableAccess(xy)\n" +
 			"     ├─ index: [xy.x]\n" +
 			"     ├─ columns: [x y]\n" +
@@ -5427,9 +5439,9 @@ inner join xy on a = x;`,
 			" │   ├─ tableId: 4\n" +
 			" │   └─ Project\n" +
 			" │       ├─ columns: [ab.a, ab.b, uv.u, uv.v]\n" +
-			" │       └─ SemiJoin (estimated cost=15.100 rows=5) (actual rows=4 loops=1)\n" +
+			" │       └─ HashJoin (estimated cost=1032.000 rows=1000) (actual rows=4 loops=1)\n" +
 			" │           ├─ (uv.u = pq.p)\n" +
-			" │           ├─ LeftOuterMergeJoin (estimated cost=1014.120 rows=5) (actual rows=4 loops=1)\n" +
+			" │           ├─ LeftOuterMergeJoin (estimated cost=1024.070 rows=1000) (actual rows=4 loops=1)\n" +
 			" │           │   ├─ cmp: (ab.a = uv.u)\n" +
 			" │           │   ├─ IndexedTableAccess(ab)\n" +
 			" │           │   │   ├─ index: [ab.a]\n" +
@@ -5437,9 +5449,15 @@ inner join xy on a = x;`,
 			" │           │   └─ IndexedTableAccess(uv)\n" +
 			" │           │       ├─ index: [uv.u]\n" +
 			" │           │       └─ filters: [{[NULL, ∞)}]\n" +
-			" │           └─ Table\n" +
-			" │               ├─ name: pq\n" +
-			" │               └─ columns: [p q]\n" +
+			" │           └─ HashLookup\n" +
+			" │               ├─ left-key: (uv.u)\n" +
+			" │               ├─ right-key: (pq.p)\n" +
+			" │               └─ Distinct\n" +
+			" │                   └─ Project\n" +
+			" │                       ├─ columns: [pq.p]\n" +
+			" │                       └─ Table\n" +
+			" │                           ├─ name: pq\n" +
+			" │                           └─ columns: [p q]\n" +
 			" └─ IndexedTableAccess(xy)\n" +
 			"     ├─ index: [xy.x]\n" +
 			"     ├─ columns: [x y]\n" +
@@ -5610,7 +5628,7 @@ where exists (select * from pq where a = p)
 			"     │       ├─ columns: [ab.a, ab.b]\n" +
 			"     │       └─ Filter\n" +
 			"     │           ├─ uv.u IS NULL\n" +
-			"     │           └─ LeftOuterMergeJoin (estimated cost=1014.120 rows=5)\n" +
+			"     │           └─ LeftOuterMergeJoin (estimated cost=1024.070 rows=1000)\n" +
 			"     │               ├─ cmp: (ab.a = uv.u)\n" +
 			"     │               ├─ IndexedTableAccess(ab)\n" +
 			"     │               │   ├─ index: [ab.a]\n" +
@@ -5646,7 +5664,7 @@ where exists (select * from pq where a = p)
 			"     │       ├─ columns: [ab.a, ab.b]\n" +
 			"     │       └─ Filter\n" +
 			"     │           ├─ uv.u IS NULL\n" +
-			"     │           └─ LeftOuterMergeJoin (estimated cost=1014.120 rows=5) (actual rows=4 loops=1)\n" +
+			"     │           └─ LeftOuterMergeJoin (estimated cost=1024.070 rows=1000) (actual rows=4 loops=1)\n" +
 			"     │               ├─ cmp: (ab.a = uv.u)\n" +
 			"     │               ├─ IndexedTableAccess(ab)\n" +
 			"     │               │   ├─ index: [ab.a]\n" +
@@ -5853,132 +5871,156 @@ inner join pq on true
 	`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [alias1.a:0!null, alias1.b:1, pq.p:2!null, pq.q:3]\n" +
-			" └─ SemiJoin\n" +
+			" └─ LeftOuterHashJoin\n" +
 			"     ├─ Eq\n" +
 			"     │   ├─ alias1.a:0!null\n" +
-			"     │   └─ uv.u:4!null\n" +
-			"     ├─ LeftOuterHashJoin\n" +
-			"     │   ├─ Eq\n" +
-			"     │   │   ├─ alias1.a:0!null\n" +
-			"     │   │   └─ pq.p:2!null\n" +
-			"     │   ├─ SubqueryAlias\n" +
-			"     │   │   ├─ name: alias1\n" +
-			"     │   │   ├─ outerVisibility: false\n" +
-			"     │   │   ├─ isLateral: false\n" +
-			"     │   │   ├─ cacheable: true\n" +
-			"     │   │   ├─ colSet: (5,6)\n" +
-			"     │   │   ├─ tableId: 3\n" +
-			"     │   │   └─ Project\n" +
-			"     │   │       ├─ columns: [ab.a:0!null, ab.b:1]\n" +
-			"     │   │       └─ Filter\n" +
-			"     │   │           ├─ xy.x:2!null IS NULL\n" +
-			"     │   │           └─ LeftOuterMergeJoin\n" +
-			"     │   │               ├─ cmp: Eq\n" +
-			"     │   │               │   ├─ ab.a:0!null\n" +
-			"     │   │               │   └─ xy.x:2!null\n" +
-			"     │   │               ├─ IndexedTableAccess(ab)\n" +
-			"     │   │               │   ├─ index: [ab.a]\n" +
-			"     │   │               │   ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │               │   ├─ colSet: (1,2)\n" +
-			"     │   │               │   ├─ tableId: 1\n" +
-			"     │   │               │   └─ Table\n" +
-			"     │   │               │       ├─ name: ab\n" +
-			"     │   │               │       └─ columns: [a b]\n" +
-			"     │   │               └─ Project\n" +
-			"     │   │                   ├─ columns: [xy.x:0!null]\n" +
-			"     │   │                   └─ IndexedTableAccess(xy)\n" +
-			"     │   │                       ├─ index: [xy.x]\n" +
-			"     │   │                       ├─ static: [{[NULL, ∞)}]\n" +
-			"     │   │                       ├─ colSet: (3,4)\n" +
-			"     │   │                       ├─ tableId: 2\n" +
-			"     │   │                       └─ Table\n" +
-			"     │   │                           ├─ name: xy\n" +
-			"     │   │                           └─ columns: [x y]\n" +
-			"     │   └─ HashLookup\n" +
-			"     │       ├─ left-key: TUPLE(alias1.a:0!null)\n" +
-			"     │       ├─ right-key: TUPLE(pq.p:0!null)\n" +
-			"     │       └─ ProcessTable\n" +
-			"     │           └─ Table\n" +
-			"     │               ├─ name: pq\n" +
-			"     │               └─ columns: [p q]\n" +
-			"     └─ ProcessTable\n" +
-			"         └─ Table\n" +
-			"             ├─ name: uv\n" +
-			"             └─ columns: [u v]\n" +
+			"     │   └─ pq.p:2!null\n" +
+			"     ├─ Project\n" +
+			"     │   ├─ columns: [alias1.a:0!null, alias1.b:1]\n" +
+			"     │   └─ HashJoin\n" +
+			"     │       ├─ Eq\n" +
+			"     │       │   ├─ alias1.a:0!null\n" +
+			"     │       │   └─ uv.u:2!null\n" +
+			"     │       ├─ SubqueryAlias\n" +
+			"     │       │   ├─ name: alias1\n" +
+			"     │       │   ├─ outerVisibility: false\n" +
+			"     │       │   ├─ isLateral: false\n" +
+			"     │       │   ├─ cacheable: true\n" +
+			"     │       │   ├─ colSet: (5,6)\n" +
+			"     │       │   ├─ tableId: 3\n" +
+			"     │       │   └─ Project\n" +
+			"     │       │       ├─ columns: [ab.a:0!null, ab.b:1]\n" +
+			"     │       │       └─ Filter\n" +
+			"     │       │           ├─ xy.x:2!null IS NULL\n" +
+			"     │       │           └─ LeftOuterMergeJoin\n" +
+			"     │       │               ├─ cmp: Eq\n" +
+			"     │       │               │   ├─ ab.a:0!null\n" +
+			"     │       │               │   └─ xy.x:2!null\n" +
+			"     │       │               ├─ IndexedTableAccess(ab)\n" +
+			"     │       │               │   ├─ index: [ab.a]\n" +
+			"     │       │               │   ├─ static: [{[NULL, ∞)}]\n" +
+			"     │       │               │   ├─ colSet: (1,2)\n" +
+			"     │       │               │   ├─ tableId: 1\n" +
+			"     │       │               │   └─ Table\n" +
+			"     │       │               │       ├─ name: ab\n" +
+			"     │       │               │       └─ columns: [a b]\n" +
+			"     │       │               └─ Project\n" +
+			"     │       │                   ├─ columns: [xy.x:0!null]\n" +
+			"     │       │                   └─ IndexedTableAccess(xy)\n" +
+			"     │       │                       ├─ index: [xy.x]\n" +
+			"     │       │                       ├─ static: [{[NULL, ∞)}]\n" +
+			"     │       │                       ├─ colSet: (3,4)\n" +
+			"     │       │                       ├─ tableId: 2\n" +
+			"     │       │                       └─ Table\n" +
+			"     │       │                           ├─ name: xy\n" +
+			"     │       │                           └─ columns: [x y]\n" +
+			"     │       └─ HashLookup\n" +
+			"     │           ├─ left-key: TUPLE(alias1.a:0!null)\n" +
+			"     │           ├─ right-key: TUPLE(uv.u:0!null)\n" +
+			"     │           └─ Distinct\n" +
+			"     │               └─ Project\n" +
+			"     │                   ├─ columns: [uv.u:0!null]\n" +
+			"     │                   └─ ProcessTable\n" +
+			"     │                       └─ Table\n" +
+			"     │                           ├─ name: uv\n" +
+			"     │                           └─ columns: [u v]\n" +
+			"     └─ HashLookup\n" +
+			"         ├─ left-key: TUPLE(alias1.a:0!null)\n" +
+			"         ├─ right-key: TUPLE(pq.p:0!null)\n" +
+			"         └─ ProcessTable\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: pq\n" +
+			"                 └─ columns: [p q]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [alias1.a, alias1.b, pq.p, pq.q]\n" +
-			" └─ SemiJoin (estimated cost=15.100 rows=5)\n" +
-			"     ├─ (alias1.a = uv.u)\n" +
-			"     ├─ LeftOuterHashJoin (estimated cost=113.050 rows=5)\n" +
-			"     │   ├─ (alias1.a = pq.p)\n" +
-			"     │   ├─ SubqueryAlias\n" +
-			"     │   │   ├─ name: alias1\n" +
-			"     │   │   ├─ outerVisibility: false\n" +
-			"     │   │   ├─ isLateral: false\n" +
-			"     │   │   ├─ cacheable: true\n" +
-			"     │   │   ├─ colSet: (5,6)\n" +
-			"     │   │   ├─ tableId: 3\n" +
-			"     │   │   └─ Project\n" +
-			"     │   │       ├─ columns: [ab.a, ab.b]\n" +
-			"     │   │       └─ Filter\n" +
-			"     │   │           ├─ xy.x IS NULL\n" +
-			"     │   │           └─ LeftOuterMergeJoin (estimated cost=2032.530 rows=1250)\n" +
-			"     │   │               ├─ cmp: (ab.a = xy.x)\n" +
-			"     │   │               ├─ IndexedTableAccess(ab)\n" +
-			"     │   │               │   ├─ index: [ab.a]\n" +
-			"     │   │               │   └─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │               └─ Project\n" +
-			"     │   │                   ├─ columns: [xy.x]\n" +
-			"     │   │                   └─ IndexedTableAccess(xy)\n" +
-			"     │   │                       ├─ index: [xy.x]\n" +
-			"     │   │                       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │                       └─ columns: [x y]\n" +
-			"     │   └─ HashLookup\n" +
-			"     │       ├─ left-key: (alias1.a)\n" +
-			"     │       ├─ right-key: (pq.p)\n" +
-			"     │       └─ Table\n" +
-			"     │           └─ name: pq\n" +
-			"     └─ Table\n" +
-			"         ├─ name: uv\n" +
-			"         └─ columns: [u v]\n" +
+			" └─ LeftOuterHashJoin (estimated cost=114.000 rows=100)\n" +
+			"     ├─ (alias1.a = pq.p)\n" +
+			"     ├─ Project\n" +
+			"     │   ├─ columns: [alias1.a, alias1.b]\n" +
+			"     │   └─ HashJoin (estimated cost=114.000 rows=100)\n" +
+			"     │       ├─ (alias1.a = uv.u)\n" +
+			"     │       ├─ SubqueryAlias\n" +
+			"     │       │   ├─ name: alias1\n" +
+			"     │       │   ├─ outerVisibility: false\n" +
+			"     │       │   ├─ isLateral: false\n" +
+			"     │       │   ├─ cacheable: true\n" +
+			"     │       │   ├─ colSet: (5,6)\n" +
+			"     │       │   ├─ tableId: 3\n" +
+			"     │       │   └─ Project\n" +
+			"     │       │       ├─ columns: [ab.a, ab.b]\n" +
+			"     │       │       └─ Filter\n" +
+			"     │       │           ├─ xy.x IS NULL\n" +
+			"     │       │           └─ LeftOuterMergeJoin (estimated cost=2032.530 rows=1250)\n" +
+			"     │       │               ├─ cmp: (ab.a = xy.x)\n" +
+			"     │       │               ├─ IndexedTableAccess(ab)\n" +
+			"     │       │               │   ├─ index: [ab.a]\n" +
+			"     │       │               │   └─ filters: [{[NULL, ∞)}]\n" +
+			"     │       │               └─ Project\n" +
+			"     │       │                   ├─ columns: [xy.x]\n" +
+			"     │       │                   └─ IndexedTableAccess(xy)\n" +
+			"     │       │                       ├─ index: [xy.x]\n" +
+			"     │       │                       ├─ filters: [{[NULL, ∞)}]\n" +
+			"     │       │                       └─ columns: [x y]\n" +
+			"     │       └─ HashLookup\n" +
+			"     │           ├─ left-key: (alias1.a)\n" +
+			"     │           ├─ right-key: (uv.u)\n" +
+			"     │           └─ Distinct\n" +
+			"     │               └─ Project\n" +
+			"     │                   ├─ columns: [uv.u]\n" +
+			"     │                   └─ Table\n" +
+			"     │                       ├─ name: uv\n" +
+			"     │                       └─ columns: [u v]\n" +
+			"     └─ HashLookup\n" +
+			"         ├─ left-key: (alias1.a)\n" +
+			"         ├─ right-key: (pq.p)\n" +
+			"         └─ Table\n" +
+			"             └─ name: pq\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [alias1.a, alias1.b, pq.p, pq.q]\n" +
-			" └─ SemiJoin (estimated cost=15.100 rows=5) (actual rows=0 loops=1)\n" +
-			"     ├─ (alias1.a = uv.u)\n" +
-			"     ├─ LeftOuterHashJoin (estimated cost=113.050 rows=5) (actual rows=0 loops=1)\n" +
-			"     │   ├─ (alias1.a = pq.p)\n" +
-			"     │   ├─ SubqueryAlias\n" +
-			"     │   │   ├─ name: alias1\n" +
-			"     │   │   ├─ outerVisibility: false\n" +
-			"     │   │   ├─ isLateral: false\n" +
-			"     │   │   ├─ cacheable: true\n" +
-			"     │   │   ├─ colSet: (5,6)\n" +
-			"     │   │   ├─ tableId: 3\n" +
-			"     │   │   └─ Project\n" +
-			"     │   │       ├─ columns: [ab.a, ab.b]\n" +
-			"     │   │       └─ Filter\n" +
-			"     │   │           ├─ xy.x IS NULL\n" +
-			"     │   │           └─ LeftOuterMergeJoin (estimated cost=2032.530 rows=1250) (actual rows=4 loops=1)\n" +
-			"     │   │               ├─ cmp: (ab.a = xy.x)\n" +
-			"     │   │               ├─ IndexedTableAccess(ab)\n" +
-			"     │   │               │   ├─ index: [ab.a]\n" +
-			"     │   │               │   └─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │               └─ Project\n" +
-			"     │   │                   ├─ columns: [xy.x]\n" +
-			"     │   │                   └─ IndexedTableAccess(xy)\n" +
-			"     │   │                       ├─ index: [xy.x]\n" +
-			"     │   │                       ├─ filters: [{[NULL, ∞)}]\n" +
-			"     │   │                       └─ columns: [x y]\n" +
-			"     │   └─ HashLookup\n" +
-			"     │       ├─ left-key: (alias1.a)\n" +
-			"     │       ├─ right-key: (pq.p)\n" +
-			"     │       └─ Table\n" +
-			"     │           └─ name: pq\n" +
-			"     └─ Table\n" +
-			"         ├─ name: uv\n" +
-			"         └─ columns: [u v]\n" +
+			" └─ LeftOuterHashJoin (estimated cost=114.000 rows=100) (actual rows=0 loops=1)\n" +
+			"     ├─ (alias1.a = pq.p)\n" +
+			"     ├─ Project\n" +
+			"     │   ├─ columns: [alias1.a, alias1.b]\n" +
+			"     │   └─ HashJoin (estimated cost=114.000 rows=100) (actual rows=0 loops=1)\n" +
+			"     │       ├─ (alias1.a = uv.u)\n" +
+			"     │       ├─ SubqueryAlias\n" +
+			"     │       │   ├─ name: alias1\n" +
+			"     │       │   ├─ outerVisibility: false\n" +
+			"     │       │   ├─ isLateral: false\n" +
+			"     │       │   ├─ cacheable: true\n" +
+			"     │       │   ├─ colSet: (5,6)\n" +
+			"     │       │   ├─ tableId: 3\n" +
+			"     │       │   └─ Project\n" +
+			"     │       │       ├─ columns: [ab.a, ab.b]\n" +
+			"     │       │       └─ Filter\n" +
+			"     │       │           ├─ xy.x IS NULL\n" +
+			"     │       │           └─ LeftOuterMergeJoin (estimated cost=2032.530 rows=1250) (actual rows=4 loops=1)\n" +
+			"     │       │               ├─ cmp: (ab.a = xy.x)\n" +
+			"     │       │               ├─ IndexedTableAccess(ab)\n" +
+			"     │       │               │   ├─ index: [ab.a]\n" +
+			"     │       │               │   └─ filters: [{[NULL, ∞)}]\n" +
+			"     │       │               └─ Project\n" +
+			"     │       │                   ├─ columns: [xy.x]\n" +
+			"     │       │                   └─ IndexedTableAccess(xy)\n" +
+			"     │       │                       ├─ index: [xy.x]\n" +
+			"     │       │                       ├─ filters: [{[NULL, ∞)}]\n" +
+			"     │       │                       └─ columns: [x y]\n" +
+			"     │       └─ HashLookup\n" +
+			"     │           ├─ left-key: (alias1.a)\n" +
+			"     │           ├─ right-key: (uv.u)\n" +
+			"     │           └─ Distinct\n" +
+			"     │               └─ Project\n" +
+			"     │                   ├─ columns: [uv.u]\n" +
+			"     │                   └─ Table\n" +
+			"     │                       ├─ name: uv\n" +
+			"     │                       └─ columns: [u v]\n" +
+			"     └─ HashLookup\n" +
+			"         ├─ left-key: (alias1.a)\n" +
+			"         ├─ right-key: (pq.p)\n" +
+			"         └─ Table\n" +
+			"             └─ name: pq\n" +
 			"",
 	},
 	{
@@ -13397,7 +13439,7 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [one_pk.pk, niltable.i, niltable.f]\n" +
-			" └─ LeftOuterMergeJoin (estimated cost=10.180 rows=5)\n" +
+			" └─ LeftOuterMergeJoin (estimated cost=10.190 rows=6)\n" +
 			"     ├─ cmp: (niltable.i = one_pk.pk)\n" +
 			"     ├─ IndexedTableAccess(niltable)\n" +
 			"     │   ├─ index: [niltable.i]\n" +
@@ -13410,7 +13452,7 @@ inner join pq on true
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [one_pk.pk, niltable.i, niltable.f]\n" +
-			" └─ LeftOuterMergeJoin (estimated cost=10.180 rows=5) (actual rows=6 loops=1)\n" +
+			" └─ LeftOuterMergeJoin (estimated cost=10.190 rows=6) (actual rows=6 loops=1)\n" +
 			"     ├─ cmp: (niltable.i = one_pk.pk)\n" +
 			"     ├─ IndexedTableAccess(niltable)\n" +
 			"     │   ├─ index: [niltable.i]\n" +
@@ -13464,7 +13506,7 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [one_pk.pk, nt.i, nt2.i]\n" +
-			" └─ LeftOuterHashJoin (estimated cost=21.120 rows=6)\n" +
+			" └─ LeftOuterHashJoin (estimated cost=24.130 rows=7)\n" +
 			"     ├─ (one_pk.pk = (nt2.i + 1))\n" +
 			"     ├─ TableAlias(nt2)\n" +
 			"     │   └─ Table\n" +
@@ -13473,7 +13515,7 @@ inner join pq on true
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: ((nt2.i + 1))\n" +
 			"         ├─ right-key: (one_pk.pk)\n" +
-			"         └─ LeftOuterMergeJoin (estimated cost=10.180 rows=5)\n" +
+			"         └─ LeftOuterMergeJoin (estimated cost=10.190 rows=6)\n" +
 			"             ├─ cmp: (nt.i = one_pk.pk)\n" +
 			"             ├─ TableAlias(nt)\n" +
 			"             │   └─ IndexedTableAccess(niltable)\n" +
@@ -13487,7 +13529,7 @@ inner join pq on true
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [one_pk.pk, nt.i, nt2.i]\n" +
-			" └─ LeftOuterHashJoin (estimated cost=21.120 rows=6) (actual rows=6 loops=1)\n" +
+			" └─ LeftOuterHashJoin (estimated cost=24.130 rows=7) (actual rows=6 loops=1)\n" +
 			"     ├─ (one_pk.pk = (nt2.i + 1))\n" +
 			"     ├─ TableAlias(nt2)\n" +
 			"     │   └─ Table\n" +
@@ -13496,7 +13538,7 @@ inner join pq on true
 			"     └─ HashLookup\n" +
 			"         ├─ left-key: ((nt2.i + 1))\n" +
 			"         ├─ right-key: (one_pk.pk)\n" +
-			"         └─ LeftOuterMergeJoin (estimated cost=10.180 rows=5) (actual rows=6 loops=1)\n" +
+			"         └─ LeftOuterMergeJoin (estimated cost=10.190 rows=6) (actual rows=6 loops=1)\n" +
 			"             ├─ cmp: (nt.i = one_pk.pk)\n" +
 			"             ├─ TableAlias(nt)\n" +
 			"             │   └─ IndexedTableAccess(niltable)\n" +
@@ -13595,7 +13637,7 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [one_pk.pk, niltable.i, niltable.f]\n" +
-			" └─ LeftOuterMergeJoin (estimated cost=10.180 rows=5)\n" +
+			" └─ LeftOuterMergeJoin (estimated cost=10.190 rows=6)\n" +
 			"     ├─ cmp: (niltable.i = one_pk.pk)\n" +
 			"     ├─ sel: (one_pk.pk > 0)\n" +
 			"     ├─ IndexedTableAccess(niltable)\n" +
@@ -13609,7 +13651,7 @@ inner join pq on true
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [one_pk.pk, niltable.i, niltable.f]\n" +
-			" └─ LeftOuterMergeJoin (estimated cost=10.180 rows=5) (actual rows=6 loops=1)\n" +
+			" └─ LeftOuterMergeJoin (estimated cost=10.190 rows=6) (actual rows=6 loops=1)\n" +
 			"     ├─ cmp: (niltable.i = one_pk.pk)\n" +
 			"     ├─ sel: (one_pk.pk > 0)\n" +
 			"     ├─ IndexedTableAccess(niltable)\n" +
@@ -14061,7 +14103,7 @@ inner join pq on true
 			" ├─ columns: [one_pk.pk, niltable.i, niltable.f]\n" +
 			" └─ Filter\n" +
 			"     ├─ (one_pk.pk > 0)\n" +
-			"     └─ LeftOuterMergeJoin (estimated cost=10.180 rows=5)\n" +
+			"     └─ LeftOuterMergeJoin (estimated cost=10.190 rows=6)\n" +
 			"         ├─ cmp: (niltable.i = one_pk.pk)\n" +
 			"         ├─ IndexedTableAccess(niltable)\n" +
 			"         │   ├─ index: [niltable.i]\n" +
@@ -14076,7 +14118,7 @@ inner join pq on true
 			" ├─ columns: [one_pk.pk, niltable.i, niltable.f]\n" +
 			" └─ Filter\n" +
 			"     ├─ (one_pk.pk > 0)\n" +
-			"     └─ LeftOuterMergeJoin (estimated cost=10.180 rows=5) (actual rows=6 loops=1)\n" +
+			"     └─ LeftOuterMergeJoin (estimated cost=10.190 rows=6) (actual rows=6 loops=1)\n" +
 			"         ├─ cmp: (niltable.i = one_pk.pk)\n" +
 			"         ├─ IndexedTableAccess(niltable)\n" +
 			"         │   ├─ index: [niltable.i]\n" +
@@ -15106,7 +15148,7 @@ inner join pq on true
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [one_pk.pk, niltable.i, niltable.f]\n" +
 			" └─ Sort(niltable.i ASC, niltable.f ASC)\n" +
-			"     └─ LeftOuterMergeJoin (estimated cost=10.180 rows=5)\n" +
+			"     └─ LeftOuterMergeJoin (estimated cost=10.190 rows=6)\n" +
 			"         ├─ cmp: (niltable.i = one_pk.pk)\n" +
 			"         ├─ IndexedTableAccess(niltable)\n" +
 			"         │   ├─ index: [niltable.i]\n" +
@@ -15120,7 +15162,7 @@ inner join pq on true
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [one_pk.pk, niltable.i, niltable.f]\n" +
 			" └─ Sort(niltable.i ASC, niltable.f ASC)\n" +
-			"     └─ LeftOuterMergeJoin (estimated cost=10.180 rows=5) (actual rows=6 loops=1)\n" +
+			"     └─ LeftOuterMergeJoin (estimated cost=10.190 rows=6) (actual rows=6 loops=1)\n" +
 			"         ├─ cmp: (niltable.i = one_pk.pk)\n" +
 			"         ├─ IndexedTableAccess(niltable)\n" +
 			"         │   ├─ index: [niltable.i]\n" +
@@ -15229,7 +15271,7 @@ inner join pq on true
 			" └─ Sort(niltable.i ASC, niltable.f ASC)\n" +
 			"     └─ Filter\n" +
 			"         ├─ (one_pk.pk > 0)\n" +
-			"         └─ LeftOuterMergeJoin (estimated cost=10.180 rows=5)\n" +
+			"         └─ LeftOuterMergeJoin (estimated cost=10.190 rows=6)\n" +
 			"             ├─ cmp: (niltable.i = one_pk.pk)\n" +
 			"             ├─ IndexedTableAccess(niltable)\n" +
 			"             │   ├─ index: [niltable.i]\n" +
@@ -15245,7 +15287,7 @@ inner join pq on true
 			" └─ Sort(niltable.i ASC, niltable.f ASC)\n" +
 			"     └─ Filter\n" +
 			"         ├─ (one_pk.pk > 0)\n" +
-			"         └─ LeftOuterMergeJoin (estimated cost=10.180 rows=5) (actual rows=6 loops=1)\n" +
+			"         └─ LeftOuterMergeJoin (estimated cost=10.190 rows=6) (actual rows=6 loops=1)\n" +
 			"             ├─ cmp: (niltable.i = one_pk.pk)\n" +
 			"             ├─ IndexedTableAccess(niltable)\n" +
 			"             │   ├─ index: [niltable.i]\n" +
@@ -15289,7 +15331,7 @@ inner join pq on true
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [one_pk.pk, niltable.i, niltable.f]\n" +
 			" └─ Sort(niltable.i ASC, niltable.f ASC)\n" +
-			"     └─ LeftOuterMergeJoin (estimated cost=10.180 rows=5)\n" +
+			"     └─ LeftOuterMergeJoin (estimated cost=10.190 rows=6)\n" +
 			"         ├─ cmp: (niltable.i = one_pk.pk)\n" +
 			"         ├─ sel: (one_pk.pk > 0)\n" +
 			"         ├─ IndexedTableAccess(niltable)\n" +
@@ -15304,7 +15346,7 @@ inner join pq on true
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [one_pk.pk, niltable.i, niltable.f]\n" +
 			" └─ Sort(niltable.i ASC, niltable.f ASC)\n" +
-			"     └─ LeftOuterMergeJoin (estimated cost=10.180 rows=5) (actual rows=6 loops=1)\n" +
+			"     └─ LeftOuterMergeJoin (estimated cost=10.190 rows=6) (actual rows=6 loops=1)\n" +
 			"         ├─ cmp: (niltable.i = one_pk.pk)\n" +
 			"         ├─ sel: (one_pk.pk > 0)\n" +
 			"         ├─ IndexedTableAccess(niltable)\n" +
@@ -24374,7 +24416,7 @@ order by x, y;
 			"                     ├─ name: othertable\n" +
 			"                     └─ columns: [s2]\n" +
 			"",
-		ExpectedEstimates: "AntiJoinIncludingNulls (estimated cost=7.545 rows=2)\n" +
+		ExpectedEstimates: "AntiJoinIncludingNulls (estimated cost=154.500 rows=2)\n" +
 			" ├─ Table\n" +
 			" │   └─ name: mytable\n" +
 			" └─ Limit(1)\n" +
@@ -24396,7 +24438,7 @@ order by x, y;
 			"                 ├─ name: othertable\n" +
 			"                 └─ columns: [s2]\n" +
 			"",
-		ExpectedAnalysis: "AntiJoinIncludingNulls (estimated cost=7.545 rows=2) (actual rows=0 loops=1)\n" +
+		ExpectedAnalysis: "AntiJoinIncludingNulls (estimated cost=154.500 rows=2) (actual rows=0 loops=1)\n" +
 			" ├─ Table\n" +
 			" │   └─ name: mytable\n" +
 			" └─ Limit(1)\n" +
