@@ -209,19 +209,28 @@ func generatePlansForSuite(spec PlanSpec, w *bytes.Buffer) error {
 
 			if node.IsReadOnly() {
 				_, _ = w.WriteString(`ExpectedEstimates: `)
-				planString = sql.Describe(enginetest.ExtractQueryNode(node), sql.DescribeOptions{
-					Estimates: true,
-				})
-				writePlanString(w, planString)
-				err = enginetest.ExecuteNode(ctx, engine, node)
-				if err != nil {
-					exit(fmt.Errorf("%w\nfailed to execute query: %s", err, tt.Query))
+				var planString string
+				if tt.ExpectedEstimates != "skip" {
+					planString = sql.Describe(enginetest.ExtractQueryNode(node), sql.DescribeOptions{
+						Estimates: true,
+					})
+				} else {
+					planString = "skip"
 				}
-				_, _ = w.WriteString(`ExpectedAnalysis: `)
-				planString = sql.Describe(enginetest.ExtractQueryNode(node), sql.DescribeOptions{
-					Analyze:   true,
-					Estimates: true,
-				})
+				writePlanString(w, planString)
+				if tt.ExpectedAnalysis != "skip" {
+					err = enginetest.ExecuteNode(ctx, engine, node)
+					if err != nil {
+						exit(fmt.Errorf("%w\nfailed to execute query: %s", err, tt.Query))
+					}
+					_, _ = w.WriteString(`ExpectedAnalysis: `)
+					planString = sql.Describe(enginetest.ExtractQueryNode(node), sql.DescribeOptions{
+						Analyze:   true,
+						Estimates: true,
+					})
+				} else {
+					planString = "skip"
+				}
 				writePlanString(w, planString)
 			}
 		} else {
