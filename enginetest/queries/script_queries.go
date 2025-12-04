@@ -13498,6 +13498,8 @@ select * from t1 except (
 				// https://github.com/dolthub/dolt/issues/10102
 				Query:    "SELECT * FROM t2 WHERE NOT EXISTS (SELECT 1 FROM (SELECT 1) AS sub0 WHERE ASIN(t2.c0));",
 				Expected: []sql.Row{{"9"}},
+				// Postgres does not allow varchar types as inputs for ASIN
+				Dialect: "mysql",
 			},
 			{
 				// https://github.com/dolthub/dolt/issues/10157
