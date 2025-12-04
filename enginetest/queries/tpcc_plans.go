@@ -882,8 +882,8 @@ from
 			"         │           ├─ columns: [orders2.o_c_id, orders2.o_w_id, orders2.o_d_id, countdistinct([orders2.o_id]) as count(distinct o_id)]\n" +
 			"         │           └─ Having((countdistinct([orders2.o_id]) > 1))\n" +
 			"         │               └─ GroupBy\n" +
-			"         │                   ├─ SelectDeps(COUNTDISTINCT([orders2.o_id]), orders2.o_c_id, orders2.o_w_id, orders2.o_d_id, orders2.o_id)\n" +
-			"         │                   ├─ Grouping(orders2.o_c_id, orders2.o_d_id, orders2.o_w_id)\n" +
+			"         │                   ├─ select: COUNTDISTINCT([orders2.o_id]), orders2.o_c_id, orders2.o_w_id, orders2.o_d_id, orders2.o_id\n" +
+			"         │                   ├─ group: orders2.o_c_id, orders2.o_d_id, orders2.o_w_id\n" +
 			"         │                   └─ IndexedTableAccess(orders2)\n" +
 			"         │                       ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
 			"         │                       └─ filters: [{[1, 1], [NULL, ∞), (2100, 11153)}]\n" +
@@ -909,8 +909,8 @@ from
 			"         │           ├─ columns: [orders2.o_c_id, orders2.o_w_id, orders2.o_d_id, countdistinct([orders2.o_id]) as count(distinct o_id)]\n" +
 			"         │           └─ Having((countdistinct([orders2.o_id]) > 1))\n" +
 			"         │               └─ GroupBy\n" +
-			"         │                   ├─ SelectDeps(COUNTDISTINCT([orders2.o_id]), orders2.o_c_id, orders2.o_w_id, orders2.o_d_id, orders2.o_id)\n" +
-			"         │                   ├─ Grouping(orders2.o_c_id, orders2.o_d_id, orders2.o_w_id)\n" +
+			"         │                   ├─ select: COUNTDISTINCT([orders2.o_id]), orders2.o_c_id, orders2.o_w_id, orders2.o_d_id, orders2.o_id\n" +
+			"         │                   ├─ group: orders2.o_c_id, orders2.o_d_id, orders2.o_w_id\n" +
 			"         │                   └─ IndexedTableAccess(orders2)\n" +
 			"         │                       ├─ index: [orders2.o_w_id,orders2.o_d_id,orders2.o_id]\n" +
 			"         │                       └─ filters: [{[1, 1], [NULL, ∞), (2100, 11153)}]\n" +

@@ -2706,8 +2706,8 @@ order by
 			"                 ├─ columns: [lineitem_1.l_orderkey]\n" +
 			"                 └─ Having((sum(lineitem.l_quantity) > 300))\n" +
 			"                     └─ GroupBy\n" +
-			"                         ├─ SelectDeps(SUM(lineitem_1.l_quantity), lineitem_1.l_orderkey, lineitem_1.L_QUANTITY)\n" +
-			"                         ├─ Grouping(lineitem_1.l_orderkey)\n" +
+			"                         ├─ select: SUM(lineitem_1.l_quantity), lineitem_1.l_orderkey, lineitem_1.L_QUANTITY\n" +
+			"                         ├─ group: lineitem_1.l_orderkey\n" +
 			"                         └─ TableAlias(lineitem_1)\n" +
 			"                             └─ Table\n" +
 			"                                 └─ name: lineitem\n" +
@@ -2734,8 +2734,8 @@ order by
 			"                 ├─ columns: [lineitem_1.l_orderkey]\n" +
 			"                 └─ Having((sum(lineitem.l_quantity) > 300))\n" +
 			"                     └─ GroupBy\n" +
-			"                         ├─ SelectDeps(SUM(lineitem_1.l_quantity), lineitem_1.l_orderkey, lineitem_1.L_QUANTITY)\n" +
-			"                         ├─ Grouping(lineitem_1.l_orderkey)\n" +
+			"                         ├─ select: SUM(lineitem_1.l_quantity), lineitem_1.l_orderkey, lineitem_1.L_QUANTITY\n" +
+			"                         ├─ group: lineitem_1.l_orderkey\n" +
 			"                         └─ TableAlias(lineitem_1)\n" +
 			"                             └─ Table\n" +
 			"                                 └─ name: lineitem\n" +

@@ -19617,8 +19617,8 @@ inner join pq on true
 			" │           └─ Table\n" +
 			" │               └─ name: \n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectDeps(a.x)\n" +
-			"     ├─ Grouping(a.x)\n" +
+			"     ├─ select: a.x\n" +
+			"     ├─ group: a.x\n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: a\n" +
 			"         ├─ outerVisibility: false\n" +
@@ -19650,8 +19650,8 @@ inner join pq on true
 			" │           └─ Table\n" +
 			" │               └─ name: \n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectDeps(a.x)\n" +
-			"     ├─ Grouping(a.x)\n" +
+			"     ├─ select: a.x\n" +
+			"     ├─ group: a.x\n" +
 			"     └─ SubqueryAlias\n" +
 			"         ├─ name: a\n" +
 			"         ├─ outerVisibility: false\n" +
@@ -19919,8 +19919,8 @@ inner join pq on true
 			"                     ├─ columns: [(n.i + 1) as i + 1]\n" +
 			"                     └─ Having(((n.i + 1) <= 10))\n" +
 			"                         └─ GroupBy\n" +
-			"                             ├─ SelectDeps(n.i)\n" +
-			"                             ├─ Grouping(n.i)\n" +
+			"                             ├─ select: n.i\n" +
+			"                             ├─ group: n.i\n" +
 			"                             └─ RecursiveTable(n)\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
@@ -19945,8 +19945,8 @@ inner join pq on true
 			"                     ├─ columns: [(n.i + 1) as i + 1]\n" +
 			"                     └─ Having(((n.i + 1) <= 10))\n" +
 			"                         └─ GroupBy\n" +
-			"                             ├─ SelectDeps(n.i)\n" +
-			"                             ├─ Grouping(n.i)\n" +
+			"                             ├─ select: n.i\n" +
+			"                             ├─ group: n.i\n" +
 			"                             └─ RecursiveTable(n)\n" +
 			"",
 	},
@@ -22341,6 +22341,100 @@ WHERE keyless.c0 IN (
 			"                 ├─ name: keyless\n" +
 			"                 └─ columns: [c0 c1]\n" +
 			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [count(1) as COUNT(*)]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: COUNT(1)\n" +
+			"     ├─ group: \n" +
+			"     └─ Filter\n" +
+			"         ├─ InSubquery\n" +
+			"         │   ├─ left: keyless.c0\n" +
+			"         │   └─ right: Subquery\n" +
+			"         │       ├─ cacheable: false\n" +
+			"         │       └─ Project\n" +
+			"         │           ├─ columns: [u0.c0]\n" +
+			"         │           └─ InnerJoin (estimated cost=405.000 rows=5)\n" +
+			"         │               ├─ (cte.j = keyless.c0)\n" +
+			"         │               ├─ SubqueryAlias\n" +
+			"         │               │   ├─ name: cte\n" +
+			"         │               │   ├─ outerVisibility: true\n" +
+			"         │               │   ├─ isLateral: false\n" +
+			"         │               │   ├─ cacheable: true\n" +
+			"         │               │   ├─ colSet: (16-18)\n" +
+			"         │               │   ├─ tableId: 5\n" +
+			"         │               │   └─ RecursiveCTE\n" +
+			"         │               │       └─ Union all\n" +
+			"         │               │           ├─ Project\n" +
+			"         │               │           │   ├─ columns: [0, t1.c0, t1.c1]\n" +
+			"         │               │           │   └─ Filter\n" +
+			"         │               │           │       ├─ (t1.c0 = 0)\n" +
+			"         │               │           │       └─ TableAlias(t1)\n" +
+			"         │               │           │           └─ Table\n" +
+			"         │               │           │               ├─ name: keyless\n" +
+			"         │               │           │               └─ columns: [c0 c1]\n" +
+			"         │               │           └─ Project\n" +
+			"         │               │               ├─ columns: [(cte.depth + 1) as cte.depth + 1, cte.i, (t2.c1 + 1) as T2.c1 + 1]\n" +
+			"         │               │               └─ InnerJoin\n" +
+			"         │               │                   ├─ (cte.depth = t2.c0)\n" +
+			"         │               │                   ├─ TableAlias(t2)\n" +
+			"         │               │                   │   └─ Table\n" +
+			"         │               │                   │       ├─ name: keyless\n" +
+			"         │               │                   │       └─ columns: [c0 c1]\n" +
+			"         │               │                   └─ RecursiveTable(cte)\n" +
+			"         │               └─ TableAlias(u0)\n" +
+			"         │                   └─ Table\n" +
+			"         │                       ├─ name: keyless\n" +
+			"         │                       └─ columns: [c0]\n" +
+			"         └─ Table\n" +
+			"             └─ name: keyless\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [count(1) as COUNT(*)]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: COUNT(1)\n" +
+			"     ├─ group: \n" +
+			"     └─ Filter\n" +
+			"         ├─ InSubquery\n" +
+			"         │   ├─ left: keyless.c0\n" +
+			"         │   └─ right: Subquery\n" +
+			"         │       ├─ cacheable: false\n" +
+			"         │       └─ Project\n" +
+			"         │           ├─ columns: [u0.c0]\n" +
+			"         │           └─ InnerJoin (estimated cost=405.000 rows=5)\n" +
+			"         │               ├─ (cte.j = keyless.c0)\n" +
+			"         │               ├─ SubqueryAlias\n" +
+			"         │               │   ├─ name: cte\n" +
+			"         │               │   ├─ outerVisibility: true\n" +
+			"         │               │   ├─ isLateral: false\n" +
+			"         │               │   ├─ cacheable: true\n" +
+			"         │               │   ├─ colSet: (16-18)\n" +
+			"         │               │   ├─ tableId: 5\n" +
+			"         │               │   └─ RecursiveCTE\n" +
+			"         │               │       └─ Union all\n" +
+			"         │               │           ├─ Project\n" +
+			"         │               │           │   ├─ columns: [0, t1.c0, t1.c1]\n" +
+			"         │               │           │   └─ Filter\n" +
+			"         │               │           │       ├─ (t1.c0 = 0)\n" +
+			"         │               │           │       └─ TableAlias(t1)\n" +
+			"         │               │           │           └─ Table\n" +
+			"         │               │           │               ├─ name: keyless\n" +
+			"         │               │           │               └─ columns: [c0 c1]\n" +
+			"         │               │           └─ Project\n" +
+			"         │               │               ├─ columns: [(cte.depth + 1) as cte.depth + 1, cte.i, (t2.c1 + 1) as T2.c1 + 1]\n" +
+			"         │               │               └─ InnerJoin\n" +
+			"         │               │                   ├─ (cte.depth = t2.c0)\n" +
+			"         │               │                   ├─ TableAlias(t2)\n" +
+			"         │               │                   │   └─ Table\n" +
+			"         │               │                   │       ├─ name: keyless\n" +
+			"         │               │                   │       └─ columns: [c0 c1]\n" +
+			"         │               │                   └─ RecursiveTable(cte)\n" +
+			"         │               └─ TableAlias(u0)\n" +
+			"         │                   └─ Table\n" +
+			"         │                       ├─ name: keyless\n" +
+			"         │                       └─ columns: [c0]\n" +
+			"         └─ Table\n" +
+			"             └─ name: keyless\n" +
+			"",
 	},
 	{
 		Query: `
@@ -22425,6 +22519,98 @@ WHERE keyless.c0 IN (
 			"             └─ Table\n" +
 			"                 ├─ name: keyless\n" +
 			"                 └─ columns: [c0 c1]\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [count(1) as COUNT(*)]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: COUNT(1)\n" +
+			"     ├─ group: \n" +
+			"     └─ Filter\n" +
+			"         ├─ InSubquery\n" +
+			"         │   ├─ left: keyless.c0\n" +
+			"         │   └─ right: Subquery\n" +
+			"         │       ├─ cacheable: false\n" +
+			"         │       └─ Project\n" +
+			"         │           ├─ columns: [u0.c0]\n" +
+			"         │           └─ InnerJoin (estimated cost=405.000 rows=5)\n" +
+			"         │               ├─ (cte.j = keyless.c0)\n" +
+			"         │               ├─ TableAlias(u0)\n" +
+			"         │               │   └─ Table\n" +
+			"         │               │       ├─ name: keyless\n" +
+			"         │               │       └─ columns: [c0]\n" +
+			"         │               └─ CachedResults\n" +
+			"         │                   └─ SubqueryAlias\n" +
+			"         │                       ├─ name: cte\n" +
+			"         │                       ├─ outerVisibility: true\n" +
+			"         │                       ├─ isLateral: false\n" +
+			"         │                       ├─ cacheable: true\n" +
+			"         │                       └─ RecursiveCTE\n" +
+			"         │                           └─ Union all\n" +
+			"         │                               ├─ Project\n" +
+			"         │                               │   ├─ columns: [0, t1.c0, t1.c1]\n" +
+			"         │                               │   └─ Filter\n" +
+			"         │                               │       ├─ (t1.c0 = 0)\n" +
+			"         │                               │       └─ TableAlias(t1)\n" +
+			"         │                               │           └─ Table\n" +
+			"         │                               │               ├─ name: keyless\n" +
+			"         │                               │               └─ columns: [c0 c1]\n" +
+			"         │                               └─ Project\n" +
+			"         │                                   ├─ columns: [(cte.depth + 1) as cte.depth + 1, cte.i, (t2.c1 + 1) as T2.c1 + 1]\n" +
+			"         │                                   └─ InnerJoin\n" +
+			"         │                                       ├─ (cte.depth = t2.c0)\n" +
+			"         │                                       ├─ TableAlias(t2)\n" +
+			"         │                                       │   └─ Table\n" +
+			"         │                                       │       ├─ name: keyless\n" +
+			"         │                                       │       └─ columns: [c0 c1]\n" +
+			"         │                                       └─ RecursiveTable(cte)\n" +
+			"         └─ Table\n" +
+			"             └─ name: keyless\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [count(1) as COUNT(*)]\n" +
+			" └─ GroupBy\n" +
+			"     ├─ select: COUNT(1)\n" +
+			"     ├─ group: \n" +
+			"     └─ Filter\n" +
+			"         ├─ InSubquery\n" +
+			"         │   ├─ left: keyless.c0\n" +
+			"         │   └─ right: Subquery\n" +
+			"         │       ├─ cacheable: false\n" +
+			"         │       └─ Project\n" +
+			"         │           ├─ columns: [u0.c0]\n" +
+			"         │           └─ InnerJoin (estimated cost=405.000 rows=5)\n" +
+			"         │               ├─ (cte.j = keyless.c0)\n" +
+			"         │               ├─ TableAlias(u0)\n" +
+			"         │               │   └─ Table\n" +
+			"         │               │       ├─ name: keyless\n" +
+			"         │               │       └─ columns: [c0]\n" +
+			"         │               └─ CachedResults\n" +
+			"         │                   └─ SubqueryAlias\n" +
+			"         │                       ├─ name: cte\n" +
+			"         │                       ├─ outerVisibility: true\n" +
+			"         │                       ├─ isLateral: false\n" +
+			"         │                       ├─ cacheable: true\n" +
+			"         │                       └─ RecursiveCTE\n" +
+			"         │                           └─ Union all\n" +
+			"         │                               ├─ Project\n" +
+			"         │                               │   ├─ columns: [0, t1.c0, t1.c1]\n" +
+			"         │                               │   └─ Filter\n" +
+			"         │                               │       ├─ (t1.c0 = 0)\n" +
+			"         │                               │       └─ TableAlias(t1)\n" +
+			"         │                               │           └─ Table\n" +
+			"         │                               │               ├─ name: keyless\n" +
+			"         │                               │               └─ columns: [c0 c1]\n" +
+			"         │                               └─ Project\n" +
+			"         │                                   ├─ columns: [(cte.depth + 1) as cte.depth + 1, cte.i, (t2.c1 + 1) as T2.c1 + 1]\n" +
+			"         │                                   └─ InnerJoin\n" +
+			"         │                                       ├─ (cte.depth = t2.c0)\n" +
+			"         │                                       ├─ TableAlias(t2)\n" +
+			"         │                                       │   └─ Table\n" +
+			"         │                                       │       ├─ name: keyless\n" +
+			"         │                                       │       └─ columns: [c0 c1]\n" +
+			"         │                                       └─ RecursiveTable(cte)\n" +
+			"         └─ Table\n" +
+			"             └─ name: keyless\n" +
 			"",
 	},
 	{
