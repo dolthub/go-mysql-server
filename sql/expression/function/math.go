@@ -481,7 +481,7 @@ func (a *Atan) Type() sql.Type {
 
 // IsNullable implements sql.Expression
 func (a *Atan) IsNullable() bool {
-	return true
+	return a.x.IsNullable() || a.y.IsNullable()
 }
 
 // Description implements sql.FunctionExpression
