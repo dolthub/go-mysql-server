@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"cmp"
 	"fmt"
 	"slices"
 	"sort"
@@ -837,15 +838,24 @@ type indexScanRangeBuilder struct {
 	leftover  []sql.Expression
 }
 
-func setToSignedIntRange(setVals []any, colExprTypes []sql.ColumnExpressionType) (sql.MySQLRangeCollection, bool) {
-	if len(colExprTypes) != 1 {
-		return nil, false
+func keysToRangeColl[N cmp.Ordered](keys []N, typ sql.Type) sql.MySQLRangeCollection {
+	slices.Sort(keys)
+	keys = slices.Compact(keys)
+	// TODO: for integers, if len(keys) - 1 == keys[len(keys)-1] - keys[0],
+	//  then we can just have one continuous range. unsure if this is worth
+	res := make(sql.MySQLRangeCollection, len(keys))
+	for i, key := range keys {
+		res[i] = sql.MySQLRange{
+			sql.ClosedRangeColumnExpr(key, key, typ),
+		}
 	}
-	typ := colExprTypes[0].Type
-	if !types.IsSigned(typ) {
-		return nil, false
+	if len(res) == 0 {
+		return nil
 	}
+	return res
+}
 
+func setToIntRangeColl(setVals []any, typ sql.Type) (sql.MySQLRangeCollection, bool) {
 	keys := make([]int64, 0, len(setVals))
 	for _, val := range setVals {
 		switch v := val.(type) {
@@ -891,19 +901,55 @@ func setToSignedIntRange(setVals []any, colExprTypes []sql.ColumnExpressionType)
 		}
 	}
 
-	slices.Sort(keys)
-	keys = slices.Compact(keys)
-	res := make(sql.MySQLRangeCollection, len(keys))
-	for i, key := range keys {
-		res[i] = sql.MySQLRange{
-			sql.ClosedRangeColumnExpr(key, key, typ),
+	return keysToRangeColl(keys, typ), true
+}
+
+func setToUintRangeColl(setVals []any, typ sql.Type) (sql.MySQLRangeCollection, bool) {
+	keys := make([]uint64, 0, len(setVals))
+	for _, val := range setVals {
+		switch v := val.(type) {
+		case int:
+			keys = append(keys, uint64(v))
+		case int8:
+			keys = append(keys, uint64(v))
+		case int16:
+			keys = append(keys, uint64(v))
+		case int32:
+			keys = append(keys, uint64(v))
+		case int64:
+			keys = append(keys, uint64(v))
+		case uint:
+			keys = append(keys, uint64(v))
+		case uint8:
+			keys = append(keys, uint64(v))
+		case uint16:
+			keys = append(keys, uint64(v))
+		case uint32:
+			keys = append(keys, uint64(v))
+		case uint64:
+			keys = append(keys, v)
+		// float32, float64, and decimal are ok as long as they don't round
+		case float32:
+			key := uint64(v)
+			if float32(key) == v {
+				keys = append(keys, key)
+			}
+		case float64:
+			key := uint64(v)
+			if float64(key) == v {
+				keys = append(keys, key)
+			}
+		case decimal.Decimal:
+			key := v.IntPart()
+			if v.Equal(decimal.NewFromInt(key)) {
+				keys = append(keys, uint64(key))
+			}
+		default:
+			// resort to default behavior for types that require more conversion
+			return nil, false
 		}
 	}
-
-	if len(res) == 0 {
-		return nil, true
-	}
-	return res, true
+	return keysToRangeColl(keys, typ), true
 }
 
 // buildRangeCollection converts our representation of the best index scan
@@ -919,11 +965,23 @@ func (b *indexScanRangeBuilder) buildRangeCollection(f indexFilter) (sql.MySQLRa
 	case *iScanOr:
 		ranges, err = b.rangeBuildOr(f, inScan)
 	case *iScanLeaf:
-		// TODO: special case for in set. can skip building range tree and overlapping range check since it's a series of equality checks
+		// When the filter is a simple IN, we can skip costly checks like building the RangeTree.
 		if f.Op() == sql.IndexScanOpInSet {
 			cets := b.idx.ColumnExpressionTypes()
-			if ranges, ok := setToSignedIntRange(f.setValues, cets); ok {
-				return ranges, nil
+			if len(cets) == 1 {
+				typ := cets[0].Type
+				var ok bool
+				// TODO: it's possible to apply this optimization to other
+				//  numeric types (float32, float64, decimal).
+				if types.IsSigned(typ) {
+					if ranges, ok = setToIntRangeColl(f.setValues, typ); ok {
+						return ranges, nil
+					}
+				} else if types.IsUnsigned(typ) {
+					if ranges, ok = setToUintRangeColl(f.setValues, typ); ok {
+						return ranges, nil
+					}
+				}
 			}
 		}
 		ranges, err = b.rangeBuildLeaf(f, inScan)
