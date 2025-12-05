@@ -136,19 +136,44 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 					return sysVar
 				}
 			}
-			var err error
 			if scope == ast.SetScope_User || scope == ast.SetScope_Persist || scope == ast.SetScope_PersistOnly {
-				err = sql.ErrUnknownUserVariable.New(colName)
+				err := sql.ErrUnknownUserVariable.New(colName)
+				b.handleErr(err)
 			} else if scope == ast.SetScope_Global || scope == ast.SetScope_Session {
-				err = sql.ErrUnknownSystemVariable.New(colName)
+				err := sql.ErrUnknownSystemVariable.New(colName)
+				b.handleErr(err)
 			} else if tblName != "" && !inScope.hasTable(tblName) {
-				err = sql.ErrTableNotFound.New(tblName)
+				err := sql.ErrTableNotFound.New(tblName)
+				b.handleErr(err)
 			} else if tblName != "" {
-				err = sql.ErrTableColumnNotFound.New(tblName, colName)
+				err := sql.ErrTableColumnNotFound.New(tblName, colName)
+				b.handleErr(err)
+			} else if inScope.hasTable(colName) {
+				// TODO: only relevant for Doltgres, this will use a hook
+				scopeTable, ok := inScope.resolveColumnAsTable(dbName, colName)
+				if !ok {
+					err := sql.ErrColumnNotFound.New(v)
+					b.handleErr(err)
+				}
+				tableSch := scopeTable.rt.Schema()
+				astQualifier := ast.TableName{
+					Name:        ast.NewTableIdent(colName), // This must be the colName due to aliases
+					DbQualifier: ast.NewTableIdent(scopeTable.rt.Database().Name()),
+				}
+				fieldArgs := make([]sql.Expression, len(tableSch))
+				for i := range tableSch {
+					astArg := ast.ColName{
+						StoredProcVal: nil,
+						Qualifier:     astQualifier,
+						Name:          ast.NewColIdent(tableSch[i].Name),
+					}
+					fieldArgs[i] = b.buildScalar(inScope, &astArg)
+				}
+				return expression.NewDoltgresHookExpression(fieldArgs...)
 			} else {
-				err = sql.ErrColumnNotFound.New(v)
+				err := sql.ErrColumnNotFound.New(v)
+				b.handleErr(err)
 			}
-			b.handleErr(err)
 		}
 
 		origTbl := b.getOrigTblName(inScope.node, c.table)
