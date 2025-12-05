@@ -837,26 +837,6 @@ type indexScanRangeBuilder struct {
 	leftover  []sql.Expression
 }
 
-func castToInt64(v any) (int64, bool) {
-	switch v := v.(type) {
-	case int:
-		return int64(v), true
-	case int8:
-		return int64(v), true
-	case int16:
-		return int64(v), true
-	case int32:
-		return int64(v), true
-	case int64:
-		return v, true
-	case float32, float64, decimal.Decimal:
-		// TODO: return an empty range here
-		return 0, false
-	default:
-		return 0, false
-	}
-}
-
 func setToSignedIntRange(setVals []any, colExprTypes []sql.ColumnExpressionType) (sql.MySQLRangeCollection, bool) {
 	if len(colExprTypes) != 1 {
 		return nil, false
@@ -865,21 +845,63 @@ func setToSignedIntRange(setVals []any, colExprTypes []sql.ColumnExpressionType)
 	if !types.IsSigned(typ) {
 		return nil, false
 	}
-	var ok bool
-	keys := make([]int64, len(setVals))
-	for i, val := range setVals {
-		keys[i], ok = castToInt64(val)
-		if !ok {
+
+	keys := make([]int64, 0, len(setVals))
+	for _, val := range setVals {
+		switch v := val.(type) {
+		case int:
+			keys = append(keys, int64(v))
+		case int8:
+			keys = append(keys, int64(v))
+		case int16:
+			keys = append(keys, int64(v))
+		case int32:
+			keys = append(keys, int64(v))
+		case int64:
+			keys = append(keys, v)
+		case uint:
+			keys = append(keys, int64(v))
+		case uint8:
+			keys = append(keys, int64(v))
+		case uint16:
+			keys = append(keys, int64(v))
+		case uint32:
+			keys = append(keys, int64(v))
+		case uint64:
+			keys = append(keys, int64(v))
+		// float32, float64, and decimal are ok as long as they don't round
+		case float32:
+			key := int64(v)
+			if float32(key) == v {
+				keys = append(keys, key)
+			}
+		case float64:
+			key := int64(v)
+			if float64(key) == v {
+				keys = append(keys, key)
+			}
+		case decimal.Decimal:
+			key := v.IntPart()
+			if v.Equal(decimal.NewFromInt(key)) {
+				keys = append(keys, key)
+			}
+		default:
+			// resort to default behavior for types that require more conversion
 			return nil, false
 		}
 	}
+
 	slices.Sort(keys)
-	slices.Compact(keys)
+	keys = slices.Compact(keys)
 	res := make(sql.MySQLRangeCollection, len(keys))
 	for i, key := range keys {
 		res[i] = sql.MySQLRange{
 			sql.ClosedRangeColumnExpr(key, key, typ),
 		}
+	}
+
+	if len(res) == 0 {
+		return nil, true
 	}
 	return res, true
 }
