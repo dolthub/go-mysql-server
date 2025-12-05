@@ -884,7 +884,7 @@ func inValsToMySQLRangeCollHelper[N cmp.Ordered](ctx *sql.Context, vals []any, t
 	if len(res) == 0 {
 		return nil, true
 	}
-	return res, true
+	return keysToRangeColl(keys, typ), true
 }
 
 // inValsToMySQLRangeColl is a fast path for in filters over numeric columns.
