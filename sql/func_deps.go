@@ -123,6 +123,10 @@ type FuncDepSet struct {
 	consts ColSet
 	// tracks in-scope equivalent closure
 	equivs *EquivSets
+	// conditionalEquivSets tracks equivalency sets from outer joins:
+	// These equivalence sets hold if
+	// at least one of the columns in the key is non-null
+	conditionalEquivSets map[ColSet]*EquivSets
 	// keys includes the set of primary and secondary keys
 	// accumulated in the relation. The first key is the best
 	// key we have seen so far, where strict > lax and shorter
@@ -213,22 +217,25 @@ func (f *FuncDepSet) String() string {
 		b.WriteString(fmt.Sprintf("%s%s", sep, f.equivs))
 		sep = "; "
 	}
-	if len(f.keys) < 2 {
-		return b.String()
-	}
-	for _, k := range f.keys[1:] {
-		var cols string
-		if k.allCols == f.all {
-			cols = k.cols.String()
-		} else {
-			cols = fmt.Sprintf("%s/%s", k.cols, k.allCols)
-		}
-		if k.strict {
-			b.WriteString(fmt.Sprintf("%sfd%s", sep, cols))
-		} else {
-			b.WriteString(fmt.Sprintf("%slax-fd%s", sep, cols))
-		}
+	for conditionalCols, equivSet := range f.conditionalEquivSets {
+		b.WriteString(fmt.Sprintf("%snonnull%s->%s", sep, conditionalCols, equivSet))
 		sep = "; "
+	}
+	if len(f.keys) >= 2 {
+		for _, k := range f.keys[1:] {
+			var cols string
+			if k.allCols == f.all {
+				cols = k.cols.String()
+			} else {
+				cols = fmt.Sprintf("%s/%s", k.cols, k.allCols)
+			}
+			if k.strict {
+				b.WriteString(fmt.Sprintf("%sfd%s", sep, cols))
+			} else {
+				b.WriteString(fmt.Sprintf("%slax-fd%s", sep, cols))
+			}
+			sep = "; "
+		}
 	}
 	return b.String()
 }
@@ -237,10 +244,22 @@ func (f *FuncDepSet) Constants() ColSet {
 	return f.consts
 }
 
+// EquivalenceClosure computes the set of columns that are known to be equal to at least one of
+// the columns in the input column set, considering conditional equivalence sets and the current
+// nullability information.
 func (f *FuncDepSet) EquivalenceClosure(cols ColSet) ColSet {
 	for _, set := range f.equivs.Sets() {
 		if set.Intersects(cols) {
 			cols = cols.Union(set)
+		}
+	}
+	for conditionalCols, equivSet := range f.conditionalEquivSets {
+		if conditionalCols.Intersects(f.notNull) {
+			for _, set := range equivSet.Sets() {
+				if set.Intersects(cols) {
+					cols = cols.Union(set)
+				}
+			}
 		}
 	}
 	return cols
@@ -255,6 +274,7 @@ func (f *FuncDepSet) AddConstants(cols ColSet) {
 	f.consts = f.consts.Union(cols)
 }
 
+// AddEquiv records that columns i and j are always equal
 func (f *FuncDepSet) AddEquiv(i, j ColumnId) {
 	cols := NewColSet(i, j)
 	if f.equivs == nil {
@@ -263,6 +283,7 @@ func (f *FuncDepSet) AddEquiv(i, j ColumnId) {
 	f.AddEquivSet(cols)
 }
 
+// AddEquivSet records that the provided columns are always equal.
 func (f *FuncDepSet) AddEquivSet(cols ColSet) {
 	if f.equivs == nil {
 		f.equivs = &EquivSets{}
@@ -274,6 +295,45 @@ func (f *FuncDepSet) AddEquivSet(cols ColSet) {
 			f.AddConstants(set)
 		}
 	}
+}
+
+// AddEquivSet imports all equivSets and conditionalEquivSets from another FDS.
+func (f *FuncDepSet) AddEquivSets(other *FuncDepSet) {
+	if f.equivs == nil {
+		f.equivs = &EquivSets{}
+	}
+	for _, equivSet := range other.equivs.Sets() {
+		f.AddEquivSet(equivSet)
+	}
+	for conditionalCols, equivSet := range other.conditionalEquivSets {
+		// If one of the columns is known to be non-null, we can promote conditional equivalence sets
+		// to ordinary equivalence sets. This is most likely to happen when constructing a lookup FDS
+		// from an outer join: the join column is implicitly nullable because of the outer join, but
+		// the column on underlying table is non-null.
+		if conditionalCols.Intersects(f.notNull) {
+			for _, set := range equivSet.Sets() {
+				f.AddEquivSet(set)
+			}
+		} else {
+			for _, colSet := range equivSet.Sets() {
+				f.AddConditionalEquiv(conditionalCols, colSet)
+			}
+		}
+	}
+}
+
+// AddConditionalEquiv records the columns in |equivCols| are equal if at least one of the columns
+// in |conditionCols| is non-null. This is usually caused by outer joins.
+func (f *FuncDepSet) AddConditionalEquiv(conditionCols, equivCols ColSet) {
+	if f.conditionalEquivSets == nil {
+		f.conditionalEquivSets = make(map[ColSet]*EquivSets)
+	}
+	outerEquivSet, ok := f.conditionalEquivSets[conditionCols]
+	if !ok {
+		outerEquivSet = &EquivSets{}
+		f.conditionalEquivSets[conditionCols] = outerEquivSet
+	}
+	outerEquivSet.Add(equivCols)
 }
 
 func (f *FuncDepSet) AddKey(k Key) {
@@ -339,8 +399,7 @@ func (f *FuncDepSet) AddLaxKey(cols ColSet) {
 	}
 }
 
-// simplifyCols uses equivalence and constant sets to minimize
-// a key set
+// simplifyCols uses equivalence and constant sets to minimize a key set
 func (f *FuncDepSet) simplifyCols(key ColSet, subKeys []Key) ColSet {
 	if key.Empty() {
 		return key
@@ -423,12 +482,8 @@ func NewCrossJoinFDs(left, right *FuncDepSet) *FuncDepSet {
 	ret.AddNotNullable(right.notNull)
 	ret.AddConstants(left.consts)
 	ret.AddConstants(right.consts)
-	for _, set := range left.equivs.Sets() {
-		ret.AddEquivSet(set)
-	}
-	for _, set := range right.equivs.Sets() {
-		ret.AddEquivSet(set)
-	}
+	ret.AddEquivSets(left)
+	ret.AddEquivSets(right)
 	// concatenate lead key, append others
 	var lKey, rKey Key
 	if len(left.keys) > 0 {
@@ -471,12 +526,8 @@ func NewInnerJoinFDs(left, right *FuncDepSet, filters [][2]ColumnId) *FuncDepSet
 	} else {
 		ret.AddConstants(right.consts)
 	}
-	for _, set := range left.Equiv().Sets() {
-		ret.AddEquivSet(set)
-	}
-	for _, set := range right.Equiv().Sets() {
-		ret.AddEquivSet(set)
-	}
+	ret.AddEquivSets(left)
+	ret.AddEquivSets(right)
 	for _, f := range filters {
 		ret.AddEquiv(f[0], f[1])
 	}
@@ -521,9 +572,7 @@ func NewFilterFDs(fds *FuncDepSet, notNull ColSet, constant ColSet, equiv [][2]C
 	ret := &FuncDepSet{all: fds.All()}
 	ret.AddNotNullable(fds.notNull.Union(notNull))
 	ret.AddConstants(fds.Constants().Union(constant))
-	for _, e := range fds.equivs.Sets() {
-		ret.AddEquivSet(e)
-	}
+	ret.AddEquivSets(fds)
 	for _, e := range equiv {
 		ret.AddEquiv(e[0], e[1])
 	}
@@ -533,15 +582,13 @@ func NewFilterFDs(fds *FuncDepSet, notNull ColSet, constant ColSet, equiv [][2]C
 	return ret
 }
 
-func NewLookupFDs(fds *FuncDepSet, idxCols ColSet, notNull ColSet, constants ColSet, equiv *EquivSets) *FuncDepSet {
+func NewLookupFDs(fds *FuncDepSet, idxCols ColSet, notNull ColSet, constants ColSet, joinFds *FuncDepSet) *FuncDepSet {
 	ret := &FuncDepSet{all: fds.All()}
 	ret.AddNotNullable(fds.notNull.Union(notNull))
 	ret.AddConstants(fds.Constants().Union(constants))
-	for _, e := range fds.equivs.Sets() {
-		ret.AddEquivSet(e)
-	}
-	for _, set := range equiv.Sets() {
-		ret.AddEquivSet(set)
+	ret.AddEquivSets(fds)
+	if joinFds != nil {
+		ret.AddEquivSets(joinFds)
 	}
 	ret.AddLaxKey(idxCols)
 	return ret
@@ -661,9 +708,12 @@ func NewLeftJoinFDs(left, right *FuncDepSet, filters [][2]ColumnId) *FuncDepSet 
 		}
 		ret.AddConstants(leftConst)
 	}
-	// only left equiv holds
-	for _, equiv := range left.equivs.Sets() {
-		ret.AddEquivSet(equiv)
+	// Because this is a left join, there may be rows where every column from the right child is NULL,
+	// even if those columns are non-null in the right child schema. Equivalence sets from the right child
+	// only hold if at least one of the columns from the right child is non-null.
+	ret.AddEquivSets(left)
+	for _, f := range filters {
+		ret.AddConditionalEquiv(right.all, NewColSet(f[0], f[1]))
 	}
 
 	if leftStrict && leftColsAreInnerJoinKey {

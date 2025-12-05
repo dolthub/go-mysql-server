@@ -269,7 +269,7 @@ func isInjectiveLookup(idx *Index, joinBase *JoinBase, keyExprs []sql.Expression
 		constCols = constCols.Union(onCols)
 	}
 
-	fds := sql.NewLookupFDs(joinBase.Right.RelProps.FuncDeps(), idx.ColSet(), notNull, constCols, joinFds.Equiv())
+	fds := sql.NewLookupFDs(joinBase.Right.RelProps.FuncDeps(), idx.ColSet(), notNull, constCols, joinFds)
 	return fds.HasMax1Row()
 }
 

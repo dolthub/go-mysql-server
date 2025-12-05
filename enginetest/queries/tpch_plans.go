@@ -2455,7 +2455,7 @@ order by
 			"                 ├─ columns: [partsupp.PS_PARTKEY, partsupp.PS_SUPPKEY, partsupp.PS_AVAILQTY, partsupp.PS_SUPPLYCOST, partsupp.PS_COMMENT, part.P_PARTKEY, part.P_NAME, part.P_MFGR, part.P_BRAND, part.P_TYPE, part.P_SIZE, part.P_CONTAINER, part.P_RETAILPRICE, part.P_COMMENT]\n" +
 			"                 └─ Filter\n" +
 			"                     ├─ supplier.s_suppkey IS NULL\n" +
-			"                     └─ LeftOuterLookupJoin (estimated cost=3463.300 rows=1062)\n" +
+			"                     └─ LeftOuterLookupJoin (estimated cost=3300.000 rows=1000)\n" +
 			"                         ├─ MergeJoin (estimated cost=1878.500 rows=1000)\n" +
 			"                         │   ├─ cmp: (partsupp.ps_partkey = part.p_partkey)\n" +
 			"                         │   ├─ IndexedTableAccess(partsupp)\n" +
@@ -2486,7 +2486,7 @@ order by
 			"                 ├─ columns: [partsupp.PS_PARTKEY, partsupp.PS_SUPPKEY, partsupp.PS_AVAILQTY, partsupp.PS_SUPPLYCOST, partsupp.PS_COMMENT, part.P_PARTKEY, part.P_NAME, part.P_MFGR, part.P_BRAND, part.P_TYPE, part.P_SIZE, part.P_CONTAINER, part.P_RETAILPRICE, part.P_COMMENT]\n" +
 			"                 └─ Filter\n" +
 			"                     ├─ supplier.s_suppkey IS NULL\n" +
-			"                     └─ LeftOuterLookupJoin (estimated cost=3463.300 rows=1062) (actual rows=0 loops=1)\n" +
+			"                     └─ LeftOuterLookupJoin (estimated cost=3300.000 rows=1000) (actual rows=0 loops=1)\n" +
 			"                         ├─ MergeJoin (estimated cost=1878.500 rows=1000) (actual rows=0 loops=1)\n" +
 			"                         │   ├─ cmp: (partsupp.ps_partkey = part.p_partkey)\n" +
 			"                         │   ├─ IndexedTableAccess(partsupp)\n" +

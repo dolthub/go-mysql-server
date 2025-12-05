@@ -1,0 +1,7 @@
+exec
+create table id_parent(id varchar(255), parent varchar(255), primary key (id));
+----
+
+exec
+analyze table id_parent update histogram on (id) using data '{"row_count": 28000}';
+----

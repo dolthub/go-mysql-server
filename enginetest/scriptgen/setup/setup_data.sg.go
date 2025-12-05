@@ -217,6 +217,11 @@ var Graph_tablesData = []SetupScript{{
 	('filling', 'butter', 3)`,
 }}
 
+var Id_parentData = []SetupScript{{
+	`create table id_parent(id varchar(255), parent varchar(255), primary key (id));`,
+	`analyze table id_parent update histogram on (id) using data '{"row_count": 28000}';`,
+}}
+
 var ImdbData = []SetupScript{{
 	`CREATE TABLE aka_name (
     id integer NOT NULL PRIMARY KEY,

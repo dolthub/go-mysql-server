@@ -334,6 +334,7 @@ func TestFuncDeps_LeftJoin(t *testing.T) {
 		assert.Equal(t, "key(1,6,7); lax-fd(2)/(1-5)", join.String())
 	})
 	t.Run("equiv on both sides left join", func(t *testing.T) {
+		// SELECT * FROM abcde RIGHT JOIN mnpq
 		abcde := &FuncDepSet{all: cols(1, 2, 3, 4, 5)}
 		abcde.AddNotNullable(cols(1))
 		abcde.AddEquivSet(cols(2, 3, 4))
@@ -360,7 +361,20 @@ func TestFuncDeps_LeftJoin(t *testing.T) {
 		mnpq.AddStrictKey(cols(6, 7))
 
 		join := NewLeftJoinFDs(mnpq, abcde, [][2]ColumnId{{1, 6}})
-		assert.Equal(t, "key(6,7); fd(1)/(1-5); lax-fd(2,3)/(1-5)", join.String())
+		assert.Equal(t, "key(6,7); nonnull(1-5)->equiv(1,6); fd(1)/(1-5); lax-fd(2,3)/(1-5)", join.String())
+	})
+	t.Run("join filter no partial equiv", func(t *testing.T) {
+		// SELECT * FROM abcde RIGHT OUTER JOIN mnpq ON a=m
+		abcde := &FuncDepSet{all: cols(1, 2, 3, 4, 5)}
+		abcde.AddStrictKey(cols(1))
+		abcde.AddLaxKey(cols(2, 3))
+
+		mnpq := &FuncDepSet{all: cols(6, 7, 8, 9)}
+		mnpq.AddNotNullable(cols(6, 7))
+		mnpq.AddStrictKey(cols(6, 7))
+
+		join := NewLeftJoinFDs(mnpq, abcde, [][2]ColumnId{{1, 6}})
+		assert.Equal(t, "key(6,7); nonnull(1-5)->equiv(1,6); fd(1)/(1-5); lax-fd(2,3)/(1-5)", join.String())
 	})
 	t.Run("join filter equiv and null-side rel equiv", func(t *testing.T) {
 		//   SELECT * FROM abcde RIGHT OUTER JOIN mnpq ON a=m AND a=b
@@ -374,7 +388,7 @@ func TestFuncDeps_LeftJoin(t *testing.T) {
 		mnpq.AddStrictKey(cols(6, 7))
 
 		join := NewLeftJoinFDs(mnpq, abcde, [][2]ColumnId{{1, 6}, {1, 2}})
-		assert.Equal(t, "key(6,7); fd(1)/(1-5); lax-fd(2,3)/(1-5)", join.String())
+		assert.Equal(t, "key(6,7); nonnull(1-5)->equiv(1,2,6); fd(1)/(1-5); lax-fd(2,3)/(1-5)", join.String())
 	})
 	t.Run("max1Row left join", func(t *testing.T) {
 		abcde := &FuncDepSet{all: cols(1, 2, 3, 4, 5)}
@@ -390,7 +404,7 @@ func TestFuncDeps_LeftJoin(t *testing.T) {
 		mnpq.AddStrictKey(cols(6, 7))
 
 		join := NewLeftJoinFDs(mnpq, abcde, [][2]ColumnId{{1, 6}, {1, 2}})
-		assert.Equal(t, "key(); constant(1,6,7)", join.String())
+		assert.Equal(t, "key(); constant(1,6,7); nonnull(1-5)->equiv(1,2,6)", join.String())
 	})
 }
 
