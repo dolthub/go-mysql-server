@@ -338,6 +338,16 @@ func (m *Memo) statsForRel(ctx *sql.Context, rel RelExpr) sql.Statistic {
 		left := jp.Left.RelProps.GetStats()
 		right := jp.Right.RelProps.GetStats()
 
+		distinct := math.Max(float64(left.DistinctCount()), float64(right.DistinctCount()))
+		if distinct == 0 {
+			m := math.Max(float64(left.RowCount()), float64(right.RowCount()))
+			distinct = m * .80
+		}
+
+		// Assume that the smaller set is surjective onto the larger set, and at least one of the sets is uniformly distributed.
+		// If so, then the odds that a random element of each set matches can be computed as:
+		selectivity := 1.0 / float64(distinct)
+
 		var injective bool
 		var smallestLeft sql.Statistic
 		var mergeStats sql.Statistic
@@ -345,6 +355,28 @@ func (m *Memo) statsForRel(ctx *sql.Context, rel RelExpr) sql.Statistic {
 		var done bool
 		for n != nil && !done {
 			switch n := n.(type) {
+			case *LeftJoin:
+				// If we have an injective lookup or a merge, use those stats instead.
+				// Otherwise, joins impose a minimum row count.
+				if injective || !stats.Empty(mergeStats) {
+					done = true
+					continue
+				}
+				rs := float64(right.RowCount()) * selectivity
+				card := float64(left.RowCount()) * max(1.0, rs)
+				return &stats.Statistic{RowCnt: uint64(card)}
+			case *FullOuterJoin:
+				// If we have an injective lookup or a merge, use those stats instead.
+				// Otherwise, joins impose a minimum row count.
+				if injective || !stats.Empty(mergeStats) {
+					done = true
+					continue
+				}
+				card := max(
+					float64(left.RowCount())*max(1.0, float64(right.RowCount())*selectivity),
+					float64(right.RowCount())*max(1.0, float64(left.RowCount())*selectivity),
+				)
+				return &stats.Statistic{RowCnt: uint64(card)}
 			case *LookupJoin:
 				if n.Injective {
 					injective = true
@@ -384,6 +416,8 @@ func (m *Memo) statsForRel(ctx *sql.Context, rel RelExpr) sql.Statistic {
 			n = n.Next()
 		}
 
+		// A join that is injective imposes a maximum row count.
+		// The actual row count may be smaller. This is handled in computing |smallestLeft|.
 		emptyStats := stats.Empty(mergeStats)
 		if emptyStats && injective {
 			return smallestLeft
@@ -397,15 +431,6 @@ func (m *Memo) statsForRel(ctx *sql.Context, rel RelExpr) sql.Statistic {
 			return mergeStats
 		}
 
-		distinct := math.Max(float64(left.DistinctCount()), float64(right.DistinctCount()))
-		if distinct == 0 {
-			m := math.Max(float64(left.RowCount()), float64(right.RowCount()))
-			distinct = m * .80
-		}
-
-		// Assume that the smaller set is surjective onto the larger set, and at least one of the sets is uniformly distributed.
-		// If so, then the odds that a random element of each set matches can be computed as:
-		selectivity := 1.0 / float64(distinct)
 		card := float64(left.RowCount()*right.RowCount()) * selectivity
 		return &stats.Statistic{RowCnt: uint64(card)}
 
