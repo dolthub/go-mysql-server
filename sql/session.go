@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -279,8 +280,16 @@ type Context struct {
 	query       string
 	pid         uint64
 	interpreted bool
+	ctxInfo     map[ContextInfoID]interface{}
 	Version     AnalyzerVersion
 }
+
+// ContextInfoID is an ID that specifies the context information that is being requested (or set).
+type ContextInfoID uint8
+
+const (
+	ContextInfoID_Builder ContextInfoID = iota
+)
 
 // ContextOption is a function to configure the context.
 type ContextOption func(*Context)
@@ -381,36 +390,11 @@ func Now() time.Time {
 
 type ContextFactory func(context.Context, ...ContextOption) *Context
 
-// NewContext creates a new query context. Options can be passed to configure
-// the context. If some aspect of the context is not configure, the default
-// value will be used.
-// By default, the context will have an empty base session, a noop tracer and
-// a memory manager using the process reporter.
-func NewContext(
-	ctx context.Context,
-	opts ...ContextOption,
-) *Context {
-	c := &Context{
-		Context:   ctx,
-		Session:   nil,
-		queryTime: Now(),
-		tracer:    NoopTracer,
-	}
-	for _, opt := range opts {
-		opt(c)
-	}
-
-	if c.Memory == nil {
-		c.Memory = NewMemoryManager(ProcessMemory)
-	}
-	if c.ProcessList == nil {
-		c.ProcessList = EmptyProcessList{}
-	}
-	if c.Session == nil {
-		c.Session = NewBaseSession()
-	}
-
-	return c
+// NewNonEngineContext creates a new Context that is not associated with an engine, nor has an engine overrides set.
+// This will still be a valid and usable context in many situations, but when an existing context is available, it is
+// preferred to call ctx.NewContext to ensure that integrator-specific overrides are retained in the new context.
+func NewNonEngineContext(ctx context.Context, opts ...ContextOption) *Context {
+	return (*Context)(nil).NewContext(ctx, opts...)
 }
 
 // ApplyOpts the options given to the context. Mostly for tests, not safe for use after construction of the context.
@@ -420,8 +404,11 @@ func (c *Context) ApplyOpts(opts ...ContextOption) {
 	}
 }
 
-// NewEmptyContext returns a default context with default values.
-func NewEmptyContext() *Context { return NewContext(context.TODO()) }
+// NewEmptyContext returns a default context with default values. When an existing context is available, it is preferred
+// to call ctx.NewContext to ensure that integrator-specific overrides are retained in the new context.
+func NewEmptyContext() *Context {
+	return (*Context)(nil).NewContext(context.TODO())
+}
 
 // IsInterpreted returns `true` when this is being called from within RunInterpreted. In such cases, GMS will choose to
 // handle logic differently, as running from within an interpreted function requires different considerations than
@@ -510,7 +497,23 @@ func (c *Context) WithContext(ctx context.Context) *Context {
 	}
 
 	nc := *c
+	nc.ctxInfo = make(map[ContextInfoID]interface{})
+	maps.Copy(nc.ctxInfo, c.ctxInfo)
 	nc.Context = ctx
+	return &nc
+}
+
+// WithClient returns a new Context with the given client.
+func (c *Context) WithClient(client Client) *Context {
+	if c == nil {
+		return nil
+	}
+
+	nc := *c
+	nc.ctxInfo = make(map[ContextInfoID]interface{})
+	maps.Copy(nc.ctxInfo, c.ctxInfo)
+	nc.Session.SetClient(client)
+	nc.Session.SetPrivilegeSet(nil, 0)
 	return &nc
 }
 
@@ -581,16 +584,50 @@ func (c *Context) NewErrgroup() (*errgroup.Group, *Context) {
 	return eg, c.WithContext(egCtx)
 }
 
-// NewCtxWithClient returns a new Context with the given [client]
-func (c *Context) NewCtxWithClient(client Client) *Context {
+// GetInfo returns the info matching the given ID.
+func (c *Context) GetInfo(id ContextInfoID) interface{} {
 	if c == nil {
 		return nil
 	}
+	if override, ok := c.ctxInfo[id]; ok {
+		return override
+	}
+	return nil
+}
 
-	nc := *c
-	nc.Session.SetClient(client)
-	nc.Session.SetPrivilegeSet(nil, 0)
-	return &nc
+// SetInfo overwrites the given info at the given ID. The engine handles setting information, therefore this should
+// never need to be called outside specific steps within the engine.
+func (c *Context) SetInfo(id ContextInfoID, override interface{}) {
+	if c != nil {
+		c.ctxInfo[id] = override
+	}
+}
+
+func (c *Context) NewContext(ctx context.Context, opts ...ContextOption) *Context {
+	nc := &Context{
+		Context:   ctx,
+		Session:   nil,
+		queryTime: Now(),
+		tracer:    NoopTracer,
+		ctxInfo:   make(map[ContextInfoID]interface{}),
+	}
+	for _, opt := range opts {
+		opt(nc)
+	}
+
+	if nc.Memory == nil {
+		nc.Memory = NewMemoryManager(ProcessMemory)
+	}
+	if nc.ProcessList == nil {
+		nc.ProcessList = EmptyProcessList{}
+	}
+	if nc.Session == nil {
+		nc.Session = NewBaseSession()
+	}
+	if c != nil {
+		maps.Copy(nc.ctxInfo, c.ctxInfo)
+	}
+	return nc
 }
 
 // Services are handles to optional or plugin functionality that can be

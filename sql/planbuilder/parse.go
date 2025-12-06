@@ -32,19 +32,6 @@ const maxAnalysisIterations = 8
 // ErrMaxAnalysisIters is thrown when the analysis iterations are exceeded
 var ErrMaxAnalysisIters = errors.NewKind("exceeded max analysis iterations (%d)")
 
-// Parse parses the given SQL |query| using the default parsing settings and returns the corresponding node.
-func Parse(ctx *sql.Context, cat sql.Catalog, query string) (sql.Node, *sql.QueryFlags, error) {
-	return ParseWithOptions(ctx, cat, query, sql.LoadSqlMode(ctx).ParserOptions())
-}
-
-func ParseWithOptions(ctx *sql.Context, cat sql.Catalog, query string, options ast.ParserOptions) (sql.Node, *sql.QueryFlags, error) {
-	// TODO: need correct parser
-	b := New(ctx, cat, nil, nil)
-	b.SetParserOptions(options)
-	node, _, _, qFlags, err := b.Parse(query, nil, false)
-	return node, qFlags, err
-}
-
 func (b *Builder) Parse(query string, qFlags *sql.QueryFlags, multi bool) (ret sql.Node, parsed, remainder string, qProps *sql.QueryFlags, err error) {
 	defer trace.StartRegion(b.ctx, "ParseOnly").End()
 	b.nesting++

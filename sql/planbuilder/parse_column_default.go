@@ -43,7 +43,8 @@ func StringToColumnDefaultValue(ctx *sql.Context, exprStr string) (*sql.ColumnDe
 	if !ok {
 		return nil, fmt.Errorf("DefaultStringToExpression expected *sqlparser.AliasedExpr but received %T", parserSelect.SelectExprs[0])
 	}
-	proj, _, err := Parse(ctx, nil, fmt.Sprintf("SELECT %s", aliasedExpr.Expr))
+	builder := NewFromContext(ctx, nil)
+	proj, _, _, _, err := builder.Parse(fmt.Sprintf("SELECT %s", aliasedExpr.Expr), nil, false)
 	if err != nil {
 		return nil, err
 	}

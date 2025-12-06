@@ -215,10 +215,10 @@ func TestPushNotFilters(t *testing.T) {
 	pro := memory.NewDBProvider(db)
 	sess := memory.NewSession(sql.NewBaseSession(), pro)
 
-	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
+	ctx := sql.NewNonEngineContext(context.Background(), sql.WithSession(sess))
 	ctx.SetCurrentDatabase("mydb")
 
-	b := planbuilder.New(ctx, cat, nil, nil)
+	b := planbuilder.NewFromContext(ctx, cat)
 
 	for _, tt := range tests {
 		t.Run(tt.in, func(t *testing.T) {

@@ -57,7 +57,7 @@ func main() {
 	engine := sqle.NewDefault(pro)
 
 	session := memory.NewSession(sql.NewBaseSession(), pro)
-	ctx := sql.NewContext(context.Background(), sql.WithSession(session))
+	ctx := sql.NewNonEngineContext(context.Background(), sql.WithSession(session))
 	ctx.SetCurrentDatabase(dbName)
 
 	// This variable may be found in the "users_example.go" file. Please refer to that file for a walkthrough on how to
@@ -73,7 +73,7 @@ func main() {
 		Protocol: "tcp",
 		Address:  fmt.Sprintf("%s:%d", address, port),
 	}
-	s, err := server.NewServer(config, engine, sql.NewContext, memory.NewSessionBuilder(pro), nil)
+	s, err := server.NewServer(config, engine, sql.NewNonEngineContext, memory.NewSessionBuilder(pro), nil)
 	if err != nil {
 		panic(err)
 	}
@@ -88,7 +88,8 @@ func createTestDatabase() *memory.DbProvider {
 
 	pro := memory.NewDBProvider(db)
 	session := memory.NewSession(sql.NewBaseSession(), pro)
-	ctx := sql.NewContext(context.Background(), sql.WithSession(session))
+	ctx := sql.NewNonEngineContext(context.Background(), sql.WithSession(session))
+	ctx.Session = session
 
 	table := memory.NewTable(db, tableName, sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "name", Type: types.Text, Nullable: false, Source: tableName, PrimaryKey: true},

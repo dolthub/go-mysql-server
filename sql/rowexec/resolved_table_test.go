@@ -58,7 +58,7 @@ func TestResolvedTableCancelled(t *testing.T) {
 
 	octx, cancel := context.WithCancel(context.Background())
 	cancel()
-	ctx := sql.NewContext(octx)
+	ctx := sql.NewNonEngineContext(octx)
 
 	iter, err := DefaultBuilder.Build(ctx, table, nil)
 	require.NoError(err)

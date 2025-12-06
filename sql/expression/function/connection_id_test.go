@@ -27,7 +27,7 @@ func TestConnectionID(t *testing.T) {
 	require := require.New(t)
 
 	session := sql.NewBaseSessionWithClientServer("", sql.Client{Address: "localhost", User: "root"}, 2)
-	ctx := sql.NewContext(context.Background(), sql.WithSession(session))
+	ctx := sql.NewNonEngineContext(context.Background(), sql.WithSession(session))
 
 	connIDFunc := sql.NewFunction0("connection_id", NewConnectionID)
 	result, err := connIDFunc.Fn().Eval(ctx, nil)

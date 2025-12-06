@@ -91,7 +91,7 @@ func TestWindowIter(t *testing.T) {
 		t.Run(tt.Name, func(t *testing.T) {
 			db := memory.NewDatabase("test")
 			pro := memory.NewDBProvider(db)
-			ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
+			ctx := sql.NewNonEngineContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
 
 			i := NewWindowIter(tt.PartitionIters, tt.OutputOrdinals, mustNewRowIter(t, db, ctx))
 			res, err := sql.RowIterToRows(ctx, i)

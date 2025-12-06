@@ -83,7 +83,7 @@ func TestVectorIndex(t *testing.T) {
 
 	db := memory.NewDatabase("db")
 	provider := memory.NewDBProvider(db)
-	ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), provider)))
+	ctx := sql.NewNonEngineContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), provider)))
 
 	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "pk", Type: types.Int64, Nullable: false},

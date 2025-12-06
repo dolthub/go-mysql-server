@@ -312,12 +312,6 @@ func NewDefault(provider sql.DatabaseProvider) *Analyzer {
 	return NewBuilder(provider).Build()
 }
 
-// NewDefaultWithVersion creates a default Analyzer instance either
-// experimental or
-func NewDefaultWithVersion(provider sql.DatabaseProvider) *Analyzer {
-	return NewBuilder(provider).Build()
-}
-
 // Log prints an INFO message to stdout with the given message and args
 // if the analyzer is in debug mode.
 func (a *Analyzer) Log(msg string, args ...interface{}) {

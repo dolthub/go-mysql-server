@@ -133,7 +133,7 @@ func TestTableInsert(t *testing.T) {
 
 			provider := memory.NewDBProvider(db)
 			session := memory.NewSession(sql.NewBaseSession(), provider)
-			ctx := sql.NewContext(context.Background(), sql.WithSession(session))
+			ctx := sql.NewNonEngineContext(context.Background(), sql.WithSession(session))
 
 			table := memory.NewTable(db, "test", sql.NewPrimaryKeySchema(sql.Schema{
 				{Name: "col1", Type: tc.colType, Nullable: false},

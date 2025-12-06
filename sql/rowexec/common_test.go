@@ -30,7 +30,7 @@ import (
 )
 
 func newContext(provider *memory.DbProvider) *sql.Context {
-	return sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), provider)))
+	return sql.NewNonEngineContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), provider)))
 }
 
 var benchtable = func() *memory.Table {

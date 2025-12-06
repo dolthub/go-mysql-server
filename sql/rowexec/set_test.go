@@ -34,7 +34,7 @@ import (
 func TestSet(t *testing.T) {
 	require := require.New(t)
 
-	ctx := sql.NewContext(context.Background(), sql.WithSession(sql.NewBaseSession()))
+	ctx := sql.NewNonEngineContext(context.Background(), sql.WithSession(sql.NewBaseSession()))
 
 	s := plan.NewSet(
 		[]sql.Expression{
@@ -65,7 +65,7 @@ func newPersistedSqlContext() (*sql.Context, memory.GlobalsMap) {
 	persistedGlobals := map[string]interface{}{"max_connections": 1000}
 	sess.SetGlobals(persistedGlobals)
 
-	sqlCtx := sql.NewContext(ctx)
+	sqlCtx := sql.NewNonEngineContext(ctx)
 	sqlCtx.Session = sess
 	return sqlCtx, persistedGlobals
 }

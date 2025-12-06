@@ -35,7 +35,7 @@ func initTestServer(port int) (*server.Server, error) {
 	sessBuilder := func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, error) {
 		return memory.NewSession(sql.NewBaseSession(), pro), nil
 	}
-	s, err := server.NewServer(config, engine, sql.NewContext, sessBuilder, nil)
+	s, err := server.NewServer(config, engine, sql.NewNonEngineContext, sessBuilder, nil)
 	if err != nil {
 		return nil, err
 	}

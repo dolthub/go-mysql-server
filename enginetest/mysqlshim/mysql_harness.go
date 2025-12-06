@@ -58,7 +58,7 @@ func (m *MySQLHarness) NewEngine(t *testing.T) (enginetest.QueryEngine, error) {
 
 func (m *MySQLHarness) NewContextWithClient(client sql.Client) *sql.Context {
 	session := sql.NewBaseSessionWithClientServer("address", client, 1)
-	return sql.NewContext(
+	return sql.NewNonEngineContext(
 		context.Background(),
 		sql.WithSession(session),
 	)
@@ -150,7 +150,7 @@ func (m *MySQLHarness) NewContext() *sql.Context {
 		m.session = enginetest.NewBaseSession()
 	}
 
-	return sql.NewContext(
+	return sql.NewNonEngineContext(
 		context.Background(),
 		sql.WithSession(m.session),
 	)

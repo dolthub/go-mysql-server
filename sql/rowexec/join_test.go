@@ -79,7 +79,7 @@ func TestInnerJoin(t *testing.T) {
 func TestMultiPassInnerJoin(t *testing.T) {
 	db := memory.NewDatabase("test")
 	pro := memory.NewDBProvider(db)
-	ctx := sql.NewContext(context.TODO(), sql.WithMemoryManager(
+	ctx := sql.NewNonEngineContext(context.TODO(), sql.WithMemoryManager(
 		sql.NewMemoryManager(mockReporter{2, 1}),
 	), sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
 	testInnerJoin(t, db, ctx)
@@ -183,7 +183,7 @@ func BenchmarkInnerJoin(b *testing.B) {
 		{int64(4), "t1_4", int64(4), "t2_4"},
 	}
 
-	ctx := sql.NewContext(context.Background(), sql.WithMemoryManager(
+	ctx := sql.NewNonEngineContext(context.Background(), sql.WithMemoryManager(
 		sql.NewMemoryManager(mockReporter{1, 5}),
 	), sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
 

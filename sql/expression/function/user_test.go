@@ -29,14 +29,14 @@ func TestUser(t *testing.T) {
 	fn := userFunc.Fn
 
 	session := sql.NewBaseSessionWithClientServer("server", sql.Client{Address: "client", User: "root"}, 0)
-	ctx := sql.NewContext(context.TODO(), sql.WithSession(session))
+	ctx := sql.NewNonEngineContext(context.TODO(), sql.WithSession(session))
 
 	user, err := fn().Eval(ctx, nil)
 	require.NoError(t, err)
 	assert.Equal(t, "root@client", user)
 
 	session = sql.NewBaseSessionWithClientServer("server", sql.Client{Address: "client", User: "someguy"}, 0)
-	ctx = sql.NewContext(context.TODO(), sql.WithSession(session))
+	ctx = sql.NewNonEngineContext(context.TODO(), sql.WithSession(session))
 
 	user, err = fn().Eval(ctx, nil)
 	require.NoError(t, err)

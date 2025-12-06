@@ -162,7 +162,7 @@ func (d *Driver) OpenConnector(dsn string) (driver.Connector, error) {
 	d.mu.Lock()
 	db, ok := d.dbs[serverName]
 	if !ok {
-		anlz := analyzer.NewDefaultWithVersion(pro)
+		anlz := analyzer.NewDefault(pro)
 		engine := sqle.New(anlz, nil)
 		db = &dbConn{engine: engine}
 		d.dbs[serverName] = db

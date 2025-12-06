@@ -17,7 +17,6 @@ package planbuilder
 import (
 	"fmt"
 	"strings"
-	"sync"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
@@ -27,10 +26,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
-
-var BinderFactory = &sync.Pool{New: func() interface{} {
-	return &Builder{f: &factory{}}
-}}
 
 type Builder struct {
 	// EventScheduler is used to communicate with the event scheduler
@@ -58,6 +53,25 @@ type Builder struct {
 	multiDDL     bool
 	insertActive bool
 	parserOpts   ast.ParserOptions
+	overrides    BuilderOverrides
+}
+
+// BuilderOverrides contains functions and variables that can replace, supplement, or override functionality within the
+// builder.
+type BuilderOverrides struct {
+	// When this is non-nil, then this allows for table names to be used in the same context as column names. When a
+	// table name creates a match, then this function is called to create an expression. The return value of the created
+	// expression will be used in place of the `GetField` expression used for columns. The input `fields` contains the
+	// `GetField` expressions for all of the table's columns. For standard MySQL compatibility, this should be nil.
+	ParseTableAsColumn func(fields []sql.Expression) sql.Expression
+}
+
+// ContextInformation is information that is stored within the context that may be retrieved later to construct a new
+// Builder using information obtained from the context.
+type ContextInformation struct {
+	Scheduler sql.EventScheduler
+	Parser    sql.Parser
+	Overrides BuilderOverrides
 }
 
 // BindvarContext holds bind variable replacement literals.
@@ -112,8 +126,9 @@ type ProcContext struct {
 	DbName string
 }
 
-// New takes ctx, catalog, event scheduler, and parser. If the parser is nil, then default parser is mysql parser.
-func New(ctx *sql.Context, cat sql.Catalog, es sql.EventScheduler, p sql.Parser) *Builder {
+// New takes ctx, catalog, event scheduler, and parser. If the parser is nil, then the default parser is used (which
+// will be the MySQL parser unless modified).
+func New(ctx *sql.Context, cat sql.Catalog, es sql.EventScheduler, p sql.Parser, overrides BuilderOverrides) *Builder {
 	if p == nil {
 		p = sql.GlobalParser
 	}
@@ -121,6 +136,16 @@ func New(ctx *sql.Context, cat sql.Catalog, es sql.EventScheduler, p sql.Parser)
 	var state sql.AuthorizationQueryState
 	if cat != nil {
 		state = cat.AuthorizationHandler().NewQueryState(ctx)
+	}
+	// We only set the info if it's nil, as in the normal GMS workflow, this will only be set on the first query and
+	// will contain all of the information that we need. Only tests will supply a subset of the information, which we
+	// aren't concerned with.
+	if info := ctx.GetInfo(sql.ContextInfoID_Builder); info == nil {
+		ctx.SetInfo(sql.ContextInfoID_Builder, ContextInformation{
+			Scheduler: es,
+			Parser:    p,
+			Overrides: overrides,
+		})
 	}
 	return &Builder{
 		ctx:            ctx,
@@ -132,7 +157,20 @@ func New(ctx *sql.Context, cat sql.Catalog, es sql.EventScheduler, p sql.Parser)
 		qFlags:         &sql.QueryFlags{},
 		authEnabled:    true,
 		authQueryState: state,
+		overrides:      overrides,
 	}
+}
+
+// NewFromContext creates a new Builder using information from the given context. This will preserve the parser,
+// overrides, etc. as long as the context was created from the server handler. Otherwise, this will use defaults
+// equivalent to calling New with nil options.
+func NewFromContext(ctx *sql.Context, cat sql.Catalog) *Builder {
+	info := ctx.GetInfo(sql.ContextInfoID_Builder)
+	if info == nil {
+		return New(ctx, cat, nil, nil, BuilderOverrides{})
+	}
+	ctxInfo := info.(ContextInformation)
+	return New(ctx, cat, ctxInfo.Scheduler, ctxInfo.Parser, ctxInfo.Overrides)
 }
 
 func (b *Builder) SetDebug(val bool) {

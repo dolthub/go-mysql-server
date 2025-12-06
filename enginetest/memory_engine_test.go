@@ -203,20 +203,27 @@ func TestSingleScript(t *testing.T) {
 	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name:        "AS OF propagates to nested CALLs",
-			SetUpScript: []string{},
+			Name: "Parse table name as column",
+			SetUpScript: []string{
+				`CREATE TABLE test (pk INT PRIMARY KEY, v1 VARCHAR(255));`,
+				`INSERT INTO test VALUES (1, 'a'), (2, 'b');`,
+			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "create procedure create_proc() create table t (i int primary key, j int);",
-					Expected: []sql.Row{
-						{types.NewOkResult(0)},
-					},
+					Query:    "SELECT temporarytesting(t) FROM test AS t;",
+					Expected: []sql.Row{},
 				},
 				{
-					Query: "call create_proc()",
-					Expected: []sql.Row{
-						{types.NewOkResult(0)},
-					},
+					Query:    "SELECT temporarytesting(test) FROM test;",
+					Expected: []sql.Row{},
+				},
+				{
+					Query:    "SELECT temporarytesting(pk, test) FROM test;",
+					Expected: []sql.Row{},
+				},
+				{
+					Query:    "SELECT temporarytesting(v1, test, pk) FROM test;",
+					Expected: []sql.Row{},
 				},
 			},
 		},

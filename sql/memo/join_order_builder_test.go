@@ -194,7 +194,7 @@ func TestJoinOrderBuilder(t *testing.T) {
 }
 
 func newContext(provider *memory.DbProvider) *sql.Context {
-	return sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), provider)))
+	return sql.NewNonEngineContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), provider)))
 }
 
 func TestJoinOrderBuilder_populateSubgraph(t *testing.T) {

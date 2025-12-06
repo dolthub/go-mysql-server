@@ -80,7 +80,7 @@ func TestWindowPartitionIter(t *testing.T) {
 		t.Run(tt.Name, func(t *testing.T) {
 			db := memory.NewDatabase("test")
 			pro := memory.NewDBProvider(db)
-			ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
+			ctx := sql.NewNonEngineContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
 
 			tt.Iter.child = mustNewRowIter(t, db, ctx)
 			res, err := sql.RowIterToRows(ctx, tt.Iter)
@@ -129,7 +129,7 @@ func mustNewRowIter(t *testing.T, db *memory.Database, ctx *sql.Context) sql.Row
 func TestWindowPartition_MaterializeInput(t *testing.T) {
 	db := memory.NewDatabase("test")
 	pro := memory.NewDBProvider(db)
-	ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
+	ctx := sql.NewNonEngineContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
 
 	i := WindowPartitionIter{
 		w: &WindowPartition{

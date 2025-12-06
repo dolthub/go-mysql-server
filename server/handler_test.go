@@ -54,7 +54,7 @@ func TestHandlerOutput(t *testing.T) {
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			sql.NewContext,
+			sql.NewNonEngineContext,
 			testSessionBuilder(pro),
 			sql.NoopTracer,
 			dbFunc,
@@ -225,7 +225,7 @@ func TestHandlerErrors(t *testing.T) {
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			sql.NewContext,
+			sql.NewNonEngineContext,
 			testSessionBuilder(pro),
 			sql.NoopTracer,
 			dbFunc,
@@ -304,7 +304,7 @@ func TestHandlerComResetConnection(t *testing.T) {
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			sql.NewContext,
+			sql.NewNonEngineContext,
 			testSessionBuilder(pro),
 			sql.NoopTracer,
 			dbFunc,
@@ -365,7 +365,7 @@ func TestHandlerComPrepare(t *testing.T) {
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			sql.NewContext,
+			sql.NewNonEngineContext,
 			testSessionBuilder(pro),
 			sql.NoopTracer,
 			dbFunc,
@@ -438,7 +438,7 @@ func TestHandlerComPrepareExecute(t *testing.T) {
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			sql.NewContext,
+			sql.NewNonEngineContext,
 			testSessionBuilder(pro),
 			sql.NoopTracer,
 			dbFunc,
@@ -515,7 +515,7 @@ func TestHandlerComPrepareExecuteWithPreparedDisabled(t *testing.T) {
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			sql.NewContext,
+			sql.NewNonEngineContext,
 			testSessionBuilder(pro),
 			sql.NoopTracer,
 			dbFunc,
@@ -660,7 +660,7 @@ func TestServerEventListener(t *testing.T) {
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			sql.NewContext,
+			sql.NewNonEngineContext,
 			func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, error) {
 				return sql.NewBaseSessionWithClientServer(addr, sql.Client{Capabilities: conn.Capabilities}, conn.ConnectionID), nil
 			},
@@ -743,7 +743,7 @@ func TestHandlerKill(t *testing.T) {
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			sql.NewContext,
+			sql.NewNonEngineContext,
 			func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, error) {
 				return sql.NewBaseSessionWithClientServer(addr, sql.Client{Capabilities: conn.Capabilities}, conn.ConnectionID), nil
 			},
@@ -803,7 +803,7 @@ func TestHandlerKillQuery(t *testing.T) {
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			sql.NewContext,
+			sql.NewNonEngineContext,
 			func(ctx context.Context, conn *mysql.Conn, addr string) (sql.Session, error) {
 				return sql.NewBaseSessionWithClientServer(addr, sql.Client{Capabilities: conn.Capabilities}, conn.ConnectionID), nil
 			},
@@ -1028,7 +1028,7 @@ func TestSchemaToFields(t *testing.T) {
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			sql.NewContext,
+			sql.NewNonEngineContext,
 			testSessionBuilder(pro),
 			sql.NoopTracer,
 			dbFunc,
@@ -1058,7 +1058,7 @@ func TestSchemaToFields(t *testing.T) {
 // here, instead of in string type unit tests, because of the dependency on system variables being loaded.
 func TestHandlerMaxTextResponseBytes(t *testing.T) {
 	session := sql.NewBaseSession()
-	ctx := sql.NewContext(
+	ctx := sql.NewNonEngineContext(
 		context.Background(),
 		sql.WithSession(session),
 	)
@@ -1110,7 +1110,7 @@ func TestHandlerTimeout(t *testing.T) {
 	timeOutHandler := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			sql.NewContext,
+			sql.NewNonEngineContext,
 			testSessionBuilder(pro),
 			sql.NoopTracer,
 			dbFunc,
@@ -1123,7 +1123,7 @@ func TestHandlerTimeout(t *testing.T) {
 	noTimeOutHandler := &Handler{
 		e: e2,
 		sm: NewSessionManager(
-			sql.NewContext,
+			sql.NewNonEngineContext,
 			testSessionBuilder(pro2),
 			sql.NoopTracer,
 			dbFunc2,
@@ -1178,7 +1178,7 @@ func TestOkClosedConnection(t *testing.T) {
 	h := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			sql.NewContext,
+			sql.NewNonEngineContext,
 			testSessionBuilder(pro),
 			sql.NoopTracer,
 			dbFunc,
@@ -1211,7 +1211,7 @@ func TestHandlerFoundRowsCapabilities(t *testing.T) {
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			sql.NewContext,
+			sql.NewNonEngineContext,
 			testSessionBuilder(pro),
 			sql.NoopTracer,
 			dbFunc,
@@ -1279,7 +1279,7 @@ func setupMemDB(require *require.Assertions) (*sqle.Engine, *memory.DbProvider) 
 	db := memory.NewDatabase("test")
 	pro := memory.NewDBProvider(db)
 	e := sqle.NewDefault(pro)
-	ctx := sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
+	ctx := sql.NewNonEngineContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), pro)))
 
 	tableTest := memory.NewTable(db, "test", sql.NewPrimaryKeySchema(sql.Schema{{Name: "c1", Type: types.Int32, Source: "test"}}), nil)
 	tableTest.EnablePrimaryKeyIndexes()
@@ -1422,7 +1422,7 @@ func TestStatusVariableQuestions(t *testing.T) {
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			sql.NewContext,
+			sql.NewNonEngineContext,
 			testSessionBuilder(pro),
 			sql.NoopTracer,
 			dbFunc,
@@ -1533,7 +1533,7 @@ func TestStatusVariableAbortedConnects(t *testing.T) {
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			sql.NewContext,
+			sql.NewNonEngineContext,
 			testSessionBuilder(pro),
 			sql.NoopTracer,
 			dbFunc,
@@ -1560,7 +1560,7 @@ func TestStatusVariableMaxUsedConnections(t *testing.T) {
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			sql.NewContext,
+			sql.NewNonEngineContext,
 			testSessionBuilder(pro),
 			sql.NoopTracer,
 			dbFunc,
@@ -1611,7 +1611,7 @@ func TestStatusVariableThreadsConnected(t *testing.T) {
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			sql.NewContext,
+			sql.NewNonEngineContext,
 			testSessionBuilder(pro),
 			sql.NoopTracer,
 			dbFunc,
@@ -1666,7 +1666,7 @@ func TestStatusVariableThreadsRunning(t *testing.T) {
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			sql.NewContext,
+			sql.NewNonEngineContext,
 			testSessionBuilder(pro),
 			sql.NoopTracer,
 			dbFunc,
@@ -1730,7 +1730,7 @@ func TestStatusVariableComSelect(t *testing.T) {
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			sql.NewContext,
+			sql.NewNonEngineContext,
 			testSessionBuilder(pro),
 			sql.NoopTracer,
 			dbFunc,
@@ -1780,7 +1780,7 @@ func TestStatusVariableComDelete(t *testing.T) {
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			sql.NewContext,
+			sql.NewNonEngineContext,
 			testSessionBuilder(pro),
 			sql.NoopTracer,
 			dbFunc,
@@ -1830,7 +1830,7 @@ func TestStatusVariableComInsert(t *testing.T) {
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			sql.NewContext,
+			sql.NewNonEngineContext,
 			testSessionBuilder(pro),
 			sql.NoopTracer,
 			dbFunc,
@@ -1880,7 +1880,7 @@ func TestStatusVariableComUpdate(t *testing.T) {
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			sql.NewContext,
+			sql.NewNonEngineContext,
 			testSessionBuilder(pro),
 			sql.NoopTracer,
 			dbFunc,
@@ -1930,7 +1930,7 @@ func TestLoggerFieldsSetup(t *testing.T) {
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			sql.NewContext,
+			sql.NewNonEngineContext,
 			testSessionBuilder(pro),
 			sql.NoopTracer,
 			dbFunc,
@@ -2005,7 +2005,7 @@ func TestHandlerNewConnectionProcessListInteractions(t *testing.T) {
 	handler := &Handler{
 		e: e,
 		sm: NewSessionManager(
-			sql.NewContext,
+			sql.NewNonEngineContext,
 			testSessionBuilder(pro),
 			sql.NoopTracer,
 			dbFunc,
