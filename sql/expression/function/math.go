@@ -268,6 +268,11 @@ func (*Tan) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, 
 	return sql.Collation_binary, 5
 }
 
+// IsNullable implements sql.Expression
+func (t *Tan) IsNullable() bool {
+	return true
+}
+
 // Eval implements sql.Expression
 func (t *Tan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	val, err := t.EvalChild(ctx, row)
@@ -325,6 +330,11 @@ func (*Asin) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID,
 	return sql.Collation_binary, 5
 }
 
+// IsNullable implements sql.Expression
+func (a *Asin) IsNullable() bool {
+	return true
+}
+
 // Eval implements sql.Expression
 func (a *Asin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	val, err := a.EvalChild(ctx, row)
@@ -380,6 +390,11 @@ func (a *Acos) Description() string {
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*Acos) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 5
+}
+
+// IsNullable implements sql.Expression
+func (a *Acos) IsNullable() bool {
+	return true
 }
 
 // Eval implements sql.Expression
@@ -557,6 +572,11 @@ func (c *Cot) Description() string {
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*Cot) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 5
+}
+
+// IsNullable implements sql.Expression
+func (c *Cot) IsNullable() bool {
+	return true
 }
 
 // Eval implements sql.Expression
@@ -989,6 +1009,11 @@ func (e *Exp) Type() sql.Type {
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (e *Exp) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 5
+}
+
+// IsNullable implements sql.Expression
+func (e *Exp) IsNullable() bool {
+	return true
 }
 
 // Eval implements the Expression interface.

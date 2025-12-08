@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"strconv"
 	"time"
 	"unicode"
 
@@ -66,8 +67,8 @@ var (
 	// datetimeMaxTime is the maximum representable time value, MYSQL: 9999-12-31 23:59:59.999999 (microseconds)
 	datetimeMaxTime = time.Date(9999, 12, 31, 23, 59, 59, 999999000, time.UTC)
 
-	// datetimeMinTime is the minimum representable time value, MYSQL: 0000-01-01 00:00:00.000000 (microseconds)
-	datetimeMinTime = time.Date(0000, 0, 0, 0, 0, 0, 0, time.UTC)
+	// datetimeMinTime is the minimum representable time value, MYSQL: 0000-00-00 00:00:00.000000 (microseconds)
+	datetimeMinTime = ZeroTime
 
 	DateOnlyLayouts = []string{
 		"2006-01-02",
@@ -98,13 +99,16 @@ var (
 		"20060102150405",
 	}, DateOnlyLayouts...)
 
-	// zeroTime is 0000-01-01 00:00:00 UTC which is the closest Go can get to 0000-00-00 00:00:00
-	zeroTime = time.Unix(-62167219200, 0).UTC()
+	// zeroTime is -0001-11-30 00:00:00 UTC which is the closest Go can get to 0000-00-00 00:00:00 without conflicting
+	// with a valid timestamp in MySQL
+	ZeroTime = time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC)
 
 	// Date is a date with day, month and year.
 	Date = MustCreateDatetimeType(sqltypes.Date, 0)
 	// Datetime is a date and a time with default precision (no fractional seconds).
 	Datetime = MustCreateDatetimeType(sqltypes.Datetime, 0)
+	// Datetime3 is a date and time with a precision of 3 (fractional seconds to 3 decimal places)
+	Datetime3 = MustCreateDatetimeType(sqltypes.Datetime, 3)
 	// DatetimeMaxPrecision is a date and a time with maximum precision
 	DatetimeMaxPrecision = MustCreateDatetimeType(sqltypes.Datetime, MaxDatetimePrecision)
 	// Timestamp is a UNIX timestamp with default precision (no fractional seconds).
@@ -222,8 +226,8 @@ func ConvertToTime(ctx context.Context, v interface{}, t datetimeType) (time.Tim
 		return time.Time{}, err
 	}
 
-	if res.Equal(zeroTime) {
-		return zeroTime, nil
+	if res.Equal(ZeroTime) {
+		return ZeroTime, nil
 	}
 
 	// Round the date to the precision of this type
@@ -275,13 +279,13 @@ func (t datetimeType) ConvertWithoutRangeCheck(ctx context.Context, v interface{
 	switch value := v.(type) {
 	case string:
 		if value == ZeroDateStr || value == ZeroTimestampDatetimeStr {
-			return zeroTime, nil
+			return ZeroTime, nil
 		}
 		// TODO: consider not using time.Parse if we want to match MySQL exactly ('2010-06-03 11:22.:.:.:.:' is a valid timestamp)
 		var parsed bool
 		res, parsed, err = parseDatetime(value)
 		if !parsed {
-			return zeroTime, ErrConvertingToTime.New(v)
+			return ZeroTime, ErrConvertingToTime.New(v)
 		}
 	case time.Time:
 		res = value.UTC()
@@ -289,84 +293,89 @@ func (t datetimeType) ConvertWithoutRangeCheck(ctx context.Context, v interface{
 	// is zero values, which are important when converting from postgres defaults.
 	case int:
 		if value == 0 {
-			return zeroTime, nil
+			return ZeroTime, nil
 		}
-		return zeroTime, ErrConvertingToTime.New(v)
+		return ZeroTime, ErrConvertingToTime.New(v)
 	case int8:
 		if value == 0 {
-			return zeroTime, nil
+			return ZeroTime, nil
 		}
-		return zeroTime, ErrConvertingToTime.New(v)
+		return ZeroTime, ErrConvertingToTime.New(v)
 	case int16:
 		if value == 0 {
-			return zeroTime, nil
+			return ZeroTime, nil
 		}
-		return zeroTime, ErrConvertingToTime.New(v)
+		return ZeroTime, ErrConvertingToTime.New(v)
 	case int32:
 		if value == 0 {
-			return zeroTime, nil
+			return ZeroTime, nil
 		}
-		return zeroTime, ErrConvertingToTime.New(v)
+		return ZeroTime, ErrConvertingToTime.New(v)
 	case int64:
 		if value == 0 {
-			return zeroTime, nil
+			return ZeroTime, nil
 		}
-		return zeroTime, ErrConvertingToTime.New(v)
+		return ZeroTime, ErrConvertingToTime.New(v)
 	case uint:
 		if value == 0 {
-			return zeroTime, nil
+			return ZeroTime, nil
 		}
-		return zeroTime, ErrConvertingToTime.New(v)
+		return ZeroTime, ErrConvertingToTime.New(v)
 	case uint8:
 		if value == 0 {
-			return zeroTime, nil
+			return ZeroTime, nil
 		}
-		return zeroTime, ErrConvertingToTime.New(v)
+		return ZeroTime, ErrConvertingToTime.New(v)
 	case uint16:
 		if value == 0 {
-			return zeroTime, nil
+			return ZeroTime, nil
 		}
-		return zeroTime, ErrConvertingToTime.New(v)
+		return ZeroTime, ErrConvertingToTime.New(v)
 	case uint32:
 		if value == 0 {
-			return zeroTime, nil
+			return ZeroTime, nil
 		}
-		return zeroTime, ErrConvertingToTime.New(v)
+		return ZeroTime, ErrConvertingToTime.New(v)
 	case uint64:
 		if value == 0 {
-			return zeroTime, nil
+			return ZeroTime, nil
 		}
-		return zeroTime, ErrConvertingToTime.New(v)
+		return ZeroTime, ErrConvertingToTime.New(v)
 	case float32:
 		if value == 0 {
-			return zeroTime, nil
+			return ZeroTime, nil
 		}
-		return zeroTime, ErrConvertingToTime.New(v)
+		return ZeroTime, ErrConvertingToTime.New(v)
 	case float64:
 		if value == 0 {
-			return zeroTime, nil
+			return ZeroTime, nil
 		}
-		return zeroTime, ErrConvertingToTime.New(v)
+		return ZeroTime, ErrConvertingToTime.New(v)
 	case decimal.Decimal:
 		if value.IsZero() {
-			return zeroTime, nil
+			return ZeroTime, nil
 		}
-		return zeroTime, ErrConvertingToTime.New(v)
+		return ZeroTime, ErrConvertingToTime.New(v)
 	case decimal.NullDecimal:
 		if value.Valid && value.Decimal.IsZero() {
-			return zeroTime, nil
+			return ZeroTime, nil
 		}
-		return zeroTime, ErrConvertingToTime.New(v)
+		return ZeroTime, ErrConvertingToTime.New(v)
 	case Timespan:
 		// when receiving TIME, MySQL fills in date with today
 		nowTimeStr := sql.Now().Format("2006-01-02")
 		nowTime, err := time.Parse("2006-01-02", nowTimeStr)
 		if err != nil {
-			return zeroTime, ErrConvertingToTime.New(v)
+			return ZeroTime, ErrConvertingToTime.New(v)
 		}
 		return nowTime.Add(value.AsTimeDuration()), nil
+	case bool:
+		if !value {
+			return ZeroTime, nil
+		}
+		return ZeroTime, ErrConvertingToTime.New(v)
 	default:
-		return zeroTime, sql.ErrConvertToSQL.New(value, t)
+		return ZeroTime, sql.ErrConvertToSQL.New(value, t)
 	}
 
 	if t.baseType == sqltypes.Date {
@@ -446,38 +455,24 @@ func (t datetimeType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 		return sqltypes.Value{}, err
 	}
 
-	var typ query.Type
-	var val []byte
-
 	switch t.baseType {
 	case sqltypes.Date:
-		typ = sqltypes.Date
-		if vt.Equal(zeroTime) {
-			val = vt.AppendFormat(dest, ZeroDateStr)
+		if vt.Equal(ZeroTime) {
+			dest = append(dest, ZeroDateStr...)
 		} else {
-			val = vt.AppendFormat(dest, sql.DateLayout)
+			dest = appendDateFormat(dest, vt)
 		}
-	case sqltypes.Datetime:
-		typ = sqltypes.Datetime
-		if vt.Equal(zeroTime) {
-			val = vt.AppendFormat(dest, ZeroTimestampDatetimeStr)
+	case sqltypes.Datetime, sqltypes.Timestamp:
+		if vt.Equal(ZeroTime) {
+			dest = append(dest, ZeroTimestampDatetimeStr...)
 		} else {
-			val = vt.AppendFormat(dest, sql.TimestampDatetimeLayout)
-		}
-	case sqltypes.Timestamp:
-		typ = sqltypes.Timestamp
-		if vt.Equal(zeroTime) {
-			val = vt.AppendFormat(dest, ZeroTimestampDatetimeStr)
-		} else {
-			val = vt.AppendFormat(dest, sql.TimestampDatetimeLayout)
+			dest = appendDatetimeFormat(dest, vt)
 		}
 	default:
 		return sqltypes.Value{}, sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime")
 	}
 
-	valBytes := val
-
-	return sqltypes.MakeTrusted(typ, valBytes), nil
+	return sqltypes.MakeTrusted(t.baseType, dest), nil
 }
 
 // SQLValue implements the ValueType interface.
@@ -485,18 +480,58 @@ func (t datetimeType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqlt
 	if v.IsNull() {
 		return sqltypes.NULL, nil
 	}
+
 	switch t.baseType {
 	case sqltypes.Date:
-		t := values.ReadDate(v.Val)
-		dest = t.AppendFormat(dest, sql.DateLayout)
+		vt := values.ReadDate(v.Val)
+		if vt.Equal(ZeroTime) {
+			dest = append(dest, ZeroDateStr...)
+		} else {
+			dest = appendDateFormat(dest, vt)
+		}
 	case sqltypes.Datetime, sqltypes.Timestamp:
 		x := values.ReadInt64(v.Val)
-		t := time.UnixMicro(x).UTC()
-		dest = t.AppendFormat(dest, sql.TimestampDatetimeLayout)
+		vt := time.UnixMicro(x).UTC()
+		if vt.Equal(ZeroTime) {
+			dest = append(dest, ZeroTimestampDatetimeStr...)
+		} else {
+			dest = appendDatetimeFormat(dest, vt)
+		}
 	default:
 		return sqltypes.Value{}, sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime")
 	}
 	return sqltypes.MakeTrusted(t.baseType, dest), nil
+}
+
+func appendDateFormat(dest []byte, t time.Time) []byte {
+	year := t.Year()
+	if year == 0 {
+		dest = append(dest, '0', '0', '0', '0')
+	} else {
+		dest = strconv.AppendInt(dest, int64(year), 10)
+	}
+	dest = append(dest, '-')
+
+	month := int64(t.Month())
+	if month < 10 {
+		dest = append(dest, '0')
+	}
+	dest = strconv.AppendInt(dest, month, 10)
+	dest = append(dest, '-')
+
+	day := int64(t.Day())
+	if day < 10 {
+		dest = append(dest, '0')
+	}
+	dest = strconv.AppendInt(dest, day, 10)
+	return dest
+}
+
+func appendDatetimeFormat(dest []byte, t time.Time) []byte {
+	dest = appendDateFormat(dest, t)
+	dest = append(dest, ' ')
+	dest = appendTimeFormat(dest, int64(t.Hour()), int64(t.Minute()), int64(t.Second()), int64(t.Nanosecond()/1000))
+	return dest
 }
 
 func (t datetimeType) String() string {
@@ -529,7 +564,7 @@ func (t datetimeType) ValueType() reflect.Type {
 }
 
 func (t datetimeType) Zero() interface{} {
-	return zeroTime
+	return ZeroTime
 }
 
 // CollationCoercibility implements sql.CollationCoercible interface.

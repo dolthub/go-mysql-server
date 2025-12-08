@@ -38,6 +38,7 @@ var _ sql.Expressioner = (*GroupBy)(nil)
 var _ sql.Node = (*GroupBy)(nil)
 var _ sql.Projector = (*GroupBy)(nil)
 var _ sql.CollationCoercible = (*GroupBy)(nil)
+var _ sql.Describable = (*GroupBy)(nil)
 
 // NewGroupBy creates a new GroupBy node. Like Project, GroupBy is a top-level node, and contains all the fields that
 // will appear in the output of the query. Some of these fields may be aggregate functions, some may be columns or
@@ -140,8 +141,8 @@ func (g *GroupBy) String() string {
 	}
 
 	_ = pr.WriteChildren(
-		fmt.Sprintf("SelectDeps(%s)", strings.Join(selectDeps, ", ")),
-		fmt.Sprintf("Grouping(%s)", strings.Join(grouping, ", ")),
+		fmt.Sprintf("select: %s", strings.Join(selectDeps, ", ")),
+		fmt.Sprintf("group: %s", strings.Join(grouping, ", ")),
 		g.Child.String(),
 	)
 	return pr.String()
@@ -165,6 +166,28 @@ func (g *GroupBy) DebugString() string {
 		fmt.Sprintf("select: %s", strings.Join(selectDeps, ", ")),
 		fmt.Sprintf("group: %s", strings.Join(grouping, ", ")),
 		sql.DebugString(g.Child),
+	)
+	return pr.String()
+}
+
+func (g *GroupBy) Describe(options sql.DescribeOptions) string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("GroupBy")
+
+	var selectDeps = make([]string, len(g.SelectDeps))
+	for i, e := range g.SelectDeps {
+		selectDeps[i] = sql.Describe(e, options)
+	}
+
+	var grouping = make([]string, len(g.GroupByExprs))
+	for i, g := range g.GroupByExprs {
+		grouping[i] = sql.Describe(g, options)
+	}
+
+	_ = pr.WriteChildren(
+		fmt.Sprintf("select: %s", strings.Join(selectDeps, ", ")),
+		fmt.Sprintf("group: %s", strings.Join(grouping, ", ")),
+		sql.Describe(g.Child, options),
 	)
 	return pr.String()
 }

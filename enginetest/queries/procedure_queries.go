@@ -2352,6 +2352,61 @@ end;
 			},
 		},
 	},
+	{
+		Name: "stored procedure with subquery set operations",
+		SetUpScript: []string{
+			`create procedure sub_intersect() select(select 1 intersect select 2);`,
+			`create procedure sub_except() select(select 1 except select 2);`,
+			`
+CREATE PROCEDURE test() 
+	WITH RECURSIVE 
+		data (str) AS (SELECT "test"), 
+		positions (pos, chr) AS (
+			SELECT 
+				1, 
+				LEFT(data.str,1) 
+			FROM 
+				data 
+			UNION ALL 
+			SELECT 
+				pos + 1, 
+				MID(data.str,pos+1,1) 
+			FROM 
+				positions 
+			CROSS JOIN 
+				data 
+			WHERE 
+				pos < LENGTH(data.str)
+		) 
+	SELECT 
+		pos, chr 
+	FROM 
+		positions;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "call sub_intersect();",
+				Expected: []sql.Row{
+					{nil},
+				},
+			},
+			{
+				Query: "call sub_except();",
+				Expected: []sql.Row{
+					{1},
+				},
+			},
+			{
+				Query: "call test();",
+				Expected: []sql.Row{
+					{1, "t"},
+					{2, "e"},
+					{3, "s"},
+					{4, "t"},
+				},
+			},
+		},
+	},
 }
 
 var ProcedureCallTests = []ScriptTest{
@@ -2586,6 +2641,31 @@ var ProcedureCallTests = []ScriptTest{
 			{
 				Query:    "CALL stan('quarantined')",
 				Expected: []sql.Row{{"stan's bar:quarantined"}},
+			},
+		},
+	},
+	{
+		Name: "Procedures with TimestampFuncExpr",
+		SetUpScript: []string{
+			`CREATE PROCEDURE after_2000(IN bday DATE) SELECT TIMESTAMPDIFF(YEAR, '2000-01-01', bday);`,
+			`CREATE PROCEDURE add_month(IN bday DATE) SELECT TIMESTAMPADD(MONTH, 1, bday);`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CALL after_2000('2001-09-11')",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "CALL after_2000('2025-01-01')",
+				Expected: []sql.Row{{25}},
+			},
+			{
+				Query:    "CALL add_month('2001-09-11')",
+				Expected: []sql.Row{{"2001-10-11 00:00:00"}},
+			},
+			{
+				Query:    "CALL add_month('2025-01-01')",
+				Expected: []sql.Row{{"2025-02-01 00:00:00"}},
 			},
 		},
 	},

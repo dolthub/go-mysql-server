@@ -147,26 +147,38 @@ var TableFunctionScriptTests = []ScriptTest{
 		Expected: []sql.Row{{0}, {1}, {2}, {3}, {4}},
 	},
 	{
+		Query:    "select x from sequence_table('x', 5) where exists (select y from sequence_table('y', 3) where x = y)",
+		Expected: []sql.Row{{0}, {1}, {2}},
+	},
+	{
+		Query:    "select * from sequence_table('x', 3) l join lateral (select * from sequence_table('y', l.x)) r",
+		Expected: []sql.Row{{1, 0}, {2, 0}, {2, 1}},
+	},
+	{
+		Query:    "select * from sequence_table('x', 3) l where exists (select * from sequence_table('y', l.x))",
+		Expected: []sql.Row{{1}, {2}},
+	},
+	{
 		Query:       "select not_seq.x from sequence_table('x', 5) as seq",
 		ExpectedErr: sql.ErrTableNotFound,
 	},
 	{
-		Query:           "select /*+ MERGE_JOIN(seq1,seq2) JOIN_ORDER(seq2,seq1) */ seq1.x, seq2.y from sequence_table('x', 5) seq1 join sequence_table('y', 5) seq2 on seq1.x = seq2.y",
+		Query:           "select /*+ MERGE_JOIN(seq1,seq2) JOIN_ORDER(seq2,seq1) */ seq1.x, seq2.y from lookup_sequence_table('x', 5) seq1 join lookup_sequence_table('y', 5) seq2 on seq1.x = seq2.y",
 		Expected:        []sql.Row{{0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}},
 		ExpectedIndexes: []string{"y", "x"},
 	},
 	{
-		Query:           "select /*+ LOOKUP_JOIN(seq1,seq2) JOIN_ORDER(seq2,seq1) */ seq1.x, seq2.y from sequence_table('x', 5) seq1 join sequence_table('y', 5) seq2 on seq1.x = seq2.y",
+		Query:           "select /*+ LOOKUP_JOIN(seq1,seq2) JOIN_ORDER(seq2,seq1) */ seq1.x, seq2.y from lookup_sequence_table('x', 5) seq1 join lookup_sequence_table('y', 5) seq2 on seq1.x = seq2.y",
 		Expected:        []sql.Row{{0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}},
 		ExpectedIndexes: []string{"x"},
 	},
 	{
-		Query:           "select /*+ MERGE_JOIN(seq1,seq2) JOIN_ORDER(seq2,seq1) */ * from sequence_table('x', 5) seq1 join sequence_table('y', 5) seq2 on x = 0",
+		Query:           "select /*+ MERGE_JOIN(seq1,seq2) JOIN_ORDER(seq2,seq1) */ * from lookup_sequence_table('x', 5) seq1 join lookup_sequence_table('y', 5) seq2 on x = 0",
 		Expected:        []sql.Row{{0, 0}, {0, 1}, {0, 2}, {0, 3}, {0, 4}},
 		ExpectedIndexes: []string{"x"},
 	},
 	{
-		Query:           "select /*+ LOOKUP_JOIN(seq1,seq2) */ * from sequence_table('x', 5) seq1 join sequence_table('y', 5) seq2 on x = 0",
+		Query:           "select /*+ LOOKUP_JOIN(seq1,seq2) */ * from lookup_sequence_table('x', 5) seq1 join lookup_sequence_table('y', 5) seq2 on x = 0",
 		Expected:        []sql.Row{{0, 0}, {0, 1}, {0, 2}, {0, 3}, {0, 4}},
 		ExpectedIndexes: []string{"x"},
 	},
@@ -187,14 +199,14 @@ var TableFunctionScriptTests = []ScriptTest{
 		Expected: []sql.Row{{0}, {1}, {2}, {3}, {4}},
 	},
 	{
-		Name:            "sequence_table allows point lookups",
-		Query:           "select * from sequence_table('x', 5) where x = 2",
+		Name:            "lookup_sequence_table allows point lookups",
+		Query:           "select * from lookup_sequence_table('x', 5) where x = 2",
 		Expected:        []sql.Row{{2}},
 		ExpectedIndexes: []string{"x"},
 	},
 	{
-		Name:            "sequence_table allows range lookups",
-		Query:           "select * from sequence_table('x', 5) where x >= 1 and x <= 3",
+		Name:            "lookup_sequence_table allows range lookups",
+		Query:           "select * from lookup_sequence_table('x', 5) where x >= 1 and x <= 3",
 		Expected:        []sql.Row{{1}, {2}, {3}},
 		ExpectedIndexes: []string{"x"},
 	},

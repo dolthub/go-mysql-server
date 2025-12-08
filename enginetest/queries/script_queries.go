@@ -123,6 +123,38 @@ type ScriptTestAssertion struct {
 // the tests.
 var ScriptTests = []ScriptTest{
 	{
+		// https://github.com/dolthub/dolt/issues/10113
+		Name: "DELETE with NOT EXISTS subquery",
+		SetUpScript: []string{
+			`CREATE TABLE IF NOT EXISTS student (
+				id BIGINT AUTO_INCREMENT,
+				name VARCHAR(50) NOT NULL,
+				PRIMARY KEY (id)
+			);`,
+			`CREATE TABLE IF NOT EXISTS student_hobby (
+				id BIGINT AUTO_INCREMENT,
+				student_id BIGINT NOT NULL,
+				hobby VARCHAR(50) NOT NULL,
+				PRIMARY KEY (id)
+			);`,
+			"INSERT INTO student (id, name) VALUES (1, 'test1');",
+			"INSERT INTO student (id, name) VALUES (2, 'test2');",
+			"INSERT INTO student_hobby (id, student_id, hobby) VALUES (1, 1, 'test1');",
+			"INSERT INTO student_hobby (id, student_id, hobby) VALUES (2, 2, 'test2');",
+			"INSERT INTO student_hobby (id, student_id, hobby) VALUES (3, 100, 'test3');",
+			"INSERT INTO student_hobby (id, student_id, hobby) VALUES (4, 100, 'test3');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "delete from student_hobby where not exists (select 1 from student where student.id = student_hobby.student_id);",
+			},
+			{
+				Query:    "SELECT * FROM student_hobby ORDER BY id;",
+				Expected: []sql.Row{{1, 1, "test1"}, {2, 2, "test2"}},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/9987
 		Name: "GROUP BY nil pointer dereference in Dispose when Next() never called",
 		SetUpScript: []string{
@@ -6175,10 +6207,10 @@ CREATE TABLE tab3 (
 						"0",
 						float64(0),
 						float64(0),
-						time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC),
+						time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC),
 						types.Timespan(0),
-						time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC),
-						time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC),
+						time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC),
+						time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC),
 						0,
 						"",
 						"",
@@ -13406,6 +13438,73 @@ select * from t1 except (
 			{
 				Query:    "select * from (select id, name, description, archived from t0 as test0 where (id in (select id from t0))) as dummy_alias order by dummy_alias.name asc;",
 				Expected: []sql.Row{{1, "first", "abc", 0}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/10064
+		Name: "Hoist out of scope filters for left and right sides of union",
+		SetUpScript: []string{
+			"create table t1(c0 int, c1 varchar(500))",
+			"insert into t1(c1, c0) values ('-1',1),('-2',2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// Ensures that out of scope filters are hoisted
+				Query: "SELECT * FROM t1 WHERE NOT EXISTS (SELECT 1 FROM (SELECT NULL WHERE FALSE) AS sub0 WHERE (t1.c0)*(t1.c0)) union all SELECT * FROM t1 WHERE NOT EXISTS (SELECT 1 FROM (SELECT NULL WHERE FALSE) AS sub0 WHERE (t1.c0)*(t1.c0));",
+				Expected: []sql.Row{
+					{1, "-1"},
+					{2, "-2"},
+					{1, "-1"},
+					{2, "-2"},
+				},
+			},
+			{
+				// Ensures that antijoin iterator works correctly
+				Query: "SELECT * FROM t1 WHERE NOT EXISTS (SELECT 1 FROM (SELECT NULL WHERE FALSE) AS sub0) union all SELECT * FROM t1 WHERE NOT EXISTS (SELECT 1 FROM (SELECT NULL WHERE FALSE) AS sub0);",
+				Expected: []sql.Row{
+					{1, "-1"},
+					{2, "-2"},
+					{1, "-1"},
+					{2, "-2"},
+				},
+			},
+		},
+	},
+	{
+		Name: "NOT EXISTS with nullable filter",
+		SetUpScript: []string{
+			"CREATE TABLE t0(c0 INT , c1 INT);",
+			"INSERT INTO t0(c0, c1) VALUES (1, -2);",
+			"create table t1(c0 int, primary key(c0))",
+			"insert into t1 values (1)",
+			"create table t2(c0 varchar(500), primary key(c0))",
+			"insert into t2 values ('9')",
+			"create table t3(c0 boolean, primary key(c0))",
+			"insert into t3 values(false)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// https://github.com/dolthub/dolt/issues/10070
+				Query:    `SELECT * FROM t0 WHERE NOT EXISTS (SELECT 1 FROM (SELECT 1) alias0 WHERE (CASE -1 WHEN t0.c1 THEN false END));`,
+				Expected: []sql.Row{{1, -2}},
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/10092
+				Query:    "select * from t1 where not exists (select 1 from (select 1) as subquery where weekday(t1.c0))",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/10102
+				Query:    "SELECT * FROM t2 WHERE NOT EXISTS (SELECT 1 FROM (SELECT 1) AS sub0 WHERE ASIN(t2.c0));",
+				Expected: []sql.Row{{"9"}},
+				// Postgres does not allow varchar types as inputs for ASIN
+				Dialect: "mysql",
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/10157
+				Query:    "SELECT * FROM t3 WHERE NOT EXISTS (SELECT 1 FROM (SELECT 1) AS sub0 WHERE LOG2(t3.c0));",
+				Expected: []sql.Row{{0}},
 			},
 		},
 	},

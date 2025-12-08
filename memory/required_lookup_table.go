@@ -18,7 +18,7 @@ var _ sql.IndexRequired = RequiredLookupTable{}
 
 // RequiredLookupTable is a table that will error if not executed as an index lookup
 type RequiredLookupTable struct {
-	IntSequenceTable
+	LookupSequenceTable
 	indexOk bool
 }
 
@@ -31,8 +31,8 @@ func (s RequiredLookupTable) UnderlyingTable() sql.Table {
 }
 
 func (s RequiredLookupTable) NewInstance(ctx *sql.Context, db sql.Database, args []sql.Expression) (sql.Node, error) {
-	node, err := s.IntSequenceTable.NewInstance(ctx, db, args)
-	return RequiredLookupTable{IntSequenceTable: node.(IntSequenceTable)}, err
+	node, err := s.LookupSequenceTable.NewInstance(ctx, db, args)
+	return RequiredLookupTable{LookupSequenceTable: node.(LookupSequenceTable)}, err
 }
 
 func (s RequiredLookupTable) String() string {
@@ -74,7 +74,7 @@ func (s RequiredLookupTable) Database() sql.Database {
 }
 
 func (s RequiredLookupTable) IndexedAccess(ctx *sql.Context, lookup sql.IndexLookup) sql.IndexedTable {
-	return RequiredLookupTable{indexOk: true, IntSequenceTable: s.IntSequenceTable}
+	return RequiredLookupTable{indexOk: true, LookupSequenceTable: s.LookupSequenceTable}
 }
 
 func (s RequiredLookupTable) RowIter(_ *sql.Context, _ sql.Row) (sql.RowIter, error) {
@@ -90,14 +90,14 @@ func (s RequiredLookupTable) Partitions(ctx *sql.Context) (sql.PartitionIter, er
 	if !s.indexOk {
 		return nil, fmt.Errorf("table requires index lookup")
 	}
-	return s.IntSequenceTable.Partitions(ctx)
+	return s.LookupSequenceTable.Partitions(ctx)
 }
 
 func (s RequiredLookupTable) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
 	if !s.indexOk {
 		return nil, fmt.Errorf("table requires index lookup")
 	}
-	return s.IntSequenceTable.PartitionRows(ctx, partition)
+	return s.LookupSequenceTable.PartitionRows(ctx, partition)
 }
 
 func (s RequiredLookupTable) GetIndexes(ctx *sql.Context) (indexes []sql.Index, err error) {

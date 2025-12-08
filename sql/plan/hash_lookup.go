@@ -60,6 +60,7 @@ type HashLookup struct {
 var _ sql.Node = (*HashLookup)(nil)
 var _ sql.Expressioner = (*HashLookup)(nil)
 var _ sql.CollationCoercible = (*HashLookup)(nil)
+var _ sql.Describable = (*HashLookup)(nil)
 
 func (n *HashLookup) Expressions() []sql.Expression {
 	return []sql.Expression{n.RightEntryKey, n.LeftProbeKey}
@@ -98,6 +99,17 @@ func (n *HashLookup) DebugString() string {
 	children[0] = fmt.Sprintf("left-key: %s", sql.DebugString(n.LeftProbeKey))
 	children[1] = fmt.Sprintf("right-key: %s", sql.DebugString(n.RightEntryKey))
 	children[2] = sql.DebugString(n.Child)
+	_ = pr.WriteChildren(children...)
+	return pr.String()
+}
+
+func (n *HashLookup) Describe(options sql.DescribeOptions) string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("HashLookup")
+	children := make([]string, 3)
+	children[0] = fmt.Sprintf("left-key: %s", sql.Describe(n.LeftProbeKey, options))
+	children[1] = fmt.Sprintf("right-key: %s", sql.Describe(n.RightEntryKey, options))
+	children[2] = sql.Describe(n.Child, options)
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }

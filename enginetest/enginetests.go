@@ -724,12 +724,12 @@ func TestQueryPlan(t *testing.T, harness Harness, e QueryEngine, tt queries.Quer
 		runTestWithDescribeOptions(t, tt.Query, tt.ExpectedPlan, sql.DescribeOptions{
 			Debug: true,
 		})
-		if tt.ExpectedEstimates != "" {
+		if tt.ExpectedEstimates != "" && tt.ExpectedEstimates != "skip" {
 			runTestWithDescribeOptions(t, tt.Query, tt.ExpectedEstimates, sql.DescribeOptions{
 				Estimates: true,
 			})
 		}
-		if tt.ExpectedAnalysis != "" {
+		if tt.ExpectedAnalysis != "" && tt.ExpectedAnalysis != "skip" {
 			runTestWithDescribeOptions(t, tt.Query, tt.ExpectedAnalysis, sql.DescribeOptions{
 				Estimates: true,
 				Analyze:   true,

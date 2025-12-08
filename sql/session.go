@@ -131,14 +131,8 @@ type Session interface {
 	DelLock(lockName string) error
 	// IterLocks iterates through all locks owned by this user
 	IterLocks(cb func(name string) error) error
-	// SetLastQueryInfoInt sets session-level query info for the key given, applying to the query just executed.
-	SetLastQueryInfoInt(key string, value int64)
-	// GetLastQueryInfoInt returns the session-level query info for the key given, for the query most recently executed.
-	GetLastQueryInfoInt(key string) int64
-	// SetLastQueryInfoString sets session-level query info as a string for the key given, applying to the query just executed.
-	SetLastQueryInfoString(key string, value string)
-	// GetLastQueryInfoString returns the session-level query info as a string for the key given, for the query most recently executed.
-	GetLastQueryInfoString(key string) string
+	// GetLastQueryInfo returns session-level info for the most recently executed query.
+	GetLastQueryInfo() *LastQueryInfo
 	// GetTransaction returns the active transaction, if any
 	GetTransaction() Transaction
 	// SetTransaction sets the session's transaction
@@ -253,12 +247,21 @@ type (
 	}
 )
 
-const (
-	RowCount       = "row_count"
-	FoundRows      = "found_rows"
-	LastInsertId   = "last_insert_id"
-	LastInsertUuid = "last_insert_uuid"
-)
+type LastQueryInfo struct {
+	RowCount       atomic.Int64 // Session-level Row Count for the last executed query
+	FoundRows      atomic.Int64 // Session-level Found Rows for the last executed query
+	LastInsertId   atomic.Int64 // Session-level ID for the last executed insert query
+	LastInsertUUID atomic.Value // Session-level UUID for the last executed insert query
+}
+
+func defaultLastQueryInfo() *LastQueryInfo {
+	ret := LastQueryInfo{}
+	ret.RowCount.Store(0)
+	ret.FoundRows.Store(1) // this is kind of a hack -- it handles the case of `select found_rows()` before any select statement is issued
+	ret.LastInsertId.Store(0)
+	ret.LastInsertUUID.Store("")
+	return &ret
+}
 
 // Session ID 0 used as invalid SessionID
 var autoSessionIDs uint32 = 1
@@ -701,19 +704,6 @@ func (i *spanIter) Close(ctx *Context) error {
 		i.finish()
 	}
 	return i.iter.Close(ctx)
-}
-
-func defaultLastQueryInfo() map[string]*atomic.Value {
-	ret := make(map[string]*atomic.Value)
-	ret[RowCount] = &atomic.Value{}
-	ret[RowCount].Store(int64(0))
-	ret[FoundRows] = &atomic.Value{}
-	ret[FoundRows].Store(int64(1)) // this is kind of a hack -- it handles the case of `select found_rows()` before any select statement is issue)
-	ret[LastInsertId] = &atomic.Value{}
-	ret[LastInsertId].Store(int64(0))
-	ret[LastInsertUuid] = &atomic.Value{}
-	ret[LastInsertUuid].Store("")
-	return ret
 }
 
 // cc: https://dev.mysql.com/doc/refman/8.0/en/temporary-files.html

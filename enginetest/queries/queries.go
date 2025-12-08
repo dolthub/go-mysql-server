@@ -8179,6 +8179,12 @@ ORDER BY 1;`,
 		},
 	},
 	{
+		Query: "SELECT * FROM xy JOIN LATERAL (SELECT * FROM uv WHERE xy.x+1 = uv.u) uv2",
+		Expected: []sql.Row{
+			{0, 2, 1, 1}, {1, 0, 2, 2}, {2, 1, 3, 2},
+		},
+	},
+	{
 		Query: `
 select * from mytable,
 	lateral (
@@ -8344,13 +8350,6 @@ from typestable`,
 				nil,
 				nil,
 			},
-		},
-	},
-	{
-		// TODO: This goes past MySQL's range
-		Query: "select dayname('0000-00-00')",
-		Expected: []sql.Row{
-			{"Saturday"},
 		},
 	},
 	{

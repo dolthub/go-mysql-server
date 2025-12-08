@@ -13,20 +13,13 @@ import (
 var _ sql.TableFunction = IntSequenceTable{}
 var _ sql.CollationCoercible = IntSequenceTable{}
 var _ sql.ExecSourceRel = IntSequenceTable{}
-var _ sql.IndexAddressable = IntSequenceTable{}
-var _ sql.IndexedTable = IntSequenceTable{}
-var _ sql.TableNode = IntSequenceTable{}
 
 // IntSequenceTable a simple table function that returns a sequence
 // of integers.
 type IntSequenceTable struct {
 	db   sql.Database
 	name string
-	Len  int64
-}
-
-func (s IntSequenceTable) UnderlyingTable() sql.Table {
-	return s
+	Len  sql.Expression
 }
 
 func (s IntSequenceTable) NewInstance(ctx *sql.Context, db sql.Database, args []sql.Expression) (sql.Node, error) {
@@ -41,15 +34,11 @@ func (s IntSequenceTable) NewInstance(ctx *sql.Context, db sql.Database, args []
 	if !ok {
 		return nil, fmt.Errorf("sequence table expects 1st argument to be column name")
 	}
-	lenExp, ok := args[1].(*expression.Literal)
-	if !ok {
-		return nil, fmt.Errorf("sequence table expects arguments to be literal expressions")
+	lenExp := args[1]
+	if !sql.IsNumberType(lenExp.Type()) {
+		return nil, fmt.Errorf("sequence table expects length argument to be a number")
 	}
-	length, _, err := types.Int64.Convert(ctx, lenExp.Value())
-	if !ok {
-		return nil, fmt.Errorf("%w; sequence table expects 2nd argument to be a sequence length integer", err)
-	}
-	return IntSequenceTable{db: db, name: name, Len: length.(int64)}, nil
+	return IntSequenceTable{db: db, name: name, Len: lenExp}, nil
 }
 
 func (s IntSequenceTable) Resolved() bool {
@@ -92,8 +81,20 @@ func (s IntSequenceTable) Children() []sql.Node {
 	return []sql.Node{}
 }
 
-func (s IntSequenceTable) RowIter(_ *sql.Context, _ sql.Row) (sql.RowIter, error) {
-	rowIter := &SequenceTableFnRowIter{i: 0, n: s.Len}
+func (s IntSequenceTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
+	iterLen, err := s.Len.Eval(ctx, row)
+	if err != nil {
+		return nil, err
+	}
+	iterLenVal, ok, err := types.Int64.Convert(ctx, iterLen)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, fmt.Errorf("sequence table expects integer argument")
+	}
+
+	rowIter := &SequenceTableFnRowIter{i: 0, n: iterLenVal.(int64)}
 	return rowIter, nil
 }
 
@@ -112,11 +113,16 @@ func (IntSequenceTable) Collation() sql.CollationID {
 }
 
 func (s IntSequenceTable) Expressions() []sql.Expression {
-	return []sql.Expression{}
+	return []sql.Expression{s.Len}
 }
 
 func (s IntSequenceTable) WithExpressions(e ...sql.Expression) (sql.Node, error) {
-	return s, nil
+	if len(e) != 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(s, len(e), 1)
+	}
+	newSequenceTable := s
+	newSequenceTable.Len = e[0]
+	return newSequenceTable, nil
 }
 
 func (s IntSequenceTable) Database() sql.Database {
@@ -163,80 +169,4 @@ type sequencePartition struct {
 
 func (s sequencePartition) Key() []byte {
 	return binary.LittleEndian.AppendUint64(binary.LittleEndian.AppendUint64(nil, uint64(s.min)), uint64(s.max))
-}
-
-// Partitions is a sql.Table interface function that returns a partition of the data. This data has a single partition.
-func (s IntSequenceTable) Partitions(ctx *sql.Context) (sql.PartitionIter, error) {
-	return sql.PartitionsToPartitionIter(&sequencePartition{min: 0, max: int64(s.Len) - 1}), nil
-}
-
-// PartitionRows is a sql.Table interface function that takes a partition and returns all rows in that partition.
-// This table has a partition for just schema changes, one for just data changes, and one for both.
-func (s IntSequenceTable) PartitionRows(ctx *sql.Context, partition sql.Partition) (sql.RowIter, error) {
-	sp, ok := partition.(*sequencePartition)
-	if !ok {
-		return &SequenceTableFnRowIter{i: 0, n: s.Len}, nil
-	}
-	min := int64(0)
-	if sp.min > min {
-		min = sp.min
-	}
-	max := int64(s.Len) - 1
-	if sp.max < max {
-		max = sp.max
-	}
-
-	return &SequenceTableFnRowIter{i: min, n: max + 1}, nil
-}
-
-// LookupPartitions is a sql.IndexedTable interface function that takes an index lookup and returns the set of corresponding partitions.
-func (s IntSequenceTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup) (sql.PartitionIter, error) {
-	lowerBound := lookup.Ranges.(sql.MySQLRangeCollection)[0][0].LowerBound
-	below, ok := lowerBound.(sql.Below)
-	if !ok {
-		return s.Partitions(ctx)
-	}
-	upperBound := lookup.Ranges.(sql.MySQLRangeCollection)[0][0].UpperBound
-	above, ok := upperBound.(sql.Above)
-	if !ok {
-		return s.Partitions(ctx)
-	}
-	min, _, err := s.Schema()[0].Type.Convert(ctx, below.Key)
-	if err != nil {
-		return nil, err
-	}
-	max, _, err := s.Schema()[0].Type.Convert(ctx, above.Key)
-	if err != nil {
-		return nil, err
-	}
-	return sql.PartitionsToPartitionIter(&sequencePartition{min: min.(int64), max: max.(int64)}), nil
-}
-
-func (s IntSequenceTable) IndexedAccess(ctx *sql.Context, lookup sql.IndexLookup) sql.IndexedTable {
-	return s
-}
-
-func (s IntSequenceTable) PreciseMatch() bool {
-	return true
-}
-
-func (s IntSequenceTable) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
-	return []sql.Index{
-		&Index{
-			DB:         s.db.Name(),
-			DriverName: "",
-			Tbl:        nil,
-			TableName:  s.Name(),
-			Exprs: []sql.Expression{
-				expression.NewGetFieldWithTable(0, 0, types.Int64, s.db.Name(), s.Name(), s.name, false),
-			},
-			Name:         s.name,
-			Unique:       true,
-			Spatial:      false,
-			Fulltext:     false,
-			CommentStr:   "",
-			PrefixLens:   nil,
-			fulltextInfo: fulltextInfo{},
-		},
-	}, nil
 }

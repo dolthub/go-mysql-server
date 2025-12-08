@@ -1104,7 +1104,7 @@ var systemVars = map[string]sql.SystemVariable{
 	// Lowest value allowed by MySQL, which is 1. If you attempt to set this value to anything other than 1, errors ensue.
 	"innodb_lock_wait_timeout": &sql.MysqlSystemVariable{
 		Name:              "innodb_lock_wait_timeout",
-		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Global),
+		Scope:             sql.GetMysqlScope(sql.SystemVariableScope_Both),
 		Dynamic:           true,
 		SetVarHintApplies: false,
 		Type:              types.NewSystemIntType("innodb_lock_wait_timeout", 1, 1, false),

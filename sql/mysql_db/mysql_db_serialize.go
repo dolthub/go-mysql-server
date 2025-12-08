@@ -172,6 +172,10 @@ func serializeUser(b *flatbuffers.Builder, users []*User) flatbuffers.UOffsetT {
 		authString := b.CreateString(user.AuthString)
 		attributes := serializeAttributes(b, user.Attributes)
 		identity := b.CreateString(user.Identity)
+		sslType := b.CreateString(user.SslType)
+		sslCipher := b.CreateString(user.SslCipher)
+		x509Issuer := b.CreateString(user.X509Issuer)
+		x509Subject := b.CreateString(user.X509Subject)
 
 		serial.UserStart(b)
 		serial.UserAddUser(b, userName)
@@ -183,6 +187,10 @@ func serializeUser(b *flatbuffers.Builder, users []*User) flatbuffers.UOffsetT {
 		serial.UserAddLocked(b, user.Locked)
 		serial.UserAddAttributes(b, attributes)
 		serial.UserAddIdentity(b, identity)
+		serial.UserAddSslType(b, sslType)
+		serial.UserAddSslCipher(b, sslCipher)
+		serial.UserAddX509Issuer(b, x509Issuer)
+		serial.UserAddX509Subject(b, x509Subject)
 
 		offsets[len(users)-i-1] = serial.UserEnd(b) // reverse order
 	}

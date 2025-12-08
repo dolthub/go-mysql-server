@@ -1997,3 +1997,66 @@ func (h *testHook) Fire(entry *logrus.Entry) error {
 	}
 	return nil
 }
+
+func TestHandlerNewConnectionProcessListInteractions(t *testing.T) {
+	e, pro := setupMemDB(require.New(t))
+	dbFunc := pro.Database
+
+	handler := &Handler{
+		e: e,
+		sm: NewSessionManager(
+			sql.NewContext,
+			testSessionBuilder(pro),
+			sql.NoopTracer,
+			dbFunc,
+			sql.NewMemoryManager(nil),
+			sqle.NewProcessList(),
+			"foo",
+		),
+		readTimeout: time.Second,
+	}
+
+	// Process List starts empty.
+	procs := handler.sm.processlist.Processes()
+	assert.Len(t, procs, 0)
+
+	// A new connection is in Connect state and shows "unauthenticated user" as the user.
+	abortedConn := newConn(1)
+	handler.NewConnection(abortedConn)
+	procs = handler.sm.processlist.Processes()
+	if assert.Len(t, procs, 1) {
+		assert.Equal(t, "unauthenticated user", procs[0].User)
+		assert.Equal(t, sql.ProcessCommandConnect, procs[0].Command)
+	}
+
+	// The connection being aborted does not effect the process list.
+	handler.ConnectionAborted(abortedConn, "")
+	procs = handler.sm.processlist.Processes()
+	assert.Len(t, procs, 1)
+
+	// After the ConnectionAborted called, the ConnectionClosed callback does
+	// remove the connection from the processlist.
+	handler.ConnectionClosed(abortedConn)
+	procs = handler.sm.processlist.Processes()
+	assert.Len(t, procs, 0)
+
+	// A new connection gets updated with the authenticated user
+	// and command Sleep when ConnectionAuthenticated is called.
+	authenticatedConn := newConn(2)
+	handler.NewConnection(authenticatedConn)
+	authenticatedConn.User = "authenticated_user"
+	handler.ConnectionAuthenticated(authenticatedConn)
+	procs = handler.sm.processlist.Processes()
+	if assert.Len(t, procs, 1) {
+		assert.Equal(t, "authenticated_user", procs[0].User)
+		assert.Equal(t, sql.ProcessCommandSleep, procs[0].Command)
+		assert.Equal(t, "", procs[0].Database)
+	}
+
+	// After ComInitDB, the selected database is also reflected.
+	handler.ComInitDB(authenticatedConn, "test")
+	procs = handler.sm.processlist.Processes()
+	if assert.Len(t, procs, 1) {
+		assert.Equal(t, "test", procs[0].Database)
+	}
+}

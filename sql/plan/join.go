@@ -532,6 +532,10 @@ func NewCrossJoin(left, right sql.Node) *JoinNode {
 	return NewJoin(left, right, JoinTypeCross, nil)
 }
 
+func NewLateralCrossJoin(left, right sql.Node) *JoinNode {
+	return NewJoin(left, right, JoinTypeLateralCross, nil)
+}
+
 // NaturalJoin is a join that automatically joins by all the columns with the
 // same name.
 // NaturalJoin is a placeholder node, it should be transformed into an INNER

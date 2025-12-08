@@ -354,11 +354,12 @@ func (i *TrackedRowIter) GetIter() sql.RowIter {
 }
 
 func (i *TrackedRowIter) updateSessionVars(ctx *sql.Context) {
+	// TODO: possible to just remove switch entirely?
 	switch i.QueryType {
 	case QueryTypeSelect:
-		ctx.SetLastQueryInfoInt(sql.RowCount, -1)
+		ctx.GetLastQueryInfo().RowCount.Store(-1)
 	case QueryTypeDdl:
-		ctx.SetLastQueryInfoInt(sql.RowCount, 0)
+		ctx.GetLastQueryInfo().RowCount.Store(0)
 	case QueryTypeUpdate:
 		// This is handled by RowUpdateAccumulator
 	default:
@@ -366,7 +367,7 @@ func (i *TrackedRowIter) updateSessionVars(ctx *sql.Context) {
 	}
 
 	if i.ShouldSetFoundRows {
-		ctx.SetLastQueryInfoInt(sql.FoundRows, i.numRows)
+		ctx.GetLastQueryInfo().FoundRows.Store(i.numRows)
 	}
 }
 

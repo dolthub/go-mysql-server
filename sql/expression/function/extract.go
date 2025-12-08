@@ -54,6 +54,11 @@ func (td *Extract) Description() string {
 // Type implements the Expression interface.
 func (td *Extract) Type() sql.Type { return types.Int64 }
 
+// IsNullable implements the Expression interface
+func (td *Extract) IsNullable() bool {
+	return true
+}
+
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*Extract) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 5
@@ -114,7 +119,7 @@ func (td *Extract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	switch unit {
 	case "DAY":
-		return dateTime.Day(), nil
+		return day(dateTime), nil
 	case "HOUR":
 		return dateTime.Hour(), nil
 	case "MINUTE":
@@ -124,57 +129,66 @@ func (td *Extract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	case "MICROSECOND":
 		return dateTime.Nanosecond() / 1000, nil
 	case "QUARTER":
-		return (int(dateTime.Month())-1)/3 + 1, nil
+		return quarter(dateTime), nil
 	case "MONTH":
-		return int(dateTime.Month()), nil
+		return month(dateTime), nil
 	case "WEEK":
-		date, err := getDate(ctx, expression.UnaryExpression{Child: td.RightChild}, row)
-		if err != nil {
-			return nil, err
-		}
-		yyyy, ok := year(date).(int32)
+		yyyy, ok := year(dateTime).(int)
 		if !ok {
 			return nil, sql.ErrInvalidArgumentDetails.New("WEEK", "invalid year")
 		}
-		mm, ok := month(date).(int32)
+		mm, ok := month(dateTime).(int)
 		if !ok {
 			return nil, sql.ErrInvalidArgumentDetails.New("WEEK", "invalid month")
 		}
-		dd, ok := day(date).(int32)
+		dd, ok := day(dateTime).(int)
 		if !ok {
 			return nil, sql.ErrInvalidArgumentDetails.New("WEEK", "invalid day")
 		}
-		yearForWeek, week := calcWeek(yyyy, mm, dd, weekBehaviourYear)
-		if yearForWeek < yyyy {
+		yr := int32(yyyy)
+		yearForWeek, week := calcWeek(yr, int32(mm), int32(dd), weekBehaviourYear)
+		if yearForWeek < yr {
 			week = 0
-		} else if yearForWeek > yyyy {
+		} else if yearForWeek > yr {
 			week = 53
 		}
 		return int(week), nil
 	case "YEAR":
-		return dateTime.Year(), nil
+		return year(dateTime), nil
 	case "DAY_HOUR":
-		dd := dateTime.Day() * 1_00
+		dd, ok := day(dateTime).(int)
+		if !ok {
+			return nil, sql.ErrInvalidArgumentDetails.New("DAY_HOUR", "invalid day")
+		}
 		hh := dateTime.Hour()
-		return dd + hh, nil
+		return (dd * 1_00) + hh, nil
 	case "DAY_MINUTE":
-		dd := dateTime.Day() * 1_00_00
+		dd, ok := day(dateTime).(int)
+		if !ok {
+			return nil, sql.ErrInvalidArgumentDetails.New("DAY_MINUTE", "invalid day")
+		}
 		hh := dateTime.Hour() * 1_00
 		mm := dateTime.Minute()
-		return dd + hh + mm, nil
+		return (dd * 1_00_00) + hh + mm, nil
 	case "DAY_SECOND":
-		dd := dateTime.Day() * 1_00_00_00
+		dd, ok := day(dateTime).(int)
+		if !ok {
+			return nil, sql.ErrInvalidArgumentDetails.New("DAY_SECOND", "invalid day")
+		}
 		hh := dateTime.Hour() * 1_00_00
 		mm := dateTime.Minute() * 1_00
 		ss := dateTime.Second()
-		return dd + hh + mm + ss, nil
+		return (dd * 1_00_00_00) + hh + mm + ss, nil
 	case "DAY_MICROSECOND":
-		dd := dateTime.Day() * 1_00_00_00_000000
+		dd, ok := day(dateTime).(int)
+		if !ok {
+			return nil, sql.ErrInvalidArgumentDetails.New("DAY_MICROSECOND", "invalid day")
+		}
 		hh := dateTime.Hour() * 1_00_00_000000
 		mm := dateTime.Minute() * 1_00_000000
 		ss := dateTime.Second() * 1_000000
 		mmmmmm := dateTime.Nanosecond() / 1000
-		return dd + hh + mm + ss + mmmmmm, nil
+		return (dd * 1_00_00_00_000000) + hh + mm + ss + mmmmmm, nil
 	case "HOUR_MINUTE":
 		hh := dateTime.Hour() * 1_00
 		mm := dateTime.Minute()
@@ -204,10 +218,15 @@ func (td *Extract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		mmmmmm := dateTime.Nanosecond() / 1000
 		return ss + mmmmmm, nil
 	case "YEAR_MONTH":
-		yyyy := dateTime.Year() * 1_00
-		dateTime.Month()
-		mm := int(dateTime.Month())
-		return yyyy + mm, nil
+		yyyy, ok := year(dateTime).(int)
+		if !ok {
+			return nil, sql.ErrInvalidArgumentDetails.New("YEAR_MONTH", "invalid year")
+		}
+		mm, ok := month(dateTime).(int)
+		if !ok {
+			return nil, sql.ErrInvalidArgumentDetails.New("YEAR_MONTH", "invalid month")
+		}
+		return (yyyy * 1_00) + mm, nil
 	default:
 		return nil, fmt.Errorf("invalid time unit")
 	}

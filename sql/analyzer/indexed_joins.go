@@ -687,7 +687,10 @@ func addRightSemiJoins(ctx *sql.Context, m *memo.Memo) error {
 		switch n := leftTab.(type) {
 		case *plan.TableAlias:
 			aliasName = n.Name()
-			leftRt = n.Child.(sql.TableNode)
+			leftRt, ok = n.Child.(sql.TableNode)
+			if !ok {
+				return nil
+			}
 		case sql.TableNode:
 			leftRt = n
 		}

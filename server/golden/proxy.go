@@ -167,6 +167,10 @@ func (h MySqlProxy) ConnectionClosed(c *mysql.Conn) {
 	delete(h.conns, c.ConnectionID)
 }
 
+func (h MySqlProxy) ConnectionAuthenticated(c *mysql.Conn) error {
+	return nil
+}
+
 // ConnectionAborted implements mysql.Handler.
 func (h MySqlProxy) ConnectionAborted(c *mysql.Conn, reason string) error {
 	return nil
