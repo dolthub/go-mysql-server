@@ -294,7 +294,7 @@ func buildReverseIndexedTable(ctx *sql.Context, node sql.Node) (sql.Node, transf
 			if !inRange {
 				return n, transform.SameTree, nil
 			}
-			
+
 			// if the index is not reversible, do nothing
 			if ordIdx, isOrdIdx := lookup.Index.(sql.OrderedIndex); !isOrdIdx || !ordIdx.Reversible() || ordIdx.Order() == sql.IndexOrderNone {
 				return n, transform.SameTree, nil
