@@ -441,7 +441,6 @@ func TestIntegrationQueryPlans(t *testing.T) {
 }
 
 func TestImdbQueryPlans(t *testing.T) {
-	t.Skip("tests are too slow")
 	indexBehaviors := []*indexBehaviorTestParams{
 		{"nativeIndexes", nil, true},
 	}
