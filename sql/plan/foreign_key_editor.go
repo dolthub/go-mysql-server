@@ -741,10 +741,10 @@ type ForeignKeyTypeConversionFn func(ctx *sql.Context, val any) (sql.Type, any, 
 // type in the corresponding table. Specify the schema of both child and parent tables, as well as whether the
 // transformation is from child to parent or vice versa.
 func GetForeignKeyTypeConversions(
-	parentSch sql.Schema,
-	childSch sql.Schema,
-	fkDef sql.ForeignKeyConstraint,
-	direction ForeignKeyTypeConversionDirection,
+		parentSch sql.Schema,
+		childSch sql.Schema,
+		fkDef sql.ForeignKeyConstraint,
+		direction ForeignKeyTypeConversionDirection,
 ) ([]ForeignKeyTypeConversionFn, error) {
 	var convFns []ForeignKeyTypeConversionFn
 
@@ -787,7 +787,10 @@ func GetForeignKeyTypeConversions(
 				convFns = make([]ForeignKeyTypeConversionFn, len(childSch))
 			}
 			convFns[childIndex] = func(ctx *sql.Context, val any) (sql.Type, any, error) {
-				convertedVal, _, err := toType.ConvertToType(ctx, fromType, val)
+				convertedVal, inRange, err := toType.ConvertToType(ctx, fromType, val)
+				if !inRange {
+					return toType, nil, sql.ErrValueOutOfRange.New(val, toType)
+				}
 				return toType, convertedVal, err
 			}
 		}
