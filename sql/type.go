@@ -281,7 +281,7 @@ type DecimalType interface {
 	// noting that Convert() returns a nil value for nil inputs, and also returns decimal.Decimal rather than
 	// decimal.NullDecimal.
 	ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, error)
-	//ConvertNoBoundsCheck normalizes an interface{} to a decimal type without performing expensive bound checks
+	// ConvertNoBoundsCheck normalizes an interface{} to a decimal type without performing expensive bound checks
 	ConvertNoBoundsCheck(v interface{}) (decimal.Decimal, error)
 	// BoundsCheck rounds and validates a decimal, returning the decimal,
 	// whether the value was out of range, and an error.
@@ -343,7 +343,7 @@ type ExtendedType interface {
 	MaxSerializedWidth() ExtendedTypeSerializedWidth
 	// ConvertToType converts the given value of the given type to this type, or returns an error if
 	// no conversion is possible.
-	ConvertToType(ctx *Context, typ ExtendedType, val any) (any, error)
+	ConvertToType(ctx *Context, typ ExtendedType, val any) (any, ConvertInRange, error)
 }
 
 type ExtendedTypeSerializedWidth uint8
