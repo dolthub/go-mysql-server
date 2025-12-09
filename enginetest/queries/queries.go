@@ -9825,6 +9825,10 @@ var ErrorQueries = []QueryErrorTest{
 		ExpectedErr: sql.ErrFunctionNotFound,
 	},
 	{
+		Query:       "select normal_dist();",
+		ExpectedErr: sql.ErrTableFunctionNotInFrom,
+	},
+	{
 		Query:       "select * from mytable where (i = 1, i = 0 or i = 2) and (i > -1)",
 		ExpectedErr: sql.ErrInvalidOperandColumns,
 	},

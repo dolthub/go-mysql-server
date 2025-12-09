@@ -17,6 +17,7 @@ package enginetest
 import (
 	"context"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/memory"
 	"strconv"
 	"strings"
 	"testing"
@@ -1363,6 +1364,13 @@ func runQueryErrorTest(t *testing.T, h Harness, tt queries.QueryErrorTest) {
 			}
 		}
 		e := mustNewEngine(t, h)
+		tfp, ok := e.EngineAnalyzer().Catalog.DbProvider.(sql.TableFunctionProvider)
+		if !ok {
+			return
+		}
+		newPro, err := tfp.WithTableFunctions(memory.NormalDistTable{})
+		require.NoError(t, err)
+		e.EngineAnalyzer().Catalog.DbProvider = newPro.(sql.DatabaseProvider)
 		defer e.Close()
 		if tt.ExpectedErrStr == "" {
 			AssertErr(t, e, h, tt.Query, nil, tt.ExpectedErr)
