@@ -28,9 +28,11 @@ func (b *BaseBuilder) buildNodeExec(ctx *sql.Context, n sql.Node, row sql.Row) (
 	var err error
 	if b.override != nil {
 		iter, err = b.override.Build(ctx, n, row)
-	}
-	if err != nil {
-		return nil, err
+		if err != nil {
+			// If the override fails, fall back to the default builder
+			iter = nil
+			err = nil
+		}
 	}
 	if iter == nil {
 		iter, err = b.buildNodeExecNoAnalyze(ctx, n, row)
