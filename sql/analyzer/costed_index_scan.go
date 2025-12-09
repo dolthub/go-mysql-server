@@ -126,7 +126,16 @@ func indexSearchableLookup(ctx *sql.Context, n sql.Node, rt sql.TableNode, looku
 
 var SplitConjunction func(expr sql.Expression) []sql.Expression = expression.SplitConjunction
 
-func costedIndexLookup(ctx *sql.Context, n sql.Node, a *Analyzer, iat sql.IndexAddressableTable, rt sql.TableNode, aliasName string, oldFilter sql.Expression, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
+func costedIndexLookup(
+	ctx *sql.Context,
+	n sql.Node,
+	a *Analyzer,
+	iat sql.IndexAddressableTable,
+	rt sql.TableNode,
+	aliasName string,
+	oldFilter sql.Expression,
+	qFlags *sql.QueryFlags,
+) (sql.Node, transform.TreeIdentity, error) {
 	indexes, err := iat.GetIndexes(ctx)
 	if err != nil {
 		return n, transform.SameTree, err

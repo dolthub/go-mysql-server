@@ -12718,7 +12718,6 @@ where
 				Query:    "select * from ti8 where i <= -999;",
 				Expected: []sql.Row{},
 			},
-
 			{
 				Query: "select * from ti8 where i in (0, 999);",
 				Expected: []sql.Row{
@@ -12747,6 +12746,466 @@ where
 					{-1},
 					{1},
 					{127},
+				},
+			},
+
+			{
+				Query:    "select * from ti16 where i = 99999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from ti16 where i = -99999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from ti16 where i != 99999;",
+				Expected: []sql.Row{
+					{-32768},
+					{-1},
+					{0},
+					{1},
+					{32767},
+				},
+			},
+			{
+				Query: "select * from ti16 where i != -99999;",
+				Expected: []sql.Row{
+					{-32768},
+					{-1},
+					{0},
+					{1},
+					{32767},
+				},
+			},
+			{
+				Query:    "select * from ti16 where i > 99999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from ti16 where i > -99999;",
+				Expected: []sql.Row{
+					{-32768},
+					{-1},
+					{0},
+					{1},
+					{32767},
+				},
+			},
+			{
+				Query:    "select * from ti16 where i >= 99999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from ti16 where i >= -99999;",
+				Expected: []sql.Row{
+					{-32768},
+					{-1},
+					{0},
+					{1},
+					{32767},
+				},
+			},
+			{
+				Query: "select * from ti16 where i < 99999;",
+				Expected: []sql.Row{
+					{-32768},
+					{-1},
+					{0},
+					{1},
+					{32767},
+				},
+			},
+			{
+				Query:    "select * from ti16 where i < -99999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from ti16 where i <= 99999;",
+				Expected: []sql.Row{
+					{-32768},
+					{-1},
+					{0},
+					{1},
+					{32767},
+				},
+			},
+			{
+				Query:    "select * from ti16 where i <= -99999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from ti16 where i in (0, 99999);",
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+			{
+				Query: "select * from ti16 where i in (0, -99999);",
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+			{
+				Query: "select * from ti16 where i not in (0, 99999);",
+				Expected: []sql.Row{
+					{-32768},
+					{-1},
+					{1},
+					{32767},
+				},
+			},
+			{
+				Query: "select * from ti16 where i not in (0, -99999);",
+				Expected: []sql.Row{
+					{-32768},
+					{-1},
+					{1},
+					{32767},
+				},
+			},
+
+			{
+				Query:    "select * from ti24 where i = 9999999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from ti24 where i = -999999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from ti24 where i != 9999999;",
+				Expected: []sql.Row{
+					{-8388608},
+					{-1},
+					{0},
+					{1},
+					{8388607},
+				},
+			},
+			{
+				Query: "select * from ti24 where i != -9999999;",
+				Expected: []sql.Row{
+					{-8388608},
+					{-1},
+					{0},
+					{1},
+					{8388607},
+				},
+			},
+			{
+				Query:    "select * from ti24 where i > 9999999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from ti24 where i > -9999999;",
+				Expected: []sql.Row{
+					{-8388608},
+					{-1},
+					{0},
+					{1},
+					{8388607},
+				},
+			},
+			{
+				Query:    "select * from ti24 where i >= 9999999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from ti24 where i >= -9999999;",
+				Expected: []sql.Row{
+					{-8388608},
+					{-1},
+					{0},
+					{1},
+					{8388607},
+				},
+			},
+			{
+				Query: "select * from ti24 where i < 9999999;",
+				Expected: []sql.Row{
+					{-8388608},
+					{-1},
+					{0},
+					{1},
+					{8388607},
+				},
+			},
+			{
+				Query:    "select * from ti24 where i < -9999999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from ti24 where i <= 9999999;",
+				Expected: []sql.Row{
+					{-8388608},
+					{-1},
+					{0},
+					{1},
+					{8388607},
+				},
+			},
+			{
+				Query:    "select * from ti24 where i <= -9999999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from ti24 where i in (0, 9999999);",
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+			{
+				Query: "select * from ti24 where i in (0, -9999999);",
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+			{
+				Query: "select * from ti24 where i not in (0, 9999999);",
+				Expected: []sql.Row{
+					{-8388608},
+					{-1},
+					{1},
+					{8388607},
+				},
+			},
+			{
+				Query: "select * from ti24 where i not in (0, -9999999);",
+				Expected: []sql.Row{
+					{-8388608},
+					{-1},
+					{1},
+					{8388607},
+				},
+			},
+
+			{
+				Query:    "select * from ti32 where i = 9999999999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from ti32 where i = -9999999999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from ti32 where i != 9999999999;",
+				Expected: []sql.Row{
+					{-2147483648},
+					{-1},
+					{0},
+					{1},
+					{2147483647},
+				},
+			},
+			{
+				Query: "select * from ti32 where i != -9999999999;",
+				Expected: []sql.Row{
+					{-2147483648},
+					{-1},
+					{0},
+					{1},
+					{2147483647},
+				},
+			},
+			{
+				Query:    "select * from ti32 where i > 9999999999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from ti32 where i > -9999999999;",
+				Expected: []sql.Row{
+					{-2147483648},
+					{-1},
+					{0},
+					{1},
+					{2147483647},
+				},
+			},
+			{
+				Query:    "select * from ti32 where i >= 9999999999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from ti32 where i >= -9999999999;",
+				Expected: []sql.Row{
+					{-2147483648},
+					{-1},
+					{0},
+					{1},
+					{2147483647},
+				},
+			},
+			{
+				Query: "select * from ti32 where i < 9999999999;",
+				Expected: []sql.Row{
+					{-2147483648},
+					{-1},
+					{0},
+					{1},
+					{2147483647},
+				},
+			},
+			{
+				Query:    "select * from ti32 where i < -9999999999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from ti32 where i <= 9999999999;",
+				Expected: []sql.Row{
+					{-2147483648},
+					{-1},
+					{0},
+					{1},
+					{2147483647},
+				},
+			},
+			{
+				Query:    "select * from ti32 where i <= -9999999999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from ti32 where i in (0, 9999999999);",
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+			{
+				Query: "select * from ti32 where i in (0, -9999999999);",
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+			{
+				Query: "select * from ti32 where i not in (0, 9999999999);",
+				Expected: []sql.Row{
+					{-2147483648},
+					{-1},
+					{1},
+					{2147483647},
+				},
+			},
+			{
+				Query: "select * from ti32 where i not in (0, -9999999999);",
+				Expected: []sql.Row{
+					{-2147483648},
+					{-1},
+					{1},
+					{2147483647},
+				},
+			},
+
+			{
+				Query:    "select * from ti64 where i = 9999999999999999999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from ti64 where i = -9999999999999999999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from ti64 where i != 9999999999999999999;",
+				Expected: []sql.Row{
+					{-9223372036854775808},
+					{-1},
+					{0},
+					{1},
+					{9223372036854775807},
+				},
+			},
+			{
+				Query: "select * from ti64 where i != -9999999999999999999;",
+				Expected: []sql.Row{
+					{-9223372036854775808},
+					{-1},
+					{0},
+					{1},
+					{9223372036854775807},
+				},
+			},
+			{
+				Query:    "select * from ti64 where i > 9999999999999999999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from ti64 where i > -9999999999999999999;",
+				Expected: []sql.Row{
+					{-9223372036854775808},
+					{-1},
+					{0},
+					{1},
+					{9223372036854775807},
+				},
+			},
+			{
+				Query:    "select * from ti64 where i >= 9999999999999999999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from ti64 where i >= -9999999999999999999;",
+				Expected: []sql.Row{
+					{-9223372036854775808},
+					{-1},
+					{0},
+					{1},
+					{9223372036854775807},
+				},
+			},
+			{
+				Query: "select * from ti64 where i < 9999999999999999999;",
+				Expected: []sql.Row{
+					{-9223372036854775808},
+					{-1},
+					{0},
+					{1},
+					{9223372036854775807},
+				},
+			},
+			{
+				Query:    "select * from ti64 where i < -9999999999999999999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from ti64 where i <= 9999999999999999999;",
+				Expected: []sql.Row{
+					{-9223372036854775808},
+					{-1},
+					{0},
+					{1},
+					{9223372036854775807},
+				},
+			},
+			{
+				Query:    "select * from ti64 where i <= -9999999999999999999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from ti64 where i in (0, 9999999999999999999);",
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+			{
+				Query: "select * from ti64 where i in (0, -9999999999999999999);",
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+			{
+				Query: "select * from ti64 where i not in (0, 9999999999999999999);",
+				Expected: []sql.Row{
+					{-9223372036854775808},
+					{-1},
+					{1},
+					{9223372036854775807},
+				},
+			},
+			{
+				Query: "select * from ti64 where i not in (0, -9999999999999999999);",
+				Expected: []sql.Row{
+					{-9223372036854775808},
+					{-1},
+					{1},
+					{9223372036854775807},
 				},
 			},
 		},
