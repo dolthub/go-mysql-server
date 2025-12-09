@@ -117,7 +117,7 @@ func (b *MySQLIndexBuilder) Equals(ctx *Context, colExpr string, keyType Type, k
 	potentialRanges := make([]MySQLRangeColumnExpr, len(keys))
 	for i, k := range keys {
 		// if converting from float to int results in rounding, then it's empty range
-		if t, ok := colTyp.(NumberType); ok && !t.IsFloat() {
+		if t, ok := colTyp.(NumberType); ok && t.IsNumericType() && !t.IsFloat() {
 			f, c := floor(k), ceil(k)
 			switch k.(type) {
 			case float32, float64:
@@ -186,7 +186,7 @@ func (b *MySQLIndexBuilder) In(ctx *Context, colExpr string, keyTypes []Type, ke
 	potentialRanges := make([]MySQLRangeColumnExpr, len(keys))
 	for i, k := range keys {
 		// if converting from float to int results in rounding, then it's empty range
-		if t, ok := colTyp.(NumberType); ok && !t.IsFloat() {
+		if t, ok := colTyp.(NumberType); ok && t.IsNumericType() && !t.IsFloat() {
 			f, c := floor(k), ceil(k)
 			switch k.(type) {
 			case float32, float64:
@@ -278,7 +278,7 @@ func (b *MySQLIndexBuilder) GreaterThan(ctx *Context, colExpr string, keyType Ty
 		return b
 	}
 
-	if t, ok := colTyp.(NumberType); ok && !t.IsFloat() {
+	if t, ok := colTyp.(NumberType); ok && t.IsNumericType() && !t.IsFloat() {
 		key = floor(key)
 	}
 
@@ -332,7 +332,7 @@ func (b *MySQLIndexBuilder) GreaterOrEqual(ctx *Context, colExpr string, keyType
 	}
 
 	var exclude bool
-	if t, ok := colTyp.(NumberType); ok && !t.IsFloat() {
+	if t, ok := colTyp.(NumberType); ok && t.IsNumericType() && !t.IsFloat() {
 		newKey := floor(key)
 		switch key.(type) {
 		case float32, float64:
@@ -373,7 +373,7 @@ func (b *MySQLIndexBuilder) LessThan(ctx *Context, colExpr string, keyType Type,
 		return b
 	}
 
-	if t, ok := colType.(NumberType); ok && !t.IsFloat() {
+	if t, ok := colType.(NumberType); ok && t.IsNumericType() && !t.IsFloat() {
 		key = ceil(key)
 	}
 
@@ -401,7 +401,7 @@ func (b *MySQLIndexBuilder) LessOrEqual(ctx *Context, colExpr string, keyType Ty
 	}
 
 	var exclude bool
-	if t, ok := colType.(NumberType); ok && !t.IsFloat() {
+	if t, ok := colType.(NumberType); ok && t.IsNumericType() && !t.IsFloat() {
 		newKey := ceil(key)
 		switch key.(type) {
 		case float32, float64:
@@ -654,7 +654,7 @@ func (b *EqualityIndexBuilder) AddEquality(ctx *Context, colIdx int, k interface
 
 	typ := b.idx.ColumnExpressionTypes()[colIdx].Type
 	// if converting from float to int results in rounding, then it's empty range
-	if t, ok := typ.(NumberType); ok && !t.IsFloat() {
+	if t, ok := typ.(NumberType); ok && t.IsNumericType() && !t.IsFloat() {
 		f, c := floor(k), ceil(k)
 		switch k.(type) {
 		case float32, float64:

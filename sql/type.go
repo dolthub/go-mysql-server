@@ -182,15 +182,15 @@ type NumberType interface {
 	// IsNumericType returns true if the type is numeric. Must be checked in addition to a type assertion for NumberType,
 	// because some implementors of this interface may not be numeric types in all instantiations.
 	IsNumericType() bool
-	// IsFloat returns true if the type is a floating point type.
+	// IsFloat returns true if the type is a floating point type (including arbitrary precision types like DECIMAL).
 	IsFloat() bool
 	// DisplayWidth returns the maximum number of characters used to display a value of this type.
 	DisplayWidth() int
 }
 
 func IsNumberType(t Type) bool {
-	_, ok := t.(NumberType)
-	return ok
+	nt, ok := t.(NumberType)
+	return ok && nt.IsNumericType()
 }
 
 // RoundingNumberType represents Number Types that implement an additional interface

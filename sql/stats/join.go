@@ -153,7 +153,7 @@ func joinAlignedStats(left, right []sql.HistogramBucket, cmp func(sql.Row, sql.R
 func AlignBuckets(h1, h2 sql.Histogram, lBound1, lBound2 sql.Row, s1Types, s2Types []sql.Type, cmp func(sql.Row, sql.Row) (int, error)) (sql.Histogram, sql.Histogram, error) {
 	var numericTypes bool = true
 	for _, t := range s1Types {
-		if _, ok := t.(sql.NumberType); !ok {
+		if !sql.IsNumberType(t) {
 			numericTypes = false
 			break
 		}
