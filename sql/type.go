@@ -103,10 +103,6 @@ type Type interface {
 	ValueType() reflect.Type
 	// Zero returns the golang zero value for this type
 	Zero() any
-	// Max returns the maximum valid value for this type
-	// Max() any
-	// Min returns the minimum valid value for this type
-	// Min() any
 	fmt.Stringer
 }
 
