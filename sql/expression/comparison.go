@@ -69,6 +69,8 @@ func PreciseComparison(e sql.Expression) bool {
 			}
 
 			// comparisons with type conversions are sometimes imprecise
+			// TODO: this sometimes leads to creating unnecessary filters
+			//  for example, when comparing int key to decimal key (that is too large for integer).
 			if !left.Equals(right) {
 				imprecise = true
 				return false
