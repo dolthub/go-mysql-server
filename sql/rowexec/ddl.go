@@ -170,7 +170,7 @@ func (b *BaseBuilder) buildCreateView(ctx *sql.Context, n *plan.CreateView, row 
 		if n.IfNotExists {
 			return rowIterWithOkResultWithZeroRowsAffected(), nil
 		}
-		return nil, sql.ErrTableAlreadyExists.New(n)
+		return nil, sql.ErrTableAlreadyExists.New(n.Name)
 	}
 
 	// TODO: isUpdatable should be defined at CREATE VIEW time
