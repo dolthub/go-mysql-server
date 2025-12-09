@@ -259,6 +259,10 @@ func (p *relProps) populateFds() {
 		for _, f := range rel.Filters {
 			switch f := f.(type) {
 			case expression.Equality:
+				if !f.RepresentsEquality() {
+					continue
+				}
+
 				if l, ok := f.Left().(*expression.GetField); ok {
 					switch r := f.Right().(type) {
 					case *expression.GetField:
