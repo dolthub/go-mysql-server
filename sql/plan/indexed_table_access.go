@@ -657,25 +657,24 @@ func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key lookupBuilderKey) (sql.
 }
 
 // convertLookupKey converts the value in keyCol to the type colType
-func convertLookupKey(ctx *sql.Context, colType sql.Type, keyCol lookupBuilderKeyElement) (interface{}, bool, error) {
+func convertLookupKey(ctx *sql.Context, colType sql.Type, keyCol lookupBuilderKeyElement) (interface{}, sql.ConvertInRange, error) {
 	srcType := keyCol.typ
 	destType := colType
 
 	// For extended types, use the rich type conversion methods
 	if srcEt, ok := srcType.(sql.ExtendedType); ok {
 		if destEt, ok := destType.(sql.ExtendedType); ok {
-			converted, err := destEt.ConvertToType(ctx, srcEt, keyCol.val)
+			converted, inRange, err := destEt.ConvertToType(ctx, srcEt, keyCol.val)
 			if err != nil {
-				// TODO: detect out of range error
-				return nil, false, err
+				return nil, sql.OutOfRange, err
 			}
 
-			return converted, true, nil
+			return converted, inRange, nil
 		}
 	}
 
 	k, inRange, err := colType.Convert(ctx, keyCol.val)
-	return k, bool(inRange), err
+	return k, inRange, err
 }
 
 func (lb *LookupBuilder) GetKey(ctx *sql.Context, row sql.Row) (lookupBuilderKey, error) {

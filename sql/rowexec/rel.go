@@ -783,7 +783,7 @@ func (b *BaseBuilder) buildIndexedTableAccess(ctx *sql.Context, n *plan.IndexedT
 	}
 
 	if !inRange {
-		sql.RowsToRowIter()
+		return sql.RowsToRowIter(), nil
 	}
 
 	partIter, err := n.Table.LookupPartitions(ctx, lookup)

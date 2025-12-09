@@ -787,7 +787,7 @@ func GetForeignKeyTypeConversions(
 				convFns = make([]ForeignKeyTypeConversionFn, len(childSch))
 			}
 			convFns[childIndex] = func(ctx *sql.Context, val any) (sql.Type, any, error) {
-				convertedVal, err := toType.ConvertToType(ctx, fromType, val)
+				convertedVal, _, err := toType.ConvertToType(ctx, fromType, val)
 				return toType, convertedVal, err
 			}
 		}

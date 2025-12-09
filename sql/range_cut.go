@@ -17,8 +17,6 @@ package sql
 import (
 	"context"
 	"fmt"
-
-	"github.com/dolthub/go-mysql-server/sql"
 )
 
 // MySQLRangeCut represents a position on the line of all possible values.
@@ -251,14 +249,14 @@ func compareRangeCuts(ctx context.Context, rangeType Type, a typedValue, b typed
 			if err != nil {
 				return 0, err
 			} else if !inRange {
-				return 0, sql.ErrValueOutOfRange.New(a.value, aet)
+				return 0, ErrValueOutOfRange.New(a.value, aet)
 			}
 
 			bc, inRange, err := et.ConvertToType(nil, bet, b.value)
 			if err != nil {
 				return 0, err
 			} else if !inRange {
-				return 0, sql.ErrValueOutOfRange.New(b.value, bet)
+				return 0, ErrValueOutOfRange.New(b.value, bet)
 			}
 
 			return aet.Compare(ctx, ac, bc)

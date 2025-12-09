@@ -305,7 +305,8 @@ func isConvertibleKeyType(colType Type, keyType Type) bool {
 // convertKey converts the given key from keyType to colType, returning an error if the conversion fails.
 func (b *MySQLIndexBuilder) convertKey(ctx *Context, colType Type, keyType Type, key interface{}) (interface{}, error) {
 	if et, ok := colType.(ExtendedType); ok {
-		return et.ConvertToType(ctx, keyType.(ExtendedType), key)
+		toType, _, err := et.ConvertToType(ctx, keyType.(ExtendedType), key)
+		return toType, err
 	} else {
 		if !isConvertibleKeyType(colType, keyType) {
 			return nil, ErrInvalidValueType.New(key, colType)
