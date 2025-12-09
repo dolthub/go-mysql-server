@@ -34,7 +34,7 @@ func ConvertToJson(t *testing.T, val interface{}) types.MutableJSON {
 	}
 	val, inRange, err := types.JSON.Convert(sqlCtx, val)
 	require.NoError(t, err)
-	require.True(t, bool(inRange))
+	require.True(t, inRange == sql.InRange)
 	require.Implements(t, (*sql.JSONWrapper)(nil), val)
 	val, err = val.(sql.JSONWrapper).ToInterface(t.Context())
 	require.NoError(t, err)

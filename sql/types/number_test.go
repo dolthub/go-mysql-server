@@ -201,27 +201,27 @@ func TestNumberConvert(t *testing.T) {
 		{typ: Float32, inp: "22.25", exp: float32(22.25), err: false, inRange: sql.InRange},
 		{typ: Float32, inp: []byte{90, 140, 228, 206, 116}, exp: float32(388910861940), err: false, inRange: sql.InRange},
 		{typ: Float64, inp: float32(893.875), exp: float64(893.875), err: false, inRange: sql.InRange},
-		{typ: Boolean, inp: math.MaxInt8 + 1, exp: int8(math.MaxInt8), err: false, inRange: sql.OutOfRange},
-		{typ: Int8, inp: math.MaxInt8 + 1, exp: int8(math.MaxInt8), err: false, inRange: sql.OutOfRange},
-		{typ: Int8, inp: math.MinInt8 - 1, exp: int8(math.MinInt8), err: false, inRange: sql.OutOfRange},
-		{typ: Int16, inp: math.MaxInt16 + 1, exp: int16(math.MaxInt16), err: false, inRange: sql.OutOfRange},
-		{typ: Int16, inp: math.MinInt16 - 1, exp: int16(math.MinInt16), err: false, inRange: sql.OutOfRange},
-		{typ: Int24, inp: 1 << 24, exp: int32(1<<23 - 1), err: false, inRange: sql.OutOfRange},
-		{typ: Int24, inp: -1 << 24, exp: int32(-1 << 23), err: false, inRange: sql.OutOfRange},
-		{typ: Int32, inp: math.MaxInt32 + 1, exp: int32(math.MaxInt32), err: false, inRange: sql.OutOfRange},
-		{typ: Int32, inp: math.MinInt32 - 1, exp: int32(math.MinInt32), err: false, inRange: sql.OutOfRange},
-		{typ: Int64, inp: uint64(math.MaxInt64 + 1), exp: int64(math.MaxInt64), err: false, inRange: sql.OutOfRange},
-		{typ: Uint8, inp: math.MaxUint8 + 1, exp: uint8(math.MaxUint8), err: false, inRange: sql.OutOfRange},
-		{typ: Uint8, inp: -1, exp: uint8(math.MaxUint8), err: false, inRange: sql.OutOfRange},
-		{typ: Uint16, inp: math.MaxUint16 + 1, exp: uint16(math.MaxUint16), err: false, inRange: sql.OutOfRange},
-		{typ: Uint16, inp: -1, exp: uint16(math.MaxUint16), err: false, inRange: sql.OutOfRange},
-		{typ: Uint24, inp: 1 << 24, exp: uint32(1<<24 - 1), err: false, inRange: sql.OutOfRange},
-		{typ: Uint24, inp: -1, exp: uint32(1<<24 - 1), err: false, inRange: sql.OutOfRange},
-		{typ: Uint32, inp: math.MaxUint32 + 1, exp: uint32(math.MaxUint32), err: false, inRange: sql.OutOfRange},
-		{typ: Uint32, inp: -1, exp: uint32(math.MaxUint32), err: false, inRange: sql.OutOfRange},
-		{typ: Uint64, inp: -1, exp: uint64(math.MaxUint64), err: false, inRange: sql.OutOfRange},
-		{typ: Uint64, inp: "-1", exp: uint64(math.MaxUint64), err: false, inRange: sql.OutOfRange},
-		{typ: Float32, inp: math.MaxFloat32 * 2, exp: float32(math.MaxFloat32), err: false, inRange: sql.OutOfRange},
+		{typ: Boolean, inp: math.MaxInt8 + 1, exp: int8(math.MaxInt8), err: false, inRange: sql.Overflow},
+		{typ: Int8, inp: math.MaxInt8 + 1, exp: int8(math.MaxInt8), err: false, inRange: sql.Overflow},
+		{typ: Int8, inp: math.MinInt8 - 1, exp: int8(math.MinInt8), err: false, inRange: sql.Underflow},
+		{typ: Int16, inp: math.MaxInt16 + 1, exp: int16(math.MaxInt16), err: false, inRange: sql.Overflow},
+		{typ: Int16, inp: math.MinInt16 - 1, exp: int16(math.MinInt16), err: false, inRange: sql.Underflow},
+		{typ: Int24, inp: 1 << 24, exp: int32(1<<23 - 1), err: false, inRange: sql.Overflow},
+		{typ: Int24, inp: -1 << 24, exp: int32(-1 << 23), err: false, inRange: sql.Underflow},
+		{typ: Int32, inp: math.MaxInt32 + 1, exp: int32(math.MaxInt32), err: false, inRange: sql.Overflow},
+		{typ: Int32, inp: math.MinInt32 - 1, exp: int32(math.MinInt32), err: false, inRange: sql.Underflow},
+		{typ: Int64, inp: uint64(math.MaxInt64 + 1), exp: int64(math.MaxInt64), err: false, inRange: sql.Overflow},
+		{typ: Uint8, inp: math.MaxUint8 + 1, exp: uint8(math.MaxUint8), err: false, inRange: sql.Overflow},
+		{typ: Uint8, inp: -1, exp: uint8(math.MaxUint8), err: false, inRange: sql.Underflow},
+		{typ: Uint16, inp: math.MaxUint16 + 1, exp: uint16(math.MaxUint16), err: false, inRange: sql.Overflow},
+		{typ: Uint16, inp: -1, exp: uint16(math.MaxUint16), err: false, inRange: sql.Underflow},
+		{typ: Uint24, inp: 1 << 24, exp: uint32(1<<24 - 1), err: false, inRange: sql.Overflow},
+		{typ: Uint24, inp: -1, exp: uint32(1<<24 - 1), err: false, inRange: sql.Underflow},
+		{typ: Uint32, inp: math.MaxUint32 + 1, exp: uint32(math.MaxUint32), err: false, inRange: sql.Overflow},
+		{typ: Uint32, inp: -1, exp: uint32(math.MaxUint32), err: false, inRange: sql.Underflow},
+		{typ: Uint64, inp: -1, exp: uint64(math.MaxUint64), err: false, inRange: sql.Underflow},
+		{typ: Uint64, inp: "-1", exp: uint64(math.MaxUint64), err: false, inRange: sql.Underflow},
+		{typ: Float32, inp: math.MaxFloat32 * 2, exp: float32(math.MaxFloat32), err: false, inRange: sql.Overflow},
 	}
 
 	for _, test := range tests {
@@ -428,7 +428,7 @@ func TestNumberConvertRound(t *testing.T) {
 			inp:     "-1",
 			exp:     uint64(math.MaxUint64),
 			err:     false,
-			inRange: sql.OutOfRange,
+			inRange: sql.Underflow,
 		},
 		{
 			typ:     Uint64,
@@ -1030,7 +1030,7 @@ func TestConvertValueToInt64(t *testing.T) {
 				Typ: sqltypes.Uint64,
 			},
 			exp: math.MaxInt64,
-			rng: sql.OutOfRange,
+			rng: sql.Overflow,
 		},
 
 		// Float32 -> Int64
@@ -1056,7 +1056,7 @@ func TestConvertValueToInt64(t *testing.T) {
 				Typ: sqltypes.Float32,
 			},
 			exp: math.MinInt64,
-			rng: sql.OutOfRange,
+			rng: sql.Underflow,
 		},
 		{
 			val: sql.Value{
@@ -1064,7 +1064,7 @@ func TestConvertValueToInt64(t *testing.T) {
 				Typ: sqltypes.Float32,
 			},
 			exp: math.MaxInt64,
-			rng: sql.OutOfRange,
+			rng: sql.Overflow,
 		},
 
 		// Float64 -> Int64
@@ -1090,7 +1090,7 @@ func TestConvertValueToInt64(t *testing.T) {
 				Typ: sqltypes.Float64,
 			},
 			exp: math.MinInt64,
-			rng: sql.OutOfRange,
+			rng: sql.Underflow,
 		},
 		{
 			val: sql.Value{
@@ -1098,7 +1098,7 @@ func TestConvertValueToInt64(t *testing.T) {
 				Typ: sqltypes.Float64,
 			},
 			exp: math.MaxInt64,
-			rng: sql.OutOfRange,
+			rng: sql.Overflow,
 		},
 		{
 			val: sql.Value{
@@ -1106,7 +1106,7 @@ func TestConvertValueToInt64(t *testing.T) {
 				Typ: sqltypes.Float64,
 			},
 			exp: math.MinInt64,
-			rng: sql.OutOfRange,
+			rng: sql.Underflow,
 		},
 		{
 			val: sql.Value{
@@ -1114,7 +1114,7 @@ func TestConvertValueToInt64(t *testing.T) {
 				Typ: sqltypes.Float64,
 			},
 			exp: math.MaxInt64,
-			rng: sql.OutOfRange,
+			rng: sql.Overflow,
 		},
 
 		// Decimal -> Int64
@@ -1182,7 +1182,7 @@ func TestConvertValueToInt64(t *testing.T) {
 				Typ: sqltypes.Bit,
 			},
 			exp: math.MaxInt64,
-			rng: sql.OutOfRange,
+			rng: sql.Overflow,
 		},
 
 		// Year -> Int64
@@ -1566,7 +1566,7 @@ func TestConvertValueToUint64(t *testing.T) {
 				Typ: sqltypes.Float32,
 			},
 			exp: math.MaxUint64,
-			rng: sql.OutOfRange,
+			rng: sql.Overflow,
 		},
 
 		// Float64 -> Uint64
@@ -1592,7 +1592,7 @@ func TestConvertValueToUint64(t *testing.T) {
 				Typ: sqltypes.Float64,
 			},
 			exp: math.MaxUint64,
-			rng: sql.OutOfRange,
+			rng: sql.Overflow,
 		},
 		{
 			val: sql.Value{
@@ -1600,7 +1600,7 @@ func TestConvertValueToUint64(t *testing.T) {
 				Typ: sqltypes.Float64,
 			},
 			exp: math.MaxUint64,
-			rng: sql.OutOfRange,
+			rng: sql.Overflow,
 		},
 
 		// Decimal -> Uint64
