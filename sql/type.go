@@ -179,8 +179,12 @@ type DeferredType interface {
 // The type of the returned value is one of the following: int8, int16, int32, int64, uint8, uint16, uint32, uint64, float32, float64.
 type NumberType interface {
 	Type
-	IsSigned() bool
+	// IsNumericType returns true if the type is numeric. Must be checked in addition to a type assertion for NumberType,
+	// because some implementors of this interface may not be numeric types in all instantiations.
+	IsNumericType() bool
+	// IsFloat returns true if the type is a floating point type.
 	IsFloat() bool
+	// DisplayWidth returns the maximum number of characters used to display a value of this type.
 	DisplayWidth() int
 }
 
