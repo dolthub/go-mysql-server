@@ -674,6 +674,11 @@ func convertLookupKey(ctx *sql.Context, colType sql.Type, keyCol lookupBuilderKe
 	}
 
 	k, inRange, err := colType.Convert(ctx, keyCol.val)
+	if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
+		// for this purpose, truncation errors are acceptable and we only look at the in-range status
+		err = nil
+	}
+
 	return k, inRange, err
 }
 
