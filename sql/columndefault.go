@@ -90,7 +90,7 @@ func (e *ColumnDefaultValue) Eval(ctx *Context, r Row) (interface{}, error) {
 		if err != nil {
 			return nil, ErrIncompatibleDefaultType.New()
 		}
-		if !inRange {
+		if inRange != InRange {
 			return nil, ErrValueOutOfRange.New(val, e.OutType)
 		}
 	}
@@ -242,7 +242,7 @@ func (e *ColumnDefaultValue) CheckType(ctx *Context) error {
 		if err != nil {
 			return ErrIncompatibleDefaultType.Wrap(err)
 		}
-		if !inRange {
+		if inRange != InRange {
 			return ErrIncompatibleDefaultType.Wrap(ErrValueOutOfRange.New(val, e.Expr))
 		}
 	}

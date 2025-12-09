@@ -12614,6 +12614,143 @@ where
 			},
 		},
 	},
+	{
+		Name:    "signed int with overflowing filters",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table ti8  (i tinyint primary key);",
+			"insert into ti8 values (-128), (-1), (0), (1), (127);",
+
+			"create table ti16 (i smallint primary key);",
+			"insert into ti16 values (-32768), (-1), (0), (1), (32767);",
+
+			"create table ti24 (i mediumint primary key);",
+			"insert into ti24 values (-8388608), (-1), (0), (1), (8388607);",
+
+			"create table ti32 (i int primary key);",
+			"insert into ti32 values (-2147483648), (-1), (0), (1), (2147483647);",
+
+			"create table ti64 (i bigint primary key);",
+			"insert into ti64 values (-9223372036854775808), (-1), (0), (1), (9223372036854775807);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from ti8 where i = 999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from ti8 where i = -999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from ti8 where i != 999;",
+				Expected: []sql.Row{
+					{-128},
+					{-1},
+					{0},
+					{1},
+					{127},
+				},
+			},
+			{
+				Query: "select * from ti8 where i != -999;",
+				Expected: []sql.Row{
+					{-128},
+					{-1},
+					{0},
+					{1},
+					{127},
+				},
+			},
+			{
+				Query:    "select * from ti8 where i > 999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from ti8 where i > -999;",
+				Expected: []sql.Row{
+					{-128},
+					{-1},
+					{0},
+					{1},
+					{127},
+				},
+			},
+			{
+				Query:    "select * from ti8 where i >= 999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from ti8 where i >= -999;",
+				Expected: []sql.Row{
+					{-128},
+					{-1},
+					{0},
+					{1},
+					{127},
+				},
+			},
+			{
+				Query: "select * from ti8 where i < 999;",
+				Expected: []sql.Row{
+					{-128},
+					{-1},
+					{0},
+					{1},
+					{127},
+				},
+			},
+			{
+				Query:    "select * from ti8 where i < -999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from ti8 where i <= 999;",
+				Expected: []sql.Row{
+					{-128},
+					{-1},
+					{0},
+					{1},
+					{127},
+				},
+			},
+			{
+				Query:    "select * from ti8 where i <= -999;",
+				Expected: []sql.Row{},
+			},
+
+			{
+				Query: "select * from ti8 where i in (0, 999);",
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+			{
+				Query: "select * from ti8 where i in (0, -999);",
+				Expected: []sql.Row{
+					{0},
+				},
+			},
+			{
+				Query: "select * from ti8 where i not in (0, 999);",
+				Expected: []sql.Row{
+					{-128},
+					{-1},
+					{1},
+					{127},
+				},
+			},
+			{
+				Query: "select * from ti8 where i not in (0, -999);",
+				Expected: []sql.Row{
+					{-128},
+					{-1},
+					{1},
+					{127},
+				},
+			},
+		},
+	},
 
 	// Float Tests
 	{

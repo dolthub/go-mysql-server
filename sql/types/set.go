@@ -204,12 +204,11 @@ func (t SetType) Convert(ctx context.Context, v interface{}) (interface{}, sql.C
 		return t.Convert(ctx, value.Decimal.BigInt().Uint64())
 	case string:
 		ret, err := t.convertStringToBitField(value)
-		return ret, err == nil, err
+		return ret, sql.InRange, err
 	case []byte:
 		return t.Convert(ctx, string(value))
 	}
-
-	return uint64(0), sql.OutOfRange, sql.ErrConvertingToSet.New(v)
+	return uint64(0), sql.InRange, sql.ErrConvertingToSet.New(v)
 }
 
 // MaxTextResponseByteLength implements the Type interface

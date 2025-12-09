@@ -429,7 +429,7 @@ func convertValue(ctx *sql.Context, val interface{}, castTo string, originType s
 			}
 			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
 		}
-		if !inRange {
+		if inRange != sql.InRange {
 			ctx.Warn(1105, "Cast to unsigned converted negative integer to its positive complement")
 		}
 		return num, nil

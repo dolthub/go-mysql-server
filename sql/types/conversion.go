@@ -776,7 +776,7 @@ func TypeAwareConversion(ctx *sql.Context, val interface{}, originalType sql.Typ
 	if (IsEnum(originalType) || IsSet(originalType)) && IsText(convertedType) {
 		val, _, err = ConvertToCollatedString(ctx, val, originalType)
 		if err != nil {
-			return nil, sql.OutOfRange, err
+			return nil, sql.InRange, err
 		}
 	}
 	return convertedType.Convert(ctx, val)
