@@ -387,7 +387,8 @@ func (b *BaseBuilder) buildNodeExecNoAnalyze(ctx *sql.Context, n sql.Node, row s
 		return n.BuildRowIter(ctx, b, row)
 	case sql.ExecSourceRel:
 		// Catch-all for nodes that implement their own RowIter method not represented above.
-		// All such nodes should be moved here over time.
+		// All nodes defined in go-mysql-server should be present in the switch above, but not all have been migrated
+		// here yet.
 		return n.RowIter(ctx, row)
 	default:
 		return nil, fmt.Errorf("exec builder found unknown Node type %T", n)
