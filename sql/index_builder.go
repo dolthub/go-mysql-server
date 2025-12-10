@@ -95,7 +95,9 @@ func floor(val interface{}) interface{} {
 		if err != nil {
 			return v
 		}
-		return floor(dec)
+		f := floor(dec)
+		// maintain the input type, rather than converting to decimal
+		return f.(decimal.Decimal).String()
 	case []byte:
 		return floor(string(v))
 	default:
