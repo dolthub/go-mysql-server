@@ -17,6 +17,7 @@ package analyzer
 import (
 	"cmp"
 	"fmt"
+	"github.com/dolthub/vitess/go/sqltypes"
 	"slices"
 	"sort"
 	"strings"
@@ -838,118 +839,80 @@ type indexScanRangeBuilder struct {
 	leftover  []sql.Expression
 }
 
-func keysToRangeColl[N cmp.Ordered](keys []N, typ sql.Type) sql.MySQLRangeCollection {
+func inValsToMySQLRangeCollHelper[N cmp.Ordered](ctx *sql.Context, vals []any, typ sql.Type, precise bool) (sql.MySQLRangeCollection, bool) {
+	keys := make([]N, 0, len(vals))
+	for _, val := range vals {
+		switch v := val.(type) {
+		case int, int8, int16, int32, int64,
+			uint, uint8, uint16, uint32, uint64:
+		case float32:
+			if precise && float32(int(v)) != v {
+				continue
+			}
+		case float64:
+			if precise && float64(int(v)) != v {
+				continue
+			}
+		case decimal.Decimal:
+			if precise && v.Equal(decimal.NewFromInt(v.IntPart())) {
+				continue
+			}
+		default:
+			return nil, false
+		}
+		key, inRange, err := typ.Convert(ctx, val)
+		if err != nil {
+			return nil, false
+		}
+		if !inRange {
+			continue
+		}
+		keys = append(keys, key.(N))
+	}
+
+	// TODO: for integers, if len(keys) - 1 == keys[len(keys)-1] - keys[0],
+	//  then we can just have one continuous range. unsure if this is worth it
 	slices.Sort(keys)
 	keys = slices.Compact(keys)
-	// TODO: for integers, if len(keys) - 1 == keys[len(keys)-1] - keys[0],
-	//  then we can just have one continuous range. unsure if this is worth
 	res := make(sql.MySQLRangeCollection, len(keys))
 	for i, key := range keys {
 		res[i] = sql.MySQLRange{
 			sql.ClosedRangeColumnExpr(key, key, typ),
 		}
 	}
+
 	if len(res) == 0 {
-		return nil
+		return nil, true
 	}
-	return res
+	return res, true
 }
 
-func setToIntRangeColl(setVals []any, typ sql.Type) (sql.MySQLRangeCollection, bool) {
-	keys := make([]int64, 0, len(setVals))
-	for _, val := range setVals {
-		switch v := val.(type) {
-		case int:
-			keys = append(keys, int64(v))
-		case int8:
-			keys = append(keys, int64(v))
-		case int16:
-			keys = append(keys, int64(v))
-		case int32:
-			keys = append(keys, int64(v))
-		case int64:
-			keys = append(keys, v)
-		case uint:
-			keys = append(keys, int64(v))
-		case uint8:
-			keys = append(keys, int64(v))
-		case uint16:
-			keys = append(keys, int64(v))
-		case uint32:
-			keys = append(keys, int64(v))
-		case uint64:
-			keys = append(keys, int64(v))
-		// float32, float64, and decimal are ok as long as they don't round
-		case float32:
-			key := int64(v)
-			if float32(key) == v {
-				keys = append(keys, key)
-			}
-		case float64:
-			key := int64(v)
-			if float64(key) == v {
-				keys = append(keys, key)
-			}
-		case decimal.Decimal:
-			key := v.IntPart()
-			if v.Equal(decimal.NewFromInt(key)) {
-				keys = append(keys, key)
-			}
-		default:
-			// resort to default behavior for types that require more conversion
-			return nil, false
-		}
+// inValsToMySQLRangeColl is a fast path for in filters over numeric columns.
+func inValsToMySQLRangeColl(ctx *sql.Context, vals []any, typ sql.Type) (sql.MySQLRangeCollection, bool) {
+	switch typ.Type() {
+	case sqltypes.Int8:
+		return inValsToMySQLRangeCollHelper[int8](ctx, vals, typ, true)
+	case sqltypes.Int16:
+		return inValsToMySQLRangeCollHelper[int16](ctx, vals, typ, true)
+	case sqltypes.Int32:
+		return inValsToMySQLRangeCollHelper[int32](ctx, vals, typ, true)
+	case sqltypes.Int64:
+		return inValsToMySQLRangeCollHelper[int64](ctx, vals, typ, true)
+	case sqltypes.Uint8:
+		return inValsToMySQLRangeCollHelper[uint8](ctx, vals, typ, true)
+	case sqltypes.Uint16:
+		return inValsToMySQLRangeCollHelper[uint16](ctx, vals, typ, true)
+	case sqltypes.Uint32:
+		return inValsToMySQLRangeCollHelper[uint32](ctx, vals, typ, true)
+	case sqltypes.Uint64:
+		return inValsToMySQLRangeCollHelper[uint64](ctx, vals, typ, true)
+	case sqltypes.Float32:
+		return inValsToMySQLRangeCollHelper[float32](ctx, vals, typ, false)
+	case sqltypes.Float64:
+		return inValsToMySQLRangeCollHelper[float64](ctx, vals, typ, false)
+	default:
+		return nil, false
 	}
-
-	return keysToRangeColl(keys, typ), true
-}
-
-func setToUintRangeColl(setVals []any, typ sql.Type) (sql.MySQLRangeCollection, bool) {
-	keys := make([]uint64, 0, len(setVals))
-	for _, val := range setVals {
-		switch v := val.(type) {
-		case int:
-			keys = append(keys, uint64(v))
-		case int8:
-			keys = append(keys, uint64(v))
-		case int16:
-			keys = append(keys, uint64(v))
-		case int32:
-			keys = append(keys, uint64(v))
-		case int64:
-			keys = append(keys, uint64(v))
-		case uint:
-			keys = append(keys, uint64(v))
-		case uint8:
-			keys = append(keys, uint64(v))
-		case uint16:
-			keys = append(keys, uint64(v))
-		case uint32:
-			keys = append(keys, uint64(v))
-		case uint64:
-			keys = append(keys, v)
-		// float32, float64, and decimal are ok as long as they don't round
-		case float32:
-			key := uint64(v)
-			if float32(key) == v {
-				keys = append(keys, key)
-			}
-		case float64:
-			key := uint64(v)
-			if float64(key) == v {
-				keys = append(keys, key)
-			}
-		case decimal.Decimal:
-			key := v.IntPart()
-			if v.Equal(decimal.NewFromInt(key)) {
-				keys = append(keys, uint64(key))
-			}
-		default:
-			// resort to default behavior for types that require more conversion
-			return nil, false
-		}
-	}
-	return keysToRangeColl(keys, typ), true
 }
 
 // buildRangeCollection converts our representation of the best index scan
@@ -969,18 +932,9 @@ func (b *indexScanRangeBuilder) buildRangeCollection(f indexFilter) (sql.MySQLRa
 		if f.Op() == sql.IndexScanOpInSet {
 			cets := b.idx.ColumnExpressionTypes()
 			if len(cets) == 1 {
-				typ := cets[0].Type
 				var ok bool
-				// TODO: it's possible to apply this optimization to other
-				//  numeric types (float32, float64, decimal).
-				if types.IsSigned(typ) {
-					if ranges, ok = setToIntRangeColl(f.setValues, typ); ok {
-						return ranges, nil
-					}
-				} else if types.IsUnsigned(typ) {
-					if ranges, ok = setToUintRangeColl(f.setValues, typ); ok {
-						return ranges, nil
-					}
+				if ranges, ok = inValsToMySQLRangeColl(b.ctx, f.setValues, cets[0].Type); ok {
+					return ranges, nil
 				}
 			}
 		}
