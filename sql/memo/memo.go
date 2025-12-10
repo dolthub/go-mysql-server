@@ -64,7 +64,7 @@ func NewMemo(ctx *sql.Context, stats sql.StatsProvider, s *plan.Scope, scopeLen 
 		TableProps: newTableProps(),
 		hints:      &joinHints{},
 		QFlags:     qFlags,
-		Tracer:     &TraceLogger{},
+		Tracer:     cost.(*coster).logger,
 	}
 }
 

@@ -601,6 +601,10 @@ func TestIntegrationPlans(t *testing.T, harness Harness) {
 func TestImdbPlans(t *testing.T, harness Harness) {
 	harness.Setup(setup.ImdbPlanSetup...)
 	e := mustNewEngine(t, harness)
+	e.EngineAnalyzer().Verbose = true
+	e.EngineAnalyzer().Trace = true
+	e.EngineAnalyzer().Debug = true
+
 	defer e.Close()
 	for _, tt := range queries.ImdbPlanTests {
 		TestQueryPlan(t, harness, e, tt)
@@ -720,7 +724,7 @@ func TestQueryPlan(t *testing.T, harness Harness, e QueryEngine, tt queries.Quer
 		t.Skip()
 	}
 
-	t.Run(tt.Query, func(t *testing.T) {
+	t.Run("test", func(t *testing.T) {
 		runTestWithDescribeOptions(t, tt.Query, tt.ExpectedPlan, sql.DescribeOptions{
 			Debug: true,
 		})

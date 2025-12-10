@@ -40,10 +40,12 @@ const (
 )
 
 func NewDefaultCoster() Coster {
-	return &coster{}
+	return &coster{&TraceLogger{}}
 }
 
-type coster struct{}
+type coster struct {
+	logger *TraceLogger
+}
 
 var _ Coster = (*coster)(nil)
 
@@ -66,6 +68,8 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 		jp := n.JoinPrivate()
 		lBest := math.Max(1, float64(jp.Left.RelProps.GetStats().RowCount()))
 		rBest := math.Max(1, float64(jp.Right.RelProps.GetStats().RowCount()))
+		c.logger.Log("lBest: %f", lBest)
+		c.logger.Log("rBest: %f", rBest)
 
 		// if a child is an index scan, the table scan will be more expensive
 		var err error
@@ -96,10 +100,12 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 		case jp.Op.IsHash():
 			if jp.Op.IsPartial() {
 				cost := lBest * (rBest / 2.0) * (seqIOCostFactor + cpuCostFactor)
+				c.logger.Log("IsPartial; cost = %f", cost)
 				return cost * .5, nil
 			}
-			return lBest*(seqIOCostFactor+cpuCostFactor) + float64(rBest)*(seqIOCostFactor+memCostFactor) + selfJoinCard*cpuCostFactor, nil
-
+			cost := lBest*(seqIOCostFactor+cpuCostFactor) + float64(rBest)*(seqIOCostFactor+memCostFactor) + selfJoinCard*cpuCostFactor
+			c.logger.Log("Not partial; cost = %f", cost)
+			return cost, nil
 		case jp.Op.IsLateral():
 			return (lBest*rBest-1)*seqIOCostFactor + (lBest*rBest)*cpuCostFactor, nil
 
