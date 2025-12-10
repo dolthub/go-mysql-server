@@ -13210,6 +13210,522 @@ where
 			},
 		},
 	},
+	{
+		Name:    "unsigned int with overflowing filters",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table tui8 (i tinyint unsigned primary key);",
+			"insert into tui8 values (0), (1), (255);",
+
+			"create table tui16 (i smallint unsigned primary key);",
+			"insert into tui16 values (0), (1), (65535);",
+
+			"create table tui24 (i mediumint unsigned primary key);",
+			"insert into tui24 values (0), (1), (16777215);",
+
+			"create table tui32 (i int unsigned primary key);",
+			"insert into tui32 values (0), (1), (4294967295);",
+
+			"create table tui64 (i bigint unsigned primary key);",
+			"insert into tui64 values (0), (1), (18446744073709551615);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from tui8 where i = 999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from tui8 where i = -999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from tui8 where i != 999;",
+				Expected: []sql.Row{
+					{uint64(0)},
+					{uint64(1)},
+					{uint64(255)},
+				},
+			},
+			{
+				Query: "select * from tui8 where i != -999;",
+				Expected: []sql.Row{
+					{uint64(0)},
+					{uint64(1)},
+					{uint64(255)},
+				},
+			},
+			{
+				Query:    "select * from tui8 where i > 999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from tui8 where i > -999;",
+				Expected: []sql.Row{
+					{uint64(0)},
+					{uint64(1)},
+					{uint64(255)},
+				},
+			},
+			{
+				Query:    "select * from tui8 where i >= 999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from tui8 where i >= -999;",
+				Expected: []sql.Row{
+					{uint64(0)},
+					{uint64(1)},
+					{uint64(255)},
+				},
+			},
+			{
+				Query: "select * from tui8 where i < 999;",
+				Expected: []sql.Row{
+					{uint64(0)},
+					{uint64(1)},
+					{uint64(255)},
+				},
+			},
+			{
+				Query:    "select * from tui8 where i < -999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from tui8 where i <= 999;",
+				Expected: []sql.Row{
+					{uint64(0)},
+					{uint64(1)},
+					{uint64(255)},
+				},
+			},
+			{
+				Query:    "select * from tui8 where i <= -999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from tui8 where i in (0, 999);",
+				Expected: []sql.Row{
+					{uint64(0)},
+				},
+			},
+			{
+				Query: "select * from tui8 where i in (0, -999);",
+				Expected: []sql.Row{
+					{uint64(0)},
+				},
+			},
+			{
+				Query: "select * from tui8 where i not in (0, 999);",
+				Expected: []sql.Row{
+					{uint64(1)},
+					{uint64(255)},
+				},
+			},
+			{
+				Query: "select * from tui8 where i not in (0, -999);",
+				Expected: []sql.Row{
+					{uint64(1)},
+					{uint64(255)},
+				},
+			},
+
+			{
+				Query:    "select * from tui16 where i = 99999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from tui16 where i = -99999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from tui16 where i != 99999;",
+				Expected: []sql.Row{
+					{uint64(0)},
+					{uint64(1)},
+					{uint64(65535)},
+				},
+			},
+			{
+				Query: "select * from tui16 where i != -99999;",
+				Expected: []sql.Row{
+					{uint64(0)},
+					{uint64(1)},
+					{uint64(65535)},
+				},
+			},
+			{
+				Query:    "select * from tui16 where i > 99999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from tui16 where i > -99999;",
+				Expected: []sql.Row{
+					{uint64(0)},
+					{uint64(1)},
+					{uint64(65535)},
+				},
+			},
+			{
+				Query:    "select * from tui16 where i >= 99999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from tui16 where i >= -99999;",
+				Expected: []sql.Row{
+					{uint64(0)},
+					{uint64(1)},
+					{uint64(65535)},
+				},
+			},
+			{
+				Query: "select * from tui16 where i < 99999;",
+				Expected: []sql.Row{
+					{uint64(0)},
+					{uint64(1)},
+					{uint64(65535)},
+				},
+			},
+			{
+				Query:    "select * from tui16 where i < -99999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from tui16 where i <= 99999;",
+				Expected: []sql.Row{
+					{uint64(0)},
+					{uint64(1)},
+					{uint64(65535)},
+				},
+			},
+			{
+				Query:    "select * from tui16 where i <= -99999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from tui16 where i in (0, 99999);",
+				Expected: []sql.Row{
+					{uint64(0)},
+				},
+			},
+			{
+				Query: "select * from tui16 where i in (0, -99999);",
+				Expected: []sql.Row{
+					{uint64(0)},
+				},
+			},
+			{
+				Query: "select * from tui16 where i not in (0, 99999);",
+				Expected: []sql.Row{
+					{uint64(1)},
+					{uint64(65535)},
+				},
+			},
+			{
+				Query: "select * from tui16 where i not in (0, -99999);",
+				Expected: []sql.Row{
+					{uint64(1)},
+					{uint64(65535)},
+				},
+			},
+
+			{
+				Query:    "select * from tui24 where i = 99999999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from tui24 where i = -9999999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from tui24 where i != 99999999;",
+				Expected: []sql.Row{
+					{uint64(0)},
+					{uint64(1)},
+					{uint64(16777215)},
+				},
+			},
+			{
+				Query: "select * from tui24 where i != -99999999;",
+				Expected: []sql.Row{
+					{uint64(0)},
+					{uint64(1)},
+					{uint64(16777215)},
+				},
+			},
+			{
+				Query:    "select * from tui24 where i > 99999999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from tui24 where i > -99999999;",
+				Expected: []sql.Row{
+					{uint64(0)},
+					{uint64(1)},
+					{uint64(16777215)},
+				},
+			},
+			{
+				Query:    "select * from tui24 where i >= 99999999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from tui24 where i >= -99999999;",
+				Expected: []sql.Row{
+					{uint64(0)},
+					{uint64(1)},
+					{uint64(16777215)},
+				},
+			},
+			{
+				Query: "select * from tui24 where i < 99999999;",
+				Expected: []sql.Row{
+					{uint64(0)},
+					{uint64(1)},
+					{uint64(16777215)},
+				},
+			},
+			{
+				Query:    "select * from tui24 where i < -99999999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from tui24 where i <= 99999999;",
+				Expected: []sql.Row{
+					{uint64(0)},
+					{uint64(1)},
+					{uint64(16777215)},
+				},
+			},
+			{
+				Query:    "select * from tui24 where i <= -99999999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from tui24 where i in (0, 99999999);",
+				Expected: []sql.Row{
+					{uint64(0)},
+				},
+			},
+			{
+				Query: "select * from tui24 where i in (0, -99999999);",
+				Expected: []sql.Row{
+					{uint64(0)},
+				},
+			},
+			{
+				Query: "select * from tui24 where i not in (0, 99999999);",
+				Expected: []sql.Row{
+					{uint64(1)},
+					{uint64(16777215)},
+				},
+			},
+			{
+				Query: "select * from tui24 where i not in (0, -99999999);",
+				Expected: []sql.Row{
+					{uint64(1)},
+					{uint64(16777215)},
+				},
+			},
+
+			{
+				Query:    "select * from tui32 where i = 9999999999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from tui32 where i = -9999999999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from tui32 where i != 9999999999;",
+				Expected: []sql.Row{
+					{uint64(0)},
+					{uint64(1)},
+					{uint64(4294967295)},
+				},
+			},
+			{
+				Query: "select * from tui32 where i != -9999999999;",
+				Expected: []sql.Row{
+					{uint64(0)},
+					{uint64(1)},
+					{uint64(4294967295)},
+				},
+			},
+			{
+				Query:    "select * from tui32 where i > 9999999999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from tui32 where i > -9999999999;",
+				Expected: []sql.Row{
+					{uint64(0)},
+					{uint64(1)},
+					{uint64(4294967295)},
+				},
+			},
+			{
+				Query:    "select * from tui32 where i >= 9999999999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from tui32 where i >= -9999999999;",
+				Expected: []sql.Row{
+					{uint64(0)},
+					{uint64(1)},
+					{uint64(4294967295)},
+				},
+			},
+			{
+				Query: "select * from tui32 where i < 9999999999;",
+				Expected: []sql.Row{
+					{uint64(0)},
+					{uint64(1)},
+					{uint64(4294967295)},
+				},
+			},
+			{
+				Query:    "select * from tui32 where i < -9999999999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from tui32 where i <= 9999999999;",
+				Expected: []sql.Row{
+					{uint64(0)},
+					{uint64(1)},
+					{uint64(4294967295)},
+				},
+			},
+			{
+				Query:    "select * from tui32 where i <= -9999999999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from tui32 where i in (0, 9999999999);",
+				Expected: []sql.Row{
+					{uint64(0)},
+				},
+			},
+			{
+				Query: "select * from tui32 where i in (0, -9999999999);",
+				Expected: []sql.Row{
+					{uint64(0)},
+				},
+			},
+			{
+				Query: "select * from tui32 where i not in (0, 9999999999);",
+				Expected: []sql.Row{
+					{uint64(1)},
+					{uint64(4294967295)},
+				},
+			},
+			{
+				Query: "select * from tui32 where i not in (0, -9999999999);",
+				Expected: []sql.Row{
+					{uint64(1)},
+					{uint64(4294967295)},
+				},
+			},
+
+			{
+				Query:    "select * from tui64 where i = 99999999999999999999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from tui64 where i = -99999999999999999999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from tui64 where i != 99999999999999999999;",
+				Expected: []sql.Row{
+					{uint64(0)},
+					{uint64(1)},
+					{uint64(18446744073709551615)},
+				},
+			},
+			{
+				Query: "select * from tui64 where i != -99999999999999999999;",
+				Expected: []sql.Row{
+					{uint64(0)},
+					{uint64(1)},
+					{uint64(18446744073709551615)},
+				},
+			},
+			{
+				Query:    "select * from tui64 where i > 99999999999999999999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from tui64 where i > -99999999999999999999;",
+				Expected: []sql.Row{
+					{uint64(0)},
+					{uint64(1)},
+					{uint64(18446744073709551615)},
+				},
+			},
+			{
+				Query:    "select * from tui64 where i >= 99999999999999999999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from tui64 where i >= -99999999999999999999;",
+				Expected: []sql.Row{
+					{uint64(0)},
+					{uint64(1)},
+					{uint64(18446744073709551615)},
+				},
+			},
+			{
+				Query: "select * from tui64 where i < 99999999999999999999;",
+				Expected: []sql.Row{
+					{uint64(0)},
+					{uint64(1)},
+					{uint64(18446744073709551615)},
+				},
+			},
+			{
+				Query:    "select * from tui64 where i < -99999999999999999999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from tui64 where i <= 99999999999999999999;",
+				Expected: []sql.Row{
+					{uint64(0)},
+					{uint64(1)},
+					{uint64(18446744073709551615)},
+				},
+			},
+			{
+				Query:    "select * from tui64 where i <= -99999999999999999999;",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "select * from tui64 where i in (0, 99999999999999999999);",
+				Expected: []sql.Row{
+					{uint64(0)},
+				},
+			},
+			{
+				Query: "select * from tui64 where i in (0, -99999999999999999999);",
+				Expected: []sql.Row{
+					{uint64(0)},
+				},
+			},
+			{
+				Query: "select * from tui64 where i not in (0, 99999999999999999999);",
+				Expected: []sql.Row{
+					{uint64(1)},
+					{uint64(18446744073709551615)},
+				},
+			},
+			{
+				Query: "select * from tui64 where i not in (0, -99999999999999999999);",
+				Expected: []sql.Row{
+					{uint64(1)},
+					{uint64(18446744073709551615)},
+				},
+			},
+		},
+	},
 
 	// Float Tests
 	{
