@@ -17,12 +17,12 @@ package analyzer
 import (
 	"cmp"
 	"fmt"
-	"github.com/dolthub/vitess/go/sqltypes"
 	"slices"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
