@@ -134,7 +134,12 @@ func (b *MySQLIndexBuilder) Equals(ctx *Context, colExpr string, keyType Type, k
 		}
 
 		var err error
-		k, err = b.convertKey(ctx, colTyp, keyType, k)
+		var inRange ConvertInRange
+		k, inRange, err = b.convertKey(ctx, colTyp, keyType, k)
+
+		if !inRange {
+			return b
+		}
 
 		if err != nil {
 			b.isInvalid = true
@@ -203,7 +208,11 @@ func (b *MySQLIndexBuilder) In(ctx *Context, colExpr string, keyTypes []Type, ke
 		}
 
 		var err error
-		k, err = b.convertKey(ctx, colTyp, keyTypes[i], k)
+		var inRange ConvertInRange
+		k, inRange, err = b.convertKey(ctx, colTyp, keyTypes[i], k)
+		if !inRange {
+			return b
+		}
 
 		if err != nil {
 			b.isInvalid = true
@@ -242,7 +251,7 @@ func (b *MySQLIndexBuilder) NotEquals(ctx *Context, colExpr string, keyType Type
 		}
 	}
 
-	key, err := b.convertKey(ctx, colTyp, keyType, key)
+	key, _, err := b.convertKey(ctx, colTyp, keyType, key)
 	if err != nil {
 		b.isInvalid = true
 		b.err = err
@@ -282,7 +291,7 @@ func (b *MySQLIndexBuilder) GreaterThan(ctx *Context, colExpr string, keyType Ty
 		key = floor(key)
 	}
 
-	key, err := b.convertKey(ctx, colTyp, keyType, key)
+	key, _, err := b.convertKey(ctx, colTyp, keyType, key)
 	if err != nil {
 		b.isInvalid = true
 		b.err = err
@@ -303,19 +312,19 @@ func isConvertibleKeyType(colType Type, keyType Type) bool {
 }
 
 // convertKey converts the given key from keyType to colType, returning an error if the conversion fails.
-func (b *MySQLIndexBuilder) convertKey(ctx *Context, colType Type, keyType Type, key interface{}) (interface{}, error) {
+func (b *MySQLIndexBuilder) convertKey(ctx *Context, colType Type, keyType Type, key interface{}) (interface{}, ConvertInRange, error) {
 	if et, ok := colType.(ExtendedType); ok {
-		toType, _, err := et.ConvertToType(ctx, keyType.(ExtendedType), key)
-		return toType, err
+		return et.ConvertToType(ctx, keyType.(ExtendedType), key)
 	} else {
 		if !isConvertibleKeyType(colType, keyType) {
-			return nil, ErrInvalidValueType.New(key, colType)
+			return nil, OutOfRange, ErrInvalidValueType.New(key, colType)
 		}
 		k, _, err := colType.Convert(ctx, key)
 		if err != nil && !ErrTruncatedIncorrect.Is(err) {
-			return nil, err
+			return nil, OutOfRange, err
 		}
-		return k, nil
+
+		return k, InRange, nil
 	}
 }
 
@@ -343,7 +352,7 @@ func (b *MySQLIndexBuilder) GreaterOrEqual(ctx *Context, colExpr string, keyType
 		key = newKey
 	}
 
-	key, err := b.convertKey(ctx, colTyp, keyType, key)
+	key, _, err := b.convertKey(ctx, colTyp, keyType, key)
 	if err != nil {
 		b.isInvalid = true
 		b.err = err
@@ -377,7 +386,7 @@ func (b *MySQLIndexBuilder) LessThan(ctx *Context, colExpr string, keyType Type,
 		key = ceil(key)
 	}
 
-	key, err := b.convertKey(ctx, colType, keyType, key)
+	key, _, err := b.convertKey(ctx, colType, keyType, key)
 	if err != nil {
 		b.isInvalid = true
 		b.err = err
@@ -412,7 +421,7 @@ func (b *MySQLIndexBuilder) LessOrEqual(ctx *Context, colExpr string, keyType Ty
 		key = newKey
 	}
 
-	key, err := b.convertKey(ctx, colType, keyType, key)
+	key, _, err := b.convertKey(ctx, colType, keyType, key)
 	if err != nil {
 		b.isInvalid = true
 		b.err = err
