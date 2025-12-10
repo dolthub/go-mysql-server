@@ -854,7 +854,7 @@ func inValsToMySQLRangeCollHelper[N cmp.Ordered](ctx *sql.Context, vals []any, t
 				continue
 			}
 		case decimal.Decimal:
-			if precise && v.Equal(decimal.NewFromInt(v.IntPart())) {
+			if precise && !v.Equal(decimal.NewFromInt(v.IntPart())) {
 				continue
 			}
 		default:
@@ -864,7 +864,7 @@ func inValsToMySQLRangeCollHelper[N cmp.Ordered](ctx *sql.Context, vals []any, t
 		if err != nil {
 			return nil, false
 		}
-		if !inRange {
+		if inRange != sql.InRange {
 			continue
 		}
 		keys = append(keys, key.(N))
