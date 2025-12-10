@@ -251,7 +251,7 @@ func isZero(ctx *sql.Context, lit *expression.Literal) bool {
 		// and the values are validated in other parts of the analyzer anyway.
 		return false
 	}
-	return bool(inRange) && convert == int8(0)
+	return inRange == sql.InRange && convert == int8(0)
 }
 
 // insertAutoUuidExpression transforms the specified |expr| for |autoUuidCol| and inserts an AutoUuid

@@ -131,7 +131,7 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 			} else {
 				converted, inRange, cErr = col.Type.Convert(ctxWithColumnInfo, val)
 			}
-			if cErr == nil && !inRange {
+			if cErr == nil && inRange != sql.InRange {
 				cErr = sql.ErrValueOutOfRange.New(val, col.Type)
 			}
 			if sql.ErrTruncatedIncorrect.Is(cErr) {

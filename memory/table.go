@@ -1146,7 +1146,7 @@ func (t *Table) PeekNextAutoIncrementValue(ctx *sql.Context) (uint64, error) {
 
 	// If the current auto increment value is out of range for the column type,
 	// return the maximum valid value instead
-	if _, inRange, err := autoCol.Type.Convert(ctx, data.autoIncVal); err == nil && inRange == sql.OutOfRange {
+	if _, inRange, err := autoCol.Type.Convert(ctx, data.autoIncVal); err == nil && inRange != sql.InRange {
 		return data.autoIncVal - 1, nil
 	}
 
@@ -1437,7 +1437,7 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 				}
 				return err
 			}
-			if !inRange {
+			if inRange != sql.InRange {
 				return sql.ErrValueOutOfRange.New(row[oldIdx], column.Type)
 			}
 			var newRow sql.Row

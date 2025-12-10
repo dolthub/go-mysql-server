@@ -73,7 +73,7 @@ func convertJSONValue(v interface{}) (interface{}, sql.ConvertInRange, error) {
 
 	var val interface{}
 	if err := json.Unmarshal(data, &val); err != nil {
-		return nil, sql.OutOfRange, sql.ErrInvalidJson.New(err.Error())
+		return nil, sql.InRange, sql.ErrInvalidJson.New(err.Error())
 	}
 
 	return JSONDocument{Val: val}, sql.InRange, nil
@@ -92,7 +92,7 @@ func (t JsonType) Convert(c context.Context, v interface{}) (interface{}, sql.Co
 	case sql.StringWrapper:
 		str, err := v.Unwrap(c)
 		if err != nil {
-			return nil, sql.OutOfRange, err
+			return nil, sql.InRange, err
 		}
 		return convertJSONValue(str)
 	case int8:

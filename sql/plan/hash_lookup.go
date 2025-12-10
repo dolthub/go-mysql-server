@@ -132,28 +132,28 @@ func (n *HashLookup) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 // Fast paths a few smaller slices into fixed size arrays, puts everything else
 // through string serialization and a hash for now. It is OK to hash lossy here
 // as the join condition is still evaluated after the matching rows are returned.
-func (n *HashLookup) GetHashKey(ctx *sql.Context, e sql.Expression, row sql.Row) (interface{}, error) {
+func (n *HashLookup) GetHashKey(ctx *sql.Context, e sql.Expression, row sql.Row) (any, sql.ConvertInRange, error) {
 	key, err := e.Eval(ctx, row)
 	if err != nil {
-		return nil, err
+		return nil, sql.InRange, err
 	}
 	key, _, err = n.CompareType.Convert(ctx, key)
 	if types.ErrValueNotNil.Is(err) {
 		// The LHS expression was NullType. This is allowed.
-		return nil, nil
+		return nil, sql.InRange, nil
 	}
 	if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
 		// Truncated warning is already thrown elsewhere.
-		return nil, err
+		return nil, sql.InRange, err
 	}
-	if s, ok := key.([]interface{}); ok {
-		return hash.HashOf(ctx, n.leftKeySch, s)
+	if s, ok := key.([]any); ok {
+		h, err := hash.HashOf(ctx, n.leftKeySch, s)
+		return h, sql.InRange, err
 	}
 	// byte slices are not hashable
 	if k, ok := key.([]byte); ok {
-		return string(k), nil
+		return string(k), sql.InRange, nil
 	}
-
 	return hash.HashOfSimple(ctx, key, n.CompareType)
 }
 

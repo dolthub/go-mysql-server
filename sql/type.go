@@ -66,11 +66,12 @@ const (
 	True = int8(1)
 )
 
-type ConvertInRange bool
+type ConvertInRange byte
 
 const (
-	InRange    ConvertInRange = true
-	OutOfRange                = false
+	InRange ConvertInRange = iota
+	Underflow
+	Overflow
 )
 
 // Type represents a SQL type.
@@ -78,11 +79,11 @@ type Type interface {
 	CollationCoercible
 	// Compare returns an integer comparing two values.
 	// The result will be 0 if a==b, -1 if a < b, and +1 if a > b.
-	Compare(context.Context, interface{}, interface{}) (int, error)
+	Compare(context.Context, any, any) (int, error)
 	// Convert a value of a compatible type to a most accurate type, returning
 	// the new value, whether the value in range, or an error. If |inRange| is
 	// false, the value was coerced according to MySQL's rules.
-	Convert(context.Context, interface{}) (interface{}, ConvertInRange, error)
+	Convert(context.Context, any) (any, ConvertInRange, error)
 	// Equals returns whether the given type is equivalent to the calling type. All parameters are included in the
 	// comparison, so ENUM("a", "b") is not equivalent to ENUM("a", "b", "c").
 	Equals(otherType Type) bool
@@ -95,13 +96,13 @@ type Type interface {
 	// SQL returns the sqltypes.Value for the given value.
 	// Implementations can optionally use |dest| to append
 	// serialized data, but should not mutate existing data.
-	SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error)
+	SQL(ctx *Context, dest []byte, v any) (sqltypes.Value, error)
 	// Type returns the query.Type for the given Type.
 	Type() query.Type
 	// ValueType returns the Go type of the value returned by Convert().
 	ValueType() reflect.Type
 	// Zero returns the golang zero value for this type
-	Zero() interface{}
+	Zero() any
 	fmt.Stringer
 }
 
