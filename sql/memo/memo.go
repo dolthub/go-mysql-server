@@ -629,7 +629,7 @@ func (m *Memo) String() string {
 				continue
 			}
 			exprs[int(TableIdForSource(g.Id))] = g.String()
-			newGroups = slices.AppendSeq(newGroups, g.children())
+			newGroups = slices.AppendSeq(newGroups, g.children)
 		}
 		groups = newGroups
 	}
@@ -678,7 +678,7 @@ func (m *Memo) LogCostDebugString() {
 			}
 
 			exprs[int(TableIdForSource(g.Id))] = g.CostTreeString(prefix)
-			newGroups = slices.AppendSeq(newGroups, g.children())
+			newGroups = slices.AppendSeq(newGroups, g.children)
 		}
 		groups = newGroups
 	}

@@ -199,7 +199,7 @@ func (o joinOrderHint) build(grp *ExprGroup) {
 	}
 	o.groups[grp.Id] = s
 
-	for g := range grp.children() {
+	for g := range grp.children {
 		if _, ok := o.groups[g.Id]; !ok {
 			// avoid duplicate work
 			o.build(g)
