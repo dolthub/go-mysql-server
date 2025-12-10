@@ -17,6 +17,7 @@ package analyzer
 import (
 	"cmp"
 	"fmt"
+	"github.com/dolthub/vitess/go/sqltypes"
 	"slices"
 	"sort"
 	"strings"
