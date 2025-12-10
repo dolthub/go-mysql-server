@@ -357,7 +357,7 @@ func (t StringType) Convert(ctx context.Context, v interface{}) (interface{}, sq
 	}
 	val, err := ConvertToBytes(ctx, v, t, nil)
 	if err != nil {
-		return nil, sql.OutOfRange, err
+		return nil, sql.Overflow, err
 	}
 
 	if IsBinaryType(t) {

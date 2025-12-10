@@ -428,7 +428,7 @@ func TestDatetimeOverflowUnderflow(t *testing.T) {
 			_, inRange, err := tt.typ.Convert(ctx, tt.val)
 
 			if tt.expectError {
-				require.True(t, err != nil || inRange == sql.OutOfRange,
+				require.True(t, err != nil || inRange != sql.InRange,
 					"expected error or out-of-range but got neither; err: %v, inRange: %v", err, inRange)
 			} else {
 				require.NoError(t, err)

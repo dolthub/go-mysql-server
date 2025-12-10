@@ -987,7 +987,8 @@ func projectRowWithTypes(ctx *sql.Context, oldSchema, newSchema sql.Schema, proj
 				err = sql.ErrInvalidValue.New(newSchema[i].Type, newRow[i])
 			}
 			return nil, err
-		} else if !inRange {
+		}
+		if inRange != sql.InRange {
 			return nil, sql.ErrValueOutOfRange.New(newRow[i], newSchema[i].Type)
 		}
 		newRow[i] = converted

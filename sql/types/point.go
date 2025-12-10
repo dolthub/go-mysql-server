@@ -67,27 +67,27 @@ func (t PointType) Convert(ctx context.Context, v interface{}) (interface{}, sql
 		// Parse header
 		srid, isBig, geomType, err := DeserializeEWKBHeader(val)
 		if err != nil {
-			return nil, sql.OutOfRange, err
+			return nil, sql.InRange, err
 		}
 		// Throw error if not marked as point
 		if geomType != WKBPointID {
-			return nil, sql.OutOfRange, sql.ErrInvalidGISData.New("PointType.Convert")
+			return nil, sql.InRange, sql.ErrInvalidGISData.New("PointType.Convert")
 		}
 		// Parse data section
 		point, _, err := DeserializePoint(val[EWKBHeaderSize:], isBig, srid)
 		if err != nil {
-			return nil, sql.OutOfRange, err
+			return nil, sql.InRange, err
 		}
 		return point, sql.InRange, nil
 	case string:
 		return t.Convert(ctx, []byte(val))
 	case Point:
 		if err := t.MatchSRID(val); err != nil {
-			return nil, sql.OutOfRange, err
+			return nil, sql.InRange, err
 		}
 		return val, sql.InRange, nil
 	default:
-		return nil, sql.OutOfRange, sql.ErrSpatialTypeConversion.New()
+		return nil, sql.InRange, sql.ErrSpatialTypeConversion.New()
 	}
 }
 

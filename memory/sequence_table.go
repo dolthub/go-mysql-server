@@ -86,11 +86,11 @@ func (s IntSequenceTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, e
 	if err != nil {
 		return nil, err
 	}
-	iterLenVal, ok, err := types.Int64.Convert(ctx, iterLen)
+	iterLenVal, inRange, err := types.Int64.Convert(ctx, iterLen)
 	if err != nil {
 		return nil, err
 	}
-	if !ok {
+	if inRange != sql.InRange {
 		return nil, fmt.Errorf("sequence table expects integer argument")
 	}
 

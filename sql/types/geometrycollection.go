@@ -68,27 +68,27 @@ func (t GeomCollType) Convert(ctx context.Context, v interface{}) (interface{}, 
 		// Parse header
 		srid, isBig, geomType, err := DeserializeEWKBHeader(val)
 		if err != nil {
-			return nil, sql.OutOfRange, err
+			return nil, sql.InRange, err
 		}
 		// Throw error if not marked as geometry collection
 		if geomType != WKBGeomCollID {
-			return nil, sql.OutOfRange, sql.ErrInvalidGISData.New("GeomCollType.Convert")
+			return nil, sql.InRange, sql.ErrInvalidGISData.New("GeomCollType.Convert")
 		}
 		// Parse data section
 		geom, _, err := DeserializeGeomColl(val[EWKBHeaderSize:], isBig, srid)
 		if err != nil {
-			return nil, sql.OutOfRange, err
+			return nil, sql.InRange, err
 		}
 		return geom, sql.InRange, nil
 	case string:
 		return t.Convert(ctx, []byte(val))
 	case GeomColl:
 		if err := t.MatchSRID(val); err != nil {
-			return nil, sql.OutOfRange, err
+			return nil, sql.InRange, err
 		}
 		return val, sql.InRange, nil
 	default:
-		return nil, sql.OutOfRange, sql.ErrSpatialTypeConversion.New()
+		return nil, sql.InRange, sql.ErrSpatialTypeConversion.New()
 	}
 }
 

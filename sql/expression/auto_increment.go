@@ -140,7 +140,7 @@ func (i *AutoIncrement) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	}
 
 	ret, inRange, err := i.Type().Convert(ctx, given)
-	if err == nil && !inRange {
+	if err == nil && inRange != sql.InRange {
 		err = sql.ErrValueOutOfRange.New(given, i.Type())
 	}
 	if err != nil {

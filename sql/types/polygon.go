@@ -64,20 +64,20 @@ func (t PolygonType) Convert(ctx context.Context, v interface{}) (interface{}, s
 	case []byte:
 		poly, _, err := GeometryType{}.Convert(ctx, buf)
 		if sql.ErrInvalidGISData.Is(err) {
-			return nil, sql.OutOfRange, sql.ErrInvalidGISData.New("PolygonType.Convert")
+			return nil, sql.InRange, sql.ErrInvalidGISData.New("PolygonType.Convert")
 		} else if err != nil {
-			return poly, sql.OutOfRange, err
+			return poly, sql.InRange, err
 		}
 		return poly, sql.InRange, nil
 	case string:
 		return t.Convert(ctx, []byte(buf))
 	case Polygon:
 		if err := t.MatchSRID(buf); err != nil {
-			return nil, sql.OutOfRange, err
+			return nil, sql.InRange, err
 		}
 		return buf, sql.InRange, nil
 	default:
-		return nil, sql.OutOfRange, sql.ErrSpatialTypeConversion.New()
+		return nil, sql.InRange, sql.ErrSpatialTypeConversion.New()
 	}
 }
 

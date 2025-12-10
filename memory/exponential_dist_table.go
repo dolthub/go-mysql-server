@@ -36,24 +36,24 @@ func (s ExponentialDistTable) NewInstance(ctx *sql.Context, db sql.Database, arg
 	if !ok {
 		return nil, fmt.Errorf("normal_dist table expects arguments to be literal expressions")
 	}
-	colCnt, inBounds, _ := types.Int64.Convert(ctx, colCntLit.Value())
-	if !inBounds {
+	colCnt, inRange, _ := types.Int64.Convert(ctx, colCntLit.Value())
+	if inRange != sql.InRange {
 		return nil, fmt.Errorf("normal_dist table expects 1st argument to be column count")
 	}
 	rowCntLit, ok := args[1].(*expression.Literal)
 	if !ok {
 		return nil, fmt.Errorf("normal_dist table expects arguments to be literal expressions")
 	}
-	rowCnt, inBounds, _ := types.Int64.Convert(ctx, rowCntLit.Value())
-	if !inBounds {
+	rowCnt, inRange, _ := types.Int64.Convert(ctx, rowCntLit.Value())
+	if inRange != sql.InRange {
 		return nil, fmt.Errorf("normal_dist table expects 2nd argument to be row count")
 	}
 	lambdaLit, ok := args[2].(*expression.Literal)
 	if !ok {
 		return nil, fmt.Errorf("exponential_dist table expects arguments to be literal expressions")
 	}
-	lambda, inBounds, _ := types.Float64.Convert(ctx, lambdaLit.Value())
-	if !inBounds {
+	lambda, inRange, _ := types.Float64.Convert(ctx, lambdaLit.Value())
+	if inRange != sql.InRange {
 		return nil, fmt.Errorf("exponential_dist table expects 3rd argument to be row count")
 	}
 	return ExponentialDistTable{db: db, colCnt: int(colCnt.(int64)), rowCnt: int(rowCnt.(int64)), lambda: lambda.(float64)}, nil

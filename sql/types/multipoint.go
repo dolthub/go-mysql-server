@@ -64,22 +64,22 @@ func (t MultiPointType) Convert(ctx context.Context, v interface{}) (interface{}
 	case []byte:
 		multipoint, _, err := GeometryType{}.Convert(ctx, buf)
 		if err != nil {
-			return nil, sql.OutOfRange, err
+			return nil, sql.InRange, err
 		}
 		// TODO: is this even possible?
 		if _, ok := multipoint.(MultiPoint); !ok {
-			return nil, sql.OutOfRange, sql.ErrInvalidGISData.New("MultiPointType.Convert")
+			return nil, sql.InRange, sql.ErrInvalidGISData.New("MultiPointType.Convert")
 		}
 		return multipoint, sql.InRange, nil
 	case string:
 		return t.Convert(ctx, []byte(buf))
 	case MultiPoint:
 		if err := t.MatchSRID(buf); err != nil {
-			return nil, sql.OutOfRange, err
+			return nil, sql.InRange, err
 		}
 		return buf, sql.InRange, nil
 	default:
-		return nil, sql.OutOfRange, sql.ErrSpatialTypeConversion.New()
+		return nil, sql.InRange, sql.ErrSpatialTypeConversion.New()
 	}
 }
 

@@ -50,7 +50,6 @@ func (t deferredType) Convert(ctx context.Context, v interface{}) (interface{}, 
 	if v != nil {
 		return nil, sql.InRange, ErrValueNotNil.New(v)
 	}
-
 	return nil, sql.InRange, nil
 }
 

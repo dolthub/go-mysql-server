@@ -75,7 +75,7 @@ func (t TupleType) Convert(ctx context.Context, v interface{}) (interface{}, sql
 	}
 	if vals, ok := v.([]interface{}); ok {
 		if len(vals) != len(t) {
-			return nil, sql.OutOfRange, sql.ErrInvalidColumnNumber.New(len(t), len(vals))
+			return nil, sql.InRange, sql.ErrInvalidColumnNumber.New(len(t), len(vals))
 		}
 
 		var result = make([]interface{}, len(t))
@@ -83,13 +83,13 @@ func (t TupleType) Convert(ctx context.Context, v interface{}) (interface{}, sql
 			var err error
 			result[i], _, err = typ.Convert(ctx, vals[i])
 			if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
-				return nil, sql.OutOfRange, err
+				return nil, sql.InRange, err
 			}
 		}
 
 		return result, sql.InRange, nil
 	}
-	return nil, sql.OutOfRange, sql.ErrNotTuple.New(v)
+	return nil, sql.InRange, sql.ErrNotTuple.New(v)
 }
 
 // Equals implements the Type interface.

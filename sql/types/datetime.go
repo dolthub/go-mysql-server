@@ -205,7 +205,7 @@ func (t datetimeType) Convert(ctx context.Context, v interface{}) (interface{}, 
 	}
 	res, err := ConvertToTime(ctx, v, t)
 	if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
-		return nil, sql.OutOfRange, err
+		return nil, sql.InRange, err
 	}
 	return res, sql.InRange, err
 }

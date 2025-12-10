@@ -120,7 +120,7 @@ func (t systemEnumType) Convert(ctx context.Context, v interface{}) (interface{}
 		}
 	}
 
-	return nil, sql.OutOfRange, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
+	return nil, sql.InRange, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
 }
 
 // Equals implements the Type interface.
