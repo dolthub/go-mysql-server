@@ -170,9 +170,16 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 
 		f, ok := b.cat.Function(b.ctx, name)
 		if !ok {
-			// todo(max): similar names in registry?
-			err := sql.ErrFunctionNotFound.New(name)
-			b.handleErr(err)
+			// check if this a table function accidentally used in a scalar context
+			_, ok := b.cat.TableFunction(b.ctx, name)
+			if ok {
+				err := sql.ErrTableFunctionNotInFrom.New(name)
+				b.handleErr(err)
+			} else {
+				// todo(max): similar names in registry?
+				err := sql.ErrFunctionNotFound.New(name)
+				b.handleErr(err)
+			}
 		}
 
 		args := make([]sql.Expression, len(v.Exprs))
