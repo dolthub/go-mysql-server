@@ -180,14 +180,18 @@ type DeferredType interface {
 // The type of the returned value is one of the following: int8, int16, int32, int64, uint8, uint16, uint32, uint64, float32, float64.
 type NumberType interface {
 	Type
-	IsSigned() bool
+	// IsNumericType returns true if the type is numeric. Must be checked in addition to a type assertion for NumberType,
+	// because some implementors of this interface may not be numeric types in all instantiations.
+	IsNumericType() bool
+	// IsFloat returns true if the type is a floating point type (including arbitrary precision types like DECIMAL).
 	IsFloat() bool
+	// DisplayWidth returns the maximum number of characters used to display a value of this type.
 	DisplayWidth() int
 }
 
 func IsNumberType(t Type) bool {
-	_, ok := t.(NumberType)
-	return ok
+	nt, ok := t.(NumberType)
+	return ok && nt.IsNumericType()
 }
 
 // RoundingNumberType represents Number Types that implement an additional interface
@@ -282,7 +286,7 @@ type DecimalType interface {
 	// noting that Convert() returns a nil value for nil inputs, and also returns decimal.Decimal rather than
 	// decimal.NullDecimal.
 	ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, error)
-	//ConvertNoBoundsCheck normalizes an interface{} to a decimal type without performing expensive bound checks
+	// ConvertNoBoundsCheck normalizes an interface{} to a decimal type without performing expensive bound checks
 	ConvertNoBoundsCheck(v interface{}) (decimal.Decimal, error)
 	// BoundsCheck rounds and validates a decimal, returning the decimal,
 	// whether the value was out of range, and an error.
@@ -344,7 +348,7 @@ type ExtendedType interface {
 	MaxSerializedWidth() ExtendedTypeSerializedWidth
 	// ConvertToType converts the given value of the given type to this type, or returns an error if
 	// no conversion is possible.
-	ConvertToType(ctx *Context, typ ExtendedType, val any) (any, error)
+	ConvertToType(ctx *Context, typ ExtendedType, val any) (any, ConvertInRange, error)
 }
 
 type ExtendedTypeSerializedWidth uint8

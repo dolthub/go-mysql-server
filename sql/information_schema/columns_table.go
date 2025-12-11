@@ -576,16 +576,17 @@ func getColumnPrecisionAndScale(colType sql.Type) (interface{}, interface{}) {
 	case sql.DecimalType:
 		return int(t.Precision()), int(t.Scale())
 	case sql.NumberType:
-		switch colType.Type() {
-		case sqltypes.Float32, sqltypes.Float64:
-			numericScale = nil
-		default:
-			numericScale = 0
+		if t.IsNumericType() {
+			switch colType.Type() {
+			case sqltypes.Float32, sqltypes.Float64:
+				numericScale = nil
+			default:
+				numericScale = 0
+			}
+			return typeToNumericPrecision[colType.Type()], numericScale
 		}
-		return typeToNumericPrecision[colType.Type()], numericScale
-	default:
-		return nil, nil
 	}
+	return nil, nil
 }
 
 func getCharAndCollNamesAndCharMaxAndOctetLens(ctx *sql.Context, colType sql.Type) (interface{}, interface{}, interface{}, interface{}) {

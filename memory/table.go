@@ -1846,7 +1846,7 @@ func (t *Table) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 func (t *Table) GetDeclaredForeignKeys(ctx *sql.Context) ([]sql.ForeignKeyConstraint, error) {
 	data := t.sessionTableData(ctx)
 
-	//TODO: may not be the best location, need to handle db as well
+	// TODO: may not be the best location, need to handle db as well
 	var fks []sql.ForeignKeyConstraint
 	lowerName := strings.ToLower(t.name)
 	for _, fk := range data.fkColl.Keys() {
@@ -1984,7 +1984,7 @@ func (t *Table) DropCheck(ctx *sql.Context, chName string) error {
 			return nil
 		}
 	}
-	//TODO: add SQL error
+	// TODO: add SQL error
 	return fmt.Errorf("check '%s' was not found on the table", chName)
 }
 

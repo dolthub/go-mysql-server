@@ -149,6 +149,11 @@ func MustCreateNumberTypeWithDisplayWidth(baseType query.Type, displayWidth int)
 	return nt
 }
 
+// IsNumericType implements the NumberType interface.
+func (t NumberTypeImpl_) IsNumericType() bool {
+	return true
+}
+
 // Compare implements Type interface.
 func (t NumberTypeImpl_) Compare(s context.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {

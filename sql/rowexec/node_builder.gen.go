@@ -378,13 +378,18 @@ func (b *BaseBuilder) buildNodeExecNoAnalyze(ctx *sql.Context, n sql.Node, row s
 		return b.buildHashLookup(ctx, n, row)
 	case *plan.Iterate:
 		return b.buildIterate(ctx, n, row)
-	case sql.ExecSourceRel:
-		// escape hatch for custom data sources
-		return n.RowIter(ctx, row)
 	case *plan.CreateSpatialRefSys:
 		return b.buildCreateSpatialRefSys(ctx, n, row)
 	case *plan.RenameForeignKey:
 		return b.buildRenameForeignKey(ctx, n, row)
+	case sql.ExecBuilderNode:
+		// Escape hatch for custom node types implemented outside this package.
+		return n.BuildRowIter(ctx, b, row)
+	case sql.ExecSourceRel:
+		// Catch-all for nodes that implement their own RowIter method not represented above.
+		// All nodes defined in go-mysql-server should be present in the switch above, but not all have been migrated
+		// here yet.
+		return n.RowIter(ctx, row)
 	default:
 		return nil, fmt.Errorf("exec builder found unknown Node type %T", n)
 	}

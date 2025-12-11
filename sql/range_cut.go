@@ -124,13 +124,14 @@ func GetMySQLRangeCutMin(typ Type, cuts ...MySQLRangeCut) (MySQLRangeCut, error)
 // Above represents the position immediately above the contained key.
 type Above struct {
 	Key interface{}
+	Typ Type
 }
 
 var _ MySQLRangeCut = Above{}
 
 // Compare implements MySQLRangeCut.
 func (a Above) Compare(c MySQLRangeCut, typ Type) (int, error) {
-	//TODO: Add context parameter to MySQLRangeCut.Compare
+	// TODO: Add context parameter to MySQLRangeCut.Compare
 	ctx := context.Background()
 	switch c := c.(type) {
 	case AboveAll:
@@ -138,9 +139,9 @@ func (a Above) Compare(c MySQLRangeCut, typ Type) (int, error) {
 	case AboveNull:
 		return 1, nil
 	case Above:
-		return typ.Compare(ctx, a.Key, c.Key)
+		return compareRangeCuts(ctx, typ, typedValue{a.Key, a.Typ}, typedValue{c.Key, c.Typ})
 	case Below:
-		cmp, err := typ.Compare(ctx, a.Key, c.Key)
+		cmp, err := compareRangeCuts(ctx, typ, typedValue{a.Key, a.Typ}, typedValue{c.Key, c.Typ})
 		if err != nil {
 			return 0, err
 		}
@@ -201,13 +202,14 @@ func (AboveAll) TypeAsUpperBound() MySQLRangeBoundType {
 // Below represents the position immediately below the contained key.
 type Below struct {
 	Key interface{}
+	Typ Type
 }
 
 var _ MySQLRangeCut = Below{}
 
 // Compare implements MySQLRangeCut.
 func (b Below) Compare(c MySQLRangeCut, typ Type) (int, error) {
-	//TODO: Add context parameter to MySQLRangeCut.Compare
+	// TODO: Add context parameter to MySQLRangeCut.Compare
 	ctx := context.Background()
 	switch c := c.(type) {
 	case AboveAll:
@@ -215,9 +217,9 @@ func (b Below) Compare(c MySQLRangeCut, typ Type) (int, error) {
 	case AboveNull:
 		return 1, nil
 	case Below:
-		return typ.Compare(ctx, b.Key, c.Key)
+		return compareRangeCuts(ctx, typ, typedValue{b.Key, b.Typ}, typedValue{c.Key, c.Typ})
 	case Above:
-		cmp, err := typ.Compare(ctx, c.Key, b.Key)
+		cmp, err := compareRangeCuts(ctx, typ, typedValue{c.Key, c.Typ}, typedValue{b.Key, b.Typ})
 		if err != nil {
 			return 0, err
 		}
@@ -230,6 +232,37 @@ func (b Below) Compare(c MySQLRangeCut, typ Type) (int, error) {
 	default:
 		panic(fmt.Errorf("unrecognized MySQLRangeCut type '%T'", c))
 	}
+}
+
+type typedValue struct {
+	value any
+	typ   Type
+}
+
+func compareRangeCuts(ctx context.Context, rangeType Type, a typedValue, b typedValue) (int, error) {
+	if et, ok := rangeType.(ExtendedType); ok {
+		aet, aok := a.typ.(ExtendedType)
+		bet, bok := b.typ.(ExtendedType)
+		if aok && bok {
+			// TODO: context
+			ac, inRange, err := et.ConvertToType(nil, aet, a.value)
+			if err != nil {
+				return 0, err
+			} else if inRange != InRange {
+				return 0, ErrValueOutOfRange.New(a.value, aet)
+			}
+
+			bc, inRange, err := et.ConvertToType(nil, bet, b.value)
+			if err != nil {
+				return 0, err
+			} else if inRange != InRange {
+				return 0, ErrValueOutOfRange.New(b.value, bet)
+			}
+
+			return aet.Compare(ctx, ac, bc)
+		}
+	}
+	return rangeType.Compare(ctx, a.value, b.value)
 }
 
 // String implements MySQLRangeCut.

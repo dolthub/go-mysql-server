@@ -486,7 +486,7 @@ func convertSemiToInnerJoin(m *memo.Memo) error {
 					}
 				case *expression.Literal, *expression.And, *expression.Or, *expression.Equals, *expression.Arithmetic, *expression.BindVar, expression.Tuple:
 				default:
-					if _, ok := e.(expression.Equality); !ok {
+					if eq, ok := e.(expression.Equality); !ok || !eq.RepresentsEquality() {
 						return true
 					}
 				}
@@ -581,7 +581,7 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 					}
 				case *expression.Literal, *expression.And, *expression.Or, *expression.Equals, *expression.Arithmetic, *expression.BindVar, expression.Tuple:
 				default:
-					if _, ok := e.(expression.Equality); !ok {
+					if eq, ok := e.(expression.Equality); !ok || !eq.RepresentsEquality() {
 						return true
 					}
 				}
@@ -708,7 +708,7 @@ func addRightSemiJoins(ctx *sql.Context, m *memo.Memo) error {
 					}
 				case *expression.Literal, *expression.And, *expression.Or, *expression.Equals, *expression.Arithmetic, *expression.BindVar:
 				default:
-					if _, ok := e.(expression.Equality); !ok {
+					if eq, ok := e.(expression.Equality); !ok || !eq.RepresentsEquality() {
 						return true
 					}
 				}
@@ -1403,7 +1403,7 @@ func makeIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, tab plan.Table
 		found := idx.Cols()[j] == matchedIdx
 		var lit *expression.Literal
 		for _, f := range filters {
-			if eq, ok := f.(expression.Equality); ok {
+			if eq, ok := f.(expression.Equality); ok && eq.RepresentsEquality() {
 				if l, ok := eq.Left().(*expression.GetField); ok && l.Id() == idx.Cols()[j] {
 					lit, _ = eq.Right().(*expression.Literal)
 				}
