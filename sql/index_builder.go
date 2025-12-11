@@ -139,15 +139,16 @@ func (b *MySQLIndexBuilder) Equals(ctx *Context, colExpr string, keyType Type, k
 		var inRange ConvertInRange
 		k, inRange, err = b.convertKey(ctx, colTyp, keyType, k)
 
-		if inRange != InRange {
-			return b
-		}
-
 		if err != nil {
 			b.isInvalid = true
 			b.err = err
 			return b
 		}
+		if inRange != InRange {
+			potentialRanges[i] = EmptyRangeColumnExpr(colTyp)
+			continue
+		}
+
 		potentialRanges[i] = ClosedRangeColumnExpr(k, k, colTyp)
 	}
 	b.updateCol(ctx, colExpr, potentialRanges...)
@@ -331,12 +332,12 @@ func (b *MySQLIndexBuilder) convertKey(ctx *Context, colType Type, keyType Type,
 		if !isConvertibleKeyType(colType, keyType) {
 			return nil, Overflow, ErrInvalidValueType.New(key, colType)
 		}
-		k, _, err := colType.Convert(ctx, key)
+		k, inRange, err := colType.Convert(ctx, key)
 		if err != nil && !ErrTruncatedIncorrect.Is(err) {
 			return nil, Overflow, err
 		}
 
-		return k, InRange, nil
+		return k, inRange, nil
 	}
 }
 

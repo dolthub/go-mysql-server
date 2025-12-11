@@ -248,14 +248,14 @@ func compareRangeCuts(ctx context.Context, rangeType Type, a typedValue, b typed
 			ac, inRange, err := et.ConvertToType(nil, aet, a.value)
 			if err != nil {
 				return 0, err
-			} else if !inRange {
+			} else if inRange != InRange {
 				return 0, ErrValueOutOfRange.New(a.value, aet)
 			}
 
 			bc, inRange, err := et.ConvertToType(nil, bet, b.value)
 			if err != nil {
 				return 0, err
-			} else if !inRange {
+			} else if inRange != InRange {
 				return 0, ErrValueOutOfRange.New(b.value, bet)
 			}
 

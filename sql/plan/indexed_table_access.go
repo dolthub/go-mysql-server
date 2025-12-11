@@ -613,7 +613,7 @@ func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key lookupBuilderKey) (sql.
 					return sql.IndexLookup{}, false, err
 				}
 
-				if !inRange {
+				if inRange != sql.InRange {
 					return sql.IndexLookup{}, false, nil
 				}
 
@@ -632,7 +632,7 @@ func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key lookupBuilderKey) (sql.
 				return sql.IndexLookup{}, false, err
 			}
 
-			if !inRange {
+			if inRange != sql.InRange {
 				return sql.IndexLookup{}, false, nil
 			}
 
@@ -664,12 +664,7 @@ func convertLookupKey(ctx *sql.Context, colType sql.Type, keyCol lookupBuilderKe
 	// For extended types, use the rich type conversion methods
 	if srcEt, ok := srcType.(sql.ExtendedType); ok {
 		if destEt, ok := destType.(sql.ExtendedType); ok {
-			converted, inRange, err := destEt.ConvertToType(ctx, srcEt, keyCol.val)
-			if err != nil {
-				return nil, sql.OutOfRange, err
-			}
-
-			return converted, inRange, nil
+			return destEt.ConvertToType(ctx, srcEt, keyCol.val)
 		}
 	}
 
