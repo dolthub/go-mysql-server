@@ -191,10 +191,10 @@ func TestPushNotFilters(t *testing.T) {
 			exp: "(xy.x < 0)",
 		},
 		// TODO this isn't correct for join filters
-		//{
+		// {
 		//	in:  "NOT(y IS NULL)",
 		//	exp: "((xy.x < NULL) OR (xy.x > NULL))",
-		//},
+		// },
 		{
 			in:  "NOT (x > 2 AND y > 2)",
 			exp: "((xy.x <= 2) OR (xy.y <= 2))",
@@ -244,14 +244,14 @@ func newTestCatalog(db *memory.Database) *sql.MapCatalog {
 	}
 
 	cat.Tables["xy"] = memory.NewTable(db, "xy", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "x", Type: types.Int64},
-		{Name: "y", Type: types.Int64},
-		{Name: "z", Type: types.Int64},
+		{Name: "x", Type: types.Int64, Source: "xy"},
+		{Name: "y", Type: types.Int64, Source: "xy"},
+		{Name: "z", Type: types.Int64, Source: "xy"},
 	}, 0), nil)
 	cat.Tables["uv"] = memory.NewTable(db, "uv", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "u", Type: types.Int64},
-		{Name: "v", Type: types.Int64},
-		{Name: "w", Type: types.Int64},
+		{Name: "u", Type: types.Int64, Source: "uv"},
+		{Name: "v", Type: types.Int64, Source: "uv"},
+		{Name: "w", Type: types.Int64, Source: "uv"},
 	}, 0), nil)
 
 	db.AddTable("xy", cat.Tables["xy"].(memory.MemTable))
