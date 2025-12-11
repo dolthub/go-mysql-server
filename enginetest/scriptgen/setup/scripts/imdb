@@ -380,5 +380,9 @@ analyze table person_info update histogram on id using data '{"row_count": 20249
 ----
 
 exec
+analyze table role_type update histogram on id using data '{"row_count": 20}';
+----
+
+exec
 analyze table title update histogram on id using data '{"row_count": 2527799}';
 ----
