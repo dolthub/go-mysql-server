@@ -226,7 +226,7 @@ func TestJoinOrderBuilder_populateSubgraph(t *testing.T) {
 					""), // C x D
 				newEdge2(plan.JoinTypeInner, "0101", "0111", "0100", "0011", nil,
 					newEq("b.y=d.y"),
-					""), // B x (CD)
+					""),                                                                      // B x (CD)
 				newEdge2(plan.JoinTypeCross, "0000", "1111", "1000", "0111", nil, nil, ""), // A x (BCD)
 			},
 		},
@@ -280,7 +280,7 @@ func TestJoinOrderBuilder_populateSubgraph(t *testing.T) {
 					""), // A x B
 				newEdge2(plan.JoinTypeLeftOuter, "0011", "0011", "0010", "0001", nil,
 					newEq("c.x=d.x"), // offset by filters
-					""),              // C x D
+					""), // C x D
 				newEdge2(plan.JoinTypeLeftOuter, "0110", "1111", "1100", "0011", nil,
 					newEq("b.y=c.y"),
 					""), // (AB) x (CD)
@@ -691,7 +691,6 @@ func childSchema(source string) sql.PrimaryKeySchema {
 
 func tableNode(db *memory.Database, name string) sql.Node {
 	t := memory.NewTable(db, name, childSchema(name), nil)
-	t.EnablePrimaryKeyIndexes()
 	tabId, colId := getIds([]string{name, "x"})
 	colset := sql.NewColSet(sql.ColumnId(colId), sql.ColumnId(colId+1), sql.ColumnId(colId+2))
 	return plan.NewResolvedTable(t, db, nil).WithId(sql.TableId(tabId)).WithColumns(colset)

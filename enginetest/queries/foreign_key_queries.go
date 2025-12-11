@@ -2705,6 +2705,33 @@ var ForeignKeyTests = []ScriptTest{
 
 var CreateForeignKeyTests = []ScriptTest{
 	{
+		Name: "",
+		SetUpScript: []string{
+			"-- Create consumed_ids table" +
+				"CREATE TABLE `consumed_ids` (" +
+				"  `id` varchar(32) NOT NULL," +
+				"  `created_at` datetime(3) NULL," +
+				"  PRIMARY KEY (`id`)" +
+				") CHARSET utf8mb4 COLLATE utf8mb4_general_ci;",
+			"-- Create orgs table" +
+				"CREATE TABLE `orgs` (" +
+				"  `id` varchar(32) NOT NULL," +
+				"  `public_id` varchar(16) NULL," +
+				"  `name` varchar(128) NOT NULL," +
+				"  `state` varchar(128) NOT NULL DEFAULT ''," +
+				"  `created_at` datetime(3) NULL," +
+				"  `updated_at` datetime(3) NULL," +
+				"  `desired_signer_version` varchar(128) NULL," +
+				"  `self_managed_td_servers_allowed` bool NULL," +
+				"  `desired_image_ecr_base` varchar(128) NULL," +
+				"  PRIMARY KEY (`id`)," +
+				"  UNIQUE INDEX `uk_orgs_name` (`name`)," +
+				"  UNIQUE INDEX `uk_orgs_public_id` (`public_id`)," +
+				"  CONSTRAINT `fk_orgs_id` FOREIGN KEY (`id`) REFERENCES `consumed_ids` (`id`) ON UPDATE RESTRICT ON DELETE RESTRICT" +
+				") CHARSET utf8mb4 COLLATE utf8mb4_general_ci;`",
+		},
+	},
+	{
 		Name: "basic create foreign key tests",
 		SetUpScript: []string{
 			"CREATE TABLE parent(a INTEGER PRIMARY KEY, b INTEGER)",

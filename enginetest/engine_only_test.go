@@ -77,7 +77,7 @@ func TestWarnings(t *testing.T) {
 		enginetest.TestWarnings(t, harness)
 	})
 
-	harness = enginetest.NewMemoryHarness("parallel", 2, testNumPartitions, false, nil)
+	harness = enginetest.NewMemoryHarness("parallel", testNumPartitions, nil)
 	t.Run("parallel", func(t *testing.T) {
 		enginetest.TestWarnings(t, harness)
 	})
@@ -563,7 +563,7 @@ func TestShowCharset(t *testing.T) {
 		},
 	}
 
-	harness := enginetest.NewMemoryHarness("", 1, 1, false, nil)
+	harness := enginetest.NewMemoryHarness("", 1, nil)
 	for _, test := range tests {
 		enginetest.TestQuery(t, harness, test.Query, test.RowGen(t), nil, nil)
 	}

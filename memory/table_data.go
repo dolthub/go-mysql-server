@@ -47,7 +47,6 @@ type TableData struct {
 	autoColIdx              int
 	autoIncVal              uint64
 	collation               sql.CollationID
-	primaryKeyIndexes       bool
 }
 
 type indexName string
@@ -62,10 +61,9 @@ type primaryRowLocation struct {
 // Table returns a table with this data
 func (td TableData) Table(database *BaseDatabase) *Table {
 	return &Table{
-		db:               database,
-		name:             td.tableName,
-		data:             &td,
-		pkIndexesEnabled: td.primaryKeyIndexes,
+		db:   database,
+		name: td.tableName,
+		data: &td,
 	}
 }
 

@@ -1790,12 +1790,6 @@ func (t *Table) Projections() []string {
 	return t.projection
 }
 
-// EnablePrimaryKeyIndexes enables the use of primary key indexes on this table.
-func (t *Table) EnablePrimaryKeyIndexes() {
-	t.pkIndexesEnabled = true
-	t.data.primaryKeyIndexes = true
-}
-
 func (t *Table) dbName() string {
 	if t.db != nil {
 		return t.db.Name()
@@ -1809,24 +1803,22 @@ func (t *Table) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 
 	indexes := make([]sql.Index, 0)
 
-	if data.primaryKeyIndexes {
-		if len(data.schema.PkOrdinals) > 0 {
-			exprs := make([]sql.Expression, len(data.schema.PkOrdinals))
-			for i, ord := range data.schema.PkOrdinals {
-				column := data.schema.Schema[ord]
-				idx, field := data.getColumnOrdinal(column.Name)
-				exprs[i] = expression.NewGetFieldWithTable(idx, 0, field.Type, t.dbName(), t.name, field.Name, field.Nullable)
-			}
-			indexes = append(indexes, &Index{
-				DB:         t.dbName(),
-				DriverName: "",
-				Tbl:        t,
-				TableName:  t.name,
-				Exprs:      exprs,
-				Name:       "PRIMARY",
-				Unique:     true,
-			})
+	if len(data.schema.PkOrdinals) > 0 {
+		exprs := make([]sql.Expression, len(data.schema.PkOrdinals))
+		for i, ord := range data.schema.PkOrdinals {
+			column := data.schema.Schema[ord]
+			idx, field := data.getColumnOrdinal(column.Name)
+			exprs[i] = expression.NewGetFieldWithTable(idx, 0, field.Type, t.dbName(), t.name, field.Name, field.Nullable)
 		}
+		indexes = append(indexes, &Index{
+			DB:         t.dbName(),
+			DriverName: "",
+			Tbl:        t,
+			TableName:  t.name,
+			Exprs:      exprs,
+			Name:       "PRIMARY",
+			Unique:     true,
+		})
 	}
 
 	nonPrimaryIndexes := make([]sql.Index, len(data.indexes))
