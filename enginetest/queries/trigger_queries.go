@@ -3872,6 +3872,23 @@ end;
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/10175
+		Name: "trigger with insert using filter",
+		SetUpScript: []string{
+			"CREATE TABLE t_1 (id BINARY(2), other BINARY(2), status TINYINT UNSIGNED);",
+			"CREATE TABLE oldstatus (id BINARY(2), status TINYINT UNSIGNED);",
+			"INSERT INTO t_1 (id, other, status) VALUES ROW(0x3E32, 0xC336, 0), ROW(0xEDC1, 0xC336, 0), ROW(0x9B15, 0xC336, 0);",
+			"CREATE TRIGGER t_change_status before UPDATE ON t_1 FOR EACH ROW INSERT INTO oldstatus (id, status) SELECT id, status FROM t_1 WHERE id = NEW.id;",
+			"UPDATE t_1 SET status = 1 WHERE id = 0x3E32;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    `SELECT * FROM oldstatus`,
+				Expected: []sql.Row{{[]uint8{0x3e, 0x32}, uint8(0)}},
+			},
+		},
+	},
 }
 
 var TriggerCreateInSubroutineTests = []ScriptTest{
