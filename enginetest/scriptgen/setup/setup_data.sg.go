@@ -415,6 +415,7 @@ var ImdbData = []SetupScript{{
 	`analyze table movie_link update histogram on id using data '{"row_count": 29997}';`,
 	`analyze table name update histogram on id using data '{"row_count": 4167453}';`,
 	`analyze table person_info update histogram on id using data '{"row_count": 2024951}';`,
+	`analyze table role_type update histogram on id using data '{"row_count": 20}';`,
 	`analyze table title update histogram on id using data '{"row_count": 2527799}';`,
 }}
 
