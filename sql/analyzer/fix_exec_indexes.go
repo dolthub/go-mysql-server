@@ -342,6 +342,9 @@ func (s *idxScope) visitChildren(n sql.Node) error {
 	case *plan.SubqueryAlias:
 		sqScope := s.copy()
 		if s.inTrigger() {
+			// TODO: this might not necessarily be true. But we do need the trigger scope(s) to be passed to the child
+			// nodes during rowexec, where there's currently no easy way to separate out the trigger scopes from the
+			// other scopes because it's all one parent row
 			n.OuterScopeVisibility = true
 		}
 		if !n.OuterScopeVisibility && !n.IsLateral {
