@@ -31,7 +31,6 @@ import (
 
 func TestBiasedCoster(t *testing.T) {
 	db := memory.NewDatabase("mydb")
-	db.EnablePrimaryKeyIndexes()
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
 
@@ -44,9 +43,6 @@ func TestBiasedCoster(t *testing.T) {
 		{Name: "a", Type: types.Int64, Source: "ab"},
 		{Name: "b", Type: types.Int64, Source: "ab"},
 	}, 0), nil)
-
-	xy.EnablePrimaryKeyIndexes()
-	ab.EnablePrimaryKeyIndexes()
 
 	ab.Insert(ctx, sql.Row{int64(0), int64(0)})
 	ab.Insert(ctx, sql.Row{int64(1), int64(1)})

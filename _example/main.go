@@ -84,7 +84,6 @@ func main() {
 
 func createTestDatabase() *memory.DbProvider {
 	db := memory.NewDatabase(dbName)
-	db.BaseDatabase.EnablePrimaryKeyIndexes()
 
 	pro := memory.NewDBProvider(db)
 	session := memory.NewSession(sql.NewBaseSession(), pro)

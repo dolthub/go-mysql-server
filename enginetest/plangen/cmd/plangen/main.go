@@ -167,7 +167,7 @@ func analyzeQuery(ctx *sql.Context, engine enginetest.QueryEngine, query string)
 }
 
 func generatePlansForSuite(spec PlanSpec, w *bytes.Buffer) error {
-	harness := enginetest.NewMemoryHarness("default", 1, 1, true, nil)
+	harness := enginetest.NewMemoryHarness("default", 1, nil)
 	s := specSetup(spec.Name)
 	harness.Setup(s...)
 	engine, err := harness.NewEngine(nil)
@@ -246,7 +246,7 @@ func generatePlansForSuite(spec PlanSpec, w *bytes.Buffer) error {
 }
 
 func generatePlansForScriptSuite(spec PlanSpec, w *bytes.Buffer) error {
-	harness := enginetest.NewMemoryHarness("default", 1, 1, true, nil)
+	harness := enginetest.NewMemoryHarness("default", 1, nil)
 	harness.Setup(setup.MydbData)
 	_, _ = fmt.Fprintf(w, "var %s = []ScriptTest{\n", spec.Name)
 	for _, tt := range queries.QueryPlanScriptTests {
@@ -369,7 +369,7 @@ func usage() {
 
 	fmt.Fprintf(os.Stderr, "\tplangen [flags] spec\n\n")
 
-	//fmt.Fprintf(os.Stderr, "Flags:\n")
+	// fmt.Fprintf(os.Stderr, "Flags:\n")
 
 	flag.PrintDefaults()
 
