@@ -884,7 +884,7 @@ func inValsToMySQLRangeCollHelper[N cmp.Ordered](ctx *sql.Context, vals []any, t
 	if len(res) == 0 {
 		return nil, true
 	}
-	return keysToRangeColl(keys, typ), true
+	return res, true
 }
 
 // inValsToMySQLRangeColl is a fast path for in filters over numeric columns.
@@ -1537,7 +1537,7 @@ func newLeaf(ctx *sql.Context, id indexScanId, e sql.Expression, underlying stri
 		var litSet []interface{}
 		var setTypes []sql.Type
 		var litType sql.Type
-		for i, lit := range tup {
+		for _, lit := range tup {
 			value, err := lit.Eval(ctx, nil)
 			if err != nil {
 				return nil, false
