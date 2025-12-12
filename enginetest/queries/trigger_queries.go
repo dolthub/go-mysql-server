@@ -3898,6 +3898,26 @@ end;
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/10175
+		Name: "trigger with joined view (views are subquery aliases)",
+		SetUpScript: []string{
+			"CREATE TABLE t_1 (id BINARY(2), data VARCHAR(10));",
+			"CREATE TABLE t_2 (id BINARY(2), other BINARY(2), status TINYINT UNSIGNED default 0);",
+			"CREATE TABLE queue (id BINARY(2), data varchar(10));",
+			"CREATE VIEW v AS SELECT t_2.id, t_1.data, status FROM t_2 inner join t_1 on other=t_1.id;",
+			"INSERT INTO t_1 (id, data) VALUES (0xC336, 'Test');",
+			"INSERT INTO t_2 (id, other) VALUES ROW(0x3E32, 0xC336), ROW(0xEDC1, 0xC336), ROW(0x9B15, 0xC336);",
+			"CREATE TRIGGER t_change_status after UPDATE ON t_2 FOR EACH ROW INSERT INTO queue(id, data) select id, data from v where v.id = NEW.id;",
+			"UPDATE t_2 SET status = 1 WHERE id = 0x3E32;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    `SELECT * FROM queue`,
+				Expected: []sql.Row{{[]uint8{0x3e, 0x32}, "Test"}},
+			},
+		},
+	},
 }
 
 var TriggerCreateInSubroutineTests = []ScriptTest{

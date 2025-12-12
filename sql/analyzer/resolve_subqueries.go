@@ -286,7 +286,7 @@ func analyzeSubqueryAlias(ctx *sql.Context, a *Analyzer, sqa *plan.SubqueryAlias
 	return newn, transform.NewTree, err
 }
 
-// cacheSubqueryAlisesInJoins will look for joins against subquery aliases that
+// cacheSubqueryAliasesInJoins will look for joins against subquery aliases that
 // will repeatedly execute the subquery, and will insert a *plan.CachedResults
 // node on top of those nodes. The left-most child of a join root is an exception
 // that cannot be cached.
