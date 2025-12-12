@@ -341,17 +341,15 @@ func (s *idxScope) visitChildren(n sql.Node) error {
 		}
 	case *plan.SubqueryAlias:
 		sqScope := s.copy()
+		if s.inTrigger() {
+			n.OuterScopeVisibility = true
+		}
 		if !n.OuterScopeVisibility && !n.IsLateral {
 			// TODO: this should not apply to subqueries inside of lateral joins
 			// Subqueries with no visibility have no parent scopes. Lateral
 			// join subquery aliases continue to enjoy full visibility.
 			sqScope.parentScopes = sqScope.parentScopes[:0]
 			sqScope.lateralScopes = sqScope.lateralScopes[:0]
-			for _, p := range s.parentScopes {
-				if p.triggerScope {
-					sqScope.parentScopes = append(sqScope.parentScopes, p)
-				}
-			}
 		}
 		newC, cScope, err := assignIndexesHelper(n.Child, sqScope)
 		if err != nil {
