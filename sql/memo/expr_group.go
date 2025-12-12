@@ -111,7 +111,7 @@ func (e *ExprGroup) children(yield func(group *ExprGroup) bool) {
 // updateBest updates a group's Best to the given expression if the cost is lower than the current best.
 // Returns whether the best plan was updated.
 func (e *ExprGroup) updateBest(n RelExpr, grpCost float64, tracer *TraceLogger) bool {
-	tracer.Log("e.Best == nil: %d, grpCost: %g, e.Cost: %g, grpCost < e.Cost: %d", e.Best == nil, grpCost, e.Cost, grpCost < e.Cost)
+	tracer.Log("grpCost < e.Cost: %d", grpCost < e.Cost)
 	if e.Best == nil || grpCost < e.Cost {
 		e.Best = n
 		e.Cost = grpCost
