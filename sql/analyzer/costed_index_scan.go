@@ -1537,7 +1537,7 @@ func newLeaf(ctx *sql.Context, id indexScanId, e sql.Expression, underlying stri
 		var litSet []interface{}
 		var setTypes []sql.Type
 		var litType sql.Type
-		for i, lit := range tup {
+		for _, lit := range tup {
 			value, err := lit.Eval(ctx, nil)
 			if err != nil {
 				return nil, false
