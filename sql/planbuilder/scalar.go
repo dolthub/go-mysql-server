@@ -926,8 +926,9 @@ func (b *Builder) intervalExprToExpression(inScope *scope, e *ast.IntervalExpr) 
 // Convert an integer, represented by the specified string in the specified
 // base, to its smallest representation possible, out of:
 // int8, uint8, int16, uint16, int32, uint32, int64 and uint64
-func (b *Builder) convertInt(value string, base int) *expression.Literal {
-	if i64, err := strconv.ParseInt(value, base, 64); err == nil {
+func (b *Builder) convertInt(value []byte, base int) *expression.Literal {
+	valStr := encodings.BytesToString(value)
+	if i64, err := strconv.ParseInt(valStr, base, 64); err == nil {
 		if uint64(i64)&0x8000_0000_0000_0000 != 0 {
 			if uint64(^i64)&0xFFFF_FFFF_FFFF_FF80 == 0 {
 				return expression.NewLiteral(int8(i64), types.Int8)
@@ -961,7 +962,7 @@ func (b *Builder) convertInt(value string, base int) *expression.Literal {
 		return expression.NewLiteral(i64, types.Int64)
 	}
 
-	if ui64, err := strconv.ParseUint(value, base, 64); err == nil {
+	if ui64, err := strconv.ParseUint(valStr, base, 64); err == nil {
 		if ui64&0xFFFF_FFFF_FFFF_FF00 == 0 {
 			return expression.NewLiteral(uint8(ui64), types.Uint8)
 		}
@@ -974,7 +975,7 @@ func (b *Builder) convertInt(value string, base int) *expression.Literal {
 		return expression.NewLiteral(ui64, types.Uint64)
 	}
 
-	if decimal, _, err := types.InternalDecimalType.Convert(b.ctx, value); err == nil {
+	if decimal, _, err := types.InternalDecimalType.Convert(b.ctx, valStr); err == nil {
 		return expression.NewLiteral(decimal, types.InternalDecimalType)
 	}
 
@@ -987,7 +988,7 @@ func (b *Builder) ConvertVal(v *ast.SQLVal) sql.Expression {
 	case ast.StrVal:
 		return expression.NewLiteral(string(v.Val), types.CreateLongText(b.ctx.GetCollation()))
 	case ast.IntVal:
-		return b.convertInt(encodings.BytesToString(v.Val), 10)
+		return b.convertInt(v.Val, 10)
 	case ast.FloatVal:
 		// any float value is parsed as decimal except when the value has scientific notation
 		ogVal := strings.ToLower(string(v.Val))
@@ -1013,7 +1014,7 @@ func (b *Builder) ConvertVal(v *ast.SQLVal) sql.Expression {
 			return expression.NewLiteral(dVal, dt)
 		} else {
 			// if the value is not float type - this should not happen
-			return b.convertInt(string(v.Val), 10)
+			return b.convertInt(v.Val, 10)
 		}
 	case ast.HexNum:
 		// TODO: binary collation?
