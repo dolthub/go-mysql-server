@@ -136,19 +136,50 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 					return sysVar
 				}
 			}
-			var err error
 			if scope == ast.SetScope_User || scope == ast.SetScope_Persist || scope == ast.SetScope_PersistOnly {
-				err = sql.ErrUnknownUserVariable.New(colName)
+				err := sql.ErrUnknownUserVariable.New(colName)
+				b.handleErr(err)
 			} else if scope == ast.SetScope_Global || scope == ast.SetScope_Session {
-				err = sql.ErrUnknownSystemVariable.New(colName)
+				err := sql.ErrUnknownSystemVariable.New(colName)
+				b.handleErr(err)
 			} else if tblName != "" && !inScope.hasTable(tblName) {
-				err = sql.ErrTableNotFound.New(tblName)
+				err := sql.ErrTableNotFound.New(tblName)
+				b.handleErr(err)
 			} else if tblName != "" {
-				err = sql.ErrTableColumnNotFound.New(tblName, colName)
+				err := sql.ErrTableColumnNotFound.New(tblName, colName)
+				b.handleErr(err)
+			} else if b.overrides.ParseTableAsColumn != nil && inScope.hasTable(colName) {
+				scopeTableCols := inScope.resolveColumnAsTable(dbName, colName)
+				if len(scopeTableCols) == 0 {
+					err := sql.ErrColumnNotFound.New(v)
+					b.handleErr(err)
+				}
+				astQualifier := ast.TableName{
+					Name:        ast.NewTableIdent(colName), // This must be `colName` due to table aliases
+					DbQualifier: ast.NewTableIdent(scopeTableCols[0].db),
+				}
+				fieldArgs := make([]sql.Expression, len(scopeTableCols))
+				for i := range scopeTableCols {
+					astArg := ast.ColName{
+						StoredProcVal: nil,
+						Qualifier:     astQualifier,
+						Name:          ast.NewColIdent(scopeTableCols[i].col),
+					}
+					fieldArgs[i] = b.buildScalar(inScope, &astArg)
+				}
+				actualTableName := colName
+				if tn, ok := inScope.oldTables[scopeTableCols[0].tableId]; ok {
+					actualTableName = tn
+				}
+				tableExpr, err := b.overrides.ParseTableAsColumn(b.ctx, actualTableName, fieldArgs)
+				if err != nil {
+					b.handleErr(err)
+				}
+				return tableExpr
 			} else {
-				err = sql.ErrColumnNotFound.New(v)
+				err := sql.ErrColumnNotFound.New(v)
+				b.handleErr(err)
 			}
-			b.handleErr(err)
 		}
 
 		origTbl := b.getOrigTblName(inScope.node, c.table)
@@ -170,9 +201,16 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 
 		f, ok := b.cat.Function(b.ctx, name)
 		if !ok {
-			// todo(max): similar names in registry?
-			err := sql.ErrFunctionNotFound.New(name)
-			b.handleErr(err)
+			// check if this a table function accidentally used in a scalar context
+			_, ok := b.cat.TableFunction(b.ctx, name)
+			if ok {
+				err := sql.ErrTableFunctionNotInFrom.New(name)
+				b.handleErr(err)
+			} else {
+				// todo(max): similar names in registry?
+				err := sql.ErrFunctionNotFound.New(name)
+				b.handleErr(err)
+			}
 		}
 
 		args := make([]sql.Expression, len(v.Exprs))

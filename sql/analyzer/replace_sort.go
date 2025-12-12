@@ -30,10 +30,15 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 		if !n.IsStatic() {
 			return n, transform.SameTree, nil
 		}
-		lookup, err := n.GetLookup(ctx, nil)
+		lookup, inRange, err := n.GetLookup(ctx, nil)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
+
+		if !inRange {
+			return n, transform.SameTree, nil
+		}
+
 		tableAliases, err := getTableAliases(sortNode, scope)
 		if err != nil {
 			return n, transform.SameTree, nil
@@ -281,10 +286,15 @@ func buildReverseIndexedTable(ctx *sql.Context, node sql.Node) (sql.Node, transf
 	return transform.Node(node, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch idxTbl := n.(type) {
 		case *plan.IndexedTableAccess:
-			lookup, err := idxTbl.GetLookup(ctx, nil)
+			lookup, inRange, err := idxTbl.GetLookup(ctx, nil)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
+
+			if !inRange {
+				return n, transform.SameTree, nil
+			}
+
 			// if the index is not reversible, do nothing
 			if ordIdx, isOrdIdx := lookup.Index.(sql.OrderedIndex); !isOrdIdx || !ordIdx.Reversible() || ordIdx.Order() == sql.IndexOrderNone {
 				return n, transform.SameTree, nil

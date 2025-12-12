@@ -17,7 +17,6 @@ package planbuilder
 import (
 	"fmt"
 	"strings"
-	"sync"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
@@ -27,10 +26,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
-
-var BinderFactory = &sync.Pool{New: func() interface{} {
-	return &Builder{f: &factory{}}
-}}
 
 type Builder struct {
 	// EventScheduler is used to communicate with the event scheduler
@@ -58,6 +53,7 @@ type Builder struct {
 	multiDDL     bool
 	insertActive bool
 	parserOpts   ast.ParserOptions
+	overrides    sql.BuilderOverrides
 }
 
 // BindvarContext holds bind variable replacement literals.
@@ -112,15 +108,19 @@ type ProcContext struct {
 	DbName string
 }
 
-// New takes ctx, catalog, event scheduler, and parser. If the parser is nil, then default parser is mysql parser.
-func New(ctx *sql.Context, cat sql.Catalog, es sql.EventScheduler, p sql.Parser) *Builder {
-	if p == nil {
-		p = sql.GlobalParser
-	}
-
+// New takes ctx, catalog, event scheduler, and parser. If the parser is nil, then the default parser is used (which
+// will be the MySQL parser unless modified).
+func New(ctx *sql.Context, cat sql.Catalog, es sql.EventScheduler) *Builder {
+	// TODO: move the event scheduler to the catalog
 	var state sql.AuthorizationQueryState
+	var overrides sql.BuilderOverrides
+	var p = sql.DefaultMySQLParser
 	if cat != nil {
 		state = cat.AuthorizationHandler().NewQueryState(ctx)
+		overrides = cat.Overrides().Builder
+		if overrides.Parser != nil {
+			p = overrides.Parser
+		}
 	}
 	return &Builder{
 		ctx:            ctx,
@@ -132,6 +132,7 @@ func New(ctx *sql.Context, cat sql.Catalog, es sql.EventScheduler, p sql.Parser)
 		qFlags:         &sql.QueryFlags{},
 		authEnabled:    true,
 		authQueryState: state,
+		overrides:      overrides,
 	}
 }
 

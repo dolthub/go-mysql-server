@@ -33,6 +33,7 @@ import (
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
+	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -627,7 +628,7 @@ func injectBindVarsAndPrepare(
 		}
 	}
 
-	b := planbuilder.New(ctx, e.EngineAnalyzer().Catalog, e.EngineEventScheduler(), nil)
+	b := planbuilder.New(ctx, e.EngineAnalyzer().Catalog, e.EngineEventScheduler())
 	b.SetParserOptions(sql.LoadSqlMode(ctx).ParserOptions())
 	resPlan, err := e.PrepareQuery(ctx, q)
 	if err != nil {
@@ -1363,6 +1364,13 @@ func runQueryErrorTest(t *testing.T, h Harness, tt queries.QueryErrorTest) {
 			}
 		}
 		e := mustNewEngine(t, h)
+		tfp, ok := e.EngineAnalyzer().Catalog.DbProvider.(sql.TableFunctionProvider)
+		if !ok {
+			return
+		}
+		newPro, err := tfp.WithTableFunctions(memory.NormalDistTable{})
+		require.NoError(t, err)
+		e.EngineAnalyzer().Catalog.DbProvider = newPro.(sql.DatabaseProvider)
 		defer e.Close()
 		if tt.ExpectedErrStr == "" {
 			AssertErr(t, e, h, tt.Query, nil, tt.ExpectedErr)

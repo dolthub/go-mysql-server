@@ -68,39 +68,34 @@ func TestHashJoins(t *testing.T) {
 	}
 }
 
-var childSchema = sql.NewPrimaryKeySchema(sql.Schema{
-	{Name: "i", Type: types.Int64, Nullable: true},
-	{Name: "s", Type: types.Text, Nullable: true},
-})
-
 func uv(db *memory.Database) sql.Node {
 	t := memory.NewTable(db, "uv", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "u", Type: types.Int64, Nullable: true},
-		{Name: "v", Type: types.Text, Nullable: true},
+		{Name: "u", Type: types.Int64, Nullable: true, Source: "uv"},
+		{Name: "v", Type: types.Text, Nullable: true, Source: "uv"},
 	}, 0), nil)
 	return plan.NewResolvedTable(t, db, nil).WithId(4).WithColumns(sql.NewColSet(7, 8))
 }
 
 func xy(db *memory.Database) sql.Node {
 	t := memory.NewTable(db, "xy", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "x", Type: types.Int64, Nullable: true},
-		{Name: "y", Type: types.Text, Nullable: true},
+		{Name: "x", Type: types.Int64, Nullable: true, Source: "xy"},
+		{Name: "y", Type: types.Text, Nullable: true, Source: "xy"},
 	}, 0), nil)
 	return plan.NewResolvedTable(t, db, nil).WithId(1).WithColumns(sql.NewColSet(1, 2))
 }
 
 func ab(db *memory.Database) sql.Node {
 	t := memory.NewTable(db, "ab", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "a", Type: types.Int64, Nullable: true},
-		{Name: "b", Type: types.Text, Nullable: true},
+		{Name: "a", Type: types.Int64, Nullable: true, Source: "ab"},
+		{Name: "b", Type: types.Text, Nullable: true, Source: "ab"},
 	}, 0), nil)
 	return plan.NewResolvedTable(t, db, nil).WithId(2).WithColumns(sql.NewColSet(3, 4))
 }
 
 func pq(db *memory.Database) sql.Node {
 	t := memory.NewTable(db, "pq", sql.NewPrimaryKeySchema(sql.Schema{
-		{Name: "p", Type: types.Int64, Nullable: true},
-		{Name: "q", Type: types.Text, Nullable: true},
+		{Name: "p", Type: types.Int64, Nullable: true, Source: "pq"},
+		{Name: "q", Type: types.Text, Nullable: true, Source: "pq"},
 	}, 0), nil)
 	return plan.NewResolvedTable(t, db, nil).WithId(3).WithColumns(sql.NewColSet(5, 6))
 }

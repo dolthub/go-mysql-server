@@ -150,7 +150,7 @@ func (d DropCheck) String() string {
 	return pr.String()
 }
 
-func NewCheckDefinition(ctx *sql.Context, check *sql.CheckConstraint) (*sql.CheckDefinition, error) {
+func NewCheckDefinition(ctx *sql.Context, check *sql.CheckConstraint, schemaFormatter sql.SchemaFormatter) (*sql.CheckDefinition, error) {
 	// When transforming an analyzed CheckConstraint into a CheckDefinition (for storage), we strip off any table
 	// qualifiers that got resolved during analysis. This is to naively match the MySQL behavior, which doesn't print
 	// any table qualifiers in check expressions.
@@ -158,7 +158,7 @@ func NewCheckDefinition(ctx *sql.Context, check *sql.CheckConstraint) (*sql.Chec
 		gf, ok := e.(*expression.GetField)
 		if ok {
 			newGf := expression.NewGetField(gf.Index(), gf.Type(), gf.Name(), gf.IsNullable())
-			newGf = newGf.WithQuotedNames(sql.GlobalSchemaFormatter, true)
+			newGf = newGf.WithQuotedNames(schemaFormatter, true)
 			return newGf, transform.NewTree, nil
 		}
 		return e, transform.SameTree, nil

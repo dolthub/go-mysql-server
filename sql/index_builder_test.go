@@ -15,7 +15,6 @@
 package sql_test
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -26,7 +25,7 @@ import (
 )
 
 func TestIndexBuilderRanges(t *testing.T) {
-	ctx := sql.NewContext(context.Background())
+	ctx := sql.NewEmptyContext()
 
 	t.Run("None=[NULL,Inf)", func(t *testing.T) {
 		builder := sql.NewMySQLIndexBuilder(testIndex{1})

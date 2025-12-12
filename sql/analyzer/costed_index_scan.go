@@ -15,11 +15,15 @@
 package analyzer
 
 import (
+	"cmp"
 	"fmt"
 	"slices"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/dolthub/vitess/go/sqltypes"
+	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -126,7 +130,16 @@ func indexSearchableLookup(ctx *sql.Context, n sql.Node, rt sql.TableNode, looku
 
 var SplitConjunction func(expr sql.Expression) []sql.Expression = expression.SplitConjunction
 
-func costedIndexLookup(ctx *sql.Context, n sql.Node, a *Analyzer, iat sql.IndexAddressableTable, rt sql.TableNode, aliasName string, oldFilter sql.Expression, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
+func costedIndexLookup(
+	ctx *sql.Context,
+	n sql.Node,
+	a *Analyzer,
+	iat sql.IndexAddressableTable,
+	rt sql.TableNode,
+	aliasName string,
+	oldFilter sql.Expression,
+	qFlags *sql.QueryFlags,
+) (sql.Node, transform.TreeIdentity, error) {
 	indexes, err := iat.GetIndexes(ctx)
 	if err != nil {
 		return n, transform.SameTree, err
@@ -162,7 +175,7 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 
 	qualToStat := make(map[sql.StatQualifier]sql.Statistic)
 	for _, stat := range statistics {
-		if prev, ok := qualToStat[stat.Qualifier()]; !ok || ok && len(stat.Columns()) > len(prev.Columns()) {
+		if prev, ok := qualToStat[stat.Qualifier()]; !ok || (len(stat.Columns()) > len(prev.Columns())) {
 			qualToStat[stat.Qualifier()] = stat
 		}
 	}
@@ -826,6 +839,82 @@ type indexScanRangeBuilder struct {
 	leftover  []sql.Expression
 }
 
+func inValsToMySQLRangeCollHelper[N cmp.Ordered](ctx *sql.Context, vals []any, typ sql.Type, precise bool) (sql.MySQLRangeCollection, bool) {
+	keys := make([]N, 0, len(vals))
+	for _, val := range vals {
+		switch v := val.(type) {
+		case int, int8, int16, int32, int64,
+			uint, uint8, uint16, uint32, uint64:
+		case float32:
+			if precise && float32(int(v)) != v {
+				continue
+			}
+		case float64:
+			if precise && float64(int(v)) != v {
+				continue
+			}
+		case decimal.Decimal:
+			if precise && !v.Equal(decimal.NewFromInt(v.IntPart())) {
+				continue
+			}
+		default:
+			return nil, false
+		}
+		key, inRange, err := typ.Convert(ctx, val)
+		if err != nil {
+			return nil, false
+		}
+		if inRange != sql.InRange {
+			continue
+		}
+		keys = append(keys, key.(N))
+	}
+
+	// TODO: for integers, if len(keys) - 1 == keys[len(keys)-1] - keys[0],
+	//  then we can just have one continuous range. unsure if this is worth it
+	slices.Sort(keys)
+	keys = slices.Compact(keys)
+	res := make(sql.MySQLRangeCollection, len(keys))
+	for i, key := range keys {
+		res[i] = sql.MySQLRange{
+			sql.ClosedRangeColumnExpr(key, key, typ),
+		}
+	}
+
+	if len(res) == 0 {
+		return nil, true
+	}
+	return res, true
+}
+
+// inValsToMySQLRangeColl is a fast path for in filters over numeric columns.
+func inValsToMySQLRangeColl(ctx *sql.Context, vals []any, typ sql.Type) (sql.MySQLRangeCollection, bool) {
+	switch typ.Type() {
+	case sqltypes.Int8:
+		return inValsToMySQLRangeCollHelper[int8](ctx, vals, typ, true)
+	case sqltypes.Int16:
+		return inValsToMySQLRangeCollHelper[int16](ctx, vals, typ, true)
+	case sqltypes.Int32:
+		return inValsToMySQLRangeCollHelper[int32](ctx, vals, typ, true)
+	case sqltypes.Int64:
+		return inValsToMySQLRangeCollHelper[int64](ctx, vals, typ, true)
+	case sqltypes.Uint8:
+		return inValsToMySQLRangeCollHelper[uint8](ctx, vals, typ, true)
+	case sqltypes.Uint16:
+		return inValsToMySQLRangeCollHelper[uint16](ctx, vals, typ, true)
+	case sqltypes.Uint32:
+		return inValsToMySQLRangeCollHelper[uint32](ctx, vals, typ, true)
+	case sqltypes.Uint64:
+		return inValsToMySQLRangeCollHelper[uint64](ctx, vals, typ, true)
+	case sqltypes.Float32:
+		return inValsToMySQLRangeCollHelper[float32](ctx, vals, typ, false)
+	case sqltypes.Float64:
+		return inValsToMySQLRangeCollHelper[float64](ctx, vals, typ, false)
+	default:
+		return nil, false
+	}
+}
+
 // buildRangeCollection converts our representation of the best index scan
 // into the format that represents an index lookup, a list of sql.Range.
 func (b *indexScanRangeBuilder) buildRangeCollection(f indexFilter) (sql.MySQLRangeCollection, error) {
@@ -839,6 +928,16 @@ func (b *indexScanRangeBuilder) buildRangeCollection(f indexFilter) (sql.MySQLRa
 	case *iScanOr:
 		ranges, err = b.rangeBuildOr(f, inScan)
 	case *iScanLeaf:
+		// When the filter is a simple IN, we can skip costly checks like building the RangeTree.
+		if f.Op() == sql.IndexScanOpInSet {
+			cets := b.idx.ColumnExpressionTypes()
+			if len(cets) == 1 {
+				var ok bool
+				if ranges, ok = inValsToMySQLRangeColl(b.ctx, f.setValues, cets[0].Type); ok {
+					return ranges, nil
+				}
+			}
+		}
 		ranges, err = b.rangeBuildLeaf(f, inScan)
 	default:
 		return nil, fmt.Errorf("unknown indexFilter type: %T", f)
@@ -971,10 +1070,17 @@ func (b *indexScanRangeBuilder) rangeBuildSpatialLeaf(f *iScanLeaf, inScan bool)
 	lower := types.Point{X: minX, Y: minY}
 	upper := types.Point{X: maxX, Y: maxY}
 
+	typ := f.gf.Type()
 	return sql.MySQLRangeCollection{{{
-		LowerBound: sql.Below{Key: lower},
-		UpperBound: sql.Above{Key: upper},
-		Typ:        f.gf.Type(),
+		LowerBound: sql.Below{
+			Key: lower,
+			Typ: typ,
+		},
+		UpperBound: sql.Above{
+			Key: upper,
+			Typ: typ,
+		},
+		Typ: typ,
 	}}}, nil
 }
 
@@ -1021,11 +1127,9 @@ func (b *indexScanRangeBuilder) rangeBuildDefaultLeaf(bb *sql.MySQLIndexBuilder,
 	case sql.IndexScanOpNotEq:
 		bb.NotEquals(b.ctx, name, f.litType, f.litValue)
 	case sql.IndexScanOpInSet:
-		bb.Equals(b.ctx, name, f.litType, f.setValues...)
+		bb.In(b.ctx, name, f.setTypes, f.setValues)
 	case sql.IndexScanOpNotInSet:
-		for _, v := range f.setValues {
-			bb.NotEquals(b.ctx, name, f.litType, v)
-		}
+		bb.NotIn(b.ctx, name, f.setTypes, f.setValues)
 	case sql.IndexScanOpGt:
 		bb.GreaterThan(b.ctx, name, f.litType, f.litValue)
 	case sql.IndexScanOpGte:
@@ -1080,6 +1184,7 @@ type iScanLeaf struct {
 	underlying    string
 	fulltextIndex string
 	setValues     []interface{}
+	setTypes      []sql.Type
 	id            indexScanId
 	op            sql.IndexScanOp
 }
@@ -1430,6 +1535,7 @@ func newLeaf(ctx *sql.Context, id indexScanId, e sql.Expression, underlying stri
 	if op == sql.IndexScanOpInSet || op == sql.IndexScanOpNotInSet {
 		tup := right.(expression.Tuple)
 		var litSet []interface{}
+		var setTypes []sql.Type
 		var litType sql.Type
 		for _, lit := range tup {
 			value, err := lit.Eval(ctx, nil)
@@ -1437,6 +1543,7 @@ func newLeaf(ctx *sql.Context, id indexScanId, e sql.Expression, underlying stri
 				return nil, false
 			}
 			litSet = append(litSet, value)
+			setTypes = append(setTypes, lit.Type())
 			if litType == nil {
 				litType = lit.Type()
 			}
@@ -1446,6 +1553,7 @@ func newLeaf(ctx *sql.Context, id indexScanId, e sql.Expression, underlying stri
 			gf:         gf,
 			op:         op,
 			setValues:  litSet,
+			setTypes:   setTypes,
 			litType:    litType,
 			underlying: underlying,
 		}, true
@@ -1533,11 +1641,11 @@ func IndexLeafChildren(e sql.Expression) (sql.IndexScanOp, sql.Expression, sql.E
 			left = e.Left()
 		case sql.IndexComparisonExpression:
 			ok := false
+			op, left, right, ok = e.IndexScanOperation()
 			if !ok {
 				return 0, nil, nil, false
 			}
 
-			op, left, right, ok = e.IndexScanOperation()
 			switch op {
 			case sql.IndexScanOpEq:
 				op = sql.IndexScanOpNotEq

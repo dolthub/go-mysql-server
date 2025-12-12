@@ -174,14 +174,14 @@ func (t EnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.
 		// MySQL rejects 0 values in strict mode regardless of enum definition
 		if value == 0 {
 			if sqlCtx, ok := ctx.(*sql.Context); ok && sql.LoadSqlMode(sqlCtx).Strict() {
-				return nil, sql.OutOfRange, ErrConvertingToEnum.New(value)
+				return nil, sql.InRange, ErrConvertingToEnum.New(value)
 			}
 		}
 		if _, ok := t.At(value); ok {
 			return uint16(value), sql.InRange, nil
 		}
 		// If value is not a valid enum index, return error
-		return nil, sql.OutOfRange, ErrConvertingToEnum.New(value)
+		return nil, sql.InRange, ErrConvertingToEnum.New(value)
 	case uint:
 		return t.Convert(ctx, int(value))
 	case int8:
@@ -196,7 +196,7 @@ func (t EnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.
 			return value, sql.InRange, nil
 		}
 		// If value is not a valid enum index, return error
-		return nil, sql.OutOfRange, ErrConvertingToEnum.New(value)
+		return nil, sql.InRange, ErrConvertingToEnum.New(value)
 	case int32:
 		return t.Convert(ctx, int(value))
 	case uint32:
@@ -224,7 +224,7 @@ func (t EnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.
 		return t.Convert(ctx, string(value))
 	}
 
-	return nil, sql.OutOfRange, ErrConvertingToEnum.New(v)
+	return nil, sql.InRange, ErrConvertingToEnum.New(v)
 }
 
 // Equals implements the Type interface.

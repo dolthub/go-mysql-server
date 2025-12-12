@@ -116,11 +116,20 @@ type NodeExecBuilder interface {
 	Build(ctx *Context, n Node, r Row) (RowIter, error)
 }
 
-// ExecSourceRel is a node that has no children and is directly
-// row generating.
+// ExecSourceRel is a node that has no children and is directly row generating.
+// See also |ExecBuilderNode| for nodes that want to control their own iterator generation but have children
+// they need to build iterators for.
 type ExecSourceRel interface {
 	Node
+	// RowIter returns a RowIter for this node
 	RowIter(ctx *Context, r Row) (RowIter, error)
+}
+
+// ExecBuilderNode is a that generates its own RowIter given a builder.
+type ExecBuilderNode interface {
+	Node
+	// BuildRowIter builds a RowIter for the node with the builder provided
+	BuildRowIter(ctx *Context, b NodeExecBuilder, r Row) (RowIter, error)
 }
 
 // Nameable is something that has a name.

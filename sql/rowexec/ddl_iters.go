@@ -317,6 +317,7 @@ func (l *loadDataIter) parseFields(ctx *sql.Context, line string) (exprs []sql.E
 type modifyColumnIter struct {
 	m         *plan.ModifyColumn
 	alterable sql.AlterableTable
+	overrides sql.EngineOverrides
 	runOnce   bool
 }
 
@@ -422,6 +423,11 @@ func (i *modifyColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, err
 		}
 		if rewritten {
+			if i.overrides.Hooks.TableModifyColumn.PostSQLExecution != nil {
+				if err = i.overrides.Hooks.TableModifyColumn.PostSQLExecution(ctx, i.m); err != nil {
+					return nil, err
+				}
+			}
 			return sql.NewRow(types.NewOkResult(0)), nil
 		}
 	}
@@ -438,6 +444,11 @@ func (i *modifyColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 	if hasFullText {
 		if err = rebuildFullText(ctx, i.alterable.Name(), i.m.Db); err != nil {
+			return nil, err
+		}
+	}
+	if i.overrides.Hooks.TableModifyColumn.PostSQLExecution != nil {
+		if err = i.overrides.Hooks.TableModifyColumn.PostSQLExecution(ctx, i.m); err != nil {
 			return nil, err
 		}
 	}
@@ -987,7 +998,8 @@ func projectRowWithTypes(ctx *sql.Context, oldSchema, newSchema sql.Schema, proj
 				err = sql.ErrInvalidValue.New(newSchema[i].Type, newRow[i])
 			}
 			return nil, err
-		} else if !inRange {
+		}
+		if inRange != sql.InRange {
 			return nil, sql.ErrValueOutOfRange.New(newRow[i], newSchema[i].Type)
 		}
 		newRow[i] = converted
@@ -1332,6 +1344,11 @@ func (i *addColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, err
 		}
 		if rewritten {
+			if i.b.EngineOverrides.Hooks.TableAddColumn.PostSQLExecution != nil {
+				if err = i.b.EngineOverrides.Hooks.TableAddColumn.PostSQLExecution(ctx, i.a); err != nil {
+					return nil, err
+				}
+			}
 			return sql.NewRow(types.NewOkResult(0)), nil
 		}
 	}
@@ -1349,6 +1366,11 @@ func (i *addColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 	// We only need to update all table rows if the new column is non-nil
 	if i.a.Column().Nullable && i.a.Column().Default == nil {
+		if i.b.EngineOverrides.Hooks.TableAddColumn.PostSQLExecution != nil {
+			if err = i.b.EngineOverrides.Hooks.TableModifyColumn.PostSQLExecution(ctx, i.a); err != nil {
+				return nil, err
+			}
+		}
 		return sql.NewRow(types.NewOkResult(0)), nil
 	}
 
@@ -1357,6 +1379,11 @@ func (i *addColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 
+	if i.b.EngineOverrides.Hooks.TableAddColumn.PostSQLExecution != nil {
+		if err = i.b.EngineOverrides.Hooks.TableModifyColumn.PostSQLExecution(ctx, i.a); err != nil {
+			return nil, err
+		}
+	}
 	return sql.NewRow(types.NewOkResult(0)), nil
 }
 
@@ -1709,6 +1736,7 @@ func (c *createTriggerIter) Close(*sql.Context) error {
 type dropColumnIter struct {
 	d         *plan.DropColumn
 	alterable sql.AlterableTable
+	overrides sql.EngineOverrides
 	runOnce   bool
 }
 
@@ -1735,6 +1763,11 @@ func (i *dropColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, err
 		}
 		if rewritten {
+			if i.overrides.Hooks.TableDropColumn.PostSQLExecution != nil {
+				if err = i.overrides.Hooks.TableDropColumn.PostSQLExecution(ctx, i.d); err != nil {
+					return nil, err
+				}
+			}
 			return sql.NewRow(types.NewOkResult(0)), nil
 		}
 	}
@@ -1754,6 +1787,11 @@ func (i *dropColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 	if hasFullText {
 		if err = rebuildFullText(ctx, i.alterable.Name(), i.d.Db); err != nil {
+			return nil, err
+		}
+	}
+	if i.overrides.Hooks.TableDropColumn.PostSQLExecution != nil {
+		if err = i.overrides.Hooks.TableDropColumn.PostSQLExecution(ctx, i.d); err != nil {
 			return nil, err
 		}
 	}
@@ -1916,7 +1954,7 @@ func (b *BaseBuilder) executeCreateCheck(ctx *sql.Context, c *plan.CreateCheck) 
 		}
 	}
 
-	check, err := plan.NewCheckDefinition(ctx, c.Check)
+	check, err := plan.NewCheckDefinition(ctx, c.Check, b.schemaFormatter)
 	if err != nil {
 		return err
 	}

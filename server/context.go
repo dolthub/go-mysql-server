@@ -279,7 +279,7 @@ func (s *SessionManager) NewContextWithQuery(ctx context.Context, conn *mysql.Co
 
 	ctx, span := s.tracer.Start(ctx, "query")
 
-	context := s.ctxFactory(
+	createdCtx := s.ctxFactory(
 		ctx,
 		sql.WithSession(sess),
 		sql.WithTracer(s.tracer),
@@ -294,7 +294,7 @@ func (s *SessionManager) NewContextWithQuery(ctx context.Context, conn *mysql.Co
 		}),
 	)
 
-	return context, nil
+	return createdCtx, nil
 }
 
 // Exposed through (*sql.Context).Services.KillConnection. Calls Close on the

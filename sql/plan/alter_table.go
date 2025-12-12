@@ -59,30 +59,6 @@ func (r *RenameTable) IsReadOnly() bool {
 	return false
 }
 
-func (r *RenameTable) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
-	renamer, _ := r.Db.(sql.TableRenamer)
-	viewDb, _ := r.Db.(sql.ViewDatabase)
-	viewRegistry := ctx.GetViewRegistry()
-
-	for i, oldName := range r.OldNames {
-		if tbl, exists := r.tableExists(ctx, oldName); exists {
-			err := r.renameTable(ctx, renamer, tbl, oldName, r.NewNames[i])
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			success, err := r.renameView(ctx, viewDb, viewRegistry, oldName, r.NewNames[i])
-			if err != nil {
-				return nil, err
-			} else if !success {
-				return nil, sql.ErrTableNotFound.New(oldName)
-			}
-		}
-	}
-
-	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
-}
-
 func (r *RenameTable) WithChildren(children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(r, children...)
 }
@@ -92,7 +68,7 @@ func (*RenameTable) CollationCoercibility(ctx *sql.Context) (collation sql.Colla
 	return sql.Collation_binary, 7
 }
 
-func (r *RenameTable) tableExists(ctx *sql.Context, name string) (sql.Table, bool) {
+func (r *RenameTable) TableExists(ctx *sql.Context, name string) (sql.Table, bool) {
 	tbl, ok, err := r.Db.GetTableInsensitive(ctx, name)
 	if err != nil || !ok {
 		return nil, false
@@ -100,7 +76,7 @@ func (r *RenameTable) tableExists(ctx *sql.Context, name string) (sql.Table, boo
 	return tbl, true
 }
 
-func (r *RenameTable) renameTable(ctx *sql.Context, renamer sql.TableRenamer, tbl sql.Table, oldName, newName string) error {
+func (r *RenameTable) RenameTable(ctx *sql.Context, renamer sql.TableRenamer, tbl sql.Table, oldName, newName string) error {
 	if renamer == nil {
 		return sql.ErrRenameTableNotSupported.New(r.Db.Name())
 	}
@@ -160,7 +136,7 @@ func (r *RenameTable) renameTable(ctx *sql.Context, renamer sql.TableRenamer, tb
 	return nil
 }
 
-func (r *RenameTable) renameView(ctx *sql.Context, viewDb sql.ViewDatabase, vr *sql.ViewRegistry, oldName, newName string) (bool, error) {
+func (r *RenameTable) RenameView(ctx *sql.Context, viewDb sql.ViewDatabase, vr *sql.ViewRegistry, oldName, newName string) (bool, error) {
 	if viewDb != nil {
 		oldView, exists, err := viewDb.GetViewDefinition(ctx, oldName)
 		if err != nil {

@@ -374,7 +374,8 @@ func getRowsFromViews(ctx *sql.Context, catalog sql.Catalog, db DbWithNames, pri
 	privSetDb := privSet.Database(db.Database.Name())
 	for _, view := range views {
 		// TODO: figure out how auth works in this case
-		node, _, err := planbuilder.Parse(ctx, catalog, view.CreateViewStatement)
+		builder := planbuilder.New(ctx, catalog, nil)
+		node, _, _, _, err := builder.Parse(view.CreateViewStatement, nil, false)
 		if err != nil {
 			continue // sometimes views contains views from other databases
 		}
@@ -576,16 +577,17 @@ func getColumnPrecisionAndScale(colType sql.Type) (interface{}, interface{}) {
 	case sql.DecimalType:
 		return int(t.Precision()), int(t.Scale())
 	case sql.NumberType:
-		switch colType.Type() {
-		case sqltypes.Float32, sqltypes.Float64:
-			numericScale = nil
-		default:
-			numericScale = 0
+		if t.IsNumericType() {
+			switch colType.Type() {
+			case sqltypes.Float32, sqltypes.Float64:
+				numericScale = nil
+			default:
+				numericScale = 0
+			}
+			return typeToNumericPrecision[colType.Type()], numericScale
 		}
-		return typeToNumericPrecision[colType.Type()], numericScale
-	default:
-		return nil, nil
 	}
+	return nil, nil
 }
 
 func getCharAndCollNamesAndCharMaxAndOctetLens(ctx *sql.Context, colType sql.Type) (interface{}, interface{}, interface{}, interface{}) {

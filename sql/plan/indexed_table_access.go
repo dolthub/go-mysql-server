@@ -60,10 +60,16 @@ func NewIndexedAccessForTableNode(ctx *sql.Context, node sql.TableNode, lb *Look
 		return nil, fmt.Errorf("table is not index addressable: %s", table.Name())
 	}
 
-	lookup, err := lb.GetLookup(ctx, lb.GetZeroKey())
+	lookup, inRange, err := lb.GetLookup(ctx, lb.GetZeroKey())
 	if err != nil {
 		return nil, err
 	}
+
+	if !inRange {
+		// TODO: this should be an empty result, not an error
+		return nil, ErrInvalidLookupForIndexedTable.New(lookup.Ranges.DebugString())
+	}
+
 	if !lookup.Index.CanSupport(ctx, lookup.Ranges.ToRanges()...) {
 		return nil, ErrInvalidLookupForIndexedTable.New(lookup.Ranges.DebugString())
 	}
@@ -265,7 +271,7 @@ func (i *IndexedTableAccess) CanBuildIndex(ctx *sql.Context) (bool, error) {
 	}
 
 	key := i.lb.GetZeroKey()
-	lookup, err := i.lb.GetLookup(ctx, key)
+	lookup, _, err := i.lb.GetLookup(ctx, key)
 	return err == nil && !lookup.IsEmpty(), nil
 }
 
@@ -294,28 +300,29 @@ func (i *IndexedTableAccess) IsStrictLookup() bool {
 	return true
 }
 
-func (i *IndexedTableAccess) GetLookup(ctx *sql.Context, row sql.Row) (sql.IndexLookup, error) {
+func (i *IndexedTableAccess) GetLookup(ctx *sql.Context, row sql.Row) (sql.IndexLookup, bool, error) {
 	// if the lookup was provided at analysis time (static evaluation), use it.
 	if !i.lookup.IsEmpty() {
-		return i.lookup, nil
+		// TODO: is in range guaranteed here?
+		return i.lookup, true, nil
 	}
 
 	key, err := i.lb.GetKey(ctx, row)
 	if err != nil {
-		return sql.IndexLookup{}, err
+		return sql.IndexLookup{}, false, err
 	}
 	return i.lb.GetLookup(ctx, key)
 }
 
-func (i *IndexedTableAccess) getValueLookup(ctx *sql.Context, row sql.ValueRow) (sql.IndexLookup, error) {
+func (i *IndexedTableAccess) getValueLookup(ctx *sql.Context, row sql.ValueRow) (sql.IndexLookup, bool, error) {
 	// if the lookup was provided at analysis time (static evaluation), use it.
 	if !i.lookup.IsEmpty() {
-		return i.lookup, nil
+		return i.lookup, true, nil
 	}
 
 	key, err := i.lb.GetValueRowKey(ctx, row)
 	if err != nil {
-		return sql.IndexLookup{}, err
+		return sql.IndexLookup{}, false, err
 	}
 	return i.lb.GetLookup(ctx, key)
 }
@@ -469,7 +476,12 @@ func GetIndexLookup(ita *IndexedTableAccess) sql.IndexLookup {
 	return ita.lookup
 }
 
-type lookupBuilderKey []interface{}
+type lookupBuilderKeyElement struct {
+	val any
+	typ sql.Type
+}
+
+type lookupBuilderKey []lookupBuilderKeyElement
 
 // LookupBuilder abstracts secondary table access for an LookupJoin.
 // A row from the primary table is first evaluated on the secondary index's
@@ -545,19 +557,19 @@ func (lb *LookupBuilder) initializeRange(key lookupBuilderKey) {
 	lb.isPointLookup = len(key) == len(lb.cets)
 	var i int
 	for i < len(key) {
-		if key[i] == nil {
+		if key[i].val == nil {
 			lb.emptyRange = true
 			lb.isPointLookup = false
 		}
 		if lb.matchesNullMask[i] {
-			if key[i] == nil {
+			if key[i].val == nil {
 				lb.rang[i] = sql.NullRangeColumnExpr(lb.cets[i].Type)
 
 			} else {
 				lb.rang[i] = sql.NotNullRangeColumnExpr(lb.cets[i].Type)
 			}
 		} else {
-			lb.rang[i] = sql.ClosedRangeColumnExpr(key[i], key[i], lb.cets[i].Type)
+			lb.rang[i] = sql.ClosedRangeColumnExpr(key[i].val, key[i].val, lb.cets[i].Type)
 		}
 		i++
 	}
@@ -569,7 +581,7 @@ func (lb *LookupBuilder) initializeRange(key lookupBuilderKey) {
 	return
 }
 
-func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key lookupBuilderKey) (sql.IndexLookup, error) {
+func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key lookupBuilderKey) (sql.IndexLookup, bool, error) {
 	if lb.rang == nil {
 		lb.initializeRange(key)
 		return sql.IndexLookup{
@@ -578,38 +590,60 @@ func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key lookupBuilderKey) (sql.
 			IsPointLookup:   lb.nullSafe && lb.isPointLookup && lb.index.IsUnique(),
 			IsEmptyRange:    lb.emptyRange,
 			IsSpatialLookup: false,
-		}, nil
+		}, true, nil
 	}
 
 	lb.emptyRange = false
 	lb.isPointLookup = len(key) == len(lb.cets)
 	for i := range key {
-		if key[i] == nil {
+		keyExpr := key[i]
+		colType := lb.rang[i].Typ
+
+		if keyExpr.val == nil {
 			lb.emptyRange = true
 			lb.isPointLookup = false
 		}
+
 		if lb.matchesNullMask[i] {
-			if key[i] == nil {
+			if keyExpr.val == nil {
 				lb.rang[i] = sql.NullRangeColumnExpr(lb.cets[i].Type)
 			} else {
-				k, _, err := lb.rang[i].Typ.Convert(ctx, key[i])
+				k, inRange, err := convertLookupKey(ctx, colType, keyExpr)
 				if err != nil {
-					// TODO: throw warning, and this should truncate for strings
-					err = nil
-					k = lb.rang[i].Typ.Zero()
+					return sql.IndexLookup{}, false, err
 				}
-				lb.rang[i].LowerBound = sql.Below{Key: k}
-				lb.rang[i].UpperBound = sql.Above{Key: k}
+
+				if inRange != sql.InRange {
+					return sql.IndexLookup{}, false, nil
+				}
+
+				lb.rang[i].LowerBound = sql.Below{
+					Key: k,
+					Typ: colType,
+				}
+				lb.rang[i].UpperBound = sql.Above{
+					Key: k,
+					Typ: colType,
+				}
 			}
 		} else {
-			k, _, err := lb.rang[i].Typ.Convert(ctx, key[i])
+			k, inRange, err := convertLookupKey(ctx, colType, keyExpr)
 			if err != nil {
-				// TODO: throw warning, and this should truncate for strings
-				err = nil
-				k = lb.rang[i].Typ.Zero()
+				return sql.IndexLookup{}, false, err
 			}
-			lb.rang[i].LowerBound = sql.Below{Key: k}
-			lb.rang[i].UpperBound = sql.Above{Key: k}
+
+			if inRange != sql.InRange {
+				return sql.IndexLookup{}, false, nil
+			}
+
+			lb.rang[i].LowerBound = sql.Below{
+				Key: k,
+				Typ: colType,
+			}
+			lb.rang[i].UpperBound = sql.Above{
+				Key: k,
+				Typ: colType,
+			}
 		}
 	}
 
@@ -619,18 +653,42 @@ func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key lookupBuilderKey) (sql.
 		IsPointLookup:   lb.nullSafe && lb.isPointLookup && lb.index.IsUnique(),
 		IsEmptyRange:    lb.emptyRange,
 		IsSpatialLookup: false,
-	}, nil
+	}, true, nil
+}
+
+// convertLookupKey converts the value in keyCol to the type colType
+func convertLookupKey(ctx *sql.Context, colType sql.Type, keyCol lookupBuilderKeyElement) (interface{}, sql.ConvertInRange, error) {
+	srcType := keyCol.typ
+	destType := colType
+
+	// For extended types, use the rich type conversion methods
+	if srcEt, ok := srcType.(sql.ExtendedType); ok {
+		if destEt, ok := destType.(sql.ExtendedType); ok {
+			return destEt.ConvertToType(ctx, srcEt, keyCol.val)
+		}
+	}
+
+	k, inRange, err := colType.Convert(ctx, keyCol.val)
+	if err != nil && sql.ErrTruncatedIncorrect.Is(err) {
+		// for this purpose, truncation errors are acceptable and we only look at the in-range status
+		err = nil
+	}
+
+	return k, inRange, err
 }
 
 func (lb *LookupBuilder) GetKey(ctx *sql.Context, row sql.Row) (lookupBuilderKey, error) {
 	if lb.key == nil {
-		lb.key = make([]interface{}, len(lb.keyExprs))
+		lb.key = make(lookupBuilderKey, len(lb.keyExprs))
 	}
 	for i := range lb.keyExprs {
-		var err error
-		lb.key[i], err = lb.keyExprs[i].Eval(ctx, row)
+		val, err := lb.keyExprs[i].Eval(ctx, row)
 		if err != nil {
 			return nil, err
+		}
+		lb.key[i] = lookupBuilderKeyElement{
+			val: val,
+			typ: lb.keyExprs[i].Type(),
 		}
 	}
 	return lb.key, nil
@@ -638,13 +696,17 @@ func (lb *LookupBuilder) GetKey(ctx *sql.Context, row sql.Row) (lookupBuilderKey
 
 func (lb *LookupBuilder) GetValueRowKey(ctx *sql.Context, row sql.ValueRow) (lookupBuilderKey, error) {
 	if lb.key == nil {
-		lb.key = make([]interface{}, len(lb.keyExprs))
+		lb.key = make(lookupBuilderKey, len(lb.keyExprs))
 	}
 	for i := range lb.keyExprs {
-		var err error
-		lb.key[i], err = lb.keyValExprs[i].EvalValue(ctx, row)
+		val, err := lb.keyValExprs[i].EvalValue(ctx, row)
 		if err != nil {
 			return nil, err
+		}
+
+		lb.key[i] = lookupBuilderKeyElement{
+			val: val,
+			typ: lb.keyValExprs[i].Type(),
 		}
 	}
 	return lb.key, nil
@@ -653,7 +715,11 @@ func (lb *LookupBuilder) GetValueRowKey(ctx *sql.Context, row sql.ValueRow) (loo
 func (lb *LookupBuilder) GetZeroKey() lookupBuilderKey {
 	key := make(lookupBuilderKey, len(lb.keyExprs))
 	for i, keyExpr := range lb.keyExprs {
-		key[i] = keyExpr.Type().Zero()
+		typ := keyExpr.Type()
+		key[i] = lookupBuilderKeyElement{
+			val: typ.Zero(),
+			typ: typ,
+		}
 	}
 	return key
 }

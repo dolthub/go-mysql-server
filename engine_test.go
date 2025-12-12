@@ -231,7 +231,7 @@ func TestTrackProcess(t *testing.T) {
 	_, ok = rhs.Table.(*plan.ProcessTable)
 	require.True(ok)
 
-	iter, err := rowexec.DefaultBuilder.Build(ctx, result, nil)
+	iter, err := rowexec.NewBuilder(nil, sql.EngineOverrides{}).Build(ctx, result, nil)
 	require.NoError(err)
 	iter, _, err = rowexec.FinalizeIters(ctx, result, nil, iter)
 	require.NoError(err)

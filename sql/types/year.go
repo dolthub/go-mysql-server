@@ -142,7 +142,7 @@ func (t YearType_) Convert(ctx context.Context, v interface{}) (interface{}, sql
 		if valueLength == 1 || valueLength == 2 || valueLength == 4 {
 			i, err := strconv.ParseInt(value, 10, 64)
 			if err != nil {
-				return nil, sql.OutOfRange, err
+				return nil, sql.InRange, err
 			}
 			if i == 0 {
 				return int16(2000), sql.InRange, nil

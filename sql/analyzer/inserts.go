@@ -60,7 +60,7 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 				))
 			}
 			scope.SetInInsertSource(true)
-			source, _, err = a.analyzeWithSelector(ctx, insert.Source, scope, SelectAllBatches, newInsertSourceSelector(sel), qFlags)
+			source, _, err = a.analyzeWithSelector(ctx, insert.Source, scope, SelectAllBatches, newInsertSourceSelector(sel, !scope.IsEmpty()), qFlags)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -251,7 +251,7 @@ func isZero(ctx *sql.Context, lit *expression.Literal) bool {
 		// and the values are validated in other parts of the analyzer anyway.
 		return false
 	}
-	return bool(inRange) && convert == int8(0)
+	return inRange == sql.InRange && convert == int8(0)
 }
 
 // insertAutoUuidExpression transforms the specified |expr| for |autoUuidCol| and inserts an AutoUuid

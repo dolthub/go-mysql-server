@@ -45,6 +45,7 @@ type Catalog struct {
 
 	MySQLDb          *mysql_db.MySQLDb
 	builtInFunctions function.Registry
+	overrides        sql.EngineOverrides
 
 	locks sessionLocks
 	mu    sync.RWMutex
@@ -66,12 +67,13 @@ type dbLocks map[string]tableLocks
 type sessionLocks map[uint32]dbLocks
 
 // NewCatalog returns a new empty Catalog with the given provider
-func NewCatalog(provider sql.DatabaseProvider) *Catalog {
+func NewCatalog(provider sql.DatabaseProvider, overrides sql.EngineOverrides) *Catalog {
 	c := &Catalog{
 		MySQLDb:          mysql_db.CreateEmptyMySQLDb(),
 		InfoSchema:       information_schema.NewInformationSchemaDatabase(),
 		DbProvider:       provider,
 		builtInFunctions: function.NewRegistry(),
+		overrides:        overrides,
 		StatsProvider:    memory.NewStatsProv(),
 		locks:            make(sessionLocks),
 	}
@@ -413,6 +415,11 @@ func (c *Catalog) TableFunction(ctx *sql.Context, name string) (sql.TableFunctio
 		}
 	}
 	return nil, false
+}
+
+// Overrides implements the sql.Catalog interface
+func (c *Catalog) Overrides() sql.EngineOverrides {
+	return c.overrides
 }
 
 func (c *Catalog) AnalyzeTable(ctx *sql.Context, table sql.Table, db string) error {

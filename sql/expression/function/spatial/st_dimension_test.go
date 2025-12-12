@@ -169,7 +169,7 @@ func TestDimension(t *testing.T) {
 
 		typ := f.Type()
 		_, inRange, err := typ.Convert(ctx, v)
-		require.True(bool(inRange))
+		require.True(inRange == sql.InRange)
 		require.NoError(err)
 	})
 }

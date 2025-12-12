@@ -24,13 +24,13 @@ import (
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 )
 
-// GlobalParser is a temporary variable to expose Doltgres parser.
-// It defaults to MysqlParser.
-var GlobalParser Parser = NewMysqlParser()
+// DefaultMySQLParser is the default MySQL parser. This is only used in contexts where we know we are strictly testing
+// the MySQL implementation, or as a fallback if no parser is provided.
+var DefaultMySQLParser Parser = NewMysqlParser()
 
-// GlobalSchemaFormatter is a temporary variable to expose Doltgres schema formatter.
-// It defaults to MySqlSchemaFormatter.
-var GlobalSchemaFormatter SchemaFormatter = &MySqlSchemaFormatter{}
+// DefaultMySQLSchemaFormatter is the default MySQL schema formatter. This is only used in contexts where we know we are
+// strictly testing the MySQL implementation, or as a fallback if no formatter is provided.
+var DefaultMySQLSchemaFormatter SchemaFormatter = &MySqlSchemaFormatter{}
 
 // Parser knows how to transform a SQL statement into an AST
 type Parser interface {
@@ -77,6 +77,23 @@ type SchemaFormatter interface {
 	// standardize identifiers that cannot be parsed without quoting, because they break the normal identifier naming
 	// rules (such as containing spaces)
 	QuoteIdentifier(identifier string) string
+}
+
+// GetSchemaFormatter gets the SchemaFormatter from the EngineOverrides if it was provided, otherwise it uses the MySQL
+// formatter.
+func GetSchemaFormatter(overrides EngineOverrides) SchemaFormatter {
+	if overrides.SchemaFormatter == nil {
+		return DefaultMySQLSchemaFormatter
+	}
+	return overrides.SchemaFormatter
+}
+
+// GetParser gets the parser from the EngineOverrides if it was provided, otherwise it uses the MySQL parser.
+func GetParser(overrides EngineOverrides) Parser {
+	if overrides.Builder.Parser == nil {
+		return DefaultMySQLParser
+	}
+	return overrides.Builder.Parser
 }
 
 // MysqlParser is a mysql syntax parser used as parser in the engine for Dolt.
