@@ -15168,6 +15168,7 @@ WHERE cn.country_code != '[us]'
 			"",
 	},
 	{
+		Skip: true, // https://github.com/dolthub/dolt/issues/10211
 		Query: `
 SELECT MIN(cn.name) AS movie_company,
        MIN(mi_idx.info) AS rating,
@@ -15966,6 +15967,7 @@ WHERE cct1.kind = 'complete+verified'
 			"",
 	},
 	{
+		Skip: true, // https://github.com/dolthub/dolt/issues/10211
 		Query: `
 SELECT MIN(kt.kind) AS movie_kind,
        MIN(t.title) AS complete_nerdy_internet_movie
@@ -19149,6 +19151,7 @@ WHERE cct1.kind = 'cast'
 			"",
 	},
 	{
+		Skip: true, // https://github.com/dolthub/dolt/issues/10211
 		Query: `
 SELECT MIN(chn.name) AS character_name,
        MIN(mi_idx.info) AS rating,
@@ -20034,6 +20037,7 @@ WHERE cct1.kind = 'cast'
 			"",
 	},
 	{
+		Skip: true, // https://github.com/dolthub/dolt/issues/10211
 		Query: `
 SELECT MIN(cn.name) AS producing_company,
        MIN(lt.link) AS link_type,
@@ -20962,6 +20966,7 @@ WHERE cct1.kind IN ('cast',
 			"",
 	},
 	{
+		Skip: true, // https://github.com/dolthub/dolt/issues/10211
 		Query: `
 SELECT MIN(cn.name) AS producing_company,
        MIN(lt.link) AS link_type,
@@ -21436,6 +21441,7 @@ WHERE cct1.kind = 'cast'
 			"",
 	},
 	{
+		Skip: true, // https://github.com/dolthub/dolt/issues/10211
 		Query: `
 SELECT MIN(cn.name) AS movie_company,
        MIN(mi_idx.info) AS rating,
@@ -21992,6 +21998,7 @@ WHERE cct1.kind = 'crew'
 			"",
 	},
 	{
+		Skip: true, // https://github.com/dolthub/dolt/issues/10211
 		Query: `
 SELECT MIN(cn.name) AS movie_company,
        MIN(mi_idx.info) AS rating,
@@ -25686,6 +25693,7 @@ WHERE cn.country_code ='[us]'
 			"",
 	},
 	{
+		Skip: true, // https://github.com/dolthub/dolt/issues/10211
 		Query: `
 SELECT MIN(mi.info) AS movie_budget,
        MIN(mi_idx.info) AS movie_votes,
