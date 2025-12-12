@@ -25107,4 +25107,486 @@ order by x, y;
 			"             └─ keys: parent.parent\n" +
 			"",
 	},
+	{
+		Query: `select * from id_parent p1 
+    		left join id_parent p2 on p1.id = p2.id
+			left join id_parent p3 on p2.id = p3.id
+			left join id_parent p4 on p3.id = p4.id
+			left join id_parent p5 on p4.id = p5.id
+			left join id_parent p6 on p5.id = p6.id
+			left join id_parent p7 on p6.id = p7.id
+			left join id_parent p8 on p7.id = p8.id
+			left join id_parent p9 on p8.id = p9.id
+			left join id_parent p10 on p9.id = p10.id
+			left join id_parent p11 on p10.id = p11.id
+			left join id_parent p12 on p11.id = p12.id
+			left join id_parent p13 on p12.id = p13.id
+			left join id_parent p14 on p13.id = p14.id
+			left join id_parent p15 on p14.id = p15.id
+			left join id_parent p16 on p15.id = p16.id
+			left join id_parent p17 on p16.id = p17.id
+			left join id_parent p18 on p17.id = p18.id
+			left join id_parent p19 on p18.id = p19.id
+			right join id_parent p20 on p19.id = p20.id
+    		`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [p1.id:2!null, p1.parent:3, p2.id:4!null, p2.parent:5, p3.id:6!null, p3.parent:7, p4.id:8!null, p4.parent:9, p5.id:10!null, p5.parent:11, p6.id:12!null, p6.parent:13, p7.id:14!null, p7.parent:15, p8.id:16!null, p8.parent:17, p9.id:18!null, p9.parent:19, p10.id:20!null, p10.parent:21, p11.id:22!null, p11.parent:23, p12.id:24!null, p12.parent:25, p13.id:26!null, p13.parent:27, p14.id:28!null, p14.parent:29, p15.id:30!null, p15.parent:31, p16.id:32!null, p16.parent:33, p17.id:34!null, p17.parent:35, p18.id:36!null, p18.parent:37, p19.id:38!null, p19.parent:39, p20.id:0!null, p20.parent:1]\n" +
+			" └─ LeftOuterHashJoin\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ p19.id:38!null\n" +
+			"     │   └─ p20.id:0!null\n" +
+			"     ├─ TableAlias(p20)\n" +
+			"     │   └─ ProcessTable\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: id_parent\n" +
+			"     │           └─ columns: [id parent]\n" +
+			"     └─ HashLookup\n" +
+			"         ├─ left-key: TUPLE(p20.id:0!null)\n" +
+			"         ├─ right-key: TUPLE(p19.id:36!null)\n" +
+			"         └─ LeftOuterLookupJoin\n" +
+			"             ├─ LeftOuterLookupJoin\n" +
+			"             │   ├─ LeftOuterLookupJoin\n" +
+			"             │   │   ├─ LeftOuterLookupJoin\n" +
+			"             │   │   │   ├─ LeftOuterLookupJoin\n" +
+			"             │   │   │   │   ├─ LeftOuterLookupJoin\n" +
+			"             │   │   │   │   │   ├─ LeftOuterLookupJoin\n" +
+			"             │   │   │   │   │   │   ├─ LeftOuterLookupJoin\n" +
+			"             │   │   │   │   │   │   │   ├─ LeftOuterLookupJoin\n" +
+			"             │   │   │   │   │   │   │   │   ├─ LeftOuterLookupJoin\n" +
+			"             │   │   │   │   │   │   │   │   │   ├─ LeftOuterLookupJoin\n" +
+			"             │   │   │   │   │   │   │   │   │   │   ├─ LeftOuterLookupJoin\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   ├─ LeftOuterLookupJoin\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   ├─ LeftOuterLookupJoin\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ LeftOuterLookupJoin\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ LeftOuterLookupJoin\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ LeftOuterLookupJoin\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ LeftOuterMergeJoin\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ cmp: Eq\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ p1.id:2!null\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ p2.id:4!null\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ TableAlias(p1)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       ├─ static: [{[NULL, ∞)}]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       ├─ colSet: (1,2)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       ├─ tableId: 1\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ Table\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ name: id_parent\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           └─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ TableAlias(p2)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ static: [{[NULL, ∞)}]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ colSet: (3,4)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ tableId: 2\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ name: id_parent\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │               └─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ TableAlias(p3)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ keys: [p2.id:4!null]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ colSet: (5,6)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ tableId: 3\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ name: id_parent\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │               └─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ TableAlias(p4)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ keys: [p3.id:6!null]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ colSet: (7,8)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ tableId: 4\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ name: id_parent\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │               └─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ TableAlias(p5)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ keys: [p4.id:8!null]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ colSet: (9,10)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ tableId: 5\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ name: id_parent\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │               └─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   └─ TableAlias(p6)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ keys: [p5.id:10!null]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ colSet: (11,12)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ tableId: 6\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │               ├─ name: id_parent\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │               └─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   └─ TableAlias(p7)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │           ├─ keys: [p6.id:12!null]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │           ├─ colSet: (13,14)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │           ├─ tableId: 7\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │               ├─ name: id_parent\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │               └─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   └─ TableAlias(p8)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │           ├─ keys: [p7.id:14!null]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │           ├─ colSet: (15,16)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │           ├─ tableId: 8\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │               ├─ name: id_parent\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │               └─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   └─ TableAlias(p9)\n" +
+			"             │   │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │   │   │   │   │           ├─ keys: [p8.id:16!null]\n" +
+			"             │   │   │   │   │   │   │   │   │   │           ├─ colSet: (17,18)\n" +
+			"             │   │   │   │   │   │   │   │   │   │           ├─ tableId: 9\n" +
+			"             │   │   │   │   │   │   │   │   │   │           └─ Table\n" +
+			"             │   │   │   │   │   │   │   │   │   │               ├─ name: id_parent\n" +
+			"             │   │   │   │   │   │   │   │   │   │               └─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │   │   │   │   └─ TableAlias(p10)\n" +
+			"             │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │   │   │   │           ├─ keys: [p9.id:18!null]\n" +
+			"             │   │   │   │   │   │   │   │   │           ├─ colSet: (19,20)\n" +
+			"             │   │   │   │   │   │   │   │   │           ├─ tableId: 10\n" +
+			"             │   │   │   │   │   │   │   │   │           └─ Table\n" +
+			"             │   │   │   │   │   │   │   │   │               ├─ name: id_parent\n" +
+			"             │   │   │   │   │   │   │   │   │               └─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │   │   │   └─ TableAlias(p11)\n" +
+			"             │   │   │   │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │   │   │           ├─ keys: [p10.id:20!null]\n" +
+			"             │   │   │   │   │   │   │   │           ├─ colSet: (21,22)\n" +
+			"             │   │   │   │   │   │   │   │           ├─ tableId: 11\n" +
+			"             │   │   │   │   │   │   │   │           └─ Table\n" +
+			"             │   │   │   │   │   │   │   │               ├─ name: id_parent\n" +
+			"             │   │   │   │   │   │   │   │               └─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │   │   └─ TableAlias(p12)\n" +
+			"             │   │   │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │   │           ├─ keys: [p11.id:22!null]\n" +
+			"             │   │   │   │   │   │   │           ├─ colSet: (23,24)\n" +
+			"             │   │   │   │   │   │   │           ├─ tableId: 12\n" +
+			"             │   │   │   │   │   │   │           └─ Table\n" +
+			"             │   │   │   │   │   │   │               ├─ name: id_parent\n" +
+			"             │   │   │   │   │   │   │               └─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │   └─ TableAlias(p13)\n" +
+			"             │   │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │           ├─ keys: [p12.id:24!null]\n" +
+			"             │   │   │   │   │   │           ├─ colSet: (25,26)\n" +
+			"             │   │   │   │   │   │           ├─ tableId: 13\n" +
+			"             │   │   │   │   │   │           └─ Table\n" +
+			"             │   │   │   │   │   │               ├─ name: id_parent\n" +
+			"             │   │   │   │   │   │               └─ columns: [id parent]\n" +
+			"             │   │   │   │   │   └─ TableAlias(p14)\n" +
+			"             │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │           ├─ keys: [p13.id:26!null]\n" +
+			"             │   │   │   │   │           ├─ colSet: (27,28)\n" +
+			"             │   │   │   │   │           ├─ tableId: 14\n" +
+			"             │   │   │   │   │           └─ Table\n" +
+			"             │   │   │   │   │               ├─ name: id_parent\n" +
+			"             │   │   │   │   │               └─ columns: [id parent]\n" +
+			"             │   │   │   │   └─ TableAlias(p15)\n" +
+			"             │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │           ├─ keys: [p14.id:28!null]\n" +
+			"             │   │   │   │           ├─ colSet: (29,30)\n" +
+			"             │   │   │   │           ├─ tableId: 15\n" +
+			"             │   │   │   │           └─ Table\n" +
+			"             │   │   │   │               ├─ name: id_parent\n" +
+			"             │   │   │   │               └─ columns: [id parent]\n" +
+			"             │   │   │   └─ TableAlias(p16)\n" +
+			"             │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │           ├─ keys: [p15.id:30!null]\n" +
+			"             │   │   │           ├─ colSet: (31,32)\n" +
+			"             │   │   │           ├─ tableId: 16\n" +
+			"             │   │   │           └─ Table\n" +
+			"             │   │   │               ├─ name: id_parent\n" +
+			"             │   │   │               └─ columns: [id parent]\n" +
+			"             │   │   └─ TableAlias(p17)\n" +
+			"             │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │           ├─ keys: [p16.id:32!null]\n" +
+			"             │   │           ├─ colSet: (33,34)\n" +
+			"             │   │           ├─ tableId: 17\n" +
+			"             │   │           └─ Table\n" +
+			"             │   │               ├─ name: id_parent\n" +
+			"             │   │               └─ columns: [id parent]\n" +
+			"             │   └─ TableAlias(p18)\n" +
+			"             │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │           ├─ index: [id_parent.id]\n" +
+			"             │           ├─ keys: [p17.id:34!null]\n" +
+			"             │           ├─ colSet: (35,36)\n" +
+			"             │           ├─ tableId: 18\n" +
+			"             │           └─ Table\n" +
+			"             │               ├─ name: id_parent\n" +
+			"             │               └─ columns: [id parent]\n" +
+			"             └─ TableAlias(p19)\n" +
+			"                 └─ IndexedTableAccess(id_parent)\n" +
+			"                     ├─ index: [id_parent.id]\n" +
+			"                     ├─ keys: [p18.id:36!null]\n" +
+			"                     ├─ colSet: (37,38)\n" +
+			"                     ├─ tableId: 19\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: id_parent\n" +
+			"                         └─ columns: [id parent]\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [p1.id, p1.parent, p2.id, p2.parent, p3.id, p3.parent, p4.id, p4.parent, p5.id, p5.parent, p6.id, p6.parent, p7.id, p7.parent, p8.id, p8.parent, p9.id, p9.parent, p10.id, p10.parent, p11.id, p11.parent, p12.id, p12.parent, p13.id, p13.parent, p14.id, p14.parent, p15.id, p15.parent, p16.id, p16.parent, p17.id, p17.parent, p18.id, p18.parent, p19.id, p19.parent, p20.id, p20.parent]\n" +
+			" └─ LeftOuterHashJoin (estimated cost=112630.000 rows=35000)\n" +
+			"     ├─ (p19.id = p20.id)\n" +
+			"     ├─ TableAlias(p20)\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: id_parent\n" +
+			"     │       └─ columns: [id parent]\n" +
+			"     └─ HashLookup\n" +
+			"         ├─ left-key: (p20.id)\n" +
+			"         ├─ right-key: (p19.id)\n" +
+			"         └─ LeftOuterLookupJoin (estimated cost=92400.000 rows=28000)\n" +
+			"             ├─ LeftOuterLookupJoin (estimated cost=92400.000 rows=28000)\n" +
+			"             │   ├─ LeftOuterLookupJoin (estimated cost=92400.000 rows=28000)\n" +
+			"             │   │   ├─ LeftOuterLookupJoin (estimated cost=92400.000 rows=28000)\n" +
+			"             │   │   │   ├─ LeftOuterLookupJoin (estimated cost=92400.000 rows=28000)\n" +
+			"             │   │   │   │   ├─ LeftOuterLookupJoin (estimated cost=92400.000 rows=28000)\n" +
+			"             │   │   │   │   │   ├─ LeftOuterLookupJoin (estimated cost=92400.000 rows=28000)\n" +
+			"             │   │   │   │   │   │   ├─ LeftOuterLookupJoin (estimated cost=92400.000 rows=28000)\n" +
+			"             │   │   │   │   │   │   │   ├─ LeftOuterLookupJoin (estimated cost=92400.000 rows=28000)\n" +
+			"             │   │   │   │   │   │   │   │   ├─ LeftOuterLookupJoin (estimated cost=92400.000 rows=28000)\n" +
+			"             │   │   │   │   │   │   │   │   │   ├─ LeftOuterLookupJoin (estimated cost=92400.000 rows=28000)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   ├─ LeftOuterLookupJoin (estimated cost=92400.000 rows=28000)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   ├─ LeftOuterLookupJoin (estimated cost=92400.000 rows=28000)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   ├─ LeftOuterLookupJoin (estimated cost=92400.000 rows=28000)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ LeftOuterLookupJoin (estimated cost=92400.000 rows=28000)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ LeftOuterLookupJoin (estimated cost=92400.000 rows=28000)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ LeftOuterLookupJoin (estimated cost=92400.000 rows=28000)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ LeftOuterMergeJoin (estimated cost=56840.000 rows=28000)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ cmp: (p1.id = p2.id)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ TableAlias(p1)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       ├─ filters: [{[NULL, ∞)}]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ TableAlias(p2)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ filters: [{[NULL, ∞)}]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           └─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ TableAlias(p3)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           └─ keys: p2.id\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ TableAlias(p4)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           └─ keys: p3.id\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ TableAlias(p5)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │           └─ keys: p4.id\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   └─ TableAlias(p6)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │           └─ keys: p5.id\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   └─ TableAlias(p7)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │           ├─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │           └─ keys: p6.id\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   └─ TableAlias(p8)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │           ├─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │           └─ keys: p7.id\n" +
+			"             │   │   │   │   │   │   │   │   │   │   └─ TableAlias(p9)\n" +
+			"             │   │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │   │   │   │   │           ├─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │   │   │   │   │           └─ keys: p8.id\n" +
+			"             │   │   │   │   │   │   │   │   │   └─ TableAlias(p10)\n" +
+			"             │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │   │   │   │           ├─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │   │   │   │           └─ keys: p9.id\n" +
+			"             │   │   │   │   │   │   │   │   └─ TableAlias(p11)\n" +
+			"             │   │   │   │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │   │   │           ├─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │   │   │           └─ keys: p10.id\n" +
+			"             │   │   │   │   │   │   │   └─ TableAlias(p12)\n" +
+			"             │   │   │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │   │           ├─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │   │           └─ keys: p11.id\n" +
+			"             │   │   │   │   │   │   └─ TableAlias(p13)\n" +
+			"             │   │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │           ├─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │           └─ keys: p12.id\n" +
+			"             │   │   │   │   │   └─ TableAlias(p14)\n" +
+			"             │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │           ├─ columns: [id parent]\n" +
+			"             │   │   │   │   │           └─ keys: p13.id\n" +
+			"             │   │   │   │   └─ TableAlias(p15)\n" +
+			"             │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │           ├─ columns: [id parent]\n" +
+			"             │   │   │   │           └─ keys: p14.id\n" +
+			"             │   │   │   └─ TableAlias(p16)\n" +
+			"             │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │           ├─ columns: [id parent]\n" +
+			"             │   │   │           └─ keys: p15.id\n" +
+			"             │   │   └─ TableAlias(p17)\n" +
+			"             │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │           ├─ columns: [id parent]\n" +
+			"             │   │           └─ keys: p16.id\n" +
+			"             │   └─ TableAlias(p18)\n" +
+			"             │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │           ├─ index: [id_parent.id]\n" +
+			"             │           ├─ columns: [id parent]\n" +
+			"             │           └─ keys: p17.id\n" +
+			"             └─ TableAlias(p19)\n" +
+			"                 └─ IndexedTableAccess(id_parent)\n" +
+			"                     ├─ index: [id_parent.id]\n" +
+			"                     ├─ columns: [id parent]\n" +
+			"                     └─ keys: p18.id\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [p1.id, p1.parent, p2.id, p2.parent, p3.id, p3.parent, p4.id, p4.parent, p5.id, p5.parent, p6.id, p6.parent, p7.id, p7.parent, p8.id, p8.parent, p9.id, p9.parent, p10.id, p10.parent, p11.id, p11.parent, p12.id, p12.parent, p13.id, p13.parent, p14.id, p14.parent, p15.id, p15.parent, p16.id, p16.parent, p17.id, p17.parent, p18.id, p18.parent, p19.id, p19.parent, p20.id, p20.parent]\n" +
+			" └─ LeftOuterHashJoin (estimated cost=112630.000 rows=35000) (actual rows=0 loops=1)\n" +
+			"     ├─ (p19.id = p20.id)\n" +
+			"     ├─ TableAlias(p20)\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: id_parent\n" +
+			"     │       └─ columns: [id parent]\n" +
+			"     └─ HashLookup\n" +
+			"         ├─ left-key: (p20.id)\n" +
+			"         ├─ right-key: (p19.id)\n" +
+			"         └─ LeftOuterLookupJoin (estimated cost=92400.000 rows=28000)\n" +
+			"             ├─ LeftOuterLookupJoin (estimated cost=92400.000 rows=28000)\n" +
+			"             │   ├─ LeftOuterLookupJoin (estimated cost=92400.000 rows=28000)\n" +
+			"             │   │   ├─ LeftOuterLookupJoin (estimated cost=92400.000 rows=28000)\n" +
+			"             │   │   │   ├─ LeftOuterLookupJoin (estimated cost=92400.000 rows=28000)\n" +
+			"             │   │   │   │   ├─ LeftOuterLookupJoin (estimated cost=92400.000 rows=28000)\n" +
+			"             │   │   │   │   │   ├─ LeftOuterLookupJoin (estimated cost=92400.000 rows=28000)\n" +
+			"             │   │   │   │   │   │   ├─ LeftOuterLookupJoin (estimated cost=92400.000 rows=28000)\n" +
+			"             │   │   │   │   │   │   │   ├─ LeftOuterLookupJoin (estimated cost=92400.000 rows=28000)\n" +
+			"             │   │   │   │   │   │   │   │   ├─ LeftOuterLookupJoin (estimated cost=92400.000 rows=28000)\n" +
+			"             │   │   │   │   │   │   │   │   │   ├─ LeftOuterLookupJoin (estimated cost=92400.000 rows=28000)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   ├─ LeftOuterLookupJoin (estimated cost=92400.000 rows=28000)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   ├─ LeftOuterLookupJoin (estimated cost=92400.000 rows=28000)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   ├─ LeftOuterLookupJoin (estimated cost=92400.000 rows=28000)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ LeftOuterLookupJoin (estimated cost=92400.000 rows=28000)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ LeftOuterLookupJoin (estimated cost=92400.000 rows=28000)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ LeftOuterLookupJoin (estimated cost=92400.000 rows=28000)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ LeftOuterMergeJoin (estimated cost=56840.000 rows=28000)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ cmp: (p1.id = p2.id)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   ├─ TableAlias(p1)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       ├─ filters: [{[NULL, ∞)}]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ TableAlias(p2)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ filters: [{[NULL, ∞)}]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           └─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ TableAlias(p3)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           └─ keys: p2.id\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ TableAlias(p4)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   │           └─ keys: p3.id\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │   └─ TableAlias(p5)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   │           └─ keys: p4.id\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │   └─ TableAlias(p6)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │           ├─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   │           └─ keys: p5.id\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │   └─ TableAlias(p7)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │           ├─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   │           └─ keys: p6.id\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │   └─ TableAlias(p8)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │           ├─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │   │   │   │   │   │           └─ keys: p7.id\n" +
+			"             │   │   │   │   │   │   │   │   │   │   └─ TableAlias(p9)\n" +
+			"             │   │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │   │   │   │   │           ├─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │   │   │   │   │           └─ keys: p8.id\n" +
+			"             │   │   │   │   │   │   │   │   │   └─ TableAlias(p10)\n" +
+			"             │   │   │   │   │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │   │   │   │           ├─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │   │   │   │           └─ keys: p9.id\n" +
+			"             │   │   │   │   │   │   │   │   └─ TableAlias(p11)\n" +
+			"             │   │   │   │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │   │   │           ├─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │   │   │           └─ keys: p10.id\n" +
+			"             │   │   │   │   │   │   │   └─ TableAlias(p12)\n" +
+			"             │   │   │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │   │           ├─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │   │           └─ keys: p11.id\n" +
+			"             │   │   │   │   │   │   └─ TableAlias(p13)\n" +
+			"             │   │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │   │           ├─ columns: [id parent]\n" +
+			"             │   │   │   │   │   │           └─ keys: p12.id\n" +
+			"             │   │   │   │   │   └─ TableAlias(p14)\n" +
+			"             │   │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │   │           ├─ columns: [id parent]\n" +
+			"             │   │   │   │   │           └─ keys: p13.id\n" +
+			"             │   │   │   │   └─ TableAlias(p15)\n" +
+			"             │   │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │   │           ├─ columns: [id parent]\n" +
+			"             │   │   │   │           └─ keys: p14.id\n" +
+			"             │   │   │   └─ TableAlias(p16)\n" +
+			"             │   │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │   │           ├─ columns: [id parent]\n" +
+			"             │   │   │           └─ keys: p15.id\n" +
+			"             │   │   └─ TableAlias(p17)\n" +
+			"             │   │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │   │           ├─ index: [id_parent.id]\n" +
+			"             │   │           ├─ columns: [id parent]\n" +
+			"             │   │           └─ keys: p16.id\n" +
+			"             │   └─ TableAlias(p18)\n" +
+			"             │       └─ IndexedTableAccess(id_parent)\n" +
+			"             │           ├─ index: [id_parent.id]\n" +
+			"             │           ├─ columns: [id parent]\n" +
+			"             │           └─ keys: p17.id\n" +
+			"             └─ TableAlias(p19)\n" +
+			"                 └─ IndexedTableAccess(id_parent)\n" +
+			"                     ├─ index: [id_parent.id]\n" +
+			"                     ├─ columns: [id parent]\n" +
+			"                     └─ keys: p18.id\n" +
+			"",
+	},
 }

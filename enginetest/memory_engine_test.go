@@ -426,7 +426,6 @@ func TestIntegrationQueryPlans(t *testing.T) {
 }
 
 func TestImdbQueryPlans(t *testing.T) {
-	t.Skip("tests are too slow")
 	harness := enginetest.NewMemoryHarness("nativeIndexes", 1, nil)
 	enginetest.TestImdbPlans(t, harness)
 }
