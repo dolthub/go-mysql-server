@@ -210,7 +210,7 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 			return nil, transform.SameTree, err
 		}
 
-		b := planbuilder.New(ctx, a.Catalog, nil, nil)
+		b := planbuilder.New(ctx, a.Catalog, nil)
 		b.DisableAuth()
 		prevActive := b.TriggerCtx().Active
 		b.TriggerCtx().Active = true

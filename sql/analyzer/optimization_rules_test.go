@@ -218,7 +218,7 @@ func TestPushNotFilters(t *testing.T) {
 	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
 	ctx.SetCurrentDatabase("mydb")
 
-	b := planbuilder.New(ctx, cat, nil, nil)
+	b := planbuilder.New(ctx, cat, nil)
 
 	for _, tt := range tests {
 		t.Run(tt.in, func(t *testing.T) {

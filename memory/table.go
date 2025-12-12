@@ -128,7 +128,7 @@ func stripTblNames(e sql.Expression) (sql.Expression, transform.TreeIdentity, er
 	case *expression.GetField:
 		// strip table names
 		ne := expression.NewGetField(e.Index(), e.Type(), e.Name(), e.IsNullable())
-		ne = ne.WithQuotedNames(sql.GlobalSchemaFormatter, e.IsQuotedIdentifier())
+		ne = ne.WithQuotedNames(sql.DefaultMySQLSchemaFormatter, e.IsQuotedIdentifier())
 		return ne, transform.NewTree, nil
 	default:
 	}

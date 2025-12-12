@@ -1951,7 +1951,9 @@ func triggersRowIter(ctx *Context, c Catalog) (RowIter, error) {
 				ctx.SetCurrentDatabase(db.Database.Name())
 				triggerSqlMode := NewSqlModeFromString(trigger.SqlMode)
 				// TODO: figure out how auth works in this case
-				parsedTrigger, _, err := planbuilder.ParseWithOptions(ctx, c, trigger.CreateStatement, triggerSqlMode.ParserOptions())
+				builder := planbuilder.New(ctx, c, nil)
+				builder.SetParserOptions(triggerSqlMode.ParserOptions())
+				parsedTrigger, _, _, _, err := builder.Parse(trigger.CreateStatement, nil, false)
 				if err != nil {
 					return nil, err
 				}

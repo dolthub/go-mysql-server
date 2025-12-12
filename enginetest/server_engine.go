@@ -705,8 +705,8 @@ func convertGoSqlType(columnType *gosql.ColumnType) (sql.Type, error) {
 // is in random order. The function expects binding variables starting with `:v1` and do not skip number.
 // It cannot sort user-defined binding variables (e.g. :var, :foo)
 func prepareBindingArgs(ctx *sql.Context, bindings map[string]sqlparser.Expr) ([]any, error) {
-	// NOTE: using binder with nil catalog and parser since we're only using it to convert SQLVal.
-	binder := planbuilder.New(ctx, nil, nil, nil)
+	// NOTE: using binder with nil catalog since we're only using it to convert SQLVal.
+	binder := planbuilder.New(ctx, nil, nil)
 	numBindVars := len(bindings)
 	args := make([]any, numBindVars)
 	for i := 0; i < numBindVars; i++ {

@@ -43,7 +43,10 @@ func StringToColumnDefaultValue(ctx *sql.Context, exprStr string) (*sql.ColumnDe
 	if !ok {
 		return nil, fmt.Errorf("DefaultStringToExpression expected *sqlparser.AliasedExpr but received %T", parserSelect.SelectExprs[0])
 	}
-	proj, _, err := Parse(ctx, nil, fmt.Sprintf("SELECT %s", aliasedExpr.Expr))
+	// TODO: this should preferably take a catalog, but since this is only used in a MySQL context it still works
+	//  if this function is ever used in a non-MySQL context, then this will cause issues
+	builder := New(ctx, nil, nil)
+	proj, _, _, _, err := builder.Parse(fmt.Sprintf("SELECT %s", aliasedExpr.Expr), nil, false)
 	if err != nil {
 		return nil, err
 	}
