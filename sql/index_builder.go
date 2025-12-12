@@ -42,15 +42,17 @@ type MySQLIndexBuilder struct {
 // NewMySQLIndexBuilder returns a new MySQLIndexBuilder. Used internally to construct a range that will later be passed to
 // integrators through the Index function NewLookup.
 func NewMySQLIndexBuilder(idx Index) *MySQLIndexBuilder {
-	colExprTypes := make(map[string]Type)
-	ranges := make(map[string][]MySQLRangeColumnExpr)
-	for _, cet := range idx.ColumnExpressionTypes() {
+	cets := idx.ColumnExpressionTypes()
+	colExprTypes := make(map[string]Type, len(cets))
+	ranges := make(map[string][]MySQLRangeColumnExpr, len(cets))
+	for _, cet := range cets {
 		typ := cet.Type
 		if _, ok := typ.(StringType); ok {
 			typ = typ.Promote()
 		}
-		colExprTypes[strings.ToLower(cet.Expression)] = typ
-		ranges[strings.ToLower(cet.Expression)] = []MySQLRangeColumnExpr{AllRangeColumnExpr(typ)}
+		expr := strings.ToLower(cet.Expression)
+		colExprTypes[expr] = typ
+		ranges[expr] = []MySQLRangeColumnExpr{AllRangeColumnExpr(typ)}
 	}
 	return &MySQLIndexBuilder{
 		idx:          idx,
@@ -120,15 +122,19 @@ func (b *MySQLIndexBuilder) Equals(ctx *Context, colExpr string, keyType Type, k
 	for i, k := range keys {
 		// if converting from float to int results in rounding, then it's empty range
 		if t, ok := colTyp.(NumberType); ok && t.IsNumericType() && !t.IsFloat() {
-			f, c := floor(k), ceil(k)
-			switch k.(type) {
-			case float32, float64:
-				if f != c {
+			switch k := k.(type) {
+			case float32:
+				if float32(int64(k)) != k {
+					potentialRanges[i] = EmptyRangeColumnExpr(colTyp)
+					continue
+				}
+			case float64:
+				if float64(int64(k)) != k {
 					potentialRanges[i] = EmptyRangeColumnExpr(colTyp)
 					continue
 				}
 			case decimal.Decimal:
-				if !f.(decimal.Decimal).Equals(c.(decimal.Decimal)) {
+				if !k.Equal(decimal.NewFromInt(k.IntPart())) {
 					potentialRanges[i] = EmptyRangeColumnExpr(colTyp)
 					continue
 				}
@@ -600,7 +606,6 @@ func (b *MySQLIndexBuilder) updateCol(ctx *Context, colExpr string, potentialRan
 	var newRanges []MySQLRangeColumnExpr
 	for _, currentRange := range currentRanges {
 		for _, potentialRange := range potentialRanges {
-
 			newRange, ok, err := currentRange.TryIntersect(potentialRange)
 			if err != nil {
 				b.isInvalid = true
