@@ -238,7 +238,7 @@ func BuildProcedureHelper(ctx *sql.Context, cat sql.Catalog, isCreateProc bool, 
 			}
 		}
 	}()
-	b := New(ctx, cat, nil, nil)
+	b := New(ctx, cat, nil)
 	b.DisableAuth()
 	b.SetParserOptions(sql.NewSqlModeFromString(procDetails.SqlMode).ParserOptions())
 	if asOf != nil {

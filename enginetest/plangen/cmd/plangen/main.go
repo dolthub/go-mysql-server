@@ -154,7 +154,7 @@ func writePlanString(w *bytes.Buffer, planString string) {
 }
 
 func analyzeQuery(ctx *sql.Context, engine enginetest.QueryEngine, query string) sql.Node {
-	binder := planbuilder.New(ctx, engine.EngineAnalyzer().Catalog, engine.EngineEventScheduler(), nil)
+	binder := planbuilder.New(ctx, engine.EngineAnalyzer().Catalog, engine.EngineEventScheduler())
 	parsed, _, _, qFlags, err := binder.Parse(query, nil, false)
 	if err != nil {
 		exit(fmt.Errorf("%w\nfailed to parse query: %s", err, query))

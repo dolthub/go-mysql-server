@@ -152,3 +152,7 @@ func (t MapCatalog) DropDbStats(ctx *Context, db string, flush bool) error {
 func (t MapCatalog) AuthorizationHandler() AuthorizationHandler {
 	return GetAuthorizationHandlerFactory().CreateHandler(t)
 }
+
+func (MapCatalog) Overrides() EngineOverrides {
+	return EngineOverrides{}
+}

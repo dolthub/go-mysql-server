@@ -83,7 +83,9 @@ func viewsRowIter(ctx *Context, catalog Catalog) (RowIter, error) {
 				continue
 			}
 			// TODO: figure out how auth works in this case
-			parsedView, _, err := planbuilder.ParseWithOptions(ctx, catalog, view.CreateViewStatement, NewSqlModeFromString(view.SqlMode).ParserOptions())
+			builder := planbuilder.New(ctx, catalog, nil)
+			builder.SetParserOptions(NewSqlModeFromString(view.SqlMode).ParserOptions())
+			parsedView, _, _, _, err := builder.Parse(view.CreateViewStatement, nil, false)
 			if err != nil {
 				continue
 			}

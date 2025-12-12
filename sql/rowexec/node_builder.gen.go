@@ -26,8 +26,8 @@ import (
 func (b *BaseBuilder) buildNodeExec(ctx *sql.Context, n sql.Node, row sql.Row) (sql.RowIter, error) {
 	var iter sql.RowIter
 	var err error
-	if b.override != nil {
-		iter, err = b.override.Build(ctx, n, row)
+	if b.PriorityBuilder != nil {
+		iter, err = b.PriorityBuilder.Build(ctx, n, row)
 	}
 	if err != nil {
 		return nil, err

@@ -420,8 +420,11 @@ func (c *Context) ApplyOpts(opts ...ContextOption) {
 	}
 }
 
-// NewEmptyContext returns a default context with default values.
-func NewEmptyContext() *Context { return NewContext(context.TODO()) }
+// NewEmptyContext returns a default context with default values. When an existing context is available, it is preferred
+// to call ctx.NewContext to ensure that integrator-specific overrides are retained in the new context.
+func NewEmptyContext() *Context {
+	return NewContext(context.TODO())
+}
 
 // IsInterpreted returns `true` when this is being called from within RunInterpreted. In such cases, GMS will choose to
 // handle logic differently, as running from within an interpreted function requires different considerations than
@@ -514,6 +517,18 @@ func (c *Context) WithContext(ctx context.Context) *Context {
 	return &nc
 }
 
+// WithClient returns a new Context with the given client.
+func (c *Context) WithClient(client Client) *Context {
+	if c == nil {
+		return nil
+	}
+
+	nc := *c
+	nc.Session.SetClient(client)
+	nc.Session.SetPrivilegeSet(nil, 0)
+	return &nc
+}
+
 // RootSpan returns the root span, if any.
 func (c *Context) RootSpan() trace.Span {
 	if c == nil {
@@ -579,18 +594,6 @@ func (c *Context) NewErrgroup() (*errgroup.Group, *Context) {
 
 	eg, egCtx := errgroup.WithContext(c.Context)
 	return eg, c.WithContext(egCtx)
-}
-
-// NewCtxWithClient returns a new Context with the given [client]
-func (c *Context) NewCtxWithClient(client Client) *Context {
-	if c == nil {
-		return nil
-	}
-
-	nc := *c
-	nc.Session.SetClient(client)
-	nc.Session.SetPrivilegeSet(nil, 0)
-	return &nc
 }
 
 // Services are handles to optional or plugin functionality that can be

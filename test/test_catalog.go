@@ -217,3 +217,7 @@ func (c *Catalog) DropDbStats(ctx *sql.Context, db string, flush bool) error {
 func (c *Catalog) AuthorizationHandler() sql.AuthorizationHandler {
 	return sql.GetAuthorizationHandlerFactory().CreateHandler(c)
 }
+
+func (*Catalog) Overrides() sql.EngineOverrides {
+	return sql.EngineOverrides{}
+}
