@@ -460,7 +460,7 @@ type indexCoster struct {
 	// bestStat is the lowest cardinality indexScan option
 	bestStat sql.Statistic
 	// idToExpr is a record of conj decomposition so we can remove duplicates later
-	idToExpr map[indexScanId]sql.Expression
+	idToExpr map[indexScanId]sql.Expression // TODO: there are quite a few map reassign and map grow
 	// bestFilters is the set of conjunctions used to create bestStat
 	bestFilters sql.FastIntSet
 	// bestConstant are the constant best filters

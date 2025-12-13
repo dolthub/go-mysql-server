@@ -196,27 +196,20 @@ func TestSingleScript(t *testing.T) {
 	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name: "Parse table name as column",
+			Name: "test ranges",
 			SetUpScript: []string{
-				`CREATE TABLE test (pk INT PRIMARY KEY, v1 VARCHAR(255));`,
-				`INSERT INTO test VALUES (1, 'a'), (2, 'b');`,
+				"create table t (i int primary key);",
+				"insert into t values (1), (2), (3), (4), (5);",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "SELECT temporarytesting(t) FROM test AS t;",
-					Expected: []sql.Row{},
-				},
-				{
-					Query:    "SELECT temporarytesting(test) FROM test;",
-					Expected: []sql.Row{},
-				},
-				{
-					Query:    "SELECT temporarytesting(pk, test) FROM test;",
-					Expected: []sql.Row{},
-				},
-				{
-					Query:    "SELECT temporarytesting(v1, test, pk) FROM test;",
-					Expected: []sql.Row{},
+					Query: "select * from t where i between 1 and 2 or i between 3 and 5;",
+					Expected: []sql.Row{
+						{1},
+						{2},
+						{3},
+						{4},
+					},
 				},
 			},
 		},
