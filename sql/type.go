@@ -210,6 +210,9 @@ type StringType interface {
 	Type
 	CharacterSet() CharacterSetID
 	Collation() CollationID
+	// IsStringType returns true if the type is a string. Must be checked in addition to a type assertion for
+	// StringType, because some implementors of this interface may not be string types in all instantiations.
+	IsStringType() bool
 	// MaxCharacterLength returns the maximum number of chars that can safely be stored in this type, based on
 	// the current character set.
 	MaxCharacterLength() int64
@@ -220,8 +223,8 @@ type StringType interface {
 }
 
 func IsStringType(t Type) bool {
-	_, ok := t.(StringType)
-	return ok
+	st, ok := t.(StringType)
+	return ok && st.IsStringType()
 }
 
 // DatetimeType represents DATE, DATETIME, and TIMESTAMP.
@@ -282,6 +285,9 @@ type EnumType interface {
 // The type of the returned value is decimal.Decimal.
 type DecimalType interface {
 	Type
+	// IsDecimalType returns true if the type is a decimal. Must be checked in addition to a type assertion for
+	// DecimalType, because some implementors of this interface may not be decimal types in all instantiations.
+	IsDecimalType() bool
 	// ConvertToNullDecimal converts the given value to a decimal.NullDecimal if it has a compatible type. It is worth
 	// noting that Convert() returns a nil value for nil inputs, and also returns decimal.Decimal rather than
 	// decimal.NullDecimal.
@@ -305,8 +311,8 @@ type DecimalType interface {
 }
 
 func IsDecimalType(t Type) bool {
-	_, ok := t.(DecimalType)
-	return ok
+	dt, ok := t.(DecimalType)
+	return ok && dt.IsDecimalType()
 }
 
 // SpatialColumnType is a node that contains a reference to all spatial types.
