@@ -247,36 +247,35 @@ func gatherOuterCols(n sql.Node) ([]tableCol, []string, bool) {
 	var cols []tableCol
 	var nodeStars []string
 	var nodeUnqualifiedStar bool
-	var helper = func(e sql.Expression) bool {
-		var col tableCol
-		switch e := e.(type) {
-		case *expression.Alias:
-			switch e := e.Child.(type) {
+	for _, e := range ne.Expressions() {
+		transform.InspectExpr(e, func(e sql.Expression) bool {
+			var col tableCol
+			switch e := e.(type) {
+			case *expression.Alias:
+				switch e := e.Child.(type) {
+				case *expression.GetField:
+					col = newTableCol(e.Table(), e.Name())
+				case *expression.UnresolvedColumn:
+					col = newTableCol(e.Table(), e.Name())
+				default:
+				}
 			case *expression.GetField:
 				col = newTableCol(e.Table(), e.Name())
 			case *expression.UnresolvedColumn:
 				col = newTableCol(e.Table(), e.Name())
+			case *expression.Star:
+				if len(e.Table) > 0 {
+					nodeStars = append(nodeStars, strings.ToLower(e.Table))
+				} else {
+					nodeUnqualifiedStar = true
+				}
 			default:
 			}
-		case *expression.GetField:
-			col = newTableCol(e.Table(), e.Name())
-		case *expression.UnresolvedColumn:
-			col = newTableCol(e.Table(), e.Name())
-		case *expression.Star:
-			if len(e.Table) > 0 {
-				nodeStars = append(nodeStars, strings.ToLower(e.Table))
-			} else {
-				nodeUnqualifiedStar = true
+			if col.col != "" {
+				cols = append(cols, col)
 			}
-		default:
-		}
-		if col.col != "" {
-			cols = append(cols, col)
-		}
-		return false
-	}
-	for _, e := range ne.Expressions() {
-		transform.InspectExpr(e, helper)
+			return false
+		})
 	}
 
 	return cols, nodeStars, nodeUnqualifiedStar

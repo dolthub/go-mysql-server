@@ -96,19 +96,17 @@ func Exprs(e []sql.Expression, f ExprFunc) ([]sql.Expression, TreeIdentity, erro
 	return newExprs, NewTree, nil
 }
 
-var stopInspect = errors.New("stop")
-
 // InspectExpr traverses the given expression tree from the bottom up, breaking if
 // stop = true. Returns a bool indicating whether traversal was interrupted.
-func InspectExpr(node sql.Expression, f func(sql.Expression) bool) bool {
-	_, _, err := Expr(node, func(e sql.Expression) (sql.Expression, TreeIdentity, error) {
-		ok := f(e)
-		if ok {
-			return nil, SameTree, stopInspect
-		}
-		return e, SameTree, nil
-	})
-	return errors.Is(err, stopInspect)
+func InspectExpr(expr sql.Expression, f func(sql.Expression) bool) bool {
+	children := expr.Children()
+	for _, child := range children {
+		InspectExpr(child, f)
+	}
+	if f(expr) {
+		return true
+	}
+	return false
 }
 
 // InspectUp traverses the given node tree from the bottom up, breaking if
