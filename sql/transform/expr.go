@@ -108,6 +108,7 @@ func InspectExpr(node sql.Expression, f func(sql.Expression) bool) bool {
 		}
 		return e, SameTree, nil
 	})
+	// testing
 	return errors.Is(err, stopInspect)
 }
 
