@@ -45,7 +45,7 @@ func (a *AnyValue) String() string {
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("ANYVALUE(%s)", a.Child)
+	return "ANYVALUE(" + a.Child.String() + ")"
 }
 
 func (a *AnyValue) DebugString() string {
@@ -124,7 +124,7 @@ func (a *Avg) String() string {
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("AVG(%s)", a.Child)
+	return "AVG(" + a.Child.String() + ")"
 }
 
 func (a *Avg) DebugString() string {
@@ -203,7 +203,7 @@ func (a *BitAnd) String() string {
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("BITAND(%s)", a.Child)
+	return "BITAND(" + a.Child.String() + ")"
 }
 
 func (a *BitAnd) DebugString() string {
@@ -282,7 +282,7 @@ func (a *BitOr) String() string {
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("BITOR(%s)", a.Child)
+	return "BITOR(" + a.Child.String() + ")"
 }
 
 func (a *BitOr) DebugString() string {
@@ -361,7 +361,7 @@ func (a *BitXor) String() string {
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("BITXOR(%s)", a.Child)
+	return "BITXOR(" + a.Child.String() + ")"
 }
 
 func (a *BitXor) DebugString() string {
@@ -440,7 +440,7 @@ func (a *Count) String() string {
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("COUNT(%s)", a.Child)
+	return "COUNT(" + a.Child.String() + ")"
 }
 
 func (a *Count) DebugString() string {
@@ -519,7 +519,7 @@ func (a *First) String() string {
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("FIRST(%s)", a.Child)
+	return "FIRST(" + a.Child.String() + ")"
 }
 
 func (a *First) DebugString() string {
@@ -598,7 +598,7 @@ func (a *JsonArray) String() string {
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("JSON_ARRAYAGG(%s)", a.Child)
+	return "JSON_ARRAYAGG(" + a.Child.String() + ")"
 }
 
 func (a *JsonArray) DebugString() string {
@@ -677,7 +677,7 @@ func (a *Last) String() string {
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("LAST(%s)", a.Child)
+	return "LAST(" + a.Child.String() + ")"
 }
 
 func (a *Last) DebugString() string {
@@ -756,7 +756,7 @@ func (a *Max) String() string {
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("MAX(%s)", a.Child)
+	return "MAX(" + a.Child.String() + ")"
 }
 
 func (a *Max) DebugString() string {
@@ -835,7 +835,7 @@ func (a *Min) String() string {
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("MIN(%s)", a.Child)
+	return "MIN(" + a.Child.String() + ")"
 }
 
 func (a *Min) DebugString() string {
@@ -914,7 +914,7 @@ func (a *Sum) String() string {
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("SUM(%s)", a.Child)
+	return "SUM(" + a.Child.String() + ")"
 }
 
 func (a *Sum) DebugString() string {
@@ -993,7 +993,7 @@ func (a *StdDevPop) String() string {
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("STDDEVPOP(%s)", a.Child)
+	return "STDDEVPOP(" + a.Child.String() + ")"
 }
 
 func (a *StdDevPop) DebugString() string {
@@ -1072,7 +1072,7 @@ func (a *StdDevSamp) String() string {
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("STDDEVSAMP(%s)", a.Child)
+	return "STDDEVSAMP(" + a.Child.String() + ")"
 }
 
 func (a *StdDevSamp) DebugString() string {
@@ -1151,7 +1151,7 @@ func (a *VarPop) String() string {
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("VARPOP(%s)", a.Child)
+	return "VARPOP(" + a.Child.String() + ")"
 }
 
 func (a *VarPop) DebugString() string {
@@ -1230,7 +1230,7 @@ func (a *VarSamp) String() string {
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("VARSAMP(%s)", a.Child)
+	return "VARSAMP(" + a.Child.String() + ")"
 }
 
 func (a *VarSamp) DebugString() string {
