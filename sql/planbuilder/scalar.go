@@ -927,7 +927,8 @@ func (b *Builder) intervalExprToExpression(inScope *scope, e *ast.IntervalExpr) 
 // base, to its smallest representation possible, out of:
 // int8, uint8, int16, uint16, int32, uint32, int64 and uint64
 func (b *Builder) convertInt(value []byte, base int) *expression.Literal {
-	valStr := encodings.BytesToString(value)
+	//valStr := encodings.BytesToString(value)
+	valStr := string(value)
 	if i64, err := strconv.ParseInt(valStr, base, 64); err == nil {
 		if uint64(i64)&0x8000_0000_0000_0000 != 0 {
 			if uint64(^i64)&0xFFFF_FFFF_FFFF_FF80 == 0 {
