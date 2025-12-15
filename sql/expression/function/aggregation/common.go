@@ -15,8 +15,6 @@
 package aggregation
 
 import (
-	"fmt"
-
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -59,7 +57,7 @@ func (a *unaryAggBase) Window() *sql.WindowDefinition {
 }
 
 func (a *unaryAggBase) String() string {
-	return fmt.Sprintf("%s(%s)", a.functionName, a.Child)
+	return a.functionName + "(" + a.Child.String() + ")"
 }
 
 func (a *unaryAggBase) Type() sql.Type {
