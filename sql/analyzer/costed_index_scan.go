@@ -756,6 +756,7 @@ func (c *indexCoster) flattenAnd(e *expression.And, and *iScanAnd) (sql.FastIntS
 				invalid.Add(int(newOr.Id()))
 			} else {
 				and.orChildren = append(and.orChildren, newOr)
+				and.cnt++
 				if imp {
 					imprecise.Add(int(newOr.id))
 				}
@@ -1243,6 +1244,7 @@ func (a *iScanAnd) newLeaf(l *iScanLeaf) {
 		a.leafChildren = make(map[string][]*iScanLeaf)
 	}
 	a.leafChildren[strings.ToLower(l.gf.Name())] = append(a.leafChildren[strings.ToLower(l.gf.Name())], l)
+	a.cnt++
 }
 
 // leaves returns a list of this nodes leaf filters, sorted by id
@@ -1260,14 +1262,6 @@ func (a *iScanAnd) leaves() []*iScanLeaf {
 }
 
 func (a *iScanAnd) childCnt() int {
-	if a.cnt > 0 {
-		return a.cnt
-	}
-	cnt := len(a.orChildren)
-	for _, leaves := range a.leafChildren {
-		cnt += len(leaves)
-	}
-	a.cnt = cnt
 	return a.cnt
 }
 
