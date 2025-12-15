@@ -2,10 +2,11 @@ package planbuilder
 
 import (
 	"math"
+	mathrand "math/rand"
 	"strconv"
 	"testing"
 
-	mathrand "math/rand"
+	"github.com/dolthub/go-mysql-server/sql/encodings"
 )
 
 func makeIntStrs(n int) []string {
@@ -26,7 +27,7 @@ func BenchmarkConvertInt(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for _, val := range vals {
-			_ = bld.convertInt(val, 10)
+			_ = bld.convertInt(encodings.StringToBytes(val), 10)
 		}
 	}
 }
