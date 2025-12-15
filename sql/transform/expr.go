@@ -101,7 +101,9 @@ func Exprs(e []sql.Expression, f ExprFunc) ([]sql.Expression, TreeIdentity, erro
 func InspectExpr(expr sql.Expression, f func(sql.Expression) bool) bool {
 	children := expr.Children()
 	for _, child := range children {
-		InspectExpr(child, f)
+		if InspectExpr(child, f) {
+			return true
+		}
 	}
 	if f(expr) {
 		return true
