@@ -2257,6 +2257,24 @@ WHERE
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/10186
+		name: "natural right join with varchar primary key",
+		setup: [][]string{
+			{
+				"create table t0(c0 varchar(500), c1 boolean, primary key(c0))",
+				"create table t1(c0 boolean, c1 boolean)",
+				"insert into t1(c0, c1) values (false, true)",
+				"insert into t0(c0, c1) values ('i', true)",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    `SELECT t0.c1, t0.c0 from t0 natural right join t1`,
+				Expected: []sql.Row{{1, "i"}},
+			},
+		},
+	},
 }
 
 var rangeJoinOpTests = []JoinOpTests{
