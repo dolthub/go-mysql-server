@@ -235,7 +235,7 @@ func generatePlansForSuite(spec PlanSpec, w *bytes.Buffer) error {
 				}
 			}
 		} else {
-			_, _ = w.WriteString(`Skip: true,\n`)
+			_, _ = w.WriteString("Skip: true,\n")
 		}
 
 		_, _ = w.WriteString("\t},\n")

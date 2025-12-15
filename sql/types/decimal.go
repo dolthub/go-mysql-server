@@ -481,3 +481,8 @@ func convertValueToDecimal(ctx *sql.Context, v sql.Value) (decimal.Decimal, erro
 		return decimal.Decimal{}, ErrConvertingToDecimal.New(v)
 	}
 }
+
+// IsDecimalType implements the sql.DecimalType
+func (t DecimalType_) IsDecimalType() bool {
+	return true
+}

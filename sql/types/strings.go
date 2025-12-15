@@ -928,6 +928,11 @@ func (t StringType) MaxByteLength() int64 {
 	return t.maxByteLength
 }
 
+// IsStringType implements the sql.StringType interface.
+func (t StringType) IsStringType() bool {
+	return true
+}
+
 // TODO: move me
 func AppendAndSliceString(buffer []byte, addition string) (slice []byte) {
 	stop := len(buffer)

@@ -321,8 +321,8 @@ func (b *MySQLIndexBuilder) GreaterThan(ctx *Context, colExpr string, keyType Ty
 	return b
 }
 
-// isConvertibleKeyType checks if the key can be converted into the column type
-func isConvertibleKeyType(colType Type, keyType Type) bool {
+// IsConvertibleKeyType checks if the key can be converted into the column type
+func IsConvertibleKeyType(colType Type, keyType Type) bool {
 	if IsStringType(colType) {
 		return !(IsNumberType(keyType) || IsDecimalType(keyType))
 	}
@@ -335,7 +335,7 @@ func (b *MySQLIndexBuilder) convertKey(ctx *Context, colType Type, keyType Type,
 	if et, ok := colType.(ExtendedType); ok {
 		return et.ConvertToType(ctx, keyType.(ExtendedType), key)
 	} else {
-		if !isConvertibleKeyType(colType, keyType) {
+		if !IsConvertibleKeyType(colType, keyType) {
 			return nil, Overflow, ErrInvalidValueType.New(key, colType)
 		}
 		k, inRange, err := colType.Convert(ctx, key)
