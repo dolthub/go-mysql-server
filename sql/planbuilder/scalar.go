@@ -926,57 +926,32 @@ func (b *Builder) intervalExprToExpression(inScope *scope, e *ast.IntervalExpr) 
 // Convert an integer, represented by the specified string in the specified
 // base, to its smallest representation possible, out of:
 // int8, uint8, int16, uint16, int32, uint32, int64 and uint64
-func (b *Builder) convertInt(value []byte, base int) *expression.Literal {
-	//valStr := encodings.BytesToString(value)
-	valStr := string(value)
-	if i64, err := strconv.ParseInt(valStr, base, 64); err == nil {
-		if uint64(i64)&0x8000_0000_0000_0000 != 0 {
-			if uint64(^i64)&0xFFFF_FFFF_FFFF_FF80 == 0 {
-				return expression.NewLiteral(int8(i64), types.Int8)
-			}
-			if uint64(^i64)&0xFFFF_FFFF_FFFF_8000 == 0 {
-				return expression.NewLiteral(int16(i64), types.Int16)
-			}
-			if uint64(^i64)&0xFFFF_FFFF_8000_0000 == 0 {
-				return expression.NewLiteral(int32(i64), types.Int32)
-			}
-			return expression.NewLiteral(i64, types.Int64)
-		}
-		if uint64(i64)&0xFFFF_FFFF_FFFF_FF80 == 0 {
-			return expression.NewLiteral(int8(i64), types.Int8)
-		}
-		if uint64(i64)&0xFFFF_FFFF_FFFF_FF00 == 0 {
-			return expression.NewLiteral(uint8(i64), types.Uint8)
-		}
-		if uint64(i64)&0xFFFF_FFFF_FFFF_8000 == 0 {
-			return expression.NewLiteral(int16(i64), types.Int16)
-		}
-		if uint64(i64)&0xFFFF_FFFF_FFFF_0000 == 0 {
-			return expression.NewLiteral(uint16(i64), types.Uint16)
-		}
-		if uint64(i64)&0xFFFF_FFFF_8000_0000 == 0 {
-			return expression.NewLiteral(int32(i64), types.Int32)
-		}
-		if uint64(i64)&0xFFFF_FFFF_0000_0000 == 0 {
-			return expression.NewLiteral(uint32(i64), types.Uint32)
-		}
-		return expression.NewLiteral(i64, types.Int64)
+func (b *Builder) convertInt(value string, base int) *expression.Literal {
+	if i8, err := strconv.ParseInt(value, base, 8); err == nil {
+		return expression.NewLiteral(int8(i8), types.Int8)
 	}
-
-	if ui64, err := strconv.ParseUint(valStr, base, 64); err == nil {
-		if ui64&0xFFFF_FFFF_FFFF_FF00 == 0 {
-			return expression.NewLiteral(uint8(ui64), types.Uint8)
-		}
-		if ui64&0xFFFF_FFFF_FFFF_0000 == 0 {
-			return expression.NewLiteral(uint16(ui64), types.Uint16)
-		}
-		if ui64&0xFFFF_0000_0000_0000 == 0 {
-			return expression.NewLiteral(uint32(ui64), types.Uint32)
-		}
-		return expression.NewLiteral(ui64, types.Uint64)
+	if ui8, err := strconv.ParseUint(value, base, 8); err == nil {
+		return expression.NewLiteral(uint8(ui8), types.Uint8)
 	}
-
-	if decimal, _, err := types.InternalDecimalType.Convert(b.ctx, valStr); err == nil {
+	if i16, err := strconv.ParseInt(value, base, 16); err == nil {
+		return expression.NewLiteral(int16(i16), types.Int16)
+	}
+	if ui16, err := strconv.ParseUint(value, base, 16); err == nil {
+		return expression.NewLiteral(uint16(ui16), types.Uint16)
+	}
+	if i32, err := strconv.ParseInt(value, base, 32); err == nil {
+		return expression.NewLiteral(int32(i32), types.Int32)
+	}
+	if ui32, err := strconv.ParseUint(value, base, 32); err == nil {
+		return expression.NewLiteral(uint32(ui32), types.Uint32)
+	}
+	if i64, err := strconv.ParseInt(value, base, 64); err == nil {
+		return expression.NewLiteral(int64(i64), types.Int64)
+	}
+	if ui64, err := strconv.ParseUint(value, base, 64); err == nil {
+		return expression.NewLiteral(uint64(ui64), types.Uint64)
+	}
+	if decimal, _, err := types.InternalDecimalType.Convert(b.ctx, value); err == nil {
 		return expression.NewLiteral(decimal, types.InternalDecimalType)
 	}
 
@@ -989,7 +964,7 @@ func (b *Builder) ConvertVal(v *ast.SQLVal) sql.Expression {
 	case ast.StrVal:
 		return expression.NewLiteral(string(v.Val), types.CreateLongText(b.ctx.GetCollation()))
 	case ast.IntVal:
-		return b.convertInt(v.Val, 10)
+		return b.convertInt(string(v.Val), 10)
 	case ast.FloatVal:
 		// any float value is parsed as decimal except when the value has scientific notation
 		ogVal := strings.ToLower(string(v.Val))
@@ -1015,7 +990,7 @@ func (b *Builder) ConvertVal(v *ast.SQLVal) sql.Expression {
 			return expression.NewLiteral(dVal, dt)
 		} else {
 			// if the value is not float type - this should not happen
-			return b.convertInt(v.Val, 10)
+			return b.convertInt(string(v.Val), 10)
 		}
 	case ast.HexNum:
 		// TODO: binary collation?
