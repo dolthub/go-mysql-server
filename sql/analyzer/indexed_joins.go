@@ -427,9 +427,11 @@ func keyForExpr(targetCol sql.ColumnId, tableId sql.TableId, filters []sql.Expre
 				right = e.Right()
 			}
 		}
-		if ref, ok := left.(*expression.GetField); ok && ref.Id() == targetCol {
+		if ref, ok := left.(*expression.GetField); ok && ref.Id() == targetCol &&
+			sql.IsConvertibleKeyType(left.Type(), right.Type()) {
 			key = right
-		} else if ref, ok := right.(*expression.GetField); ok && ref.Id() == targetCol {
+		} else if ref, ok := right.(*expression.GetField); ok && ref.Id() == targetCol &&
+			sql.IsConvertibleKeyType(right.Type(), left.Type()) {
 			key = left
 		} else {
 			continue
