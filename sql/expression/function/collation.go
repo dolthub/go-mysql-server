@@ -36,12 +36,12 @@ func NewCollation(e sql.Expression) sql.Expression {
 	return &Collation{expression.UnaryExpression{Child: e}}
 }
 
-// FunctionName implements sql.FunctionExpression interface.
+// FunctionName implements the sql.FunctionExpression interface.
 func (c *Collation) FunctionName() string {
 	return "collation"
 }
 
-// Description implements sql.FunctionExpression interface.
+// Description implements the sql.FunctionExpression interface.
 func (c *Collation) Description() string {
 	return "Returns the collation of the inner expression"
 }
@@ -71,7 +71,7 @@ func (c *Collation) String() string {
 	return fmt.Sprintf("%s(%s)", c.FunctionName(), c.Child.String())
 }
 
-// WithChildren implements the Expression interface.
+// WithChildren implements the sql.Expression interface.
 func (c *Collation) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
@@ -79,7 +79,7 @@ func (c *Collation) WithChildren(children ...sql.Expression) (sql.Expression, er
 	return NewCollation(children[0]), nil
 }
 
-// Type implements the Expression interface.
+// Type implements the sql.Expression interface.
 func (c *Collation) Type() sql.Type {
 	return types.LongText
 }
@@ -102,17 +102,17 @@ func NewCoercibility(e sql.Expression) sql.Expression {
 	return &Coercibility{expression.UnaryExpression{Child: e}}
 }
 
-// FunctionName implements sql.FunctionExpression
+// FunctionName implements the sql.FunctionExpression interface.
 func (c *Coercibility) FunctionName() string {
 	return "coercibility"
 }
 
-// Description implements sql.FunctionExpression
+// Description implements the sql.FunctionExpression interface.
 func (c *Coercibility) Description() string {
 	return "Returns the coercibility of the inner expression"
 }
 
-// Eval implements the sql.Expression.
+// Eval implements the sql.Expression interface.
 func (c *Coercibility) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	val, err := c.Child.Eval(ctx, row)
 	if err != nil {
@@ -127,12 +127,17 @@ func (c *Coercibility) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	return coercibility, nil
 }
 
+// IsNullable implements the sql.Expression interface.
+func (c *Coercibility) IsNullable() bool {
+	return false
+}
+
 // String implements the fmt.Stringer interface.
 func (c *Coercibility) String() string {
 	return fmt.Sprintf("%s(%s)", c.FunctionName(), c.Child.String())
 }
 
-// WithChildren implements the Expression interface.
+// WithChildren implements the sql.Expression interface.
 func (c *Coercibility) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
@@ -140,7 +145,7 @@ func (c *Coercibility) WithChildren(children ...sql.Expression) (sql.Expression,
 	return NewCoercibility(children[0]), nil
 }
 
-// Type implements the Expression interface.
+// Type implements the sql.Expression interface.
 func (c *Coercibility) Type() sql.Type {
 	return types.Int8
 }
@@ -163,17 +168,17 @@ func NewCharset(e sql.Expression) sql.Expression {
 	return &Charset{expression.UnaryExpression{Child: e}}
 }
 
-// FunctionName implements sql.FunctionExpression
+// FunctionName implements the sql.FunctionExpression interface.
 func (c *Charset) FunctionName() string {
 	return "charset"
 }
 
-// Description implements sql.FunctionExpression
+// Description implements the sql.FunctionExpression interface.
 func (c *Charset) Description() string {
 	return "Returns the charset of the inner expression"
 }
 
-// Eval implements the sql.Expression.
+// Eval implements the sql.Expression interface.
 func (c *Charset) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	val, err := c.Child.Eval(ctx, row)
 	if err != nil {
@@ -188,12 +193,17 @@ func (c *Charset) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return collation.CharacterSet().Name(), nil
 }
 
+// IsNullable implements the sql.Expression interface.
+func (c *Charset) IsNullable() bool {
+	return false
+}
+
 // String implements the fmt.Stringer interface.
 func (c *Charset) String() string {
 	return fmt.Sprintf("%s(%s)", c.FunctionName(), c.Child.String())
 }
 
-// WithChildren implements the Expression interface.
+// WithChildren implements the sql.Expression interface.
 func (c *Charset) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
@@ -201,7 +211,7 @@ func (c *Charset) WithChildren(children ...sql.Expression) (sql.Expression, erro
 	return NewCharset(children[0]), nil
 }
 
-// Type implements the Expression interface.
+// Type implements the sql.Expression interface.
 func (c *Charset) Type() sql.Type {
 	return types.LongText
 }
