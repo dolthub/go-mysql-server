@@ -136,3 +136,8 @@ func (g *GetFormat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 	return format, nil
 }
+
+// IsNullable implements sql.Expression
+func (g *GetFormat) IsNullable() bool {
+	return true
+}
