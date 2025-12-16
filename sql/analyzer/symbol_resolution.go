@@ -178,24 +178,25 @@ func findSubqueryExpr(n sql.Node) *plan.Subquery {
 // hasMatchAgainstExpr searches for an *expression.MatchAgainst within the node's expressions
 func hasMatchAgainstExpr(node sql.Node) bool {
 	var foundMatchAgainstExpr bool
-	// TODO: why the fuck is this so expensive?
-	transform.Inspect(node, func(n sql.Node) bool {
-		if ne, ok := n.(sql.Expressioner); ok {
-			for _, expr := range ne.Expressions() {
-				stop := transform.InspectExpr(expr, func(e sql.Expression) bool {
-					_, isMatchAgainstExpr := e.(*expression.MatchAgainst)
-					if isMatchAgainstExpr {
-						foundMatchAgainstExpr = true
-						return true
-					}
-					return false
-				})
-				if stop {
-					return false
+	transform.Inspect2(node, func(n sql.Node) bool {
+		ne, ok := n.(sql.Expressioner)
+		if !ok {
+			return false
+		}
+		for _, expr := range ne.Expressions() {
+			stop := transform.InspectExpr(expr, func(e sql.Expression) bool {
+				_, isMatchAgainstExpr := e.(*expression.MatchAgainst)
+				if isMatchAgainstExpr {
+					foundMatchAgainstExpr = true
+					return true
 				}
+				return false
+			})
+			if stop {
+				return true
 			}
 		}
-		return true
+		return false
 	})
 	return foundMatchAgainstExpr
 	//transform.InspectExpressions(node, func(expr sql.Expression) bool {

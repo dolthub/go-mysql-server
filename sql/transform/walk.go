@@ -60,6 +60,18 @@ func Inspect(node sql.Node, f func(sql.Node) bool) {
 	Walk(inspector(f), node)
 }
 
+func Inspect2(node sql.Node, f func(sql.Node) bool) bool {
+	if f(node) {
+		return true
+	}
+	for _, child := range node.Children() {
+		if Inspect2(child, f) {
+			return true
+		}
+	}
+	return false
+}
+
 // WalkExpressions traverses the plan and calls sql.Walk on any expression it finds.
 func WalkExpressions(v sql.Visitor, node sql.Node) {
 	Inspect(node, func(node sql.Node) bool {
