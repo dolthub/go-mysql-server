@@ -186,8 +186,9 @@ func hasMatchAgainstExpr(node sql.Node) bool {
 					_, isMatchAgainstExpr := e.(*expression.MatchAgainst)
 					if isMatchAgainstExpr {
 						foundMatchAgainstExpr = true
+						return true
 					}
-					return !foundMatchAgainstExpr
+					return false
 				})
 				if stop {
 					return false
