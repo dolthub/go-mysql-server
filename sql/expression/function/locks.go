@@ -92,7 +92,7 @@ func (nl *NamedLockFunction) String() string {
 
 // IsNullable implements the Expression interface.
 func (nl *NamedLockFunction) IsNullable() bool {
-	return nl.Child.IsNullable()
+	return true
 }
 
 // Type implements the Expression interface.
@@ -359,7 +359,7 @@ func (gl *GetLock) String() string {
 
 // IsNullable implements the Expression interface.
 func (gl *GetLock) IsNullable() bool {
-	return false
+	return gl.LeftChild.IsNullable() || gl.RightChild.IsNullable()
 }
 
 // WithChildren implements the Expression interface.
