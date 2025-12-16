@@ -26,7 +26,7 @@ var ErrEvalUnsupportedOnAggregation = errors.NewKind("Unimplemented %s.Eval(). T
 // unaryAggBase is the generic embedded class optgen
 // uses to codegen single expression aggregate functions.
 type unaryAggBase struct {
-	expression.UnaryExpressionStub
+	Child        sql.Expression
 	typ          sql.Type
 	window       *sql.WindowDefinition
 	functionName string
@@ -76,6 +76,11 @@ func (a *unaryAggBase) WithId(id sql.ColumnId) sql.IdExpression {
 	return &ret
 }
 
+// IsNullable returns whether the expression can be null.
+func (a *unaryAggBase) IsNullable() bool {
+	return a.Child.IsNullable()
+}
+
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (a *unaryAggBase) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.GetCoercibility(ctx, a.Child)
@@ -96,7 +101,8 @@ func (a *unaryAggBase) Children() []sql.Expression {
 func (a *unaryAggBase) Resolved() bool {
 	if _, ok := a.Child.(*expression.Star); ok {
 		return true
-	} else if !a.Child.Resolved() {
+	}
+	if !a.Child.Resolved() {
 		return false
 	}
 	if a.window == nil {
@@ -112,7 +118,7 @@ func (a *unaryAggBase) WithChildren(children ...sql.Expression) (sql.Expression,
 	}
 
 	na := *a
-	na.UnaryExpressionStub = expression.UnaryExpressionStub{Child: children[0]}
+	na.Child = children[0]
 	if len(children) > 1 && a.window != nil {
 		w, err := a.window.FromExpressions(children[1:])
 		if err != nil {

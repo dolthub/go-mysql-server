@@ -104,10 +104,10 @@ func InspectExpr(expr sql.Expression, f func(sql.Expression) bool) (stop bool) {
 	// Avoid allocating []sql.Expression
 	switch e := expr.(type) {
 	// TODO: some expression.UnaryExpressions return multiple children...
-	//case expression.UnaryExpression:
-	//	if child := e.UnaryChild(); child != nil && InspectExpr(child, f) {
-	//		return true
-	//	}
+	case expression.UnaryExpression:
+		if child := e.UnaryChild(); child != nil && InspectExpr(child, f) {
+			return true
+		}
 	case expression.BinaryExpression:
 		// some binary expressions may return `nil` for left/right
 		// example: expression.Round

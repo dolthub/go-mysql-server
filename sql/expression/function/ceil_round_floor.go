@@ -216,6 +216,7 @@ func (f *Floor) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 // digits of it's integer part set to 0. If d is not specified or nil/null
 // it defaults to 0.
 type Round struct {
+	// TODO: this should not be binary expression then??
 	expression.BinaryExpressionStub
 }
 
