@@ -59,7 +59,7 @@ func (*Conv) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID,
 
 // IsNullable implements the Expression interface.
 func (c *Conv) IsNullable() bool {
-	return c.n.IsNullable() || c.fromBase.IsNullable() || c.toBase.IsNullable()
+	return true
 }
 
 func (c *Conv) String() string {
