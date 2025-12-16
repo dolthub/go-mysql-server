@@ -252,7 +252,10 @@ func (ut *UnixTimestamp) Resolved() bool {
 }
 
 func (ut *UnixTimestamp) IsNullable() bool {
-	return true
+	if ut.Date != nil {
+		return ut.Date.IsNullable()
+	}
+	return false
 }
 
 func (ut *UnixTimestamp) Type() sql.Type {
@@ -419,6 +422,11 @@ func (r *FromUnixtime) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 		return nil, nil
 	}
 	return formatDate(format.(string), t)
+}
+
+// IsNullable implements the sql.Expression interface
+func (r *FromUnixtime) IsNullable() bool {
+	return true
 }
 
 func (r *FromUnixtime) WithChildren(children ...sql.Expression) (sql.Expression, error) {
