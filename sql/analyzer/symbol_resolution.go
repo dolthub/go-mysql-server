@@ -178,14 +178,33 @@ func findSubqueryExpr(n sql.Node) *plan.Subquery {
 // hasMatchAgainstExpr searches for an *expression.MatchAgainst within the node's expressions
 func hasMatchAgainstExpr(node sql.Node) bool {
 	var foundMatchAgainstExpr bool
-	transform.InspectExpressions(node, func(expr sql.Expression) bool {
-		_, isMatchAgainstExpr := expr.(*expression.MatchAgainst)
-		if isMatchAgainstExpr {
-			foundMatchAgainstExpr = true
+	// TODO: why the fuck is this so expensive?
+	transform.Inspect(node, func(n sql.Node) bool {
+		if ne, ok := n.(sql.Expressioner); ok {
+			for _, expr := range ne.Expressions() {
+				stop := transform.InspectExpr(expr, func(e sql.Expression) bool {
+					_, isMatchAgainstExpr := e.(*expression.MatchAgainst)
+					if isMatchAgainstExpr {
+						foundMatchAgainstExpr = true
+					}
+					return !foundMatchAgainstExpr
+				})
+				if stop {
+					return false
+				}
+			}
 		}
-		return !foundMatchAgainstExpr
+		return true
 	})
 	return foundMatchAgainstExpr
+	//transform.InspectExpressions(node, func(expr sql.Expression) bool {
+	//	_, isMatchAgainstExpr := expr.(*expression.MatchAgainst)
+	//	if isMatchAgainstExpr {
+	//		foundMatchAgainstExpr = true
+	//	}
+	//	return !foundMatchAgainstExpr
+	//})
+	//return foundMatchAgainstExpr
 }
 
 // pruneTableCols uses a list of parent dependencies columns and stars
