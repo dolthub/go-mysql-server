@@ -93,7 +93,10 @@ func (f *IfNull) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 
 // IsNullable implements the Expression interface.
 func (f *IfNull) IsNullable() bool {
-	return f.LeftChild.IsNullable() || f.RightChild.IsNullable()
+	if !f.LeftChild.IsNullable() {
+		return false
+	}
+	return f.RightChild.IsNullable()
 }
 
 func (f *IfNull) String() string {
