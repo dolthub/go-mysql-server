@@ -424,7 +424,7 @@ func (r *FromUnixtime) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 	return formatDate(format.(string), t)
 }
 
-// IsNullable implements the sql.Expression interface
+// IsNullable implements sql.Expression.
 func (r *FromUnixtime) IsNullable() bool {
 	return true
 }
