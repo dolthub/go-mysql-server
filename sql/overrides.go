@@ -36,6 +36,16 @@ type EngineOverrides struct {
 	SchemaFormatter SchemaFormatter
 	// Hooks contain various hooks that are called within a statement's lifecycle.
 	Hooks ExecutionHooks
+	// CostedIndexScanExpressionFilter is used to walk expression trees in order to apply index scans based on
+	// filter expressions. Some expressions may need to be modified or skipped in order to properly apply indexes
+	// for all integrators.
+	CostedIndexScanExpressionFilter ExpressionTreeFilter
+}
+
+// ExpressionTreeFilter is an interface for walking logic expression trees or AND, OR, and leaf nodes.
+type ExpressionTreeFilter interface {
+	// Next returns the next expression to process, skipping any irrelevant nodes.
+	Next(e Expression) Expression
 }
 
 // BuilderOverrides contains functions and variables that can replace, supplement, or override functionality within the
