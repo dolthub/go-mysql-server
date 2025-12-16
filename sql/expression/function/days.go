@@ -319,3 +319,8 @@ func (f *LastDay) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	lDay := lastDay(d.Year(), int(d.Month()))
 	return time.Date(d.Year(), d.Month(), lDay, 0, 0, 0, 0, time.UTC), nil
 }
+
+// IsNullable implements sql.Expression
+func (f *LastDay) IsNullable() bool {
+	return true
+}
