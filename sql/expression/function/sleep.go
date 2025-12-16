@@ -84,7 +84,7 @@ func (s *Sleep) String() string {
 
 // IsNullable implements the Expression interface.
 func (s *Sleep) IsNullable() bool {
-	return false
+	return s.Child.IsNullable()
 }
 
 // WithChildren implements the Expression interface.
