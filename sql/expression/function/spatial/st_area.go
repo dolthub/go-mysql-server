@@ -24,7 +24,7 @@ import (
 
 // Area is a function that returns the Area of a Polygon
 type Area struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*Area)(nil)
@@ -32,7 +32,7 @@ var _ sql.CollationCoercible = (*Area)(nil)
 
 // NewArea creates a new Area expression.
 func NewArea(arg sql.Expression) sql.Expression {
-	return &Area{expression.UnaryExpression{Child: arg}}
+	return &Area{expression.UnaryExpressionStub{Child: arg}}
 }
 
 // FunctionName implements sql.FunctionExpression

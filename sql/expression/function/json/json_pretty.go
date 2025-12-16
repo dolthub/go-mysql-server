@@ -41,14 +41,14 @@ import (
 //
 // https://dev.mysql.com/doc/refman/8.0/en/json-utility-functions.html#function_json-pretty
 type JSONPretty struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = &JSONPretty{}
 
 // NewJSONPretty creates a new JSONPretty function.
 func NewJSONPretty(arg sql.Expression) sql.Expression {
-	return &JSONPretty{expression.UnaryExpression{Child: arg}}
+	return &JSONPretty{expression.UnaryExpressionStub{Child: arg}}
 }
 
 // FunctionName implements sql.FunctionExpression

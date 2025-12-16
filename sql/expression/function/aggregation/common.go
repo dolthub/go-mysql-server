@@ -26,7 +26,7 @@ var ErrEvalUnsupportedOnAggregation = errors.NewKind("Unimplemented %s.Eval(). T
 // unaryAggBase is the generic embedded class optgen
 // uses to codegen single expression aggregate functions.
 type unaryAggBase struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 	typ          sql.Type
 	window       *sql.WindowDefinition
 	functionName string
@@ -112,7 +112,7 @@ func (a *unaryAggBase) WithChildren(children ...sql.Expression) (sql.Expression,
 	}
 
 	na := *a
-	na.UnaryExpression = expression.UnaryExpression{Child: children[0]}
+	na.UnaryExpressionStub = expression.UnaryExpressionStub{Child: children[0]}
 	if len(children) > 1 && a.window != nil {
 		w, err := a.window.FromExpressions(children[1:])
 		if err != nil {

@@ -47,7 +47,7 @@ func numericRetType(inputType sql.Type) sql.Type {
 
 // Ceil returns the smallest integer value not less than X.
 type Ceil struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*Ceil)(nil)
@@ -55,7 +55,7 @@ var _ sql.CollationCoercible = (*Ceil)(nil)
 
 // NewCeil creates a new Ceil expression.
 func NewCeil(num sql.Expression) sql.Expression {
-	return &Ceil{expression.UnaryExpression{Child: num}}
+	return &Ceil{expression.UnaryExpressionStub{Child: num}}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -130,7 +130,7 @@ func (c *Ceil) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // Floor returns the biggest integer value not less than X.
 type Floor struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*Floor)(nil)
@@ -138,7 +138,7 @@ var _ sql.CollationCoercible = (*Floor)(nil)
 
 // NewFloor returns a new Floor expression.
 func NewFloor(num sql.Expression) sql.Expression {
-	return &Floor{expression.UnaryExpression{Child: num}}
+	return &Floor{expression.UnaryExpressionStub{Child: num}}
 }
 
 // FunctionName implements sql.FunctionExpression

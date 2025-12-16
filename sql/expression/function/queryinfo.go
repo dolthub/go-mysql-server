@@ -153,7 +153,7 @@ func (l *LastInsertUuid) Description() string {
 // LastInsertId implements the LAST_INSERT_ID() function
 // https://dev.mysql.com/doc/refman/8.0/en/information-functions.html#function_last-insert-id
 type LastInsertId struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 func NewLastInsertId(children ...sql.Expression) (sql.Expression, error) {
@@ -161,7 +161,7 @@ func NewLastInsertId(children ...sql.Expression) (sql.Expression, error) {
 	case 0:
 		return &LastInsertId{}, nil
 	case 1:
-		return &LastInsertId{UnaryExpression: expression.UnaryExpression{Child: children[0]}}, nil
+		return &LastInsertId{UnaryExpressionStub: expression.UnaryExpressionStub{Child: children[0]}}, nil
 	default:
 		return nil, sql.ErrInvalidArgumentNumber.New("LastInsertId", len(children), 1)
 	}

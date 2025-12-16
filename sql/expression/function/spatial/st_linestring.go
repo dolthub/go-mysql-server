@@ -24,7 +24,7 @@ import (
 
 // StartPoint is a function that returns the first point of a LineString
 type StartPoint struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*StartPoint)(nil)
@@ -32,7 +32,7 @@ var _ sql.CollationCoercible = (*StartPoint)(nil)
 
 // NewStartPoint creates a new StartPoint expression.
 func NewStartPoint(arg sql.Expression) sql.Expression {
-	return &StartPoint{expression.UnaryExpression{Child: arg}}
+	return &StartPoint{expression.UnaryExpressionStub{Child: arg}}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -96,7 +96,7 @@ func (s *StartPoint) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // EndPoint is a function that returns the last point of a LineString
 type EndPoint struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*EndPoint)(nil)
@@ -104,7 +104,7 @@ var _ sql.CollationCoercible = (*EndPoint)(nil)
 
 // NewEndPoint creates a new EndPoint expression.
 func NewEndPoint(arg sql.Expression) sql.Expression {
-	return &EndPoint{expression.UnaryExpression{Child: arg}}
+	return &EndPoint{expression.UnaryExpressionStub{Child: arg}}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -168,7 +168,7 @@ func (e *EndPoint) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // IsClosed is a function that checks if a LineString or MultiLineString is close
 type IsClosed struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*IsClosed)(nil)
@@ -176,7 +176,7 @@ var _ sql.CollationCoercible = (*IsClosed)(nil)
 
 // NewIsClosed creates a new EndPoint expression.
 func NewIsClosed(arg sql.Expression) sql.Expression {
-	return &IsClosed{expression.UnaryExpression{Child: arg}}
+	return &IsClosed{expression.UnaryExpressionStub{Child: arg}}
 }
 
 // FunctionName implements sql.FunctionExpression

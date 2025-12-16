@@ -23,7 +23,7 @@ import (
 
 // IsTrue is an expression that checks if an expression is true.
 type IsTrue struct {
-	UnaryExpression
+	UnaryExpressionStub
 	invert bool
 }
 
@@ -35,12 +35,12 @@ const IsFalseStr = "IS FALSE"
 
 // NewIsTrue creates a new IsTrue expression.
 func NewIsTrue(child sql.Expression) *IsTrue {
-	return &IsTrue{UnaryExpression: UnaryExpression{child}}
+	return &IsTrue{UnaryExpressionStub: UnaryExpressionStub{child}}
 }
 
 // NewIsFalse creates a new IsTrue expression with its boolean sense inverted (IsFalse, effectively).
 func NewIsFalse(child sql.Expression) *IsTrue {
-	return &IsTrue{UnaryExpression: UnaryExpression{child}, invert: true}
+	return &IsTrue{UnaryExpressionStub: UnaryExpressionStub{child}, invert: true}
 }
 
 // Type implements the Expression interface.

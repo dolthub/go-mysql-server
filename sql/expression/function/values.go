@@ -26,7 +26,7 @@ import (
 // INSERT INTO table (pk, v1, v2) VALUES (1, 3, 5), (2, 4, 6) ON DUPLICATE KEY UPDATE v2 = values(v1) * 10;
 // the values inserted into v2 would be 30 and 40.
 type Values struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 	Value interface{}
 }
 
@@ -36,8 +36,8 @@ var _ sql.CollationCoercible = (*Values)(nil)
 // NewValues creates a new Values function.
 func NewValues(col sql.Expression) sql.Expression {
 	return &Values{
-		UnaryExpression: expression.UnaryExpression{Child: col},
-		Value:           nil,
+		UnaryExpressionStub: expression.UnaryExpressionStub{Child: col},
+		Value:               nil,
 	}
 }
 

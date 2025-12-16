@@ -681,7 +681,7 @@ func mult(lval, rval interface{}) (interface{}, error) {
 
 // UnaryMinus is an unary minus operator.
 type UnaryMinus struct {
-	UnaryExpression
+	UnaryExpressionStub
 }
 
 var _ sql.Expression = (*UnaryMinus)(nil)
@@ -689,7 +689,7 @@ var _ sql.CollationCoercible = (*UnaryMinus)(nil)
 
 // NewUnaryMinus creates a new UnaryMinus expression node.
 func NewUnaryMinus(child sql.Expression) *UnaryMinus {
-	return &UnaryMinus{UnaryExpression{Child: child}}
+	return &UnaryMinus{UnaryExpressionStub{Child: child}}
 }
 
 // Eval implements the sql.Expression interface.

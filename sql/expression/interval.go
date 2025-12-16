@@ -30,7 +30,7 @@ import (
 
 // Interval defines a time duration.
 type Interval struct {
-	UnaryExpression
+	UnaryExpressionStub
 	Unit string
 }
 
@@ -39,7 +39,7 @@ var _ sql.CollationCoercible = (*Interval)(nil)
 
 // NewInterval creates a new interval expression.
 func NewInterval(child sql.Expression, unit string) *Interval {
-	return &Interval{UnaryExpression{Child: child}, strings.ToUpper(unit)}
+	return &Interval{UnaryExpressionStub{Child: child}, strings.ToUpper(unit)}
 }
 
 // Type implements the sql.Expression interface.

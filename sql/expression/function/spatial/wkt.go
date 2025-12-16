@@ -26,7 +26,7 @@ import (
 
 // AsWKT is a function that converts a spatial type into WKT format (alias for AsText)
 type AsWKT struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*AsWKT)(nil)
@@ -34,7 +34,7 @@ var _ sql.CollationCoercible = (*AsWKT)(nil)
 
 // NewAsWKT creates a new point expression.
 func NewAsWKT(e sql.Expression) sql.Expression {
-	return &AsWKT{expression.UnaryExpression{Child: e}}
+	return &AsWKT{expression.UnaryExpressionStub{Child: e}}
 }
 
 // FunctionName implements sql.FunctionExpression

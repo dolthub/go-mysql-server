@@ -27,7 +27,7 @@ import (
 
 type LastValue struct {
 	window *sql.WindowDefinition
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 	pos int
 	id  sql.ColumnId
 }
@@ -38,7 +38,7 @@ var _ sql.WindowAdaptableExpression = (*LastValue)(nil)
 var _ sql.CollationCoercible = (*LastValue)(nil)
 
 func NewLastValue(e sql.Expression) sql.Expression {
-	return &LastValue{window: nil, UnaryExpression: expression.UnaryExpression{Child: e}}
+	return &LastValue{window: nil, UnaryExpressionStub: expression.UnaryExpressionStub{Child: e}}
 }
 
 // Id implements sql.IdExpression

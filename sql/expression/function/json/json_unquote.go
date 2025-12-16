@@ -28,7 +28,7 @@ import (
 // Returns NULL if the argument is NULL.
 // An error occurs if the value starts and ends with double quotes but is not a valid JSON string literal.
 type JSONUnquote struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*JSONUnquote)(nil)
@@ -36,7 +36,7 @@ var _ sql.CollationCoercible = (*JSONUnquote)(nil)
 
 // NewJSONUnquote creates a new JSONUnquote UDF.
 func NewJSONUnquote(json sql.Expression) sql.Expression {
-	return &JSONUnquote{expression.UnaryExpression{Child: json}}
+	return &JSONUnquote{expression.UnaryExpressionStub{Child: json}}
 }
 
 // FunctionName implements sql.FunctionExpression

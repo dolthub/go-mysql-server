@@ -39,7 +39,7 @@ func NewLogBaseFunc(base float64) func(e sql.Expression) sql.Expression {
 
 // LogBase is a function that returns the logarithm of a value with a specific base.
 type LogBase struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 	base float64
 }
 
@@ -48,7 +48,7 @@ var _ sql.CollationCoercible = (*LogBase)(nil)
 
 // NewLogBase creates a new LogBase expression.
 func NewLogBase(base float64, e sql.Expression) sql.Expression {
-	return &LogBase{UnaryExpression: expression.UnaryExpression{Child: e}, base: base}
+	return &LogBase{UnaryExpressionStub: expression.UnaryExpressionStub{Child: e}, base: base}
 }
 
 // FunctionName implements sql.FunctionExpression

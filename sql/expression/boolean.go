@@ -23,7 +23,7 @@ import (
 
 // Not is a node that negates an expression.
 type Not struct {
-	UnaryExpression
+	UnaryExpressionStub
 }
 
 var _ sql.Expression = (*Not)(nil)
@@ -31,7 +31,7 @@ var _ sql.CollationCoercible = (*Not)(nil)
 
 // NewNot returns a new Not node.
 func NewNot(child sql.Expression) *Not {
-	return &Not{UnaryExpression{child}}
+	return &Not{UnaryExpressionStub{child}}
 }
 
 // Type implements the Expression interface.

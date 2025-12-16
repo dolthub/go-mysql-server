@@ -64,7 +64,7 @@ const (
 
 // Convert represent a CAST(x AS T) or CONVERT(x, T) operation that casts x expression to type T.
 type Convert struct {
-	UnaryExpression
+	UnaryExpressionStub
 
 	// cachedDecimalType is the cached Decimal type for this convert expression. Because new Decimal types
 	// must be created with their specific scale and precision values, unlike other types, we cache the created
@@ -88,8 +88,8 @@ var _ sql.CollationCoercible = (*Convert)(nil)
 func NewConvert(expr sql.Expression, castToType string) *Convert {
 	disableRounding(expr)
 	return &Convert{
-		UnaryExpression: UnaryExpression{Child: expr},
-		castToType:      strings.ToLower(castToType),
+		UnaryExpressionStub: UnaryExpressionStub{Child: expr},
+		castToType:          strings.ToLower(castToType),
 	}
 }
 
@@ -99,10 +99,10 @@ func NewConvert(expr sql.Expression, castToType string) *Convert {
 func NewConvertWithLengthAndScale(expr sql.Expression, castToType string, typeLength, typeScale int) *Convert {
 	disableRounding(expr)
 	return &Convert{
-		UnaryExpression: UnaryExpression{Child: expr},
-		castToType:      strings.ToLower(castToType),
-		typeLength:      typeLength,
-		typeScale:       typeScale,
+		UnaryExpressionStub: UnaryExpressionStub{Child: expr},
+		castToType:          strings.ToLower(castToType),
+		typeLength:          typeLength,
+		typeScale:           typeScale,
 	}
 }
 

@@ -25,7 +25,7 @@ import (
 
 // AsWKB is a function that converts a spatial type into WKB format (alias for AsBinary)
 type AsWKB struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*AsWKB)(nil)
@@ -33,7 +33,7 @@ var _ sql.CollationCoercible = (*AsWKB)(nil)
 
 // NewAsWKB creates a new point expression.
 func NewAsWKB(e sql.Expression) sql.Expression {
-	return &AsWKB{expression.UnaryExpression{Child: e}}
+	return &AsWKB{expression.UnaryExpressionStub{Child: e}}
 }
 
 // FunctionName implements sql.FunctionExpression

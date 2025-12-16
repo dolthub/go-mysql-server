@@ -27,7 +27,7 @@ import (
 
 type FirstValue struct {
 	window *sql.WindowDefinition
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 	pos int
 	id  sql.ColumnId
 }
@@ -38,7 +38,7 @@ var _ sql.WindowAdaptableExpression = (*FirstValue)(nil)
 var _ sql.CollationCoercible = (*FirstValue)(nil)
 
 func NewFirstValue(e sql.Expression) sql.Expression {
-	return &FirstValue{UnaryExpression: expression.UnaryExpression{Child: e}}
+	return &FirstValue{UnaryExpressionStub: expression.UnaryExpressionStub{Child: e}}
 }
 
 // Id implements sql.IdExpression
