@@ -36,17 +36,17 @@ func NewCollation(e sql.Expression) sql.Expression {
 	return &Collation{expression.UnaryExpression{Child: e}}
 }
 
-// FunctionName implements sql.FunctionExpression
+// FunctionName implements sql.FunctionExpression interface.
 func (c *Collation) FunctionName() string {
 	return "collation"
 }
 
-// Description implements sql.FunctionExpression
+// Description implements sql.FunctionExpression interface.
 func (c *Collation) Description() string {
 	return "Returns the collation of the inner expression"
 }
 
-// Eval implements the sql.Expression.
+// Eval implements the sql.Expression interface.
 func (c *Collation) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	val, err := c.Child.Eval(ctx, row)
 	if err != nil {
@@ -59,6 +59,11 @@ func (c *Collation) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	// Otherwise, we return the collation calculated from the expression
 	collation, _ := sql.GetCoercibility(ctx, c.Child)
 	return collation.Name(), nil
+}
+
+// IsNullable implements the sql.Expression interface.
+func (c *Collation) IsNullable() bool {
+	return false
 }
 
 // String implements the fmt.Stringer interface.
