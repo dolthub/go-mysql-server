@@ -190,7 +190,7 @@ Or
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := newIndexCoster(ctx, "xyz")
-			root, leftover, _ := c.flatten(tt.in)
+			root, leftover, _ := c.buildRoot(tt.in, NewDefaultLogicTreeWalker())
 			costTree := formatIndexFilter(root)
 			require.Equal(t, strings.TrimSpace(tt.exp), strings.TrimSpace(costTree), costTree)
 			if leftover != nil {
@@ -557,7 +557,7 @@ func TestRangeBuilder(t *testing.T) {
 		t.Run(fmt.Sprintf("Expr:  %s\nRange: %s", tt.filter.String(), tt.exp.DebugString()), func(t *testing.T) {
 
 			c := newIndexCoster(ctx, testTable)
-			root, _, _ := c.flatten(tt.filter)
+			root, _, _ := c.buildRoot(tt.filter, NewDefaultLogicTreeWalker())
 
 			var idx sql.Index
 			switch len(tt.exp[0]) {
@@ -666,7 +666,7 @@ func TestRangeBuilderInclude(t *testing.T) {
 
 			// TODO make index
 			c := newIndexCoster(ctx, "xyz")
-			root, _, _ := c.flatten(tt.in)
+			root, _, _ := c.buildRoot(tt.in, NewDefaultLogicTreeWalker())
 			b := newIndexScanRangeBuilder(ctx, dummy1, tt.include, sql.FastIntSet{}, c.idToExpr)
 			cmpRanges, err := b.buildRangeCollection(root)
 			require.NoError(t, err)
