@@ -50,7 +50,7 @@ func (o *Oct) Type() sql.Type {
 
 // IsNullable implements the Expression interface.
 func (o *Oct) IsNullable() bool {
-	return o.n.IsNullable()
+	return true
 }
 
 // Eval implements the Expression interface.
