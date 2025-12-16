@@ -689,8 +689,6 @@ func (c *indexCoster) getConstAndNullFilters(filters sql.FastIntSet) (sql.FastIn
 type LogicTreeWalker interface {
 	// Next returns the next expression to process, skipping any irrelevant nodes.
 	Next(e sql.Expression) sql.Expression
-	// Children returns the child expressions to process, skipping any irrelevant nodes.
-	Children(e sql.Expression) []sql.Expression
 }
 
 // CostedIndexScanExpressionWalker is the default LogicTreeWalker that processes all nodes in an expression tree for
@@ -702,10 +700,6 @@ type defaultLogicTreeWalker struct{}
 
 func (d defaultLogicTreeWalker) Next(e sql.Expression) sql.Expression {
 	return e
-}
-
-func (d defaultLogicTreeWalker) Children(e sql.Expression) []sql.Expression {
-	return e.Children()
 }
 
 func NewDefaultLogicTreeWalker() LogicTreeWalker {
@@ -767,8 +761,8 @@ func (c *indexCoster) buildRoot(e sql.Expression, walker LogicTreeWalker) (index
 func (c *indexCoster) buildAnd(e *expression.And, and *iScanAnd, walker LogicTreeWalker) (sql.FastIntSet, sql.FastIntSet) {
 	var invalid sql.FastIntSet
 	var imprecise sql.FastIntSet
-	for _, e := range walker.Children(e) {
-		switch e := e.(type) {
+	for _, e := range e.Children() {
+		switch e := walker.Next(e).(type) {
 		case *expression.And:
 			c.idToExpr[c.i] = e
 			c.i++
@@ -809,8 +803,8 @@ func (c *indexCoster) buildAnd(e *expression.And, and *iScanAnd, walker LogicTre
 
 func (c *indexCoster) buildOr(e *expression.Or, or *iScanOr, walker LogicTreeWalker) (bool, bool) {
 	var imprecise bool
-	for _, e := range walker.Children(e) {
-		switch e := e.(type) {
+	for _, e := range e.Children() {
+		switch e := walker.Next(e).(type) {
 		case *expression.And:
 			c.idToExpr[c.i] = e
 			newAnd := &iScanAnd{id: c.i}
