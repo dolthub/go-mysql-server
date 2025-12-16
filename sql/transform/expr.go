@@ -99,10 +99,20 @@ func Exprs(e []sql.Expression, f ExprFunc) ([]sql.Expression, TreeIdentity, erro
 // InspectExpr traverses the given expression tree from the bottom up, breaking if
 // stop = true. Returns a bool indicating whether traversal was interrupted.
 func InspectExpr(expr sql.Expression, f func(sql.Expression) bool) bool {
-	children := expr.Children()
-	for _, child := range children {
-		if InspectExpr(child, f) {
+	switch e := expr.(type) {
+	case expression.BinaryExpression:
+		if InspectExpr(e.Left(), f) {
 			return true
+		}
+		if InspectExpr(e.Right(), f) {
+			return true
+		}
+	default:
+		children := expr.Children()
+		for _, child := range children {
+			if InspectExpr(child, f) {
+				return true
+			}
 		}
 	}
 	if f(expr) {
