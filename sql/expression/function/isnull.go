@@ -59,6 +59,11 @@ func (ib *IsNull) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return true, nil
 }
 
+// IsNullable implements sql.Expression
+func (ib *IsNull) IsNullable() bool {
+	return false
+}
+
 func (ib *IsNull) String() string {
 	return fmt.Sprintf("isnull(%s)", ib.Child)
 }
