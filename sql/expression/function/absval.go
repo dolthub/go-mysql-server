@@ -108,6 +108,10 @@ func (t *AbsVal) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return x.Abs(), nil
 	}
 
+	// TODO: Strings should truncate to float prefix. We should also check what other types return. But abs should not
+	// return null for non-null values
+	// https://github.com/dolthub/dolt/issues/10171
+	// https://dev.mysql.com/doc/refman/8.4/en/mathematical-functions.html#function_abs
 	return nil, nil
 }
 
