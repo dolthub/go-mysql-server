@@ -60,10 +60,11 @@ func (s *StatsProv) AnalyzeTable(ctx *sql.Context, table sql.Table, db string) e
 	}
 
 	newStats := make(map[statsKey][]int)
-	tablePrefix := fmt.Sprintf("%s.", strings.ToLower(table.Name()))
+	tablePrefix := strings.ToLower(table.Name()) + "."
 	for _, idx := range indexes {
-		cols := make([]string, len(idx.Expressions()))
-		for i, c := range idx.Expressions() {
+		exprs := idx.Expressions()
+		cols := make([]string, len(exprs))
+		for i, c := range exprs {
 			cols[i] = strings.TrimPrefix(strings.ToLower(c), tablePrefix)
 		}
 		for i := 1; i < len(cols)+1; i++ {
@@ -244,7 +245,7 @@ func (s *StatsProv) reservoirSample(ctx *sql.Context, table sql.Table) ([]sql.Ro
 }
 
 func (s *StatsProv) GetTableStats(ctx *sql.Context, db string, table sql.Table) ([]sql.Statistic, error) {
-	pref := fmt.Sprintf("%s.%s", strings.ToLower(db), strings.ToLower(table.Name()))
+	pref := strings.ToLower(db) + "." + strings.ToLower(table.Name())
 	var ret []sql.Statistic
 	for key, stats := range s.colStats {
 		if strings.HasPrefix(string(key), pref) {
@@ -279,7 +280,7 @@ func (s *StatsProv) DropStats(ctx *sql.Context, qual sql.StatQualifier, cols []s
 }
 
 func (s *StatsProv) RowCount(ctx *sql.Context, db string, table sql.Table) (uint64, error) {
-	pref := fmt.Sprintf("%s.%s", strings.ToLower(db), strings.ToLower(table.Name()))
+	pref := strings.ToLower(db) + "." + strings.ToLower(table.Name())
 	var cnt uint64
 	for key, stats := range s.colStats {
 		if strings.HasPrefix(string(key), pref) {
@@ -292,7 +293,7 @@ func (s *StatsProv) RowCount(ctx *sql.Context, db string, table sql.Table) (uint
 }
 
 func (s *StatsProv) DataLength(ctx *sql.Context, db string, table sql.Table) (uint64, error) {
-	pref := fmt.Sprintf("%s.%s", db, table)
+	pref := strings.ToLower(db) + "." + strings.ToLower(table.Name())
 	var size uint64
 	for key, stats := range s.colStats {
 		if strings.HasPrefix(string(key), pref) {

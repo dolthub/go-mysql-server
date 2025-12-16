@@ -798,7 +798,7 @@ func (*UnaryMinus) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 }
 
 func (e *UnaryMinus) String() string {
-	return fmt.Sprintf("-%s", e.Child)
+	return "-" + e.Child.String()
 }
 
 // WithChildren implements the Expression interface.
