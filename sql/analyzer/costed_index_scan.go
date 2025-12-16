@@ -145,7 +145,7 @@ func costedIndexLookup(
 		return n, transform.SameTree, err
 	}
 
-	ita, stats, filters, err := getCostedIndexScan(ctx, a.Catalog, rt, indexes, SplitConjunction(oldFilter), qFlags)
+	ita, stats, filters, err := getCostedIndexScan(ctx, a.Catalog, a.Catalog, rt, indexes, SplitConjunction(oldFilter), qFlags)
 	if err != nil || ita == nil {
 		return n, transform.SameTree, err
 	}
@@ -167,8 +167,18 @@ func costedIndexLookup(
 	return ret, transform.NewTree, nil
 }
 
-func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.TableNode, indexes []sql.Index, filters []sql.Expression, qFlags *sql.QueryFlags) (*plan.IndexedTableAccess, sql.Statistic, []sql.Expression, error) {
-	statistics, err := statsProv.GetTableStats(ctx, strings.ToLower(rt.Database().Name()), rt.UnderlyingTable())
+// getCostedIndexScan tries to build the lowest cost index scan for the filter expressions provided. Returns a nil
+// result if an index cannot satisfy the filters.
+func getCostedIndexScan(
+	ctx *sql.Context,
+	statsProvider sql.StatsProvider,
+	cat sql.Catalog,
+	rt sql.TableNode,
+	indexes []sql.Index,
+	filters []sql.Expression,
+	qFlags *sql.QueryFlags,
+) (*plan.IndexedTableAccess, sql.Statistic, []sql.Expression, error) {
+	statistics, err := statsProvider.GetTableStats(ctx, strings.ToLower(rt.Database().Name()), rt.UnderlyingTable())
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -180,9 +190,13 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 		}
 	}
 
-	// flatten expression tree for costing
+	var expressionWalker sql.ExpressionTreeFilter = &defaultLogicTreeWalker{}
+	if cat.Overrides().CostedIndexScanExpressionFilter != nil {
+		expressionWalker = cat.Overrides().CostedIndexScanExpressionFilter
+	}
+
 	c := newIndexCoster(ctx, rt.Name())
-	root, leftover, imprecise := c.buildRoot(expression.JoinAnd(filters...), CostedIndexScanExpressionWalker)
+	root, leftover, imprecise := c.buildRoot(expression.JoinAnd(filters...), expressionWalker)
 	if root == nil {
 		return nil, nil, nil, err
 	}
@@ -220,7 +234,7 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 		qual := sql.NewStatQualifier(dbName, schemaName, tableName, strings.ToLower(idx.ID()))
 		stat, ok := qualToStat[qual]
 		if !ok {
-			stat, err = uniformDistStatisticsForIndex(ctx, statsProv, iat, idx)
+			stat, err = uniformDistStatisticsForIndex(ctx, statsProvider, iat, idx)
 		}
 		if err != nil {
 			return nil, nil, nil, err
@@ -348,7 +362,7 @@ func getCostedIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, rt sql.Ta
 	return ret, bestStat, retFilters, nil
 }
 
-func addIndexScans(ctx *sql.Context, m *memo.Memo) error {
+func addIndexScans(ctx *sql.Context, m *memo.Memo, catalog *Catalog) error {
 	m.Tracer.PushDebugContext("addIndexScans")
 	defer m.Tracer.PopDebugContext()
 
@@ -421,7 +435,7 @@ func addIndexScans(ctx *sql.Context, m *memo.Memo) error {
 		for i, idx := range indexes {
 			sqlIndexes[i] = idx.SqlIdx()
 		}
-		ita, stat, filters, err := getCostedIndexScan(m.Ctx, m.StatsProvider(), rt, sqlIndexes, filter.Filters, m.QFlags)
+		ita, stat, filters, err := getCostedIndexScan(m.Ctx, m.StatsProvider(), catalog, rt, sqlIndexes, filter.Filters, m.QFlags)
 		if err != nil {
 			m.HandleErr(err)
 		}
@@ -685,31 +699,20 @@ func (c *indexCoster) getConstAndNullFilters(filters sql.FastIntSet) (sql.FastIn
 	return isConst, isNull
 }
 
-// LogicTreeWalker is an interface for walking logic expression trees or AND, OR, and leaf nodes.
-type LogicTreeWalker interface {
-	// Next returns the next expression to process, skipping any irrelevant nodes.
-	Next(e sql.Expression) sql.Expression
-}
-
-// CostedIndexScanExpressionWalker is the default LogicTreeWalker that processes all nodes in an expression tree for
-// index filtering. It's exported to make it possible to override in other packages.
-// TODO: come up with a better mechanism for overriding this behavior.
-var CostedIndexScanExpressionWalker LogicTreeWalker = NewDefaultLogicTreeWalker()
-
 type defaultLogicTreeWalker struct{}
 
 func (d defaultLogicTreeWalker) Next(e sql.Expression) sql.Expression {
 	return e
 }
 
-func NewDefaultLogicTreeWalker() LogicTreeWalker {
+func NewDefaultLogicTreeWalker() sql.ExpressionTreeFilter {
 	return &defaultLogicTreeWalker{}
 }
 
 // buildRoot converts a filter into a tree of indexFilter, a format designed
 // to make costing index scans easier. We return the root of the new tree
 // and a conjunction of filters that cannot be pushed into index scans.
-func (c *indexCoster) buildRoot(e sql.Expression, walker LogicTreeWalker) (indexFilter, sql.Expression, sql.FastIntSet) {
+func (c *indexCoster) buildRoot(e sql.Expression, walker sql.ExpressionTreeFilter) (indexFilter, sql.Expression, sql.FastIntSet) {
 	e = walker.Next(e)
 
 	switch e := e.(type) {
@@ -758,7 +761,7 @@ func (c *indexCoster) buildRoot(e sql.Expression, walker LogicTreeWalker) (index
 }
 
 // buildAnd return two bitsets to indicate invalid index filter ids, and imprecise filter ids
-func (c *indexCoster) buildAnd(e *expression.And, and *iScanAnd, walker LogicTreeWalker) (sql.FastIntSet, sql.FastIntSet) {
+func (c *indexCoster) buildAnd(e *expression.And, and *iScanAnd, walker sql.ExpressionTreeFilter) (sql.FastIntSet, sql.FastIntSet) {
 	var invalid sql.FastIntSet
 	var imprecise sql.FastIntSet
 	for _, e := range e.Children() {
@@ -801,7 +804,7 @@ func (c *indexCoster) buildAnd(e *expression.And, and *iScanAnd, walker LogicTre
 	return invalid, imprecise
 }
 
-func (c *indexCoster) buildOr(e *expression.Or, or *iScanOr, walker LogicTreeWalker) (bool, bool) {
+func (c *indexCoster) buildOr(e *expression.Or, or *iScanOr, walker sql.ExpressionTreeFilter) (bool, bool) {
 	var imprecise bool
 	for _, e := range e.Children() {
 		switch e := walker.Next(e).(type) {

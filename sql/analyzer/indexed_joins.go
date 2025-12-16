@@ -162,7 +162,7 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 	hints := m.SessionHints()
 	hints = append(hints, memo.ExtractJoinHint(n)...)
 
-	err = addIndexScans(ctx, m)
+	err = addIndexScans(ctx, m, a.Catalog)
 	if err != nil {
 		return nil, err
 	}
