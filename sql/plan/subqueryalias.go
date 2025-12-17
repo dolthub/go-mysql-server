@@ -45,6 +45,7 @@ var _ sql.Node = (*SubqueryAlias)(nil)
 var _ sql.CollationCoercible = (*SubqueryAlias)(nil)
 var _ sql.RenameableNode = (*SubqueryAlias)(nil)
 var _ sql.OpaqueNode = (*SubqueryAlias)(nil)
+var _ sql.Describable = (*SubqueryAlias)(nil)
 
 // NewSubqueryAlias creates a new SubqueryAlias node.
 func NewSubqueryAlias(name, textDefinition string, node sql.Node) *SubqueryAlias {
@@ -186,6 +187,21 @@ func (sq *SubqueryAlias) DebugString() string {
 	children[4] = fmt.Sprintf("colSet: %s", sq.Columns())
 	children[5] = fmt.Sprintf("tableId: %d", sq.Id())
 	children[6] = sql.DebugString(sq.Child)
+	_ = pr.WriteChildren(children...)
+	return pr.String()
+}
+
+func (sq *SubqueryAlias) Describe(options sql.DescribeOptions) string {
+	pr := sql.NewTreePrinter()
+	_ = pr.WriteNode("SubqueryAlias")
+	children := make([]string, 7)
+	children[0] = fmt.Sprintf("name: %s", sq.name)
+	children[1] = fmt.Sprintf("outerVisibility: %t", sq.OuterScopeVisibility)
+	children[2] = fmt.Sprintf("isLateral: %t", sq.IsLateral)
+	children[3] = fmt.Sprintf("cacheable: %t", sq.CanCacheResults())
+	children[4] = fmt.Sprintf("colSet: %s", sq.Columns())
+	children[5] = fmt.Sprintf("tableId: %d", sq.Id())
+	children[6] = sql.Describe(sq.Child, options)
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }

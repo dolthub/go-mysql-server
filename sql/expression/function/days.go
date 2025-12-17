@@ -25,7 +25,7 @@ import (
 
 // ToDays is a function that converts a date to a number of days since year 0.
 type ToDays struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*ToDays)(nil)
@@ -33,7 +33,7 @@ var _ sql.CollationCoercible = (*ToDays)(nil)
 
 // NewToDays creates a new ToDays function.
 func NewToDays(date sql.Expression) sql.Expression {
-	return &ToDays{expression.UnaryExpression{Child: date}}
+	return &ToDays{expression.UnaryExpressionStub{Child: date}}
 }
 
 // CollationCoercibility implements sql.CollationCoercible
@@ -119,7 +119,7 @@ func (t *ToDays) IsNullable() bool {
 
 // FromDays is a function that returns date for a given number of days since year 0.
 type FromDays struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*FromDays)(nil)
@@ -127,7 +127,7 @@ var _ sql.CollationCoercible = (*FromDays)(nil)
 
 // NewFromDays creates a new FromDays function.
 func NewFromDays(days sql.Expression) sql.Expression {
-	return &FromDays{expression.UnaryExpression{Child: days}}
+	return &FromDays{expression.UnaryExpressionStub{Child: days}}
 }
 
 // CollationCoercibility implements sql.CollationCoercible
@@ -243,7 +243,7 @@ func (f *FromDays) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // LastDay is a function that returns the date at the last day of the month.
 type LastDay struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*LastDay)(nil)
@@ -251,7 +251,7 @@ var _ sql.CollationCoercible = (*LastDay)(nil)
 
 // NewLastDay creates a new LastDay function.
 func NewLastDay(date sql.Expression) sql.Expression {
-	return &LastDay{expression.UnaryExpression{Child: date}}
+	return &LastDay{expression.UnaryExpressionStub{Child: date}}
 }
 
 // CollationCoercibility implements sql.CollationCoercible

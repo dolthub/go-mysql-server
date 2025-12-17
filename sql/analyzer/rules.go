@@ -31,6 +31,7 @@ func init() {
 // OnceBeforeDefault contains the rules to be applied just once before the
 // DefaultRules.
 var OnceBeforeDefault = []Rule{
+	{Id: engineOverridesId, Apply: engineOverrides},
 	{Id: applyDefaultSelectLimitId, Apply: applyDefaultSelectLimit},
 	{Id: replaceCountStarId, Apply: replaceCountStar},
 	{Id: validateOffsetAndLimitId, Apply: validateOffsetAndLimit},

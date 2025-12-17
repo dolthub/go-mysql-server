@@ -25,7 +25,7 @@ import (
 
 // AbsVal is a function that takes the absolute value of a number
 type AbsVal struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*AbsVal)(nil)
@@ -33,7 +33,7 @@ var _ sql.CollationCoercible = (*AbsVal)(nil)
 
 // NewAbsVal creates a new AbsVal expression.
 func NewAbsVal(e sql.Expression) sql.Expression {
-	return &AbsVal{expression.UnaryExpression{Child: e}}
+	return &AbsVal{expression.UnaryExpressionStub{Child: e}}
 }
 
 // FunctionName implements sql.FunctionExpression

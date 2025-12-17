@@ -116,5 +116,6 @@ var (
 		Invert_pkData,
 		JoinData,
 		Comp_index_tablesData,
+		Id_parentData,
 	}
 )

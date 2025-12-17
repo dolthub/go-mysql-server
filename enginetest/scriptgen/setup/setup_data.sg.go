@@ -217,6 +217,11 @@ var Graph_tablesData = []SetupScript{{
 	('filling', 'butter', 3)`,
 }}
 
+var Id_parentData = []SetupScript{{
+	`create table id_parent(id varchar(255), parent varchar(255), primary key (id));`,
+	`analyze table id_parent update histogram on (id) using data '{"row_count": 28000}';`,
+}}
+
 var ImdbData = []SetupScript{{
 	`CREATE TABLE aka_name (
     id integer NOT NULL PRIMARY KEY,
@@ -392,6 +397,25 @@ var ImdbData = []SetupScript{{
 	`create index person_role_id_cast_info on cast_info(person_role_id);`,
 	`create index role_id_cast_info on cast_info(role_id);`,
 	`analyze table aka_name update histogram on id using data '{"row_count": 900662}';`,
+	`analyze table aka_title update histogram on id using data '{"row_count": 361376}';`,
+	`analyze table cast_info update histogram on id using data '{"row_count": 36124530}';`,
+	`analyze table char_name update histogram on id using data '{"row_count": 3136382}';`,
+	`analyze table company_name update histogram on id using data '{"row_count": 234825}';`,
+	`analyze table company_type update histogram on id using data '{"row_count": 4}';`,
+	`analyze table complete_cast update histogram on id using data '{"row_count": 135086}';`,
+	`analyze table comp_cast_type update histogram on id using data '{"row_count": 4}';`,
+	`analyze table info_type update histogram on id using data '{"row_count": 113}';`,
+	`analyze table keyword update histogram on id using data '{"row_count": 134110}';`,
+	`analyze table kind_type update histogram on id using data '{"row_count": 7}';`,
+	`analyze table link_type update histogram on id using data '{"row_count": 18}';`,
+	`analyze table movie_companies update histogram on id using data '{"row_count": 2604067}';`,
+	`analyze table movie_info update histogram on id using data '{"row_count": 14355706}';`,
+	`analyze table movie_info_idx update histogram on id using data '{"row_count": 1380035}';`,
+	`analyze table movie_keyword update histogram on id using data '{"row_count": 4523930}';`,
+	`analyze table movie_link update histogram on id using data '{"row_count": 29997}';`,
+	`analyze table name update histogram on id using data '{"row_count": 4167453}';`,
+	`analyze table person_info update histogram on id using data '{"row_count": 2024951}';`,
+	`analyze table title update histogram on id using data '{"row_count": 2527799}';`,
 }}
 
 var Integration_testData = []SetupScript{{

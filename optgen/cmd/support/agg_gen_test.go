@@ -41,7 +41,7 @@ func TestAggGen(t *testing.T) {
         func NewTest(e sql.Expression) *Test {
             return &Test{
                 unaryAggBase{
-                    UnaryExpression: expression.UnaryExpression{Child: e},
+                    Child: e,
                     functionName: "Test",
                     description: "Test description",
                 },
@@ -64,7 +64,7 @@ func TestAggGen(t *testing.T) {
             pr.WriteChildren(children...)
             return pr.String()
           }
-          return fmt.Sprintf("TEST(%s)", a.Child)
+          return "TEST(" + a.Child.String() + ")"
         }
 
         func (a *Test) DebugString() string {

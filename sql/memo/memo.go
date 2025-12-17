@@ -269,8 +269,8 @@ func (m *Memo) MemoizeMergeJoin(grp, left, right *ExprGroup, lIdx, rIdx *IndexSc
 		SwapCmp:   swapCmp,
 	}
 
-	comparer, ok := filter[0].(expression.Equality)
-	if !ok {
+	eq, ok := filter[0].(expression.Equality)
+	if !ok || !eq.RepresentsEquality() {
 		err := sql.ErrMergeJoinExpectsComparerFilters.New(filter[0])
 		m.HandleErr(err)
 	}
@@ -278,14 +278,14 @@ func (m *Memo) MemoizeMergeJoin(grp, left, right *ExprGroup, lIdx, rIdx *IndexSc
 	var leftCompareExprs []sql.Expression
 	var rightCompareExprs []sql.Expression
 
-	leftTuple, isTuple := comparer.Left().(expression.Tuple)
+	leftTuple, isTuple := eq.Left().(expression.Tuple)
 	if isTuple {
-		rightTuple, _ := comparer.Right().(expression.Tuple)
+		rightTuple, _ := eq.Right().(expression.Tuple)
 		leftCompareExprs = leftTuple.Children()
 		rightCompareExprs = rightTuple.Children()
 	} else {
-		leftCompareExprs = []sql.Expression{comparer.Left()}
-		rightCompareExprs = []sql.Expression{comparer.Right()}
+		leftCompareExprs = []sql.Expression{eq.Left()}
+		rightCompareExprs = []sql.Expression{eq.Right()}
 	}
 
 	if grp == nil {
@@ -629,7 +629,7 @@ func (m *Memo) String() string {
 				continue
 			}
 			exprs[int(TableIdForSource(g.Id))] = g.String()
-			newGroups = slices.AppendSeq(newGroups, g.children())
+			newGroups = slices.AppendSeq(newGroups, g.children)
 		}
 		groups = newGroups
 	}
@@ -678,7 +678,7 @@ func (m *Memo) LogCostDebugString() {
 			}
 
 			exprs[int(TableIdForSource(g.Id))] = g.CostTreeString(prefix)
-			newGroups = slices.AppendSeq(newGroups, g.children())
+			newGroups = slices.AppendSeq(newGroups, g.children)
 		}
 		groups = newGroups
 	}

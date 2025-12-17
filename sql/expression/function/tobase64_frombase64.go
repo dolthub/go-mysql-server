@@ -30,7 +30,7 @@ import (
 // ToBase64 is a function to encode a string to the Base64 format
 // using the same dialect that MySQL's TO_BASE64 uses
 type ToBase64 struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*ToBase64)(nil)
@@ -38,7 +38,7 @@ var _ sql.CollationCoercible = (*ToBase64)(nil)
 
 // NewToBase64 creates a new ToBase64 expression.
 func NewToBase64(e sql.Expression) sql.Expression {
-	return &ToBase64{expression.UnaryExpression{Child: e}}
+	return &ToBase64{expression.UnaryExpressionStub{Child: e}}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -139,7 +139,7 @@ func (*ToBase64) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 // FromBase64 is a function to decode a Base64-formatted string
 // using the same dialect that MySQL's FROM_BASE64 uses
 type FromBase64 struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*FromBase64)(nil)
@@ -147,7 +147,7 @@ var _ sql.CollationCoercible = (*FromBase64)(nil)
 
 // NewFromBase64 creates a new FromBase64 expression.
 func NewFromBase64(e sql.Expression) sql.Expression {
-	return &FromBase64{expression.UnaryExpression{Child: e}}
+	return &FromBase64{expression.UnaryExpressionStub{Child: e}}
 }
 
 // FunctionName implements sql.FunctionExpression

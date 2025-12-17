@@ -777,19 +777,43 @@ func notNull() sql.MySQLRangeColumnExpr {
 }
 
 func rcc(lowerbound, upperbound byte) sql.MySQLRangeColumnExpr {
-	return sql.CustomRangeColumnExpr(lowerbound, upperbound, sql.Closed, sql.Closed, rangeType)
+	return newRangeColumnExpr(lowerbound, upperbound, sql.Closed, sql.Closed, rangeType)
 }
 
 func rco(lowerbound, upperbound byte) sql.MySQLRangeColumnExpr {
-	return sql.CustomRangeColumnExpr(lowerbound, upperbound, sql.Closed, sql.Open, rangeType)
+	return newRangeColumnExpr(lowerbound, upperbound, sql.Closed, sql.Open, rangeType)
 }
 
 func roc(lowerbound, upperbound byte) sql.MySQLRangeColumnExpr {
-	return sql.CustomRangeColumnExpr(lowerbound, upperbound, sql.Open, sql.Closed, rangeType)
+	return newRangeColumnExpr(lowerbound, upperbound, sql.Open, sql.Closed, rangeType)
 }
 
 func roo(lowerbound, upperbound byte) sql.MySQLRangeColumnExpr {
-	return sql.CustomRangeColumnExpr(lowerbound, upperbound, sql.Open, sql.Open, rangeType)
+	return newRangeColumnExpr(lowerbound, upperbound, sql.Open, sql.Open, rangeType)
+}
+
+// CustomRangeColumnExpr returns a MySQLRangeColumnExpr defined by the bounds given.
+func newRangeColumnExpr(lower, upper interface{}, lowerBound, upperBound sql.MySQLRangeBoundType, typ sql.Type) sql.MySQLRangeColumnExpr {
+	if lower == nil || upper == nil {
+		return sql.EmptyRangeColumnExpr(typ)
+	}
+	var lCut sql.MySQLRangeCut
+	var uCut sql.MySQLRangeCut
+	if lowerBound == sql.Open {
+		lCut = sql.Above{Key: lower}
+	} else {
+		lCut = sql.Below{Key: lower}
+	}
+	if upperBound == sql.Open {
+		uCut = sql.Below{Key: upper}
+	} else {
+		uCut = sql.Above{Key: upper}
+	}
+	return sql.MySQLRangeColumnExpr{
+		LowerBound: lCut,
+		UpperBound: uCut,
+		Typ:        typ,
+	}
 }
 
 func or(expressions ...sql.Expression) sql.Expression {

@@ -96,19 +96,36 @@ func Exprs(e []sql.Expression, f ExprFunc) ([]sql.Expression, TreeIdentity, erro
 	return newExprs, NewTree, nil
 }
 
-var stopInspect = errors.New("stop")
-
-// InspectExpr traverses the given expression tree from the bottom up, breaking if
-// stop = true. Returns a bool indicating whether traversal was interrupted.
-func InspectExpr(node sql.Expression, f func(sql.Expression) bool) bool {
-	_, _, err := Expr(node, func(e sql.Expression) (sql.Expression, TreeIdentity, error) {
-		ok := f(e)
-		if ok {
-			return nil, SameTree, stopInspect
+// InspectExpr performs a post-order traversal of the sql.Expression tree;
+// First, `f` is called on `expr.Children()` and if stop = false, then InspectExpr is recursively called on node's
+// children.
+// TODO: this conflicts with transform.Inspect which performs a pre-order traversal and stops when cont = false.
+func InspectExpr(expr sql.Expression, f func(sql.Expression) bool) (stop bool) {
+	// Avoid allocating []sql.Expression
+	switch e := expr.(type) {
+	case expression.UnaryExpression:
+		if InspectExpr(e.UnaryChild(), f) {
+			return true
 		}
-		return e, SameTree, nil
-	})
-	return errors.Is(err, stopInspect)
+	case expression.BinaryExpression:
+		if InspectExpr(e.Left(), f) {
+			return true
+		}
+		if InspectExpr(e.Right(), f) {
+			return true
+		}
+	default:
+		children := e.Children()
+		for _, child := range children {
+			if InspectExpr(child, f) {
+				return true
+			}
+		}
+	}
+	if f(expr) {
+		return true
+	}
+	return false
 }
 
 // InspectUp traverses the given node tree from the bottom up, breaking if

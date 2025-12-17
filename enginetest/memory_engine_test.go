@@ -42,7 +42,6 @@ import (
 type indexBehaviorTestParams struct {
 	name              string
 	driverInitializer enginetest.IndexDriverInitializer
-	nativeIndexes     bool
 }
 
 const testNumPartitions = 5
@@ -51,15 +50,11 @@ var numPartitionsVals = []int{
 	1,
 	testNumPartitions,
 }
+
+// indexBehaviors are the set of index configurations to test against.
 var indexBehaviors = []*indexBehaviorTestParams{
-	{"none", nil, false},
-	{"mergableIndexes", mergableIndexDriver, false},
-	{"nativeIndexes", nil, true},
-	{"nativeAndMergable", mergableIndexDriver, true},
-}
-var parallelVals = []int{
-	1,
-	2,
+	{"nativeIndexes", nil},
+	{"nativeAndMergable", mergableIndexDriver},
 }
 
 // TestQueries tests the given queries on an engine under a variety of circumstances:
@@ -69,18 +64,16 @@ var parallelVals = []int{
 func TestQueries(t *testing.T) {
 	for _, numPartitions := range numPartitionsVals {
 		for _, indexBehavior := range indexBehaviors {
-			for _, parallelism := range parallelVals {
-				if parallelism == 1 && numPartitions == testNumPartitions && indexBehavior.name == "nativeIndexes" {
-					// This case is covered by TestQueriesSimple
-					continue
-				}
-				testName := fmt.Sprintf("partitions=%d,indexes=%v,parallelism=%v", numPartitions, indexBehavior.name, parallelism)
-				harness := enginetest.NewMemoryHarness(testName, parallelism, numPartitions, indexBehavior.nativeIndexes, indexBehavior.driverInitializer)
-
-				t.Run(testName, func(t *testing.T) {
-					enginetest.TestQueries(t, harness)
-				})
+			if numPartitions == testNumPartitions && indexBehavior.name == "nativeIndexes" {
+				// This case is covered by TestQueriesSimple
+				continue
 			}
+			testName := fmt.Sprintf("partitions=%d,indexes=%v", numPartitions, indexBehavior.name)
+			harness := enginetest.NewMemoryHarness(testName, numPartitions, indexBehavior.driverInitializer)
+
+			t.Run(testName, func(t *testing.T) {
+				enginetest.TestQueries(t, harness)
+			})
 		}
 	}
 }
@@ -156,7 +149,7 @@ func TestSingleQuery(t *testing.T) {
 		Expected: []sql.Row{{-1}},
 	}
 
-	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
+	harness := enginetest.NewMemoryHarness("", testNumPartitions, nil)
 	// harness.UseServer()
 	harness.Setup(setup.MydbData, setup.NiltableData)
 	engine, err := harness.NewEngine(t)
@@ -185,7 +178,7 @@ func TestSingleQueryPrepared(t *testing.T) {
 		},
 	}
 
-	harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, false, nil)
+	harness := enginetest.NewMemoryHarness("", testNumPartitions, nil)
 	harness.Setup(setup.KeylessSetup...)
 	engine, err := harness.NewEngine(t)
 	if err != nil {
@@ -203,35 +196,42 @@ func TestSingleScript(t *testing.T) {
 	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			Name:        "AS OF propagates to nested CALLs",
-			SetUpScript: []string{},
+			Name: "Parse table name as column",
+			SetUpScript: []string{
+				`CREATE TABLE test (pk INT PRIMARY KEY, v1 VARCHAR(255));`,
+				`INSERT INTO test VALUES (1, 'a'), (2, 'b');`,
+			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "create procedure create_proc() create table t (i int primary key, j int);",
-					Expected: []sql.Row{
-						{types.NewOkResult(0)},
-					},
+					Query:    "SELECT temporarytesting(t) FROM test AS t;",
+					Expected: []sql.Row{},
 				},
 				{
-					Query: "call create_proc()",
-					Expected: []sql.Row{
-						{types.NewOkResult(0)},
-					},
+					Query:    "SELECT temporarytesting(test) FROM test;",
+					Expected: []sql.Row{},
+				},
+				{
+					Query:    "SELECT temporarytesting(pk, test) FROM test;",
+					Expected: []sql.Row{},
+				},
+				{
+					Query:    "SELECT temporarytesting(v1, test, pk) FROM test;",
+					Expected: []sql.Row{},
 				},
 			},
 		},
 	}
 
 	for _, test := range scripts {
-		harness := enginetest.NewMemoryHarness("", 1, testNumPartitions, true, nil)
-		//harness.UseServer()
+		harness := enginetest.NewMemoryHarness("", testNumPartitions, nil)
+		// harness.UseServer()
 		engine, err := harness.NewEngine(t)
 		if err != nil {
 			panic(err)
 		}
 
-		//engine.EngineAnalyzer().Debug = true
-		//engine.EngineAnalyzer().Verbose = true
+		// engine.EngineAnalyzer().Debug = true
+		// engine.EngineAnalyzer().Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
@@ -287,14 +287,12 @@ func TestQueryPlanTODOs(t *testing.T) {
 func TestVersionedQueries(t *testing.T) {
 	for _, numPartitions := range numPartitionsVals {
 		for _, indexInit := range indexBehaviors {
-			for _, parallelism := range parallelVals {
-				testName := fmt.Sprintf("partitions=%d,indexes=%v,parallelism=%v", numPartitions, indexInit.name, parallelism)
-				harness := enginetest.NewMemoryHarness(testName, parallelism, numPartitions, indexInit.nativeIndexes, indexInit.driverInitializer)
+			testName := fmt.Sprintf("partitions=%d,indexes=%v", numPartitions, indexInit.name)
+			harness := enginetest.NewMemoryHarness(testName, numPartitions, indexInit.driverInitializer)
 
-				t.Run(testName, func(t *testing.T) {
-					enginetest.TestVersionedQueries(t, harness)
-				})
-			}
+			t.Run(testName, func(t *testing.T) {
+				enginetest.TestVersionedQueries(t, harness)
+			})
 		}
 	}
 }
@@ -314,21 +312,16 @@ func TestAnsiQuotesSqlModePrepared(t *testing.T) {
 // Tests of choosing the correct execution plan independent of result correctness. Mostly useful for confirming that
 // the right indexes are being used for joining tables.
 func TestQueryPlans(t *testing.T) {
-	indexBehaviors := []*indexBehaviorTestParams{
-		{"nativeIndexes", nil, true},
-		{"nativeAndMergable", mergableIndexDriver, true},
-	}
-
 	for _, indexInit := range indexBehaviors {
 		t.Run(indexInit.name, func(t *testing.T) {
-			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 2, indexInit.nativeIndexes, indexInit.driverInitializer)
+			harness := enginetest.NewMemoryHarness(indexInit.name, 2, indexInit.driverInitializer)
 			enginetest.TestQueryPlans(t, harness, queries.PlanTests)
 		})
 	}
 }
 
 func TestQueryPlanScripts(t *testing.T) {
-	enginetest.TestQueryPlanScripts(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestQueryPlanScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
 func TestSingleQueryPlan(t *testing.T) {
@@ -412,7 +405,7 @@ func TestSingleQueryPlan(t *testing.T) {
 		},
 	}
 
-	harness := enginetest.NewMemoryHarness("nativeIndexes", 1, 2, true, nil)
+	harness := enginetest.NewMemoryHarness("nativeIndexes", 2, nil)
 	harness.Setup(setup.PlanSetup...)
 
 	for _, test := range tt {
@@ -428,81 +421,35 @@ func TestSingleQueryPlan(t *testing.T) {
 }
 
 func TestIntegrationQueryPlans(t *testing.T) {
-	indexBehaviors := []*indexBehaviorTestParams{
-		{"nativeIndexes", nil, true},
-	}
-
-	for _, indexInit := range indexBehaviors {
-		t.Run(indexInit.name, func(t *testing.T) {
-			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 1, indexInit.nativeIndexes, indexInit.driverInitializer)
-			enginetest.TestIntegrationPlans(t, harness)
-		})
-	}
+	harness := enginetest.NewMemoryHarness("nativeIndexes", 1, nil)
+	enginetest.TestIntegrationPlans(t, harness)
 }
 
 func TestImdbQueryPlans(t *testing.T) {
-	t.Skip("tests are too slow")
-	indexBehaviors := []*indexBehaviorTestParams{
-		{"nativeIndexes", nil, true},
-	}
-
-	for _, indexInit := range indexBehaviors {
-		t.Run(indexInit.name, func(t *testing.T) {
-			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 1, indexInit.nativeIndexes, indexInit.driverInitializer)
-			enginetest.TestImdbPlans(t, harness)
-		})
-	}
+	harness := enginetest.NewMemoryHarness("nativeIndexes", 1, nil)
+	enginetest.TestImdbPlans(t, harness)
 }
 
 func TestTpccQueryPlans(t *testing.T) {
-	indexBehaviors := []*indexBehaviorTestParams{
-		{"nativeIndexes", nil, true},
-	}
-
-	for _, indexInit := range indexBehaviors {
-		t.Run(indexInit.name, func(t *testing.T) {
-			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 1, indexInit.nativeIndexes, indexInit.driverInitializer)
-			enginetest.TestTpccPlans(t, harness)
-		})
-	}
+	harness := enginetest.NewMemoryHarness("nativeIndexes", 1, nil)
+	enginetest.TestTpccPlans(t, harness)
 }
 
 func TestTpchQueryPlans(t *testing.T) {
-	indexBehaviors := []*indexBehaviorTestParams{
-		{"nativeIndexes", nil, true},
-	}
-
-	for _, indexInit := range indexBehaviors {
-		t.Run(indexInit.name, func(t *testing.T) {
-			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 1, indexInit.nativeIndexes, indexInit.driverInitializer).RetainSessionAfterSetup()
-			enginetest.TestTpchPlans(t, harness)
-		})
-	}
+	harness := enginetest.NewMemoryHarness("nativeIndexes", 1, nil)
+	enginetest.TestTpchPlans(t, harness)
 }
 
 func TestTpcdsQueryPlans(t *testing.T) {
 	t.Skip("missing features")
-	indexBehaviors := []*indexBehaviorTestParams{
-		{"nativeIndexes", nil, true},
-	}
-
-	for _, indexInit := range indexBehaviors {
-		t.Run(indexInit.name, func(t *testing.T) {
-			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 1, indexInit.nativeIndexes, indexInit.driverInitializer)
-			enginetest.TestTpcdsPlans(t, harness)
-		})
-	}
+	harness := enginetest.NewMemoryHarness("nativeIndexes", 1, nil)
+	enginetest.TestTpcdsPlans(t, harness)
 }
 
 func TestIndexQueryPlans(t *testing.T) {
-	indexBehaviors := []*indexBehaviorTestParams{
-		{"nativeIndexes", nil, true},
-		{"nativeAndMergable", mergableIndexDriver, true},
-	}
-
 	for _, indexInit := range indexBehaviors {
 		t.Run(indexInit.name, func(t *testing.T) {
-			harness := enginetest.NewMemoryHarness(indexInit.name, 1, 2, indexInit.nativeIndexes, indexInit.driverInitializer)
+			harness := enginetest.NewMemoryHarness(indexInit.name, 2, indexInit.driverInitializer)
 			enginetest.TestIndexQueryPlans(t, harness)
 		})
 	}
@@ -513,7 +460,7 @@ func TestQueryErrors(t *testing.T) {
 }
 
 func TestInfoSchema(t *testing.T) {
-	enginetest.TestInfoSchema(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestInfoSchema(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
 func TestMySqlDb(t *testing.T) {
@@ -620,68 +567,68 @@ func TestReplaceIntoErrors(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	enginetest.TestUpdate(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestUpdate(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
 func TestUpdateIgnore(t *testing.T) {
-	enginetest.TestUpdateIgnore(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestUpdateIgnore(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
 func TestUpdateErrors(t *testing.T) {
 	// TODO different errors
-	enginetest.TestUpdateErrors(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestUpdateErrors(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
 func TestOnUpdateExprScripts(t *testing.T) {
-	enginetest.TestOnUpdateExprScripts(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestOnUpdateExprScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
 func TestSpatialUpdate(t *testing.T) {
-	enginetest.TestSpatialUpdate(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestSpatialUpdate(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
 func TestDeleteFromErrors(t *testing.T) {
-	enginetest.TestDeleteErrors(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestDeleteErrors(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
 func TestSpatialDeleteFrom(t *testing.T) {
-	enginetest.TestSpatialDelete(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestSpatialDelete(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
 func TestTruncate(t *testing.T) {
-	enginetest.TestTruncate(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestTruncate(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
 func TestDeleteFrom(t *testing.T) {
-	enginetest.TestDelete(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestDelete(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
 func TestConvert(t *testing.T) {
-	enginetest.TestConvert(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestConvert(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
 func TestScripts(t *testing.T) {
-	enginetest.TestScripts(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
 func TestSpatialScripts(t *testing.T) {
-	enginetest.TestSpatialScripts(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestSpatialScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
 func TestSpatialIndexScripts(t *testing.T) {
-	enginetest.TestSpatialIndexScripts(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestSpatialIndexScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
 func TestSpatialIndexPlans(t *testing.T) {
-	enginetest.TestSpatialIndexPlans(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestSpatialIndexPlans(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
 func TestNumericErrorScripts(t *testing.T) {
-	enginetest.TestNumericErrorScripts(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestNumericErrorScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
 func TestUserPrivileges(t *testing.T) {
-	harness := enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver)
+	harness := enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver)
 	if harness.IsUsingServer() {
 		t.Skip("TestUserPrivileges test depend on Context to switch the user to run test queries")
 	}
@@ -689,7 +636,7 @@ func TestUserPrivileges(t *testing.T) {
 }
 
 func TestUserAuthentication(t *testing.T) {
-	harness := enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver)
+	harness := enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver)
 	if harness.IsUsingServer() {
 		t.Skip("TestUserPrivileges test depend on Context to switch the user to run test queries")
 	}
@@ -697,11 +644,11 @@ func TestUserAuthentication(t *testing.T) {
 }
 
 func TestPrivilegePersistence(t *testing.T) {
-	enginetest.TestPrivilegePersistence(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestPrivilegePersistence(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
 func TestComplexIndexQueries(t *testing.T) {
-	harness := enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver)
+	harness := enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver)
 	enginetest.TestComplexIndexQueries(t, harness)
 }
 
@@ -722,7 +669,7 @@ func TestBrokenTriggers(t *testing.T) {
 
 func TestStoredProcedures(t *testing.T) {
 	for i, test := range queries.ProcedureLogicTests {
-		//TODO: the RowIter returned from a SELECT should not take future changes into account
+		// TODO: the RowIter returned from a SELECT should not take future changes into account
 		if test.Name == "FETCH captures state at OPEN" {
 			queries.ProcedureLogicTests[0], queries.ProcedureLogicTests[i] = queries.ProcedureLogicTests[i], queries.ProcedureLogicTests[0]
 			queries.ProcedureLogicTests = queries.ProcedureLogicTests[1:]
@@ -967,7 +914,7 @@ func TestPrepared(t *testing.T) {
 }
 
 func TestPreparedInsert(t *testing.T) {
-	enginetest.TestPreparedInsert(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestPreparedInsert(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
 func TestPreparedStatements(t *testing.T) {
@@ -1090,7 +1037,7 @@ func findTable(dbs []sql.Database, tableName string) (sql.Database, sql.Table) {
 }
 
 func TestSQLLogicTests(t *testing.T) {
-	enginetest.TestSQLLogicTests(t, enginetest.NewMemoryHarness("default", 1, testNumPartitions, true, mergableIndexDriver))
+	enginetest.TestSQLLogicTests(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
 func TestSQLLogicTestFiles(t *testing.T) {

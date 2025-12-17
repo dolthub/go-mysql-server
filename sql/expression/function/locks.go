@@ -46,7 +46,7 @@ func (nl *NamedLockFunction) evalLockLogic(ctx *sql.Context, fn lockFuncLogic, r
 
 // NamedLockFunction is a sql function that takes just the name of a lock as an argument
 type NamedLockFunction struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 	retType  sql.Type
 	ls       *sql.LockSubsystem
 	funcName string
@@ -128,10 +128,10 @@ func NewIsFreeLock(ls *sql.LockSubsystem) sql.CreateFunc1Args {
 	return func(e sql.Expression) sql.Expression {
 		return &IsFreeLock{
 			NamedLockFunction: NamedLockFunction{
-				UnaryExpression: expression.UnaryExpression{e},
-				ls:              ls,
-				funcName:        "is_free_lock",
-				retType:         types.Int8,
+				UnaryExpressionStub: expression.UnaryExpressionStub{e},
+				ls:                  ls,
+				funcName:            "is_free_lock",
+				retType:             types.Int8,
 			},
 		}
 	}
@@ -170,10 +170,10 @@ func NewIsUsedLock(ls *sql.LockSubsystem) sql.CreateFunc1Args {
 	return func(e sql.Expression) sql.Expression {
 		return &IsUsedLock{
 			NamedLockFunction: NamedLockFunction{
-				UnaryExpression: expression.UnaryExpression{e},
-				ls:              ls,
-				funcName:        "is_used_lock",
-				retType:         types.Uint32,
+				UnaryExpressionStub: expression.UnaryExpressionStub{e},
+				ls:                  ls,
+				funcName:            "is_used_lock",
+				retType:             types.Uint32,
 			},
 		}
 	}
@@ -212,10 +212,10 @@ func NewReleaseLock(ls *sql.LockSubsystem) sql.CreateFunc1Args {
 	return func(e sql.Expression) sql.Expression {
 		return &ReleaseLock{
 			NamedLockFunction: NamedLockFunction{
-				UnaryExpression: expression.UnaryExpression{e},
-				ls:              ls,
-				funcName:        "release_lock",
-				retType:         types.Int8,
+				UnaryExpressionStub: expression.UnaryExpressionStub{e},
+				ls:                  ls,
+				funcName:            "release_lock",
+				retType:             types.Int8,
 			},
 		}
 	}

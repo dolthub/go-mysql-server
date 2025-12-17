@@ -149,8 +149,8 @@ var SysbenchPlanTests = []QueryPlanTest{
 			" ├─ columns: [sbtest1.year_col, count(sbtest1.year_col) as count(year_col), max(sbtest1.big_int_col) as max(big_int_col), avg(sbtest1.small_int_col) as avg(small_int_col)]\n" +
 			" └─ Sort(sbtest1.year_col ASC)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ SelectDeps(AVG(sbtest1.small_int_col), COUNT(sbtest1.year_col), MAX(sbtest1.big_int_col), sbtest1.year_col)\n" +
-			"         ├─ Grouping(sbtest1.id)\n" +
+			"         ├─ select: AVG(sbtest1.small_int_col), COUNT(sbtest1.year_col), MAX(sbtest1.big_int_col), sbtest1.year_col\n" +
+			"         ├─ group: sbtest1.id\n" +
 			"         └─ IndexedTableAccess(sbtest1)\n" +
 			"             ├─ index: [sbtest1.big_int_col]\n" +
 			"             ├─ filters: [{(0, ∞)}]\n" +
@@ -160,8 +160,8 @@ var SysbenchPlanTests = []QueryPlanTest{
 			" ├─ columns: [sbtest1.year_col, count(sbtest1.year_col) as count(year_col), max(sbtest1.big_int_col) as max(big_int_col), avg(sbtest1.small_int_col) as avg(small_int_col)]\n" +
 			" └─ Sort(sbtest1.year_col ASC)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ SelectDeps(AVG(sbtest1.small_int_col), COUNT(sbtest1.year_col), MAX(sbtest1.big_int_col), sbtest1.year_col)\n" +
-			"         ├─ Grouping(sbtest1.id)\n" +
+			"         ├─ select: AVG(sbtest1.small_int_col), COUNT(sbtest1.year_col), MAX(sbtest1.big_int_col), sbtest1.year_col\n" +
+			"         ├─ group: sbtest1.id\n" +
 			"         └─ IndexedTableAccess(sbtest1)\n" +
 			"             ├─ index: [sbtest1.big_int_col]\n" +
 			"             ├─ filters: [{(0, ∞)}]\n" +
@@ -187,8 +187,8 @@ var SysbenchPlanTests = []QueryPlanTest{
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [count(sbtest1.id) as count(id)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectDeps(COUNT(sbtest1.id))\n" +
-			"     ├─ Grouping()\n" +
+			"     ├─ select: COUNT(sbtest1.id)\n" +
+			"     ├─ group: \n" +
 			"     └─ IndexedTableAccess(sbtest1)\n" +
 			"         ├─ index: [sbtest1.big_int_col]\n" +
 			"         ├─ filters: [{(0, ∞)}]\n" +
@@ -197,8 +197,8 @@ var SysbenchPlanTests = []QueryPlanTest{
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [count(sbtest1.id) as count(id)]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectDeps(COUNT(sbtest1.id))\n" +
-			"     ├─ Grouping()\n" +
+			"     ├─ select: COUNT(sbtest1.id)\n" +
+			"     ├─ group: \n" +
 			"     └─ IndexedTableAccess(sbtest1)\n" +
 			"         ├─ index: [sbtest1.big_int_col]\n" +
 			"         ├─ filters: [{(0, ∞)}]\n" +

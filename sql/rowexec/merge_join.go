@@ -57,8 +57,8 @@ func newMergeJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode,
 	filters := expression.SplitConjunction(j.Filter)
 	cmp, ok := filters[0].(expression.Comparer)
 	if !ok {
-		if equality, ok := filters[0].(expression.Equality); ok {
-			cmp, err = equality.ToComparer()
+		if eq, ok := filters[0].(expression.Equality); ok && eq.RepresentsEquality() {
+			cmp, err = eq.ToComparer()
 			if err != nil {
 				return nil, err
 			}

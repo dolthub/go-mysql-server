@@ -181,7 +181,8 @@ func (j *joinOrderBuilder) ReorderJoin(n sql.Node) {
 			j.m.Tracer.Log("Successfully built single lookup plan")
 			return
 		}
-		j.m.Tracer.Log("Failed to build single lookup plan, falling back to exhaustive enumeration")
+		j.m.Tracer.Log("Failed to identify an ideal join plan, exhaustive enumeration would be too slow, so preserve the join order in the original query")
+		return
 	} else if j.hasCrossJoin {
 		j.m.Tracer.Log("Join contains cross joins, attempting single lookup plan first")
 		// Rely on FastReorder to avoid plans that drop filters with cross joins
@@ -397,8 +398,10 @@ func (j *joinOrderBuilder) hasEqEdge(leftCol, rightCol sql.ColumnId) bool {
 				l, _ = f.Left().(*expression.GetField)
 				r, _ = f.Right().(*expression.GetField)
 			case expression.Equality:
-				l, _ = f.Left().(*expression.GetField)
-				r, _ = f.Right().(*expression.GetField)
+				if f.RepresentsEquality() {
+					l, _ = f.Left().(*expression.GetField)
+					r, _ = f.Right().(*expression.GetField)
+				}
 			}
 			if l == nil || r == nil {
 				continue

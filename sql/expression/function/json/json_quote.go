@@ -35,7 +35,7 @@ import (
 //
 // https://dev.mysql.com/doc/refman/8.0/en/json-creation-functions.html#function_json-quote
 type JSONQuote struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*JSONQuote)(nil)
@@ -43,7 +43,7 @@ var _ sql.CollationCoercible = (*JSONQuote)(nil)
 
 // NewJSONQuote creates a new JSONQuote UDF.
 func NewJSONQuote(json sql.Expression) sql.Expression {
-	return &JSONQuote{expression.UnaryExpression{Child: json}}
+	return &JSONQuote{expression.UnaryExpressionStub{Child: json}}
 }
 
 // FunctionName implements sql.FunctionExpression

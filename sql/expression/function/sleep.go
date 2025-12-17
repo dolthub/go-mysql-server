@@ -28,7 +28,7 @@ import (
 // and returns 0.
 // It can be useful to test timeouts or long queries.
 type Sleep struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*Sleep)(nil)
@@ -36,7 +36,7 @@ var _ sql.CollationCoercible = (*Sleep)(nil)
 
 // NewSleep creates a new Sleep expression.
 func NewSleep(e sql.Expression) sql.Expression {
-	return &Sleep{expression.UnaryExpression{Child: e}}
+	return &Sleep{expression.UnaryExpressionStub{Child: e}}
 }
 
 // FunctionName implements sql.FunctionExpression

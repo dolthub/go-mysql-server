@@ -15,8 +15,6 @@
 package aggregation
 
 import (
-	"fmt"
-
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -28,7 +26,7 @@ var ErrEvalUnsupportedOnAggregation = errors.NewKind("Unimplemented %s.Eval(). T
 // unaryAggBase is the generic embedded class optgen
 // uses to codegen single expression aggregate functions.
 type unaryAggBase struct {
-	expression.UnaryExpression
+	Child        sql.Expression
 	typ          sql.Type
 	window       *sql.WindowDefinition
 	functionName string
@@ -59,7 +57,7 @@ func (a *unaryAggBase) Window() *sql.WindowDefinition {
 }
 
 func (a *unaryAggBase) String() string {
-	return fmt.Sprintf("%s(%s)", a.functionName, a.Child)
+	return a.functionName + "(" + a.Child.String() + ")"
 }
 
 func (a *unaryAggBase) Type() sql.Type {
@@ -76,6 +74,11 @@ func (a *unaryAggBase) WithId(id sql.ColumnId) sql.IdExpression {
 	ret := *a
 	ret.id = id
 	return &ret
+}
+
+// IsNullable returns whether the expression can be null.
+func (a *unaryAggBase) IsNullable() bool {
+	return a.Child.IsNullable()
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -98,7 +101,8 @@ func (a *unaryAggBase) Children() []sql.Expression {
 func (a *unaryAggBase) Resolved() bool {
 	if _, ok := a.Child.(*expression.Star); ok {
 		return true
-	} else if !a.Child.Resolved() {
+	}
+	if !a.Child.Resolved() {
 		return false
 	}
 	if a.window == nil {
@@ -114,7 +118,7 @@ func (a *unaryAggBase) WithChildren(children ...sql.Expression) (sql.Expression,
 	}
 
 	na := *a
-	na.UnaryExpression = expression.UnaryExpression{Child: children[0]}
+	na.Child = children[0]
 	if len(children) > 1 && a.window != nil {
 		w, err := a.window.FromExpressions(children[1:])
 		if err != nil {

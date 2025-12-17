@@ -37,32 +37,32 @@ func (s NormalDistTable) NewInstance(ctx *sql.Context, db sql.Database, args []s
 	if !ok {
 		return nil, fmt.Errorf("normal_dist table expects arguments to be literal expressions")
 	}
-	colCnt, inBounds, _ := types.Int64.Convert(ctx, colCntLit.Value())
-	if !inBounds {
+	colCnt, inRange, _ := types.Int64.Convert(ctx, colCntLit.Value())
+	if inRange != sql.InRange {
 		return nil, fmt.Errorf("normal_dist table expects 1st argument to be column count")
 	}
 	rowCntLit, ok := args[1].(*expression.Literal)
 	if !ok {
 		return nil, fmt.Errorf("normal_dist table expects arguments to be literal expressions")
 	}
-	rowCnt, inBounds, _ := types.Int64.Convert(ctx, rowCntLit.Value())
-	if !inBounds {
+	rowCnt, inRange, _ := types.Int64.Convert(ctx, rowCntLit.Value())
+	if inRange != sql.InRange {
 		return nil, fmt.Errorf("normal_dist table expects 2nd argument to be row count")
 	}
 	meanLit, ok := args[2].(*expression.Literal)
 	if !ok {
 		return nil, fmt.Errorf("normal_dist table expects arguments to be literal expressions")
 	}
-	mean, inBounds, _ := types.Float64.Convert(ctx, meanLit.Value())
-	if !inBounds {
+	mean, inRange, _ := types.Float64.Convert(ctx, meanLit.Value())
+	if inRange != sql.InRange {
 		return nil, fmt.Errorf("normal_dist table expects 3rd argument to be row count")
 	}
 	stdLit, ok := args[3].(*expression.Literal)
 	if !ok {
 		return nil, fmt.Errorf("normal_dist table expects arguments to be literal expressions")
 	}
-	std, inBounds, _ := types.Float64.Convert(ctx, stdLit.Value())
-	if !inBounds {
+	std, inRange, _ := types.Float64.Convert(ctx, stdLit.Value())
+	if inRange != sql.InRange {
 		return nil, fmt.Errorf("normal_dist table expects 4th argument to be row count")
 	}
 

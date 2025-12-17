@@ -28,7 +28,7 @@ import (
 // Length returns the length of a string or binary content, either in bytes
 // or characters.
 type Length struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 	CountType CountType
 }
 
@@ -47,12 +47,12 @@ const (
 
 // NewLength returns a new LENGTH function.
 func NewLength(e sql.Expression) sql.Expression {
-	return &Length{expression.UnaryExpression{Child: e}, NumBytes}
+	return &Length{expression.UnaryExpressionStub{Child: e}, NumBytes}
 }
 
 // NewCharLength returns a new CHAR_LENGTH function.
 func NewCharLength(e sql.Expression) sql.Expression {
-	return &Length{expression.UnaryExpression{Child: e}, NumChars}
+	return &Length{expression.UnaryExpressionStub{Child: e}, NumChars}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -83,7 +83,7 @@ func (l *Length) WithChildren(children ...sql.Expression) (sql.Expression, error
 		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 1)
 	}
 
-	return &Length{expression.UnaryExpression{Child: children[0]}, l.CountType}, nil
+	return &Length{expression.UnaryExpressionStub{Child: children[0]}, l.CountType}, nil
 }
 
 // Type implements the sql.Expression interface.

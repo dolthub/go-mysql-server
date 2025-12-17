@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"io"
 	"iter"
-	"maps"
 	"slices"
 	"sort"
 	"strings"
@@ -95,14 +94,18 @@ func (e *ExprGroup) Iter() iter.Seq[RelExpr] {
 
 // children returns a unioned list of child ExprGroup for
 // every logical plan in this group.
-func (e *ExprGroup) children() iter.Seq[*ExprGroup] {
+func (e *ExprGroup) children(yield func(group *ExprGroup) bool) {
 	children := make(map[GroupId]*ExprGroup)
 	for n := range e.Iter() {
 		for _, n := range n.Children() {
-			children[n.Id] = n
+			if _, exists := children[n.Id]; !exists {
+				children[n.Id] = n
+				if !yield(n) {
+					return
+				}
+			}
 		}
 	}
-	return maps.Values(children)
 }
 
 // updateBest updates a group's Best to the given expression if the cost is lower than the current best.

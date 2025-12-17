@@ -28,14 +28,14 @@ import (
 )
 
 type InetAton struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*InetAton)(nil)
 var _ sql.CollationCoercible = (*InetAton)(nil)
 
 func NewInetAton(val sql.Expression) sql.Expression {
-	return &InetAton{expression.UnaryExpression{Child: val}}
+	return &InetAton{expression.UnaryExpressionStub{Child: val}}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -108,14 +108,14 @@ func (i *InetAton) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 type Inet6Aton struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*Inet6Aton)(nil)
 var _ sql.CollationCoercible = (*Inet6Aton)(nil)
 
 func NewInet6Aton(val sql.Expression) sql.Expression {
-	return &Inet6Aton{expression.UnaryExpression{Child: val}}
+	return &Inet6Aton{expression.UnaryExpressionStub{Child: val}}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -188,14 +188,14 @@ func (i *Inet6Aton) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 type InetNtoa struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*InetNtoa)(nil)
 var _ sql.CollationCoercible = (*InetNtoa)(nil)
 
 func NewInetNtoa(val sql.Expression) sql.Expression {
-	return &InetNtoa{expression.UnaryExpression{Child: val}}
+	return &InetNtoa{expression.UnaryExpressionStub{Child: val}}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -261,14 +261,14 @@ func (i *InetNtoa) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 type Inet6Ntoa struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*Inet6Ntoa)(nil)
 var _ sql.CollationCoercible = (*Inet6Ntoa)(nil)
 
 func NewInet6Ntoa(val sql.Expression) sql.Expression {
-	return &Inet6Ntoa{expression.UnaryExpression{Child: val}}
+	return &Inet6Ntoa{expression.UnaryExpressionStub{Child: val}}
 }
 
 // FunctionName implements sql.FunctionExpression

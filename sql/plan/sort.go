@@ -44,6 +44,7 @@ var _ sql.Expressioner = (*Sort)(nil)
 var _ sql.Node = (*Sort)(nil)
 var _ sql.CollationCoercible = (*Sort)(nil)
 var _ Sortable = (*Sort)(nil)
+var _ sql.Describable = (*Sort)(nil)
 
 // Resolved implements the Resolvable interface.
 func (s *Sort) Resolved() bool {
@@ -67,6 +68,18 @@ func (s *Sort) String() string {
 	}
 	_ = pr.WriteNode("Sort(%s)", strings.Join(fields, ", "))
 	_ = pr.WriteChildren(s.Child.String())
+	return pr.String()
+}
+
+// Describe implements the sql.Describable interface
+func (s *Sort) Describe(options sql.DescribeOptions) string {
+	pr := sql.NewTreePrinter()
+	var fields = make([]string, len(s.SortFields))
+	for i, f := range s.SortFields {
+		fields[i] = sql.Describe(f, options)
+	}
+	_ = pr.WriteNode("Sort(%s)", strings.Join(fields, ", "))
+	_ = pr.WriteChildren(sql.Describe(s.Child, options))
 	return pr.String()
 }
 

@@ -140,21 +140,23 @@ func HashOf(ctx *sql.Context, sch sql.Schema, row sql.Row) (uint64, error) {
 }
 
 // HashOfSimple returns a hash for a single interface value
-func HashOfSimple(ctx *sql.Context, i interface{}, t sql.Type) (uint64, error) {
+func HashOfSimple(ctx *sql.Context, i any, t sql.Type) (uint64, sql.ConvertInRange, error) {
 	if i == nil {
-		return 0, nil
+		return 0, sql.InRange, nil
 	}
 
 	var str string
+	var inRange sql.ConvertInRange
 	coll := sql.Collation_Default
 	if types.IsTuple(t) {
-		tup := i.([]interface{})
+		tup := i.([]any)
 		tupType := t.(types.TupleType)
 		hashes := make([]uint64, len(tup))
 		for idx, v := range tup {
-			h, err := HashOfSimple(ctx, v, tupType[idx])
+			// TODO: handle out of range conversions here?
+			h, _, err := HashOfSimple(ctx, v, tupType[idx])
 			if err != nil {
-				return 0, err
+				return 0, sql.InRange, err
 			}
 			hashes[idx] = h
 		}
@@ -164,23 +166,25 @@ func HashOfSimple(ctx *sql.Context, i interface{}, t sql.Type) (uint64, error) {
 		if s, ok := i.(string); ok {
 			str = s
 		} else {
-			converted, err := types.ConvertOrTruncate(ctx, i, t)
+			converted, _, err := types.ConvertOrTruncate(ctx, i, t)
 			if err != nil {
-				return 0, err
+				return 0, sql.InRange, err
 			}
 			str, _, err = sql.Unwrap[string](ctx, converted)
 			if err != nil {
-				return 0, err
+				return 0, sql.InRange, err
 			}
 		}
 	} else {
-		x, err := types.ConvertOrTruncate(ctx, i, t.Promote())
+		var val any
+		var err error
+		val, inRange, err = types.ConvertOrTruncate(ctx, i, t.Promote())
 		if err != nil {
-			return 0, err
+			return 0, sql.InRange, err
 		}
 
 		// Remove trailing 0s from floats
-		switch v := x.(type) {
+		switch v := val.(type) {
 		case float32:
 			str = strconv.FormatFloat(float64(v), 'f', -1, 32)
 			if str == "-0" {
@@ -197,5 +201,9 @@ func HashOfSimple(ctx *sql.Context, i interface{}, t sql.Type) (uint64, error) {
 	}
 
 	// Collated strings that are equivalent may have different runes, so we must make them hash to the same value
-	return coll.HashToUint(str)
+	h, err := coll.HashToUint(str)
+	if err != nil {
+		return 0, sql.InRange, err
+	}
+	return h, inRange, nil
 }

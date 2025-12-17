@@ -52,9 +52,15 @@ func OpenRangeColumnExpr(lower, upper interface{}, typ Type) MySQLRangeColumnExp
 		return EmptyRangeColumnExpr(typ)
 	}
 	return MySQLRangeColumnExpr{
-		Above{Key: lower},
-		Below{Key: upper},
-		typ,
+		LowerBound: Above{
+			Key: lower,
+			Typ: typ,
+		},
+		UpperBound: Below{
+			Key: upper,
+			Typ: typ,
+		},
+		Typ: typ,
 	}
 }
 
@@ -64,33 +70,15 @@ func ClosedRangeColumnExpr(lower, upper interface{}, typ Type) MySQLRangeColumnE
 		return EmptyRangeColumnExpr(typ)
 	}
 	return MySQLRangeColumnExpr{
-		Below{Key: lower},
-		Above{Key: upper},
-		typ,
-	}
-}
-
-// CustomRangeColumnExpr returns a MySQLRangeColumnExpr defined by the bounds given.
-func CustomRangeColumnExpr(lower, upper interface{}, lowerBound, upperBound MySQLRangeBoundType, typ Type) MySQLRangeColumnExpr {
-	if lower == nil || upper == nil {
-		return EmptyRangeColumnExpr(typ)
-	}
-	var lCut MySQLRangeCut
-	var uCut MySQLRangeCut
-	if lowerBound == Open {
-		lCut = Above{Key: lower}
-	} else {
-		lCut = Below{Key: lower}
-	}
-	if upperBound == Open {
-		uCut = Below{Key: upper}
-	} else {
-		uCut = Above{Key: upper}
-	}
-	return MySQLRangeColumnExpr{
-		lCut,
-		uCut,
-		typ,
+		LowerBound: Below{
+			Key: lower,
+			Typ: typ,
+		},
+		UpperBound: Above{
+			Key: upper,
+			Typ: typ,
+		},
+		Typ: typ,
 	}
 }
 
@@ -101,7 +89,10 @@ func LessThanRangeColumnExpr(upper interface{}, typ Type) MySQLRangeColumnExpr {
 	}
 	return MySQLRangeColumnExpr{
 		AboveNull{},
-		Below{Key: upper},
+		Below{
+			Key: upper,
+			Typ: typ,
+		},
 		typ,
 	}
 }
@@ -112,9 +103,12 @@ func LessOrEqualRangeColumnExpr(upper interface{}, typ Type) MySQLRangeColumnExp
 		return EmptyRangeColumnExpr(typ)
 	}
 	return MySQLRangeColumnExpr{
-		AboveNull{},
-		Above{Key: upper},
-		typ,
+		LowerBound: AboveNull{},
+		UpperBound: Above{
+			Key: upper,
+			Typ: typ,
+		},
+		Typ: typ,
 	}
 }
 
@@ -124,9 +118,12 @@ func GreaterThanRangeColumnExpr(lower interface{}, typ Type) MySQLRangeColumnExp
 		return EmptyRangeColumnExpr(typ)
 	}
 	return MySQLRangeColumnExpr{
-		Above{Key: lower},
-		AboveAll{},
-		typ,
+		LowerBound: Above{
+			Key: lower,
+			Typ: typ,
+		},
+		UpperBound: AboveAll{},
+		Typ:        typ,
 	}
 }
 
@@ -136,7 +133,10 @@ func GreaterOrEqualRangeColumnExpr(lower interface{}, typ Type) MySQLRangeColumn
 		return EmptyRangeColumnExpr(typ)
 	}
 	return MySQLRangeColumnExpr{
-		Below{Key: lower},
+		Below{
+			Key: lower,
+			Typ: typ,
+		},
 		AboveAll{},
 		typ,
 	}

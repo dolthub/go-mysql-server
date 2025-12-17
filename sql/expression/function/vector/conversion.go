@@ -24,7 +24,7 @@ import (
 
 // StringToVector converts a JSON string representation to a vector
 type StringToVector struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.Expression = (*StringToVector)(nil)
@@ -32,7 +32,7 @@ var _ sql.FunctionExpression = (*StringToVector)(nil)
 var _ sql.CollationCoercible = (*StringToVector)(nil)
 
 func NewStringToVector(e sql.Expression) sql.Expression {
-	return &StringToVector{UnaryExpression: expression.UnaryExpression{Child: e}}
+	return &StringToVector{UnaryExpressionStub: expression.UnaryExpressionStub{Child: e}}
 }
 
 func (s *StringToVector) FunctionName() string {
@@ -82,7 +82,7 @@ func (s *StringToVector) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 
 // VectorToString converts a vector to a JSON string representation
 type VectorToString struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.Expression = (*VectorToString)(nil)
@@ -90,7 +90,7 @@ var _ sql.FunctionExpression = (*VectorToString)(nil)
 var _ sql.CollationCoercible = (*VectorToString)(nil)
 
 func NewVectorToString(e sql.Expression) sql.Expression {
-	return &VectorToString{UnaryExpression: expression.UnaryExpression{Child: e}}
+	return &VectorToString{UnaryExpressionStub: expression.UnaryExpressionStub{Child: e}}
 }
 
 func (v *VectorToString) FunctionName() string {

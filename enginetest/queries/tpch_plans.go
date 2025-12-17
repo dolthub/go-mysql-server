@@ -60,8 +60,8 @@ order by
 			" ├─ columns: [lineitem.l_returnflag, lineitem.l_linestatus, sum(lineitem.l_quantity) as sum_qty, sum(lineitem.l_extendedprice) as sum_base_price, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as sum_disc_price, sum(((lineitem.l_extendedprice * (1 - lineitem.l_discount)) * (1 + lineitem.l_tax))) as sum_charge, avg(lineitem.l_quantity) as avg_qty, avg(lineitem.l_extendedprice) as avg_price, avg(lineitem.l_discount) as avg_disc, count(1) as count_order]\n" +
 			" └─ Sort(lineitem.l_returnflag ASC, lineitem.l_linestatus ASC)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ SelectDeps(AVG(lineitem.l_discount), AVG(lineitem.l_extendedprice), AVG(lineitem.l_quantity), COUNT(1), SUM(((lineitem.l_extendedprice * (1 - lineitem.l_discount)) * (1 + lineitem.l_tax))), SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), SUM(lineitem.l_extendedprice), SUM(lineitem.l_quantity), lineitem.l_returnflag, lineitem.l_linestatus)\n" +
-			"         ├─ Grouping(lineitem.l_returnflag, lineitem.l_linestatus)\n" +
+			"         ├─ select: AVG(lineitem.l_discount), AVG(lineitem.l_extendedprice), AVG(lineitem.l_quantity), COUNT(1), SUM(((lineitem.l_extendedprice * (1 - lineitem.l_discount)) * (1 + lineitem.l_tax))), SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), SUM(lineitem.l_extendedprice), SUM(lineitem.l_quantity), lineitem.l_returnflag, lineitem.l_linestatus\n" +
+			"         ├─ group: lineitem.l_returnflag, lineitem.l_linestatus\n" +
 			"         └─ Filter\n" +
 			"             ├─ (lineitem.l_shipdate <= 1998-09-02 00:00:00 +0000 UTC)\n" +
 			"             └─ Table\n" +
@@ -72,8 +72,8 @@ order by
 			" ├─ columns: [lineitem.l_returnflag, lineitem.l_linestatus, sum(lineitem.l_quantity) as sum_qty, sum(lineitem.l_extendedprice) as sum_base_price, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as sum_disc_price, sum(((lineitem.l_extendedprice * (1 - lineitem.l_discount)) * (1 + lineitem.l_tax))) as sum_charge, avg(lineitem.l_quantity) as avg_qty, avg(lineitem.l_extendedprice) as avg_price, avg(lineitem.l_discount) as avg_disc, count(1) as count_order]\n" +
 			" └─ Sort(lineitem.l_returnflag ASC, lineitem.l_linestatus ASC)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ SelectDeps(AVG(lineitem.l_discount), AVG(lineitem.l_extendedprice), AVG(lineitem.l_quantity), COUNT(1), SUM(((lineitem.l_extendedprice * (1 - lineitem.l_discount)) * (1 + lineitem.l_tax))), SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), SUM(lineitem.l_extendedprice), SUM(lineitem.l_quantity), lineitem.l_returnflag, lineitem.l_linestatus)\n" +
-			"         ├─ Grouping(lineitem.l_returnflag, lineitem.l_linestatus)\n" +
+			"         ├─ select: AVG(lineitem.l_discount), AVG(lineitem.l_extendedprice), AVG(lineitem.l_quantity), COUNT(1), SUM(((lineitem.l_extendedprice * (1 - lineitem.l_discount)) * (1 + lineitem.l_tax))), SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), SUM(lineitem.l_extendedprice), SUM(lineitem.l_quantity), lineitem.l_returnflag, lineitem.l_linestatus\n" +
+			"         ├─ group: lineitem.l_returnflag, lineitem.l_linestatus\n" +
 			"         └─ Filter\n" +
 			"             ├─ (lineitem.l_shipdate <= 1998-09-02 00:00:00 +0000 UTC)\n" +
 			"             └─ Table\n" +
@@ -240,11 +240,11 @@ order by
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [supplier.s_acctbal, supplier.s_name, nation.n_name, part.p_partkey, part.p_mfgr, supplier.s_address, supplier.s_phone, supplier.s_comment]\n" +
 			" └─ Sort(supplier.s_acctbal DESC, nation.n_name ASC, supplier.s_name ASC, part.p_partkey ASC)\n" +
-			"     └─ LookupJoin\n" +
+			"     └─ LookupJoin (estimated cost=3300.000 rows=1000)\n" +
 			"         ├─ (partsupp.ps_supplycost = Subquery(select min(ps_supplycost) from partsupp, supplier, nation, region where p_partkey = ps_partkey and s_suppkey = ps_suppkey and s_nationkey = n_nationkey and n_regionkey = r_regionkey and r_name = 'EUROPE'))\n" +
-			"         ├─ LookupJoin\n" +
-			"         │   ├─ LookupJoin\n" +
-			"         │   │   ├─ MergeJoin\n" +
+			"         ├─ LookupJoin (estimated cost=3300.000 rows=1000)\n" +
+			"         │   ├─ LookupJoin (estimated cost=3300.000 rows=1000)\n" +
+			"         │   │   ├─ MergeJoin (estimated cost=1878.500 rows=1000)\n" +
 			"         │   │   │   ├─ cmp: (part.p_partkey = partsupp.ps_partkey)\n" +
 			"         │   │   │   ├─ Filter\n" +
 			"         │   │   │   │   ├─ ((part.p_size = 15) AND part.p_type LIKE '%BRASS')\n" +
@@ -269,11 +269,11 @@ order by
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [supplier.s_acctbal, supplier.s_name, nation.n_name, part.p_partkey, part.p_mfgr, supplier.s_address, supplier.s_phone, supplier.s_comment]\n" +
 			" └─ Sort(supplier.s_acctbal DESC, nation.n_name ASC, supplier.s_name ASC, part.p_partkey ASC)\n" +
-			"     └─ LookupJoin\n" +
+			"     └─ LookupJoin (estimated cost=3300.000 rows=1000) (actual rows=0 loops=1)\n" +
 			"         ├─ (partsupp.ps_supplycost = Subquery(select min(ps_supplycost) from partsupp, supplier, nation, region where p_partkey = ps_partkey and s_suppkey = ps_suppkey and s_nationkey = n_nationkey and n_regionkey = r_regionkey and r_name = 'EUROPE'))\n" +
-			"         ├─ LookupJoin\n" +
-			"         │   ├─ LookupJoin\n" +
-			"         │   │   ├─ MergeJoin\n" +
+			"         ├─ LookupJoin (estimated cost=3300.000 rows=1000) (actual rows=0 loops=1)\n" +
+			"         │   ├─ LookupJoin (estimated cost=3300.000 rows=1000) (actual rows=0 loops=1)\n" +
+			"         │   │   ├─ MergeJoin (estimated cost=1878.500 rows=1000) (actual rows=0 loops=1)\n" +
 			"         │   │   │   ├─ cmp: (part.p_partkey = partsupp.ps_partkey)\n" +
 			"         │   │   │   ├─ Filter\n" +
 			"         │   │   │   │   ├─ ((part.p_size = 15) AND part.p_type LIKE '%BRASS')\n" +
@@ -377,10 +377,10 @@ order by
 			"     └─ Project\n" +
 			"         ├─ columns: [sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))), lineitem.l_orderkey, orders.o_orderdate, orders.o_shippriority, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as revenue]\n" +
 			"         └─ GroupBy\n" +
-			"             ├─ SelectDeps(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), lineitem.l_orderkey, orders.o_orderdate, orders.o_shippriority)\n" +
-			"             ├─ Grouping(lineitem.l_orderkey, orders.o_orderdate, orders.o_shippriority)\n" +
-			"             └─ LookupJoin\n" +
-			"                 ├─ MergeJoin\n" +
+			"             ├─ select: SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), lineitem.l_orderkey, orders.o_orderdate, orders.o_shippriority\n" +
+			"             ├─ group: lineitem.l_orderkey, orders.o_orderdate, orders.o_shippriority\n" +
+			"             └─ LookupJoin (estimated cost=2805.000 rows=850)\n" +
+			"                 ├─ MergeJoin (estimated cost=1725.500 rows=850)\n" +
 			"                 │   ├─ cmp: (orders.o_orderkey = lineitem.l_orderkey)\n" +
 			"                 │   ├─ Filter\n" +
 			"                 │   │   ├─ (orders.o_orderdate < '1995-03-15')\n" +
@@ -407,10 +407,10 @@ order by
 			"     └─ Project\n" +
 			"         ├─ columns: [sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))), lineitem.l_orderkey, orders.o_orderdate, orders.o_shippriority, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as revenue]\n" +
 			"         └─ GroupBy\n" +
-			"             ├─ SelectDeps(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), lineitem.l_orderkey, orders.o_orderdate, orders.o_shippriority)\n" +
-			"             ├─ Grouping(lineitem.l_orderkey, orders.o_orderdate, orders.o_shippriority)\n" +
-			"             └─ LookupJoin\n" +
-			"                 ├─ MergeJoin\n" +
+			"             ├─ select: SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), lineitem.l_orderkey, orders.o_orderdate, orders.o_shippriority\n" +
+			"             ├─ group: lineitem.l_orderkey, orders.o_orderdate, orders.o_shippriority\n" +
+			"             └─ LookupJoin (estimated cost=2805.000 rows=850) (actual rows=0 loops=1)\n" +
+			"                 ├─ MergeJoin (estimated cost=1725.500 rows=850) (actual rows=0 loops=1)\n" +
 			"                 │   ├─ cmp: (orders.o_orderkey = lineitem.l_orderkey)\n" +
 			"                 │   ├─ Filter\n" +
 			"                 │   │   ├─ (orders.o_orderdate < '1995-03-15')\n" +
@@ -504,11 +504,11 @@ order by
 			" ├─ columns: [orders.o_orderpriority, count(1) as order_count]\n" +
 			" └─ Sort(orders.o_orderpriority ASC)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ SelectDeps(COUNT(1), orders.o_orderpriority)\n" +
-			"         ├─ Grouping(orders.o_orderpriority)\n" +
+			"         ├─ select: COUNT(1), orders.o_orderpriority\n" +
+			"         ├─ group: orders.o_orderpriority\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [orders.O_ORDERKEY, orders.O_CUSTKEY, orders.O_ORDERSTATUS, orders.O_TOTALPRICE, orders.O_ORDERDATE, orders.O_ORDERPRIORITY, orders.O_CLERK, orders.O_SHIPPRIORITY, orders.O_COMMENT]\n" +
-			"             └─ MergeJoin\n" +
+			"             └─ MergeJoin (estimated cost=1725.500 rows=850)\n" +
 			"                 ├─ cmp: (orders.o_orderkey = lineitem.l_orderkey)\n" +
 			"                 ├─ Filter\n" +
 			"                 │   ├─ ((orders.o_orderdate >= '1993-07-01') AND (orders.o_orderdate < 1993-10-01 00:00:00 +0000 UTC))\n" +
@@ -529,11 +529,11 @@ order by
 			" ├─ columns: [orders.o_orderpriority, count(1) as order_count]\n" +
 			" └─ Sort(orders.o_orderpriority ASC)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ SelectDeps(COUNT(1), orders.o_orderpriority)\n" +
-			"         ├─ Grouping(orders.o_orderpriority)\n" +
+			"         ├─ select: COUNT(1), orders.o_orderpriority\n" +
+			"         ├─ group: orders.o_orderpriority\n" +
 			"         └─ Project\n" +
 			"             ├─ columns: [orders.O_ORDERKEY, orders.O_CUSTKEY, orders.O_ORDERSTATUS, orders.O_TOTALPRICE, orders.O_ORDERDATE, orders.O_ORDERPRIORITY, orders.O_CLERK, orders.O_SHIPPRIORITY, orders.O_COMMENT]\n" +
-			"             └─ MergeJoin\n" +
+			"             └─ MergeJoin (estimated cost=1725.500 rows=850) (actual rows=0 loops=1)\n" +
 			"                 ├─ cmp: (orders.o_orderkey = lineitem.l_orderkey)\n" +
 			"                 ├─ Filter\n" +
 			"                 │   ├─ ((orders.o_orderdate >= '1993-07-01') AND (orders.o_orderdate < 1993-10-01 00:00:00 +0000 UTC))\n" +
@@ -661,14 +661,14 @@ order by
 			"     └─ Project\n" +
 			"         ├─ columns: [sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))), nation.n_name, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as revenue]\n" +
 			"         └─ GroupBy\n" +
-			"             ├─ SelectDeps(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), nation.n_name)\n" +
-			"             ├─ Grouping(nation.n_name)\n" +
-			"             └─ LookupJoin\n" +
+			"             ├─ select: SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), nation.n_name\n" +
+			"             ├─ group: nation.n_name\n" +
+			"             └─ LookupJoin (estimated cost=3300.000 rows=1000)\n" +
 			"                 ├─ ((customer.c_nationkey = supplier.s_nationkey) AND (supplier.s_nationkey = nation.n_nationkey))\n" +
-			"                 ├─ LookupJoin\n" +
-			"                 │   ├─ LookupJoin\n" +
-			"                 │   │   ├─ LookupJoin\n" +
-			"                 │   │   │   ├─ LookupJoin\n" +
+			"                 ├─ LookupJoin (estimated cost=3173.000 rows=1000)\n" +
+			"                 │   ├─ LookupJoin (estimated cost=2805.000 rows=850)\n" +
+			"                 │   │   ├─ LookupJoin (estimated cost=2805.000 rows=850)\n" +
+			"                 │   │   │   ├─ LookupJoin (estimated cost=2805.000 rows=850)\n" +
 			"                 │   │   │   │   ├─ Filter\n" +
 			"                 │   │   │   │   │   ├─ ((orders.o_orderdate >= '1994-01-01') AND (orders.o_orderdate < 1995-01-01 00:00:00 +0000 UTC))\n" +
 			"                 │   │   │   │   │   └─ Table\n" +
@@ -703,14 +703,14 @@ order by
 			"     └─ Project\n" +
 			"         ├─ columns: [sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))), nation.n_name, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as revenue]\n" +
 			"         └─ GroupBy\n" +
-			"             ├─ SelectDeps(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), nation.n_name)\n" +
-			"             ├─ Grouping(nation.n_name)\n" +
-			"             └─ LookupJoin\n" +
+			"             ├─ select: SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), nation.n_name\n" +
+			"             ├─ group: nation.n_name\n" +
+			"             └─ LookupJoin (estimated cost=3300.000 rows=1000) (actual rows=0 loops=1)\n" +
 			"                 ├─ ((customer.c_nationkey = supplier.s_nationkey) AND (supplier.s_nationkey = nation.n_nationkey))\n" +
-			"                 ├─ LookupJoin\n" +
-			"                 │   ├─ LookupJoin\n" +
-			"                 │   │   ├─ LookupJoin\n" +
-			"                 │   │   │   ├─ LookupJoin\n" +
+			"                 ├─ LookupJoin (estimated cost=3173.000 rows=1000) (actual rows=0 loops=1)\n" +
+			"                 │   ├─ LookupJoin (estimated cost=2805.000 rows=850) (actual rows=0 loops=1)\n" +
+			"                 │   │   ├─ LookupJoin (estimated cost=2805.000 rows=850) (actual rows=0 loops=1)\n" +
+			"                 │   │   │   ├─ LookupJoin (estimated cost=2805.000 rows=850) (actual rows=0 loops=1)\n" +
 			"                 │   │   │   │   ├─ Filter\n" +
 			"                 │   │   │   │   │   ├─ ((orders.o_orderdate >= '1994-01-01') AND (orders.o_orderdate < 1995-01-01 00:00:00 +0000 UTC))\n" +
 			"                 │   │   │   │   │   └─ Table\n" +
@@ -785,8 +785,8 @@ where
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [sum((lineitem.l_extendedprice * lineitem.l_discount)) as revenue]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectDeps(SUM((lineitem.l_extendedprice * lineitem.l_discount)))\n" +
-			"     ├─ Grouping()\n" +
+			"     ├─ select: SUM((lineitem.l_extendedprice * lineitem.l_discount))\n" +
+			"     ├─ group: \n" +
 			"     └─ Filter\n" +
 			"         ├─ ((((lineitem.l_shipdate >= '1994-01-01') AND (lineitem.l_shipdate < 1995-01-01 00:00:00 +0000 UTC)) AND ((lineitem.l_discount >= 0.05) AND (lineitem.l_discount <= 0.07))) AND (lineitem.l_quantity < 24))\n" +
 			"         └─ Table\n" +
@@ -796,8 +796,8 @@ where
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [sum((lineitem.l_extendedprice * lineitem.l_discount)) as revenue]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectDeps(SUM((lineitem.l_extendedprice * lineitem.l_discount)))\n" +
-			"     ├─ Grouping()\n" +
+			"     ├─ select: SUM((lineitem.l_extendedprice * lineitem.l_discount))\n" +
+			"     ├─ group: \n" +
 			"     └─ Filter\n" +
 			"         ├─ ((((lineitem.l_shipdate >= '1994-01-01') AND (lineitem.l_shipdate < 1995-01-01 00:00:00 +0000 UTC)) AND ((lineitem.l_discount >= 0.05) AND (lineitem.l_discount <= 0.07))) AND (lineitem.l_quantity < 24))\n" +
 			"         └─ Table\n" +
@@ -948,21 +948,23 @@ order by
 			" ├─ columns: [shipping.supp_nation, shipping.cust_nation, shipping.l_year, sum(shipping.volume) as revenue]\n" +
 			" └─ Sort(shipping.supp_nation ASC, shipping.cust_nation ASC, shipping.l_year ASC)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ SelectDeps(SUM(shipping.volume), shipping.supp_nation, shipping.cust_nation, shipping.l_year)\n" +
-			"         ├─ Grouping(shipping.supp_nation, shipping.cust_nation, shipping.l_year)\n" +
+			"         ├─ select: SUM(shipping.volume), shipping.supp_nation, shipping.cust_nation, shipping.l_year\n" +
+			"         ├─ group: shipping.supp_nation, shipping.cust_nation, shipping.l_year\n" +
 			"         └─ SubqueryAlias\n" +
 			"             ├─ name: shipping\n" +
 			"             ├─ outerVisibility: false\n" +
 			"             ├─ isLateral: false\n" +
 			"             ├─ cacheable: true\n" +
+			"             ├─ colSet: (53-56)\n" +
+			"             ├─ tableId: 7\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [n1.n_name as supp_nation, n2.n_name as cust_nation, extract('YEAR' from lineitem.l_shipdate) as l_year, (lineitem.l_extendedprice * (1 - lineitem.l_discount)) as volume]\n" +
-			"                 └─ LookupJoin\n" +
+			"                 └─ LookupJoin (estimated cost=2805.000 rows=850)\n" +
 			"                     ├─ (((n1.n_name = 'FRANCE') AND (n2.n_name = 'GERMANY')) OR ((n1.n_name = 'GERMANY') AND (n2.n_name = 'FRANCE')))\n" +
-			"                     ├─ LookupJoin\n" +
-			"                     │   ├─ LookupJoin\n" +
-			"                     │   │   ├─ LookupJoin\n" +
-			"                     │   │   │   ├─ MergeJoin\n" +
+			"                     ├─ LookupJoin (estimated cost=2805.000 rows=850)\n" +
+			"                     │   ├─ LookupJoin (estimated cost=2805.000 rows=850)\n" +
+			"                     │   │   ├─ LookupJoin (estimated cost=2805.000 rows=850)\n" +
+			"                     │   │   │   ├─ MergeJoin (estimated cost=1877.000 rows=850)\n" +
 			"                     │   │   │   │   ├─ cmp: (lineitem.l_orderkey = orders.o_orderkey)\n" +
 			"                     │   │   │   │   ├─ Filter\n" +
 			"                     │   │   │   │   │   ├─ ((lineitem.l_shipdate >= '1995-01-01') AND (lineitem.l_shipdate <= '1996-12-31'))\n" +
@@ -997,21 +999,23 @@ order by
 			" ├─ columns: [shipping.supp_nation, shipping.cust_nation, shipping.l_year, sum(shipping.volume) as revenue]\n" +
 			" └─ Sort(shipping.supp_nation ASC, shipping.cust_nation ASC, shipping.l_year ASC)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ SelectDeps(SUM(shipping.volume), shipping.supp_nation, shipping.cust_nation, shipping.l_year)\n" +
-			"         ├─ Grouping(shipping.supp_nation, shipping.cust_nation, shipping.l_year)\n" +
+			"         ├─ select: SUM(shipping.volume), shipping.supp_nation, shipping.cust_nation, shipping.l_year\n" +
+			"         ├─ group: shipping.supp_nation, shipping.cust_nation, shipping.l_year\n" +
 			"         └─ SubqueryAlias\n" +
 			"             ├─ name: shipping\n" +
 			"             ├─ outerVisibility: false\n" +
 			"             ├─ isLateral: false\n" +
 			"             ├─ cacheable: true\n" +
+			"             ├─ colSet: (53-56)\n" +
+			"             ├─ tableId: 7\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [n1.n_name as supp_nation, n2.n_name as cust_nation, extract('YEAR' from lineitem.l_shipdate) as l_year, (lineitem.l_extendedprice * (1 - lineitem.l_discount)) as volume]\n" +
-			"                 └─ LookupJoin\n" +
+			"                 └─ LookupJoin (estimated cost=2805.000 rows=850) (actual rows=0 loops=1)\n" +
 			"                     ├─ (((n1.n_name = 'FRANCE') AND (n2.n_name = 'GERMANY')) OR ((n1.n_name = 'GERMANY') AND (n2.n_name = 'FRANCE')))\n" +
-			"                     ├─ LookupJoin\n" +
-			"                     │   ├─ LookupJoin\n" +
-			"                     │   │   ├─ LookupJoin\n" +
-			"                     │   │   │   ├─ MergeJoin\n" +
+			"                     ├─ LookupJoin (estimated cost=2805.000 rows=850) (actual rows=0 loops=1)\n" +
+			"                     │   ├─ LookupJoin (estimated cost=2805.000 rows=850) (actual rows=0 loops=1)\n" +
+			"                     │   │   ├─ LookupJoin (estimated cost=2805.000 rows=850) (actual rows=0 loops=1)\n" +
+			"                     │   │   │   ├─ MergeJoin (estimated cost=1877.000 rows=850) (actual rows=0 loops=1)\n" +
 			"                     │   │   │   │   ├─ cmp: (lineitem.l_orderkey = orders.o_orderkey)\n" +
 			"                     │   │   │   │   ├─ Filter\n" +
 			"                     │   │   │   │   │   ├─ ((lineitem.l_shipdate >= '1995-01-01') AND (lineitem.l_shipdate <= '1996-12-31'))\n" +
@@ -1192,22 +1196,24 @@ order by
 			" ├─ columns: [all_nations.o_year, (sum(case  when (all_nations.nation = 'brazil') then all_nations.volume else 0 end) / sum(all_nations.volume)) as mkt_share]\n" +
 			" └─ Sort(all_nations.o_year ASC)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ SelectDeps(SUM(CASE  WHEN (all_nations.nation = 'BRAZIL') THEN all_nations.volume ELSE 0 END), SUM(all_nations.volume), all_nations.o_year)\n" +
-			"         ├─ Grouping(all_nations.o_year)\n" +
+			"         ├─ select: SUM(CASE  WHEN (all_nations.nation = 'BRAZIL') THEN all_nations.volume ELSE 0 END), SUM(all_nations.volume), all_nations.o_year\n" +
+			"         ├─ group: all_nations.o_year\n" +
 			"         └─ SubqueryAlias\n" +
 			"             ├─ name: all_nations\n" +
 			"             ├─ outerVisibility: false\n" +
 			"             ├─ isLateral: false\n" +
 			"             ├─ cacheable: true\n" +
+			"             ├─ colSet: (64-66)\n" +
+			"             ├─ tableId: 9\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [extract('YEAR' from orders.o_orderdate) as o_year, (lineitem.l_extendedprice * (1 - lineitem.l_discount)) as volume, n2.n_name as nation]\n" +
-			"                 └─ LookupJoin\n" +
-			"                     ├─ LookupJoin\n" +
-			"                     │   ├─ LookupJoin\n" +
-			"                     │   │   ├─ LookupJoin\n" +
-			"                     │   │   │   ├─ LookupJoin\n" +
-			"                     │   │   │   │   ├─ LookupJoin\n" +
-			"                     │   │   │   │   │   ├─ LookupJoin\n" +
+			"                 └─ LookupJoin (estimated cost=3300.000 rows=1000)\n" +
+			"                     ├─ LookupJoin (estimated cost=3300.000 rows=1000)\n" +
+			"                     │   ├─ LookupJoin (estimated cost=3300.000 rows=1000)\n" +
+			"                     │   │   ├─ LookupJoin (estimated cost=3173.000 rows=1000)\n" +
+			"                     │   │   │   ├─ LookupJoin (estimated cost=2805.000 rows=850)\n" +
+			"                     │   │   │   │   ├─ LookupJoin (estimated cost=2805.000 rows=850)\n" +
+			"                     │   │   │   │   │   ├─ LookupJoin (estimated cost=2805.000 rows=850)\n" +
 			"                     │   │   │   │   │   │   ├─ Filter\n" +
 			"                     │   │   │   │   │   │   │   ├─ ((orders.o_orderdate >= '1995-01-01') AND (orders.o_orderdate <= '1996-12-31'))\n" +
 			"                     │   │   │   │   │   │   │   └─ Table\n" +
@@ -1252,22 +1258,24 @@ order by
 			" ├─ columns: [all_nations.o_year, (sum(case  when (all_nations.nation = 'brazil') then all_nations.volume else 0 end) / sum(all_nations.volume)) as mkt_share]\n" +
 			" └─ Sort(all_nations.o_year ASC)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ SelectDeps(SUM(CASE  WHEN (all_nations.nation = 'BRAZIL') THEN all_nations.volume ELSE 0 END), SUM(all_nations.volume), all_nations.o_year)\n" +
-			"         ├─ Grouping(all_nations.o_year)\n" +
+			"         ├─ select: SUM(CASE  WHEN (all_nations.nation = 'BRAZIL') THEN all_nations.volume ELSE 0 END), SUM(all_nations.volume), all_nations.o_year\n" +
+			"         ├─ group: all_nations.o_year\n" +
 			"         └─ SubqueryAlias\n" +
 			"             ├─ name: all_nations\n" +
 			"             ├─ outerVisibility: false\n" +
 			"             ├─ isLateral: false\n" +
 			"             ├─ cacheable: true\n" +
+			"             ├─ colSet: (64-66)\n" +
+			"             ├─ tableId: 9\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [extract('YEAR' from orders.o_orderdate) as o_year, (lineitem.l_extendedprice * (1 - lineitem.l_discount)) as volume, n2.n_name as nation]\n" +
-			"                 └─ LookupJoin\n" +
-			"                     ├─ LookupJoin\n" +
-			"                     │   ├─ LookupJoin\n" +
-			"                     │   │   ├─ LookupJoin\n" +
-			"                     │   │   │   ├─ LookupJoin\n" +
-			"                     │   │   │   │   ├─ LookupJoin\n" +
-			"                     │   │   │   │   │   ├─ LookupJoin\n" +
+			"                 └─ LookupJoin (estimated cost=3300.000 rows=1000) (actual rows=0 loops=1)\n" +
+			"                     ├─ LookupJoin (estimated cost=3300.000 rows=1000) (actual rows=0 loops=1)\n" +
+			"                     │   ├─ LookupJoin (estimated cost=3300.000 rows=1000) (actual rows=0 loops=1)\n" +
+			"                     │   │   ├─ LookupJoin (estimated cost=3173.000 rows=1000) (actual rows=0 loops=1)\n" +
+			"                     │   │   │   ├─ LookupJoin (estimated cost=2805.000 rows=850) (actual rows=0 loops=1)\n" +
+			"                     │   │   │   │   ├─ LookupJoin (estimated cost=2805.000 rows=850) (actual rows=0 loops=1)\n" +
+			"                     │   │   │   │   │   ├─ LookupJoin (estimated cost=2805.000 rows=850) (actual rows=0 loops=1)\n" +
 			"                     │   │   │   │   │   │   ├─ Filter\n" +
 			"                     │   │   │   │   │   │   │   ├─ ((orders.o_orderdate >= '1995-01-01') AND (orders.o_orderdate <= '1996-12-31'))\n" +
 			"                     │   │   │   │   │   │   │   └─ Table\n" +
@@ -1443,19 +1451,21 @@ order by
 			" ├─ columns: [profit.nation, profit.o_year, sum(profit.amount) as sum_profit]\n" +
 			" └─ Sort(profit.nation ASC, profit.o_year DESC)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ SelectDeps(SUM(profit.amount), profit.nation, profit.o_year)\n" +
-			"         ├─ Grouping(profit.nation, profit.o_year)\n" +
+			"         ├─ select: SUM(profit.amount), profit.nation, profit.o_year\n" +
+			"         ├─ group: profit.nation, profit.o_year\n" +
 			"         └─ SubqueryAlias\n" +
 			"             ├─ name: profit\n" +
 			"             ├─ outerVisibility: false\n" +
 			"             ├─ isLateral: false\n" +
 			"             ├─ cacheable: true\n" +
+			"             ├─ colSet: (54-56)\n" +
+			"             ├─ tableId: 7\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [nation.n_name as nation, extract('YEAR' from orders.o_orderdate) as o_year, ((lineitem.l_extendedprice * (1 - lineitem.l_discount)) - (partsupp.ps_supplycost * lineitem.l_quantity)) as amount]\n" +
-			"                 └─ LookupJoin\n" +
-			"                     ├─ HashJoin\n" +
+			"                 └─ LookupJoin (estimated cost=3300.000 rows=1000)\n" +
+			"                     ├─ HashJoin (estimated cost=4020.000 rows=1000)\n" +
 			"                     │   ├─ ((((part.p_partkey = lineitem.l_partkey) AND (partsupp.ps_suppkey = lineitem.l_suppkey)) AND (partsupp.ps_partkey = lineitem.l_partkey)) AND (supplier.s_suppkey = partsupp.ps_suppkey))\n" +
-			"                     │   ├─ MergeJoin\n" +
+			"                     │   ├─ MergeJoin (estimated cost=1878.500 rows=1000)\n" +
 			"                     │   │   ├─ cmp: (part.p_partkey = partsupp.ps_partkey)\n" +
 			"                     │   │   ├─ Filter\n" +
 			"                     │   │   │   ├─ part.p_name LIKE '%green%'\n" +
@@ -1470,8 +1480,8 @@ order by
 			"                     │   └─ HashLookup\n" +
 			"                     │       ├─ left-key: (part.p_partkey, partsupp.ps_suppkey, partsupp.ps_partkey, partsupp.ps_suppkey)\n" +
 			"                     │       ├─ right-key: (lineitem.l_partkey, lineitem.l_suppkey, lineitem.l_partkey, supplier.s_suppkey)\n" +
-			"                     │       └─ LookupJoin\n" +
-			"                     │           ├─ MergeJoin\n" +
+			"                     │       └─ LookupJoin (estimated cost=3300.000 rows=1000)\n" +
+			"                     │           ├─ MergeJoin (estimated cost=2030.000 rows=1000)\n" +
 			"                     │           │   ├─ cmp: (lineitem.l_orderkey = orders.o_orderkey)\n" +
 			"                     │           │   ├─ IndexedTableAccess(lineitem)\n" +
 			"                     │           │   │   ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
@@ -1494,19 +1504,21 @@ order by
 			" ├─ columns: [profit.nation, profit.o_year, sum(profit.amount) as sum_profit]\n" +
 			" └─ Sort(profit.nation ASC, profit.o_year DESC)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ SelectDeps(SUM(profit.amount), profit.nation, profit.o_year)\n" +
-			"         ├─ Grouping(profit.nation, profit.o_year)\n" +
+			"         ├─ select: SUM(profit.amount), profit.nation, profit.o_year\n" +
+			"         ├─ group: profit.nation, profit.o_year\n" +
 			"         └─ SubqueryAlias\n" +
 			"             ├─ name: profit\n" +
 			"             ├─ outerVisibility: false\n" +
 			"             ├─ isLateral: false\n" +
 			"             ├─ cacheable: true\n" +
+			"             ├─ colSet: (54-56)\n" +
+			"             ├─ tableId: 7\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [nation.n_name as nation, extract('YEAR' from orders.o_orderdate) as o_year, ((lineitem.l_extendedprice * (1 - lineitem.l_discount)) - (partsupp.ps_supplycost * lineitem.l_quantity)) as amount]\n" +
-			"                 └─ LookupJoin\n" +
-			"                     ├─ HashJoin\n" +
+			"                 └─ LookupJoin (estimated cost=3300.000 rows=1000) (actual rows=0 loops=1)\n" +
+			"                     ├─ HashJoin (estimated cost=4020.000 rows=1000) (actual rows=0 loops=1)\n" +
 			"                     │   ├─ ((((part.p_partkey = lineitem.l_partkey) AND (partsupp.ps_suppkey = lineitem.l_suppkey)) AND (partsupp.ps_partkey = lineitem.l_partkey)) AND (supplier.s_suppkey = partsupp.ps_suppkey))\n" +
-			"                     │   ├─ MergeJoin\n" +
+			"                     │   ├─ MergeJoin (estimated cost=1878.500 rows=1000) (actual rows=0 loops=1)\n" +
 			"                     │   │   ├─ cmp: (part.p_partkey = partsupp.ps_partkey)\n" +
 			"                     │   │   ├─ Filter\n" +
 			"                     │   │   │   ├─ part.p_name LIKE '%green%'\n" +
@@ -1521,8 +1533,8 @@ order by
 			"                     │   └─ HashLookup\n" +
 			"                     │       ├─ left-key: (part.p_partkey, partsupp.ps_suppkey, partsupp.ps_partkey, partsupp.ps_suppkey)\n" +
 			"                     │       ├─ right-key: (lineitem.l_partkey, lineitem.l_suppkey, lineitem.l_partkey, supplier.s_suppkey)\n" +
-			"                     │       └─ LookupJoin\n" +
-			"                     │           ├─ MergeJoin\n" +
+			"                     │       └─ LookupJoin (estimated cost=3300.000 rows=1000)\n" +
+			"                     │           ├─ MergeJoin (estimated cost=2030.000 rows=1000)\n" +
 			"                     │           │   ├─ cmp: (lineitem.l_orderkey = orders.o_orderkey)\n" +
 			"                     │           │   ├─ IndexedTableAccess(lineitem)\n" +
 			"                     │           │   │   ├─ index: [lineitem.L_ORDERKEY,lineitem.L_LINENUMBER]\n" +
@@ -1641,11 +1653,11 @@ order by
 			"     └─ Project\n" +
 			"         ├─ columns: [sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))), customer.c_custkey, customer.c_name, customer.c_acctbal, nation.n_name, customer.c_address, customer.c_phone, customer.c_comment, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as revenue]\n" +
 			"         └─ GroupBy\n" +
-			"             ├─ SelectDeps(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), customer.c_custkey, customer.c_name, customer.c_acctbal, nation.n_name, customer.c_address, customer.c_phone, customer.c_comment)\n" +
-			"             ├─ Grouping(customer.c_custkey, customer.c_name, customer.c_acctbal, customer.c_phone, nation.n_name, customer.c_address, customer.c_comment)\n" +
-			"             └─ LookupJoin\n" +
-			"                 ├─ LookupJoin\n" +
-			"                 │   ├─ MergeJoin\n" +
+			"             ├─ select: SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), customer.c_custkey, customer.c_name, customer.c_acctbal, nation.n_name, customer.c_address, customer.c_phone, customer.c_comment\n" +
+			"             ├─ group: customer.c_custkey, customer.c_name, customer.c_acctbal, customer.c_phone, nation.n_name, customer.c_address, customer.c_comment\n" +
+			"             └─ LookupJoin (estimated cost=2805.000 rows=850)\n" +
+			"                 ├─ LookupJoin (estimated cost=2805.000 rows=850)\n" +
+			"                 │   ├─ MergeJoin (estimated cost=1725.500 rows=850)\n" +
 			"                 │   │   ├─ cmp: (orders.o_orderkey = lineitem.l_orderkey)\n" +
 			"                 │   │   ├─ Filter\n" +
 			"                 │   │   │   ├─ ((orders.o_orderdate >= '1993-10-01') AND (orders.o_orderdate < 1994-01-01 00:00:00 +0000 UTC))\n" +
@@ -1674,11 +1686,11 @@ order by
 			"     └─ Project\n" +
 			"         ├─ columns: [sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))), customer.c_custkey, customer.c_name, customer.c_acctbal, nation.n_name, customer.c_address, customer.c_phone, customer.c_comment, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as revenue]\n" +
 			"         └─ GroupBy\n" +
-			"             ├─ SelectDeps(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), customer.c_custkey, customer.c_name, customer.c_acctbal, nation.n_name, customer.c_address, customer.c_phone, customer.c_comment)\n" +
-			"             ├─ Grouping(customer.c_custkey, customer.c_name, customer.c_acctbal, customer.c_phone, nation.n_name, customer.c_address, customer.c_comment)\n" +
-			"             └─ LookupJoin\n" +
-			"                 ├─ LookupJoin\n" +
-			"                 │   ├─ MergeJoin\n" +
+			"             ├─ select: SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), customer.c_custkey, customer.c_name, customer.c_acctbal, nation.n_name, customer.c_address, customer.c_phone, customer.c_comment\n" +
+			"             ├─ group: customer.c_custkey, customer.c_name, customer.c_acctbal, customer.c_phone, nation.n_name, customer.c_address, customer.c_comment\n" +
+			"             └─ LookupJoin (estimated cost=2805.000 rows=850) (actual rows=0 loops=1)\n" +
+			"                 ├─ LookupJoin (estimated cost=2805.000 rows=850) (actual rows=0 loops=1)\n" +
+			"                 │   ├─ MergeJoin (estimated cost=1725.500 rows=850) (actual rows=0 loops=1)\n" +
 			"                 │   │   ├─ cmp: (orders.o_orderkey = lineitem.l_orderkey)\n" +
 			"                 │   │   ├─ Filter\n" +
 			"                 │   │   │   ├─ ((orders.o_orderdate >= '1993-10-01') AND (orders.o_orderdate < 1994-01-01 00:00:00 +0000 UTC))\n" +
@@ -1809,8 +1821,8 @@ order by
 			"         └─ Project\n" +
 			"             ├─ columns: [sum((partsupp.ps_supplycost * partsupp.ps_availqty)), partsupp.ps_partkey, partsupp.PS_SUPPLYCOST, partsupp.PS_AVAILQTY, sum((partsupp.ps_supplycost * partsupp.ps_availqty)) as value]\n" +
 			"             └─ GroupBy\n" +
-			"                 ├─ SelectDeps(SUM((partsupp.ps_supplycost * partsupp.ps_availqty)), partsupp.ps_partkey, partsupp.PS_SUPPLYCOST, partsupp.PS_AVAILQTY)\n" +
-			"                 ├─ Grouping(partsupp.ps_partkey)\n" +
+			"                 ├─ select: SUM((partsupp.ps_supplycost * partsupp.ps_availqty)), partsupp.ps_partkey, partsupp.PS_SUPPLYCOST, partsupp.PS_AVAILQTY\n" +
+			"                 ├─ group: partsupp.ps_partkey\n" +
 			"                 └─ LookupJoin\n" +
 			"                     ├─ LookupJoin\n" +
 			"                     │   ├─ Table\n" +
@@ -1831,8 +1843,8 @@ order by
 			"         └─ Project\n" +
 			"             ├─ columns: [sum((partsupp.ps_supplycost * partsupp.ps_availqty)), partsupp.ps_partkey, partsupp.PS_SUPPLYCOST, partsupp.PS_AVAILQTY, sum((partsupp.ps_supplycost * partsupp.ps_availqty)) as value]\n" +
 			"             └─ GroupBy\n" +
-			"                 ├─ SelectDeps(SUM((partsupp.ps_supplycost * partsupp.ps_availqty)), partsupp.ps_partkey, partsupp.PS_SUPPLYCOST, partsupp.PS_AVAILQTY)\n" +
-			"                 ├─ Grouping(partsupp.ps_partkey)\n" +
+			"                 ├─ select: SUM((partsupp.ps_supplycost * partsupp.ps_availqty)), partsupp.ps_partkey, partsupp.PS_SUPPLYCOST, partsupp.PS_AVAILQTY\n" +
+			"                 ├─ group: partsupp.ps_partkey\n" +
 			"                 └─ LookupJoin\n" +
 			"                     ├─ LookupJoin\n" +
 			"                     │   ├─ Table\n" +
@@ -1945,9 +1957,9 @@ order by
 			" ├─ columns: [lineitem.l_shipmode, sum(case  when ((orders.o_orderpriority = '1-urgent') or (orders.o_orderpriority = '2-high')) then 1 else 0 end) as high_line_count, sum(case  when ((not((orders.o_orderpriority = '1-urgent'))) and (not((orders.o_orderpriority = '2-high')))) then 1 else 0 end) as low_line_count]\n" +
 			" └─ Sort(lineitem.l_shipmode ASC)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ SelectDeps(SUM(CASE  WHEN ((NOT((orders.o_orderpriority = '1-URGENT'))) AND (NOT((orders.o_orderpriority = '2-HIGH')))) THEN 1 ELSE 0 END), SUM(CASE  WHEN ((orders.o_orderpriority = '1-URGENT') OR (orders.o_orderpriority = '2-HIGH')) THEN 1 ELSE 0 END), lineitem.l_shipmode)\n" +
-			"         ├─ Grouping(lineitem.l_shipmode)\n" +
-			"         └─ MergeJoin\n" +
+			"         ├─ select: SUM(CASE  WHEN ((NOT((orders.o_orderpriority = '1-URGENT'))) AND (NOT((orders.o_orderpriority = '2-HIGH')))) THEN 1 ELSE 0 END), SUM(CASE  WHEN ((orders.o_orderpriority = '1-URGENT') OR (orders.o_orderpriority = '2-HIGH')) THEN 1 ELSE 0 END), lineitem.l_shipmode\n" +
+			"         ├─ group: lineitem.l_shipmode\n" +
+			"         └─ MergeJoin (estimated cost=1877.000 rows=850)\n" +
 			"             ├─ cmp: (orders.o_orderkey = lineitem.l_orderkey)\n" +
 			"             ├─ IndexedTableAccess(orders)\n" +
 			"             │   ├─ index: [orders.O_ORDERKEY]\n" +
@@ -1964,9 +1976,9 @@ order by
 			" ├─ columns: [lineitem.l_shipmode, sum(case  when ((orders.o_orderpriority = '1-urgent') or (orders.o_orderpriority = '2-high')) then 1 else 0 end) as high_line_count, sum(case  when ((not((orders.o_orderpriority = '1-urgent'))) and (not((orders.o_orderpriority = '2-high')))) then 1 else 0 end) as low_line_count]\n" +
 			" └─ Sort(lineitem.l_shipmode ASC)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ SelectDeps(SUM(CASE  WHEN ((NOT((orders.o_orderpriority = '1-URGENT'))) AND (NOT((orders.o_orderpriority = '2-HIGH')))) THEN 1 ELSE 0 END), SUM(CASE  WHEN ((orders.o_orderpriority = '1-URGENT') OR (orders.o_orderpriority = '2-HIGH')) THEN 1 ELSE 0 END), lineitem.l_shipmode)\n" +
-			"         ├─ Grouping(lineitem.l_shipmode)\n" +
-			"         └─ MergeJoin\n" +
+			"         ├─ select: SUM(CASE  WHEN ((NOT((orders.o_orderpriority = '1-URGENT'))) AND (NOT((orders.o_orderpriority = '2-HIGH')))) THEN 1 ELSE 0 END), SUM(CASE  WHEN ((orders.o_orderpriority = '1-URGENT') OR (orders.o_orderpriority = '2-HIGH')) THEN 1 ELSE 0 END), lineitem.l_shipmode\n" +
+			"         ├─ group: lineitem.l_shipmode\n" +
+			"         └─ MergeJoin (estimated cost=1877.000 rows=850) (actual rows=0 loops=1)\n" +
 			"             ├─ cmp: (orders.o_orderkey = lineitem.l_orderkey)\n" +
 			"             ├─ IndexedTableAccess(orders)\n" +
 			"             │   ├─ index: [orders.O_ORDERKEY]\n" +
@@ -2047,19 +2059,21 @@ order by
 			"     └─ Project\n" +
 			"         ├─ columns: [count(1), c_orders.c_count, count(1) as custdist]\n" +
 			"         └─ GroupBy\n" +
-			"             ├─ SelectDeps(COUNT(1), c_orders.c_count)\n" +
-			"             ├─ Grouping(c_orders.c_count)\n" +
+			"             ├─ select: COUNT(1), c_orders.c_count\n" +
+			"             ├─ group: c_orders.c_count\n" +
 			"             └─ SubqueryAlias\n" +
 			"                 ├─ name: c_orders\n" +
 			"                 ├─ outerVisibility: false\n" +
 			"                 ├─ isLateral: false\n" +
 			"                 ├─ cacheable: true\n" +
+			"                 ├─ colSet: (19,20)\n" +
+			"                 ├─ tableId: 3\n" +
 			"                 └─ Project\n" +
 			"                     ├─ columns: [customer.c_custkey, count(orders.o_orderkey) as count(o_orderkey)]\n" +
 			"                     └─ GroupBy\n" +
-			"                         ├─ SelectDeps(COUNT(orders.o_orderkey), customer.c_custkey)\n" +
-			"                         ├─ Grouping(customer.c_custkey)\n" +
-			"                         └─ LeftOuterJoin\n" +
+			"                         ├─ select: COUNT(orders.o_orderkey), customer.c_custkey\n" +
+			"                         ├─ group: customer.c_custkey\n" +
+			"                         └─ LeftOuterJoin (estimated cost=1009999.000 rows=1250)\n" +
 			"                             ├─ ((customer.c_custkey = orders.o_custkey) AND (NOT(orders.o_comment LIKE '%special%requests%')))\n" +
 			"                             ├─ Table\n" +
 			"                             │   ├─ name: customer\n" +
@@ -2074,19 +2088,21 @@ order by
 			"     └─ Project\n" +
 			"         ├─ columns: [count(1), c_orders.c_count, count(1) as custdist]\n" +
 			"         └─ GroupBy\n" +
-			"             ├─ SelectDeps(COUNT(1), c_orders.c_count)\n" +
-			"             ├─ Grouping(c_orders.c_count)\n" +
+			"             ├─ select: COUNT(1), c_orders.c_count\n" +
+			"             ├─ group: c_orders.c_count\n" +
 			"             └─ SubqueryAlias\n" +
 			"                 ├─ name: c_orders\n" +
 			"                 ├─ outerVisibility: false\n" +
 			"                 ├─ isLateral: false\n" +
 			"                 ├─ cacheable: true\n" +
+			"                 ├─ colSet: (19,20)\n" +
+			"                 ├─ tableId: 3\n" +
 			"                 └─ Project\n" +
 			"                     ├─ columns: [customer.c_custkey, count(orders.o_orderkey) as count(o_orderkey)]\n" +
 			"                     └─ GroupBy\n" +
-			"                         ├─ SelectDeps(COUNT(orders.o_orderkey), customer.c_custkey)\n" +
-			"                         ├─ Grouping(customer.c_custkey)\n" +
-			"                         └─ LeftOuterJoin\n" +
+			"                         ├─ select: COUNT(orders.o_orderkey), customer.c_custkey\n" +
+			"                         ├─ group: customer.c_custkey\n" +
+			"                         └─ LeftOuterJoin (estimated cost=1009999.000 rows=1250) (actual rows=0 loops=1)\n" +
 			"                             ├─ ((customer.c_custkey = orders.o_custkey) AND (NOT(orders.o_comment LIKE '%special%requests%')))\n" +
 			"                             ├─ Table\n" +
 			"                             │   ├─ name: customer\n" +
@@ -2142,9 +2158,9 @@ where
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [((100.00 * sum(case  when part.p_type like 'promo%' then (lineitem.l_extendedprice * (1 - lineitem.l_discount)) else 0 end)) / sum((lineitem.l_extendedprice * (1 - lineitem.l_discount)))) as promo_revenue]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectDeps(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), SUM(CASE  WHEN part.p_type LIKE 'PROMO%' THEN (lineitem.l_extendedprice * (1 - lineitem.l_discount)) ELSE 0 END))\n" +
-			"     ├─ Grouping()\n" +
-			"     └─ LookupJoin\n" +
+			"     ├─ select: SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), SUM(CASE  WHEN part.p_type LIKE 'PROMO%' THEN (lineitem.l_extendedprice * (1 - lineitem.l_discount)) ELSE 0 END)\n" +
+			"     ├─ group: \n" +
+			"     └─ LookupJoin (estimated cost=2805.000 rows=850)\n" +
 			"         ├─ Filter\n" +
 			"         │   ├─ ((lineitem.l_shipdate >= '1995-09-01') AND (lineitem.l_shipdate < 1995-10-01 00:00:00 +0000 UTC))\n" +
 			"         │   └─ Table\n" +
@@ -2158,9 +2174,9 @@ where
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [((100.00 * sum(case  when part.p_type like 'promo%' then (lineitem.l_extendedprice * (1 - lineitem.l_discount)) else 0 end)) / sum((lineitem.l_extendedprice * (1 - lineitem.l_discount)))) as promo_revenue]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectDeps(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), SUM(CASE  WHEN part.p_type LIKE 'PROMO%' THEN (lineitem.l_extendedprice * (1 - lineitem.l_discount)) ELSE 0 END))\n" +
-			"     ├─ Grouping()\n" +
-			"     └─ LookupJoin\n" +
+			"     ├─ select: SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), SUM(CASE  WHEN part.p_type LIKE 'PROMO%' THEN (lineitem.l_extendedprice * (1 - lineitem.l_discount)) ELSE 0 END)\n" +
+			"     ├─ group: \n" +
+			"     └─ LookupJoin (estimated cost=2805.000 rows=850) (actual rows=0 loops=1)\n" +
 			"         ├─ Filter\n" +
 			"         │   ├─ ((lineitem.l_shipdate >= '1995-09-01') AND (lineitem.l_shipdate < 1995-10-01 00:00:00 +0000 UTC))\n" +
 			"         │   └─ Table\n" +
@@ -2281,18 +2297,20 @@ order by
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [supplier.s_suppkey, supplier.s_name, supplier.s_address, supplier.s_phone, revenue0.total_revenue]\n" +
 			" └─ Sort(supplier.s_suppkey ASC)\n" +
-			"     └─ LookupJoin\n" +
+			"     └─ LookupJoin (estimated cost=330.000 rows=100)\n" +
 			"         ├─ (revenue0.total_revenue = Subquery(select max(total_revenue) from revenue0))\n" +
 			"         ├─ SubqueryAlias\n" +
 			"         │   ├─ name: revenue0\n" +
 			"         │   ├─ outerVisibility: false\n" +
 			"         │   ├─ isLateral: false\n" +
 			"         │   ├─ cacheable: true\n" +
+			"         │   ├─ colSet: (27,28)\n" +
+			"         │   ├─ tableId: 3\n" +
 			"         │   └─ Project\n" +
 			"         │       ├─ columns: [lineitem.l_suppkey, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as sum(l_extendedprice * (1 - l_discount))]\n" +
 			"         │       └─ GroupBy\n" +
-			"         │           ├─ SelectDeps(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), lineitem.l_suppkey)\n" +
-			"         │           ├─ Grouping(lineitem.l_suppkey)\n" +
+			"         │           ├─ select: SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), lineitem.l_suppkey\n" +
+			"         │           ├─ group: lineitem.l_suppkey\n" +
 			"         │           └─ Filter\n" +
 			"         │               ├─ ((lineitem.l_shipdate >= '1996-01-01') AND (lineitem.l_shipdate < 1996-04-01 00:00:00 +0000 UTC))\n" +
 			"         │               └─ Table\n" +
@@ -2305,18 +2323,20 @@ order by
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [supplier.s_suppkey, supplier.s_name, supplier.s_address, supplier.s_phone, revenue0.total_revenue]\n" +
 			" └─ Sort(supplier.s_suppkey ASC)\n" +
-			"     └─ LookupJoin\n" +
+			"     └─ LookupJoin (estimated cost=330.000 rows=100) (actual rows=0 loops=1)\n" +
 			"         ├─ (revenue0.total_revenue = Subquery(select max(total_revenue) from revenue0))\n" +
 			"         ├─ SubqueryAlias\n" +
 			"         │   ├─ name: revenue0\n" +
 			"         │   ├─ outerVisibility: false\n" +
 			"         │   ├─ isLateral: false\n" +
 			"         │   ├─ cacheable: true\n" +
+			"         │   ├─ colSet: (27,28)\n" +
+			"         │   ├─ tableId: 3\n" +
 			"         │   └─ Project\n" +
 			"         │       ├─ columns: [lineitem.l_suppkey, sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as sum(l_extendedprice * (1 - l_discount))]\n" +
 			"         │       └─ GroupBy\n" +
-			"         │           ├─ SelectDeps(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), lineitem.l_suppkey)\n" +
-			"         │           ├─ Grouping(lineitem.l_suppkey)\n" +
+			"         │           ├─ select: SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))), lineitem.l_suppkey\n" +
+			"         │           ├─ group: lineitem.l_suppkey\n" +
 			"         │           └─ Filter\n" +
 			"         │               ├─ ((lineitem.l_shipdate >= '1996-01-01') AND (lineitem.l_shipdate < 1996-04-01 00:00:00 +0000 UTC))\n" +
 			"         │               └─ Table\n" +
@@ -2429,14 +2449,14 @@ order by
 			"     └─ Project\n" +
 			"         ├─ columns: [countdistinct([partsupp.ps_suppkey]), part.p_brand, part.p_type, part.p_size, countdistinct([partsupp.ps_suppkey]) as supplier_cnt]\n" +
 			"         └─ GroupBy\n" +
-			"             ├─ SelectDeps(COUNTDISTINCT([partsupp.ps_suppkey]), part.p_brand, part.p_type, part.p_size)\n" +
-			"             ├─ Grouping(part.p_brand, part.p_type, part.p_size)\n" +
+			"             ├─ select: COUNTDISTINCT([partsupp.ps_suppkey]), part.p_brand, part.p_type, part.p_size\n" +
+			"             ├─ group: part.p_brand, part.p_type, part.p_size\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [partsupp.PS_PARTKEY, partsupp.PS_SUPPKEY, partsupp.PS_AVAILQTY, partsupp.PS_SUPPLYCOST, partsupp.PS_COMMENT, part.P_PARTKEY, part.P_NAME, part.P_MFGR, part.P_BRAND, part.P_TYPE, part.P_SIZE, part.P_CONTAINER, part.P_RETAILPRICE, part.P_COMMENT]\n" +
 			"                 └─ Filter\n" +
 			"                     ├─ supplier.s_suppkey IS NULL\n" +
-			"                     └─ LeftOuterLookupJoin\n" +
-			"                         ├─ MergeJoin\n" +
+			"                     └─ LeftOuterLookupJoin (estimated cost=3300.000 rows=1000)\n" +
+			"                         ├─ MergeJoin (estimated cost=1878.500 rows=1000)\n" +
 			"                         │   ├─ cmp: (partsupp.ps_partkey = part.p_partkey)\n" +
 			"                         │   ├─ IndexedTableAccess(partsupp)\n" +
 			"                         │   │   ├─ index: [partsupp.PS_PARTKEY,partsupp.PS_SUPPKEY]\n" +
@@ -2460,14 +2480,14 @@ order by
 			"     └─ Project\n" +
 			"         ├─ columns: [countdistinct([partsupp.ps_suppkey]), part.p_brand, part.p_type, part.p_size, countdistinct([partsupp.ps_suppkey]) as supplier_cnt]\n" +
 			"         └─ GroupBy\n" +
-			"             ├─ SelectDeps(COUNTDISTINCT([partsupp.ps_suppkey]), part.p_brand, part.p_type, part.p_size)\n" +
-			"             ├─ Grouping(part.p_brand, part.p_type, part.p_size)\n" +
+			"             ├─ select: COUNTDISTINCT([partsupp.ps_suppkey]), part.p_brand, part.p_type, part.p_size\n" +
+			"             ├─ group: part.p_brand, part.p_type, part.p_size\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [partsupp.PS_PARTKEY, partsupp.PS_SUPPKEY, partsupp.PS_AVAILQTY, partsupp.PS_SUPPLYCOST, partsupp.PS_COMMENT, part.P_PARTKEY, part.P_NAME, part.P_MFGR, part.P_BRAND, part.P_TYPE, part.P_SIZE, part.P_CONTAINER, part.P_RETAILPRICE, part.P_COMMENT]\n" +
 			"                 └─ Filter\n" +
 			"                     ├─ supplier.s_suppkey IS NULL\n" +
-			"                     └─ LeftOuterLookupJoin\n" +
-			"                         ├─ MergeJoin\n" +
+			"                     └─ LeftOuterLookupJoin (estimated cost=3300.000 rows=1000) (actual rows=0 loops=1)\n" +
+			"                         ├─ MergeJoin (estimated cost=1878.500 rows=1000) (actual rows=0 loops=1)\n" +
 			"                         │   ├─ cmp: (partsupp.ps_partkey = part.p_partkey)\n" +
 			"                         │   ├─ IndexedTableAccess(partsupp)\n" +
 			"                         │   │   ├─ index: [partsupp.PS_PARTKEY,partsupp.PS_SUPPKEY]\n" +
@@ -2555,9 +2575,9 @@ where
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [(sum(lineitem.l_extendedprice) / 7.0) as avg_yearly]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectDeps(SUM(lineitem.l_extendedprice))\n" +
-			"     ├─ Grouping()\n" +
-			"     └─ LookupJoin\n" +
+			"     ├─ select: SUM(lineitem.l_extendedprice)\n" +
+			"     ├─ group: \n" +
+			"     └─ LookupJoin (estimated cost=3300.000 rows=1000)\n" +
 			"         ├─ (lineitem.l_quantity < Subquery(select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey))\n" +
 			"         ├─ Table\n" +
 			"         │   └─ name: lineitem\n" +
@@ -2570,9 +2590,9 @@ where
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [(sum(lineitem.l_extendedprice) / 7.0) as avg_yearly]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectDeps(SUM(lineitem.l_extendedprice))\n" +
-			"     ├─ Grouping()\n" +
-			"     └─ LookupJoin\n" +
+			"     ├─ select: SUM(lineitem.l_extendedprice)\n" +
+			"     ├─ group: \n" +
+			"     └─ LookupJoin (estimated cost=3300.000 rows=1000) (actual rows=0 loops=1)\n" +
 			"         ├─ (lineitem.l_quantity < Subquery(select 0.2 * avg(l_quantity) from lineitem where l_partkey = p_partkey))\n" +
 			"         ├─ Table\n" +
 			"         │   └─ name: lineitem\n" +
@@ -2668,13 +2688,13 @@ order by
 			" ├─ columns: [customer.c_name, customer.c_custkey, orders.o_orderkey, orders.o_orderdate, orders.o_totalprice, sum(lineitem.l_quantity) as sum(l_quantity)]\n" +
 			" └─ Sort(orders.o_totalprice DESC, orders.o_orderdate ASC)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ SelectDeps(SUM(lineitem.l_quantity), customer.c_name, customer.c_custkey, orders.o_orderkey, orders.o_orderdate, orders.o_totalprice)\n" +
-			"         ├─ Grouping(customer.c_name, customer.c_custkey, orders.o_orderkey, orders.o_orderdate, orders.o_totalprice)\n" +
-			"         └─ SemiJoin\n" +
+			"         ├─ select: SUM(lineitem.l_quantity), customer.c_name, customer.c_custkey, orders.o_orderkey, orders.o_orderdate, orders.o_totalprice\n" +
+			"         ├─ group: customer.c_name, customer.c_custkey, orders.o_orderkey, orders.o_orderdate, orders.o_totalprice\n" +
+			"         └─ SemiJoin (No stats)\n" +
 			"             ├─ (orders.o_orderkey = lineitem_1.l_orderkey)\n" +
-			"             ├─ InnerJoin\n" +
+			"             ├─ InnerJoin (No stats)\n" +
 			"             │   ├─ (orders.o_orderkey = lineitem.l_orderkey)\n" +
-			"             │   ├─ InnerJoin\n" +
+			"             │   ├─ InnerJoin (No stats)\n" +
 			"             │   │   ├─ (customer.c_custkey = orders.o_custkey)\n" +
 			"             │   │   ├─ Table\n" +
 			"             │   │   │   └─ name: customer\n" +
@@ -2686,8 +2706,8 @@ order by
 			"                 ├─ columns: [lineitem_1.l_orderkey]\n" +
 			"                 └─ Having((sum(lineitem.l_quantity) > 300))\n" +
 			"                     └─ GroupBy\n" +
-			"                         ├─ SelectDeps(SUM(lineitem_1.l_quantity), lineitem_1.l_orderkey, lineitem_1.L_QUANTITY)\n" +
-			"                         ├─ Grouping(lineitem_1.l_orderkey)\n" +
+			"                         ├─ select: SUM(lineitem_1.l_quantity), lineitem_1.l_orderkey, lineitem_1.L_QUANTITY\n" +
+			"                         ├─ group: lineitem_1.l_orderkey\n" +
 			"                         └─ TableAlias(lineitem_1)\n" +
 			"                             └─ Table\n" +
 			"                                 └─ name: lineitem\n" +
@@ -2696,13 +2716,13 @@ order by
 			" ├─ columns: [customer.c_name, customer.c_custkey, orders.o_orderkey, orders.o_orderdate, orders.o_totalprice, sum(lineitem.l_quantity) as sum(l_quantity)]\n" +
 			" └─ Sort(orders.o_totalprice DESC, orders.o_orderdate ASC)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ SelectDeps(SUM(lineitem.l_quantity), customer.c_name, customer.c_custkey, orders.o_orderkey, orders.o_orderdate, orders.o_totalprice)\n" +
-			"         ├─ Grouping(customer.c_name, customer.c_custkey, orders.o_orderkey, orders.o_orderdate, orders.o_totalprice)\n" +
-			"         └─ SemiJoin\n" +
+			"         ├─ select: SUM(lineitem.l_quantity), customer.c_name, customer.c_custkey, orders.o_orderkey, orders.o_orderdate, orders.o_totalprice\n" +
+			"         ├─ group: customer.c_name, customer.c_custkey, orders.o_orderkey, orders.o_orderdate, orders.o_totalprice\n" +
+			"         └─ SemiJoin (No stats)\n" +
 			"             ├─ (orders.o_orderkey = lineitem_1.l_orderkey)\n" +
-			"             ├─ InnerJoin\n" +
+			"             ├─ InnerJoin (No stats)\n" +
 			"             │   ├─ (orders.o_orderkey = lineitem.l_orderkey)\n" +
-			"             │   ├─ InnerJoin\n" +
+			"             │   ├─ InnerJoin (No stats)\n" +
 			"             │   │   ├─ (customer.c_custkey = orders.o_custkey)\n" +
 			"             │   │   ├─ Table\n" +
 			"             │   │   │   └─ name: customer\n" +
@@ -2714,8 +2734,8 @@ order by
 			"                 ├─ columns: [lineitem_1.l_orderkey]\n" +
 			"                 └─ Having((sum(lineitem.l_quantity) > 300))\n" +
 			"                     └─ GroupBy\n" +
-			"                         ├─ SelectDeps(SUM(lineitem_1.l_quantity), lineitem_1.l_orderkey, lineitem_1.L_QUANTITY)\n" +
-			"                         ├─ Grouping(lineitem_1.l_orderkey)\n" +
+			"                         ├─ select: SUM(lineitem_1.l_quantity), lineitem_1.l_orderkey, lineitem_1.L_QUANTITY\n" +
+			"                         ├─ group: lineitem_1.l_orderkey\n" +
 			"                         └─ TableAlias(lineitem_1)\n" +
 			"                             └─ Table\n" +
 			"                                 └─ name: lineitem\n" +
@@ -2906,9 +2926,9 @@ where
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as revenue]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectDeps(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))))\n" +
-			"     ├─ Grouping()\n" +
-			"     └─ LookupJoin\n" +
+			"     ├─ select: SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount)))\n" +
+			"     ├─ group: \n" +
+			"     └─ LookupJoin (estimated cost=-852.625 rows=1250)\n" +
 			"         ├─ ((((((((((part.p_partkey = lineitem.l_partkey) AND (part.p_brand = 'Brand#12')) AND (part.p_container IN ('SM CASE', 'SM BOX', 'SM PACK', 'SM PKG'))) AND (lineitem.l_quantity >= 1)) AND (lineitem.l_quantity <= 11)) AND ((part.p_size >= 1) AND (part.p_size <= 5))) AND (lineitem.l_shipmode IN ('AIR', 'AIR REG'))) AND (lineitem.l_shipinstruct = 'DELIVER IN PERSON')) OR ((((((((part.p_partkey = lineitem.l_partkey) AND (part.p_brand = 'Brand#23')) AND (part.p_container IN ('MED BAG', 'MED BOX', 'MED PKG', 'MED PACK'))) AND (lineitem.l_quantity >= 10)) AND (lineitem.l_quantity <= 20)) AND ((part.p_size >= 1) AND (part.p_size <= 10))) AND (lineitem.l_shipmode IN ('AIR', 'AIR REG'))) AND (lineitem.l_shipinstruct = 'DELIVER IN PERSON'))) OR ((((((((part.p_partkey = lineitem.l_partkey) AND (part.p_brand = 'Brand#34')) AND (part.p_container IN ('LG CASE', 'LG BOX', 'LG PACK', 'LG PKG'))) AND (lineitem.l_quantity >= 20)) AND (lineitem.l_quantity <= 30)) AND ((part.p_size >= 1) AND (part.p_size <= 15))) AND (lineitem.l_shipmode IN ('AIR', 'AIR REG'))) AND (lineitem.l_shipinstruct = 'DELIVER IN PERSON')))\n" +
 			"         ├─ Table\n" +
 			"         │   ├─ name: lineitem\n" +
@@ -2931,9 +2951,9 @@ where
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [sum((lineitem.l_extendedprice * (1 - lineitem.l_discount))) as revenue]\n" +
 			" └─ GroupBy\n" +
-			"     ├─ SelectDeps(SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount))))\n" +
-			"     ├─ Grouping()\n" +
-			"     └─ LookupJoin\n" +
+			"     ├─ select: SUM((lineitem.l_extendedprice * (1 - lineitem.l_discount)))\n" +
+			"     ├─ group: \n" +
+			"     └─ LookupJoin (estimated cost=-852.625 rows=1250) (actual rows=0 loops=1)\n" +
 			"         ├─ ((((((((((part.p_partkey = lineitem.l_partkey) AND (part.p_brand = 'Brand#12')) AND (part.p_container IN ('SM CASE', 'SM BOX', 'SM PACK', 'SM PKG'))) AND (lineitem.l_quantity >= 1)) AND (lineitem.l_quantity <= 11)) AND ((part.p_size >= 1) AND (part.p_size <= 5))) AND (lineitem.l_shipmode IN ('AIR', 'AIR REG'))) AND (lineitem.l_shipinstruct = 'DELIVER IN PERSON')) OR ((((((((part.p_partkey = lineitem.l_partkey) AND (part.p_brand = 'Brand#23')) AND (part.p_container IN ('MED BAG', 'MED BOX', 'MED PKG', 'MED PACK'))) AND (lineitem.l_quantity >= 10)) AND (lineitem.l_quantity <= 20)) AND ((part.p_size >= 1) AND (part.p_size <= 10))) AND (lineitem.l_shipmode IN ('AIR', 'AIR REG'))) AND (lineitem.l_shipinstruct = 'DELIVER IN PERSON'))) OR ((((((((part.p_partkey = lineitem.l_partkey) AND (part.p_brand = 'Brand#34')) AND (part.p_container IN ('LG CASE', 'LG BOX', 'LG PACK', 'LG PKG'))) AND (lineitem.l_quantity >= 20)) AND (lineitem.l_quantity <= 30)) AND ((part.p_size >= 1) AND (part.p_size <= 15))) AND (lineitem.l_shipmode IN ('AIR', 'AIR REG'))) AND (lineitem.l_shipinstruct = 'DELIVER IN PERSON')))\n" +
 			"         ├─ Table\n" +
 			"         │   ├─ name: lineitem\n" +
@@ -3107,13 +3127,13 @@ order by
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [supplier.s_name, supplier.s_address]\n" +
 			" └─ Sort(supplier.s_name ASC)\n" +
-			"     └─ LookupJoin\n" +
-			"         ├─ LookupJoin\n" +
+			"     └─ LookupJoin (estimated cost=3300.000 rows=1000)\n" +
+			"         ├─ LookupJoin (estimated cost=3300.000 rows=1000)\n" +
 			"         │   ├─ (supplier.s_suppkey = partsupp.ps_suppkey)\n" +
 			"         │   ├─ Distinct\n" +
 			"         │   │   └─ Project\n" +
 			"         │   │       ├─ columns: [partsupp.ps_suppkey]\n" +
-			"         │   │       └─ SemiLookupJoin\n" +
+			"         │   │       └─ SemiLookupJoin (estimated cost=3300.000 rows=1000)\n" +
 			"         │   │           ├─ (partsupp.ps_availqty > Subquery(select 0.5 * sum(l_quantity) from lineitem where l_partkey = ps_partkey and l_suppkey = ps_suppkey and l_shipdate >= '1994-01-01' and l_shipdate < '1994-01-01' + interval '1' year))\n" +
 			"         │   │           ├─ Table\n" +
 			"         │   │           │   └─ name: partsupp\n" +
@@ -3136,13 +3156,13 @@ order by
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [supplier.s_name, supplier.s_address]\n" +
 			" └─ Sort(supplier.s_name ASC)\n" +
-			"     └─ LookupJoin\n" +
-			"         ├─ LookupJoin\n" +
+			"     └─ LookupJoin (estimated cost=3300.000 rows=1000) (actual rows=0 loops=1)\n" +
+			"         ├─ LookupJoin (estimated cost=3300.000 rows=1000) (actual rows=0 loops=1)\n" +
 			"         │   ├─ (supplier.s_suppkey = partsupp.ps_suppkey)\n" +
 			"         │   ├─ Distinct\n" +
 			"         │   │   └─ Project\n" +
 			"         │   │       ├─ columns: [partsupp.ps_suppkey]\n" +
-			"         │   │       └─ SemiLookupJoin\n" +
+			"         │   │       └─ SemiLookupJoin (estimated cost=3300.000 rows=1000) (actual rows=0 loops=1)\n" +
 			"         │   │           ├─ (partsupp.ps_availqty > Subquery(select 0.5 * sum(l_quantity) from lineitem where l_partkey = ps_partkey and l_suppkey = ps_suppkey and l_shipdate >= '1994-01-01' and l_shipdate < '1994-01-01' + interval '1' year))\n" +
 			"         │   │           ├─ Table\n" +
 			"         │   │           │   └─ name: partsupp\n" +
@@ -3303,15 +3323,15 @@ order by
 			"     └─ Project\n" +
 			"         ├─ columns: [count(1), supplier.s_name, count(1) as numwait]\n" +
 			"         └─ GroupBy\n" +
-			"             ├─ SelectDeps(COUNT(1), supplier.s_name)\n" +
-			"             ├─ Grouping(supplier.s_name)\n" +
-			"             └─ SemiLookupJoin\n" +
+			"             ├─ select: COUNT(1), supplier.s_name\n" +
+			"             ├─ group: supplier.s_name\n" +
+			"             └─ SemiLookupJoin (estimated cost=3960.000 rows=1250)\n" +
 			"                 ├─ (NOT((l2.l_suppkey = l1.l_suppkey)))\n" +
-			"                 ├─ AntiJoinIncludingNulls\n" +
+			"                 ├─ AntiJoinIncludingNulls (estimated cost=365712.500 rows=1062)\n" +
 			"                 │   ├─ ((l3.l_orderkey = l1.l_orderkey) AND (NOT((l3.l_suppkey = l1.l_suppkey))))\n" +
-			"                 │   ├─ LookupJoin\n" +
-			"                 │   │   ├─ LookupJoin\n" +
-			"                 │   │   │   ├─ MergeJoin\n" +
+			"                 │   ├─ LookupJoin (estimated cost=2805.000 rows=850)\n" +
+			"                 │   │   ├─ LookupJoin (estimated cost=2805.000 rows=850)\n" +
+			"                 │   │   │   ├─ MergeJoin (estimated cost=1725.500 rows=850)\n" +
 			"                 │   │   │   │   ├─ cmp: (l1.l_orderkey = orders.o_orderkey)\n" +
 			"                 │   │   │   │   ├─ Filter\n" +
 			"                 │   │   │   │   │   ├─ (l1.l_receiptdate > l1.l_commitdate)\n" +
@@ -3350,15 +3370,15 @@ order by
 			"     └─ Project\n" +
 			"         ├─ columns: [count(1), supplier.s_name, count(1) as numwait]\n" +
 			"         └─ GroupBy\n" +
-			"             ├─ SelectDeps(COUNT(1), supplier.s_name)\n" +
-			"             ├─ Grouping(supplier.s_name)\n" +
-			"             └─ SemiLookupJoin\n" +
+			"             ├─ select: COUNT(1), supplier.s_name\n" +
+			"             ├─ group: supplier.s_name\n" +
+			"             └─ SemiLookupJoin (estimated cost=3960.000 rows=1250) (actual rows=0 loops=1)\n" +
 			"                 ├─ (NOT((l2.l_suppkey = l1.l_suppkey)))\n" +
-			"                 ├─ AntiJoinIncludingNulls\n" +
+			"                 ├─ AntiJoinIncludingNulls (estimated cost=365712.500 rows=1062) (actual rows=0 loops=1)\n" +
 			"                 │   ├─ ((l3.l_orderkey = l1.l_orderkey) AND (NOT((l3.l_suppkey = l1.l_suppkey))))\n" +
-			"                 │   ├─ LookupJoin\n" +
-			"                 │   │   ├─ LookupJoin\n" +
-			"                 │   │   │   ├─ MergeJoin\n" +
+			"                 │   ├─ LookupJoin (estimated cost=2805.000 rows=850) (actual rows=0 loops=1)\n" +
+			"                 │   │   ├─ LookupJoin (estimated cost=2805.000 rows=850) (actual rows=0 loops=1)\n" +
+			"                 │   │   │   ├─ MergeJoin (estimated cost=1725.500 rows=850) (actual rows=0 loops=1)\n" +
 			"                 │   │   │   │   ├─ cmp: (l1.l_orderkey = orders.o_orderkey)\n" +
 			"                 │   │   │   │   ├─ Filter\n" +
 			"                 │   │   │   │   │   ├─ (l1.l_receiptdate > l1.l_commitdate)\n" +
@@ -3503,13 +3523,15 @@ order by
 			" ├─ columns: [custsale.cntrycode, count(1) as numcust, sum(custsale.c_acctbal) as totacctbal]\n" +
 			" └─ Sort(custsale.cntrycode ASC)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ SelectDeps(COUNT(1), SUM(custsale.c_acctbal), custsale.cntrycode)\n" +
-			"         ├─ Grouping(custsale.cntrycode)\n" +
+			"         ├─ select: COUNT(1), SUM(custsale.c_acctbal), custsale.cntrycode\n" +
+			"         ├─ group: custsale.cntrycode\n" +
 			"         └─ SubqueryAlias\n" +
 			"             ├─ name: custsale\n" +
 			"             ├─ outerVisibility: false\n" +
 			"             ├─ isLateral: false\n" +
 			"             ├─ cacheable: true\n" +
+			"             ├─ colSet: (28,29)\n" +
+			"             ├─ tableId: 4\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [SUBSTRING(customer.c_phone, 1, 2) as cntrycode, customer.c_acctbal]\n" +
 			"                 └─ Filter\n" +
@@ -3518,7 +3540,7 @@ order by
 			"                         ├─ columns: [customer.C_CUSTKEY, customer.C_NAME, customer.C_ADDRESS, customer.C_NATIONKEY, customer.C_PHONE, customer.C_ACCTBAL, customer.C_MKTSEGMENT, customer.C_COMMENT]\n" +
 			"                         └─ Filter\n" +
 			"                             ├─ orders.o_custkey IS NULL\n" +
-			"                             └─ LeftOuterHashJoin\n" +
+			"                             └─ LeftOuterHashJoin (estimated cost=3869.120 rows=1062)\n" +
 			"                                 ├─ (orders.o_custkey = customer.c_custkey)\n" +
 			"                                 ├─ Filter\n" +
 			"                                 │   ├─ (SUBSTRING(customer.c_phone, 1, 2) HASH IN ('13', '31', '23', '29', '30', '18', '17'))\n" +
@@ -3537,13 +3559,15 @@ order by
 			" ├─ columns: [custsale.cntrycode, count(1) as numcust, sum(custsale.c_acctbal) as totacctbal]\n" +
 			" └─ Sort(custsale.cntrycode ASC)\n" +
 			"     └─ GroupBy\n" +
-			"         ├─ SelectDeps(COUNT(1), SUM(custsale.c_acctbal), custsale.cntrycode)\n" +
-			"         ├─ Grouping(custsale.cntrycode)\n" +
+			"         ├─ select: COUNT(1), SUM(custsale.c_acctbal), custsale.cntrycode\n" +
+			"         ├─ group: custsale.cntrycode\n" +
 			"         └─ SubqueryAlias\n" +
 			"             ├─ name: custsale\n" +
 			"             ├─ outerVisibility: false\n" +
 			"             ├─ isLateral: false\n" +
 			"             ├─ cacheable: true\n" +
+			"             ├─ colSet: (28,29)\n" +
+			"             ├─ tableId: 4\n" +
 			"             └─ Project\n" +
 			"                 ├─ columns: [SUBSTRING(customer.c_phone, 1, 2) as cntrycode, customer.c_acctbal]\n" +
 			"                 └─ Filter\n" +
@@ -3552,7 +3576,7 @@ order by
 			"                         ├─ columns: [customer.C_CUSTKEY, customer.C_NAME, customer.C_ADDRESS, customer.C_NATIONKEY, customer.C_PHONE, customer.C_ACCTBAL, customer.C_MKTSEGMENT, customer.C_COMMENT]\n" +
 			"                         └─ Filter\n" +
 			"                             ├─ orders.o_custkey IS NULL\n" +
-			"                             └─ LeftOuterHashJoin\n" +
+			"                             └─ LeftOuterHashJoin (estimated cost=3869.120 rows=1062) (actual rows=0 loops=1)\n" +
 			"                                 ├─ (orders.o_custkey = customer.c_custkey)\n" +
 			"                                 ├─ Filter\n" +
 			"                                 │   ├─ (SUBSTRING(customer.c_phone, 1, 2) HASH IN ('13', '31', '23', '29', '30', '18', '17'))\n" +

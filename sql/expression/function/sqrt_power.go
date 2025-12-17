@@ -27,7 +27,7 @@ import (
 
 // Sqrt is a function that returns the square value of the number provided.
 type Sqrt struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*Sqrt)(nil)
@@ -35,7 +35,7 @@ var _ sql.CollationCoercible = (*Sqrt)(nil)
 
 // NewSqrt creates a new Sqrt expression.
 func NewSqrt(e sql.Expression) sql.Expression {
-	return &Sqrt{expression.UnaryExpression{Child: e}}
+	return &Sqrt{expression.UnaryExpressionStub{Child: e}}
 }
 
 // FunctionName implements sql.FunctionExpression

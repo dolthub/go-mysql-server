@@ -190,7 +190,7 @@ Or
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := newIndexCoster(ctx, "xyz")
-			root, leftover, _ := c.flatten(tt.in)
+			root, leftover, _ := c.buildRoot(tt.in, NewDefaultLogicTreeWalker())
 			costTree := formatIndexFilter(root)
 			require.Equal(t, strings.TrimSpace(tt.exp), strings.TrimSpace(costTree), costTree)
 			if leftover != nil {
@@ -557,7 +557,7 @@ func TestRangeBuilder(t *testing.T) {
 		t.Run(fmt.Sprintf("Expr:  %s\nRange: %s", tt.filter.String(), tt.exp.DebugString()), func(t *testing.T) {
 
 			c := newIndexCoster(ctx, testTable)
-			root, _, _ := c.flatten(tt.filter)
+			root, _, _ := c.buildRoot(tt.filter, NewDefaultLogicTreeWalker())
 
 			var idx sql.Index
 			switch len(tt.exp[0]) {
@@ -662,11 +662,11 @@ func TestRangeBuilderInclude(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			//t.Skip("todo add tests and implement")
+			// t.Skip("todo add tests and implement")
 
 			// TODO make index
 			c := newIndexCoster(ctx, "xyz")
-			root, _, _ := c.flatten(tt.in)
+			root, _, _ := c.buildRoot(tt.in, NewDefaultLogicTreeWalker())
 			b := newIndexScanRangeBuilder(ctx, dummy1, tt.include, sql.FastIntSet{}, c.idToExpr)
 			cmpRanges, err := b.buildRangeCollection(root)
 			require.NoError(t, err)
@@ -783,19 +783,43 @@ func notNull() sql.MySQLRangeColumnExpr {
 }
 
 func rcc(lowerbound, upperbound byte) sql.MySQLRangeColumnExpr {
-	return sql.CustomRangeColumnExpr(lowerbound, upperbound, sql.Closed, sql.Closed, rangeType)
+	return newRangeColumnExpr(lowerbound, upperbound, sql.Closed, sql.Closed, rangeType)
 }
 
 func rco(lowerbound, upperbound byte) sql.MySQLRangeColumnExpr {
-	return sql.CustomRangeColumnExpr(lowerbound, upperbound, sql.Closed, sql.Open, rangeType)
+	return newRangeColumnExpr(lowerbound, upperbound, sql.Closed, sql.Open, rangeType)
 }
 
 func roc(lowerbound, upperbound byte) sql.MySQLRangeColumnExpr {
-	return sql.CustomRangeColumnExpr(lowerbound, upperbound, sql.Open, sql.Closed, rangeType)
+	return newRangeColumnExpr(lowerbound, upperbound, sql.Open, sql.Closed, rangeType)
 }
 
 func roo(lowerbound, upperbound byte) sql.MySQLRangeColumnExpr {
-	return sql.CustomRangeColumnExpr(lowerbound, upperbound, sql.Open, sql.Open, rangeType)
+	return newRangeColumnExpr(lowerbound, upperbound, sql.Open, sql.Open, rangeType)
+}
+
+// CustomRangeColumnExpr returns a MySQLRangeColumnExpr defined by the bounds given.
+func newRangeColumnExpr(lower, upper interface{}, lowerBound, upperBound sql.MySQLRangeBoundType, typ sql.Type) sql.MySQLRangeColumnExpr {
+	if lower == nil || upper == nil {
+		return sql.EmptyRangeColumnExpr(typ)
+	}
+	var lCut sql.MySQLRangeCut
+	var uCut sql.MySQLRangeCut
+	if lowerBound == sql.Open {
+		lCut = sql.Above{Key: lower}
+	} else {
+		lCut = sql.Below{Key: lower}
+	}
+	if upperBound == sql.Open {
+		uCut = sql.Below{Key: upper}
+	} else {
+		uCut = sql.Above{Key: upper}
+	}
+	return sql.MySQLRangeColumnExpr{
+		LowerBound: lCut,
+		UpperBound: uCut,
+		Typ:        typ,
+	}
 }
 
 func or2(expressions ...sql.Expression) sql.Expression {
@@ -875,12 +899,12 @@ func (i *indexSearchableTable) Comment() string {
 }
 
 func (i *indexSearchableTable) Partitions(context *sql.Context) (sql.PartitionIter, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (i *indexSearchableTable) PartitionRows(context *sql.Context, partition sql.Partition) (sql.RowIter, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
@@ -889,7 +913,7 @@ func (i *indexSearchableTable) SkipIndexCosting() bool {
 }
 
 func (i *indexSearchableTable) IndexWithPrefix(ctx *sql.Context, expressions []string) (sql.Index, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
@@ -917,6 +941,6 @@ func (i *indexSearchableTable) PreciseMatch() bool {
 	return false
 }
 func (i *indexSearchableTable) LookupPartitions(context *sql.Context, lookup sql.IndexLookup) (sql.PartitionIter, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }

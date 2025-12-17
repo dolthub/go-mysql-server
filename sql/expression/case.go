@@ -136,7 +136,7 @@ func (c *Case) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			}
 			// When unable to convert to the type of the case, return the original value
 			// A common error here is "Out of bounds value for decimal type"
-			if ret, inRange, err := types.TypeAwareConversion(ctx, bval, b.Value.Type(), t); inRange && err == nil {
+			if ret, inRange, err := types.TypeAwareConversion(ctx, bval, b.Value.Type(), t); inRange == sql.InRange && err == nil {
 				return ret, nil
 			}
 			return bval, nil
@@ -150,7 +150,7 @@ func (c *Case) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 		// When unable to convert to the type of the case, return the original value
 		// A common error here is "Out of bounds value for decimal type"
-		if ret, inRange, err := types.TypeAwareConversion(ctx, val, c.Else.Type(), t); inRange && err == nil {
+		if ret, inRange, err := types.TypeAwareConversion(ctx, val, c.Else.Type(), t); inRange == sql.InRange && err == nil {
 			return ret, nil
 		}
 		return val, nil
@@ -239,6 +239,30 @@ func (c *Case) DebugString() string {
 	if c.Else != nil {
 		buf.WriteString(" ELSE ")
 		buf.WriteString(sql.DebugString(c.Else))
+	}
+
+	buf.WriteString(" END")
+	return buf.String()
+}
+
+func (c *Case) Describe(options sql.DescribeOptions) string {
+	var buf bytes.Buffer
+
+	buf.WriteString("CASE ")
+	if c.Expr != nil {
+		buf.WriteString(sql.Describe(c.Expr, options))
+	}
+
+	for _, b := range c.Branches {
+		buf.WriteString(" WHEN ")
+		buf.WriteString(sql.Describe(b.Cond, options))
+		buf.WriteString(" THEN ")
+		buf.WriteString(sql.Describe(b.Value, options))
+	}
+
+	if c.Else != nil {
+		buf.WriteString(" ELSE ")
+		buf.WriteString(sql.Describe(c.Else, options))
 	}
 
 	buf.WriteString(" END")

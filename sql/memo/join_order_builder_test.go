@@ -691,7 +691,6 @@ func childSchema(source string) sql.PrimaryKeySchema {
 
 func tableNode(db *memory.Database, name string) sql.Node {
 	t := memory.NewTable(db, name, childSchema(name), nil)
-	t.EnablePrimaryKeyIndexes()
 	tabId, colId := getIds([]string{name, "x"})
 	colset := sql.NewColSet(sql.ColumnId(colId), sql.ColumnId(colId+1), sql.ColumnId(colId+2))
 	return plan.NewResolvedTable(t, db, nil).WithId(sql.TableId(tabId)).WithColumns(colset)

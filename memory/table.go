@@ -128,7 +128,7 @@ func stripTblNames(e sql.Expression) (sql.Expression, transform.TreeIdentity, er
 	case *expression.GetField:
 		// strip table names
 		ne := expression.NewGetField(e.Index(), e.Type(), e.Name(), e.IsNullable())
-		ne = ne.WithQuotedNames(sql.GlobalSchemaFormatter, e.IsQuotedIdentifier())
+		ne = ne.WithQuotedNames(sql.DefaultMySQLSchemaFormatter, e.IsQuotedIdentifier())
 		return ne, transform.NewTree, nil
 	default:
 	}
@@ -1146,7 +1146,7 @@ func (t *Table) PeekNextAutoIncrementValue(ctx *sql.Context) (uint64, error) {
 
 	// If the current auto increment value is out of range for the column type,
 	// return the maximum valid value instead
-	if _, inRange, err := autoCol.Type.Convert(ctx, data.autoIncVal); err == nil && inRange == sql.OutOfRange {
+	if _, inRange, err := autoCol.Type.Convert(ctx, data.autoIncVal); err == nil && inRange != sql.InRange {
 		return data.autoIncVal - 1, nil
 	}
 
@@ -1437,7 +1437,7 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 				}
 				return err
 			}
-			if !inRange {
+			if inRange != sql.InRange {
 				return sql.ErrValueOutOfRange.New(row[oldIdx], column.Type)
 			}
 			var newRow sql.Row
@@ -1790,12 +1790,6 @@ func (t *Table) Projections() []string {
 	return t.projection
 }
 
-// EnablePrimaryKeyIndexes enables the use of primary key indexes on this table.
-func (t *Table) EnablePrimaryKeyIndexes() {
-	t.pkIndexesEnabled = true
-	t.data.primaryKeyIndexes = true
-}
-
 func (t *Table) dbName() string {
 	if t.db != nil {
 		return t.db.Name()
@@ -1809,24 +1803,22 @@ func (t *Table) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 
 	indexes := make([]sql.Index, 0)
 
-	if data.primaryKeyIndexes {
-		if len(data.schema.PkOrdinals) > 0 {
-			exprs := make([]sql.Expression, len(data.schema.PkOrdinals))
-			for i, ord := range data.schema.PkOrdinals {
-				column := data.schema.Schema[ord]
-				idx, field := data.getColumnOrdinal(column.Name)
-				exprs[i] = expression.NewGetFieldWithTable(idx, 0, field.Type, t.dbName(), t.name, field.Name, field.Nullable)
-			}
-			indexes = append(indexes, &Index{
-				DB:         t.dbName(),
-				DriverName: "",
-				Tbl:        t,
-				TableName:  t.name,
-				Exprs:      exprs,
-				Name:       "PRIMARY",
-				Unique:     true,
-			})
+	if len(data.schema.PkOrdinals) > 0 {
+		exprs := make([]sql.Expression, len(data.schema.PkOrdinals))
+		for i, ord := range data.schema.PkOrdinals {
+			column := data.schema.Schema[ord]
+			idx, field := data.getColumnOrdinal(column.Name)
+			exprs[i] = expression.NewGetFieldWithTable(idx, 0, field.Type, t.dbName(), t.name, field.Name, field.Nullable)
 		}
+		indexes = append(indexes, &Index{
+			DB:         t.dbName(),
+			DriverName: "",
+			Tbl:        t,
+			TableName:  t.name,
+			Exprs:      exprs,
+			Name:       "PRIMARY",
+			Unique:     true,
+		})
 	}
 
 	nonPrimaryIndexes := make([]sql.Index, len(data.indexes))
@@ -1846,7 +1838,7 @@ func (t *Table) GetIndexes(ctx *sql.Context) ([]sql.Index, error) {
 func (t *Table) GetDeclaredForeignKeys(ctx *sql.Context) ([]sql.ForeignKeyConstraint, error) {
 	data := t.sessionTableData(ctx)
 
-	//TODO: may not be the best location, need to handle db as well
+	// TODO: may not be the best location, need to handle db as well
 	var fks []sql.ForeignKeyConstraint
 	lowerName := strings.ToLower(t.name)
 	for _, fk := range data.fkColl.Keys() {
@@ -1984,7 +1976,7 @@ func (t *Table) DropCheck(ctx *sql.Context, chName string) error {
 			return nil
 		}
 	}
-	//TODO: add SQL error
+	// TODO: add SQL error
 	return fmt.Errorf("check '%s' was not found on the table", chName)
 }
 

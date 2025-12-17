@@ -187,7 +187,7 @@ func (b *Builder) normalizeValArg(e *ast.SQLVal) (sql.Expression, bool) {
 
 func (b *Builder) normalizeIntVal(e *ast.SQLVal) (any, bool) {
 	if e.Type == ast.IntVal {
-		lit := b.convertInt(string(e.Val), 10)
+		lit := b.convertInt(e.Val, 10)
 		return lit.Value(), true
 	} else if replace, ok := b.normalizeValArg(e); ok {
 		if lit, ok := replace.(*expression.Literal); ok && types.IsNumber(lit.Type()) {

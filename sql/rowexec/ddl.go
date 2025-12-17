@@ -170,7 +170,7 @@ func (b *BaseBuilder) buildCreateView(ctx *sql.Context, n *plan.CreateView, row 
 		if n.IfNotExists {
 			return rowIterWithOkResultWithZeroRowsAffected(), nil
 		}
-		return nil, sql.ErrTableAlreadyExists.New(n)
+		return nil, sql.ErrTableAlreadyExists.New(n.Name)
 	}
 
 	// TODO: isUpdatable should be defined at CREATE VIEW time
@@ -240,10 +240,51 @@ func (b *BaseBuilder) buildDropCheck(ctx *sql.Context, n *plan.DropCheck, row sq
 }
 
 func (b *BaseBuilder) buildRenameTable(ctx *sql.Context, n *plan.RenameTable, row sql.Row) (sql.RowIter, error) {
-	return n.RowIter(ctx, row)
+	if b.EngineOverrides.Hooks.RenameTable.PreSQLExecution != nil {
+		nn, err := b.EngineOverrides.Hooks.RenameTable.PreSQLExecution(ctx, n)
+		if err != nil {
+			return nil, err
+		}
+		n = nn.(*plan.RenameTable)
+	}
+
+	renamer, _ := n.Db.(sql.TableRenamer)
+	viewDb, _ := n.Db.(sql.ViewDatabase)
+	viewRegistry := ctx.GetViewRegistry()
+
+	for i, oldName := range n.OldNames {
+		if tbl, exists := n.TableExists(ctx, oldName); exists {
+			err := n.RenameTable(ctx, renamer, tbl, oldName, n.NewNames[i])
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			success, err := n.RenameView(ctx, viewDb, viewRegistry, oldName, n.NewNames[i])
+			if err != nil {
+				return nil, err
+			} else if !success {
+				return nil, sql.ErrTableNotFound.New(oldName)
+			}
+		}
+	}
+	if b.EngineOverrides.Hooks.RenameTable.PostSQLExecution != nil {
+		if err := b.EngineOverrides.Hooks.RenameTable.PostSQLExecution(ctx, n); err != nil {
+			return nil, err
+		}
+	}
+
+	return sql.RowsToRowIter(sql.NewRow(types.NewOkResult(0))), nil
 }
 
 func (b *BaseBuilder) buildModifyColumn(ctx *sql.Context, n *plan.ModifyColumn, row sql.Row) (sql.RowIter, error) {
+	if b.EngineOverrides.Hooks.TableModifyColumn.PreSQLExecution != nil {
+		nn, err := b.EngineOverrides.Hooks.TableModifyColumn.PreSQLExecution(ctx, n)
+		if err != nil {
+			return nil, err
+		}
+		n = nn.(*plan.ModifyColumn)
+	}
+
 	tbl, err := getTableFromDatabase(ctx, n.Database(), n.Table)
 	if err != nil {
 		return nil, err
@@ -279,6 +320,7 @@ func (b *BaseBuilder) buildModifyColumn(ctx *sql.Context, n *plan.ModifyColumn, 
 	return &modifyColumnIter{
 		m:         n,
 		alterable: alterable,
+		overrides: b.EngineOverrides,
 	}, nil
 }
 
@@ -841,6 +883,14 @@ func (b *BaseBuilder) buildDropDB(ctx *sql.Context, n *plan.DropDB, row sql.Row)
 }
 
 func (b *BaseBuilder) buildRenameColumn(ctx *sql.Context, n *plan.RenameColumn, row sql.Row) (sql.RowIter, error) {
+	if b.EngineOverrides.Hooks.TableRenameColumn.PreSQLExecution != nil {
+		nn, err := b.EngineOverrides.Hooks.TableRenameColumn.PreSQLExecution(ctx, n)
+		if err != nil {
+			return nil, err
+		}
+		n = nn.(*plan.RenameColumn)
+	}
+
 	tbl, err := getTableFromDatabase(ctx, n.Database(), n.Table)
 	if err != nil {
 		return nil, err
@@ -881,11 +931,26 @@ func (b *BaseBuilder) buildRenameColumn(ctx *sql.Context, n *plan.RenameColumn, 
 			}
 		}
 	}
+	if err = alterable.ModifyColumn(ctx, n.ColumnName, col, nil); err != nil {
+		return nil, err
+	}
+	if b.EngineOverrides.Hooks.TableRenameColumn.PostSQLExecution != nil {
+		if err = b.EngineOverrides.Hooks.TableRenameColumn.PostSQLExecution(ctx, n); err != nil {
+			return nil, err
+		}
+	}
 
-	return rowIterWithOkResultWithZeroRowsAffected(), alterable.ModifyColumn(ctx, n.ColumnName, col, nil)
+	return rowIterWithOkResultWithZeroRowsAffected(), nil
 }
 
 func (b *BaseBuilder) buildAddColumn(ctx *sql.Context, n *plan.AddColumn, row sql.Row) (sql.RowIter, error) {
+	if b.EngineOverrides.Hooks.TableAddColumn.PreSQLExecution != nil {
+		nn, err := b.EngineOverrides.Hooks.TableAddColumn.PreSQLExecution(ctx, n)
+		if err != nil {
+			return nil, err
+		}
+		n = nn.(*plan.AddColumn)
+	}
 	table, err := getTableFromDatabase(ctx, n.Database(), n.Table)
 	if err != nil {
 		return nil, err
@@ -963,6 +1028,13 @@ func (b *BaseBuilder) buildAlterDB(ctx *sql.Context, n *plan.AlterDB, row sql.Ro
 
 func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, row sql.Row) (sql.RowIter, error) {
 	var err error
+	if b.EngineOverrides.Hooks.CreateTable.PreSQLExecution != nil {
+		nn, err := b.EngineOverrides.Hooks.CreateTable.PreSQLExecution(ctx, n)
+		if err != nil {
+			return sql.RowsToRowIter(), err
+		}
+		n = nn.(*plan.CreateTable)
+	}
 
 	// If it's set to Invalid, then no collation has been explicitly defined
 	if n.Collation == sql.Collation_Unspecified {
@@ -1116,9 +1188,15 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 	}
 
 	if len(n.Checks()) > 0 {
-		err = n.CreateChecks(ctx, tableNode)
+		err = n.CreateChecks(ctx, tableNode, b.schemaFormatter)
 		if err != nil {
 			return sql.RowsToRowIter(), err
+		}
+	}
+
+	if b.EngineOverrides.Hooks.CreateTable.PostSQLExecution != nil {
+		if err = b.EngineOverrides.Hooks.CreateTable.PostSQLExecution(ctx, n); err != nil {
+			return nil, err
 		}
 	}
 
@@ -1199,6 +1277,13 @@ func (b *BaseBuilder) buildCreateTrigger(ctx *sql.Context, n *plan.CreateTrigger
 }
 
 func (b *BaseBuilder) buildDropColumn(ctx *sql.Context, n *plan.DropColumn, row sql.Row) (sql.RowIter, error) {
+	if b.EngineOverrides.Hooks.TableDropColumn.PreSQLExecution != nil {
+		nn, err := b.EngineOverrides.Hooks.TableDropColumn.PreSQLExecution(ctx, n)
+		if err != nil {
+			return nil, err
+		}
+		n = nn.(*plan.DropColumn)
+	}
 	tbl, err := getTableFromDatabase(ctx, n.Database(), n.Table)
 	if err != nil {
 		return nil, err
@@ -1217,6 +1302,7 @@ func (b *BaseBuilder) buildDropColumn(ctx *sql.Context, n *plan.DropColumn, row 
 	return &dropColumnIter{
 		d:         n,
 		alterable: alterable,
+		overrides: b.EngineOverrides,
 	}, nil
 }
 

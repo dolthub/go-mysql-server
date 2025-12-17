@@ -31,7 +31,7 @@ var (
 
 // AutoIncrement implements AUTO_INCREMENT
 type AutoIncrement struct {
-	UnaryExpression
+	UnaryExpressionStub
 	autoTbl sql.AutoIncrementTable
 	autoCol *sql.Column
 }
@@ -58,7 +58,7 @@ func NewAutoIncrement(ctx *sql.Context, table sql.Table, given sql.Expression) (
 	}
 
 	return &AutoIncrement{
-		UnaryExpression{Child: given},
+		UnaryExpressionStub{Child: given},
 		autoTbl,
 		autoCol,
 	}, nil
@@ -72,7 +72,7 @@ func NewAutoIncrementForColumn(ctx *sql.Context, table sql.Table, autoCol *sql.C
 	}
 
 	return &AutoIncrement{
-		UnaryExpression{Child: given},
+		UnaryExpressionStub{Child: given},
 		autoTbl,
 		autoCol,
 	}, nil
@@ -140,7 +140,7 @@ func (i *AutoIncrement) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	}
 
 	ret, inRange, err := i.Type().Convert(ctx, given)
-	if err == nil && !inRange {
+	if err == nil && inRange != sql.InRange {
 		err = sql.ErrValueOutOfRange.New(given, i.Type())
 	}
 	if err != nil {
@@ -159,7 +159,7 @@ func (i *AutoIncrement) WithChildren(children ...sql.Expression) (sql.Expression
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}
 	return &AutoIncrement{
-		UnaryExpression{Child: children[0]},
+		UnaryExpressionStub{Child: children[0]},
 		i.autoTbl,
 		i.autoCol,
 	}, nil

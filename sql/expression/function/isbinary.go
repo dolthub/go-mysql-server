@@ -25,7 +25,7 @@ import (
 
 // IsBinary is a function that returns whether a blob is binary or not.
 type IsBinary struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*IsBinary)(nil)
@@ -33,7 +33,7 @@ var _ sql.CollationCoercible = (*IsBinary)(nil)
 
 // NewIsBinary creates a new IsBinary expression.
 func NewIsBinary(e sql.Expression) sql.Expression {
-	return &IsBinary{expression.UnaryExpression{Child: e}}
+	return &IsBinary{expression.UnaryExpressionStub{Child: e}}
 }
 
 // FunctionName implements sql.FunctionExpression

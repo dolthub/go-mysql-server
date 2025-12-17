@@ -27,7 +27,7 @@ import (
 
 // Reverse is a function that returns the reverse of the text provided.
 type Reverse struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*Reverse)(nil)
@@ -35,7 +35,7 @@ var _ sql.CollationCoercible = (*Reverse)(nil)
 
 // NewReverse creates a new Reverse expression.
 func NewReverse(e sql.Expression) sql.Expression {
-	return &Reverse{expression.UnaryExpression{Child: e}}
+	return &Reverse{expression.UnaryExpressionStub{Child: e}}
 }
 
 // FunctionName implements sql.FunctionExpression

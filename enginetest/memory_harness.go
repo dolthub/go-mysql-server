@@ -37,13 +37,11 @@ type IndexDriverInitializer func([]sql.Database) sql.IndexDriver
 
 type MemoryHarness struct {
 	name                      string
-	parallelism               int
 	numTablePartitions        int
 	readonly                  bool
 	provider                  sql.DatabaseProvider
 	indexDriverInitializer    IndexDriverInitializer
 	driver                    sql.IndexDriver
-	nativeIndexSupport        bool
 	skippedQueries            map[string]struct{}
 	session                   sql.Session
 	retainSession             bool
@@ -65,7 +63,7 @@ var _ ClientHarness = (*MemoryHarness)(nil)
 var _ ServerHarness = (*MemoryHarness)(nil)
 var _ sql.ExternalStoredProcedureProvider = (*MemoryHarness)(nil)
 
-func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useNativeIndexes bool, driverInitializer IndexDriverInitializer) *MemoryHarness {
+func NewMemoryHarness(name string, numTablePartitions int, driverInitializer IndexDriverInitializer) *MemoryHarness {
 	externalProcedureRegistry := sql.NewExternalStoredProcedureRegistry()
 	for _, esp := range memory.ExternalStoredProcedures {
 		externalProcedureRegistry.Register(esp)
@@ -80,8 +78,6 @@ func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useN
 		name:                      name,
 		numTablePartitions:        numTablePartitions,
 		indexDriverInitializer:    driverInitializer,
-		parallelism:               parallelism,
-		nativeIndexSupport:        useNativeIndexes,
 		skippedQueries:            make(map[string]struct{}),
 		externalProcedureRegistry: externalProcedureRegistry,
 		mu:                        &sync.Mutex{},
@@ -90,7 +86,7 @@ func NewMemoryHarness(name string, parallelism int, numTablePartitions int, useN
 }
 
 func NewDefaultMemoryHarness() *MemoryHarness {
-	return NewMemoryHarness("default", 1, testNumPartitions, true, nil)
+	return NewMemoryHarness("default", testNumPartitions, nil)
 }
 
 func NewReadOnlyMemoryHarness() *MemoryHarness {
@@ -218,9 +214,6 @@ func (m *MemoryHarness) NewTableAsOf(db sql.VersionedDatabase, name string, sche
 		panic(fmt.Sprintf("unexpected database type %T", db))
 	}
 	table := memory.NewPartitionedTableRevision(baseDb, name, schema, fkColl, m.numTablePartitions)
-	if m.nativeIndexSupport {
-		table.EnablePrimaryKeyIndexes()
-	}
 	if ro, ok := db.(memory.ReadOnlyDatabase); ok {
 		ro.HistoryDatabase.AddTableAsOf(name, table, asOf)
 	} else {
@@ -238,7 +231,7 @@ func (m *MemoryHarness) SnapshotTable(db sql.VersionedDatabase, name string, asO
 }
 
 func (m *MemoryHarness) SupportsNativeIndexCreation() bool {
-	return m.nativeIndexSupport
+	return true
 }
 
 func (m *MemoryHarness) SupportsForeignKeys() bool {
@@ -247,10 +240,6 @@ func (m *MemoryHarness) SupportsForeignKeys() bool {
 
 func (m *MemoryHarness) SupportsKeylessTables() bool {
 	return true
-}
-
-func (m *MemoryHarness) Parallelism() int {
-	return m.parallelism
 }
 
 func (m *MemoryHarness) NewContext() *sql.Context {
@@ -320,7 +309,6 @@ func (m *MemoryHarness) getProvider() sql.DatabaseProvider {
 
 func (m *MemoryHarness) NewDatabaseProvider() sql.MutableDatabaseProvider {
 	return memory.NewDBProviderWithOpts(
-		memory.NativeIndexProvider(m.nativeIndexSupport),
 		memory.HistoryProvider(true))
 }
 

@@ -21,27 +21,31 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-var DefaultBuilder = &BaseBuilder{}
-
-var _ sql.NodeExecBuilder = (*BaseBuilder)(nil)
-
-type ExecBuilderFunc func(ctx *sql.Context, n sql.Node, r sql.Row) (sql.RowIter, error)
-
 // BaseBuilder converts a plan tree into a RowIter tree. All relational nodes
 // have a build statement. Custom source nodes that provide rows that implement
 // sql.ExecSourceRel are also built into the tree.
 type BaseBuilder struct {
-	// if override is provided, we try to build executor with this first
-	override sql.NodeExecBuilder
+	PriorityBuilder sql.NodeExecBuilder
+	EngineOverrides sql.EngineOverrides
+	schemaFormatter sql.SchemaFormatter
 }
 
+var _ sql.NodeExecBuilder = (*BaseBuilder)(nil)
+
+// NewBuilder creates a new builder. If a priority builder is given, then it is tried first, and only uses the internal
+// builder logic if the given one does not return a result (and does not error).
+func NewBuilder(priority sql.NodeExecBuilder, overrides sql.EngineOverrides) sql.NodeExecBuilder {
+	return &BaseBuilder{
+		PriorityBuilder: priority,
+		EngineOverrides: overrides,
+		schemaFormatter: sql.GetSchemaFormatter(overrides),
+	}
+}
+
+// Build implements the interface sql.NodeExecBuilder.
 func (b *BaseBuilder) Build(ctx *sql.Context, n sql.Node, r sql.Row) (sql.RowIter, error) {
 	defer trace.StartRegion(ctx, "ExecBuilder.Build").End()
 	return b.buildNodeExec(ctx, n, r)
-}
-
-func NewOverrideBuilder(override sql.NodeExecBuilder) sql.NodeExecBuilder {
-	return &BaseBuilder{override: override}
 }
 
 // FinalizeIters applies the final transformations on sql.RowIter before execution.

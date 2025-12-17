@@ -238,11 +238,13 @@ func newInMap(ctx *sql.Context, lType sql.Type, right Tuple) (map[uint64]struct{
 	}
 	elements := map[uint64]struct{}{}
 	for _, rVal := range rVals {
-		key, hErr := hash.HashOfSimple(ctx, rVal, cmpType)
+		key, inRange, hErr := hash.HashOfSimple(ctx, rVal, cmpType)
 		if hErr != nil {
 			return nil, nil, false, hErr
 		}
-		elements[key] = struct{}{}
+		if inRange == sql.InRange {
+			elements[key] = struct{}{}
+		}
 	}
 	return elements, cmpType, rHasNull, nil
 }
@@ -257,9 +259,12 @@ func (hit *HashInTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		return nil, nil
 	}
 
-	key, err := hash.HashOfSimple(ctx, leftVal, hit.cmpType)
+	key, inRange, err := hash.HashOfSimple(ctx, leftVal, hit.cmpType)
 	if err != nil {
 		return nil, err
+	}
+	if inRange != sql.InRange {
+		return false, nil
 	}
 
 	if _, ok := hit.cmp[key]; ok {

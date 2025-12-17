@@ -84,27 +84,27 @@ func (t VectorType) Convert(ctx context.Context, v interface{}) (interface{}, sq
 	var err error
 	v, err = sql.UnwrapAny(ctx, v)
 	if err != nil {
-		return nil, sql.OutOfRange, err
+		return nil, sql.InRange, err
 	}
 
 	switch val := v.(type) {
 	case []byte:
 		if t.Dimensions != 0 && len(val) != int(values.Float32Size)*t.Dimensions {
 			if len(val)%int(values.Float32Size) != 0 {
-				return nil, sql.OutOfRange, sql.ErrVectorInvalidBinaryLength.New(len(val))
+				return nil, sql.InRange, sql.ErrVectorInvalidBinaryLength.New(len(val))
 			}
-			return nil, sql.OutOfRange, ErrVectorWrongDimensions.New(t.Dimensions, len(val)/int(values.Float32Size))
+			return nil, sql.InRange, ErrVectorWrongDimensions.New(t.Dimensions, len(val)/int(values.Float32Size))
 		}
 		return val, sql.InRange, nil
 	case sql.JSONWrapper:
 		unwrapped, err := val.ToInterface(ctx)
 		if err != nil {
-			return nil, sql.OutOfRange, err
+			return nil, sql.InRange, err
 		}
 		return t.Convert(ctx, unwrapped)
 	case []interface{}:
 		if t.Dimensions != 0 && len(val) != t.Dimensions {
-			return nil, sql.OutOfRange, ErrVectorWrongDimensions.New(t.Dimensions, len(val))
+			return nil, sql.InRange, ErrVectorWrongDimensions.New(t.Dimensions, len(val))
 		}
 		result := make([]float32, len(val))
 		for i, elem := range val {
@@ -123,17 +123,17 @@ func (t VectorType) Convert(ctx context.Context, v interface{}) (interface{}, sq
 				if str, ok := elem.(string); ok {
 					f, err := strconv.ParseFloat(str, 64)
 					if err != nil {
-						return nil, sql.OutOfRange, fmt.Errorf("invalid vector element: %v", elem)
+						return nil, sql.InRange, fmt.Errorf("invalid vector element: %v", elem)
 					}
 					result[i] = float32(f)
 				} else {
-					return nil, sql.OutOfRange, fmt.Errorf("invalid vector element: %v", elem)
+					return nil, sql.InRange, fmt.Errorf("invalid vector element: %v", elem)
 				}
 			}
 		}
 		return sql.EncodeVector(result), sql.InRange, nil
 	default:
-		return nil, sql.OutOfRange, fmt.Errorf("value of type %T cannot be converted to 'vector' type", v)
+		return nil, sql.InRange, fmt.Errorf("value of type %T cannot be converted to 'vector' type", v)
 	}
 }
 
