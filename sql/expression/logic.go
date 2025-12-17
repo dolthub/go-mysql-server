@@ -151,24 +151,26 @@ func (a *And) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	if lval == nil {
-		return nil, nil
-	}
-	lvalBool, err := sql.ConvertToBool(ctx, lval)
-	if err == nil && lvalBool == false {
-		return false, nil
+	if lval != nil {
+		lvalBool, err := sql.ConvertToBool(ctx, lval)
+		if err == nil && lvalBool == false {
+			return false, nil
+		}
 	}
 
 	rval, err := a.RightChild.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-	if rval == nil {
-		return nil, nil
+	if rval != nil {
+		rvalBool, err := sql.ConvertToBool(ctx, rval)
+		if err == nil && rvalBool == false {
+			return false, nil
+		}
 	}
-	rvalBool, err := sql.ConvertToBool(ctx, rval)
-	if err == nil && rvalBool == false {
-		return false, nil
+
+	if lval == nil || rval == nil {
+		return nil, nil
 	}
 
 	return true, nil
