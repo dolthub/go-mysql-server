@@ -62,6 +62,10 @@ func (t *Trim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
+	if pat == nil {
+		return nil, nil
+	}
+
 	// Convert pat into string and unwrap automatically
 	pat, _, err = types.LongText.Convert(ctx, pat)
 	if err != nil {
