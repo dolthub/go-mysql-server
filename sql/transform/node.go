@@ -310,54 +310,40 @@ func transformUpWithPrefixSchemaHelper(c Context, s SelectorFunc, f CtxFunc) (sq
 // Node applies a transformation function to the given tree from the
 // bottom up.
 func Node(node sql.Node, f NodeFunc) (sql.Node, TreeIdentity, error) {
-	var newChildren []sql.Node
-	sameC := SameTree
-	switch n := node.(type) {
-	case sql.OpaqueNode:
-		return f(n)
-	case sql.UnaryNode:
-		var newC sql.Node
-		var err error
-		newC, sameC, err = f(node)
+	_, ok := node.(sql.OpaqueNode)
+	if ok {
+		return f(node)
+	}
+
+	children := node.Children()
+	if len(children) == 0 {
+		return f(node)
+	}
+
+	var (
+		newChildren []sql.Node
+		child       sql.Node
+	)
+
+	for i := range children {
+		child = children[i]
+		child, same, err := Node(child, f)
 		if err != nil {
 			return nil, SameTree, err
 		}
-		if !sameC {
-			newChildren = []sql.Node{newC}
-		}
-	case sql.BinaryNode:
-		newL, sameL, err := f(n.Left())
-		if err != nil {
-			return nil, SameTree, err
-		}
-		newR, sameR, err := f(n.Right())
-		if err != nil {
-			return nil, SameTree, err
-		}
-		if !sameL || !sameR {
-			sameC = NewTree
-			newChildren = []sql.Node{newL, newR}
-		}
-	default:
-		children := node.Children()
-		for i := range children {
-			newChild, same, err := Node(children[i], f)
-			if err != nil {
-				return nil, SameTree, err
+		if !same {
+			if newChildren == nil {
+				newChildren = make([]sql.Node, len(children))
+				copy(newChildren, children)
 			}
-			if !same {
-				sameC = NewTree
-				if newChildren == nil {
-					newChildren = make([]sql.Node, len(children))
-					copy(newChildren, children)
-				}
-				newChildren[i] = newChild
-			}
+			newChildren[i] = child
 		}
 	}
 
 	var err error
-	if !sameC {
+	sameC := SameTree
+	if len(newChildren) > 0 {
+		sameC = NewTree
 		node, err = node.WithChildren(newChildren...)
 		if err != nil {
 			return nil, SameTree, err
