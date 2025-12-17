@@ -21,15 +21,14 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 )
 
 type FirstValue struct {
+	Child  sql.Expression
 	window *sql.WindowDefinition
-	expression.UnaryExpressionStub
-	pos int
-	id  sql.ColumnId
+	pos    int
+	id     sql.ColumnId
 }
 
 var _ sql.FunctionExpression = (*FirstValue)(nil)
@@ -38,7 +37,7 @@ var _ sql.WindowAdaptableExpression = (*FirstValue)(nil)
 var _ sql.CollationCoercible = (*FirstValue)(nil)
 
 func NewFirstValue(e sql.Expression) sql.Expression {
-	return &FirstValue{UnaryExpressionStub: expression.UnaryExpressionStub{Child: e}}
+	return &FirstValue{Child: e}
 }
 
 // Id implements sql.IdExpression
@@ -63,7 +62,7 @@ func (f *FirstValue) Window() *sql.WindowDefinition {
 	return f.window
 }
 
-// IsNullable implements sql.Expression
+// Resolved implements sql.Expression
 func (f *FirstValue) Resolved() bool {
 	return windowResolved(f.window)
 }
