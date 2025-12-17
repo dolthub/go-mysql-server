@@ -104,10 +104,7 @@ func InspectExpr(expr sql.Expression, f func(sql.Expression) bool) (stop bool) {
 	// Avoid allocating []sql.Expression
 	switch e := expr.(type) {
 	case expression.UnaryExpression:
-		if len(e.Children()) != 1 {
-			panic("aaaaaaaaaaaaaaaaaaaaaa")
-		}
-		if child := e.UnaryChild(); child != nil && InspectExpr(child, f) {
+		if InspectExpr(e.UnaryChild(), f) {
 			return true
 		}
 	case expression.BinaryExpression:
