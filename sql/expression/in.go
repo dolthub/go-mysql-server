@@ -284,7 +284,7 @@ func (hit *HashInTuple) Type() sql.Type {
 }
 
 func (hit *HashInTuple) IsNullable() bool {
-	return hit.in.IsNullable() || hit.hasNull
+	return hit.hasNull || hit.in.Left().IsNullable()
 }
 
 func (hit *HashInTuple) Children() []sql.Expression {
