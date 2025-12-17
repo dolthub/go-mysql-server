@@ -213,7 +213,12 @@ func (g *GroupConcat) Type() sql.Type {
 
 // IsNullable implements the Expression interface.
 func (g *GroupConcat) IsNullable() bool {
-	return false
+	for _, se := range g.selectExprs {
+		if !se.IsNullable() {
+			return false
+		}
+	}
+	return true
 }
 
 // Children implements the Expression interface.
