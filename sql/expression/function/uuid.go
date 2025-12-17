@@ -212,7 +212,7 @@ func (u IsUUID) Children() []sql.Expression {
 
 // IsNullable returns whether the expression can be null.
 func (u IsUUID) IsNullable() bool {
-	return false
+	return u.child.IsNullable()
 }
 
 // UUID_TO_BIN(string_uuid), UUID_TO_BIN(string_uuid, swap_flag)
@@ -376,7 +376,7 @@ func (ub UUIDToBin) Children() []sql.Expression {
 
 // IsNullable returns whether the expression can be null.
 func (ub UUIDToBin) IsNullable() bool {
-	return false
+	return ub.inputUUID.IsNullable() || (ub.swapFlag != nil && ub.inputUUID.IsNullable())
 }
 
 // BIN_TO_UUID(binary_uuid), BIN_TO_UUID(binary_uuid, swap_flag)
@@ -534,7 +534,7 @@ func (bu BinToUUID) Children() []sql.Expression {
 
 // IsNullable returns whether the expression can be null.
 func (bu BinToUUID) IsNullable() bool {
-	return false
+	return bu.inputBinary.IsNullable()
 }
 
 // UUID_SHORT()
