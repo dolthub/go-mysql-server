@@ -151,26 +151,24 @@ func (a *And) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	if lval != nil {
-		lvalBool, err := sql.ConvertToBool(ctx, lval)
-		if err == nil && lvalBool == false {
-			return false, nil
-		}
+	if lval == nil {
+		return nil, nil
+	}
+	lvalBool, err := sql.ConvertToBool(ctx, lval)
+	if err == nil && lvalBool == false {
+		return false, nil
 	}
 
 	rval, err := a.RightChild.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
-	if rval != nil {
-		rvalBool, err := sql.ConvertToBool(ctx, rval)
-		if err == nil && rvalBool == false {
-			return false, nil
-		}
-	}
-
-	if lval == nil || rval == nil {
+	if rval == nil {
 		return nil, nil
+	}
+	rvalBool, err := sql.ConvertToBool(ctx, rval)
+	if err == nil && rvalBool == false {
+		return false, nil
 	}
 
 	return true, nil
@@ -264,13 +262,11 @@ func (o *Or) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
-	// Can also be triggered by lval and rval not being bool types.
-	if lval == false && rval == false {
-		return false, nil
+	if lval == nil || rval == nil {
+		return nil, nil
 	}
 
-	// (lval == nil && rval == nil) || (lval == false && rval == nil) || (lval == nil && rval == false)
-	return nil, nil
+	return false, nil
 }
 
 // WithChildren implements the Expression interface.
@@ -339,10 +335,7 @@ func (x *Xor) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// a XOR b == (a AND (NOT b)) OR ((NOT a) and b)
-	if (rvalue && !lvalue) || (!rvalue && lvalue) {
-		return true, nil
-	}
-	return false, nil
+	return (rvalue && !lvalue) || (!rvalue && lvalue), nil
 }
 
 // WithChildren implements the Expression interface.
