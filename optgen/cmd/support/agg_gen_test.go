@@ -41,7 +41,7 @@ func TestAggGen(t *testing.T) {
         func NewTest(e sql.Expression) *Test {
             return &Test{
                 unaryAggBase{
-                    UnaryExpression: expression.UnaryExpression{Child: e},
+                    Child: e,
                     functionName: "Test",
                     description: "Test description",
                 },

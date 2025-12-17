@@ -29,7 +29,7 @@ const randomBytesMax = 1024
 
 // RandomBytes returns a random binary string of the given length.
 type RandomBytes struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*RandomBytes)(nil)
@@ -37,7 +37,7 @@ var _ sql.CollationCoercible = (*RandomBytes)(nil)
 
 // NewRandomBytes returns a new RANDOM_BYTES function.
 func NewRandomBytes(e sql.Expression) sql.Expression {
-	return &RandomBytes{expression.UnaryExpression{Child: e}}
+	return &RandomBytes{expression.UnaryExpressionStub{Child: e}}
 }
 
 // FunctionName implements sql.FunctionExpression

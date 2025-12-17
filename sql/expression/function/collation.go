@@ -25,7 +25,7 @@ import (
 
 // Collation is a function that returns the collation of the inner expression.
 type Collation struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*Collation)(nil)
@@ -33,7 +33,7 @@ var _ sql.CollationCoercible = (*Collation)(nil)
 
 // NewCollation creates a new Collation expression.
 func NewCollation(e sql.Expression) sql.Expression {
-	return &Collation{expression.UnaryExpression{Child: e}}
+	return &Collation{expression.UnaryExpressionStub{Child: e}}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -86,7 +86,7 @@ func (*Collation) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 
 // Coercibility is a function that returns the coercibility of the inner expression.
 type Coercibility struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*Coercibility)(nil)
@@ -94,7 +94,7 @@ var _ sql.CollationCoercible = (*Coercibility)(nil)
 
 // NewCoercibility creates a new Coercibility expression.
 func NewCoercibility(e sql.Expression) sql.Expression {
-	return &Coercibility{expression.UnaryExpression{Child: e}}
+	return &Coercibility{expression.UnaryExpressionStub{Child: e}}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -147,7 +147,7 @@ func (*Coercibility) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 
 // Charset is a function that returns the character set of the inner expression.
 type Charset struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*Charset)(nil)
@@ -155,7 +155,7 @@ var _ sql.CollationCoercible = (*Charset)(nil)
 
 // NewCharset creates a new Charset expression.
 func NewCharset(e sql.Expression) sql.Expression {
-	return &Charset{expression.UnaryExpression{Child: e}}
+	return &Charset{expression.UnaryExpressionStub{Child: e}}
 }
 
 // FunctionName implements sql.FunctionExpression

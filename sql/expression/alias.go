@@ -80,7 +80,7 @@ var _ sql.CollationCoercible = (*AliasReference)(nil)
 
 // Alias is a node that gives a name to an expression.
 type Alias struct {
-	UnaryExpression
+	UnaryExpressionStub
 	name           string
 	unreferencable bool
 	id             sql.ColumnId
@@ -92,7 +92,7 @@ var _ sql.CollationCoercible = (*Alias)(nil)
 
 // NewAlias returns a new Alias node.
 func NewAlias(name string, expr sql.Expression) *Alias {
-	return &Alias{UnaryExpression{expr}, name, false, 0}
+	return &Alias{UnaryExpressionStub{expr}, name, false, 0}
 }
 
 // AsUnreferencable marks the alias outside of scope referencing

@@ -24,7 +24,7 @@ import (
 
 // SwapXY is a function that returns a spatial type with their X and Y values swapped
 type SwapXY struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*SwapXY)(nil)
@@ -32,7 +32,7 @@ var _ sql.CollationCoercible = (*SwapXY)(nil)
 
 // NewSwapXY creates a new point expression.
 func NewSwapXY(e sql.Expression) sql.Expression {
-	return &SwapXY{expression.UnaryExpression{Child: e}}
+	return &SwapXY{expression.UnaryExpressionStub{Child: e}}
 }
 
 // FunctionName implements sql.FunctionExpression

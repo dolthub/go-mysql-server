@@ -24,7 +24,7 @@ import (
 
 // Dimension is a function that converts a spatial type into WKT format (alias for AsText)
 type Dimension struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*Dimension)(nil)
@@ -32,7 +32,7 @@ var _ sql.CollationCoercible = (*Dimension)(nil)
 
 // NewDimension creates a new point expression.
 func NewDimension(e sql.Expression) sql.Expression {
-	return &Dimension{expression.UnaryExpression{Child: e}}
+	return &Dimension{expression.UnaryExpressionStub{Child: e}}
 }
 
 // FunctionName implements sql.FunctionExpression

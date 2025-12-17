@@ -373,7 +373,7 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 		var sf sql.SortField
 		switch agg := gb.SelectDeps[0].(type) {
 		case *aggregation.Max:
-			gf, ok := agg.UnaryExpression.Child.(*expression.GetField)
+			gf, ok := agg.Child.(*expression.GetField)
 			if !ok {
 				return n, transform.SameTree, nil
 			}
@@ -382,7 +382,7 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 				Order:  sql.Descending,
 			}
 		case *aggregation.Min:
-			gf, ok := agg.UnaryExpression.Child.(*expression.GetField)
+			gf, ok := agg.Child.(*expression.GetField)
 			if !ok {
 				return n, transform.SameTree, nil
 			}

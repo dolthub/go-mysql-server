@@ -162,11 +162,11 @@ func (t Trim) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 }
 
 type LeftTrim struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 func NewLeftTrim(str sql.Expression) sql.Expression {
-	return &LeftTrim{expression.UnaryExpression{Child: str}}
+	return &LeftTrim{expression.UnaryExpressionStub{Child: str}}
 }
 
 var _ sql.FunctionExpression = (*LeftTrim)(nil)
@@ -231,11 +231,11 @@ func (t *LeftTrim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 type RightTrim struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 func NewRightTrim(str sql.Expression) sql.Expression {
-	return &RightTrim{expression.UnaryExpression{Child: str}}
+	return &RightTrim{expression.UnaryExpressionStub{Child: str}}
 }
 
 var _ sql.FunctionExpression = (*RightTrim)(nil)

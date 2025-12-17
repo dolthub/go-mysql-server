@@ -47,7 +47,7 @@ func numericRetType(inputType sql.Type) sql.Type {
 
 // Ceil returns the smallest integer value not less than X.
 type Ceil struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*Ceil)(nil)
@@ -55,7 +55,7 @@ var _ sql.CollationCoercible = (*Ceil)(nil)
 
 // NewCeil creates a new Ceil expression.
 func NewCeil(num sql.Expression) sql.Expression {
-	return &Ceil{expression.UnaryExpression{Child: num}}
+	return &Ceil{expression.UnaryExpressionStub{Child: num}}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -130,7 +130,7 @@ func (c *Ceil) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // Floor returns the biggest integer value not less than X.
 type Floor struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*Floor)(nil)
@@ -138,7 +138,7 @@ var _ sql.CollationCoercible = (*Floor)(nil)
 
 // NewFloor returns a new Floor expression.
 func NewFloor(num sql.Expression) sql.Expression {
-	return &Floor{expression.UnaryExpression{Child: num}}
+	return &Floor{expression.UnaryExpressionStub{Child: num}}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -216,7 +216,8 @@ func (f *Floor) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 // digits of it's integer part set to 0. If d is not specified or nil/null
 // it defaults to 0.
 type Round struct {
-	expression.BinaryExpressionStub
+	Num sql.Expression
+	Dec sql.Expression
 }
 
 var _ sql.FunctionExpression = (*Round)(nil)
@@ -225,16 +226,19 @@ var _ sql.CollationCoercible = (*Round)(nil)
 // NewRound returns a new Round expression.
 func NewRound(args ...sql.Expression) (sql.Expression, error) {
 	argLen := len(args)
-	if argLen == 0 || argLen > 2 {
+	switch argLen {
+	case 1:
+		return &Round{
+			Num: args[0],
+		}, nil
+	case 2:
+		return &Round{
+			Num: args[0],
+			Dec: args[1],
+		}, nil
+	default:
 		return nil, sql.ErrInvalidArgumentNumber.New("ROUND", "1 or 2", argLen)
 	}
-
-	var right sql.Expression
-	if len(args) == 2 {
-		right = args[1]
-	}
-
-	return &Round{expression.BinaryExpressionStub{LeftChild: args[0], RightChild: right}}, nil
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -249,16 +253,15 @@ func (r *Round) Description() string {
 
 // Children implements the Expression interface.
 func (r *Round) Children() []sql.Expression {
-	if r.RightChild == nil {
-		return []sql.Expression{r.LeftChild}
+	if r.Dec == nil {
+		return []sql.Expression{r.Num}
 	}
-
-	return r.BinaryExpressionStub.Children()
+	return []sql.Expression{r.Num, r.Dec}
 }
 
 // Eval implements the Expression interface.
 func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	val, err := r.LeftChild.Eval(ctx, row)
+	val, err := r.Num.Eval(ctx, row)
 	if err != nil {
 		return nil, err
 	}
@@ -272,9 +275,9 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	prec := int32(0)
-	if r.RightChild != nil {
+	if r.Dec != nil {
 		var tmp any
-		tmp, err = r.RightChild.Eval(ctx, row)
+		tmp, err = r.Dec.Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
@@ -301,7 +304,7 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	var res interface{}
 	tmp := val.(decimal.Decimal).Round(prec)
-	lType := r.LeftChild.Type()
+	lType := r.Num.Type()
 	if types.IsSigned(lType) {
 		res, _, err = types.Int64.Convert(ctx, tmp)
 	} else if types.IsUnsigned(lType) {
@@ -322,25 +325,24 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // IsNullable implements the Expression interface.
 func (r *Round) IsNullable() bool {
-	return r.LeftChild.IsNullable()
+	return r.Num.IsNullable() && (r == nil || r.Dec.IsNullable())
 }
 
 func (r *Round) String() string {
-	if r.RightChild == nil {
-		return fmt.Sprintf("%s(%s,0)", r.FunctionName(), r.LeftChild.String())
+	if r.Dec == nil {
+		return fmt.Sprintf("%s(%s,0)", r.FunctionName(), r.Num.String())
 	}
-
-	return fmt.Sprintf("%s(%s,%s)", r.FunctionName(), r.LeftChild.String(), r.RightChild.String())
+	return fmt.Sprintf("%s(%s,%s)", r.FunctionName(), r.Num.String(), r.Dec.String())
 }
 
 // Resolved implements the Expression interface.
 func (r *Round) Resolved() bool {
-	return r.LeftChild.Resolved() && (r.RightChild == nil || r.RightChild.Resolved())
+	return r.Num.Resolved() && (r.Dec == nil || r.Dec.Resolved())
 }
 
 // Type implements the Expression interface.
 func (r *Round) Type() sql.Type {
-	return numericRetType(r.LeftChild.Type())
+	return numericRetType(r.Num.Type())
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
