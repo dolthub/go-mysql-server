@@ -146,7 +146,12 @@ func GetConvertToType(l, r sql.Type) string {
 
 // IsNullable implements the Expression interface.
 func (c *Convert) IsNullable() bool {
-	return true
+	switch c.castToType {
+	case ConvertToDate, ConvertToDatetime, ConvertToBinary, ConvertToChar, ConvertToNChar:
+		return true
+	default:
+		return c.Child.IsNullable()
+	}
 }
 
 // Type implements the Expression interface.
