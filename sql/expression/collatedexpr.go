@@ -35,7 +35,7 @@ var _ sql.CollationCoercible = (*CollatedExpression)(nil)
 var _ sql.DebugStringer = (*CollatedExpression)(nil)
 
 // NewCollatedExpression creates a new CollatedExpression expression. If the given expression is already a
-// CollatedExpression, then the previous collation is overriden with the given one.
+// CollatedExpression, then the previous collation is overridden with the given one.
 func NewCollatedExpression(expr sql.Expression, collation sql.CollationID) *CollatedExpression {
 	if collatedExpr, ok := expr.(*CollatedExpression); ok {
 		return &CollatedExpression{
