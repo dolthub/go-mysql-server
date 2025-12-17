@@ -122,6 +122,11 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return false, nil
 }
 
+// IsNullable implements sql.Expression
+func (in *InTuple) IsNullable() bool {
+	return true
+}
+
 // WithChildren implements the Expression interface.
 func (in *InTuple) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
@@ -279,7 +284,7 @@ func (hit *HashInTuple) Type() sql.Type {
 }
 
 func (hit *HashInTuple) IsNullable() bool {
-	return hit.in.IsNullable()
+	return hit.in.IsNullable() || hit.hasNull
 }
 
 func (hit *HashInTuple) Children() []sql.Expression {
