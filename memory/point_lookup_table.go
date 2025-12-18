@@ -83,24 +83,23 @@ func (i pointLookupIndex) CanSupport(ctx *sql.Context, ranges ...sql.Range) bool
 		if !ok || len(mysqlRange) != 1 {
 			return false
 		}
-		below, ok := mysqlRange[0].LowerBound.(sql.Below)
-		if !ok {
+		lowerBound := mysqlRange[0].LowerBound
+		if lowerBound.BoundType != sql.Below {
 			return false
 		}
-		belowKey, _, err := types.Int64.Convert(ctx, below.Key)
+		belowKey, _, err := types.Int64.Convert(ctx, lowerBound.Key)
 		if err != nil {
 			return false
 		}
-
-		above, ok := mysqlRange[0].UpperBound.(sql.Above)
-		if !ok {
+		upperBound := mysqlRange[0].UpperBound
+		if upperBound.BoundType != sql.Above {
 			return false
 		}
-		aboveKey, _, err := types.Int64.Convert(ctx, above.Key)
+		aboveKey, _, err := types.Int64.Convert(ctx, upperBound.Key)
 		if err != nil {
 			return false
 		}
-
+		// TODO: why are we comparing these as Int64?
 		if belowKey != aboveKey {
 			return false
 		}

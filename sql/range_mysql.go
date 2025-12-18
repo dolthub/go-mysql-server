@@ -29,7 +29,7 @@ type MySQLRange []MySQLRangeColumnExpr
 
 // Equals returns whether the given RangeCollection matches the calling RangeCollection. The order of each Range is
 // important, therefore it is recommended to sort two collections beforehand.
-func (ranges MySQLRangeCollection) Equals(other RangeCollection) (bool, error) {
+func (ranges MySQLRangeCollection) Equals(ctx *Context, other RangeCollection) (bool, error) {
 	otherCollection, ok := other.(MySQLRangeCollection)
 	if !ok {
 		return false, nil
@@ -38,7 +38,7 @@ func (ranges MySQLRangeCollection) Equals(other RangeCollection) (bool, error) {
 		return false, nil
 	}
 	for i := range ranges {
-		if ok, err := ranges[i].Equals(otherCollection[i]); err != nil || !ok {
+		if ok, err := ranges[i].Equals(ctx, otherCollection[i]); err != nil || !ok {
 			return ok, err
 		}
 	}
@@ -53,11 +53,11 @@ func (ranges MySQLRangeCollection) Len() int {
 // Intersect attempts to intersect the given MySQLRangeCollection with the calling MySQLRangeCollection. This ensures
 // that each MySQLRange belonging to the same collection is treated as a union with respect to that same collection,
 // rather than attempting to intersect ranges that are a part of the same collection.
-func (ranges MySQLRangeCollection) Intersect(otherRanges MySQLRangeCollection) (MySQLRangeCollection, error) {
+func (ranges MySQLRangeCollection) Intersect(ctx *Context, otherRanges MySQLRangeCollection) (MySQLRangeCollection, error) {
 	var newRanges MySQLRangeCollection
 	for _, rang := range ranges {
 		for _, otherRange := range otherRanges {
-			newRange, err := rang.Intersect(otherRange)
+			newRange, err := rang.Intersect(ctx, otherRange)
 			if err != nil {
 				return nil, err
 			}
@@ -66,7 +66,7 @@ func (ranges MySQLRangeCollection) Intersect(otherRanges MySQLRangeCollection) (
 			}
 		}
 	}
-	newRanges, err := RemoveOverlappingRanges(newRanges...)
+	newRanges, err := RemoveOverlappingRanges(ctx, newRanges...)
 	if err != nil {
 		return nil, err
 	}
@@ -122,12 +122,12 @@ func (rang MySQLRange) AsEmpty() MySQLRange {
 	return emptyRange
 }
 
-func (rang MySQLRange) IsEmpty() (bool, error) {
+func (rang MySQLRange) IsEmpty(ctx *Context) (bool, error) {
 	if len(rang) == 0 {
 		return true, nil
 	}
 	for i := range rang {
-		res, err := rang[i].IsEmpty()
+		res, err := rang[i].IsEmpty(ctx)
 		if err != nil {
 			return false, err
 		}
@@ -160,8 +160,8 @@ func (rang MySQLRange) ExpressionByColumnName(idx Index, colExpr string) (MySQLR
 }
 
 // Equals evaluates whether the calling Range is equivalent to the given Range.
-func (rang MySQLRange) Equals(other Range) (bool, error) {
-	otherRange, ok := other.(MySQLRange)
+func (rang MySQLRange) Equals(ctx *Context, other Range) (bool, error) {
+	otherRange, ok := other.(MySQLRange) // TODO: can we avoid interface here?
 	if !ok {
 		return false, nil
 	}
@@ -169,7 +169,7 @@ func (rang MySQLRange) Equals(other Range) (bool, error) {
 		return false, nil
 	}
 	for i := range rang {
-		if ok, err := rang[i].Equals(otherRange[i]); err != nil || !ok {
+		if ok, err := rang[i].Equals(ctx, otherRange[i]); err != nil || !ok {
 			return false, err
 		}
 	}
@@ -177,16 +177,16 @@ func (rang MySQLRange) Equals(other Range) (bool, error) {
 }
 
 // Compare returns an integer stating the relative position of the calling MySQLRange to the given MySQLRange.
-func (rang MySQLRange) Compare(otherRange MySQLRange) (int, error) {
+func (rang MySQLRange) Compare(ctx *Context, otherRange MySQLRange) (int, error) {
 	if len(rang) != len(otherRange) {
 		return 0, fmt.Errorf("compared ranges must have matching lengths")
 	}
 	for i := range rang {
-		cmp, err := rang[i].LowerBound.Compare(otherRange[i].LowerBound, rang[i].Typ)
+		cmp, err := rang[i].LowerBound.Compare(ctx, otherRange[i].LowerBound, rang[i].Typ)
 		if err != nil || cmp != 0 {
 			return cmp, err
 		}
-		cmp, err = rang[i].UpperBound.Compare(otherRange[i].UpperBound, rang[i].Typ)
+		cmp, err = rang[i].UpperBound.Compare(ctx, otherRange[i].UpperBound, rang[i].Typ)
 		if err != nil || cmp != 0 {
 			return cmp, err
 		}
@@ -195,13 +195,13 @@ func (rang MySQLRange) Compare(otherRange MySQLRange) (int, error) {
 }
 
 // Intersect intersects the given MySQLRange with the calling MySQLRange.
-func (rang MySQLRange) Intersect(otherRange MySQLRange) (MySQLRange, error) {
+func (rang MySQLRange) Intersect(ctx *Context, otherRange MySQLRange) (MySQLRange, error) {
 	if len(rang) != len(otherRange) {
 		return nil, nil
 	}
 	newRangeCollection := make(MySQLRange, len(rang))
 	for i := range rang {
-		intersectedRange, ok, err := rang[i].TryIntersect(otherRange[i])
+		intersectedRange, ok, err := rang[i].TryIntersect(ctx, otherRange[i])
 		if err != nil {
 			return nil, err
 		}
@@ -216,16 +216,16 @@ func (rang MySQLRange) Intersect(otherRange MySQLRange) (MySQLRange, error) {
 // TryMerge attempts to merge the given MySQLRange with the calling MySQLRange. This can only do a merge if one
 // MySQLRange is a subset of the other, or if all columns except for one are equivalent, upon which a union is attempted
 // on that column. Returns true if the merge was successful.
-func (rang MySQLRange) TryMerge(otherRange MySQLRange) (MySQLRange, bool, error) {
+func (rang MySQLRange) TryMerge(ctx *Context, otherRange MySQLRange) (MySQLRange, bool, error) {
 	if len(rang) != len(otherRange) {
 		return nil, false, nil
 	}
-	if ok, err := rang.IsSupersetOf(otherRange); err != nil {
+	if ok, err := rang.IsSupersetOf(ctx, otherRange); err != nil {
 		return nil, false, err
 	} else if ok {
 		return rang, true, nil
 	}
-	if ok, err := otherRange.IsSupersetOf(rang); err != nil {
+	if ok, err := otherRange.IsSupersetOf(ctx, rang); err != nil {
 		return nil, false, err
 	} else if ok {
 		return otherRange, true, nil
@@ -234,7 +234,7 @@ func (rang MySQLRange) TryMerge(otherRange MySQLRange) (MySQLRange, bool, error)
 	indexToMerge := -1
 	// The superset checks will cover if every column expr is equivalent
 	for i := 0; i < len(rang); i++ {
-		if ok, err := rang[i].Equals(otherRange[i]); err != nil {
+		if ok, err := rang[i].Equals(ctx, otherRange[i]); err != nil {
 			return nil, false, err
 		} else if !ok {
 			// Only one column may not equal another
@@ -248,7 +248,7 @@ func (rang MySQLRange) TryMerge(otherRange MySQLRange) (MySQLRange, bool, error)
 	if indexToMerge == -1 {
 		return nil, false, fmt.Errorf("invalid index to merge")
 	}
-	mergedLastExpr, ok, err := rang[indexToMerge].TryUnion(otherRange[indexToMerge])
+	mergedLastExpr, ok, err := rang[indexToMerge].TryUnion(ctx, otherRange[indexToMerge])
 	if err != nil || !ok {
 		return nil, false, err
 	}
@@ -258,12 +258,12 @@ func (rang MySQLRange) TryMerge(otherRange MySQLRange) (MySQLRange, bool, error)
 }
 
 // IsSubsetOf evaluates whether the calling MySQLRange is fully encompassed by the given MySQLRange.
-func (rang MySQLRange) IsSubsetOf(otherRange MySQLRange) (bool, error) {
+func (rang MySQLRange) IsSubsetOf(ctx *Context, otherRange MySQLRange) (bool, error) {
 	if len(rang) != len(otherRange) {
 		return false, nil
 	}
 	for i := range rang {
-		ok, err := rang[i].IsSubsetOf(otherRange[i])
+		ok, err := rang[i].IsSubsetOf(ctx, otherRange[i])
 		if err != nil || !ok {
 			return false, err
 		}
@@ -272,19 +272,19 @@ func (rang MySQLRange) IsSubsetOf(otherRange MySQLRange) (bool, error) {
 }
 
 // IsSupersetOf evaluates whether the calling MySQLRange fully encompasses the given MySQLRange.
-func (rang MySQLRange) IsSupersetOf(otherRange MySQLRange) (bool, error) {
-	return otherRange.IsSubsetOf(rang)
+func (rang MySQLRange) IsSupersetOf(ctx *Context, otherRange MySQLRange) (bool, error) {
+	return otherRange.IsSubsetOf(ctx, rang)
 }
 
 // IsConnected returns whether the calling MySQLRange and given MySQLRange have overlapping values, which would result
 // in the same values being returned from some subset of both ranges.
-func (rang MySQLRange) IsConnected(otherRange MySQLRange) (bool, error) {
+func (rang MySQLRange) IsConnected(ctx *Context, otherRange MySQLRange) (bool, error) {
 	if len(rang) != len(otherRange) {
 		return false, nil
 	}
 	for i := range rang {
-		_, ok, err := rang[i].Overlaps(otherRange[i])
-		if err != nil || !ok {
+		overlaps, err := rang[i].Overlaps(ctx, otherRange[i])
+		if err != nil || !overlaps {
 			return false, err
 		}
 	}
@@ -293,13 +293,13 @@ func (rang MySQLRange) IsConnected(otherRange MySQLRange) (bool, error) {
 
 // Overlaps returns whether the calling MySQLRange and given MySQLRange have overlapping values, which would result in
 // the same values being returned from some subset of both ranges.
-func (rang MySQLRange) Overlaps(otherRange MySQLRange) (bool, error) {
+func (rang MySQLRange) Overlaps(ctx *Context, otherRange MySQLRange) (bool, error) {
 	if len(rang) != len(otherRange) {
 		return false, nil
 	}
 	for i := range rang {
-		_, ok, err := rang[i].Overlaps(otherRange[i])
-		if err != nil || !ok {
+		overlaps, err := rang[i].Overlaps(ctx, otherRange[i])
+		if err != nil || !overlaps {
 			return false, err
 		}
 	}
@@ -311,7 +311,7 @@ func (rang MySQLRange) Overlaps(otherRange MySQLRange) (bool, error) {
 // one MySQLRange is returned. Otherwise, this returns a collection of ranges that do not overlap with each other, and covers
 // the entirety of the original ranges (and nothing more). If the two ranges do not overlap and are not mergeable then
 // false is returned, otherwise returns true.
-func (rang MySQLRange) RemoveOverlap(otherRange MySQLRange) ([]MySQLRange, bool, error) {
+func (rang MySQLRange) RemoveOverlap(ctx *Context, otherRange MySQLRange) ([]MySQLRange, bool, error) {
 	// An explanation on why overlapping ranges may return more than one range, and why they can't just be merged as-is.
 	// Let's start with a MySQLRange that has a single RangeColumnExpression (a one-dimensional range). Imagine this as a
 	// number line with contiguous sections defined as the range. If you have any two sections that overlap, then you
@@ -335,39 +335,40 @@ func (rang MySQLRange) RemoveOverlap(otherRange MySQLRange) ([]MySQLRange, bool,
 
 	// If the two ranges may be merged then we just do that and return.
 	// Also allows us to not have to worry about the case where every column is equivalent.
-	if mergedRange, ok, err := rang.TryMerge(otherRange); err != nil {
+	if mergedRange, ok, err := rang.TryMerge(ctx, otherRange); err != nil {
 		return nil, false, err
 	} else if ok {
 		return []MySQLRange{mergedRange}, true, nil
 	}
 	// We check for overlapping after checking for merge as two ranges may not overlap but may be mergeable.
 	// This would occur if all other columns are equivalent except for one column that is overlapping or adjacent.
-	if ok, err := rang.Overlaps(otherRange); err != nil || !ok {
+	if ok, err := rang.Overlaps(ctx, otherRange); err != nil || !ok {
 		return []MySQLRange{rang, otherRange}, false, err
 	}
 
 	var ranges []MySQLRange
 	for i := range rang {
-		if ok, err := rang[i].Equals(otherRange[i]); err != nil {
+		if ok, err := rang[i].Equals(ctx, otherRange[i]); err != nil {
 			return nil, false, err
 		} else if ok {
 			continue
 		}
+		// TODO: if FindOverlap is only called when Overlaps is true, we can save some operations
 		// Get the MySQLRangeColumnExpr that overlaps both RangeColumnExprs
-		overlapExpr, _, err := rang[i].Overlaps(otherRange[i])
+		overlapExpr, err := rang[i].FindOverlap(ctx, otherRange[i])
 		if err != nil {
 			return nil, false, err
 		}
 		// Subtract the overlapping range from each existing range.
 		// This will give us a collection of ranges that do not have any overlap.
-		range1Subtracted, err := rang[i].Subtract(overlapExpr)
+		range1Subtracted, err := rang[i].Subtract(ctx, overlapExpr)
 		if err != nil {
 			return nil, false, err
 		}
 		for _, newColExpr := range range1Subtracted {
 			ranges = append(ranges, rang.replace(i, newColExpr))
 		}
-		range2Subtracted, err := otherRange[i].Subtract(overlapExpr)
+		range2Subtracted, err := otherRange[i].Subtract(ctx, overlapExpr)
 		if err != nil {
 			return nil, false, err
 		}
@@ -377,7 +378,7 @@ func (rang MySQLRange) RemoveOverlap(otherRange MySQLRange) ([]MySQLRange, bool,
 		// Create two ranges that replace each respective MySQLRangeColumnExpr with the overlapping one, giving us two
 		// ranges that are guaranteed to overlap (and are a subset of the originals). We can then recursively call this
 		// function on the new overlapping ranges which will eventually return a set of non-overlapping ranges.
-		newRanges, _, err := rang.replace(i, overlapExpr).RemoveOverlap(otherRange.replace(i, overlapExpr))
+		newRanges, _, err := rang.replace(i, overlapExpr).RemoveOverlap(ctx, otherRange.replace(i, overlapExpr))
 		if err != nil {
 			return nil, false, err
 		}
@@ -427,7 +428,7 @@ func (rang MySQLRange) replace(i int, colExpr MySQLRangeColumnExpr) MySQLRange {
 
 // IntersectRanges intersects each MySQLRange for each column expression. If a MySQLRangeColumnExpr ends up with no valid ranges
 // then a nil is returned.
-func IntersectRanges(ranges ...MySQLRange) MySQLRange {
+func IntersectRanges(ctx *Context, ranges ...MySQLRange) MySQLRange {
 	if len(ranges) == 0 {
 		return nil
 	}
@@ -451,7 +452,7 @@ func IntersectRanges(ranges ...MySQLRange) MySQLRange {
 		if len(rc) == 0 {
 			continue
 		}
-		newRange, err := rang.Intersect(rc)
+		newRange, err := rang.Intersect(ctx, rc)
 		if err != nil || len(newRange) == 0 {
 			return nil
 		}
@@ -463,7 +464,7 @@ func IntersectRanges(ranges ...MySQLRange) MySQLRange {
 }
 
 // RemoveOverlappingRanges removes all overlap between all ranges.
-func RemoveOverlappingRanges(ranges ...MySQLRange) (MySQLRangeCollection, error) {
+func RemoveOverlappingRanges(ctx *Context, ranges ...MySQLRange) (MySQLRangeCollection, error) {
 	if len(ranges) == 0 {
 		return nil, nil
 	}
@@ -475,20 +476,20 @@ func RemoveOverlappingRanges(ranges ...MySQLRange) (MySQLRangeCollection, error)
 	}
 	for i := 1; i < len(ranges); i++ {
 		rang := ranges[i]
-		connectingRanges, err := rangeTree.FindConnections(rang, 0)
+		connectingRanges, err := rangeTree.FindConnections(ctx, rang, 0)
 		if err != nil {
 			return nil, err
 		}
 		foundOverlap := false
 		for _, connectingRange := range connectingRanges {
 			if connectingRange != nil {
-				newRanges, ok, err := connectingRange.RemoveOverlap(rang)
+				newRanges, ok, err := connectingRange.RemoveOverlap(ctx, rang)
 				if err != nil {
 					return nil, err
 				}
 				if ok {
 					foundOverlap = true
-					err = rangeTree.Remove(connectingRange)
+					err = rangeTree.Remove(ctx, connectingRange)
 					if err != nil {
 						return nil, err
 					}
@@ -499,19 +500,20 @@ func RemoveOverlappingRanges(ranges ...MySQLRange) (MySQLRangeCollection, error)
 			}
 		}
 		if !foundOverlap {
-			err = rangeTree.Insert(rang)
+			err = rangeTree.Insert(ctx, rang)
 			if err != nil {
 				return nil, err
 			}
 		}
 	}
 
-	rangeColl, err := rangeTree.GetRangeCollection()
+	rangeColl, err := rangeTree.GetRangeCollection(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	if err = validateRangeCollection(rangeColl); err != nil {
+	// We should try to avoid this step
+	if err = validateRangeCollection(ctx, rangeColl); err != nil {
 		return nil, err
 	}
 
@@ -519,12 +521,12 @@ func RemoveOverlappingRanges(ranges ...MySQLRange) (MySQLRangeCollection, error)
 }
 
 // SortRanges sorts the given ranges, returning a new slice of ranges.
-func SortRanges(ranges ...MySQLRange) ([]MySQLRange, error) {
+func SortRanges(ctx *Context, ranges ...MySQLRange) ([]MySQLRange, error) {
 	sortedRanges := make([]MySQLRange, len(ranges))
 	copy(sortedRanges, ranges)
 	var err error
 	sort.Slice(sortedRanges, func(i, j int) bool {
-		cmp, cmpErr := sortedRanges[i].Compare(sortedRanges[j])
+		cmp, cmpErr := sortedRanges[i].Compare(ctx, sortedRanges[j])
 		if cmpErr != nil {
 			err = cmpErr
 		}
@@ -533,10 +535,10 @@ func SortRanges(ranges ...MySQLRange) ([]MySQLRange, error) {
 	return sortedRanges, err
 }
 
-func validateRangeCollection(rangeColl MySQLRangeCollection) error {
+func validateRangeCollection(ctx *Context, rangeColl MySQLRangeCollection) error {
 	for i := 0; i < len(rangeColl)-1; i++ {
 		for j := i + 1; j < len(rangeColl); j++ {
-			if ok, err := rangeColl[i].Overlaps(rangeColl[j]); err != nil {
+			if ok, err := rangeColl[i].Overlaps(ctx, rangeColl[j]); err != nil {
 				return err
 			} else if ok {
 				return fmt.Errorf("overlapping ranges: %s and %s", rangeColl[i].String(), rangeColl[j].String())

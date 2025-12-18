@@ -53,9 +53,9 @@ type MySQLRangeColumnExprTree struct {
 
 // rangeColumnExprTreeNode is a node within a MySQLRangeColumnExprTree.
 type rangeColumnExprTreeNode struct {
-	LowerBound    MySQLRangeCut
-	UpperBound    MySQLRangeCut
-	MaxUpperbound MySQLRangeCut
+	LowerBound    *Bound
+	UpperBound    *Bound
+	MaxUpperbound *Bound
 	Inner         *MySQLRangeColumnExprTree
 	Parent        *rangeColumnExprTreeNode
 	Left          *rangeColumnExprTreeNode
@@ -134,7 +134,7 @@ func NewMySQLRangeColumnExprTree(initialRange MySQLRange, columnExprTypes []Type
 }
 
 // FindConnections returns all connecting Ranges found in the tree. They may or may not be mergeable or overlap.
-func (tree *MySQLRangeColumnExprTree) FindConnections(rang MySQLRange, colExprIdx int) (MySQLRangeCollection, error) {
+func (tree *MySQLRangeColumnExprTree) FindConnections(ctx *Context, rang MySQLRange, colExprIdx int) (MySQLRangeCollection, error) {
 	// Some potential optimizations that may significantly reduce the number of comparisons in a worst-case scenario:
 	// 1) Rewrite this function to return a single Range that is guaranteed to either merge or overlap, rather than
 	//    a slice of ranges that are all connected (either overlapping or adjacent) but may not be mergeable.
@@ -150,11 +150,11 @@ func (tree *MySQLRangeColumnExprTree) FindConnections(rang MySQLRange, colExprId
 	for len(stack) > 0 {
 		node := stack[len(stack)-1]
 		stack = stack[:len(stack)-1]
-		cmp1, err := colExpr.LowerBound.Compare(node.UpperBound, tree.typ)
+		cmp1, err := colExpr.LowerBound.Compare(ctx, node.UpperBound, tree.typ)
 		if err != nil {
 			return nil, err
 		}
-		cmp2, err := node.LowerBound.Compare(colExpr.UpperBound, tree.typ)
+		cmp2, err := node.LowerBound.Compare(ctx, colExpr.UpperBound, tree.typ)
 		if err != nil {
 			return nil, err
 		}
@@ -171,7 +171,7 @@ func (tree *MySQLRangeColumnExprTree) FindConnections(rang MySQLRange, colExprId
 			}
 			if node.Inner == nil {
 				rangeCollection = append(rangeCollection, MySQLRange{connectedColExpr})
-			} else if connectedRanges, err := node.Inner.FindConnections(rang, colExprIdx+1); err != nil {
+			} else if connectedRanges, err := node.Inner.FindConnections(ctx, rang, colExprIdx+1); err != nil {
 				return nil, err
 			} else if connectedRanges != nil {
 				for _, connectedRange := range connectedRanges {
@@ -186,7 +186,7 @@ func (tree *MySQLRangeColumnExprTree) FindConnections(rang MySQLRange, colExprId
 		}
 		// If the left child's max upperbound is greater than the search column's lowerbound, we need to search the left subtree
 		if node.Left != nil {
-			cmp, err := colExpr.LowerBound.Compare(node.Left.MaxUpperbound, tree.typ)
+			cmp, err := colExpr.LowerBound.Compare(ctx, node.Left.MaxUpperbound, tree.typ)
 			if err != nil {
 				return nil, err
 			}
@@ -199,12 +199,12 @@ func (tree *MySQLRangeColumnExprTree) FindConnections(rang MySQLRange, colExprId
 }
 
 // Insert adds the given Range into the tree.
-func (tree *MySQLRangeColumnExprTree) Insert(rang MySQLRange) error {
-	return tree.insert(rang, 0)
+func (tree *MySQLRangeColumnExprTree) Insert(ctx *Context, rang MySQLRange) error {
+	return tree.insert(ctx, rang, 0)
 }
 
 // insert is the internal implementation of Insert.
-func (tree *MySQLRangeColumnExprTree) insert(rang MySQLRange, colExprIdx int) error {
+func (tree *MySQLRangeColumnExprTree) insert(ctx *Context, rang MySQLRange, colExprIdx int) error {
 	colExpr := rang[colExprIdx]
 	var insertedNode *rangeColumnExprTreeNode
 	var inner *MySQLRangeColumnExprTree
@@ -231,18 +231,18 @@ func (tree *MySQLRangeColumnExprTree) insert(rang MySQLRange, colExprIdx int) er
 		node := tree.root
 		loop := true
 		for loop {
-			cmp, err := colExpr.LowerBound.Compare(node.LowerBound, tree.typ)
+			cmp, err := colExpr.LowerBound.Compare(ctx, node.LowerBound, tree.typ)
 			if err != nil {
 				return err
 			}
 			if cmp == 0 {
-				cmp, err = colExpr.UpperBound.Compare(node.UpperBound, tree.typ)
+				cmp, err = colExpr.UpperBound.Compare(ctx, node.UpperBound, tree.typ)
 				if err != nil {
 					return err
 				}
 			}
 			if cmp < 0 {
-				node.MaxUpperbound, err = GetMySQLRangeCutMax(colExpr.Typ, node.MaxUpperbound, colExpr.UpperBound)
+				node.MaxUpperbound, err = MaxBound(ctx, node.MaxUpperbound, colExpr.UpperBound, colExpr.Typ)
 				if err != nil {
 					return err
 				}
@@ -270,7 +270,7 @@ func (tree *MySQLRangeColumnExprTree) insert(rang MySQLRange, colExprIdx int) er
 					node = node.Left
 				}
 			} else if cmp > 0 {
-				node.MaxUpperbound, err = GetMySQLRangeCutMax(colExpr.Typ, node.MaxUpperbound, colExpr.UpperBound)
+				node.MaxUpperbound, err = MaxBound(ctx, node.MaxUpperbound, colExpr.UpperBound, colExpr.Typ)
 				if err != nil {
 					return err
 				}
@@ -302,7 +302,7 @@ func (tree *MySQLRangeColumnExprTree) insert(rang MySQLRange, colExprIdx int) er
 				}
 			} else /* cmp == 0 */ {
 				if node.Inner != nil {
-					return node.Inner.insert(rang, colExprIdx+1)
+					return node.Inner.insert(ctx, rang, colExprIdx+1)
 				}
 				return nil
 			}
@@ -315,20 +315,20 @@ func (tree *MySQLRangeColumnExprTree) insert(rang MySQLRange, colExprIdx int) er
 }
 
 // Remove removes the given Range from the tree (and subtrees if applicable).
-func (tree *MySQLRangeColumnExprTree) Remove(rang MySQLRange) error {
-	return tree.remove(rang, 0)
+func (tree *MySQLRangeColumnExprTree) Remove(ctx *Context, rang MySQLRange) error {
+	return tree.remove(ctx, rang, 0)
 }
 
 // remove is the internal implementation of Remove.
-func (tree *MySQLRangeColumnExprTree) remove(rang MySQLRange, colExprIdx int) error {
+func (tree *MySQLRangeColumnExprTree) remove(ctx *Context, rang MySQLRange, colExprIdx int) error {
 	colExpr := rang[colExprIdx]
 	var child *rangeColumnExprTreeNode
-	node, err := tree.getNode(colExpr)
+	node, err := tree.getNode(ctx, colExpr)
 	if err != nil || node == nil {
 		return err
 	}
 	if node.Inner != nil {
-		err = node.Inner.remove(rang, colExprIdx+1)
+		err = node.Inner.remove(ctx, rang, colExprIdx+1)
 		if err != nil {
 			return err
 		}
@@ -386,14 +386,14 @@ func (tree *MySQLRangeColumnExprTree) remove(rang MySQLRange, colExprIdx int) er
 }
 
 // GetRangeCollection returns every Range that this tree contains.
-func (tree *MySQLRangeColumnExprTree) GetRangeCollection() (MySQLRangeCollection, error) {
+func (tree *MySQLRangeColumnExprTree) GetRangeCollection(ctx *Context) (MySQLRangeCollection, error) {
 	var rangeCollection MySQLRangeCollection
 	var emptyRange MySQLRange
 	iterStack := []*rangeTreeIter{tree.Iterator()}
 	rangeStack := MySQLRange{MySQLRangeColumnExpr{}}
 	for len(iterStack) > 0 {
 		iter := iterStack[len(iterStack)-1]
-		node, err := iter.Next()
+		node, err := iter.Next(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -409,13 +409,13 @@ func (tree *MySQLRangeColumnExprTree) GetRangeCollection() (MySQLRangeCollection
 			} else {
 				rang := make(MySQLRange, len(rangeStack))
 				copy(rang, rangeStack)
-				isempty, err := rang.IsEmpty()
+				isempty, err := rang.IsEmpty(ctx)
 				if err != nil {
 					return nil, err
 				}
 				if !isempty {
 					if len(rangeCollection) > 0 {
-						merged, ok, err := rangeCollection[len(rangeCollection)-1].TryMerge(rang)
+						merged, ok, err := rangeCollection[len(rangeCollection)-1].TryMerge(ctx, rang)
 						if err != nil {
 							return nil, err
 						}
@@ -502,15 +502,15 @@ func (node *rangeColumnExprTreeNode) string(prefix string, isTail bool, sb *stri
 }
 
 // getNode returns the node that matches the given column expression, if it exists. Returns nil otherwise.
-func (tree *MySQLRangeColumnExprTree) getNode(colExpr MySQLRangeColumnExpr) (*rangeColumnExprTreeNode, error) {
+func (tree *MySQLRangeColumnExprTree) getNode(ctx *Context, colExpr MySQLRangeColumnExpr) (*rangeColumnExprTreeNode, error) {
 	node := tree.root
 	for node != nil {
-		cmp, err := colExpr.LowerBound.Compare(node.LowerBound, tree.typ)
+		cmp, err := colExpr.LowerBound.Compare(ctx, node.LowerBound, tree.typ)
 		if err != nil {
 			return nil, err
 		}
 		if cmp == 0 {
-			cmp, err = colExpr.UpperBound.Compare(node.UpperBound, tree.typ)
+			cmp, err = colExpr.UpperBound.Compare(ctx, node.UpperBound, tree.typ)
 			if err != nil {
 				return nil, err
 			}
@@ -729,7 +729,7 @@ func (node *rangeColumnExprTreeNode) nodeColor() rangeTreeColor {
 }
 
 // maxUpperBound is a nil-safe way to return this node's maximum upper bound.
-func (node *rangeColumnExprTreeNode) maxUpperBound() MySQLRangeCut {
+func (node *rangeColumnExprTreeNode) maxUpperBound() *Bound {
 	if node == nil {
 		return nil
 	}
@@ -737,7 +737,7 @@ func (node *rangeColumnExprTreeNode) maxUpperBound() MySQLRangeCut {
 }
 
 // upperBound is a nil-safe way to return this node's upper bound.
-func (node *rangeColumnExprTreeNode) upperBound() MySQLRangeCut {
+func (node *rangeColumnExprTreeNode) upperBound() *Bound {
 	if node == nil {
 		return nil
 	}
@@ -757,7 +757,7 @@ func (tree *MySQLRangeColumnExprTree) Iterator() *rangeTreeIter {
 }
 
 // Next returns the next node, or nil if no more nodes are available.
-func (iterator *rangeTreeIter) Next() (*rangeColumnExprTreeNode, error) {
+func (iterator *rangeTreeIter) Next(ctx *Context) (*rangeColumnExprTreeNode, error) {
 	if iterator.position == end {
 		return nil, nil
 	}
@@ -784,13 +784,13 @@ func (iterator *rangeTreeIter) Next() (*rangeColumnExprTreeNode, error) {
 		node := iterator.node
 		for iterator.node.Parent != nil {
 			iterator.node = iterator.node.Parent
-			if cmp, err := node.LowerBound.Compare(iterator.node.LowerBound, iterator.tree.typ); err != nil {
+			if cmp, err := node.LowerBound.Compare(ctx, iterator.node.LowerBound, iterator.tree.typ); err != nil {
 				return nil, err
 			} else if cmp < 0 {
 				iterator.position = between
 				return iterator.node, nil
 			} else if cmp == 0 {
-				cmp, err = node.UpperBound.Compare(iterator.node.UpperBound, iterator.tree.typ)
+				cmp, err = node.UpperBound.Compare(ctx, iterator.node.UpperBound, iterator.tree.typ)
 				if err != nil {
 					return nil, err
 				}
