@@ -108,8 +108,8 @@ func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.
 	}
 
 	fieldToColMap := make([]int, len(n.UserVars))
-	for fieldIdx, colIdx := 0, 0; fieldIdx < len(n.UserVars) && colIdx < len(colNames); fieldIdx++ {
-		if n.UserVars[fieldIdx] != nil {
+	for fieldIdx, colIdx := 0, 0; fieldIdx < len(n.UserVars); fieldIdx++ {
+		if n.UserVars[fieldIdx] != nil || colIdx >= len(colNames) {
 			fieldToColMap[fieldIdx] = -1
 			continue
 		}
