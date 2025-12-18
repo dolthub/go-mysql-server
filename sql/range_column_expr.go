@@ -344,12 +344,12 @@ func (r MySQLRangeColumnExpr) IsSubsetOf(ctx *Context, other MySQLRangeColumnExp
 	if r.Typ.String() != other.Typ.String() {
 		return false, nil
 	}
-	comp, err := r.LowerBound.Compare(ctx, other.LowerBound, r.Typ)
-	if err != nil || comp == -1 {
+	cmp, err := r.LowerBound.Compare(ctx, other.LowerBound, r.Typ)
+	if err != nil || cmp == -1 {
 		return false, err
 	}
-	comp, err = r.UpperBound.Compare(ctx, other.UpperBound, r.Typ)
-	if err != nil || comp == 1 {
+	cmp, err = r.UpperBound.Compare(ctx, other.UpperBound, r.Typ)
+	if err != nil || cmp == 1 {
 		return false, err
 	}
 	return true, nil
@@ -370,9 +370,9 @@ func (r MySQLRangeColumnExpr) DebugString() string {
 	var res string
 	switch r.LowerBound.BoundType {
 	case Above:
-		res += fmt.Sprintf("(%s", r.LowerBound.Key)
+		res += fmt.Sprintf("(%v", r.LowerBound.Key)
 	case Below:
-		res += fmt.Sprintf("[%s", r.LowerBound.Key)
+		res += fmt.Sprintf("[%v", r.LowerBound.Key)
 	case AboveAll:
 		res += "(∞"
 	case AboveNull:
@@ -383,9 +383,9 @@ func (r MySQLRangeColumnExpr) DebugString() string {
 	res += ", "
 	switch r.UpperBound.BoundType {
 	case Above:
-		res += fmt.Sprintf("%s]", r.UpperBound.Key)
+		res += fmt.Sprintf("%v]", r.UpperBound.Key)
 	case Below:
-		res += fmt.Sprintf("%s)", r.UpperBound.Key)
+		res += fmt.Sprintf("%v)", r.UpperBound.Key)
 	case AboveAll:
 		res += "∞)"
 	case AboveNull:
@@ -564,6 +564,11 @@ func SimplifyRangeColumn(ctx *Context, rngColExprs []MySQLRangeColumnExpr) ([]My
 			res = append(res, cur)
 			cur = rngColExpr
 		}
+	}
+	if curIsEmpty, err := cur.IsEmpty(ctx); err != nil {
+		return nil, err
+	} else if !curIsEmpty {
+		res = append(res, cur)
 	}
 
 	return res, nil
