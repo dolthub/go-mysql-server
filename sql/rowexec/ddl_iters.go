@@ -234,36 +234,19 @@ func (l *loadDataIter) parseFields(ctx *sql.Context, line string) (exprs []sql.E
 		return nil, fmt.Errorf("error: unterminated enclosed field")
 	}
 
-	exprs, destRow, err := l.preprocessor(ctx, fields)
+	exprs, colListRow, err := l.preprocessor(ctx, fields)
 	if err != nil {
 		return nil, err
 	}
 
 	for exprIdx, expr := range exprs {
 		if expr != nil {
-			result, err := expr.Eval(ctx, destRow)
+			result, err := expr.Eval(ctx, colListRow)
 			if err != nil {
 				return nil, err
 			}
 			exprs[exprIdx] = expression.NewLiteral(result, expr.Type())
 			continue
-		}
-
-		field := destRow[exprIdx]
-		switch field {
-		case "":
-			destCol := l.destSch[exprIdx]
-			if _, ok := destCol.Type.(sql.StringType); ok {
-				exprs[exprIdx] = expression.NewLiteral(field, types.LongText)
-			} else if destCol.Default != nil {
-				exprs[exprIdx] = destCol.Default
-			} else {
-				exprs[exprIdx] = expression.NewLiteral(nil, types.Null)
-			}
-		case "NULL":
-			exprs[exprIdx] = expression.NewLiteral(nil, types.Null)
-		default:
-			exprs[exprIdx] = expression.NewLiteral(field, types.LongText)
 		}
 	}
 
@@ -331,55 +314,78 @@ func (l *loadDataIter) parseFields(ctx *sql.Context, line string) (exprs []sql.E
 
 	// Due to how projections work, if no columns are provided (each row may have a variable number of values), the
 	// projection will not insert default values, so we must do it here.
-	if l.colCount == 0 {
-		for exprIdx, expr := range exprs {
-			if expr != nil {
-				continue
-			}
-			col := l.destSch[exprIdx]
-			if !col.Nullable && col.Default == nil && !col.AutoIncrement {
-				return nil, sql.ErrInsertIntoNonNullableDefaultNullColumn.New(col.Name)
-			}
-			exprs[exprIdx] = col.Default
-		}
-	}
+	//if l.colCount == 0 {
+	//	for exprIdx, expr := range exprs {
+	//		if expr != nil {
+	//			continue
+	//		}
+	//		col := l.destSch[exprIdx]
+	//		if !col.Nullable && col.Default == nil && !col.AutoIncrement {
+	//			return nil, sql.ErrInsertIntoNonNullableDefaultNullColumn.New(col.Name)
+	//		}
+	//		exprs[exprIdx] = col.Default
+	//	}
+	//}
 
 	return exprs, nil
 }
 
-func (l *loadDataIter) preprocessor(ctx *sql.Context, parsedFields []string) (expressions []sql.Expression, destRow sql.Row, err error) {
-	destRow = make(sql.Row, len(l.destSch))
-	for fieldIdx, field := range parsedFields {
-		colIdx := l.fieldToColMap[fieldIdx]
-		if colIdx != -1 {
-			destRow[fieldIdx] = field
-		}
-	}
-
+// preprocessor
+func (l *loadDataIter) preprocessor(ctx *sql.Context, parsedFields []string) (expressions []sql.Expression, colListRow sql.Row, err error) {
+	colListRow = make(sql.Row, len(l.destSch))
 	expressions = make([]sql.Expression, len(l.destSch))
-	for exprIdx, expr := range l.userVars {
-		if exprIdx >= len(parsedFields) {
-			// TODO(elianddb): Set user variables outside of len(destSchema) to nil with a warning.
-			continue
-		}
-
-		if expr != nil {
-			setField := expr.(*expression.SetField)
+	colListIdx := 0
+	for fieldIdx, destColIdx := range l.fieldToColMap {
+		if l.userVars[fieldIdx] != nil {
+			setField := l.userVars[fieldIdx].(*expression.SetField)
 			userVar := setField.LeftChild.(*expression.UserVar)
-			err := setUserVar(ctx, userVar, setField.RightChild, destRow)
+			field := parsedFields[fieldIdx]
+			fieldType := types.ApproximateTypeFromValue(field)
+			err := ctx.SetUserVariable(ctx, userVar.Name, field, fieldType)
 			if err != nil {
 				return nil, nil, err
 			}
+			continue
 		}
+
+		if colListIdx >= len(expressions) {
+			continue
+		}
+
+		if l.setExprs != nil && destColIdx != -1 && l.setExprs[destColIdx] != nil {
+			expressions[colListIdx] = l.setExprs[destColIdx]
+		}
+
+		if fieldIdx >= len(parsedFields) {
+			colListIdx++
+			continue
+		}
+
+		field := parsedFields[fieldIdx]
+		colListRow[colListIdx] = field
+
+		if expressions[colListIdx] == nil {
+			switch field {
+			case "":
+				destCol := l.destSch[destColIdx]
+				if _, ok := destCol.Type.(sql.StringType); ok {
+					expressions[colListIdx] = expression.NewLiteral(field, types.LongText)
+				} else if destCol.Default != nil {
+					expressions[colListIdx] = destCol.Default
+				} else {
+					expressions[colListIdx] = expression.NewLiteral(nil, types.Null)
+				}
+			case "NULL":
+				expressions[colListIdx] = expression.NewLiteral(nil, types.Null)
+			default:
+				expressions[colListIdx] = expression.NewLiteral(field, types.LongText)
+			}
+		}
+
+		colListIdx++
 	}
 
-	for exprIdx, expr := range l.setExprs {
-		if expr != nil {
-			expressions[exprIdx] = expr
-		}
-	}
-
-	return expressions, destRow, nil
+	return expressions, colListRow, nil
 }
 
 type modifyColumnIter struct {
