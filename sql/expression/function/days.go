@@ -112,6 +112,11 @@ func (t *ToDays) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return res, nil
 }
 
+// IsNullable implements sql.Expression
+func (t *ToDays) IsNullable() bool {
+	return true
+}
+
 // FromDays is a function that returns date for a given number of days since year 0.
 type FromDays struct {
 	expression.UnaryExpressionStub
@@ -313,4 +318,9 @@ func (f *LastDay) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	lDay := lastDay(d.Year(), int(d.Month()))
 	return time.Date(d.Year(), d.Month(), lDay, 0, 0, 0, 0, time.UTC), nil
+}
+
+// IsNullable implements sql.Expression
+func (f *LastDay) IsNullable() bool {
+	return true
 }

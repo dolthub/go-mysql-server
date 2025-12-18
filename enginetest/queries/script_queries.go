@@ -9642,9 +9642,9 @@ where
 			{
 				Query: "describe t;",
 				Expected: []sql.Row{
-					{"port1", "bigint", "NO", "", nil, ""},
-					{"port2", "bigint", "NO", "", nil, ""},
-					{"port3", "bigint", "NO", "", nil, ""},
+					{"port1", "bigint", "YES", "", nil, ""},
+					{"port2", "bigint", "YES", "", nil, ""},
+					{"port3", "bigint", "YES", "", nil, ""},
 				},
 			},
 		},

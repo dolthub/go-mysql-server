@@ -104,7 +104,7 @@ func (f *FirstValue) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 
 // IsNullable implements sql.Expression
 func (f *FirstValue) IsNullable() bool {
-	return false
+	return f.Child.IsNullable()
 }
 
 // Eval implements sql.Expression

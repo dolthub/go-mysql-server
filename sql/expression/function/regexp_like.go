@@ -89,7 +89,11 @@ func (r *RegexpLike) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 }
 
 // IsNullable implements the sql.Expression interface.
-func (r *RegexpLike) IsNullable() bool { return true }
+func (r *RegexpLike) IsNullable() bool {
+	// TODO: this might be too general. We might want to evaluate IsNullable based on if Text and Pattern are nullable
+	// https://dev.mysql.com/doc/refman/8.4/en/regexp.html#function_regexp-like
+	return true
+}
 
 // Children implements the sql.Expression interface.
 func (r *RegexpLike) Children() []sql.Expression {

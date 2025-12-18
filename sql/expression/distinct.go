@@ -97,7 +97,7 @@ func (de *DistinctExpression) CollationCoercibility(ctx *sql.Context) (collation
 }
 
 func (de *DistinctExpression) IsNullable() bool {
-	return false
+	return true
 }
 
 // Returns the child value if the cache hasn't seen the value before otherwise returns nil.

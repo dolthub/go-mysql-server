@@ -325,7 +325,7 @@ func (r *Round) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // IsNullable implements the Expression interface.
 func (r *Round) IsNullable() bool {
-	return r.Num.IsNullable() && (r == nil || r.Dec.IsNullable())
+	return r.Num.IsNullable() || (r.Dec != nil && r.Dec.IsNullable())
 }
 
 func (r *Round) String() string {

@@ -96,9 +96,6 @@ func (s *StrCmp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	collationPreference, _ := s.CollationCoercibility(ctx)
-	if err != nil {
-		return nil, err
-	}
 
 	strType := types.CreateLongText(collationPreference)
 	return strType.Compare(ctx, expr1, expr2)

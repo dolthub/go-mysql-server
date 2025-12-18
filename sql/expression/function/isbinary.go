@@ -68,6 +68,11 @@ func (ib *IsBinary) Eval(
 	return isBinary(blob.([]byte)), nil
 }
 
+// IsNullable implements sql.Expression
+func (ib *IsBinary) IsNullable() bool {
+	return false
+}
+
 func (ib *IsBinary) String() string {
 	return fmt.Sprintf("%s(%s)", ib.FunctionName(), ib.Child)
 }

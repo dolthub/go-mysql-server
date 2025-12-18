@@ -76,7 +76,7 @@ func (d *Div) DebugString() string {
 
 // IsNullable implements the sql.Expression interface.
 func (d *Div) IsNullable() bool {
-	return d.BinaryExpressionStub.IsNullable()
+	return true
 }
 
 // Type returns the result type for this division expression. For nested division expressions, we prefer sending
@@ -656,7 +656,7 @@ func (i *IntDiv) DebugString() string {
 
 // IsNullable implements the sql.Expression interface.
 func (i *IntDiv) IsNullable() bool {
-	return i.BinaryExpressionStub.IsNullable()
+	return true
 }
 
 // Type returns the greatest type for given operation.

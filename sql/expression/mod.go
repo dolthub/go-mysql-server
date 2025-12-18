@@ -71,7 +71,7 @@ func (m *Mod) DebugString() string {
 
 // IsNullable implements the sql.Expression interface.
 func (m *Mod) IsNullable() bool {
-	return m.BinaryExpressionStub.IsNullable()
+	return true
 }
 
 // Type returns the greatest type for given operation.

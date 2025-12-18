@@ -114,7 +114,8 @@ func (a *Arithmetic) DebugString() string {
 
 // IsNullable implements the sql.Expression interface.
 func (a *Arithmetic) IsNullable() bool {
-	if types.IsDatetimeType(a.Type()) || types.IsTimestampType(a.Type()) {
+	typ := a.Type()
+	if types.IsDatetimeType(typ) || types.IsTimestampType(typ) {
 		return true
 	}
 

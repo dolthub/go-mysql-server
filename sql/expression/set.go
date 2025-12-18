@@ -90,6 +90,11 @@ func (s *SetField) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return updatedRow, nil
 }
 
+// IsNullable implements sql.Expression
+func (s *SetField) IsNullable() bool {
+	return false
+}
+
 // WithChildren implements the Expression interface.
 func (s *SetField) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {

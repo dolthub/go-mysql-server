@@ -115,7 +115,11 @@ func (r *RegexpReplace) CollationCoercibility(ctx *sql.Context) (collation sql.C
 }
 
 // IsNullable implements the sql.Expression interface.
-func (r *RegexpReplace) IsNullable() bool { return true }
+func (r *RegexpReplace) IsNullable() bool {
+	// TODO: this might be too general. We might want to evaluate IsNullable based on if the arguments are nullable
+	// https://dev.mysql.com/doc/refman/8.4/en/regexp.html#function_regexp-replace
+	return true
+}
 
 // Children implements the sql.Expression interface.
 func (r *RegexpReplace) Children() []sql.Expression {

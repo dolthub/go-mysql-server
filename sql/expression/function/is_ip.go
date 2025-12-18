@@ -72,7 +72,7 @@ func (i *IsIPv4) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	// If null, return nul
+	// If null, return null
 	if val == nil {
 		return nil, nil
 	}
@@ -140,7 +140,7 @@ func (i *IsIPv6) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	// If null, return nul
+	// If null, return null
 	if val == nil {
 		return nil, nil
 	}
@@ -208,7 +208,7 @@ func (i *IsIPv4Compat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 		return nil, err
 	}
 
-	// If null, return nul
+	// If null, return null
 	if val == nil {
 		return nil, nil
 	}
@@ -280,7 +280,7 @@ func (i *IsIPv4Mapped) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 		return nil, err
 	}
 
-	// If null, return nul
+	// If null, return null
 	if val == nil {
 		return nil, nil
 	}

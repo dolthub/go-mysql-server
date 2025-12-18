@@ -264,13 +264,11 @@ func (o *Or) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	}
 
-	// Can also be triggered by lval and rval not being bool types.
-	if lval == false && rval == false {
-		return false, nil
+	if lval == nil || rval == nil {
+		return nil, nil
 	}
 
-	// (lval == nil && rval == nil) || (lval == false && rval == nil) || (lval == nil && rval == false)
-	return nil, nil
+	return false, nil
 }
 
 // WithChildren implements the Expression interface.
@@ -339,10 +337,7 @@ func (x *Xor) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// a XOR b == (a AND (NOT b)) OR ((NOT a) and b)
-	if (rvalue && !lvalue) || (!rvalue && lvalue) {
-		return true, nil
-	}
-	return false, nil
+	return (rvalue && !lvalue) || (!rvalue && lvalue), nil
 }
 
 // WithChildren implements the Expression interface.

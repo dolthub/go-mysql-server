@@ -33,7 +33,7 @@ func NewIsNull(child sql.Expression) *IsNull {
 	return &IsNull{UnaryExpressionStub{child}}
 }
 
-// IsNullExpression implements the sql.IsNullExpression interface. This function exsists primarily
+// IsNullExpression implements the sql.IsNullExpression interface. This function exists primarily
 // to ensure the IsNullExpression interface has a unique signature.
 func (e *IsNull) IsNullExpression() bool {
 	return true

@@ -529,6 +529,11 @@ func (e *NullSafeEquals) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 	return result == 0, nil
 }
 
+// IsNullable implements sql.Expression
+func (e *NullSafeEquals) IsNullable() bool {
+	return false
+}
+
 // WithChildren implements the Expression interface.
 func (e *NullSafeEquals) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
