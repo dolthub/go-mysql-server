@@ -24,31 +24,33 @@ import (
 )
 
 func TestTryIntersect(t *testing.T) {
-	res, ok, err := sql.LessThanRangeColumnExpr(6, types.Int8).TryIntersect(sql.GreaterThanRangeColumnExpr(-1, types.Int8))
+	ctx := sql.NewEmptyContext()
+	res, ok, err := sql.LessThanRangeColumnExpr(6, types.Int8).TryIntersect(ctx, sql.GreaterThanRangeColumnExpr(-1, types.Int8))
 	assert.NoError(t, err)
 	assert.True(t, ok)
 	assert.Equal(t, sql.RangeType_OpenOpen, res.Type())
 
-	res, ok, err = sql.NotNullRangeColumnExpr(types.Int8).TryIntersect(sql.AllRangeColumnExpr(types.Int8))
+	res, ok, err = sql.NotNullRangeColumnExpr(types.Int8).TryIntersect(ctx, sql.AllRangeColumnExpr(types.Int8))
 	assert.NoError(t, err)
 	assert.True(t, ok)
 	assert.Equal(t, sql.RangeType_GreaterThan, res.Type())
-	assert.False(t, sql.MySQLRangeCutIsBinding(res.LowerBound))
+	assert.False(t, res.LowerBound.IsBinding())
 
-	_, ok, err = sql.NotNullRangeColumnExpr(types.Int8).TryIntersect(sql.NullRangeColumnExpr(types.Int8))
+	_, ok, err = sql.NotNullRangeColumnExpr(types.Int8).TryIntersect(ctx, sql.NullRangeColumnExpr(types.Int8))
 	assert.NoError(t, err)
 	assert.False(t, ok)
-	_, ok, err = sql.NullRangeColumnExpr(types.Int8).TryIntersect(sql.NotNullRangeColumnExpr(types.Int8))
+	_, ok, err = sql.NullRangeColumnExpr(types.Int8).TryIntersect(ctx, sql.NotNullRangeColumnExpr(types.Int8))
 	assert.NoError(t, err)
 	assert.False(t, ok)
 }
 
 func TestTryUnion(t *testing.T) {
-	res, ok, err := sql.NotNullRangeColumnExpr(types.Int8).TryUnion(sql.NullRangeColumnExpr(types.Int8))
+	ctx := sql.NewEmptyContext()
+	res, ok, err := sql.NotNullRangeColumnExpr(types.Int8).TryUnion(ctx, sql.NullRangeColumnExpr(types.Int8))
 	assert.NoError(t, err)
 	assert.True(t, ok)
 	assert.Equal(t, sql.RangeType_All, res.Type())
-	res, ok, err = sql.NullRangeColumnExpr(types.Int8).TryUnion(sql.NotNullRangeColumnExpr(types.Int8))
+	res, ok, err = sql.NullRangeColumnExpr(types.Int8).TryUnion(ctx, sql.NotNullRangeColumnExpr(types.Int8))
 	assert.NoError(t, err)
 	assert.True(t, ok)
 	assert.Equal(t, sql.RangeType_All, res.Type())

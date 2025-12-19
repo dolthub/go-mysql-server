@@ -1634,8 +1634,8 @@ func (t *IndexedTable) LookupPartitions(ctx *sql.Context, lookup sql.IndexLookup
 			return nil, err
 		}
 
-		lower := sql.GetMySQLRangeCutKey(lookupRanges[0][0].LowerBound)
-		upper := sql.GetMySQLRangeCutKey(lookupRanges[0][0].UpperBound)
+		lower := lookupRanges[0][0].LowerBound.Key
+		upper := lookupRanges[0][0].UpperBound.Key
 		minPoint, ok := lower.(types.Point)
 		if !ok {
 			return nil, sql.ErrInvalidGISData.New()

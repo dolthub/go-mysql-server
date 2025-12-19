@@ -54,7 +54,7 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 		}
 		// if the resulting ranges are overlapping, we cannot drop the sort node
 		// it is possible we end up with blocks of rows that intersect
-		if hasOverlapping(sfExprs, mysqlRanges) {
+		if hasOverlapping(ctx, sfExprs, mysqlRanges) {
 			return n, transform.SameTree, nil
 		}
 
@@ -454,11 +454,11 @@ func isValidSortFieldOrder(sfs sql.SortFields) bool {
 
 // hasOverlapping checks if the ranges in a RangeCollection that are part of the sortfield exprs are overlapping
 // This function assumes that the sort field exprs are a valid prefix of the index columns
-func hasOverlapping(sfExprs []sql.Expression, ranges sql.MySQLRangeCollection) bool {
+func hasOverlapping(ctx *sql.Context, sfExprs []sql.Expression, ranges sql.MySQLRangeCollection) bool {
 	for si := range sfExprs {
 		for ri := 0; ri < len(ranges)-1; ri++ {
 			for rj := ri + 1; rj < len(ranges); rj++ {
-				if _, overlaps, _ := ranges[ri][si].Overlaps(ranges[rj][si]); overlaps {
+				if overlaps, _ := ranges[ri][si].Overlaps(ctx, ranges[rj][si]); overlaps {
 					return true
 				}
 			}

@@ -266,7 +266,7 @@ func getCostedIndexScan(
 	if leftover != nil {
 		b.leftover = append(b.leftover, leftover)
 	}
-	ranges, err := b.buildRangeCollection(root)
+	ranges, err := b.buildRangeCollection(ctx, root)
 	if sql.ErrInvalidValueType.Is(err) {
 		return nil, nil, nil, nil
 	}
@@ -278,15 +278,13 @@ func getCostedIndexScan(
 	if len(ranges) == 0 {
 		emptyLookup = true
 	} else if len(ranges) == 1 {
-		emptyLookup, err = ranges[0].IsEmpty()
+		emptyLookup, err = ranges[0].IsEmpty(ctx)
 		if err != nil {
 			return nil, nil, nil, err
 		}
 		allRange := true
 		for i, r := range ranges[0] {
-			_, uok := r.UpperBound.(sql.AboveAll)
-			_, lok := r.LowerBound.(sql.BelowNull)
-			allRange = allRange && uok && lok
+			allRange = allRange && r.UpperBound.BoundType == sql.AboveAll && r.LowerBound.BoundType == sql.BelowNull
 			if i == 0 && allRange {
 				// no prefix restriction
 				return nil, nil, nil, err
@@ -944,16 +942,16 @@ func inValsToMySQLRangeColl(ctx *sql.Context, vals []any, typ sql.Type) (sql.MyS
 
 // buildRangeCollection converts our representation of the best index scan
 // into the format that represents an index lookup, a list of sql.Range.
-func (b *indexScanRangeBuilder) buildRangeCollection(f indexFilter) (sql.MySQLRangeCollection, error) {
+func (b *indexScanRangeBuilder) buildRangeCollection(ctx *sql.Context, f indexFilter) (sql.MySQLRangeCollection, error) {
 	inScan := b.include.Contains(int(f.Id()))
 
 	var ranges []sql.MySQLRange
 	var err error
 	switch f := f.(type) {
 	case *iScanAnd:
-		ranges, err = b.rangeBuildAnd(f, inScan)
+		ranges, err = b.rangeBuildAnd(ctx, f, inScan)
 	case *iScanOr:
-		ranges, err = b.rangeBuildOr(f, inScan)
+		ranges, err = b.rangeBuildOr(ctx, f, inScan)
 	case *iScanLeaf:
 		// When the filter is a simple IN, we can skip costly checks like building the RangeTree.
 		if f.Op() == sql.IndexScanOpInSet {
@@ -965,7 +963,7 @@ func (b *indexScanRangeBuilder) buildRangeCollection(f indexFilter) (sql.MySQLRa
 				}
 			}
 		}
-		ranges, err = b.rangeBuildLeaf(f, inScan)
+		ranges, err = b.rangeBuildLeaf(ctx, f, inScan)
 	default:
 		return nil, fmt.Errorf("unknown indexFilter type: %T", f)
 	}
@@ -973,21 +971,21 @@ func (b *indexScanRangeBuilder) buildRangeCollection(f indexFilter) (sql.MySQLRa
 	if err != nil {
 		return nil, err
 	}
-	return sql.RemoveOverlappingRanges(ranges...)
+	return sql.RemoveOverlappingRanges(ctx, ranges...)
 }
 
-func (b *indexScanRangeBuilder) Ranges() (sql.MySQLRangeCollection, error) {
-	return sql.RemoveOverlappingRanges(b.allRanges...)
+func (b *indexScanRangeBuilder) Ranges(ctx *sql.Context) (sql.MySQLRangeCollection, error) {
+	return sql.RemoveOverlappingRanges(ctx, b.allRanges...)
 }
 
-func (b *indexScanRangeBuilder) rangeBuildAnd(f *iScanAnd, inScan bool) (sql.MySQLRangeCollection, error) {
+func (b *indexScanRangeBuilder) rangeBuildAnd(ctx *sql.Context, f *iScanAnd, inScan bool) (sql.MySQLRangeCollection, error) {
 	// no leftover check for AND, it's children may be included in scan
 	inScan = inScan || b.include.Contains(int(f.Id()))
 
 	var ret sql.MySQLRangeCollection
 	for _, or := range f.orChildren {
 		// separate range builder for each, before UNIONing
-		ranges, err := b.rangeBuildOr(or.(*iScanOr), inScan)
+		ranges, err := b.rangeBuildOr(ctx, or.(*iScanOr), inScan)
 		if err != nil {
 			return nil, err
 		}
@@ -998,7 +996,7 @@ func (b *indexScanRangeBuilder) rangeBuildAnd(f *iScanAnd, inScan bool) (sql.MyS
 			ret = ranges
 			continue
 		}
-		ret, err = ret.Intersect(ranges)
+		ret, err = ret.Intersect(ctx, ranges)
 		if err != nil {
 			return nil, err
 		}
@@ -1013,7 +1011,7 @@ func (b *indexScanRangeBuilder) rangeBuildAnd(f *iScanAnd, inScan bool) (sql.MyS
 				return nil, err
 			}
 			if ranges != nil {
-				ret, err = ret.Intersect(partBuilder.Ranges(b.ctx))
+				ret, err = ret.Intersect(ctx, partBuilder.Ranges(b.ctx))
 				if err != nil {
 					return nil, err
 				}
@@ -1024,7 +1022,7 @@ func (b *indexScanRangeBuilder) rangeBuildAnd(f *iScanAnd, inScan bool) (sql.MyS
 				return nil, err
 			}
 			if ranges != nil {
-				ret, err = ret.Intersect(partBuilder.Ranges(b.ctx))
+				ret, err = ret.Intersect(ctx, partBuilder.Ranges(b.ctx))
 				if err != nil {
 					return nil, err
 				}
@@ -1042,7 +1040,7 @@ func (b *indexScanRangeBuilder) rangeBuildAnd(f *iScanAnd, inScan bool) (sql.MyS
 		return partBuilder.Ranges(b.ctx), nil
 	}
 
-	ret, err := ret.Intersect(partBuilder.Ranges(b.ctx))
+	ret, err := ret.Intersect(ctx, partBuilder.Ranges(b.ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -1050,7 +1048,7 @@ func (b *indexScanRangeBuilder) rangeBuildAnd(f *iScanAnd, inScan bool) (sql.MyS
 	return ret, nil
 }
 
-func (b *indexScanRangeBuilder) rangeBuildOr(f *iScanOr, inScan bool) (sql.MySQLRangeCollection, error) {
+func (b *indexScanRangeBuilder) rangeBuildOr(ctx *sql.Context, f *iScanOr, inScan bool) (sql.MySQLRangeCollection, error) {
 	inScan = !b.markLeftover(f, inScan)
 	if !inScan {
 		return nil, nil
@@ -1066,9 +1064,9 @@ func (b *indexScanRangeBuilder) rangeBuildOr(f *iScanOr, inScan bool) (sql.MySQL
 		var err error
 		switch c := c.(type) {
 		case *iScanAnd:
-			ranges, err = b.rangeBuildAnd(c, inScan)
+			ranges, err = b.rangeBuildAnd(ctx, c, inScan)
 		case *iScanLeaf:
-			ranges, err = b.rangeBuildLeaf(c, inScan)
+			ranges, err = b.rangeBuildLeaf(ctx, c, inScan)
 		default:
 			return nil, fmt.Errorf("invalid *iScanOr child: %T", c)
 		}
@@ -1098,17 +1096,15 @@ func (b *indexScanRangeBuilder) rangeBuildSpatialLeaf(f *iScanLeaf, inScan bool)
 	upper := types.Point{X: maxX, Y: maxY}
 
 	typ := f.gf.Type()
-	return sql.MySQLRangeCollection{{{
-		LowerBound: sql.Below{
-			Key: lower,
-			Typ: typ,
+	return sql.MySQLRangeCollection{
+		{
+			{
+				LowerBound: sql.NewBound(lower, sql.Below),
+				UpperBound: sql.NewBound(upper, sql.Above),
+				Typ:        typ,
+			},
 		},
-		UpperBound: sql.Above{
-			Key: upper,
-			Typ: typ,
-		},
-		Typ: typ,
-	}}}, nil
+	}, nil
 }
 
 func (b *indexScanRangeBuilder) rangeBuildFulltextLeaf(f *iScanLeaf, inScan bool) (sql.MySQLRangeCollection, error) {
@@ -1123,7 +1119,7 @@ func (b *indexScanRangeBuilder) rangeBuildFulltextLeaf(f *iScanLeaf, inScan bool
 	return sql.MySQLRangeCollection{{sql.EmptyRangeColumnExpr(f.gf.Type())}}, nil
 }
 
-func (b *indexScanRangeBuilder) rangeBuildLeaf(f *iScanLeaf, inScan bool) (sql.MySQLRangeCollection, error) {
+func (b *indexScanRangeBuilder) rangeBuildLeaf(ctx *sql.Context, f *iScanLeaf, inScan bool) (sql.MySQLRangeCollection, error) {
 	switch f.Op() {
 	case sql.IndexScanOpSpatialEq:
 		return b.rangeBuildSpatialLeaf(f, inScan)

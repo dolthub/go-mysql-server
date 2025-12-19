@@ -180,21 +180,21 @@ func TestRangeOverlapTwoColumns(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("Expr:  %s\nRange: %s", test.reference.String(), test.ranges.DebugString()), func(t *testing.T) {
-			discreteRanges, err := sql.RemoveOverlappingRanges(test.ranges...)
+			discreteRanges, err := sql.RemoveOverlappingRanges(ctx, test.ranges...)
 			require.NoError(t, err)
-			verificationRanges, err := removeOverlappingRangesVerification(test.ranges...)
+			verificationRanges, err := removeOverlappingRangesVerification(ctx, test.ranges...)
 			require.NoError(t, err)
 			for _, row := range values2 {
 				referenceBool, err := test.reference.Eval(ctx, row)
 				require.NoError(t, err)
-				rangeBool := evalRanges(t, discreteRanges, row)
+				rangeBool := evalRanges(t, ctx, discreteRanges, row)
 				assert.Equal(t, referenceBool, rangeBool, fmt.Sprintf("%v: DiscreteRanges: %s", row, discreteRanges.DebugString()))
 			}
-			discreteRanges, err = sql.SortRanges(discreteRanges...)
+			discreteRanges, err = sql.SortRanges(ctx, discreteRanges...)
 			require.NoError(t, err)
-			verificationRanges, err = sql.SortRanges(verificationRanges...)
+			verificationRanges, err = sql.SortRanges(ctx, verificationRanges...)
 			require.NoError(t, err)
-			ok, err := discreteRanges.Equals(verificationRanges)
+			ok, err := discreteRanges.Equals(ctx, verificationRanges)
 			require.NoError(t, err)
 			assert.True(t, ok)
 		})
@@ -295,21 +295,21 @@ func TestRangeOverlapThreeColumns(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("Expr:  %s\nRange: %s", test.reference.String(), test.ranges.DebugString()), func(t *testing.T) {
-			discreteRanges, err := sql.RemoveOverlappingRanges(test.ranges...)
+			discreteRanges, err := sql.RemoveOverlappingRanges(ctx, test.ranges...)
 			require.NoError(t, err)
-			verificationRanges, err := removeOverlappingRangesVerification(test.ranges...)
+			verificationRanges, err := removeOverlappingRangesVerification(ctx, test.ranges...)
 			require.NoError(t, err)
 			for _, row := range values3 {
 				referenceBool, err := test.reference.Eval(ctx, row)
 				require.NoError(t, err)
-				rangeBool := evalRanges(t, discreteRanges, row)
+				rangeBool := evalRanges(t, ctx, discreteRanges, row)
 				assert.Equal(t, referenceBool, rangeBool, fmt.Sprintf("%v: DiscreteRanges: %s", row, discreteRanges.DebugString()))
 			}
-			discreteRanges, err = sql.SortRanges(discreteRanges...)
+			discreteRanges, err = sql.SortRanges(ctx, discreteRanges...)
 			require.NoError(t, err)
-			verificationRanges, err = sql.SortRanges(verificationRanges...)
+			verificationRanges, err = sql.SortRanges(ctx, verificationRanges...)
 			require.NoError(t, err)
-			ok, err := discreteRanges.Equals(verificationRanges)
+			ok, err := discreteRanges.Equals(ctx, verificationRanges)
 			require.NoError(t, err)
 			assert.True(t, ok)
 		})
@@ -384,21 +384,21 @@ func TestRangeOverlapNulls(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("Expr:  %s\nRange: %s", test.reference.String(), test.ranges.DebugString()), func(t *testing.T) {
-			discreteRanges, err := sql.RemoveOverlappingRanges(test.ranges...)
+			discreteRanges, err := sql.RemoveOverlappingRanges(ctx, test.ranges...)
 			require.NoError(t, err)
-			verificationRanges, err := removeOverlappingRangesVerification(test.ranges...)
+			verificationRanges, err := removeOverlappingRangesVerification(ctx, test.ranges...)
 			require.NoError(t, err)
 			for _, row := range valuesNull {
 				referenceBool, err := test.reference.Eval(ctx, row)
 				require.NoError(t, err)
-				rangeBool := evalRanges(t, discreteRanges, row)
+				rangeBool := evalRanges(t, ctx, discreteRanges, row)
 				assert.Equal(t, referenceBool, rangeBool, fmt.Sprintf("%v: DiscreteRanges: %s", row, discreteRanges.DebugString()))
 			}
-			discreteRanges, err = sql.SortRanges(discreteRanges...)
+			discreteRanges, err = sql.SortRanges(ctx, discreteRanges...)
 			require.NoError(t, err)
-			verificationRanges, err = sql.SortRanges(verificationRanges...)
+			verificationRanges, err = sql.SortRanges(ctx, verificationRanges...)
 			require.NoError(t, err)
-			ok, err := discreteRanges.Equals(verificationRanges)
+			ok, err := discreteRanges.Equals(ctx, verificationRanges)
 			require.NoError(t, err)
 			assert.True(t, ok)
 		})
@@ -414,44 +414,44 @@ func TestComplexRange(t *testing.T) {
 			// derived from sqllogictest/index/in/100/slt_good_1.test:12655
 			ranges: sql.MySQLRangeCollection{
 				r(
-					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int16},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int16},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveNull{}, Typ: types.Float32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBelowNullBound(), UpperBound: sql.NewAboveAllBound(), Typ: types.Int16},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBelowNullBound(), UpperBound: sql.NewAboveAllBound(), Typ: types.Int16},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBelowNullBound(), UpperBound: sql.NewAboveNullBound(), Typ: types.Float32},
 				),
 				r(
-					sql.MySQLRangeColumnExpr{LowerBound: sql.AboveNull{}, UpperBound: sql.Below{Key: int16(848)}, Typ: types.Int16},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Above{Key: int16(560)}, UpperBound: sql.AboveAll{}, Typ: types.Int16},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewAboveNullBound(), UpperBound: sql.NewBound(int16(848), sql.Below), Typ: types.Int16},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(int16(560), sql.Above), UpperBound: sql.NewAboveAllBound(), Typ: types.Int16},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBelowNullBound(), UpperBound: sql.NewAboveAllBound(), Typ: types.Float32},
 				),
 				r(
-					sql.MySQLRangeColumnExpr{LowerBound: sql.AboveNull{}, UpperBound: sql.Above{Key: 953}, Typ: types.Int16},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int16},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: decimal.New(53978, -2)}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewAboveNullBound(), UpperBound: sql.NewBound(953, sql.Above), Typ: types.Int16},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBelowNullBound(), UpperBound: sql.NewAboveAllBound(), Typ: types.Int16},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(decimal.New(53978, -2), sql.Below), UpperBound: sql.NewAboveAllBound(), Typ: types.Float32},
 				),
 				r(
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: int16(234)}, UpperBound: sql.Above{Key: int16(234)}, Typ: types.Int16},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int16},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: decimal.New(48843, -2)}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(int16(234), sql.Below), UpperBound: sql.NewBound(int16(234), sql.Above), Typ: types.Int16},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBelowNullBound(), UpperBound: sql.NewAboveAllBound(), Typ: types.Int16},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(decimal.New(48843, -2), sql.Below), UpperBound: sql.NewAboveAllBound(), Typ: types.Float32},
 				),
 				r(
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: int16(258)}, UpperBound: sql.Above{Key: int16(258)}, Typ: types.Int16},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int16},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(int16(258), sql.Below), UpperBound: sql.NewBound(int16(258), sql.Above), Typ: types.Int16},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBelowNullBound(), UpperBound: sql.NewAboveAllBound(), Typ: types.Int16},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBelowNullBound(), UpperBound: sql.NewAboveAllBound(), Typ: types.Float32},
 				),
 				r(
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: int16(372)}, UpperBound: sql.Above{Key: int16(372)}, Typ: types.Int16},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int16},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: decimal.New(48843, -2)}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(int16(372), sql.Below), UpperBound: sql.NewBound(int16(372), sql.Above), Typ: types.Int16},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBelowNullBound(), UpperBound: sql.NewAboveAllBound(), Typ: types.Int16},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(decimal.New(48843, -2), sql.Below), UpperBound: sql.NewAboveAllBound(), Typ: types.Float32},
 				),
 				r(
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: int16(583)}, UpperBound: sql.Above{Key: int16(583)}, Typ: types.Int16},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int16},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: decimal.New(48843, -2)}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(int16(583), sql.Below), UpperBound: sql.NewBound(int16(583), sql.Above), Typ: types.Int16},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBelowNullBound(), UpperBound: sql.NewAboveAllBound(), Typ: types.Int16},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(decimal.New(48843, -2), sql.Below), UpperBound: sql.NewAboveAllBound(), Typ: types.Float32},
 				),
 				r(
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Above{Key: int16(883)}, UpperBound: sql.AboveAll{}, Typ: types.Int16},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int16},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(int16(883), sql.Above), UpperBound: sql.NewAboveAllBound(), Typ: types.Int16},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBelowNullBound(), UpperBound: sql.NewAboveAllBound(), Typ: types.Int16},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBelowNullBound(), UpperBound: sql.NewAboveAllBound(), Typ: types.Float32},
 				),
 			},
 		},
@@ -460,126 +460,127 @@ func TestComplexRange(t *testing.T) {
 			// `SELECT * FROM comp_index_t2 WHERE (((v1>25 AND v2 BETWEEN 23 AND 54) OR (v1<>40 AND v3>90)) OR (v1<>7 AND v4<=78));`
 			ranges: sql.MySQLRangeCollection{
 				r(
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Above{Key: 25}, UpperBound: sql.AboveAll{}, Typ: types.Int32},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: 23}, UpperBound: sql.Above{Key: 54}, Typ: types.Int32},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int32},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(25, sql.Above), UpperBound: sql.NewAboveAllBound(), Typ: types.Int32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(23, sql.Below), UpperBound: sql.NewBound(54, sql.Above), Typ: types.Int32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBelowNullBound(), UpperBound: sql.NewAboveAllBound(), Typ: types.Int32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBelowNullBound(), UpperBound: sql.NewAboveAllBound(), Typ: types.Int32},
 				),
 				r(
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Above{Key: 40}, UpperBound: sql.AboveAll{}, Typ: types.Int32},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int32},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Above{Key: 90}, UpperBound: sql.AboveAll{}, Typ: types.Int32},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(40, sql.Above), UpperBound: sql.NewAboveAllBound(), Typ: types.Int32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBelowNullBound(), UpperBound: sql.NewAboveAllBound(), Typ: types.Int32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(90, sql.Above), UpperBound: sql.NewAboveAllBound(), Typ: types.Int32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBelowNullBound(), UpperBound: sql.NewAboveAllBound(), Typ: types.Int32},
 				),
 				r(
-					sql.MySQLRangeColumnExpr{LowerBound: sql.AboveNull{}, UpperBound: sql.Below{Key: 40}, Typ: types.Int32},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int32},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Above{Key: 90}, UpperBound: sql.AboveAll{}, Typ: types.Int32},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewAboveNullBound(), UpperBound: sql.NewBound(40, sql.Below), Typ: types.Int32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBelowNullBound(), UpperBound: sql.NewAboveAllBound(), Typ: types.Int32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(90, sql.Above), UpperBound: sql.NewAboveAllBound(), Typ: types.Int32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBelowNullBound(), UpperBound: sql.NewAboveAllBound(), Typ: types.Int32},
 				),
 				r(
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Above{Key: 7}, UpperBound: sql.AboveAll{}, Typ: types.Int32},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int32},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int32},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.AboveNull{}, UpperBound: sql.Above{Key: 78}, Typ: types.Int32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(7, sql.Above), UpperBound: sql.NewAboveAllBound(), Typ: types.Int32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBelowNullBound(), UpperBound: sql.NewAboveAllBound(), Typ: types.Int32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBelowNullBound(), UpperBound: sql.NewAboveAllBound(), Typ: types.Int32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewAboveNullBound(), UpperBound: sql.NewBound(78, sql.Above), Typ: types.Int32},
 				),
 				r(
-					sql.MySQLRangeColumnExpr{LowerBound: sql.AboveNull{}, UpperBound: sql.Below{Key: 7}, Typ: types.Int32},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int32},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int32},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.AboveNull{}, UpperBound: sql.Above{Key: 78}, Typ: types.Int32},
-				),
-			},
-		},
-		{
-			ranges: sql.MySQLRangeCollection{
-				r(
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: 0}, UpperBound: sql.Above{Key: 6}, Typ: types.Int16},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: 0}, UpperBound: sql.Above{Key: 6}, Typ: types.Int16},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: 0}, UpperBound: sql.Above{Key: 0}, Typ: types.Int16},
-				),
-				r(
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Above{Key: 0}, UpperBound: sql.Below{Key: 5}, Typ: types.Int16},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Above{Key: 3}, UpperBound: sql.Above{Key: 6}, Typ: types.Int16},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: 0}, UpperBound: sql.Above{Key: 6}, Typ: types.Int16},
-				),
-				r(
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: 1}, UpperBound: sql.Above{Key: 1}, Typ: types.Int16},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: 0}, UpperBound: sql.Above{Key: 6}, Typ: types.Int16},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: 0}, UpperBound: sql.Above{Key: 6}, Typ: types.Int16},
-				),
-				r(
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: 2}, UpperBound: sql.Above{Key: 2}, Typ: types.Int16},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: 0}, UpperBound: sql.Above{Key: 6}, Typ: types.Int16},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: 1}, UpperBound: sql.Above{Key: 6}, Typ: types.Int16},
-				),
-				r(
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: 4}, UpperBound: sql.Above{Key: 4}, Typ: types.Int16},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: 0}, UpperBound: sql.Above{Key: 6}, Typ: types.Int16},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: 1}, UpperBound: sql.Above{Key: 6}, Typ: types.Int16},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewAboveNullBound(), UpperBound: sql.NewBound(7, sql.Below), Typ: types.Int32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBelowNullBound(), UpperBound: sql.NewAboveAllBound(), Typ: types.Int32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBelowNullBound(), UpperBound: sql.NewAboveAllBound(), Typ: types.Int32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewAboveNullBound(), UpperBound: sql.NewBound(78, sql.Above), Typ: types.Int32},
 				),
 			},
 		},
 		{
 			ranges: sql.MySQLRangeCollection{
 				r(
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: 69}, UpperBound: sql.Above{Key: 69}, Typ: types.Int32},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(0, sql.Below), UpperBound: sql.NewBound(6, sql.Above), Typ: types.Int16},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(0, sql.Below), UpperBound: sql.NewBound(6, sql.Above), Typ: types.Int16},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(0, sql.Below), UpperBound: sql.NewBound(0, sql.Above), Typ: types.Int16},
 				),
 				r(
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: 73}, UpperBound: sql.Above{Key: 73}, Typ: types.Int32},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(0, sql.Above), UpperBound: sql.NewBound(5, sql.Below), Typ: types.Int16},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(3, sql.Above), UpperBound: sql.NewBound(6, sql.Above), Typ: types.Int16},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(0, sql.Below), UpperBound: sql.NewBound(6, sql.Above), Typ: types.Int16},
 				),
 				r(
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: 12}, UpperBound: sql.Above{Key: 12}, Typ: types.Int32},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(1, sql.Below), UpperBound: sql.NewBound(1, sql.Above), Typ: types.Int16},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(0, sql.Below), UpperBound: sql.NewBound(6, sql.Above), Typ: types.Int16},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(0, sql.Below), UpperBound: sql.NewBound(6, sql.Above), Typ: types.Int16},
 				),
 				r(
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: 3}, UpperBound: sql.Above{Key: 3}, Typ: types.Int32},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(2, sql.Below), UpperBound: sql.NewBound(2, sql.Above), Typ: types.Int16},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(0, sql.Below), UpperBound: sql.NewBound(6, sql.Above), Typ: types.Int16},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(1, sql.Below), UpperBound: sql.NewBound(6, sql.Above), Typ: types.Int16},
 				),
 				r(
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: 17}, UpperBound: sql.Above{Key: 17}, Typ: types.Int32},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(4, sql.Below), UpperBound: sql.NewBound(4, sql.Above), Typ: types.Int16},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(0, sql.Below), UpperBound: sql.NewBound(6, sql.Above), Typ: types.Int16},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(1, sql.Below), UpperBound: sql.NewBound(6, sql.Above), Typ: types.Int16},
+				),
+			},
+		},
+		{
+			ranges: sql.MySQLRangeCollection{
+				r(
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(69, sql.Below), UpperBound: sql.NewBound(69, sql.Above), Typ: types.Int32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBelowNullBound(), UpperBound: sql.NewAboveAllBound(), Typ: types.Float32},
 				),
 				r(
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: 70}, UpperBound: sql.Above{Key: 70}, Typ: types.Int32},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(73, sql.Below), UpperBound: sql.NewBound(73, sql.Above), Typ: types.Int32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBelowNullBound(), UpperBound: sql.NewAboveAllBound(), Typ: types.Float32},
 				),
 				r(
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: 20}, UpperBound: sql.Above{Key: 20}, Typ: types.Int32},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(12, sql.Below), UpperBound: sql.NewBound(12, sql.Above), Typ: types.Int32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBelowNullBound(), UpperBound: sql.NewAboveAllBound(), Typ: types.Float32},
 				),
 				r(
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: 4}, UpperBound: sql.Above{Key: 4}, Typ: types.Int32},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(3, sql.Below), UpperBound: sql.NewBound(3, sql.Above), Typ: types.Int32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBelowNullBound(), UpperBound: sql.NewAboveAllBound(), Typ: types.Float32},
 				),
 				r(
-					sql.MySQLRangeColumnExpr{LowerBound: sql.Below{Key: 39}, UpperBound: sql.Above{Key: 39}, Typ: types.Int32},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Float32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(17, sql.Below), UpperBound: sql.NewBound(17, sql.Above), Typ: types.Int32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBelowNullBound(), UpperBound: sql.NewAboveAllBound(), Typ: types.Float32},
 				),
 				r(
-					sql.MySQLRangeColumnExpr{LowerBound: sql.BelowNull{}, UpperBound: sql.AboveAll{}, Typ: types.Int32},
-					sql.MySQLRangeColumnExpr{LowerBound: sql.AboveNull{}, UpperBound: sql.Below{Key: 69.67}, Typ: types.Float32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(70, sql.Below), UpperBound: sql.NewBound(70, sql.Above), Typ: types.Int32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBelowNullBound(), UpperBound: sql.NewAboveAllBound(), Typ: types.Float32},
+				),
+				r(
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(20, sql.Below), UpperBound: sql.NewBound(20, sql.Above), Typ: types.Int32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBelowNullBound(), UpperBound: sql.NewAboveAllBound(), Typ: types.Float32},
+				),
+				r(
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(4, sql.Below), UpperBound: sql.NewBound(4, sql.Above), Typ: types.Int32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBelowNullBound(), UpperBound: sql.NewAboveAllBound(), Typ: types.Float32},
+				),
+				r(
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBound(39, sql.Below), UpperBound: sql.NewBound(39, sql.Above), Typ: types.Int32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBelowNullBound(), UpperBound: sql.NewAboveAllBound(), Typ: types.Float32},
+				),
+				r(
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewBelowNullBound(), UpperBound: sql.NewAboveAllBound(), Typ: types.Int32},
+					sql.MySQLRangeColumnExpr{LowerBound: sql.NewAboveNullBound(), UpperBound: sql.NewBound(69.67, sql.Below), Typ: types.Float32},
 				),
 			},
 		},
 	}
 
+	ctx := sql.NewEmptyContext()
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("Range: %s", test.ranges.DebugString()), func(t *testing.T) {
 			if test.skip {
 				t.Skip()
 			}
-			discreteRanges, err := sql.RemoveOverlappingRanges(test.ranges...)
+			discreteRanges, err := sql.RemoveOverlappingRanges(ctx, test.ranges...)
 			require.NoError(t, err)
-			verificationRanges, err := removeOverlappingRangesVerification(test.ranges...)
+			verificationRanges, err := removeOverlappingRangesVerification(ctx, test.ranges...)
 			require.NoError(t, err)
-			discreteRanges, err = sql.SortRanges(discreteRanges...)
+			discreteRanges, err = sql.SortRanges(ctx, discreteRanges...)
 			require.NoError(t, err)
-			verificationRanges, err = sql.SortRanges(verificationRanges...)
+			verificationRanges, err = sql.SortRanges(ctx, verificationRanges...)
 			require.NoError(t, err)
-			ok, err := discreteRanges.Equals(verificationRanges)
+			ok, err := discreteRanges.Equals(ctx, verificationRanges)
 			require.NoError(t, err)
 			assert.True(t, ok)
 			if !ok {
@@ -592,7 +593,7 @@ func TestComplexRange(t *testing.T) {
 				for j := i + 1; j < len(discreteRanges); j++ {
 					r1 := discreteRanges[i]
 					r2 := discreteRanges[j]
-					hasOverlap, err := r1.Overlaps(r2)
+					hasOverlap, err := r1.Overlaps(ctx, r2)
 					if hasOverlap {
 						t.Logf("Overlap: %s\n%s", r1.String(), r2.String())
 					}
@@ -626,10 +627,10 @@ func setup() (x, y, z sql.Expression, values2, values3, valuesNull [][]interface
 	return
 }
 
-func evalRanges(t *testing.T, ranges []sql.MySQLRange, row []interface{}) bool {
+func evalRanges(t *testing.T, ctx *sql.Context, ranges []sql.MySQLRange, row []interface{}) bool {
 	found := false
 	for _, rang := range ranges {
-		if evalRange(t, rang, row) {
+		if evalRange(t, ctx, rang, row) {
 			if !found {
 				found = true
 			} else {
@@ -640,7 +641,7 @@ func evalRanges(t *testing.T, ranges []sql.MySQLRange, row []interface{}) bool {
 	return found
 }
 
-func evalRange(t *testing.T, rang sql.MySQLRange, row []interface{}) bool {
+func evalRange(t *testing.T, ctx *sql.Context, rang sql.MySQLRange, row []interface{}) bool {
 	rowRange := make(sql.MySQLRange, len(rang))
 	for i, val := range row {
 		if val == nil {
@@ -649,12 +650,12 @@ func evalRange(t *testing.T, rang sql.MySQLRange, row []interface{}) bool {
 			rowRange[i] = sql.ClosedRangeColumnExpr(val, val, rangeType)
 		}
 	}
-	ok, err := rang.IsSupersetOf(rowRange)
+	ok, err := rang.IsSupersetOf(ctx, rowRange)
 	require.NoError(t, err)
 	return ok
 }
 
-func removeOverlappingRangesVerification(ranges ...sql.MySQLRange) (sql.MySQLRangeCollection, error) {
+func removeOverlappingRangesVerification(ctx *sql.Context, ranges ...sql.MySQLRange) (sql.MySQLRangeCollection, error) {
 	if len(ranges) == 0 {
 		return nil, nil
 	}
@@ -663,7 +664,7 @@ func removeOverlappingRangesVerification(ranges ...sql.MySQLRange) (sql.MySQLRan
 	for i := 0; i < len(ranges); i++ {
 		hadOverlap := false
 		for nri := 0; nri < len(newRanges); nri++ {
-			if resultingRanges, ok, err := ranges[i].RemoveOverlap(newRanges[nri]); err != nil {
+			if resultingRanges, ok, err := ranges[i].RemoveOverlap(ctx, newRanges[nri]); err != nil {
 				return nil, err
 			} else if ok {
 				hadOverlap = true
@@ -777,41 +778,32 @@ func notNull() sql.MySQLRangeColumnExpr {
 }
 
 func rcc(lowerbound, upperbound byte) sql.MySQLRangeColumnExpr {
-	return newRangeColumnExpr(lowerbound, upperbound, sql.Closed, sql.Closed, rangeType)
+	return newRangeColumnExpr(lowerbound, upperbound, sql.Below, sql.Above, rangeType)
 }
 
 func rco(lowerbound, upperbound byte) sql.MySQLRangeColumnExpr {
-	return newRangeColumnExpr(lowerbound, upperbound, sql.Closed, sql.Open, rangeType)
+	return newRangeColumnExpr(lowerbound, upperbound, sql.Below, sql.Below, rangeType)
 }
 
 func roc(lowerbound, upperbound byte) sql.MySQLRangeColumnExpr {
-	return newRangeColumnExpr(lowerbound, upperbound, sql.Open, sql.Closed, rangeType)
+	return newRangeColumnExpr(lowerbound, upperbound, sql.Above, sql.Above, rangeType)
 }
 
 func roo(lowerbound, upperbound byte) sql.MySQLRangeColumnExpr {
-	return newRangeColumnExpr(lowerbound, upperbound, sql.Open, sql.Open, rangeType)
+	return newRangeColumnExpr(lowerbound, upperbound, sql.Above, sql.Below, rangeType)
 }
 
 // CustomRangeColumnExpr returns a MySQLRangeColumnExpr defined by the bounds given.
-func newRangeColumnExpr(lower, upper interface{}, lowerBound, upperBound sql.MySQLRangeBoundType, typ sql.Type) sql.MySQLRangeColumnExpr {
+func newRangeColumnExpr(lower, upper interface{}, lBoundType, uBoundType sql.BoundType, typ sql.Type) sql.MySQLRangeColumnExpr {
 	if lower == nil || upper == nil {
 		return sql.EmptyRangeColumnExpr(typ)
 	}
-	var lCut sql.MySQLRangeCut
-	var uCut sql.MySQLRangeCut
-	if lowerBound == sql.Open {
-		lCut = sql.Above{Key: lower}
-	} else {
-		lCut = sql.Below{Key: lower}
-	}
-	if upperBound == sql.Open {
-		uCut = sql.Below{Key: upper}
-	} else {
-		uCut = sql.Above{Key: upper}
-	}
+
+	lBound := sql.NewBound(lower, lBoundType)
+	uBound := sql.NewBound(upper, uBoundType)
 	return sql.MySQLRangeColumnExpr{
-		LowerBound: lCut,
-		UpperBound: uCut,
+		LowerBound: lBound,
+		UpperBound: uBound,
 		Typ:        typ,
 	}
 }
@@ -836,13 +828,13 @@ func and(expressions ...sql.Expression) sql.Expression {
 	return expression.NewAnd(expressions[0], and(expressions[1:]...))
 }
 
-func buildTestRangeTree(ranges []sql.MySQLRange) (*sql.MySQLRangeColumnExprTree, error) {
+func buildTestRangeTree(ctx *sql.Context, ranges []sql.MySQLRange) (*sql.MySQLRangeColumnExprTree, error) {
 	tree, err := sql.NewMySQLRangeColumnExprTree(ranges[0], []sql.Type{rangeType})
 	if err != nil {
 		return nil, err
 	}
 	for _, rng := range ranges[1:] {
-		err = tree.Insert(rng)
+		err = tree.Insert(ctx, rng)
 		if err != nil {
 			return nil, err
 		}
@@ -1006,13 +998,14 @@ func TestRangeTreeInsert(t *testing.T) {
 		},
 	}
 
+	ctx := sql.NewEmptyContext()
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			tree, err := buildTestRangeTree(test.setupRngs)
+			tree, err := buildTestRangeTree(ctx, test.setupRngs)
 			require.NoError(t, err)
 			assert.Equal(t, test.setupExp, tree.String())
 
-			err = tree.Insert(test.rng)
+			err = tree.Insert(ctx, test.rng)
 			require.NoError(t, err)
 			assert.Equal(t, test.exp, tree.String())
 		})
@@ -1223,13 +1216,14 @@ func TestRangeTreeRemove(t *testing.T) {
 		},
 	}
 
+	ctx := sql.NewEmptyContext()
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			tree, err := buildTestRangeTree(test.setupRngs)
+			tree, err := buildTestRangeTree(ctx, test.setupRngs)
 			require.NoError(t, err)
 			assert.Equal(t, test.setupExp, tree.String())
 
-			err = tree.Remove(test.rng)
+			err = tree.Remove(ctx, test.rng)
 			require.NoError(t, err)
 			assert.Equal(t, test.exp, tree.String())
 		})

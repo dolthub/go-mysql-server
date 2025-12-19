@@ -582,20 +582,20 @@ func TestRangeBuilder(t *testing.T) {
 			}
 
 			b := newIndexScanRangeBuilder(ctx, idx, include, sql.FastIntSet{}, c.idToExpr)
-			cmpRanges, err := b.buildRangeCollection(root)
+			cmpRanges, err := b.buildRangeCollection(ctx, root)
 			require.NoError(t, err)
 			if tt.cnt == 1 {
 				require.Equal(t, 0, len(b.leftover))
 			}
-			cmpRanges, err = sql.SortRanges(cmpRanges...)
+			cmpRanges, err = sql.SortRanges(ctx, cmpRanges...)
 			require.NoError(t, err)
 
-			expRanges, err := sql.RemoveOverlappingRanges(tt.exp...)
+			expRanges, err := sql.RemoveOverlappingRanges(ctx, tt.exp...)
 			require.NoError(t, err)
-			expRanges, err = sql.SortRanges(expRanges...)
+			expRanges, err = sql.SortRanges(ctx, expRanges...)
 			require.NoError(t, err)
 
-			ok, err := expRanges.Equals(cmpRanges)
+			ok, err := expRanges.Equals(ctx, cmpRanges)
 			require.NoError(t, err)
 			assert.True(t, ok)
 			if !ok {
@@ -668,18 +668,18 @@ func TestRangeBuilderInclude(t *testing.T) {
 			c := newIndexCoster(ctx, "xyz")
 			root, _, _ := c.buildRoot(tt.in, NewDefaultLogicTreeWalker())
 			b := newIndexScanRangeBuilder(ctx, dummy1, tt.include, sql.FastIntSet{}, c.idToExpr)
-			cmpRanges, err := b.buildRangeCollection(root)
+			cmpRanges, err := b.buildRangeCollection(ctx, root)
 			require.NoError(t, err)
-			cmpRanges, err = sql.SortRanges(cmpRanges...)
+			cmpRanges, err = sql.SortRanges(ctx, cmpRanges...)
 			require.NoError(t, err)
 
-			expRanges, err := sql.RemoveOverlappingRanges(tt.exp...)
+			expRanges, err := sql.RemoveOverlappingRanges(ctx, tt.exp...)
 			require.NoError(t, err)
-			expRanges, err = sql.SortRanges(expRanges...)
+			expRanges, err = sql.SortRanges(ctx, expRanges...)
 			require.NoError(t, err)
 
 			// TODO how to compare ranges, strings?
-			ok, err := expRanges.Equals(cmpRanges)
+			ok, err := expRanges.Equals(ctx, cmpRanges)
 			require.NoError(t, err)
 			assert.True(t, ok)
 			if !ok {
@@ -783,41 +783,32 @@ func notNull() sql.MySQLRangeColumnExpr {
 }
 
 func rcc(lowerbound, upperbound byte) sql.MySQLRangeColumnExpr {
-	return newRangeColumnExpr(lowerbound, upperbound, sql.Closed, sql.Closed, rangeType)
+	return newRangeColumnExpr(lowerbound, upperbound, sql.Below, sql.Above, rangeType)
 }
 
 func rco(lowerbound, upperbound byte) sql.MySQLRangeColumnExpr {
-	return newRangeColumnExpr(lowerbound, upperbound, sql.Closed, sql.Open, rangeType)
+	return newRangeColumnExpr(lowerbound, upperbound, sql.Below, sql.Below, rangeType)
 }
 
 func roc(lowerbound, upperbound byte) sql.MySQLRangeColumnExpr {
-	return newRangeColumnExpr(lowerbound, upperbound, sql.Open, sql.Closed, rangeType)
+	return newRangeColumnExpr(lowerbound, upperbound, sql.Above, sql.Above, rangeType)
 }
 
 func roo(lowerbound, upperbound byte) sql.MySQLRangeColumnExpr {
-	return newRangeColumnExpr(lowerbound, upperbound, sql.Open, sql.Open, rangeType)
+	return newRangeColumnExpr(lowerbound, upperbound, sql.Above, sql.Below, rangeType)
 }
 
 // CustomRangeColumnExpr returns a MySQLRangeColumnExpr defined by the bounds given.
-func newRangeColumnExpr(lower, upper interface{}, lowerBound, upperBound sql.MySQLRangeBoundType, typ sql.Type) sql.MySQLRangeColumnExpr {
+func newRangeColumnExpr(lower, upper interface{}, lBoundTyp, uBoundTyp sql.BoundType, typ sql.Type) sql.MySQLRangeColumnExpr {
 	if lower == nil || upper == nil {
 		return sql.EmptyRangeColumnExpr(typ)
 	}
-	var lCut sql.MySQLRangeCut
-	var uCut sql.MySQLRangeCut
-	if lowerBound == sql.Open {
-		lCut = sql.Above{Key: lower}
-	} else {
-		lCut = sql.Below{Key: lower}
-	}
-	if upperBound == sql.Open {
-		uCut = sql.Below{Key: upper}
-	} else {
-		uCut = sql.Above{Key: upper}
-	}
+
+	lBound := sql.NewBound(lower, lBoundTyp)
+	uBound := sql.NewBound(upper, uBoundTyp)
 	return sql.MySQLRangeColumnExpr{
-		LowerBound: lCut,
-		UpperBound: uCut,
+		LowerBound: lBound,
+		UpperBound: uBound,
 		Typ:        typ,
 	}
 }

@@ -20,7 +20,7 @@ import "fmt"
 type RangeCollection interface {
 	DebugStringer
 	fmt.Stringer
-	Equals(otherCollection RangeCollection) (bool, error)
+	Equals(ctx *Context, other RangeCollection) (bool, error)
 	Len() int
 	ToRanges() []Range
 }
@@ -30,5 +30,5 @@ type RangeCollection interface {
 type Range interface {
 	DebugStringer
 	fmt.Stringer
-	Equals(other Range) (bool, error)
+	Equals(ctx *Context, other Range) (bool, error)
 }

@@ -26,37 +26,38 @@ import (
 
 func TestRangeCutCompare(t *testing.T) {
 	type tc struct {
-		left, right sql.MySQLRangeCut
+		left, right *sql.Bound
 		res         int
 	}
+	ctx := sql.NewEmptyContext()
 	for _, testcase := range []tc{
-		{sql.AboveAll{}, sql.BelowNull{}, 1},
-		{sql.AboveAll{}, sql.AboveNull{}, 1},
-		{sql.AboveAll{}, sql.Above{Key: 1}, 1},
-		{sql.AboveAll{}, sql.Below{Key: 1}, 1},
-		{sql.AboveAll{}, sql.AboveAll{}, 0},
+		{sql.NewAboveAllBound(), sql.NewBelowNullBound(), 1},
+		{sql.NewAboveAllBound(), sql.NewAboveNullBound(), 1},
+		{sql.NewAboveAllBound(), sql.NewBound(1, sql.Above), 1},
+		{sql.NewAboveAllBound(), sql.NewBound(1, sql.Below), 1},
+		{sql.NewAboveAllBound(), sql.NewAboveAllBound(), 0},
 
-		{sql.Above{Key: 1}, sql.AboveNull{}, 1},
-		{sql.Above{Key: 1}, sql.BelowNull{}, 1},
-		{sql.Above{Key: 1}, sql.Above{Key: 1}, 0},
-		{sql.Above{Key: 1}, sql.Below{Key: 1}, 1},
-		{sql.Above{Key: 2}, sql.Above{Key: 1}, 1},
+		{sql.NewBound(1, sql.Above), sql.NewAboveNullBound(), 1},
+		{sql.NewBound(1, sql.Above), sql.NewBelowNullBound(), 1},
+		{sql.NewBound(1, sql.Above), sql.NewBound(1, sql.Above), 0},
+		{sql.NewBound(1, sql.Above), sql.NewBound(1, sql.Below), 1},
+		{sql.NewBound(2, sql.Above), sql.NewBound(1, sql.Above), 1},
 
-		{sql.Below{Key: 1}, sql.AboveNull{}, 1},
-		{sql.Below{Key: 1}, sql.BelowNull{}, 1},
-		{sql.Below{Key: 1}, sql.Below{Key: 1}, 0},
-		{sql.Below{Key: 2}, sql.Below{Key: 1}, 1},
+		{sql.NewBound(1, sql.Below), sql.NewAboveNullBound(), 1},
+		{sql.NewBound(1, sql.Below), sql.NewBelowNullBound(), 1},
+		{sql.NewBound(1, sql.Below), sql.NewBound(1, sql.Below), 0},
+		{sql.NewBound(2, sql.Below), sql.NewBound(1, sql.Below), 1},
 
-		{sql.AboveNull{}, sql.BelowNull{}, 1},
+		{sql.NewAboveNullBound(), sql.NewBelowNullBound(), 1},
 
-		{sql.BelowNull{}, sql.BelowNull{}, 0},
+		{sql.NewBelowNullBound(), sql.NewBelowNullBound(), 0},
 	} {
 		t.Run(fmt.Sprintf("%s/%s = %d", testcase.left.String(), testcase.right.String(), testcase.res), func(t *testing.T) {
-			res, err := testcase.left.Compare(testcase.right, types.Int8)
+			res, err := testcase.left.Compare(ctx, testcase.right, types.Int8)
 			assert.NoError(t, err)
 			assert.Equal(t, testcase.res, res, "forward Compare")
 
-			res, err = testcase.right.Compare(testcase.left, types.Int8)
+			res, err = testcase.right.Compare(ctx, testcase.left, types.Int8)
 			assert.NoError(t, err)
 			assert.Equal(t, -testcase.res, res, "reverse Compare")
 		})

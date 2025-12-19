@@ -612,38 +612,22 @@ func (lb *LookupBuilder) GetLookup(ctx *sql.Context, key lookupBuilderKey) (sql.
 				if err != nil {
 					return sql.IndexLookup{}, false, err
 				}
-
 				if inRange != sql.InRange {
 					return sql.IndexLookup{}, false, nil
 				}
-
-				lb.rang[i].LowerBound = sql.Below{
-					Key: k,
-					Typ: colType,
-				}
-				lb.rang[i].UpperBound = sql.Above{
-					Key: k,
-					Typ: colType,
-				}
+				lb.rang[i].LowerBound = sql.NewBound(k, sql.Below)
+				lb.rang[i].UpperBound = sql.NewBound(k, sql.Above)
 			}
 		} else {
 			k, inRange, err := convertLookupKey(ctx, colType, keyExpr)
 			if err != nil {
 				return sql.IndexLookup{}, false, err
 			}
-
 			if inRange != sql.InRange {
 				return sql.IndexLookup{}, false, nil
 			}
-
-			lb.rang[i].LowerBound = sql.Below{
-				Key: k,
-				Typ: colType,
-			}
-			lb.rang[i].UpperBound = sql.Above{
-				Key: k,
-				Typ: colType,
-			}
+			lb.rang[i].LowerBound = sql.NewBound(k, sql.Below)
+			lb.rang[i].UpperBound = sql.NewBound(k, sql.Above)
 		}
 	}
 
