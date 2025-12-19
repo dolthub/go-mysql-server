@@ -142,7 +142,7 @@ func TestIndexBuilderRanges(t *testing.T) {
 			all = append(all, clauses[perm[0]]...)
 			all = append(all, clauses[perm[1]]...)
 			all = append(all, clauses[perm[2]]...)
-			combined, err := sql.RemoveOverlappingRanges(all...)
+			combined, err := sql.RemoveOverlappingRanges(ctx, all...)
 			assert.NoError(t, err)
 			assert.NotNil(t, combined)
 			assert.Equal(t, sql.MySQLRangeCollection{
