@@ -166,8 +166,6 @@ func (i *groupByGroupingIter) Next(ctx *sql.Context) (sql.Row, error) {
 }
 
 func (i *groupByGroupingIter) compute(ctx *sql.Context) error {
-	// TODO: apply chan and receiver optimization here?
-
 	eg, subCtx := ctx.NewErrgroup()
 
 	var rowChan = make(chan sql.Row, 512)
