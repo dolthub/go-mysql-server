@@ -47,11 +47,11 @@ type MySQLRangeColumnExpr struct {
 }
 
 // OpenRangeColumnExpr returns a MySQLRangeColumnExpr representing {l < x < u}.
-func OpenRangeColumnExpr(lower, upper interface{}, typ Type) MySQLRangeColumnExpr {
+func OpenRangeColumnExpr(lower, upper interface{}, typ Type) *MySQLRangeColumnExpr {
 	if lower == nil || upper == nil {
 		return EmptyRangeColumnExpr(typ)
 	}
-	return MySQLRangeColumnExpr{
+	return &MySQLRangeColumnExpr{
 		LowerBound: NewBound(lower, Above),
 		UpperBound: NewBound(upper, Below),
 		Typ:        typ,
@@ -59,11 +59,11 @@ func OpenRangeColumnExpr(lower, upper interface{}, typ Type) MySQLRangeColumnExp
 }
 
 // ClosedRangeColumnExpr returns a MySQLRangeColumnExpr representing {l <= x <= u}.
-func ClosedRangeColumnExpr(lower, upper interface{}, typ Type) MySQLRangeColumnExpr {
+func ClosedRangeColumnExpr(lower, upper interface{}, typ Type) *MySQLRangeColumnExpr {
 	if lower == nil || upper == nil {
 		return EmptyRangeColumnExpr(typ)
 	}
-	return MySQLRangeColumnExpr{
+	return &MySQLRangeColumnExpr{
 		LowerBound: NewBound(lower, Below),
 		UpperBound: NewBound(upper, Above),
 		Typ:        typ,
@@ -71,11 +71,11 @@ func ClosedRangeColumnExpr(lower, upper interface{}, typ Type) MySQLRangeColumnE
 }
 
 // LessThanRangeColumnExpr returns a MySQLRangeColumnExpr representing {x < u}.
-func LessThanRangeColumnExpr(upper interface{}, typ Type) MySQLRangeColumnExpr {
+func LessThanRangeColumnExpr(upper interface{}, typ Type) *MySQLRangeColumnExpr {
 	if upper == nil {
 		return EmptyRangeColumnExpr(typ)
 	}
-	return MySQLRangeColumnExpr{
+	return &MySQLRangeColumnExpr{
 		LowerBound: NewAboveNullBound(),
 		UpperBound: NewBound(upper, Below),
 		Typ:        typ,
@@ -83,11 +83,11 @@ func LessThanRangeColumnExpr(upper interface{}, typ Type) MySQLRangeColumnExpr {
 }
 
 // LessOrEqualRangeColumnExpr returns a MySQLRangeColumnExpr representing  {x <= u}.
-func LessOrEqualRangeColumnExpr(upper interface{}, typ Type) MySQLRangeColumnExpr {
+func LessOrEqualRangeColumnExpr(upper interface{}, typ Type) *MySQLRangeColumnExpr {
 	if upper == nil {
 		return EmptyRangeColumnExpr(typ)
 	}
-	return MySQLRangeColumnExpr{
+	return &MySQLRangeColumnExpr{
 		LowerBound: NewAboveNullBound(),
 		UpperBound: NewBound(upper, Above),
 		Typ:        typ,
@@ -95,11 +95,11 @@ func LessOrEqualRangeColumnExpr(upper interface{}, typ Type) MySQLRangeColumnExp
 }
 
 // GreaterThanRangeColumnExpr returns a MySQLRangeColumnExpr representing {x > l}.
-func GreaterThanRangeColumnExpr(lower interface{}, typ Type) MySQLRangeColumnExpr {
+func GreaterThanRangeColumnExpr(lower interface{}, typ Type) *MySQLRangeColumnExpr {
 	if lower == nil {
 		return EmptyRangeColumnExpr(typ)
 	}
-	return MySQLRangeColumnExpr{
+	return &MySQLRangeColumnExpr{
 		LowerBound: NewBound(lower, Above),
 		UpperBound: NewAboveAllBound(),
 		Typ:        typ,
@@ -107,11 +107,11 @@ func GreaterThanRangeColumnExpr(lower interface{}, typ Type) MySQLRangeColumnExp
 }
 
 // GreaterOrEqualRangeColumnExpr returns a MySQLRangeColumnExpr representing {x >= l}.
-func GreaterOrEqualRangeColumnExpr(lower interface{}, typ Type) MySQLRangeColumnExpr {
+func GreaterOrEqualRangeColumnExpr(lower interface{}, typ Type) *MySQLRangeColumnExpr {
 	if lower == nil {
 		return EmptyRangeColumnExpr(typ)
 	}
-	return MySQLRangeColumnExpr{
+	return &MySQLRangeColumnExpr{
 		LowerBound: NewBound(lower, Below),
 		UpperBound: NewAboveAllBound(),
 		Typ:        typ,
@@ -119,8 +119,8 @@ func GreaterOrEqualRangeColumnExpr(lower interface{}, typ Type) MySQLRangeColumn
 }
 
 // AllRangeColumnExpr returns a MySQLRangeColumnExpr representing all values.
-func AllRangeColumnExpr(typ Type) MySQLRangeColumnExpr {
-	return MySQLRangeColumnExpr{
+func AllRangeColumnExpr(typ Type) *MySQLRangeColumnExpr {
+	return &MySQLRangeColumnExpr{
 		LowerBound: NewBelowNullBound(),
 		UpperBound: NewAboveAllBound(),
 		Typ:        typ,
@@ -128,8 +128,8 @@ func AllRangeColumnExpr(typ Type) MySQLRangeColumnExpr {
 }
 
 // EmptyRangeColumnExpr returns the empty MySQLRangeColumnExpr for the given type.
-func EmptyRangeColumnExpr(typ Type) MySQLRangeColumnExpr {
-	return MySQLRangeColumnExpr{
+func EmptyRangeColumnExpr(typ Type) *MySQLRangeColumnExpr {
+	return &MySQLRangeColumnExpr{
 		LowerBound: NewAboveAllBound(),
 		UpperBound: NewAboveAllBound(),
 		Typ:        typ,
@@ -137,8 +137,8 @@ func EmptyRangeColumnExpr(typ Type) MySQLRangeColumnExpr {
 }
 
 // NullRangeColumnExpr returns the null MySQLRangeColumnExpr for the given type.
-func NullRangeColumnExpr(typ Type) MySQLRangeColumnExpr {
-	return MySQLRangeColumnExpr{
+func NullRangeColumnExpr(typ Type) *MySQLRangeColumnExpr {
+	return &MySQLRangeColumnExpr{
 		LowerBound: NewBelowNullBound(),
 		UpperBound: NewAboveNullBound(),
 		Typ:        typ,
@@ -146,8 +146,8 @@ func NullRangeColumnExpr(typ Type) MySQLRangeColumnExpr {
 }
 
 // NotNullRangeColumnExpr returns the not null MySQLRangeColumnExpr for the given type.
-func NotNullRangeColumnExpr(typ Type) MySQLRangeColumnExpr {
-	return MySQLRangeColumnExpr{
+func NotNullRangeColumnExpr(typ Type) *MySQLRangeColumnExpr {
+	return &MySQLRangeColumnExpr{
 		LowerBound: NewAboveNullBound(),
 		UpperBound: NewAboveAllBound(),
 		Typ:        typ,
@@ -155,7 +155,7 @@ func NotNullRangeColumnExpr(typ Type) MySQLRangeColumnExpr {
 }
 
 // Equals checks for equality with the given MySQLRangeColumnExpr.
-func (r MySQLRangeColumnExpr) Equals(ctx *Context, other MySQLRangeColumnExpr) (bool, error) {
+func (r *MySQLRangeColumnExpr) Equals(ctx *Context, other *MySQLRangeColumnExpr) (bool, error) {
 	cmpL, err := r.LowerBound.Compare(ctx, other.LowerBound, r.Typ)
 	if err != nil {
 		return false, err
@@ -168,13 +168,13 @@ func (r MySQLRangeColumnExpr) Equals(ctx *Context, other MySQLRangeColumnExpr) (
 }
 
 // IsEmpty returns whether this MySQLRangeColumnExpr is empty.
-func (r MySQLRangeColumnExpr) IsEmpty(ctx context.Context) (bool, error) {
+func (r *MySQLRangeColumnExpr) IsEmpty(ctx context.Context) (bool, error) {
 	cmp, err := r.LowerBound.Compare(ctx, r.UpperBound, r.Typ)
 	return cmp >= 0, err
 }
 
 // IsConnected evaluates whether the given MySQLRangeColumnExpr overlaps or is adjacent to the calling MySQLRangeColumnExpr.
-func (r MySQLRangeColumnExpr) IsConnected(ctx *Context, other MySQLRangeColumnExpr) (bool, error) {
+func (r *MySQLRangeColumnExpr) IsConnected(ctx *Context, other *MySQLRangeColumnExpr) (bool, error) {
 	if r.Typ.String() != other.Typ.String() {
 		return false, nil
 	}
@@ -194,7 +194,7 @@ func (r MySQLRangeColumnExpr) IsConnected(ctx *Context, other MySQLRangeColumnEx
 
 // Overlaps evaluates whether the calling MySQLRangeColumnExpr overlaps the given MySQLRangeColumnExpr.
 // If they do, return the overlapping region as a MySQLRangeColumnExpr.
-func (r MySQLRangeColumnExpr) Overlaps(ctx *Context, other MySQLRangeColumnExpr) (bool, error) {
+func (r *MySQLRangeColumnExpr) Overlaps(ctx *Context, other *MySQLRangeColumnExpr) (bool, error) {
 	if r.Typ.String() != other.Typ.String() {
 		return false, nil
 	}
@@ -233,7 +233,7 @@ func MinBound(ctx *Context, b1, b2 *Bound, typ Type) (*Bound, error) {
 
 // FindOverlap returns the overlapping region as a MySQLRangeColumnExpr.
 // TODO: use pointers
-func (r MySQLRangeColumnExpr) FindOverlap(ctx *Context, other MySQLRangeColumnExpr) (MySQLRangeColumnExpr, error) {
+func (r *MySQLRangeColumnExpr) FindOverlap(ctx *Context, other *MySQLRangeColumnExpr) (*MySQLRangeColumnExpr, error) {
 	if r.Typ.String() != other.Typ.String() {
 		return EmptyRangeColumnExpr(r.Typ), nil
 	}
@@ -256,7 +256,7 @@ func (r MySQLRangeColumnExpr) FindOverlap(ctx *Context, other MySQLRangeColumnEx
 		return EmptyRangeColumnExpr(r.Typ), err
 	}
 
-	return MySQLRangeColumnExpr{
+	return &MySQLRangeColumnExpr{
 		LowerBound: lower,
 		UpperBound: upper,
 		Typ:        r.Typ,
@@ -268,13 +268,13 @@ func (r MySQLRangeColumnExpr) FindOverlap(ctx *Context, other MySQLRangeColumnEx
 // given MySQLRangeColumnExpr does not overlap the calling MySQLRangeColumnExpr, then the calling MySQLRangeColumnExpr is returned.
 // If the calling MySQLRangeColumnExpr is a strict subset (or equivalent) of the given MySQLRangeColumnExpr, then an empty slice
 // is returned. In all other cases, a slice with a single MySQLRangeColumnExpr will be returned.
-func (r MySQLRangeColumnExpr) Subtract(ctx *Context, other MySQLRangeColumnExpr) ([]MySQLRangeColumnExpr, error) {
+func (r *MySQLRangeColumnExpr) Subtract(ctx *Context, other *MySQLRangeColumnExpr) ([]*MySQLRangeColumnExpr, error) {
 	overlaps, err := r.Overlaps(ctx, other)
 	if err != nil {
 		return nil, err
 	}
 	if !overlaps {
-		return []MySQLRangeColumnExpr{r}, nil
+		return []*MySQLRangeColumnExpr{r}, nil
 	}
 	cmpL, err := r.LowerBound.Compare(ctx, other.LowerBound, r.Typ)
 	if err != nil {
@@ -286,7 +286,7 @@ func (r MySQLRangeColumnExpr) Subtract(ctx *Context, other MySQLRangeColumnExpr)
 	}
 	switch {
 	case cmpL == -1 && cmpU == -1:
-		return []MySQLRangeColumnExpr{
+		return []*MySQLRangeColumnExpr{
 			{
 				LowerBound: r.LowerBound,
 				UpperBound: other.LowerBound,
@@ -294,7 +294,7 @@ func (r MySQLRangeColumnExpr) Subtract(ctx *Context, other MySQLRangeColumnExpr)
 			},
 		}, nil
 	case cmpL == -1 && cmpU == 0:
-		return []MySQLRangeColumnExpr{
+		return []*MySQLRangeColumnExpr{
 			{
 				LowerBound: r.LowerBound,
 				UpperBound: other.LowerBound,
@@ -302,7 +302,7 @@ func (r MySQLRangeColumnExpr) Subtract(ctx *Context, other MySQLRangeColumnExpr)
 			},
 		}, nil
 	case cmpL == -1 && cmpU == 1:
-		return []MySQLRangeColumnExpr{
+		return []*MySQLRangeColumnExpr{
 			{
 				LowerBound: r.LowerBound,
 				UpperBound: other.LowerBound,
@@ -315,7 +315,7 @@ func (r MySQLRangeColumnExpr) Subtract(ctx *Context, other MySQLRangeColumnExpr)
 			},
 		}, nil
 	case cmpL == 0 && cmpU == 1:
-		return []MySQLRangeColumnExpr{
+		return []*MySQLRangeColumnExpr{
 			{
 				LowerBound: other.UpperBound,
 				UpperBound: r.UpperBound,
@@ -323,7 +323,7 @@ func (r MySQLRangeColumnExpr) Subtract(ctx *Context, other MySQLRangeColumnExpr)
 			},
 		}, nil
 	case cmpL == 1 && cmpU == 1:
-		return []MySQLRangeColumnExpr{
+		return []*MySQLRangeColumnExpr{
 			{
 				LowerBound: other.UpperBound,
 				UpperBound: r.UpperBound,
@@ -340,7 +340,7 @@ func (r MySQLRangeColumnExpr) Subtract(ctx *Context, other MySQLRangeColumnExpr)
 }
 
 // IsSubsetOf evaluates whether the calling MySQLRangeColumnExpr is fully encompassed by the given MySQLRangeColumnExpr.
-func (r MySQLRangeColumnExpr) IsSubsetOf(ctx *Context, other MySQLRangeColumnExpr) (bool, error) {
+func (r *MySQLRangeColumnExpr) IsSubsetOf(ctx *Context, other *MySQLRangeColumnExpr) (bool, error) {
 	if r.Typ.String() != other.Typ.String() {
 		return false, nil
 	}
@@ -356,17 +356,17 @@ func (r MySQLRangeColumnExpr) IsSubsetOf(ctx *Context, other MySQLRangeColumnExp
 }
 
 // IsSupersetOf evaluates whether the calling MySQLRangeColumnExpr fully encompasses the given MySQLRangeColumnExpr.
-func (r MySQLRangeColumnExpr) IsSupersetOf(ctx *Context, other MySQLRangeColumnExpr) (bool, error) {
+func (r *MySQLRangeColumnExpr) IsSupersetOf(ctx *Context, other *MySQLRangeColumnExpr) (bool, error) {
 	return other.IsSubsetOf(ctx, r)
 }
 
 // String returns this MySQLRangeColumnExpr as a string for display purposes.
-func (r MySQLRangeColumnExpr) String() string {
+func (r *MySQLRangeColumnExpr) String() string {
 	return "(" + r.LowerBound.String() + "," + r.UpperBound.String() + ")"
 }
 
 // DebugString returns this MySQLRangeColumnExpr as a string for debugging purposes.
-func (r MySQLRangeColumnExpr) DebugString() string {
+func (r *MySQLRangeColumnExpr) DebugString() string {
 	var res string
 	switch r.LowerBound.BoundType {
 	case Above:
@@ -399,58 +399,58 @@ func (r MySQLRangeColumnExpr) DebugString() string {
 // TryIntersect attempts to intersect the given MySQLRangeColumnExpr with the calling MySQLRangeColumnExpr. Returns true if the
 // intersection result is not the empty MySQLRangeColumnExpr, however a valid MySQLRangeColumnExpr is always returned if the error
 // is nil.
-func (r MySQLRangeColumnExpr) TryIntersect(ctx context.Context, other MySQLRangeColumnExpr) (MySQLRangeColumnExpr, bool, error) {
+func (r *MySQLRangeColumnExpr) TryIntersect(ctx context.Context, other *MySQLRangeColumnExpr) (*MySQLRangeColumnExpr, bool, error) {
 	_, l, err := OrderedBounds(ctx, r.LowerBound, other.LowerBound, r.Typ)
 	if err != nil {
-		return MySQLRangeColumnExpr{}, false, err
+		return nil, false, err
 	}
 	u, _, err := OrderedBounds(ctx, r.UpperBound, other.UpperBound, r.Typ)
 	if err != nil {
-		return MySQLRangeColumnExpr{}, false, err
+		return nil, false, err
 	}
 	comp, err := l.Compare(ctx, u, r.Typ)
 	if err != nil {
-		return MySQLRangeColumnExpr{}, false, err
+		return nil, false, err
 	}
 	if comp < 0 {
-		return MySQLRangeColumnExpr{l, u, r.Typ}, true, nil
+		return &MySQLRangeColumnExpr{l, u, r.Typ}, true, nil
 	}
 	return EmptyRangeColumnExpr(r.Typ), false, nil
 }
 
 // TryUnion attempts to combine the given MySQLRangeColumnExpr with the calling MySQLRangeColumnExpr. Returns true if the union
 // was a success.
-func (r MySQLRangeColumnExpr) TryUnion(ctx *Context, other MySQLRangeColumnExpr) (MySQLRangeColumnExpr, bool, error) {
+func (r *MySQLRangeColumnExpr) TryUnion(ctx *Context, other *MySQLRangeColumnExpr) (*MySQLRangeColumnExpr, bool, error) {
 	if isEmpty, err := other.IsEmpty(ctx); err != nil {
-		return MySQLRangeColumnExpr{}, false, err
+		return nil, false, err
 	} else if isEmpty {
 		return r, true, nil
 	}
 	if isEmpty, err := r.IsEmpty(ctx); err != nil {
-		return MySQLRangeColumnExpr{}, false, err
+		return nil, false, err
 	} else if isEmpty {
 		return other, true, nil
 	}
 	connected, err := r.IsConnected(ctx, other)
 	if err != nil {
-		return MySQLRangeColumnExpr{}, false, err
+		return nil, false, err
 	}
 	if !connected {
-		return MySQLRangeColumnExpr{}, false, nil
+		return nil, false, nil
 	}
 	l, _, err := OrderedBounds(ctx, r.LowerBound, other.LowerBound, r.Typ)
 	if err != nil {
-		return MySQLRangeColumnExpr{}, false, err
+		return nil, false, err
 	}
 	_, u, err := OrderedBounds(ctx, r.UpperBound, other.UpperBound, r.Typ)
 	if err != nil {
-		return MySQLRangeColumnExpr{}, false, err
+		return nil, false, err
 	}
-	return MySQLRangeColumnExpr{l, u, r.Typ}, true, nil
+	return &MySQLRangeColumnExpr{l, u, r.Typ}, true, nil
 }
 
 // Type returns this MySQLRangeColumnExpr's RangeType.
-func (r MySQLRangeColumnExpr) Type() RangeType {
+func (r *MySQLRangeColumnExpr) Type() RangeType {
 	switch r.LowerBound.BoundType {
 	case Above:
 		switch r.UpperBound.BoundType {
@@ -517,7 +517,7 @@ func OrderedBounds(ctx context.Context, l, r *Bound, typ Type) (*Bound, *Bound, 
 }
 
 // SimplifyRangeColumn combines all RangeColumnExprs that are connected and returns a new slice.
-func SimplifyRangeColumn(ctx *Context, rngColExprs []MySQLRangeColumnExpr) ([]MySQLRangeColumnExpr, error) {
+func SimplifyRangeColumn(ctx *Context, rngColExprs []*MySQLRangeColumnExpr) ([]*MySQLRangeColumnExpr, error) {
 	if len(rngColExprs) == 0 {
 		return rngColExprs, nil
 	}
@@ -529,7 +529,7 @@ func SimplifyRangeColumn(ctx *Context, rngColExprs []MySQLRangeColumnExpr) ([]My
 	}
 
 	var sortErr error
-	slices.SortFunc(rngColExprs, func(a, b MySQLRangeColumnExpr) int {
+	slices.SortFunc(rngColExprs, func(a, b *MySQLRangeColumnExpr) int {
 		cmpL, err := a.LowerBound.Compare(ctx, b.LowerBound, typ)
 		if err != nil {
 			sortErr = err
@@ -550,7 +550,7 @@ func SimplifyRangeColumn(ctx *Context, rngColExprs []MySQLRangeColumnExpr) ([]My
 	}
 
 	cur := EmptyRangeColumnExpr(rngColExprs[0].Typ)
-	res := make([]MySQLRangeColumnExpr, 0, len(rngColExprs))
+	res := make([]*MySQLRangeColumnExpr, 0, len(rngColExprs))
 	for _, rngColExpr := range rngColExprs {
 		merged, ok, err := cur.TryUnion(ctx, rngColExpr)
 		if err != nil {

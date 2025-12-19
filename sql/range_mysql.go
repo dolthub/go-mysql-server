@@ -25,7 +25,7 @@ type MySQLRangeCollection []MySQLRange
 
 // MySQLRange is a collection of RangeColumns that are ordered by the column expressions as returned by their parent
 // index. A single range represents a set of values intended for iteration by an integrator's index.
-type MySQLRange []MySQLRangeColumnExpr
+type MySQLRange []*MySQLRangeColumnExpr
 
 // Equals returns whether the given RangeCollection matches the calling RangeCollection. The order of each Range is
 // important, therefore it is recommended to sort two collections beforehand.
@@ -147,7 +147,7 @@ func (rang MySQLRange) Copy() MySQLRange {
 
 // ExpressionByColumnName returns the MySQLRangeColumnExpr that belongs to the given column expression. If an index does not
 // contain the column expression then false is returned.
-func (rang MySQLRange) ExpressionByColumnName(idx Index, colExpr string) (MySQLRangeColumnExpr, bool) {
+func (rang MySQLRange) ExpressionByColumnName(idx Index, colExpr string) (*MySQLRangeColumnExpr, bool) {
 	for i, idxColExpr := range idx.Expressions() {
 		if idxColExpr == colExpr {
 			if i < len(rang) {
@@ -156,7 +156,7 @@ func (rang MySQLRange) ExpressionByColumnName(idx Index, colExpr string) (MySQLR
 			break
 		}
 	}
-	return MySQLRangeColumnExpr{}, false
+	return nil, false
 }
 
 // Equals evaluates whether the calling Range is equivalent to the given Range.
@@ -420,7 +420,7 @@ func (rang MySQLRange) DebugString() string {
 // replace returns a new MySQLRange with the column at the given index replaced by the given MySQLRangeColumnExpr. Does NOT
 // perform any validation checks such as the index being within the bounds of the MySQLRange or the MySQLRangeColumnExpr having
 // the same type as the other columns, so use with caution.
-func (rang MySQLRange) replace(i int, colExpr MySQLRangeColumnExpr) MySQLRange {
+func (rang MySQLRange) replace(i int, colExpr *MySQLRangeColumnExpr) MySQLRange {
 	newRange := rang.Copy()
 	newRange[i] = colExpr
 	return newRange

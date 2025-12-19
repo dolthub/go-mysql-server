@@ -35,7 +35,7 @@ type MySQLIndexBuilder struct {
 	idx          Index
 	err          error
 	colExprTypes map[string]Type
-	ranges       map[string][]MySQLRangeColumnExpr
+	ranges       map[string][]*MySQLRangeColumnExpr
 	isInvalid    bool
 }
 
@@ -44,7 +44,7 @@ type MySQLIndexBuilder struct {
 func NewMySQLIndexBuilder(idx Index) *MySQLIndexBuilder {
 	cets := idx.ColumnExpressionTypes()
 	colExprTypes := make(map[string]Type, len(cets))
-	ranges := make(map[string][]MySQLRangeColumnExpr, len(cets))
+	ranges := make(map[string][]*MySQLRangeColumnExpr, len(cets))
 	for _, cet := range cets {
 		typ := cet.Type
 		if _, ok := typ.(StringType); ok {
@@ -52,7 +52,9 @@ func NewMySQLIndexBuilder(idx Index) *MySQLIndexBuilder {
 		}
 		expr := strings.ToLower(cet.Expression)
 		colExprTypes[expr] = typ
-		ranges[expr] = []MySQLRangeColumnExpr{AllRangeColumnExpr(typ)}
+		ranges[expr] = []*MySQLRangeColumnExpr{
+			AllRangeColumnExpr(typ),
+		}
 	}
 	return &MySQLIndexBuilder{
 		idx:          idx,
@@ -118,7 +120,7 @@ func (b *MySQLIndexBuilder) Equals(ctx *Context, colExpr string, keyType Type, k
 		b.err = ErrInvalidColExpr.New(colExpr, b.idx.ID())
 		return b
 	}
-	potentialRanges := make([]MySQLRangeColumnExpr, len(keys))
+	potentialRanges := make([]*MySQLRangeColumnExpr, len(keys))
 	for i, k := range keys {
 		// if converting from float to int results in rounding, then it's empty range
 		if t, ok := colTyp.(NumberType); ok && t.IsNumericType() && !t.IsFloat() {
@@ -197,7 +199,7 @@ func (b *MySQLIndexBuilder) In(ctx *Context, colExpr string, keyTypes []Type, ke
 		b.err = ErrInvalidColExpr.New(colExpr, b.idx.ID())
 		return b
 	}
-	potentialRanges := make([]MySQLRangeColumnExpr, len(keys))
+	potentialRanges := make([]*MySQLRangeColumnExpr, len(keys))
 	for i, k := range keys {
 		// if converting from float to int results in rounding, then it's empty range
 		if t, ok := colTyp.(NumberType); ok && t.IsNumericType() && !t.IsFloat() {
@@ -531,7 +533,7 @@ func (b *MySQLIndexBuilder) Ranges(ctx *Context) MySQLRangeCollection {
 		}
 		return MySQLRangeCollection{emptyRange}
 	}
-	var allColumns [][]MySQLRangeColumnExpr
+	var allColumns [][]*MySQLRangeColumnExpr
 	for _, colExpr := range b.idx.Expressions() {
 		ranges, ok := b.ranges[strings.ToLower(colExpr)]
 		if !ok {
@@ -600,7 +602,7 @@ func (b *MySQLIndexBuilder) Build(ctx *Context) (IndexLookup, error) {
 // updateCol updates the internal columns with the given ranges by intersecting each given range with each existing
 // range. That means that each given range is treated as an OR with respect to the other given ranges. If multiple
 // ranges are to be intersected with respect to one another, multiple calls to updateCol should be made.
-func (b *MySQLIndexBuilder) updateCol(ctx *Context, colExpr string, potentialRanges ...MySQLRangeColumnExpr) {
+func (b *MySQLIndexBuilder) updateCol(ctx *Context, colExpr string, potentialRanges ...*MySQLRangeColumnExpr) {
 	if len(potentialRanges) == 0 {
 		return
 	}
@@ -611,7 +613,7 @@ func (b *MySQLIndexBuilder) updateCol(ctx *Context, colExpr string, potentialRan
 		return
 	}
 
-	var newRanges []MySQLRangeColumnExpr
+	var newRanges []*MySQLRangeColumnExpr
 	for _, currentRange := range currentRanges {
 		for _, potentialRange := range potentialRanges {
 			newRange, ok, err := currentRange.TryIntersect(ctx, potentialRange)
@@ -648,7 +650,7 @@ func (b *MySQLIndexBuilder) updateCol(ctx *Context, colExpr string, potentialRan
 type SpatialIndexBuilder struct {
 	idx Index
 	typ Type
-	rng MySQLRangeColumnExpr
+	rng *MySQLRangeColumnExpr
 }
 
 func NewSpatialIndexBuilder(idx Index) *SpatialIndexBuilder {
@@ -656,7 +658,7 @@ func NewSpatialIndexBuilder(idx Index) *SpatialIndexBuilder {
 }
 
 func (b *SpatialIndexBuilder) AddRange(lower, upper interface{}) *SpatialIndexBuilder {
-	b.rng = MySQLRangeColumnExpr{
+	b.rng = &MySQLRangeColumnExpr{
 		LowerBound: NewBound(lower, Below),
 		UpperBound: NewBound(upper, Above),
 		Typ:        b.typ,

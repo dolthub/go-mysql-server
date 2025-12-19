@@ -164,7 +164,7 @@ func (tree *MySQLRangeColumnExprTree) FindConnections(ctx *Context, rang MySQLRa
 			if typ == nil {
 				typ = colExpr.Typ
 			}
-			connectedColExpr := MySQLRangeColumnExpr{
+			connectedColExpr := &MySQLRangeColumnExpr{
 				LowerBound: node.LowerBound,
 				UpperBound: node.UpperBound,
 				Typ:        typ,
@@ -390,7 +390,7 @@ func (tree *MySQLRangeColumnExprTree) GetRangeCollection(ctx *Context) (MySQLRan
 	var rangeCollection MySQLRangeCollection
 	var emptyRange MySQLRange
 	iterStack := []*rangeTreeIter{tree.Iterator()}
-	rangeStack := MySQLRange{MySQLRangeColumnExpr{}}
+	rangeStack := MySQLRange{&MySQLRangeColumnExpr{}}
 	for len(iterStack) > 0 {
 		iter := iterStack[len(iterStack)-1]
 		node, err := iter.Next(ctx)
@@ -398,14 +398,14 @@ func (tree *MySQLRangeColumnExprTree) GetRangeCollection(ctx *Context) (MySQLRan
 			return nil, err
 		}
 		if node != nil {
-			rangeStack[len(rangeStack)-1] = MySQLRangeColumnExpr{
+			rangeStack[len(rangeStack)-1] = &MySQLRangeColumnExpr{
 				LowerBound: node.LowerBound,
 				UpperBound: node.UpperBound,
 				Typ:        iter.tree.typ,
 			}
 			if node.Inner != nil {
 				iterStack = append(iterStack, node.Inner.Iterator())
-				rangeStack = append(rangeStack, MySQLRangeColumnExpr{})
+				rangeStack = append(rangeStack, &MySQLRangeColumnExpr{})
 			} else {
 				rang := make(MySQLRange, len(rangeStack))
 				copy(rang, rangeStack)
@@ -472,11 +472,11 @@ func (node *rangeColumnExprTreeNode) string(prefix string, isTail bool, sb *stri
 	} else {
 		sb.WriteString("┌── ")
 	}
-	sb.WriteString(MySQLRangeColumnExpr{
+	sb.WriteString((&MySQLRangeColumnExpr{
 		LowerBound: node.LowerBound,
 		UpperBound: node.UpperBound,
 		Typ:        typ,
-	}.DebugString())
+	}).DebugString())
 	sb.WriteString(fmt.Sprintf(" max: %s", node.MaxUpperbound.String()))
 	sb.WriteString(fmt.Sprintf(" color: %d", node.color))
 	// TODO: if we ever need to see one level deeper
@@ -502,7 +502,7 @@ func (node *rangeColumnExprTreeNode) string(prefix string, isTail bool, sb *stri
 }
 
 // getNode returns the node that matches the given column expression, if it exists. Returns nil otherwise.
-func (tree *MySQLRangeColumnExprTree) getNode(ctx *Context, colExpr MySQLRangeColumnExpr) (*rangeColumnExprTreeNode, error) {
+func (tree *MySQLRangeColumnExprTree) getNode(ctx *Context, colExpr *MySQLRangeColumnExpr) (*rangeColumnExprTreeNode, error) {
 	node := tree.root
 	for node != nil {
 		cmp, err := colExpr.LowerBound.Compare(ctx, node.LowerBound, tree.typ)
