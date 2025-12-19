@@ -5718,7 +5718,7 @@ full join pq on a = p
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [ab.a, ab.b, uv.u, uv.v, pq.p, pq.q]\n" +
-			" └─ FullOuterJoin (estimated cost=30.320 rows=5)\n" +
+			" └─ FullOuterJoin (estimated cost=15.320 rows=5)\n" +
 			"     ├─ (ab.a = pq.p)\n" +
 			"     ├─ LookupJoin (estimated cost=13.200 rows=4)\n" +
 			"     │   ├─ Table\n" +
@@ -5734,7 +5734,7 @@ full join pq on a = p
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [ab.a, ab.b, uv.u, uv.v, pq.p, pq.q]\n" +
-			" └─ FullOuterJoin (estimated cost=30.320 rows=5) (actual rows=4 loops=1)\n" +
+			" └─ FullOuterJoin (estimated cost=15.320 rows=5) (actual rows=4 loops=1)\n" +
 			"     ├─ (ab.a = pq.p)\n" +
 			"     ├─ LookupJoin (estimated cost=13.200 rows=4) (actual rows=4 loops=1)\n" +
 			"     │   ├─ Table\n" +
@@ -6155,7 +6155,7 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [mytable.i]\n" +
-			" └─ FullOuterJoin (estimated cost=16.180 rows=3)\n" +
+			" └─ FullOuterJoin (estimated cost=8.180 rows=3)\n" +
 			"     ├─ (mytable.i = othertable.i2)\n" +
 			"     ├─ Table\n" +
 			"     │   ├─ name: mytable\n" +
@@ -6166,7 +6166,7 @@ inner join pq on true
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [mytable.i]\n" +
-			" └─ FullOuterJoin (estimated cost=16.180 rows=3) (actual rows=3 loops=1)\n" +
+			" └─ FullOuterJoin (estimated cost=8.180 rows=3) (actual rows=3 loops=1)\n" +
 			"     ├─ (mytable.i = othertable.i2)\n" +
 			"     ├─ Table\n" +
 			"     │   ├─ name: mytable\n" +

@@ -90,18 +90,18 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 		switch {
 		case jp.Op.IsInner():
 			// arbitrary +1 penalty, prefer lookup
-			return (lBest*rBest+1)*seqIOCostFactor + (lBest*rBest)*cpuCostFactor, nil
+			return float64((lBest*rBest+1)*seqIOCostFactor) + float64((lBest*rBest)*cpuCostFactor), nil
 		case jp.Op.IsDegenerate():
-			return ((lBest*rBest)*seqIOCostFactor + (lBest*rBest)*cpuCostFactor) * degeneratePenalty, nil
+			return float64((lBest*rBest)*seqIOCostFactor+(lBest*rBest)*cpuCostFactor) * degeneratePenalty, nil
 		case jp.Op.IsHash():
 			if jp.Op.IsPartial() {
 				cost := lBest * (rBest / 2.0) * (seqIOCostFactor + cpuCostFactor)
 				return cost * .5, nil
 			}
-			return lBest*(seqIOCostFactor+cpuCostFactor) + float64(rBest)*(seqIOCostFactor+memCostFactor) + selfJoinCard*cpuCostFactor, nil
+			return float64(lBest*(seqIOCostFactor+cpuCostFactor)) + float64(float64(rBest)*(seqIOCostFactor+memCostFactor)) + float64(selfJoinCard*cpuCostFactor), nil
 
 		case jp.Op.IsLateral():
-			return (lBest*rBest-1)*seqIOCostFactor + (lBest*rBest)*cpuCostFactor, nil
+			return float64((lBest*rBest-1)*seqIOCostFactor) + float64((lBest*rBest)*cpuCostFactor), nil
 
 		case jp.Op.IsMerge():
 			// TODO memory overhead when not injective
@@ -119,7 +119,7 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 			// cost is full left scan + full rightScan plus compute/memory overhead
 			// for this merge filter's cardinality
 			// TODO: estimate memory overhead
-			return float64(lTableScan+rTableScan)*(seqIOCostFactor+cpuCostFactor) + cpuCostFactor*selfJoinCard, nil
+			return float64(float64(lTableScan+rTableScan)*(seqIOCostFactor+cpuCostFactor)) + float64(cpuCostFactor*selfJoinCard), nil
 		case jp.Op.IsLookup():
 			// TODO added overhead for right lookups
 			switch n := n.(type) {
@@ -132,7 +132,7 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 
 				// read the whole left table and randIO into table equivalent to
 				// this join's output cardinality estimate
-				return lBest*seqIOCostFactor + selfJoinCard*(randIOCostFactor+seqIOCostFactor), nil
+				return float64(lBest*seqIOCostFactor) + float64(selfJoinCard*(randIOCostFactor+seqIOCostFactor)), nil
 			case *ConcatJoin:
 				return c.costConcatJoin(ctx, n, s)
 			}
@@ -140,11 +140,11 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 			expectedNumberOfOverlappingJoins := rBest * perKeyCostReductionFactor
 			return lBest * expectedNumberOfOverlappingJoins * (seqIOCostFactor), nil
 		case jp.Op.IsPartial():
-			return lBest*seqIOCostFactor + lBest*(rBest/2.0)*(seqIOCostFactor+cpuCostFactor), nil
+			return float64(lBest*seqIOCostFactor) + float64(lBest*(rBest/2.0)*(seqIOCostFactor+cpuCostFactor)), nil
 		case jp.Op.IsFullOuter():
-			return ((lBest*rBest-1)*seqIOCostFactor + (lBest*rBest)*cpuCostFactor) * degeneratePenalty, nil
+			return (float64((lBest*rBest-1)*seqIOCostFactor) + float64((lBest*rBest)*cpuCostFactor)*degeneratePenalty), nil
 		case jp.Op.IsLeftOuter():
-			return (lBest*rBest-1)*seqIOCostFactor + (lBest*rBest)*cpuCostFactor, nil
+			return float64((lBest*rBest-1)*seqIOCostFactor) + float64((lBest*rBest)*cpuCostFactor), nil
 		default:
 		}
 		return 0, fmt.Errorf("unhandled join type: %T (%s)", n, jp.Op)
