@@ -234,7 +234,7 @@ func (l *loadDataIter) parseFields(ctx *sql.Context, line string) (exprs []sql.E
 		return nil, fmt.Errorf("error: unterminated enclosed field")
 	}
 
-	exprs, colListRow, err := l.preprocessor(ctx, fields)
+	exprs, colListRow, rowFieldToColMap, err := l.inputPreprocessor(ctx, fields)
 	if err != nil {
 		return nil, err
 	}
@@ -248,110 +248,89 @@ func (l *loadDataIter) parseFields(ctx *sql.Context, line string) (exprs []sql.E
 			exprs[exprIdx] = expression.NewLiteral(result, expr.Type())
 			continue
 		}
+
+		destColIdx := rowFieldToColMap[exprIdx]
+		if destColIdx == -1 {
+			continue
+		}
+
+		field := colListRow[exprIdx]
+		destCol := l.destSch[rowFieldToColMap[exprIdx]]
+
+		if field != nil {
+			switch field {
+			case "":
+				if _, ok := destCol.Type.(sql.StringType); ok {
+					exprs[exprIdx] = expression.NewLiteral(field, types.LongText)
+				}
+			case "NULL":
+				exprs[exprIdx] = expression.NewLiteral(nil, types.Null)
+			default:
+				exprs[exprIdx] = expression.NewLiteral(field, types.LongText)
+			}
+			continue
+		}
+
+		// The field is still nil at this point so we attempt to set the default value if possible.
+		if !destCol.Nullable && destCol.Default == nil && !destCol.AutoIncrement {
+			return nil, sql.ErrInsertIntoNonNullableDefaultNullColumn.New(destCol.Name)
+		}
+		exprs[exprIdx] = destCol.Default
 	}
-
-	//fieldRow := make(sql.Row, len(fields))
-	//for i, field := range fields {
-	//	fieldRow[i] = field
-	//}
-	//
-	//exprs = make([]sql.Expression, len(l.destSch))
-	//for fieldIdx, exprIdx := 0, 0; fieldIdx < len(fields) && fieldIdx < len(l.userVars); fieldIdx++ {
-	//	if l.userVars[fieldIdx] != nil {
-	//		setField := l.userVars[fieldIdx].(*expression.SetField)
-	//		userVar := setField.LeftChild.(*expression.UserVar)
-	//		err := setUserVar(ctx, userVar, setField.RightChild, fieldRow)
-	//		if err != nil {
-	//			return nil, err
-	//		}
-	//		continue
-	//	}
-	//
-	//	// don't check for `exprIdx < len(exprs)` in for loop
-	//	// because we still need to assign trailing user variables
-	//	if exprIdx >= len(exprs) {
-	//		continue
-	//	}
-	//
-	//	field := fields[fieldIdx]
-	//	switch field {
-	//	case "":
-	//		// Replace the empty string with defaults if exists, otherwise NULL
-	//		destCol := l.destSch[l.fieldToColMap[fieldIdx]]
-	//		if _, ok := destCol.Type.(sql.StringType); ok {
-	//			exprs[exprIdx] = expression.NewLiteral(field, types.LongText)
-	//		} else {
-	//			if destCol.Default != nil {
-	//				exprs[exprIdx] = destCol.Default
-	//			} else {
-	//				exprs[exprIdx] = expression.NewLiteral(nil, types.Null)
-	//			}
-	//		}
-	//	case "NULL":
-	//		exprs[exprIdx] = expression.NewLiteral(nil, types.Null)
-	//	default:
-	//		exprs[exprIdx] = expression.NewLiteral(field, types.LongText)
-	//	}
-	//	exprIdx++
-	//}
-	//
-	//// Apply Set Expressions by replacing the corresponding field expression with the set expression
-	//for fieldIdx, exprIdx := 0, 0; len(l.setExprs) > 0 && fieldIdx < len(l.fieldToColMap) && exprIdx < len(exprs); fieldIdx++ {
-	//	setIdx := l.fieldToColMap[fieldIdx]
-	//	if setIdx == -1 {
-	//		continue
-	//	}
-	//	setExpr := l.setExprs[setIdx]
-	//	if setExpr != nil {
-	//		res, err := setExpr.Eval(ctx, fieldRow)
-	//		if err != nil {
-	//			return nil, err
-	//		}
-	//		exprs[exprIdx] = expression.NewLiteral(res, setExpr.Type())
-	//	}
-	//	exprIdx++
-	//}
-
-	// Due to how projections work, if no columns are provided (each row may have a variable number of values), the
-	// projection will not insert default values, so we must do it here.
-	//if l.colCount == 0 {
-	//	for exprIdx, expr := range exprs {
-	//		if expr != nil {
-	//			continue
-	//		}
-	//		col := l.destSch[exprIdx]
-	//		if !col.Nullable && col.Default == nil && !col.AutoIncrement {
-	//			return nil, sql.ErrInsertIntoNonNullableDefaultNullColumn.New(col.Name)
-	//		}
-	//		exprs[exprIdx] = col.Default
-	//	}
-	//}
 
 	return exprs, nil
 }
 
-// preprocessor
-func (l *loadDataIter) preprocessor(ctx *sql.Context, parsedFields []string) (expressions []sql.Expression, colListRow sql.Row, err error) {
+// inputPreprocessor takes in the |parsedFields| extracted from a [plan.LoadData.File] line to correctly place
+// preprocessors (i.e. the SET clause allowing you to perform transformations on values before assigning their result to
+// a column), and to reindex new field positions without user variables into a [sql.Row], and [sql.Expression] array.
+// Per row results can differentiate, and we only care about column fields for expressions anyway, so we don't include
+// user variables in the returned results of this function. If a user variable is included in the returned [sql.Row], it
+// could mess with the projection of other fields, because it offsets anything that comes after it.
+//
+// For more information on preprocessors, see the documentation for "[Input Preprocessing]".
+//
+// [Input Preprocessing]: https://dev.mysql.com/doc/refman/9.5/en/load-data.html#load-data-input-preprocessing
+func (l *loadDataIter) inputPreprocessor(ctx *sql.Context, parsedFields []string) (expressions []sql.Expression, colListRow sql.Row, rowFieldToColMap map[int]int, err error) {
 	colListRow = make(sql.Row, len(l.destSch))
 	expressions = make([]sql.Expression, len(l.destSch))
+	rowFieldToColMap = make(map[int]int)
+	// colListIdx must only increment on column fields or preprocessors.
 	colListIdx := 0
 	for fieldIdx, destColIdx := range l.fieldToColMap {
 		if l.userVars[fieldIdx] != nil {
 			setField := l.userVars[fieldIdx].(*expression.SetField)
 			userVar := setField.LeftChild.(*expression.UserVar)
+			if fieldIdx > len(parsedFields) {
+				err = ctx.SetUserVariable(ctx, userVar.Name, nil, types.Null)
+				if err != nil {
+					return nil, nil, nil, err
+				}
+				continue
+			}
+
 			field := parsedFields[fieldIdx]
 			fieldType := types.ApproximateTypeFromValue(field)
-			err := ctx.SetUserVariable(ctx, userVar.Name, field, fieldType)
+			err = ctx.SetUserVariable(ctx, userVar.Name, field, fieldType)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 			continue
 		}
 
+		// We've filled all possible column-only fields for the destination [sql.Schema], but other user variables could
+		// exist past this length. Any other `continue` statements below apply the same thought process.
 		if colListIdx >= len(expressions) {
 			continue
 		}
 
+		rowFieldToColMap[colListIdx] = destColIdx
+
+		// The preprocessors are placed ahead of time to let callers know they can be evaluated and should not be
+		// overwritten. loadDataIter.setExprs uses the destination [sql.Schema] indices as its map. This deviates from
+		// loadDataIter.fieldToColMap which includes all column field indices first, and *then* preprocessor expression
+		// indices (incrementing from where columns fields left off). For that reason, we must use the destination
+		// column index to get the correct expression.
 		if l.setExprs != nil && destColIdx != -1 && l.setExprs[destColIdx] != nil {
 			expressions[colListIdx] = l.setExprs[destColIdx]
 		}
@@ -361,31 +340,14 @@ func (l *loadDataIter) preprocessor(ctx *sql.Context, parsedFields []string) (ex
 			continue
 		}
 
+		// We need to provide a [sql.Row] with all non-user variable claimed values to later evaluate expressions that
+		// rely on their values.
 		field := parsedFields[fieldIdx]
 		colListRow[colListIdx] = field
-
-		if expressions[colListIdx] == nil {
-			switch field {
-			case "":
-				destCol := l.destSch[destColIdx]
-				if _, ok := destCol.Type.(sql.StringType); ok {
-					expressions[colListIdx] = expression.NewLiteral(field, types.LongText)
-				} else if destCol.Default != nil {
-					expressions[colListIdx] = destCol.Default
-				} else {
-					expressions[colListIdx] = expression.NewLiteral(nil, types.Null)
-				}
-			case "NULL":
-				expressions[colListIdx] = expression.NewLiteral(nil, types.Null)
-			default:
-				expressions[colListIdx] = expression.NewLiteral(field, types.LongText)
-			}
-		}
-
 		colListIdx++
 	}
 
-	return expressions, colListRow, nil
+	return expressions, colListRow, rowFieldToColMap, nil
 }
 
 type modifyColumnIter struct {
