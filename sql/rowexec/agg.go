@@ -16,10 +16,11 @@ package rowexec
 
 import (
 	"errors"
+	"io"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/hash"
-	"io"
 )
 
 type groupByIter struct {
