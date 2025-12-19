@@ -225,14 +225,10 @@ func (l *loadDataIter) parseFields(ctx *sql.Context, line string) (exprs []sql.E
 
 	lastField := currentField.String()
 	// If still in enclosure at EOF when enc==esc, prepend the opening enclosure that was stripped
-	if inEnclosure && !normalLineTerm {
+	if inEnclosure {
 		lastField = string(l.fieldsEnclosedBy[0]) + lastField
 	}
 	fields = append(fields, lastField)
-
-	if inEnclosure && normalLineTerm {
-		return nil, fmt.Errorf("error: unterminated enclosed field")
-	}
 
 	exprs, colListRow, rowFieldToColMap, err := l.inputPreprocessor(ctx, fields)
 	if err != nil {
@@ -255,7 +251,7 @@ func (l *loadDataIter) parseFields(ctx *sql.Context, line string) (exprs []sql.E
 		}
 
 		field := colListRow[exprIdx]
-		destCol := l.destSch[rowFieldToColMap[exprIdx]]
+		destCol := l.destSch[destColIdx]
 
 		if field != nil {
 			switch field {
@@ -271,11 +267,14 @@ func (l *loadDataIter) parseFields(ctx *sql.Context, line string) (exprs []sql.E
 			continue
 		}
 
-		// The field is still nil at this point so we attempt to set the default value if possible.
-		if !destCol.Nullable && destCol.Default == nil && !destCol.AutoIncrement {
-			return nil, sql.ErrInsertIntoNonNullableDefaultNullColumn.New(destCol.Name)
+		// If the field is still nil, the input line did not contain enough fields to satisfy the column list. For
+		// non-nullable columns, MySQL treats this as a data truncation and assigns the implicit "zero value" for the
+		// data type (e.g. an empty string or 0) instead of the explicit schema default.
+		if !destCol.Nullable && !destCol.AutoIncrement {
+			exprs[exprIdx] = expression.NewLiteral(destCol.Type.Zero(), destCol.Type)
+		} else {
+			exprs[exprIdx] = destCol.Default
 		}
-		exprs[exprIdx] = destCol.Default
 	}
 
 	return exprs, nil
@@ -301,7 +300,7 @@ func (l *loadDataIter) inputPreprocessor(ctx *sql.Context, parsedFields []string
 		if l.userVars[fieldIdx] != nil {
 			setField := l.userVars[fieldIdx].(*expression.SetField)
 			userVar := setField.LeftChild.(*expression.UserVar)
-			if fieldIdx > len(parsedFields) {
+			if fieldIdx >= len(parsedFields) {
 				err = ctx.SetUserVariable(ctx, userVar.Name, nil, types.Null)
 				if err != nil {
 					return nil, nil, nil, err
