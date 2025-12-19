@@ -173,7 +173,7 @@ func (i *groupByGroupingIter) compute(ctx *sql.Context) error {
 	eg.Go(func() error {
 		defer close(rowChan)
 		for {
-			row, err := i.child.Next(ctx)
+			row, err := i.child.Next(subCtx)
 			if err != nil {
 				if err == io.EOF {
 					return nil
@@ -211,7 +211,7 @@ func (i *groupByGroupingIter) compute(ctx *sql.Context) error {
 			} else if err != nil {
 				return err
 			}
-			err = updateBuffers(ctx, buf, row)
+			err = updateBuffers(subCtx, buf, row)
 			if err != nil {
 				return err
 			}
