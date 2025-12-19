@@ -20,3 +20,4 @@ enginetest/testdata/loaddata_enclosed.dat binary
 enginetest/testdata/loaddata_single_quotes.dat binary
 enginetest/testdata/loaddata_nulls.dat binary
 enginetest/testdata/loaddata_escape.dat binary
+enginetest/testdata/loaddata_extra_fields.dat binary
