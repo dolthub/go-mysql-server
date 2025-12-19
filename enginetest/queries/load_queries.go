@@ -25,6 +25,74 @@ import (
 
 var LoadDataScripts = []ScriptTest{
 	{
+		Name: "LOAD DATA with unterminated enclosed field",
+		SetUpScript: []string{
+			"CREATE TABLE t_unterminated (val VARCHAR(255))",
+			"LOAD DATA INFILE './testdata/loaddata_unterminated.dat' INTO TABLE t_unterminated FIELDS ENCLOSED BY '\"'",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM t_unterminated",
+				Expected: []sql.Row{
+					{"\"unterminated field"},
+				},
+			},
+		},
+	},
+	{
+		Name: "LOAD DATA with extra fields, user variables, and missing fields",
+		SetUpScript: []string{
+			"CREATE TABLE t_extra (id INT PRIMARY KEY, val VARCHAR(255))",
+			"LOAD DATA INFILE './testdata/loaddata_extra_fields.dat' INTO TABLE t_extra FIELDS TERMINATED BY ',' (id, val, @extra1, @extra2)",
+			"CREATE TABLE t_short (id INT PRIMARY KEY, val VARCHAR(255) NOT NULL DEFAULT 'default')",
+			"LOAD DATA INFILE './testdata/loaddata_extra_fields.dat' INTO TABLE t_short FIELDS TERMINATED BY ',' (id, val)",
+			"CREATE TABLE t_defaults (id INT PRIMARY KEY, val VARCHAR(255) DEFAULT 'default')",
+			"LOAD DATA INFILE './testdata/loaddata_extra_fields.dat' INTO TABLE t_defaults FIELDS TERMINATED BY ',' (id)",
+			"CREATE TABLE t_discard (id INT PRIMARY KEY, val VARCHAR(255))",
+			"LOAD DATA INFILE './testdata/loaddata_extra_fields.dat' INTO TABLE t_discard FIELDS TERMINATED BY ',' (id, @discard, val)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM t_extra ORDER BY id",
+				Expected: []sql.Row{
+					{1, "val1"},
+					{2, "val2"},
+					{3, nil},
+				},
+			},
+			{
+				Query: "SELECT * FROM t_short ORDER BY id",
+				Expected: []sql.Row{
+					{1, "val1"},
+					{2, "val2"},
+					{3, ""},
+				},
+			},
+			{
+				Query: "SELECT * FROM t_defaults ORDER BY id",
+				Expected: []sql.Row{
+					{1, "default"},
+					{2, "default"},
+					{3, "default"},
+				},
+			},
+			{
+				Query: "SELECT * FROM t_discard ORDER BY id",
+				Expected: []sql.Row{
+					{1, "extra1"},
+					{2, "extra3"},
+					{3, nil},
+				},
+			},
+			{
+				Query: "SELECT @extra1, @extra2, @discard",
+				Expected: []sql.Row{
+					{nil, nil, nil},
+				},
+			},
+		},
+	},
+	{
 		// https://github.com/dolthub/dolt/issues/9969
 		Name: "LOAD DATA with ENCLOSED BY and ESCAPED BY parsing",
 		SetUpScript: []string{
