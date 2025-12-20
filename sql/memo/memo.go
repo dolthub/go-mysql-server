@@ -516,7 +516,7 @@ func (m *Memo) updateBest(grp *ExprGroup, n RelExpr, cost float64) {
 		}
 		return
 	}
-	m.Tracer.Log("Updated best plan for group %d from plan with cost %f to plan %s with cost %f. %f < %f == %t",
+	m.Tracer.Log("Updated best plan for group %d from plan with cost %g to plan %s with cost %g. %g < %g == %t",
 		grp.Id, grp.Cost, n, cost, grp.Cost, cost, grp.Cost < cost)
 	if grp.updateBest(n, cost, m.Tracer) {
 	}
