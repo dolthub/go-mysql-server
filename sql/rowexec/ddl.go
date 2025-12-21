@@ -448,11 +448,20 @@ func (b *BaseBuilder) buildCreateDB(ctx *sql.Context, n *plan.CreateDB, row sql.
 func (b *BaseBuilder) buildCreateSchema(ctx *sql.Context, n *plan.CreateSchema, row sql.Row) (sql.RowIter, error) {
 	database := ctx.GetCurrentDatabase()
 
-	// If no database is selected, first try to fall back to CREATE DATABASE
-	// since CREATE SCHEMA is a synonym for CREATE DATABASE in MySQL
+	// If no database is selected, check if we're in PostgreSQL mode or MySQL mode.
+	// PostgreSQL requires a database context for CREATE SCHEMA.
+	// MySQL treats CREATE SCHEMA as a synonym for CREATE DATABASE.
 	// https://dev.mysql.com/doc/refman/8.4/en/create-database.html
-	// TODO: For PostgreSQL, return an error if no database is selected.
 	if database == "" {
+		// Check for PostgreSQL mode by looking for the search_path session variable.
+		// If search_path exists, we're in PostgreSQL mode and should return an error.
+		// If it doesn't exist (ErrUnknownSystemVariable), we're in MySQL mode and fall back to CREATE DATABASE.
+		_, err := ctx.Session.GetSessionVariable(ctx, "search_path")
+		if err == nil {
+			// PostgreSQL mode: search_path exists, require database selection
+			return nil, sql.ErrNoDatabaseSelected.New()
+		}
+		// MySQL mode: fall back to CREATE DATABASE
 		return b.buildCreateDB(ctx, &plan.CreateDB{
 			Catalog:     n.Catalog,
 			DbName:      n.DbName,

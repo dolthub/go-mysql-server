@@ -24,6 +24,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
+	"github.com/dolthub/go-mysql-server/test"
 )
 
 func TestCreateTable(t *testing.T) {
@@ -123,4 +124,41 @@ func createTable(t *testing.T, ctx *sql.Context, db sql.Database, name string, s
 	r, err = rows.Next(ctx)
 	require.Equal(t, io.EOF, err)
 	return nil
+}
+
+// TestCreateSchemaPostgresMode tests that CREATE SCHEMA returns an error when no database is selected
+// in PostgreSQL mode (when search_path session variable exists).
+// See: https://github.com/dolthub/doltgresql/issues/1863
+func TestCreateSchemaPostgresMode(t *testing.T) {
+	require := require.New(t)
+
+	db := memory.NewDatabase("testdb")
+	pro := memory.NewDBProvider(db)
+	catalog := test.NewCatalog(sql.NewDatabaseProvider(db))
+	ctx := newContext(pro)
+
+	// Register search_path system variable to simulate PostgreSQL mode
+	sql.SystemVariables.AddSystemVariables([]sql.SystemVariable{
+		&sql.MysqlSystemVariable{
+			Name:    "search_path",
+			Type:    types.NewSystemStringType("search_path"),
+			Default: "public",
+		},
+	})
+
+	// Initialize the session variable so GetSessionVariable can find it
+	err := ctx.Session.InitSessionVariable(ctx, "search_path", "public")
+	require.NoError(err)
+
+	// Ensure no current database is set (simulating no database selected)
+	ctx.SetCurrentDatabase("")
+
+	// Create a CreateSchema plan node with Catalog set
+	createSchema := plan.NewCreateSchema("test_schema", false, sql.Collation_Default)
+	createSchema.Catalog = catalog
+
+	// Build and execute - should return ErrNoDatabaseSelected in PostgreSQL mode
+	_, err = DefaultBuilder.Build(ctx, createSchema, nil)
+	require.Error(err)
+	require.True(sql.ErrNoDatabaseSelected.Is(err), "expected ErrNoDatabaseSelected, got: %v", err)
 }
