@@ -167,43 +167,60 @@ func (i *groupByGroupingIter) Next(ctx *sql.Context) (sql.Row, error) {
 }
 
 func (i *groupByGroupingIter) compute(ctx *sql.Context) error {
-	for {
-		row, err := i.child.Next(ctx)
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return err
-		}
+	eg, subCtx := ctx.NewErrgroup()
 
-		key, err := i.groupingKey(ctx, row)
-		if err != nil {
-			return err
-		}
-
-		b, err := i.get(key)
-		if errors.Is(err, sql.ErrKeyNotFound) {
-			b = make([]sql.AggregationBuffer, len(i.selectedExprs))
-			for j, a := range i.selectedExprs {
-				b[j], err = newAggregationBuffer(a)
-				if err != nil {
-					return err
+	var rowChan = make(chan sql.Row, 512)
+	eg.Go(func() error {
+		defer close(rowChan)
+		for {
+			row, err := i.child.Next(subCtx)
+			if err != nil {
+				if err == io.EOF {
+					return nil
 				}
+				return err
 			}
+			rowChan <- row
+		}
+	})
 
-			if err := i.aggregations.Put(key, b); err != nil {
+	eg.Go(func() error {
+		for {
+			row, ok := <-rowChan
+			if !ok {
+				return nil
+			}
+			key, err := i.groupingKey(subCtx, row)
+			if err != nil {
 				return err
 			}
 
-			i.keys = append(i.keys, key)
-		} else if err != nil {
-			return err
+			buf, err := i.get(key)
+			if errors.Is(err, sql.ErrKeyNotFound) {
+				buf = make([]sql.AggregationBuffer, len(i.selectedExprs))
+				for j, a := range i.selectedExprs {
+					buf[j], err = newAggregationBuffer(a)
+					if err != nil {
+						return err
+					}
+				}
+				if err = i.aggregations.Put(key, buf); err != nil {
+					return err
+				}
+				i.keys = append(i.keys, key)
+			} else if err != nil {
+				return err
+			}
+			err = updateBuffers(subCtx, buf, row)
+			if err != nil {
+				return err
+			}
 		}
+	})
 
-		err = updateBuffers(ctx, b, row)
-		if err != nil {
-			return err
-		}
+	err := eg.Wait()
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -217,7 +234,7 @@ func (i *groupByGroupingIter) get(key uint64) ([]sql.AggregationBuffer, error) {
 	if v == nil {
 		return nil, nil
 	}
-	return v.([]sql.AggregationBuffer), err
+	return v.([]sql.AggregationBuffer), nil
 }
 
 func (i *groupByGroupingIter) put(key uint64, val []sql.AggregationBuffer) error {
