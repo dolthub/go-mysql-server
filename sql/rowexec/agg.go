@@ -15,6 +15,7 @@
 package rowexec
 
 import (
+	"context"
 	"errors"
 	"io"
 
@@ -180,15 +181,25 @@ func (i *groupByGroupingIter) compute(ctx *sql.Context) error {
 				}
 				return err
 			}
-			rowChan <- row
+			select {
+			case rowChan <- row:
+			case <-subCtx.Done():
+				return context.Cause(subCtx)
+			}
 		}
 	})
 
 	eg.Go(func() error {
 		for {
-			row, ok := <-rowChan
-			if !ok {
-				return nil
+			var row sql.Row
+			var ok bool
+			select {
+			case row, ok = <-rowChan:
+				if !ok {
+					return nil
+				}
+			case <-subCtx.Done():
+				return context.Cause(subCtx)
 			}
 			key, err := i.groupingKey(subCtx, row)
 			if err != nil {
