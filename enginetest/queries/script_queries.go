@@ -14620,6 +14620,22 @@ select * from t1 except (
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/10234
+		Name: "NOT EXISTS with nullable column in OR filter",
+		SetUpScript: []string{
+			"create table t0(c0 boolean)",
+			"create table t1(c0 boolean)",
+			"insert into t0 values (null)",
+			"insert into t1 values (true)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM t1 WHERE NOT EXISTS (SELECT 1 FROM t0 WHERE (t0.c0)OR(t1.c0))",
+				Expected: []sql.Row{},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{

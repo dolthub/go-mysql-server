@@ -579,7 +579,13 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 				case *expression.GetField:
 					if rightOutTables.Contains(int(e.TableId())) {
 						projectExpressions = append(projectExpressions, e)
-						nullify = append(nullify, e)
+						// TODO: it is normally okay to use a nullable GetField in a null filter. However, we cannot do
+						// so if GetField is both nullable and part of an Or expression. We currently have no way of
+						// identifying an expression's parent during InspectExpr so we have to be extra safe by not
+						// allowing nullable GetFields in null filters at all.
+						if !e.IsNullable() {
+							nullify = append(nullify, e)
+						}
 					}
 				case *expression.Literal, *expression.And, *expression.Or, *expression.Equals, *expression.Arithmetic, *expression.BindVar, expression.Tuple:
 				default:
@@ -592,7 +598,7 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 				return err
 			}
 		}
-		if len(projectExpressions) == 0 {
+		if len(nullify) == 0 {
 			p := expression.NewLiteral(1, types.Int64)
 			projectExpressions = append(projectExpressions, p)
 			gf := expression.NewGetField(0, types.Int64, "1", true)
