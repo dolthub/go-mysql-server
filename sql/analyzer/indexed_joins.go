@@ -579,7 +579,9 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 				case *expression.GetField:
 					if rightOutTables.Contains(int(e.TableId())) {
 						projectExpressions = append(projectExpressions, e)
-						nullify = append(nullify, e)
+						if !e.IsNullable() {
+							nullify = append(nullify, e)
+						}
 					}
 				case *expression.Literal, *expression.And, *expression.Or, *expression.Equals, *expression.Arithmetic, *expression.BindVar, expression.Tuple:
 				default:
@@ -592,7 +594,7 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 				return err
 			}
 		}
-		if len(projectExpressions) == 0 {
+		if len(nullify) == 0 {
 			p := expression.NewLiteral(1, types.Int64)
 			projectExpressions = append(projectExpressions, p)
 			gf := expression.NewGetField(0, types.Int64, "1", true)
