@@ -1030,7 +1030,6 @@ func TestInsertIntoErrors(t *testing.T, harness Harness) {
 
 func TestBrokenInsertScripts(t *testing.T, harness Harness) {
 	for _, script := range queries.InsertBrokenScripts {
-		t.Skip()
 		TestScript(t, harness, script)
 	}
 }
