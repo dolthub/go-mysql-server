@@ -14636,6 +14636,26 @@ select * from t1 except (
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/10243
+		Name: "OR filters are simplified to correct type",
+		SetUpScript: []string{
+			"create table t0(c1 boolean)",
+			"insert into t0 values (true)",
+			"create table t1(c1 int)",
+			"insert into t1 values (2)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select 1 from t0 where (19 or 's') != (7 != t0.c1);",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "SELECT * FROM t1 WHERE NOT EXISTS (SELECT 1 FROM t0 WHERE ((((19)OR('s')))!=(((7)!=(t0.c1)))));",
+				Expected: []sql.Row{{2}},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
