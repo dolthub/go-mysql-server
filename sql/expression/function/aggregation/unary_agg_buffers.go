@@ -52,15 +52,16 @@ func (a *anyValueBuffer) Dispose() {
 }
 
 type sumBuffer struct {
-	sum   interface{} // sum is either decimal.Decimal or float64
-	expr  sql.Expression
-	isnil bool
+	expr sql.Expression
+	// sum is either decimal.Decimal or float64
+	sumDec   decimal.Decimal
+	sumFloat float64
+	isnil    bool
 }
 
 func NewSumBuffer(child sql.Expression) *sumBuffer {
 	return &sumBuffer{
 		expr:  child,
-		sum:   float64(0),
 		isnil: true,
 	}
 }
@@ -94,32 +95,19 @@ func (m *sumBuffer) PerformSum(ctx *sql.Context, v interface{}) {
 	switch n := v.(type) {
 	case decimal.Decimal:
 		if m.isnil {
-			m.sum = decimal.NewFromInt(0)
+			m.sumDec = decimal.NewFromInt(0)
 			m.isnil = false
 		}
-		if sum, ok := m.sum.(decimal.Decimal); ok {
-			m.sum = sum.Add(n)
-		} else {
-			m.sum = decimal.NewFromFloat(m.sum.(float64)).Add(n)
-		}
+		m.sumDec.Add(n)
 	default:
 		val, _, err := types.Float64.Convert(ctx, n)
 		if err != nil {
 			val = float64(0)
 		}
 		if m.isnil {
-			m.sum = float64(0)
 			m.isnil = false
 		}
-		if sum, ok := m.sum.(float64); ok {
-			m.sum = sum + val.(float64)
-			return
-		}
-		sum, _, err := types.Float64.Convert(ctx, m.sum)
-		if err != nil {
-			sum = float64(0)
-		}
-		m.sum = sum.(float64) + val.(float64)
+		m.sumFloat += val.(float64)
 	}
 }
 
@@ -128,7 +116,11 @@ func (m *sumBuffer) Eval(ctx *sql.Context) (interface{}, error) {
 	if m.isnil {
 		return nil, nil
 	}
-	return m.sum, nil
+	// TODO: possible for both sumDec and sumFloat to not be 0?
+	if !m.sumDec.IsZero() {
+		return m.sumDec, nil
+	}
+	return m.sumFloat, nil
 }
 
 // Dispose implements the Disposable interface.
