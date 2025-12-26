@@ -111,6 +111,10 @@ func (m *sumBuffer) PerformSum(ctx *sql.Context, v interface{}) {
 			m.sum = float64(0)
 			m.isnil = false
 		}
+		if sum, ok := m.sum.(float64); ok {
+			m.sum = sum + val.(float64)
+			return
+		}
 		sum, _, err := types.Float64.Convert(ctx, m.sum)
 		if err != nil {
 			sum = float64(0)
