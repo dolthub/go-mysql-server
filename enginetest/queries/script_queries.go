@@ -14639,7 +14639,7 @@ select * from t1 except (
 	{
 		// https://github.com/dolthub/dolt/issues/10243
 		Dialect: "mysql",
-		Name: "OR filters are simplified to correct type",
+		Name:    "OR filters are simplified to correct type",
 		SetUpScript: []string{
 			"create table t0(c1 boolean)",
 			"insert into t0 values (true)",
