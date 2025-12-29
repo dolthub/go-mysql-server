@@ -504,7 +504,7 @@ func (t datetimeType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqlt
 }
 
 func appendDateFormat(dest []byte, t time.Time) []byte {
-	year := t.Year()
+	year, m, d := t.Date()
 	if year == 0 {
 		dest = append(dest, '0', '0', '0', '0')
 	} else {
@@ -512,14 +512,14 @@ func appendDateFormat(dest []byte, t time.Time) []byte {
 	}
 	dest = append(dest, '-')
 
-	month := int64(t.Month())
+	month := int64(m)
 	if month < 10 {
 		dest = append(dest, '0')
 	}
 	dest = strconv.AppendInt(dest, month, 10)
 	dest = append(dest, '-')
 
-	day := int64(t.Day())
+	day := int64(d)
 	if day < 10 {
 		dest = append(dest, '0')
 	}
