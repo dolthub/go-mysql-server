@@ -2275,6 +2275,28 @@ WHERE
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/10233
+		name: "inner join with out of range key",
+		setup: [][]string{
+			{
+				"create table t0(c0 boolean, c1 int)",
+				"create table t1(c0 int)",
+				"insert into t0(c0, c1) values (-128, 1)",
+				"insert into t1(c0) (1),(2)",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select * from t1 inner join t0 on t0.c0<=>(-87840)",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from t0 inner join t1 on t0.c0<=>(-87840)",
+				Expected: []sql.Row{},
+			},
+		},
+	},
 }
 
 var rangeJoinOpTests = []JoinOpTests{
