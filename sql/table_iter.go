@@ -152,7 +152,7 @@ func (i *TableRowIter) exhaustValueIter(ctx *Context, rowIter ValueRowIter, rowC
 
 // NextValueRow implements the sql.ValueRowIter interface
 func (i *TableRowIter) NextValueRow(ctx *Context) (ValueRow, error) {
-	if i.idx == len(i.rowIters) {
+	if i.idx == len(i.valueRowChans) {
 		return nil, io.EOF
 	}
 	if !i.hasInit {
