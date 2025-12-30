@@ -2284,7 +2284,7 @@ WHERE
 				"create index t0i0 on t0(c1, c0)",
 				"create table t1(c0 int)",
 				"insert into t0(c0, c1) values (-128, 1)",
-				"insert into t1(c0) (1),(2)",
+				"insert into t1(c0) values (1),(2)",
 			},
 		},
 		tests: []JoinOpTests{
