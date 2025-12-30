@@ -530,7 +530,8 @@ func appendDateFormat(dest []byte, t time.Time) []byte {
 func appendDatetimeFormat(dest []byte, t time.Time) []byte {
 	dest = appendDateFormat(dest, t)
 	dest = append(dest, ' ')
-	dest = appendTimeFormat(dest, int64(t.Hour()), int64(t.Minute()), int64(t.Second()), int64(t.Nanosecond()/1000))
+	h, m, s := t.Clock()
+	dest = appendTimeFormat(dest, int64(h), int64(m), int64(s), int64(t.Nanosecond()/1000))
 	return dest
 }
 
