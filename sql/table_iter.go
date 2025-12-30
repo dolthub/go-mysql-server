@@ -86,12 +86,14 @@ func (i *TableRowIter) exhaustIter(ctx *Context, rowIter RowIter, rowChan chan R
 		if err != nil {
 			if err != io.EOF {
 				i.errChan <- err
+				return
 			}
 			err = rowIter.Close(ctx)
 			if err != nil {
 				i.errChan <- err
+				return
 			}
-			break
+			return
 		}
 		rowChan <- row
 	}
@@ -139,12 +141,14 @@ func (i *TableRowIter) exhaustValueIter(ctx *Context, rowIter ValueRowIter, rowC
 		if err != nil {
 			if err != io.EOF {
 				i.errChan <- err
+				return
 			}
 			err = rowIter.Close(ctx)
 			if err != nil {
 				i.errChan <- err
+				return
 			}
-			break
+			return
 		}
 		rowChan <- row
 	}
