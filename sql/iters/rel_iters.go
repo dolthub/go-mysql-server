@@ -556,6 +556,7 @@ type distinctIter struct {
 
 	hasInit bool
 	rowChan chan sql.Row
+	errChan chan error
 }
 
 func NewDistinctIter(ctx *sql.Context, child sql.RowIter) *distinctIter {
@@ -569,26 +570,28 @@ func NewDistinctIter(ctx *sql.Context, child sql.RowIter) *distinctIter {
 
 func (di *distinctIter) initQueueRows(ctx *sql.Context) {
 	di.rowChan = make(chan sql.Row, 512)
+	di.errChan = make(chan error)
 	go func() {
 		defer close(di.rowChan)
 		for {
 			row, err := di.childIter.Next(ctx)
 			if err == io.EOF {
+				di.Dispose()
 				return
 			}
 			if err != nil {
-				panic(err) // TODO
+				di.errChan <- err
 			}
 
 			hash, err := hash.HashOf(ctx, nil, row)
 			if err != nil {
-				panic(err)
+				di.errChan <- err
 			}
 			if _, err = di.seen.Get(hash); err == nil {
 				continue
 			}
 			if err = di.seen.Put(hash, struct{}{}); err != nil {
-				panic(err)
+				di.errChan <- err
 			}
 			di.rowChan <- row
 		}
@@ -600,11 +603,16 @@ func (di *distinctIter) Next(ctx *sql.Context) (sql.Row, error) {
 		di.initQueueRows(ctx)
 		di.hasInit = true
 	}
-	row, ok := <-di.rowChan
-	if !ok {
-		return nil, io.EOF
+	// TODO: we need to make sure we drain row before error?
+	select {
+	case err := <-di.errChan:
+		return nil, err
+	case row, ok := <-di.rowChan:
+		if !ok {
+			return nil, io.EOF
+		}
+		return row, nil
 	}
-	return row, nil
 }
 
 func (di *distinctIter) Close(ctx *sql.Context) error {
