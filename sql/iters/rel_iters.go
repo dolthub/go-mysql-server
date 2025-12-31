@@ -569,11 +569,11 @@ func NewDistinctIter(ctx *sql.Context, child sql.RowIter) *distinctIter {
 }
 
 func (di *distinctIter) initQueueRows(ctx *sql.Context) {
-	// TODO: does order matter?
 	di.rowChan = make(chan sql.Row, 512)
 	di.errChan = make(chan error)
+	childChan := make(chan sql.Row)
 	go func() {
-		defer close(di.rowChan)
+		defer close(childChan)
 		for {
 			row, err := di.childIter.Next(ctx)
 			if err == io.EOF {
@@ -582,6 +582,17 @@ func (di *distinctIter) initQueueRows(ctx *sql.Context) {
 			}
 			if err != nil {
 				di.errChan <- err
+				return
+			}
+			childChan <- row
+		}
+	}()
+
+	go func() {
+		defer close(di.rowChan)
+		for {
+			row, ok := <-childChan
+			if !ok {
 				return
 			}
 			hash, err := hash.HashOf(ctx, nil, row)
