@@ -553,6 +553,9 @@ type distinctIter struct {
 	childIter   sql.RowIter
 	seen        sql.KeyValueCache
 	DisposeFunc sql.DisposeFunc
+
+	hasInit bool
+	rowChan chan sql.Row
 }
 
 func NewDistinctIter(ctx *sql.Context, child sql.RowIter) *distinctIter {
@@ -564,31 +567,44 @@ func NewDistinctIter(ctx *sql.Context, child sql.RowIter) *distinctIter {
 	}
 }
 
-func (di *distinctIter) Next(ctx *sql.Context) (sql.Row, error) {
-	for {
-		row, err := di.childIter.Next(ctx)
-		if err != nil {
+func (di *distinctIter) initQueueRows(ctx *sql.Context) {
+	di.rowChan = make(chan sql.Row, 512)
+	go func() {
+		defer close(di.rowChan)
+		for {
+			row, err := di.childIter.Next(ctx)
 			if err == io.EOF {
-				di.Dispose()
+				return
 			}
-			return nil, err
-		}
+			if err != nil {
+				panic(err) // TODO
+			}
 
-		hash, err := hash.HashOf(ctx, nil, row)
-		if err != nil {
-			return nil, err
+			hash, err := hash.HashOf(ctx, nil, row)
+			if err != nil {
+				panic(err)
+			}
+			if _, err = di.seen.Get(hash); err == nil {
+				continue
+			}
+			if err = di.seen.Put(hash, struct{}{}); err != nil {
+				panic(err)
+			}
+			di.rowChan <- row
 		}
+	}()
+}
 
-		if _, err := di.seen.Get(hash); err == nil {
-			continue
-		}
-
-		if err := di.seen.Put(hash, struct{}{}); err != nil {
-			return nil, err
-		}
-
-		return row, nil
+func (di *distinctIter) Next(ctx *sql.Context) (sql.Row, error) {
+	if !di.hasInit {
+		di.initQueueRows(ctx)
+		di.hasInit = true
 	}
+	row, ok := <-di.rowChan
+	if !ok {
+		return nil, io.EOF
+	}
+	return row, nil
 }
 
 func (di *distinctIter) Close(ctx *sql.Context) error {
