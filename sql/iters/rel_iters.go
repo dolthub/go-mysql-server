@@ -603,7 +603,6 @@ func (di *distinctIter) Next(ctx *sql.Context) (sql.Row, error) {
 		di.initQueueRows(ctx)
 		di.hasInit = true
 	}
-	// TODO: we need to make sure we drain row before error?
 	select {
 	case err := <-di.errChan:
 		return nil, err
