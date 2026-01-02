@@ -14660,7 +14660,7 @@ select * from t1 except (
 	{
 		// https://github.com/dolthub/dolt/issues/10246
 		Dialect: "mysql",
-		Name: "boolean keys are not used for string column lookups",
+		Name:    "boolean keys are not used for string column lookups",
 		SetUpScript: []string{
 			"create table t1(c0 varchar(500), primary key(c0))",
 			"insert into t1(c0) values ('')",
