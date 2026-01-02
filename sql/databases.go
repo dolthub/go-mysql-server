@@ -87,6 +87,8 @@ type SchemaDatabase interface {
 	CreateSchema(ctx *Context, schemaName string) error
 	// AllSchemas returns all schemas in the database.
 	AllSchemas(ctx *Context) ([]DatabaseSchema, error)
+	// DropSchema drops the schema with the name given.
+	DropSchema(ctx *Context, schemaName string) error
 }
 
 // DatabaseSchema is a schema that can be queried for tables. It is functionally equivalent to a Database
