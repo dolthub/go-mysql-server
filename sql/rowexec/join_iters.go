@@ -301,15 +301,7 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 				return nil, err
 			}
 			if plan.IsEmptyIter(rIter) {
-				switch {
-				case i.typ.IsSemi():
-					// EXISTS with empty right is always false → skip this left row
-					nextState = esIncLeft
-				case i.typ.IsAnti():
-					nextState = esRet
-				default:
-					nextState = esCompare
-				}
+				nextState = esRightIterEOF
 			} else {
 				nextState = esIncRight
 			}
