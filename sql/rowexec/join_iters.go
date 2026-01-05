@@ -247,7 +247,6 @@ func newExistsIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode, ro
 		cond:              j.Filter,
 		scopeLen:          j.ScopeLen,
 		rowSize:           rowSize,
-		nullRej:           j.Filter != nil && plan.IsNullRejecting(j.Filter),
 	}, nil
 }
 
@@ -262,7 +261,6 @@ type existsIter struct {
 	scopeLen          int
 	rowSize           int
 	typ               plan.JoinType
-	nullRej           bool
 	rightIterNonEmpty bool
 }
 
@@ -303,22 +301,7 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 				return nil, err
 			}
 			if plan.IsEmptyIter(rIter) {
-				switch {
-				case i.typ.IsSemi():
-					// EXISTS with empty right is always false → skip this left row
-					nextState = esIncLeft
-				case i.typ.IsAnti():
-					if i.nullRej {
-						// Filter is null-rejecting: need to run condition once with nil right so NULL can propagate
-						// and row may be excluded
-						nextState = esCompare
-					} else {
-						// Filter is not null-rejecting: no matches possible, row passes
-						nextState = esRet
-					}
-				default:
-					nextState = esCompare
-				}
+				nextState = esRightIterEOF
 			} else {
 				nextState = esIncRight
 			}
