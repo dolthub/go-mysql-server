@@ -14657,6 +14657,21 @@ select * from t1 except (
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/10258
+		Name: "WHERE NOT EXISTS from empty view",
+		SetUpScript: []string{
+			"CREATE TABLE t1(c0 boolean, c1 boolean);",
+			"insert into t1(c0) values (true), (false)",
+			"create view v0(c0) as select true having false",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * from t1 where not exists (select 1 from v0 where (case t1.c1 when false then v0.c0 else t1.c0 end)) order by c0",
+				Expected: []sql.Row{{0, nil}, {1, nil}},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
