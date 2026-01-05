@@ -24,7 +24,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/hash"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -367,13 +366,6 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, fmt.Errorf("invalid exists join state")
 		}
 	}
-}
-
-func isTrueLit(e sql.Expression) bool {
-	if lit, ok := e.(*expression.Literal); ok {
-		return lit.Value() == true
-	}
-	return false
 }
 
 func (i *existsIter) removeParentRow(r sql.Row) sql.Row {
