@@ -16,6 +16,7 @@ package rowexec
 
 import (
 	"errors"
+	"fmt"
 	"io"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -184,7 +185,13 @@ func (i *groupByGroupingIter) compute(ctx *sql.Context) error {
 		}
 	})
 
-	eg.Go(func() error {
+	eg.Go(func() (err error) {
+		defer func() {
+			if recoveredPanic := recover(); recoveredPanic != nil {
+				err = fmt.Errorf("caught panic: %v", recoveredPanic)
+			}
+		}()
+
 		for {
 			row, ok := <-rowChan
 			if !ok {
