@@ -1275,11 +1275,9 @@ func (a *iScanAnd) newLeaf(l *iScanLeaf) {
 
 // leaves returns a list of this nodes leaf filters, sorted by id
 func (a *iScanAnd) leaves() []*iScanLeaf {
-	var ret []*iScanLeaf
+	ret := make([]*iScanLeaf, 0, a.cnt)
 	for _, colLeaves := range a.leafChildren {
-		for _, leaf := range colLeaves {
-			ret = append(ret, leaf)
-		}
+		ret = append(ret, colLeaves...)
 	}
 	sort.SliceStable(ret, func(i, j int) bool {
 		return ret[i].id < ret[j].id
@@ -1928,18 +1926,19 @@ func (c *conjCollector) cmpFirstCol(ctx *sql.Context, op sql.IndexScanOp, val in
 	if c.constant.Contains(1) {
 		return nil
 	}
+	target := sql.Row{val}
 	switch op {
 	case sql.IndexScanOpNotEq:
 		// todo notEq
-		c.hist, err = stats.PrefixGt(ctx, c.hist, c.stat.Types(), val)
+		c.hist, err = stats.PrefixGt(ctx, c.hist, c.stat.Types(), target)
 	case sql.IndexScanOpGt:
-		c.hist, err = stats.PrefixGt(ctx, c.hist, c.stat.Types(), val)
+		c.hist, err = stats.PrefixGt(ctx, c.hist, c.stat.Types(), target)
 	case sql.IndexScanOpGte:
-		c.hist, err = stats.PrefixGte(ctx, c.hist, c.stat.Types(), val)
+		c.hist, err = stats.PrefixGte(ctx, c.hist, c.stat.Types(), target)
 	case sql.IndexScanOpLt:
-		c.hist, err = stats.PrefixLt(ctx, c.hist, c.stat.Types(), val)
+		c.hist, err = stats.PrefixLt(ctx, c.hist, c.stat.Types(), target)
 	case sql.IndexScanOpLte:
-		c.hist, err = stats.PrefixLte(ctx, c.hist, c.stat.Types(), val)
+		c.hist, err = stats.PrefixLte(ctx, c.hist, c.stat.Types(), target)
 	case sql.IndexScanOpIsNull:
 		c.hist, err = stats.PrefixIsNull(c.hist)
 	case sql.IndexScanOpIsNotNull:
