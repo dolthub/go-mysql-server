@@ -1649,6 +1649,18 @@ var FunctionQueryTests = []QueryTest{
 		Query:    "select abs(false or 2)",
 		Expected: []sql.Row{{1}},
 	},
+	{
+		Query:    "select abs(date('2020-12-15'))",
+		Expected: []sql.Row{{float64(20201215)}},
+		// https://github.com/dolthub/dolt/issues/10278
+		Skip: true,
+	},
+	{
+		Query:    "select abs(time('12:23:43'))",
+		Expected: []sql.Row{{float64(122343)}},
+		// https://github.com/dolthub/dolt/issues/10278
+		Skip: true,
+	},
 	// Date Manipulation Function Tests
 	{
 		Query:    "SELECT TIMESTAMPADD(DAY, 1, '2018-05-02')",
