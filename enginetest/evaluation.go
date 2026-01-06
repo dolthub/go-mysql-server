@@ -863,16 +863,18 @@ func checkResultsDefault(t *testing.T, ctx *sql.Context, expected []sql.Row, exp
 }
 
 type resultSchemaCol struct {
-	Name string
-	Type querypb.Type
+	Name     string
+	Type     querypb.Type
+	Nullable bool
 }
 
 func simplifyResultSchema(s sql.Schema) []resultSchemaCol {
 	fields := make([]resultSchemaCol, len(s))
 	for i, c := range s {
 		fields[i] = resultSchemaCol{
-			Name: c.Name,
-			Type: c.Type.Type(),
+			Name:     c.Name,
+			Type:     c.Type.Type(),
+			Nullable: c.Nullable,
 		}
 	}
 	return fields
