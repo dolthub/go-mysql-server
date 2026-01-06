@@ -251,14 +251,6 @@ type hoistSubquery struct {
 	emptyScope  bool
 }
 
-type fakeNameable struct {
-	name string
-}
-
-var _ sql.Nameable = (*fakeNameable)(nil)
-
-func (f fakeNameable) Name() string { return f.name }
-
 // decorrelateOuterCols returns an optionally modified subquery and extracted filters referencing an outer scope.
 // If the subquery has aliases that conflict with outside aliases, the internal aliases will be renamed to avoid
 // name collisions.
