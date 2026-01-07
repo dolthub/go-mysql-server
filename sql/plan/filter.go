@@ -49,8 +49,8 @@ func (f *Filter) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 1)
 	}
-
-	return NewFilter(f.Expression, children[0]), nil
+	f.Child = children[0]
+	return f, nil
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

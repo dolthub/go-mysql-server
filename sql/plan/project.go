@@ -194,10 +194,9 @@ func (p *Project) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
-	np := *p
-	np.Child = children[0]
-	np.sch = nil
-	return &np, nil
+	p.Child = children[0]
+	p.sch = nil
+	return p, nil
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

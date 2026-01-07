@@ -101,8 +101,8 @@ func (g *GroupBy) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(g, len(children), 1)
 	}
-
-	return NewGroupBy(g.SelectDeps, g.GroupByExprs, children[0]), nil
+	g.Child = children[0]
+	return g, nil
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

@@ -108,12 +108,8 @@ func (t *TableAlias) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 1)
 	}
-
-	ret := NewTableAlias(t.name, children[0])
-	ret.comment = t.comment
-	ret.cols = t.cols
-	ret.id = t.id
-	return ret, nil
+	t.Child = children[0]
+	return t, nil
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

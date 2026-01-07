@@ -276,7 +276,9 @@ func (o *Or) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(o, len(children), 2)
 	}
-	return NewOr(children[0], children[1]), nil
+	o.LeftChild = children[0]
+	o.RightChild = children[1]
+	return o, nil
 }
 
 // Xor checks whether only one of the two given expressions is true.

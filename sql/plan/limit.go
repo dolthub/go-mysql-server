@@ -42,13 +42,13 @@ func (l *Limit) Expressions() []sql.Expression {
 }
 
 // WithExpressions implements sql.Expressioner
-func (l Limit) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (l *Limit) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(l, len(exprs), 1)
 	}
-	nl := &l
+	nl := *l
 	nl.Limit = exprs[0]
-	return nl, nil
+	return &nl, nil
 }
 
 // Resolved implements the Resolvable interface.
@@ -56,12 +56,12 @@ func (l *Limit) Resolved() bool {
 	return l.UnaryNode.Child.Resolved() && l.Limit.Resolved()
 }
 
-func (l Limit) WithCalcFoundRows(v bool) *Limit {
+func (l *Limit) WithCalcFoundRows(v bool) *Limit {
 	l.CalcFoundRows = v
-	return &l
+	return l
 }
 
-func (l Limit) IsReadOnly() bool {
+func (l *Limit) IsReadOnly() bool {
 	return l.Child.IsReadOnly()
 }
 
@@ -70,10 +70,8 @@ func (l *Limit) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 1)
 	}
-
-	nl := *l
-	nl.Child = children[0]
-	return &nl, nil
+	l.Child = children[0]
+	return l, nil
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -81,14 +79,14 @@ func (l *Limit) CollationCoercibility(ctx *sql.Context) (collation sql.Collation
 	return sql.GetCoercibility(ctx, l.Child)
 }
 
-func (l Limit) String() string {
+func (l *Limit) String() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Limit(%s)", l.Limit)
 	_ = pr.WriteChildren(l.Child.String())
 	return pr.String()
 }
 
-func (l Limit) DebugString() string {
+func (l *Limit) DebugString() string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Limit(%s)", l.Limit)
 	_ = pr.WriteChildren(sql.DebugString(l.Child))

@@ -426,10 +426,9 @@ func (j *JoinNode) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(j, len(children), 2)
 	}
-	ret := *j
-	ret.left = children[0]
-	ret.right = children[1]
-	return &ret, nil
+	j.left = children[0]
+	j.right = children[1]
+	return j, nil
 }
 
 // WithComment implements sql.CommentedNode

@@ -431,7 +431,11 @@ func (e *Equals) WithChildren(children ...sql.Expression) (sql.Expression, error
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 2)
 	}
-	return NewEquals(children[0], children[1]), nil
+	e.LeftChild = children[0]
+	e.RightChild = children[1]
+	disableRounding(e.LeftChild)
+	disableRounding(e.RightChild)
+	return e, nil
 }
 
 func (e *Equals) String() string {

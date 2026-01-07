@@ -109,8 +109,8 @@ func (s *Sort) WithChildren(children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
 	}
-
-	return NewSort(s.SortFields, children[0]), nil
+	s.Child = children[0]
+	return s, nil
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

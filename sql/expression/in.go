@@ -132,7 +132,11 @@ func (in *InTuple) WithChildren(children ...sql.Expression) (sql.Expression, err
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(in, len(children), 2)
 	}
-	return NewInTuple(children[0], children[1]), nil
+	in.LeftChild = children[0]
+	in.RightChild = children[1]
+	disableRounding(in.LeftChild)
+	disableRounding(in.RightChild)
+	return in, nil
 }
 
 func (in *InTuple) String() string {
