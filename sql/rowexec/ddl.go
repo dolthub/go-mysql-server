@@ -466,8 +466,12 @@ func (b *BaseBuilder) buildCreateSchema(ctx *sql.Context, n *plan.CreateSchema, 
 		return nil, err
 	}
 
+	if pdb, ok := db.(mysql_db.PrivilegedDatabase); ok {
+		db = pdb.Unwrap()
+	}
+
 	sdb, ok := db.(sql.SchemaDatabase)
-	if !ok {
+	if !ok || !sdb.SupportsDatabaseSchemas() {
 		// If schemas aren't supported, treat CREATE SCHEMA as a synonym for CREATE DATABASE (as is the case in MySQL)
 		return b.buildCreateDB(ctx, &plan.CreateDB{
 			Catalog:     n.Catalog,
@@ -902,8 +906,12 @@ func (b *BaseBuilder) buildDropSchema(ctx *sql.Context, n *plan.DropSchema, row 
 		return nil, err
 	}
 
+	if pdb, ok := db.(mysql_db.PrivilegedDatabase); ok {
+		db = pdb.Unwrap()
+	}
+
 	sdb, ok := db.(sql.SchemaDatabase)
-	if !ok {
+	if !ok || !sdb.SupportsDatabaseSchemas() {
 		// If schemas aren't supported, treat DROP SCHEMA as a synonym for DROP DATABASE (as is the case in MySQL)
 		return b.buildDropDB(ctx, &plan.DropDB{
 			Catalog:  n.Catalog,

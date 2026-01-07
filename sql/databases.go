@@ -79,6 +79,10 @@ type Database interface {
 // SchemaDatabase is a database comprising multiple schemas that can each be queried for tables.
 type SchemaDatabase interface {
 	Nameable
+	// SupportsDatabaseSchemas returns whether this database supports multiple schemas. This is necessary because some
+	// integrators may use implementations that fulfill the interface without actually supporting multiple schemas in
+	// all configurations.
+	SupportsDatabaseSchemas() bool
 	// GetSchema returns the database with the schema name provided, matched case-insensitive.
 	// If the schema does not exist, the boolean return value should be false.
 	GetSchema(ctx *Context, schemaName string) (DatabaseSchema, bool, error)
