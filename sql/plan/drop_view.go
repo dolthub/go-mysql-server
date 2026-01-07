@@ -17,9 +17,9 @@ package plan
 import (
 	errors "gopkg.in/src-d/go-errors.v1"
 
-	"github.com/dolthub/go-mysql-server/sql/mysql_db"
-
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var ErrDropViewChild = errors.NewKind("any child of DropView must be of type SingleDropView")
@@ -56,8 +56,8 @@ func (dv *SingleDropView) IsReadOnly() bool {
 	return false
 }
 
-// Schema implements the Node interface. It always returns nil.
-func (dv *SingleDropView) Schema() sql.Schema { return nil }
+// Schema implements the Node interface. It always returns Query OK result.
+func (dv *SingleDropView) Schema() sql.Schema { return types.OkResultSchema }
 
 // String implements the fmt.Stringer interface, using sql.TreePrinter to
 // generate the string.
@@ -133,8 +133,8 @@ func (dvs *DropView) Resolved() bool {
 	return true
 }
 
-// Schema implements the Node interface. It always returns nil.
-func (dvs *DropView) Schema() sql.Schema { return nil }
+// Schema implements the Node interface. It always returns Query OK result.
+func (dvs *DropView) Schema() sql.Schema { return types.OkResultSchema }
 
 // String implements the fmt.Stringer interface, using sql.TreePrinter to
 // generate the string.
