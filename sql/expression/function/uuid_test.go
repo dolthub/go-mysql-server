@@ -73,7 +73,9 @@ func TestIsUUID(t *testing.T) {
 		})
 
 		req := require.New(t)
-		req.False(f.IsNullable())
+		if tt.expected == nil {
+			req.True(f.IsNullable())
+		}
 	}
 }
 
@@ -114,7 +116,9 @@ func TestUUIDToBinValid(t *testing.T) {
 		})
 
 		req := require.New(t)
-		req.False(f.IsNullable())
+		if tt.expected == nil {
+			req.True(f.IsNullable())
+		}
 	}
 }
 
@@ -187,7 +191,9 @@ func TestBinToUUID(t *testing.T) {
 		})
 
 		req := require.New(t)
-		req.False(f.IsNullable())
+		if tt.expected == nil {
+			req.True(f.IsNullable())
+		}
 	}
 }
 

@@ -90,7 +90,7 @@ func (*JSONObjectAgg) CollationCoercibility(ctx *sql.Context) (collation sql.Col
 
 // IsNullable implements the Expression interface.
 func (j *JSONObjectAgg) IsNullable() bool {
-	return false
+	return true
 }
 
 // Children implements the Expression interface.

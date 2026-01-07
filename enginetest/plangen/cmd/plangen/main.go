@@ -154,7 +154,7 @@ func writePlanString(w *bytes.Buffer, planString string) {
 }
 
 func analyzeQuery(ctx *sql.Context, engine enginetest.QueryEngine, query string) sql.Node {
-	binder := planbuilder.New(ctx, engine.EngineAnalyzer().Catalog, engine.EngineEventScheduler(), nil)
+	binder := planbuilder.New(ctx, engine.EngineAnalyzer().Catalog, engine.EngineEventScheduler())
 	parsed, _, _, qFlags, err := binder.Parse(query, nil, false)
 	if err != nil {
 		exit(fmt.Errorf("%w\nfailed to parse query: %s", err, query))
@@ -167,7 +167,7 @@ func analyzeQuery(ctx *sql.Context, engine enginetest.QueryEngine, query string)
 }
 
 func generatePlansForSuite(spec PlanSpec, w *bytes.Buffer) error {
-	harness := enginetest.NewMemoryHarness("default", 1, 1, true, nil)
+	harness := enginetest.NewMemoryHarness("default", 1, nil)
 	s := specSetup(spec.Name)
 	harness.Setup(s...)
 	engine, err := harness.NewEngine(nil)
@@ -235,7 +235,7 @@ func generatePlansForSuite(spec PlanSpec, w *bytes.Buffer) error {
 				}
 			}
 		} else {
-			_, _ = w.WriteString(`Skip: true,\n`)
+			_, _ = w.WriteString("Skip: true,\n")
 		}
 
 		_, _ = w.WriteString("\t},\n")
@@ -246,7 +246,7 @@ func generatePlansForSuite(spec PlanSpec, w *bytes.Buffer) error {
 }
 
 func generatePlansForScriptSuite(spec PlanSpec, w *bytes.Buffer) error {
-	harness := enginetest.NewMemoryHarness("default", 1, 1, true, nil)
+	harness := enginetest.NewMemoryHarness("default", 1, nil)
 	harness.Setup(setup.MydbData)
 	_, _ = fmt.Fprintf(w, "var %s = []ScriptTest{\n", spec.Name)
 	for _, tt := range queries.QueryPlanScriptTests {
@@ -369,7 +369,7 @@ func usage() {
 
 	fmt.Fprintf(os.Stderr, "\tplangen [flags] spec\n\n")
 
-	//fmt.Fprintf(os.Stderr, "Flags:\n")
+	// fmt.Fprintf(os.Stderr, "Flags:\n")
 
 	flag.PrintDefaults()
 

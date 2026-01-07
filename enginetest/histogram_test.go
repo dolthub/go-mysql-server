@@ -315,7 +315,7 @@ func testHistogram(ctx *sql.Context, table *plan.ResolvedTable, fields []int, bu
 		return nil, fmt.Errorf("found zero row count for table")
 	}
 
-	i, err := rowexec.DefaultBuilder.Build(ctx, table, nil)
+	i, err := rowexec.NewBuilder(nil, sql.EngineOverrides{}).Build(ctx, table, nil)
 	rows, err := sql.RowIterToRows(ctx, i)
 	if err != nil {
 		return nil, err
@@ -402,7 +402,6 @@ func childSchema(source string) sql.PrimaryKeySchema {
 
 func makeTable(db *memory.Database, name string, tabId sql.TableId, colId sql.ColumnId) *plan.ResolvedTable {
 	t := memory.NewTable(db, name, childSchema(name), nil)
-	t.EnablePrimaryKeyIndexes()
 	colset := sql.NewColSet(sql.ColumnId(colId), sql.ColumnId(colId+1), sql.ColumnId(colId+2))
 	return plan.NewResolvedTable(t, db, nil).WithId(sql.TableId(tabId)).WithColumns(colset).(*plan.ResolvedTable)
 }
@@ -416,7 +415,7 @@ func expectedResultSize(ctx *sql.Context, t1, t2 *plan.ResolvedTable, filters []
 	if debug {
 		fmt.Println(sql.DebugString(j))
 	}
-	i, err := rowexec.DefaultBuilder.Build(ctx, j, nil)
+	i, err := rowexec.NewBuilder(nil, sql.EngineOverrides{}).Build(ctx, j, nil)
 	if err != nil {
 		return 0, err
 	}

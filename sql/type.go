@@ -66,11 +66,12 @@ const (
 	True = int8(1)
 )
 
-type ConvertInRange bool
+type ConvertInRange byte
 
 const (
-	InRange    ConvertInRange = true
-	OutOfRange                = false
+	InRange ConvertInRange = iota
+	Underflow
+	Overflow
 )
 
 // Type represents a SQL type.
@@ -78,11 +79,11 @@ type Type interface {
 	CollationCoercible
 	// Compare returns an integer comparing two values.
 	// The result will be 0 if a==b, -1 if a < b, and +1 if a > b.
-	Compare(context.Context, interface{}, interface{}) (int, error)
+	Compare(context.Context, any, any) (int, error)
 	// Convert a value of a compatible type to a most accurate type, returning
 	// the new value, whether the value in range, or an error. If |inRange| is
 	// false, the value was coerced according to MySQL's rules.
-	Convert(context.Context, interface{}) (interface{}, ConvertInRange, error)
+	Convert(context.Context, any) (any, ConvertInRange, error)
 	// Equals returns whether the given type is equivalent to the calling type. All parameters are included in the
 	// comparison, so ENUM("a", "b") is not equivalent to ENUM("a", "b", "c").
 	Equals(otherType Type) bool
@@ -95,13 +96,13 @@ type Type interface {
 	// SQL returns the sqltypes.Value for the given value.
 	// Implementations can optionally use |dest| to append
 	// serialized data, but should not mutate existing data.
-	SQL(ctx *Context, dest []byte, v interface{}) (sqltypes.Value, error)
+	SQL(ctx *Context, dest []byte, v any) (sqltypes.Value, error)
 	// Type returns the query.Type for the given Type.
 	Type() query.Type
 	// ValueType returns the Go type of the value returned by Convert().
 	ValueType() reflect.Type
 	// Zero returns the golang zero value for this type
-	Zero() interface{}
+	Zero() any
 	fmt.Stringer
 }
 
@@ -179,14 +180,18 @@ type DeferredType interface {
 // The type of the returned value is one of the following: int8, int16, int32, int64, uint8, uint16, uint32, uint64, float32, float64.
 type NumberType interface {
 	Type
-	IsSigned() bool
+	// IsNumericType returns true if the type is numeric. Must be checked in addition to a type assertion for NumberType,
+	// because some implementors of this interface may not be numeric types in all instantiations.
+	IsNumericType() bool
+	// IsFloat returns true if the type is a floating point type (including arbitrary precision types like DECIMAL).
 	IsFloat() bool
+	// DisplayWidth returns the maximum number of characters used to display a value of this type.
 	DisplayWidth() int
 }
 
 func IsNumberType(t Type) bool {
-	_, ok := t.(NumberType)
-	return ok
+	nt, ok := t.(NumberType)
+	return ok && nt.IsNumericType()
 }
 
 // RoundingNumberType represents Number Types that implement an additional interface
@@ -205,6 +210,9 @@ type StringType interface {
 	Type
 	CharacterSet() CharacterSetID
 	Collation() CollationID
+	// IsStringType returns true if the type is a string. Must be checked in addition to a type assertion for
+	// StringType, because some implementors of this interface may not be string types in all instantiations.
+	IsStringType() bool
 	// MaxCharacterLength returns the maximum number of chars that can safely be stored in this type, based on
 	// the current character set.
 	MaxCharacterLength() int64
@@ -215,8 +223,8 @@ type StringType interface {
 }
 
 func IsStringType(t Type) bool {
-	_, ok := t.(StringType)
-	return ok
+	st, ok := t.(StringType)
+	return ok && st.IsStringType()
 }
 
 // DatetimeType represents DATE, DATETIME, and TIMESTAMP.
@@ -277,11 +285,14 @@ type EnumType interface {
 // The type of the returned value is decimal.Decimal.
 type DecimalType interface {
 	Type
+	// IsDecimalType returns true if the type is a decimal. Must be checked in addition to a type assertion for
+	// DecimalType, because some implementors of this interface may not be decimal types in all instantiations.
+	IsDecimalType() bool
 	// ConvertToNullDecimal converts the given value to a decimal.NullDecimal if it has a compatible type. It is worth
 	// noting that Convert() returns a nil value for nil inputs, and also returns decimal.Decimal rather than
 	// decimal.NullDecimal.
 	ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, error)
-	//ConvertNoBoundsCheck normalizes an interface{} to a decimal type without performing expensive bound checks
+	// ConvertNoBoundsCheck normalizes an interface{} to a decimal type without performing expensive bound checks
 	ConvertNoBoundsCheck(v interface{}) (decimal.Decimal, error)
 	// BoundsCheck rounds and validates a decimal, returning the decimal,
 	// whether the value was out of range, and an error.
@@ -300,8 +311,8 @@ type DecimalType interface {
 }
 
 func IsDecimalType(t Type) bool {
-	_, ok := t.(DecimalType)
-	return ok
+	dt, ok := t.(DecimalType)
+	return ok && dt.IsDecimalType()
 }
 
 // SpatialColumnType is a node that contains a reference to all spatial types.
@@ -343,7 +354,7 @@ type ExtendedType interface {
 	MaxSerializedWidth() ExtendedTypeSerializedWidth
 	// ConvertToType converts the given value of the given type to this type, or returns an error if
 	// no conversion is possible.
-	ConvertToType(ctx *Context, typ ExtendedType, val any) (any, error)
+	ConvertToType(ctx *Context, typ ExtendedType, val any) (any, ConvertInRange, error)
 }
 
 type ExtendedTypeSerializedWidth uint8

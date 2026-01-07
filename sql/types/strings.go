@@ -357,7 +357,7 @@ func (t StringType) Convert(ctx context.Context, v interface{}) (interface{}, sq
 	}
 	val, err := ConvertToBytes(ctx, v, t, nil)
 	if err != nil {
-		return nil, sql.OutOfRange, err
+		return nil, sql.Overflow, err
 	}
 
 	if IsBinaryType(t) {
@@ -926,6 +926,11 @@ func (t StringType) MaxCharacterLength() int64 {
 // MaxByteLength is the maximum number of bytes that may be consumed by a string that conforms to this type.
 func (t StringType) MaxByteLength() int64 {
 	return t.maxByteLength
+}
+
+// IsStringType implements the sql.StringType interface.
+func (t StringType) IsStringType() bool {
+	return true
 }
 
 // TODO: move me

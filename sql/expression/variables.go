@@ -68,7 +68,9 @@ func (v *SystemVar) CollationCoercibility(ctx *sql.Context) (collation sql.Colla
 }
 
 // IsNullable implements the sql.Expression interface.
-func (v *SystemVar) IsNullable() bool { return false }
+func (v *SystemVar) IsNullable() bool {
+	return true
+}
 
 // Resolved implements the sql.Expression interface.
 func (v *SystemVar) Resolved() bool { return true }

@@ -392,53 +392,21 @@ func extractJoinColumnExpr(e sql.Expression) (leftCol *joinColExpr, rightCol *jo
 	}
 }
 
-func containsColumns(e sql.Expression) bool {
-	var result bool
-	sql.Inspect(e, func(e sql.Expression) bool {
-		_, ok1 := e.(*expression.GetField)
-		_, ok2 := e.(*expression.UnresolvedColumn)
-		if ok1 || ok2 {
-			result = true
-			return false
-		}
-		return true
-	})
-	return result
-}
-
-func containsSubquery(e sql.Expression) bool {
-	var result bool
-	sql.Inspect(e, func(e sql.Expression) bool {
-		if _, ok := e.(*plan.Subquery); ok {
-			result = true
-			return false
-		}
-		return true
-	})
-	return result
-}
-
+// isEvaluable determines if sql.Expression has/contains columns, subqueries, bindvars, or procedure params.
+// Those expressions are NOT evaluable.
 func isEvaluable(e sql.Expression) bool {
-	return !containsColumns(e) && !containsSubquery(e) && !containsBindvars(e) && !containsProcedureParam(e)
-}
-
-func containsBindvars(e sql.Expression) bool {
-	var result bool
+	var hasUnevaluable bool
 	sql.Inspect(e, func(e sql.Expression) bool {
-		if _, ok := e.(*expression.BindVar); ok {
-			result = true
+		switch e.(type) {
+		case *expression.GetField, *expression.UnresolvedColumn,
+			*plan.Subquery,
+			*expression.BindVar,
+			*expression.ProcedureParam:
+			hasUnevaluable = true
 			return false
+		default:
+			return true
 		}
-		return true
 	})
-	return result
-}
-
-func containsProcedureParam(e sql.Expression) bool {
-	var result bool
-	sql.Inspect(e, func(e sql.Expression) bool {
-		_, result = e.(*expression.ProcedureParam)
-		return !result
-	})
-	return result
+	return !hasUnevaluable
 }

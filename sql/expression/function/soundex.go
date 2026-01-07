@@ -29,7 +29,7 @@ import (
 // soundex string is four characters long, but the SOUNDEX() function returns
 // an arbitrarily long string.
 type Soundex struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*Soundex)(nil)
@@ -37,7 +37,7 @@ var _ sql.CollationCoercible = (*Soundex)(nil)
 
 // NewSoundex creates a new Soundex expression.
 func NewSoundex(e sql.Expression) sql.Expression {
-	return &Soundex{expression.UnaryExpression{Child: e}}
+	return &Soundex{expression.UnaryExpressionStub{Child: e}}
 }
 
 // FunctionName implements sql.FunctionExpression

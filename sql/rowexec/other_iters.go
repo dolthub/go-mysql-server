@@ -238,7 +238,8 @@ func (h *hashLookupGeneratingIter) Next(ctx *sql.Context) (sql.Row, error) {
 		return nil, err
 	}
 	// TODO: Maybe do not put nil stuff in here.
-	key, err := h.n.GetHashKey(ctx, h.n.RightEntryKey, childRow)
+	// TODO: Handle keys that are out of range?
+	key, _, err := h.n.GetHashKey(ctx, h.n.RightEntryKey, childRow)
 	if err != nil {
 		return nil, err
 	}

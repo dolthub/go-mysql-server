@@ -24,7 +24,7 @@ import (
 
 // Lower is a function that returns the lowercase of the text provided.
 type Lower struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*Lower)(nil)
@@ -32,7 +32,7 @@ var _ sql.CollationCoercible = (*Lower)(nil)
 
 // NewLower creates a new Lower expression.
 func NewLower(e sql.Expression) sql.Expression {
-	return &Lower{expression.UnaryExpression{Child: e}}
+	return &Lower{expression.UnaryExpressionStub{Child: e}}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -90,7 +90,7 @@ func (l *Lower) CollationCoercibility(ctx *sql.Context) (collation sql.Collation
 
 // Upper is a function that returns the UPPERCASE of the text provided.
 type Upper struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*Upper)(nil)
@@ -98,7 +98,7 @@ var _ sql.CollationCoercible = (*Upper)(nil)
 
 // NewUpper creates a new Lower expression.
 func NewUpper(e sql.Expression) sql.Expression {
-	return &Upper{expression.UnaryExpression{Child: e}}
+	return &Upper{expression.UnaryExpressionStub{Child: e}}
 }
 
 // FunctionName implements sql.FunctionExpression

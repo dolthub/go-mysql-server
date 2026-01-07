@@ -226,7 +226,8 @@ func (b *BaseBuilder) buildHashLookup(ctx *sql.Context, n *plan.HashLookup, row 
 		}
 		return newHashLookupGeneratingIter(n, childIter), nil
 	}
-	key, err := n.GetHashKey(ctx, n.LeftProbeKey, row)
+	// TODO: handle out of range keys?
+	key, _, err := n.GetHashKey(ctx, n.LeftProbeKey, row)
 	if err != nil {
 		return nil, err
 	}
@@ -777,9 +778,13 @@ func (b *BaseBuilder) buildDistinct(ctx *sql.Context, n *plan.Distinct, row sql.
 func (b *BaseBuilder) buildIndexedTableAccess(ctx *sql.Context, n *plan.IndexedTableAccess, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.IndexedTableAccess")
 
-	lookup, err := n.GetLookup(ctx, row)
+	lookup, inRange, err := n.GetLookup(ctx, row)
 	if err != nil {
 		return nil, err
+	}
+
+	if !inRange {
+		return sql.RowsToRowIter(), nil
 	}
 
 	partIter, err := n.Table.LookupPartitions(ctx, lookup)

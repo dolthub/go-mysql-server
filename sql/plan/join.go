@@ -327,16 +327,6 @@ func NewJoin(left, right sql.Node, op JoinType, cond sql.Expression) *JoinNode {
 	}
 }
 
-// NewUsingJoin creates a UsingJoin that joins on the specified columns with the same name.
-// This is a placeholder node, and should be transformed into the appropriate join during analysis.
-func NewUsingJoin(left, right sql.Node, op JoinType, cols []string) *JoinNode {
-	return &JoinNode{
-		Op:         op,
-		BinaryNode: BinaryNode{left: left, right: right},
-		UsingCols:  cols,
-	}
-}
-
 // Expressions implements sql.Expression
 func (j *JoinNode) Expressions() []sql.Expression {
 	if j.Op.IsDegenerate() || j.Filter == nil {
@@ -504,20 +494,8 @@ func NewInnerJoin(left, right sql.Node, cond sql.Expression) *JoinNode {
 	return NewJoin(left, right, JoinTypeInner, cond)
 }
 
-func NewHashJoin(left, right sql.Node, cond sql.Expression) *JoinNode {
-	return NewJoin(left, right, JoinTypeHash, cond)
-}
-
 func NewLeftOuterJoin(left, right sql.Node, cond sql.Expression) *JoinNode {
 	return NewJoin(left, right, JoinTypeLeftOuter, cond)
-}
-
-func NewLeftOuterHashJoin(left, right sql.Node, cond sql.Expression) *JoinNode {
-	return NewJoin(left, right, JoinTypeLeftOuterHash, cond)
-}
-
-func NewLeftOuterLookupJoin(left, right sql.Node, cond sql.Expression) *JoinNode {
-	return NewJoin(left, right, JoinTypeLeftOuterLookup, cond)
 }
 
 func NewRightOuterJoin(left, right sql.Node, cond sql.Expression) *JoinNode {
@@ -544,11 +522,8 @@ func NewNaturalJoin(left, right sql.Node) *JoinNode {
 	return NewJoin(left, right, JoinTypeUsing, nil)
 }
 
-// An LookupJoin is a join that uses index lookups for the secondary table.
-func NewLookupJoin(left, right sql.Node, cond sql.Expression) *JoinNode {
-	return NewJoin(left, right, JoinTypeLookup, cond)
-}
-
+// NewAntiJoinIncludingNulls creates a new antijoin that includes nulls, which is created from a NOT EXISTS query. This
+// is different from an antijoin excluding nulls (default antijoin) created from a NOT IN query.
 func NewAntiJoinIncludingNulls(left, right sql.Node, cond sql.Expression) *JoinNode {
 	return NewJoin(left, right, JoinTypeAntiIncludeNulls, cond)
 }

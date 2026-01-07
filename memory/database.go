@@ -55,15 +55,14 @@ var _ sql.SchemaValidator = (*BaseDatabase)(nil)
 
 // BaseDatabase is an in-memory database that can't store views, only for testing the engine
 type BaseDatabase struct {
-	tables            map[string]MemTable
-	fkColl            *ForeignKeyCollection
-	tablesMu          *sync.RWMutex
-	name              string
-	triggers          []sql.TriggerDefinition
-	storedProcedures  []sql.StoredProcedureDetails
-	events            []sql.EventDefinition
-	collation         sql.CollationID
-	primaryKeyIndexes bool
+	tables           map[string]MemTable
+	fkColl           *ForeignKeyCollection
+	tablesMu         *sync.RWMutex
+	name             string
+	triggers         []sql.TriggerDefinition
+	storedProcedures []sql.StoredProcedureDetails
+	events           []sql.EventDefinition
+	collation        sql.CollationID
 }
 
 var _ MemoryDatabase = (*Database)(nil)
@@ -90,11 +89,6 @@ func NewViewlessDatabase(name string) *BaseDatabase {
 // ValidateSchema implements sql.SchemaValidator
 func (d *BaseDatabase) ValidateSchema(schema sql.Schema) error {
 	return validateMaxRowLength(schema)
-}
-
-// EnablePrimaryKeyIndexes causes every table created in this database to use an index on its primary partitionKeys
-func (d *BaseDatabase) EnablePrimaryKeyIndexes() {
-	d.primaryKeyIndexes = true
 }
 
 func (d *BaseDatabase) Database() *BaseDatabase {
@@ -270,9 +264,6 @@ func (d *BaseDatabase) CreateTable(ctx *sql.Context, name string, schema sql.Pri
 	table := NewTableWithCollation(d, name, schema, d.fkColl, collation)
 	table.db = d
 	table.data.comment = comment
-	if d.primaryKeyIndexes {
-		table.EnablePrimaryKeyIndexes()
-	}
 
 	d.AddTable(name, table)
 	sess := SessionFromContext(ctx)
@@ -292,9 +283,6 @@ func (d *BaseDatabase) CreateIndexedTable(ctx *sql.Context, name string, sch sql
 
 	table := NewTableWithCollation(d, name, sch, d.fkColl, collation)
 	table.db = d
-	if d.primaryKeyIndexes {
-		table.EnablePrimaryKeyIndexes()
-	}
 
 	for _, idxCol := range idxDef.Columns {
 		idx := sch.Schema.IndexOfColName(idxCol.Name)

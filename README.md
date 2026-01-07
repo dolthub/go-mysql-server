@@ -147,7 +147,6 @@ func main() {
 
 func createTestDatabase() *memory.DbProvider {
 	db := memory.NewDatabase(dbName)
-	db.BaseDatabase.EnablePrimaryKeyIndexes()
 
 	pro := memory.NewDBProvider(db)
 	session := memory.NewSession(sql.NewBaseSession(), pro)
@@ -250,3 +249,6 @@ Martinez (@juanjux).
 ## License
 
 Apache License 2.0, see [LICENSE](/LICENSE)
+
+The Go gopher was designed by [Renee French](https://reneefrench.blogspot.com/), licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+The mascot image is based on work by [Takuya Ueda](https://twitter.com/tenntenn), licensed under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/), with modifications.

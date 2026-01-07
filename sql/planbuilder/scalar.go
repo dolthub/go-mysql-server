@@ -136,19 +136,50 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 					return sysVar
 				}
 			}
-			var err error
 			if scope == ast.SetScope_User || scope == ast.SetScope_Persist || scope == ast.SetScope_PersistOnly {
-				err = sql.ErrUnknownUserVariable.New(colName)
+				err := sql.ErrUnknownUserVariable.New(colName)
+				b.handleErr(err)
 			} else if scope == ast.SetScope_Global || scope == ast.SetScope_Session {
-				err = sql.ErrUnknownSystemVariable.New(colName)
+				err := sql.ErrUnknownSystemVariable.New(colName)
+				b.handleErr(err)
 			} else if tblName != "" && !inScope.hasTable(tblName) {
-				err = sql.ErrTableNotFound.New(tblName)
+				err := sql.ErrTableNotFound.New(tblName)
+				b.handleErr(err)
 			} else if tblName != "" {
-				err = sql.ErrTableColumnNotFound.New(tblName, colName)
+				err := sql.ErrTableColumnNotFound.New(tblName, colName)
+				b.handleErr(err)
+			} else if b.overrides.ParseTableAsColumn != nil && inScope.hasTable(colName) {
+				scopeTableCols := inScope.resolveColumnAsTable(dbName, colName)
+				if len(scopeTableCols) == 0 {
+					err := sql.ErrColumnNotFound.New(v)
+					b.handleErr(err)
+				}
+				astQualifier := ast.TableName{
+					Name:        ast.NewTableIdent(colName), // This must be `colName` due to table aliases
+					DbQualifier: ast.NewTableIdent(scopeTableCols[0].db),
+				}
+				fieldArgs := make([]sql.Expression, len(scopeTableCols))
+				for i := range scopeTableCols {
+					astArg := ast.ColName{
+						StoredProcVal: nil,
+						Qualifier:     astQualifier,
+						Name:          ast.NewColIdent(scopeTableCols[i].col),
+					}
+					fieldArgs[i] = b.buildScalar(inScope, &astArg)
+				}
+				actualTableName := colName
+				if tn, ok := inScope.oldTables[scopeTableCols[0].tableId]; ok {
+					actualTableName = tn
+				}
+				tableExpr, err := b.overrides.ParseTableAsColumn(b.ctx, actualTableName, fieldArgs)
+				if err != nil {
+					b.handleErr(err)
+				}
+				return tableExpr
 			} else {
-				err = sql.ErrColumnNotFound.New(v)
+				err := sql.ErrColumnNotFound.New(v)
+				b.handleErr(err)
 			}
-			b.handleErr(err)
 		}
 
 		origTbl := b.getOrigTblName(inScope.node, c.table)
@@ -170,9 +201,16 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 
 		f, ok := b.cat.Function(b.ctx, name)
 		if !ok {
-			// todo(max): similar names in registry?
-			err := sql.ErrFunctionNotFound.New(name)
-			b.handleErr(err)
+			// check if this a table function accidentally used in a scalar context
+			_, ok := b.cat.TableFunction(b.ctx, name)
+			if ok {
+				err := sql.ErrTableFunctionNotInFrom.New(name)
+				b.handleErr(err)
+			} else {
+				// todo(max): similar names in registry?
+				err := sql.ErrFunctionNotFound.New(name)
+				b.handleErr(err)
+			}
 		}
 
 		args := make([]sql.Expression, len(v.Exprs))
@@ -888,32 +926,59 @@ func (b *Builder) intervalExprToExpression(inScope *scope, e *ast.IntervalExpr) 
 // Convert an integer, represented by the specified string in the specified
 // base, to its smallest representation possible, out of:
 // int8, uint8, int16, uint16, int32, uint32, int64 and uint64
-func (b *Builder) convertInt(value string, base int) *expression.Literal {
-	if i8, err := strconv.ParseInt(value, base, 8); err == nil {
-		return expression.NewLiteral(int8(i8), types.Int8)
+func (b *Builder) convertInt(value []byte, base int) *expression.Literal {
+	// For performance reasons, this smallest int representation possible for value.
+	// If zero-ing out (subtracting) the largest representation of the respective integer type results in values
+	// left over, then the value must not fit within that integer type.
+	valStr := encodings.BytesToString(value)
+	if i64, err := strconv.ParseInt(valStr, base, 64); err == nil {
+		if uint64(i64)&0x8000_0000_0000_0000 != 0 {
+			if uint64(^i64)&0xFFFF_FFFF_FFFF_FF80 == 0 {
+				return expression.NewLiteral(int8(i64), types.Int8)
+			}
+			if uint64(^i64)&0xFFFF_FFFF_FFFF_8000 == 0 {
+				return expression.NewLiteral(int16(i64), types.Int16)
+			}
+			if uint64(^i64)&0xFFFF_FFFF_8000_0000 == 0 {
+				return expression.NewLiteral(int32(i64), types.Int32)
+			}
+			return expression.NewLiteral(i64, types.Int64)
+		}
+		if uint64(i64)&0xFFFF_FFFF_FFFF_FF80 == 0 {
+			return expression.NewLiteral(int8(i64), types.Int8)
+		}
+		if uint64(i64)&0xFFFF_FFFF_FFFF_FF00 == 0 {
+			return expression.NewLiteral(uint8(i64), types.Uint8)
+		}
+		if uint64(i64)&0xFFFF_FFFF_FFFF_8000 == 0 {
+			return expression.NewLiteral(int16(i64), types.Int16)
+		}
+		if uint64(i64)&0xFFFF_FFFF_FFFF_0000 == 0 {
+			return expression.NewLiteral(uint16(i64), types.Uint16)
+		}
+		if uint64(i64)&0xFFFF_FFFF_8000_0000 == 0 {
+			return expression.NewLiteral(int32(i64), types.Int32)
+		}
+		if uint64(i64)&0xFFFF_FFFF_0000_0000 == 0 {
+			return expression.NewLiteral(uint32(i64), types.Uint32)
+		}
+		return expression.NewLiteral(i64, types.Int64)
 	}
-	if ui8, err := strconv.ParseUint(value, base, 8); err == nil {
-		return expression.NewLiteral(uint8(ui8), types.Uint8)
+
+	if ui64, err := strconv.ParseUint(valStr, base, 64); err == nil {
+		if ui64&0xFFFF_FFFF_FFFF_FF00 == 0 {
+			return expression.NewLiteral(uint8(ui64), types.Uint8)
+		}
+		if ui64&0xFFFF_FFFF_FFFF_0000 == 0 {
+			return expression.NewLiteral(uint16(ui64), types.Uint16)
+		}
+		if ui64&0xFFFF_0000_0000_0000 == 0 {
+			return expression.NewLiteral(uint32(ui64), types.Uint32)
+		}
+		return expression.NewLiteral(ui64, types.Uint64)
 	}
-	if i16, err := strconv.ParseInt(value, base, 16); err == nil {
-		return expression.NewLiteral(int16(i16), types.Int16)
-	}
-	if ui16, err := strconv.ParseUint(value, base, 16); err == nil {
-		return expression.NewLiteral(uint16(ui16), types.Uint16)
-	}
-	if i32, err := strconv.ParseInt(value, base, 32); err == nil {
-		return expression.NewLiteral(int32(i32), types.Int32)
-	}
-	if ui32, err := strconv.ParseUint(value, base, 32); err == nil {
-		return expression.NewLiteral(uint32(ui32), types.Uint32)
-	}
-	if i64, err := strconv.ParseInt(value, base, 64); err == nil {
-		return expression.NewLiteral(int64(i64), types.Int64)
-	}
-	if ui64, err := strconv.ParseUint(value, base, 64); err == nil {
-		return expression.NewLiteral(uint64(ui64), types.Uint64)
-	}
-	if decimal, _, err := types.InternalDecimalType.Convert(b.ctx, value); err == nil {
+
+	if decimal, _, err := types.InternalDecimalType.Convert(b.ctx, valStr); err == nil {
 		return expression.NewLiteral(decimal, types.InternalDecimalType)
 	}
 
@@ -926,7 +991,7 @@ func (b *Builder) ConvertVal(v *ast.SQLVal) sql.Expression {
 	case ast.StrVal:
 		return expression.NewLiteral(string(v.Val), types.CreateLongText(b.ctx.GetCollation()))
 	case ast.IntVal:
-		return b.convertInt(string(v.Val), 10)
+		return b.convertInt(v.Val, 10)
 	case ast.FloatVal:
 		// any float value is parsed as decimal except when the value has scientific notation
 		ogVal := strings.ToLower(string(v.Val))
@@ -952,7 +1017,7 @@ func (b *Builder) ConvertVal(v *ast.SQLVal) sql.Expression {
 			return expression.NewLiteral(dVal, dt)
 		} else {
 			// if the value is not float type - this should not happen
-			return b.convertInt(string(v.Val), 10)
+			return b.convertInt(v.Val, 10)
 		}
 	case ast.HexNum:
 		// TODO: binary collation?

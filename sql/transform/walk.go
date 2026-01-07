@@ -39,8 +39,6 @@ func Walk(v Visitor, node sql.Node) {
 	for _, child := range node.Children() {
 		Walk(v, child)
 	}
-
-	v.Visit(nil)
 }
 
 type inspector func(sql.Node) bool
@@ -52,12 +50,27 @@ func (f inspector) Visit(node sql.Node) Visitor {
 	return nil
 }
 
-// Inspect traverses the plan in depth-first order: It starts by calling
-// f(node); node must not be nil. If f returns true, Inspect invokes f
-// recursively for each of the children of node, followed by a call of
-// f(nil).
-func Inspect(node sql.Node, f func(sql.Node) bool) {
-	Walk(inspector(f), node)
+// Inspect performs a pre-order traversal of the sql.Node tree;
+// First, it does f(node) and if cont = true, then Inspect is recursively called on node's children.
+// TODO: this conflicts with transform.InspectExpr which performs a post-order traversal and stops when stop = true.
+func Inspect(node sql.Node, f func(sql.Node) bool) (cont bool) {
+	if !f(node) {
+		return false
+	}
+
+	// Avoid allocating []sql.Expression
+	switch n := node.(type) {
+	case sql.UnaryNode:
+		Inspect(n.Child(), f)
+	case sql.BinaryNode:
+		Inspect(n.Left(), f)
+		Inspect(n.Right(), f)
+	default:
+		for _, child := range n.Children() {
+			Inspect(child, f)
+		}
+	}
+	return true
 }
 
 // WalkExpressions traverses the plan and calls sql.Walk on any expression it finds.

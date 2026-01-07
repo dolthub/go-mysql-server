@@ -108,6 +108,7 @@ func NewFunction0(name string, fn func() Expression) Function0 {
 	}
 }
 
+// NewInstance implements the interface Function.
 func (fn Function0) NewInstance(args []Expression) (Expression, error) {
 	if len(args) != 0 {
 		return nil, ErrInvalidArgumentNumber.New(fn.Name, 0, len(args))
@@ -116,6 +117,7 @@ func (fn Function0) NewInstance(args []Expression) (Expression, error) {
 	return fn.Fn(), nil
 }
 
+// NewInstance implements the interface Function.
 func (fn Function1) NewInstance(args []Expression) (Expression, error) {
 	if len(args) != 1 {
 		return nil, ErrInvalidArgumentNumber.New(fn.Name, 1, len(args))
@@ -124,6 +126,7 @@ func (fn Function1) NewInstance(args []Expression) (Expression, error) {
 	return fn.Fn(args[0]), nil
 }
 
+// NewInstance implements the interface Function.
 func (fn Function2) NewInstance(args []Expression) (Expression, error) {
 	if len(args) != 2 {
 		return nil, ErrInvalidArgumentNumber.New(fn.Name, 2, len(args))
@@ -132,6 +135,7 @@ func (fn Function2) NewInstance(args []Expression) (Expression, error) {
 	return fn.Fn(args[0], args[1]), nil
 }
 
+// NewInstance implements the interface Function.
 func (fn Function3) NewInstance(args []Expression) (Expression, error) {
 	if len(args) != 3 {
 		return nil, ErrInvalidArgumentNumber.New(fn.Name, 3, len(args))
@@ -140,6 +144,7 @@ func (fn Function3) NewInstance(args []Expression) (Expression, error) {
 	return fn.Fn(args[0], args[1], args[2]), nil
 }
 
+// NewInstance implements the interface Function.
 func (fn Function4) NewInstance(args []Expression) (Expression, error) {
 	if len(args) != 4 {
 		return nil, ErrInvalidArgumentNumber.New(fn.Name, 4, len(args))
@@ -148,6 +153,7 @@ func (fn Function4) NewInstance(args []Expression) (Expression, error) {
 	return fn.Fn(args[0], args[1], args[2], args[3]), nil
 }
 
+// NewInstance implements the interface Function.
 func (fn Function5) NewInstance(args []Expression) (Expression, error) {
 	if len(args) != 5 {
 		return nil, ErrInvalidArgumentNumber.New(fn.Name, 5, len(args))
@@ -156,6 +162,7 @@ func (fn Function5) NewInstance(args []Expression) (Expression, error) {
 	return fn.Fn(args[0], args[1], args[2], args[3], args[4]), nil
 }
 
+// NewInstance implements the interface Function.
 func (fn Function6) NewInstance(args []Expression) (Expression, error) {
 	if len(args) != 6 {
 		return nil, ErrInvalidArgumentNumber.New(fn.Name, 6, len(args))
@@ -164,6 +171,7 @@ func (fn Function6) NewInstance(args []Expression) (Expression, error) {
 	return fn.Fn(args[0], args[1], args[2], args[3], args[4], args[5]), nil
 }
 
+// NewInstance implements the interface Function.
 func (fn Function7) NewInstance(args []Expression) (Expression, error) {
 	if len(args) != 7 {
 		return nil, ErrInvalidArgumentNumber.New(fn.Name, 7, len(args))
@@ -172,6 +180,7 @@ func (fn Function7) NewInstance(args []Expression) (Expression, error) {
 	return fn.Fn(args[0], args[1], args[2], args[3], args[4], args[5], args[6]), nil
 }
 
+// NewInstance implements the interface Function.
 func (fn FunctionN) NewInstance(args []Expression) (Expression, error) {
 	return fn.Fn(args...)
 }

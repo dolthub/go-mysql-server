@@ -28,14 +28,14 @@ import (
 //
 // cc: https://dev.mysql.com/doc/refman/8.0/en/cast-functions.html#operator_binary
 type Binary struct {
-	UnaryExpression
+	UnaryExpressionStub
 }
 
 var _ sql.Expression = (*Binary)(nil)
 var _ sql.CollationCoercible = (*Binary)(nil)
 
 func NewBinary(e sql.Expression) sql.Expression {
-	return &Binary{UnaryExpression{Child: e}}
+	return &Binary{UnaryExpressionStub{Child: e}}
 }
 
 func (b *Binary) String() string {

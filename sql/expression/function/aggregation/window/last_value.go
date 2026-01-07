@@ -21,15 +21,14 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 )
 
 type LastValue struct {
+	Child  sql.Expression
 	window *sql.WindowDefinition
-	expression.UnaryExpression
-	pos int
-	id  sql.ColumnId
+	pos    int
+	id     sql.ColumnId
 }
 
 var _ sql.FunctionExpression = (*LastValue)(nil)
@@ -38,7 +37,7 @@ var _ sql.WindowAdaptableExpression = (*LastValue)(nil)
 var _ sql.CollationCoercible = (*LastValue)(nil)
 
 func NewLastValue(e sql.Expression) sql.Expression {
-	return &LastValue{window: nil, UnaryExpression: expression.UnaryExpression{Child: e}}
+	return &LastValue{window: nil, Child: e}
 }
 
 // Id implements sql.IdExpression
@@ -63,7 +62,7 @@ func (f *LastValue) Window() *sql.WindowDefinition {
 	return f.window
 }
 
-// IsNullable implements sql.Expression
+// Resolved implements sql.Expression
 func (f *LastValue) Resolved() bool {
 	return windowResolved(f.window)
 }
@@ -105,7 +104,7 @@ func (f *LastValue) CollationCoercibility(ctx *sql.Context) (collation sql.Colla
 
 // IsNullable implements sql.Expression
 func (f *LastValue) IsNullable() bool {
-	return false
+	return f.Child.IsNullable()
 }
 
 // Eval implements sql.Expression

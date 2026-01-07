@@ -350,6 +350,7 @@ type showCreateTablesIter struct {
 	checks       sql.CheckConstraints
 	didIteration bool
 	isView       bool
+	formatter    sql.SchemaFormatter
 }
 
 func (i *showCreateTablesIter) Next(ctx *sql.Context) (sql.Row, error) {
@@ -432,7 +433,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 
 	// Statement creation parts for each column
 	tableCollation := table.Collation()
-	for i, col := range schema {
+	for idx, col := range schema {
 		var colDefaultStr string
 		var err error
 		if col.Default != nil && col.Generated == nil {
@@ -452,18 +453,18 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 		}
 
 		if col.PrimaryKey && len(pkSchema.Schema) == 0 {
-			pkOrdinals = append(pkOrdinals, i)
+			pkOrdinals = append(pkOrdinals, idx)
 		}
 
-		colStmts[i] = sql.GenerateCreateTableColumnDefinition(col, colDefaultStr, onUpdateStr, tableCollation)
+		colStmts[idx] = i.formatter.GenerateCreateTableColumnDefinition(col, colDefaultStr, onUpdateStr, tableCollation)
 	}
 
-	for _, i := range pkOrdinals {
-		primaryKeyCols = append(primaryKeyCols, schema[i].Name)
+	for _, idx := range pkOrdinals {
+		primaryKeyCols = append(primaryKeyCols, schema[idx].Name)
 	}
 
 	if len(primaryKeyCols) > 0 {
-		colStmts = append(colStmts, sql.GenerateCreateTablePrimaryKeyDefinition(primaryKeyCols))
+		colStmts = append(colStmts, i.formatter.GenerateCreateTablePrimaryKeyDefinition(primaryKeyCols))
 	}
 
 	for _, index := range i.indexes {
@@ -474,18 +475,18 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 
 		prefixLengths := index.PrefixLengths()
 		var indexCols []string
-		for i, expr := range index.Expressions() {
+		for idx, expr := range index.Expressions() {
 			col := plan.GetColumnFromIndexExpr(expr, table)
 			if col != nil {
-				indexDef := sql.QuoteIdentifier(col.Name)
-				if len(prefixLengths) > i && prefixLengths[i] != 0 {
-					indexDef += fmt.Sprintf("(%v)", prefixLengths[i])
+				indexDef := i.formatter.QuoteIdentifier(col.Name)
+				if len(prefixLengths) > idx && prefixLengths[idx] != 0 {
+					indexDef += fmt.Sprintf("(%v)", prefixLengths[idx])
 				}
 				indexCols = append(indexCols, indexDef)
 			}
 		}
 
-		indexDefn, shouldInclude := sql.GenerateCreateTableIndexDefinition(index.IsUnique(), index.IsSpatial(),
+		indexDefn, shouldInclude := i.formatter.GenerateCreateTableIndexDefinition(index.IsUnique(), index.IsSpatial(),
 			index.IsFullText(), index.IsVector(), index.ID(), indexCols, index.Comment())
 		if shouldInclude {
 			colStmts = append(colStmts, indexDefn)
@@ -507,13 +508,13 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 			if len(fk.OnUpdate) > 0 && fk.OnUpdate != sql.ForeignKeyReferentialAction_DefaultAction {
 				onUpdate = string(fk.OnUpdate)
 			}
-			colStmts = append(colStmts, sql.GenerateCreateTableForiegnKeyDefinition(fk.Name, fk.Columns, fk.ParentTable, fk.ParentColumns, onDelete, onUpdate))
+			colStmts = append(colStmts, i.formatter.GenerateCreateTableForiegnKeyDefinition(fk.Name, fk.Columns, fk.ParentTable, fk.ParentColumns, onDelete, onUpdate))
 		}
 	}
 
 	if i.checks != nil {
 		for _, check := range i.checks {
-			colStmts = append(colStmts, sql.GenerateCreateTableCheckConstraintClause(check.Name, check.Expr.String(), check.Enforced))
+			colStmts = append(colStmts, i.formatter.GenerateCreateTableCheckConstraintClause(check.Name, check.Expr.String(), check.Enforced))
 		}
 	}
 
@@ -539,7 +540,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 		temp = " TEMPORARY"
 	}
 
-	return sql.GenerateCreateTableStatement(table.Name(), colStmts, temp, autoInc, table.Collation().CharacterSet().Name(), table.Collation().Name(), comment), nil
+	return i.formatter.GenerateCreateTableStatement(table.Name(), colStmts, temp, autoInc, table.Collation().CharacterSet().Name(), table.Collation().Name(), comment), nil
 }
 
 func produceCreateViewStatement(view *plan.SubqueryAlias) string {

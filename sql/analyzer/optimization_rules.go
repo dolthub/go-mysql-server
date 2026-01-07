@@ -238,11 +238,11 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 				), transform.NewTree, nil
 			case *expression.Or:
 				if isTrue(ctx, e.LeftChild) {
-					return e.LeftChild, transform.NewTree, nil
+					return expression.NewLiteral(true, types.Boolean), transform.NewTree, nil
 				}
 
 				if isTrue(ctx, e.RightChild) {
-					return e.RightChild, transform.NewTree, nil
+					return expression.NewLiteral(true, types.Boolean), transform.NewTree, nil
 				}
 
 				if isFalse(ctx, e.LeftChild) && types.IsBoolean(e.RightChild.Type()) {
@@ -256,11 +256,11 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 				return e, transform.SameTree, nil
 			case *expression.And:
 				if isFalse(ctx, e.LeftChild) {
-					return e.LeftChild, transform.NewTree, nil
+					return expression.NewLiteral(false, types.Boolean), transform.NewTree, nil
 				}
 
 				if isFalse(ctx, e.RightChild) {
-					return e.RightChild, transform.NewTree, nil
+					return expression.NewLiteral(false, types.Boolean), transform.NewTree, nil
 				}
 
 				if isTrue(ctx, e.LeftChild) && types.IsBoolean(e.RightChild.Type()) {

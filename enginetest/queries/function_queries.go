@@ -1603,12 +1603,63 @@ var FunctionQueryTests = []QueryTest{
 	},
 	// https://github.com/dolthub/dolt/issues/9735
 	{
-		Query:    "select log('10asdf', '100f')",
-		Expected: []sql.Row{{float64(2)}},
+		Query:                 "select log('10asdf', '100f')",
+		Expected:              []sql.Row{{float64(2)}},
+		ExpectedWarningsCount: 2,
 	},
 	{
-		Query:    "select log('a10asdf', 'b100f')",
-		Expected: []sql.Row{{nil}},
+		Query:                 "select log('a10asdf', 'b100f')",
+		Expected:              []sql.Row{{nil}},
+		ExpectedWarningsCount: 2,
+	},
+	// https://github.com/dolthub/dolt/issues/10171
+	{
+		Query:                 "select abs('hi')",
+		Expected:              []sql.Row{{float64(0)}},
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select abs('12.3hi')",
+		Expected:              []sql.Row{{12.3}},
+		ExpectedWarningsCount: 1,
+	},
+	{
+		Query:                 "select abs('-342.12hi')",
+		Expected:              []sql.Row{{342.12}},
+		ExpectedWarningsCount: 1,
+	},
+	// https://github.com/dolthub/dolt/issues/10270
+	{
+		Query:    "select abs(1 and true)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select abs(true)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select abs(2 and true)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select abs(false)",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "select abs(false or 2)",
+		Expected: []sql.Row{{1}},
+	},
+	{
+		Query:    "select abs(date('2020-12-15'))",
+		Expected: []sql.Row{{float64(20201215)}},
+		// https://github.com/dolthub/dolt/issues/10278
+		Skip: true,
+	},
+	{
+		Query:    "select abs(time('12:23:43'))",
+		Expected: []sql.Row{{float64(122343)}},
+		// https://github.com/dolthub/dolt/issues/10278
+		Skip: true,
 	},
 	// Date Manipulation Function Tests
 	{

@@ -16,16 +16,19 @@ package function
 
 import (
 	"fmt"
+	"math"
 
+	"github.com/dolthub/vitess/go/mysql"
 	"github.com/shopspring/decimal"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // AbsVal is a function that takes the absolute value of a number
 type AbsVal struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*AbsVal)(nil)
@@ -33,7 +36,7 @@ var _ sql.CollationCoercible = (*AbsVal)(nil)
 
 // NewAbsVal creates a new AbsVal expression.
 func NewAbsVal(e sql.Expression) sql.Expression {
-	return &AbsVal{expression.UnaryExpression{Child: e}}
+	return &AbsVal{expression.UnaryExpressionStub{Child: e}}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -93,11 +96,7 @@ func (t *AbsVal) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return x, nil
 		}
 	case float64:
-		if x < 0 {
-			return -x, nil
-		} else {
-			return x, nil
-		}
+		return math.Abs(x), nil
 	case float32:
 		if x < 0 {
 			return -x, nil
@@ -106,9 +105,21 @@ func (t *AbsVal) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 	case decimal.Decimal:
 		return x.Abs(), nil
+	case bool:
+		if x {
+			return 1, nil
+		}
+		return 0, nil
+	default:
+		v, _, err := types.Float64.Convert(ctx, val)
+		if err != nil {
+			if !sql.ErrTruncatedIncorrect.Is(err) {
+				return nil, err
+			}
+			ctx.Warn(mysql.ERTruncatedWrongValue, "%s", err.Error())
+		}
+		return math.Abs(v.(float64)), nil
 	}
-
-	return nil, nil
 }
 
 // String implements the fmt.Stringer interface.
@@ -135,7 +146,11 @@ func (t *AbsVal) WithChildren(children ...sql.Expression) (sql.Expression, error
 
 // Type implements the Expression interface.
 func (t *AbsVal) Type() sql.Type {
-	return t.Child.Type()
+	typ := t.Child.Type()
+	if types.IsNumber(typ) {
+		return typ
+	}
+	return types.Float64
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.

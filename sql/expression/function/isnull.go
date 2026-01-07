@@ -24,7 +24,7 @@ import (
 
 // IsNull is a function that returns whether a value is null or not.
 type IsNull struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*IsNull)(nil)
@@ -32,7 +32,7 @@ var _ sql.CollationCoercible = (*IsNull)(nil)
 
 // NewIsNull creates a new IsNull expression.
 func NewIsNull(e sql.Expression) sql.Expression {
-	return &IsNull{expression.UnaryExpression{Child: e}}
+	return &IsNull{expression.UnaryExpressionStub{Child: e}}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -57,6 +57,11 @@ func (ib *IsNull) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	return true, nil
+}
+
+// IsNullable implements sql.Expression
+func (ib *IsNull) IsNullable() bool {
+	return false
 }
 
 func (ib *IsNull) String() string {

@@ -70,12 +70,7 @@ func (c *ConcatWithSeparator) CollationCoercibility(ctx *sql.Context) (collation
 
 // IsNullable implements the Expression interface.
 func (f *ConcatWithSeparator) IsNullable() bool {
-	for _, arg := range f.args {
-		if arg.IsNullable() {
-			return true
-		}
-	}
-	return false
+	return f.args[0].IsNullable()
 }
 
 func (f *ConcatWithSeparator) String() string {

@@ -151,13 +151,7 @@ func (*TimeFormat) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 
 // IsNullable implements the Expression interface.
 func (f *TimeFormat) IsNullable() bool {
-	if types.IsNull(f.LeftChild) {
-		if types.IsNull(f.RightChild) {
-			return true
-		}
-		return f.RightChild.IsNullable()
-	}
-	return f.LeftChild.IsNullable()
+	return f.LeftChild.IsNullable() || f.RightChild.IsNullable()
 }
 
 func (f *TimeFormat) String() string {

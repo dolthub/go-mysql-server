@@ -132,7 +132,7 @@ func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, fil
 		case *expression.Not:
 			if esq, ok := e.Child.(*plan.ExistsSubquery); ok {
 				sq = esq.Query
-				joinType = plan.JoinTypeAnti
+				joinType = plan.JoinTypeAntiIncludeNulls
 			}
 		default:
 		}
@@ -176,7 +176,7 @@ func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, fil
 
 		if s.emptyScope {
 			switch joinType {
-			case plan.JoinTypeAnti:
+			case plan.JoinTypeAntiIncludeNulls:
 				// ret will be all rows
 			case plan.JoinTypeSemi:
 				ret = plan.NewEmptyTableWithSchema(ret.Schema())
@@ -188,7 +188,7 @@ func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, fil
 
 		if len(s.joinFilters) == 0 {
 			switch joinType {
-			case plan.JoinTypeAnti:
+			case plan.JoinTypeAntiIncludeNulls:
 				cond := expression.NewLiteral(true, types.Boolean)
 				ret = plan.NewAntiJoinIncludingNulls(ret, s.inner, cond).WithComment(comment)
 				qFlags.Set(sql.QFlagInnerJoin)
@@ -212,11 +212,8 @@ func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, fil
 		}
 
 		switch joinType {
-		case plan.JoinTypeAnti:
-			ret = plan.NewAntiJoinIncludingNulls(ret, s.inner, expression.JoinAnd(outerFilters...)).WithComment(comment)
-			qFlags.Set(sql.QFlagInnerJoin)
-		case plan.JoinTypeSemi:
-			ret = plan.NewSemiJoin(ret, s.inner, expression.JoinAnd(outerFilters...)).WithComment(comment)
+		case plan.JoinTypeAntiIncludeNulls, plan.JoinTypeSemi:
+			ret = plan.NewJoin(ret, s.inner, joinType, expression.JoinAnd(outerFilters...)).WithComment(comment)
 			qFlags.Set(sql.QFlagInnerJoin)
 		default:
 			return filter, transform.SameTree, fmt.Errorf("hoistSelectExists failed on unexpected join type")
@@ -253,14 +250,6 @@ type hoistSubquery struct {
 	joinFilters []sql.Expression
 	emptyScope  bool
 }
-
-type fakeNameable struct {
-	name string
-}
-
-var _ sql.Nameable = (*fakeNameable)(nil)
-
-func (f fakeNameable) Name() string { return f.name }
 
 // decorrelateOuterCols returns an optionally modified subquery and extracted filters referencing an outer scope.
 // If the subquery has aliases that conflict with outside aliases, the internal aliases will be renamed to avoid

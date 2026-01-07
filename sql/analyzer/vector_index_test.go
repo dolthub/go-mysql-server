@@ -125,7 +125,7 @@ func TestVectorIndex(t *testing.T) {
 					"expected:\n%s,\nfound:\n%s\n", testCase.expectedPlan, res.String())
 			}
 
-			iter, err := rowexec.DefaultBuilder.Build(ctx, res, nil)
+			iter, err := rowexec.NewBuilder(nil, sql.EngineOverrides{}).Build(ctx, res, nil)
 			require.NoError(t, err)
 			rows, err = sql.RowIterToRows(ctx, iter)
 			require.NoError(t, err)
@@ -157,7 +157,7 @@ func TestShowCreateTableWithVectorIndex(t *testing.T) {
 		&vectorIndex,
 	}
 
-	rowIter, _ := rowexec.DefaultBuilder.Build(ctx, showCreateTable, nil)
+	rowIter, _ := rowexec.NewBuilder(nil, sql.EngineOverrides{}).Build(ctx, showCreateTable, nil)
 
 	row, err := rowIter.Next(ctx)
 

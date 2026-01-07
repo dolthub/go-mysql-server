@@ -23,7 +23,7 @@ import (
 
 // ConvertUsing represents a CONVERT(X USING T) operation that casts the expression X to the character set T.
 type ConvertUsing struct {
-	UnaryExpression
+	UnaryExpressionStub
 	TargetCharSet sql.CharacterSetID
 }
 
@@ -32,8 +32,8 @@ var _ sql.CollationCoercible = (*ConvertUsing)(nil)
 
 func NewConvertUsing(expr sql.Expression, targetCharSet sql.CharacterSetID) *ConvertUsing {
 	return &ConvertUsing{
-		UnaryExpression: UnaryExpression{Child: expr},
-		TargetCharSet:   targetCharSet,
+		UnaryExpressionStub: UnaryExpressionStub{Child: expr},
+		TargetCharSet:       targetCharSet,
 	}
 }
 

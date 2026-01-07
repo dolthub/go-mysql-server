@@ -218,6 +218,11 @@ func (f *SHA2) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
+// IsNullable implements sql.Expression
+func (f *SHA2) IsNullable() bool {
+	return true
+}
+
 // FunctionName implements sql.FunctionExpression
 func (f *SHA2) FunctionName() string {
 	return "sha2"
@@ -405,6 +410,11 @@ func (f *Uncompress) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return outBuf[:readLen], nil
 }
 
+// IsNullable implements sql.Expression
+func (f *Uncompress) IsNullable() bool {
+	return true
+}
+
 // WithChildren implements sql.Expression
 func (f *Uncompress) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
@@ -469,6 +479,11 @@ func (f *UncompressedLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, e
 	return outLen, nil
 }
 
+// IsNullable implements sql.Expression
+func (f *UncompressedLength) IsNullable() bool {
+	return true
+}
+
 // WithChildren implements sql.Expression
 func (f *UncompressedLength) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
@@ -519,7 +534,7 @@ func (f *ValidatePasswordStrength) Eval(ctx *sql.Context, row sql.Row) (interfac
 
 	val, _, err := types.LongText.Convert(ctx, arg)
 	if err != nil {
-		return nil, nil
+		return 0, nil
 	}
 	password := val.(string)
 	strength := 0

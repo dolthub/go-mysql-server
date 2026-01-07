@@ -2646,7 +2646,7 @@ Project
 
 	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
 	ctx.SetCurrentDatabase("mydb")
-	b := New(ctx, cat, nil, nil)
+	b := New(ctx, cat, nil)
 
 	for _, tt := range tests {
 		t.Run(tt.Query, func(t *testing.T) {
@@ -3041,7 +3041,7 @@ func TestPlanBuilderErr(t *testing.T) {
 
 	ctx := sql.NewContext(context.Background(), sql.WithSession(sess))
 	ctx.SetCurrentDatabase("mydb")
-	b := New(ctx, cat, nil, nil)
+	b := New(ctx, cat, nil)
 
 	for _, tt := range tests {
 		t.Run(tt.Query, func(t *testing.T) {

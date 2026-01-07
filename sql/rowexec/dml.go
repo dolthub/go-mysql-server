@@ -200,6 +200,13 @@ func (b *BaseBuilder) buildDropTable(ctx *sql.Context, n *plan.DropTable, _ sql.
 	var err error
 	var curdb sql.Database
 
+	if b.EngineOverrides.Hooks.DropTable.PreSQLExecution != nil {
+		nn, err := b.EngineOverrides.Hooks.DropTable.PreSQLExecution(ctx, n)
+		if err != nil {
+			return nil, err
+		}
+		n = nn.(*plan.DropTable)
+	}
 	sortedTables, err := sortTablesByFKDependencies(ctx, n.Tables)
 	if err != nil {
 		return nil, err
@@ -263,6 +270,12 @@ func (b *BaseBuilder) buildDropTable(ctx *sql.Context, n *plan.DropTable, _ sql.
 			if err != nil {
 				return nil, err
 			}
+		}
+	}
+
+	if b.EngineOverrides.Hooks.DropTable.PostSQLExecution != nil {
+		if err = b.EngineOverrides.Hooks.DropTable.PostSQLExecution(ctx, n); err != nil {
+			return nil, err
 		}
 	}
 

@@ -160,14 +160,14 @@ func (t DecimalType_) CompareValue(ctx *sql.Context, a, b sql.Value) (int, error
 func (t DecimalType_) Convert(c context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	dec, err := t.ConvertToNullDecimal(v)
 	if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
-		return nil, sql.OutOfRange, err
+		return nil, sql.InRange, err
 	}
 	if !dec.Valid {
 		return nil, sql.InRange, nil
 	}
 	res, inRange, cErr := t.BoundsCheck(dec.Decimal)
 	if cErr != nil {
-		return nil, sql.OutOfRange, cErr
+		return nil, inRange, cErr
 	}
 	return res, inRange, err
 }
@@ -480,4 +480,9 @@ func convertValueToDecimal(ctx *sql.Context, v sql.Value) (decimal.Decimal, erro
 	default:
 		return decimal.Decimal{}, ErrConvertingToDecimal.New(v)
 	}
+}
+
+// IsDecimalType implements the sql.DecimalType
+func (t DecimalType_) IsDecimalType() bool {
+	return true
 }

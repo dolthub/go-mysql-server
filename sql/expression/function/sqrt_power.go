@@ -27,7 +27,7 @@ import (
 
 // Sqrt is a function that returns the square value of the number provided.
 type Sqrt struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*Sqrt)(nil)
@@ -35,7 +35,7 @@ var _ sql.CollationCoercible = (*Sqrt)(nil)
 
 // NewSqrt creates a new Sqrt expression.
 func NewSqrt(e sql.Expression) sql.Expression {
-	return &Sqrt{expression.UnaryExpression{Child: e}}
+	return &Sqrt{expression.UnaryExpressionStub{Child: e}}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -64,7 +64,7 @@ func (*Sqrt) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID,
 
 // IsNullable implements the Expression interface.
 func (s *Sqrt) IsNullable() bool {
-	return s.Child.IsNullable()
+	return true
 }
 
 // WithChildren implements the Expression interface.
@@ -138,7 +138,11 @@ func (*Power) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID
 }
 
 // IsNullable implements the Expression interface.
-func (p *Power) IsNullable() bool { return p.LeftChild.IsNullable() || p.RightChild.IsNullable() }
+func (p *Power) IsNullable() bool {
+	// This should be correct, even though Power.Eval returns nil if math.Pow(left, right) returns NaN or Inf. However,
+	// it's unlikely this would ever actually happen since NaN and Inf are not valid in MySQL
+	return p.LeftChild.IsNullable() || p.RightChild.IsNullable()
+}
 
 func (p *Power) String() string {
 	return fmt.Sprintf("power(%s, %s)", p.LeftChild, p.RightChild)

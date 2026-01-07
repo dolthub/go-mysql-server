@@ -15,22 +15,24 @@
 package plan
 
 import (
+	"github.com/dolthub/vitess/go/vt/sqlparser"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
 type TriggerEvent string
 
 const (
-	InsertTrigger TriggerEvent = "insert"
-	UpdateTrigger              = "update"
-	DeleteTrigger              = "delete"
+	InsertTrigger TriggerEvent = sqlparser.InsertStr
+	UpdateTrigger TriggerEvent = sqlparser.UpdateStr
+	DeleteTrigger TriggerEvent = sqlparser.DeleteStr
 )
 
 type TriggerTime string
 
 const (
-	BeforeTrigger TriggerTime = "before"
-	AfterTrigger              = "after"
+	BeforeTrigger TriggerTime = sqlparser.BeforeStr
+	AfterTrigger  TriggerTime = sqlparser.AfterStr
 )
 
 // TriggerExecutor is node that wraps, or is wrapped by, an INSERT, UPDATE, or DELETE node to execute defined trigger

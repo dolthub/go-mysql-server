@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -22,9 +21,9 @@ var _ sql.WindowAdaptableExpression = (*AnyValue)(nil)
 func NewAnyValue(e sql.Expression) *AnyValue {
 	return &AnyValue{
 		unaryAggBase{
-			UnaryExpression: expression.UnaryExpression{Child: e},
-			functionName:    "AnyValue",
-			description:     "returns any single value in the grouped rows",
+			Child:        e,
+			functionName: "AnyValue",
+			description:  "returns any single value in the grouped rows",
 		},
 	}
 }
@@ -45,7 +44,7 @@ func (a *AnyValue) String() string {
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("ANYVALUE(%s)", a.Child)
+	return "ANYVALUE(" + a.Child.String() + ")"
 }
 
 func (a *AnyValue) DebugString() string {
@@ -101,9 +100,9 @@ var _ sql.WindowAdaptableExpression = (*Avg)(nil)
 func NewAvg(e sql.Expression) *Avg {
 	return &Avg{
 		unaryAggBase{
-			UnaryExpression: expression.UnaryExpression{Child: e},
-			functionName:    "Avg",
-			description:     "returns the average value of expr in all rows.",
+			Child:        e,
+			functionName: "Avg",
+			description:  "returns the average value of expr in all rows.",
 		},
 	}
 }
@@ -124,7 +123,7 @@ func (a *Avg) String() string {
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("AVG(%s)", a.Child)
+	return "AVG(" + a.Child.String() + ")"
 }
 
 func (a *Avg) DebugString() string {
@@ -180,9 +179,9 @@ var _ sql.WindowAdaptableExpression = (*BitAnd)(nil)
 func NewBitAnd(e sql.Expression) *BitAnd {
 	return &BitAnd{
 		unaryAggBase{
-			UnaryExpression: expression.UnaryExpression{Child: e},
-			functionName:    "BitAnd",
-			description:     "returns the bitwise AND of all bits in expr.",
+			Child:        e,
+			functionName: "BitAnd",
+			description:  "returns the bitwise AND of all bits in expr.",
 		},
 	}
 }
@@ -203,7 +202,7 @@ func (a *BitAnd) String() string {
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("BITAND(%s)", a.Child)
+	return "BITAND(" + a.Child.String() + ")"
 }
 
 func (a *BitAnd) DebugString() string {
@@ -259,9 +258,9 @@ var _ sql.WindowAdaptableExpression = (*BitOr)(nil)
 func NewBitOr(e sql.Expression) *BitOr {
 	return &BitOr{
 		unaryAggBase{
-			UnaryExpression: expression.UnaryExpression{Child: e},
-			functionName:    "BitOr",
-			description:     "returns the bitwise OR of all bits in expr.",
+			Child:        e,
+			functionName: "BitOr",
+			description:  "returns the bitwise OR of all bits in expr.",
 		},
 	}
 }
@@ -282,7 +281,7 @@ func (a *BitOr) String() string {
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("BITOR(%s)", a.Child)
+	return "BITOR(" + a.Child.String() + ")"
 }
 
 func (a *BitOr) DebugString() string {
@@ -338,9 +337,9 @@ var _ sql.WindowAdaptableExpression = (*BitXor)(nil)
 func NewBitXor(e sql.Expression) *BitXor {
 	return &BitXor{
 		unaryAggBase{
-			UnaryExpression: expression.UnaryExpression{Child: e},
-			functionName:    "BitXor",
-			description:     "returns the bitwise XOR of all bits in expr.",
+			Child:        e,
+			functionName: "BitXor",
+			description:  "returns the bitwise XOR of all bits in expr.",
 		},
 	}
 }
@@ -361,7 +360,7 @@ func (a *BitXor) String() string {
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("BITXOR(%s)", a.Child)
+	return "BITXOR(" + a.Child.String() + ")"
 }
 
 func (a *BitXor) DebugString() string {
@@ -417,9 +416,9 @@ var _ sql.WindowAdaptableExpression = (*Count)(nil)
 func NewCount(e sql.Expression) *Count {
 	return &Count{
 		unaryAggBase{
-			UnaryExpression: expression.UnaryExpression{Child: e},
-			functionName:    "Count",
-			description:     "returns a count of the number of non-NULL values of expr in the rows retrieved by a SELECT statement.",
+			Child:        e,
+			functionName: "Count",
+			description:  "returns a count of the number of non-NULL values of expr in the rows retrieved by a SELECT statement.",
 		},
 	}
 }
@@ -440,7 +439,7 @@ func (a *Count) String() string {
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("COUNT(%s)", a.Child)
+	return "COUNT(" + a.Child.String() + ")"
 }
 
 func (a *Count) DebugString() string {
@@ -496,9 +495,9 @@ var _ sql.WindowAdaptableExpression = (*First)(nil)
 func NewFirst(e sql.Expression) *First {
 	return &First{
 		unaryAggBase{
-			UnaryExpression: expression.UnaryExpression{Child: e},
-			functionName:    "First",
-			description:     "returns the first value in a sequence of elements of an aggregation.",
+			Child:        e,
+			functionName: "First",
+			description:  "returns the first value in a sequence of elements of an aggregation.",
 		},
 	}
 }
@@ -519,7 +518,7 @@ func (a *First) String() string {
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("FIRST(%s)", a.Child)
+	return "FIRST(" + a.Child.String() + ")"
 }
 
 func (a *First) DebugString() string {
@@ -575,9 +574,9 @@ var _ sql.WindowAdaptableExpression = (*JsonArray)(nil)
 func NewJsonArray(e sql.Expression) *JsonArray {
 	return &JsonArray{
 		unaryAggBase{
-			UnaryExpression: expression.UnaryExpression{Child: e},
-			functionName:    "JsonArray",
-			description:     "returns result set as a single JSON array.",
+			Child:        e,
+			functionName: "JsonArray",
+			description:  "returns result set as a single JSON array.",
 		},
 	}
 }
@@ -598,7 +597,7 @@ func (a *JsonArray) String() string {
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("JSON_ARRAYAGG(%s)", a.Child)
+	return "JSON_ARRAYAGG(" + a.Child.String() + ")"
 }
 
 func (a *JsonArray) DebugString() string {
@@ -654,9 +653,9 @@ var _ sql.WindowAdaptableExpression = (*Last)(nil)
 func NewLast(e sql.Expression) *Last {
 	return &Last{
 		unaryAggBase{
-			UnaryExpression: expression.UnaryExpression{Child: e},
-			functionName:    "Last",
-			description:     "returns the last value in a sequence of elements of an aggregation.",
+			Child:        e,
+			functionName: "Last",
+			description:  "returns the last value in a sequence of elements of an aggregation.",
 		},
 	}
 }
@@ -677,7 +676,7 @@ func (a *Last) String() string {
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("LAST(%s)", a.Child)
+	return "LAST(" + a.Child.String() + ")"
 }
 
 func (a *Last) DebugString() string {
@@ -733,9 +732,9 @@ var _ sql.WindowAdaptableExpression = (*Max)(nil)
 func NewMax(e sql.Expression) *Max {
 	return &Max{
 		unaryAggBase{
-			UnaryExpression: expression.UnaryExpression{Child: e},
-			functionName:    "Max",
-			description:     "returns the maximum value of expr in all rows.",
+			Child:        e,
+			functionName: "Max",
+			description:  "returns the maximum value of expr in all rows.",
 		},
 	}
 }
@@ -756,7 +755,7 @@ func (a *Max) String() string {
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("MAX(%s)", a.Child)
+	return "MAX(" + a.Child.String() + ")"
 }
 
 func (a *Max) DebugString() string {
@@ -812,9 +811,9 @@ var _ sql.WindowAdaptableExpression = (*Min)(nil)
 func NewMin(e sql.Expression) *Min {
 	return &Min{
 		unaryAggBase{
-			UnaryExpression: expression.UnaryExpression{Child: e},
-			functionName:    "Min",
-			description:     "returns the minimum value of expr in all rows.",
+			Child:        e,
+			functionName: "Min",
+			description:  "returns the minimum value of expr in all rows.",
 		},
 	}
 }
@@ -835,7 +834,7 @@ func (a *Min) String() string {
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("MIN(%s)", a.Child)
+	return "MIN(" + a.Child.String() + ")"
 }
 
 func (a *Min) DebugString() string {
@@ -891,9 +890,9 @@ var _ sql.WindowAdaptableExpression = (*Sum)(nil)
 func NewSum(e sql.Expression) *Sum {
 	return &Sum{
 		unaryAggBase{
-			UnaryExpression: expression.UnaryExpression{Child: e},
-			functionName:    "Sum",
-			description:     "returns the sum of expr in all rows",
+			Child:        e,
+			functionName: "Sum",
+			description:  "returns the sum of expr in all rows",
 		},
 	}
 }
@@ -914,7 +913,7 @@ func (a *Sum) String() string {
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("SUM(%s)", a.Child)
+	return "SUM(" + a.Child.String() + ")"
 }
 
 func (a *Sum) DebugString() string {
@@ -970,9 +969,9 @@ var _ sql.WindowAdaptableExpression = (*StdDevPop)(nil)
 func NewStdDevPop(e sql.Expression) *StdDevPop {
 	return &StdDevPop{
 		unaryAggBase{
-			UnaryExpression: expression.UnaryExpression{Child: e},
-			functionName:    "StdDevPop",
-			description:     "returns the population standard deviation of expr",
+			Child:        e,
+			functionName: "StdDevPop",
+			description:  "returns the population standard deviation of expr",
 		},
 	}
 }
@@ -993,7 +992,7 @@ func (a *StdDevPop) String() string {
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("STDDEVPOP(%s)", a.Child)
+	return "STDDEVPOP(" + a.Child.String() + ")"
 }
 
 func (a *StdDevPop) DebugString() string {
@@ -1049,9 +1048,9 @@ var _ sql.WindowAdaptableExpression = (*StdDevSamp)(nil)
 func NewStdDevSamp(e sql.Expression) *StdDevSamp {
 	return &StdDevSamp{
 		unaryAggBase{
-			UnaryExpression: expression.UnaryExpression{Child: e},
-			functionName:    "StdDevSamp",
-			description:     "returns the sample standard deviation of expr",
+			Child:        e,
+			functionName: "StdDevSamp",
+			description:  "returns the sample standard deviation of expr",
 		},
 	}
 }
@@ -1072,7 +1071,7 @@ func (a *StdDevSamp) String() string {
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("STDDEVSAMP(%s)", a.Child)
+	return "STDDEVSAMP(" + a.Child.String() + ")"
 }
 
 func (a *StdDevSamp) DebugString() string {
@@ -1128,9 +1127,9 @@ var _ sql.WindowAdaptableExpression = (*VarPop)(nil)
 func NewVarPop(e sql.Expression) *VarPop {
 	return &VarPop{
 		unaryAggBase{
-			UnaryExpression: expression.UnaryExpression{Child: e},
-			functionName:    "VarPop",
-			description:     "returns the population variance of expr",
+			Child:        e,
+			functionName: "VarPop",
+			description:  "returns the population variance of expr",
 		},
 	}
 }
@@ -1151,7 +1150,7 @@ func (a *VarPop) String() string {
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("VARPOP(%s)", a.Child)
+	return "VARPOP(" + a.Child.String() + ")"
 }
 
 func (a *VarPop) DebugString() string {
@@ -1207,9 +1206,9 @@ var _ sql.WindowAdaptableExpression = (*VarSamp)(nil)
 func NewVarSamp(e sql.Expression) *VarSamp {
 	return &VarSamp{
 		unaryAggBase{
-			UnaryExpression: expression.UnaryExpression{Child: e},
-			functionName:    "VarSamp",
-			description:     "returns the sample variance of expr",
+			Child:        e,
+			functionName: "VarSamp",
+			description:  "returns the sample variance of expr",
 		},
 	}
 }
@@ -1230,7 +1229,7 @@ func (a *VarSamp) String() string {
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return fmt.Sprintf("VARSAMP(%s)", a.Child)
+	return "VARSAMP(" + a.Child.String() + ")"
 }
 
 func (a *VarSamp) DebugString() string {

@@ -15,7 +15,6 @@
 package analyzer
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -25,11 +24,11 @@ import (
 
 func TestCatalogLockTable(t *testing.T) {
 	require := require.New(t)
-	c := NewCatalog(NewDatabaseProvider())
+	c := NewCatalog(NewDatabaseProvider(), sql.EngineOverrides{})
 
-	ctx1 := sql.NewContext(context.Background())
+	ctx1 := sql.NewEmptyContext()
 	ctx1.SetCurrentDatabase("db1")
-	ctx2 := sql.NewContext(context.Background())
+	ctx2 := sql.NewEmptyContext()
 	ctx2.SetCurrentDatabase("db1")
 
 	c.LockTable(ctx1, "foo")

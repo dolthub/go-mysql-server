@@ -115,12 +115,12 @@ func (t systemIntType) Convert(ctx context.Context, v interface{}) (interface{},
 		// try getting int out of string value
 		i, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
-			return nil, sql.OutOfRange, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
+			return nil, sql.InRange, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
 		}
 		return t.Convert(ctx, i)
 	}
 
-	return nil, sql.OutOfRange, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
+	return nil, sql.InRange, sql.ErrInvalidSystemVariableValue.New(t.varName, v)
 }
 
 // Equals implements the Type interface.

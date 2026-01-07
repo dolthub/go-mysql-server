@@ -381,7 +381,8 @@ func (t Table) getCreateTable() (*plan.CreateTable, error) {
 		return nil, sql.ErrTableNotFound.New(t.name)
 	}
 	// TODO add catalog
-	createTableNode, _, err := planbuilder.Parse(sql.NewEmptyContext(), sql.MapCatalog{Tables: map[string]sql.Table{t.name: t}}, rows[0][1].(string))
+	builder := planbuilder.New(sql.NewEmptyContext(), sql.MapCatalog{Tables: map[string]sql.Table{t.name: t}}, nil)
+	createTableNode, _, _, _, err := builder.Parse(rows[0][1].(string), nil, false)
 	if err != nil {
 		return nil, err
 	}

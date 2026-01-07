@@ -26,14 +26,14 @@ import (
 )
 
 type IsIPv4 struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*IsIPv4)(nil)
 var _ sql.CollationCoercible = (*IsIPv4)(nil)
 
 func NewIsIPv4(val sql.Expression) sql.Expression {
-	return &IsIPv4{expression.UnaryExpression{Child: val}}
+	return &IsIPv4{expression.UnaryExpressionStub{Child: val}}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -72,7 +72,7 @@ func (i *IsIPv4) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	// If null, return nul
+	// If null, return null
 	if val == nil {
 		return nil, nil
 	}
@@ -94,14 +94,14 @@ func (i *IsIPv4) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 type IsIPv6 struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*IsIPv6)(nil)
 var _ sql.CollationCoercible = (*IsIPv6)(nil)
 
 func NewIsIPv6(val sql.Expression) sql.Expression {
-	return &IsIPv6{expression.UnaryExpression{Child: val}}
+	return &IsIPv6{expression.UnaryExpressionStub{Child: val}}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -140,7 +140,7 @@ func (i *IsIPv6) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, err
 	}
 
-	// If null, return nul
+	// If null, return null
 	if val == nil {
 		return nil, nil
 	}
@@ -162,14 +162,14 @@ func (i *IsIPv6) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 type IsIPv4Compat struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*IsIPv4Compat)(nil)
 var _ sql.CollationCoercible = (*IsIPv4Compat)(nil)
 
 func NewIsIPv4Compat(val sql.Expression) sql.Expression {
-	return &IsIPv4Compat{expression.UnaryExpression{Child: val}}
+	return &IsIPv4Compat{expression.UnaryExpressionStub{Child: val}}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -208,7 +208,7 @@ func (i *IsIPv4Compat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 		return nil, err
 	}
 
-	// If null, return nul
+	// If null, return null
 	if val == nil {
 		return nil, nil
 	}
@@ -234,14 +234,14 @@ func (i *IsIPv4Compat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 }
 
 type IsIPv4Mapped struct {
-	expression.UnaryExpression
+	expression.UnaryExpressionStub
 }
 
 var _ sql.FunctionExpression = (*IsIPv4Mapped)(nil)
 var _ sql.CollationCoercible = (*IsIPv4Mapped)(nil)
 
 func NewIsIPv4Mapped(val sql.Expression) sql.Expression {
-	return &IsIPv4Mapped{expression.UnaryExpression{Child: val}}
+	return &IsIPv4Mapped{expression.UnaryExpressionStub{Child: val}}
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -280,7 +280,7 @@ func (i *IsIPv4Mapped) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 		return nil, err
 	}
 
-	// If null, return nul
+	// If null, return null
 	if val == nil {
 		return nil, nil
 	}

@@ -406,14 +406,14 @@ func (c *CreateTable) WithParentForeignKeyTables(refTbls []sql.ForeignKeyTable) 
 }
 
 // CreateChecks creates the check constraints on the table.
-func (c *CreateTable) CreateChecks(ctx *sql.Context, tableNode sql.Table) error {
+func (c *CreateTable) CreateChecks(ctx *sql.Context, tableNode sql.Table, schemaFormatter sql.SchemaFormatter) error {
 	chAlterable, ok := tableNode.(sql.CheckAlterableTable)
 	if !ok {
 		return ErrNoCheckConstraintSupport.New(c.name)
 	}
 
 	for _, ch := range c.checks {
-		check, err := NewCheckDefinition(ctx, ch)
+		check, err := NewCheckDefinition(ctx, ch, schemaFormatter)
 		if err != nil {
 			return err
 		}

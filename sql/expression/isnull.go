@@ -21,7 +21,7 @@ import (
 
 // IsNull is an expression that checks if an expression is null.
 type IsNull struct {
-	UnaryExpression
+	UnaryExpressionStub
 }
 
 var _ sql.Expression = (*IsNull)(nil)
@@ -30,10 +30,10 @@ var _ sql.IsNullExpression = (*IsNull)(nil)
 
 // NewIsNull creates a new IsNull expression.
 func NewIsNull(child sql.Expression) *IsNull {
-	return &IsNull{UnaryExpression{child}}
+	return &IsNull{UnaryExpressionStub{child}}
 }
 
-// IsNullExpression implements the sql.IsNullExpression interface. This function exsists primarily
+// IsNullExpression implements the sql.IsNullExpression interface. This function exists primarily
 // to ensure the IsNullExpression interface has a unique signature.
 func (e *IsNull) IsNullExpression() bool {
 	return true

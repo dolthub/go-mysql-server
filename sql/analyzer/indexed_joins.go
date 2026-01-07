@@ -162,7 +162,7 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 	hints := m.SessionHints()
 	hints = append(hints, memo.ExtractJoinHint(n)...)
 
-	err = addIndexScans(ctx, m)
+	err = addIndexScans(ctx, m, a.Catalog)
 	if err != nil {
 		return nil, err
 	}
@@ -427,9 +427,11 @@ func keyForExpr(targetCol sql.ColumnId, tableId sql.TableId, filters []sql.Expre
 				right = e.Right()
 			}
 		}
-		if ref, ok := left.(*expression.GetField); ok && ref.Id() == targetCol {
+		if ref, ok := left.(*expression.GetField); ok && ref.Id() == targetCol &&
+			sql.IsConvertibleKeyType(left.Type(), right.Type()) {
 			key = right
-		} else if ref, ok := right.(*expression.GetField); ok && ref.Id() == targetCol {
+		} else if ref, ok := right.(*expression.GetField); ok && ref.Id() == targetCol &&
+			sql.IsConvertibleKeyType(right.Type(), left.Type()) {
 			key = left
 		} else {
 			continue
@@ -486,7 +488,7 @@ func convertSemiToInnerJoin(m *memo.Memo) error {
 					}
 				case *expression.Literal, *expression.And, *expression.Or, *expression.Equals, *expression.Arithmetic, *expression.BindVar, expression.Tuple:
 				default:
-					if _, ok := e.(expression.Equality); !ok {
+					if eq, ok := e.(expression.Equality); !ok || !eq.RepresentsEquality() {
 						return true
 					}
 				}
@@ -577,11 +579,17 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 				case *expression.GetField:
 					if rightOutTables.Contains(int(e.TableId())) {
 						projectExpressions = append(projectExpressions, e)
-						nullify = append(nullify, e)
+						// TODO: it is normally okay to use a nullable GetField in a null filter. However, we cannot do
+						// so if GetField is both nullable and part of an Or expression. We currently have no way of
+						// identifying an expression's parent during InspectExpr so we have to be extra safe by not
+						// allowing nullable GetFields in null filters at all.
+						if !e.IsNullable() {
+							nullify = append(nullify, e)
+						}
 					}
 				case *expression.Literal, *expression.And, *expression.Or, *expression.Equals, *expression.Arithmetic, *expression.BindVar, expression.Tuple:
 				default:
-					if _, ok := e.(expression.Equality); !ok {
+					if eq, ok := e.(expression.Equality); !ok || !eq.RepresentsEquality() {
 						return true
 					}
 				}
@@ -590,7 +598,7 @@ func convertAntiToLeftJoin(m *memo.Memo) error {
 				return err
 			}
 		}
-		if len(projectExpressions) == 0 {
+		if len(nullify) == 0 {
 			p := expression.NewLiteral(1, types.Int64)
 			projectExpressions = append(projectExpressions, p)
 			gf := expression.NewGetField(0, types.Int64, "1", true)
@@ -708,7 +716,7 @@ func addRightSemiJoins(ctx *sql.Context, m *memo.Memo) error {
 					}
 				case *expression.Literal, *expression.And, *expression.Or, *expression.Equals, *expression.Arithmetic, *expression.BindVar:
 				default:
-					if _, ok := e.(expression.Equality); !ok {
+					if eq, ok := e.(expression.Equality); !ok || !eq.RepresentsEquality() {
 						return true
 					}
 				}
@@ -1403,7 +1411,7 @@ func makeIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, tab plan.Table
 		found := idx.Cols()[j] == matchedIdx
 		var lit *expression.Literal
 		for _, f := range filters {
-			if eq, ok := f.(expression.Equality); ok {
+			if eq, ok := f.(expression.Equality); ok && eq.RepresentsEquality() {
 				if l, ok := eq.Left().(*expression.GetField); ok && l.Id() == idx.Cols()[j] {
 					lit, _ = eq.Right().(*expression.Literal)
 				}

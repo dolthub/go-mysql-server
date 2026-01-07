@@ -85,7 +85,7 @@ func (g *AggGen) genAggConstructor(define AggDef) {
 	fmt.Fprintf(g.w, "func New%s(e sql.Expression) *%s {\n", define.Name, define.Name)
 	fmt.Fprintf(g.w, "    return &%s{\n", define.Name)
 	fmt.Fprintf(g.w, "        unaryAggBase{\n")
-	fmt.Fprintf(g.w, "            UnaryExpression: expression.UnaryExpression{Child: e},\n")
+	fmt.Fprintf(g.w, "            Child: e,\n")
 	fmt.Fprintf(g.w, "            functionName: \"%s\",\n", define.Name)
 	fmt.Fprintf(g.w, "            description: \"%s\",\n", define.Desc)
 	fmt.Fprintf(g.w, "        },\n")
@@ -120,7 +120,7 @@ func (g *AggGen) genAggStringer(define AggDef) {
 	fmt.Fprintf(g.w, "    pr.WriteChildren(children...)\n")
 	fmt.Fprintf(g.w, "    return pr.String()\n")
 	fmt.Fprintf(g.w, "  }\n")
-	fmt.Fprintf(g.w, "  return fmt.Sprintf(\"%s(%%s)\", a.Child)\n", strings.ToUpper(sqlName))
+	fmt.Fprintf(g.w, " return \"%s(\" + a.Child.String() + \")\"\n", strings.ToUpper(sqlName))
 	fmt.Fprintf(g.w, "}\n\n")
 
 	fmt.Fprintf(g.w, "func (a *%s) DebugString() string {\n", define.Name)

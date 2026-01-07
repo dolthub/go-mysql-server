@@ -32,7 +32,7 @@ func TestAllDatabases(t *testing.T) {
 		memory.NewDatabase("c"),
 	}
 
-	c := NewCatalog(sql.NewDatabaseProvider(dbs...))
+	c := NewCatalog(sql.NewDatabaseProvider(dbs...), sql.EngineOverrides{})
 
 	databases := c.AllDatabases(sql.NewEmptyContext())
 	require.Equal(4, len(databases))
@@ -44,7 +44,7 @@ func TestCatalogDatabase(t *testing.T) {
 	require := require.New(t)
 
 	mydb := memory.NewDatabase("foo")
-	c := NewCatalog(sql.NewDatabaseProvider(mydb))
+	c := NewCatalog(sql.NewDatabaseProvider(mydb), sql.EngineOverrides{})
 
 	db, err := c.Database(sql.NewEmptyContext(), "flo")
 	require.EqualError(err, "database not found: flo, maybe you mean foo?")
@@ -61,7 +61,7 @@ func TestCatalogTable(t *testing.T) {
 	db := memory.NewDatabase("foo")
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
-	c := NewCatalog(pro)
+	c := NewCatalog(pro, sql.EngineOverrides{})
 
 	table, _, err := c.Table(ctx, "foo", "bar")
 	require.EqualError(err, "table not found: bar")
@@ -87,7 +87,7 @@ func TestCatalogUnlockTables(t *testing.T) {
 	require := require.New(t)
 	db := memory.NewDatabase("db")
 	pro := memory.NewDBProvider(db)
-	c := NewCatalog(pro)
+	c := NewCatalog(pro, sql.EngineOverrides{})
 	ctx := newContext(pro)
 
 	t1 := newLockableTable(memory.NewTable(db, "t1", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))

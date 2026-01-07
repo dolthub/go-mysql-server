@@ -725,12 +725,13 @@ func (b *BaseBuilder) buildShowIndexes(ctx *sql.Context, n *plan.ShowIndexes, ro
 
 func (b *BaseBuilder) buildShowCreateTable(ctx *sql.Context, n *plan.ShowCreateTable, row sql.Row) (sql.RowIter, error) {
 	return &showCreateTablesIter{
-		table:    n.Child,
-		isView:   n.IsView,
-		indexes:  n.Indexes,
-		checks:   n.Checks(),
-		schema:   n.TargetSchema(),
-		pkSchema: n.PrimaryKeySchema,
+		table:     n.Child,
+		isView:    n.IsView,
+		indexes:   n.Indexes,
+		checks:    n.Checks(),
+		schema:    n.TargetSchema(),
+		pkSchema:  n.PrimaryKeySchema,
+		formatter: b.schemaFormatter,
 	}, nil
 }
 

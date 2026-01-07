@@ -2257,6 +2257,47 @@ WHERE
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/10186
+		name: "natural right join with varchar primary key",
+		setup: [][]string{
+			{
+				"create table t0(c0 varchar(500), c1 boolean, primary key(c0))",
+				"create table t1(c0 boolean, c1 boolean)",
+				"insert into t1(c0, c1) values (false, true)",
+				"insert into t0(c0, c1) values ('i', true)",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    `SELECT t0.c1, t0.c0 from t0 natural right join t1`,
+				Expected: []sql.Row{{1, "i"}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/10233
+		name: "inner join with out of range key",
+		setup: [][]string{
+			{
+				"create table t0(c0 boolean, c1 int)",
+				"create index t0i0 on t0(c0, c1)",
+				"create table t1(c0 int)",
+				"insert into t0(c0, c1) values (-128, 1)",
+				"insert into t1(c0) values (1),(2)",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select * from t1 inner join t0 on t0.c0<=>(-87840)",
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "select * from t0 inner join t1 on t0.c0<=>(-87840)",
+				Expected: []sql.Row{},
+			},
+		},
+	},
 }
 
 var rangeJoinOpTests = []JoinOpTests{

@@ -259,6 +259,10 @@ func (p *relProps) populateFds() {
 		for _, f := range rel.Filters {
 			switch f := f.(type) {
 			case expression.Equality:
+				if !f.RepresentsEquality() {
+					continue
+				}
+
 				if l, ok := f.Left().(*expression.GetField); ok {
 					switch r := f.Right().(type) {
 					case *expression.GetField:
@@ -319,7 +323,7 @@ func (m *Memo) CardMemoGroups(ctx *sql.Context, g *ExprGroup) {
 	if g.RelProps.stat != nil {
 		return
 	}
-	for g := range g.children() {
+	for g := range g.children {
 		m.CardMemoGroups(ctx, g)
 	}
 	s := m.statsForRel(ctx, g.First)

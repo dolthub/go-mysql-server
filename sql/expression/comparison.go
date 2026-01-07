@@ -69,6 +69,8 @@ func PreciseComparison(e sql.Expression) bool {
 			}
 
 			// comparisons with type conversions are sometimes imprecise
+			// TODO: this sometimes leads to creating unnecessary filters
+			//  for example, when comparing int key to decimal key (that is too large for integer).
 			if !left.Equals(right) {
 				imprecise = true
 				return false
@@ -239,7 +241,7 @@ func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right interface{})
 	} else {
 		// If right side is convertible to enum/set, convert. Otherwise, convert left side
 		if leftIsEnumOrSet && (types.IsText(rightType) || types.IsNumber(rightType)) {
-			if r, inRange, err := leftType.Convert(ctx, right); inRange && err == nil {
+			if r, inRange, err := leftType.Convert(ctx, right); inRange == sql.InRange && err == nil {
 				return left, r, leftType, nil
 			} else {
 				l, _, err := types.TypeAwareConversion(ctx, left, leftType, rightType)
@@ -251,7 +253,7 @@ func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right interface{})
 		}
 		// If left side is convertible to enum/set, convert. Otherwise, convert right side
 		if rightIsEnumOrSet && (types.IsText(leftType) || types.IsNumber(leftType)) {
-			if l, inRange, err := rightType.Convert(ctx, left); inRange && err == nil {
+			if l, inRange, err := rightType.Convert(ctx, left); inRange == sql.InRange && err == nil {
 				return l, right, rightType, nil
 			} else {
 				r, _, err := types.TypeAwareConversion(ctx, right, rightType, leftType)
@@ -525,6 +527,11 @@ func (e *NullSafeEquals) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 	}
 
 	return result == 0, nil
+}
+
+// IsNullable implements sql.Expression
+func (e *NullSafeEquals) IsNullable() bool {
+	return false
 }
 
 // WithChildren implements the Expression interface.
