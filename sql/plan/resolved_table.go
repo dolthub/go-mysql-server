@@ -18,8 +18,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/mysql_db"
-
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -94,9 +92,6 @@ func (t *ResolvedTable) Database() sql.Database {
 }
 
 func (t *ResolvedTable) UnwrappedDatabase() sql.Database {
-	if privDb, ok := t.SqlDatabase.(mysql_db.PrivilegedDatabase); ok {
-		return privDb.Unwrap()
-	}
 	return t.SqlDatabase
 }
 

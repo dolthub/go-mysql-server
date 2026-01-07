@@ -20,7 +20,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -29,9 +28,6 @@ import (
 func wrapInTransaction(t *testing.T, db sql.Database, harness Harness, fn func()) {
 	ctx := NewContext(harness)
 	ctx.SetCurrentDatabase(db.Name())
-	if privilegedDatabase, ok := db.(mysql_db.PrivilegedDatabase); ok {
-		db = privilegedDatabase.Unwrap()
-	}
 
 	ts, transactionsSupported := ctx.Session.(sql.TransactionSession)
 

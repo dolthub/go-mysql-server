@@ -23,7 +23,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	dtablefunctions "github.com/dolthub/go-mysql-server/sql/expression/tablefunction"
-	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -91,7 +90,7 @@ func (b *Builder) canConvertToCrossJoin(te *ast.JoinTableExpr) bool {
 func (b *Builder) buildJoin(inScope *scope, te *ast.JoinTableExpr) (outScope *scope) {
 	b.qFlags.Set(sql.QFlagInnerJoin)
 
-	//TODO build individual table expressions
+	// TODO build individual table expressions
 	// collect column  definitions
 	leftScope := b.buildDataSource(inScope, te.LeftExpr)
 
@@ -449,14 +448,11 @@ func (b *Builder) resolveTable(tab, db string, asOf interface{}) *plan.ResolvedT
 		b.handleErr(err)
 	}
 
-	if privilegedDatabase, ok := database.(mysql_db.PrivilegedDatabase); ok {
-		database = privilegedDatabase.Unwrap()
-	}
 	return plan.NewResolvedTable(table, database, asOf)
 }
 
 func (b *Builder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outScope *scope) {
-	//TODO what are valid mysql table arguments
+	// TODO what are valid mysql table arguments
 	args := make([]sql.Expression, 0, len(t.Exprs))
 	for _, expr := range t.Exprs {
 		switch e := expr.(type) {

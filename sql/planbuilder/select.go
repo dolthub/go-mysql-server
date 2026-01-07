@@ -21,7 +21,6 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -221,9 +220,6 @@ func (b *Builder) currentDb() sql.Database {
 			b.handleErr(err)
 		}
 		b.currentDatabase = database
-	}
-	if privilegedDatabase, ok := b.currentDatabase.(mysql_db.PrivilegedDatabase); ok {
-		b.currentDatabase = privilegedDatabase.Unwrap()
 	}
 	return b.currentDatabase
 }

@@ -16,7 +16,6 @@ package plan
 
 import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 
@@ -123,9 +122,6 @@ func (cv *CreateView) Database() sql.Database {
 // WithDatabase implements the Databaser interface, and it returns a copy of this
 // node with the specified database.
 func (cv *CreateView) WithDatabase(database sql.Database) (sql.Node, error) {
-	if privilegedDatabase, ok := database.(mysql_db.PrivilegedDatabase); ok {
-		database = privilegedDatabase.Unwrap()
-	}
 	newCreate := *cv
 	newCreate.database = database
 	return &newCreate, nil

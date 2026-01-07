@@ -1863,11 +1863,6 @@ func allDatabasesWithNames(ctx *Context, cat Catalog, privCheck bool) ([]DbWithN
 
 	allDbs := cat.AllDatabases(ctx)
 	for _, db := range allDbs {
-		if privCheck {
-			if privDatabase, ok := db.(mysql_db.PrivilegedDatabase); ok {
-				db = privDatabase.Unwrap()
-			}
-		}
 		dbs = append(dbs, DbWithNames{db, "def", db.Name()})
 	}
 

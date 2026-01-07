@@ -19,7 +19,6 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
@@ -224,9 +223,6 @@ func CheckPrivilegeNameForDatabase(db sql.Database) string {
 	}
 
 	checkDbName := db.Name()
-	if pdb, ok := db.(mysql_db.PrivilegedDatabase); ok {
-		db = pdb.Unwrap()
-	}
 	if adb, ok := db.(sql.AliasedDatabase); ok {
 		checkDbName = adb.AliasedName()
 	}

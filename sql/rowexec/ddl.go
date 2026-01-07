@@ -1055,19 +1055,14 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 		return sql.RowsToRowIter(), err
 	}
 
-	maybePrivDb := n.Db
-	if privDb, ok := maybePrivDb.(mysql_db.PrivilegedDatabase); ok {
-		maybePrivDb = privDb.Unwrap()
-	}
-
 	if n.Temporary() {
-		creatable, ok := maybePrivDb.(sql.TemporaryTableCreator)
+		creatable, ok := n.Db.(sql.TemporaryTableCreator)
 		if !ok {
 			return sql.RowsToRowIter(), sql.ErrTemporaryTableNotSupported.New()
 		}
 		err = creatable.CreateTemporaryTable(ctx, n.Name(), n.PkSchema(), n.Collation)
 	} else {
-		switch creatable := maybePrivDb.(type) {
+		switch creatable := n.Db.(type) {
 		case sql.IndexedTableCreator:
 			var pkIdxDef *sql.IndexDef
 			for _, idxDef := range n.Indexes() {
@@ -1088,7 +1083,7 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 					return sql.RowsToRowIter(), err
 				}
 			} else {
-				creatable, ok := maybePrivDb.(sql.TableCreator)
+				creatable, ok := n.Db.(sql.TableCreator)
 				if !ok {
 					return sql.RowsToRowIter(), sql.ErrCreateTableNotSupported.New(n.Db.Name())
 				}
@@ -1128,8 +1123,8 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 		}
 	}
 
-	//TODO: in the event that foreign keys or indexes aren't supported, you'll be left with a created table and no foreign keys/indexes
-	//this also means that if a foreign key or index fails, you'll only have what was declared up to the failure
+	// TODO: in the event that foreign keys or indexes aren't supported, you'll be left with a created table and no foreign keys/indexes
+	// this also means that if a foreign key or index fails, you'll only have what was declared up to the failure
 	tableNode, ok, err := n.Db.GetTableInsensitive(ctx, n.Name())
 	if err != nil {
 		return sql.RowsToRowIter(), err

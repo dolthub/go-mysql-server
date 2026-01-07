@@ -31,7 +31,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/fulltext"
-	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -503,7 +502,7 @@ func handleFkColumnRename(ctx *sql.Context, fkTable sql.ForeignKeyTable, db sql.
 	if len(parentFks) > 0 {
 		dbName := strings.ToLower(db.Name())
 		for _, parentFk := range parentFks {
-			//TODO: add support for multi db foreign keys
+			// TODO: add support for multi db foreign keys
 			if dbName != strings.ToLower(parentFk.ParentDatabase) {
 				return fmt.Errorf("renaming columns involved in foreign keys referencing a different database" +
 					" is not yet supported")
@@ -1715,7 +1714,7 @@ func (c *createProcedureIter) Next(ctx *sql.Context) (sql.Row, error) {
 	if !run {
 		return nil, io.EOF
 	}
-	//TODO: if "automatic_sp_privileges" is true then the creator automatically gets EXECUTE and ALTER ROUTINE on this procedure
+	// TODO: if "automatic_sp_privileges" is true then the creator automatically gets EXECUTE and ALTER ROUTINE on this procedure
 	pdb, ok := c.db.(sql.StoredProcedureDatabase)
 	if !ok {
 		return nil, sql.ErrStoredProceduresNotSupported.New(c.db.Name())
@@ -2080,14 +2079,6 @@ func generateIndexName(ctx *sql.Context, idxAltable sql.IndexAlterableTable, idx
 // getFulltextDatabase returns the fulltext.Database from the given sql.Database, or an error if it is not supported.
 func getFulltextDatabase(db sql.Database) (fulltext.Database, error) {
 	fullTextDb, isFulltextDb := db.(fulltext.Database)
-	if isFulltextDb {
-		return fullTextDb, nil
-	}
-	privDb, isPrivDb := db.(mysql_db.PrivilegedDatabase)
-	if !isPrivDb {
-		return nil, sql.ErrCreateTableNotSupported.New()
-	}
-	fullTextDb, isFulltextDb = privDb.Unwrap().(fulltext.Database)
 	if isFulltextDb {
 		return fullTextDb, nil
 	}

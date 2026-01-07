@@ -25,7 +25,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/expression/function"
-	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -41,9 +40,9 @@ func (b *Builder) resolveDb(name string) sql.Database {
 	}
 
 	// todo show tables as of expects privileged
-	//if privilegedDatabase, ok := database.(mysql_db.PrivilegedDatabase); ok {
+	// if privilegedDatabase, ok := database.(mysql_db.PrivilegedDatabase); ok {
 	//	database = privilegedDatabase.Unwrap()
-	//}
+	// }
 	return database
 }
 
@@ -332,17 +331,9 @@ func (b *Builder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *scope)
 	schema.Schema = assignColumnIndexesInSchema(schema.Schema)
 	chDefs = assignColumnIndexesInCheckDefs(chDefs, schema.Schema)
 
-	if privDb, ok := database.(mysql_db.PrivilegedDatabase); ok {
-		if sv, ok := privDb.Unwrap().(sql.SchemaValidator); ok {
-			if err := sv.ValidateSchema(schema.PhysicalSchema()); err != nil {
-				b.handleErr(err)
-			}
-		}
-	} else {
-		if sv, ok := database.(sql.SchemaValidator); ok {
-			if err := sv.ValidateSchema(schema.PhysicalSchema()); err != nil {
-				b.handleErr(err)
-			}
+	if sv, ok := database.(sql.SchemaValidator); ok {
+		if err := sv.ValidateSchema(schema.PhysicalSchema()); err != nil {
+			b.handleErr(err)
 		}
 	}
 
@@ -848,7 +839,7 @@ func (b *Builder) buildIndexDefs(_ *scope, spec *ast.TableSpec) (idxDefs sql.Ind
 		}
 		idxDefs = append(idxDefs, &sql.IndexDef{
 			Name:       idxDef.Info.Name.String(),
-			Storage:    sql.IndexUsing_Default, //TODO: add vitess support for USING
+			Storage:    sql.IndexUsing_Default, // TODO: add vitess support for USING
 			Constraint: constraint,
 			Columns:    columns,
 			Comment:    comment,
