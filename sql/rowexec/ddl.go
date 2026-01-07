@@ -516,7 +516,7 @@ func (b *BaseBuilder) buildDropView(ctx *sql.Context, n *plan.DropView, row sql.
 		}
 	}
 
-	return sql.RowsToRowIter(), nil
+	return rowIterWithOkResultWithZeroRowsAffected(), nil
 }
 
 func (b *BaseBuilder) buildAlterUser(ctx *sql.Context, a *plan.AlterUser, _ sql.Row) (sql.RowIter, error) {
