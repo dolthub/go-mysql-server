@@ -451,7 +451,7 @@ func (b *BaseBuilder) buildCreateSchema(ctx *sql.Context, n *plan.CreateSchema, 
 	// If no database is selected, first try to fall back to CREATE DATABASE
 	// since CREATE SCHEMA is a synonym for CREATE DATABASE in MySQL
 	// https://dev.mysql.com/doc/refman/8.4/en/create-database.html
-	// TODO: For PostgreSQL, return an error if no database is selected.
+	// TODO: For PostgreSQL, return an error if no database is selected (should be impossible)
 	if database == "" {
 		return b.buildCreateDB(ctx, &plan.CreateDB{
 			Catalog:     n.Catalog,
@@ -888,7 +888,7 @@ func (b *BaseBuilder) buildDropSchema(ctx *sql.Context, n *plan.DropSchema, row 
 	// If no database is selected, first try to fall back to CREATE DATABASE
 	// since CREATE SCHEMA is a synonym for CREATE DATABASE in MySQL
 	// https://dev.mysql.com/doc/refman/8.4/en/create-database.html
-	// TODO: For PostgreSQL, return an error if no database is selected.
+	// TODO: For PostgreSQL, return an error if no database is selected (should be impossible)
 	if database == "" {
 		return b.buildDropDB(ctx, &plan.DropDB{
 			Catalog:  n.Catalog,
@@ -904,7 +904,7 @@ func (b *BaseBuilder) buildDropSchema(ctx *sql.Context, n *plan.DropSchema, row 
 
 	sdb, ok := db.(sql.SchemaDatabase)
 	if !ok {
-		// If schemas aren't supported, treat CREATE SCHEMA as a synonym for CREATE DATABASE (as is the case in MySQL)
+		// If schemas aren't supported, treat DROP SCHEMA as a synonym for DROP DATABASE (as is the case in MySQL)
 		return b.buildDropDB(ctx, &plan.DropDB{
 			Catalog:  n.Catalog,
 			DbName:   n.DbName,

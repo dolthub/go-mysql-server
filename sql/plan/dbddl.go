@@ -163,6 +163,7 @@ func NewDropDatabase(dbName string, ifExists bool) *DropDB {
 	}
 }
 
+// DropSchema removes a schema from the Catalog using the currently selected database.
 type DropSchema struct {
 	*DropDB
 }
