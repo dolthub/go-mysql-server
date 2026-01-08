@@ -140,7 +140,7 @@ func (e *Alias) Describe(options sql.DescribeOptions) string {
 			return fmt.Sprintf("%s->%s:%d", sql.Describe(e.Child, options), e.name, e.id)
 		}
 	}
-	return fmt.Sprintf("%s as %s", sql.Describe(e.Child, options), e.name)
+	return sql.Describe(e.Child, options) + " as " + e.name
 }
 
 func (e *Alias) String() string {
