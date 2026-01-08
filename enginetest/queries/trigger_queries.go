@@ -3927,13 +3927,64 @@ end;
 			"create table C(col0 int)",
 			"create trigger test_trigger after update on A for each row insert into C (col0) select col0 from B where B.col0 = new.col0",
 			"drop table B",
-			"show triggers", // no error expected here
-			"create table B(a int, b int)",
-			"show triggers",               // no error expected here
-			"insert into C values (12)",   // no error expected here
-			"insert into A values (1, 2)", // no error expected here
 		},
 		Assertions: []ScriptTestAssertion{
+			{
+				Query: "show triggers",
+				// assert trigger is still there
+				Expected: []sql.Row{
+					{
+						"test_trigger", // Trigger
+						"UPDATE",       // Event
+						"A",            // Table
+						"insert into C (col0) select col0 from B where B.col0 = new.col0", // Statement
+						"AFTER",               // Timing
+						time.Unix(0, 0).UTC(), // Created
+						"",                    // sql_mode
+						"",                    // Definer
+						sql.Collation_Default.CharacterSet().String(), // character_set_client
+						sql.Collation_Default.String(),                // collation_connection
+						sql.Collation_Default.String(),                // Database Collation
+					},
+				},
+			},
+			{
+				Query: "create table B(a int, b int)",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show triggers",
+				// assert trigger is still there
+				Expected: []sql.Row{
+					{
+						"test_trigger", // Trigger
+						"UPDATE",       // Event
+						"A",            // Table
+						"insert into C (col0) select col0 from B where B.col0 = new.col0", // Statement
+						"AFTER",               // Timing
+						time.Unix(0, 0).UTC(), // Created
+						"",                    // sql_mode
+						"",                    // Definer
+						sql.Collation_Default.CharacterSet().String(), // character_set_client
+						sql.Collation_Default.String(),                // collation_connection
+						sql.Collation_Default.String(),                // Database Collation
+					},
+				},
+			},
+			{
+				Query: "insert into C values (12)",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
+			{
+				Query: "insert into A values (1, 2)",
+				Expected: []sql.Row{
+					{types.NewOkResult(1)},
+				},
+			},
 			{
 				Query:       "update A set A.col0=2 where true",
 				ExpectedErr: sql.ErrTableColumnNotFound,
@@ -3943,13 +3994,38 @@ end;
 				Expected: []sql.Row{{1, 2}},
 			},
 			{
+				Query: "show create trigger test_trigger",
+				// assert trigger info is there
+				Expected: []sql.Row{
+					{
+						"test_trigger",
+						"",
+						"create trigger test_trigger after update on A for each row insert into C (col0) select col0 from B where B.col0 = new.col0",
+						sql.Collation_Default.CharacterSet().String(),
+						sql.Collation_Default.String(),
+						sql.Collation_Default.String(),
+						time.Unix(0, 0).UTC(),
+					},
+				},
+			},
+			{
 				Query: "drop trigger test_trigger",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
+			{
+				Query: "show triggers",
+				// assert trigger has been dropped
+				Expected: []sql.Row{},
 			},
 			{
 				// https://github.com/dolthub/dolt/issues/10291
 				Skip:  true,
 				Query: "create trigger test_trigger after update on A for each row insert into C (col0) select col0 from B where B.col0 = new.col0",
-				// no error expected here
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
 			},
 		},
 	},
