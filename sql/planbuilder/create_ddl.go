@@ -53,48 +53,46 @@ func (b *Builder) buildCreateTrigger(inScope *scope, subQuery string, fullQuery 
 		}
 	}
 
-	// resolve table -> create initial scope
-	triggerCtx := b.TriggerCtx()
-	prevTriggerCtxActive := triggerCtx.Active
-	triggerCtx.Active = true
-	defer func() {
-		triggerCtx.Active = prevTriggerCtxActive
-	}()
-
-	tableName := strings.ToLower(c.Table.Name.String())
-	tableScope, ok := b.buildResolvedTableForTablename(inScope, c.Table, nil)
-	if !ok {
-		b.handleErr(sql.ErrTableNotFound.New(tableName))
-	}
-	if _, ok := tableScope.node.(*plan.UnresolvedTable); ok {
-		// unknown table in trigger body is OK, but the target table must exist
-		b.handleErr(sql.ErrTableNotFound.New(tableName))
-	}
-
 	db, ok := b.resolveDbForTable(c.Table)
 	if !ok {
 		b.handleErr(sql.ErrDatabaseSchemaNotFound.New(c.Table.SchemaQualifier.String()))
 	}
 
-	definer := getCurrentUserForDefiner(b.ctx, c.TriggerSpec.Definer)
+	tableScope, ok := b.buildResolvedTableForTablename(inScope, c.Table, nil)
+	if !ok {
+		b.handleErr(sql.ErrTableNotFound.New(c.Table.Name.String()))
+	}
+	if _, ok := tableScope.node.(*plan.UnresolvedTable); ok {
+		// unknown table in trigger body is OK, but the target table must exist
+		b.handleErr(sql.ErrTableNotFound.New(c.Table.Name.String()))
+	}
 
-	var bodyNode sql.Node
+	triggerCtx := b.TriggerCtx()
+
 	if _, ok := tableScope.node.(*plan.ResolvedTable); !ok {
-		if prevTriggerCtxActive {
-			// previous ctx set means this is an INSERT or SHOW
-			// old version of Dolt permitted a bad trigger on VIEW
-			// warn and noop
-			b.ctx.Warn(0, "trigger on view is not supported; 'DROP TRIGGER  %s' to fix", c.TriggerSpec.TrigName.Name.String())
-			bodyNode = plan.NewResolvedDualTable()
+		// Old versions of GMS/Dolt permitted creating an invalid trigger on VIEW
+		if triggerCtx.LoadOnly {
+			// LoadOnly means a CreateTrigger statement was parsed while loading triggers for SHOW, INSERT, UPDATE, or
+			// DELETE. Warn and no-op. Since tableScope.node here is not a ResolvedTable, it won't be matched to any
+			// table during applyTriggers.
+			b.ctx.Warn(0, "Trigger on view is not supported. Please run 'DROP TRIGGER %s;'", c.TriggerSpec.TrigName.Name.String())
 		} else {
-			// top-level call is DDL
-			err := sql.ErrExpectedTableFoundView.New(tableName)
+			// Top-level call is DDL, and we should not allow a trigger on a VIEW to be created here. Or somehow, a
+			// trigger on a VIEW has been matched during applyTriggers, and we should not run that trigger.
+			err := sql.ErrExpectedTableFoundView.New(c.Table.Name.String())
 			b.handleErr(err)
 		}
 	}
 
+	var bodyNode sql.Node
 	bodyStr := strings.TrimSpace(fullQuery[c.SubStatementPositionStart:c.SubStatementPositionEnd])
-	if bodyNode == nil && !triggerCtx.LoadOnly {
+	if !triggerCtx.LoadOnly {
+		prevTriggerCtxActive := triggerCtx.Active
+		triggerCtx.Active = true
+		defer func() {
+			triggerCtx.Active = prevTriggerCtxActive
+		}()
+
 		// todo scope with new and old columns provided
 		// insert/update have "new"
 		// update/delete have "old"
@@ -136,7 +134,7 @@ func (b *Builder) buildCreateTrigger(inScope *scope, subQuery string, fullQuery 
 		subQuery,
 		bodyStr,
 		b.ctx.QueryTime(),
-		definer,
+		getCurrentUserForDefiner(b.ctx, c.TriggerSpec.Definer),
 	)
 	return outScope
 }
