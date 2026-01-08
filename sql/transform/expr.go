@@ -114,6 +114,16 @@ func InspectExpr(expr sql.Expression, f func(sql.Expression) bool) (stop bool) {
 		if InspectExpr(e.Right(), f) {
 			return true
 		}
+	case *expression.Between:
+		if InspectExpr(e.Val, f) {
+			return true
+		}
+		if InspectExpr(e.Lower, f) {
+			return true
+		}
+		if InspectExpr(e.Upper, f) {
+			return true
+		}
 	default:
 		children := e.Children()
 		for _, child := range children {
