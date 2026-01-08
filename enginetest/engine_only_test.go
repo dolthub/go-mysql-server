@@ -657,7 +657,7 @@ func TestTriggerViewWarning(t *testing.T) {
 	enginetest.CreateNewConnectionForServerEngine(ctx, e)
 
 	enginetest.TestQueryWithContext(t, ctx, e, harness, "insert into mytable values (4, 'fourth row')", []sql.Row{{types.NewOkResult(1)}}, nil, nil, nil)
-	enginetest.TestQueryWithContext(t, ctx, e, harness, "SHOW WARNINGS", []sql.Row{{"Warning", 0, "trigger on view is not supported; 'DROP TRIGGER  view_trig' to fix"}}, nil, nil, nil)
+	enginetest.TestQueryWithContext(t, ctx, e, harness, "SHOW WARNINGS", []sql.Row{{"Warning", 0, "Trigger on view is not supported. Please run 'DROP TRIGGER  view_trig;'"}}, nil, nil, nil)
 	enginetest.AssertErrWithCtx(t, e, harness, ctx, "insert into myview values (5, 'fifth row')", nil, nil, "expected insert destination to be resolved or unresolved table")
 }
 

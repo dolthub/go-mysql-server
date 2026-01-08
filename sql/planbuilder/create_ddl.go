@@ -68,29 +68,25 @@ func (b *Builder) buildCreateTrigger(inScope *scope, subQuery string, fullQuery 
 	}
 
 	triggerCtx := b.TriggerCtx()
-	prevTriggerCtxActive := triggerCtx.Active
-	var bodyNode sql.Node
+
 	if _, ok := tableScope.node.(*plan.ResolvedTable); !ok {
-		if prevTriggerCtxActive {
-			// previous ctx set means this is an INSERT, UPDATE, or DELETE
-			// old version of Dolt permitted a bad trigger on VIEW
-			// warn and noop
-			// TODO: This currently produces a warning for every single INSERT, UPDATE, or DELETE if the database
-			//  contains a trigger on a view. Can a trigger on a view even get matched during applyTriggers? If so, it's
-			//  probably only necessary to show this warning when the trigger is actually triggered when triggerCtx.Call
-			//  is true, in which case we would no longer need to set triggerCtx.Active to true when parsing for
-			//  affected triggers during applyTriggers
-			b.ctx.Warn(0, "trigger on view is not supported; 'DROP TRIGGER  %s' to fix", c.TriggerSpec.TrigName.Name.String())
-			bodyNode = plan.NewResolvedDualTable()
+		// Old version of Dolt permitted creating a bad trigger on VIEW
+		if triggerCtx.LoadOnly {
+			// LoadOnly means a CreateTrigger statement was parsed while loading triggers for SHOW, INSERT, UPDATE, or
+			// DELETE. Warn and no-op. Since tableScope.node here is not a ResolvedTable, it won't be matched to any
+			// table during applyTriggers.
+			b.ctx.Warn(0, "Trigger on view is not supported. Please run 'DROP TRIGGER  %s;'", c.TriggerSpec.TrigName.Name.String())
 		} else {
-			// top-level call is DDL
+			// Top-level call is DDL, and we should not allow a trigger on a view to be created here.
 			err := sql.ErrExpectedTableFoundView.New(c.Table.Name.String())
 			b.handleErr(err)
 		}
 	}
 
+	var bodyNode sql.Node
 	bodyStr := strings.TrimSpace(fullQuery[c.SubStatementPositionStart:c.SubStatementPositionEnd])
-	if bodyNode == nil && !triggerCtx.LoadOnly {
+	if !triggerCtx.LoadOnly {
+		prevTriggerCtxActive := triggerCtx.Active
 		triggerCtx.Active = true
 		defer func() {
 			triggerCtx.Active = prevTriggerCtxActive

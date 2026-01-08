@@ -217,7 +217,6 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 			var parsedTrigger sql.Node
 			sqlMode := sql.NewSqlModeFromString(trigger.SqlMode)
 			b.SetParserOptions(sqlMode.ParserOptions())
-			b.TriggerCtx().Active = true
 			b.TriggerCtx().LoadOnly = true
 			parsedTrigger, _, _, _, err = b.Parse(trigger.CreateStatement, nil, false)
 			b.Reset()
