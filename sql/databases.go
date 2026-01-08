@@ -79,6 +79,10 @@ type Database interface {
 // SchemaDatabase is a database comprising multiple schemas that can each be queried for tables.
 type SchemaDatabase interface {
 	Nameable
+	// SupportsDatabaseSchemas returns whether this database supports multiple schemas. This is necessary because some
+	// integrators may use implementations that fulfill the interface without actually supporting multiple schemas in
+	// all configurations.
+	SupportsDatabaseSchemas() bool
 	// GetSchema returns the database with the schema name provided, matched case-insensitive.
 	// If the schema does not exist, the boolean return value should be false.
 	GetSchema(ctx *Context, schemaName string) (DatabaseSchema, bool, error)
@@ -87,6 +91,8 @@ type SchemaDatabase interface {
 	CreateSchema(ctx *Context, schemaName string) error
 	// AllSchemas returns all schemas in the database.
 	AllSchemas(ctx *Context) ([]DatabaseSchema, error)
+	// DropSchema drops the schema with the name given.
+	DropSchema(ctx *Context, schemaName string) error
 }
 
 // DatabaseSchema is a schema that can be queried for tables. It is functionally equivalent to a Database

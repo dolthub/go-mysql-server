@@ -163,6 +163,23 @@ func NewDropDatabase(dbName string, ifExists bool) *DropDB {
 	}
 }
 
+// DropSchema removes a schema from the Catalog using the currently selected database.
+type DropSchema struct {
+	*DropDB
+}
+
+var _ sql.Node = (*DropSchema)(nil)
+
+// NewDropSchema returns a new DropSchema.
+func NewDropSchema(schemaName string, ifExists bool) *DropSchema {
+	return &DropSchema{
+		&DropDB{
+			DbName:   schemaName,
+			IfExists: ifExists,
+		},
+	}
+}
+
 // AlterDB alters a database from the Catalog.
 type AlterDB struct {
 	Catalog   sql.Catalog
