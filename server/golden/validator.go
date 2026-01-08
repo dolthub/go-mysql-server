@@ -21,6 +21,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/dolthub/go-mysql-server/errguard"
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -108,11 +109,11 @@ func (v Validator) ComMultiQuery(
 	ag := newResultAggregator(callback)
 	var remainder string
 	eg, _ := errgroup.WithContext(context.Background())
-	eg.Go(func() (err error) {
+	errguard.Go(eg, func() (err error) {
 		remainder, err = v.handler.ComMultiQuery(ctx, c, query, ag.processResults)
 		return
 	})
-	eg.Go(func() error {
+	errguard.Go(eg, func() error {
 		// ignore errors from MySQL connection
 		_, _ = v.golden.ComMultiQuery(ctx, c, query, ag.processGoldenResults)
 		return nil
@@ -136,10 +137,10 @@ func (v Validator) ComQuery(
 ) error {
 	ag := newResultAggregator(callback)
 	eg, _ := errgroup.WithContext(context.Background())
-	eg.Go(func() error {
+	errguard.Go(eg, func() error {
 		return v.handler.ComQuery(ctx, c, query, ag.processResults)
 	})
-	eg.Go(func() error {
+	errguard.Go(eg, func() error {
 		// ignore errors from MySQL connection
 		_ = v.golden.ComQuery(ctx, c, query, ag.processGoldenResults)
 		return nil

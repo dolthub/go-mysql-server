@@ -22,6 +22,7 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/dolthub/go-mysql-server/errguard"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -84,7 +85,7 @@ func NewListener(protocol, address string, unixSocketPath string) (*Listener, er
 		shutdown:     make(chan struct{}),
 		once:         &sync.Once{},
 	}
-	l.eg.Go(func() error {
+	errguard.Go(l.eg, func() error {
 		for {
 			conn, err := l.netListener.Accept()
 			// connection can be closed already from the other goroutine
@@ -102,7 +103,7 @@ func NewListener(protocol, address string, unixSocketPath string) (*Listener, er
 	})
 
 	if l.unixListener != nil {
-		l.eg.Go(func() error {
+		errguard.Go(l.eg, func() error {
 			for {
 				conn, err := l.unixListener.Accept()
 				// connection can be closed already from the other goroutine
