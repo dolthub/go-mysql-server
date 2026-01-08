@@ -16,6 +16,13 @@ package enginetest_test
 
 import (
 	"fmt"
+	"log"
+	"os"
+	"testing"
+
+	"github.com/dolthub/sqllogictest/go/logictest"
+	"github.com/stretchr/testify/require"
+
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
@@ -25,11 +32,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
 	_ "github.com/dolthub/go-mysql-server/sql/variables"
-	"github.com/dolthub/sqllogictest/go/logictest"
-	"github.com/stretchr/testify/require"
-	"log"
-	"os"
-	"testing"
 )
 
 // This file is for validating both the engine itself and the in-memory database implementation in the memory package.
