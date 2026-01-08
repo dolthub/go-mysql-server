@@ -1243,6 +1243,33 @@ var JoinScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/10268
+		// https://github.com/dolthub/dolt/issues/10295
+		// TODO: when natural full join has been implemented, move this to join_op_tests
+		Name: "natural full join",
+		SetUpScript: []string{
+			"CREATE TABLE t0(c0 BOOLEAN, c1 INT, PRIMARY KEY(c0));",
+			"CREATE TABLE t1(c0 BOOLEAN, c1 VARCHAR(500), PRIMARY KEY(c0));",
+			"INSERT INTO t1(c1, c0) VALUES (NULL, true);",
+			"INSERT INTO t0(c0, c1) VALUES (true, 4);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// https://github.com/dolthub/dolt/issues/10295
+				Skip:  true,
+				Query: "SELECT * FROM t1 NATURAL FULL JOIN t0;",
+				Expected: []sql.Row{
+					{1, 4},
+					{1, nil},
+				},
+			},
+			{
+				Query:          "SELECT * FROM t1 NATURAL FULL JOIN t0;",
+				ExpectedErrStr: "unknown using join type: natural full join",
+			},
+		},
+	},
 }
 
 var LateralJoinScriptTests = []ScriptTest{
