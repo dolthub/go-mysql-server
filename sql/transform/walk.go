@@ -16,7 +16,6 @@ package transform
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 )
 
 // Visitor visits nodes in the plan.
@@ -109,38 +108,7 @@ func WalkExpressionsWithNode(v sql.NodeVisitor, n sql.Node) {
 // InspectExpressions traverses the plan and calls sql.Inspect on any
 // expression it finds.
 func InspectExpressions(node sql.Node, f func(sql.Expression) bool) {
-	Inspect(node, func(node sql.Node) bool {
-		if n, ok := node.(sql.Expressioner); ok {
-			for _, expr := range n.Expressions() {
-				if !f(expr) {
-					return false
-				}
-				// Avoid allocating []sql.Expression
-				switch e := expr.(type) {
-				case expression.UnaryExpression:
-					if !InspectExpr(e.UnaryChild(), f) {
-						return false
-					}
-				case expression.BinaryExpression:
-					if !InspectExpr(e.Left(), f) {
-						return false
-					}
-					if !InspectExpr(e.Right(), f) {
-						return false
-					}
-				default:
-					children := e.Children()
-					for _, child := range children {
-						if !InspectExpr(child, f) {
-							return false
-						}
-					}
-				}
-				return true
-			}
-		}
-		return true
-	})
+	WalkExpressions(exprInspector(f), node) // TODO: avoiding WalkExpressions breaks things somehow
 }
 
 type exprInspector func(sql.Expression) bool
