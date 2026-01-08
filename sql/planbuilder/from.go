@@ -75,7 +75,8 @@ func (b *Builder) isUsingJoin(te *ast.JoinTableExpr) bool {
 	return te.Condition.Using != nil ||
 		strings.EqualFold(te.Join, ast.NaturalJoinStr) ||
 		strings.EqualFold(te.Join, ast.NaturalLeftJoinStr) ||
-		strings.EqualFold(te.Join, ast.NaturalRightJoinStr)
+		strings.EqualFold(te.Join, ast.NaturalRightJoinStr) ||
+		strings.EqualFold(te.Join, ast.NaturalFullJoinStr)
 }
 
 func (b *Builder) canConvertToCrossJoin(te *ast.JoinTableExpr) bool {
@@ -264,6 +265,7 @@ func (b *Builder) buildUsingJoin(inScope, leftScope, rightScope *scope, te *ast.
 	}
 
 	switch strings.ToLower(te.Join) {
+	// TODO handle ast.FullOuterJoinStr, ast.NaturalFullJoinStr case https://github.com/dolthub/dolt/issues/10295
 	case ast.JoinStr, ast.NaturalJoinStr:
 		outScope.node = plan.NewInnerJoin(leftScope.node, rightScope.node, filter)
 	case ast.LeftJoinStr, ast.NaturalLeftJoinStr:
