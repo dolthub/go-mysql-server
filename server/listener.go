@@ -22,8 +22,9 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/dolthub/go-mysql-server/errguard"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/dolthub/go-mysql-server/errguard"
 )
 
 var UnixSocketInUseError = errors.New("bind address at given unix socket path is already in use")
