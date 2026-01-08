@@ -75,7 +75,7 @@ func (b *Builder) buildCreateTrigger(inScope *scope, subQuery string, fullQuery 
 			// LoadOnly means a CreateTrigger statement was parsed while loading triggers for SHOW, INSERT, UPDATE, or
 			// DELETE. Warn and no-op. Since tableScope.node here is not a ResolvedTable, it won't be matched to any
 			// table during applyTriggers.
-			b.ctx.Warn(0, "Trigger on view is not supported. Please run 'DROP TRIGGER  %s;'", c.TriggerSpec.TrigName.Name.String())
+			b.ctx.Warn(0, "Trigger on view is not supported. Please run 'DROP TRIGGER %s;'", c.TriggerSpec.TrigName.Name.String())
 		} else {
 			// Top-level call is DDL, and we should not allow a trigger on a VIEW to be created here. Or somehow, a
 			// trigger on a VIEW has been matched during applyTriggers, and we should not run that trigger.
