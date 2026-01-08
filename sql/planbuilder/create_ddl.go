@@ -72,9 +72,14 @@ func (b *Builder) buildCreateTrigger(inScope *scope, subQuery string, fullQuery 
 	var bodyNode sql.Node
 	if _, ok := tableScope.node.(*plan.ResolvedTable); !ok {
 		if prevTriggerCtxActive {
-			// previous ctx set means this is an INSERT or SHOW
+			// previous ctx set means this is an INSERT, UPDATE, or DELETE
 			// old version of Dolt permitted a bad trigger on VIEW
 			// warn and noop
+			// TODO: This currently produces a warning for every single INSERT, UPDATE, or DELETE if the database
+			//  contains a trigger on a view. Can a trigger on a view even get matched during applyTriggers? If so, it's
+			//  probably only necessary to show this warning when the trigger is actually triggered when triggerCtx.Call
+			//  is true, in which case we would no longer need to set triggerCtx.Active to true when parsing for
+			//  affected triggers during applyTriggers
 			b.ctx.Warn(0, "trigger on view is not supported; 'DROP TRIGGER  %s' to fix", c.TriggerSpec.TrigName.Name.String())
 			bodyNode = plan.NewResolvedDualTable()
 		} else {
