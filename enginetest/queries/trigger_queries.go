@@ -3919,7 +3919,8 @@ end;
 		},
 	},
 	{
-		Name: "only throw column not found error when trigger is actually triggered",
+		// https://github.com/dolthub/dolt/issues/10287
+		Name: "only throw 'column not found' error when trigger is actually triggered",
 		SetUpScript: []string{
 			"create table A(col0 int, col1 int)",
 			"create table B(col0 int, col1 int)",
@@ -3945,6 +3946,7 @@ end;
 				Query: "drop trigger test_trigger",
 			},
 			{
+				// https://github.com/dolthub/dolt/issues/10291
 				Skip:  true,
 				Query: "create trigger test_trigger after update on A for each row insert into C (col0) select col0 from B where B.col0 = new.col0",
 				// no error expected here
