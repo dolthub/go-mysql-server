@@ -566,7 +566,7 @@ func (b *Builder) isUniqueColumn(tableSpec *ast.TableSpec, columnName string) bo
 	for _, column := range tableSpec.Columns {
 		if column.Name.String() == columnName {
 			return column.Type.KeyOpt == colKeyUnique ||
-				column.Type.KeyOpt == colKeyUniqueKey
+					column.Type.KeyOpt == colKeyUniqueKey
 		}
 	}
 	err := fmt.Errorf("unknown column name %s", columnName)
@@ -1638,7 +1638,7 @@ func (b *Builder) ResolveSchemaDefaults(db string, tableName string, schema sql.
 func (b *Builder) validateOnUpdateOnDeleteRefActions(constraint *sql.ForeignKeyConstraint) error {
 	if _, ok := b.parser.(*sql.MysqlParser); ok {
 		if constraint.OnUpdate == sql.ForeignKeyReferentialAction_SetDefault ||
-			constraint.OnDelete == sql.ForeignKeyReferentialAction_SetDefault {
+				constraint.OnDelete == sql.ForeignKeyReferentialAction_SetDefault {
 			return sql.ErrForeignKeySetDefault.New()
 		}
 	}
@@ -1701,7 +1701,7 @@ func partitionTableColumns(sch sql.Schema) [][2]int {
 	var prevI int = 0
 	for i < len(sch) {
 		if strings.EqualFold(sch[i-1].Source, sch[i].Source) &&
-			strings.EqualFold(sch[i-1].DatabaseSource, sch[i].DatabaseSource) {
+				strings.EqualFold(sch[i-1].DatabaseSource, sch[i].DatabaseSource) {
 			i++
 			continue
 		}
@@ -1857,6 +1857,8 @@ func (b *Builder) buildDBDDL(inScope *scope, c *ast.DBDDL) (outScope *scope) {
 			createSchema := plan.NewCreateSchema(c.DBName, c.IfNotExists, collation)
 			createSchema.Catalog = b.cat
 			node = createSchema
+		default:
+			b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(c)))
 		}
 
 		outScope.node = node
