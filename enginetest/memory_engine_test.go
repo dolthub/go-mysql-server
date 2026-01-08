@@ -16,6 +16,13 @@ package enginetest_test
 
 import (
 	"fmt"
+	"log"
+	"os"
+	"testing"
+
+	"github.com/dolthub/sqllogictest/go/logictest"
+	"github.com/stretchr/testify/require"
+
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
@@ -25,11 +32,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
 	_ "github.com/dolthub/go-mysql-server/sql/variables"
-	"github.com/dolthub/sqllogictest/go/logictest"
-	"github.com/stretchr/testify/require"
-	"log"
-	"os"
-	"testing"
 )
 
 // This file is for validating both the engine itself and the in-memory database implementation in the memory package.
@@ -191,37 +193,30 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	// t.Skip()
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
+			Name: "Parse table name as column",
 			SetUpScript: []string{
-				"create table A(col0 int, col1 int)",
-				"create table B(col0 int, col1 int)",
-				"create table C(col0 int)",
-				"create trigger test_trigger after update on A for each row insert into C (col0) select col0 from B where B.col0 = new.col0",
-				"drop table B",
-				"show triggers", // no error expected here
-				"create table B(a int, b int)",
-				"show triggers",               // no error expected here
-				"insert into C values (12)",   // no error expected here
-				"insert into A values (1, 2)", // no error expected here
+				`CREATE TABLE test (pk INT PRIMARY KEY, v1 VARCHAR(255));`,
+				`INSERT INTO test VALUES (1, 'a'), (2, 'b');`,
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:       "update A set A.col0=2 where true",
-					ExpectedErr: sql.ErrTableColumnNotFound,
+					Query:    "SELECT temporarytesting(t) FROM test AS t;",
+					Expected: []sql.Row{},
 				},
 				{
-					Query:    "select * from A",
-					Expected: []sql.Row{{1, 2}},
+					Query:    "SELECT temporarytesting(test) FROM test;",
+					Expected: []sql.Row{},
 				},
 				{
-					Query: "drop trigger test_trigger",
+					Query:    "SELECT temporarytesting(pk, test) FROM test;",
+					Expected: []sql.Row{},
 				},
 				{
-					Skip:  true,
-					Query: "create trigger test_trigger after update on A for each row insert into C (col0) select col0 from B where B.col0 = new.col0",
-					// no error expected here
+					Query:    "SELECT temporarytesting(v1, test, pk) FROM test;",
+					Expected: []sql.Row{},
 				},
 			},
 		},
