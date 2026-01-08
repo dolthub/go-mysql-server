@@ -141,8 +141,6 @@ func InspectExpressions(node sql.Node, f func(sql.Expression) bool) {
 		}
 		return true
 	})
-
-	WalkExpressions(exprInspector(f), node)
 }
 
 type exprInspector func(sql.Expression) bool
