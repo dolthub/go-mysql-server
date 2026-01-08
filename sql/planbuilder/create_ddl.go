@@ -53,14 +53,6 @@ func (b *Builder) buildCreateTrigger(inScope *scope, subQuery string, fullQuery 
 		}
 	}
 
-	// resolve table -> create initial scope
-	triggerCtx := b.TriggerCtx()
-	prevTriggerCtxActive := triggerCtx.Active
-	triggerCtx.Active = true
-	defer func() {
-		triggerCtx.Active = prevTriggerCtxActive
-	}()
-
 	db, ok := b.resolveDbForTable(c.Table)
 	if !ok {
 		b.handleErr(sql.ErrDatabaseSchemaNotFound.New(c.Table.SchemaQualifier.String()))
@@ -75,6 +67,8 @@ func (b *Builder) buildCreateTrigger(inScope *scope, subQuery string, fullQuery 
 		b.handleErr(sql.ErrTableNotFound.New(c.Table.Name.String()))
 	}
 
+	triggerCtx := b.TriggerCtx()
+	prevTriggerCtxActive := triggerCtx.Active
 	var bodyNode sql.Node
 	if _, ok := tableScope.node.(*plan.ResolvedTable); !ok {
 		if prevTriggerCtxActive {
@@ -92,6 +86,11 @@ func (b *Builder) buildCreateTrigger(inScope *scope, subQuery string, fullQuery 
 
 	bodyStr := strings.TrimSpace(fullQuery[c.SubStatementPositionStart:c.SubStatementPositionEnd])
 	if bodyNode == nil && !triggerCtx.LoadOnly {
+		triggerCtx.Active = true
+		defer func() {
+			triggerCtx.Active = prevTriggerCtxActive
+		}()
+
 		// todo scope with new and old columns provided
 		// insert/update have "new"
 		// update/delete have "old"
