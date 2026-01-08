@@ -61,22 +61,19 @@ func (b *Builder) buildCreateTrigger(inScope *scope, subQuery string, fullQuery 
 		triggerCtx.Active = prevTriggerCtxActive
 	}()
 
-	tableName := strings.ToLower(c.Table.Name.String())
-	tableScope, ok := b.buildResolvedTableForTablename(inScope, c.Table, nil)
-	if !ok {
-		b.handleErr(sql.ErrTableNotFound.New(tableName))
-	}
-	if _, ok := tableScope.node.(*plan.UnresolvedTable); ok {
-		// unknown table in trigger body is OK, but the target table must exist
-		b.handleErr(sql.ErrTableNotFound.New(tableName))
-	}
-
 	db, ok := b.resolveDbForTable(c.Table)
 	if !ok {
 		b.handleErr(sql.ErrDatabaseSchemaNotFound.New(c.Table.SchemaQualifier.String()))
 	}
 
-	definer := getCurrentUserForDefiner(b.ctx, c.TriggerSpec.Definer)
+	tableScope, ok := b.buildResolvedTableForTablename(inScope, c.Table, nil)
+	if !ok {
+		b.handleErr(sql.ErrTableNotFound.New(c.Table.Name.String()))
+	}
+	if _, ok := tableScope.node.(*plan.UnresolvedTable); ok {
+		// unknown table in trigger body is OK, but the target table must exist
+		b.handleErr(sql.ErrTableNotFound.New(c.Table.Name.String()))
+	}
 
 	var bodyNode sql.Node
 	if _, ok := tableScope.node.(*plan.ResolvedTable); !ok {
@@ -88,7 +85,7 @@ func (b *Builder) buildCreateTrigger(inScope *scope, subQuery string, fullQuery 
 			bodyNode = plan.NewResolvedDualTable()
 		} else {
 			// top-level call is DDL
-			err := sql.ErrExpectedTableFoundView.New(tableName)
+			err := sql.ErrExpectedTableFoundView.New(c.Table.Name.String())
 			b.handleErr(err)
 		}
 	}
@@ -136,7 +133,7 @@ func (b *Builder) buildCreateTrigger(inScope *scope, subQuery string, fullQuery 
 		subQuery,
 		bodyStr,
 		b.ctx.QueryTime(),
-		definer,
+		getCurrentUserForDefiner(b.ctx, c.TriggerSpec.Definer),
 	)
 	return outScope
 }
