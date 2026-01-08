@@ -212,42 +212,22 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 
 		b := planbuilder.New(ctx, a.Catalog, nil)
 		b.DisableAuth()
-		prevActive := b.TriggerCtx().Active
-		b.TriggerCtx().Active = true
-		defer func() {
-			b.TriggerCtx().Active = prevActive
-		}()
 
 		for _, trigger := range triggers {
 			var parsedTrigger sql.Node
 			sqlMode := sql.NewSqlModeFromString(trigger.SqlMode)
 			b.SetParserOptions(sqlMode.ParserOptions())
+			b.TriggerCtx().Active = true
+			b.TriggerCtx().LoadOnly = true
 			parsedTrigger, _, _, _, err = b.Parse(trigger.CreateStatement, nil, false)
 			b.Reset()
 			if err != nil {
-				return nil, transform.SameTree, err
+				continue
 			}
 
 			ct, ok := parsedTrigger.(*plan.CreateTrigger)
 			if !ok {
-				return nil, transform.SameTree, sql.ErrTriggerCreateStatementInvalid.New(trigger.CreateStatement)
-			}
-			transform.Inspect(ct.Body, func(n sql.Node) bool {
-				call, isCall := n.(*plan.Call)
-				if !isCall {
-					return true
-				}
-				if call.Procedure == nil {
-					return true
-				}
-				if call.Procedure.ValidationError == nil {
-					return true
-				}
-				err = call.Procedure.ValidationError
-				return false
-			})
-			if err != nil {
-				return nil, transform.SameTree, err
+				continue
 			}
 
 			var triggerTable string
@@ -257,11 +237,11 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 			default:
 			}
 			if stringContains(affectedTables, triggerTable) && triggerEventsMatch(triggerEvent, ct.TriggerEvent) {
-				// first pass allows unresolved before we know whether trigger is relevant
-				// TODO store destination table name with trigger, so we don't have to do parse twice
+				// first pass does not parse the trigger body and is only so we know whether trigger is relevant
 				b.TriggerCtx().Call = true
+				// TODO: We only need to parse the body here since the other info from the create trigger statement have
+				// already been parsed.
 				parsedTrigger, _, _, _, err = b.Parse(trigger.CreateStatement, nil, false)
-				b.TriggerCtx().Call = false
 				b.Reset()
 				if err != nil {
 					return nil, transform.SameTree, err
@@ -270,6 +250,24 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 				ct, ok := parsedTrigger.(*plan.CreateTrigger)
 				if !ok {
 					return nil, transform.SameTree, sql.ErrTriggerCreateStatementInvalid.New(trigger.CreateStatement)
+				}
+
+				transform.Inspect(ct.Body, func(n sql.Node) bool {
+					call, isCall := n.(*plan.Call)
+					if !isCall {
+						return true
+					}
+					if call.Procedure == nil {
+						return true
+					}
+					if call.Procedure.ValidationError == nil {
+						return true
+					}
+					err = call.Procedure.ValidationError
+					return false
+				})
+				if err != nil {
+					return nil, transform.SameTree, err
 				}
 
 				if block, ok := ct.Body.(*plan.BeginEndBlock); ok {
