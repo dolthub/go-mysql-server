@@ -3918,6 +3918,39 @@ end;
 			},
 		},
 	},
+	{
+		Name: "only throw column not found error when trigger is actually triggered",
+		SetUpScript: []string{
+			"create table A(col0 int, col1 int)",
+			"create table B(col0 int, col1 int)",
+			"create table C(col0 int)",
+			"create trigger test_trigger after update on A for each row insert into C (col0) select col0 from B where B.col0 = new.col0",
+			"drop table B",
+			"show triggers", // no error expected here
+			"create table B(a int, b int)",
+			"show triggers",               // no error expected here
+			"insert into C values (12)",   // no error expected here
+			"insert into A values (1, 2)", // no error expected here
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "update A set A.col0=2 where true",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query:    "select * from A",
+				Expected: []sql.Row{{1, 2}},
+			},
+			{
+				Query: "drop trigger test_trigger",
+			},
+			{
+				Skip:  true,
+				Query: "create trigger test_trigger after update on A for each row insert into C (col0) select col0 from B where B.col0 = new.col0",
+				// no error expected here
+			},
+		},
+	},
 }
 
 var TriggerCreateInSubroutineTests = []ScriptTest{

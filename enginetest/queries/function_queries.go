@@ -2325,6 +2325,7 @@ var FunctionQueryTests = []QueryTest{
 		Expected: []sql.Row{{0}},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/10087
 		Skip:     true,
 		Query:    "select extract(day_microsecond from true)",
 		Expected: []sql.Row{{1000000}},
