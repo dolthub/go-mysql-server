@@ -53,70 +53,74 @@ func (b *Builder) buildCreateTrigger(inScope *scope, subQuery string, fullQuery 
 		}
 	}
 
-	// resolve table -> create initial scope
-	prevTriggerCtxActive := b.TriggerCtx().Active
-	b.TriggerCtx().Active = true
-	defer func() {
-		b.TriggerCtx().Active = prevTriggerCtxActive
-	}()
-
-	tableName := strings.ToLower(c.Table.Name.String())
-	tableScope, ok := b.buildResolvedTableForTablename(inScope, c.Table, nil)
-	if !ok {
-		b.handleErr(sql.ErrTableNotFound.New(tableName))
-	}
-	if _, ok := tableScope.node.(*plan.UnresolvedTable); ok {
-		// unknown table in trigger body is OK, but the target table must exist
-		b.handleErr(sql.ErrTableNotFound.New(tableName))
-	}
-
-	// todo scope with new and old columns provided
-	// insert/update have "new"
-	// update/delete have "old"
-	newScope := tableScope.replace()
-	oldScope := tableScope.replace()
-	for _, col := range tableScope.cols {
-		switch c.TriggerSpec.Event {
-		case ast.InsertStr:
-			newScope.newColumn(col)
-		case ast.UpdateStr:
-			newScope.newColumn(col)
-			oldScope.newColumn(col)
-		case ast.DeleteStr:
-			oldScope.newColumn(col)
-		}
-	}
-	newScope.setTableAlias("new")
-	oldScope.setTableAlias("old")
-	triggerScope := tableScope.replace()
-
-	triggerScope.addColumns(newScope.cols)
-	triggerScope.addColumns(oldScope.cols)
-
-	triggerScope.addExpressions(newScope.exprs)
-	triggerScope.addExpressions(oldScope.exprs)
-
-	bodyStr := strings.TrimSpace(fullQuery[c.SubStatementPositionStart:c.SubStatementPositionEnd])
-	bodyScope := b.buildSubquery(triggerScope, c.TriggerSpec.Body, bodyStr, fullQuery)
-	definer := getCurrentUserForDefiner(b.ctx, c.TriggerSpec.Definer)
-
 	db, ok := b.resolveDbForTable(c.Table)
 	if !ok {
 		b.handleErr(sql.ErrDatabaseSchemaNotFound.New(c.Table.SchemaQualifier.String()))
 	}
 
+	tableScope, ok := b.buildResolvedTableForTablename(inScope, c.Table, nil)
+	if !ok {
+		b.handleErr(sql.ErrTableNotFound.New(c.Table.Name.String()))
+	}
+	if _, ok := tableScope.node.(*plan.UnresolvedTable); ok {
+		// unknown table in trigger body is OK, but the target table must exist
+		b.handleErr(sql.ErrTableNotFound.New(c.Table.Name.String()))
+	}
+
+	triggerCtx := b.TriggerCtx()
+
 	if _, ok := tableScope.node.(*plan.ResolvedTable); !ok {
-		if prevTriggerCtxActive {
-			// previous ctx set means this is an INSERT or SHOW
-			// old version of Dolt permitted a bad trigger on VIEW
-			// warn and noop
-			b.ctx.Warn(0, "trigger on view is not supported; 'DROP TRIGGER  %s' to fix", c.TriggerSpec.TrigName.Name.String())
-			bodyScope.node = plan.NewResolvedDualTable()
+		// Old versions of GMS/Dolt permitted creating an invalid trigger on VIEW
+		if triggerCtx.LoadOnly {
+			// LoadOnly means a CreateTrigger statement was parsed while loading triggers for SHOW, INSERT, UPDATE, or
+			// DELETE. Warn and no-op. Since tableScope.node here is not a ResolvedTable, it won't be matched to any
+			// table during applyTriggers.
+			b.ctx.Warn(0, "Trigger on view is not supported. Please run 'DROP TRIGGER %s;'", c.TriggerSpec.TrigName.Name.String())
 		} else {
-			// top-level call is DDL
-			err := sql.ErrExpectedTableFoundView.New(tableName)
+			// Top-level call is DDL, and we should not allow a trigger on a VIEW to be created here. Or somehow, a
+			// trigger on a VIEW has been matched during applyTriggers, and we should not run that trigger.
+			err := sql.ErrExpectedTableFoundView.New(c.Table.Name.String())
 			b.handleErr(err)
 		}
+	}
+
+	var bodyNode sql.Node
+	bodyStr := strings.TrimSpace(fullQuery[c.SubStatementPositionStart:c.SubStatementPositionEnd])
+	if !triggerCtx.LoadOnly {
+		prevTriggerCtxActive := triggerCtx.Active
+		triggerCtx.Active = true
+		defer func() {
+			triggerCtx.Active = prevTriggerCtxActive
+		}()
+
+		// todo scope with new and old columns provided
+		// insert/update have "new"
+		// update/delete have "old"
+		newScope := tableScope.replace()
+		oldScope := tableScope.replace()
+		for _, col := range tableScope.cols {
+			switch c.TriggerSpec.Event {
+			case ast.InsertStr:
+				newScope.newColumn(col)
+			case ast.UpdateStr:
+				newScope.newColumn(col)
+				oldScope.newColumn(col)
+			case ast.DeleteStr:
+				oldScope.newColumn(col)
+			}
+		}
+		newScope.setTableAlias("new")
+		oldScope.setTableAlias("old")
+		triggerScope := tableScope.replace()
+
+		triggerScope.addColumns(newScope.cols)
+		triggerScope.addColumns(oldScope.cols)
+
+		triggerScope.addExpressions(newScope.exprs)
+		triggerScope.addExpressions(oldScope.exprs)
+
+		bodyScope := b.buildSubquery(triggerScope, c.TriggerSpec.Body, bodyStr, fullQuery)
+		bodyNode = bodyScope.node
 	}
 
 	outScope.node = plan.NewCreateTrigger(
@@ -126,11 +130,11 @@ func (b *Builder) buildCreateTrigger(inScope *scope, subQuery string, fullQuery 
 		c.TriggerSpec.Event,
 		triggerOrder,
 		tableScope.node,
-		bodyScope.node,
+		bodyNode,
 		subQuery,
 		bodyStr,
 		b.ctx.QueryTime(),
-		definer,
+		getCurrentUserForDefiner(b.ctx, c.TriggerSpec.Definer),
 	)
 	return outScope
 }

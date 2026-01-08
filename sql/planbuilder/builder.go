@@ -99,6 +99,7 @@ type TriggerContext struct {
 	UnresolvedTables []string
 	Active           bool
 	Call             bool
+	LoadOnly         bool
 }
 
 // ProcContext allows nested CALLs to use the same database for resolving
