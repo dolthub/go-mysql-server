@@ -451,7 +451,7 @@ func (b *BaseBuilder) buildCreateSchema(ctx *sql.Context, n *plan.CreateSchema, 
 	// If no database is selected, first try to fall back to CREATE DATABASE
 	// since CREATE SCHEMA is a synonym for CREATE DATABASE in MySQL
 	// https://dev.mysql.com/doc/refman/8.4/en/create-database.html
-	// TODO: For PostgreSQL, return an error if no database is selected.
+	// TODO: For PostgreSQL, return an error if no database is selected (should be impossible)
 	if database == "" {
 		return b.buildCreateDB(ctx, &plan.CreateDB{
 			Catalog:     n.Catalog,
@@ -466,8 +466,12 @@ func (b *BaseBuilder) buildCreateSchema(ctx *sql.Context, n *plan.CreateSchema, 
 		return nil, err
 	}
 
+	if pdb, ok := db.(mysql_db.PrivilegedDatabase); ok {
+		db = pdb.Unwrap()
+	}
+
 	sdb, ok := db.(sql.SchemaDatabase)
-	if !ok {
+	if !ok || !sdb.SupportsDatabaseSchemas() {
 		// If schemas aren't supported, treat CREATE SCHEMA as a synonym for CREATE DATABASE (as is the case in MySQL)
 		return b.buildCreateDB(ctx, &plan.CreateDB{
 			Catalog:     n.Catalog,
@@ -882,6 +886,69 @@ func (b *BaseBuilder) buildDropDB(ctx *sql.Context, n *plan.DropDB, row sql.Row)
 	return sql.RowsToRowIter(rows...), nil
 }
 
+func (b *BaseBuilder) buildDropSchema(ctx *sql.Context, n *plan.DropSchema, row sql.Row) (sql.RowIter, error) {
+	database := ctx.GetCurrentDatabase()
+
+	// If no database is selected, first try to fall back to CREATE DATABASE
+	// since CREATE SCHEMA is a synonym for CREATE DATABASE in MySQL
+	// https://dev.mysql.com/doc/refman/8.4/en/create-database.html
+	// TODO: For PostgreSQL, return an error if no database is selected (should be impossible)
+	if database == "" {
+		return b.buildDropDB(ctx, &plan.DropDB{
+			Catalog:  n.Catalog,
+			DbName:   n.DbName,
+			IfExists: n.IfExists,
+		}, row)
+	}
+
+	db, err := n.Catalog.Database(ctx, database)
+	if err != nil {
+		return nil, err
+	}
+
+	if pdb, ok := db.(mysql_db.PrivilegedDatabase); ok {
+		db = pdb.Unwrap()
+	}
+
+	sdb, ok := db.(sql.SchemaDatabase)
+	if !ok || !sdb.SupportsDatabaseSchemas() {
+		// If schemas aren't supported, treat DROP SCHEMA as a synonym for DROP DATABASE (as is the case in MySQL)
+		return b.buildDropDB(ctx, &plan.DropDB{
+			Catalog:  n.Catalog,
+			DbName:   n.DbName,
+			IfExists: n.IfExists,
+		}, row)
+	}
+
+	_, exists, err := sdb.GetSchema(ctx, n.DbName)
+	if err != nil {
+		return nil, err
+	}
+
+	rows := []sql.Row{{types.OkResult{RowsAffected: 1}}}
+
+	if !exists {
+		if n.IfExists && ctx != nil && ctx.Session != nil {
+			ctx.Session.Warn(&sql.Warning{
+				Level:   "Note",
+				Code:    mysql.ERDbCreateExists,
+				Message: fmt.Sprintf("Can't drop schema %s; schema does not exist", n.DbName),
+			})
+
+			return sql.RowsToRowIter(rows...), nil
+		} else {
+			return nil, sql.ErrDatabaseSchemaNotFound.New(n.DbName)
+		}
+	}
+
+	err = sdb.DropSchema(ctx, n.DbName)
+	if err != nil {
+		return nil, err
+	}
+
+	return sql.RowsToRowIter(rows...), nil
+}
+
 func (b *BaseBuilder) buildRenameColumn(ctx *sql.Context, n *plan.RenameColumn, row sql.Row) (sql.RowIter, error) {
 	if b.EngineOverrides.Hooks.TableRenameColumn.PreSQLExecution != nil {
 		nn, err := b.EngineOverrides.Hooks.TableRenameColumn.PreSQLExecution(ctx, n)
@@ -1128,8 +1195,8 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 		}
 	}
 
-	//TODO: in the event that foreign keys or indexes aren't supported, you'll be left with a created table and no foreign keys/indexes
-	//this also means that if a foreign key or index fails, you'll only have what was declared up to the failure
+	// TODO: in the event that foreign keys or indexes aren't supported, you'll be left with a created table and no foreign keys/indexes
+	// this also means that if a foreign key or index fails, you'll only have what was declared up to the failure
 	tableNode, ok, err := n.Db.GetTableInsensitive(ctx, n.Name())
 	if err != nil {
 		return sql.RowsToRowIter(), err
