@@ -70,14 +70,15 @@ func (b *Builder) buildCreateTrigger(inScope *scope, subQuery string, fullQuery 
 	triggerCtx := b.TriggerCtx()
 
 	if _, ok := tableScope.node.(*plan.ResolvedTable); !ok {
-		// Old version of Dolt permitted creating a bad trigger on VIEW
+		// Old versions of GMS/Dolt permitted creating an invalid trigger on VIEW
 		if triggerCtx.LoadOnly {
 			// LoadOnly means a CreateTrigger statement was parsed while loading triggers for SHOW, INSERT, UPDATE, or
 			// DELETE. Warn and no-op. Since tableScope.node here is not a ResolvedTable, it won't be matched to any
 			// table during applyTriggers.
 			b.ctx.Warn(0, "Trigger on view is not supported. Please run 'DROP TRIGGER  %s;'", c.TriggerSpec.TrigName.Name.String())
 		} else {
-			// Top-level call is DDL, and we should not allow a trigger on a view to be created here.
+			// Top-level call is DDL, and we should not allow a trigger on a VIEW to be created here. Or somehow, a
+			// trigger on a VIEW has been matched during applyTriggers, and we should not run that trigger.
 			err := sql.ErrExpectedTableFoundView.New(c.Table.Name.String())
 			b.handleErr(err)
 		}
