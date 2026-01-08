@@ -108,6 +108,7 @@ func loadTriggersFromDb(ctx *sql.Context, a *Analyzer, db sql.Database, ignorePa
 			// TODO: should perhaps add the auth query handler to the analyzer? does this even use auth?
 			builder := planbuilder.New(ctx, a.Catalog, nil)
 			builder.SetParserOptions(sqlMode.ParserOptions())
+			builder.TriggerCtx().LoadOnly = true
 			parsedTrigger, _, _, _, err = builder.Parse(trigger.CreateStatement, nil, false)
 			if err != nil {
 				// We want to be able to drop invalid triggers, so ignore any parser errors and return the name of the trigger
