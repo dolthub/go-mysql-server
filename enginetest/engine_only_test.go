@@ -647,7 +647,9 @@ func TestTriggerViewWarning(t *testing.T) {
 
 	baseDb := db.(*memory.HistoryDatabase).BaseDatabase
 	err = baseDb.CreateTrigger(nil, sql.TriggerDefinition{
-		Name:            "view_trig",
+		Name: "view_trig",
+		// TODO: this trigger statement still wouldn't parse correctly in MySQL if it was created on a table. Update to
+		// a trigger that would otherwise be valid.
 		CreateStatement: "CREATE TRIGGER view_trig BEFORE INSERT ON myview FOR EACH ROW SET i=i+2",
 	})
 	assert.NoError(t, err)
@@ -658,6 +660,7 @@ func TestTriggerViewWarning(t *testing.T) {
 
 	enginetest.TestQueryWithContext(t, ctx, e, harness, "insert into mytable values (4, 'fourth row')", []sql.Row{{types.NewOkResult(1)}}, nil, nil, nil)
 	enginetest.TestQueryWithContext(t, ctx, e, harness, "SHOW WARNINGS", []sql.Row{{"Warning", 0, "Trigger on view is not supported. Please run 'DROP TRIGGER  view_trig;'"}}, nil, nil, nil)
+	// TODO: this is not correct. MySQL allows inserting into views. https://github.com/dolthub/dolt/issues/10292
 	enginetest.AssertErrWithCtx(t, e, harness, ctx, "insert into myview values (5, 'fifth row')", nil, nil, "expected insert destination to be resolved or unresolved table")
 }
 
