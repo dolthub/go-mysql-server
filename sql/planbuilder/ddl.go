@@ -41,9 +41,9 @@ func (b *Builder) resolveDb(name string) sql.Database {
 	}
 
 	// todo show tables as of expects privileged
-	//if privilegedDatabase, ok := database.(mysql_db.PrivilegedDatabase); ok {
+	// if privilegedDatabase, ok := database.(mysql_db.PrivilegedDatabase); ok {
 	//	database = privilegedDatabase.Unwrap()
-	//}
+	// }
 	return database
 }
 
@@ -848,7 +848,7 @@ func (b *Builder) buildIndexDefs(_ *scope, spec *ast.TableSpec) (idxDefs sql.Ind
 		}
 		idxDefs = append(idxDefs, &sql.IndexDef{
 			Name:       idxDef.Info.Name.String(),
-			Storage:    sql.IndexUsing_Default, //TODO: add vitess support for USING
+			Storage:    sql.IndexUsing_Default, // TODO: add vitess support for USING
 			Constraint: constraint,
 			Columns:    columns,
 			Comment:    comment,
@@ -1857,13 +1857,22 @@ func (b *Builder) buildDBDDL(inScope *scope, c *ast.DBDDL) (outScope *scope) {
 			createSchema := plan.NewCreateSchema(c.DBName, c.IfNotExists, collation)
 			createSchema.Catalog = b.cat
 			node = createSchema
+		default:
+			b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(c)))
 		}
 
 		outScope.node = node
 	case ast.DropStr:
-		dropDb := plan.NewDropDatabase(c.DBName, c.IfExists)
-		dropDb.Catalog = b.cat
-		outScope.node = dropDb
+		switch c.SchemaOrDatabase {
+		case "database":
+			node := plan.NewDropDatabase(c.DBName, c.IfExists)
+			node.Catalog = b.cat
+			outScope.node = node
+		case "schema":
+			node := plan.NewDropSchema(c.DBName, c.IfExists)
+			node.Catalog = b.cat
+			outScope.node = node
+		}
 	case ast.AlterStr:
 		if len(c.CharsetCollate) == 0 {
 			if len(c.DBName) > 0 {

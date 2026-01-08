@@ -148,6 +148,8 @@ func (b *BaseBuilder) buildNodeExecNoAnalyze(ctx *sql.Context, n sql.Node, row s
 		return b.buildRenameColumn(ctx, n, row)
 	case *plan.DropDB:
 		return b.buildDropDB(ctx, n, row)
+	case *plan.DropSchema:
+		return b.buildDropSchema(ctx, n, row)
 	case *plan.Distinct:
 		return b.buildDistinct(ctx, n, row)
 	case *plan.Having:
