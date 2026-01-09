@@ -16,9 +16,9 @@ package rowexec
 
 import (
 	"errors"
-	"fmt"
 	"io"
 
+	"github.com/dolthub/go-mysql-server/errguard"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/hash"
@@ -171,7 +171,7 @@ func (i *groupByGroupingIter) compute(ctx *sql.Context) error {
 	eg, subCtx := ctx.NewErrgroup()
 
 	var rowChan = make(chan sql.Row, 512)
-	eg.Go(func() error {
+	errguard.Go(eg, func() error {
 		defer close(rowChan)
 		for {
 			row, err := i.child.Next(subCtx)
@@ -185,13 +185,7 @@ func (i *groupByGroupingIter) compute(ctx *sql.Context) error {
 		}
 	})
 
-	eg.Go(func() (err error) {
-		defer func() {
-			if recoveredPanic := recover(); recoveredPanic != nil {
-				err = fmt.Errorf("caught panic: %v", recoveredPanic)
-			}
-		}()
-
+	errguard.Go(eg, func() error {
 		for {
 			row, ok := <-rowChan
 			if !ok {
