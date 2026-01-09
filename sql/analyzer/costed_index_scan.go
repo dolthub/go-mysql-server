@@ -464,7 +464,7 @@ func newIndexCoster(ctx *sql.Context, underlyingName string) *indexCoster {
 	return &indexCoster{
 		ctx:            ctx,
 		i:              1,
-		idToExpr:       make(map[indexScanId]sql.Expression),
+		idToExpr:       make([]sql.Expression, 1), // TODO: dummy id because i starts at 1; check if we can remove
 		underlyingName: underlyingName,
 	}
 }
@@ -474,7 +474,7 @@ type indexCoster struct {
 	// bestStat is the lowest cardinality indexScan option
 	bestStat sql.Statistic
 	// idToExpr is a record of conj decomposition so we can remove duplicates later
-	idToExpr map[indexScanId]sql.Expression
+	idToExpr []sql.Expression
 	// bestFilters is the set of conjunctions used to create bestStat
 	bestFilters sql.FastIntSet
 	// bestConstant are the constant best filters
@@ -717,22 +717,21 @@ func (c *indexCoster) buildRoot(e sql.Expression, walker sql.ExpressionTreeFilte
 
 	switch e := e.(type) {
 	case *expression.And:
-		c.idToExpr[c.i] = e
+		c.idToExpr = append(c.idToExpr, e)
 		newAnd := &iScanAnd{id: c.i}
 		c.i++
 		invalid, imprecise := c.buildAnd(e, newAnd, walker)
 		var leftovers []sql.Expression
 		for i, hasMore := invalid.Next(1); hasMore; i, hasMore = invalid.Next(i + 1) {
-			f, ok := c.idToExpr[indexScanId(i)]
-			if !ok {
+			if i >= len(c.idToExpr) {
 				panic("todo filter map not working")
 			}
-			leftovers = append(leftovers, f)
+			leftovers = append(leftovers, c.idToExpr[indexScanId(i)])
 		}
 		return newAnd, expression.JoinAnd(leftovers...), imprecise
 
 	case *expression.Or:
-		c.idToExpr[c.i] = e
+		c.idToExpr = append(c.idToExpr, e)
 		newOr := &iScanOr{id: c.i}
 		c.i++
 		valid, imp := c.buildOr(e, newOr, walker)
@@ -746,7 +745,7 @@ func (c *indexCoster) buildRoot(e sql.Expression, walker sql.ExpressionTreeFilte
 		return newOr, nil, imprecise
 
 	default:
-		c.idToExpr[c.i] = e
+		c.idToExpr = append(c.idToExpr, e)
 		leaf, ok := buildLeaf(c.ctx, c.i, e, c.underlyingName)
 		c.i++
 		if !ok {
@@ -767,13 +766,13 @@ func (c *indexCoster) buildAnd(e *expression.And, and *iScanAnd, walker sql.Expr
 	for _, e := range e.Children() {
 		switch e := walker.Next(e).(type) {
 		case *expression.And:
-			c.idToExpr[c.i] = e
+			c.idToExpr = append(c.idToExpr, e)
 			c.i++
 			inv, imp := c.buildAnd(e, and, walker)
 			invalid = invalid.Union(inv)
 			imprecise = invalid.Union(imp)
 		case *expression.Or:
-			c.idToExpr[c.i] = e
+			c.idToExpr = append(c.idToExpr, e)
 			newOr := &iScanOr{id: c.i}
 			c.i++
 			valid, imp := c.buildOr(e, newOr, walker)
@@ -788,7 +787,7 @@ func (c *indexCoster) buildAnd(e *expression.And, and *iScanAnd, walker sql.Expr
 				}
 			}
 		default:
-			c.idToExpr[c.i] = e
+			c.idToExpr = append(c.idToExpr, e)
 			leaf, ok := buildLeaf(c.ctx, c.i, e, c.underlyingName)
 			if !ok {
 				invalid.Add(int(c.i))
@@ -810,7 +809,7 @@ func (c *indexCoster) buildOr(e *expression.Or, or *iScanOr, walker sql.Expressi
 	for _, e := range e.Children() {
 		switch e := walker.Next(e).(type) {
 		case *expression.And:
-			c.idToExpr[c.i] = e
+			c.idToExpr = append(c.idToExpr, e)
 			newAnd := &iScanAnd{id: c.i}
 			c.i++
 			inv, imp := c.buildAnd(e, newAnd, walker)
@@ -820,7 +819,7 @@ func (c *indexCoster) buildOr(e *expression.Or, or *iScanOr, walker sql.Expressi
 			or.children = append(or.children, newAnd)
 			imprecise = imprecise || !imp.Empty()
 		case *expression.Or:
-			c.idToExpr[c.i] = e
+			c.idToExpr = append(c.idToExpr, e)
 			c.i++
 			ok, imp := c.buildOr(e, or, walker)
 			if !ok {
@@ -828,9 +827,10 @@ func (c *indexCoster) buildOr(e *expression.Or, or *iScanOr, walker sql.Expressi
 			}
 			imprecise = imprecise || imp
 		default:
-			c.idToExpr[c.i] = e
+			c.idToExpr = append(c.idToExpr, e)
 			leaf, ok := buildLeaf(c.ctx, c.i, e, c.underlyingName)
 			if !ok {
+				c.idToExpr = c.idToExpr[:len(c.idToExpr)-1] // TODO: not sure if necessary
 				return false, false
 			} else {
 				c.i++
@@ -844,7 +844,7 @@ func (c *indexCoster) buildOr(e *expression.Or, or *iScanOr, walker sql.Expressi
 	return true, imprecise
 }
 
-func newIndexScanRangeBuilder(ctx *sql.Context, idx sql.Index, include, imprecise sql.FastIntSet, idToExpr map[indexScanId]sql.Expression) *indexScanRangeBuilder {
+func newIndexScanRangeBuilder(ctx *sql.Context, idx sql.Index, include, imprecise sql.FastIntSet, idToExpr []sql.Expression) *indexScanRangeBuilder {
 	return &indexScanRangeBuilder{
 		ctx:       ctx,
 		idx:       idx,
@@ -857,7 +857,7 @@ func newIndexScanRangeBuilder(ctx *sql.Context, idx sql.Index, include, imprecis
 type indexScanRangeBuilder struct {
 	idx       sql.Index
 	ctx       *sql.Context
-	idToExpr  map[indexScanId]sql.Expression
+	idToExpr  []sql.Expression
 	conjIb    *sql.MySQLIndexBuilder
 	include   sql.FastIntSet
 	imprecise sql.FastIntSet
@@ -1275,11 +1275,9 @@ func (a *iScanAnd) newLeaf(l *iScanLeaf) {
 
 // leaves returns a list of this nodes leaf filters, sorted by id
 func (a *iScanAnd) leaves() []*iScanLeaf {
-	var ret []*iScanLeaf
+	ret := make([]*iScanLeaf, 0, a.cnt)
 	for _, colLeaves := range a.leafChildren {
-		for _, leaf := range colLeaves {
-			ret = append(ret, leaf)
-		}
+		ret = append(ret, colLeaves...)
 	}
 	sort.SliceStable(ret, func(i, j int) bool {
 		return ret[i].id < ret[j].id
@@ -1928,18 +1926,19 @@ func (c *conjCollector) cmpFirstCol(ctx *sql.Context, op sql.IndexScanOp, val in
 	if c.constant.Contains(1) {
 		return nil
 	}
+	target := sql.Row{val}
 	switch op {
 	case sql.IndexScanOpNotEq:
 		// todo notEq
-		c.hist, err = stats.PrefixGt(ctx, c.hist, c.stat.Types(), val)
+		c.hist, err = stats.PrefixGt(ctx, c.hist, c.stat.Types(), target)
 	case sql.IndexScanOpGt:
-		c.hist, err = stats.PrefixGt(ctx, c.hist, c.stat.Types(), val)
+		c.hist, err = stats.PrefixGt(ctx, c.hist, c.stat.Types(), target)
 	case sql.IndexScanOpGte:
-		c.hist, err = stats.PrefixGte(ctx, c.hist, c.stat.Types(), val)
+		c.hist, err = stats.PrefixGte(ctx, c.hist, c.stat.Types(), target)
 	case sql.IndexScanOpLt:
-		c.hist, err = stats.PrefixLt(ctx, c.hist, c.stat.Types(), val)
+		c.hist, err = stats.PrefixLt(ctx, c.hist, c.stat.Types(), target)
 	case sql.IndexScanOpLte:
-		c.hist, err = stats.PrefixLte(ctx, c.hist, c.stat.Types(), val)
+		c.hist, err = stats.PrefixLte(ctx, c.hist, c.stat.Types(), target)
 	case sql.IndexScanOpIsNull:
 		c.hist, err = stats.PrefixIsNull(c.hist)
 	case sql.IndexScanOpIsNotNull:
