@@ -2407,6 +2407,23 @@ CREATE PROCEDURE test()
 			},
 		},
 	},
+	{
+		Name: "Resolve procedure variable in IS expression",
+		SetUpScript: []string{
+			`CREATE PROCEDURE p1(IN v TEXT)
+	BEGIN
+	DECLARE v_text TEXT;
+	SET v_text = v;
+	select v_text is null;
+	END`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "call p1('abc')",
+				Expected: []sql.Row{{false}},
+			},
+		},
+	},
 }
 
 var ProcedureCallTests = []ScriptTest{

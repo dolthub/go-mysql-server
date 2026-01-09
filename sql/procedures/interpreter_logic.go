@@ -140,6 +140,12 @@ func replaceVariablesInExpr(ctx *sql.Context, stack *InterpreterStack, expr ast.
 			return nil, err
 		}
 		e.Expr = newExpr.(ast.Expr)
+	case *ast.IsExpr:
+		newExpr, err := replaceVariablesInExpr(ctx, stack, e.Expr, asOf)
+		if err != nil {
+			return nil, err
+		}
+		e.Expr = newExpr.(ast.Expr)
 	case *ast.ExistsExpr:
 		newSubquery, err := replaceVariablesInExpr(ctx, stack, e.Subquery, asOf)
 		if err != nil {
