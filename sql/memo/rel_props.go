@@ -41,6 +41,7 @@ type relProps struct {
 	tableNodes   []plan.TableIdNode
 	sort         sql.SortFields
 	Distinct     distinctOp
+	DistinctOn   []sql.Expression
 }
 
 func newRelProps(rel RelExpr) *relProps {

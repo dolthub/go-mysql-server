@@ -551,14 +551,21 @@ func (i *sortIter) computeSortedRows(ctx *sql.Context) error {
 // result sets.
 type distinctIter struct {
 	childIter   sql.RowIter
+	hasher      DistinctHasher
 	seen        sql.KeyValueCache
 	DisposeFunc sql.DisposeFunc
 }
 
-func NewDistinctIter(ctx *sql.Context, child sql.RowIter) *distinctIter {
+// DistinctHasher handles hashing for distinctIter
+type DistinctHasher interface {
+	HashOf(ctx *sql.Context, row sql.Row) (uint64, error)
+}
+
+func NewDistinctIter(ctx *sql.Context, child sql.RowIter, hasher DistinctHasher) *distinctIter {
 	cache, dispose := ctx.Memory.NewHistoryCache()
 	return &distinctIter{
 		childIter:   child,
+		hasher:      hasher,
 		seen:        cache,
 		DisposeFunc: dispose,
 	}
@@ -574,7 +581,7 @@ func (di *distinctIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, err
 		}
 
-		hash, err := hash.HashOf(ctx, nil, row)
+		hash, err := di.hasher.HashOf(ctx, row)
 		if err != nil {
 			return nil, err
 		}
