@@ -188,18 +188,45 @@ func (f *factory) buildTableAlias(name string, child sql.Node) (plan.TableIdNode
 }
 
 // buildDistinct will wrap the child node in a distinct node depending on the Sort nodes and Projections there.
-// if the sort fields are a subset of the projection fields
+// If the sort fields are a subset of the projection fields:
 //
-//	sort(project(table)) -> sort(distinct(project(table)))
+//	project(sort(table)) -> sort(distinct(project(table)))
 //
-// else
+// otherwise, it is:
 //
-//	sort(project(table)) -> distinct(sort(project(table)))
-func (f *factory) buildDistinct(child sql.Node, refsSubquery bool) (sql.Node, error) {
-	if proj, isProj := child.(*plan.Project); isProj {
+//	project(sort(table)) -> distinct(sort(project(table)))
+//
+// With DISTINCT ON columns, we may use columns that are not referenced by the projection, and therefore it must be
+// pushed under it. This also means that the sort node has to be pushed under distinct as well.
+func (f *factory) buildDistinct(child sql.Node, refsSubquery bool, distinctOn []sql.Expression) (sql.Node, error) {
+	if len(distinctOn) > 0 {
+		if proj, isProj := child.(*plan.Project); isProj {
+			if sort, isSort := proj.Child.(*plan.Sort); isSort {
+				dMap := make(map[string]struct{})
+				for _, expr := range distinctOn {
+					dMap[strings.ToLower(expr.String())] = struct{}{}
+				}
+				minMatching := min(len(distinctOn), len(sort.SortFields))
+				for i := 0; i < minMatching; i++ {
+					if _, ok := dMap[strings.ToLower(sort.SortFields[i].Column.String())]; !ok {
+						return nil, sql.ErrDistinctOnMatchOrderBy.New()
+					}
+				}
+			}
+			distinct := plan.NewDistinct(proj.Child, distinctOn...)
+			proj.Child = distinct
+			return proj, nil
+		}
+	} else if proj, isProj := child.(*plan.Project); isProj {
 		// TODO: if projection columns are just primary key, distinct is no-op
 		// TODO: distinct literals are just one row
 		if sort, isSort := proj.Child.(*plan.Sort); isSort {
+			if len(distinctOn) > 0 {
+				sortMap := make(map[string]struct{})
+				for _, p := range proj.Projections {
+					sortMap[strings.ToLower(p.String())] = struct{}{}
+				}
+			}
 			projMap := make(map[string]struct{})
 			for _, p := range proj.Projections {
 				projMap[strings.ToLower(p.String())] = struct{}{}
@@ -218,12 +245,12 @@ func (f *factory) buildDistinct(child sql.Node, refsSubquery bool) (sql.Node, er
 				if err != nil {
 					return nil, err
 				}
-				sort.Child = plan.NewDistinct(proj)
+				sort.Child = plan.NewDistinct(proj, distinctOn...)
 				return sort, nil
 			}
 		}
 	}
-	return plan.NewDistinct(child), nil
+	return plan.NewDistinct(child, distinctOn...), nil
 }
 
 func (f *factory) buildSort(child sql.Node, exprs []sql.SortField, deps sql.ColSet, subquery bool) (sql.Node, error) {

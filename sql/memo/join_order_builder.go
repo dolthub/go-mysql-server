@@ -226,6 +226,7 @@ func (j *joinOrderBuilder) populateSubgraph(n sql.Node) (vertexSet, edgeSet, *Ex
 	case *plan.Distinct:
 		_, _, group = j.populateSubgraph(n.Child)
 		group.RelProps.Distinct = HashDistinctOp
+		group.RelProps.DistinctOn = n.Expressions()
 	case *plan.Max1Row:
 		return j.buildMax1Row(n)
 	case *plan.JoinNode:
