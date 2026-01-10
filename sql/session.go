@@ -354,7 +354,7 @@ func RunWithNowFunc(nowFunc func() time.Time, fn func() error) error {
 
 // RunInterpreted modifies the context such that all calls to Context.IsInterpreted will return `true`. It is safe to
 // recursively call this.
-func RunInterpreted[T any](ctx *Context, f func(ctx *Context) (T, error)) (T, error) {
+func RunInterpreted[T1 any, T2 any](ctx *Context, f func(ctx *Context) (T1, T2, error)) (T1, T2, error) {
 	current := ctx.interpreted
 	ctx.interpreted = true
 	defer func() {
