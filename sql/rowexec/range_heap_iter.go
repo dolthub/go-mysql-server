@@ -274,13 +274,13 @@ func (iter *rangeHeapJoinIter) getActiveRanges(ctx *sql.Context, _ sql.NodeExecB
 
 		if (iter.rangeHeapPlan.RangeIsClosedBelow && compareResult < 0) || (!iter.rangeHeapPlan.RangeIsClosedBelow && compareResult <= 0) {
 			break
-		}
-
-		heap.Push(iter, iter.pendingRow)
-		if iter.err != nil {
-			err = iter.err
-			iter.err = nil
-			return nil, err
+		} else {
+			heap.Push(iter, iter.pendingRow)
+			if iter.err != nil {
+				err = iter.err
+				iter.err = nil
+				return nil, err
+			}
 		}
 
 		iter.pendingRow, err = iter.childRowIter.Next(ctx)
@@ -316,10 +316,8 @@ func compareNullsFirst(ctx *sql.Context, comparisonType sql.Type, a, b interface
 	return comparisonType.Compare(ctx, a, b)
 }
 
-// Len implements sort.Interface
 func (iter *rangeHeapJoinIter) Len() int { return len(iter.activeRanges) }
 
-// Less implements sort.Interface
 func (iter *rangeHeapJoinIter) Less(i, j int) bool {
 	lhs := iter.activeRanges[i][iter.rangeHeapPlan.MaxColumnIndex]
 	rhs := iter.activeRanges[j][iter.rangeHeapPlan.MaxColumnIndex]
@@ -331,18 +329,15 @@ func (iter *rangeHeapJoinIter) Less(i, j int) bool {
 	return compareResult < 0
 }
 
-// Swap implements sort.Interface
 func (iter *rangeHeapJoinIter) Swap(i, j int) {
 	iter.activeRanges[i], iter.activeRanges[j] = iter.activeRanges[j], iter.activeRanges[i]
 }
 
-// Push implements heap.Interface
 func (iter *rangeHeapJoinIter) Push(x any) {
 	item := x.(sql.Row)
 	iter.activeRanges = append(iter.activeRanges, item)
 }
 
-// Pop implements heap.Interface
 func (iter *rangeHeapJoinIter) Pop() any {
 	n := len(iter.activeRanges)
 	x := iter.activeRanges[n-1]
@@ -350,7 +345,6 @@ func (iter *rangeHeapJoinIter) Pop() any {
 	return x
 }
 
-// Peek implements heap.Interface
 func (iter *rangeHeapJoinIter) Peek() interface{} {
 	n := len(iter.activeRanges)
 	return iter.activeRanges[n-1][iter.rangeHeapPlan.MaxColumnIndex]
