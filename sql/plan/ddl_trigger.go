@@ -137,30 +137,63 @@ func OrderTriggers(triggers []*CreateTrigger) (beforeTriggers []*CreateTrigger, 
 	orderedTriggers := make([]*CreateTrigger, len(triggers))
 	copy(orderedTriggers, triggers)
 
-Top:
-	for i, trigger := range triggers {
-		if trigger.TriggerOrder != nil {
-			ref := trigger.TriggerOrder.OtherTriggerName
-			// remove the trigger from the slice
-			orderedTriggers = append(orderedTriggers[:i], orderedTriggers[i+1:]...)
-			// then find where to reinsert it
-			for j, t := range orderedTriggers {
-				if t.TriggerName == ref {
-					if trigger.TriggerOrder.PrecedesOrFollows == sqlparser.PrecedesStr {
-						orderedTriggers = append(orderedTriggers[:j], append(triggers[i:i+1], orderedTriggers[j:]...)...)
-					} else if trigger.TriggerOrder.PrecedesOrFollows == sqlparser.FollowsStr {
-						if len(orderedTriggers) == j-1 {
-							orderedTriggers = append(orderedTriggers, triggers[i])
-						} else {
-							orderedTriggers = append(orderedTriggers[:j+1], append(triggers[i:i+1], orderedTriggers[j+1:]...)...)
-						}
-					} else {
-						panic("unexpected value for trigger order")
-					}
-					continue Top
-				}
+	// Process triggers with ordering constraints
+	for _, trigger := range triggers {
+		if trigger.TriggerOrder == nil {
+			continue
+		}
+
+		ref := trigger.TriggerOrder.OtherTriggerName
+
+		// Find the current position of this trigger in orderedTriggers
+		currentPos := -1
+		for j, t := range orderedTriggers {
+			if t.TriggerName == trigger.TriggerName {
+				currentPos = j
+				break
 			}
-			panic(fmt.Sprintf("Referenced trigger %s not found", ref))
+		}
+		if currentPos == -1 {
+			continue // trigger not found, skip
+		}
+
+		// Find the position of the referenced trigger
+		refPos := -1
+		for j, t := range orderedTriggers {
+			if t.TriggerName == ref {
+				refPos = j
+				break
+			}
+		}
+		if refPos == -1 {
+			// Referenced trigger not found (may have been dropped), keep trigger in its current position
+			continue
+		}
+
+		// Remove trigger from current position
+		orderedTriggers = append(orderedTriggers[:currentPos], orderedTriggers[currentPos+1:]...)
+
+		// Recalculate refPos after removal (it may have shifted)
+		refPos = -1
+		for j, t := range orderedTriggers {
+			if t.TriggerName == ref {
+				refPos = j
+				break
+			}
+		}
+
+		// Insert at the correct position
+		if trigger.TriggerOrder.PrecedesOrFollows == sqlparser.PrecedesStr {
+			orderedTriggers = append(orderedTriggers[:refPos], append([]*CreateTrigger{trigger}, orderedTriggers[refPos:]...)...)
+		} else if trigger.TriggerOrder.PrecedesOrFollows == sqlparser.FollowsStr {
+			insertPos := refPos + 1
+			if insertPos >= len(orderedTriggers) {
+				orderedTriggers = append(orderedTriggers, trigger)
+			} else {
+				orderedTriggers = append(orderedTriggers[:insertPos], append([]*CreateTrigger{trigger}, orderedTriggers[insertPos:]...)...)
+			}
+		} else {
+			panic("unexpected value for trigger order")
 		}
 	}
 

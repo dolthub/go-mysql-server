@@ -2457,19 +2457,8 @@ end;`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:       "drop trigger t1",
-				ExpectedErr: sql.ErrTriggerCannotBeDropped,
-			},
-			{
-				Query:       "drop trigger t3",
-				ExpectedErr: sql.ErrTriggerCannotBeDropped,
-			},
-			{
-				Query:    "drop trigger t4",
-				Expected: []sql.Row{{types.OkResult{}}},
-			},
-			{
-				Query:    "drop trigger t3",
+				// Dropping a trigger that is referenced by another trigger should succeed
+				Query:    "drop trigger t1",
 				Expected: []sql.Row{{types.OkResult{}}},
 			},
 			{
@@ -2483,8 +2472,9 @@ end;`,
 			{
 				Query: "select trigger_name from information_schema.triggers order by 1",
 				Expected: []sql.Row{
-					{"t1"},
 					{"t2"},
+					{"t3"},
+					{"t4"},
 				},
 			},
 			{
@@ -2494,7 +2484,56 @@ end;`,
 			{
 				Query: "select trigger_name from information_schema.triggers order by 1",
 				Expected: []sql.Row{
-					{"t1"},
+					{"t3"},
+					{"t4"},
+				},
+			},
+		},
+	},
+	// DROP TRIGGER with referenced trigger
+	{
+		Name: "drop trigger with referenced trigger",
+		SetUpScript: []string{
+			"create table x (a bigint primary key)",
+			"create trigger trigger1 before insert on x for each row set new.a = new.a + 1",
+			"create trigger trigger2 before insert on x for each row set new.a = (new.a * 2) + 10",
+			"create trigger trigger3 before insert on x for each row set new.a = (new.a * 2) + 100",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// Create trigger4 that precedes trigger3
+				Query:    "create trigger trigger4 before insert on x for each row precedes trigger3 set new.a = (new.a * 2) + 1000",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				// Drop trigger3 which is referenced by trigger4 - should now succeed
+				Query:    "drop trigger trigger3",
+				Expected: []sql.Row{{types.OkResult{}}},
+			},
+			{
+				// Verify remaining triggers
+				Query: "select trigger_name from information_schema.triggers order by 1",
+				Expected: []sql.Row{
+					{"trigger1"},
+					{"trigger2"},
+					{"trigger4"},
+				},
+			},
+			{
+				// Insert and verify triggers execute (order may vary when reference is broken)
+				Query:    "insert into x values (0)",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1}}},
+			},
+			{
+				// The triggers should still execute, even if order is affected
+				// Order: trigger1 -> trigger2 -> trigger4
+				// Start: a = 0
+				// trigger1: a = 0 + 1 = 1
+				// trigger2: a = (1 * 2) + 10 = 12
+				// trigger4: a = (12 * 2) + 1000 = 1024
+				Query: "select * from x where a != 0",
+				Expected: []sql.Row{
+					{int64(1024)},
 				},
 			},
 		},

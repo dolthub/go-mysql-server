@@ -51,10 +51,7 @@ func loadTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, 
 			for _, trigger := range loadedTriggers {
 				if strings.EqualFold(node.TriggerName, trigger.TriggerName) {
 					node.TriggerName = trigger.TriggerName
-					continue
-				}
-				if trigger.TriggerOrder != nil && strings.EqualFold(node.TriggerName, trigger.TriggerOrder.OtherTriggerName) {
-					return nil, transform.SameTree, sql.ErrTriggerCannotBeDropped.New(node.TriggerName, trigger.TriggerName)
+					break
 				}
 			}
 			return node, transform.NewTree, nil
