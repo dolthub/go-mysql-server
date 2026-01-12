@@ -145,16 +145,11 @@ func getCompareType(left, right sql.Type) (sql.Type, bool) {
 func newComparison(left, right sql.Expression) comparison {
 	disableRounding(left)
 	disableRounding(right)
-	var compareType sql.Type
-	var needConversion bool
-	if left.Resolved() && right.Resolved() {
-		compareType, needConversion = getCompareType(left.Type(), right.Type())
-	}
 	return comparison{
 		BinaryExpressionStub{left, right},
 		// we can't cache the type information yet here because the left and right expressions may be unresolved
-		compareType,
-		needConversion}
+		nil,
+		true}
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
