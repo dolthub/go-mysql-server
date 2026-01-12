@@ -95,6 +95,7 @@ func tupleTypesMatch(left sql.Type, tup types.TupleType, typeCb func(t sql.Type)
 
 type comparison struct {
 	BinaryExpressionStub
+	typesEqual bool
 }
 
 // disableRounding disables rounding for the given expression.
@@ -106,7 +107,11 @@ func disableRounding(expr sql.Expression) {
 func newComparison(left, right sql.Expression) comparison {
 	disableRounding(left)
 	disableRounding(right)
-	return comparison{BinaryExpressionStub{left, right}}
+
+	return comparison{
+		BinaryExpressionStub{left, right},
+		types.TypesEqual(left.Type(), right.Type()),
+	}
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -139,7 +144,7 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		return 0, err
 	}
 
-	if types.TypesEqual(c.Left().Type(), c.Right().Type()) {
+	if c.typesEqual {
 		return c.Left().Type().Compare(ctx, left, right)
 	}
 
@@ -176,7 +181,7 @@ func (c *comparison) CompareValue(ctx *sql.Context, row sql.ValueRow) (int, erro
 	}
 
 	lTyp, rTyp := c.LeftChild.Type().(sql.ValueType), c.RightChild.Type().(sql.ValueType)
-	if types.TypesEqual(lTyp, rTyp) {
+	if c.typesEqual {
 		return lTyp.(sql.ValueType).CompareValue(ctx, lv, rv)
 	}
 
@@ -233,35 +238,28 @@ func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right interface{})
 
 	leftIsEnumOrSet := types.IsEnum(leftType) || types.IsSet(leftType)
 	rightIsEnumOrSet := types.IsEnum(rightType) || types.IsSet(rightType)
-	// Only convert if same Enum or Set
-	if leftIsEnumOrSet && rightIsEnumOrSet {
-		if types.TypesEqual(leftType, rightType) {
-			return left, right, leftType, nil
-		}
-	} else {
-		// If right side is convertible to enum/set, convert. Otherwise, convert left side
-		if leftIsEnumOrSet && (types.IsText(rightType) || types.IsNumber(rightType)) {
-			if r, inRange, err := leftType.Convert(ctx, right); inRange == sql.InRange && err == nil {
-				return left, r, leftType, nil
-			} else {
-				l, _, err := types.TypeAwareConversion(ctx, left, leftType, rightType)
-				if err != nil {
-					return nil, nil, nil, err
-				}
-				return l, right, rightType, nil
+	// If right side is convertible to enum/set, convert. Otherwise, convert left side
+	if leftIsEnumOrSet && (types.IsText(rightType) || types.IsNumber(rightType)) {
+		if r, inRange, err := leftType.Convert(ctx, right); inRange == sql.InRange && err == nil {
+			return left, r, leftType, nil
+		} else {
+			l, _, err := types.TypeAwareConversion(ctx, left, leftType, rightType)
+			if err != nil {
+				return nil, nil, nil, err
 			}
+			return l, right, rightType, nil
 		}
-		// If left side is convertible to enum/set, convert. Otherwise, convert right side
-		if rightIsEnumOrSet && (types.IsText(leftType) || types.IsNumber(leftType)) {
-			if l, inRange, err := rightType.Convert(ctx, left); inRange == sql.InRange && err == nil {
-				return l, right, rightType, nil
-			} else {
-				r, _, err := types.TypeAwareConversion(ctx, right, rightType, leftType)
-				if err != nil {
-					return nil, nil, nil, err
-				}
-				return left, r, leftType, nil
+	}
+	// If left side is convertible to enum/set, convert. Otherwise, convert right side
+	if rightIsEnumOrSet && (types.IsText(leftType) || types.IsNumber(leftType)) {
+		if l, inRange, err := rightType.Convert(ctx, left); inRange == sql.InRange && err == nil {
+			return l, right, rightType, nil
+		} else {
+			r, _, err := types.TypeAwareConversion(ctx, right, rightType, leftType)
+			if err != nil {
+				return nil, nil, nil, err
 			}
+			return left, r, leftType, nil
 		}
 	}
 
@@ -506,7 +504,7 @@ func (e *NullSafeEquals) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		return -1, nil
 	}
 
-	if types.TypesEqual(e.Left().Type(), e.Right().Type()) {
+	if e.typesEqual {
 		return e.Left().Type().Compare(ctx, left, right)
 	}
 
