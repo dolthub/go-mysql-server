@@ -95,7 +95,8 @@ func tupleTypesMatch(left sql.Type, tup types.TupleType, typeCb func(t sql.Type)
 
 type comparison struct {
 	BinaryExpressionStub
-	typesEqual bool
+	compareType    sql.Type
+	needConversion bool
 }
 
 // disableRounding disables rounding for the given expression.
@@ -104,14 +105,56 @@ func disableRounding(expr sql.Expression) {
 	setDivOps(expr, -1)
 }
 
+// getCompareType determines a tentative comparison type and if a conversion is needed before comparing. This
+// comparison type is tentative because the comparison type if one side is an Enum or Set is determined by if the other
+// side can successfully convert
+func getCompareType(left, right sql.Type) (sql.Type, bool) {
+	switch {
+	case types.TypesEqual(left, right):
+		return left, false
+	case (types.IsEnum(left) || types.IsSet(left)) && (types.IsText(right) || types.IsNumber(right)):
+		return left, true
+	case (types.IsEnum(right) || types.IsSet(right)) && (types.IsText(left) || types.IsNumber(left)):
+		return right, true
+	case types.IsTimespan(left) || types.IsTimespan(right):
+		return types.Time, true
+	case types.IsTuple(left) && types.IsTuple(right):
+		return left, false
+	case types.IsJSON(left) || types.IsJSON(right):
+		// rely on types.JSON.Compare to handle JSON comparisons
+		return types.JSON, false
+	case types.IsBinaryType(left) || types.IsBinaryType(right):
+		return types.LongBlob, true
+	case types.IsDecimal(left):
+		return left, true
+	case types.IsDecimal(right):
+		return right, true
+	case types.IsFloat(left) || types.IsFloat(right):
+		return types.Float64, true
+	case types.IsSigned(left) && types.IsSigned(right):
+		return types.Int64, true
+	case types.IsUnsigned(left) && types.IsUnsigned(right):
+		return types.Uint64, true
+	case types.IsNumber(left) || types.IsNumber(right):
+		return types.Float64, true
+	default:
+		return types.LongText, true
+	}
+}
+
 func newComparison(left, right sql.Expression) comparison {
 	disableRounding(left)
 	disableRounding(right)
-
+	var compareType sql.Type
+	var needConversion bool
+	if left.Resolved() && right.Resolved() {
+		compareType, needConversion = getCompareType(left.Type(), right.Type())
+	}
 	return comparison{
 		BinaryExpressionStub{left, right},
-		types.TypesEqual(left.Type(), right.Type()),
-	}
+		// we can't cache the type information yet here because the left and right expressions may be unresolved
+		compareType,
+		needConversion}
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -144,8 +187,11 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		return 0, err
 	}
 
-	if c.typesEqual {
-		return c.Left().Type().Compare(ctx, left, right)
+	if c.compareType == nil {
+		c.compareType, c.needConversion = getCompareType(c.Left().Type(), c.Right().Type())
+	}
+	if !c.needConversion {
+		return c.compareType.Compare(ctx, left, right)
 	}
 
 	l, r, compareType, err := c.castLeftAndRight(ctx, left, right)
@@ -180,8 +226,9 @@ func (c *comparison) CompareValue(ctx *sql.Context, row sql.ValueRow) (int, erro
 		return 0, nil
 	}
 
+	// TODO: We can likely make use of caching the compare type here
 	lTyp, rTyp := c.LeftChild.Type().(sql.ValueType), c.RightChild.Type().(sql.ValueType)
-	if c.typesEqual {
+	if types.TypesEqual(lTyp, rTyp) {
 		return lTyp.(sql.ValueType).CompareValue(ctx, lv, rv)
 	}
 
@@ -238,28 +285,35 @@ func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right interface{})
 
 	leftIsEnumOrSet := types.IsEnum(leftType) || types.IsSet(leftType)
 	rightIsEnumOrSet := types.IsEnum(rightType) || types.IsSet(rightType)
-	// If right side is convertible to enum/set, convert. Otherwise, convert left side
-	if leftIsEnumOrSet && (types.IsText(rightType) || types.IsNumber(rightType)) {
-		if r, inRange, err := leftType.Convert(ctx, right); inRange == sql.InRange && err == nil {
-			return left, r, leftType, nil
-		} else {
-			l, _, err := types.TypeAwareConversion(ctx, left, leftType, rightType)
-			if err != nil {
-				return nil, nil, nil, err
-			}
-			return l, right, rightType, nil
+	// Only convert if same Enum or Set
+	if leftIsEnumOrSet && rightIsEnumOrSet {
+		if types.TypesEqual(leftType, rightType) {
+			return left, right, leftType, nil
 		}
-	}
-	// If left side is convertible to enum/set, convert. Otherwise, convert right side
-	if rightIsEnumOrSet && (types.IsText(leftType) || types.IsNumber(leftType)) {
-		if l, inRange, err := rightType.Convert(ctx, left); inRange == sql.InRange && err == nil {
-			return l, right, rightType, nil
-		} else {
-			r, _, err := types.TypeAwareConversion(ctx, right, rightType, leftType)
-			if err != nil {
-				return nil, nil, nil, err
+	} else {
+		// If right side is convertible to enum/set, convert. Otherwise, convert left side
+		if leftIsEnumOrSet && (types.IsText(rightType) || types.IsNumber(rightType)) {
+			if r, inRange, err := leftType.Convert(ctx, right); inRange == sql.InRange && err == nil {
+				return left, r, leftType, nil
+			} else {
+				l, _, err := types.TypeAwareConversion(ctx, left, leftType, rightType)
+				if err != nil {
+					return nil, nil, nil, err
+				}
+				return l, right, rightType, nil
 			}
-			return left, r, leftType, nil
+		}
+		// If left side is convertible to enum/set, convert. Otherwise, convert right side
+		if rightIsEnumOrSet && (types.IsText(leftType) || types.IsNumber(leftType)) {
+			if l, inRange, err := rightType.Convert(ctx, left); inRange == sql.InRange && err == nil {
+				return l, right, rightType, nil
+			} else {
+				r, _, err := types.TypeAwareConversion(ctx, right, rightType, leftType)
+				if err != nil {
+					return nil, nil, nil, err
+				}
+				return left, r, leftType, nil
+			}
 		}
 	}
 
@@ -504,8 +558,11 @@ func (e *NullSafeEquals) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		return -1, nil
 	}
 
-	if e.typesEqual {
-		return e.Left().Type().Compare(ctx, left, right)
+	if e.compareType == nil {
+		e.compareType, e.needConversion = getCompareType(e.Left().Type(), e.Right().Type())
+	}
+	if !e.needConversion {
+		return e.compareType.Compare(ctx, left, right)
 	}
 
 	var compareType sql.Type
