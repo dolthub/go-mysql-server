@@ -763,17 +763,30 @@ func GetForeignKeyTypeConversions(
 		childType := childSch[childIndex].Type
 		parentType := parentSch[parentIndex].Type
 
+		// For foreign keys, equality between different sets/enums are evaluated based on underlying int value
+		if ((types.IsEnum(parentType) && types.IsEnum(childType)) || (types.IsSet(parentType) && types.IsSet(childType))) &&
+			!types.TypesEqual(parentType, childType) {
+			if convFns == nil {
+				convFns = make([]ForeignKeyTypeConversionFn, len(childSch))
+			}
+			convFns[childIndex] = func(ctx *sql.Context, val any) (sql.Type, any, error) {
+				convertedVal, _, err := types.Uint64.Convert(ctx, val)
+				return types.Uint64, convertedVal, err
+			}
+			continue
+		}
+
 		childExtendedType, ok := childType.(sql.ExtendedType)
 		// if even one of the types is not an extended type, then we can't transform any values
 		if !ok {
-			return nil, nil
+			continue
 		}
 
 		if !childType.Equals(parentType) {
 			parentExtendedType, ok := parentType.(sql.ExtendedType)
 			if !ok {
 				// this should be impossible (child and parent should both be extended types), but just in case
-				return nil, nil
+				continue
 			}
 
 			fromType := childExtendedType
