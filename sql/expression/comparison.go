@@ -295,7 +295,7 @@ func (c *comparison) evalLeftAndRight(ctx *sql.Context, row sql.Row) (interface{
 func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right interface{}) (interface{}, interface{}, sql.Type, error) {
 	compareType := c.compareType
 	if types.IsEnum(compareType) || types.IsSet(compareType) {
-		leftIsEnumOrSet := c.leftType == compareType
+		leftIsEnumOrSet := types.IsEnum(c.leftType) || types.IsSet(c.leftType)
 		if leftIsEnumOrSet {
 			// If right side is convertible to enum/set, convert. Otherwise, fallback to right side type
 			if r, inRange, err := compareType.Convert(ctx, right); inRange == sql.InRange && err == nil {
@@ -319,6 +319,11 @@ func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right interface{})
 		}
 		// if fails to convert to timespan, fallback to number compare type
 		compareType = getNumberCompareType(c.leftType, c.rightType)
+	}
+
+	// convertTo := ConvertToChar
+	// typeLength := 0
+	switch compareType {
 	}
 
 	leftType := c.Left().Type()
