@@ -95,6 +95,8 @@ func tupleTypesMatch(left sql.Type, tup types.TupleType, typeCb func(t sql.Type)
 
 type comparison struct {
 	BinaryExpressionStub
+	leftType       sql.Type
+	rightType      sql.Type
 	compareType    sql.Type
 	needConversion bool
 }
@@ -105,41 +107,53 @@ func disableRounding(expr sql.Expression) {
 	setDivOps(expr, -1)
 }
 
-// getCompareType determines a tentative comparison type and if a conversion is needed before comparing. This
-// comparison type is tentative because the comparison type if one side is an Enum or Set is determined by if the other
-// side can successfully convert
-func getCompareType(left, right sql.Type) (sql.Type, bool) {
+// setCompareType sets a tentative comparison type and if a conversion is needed before comparing. This comparison type
+// is tentative because the comparison type if one side is an Enum or Set is determined by if the other side can
+// successfully convert
+func (c *comparison) setCompareType() {
 	switch {
-	case types.TypesEqual(left, right):
-		return left, false
-	case (types.IsEnum(left) || types.IsSet(left)) && (types.IsText(right) || types.IsNumber(right)):
-		return left, true
-	case (types.IsEnum(right) || types.IsSet(right)) && (types.IsText(left) || types.IsNumber(left)):
-		return right, true
-	case types.IsTimespan(left) || types.IsTimespan(right):
-		return types.Time, true
-	case types.IsTuple(left) && types.IsTuple(right):
-		return left, false
-	case types.IsJSON(left) || types.IsJSON(right):
+	case types.TypesEqual(c.leftType, c.rightType):
+		c.compareType, c.needConversion = c.leftType, false
+	case (types.IsEnum(c.leftType) || types.IsSet(c.leftType)) && (types.IsText(c.rightType) || types.IsNumber(c.rightType)):
+		c.compareType, c.needConversion = c.leftType, true
+	case (types.IsEnum(c.rightType) || types.IsSet(c.rightType)) && (types.IsText(c.leftType) || types.IsNumber(c.leftType)):
+		c.compareType, c.needConversion = c.rightType, true
+	case types.IsJSON(c.leftType) || types.IsJSON(c.rightType):
 		// rely on types.JSON.Compare to handle JSON comparisons
-		return types.JSON, false
-	case types.IsBinaryType(left) || types.IsBinaryType(right):
-		return types.LongBlob, true
-	case types.IsDecimal(left):
-		return left, true
-	case types.IsDecimal(right):
-		return right, true
-	case types.IsFloat(left) || types.IsFloat(right):
-		return types.Float64, true
-	case types.IsSigned(left) && types.IsSigned(right):
-		return types.Int64, true
-	case types.IsUnsigned(left) && types.IsUnsigned(right):
-		return types.Uint64, true
-	case types.IsNumber(left) || types.IsNumber(right):
-		return types.Float64, true
+		c.compareType, c.needConversion = types.JSON, false
+	case types.IsTuple(c.leftType) && types.IsTuple(c.rightType):
+		c.compareType, c.needConversion = c.leftType, false
+	case types.IsBinaryType(c.leftType) || types.IsBinaryType(c.rightType):
+		c.compareType, c.needConversion = types.LongBlob, true
+	case types.IsTimespan(c.leftType) || types.IsTimespan(c.rightType):
+		c.compareType, c.needConversion = types.Time, true
+	case types.IsNumber(c.leftType) || types.IsNumber(c.rightType):
+		c.compareType, c.needConversion = getNumberCompareType(c.leftType, c.rightType), true
 	default:
-		return types.LongText, true
+		c.compareType, c.needConversion = types.LongText, true
 	}
+}
+
+func getNumberCompareType(left, right sql.Type) sql.Type {
+	switch {
+	case types.IsDecimal(left) || types.IsDecimal(right):
+		return types.InternalDecimalType
+	case types.IsFloat(left) || types.IsFloat(right):
+		return types.Float64
+	case types.IsSigned(left) && types.IsSigned(right):
+		return types.Int64
+	case types.IsUnsigned(left) && types.IsUnsigned(right):
+		return types.Uint64
+	default:
+		return types.Float64
+	}
+}
+
+func promoteToCompareType(typ sql.Type) sql.Type {
+	if types.IsDecimal(typ) {
+		return types.InternalDecimalType
+	}
+	return typ.Promote()
 }
 
 func newComparison(left, right sql.Expression) comparison {
@@ -148,6 +162,8 @@ func newComparison(left, right sql.Expression) comparison {
 	return comparison{
 		BinaryExpressionStub{left, right},
 		// we can't cache the type information yet here because the left and right expressions may be unresolved
+		nil,
+		nil,
 		nil,
 		true}
 }
@@ -183,7 +199,9 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 	}
 
 	if c.compareType == nil {
-		c.compareType, c.needConversion = getCompareType(c.Left().Type(), c.Right().Type())
+		c.leftType = c.Left().Type()
+		c.rightType = c.Right().Type()
+		c.setCompareType()
 	}
 	if !c.needConversion {
 		return c.compareType.Compare(ctx, left, right)
@@ -275,54 +293,36 @@ func (c *comparison) evalLeftAndRight(ctx *sql.Context, row sql.Row) (interface{
 }
 
 func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right interface{}) (interface{}, interface{}, sql.Type, error) {
-	leftType := c.Left().Type()
-	rightType := c.Right().Type()
-
-	leftIsEnumOrSet := types.IsEnum(leftType) || types.IsSet(leftType)
-	rightIsEnumOrSet := types.IsEnum(rightType) || types.IsSet(rightType)
-	// Only convert if same Enum or Set
-	if leftIsEnumOrSet && rightIsEnumOrSet {
-		if types.TypesEqual(leftType, rightType) {
-			return left, right, leftType, nil
-		}
-	} else {
-		// If right side is convertible to enum/set, convert. Otherwise, convert left side
-		if leftIsEnumOrSet && (types.IsText(rightType) || types.IsNumber(rightType)) {
-			if r, inRange, err := leftType.Convert(ctx, right); inRange == sql.InRange && err == nil {
-				return left, r, leftType, nil
+	compareType := c.compareType
+	if types.IsEnum(compareType) || types.IsSet(compareType) {
+		leftIsEnumOrSet := c.leftType == compareType
+		if leftIsEnumOrSet {
+			// If right side is convertible to enum/set, convert. Otherwise, fallback to right side type
+			if r, inRange, err := compareType.Convert(ctx, right); inRange == sql.InRange && err == nil {
+				return left, r, compareType, nil
 			} else {
-				l, _, err := types.TypeAwareConversion(ctx, left, leftType, rightType)
-				if err != nil {
-					return nil, nil, nil, err
-				}
-				return l, right, rightType, nil
+				compareType = promoteToCompareType(c.rightType)
 			}
-		}
-		// If left side is convertible to enum/set, convert. Otherwise, convert right side
-		if rightIsEnumOrSet && (types.IsText(leftType) || types.IsNumber(leftType)) {
-			if l, inRange, err := rightType.Convert(ctx, left); inRange == sql.InRange && err == nil {
-				return l, right, rightType, nil
+		} else {
+			if l, inRange, err := compareType.Convert(ctx, left); inRange == sql.InRange && err == nil {
+				return l, right, compareType, nil
 			} else {
-				r, _, err := types.TypeAwareConversion(ctx, right, rightType, leftType)
-				if err != nil {
-					return nil, nil, nil, err
-				}
-				return left, r, leftType, nil
+				compareType = promoteToCompareType(c.leftType)
 			}
 		}
 	}
-
-	if types.IsTimespan(leftType) || types.IsTimespan(rightType) {
+	if types.IsTimespan(compareType) {
 		if l, err := types.Time.ConvertToTimespan(left); err == nil {
 			if r, err := types.Time.ConvertToTimespan(right); err == nil {
 				return l, r, types.Time, nil
 			}
 		}
+		// if fails to convert to timespan, fallback to number compare type
+		compareType = getNumberCompareType(c.leftType, c.rightType)
 	}
 
-	if types.IsTuple(leftType) && types.IsTuple(rightType) {
-		return left, right, c.Left().Type(), nil
-	}
+	leftType := c.Left().Type()
+	rightType := c.Right().Type()
 
 	if types.IsTime(leftType) || types.IsTime(rightType) {
 		l, r, err := convertLeftAndRight(ctx, left, right, ConvertToDatetime)
@@ -554,7 +554,9 @@ func (e *NullSafeEquals) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 	}
 
 	if e.compareType == nil {
-		e.compareType, e.needConversion = getCompareType(e.Left().Type(), e.Right().Type())
+		e.leftType = e.Left().Type()
+		e.rightType = e.Right().Type()
+		e.setCompareType()
 	}
 	if !e.needConversion {
 		return e.compareType.Compare(ctx, left, right)
