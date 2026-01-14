@@ -2298,6 +2298,23 @@ WHERE
 			},
 		},
 	},
+	{
+		name: "join on different enum types",
+		setup: [][]string{
+			{
+				"create table animals(e enum('rat','ox','tiger','dog') primary key);",
+				"create table pets(e enum('cat','dog','fish','rat'), foreign key (e) references animals(e));",
+				"insert into animals values('rat'), ('dog');",
+				"insert into pets values ('cat'), ('rat');",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select * from animals join pets on animals.e=pets.e;",
+				Expected: []sql.Row{{"rat", "rat"}},
+			},
+		},
+	},
 }
 
 var rangeJoinOpTests = []JoinOpTests{
