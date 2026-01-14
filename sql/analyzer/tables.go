@@ -123,3 +123,27 @@ func getTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
 	})
 	return ret
 }
+
+func getTablesByName2(node sql.Node) map[string]sql.Node {
+	ret := make(map[string]sql.Node)
+	// TODO: We should change transform.Inspect to not walk the children of sql.OpaqueNodes (like transform.Node)
+	//  and add a transform.InspectWithOpaque that does.
+	//  Using transform.Node here achieves the same result without a large refactor.
+	transform.Node(node, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		switch n := node.(type) {
+		case *plan.ResolvedTable:
+			ret[strings.ToLower(n.Table.Name())] = n
+		case *plan.IndexedTableAccess:
+			rt, ok := n.TableNode.(*plan.ResolvedTable)
+			if ok {
+				ret[strings.ToLower(rt.Name())] = rt
+			}
+		case *plan.TableAlias:
+			ret[strings.ToLower(n.Name())] = n
+		case *plan.SubqueryAlias:
+			ret[strings.ToLower(n.Name())] = n
+		}
+		return nil, transform.SameTree, nil
+	})
+	return ret
+}

@@ -29,10 +29,6 @@ import (
 // apply, effectively, an indexed join between two tables, one of which is defined in the outer scope. This is similar
 // to the process in the join analyzer.
 func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	if scope.IsEmpty() {
-		return n, transform.SameTree, nil
-	}
-
 	// this isn't good enough: we need to consider aliases defined in the outer scope as well for this analysis
 	tableAliases, err := getTableAliases(n, scope)
 	if err != nil {
@@ -194,7 +190,7 @@ func createIndexKeyExpr(ctx *sql.Context, idx sql.Index, joinExprs []*joinColExp
 	idxExpressions := idx.Expressions()
 	normalizedJoinExprStrs := make([]string, len(joinExprs))
 	for i := range joinExprs {
-		normalizedJoinExprStrs[i] = normalizeExpression(tableAliases, joinExprs[i].colExpr).String()
+		normalizedJoinExprStrs[i] = normalizeExpression(tableAliases, joinExprs[i].col).String()
 	}
 	if ok, prefixCount := exprsAreIndexSubset(normalizedJoinExprStrs, idxExpressions); !ok || prefixCount != len(normalizedJoinExprStrs) {
 		return nil, nil, nil
@@ -284,6 +280,12 @@ func tablesInScope(scope *plan.Scope) []string {
 	var tableSlice []string
 	for table := range tables {
 		tableSlice = append(tableSlice, table)
+	}
+	for _, table := range scope.JoinSiblings() {
+		_ = table
+		if nameable, ok := table.(sql.Nameable); ok {
+			tableSlice = append(tableSlice, nameable.Name())
+		}
 	}
 	return tableSlice
 }

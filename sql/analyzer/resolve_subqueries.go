@@ -36,8 +36,9 @@ func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 }
 
 func addLeftTablesToScope(outerScope *plan.Scope, leftNode sql.Node) *plan.Scope {
-	resTbls := getTablesByName(leftNode)
-	subScope := outerScope
+	// Why are we getting the underlying table here?
+	resTbls := getTablesByName2(leftNode)
+	subScope := outerScope.NewScope(leftNode)
 	for _, tbl := range resTbls {
 		subScope = subScope.NewScopeInJoin(tbl)
 	}
@@ -104,10 +105,10 @@ func finalizeSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 // finalizeSubqueriesHelper finalizes all subqueries and subquery expressions,
 // fixing parent scopes before recursing into child nodes.
 func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	var joinParent *plan.JoinNode
+	var joinParents []*plan.JoinNode
 	var selFunc transform.SelectorFunc = func(c transform.Context) bool {
 		if jp, ok := c.Node.(*plan.JoinNode); ok {
-			joinParent = jp
+			joinParents = append(joinParents, jp)
 		}
 		return true
 	}
@@ -118,35 +119,31 @@ func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 			var newSqa sql.Node
 			var same2 transform.TreeIdentity
 			var err error
+			var subScope *plan.Scope = scope
 			// NOTE: this only really fixes one level of subquery with two joins.
 			// This patch will likely not fix cases with more deeply nested joins and subqueries.
 			// A real fix would be to re-examine indexes after everything.
-			if sqa.OuterScopeVisibility && joinParent != nil {
-				if stripChild, ok := joinParent.Right().(*plan.StripRowNode); ok && stripChild.Child == sqa {
-					subScope := scope.NewScopeInJoin(joinParent.Children()[0])
-					subScope.SetLateralJoin(joinParent.Op.IsLateral())
-					newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, true, qFlags)
+			for _, joinParent := range joinParents {
+				if sqa.OuterScopeVisibility && joinParent != nil {
+					if stripChild, ok := joinParent.Right().(*plan.StripRowNode); ok && stripChild.Child == sqa {
+						subScope = scope.NewScopeInJoin(joinParent.Children()[0])
+						subScope.SetLateralJoin(joinParent.Op.IsLateral())
+					} else {
+						// IsLateral means that the subquery should have visibility into the left scope.
+						if true { // sqa.IsLateral {
+							subScope = addLeftTablesToScope(subScope, joinParent.Left())
+							subScope.SetLateralJoin(true)
+						}
+					}
 				} else {
 					// IsLateral means that the subquery should have visibility into the left scope.
-					if sqa.IsLateral {
-						subScope := addLeftTablesToScope(scope, joinParent.Left())
+					if joinParent != nil { // && sqa.IsLateral {
+						subScope = addLeftTablesToScope(subScope, joinParent.Left())
 						subScope.SetLateralJoin(true)
-						newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, true, qFlags)
-					} else {
-						newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, scope, sel, true, qFlags)
 					}
 				}
-			} else {
-				// IsLateral means that the subquery should have visibility into the left scope.
-				if joinParent != nil && sqa.IsLateral {
-					subScope := addLeftTablesToScope(scope, joinParent.Left())
-					subScope.SetLateralJoin(true)
-					newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, true, qFlags)
-				} else {
-					newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, scope, sel, true, qFlags)
-				}
 			}
-
+			newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, true, qFlags)
 			if err != nil {
 				return n, transform.SameTree, err
 			}

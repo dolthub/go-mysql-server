@@ -42,12 +42,12 @@ func (f filtersByTable) size() int {
 
 // getFiltersByTable returns a map of table name to filter expressions on that table for the node provided. Any
 // predicates that contain no table or more than one table are not included in the result.
-func getFiltersByTable(n sql.Node) filtersByTable {
+func getFiltersByTable(n sql.Node, allow_multiple_tables_in_expression bool) filtersByTable {
 	filters := newFiltersByTable()
 	transform.Inspect(n, func(node sql.Node) bool {
 		switch node := node.(type) {
 		case *plan.Filter:
-			fs := exprToTableFilters(node.Expression)
+			fs := exprToTableFilters_(node.Expression, allow_multiple_tables_in_expression)
 			filters.merge(fs)
 		}
 		if o, ok := node.(sql.OpaqueNode); ok {
@@ -63,17 +63,24 @@ func getFiltersByTable(n sql.Node) filtersByTable {
 // given, split at AND. Any expressions that contain subquerys, or refer to more than one table, are not included in
 // the result.
 func exprToTableFilters(expr sql.Expression) filtersByTable {
+	return exprToTableFilters_(expr, false)
+}
+
+// exprToTableFilters returns a map of table name to filter expressions on that table for all parts of the expression
+// given, split at AND. Any expressions that contain subquerys, or refer to more than one table, are not included in
+// the result.
+func exprToTableFilters_(expr sql.Expression, allow_multiple_tables_in_expression bool) filtersByTable {
 	filters := newFiltersByTable()
 	for _, expr := range expression.SplitConjunction(expr) {
 		var seenTables = make(map[string]bool)
-		var lastTable string
+		var lastTable []string
 		hasSubquery := false
 		sql.Inspect(expr, func(e sql.Expression) bool {
 			f, ok := e.(*expression.GetField)
 			if ok {
 				if !seenTables[f.Table()] {
 					seenTables[f.Table()] = true
-					lastTable = f.Table()
+					lastTable = append(lastTable, f.Table())
 				}
 			} else if _, isSubquery := e.(*plan.Subquery); isSubquery {
 				hasSubquery = true
@@ -83,8 +90,10 @@ func exprToTableFilters(expr sql.Expression) filtersByTable {
 			return true
 		})
 
-		if len(seenTables) == 1 && !hasSubquery {
-			filters[lastTable] = append(filters[lastTable], expr)
+		if (allow_multiple_tables_in_expression || len(seenTables) == 1) && !hasSubquery {
+			for _, table := range lastTable {
+				filters[table] = append(filters[table], expr)
+			}
 		}
 	}
 

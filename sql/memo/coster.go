@@ -247,23 +247,23 @@ func lookupJoinSelectivity(l *IndexScan, joinBase *JoinBase) float64 {
 // at most one row.
 func isInjectiveLookup(idx *Index, joinBase *JoinBase, keyExprs []sql.Expression, nullMask []bool) bool {
 	if !idx.SqlIdx().IsUnique() {
-		return false
+		// return false
 	}
 
 	joinFds := joinBase.Group().RelProps.FuncDeps()
 
 	var notNull sql.ColSet
 	var constCols sql.ColSet
-	for i, nullable := range nullMask {
+	for i, _ := range nullMask {
 		cols, _, nullRej := getExprScalarProps(keyExprs[i])
 		onCols := joinFds.EquivalenceClosure(cols)
-		if !nullable {
-			if nullRej {
-				// columns with nulls will be filtered out
-				// TODO double-checking nullRejecting might be redundant
-				notNull = notNull.Union(onCols)
-			}
+		//if !nullable {
+		if nullRej {
+			// columns with nulls will be filtered out
+			// TODO double-checking nullRejecting might be redundant
+			notNull = notNull.Union(onCols)
 		}
+		//}
 		// from the perspective of the secondary table, lookup keys
 		// will be constant
 		constCols = constCols.Union(onCols)

@@ -1534,6 +1534,25 @@ func buildLeaf(ctx *sql.Context, id indexScanId, e sql.Expression, underlying st
 		e := e.(*expression.MatchAgainst)
 		return &iScanLeaf{id: id, op: op, gf: e.Columns[0].(*expression.GetField), underlying: underlying, fulltextIndex: e.GetIndex().ID()}, true
 	}
+
+	for {
+		leftAlias, ok := left.(*expression.Alias)
+		if ok {
+			left = leftAlias.Child
+		} else {
+			break
+		}
+	}
+
+	for {
+		rightAlias, ok := right.(*expression.Alias)
+		if ok {
+			left = rightAlias.Child
+		} else {
+			break
+		}
+	}
+
 	if _, ok := left.(*expression.GetField); !ok {
 		left, right = right, left
 		op = op.Swap()

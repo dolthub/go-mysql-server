@@ -265,6 +265,23 @@ func getTableAliases(n sql.Node, scope *plan.Scope) (TableAliases, error) {
 		aliases.putAll(passAliases)
 	}
 
+	if analysisErr != nil {
+		return TableAliases{}, analysisErr
+	}
+
+	passAliases = TableAliases{}
+	for _, siblingNode := range scope.JoinSiblings() {
+		switch node := siblingNode.(type) {
+		case *plan.SubqueryAlias:
+			analysisErr = passAliases.addUnqualified(node.Name(), node)
+		}
+	}
+
+	if analysisErr != nil {
+		return TableAliases{}, analysisErr
+	}
+	aliases.putAll(passAliases)
+
 	passAliases = TableAliases{}
 	transform.Inspect(n, aliasFn)
 	if analysisErr != nil {

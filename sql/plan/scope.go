@@ -340,9 +340,15 @@ func (s *Scope) InInsertSource() bool {
 }
 
 func (s *Scope) JoinSiblings() []sql.Node {
+	if s == nil {
+		return nil
+	}
 	return s.joinSiblings
 }
 
 func (s *Scope) Correlated() sql.ColSet {
+	if s == nil {
+		return sql.ColSet{}
+	}
 	return s.corr
 }

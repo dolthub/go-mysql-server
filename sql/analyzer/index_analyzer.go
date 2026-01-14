@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"sort"
 	"strings"
 
@@ -155,6 +156,9 @@ func (r *indexAnalyzer) MatchingIndexes(ctx *sql.Context, table, db string, expr
 	distinctExprs := make(map[string]struct{})
 	var exprStrs []string
 	for _, e := range exprs {
+		if aliasExpr, ok := e.(*expression.Alias); ok {
+			e = aliasExpr.Child
+		}
 		es := strings.ToLower(e.String())
 		if _, ok := distinctExprs[es]; !ok {
 			distinctExprs[es] = struct{}{}

@@ -801,6 +801,15 @@ on w = 0;`,
 		Query:    "select * from comp_index_t0 a join comp_index_t0 b join comp_index_t0 c on a.v2 = b.pk and b.v2 = c.pk and c.v2 = 5",
 		Expected: []sql.Row{},
 	},
+	{
+		Query: "select * from ab join (select * from pq join uv on p = u) pquv where a = p order by a;",
+		Expected: []sql.Row{
+			{0, 2},
+			{1, 2},
+			{2, 2},
+			{3, 1},
+		},
+	},
 }
 
 var JoinScriptTests = []ScriptTest{
