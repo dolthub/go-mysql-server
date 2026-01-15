@@ -331,13 +331,15 @@ func (b *MySQLIndexBuilder) GreaterThan(ctx *Context, colExpr string, keyType Ty
 
 // IsConvertibleKeyType checks if the key can be converted into the column type
 func IsConvertibleKeyType(colType Type, keyType Type) bool {
-	if IsEnumType(colType) {
-		return !(IsStringType(keyType) || (IsEnumType(keyType) && !colType.Equals(keyType)))
+	// TODO: check other types https://github.com/dolthub/dolt/issues/10316
+	switch {
+	case IsEnumType(colType):
+		if IsEnumType(keyType) {
+			return !colType.Equals(keyType)
+		}
+	case IsStringType(colType):
+		return !(IsNumberType(keyType) || IsDecimalType(keyType))
 	}
-	if IsStringType(colType) {
-		return !(IsNumberType(keyType) || IsDecimalType(keyType) || IsEnumType(keyType))
-	}
-	// TODO: check other types
 	return true
 }
 
