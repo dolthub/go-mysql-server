@@ -36,7 +36,7 @@ func resolveSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 }
 
 func addLeftTablesToScope(outerScope *plan.Scope, leftNode sql.Node) *plan.Scope {
-	resTbls := getTablesByName(leftNode)
+	resTbls := getNamedChildren(leftNode)
 	subScope := outerScope
 	for _, tbl := range resTbls {
 		subScope = subScope.NewScopeInJoin(tbl)

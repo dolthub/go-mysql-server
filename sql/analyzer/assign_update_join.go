@@ -51,7 +51,7 @@ func modifyUpdateExprsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 // getUpdateTargetsByTable maps a set of table names and aliases to their corresponding update target Node
 func getUpdateTargetsByTable(node sql.Node, ij sql.Node, isJoin bool) (map[string]sql.Node, error) {
 	namesOfTableToBeUpdated := plan.GetTablesToBeUpdated(node)
-	resolvedTables := getTablesByName(ij)
+	resolvedTables := getResolvedTablesByName(ij)
 
 	updateTargets := make(map[string]sql.Node)
 	for tableToBeUpdated, _ := range namesOfTableToBeUpdated {

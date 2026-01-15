@@ -278,7 +278,7 @@ func tablesInScope(scope *plan.Scope) []string {
 		}
 	}
 	for _, table := range scope.JoinSiblings() {
-		for name, _ := range getTablesByName(table) {
+		for name, _ := range getNamedChildren(table) {
 			tables[name] = true
 		}
 	}

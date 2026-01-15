@@ -1084,7 +1084,7 @@ func (b *Builder) ConvertVal(v *ast.SQLVal) sql.Expression {
 // filter, since we only need to load the tables once. All steps after this
 // one can assume that the expression has been fully resolved and is valid.
 func (b *Builder) buildMatchAgainst(inScope *scope, v *ast.MatchExpr) *expression.MatchAgainst {
-	rts := getTablesByName(inScope.node)
+	rts := getResolvedTablesByName(inScope.node)
 	var rt *plan.ResolvedTable
 	var matchTable string
 	cols := make([]*expression.GetField, len(v.Columns))
