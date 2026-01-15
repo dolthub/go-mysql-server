@@ -11417,6 +11417,46 @@ where
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/10311
+		Name:    "enums with foreign keys and joins",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table animals(e enum('rat','ox','tiger','dog') primary key);",
+			"create table pets(e enum('cat','dog','fish','rat'), foreign key (e) references animals(e));",
+			"insert into animals values('rat');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "insert into pets values ('rat');",
+				// Error expected here because 'rat' has different underlying int values depending on the enum type
+				ExpectedErr: sql.ErrForeignKeyChildViolation,
+			},
+			{
+				Query: "insert into pets values ('cat');",
+				// Query OK expected here because the underlying int values are the same
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query: "select * from animals join pets on animals.e=pets.e;",
+				// Empty set expected here because comparison uses the string values when enum types are different
+				Expected: []sql.Row{},
+			},
+			{
+				Query:    "insert into animals values ('dog');",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query: "insert into pets values ('rat');",
+				// 'rat' is now okay because it has the same underlying int value as 'dog' in the animals table
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "select * from animals join pets on animals.e=pets.e;",
+				Expected: []sql.Row{{"rat", "rat"}},
+			},
+		},
+	},
+	{
 		Skip:    true,
 		Name:    "enums with foreign keys and cascade",
 		Dialect: "mysql",
