@@ -1147,7 +1147,7 @@ func addMergeJoins(ctx *sql.Context, m *memo.Memo) error {
 				}
 
 				// check that comparer is not non-decreasing
-				if !isWeaklyMonotonic(l) || !isWeaklyMonotonic(r) {
+				if !canMergeTypes(l.Type(), r.Type()) || !isWeaklyMonotonic(l) || !isWeaklyMonotonic(r) {
 					continue
 				}
 
@@ -1489,6 +1489,19 @@ func makeIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, tab plan.Table
 		Alias: alias,
 		Stats: stats,
 	}, true, nil
+}
+
+// canMerge checks the types of two columns to see if they can be merged into one another if sorted.
+func canMergeTypes(t1, t2 sql.Type) bool {
+	// TODO: handle other types here. For example, Number and Text types likely can't be merged together. But we need to
+	// add more testing https://github.com/dolthub/dolt/issues/10316
+	switch {
+	case types.IsEnum(t1):
+		if types.IsEnum(t2) {
+			return types.TypesEqual(t1, t2)
+		}
+	}
+	return true
 }
 
 // isWeaklyMonotonic is a weak test of whether an expression

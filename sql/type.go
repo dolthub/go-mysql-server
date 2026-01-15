@@ -280,6 +280,11 @@ type EnumType interface {
 	Values() []string
 }
 
+func IsEnumType(t Type) bool {
+	_, ok := t.(EnumType)
+	return ok
+}
+
 // DecimalType represents the DECIMAL type.
 // https://dev.mysql.com/doc/refman/8.0/en/fixed-point-types.html
 // The type of the returned value is decimal.Decimal.
