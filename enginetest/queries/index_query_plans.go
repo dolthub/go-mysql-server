@@ -16399,4 +16399,47 @@ var IndexPlanTests = []QueryPlanTest{
 			"         └─ columns: [v1 v2]\n" +
 			"",
 	},
+	{
+		Query: `select * from two_pks_view where pk2 = 1;`,
+		ExpectedPlan: "SubqueryAlias\n" +
+			" ├─ name: two_pks_view\n" +
+			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
+			" ├─ cacheable: true\n" +
+			" ├─ colSet: (3,4)\n" +
+			" ├─ tableId: 3\n" +
+			" └─ IndexedTableAccess(two_pks)\n" +
+			"     ├─ index: [two_pks.pk1,two_pks.pk2]\n" +
+			"     ├─ static: [{[1, 1], [1, 1]}]\n" +
+			"     ├─ colSet: (1,2)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: two_pks\n" +
+			"         └─ columns: [pk1 pk2]\n" +
+			"",
+		ExpectedEstimates: "SubqueryAlias\n" +
+			" ├─ name: two_pks_view\n" +
+			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
+			" ├─ cacheable: true\n" +
+			" ├─ colSet: (3,4)\n" +
+			" ├─ tableId: 3\n" +
+			" └─ IndexedTableAccess(two_pks)\n" +
+			"     ├─ index: [two_pks.pk1,two_pks.pk2]\n" +
+			"     ├─ filters: [{[1, 1], [1, 1]}]\n" +
+			"     └─ columns: [pk1 pk2]\n" +
+			"",
+		ExpectedAnalysis: "SubqueryAlias\n" +
+			" ├─ name: two_pks_view\n" +
+			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
+			" ├─ cacheable: true\n" +
+			" ├─ colSet: (3,4)\n" +
+			" ├─ tableId: 3\n" +
+			" └─ IndexedTableAccess(two_pks)\n" +
+			"     ├─ index: [two_pks.pk1,two_pks.pk2]\n" +
+			"     ├─ filters: [{[1, 1], [1, 1]}]\n" +
+			"     └─ columns: [pk1 pk2]\n" +
+			"",
+	},
 }

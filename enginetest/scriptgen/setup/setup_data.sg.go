@@ -3893,8 +3893,8 @@ var TypestableData = []SetupScript{{
 }}
 
 var ViewsData = []SetupScript{{
-	`CREATE VIEW myview1 AS SELECT * FROM myhistorytable`,
-	`CREATE VIEW myview2 AS SELECT * FROM myview WHERE i = 1`,
+	`CREATE TABLE two_pks(pk1 INT, pk2 INT, PRIMARY KEY (pk1, pk2))`,
+	`CREATE VIEW two_pks_view AS SELECT * FROM two_pks WHERE pk1 = 1`,
 }}
 
 var XyData = []SetupScript{{
