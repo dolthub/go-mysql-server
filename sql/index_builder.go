@@ -335,7 +335,7 @@ func IsConvertibleKeyType(colType Type, keyType Type) bool {
 	switch {
 	case IsEnumType(colType):
 		if IsEnumType(keyType) {
-			return !colType.Equals(keyType)
+			return colType.Equals(keyType)
 		}
 	case IsStringType(colType):
 		return !(IsNumberType(keyType) || IsDecimalType(keyType))

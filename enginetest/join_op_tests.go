@@ -2299,6 +2299,7 @@ WHERE
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/10311
 		name: "join on different enum types",
 		setup: [][]string{
 			{
