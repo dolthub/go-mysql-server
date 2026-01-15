@@ -278,7 +278,7 @@ func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right interface{})
 	}
 
 	if types.IsTime(leftType) || types.IsTime(rightType) {
-		l, r, err := convertLeftAndRight(ctx, left, right, ConvertToDatetime)
+		l, r, err := c.convertLeftAndRight(ctx, left, right, ConvertToDatetime)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -291,7 +291,7 @@ func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right interface{})
 	}
 
 	if types.IsBinaryType(leftType) || types.IsBinaryType(rightType) {
-		l, r, err := convertLeftAndRight(ctx, left, right, ConvertToBinary)
+		l, r, err := c.convertLeftAndRight(ctx, left, right, ConvertToBinary)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -301,7 +301,7 @@ func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right interface{})
 	if types.IsNumber(leftType) || types.IsNumber(rightType) {
 		if types.IsDecimal(leftType) || types.IsDecimal(rightType) {
 			//TODO: We need to set to the actual DECIMAL type
-			l, r, err := convertLeftAndRight(ctx, left, right, ConvertToDecimal)
+			l, r, err := c.convertLeftAndRight(ctx, left, right, ConvertToDecimal)
 			if err != nil {
 				return nil, nil, nil, err
 			}
@@ -314,7 +314,7 @@ func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right interface{})
 		}
 
 		if types.IsFloat(leftType) || types.IsFloat(rightType) {
-			l, r, err := convertLeftAndRight(ctx, left, right, ConvertToDouble)
+			l, r, err := c.convertLeftAndRight(ctx, left, right, ConvertToDouble)
 			if err != nil {
 				return nil, nil, nil, err
 			}
@@ -323,7 +323,7 @@ func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right interface{})
 		}
 
 		if types.IsSigned(leftType) && types.IsSigned(rightType) {
-			l, r, err := convertLeftAndRight(ctx, left, right, ConvertToSigned)
+			l, r, err := c.convertLeftAndRight(ctx, left, right, ConvertToSigned)
 			if err != nil {
 				return nil, nil, nil, err
 			}
@@ -332,7 +332,7 @@ func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right interface{})
 		}
 
 		if types.IsUnsigned(leftType) && types.IsUnsigned(rightType) {
-			l, r, err := convertLeftAndRight(ctx, left, right, ConvertToUnsigned)
+			l, r, err := c.convertLeftAndRight(ctx, left, right, ConvertToUnsigned)
 			if err != nil {
 				return nil, nil, nil, err
 			}
@@ -340,7 +340,7 @@ func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right interface{})
 			return l, r, types.Uint64, nil
 		}
 
-		l, r, err := convertLeftAndRight(ctx, left, right, ConvertToDouble)
+		l, r, err := c.convertLeftAndRight(ctx, left, right, ConvertToDouble)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -348,7 +348,7 @@ func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right interface{})
 		return l, r, types.Float64, nil
 	}
 
-	left, right, err := convertLeftAndRight(ctx, left, right, ConvertToChar)
+	left, right, err := c.convertLeftAndRight(ctx, left, right, ConvertToChar)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -356,17 +356,17 @@ func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right interface{})
 	return left, right, types.LongText, nil
 }
 
-func convertLeftAndRight(ctx *sql.Context, left, right interface{}, convertTo string) (interface{}, interface{}, error) {
+func (c *comparison) convertLeftAndRight(ctx *sql.Context, left, right interface{}, convertTo string) (interface{}, interface{}, error) {
 	typeLength := 0
 	if convertTo == ConvertToDatetime {
 		typeLength = types.MaxDatetimePrecision
 	}
-	l, err := convertValue(ctx, left, convertTo, nil, typeLength, 0)
+	l, err := convertValue(ctx, left, convertTo, c.Left().Type(), typeLength, 0)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	r, err := convertValue(ctx, right, convertTo, nil, typeLength, 0)
+	r, err := convertValue(ctx, right, convertTo, c.Right().Type(), typeLength, 0)
 	if err != nil {
 		return nil, nil, err
 	}
