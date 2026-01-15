@@ -694,11 +694,11 @@ func (b *Builder) buildCreateView(inScope *scope, subQuery string, fullQuery str
 	scopeMapping := make(map[sql.ColumnId]sql.Expression)
 	var cols sql.ColSet
 
-	for _, col := range queryScope.cols {
+	for i, col := range queryScope.cols {
 		id := outScope.newColumn(scopeColumn{
 			db:          dbName,
 			table:       aliasName,
-			col:         strings.ToLower(col.col),
+			col:         strings.ToLower(queryAlias.ColumnNames[i]),
 			originalCol: col.originalCol,
 			typ:         col.typ,
 			nullable:    col.nullable,
