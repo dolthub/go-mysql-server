@@ -131,7 +131,6 @@ func getNamedChildren(node sql.Node) map[string]sql.NameableNode {
 	//  Using transform.Node here achieves the same result without a large refactor.
 	transform.Node(node, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if nameable, ok := node.(sql.NameableNode); ok {
-
 			ret[strings.ToLower(nameable.Name())] = nameable
 		}
 		return nil, transform.SameTree, nil
