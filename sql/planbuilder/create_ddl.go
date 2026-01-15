@@ -638,6 +638,18 @@ func (b *Builder) buildAlterEvent(inScope *scope, subQuery string, fullQuery str
 }
 
 func (b *Builder) buildCreateView(inScope *scope, subQuery string, fullQuery string, c *ast.DDL) (outScope *scope) {
+	dbName := c.Table.DbQualifier.String()
+	if dbName == "" {
+		dbName = b.ctx.GetCurrentDatabase()
+		if b.ViewCtx().DbName != "" {
+			dbName = b.ViewCtx().DbName
+		}
+
+		if dbName == "" {
+			b.handleErr(sql.ErrNoDatabaseSelected.New())
+		}
+	}
+
 	outScope = inScope.push()
 	selectStr := c.SubStatementStr
 	if selectStr == "" {
@@ -654,7 +666,8 @@ func (b *Builder) buildCreateView(inScope *scope, subQuery string, fullQuery str
 	}
 	queryScope := b.buildSelectStmt(inScope, selectStatement)
 
-	queryAlias := plan.NewSubqueryAlias(c.ViewSpec.ViewName.Name.String(), selectStr, queryScope.node)
+	aliasName := c.ViewSpec.ViewName.Name.String()
+	queryAlias := plan.NewSubqueryAlias(aliasName, selectStr, queryScope.node)
 	b.qFlags.Set(sql.QFlagRelSubquery)
 
 	definer := getCurrentUserForDefiner(b.ctx, c.ViewSpec.Definer)
@@ -670,7 +683,31 @@ func (b *Builder) buildCreateView(inScope *scope, subQuery string, fullQuery str
 			b.handleErr(err)
 		}
 		queryAlias = queryAlias.WithColumnNames(columnsToStrings(c.ViewSpec.Columns))
+	} else {
+		columnNames := make([]string, len(queryScope.cols))
+		for i, col := range queryScope.cols {
+			columnNames[i] = col.col
+		}
+		queryAlias = queryAlias.WithColumnNames(columnNames)
 	}
+
+	scopeMapping := make(map[sql.ColumnId]sql.Expression)
+	var cols sql.ColSet
+
+	for _, col := range queryScope.cols {
+		id := outScope.newColumn(scopeColumn{
+			db:          dbName,
+			table:       aliasName,
+			col:         strings.ToLower(col.col),
+			originalCol: col.originalCol,
+			typ:         col.typ,
+			nullable:    col.nullable,
+		})
+		cols.Add(sql.ColumnId(id))
+		scopeMapping[sql.ColumnId(id)] = col.scalar
+	}
+
+	queryAlias = queryAlias.WithScopeMapping(scopeMapping).WithColumns(cols).(*plan.SubqueryAlias)
 
 	db, ok := b.resolveDbForTable(c.ViewSpec.ViewName)
 	if !ok {
@@ -679,5 +716,6 @@ func (b *Builder) buildCreateView(inScope *scope, subQuery string, fullQuery str
 	createView := plan.NewCreateView(db, c.ViewSpec.ViewName.Name.String(), queryAlias, c.IfNotExists, c.OrReplace, subQuery, c.ViewSpec.Algorithm, definer, c.ViewSpec.Security)
 	outScope.node = b.modifySchemaTarget(queryScope, createView, createView.Definition.Schema())
 
+	b.subqueryScope = outScope
 	return outScope
 }

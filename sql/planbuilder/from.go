@@ -693,6 +693,7 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 
 	if view := b.resolveView(name, database, asOfLit); view != nil {
 		// TODO: Schema name
+		outScope.appendColumnsFromScope(b.subqueryScope)
 		return resolvedViewScope(outScope, view, db, name)
 	}
 
@@ -801,23 +802,10 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 func resolvedViewScope(outScope *scope, view sql.Node, db string, name string) (*scope, bool) {
 	outScope.node = view
 	tabId := outScope.addTable(strings.ToLower(view.Schema()[0].Name))
-	var cols sql.ColSet
-	for _, c := range view.Schema() {
-		id := outScope.newColumn(scopeColumn{
-			db:          db,
-			table:       name,
-			col:         strings.ToLower(c.Name),
-			originalCol: c.Name,
-			typ:         c.Type,
-			nullable:    c.Nullable,
-		})
-		cols.Add(sql.ColumnId(id))
-	}
 	if tin, ok := view.(plan.TableIdNode); ok {
 		// TODO should *sql.View implement TableIdNode?
-		outScope.node = tin.WithId(tabId).WithColumns(cols)
+		outScope.node = tin.WithId(tabId)
 	}
-
 	return outScope, true
 }
 
