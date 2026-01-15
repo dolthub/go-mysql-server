@@ -277,14 +277,14 @@ func tablesInScope(scope *plan.Scope) []string {
 			tables[col.Source] = true
 		}
 	}
+	for _, table := range scope.JoinSiblings() {
+		for name, _ := range getTablesByName(table) {
+			tables[name] = true
+		}
+	}
 	var tableSlice []string
 	for table := range tables {
 		tableSlice = append(tableSlice, table)
-	}
-	for _, table := range scope.JoinSiblings() {
-		for names, _ := range getTablesByName(table) {
-			tableSlice = append(tableSlice, names)
-		}
 	}
 	return tableSlice
 }
