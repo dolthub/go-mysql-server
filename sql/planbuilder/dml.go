@@ -607,7 +607,7 @@ func hasJoinNode(node sql.Node) bool {
 
 func getResolvedTablesToUpdate(_ *sql.Context, node sql.Node, ij sql.Node) (resolvedTables []*plan.ResolvedTable, err error) {
 	namesOfTablesToBeUpdated := plan.GetTablesToBeUpdated(node)
-	resolvedTablesMap := getTablesByName(ij)
+	resolvedTablesMap := getResolvedTablesByName(ij)
 
 	for tableToBeUpdated, _ := range namesOfTablesToBeUpdated {
 		resolvedTable, ok := resolvedTablesMap[strings.ToLower(tableToBeUpdated)]
@@ -622,7 +622,7 @@ func getResolvedTablesToUpdate(_ *sql.Context, node sql.Node, ij sql.Node) (reso
 }
 
 // getTablesByName takes a node and returns all found resolved tables in a map.
-func getTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
+func getResolvedTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
 	ret := make(map[string]*plan.ResolvedTable)
 
 	transform.Inspect(node, func(node sql.Node) bool {

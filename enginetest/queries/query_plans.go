@@ -22712,6 +22712,77 @@ WHERE keyless.c0 IN (
 			"",
 	},
 	{
+		Query: `select x, u from xy xy_alias, lateral (select * from uv where xy_alias.y = u) uv;`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [xy_alias.x:0!null, uv.u:2!null]\n" +
+			" └─ LateralCrossJoin\n" +
+			"     ├─ TableAlias(xy_alias)\n" +
+			"     │   └─ ProcessTable\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: xy\n" +
+			"     │           └─ columns: [x y]\n" +
+			"     └─ SubqueryAlias\n" +
+			"         ├─ name: uv\n" +
+			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: true\n" +
+			"         ├─ cacheable: false\n" +
+			"         ├─ colSet: (5,6)\n" +
+			"         ├─ tableId: 3\n" +
+			"         └─ Filter\n" +
+			"             ├─ Eq\n" +
+			"             │   ├─ xy_alias.y:1\n" +
+			"             │   └─ uv.u:2!null\n" +
+			"             └─ IndexedTableAccess(uv)\n" +
+			"                 ├─ index: [uv.u]\n" +
+			"                 ├─ keys: [xy_alias.y:1]\n" +
+			"                 ├─ colSet: (3,4)\n" +
+			"                 ├─ tableId: 2\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: uv\n" +
+			"                     └─ columns: [u v]\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [xy_alias.x, uv.u]\n" +
+			" └─ LateralCrossJoin (estimated cost=100999.000 rows=125)\n" +
+			"     ├─ TableAlias(xy_alias)\n" +
+			"     │   └─ Table\n" +
+			"     │       └─ name: xy\n" +
+			"     └─ SubqueryAlias\n" +
+			"         ├─ name: uv\n" +
+			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: true\n" +
+			"         ├─ cacheable: false\n" +
+			"         ├─ colSet: (5,6)\n" +
+			"         ├─ tableId: 3\n" +
+			"         └─ Filter\n" +
+			"             ├─ (xy_alias.y = uv.u)\n" +
+			"             └─ IndexedTableAccess(uv)\n" +
+			"                 ├─ index: [uv.u]\n" +
+			"                 ├─ columns: [u v]\n" +
+			"                 └─ keys: xy_alias.y\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [xy_alias.x, uv.u]\n" +
+			" └─ LateralCrossJoin (estimated cost=100999.000 rows=125) (actual rows=4 loops=1)\n" +
+			"     ├─ TableAlias(xy_alias)\n" +
+			"     │   └─ Table\n" +
+			"     │       └─ name: xy\n" +
+			"     └─ SubqueryAlias\n" +
+			"         ├─ name: uv\n" +
+			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: true\n" +
+			"         ├─ cacheable: false\n" +
+			"         ├─ colSet: (5,6)\n" +
+			"         ├─ tableId: 3\n" +
+			"         └─ Filter\n" +
+			"             ├─ (xy_alias.y = uv.u)\n" +
+			"             └─ IndexedTableAccess(uv)\n" +
+			"                 ├─ index: [uv.u]\n" +
+			"                 ├─ columns: [u v]\n" +
+			"                 └─ keys: xy_alias.y\n" +
+			"",
+	},
+	{
 		Query: `select x from xy where x > 0 and x <= 2 order by x`,
 		ExpectedPlan: "IndexedTableAccess(xy)\n" +
 			" ├─ index: [xy.x]\n" +

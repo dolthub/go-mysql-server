@@ -97,9 +97,9 @@ func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 	return table
 }
 
-// getTablesByName takes a node and returns all found resolved tables in a map.
+// getResolvedTablesByName takes a node and returns all found resolved tables in a map.
 // This function will not look inside sql.OpaqueNodes (like plan.SubqueryAlias).
-func getTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
+func getResolvedTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
 	ret := make(map[string]*plan.ResolvedTable)
 	// TODO: We should change transform.Inspect to not walk the children of sql.OpaqueNodes (like transform.Node)
 	//  and add a transform.InspectWithOpaque that does.
@@ -118,6 +118,20 @@ func getTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
 			if rt != nil {
 				ret[n.Name()] = rt
 			}
+		}
+		return nil, transform.SameTree, nil
+	})
+	return ret
+}
+
+func getNamedChildren(node sql.Node) map[string]sql.NameableNode {
+	ret := make(map[string]sql.NameableNode)
+	// TODO: We should change transform.Inspect to not walk the children of sql.OpaqueNodes (like transform.Node)
+	//  and add a transform.InspectWithOpaque that does.
+	//  Using transform.Node here achieves the same result without a large refactor.
+	transform.Node(node, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		if nameable, ok := node.(sql.NameableNode); ok {
+			ret[strings.ToLower(nameable.Name())] = nameable
 		}
 		return nil, transform.SameTree, nil
 	})
