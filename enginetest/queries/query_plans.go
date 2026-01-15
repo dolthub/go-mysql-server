@@ -22663,11 +22663,14 @@ WHERE keyless.c0 IN (
 			"             ├─ Eq\n" +
 			"             │   ├─ xy.y:1\n" +
 			"             │   └─ uv.u:2!null\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: uv\n" +
-			"                 ├─ columns: [u v]\n" +
+			"             └─ IndexedTableAccess(uv)\n" +
+			"                 ├─ index: [uv.u]\n" +
+			"                 ├─ keys: [xy.y:1]\n" +
 			"                 ├─ colSet: (3,4)\n" +
-			"                 └─ tableId: 2\n" +
+			"                 ├─ tableId: 2\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: uv\n" +
+			"                     └─ columns: [u v]\n" +
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [xy.x, uv.u]\n" +
@@ -22683,9 +22686,10 @@ WHERE keyless.c0 IN (
 			"         ├─ tableId: 3\n" +
 			"         └─ Filter\n" +
 			"             ├─ (xy.y = uv.u)\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: uv\n" +
-			"                 └─ columns: [u v]\n" +
+			"             └─ IndexedTableAccess(uv)\n" +
+			"                 ├─ index: [uv.u]\n" +
+			"                 ├─ columns: [u v]\n" +
+			"                 └─ keys: xy.y\n" +
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [xy.x, uv.u]\n" +
@@ -22701,9 +22705,10 @@ WHERE keyless.c0 IN (
 			"         ├─ tableId: 3\n" +
 			"         └─ Filter\n" +
 			"             ├─ (xy.y = uv.u)\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: uv\n" +
-			"                 └─ columns: [u v]\n" +
+			"             └─ IndexedTableAccess(uv)\n" +
+			"                 ├─ index: [uv.u]\n" +
+			"                 ├─ columns: [u v]\n" +
+			"                 └─ keys: xy.y\n" +
 			"",
 	},
 	{

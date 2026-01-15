@@ -29,10 +29,6 @@ import (
 // apply, effectively, an indexed join between two tables, one of which is defined in the outer scope. This is similar
 // to the process in the join analyzer.
 func applyIndexesFromOuterScope(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	if scope.IsEmpty() {
-		return n, transform.SameTree, nil
-	}
-
 	// this isn't good enough: we need to consider aliases defined in the outer scope as well for this analysis
 	tableAliases, err := getTableAliases(n, scope)
 	if err != nil {
@@ -279,6 +275,11 @@ func tablesInScope(scope *plan.Scope) []string {
 	for _, node := range scope.InnerToOuter() {
 		for _, col := range Schemas(node.Children()) {
 			tables[col.Source] = true
+		}
+	}
+	for _, table := range scope.JoinSiblings() {
+		for name, _ := range getTablesByName(table) {
+			tables[name] = true
 		}
 	}
 	var tableSlice []string
