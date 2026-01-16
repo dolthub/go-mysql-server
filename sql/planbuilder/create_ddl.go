@@ -699,7 +699,7 @@ func (b *Builder) buildCreateView(inScope *scope, subQuery string, fullQuery str
 			db:          dbName,
 			table:       aliasName,
 			col:         strings.ToLower(queryAlias.ColumnNames[i]),
-			originalCol: col.originalCol,
+			originalCol: queryAlias.ColumnNames[i],
 			typ:         col.typ,
 			nullable:    col.nullable,
 		})
