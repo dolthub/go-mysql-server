@@ -4676,6 +4676,89 @@ Select * from (
 			"",
 	},
 	{
+		Query: `select * from ab join uv join lateral (select * from two_pk where pk1 = a and pk2 = u) inner1`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [ab.a:2!null, ab.b:3, uv.u:0!null, uv.v:1, inner1.pk1:4!null, inner1.pk2:5!null, inner1.c1:6!null, inner1.c2:7!null, inner1.c3:8!null, inner1.c4:9!null, inner1.c5:10!null]\n" +
+			" └─ LateralCrossJoin\n" +
+			"     ├─ CrossJoin\n" +
+			"     │   ├─ ProcessTable\n" +
+			"     │   │   └─ Table\n" +
+			"     │   │       ├─ name: uv\n" +
+			"     │   │       └─ columns: [u v]\n" +
+			"     │   └─ ProcessTable\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: ab\n" +
+			"     │           └─ columns: [a b]\n" +
+			"     └─ SubqueryAlias\n" +
+			"         ├─ name: inner1\n" +
+			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: true\n" +
+			"         ├─ cacheable: false\n" +
+			"         ├─ colSet: (12-18)\n" +
+			"         ├─ tableId: 4\n" +
+			"         └─ Filter\n" +
+			"             ├─ AND\n" +
+			"             │   ├─ Eq\n" +
+			"             │   │   ├─ two_pk.pk1:4!null\n" +
+			"             │   │   └─ ab.a:2!null\n" +
+			"             │   └─ Eq\n" +
+			"             │       ├─ two_pk.pk2:5!null\n" +
+			"             │       └─ uv.u:0!null\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ keys: [ab.a:2!null uv.u:0!null]\n" +
+			"                 ├─ colSet: (5-11)\n" +
+			"                 ├─ tableId: 3\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: two_pk\n" +
+			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [ab.a, ab.b, uv.u, uv.v, inner1.pk1, inner1.pk2, inner1.c1, inner1.c2, inner1.c3, inner1.c4, inner1.c5]\n" +
+			" └─ LateralCrossJoin (estimated cost=504.000 rows=6)\n" +
+			"     ├─ CrossJoin (estimated cost=4041.000 rows=5)\n" +
+			"     │   ├─ Table\n" +
+			"     │   │   └─ name: uv\n" +
+			"     │   └─ Table\n" +
+			"     │       └─ name: ab\n" +
+			"     └─ SubqueryAlias\n" +
+			"         ├─ name: inner1\n" +
+			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: true\n" +
+			"         ├─ cacheable: false\n" +
+			"         ├─ colSet: (12-18)\n" +
+			"         ├─ tableId: 4\n" +
+			"         └─ Filter\n" +
+			"             ├─ ((two_pk.pk1 = ab.a) AND (two_pk.pk2 = uv.u))\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"                 └─ keys: ab.a, uv.u\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [ab.a, ab.b, uv.u, uv.v, inner1.pk1, inner1.pk2, inner1.c1, inner1.c2, inner1.c3, inner1.c4, inner1.c5]\n" +
+			" └─ LateralCrossJoin (estimated cost=504.000 rows=6) (actual rows=4 loops=1)\n" +
+			"     ├─ CrossJoin (estimated cost=4041.000 rows=5) (actual rows=16 loops=1)\n" +
+			"     │   ├─ Table\n" +
+			"     │   │   └─ name: uv\n" +
+			"     │   └─ Table\n" +
+			"     │       └─ name: ab\n" +
+			"     └─ SubqueryAlias\n" +
+			"         ├─ name: inner1\n" +
+			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: true\n" +
+			"         ├─ cacheable: false\n" +
+			"         ├─ colSet: (12-18)\n" +
+			"         ├─ tableId: 4\n" +
+			"         └─ Filter\n" +
+			"             ├─ ((two_pk.pk1 = ab.a) AND (two_pk.pk2 = uv.u))\n" +
+			"             └─ IndexedTableAccess(two_pk)\n" +
+			"                 ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                 ├─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"                 └─ keys: ab.a, uv.u\n" +
+			"",
+	},
+	{
 		Query: `select * from ab s where exists (select * from ab where a = 1 or s.a = 1)`,
 		ExpectedPlan: "SemiJoin\n" +
 			" ├─ Or\n" +
