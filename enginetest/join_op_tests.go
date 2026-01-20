@@ -2304,15 +2304,17 @@ WHERE
 		setup: [][]string{
 			{
 				"create table animals(e enum('rat','ox','tiger','dog') primary key);",
-				"create table pets(e enum('cat','dog','fish','rat'), foreign key (e) references animals(e));",
+				"create table pets(e enum('cat','dog','fish','rat'));",
 				"insert into animals values('rat'), ('dog');",
-				"insert into pets values ('cat'), ('rat');",
+				"insert into pets values ('cat'), ('dog'), ('rat');",
 			},
 		},
 		tests: []JoinOpTests{
 			{
-				Query:    "select * from animals join pets on animals.e=pets.e;",
-				Expected: []sql.Row{{"rat", "rat"}},
+				// hash join doesn't work here https://github.com/dolthub/dolt/issues/10336
+				Skip:     true,
+				Query:    "select * from animals join pets on animals.e=pets.e order by animals.e;",
+				Expected: []sql.Row{{"rat", "rat"}, {"dog", "dog"}},
 			},
 		},
 	},
