@@ -22,7 +22,7 @@ func (b *ExecBuilder) buildRel(r RelExpr, children ...sql.Node) (sql.Node, error
 	}
 
 	// TODO: distinctOp doesn't seem to be propagated through all the time
-	return b.wrapInDistinct(n, r.Distinct(), r.DistinctOn())
+	return b.wrapInDistinct(n, r.Distinct())
 }
 
 func (b *ExecBuilder) buildInnerJoin(j *InnerJoin, children ...sql.Node) (sql.Node, error) {
@@ -73,7 +73,7 @@ func (b *ExecBuilder) buildRangeHeap(sr *RangeHeap, children ...sql.Node) (ret s
 	switch n := children[0].(type) {
 	case *plan.Distinct:
 		ret, err = b.buildRangeHeap(sr, n.Child)
-		ret = plan.NewDistinct(ret, n.DistinctOn()...)
+		ret = plan.NewDistinct(ret)
 	case *plan.OrderedDistinct:
 		ret, err = b.buildRangeHeap(sr, n.Child)
 		ret = plan.NewOrderedDistinct(ret)
@@ -233,7 +233,7 @@ func (b *ExecBuilder) buildIndexScan(i *IndexScan, children ...sql.Node) (sql.No
 		ret = i.Table
 	case *plan.Distinct:
 		ret, err = b.buildIndexScan(i, n.Child)
-		ret = plan.NewDistinct(ret, n.DistinctOn()...)
+		ret = plan.NewDistinct(ret)
 	case *plan.OrderedDistinct:
 		ret, err = b.buildIndexScan(i, n.Child)
 		ret = plan.NewOrderedDistinct(ret)
@@ -358,7 +358,7 @@ func (b *ExecBuilder) buildProject(r *Project, children ...sql.Node) (sql.Node, 
 }
 
 func (b *ExecBuilder) buildDistinct(r *Distinct, children ...sql.Node) (sql.Node, error) {
-	return plan.NewDistinct(children[0], r.distinctOn...), nil
+	return plan.NewDistinct(children[0]), nil
 }
 
 func (b *ExecBuilder) buildFilter(r *Filter, children ...sql.Node) (sql.Node, error) {
@@ -366,10 +366,10 @@ func (b *ExecBuilder) buildFilter(r *Filter, children ...sql.Node) (sql.Node, er
 	return ret, nil
 }
 
-func (b *ExecBuilder) wrapInDistinct(n sql.Node, d distinctOp, distinctOn []sql.Expression) (sql.Node, error) {
+func (b *ExecBuilder) wrapInDistinct(n sql.Node, d distinctOp) (sql.Node, error) {
 	switch d {
 	case HashDistinctOp:
-		return plan.NewDistinct(n, distinctOn...), nil
+		return plan.NewDistinct(n), nil
 	case SortedDistinctOp:
 		return plan.NewOrderedDistinct(n), nil
 	case NoDistinctOp:

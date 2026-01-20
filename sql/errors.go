@@ -964,9 +964,6 @@ var (
 
 	// ErrOnlyFDAndRBREventsAllowedInBinlogStatement is returned when an unsupported event type is used in a BINLOG statement.
 	ErrOnlyFDAndRBREventsAllowedInBinlogStatement = errors.NewKind("Only Format_description_log_event and row events are allowed in BINLOG statements (but %s was provided)")
-
-	// ErrDistinctOnMatchOrderBy is returned when DISTINCT ON does not match the initial ORDER BY expressions
-	ErrDistinctOnMatchOrderBy = errors.NewKind("SELECT DISTINCT ON expressions must match initial ORDER BY expressions")
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the

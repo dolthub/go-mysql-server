@@ -107,7 +107,7 @@ func (b *Builder) buildSelect(inScope *scope, s *ast.Select) (outScope *scope) {
 	b.buildProjection(outScope, projScope)
 	outScope = projScope
 
-	if err := b.buildDistinct(outScope, s.QueryOpts.Distinct, s.QueryOpts.DistinctOn); err != nil {
+	if err := b.buildDistinct(outScope, s.QueryOpts.Distinct); err != nil {
 		b.handleErr(err)
 	}
 
@@ -201,16 +201,12 @@ func (b *Builder) typeCoerceLiteral(e sql.Expression) sql.Expression {
 
 // buildDistinct creates a new plan.Distinct node if the query has a DISTINCT option.
 // If the query has both DISTINCT and ALL, an error is returned.
-func (b *Builder) buildDistinct(inScope *scope, distinct bool, distinctOn ast.Exprs) error {
+func (b *Builder) buildDistinct(inScope *scope, distinct bool) error {
 	if !distinct {
 		return nil
 	}
-	distinctOnExprs := make([]sql.Expression, len(distinctOn))
-	for i := range distinctOn {
-		distinctOnExprs[i] = b.buildScalar(inScope, distinctOn[i])
-	}
 	var err error
-	inScope.node, err = b.f.buildDistinct(inScope.node, inScope.refsSubquery, distinctOnExprs)
+	inScope.node, err = b.f.buildDistinct(inScope.node, inScope.refsSubquery)
 	return err
 }
 

@@ -469,11 +469,11 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 		}
 
 		if grp.RelProps.Distinct.IsHash() {
-			if sortedInputs(n) && len(grp.RelProps.DistinctOn) == 0 {
+			if sortedInputs(n) {
 				n.SetDistinct(SortedDistinctOp)
 				m.Tracer.Log("Plan %s: using sorted distinct", n)
 			} else {
-				n.SetDistinct(HashDistinctOp, grp.RelProps.DistinctOn...)
+				n.SetDistinct(HashDistinctOp)
 				d := &Distinct{Child: grp}
 				relCost += float64(m.statsForRel(m.Ctx, d).RowCount())
 				m.Tracer.Log("Plan %s: using hash distinct", n)
@@ -752,8 +752,7 @@ type RelExpr interface {
 	SetCost(c float64)
 	Cost() float64
 	Distinct() distinctOp
-	DistinctOn() []sql.Expression
-	SetDistinct(distinctOp, ...sql.Expression)
+	SetDistinct(distinctOp)
 }
 
 type relBase struct {
@@ -765,8 +764,6 @@ type relBase struct {
 	c float64
 	// d indicates a RelExpr should be checked for distinctness
 	d distinctOp
-	// distinctOn, when not empty, indicates the expressions that should be used for distinctness (otherwise it's the projections)
-	distinctOn []sql.Expression
 }
 
 // relKey is a quick identifier for avoiding duplicate work on the same
@@ -813,13 +810,8 @@ func (r *relBase) Distinct() distinctOp {
 	return r.d
 }
 
-func (r *relBase) DistinctOn() []sql.Expression {
-	return r.distinctOn
-}
-
-func (r *relBase) SetDistinct(d distinctOp, on ...sql.Expression) {
+func (r *relBase) SetDistinct(d distinctOp) {
 	r.d = d
-	r.distinctOn = on
 }
 
 func (r *relBase) Group() *ExprGroup {
