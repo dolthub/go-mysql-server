@@ -293,10 +293,11 @@ func pushdownFiltersUnderSubqueryAlias(ctx *sql.Context, a *Analyzer, sa *plan.S
 			if gt, ok := e.(*expression.GetField); ok {
 				gf, ok := sa.ScopeMapping[gt.Id()]
 				if !ok {
-					// There is now a reference to an outer column, so we need to add this to the subquery alias's list
-					// of correlated columns
+					// The GetField must be referencing an outer or lateral scope.
+					// We need to add this to the subquery alias's list of correlated columns
 					sa.Correlated.Add(gt.Id())
-					// There now may be a reference to a lateral scope
+					// There now may be a reference to a lateral scope, so we mark the alias as lateral just in case.
+					// This shouldn't break anything, but it might inhibit optimizations that check this.
 					sa.IsLateral = true
 					return e, transform.NewTree, nil
 				}
