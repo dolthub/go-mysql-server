@@ -224,9 +224,6 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			if same {
-				return n, transform.SameTree, nil
-			}
 
 			if isFalse(ctx, e) {
 				emptyTable := plan.NewEmptyTableWithSchema(n.Schema())
@@ -237,7 +234,9 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 				return n.Child, transform.NewTree, nil
 			}
 
-			return plan.NewFilter(e, n.Child), transform.NewTree, nil
+			if !same {
+				return plan.NewFilter(e, n.Child), transform.NewTree, nil
+			}
 		}
 		return node, transform.SameTree, nil
 	})
