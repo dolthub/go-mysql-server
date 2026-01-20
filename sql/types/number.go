@@ -197,9 +197,11 @@ func (t NumberTypeImpl_) Compare(s context.Context, a interface{}, b interface{}
 		return +1, nil
 	default:
 		ca, _, err := convertToInt64(t, a, ShouldTruncate)
+		// TODO: handle sql.ErrTruncatedIncorrect error here
 		if err != nil {
 			ca = 0
 		}
+		// TODO: handle sql.ErrTruncatedIncorrect error here
 		cb, _, err := convertToInt64(t, b, ShouldTruncate)
 		if err != nil {
 			cb = 0
