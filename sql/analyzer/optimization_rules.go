@@ -225,6 +225,7 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 
 		e, same, err := transform.Expr(filter.Expression, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			switch e := e.(type) {
+			// TODO: if the left and right children of Equals refer to the same field, simplify to true
 			case *plan.Subquery:
 				newQ, same, err := simplifyFilters(ctx, a, e.Query, scope, sel, qFlags)
 				if same || err != nil {
@@ -232,6 +233,12 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 				}
 				return e.WithQuery(newQ), transform.NewTree, nil
 			case *expression.Between:
+				// TODO: if e.Lower and e.Upper refer to the same field, simplify to Equals(e.Val, e.Lower)
+				// TODO: if e.Val is the same field as e.Lower and e.Upper, simplify to true
+
+				// TODO: Can be evaluated to true/false if e.Val, e.Lower, and e.Upper are all Literals.
+				//  If e.Lower and e.Upper are both Literals:
+				//  If e.Lower > e.Upper, simplify to false. If e.Lower == e.Upper, simplify to Equals(e.Val, e.Lower).
 				return expression.NewAnd(
 					expression.NewGreaterThanOrEqual(e.Val, e.Lower),
 					expression.NewLessThanOrEqual(e.Val, e.Upper),
@@ -245,10 +252,14 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 					return expression.NewLiteral(true, types.Boolean), transform.NewTree, nil
 				}
 
+				// TODO If e.LeftChild and e.RightChild are both zero literals (false), we simplify to false
+
+				// TODO if e.RightChild is not of type Boolean, simplify to IsTrue(e.RightChild)
 				if isFalse(ctx, e.LeftChild) && types.IsBoolean(e.RightChild.Type()) {
 					return e.RightChild, transform.NewTree, nil
 				}
 
+				// TODO if e.LeftChild is not of type Boolean, simplify to IsTrue(e.LeftChild)
 				if isFalse(ctx, e.RightChild) && types.IsBoolean(e.LeftChild.Type()) {
 					return e.LeftChild, transform.NewTree, nil
 				}
@@ -263,10 +274,14 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 					return expression.NewLiteral(false, types.Boolean), transform.NewTree, nil
 				}
 
+				// TODO If e.LeftChild and e.RightChild are both non-zero literals (true), we simplify to true
+
+				// TODO if e.RightChild is not of type Boolean, simplify to IsTrue(e.RightChild)
 				if isTrue(ctx, e.LeftChild) && types.IsBoolean(e.RightChild.Type()) {
 					return e.RightChild, transform.NewTree, nil
 				}
 
+				// TODO if e.LeftChild is not of type Boolean, simplify to IsTrue(e.LeftChild)
 				if isTrue(ctx, e.RightChild) && types.IsBoolean(e.LeftChild.Type()) {
 					return e.LeftChild, transform.NewTree, nil
 				}
@@ -333,7 +348,7 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 						// error while converting, keep as is
 						return e, transform.SameTree, nil
 					}
-					return expression.NewLiteral(!val, e.Type()), transform.NewTree, nil
+					return expression.NewLiteral(!val, types.Boolean), transform.NewTree, nil
 				}
 				return e, transform.SameTree, nil
 			case *expression.Literal, expression.Tuple, *expression.Interval, *expression.CollatedExpression, *expression.MatchAgainst:
