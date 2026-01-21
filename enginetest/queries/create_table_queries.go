@@ -324,6 +324,13 @@ var CreateTableQueries = []WriteQueryTest{
 		SelectQuery:         `SHOW CREATE TABLE embeddings`,
 		ExpectedSelect:      []sql.Row{{"embeddings", "CREATE TABLE `embeddings` (\n  `id` int,\n  `vector_col` VECTOR(128) NOT NULL,\n  `small_vec` VECTOR(1)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/10345
+		WriteQuery:          "create table t1 (id serial)",
+		ExpectedWriteResult: []sql.Row{{types.NewOkResult(0)}},
+		SelectQuery:         `SHOW CREATE TABLE t1`,
+		ExpectedSelect:      []sql.Row{{"t1", "CREATE TABLE `t1` (\n  `id` bigint unsigned NOT NULL AUTO_INCREMENT,\n  UNIQUE KEY `id` (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"}},
+	},
 }
 
 var CreateTableScriptTests = []ScriptTest{
