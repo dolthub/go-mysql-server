@@ -225,13 +225,15 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 				return nil, transform.SameTree, err
 			}
 
-			if isFalse(ctx, e) {
+			isTrue, isFalse := getDefiniteBoolValues(ctx, e)
+			// if the filter always evaluates to true, it can be removed
+			if isTrue {
+				return n.Child, transform.NewTree, nil
+			}
+			// if the filter always evaluates to false, the result is an empty table
+			if isFalse {
 				emptyTable := plan.NewEmptyTableWithSchema(n.Schema())
 				return emptyTable, transform.NewTree, nil
-			}
-
-			if isTrue(ctx, e) {
-				return n.Child, transform.NewTree, nil
 			}
 
 			if !same {
@@ -264,45 +266,69 @@ func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel Ru
 				expression.NewLessThanOrEqual(e.Val, e.Upper),
 			), transform.NewTree, nil
 		case *expression.Or:
-			if isTrue(ctx, e.LeftChild) {
+			leftIsTrue, leftIsFalse := getDefiniteBoolValues(ctx, e.LeftChild)
+			// if left side is true, the OR expression is true
+			if leftIsTrue {
 				return expression.NewLiteral(true, types.Boolean), transform.NewTree, nil
 			}
 
-			if isTrue(ctx, e.RightChild) {
+			rightIsTrue, rightIsFalse := getDefiniteBoolValues(ctx, e.RightChild)
+			// if right side is true, the OR expression is true
+			if rightIsTrue {
 				return expression.NewLiteral(true, types.Boolean), transform.NewTree, nil
 			}
 
-			// TODO If e.LeftChild and e.RightChild are both zero literals (false), we simplify to false
-
-			// TODO if e.RightChild is not of type Boolean, simplify to IsTrue(e.RightChild)
-			if isFalse(ctx, e.LeftChild) && types.IsBoolean(e.RightChild.Type()) {
-				return e.RightChild, transform.NewTree, nil
+			if leftIsFalse {
+				// if both sides are false, the OR expression is false
+				if rightIsFalse {
+					return expression.NewLiteral(false, types.Boolean), transform.NewTree, nil
+				}
+				// if left side is false, the value of the OR expression is determined by the right side
+				// TODO If RightChild is not a boolean type, it can be returned if converted to a boolean. Nil values
+				//  must be preserved
+				if types.IsBoolean(e.RightChild.Type()) {
+					return e.RightChild, transform.NewTree, nil
+				}
 			}
 
-			// TODO if e.LeftChild is not of type Boolean, simplify to IsTrue(e.LeftChild)
-			if isFalse(ctx, e.RightChild) && types.IsBoolean(e.LeftChild.Type()) {
+			// if right side is false, the value of the OR expression is determined by the left side
+			// TODO If LeftChild is not a boolean type, it can be returned if converted to a boolean. Nil values must be
+			//  preserved
+			if rightIsFalse && types.IsBoolean(e.LeftChild.Type()) {
 				return e.LeftChild, transform.NewTree, nil
 			}
 
 			return e, transform.SameTree, nil
 		case *expression.And:
-			if isFalse(ctx, e.LeftChild) {
+			leftIsTrue, leftIsFalse := getDefiniteBoolValues(ctx, e.LeftChild)
+			// if left is false, the AND expression is false
+			if leftIsFalse {
 				return expression.NewLiteral(false, types.Boolean), transform.NewTree, nil
 			}
 
-			if isFalse(ctx, e.RightChild) {
+			rightIsTrue, rightIsFalse := getDefiniteBoolValues(ctx, e.RightChild)
+			// if right is false, the AND expression is false
+			if rightIsFalse {
 				return expression.NewLiteral(false, types.Boolean), transform.NewTree, nil
 			}
 
-			// TODO If e.LeftChild and e.RightChild are both non-zero literals (true), we simplify to true
-
-			// TODO if e.RightChild is not of type Boolean, simplify to IsTrue(e.RightChild)
-			if isTrue(ctx, e.LeftChild) && types.IsBoolean(e.RightChild.Type()) {
-				return e.RightChild, transform.NewTree, nil
+			if leftIsTrue {
+				// if both sides are definitely true, the AND expression is true
+				if rightIsTrue {
+					return expression.NewLiteral(true, types.Boolean), transform.NewTree, nil
+				}
+				// if left side is true, the value of the AND expression is determined by the right side
+				// TODO If RightChild is not a boolean type, it can be returned if converted to a boolean. Nil values
+				//  must be preserved
+				if types.IsBoolean(e.RightChild.Type()) {
+					return e.RightChild, transform.NewTree, nil
+				}
 			}
 
-			// TODO if e.LeftChild is not of type Boolean, simplify to IsTrue(e.LeftChild)
-			if isTrue(ctx, e.RightChild) && types.IsBoolean(e.LeftChild.Type()) {
+			// if right side is definitely false, the value of the AND expression is determined by the left side
+			// TODO If LeftChild is not a boolean type, it can be returned if converted to a boolean. Nil values must be
+			//  preserved
+			if rightIsTrue && types.IsBoolean(e.LeftChild.Type()) {
 				return e.LeftChild, transform.NewTree, nil
 			}
 
@@ -393,28 +419,20 @@ func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel Ru
 	})
 }
 
-func isFalse(ctx *sql.Context, e sql.Expression) bool {
+// getDefiniteBoolValues gets the definite boolean values of an expression. isTrue will only be true if the expression
+// is a non-nil Literal that evaluates to true, and isFalse will only be true if the expression is a non-nil Literal
+// that evaluates to false. Both return values are necessary since nil values are neither true nor false. We also cannot
+// yet evaluate the value of non-Literal expressions so they can neither definitely true nor false.
+func getDefiniteBoolValues(ctx *sql.Context, e sql.Expression) (isTrue, isFalse bool) {
 	lit, ok := e.(*expression.Literal)
 	if !ok || lit == nil || lit.Value() == nil {
-		return false
+		return false, false
 	}
 	val, err := sql.ConvertToBool(ctx, lit.Value())
 	if err != nil {
-		return false
+		return false, false
 	}
-	return !val
-}
-
-func isTrue(ctx *sql.Context, e sql.Expression) bool {
-	lit, ok := e.(*expression.Literal)
-	if !ok || lit == nil || lit.Value() == nil {
-		return false
-	}
-	val, err := sql.ConvertToBool(ctx, lit.Value())
-	if err != nil {
-		return false
-	}
-	return val
+	return val, !val
 }
 
 // pushNotFilters applies De'Morgan's laws to push NOT expressions as low
