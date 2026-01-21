@@ -439,6 +439,12 @@ func (j *JoinNode) WithComment(comment string) sql.Node {
 	return &ret
 }
 
+func (j *JoinNode) WithFilter(filter sql.Expression) *JoinNode {
+	ret := *j
+	ret.Filter = filter
+	return &ret
+}
+
 var _ sql.Describable = (*JoinNode)(nil)
 
 // Describe implements sql.Describable

@@ -168,10 +168,11 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 			}
 		case *plan.Update:
 			if n.IsJoin {
-				uj := n.Child.(*plan.UpdateJoin)
-				updateTargets := uj.UpdateTargets
-				for _, updateTarget := range updateTargets {
-					affectedTables = append(affectedTables, getTableName(updateTarget))
+				if uj, ok := n.Child.(*plan.UpdateJoin); ok {
+					updateTargets := uj.UpdateTargets
+					for _, updateTarget := range updateTargets {
+						affectedTables = append(affectedTables, getTableName(updateTarget))
+					}
 				}
 			} else {
 				affectedTables = append(affectedTables, getTableName(n))

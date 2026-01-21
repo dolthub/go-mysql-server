@@ -219,6 +219,45 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 
 	return transform.NodeWithOpaque(node, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		switch n := node.(type) {
+		case *plan.JoinNode:
+			if n.Filter != nil {
+				e, same, err := simplifyExpression(ctx, a, scope, sel, qFlags, n.Filter)
+				if err != nil {
+					return nil, transform.SameTree, err
+				}
+
+				isTrue, isFalse := getDefiniteBoolValues(ctx, e)
+				joinType := n.JoinType()
+				if isTrue {
+					// if the filter always evaluates to true, convert to cross join if possible
+					switch joinType {
+					case plan.JoinTypeInner:
+						return plan.NewCrossJoin(n.Left(), n.Right()), transform.NewTree, nil
+					case plan.JoinTypeLateralInner:
+						return plan.NewLateralCrossJoin(n.Left(), n.Right()), transform.NewTree, nil
+					default:
+						// remove filter if nil. filter does not need to be evaluated if always true
+						return n.WithFilter(nil), transform.NewTree, nil
+					}
+				} else if isFalse {
+					switch joinType {
+					case plan.JoinTypeFullOuter:
+						// Do nothing here. For a full outer join, we still want to return every row of both.
+					case plan.JoinTypeLeftOuter, plan.JoinTypeLateralLeft:
+						// In a left join, we still want all rows on the left side. But because the filter is always
+						// false, it will never match rows on the right side so we can treat it like it's empty
+						return plan.NewJoin(n.Left(), plan.NewEmptyTableWithSchema(n.Right().Schema()), joinType, e), transform.NewTree, nil
+					default:
+						// For non-outer joins, a join condition that always evaluates to false would return an empty set
+						return plan.NewEmptyTableWithSchema(n.Schema()), transform.NewTree, nil
+					}
+				}
+
+				if !same {
+					return n.WithFilter(e), transform.NewTree, nil
+				}
+
+			}
 		case *plan.Filter:
 			e, same, err := simplifyExpression(ctx, a, scope, sel, qFlags, n.Expression)
 			if err != nil {
@@ -232,8 +271,7 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 			}
 			// if the filter always evaluates to false, the result is an empty table
 			if isFalse {
-				emptyTable := plan.NewEmptyTableWithSchema(n.Schema())
-				return emptyTable, transform.NewTree, nil
+				return plan.NewEmptyTableWithSchema(n.Schema()), transform.NewTree, nil
 			}
 
 			if !same {
