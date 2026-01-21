@@ -61,6 +61,8 @@ func Unquote(s string) (string, error) {
 		head, tail := str[0], str[strlen-1]
 		if head == '"' && tail == '"' {
 			return str[1 : strlen-1], nil
+		}else{
+			return s,nil
 		}
 	}
 	return str, nil
