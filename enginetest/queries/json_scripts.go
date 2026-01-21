@@ -753,10 +753,9 @@ var JsonScripts = []ScriptTest{
 				Query:    `SELECT k->"$.inner" from (SELECT j->"$.outer" AS k FROM t2) sq;`,
 				Expected: []sql.Row{{types.MustJSON("456")}},
 			},
-
 			{
 				Query:    `SELECT j->>"$.inner" from t3;`,
-				Expected: []sql.Row{{types.MustJSON(`{"a":"test"}`)}},
+				Expected: []sql.Row{{`{"a":"test"}`}},
 			},
 		},
 	},
