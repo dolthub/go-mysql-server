@@ -101,52 +101,94 @@ func finalizeSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 	return newNode, same1 && same2, nil
 }
 
+// transformTrackingJoinParents walks a node tree, keeping a list of every join node parent.
+func transformTrackingJoinParents(node sql.Node, joinParents *[]*plan.JoinNode, transformFunc func(n sql.Node) (sql.Node, transform.TreeIdentity, error)) (sql.Node, transform.TreeIdentity, error) {
+	joinParent, ok := node.(*plan.JoinNode)
+	if ok {
+		*joinParents = append(*joinParents, joinParent)
+		defer func() {
+			*joinParents = (*joinParents)[:len(*joinParents)-1]
+		}()
+	}
+
+	_, ok = node.(sql.OpaqueNode)
+	if ok {
+		return transformFunc(node)
+	}
+
+	children := node.Children()
+	if len(children) == 0 {
+		return transformFunc(node)
+	}
+
+	var (
+		newChildren []sql.Node
+		err         error
+	)
+	for i := range children {
+		child := children[i]
+		child, same, err := transformTrackingJoinParents(child, joinParents, transformFunc)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+		if !same {
+			if newChildren == nil {
+				newChildren = make([]sql.Node, len(children))
+				copy(newChildren, children)
+			}
+			newChildren[i] = child
+		}
+
+	}
+
+	sameC := transform.SameTree
+	if len(newChildren) > 0 {
+		sameC = transform.NewTree
+		node, err = node.WithChildren(newChildren...)
+		if err != nil {
+			return nil, transform.SameTree, err
+		}
+	}
+
+	node, sameN, err := transformFunc(node)
+	if err != nil {
+		return nil, transform.SameTree, err
+	}
+	return node, sameC && sameN, nil
+}
+
 // finalizeSubqueriesHelper finalizes all subqueries and subquery expressions,
 // fixing parent scopes before recursing into child nodes.
 func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	var joinParent *plan.JoinNode
-	var selFunc transform.SelectorFunc = func(c transform.Context) bool {
-		if jp, ok := c.Node.(*plan.JoinNode); ok {
-			joinParent = jp
-		}
-		return true
-	}
+	var joinParents []*plan.JoinNode
 
-	var conFunc transform.CtxFunc = func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
-		n := c.Node
+	transformFunc := func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if sqa, ok := n.(*plan.SubqueryAlias); ok {
 			var newSqa sql.Node
 			var same2 transform.TreeIdentity
 			var err error
-			// NOTE: this only really fixes one level of subquery with two joins.
-			// This patch will likely not fix cases with more deeply nested joins and subqueries.
-			// A real fix would be to re-examine indexes after everything.
-			if sqa.OuterScopeVisibility && joinParent != nil {
-				if stripChild, ok := joinParent.Right().(*plan.StripRowNode); ok && stripChild.Child == sqa {
-					subScope := scope.NewScopeInJoin(joinParent.Children()[0])
-					subScope.SetLateralJoin(joinParent.Op.IsLateral())
-					newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, true, qFlags)
+			var subScope *plan.Scope = scope
+			for _, joinParent := range joinParents {
+				if sqa.OuterScopeVisibility && joinParent != nil {
+					if stripChild, ok := joinParent.Right().(*plan.StripRowNode); ok && stripChild.Child == sqa {
+						subScope = scope.NewScopeInJoin(joinParent.Children()[0])
+						subScope.SetLateralJoin(joinParent.Op.IsLateral())
+					} else {
+						// IsLateral means that the subquery should have visibility into the left scope.
+						if sqa.IsLateral {
+							subScope = addLeftTablesToScope(subScope, joinParent.Left())
+							subScope.SetLateralJoin(true)
+						}
+					}
 				} else {
 					// IsLateral means that the subquery should have visibility into the left scope.
-					if sqa.IsLateral {
-						subScope := addLeftTablesToScope(scope, joinParent.Left())
+					if joinParent != nil && sqa.IsLateral {
+						subScope = addLeftTablesToScope(subScope, joinParent.Left())
 						subScope.SetLateralJoin(true)
-						newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, true, qFlags)
-					} else {
-						newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, scope, sel, true, qFlags)
 					}
 				}
-			} else {
-				// IsLateral means that the subquery should have visibility into the left scope.
-				if joinParent != nil && sqa.IsLateral {
-					subScope := addLeftTablesToScope(scope, joinParent.Left())
-					subScope.SetLateralJoin(true)
-					newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, true, qFlags)
-				} else {
-					newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, scope, sel, true, qFlags)
-				}
 			}
-
+			newSqa, same2, err = analyzeSubqueryAlias(ctx, a, sqa, subScope, sel, true, qFlags)
 			if err != nil {
 				return n, transform.SameTree, err
 			}
@@ -193,7 +235,7 @@ func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 		})
 	}
 
-	return transform.NodeWithCtx(node, selFunc, conFunc)
+	return transformTrackingJoinParents(node, &joinParents, transformFunc)
 }
 
 func resolveSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector, finalize bool, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
