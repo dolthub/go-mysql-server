@@ -17,12 +17,10 @@ package server
 import (
 	"context"
 	"encoding/base64"
-	goerrors "errors"
 	"fmt"
 	"io"
 	"net"
 	"regexp"
-	"runtime/debug"
 	"runtime/trace"
 	"sync"
 	"time"
@@ -38,6 +36,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	sqle "github.com/dolthub/go-mysql-server"
+	"github.com/dolthub/go-mysql-server/errguard"
 	"github.com/dolthub/go-mysql-server/internal/sockstate"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
@@ -635,20 +634,11 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 	defer trace.StartRegion(ctx, "Handler.resultForDefaultIter").End()
 
 	eg, ctx := ctx.NewErrgroup()
-	pan2err := func(err *error) {
-		if recoveredPanic := recover(); recoveredPanic != nil {
-			stack := debug.Stack()
-			wrappedErr := fmt.Errorf("handler caught panic: %v\n%s", recoveredPanic, stack)
-			*err = goerrors.Join(*err, wrappedErr)
-		}
-	}
-
 	// TODO: poll for closed connections should obviously also run even if
 	// we're doing something with an OK result or a single row result, etc.
 	// This should be in the caller.
 	pollCtx, cancelF := ctx.NewSubContext()
-	eg.Go(func() (err error) {
-		defer pan2err(&err)
+	errguard.Go(eg, func() error {
 		return h.pollForClosedConnection(pollCtx, c)
 	})
 
@@ -681,8 +671,7 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 
 	// Read rows off the row iterator and send them to the row channel.
 	var rowChan = make(chan sql.Row, 512)
-	eg.Go(func() (err error) {
-		defer pan2err(&err)
+	errguard.Go(eg, func() error {
 		defer wg.Done()
 		defer close(rowChan)
 		for {
@@ -709,8 +698,7 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 	// Drain rows from rowChan, convert to wire format, and send to resChan
 	var resChan = make(chan *sqltypes.Result, 4)
 	var res *sqltypes.Result
-	eg.Go(func() (err error) {
-		defer pan2err(&err)
+	errguard.Go(eg, func() error {
 		defer wg.Done()
 		defer close(resChan)
 
@@ -771,8 +759,7 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 
 	// Drain sqltypes.Result from resChan and call callback (send to client and potentially reset buffer)
 	var processedAtLeastOneBatch bool
-	eg.Go(func() (err error) {
-		defer pan2err(&err)
+	errguard.Go(eg, func() (err error) {
 		defer cancelF()
 		defer wg.Done()
 		for {
@@ -794,8 +781,7 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 
 	// Close() kills this PID in the process list,
 	// wait until all rows have be sent over the wire
-	eg.Go(func() (err error) {
-		defer pan2err(&err)
+	errguard.Go(eg, func() error {
 		wg.Wait()
 		return iter.Close(ctx)
 	})
@@ -815,19 +801,11 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 	defer trace.StartRegion(ctx, "Handler.resultForValueRowIter").End()
 
 	eg, ctx := ctx.NewErrgroup()
-	pan2err := func(err *error) {
-		if recoveredPanic := recover(); recoveredPanic != nil {
-			wrappedErr := fmt.Errorf("handler caught panic: %v\n%s", recoveredPanic, debug.Stack())
-			*err = goerrors.Join(*err, wrappedErr)
-		}
-	}
-
 	// TODO: poll for closed connections should obviously also run even if
 	// we're doing something with an OK result or a single row result, etc.
 	// This should be in the caller.
 	pollCtx, cancelF := ctx.NewSubContext()
-	eg.Go(func() (err error) {
-		defer pan2err(&err)
+	errguard.Go(eg, func() error {
 		return h.pollForClosedConnection(pollCtx, c)
 	})
 
@@ -858,8 +836,7 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 
 	// Drain rows from iter and send to rowsChan
 	var rowChan = make(chan sql.ValueRow, 512)
-	eg.Go(func() (err error) {
-		defer pan2err(&err)
+	errguard.Go(eg, func() error {
 		defer wg.Done()
 		defer close(rowChan)
 		for {
@@ -886,8 +863,7 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 	// Drain rows from rowChan, convert to wire format, and send to resChan
 	var resChan = make(chan *sqltypes.Result, 4)
 	var res *sqltypes.Result
-	eg.Go(func() (err error) {
-		defer pan2err(&err)
+	errguard.Go(eg, func() error {
 		defer close(resChan)
 		defer wg.Done()
 
@@ -940,8 +916,7 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 
 	// Drain sqltypes.Result from resChan and call callback (send to client and reset buffer)
 	var processedAtLeastOneBatch bool
-	eg.Go(func() (err error) {
-		defer pan2err(&err)
+	errguard.Go(eg, func() (err error) {
 		defer cancelF()
 		defer wg.Done()
 		for {
@@ -963,8 +938,7 @@ func (h *Handler) resultForValueRowIter(ctx *sql.Context, c *mysql.Conn, schema 
 
 	// Close() kills this PID in the process list,
 	// wait until all rows have be sent over the wire
-	eg.Go(func() (err error) {
-		defer pan2err(&err)
+	errguard.Go(eg, func() error {
 		wg.Wait()
 		return iter.Close(ctx)
 	})
