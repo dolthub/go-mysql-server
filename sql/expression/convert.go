@@ -293,7 +293,7 @@ func (c *Convert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 // |typeLength| and |typeScale|).
 // Only returns an error if converting to JSON, Date, and Datetime; the zero value is returned for float types.
 // Nil is returned in all other cases.
-func convertValue(ctx *sql.Context, val interface{}, castTo string, originType sql.Type, typeLength, typeScale int) (interface{}, error) {
+func convertValue(ctx *sql.Context, val any, castTo string, originType sql.Type, typeLength, typeScale int) (any, error) {
 	if val == nil {
 		return nil, nil
 	}
