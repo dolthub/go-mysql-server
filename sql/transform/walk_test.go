@@ -80,7 +80,7 @@ func TestInspect(t *testing.T) {
 		return true
 	}
 
-	Inspect(a3, f)
+	InspectWithOpaque(a3, f)
 
 	require.Equal(t,
 		[]sql.Node{a3, a2, c1, a1, b1},
@@ -96,7 +96,7 @@ func TestInspect(t *testing.T) {
 		return true
 	}
 
-	Inspect(a3, f)
+	InspectWithOpaque(a3, f)
 
 	require.Equal(t,
 		[]sql.Node{a3, a2, c1},

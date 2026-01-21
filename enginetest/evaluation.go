@@ -521,7 +521,7 @@ func TestQueryWithIndexCheck(t *testing.T, ctx *sql.Context, e QueryEngine, harn
 
 func CheckIndexedAccess(n sql.Node) bool {
 	var hasIndex bool
-	transform.Inspect(n, func(n sql.Node) bool {
+	transform.InspectWithOpaque(n, func(n sql.Node) bool {
 		if n == nil {
 			return false
 		}

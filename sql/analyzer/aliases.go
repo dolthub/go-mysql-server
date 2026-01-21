@@ -252,12 +252,12 @@ func getTableAliases(n sql.Node, scope *plan.Scope) (TableAliases, error) {
 		return TableAliases{}, analysisErr
 	}
 
-	// Inspect all of the scopes, outer to inner. Within a single scope, a name conflict is an error. But an inner scope
+	// InspectWithOpaque all of the scopes, outer to inner. Within a single scope, a name conflict is an error. But an inner scope
 	// can overwrite a name in an outer scope, and it's not an error.
 	aliases := TableAliases{}
 	for _, scopeNode := range scope.OuterToInner() {
 		passAliases = TableAliases{}
-		transform.Inspect(scopeNode, aliasFn)
+		transform.InspectWithOpaque(scopeNode, aliasFn)
 		if analysisErr != nil {
 			return TableAliases{}, analysisErr
 		}
@@ -266,7 +266,7 @@ func getTableAliases(n sql.Node, scope *plan.Scope) (TableAliases, error) {
 	}
 
 	passAliases = TableAliases{}
-	transform.Inspect(n, aliasFn)
+	transform.InspectWithOpaque(n, aliasFn)
 	if analysisErr != nil {
 		return TableAliases{}, analysisErr
 	}

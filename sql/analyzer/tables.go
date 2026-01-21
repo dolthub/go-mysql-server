@@ -25,7 +25,7 @@ import (
 // Returns the underlying table name, unaliased, for the node given
 func getTableName(node sql.Node) string {
 	var tableName string
-	transform.Inspect(node, func(node sql.Node) bool {
+	transform.InspectWithOpaque(node, func(node sql.Node) bool {
 		switch node := node.(type) {
 		case *plan.ResolvedTable:
 			tableName = node.Name()
@@ -46,8 +46,8 @@ func getTableName(node sql.Node) string {
 // Finds first table node that is a descendant of the node given
 func getTable(node sql.Node) sql.Table {
 	var table sql.Table
-	transform.Inspect(node, func(n sql.Node) bool {
-		// Inspect is called on all children of a node even if an earlier child's call returns false.
+	transform.InspectWithOpaque(node, func(n sql.Node) bool {
+		// InspectWithOpaque is called on all children of a node even if an earlier child's call returns false.
 		// We only want the first TableNode match.
 		if table != nil {
 			return false
@@ -71,8 +71,8 @@ func getTable(node sql.Node) sql.Table {
 // This function will not look inside SubqueryAliases
 func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 	var table *plan.ResolvedTable
-	transform.Inspect(node, func(n sql.Node) bool {
-		// Inspect is called on all children of a node even if an earlier child's call returns false.
+	transform.InspectWithOpaque(node, func(n sql.Node) bool {
+		// InspectWithOpaque is called on all children of a node even if an earlier child's call returns false.
 		// We only want the first TableNode match.
 		if table != nil {
 			return false
@@ -101,7 +101,7 @@ func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 // This function will not look inside sql.OpaqueNodes (like plan.SubqueryAlias).
 func getResolvedTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
 	ret := make(map[string]*plan.ResolvedTable)
-	// TODO: We should change transform.Inspect to not walk the children of sql.OpaqueNodes (like transform.Node)
+	// TODO: We should change transform.InspectWithOpaque to not walk the children of sql.OpaqueNodes (like transform.Node)
 	//  and add a transform.InspectWithOpaque that does.
 	//  Using transform.Node here achieves the same result without a large refactor.
 	transform.Node(node, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
@@ -126,7 +126,7 @@ func getResolvedTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
 
 func getNamedChildren(node sql.Node) map[string]sql.NameableNode {
 	ret := make(map[string]sql.NameableNode)
-	// TODO: We should change transform.Inspect to not walk the children of sql.OpaqueNodes (like transform.Node)
+	// TODO: We should change transform.InspectWithOpaque to not walk the children of sql.OpaqueNodes (like transform.Node)
 	//  and add a transform.InspectWithOpaque that does.
 	//  Using transform.Node here achieves the same result without a large refactor.
 	transform.Node(node, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {

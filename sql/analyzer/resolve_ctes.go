@@ -29,7 +29,7 @@ func schemaLength(node sql.Node) int {
 		return len(node.Schema())
 	}
 	schemaLen := 0
-	transform.Inspect(node, func(node sql.Node) bool {
+	transform.InspectWithOpaque(node, func(node sql.Node) bool {
 		switch node := node.(type) {
 		case *plan.Project:
 			schemaLen = len(node.Projections)

@@ -871,7 +871,7 @@ func (e *Engine) executeEvent(ctx *sql.Context, dbName, createEventStatement, us
 func findCreateEventNode(planTree sql.Node) (*plan.CreateEvent, error) {
 	// Search through the node to find the first CREATE EVENT node, and then grab its body
 	var targetNode sql.Node
-	transform.Inspect(planTree, func(node sql.Node) bool {
+	transform.InspectWithOpaque(planTree, func(node sql.Node) bool {
 		if cen, ok := node.(*plan.CreateEvent); ok {
 			targetNode = cen
 			return false

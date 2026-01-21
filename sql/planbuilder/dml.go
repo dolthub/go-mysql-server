@@ -576,7 +576,7 @@ func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 			checks = append(checks, b.loadChecksFromTable(tableScope, rt.Table)...)
 		}
 	} else {
-		transform.Inspect(update, func(n sql.Node) bool {
+		transform.InspectWithOpaque(update, func(n sql.Node) bool {
 			// todo maybe this should be later stage
 			if rt, ok := n.(*plan.ResolvedTable); ok {
 				checks = append(checks, b.loadChecksFromTable(outScope, rt.Table)...)
@@ -596,7 +596,7 @@ func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 // hasJoinNode returns true if |node| or any child is a JoinNode.
 func hasJoinNode(node sql.Node) bool {
 	updateJoinFound := false
-	transform.Inspect(node, func(n sql.Node) bool {
+	transform.InspectWithOpaque(node, func(n sql.Node) bool {
 		if _, ok := n.(*plan.JoinNode); ok {
 			updateJoinFound = true
 		}
@@ -625,7 +625,7 @@ func getResolvedTablesToUpdate(_ *sql.Context, node sql.Node, ij sql.Node) (reso
 func getResolvedTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
 	ret := make(map[string]*plan.ResolvedTable)
 
-	transform.Inspect(node, func(node sql.Node) bool {
+	transform.InspectWithOpaque(node, func(node sql.Node) bool {
 		switch n := node.(type) {
 		case *plan.ResolvedTable:
 			ret[strings.ToLower(n.Table.Name())] = n
@@ -650,8 +650,8 @@ func getResolvedTablesByName(node sql.Node) map[string]*plan.ResolvedTable {
 // Finds first TableNode node that is a descendant of the node given
 func getResolvedTable(node sql.Node) *plan.ResolvedTable {
 	var table *plan.ResolvedTable
-	transform.Inspect(node, func(node sql.Node) bool {
-		// plan.Inspect will get called on all children of a node even if one of the children's calls returns false. We
+	transform.InspectWithOpaque(node, func(node sql.Node) bool {
+		// plan.InspectWithOpaque will get called on all children of a node even if one of the children's calls returns false. We
 		// only want the first TableNode match.
 		if table != nil {
 			return false

@@ -44,7 +44,7 @@ func (f filtersByTable) size() int {
 // predicates that contain no table or more than one table are not included in the result.
 func getFiltersByTable(n sql.Node) filtersByTable {
 	filters := newFiltersByTable()
-	transform.Inspect(n, func(node sql.Node) bool {
+	transform.InspectWithOpaque(n, func(node sql.Node) bool {
 		switch node := node.(type) {
 		case *plan.Filter:
 			fs := exprToTableFilters(node.Expression)

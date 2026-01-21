@@ -75,7 +75,7 @@ func loadStoredProcedures(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan
 
 func hasProcedureCall(n sql.Node) bool {
 	referencesProcedures := false
-	transform.Inspect(n, func(n sql.Node) bool {
+	transform.InspectWithOpaque(n, func(n sql.Node) bool {
 		if _, ok := n.(*plan.Call); ok {
 			referencesProcedures = true
 			return false

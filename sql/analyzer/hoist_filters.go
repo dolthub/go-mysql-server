@@ -182,7 +182,7 @@ func partitionFilterByScope(e sql.Expression, corr sql.ColSet) (inScope, outOfSc
 			}
 		case *plan.Subquery:
 			// TODO cache in-scope on subqueries?
-			transform.Inspect(e.Query, func(n sql.Node) bool {
+			transform.InspectWithOpaque(e.Query, func(n sql.Node) bool {
 				if ne, ok := n.(sql.Expressioner); ok {
 					for _, e := range ne.Expressions() {
 						in, out := partitionFilterByScope(e, corr)

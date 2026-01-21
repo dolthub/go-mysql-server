@@ -33,7 +33,7 @@ import (
 func validateOffsetAndLimit(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	var err error
 	var i, i64 interface{}
-	transform.Inspect(n, func(n sql.Node) bool {
+	transform.InspectWithOpaque(n, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.Limit:
 			switch e := n.Limit.(type) {
@@ -162,7 +162,7 @@ func validateDeleteFrom(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 		// Check that delete from join only targets tables that exist in the join
 		if df.HasExplicitTargets() {
 			sourceTables := make(map[string]struct{})
-			transform.Inspect(df.Child, func(node sql.Node) bool {
+			transform.InspectWithOpaque(df.Child, func(node sql.Node) bool {
 				if t, ok := node.(sql.Table); ok {
 					sourceTables[t.Name()] = struct{}{}
 				}
@@ -212,7 +212,7 @@ func validateDeleteFrom(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 
 		// DELETE FROM JOIN with no target tables specified
 		deleteFromJoin := false
-		transform.Inspect(df.Child, func(node sql.Node) bool {
+		transform.InspectWithOpaque(df.Child, func(node sql.Node) bool {
 			if _, ok := node.(*plan.JoinNode); ok {
 				deleteFromJoin = true
 				return false
@@ -254,7 +254,7 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 	var parent sql.Node
 	var project *plan.Project
 	var orderBy *plan.Sort
-	transform.Inspect(n, func(n sql.Node) bool {
+	transform.InspectWithOpaque(n, func(n sql.Node) bool {
 		defer func() {
 			parent = n
 		}()
@@ -525,7 +525,7 @@ func validateUnionSchemasMatch(ctx *sql.Context, a *Analyzer, n sql.Node, scope 
 	defer span.End()
 
 	var firstmismatch []string
-	transform.Inspect(n, func(n sql.Node) bool {
+	transform.InspectWithOpaque(n, func(n sql.Node) bool {
 		if u, ok := n.(*plan.SetOp); ok {
 			ls := u.Left().Schema()
 			rs := u.Right().Schema()
@@ -606,7 +606,7 @@ func validateStarExpressions(ctx *sql.Context, a *Analyzer, n sql.Node, scope *p
 	}
 
 	var err error
-	transform.Inspect(n, func(n sql.Node) bool {
+	transform.InspectWithOpaque(n, func(n sql.Node) bool {
 		if er, ok := n.(sql.Expressioner); ok {
 			for _, e := range er.Expressions() {
 				// An expression consisting of just a * is allowed.
@@ -655,7 +655,7 @@ func validateOperands(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sco
 	// We do not use plan.InspectExpressions here because we're treating
 	// top-level expressions of sql.Node differently from subexpressions.
 	var err error
-	transform.Inspect(n, func(n sql.Node) bool {
+	transform.InspectWithOpaque(n, func(n sql.Node) bool {
 		if n == nil {
 			return false
 		}
@@ -746,7 +746,7 @@ func validateSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *p
 		}
 
 		outerScopeRowLen := len(scope.Schema()) + len(Schemas(n.Children()))
-		transform.Inspect(s.Query, func(n sql.Node) bool {
+		transform.InspectWithOpaque(s.Query, func(n sql.Node) bool {
 			if n == nil {
 				return true
 			}
@@ -815,16 +815,16 @@ func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 		return valid
 	}
 
-	transform.Inspect(n, func(node sql.Node) bool {
+	transform.InspectWithOpaque(n, func(node sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.DeleteFrom, *plan.Update, *plan.LockTables, *plan.UnlockTables:
-			transform.Inspect(node, readOnlyDBSearch)
+			transform.InspectWithOpaque(node, readOnlyDBSearch)
 			return false
 
 		case *plan.InsertInto:
 			// ReadOnlyDatabase can be an insertion Source,
 			// only inspect the Destination tree
-			transform.Inspect(n.Destination, readOnlyDBSearch)
+			transform.InspectWithOpaque(n.Destination, readOnlyDBSearch)
 			return false
 
 		case *plan.CreateTable:
@@ -846,7 +846,7 @@ func validateReadOnlyDatabase(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 			// CreateTable is the only DDL node allowed
 			// to contain a ReadOnlyDatabase
 			if plan.IsDDLNode(n) {
-				transform.Inspect(n, readOnlyDBSearch)
+				transform.InspectWithOpaque(n, readOnlyDBSearch)
 				return false
 			}
 		}
@@ -895,13 +895,13 @@ func validateReadOnlyTransaction(ctx *sql.Context, a *Analyzer, n sql.Node, scop
 		return valid
 	}
 
-	transform.Inspect(n, func(node sql.Node) bool {
+	transform.InspectWithOpaque(n, func(node sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.DeleteFrom, *plan.Update, *plan.UnlockTables:
-			transform.Inspect(node, temporaryTableSearch)
+			transform.InspectWithOpaque(node, temporaryTableSearch)
 			return false
 		case *plan.InsertInto:
-			transform.Inspect(n.Destination, temporaryTableSearch)
+			transform.InspectWithOpaque(n.Destination, temporaryTableSearch)
 			return false
 		case *plan.LockTables:
 			// TODO: Technically we should allow for the locking of temporary tables but the LockTables implementation
@@ -947,7 +947,7 @@ func validateAggregations(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan
 		return n, transform.SameTree, nil
 	}
 	var validationErr error
-	transform.Inspect(n, func(n sql.Node) bool {
+	transform.InspectWithOpaque(n, func(n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.GroupBy:
 			validationErr = checkForAggregationFunctions(n.GroupByExprs)
