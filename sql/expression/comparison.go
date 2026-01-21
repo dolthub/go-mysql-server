@@ -278,7 +278,11 @@ func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right interface{})
 	}
 
 	if types.IsTime(leftType) || types.IsTime(rightType) {
-		l, r, err := convertLeftAndRight(ctx, left, right, ConvertToDatetime)
+		l, err := convertValue(ctx, left, ConvertToDatetime, leftType, types.MaxDatetimePrecision, 0)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		r, err := convertValue(ctx, right, ConvertToDatetime, rightType, types.MaxDatetimePrecision, 0)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -291,7 +295,11 @@ func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right interface{})
 	}
 
 	if types.IsBinaryType(leftType) || types.IsBinaryType(rightType) {
-		l, r, err := convertLeftAndRight(ctx, left, right, ConvertToBinary)
+		l, err := convertValue(ctx, left, ConvertToBinary, leftType, 0, 0)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		r, err := convertValue(ctx, right, ConvertToBinary, rightType, 0, 0)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -301,11 +309,14 @@ func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right interface{})
 	if types.IsNumber(leftType) || types.IsNumber(rightType) {
 		if types.IsDecimal(leftType) || types.IsDecimal(rightType) {
 			//TODO: We need to set to the actual DECIMAL type
-			l, r, err := convertLeftAndRight(ctx, left, right, ConvertToDecimal)
+			l, err := convertValue(ctx, left, ConvertToDecimal, leftType, 0, 0)
 			if err != nil {
 				return nil, nil, nil, err
 			}
-
+			r, err := convertValue(ctx, right, ConvertToDecimal, rightType, 0, 0)
+			if err != nil {
+				return nil, nil, nil, err
+			}
 			if types.IsDecimal(leftType) {
 				return l, r, leftType, nil
 			} else {
@@ -314,7 +325,14 @@ func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right interface{})
 		}
 
 		if types.IsFloat(leftType) || types.IsFloat(rightType) {
-			l, r, err := convertLeftAndRight(ctx, left, right, ConvertToDouble)
+			l, err := convertValue(ctx, left, ConvertToDouble, leftType, 0, 0)
+			if err != nil {
+				return nil, nil, nil, err
+			}
+			r, err := convertValue(ctx, right, ConvertToDouble, rightType, 0, 0)
+			if err != nil {
+				return nil, nil, nil, err
+			}
 			if err != nil {
 				return nil, nil, nil, err
 			}
@@ -323,37 +341,49 @@ func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right interface{})
 		}
 
 		if types.IsSigned(leftType) && types.IsSigned(rightType) {
-			l, r, err := convertLeftAndRight(ctx, left, right, ConvertToSigned)
+			l, err := convertValue(ctx, left, ConvertToSigned, leftType, 0, 0)
 			if err != nil {
 				return nil, nil, nil, err
 			}
-
+			r, err := convertValue(ctx, right, ConvertToSigned, rightType, 0, 0)
+			if err != nil {
+				return nil, nil, nil, err
+			}
 			return l, r, types.Int64, nil
 		}
 
 		if types.IsUnsigned(leftType) && types.IsUnsigned(rightType) {
-			l, r, err := convertLeftAndRight(ctx, left, right, ConvertToUnsigned)
+			l, err := convertValue(ctx, left, ConvertToUnsigned, leftType, 0, 0)
 			if err != nil {
 				return nil, nil, nil, err
 			}
-
+			r, err := convertValue(ctx, right, ConvertToUnsigned, rightType, 0, 0)
+			if err != nil {
+				return nil, nil, nil, err
+			}
 			return l, r, types.Uint64, nil
 		}
 
-		l, r, err := convertLeftAndRight(ctx, left, right, ConvertToDouble)
+		l, err := convertValue(ctx, left, ConvertToDouble, leftType, 0, 0)
 		if err != nil {
 			return nil, nil, nil, err
 		}
-
+		r, err := convertValue(ctx, right, ConvertToDouble, rightType, 0, 0)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		return l, r, types.Float64, nil
 	}
 
-	left, right, err := convertLeftAndRight(ctx, left, right, ConvertToChar)
+	l, err := convertValue(ctx, left, ConvertToChar, leftType, 0, 0)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-
-	return left, right, types.LongText, nil
+	r, err := convertValue(ctx, right, ConvertToChar, rightType, 0, 0)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	return l, r, types.LongText, nil
 }
 
 func convertLeftAndRight(ctx *sql.Context, left, right interface{}, convertTo string) (interface{}, interface{}, error) {
