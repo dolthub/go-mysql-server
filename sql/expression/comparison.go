@@ -95,6 +95,7 @@ func tupleTypesMatch(left sql.Type, tup types.TupleType, typeCb func(t sql.Type)
 
 type comparison struct {
 	BinaryExpressionStub
+	cmpTyp sql.ValueType
 }
 
 // disableRounding disables rounding for the given expression.
@@ -106,7 +107,13 @@ func disableRounding(expr sql.Expression) {
 func newComparison(left, right sql.Expression) comparison {
 	disableRounding(left)
 	disableRounding(right)
-	return comparison{BinaryExpressionStub{left, right}}
+	return comparison{
+		BinaryExpressionStub: BinaryExpressionStub{
+			LeftChild:  left,
+			RightChild: right,
+		},
+		cmpTyp: nil, // TODO: unable to determine type yet, as some expressions are unresolved
+	}
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -176,25 +183,24 @@ func (c *comparison) CompareValue(ctx *sql.Context, row sql.ValueRow) (int, erro
 		return 0, nil
 	}
 
-	lTyp, rTyp := c.LeftChild.Type().(sql.ValueType), c.RightChild.Type().(sql.ValueType)
-	if types.TypesEqual(lTyp, rTyp) {
-		return lTyp.(sql.ValueType).CompareValue(ctx, lv, rv)
+	if c.cmpTyp == nil {
+		lTyp, rTyp := c.LeftChild.Type().(sql.ValueType), c.RightChild.Type().(sql.ValueType)
+		if !types.TypesEqual(lTyp, rTyp) && types.IsNumber(lTyp) || types.IsNumber(rTyp) {
+			if types.IsUnsigned(lTyp) && types.IsUnsigned(rTyp) {
+				c.cmpTyp = types.Uint64.(sql.ValueType)
+			} else if types.IsSigned(lTyp) && types.IsSigned(rTyp) {
+				c.cmpTyp = types.Int64.(sql.ValueType)
+			} else if types.IsDecimal(lTyp) || types.IsDecimal(rTyp) {
+				c.cmpTyp = types.InternalDecimalType.(sql.ValueType)
+			} else {
+				c.cmpTyp = types.Float64.(sql.ValueType)
+			}
+		} else {
+			c.cmpTyp = lTyp
+		}
 	}
 
-	if types.IsNumber(lTyp) || types.IsNumber(rTyp) {
-		if types.IsUnsigned(lTyp) && types.IsUnsigned(rTyp) {
-			return types.Uint64.(sql.ValueType).CompareValue(ctx, lv, rv)
-		}
-		if types.IsSigned(lTyp) && types.IsSigned(rTyp) {
-			return types.Int64.(sql.ValueType).CompareValue(ctx, lv, rv)
-		}
-		if types.IsDecimal(lTyp) || types.IsDecimal(rTyp) {
-			return types.InternalDecimalType.(sql.ValueType).CompareValue(ctx, lv, rv)
-		}
-		return types.Float64.(sql.ValueType).CompareValue(ctx, lv, rv)
-	}
-
-	return lTyp.CompareValue(ctx, lv, rv)
+	return c.cmpTyp.Compare(ctx, lv, rv)
 }
 
 // IsValueExpression returns whether every child supports sql.ValueExpression
