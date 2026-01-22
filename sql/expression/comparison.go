@@ -201,8 +201,11 @@ func (c *comparison) CompareValue(ctx *sql.Context, row sql.ValueRow) (int, erro
 			c.cmpTyp = lTyp
 		}
 	}
-
-	return c.cmpTyp.Compare(ctx, lv, rv)
+	cmp, err := c.cmpTyp.Compare(ctx, lv, rv)
+	if err != nil {
+		panic(fmt.Sprintf("%v %v", lv, rv))
+	}
+	return cmp, nil
 }
 
 // IsValueExpression returns whether every child supports sql.ValueExpression
