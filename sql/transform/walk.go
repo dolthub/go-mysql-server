@@ -124,8 +124,8 @@ func WalkExpressionsWithNode(v sql.NodeVisitor, n sql.Node) {
 	})
 }
 
-// InspectExpressions traverses the plan and calls sql.InspectWithOpaque on any
-// expression it finds.
+// InspectExpressions traverses every node through sql.InspectWithOpaque, and calls the `f` on expressions returned from
+// sql.Expressioner.Expressions().
 func InspectExpressions(node sql.Node, f func(sql.Expression) bool) {
 	WalkExpressions(exprInspector(f), node)
 }
@@ -139,7 +139,8 @@ func (f exprInspector) Visit(e sql.Expression) sql.Visitor {
 	return nil
 }
 
-// InspectExpressionsWithNode traverses the plan and calls sql.InspectWithOpaque on any expression it finds.
+// InspectExpressionsWithNode traverses every node through sql.InspectWithOpaque, and calls the `f` on expressions
+// returned from sql.Expressioner.Expressions().
 func InspectExpressionsWithNode(node sql.Node, f func(sql.Node, sql.Expression) bool) {
 	WalkExpressionsWithNode(exprWithNodeInspector(f), node)
 }
