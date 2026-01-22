@@ -185,7 +185,9 @@ func (c *comparison) CompareValue(ctx *sql.Context, row sql.ValueRow) (int, erro
 
 	if c.cmpTyp == nil {
 		lTyp, rTyp := c.LeftChild.Type().(sql.ValueType), c.RightChild.Type().(sql.ValueType)
-		if !types.TypesEqual(lTyp, rTyp) && (types.IsNumber(lTyp) || types.IsNumber(rTyp)) {
+		if types.TypesEqual(lTyp, rTyp) {
+			c.cmpTyp = lTyp
+		} else if types.IsNumber(lTyp) || types.IsNumber(rTyp) {
 			if types.IsUnsigned(lTyp) && types.IsUnsigned(rTyp) {
 				c.cmpTyp = types.Uint64.(sql.ValueType)
 			} else if types.IsSigned(lTyp) && types.IsSigned(rTyp) {
