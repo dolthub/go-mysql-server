@@ -1538,7 +1538,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		analyzed, err := e.EngineAnalyzer().Analyze(ctx, parsed, nil, qFlags)
 		require.NoError(t, err)
 		truncateFound := false
-		transform.Inspect(analyzed, func(n sql.Node) bool {
+		transform.InspectWithOpaque(analyzed, func(n sql.Node) bool {
 			switch n.(type) {
 			case *plan.Truncate:
 				truncateFound = true
@@ -1568,7 +1568,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		analyzed, err := e.EngineAnalyzer().Analyze(ctx, parsed, nil, qFlags)
 		require.NoError(t, err)
 		truncateFound := false
-		transform.Inspect(analyzed, func(n sql.Node) bool {
+		transform.InspectWithOpaque(analyzed, func(n sql.Node) bool {
 			switch n.(type) {
 			case *plan.Truncate:
 				truncateFound = true
@@ -1596,7 +1596,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		analyzed, err := e.EngineAnalyzer().Analyze(ctx, parsed, nil, qFlags)
 		require.NoError(t, err)
 		truncateFound := false
-		transform.Inspect(analyzed, func(n sql.Node) bool {
+		transform.InspectWithOpaque(analyzed, func(n sql.Node) bool {
 			switch n.(type) {
 			case *plan.Truncate:
 				truncateFound = true
@@ -1624,7 +1624,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		analyzed, err := e.EngineAnalyzer().Analyze(ctx, parsed, nil, qFlags)
 		require.NoError(t, err)
 		truncateFound := false
-		transform.Inspect(analyzed, func(n sql.Node) bool {
+		transform.InspectWithOpaque(analyzed, func(n sql.Node) bool {
 			switch n.(type) {
 			case *plan.Truncate:
 				truncateFound = true
@@ -1653,7 +1653,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		analyzed, err := e.EngineAnalyzer().Analyze(ctx, parsed, nil, qFlags)
 		require.NoError(t, err)
 		truncateFound := false
-		transform.Inspect(analyzed, func(n sql.Node) bool {
+		transform.InspectWithOpaque(analyzed, func(n sql.Node) bool {
 			switch n.(type) {
 			case *plan.Truncate:
 				truncateFound = true
@@ -1680,7 +1680,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		analyzed, err := e.EngineAnalyzer().Analyze(ctx, parsed, nil, qFlags)
 		require.NoError(t, err)
 		truncateFound := false
-		transform.Inspect(analyzed, func(n sql.Node) bool {
+		transform.InspectWithOpaque(analyzed, func(n sql.Node) bool {
 			switch n.(type) {
 			case *plan.Truncate:
 				truncateFound = true
@@ -1707,7 +1707,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		analyzed, err := e.EngineAnalyzer().Analyze(ctx, parsed, nil, qFlags)
 		require.NoError(t, err)
 		truncateFound := false
-		transform.Inspect(analyzed, func(n sql.Node) bool {
+		transform.InspectWithOpaque(analyzed, func(n sql.Node) bool {
 			switch n.(type) {
 			case *plan.Truncate:
 				truncateFound = true
@@ -1738,7 +1738,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		analyzed, err := e.EngineAnalyzer().Analyze(ctx, parsed, nil, qFlags)
 		require.NoError(t, err)
 		truncateFound := false
-		transform.Inspect(analyzed, func(n sql.Node) bool {
+		transform.InspectWithOpaque(analyzed, func(n sql.Node) bool {
 			switch n.(type) {
 			case *plan.Truncate:
 				truncateFound = true

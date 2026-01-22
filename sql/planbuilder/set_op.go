@@ -29,7 +29,7 @@ import (
 
 func hasRecursiveCte(node sql.Node) bool {
 	hasRCTE := false
-	transform.Inspect(node, func(n sql.Node) bool {
+	transform.InspectWithOpaque(node, func(n sql.Node) bool {
 		if _, ok := n.(*plan.RecursiveTable); ok {
 			hasRCTE = true
 			return false

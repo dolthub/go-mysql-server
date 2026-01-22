@@ -92,9 +92,9 @@ func validateNoVirtualColumnsInPrimaryKey(sch sql.Schema) error {
 // validation rules
 func validateAlterTable(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	var err error
-	// Inspect is required here because alter table statements with multiple clauses are represented as a block of
+	// InspectWithOpaque is required here because alter table statements with multiple clauses are represented as a block of
 	// plan nodes
-	transform.Inspect(n, func(sql.Node) bool {
+	transform.InspectWithOpaque(n, func(sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.RenameTable:
 			for _, name := range n.NewNames {
@@ -174,7 +174,7 @@ func resolveAlterColumn(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 	var validator sql.SchemaValidator
 	keyedColumns := make(map[string]bool)
 	var err error
-	transform.Inspect(n, func(n sql.Node) bool {
+	transform.InspectWithOpaque(n, func(n sql.Node) bool {
 		if st, ok := n.(sql.SchemaTarget); ok {
 			sch = st.TargetSchema()
 		}

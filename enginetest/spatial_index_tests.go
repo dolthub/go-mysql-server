@@ -387,7 +387,7 @@ func evalSpatialIndexPlanTest(t *testing.T, harness Harness, e QueryEngine, quer
 		require.NoError(t, err)
 
 		hasFilter, hasIndex, hasRightOrder := false, false, false
-		transform.Inspect(a, func(n sql.Node) bool {
+		transform.InspectWithOpaque(a, func(n sql.Node) bool {
 			if n == nil {
 				return false
 			}

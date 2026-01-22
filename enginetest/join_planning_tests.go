@@ -1992,7 +1992,7 @@ func evalJoinCorrectness(t *testing.T, harness Harness, e QueryEngine, name, q s
 
 func collectJoinTypes(n sql.Node) []plan.JoinType {
 	var types []plan.JoinType
-	transform.Inspect(n, func(n sql.Node) bool {
+	transform.InspectWithOpaque(n, func(n sql.Node) bool {
 		if n == nil {
 			return true
 		}
@@ -2020,7 +2020,7 @@ func collectJoinTypes(n sql.Node) []plan.JoinType {
 
 func collectMergeCompares(n sql.Node) []sql.Expression {
 	var compares []sql.Expression
-	transform.Inspect(n, func(n sql.Node) bool {
+	transform.InspectWithOpaque(n, func(n sql.Node) bool {
 		if n == nil {
 			return true
 		}
@@ -2054,7 +2054,7 @@ func collectMergeCompares(n sql.Node) []sql.Expression {
 
 func collectIndexes(n sql.Node) []sql.Index {
 	var indexes []sql.Index
-	transform.Inspect(n, func(n sql.Node) bool {
+	transform.InspectWithOpaque(n, func(n sql.Node) bool {
 		if n == nil {
 			return true
 		}

@@ -132,7 +132,7 @@ func getOuterScopeIndexes(
 	var exprsByTable joinExpressionsByTable
 
 	var err error
-	transform.Inspect(node, func(node sql.Node) bool {
+	transform.InspectWithOpaque(node, func(node sql.Node) bool {
 		switch node := node.(type) {
 		case *plan.Filter:
 
