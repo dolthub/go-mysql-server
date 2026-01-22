@@ -310,24 +310,30 @@ func gatherTableAlias(
 		alias := strings.ToLower(n.Name())
 		var base string
 		if rt, ok := n.Child.(*plan.ResolvedTable); ok {
-			base = rt.Name()
+			base = rt.Name() // TODO: toLower?
 		}
 		_, starred := parentStars[alias]
+		if starred {
+			nodeStars = append(nodeStars, base)
+		}
 		if unqualifiedStar {
 			starred = true
 		}
+		base = strings.ToLower(base)
 		for _, col := range n.Schema() {
-			baseCol := newTableCol(base, col.Name)
-			aliasCol := newTableCol(alias, col.Name)
+			colName := strings.ToLower(col.Name)
+			aliasCol := tableCol{
+				table: alias,
+				col:   colName,
+			}
 			if starred || parentCols[aliasCol] > 0 {
 				// if the outer scope requests an aliased column
 				// a table lower in the tree must provide the source
+				baseCol := tableCol{
+					table: base,
+					col:   colName,
+				}
 				cols = append(cols, baseCol)
-			}
-		}
-		for t := range parentStars {
-			if t == alias {
-				nodeStars = append(nodeStars, base)
 			}
 		}
 		return cols, nodeStars
