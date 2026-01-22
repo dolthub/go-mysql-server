@@ -232,7 +232,10 @@ func pruneTableCols(
 	cols := make([]string, 0)
 	source := strings.ToLower(table.Name())
 	for _, col := range table.Schema() {
-		c := newTableCol(source, col.Name)
+		c := tableCol{
+			table: source,
+			col:   strings.ToLower(col.Name),
+		}
 		if parentCols[c] > 0 {
 			cols = append(cols, c.col)
 		}
