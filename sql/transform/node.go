@@ -198,10 +198,8 @@ func nodeWithCtxHelper(c Context, s SelectorFunc, f CtxFunc) (sql.Node, TreeIden
 		return f(c)
 	}
 
-	children := c.Node.Children()
-
-	var newChildren []sql.Node
 	sameC := SameTree
+	children := c.Node.Children()
 	cc := Context{Parent: c.Node}
 	for i, child := range children {
 		cc.Node = child
@@ -212,19 +210,15 @@ func nodeWithCtxHelper(c Context, s SelectorFunc, f CtxFunc) (sql.Node, TreeIden
 				return nil, SameTree, err
 			}
 			if !same {
-				if newChildren == nil {
-					newChildren = make([]sql.Node, len(children))
-					copy(newChildren, children)
-					sameC = NewTree
-				}
-				newChildren[i] = newChild
+				children[i] = newChild
+				sameC = NewTree
 			}
 		}
 	}
 
 	if !sameC {
 		var err error
-		c.Node, err = c.Node.WithChildren(newChildren...)
+		c.Node, err = c.Node.WithChildren(children...)
 		if err != nil {
 			return nil, SameTree, err
 		}

@@ -115,7 +115,9 @@ func (b *Block) SetSchema(sch sql.Schema) {
 
 // Children implements the sql.Node interface.
 func (b *Block) Children() []sql.Node {
-	return b.statements
+	children := make([]sql.Node, len(b.statements))
+	copy(children, b.statements)
+	return children
 }
 
 // WithChildren implements the sql.Node interface.
