@@ -46,9 +46,8 @@ type Builder struct {
 
 	nesting int
 
-	tabId         sql.TableId
-	colId         columnId
-	subqueryScope *scope
+	tabId sql.TableId
+	colId columnId
 
 	authEnabled  bool
 	multiDDL     bool

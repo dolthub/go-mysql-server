@@ -716,6 +716,5 @@ func (b *Builder) buildCreateView(inScope *scope, subQuery string, fullQuery str
 	createView := plan.NewCreateView(db, c.ViewSpec.ViewName.Name.String(), queryAlias, c.IfNotExists, c.OrReplace, subQuery, c.ViewSpec.Algorithm, definer, c.ViewSpec.Security)
 	outScope.node = b.modifySchemaTarget(queryScope, createView, createView.Definition.Schema())
 
-	b.subqueryScope = outScope
 	return outScope
 }

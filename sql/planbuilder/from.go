@@ -691,9 +691,8 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 		asOfLit = asof
 	}
 
-	if view := b.resolveView(name, database, asOfLit); view != nil {
+	if view := b.resolveView(name, database, asOfLit, outScope); view != nil {
 		// TODO: Schema name
-		outScope.appendColumnsFromScope(b.subqueryScope)
 		return resolvedViewScope(outScope, view, db, name)
 	}
 
@@ -809,7 +808,7 @@ func resolvedViewScope(outScope *scope, view sql.Node, db string, name string) (
 	return outScope, true
 }
 
-func (b *Builder) resolveView(name string, database sql.Database, asOf interface{}) sql.Node {
+func (b *Builder) resolveView(name string, database sql.Database, asOf interface{}, outScope *scope) sql.Node {
 	var view *sql.View
 
 	if vdb, vok := database.(sql.ViewDatabase); vok {
@@ -838,7 +837,7 @@ func (b *Builder) resolveView(name string, database sql.Database, asOf interface
 			// TODO: Once view definers are persisted, load the real definer client
 			restoreInvoker := b.mockDefiner(sql.PrivilegeType_CreateView)
 			defer restoreInvoker()
-			node, _, err := b.bindOnlyWithDatabase(database, stmt, viewDef.CreateViewStatement)
+			viewScope, _, err := b.bindOnlyWithDatabase(database, stmt, viewDef.CreateViewStatement)
 			if err != nil {
 				// TODO: Need to account for non-existing functions or
 				//  users without appropriate privilege to the referenced table/column/function.
@@ -848,9 +847,10 @@ func (b *Builder) resolveView(name string, database sql.Database, asOf interface
 				}
 				b.handleErr(err)
 			}
-			create, ok := node.(*plan.CreateView)
+			outScope.appendColumnsFromScope(viewScope)
+			create, ok := viewScope.node.(*plan.CreateView)
 			if !ok {
-				err = fmt.Errorf("expected create view statement, found: %T", node)
+				err = fmt.Errorf("expected create view statement, found: %T", viewScope.node)
 				b.handleErr(err)
 			}
 			switch n := create.Child.(type) {
@@ -891,11 +891,12 @@ func (b *Builder) resolveView(name string, database sql.Database, asOf interface
 
 // bindOnlyWithDatabase sets the current database to given database before binding and sets it back to the original
 // database after binding. This function is used for binding a subquery using the same database as the original query.
-func (b *Builder) bindOnlyWithDatabase(db sql.Database, stmt ast.Statement, s string) (sql.Node, *sql.QueryFlags, error) {
+func (b *Builder) bindOnlyWithDatabase(db sql.Database, stmt ast.Statement, s string) (*scope, *sql.QueryFlags, error) {
 	curDb := b.currentDb()
 	defer func() {
 		b.currentDatabase = curDb
 	}()
 	b.currentDatabase = db
-	return b.BindOnly(stmt, s, nil)
+	outScope, err := b.bindOnly(stmt, s, nil)
+	return outScope, b.qFlags, err
 }

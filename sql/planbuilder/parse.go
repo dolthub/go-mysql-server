@@ -75,7 +75,12 @@ func (b *Builder) Parse(query string, qFlags *sql.QueryFlags, multi bool) (ret s
 	return outScope.node, parsed, remainder, b.qFlags, err
 }
 
-func (b *Builder) BindOnly(stmt ast.Statement, s string, queryFlags *sql.QueryFlags) (_ sql.Node, _ *sql.QueryFlags, err error) {
+func (b *Builder) BindOnly(stmt ast.Statement, s string, queryFlags *sql.QueryFlags) (sql.Node, *sql.QueryFlags, error) {
+	outScope, err := b.bindOnly(stmt, s, queryFlags)
+	return outScope.node, b.qFlags, err
+}
+
+func (b *Builder) bindOnly(stmt ast.Statement, s string, queryFlags *sql.QueryFlags) (_ *scope, err error) {
 	defer trace.StartRegion(b.ctx, "BindOnly").End()
 	defer func() {
 		if r := recover(); r != nil {
@@ -96,5 +101,5 @@ func (b *Builder) BindOnly(stmt ast.Statement, s string, queryFlags *sql.QueryFl
 		b.qFlags = queryFlags
 	}
 	outScope := b.build(nil, stmt, s)
-	return outScope.node, b.qFlags, err
+	return outScope, err
 }
