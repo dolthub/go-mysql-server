@@ -315,36 +315,22 @@ func Node(node sql.Node, f NodeFunc) (sql.Node, TreeIdentity, error) {
 		return f(node)
 	}
 
+	sameC := SameTree
 	children := node.Children()
-	if len(children) == 0 {
-		return f(node)
-	}
-
-	var (
-		newChildren []sql.Node
-		child       sql.Node
-	)
-
-	for i := range children {
-		child = children[i]
-		child, same, err := Node(child, f)
+	for i, child := range children {
+		newChild, same, err := Node(child, f)
 		if err != nil {
 			return nil, SameTree, err
 		}
 		if !same {
-			if newChildren == nil {
-				newChildren = make([]sql.Node, len(children))
-				copy(newChildren, children)
-			}
-			newChildren[i] = child
+			children[i] = newChild
+			sameC = NewTree
 		}
 	}
 
-	var err error
-	sameC := SameTree
-	if len(newChildren) > 0 {
-		sameC = NewTree
-		node, err = node.WithChildren(newChildren...)
+	if !sameC {
+		var err error
+		node, err = node.WithChildren(children...)
 		if err != nil {
 			return nil, SameTree, err
 		}
@@ -361,39 +347,27 @@ func Node(node sql.Node, f NodeFunc) (sql.Node, TreeIdentity, error) {
 // opaque nodes. This method is generally not safe to use for a transformation. Opaque nodes need to be considered in
 // isolation except for very specific exceptions.
 func NodeWithOpaque(node sql.Node, f NodeFunc) (sql.Node, TreeIdentity, error) {
+	sameC := SameTree
 	children := node.Children()
-	if len(children) == 0 {
-		return f(node)
-	}
-
-	var (
-		newChildren []sql.Node
-		err         error
-	)
-
-	for i := range children {
-		c := children[i]
-		c, same, err := NodeWithOpaque(c, f)
+	for i, child := range children {
+		newChild, same, err := NodeWithOpaque(child, f)
 		if err != nil {
 			return nil, SameTree, err
 		}
 		if !same {
-			if newChildren == nil {
-				newChildren = make([]sql.Node, len(children))
-				copy(newChildren, children)
-			}
-			newChildren[i] = c
+			children[i] = newChild
+			sameC = NewTree
 		}
 	}
 
-	sameC := SameTree
-	if len(newChildren) > 0 {
-		sameC = NewTree
-		node, err = node.WithChildren(newChildren...)
+	if !sameC {
+		var err error
+		node, err = node.WithChildren(children...)
 		if err != nil {
 			return nil, SameTree, err
 		}
 	}
+
 	node, sameN, err := f(node)
 	if err != nil {
 		return nil, SameTree, err
