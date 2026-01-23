@@ -704,7 +704,7 @@ func (b *Builder) buildCreateView(inScope *scope, subQuery string, fullQuery str
 			nullable:    col.nullable,
 		})
 		cols.Add(sql.ColumnId(id))
-		scopeMapping[sql.ColumnId(id)] = col.scalar
+		scopeMapping[sql.ColumnId(id)] = col.scalarGf()
 	}
 
 	queryAlias = queryAlias.WithScopeMapping(scopeMapping).WithColumns(cols).(*plan.SubqueryAlias)
