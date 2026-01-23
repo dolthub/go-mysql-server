@@ -18,7 +18,6 @@ import (
 	"errors"
 	"io"
 
-	"github.com/dolthub/go-mysql-server/errguard"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression/function/aggregation"
 	"github.com/dolthub/go-mysql-server/sql/hash"
@@ -168,63 +167,42 @@ func (i *groupByGroupingIter) Next(ctx *sql.Context) (sql.Row, error) {
 }
 
 func (i *groupByGroupingIter) compute(ctx *sql.Context) error {
-	eg, subCtx := ctx.NewErrgroup()
-
-	var rowChan = make(chan sql.Row, 512)
-	errguard.Go(eg, func() error {
-		defer close(rowChan)
-		for {
-			row, err := i.child.Next(subCtx)
-			if err != nil {
-				if err == io.EOF {
-					return nil
-				}
-				return err
-			}
-			rowChan <- row
-		}
-	})
-
-	errguard.Go(eg, func() error {
-		for {
-			row, ok := <-rowChan
-			if !ok {
+	for {
+		row, err := i.child.Next(ctx)
+		if err != nil {
+			if err == io.EOF {
 				return nil
 			}
-			key, err := i.groupingKey(subCtx, row)
-			if err != nil {
-				return err
-			}
+			return err
+		}
 
-			buf, err := i.get(key)
-			if errors.Is(err, sql.ErrKeyNotFound) {
-				buf = make([]sql.AggregationBuffer, len(i.selectedExprs))
-				for j, a := range i.selectedExprs {
-					buf[j], err = newAggregationBuffer(a)
-					if err != nil {
-						return err
-					}
-				}
-				if err = i.aggregations.Put(key, buf); err != nil {
+		key, err := i.groupingKey(ctx, row)
+		if err != nil {
+			return err
+		}
+
+		buf, err := i.get(key)
+		if errors.Is(err, sql.ErrKeyNotFound) {
+			buf = make([]sql.AggregationBuffer, len(i.selectedExprs))
+			for j, a := range i.selectedExprs {
+				buf[j], err = newAggregationBuffer(a)
+				if err != nil {
 					return err
 				}
-				i.keys = append(i.keys, key)
-			} else if err != nil {
+			}
+			if err = i.aggregations.Put(key, buf); err != nil {
 				return err
 			}
-			err = updateBuffers(subCtx, buf, row)
-			if err != nil {
-				return err
-			}
+			i.keys = append(i.keys, key)
+		} else if err != nil {
+			return err
 		}
-	})
 
-	err := eg.Wait()
-	if err != nil {
-		return err
+		err = updateBuffers(ctx, buf, row)
+		if err != nil {
+			return err
+		}
 	}
-
-	return nil
 }
 
 func (i *groupByGroupingIter) get(key uint64) ([]sql.AggregationBuffer, error) {
