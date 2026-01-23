@@ -3893,8 +3893,15 @@ var TypestableData = []SetupScript{{
 }}
 
 var ViewsData = []SetupScript{{
-	`CREATE VIEW myview1 AS SELECT * FROM myhistorytable`,
-	`CREATE VIEW myview2 AS SELECT * FROM myview WHERE i = 1`,
+	`CREATE TABLE three_pks(pk1 INT, pk2 INT, pk3 INT, PRIMARY KEY (pk1, pk2, pk3))`,
+	`CREATE VIEW three_pks_view AS SELECT * FROM three_pks WHERE pk1 = 1`,
+	`CREATE VIEW view_in_view AS SELECT * FROM three_pks_view WHERE pk2 = 1`,
+	`CREATE VIEW three_pks_projection_view AS SELECT pk2 as pk1, pk3 as pk2 FROM three_pks WHERE three_pks.pk1 = 1`,
+	`CREATE VIEW projection_view_in_view AS SELECT pk2 as pk FROM three_pks_projection_view WHERE pk1 = 1`,
+	`CREATE VIEW join_view AS SELECT l.pk1, r.pk2 FROM three_pks l JOIN three_pks r WHERE l.pk2 = r.pk1`,
+	`CREATE VIEW join_view_in_view AS SELECT * FROM join_view WHERE pk1 = 1`,
+	`CREATE VIEW where_exists_view AS SELECT * FROM three_pks l WHERE EXISTS (SELECT * FROM three_pks r WHERE l.pk2 = r.pk1)`,
+	`CREATE VIEW where_exists_view_in_view AS SELECT * FROM where_exists_view WHERE pk1 = 1`,
 }}
 
 var XyData = []SetupScript{{

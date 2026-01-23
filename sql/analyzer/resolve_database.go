@@ -23,7 +23,7 @@ import (
 // validateDatabaseSet returns an error if any database node that requires a database doesn't have one
 func validateDatabaseSet(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	var err error
-	transform.Inspect(n, func(node sql.Node) bool {
+	transform.InspectWithOpaque(n, func(node sql.Node) bool {
 		switch n.(type) {
 		// TODO: there are probably other kinds of nodes that need this too
 		case *plan.ShowTables, *plan.ShowTriggers, *plan.CreateTable:

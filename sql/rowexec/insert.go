@@ -57,7 +57,7 @@ type insertIter struct {
 
 func getInsertExpressions(values sql.Node) []sql.Expression {
 	var exprs []sql.Expression
-	transform.Inspect(values, func(node sql.Node) bool {
+	transform.InspectWithOpaque(values, func(node sql.Node) bool {
 		switch node := node.(type) {
 		case *plan.Project:
 			exprs = node.Projections

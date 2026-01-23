@@ -17,7 +17,7 @@ func modifyUpdateExprsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 		}
 
 		var jn sql.Node
-		transform.Inspect(us, func(node sql.Node) bool {
+		transform.InspectWithOpaque(us, func(node sql.Node) bool {
 			switch node.(type) {
 			case *plan.JoinNode:
 				jn = node

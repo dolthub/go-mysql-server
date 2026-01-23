@@ -29,7 +29,7 @@ var (
 	Mytable              = [][]SetupScript{MydbData, MytableData}
 	ChecksSetup          = [][]SetupScript{MydbData, Check_constraintData}
 	NullsSetup           = [][]SetupScript{MydbData, Null_rangesData}
-	ComplexIndexSetup    = [][]SetupScript{MydbData, Comp_index_tablesData}
+	ComplexIndexSetup    = [][]SetupScript{MydbData, Comp_index_tablesData, ViewsData}
 	ImdbPlanSetup        = [][]SetupScript{MydbData, ImdbData}
 	TpchPlanSetup        = [][]SetupScript{MydbData, TpchData}
 	TpccPlanSetup        = [][]SetupScript{MydbData, TpccData}

@@ -71,7 +71,7 @@ func assignExecIndexes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 func relIsProjected(n sql.Node) (sql.ColSet, bool) {
 	proj := true
 	var cols sql.ColSet
-	transform.Inspect(n, func(n sql.Node) bool {
+	transform.InspectWithOpaque(n, func(n sql.Node) bool {
 		var table sql.Table
 		switch n := n.(type) {
 		case *plan.IndexedTableAccess:

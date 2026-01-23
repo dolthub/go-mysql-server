@@ -114,7 +114,7 @@ func (u *UpdateSource) GetChildSchema() (sql.Schema, error) {
 
 func nodeHasJoin(node sql.Node) bool {
 	hasJoinNode := false
-	transform.Inspect(node, func(node sql.Node) bool {
+	transform.InspectWithOpaque(node, func(node sql.Node) bool {
 		switch node.(type) {
 		case *JoinNode:
 			hasJoinNode = true

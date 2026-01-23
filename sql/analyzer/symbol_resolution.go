@@ -178,7 +178,7 @@ func findSubqueryExpr(n sql.Node) *plan.Subquery {
 // hasMatchAgainstExpr searches for an *expression.MatchAgainst within the node's expressions
 func hasMatchAgainstExpr(node sql.Node) bool {
 	var foundMatchAgainstExpr bool
-	transform.Inspect(node, func(n sql.Node) (cont bool) {
+	transform.InspectWithOpaque(node, func(n sql.Node) (cont bool) {
 		if ne, ok := n.(sql.Expressioner); ok {
 			for _, expr := range ne.Expressions() {
 				stop := transform.InspectExpr(expr, func(e sql.Expression) (stop bool) {
@@ -232,7 +232,10 @@ func pruneTableCols(
 	cols := make([]string, 0)
 	source := strings.ToLower(table.Name())
 	for _, col := range table.Schema() {
-		c := newTableCol(source, col.Name)
+		c := tableCol{
+			table: source,
+			col:   strings.ToLower(col.Name),
+		}
 		if parentCols[c] > 0 {
 			cols = append(cols, c.col)
 		}
@@ -310,24 +313,30 @@ func gatherTableAlias(
 		alias := strings.ToLower(n.Name())
 		var base string
 		if rt, ok := n.Child.(*plan.ResolvedTable); ok {
-			base = rt.Name()
+			base = rt.Name() // TODO: toLower?
 		}
 		_, starred := parentStars[alias]
+		if starred {
+			nodeStars = append(nodeStars, base)
+		}
 		if unqualifiedStar {
 			starred = true
 		}
+		base = strings.ToLower(base)
 		for _, col := range n.Schema() {
-			baseCol := newTableCol(base, col.Name)
-			aliasCol := newTableCol(alias, col.Name)
+			colName := strings.ToLower(col.Name)
+			aliasCol := tableCol{
+				table: alias,
+				col:   colName,
+			}
 			if starred || parentCols[aliasCol] > 0 {
 				// if the outer scope requests an aliased column
 				// a table lower in the tree must provide the source
+				baseCol := tableCol{
+					table: base,
+					col:   colName,
+				}
 				cols = append(cols, baseCol)
-			}
-		}
-		for t := range parentStars {
-			if t == alias {
-				nodeStars = append(nodeStars, base)
 			}
 		}
 		return cols, nodeStars

@@ -119,12 +119,13 @@ func (s *Scope) NewScopeInJoin(node sql.Node) *Scope {
 	newNodes = append(newNodes, node)
 	newNodes = append(newNodes, s.joinSiblings...)
 	return &Scope{
-		nodes:          s.nodes,
-		Memos:          s.Memos,
-		recursionDepth: s.recursionDepth + 1,
-		Procedures:     s.Procedures,
-		joinSiblings:   newNodes,
-		corr:           s.corr,
+		nodes:                               s.nodes,
+		Memos:                               s.Memos,
+		recursionDepth:                      s.recursionDepth + 1,
+		Procedures:                          s.Procedures,
+		joinSiblings:                        newNodes,
+		corr:                                s.corr,
+		CurrentNodeIsFromSubqueryExpression: s.CurrentNodeIsFromSubqueryExpression,
 	}
 }
 

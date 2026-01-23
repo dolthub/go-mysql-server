@@ -191,7 +191,7 @@ func (t *ProcessTable) notifyFuncsForPartition(p sql.Partition) (NotifyFunc, Not
 func GetQueryType(child sql.Node) queryType {
 	// TODO: behavior of CALL is not specified in the docs. Needs investigation
 	var queryType queryType = QueryTypeSelect
-	transform.Inspect(child, func(node sql.Node) bool {
+	transform.InspectWithOpaque(child, func(node sql.Node) bool {
 		if IsNoRowNode(node) {
 			queryType = QueryTypeDdl
 			return false
@@ -246,7 +246,7 @@ func NewTrackedRowIter(
 // any select except a Limit with a SQL_CALC_FOUND_ROWS modifier, which is handled in the Limit node itself.
 func shouldSetFoundRows(node sql.Node) bool {
 	result := true
-	transform.Inspect(node, func(n sql.Node) bool {
+	transform.InspectWithOpaque(node, func(n sql.Node) bool {
 		switch nn := n.(type) {
 		case *Limit:
 			if nn.CalcFoundRows {
@@ -286,7 +286,7 @@ func (i *TrackedRowIter) done() {
 }
 
 func disposeNode(n sql.Node) {
-	transform.Inspect(n, func(node sql.Node) bool {
+	transform.InspectWithOpaque(n, func(node sql.Node) bool {
 		sql.Dispose(node)
 		return true
 	})

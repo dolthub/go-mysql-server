@@ -207,7 +207,7 @@ func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *plan.Scope) (m
 	case *plan.InsertInto:
 		// should index columns in InsertInto.Source
 		aliasedTables := make(map[sql.Node]bool)
-		transform.Inspect(node.Source, func(n sql.Node) bool {
+		transform.InspectWithOpaque(node.Source, func(n sql.Node) bool {
 			// need to reset idx for each table found, as this function assumes only 1 table
 			if tblAlias, ok := n.(*plan.TableAlias); ok && tblAlias.Resolved() {
 				idx = 0
@@ -216,13 +216,13 @@ func indexColumns(_ *sql.Context, _ *Analyzer, n sql.Node, scope *plan.Scope) (m
 			}
 			return true
 		})
-		transform.Inspect(node.Source, func(n sql.Node) bool {
+		transform.InspectWithOpaque(node.Source, func(n sql.Node) bool {
 			if resTbl, ok := n.(*plan.ResolvedTable); ok && !aliasedTables[resTbl] {
 				indexSchema(resTbl.Schema())
 			}
 			return true
 		})
-		transform.Inspect(node.Source, func(n sql.Node) bool {
+		transform.InspectWithOpaque(node.Source, func(n sql.Node) bool {
 			if resTbl, ok := n.(*plan.SubqueryAlias); ok && resTbl.Resolved() && !aliasedTables[resTbl] {
 				idx = 0
 				indexSchema(resTbl.Schema())

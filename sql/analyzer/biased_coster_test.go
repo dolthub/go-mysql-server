@@ -104,7 +104,7 @@ func TestBiasedCoster(t *testing.T) {
 
 func collectJoinTypes(n sql.Node) []plan.JoinType {
 	var types []plan.JoinType
-	transform.Inspect(n, func(n sql.Node) bool {
+	transform.InspectWithOpaque(n, func(n sql.Node) bool {
 		if n == nil {
 			return true
 		}

@@ -142,16 +142,17 @@ order by
 			"         │               ├─ select: MIN(partsupp.ps_supplycost:30!null)\n" +
 			"         │               ├─ group: \n" +
 			"         │               └─ LookupJoin\n" +
-			"         │                   ├─ Eq\n" +
-			"         │                   │   ├─ part.p_partkey:0!null\n" +
-			"         │                   │   └─ partsupp.ps_partkey:28!null\n" +
 			"         │                   ├─ LookupJoin\n" +
 			"         │                   │   ├─ LookupJoin\n" +
-			"         │                   │   │   ├─ Table\n" +
-			"         │                   │   │   │   ├─ name: partsupp\n" +
-			"         │                   │   │   │   ├─ columns: [ps_partkey ps_suppkey ps_supplycost]\n" +
-			"         │                   │   │   │   ├─ colSet: (29-33)\n" +
-			"         │                   │   │   │   └─ tableId: 6\n" +
+			"         │                   │   │   ├─ Filter\n" +
+			"         │                   │   │   │   ├─ Eq\n" +
+			"         │                   │   │   │   │   ├─ part.p_partkey:0!null\n" +
+			"         │                   │   │   │   │   └─ partsupp.ps_partkey:28!null\n" +
+			"         │                   │   │   │   └─ Table\n" +
+			"         │                   │   │   │       ├─ name: partsupp\n" +
+			"         │                   │   │   │       ├─ columns: [ps_partkey ps_suppkey ps_supplycost]\n" +
+			"         │                   │   │   │       ├─ colSet: (29-33)\n" +
+			"         │                   │   │   │       └─ tableId: 6\n" +
 			"         │                   │   │   └─ IndexedTableAccess(supplier)\n" +
 			"         │                   │   │       ├─ index: [supplier.S_SUPPKEY]\n" +
 			"         │                   │   │       ├─ keys: [partsupp.ps_suppkey:29!null]\n" +

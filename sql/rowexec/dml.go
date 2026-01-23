@@ -136,7 +136,7 @@ func (b *BaseBuilder) buildDeleteFrom(ctx *sql.Context, n *plan.DeleteFrom, row 
 		// By default the sourceName in the schema is the table name, but if there is a
 		// table alias applied, then use that instead.
 		sourceName := deletable.Name()
-		transform.Inspect(target, func(node sql.Node) bool {
+		transform.InspectWithOpaque(target, func(node sql.Node) bool {
 			if tableAlias, ok := node.(*plan.TableAlias); ok {
 				sourceName = tableAlias.Name()
 				return false

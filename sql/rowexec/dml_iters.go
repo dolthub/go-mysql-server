@@ -154,7 +154,7 @@ func (i *triggerBlockIter) Next(ctx *sql.Context) (sql.Row, error) {
 // of the given node.
 func shouldUseTriggerStatementForReturnRow(stmt sql.Node) bool {
 	hasSetField := false
-	transform.Inspect(stmt, func(n sql.Node) bool {
+	transform.InspectWithOpaque(stmt, func(n sql.Node) bool {
 		switch logic := n.(type) {
 		case *plan.Set:
 			for _, expr := range logic.Exprs {
@@ -331,7 +331,7 @@ func shouldUseLogicResult(logic sql.Node, row sql.Row) (bool, sql.Row) {
 		return hasSetField, row[len(row)/2:]
 	case *plan.TriggerBeginEndBlock:
 		hasSetField := false
-		transform.Inspect(logic, func(n sql.Node) bool {
+		transform.InspectWithOpaque(logic, func(n sql.Node) bool {
 			set, ok := n.(*plan.Set)
 			if !ok {
 				return true
