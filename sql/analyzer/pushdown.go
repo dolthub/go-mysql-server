@@ -82,7 +82,7 @@ func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 			}
 			// Find all col exprs and group them by the table they mention so that we can keep track of which ones
 			// have been pushed down and need to be removed from the parent filter
-			filtersByTable := getFiltersByTable(n)
+			filtersByTable := getFiltersByTable(n, scope)
 			filters := newFilterSet(n.Expression, filtersByTable, tableAliases)
 
 			// move filter predicates directly above their respective tables in joins
@@ -220,7 +220,7 @@ func transformPushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.
 		switch n := n.(type) {
 		case *plan.Filter:
 			// First step is to find all col exprs and group them by the table they mention.
-			filtersByTable := getFiltersByTable(n)
+			filtersByTable := getFiltersByTable(n, scope)
 			filters = newFilterSet(n.Expression, filtersByTable, tableAliases)
 			return transformFilterNode(n)
 		default:
@@ -293,7 +293,13 @@ func pushdownFiltersUnderSubqueryAlias(ctx *sql.Context, a *Analyzer, sa *plan.S
 			if gt, ok := e.(*expression.GetField); ok {
 				gf, ok := sa.ScopeMapping[gt.Id()]
 				if !ok {
-					return e, transform.SameTree, fmt.Errorf("unable to find child with id: %d", gt.Index())
+					// The GetField must be referencing an outer or lateral scope.
+					// We need to add this to the subquery alias's list of correlated columns
+					sa.Correlated.Add(gt.Id())
+					// There now may be a reference to a lateral scope, so we mark the alias as lateral just in case.
+					// This shouldn't break anything, but it might inhibit optimizations that check this.
+					sa.IsLateral = true
+					return e, transform.NewTree, nil
 				}
 				return gf, transform.NewTree, nil
 			}
