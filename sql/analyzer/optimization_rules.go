@@ -209,9 +209,8 @@ func expressionSources(expr sql.Expression) (sql.FastIntSet, bool) {
 	return tables, nullRejecting
 }
 
-// simplifyFilters simplifies the expressions in Filter nodes where possible. This involves removing redundant parts of AND
-// and OR expressions, as well as replacing evaluable expressions with their literal result. Filters that can
-// statically be determined to be true or false are replaced with the child node or an empty result, respectively.
+// simplifyFilters simplifies filter expressions in nodes where possible. Nodes with filter expressions that can be
+// statically evaluated to true or false are transformed so that the expression no longer needs to be evaluated.
 func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	if !node.Resolved() {
 		return node, transform.SameTree, nil
@@ -229,14 +228,14 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 				isTrue, isFalse := getDefiniteBoolValues(ctx, e)
 				joinType := n.JoinType()
 				if isTrue {
-					// if the filter always evaluates to true, convert to cross join if possible
+					// If the filter always evaluates to true, convert to cross join if possible
 					switch joinType {
 					case plan.JoinTypeInner:
 						return plan.NewCrossJoin(n.Left(), n.Right()), transform.NewTree, nil
 					case plan.JoinTypeLateralInner:
 						return plan.NewLateralCrossJoin(n.Left(), n.Right()), transform.NewTree, nil
 					default:
-						// remove filter if nil. filter does not need to be evaluated if always true
+						// Remove filter. Filter does not need to be evaluated if always true
 						return n.WithFilter(nil), transform.NewTree, nil
 					}
 				} else if isFalse {
@@ -282,6 +281,8 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 	})
 }
 
+// simplifyExpressions replaces expressions that can be evaluated statically with their Literal value and removes
+// redundant parts of AND and OR expressions.
 func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 	return transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		switch e := e.(type) {
