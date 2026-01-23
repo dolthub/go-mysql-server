@@ -107,7 +107,9 @@ func (c *Concat) Resolved() bool {
 }
 
 // Children implements the Expression interface.
-func (c *Concat) Children() []sql.Expression { return c.args }
+func (c *Concat) Children() []sql.Expression {
+	return append([]sql.Expression(nil), c.args...)
+}
 
 // Eval implements the Expression interface.
 func (c *Concat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
