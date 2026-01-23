@@ -239,7 +239,7 @@ func prependRowForTriggerExecutionSelector(ctx transform.Context) bool {
 	switch p := ctx.Parent.(type) {
 	case *plan.TriggerExecutor:
 		// don't nest prepends
-		return !(p.Right() == ctx.Node)
+		return p.Right() != ctx.Node
 	default:
 		return true
 	}

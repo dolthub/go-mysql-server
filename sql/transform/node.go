@@ -193,26 +193,21 @@ func NodeWithCtx(n sql.Node, s SelectorFunc, f CtxFunc) (sql.Node, TreeIdentity,
 }
 
 func nodeWithCtxHelper(c Context, s SelectorFunc, f CtxFunc) (sql.Node, TreeIdentity, error) {
-	node := c.Node
-	_, ok := node.(sql.OpaqueNode)
+	_, ok := c.Node.(sql.OpaqueNode)
 	if ok {
 		return f(c)
 	}
 
-	children := node.Children()
-	if len(children) == 0 {
-		return f(c)
-	}
+	children := c.Node.Children()
 
-	var (
-		newChildren []sql.Node
-		err         error
-	)
-	for i := range children {
-		child := children[i]
-		cc := Context{Node: child, Parent: node, ChildNum: i}
+	var newChildren []sql.Node
+	sameC := SameTree
+	cc := Context{Parent: c.Node}
+	for i, child := range children {
+		cc.Node = child
+		cc.ChildNum = i
 		if s == nil || s(cc) {
-			child, same, err := nodeWithCtxHelper(cc, s, f)
+			newChild, same, err := nodeWithCtxHelper(cc, s, f)
 			if err != nil {
 				return nil, SameTree, err
 			}
@@ -220,22 +215,22 @@ func nodeWithCtxHelper(c Context, s SelectorFunc, f CtxFunc) (sql.Node, TreeIden
 				if newChildren == nil {
 					newChildren = make([]sql.Node, len(children))
 					copy(newChildren, children)
+					sameC = NewTree
 				}
-				newChildren[i] = child
+				newChildren[i] = newChild
 			}
 		}
 	}
 
-	sameC := SameTree
-	if len(newChildren) > 0 {
-		sameC = NewTree
-		node, err = node.WithChildren(newChildren...)
+	if !sameC {
+		var err error
+		c.Node, err = c.Node.WithChildren(newChildren...)
 		if err != nil {
 			return nil, SameTree, err
 		}
 	}
 
-	node, sameN, err := f(Context{Node: node, Parent: c.Parent, SchemaPrefix: c.SchemaPrefix, ChildNum: c.ChildNum})
+	node, sameN, err := f(c)
 	if err != nil {
 		return nil, SameTree, err
 	}
