@@ -1063,4 +1063,30 @@ var SQLLogicSubqueryTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "multiple nested views",
+		SetUpScript: []string{
+			"CREATE TABLE IF NOT EXISTS t_48638 (`key` INT NOT NULL, `value` INTEGER NOT NULL, PRIMARY KEY (`key`, `value`));",
+			"INSERT INTO t_48638 values (1, 4);",
+			"INSERT INTO t_48638 values (4, 3);",
+			"INSERT INTO t_48638 values (3, 2);",
+			"INSERT INTO t_48638 values (4, 1);",
+			"INSERT INTO t_48638 values (1, 2);",
+			"INSERT INTO t_48638 values (6, 5);",
+			"INSERT INTO t_48638 values (7, 8);",
+			"CREATE VIEW v AS (SELECT level1.`value` AS `value`, level1.`key`AS level1, level2.`key` AS level2, level3.`key` AS level3 FROM t_48638 AS level2 RIGHT JOIN (SELECT * FROM t_48638 WHERE `value` = 4) AS level1 ON level1.`value` = level2.`key`      LEFT JOIN (SELECT * FROM t_48638) AS level3 ON level3.`key` = level2.`value`  );",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT *  FROM t_48638  WHERE `key` IN (SELECT v.level1 FROM v WHERE v.level1 IS NOT NULL  UNION ALL SELECT v.level2 FROM v WHERE v.level2 IS NOT NULL  UNION ALL SELECT v.level3 FROM v WHERE v.level3 IS NOT NULL);",
+				Expected: []sql.Row{
+					{1, 2},
+					{1, 4},
+					{3, 2},
+					{4, 1},
+					{4, 3},
+				},
+			},
+		},
+	},
 }

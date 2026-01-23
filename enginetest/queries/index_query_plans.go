@@ -16399,4 +16399,111 @@ var IndexPlanTests = []QueryPlanTest{
 			"         └─ columns: [v1 v2]\n" +
 			"",
 	},
+	{
+		Query: `select * from three_pks_view where pk2 = 1;`,
+		ExpectedPlan: "SubqueryAlias\n" +
+			" ├─ name: three_pks_view\n" +
+			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
+			" ├─ cacheable: true\n" +
+			" ├─ colSet: (4-6)\n" +
+			" ├─ tableId: 3\n" +
+			" └─ IndexedTableAccess(three_pks)\n" +
+			"     ├─ index: [three_pks.pk1,three_pks.pk2,three_pks.pk3]\n" +
+			"     ├─ static: [{[1, 1], [1, 1], [NULL, ∞)}]\n" +
+			"     ├─ colSet: (1-3)\n" +
+			"     ├─ tableId: 1\n" +
+			"     └─ Table\n" +
+			"         ├─ name: three_pks\n" +
+			"         └─ columns: [pk1 pk2 pk3]\n" +
+			"",
+		ExpectedEstimates: "SubqueryAlias\n" +
+			" ├─ name: three_pks_view\n" +
+			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
+			" ├─ cacheable: true\n" +
+			" ├─ colSet: (4-6)\n" +
+			" ├─ tableId: 3\n" +
+			" └─ IndexedTableAccess(three_pks)\n" +
+			"     ├─ index: [three_pks.pk1,three_pks.pk2,three_pks.pk3]\n" +
+			"     ├─ filters: [{[1, 1], [1, 1], [NULL, ∞)}]\n" +
+			"     └─ columns: [pk1 pk2 pk3]\n" +
+			"",
+		ExpectedAnalysis: "SubqueryAlias\n" +
+			" ├─ name: three_pks_view\n" +
+			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
+			" ├─ cacheable: true\n" +
+			" ├─ colSet: (4-6)\n" +
+			" ├─ tableId: 3\n" +
+			" └─ IndexedTableAccess(three_pks)\n" +
+			"     ├─ index: [three_pks.pk1,three_pks.pk2,three_pks.pk3]\n" +
+			"     ├─ filters: [{[1, 1], [1, 1], [NULL, ∞)}]\n" +
+			"     └─ columns: [pk1 pk2 pk3]\n" +
+			"",
+	},
+	{
+		Query: `select * from view_in_view where pk3 = 1;`,
+		ExpectedPlan: "SubqueryAlias\n" +
+			" ├─ name: view_in_view\n" +
+			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
+			" ├─ cacheable: true\n" +
+			" ├─ colSet: (7-9)\n" +
+			" ├─ tableId: 5\n" +
+			" └─ SubqueryAlias\n" +
+			"     ├─ name: three_pks_view\n" +
+			"     ├─ outerVisibility: false\n" +
+			"     ├─ isLateral: false\n" +
+			"     ├─ cacheable: true\n" +
+			"     ├─ colSet: (4-6)\n" +
+			"     ├─ tableId: 3\n" +
+			"     └─ IndexedTableAccess(three_pks)\n" +
+			"         ├─ index: [three_pks.pk1,three_pks.pk2,three_pks.pk3]\n" +
+			"         ├─ static: [{[1, 1], [1, 1], [1, 1]}]\n" +
+			"         ├─ colSet: (1-3)\n" +
+			"         ├─ tableId: 1\n" +
+			"         └─ Table\n" +
+			"             ├─ name: three_pks\n" +
+			"             └─ columns: [pk1 pk2 pk3]\n" +
+			"",
+		ExpectedEstimates: "SubqueryAlias\n" +
+			" ├─ name: view_in_view\n" +
+			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
+			" ├─ cacheable: true\n" +
+			" ├─ colSet: (7-9)\n" +
+			" ├─ tableId: 5\n" +
+			" └─ SubqueryAlias\n" +
+			"     ├─ name: three_pks_view\n" +
+			"     ├─ outerVisibility: false\n" +
+			"     ├─ isLateral: false\n" +
+			"     ├─ cacheable: true\n" +
+			"     ├─ colSet: (4-6)\n" +
+			"     ├─ tableId: 3\n" +
+			"     └─ IndexedTableAccess(three_pks)\n" +
+			"         ├─ index: [three_pks.pk1,three_pks.pk2,three_pks.pk3]\n" +
+			"         ├─ filters: [{[1, 1], [1, 1], [1, 1]}]\n" +
+			"         └─ columns: [pk1 pk2 pk3]\n" +
+			"",
+		ExpectedAnalysis: "SubqueryAlias\n" +
+			" ├─ name: view_in_view\n" +
+			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
+			" ├─ cacheable: true\n" +
+			" ├─ colSet: (7-9)\n" +
+			" ├─ tableId: 5\n" +
+			" └─ SubqueryAlias\n" +
+			"     ├─ name: three_pks_view\n" +
+			"     ├─ outerVisibility: false\n" +
+			"     ├─ isLateral: false\n" +
+			"     ├─ cacheable: true\n" +
+			"     ├─ colSet: (4-6)\n" +
+			"     ├─ tableId: 3\n" +
+			"     └─ IndexedTableAccess(three_pks)\n" +
+			"         ├─ index: [three_pks.pk1,three_pks.pk2,three_pks.pk3]\n" +
+			"         ├─ filters: [{[1, 1], [1, 1], [1, 1]}]\n" +
+			"         └─ columns: [pk1 pk2 pk3]\n" +
+			"",
+	},
 }
