@@ -111,15 +111,10 @@ func (m *sumBuffer) PerformSum(ctx *sql.Context, v interface{}) {
 			m.sum = float64(0)
 			m.isnil = false
 		}
-		var sum any
-		var ok bool
-		if sum, ok = m.sum.(float64); !ok {
-			sum, _, err = types.Float64.Convert(ctx, m.sum)
-			if err != nil {
-				sum = float64(0)
-			}
+		if _, ok := m.sum.(decimal.Decimal); ok {
+			m.sum, _ = m.sum.(decimal.Decimal).Float64()
 		}
-		m.sum = sum.(float64) + val.(float64)
+		m.sum = m.sum.(float64) + val.(float64)
 	}
 }
 
