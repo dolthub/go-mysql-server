@@ -77,6 +77,9 @@ func (b *Builder) Parse(query string, qFlags *sql.QueryFlags, multi bool) (ret s
 
 func (b *Builder) BindOnly(stmt ast.Statement, s string, queryFlags *sql.QueryFlags) (sql.Node, *sql.QueryFlags, error) {
 	outScope, err := b.bindOnly(stmt, s, queryFlags)
+	if err != nil {
+		return nil, b.qFlags, err
+	}
 	return outScope.node, b.qFlags, err
 }
 
