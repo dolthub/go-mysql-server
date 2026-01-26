@@ -53,27 +53,29 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 			dbName := strings.ToLower(e.Qualifier.DbQualifier.String())
 			tblName := strings.ToLower(e.Qualifier.Name.String())
 			colName := strings.ToLower(e.Name.String())
-			c, ok := projScope.resolveColumn(dbName, tblName, colName, false, false)
+			col, ok := projScope.resolveColumn(dbName, tblName, colName, false, false)
 			if ok {
-				if _, ok := c.scalar.(*expression.Alias); ok {
+				newCol := *col
+				if _, ok := newCol.scalar.(*expression.Alias); ok {
 					// take ref dependency on expression lower in tree
-					c.scalar = nil
+					newCol.scalar = nil
 				}
-				c.descending = descending
-				outScope.addColumn(c)
+				newCol.descending = descending
+				outScope.addColumn(&newCol)
 				continue
 			}
 
 			// fromScope col
-			c, ok = fromScope.resolveColumn(dbName, tblName, colName, true, false)
+			col, ok = fromScope.resolveColumn(dbName, tblName, colName, true, false)
 			if !ok {
 				err := sql.ErrColumnNotFound.New(e.Name)
 				b.handleErr(err)
 			}
-			c.descending = descending
-			c.scalar = c.scalarGf()
-			outScope.addColumn(c)
-			fromScope.addExtraColumn(c)
+			newCol := *col
+			newCol.descending = descending
+			newCol.scalar = newCol.scalarGf()
+			outScope.addColumn(&newCol)
+			fromScope.addExtraColumn(&newCol)
 		case *ast.SQLVal:
 			// integer literal into projScope
 			// else throw away

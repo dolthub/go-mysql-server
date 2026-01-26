@@ -668,7 +668,7 @@ type scopeColumn struct {
 
 // empty returns true if a scopeColumn is the null value
 func (c *scopeColumn) empty() bool {
-	return c.id == 0
+	return c == nil || c.id == 0
 }
 
 func (c *scopeColumn) equals(other *scopeColumn) bool {

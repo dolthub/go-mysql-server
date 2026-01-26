@@ -260,6 +260,9 @@ func (b *Builder) markDeferProjection(proj sql.Node, inScope, outScope *scope) {
 func (b *Builder) buildProjection(inScope, outScope *scope) {
 	projections := make([]sql.Expression, len(outScope.cols))
 	for i, sc := range outScope.cols {
+		if sc.scalar == nil {
+			print()
+		}
 		projections[i] = sc.scalar
 	}
 	proj, err := b.f.buildProject(plan.NewProject(projections, inScope.node), outScope.refsSubquery)

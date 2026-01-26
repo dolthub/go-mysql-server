@@ -231,6 +231,9 @@ func (b *Builder) buildSubquery(inScope *scope, stmt ast.Statement, subQuery str
 	default:
 		b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(n)))
 	case ast.SelectStatement:
+		if subQuery == "SELECT i AS x FROM mytable ORDER BY x DESC" {
+			print()
+		}
 		outScope = b.buildSelectStmt(inScope, n)
 		if into := n.GetInto(); into != nil {
 			b.buildInto(outScope, into)
