@@ -45,7 +45,7 @@ type scope struct {
 
 	// redirectCol is used for using and natural joins right-table
 	// attributes that redirect to the left table intersection
-	redirectCol map[string]scopeColumn
+	redirectCol map[string]*scopeColumn
 
 	// ctes are common table expressions defined in this scope
 	// TODO: these should be case-sensitive
@@ -62,11 +62,11 @@ type scope struct {
 	insertTableAlias string
 
 	// cols are definitions provided by this scope
-	cols []scopeColumn
+	cols []*scopeColumn
 	// extraCols are auxillary output columns required for sorting or grouping
-	extraCols []scopeColumn
+	extraCols []*scopeColumn
 	// windowFuncs is a list of window functions in the current scope
-	windowFuncs []scopeColumn
+	windowFuncs []*scopeColumn
 
 	refsSubquery bool
 }
@@ -74,7 +74,7 @@ type scope struct {
 // resolveColumn matches a variable use to a column definition with a unique
 // expression id. |chooseFirst| is indicated for accepting ambiguous having and
 // group by columns.
-func (s *scope) resolveColumn(db, table, col string, checkParent, chooseFirst bool) (scopeColumn, bool) {
+func (s *scope) resolveColumn(db, table, col string, checkParent, chooseFirst bool) (*scopeColumn, bool) {
 	// procedure params take precedence
 	if table == "" && checkParent && s.procActive() {
 		col, ok := s.proc.GetVar(col)
@@ -90,7 +90,7 @@ func (s *scope) resolveColumn(db, table, col string, checkParent, chooseFirst bo
 		}
 	}
 
-	var found scopeColumn
+	var found *scopeColumn
 	var foundCand bool
 	for _, c := range s.cols {
 		if strings.EqualFold(c.col, col) && (strings.EqualFold(c.table, table) || table == "") && (strings.EqualFold(c.db, db) || db == "") {
@@ -141,12 +141,12 @@ func (s *scope) resolveColumn(db, table, col string, checkParent, chooseFirst bo
 	}
 
 	if !checkParent || s.parent == nil {
-		return scopeColumn{}, false
+		return nil, false
 	}
 
 	c, foundCand := s.parent.resolveColumn(db, table, col, true, false)
 	if !foundCand {
-		return scopeColumn{}, false
+		return nil, false
 	}
 
 	if s.activeSubquery != nil {
@@ -157,8 +157,8 @@ func (s *scope) resolveColumn(db, table, col string, checkParent, chooseFirst bo
 
 // resolveColumnAsTable resolves a column as though it were a table, by searching the table space. This then returns all
 // columns (in their index order) of the table.
-func (s *scope) resolveColumnAsTable(db, table string) []scopeColumn {
-	var tableCols []scopeColumn
+func (s *scope) resolveColumnAsTable(db, table string) []*scopeColumn {
+	var tableCols []*scopeColumn
 	tabId := s.getTable(table)
 	for _, col := range s.cols {
 		if col.tableId != tabId || (db != "" && !strings.EqualFold(col.db, db)) {
@@ -176,7 +176,7 @@ func (s *scope) resolveColumnAsTable(db, table string) []scopeColumn {
 }
 
 // getCol gets a scopeColumn based on a columnId
-func (s *scope) getCol(colId sql.ColumnId) (scopeColumn, bool) {
+func (s *scope) getCol(colId sql.ColumnId) (*scopeColumn, bool) {
 	if s.colset.Contains(colId) {
 		for _, c := range s.cols {
 			if sql.ColumnId(c.id) == colId {
@@ -184,7 +184,7 @@ func (s *scope) getCol(colId sql.ColumnId) (scopeColumn, bool) {
 			}
 		}
 	}
-	return scopeColumn{}, false
+	return nil, false
 }
 
 func (s *scope) hasTable(table string) bool {
@@ -212,7 +212,7 @@ func (s *scope) getTable(table string) sql.TableId {
 
 // triggerCol is used to hallucinate a new column during trigger DDL
 // when we fail a resolveColumn.
-func (s *scope) triggerCol(table, col string) (scopeColumn, bool) {
+func (s *scope) triggerCol(table, col string) (*scopeColumn, bool) {
 	// hallucinate tablecol
 	dbName := ""
 	if s.b.currentDatabase != nil {
@@ -220,19 +220,19 @@ func (s *scope) triggerCol(table, col string) (scopeColumn, bool) {
 	}
 	for _, t := range s.b.TriggerCtx().UnresolvedTables {
 		if strings.EqualFold(t, table) {
-			col := scopeColumn{db: dbName, table: table, col: col}
+			col := &scopeColumn{db: dbName, table: table, col: col}
 			id := s.newColumn(col)
 			col.id = id
 			return col, true
 		}
 	}
 	if table == "" {
-		col := scopeColumn{db: dbName, table: table, col: col}
+		col := &scopeColumn{db: dbName, table: table, col: col}
 		id := s.newColumn(col)
 		col.id = id
 		return col, true
 	}
-	return scopeColumn{}, false
+	return nil, false
 }
 
 // getExpr returns a columnId if the given expression has
@@ -267,7 +267,7 @@ func (s *scope) initProc() {
 		s:          s,
 		conditions: make(map[string]*plan.DeclareCondition),
 		cursors:    make(map[string]struct{}),
-		vars:       make(map[string]scopeColumn),
+		vars:       make(map[string]*scopeColumn),
 		labels:     make(map[string]bool),
 		lastState:  dsVariable,
 	}
@@ -435,7 +435,7 @@ func (s *scope) aliasCte(alias string) *scope {
 	var colSet sql.ColSet
 	scopeMapping := make(map[sql.ColumnId]sql.Expression)
 	for _, c := range s.cols {
-		id := outScope.newColumn(scopeColumn{
+		id := outScope.newColumn(&scopeColumn{
 			tableId:     tabId,
 			db:          c.db,
 			table:       alias,
@@ -491,7 +491,7 @@ func (s *scope) copy() *scope {
 		ret.groupBy = &gbCopy
 	}
 	if s.cols != nil {
-		ret.cols = make([]scopeColumn, len(s.cols))
+		ret.cols = make([]*scopeColumn, len(s.cols))
 		copy(ret.cols, s.cols)
 	}
 	if !s.colset.Empty() {
@@ -544,9 +544,9 @@ func (s *scope) getCte(name string) *scope {
 // redirect overwrites a definition with an alias rewrite,
 // without preventing us from resolving the original column.
 // This is used for resolving natural join projections.
-func (s *scope) redirect(from, to scopeColumn) {
+func (s *scope) redirect(from, to *scopeColumn) {
 	if s.redirectCol == nil {
-		s.redirectCol = make(map[string]scopeColumn)
+		s.redirectCol = make(map[string]*scopeColumn)
 	}
 	s.redirectCol[from.String()] = to
 }
@@ -554,7 +554,7 @@ func (s *scope) redirect(from, to scopeColumn) {
 // addColumn interns and saves the given column to this scope.
 // todo: new IR should absorb interning and use bitmaps for
 // column identity
-func (s *scope) addColumn(col scopeColumn) {
+func (s *scope) addColumn(col *scopeColumn) {
 	s.cols = append(s.cols, col)
 	s.colset.Add(sql.ColumnId(col.id))
 	if s.exprs == nil {
@@ -568,7 +568,7 @@ func (s *scope) addColumn(col scopeColumn) {
 // new columnId for referencing. newColumn builds a new expression
 // reference, whereas addColumn only adds a preexisting expression
 // definition to a given scope.
-func (s *scope) newColumn(col scopeColumn) columnId {
+func (s *scope) newColumn(col *scopeColumn) columnId {
 	s.b.colId++
 	col.id = s.b.colId
 	if col.table != "" {
@@ -597,11 +597,11 @@ func (s *scope) addTable(name string) sql.TableId {
 
 // addExtraColumn marks an auxiliary column used in an
 // aggregation, sorting, or having clause.
-func (s *scope) addExtraColumn(col scopeColumn) {
+func (s *scope) addExtraColumn(col *scopeColumn) {
 	s.extraCols = append(s.extraCols, col)
 }
 
-func (s *scope) addColumns(cols []scopeColumn) {
+func (s *scope) addColumns(cols []*scopeColumn) {
 	s.cols = append(s.cols, cols...)
 }
 
@@ -625,7 +625,7 @@ func (s *scope) appendColumnsFromScope(src *scope) {
 		s.exprs[k] = v
 	}
 	if len(src.redirectCol) > 0 && s.redirectCol == nil {
-		s.redirectCol = make(map[string]scopeColumn)
+		s.redirectCol = make(map[string]*scopeColumn)
 	}
 	for k, v := range src.redirectCol {
 		s.redirectCol[k] = v
@@ -667,11 +667,11 @@ type scopeColumn struct {
 }
 
 // empty returns true if a scopeColumn is the null value
-func (c scopeColumn) empty() bool {
+func (c *scopeColumn) empty() bool {
 	return c.id == 0
 }
 
-func (c scopeColumn) equals(other scopeColumn) bool {
+func (c *scopeColumn) equals(other *scopeColumn) bool {
 	if c.id == other.id {
 		return true
 	}
@@ -681,7 +681,7 @@ func (c scopeColumn) equals(other scopeColumn) bool {
 	return false
 }
 
-func (c scopeColumn) unwrapGetFieldAliasId() columnId {
+func (c *scopeColumn) unwrapGetFieldAliasId() columnId {
 	if c.scalar != nil {
 		if a, ok := c.scalar.(*expression.Alias); ok {
 			if gf, ok := a.Child.(*expression.GetField); ok {
@@ -692,19 +692,20 @@ func (c scopeColumn) unwrapGetFieldAliasId() columnId {
 	return c.id
 }
 
-func (c scopeColumn) withOriginal(origTbl, col string) scopeColumn {
+func (c *scopeColumn) withOriginal(origTbl, col string) *scopeColumn {
 	// info schema columns always presented as uppercase, except for processlist
 	// can't reference information_schema.ProcessListTableName because of import cycles
-	if !strings.EqualFold(c.db, sql.InformationSchemaDatabaseName) ||
-		(strings.EqualFold(c.db, sql.InformationSchemaDatabaseName) && strings.EqualFold(c.table, "processlist")) ||
-		(strings.EqualFold(c.db, sql.InformationSchemaDatabaseName) && strings.EqualFold(origTbl, "processlist")) {
-		c.originalCol = col
+	nc := *c
+	if !strings.EqualFold(nc.db, sql.InformationSchemaDatabaseName) ||
+		(strings.EqualFold(nc.db, sql.InformationSchemaDatabaseName) && strings.EqualFold(nc.table, "processlist")) ||
+		(strings.EqualFold(nc.db, sql.InformationSchemaDatabaseName) && strings.EqualFold(origTbl, "processlist")) {
+		nc.originalCol = col
 	}
-	return c
+	return &nc
 }
 
 // scalarGf returns a getField reference to this column's expression.
-func (c scopeColumn) scalarGf() sql.Expression {
+func (c *scopeColumn) scalarGf() sql.Expression {
 	if c.scalar != nil {
 		switch e := c.scalar.(type) {
 		case *expression.ProcedureParam:
@@ -717,7 +718,7 @@ func (c scopeColumn) scalarGf() sql.Expression {
 	return expression.NewGetFieldWithTable(int(c.id), int(c.tableId), c.typ, c.db, c.table, c.col, c.nullable)
 }
 
-func (c scopeColumn) String() string {
+func (c *scopeColumn) String() string {
 	if c.table == "" {
 		return c.col
 	} else {

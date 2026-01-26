@@ -48,6 +48,9 @@ var _ sql.CollationCoercible = (*Project)(nil)
 
 // NewProject creates a new projection.
 func NewProject(expressions []sql.Expression, child sql.Node) *Project {
+	if len(expressions) > 0 && expressions[0] == nil {
+		print()
+	}
 	return &Project{
 		UnaryNode:   UnaryNode{child},
 		Projections: expressions,
@@ -209,6 +212,9 @@ func (p *Project) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 func (p *Project) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != len(p.Projections) {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(exprs), len(p.Projections))
+	}
+	if len(exprs) > 0 && exprs[0] == nil {
+		print()
 	}
 	np := *p
 	np.Projections = exprs

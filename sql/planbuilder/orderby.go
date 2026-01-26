@@ -112,7 +112,7 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 						}
 					}
 				}
-				outScope.addColumn(scopeColumn{
+				outScope.addColumn(&scopeColumn{
 					tableId:    target.tableId,
 					col:        target.col,
 					scalar:     scalar,
@@ -155,7 +155,7 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 				}
 				return e, transform.SameTree, nil
 			})
-			col := scopeColumn{
+			col := &scopeColumn{
 				col:        expr.String(),
 				scalar:     expr,
 				typ:        expr.Type(),

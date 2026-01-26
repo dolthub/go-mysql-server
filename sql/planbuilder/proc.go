@@ -42,7 +42,7 @@ const (
 type procCtx struct {
 	s          *scope
 	conditions map[string]*plan.DeclareCondition
-	vars       map[string]scopeColumn
+	vars       map[string]*scopeColumn
 	cursors    map[string]struct{}
 	labels     map[string]bool
 	handlers   []*plan.DeclareHandler
@@ -83,11 +83,11 @@ func (p *procCtx) AddVar(param *expression.ProcedureParam) {
 		err := sql.ErrDeclareVariableDuplicate.New(lowerName)
 		p.s.b.handleErr(err)
 	}
-	col := scopeColumn{col: lowerName, typ: param.Type(), scalar: param}
+	col := &scopeColumn{col: lowerName, typ: param.Type(), scalar: param}
 	p.vars[lowerName] = col
 }
 
-func (p *procCtx) GetVar(name string) (scopeColumn, bool) {
+func (p *procCtx) GetVar(name string) (*scopeColumn, bool) {
 	param, ok := p.vars[strings.ToLower(name)]
 	parent := p.s.parent
 	for !ok && parent != nil {
@@ -434,7 +434,11 @@ func (b *Builder) buildDeclareVariables(inScope *scope, d *ast.Declare) (outScop
 		names[i] = varName
 		param := expression.NewProcedureParam(varName, typ)
 		inScope.proc.AddVar(param)
-		inScope.newColumn(scopeColumn{col: varName, typ: typ, scalar: param})
+		inScope.newColumn(&scopeColumn{
+			col:    varName,
+			typ:    typ,
+			scalar: param,
+		})
 	}
 	defaultVal := b.buildDefaultExpression(inScope, dVars.VarType.Default)
 

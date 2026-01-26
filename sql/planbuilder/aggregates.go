@@ -33,16 +33,16 @@ var _ ast.Expr = (*aggregateInfo)(nil)
 
 type groupBy struct {
 	outScope *scope
-	aggs     map[string]scopeColumn
+	aggs     map[string]*scopeColumn
 	grouping map[string]bool
-	inCols   []scopeColumn
+	inCols   []*scopeColumn
 }
 
-func (g *groupBy) addInCol(c scopeColumn) {
+func (g *groupBy) addInCol(c *scopeColumn) {
 	g.inCols = append(g.inCols, c)
 }
 
-func (g *groupBy) addOutCol(c scopeColumn) columnId {
+func (g *groupBy) addOutCol(c *scopeColumn) columnId {
 	return g.outScope.newColumn(c)
 }
 
@@ -50,8 +50,8 @@ func (g *groupBy) hasAggs() bool {
 	return len(g.aggs) > 0
 }
 
-func (g *groupBy) aggregations() []scopeColumn {
-	aggregations := make([]scopeColumn, 0, len(g.aggs))
+func (g *groupBy) aggregations() []*scopeColumn {
+	aggregations := make([]*scopeColumn, 0, len(g.aggs))
 	for _, agg := range g.aggs {
 		aggregations = append(aggregations, agg)
 	}
@@ -61,9 +61,9 @@ func (g *groupBy) aggregations() []scopeColumn {
 	return aggregations
 }
 
-func (g *groupBy) addAggStr(c scopeColumn) {
+func (g *groupBy) addAggStr(c *scopeColumn) {
 	if g.aggs == nil {
-		g.aggs = make(map[string]scopeColumn)
+		g.aggs = make(map[string]*scopeColumn)
 	}
 	g.aggs[strings.ToLower(c.scalar.String())] = c
 }
@@ -99,7 +99,7 @@ func (b *Builder) buildGroupingCols(fromScope, projScope *scope, groupby ast.Gro
 
 	g := fromScope.groupBy
 	for _, e := range groupby {
-		var col scopeColumn
+		var col *scopeColumn
 		switch e := e.(type) {
 		case *ast.ColName:
 			var ok bool
@@ -111,7 +111,6 @@ func (b *Builder) buildGroupingCols(fromScope, projScope *scope, groupby ast.Gro
 			if !ok {
 				col, ok = projScope.resolveColumn(dbName, tblName, colName, true, true)
 			}
-
 			if !ok {
 				b.handleErr(sql.ErrColumnNotFound.New(e.Name.String()))
 			}
@@ -139,10 +138,10 @@ func (b *Builder) buildGroupingCols(fromScope, projScope *scope, groupby ast.Gro
 			col = projScope.cols[intIdx-1]
 		default:
 			expr := b.buildScalar(fromScope, e)
-			col = scopeColumn{
-				col:      expr.String(),
+			col = &scopeColumn{
 				typ:      nil,
 				scalar:   expr,
+				col:      expr.String(),
 				nullable: expr.IsNullable(),
 			}
 		}
@@ -333,7 +332,12 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 		return gf
 	}
 
-	col := scopeColumn{col: aggName, scalar: agg, typ: aggType, nullable: agg.IsNullable()}
+	col := &scopeColumn{
+		col:      aggName,
+		scalar:   agg,
+		typ:      aggType,
+		nullable: agg.IsNullable(),
+	}
 	id := gb.outScope.newColumn(col)
 
 	agg = agg.WithId(sql.ColumnId(id)).(sql.Aggregation)
@@ -398,18 +402,18 @@ func (b *Builder) buildAggFunctionArgs(inScope *scope, e *ast.FuncExpr, gb *grou
 				b.handleErr(fmt.Errorf("failed to resolve aggregate column argument: %s", e))
 			}
 			args = append(args, e)
-			col := scopeColumn{tableId: e.TableID(), db: e.Database(), table: e.Table(), col: e.Name(), scalar: e, typ: e.Type(), nullable: e.IsNullable()}
+			col := &scopeColumn{tableId: e.TableID(), db: e.Database(), table: e.Table(), col: e.Name(), scalar: e, typ: e.Type(), nullable: e.IsNullable()}
 			gb.addInCol(col)
 		case *expression.Star:
 			err := sql.ErrStarUnsupported.New()
 			b.handleErr(err)
 		case *plan.Subquery:
 			args = append(args, e)
-			col := scopeColumn{col: e.QueryString, scalar: e, typ: e.Type()}
+			col := &scopeColumn{col: e.QueryString, scalar: e, typ: e.Type()}
 			gb.addInCol(col)
 		default:
 			args = append(args, e)
-			col := scopeColumn{col: e.String(), scalar: e, typ: e.Type()}
+			col := &scopeColumn{col: e.String(), scalar: e, typ: e.Type()}
 			gb.addInCol(col)
 		}
 	}
@@ -432,7 +436,7 @@ func (b *Builder) buildJsonArrayStarAggregate(gb *groupBy) sql.Expression {
 		return gf
 	}
 
-	col := scopeColumn{col: strings.ToLower(agg.String()), scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
+	col := &scopeColumn{col: strings.ToLower(agg.String()), scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
 	id := gb.outScope.newColumn(col)
 
 	agg = agg.WithId(sql.ColumnId(id)).(*aggregation.JsonArray)
@@ -460,7 +464,7 @@ func (b *Builder) buildCountStarAggregate(e *ast.FuncExpr, gb *groupBy) sql.Expr
 		return gf
 	}
 
-	col := scopeColumn{col: strings.ToLower(agg.String()), scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
+	col := &scopeColumn{col: strings.ToLower(agg.String()), scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
 	id := gb.outScope.newColumn(col)
 	col.id = id
 
@@ -515,7 +519,7 @@ func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.E
 	// todo store ref to aggregate
 	agg := aggregation.NewGroupConcat(e.Distinct, sortFields, separatorS, args, int(groupConcatMaxLen))
 	aggName := strings.ToLower(plan.AliasSubqueryString(agg))
-	col := scopeColumn{col: aggName, scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
+	col := &scopeColumn{col: aggName, scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
 
 	id := gb.outScope.newColumn(col)
 
@@ -573,7 +577,7 @@ func (b *Builder) buildOrderedInjectedExpr(inScope *scope, e *ast.OrderedInjecte
 	}
 
 	aggName := strings.ToLower(plan.AliasSubqueryString(agg))
-	col := scopeColumn{col: aggName, scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
+	col := &scopeColumn{col: aggName, scalar: agg, typ: agg.Type(), nullable: agg.IsNullable()}
 	id := gb.outScope.newColumn(col)
 
 	agg = agg.WithId(sql.ColumnId(id)).(sql.Aggregation)
@@ -647,7 +651,7 @@ func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, 
 		win = w.WithWindow(def)
 	}
 
-	col := scopeColumn{col: strings.ToLower(win.String()), scalar: win, typ: win.Type(), nullable: win.IsNullable()}
+	col := &scopeColumn{col: strings.ToLower(win.String()), scalar: win, typ: win.Type(), nullable: win.IsNullable()}
 	id := inScope.newColumn(col)
 	col.id = id
 	win = win.WithId(sql.ColumnId(id)).(sql.WindowAdaptableExpression)
@@ -947,13 +951,14 @@ func (b *Builder) buildInnerProj(fromScope, projScope *scope) *scope {
 }
 
 // getMatchingCol returns the column in cols that matches the name, if it exists
-func getMatchingCol(cols []scopeColumn, name string) (scopeColumn, bool) {
+func getMatchingCol(cols []*scopeColumn, name string) (*scopeColumn, bool) {
 	for _, c := range cols {
 		if strings.EqualFold(c.col, name) {
 			return c, true
 		}
 	}
-	return scopeColumn{}, false
+	// TODO: drop the bool
+	return nil, false
 }
 
 func (b *Builder) buildHaving(fromScope, projScope, outScope *scope, having *ast.Where) {

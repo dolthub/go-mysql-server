@@ -36,7 +36,9 @@ func (b *Builder) buildFrom(inScope *scope, te ast.TableExprs) (outScope *scope)
 		outScope.ast = te
 		outScope.node = plan.NewResolvedDualTable()
 		// new unreferenceable column to mirror empty table schema
-		outScope.addColumn(scopeColumn{table: "dual"})
+		outScope.addColumn(&scopeColumn{
+			table: "dual",
+		})
 		return
 	}
 
@@ -228,7 +230,9 @@ func (b *Builder) buildUsingJoin(inScope, leftScope, rightScope *scope, te *ast.
 			filter = expression.NewAnd(filter, f)
 		}
 		usingCols[colName] = struct{}{}
-		outScope.redirect(scopeColumn{col: rCol.col}, lCol)
+		outScope.redirect(&scopeColumn{
+			col: rCol.col,
+		}, lCol)
 	}
 
 	// Add common columns first, then left, then right.
@@ -346,7 +350,7 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 				if len(renameCols) > 0 {
 					col = renameCols[i]
 				}
-				toId := outScope.newColumn(scopeColumn{
+				toId := outScope.newColumn(&scopeColumn{
 					tableId:     tabId,
 					db:          c.db,
 					table:       alias,
@@ -385,7 +389,13 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 			tabId := outScope.addTable(tableName)
 			var cols sql.ColSet
 			for _, c := range vdt.Schema() {
-				id := outScope.newColumn(scopeColumn{col: c.Name, db: c.DatabaseSource, table: tableName, typ: c.Type, nullable: c.Nullable})
+				id := outScope.newColumn(&scopeColumn{
+					col:      c.Name,
+					db:       c.DatabaseSource,
+					table:    tableName,
+					typ:      c.Type,
+					nullable: c.Nullable,
+				})
 				cols.Add(sql.ColumnId(id))
 			}
 			var renameCols []string
@@ -532,7 +542,7 @@ func (b *Builder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outScope
 	tabId := outScope.addTable(name)
 	var colset sql.ColSet
 	for _, c := range newAlias.Schema() {
-		id := outScope.newColumn(scopeColumn{
+		id := outScope.newColumn(&scopeColumn{
 			db:    database.Name(),
 			table: name,
 			col:   c.Name,
@@ -613,7 +623,7 @@ func (b *Builder) buildJSONTable(inScope *scope, t *ast.JSONTableExpr) (outScope
 			recFlatten(col)
 		}
 		if col.Opts != nil {
-			id := outScope.newColumn(scopeColumn{
+			id := outScope.newColumn(&scopeColumn{
 				table: alias,
 				col:   col.Opts.Name,
 				typ:   col.Opts.Type,
@@ -743,7 +753,7 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 	var cols sql.ColSet
 
 	for _, c := range tab.Schema() {
-		id := outScope.newColumn(scopeColumn{
+		id := outScope.newColumn(&scopeColumn{
 			db:          db,
 			table:       strings.ToLower(tab.Name()),
 			col:         strings.ToLower(c.Name),
@@ -769,7 +779,7 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 		tmpScope := inScope.push()
 		for i, c := range sch {
 			// bucket schema fragments into colsets for resolving defaults
-			newCol := scopeColumn{
+			newCol := &scopeColumn{
 				db:          c.DatabaseSource,
 				table:       c.Source,
 				col:         strings.ToLower(c.Name),

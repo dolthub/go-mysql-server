@@ -155,6 +155,9 @@ func Clone(expr sql.Expression) (sql.Expression, error) {
 
 // ExprWithNode applies a transformation function to the given expression from the bottom up.
 func ExprWithNode(n sql.Node, e sql.Expression, f ExprWithNodeFunc) (sql.Expression, TreeIdentity, error) {
+	if e == nil {
+		print()
+	}
 	children := e.Children()
 	if len(children) == 0 {
 		return f(n, e)

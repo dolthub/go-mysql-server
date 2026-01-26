@@ -422,7 +422,7 @@ func (b *Builder) buildVirtualTableScan(db string, tab sql.Table) *plan.VirtualC
 	tableScope := b.newScope()
 	schema := tab.Schema()
 	for _, c := range schema {
-		tableScope.newColumn(scopeColumn{
+		tableScope.newColumn(&scopeColumn{
 			table:       strings.ToLower(tab.Name()),
 			db:          strings.ToLower(db),
 			col:         strings.ToLower(c.Name),
