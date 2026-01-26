@@ -276,11 +276,11 @@ func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right any) (any, a
 	}
 
 	if types.IsTime(lTyp) || types.IsTime(rTyp) {
-		l, err := convertValue(ctx, left, ConvertToDatetime, lTyp, types.MaxDatetimePrecision, 0)
+		l, err := convertValue(ctx, left, ConvertToDatetime, nil, types.MaxDatetimePrecision, 0)
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		r, err := convertValue(ctx, right, ConvertToDatetime, rTyp, types.MaxDatetimePrecision, 0)
+		r, err := convertValue(ctx, right, ConvertToDatetime, nil, types.MaxDatetimePrecision, 0)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -293,11 +293,11 @@ func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right any) (any, a
 	}
 
 	if types.IsBinaryType(lTyp) || types.IsBinaryType(rTyp) {
-		l, err := convertValue(ctx, left, ConvertToBinary, lTyp, 0, 0)
+		l, err := convertValue(ctx, left, ConvertToBinary, nil, 0, 0)
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		r, err := convertValue(ctx, right, ConvertToBinary, rTyp, 0, 0)
+		r, err := convertValue(ctx, right, ConvertToBinary, nil, 0, 0)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -307,27 +307,27 @@ func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right any) (any, a
 	if types.IsNumber(lTyp) || types.IsNumber(rTyp) {
 		if types.IsDecimal(lTyp) || types.IsDecimal(rTyp) {
 			// TODO: We need to set to the actual DECIMAL type
-			l, err := convertValue(ctx, left, ConvertToDecimal, lTyp, 0, 0)
+			l, err := convertValue(ctx, left, ConvertToDecimal, nil, 0, 0)
 			if err != nil {
 				return nil, nil, nil, err
 			}
-			r, err := convertValue(ctx, right, ConvertToDecimal, rTyp, 0, 0)
+			r, err := convertValue(ctx, right, ConvertToDecimal, nil, 0, 0)
 			if err != nil {
 				return nil, nil, nil, err
 			}
 			if types.IsDecimal(lTyp) {
 				return l, r, lTyp, nil
 			} else {
-				return l, r, rTyp, nil
+				return l, r, nil, nil
 			}
 		}
 
 		if types.IsFloat(lTyp) || types.IsFloat(rTyp) {
-			l, err := convertValue(ctx, left, ConvertToDouble, lTyp, 0, 0)
+			l, err := convertValue(ctx, left, ConvertToDouble, nil, 0, 0)
 			if err != nil {
 				return nil, nil, nil, err
 			}
-			r, err := convertValue(ctx, right, ConvertToDouble, rTyp, 0, 0)
+			r, err := convertValue(ctx, right, ConvertToDouble, nil, 0, 0)
 			if err != nil {
 				return nil, nil, nil, err
 			}
@@ -339,11 +339,11 @@ func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right any) (any, a
 		}
 
 		if types.IsSigned(lTyp) && types.IsSigned(rTyp) {
-			l, err := convertValue(ctx, left, ConvertToSigned, lTyp, 0, 0)
+			l, err := convertValue(ctx, left, ConvertToSigned, nil, 0, 0)
 			if err != nil {
 				return nil, nil, nil, err
 			}
-			r, err := convertValue(ctx, right, ConvertToSigned, rTyp, 0, 0)
+			r, err := convertValue(ctx, right, ConvertToSigned, nil, 0, 0)
 			if err != nil {
 				return nil, nil, nil, err
 			}
@@ -351,33 +351,33 @@ func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right any) (any, a
 		}
 
 		if types.IsUnsigned(lTyp) && types.IsUnsigned(rTyp) {
-			l, err := convertValue(ctx, left, ConvertToUnsigned, lTyp, 0, 0)
+			l, err := convertValue(ctx, left, ConvertToUnsigned, nil, 0, 0)
 			if err != nil {
 				return nil, nil, nil, err
 			}
-			r, err := convertValue(ctx, right, ConvertToUnsigned, rTyp, 0, 0)
+			r, err := convertValue(ctx, right, ConvertToUnsigned, nil, 0, 0)
 			if err != nil {
 				return nil, nil, nil, err
 			}
 			return l, r, types.Uint64, nil
 		}
 
-		l, err := convertValue(ctx, left, ConvertToDouble, lTyp, 0, 0)
+		l, err := convertValue(ctx, left, ConvertToDouble, nil, 0, 0)
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		r, err := convertValue(ctx, right, ConvertToDouble, rTyp, 0, 0)
+		r, err := convertValue(ctx, right, ConvertToDouble, nil, 0, 0)
 		if err != nil {
 			return nil, nil, nil, err
 		}
 		return l, r, types.Float64, nil
 	}
 
-	l, err := convertValue(ctx, left, ConvertToChar, lTyp, 0, 0)
+	l, err := convertValue(ctx, left, ConvertToChar, nil, 0, 0)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	r, err := convertValue(ctx, right, ConvertToChar, rTyp, 0, 0)
+	r, err := convertValue(ctx, right, ConvertToChar, nil, 0, 0)
 	if err != nil {
 		return nil, nil, nil, err
 	}
