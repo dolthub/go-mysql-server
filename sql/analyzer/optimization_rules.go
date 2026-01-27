@@ -340,19 +340,19 @@ func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel Ru
 			return e, transform.SameTree, nil
 		case *expression.And:
 			leftIsTrue, leftIsFalse := getDefiniteBoolValues(ctx, e.LeftChild)
-			// if left is false, the AND expression is false
+			// if left side is false, the AND expression is false
 			if leftIsFalse {
 				return expression.NewLiteral(false, types.Boolean), transform.NewTree, nil
 			}
 
 			rightIsTrue, rightIsFalse := getDefiniteBoolValues(ctx, e.RightChild)
-			// if right is false, the AND expression is false
+			// if right side is false, the AND expression is false
 			if rightIsFalse {
 				return expression.NewLiteral(false, types.Boolean), transform.NewTree, nil
 			}
 
 			if leftIsTrue {
-				// if both sides are definitely true, the AND expression is true
+				// if both sides are true, the AND expression is true
 				if rightIsTrue {
 					return expression.NewLiteral(true, types.Boolean), transform.NewTree, nil
 				}
@@ -364,7 +364,7 @@ func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel Ru
 				}
 			}
 
-			// if right side is definitely true, the value of the AND expression is determined by the left side
+			// if right side is true, the value of the AND expression is determined by the left side
 			// TODO If LeftChild is not a boolean type, it can be returned if converted to a boolean. Nil values must be
 			//  preserved
 			if rightIsTrue && types.IsBoolean(e.LeftChild.Type()) {
