@@ -209,195 +209,269 @@ func expressionSources(expr sql.Expression) (sql.FastIntSet, bool) {
 	return tables, nullRejecting
 }
 
-// simplifyFilters simplifies the expressions in Filter nodes where possible. This involves removing redundant parts of AND
-// and OR expressions, as well as replacing evaluable expressions with their literal result. Filters that can
-// statically be determined to be true or false are replaced with the child node or an empty result, respectively.
+// simplifyFilters simplifies filter expressions in nodes where possible. Nodes with filter expressions that can be
+// statically evaluated to true or false are transformed so that the expression no longer needs to be evaluated.
 func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	if !node.Resolved() {
 		return node, transform.SameTree, nil
 	}
 
 	return transform.NodeWithOpaque(node, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
-		filter, ok := node.(*plan.Filter)
-		if !ok {
-			return node, transform.SameTree, nil
-		}
-
-		e, same, err := transform.Expr(filter.Expression, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-			switch e := e.(type) {
-			case *plan.Subquery:
-				newQ, same, err := simplifyFilters(ctx, a, e.Query, scope, sel, qFlags)
-				if same || err != nil {
-					return e, transform.SameTree, err
-				}
-				return e.WithQuery(newQ), transform.NewTree, nil
-			case *expression.Between:
-				return expression.NewAnd(
-					expression.NewGreaterThanOrEqual(e.Val, e.Lower),
-					expression.NewLessThanOrEqual(e.Val, e.Upper),
-				), transform.NewTree, nil
-			case *expression.Or:
-				if isTrue(ctx, e.LeftChild) {
-					return expression.NewLiteral(true, types.Boolean), transform.NewTree, nil
-				}
-
-				if isTrue(ctx, e.RightChild) {
-					return expression.NewLiteral(true, types.Boolean), transform.NewTree, nil
-				}
-
-				if isFalse(ctx, e.LeftChild) && types.IsBoolean(e.RightChild.Type()) {
-					return e.RightChild, transform.NewTree, nil
-				}
-
-				if isFalse(ctx, e.RightChild) && types.IsBoolean(e.LeftChild.Type()) {
-					return e.LeftChild, transform.NewTree, nil
-				}
-
-				return e, transform.SameTree, nil
-			case *expression.And:
-				if isFalse(ctx, e.LeftChild) {
-					return expression.NewLiteral(false, types.Boolean), transform.NewTree, nil
-				}
-
-				if isFalse(ctx, e.RightChild) {
-					return expression.NewLiteral(false, types.Boolean), transform.NewTree, nil
-				}
-
-				if isTrue(ctx, e.LeftChild) && types.IsBoolean(e.RightChild.Type()) {
-					return e.RightChild, transform.NewTree, nil
-				}
-
-				if isTrue(ctx, e.RightChild) && types.IsBoolean(e.LeftChild.Type()) {
-					return e.LeftChild, transform.NewTree, nil
-				}
-
-				return e, transform.SameTree, nil
-			case *expression.Like:
-				// if the charset is not utf8mb4, the last character used in optimization rule does not work
-				coll, _ := sql.GetCoercibility(ctx, e.LeftChild)
-				charset := coll.CharacterSet()
-				if charset != sql.CharacterSet_utf8mb4 {
-					return e, transform.SameTree, nil
-				}
-				// TODO: maybe more cases to simplify
-				r, ok := e.RightChild.(*expression.Literal)
-				if !ok {
-					return e, transform.SameTree, nil
-				}
-				// TODO: handle escapes
-				if e.Escape != nil {
-					return e, transform.SameTree, nil
-				}
-				val := r.Value()
-				valStr, ok := val.(string)
-				if !ok {
-					return e, transform.SameTree, nil
-				}
-				if len(valStr) == 0 {
-					return e, transform.SameTree, nil
-				}
-				// if there are single character wildcards, don't simplify
-				if strings.Count(valStr, "_")-strings.Count(valStr, "\\_") > 0 {
-					return e, transform.SameTree, nil
-				}
-				// if there are also no multiple character wildcards, this is just a plain equals
-				numWild := strings.Count(valStr, "%") - strings.Count(valStr, "\\%")
-				if numWild == 0 {
-					return expression.NewEquals(e.LeftChild, e.RightChild), transform.NewTree, nil
-				}
-				// if there are many multiple character wildcards, don't simplify
-				if numWild != 1 {
-					return e, transform.SameTree, nil
-				}
-				// if the last character is an escaped multiple character wildcard, don't simplify
-				if len(valStr) >= 2 && valStr[len(valStr)-2:] == "\\%" {
-					return e, transform.SameTree, nil
-				}
-				if valStr[len(valStr)-1] != '%' {
-					return e, transform.SameTree, nil
-				}
-				// TODO: like expression with just a wild card shouldn't even make it here; analyzer rule should just drop filter
-				if len(valStr) == 1 {
-					return e, transform.SameTree, nil
-				}
-				valStr = valStr[:len(valStr)-1]
-				newRightLower := expression.NewLiteral(valStr, e.RightChild.Type())
-				valStr += string(byte(255)) // append largest possible character as upper bound
-				newRightUpper := expression.NewLiteral(valStr, e.RightChild.Type())
-				newExpr := expression.NewAnd(expression.NewGreaterThanOrEqual(e.LeftChild, newRightLower), expression.NewLessThanOrEqual(e.LeftChild, newRightUpper))
-				return newExpr, transform.NewTree, nil
-			case *expression.Not:
-				if lit, ok := e.Child.(*expression.Literal); ok {
-					val, err := sql.ConvertToBool(ctx, lit.Value())
-					if err != nil {
-						// error while converting, keep as is
-						return e, transform.SameTree, nil
-					}
-					return expression.NewLiteral(!val, e.Type()), transform.NewTree, nil
-				}
-				return e, transform.SameTree, nil
-			case *expression.Literal, expression.Tuple, *expression.Interval, *expression.CollatedExpression, *expression.MatchAgainst:
-				return e, transform.SameTree, nil
-			default:
-				if !isEvaluable(e) {
-					return e, transform.SameTree, nil
-				}
-				if conv, ok := e.(*expression.Convert); ok {
-					if types.IsBinaryType(conv.Type()) {
-						return e, transform.SameTree, nil
-					}
-				}
-
-				// All other expressions types can be evaluated once and turned into literals for the rest of query execution
-				val, err := e.Eval(ctx, nil)
+		switch n := node.(type) {
+		case *plan.JoinNode:
+			if n.Filter != nil {
+				e, same, err := simplifyExpression(ctx, a, scope, sel, qFlags, n.Filter)
 				if err != nil {
-					return e, transform.SameTree, err
+					return nil, transform.SameTree, err
 				}
-				return expression.NewLiteral(val, e.Type()), transform.NewTree, nil
+
+				isTrue, isFalse := getDefiniteBoolValues(ctx, e)
+				joinType := n.JoinType()
+				if isTrue {
+					// If the filter always evaluates to true, convert to cross join if possible
+					switch joinType {
+					case plan.JoinTypeInner:
+						return plan.NewCrossJoin(n.Left(), n.Right()), transform.NewTree, nil
+					case plan.JoinTypeLateralInner:
+						return plan.NewLateralCrossJoin(n.Left(), n.Right()), transform.NewTree, nil
+					default:
+						// Remove filter. Filter does not need to be evaluated if always true
+						return n.WithFilter(nil), transform.NewTree, nil
+					}
+				} else if isFalse {
+					switch joinType {
+					case plan.JoinTypeFullOuter:
+						// Do nothing here. For a full outer join, we still want to return every row of both.
+					case plan.JoinTypeLeftOuter, plan.JoinTypeLateralLeft:
+						// In a left join, we still want all rows on the left side. But because the filter is always
+						// false, it will never match rows on the right side so we can treat it like it's empty
+						return plan.NewJoin(n.Left(), plan.NewEmptyTableWithSchema(n.Right().Schema()), joinType, nil), transform.NewTree, nil
+					default:
+						// For non-outer joins, a join condition that always evaluates to false would return an empty set
+						return plan.NewEmptyTableWithSchema(n.Schema()), transform.NewTree, nil
+					}
+				}
+
+				if !same {
+					return n.WithFilter(e), transform.NewTree, nil
+				}
+
 			}
-		})
-		if err != nil {
-			return nil, transform.SameTree, err
-		}
+		case *plan.Filter:
+			e, same, err := simplifyExpression(ctx, a, scope, sel, qFlags, n.Expression)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
 
-		if isFalse(ctx, e) {
-			emptyTable := plan.NewEmptyTableWithSchema(filter.Schema())
-			return emptyTable, transform.NewTree, nil
-		}
+			isTrue, isFalse := getDefiniteBoolValues(ctx, e)
+			// if the filter always evaluates to true, it can be removed
+			if isTrue {
+				return n.Child, transform.NewTree, nil
+			}
+			// if the filter always evaluates to false, the result is an empty table
+			if isFalse {
+				return plan.NewEmptyTableWithSchema(n.Schema()), transform.NewTree, nil
+			}
 
-		if isTrue(ctx, e) {
-			return filter.Child, transform.NewTree, nil
+			if !same {
+				return plan.NewFilter(e, n.Child), transform.NewTree, nil
+			}
 		}
-
-		if same {
-			return filter, transform.SameTree, nil
-		}
-		return plan.NewFilter(e, filter.Child), transform.NewTree, nil
+		return node, transform.SameTree, nil
 	})
 }
 
-func isFalse(ctx *sql.Context, e sql.Expression) bool {
-	lit, ok := e.(*expression.Literal)
-	if !ok || lit == nil || lit.Value() == nil {
-		return false
-	}
-	val, err := sql.ConvertToBool(ctx, lit.Value())
-	if err != nil {
-		return false
-	}
-	return !val
+// simplifyExpressions replaces expressions that can be evaluated statically with their Literal value and removes
+// redundant parts of AND and OR expressions.
+func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+	return transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		switch e := e.(type) {
+		// TODO: if the left and right children of Equals refer to the same field, simplify to true
+		case *plan.Subquery:
+			newQ, same, err := simplifyFilters(ctx, a, e.Query, scope, sel, qFlags)
+			if same || err != nil {
+				return e, transform.SameTree, err
+			}
+			return e.WithQuery(newQ), transform.NewTree, nil
+		case *expression.Between:
+			// TODO: if e.Lower and e.Upper refer to the same field, simplify to Equals(e.Val, e.Lower)
+			// TODO: if e.Val is the same field as e.Lower and e.Upper, simplify to true
+
+			// TODO: Can be evaluated to true/false if e.Val, e.Lower, and e.Upper are all Literals.
+			//  If e.Lower and e.Upper are both Literals:
+			//  If e.Lower > e.Upper, simplify to false. If e.Lower == e.Upper, simplify to Equals(e.Val, e.Lower).
+			return expression.NewAnd(
+				expression.NewGreaterThanOrEqual(e.Val, e.Lower),
+				expression.NewLessThanOrEqual(e.Val, e.Upper),
+			), transform.NewTree, nil
+		case *expression.Or:
+			leftIsTrue, leftIsFalse := getDefiniteBoolValues(ctx, e.LeftChild)
+			// if left side is true, the OR expression is true
+			if leftIsTrue {
+				return expression.NewLiteral(true, types.Boolean), transform.NewTree, nil
+			}
+
+			rightIsTrue, rightIsFalse := getDefiniteBoolValues(ctx, e.RightChild)
+			// if right side is true, the OR expression is true
+			if rightIsTrue {
+				return expression.NewLiteral(true, types.Boolean), transform.NewTree, nil
+			}
+
+			if leftIsFalse {
+				// if both sides are false, the OR expression is false
+				if rightIsFalse {
+					return expression.NewLiteral(false, types.Boolean), transform.NewTree, nil
+				}
+				// if left side is false, the value of the OR expression is determined by the right side
+				// TODO If RightChild is not a boolean type, it can be returned if converted to a boolean. Nil values
+				//  must be preserved
+				if types.IsBoolean(e.RightChild.Type()) {
+					return e.RightChild, transform.NewTree, nil
+				}
+			}
+
+			// if right side is false, the value of the OR expression is determined by the left side
+			// TODO If LeftChild is not a boolean type, it can be returned if converted to a boolean. Nil values must be
+			//  preserved
+			if rightIsFalse && types.IsBoolean(e.LeftChild.Type()) {
+				return e.LeftChild, transform.NewTree, nil
+			}
+
+			return e, transform.SameTree, nil
+		case *expression.And:
+			leftIsTrue, leftIsFalse := getDefiniteBoolValues(ctx, e.LeftChild)
+			// if left side is false, the AND expression is false
+			if leftIsFalse {
+				return expression.NewLiteral(false, types.Boolean), transform.NewTree, nil
+			}
+
+			rightIsTrue, rightIsFalse := getDefiniteBoolValues(ctx, e.RightChild)
+			// if right side is false, the AND expression is false
+			if rightIsFalse {
+				return expression.NewLiteral(false, types.Boolean), transform.NewTree, nil
+			}
+
+			if leftIsTrue {
+				// if both sides are true, the AND expression is true
+				if rightIsTrue {
+					return expression.NewLiteral(true, types.Boolean), transform.NewTree, nil
+				}
+				// if left side is true, the value of the AND expression is determined by the right side
+				// TODO If RightChild is not a boolean type, it can be returned if converted to a boolean. Nil values
+				//  must be preserved
+				if types.IsBoolean(e.RightChild.Type()) {
+					return e.RightChild, transform.NewTree, nil
+				}
+			}
+
+			// if right side is true, the value of the AND expression is determined by the left side
+			// TODO If LeftChild is not a boolean type, it can be returned if converted to a boolean. Nil values must be
+			//  preserved
+			if rightIsTrue && types.IsBoolean(e.LeftChild.Type()) {
+				return e.LeftChild, transform.NewTree, nil
+			}
+
+			return e, transform.SameTree, nil
+		case *expression.Like:
+			// if the charset is not utf8mb4, the last character used in optimization rule does not work
+			coll, _ := sql.GetCoercibility(ctx, e.LeftChild)
+			charset := coll.CharacterSet()
+			if charset != sql.CharacterSet_utf8mb4 {
+				return e, transform.SameTree, nil
+			}
+			// TODO: maybe more cases to simplify
+			r, ok := e.RightChild.(*expression.Literal)
+			if !ok {
+				return e, transform.SameTree, nil
+			}
+			// TODO: handle escapes
+			if e.Escape != nil {
+				return e, transform.SameTree, nil
+			}
+			val := r.Value()
+			valStr, ok := val.(string)
+			if !ok {
+				return e, transform.SameTree, nil
+			}
+			if len(valStr) == 0 {
+				return e, transform.SameTree, nil
+			}
+			// if there are single character wildcards, don't simplify
+			if strings.Count(valStr, "_")-strings.Count(valStr, "\\_") > 0 {
+				return e, transform.SameTree, nil
+			}
+			// if there are also no multiple character wildcards, this is just a plain equals
+			numWild := strings.Count(valStr, "%") - strings.Count(valStr, "\\%")
+			if numWild == 0 {
+				return expression.NewEquals(e.LeftChild, e.RightChild), transform.NewTree, nil
+			}
+			// if there are many multiple character wildcards, don't simplify
+			if numWild != 1 {
+				return e, transform.SameTree, nil
+			}
+			// if the last character is an escaped multiple character wildcard, don't simplify
+			if len(valStr) >= 2 && valStr[len(valStr)-2:] == "\\%" {
+				return e, transform.SameTree, nil
+			}
+			if valStr[len(valStr)-1] != '%' {
+				return e, transform.SameTree, nil
+			}
+			// TODO: like expression with just a wild card shouldn't even make it here; analyzer rule should just drop filter
+			if len(valStr) == 1 {
+				return e, transform.SameTree, nil
+			}
+			valStr = valStr[:len(valStr)-1]
+			newRightLower := expression.NewLiteral(valStr, e.RightChild.Type())
+			valStr += string(byte(255)) // append largest possible character as upper bound
+			newRightUpper := expression.NewLiteral(valStr, e.RightChild.Type())
+			newExpr := expression.NewAnd(expression.NewGreaterThanOrEqual(e.LeftChild, newRightLower), expression.NewLessThanOrEqual(e.LeftChild, newRightUpper))
+			return newExpr, transform.NewTree, nil
+		case *expression.Not:
+			if lit, ok := e.Child.(*expression.Literal); ok {
+				val, err := sql.ConvertToBool(ctx, lit.Value())
+				if err != nil {
+					// error while converting, keep as is
+					return e, transform.SameTree, nil
+				}
+				return expression.NewLiteral(!val, types.Boolean), transform.NewTree, nil
+			}
+			return e, transform.SameTree, nil
+		case *expression.Literal, expression.Tuple, *expression.Interval, *expression.CollatedExpression, *expression.MatchAgainst:
+			return e, transform.SameTree, nil
+		default:
+			if !isEvaluable(e) {
+				return e, transform.SameTree, nil
+			}
+			if conv, ok := e.(*expression.Convert); ok {
+				if types.IsBinaryType(conv.Type()) {
+					return e, transform.SameTree, nil
+				}
+			}
+
+			// All other expressions types can be evaluated once and turned into literals for the rest of query execution
+			val, err := e.Eval(ctx, nil)
+			if err != nil {
+				return e, transform.SameTree, err
+			}
+			return expression.NewLiteral(val, e.Type()), transform.NewTree, nil
+		}
+	})
 }
 
-func isTrue(ctx *sql.Context, e sql.Expression) bool {
+// getDefiniteBoolValues gets the definite boolean values of an expression. isTrue will only be true if the expression
+// is a non-nil Literal that evaluates to true, and isFalse will only be true if the expression is a non-nil Literal
+// that evaluates to false. Both return values are necessary since nil values are neither true nor false. We also cannot
+// yet evaluate the value of non-Literal expressions so they can neither be definitely true nor false.
+func getDefiniteBoolValues(ctx *sql.Context, e sql.Expression) (isTrue, isFalse bool) {
 	lit, ok := e.(*expression.Literal)
 	if !ok || lit == nil || lit.Value() == nil {
-		return false
+		return false, false
 	}
 	val, err := sql.ConvertToBool(ctx, lit.Value())
 	if err != nil {
-		return false
+		return false, false
 	}
-	return val
+	return val, !val
 }
 
 // pushNotFilters applies De'Morgan's laws to push NOT expressions as low

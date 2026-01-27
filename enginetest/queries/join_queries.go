@@ -801,6 +801,61 @@ on w = 0;`,
 		Query:    "select * from comp_index_t0 a join comp_index_t0 b join comp_index_t0 c on a.v2 = b.pk and b.v2 = c.pk and c.v2 = 5",
 		Expected: []sql.Row{},
 	},
+	{
+		Query: "select * from mytable join othertable on 3 >= 2 where mytable.i = 1 order by othertable.i2",
+		Expected: []sql.Row{
+			{1, "first row", "third", 1},
+			{1, "first row", "second", 2},
+			{1, "first row", "first", 3},
+		},
+	},
+	{
+		Query:    "select * from mytable join othertable on 3 < 2",
+		Expected: []sql.Row{},
+	},
+	{
+		Query: "select * from mytable left join emptytable on 3 >= 2",
+		Expected: []sql.Row{
+			{1, "first row", nil, nil},
+			{2, "second row", nil, nil},
+			{3, "third row", nil, nil},
+		},
+	},
+	{
+		Query: "select * from mytable left join othertable on 3 < 2",
+		Expected: []sql.Row{
+			{1, "first row", nil, nil},
+			{2, "second row", nil, nil},
+			{3, "third row", nil, nil},
+		},
+	},
+	{
+		Query: "select * from emptytable right join mytable on 3 >= 2",
+		Expected: []sql.Row{
+			{nil, nil, 1, "first row"},
+			{nil, nil, 2, "second row"},
+			{nil, nil, 3, "third row"},
+		},
+	},
+	{
+		Query: "select * from othertable right join mytable on 3 < 2",
+		Expected: []sql.Row{
+			{nil, nil, 1, "first row"},
+			{nil, nil, 2, "second row"},
+			{nil, nil, 3, "third row"},
+		},
+	},
+	{
+		Query: "select * from mytable full outer join othertable on 3 < 2",
+		Expected: []sql.Row{
+			{1, "first row", nil, nil},
+			{2, "second row", nil, nil},
+			{3, "third row", nil, nil},
+			{nil, nil, "first", 3},
+			{nil, nil, "second", 2},
+			{nil, nil, "third", 1},
+		},
+	},
 }
 
 var JoinScriptTests = []ScriptTest{

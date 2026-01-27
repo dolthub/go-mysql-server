@@ -18598,19 +18598,15 @@ inner join pq on true
 			"     ├─ cmp: Eq\n" +
 			"     │   ├─ a.i:0!null\n" +
 			"     │   └─ b.i:2!null\n" +
-			"     ├─ Filter\n" +
-			"     │   ├─ GreaterThanOrEqual\n" +
-			"     │   │   ├─ NOW()\n" +
-			"     │   │   └─ coalesce(NULL (null),NULL (null),NOW())\n" +
-			"     │   └─ TableAlias(a)\n" +
-			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ index: [mytable.i,mytable.s]\n" +
-			"     │           ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │           ├─ colSet: (1,2)\n" +
-			"     │           ├─ tableId: 1\n" +
-			"     │           └─ Table\n" +
-			"     │               ├─ name: mytable\n" +
-			"     │               └─ columns: [i s]\n" +
+			"     ├─ TableAlias(a)\n" +
+			"     │   └─ IndexedTableAccess(mytable)\n" +
+			"     │       ├─ index: [mytable.i,mytable.s]\n" +
+			"     │       ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │       ├─ colSet: (1,2)\n" +
+			"     │       ├─ tableId: 1\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: mytable\n" +
+			"     │           └─ columns: [i s]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
@@ -18623,15 +18619,13 @@ inner join pq on true
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
-			" └─ MergeJoin (estimated cost=5.070 rows=2)\n" +
+			" └─ MergeJoin (estimated cost=6.090 rows=3)\n" +
 			"     ├─ cmp: (a.i = b.i)\n" +
-			"     ├─ Filter\n" +
-			"     │   ├─ (NOW() >= coalesce(NULL,NULL,NOW()))\n" +
-			"     │   └─ TableAlias(a)\n" +
-			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ index: [mytable.i,mytable.s]\n" +
-			"     │           ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │           └─ columns: [i s]\n" +
+			"     ├─ TableAlias(a)\n" +
+			"     │   └─ IndexedTableAccess(mytable)\n" +
+			"     │       ├─ index: [mytable.i,mytable.s]\n" +
+			"     │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │       └─ columns: [i s]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
@@ -18640,15 +18634,13 @@ inner join pq on true
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [a.i, a.s]\n" +
-			" └─ MergeJoin (estimated cost=5.070 rows=2) (actual rows=3 loops=1)\n" +
+			" └─ MergeJoin (estimated cost=6.090 rows=3) (actual rows=3 loops=1)\n" +
 			"     ├─ cmp: (a.i = b.i)\n" +
-			"     ├─ Filter\n" +
-			"     │   ├─ (NOW() >= coalesce(NULL,NULL,NOW()))\n" +
-			"     │   └─ TableAlias(a)\n" +
-			"     │       └─ IndexedTableAccess(mytable)\n" +
-			"     │           ├─ index: [mytable.i,mytable.s]\n" +
-			"     │           ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
-			"     │           └─ columns: [i s]\n" +
+			"     ├─ TableAlias(a)\n" +
+			"     │   └─ IndexedTableAccess(mytable)\n" +
+			"     │       ├─ index: [mytable.i,mytable.s]\n" +
+			"     │       ├─ filters: [{[NULL, ∞), [NULL, ∞)}]\n" +
+			"     │       └─ columns: [i s]\n" +
 			"     └─ TableAlias(b)\n" +
 			"         └─ IndexedTableAccess(mytable)\n" +
 			"             ├─ index: [mytable.i]\n" +
@@ -23850,11 +23842,9 @@ where i = a
 order by i;`,
 		ExpectedPlan: "Sort(mytable.i:0!null ASC nullsFirst)\n" +
 			" └─ LateralCrossJoin\n" +
-			"     ├─ AND\n" +
-			"     │   ├─ Eq\n" +
-			"     │   │   ├─ mytable.i:0!null\n" +
-			"     │   │   └─ sqa.a:2\n" +
-			"     │   └─ true (tinyint(1))\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ mytable.i:0!null\n" +
+			"     │   └─ sqa.a:2\n" +
 			"     ├─ ProcessTable\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
@@ -23889,7 +23879,7 @@ order by i;`,
 			"",
 		ExpectedEstimates: "Sort(mytable.i ASC)\n" +
 			" └─ LateralCrossJoin (estimated cost=302.000 rows=3)\n" +
-			"     ├─ ((mytable.i = sqa.a) AND true)\n" +
+			"     ├─ (mytable.i = sqa.a)\n" +
 			"     ├─ Table\n" +
 			"     │   └─ name: mytable\n" +
 			"     └─ CachedResults\n" +
@@ -23914,7 +23904,7 @@ order by i;`,
 			"",
 		ExpectedAnalysis: "Sort(mytable.i ASC)\n" +
 			" └─ LateralCrossJoin (estimated cost=302.000 rows=3) (actual rows=3 loops=1)\n" +
-			"     ├─ ((mytable.i = sqa.a) AND true)\n" +
+			"     ├─ (mytable.i = sqa.a)\n" +
 			"     ├─ Table\n" +
 			"     │   └─ name: mytable\n" +
 			"     └─ CachedResults\n" +
@@ -23961,11 +23951,9 @@ where i = a
 order by i;`,
 		ExpectedPlan: "Sort(mytable.i:0!null ASC nullsFirst)\n" +
 			" └─ LateralCrossJoin\n" +
-			"     ├─ AND\n" +
-			"     │   ├─ Eq\n" +
-			"     │   │   ├─ mytable.i:0!null\n" +
-			"     │   │   └─ sqa2.a:2\n" +
-			"     │   └─ true (tinyint(1))\n" +
+			"     ├─ Eq\n" +
+			"     │   ├─ mytable.i:0!null\n" +
+			"     │   └─ sqa2.a:2\n" +
 			"     ├─ ProcessTable\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: mytable\n" +
@@ -24011,7 +23999,7 @@ order by i;`,
 			"",
 		ExpectedEstimates: "Sort(mytable.i ASC)\n" +
 			" └─ LateralCrossJoin (estimated cost=302.000 rows=3)\n" +
-			"     ├─ ((mytable.i = sqa2.a) AND true)\n" +
+			"     ├─ (mytable.i = sqa2.a)\n" +
 			"     ├─ Table\n" +
 			"     │   └─ name: mytable\n" +
 			"     └─ CachedResults\n" +
@@ -24045,7 +24033,7 @@ order by i;`,
 			"",
 		ExpectedAnalysis: "Sort(mytable.i ASC)\n" +
 			" └─ LateralCrossJoin (estimated cost=302.000 rows=3) (actual rows=2 loops=1)\n" +
-			"     ├─ ((mytable.i = sqa2.a) AND true)\n" +
+			"     ├─ (mytable.i = sqa2.a)\n" +
 			"     ├─ Table\n" +
 			"     │   └─ name: mytable\n" +
 			"     └─ CachedResults\n" +
@@ -25717,6 +25705,258 @@ order by x, y;
 			"                     ├─ index: [id_parent.id]\n" +
 			"                     ├─ columns: [id parent]\n" +
 			"                     └─ keys: p18.id\n" +
+			"",
+	},
+	{
+		Query: `select * from mytable where 3 < 2`,
+		ExpectedPlan: "EmptyTable\n" +
+			"",
+		ExpectedEstimates: "EmptyTable\n" +
+			"",
+		ExpectedAnalysis: "EmptyTable\n" +
+			"",
+	},
+	{
+		Query: `select * from mytable join othertable on 3 > 2`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [mytable.i:2!null, mytable.s:3!null, othertable.s2:0!null, othertable.i2:1!null]\n" +
+			" └─ CrossJoin\n" +
+			"     ├─ ProcessTable\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: othertable\n" +
+			"     │       └─ columns: [s2 i2]\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i s]\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [mytable.i, mytable.s, othertable.s2, othertable.i2]\n" +
+			" └─ CrossJoin (estimated cost=10.090 rows=3)\n" +
+			"     ├─ Table\n" +
+			"     │   ├─ name: othertable\n" +
+			"     │   └─ columns: [s2 i2]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: mytable\n" +
+			"         └─ columns: [i s]\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [mytable.i, mytable.s, othertable.s2, othertable.i2]\n" +
+			" └─ CrossJoin (estimated cost=10.090 rows=3) (actual rows=9 loops=1)\n" +
+			"     ├─ Table\n" +
+			"     │   ├─ name: othertable\n" +
+			"     │   └─ columns: [s2 i2]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: mytable\n" +
+			"         └─ columns: [i s]\n" +
+			"",
+	},
+	{
+		Query: `select * from mytable join othertable on 3 < 2`,
+		ExpectedPlan: "EmptyTable\n" +
+			"",
+		ExpectedEstimates: "EmptyTable\n" +
+			"",
+		ExpectedAnalysis: "EmptyTable\n" +
+			"",
+	},
+	{
+		Query: `select * from mytable left join othertable on 3 > 2`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [mytable.i:0!null, mytable.s:1!null, othertable.s2:2!null, othertable.i2:3!null]\n" +
+			" └─ LeftOuterJoin\n" +
+			"     ├─ ProcessTable\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: mytable\n" +
+			"     │       └─ columns: [i s]\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: othertable\n" +
+			"             └─ columns: [s2 i2]\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [mytable.i, mytable.s, othertable.s2, othertable.i2]\n" +
+			" └─ LeftOuterJoin (estimated cost=8.090 rows=3)\n" +
+			"     ├─ Table\n" +
+			"     │   ├─ name: mytable\n" +
+			"     │   └─ columns: [i s]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: othertable\n" +
+			"         └─ columns: [s2 i2]\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [mytable.i, mytable.s, othertable.s2, othertable.i2]\n" +
+			" └─ LeftOuterJoin (estimated cost=8.090 rows=3) (actual rows=9 loops=1)\n" +
+			"     ├─ Table\n" +
+			"     │   ├─ name: mytable\n" +
+			"     │   └─ columns: [i s]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: othertable\n" +
+			"         └─ columns: [s2 i2]\n" +
+			"",
+	},
+	{
+		Query: `select * from mytable left join othertable on 3 < 2`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [mytable.i:0!null, mytable.s:1!null, othertable.s2:2!null, othertable.i2:3!null]\n" +
+			" └─ LeftOuterJoin\n" +
+			"     ├─ ProcessTable\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: mytable\n" +
+			"     │       └─ columns: [i s]\n" +
+			"     └─ EmptyTable\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [mytable.i, mytable.s, othertable.s2, othertable.i2]\n" +
+			" └─ LeftOuterJoin (estimated cost=2.030 rows=3)\n" +
+			"     ├─ Table\n" +
+			"     │   ├─ name: mytable\n" +
+			"     │   └─ columns: [i s]\n" +
+			"     └─ EmptyTable\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [mytable.i, mytable.s, othertable.s2, othertable.i2]\n" +
+			" └─ LeftOuterJoin (estimated cost=2.030 rows=3) (actual rows=3 loops=1)\n" +
+			"     ├─ Table\n" +
+			"     │   ├─ name: mytable\n" +
+			"     │   └─ columns: [i s]\n" +
+			"     └─ EmptyTable\n" +
+			"",
+	},
+	{
+		Query: `select * from mytable right join othertable on 3 > 2`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [mytable.i:2!null, mytable.s:3!null, othertable.s2:0!null, othertable.i2:1!null]\n" +
+			" └─ LeftOuterJoin\n" +
+			"     ├─ ProcessTable\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: othertable\n" +
+			"     │       └─ columns: [s2 i2]\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: mytable\n" +
+			"             └─ columns: [i s]\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [mytable.i, mytable.s, othertable.s2, othertable.i2]\n" +
+			" └─ LeftOuterJoin (estimated cost=8.090 rows=3)\n" +
+			"     ├─ Table\n" +
+			"     │   ├─ name: othertable\n" +
+			"     │   └─ columns: [s2 i2]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: mytable\n" +
+			"         └─ columns: [i s]\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [mytable.i, mytable.s, othertable.s2, othertable.i2]\n" +
+			" └─ LeftOuterJoin (estimated cost=8.090 rows=3) (actual rows=9 loops=1)\n" +
+			"     ├─ Table\n" +
+			"     │   ├─ name: othertable\n" +
+			"     │   └─ columns: [s2 i2]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: mytable\n" +
+			"         └─ columns: [i s]\n" +
+			"",
+	},
+	{
+		Query: `select * from mytable right join othertable on 3 < 2`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [mytable.i:2!null, mytable.s:3!null, othertable.s2:0!null, othertable.i2:1!null]\n" +
+			" └─ LeftOuterJoin\n" +
+			"     ├─ ProcessTable\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: othertable\n" +
+			"     │       └─ columns: [s2 i2]\n" +
+			"     └─ EmptyTable\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [mytable.i, mytable.s, othertable.s2, othertable.i2]\n" +
+			" └─ LeftOuterJoin (estimated cost=2.030 rows=3)\n" +
+			"     ├─ Table\n" +
+			"     │   ├─ name: othertable\n" +
+			"     │   └─ columns: [s2 i2]\n" +
+			"     └─ EmptyTable\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [mytable.i, mytable.s, othertable.s2, othertable.i2]\n" +
+			" └─ LeftOuterJoin (estimated cost=2.030 rows=3) (actual rows=3 loops=1)\n" +
+			"     ├─ Table\n" +
+			"     │   ├─ name: othertable\n" +
+			"     │   └─ columns: [s2 i2]\n" +
+			"     └─ EmptyTable\n" +
+			"",
+	},
+	{
+		Query: `select * from mytable full outer join othertable on 3 > 2`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [mytable.i:0!null, mytable.s:1!null, othertable.s2:2!null, othertable.i2:3!null]\n" +
+			" └─ FullOuterJoin\n" +
+			"     ├─ ProcessTable\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: mytable\n" +
+			"     │       └─ columns: [i s]\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: othertable\n" +
+			"             └─ columns: [s2 i2]\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [mytable.i, mytable.s, othertable.s2, othertable.i2]\n" +
+			" └─ FullOuterJoin (estimated cost=16.180 rows=3)\n" +
+			"     ├─ Table\n" +
+			"     │   ├─ name: mytable\n" +
+			"     │   └─ columns: [i s]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: othertable\n" +
+			"         └─ columns: [s2 i2]\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [mytable.i, mytable.s, othertable.s2, othertable.i2]\n" +
+			" └─ FullOuterJoin (estimated cost=16.180 rows=3) (actual rows=9 loops=1)\n" +
+			"     ├─ Table\n" +
+			"     │   ├─ name: mytable\n" +
+			"     │   └─ columns: [i s]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: othertable\n" +
+			"         └─ columns: [s2 i2]\n" +
+			"",
+	},
+	{
+		Query: `select * from mytable full outer join othertable on 3 < 2`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [mytable.i:0!null, mytable.s:1!null, othertable.s2:2!null, othertable.i2:3!null]\n" +
+			" └─ FullOuterJoin\n" +
+			"     ├─ false (tinyint(1))\n" +
+			"     ├─ ProcessTable\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: mytable\n" +
+			"     │       └─ columns: [i s]\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: othertable\n" +
+			"             └─ columns: [s2 i2]\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [mytable.i, mytable.s, othertable.s2, othertable.i2]\n" +
+			" └─ FullOuterJoin (estimated cost=16.180 rows=3)\n" +
+			"     ├─ false\n" +
+			"     ├─ Table\n" +
+			"     │   ├─ name: mytable\n" +
+			"     │   └─ columns: [i s]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: othertable\n" +
+			"         └─ columns: [s2 i2]\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [mytable.i, mytable.s, othertable.s2, othertable.i2]\n" +
+			" └─ FullOuterJoin (estimated cost=16.180 rows=3) (actual rows=6 loops=1)\n" +
+			"     ├─ false\n" +
+			"     ├─ Table\n" +
+			"     │   ├─ name: mytable\n" +
+			"     │   └─ columns: [i s]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: othertable\n" +
+			"         └─ columns: [s2 i2]\n" +
 			"",
 	},
 }
