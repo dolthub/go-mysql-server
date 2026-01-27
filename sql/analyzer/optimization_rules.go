@@ -364,7 +364,7 @@ func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel Ru
 				}
 			}
 
-			// if right side is definitely false, the value of the AND expression is determined by the left side
+			// if right side is definitely true, the value of the AND expression is determined by the left side
 			// TODO If LeftChild is not a boolean type, it can be returned if converted to a boolean. Nil values must be
 			//  preserved
 			if rightIsTrue && types.IsBoolean(e.LeftChild.Type()) {
