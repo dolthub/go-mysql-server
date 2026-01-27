@@ -461,7 +461,7 @@ func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel Ru
 // getDefiniteBoolValues gets the definite boolean values of an expression. isTrue will only be true if the expression
 // is a non-nil Literal that evaluates to true, and isFalse will only be true if the expression is a non-nil Literal
 // that evaluates to false. Both return values are necessary since nil values are neither true nor false. We also cannot
-// yet evaluate the value of non-Literal expressions so they can neither definitely true nor false.
+// yet evaluate the value of non-Literal expressions so they can neither be definitely true nor false.
 func getDefiniteBoolValues(ctx *sql.Context, e sql.Expression) (isTrue, isFalse bool) {
 	lit, ok := e.(*expression.Literal)
 	if !ok || lit == nil || lit.Value() == nil {
