@@ -93,7 +93,16 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 				b.handleErr(err)
 			}
 			e = e.WithIndex(int(id)).(*expression.GetField)
-			outScope.addColumn(scopeColumn{tableId: inScope.tables[e.Table()], table: e.Table(), db: e.Database(), col: e.Name(), scalar: e, typ: e.Type(), nullable: e.IsNullable(), id: id})
+			outScope.addColumn(&scopeColumn{
+				id:       id,
+				tableId:  inScope.tables[e.Table()],
+				scalar:   e,
+				table:    e.Table(),
+				db:       e.Database(),
+				col:      e.Name(),
+				typ:      e.Type(),
+				nullable: e.IsNullable(),
+			})
 		case *expression.Star:
 			tableName := strings.ToLower(e.Table)
 			if tableName == "" && len(inScope.cols) == 1 && inScope.cols[0].col == "" && inScope.cols[0].table == "dual" {
@@ -124,14 +133,19 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 				b.handleErr(err)
 			}
 		case *expression.Alias:
-			var col scopeColumn
+			var col *scopeColumn
 			if a, ok := e.Child.(*expression.Alias); ok {
 				if _, ok := tempScope.exprs[a.Name()]; ok {
 					// can't ref alias within the same scope
 					err := sql.ErrMisusedAlias.New(e.Name())
 					b.handleErr(err)
 				}
-				col = scopeColumn{col: e.Name(), scalar: e, typ: e.Type(), nullable: e.IsNullable()}
+				col = &scopeColumn{
+					col:      e.Name(),
+					scalar:   e,
+					typ:      e.Type(),
+					nullable: e.IsNullable(),
+				}
 			} else if gf, ok := e.Child.(*expression.GetField); ok && gf.Table() == "" {
 				// potential alias only if table is empty
 				if _, ok := tempScope.exprs[gf.Name()]; ok {
@@ -144,11 +158,30 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 					err := sql.ErrColumnNotFound.New(gf.String())
 					b.handleErr(err)
 				}
-				col = scopeColumn{id: id, tableId: gf.TableId(), col: e.Name(), db: gf.Database(), table: gf.Table(), scalar: e, typ: gf.Type(), nullable: gf.IsNullable()}
+				col = &scopeColumn{
+					id:       id,
+					scalar:   e,
+					col:      e.Name(),
+					tableId:  gf.TableId(),
+					db:       gf.Database(),
+					table:    gf.Table(),
+					typ:      gf.Type(),
+					nullable: gf.IsNullable(),
+				}
 			} else if sq, ok := e.Child.(*plan.Subquery); ok {
-				col = scopeColumn{col: e.Name(), scalar: e, typ: sq.Type(), nullable: sq.IsNullable()}
+				col = &scopeColumn{
+					scalar:   e,
+					col:      e.Name(),
+					typ:      sq.Type(),
+					nullable: sq.IsNullable(),
+				}
 			} else {
-				col = scopeColumn{col: e.Name(), scalar: e, typ: e.Type(), nullable: e.IsNullable()}
+				col = &scopeColumn{
+					scalar:   e,
+					col:      e.Name(),
+					typ:      e.Type(),
+					nullable: e.IsNullable(),
+				}
 			}
 			if e.Unreferencable() {
 				outScope.addColumn(col)
@@ -167,7 +200,11 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 			exprs = append(exprs, e)
 		default:
 			exprs = append(exprs, pe)
-			col := scopeColumn{col: pe.String(), scalar: pe, typ: pe.Type()}
+			col := &scopeColumn{
+				scalar: pe,
+				col:    pe.String(),
+				typ:    pe.Type(),
+			}
 			outScope.newColumn(col)
 		}
 	}
@@ -223,6 +260,9 @@ func (b *Builder) markDeferProjection(proj sql.Node, inScope, outScope *scope) {
 func (b *Builder) buildProjection(inScope, outScope *scope) {
 	projections := make([]sql.Expression, len(outScope.cols))
 	for i, sc := range outScope.cols {
+		if sc.scalar == nil {
+			print()
+		}
 		projections[i] = sc.scalar
 	}
 	proj, err := b.f.buildProject(plan.NewProject(projections, inScope.node), outScope.refsSubquery)
