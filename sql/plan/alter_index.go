@@ -30,8 +30,6 @@ var (
 	ErrIndexActionNotImplemented = errors.NewKind("alter table index action is not implemented: %v")
 	// ErrCreateIndexMissingColumns is returned when a CREATE INDEX statement does not provide any columns
 	ErrCreateIndexMissingColumns = errors.NewKind("cannot create an index without columns")
-	// WarnFunctionIndexNotImplemented is returned when there is an attempt to create an index using expressions which Dolt does not support
-	WarnFunctionIndexNotImplemented = sql.Warning{Level: "Error", Message: "Index not created, functional indexes not implemented"}
 )
 
 type IndexAction byte

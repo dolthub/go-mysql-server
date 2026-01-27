@@ -2110,7 +2110,9 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 	switch n.Action {
 	case plan.IndexAction_Create:
 		if n.Expression != nil {
-			ctx.Session.Warn(&plan.WarnFunctionIndexNotImplemented)
+			// Dolt doesn't currently support creating indices with expression arguments.
+			// If we parse a query attempting to do so, we offer a warning and no-op
+			ctx.Session.Warn(&sql.Warning{Level: "Error", Message: "Index not created, functional indexes not implemented"})
 			return nil
 		}
 

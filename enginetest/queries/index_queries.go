@@ -4534,27 +4534,13 @@ var IndexQueries = []ScriptTest{
 		},
 	},
 	{
-		Name: "functional indices no-op",
-		SetUpScript: []string{
-			"CREATE TABLE test (i int, b int)",
-		},
-		Assertions: []ScriptTestAssertion{
-			{
-				Query: "CREATE INDEX idx ON test ((i + b))",
-				Expected: []sql.Row{
-					{types.NewOkResult(0)},
-				},
-			},
-		},
-	},
-	{
 		Name: "functional indices warning",
 		SetUpScript: []string{
 			"CREATE TABLE test (i int, b int)",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "CREATE INDEX idx ON test ((i))",
+				Query: "CREATE INDEX idx ON test ((i + b))",
 				Expected: []sql.Row{
 					{types.NewOkResult(0)},
 				},
