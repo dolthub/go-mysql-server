@@ -29,7 +29,8 @@ var (
 	// ErrIndexActionNotImplemented is returned when the action has not been implemented
 	ErrIndexActionNotImplemented = errors.NewKind("alter table index action is not implemented: %v")
 	// ErrCreateIndexMissingColumns is returned when a CREATE INDEX statement does not provide any columns
-	ErrCreateIndexMissingColumns = errors.NewKind("cannot create an index without columns")
+	ErrCreateIndexMissingColumns    = errors.NewKind("cannot create an index without columns")
+	WarnFunctionIndexNotImplemented = sql.Warning{Level: "Error", Message: "Index not created, functional indexes not implemented"}
 )
 
 type IndexAction byte
@@ -58,6 +59,9 @@ type AlterIndex struct {
 	targetSchema sql.Schema
 	// Columns contains the column names (and possibly lengths) when creating an index
 	Columns []sql.IndexColumn
+	// Expression holds the expression when creating an index
+	// TODO: Not currently implemented. Returns a no-op & warning if used
+	Expression sql.Expression
 	// TODO: This should just use sql.IndexDef
 	// Using states whether you're using BTREE, HASH, or non
 	Using sql.IndexUsing
@@ -79,7 +83,7 @@ var _ sql.Expressioner = (*AlterIndex)(nil)
 var _ sql.Node = (*AlterIndex)(nil)
 var _ sql.CollationCoercible = (*AlterIndex)(nil)
 
-func NewAlterCreateIndex(db sql.Database, table sql.TableNode, ifNotExists bool, indexName string, using sql.IndexUsing, constraint sql.IndexConstraint, columns []sql.IndexColumn, comment string) *AlterIndex {
+func NewAlterCreateIndex(db sql.Database, table sql.TableNode, ifNotExists bool, indexName string, using sql.IndexUsing, constraint sql.IndexConstraint, columns []sql.IndexColumn, expression sql.Expression, comment string) *AlterIndex {
 	return &AlterIndex{
 		Action:      IndexAction_Create,
 		Db:          db,
@@ -89,6 +93,7 @@ func NewAlterCreateIndex(db sql.Database, table sql.TableNode, ifNotExists bool,
 		Using:       using,
 		Constraint:  constraint,
 		Columns:     columns,
+		Expression:  expression,
 		Comment:     comment,
 	}
 }

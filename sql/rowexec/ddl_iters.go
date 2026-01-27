@@ -2109,6 +2109,11 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 
 	switch n.Action {
 	case plan.IndexAction_Create:
+		if n.Expression != nil {
+			ctx.Session.Warn(&plan.WarnFunctionIndexNotImplemented)
+			return nil
+		}
+
 		if len(n.Columns) == 0 {
 			return plan.ErrCreateIndexMissingColumns.New()
 		}

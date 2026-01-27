@@ -617,6 +617,7 @@ func (b *Builder) buildAlterTableClause(inScope *scope, ddl *ast.DDL) []*scope {
 						sql.IndexUsing_BTree,
 						sql.IndexConstraint_Unique,
 						[]sql.IndexColumn{{Name: column.Name.String()}},
+						nil,
 						"",
 					)
 
@@ -981,6 +982,11 @@ func (b *Builder) buildAlterIndex(inScope *scope, ddl *ast.DDL, table *plan.Reso
 
 		columns := b.gatherIndexColumns(ddl.IndexSpec.Columns)
 
+		var indexExpr sql.Expression
+		if ddl.IndexSpec.Expression != nil {
+			indexExpr = b.buildScalar(inScope, ddl.IndexSpec.Expression)
+		}
+
 		var comment string
 		for _, option := range ddl.IndexSpec.Options {
 			if strings.ToLower(option.Name) == strings.ToLower(ast.KeywordString(ast.COMMENT_KEYWORD)) {
@@ -1007,6 +1013,7 @@ func (b *Builder) buildAlterIndex(inScope *scope, ddl *ast.DDL, table *plan.Reso
 			using,
 			constraint,
 			columns,
+			indexExpr,
 			comment,
 		)
 		outScope.node = b.modifySchemaTarget(inScope, createIndex, table.Schema())
