@@ -4551,9 +4551,14 @@ var IndexQueries = []ScriptTest{
 		Name: "functional indices warning",
 		SetUpScript: []string{
 			"CREATE TABLE test (i int, b int)",
-			"CREATE INDEX idx ON test ((i + b))",
 		},
 		Assertions: []ScriptTestAssertion{
+			{
+				Query: "CREATE INDEX idx ON test ((i))",
+				Expected: []sql.Row{
+					{types.NewOkResult(0)},
+				},
+			},
 			{
 				Query: "SHOW WARNINGS",
 				Expected: []sql.Row{
