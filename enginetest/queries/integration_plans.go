@@ -7076,24 +7076,24 @@ WHERE
 			"                                             │   │   │   │   ├─ cacheable: true\n" +
 			"                                             │   │   │   │   ├─ colSet: (74,75)\n" +
 			"                                             │   │   │   │   ├─ tableId: 9\n" +
-			"                                             │   │   │   │   └─ Filter\n" +
-			"                                             │   │   │   │       ├─ HashIn\n" +
-			"                                             │   │   │   │       │   ├─ T4IBQ:1!null\n" +
-			"                                             │   │   │   │       │   └─ TUPLE(SQ1 (longtext))\n" +
-			"                                             │   │   │   │       └─ Project\n" +
-			"                                             │   │   │   │           ├─ columns: [thnts.id:0!null, yk2gw.FTQLQ:3!null->T4IBQ:0]\n" +
-			"                                             │   │   │   │           └─ MergeJoin\n" +
-			"                                             │   │   │   │               ├─ cmp: Eq\n" +
-			"                                             │   │   │   │               │   ├─ thnts.IXUXU:1\n" +
-			"                                             │   │   │   │               │   └─ yk2gw.id:2!null\n" +
-			"                                             │   │   │   │               ├─ IndexedTableAccess(THNTS)\n" +
-			"                                             │   │   │   │               │   ├─ index: [THNTS.IXUXU]\n" +
-			"                                             │   │   │   │               │   ├─ static: [{[NULL, ∞)}]\n" +
-			"                                             │   │   │   │               │   ├─ colSet: (39-42)\n" +
-			"                                             │   │   │   │               │   ├─ tableId: 7\n" +
-			"                                             │   │   │   │               │   └─ Table\n" +
-			"                                             │   │   │   │               │       ├─ name: THNTS\n" +
-			"                                             │   │   │   │               │       └─ columns: [id ixuxu]\n" +
+			"                                             │   │   │   │   └─ Project\n" +
+			"                                             │   │   │   │       ├─ columns: [thnts.id:0!null, yk2gw.FTQLQ:3!null->T4IBQ:0]\n" +
+			"                                             │   │   │   │       └─ MergeJoin\n" +
+			"                                             │   │   │   │           ├─ cmp: Eq\n" +
+			"                                             │   │   │   │           │   ├─ thnts.IXUXU:1\n" +
+			"                                             │   │   │   │           │   └─ yk2gw.id:2!null\n" +
+			"                                             │   │   │   │           ├─ IndexedTableAccess(THNTS)\n" +
+			"                                             │   │   │   │           │   ├─ index: [THNTS.IXUXU]\n" +
+			"                                             │   │   │   │           │   ├─ static: [{[NULL, ∞)}]\n" +
+			"                                             │   │   │   │           │   ├─ colSet: (39-42)\n" +
+			"                                             │   │   │   │           │   ├─ tableId: 7\n" +
+			"                                             │   │   │   │           │   └─ Table\n" +
+			"                                             │   │   │   │           │       ├─ name: THNTS\n" +
+			"                                             │   │   │   │           │       └─ columns: [id ixuxu]\n" +
+			"                                             │   │   │   │           └─ Filter\n" +
+			"                                             │   │   │   │               ├─ HashIn\n" +
+			"                                             │   │   │   │               │   ├─ yk2gw.FTQLQ:1!null\n" +
+			"                                             │   │   │   │               │   └─ TUPLE(SQ1 (longtext))\n" +
 			"                                             │   │   │   │               └─ IndexedTableAccess(YK2GW)\n" +
 			"                                             │   │   │   │                   ├─ index: [YK2GW.id]\n" +
 			"                                             │   │   │   │                   ├─ static: [{[NULL, ∞)}]\n" +
@@ -7449,16 +7449,16 @@ WHERE
 			"                                             │   │   │   │   ├─ cacheable: true\n" +
 			"                                             │   │   │   │   ├─ colSet: (74,75)\n" +
 			"                                             │   │   │   │   ├─ tableId: 9\n" +
-			"                                             │   │   │   │   └─ Filter\n" +
-			"                                             │   │   │   │       ├─ (T4IBQ HASH IN ('SQ1'))\n" +
-			"                                             │   │   │   │       └─ Project\n" +
-			"                                             │   │   │   │           ├─ columns: [thnts.id, yk2gw.FTQLQ as T4IBQ]\n" +
-			"                                             │   │   │   │           └─ MergeJoin (estimated cost=5070.940 rows=2498)\n" +
-			"                                             │   │   │   │               ├─ cmp: (thnts.IXUXU = yk2gw.id)\n" +
-			"                                             │   │   │   │               ├─ IndexedTableAccess(THNTS)\n" +
-			"                                             │   │   │   │               │   ├─ index: [THNTS.IXUXU]\n" +
-			"                                             │   │   │   │               │   ├─ filters: [{[NULL, ∞)}]\n" +
-			"                                             │   │   │   │               │   └─ columns: [id ixuxu]\n" +
+			"                                             │   │   │   │   └─ Project\n" +
+			"                                             │   │   │   │       ├─ columns: [thnts.id, yk2gw.FTQLQ as T4IBQ]\n" +
+			"                                             │   │   │   │       └─ MergeJoin (estimated cost=5070.940 rows=2498)\n" +
+			"                                             │   │   │   │           ├─ cmp: (thnts.IXUXU = yk2gw.id)\n" +
+			"                                             │   │   │   │           ├─ IndexedTableAccess(THNTS)\n" +
+			"                                             │   │   │   │           │   ├─ index: [THNTS.IXUXU]\n" +
+			"                                             │   │   │   │           │   ├─ filters: [{[NULL, ∞)}]\n" +
+			"                                             │   │   │   │           │   └─ columns: [id ixuxu]\n" +
+			"                                             │   │   │   │           └─ Filter\n" +
+			"                                             │   │   │   │               ├─ (yk2gw.FTQLQ HASH IN ('SQ1'))\n" +
 			"                                             │   │   │   │               └─ IndexedTableAccess(YK2GW)\n" +
 			"                                             │   │   │   │                   ├─ index: [YK2GW.id]\n" +
 			"                                             │   │   │   │                   ├─ filters: [{[NULL, ∞)}]\n" +
@@ -7659,16 +7659,16 @@ WHERE
 			"                                             │   │   │   │   ├─ cacheable: true\n" +
 			"                                             │   │   │   │   ├─ colSet: (74,75)\n" +
 			"                                             │   │   │   │   ├─ tableId: 9\n" +
-			"                                             │   │   │   │   └─ Filter\n" +
-			"                                             │   │   │   │       ├─ (T4IBQ HASH IN ('SQ1'))\n" +
-			"                                             │   │   │   │       └─ Project\n" +
-			"                                             │   │   │   │           ├─ columns: [thnts.id, yk2gw.FTQLQ as T4IBQ]\n" +
-			"                                             │   │   │   │           └─ MergeJoin (estimated cost=5070.940 rows=2498) (actual rows=0 loops=1)\n" +
-			"                                             │   │   │   │               ├─ cmp: (thnts.IXUXU = yk2gw.id)\n" +
-			"                                             │   │   │   │               ├─ IndexedTableAccess(THNTS)\n" +
-			"                                             │   │   │   │               │   ├─ index: [THNTS.IXUXU]\n" +
-			"                                             │   │   │   │               │   ├─ filters: [{[NULL, ∞)}]\n" +
-			"                                             │   │   │   │               │   └─ columns: [id ixuxu]\n" +
+			"                                             │   │   │   │   └─ Project\n" +
+			"                                             │   │   │   │       ├─ columns: [thnts.id, yk2gw.FTQLQ as T4IBQ]\n" +
+			"                                             │   │   │   │       └─ MergeJoin (estimated cost=5070.940 rows=2498) (actual rows=0 loops=1)\n" +
+			"                                             │   │   │   │           ├─ cmp: (thnts.IXUXU = yk2gw.id)\n" +
+			"                                             │   │   │   │           ├─ IndexedTableAccess(THNTS)\n" +
+			"                                             │   │   │   │           │   ├─ index: [THNTS.IXUXU]\n" +
+			"                                             │   │   │   │           │   ├─ filters: [{[NULL, ∞)}]\n" +
+			"                                             │   │   │   │           │   └─ columns: [id ixuxu]\n" +
+			"                                             │   │   │   │           └─ Filter\n" +
+			"                                             │   │   │   │               ├─ (yk2gw.FTQLQ HASH IN ('SQ1'))\n" +
 			"                                             │   │   │   │               └─ IndexedTableAccess(YK2GW)\n" +
 			"                                             │   │   │   │                   ├─ index: [YK2GW.id]\n" +
 			"                                             │   │   │   │                   ├─ filters: [{[NULL, ∞)}]\n" +
@@ -8002,24 +8002,24 @@ WHERE
 			"                                             │   │   │   │   ├─ cacheable: true\n" +
 			"                                             │   │   │   │   ├─ colSet: (74,75)\n" +
 			"                                             │   │   │   │   ├─ tableId: 9\n" +
-			"                                             │   │   │   │   └─ Filter\n" +
-			"                                             │   │   │   │       ├─ HashIn\n" +
-			"                                             │   │   │   │       │   ├─ T4IBQ:1!null\n" +
-			"                                             │   │   │   │       │   └─ TUPLE(SQ1 (longtext))\n" +
-			"                                             │   │   │   │       └─ Project\n" +
-			"                                             │   │   │   │           ├─ columns: [thnts.id:0!null, yk2gw.FTQLQ:3!null->T4IBQ:0]\n" +
-			"                                             │   │   │   │           └─ MergeJoin\n" +
-			"                                             │   │   │   │               ├─ cmp: Eq\n" +
-			"                                             │   │   │   │               │   ├─ thnts.IXUXU:1\n" +
-			"                                             │   │   │   │               │   └─ yk2gw.id:2!null\n" +
-			"                                             │   │   │   │               ├─ IndexedTableAccess(THNTS)\n" +
-			"                                             │   │   │   │               │   ├─ index: [THNTS.IXUXU]\n" +
-			"                                             │   │   │   │               │   ├─ static: [{[NULL, ∞)}]\n" +
-			"                                             │   │   │   │               │   ├─ colSet: (39-42)\n" +
-			"                                             │   │   │   │               │   ├─ tableId: 7\n" +
-			"                                             │   │   │   │               │   └─ Table\n" +
-			"                                             │   │   │   │               │       ├─ name: THNTS\n" +
-			"                                             │   │   │   │               │       └─ columns: [id ixuxu]\n" +
+			"                                             │   │   │   │   └─ Project\n" +
+			"                                             │   │   │   │       ├─ columns: [thnts.id:0!null, yk2gw.FTQLQ:3!null->T4IBQ:0]\n" +
+			"                                             │   │   │   │       └─ MergeJoin\n" +
+			"                                             │   │   │   │           ├─ cmp: Eq\n" +
+			"                                             │   │   │   │           │   ├─ thnts.IXUXU:1\n" +
+			"                                             │   │   │   │           │   └─ yk2gw.id:2!null\n" +
+			"                                             │   │   │   │           ├─ IndexedTableAccess(THNTS)\n" +
+			"                                             │   │   │   │           │   ├─ index: [THNTS.IXUXU]\n" +
+			"                                             │   │   │   │           │   ├─ static: [{[NULL, ∞)}]\n" +
+			"                                             │   │   │   │           │   ├─ colSet: (39-42)\n" +
+			"                                             │   │   │   │           │   ├─ tableId: 7\n" +
+			"                                             │   │   │   │           │   └─ Table\n" +
+			"                                             │   │   │   │           │       ├─ name: THNTS\n" +
+			"                                             │   │   │   │           │       └─ columns: [id ixuxu]\n" +
+			"                                             │   │   │   │           └─ Filter\n" +
+			"                                             │   │   │   │               ├─ HashIn\n" +
+			"                                             │   │   │   │               │   ├─ yk2gw.FTQLQ:1!null\n" +
+			"                                             │   │   │   │               │   └─ TUPLE(SQ1 (longtext))\n" +
 			"                                             │   │   │   │               └─ IndexedTableAccess(YK2GW)\n" +
 			"                                             │   │   │   │                   ├─ index: [YK2GW.id]\n" +
 			"                                             │   │   │   │                   ├─ static: [{[NULL, ∞)}]\n" +
@@ -8374,16 +8374,16 @@ WHERE
 			"                                             │   │   │   │   ├─ cacheable: true\n" +
 			"                                             │   │   │   │   ├─ colSet: (74,75)\n" +
 			"                                             │   │   │   │   ├─ tableId: 9\n" +
-			"                                             │   │   │   │   └─ Filter\n" +
-			"                                             │   │   │   │       ├─ (T4IBQ HASH IN ('SQ1'))\n" +
-			"                                             │   │   │   │       └─ Project\n" +
-			"                                             │   │   │   │           ├─ columns: [thnts.id, yk2gw.FTQLQ as T4IBQ]\n" +
-			"                                             │   │   │   │           └─ MergeJoin (estimated cost=5070.940 rows=2498)\n" +
-			"                                             │   │   │   │               ├─ cmp: (thnts.IXUXU = yk2gw.id)\n" +
-			"                                             │   │   │   │               ├─ IndexedTableAccess(THNTS)\n" +
-			"                                             │   │   │   │               │   ├─ index: [THNTS.IXUXU]\n" +
-			"                                             │   │   │   │               │   ├─ filters: [{[NULL, ∞)}]\n" +
-			"                                             │   │   │   │               │   └─ columns: [id ixuxu]\n" +
+			"                                             │   │   │   │   └─ Project\n" +
+			"                                             │   │   │   │       ├─ columns: [thnts.id, yk2gw.FTQLQ as T4IBQ]\n" +
+			"                                             │   │   │   │       └─ MergeJoin (estimated cost=5070.940 rows=2498)\n" +
+			"                                             │   │   │   │           ├─ cmp: (thnts.IXUXU = yk2gw.id)\n" +
+			"                                             │   │   │   │           ├─ IndexedTableAccess(THNTS)\n" +
+			"                                             │   │   │   │           │   ├─ index: [THNTS.IXUXU]\n" +
+			"                                             │   │   │   │           │   ├─ filters: [{[NULL, ∞)}]\n" +
+			"                                             │   │   │   │           │   └─ columns: [id ixuxu]\n" +
+			"                                             │   │   │   │           └─ Filter\n" +
+			"                                             │   │   │   │               ├─ (yk2gw.FTQLQ HASH IN ('SQ1'))\n" +
 			"                                             │   │   │   │               └─ IndexedTableAccess(YK2GW)\n" +
 			"                                             │   │   │   │                   ├─ index: [YK2GW.id]\n" +
 			"                                             │   │   │   │                   ├─ filters: [{[NULL, ∞)}]\n" +
@@ -8585,16 +8585,16 @@ WHERE
 			"                                             │   │   │   │   ├─ cacheable: true\n" +
 			"                                             │   │   │   │   ├─ colSet: (74,75)\n" +
 			"                                             │   │   │   │   ├─ tableId: 9\n" +
-			"                                             │   │   │   │   └─ Filter\n" +
-			"                                             │   │   │   │       ├─ (T4IBQ HASH IN ('SQ1'))\n" +
-			"                                             │   │   │   │       └─ Project\n" +
-			"                                             │   │   │   │           ├─ columns: [thnts.id, yk2gw.FTQLQ as T4IBQ]\n" +
-			"                                             │   │   │   │           └─ MergeJoin (estimated cost=5070.940 rows=2498) (actual rows=0 loops=1)\n" +
-			"                                             │   │   │   │               ├─ cmp: (thnts.IXUXU = yk2gw.id)\n" +
-			"                                             │   │   │   │               ├─ IndexedTableAccess(THNTS)\n" +
-			"                                             │   │   │   │               │   ├─ index: [THNTS.IXUXU]\n" +
-			"                                             │   │   │   │               │   ├─ filters: [{[NULL, ∞)}]\n" +
-			"                                             │   │   │   │               │   └─ columns: [id ixuxu]\n" +
+			"                                             │   │   │   │   └─ Project\n" +
+			"                                             │   │   │   │       ├─ columns: [thnts.id, yk2gw.FTQLQ as T4IBQ]\n" +
+			"                                             │   │   │   │       └─ MergeJoin (estimated cost=5070.940 rows=2498) (actual rows=0 loops=1)\n" +
+			"                                             │   │   │   │           ├─ cmp: (thnts.IXUXU = yk2gw.id)\n" +
+			"                                             │   │   │   │           ├─ IndexedTableAccess(THNTS)\n" +
+			"                                             │   │   │   │           │   ├─ index: [THNTS.IXUXU]\n" +
+			"                                             │   │   │   │           │   ├─ filters: [{[NULL, ∞)}]\n" +
+			"                                             │   │   │   │           │   └─ columns: [id ixuxu]\n" +
+			"                                             │   │   │   │           └─ Filter\n" +
+			"                                             │   │   │   │               ├─ (yk2gw.FTQLQ HASH IN ('SQ1'))\n" +
 			"                                             │   │   │   │               └─ IndexedTableAccess(YK2GW)\n" +
 			"                                             │   │   │   │                   ├─ index: [YK2GW.id]\n" +
 			"                                             │   │   │   │                   ├─ filters: [{[NULL, ∞)}]\n" +

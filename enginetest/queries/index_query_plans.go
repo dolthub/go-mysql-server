@@ -16400,6 +16400,82 @@ var IndexPlanTests = []QueryPlanTest{
 			"",
 	},
 	{
+		Query: `select * from (select pk2 as pk1 from (select pk2 as pk1, pk3 as pk2 from three_pk where pk1=0) t1 where pk1=0) t2 where pk1=0;`,
+		ExpectedPlan: "SubqueryAlias\n" +
+			" ├─ name: t2\n" +
+			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
+			" ├─ cacheable: true\n" +
+			" ├─ colSet: (14)\n" +
+			" ├─ tableId: 3\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [t1.pk2:1!null->pk1:0]\n" +
+			"     └─ SubqueryAlias\n" +
+			"         ├─ name: t1\n" +
+			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: false\n" +
+			"         ├─ cacheable: true\n" +
+			"         ├─ colSet: (11,12)\n" +
+			"         ├─ tableId: 2\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [three_pk.pk2:1!null->pk1:0, three_pk.pk3:2!null->pk2:0]\n" +
+			"             └─ IndexedTableAccess(three_pk)\n" +
+			"                 ├─ index: [three_pk.pk1,three_pk.pk2,three_pk.pk3]\n" +
+			"                 ├─ static: [{[0, 0], [0, 0], [0, 0]}]\n" +
+			"                 ├─ colSet: (1-8)\n" +
+			"                 ├─ tableId: 1\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: three_pk\n" +
+			"                     └─ columns: [pk1 pk2 pk3]\n" +
+			"",
+		ExpectedEstimates: "SubqueryAlias\n" +
+			" ├─ name: t2\n" +
+			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
+			" ├─ cacheable: true\n" +
+			" ├─ colSet: (14)\n" +
+			" ├─ tableId: 3\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [t1.pk2 as pk1]\n" +
+			"     └─ SubqueryAlias\n" +
+			"         ├─ name: t1\n" +
+			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: false\n" +
+			"         ├─ cacheable: true\n" +
+			"         ├─ colSet: (11,12)\n" +
+			"         ├─ tableId: 2\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [three_pk.pk2 as pk1, three_pk.pk3 as pk2]\n" +
+			"             └─ IndexedTableAccess(three_pk)\n" +
+			"                 ├─ index: [three_pk.pk1,three_pk.pk2,three_pk.pk3]\n" +
+			"                 ├─ filters: [{[0, 0], [0, 0], [0, 0]}]\n" +
+			"                 └─ columns: [pk1 pk2 pk3]\n" +
+			"",
+		ExpectedAnalysis: "SubqueryAlias\n" +
+			" ├─ name: t2\n" +
+			" ├─ outerVisibility: false\n" +
+			" ├─ isLateral: false\n" +
+			" ├─ cacheable: true\n" +
+			" ├─ colSet: (14)\n" +
+			" ├─ tableId: 3\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [t1.pk2 as pk1]\n" +
+			"     └─ SubqueryAlias\n" +
+			"         ├─ name: t1\n" +
+			"         ├─ outerVisibility: false\n" +
+			"         ├─ isLateral: false\n" +
+			"         ├─ cacheable: true\n" +
+			"         ├─ colSet: (11,12)\n" +
+			"         ├─ tableId: 2\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [three_pk.pk2 as pk1, three_pk.pk3 as pk2]\n" +
+			"             └─ IndexedTableAccess(three_pk)\n" +
+			"                 ├─ index: [three_pk.pk1,three_pk.pk2,three_pk.pk3]\n" +
+			"                 ├─ filters: [{[0, 0], [0, 0], [0, 0]}]\n" +
+			"                 └─ columns: [pk1 pk2 pk3]\n" +
+			"",
+	},
+	{
 		Query: `select * from three_pks_view where pk2 = 1;`,
 		ExpectedPlan: "SubqueryAlias\n" +
 			" ├─ name: three_pks_view\n" +
@@ -16504,6 +16580,88 @@ var IndexPlanTests = []QueryPlanTest{
 			"         ├─ index: [three_pks.pk1,three_pks.pk2,three_pks.pk3]\n" +
 			"         ├─ filters: [{[1, 1], [1, 1], [1, 1]}]\n" +
 			"         └─ columns: [pk1 pk2 pk3]\n" +
+			"",
+	},
+	{
+		Query: `select * from projection_view_in_view where pk = 1;`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [projection_view_in_view.pk:0!null]\n" +
+			" └─ SubqueryAlias\n" +
+			"     ├─ name: projection_view_in_view\n" +
+			"     ├─ outerVisibility: false\n" +
+			"     ├─ isLateral: false\n" +
+			"     ├─ cacheable: true\n" +
+			"     ├─ colSet: (9)\n" +
+			"     ├─ tableId: 5\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [three_pks_projection_view.pk2:1!null->pk:0]\n" +
+			"         └─ SubqueryAlias\n" +
+			"             ├─ name: three_pks_projection_view\n" +
+			"             ├─ outerVisibility: false\n" +
+			"             ├─ isLateral: false\n" +
+			"             ├─ cacheable: true\n" +
+			"             ├─ colSet: (6,7)\n" +
+			"             ├─ tableId: 3\n" +
+			"             └─ Project\n" +
+			"                 ├─ columns: [three_pks.pk2:1!null->pk1:0, three_pks.pk3:2!null->pk2:0]\n" +
+			"                 └─ IndexedTableAccess(three_pks)\n" +
+			"                     ├─ index: [three_pks.pk1,three_pks.pk2,three_pks.pk3]\n" +
+			"                     ├─ static: [{[1, 1], [1, 1], [1, 1]}]\n" +
+			"                     ├─ colSet: (1-3)\n" +
+			"                     ├─ tableId: 1\n" +
+			"                     └─ Table\n" +
+			"                         ├─ name: three_pks\n" +
+			"                         └─ columns: [pk1 pk2 pk3]\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [projection_view_in_view.pk]\n" +
+			" └─ SubqueryAlias\n" +
+			"     ├─ name: projection_view_in_view\n" +
+			"     ├─ outerVisibility: false\n" +
+			"     ├─ isLateral: false\n" +
+			"     ├─ cacheable: true\n" +
+			"     ├─ colSet: (9)\n" +
+			"     ├─ tableId: 5\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [three_pks_projection_view.pk2 as pk]\n" +
+			"         └─ SubqueryAlias\n" +
+			"             ├─ name: three_pks_projection_view\n" +
+			"             ├─ outerVisibility: false\n" +
+			"             ├─ isLateral: false\n" +
+			"             ├─ cacheable: true\n" +
+			"             ├─ colSet: (6,7)\n" +
+			"             ├─ tableId: 3\n" +
+			"             └─ Project\n" +
+			"                 ├─ columns: [three_pks.pk2 as pk1, three_pks.pk3 as pk2]\n" +
+			"                 └─ IndexedTableAccess(three_pks)\n" +
+			"                     ├─ index: [three_pks.pk1,three_pks.pk2,three_pks.pk3]\n" +
+			"                     ├─ filters: [{[1, 1], [1, 1], [1, 1]}]\n" +
+			"                     └─ columns: [pk1 pk2 pk3]\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [projection_view_in_view.pk]\n" +
+			" └─ SubqueryAlias\n" +
+			"     ├─ name: projection_view_in_view\n" +
+			"     ├─ outerVisibility: false\n" +
+			"     ├─ isLateral: false\n" +
+			"     ├─ cacheable: true\n" +
+			"     ├─ colSet: (9)\n" +
+			"     ├─ tableId: 5\n" +
+			"     └─ Project\n" +
+			"         ├─ columns: [three_pks_projection_view.pk2 as pk]\n" +
+			"         └─ SubqueryAlias\n" +
+			"             ├─ name: three_pks_projection_view\n" +
+			"             ├─ outerVisibility: false\n" +
+			"             ├─ isLateral: false\n" +
+			"             ├─ cacheable: true\n" +
+			"             ├─ colSet: (6,7)\n" +
+			"             ├─ tableId: 3\n" +
+			"             └─ Project\n" +
+			"                 ├─ columns: [three_pks.pk2 as pk1, three_pks.pk3 as pk2]\n" +
+			"                 └─ IndexedTableAccess(three_pks)\n" +
+			"                     ├─ index: [three_pks.pk1,three_pks.pk2,three_pks.pk3]\n" +
+			"                     ├─ filters: [{[1, 1], [1, 1], [1, 1]}]\n" +
+			"                     └─ columns: [pk1 pk2 pk3]\n" +
 			"",
 	},
 }

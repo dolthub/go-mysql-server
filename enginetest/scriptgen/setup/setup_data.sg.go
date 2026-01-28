@@ -118,6 +118,22 @@ var Comp_index_tablesData = []SetupScript{{
 (88,85,"[53,50]"),(89,86,"[63,79]"),(90,87,"[22,34]"),(91,87,"[57,62]"),(92,88,"[88,42]"),(93,90,"[30,67]"),(94,91,"[15,15]"),(95,93,"[7,26]"),
 (96,94,"[92,38]"),(97,95,"[89,66]"),(98,97,"[63,19]"),(99,98,"[31,21]"),(100,98,"[42,22]")`,
 	`create VECTOR INDEX v_idx on comp_vector_index_t0 (v2)`,
+	`create table three_pk (
+    pk1 tinyint,
+    pk2 tinyint,
+    pk3 tinyint,
+    c1 tinyint NOT NULL,
+    c2 tinyint NOT NULL,
+    c3 tinyint NOT NULL,
+    c4 tinyint NOT NULL,
+    c5 tinyint NOT NULL,
+    primary key (pk1, pk2, pk3)
+)`,
+	`insert into three_pk values
+    (0,0,0,0,1,2,3,4),
+    (0,1,10,20,11,12,13,14),
+    (1,0,20,40,21,22,23,24),
+    (1,1,30,60,31,32,33,34)`,
 }}
 
 var DatetimetableData = []SetupScript{{
