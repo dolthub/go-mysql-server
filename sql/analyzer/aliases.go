@@ -326,8 +326,9 @@ func normalizeExpressions(tableAliases TableAliases, projectionExpressions map[s
 }
 
 // normalizeExpression returns the expression given after normalizing it to replace table aliases with their underlying
-// names. This is necessary to match such expressions against those declared by implementors of various interfaces that
-// declare expressions to handle, such as Index.Expressions(), FilteredTable, etc.
+// names and projection aliases with their underlying expressions. This is necessary to match such expressions
+// against those declared by implementors of various interfaces that declare expressions to handle,
+// such as Index.Expressions(), FilteredTable, etc.
 func normalizeExpression(tableAliases TableAliases, projectionExpressions map[sql.ColumnId]sql.Expression, e sql.Expression) sql.Expression {
 	// If the query has table aliases, use them to replace any table aliases in column expressions
 	var tf transform.ExprFunc

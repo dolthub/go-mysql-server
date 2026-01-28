@@ -249,6 +249,8 @@ func pushdownFiltersToAboveTable(
 	if tableFilters := filters.availableFiltersForTable(ctx, tableNode.Name()); len(tableFilters) > 0 {
 		filters.markFiltersHandled(tableFilters...)
 		for i, filter := range tableFilters {
+			// If a filter contains a reference to a projection alias, pushing the filter will move it below the
+			// Project node. We need to replace the reference with the underlying expression.
 			tableFilters[i], _, _ = transform.Expr(filter, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				if gt, ok := e.(*expression.GetField); ok {
 					if aliasedExpression, ok := filters.projectionExpressions[gt.Id()]; ok {
@@ -303,6 +305,8 @@ func pushdownFiltersUnderSubqueryAlias(ctx *sql.Context, a *Analyzer, sa *plan.S
 	for i, h := range handled {
 		var tf transform.ExprFunc
 		tf = func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			// If a filter contains a reference to a projection alias, pushing the filter will move it below the
+			// Project node. We need to replace the reference with the underlying expression.
 			if gt, ok := e.(*expression.GetField); ok {
 				if aliasedExpression, ok := filters.projectionExpressions[gt.Id()]; ok {
 					return transform.Expr(aliasedExpression, tf)
