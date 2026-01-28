@@ -1,5 +1,7 @@
 name: Test
 on: [pull_request]
+permissions:
+  contents: read
 
 concurrency:
   group: test-${{ github.event.pull_request.number || github.ref }}
