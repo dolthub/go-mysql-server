@@ -179,14 +179,14 @@ func TestExprToTableFilters(t *testing.T) {
 		},
 	}
 
-	filters := exprToTableFilters(expr, nil)
+	filters := exprToTableFilters(expr, nil, nil)
 	assert.Equal(t, expected, filters)
 
 	// Test various complex conditions -- anytime we can't neatly split the expressions into tables
 	filters = exprToTableFilters(expression.NewAnd(
 		lit(0),
 		expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
-	), nil)
+	), nil, nil)
 	expected = filtersByTable{
 		"mytable": []sql.Expression{
 			expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
@@ -197,7 +197,7 @@ func TestExprToTableFilters(t *testing.T) {
 	filters = exprToTableFilters(expression.NewAnd(
 		expression.NewLiteral(nil, types.Null),
 		expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
-	), nil)
+	), nil, nil)
 	expected = filtersByTable{
 		"mytable": []sql.Expression{
 			expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
@@ -208,7 +208,7 @@ func TestExprToTableFilters(t *testing.T) {
 	filters = exprToTableFilters(expression.NewAnd(
 		expression.NewEquals(lit(1), mustExpr(function.NewRand())),
 		expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
-	), nil)
+	), nil, nil)
 	expected = filtersByTable{
 		"mytable": []sql.Expression{
 			expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
@@ -219,7 +219,7 @@ func TestExprToTableFilters(t *testing.T) {
 	filters = exprToTableFilters(expression.NewOr(
 		expression.NewLiteral(nil, types.Null),
 		expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
-	), nil)
+	), nil, nil)
 	expected = filtersByTable{
 		"mytable": []sql.Expression{
 			expression.NewOr(
@@ -239,7 +239,7 @@ func TestExprToTableFilters(t *testing.T) {
 			expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
 			expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable2", "i", false),
 		),
-	), nil)
+	), nil, nil)
 	expected = filtersByTable{
 		"mytable": []sql.Expression{
 			eq(

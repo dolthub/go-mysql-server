@@ -335,7 +335,7 @@ func normalizeExpression(tableAliases TableAliases, projectionExpressions map[sq
 		if field, ok := e.(*expression.GetField); ok {
 			table := strings.ToLower(field.Table())
 			if aliasedExpr, ok := projectionExpressions[field.Id()]; ok {
-				return transform.Expr(e, aliasedExpr)
+				return transform.Expr(aliasedExpr, tf)
 			}
 			if rt, ok, _ := tableAliases.resolveName(table); ok {
 				return field.WithTable(strings.ToLower(rt.Name())).WithName(strings.ToLower(field.Name())), transform.NewTree, nil

@@ -42,12 +42,12 @@ func (f filtersByTable) size() int {
 
 // getFiltersByTable returns a map of table name to filter expressions on that table for the node provided. Any
 // predicates that contain no table or more than one table are not included in the result.
-func getFiltersByTable(n sql.Node, scope *plan.Scope) filtersByTable {
+func getFiltersByTable(n sql.Node, scope *plan.Scope, projectedExpressions map[sql.ColumnId]sql.Expression) filtersByTable {
 	filters := newFiltersByTable()
 	transform.InspectWithOpaque(n, func(node sql.Node) bool {
 		switch node := node.(type) {
 		case *plan.Filter:
-			fs := exprToTableFilters(node.Expression, scope)
+			fs := exprToTableFilters(node.Expression, scope, projectedExpressions)
 			filters.merge(fs)
 		}
 		if o, ok := node.(sql.OpaqueNode); ok {
@@ -62,18 +62,23 @@ func getFiltersByTable(n sql.Node, scope *plan.Scope) filtersByTable {
 // exprToTableFilters returns a map of table name to filter expressions on that table for all parts of the expression
 // given, split at AND. Any expressions that contain subquerys, or refer to more than one table, are not included in
 // the result.
-func exprToTableFilters(expr sql.Expression, scope *plan.Scope) filtersByTable {
+func exprToTableFilters(expr sql.Expression, scope *plan.Scope, projectionExpressions map[sql.ColumnId]sql.Expression) filtersByTable {
 	filters := newFiltersByTable()
 	for _, expr := range expression.SplitConjunction(expr) {
 		var seenTables = make(map[string]bool)
 		var lastTable string
 		hasSubquery := false
-		sql.Inspect(expr, func(e sql.Expression) bool {
+		var findGetFields func(sql.Expression) bool
+		findGetFields = func(e sql.Expression) bool {
 			f, ok := e.(*expression.GetField)
 			if ok {
 				// A GetField that resolves to an outer scope or lateral scope
 				// is effectively constant and can be skipped.
 				if scope.Correlated().Contains(f.Id()) {
+					return true
+				}
+				if projectionExpression, ok := projectionExpressions[f.Id()]; ok {
+					sql.Inspect(projectionExpression, findGetFields)
 					return true
 				}
 				if !seenTables[f.Table()] {
@@ -86,7 +91,8 @@ func exprToTableFilters(expr sql.Expression, scope *plan.Scope) filtersByTable {
 			}
 
 			return true
-		})
+		}
+		sql.Inspect(expr, findGetFields)
 
 		if len(seenTables) == 1 && !hasSubquery {
 			filters[lastTable] = append(filters[lastTable], expr)
@@ -97,20 +103,22 @@ func exprToTableFilters(expr sql.Expression, scope *plan.Scope) filtersByTable {
 }
 
 type filterSet struct {
-	filtersByTable      filtersByTable
-	tableAliases        TableAliases
-	filterPredicates    []sql.Expression
-	handledFilters      []sql.Expression
-	handledIndexFilters []string
+	filtersByTable        filtersByTable
+	tableAliases          TableAliases
+	projectionExpressions map[sql.ColumnId]sql.Expression
+	filterPredicates      []sql.Expression
+	handledFilters        []sql.Expression
+	handledIndexFilters   []string
 }
 
 // newFilterSet returns a new filter set that will track available filters with the filters and aliases given. Aliases
 // are necessary to normalize expressions from indexes when in the presence of aliases.
-func newFilterSet(filter sql.Expression, filtersByTable filtersByTable, tableAliases TableAliases) *filterSet {
+func newFilterSet(filter sql.Expression, filtersByTable filtersByTable, tableAliases TableAliases, projectionExpressions map[sql.ColumnId]sql.Expression) *filterSet {
 	return &filterSet{
-		filterPredicates: expression.SplitConjunction(filter),
-		filtersByTable:   filtersByTable,
-		tableAliases:     tableAliases,
+		filterPredicates:      expression.SplitConjunction(filter),
+		filtersByTable:        filtersByTable,
+		tableAliases:          tableAliases,
+		projectionExpressions: projectionExpressions,
 	}
 }
 
@@ -180,7 +188,7 @@ func (fs *filterSet) subtractUsedIndexes(ctx *sql.Context, all []sql.Expression)
 	// Careful: index expressions are always normalized (contain actual table names), whereas filter expressions can
 	// contain aliases for both expressions and table names. We want to normalize all expressions for comparison, but
 	// return the original expressions.
-	normalized := normalizeExpressions(fs.tableAliases, all...)
+	normalized := normalizeExpressions(fs.tableAliases, fs.projectionExpressions, all...)
 
 	for i, e := range normalized {
 		var found bool
