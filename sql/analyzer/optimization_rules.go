@@ -294,8 +294,22 @@ func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel Ru
 			}
 			return e.WithQuery(newQ), transform.NewTree, nil
 		case *expression.Between:
-			// TODO: if e.Lower and e.Upper refer to the same field, simplify to Equals(e.Val, e.Lower)
-			// TODO: if e.Val is the same field as e.Lower and e.Upper, simplify to true
+			if lowerField, ok := e.Lower.(*expression.GetField); ok {
+				if upperField, ok := e.Upper.(*expression.GetField); ok {
+					if strings.EqualFold(lowerField.Table(), upperField.Table()) &&
+						strings.EqualFold(lowerField.Name(), upperField.Name()) {
+						if valField, ok := e.Val.(*expression.GetField); ok &&
+							strings.EqualFold(valField.Table(), lowerField.Table()) &&
+							strings.EqualFold(valField.Name(), lowerField.Name()) {
+							// If e.Lower, e.Upper, and e.Val all refer to the same field, Between will always evaluate
+							// to true
+							return expression.NewLiteral(true, types.Boolean), transform.NewTree, nil
+						}
+						// If e.Lower and e.Upper refer to the same field, Between can be simplified to Equals
+						return expression.NewEquals(e.Lower, e.Val), transform.NewTree, nil
+					}
+				}
+			}
 
 			// TODO: Can be evaluated to true/false if e.Val, e.Lower, and e.Upper are all Literals.
 			//  If e.Lower and e.Upper are both Literals:
