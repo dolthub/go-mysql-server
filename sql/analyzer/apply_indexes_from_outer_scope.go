@@ -190,7 +190,7 @@ func createIndexKeyExpr(ctx *sql.Context, idx sql.Index, joinExprs []*joinColExp
 	idxExpressions := idx.Expressions()
 	normalizedJoinExprStrs := make([]string, len(joinExprs))
 	for i := range joinExprs {
-		normalizedJoinExprStrs[i] = normalizeExpression(tableAliases, joinExprs[i].colExpr).String()
+		normalizedJoinExprStrs[i] = normalizeExpression(tableAliases, nil, joinExprs[i].colExpr).String()
 	}
 	if ok, prefixCount := exprsAreIndexSubset(normalizedJoinExprStrs, idxExpressions); !ok || prefixCount != len(normalizedJoinExprStrs) {
 		return nil, nil, nil
@@ -260,7 +260,7 @@ func getSubqueryIndexes(
 		indexCols := exprsByTable[scopeTable]
 		if indexCols != nil {
 			col := indexCols[0].comparandCol
-			idx := ia.MatchingIndex(ctx, col.Table(), col.Database(), normalizeExpressions(tableAliases, extractComparands(indexCols)...)...)
+			idx := ia.MatchingIndex(ctx, col.Table(), col.Database(), normalizeExpressions(tableAliases, nil, extractComparands(indexCols)...)...)
 			if idx != nil {
 				result[indexCols[0].comparandCol.Table()] = idx
 			}
