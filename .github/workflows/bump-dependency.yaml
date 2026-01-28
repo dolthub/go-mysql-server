@@ -1,5 +1,10 @@
 name: Bump Deps
 
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
 on:
   repository_dispatch:
     types: [ bump-dependency ]
