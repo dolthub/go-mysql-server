@@ -223,10 +223,18 @@ func (db *MySQLDb) AddRootAccount() {
 
 // AddSuperUser adds the given username and password to the list of accounts. This is a temporary function, which is
 // meant to replace the "auth.New..." functions while the remaining functions are added.
+//
+// SECURITY NOTE: This function uses SHA1 as required by MySQL's mysql_native_password protocol.
+// SHA1 is cryptographically weak and should not be used for new implementations.
+// Consider using caching_sha2_password or a custom PlaintextAuthPlugin with stronger hashing (e.g., bcrypt, argon2)
+// for production environments. This implementation is provided for MySQL protocol compatibility.
+//
+// Deprecated: Use more secure authentication plugins instead of mysql_native_password.
 func (db *MySQLDb) AddSuperUser(username string, host string, password string) {
 	//TODO: remove this function and the called function
 	db.Enabled = true
 	if len(password) > 0 {
+		// #nosec G401 - SHA1 required for MySQL mysql_native_password protocol compatibility
 		hash := sha1.New()
 		hash.Write([]byte(password))
 		s1 := hash.Sum(nil)
@@ -688,6 +696,8 @@ func columnTemplate(name string, source string, isPk bool, template *sql.Column)
 }
 
 // validateMysqlNativePassword was taken directly from vitess and validates the password hash for "mysql_native_password".
+// NOTE: This implements MySQL's mysql_native_password protocol which uses SHA1. This is a MySQL protocol requirement,
+// not a design choice. For better security, use caching_sha2_password or custom authentication plugins.
 func validateMysqlNativePassword(authResponse, salt []byte, mysqlNativePassword string) bool {
 	// SERVER: recv(authResponse)
 	// 		   hash_stage1=xor(authResponse, sha1(salt,hash))
@@ -706,6 +716,7 @@ func validateMysqlNativePassword(authResponse, salt []byte, mysqlNativePassword 
 	}
 
 	// scramble = SHA1(salt+hash)
+	// #nosec G401 - SHA1 required for MySQL mysql_native_password protocol compatibility
 	crypt := sha1.New()
 	crypt.Write(salt)
 	crypt.Write(hash)
