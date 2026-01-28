@@ -1,5 +1,5 @@
 {
-    "name": "go-mysql-server php test",
+    "name": "go-mysql-server/php-test",
     "description": "go-mysql-server php test for compatibility",
     "autoload": {
         "classmap": [
