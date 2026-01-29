@@ -232,7 +232,8 @@ func (u *updateJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 		tableToNewRowMap := plan.SplitRowIntoTableRowMap(newJoinRow, u.joinSchema)
 
 		for tableName, _ := range u.updaters {
-			oldTableRow := tableToOldRowMap[strings.ToLower(tableName)]
+			tableName = strings.ToLower(tableName)
+			oldTableRow := tableToOldRowMap[tableName]
 
 			// Handle the case of row being ignored due to it not being valid in the join row.
 			if isRightOrLeftJoin(u.joinNode) {
