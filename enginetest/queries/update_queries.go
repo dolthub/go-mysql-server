@@ -692,6 +692,24 @@ t1.oid = t2.pid;`,
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/10385
+		Name:    "UPDATE JOIN - tables with capitalized names",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table Items(ItemID char(38) NOT NULL primary key, Version int)",
+			"insert into Items values ('1234', 1)",
+			"create table Items2(ItemID char(38) NOT NULL primary key, Version int)",
+			"insert into Items2 values ('1234', 2)",
+			"UPDATE Items INNER JOIN Items2 ON (Items.ItemID = Items2.ItemID) SET Items.Version = Items2.Version WHERE Items.Version != Items2.Version",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from Items",
+				Expected: []sql.Row{{"1234", 2}},
+			},
+		},
+	},
 }
 
 var SpatialUpdateTests = []WriteQueryTest{
