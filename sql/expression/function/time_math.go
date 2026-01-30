@@ -689,6 +689,7 @@ func (t *TimestampDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	case "week":
 		res = int64(diff.Hours() / (24 * 7))
 	case "month":
+		// TODO: this calculation is not correct. Not every month is 30 days https://github.com/dolthub/dolt/issues/10393
 		res = int64(diff.Hours() / (24 * 30))
 		if res > 0 {
 			if date2.Day()-date1.Day() < 0 {
@@ -702,6 +703,7 @@ func (t *TimestampDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 			}
 		}
 	case "quarter":
+		// TODO: this calculation is not correct. Not every month is 30 days https://github.com/dolthub/dolt/issues/10393
 		monthRes := int64(diff.Hours() / (24 * 30))
 		if monthRes > 0 {
 			if date2.Day()-date1.Day() < 0 {
@@ -716,25 +718,42 @@ func (t *TimestampDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		}
 		res = monthRes / 3
 	case "year":
-		yearRes := int64(diff.Hours() / (24 * 365))
-		if yearRes > 0 {
-			monthRes := int64(diff.Hours() / (24 * 30))
-			if monthRes > 0 {
-				if date2.Day()-date1.Day() < 0 {
-					monthRes -= 1
-				} else if date2.Hour()-date1.Hour() < 0 {
-					monthRes -= 1
-				} else if date2.Minute()-date1.Minute() < 0 {
-					monthRes -= 1
-				} else if date2.Second()-date1.Second() < 0 {
-					monthRes -= 1
-				}
-			}
-			res = monthRes / 12
-		} else {
-			res = yearRes
+		if diff == 0 {
+			return 0, nil
+		}
+		negate := false
+		before := date1
+		after := date2
+		if diff < 0 {
+			negate = true
+			before = date2
+			after = date1
 		}
 
+		beforeYear, beforeMonth, beforeDay := before.Date()
+		afterYear, afterMonth, afterDay := after.Date()
+		yearDiff := afterYear - beforeYear
+		if beforeMonth > afterMonth {
+			yearDiff -= 1
+		} else if beforeMonth == afterMonth {
+			if beforeDay > afterDay {
+				yearDiff -= 1
+			} else if beforeDay == afterDay {
+				beforeHour, beforeMin, beforeSec := before.Clock()
+				afterHour, afterMin, afterSec := after.Clock()
+				secondDiff := (afterHour-beforeHour)*3600 + (afterMin-beforeMin)*60 + (afterSec - beforeSec)
+				if secondDiff < 0 {
+					yearDiff -= 1
+				} else if secondDiff == 0 && before.Nanosecond() > after.Nanosecond() {
+					yearDiff -= 1
+				}
+			}
+		}
+
+		res = int64(yearDiff)
+		if negate {
+			res = -res
+		}
 	default:
 		return nil, errors.NewKind("invalid interval unit: %s").New(unit)
 	}

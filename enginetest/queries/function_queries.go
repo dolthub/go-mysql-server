@@ -911,7 +911,31 @@ var FunctionQueryTests = []QueryTest{
 		Query:    "SELECT TIMESTAMPDIFF(SECOND, null, '2007-12-31 00:00:00');",
 		Expected: []sql.Row{{nil}},
 	},
-
+	// https://github.com/dolthub/dolt/issues/10393
+	{
+		Query:    "SELECT TIMESTAMPDIFF(YEAR, DATE '2011-07-05', DATE '2026-07-04')",
+		Expected: []sql.Row{{14}},
+	},
+	{
+		Query:    "SELECT TIMESTAMPDIFF(YEAR, DATE '2026-07-04', DATE '2011-07-05')",
+		Expected: []sql.Row{{-14}},
+	},
+	{
+		Query:    "SELECT TIMESTAMPDIFF(YEAR, DATE '2026-07-05', DATE '2026-07-04')",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "SELECT TIMESTAMPDIFF(YEAR, DATE '2026-07-04', DATE '2026-07-05')",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "SELECT TIMESTAMPDIFF(YEAR, DATE '2025-07-04', DATE '2026-07-03')",
+		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    "SELECT TIMESTAMPDIFF(YEAR, DATE '2026-07-03', DATE '2025-07-04')",
+		Expected: []sql.Row{{0}},
+	},
 	// TRIM Function Tests
 	{
 		Query:    `SELECT TRIM(mytable.s) AS s FROM mytable`,
