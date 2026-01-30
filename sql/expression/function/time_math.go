@@ -689,7 +689,7 @@ func (t *TimestampDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	case "week":
 		res = int64(diff.Hours() / (24 * 7))
 	case "month":
-		// TODO: this calculation is not correct. Not every month is 30 days
+		// TODO: this calculation is not correct. Not every month is 30 days https://github.com/dolthub/dolt/issues/10393
 		res = int64(diff.Hours() / (24 * 30))
 		if res > 0 {
 			if date2.Day()-date1.Day() < 0 {
@@ -703,7 +703,7 @@ func (t *TimestampDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 			}
 		}
 	case "quarter":
-		// TODO: this calculation is not correct. Not every month is 30 days
+		// TODO: this calculation is not correct. Not every month is 30 days https://github.com/dolthub/dolt/issues/10393
 		monthRes := int64(diff.Hours() / (24 * 30))
 		if monthRes > 0 {
 			if date2.Day()-date1.Day() < 0 {
@@ -730,22 +730,26 @@ func (t *TimestampDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 			after = date1
 		}
 
-		yearDiff := after.Year() - before.Year()
-		beforeYearDay := before.YearDay()
-		afterYearDay := after.YearDay()
-		if beforeYearDay > afterYearDay {
+		beforeYear, beforeMonth, beforeDay := before.Date()
+		afterYear, afterMonth, afterDay := after.Date()
+		yearDiff := afterYear - beforeYear
+		if beforeMonth > afterMonth {
 			yearDiff -= 1
-		} else if beforeYearDay == afterYearDay {
-			beforeHour, beforeMin, beforeSec := before.Clock()
-			afterHour, afterMin, afterSec := after.Clock()
-			secondDiff := (afterHour-beforeHour)*3600 + (afterMin-beforeMin)*60 + (afterSec - beforeSec)
-			if secondDiff < 0 {
+		} else if beforeMonth == afterMonth {
+			if beforeDay > afterDay {
 				yearDiff -= 1
-			} else if secondDiff == 0 && before.Nanosecond() > after.Nanosecond() {
-				yearDiff -= 1
+			} else if beforeDay == afterDay {
+				beforeHour, beforeMin, beforeSec := before.Clock()
+				afterHour, afterMin, afterSec := after.Clock()
+				secondDiff := (afterHour-beforeHour)*3600 + (afterMin-beforeMin)*60 + (afterSec - beforeSec)
+				if secondDiff < 0 {
+					yearDiff -= 1
+				} else if secondDiff == 0 && before.Nanosecond() > after.Nanosecond() {
+					yearDiff -= 1
+				}
 			}
 		}
-		
+
 		res = int64(yearDiff)
 		if negate {
 			res = -res
