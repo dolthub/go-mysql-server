@@ -201,7 +201,7 @@ func (b *BaseBuilder) buildDropTable(ctx *sql.Context, n *plan.DropTable, _ sql.
 	var curdb sql.Database
 
 	if b.EngineOverrides.Hooks.DropTable.PreSQLExecution != nil {
-		nn, err := b.EngineOverrides.Hooks.DropTable.PreSQLExecution(ctx, n)
+		nn, err := b.EngineOverrides.Hooks.DropTable.PreSQLExecution(ctx, b.Runner, n)
 		if err != nil {
 			return nil, err
 		}
@@ -274,7 +274,7 @@ func (b *BaseBuilder) buildDropTable(ctx *sql.Context, n *plan.DropTable, _ sql.
 	}
 
 	if b.EngineOverrides.Hooks.DropTable.PostSQLExecution != nil {
-		if err = b.EngineOverrides.Hooks.DropTable.PostSQLExecution(ctx, n); err != nil {
+		if err = b.EngineOverrides.Hooks.DropTable.PostSQLExecution(ctx, b.Runner, n); err != nil {
 			return nil, err
 		}
 	}

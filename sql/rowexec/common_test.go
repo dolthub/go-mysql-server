@@ -29,7 +29,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-var DefaultBuilder = NewBuilder(nil, sql.EngineOverrides{}).(*BaseBuilder)
+var DefaultBuilder = NewBuilder(nil, sql.EngineOverrides{})
 
 func newContext(provider *memory.DbProvider) *sql.Context {
 	return sql.NewContext(context.Background(), sql.WithSession(memory.NewSession(sql.NewBaseSession(), provider)))

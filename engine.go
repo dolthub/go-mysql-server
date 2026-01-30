@@ -198,6 +198,7 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 	}
 	ret.ReadOnly.Store(cfg.IsReadOnly)
 	a.Runner = ret
+	a.ExecBuilder.Runner = ret
 	return ret
 }
 

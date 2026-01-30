@@ -592,6 +592,7 @@ func TestTableFunctions(t *testing.T) {
 	harness = harness.WithProvider(engine.Analyzer.Catalog.DbProvider)
 
 	engine.EngineAnalyzer().ExecBuilder = rowexec.NewBuilder(nil, sql.EngineOverrides{})
+	engine.EngineAnalyzer().ExecBuilder.Runner = engine
 
 	engine, err := enginetest.RunSetupScripts(harness.NewContext(), engine, setup.MydbData, true)
 	require.NoError(t, err)

@@ -294,7 +294,7 @@ type Analyzer struct {
 	// Parser is the parser used to parse SQL statements.
 	Parser sql.Parser
 	// ExecBuilder converts a sql.Node tree into an executable iterator.
-	ExecBuilder sql.NodeExecBuilder
+	ExecBuilder *rowexec.BaseBuilder
 	// Runner represents the engine, which is represented as a separate interface to work around circular dependencies
 	Runner sql.StatementRunner
 	// SchemaFormatter is used to format the schema of a node to a string.
