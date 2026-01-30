@@ -745,7 +745,7 @@ func (t *TimestampDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 				yearDiff -= 1
 			}
 		}
-		
+
 		res = int64(yearDiff)
 		if negate {
 			res = -res
