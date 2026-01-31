@@ -990,7 +990,7 @@ var FunctionQueryTests = []QueryTest{
 		Query:    "select timestampdiff(quarter, '0000-01-01', '9999-12-31 23:59:59.999999');",
 		Expected: []sql.Row{{39999}},
 	},
-	// TIMESTAMPDIFF tests for timestamp differences // https://github.com/dolthub/dolt/issues/10397
+	// TIMESTAMPDIFF tests for large timestamp differences // https://github.com/dolthub/dolt/issues/10397
 	// 0000-03-01 is used here instead of 0000-01-01 because 0000 is a leap year in Go (ie 0000-02-29 is a valid date),
 	// but not in MySQL. As a result, date differences between any day before 0000-02-29 and any after are off by one
 	// day.
