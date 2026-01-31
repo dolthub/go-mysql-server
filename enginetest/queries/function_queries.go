@@ -990,35 +990,33 @@ var FunctionQueryTests = []QueryTest{
 		Query:    "select timestampdiff(quarter, '0000-01-01', '9999-12-31 23:59:59.999999');",
 		Expected: []sql.Row{{39999}},
 	},
+	// TIMESTAMPDIFF tests for timestamp differences // https://github.com/dolthub/dolt/issues/10397
+	// 0000-03-01 is used here instead of 0000-01-01 because 0000 is a leap year in Go (ie 0000-02-29 is a valid date),
+	// but not in MySQL. As a result, date differences between any day before 0000-02-29 and any after are off by one
+	// day.
 	{
-		// https://github.com/dolthub/dolt/issues/10397
-		Query:    "select timestampdiff(microsecond, '0001-01-01', '9999-12-31 23:59:59.999999');",
-		Expected: []sql.Row{{315537897599999999}},
+		Query:    "select timestampdiff(microsecond, '0000-03-01', '9999-12-31 23:59:59.999999');",
+		Expected: []sql.Row{{315564335999999999}},
 	},
 	{
-		// https://github.com/dolthub/dolt/issues/10397
-		Query:    "select timestampdiff(second, '0001-01-01', '9999-12-31 23:59:59.999999');",
-		Expected: []sql.Row{{315537897599}},
+		Query:    "select timestampdiff(second, '0000-03-01', '9999-12-31 23:59:59.999999');",
+		Expected: []sql.Row{{315564335999}},
 	},
 	{
-		// https://github.com/dolthub/dolt/issues/10397
-		Query:    "select timestampdiff(minute, '0001-01-01', '9999-12-31 23:59:59.999999');",
-		Expected: []sql.Row{{5258964959}},
+		Query:    "select timestampdiff(minute, '0000-03-01', '9999-12-31 23:59:59.999999');",
+		Expected: []sql.Row{{5259405599}},
 	},
 	{
-		// https://github.com/dolthub/dolt/issues/10397
-		Query:    "select timestampdiff(hour, '0001-01-01', '9999-12-31 23:59:59.999999');",
-		Expected: []sql.Row{{87649415}},
+		Query:    "select timestampdiff(hour, '0000-03-01', '9999-12-31 23:59:59.999999');",
+		Expected: []sql.Row{{87656759}},
 	},
 	{
-		// https://github.com/dolthub/dolt/issues/10397
-		Query:    "select timestampdiff(day, '0001-01-01', '9999-12-31 23:59:59.999999');",
-		Expected: []sql.Row{{3652058}},
+		Query:    "select timestampdiff(day, '0000-03-01', '9999-12-31 23:59:59.999999');",
+		Expected: []sql.Row{{3652364}},
 	},
 	{
-		// https://github.com/dolthub/dolt/issues/10397
-		Query:    "select timestampdiff(week, '0001-01-01', '9999-12-31 23:59:59.999999');",
-		Expected: []sql.Row{{521722}},
+		Query:    "select timestampdiff(week, '0000-03-01', '9999-12-31 23:59:59.999999');",
+		Expected: []sql.Row{{521766}},
 	},
 	// TRIM Function Tests
 	{
