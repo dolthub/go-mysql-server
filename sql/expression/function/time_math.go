@@ -676,22 +676,20 @@ func (t *TimestampDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 		return 0, nil
 	}
 
-	diff := date2.Sub(date1)
-
 	var res int64
 	switch unit {
 	case "microsecond":
-		res = diff.Microseconds()
+		res = microsecondsDiff(date1, date2)
 	case "second":
-		res = int64(diff.Seconds())
+		res = microsecondsDiff(date1, date2) / 1000000
 	case "minute":
-		res = int64(diff.Minutes())
+		res = microsecondsDiff(date1, date2) / (1000000 * 60)
 	case "hour":
-		res = int64(diff.Hours())
+		res = microsecondsDiff(date1, date2) / (1000000 * 60 * 60)
 	case "day":
-		res = int64(diff.Hours() / 24)
+		res = microsecondsDiff(date1, date2) / (1000000 * 60 * 60 * 24)
 	case "week":
-		res = int64(diff.Hours() / (24 * 7))
+		res = microsecondsDiff(date1, date2) / (1000000 * 60 * 60 * 24 * 7)
 	case "month":
 		res = monthsDiff(date1, date2)
 	case "quarter":
@@ -734,4 +732,8 @@ func monthsDiff(date1, date2 time.Time) int64 {
 	}
 
 	return int64(sign) * (int64(yearDiff*12) + monthDiff)
+}
+
+func microsecondsDiff(date1, date2 time.Time) int64 {
+	return date2.UnixMicro() - date1.UnixMicro()
 }
