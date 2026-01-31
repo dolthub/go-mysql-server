@@ -49,6 +49,8 @@ var (
 	// datetimeTypeMaxDatetime is the maximum representable Datetime/Date value. MYSQL: 9999-12-31 23:59:59.499999 (microseconds)
 	datetimeTypeMaxDatetime = time.Date(9999, 12, 31, 23, 59, 59, 499999000, time.UTC)
 
+	// TODO: This isn't true. Consider getting rid of or updating this var. It's only used in MinimumTime, which is only
+	// used for testing purposes
 	// datetimeTypeMinDatetime is the minimum representable Datetime/Date value. MYSQL: 1000-01-01 00:00:00.000000 (microseconds)
 	datetimeTypeMinDatetime = time.Date(1000, 1, 1, 0, 0, 0, 0, time.UTC)
 
@@ -57,11 +59,6 @@ var (
 
 	// datetimeTypeMinTimestamp is the minimum representable Timestamp value, MYSQL: 1970-01-01 00:00:01.000000 (microseconds)
 	datetimeTypeMinTimestamp = time.Unix(1, 0).UTC()
-
-	datetimeTypeMaxDate = time.Date(9999, 12, 31, 0, 0, 0, 0, time.UTC)
-
-	// datetimeTypeMinDate is the minimum representable Date value, MYSQL: 1000-01-01 00:00:00.000000 (microseconds)
-	datetimeTypeMinDate = time.Date(1000, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	// The MAX and MIN are extrapolated from commit ff05628a530 in the MySQL source code from my_time.cc
 	// datetimeMaxTime is the maximum representable time value, MYSQL: 9999-12-31 23:59:59.999999 (microseconds)
@@ -173,7 +170,7 @@ func (t datetimeType) Compare(ctx context.Context, a interface{}, b interface{})
 			return 0, err
 		}
 	} else if t.baseType == sqltypes.Date {
-		at = at.Truncate(24 * time.Hour)
+		at = at.Truncate(sql.DayDuration)
 	}
 	if bt, ok = b.(time.Time); !ok {
 		bt, err = ConvertToTime(ctx, b, t)
@@ -182,7 +179,7 @@ func (t datetimeType) Compare(ctx context.Context, a interface{}, b interface{})
 		}
 
 	} else if t.baseType == sqltypes.Date {
-		bt = bt.Truncate(24 * time.Hour)
+		bt = bt.Truncate(sql.DayDuration)
 	}
 
 	if at.Before(bt) {
@@ -238,21 +235,14 @@ func ConvertToTime(ctx context.Context, v interface{}, t datetimeType) (time.Tim
 		res = res.Round(time.Microsecond)
 	}
 
-	if t == DatetimeMaxRange {
-		validated := ValidateTime(res)
-		if validated == nil {
-			return time.Time{}, ErrConvertingToTimeOutOfRange.New(v, t)
-		}
-		return validated.(time.Time), err
-	}
-
+	year := res.Year()
 	switch t.baseType {
 	case sqltypes.Date:
-		if res.Year() < 0 || res.Year() > 9999 {
+		if year < 0 || year > 9999 {
 			return time.Time{}, ErrConvertingToTimeOutOfRange.New(res.Format(sql.DateLayout), t.String())
 		}
 	case sqltypes.Datetime:
-		if res.Year() < 0 || res.Year() > 9999 {
+		if year < 0 || year > 9999 {
 			return time.Time{}, ErrConvertingToTimeOutOfRange.New(res.Format(sql.TimestampDatetimeLayout), t.String())
 		}
 	case sqltypes.Timestamp:
@@ -379,7 +369,7 @@ func (t datetimeType) ConvertWithoutRangeCheck(ctx context.Context, v interface{
 	}
 
 	if t.baseType == sqltypes.Date {
-		res = res.Truncate(24 * time.Hour)
+		res = res.Truncate(sql.DayDuration)
 	}
 
 	return res, err
