@@ -669,10 +669,10 @@ func (t *TimestampDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 
 	unit = strings.TrimPrefix(strings.ToLower(unit.(string)), "sql_tsi_")
 
-	date1 := expr1.(time.Time)
-	date2 := expr2.(time.Time)
+	time1 := expr1.(time.Time)
+	time2 := expr2.(time.Time)
 
-	diff := date2.Sub(date1)
+	diff := time2.Sub(time1)
 
 	var res int64
 	switch unit {
@@ -689,74 +689,58 @@ func (t *TimestampDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	case "week":
 		res = int64(diff.Hours() / (24 * 7))
 	case "month":
-		// TODO: this calculation is not correct. Not every month is 30 days https://github.com/dolthub/dolt/issues/10393
-		res = int64(diff.Hours() / (24 * 30))
-		if res > 0 {
-			if date2.Day()-date1.Day() < 0 {
-				res -= 1
-			} else if date2.Hour()-date1.Hour() < 0 {
-				res -= 1
-			} else if date2.Minute()-date1.Minute() < 0 {
-				res -= 1
-			} else if date2.Second()-date1.Second() < 0 {
-				res -= 1
-			}
-		}
+		res = dateDiff(time1, time2, false)
 	case "quarter":
-		// TODO: this calculation is not correct. Not every month is 30 days https://github.com/dolthub/dolt/issues/10393
-		monthRes := int64(diff.Hours() / (24 * 30))
-		if monthRes > 0 {
-			if date2.Day()-date1.Day() < 0 {
-				monthRes -= 1
-			} else if date2.Hour()-date1.Hour() < 0 {
-				monthRes -= 1
-			} else if date2.Minute()-date1.Minute() < 0 {
-				monthRes -= 1
-			} else if date2.Second()-date1.Second() < 0 {
-				monthRes -= 1
-			}
-		}
-		res = monthRes / 3
+		res = dateDiff(time1, time2, false) / 3
 	case "year":
-		if diff == 0 {
-			return 0, nil
-		}
-		negate := false
-		before := date1
-		after := date2
-		if diff < 0 {
-			negate = true
-			before = date2
-			after = date1
-		}
-
-		beforeYear, beforeMonth, beforeDay := before.Date()
-		afterYear, afterMonth, afterDay := after.Date()
-		yearDiff := afterYear - beforeYear
-		if beforeMonth > afterMonth {
-			yearDiff -= 1
-		} else if beforeMonth == afterMonth {
-			if beforeDay > afterDay {
-				yearDiff -= 1
-			} else if beforeDay == afterDay {
-				beforeHour, beforeMin, beforeSec := before.Clock()
-				afterHour, afterMin, afterSec := after.Clock()
-				secondDiff := (afterHour-beforeHour)*3600 + (afterMin-beforeMin)*60 + (afterSec - beforeSec)
-				if secondDiff < 0 {
-					yearDiff -= 1
-				} else if secondDiff == 0 && before.Nanosecond() > after.Nanosecond() {
-					yearDiff -= 1
-				}
-			}
-		}
-
-		res = int64(yearDiff)
-		if negate {
-			res = -res
-		}
+		res = dateDiff(time1, time2, true)
 	default:
 		return nil, errors.NewKind("invalid interval unit: %s").New(unit)
 	}
 
 	return res, nil
+}
+
+// dateDiff calculates the difference between two time.Times based on their Date and Clock values. If yearDiff is set
+// to true, dateDiff returns the difference in number of full years. Otherwise, dateDiff returns the difference in
+// number of full months.
+func dateDiff(date1, date2 time.Time, yearDiff bool) int64 {
+	compare := date1.Compare(date2)
+	if compare == 0 {
+		return 0
+	}
+	sign := 1
+	before := date1
+	after := date2
+	if compare > 0 {
+		sign = -1
+		before = date2
+		after = date1
+	}
+
+	beforeYear, beforeMonth, beforeDay := before.Date()
+	afterYear, afterMonth, afterDay := after.Date()
+
+	checkDayClock := !yearDiff || afterMonth == beforeMonth
+	res := int64(afterYear-beforeYear)*12 + int64(afterMonth) - int64(beforeMonth)
+	if yearDiff {
+		res = res / 12
+	}
+
+	if checkDayClock {
+		if beforeDay > afterDay {
+			res -= 1
+		} else if beforeDay == afterDay {
+			beforeHour, beforeMin, beforeSec := before.Clock()
+			afterHour, afterMin, afterSec := after.Clock()
+			secondDiff := (afterHour-beforeHour)*3600 + (afterMin-beforeMin)*60 + (afterSec - beforeSec)
+			if secondDiff < 0 {
+				res -= 1
+			} else if secondDiff == 0 && before.Nanosecond() > after.Nanosecond() {
+				res -= 1
+			}
+		}
+	}
+
+	return int64(sign) * res
 }
