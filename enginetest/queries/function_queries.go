@@ -940,6 +940,10 @@ var FunctionQueryTests = []QueryTest{
 		Query:    `select timestampdiff(year, "0050-01-01", "2020-01-01");`,
 		Expected: []sql.Row{{1970}},
 	},
+	{
+		Query:    "select timestampdiff(year, '0000-01-01', '9999-12-31 23:59:59.999999');",
+		Expected: []sql.Row{{9999}},
+	},
 	// TIMESTAMPDIFF MONTH tests https://github.com/dolthub/dolt/issues/10393
 	{
 		Query:    `select timestampdiff(year, "2000-12-25", "2020-2-20");`,
@@ -961,6 +965,10 @@ var FunctionQueryTests = []QueryTest{
 		Query:    `select timestampdiff(month, "0050-01-01", "2020-01-01");`,
 		Expected: []sql.Row{{23640}},
 	},
+	{
+		Query:    "select timestampdiff(month, '0000-01-01', '9999-12-31 23:59:59.999999');",
+		Expected: []sql.Row{{119999}},
+	},
 	// TIMESTAMPDIFF QUARTER tests https://github.com/dolthub/dolt/issues/10393
 	{
 		Query:    "SELECT TIMESTAMPDIFF(quarter, DATE '2011-07-05', DATE '2026-07-04')",
@@ -977,6 +985,52 @@ var FunctionQueryTests = []QueryTest{
 	{
 		Query:    `select timestampdiff(quarter, "2000-12-25", "2020-2-20");`,
 		Expected: []sql.Row{{76}},
+	},
+	{
+		Query:    "select timestampdiff(quarter, '0000-01-01', '9999-12-31 23:59:59.999999');",
+		Expected: []sql.Row{{39999}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/10397
+		Skip: true,
+		// might need to change first date to 0001-01-01 since 0000 is a leap year in Go but not in MySQL
+		Query:    "select timestampdiff(microsecond, '0000-01-01', '9999-12-31 23:59:59.999999');",
+		Expected: []sql.Row{{315569433599999999}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/10397
+		Skip: true,
+		// might need to change first date to 0001-01-01 since 0000 is a leap year in Go but not in MySQL
+		Query:    "select timestampdiff(second, '0000-01-01', '9999-12-31 23:59:59.999999');",
+		Expected: []sql.Row{{315569433599}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/10397
+		Skip: true,
+		// might need to change first date to 0001-01-01 since 0000 is a leap year in Go but not in MySQL
+		Query:    "select timestampdiff(minute, '0000-01-01', '9999-12-31 23:59:59.999999');",
+		Expected: []sql.Row{{5259490559}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/10397
+		Skip: true,
+		// might need to change first date to 0001-01-01 since 0000 is a leap year in Go but not in MySQL
+		Query:    "select timestampdiff(hour, '0000-01-01', '9999-12-31 23:59:59.999999');",
+		Expected: []sql.Row{{87658175}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/10397
+		Skip: true,
+		// might need to change first date to 0001-01-01 since 0000 is a leap year in Go but not in MySQL
+		Query:    "select timestampdiff(day, '0000-01-01', '9999-12-31 23:59:59.999999');",
+		Expected: []sql.Row{{3652423}},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/10397
+		Skip: true,
+		// might need to change first date to 0001-01-01 since 0000 is a leap year in Go but not in MySQL
+		Query:    "select timestampdiff(week, '0000-01-01', '9999-12-31 23:59:59.999999');",
+		Expected: []sql.Row{{521774}},
 	},
 	// TRIM Function Tests
 	{
