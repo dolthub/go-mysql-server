@@ -681,21 +681,21 @@ func (t *TimestampDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	case "microsecond":
 		res = microsecondsDiff(date1, date2)
 	case "second":
-		res = microsecondsDiff(date1, date2) / 1000000
+		res = microsecondsDiff(date1, date2) / sql.MicrosecondsPerSecond
 	case "minute":
-		res = microsecondsDiff(date1, date2) / (1000000 * 60)
+		res = microsecondsDiff(date1, date2) / sql.MicrosecondsPerMinute
 	case "hour":
-		res = microsecondsDiff(date1, date2) / (1000000 * 60 * 60)
+		res = microsecondsDiff(date1, date2) / sql.MicrosecondsPerHour
 	case "day":
-		res = microsecondsDiff(date1, date2) / (1000000 * 60 * 60 * 24)
+		res = microsecondsDiff(date1, date2) / sql.MicrosecondsPerDay
 	case "week":
-		res = microsecondsDiff(date1, date2) / (1000000 * 60 * 60 * 24 * 7)
+		res = microsecondsDiff(date1, date2) / sql.MicrosecondsPerWeek
 	case "month":
 		res = monthsDiff(date1, date2)
 	case "quarter":
-		res = monthsDiff(date1, date2) / 3
+		res = monthsDiff(date1, date2) / sql.MonthsPerQuarter
 	case "year":
-		res = monthsDiff(date1, date2) / 12
+		res = monthsDiff(date1, date2) / sql.MonthsPerYear
 	default:
 		return nil, errors.NewKind("invalid interval unit: %s").New(unit)
 	}
@@ -723,10 +723,11 @@ func monthsDiff(date1, date2 time.Time) int64 {
 	} else if beforeDay == afterDay {
 		beforeHour, beforeMin, beforeSec := before.Clock()
 		afterHour, afterMin, afterSec := after.Clock()
-		secondDiff := (afterHour-beforeHour)*3600 + (afterMin-beforeMin)*60 + (afterSec - beforeSec)
-		if secondDiff < 0 {
+		secondsDiff := int64(afterHour-beforeHour)*sql.SecondsPerHour +
+			int64(afterMin-beforeMin)*sql.SecondsPerMinute + int64(afterSec-beforeSec)
+		if secondsDiff < 0 {
 			monthDiff -= 1
-		} else if secondDiff == 0 && before.Nanosecond() > after.Nanosecond() {
+		} else if secondsDiff == 0 && before.Nanosecond() > after.Nanosecond() {
 			monthDiff -= 1
 		}
 	}
