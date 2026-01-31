@@ -51,7 +51,7 @@ func replaceIdxOrderByDistanceHelper(ctx *sql.Context, scope *plan.Scope, node s
 		// We can safely do this because an expression that references other tables won't pass `isSortFieldsValidPrefix` below.
 		sortNode = offsetAssignIndexes(sortNode).(plan.Sortable)
 
-		sfExprs := normalizeExpressions(tableAliases, sortNode.GetSortFields().ToExpressions()...)
+		sfExprs := normalizeExpressions(tableAliases, nil, sortNode.GetSortFields().ToExpressions()...)
 		sfAliases := aliasedExpressionsInNode(sortNode)
 
 		// TODO: Instead of checking both sides of the expression,

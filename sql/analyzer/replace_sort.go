@@ -43,7 +43,7 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 		if err != nil {
 			return n, transform.SameTree, nil
 		}
-		sfExprs := normalizeExpressions(tableAliases, sortNode.SortFields.ToExpressions()...)
+		sfExprs := normalizeExpressions(tableAliases, nil, sortNode.SortFields.ToExpressions()...)
 		sfAliases := aliasedExpressionsInNode(sortNode)
 		if !isSortFieldsValidPrefix(sfExprs, sfAliases, lookup.Index.Expressions()) {
 			return n, transform.SameTree, nil
@@ -103,7 +103,7 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
-		sfExprs := normalizeExpressions(tableAliases, sortNode.SortFields.ToExpressions()...)
+		sfExprs := normalizeExpressions(tableAliases, nil, sortNode.SortFields.ToExpressions()...)
 		sfAliases := aliasedExpressionsInNode(sortNode)
 		for _, idxCandidate := range idxs {
 			if idxCandidate.IsSpatial() {
