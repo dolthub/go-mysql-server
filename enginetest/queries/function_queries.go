@@ -911,7 +911,7 @@ var FunctionQueryTests = []QueryTest{
 		Query:    "SELECT TIMESTAMPDIFF(SECOND, null, '2007-12-31 00:00:00');",
 		Expected: []sql.Row{{nil}},
 	},
-	// https://github.com/dolthub/dolt/issues/10393
+	// TIMESTAMPDIFF YEAR tests https://github.com/dolthub/dolt/issues/10393
 	{
 		Query:    "SELECT TIMESTAMPDIFF(YEAR, DATE '2011-07-05', DATE '2026-07-04')",
 		Expected: []sql.Row{{14}},
@@ -935,6 +935,48 @@ var FunctionQueryTests = []QueryTest{
 	{
 		Query:    "SELECT TIMESTAMPDIFF(YEAR, DATE '2026-07-03', DATE '2025-07-04')",
 		Expected: []sql.Row{{0}},
+	},
+	{
+		Query:    `select timestampdiff(year, "0050-01-01", "2020-01-01");`,
+		Expected: []sql.Row{{1970}},
+	},
+	// TIMESTAMPDIFF MONTH tests https://github.com/dolthub/dolt/issues/10393
+	{
+		Query:    `select timestampdiff(year, "2000-12-25", "2020-2-20");`,
+		Expected: []sql.Row{{19}},
+	},
+	{
+		Query:    "SELECT TIMESTAMPDIFF(month, DATE '2011-07-05', DATE '2026-07-04')",
+		Expected: []sql.Row{{179}},
+	},
+	{
+		Query:    "SELECT TIMESTAMPDIFF(month, DATE '2026-07-04', DATE '2011-07-05')",
+		Expected: []sql.Row{{-179}},
+	},
+	{
+		Query:    `select timestampdiff(month, "2000-12-25", "2020-2-20");`,
+		Expected: []sql.Row{{229}},
+	},
+	{
+		Query:    `select timestampdiff(month, "0050-01-01", "2020-01-01");`,
+		Expected: []sql.Row{{23640}},
+	},
+	// TIMESTAMPDIFF QUARTER tests https://github.com/dolthub/dolt/issues/10393
+	{
+		Query:    "SELECT TIMESTAMPDIFF(quarter, DATE '2011-07-05', DATE '2026-07-04')",
+		Expected: []sql.Row{{59}},
+	},
+	{
+		Query:    "SELECT TIMESTAMPDIFF(quarter, DATE '2026-07-04', DATE '2011-07-05')",
+		Expected: []sql.Row{{-59}},
+	},
+	{
+		Query:    `select timestampdiff(quarter, "0050-01-01", "2020-01-01");`,
+		Expected: []sql.Row{{7880}},
+	},
+	{
+		Query:    `select timestampdiff(quarter, "2000-12-25", "2020-2-20");`,
+		Expected: []sql.Row{{76}},
 	},
 	// TRIM Function Tests
 	{
