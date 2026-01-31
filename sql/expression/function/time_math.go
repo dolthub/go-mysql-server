@@ -689,11 +689,11 @@ func (t *TimestampDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	case "week":
 		res = int64(diff.Hours() / (24 * 7))
 	case "month":
-		res = dateDiff(time1, time2, true)
-	case "quarter":
-		res = dateDiff(time1, time2, true) / 3
-	case "year":
 		res = dateDiff(time1, time2, false)
+	case "quarter":
+		res = dateDiff(time1, time2, false) / 3
+	case "year":
+		res = dateDiff(time1, time2, true)
 	default:
 		return nil, errors.NewKind("invalid interval unit: %s").New(unit)
 	}
@@ -701,10 +701,10 @@ func (t *TimestampDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	return res, nil
 }
 
-// dateDiff calculates the difference between two time.Times based on their Date and Clock values. If monthDiff is set
-// to true, dateDiff returns the difference in number of full months. Otherwise, dateDiff returns the difference in
-// number of full years.
-func dateDiff(date1, date2 time.Time, monthDiff bool) int64 {
+// dateDiff calculates the difference between two time.Times based on their Date and Clock values. If yearDiff is set
+// to true, dateDiff returns the difference in number of full years. Otherwise, dateDiff returns the difference in
+// number of full months.
+func dateDiff(date1, date2 time.Time, yearDiff bool) int64 {
 	compare := date1.Compare(date2)
 	if compare == 0 {
 		return 0
@@ -721,12 +721,13 @@ func dateDiff(date1, date2 time.Time, monthDiff bool) int64 {
 	beforeYear, beforeMonth, beforeDay := before.Date()
 	afterYear, afterMonth, afterDay := after.Date()
 
-	res := int64(afterYear - beforeYear)
-	if monthDiff {
-		res = res*12 + int64(afterMonth) - int64(beforeMonth)
+	checkDayClock := !yearDiff || afterMonth == beforeMonth
+	res := int64(afterYear-beforeYear)*12 + int64(afterMonth) - int64(beforeMonth)
+	if yearDiff {
+		res = res / 12
 	}
 
-	if monthDiff || afterMonth == beforeMonth {
+	if checkDayClock {
 		if beforeDay > afterDay {
 			res -= 1
 		} else if beforeDay == afterDay {
