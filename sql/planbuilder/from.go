@@ -409,6 +409,9 @@ func (b *Builder) buildDataSource(inScope *scope, te ast.TableExpr) (outScope *s
 	case *ast.JSONTableExpr:
 		return b.buildJSONTable(inScope, t)
 
+	case *ast.RowsFromExpr:
+		return b.buildRowsFrom(inScope, t)
+
 	case *ast.ParenTableExpr:
 		if len(t.Exprs) != 1 {
 			b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(t)))
@@ -910,4 +913,64 @@ func (b *Builder) bindOnlyWithDatabase(db sql.Database, stmt ast.Statement, s st
 	}()
 	b.currentDatabase = db
 	return b.BindOnly(stmt, s, nil)
+}
+
+// buildRowsFrom builds a plan.RowsFrom node from a RowsFromExpr AST node.
+// ROWS FROM executes multiple set-returning functions in parallel and zips their results.
+func (b *Builder) buildRowsFrom(inScope *scope, t *ast.RowsFromExpr) (outScope *scope) {
+	outScope = inScope.push()
+	outScope.ast = t
+
+	// Build expressions for each function
+	funcs := make([]sql.Expression, len(t.Exprs))
+	for i, expr := range t.Exprs {
+		switch e := expr.(type) {
+		case *ast.AliasedExpr:
+			funcs[i] = b.buildScalar(inScope, e.Expr)
+		default:
+			b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(e)))
+		}
+	}
+
+	// Create the RowsFrom node
+	rowsFrom := plan.NewRowsFrom(funcs, t.Alias.String())
+	if t.WithOrdinality {
+		rowsFrom = rowsFrom.SetWithOrdinality(true)
+	}
+	if len(t.Columns) > 0 {
+		aliases := make([]string, len(t.Columns))
+		for i, col := range t.Columns {
+			aliases[i] = col.String()
+		}
+		rowsFrom = rowsFrom.WithColumnAliases(aliases)
+	}
+
+	// Set up table alias if needed
+	name := rowsFrom.Name()
+	if name == "" {
+		name = "rows_from"
+	}
+
+	// Wrap in table alias if an alias is provided
+	var node plan.TableIdNode = rowsFrom
+	if !t.Alias.IsEmpty() {
+		var err error
+		node, err = b.f.buildTableAlias(name, rowsFrom)
+		if err != nil {
+			b.handleErr(err)
+		}
+	}
+
+	tabId := outScope.addTable(name)
+	var colset sql.ColSet
+	for _, c := range node.Schema() {
+		id := outScope.newColumn(scopeColumn{
+			table: name,
+			col:   c.Name,
+			typ:   c.Type,
+		})
+		colset.Add(sql.ColumnId(id))
+	}
+	outScope.node = node.WithColumns(colset).WithId(tabId)
+	return
 }
