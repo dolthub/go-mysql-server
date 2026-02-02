@@ -689,11 +689,11 @@ func (t *TimestampDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	case "week":
 		res = int64(diff.Hours() / (24 * 7))
 	case "month":
-		res = dateDiff(time1, time2, false)
+		res = monthsDiff(time1, time2)
 	case "quarter":
-		res = dateDiff(time1, time2, false) / 3
+		res = monthsDiff(time1, time2) / 3
 	case "year":
-		res = dateDiff(time1, time2, true)
+		res = monthsDiff(time1, time2) / 12
 	default:
 		return nil, errors.NewKind("invalid interval unit: %s").New(unit)
 	}
@@ -701,46 +701,35 @@ func (t *TimestampDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	return res, nil
 }
 
-// dateDiff calculates the difference between two time.Times based on their Date and Clock values. If yearDiff is set
-// to true, dateDiff returns the difference in number of full years. Otherwise, dateDiff returns the difference in
-// number of full months.
-func dateDiff(date1, date2 time.Time, yearDiff bool) int64 {
-	compare := date1.Compare(date2)
-	if compare == 0 {
-		return 0
-	}
+// monthsDiff calculates the difference between two time.Times in number of full months based on their Date and Clock
+// values.
+func monthsDiff(time1, time2 time.Time) int64 {
 	sign := 1
-	before := date1
-	after := date2
-	if compare > 0 {
+	before := time1
+	after := time2
+	if before.After(after) {
 		sign = -1
-		before = date2
-		after = date1
+		before = time2
+		after = time1
 	}
 
 	beforeYear, beforeMonth, beforeDay := before.Date()
 	afterYear, afterMonth, afterDay := after.Date()
+	yearDiff := afterYear - beforeYear
+	monthDiff := int64(afterMonth) - int64(beforeMonth)
 
-	checkDayClock := !yearDiff || afterMonth == beforeMonth
-	res := int64(afterYear-beforeYear)*12 + int64(afterMonth) - int64(beforeMonth)
-	if yearDiff {
-		res = res / 12
-	}
-
-	if checkDayClock {
-		if beforeDay > afterDay {
-			res -= 1
-		} else if beforeDay == afterDay {
-			beforeHour, beforeMin, beforeSec := before.Clock()
-			afterHour, afterMin, afterSec := after.Clock()
-			secondDiff := (afterHour-beforeHour)*3600 + (afterMin-beforeMin)*60 + (afterSec - beforeSec)
-			if secondDiff < 0 {
-				res -= 1
-			} else if secondDiff == 0 && before.Nanosecond() > after.Nanosecond() {
-				res -= 1
-			}
+	if beforeDay > afterDay {
+		monthDiff -= 1
+	} else if beforeDay == afterDay {
+		beforeHour, beforeMin, beforeSec := before.Clock()
+		afterHour, afterMin, afterSec := after.Clock()
+		secondDiff := (afterHour-beforeHour)*3600 + (afterMin-beforeMin)*60 + (afterSec - beforeSec)
+		if secondDiff < 0 {
+			monthDiff -= 1
+		} else if secondDiff == 0 && before.Nanosecond() > after.Nanosecond() {
+			monthDiff -= 1
 		}
 	}
 
-	return int64(sign) * res
+	return int64(sign) * (int64(yearDiff*12) + monthDiff)
 }
