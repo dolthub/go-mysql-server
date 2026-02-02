@@ -669,33 +669,29 @@ func (t *TimestampDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 
 	unit = strings.TrimPrefix(strings.ToLower(unit.(string)), "sql_tsi_")
 
-	date1 := expr1.(time.Time)
-	date2 := expr2.(time.Time)
-
-	if date1.Equal(date2) {
-		return 0, nil
-	}
+	time1 := expr1.(time.Time)
+	time2 := expr2.(time.Time)
 
 	var res int64
 	switch unit {
 	case "microsecond":
-		res = microsecondsDiff(date1, date2)
+		res = microsecondsDiff(time1, time2)
 	case "second":
-		res = microsecondsDiff(date1, date2) / sql.MicrosecondsPerSecond
+		res = microsecondsDiff(time1, time2) / sql.MicrosecondsPerSecond
 	case "minute":
-		res = microsecondsDiff(date1, date2) / sql.MicrosecondsPerMinute
+		res = microsecondsDiff(time1, time2) / sql.MicrosecondsPerMinute
 	case "hour":
-		res = microsecondsDiff(date1, date2) / sql.MicrosecondsPerHour
+		res = microsecondsDiff(time1, time2) / sql.MicrosecondsPerHour
 	case "day":
-		res = microsecondsDiff(date1, date2) / sql.MicrosecondsPerDay
+		res = microsecondsDiff(time1, time2) / sql.MicrosecondsPerDay
 	case "week":
-		res = microsecondsDiff(date1, date2) / sql.MicrosecondsPerWeek
+		res = microsecondsDiff(time1, time2) / sql.MicrosecondsPerWeek
 	case "month":
-		res = monthsDiff(date1, date2)
+		res = dateDiff(time1, time2, false)
 	case "quarter":
-		res = monthsDiff(date1, date2) / sql.MonthsPerQuarter
+		res = dateDiff(time1, time2, false) / 3
 	case "year":
-		res = monthsDiff(date1, date2) / sql.MonthsPerYear
+		res = dateDiff(time1, time2, true)
 	default:
 		return nil, errors.NewKind("invalid interval unit: %s").New(unit)
 	}
@@ -703,11 +699,18 @@ func (t *TimestampDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	return res, nil
 }
 
-func monthsDiff(date1, date2 time.Time) int64 {
+// dateDiff calculates the difference between two time.Times based on their Date and Clock values. If yearDiff is set
+// to true, dateDiff returns the difference in number of full years. Otherwise, dateDiff returns the difference in
+// number of full months.
+func dateDiff(date1, date2 time.Time, yearDiff bool) int64 {
+	compare := date1.Compare(date2)
+	if compare == 0 {
+		return 0
+	}
 	sign := 1
 	before := date1
 	after := date2
-	if before.After(after) {
+	if compare > 0 {
 		sign = -1
 		before = date2
 		after = date1
@@ -715,24 +718,29 @@ func monthsDiff(date1, date2 time.Time) int64 {
 
 	beforeYear, beforeMonth, beforeDay := before.Date()
 	afterYear, afterMonth, afterDay := after.Date()
-	yearDiff := afterYear - beforeYear
-	monthDiff := int64(afterMonth) - int64(beforeMonth)
 
-	if beforeDay > afterDay {
-		monthDiff -= 1
-	} else if beforeDay == afterDay {
-		beforeHour, beforeMin, beforeSec := before.Clock()
-		afterHour, afterMin, afterSec := after.Clock()
-		secondsDiff := int64(afterHour-beforeHour)*sql.SecondsPerHour +
-			int64(afterMin-beforeMin)*sql.SecondsPerMinute + int64(afterSec-beforeSec)
-		if secondsDiff < 0 {
-			monthDiff -= 1
-		} else if secondsDiff == 0 && before.Nanosecond() > after.Nanosecond() {
-			monthDiff -= 1
+	checkDayClock := !yearDiff || afterMonth == beforeMonth
+	res := int64(afterYear-beforeYear)*12 + int64(afterMonth) - int64(beforeMonth)
+	if yearDiff {
+		res = res / 12
+	}
+
+	if checkDayClock {
+		if beforeDay > afterDay {
+			res -= 1
+		} else if beforeDay == afterDay {
+			beforeHour, beforeMin, beforeSec := before.Clock()
+			afterHour, afterMin, afterSec := after.Clock()
+			secondDiff := (afterHour-beforeHour)*3600 + (afterMin-beforeMin)*60 + (afterSec - beforeSec)
+			if secondDiff < 0 {
+				res -= 1
+			} else if secondDiff == 0 && before.Nanosecond() > after.Nanosecond() {
+				res -= 1
+			}
 		}
 	}
 
-	return int64(sign) * (int64(yearDiff*12) + monthDiff)
+	return int64(sign) * res
 }
 
 func microsecondsDiff(date1, date2 time.Time) int64 {
