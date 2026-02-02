@@ -36,3 +36,7 @@ CREATE VIEW where_exists_view AS SELECT * FROM three_pks l WHERE EXISTS (SELECT 
 exec
 CREATE VIEW where_exists_view_in_view AS SELECT * FROM where_exists_view WHERE pk1 = 1
 ----
+
+exec
+CREATE VIEW join_view_requires_prefix AS SELECT l.pk1 as left_pk, r.pk1 as right_pk FROM three_pks l JOIN three_pks r WHERE l.pk2 = r.pk2
+----
