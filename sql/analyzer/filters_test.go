@@ -123,43 +123,22 @@ func TestSubtractExprSet(t *testing.T) {
 }
 
 func TestExprToTableFilters(t *testing.T) {
-	expr := expression.NewAnd(
-		expression.NewAnd(
+	t.Run("basic", func(t *testing.T) {
+		expr := expression.NewAnd(
 			expression.NewAnd(
-				expression.NewEquals(
-					expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
-					expression.NewLiteral(3.14, types.Float64),
+				expression.NewAnd(
+					expression.NewEquals(
+						expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
+						expression.NewLiteral(3.14, types.Float64),
+					),
+					expression.NewGreaterThan(
+						expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
+						expression.NewLiteral(3., types.Float64),
+					),
 				),
-				expression.NewGreaterThan(
-					expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
-					expression.NewLiteral(3., types.Float64),
+				expression.NewIsNull(
+					expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable2", "i2", false),
 				),
-			),
-			expression.NewIsNull(
-				expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable2", "i2", false),
-			),
-		),
-		expression.NewOr(
-			expression.NewEquals(
-				expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
-				expression.NewLiteral(3.14, types.Float64),
-			),
-			expression.NewGreaterThan(
-				expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
-				expression.NewLiteral(3., types.Float64),
-			),
-		),
-	)
-
-	expected := filtersByTable{
-		"mytable": []sql.Expression{
-			expression.NewEquals(
-				expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
-				expression.NewLiteral(3.14, types.Float64),
-			),
-			expression.NewGreaterThan(
-				expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
-				expression.NewLiteral(3., types.Float64),
 			),
 			expression.NewOr(
 				expression.NewEquals(
@@ -171,82 +150,146 @@ func TestExprToTableFilters(t *testing.T) {
 					expression.NewLiteral(3., types.Float64),
 				),
 			),
-		},
-		"mytable2": []sql.Expression{
-			expression.NewIsNull(
-				expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable2", "i2", false),
-			),
-		},
-	}
+		)
 
-	filters := exprToTableFilters(expr, nil, nil)
-	assert.Equal(t, expected, filters)
+		expected := filtersByTable{
+			"mytable": []sql.Expression{
+				expression.NewEquals(
+					expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
+					expression.NewLiteral(3.14, types.Float64),
+				),
+				expression.NewGreaterThan(
+					expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
+					expression.NewLiteral(3., types.Float64),
+				),
+				expression.NewOr(
+					expression.NewEquals(
+						expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
+						expression.NewLiteral(3.14, types.Float64),
+					),
+					expression.NewGreaterThan(
+						expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
+						expression.NewLiteral(3., types.Float64),
+					),
+				),
+			},
+			"mytable2": []sql.Expression{
+				expression.NewIsNull(
+					expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable2", "i2", false),
+				),
+			},
+		}
 
+		filters := exprToTableFilters(expr, nil, nil)
+		assert.Equal(t, expected, filters)
+	})
 	// Test various complex conditions -- anytime we can't neatly split the expressions into tables
-	filters = exprToTableFilters(expression.NewAnd(
-		lit(0),
-		expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
-	), nil, nil)
-	expected = filtersByTable{
-		"mytable": []sql.Expression{
-			expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
-		},
-	}
-	assert.Equal(t, expected, filters)
+	t.Run("int literal", func(t *testing.T) {
 
-	filters = exprToTableFilters(expression.NewAnd(
-		expression.NewLiteral(nil, types.Null),
-		expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
-	), nil, nil)
-	expected = filtersByTable{
-		"mytable": []sql.Expression{
+		filters := exprToTableFilters(expression.NewAnd(
+			lit(0),
 			expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
-		},
-	}
-	assert.Equal(t, expected, filters)
-
-	filters = exprToTableFilters(expression.NewAnd(
-		expression.NewEquals(lit(1), mustExpr(function.NewRand())),
-		expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
-	), nil, nil)
-	expected = filtersByTable{
-		"mytable": []sql.Expression{
-			expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
-		},
-	}
-	assert.Equal(t, expected, filters)
-
-	filters = exprToTableFilters(expression.NewOr(
-		expression.NewLiteral(nil, types.Null),
-		expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
-	), nil, nil)
-	expected = filtersByTable{
-		"mytable": []sql.Expression{
-			expression.NewOr(
-				expression.NewLiteral(nil, types.Null),
+		), nil, nil)
+		expected := filtersByTable{
+			"mytable": []sql.Expression{
 				expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
-			),
-		},
-	}
-	assert.Equal(t, expected, filters)
+			},
+		}
+		assert.Equal(t, expected, filters)
+	})
 
-	filters = exprToTableFilters(expression.NewAnd(
-		eq(
-			expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "a", false),
-			lit(1),
-		),
-		eq(
+	t.Run("NULL literal", func(t *testing.T) {
+		filters := exprToTableFilters(expression.NewAnd(
+			expression.NewLiteral(nil, types.Null),
 			expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
-			expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable2", "i", false),
-		),
-	), nil, nil)
-	expected = filtersByTable{
-		"mytable": []sql.Expression{
+		), nil, nil)
+		expected := filtersByTable{
+			"mytable": []sql.Expression{
+				expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
+			},
+		}
+		assert.Equal(t, expected, filters)
+	})
+
+	t.Run("random expression", func(t *testing.T) {
+		filters := exprToTableFilters(expression.NewAnd(
+			expression.NewEquals(lit(1), mustExpr(function.NewRand())),
+			expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
+		), nil, nil)
+		expected := filtersByTable{
+			"mytable": []sql.Expression{
+				expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
+			},
+		}
+		assert.Equal(t, expected, filters)
+	})
+
+	t.Run("or expression", func(t *testing.T) {
+		filters := exprToTableFilters(expression.NewOr(
+			expression.NewLiteral(nil, types.Null),
+			expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
+		), nil, nil)
+		expected := filtersByTable{
+			"mytable": []sql.Expression{
+				expression.NewOr(
+					expression.NewLiteral(nil, types.Null),
+					expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
+				),
+			},
+		}
+		assert.Equal(t, expected, filters)
+	})
+
+	t.Run("comparing multiple tables", func(t *testing.T) {
+		filters := exprToTableFilters(expression.NewAnd(
 			eq(
 				expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "a", false),
 				lit(1),
 			),
-		},
-	}
-	assert.Equal(t, expected, filters)
+			eq(
+				expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
+				expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable2", "i", false),
+			),
+		), nil, nil)
+		expected := filtersByTable{
+			"mytable": []sql.Expression{
+				eq(
+					expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "a", false),
+					lit(1),
+				),
+			},
+		}
+		assert.Equal(t, expected, filters)
+	})
+
+	t.Run("project expressions", func(t *testing.T) {
+		projections := map[sql.ColumnId]sql.Expression{
+			1: expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "a", false),
+		}
+		filters := exprToTableFilters(
+			expression.NewGetFieldWithTable(1, 0, types.Int64, "db", "", "a", false),
+			nil, projections)
+		expected := filtersByTable{
+			"mytable": []sql.Expression{
+				expression.NewGetFieldWithTable(1, 0, types.Int64, "db", "", "a", false),
+			},
+		}
+		assert.Equal(t, expected, filters)
+	})
+
+	t.Run("nested project expressions", func(t *testing.T) {
+		projections := map[sql.ColumnId]sql.Expression{
+			1: expression.NewGetFieldWithTable(2, 0, types.Int64, "db", "", "a", false),
+			2: expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "a", false),
+		}
+		filters := exprToTableFilters(
+			expression.NewGetFieldWithTable(1, 0, types.Int64, "db", "", "a", false),
+			nil, projections)
+		expected := filtersByTable{
+			"mytable": []sql.Expression{
+				expression.NewGetFieldWithTable(1, 0, types.Int64, "db", "", "a", false),
+			},
+		}
+		assert.Equal(t, expected, filters)
+	})
 }
