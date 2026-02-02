@@ -294,9 +294,9 @@ func aliasedExpressionsInNode(n sql.Node) map[string]string {
 	return aliasesFromExpressionToName
 }
 
-// GetProjectionExpressions walks a tree to identify all projections and returns a map from the column ids of those
+// getProjectionExpressions walks a tree to identify all projections and returns a map from the column ids of those
 // projections to the underlying expression.
-func GetProjectionExpressions(n sql.Node) map[sql.ColumnId]sql.Expression {
+func getProjectionExpressions(n sql.Node) map[sql.ColumnId]sql.Expression {
 	projectionExpressions := make(map[sql.ColumnId]sql.Expression)
 	transform.Inspect(n, func(n sql.Node) bool {
 		switch node := n.(type) {

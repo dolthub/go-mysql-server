@@ -82,9 +82,7 @@ func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 			}
 			// Find all col exprs and group them by the table they mention so that we can keep track of which ones
 			// have been pushed down and need to be removed from the parent filter
-			projectionExpressions := GetProjectionExpressions(n)
-			filtersByTable := getFiltersByTable(n, scope, projectionExpressions)
-			filters := newFilterSet(n.Expression, filtersByTable, tableAliases, projectionExpressions)
+			filters := newFilterSet(n, scope, tableAliases)
 
 			// move filter predicates directly above their respective tables in joins
 			ret, same, err := pushdownAboveTables(n, filters)
@@ -221,9 +219,8 @@ func transformPushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.
 		switch n := n.(type) {
 		case *plan.Filter:
 			// First step is to find all col exprs and group them by the table they mention.
-			projectionExpressions := GetProjectionExpressions(n)
-			filtersByTable := getFiltersByTable(n, scope, projectionExpressions)
-			filters = newFilterSet(n.Expression, filtersByTable, tableAliases, projectionExpressions)
+
+			filters = newFilterSet(n, scope, tableAliases)
 			return transformFilterNode(n)
 		default:
 			return n, transform.SameTree, nil

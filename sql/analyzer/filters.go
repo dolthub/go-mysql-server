@@ -113,9 +113,15 @@ type filterSet struct {
 
 // newFilterSet returns a new filter set that will track available filters with the filters and aliases given. Aliases
 // are necessary to normalize expressions from indexes when in the presence of aliases.
-func newFilterSet(filter sql.Expression, filtersByTable filtersByTable, tableAliases TableAliases, projectionExpressions map[sql.ColumnId]sql.Expression) *filterSet {
+func newFilterSet(
+	filter *plan.Filter,
+	scope *plan.Scope,
+	tableAliases TableAliases,
+) *filterSet {
+	projectionExpressions := getProjectionExpressions(filter)
+	filtersByTable := getFiltersByTable(filter, scope, projectionExpressions)
 	return &filterSet{
-		filterPredicates:      expression.SplitConjunction(filter),
+		filterPredicates:      expression.SplitConjunction(filter.Expression),
 		filtersByTable:        filtersByTable,
 		tableAliases:          tableAliases,
 		projectionExpressions: projectionExpressions,
