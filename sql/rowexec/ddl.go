@@ -241,7 +241,7 @@ func (b *BaseBuilder) buildDropCheck(ctx *sql.Context, n *plan.DropCheck, row sq
 
 func (b *BaseBuilder) buildRenameTable(ctx *sql.Context, n *plan.RenameTable, row sql.Row) (sql.RowIter, error) {
 	if b.EngineOverrides.Hooks.RenameTable.PreSQLExecution != nil {
-		nn, err := b.EngineOverrides.Hooks.RenameTable.PreSQLExecution(ctx, n)
+		nn, err := b.EngineOverrides.Hooks.RenameTable.PreSQLExecution(ctx, b.Runner, n)
 		if err != nil {
 			return nil, err
 		}
@@ -268,7 +268,7 @@ func (b *BaseBuilder) buildRenameTable(ctx *sql.Context, n *plan.RenameTable, ro
 		}
 	}
 	if b.EngineOverrides.Hooks.RenameTable.PostSQLExecution != nil {
-		if err := b.EngineOverrides.Hooks.RenameTable.PostSQLExecution(ctx, n); err != nil {
+		if err := b.EngineOverrides.Hooks.RenameTable.PostSQLExecution(ctx, b.Runner, n); err != nil {
 			return nil, err
 		}
 	}
@@ -278,7 +278,7 @@ func (b *BaseBuilder) buildRenameTable(ctx *sql.Context, n *plan.RenameTable, ro
 
 func (b *BaseBuilder) buildModifyColumn(ctx *sql.Context, n *plan.ModifyColumn, row sql.Row) (sql.RowIter, error) {
 	if b.EngineOverrides.Hooks.TableModifyColumn.PreSQLExecution != nil {
-		nn, err := b.EngineOverrides.Hooks.TableModifyColumn.PreSQLExecution(ctx, n)
+		nn, err := b.EngineOverrides.Hooks.TableModifyColumn.PreSQLExecution(ctx, b.Runner, n)
 		if err != nil {
 			return nil, err
 		}
@@ -321,6 +321,7 @@ func (b *BaseBuilder) buildModifyColumn(ctx *sql.Context, n *plan.ModifyColumn, 
 		m:         n,
 		alterable: alterable,
 		overrides: b.EngineOverrides,
+		runner:    b.Runner,
 	}, nil
 }
 
@@ -951,7 +952,7 @@ func (b *BaseBuilder) buildDropSchema(ctx *sql.Context, n *plan.DropSchema, row 
 
 func (b *BaseBuilder) buildRenameColumn(ctx *sql.Context, n *plan.RenameColumn, row sql.Row) (sql.RowIter, error) {
 	if b.EngineOverrides.Hooks.TableRenameColumn.PreSQLExecution != nil {
-		nn, err := b.EngineOverrides.Hooks.TableRenameColumn.PreSQLExecution(ctx, n)
+		nn, err := b.EngineOverrides.Hooks.TableRenameColumn.PreSQLExecution(ctx, b.Runner, n)
 		if err != nil {
 			return nil, err
 		}
@@ -1002,7 +1003,7 @@ func (b *BaseBuilder) buildRenameColumn(ctx *sql.Context, n *plan.RenameColumn, 
 		return nil, err
 	}
 	if b.EngineOverrides.Hooks.TableRenameColumn.PostSQLExecution != nil {
-		if err = b.EngineOverrides.Hooks.TableRenameColumn.PostSQLExecution(ctx, n); err != nil {
+		if err = b.EngineOverrides.Hooks.TableRenameColumn.PostSQLExecution(ctx, b.Runner, n); err != nil {
 			return nil, err
 		}
 	}
@@ -1012,7 +1013,7 @@ func (b *BaseBuilder) buildRenameColumn(ctx *sql.Context, n *plan.RenameColumn, 
 
 func (b *BaseBuilder) buildAddColumn(ctx *sql.Context, n *plan.AddColumn, row sql.Row) (sql.RowIter, error) {
 	if b.EngineOverrides.Hooks.TableAddColumn.PreSQLExecution != nil {
-		nn, err := b.EngineOverrides.Hooks.TableAddColumn.PreSQLExecution(ctx, n)
+		nn, err := b.EngineOverrides.Hooks.TableAddColumn.PreSQLExecution(ctx, b.Runner, n)
 		if err != nil {
 			return nil, err
 		}
@@ -1096,7 +1097,7 @@ func (b *BaseBuilder) buildAlterDB(ctx *sql.Context, n *plan.AlterDB, row sql.Ro
 func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, row sql.Row) (sql.RowIter, error) {
 	var err error
 	if b.EngineOverrides.Hooks.CreateTable.PreSQLExecution != nil {
-		nn, err := b.EngineOverrides.Hooks.CreateTable.PreSQLExecution(ctx, n)
+		nn, err := b.EngineOverrides.Hooks.CreateTable.PreSQLExecution(ctx, b.Runner, n)
 		if err != nil {
 			return sql.RowsToRowIter(), err
 		}
@@ -1262,7 +1263,7 @@ func (b *BaseBuilder) buildCreateTable(ctx *sql.Context, n *plan.CreateTable, ro
 	}
 
 	if b.EngineOverrides.Hooks.CreateTable.PostSQLExecution != nil {
-		if err = b.EngineOverrides.Hooks.CreateTable.PostSQLExecution(ctx, n); err != nil {
+		if err = b.EngineOverrides.Hooks.CreateTable.PostSQLExecution(ctx, b.Runner, n); err != nil {
 			return nil, err
 		}
 	}
@@ -1345,7 +1346,7 @@ func (b *BaseBuilder) buildCreateTrigger(ctx *sql.Context, n *plan.CreateTrigger
 
 func (b *BaseBuilder) buildDropColumn(ctx *sql.Context, n *plan.DropColumn, row sql.Row) (sql.RowIter, error) {
 	if b.EngineOverrides.Hooks.TableDropColumn.PreSQLExecution != nil {
-		nn, err := b.EngineOverrides.Hooks.TableDropColumn.PreSQLExecution(ctx, n)
+		nn, err := b.EngineOverrides.Hooks.TableDropColumn.PreSQLExecution(ctx, b.Runner, n)
 		if err != nil {
 			return nil, err
 		}
@@ -1370,6 +1371,7 @@ func (b *BaseBuilder) buildDropColumn(ctx *sql.Context, n *plan.DropColumn, row 
 		d:         n,
 		alterable: alterable,
 		overrides: b.EngineOverrides,
+		runner:    b.Runner,
 	}, nil
 }
 
