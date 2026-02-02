@@ -689,7 +689,7 @@ func (t *TimestampDiff) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	case "month":
 		res = dateDiff(time1, time2, false)
 	case "quarter":
-		res = dateDiff(time1, time2, false) / 3
+		res = dateDiff(time1, time2, false) / sql.MonthsPerQuarter
 	case "year":
 		res = dateDiff(time1, time2, true)
 	default:
@@ -720,9 +720,9 @@ func dateDiff(date1, date2 time.Time, yearDiff bool) int64 {
 	afterYear, afterMonth, afterDay := after.Date()
 
 	checkDayClock := !yearDiff || afterMonth == beforeMonth
-	res := int64(afterYear-beforeYear)*12 + int64(afterMonth) - int64(beforeMonth)
+	res := int64(afterYear-beforeYear)*sql.MonthsPerYear + int64(afterMonth) - int64(beforeMonth)
 	if yearDiff {
-		res = res / 12
+		res = res / sql.MonthsPerYear
 	}
 
 	if checkDayClock {
@@ -731,7 +731,8 @@ func dateDiff(date1, date2 time.Time, yearDiff bool) int64 {
 		} else if beforeDay == afterDay {
 			beforeHour, beforeMin, beforeSec := before.Clock()
 			afterHour, afterMin, afterSec := after.Clock()
-			secondDiff := (afterHour-beforeHour)*3600 + (afterMin-beforeMin)*60 + (afterSec - beforeSec)
+			secondDiff := int64(afterHour-beforeHour)*sql.SecondsPerHour +
+				int64(afterMin-beforeMin)*sql.SecondsPerMinute + int64(afterSec-beforeSec)
 			if secondDiff < 0 {
 				res -= 1
 			} else if secondDiff == 0 && before.Nanosecond() > after.Nanosecond() {
