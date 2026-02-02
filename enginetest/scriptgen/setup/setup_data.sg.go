@@ -3918,6 +3918,7 @@ var ViewsData = []SetupScript{{
 	`CREATE VIEW join_view_in_view AS SELECT * FROM join_view WHERE pk1 = 1`,
 	`CREATE VIEW where_exists_view AS SELECT * FROM three_pks l WHERE EXISTS (SELECT * FROM three_pks r WHERE l.pk2 = r.pk1)`,
 	`CREATE VIEW where_exists_view_in_view AS SELECT * FROM where_exists_view WHERE pk1 = 1`,
+	`CREATE VIEW join_view_requires_prefix AS SELECT l.pk1 as left_pk, r.pk1 as right_pk FROM three_pks l JOIN three_pks r WHERE l.pk2 = r.pk2`,
 }}
 
 var XyData = []SetupScript{{
