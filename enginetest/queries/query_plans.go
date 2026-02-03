@@ -24271,108 +24271,140 @@ order by x, y;
 	},
 	{
 		Query: `select * from (select 'k' as k) sq join bigtable on t = k join xy where x between n and n;`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [sq.k:0!null, bigtable.t:3!null, bigtable.n:4, xy.x:1!null, xy.y:2]\n" +
-			" └─ HashJoin\n" +
-			"     ├─ Eq\n" +
-			"     │   ├─ bigtable.t:3!null\n" +
-			"     │   └─ sq.k:0!null\n" +
-			"     ├─ SubqueryAlias\n" +
-			"     │   ├─ name: sq\n" +
-			"     │   ├─ outerVisibility: false\n" +
-			"     │   ├─ isLateral: false\n" +
-			"     │   ├─ cacheable: true\n" +
-			"     │   ├─ colSet: (2)\n" +
-			"     │   ├─ tableId: 1\n" +
-			"     │   └─ Project\n" +
-			"     │       ├─ columns: [k (longtext)->k:1]\n" +
-			"     │       └─ Table\n" +
-			"     │           ├─ name: \n" +
-			"     │           ├─ columns: []\n" +
-			"     │           ├─ colSet: ()\n" +
-			"     │           └─ tableId: 0\n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: TUPLE(sq.k:0!null)\n" +
-			"         ├─ right-key: TUPLE(bigtable.t:2!null)\n" +
-			"         └─ RangeHeapJoin\n" +
-			"             ├─ AND\n" +
-			"             │   ├─ GreaterThanOrEqual\n" +
-			"             │   │   ├─ xy.x:1!null\n" +
-			"             │   │   └─ bigtable.n:4\n" +
-			"             │   └─ LessThanOrEqual\n" +
-			"             │       ├─ xy.x:1!null\n" +
-			"             │       └─ bigtable.n:4\n" +
-			"             ├─ IndexedTableAccess(xy)\n" +
-			"             │   ├─ index: [xy.x]\n" +
-			"             │   ├─ static: [{[NULL, ∞)}]\n" +
-			"             │   ├─ colSet: (5,6)\n" +
-			"             │   ├─ tableId: 3\n" +
-			"             │   └─ Table\n" +
-			"             │       ├─ name: xy\n" +
-			"             │       └─ columns: [x y]\n" +
-			"             └─ Sort(bigtable.n:1 ASC nullsFirst)\n" +
-			"                 └─ ProcessTable\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: bigtable\n" +
-			"                         └─ columns: [t n]\n" +
+		ExpectedPlan: "HashJoin\n" +
+			" ├─ Eq\n" +
+			" │   ├─ bigtable.t:1!null\n" +
+			" │   └─ sq.k:0!null\n" +
+			" ├─ SubqueryAlias\n" +
+			" │   ├─ name: sq\n" +
+			" │   ├─ outerVisibility: false\n" +
+			" │   ├─ isLateral: false\n" +
+			" │   ├─ cacheable: true\n" +
+			" │   ├─ colSet: (2)\n" +
+			" │   ├─ tableId: 1\n" +
+			" │   └─ Project\n" +
+			" │       ├─ columns: [k (longtext)->k:1]\n" +
+			" │       └─ Table\n" +
+			" │           ├─ name: \n" +
+			" │           ├─ columns: []\n" +
+			" │           ├─ colSet: ()\n" +
+			" │           └─ tableId: 0\n" +
+			" └─ HashLookup\n" +
+			"     ├─ left-key: TUPLE(sq.k:0!null)\n" +
+			"     ├─ right-key: TUPLE(bigtable.t:0!null)\n" +
+			"     └─ LookupJoin\n" +
+			"         ├─ ProcessTable\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: bigtable\n" +
+			"         │       └─ columns: [t n]\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.x]\n" +
+			"             ├─ keys: [bigtable.n:2]\n" +
+			"             ├─ colSet: (5,6)\n" +
+			"             ├─ tableId: 3\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: xy\n" +
+			"                 └─ columns: [x y]\n" +
 			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [sq.k, bigtable.t, bigtable.n, xy.x, xy.y]\n" +
-			" └─ HashJoin (estimated cost=153.250 rows=125)\n" +
-			"     ├─ (bigtable.t = sq.k)\n" +
-			"     ├─ SubqueryAlias\n" +
-			"     │   ├─ name: sq\n" +
-			"     │   ├─ outerVisibility: false\n" +
-			"     │   ├─ isLateral: false\n" +
-			"     │   ├─ cacheable: true\n" +
-			"     │   ├─ colSet: (2)\n" +
-			"     │   ├─ tableId: 1\n" +
-			"     │   └─ Project\n" +
-			"     │       ├─ columns: ['k' as k]\n" +
-			"     │       └─ Table\n" +
-			"     │           └─ name: \n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: (sq.k)\n" +
-			"         ├─ right-key: (bigtable.t)\n" +
-			"         └─ RangeHeapJoin (estimated cost=7000.000 rows=17)\n" +
-			"             ├─ ((xy.x >= bigtable.n) AND (xy.x <= bigtable.n))\n" +
-			"             ├─ IndexedTableAccess(xy)\n" +
-			"             │   ├─ index: [xy.x]\n" +
-			"             │   ├─ filters: [{[NULL, ∞)}]\n" +
-			"             │   └─ columns: [x y]\n" +
-			"             └─ Sort(bigtable.n ASC)\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: bigtable\n" +
-			"                     └─ columns: [t n]\n" +
+		ExpectedEstimates: "HashJoin (estimated cost=144.000 rows=100)\n" +
+			" ├─ (bigtable.t = sq.k)\n" +
+			" ├─ SubqueryAlias\n" +
+			" │   ├─ name: sq\n" +
+			" │   ├─ outerVisibility: false\n" +
+			" │   ├─ isLateral: false\n" +
+			" │   ├─ cacheable: true\n" +
+			" │   ├─ colSet: (2)\n" +
+			" │   ├─ tableId: 1\n" +
+			" │   └─ Project\n" +
+			" │       ├─ columns: ['k' as k]\n" +
+			" │       └─ Table\n" +
+			" │           └─ name: \n" +
+			" └─ HashLookup\n" +
+			"     ├─ left-key: (sq.k)\n" +
+			"     ├─ right-key: (bigtable.t)\n" +
+			"     └─ LookupJoin (estimated cost=46.200 rows=14)\n" +
+			"         ├─ Table\n" +
+			"         │   ├─ name: bigtable\n" +
+			"         │   └─ columns: [t n]\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.x]\n" +
+			"             ├─ columns: [x y]\n" +
+			"             └─ keys: bigtable.n\n" +
 			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [sq.k, bigtable.t, bigtable.n, xy.x, xy.y]\n" +
-			" └─ HashJoin (estimated cost=153.250 rows=125) (actual rows=1 loops=1)\n" +
-			"     ├─ (bigtable.t = sq.k)\n" +
-			"     ├─ SubqueryAlias\n" +
-			"     │   ├─ name: sq\n" +
-			"     │   ├─ outerVisibility: false\n" +
-			"     │   ├─ isLateral: false\n" +
-			"     │   ├─ cacheable: true\n" +
-			"     │   ├─ colSet: (2)\n" +
-			"     │   ├─ tableId: 1\n" +
-			"     │   └─ Project\n" +
-			"     │       ├─ columns: ['k' as k]\n" +
-			"     │       └─ Table\n" +
-			"     │           └─ name: \n" +
-			"     └─ HashLookup\n" +
-			"         ├─ left-key: (sq.k)\n" +
-			"         ├─ right-key: (bigtable.t)\n" +
-			"         └─ RangeHeapJoin (estimated cost=7000.000 rows=17) (actual rows=8 loops=1)\n" +
-			"             ├─ ((xy.x >= bigtable.n) AND (xy.x <= bigtable.n))\n" +
-			"             ├─ IndexedTableAccess(xy)\n" +
-			"             │   ├─ index: [xy.x]\n" +
-			"             │   ├─ filters: [{[NULL, ∞)}]\n" +
-			"             │   └─ columns: [x y]\n" +
-			"             └─ Sort(bigtable.n ASC)\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: bigtable\n" +
-			"                     └─ columns: [t n]\n" +
+		ExpectedAnalysis: "HashJoin (estimated cost=144.000 rows=100) (actual rows=1 loops=1)\n" +
+			" ├─ (bigtable.t = sq.k)\n" +
+			" ├─ SubqueryAlias\n" +
+			" │   ├─ name: sq\n" +
+			" │   ├─ outerVisibility: false\n" +
+			" │   ├─ isLateral: false\n" +
+			" │   ├─ cacheable: true\n" +
+			" │   ├─ colSet: (2)\n" +
+			" │   ├─ tableId: 1\n" +
+			" │   └─ Project\n" +
+			" │       ├─ columns: ['k' as k]\n" +
+			" │       └─ Table\n" +
+			" │           └─ name: \n" +
+			" └─ HashLookup\n" +
+			"     ├─ left-key: (sq.k)\n" +
+			"     ├─ right-key: (bigtable.t)\n" +
+			"     └─ LookupJoin (estimated cost=46.200 rows=14) (actual rows=8 loops=1)\n" +
+			"         ├─ Table\n" +
+			"         │   ├─ name: bigtable\n" +
+			"         │   └─ columns: [t n]\n" +
+			"         └─ IndexedTableAccess(xy)\n" +
+			"             ├─ index: [xy.x]\n" +
+			"             ├─ columns: [x y]\n" +
+			"             └─ keys: bigtable.n\n" +
+			"",
+	},
+	{
+		Query: `select * from bigtable join xy where t between x and y;`,
+		ExpectedPlan: "RangeHeapJoin\n" +
+			" ├─ AND\n" +
+			" │   ├─ GreaterThanOrEqual\n" +
+			" │   │   ├─ bigtable.t:0!null\n" +
+			" │   │   └─ xy.x:2!null\n" +
+			" │   └─ LessThanOrEqual\n" +
+			" │       ├─ bigtable.t:0!null\n" +
+			" │       └─ xy.y:3\n" +
+			" ├─ IndexedTableAccess(bigtable)\n" +
+			" │   ├─ index: [bigtable.t]\n" +
+			" │   ├─ static: [{[NULL, ∞)}]\n" +
+			" │   ├─ colSet: (1,2)\n" +
+			" │   ├─ tableId: 1\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: bigtable\n" +
+			" │       └─ columns: [t n]\n" +
+			" └─ IndexedTableAccess(xy)\n" +
+			"     ├─ index: [xy.x]\n" +
+			"     ├─ static: [{[NULL, ∞)}]\n" +
+			"     ├─ colSet: (3,4)\n" +
+			"     ├─ tableId: 2\n" +
+			"     └─ Table\n" +
+			"         ├─ name: xy\n" +
+			"         └─ columns: [x y]\n" +
+			"",
+		ExpectedEstimates: "RangeHeapJoin (estimated cost=7000.000 rows=17)\n" +
+			" ├─ ((bigtable.t >= xy.x) AND (bigtable.t <= xy.y))\n" +
+			" ├─ IndexedTableAccess(bigtable)\n" +
+			" │   ├─ index: [bigtable.t]\n" +
+			" │   ├─ filters: [{[NULL, ∞)}]\n" +
+			" │   └─ columns: [t n]\n" +
+			" └─ IndexedTableAccess(xy)\n" +
+			"     ├─ index: [xy.x]\n" +
+			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     └─ columns: [x y]\n" +
+			"",
+		ExpectedAnalysis: "RangeHeapJoin (estimated cost=7000.000 rows=17) (actual rows=14 loops=1)\n" +
+			" ├─ ((bigtable.t >= xy.x) AND (bigtable.t <= xy.y))\n" +
+			" ├─ IndexedTableAccess(bigtable)\n" +
+			" │   ├─ index: [bigtable.t]\n" +
+			" │   ├─ filters: [{[NULL, ∞)}]\n" +
+			" │   └─ columns: [t n]\n" +
+			" └─ IndexedTableAccess(xy)\n" +
+			"     ├─ index: [xy.x]\n" +
+			"     ├─ filters: [{[NULL, ∞)}]\n" +
+			"     └─ columns: [x y]\n" +
 			"",
 	},
 	{
