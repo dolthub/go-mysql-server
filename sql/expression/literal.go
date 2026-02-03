@@ -54,6 +54,12 @@ func NewTrue() *Literal {
 	return NewLiteral(true, types.Boolean)
 }
 
+// NewFalse creates a new Literal that represents a false boolean
+// TODO: replace NewLiteral(false, types.Boolean) calls with call to NewFalse
+func NewFalse() *Literal {
+	return NewLiteral(false, types.Boolean)
+}
+
 // Resolved implements the Expression interface.
 func (lit *Literal) Resolved() bool {
 	return true

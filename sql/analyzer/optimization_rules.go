@@ -342,7 +342,7 @@ func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel Ru
 			if leftIsFalse {
 				// if both sides are false, the OR expression is false
 				if rightIsFalse {
-					return expression.NewLiteral(false, types.Boolean), transform.NewTree, nil
+					return expression.NewFalse(), transform.NewTree, nil
 				}
 				// if left side is false, the value of the OR expression is determined by the right side
 				// TODO If RightChild is not a boolean type, it can be returned if converted to a boolean. Nil values
@@ -364,13 +364,13 @@ func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel Ru
 			leftIsTrue, leftIsFalse := getDefiniteBoolValues(ctx, e.LeftChild)
 			// if left side is false, the AND expression is false
 			if leftIsFalse {
-				return expression.NewLiteral(false, types.Boolean), transform.NewTree, nil
+				return expression.NewFalse(), transform.NewTree, nil
 			}
 
 			rightIsTrue, rightIsFalse := getDefiniteBoolValues(ctx, e.RightChild)
 			// if right side is false, the AND expression is false
 			if rightIsFalse {
-				return expression.NewLiteral(false, types.Boolean), transform.NewTree, nil
+				return expression.NewFalse(), transform.NewTree, nil
 			}
 
 			if leftIsTrue {
