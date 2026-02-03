@@ -48,6 +48,12 @@ func NewLiteral(value interface{}, fieldType sql.Type) *Literal {
 	}
 }
 
+// NewTrue creates a new Literal that represents a true boolean
+// TODO: replace NewLiteral(true, types.Boolean) calls with call to NewTrue
+func NewTrue() *Literal {
+	return NewLiteral(true, types.Boolean)
+}
+
 // Resolved implements the Expression interface.
 func (lit *Literal) Resolved() bool {
 	return true

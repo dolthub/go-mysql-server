@@ -140,8 +140,10 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 			newRight = plan.NewFilter(expression.JoinAnd(rightOnlyFilters...), newRight)
 		}
 
+		// TODO: This might not be necessary. JoinAnd returns nil for arrays of length 0 and nil join conditions are
+		//  evaluated as true anyways
 		if len(condFilters) == 0 {
-			condFilters = append(condFilters, expression.NewLiteral(true, types.Boolean))
+			condFilters = append(condFilters, expression.NewTrue())
 		}
 
 		return plan.NewJoin(newLeft, newRight, join.Op, expression.JoinAnd(condFilters...)).WithComment(join.CommentStr), transform.NewTree, nil
@@ -294,26 +296,32 @@ func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel Ru
 			}
 			return e.WithQuery(newQ), transform.NewTree, nil
 		case *expression.Between:
-			if lowerField, ok := e.Lower.(*expression.GetField); ok {
-				if upperField, ok := e.Upper.(*expression.GetField); ok {
-					if strings.EqualFold(lowerField.Table(), upperField.Table()) &&
-						strings.EqualFold(lowerField.Name(), upperField.Name()) {
-						if valField, ok := e.Val.(*expression.GetField); ok &&
-							strings.EqualFold(valField.Table(), lowerField.Table()) &&
-							strings.EqualFold(valField.Name(), lowerField.Name()) {
-							// If e.Lower, e.Upper, and e.Val all refer to the same field, Between will always evaluate
-							// to true
-							return expression.NewLiteral(true, types.Boolean), transform.NewTree, nil
-						}
-						// If e.Lower and e.Upper refer to the same field, Between can be simplified to Equals
-						return expression.NewEquals(e.Lower, e.Val), transform.NewTree, nil
-					}
-				}
+			lowerField, lowerIsField := e.Lower.(*expression.GetField)
+			upperField, upperIsField := e.Upper.(*expression.GetField)
+			valField, valIsField := e.Val.(*expression.GetField)
+			if valIsField &&
+				((lowerIsField && lowerField.IsSameField(valField)) ||
+					(upperIsField && upperField.IsSameField(valField))) {
+				// If e.Val refers to the same field as e.Lower or e.Upper, Between will always evaluate to true
+				return expression.NewTrue(), transform.NewTree, nil
+			}
+			if lowerIsField && upperIsField && lowerField.IsSameField(upperField) {
+				// If e.Lower and e.Upper refer to the same field, Between can be simplified to Equals
+				return expression.NewEquals(e.Lower, e.Val), transform.NewTree, nil
 			}
 
-			// TODO: Can be evaluated to true/false if e.Val, e.Lower, and e.Upper are all Literals.
+			// TODO: simplify arguments are Literals
+			//  If all arguments are Literals, Between can be evaluated to true/false
+			//  If e.Val and e.Lower are both Literals:
+			//    If e.Val < e.Lower, simplify to false.
+			//    If e.Val == e.Lower, simplify to true.
+			//    If e.Val > e.Lower, simplify to e.Val <= e.Upper
+			//  If e.Val and e.Upper are both Literals:
+			//    If e.Val < e.Upper, simplify to e.Val >= e.Lower.
+			//    If e.Val == e.Upper, simplify to true
+			//    If e.Val > e.Upper, simplify to false
 			//  If e.Lower and e.Upper are both Literals:
-			//  If e.Lower > e.Upper, simplify to false. If e.Lower == e.Upper, simplify to Equals(e.Val, e.Lower).
+			//    If e.Lower > e.Upper, simplify to false. If e.Lower == e.Upper, simplify to Equals(e.Val, e.Lower).
 			return expression.NewAnd(
 				expression.NewGreaterThanOrEqual(e.Val, e.Lower),
 				expression.NewLessThanOrEqual(e.Val, e.Upper),
@@ -322,13 +330,13 @@ func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel Ru
 			leftIsTrue, leftIsFalse := getDefiniteBoolValues(ctx, e.LeftChild)
 			// if left side is true, the OR expression is true
 			if leftIsTrue {
-				return expression.NewLiteral(true, types.Boolean), transform.NewTree, nil
+				return expression.NewTrue(), transform.NewTree, nil
 			}
 
 			rightIsTrue, rightIsFalse := getDefiniteBoolValues(ctx, e.RightChild)
 			// if right side is true, the OR expression is true
 			if rightIsTrue {
-				return expression.NewLiteral(true, types.Boolean), transform.NewTree, nil
+				return expression.NewTrue(), transform.NewTree, nil
 			}
 
 			if leftIsFalse {
@@ -368,7 +376,7 @@ func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel Ru
 			if leftIsTrue {
 				// if both sides are true, the AND expression is true
 				if rightIsTrue {
-					return expression.NewLiteral(true, types.Boolean), transform.NewTree, nil
+					return expression.NewTrue(), transform.NewTree, nil
 				}
 				// if left side is true, the value of the AND expression is determined by the right side
 				// TODO If RightChild is not a boolean type, it can be returned if converted to a boolean. Nil values
