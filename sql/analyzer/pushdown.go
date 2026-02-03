@@ -82,8 +82,7 @@ func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 			}
 			// Find all col exprs and group them by the table they mention so that we can keep track of which ones
 			// have been pushed down and need to be removed from the parent filter
-			filtersByTable := getFiltersByTable(n, scope)
-			filters := newFilterSet(n.Expression, filtersByTable, tableAliases)
+			filters := newFilterSet(n, scope, tableAliases)
 
 			// move filter predicates directly above their respective tables in joins
 			ret, same, err := pushdownAboveTables(n, filters)
@@ -220,8 +219,8 @@ func transformPushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.
 		switch n := n.(type) {
 		case *plan.Filter:
 			// First step is to find all col exprs and group them by the table they mention.
-			filtersByTable := getFiltersByTable(n, scope)
-			filters = newFilterSet(n.Expression, filtersByTable, tableAliases)
+
+			filters = newFilterSet(n, scope, tableAliases)
 			return transformFilterNode(n)
 		default:
 			return n, transform.SameTree, nil
@@ -246,6 +245,18 @@ func pushdownFiltersToAboveTable(
 	var pushedDownFilterExpression sql.Expression
 	if tableFilters := filters.availableFiltersForTable(ctx, tableNode.Name()); len(tableFilters) > 0 {
 		filters.markFiltersHandled(tableFilters...)
+		for i, filter := range tableFilters {
+			// If a filter contains a reference to a projection alias, pushing the filter will move it below the
+			// Project node. We need to replace the reference with the underlying expression.
+			tableFilters[i], _, _ = transform.Expr(filter, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				if gt, ok := e.(*expression.GetField); ok {
+					if aliasedExpression, ok := filters.projectionExpressions[gt.Id()]; ok {
+						return aliasedExpression, transform.NewTree, nil
+					}
+				}
+				return e, transform.SameTree, nil
+			})
+		}
 		pushedDownFilterExpression = expression.JoinAnd(tableFilters...)
 
 		a.Log(
@@ -289,8 +300,14 @@ func pushdownFiltersUnderSubqueryAlias(ctx *sql.Context, a *Analyzer, sa *plan.S
 	expressionsForChild := make([]sql.Expression, len(handled))
 	var err error
 	for i, h := range handled {
-		expressionsForChild[i], _, err = transform.Expr(h, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		var tf transform.ExprFunc
+		tf = func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			// If a filter contains a reference to a projection alias, pushing the filter will move it below the
+			// Project node. We need to replace the reference with the underlying expression.
 			if gt, ok := e.(*expression.GetField); ok {
+				if aliasedExpression, ok := filters.projectionExpressions[gt.Id()]; ok {
+					return transform.Expr(aliasedExpression, tf)
+				}
 				gf, ok := sa.ScopeMapping[gt.Id()]
 				if !ok {
 					// The GetField must be referencing an outer or lateral scope.
@@ -304,7 +321,8 @@ func pushdownFiltersUnderSubqueryAlias(ctx *sql.Context, a *Analyzer, sa *plan.S
 				return gf, transform.NewTree, nil
 			}
 			return e, transform.SameTree, nil
-		})
+		}
+		expressionsForChild[i], _, err = transform.Expr(h, tf)
 		if err != nil {
 			return sa, transform.SameTree, err
 		}

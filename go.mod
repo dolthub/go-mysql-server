@@ -6,7 +6,7 @@ require (
 	github.com/dolthub/go-icu-regex v0.0.0-20250916051405-78a38d478790
 	github.com/dolthub/jsonpath v0.0.2-0.20240227200619-19675ab05c71
 	github.com/dolthub/sqllogictest/go v0.0.0-20201107003712-816f3ae12d81
-	github.com/dolthub/vitess v0.0.0-20260126213359-8ef4cbd3309c
+	github.com/dolthub/vitess v0.0.0-20260202234501-b14ed9b1632b
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/gocraft/dbr/v2 v2.7.2
 	github.com/google/uuid v1.3.0
@@ -23,7 +23,7 @@ require (
 	golang.org/x/sys v0.38.0
 	golang.org/x/text v0.31.0
 	golang.org/x/tools v0.38.0
-	google.golang.org/grpc v1.53.0
+	google.golang.org/grpc v1.56.3
 	gopkg.in/src-d/go-errors.v1 v1.0.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -31,15 +31,15 @@ require (
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/golang/protobuf v1.5.2 // indirect
+	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	golang.org/x/crypto v0.45.0 // indirect
 	golang.org/x/mod v0.29.0 // indirect
 	golang.org/x/telemetry v0.0.0-20251008203120-078029d740a8 // indirect
-	google.golang.org/genproto v0.0.0-20230110181048-76db0878b65f // indirect
-	google.golang.org/protobuf v1.28.1 // indirect
+	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
+	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20200902074654-038fdea0a05b // indirect
 )
 
-go 1.25.0
+go 1.25.6

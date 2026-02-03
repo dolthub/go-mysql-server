@@ -235,23 +235,22 @@ func SplitRowIntoTableRowMap(row sql.Row, joinSchema sql.Schema) map[string]sql.
 		return ret
 	}
 
-	currentTable := joinSchema[0].Source
+	currentTable := strings.ToLower(joinSchema[0].Source)
 	currentRow := sql.Row{row[0]}
 
 	for i := 1; i < len(joinSchema); i++ {
 		c := joinSchema[i]
 
-		if c.Source != currentTable {
+		newTable := strings.ToLower(c.Source)
+		if newTable != currentTable {
 			ret[currentTable] = currentRow
-			currentTable = c.Source
+			currentTable = newTable
 			currentRow = sql.Row{row[i]}
 		} else {
-			currentTable = c.Source
 			currentRow = append(currentRow, row[i])
 		}
 	}
 
-	currentTable = strings.ToLower(currentTable)
 	ret[currentTable] = currentRow
 
 	return ret

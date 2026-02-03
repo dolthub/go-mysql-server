@@ -58,6 +58,9 @@ type AlterIndex struct {
 	targetSchema sql.Schema
 	// Columns contains the column names (and possibly lengths) when creating an index
 	Columns []sql.IndexColumn
+	// Expression holds the expression when creating an index
+	// TODO: Not currently implemented. Returns a no-op & warning if used
+	Expression sql.Expression
 	// TODO: This should just use sql.IndexDef
 	// Using states whether you're using BTREE, HASH, or non
 	Using sql.IndexUsing
@@ -79,7 +82,7 @@ var _ sql.Expressioner = (*AlterIndex)(nil)
 var _ sql.Node = (*AlterIndex)(nil)
 var _ sql.CollationCoercible = (*AlterIndex)(nil)
 
-func NewAlterCreateIndex(db sql.Database, table sql.TableNode, ifNotExists bool, indexName string, using sql.IndexUsing, constraint sql.IndexConstraint, columns []sql.IndexColumn, comment string) *AlterIndex {
+func NewAlterCreateIndex(db sql.Database, table sql.TableNode, ifNotExists bool, indexName string, using sql.IndexUsing, constraint sql.IndexConstraint, columns []sql.IndexColumn, expression sql.Expression, comment string) *AlterIndex {
 	return &AlterIndex{
 		Action:      IndexAction_Create,
 		Db:          db,
@@ -89,6 +92,7 @@ func NewAlterCreateIndex(db sql.Database, table sql.TableNode, ifNotExists bool,
 		Using:       using,
 		Constraint:  constraint,
 		Columns:     columns,
+		Expression:  expression,
 		Comment:     comment,
 	}
 }

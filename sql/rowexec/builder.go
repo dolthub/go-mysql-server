@@ -27,6 +27,7 @@ import (
 type BaseBuilder struct {
 	PriorityBuilder sql.NodeExecBuilder
 	EngineOverrides sql.EngineOverrides
+	Runner          sql.StatementRunner
 	schemaFormatter sql.SchemaFormatter
 }
 
@@ -34,10 +35,11 @@ var _ sql.NodeExecBuilder = (*BaseBuilder)(nil)
 
 // NewBuilder creates a new builder. If a priority builder is given, then it is tried first, and only uses the internal
 // builder logic if the given one does not return a result (and does not error).
-func NewBuilder(priority sql.NodeExecBuilder, overrides sql.EngineOverrides) sql.NodeExecBuilder {
+func NewBuilder(priority sql.NodeExecBuilder, overrides sql.EngineOverrides) *BaseBuilder {
 	return &BaseBuilder{
 		PriorityBuilder: priority,
 		EngineOverrides: overrides,
+		Runner:          nil, // This is often set later (directly on the variable), as it's not yet available during creation
 		schemaFormatter: sql.GetSchemaFormatter(overrides),
 	}
 }

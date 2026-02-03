@@ -75,56 +75,56 @@ type ExecutionHooks struct {
 // CreateTable contains hooks related to CREATE TABLE statements. These will take a *plan.CreateTable.
 type CreateTable struct {
 	// PreSQLExecution is called before the final step of statement execution, after analysis.
-	PreSQLExecution func(*Context, Node) (Node, error)
+	PreSQLExecution func(*Context, StatementRunner, Node) (Node, error)
 	// PostSQLExecution is called after the final step of statement execution, after analysis.
-	PostSQLExecution func(*Context, Node) error
+	PostSQLExecution func(*Context, StatementRunner, Node) error
 }
 
 // RenameTable contains hooks related to RENAME TABLE statements. These will take a *plan.RenameTable.
 type RenameTable struct {
 	// PreSQLExecution is called before the final step of statement execution, after analysis.
-	PreSQLExecution func(*Context, Node) (Node, error)
+	PreSQLExecution func(*Context, StatementRunner, Node) (Node, error)
 	// PostSQLExecution is called after the final step of statement execution, after analysis.
-	PostSQLExecution func(*Context, Node) error
+	PostSQLExecution func(*Context, StatementRunner, Node) error
 }
 
 // DropTable contains hooks related to DROP TABLE statements. These will take a *plan.DropTable.
 type DropTable struct {
 	// PreSQLExecution is called before the final step of statement execution, after analysis.
-	PreSQLExecution func(*Context, Node) (Node, error)
+	PreSQLExecution func(*Context, StatementRunner, Node) (Node, error)
 	// PostSQLExecution is called after the final step of statement execution, after analysis.
-	PostSQLExecution func(*Context, Node) error
+	PostSQLExecution func(*Context, StatementRunner, Node) error
 }
 
 // TableAddColumn contains hooks related to ALTER TABLE ... ADD COLUMN statements. These will take a *plan.AddColumn.
 type TableAddColumn struct {
 	// PreSQLExecution is called before the final step of statement execution, after analysis.
-	PreSQLExecution func(*Context, Node) (Node, error)
+	PreSQLExecution func(*Context, StatementRunner, Node) (Node, error)
 	// PostSQLExecution is called after the final step of statement execution, after analysis.
-	PostSQLExecution func(*Context, Node) error
+	PostSQLExecution func(*Context, StatementRunner, Node) error
 }
 
 // TableRenameColumn contains hooks related to ALTER TABLE ... RENAME COLUMN statements. These will take a *plan.RenameColumn.
 type TableRenameColumn struct {
 	// PreSQLExecution is called before the final step of statement execution, after analysis.
-	PreSQLExecution func(*Context, Node) (Node, error)
+	PreSQLExecution func(*Context, StatementRunner, Node) (Node, error)
 	// PostSQLExecution is called after the final step of statement execution, after analysis.
-	PostSQLExecution func(*Context, Node) error
+	PostSQLExecution func(*Context, StatementRunner, Node) error
 }
 
 // TableModifyColumn contains hooks related to ALTER TABLE ... MODIFY COLUMN statements. These will take a
 // *plan.ModifyColumn.
 type TableModifyColumn struct {
 	// PreSQLExecution is called before the final step of statement execution, after analysis.
-	PreSQLExecution func(*Context, Node) (Node, error)
+	PreSQLExecution func(*Context, StatementRunner, Node) (Node, error)
 	// PostSQLExecution is called after the final step of statement execution, after analysis.
-	PostSQLExecution func(*Context, Node) error
+	PostSQLExecution func(*Context, StatementRunner, Node) error
 }
 
 // TableDropColumn contains hooks related to ALTER TABLE ... DROP COLUMN statements. These will take a *plan.DropColumn.
 type TableDropColumn struct {
 	// PreSQLExecution is called before the final step of statement execution, after analysis.
-	PreSQLExecution func(*Context, Node) (Node, error)
+	PreSQLExecution func(*Context, StatementRunner, Node) (Node, error)
 	// PostSQLExecution is called after the final step of statement execution, after analysis.
-	PostSQLExecution func(*Context, Node) error
+	PostSQLExecution func(*Context, StatementRunner, Node) error
 }

@@ -353,6 +353,7 @@ type modifyColumnIter struct {
 	m         *plan.ModifyColumn
 	alterable sql.AlterableTable
 	overrides sql.EngineOverrides
+	runner    sql.StatementRunner
 	runOnce   bool
 }
 
@@ -459,7 +460,7 @@ func (i *modifyColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 		if rewritten {
 			if i.overrides.Hooks.TableModifyColumn.PostSQLExecution != nil {
-				if err = i.overrides.Hooks.TableModifyColumn.PostSQLExecution(ctx, i.m); err != nil {
+				if err = i.overrides.Hooks.TableModifyColumn.PostSQLExecution(ctx, i.runner, i.m); err != nil {
 					return nil, err
 				}
 			}
@@ -483,7 +484,7 @@ func (i *modifyColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 	}
 	if i.overrides.Hooks.TableModifyColumn.PostSQLExecution != nil {
-		if err = i.overrides.Hooks.TableModifyColumn.PostSQLExecution(ctx, i.m); err != nil {
+		if err = i.overrides.Hooks.TableModifyColumn.PostSQLExecution(ctx, i.runner, i.m); err != nil {
 			return nil, err
 		}
 	}
@@ -1380,7 +1381,7 @@ func (i *addColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 		if rewritten {
 			if i.b.EngineOverrides.Hooks.TableAddColumn.PostSQLExecution != nil {
-				if err = i.b.EngineOverrides.Hooks.TableAddColumn.PostSQLExecution(ctx, i.a); err != nil {
+				if err = i.b.EngineOverrides.Hooks.TableAddColumn.PostSQLExecution(ctx, i.b.Runner, i.a); err != nil {
 					return nil, err
 				}
 			}
@@ -1402,7 +1403,7 @@ func (i *addColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 	// We only need to update all table rows if the new column is non-nil
 	if i.a.Column().Nullable && i.a.Column().Default == nil {
 		if i.b.EngineOverrides.Hooks.TableAddColumn.PostSQLExecution != nil {
-			if err = i.b.EngineOverrides.Hooks.TableModifyColumn.PostSQLExecution(ctx, i.a); err != nil {
+			if err = i.b.EngineOverrides.Hooks.TableAddColumn.PostSQLExecution(ctx, i.b.Runner, i.a); err != nil {
 				return nil, err
 			}
 		}
@@ -1415,7 +1416,7 @@ func (i *addColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 
 	if i.b.EngineOverrides.Hooks.TableAddColumn.PostSQLExecution != nil {
-		if err = i.b.EngineOverrides.Hooks.TableModifyColumn.PostSQLExecution(ctx, i.a); err != nil {
+		if err = i.b.EngineOverrides.Hooks.TableAddColumn.PostSQLExecution(ctx, i.b.Runner, i.a); err != nil {
 			return nil, err
 		}
 	}
@@ -1772,6 +1773,7 @@ type dropColumnIter struct {
 	d         *plan.DropColumn
 	alterable sql.AlterableTable
 	overrides sql.EngineOverrides
+	runner    sql.StatementRunner
 	runOnce   bool
 }
 
@@ -1799,7 +1801,7 @@ func (i *dropColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 		if rewritten {
 			if i.overrides.Hooks.TableDropColumn.PostSQLExecution != nil {
-				if err = i.overrides.Hooks.TableDropColumn.PostSQLExecution(ctx, i.d); err != nil {
+				if err = i.overrides.Hooks.TableDropColumn.PostSQLExecution(ctx, i.runner, i.d); err != nil {
 					return nil, err
 				}
 			}
@@ -1826,7 +1828,7 @@ func (i *dropColumnIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 	}
 	if i.overrides.Hooks.TableDropColumn.PostSQLExecution != nil {
-		if err = i.overrides.Hooks.TableDropColumn.PostSQLExecution(ctx, i.d); err != nil {
+		if err = i.overrides.Hooks.TableDropColumn.PostSQLExecution(ctx, i.runner, i.d); err != nil {
 			return nil, err
 		}
 	}
@@ -2109,6 +2111,13 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 
 	switch n.Action {
 	case plan.IndexAction_Create:
+		if n.Expression != nil {
+			// Dolt doesn't currently support creating indices with expression arguments.
+			// If we parse a query attempting to do so, we offer a warning and no-op
+			ctx.Session.Warn(&sql.Warning{Level: "Error", Message: "Index not created, functional indexes not implemented"})
+			return nil
+		}
+
 		if len(n.Columns) == 0 {
 			return plan.ErrCreateIndexMissingColumns.New()
 		}
