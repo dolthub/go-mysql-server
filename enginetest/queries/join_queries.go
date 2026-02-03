@@ -1325,6 +1325,23 @@ var JoinScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/10284
+		Name: "join when range bounds are the same field",
+		SetUpScript: []string{
+			"CREATE TABLE t0(c0 VARCHAR(500) , c1 VARCHAR(500) , c2 VARCHAR(500));",
+			"CREATE TABLE t1(c0 INT, c1 VARCHAR(500));",
+			"INSERT INTO t0(c0, c1) VALUES (1, 5);",
+			"INSERT INTO t0(c2) VALUES ('KZ');",
+			"INSERT INTO t1(c0) VALUES (false);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM t1 INNER  JOIN t0 ON (t1.c0 BETWEEN t0.c2 AND t0.c2);",
+				Expected: []sql.Row{{0, nil, nil, nil, "KZ"}},
+			},
+		},
+	},
 }
 
 var LateralJoinScriptTests = []ScriptTest{

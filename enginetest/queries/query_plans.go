@@ -24408,6 +24408,76 @@ order by x, y;
 			"",
 	},
 	{
+		Query: `select * from bigtable join xy where t between t and y;`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [bigtable.t:2!null, bigtable.n:3, xy.x:0!null, xy.y:1]\n" +
+			" └─ CrossJoin\n" +
+			"     ├─ ProcessTable\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: xy\n" +
+			"     │       └─ columns: [x y]\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: bigtable\n" +
+			"             └─ columns: [t n]\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [bigtable.t, bigtable.n, xy.x, xy.y]\n" +
+			" └─ CrossJoin (estimated cost=14141.000 rows=17)\n" +
+			"     ├─ Table\n" +
+			"     │   ├─ name: xy\n" +
+			"     │   └─ columns: [x y]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: bigtable\n" +
+			"         └─ columns: [t n]\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [bigtable.t, bigtable.n, xy.x, xy.y]\n" +
+			" └─ CrossJoin (estimated cost=14141.000 rows=17) (actual rows=56 loops=1)\n" +
+			"     ├─ Table\n" +
+			"     │   ├─ name: xy\n" +
+			"     │   └─ columns: [x y]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: bigtable\n" +
+			"         └─ columns: [t n]\n" +
+			"",
+	},
+	{
+		Query: `select * from bigtable join xy where t between x and t;`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [bigtable.t:2!null, bigtable.n:3, xy.x:0!null, xy.y:1]\n" +
+			" └─ CrossJoin\n" +
+			"     ├─ ProcessTable\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: xy\n" +
+			"     │       └─ columns: [x y]\n" +
+			"     └─ ProcessTable\n" +
+			"         └─ Table\n" +
+			"             ├─ name: bigtable\n" +
+			"             └─ columns: [t n]\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [bigtable.t, bigtable.n, xy.x, xy.y]\n" +
+			" └─ CrossJoin (estimated cost=14141.000 rows=17)\n" +
+			"     ├─ Table\n" +
+			"     │   ├─ name: xy\n" +
+			"     │   └─ columns: [x y]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: bigtable\n" +
+			"         └─ columns: [t n]\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [bigtable.t, bigtable.n, xy.x, xy.y]\n" +
+			" └─ CrossJoin (estimated cost=14141.000 rows=17) (actual rows=56 loops=1)\n" +
+			"     ├─ Table\n" +
+			"     │   ├─ name: xy\n" +
+			"     │   └─ columns: [x y]\n" +
+			"     └─ Table\n" +
+			"         ├─ name: bigtable\n" +
+			"         └─ columns: [t n]\n" +
+			"",
+	},
+	{
 		Query: `select * from one_pk_two_idx where v1 < 4 and v2 < 2 or v2 > 3 order by v1`,
 		ExpectedPlan: "Sort(one_pk_two_idx.v1:1 ASC nullsFirst)\n" +
 			" └─ IndexedTableAccess(one_pk_two_idx)\n" +
