@@ -23,6 +23,29 @@ import (
 	"time"
 )
 
+const (
+	NanosecondsPerMicrosecond = int64(time.Microsecond)
+
+	MicrosecondsPerSecond = int64(time.Second / time.Microsecond)
+
+	SecondsPerMinute      = int64(time.Second / time.Minute)
+	MicrosecondsPerMinute = int64(time.Minute / time.Microsecond)
+
+	SecondsPerHour      = int64(time.Hour / time.Second)
+	MicrosecondsPerHour = int64(time.Hour / time.Microsecond)
+
+	hoursPerDay        = 24
+	DayDuration        = hoursPerDay * time.Hour
+	MicrosecondsPerDay = MicrosecondsPerHour * hoursPerDay
+
+	daysPerWeek         = 7
+	MicrosecondsPerWeek = MicrosecondsPerDay * daysPerWeek
+
+	MonthsPerQuarter = 3
+
+	MonthsPerYear = 12
+)
+
 // offsetRegex is a regex for matching MySQL offsets (e.g. +01:00).
 var offsetRegex = regexp.MustCompile(`(?m)^([+\-])(\d{1,2}):(\d{2})$`)
 
