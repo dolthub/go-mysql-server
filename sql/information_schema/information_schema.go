@@ -2140,6 +2140,10 @@ func emptyRowIter(ctx *Context, c Catalog) (RowIter, error) {
 	return RowsToRowIter(), nil
 }
 
+// NewInformationSchemaTablesToAdd is used by Doltgres to inject Postgres-specific
+// tables and views. In Dolt, this just returns empty map.
+var NewInformationSchemaTablesToAdd = map[string]Table{}
+
 func GetInformationSchemaTables() map[string]Table {
 	return map[string]Table{
 		AdministrableRoleAuthorizationsTableName: &InformationSchemaTable{
@@ -2527,6 +2531,12 @@ func NewInformationSchemaDatabase() Database {
 	}
 
 	isDb.tables[StatisticsTableName] = NewDefaultStats()
+
+	// It's for Doltgres-only tables.
+	// It should be empty map for Dolt.
+	for tn, tbl := range NewInformationSchemaTablesToAdd {
+		isDb.tables[tn] = tbl
+	}
 
 	return isDb
 }
