@@ -24411,7 +24411,10 @@ order by x, y;
 		Query: `select * from bigtable join xy where t between t and y;`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [bigtable.t:2!null, bigtable.n:3, xy.x:0!null, xy.y:1]\n" +
-			" └─ CrossJoin\n" +
+			" └─ InnerJoin\n" +
+			"     ├─ LessThanOrEqual\n" +
+			"     │   ├─ bigtable.t:2!null\n" +
+			"     │   └─ xy.y:1\n" +
 			"     ├─ ProcessTable\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: xy\n" +
@@ -24423,7 +24426,8 @@ order by x, y;
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [bigtable.t, bigtable.n, xy.x, xy.y]\n" +
-			" └─ CrossJoin (estimated cost=14141.000 rows=17)\n" +
+			" └─ InnerJoin (estimated cost=14141.000 rows=17)\n" +
+			"     ├─ (bigtable.t <= xy.y)\n" +
 			"     ├─ Table\n" +
 			"     │   ├─ name: xy\n" +
 			"     │   └─ columns: [x y]\n" +
@@ -24433,7 +24437,8 @@ order by x, y;
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [bigtable.t, bigtable.n, xy.x, xy.y]\n" +
-			" └─ CrossJoin (estimated cost=14141.000 rows=17) (actual rows=56 loops=1)\n" +
+			" └─ InnerJoin (estimated cost=14141.000 rows=17) (actual rows=56 loops=1)\n" +
+			"     ├─ (bigtable.t <= xy.y)\n" +
 			"     ├─ Table\n" +
 			"     │   ├─ name: xy\n" +
 			"     │   └─ columns: [x y]\n" +
@@ -24446,7 +24451,10 @@ order by x, y;
 		Query: `select * from bigtable join xy where t between x and t;`,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [bigtable.t:2!null, bigtable.n:3, xy.x:0!null, xy.y:1]\n" +
-			" └─ CrossJoin\n" +
+			" └─ InnerJoin\n" +
+			"     ├─ GreaterThanOrEqual\n" +
+			"     │   ├─ bigtable.t:2!null\n" +
+			"     │   └─ xy.x:0!null\n" +
 			"     ├─ ProcessTable\n" +
 			"     │   └─ Table\n" +
 			"     │       ├─ name: xy\n" +
@@ -24458,7 +24466,8 @@ order by x, y;
 			"",
 		ExpectedEstimates: "Project\n" +
 			" ├─ columns: [bigtable.t, bigtable.n, xy.x, xy.y]\n" +
-			" └─ CrossJoin (estimated cost=14141.000 rows=17)\n" +
+			" └─ InnerJoin (estimated cost=14141.000 rows=17)\n" +
+			"     ├─ (bigtable.t >= xy.x)\n" +
 			"     ├─ Table\n" +
 			"     │   ├─ name: xy\n" +
 			"     │   └─ columns: [x y]\n" +
@@ -24468,7 +24477,8 @@ order by x, y;
 			"",
 		ExpectedAnalysis: "Project\n" +
 			" ├─ columns: [bigtable.t, bigtable.n, xy.x, xy.y]\n" +
-			" └─ CrossJoin (estimated cost=14141.000 rows=17) (actual rows=56 loops=1)\n" +
+			" └─ InnerJoin (estimated cost=14141.000 rows=17) (actual rows=14 loops=1)\n" +
+			"     ├─ (bigtable.t >= xy.x)\n" +
 			"     ├─ Table\n" +
 			"     │   ├─ name: xy\n" +
 			"     │   └─ columns: [x y]\n" +

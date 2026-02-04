@@ -288,7 +288,7 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 	return transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		switch e := e.(type) {
-		// TODO: if the left and right children of Equals refer to the same field, simplify to true
+		// TODO: if the left and right children of Equals are the same expression, simplify to NullIf(IsNotNull(left), false)
 		case *plan.Subquery:
 			newQ, same, err := simplifyFilters(ctx, a, e.Query, scope, sel, qFlags)
 			if same || err != nil {
@@ -296,21 +296,8 @@ func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel Ru
 			}
 			return e.WithQuery(newQ), transform.NewTree, nil
 		case *expression.Between:
-			lowerField, lowerIsField := e.Lower.(*expression.GetField)
-			upperField, upperIsField := e.Upper.(*expression.GetField)
-			valField, valIsField := e.Val.(*expression.GetField)
-			if valIsField &&
-				((lowerIsField && lowerField.IsSameField(valField)) ||
-					(upperIsField && upperField.IsSameField(valField))) {
-				// If e.Val refers to the same field as e.Lower or e.Upper, Between will always evaluate to true
-				return expression.NewTrue(), transform.NewTree, nil
-			}
-			if lowerIsField && upperIsField && lowerField.IsSameField(upperField) {
-				// If e.Lower and e.Upper refer to the same field, Between can be simplified to Equals
-				return expression.NewEquals(e.Lower, e.Val), transform.NewTree, nil
-			}
-
-			// TODO: simplify arguments are Literals
+			// TODO: Simplify for Literal arguments
+			//  If any argument is null (Literal.IsNullable returns true), simplify to null
 			//  If all arguments are Literals, Between can be evaluated to true/false
 			//  If e.Val and e.Lower are both Literals:
 			//    If e.Val < e.Lower, simplify to false.
@@ -322,6 +309,26 @@ func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel Ru
 			//    If e.Val > e.Upper, simplify to false
 			//  If e.Lower and e.Upper are both Literals:
 			//    If e.Lower > e.Upper, simplify to false. If e.Lower == e.Upper, simplify to Equals(e.Val, e.Lower).
+
+			// TODO: These simplifications for GetField arguments can likely be applied to all expressions. Maybe we can
+			//  check for expression equality using their String values. If all arguments refer to the same expression,
+			//  Between can be simplified to NullIf(IsNotNull(left), false)
+			lowerField, lowerIsField := e.Lower.(*expression.GetField)
+			upperField, upperIsField := e.Upper.(*expression.GetField)
+			if lowerIsField && upperIsField && lowerField.IsSameField(upperField) {
+				// If e.Lower and e.Upper refer to the same field, Between can be simplified to Equals
+				return expression.NewEquals(e.Val, e.Lower), transform.NewTree, nil
+			}
+
+			if valField, valIsField := e.Val.(*expression.GetField); valIsField {
+				if lowerIsField && lowerField.IsSameField(valField) {
+					return expression.NewLessThanOrEqual(e.Val, e.Upper), transform.NewTree, nil
+				}
+				if upperIsField && upperField.IsSameField(valField) {
+					return expression.NewGreaterThanOrEqual(e.Val, e.Lower), transform.NewTree, nil
+				}
+			}
+
 			return expression.NewAnd(
 				expression.NewGreaterThanOrEqual(e.Val, e.Lower),
 				expression.NewLessThanOrEqual(e.Val, e.Upper),
