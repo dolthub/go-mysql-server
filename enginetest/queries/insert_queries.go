@@ -3063,7 +3063,7 @@ var InsertBrokenScripts = []ScriptTest{
 			{
 				Query: "SELECT * FROM x",
 				Expected: []sql.Row{
-					{1, "one"}, {2, 1}, {3, "three"},
+					{1, "one"}, {2, "1"}, {3, "three"},
 				},
 			},
 			{
@@ -3198,8 +3198,58 @@ var InsertBrokenScripts = []ScriptTest{
 				Expected: []sql.Row{{types.NewOkResult(1)}},
 			},
 			{
-				Query:    "select * from t2;",
+				Query:    "select * from test;",
 				Expected: []sql.Row{{1, "a"}},
+			},
+		},
+	},
+	{
+		Name: "column count mismatch in insert",
+		SetUpScript: []string{
+			"create table t(i int, j int)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       "insert into t(i, j) values (1, 2, 3)",
+				ExpectedErr: sql.ErrColValCountMismatch,
+			},
+			{
+				Query:       "insert into t(i, j) values (1)",
+				ExpectedErr: sql.ErrColValCountMismatch,
+			},
+			{
+				Query:       "insert into t(i, j) values (1, 2), ()",
+				ExpectedErr: sql.ErrColValCountMismatch,
+			},
+		},
+	},
+	{
+		Name: "no cols empty val insert",
+		SetUpScript: []string{
+			"create table t_auto (id int auto_increment primary key, name varchar(10) default null)",
+			"create table t_default_null (id int default null, name varchar(10) default null)",
+			"create table t_not_null (id int not null, name varchar(10) not null)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "insert into t_auto values ()",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 1}}},
+			},
+			{
+				Query:    "select * from t_auto",
+				Expected: []sql.Row{{1, nil}},
+			},
+			{
+				Query:    "insert into t_default_null values ()",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 1, InsertID: 0}}},
+			},
+			{
+				Query:    "select * from t_default_null",
+				Expected: []sql.Row{{nil, nil}},
+			},
+			{
+				Query:       "insert into t_not_null values ()",
+				ExpectedErr: sql.ErrInsertIntoNonNullableDefaultNullColumn,
 			},
 		},
 	},
