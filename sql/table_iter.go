@@ -20,18 +20,42 @@ import (
 
 // TableRowIter is an iterator over the partitions in a table.
 type TableRowIter struct {
-	table      Table
-	partitions PartitionIter
-	partition  Partition
-	rows       RowIter
-	valueRows  ValueRowIter
+	rowIters      []RowIter
+	valueRowIters []ValueRowIter
+	idx           int
 }
 
 var _ RowIter = (*TableRowIter)(nil)
 
 // NewTableRowIter returns a new iterator over the rows in the partitions of the table given.
 func NewTableRowIter(ctx *Context, table Table, partitions PartitionIter) *TableRowIter {
-	return &TableRowIter{table: table, partitions: partitions}
+	var rowIters []RowIter
+	var valueRowIters []ValueRowIter
+	for {
+		part, err := partitions.Next(ctx)
+		if err != nil {
+			if err != io.EOF {
+				panic(err)
+			}
+			err = partitions.Close(ctx)
+			if err != nil {
+				panic(err)
+			}
+			break
+		}
+		rowIter, err := table.PartitionRows(ctx, part)
+		if err != nil {
+			panic(err)
+		}
+		rowIters = append(rowIters, rowIter)
+		if valRowIter, ok := rowIter.(ValueRowIter); ok {
+			valueRowIters = append(valueRowIters, valRowIter)
+		}
+	}
+	return &TableRowIter{
+		rowIters:      rowIters,
+		valueRowIters: valueRowIters,
+	}
 }
 
 func (i *TableRowIter) Next(ctx *Context) (Row, error) {
@@ -40,41 +64,23 @@ func (i *TableRowIter) Next(ctx *Context) (Row, error) {
 		return nil, ctx.Err()
 	default:
 	}
-	if i.partition == nil {
-		partition, err := i.partitions.Next(ctx)
-		if err != nil {
-			if err == io.EOF {
-				if e := i.partitions.Close(ctx); e != nil {
-					return nil, e
-				}
-			}
-
+	if i.idx == len(i.rowIters) {
+		return nil, io.EOF
+	}
+	rowIter := i.rowIters[i.idx]
+	row, err := rowIter.Next(ctx)
+	if err != nil {
+		if err != io.EOF {
 			return nil, err
 		}
-
-		i.partition = partition
-	}
-
-	if i.rows == nil {
-		rows, err := i.table.PartitionRows(ctx, i.partition)
+		err = rowIter.Close(ctx)
 		if err != nil {
 			return nil, err
 		}
-
-		i.rows = rows
+		i.idx++
+		return i.Next(ctx)
 	}
-
-	row, err := i.rows.Next(ctx)
-	if err != nil && err == io.EOF {
-		if err = i.rows.Close(ctx); err != nil {
-			return nil, err
-		}
-
-		i.partition = nil
-		i.rows = nil
-		row, err = i.Next(ctx)
-	}
-	return row, err
+	return row, nil
 }
 
 // NextValueRow implements the sql.ValueRowIter interface
@@ -84,75 +90,38 @@ func (i *TableRowIter) NextValueRow(ctx *Context) (ValueRow, error) {
 		return nil, ctx.Err()
 	default:
 	}
-
-	if i.partition == nil {
-		partition, err := i.partitions.Next(ctx)
-		if err != nil {
-			if err == io.EOF {
-				if e := i.partitions.Close(ctx); e != nil {
-					return nil, e
-				}
-			}
+	if i.idx == len(i.valueRowIters) {
+		return nil, io.EOF
+	}
+	rowIter := i.valueRowIters[i.idx]
+	row, err := rowIter.NextValueRow(ctx)
+	if err != nil {
+		if err != io.EOF {
 			return nil, err
 		}
-		i.partition = partition
-	}
-
-	if i.valueRows == nil {
-		rows, err := i.table.PartitionRows(ctx, i.partition)
+		err = rowIter.Close(ctx)
 		if err != nil {
 			return nil, err
 		}
-		i.valueRows = rows.(ValueRowIter)
+		i.idx++
+		return i.NextValueRow(ctx)
 	}
-
-	row, err := i.valueRows.NextValueRow(ctx)
-	if err != nil && err == io.EOF {
-		if err = i.valueRows.Close(ctx); err != nil {
-			return nil, err
-		}
-		i.partition = nil
-		i.valueRows = nil
-		row, err = i.NextValueRow(ctx)
-	}
-	return row, err
+	return row, nil
 }
 
 // IsValueRowIter implements the sql.ValueRowIter interface.
 func (i *TableRowIter) IsValueRowIter(ctx *Context) bool {
-	if i.partition == nil {
-		partition, err := i.partitions.Next(ctx)
-		if err != nil {
-			return false
-		}
-		i.partition = partition
+	if len(i.valueRowIters) == 0 {
+		return false
 	}
-	if i.valueRows == nil {
-		rows, err := i.table.PartitionRows(ctx, i.partition)
-		if err != nil {
+	for _, iter := range i.valueRowIters {
+		if !iter.IsValueRowIter(ctx) {
 			return false
 		}
-		valRowIter, ok := rows.(ValueRowIter)
-		if !ok {
-			return false
-		}
-		i.valueRows = valRowIter
 	}
-	return i.valueRows.IsValueRowIter(ctx)
+	return true
 }
 
 func (i *TableRowIter) Close(ctx *Context) error {
-	if i.rows != nil {
-		if err := i.rows.Close(ctx); err != nil {
-			_ = i.partitions.Close(ctx)
-			return err
-		}
-	}
-	if i.valueRows != nil {
-		if err := i.valueRows.Close(ctx); err != nil {
-			_ = i.partitions.Close(ctx)
-			return err
-		}
-	}
-	return i.partitions.Close(ctx)
+	return nil
 }
