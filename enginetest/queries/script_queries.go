@@ -14727,6 +14727,60 @@ select * from t1 except (
 			},
 		},
 	},
+	{
+		Name: "Between filter",
+		SetUpScript: []string{
+			"create table test(x int, y int, z int);",
+			`insert into test values
+                     (null, 0, 0),
+                     (1, null, 1),
+                     (2, 2, null),
+                     (3, 2, 4),
+                     (4, 2, 3),
+                     (5, 6, 7),
+                     (6, 6, 5),
+                     (7, 8, 7),
+                     (8, 9, 7)`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `select x, y, z,
+       						(x between y and z), (x between x and z), (x between y and x), (x between y and y),
+       						(x between x and x) from test order by x`,
+				Expected: []sql.Row{
+					{nil, 0, 0, nil, nil, nil, nil, nil},
+					{1, nil, 1, nil, true, nil, nil, true},
+					{2, 2, nil, nil, nil, true, true, true},
+					{3, 2, 4, true, true, true, false, true},
+					{4, 2, 3, false, false, true, false, true},
+					{5, 6, 7, false, true, false, false, true},
+					{6, 6, 5, false, false, true, true, true},
+					{7, 8, 7, false, true, false, false, true},
+					{8, 9, 7, false, false, false, false, true},
+				},
+			},
+			{
+				Query:    "select x from test where (x between y and z) order by x",
+				Expected: []sql.Row{{3}},
+			},
+			{
+				Query:    "select x from test where (x between x and z) order by x",
+				Expected: []sql.Row{{1}, {3}, {5}, {7}},
+			},
+			{
+				Query:    "select x from test where (x between y and x) order by x",
+				Expected: []sql.Row{{2}, {3}, {4}, {6}},
+			},
+			{
+				Query:    "select x from test where (x between y and y) order by x",
+				Expected: []sql.Row{{2}, {6}},
+			},
+			{
+				Query:    "select x from test where (x between x and x) order by x",
+				Expected: []sql.Row{{1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
