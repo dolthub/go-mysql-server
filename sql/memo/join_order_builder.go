@@ -254,7 +254,7 @@ func (j *joinOrderBuilder) buildSingleLookupPlan() bool {
 	fds := j.m.root.RelProps.FuncDeps()
 	fdKey, hasKey := fds.StrictKey()
 	// fdKey is a set of columns which constrain all other columns in the join.
-	// If a chain of lookups exist, then the columns in fdKey must be in the innermost join.
+	// If a chain of lookups exists, then the columns in fdKey must be in the innermost join.
 	if !hasKey {
 		return false
 	}
@@ -324,22 +324,9 @@ func (j *joinOrderBuilder) buildSingleLookupPlan() bool {
 			}
 		}
 
-		if len(joinCandidates) > 1 {
+		if len(joinCandidates) != 1 {
 			// We end up here if there are multiple possible choices for the next join.
 			// This could happen if there are redundant rules. For now, we bail out if this happens.
-			return false
-		}
-
-		if len(joinCandidates) == 0 {
-			// There are still tables left to join, but no more filters that match the already joined tables.
-			// This can happen, for instance, if the remaining table is a single-row table that was cross-joined.
-			// It's probably safe to just join the remaining tables here.
-			remainingVertexes := j.allVertices().difference(currentlyJoinedVertexes)
-			for idx, ok := remainingVertexes.next(0); ok; idx, ok = remainingVertexes.next(idx + 1) {
-				nextVertex := newBitSet(idx)
-				j.addJoin(plan.JoinTypeCross, currentlyJoinedVertexes, nextVertex, nil, nil, false)
-				currentlyJoinedVertexes = currentlyJoinedVertexes.union(nextVertex)
-			}
 			return false
 		}
 
