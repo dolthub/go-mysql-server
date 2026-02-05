@@ -325,7 +325,7 @@ func (j *joinOrderBuilder) buildSingleLookupPlan() bool {
 		}
 
 		if len(joinCandidates) != 1 {
-			//  For now, we bail out if there are no or multiple possible choices for the next join.
+			// For now, we bail out if there are no or multiple possible choices for the next join.
 			// There are no possible choices for the next join when the filters are not applicable to the table
 			// containing the functional dependency key. Suppose we have a query like
 			// `select from A, B, inner join C on B.c0 <=> C.c0` where table A has a primary key and tables B and C are
