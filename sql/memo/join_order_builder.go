@@ -254,7 +254,7 @@ func (j *joinOrderBuilder) buildSingleLookupPlan() bool {
 	fds := j.m.root.RelProps.FuncDeps()
 	fdKey, hasKey := fds.StrictKey()
 	// fdKey is a set of columns which constrain all other columns in the join.
-	// If a chain of lookups exist, then the columns in fdKey must be in the innermost join.
+	// If a chain of lookups exists, then the columns in fdKey must be in the innermost join.
 	if !hasKey {
 		return false
 	}
@@ -324,22 +324,14 @@ func (j *joinOrderBuilder) buildSingleLookupPlan() bool {
 			}
 		}
 
-		if len(joinCandidates) > 1 {
-			// We end up here if there are multiple possible choices for the next join.
-			// This could happen if there are redundant rules. For now, we bail out if this happens.
-			return false
-		}
-
-		if len(joinCandidates) == 0 {
-			// There are still tables left to join, but no more filters that match the already joined tables.
-			// This can happen, for instance, if the remaining table is a single-row table that was cross-joined.
-			// It's probably safe to just join the remaining tables here.
-			remainingVertexes := j.allVertices().difference(currentlyJoinedVertexes)
-			for idx, ok := remainingVertexes.next(0); ok; idx, ok = remainingVertexes.next(idx + 1) {
-				nextVertex := newBitSet(idx)
-				j.addJoin(plan.JoinTypeCross, currentlyJoinedVertexes, nextVertex, nil, nil, false)
-				currentlyJoinedVertexes = currentlyJoinedVertexes.union(nextVertex)
-			}
+		if len(joinCandidates) != 1 {
+			// For now, we bail out if there are no or multiple possible choices for the next join.
+			// There are no possible choices for the next join when the filters are not applicable to the table
+			// containing the functional dependency key. Suppose we have a query like
+			// `select from A, B, inner join C on B.c0 <=> C.c0` where table A has a primary key and tables B and C are
+			// keyless; in this case, keyColumn would match table A's primary key, currentlyJoinedTables would only
+			// contain table A, and the join filter for tables B and C would not apply.
+			// There are multiple possible choices for the next join if there are redundant rules.
 			return false
 		}
 
