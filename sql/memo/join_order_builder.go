@@ -325,8 +325,13 @@ func (j *joinOrderBuilder) buildSingleLookupPlan() bool {
 		}
 
 		if len(joinCandidates) != 1 {
-			// We end up here if there are multiple possible choices for the next join.
-			// This could happen if there are redundant rules. For now, we bail out if this happens.
+			//  For now, we bail out if there are no or multiple possible choices for the next join.
+			// There are no possible choices for the next join when the filters are not applicable to the table
+			// containing the functional dependency key. Suppose we have a query like
+			// `select from A, B, inner join C on B.c0 = C.c0` where table A has a primary key and tables B and C are
+			// keyless; in this case, keyColumn would match table A's primary key, currentlyJoinedTables would only
+			// contain table A, and the join filter for tables B and C would not apply.
+			// There are multiple possible choices for the next join if there are redundant rules.
 			return false
 		}
 
