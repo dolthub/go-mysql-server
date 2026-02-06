@@ -47,7 +47,7 @@ var (
 
 	// ErrTableAlreadyExists is thrown when someone tries to create a
 	// table with a name of an existing one
-	ErrTableAlreadyExists = errors.NewKind("table with name %s already exists")
+	ErrTableAlreadyExists = errors.NewKind("table '%s' already exists")
 
 	// ErrTableNotFound is returned when the table is not available from the
 	// current scope.
@@ -58,6 +58,7 @@ var (
 	ErrInvalidRefInView = errors.NewKind("View '%s.%s' references invalid table(s) or column(s) or function(s) or definer/invoker of view lack rights to use them")
 
 	// ErrUnknownTable is returned when the non-table name is used for table actions.
+	// TODO: include db name
 	ErrUnknownTable = errors.NewKind("Unknown table '%s'")
 
 	// ErrTableColumnNotFound is thrown when a column named cannot be found in scope
@@ -557,15 +558,15 @@ var (
 	ErrInvalidValueType = errors.NewKind(`error: '%T' is not a valid value type for '%v'`)
 
 	// ErrFunctionNotFound is thrown when a function is not found
-	ErrFunctionNotFound = errors.NewKind("function: '%s' not found")
+	ErrFunctionNotFound = errors.NewKind("function '%s' not found")
 
-	ErrTableFunctionNotInFrom = errors.NewKind("function: '%s' is a table function and must be used in a FROM clause")
+	ErrTableFunctionNotInFrom = errors.NewKind("function '%s' is a table function and must be used in a FROM clause")
 
 	// ErrConflictingExternalQuery is thrown when a scope's parent has a conflicting sort or limit node
 	ErrConflictingExternalQuery = errors.NewKind("found external scope with conflicting ORDER BY/LIMIT")
 
 	// ErrTableFunctionNotFound is thrown when a table function is not found
-	ErrTableFunctionNotFound = errors.NewKind("table function: '%s' not found")
+	ErrTableFunctionNotFound = errors.NewKind("table function '%s' not found")
 
 	// ErrNonAggregatedColumnWithoutGroupBy is thrown when an aggregate function is used with the implicit, all-rows
 	// grouping and another projected expression contains a non-aggregated column.
@@ -616,16 +617,17 @@ var (
 	ErrViewCreateStatementInvalid = errors.NewKind(`Invalid CREATE VIEW statement: %s`)
 
 	// ErrViewsNotSupported is returned when attempting to access a view on a database that doesn't support them.
-	ErrViewsNotSupported = errors.NewKind("database '%s' doesn't support views")
+	ErrViewsNotSupported = errors.NewKind("database '%s' does not support views")
 
 	// ErrExpectedTableFoundView is returned when attempting to rename a view using ALTER TABLE statement.
 	ErrExpectedTableFoundView = errors.NewKind("expected a table and found view: '%s' ")
 
 	// ErrExistingView is returned when a CREATE VIEW statement uses a name that already exists
-	ErrExistingView = errors.NewKind("the view %s.%s already exists")
+	ErrExistingView = errors.NewKind("view '%s' already exists")
 
 	// ErrViewDoesNotExist is returned when a DROP VIEW statement drops a view that does not exist
-	ErrViewDoesNotExist = errors.NewKind("the view %s.%s does not exist")
+	// TODO: Database name might not be necessary here; check what MySQL does
+	ErrViewDoesNotExist = errors.NewKind("view '%s.%s' does not exist")
 
 	// ErrSessionDoesNotSupportPersistence is thrown when a feature is not already supported
 	ErrSessionDoesNotSupportPersistence = errors.NewKind("session does not support persistence")
