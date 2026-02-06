@@ -69,3 +69,39 @@ func TestEvaluateCondition(t *testing.T) {
 		})
 	}
 }
+
+func TestConvertToVectorNilHandling(t *testing.T) {
+	ctx := sql.NewEmptyContext()
+	tests := map[string]struct {
+		input    interface{}
+		expected []float32
+		wantErr  bool
+	}{
+		"nil input returns nil": {
+			input:    nil,
+			expected: nil,
+			wantErr:  false,
+		},
+		"valid float32 slice passes through": {
+			input:    []float32{1.0, 2.0, 3.0},
+			expected: []float32{1.0, 2.0, 3.0},
+			wantErr:  false,
+		},
+		"valid JSON string parses correctly": {
+			input:    "[1.0, 2.0, 3.0]",
+			expected: []float32{1.0, 2.0, 3.0},
+			wantErr:  false,
+		},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			got, err := sql.ConvertToVector(ctx, tt.input)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, got)
+		})
+	}
+}

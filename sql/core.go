@@ -368,6 +368,9 @@ func ConvertToVector(ctx context.Context, v interface{}) ([]float32, error) {
 	if err != nil {
 		return nil, err
 	}
+	if v == nil {
+		return nil, nil
+	}
 	switch b := v.(type) {
 	case []float32:
 		return b, nil
