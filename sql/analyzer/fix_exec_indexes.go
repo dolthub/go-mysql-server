@@ -677,6 +677,7 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 // Projector nodes can return a subset of the full sql.PrimaryTableSchema.
 // todo: pruning projections should update plan.TableIdNode .Columns()
 // to avoid schema/column discontinuities.
+// TODO: consider caching columnIds in node to avoid recursively calculating it for every node
 func columnIdsForNode(n sql.Node) []sql.ColumnId {
 	var ret []sql.ColumnId
 	switch n := n.(type) {
