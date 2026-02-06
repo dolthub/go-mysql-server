@@ -707,6 +707,10 @@ func columnIdsForNode(n sql.Node) []sql.ColumnId {
 		}
 	case *plan.SetOp:
 		ret = append(ret, columnIdsForNode(n.Left())...)
+	case *plan.EmptyTable:
+		// ColumnIds are all zero here. The index will be determined based on the column name or by the Projector that
+		// wraps the EmptyTable.
+		return make([]sql.ColumnId, len(n.Schema()))
 	case plan.TableIdNode:
 		if rt, ok := n.(*plan.ResolvedTable); ok && plan.IsDualTable(rt.Table) {
 			ret = append(ret, 0)

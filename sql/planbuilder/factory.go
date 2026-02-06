@@ -147,16 +147,20 @@ func (f *factory) buildConvert(expr sql.Expression, castToType string, typeLengt
 func (f *factory) buildJoin(l, r sql.Node, op plan.JoinType, cond sql.Expression) (sql.Node, error) {
 	{
 		// fold empty joins
+		// TODO: shouldn't be allowed for right outer joins or full outer joins
+		// https://github.com/dolthub/dolt/issues/10445
 		if _, empty := l.(*plan.EmptyTable); empty {
 			f.log("folded empty table join")
 			return plan.NewEmptyTableWithSchema(append(l.Schema(), r.Schema()...)), nil
 		}
+		// TODO: shouldn't be allowed for full outer joins either https://github.com/dolthub/dolt/issues/10445
 		if _, empty := r.(*plan.EmptyTable); empty && !op.IsLeftOuter() {
 			f.log("folded empty table join")
 			return plan.NewEmptyTableWithSchema(append(l.Schema(), r.Schema()...)), nil
 		}
 	}
 
+	// TODO: transpose BEFORE folding empty table joins https://github.com/dolthub/dolt/issues/10445
 	{
 		// transpose right joins
 		if op.IsRightOuter() {

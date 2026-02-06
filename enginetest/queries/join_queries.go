@@ -1386,6 +1386,29 @@ var JoinScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/10434
+		Name: "Correct exec indexes are assigned for left join on empty table",
+		SetUpScript: []string{
+			"CREATE  TABLE  t4(c1 BOOLEAN, PRIMARY KEY(c1));",
+			"CREATE  TABLE  t0(c0 INT);",
+			"CREATE table t1 AS SELECT 1;",
+			"CREATE VIEW v0(c0) AS SELECT 1;",
+			"INSERT INTO t0(c0) VALUES (1);",
+			"insert into t4(c1) values (false)",
+			"SELECT * FROM t1, t0 LEFT JOIN t4 ON FALSE;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from t1, t0 left join t4 on false;",
+				Expected: []sql.Row{{1, 1, nil}},
+			},
+			{
+				Query:    "select * from t1, t0 left join t4 on false;",
+				Expected: []sql.Row{{1, 1, nil}},
+			},
+		},
+	},
 }
 
 var LateralJoinScriptTests = []ScriptTest{
