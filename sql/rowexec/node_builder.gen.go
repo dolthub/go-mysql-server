@@ -374,6 +374,8 @@ func (b *BaseBuilder) buildNodeExecNoAnalyze(ctx *sql.Context, n sql.Node, row s
 		return b.buildDropTable(ctx, n, row)
 	case *plan.JSONTable:
 		return b.buildJSONTable(ctx, n, row)
+	case *plan.RowsFrom:
+		return b.buildRowsFrom(ctx, n, row)
 	case *plan.UnlockTables:
 		return b.buildUnlockTables(ctx, n, row)
 	case *plan.HashLookup:
