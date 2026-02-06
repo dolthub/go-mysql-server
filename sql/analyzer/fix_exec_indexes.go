@@ -707,6 +707,9 @@ func columnIdsForNode(n sql.Node) []sql.ColumnId {
 		}
 	case *plan.SetOp:
 		ret = append(ret, columnIdsForNode(n.Left())...)
+	case *plan.EmptyTable:
+		// ColumnIds are all zero here. The index will be determined based on the column name
+		return make([]sql.ColumnId, len(n.Schema()))
 	case plan.TableIdNode:
 		if rt, ok := n.(*plan.ResolvedTable); ok && plan.IsDualTable(rt.Table) {
 			ret = append(ret, 0)
@@ -763,7 +766,9 @@ func fixExprToScope(e sql.Expression, scopes ...*idxScope) sql.Expression {
 			// TODO: this is a swallowed error in some cases. It triggers falsely in queries involving the dual table, or
 			//  queries where the columns being selected are only found in subqueries. Conversely, we actually want to ignore
 			//  this error for the case of DEFAULT in a `plan.Values`, since we analyze the insert source in isolation (we
-			//  don't have the destination schema, and column references in default values are determined in the build phase)
+			//  don't have the destination schema, and column references in default values are determined in the build phase).
+			//  We also want to ignore the error if the field references a column from in an EmptyTable (some Nodes are
+			//  optimized into an EmptyTable if it ultimately doesn't return anything).
 
 			// TODO: If we don't find a valid index for a field, we should report an error
 			idx, _ := newScope.getIdxId(e.Id(), e.String())

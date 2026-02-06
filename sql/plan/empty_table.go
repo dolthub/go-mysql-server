@@ -35,31 +35,33 @@ var _ sql.DeletableTable = (*EmptyTable)(nil)
 var _ sql.RenameableNode = (*EmptyTable)(nil)
 
 type EmptyTable struct {
+	// TODO: cols and id are currently used only to implement TableIdNode, which is only used for testing purposes.
+	// It doesn't make sense for EmptyTable to implement TableIdNode. We should remove these fields.
 	cols   sql.ColSet
 	schema sql.Schema
 	id     sql.TableId
 }
 
-// WithId implements sql.TableIdNode
+// WithId implements TableIdNode
 func (e *EmptyTable) WithId(id sql.TableId) TableIdNode {
 	ret := *e
 	ret.id = id
 	return &ret
 }
 
-// Id implements sql.TableIdNode
+// Id implements TableIdNode
 func (e *EmptyTable) Id() sql.TableId {
 	return e.id
 }
 
-// WithColumns implements sql.TableIdNode
+// WithColumns implements TableIdNode
 func (e *EmptyTable) WithColumns(set sql.ColSet) TableIdNode {
 	ret := *e
 	ret.cols = set
 	return &ret
 }
 
-// Columns implements sql.TableIdNode
+// Columns implements TableIdNode
 func (e *EmptyTable) Columns() sql.ColSet {
 	return e.cols
 }
