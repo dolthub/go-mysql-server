@@ -766,9 +766,7 @@ func fixExprToScope(e sql.Expression, scopes ...*idxScope) sql.Expression {
 			// TODO: this is a swallowed error in some cases. It triggers falsely in queries involving the dual table, or
 			//  queries where the columns being selected are only found in subqueries. Conversely, we actually want to ignore
 			//  this error for the case of DEFAULT in a `plan.Values`, since we analyze the insert source in isolation (we
-			//  don't have the destination schema, and column references in default values are determined in the build phase).
-			//  We also want to ignore the error if the field references a column from in an EmptyTable (some Nodes are
-			//  optimized into an EmptyTable if it ultimately doesn't return anything).
+			//  don't have the destination schema, and column references in default values are determined in the build phase)
 
 			// TODO: If we don't find a valid index for a field, we should report an error
 			idx, _ := newScope.getIdxId(e.Id(), e.String())
