@@ -36,7 +36,7 @@ var _ sql.RenameableNode = (*EmptyTable)(nil)
 
 type EmptyTable struct {
 	// TODO: cols and id are currently used only to implement TableIdNode, which is only used for testing purposes.
-	// It doesn't make sense for EmptyTable to implement TableIdNode. We should remove these fields.
+	// It doesn't make sense for EmptyTable to implement TableIdNode. https://github.com/dolthub/dolt/issues/10443
 	cols   sql.ColSet
 	schema sql.Schema
 	id     sql.TableId

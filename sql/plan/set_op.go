@@ -46,7 +46,7 @@ var _ sql.Expressioner = (*SetOp)(nil)
 var _ sql.CollationCoercible = (*SetOp)(nil)
 
 // TODO: This might not be necessary now that SetOp exec indexes are assigned based on its left child node, instead of
-// the cols in ColSet
+// the cols in ColSet https://github.com/dolthub/dolt/issues/10443
 var _ TableIdNode = (*SetOp)(nil)
 
 // NewSetOp creates a new SetOp node with the given children.
