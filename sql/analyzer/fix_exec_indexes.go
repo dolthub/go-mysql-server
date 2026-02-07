@@ -633,6 +633,8 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 			nn.Returning = s.expressions
 		}
 
+		// TODO: For a lot of nodes, we can figure out the ColumnIds from the child scope(s) without having to
+		//  recursively recalculate by revisiting the child nodes
 		s.ids = columnIdsForNode(n)
 		s.addSchema(n.Schema())
 		var err error
@@ -677,7 +679,6 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 // Projector nodes can return a subset of the full sql.PrimaryTableSchema.
 // todo: pruning projections should update plan.TableIdNode .Columns()
 // to avoid schema/column discontinuities.
-// TODO: consider caching columnIds in node to avoid recursively calculating it for every node
 func columnIdsForNode(n sql.Node) []sql.ColumnId {
 	var ret []sql.ColumnId
 	switch n := n.(type) {
