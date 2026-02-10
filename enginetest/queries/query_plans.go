@@ -24358,23 +24358,20 @@ order by x, y;
 			"",
 	},
 	{
-		Query: `select * from bigtable join xy where t between x and y;`,
+		Query: `select * from bigtable join xy where n between x and y;`,
 		ExpectedPlan: "RangeHeapJoin\n" +
 			" ├─ AND\n" +
 			" │   ├─ GreaterThanOrEqual\n" +
-			" │   │   ├─ bigtable.t:0!null\n" +
+			" │   │   ├─ bigtable.n:1\n" +
 			" │   │   └─ xy.x:2!null\n" +
 			" │   └─ LessThanOrEqual\n" +
-			" │       ├─ bigtable.t:0!null\n" +
+			" │       ├─ bigtable.n:1\n" +
 			" │       └─ xy.y:3\n" +
-			" ├─ IndexedTableAccess(bigtable)\n" +
-			" │   ├─ index: [bigtable.t]\n" +
-			" │   ├─ static: [{[NULL, ∞)}]\n" +
-			" │   ├─ colSet: (1,2)\n" +
-			" │   ├─ tableId: 1\n" +
-			" │   └─ Table\n" +
-			" │       ├─ name: bigtable\n" +
-			" │       └─ columns: [t n]\n" +
+			" ├─ Sort(bigtable.n:1 ASC nullsFirst)\n" +
+			" │   └─ ProcessTable\n" +
+			" │       └─ Table\n" +
+			" │           ├─ name: bigtable\n" +
+			" │           └─ columns: [t n]\n" +
 			" └─ IndexedTableAccess(xy)\n" +
 			"     ├─ index: [xy.x]\n" +
 			"     ├─ static: [{[NULL, ∞)}]\n" +
@@ -24385,22 +24382,22 @@ order by x, y;
 			"         └─ columns: [x y]\n" +
 			"",
 		ExpectedEstimates: "RangeHeapJoin (estimated cost=7000.000 rows=17)\n" +
-			" ├─ ((bigtable.t >= xy.x) AND (bigtable.t <= xy.y))\n" +
-			" ├─ IndexedTableAccess(bigtable)\n" +
-			" │   ├─ index: [bigtable.t]\n" +
-			" │   ├─ filters: [{[NULL, ∞)}]\n" +
-			" │   └─ columns: [t n]\n" +
+			" ├─ ((bigtable.n >= xy.x) AND (bigtable.n <= xy.y))\n" +
+			" ├─ Sort(bigtable.n ASC)\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: bigtable\n" +
+			" │       └─ columns: [t n]\n" +
 			" └─ IndexedTableAccess(xy)\n" +
 			"     ├─ index: [xy.x]\n" +
 			"     ├─ filters: [{[NULL, ∞)}]\n" +
 			"     └─ columns: [x y]\n" +
 			"",
-		ExpectedAnalysis: "RangeHeapJoin (estimated cost=7000.000 rows=17) (actual rows=14 loops=1)\n" +
-			" ├─ ((bigtable.t >= xy.x) AND (bigtable.t <= xy.y))\n" +
-			" ├─ IndexedTableAccess(bigtable)\n" +
-			" │   ├─ index: [bigtable.t]\n" +
-			" │   ├─ filters: [{[NULL, ∞)}]\n" +
-			" │   └─ columns: [t n]\n" +
+		ExpectedAnalysis: "RangeHeapJoin (estimated cost=7000.000 rows=17) (actual rows=8 loops=1)\n" +
+			" ├─ ((bigtable.n >= xy.x) AND (bigtable.n <= xy.y))\n" +
+			" ├─ Sort(bigtable.n ASC)\n" +
+			" │   └─ Table\n" +
+			" │       ├─ name: bigtable\n" +
+			" │       └─ columns: [t n]\n" +
 			" └─ IndexedTableAccess(xy)\n" +
 			"     ├─ index: [xy.x]\n" +
 			"     ├─ filters: [{[NULL, ∞)}]\n" +
