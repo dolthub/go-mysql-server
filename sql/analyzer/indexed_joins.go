@@ -1033,6 +1033,15 @@ func addRangeHeapJoin(m *memo.Memo) error {
 				return nil
 			}
 
+			valType := valueColRef.Type()
+			// TODO: Incompatible sort orders between the value and min columns would be fine if we sorted the tables
+			//  using the same sort order (for example, if value is a number type column and min is a string, we sort
+			//  the right table based on min converted to a number). Incompatible sort orders between value and max
+			//  columns would be fine if we updated the range heap join iter to use a compare expression instead of
+			//  hard-coding it to use maxColRef.Type().Compare
+			if !compatibleSortOrders(valType, minColRef.Type()) || !compatibleSortOrders(valType, maxColRef.Type()) {
+				return nil
+			}
 			leftIndexScans, err := sortedIndexScansForTableCol(m.Ctx, m.StatsProvider(), leftTab, lIndexes, valueColRef, join.Left.RelProps.FuncDeps().Constants(), lFilters)
 			if err != nil {
 				return err
