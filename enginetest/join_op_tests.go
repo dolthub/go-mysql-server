@@ -615,8 +615,8 @@ var DefaultJoinOpTests = []joinOpTest{
 			},
 			{
 				// https://github.com/dolthub/dolt/issues/10451
-				Query:    "select u from xy left join uv on x = v;",
-				Expected: []sql.Row{{1}, {nil}, {3}, {nil}, {4}, {5}, {6}, {nil}, {8}},
+				Query:    "select u from xy left join uv on u = -2;",
+				Expected: []sql.Row{{nil}, {nil}, {nil}, {nil}, {nil}, {nil}, {nil}, {nil}},
 			},
 			{
 				Query: "select x, v, s from xy left join uv on x = v left join st on u=t;",
