@@ -4759,6 +4759,199 @@ Select * from (
 			"",
 	},
 	{
+		Query: `select * from ab ab1 where exists (select * from ab ab2 join lateral (select * from two_pk where pk1 = ab1.a and pk2 = ab2.a) inner1)`,
+		ExpectedPlan: "Project\n" +
+			" ├─ columns: [ab1.a:0!null, ab1.b:1]\n" +
+			" └─ LateralCrossJoin\n" +
+			"     ├─ TableAlias(ab1)\n" +
+			"     │   └─ ProcessTable\n" +
+			"     │       └─ Table\n" +
+			"     │           ├─ name: ab\n" +
+			"     │           └─ columns: [a b]\n" +
+			"     └─ Limit(1)\n" +
+			"         └─ LateralCrossJoin\n" +
+			"             ├─ TableAlias(ab2)\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: ab\n" +
+			"             │       ├─ columns: [a b]\n" +
+			"             │       ├─ colSet: (3,4)\n" +
+			"             │       └─ tableId: 2\n" +
+			"             └─ SubqueryAlias\n" +
+			"                 ├─ name: inner1\n" +
+			"                 ├─ outerVisibility: true\n" +
+			"                 ├─ isLateral: true\n" +
+			"                 ├─ cacheable: false\n" +
+			"                 ├─ colSet: (12-18)\n" +
+			"                 ├─ tableId: 4\n" +
+			"                 └─ Filter\n" +
+			"                     ├─ AND\n" +
+			"                     │   ├─ Eq\n" +
+			"                     │   │   ├─ two_pk.pk1:4!null\n" +
+			"                     │   │   └─ ab1.a:0!null\n" +
+			"                     │   └─ Eq\n" +
+			"                     │       ├─ two_pk.pk2:5!null\n" +
+			"                     │       └─ ab2.a:2!null\n" +
+			"                     └─ IndexedTableAccess(two_pk)\n" +
+			"                         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                         ├─ keys: [ab1.a:0!null ab2.a:2!null]\n" +
+			"                         ├─ colSet: (5-11)\n" +
+			"                         ├─ tableId: 3\n" +
+			"                         └─ Table\n" +
+			"                             ├─ name: two_pk\n" +
+			"                             └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"",
+		ExpectedEstimates: "Project\n" +
+			" ├─ columns: [ab1.a, ab1.b]\n" +
+			" └─ LateralCrossJoin (estimated cost=126249.000 rows=156)\n" +
+			"     ├─ TableAlias(ab1)\n" +
+			"     │   └─ Table\n" +
+			"     │       └─ name: ab\n" +
+			"     └─ Limit(1)\n" +
+			"         └─ LateralCrossJoin\n" +
+			"             ├─ TableAlias(ab2)\n" +
+			"             │   └─ Table\n" +
+			"             │       └─ name: ab\n" +
+			"             └─ SubqueryAlias\n" +
+			"                 ├─ name: inner1\n" +
+			"                 ├─ outerVisibility: true\n" +
+			"                 ├─ isLateral: true\n" +
+			"                 ├─ cacheable: false\n" +
+			"                 ├─ colSet: (12-18)\n" +
+			"                 ├─ tableId: 4\n" +
+			"                 └─ Filter\n" +
+			"                     ├─ ((two_pk.pk1 = ab1.a) AND (two_pk.pk2 = ab2.a))\n" +
+			"                     └─ IndexedTableAccess(two_pk)\n" +
+			"                         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                         ├─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"                         └─ keys: ab1.a, ab2.a\n" +
+			"",
+		ExpectedAnalysis: "Project\n" +
+			" ├─ columns: [ab1.a, ab1.b]\n" +
+			" └─ LateralCrossJoin (estimated cost=126249.000 rows=156) (actual rows=2 loops=1)\n" +
+			"     ├─ TableAlias(ab1)\n" +
+			"     │   └─ Table\n" +
+			"     │       └─ name: ab\n" +
+			"     └─ Limit(1)\n" +
+			"         └─ LateralCrossJoin\n" +
+			"             ├─ TableAlias(ab2)\n" +
+			"             │   └─ Table\n" +
+			"             │       └─ name: ab\n" +
+			"             └─ SubqueryAlias\n" +
+			"                 ├─ name: inner1\n" +
+			"                 ├─ outerVisibility: true\n" +
+			"                 ├─ isLateral: true\n" +
+			"                 ├─ cacheable: false\n" +
+			"                 ├─ colSet: (12-18)\n" +
+			"                 ├─ tableId: 4\n" +
+			"                 └─ Filter\n" +
+			"                     ├─ ((two_pk.pk1 = ab1.a) AND (two_pk.pk2 = ab2.a))\n" +
+			"                     └─ IndexedTableAccess(two_pk)\n" +
+			"                         ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                         ├─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"                         └─ keys: ab1.a, ab2.a\n" +
+			"",
+	},
+	{
+		Query: `select * from ab ab1 join lateral (select * from ab ab2 join lateral (select * from two_pk where pk1 = ab1.a and pk2 = ab2.a) inner1) inner2;`,
+		ExpectedPlan: "LateralCrossJoin\n" +
+			" ├─ TableAlias(ab1)\n" +
+			" │   └─ ProcessTable\n" +
+			" │       └─ Table\n" +
+			" │           ├─ name: ab\n" +
+			" │           └─ columns: [a b]\n" +
+			" └─ SubqueryAlias\n" +
+			"     ├─ name: inner2\n" +
+			"     ├─ outerVisibility: false\n" +
+			"     ├─ isLateral: true\n" +
+			"     ├─ cacheable: false\n" +
+			"     ├─ colSet: (19-27)\n" +
+			"     ├─ tableId: 5\n" +
+			"     └─ LateralCrossJoin\n" +
+			"         ├─ TableAlias(ab2)\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: ab\n" +
+			"         │       ├─ columns: [a b]\n" +
+			"         │       ├─ colSet: (3,4)\n" +
+			"         │       └─ tableId: 2\n" +
+			"         └─ SubqueryAlias\n" +
+			"             ├─ name: inner1\n" +
+			"             ├─ outerVisibility: false\n" +
+			"             ├─ isLateral: true\n" +
+			"             ├─ cacheable: false\n" +
+			"             ├─ colSet: (12-18)\n" +
+			"             ├─ tableId: 4\n" +
+			"             └─ Filter\n" +
+			"                 ├─ AND\n" +
+			"                 │   ├─ Eq\n" +
+			"                 │   │   ├─ two_pk.pk1:4!null\n" +
+			"                 │   │   └─ ab1.a:0!null\n" +
+			"                 │   └─ Eq\n" +
+			"                 │       ├─ two_pk.pk2:5!null\n" +
+			"                 │       └─ ab2.a:2!null\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: two_pk\n" +
+			"                     ├─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"                     ├─ colSet: (5-11)\n" +
+			"                     └─ tableId: 3\n" +
+			"",
+		ExpectedEstimates: "LateralCrossJoin (estimated cost=100999.000 rows=125)\n" +
+			" ├─ TableAlias(ab1)\n" +
+			" │   └─ Table\n" +
+			" │       └─ name: ab\n" +
+			" └─ SubqueryAlias\n" +
+			"     ├─ name: inner2\n" +
+			"     ├─ outerVisibility: false\n" +
+			"     ├─ isLateral: true\n" +
+			"     ├─ cacheable: false\n" +
+			"     ├─ colSet: (19-27)\n" +
+			"     ├─ tableId: 5\n" +
+			"     └─ LateralCrossJoin (estimated cost=100999.000 rows=125)\n" +
+			"         ├─ TableAlias(ab2)\n" +
+			"         │   └─ Table\n" +
+			"         │       └─ name: ab\n" +
+			"         └─ SubqueryAlias\n" +
+			"             ├─ name: inner1\n" +
+			"             ├─ outerVisibility: false\n" +
+			"             ├─ isLateral: true\n" +
+			"             ├─ cacheable: false\n" +
+			"             ├─ colSet: (12-18)\n" +
+			"             ├─ tableId: 4\n" +
+			"             └─ Filter\n" +
+			"                 ├─ ((two_pk.pk1 = ab1.a) AND (two_pk.pk2 = ab2.a))\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: two_pk\n" +
+			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"",
+		ExpectedAnalysis: "LateralCrossJoin (estimated cost=100999.000 rows=125) (actual rows=4 loops=1)\n" +
+			" ├─ TableAlias(ab1)\n" +
+			" │   └─ Table\n" +
+			" │       └─ name: ab\n" +
+			" └─ SubqueryAlias\n" +
+			"     ├─ name: inner2\n" +
+			"     ├─ outerVisibility: false\n" +
+			"     ├─ isLateral: true\n" +
+			"     ├─ cacheable: false\n" +
+			"     ├─ colSet: (19-27)\n" +
+			"     ├─ tableId: 5\n" +
+			"     └─ LateralCrossJoin (estimated cost=100999.000 rows=125)\n" +
+			"         ├─ TableAlias(ab2)\n" +
+			"         │   └─ Table\n" +
+			"         │       └─ name: ab\n" +
+			"         └─ SubqueryAlias\n" +
+			"             ├─ name: inner1\n" +
+			"             ├─ outerVisibility: false\n" +
+			"             ├─ isLateral: true\n" +
+			"             ├─ cacheable: false\n" +
+			"             ├─ colSet: (12-18)\n" +
+			"             ├─ tableId: 4\n" +
+			"             └─ Filter\n" +
+			"                 ├─ ((two_pk.pk1 = ab1.a) AND (two_pk.pk2 = ab2.a))\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: two_pk\n" +
+			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"",
+	},
+	{
 		Query: `select * from ab s where exists (select * from ab where a = 1 or s.a = 1)`,
 		ExpectedPlan: "SemiJoin\n" +
 			" ├─ Or\n" +
