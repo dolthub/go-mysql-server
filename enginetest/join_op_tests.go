@@ -2357,6 +2357,7 @@ WHERE
 				Expected: []sql.Row{{"5", 5}, {"33", 33}, {"123a", 123}, {"223", 223}},
 			},
 			{
+				// https://github.com/dolthub/dolt/issues/10435
 				Query:    "select * from t1 inner join t0 on (t1.c0 between t0.c1 and t0.c0)",
 				Expected: []sql.Row{{-1, nil, "0", -2}},
 			},
