@@ -2339,6 +2339,30 @@ WHERE
 			},
 		},
 	},
+	{
+		name: "join on string and number columns",
+		setup: [][]string{
+			{
+				"create table t0(c0 varchar(500) primary key, c1 int)",
+				"create table t1(c0 int primary key, c1 varchar(500))",
+				"insert into t0(c0) values (5), (33), (223), ('123a')",
+				"insert into t1(c0) values (5), (33), (223), (123)",
+				"insert into t1(c0) values (-1)",
+				"insert into t0(c0, c1) values (false, -2)",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select t0.c0, t1.c0 from t0 join t1 on t0.c0 = t1.c0 order by t1.c0;",
+				Expected: []sql.Row{{"5", 5}, {"33", 33}, {"123a", 123}, {"223", 223}},
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/10435
+				Query:    "select * from t1 inner join t0 on (t1.c0 between t0.c1 and t0.c0)",
+				Expected: []sql.Row{{-1, nil, "0", -2}},
+			},
+		},
+	},
 }
 
 var rangeJoinOpTests = []JoinOpTests{
