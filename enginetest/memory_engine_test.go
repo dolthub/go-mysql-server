@@ -193,31 +193,30 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	// t.Skip()
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
+			Name: "Parse table name as column",
 			SetUpScript: []string{
-				"CREATE TABLE t1(c0 BOOLEAN , c1 INT);",
-				"CREATE TABLE t0(c0 INT , c1 VARCHAR(500) , PRIMARY KEY(c0));",
-				"INSERT INTO t1(c0, c1) VALUES (true, 2063453753);",
-				"INSERT INTO t1(c0) VALUES (false);",
-				"INSERT INTO t0(c0) VALUES (131799004);",
-				"INSERT INTO t0(c0, c1) VALUES (-545443710, 'a'), (-892374514, 'u');",
-				"INSERT INTO t0(c1, c0) VALUES ('', 2063453753), ('', 669814563);",
-				"INSERT INTO t0(c1, c0) VALUES (NULL, -1798911197);",
-				"INSERT INTO t0(c0) VALUES (453889817);",
-				"INSERT INTO t0(c1, c0) VALUES ('', -949625485);",
-				"INSERT INTO t0(c1, c0) VALUES ('()', -1969119186);",
-				"INSERT INTO t0(c0, c1) VALUES (1089256870, 'd');",
-				"INSERT INTO t0(c0, c1) VALUES (-1636070025, 'e'), (993406539, '');",
-				"INSERT INTO t0(c1, c0) VALUES ('-235577687', -204214863);",
-				"INSERT INTO t0(c0) VALUES (679291764);",
-				"INSERT INTO t0(c0, c1) VALUES (-1238292327, false);",
+				`CREATE TABLE test (pk INT PRIMARY KEY, v1 VARCHAR(255));`,
+				`INSERT INTO test VALUES (1, 'a'), (2, 'b');`,
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "SELECT t0.c0 FROM t1 LEFT  JOIN t0 ON ((t0.c0)=(-5));",
-					Expected: []sql.Row{{nil}, {nil}},
+					Query:    "SELECT temporarytesting(t) FROM test AS t;",
+					Expected: []sql.Row{},
+				},
+				{
+					Query:    "SELECT temporarytesting(test) FROM test;",
+					Expected: []sql.Row{},
+				},
+				{
+					Query:    "SELECT temporarytesting(pk, test) FROM test;",
+					Expected: []sql.Row{},
+				},
+				{
+					Query:    "SELECT temporarytesting(v1, test, pk) FROM test;",
+					Expected: []sql.Row{},
 				},
 			},
 		},
@@ -231,9 +230,8 @@ func TestSingleScript(t *testing.T) {
 			panic(err)
 		}
 
-		engine.EngineAnalyzer().Debug = true
-		engine.EngineAnalyzer().Verbose = true
-		engine.EngineAnalyzer().Trace = true
+		// engine.EngineAnalyzer().Debug = true
+		// engine.EngineAnalyzer().Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
