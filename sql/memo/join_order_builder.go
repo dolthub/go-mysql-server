@@ -238,8 +238,6 @@ func (j *joinOrderBuilder) populateSubgraph(n sql.Node) (vertexSet, edgeSet, *Ex
 		group = j.buildJoinLeaf(n)
 	case sql.NameableNode:
 		group = j.buildJoinLeaf(n.(plan.TableIdNode))
-	case *plan.StripRowNode:
-		return j.populateSubgraph(n.Child)
 	case *plan.CachedResults:
 		return j.populateSubgraph(n.Child)
 	default:

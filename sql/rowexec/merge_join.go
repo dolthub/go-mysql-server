@@ -345,7 +345,7 @@ func (i *mergeJoinIter) incMatch(ctx *sql.Context) error {
 			if err != nil {
 				return err
 			} else if match {
-				i.rightBuf = append(i.rightBuf, peek)
+				i.rightBuf = append(i.rightBuf, peek[i.scopeLen:])
 			} else {
 				i.rightPeek = peek
 				i.rightDone = true
@@ -376,7 +376,7 @@ func (i *mergeJoinIter) incMatch(ctx *sql.Context) error {
 
 	if !i.leftDone {
 		// rightBuf has already been validated, we don't need compare
-		copySubslice(i.fullRow, i.rightBuf[i.bufI], i.scopeLen+i.parentLen+i.leftRowLen)
+		copy(i.fullRow[i.scopeLen+i.parentLen+i.leftRowLen:], i.rightBuf[i.bufI])
 		i.bufI++
 		return nil
 	}
@@ -402,8 +402,8 @@ func (i *mergeJoinIter) incMatch(ctx *sql.Context) error {
 	// both lookaheads fail the join condition. Drain
 	// lookahead rows / increment both iterators.
 	i.matchIncLeft = true
-	copySubslice(i.fullRow, i.leftPeek, i.scopeLen+i.parentLen)
-	copySubslice(i.fullRow, i.rightPeek, i.scopeLen+i.parentLen+i.leftRowLen)
+	copySubslice(i.fullRow, i.leftPeek[i.scopeLen:], i.scopeLen+i.parentLen)
+	copySubslice(i.fullRow, i.rightPeek[i.scopeLen:], i.scopeLen+i.parentLen+i.leftRowLen)
 
 	return nil
 }
@@ -477,7 +477,7 @@ func (i *mergeJoinIter) peekMatch(ctx *sql.Context, iter sql.RowIter) (bool, sql
 	}
 
 	// check if lookahead valid
-	copySubslice(i.fullRow, peek, off)
+	copy(i.fullRow[off:], peek[i.scopeLen:])
 	res, err := i.cmp.Compare(ctx, i.fullRow)
 	if expression.ErrNilOperand.Is(err) {
 		// revert change to output row if no match
@@ -487,7 +487,7 @@ func (i *mergeJoinIter) peekMatch(ctx *sql.Context, iter sql.RowIter) (bool, sql
 	}
 	if res != 0 {
 		// revert change to output row if no match
-		copySubslice(i.fullRow, restore, off)
+		copy(i.fullRow[off:], restore)
 	}
 	return res == 0, peek, nil
 }
@@ -499,9 +499,7 @@ func (i *mergeJoinIter) exhausted() bool {
 
 // copySubslice copies |src| into |dst| starting at index |off|
 func copySubslice(dst, src sql.Row, off int) {
-	for i, v := range src {
-		dst[off+i] = v
-	}
+	copy(dst[off:], src)
 }
 
 // incLeft updates |i.fullRow|'s left row
@@ -522,10 +520,7 @@ func (i *mergeJoinIter) incLeft(ctx *sql.Context) error {
 		}
 	}
 
-	off := i.scopeLen + i.parentLen
-	for j, v := range row {
-		i.fullRow[off+j] = v
-	}
+	copy(i.fullRow[i.scopeLen+i.parentLen:], row[i.scopeLen:])
 
 	return nil
 }
@@ -547,10 +542,7 @@ func (i *mergeJoinIter) incRight(ctx *sql.Context) error {
 		}
 	}
 
-	off := i.scopeLen + i.parentLen + i.leftRowLen
-	for j, v := range row {
-		i.fullRow[off+j] = v
-	}
+	copy(i.fullRow[i.scopeLen+i.parentLen+i.leftRowLen:], row[i.scopeLen:])
 
 	return nil
 }

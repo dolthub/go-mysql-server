@@ -661,13 +661,6 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 				return n, nil
 			}
 			n = jn.WithScopeLen(scopeLen)
-			n, err = n.WithChildren(
-				plan.NewStripRowNode(jn.Left(), scopeLen),
-				plan.NewStripRowNode(jn.Right(), scopeLen),
-			)
-			if err != nil {
-				return nil, err
-			}
 		}
 		return n, nil
 	}

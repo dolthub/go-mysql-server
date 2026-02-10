@@ -170,7 +170,8 @@ func finalizeSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scop
 			var subScope *plan.Scope = scope
 			for _, joinParent := range joinParents {
 				if sqa.OuterScopeVisibility && joinParent != nil {
-					if stripChild, ok := joinParent.Right().(*plan.StripRowNode); ok && stripChild.Child == sqa {
+					// if joinParent.Right() == sqa {
+					if false {
 						subScope = scope.NewScopeInJoin(joinParent.Children()[0])
 						subScope.SetLateralJoin(joinParent.Op.IsLateral())
 					} else {
