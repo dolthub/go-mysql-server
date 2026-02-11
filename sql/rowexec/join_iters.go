@@ -29,6 +29,70 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
+type joinStats struct {
+	builder  sql.NodeExecBuilder
+	joinType plan.JoinType
+
+	rowSize   int
+	scopeLen  int
+	parentLen int
+	leftLen   int
+	rightLen  int
+
+	primaryRowIter    sql.RowIter
+	primaryRow        sql.Row
+	secondaryProvider sql.Node
+	secondaryRowIter  sql.RowIter
+}
+
+func newJoinStats(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode, parentRow sql.Row) (joinStats, error) {
+	parentLen := len(parentRow)
+	leftLen := len(j.Left().Schema())
+	rightLen := len(j.Right().Schema())
+
+	primaryRow := make(sql.Row, parentLen+leftLen)
+	copy(primaryRow, parentRow)
+
+	primaryRowIter, err := b.Build(ctx, j.Left(), parentRow)
+	if err != nil {
+		return joinStats{}, err
+	}
+
+	return joinStats{
+		builder:  b,
+		joinType: j.Op,
+
+		rowSize:   parentLen + leftLen + rightLen,
+		scopeLen:  j.ScopeLen,
+		parentLen: parentLen,
+		leftLen:   leftLen,
+		rightLen:  rightLen,
+
+		primaryRowIter:    primaryRowIter,
+		primaryRow:        primaryRow,
+		secondaryProvider: j.Right(),
+		secondaryRowIter:  nil,
+	}, nil
+}
+
+func (i *joinStats) Close(ctx *sql.Context) (err error) {
+	if i.primaryRowIter != nil {
+		if err = i.primaryRowIter.Close(ctx); err != nil {
+			if i.secondaryRowIter != nil {
+				_ = i.secondaryRowIter.Close(ctx)
+			}
+			return err
+		}
+	}
+
+	if i.secondaryRowIter != nil {
+		err = i.secondaryRowIter.Close(ctx)
+		i.secondaryRowIter = nil
+	}
+
+	return err
+}
+
 // joinIter is an iterator that iterates over every row in the primary table and performs an index lookup in
 // the secondary table for each value
 type joinIter struct {
