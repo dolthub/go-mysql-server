@@ -185,7 +185,7 @@ func TestJoinOrderBuilder(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			j := NewJoinOrderBuilder(NewMemo(newContext(pro), nil, nil, 0, NewDefaultCoster(), nil))
+			j := NewJoinOrderBuilder(NewMemo(newContext(pro), nil, nil, NewDefaultCoster(), nil))
 			j.forceFastDFSLookupForTest = tt.forceFastReorder
 			j.ReorderJoin(tt.in)
 			require.Equal(t, tt.plans, j.m.String())
@@ -671,7 +671,7 @@ func TestEnsureClosure(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			b := NewJoinOrderBuilder(NewMemo(newContext(pro), nil, nil, 0, NewDefaultCoster(), nil))
+			b := NewJoinOrderBuilder(NewMemo(newContext(pro), nil, nil, NewDefaultCoster(), nil))
 			b.populateSubgraph(tt.in)
 			beforeLen := len(b.edges)
 			b.ensureClosure(b.m.Root())
