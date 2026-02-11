@@ -96,20 +96,10 @@ func (i *joinStats) Close(ctx *sql.Context) (err error) {
 // joinIter is an iterator that iterates over every row in the primary table and performs an index lookup in
 // the secondary table for each value
 type joinIter struct {
-	b                 sql.NodeExecBuilder
-	cond              sql.Expression
-	primary           sql.RowIter
-	secondaryProvider sql.Node
-	secondary         sql.RowIter
-	primaryRow        sql.Row
-	rowSize           int
-	scopeLen          int
-	parentLen         int
-	leftLen           int
-	rightLen          int
-	joinType          plan.JoinType
-	loadPrimaryRow    bool
-	foundMatch        bool
+	joinStats
+	cond           sql.Expression
+	loadPrimaryRow bool
+	foundMatch     bool
 }
 
 func newJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode, row sql.Row) (sql.RowIter, error) {
@@ -131,41 +121,22 @@ func newJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode, row 
 		attribute.String("right", rightName),
 	))
 
-	l, err := b.Build(ctx, j.Left(), row)
+	js, err := newJoinStats(ctx, b, j, row)
 	if err != nil {
 		span.End()
 		return nil, err
 	}
 
-	parentLen := len(row)
-	leftLen := len(j.Left().Schema())
-	rightLen := len(j.Right().Schema())
-
-	primaryRow := make(sql.Row, parentLen+len(j.Left().Schema()))
-	copy(primaryRow, row)
-
 	return sql.NewSpanIter(span, &joinIter{
-		b:        b,
-		joinType: j.Op,
-		cond:     j.Filter,
-		leftLen:  leftLen,
-		rightLen: rightLen,
-
-		primary:        l,
-		primaryRow:     primaryRow,
+		joinStats:      js,
+		cond:           j.Filter,
 		loadPrimaryRow: true,
-
-		secondaryProvider: j.Right(),
-
-		rowSize:   parentLen + leftLen + rightLen,
-		scopeLen:  j.ScopeLen,
-		parentLen: parentLen,
 	}), nil
 }
 
 func (i *joinIter) loadPrimary(ctx *sql.Context) error {
 	if i.loadPrimaryRow {
-		r, err := i.primary.Next(ctx)
+		r, err := i.primaryRowIter.Next(ctx)
 		if err != nil {
 			return err
 		}
@@ -177,22 +148,22 @@ func (i *joinIter) loadPrimary(ctx *sql.Context) error {
 }
 
 func (i *joinIter) loadSecondary(ctx *sql.Context) (sql.Row, error) {
-	if i.secondary == nil {
-		rowIter, err := i.b.Build(ctx, i.secondaryProvider, i.primaryRow)
+	if i.secondaryRowIter == nil {
+		rowIter, err := i.builder.Build(ctx, i.secondaryProvider, i.primaryRow)
 		if err != nil {
 			return nil, err
 		}
 		if plan.IsEmptyIter(rowIter) {
 			return nil, plan.ErrEmptyCachedResult
 		}
-		i.secondary = rowIter
+		i.secondaryRowIter = rowIter
 	}
 
-	secondaryRow, err := i.secondary.Next(ctx)
+	secondaryRow, err := i.secondaryRowIter.Next(ctx)
 	if err != nil {
 		if err == io.EOF {
-			err = i.secondary.Close(ctx)
-			i.secondary = nil
+			err = i.secondaryRowIter.Close(ctx)
+			i.secondaryRowIter = nil
 			if err != nil {
 				return nil, err
 			}
@@ -242,8 +213,8 @@ func (i *joinIter) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 
 		if res == nil && i.joinType.IsExcludeNulls() {
-			err = i.secondary.Close(ctx)
-			i.secondary = nil
+			err = i.secondaryRowIter.Close(ctx)
+			i.secondaryRowIter = nil
 			if err != nil {
 				return nil, err
 			}
@@ -272,24 +243,6 @@ func (i *joinIter) buildRow(primary, secondary sql.Row) sql.Row {
 	copy(row, primary)
 	copy(row[len(primary):], secondary[i.scopeLen:])
 	return row
-}
-
-func (i *joinIter) Close(ctx *sql.Context) (err error) {
-	if i.primary != nil {
-		if err = i.primary.Close(ctx); err != nil {
-			if i.secondary != nil {
-				_ = i.secondary.Close(ctx)
-			}
-			return err
-		}
-	}
-
-	if i.secondary != nil {
-		err = i.secondary.Close(ctx)
-		i.secondary = nil
-	}
-
-	return err
 }
 
 func newExistsIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode, row sql.Row) (sql.RowIter, error) {
