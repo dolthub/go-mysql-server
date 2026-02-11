@@ -444,7 +444,7 @@ func (i *fullJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 			}
 			if _, ok := i.seenLeft[key]; !ok {
 				// (left, null) only if we haven't matched left
-				ret := i.buildRow(i.primaryRow, make(sql.Row, i.rightLen))
+				ret := i.buildRow(i.primaryRow, make(sql.Row, i.scopeLen+i.rightLen))
 				i.secondaryRowIter = nil
 				i.primaryRow = nil
 				return i.removeParentRow(ret), nil
@@ -517,8 +517,8 @@ func (i *fullJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 func (i *fullJoinIter) buildRow(primary, secondary sql.Row) sql.Row {
 	row := make(sql.Row, i.rowSize)
 	copy(row, i.parentRow)
-	copy(row[len(i.parentRow):], primary)
-	copy(row[len(i.parentRow)+len(primary):], secondary)
+	copy(row[len(i.parentRow):], primary[i.scopeLen:])
+	copy(row[len(i.parentRow)+i.leftLen:], secondary[i.scopeLen:])
 	return row
 }
 
