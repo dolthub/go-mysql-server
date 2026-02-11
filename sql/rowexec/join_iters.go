@@ -246,51 +246,26 @@ func (i *joinIter) buildRow(primary, secondary sql.Row) sql.Row {
 }
 
 func newExistsIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode, row sql.Row) (sql.RowIter, error) {
-	leftIter, err := b.Build(ctx, j.Left(), row)
+
+	js, err := newJoinStats(ctx, b, j, row)
 	if err != nil {
 		return nil, err
 	}
 
-	parentLen := len(row)
-
-	leftLen := len(j.Left().Schema())
-	rightLen := len(j.Right().Schema())
-	rowSize := parentLen + leftLen + rightLen
-	fullRow := make(sql.Row, rowSize)
+	fullRow := make(sql.Row, js.rowSize)
 	copy(fullRow, row)
 
-	primaryRow := make(sql.Row, parentLen+leftLen)
-	copy(primaryRow, row)
-
 	return &existsIter{
-		b:                 b,
-		typ:               j.Op,
-		primary:           leftIter,
-		primaryRow:        primaryRow,
-		fullRow:           fullRow,
-		parentLen:         parentLen,
-		leftLen:           leftLen,
-		rightLen:          rightLen,
-		secondaryProvider: j.Right(),
-		cond:              j.Filter,
-		scopeLen:          j.ScopeLen,
-		rowSize:           rowSize,
+		joinStats: js,
+		fullRow:   fullRow,
+		cond:      j.Filter,
 	}, nil
 }
 
 type existsIter struct {
-	b                 sql.NodeExecBuilder
+	joinStats
 	cond              sql.Expression
-	primary           sql.RowIter
-	secondaryProvider sql.Node
-	primaryRow        sql.Row
 	fullRow           sql.Row
-	parentLen         int
-	scopeLen          int
-	leftLen           int
-	rightLen          int
-	rowSize           int
-	typ               plan.JoinType
 	rightIterNonEmpty bool
 }
 
@@ -321,12 +296,12 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 	for {
 		switch nextState {
 		case esIncLeft:
-			r, err := i.primary.Next(ctx)
+			r, err := i.primaryRowIter.Next(ctx)
 			if err != nil {
 				return nil, err
 			}
 			copy(i.primaryRow[i.parentLen:], r[i.scopeLen:])
-			rIter, err = i.b.Build(ctx, i.secondaryProvider, i.primaryRow)
+			rIter, err = i.builder.Build(ctx, i.secondaryProvider, i.primaryRow)
 			if err != nil {
 				return nil, err
 			}
@@ -352,7 +327,7 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 				nextState = esCompare
 			}
 		case esRightIterEOF:
-			if i.typ.IsSemi() {
+			if i.joinType.IsSemi() {
 				// reset iter, no match
 				nextState = esIncLeft
 			} else {
@@ -366,7 +341,7 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 				return nil, err
 			}
 
-			if res == nil && i.typ.IsExcludeNulls() {
+			if res == nil && i.joinType.IsExcludeNulls() {
 				nextState = esRejectNull
 				continue
 			}
@@ -378,7 +353,7 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 				if err != nil {
 					return nil, err
 				}
-				if i.typ.IsAnti() {
+				if i.joinType.IsAnti() {
 					// reset iter, found match -> no return row
 					nextState = esIncLeft
 				} else {
@@ -386,7 +361,7 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 				}
 			}
 		case esRejectNull:
-			if i.typ.IsAnti() {
+			if i.joinType.IsAnti() {
 				nextState = esIncLeft
 			} else {
 				nextState = esIncRight
@@ -411,15 +386,6 @@ func (i *existsIter) buildRow(primary, secondary sql.Row) sql.Row {
 	copy(row, primary)
 	copy(row[len(primary):], secondary)
 	return row
-}
-
-func (i *existsIter) Close(ctx *sql.Context) (err error) {
-	if i.primary != nil {
-		if err = i.primary.Close(ctx); err != nil {
-			return err
-		}
-	}
-	return err
 }
 
 func newFullJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode, row sql.Row) (sql.RowIter, error) {
