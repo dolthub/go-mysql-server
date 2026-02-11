@@ -75,6 +75,12 @@ func newJoinStats(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode, par
 	}, nil
 }
 
+func (i *joinStats) removeParentRow(r sql.Row) sql.Row {
+	copy(r[i.scopeLen:], r[i.parentLen:])
+	r = r[:len(r)-i.parentLen+i.scopeLen]
+	return r
+}
+
 func (i *joinStats) Close(ctx *sql.Context) (err error) {
 	if i.primaryRowIter != nil {
 		if err = i.primaryRowIter.Close(ctx); err != nil {
@@ -231,12 +237,6 @@ func (i *joinIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 }
 
-func (i *joinIter) removeParentRow(r sql.Row) sql.Row {
-	copy(r[i.scopeLen:], r[i.parentLen:])
-	r = r[:len(r)-i.parentLen+i.scopeLen]
-	return r
-}
-
 // buildRow builds the result set row using the rows from the primary and secondary tables
 func (i *joinIter) buildRow(primary, secondary sql.Row) sql.Row {
 	row := make(sql.Row, i.rowSize)
@@ -372,12 +372,6 @@ func (i *existsIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, fmt.Errorf("invalid exists join state")
 		}
 	}
-}
-
-func (i *existsIter) removeParentRow(r sql.Row) sql.Row {
-	copy(r[i.scopeLen:], r[i.parentLen:])
-	r = r[:len(r)-i.parentLen+i.scopeLen]
-	return r
 }
 
 // buildRow builds the result set row using the rows from the primary and secondary tables
@@ -519,12 +513,6 @@ func (i *fullJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 }
 
-func (i *fullJoinIter) removeParentRow(r sql.Row) sql.Row {
-	copy(r[i.scopeLen:], r[len(i.parentRow):])
-	r = r[:len(r)-len(i.parentRow)+i.scopeLen]
-	return r
-}
-
 // buildRow builds the result set row using the rows from the primary and secondary tables
 func (i *fullJoinIter) buildRow(primary, secondary sql.Row) sql.Row {
 	row := make(sql.Row, i.rowSize)
@@ -598,12 +586,6 @@ func (i *crossJoinIterator) Next(ctx *sql.Context) (sql.Row, error) {
 		copy(row[len(i.primaryRow):], rightRow[i.scopeLen:])
 		return i.removeParentRow(row), nil
 	}
-}
-
-func (i *crossJoinIterator) removeParentRow(r sql.Row) sql.Row {
-	copy(r[i.scopeLen:], r[i.parentLen:])
-	r = r[:len(r)-i.parentLen+i.scopeLen]
-	return r
 }
 
 // lateralJoinIterator is an iterator that performs a lateral join.
@@ -714,10 +696,6 @@ func (i *lateralJoinIterator) buildRow(primaryRow, secondaryRow sql.Row) sql.Row
 	return row
 }
 
-func (i *lateralJoinIterator) removeParentRow(r sql.Row) sql.Row {
-	return r
-}
-
 func (i *lateralJoinIterator) reset(ctx *sql.Context) (err error) {
 	if i.secondaryRowIter != nil {
 		err = i.secondaryRowIter.Close(ctx)
@@ -746,7 +724,7 @@ func (i *lateralJoinIterator) Next(ctx *sql.Context) (sql.Row, error) {
 					if resetErr := i.reset(ctx); resetErr != nil {
 						return nil, resetErr
 					}
-					return i.removeParentRow(res), nil
+					return res, nil
 				}
 				if resetErr := i.reset(ctx); resetErr != nil {
 					return nil, resetErr
@@ -765,6 +743,6 @@ func (i *lateralJoinIterator) Next(ctx *sql.Context) (sql.Row, error) {
 		}
 
 		i.foundMatch = true
-		return i.removeParentRow(row), nil
+		return row, nil
 	}
 }
