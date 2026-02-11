@@ -535,18 +535,7 @@ func (i *fullJoinIter) buildRow(primary, secondary sql.Row) sql.Row {
 }
 
 type crossJoinIterator struct {
-	l  sql.RowIter
-	r  sql.RowIter
-	rp sql.Node
-	b  sql.NodeExecBuilder
-
-	primaryRow sql.Row
-
-	rowSize   int
-	scopeLen  int
-	parentLen int
-	leftLen   int
-	rightLen  int
+	joinStats
 }
 
 func newCrossJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode, row sql.Row) (sql.RowIter, error) {
@@ -568,53 +557,35 @@ func newCrossJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode,
 		attribute.String("right", right),
 	))
 
-	l, err := b.Build(ctx, j.Left(), row)
+	js, err := newJoinStats(ctx, b, j, row)
 	if err != nil {
-		span.End()
 		return nil, err
 	}
 
-	parentLen := len(row)
-	leftLen := len(j.Left().Schema())
-	rightLen := len(j.Right().Schema())
-
-	primaryRow := make(sql.Row, parentLen+leftLen)
-	copy(primaryRow, row)
-
 	return sql.NewSpanIter(span, &crossJoinIterator{
-		b:  b,
-		l:  l,
-		rp: j.Right(),
-
-		primaryRow: primaryRow,
-
-		rowSize:   parentLen + leftLen + rightLen,
-		scopeLen:  j.ScopeLen,
-		parentLen: parentLen,
-		leftLen:   leftLen,
-		rightLen:  rightLen,
+		joinStats: js,
 	}), nil
 }
 
 func (i *crossJoinIterator) Next(ctx *sql.Context) (sql.Row, error) {
 	for {
-		if i.r == nil {
-			r, err := i.l.Next(ctx)
+		if i.secondaryRowIter == nil {
+			r, err := i.primaryRowIter.Next(ctx)
 			if err != nil {
 				return nil, err
 			}
 			copy(i.primaryRow[i.parentLen:], r[i.scopeLen:])
 
-			iter, err := i.b.Build(ctx, i.rp, i.primaryRow)
+			iter, err := i.builder.Build(ctx, i.secondaryProvider, i.primaryRow)
 			if err != nil {
 				return nil, err
 			}
-			i.r = iter
+			i.secondaryRowIter = iter
 		}
 
-		rightRow, err := i.r.Next(ctx)
+		rightRow, err := i.secondaryRowIter.Next(ctx)
 		if err == io.EOF {
-			i.r = nil
+			i.secondaryRowIter = nil
 			continue
 		}
 
@@ -633,20 +604,6 @@ func (i *crossJoinIterator) removeParentRow(r sql.Row) sql.Row {
 	copy(r[i.scopeLen:], r[i.parentLen:])
 	r = r[:len(r)-i.parentLen+i.scopeLen]
 	return r
-}
-
-func (i *crossJoinIterator) Close(ctx *sql.Context) (err error) {
-	if i.l != nil {
-		err = i.l.Close(ctx)
-	}
-	if i.r != nil {
-		if err == nil {
-			err = i.r.Close(ctx)
-		} else {
-			i.r.Close(ctx)
-		}
-	}
-	return err
 }
 
 // lateralJoinIterator is an iterator that performs a lateral join.
