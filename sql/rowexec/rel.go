@@ -314,6 +314,10 @@ func (b *BaseBuilder) buildProject(ctx *sql.Context, n *plan.Project, row sql.Ro
 		return nil, err
 	}
 
+	if i == nil {
+		ctx.GetLogger().WithField("nodeType", "Project").Debug("child iterator is nil")
+	}
+
 	return sql.NewSpanIter(span, &ProjectIter{
 		projs:          n.Projections,
 		canDefer:       n.CanDefer,
@@ -480,6 +484,9 @@ func (b *BaseBuilder) buildLimit(ctx *sql.Context, n *plan.Limit, row sql.Row) (
 	if err != nil {
 		span.End()
 		return nil, err
+	}
+	if childIter == nil {
+		ctx.GetLogger().WithField("nodeType", "Limit").Debug("child iterator is nil")
 	}
 	return sql.NewSpanIter(span, &iters.LimitIter{
 		CalcFoundRows: n.CalcFoundRows,

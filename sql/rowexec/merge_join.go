@@ -16,6 +16,7 @@ package rowexec
 
 import (
 	"errors"
+	"fmt"
 	"io"
 
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -46,6 +47,17 @@ func newMergeJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode,
 		return nil, err
 	}
 
+	ctx.GetLogger().WithFields(map[string]any{
+		"joinOp":         fmt.Sprintf("%v", j.Op),
+		"isReversed":     j.IsReversed,
+		"scopeLen":       j.ScopeLen,
+		"leftSchemaLen":  len(j.Left().Schema()),
+		"rightSchemaLen": len(j.Right().Schema()),
+		"filterIsNil":    j.Filter == nil,
+		"leftIterType":   fmt.Sprintf("%T", l),
+		"rightIterType":  fmt.Sprintf("%T", r),
+	}).Debug("constructed merge join child iterators")
+
 	fullRow := make(sql.Row, len(row)+len(j.Left().Schema())+len(j.Right().Schema()))
 	fullRow[0] = row
 	if len(row) > 0 {
@@ -63,11 +75,13 @@ func newMergeJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode,
 				return nil, err
 			}
 		} else {
+			ctx.GetLogger().WithField("firstFilterType", fmt.Sprintf("%T", filters[0])).Debug("merge join expected comparer filter")
 			return nil, sql.ErrMergeJoinExpectsComparerFilters.New(filters[0])
 		}
 	}
 
 	if len(filters) == 0 {
+		ctx.GetLogger().Debug("merge join constructed with zero filters")
 		return nil, sql.ErrNoJoinFilters.New()
 	}
 
@@ -84,6 +98,7 @@ func newMergeJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinNode,
 		rightRowLen: len(j.Right().Schema()),
 		isReversed:  j.IsReversed,
 	}
+	ctx.GetLogger().WithField("iterType", fmt.Sprintf("%T", iter)).Debug("created merge join iter")
 	return iter, nil
 }
 
@@ -211,6 +226,7 @@ func (i *mergeJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 		case msCompare:
 			res, err = i.cmp.Compare(ctx, i.fullRow)
 			if expression.ErrNilOperand.Is(err) {
+				ctx.GetLogger().Debug("merge join comparer produced nil operand; rejecting null")
 				nextState = msRejectNull
 				break
 			} else if err != nil {
@@ -434,6 +450,7 @@ func (i *mergeJoinIter) initIters(ctx *sql.Context) error {
 	}
 	i.init = true
 	i.resetMatchState()
+	ctx.GetLogger().Debug("merge join iters initialized")
 	return nil
 }
 
@@ -516,6 +533,7 @@ func (i *mergeJoinIter) incLeft(ctx *sql.Context) error {
 		row, err = i.left.Next(ctx)
 		if errors.Is(err, io.EOF) {
 			i.leftExhausted = true
+			ctx.GetLogger().Trace("merge join left iterator exhausted")
 			return nil
 		} else if err != nil {
 			return err
@@ -526,7 +544,7 @@ func (i *mergeJoinIter) incLeft(ctx *sql.Context) error {
 	for j, v := range row {
 		i.fullRow[off+j] = v
 	}
-
+	ctx.GetLogger().Trace("merge join advanced left iterator")
 	return nil
 }
 
@@ -541,6 +559,7 @@ func (i *mergeJoinIter) incRight(ctx *sql.Context) error {
 		row, err = i.right.Next(ctx)
 		if errors.Is(err, io.EOF) {
 			i.rightExhausted = true
+			ctx.GetLogger().Trace("merge join right iterator exhausted")
 			return nil
 		} else if err != nil {
 			return err
@@ -551,7 +570,7 @@ func (i *mergeJoinIter) incRight(ctx *sql.Context) error {
 	for j, v := range row {
 		i.fullRow[off+j] = v
 	}
-
+	ctx.GetLogger().Trace("merge join advanced right iterator")
 	return nil
 }
 
