@@ -135,7 +135,7 @@ func recSchemaToGetFields(n sql.Node, sch sql.Schema) []sql.Expression {
 }
 
 func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Scope, qFlags *sql.QueryFlags) (ret sql.Node, err error) {
-	m := memo.NewMemo(ctx, a.Catalog, scope, len(scope.Schema()), a.Coster, qFlags)
+	m := memo.NewMemo(ctx, a.Catalog, scope, a.Coster, qFlags)
 	m.Debug = a.Debug
 	m.EnableTrace(a.Trace)
 

@@ -66,7 +66,7 @@ func (b *ExecBuilder) buildLookupJoin(j *LookupJoin, children ...sql.Node) (sql.
 		return nil, err
 	}
 	filters := b.buildFilterConjunction(j.Filter...)
-	return plan.NewJoin(left, right, j.Op, filters).WithScopeLen(j.g.m.scopeLen), nil
+	return plan.NewJoin(left, right, j.Op, filters), nil
 }
 
 func (b *ExecBuilder) buildRangeHeap(sr *RangeHeap, children ...sql.Node) (ret sql.Node, err error) {
@@ -146,7 +146,7 @@ func (b *ExecBuilder) buildRangeHeapJoin(j *RangeHeapJoin, children ...sql.Node)
 		return nil, err
 	}
 	filters := b.buildFilterConjunction(j.Filter...)
-	return plan.NewJoin(left, right, j.Op, filters).WithScopeLen(j.g.m.scopeLen), nil
+	return plan.NewJoin(left, right, j.Op, filters), nil
 }
 
 func (b *ExecBuilder) buildConcatJoin(j *ConcatJoin, children ...sql.Node) (sql.Node, error) {
@@ -181,7 +181,7 @@ func (b *ExecBuilder) buildConcatJoin(j *ConcatJoin, children ...sql.Node) (sql.
 
 	filters := b.buildFilterConjunction(j.Filter...)
 
-	return plan.NewJoin(children[0], right, j.Op, filters).WithScopeLen(j.g.m.scopeLen), nil
+	return plan.NewJoin(children[0], right, j.Op, filters), nil
 }
 
 func (b *ExecBuilder) buildHashJoin(j *HashJoin, children ...sql.Node) (sql.Node, error) {
@@ -206,7 +206,7 @@ func (b *ExecBuilder) buildHashJoin(j *HashJoin, children ...sql.Node) (sql.Node
 
 	outer := plan.NewHashLookup(children[1], rightEntryKey, leftProbeKey, j.Op)
 	inner := children[0]
-	return plan.NewJoin(inner, outer, j.Op, filters).WithScopeLen(j.g.m.scopeLen), nil
+	return plan.NewJoin(inner, outer, j.Op, filters), nil
 }
 
 func (b *ExecBuilder) buildIndexScan(i *IndexScan, children ...sql.Node) (sql.Node, error) {
@@ -294,7 +294,7 @@ func (b *ExecBuilder) buildMergeJoin(j *MergeJoin, children ...sql.Node) (sql.No
 		}
 	}
 	filters := b.buildFilterConjunction(j.Filter...)
-	return plan.NewJoin(inner, outer, j.Op, filters).WithScopeLen(j.g.m.scopeLen), nil
+	return plan.NewJoin(inner, outer, j.Op, filters), nil
 }
 
 func (b *ExecBuilder) buildLateralJoin(j *LateralJoin, children ...sql.Node) (sql.Node, error) {
