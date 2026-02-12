@@ -78,7 +78,6 @@ func (b *Builder) buildCte(inScope *scope, e ast.TableExpr, name string, columns
 	b.renameSource(cteScope, name, columns)
 	switch n := cteScope.node.(type) {
 	case *plan.SubqueryAlias:
-		n.FromCTE = true
 		cteScope.node = n.WithColumnNames(columns)
 	}
 	return cteScope
@@ -104,7 +103,7 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.SetOp, name strin
 				colset.Add(sql.ColumnId(c.id))
 				scopeMapping[sql.ColumnId(c.id)] = c.scalarGf()
 			}
-			cteScope.node = plan.NewSubqueryAliasFromCTE(name, "", n).
+			cteScope.node = plan.NewSubqueryAlias(name, "", n).
 				WithColumnNames(columns).WithCorrelated(sqScope.correlated()).WithVolatile(sqScope.volatile()).
 				WithScopeMapping(scopeMapping).WithId(tabId).WithColumns(colset)
 		}
@@ -194,7 +193,7 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.SetOp, name strin
 	vol := leftSqScope.activeSubquery.volatile || rightInScope.activeSubquery.volatile
 
 	b.qFlags.Set(sql.QFlagRelSubquery)
-	cteScope.node = plan.NewSubqueryAliasFromCTE(name, "",
+	cteScope.node = plan.NewSubqueryAlias(name, "",
 		plan.NewRecursiveCte(rInit, rightScope.node, name, columns, distinct, limit, sortFields).
 			WithSchema(recSch).WithWorking(rTable).WithId(tableId).WithColumns(cols)).
 		WithColumnNames(columns).WithCorrelated(corr).WithVolatile(vol).WithScopeMapping(scopeMapping).

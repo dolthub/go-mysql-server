@@ -37,7 +37,6 @@ type SubqueryAlias struct {
 	// expression and is eligible to have visibility to outer scopes of the query.
 	OuterScopeVisibility bool
 	Volatile             bool
-	FromCTE              bool
 	IsLateral            bool
 }
 
@@ -54,17 +53,6 @@ func NewSubqueryAlias(name, textDefinition string, node sql.Node) *SubqueryAlias
 		name:                 name,
 		TextDefinition:       textDefinition,
 		OuterScopeVisibility: false,
-	}
-}
-
-// NewSubqueryAliasFromCTE creates a new SubqueryAlias node with a flag indicating that it was created from a CTE
-func NewSubqueryAliasFromCTE(name, textDefinition string, node sql.Node) *SubqueryAlias {
-	return &SubqueryAlias{
-		UnaryNode:            UnaryNode{Child: node},
-		name:                 name,
-		TextDefinition:       textDefinition,
-		OuterScopeVisibility: false,
-		FromCTE:              true,
 	}
 }
 
