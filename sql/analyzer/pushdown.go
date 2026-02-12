@@ -166,7 +166,7 @@ func filterPushdownSelector(c transform.Context) bool {
 		// predicate on the secondary table below the join, we end up not evaluating it in all cases (since the
 		// secondary table result is sometimes null in these types of joins). It must be evaluated only after the join
 		// result is computed.
-		if n.Op.IsLeftOuter() && c.ChildNum == 0 {
+		if n.Op.IsLeftOuter() && c.ChildNum != 0 {
 			return false
 		}
 	}
@@ -197,6 +197,9 @@ func transformPushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.
 				}
 				return newF, transform.NewTree, nil
 			case *plan.SubqueryAlias:
+				if _, ok := node.Child.(*plan.RecursiveCte); ok {
+					return node, transform.SameTree, nil
+				}
 				return pushdownFiltersUnderSubqueryAlias(ctx, a, node, filters)
 			default:
 				return node, transform.SameTree, nil
