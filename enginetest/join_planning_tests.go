@@ -1402,6 +1402,7 @@ join uv d on d.u = c.x`,
 				},
 			},
 			{
+				// https://github.com/dolthub/dolt/issues/10493
 				skip: true,
 				q:    "select * from vals where exists (select * from ranges where val between min and max limit 0);",
 				exp:  []sql.Row{},

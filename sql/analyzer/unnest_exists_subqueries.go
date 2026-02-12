@@ -100,13 +100,15 @@ func unnestSelectExistsHelper(ctx *sql.Context, scope *plan.Scope, a *Analyzer, 
 // simplifyPartialJoinParents discards nodes that will not affect an existence check.
 func simplifyPartialJoinParents(n sql.Node) (sql.Node, bool) {
 	ret := n
+	// TODO: This should probably be a transform since we could have multiple layers of these types of nodes wrapped
+	//  together.
 	for {
 		switch n := ret.(type) {
 		case *plan.Having:
 			return nil, false
 		case *plan.Project, *plan.GroupBy, *plan.Sort, *plan.Distinct, *plan.TopN, *plan.Limit:
-			// TODO: In most cases, it makes sense to remove *plan.Limit because child Filter nodes will have been
-			//  hoisted out. But what if Limit.Limit evals to 0?
+			// TODO: In most cases, it's necessary to remove *plan.Limit because child Filter nodes will have been
+			//  hoisted out. But what if Limit.Limit evals to 0? https://github.com/dolthub/dolt/issues/10493
 			ret = n.Children()[0]
 		default:
 			return ret, true
@@ -144,6 +146,9 @@ func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, fil
 		}
 
 		// try to decorrelate
+		// TODO: We're currently not able to decorrelate outer columns because we are pushing outerscope/correlated
+		//  filters below SubqueryAliases. We likely need to rearrange the ordering of our rules.
+		//  https://github.com/dolthub/dolt/issues/10490
 		s, err = decorrelateOuterCols(sq.Query, aliasDisambig, sq.Correlated())
 		if err != nil {
 			return nil, transform.SameTree, err
@@ -162,6 +167,9 @@ func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, fil
 			}
 		}
 
+		// TODO: This should be done by walking the entire node instead of just checking the top node. What if we have
+		//  a join where one side is a cacheable SQA and the other side is an uncacheable SQA? We should be able to
+		//  detect that.
 		if sqa, ok := s.inner.(*plan.SubqueryAlias); ok {
 			if !sqa.CanCacheResults() {
 				return filter, transform.SameTree, nil
@@ -189,6 +197,8 @@ func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, fil
 		}
 
 		if len(s.joinFilters) == 0 {
+			// TODO: this is unsafe to do if query was originally wrapped in a Limit that evaluates to zero
+			//   https://github.com/dolthub/dolt/issues/10493
 			limited := plan.NewLimit(expression.NewLiteral(1, types.Int64), s.inner)
 			switch joinType {
 			case plan.JoinTypeAntiIncludeNulls:

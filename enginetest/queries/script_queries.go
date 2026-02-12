@@ -14830,8 +14830,6 @@ select * from t1 except (
 				Expected: []sql.Row{{1, "Login API", "open"}, {6, "Marketing Page", "open"}},
 			},
 			{
-				// fixing in https://github.com/dolthub/go-mysql-server/pull/3427
-				Skip: true,
 				Query: `WITH blocked_directly AS (
 						SELECT DISTINCT d.issue_id
 						FROM dependencies d
@@ -14848,8 +14846,6 @@ select * from t1 except (
 				Expected: []sql.Row{{1}, {4}, {5}, {6}},
 			},
 			{
-				// fixing in https://github.com/dolthub/go-mysql-server/pull/3427
-				Skip: true,
 				Query: `SELECT i.id
 						FROM issues i
 						WHERE i.status = 'open'
