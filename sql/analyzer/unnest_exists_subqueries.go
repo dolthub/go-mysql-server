@@ -16,12 +16,12 @@ package analyzer
 
 import (
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql/types"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
-	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 type aliasDisambiguator struct {
@@ -187,16 +187,18 @@ func unnestExistSubqueries(ctx *sql.Context, scope *plan.Scope, a *Analyzer, fil
 		}
 
 		if len(s.joinFilters) == 0 {
+			limited := plan.NewLimit(expression.NewLiteral(1, types.Int64), s.inner)
 			switch joinType {
 			case plan.JoinTypeAntiIncludeNulls:
-				cond := expression.NewLiteral(true, types.Boolean)
-				ret = plan.NewAntiJoinIncludingNulls(ret, s.inner, cond).WithComment(comment)
+				ret = plan.NewAntiJoinIncludingNulls(ret, limited, nil).WithComment(comment)
 				qFlags.Set(sql.QFlagInnerJoin)
 			case plan.JoinTypeSemi:
 				if sq.Correlated().Empty() {
-					ret = plan.NewCrossJoin(ret, s.inner).WithComment(comment)
+					ret = plan.NewCrossJoin(ret, limited).WithComment(comment)
 				} else {
-					ret = plan.NewLateralCrossJoin(ret, s.inner).WithComment(comment)
+					// TODO: when does this actually happen? Should we account for this in an AntiJoin? What about when
+					//  there are join filters?
+					ret = plan.NewLateralCrossJoin(ret, limited).WithComment(comment)
 				}
 				qFlags.Set(sql.QFlagCrossJoin)
 			default:
@@ -397,10 +399,6 @@ func decorrelateOuterCols(sqChild sql.Node, aliasDisambig *aliasDisambiguator, c
 	}
 	if len(filtersToKeep) > 0 {
 		n = plan.NewFilter(expression.JoinAnd(filtersToKeep...), n)
-	}
-
-	if len(joinFilters) == 0 {
-		n = plan.NewLimit(expression.NewLiteral(1, types.Int64), n)
 	}
 
 	return &hoistSubquery{
