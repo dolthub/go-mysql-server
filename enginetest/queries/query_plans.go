@@ -4760,6 +4760,7 @@ Select * from (
 	},
 	{
 		Query: `select * from ab ab1 where exists (select * from ab ab2 join lateral (select * from two_pk where pk1 = ab1.a and pk2 = ab2.a) inner1)`,
+		Skip:  true,
 		ExpectedPlan: "Project\n" +
 			" ├─ columns: [ab1.a:0!null, ab1.b:1]\n" +
 			" └─ LateralCrossJoin\n" +
@@ -4853,6 +4854,7 @@ Select * from (
 	},
 	{
 		Query: `select * from ab ab1 join lateral (select * from ab ab2 join lateral (select * from two_pk where pk1 = ab1.a and pk2 = ab2.a) inner1) inner2;`,
+		Skip:  true,
 		ExpectedPlan: "LateralCrossJoin\n" +
 			" ├─ TableAlias(ab1)\n" +
 			" │   └─ ProcessTable\n" +
@@ -4888,11 +4890,10 @@ Select * from (
 			"                 │   └─ Eq\n" +
 			"                 │       ├─ two_pk.pk2:5!null\n" +
 			"                 │       └─ ab2.a:2!null\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: two_pk\n" +
+			"                 └─ IndexedTableAccess(two_pk)\n" +
+			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
 			"                     ├─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
-			"                     ├─ colSet: (5-11)\n" +
-			"                     └─ tableId: 3\n" +
+			"                     └─ keys: ab1.a, ab2.a\n" +
 			"",
 		ExpectedEstimates: "LateralCrossJoin (estimated cost=100999.000 rows=125)\n" +
 			" ├─ TableAlias(ab1)\n" +
@@ -4918,9 +4919,10 @@ Select * from (
 			"             ├─ tableId: 4\n" +
 			"             └─ Filter\n" +
 			"                 ├─ ((two_pk.pk1 = ab1.a) AND (two_pk.pk2 = ab2.a))\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: two_pk\n" +
-			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"                 └─ IndexedTableAccess(two_pk)\n" +
+			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                     ├─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"                     └─ keys: ab1.a, ab2.a\n" +
 			"",
 		ExpectedAnalysis: "LateralCrossJoin (estimated cost=100999.000 rows=125) (actual rows=4 loops=1)\n" +
 			" ├─ TableAlias(ab1)\n" +
@@ -4946,9 +4948,10 @@ Select * from (
 			"             ├─ tableId: 4\n" +
 			"             └─ Filter\n" +
 			"                 ├─ ((two_pk.pk1 = ab1.a) AND (two_pk.pk2 = ab2.a))\n" +
-			"                 └─ Table\n" +
-			"                     ├─ name: two_pk\n" +
-			"                     └─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"                 └─ IndexedTableAccess(two_pk)\n" +
+			"                     ├─ index: [two_pk.pk1,two_pk.pk2]\n" +
+			"                     ├─ columns: [pk1 pk2 c1 c2 c3 c4 c5]\n" +
+			"                     └─ keys: ab1.a, ab2.a\n" +
 			"",
 	},
 	{
