@@ -197,6 +197,13 @@ func transformPushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.
 				}
 				return newF, transform.NewTree, nil
 			case *plan.SubqueryAlias:
+				// TODO: We probably could push filters into a RecursiveCTE to get an IndexedTableAccess where
+				//  applicable. But we currently don't push any filters through at all so pushing filters past the
+				//  SubqueryAlias node doesn't actually do anything except possibly make them uncacheable, which we
+				//  don't want.
+				if _, ok := node.Child.(*plan.RecursiveCte); ok {
+					return node, transform.SameTree, nil
+				}
 				return pushdownFiltersUnderSubqueryAlias(ctx, a, node, filters)
 			default:
 				return node, transform.SameTree, nil

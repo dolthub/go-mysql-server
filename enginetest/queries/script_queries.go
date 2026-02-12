@@ -14781,6 +14781,89 @@ select * from t1 except (
 			},
 		},
 	},
+	{
+		Name: "Subqueries inside NOT EXISTS clause with correlated column filter",
+		SetUpScript: []string{
+			"CREATE TABLE issues (id INT PRIMARY KEY, title TEXT, status TEXT);",
+			"CREATE TABLE dependencies (issue_id INT, depends_on_id INT, type TEXT);",
+			`INSERT INTO issues (id, title, status) VALUES
+					(1, 'Login API',        'open'),
+					(2, 'Auth Library',    'in_progress'),
+					(3, 'User Profile',    'open'),
+					(4, 'Profile UI',      'open'),
+					(5, 'Settings Page',   'open'),
+					(6, 'Marketing Page',  'open'),
+					(7, 'Old Feature',     'closed');`,
+			`INSERT INTO dependencies (issue_id, depends_on_id, type) VALUES
+					(3, 1, 'blocks'),
+					(3, 2, 'blocks'),
+					(4, 3, 'parent-child'),
+					(5, 4, 'parent-child');`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// https://github.com/dolthub/dolt/issues/10472
+				Query: `WITH RECURSIVE
+					  blocked_directly AS (
+						SELECT DISTINCT d.issue_id
+						FROM dependencies d
+						JOIN issues blocker ON d.depends_on_id = blocker.id
+						WHERE d.type = 'blocks'
+						  AND blocker.status IN ('open', 'in_progress', 'blocked', 'deferred', 'hooked')
+					  ),
+					  blocked_transitively AS (
+						SELECT issue_id, 0 as depth
+						FROM blocked_directly
+						UNION ALL
+						SELECT d.issue_id, bt.depth + 1
+						FROM blocked_transitively bt
+						JOIN dependencies d ON d.depends_on_id = bt.issue_id
+						WHERE d.type = 'parent-child'
+						  AND bt.depth < 50
+					  )
+					SELECT i.*
+					FROM issues i
+					WHERE i.status = 'open'
+					  AND NOT EXISTS (
+						SELECT 1 FROM blocked_transitively WHERE issue_id = i.id
+					  );`,
+				Expected: []sql.Row{{1, "Login API", "open"}, {6, "Marketing Page", "open"}},
+			},
+			{
+				// fixing in https://github.com/dolthub/go-mysql-server/pull/3427
+				Skip: true,
+				Query: `WITH blocked_directly AS (
+						SELECT DISTINCT d.issue_id
+						FROM dependencies d
+						JOIN issues blocker ON d.depends_on_id = blocker.id
+						WHERE d.type = 'blocks'
+						  AND blocker.status IN ('open', 'in_progress', 'blocked', 'deferred', 'hooked')
+					  )
+					SELECT i.id
+					FROM issues i
+					WHERE i.status = 'open'
+					  AND NOT EXISTS (
+						SELECT 1 FROM blocked_directly WHERE issue_id = i.id
+					  );`,
+				Expected: []sql.Row{{1}, {4}, {5}, {6}},
+			},
+			{
+				// fixing in https://github.com/dolthub/go-mysql-server/pull/3427
+				Skip: true,
+				Query: `SELECT i.id
+						FROM issues i
+						WHERE i.status = 'open'
+						  AND NOT EXISTS (
+							SELECT 1 FROM (
+					  SELECT DISTINCT d.issue_id
+						FROM dependencies d
+						JOIN issues blocker ON d.depends_on_id = blocker.id
+						WHERE d.type = 'blocks' AND blocker.status IN ('open', 'in_progress', 'blocked', 'deferred', 'hooked')
+					) as blocked WHERE blocked.issue_id = i.id);`,
+				Expected: []sql.Row{{1}, {4}, {5}, {6}},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
