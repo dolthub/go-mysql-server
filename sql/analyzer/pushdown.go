@@ -197,7 +197,7 @@ func transformPushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.
 				}
 				return newF, transform.NewTree, nil
 			case *plan.SubqueryAlias:
-				if _, ok := node.Child.(*plan.RecursiveCte); ok {
+				if node.FromCTE {
 					return node, transform.SameTree, nil
 				}
 				return pushdownFiltersUnderSubqueryAlias(ctx, a, node, filters)
