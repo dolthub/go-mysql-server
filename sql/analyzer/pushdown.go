@@ -158,6 +158,19 @@ func canDoPushdown(n sql.Node) bool {
 
 // filterPushdownSelector determines if it's valid to push a filter down into a node
 func filterPushdownSelector(c transform.Context) bool {
+	switch n := c.Parent.(type) {
+	case *plan.TableAlias:
+		return false
+	case *plan.JoinNode:
+		// Pushing down a filter is incompatible with the secondary table in a Left or Right join. If we push a
+		// predicate on the secondary table below the join, we end up not evaluating it in all cases (since the
+		// secondary table result is sometimes null in these types of joins). It must be evaluated only after the join
+		// result is computed.
+		if n.Op.IsLeftOuter() && c.ChildNum == 0 {
+			return false
+		}
+	}
+
 	switch n := c.Node.(type) {
 	case *plan.Limit, *plan.Window:
 		// Limit and Window operate across the rows they see and cannot have filters pushed below them.
@@ -167,17 +180,6 @@ func filterPushdownSelector(c transform.Context) bool {
 		// after join result is computed. Filters cannot be pushed down into Merge join because they might result into
 		// an index lookup that is not monotonically sorted on the join condition
 		return !(n.Op.IsFullOuter() || n.Op.IsMerge())
-	}
-
-	switch n := c.Parent.(type) {
-	case *plan.TableAlias:
-		return false
-	case *plan.JoinNode:
-		// Pushing down a filter is incompatible with the secondary table in a Left or Right join. If we push a
-		// predicate on the secondary table below the join, we end up not evaluating it in all cases (since the
-		// secondary table result is sometimes null in these types of joins). It must be evaluated only after the join
-		// result is computed.
-		return !(n.Op.IsLeftOuter() && c.ChildNum != 0)
 	}
 	return true
 }
