@@ -195,7 +195,7 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.SetOp, name strin
 		WithSchema(recSch).WithWorking(rTable).WithId(tableId).WithColumns(cols)
 	corr := leftSqScope.correlated().Union(rightInScope.correlated())
 	vol := leftSqScope.activeSubquery.volatile || rightInScope.activeSubquery.volatile
-	
+
 	sq := plan.NewSubqueryAlias(name, "", rCte)
 	b.qFlags.Set(sql.QFlagRelSubquery)
 	sq = sq.WithColumnNames(columns)
