@@ -37,7 +37,7 @@ func pushFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 	}
 
 	pushdownAboveTables := func(n sql.Node, filters *filterSet) (sql.Node, transform.TreeIdentity, error) {
-		return transform.NodeWithCtx(n, filterPushdownChildSelector, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
+		return transform.NodeWithCtx(n, filterPushdownSelector, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 			switch node := c.Node.(type) {
 			case *plan.Filter:
 				// Notably, filters are allowed to be pushed through other filters.
@@ -156,11 +156,8 @@ func canDoPushdown(n sql.Node) bool {
 	return true
 }
 
-// Pushing down a filter is incompatible with the secondary table in a Left or Right join. If we push a predicate on the
-// secondary table below the join, we end up not evaluating it in all cases (since the secondary table result is
-// sometimes null in these types of joins). It must be evaluated only after the join result is computed. This is also
-// true with both tables in a Full Outer join, since either table result could be null.
-func filterPushdownChildSelector(c transform.Context) bool {
+// filterPushdownSelector determines if it's valid to push a filter down into a node
+func filterPushdownSelector(c transform.Context) bool {
 	switch c.Node.(type) {
 	case *plan.Limit:
 		return false
@@ -175,21 +172,19 @@ func filterPushdownChildSelector(c transform.Context) bool {
 		// again by the Transform function, starting at this node.
 		return false
 	case *plan.JoinNode:
+		// Pushing down a filter is incompatible with the secondary table in a Left or Right join. If we push a
+		// predicate on the secondary table below the join, we end up not evaluating it in all cases (since the
+		// secondary table result is sometimes null in these types of joins). It must be evaluated only after the join
+		// result is computed. This is also true with both tables in a Full Outer join, since either table result could
+		// be null.
 		switch {
 		case n.Op.IsFullOuter():
 			return false
 		case n.Op.IsMerge():
 			return false
-		case n.Op.IsLookup():
-			if n.JoinType().IsLeftOuter() {
-				return c.ChildNum == 0
-			}
-			return true
 		case n.Op.IsLeftOuter():
 			return c.ChildNum == 0
-		default:
 		}
-	default:
 	}
 	return true
 }
@@ -198,7 +193,7 @@ func transformPushdownSubqueryAliasFilters(ctx *sql.Context, a *Analyzer, n sql.
 	var filters *filterSet
 
 	transformFilterNode := func(n *plan.Filter) (sql.Node, transform.TreeIdentity, error) {
-		return transform.NodeWithCtx(n, filterPushdownChildSelector, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
+		return transform.NodeWithCtx(n, filterPushdownSelector, func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 			switch node := c.Node.(type) {
 			case *plan.Filter:
 				newF := updateFilterNode(ctx, a, node, filters)
