@@ -345,7 +345,7 @@ func (i *mergeJoinIter) incMatch(ctx *sql.Context) error {
 			if err != nil {
 				return err
 			} else if match {
-				i.rightBuf = append(i.rightBuf, peek[i.scopeLen:])
+				i.rightBuf = append(i.rightBuf, peek)
 			} else {
 				i.rightPeek = peek
 				i.rightDone = true
@@ -402,8 +402,8 @@ func (i *mergeJoinIter) incMatch(ctx *sql.Context) error {
 	// both lookaheads fail the join condition. Drain
 	// lookahead rows / increment both iterators.
 	i.matchIncLeft = true
-	copySubslice(i.fullRow, i.leftPeek[i.scopeLen:], i.scopeLen+i.parentLen)
-	copySubslice(i.fullRow, i.rightPeek[i.scopeLen:], i.scopeLen+i.parentLen+i.leftRowLen)
+	copySubslice(i.fullRow, i.leftPeek, i.scopeLen+i.parentLen)
+	copySubslice(i.fullRow, i.rightPeek, i.scopeLen+i.parentLen+i.leftRowLen)
 
 	return nil
 }
@@ -476,8 +476,11 @@ func (i *mergeJoinIter) peekMatch(ctx *sql.Context, iter sql.RowIter) (bool, sql
 		return false, nil, err
 	}
 
+	// strip outer scope rows from peek
+	peek = peek[i.scopeLen:]
+
 	// check if lookahead valid
-	copy(i.fullRow[off:], peek[i.scopeLen:])
+	copy(i.fullRow[off:], peek)
 	res, err := i.cmp.Compare(ctx, i.fullRow)
 	if expression.ErrNilOperand.Is(err) {
 		// revert change to output row if no match
@@ -518,9 +521,11 @@ func (i *mergeJoinIter) incLeft(ctx *sql.Context) error {
 		} else if err != nil {
 			return err
 		}
+		// strip outer scope rows from row
+		row = row[i.scopeLen:]
 	}
 
-	copy(i.fullRow[i.scopeLen+i.parentLen:], row[i.scopeLen:])
+	copy(i.fullRow[i.scopeLen+i.parentLen:], row)
 
 	return nil
 }
@@ -540,9 +545,11 @@ func (i *mergeJoinIter) incRight(ctx *sql.Context) error {
 		} else if err != nil {
 			return err
 		}
+		// strip outer scope rows from row
+		row = row[i.scopeLen:]
 	}
 
-	copy(i.fullRow[i.scopeLen+i.parentLen+i.leftRowLen:], row[i.scopeLen:])
+	copy(i.fullRow[i.scopeLen+i.parentLen+i.leftRowLen:], row)
 
 	return nil
 }
