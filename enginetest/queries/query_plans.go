@@ -5267,69 +5267,43 @@ Select * from (
 	},
 	{
 		Query: `with cte(a,b) as (select * from ab) select * from xy where exists (select * from cte where a = x)`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [xy.x:0!null, xy.y:1]\n" +
-			" └─ LateralCrossJoin\n" +
-			"     ├─ ProcessTable\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: xy\n" +
-			"     │       └─ columns: [x y]\n" +
-			"     └─ Limit(1)\n" +
-			"         └─ SubqueryAlias\n" +
-			"             ├─ name: cte\n" +
-			"             ├─ outerVisibility: true\n" +
-			"             ├─ isLateral: true\n" +
-			"             ├─ cacheable: false\n" +
-			"             ├─ colSet: (7,8)\n" +
-			"             ├─ tableId: 3\n" +
-			"             └─ Filter\n" +
-			"                 ├─ Eq\n" +
-			"                 │   ├─ ab.a:2!null\n" +
-			"                 │   └─ xy.x:0!null\n" +
-			"                 └─ IndexedTableAccess(ab)\n" +
-			"                     ├─ index: [ab.a]\n" +
-			"                     ├─ keys: [xy.x:0!null]\n" +
-			"                     ├─ colSet: (1,2)\n" +
-			"                     ├─ tableId: 1\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: ab\n" +
-			"                         └─ columns: [a b]\n" +
+		ExpectedPlan: "Filter\n" +
+			" ├─ EXISTS Subquery\n" +
+			" │   ├─ cacheable: false\n" +
+			" │   ├─ alias-string: select * from cte where a = x\n" +
+			" │   └─ SubqueryAlias\n" +
+			" │       ├─ name: cte\n" +
+			" │       ├─ outerVisibility: true\n" +
+			" │       ├─ isLateral: true\n" +
+			" │       ├─ cacheable: false\n" +
+			" │       ├─ colSet: (7,8)\n" +
+			" │       ├─ tableId: 3\n" +
+			" │       └─ Filter\n" +
+			" │           ├─ Eq\n" +
+			" │           │   ├─ ab.a:2!null\n" +
+			" │           │   └─ xy.x:0!null\n" +
+			" │           └─ IndexedTableAccess(ab)\n" +
+			" │               ├─ index: [ab.a]\n" +
+			" │               ├─ keys: [xy.x:0!null]\n" +
+			" │               ├─ colSet: (1,2)\n" +
+			" │               ├─ tableId: 1\n" +
+			" │               └─ Table\n" +
+			" │                   ├─ name: ab\n" +
+			" │                   └─ columns: [a b]\n" +
+			" └─ ProcessTable\n" +
+			"     └─ Table\n" +
+			"         ├─ name: xy\n" +
+			"         └─ columns: [x y]\n" +
 			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [xy.x, xy.y]\n" +
-			" └─ LateralCrossJoin (estimated cost=100999.000 rows=125)\n" +
-			"     ├─ Table\n" +
-			"     │   └─ name: xy\n" +
-			"     └─ Limit(1)\n" +
-			"         └─ SubqueryAlias\n" +
-			"             ├─ name: cte\n" +
-			"             ├─ outerVisibility: true\n" +
-			"             ├─ isLateral: true\n" +
-			"             ├─ cacheable: false\n" +
-			"             └─ Filter\n" +
-			"                 ├─ (ab.a = xy.x)\n" +
-			"                 └─ IndexedTableAccess(ab)\n" +
-			"                     ├─ index: [ab.a]\n" +
-			"                     ├─ columns: [a b]\n" +
-			"                     └─ keys: xy.x\n" +
+		ExpectedEstimates: "Filter\n" +
+			" ├─ EXISTS Subquery(select * from cte where a = x)\n" +
+			" └─ Table\n" +
+			"     └─ name: xy\n" +
 			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [xy.x, xy.y]\n" +
-			" └─ LateralCrossJoin (estimated cost=100999.000 rows=125) (actual rows=4 loops=1)\n" +
-			"     ├─ Table\n" +
-			"     │   └─ name: xy\n" +
-			"     └─ Limit(1)\n" +
-			"         └─ SubqueryAlias\n" +
-			"             ├─ name: cte\n" +
-			"             ├─ outerVisibility: true\n" +
-			"             ├─ isLateral: true\n" +
-			"             ├─ cacheable: false\n" +
-			"             └─ Filter\n" +
-			"                 ├─ (ab.a = xy.x)\n" +
-			"                 └─ IndexedTableAccess(ab)\n" +
-			"                     ├─ index: [ab.a]\n" +
-			"                     ├─ columns: [a b]\n" +
-			"                     └─ keys: xy.x\n" +
+		ExpectedAnalysis: "Filter\n" +
+			" ├─ EXISTS Subquery(select * from cte where a = x)\n" +
+			" └─ Table\n" +
+			"     └─ name: xy\n" +
 			"",
 	},
 	{
