@@ -191,14 +191,12 @@ func (b *Builder) buildRecursiveCte(inScope *scope, union *ast.SetOp, name strin
 		sortFields = append(sortFields, sf)
 	}
 
-	rcte := plan.NewRecursiveCte(rInit, rightScope.node, name, columns, distinct, limit, sortFields)
-	rcte = rcte.WithSchema(recSch).WithWorking(rTable)
+	rCte := plan.NewRecursiveCte(rInit, rightScope.node, name, columns, distinct, limit, sortFields).
+		WithSchema(recSch).WithWorking(rTable).WithId(tableId).WithColumns(cols)
 	corr := leftSqScope.correlated().Union(rightInScope.correlated())
 	vol := leftSqScope.activeSubquery.volatile || rightInScope.activeSubquery.volatile
-
-	rcteId := rcte.WithId(tableId).WithColumns(cols)
-
-	sq := plan.NewSubqueryAlias(name, "", rcteId)
+	
+	sq := plan.NewSubqueryAlias(name, "", rCte)
 	b.qFlags.Set(sql.QFlagRelSubquery)
 	sq = sq.WithColumnNames(columns)
 	sq = sq.WithCorrelated(corr)
