@@ -104,7 +104,9 @@ func simplifyPartialJoinParents(n sql.Node) (sql.Node, bool) {
 		switch n := ret.(type) {
 		case *plan.Having:
 			return nil, false
-		case *plan.Project, *plan.GroupBy, *plan.Sort, *plan.Distinct, *plan.TopN:
+		case *plan.Project, *plan.GroupBy, *plan.Sort, *plan.Distinct, *plan.TopN, *plan.Limit:
+			// TODO: In most cases, it makes sense to remove *plan.Limit because child Filter nodes will have been
+			//  hoisted out. But what if Limit.Limit evals to 0?
 			ret = n.Children()[0]
 		default:
 			return ret, true

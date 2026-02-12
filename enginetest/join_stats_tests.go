@@ -39,7 +39,7 @@ func TestJoinStats(t *testing.T, harness Harness) {
 
 			for _, tt := range tt.tests {
 				if tt.order != nil {
-					evalJoinOrder(t, harness, e, tt.q, tt.order, tt.skipOld)
+					evalJoinOrder(t, harness, e, tt.q, tt.order, tt.skip)
 				}
 				if tt.exp != nil {
 					evalJoinCorrectness(t, harness, e, tt.q, tt.q, tt.exp, false)
