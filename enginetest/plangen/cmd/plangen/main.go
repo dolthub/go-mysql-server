@@ -257,7 +257,7 @@ func generatePlansForScriptSuite(spec PlanSpec, w *bytes.Buffer) error {
 		w.WriteString(fmt.Sprintf("\t\tName: \"%s\",\n", tt.Name))
 		w.WriteString("\t\tSetUpScript: []string{\n")
 		for _, setupQuery := range tt.SetUpScript {
-			w.WriteString(fmt.Sprintf("\t\t\t\"%s\",\n", setupQuery))
+			w.WriteString(fmt.Sprintf("\t\t\t`%s`,\n", setupQuery))
 		}
 		w.WriteString("\t\t},\n")
 		w.WriteString("\t\tAssertions: []ScriptTestAssertion{\n")
@@ -266,7 +266,7 @@ func generatePlansForScriptSuite(spec PlanSpec, w *bytes.Buffer) error {
 			if assertion.Skip {
 				w.WriteString("\t\t\t\tSkip: true,\n")
 			}
-			w.WriteString(fmt.Sprintf("\t\t\t\tQuery: \"%s\",\n", assertion.Query))
+			w.WriteString(fmt.Sprintf("\t\t\t\tQuery: `%s`,\n", assertion.Query))
 			w.WriteString(fmt.Sprintf("\t\t\t\tExpected: []sql.Row{\n"))
 			for _, expRow := range assertion.Expected {
 				w.WriteString(fmt.Sprintf("\t\t\t\t\t%#v,\n", expRow))

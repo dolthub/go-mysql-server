@@ -72,18 +72,20 @@ func exprToTableFilters(expr sql.Expression, scope *plan.Scope, projectionExpres
 		findGetFields = func(e sql.Expression) bool {
 			f, ok := e.(*expression.GetField)
 			if ok {
+				id := f.Id()
 				// A GetField that resolves to an outer scope or lateral scope
 				// is effectively constant and can be skipped.
-				if scope.Correlated().Contains(f.Id()) {
+				if scope.Correlated().Contains(id) {
 					return true
 				}
-				if projectionExpression, ok := projectionExpressions[f.Id()]; ok {
+				if projectionExpression, ok := projectionExpressions[id]; ok {
 					sql.Inspect(projectionExpression, findGetFields)
 					return true
 				}
-				if !seenTables[f.Table()] {
-					seenTables[f.Table()] = true
-					lastTable = f.Table()
+				table := f.Table()
+				if !seenTables[table] {
+					seenTables[table] = true
+					lastTable = table
 				}
 			} else if _, isSubquery := e.(*plan.Subquery); isSubquery {
 				hasSubquery = true
