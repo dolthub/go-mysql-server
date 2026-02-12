@@ -37,7 +37,6 @@ type SubqueryAlias struct {
 	// expression and is eligible to have visibility to outer scopes of the query.
 	OuterScopeVisibility bool
 	Volatile             bool
-	CacheableCTESource   bool
 	IsLateral            bool
 }
 
