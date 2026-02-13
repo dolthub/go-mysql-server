@@ -159,7 +159,6 @@ func TestGenBuilder(t *testing.T) {
 		"SignalName":                "*plan.SignalName",
 		"Sort":                      "*plan.Sort",
 		"TopN":                      "*plan.TopN",
-		"StripRowNode":              "*plan.StripRowNode",
 		"prependNode":               "*plan.prependNode",
 		"Max1Row":                   "*plan.Max1Row",
 		"SubqueryAlias":             "*plan.SubqueryAlias",

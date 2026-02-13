@@ -1641,4 +1641,83 @@ LATERAL (
 			},
 		},
 	},
+	{
+		Name: "nested lateral joins",
+		SetUpScript: []string{
+			"CREATE table ab (a int primary key, b int);",
+			"insert into ab values (0,3), (1,2), (2,1), (3,0);",
+			"create table three_pk (pk1 tinyint, pk2 tinyint, pk3 tinyint, col tinyint, primary key (pk1, pk2))",
+			"insert into three_pk values (0,0,0,100), (0,1,1,101), (1,0,1,110), (1,1,0,111)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `select * from ab ab1 join lateral (select * from ab ab2 join lateral (select * from three_pk where pk1 = ab1.a and pk2 = ab2.a) inner1) inner2;`,
+				Expected: []sql.Row{
+					{0, 3, 0, 3, 0, 0, 0, 100},
+					{0, 3, 1, 2, 0, 1, 1, 101},
+					{1, 2, 0, 3, 1, 0, 1, 110},
+					{1, 2, 1, 2, 1, 1, 0, 111},
+				},
+			},
+			{
+				Query: `select * from ab ab1 join lateral (select * from ab ab2 join lateral (select * from ab ab3 join lateral (select * from three_pk where pk1 = ab1.a and pk2 = ab2.a and pk3 = ab3.a) inner1) inner2) inner3;`,
+				Expected: []sql.Row{
+					{0, 3, 0, 3, 0, 3, 0, 0, 0, 100},
+					{0, 3, 1, 2, 1, 2, 0, 1, 1, 101},
+					{1, 2, 0, 3, 1, 2, 1, 0, 1, 110},
+					{1, 2, 1, 2, 0, 3, 1, 1, 0, 111},
+				},
+			},
+			{
+				Query: `select * from ab ab1 where exists (select * from ab ab2 where exists (select * from three_pk where pk1 = ab1.a and pk2 = ab2.a));`,
+				Expected: []sql.Row{
+					{0, 3},
+					{1, 2},
+				},
+			},
+			{
+				Query: `select * from ab ab1 where exists (select * from ab ab2 where exists (select * from ab ab3 where exists (select * from three_pk where pk1 = ab1.a and pk2 = ab2.a and pk3 = ab3.a)));`,
+				Expected: []sql.Row{
+					{0, 3},
+					{1, 2},
+				},
+			},
+		},
+	},
+	{
+		Name: "non-lateral joins inside inside lateral join",
+		SetUpScript: []string{
+			"CREATE table ab (a int primary key);",
+			"insert into ab values (0), (1), (2);",
+			"create table three_pk (pk1 tinyint, pk2 tinyint, pk3 tinyint, col tinyint, primary key (pk1, pk2))",
+			"insert into three_pk values (0,0,0,100), (0,1,1,101), (1,0,1,110), (1,1,0,111)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `
+select *
+from three_pk outer_table join lateral (
+    select /*+ JOIN_ORDER(inner1, inner2, inner3) */ *
+    from three_pk inner1 join (three_pk inner2 join three_pk inner3
+        on outer_table.pk2 = inner2.pk1 and outer_table.pk2 = inner2.pk2
+       and outer_table.pk3 = inner3.pk1 and outer_table.pk3 = inner3.pk2)
+        on outer_table.pk1 = inner1.pk1 and outer_table.pk1 = inner1.pk2
+) inner_join;`,
+				Expected: []sql.Row{
+					{0, 0, 0, 100, 0, 0, 0, 100, 0, 0, 0, 100, 0, 0, 0, 100},
+					{0, 1, 1, 101, 0, 0, 0, 100, 1, 1, 0, 111, 1, 1, 0, 111},
+					{1, 0, 1, 110, 1, 1, 0, 111, 0, 0, 0, 100, 1, 1, 0, 111},
+					{1, 1, 0, 111, 1, 1, 0, 111, 1, 1, 0, 111, 0, 0, 0, 100},
+				},
+			},
+			{
+				Query: `select ab1.a, a2 from ab ab1 join lateral (select ab2.a as a2, ab3.a as a3 from ab ab2 full outer join ab ab3 on ab2.a = ab1.a) inner1 where a3 is null;`,
+				Expected: []sql.Row{
+					{0, 1}, {0, 2},
+					{1, 0}, {1, 2},
+					{2, 0}, {2, 1},
+				},
+			},
+		},
+	},
 }

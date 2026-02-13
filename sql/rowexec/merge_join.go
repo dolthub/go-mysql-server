@@ -376,7 +376,7 @@ func (i *mergeJoinIter) incMatch(ctx *sql.Context) error {
 
 	if !i.leftDone {
 		// rightBuf has already been validated, we don't need compare
-		copySubslice(i.fullRow, i.rightBuf[i.bufI], i.scopeLen+i.parentLen+i.leftRowLen)
+		copy(i.fullRow[i.scopeLen+i.parentLen+i.leftRowLen:], i.rightBuf[i.bufI])
 		i.bufI++
 		return nil
 	}
@@ -476,8 +476,11 @@ func (i *mergeJoinIter) peekMatch(ctx *sql.Context, iter sql.RowIter) (bool, sql
 		return false, nil, err
 	}
 
+	// strip outer scope rows from peek
+	peek = peek[i.scopeLen:]
+
 	// check if lookahead valid
-	copySubslice(i.fullRow, peek, off)
+	copy(i.fullRow[off:], peek)
 	res, err := i.cmp.Compare(ctx, i.fullRow)
 	if expression.ErrNilOperand.Is(err) {
 		// revert change to output row if no match
@@ -487,7 +490,7 @@ func (i *mergeJoinIter) peekMatch(ctx *sql.Context, iter sql.RowIter) (bool, sql
 	}
 	if res != 0 {
 		// revert change to output row if no match
-		copySubslice(i.fullRow, restore, off)
+		copy(i.fullRow[off:], restore)
 	}
 	return res == 0, peek, nil
 }
@@ -499,9 +502,7 @@ func (i *mergeJoinIter) exhausted() bool {
 
 // copySubslice copies |src| into |dst| starting at index |off|
 func copySubslice(dst, src sql.Row, off int) {
-	for i, v := range src {
-		dst[off+i] = v
-	}
+	copy(dst[off:], src)
 }
 
 // incLeft updates |i.fullRow|'s left row
@@ -520,12 +521,11 @@ func (i *mergeJoinIter) incLeft(ctx *sql.Context) error {
 		} else if err != nil {
 			return err
 		}
+		// strip outer scope rows from row
+		row = row[i.scopeLen:]
 	}
 
-	off := i.scopeLen + i.parentLen
-	for j, v := range row {
-		i.fullRow[off+j] = v
-	}
+	copy(i.fullRow[i.scopeLen+i.parentLen:], row)
 
 	return nil
 }
@@ -545,12 +545,11 @@ func (i *mergeJoinIter) incRight(ctx *sql.Context) error {
 		} else if err != nil {
 			return err
 		}
+		// strip outer scope rows from row
+		row = row[i.scopeLen:]
 	}
 
-	off := i.scopeLen + i.parentLen + i.leftRowLen
-	for j, v := range row {
-		i.fullRow[off+j] = v
-	}
+	copy(i.fullRow[i.scopeLen+i.parentLen+i.leftRowLen:], row)
 
 	return nil
 }

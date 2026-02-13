@@ -326,8 +326,6 @@ func (b *BaseBuilder) buildNodeExecNoAnalyze(ctx *sql.Context, n sql.Node, row s
 		return b.buildLoadData(ctx, n, row)
 	case *plan.ShowCharset:
 		return b.buildShowCharset(ctx, n, row)
-	case *plan.StripRowNode:
-		return b.buildStripRowNode(ctx, n, row)
 	case *plan.DropConstraint:
 		return b.buildDropConstraint(ctx, n, row)
 	case *plan.FlushPrivileges:

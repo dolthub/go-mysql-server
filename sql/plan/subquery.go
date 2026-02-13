@@ -68,49 +68,6 @@ var _ sql.NonDeterministicExpression = (*Subquery)(nil)
 var _ sql.ExpressionWithNodes = (*Subquery)(nil)
 var _ sql.CollationCoercible = (*Subquery)(nil)
 
-type StripRowNode struct {
-	UnaryNode
-	NumCols int
-}
-
-var _ sql.Node = (*StripRowNode)(nil)
-var _ sql.CollationCoercible = (*StripRowNode)(nil)
-
-func NewStripRowNode(child sql.Node, numCols int) sql.Node {
-	return &StripRowNode{UnaryNode: UnaryNode{child}, NumCols: numCols}
-}
-
-// Describe implements the sql.Describable interface
-func (srn *StripRowNode) Describe(options sql.DescribeOptions) string {
-	return sql.Describe(srn.Child, options)
-}
-
-// String implements the fmt.Stringer interface
-func (srn *StripRowNode) String() string {
-	return srn.Child.String()
-}
-
-func (srn *StripRowNode) IsReadOnly() bool {
-	return srn.Child.IsReadOnly()
-}
-
-// DebugString implements the sql.DebugStringer interface
-func (srn *StripRowNode) DebugString() string {
-	return sql.DebugString(srn.Child)
-}
-
-func (srn *StripRowNode) WithChildren(children ...sql.Node) (sql.Node, error) {
-	if len(children) != 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(srn, len(children), 1)
-	}
-	return NewStripRowNode(children[0], srn.NumCols), nil
-}
-
-// CollationCoercibility implements the interface sql.CollationCoercible.
-func (srn *StripRowNode) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
-	return sql.GetCoercibility(ctx, srn.Child)
-}
-
 // PrependNode wraps its child by prepending column values onto any result rows
 type PrependNode struct {
 	UnaryNode

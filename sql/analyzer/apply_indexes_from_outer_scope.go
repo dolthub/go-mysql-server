@@ -256,6 +256,11 @@ func getSubqueryIndexes(
 	result := make(map[string]sql.Index)
 	// For every predicate involving a table in the outer scope, see if there's an index lookup possible on its comparands
 	// (the tables in this scope)
+	// TODO: As written, this only looks at a single outer scope.
+	// This prevents optimization when we need to get predicates from multiple outer scopes like:
+	// select * from ab ab1 where exists
+	//     (select * from ab ab2 join lateral
+	//         (select * from two_pk where pk1 = ab1.a and pk2 = ab2.a) inner1)`
 	for _, scopeTable := range tablesInScope {
 		indexCols := exprsByTable[scopeTable]
 		if indexCols != nil {

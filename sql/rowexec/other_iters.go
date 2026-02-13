@@ -368,20 +368,3 @@ func (ci *concatIter) Close(ctx *sql.Context) error {
 		return nil
 	}
 }
-
-type stripRowIter struct {
-	sql.RowIter
-	numCols int
-}
-
-func (sri *stripRowIter) Next(ctx *sql.Context) (sql.Row, error) {
-	r, err := sri.RowIter.Next(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return r[sri.numCols:], nil
-}
-
-func (sri *stripRowIter) Close(ctx *sql.Context) error {
-	return sri.RowIter.Close(ctx)
-}

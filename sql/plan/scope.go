@@ -99,18 +99,6 @@ func (s *Scope) NewScopeFromSubqueryExpression(node sql.Node, corr sql.ColSet) *
 // NewScopeFromSubqueryExpression returns a new subscope created from a subquery expression contained by the specified
 // node.
 func (s *Scope) NewScopeInJoin(node sql.Node) *Scope {
-	for {
-		var done bool
-		switch n := node.(type) {
-		case *StripRowNode:
-			node = n.Child
-		default:
-			done = true
-		}
-		if done {
-			break
-		}
-	}
 	if s == nil {
 		return &Scope{joinSiblings: []sql.Node{node}}
 	}

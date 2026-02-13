@@ -24,18 +24,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func (b *BaseBuilder) buildStripRowNode(ctx *sql.Context, n *plan.StripRowNode, row sql.Row) (sql.RowIter, error) {
-	childIter, err := b.buildNodeExec(ctx, n.Child, row)
-	if err != nil {
-		return nil, err
-	}
-
-	return &stripRowIter{
-		childIter,
-		n.NumCols,
-	}, nil
-}
-
 func (b *BaseBuilder) buildConcat(ctx *sql.Context, n *plan.Concat, row sql.Row) (sql.RowIter, error) {
 	span, ctx := ctx.Span("plan.Concat")
 	li, err := b.buildNodeExec(ctx, n.Left(), row)
