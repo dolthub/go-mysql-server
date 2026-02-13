@@ -146,7 +146,7 @@ func (i *joinState) leftColumns() sql.Row {
 	return i.fullRow[i.parentLen : i.parentLen+i.leftLen]
 }
 
-// leftColumns returns the values most recently yielded from the secondary/right child node.
+// rightColumns returns the values most recently yielded from the secondary/right child node.
 func (i *joinState) rightColumns() sql.Row {
 	return i.fullRow[i.parentLen+i.leftLen : i.parentLen+i.leftLen+i.rightLen]
 }
@@ -276,7 +276,7 @@ func (i *joinState) resetSecondaryIter(ctx *sql.Context) (err error) {
 	return err
 }
 
-// Close cleans up the iterator by recusrively closing the children iterators.
+// Close cleans up the iterator by recursively closing the children iterators.
 func (i *joinState) Close(ctx *sql.Context) (err error) {
 	if i.primaryRowIter != nil {
 		if err = i.primaryRowIter.Close(ctx); err != nil {
