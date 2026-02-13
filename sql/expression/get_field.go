@@ -213,6 +213,11 @@ func (p *GetField) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 	return collation, 2
 }
 
+// IsSameField checks if another *GetField refers to the same field
+func (p *GetField) IsSameField(other *GetField) bool {
+	return strings.EqualFold(p.Table(), other.Table()) && strings.EqualFold(p.Name(), other.Name())
+}
+
 // SchemaToGetFields takes a schema and returns an expression array of
 // GetFields. If |columns| is provided, each get field will get the
 // appropriate expression id.

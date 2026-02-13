@@ -1325,6 +1325,90 @@ var JoinScriptTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/10284
+		Name: "join when range bounds are the same field",
+		SetUpScript: []string{
+			"CREATE TABLE t0(c0 VARCHAR(500) , c1 VARCHAR(500) , c2 VARCHAR(500));",
+			"CREATE TABLE t1(c0 INT, c1 VARCHAR(500));",
+			"INSERT INTO t0(c0, c1) VALUES (1, 5);",
+			"INSERT INTO t0(c2) VALUES ('KZ');",
+			"INSERT INTO t1(c0) VALUES (false);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM t1 INNER  JOIN t0 ON (t1.c0 BETWEEN t0.c2 AND t0.c2);",
+				Expected: []sql.Row{{0, nil, nil, nil, "KZ"}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/10304
+		Name: "3-way join with 1 primary key table, 2 keyless tables, and join filter on keyless tables",
+		SetUpScript: []string{
+			"CREATE TABLE t0(c0 VARCHAR(500), c1 INT);",
+			"CREATE TABLE t6(t6c0 VARCHAR(500), t6c1 INT, PRIMARY KEY(t6c0));",
+			"CREATE VIEW v0(c0) AS SELECT t0.c1 FROM t0;",
+			"create table t1(c0 int)",
+			"INSERT INTO t6(t6c0) VALUES (3);",
+			"INSERT INTO t6(t6c0, t6c1) VALUES (2, '-1'), ('', '1');",
+			"INSERT INTO t6(t6c0, t6c1) VALUES (true, 0);",
+			"INSERT INTO t0(c0, c1) VALUES (-1, false);",
+			"INSERT INTO t0(c1) VALUES (-7);",
+			"insert into t1(c0) values (-7),(0)",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM t6, t1 INNER JOIN t0 ON ((t1.c0)<=>(t0.c1));",
+				Expected: []sql.Row{
+					{"", 1, -7, nil, -7},
+					{"", 1, 0, "-1", 0},
+					{"1", 0, -7, nil, -7},
+					{"1", 0, 0, "-1", 0},
+					{"2", -1, -7, nil, -7},
+					{"2", -1, 0, "-1", 0},
+					{"3", nil, -7, nil, -7},
+					{"3", nil, 0, "-1", 0},
+				},
+			},
+			{
+				Query: "SELECT * FROM t6, v0 INNER JOIN t0 ON ((v0.c0)<=>(t0.c1));",
+				Expected: []sql.Row{
+					{"", 1, -7, nil, -7},
+					{"", 1, 0, "-1", 0},
+					{"1", 0, -7, nil, -7},
+					{"1", 0, 0, "-1", 0},
+					{"2", -1, -7, nil, -7},
+					{"2", -1, 0, "-1", 0},
+					{"3", nil, -7, nil, -7},
+					{"3", nil, 0, "-1", 0},
+				},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/10434
+		Name: "Correct exec indexes are assigned for left join on empty table",
+		SetUpScript: []string{
+			"CREATE  TABLE  t4(c1 BOOLEAN, PRIMARY KEY(c1));",
+			"CREATE  TABLE  t0(c0 INT);",
+			"CREATE table t1 AS SELECT 1;",
+			"CREATE VIEW v0(c0) AS SELECT 1;",
+			"INSERT INTO t0(c0) VALUES (1);",
+			"insert into t4(c1) values (false)",
+			"SELECT * FROM t1, t0 LEFT JOIN t4 ON FALSE;",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select * from t1, t0 left join t4 on false;",
+				Expected: []sql.Row{{1, 1, nil}},
+			},
+			{
+				Query:    "select * from t1, t0 left join t4 on false;",
+				Expected: []sql.Row{{1, 1, nil}},
+			},
+		},
+	},
 }
 
 var LateralJoinScriptTests = []ScriptTest{

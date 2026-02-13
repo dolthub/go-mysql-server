@@ -14727,6 +14727,139 @@ select * from t1 except (
 			},
 		},
 	},
+	{
+		Name: "Between filter",
+		SetUpScript: []string{
+			"create table test(x int, y int, z int);",
+			`insert into test values
+                     (null, 0, 0),
+                     (1, null, 1),
+                     (2, 2, null),
+                     (3, 2, 4),
+                     (4, 2, 3),
+                     (5, 6, 7),
+                     (6, 6, 5),
+                     (7, 8, 7),
+                     (8, 9, 7)`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `select x, y, z,
+       						(x between y and z), (x between x and z), (x between y and x), (x between y and y),
+       						(x between x and x) from test order by x`,
+				Expected: []sql.Row{
+					{nil, 0, 0, nil, nil, nil, nil, nil},
+					{1, nil, 1, nil, true, nil, nil, true},
+					{2, 2, nil, nil, nil, true, true, true},
+					{3, 2, 4, true, true, true, false, true},
+					{4, 2, 3, false, false, true, false, true},
+					{5, 6, 7, false, true, false, false, true},
+					{6, 6, 5, false, false, true, true, true},
+					{7, 8, 7, false, true, false, false, true},
+					{8, 9, 7, false, false, false, false, true},
+				},
+			},
+			{
+				Query:    "select x from test where (x between y and z) order by x",
+				Expected: []sql.Row{{3}},
+			},
+			{
+				Query:    "select x from test where (x between x and z) order by x",
+				Expected: []sql.Row{{1}, {3}, {5}, {7}},
+			},
+			{
+				Query:    "select x from test where (x between y and x) order by x",
+				Expected: []sql.Row{{2}, {3}, {4}, {6}},
+			},
+			{
+				Query:    "select x from test where (x between y and y) order by x",
+				Expected: []sql.Row{{2}, {6}},
+			},
+			{
+				Query:    "select x from test where (x between x and x) order by x",
+				Expected: []sql.Row{{1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}},
+			},
+		},
+	},
+	{
+		Name: "Subqueries inside NOT EXISTS clause with correlated column filter",
+		SetUpScript: []string{
+			"CREATE TABLE issues (id INT PRIMARY KEY, title TEXT, status TEXT);",
+			"CREATE TABLE dependencies (issue_id INT, depends_on_id INT, type TEXT);",
+			`INSERT INTO issues (id, title, status) VALUES
+					(1, 'Login API',        'open'),
+					(2, 'Auth Library',    'in_progress'),
+					(3, 'User Profile',    'open'),
+					(4, 'Profile UI',      'open'),
+					(5, 'Settings Page',   'open'),
+					(6, 'Marketing Page',  'open'),
+					(7, 'Old Feature',     'closed');`,
+			`INSERT INTO dependencies (issue_id, depends_on_id, type) VALUES
+					(3, 1, 'blocks'),
+					(3, 2, 'blocks'),
+					(4, 3, 'parent-child'),
+					(5, 4, 'parent-child');`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// https://github.com/dolthub/dolt/issues/10472
+				Query: `WITH RECURSIVE
+					  blocked_directly AS (
+						SELECT DISTINCT d.issue_id
+						FROM dependencies d
+						JOIN issues blocker ON d.depends_on_id = blocker.id
+						WHERE d.type = 'blocks'
+						  AND blocker.status IN ('open', 'in_progress', 'blocked', 'deferred', 'hooked')
+					  ),
+					  blocked_transitively AS (
+						SELECT issue_id, 0 as depth
+						FROM blocked_directly
+						UNION ALL
+						SELECT d.issue_id, bt.depth + 1
+						FROM blocked_transitively bt
+						JOIN dependencies d ON d.depends_on_id = bt.issue_id
+						WHERE d.type = 'parent-child'
+						  AND bt.depth < 50
+					  )
+					SELECT i.*
+					FROM issues i
+					WHERE i.status = 'open'
+					  AND NOT EXISTS (
+						SELECT 1 FROM blocked_transitively WHERE issue_id = i.id
+					  );`,
+				Expected: []sql.Row{{1, "Login API", "open"}, {6, "Marketing Page", "open"}},
+			},
+			{
+				Query: `WITH blocked_directly AS (
+						SELECT DISTINCT d.issue_id
+						FROM dependencies d
+						JOIN issues blocker ON d.depends_on_id = blocker.id
+						WHERE d.type = 'blocks'
+						  AND blocker.status IN ('open', 'in_progress', 'blocked', 'deferred', 'hooked')
+					  )
+					SELECT i.id
+					FROM issues i
+					WHERE i.status = 'open'
+					  AND NOT EXISTS (
+						SELECT 1 FROM blocked_directly WHERE issue_id = i.id
+					  );`,
+				Expected: []sql.Row{{1}, {4}, {5}, {6}},
+			},
+			{
+				Query: `SELECT i.id
+						FROM issues i
+						WHERE i.status = 'open'
+						  AND NOT EXISTS (
+							SELECT 1 FROM (
+					  SELECT DISTINCT d.issue_id
+						FROM dependencies d
+						JOIN issues blocker ON d.depends_on_id = blocker.id
+						WHERE d.type = 'blocks' AND blocker.status IN ('open', 'in_progress', 'blocked', 'deferred', 'hooked')
+					) as blocked WHERE blocked.issue_id = i.id);`,
+				Expected: []sql.Row{{1}, {4}, {5}, {6}},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{

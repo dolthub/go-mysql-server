@@ -135,7 +135,7 @@ func recSchemaToGetFields(n sql.Node, sch sql.Schema) []sql.Expression {
 }
 
 func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Scope, qFlags *sql.QueryFlags) (ret sql.Node, err error) {
-	m := memo.NewMemo(ctx, a.Catalog, scope, len(scope.Schema()), a.Coster, qFlags)
+	m := memo.NewMemo(ctx, a.Catalog, scope, a.Coster, qFlags)
 	m.Debug = a.Debug
 	m.EnableTrace(a.Trace)
 
@@ -1033,6 +1033,15 @@ func addRangeHeapJoin(m *memo.Memo) error {
 				return nil
 			}
 
+			valType := valueColRef.Type()
+			// TODO: Incompatible sort orders between the value and min columns would be fine if we sorted the tables
+			//  using the same sort order (for example, if value is a number type column and min is a string, we sort
+			//  the right table based on min converted to a number). Incompatible sort orders between value and max
+			//  columns could be fine depending on the heap implementation and if we updated the range heap join iter to
+			//  use a compare expression instead of hard-coding it to use maxColRef.Type().Compare
+			if !compatibleSortOrders(valType, minColRef.Type()) || !compatibleSortOrders(valType, maxColRef.Type()) {
+				return nil
+			}
 			leftIndexScans, err := sortedIndexScansForTableCol(m.Ctx, m.StatsProvider(), leftTab, lIndexes, valueColRef, join.Left.RelProps.FuncDeps().Constants(), lFilters)
 			if err != nil {
 				return err
@@ -1147,7 +1156,7 @@ func addMergeJoins(ctx *sql.Context, m *memo.Memo) error {
 				}
 
 				// check that comparer is not non-decreasing
-				if !canMergeTypes(l.Type(), r.Type()) || !isWeaklyMonotonic(l) || !isWeaklyMonotonic(r) {
+				if !compatibleSortOrders(l.Type(), r.Type()) || !isWeaklyMonotonic(l) || !isWeaklyMonotonic(r) {
 					continue
 				}
 
@@ -1491,15 +1500,18 @@ func makeIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, tab plan.Table
 	}, true, nil
 }
 
-// canMerge checks the types of two columns to see if they can be merged into one another if sorted.
-func canMergeTypes(t1, t2 sql.Type) bool {
-	// TODO: handle other types here. For example, Number and Text types likely can't be merged together. But we need to
-	// add more testing https://github.com/dolthub/dolt/issues/10316
+// compatibleSortOrders checks the types of two columns to see if they can be merged into one another if sorted.
+func compatibleSortOrders(t1, t2 sql.Type) bool {
+	// TODO: handle other types here https://github.com/dolthub/dolt/issues/10316
 	switch {
 	case types.IsEnum(t1):
 		if types.IsEnum(t2) {
 			return types.TypesEqual(t1, t2)
 		}
+	case types.IsNumber(t1):
+		return !types.IsText(t2)
+	case types.IsText(t1):
+		return !types.IsNumber(t2)
 	}
 	return true
 }

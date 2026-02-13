@@ -140,8 +140,10 @@ func moveJoinConditionsToFilter(ctx *sql.Context, a *Analyzer, n sql.Node, scope
 			newRight = plan.NewFilter(expression.JoinAnd(rightOnlyFilters...), newRight)
 		}
 
+		// TODO: This might not be necessary. JoinAnd returns nil for arrays of length 0 and nil join conditions are
+		//  evaluated as true anyways
 		if len(condFilters) == 0 {
-			condFilters = append(condFilters, expression.NewLiteral(true, types.Boolean))
+			condFilters = append(condFilters, expression.NewTrue())
 		}
 
 		return plan.NewJoin(newLeft, newRight, join.Op, expression.JoinAnd(condFilters...)).WithComment(join.CommentStr), transform.NewTree, nil
@@ -286,7 +288,7 @@ func simplifyFilters(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.S
 func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 	return transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		switch e := e.(type) {
-		// TODO: if the left and right children of Equals refer to the same field, simplify to true
+		// TODO: if the left and right children of Equals are the same expression, simplify to NullIf(IsNotNull(left), false)
 		case *plan.Subquery:
 			newQ, same, err := simplifyFilters(ctx, a, e.Query, scope, sel, qFlags)
 			if same || err != nil {
@@ -294,12 +296,39 @@ func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel Ru
 			}
 			return e.WithQuery(newQ), transform.NewTree, nil
 		case *expression.Between:
-			// TODO: if e.Lower and e.Upper refer to the same field, simplify to Equals(e.Val, e.Lower)
-			// TODO: if e.Val is the same field as e.Lower and e.Upper, simplify to true
-
-			// TODO: Can be evaluated to true/false if e.Val, e.Lower, and e.Upper are all Literals.
+			// TODO: Simplify for Literal arguments
+			//  If any argument is null (Literal.IsNullable returns true), simplify to null
+			//  If all arguments are Literals, Between can be evaluated to true/false
+			//  If e.Val and e.Lower are both Literals:
+			//    If e.Val < e.Lower, simplify to false.
+			//    If e.Val == e.Lower, simplify to true.
+			//    If e.Val > e.Lower, simplify to e.Val <= e.Upper
+			//  If e.Val and e.Upper are both Literals:
+			//    If e.Val < e.Upper, simplify to e.Val >= e.Lower.
+			//    If e.Val == e.Upper, simplify to true
+			//    If e.Val > e.Upper, simplify to false
 			//  If e.Lower and e.Upper are both Literals:
-			//  If e.Lower > e.Upper, simplify to false. If e.Lower == e.Upper, simplify to Equals(e.Val, e.Lower).
+			//    If e.Lower > e.Upper, simplify to false. If e.Lower == e.Upper, simplify to Equals(e.Val, e.Lower).
+
+			// TODO: These simplifications for GetField arguments can likely be applied to all expressions. Maybe we can
+			//  check for expression equality using their String values. If all arguments refer to the same expression,
+			//  Between can be simplified to NullIf(IsNotNull(left), false)
+			lowerField, lowerIsField := e.Lower.(*expression.GetField)
+			upperField, upperIsField := e.Upper.(*expression.GetField)
+			if lowerIsField && upperIsField && lowerField.IsSameField(upperField) {
+				// If e.Lower and e.Upper refer to the same field, Between can be simplified to Equals
+				return expression.NewEquals(e.Val, e.Lower), transform.NewTree, nil
+			}
+
+			if valField, valIsField := e.Val.(*expression.GetField); valIsField {
+				if lowerIsField && lowerField.IsSameField(valField) {
+					return expression.NewLessThanOrEqual(e.Val, e.Upper), transform.NewTree, nil
+				}
+				if upperIsField && upperField.IsSameField(valField) {
+					return expression.NewGreaterThanOrEqual(e.Val, e.Lower), transform.NewTree, nil
+				}
+			}
+
 			return expression.NewAnd(
 				expression.NewGreaterThanOrEqual(e.Val, e.Lower),
 				expression.NewLessThanOrEqual(e.Val, e.Upper),
@@ -308,19 +337,19 @@ func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel Ru
 			leftIsTrue, leftIsFalse := getDefiniteBoolValues(ctx, e.LeftChild)
 			// if left side is true, the OR expression is true
 			if leftIsTrue {
-				return expression.NewLiteral(true, types.Boolean), transform.NewTree, nil
+				return expression.NewTrue(), transform.NewTree, nil
 			}
 
 			rightIsTrue, rightIsFalse := getDefiniteBoolValues(ctx, e.RightChild)
 			// if right side is true, the OR expression is true
 			if rightIsTrue {
-				return expression.NewLiteral(true, types.Boolean), transform.NewTree, nil
+				return expression.NewTrue(), transform.NewTree, nil
 			}
 
 			if leftIsFalse {
 				// if both sides are false, the OR expression is false
 				if rightIsFalse {
-					return expression.NewLiteral(false, types.Boolean), transform.NewTree, nil
+					return expression.NewFalse(), transform.NewTree, nil
 				}
 				// if left side is false, the value of the OR expression is determined by the right side
 				// TODO If RightChild is not a boolean type, it can be returned if converted to a boolean. Nil values
@@ -342,19 +371,19 @@ func simplifyExpression(ctx *sql.Context, a *Analyzer, scope *plan.Scope, sel Ru
 			leftIsTrue, leftIsFalse := getDefiniteBoolValues(ctx, e.LeftChild)
 			// if left side is false, the AND expression is false
 			if leftIsFalse {
-				return expression.NewLiteral(false, types.Boolean), transform.NewTree, nil
+				return expression.NewFalse(), transform.NewTree, nil
 			}
 
 			rightIsTrue, rightIsFalse := getDefiniteBoolValues(ctx, e.RightChild)
 			// if right side is false, the AND expression is false
 			if rightIsFalse {
-				return expression.NewLiteral(false, types.Boolean), transform.NewTree, nil
+				return expression.NewFalse(), transform.NewTree, nil
 			}
 
 			if leftIsTrue {
 				// if both sides are true, the AND expression is true
 				if rightIsTrue {
-					return expression.NewLiteral(true, types.Boolean), transform.NewTree, nil
+					return expression.NewTrue(), transform.NewTree, nil
 				}
 				// if left side is true, the value of the AND expression is determined by the right side
 				// TODO If RightChild is not a boolean type, it can be returned if converted to a boolean. Nil values

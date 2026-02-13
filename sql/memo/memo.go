@@ -48,19 +48,17 @@ type Memo struct {
 	scope      *plan.Scope
 	TableProps *tableProps
 	QFlags     *sql.QueryFlags
-	scopeLen   int
 	cnt        uint16
 	Debug      bool
 	Tracer     *TraceLogger
 }
 
-func NewMemo(ctx *sql.Context, stats sql.StatsProvider, s *plan.Scope, scopeLen int, cost Coster, qFlags *sql.QueryFlags) *Memo {
+func NewMemo(ctx *sql.Context, stats sql.StatsProvider, s *plan.Scope, cost Coster, qFlags *sql.QueryFlags) *Memo {
 	return &Memo{
 		Ctx:        ctx,
 		c:          cost,
 		statsProv:  stats,
 		scope:      s,
-		scopeLen:   scopeLen,
 		TableProps: newTableProps(),
 		hints:      &joinHints{},
 		QFlags:     qFlags,

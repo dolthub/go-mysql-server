@@ -40,8 +40,8 @@ type JoinPlanTest struct {
 	// order is a list of acceptable join plan orders.
 	// used for statistics test plans that are unlikely but otherwise
 	// cause flakes in CI for lack of seed control.
-	order   [][]string
-	skipOld bool
+	order [][]string
+	skip  bool
 }
 
 type joinPlanScript struct {
@@ -1402,6 +1402,12 @@ join uv d on d.u = c.x`,
 				},
 			},
 			{
+				// https://github.com/dolthub/dolt/issues/10493
+				skip: true,
+				q:    "select * from vals where exists (select * from ranges where val between min and max limit 0);",
+				exp:  []sql.Row{},
+			},
+			{
 				q:     "select * from vals where exists (select distinct val from ranges where val between min and max);",
 				types: []plan.JoinType{plan.JoinTypeSemi},
 				exp: []sql.Row{
@@ -1857,19 +1863,19 @@ func runJoinPlanningTests(t *testing.T, harness Harness, tests []joinPlanScript)
 			defer e.Close()
 			for _, tt := range tt.tests {
 				if tt.types != nil {
-					evalJoinTypeTest(t, harness, e, tt.q, tt.types, tt.skipOld)
+					evalJoinTypeTest(t, harness, e, tt.q, tt.types, tt.skip)
 				}
 				if tt.indexes != nil {
-					evalIndexTest(t, harness, e, tt.q, tt.indexes, tt.skipOld)
+					evalIndexTest(t, harness, e, tt.q, tt.indexes, tt.skip)
 				}
 				if tt.mergeCompares != nil {
 					evalMergeCmpTest(t, harness, e, tt)
 				}
 				if tt.exp != nil {
-					evalJoinCorrectness(t, harness, e, tt.q, tt.q, tt.exp, tt.skipOld)
+					evalJoinCorrectness(t, harness, e, tt.q, tt.q, tt.exp, tt.skip)
 				}
 				if tt.order != nil {
-					evalJoinOrder(t, harness, e, tt.q, tt.order, tt.skipOld)
+					evalJoinOrder(t, harness, e, tt.q, tt.order, tt.skip)
 				}
 			}
 		})
@@ -1921,7 +1927,7 @@ func evalMergeCmpTest(t *testing.T, harness Harness, e QueryEngine, tt JoinPlanT
 		return
 	}
 	t.Run(tt.q+"merge join compare", func(t *testing.T) {
-		if tt.skipOld {
+		if tt.skip {
 			t.Skip()
 		}
 

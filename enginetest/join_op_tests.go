@@ -600,16 +600,37 @@ var DefaultJoinOpTests = []joinOpTest{
 		name: "left join tests",
 		setup: [][]string{
 			{
-				"create table xy (x int primary key, y int)",
-				"create table uv (u int primary key, v int, key(v))",
-				"insert into xy values (0,0),(2,2),(3,3),(4,4),(5,5),(7,7),(8,8),(10,10);",
-				"insert into uv values (0,0),(1,1),(3,3),(5,5),(6,5),(7,7),(9,9),(10,10);",
+				"create table xy (x int primary key, y int);",
+				"create table uv (u int primary key, v int, key(v));",
+				"create table st (s int primary key, t int, key(t));",
+				"insert into xy values (0,1),(2,3),(3,4),(4,5),(5,6),(7,8),(8,9),(10,11);",
+				"insert into uv values (1,0),(2,1),(3,3),(4,5),(5,5),(6,7),(7,9),(8,10);",
+				"insert into st values (10, 9), (8, 7), (6, 6), (5, 7), (3, 2), (1, 0);",
 			},
 		},
 		tests: []JoinOpTests{
 			{
-				Query:    "select x from xy left join uv on x = v",
+				Query:    "select x from xy left join uv on x = v;",
 				Expected: []sql.Row{{0}, {2}, {3}, {4}, {5}, {5}, {7}, {8}, {10}},
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/10451
+				Query:    "select u from xy left join uv on u = -2;",
+				Expected: []sql.Row{{nil}, {nil}, {nil}, {nil}, {nil}, {nil}, {nil}, {nil}},
+			},
+			{
+				Query: "select x, v, s from xy left join uv on x = v left join st on u=t;",
+				Expected: []sql.Row{
+					{0, 0, nil},
+					{2, nil, nil},
+					{3, 3, nil},
+					{4, nil, nil},
+					{5, 5, nil},
+					{5, 5, nil},
+					{7, 7, 6},
+					{8, nil, nil},
+					{10, 10, nil},
+				},
 			},
 		},
 	},
@@ -2315,6 +2336,30 @@ WHERE
 				Skip:     true,
 				Query:    "select * from animals join pets on animals.e=pets.e order by animals.e;",
 				Expected: []sql.Row{{"rat", "rat"}, {"dog", "dog"}},
+			},
+		},
+	},
+	{
+		name: "join on string and number columns",
+		setup: [][]string{
+			{
+				"create table t0(c0 varchar(500) primary key, c1 int)",
+				"create table t1(c0 int primary key, c1 varchar(500))",
+				"insert into t0(c0) values (5), (33), (223), ('123a')",
+				"insert into t1(c0) values (5), (33), (223), (123)",
+				"insert into t1(c0) values (-1)",
+				"insert into t0(c0, c1) values (false, -2)",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "select t0.c0, t1.c0 from t0 join t1 on t0.c0 = t1.c0 order by t1.c0;",
+				Expected: []sql.Row{{"5", 5}, {"33", 33}, {"123a", 123}, {"223", 223}},
+			},
+			{
+				// https://github.com/dolthub/dolt/issues/10435
+				Query:    "select * from t1 inner join t0 on (t1.c0 between t0.c1 and t0.c0)",
+				Expected: []sql.Row{{-1, nil, "0", -2}},
 			},
 		},
 	},

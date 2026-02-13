@@ -24,18 +24,18 @@ var QueryPlanScriptTests = []ScriptTest{
 	{
 		Name: "test merge join optimization (removing sort node over indexed tables) does not break ordering",
 		SetUpScript: []string{
-			"create table t1 (i int primary key);",
-			"create table t2 (j int primary key);",
-			"insert into t1 values (1), (2), (3);",
-			"insert into t2 values (2), (3), (4);",
-			"create table t3 (i int, j int, primary key (i, j));",
-			"create table t4 (x int, y int, primary key (x, y));",
-			"insert into t3 values (1, 1), (1, 2), (2, 2), (3, 3);",
-			"insert into t4 values (2, 2), (3, 3), (4, 4);",
+			`create table t1 (i int primary key);`,
+			`create table t2 (j int primary key);`,
+			`insert into t1 values (1), (2), (3);`,
+			`insert into t2 values (2), (3), (4);`,
+			`create table t3 (i int, j int, primary key (i, j));`,
+			`create table t4 (x int, y int, primary key (x, y));`,
+			`insert into t3 values (1, 1), (1, 2), (2, 2), (3, 3);`,
+			`insert into t4 values (2, 2), (3, 3), (4, 4);`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on t1.i = t2.j order by t1.i;",
+				Query: `select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on t1.i = t2.j order by t1.i;`,
 				Expected: []sql.Row{
 					sql.Row{2, 2},
 					sql.Row{3, 3},
@@ -63,7 +63,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					"",
 			},
 			{
-				Query: "select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on t1.i = t2.j order by t2.j;",
+				Query: `select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on t1.i = t2.j order by t2.j;`,
 				Expected: []sql.Row{
 					sql.Row{2, 2},
 					sql.Row{3, 3},
@@ -91,37 +91,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					"",
 			},
 			{
-				Query: "select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on t1.i = t2.j order by t1.i desc;",
-				Expected: []sql.Row{
-					sql.Row{3, 3},
-					sql.Row{2, 2},
-				},
-				ExpectedPlan: "MergeJoin\n" +
-					" ├─ cmp: Eq\n" +
-					" │   ├─ t1.i:0!null\n" +
-					" │   └─ t2.j:1!null\n" +
-					" ├─ IndexedTableAccess(t1)\n" +
-					" │   ├─ index: [t1.i]\n" +
-					" │   ├─ static: [{[NULL, ∞)}]\n" +
-					" │   ├─ reverse: true\n" +
-					" │   ├─ colSet: (1)\n" +
-					" │   ├─ tableId: 1\n" +
-					" │   └─ Table\n" +
-					" │       ├─ name: t1\n" +
-					" │       └─ columns: [i]\n" +
-					" └─ IndexedTableAccess(t2)\n" +
-					"     ├─ index: [t2.j]\n" +
-					"     ├─ static: [{[NULL, ∞)}]\n" +
-					"     ├─ reverse: true\n" +
-					"     ├─ colSet: (2)\n" +
-					"     ├─ tableId: 2\n" +
-					"     └─ Table\n" +
-					"         ├─ name: t2\n" +
-					"         └─ columns: [j]\n" +
-					"",
-			},
-			{
-				Query: "select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on t1.i = t2.j order by t2.j desc;",
+				Query: `select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on t1.i = t2.j order by t1.i desc;`,
 				Expected: []sql.Row{
 					sql.Row{3, 3},
 					sql.Row{2, 2},
@@ -151,7 +121,37 @@ var QueryPlanScriptTests = []ScriptTest{
 					"",
 			},
 			{
-				Query: "select /*+ MERGE_JOIN(t1, t2) */ * from t1 where ((i in (select j from t2 where j > 2))) order by i desc;",
+				Query: `select /*+ MERGE_JOIN(t1, t2) */ * from t1 join t2 on t1.i = t2.j order by t2.j desc;`,
+				Expected: []sql.Row{
+					sql.Row{3, 3},
+					sql.Row{2, 2},
+				},
+				ExpectedPlan: "MergeJoin\n" +
+					" ├─ cmp: Eq\n" +
+					" │   ├─ t1.i:0!null\n" +
+					" │   └─ t2.j:1!null\n" +
+					" ├─ IndexedTableAccess(t1)\n" +
+					" │   ├─ index: [t1.i]\n" +
+					" │   ├─ static: [{[NULL, ∞)}]\n" +
+					" │   ├─ reverse: true\n" +
+					" │   ├─ colSet: (1)\n" +
+					" │   ├─ tableId: 1\n" +
+					" │   └─ Table\n" +
+					" │       ├─ name: t1\n" +
+					" │       └─ columns: [i]\n" +
+					" └─ IndexedTableAccess(t2)\n" +
+					"     ├─ index: [t2.j]\n" +
+					"     ├─ static: [{[NULL, ∞)}]\n" +
+					"     ├─ reverse: true\n" +
+					"     ├─ colSet: (2)\n" +
+					"     ├─ tableId: 2\n" +
+					"     └─ Table\n" +
+					"         ├─ name: t2\n" +
+					"         └─ columns: [j]\n" +
+					"",
+			},
+			{
+				Query: `select /*+ MERGE_JOIN(t1, t2) */ * from t1 where ((i in (select j from t2 where j > 2))) order by i desc;`,
 				Expected: []sql.Row{
 					sql.Row{3},
 				},
@@ -187,7 +187,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					"",
 			},
 			{
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i;",
+				Query: `select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i;`,
 				Expected: []sql.Row{
 					sql.Row{2, 2, 2, 2},
 					sql.Row{3, 3, 3, 3},
@@ -215,65 +215,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					"",
 			},
 			{
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i desc;",
-				Expected: []sql.Row{
-					sql.Row{3, 3, 3, 3},
-					sql.Row{2, 2, 2, 2},
-				},
-				ExpectedPlan: "MergeJoin\n" +
-					" ├─ cmp: Eq\n" +
-					" │   ├─ t3.i:0!null\n" +
-					" │   └─ t4.x:2!null\n" +
-					" ├─ IndexedTableAccess(t3)\n" +
-					" │   ├─ index: [t3.i,t3.j]\n" +
-					" │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-					" │   ├─ reverse: true\n" +
-					" │   ├─ colSet: (1,2)\n" +
-					" │   ├─ tableId: 1\n" +
-					" │   └─ Table\n" +
-					" │       ├─ name: t3\n" +
-					" │       └─ columns: [i j]\n" +
-					" └─ IndexedTableAccess(t4)\n" +
-					"     ├─ index: [t4.x,t4.y]\n" +
-					"     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-					"     ├─ reverse: true\n" +
-					"     ├─ colSet: (3,4)\n" +
-					"     ├─ tableId: 2\n" +
-					"     └─ Table\n" +
-					"         ├─ name: t4\n" +
-					"         └─ columns: [x y]\n" +
-					"",
-			},
-			{
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t4.x;",
-				Expected: []sql.Row{
-					sql.Row{2, 2, 2, 2},
-					sql.Row{3, 3, 3, 3},
-				},
-				ExpectedPlan: "MergeJoin\n" +
-					" ├─ cmp: Eq\n" +
-					" │   ├─ t3.i:0!null\n" +
-					" │   └─ t4.x:2!null\n" +
-					" ├─ IndexedTableAccess(t3)\n" +
-					" │   ├─ index: [t3.i,t3.j]\n" +
-					" │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-					" │   ├─ colSet: (1,2)\n" +
-					" │   ├─ tableId: 1\n" +
-					" │   └─ Table\n" +
-					" │       ├─ name: t3\n" +
-					" │       └─ columns: [i j]\n" +
-					" └─ IndexedTableAccess(t4)\n" +
-					"     ├─ index: [t4.x,t4.y]\n" +
-					"     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-					"     ├─ colSet: (3,4)\n" +
-					"     ├─ tableId: 2\n" +
-					"     └─ Table\n" +
-					"         ├─ name: t4\n" +
-					"         └─ columns: [x y]\n" +
-					"",
-			},
-			{
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t4.x desc;",
+				Query: `select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i desc;`,
 				Expected: []sql.Row{
 					sql.Row{3, 3, 3, 3},
 					sql.Row{2, 2, 2, 2},
@@ -303,7 +245,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					"",
 			},
 			{
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t3.j;",
+				Query: `select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t4.x;`,
 				Expected: []sql.Row{
 					sql.Row{2, 2, 2, 2},
 					sql.Row{3, 3, 3, 3},
@@ -331,65 +273,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					"",
 			},
 			{
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i desc, t3.j desc;",
-				Expected: []sql.Row{
-					sql.Row{3, 3, 3, 3},
-					sql.Row{2, 2, 2, 2},
-				},
-				ExpectedPlan: "MergeJoin\n" +
-					" ├─ cmp: Eq\n" +
-					" │   ├─ t3.i:0!null\n" +
-					" │   └─ t4.x:2!null\n" +
-					" ├─ IndexedTableAccess(t3)\n" +
-					" │   ├─ index: [t3.i,t3.j]\n" +
-					" │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-					" │   ├─ reverse: true\n" +
-					" │   ├─ colSet: (1,2)\n" +
-					" │   ├─ tableId: 1\n" +
-					" │   └─ Table\n" +
-					" │       ├─ name: t3\n" +
-					" │       └─ columns: [i j]\n" +
-					" └─ IndexedTableAccess(t4)\n" +
-					"     ├─ index: [t4.x,t4.y]\n" +
-					"     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-					"     ├─ reverse: true\n" +
-					"     ├─ colSet: (3,4)\n" +
-					"     ├─ tableId: 2\n" +
-					"     └─ Table\n" +
-					"         ├─ name: t4\n" +
-					"         └─ columns: [x y]\n" +
-					"",
-			},
-			{
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t4.x, t4.y;",
-				Expected: []sql.Row{
-					sql.Row{2, 2, 2, 2},
-					sql.Row{3, 3, 3, 3},
-				},
-				ExpectedPlan: "MergeJoin\n" +
-					" ├─ cmp: Eq\n" +
-					" │   ├─ t3.i:0!null\n" +
-					" │   └─ t4.x:2!null\n" +
-					" ├─ IndexedTableAccess(t3)\n" +
-					" │   ├─ index: [t3.i,t3.j]\n" +
-					" │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-					" │   ├─ colSet: (1,2)\n" +
-					" │   ├─ tableId: 1\n" +
-					" │   └─ Table\n" +
-					" │       ├─ name: t3\n" +
-					" │       └─ columns: [i j]\n" +
-					" └─ IndexedTableAccess(t4)\n" +
-					"     ├─ index: [t4.x,t4.y]\n" +
-					"     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
-					"     ├─ colSet: (3,4)\n" +
-					"     ├─ tableId: 2\n" +
-					"     └─ Table\n" +
-					"         ├─ name: t4\n" +
-					"         └─ columns: [x y]\n" +
-					"",
-			},
-			{
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t4.x desc, t4.y desc;",
+				Query: `select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t4.x desc;`,
 				Expected: []sql.Row{
 					sql.Row{3, 3, 3, 3},
 					sql.Row{2, 2, 2, 2},
@@ -419,7 +303,123 @@ var QueryPlanScriptTests = []ScriptTest{
 					"",
 			},
 			{
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t4.x;",
+				Query: `select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t3.j;`,
+				Expected: []sql.Row{
+					sql.Row{2, 2, 2, 2},
+					sql.Row{3, 3, 3, 3},
+				},
+				ExpectedPlan: "MergeJoin\n" +
+					" ├─ cmp: Eq\n" +
+					" │   ├─ t3.i:0!null\n" +
+					" │   └─ t4.x:2!null\n" +
+					" ├─ IndexedTableAccess(t3)\n" +
+					" │   ├─ index: [t3.i,t3.j]\n" +
+					" │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+					" │   ├─ colSet: (1,2)\n" +
+					" │   ├─ tableId: 1\n" +
+					" │   └─ Table\n" +
+					" │       ├─ name: t3\n" +
+					" │       └─ columns: [i j]\n" +
+					" └─ IndexedTableAccess(t4)\n" +
+					"     ├─ index: [t4.x,t4.y]\n" +
+					"     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+					"     ├─ colSet: (3,4)\n" +
+					"     ├─ tableId: 2\n" +
+					"     └─ Table\n" +
+					"         ├─ name: t4\n" +
+					"         └─ columns: [x y]\n" +
+					"",
+			},
+			{
+				Query: `select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i desc, t3.j desc;`,
+				Expected: []sql.Row{
+					sql.Row{3, 3, 3, 3},
+					sql.Row{2, 2, 2, 2},
+				},
+				ExpectedPlan: "MergeJoin\n" +
+					" ├─ cmp: Eq\n" +
+					" │   ├─ t3.i:0!null\n" +
+					" │   └─ t4.x:2!null\n" +
+					" ├─ IndexedTableAccess(t3)\n" +
+					" │   ├─ index: [t3.i,t3.j]\n" +
+					" │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+					" │   ├─ reverse: true\n" +
+					" │   ├─ colSet: (1,2)\n" +
+					" │   ├─ tableId: 1\n" +
+					" │   └─ Table\n" +
+					" │       ├─ name: t3\n" +
+					" │       └─ columns: [i j]\n" +
+					" └─ IndexedTableAccess(t4)\n" +
+					"     ├─ index: [t4.x,t4.y]\n" +
+					"     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+					"     ├─ reverse: true\n" +
+					"     ├─ colSet: (3,4)\n" +
+					"     ├─ tableId: 2\n" +
+					"     └─ Table\n" +
+					"         ├─ name: t4\n" +
+					"         └─ columns: [x y]\n" +
+					"",
+			},
+			{
+				Query: `select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t4.x, t4.y;`,
+				Expected: []sql.Row{
+					sql.Row{2, 2, 2, 2},
+					sql.Row{3, 3, 3, 3},
+				},
+				ExpectedPlan: "MergeJoin\n" +
+					" ├─ cmp: Eq\n" +
+					" │   ├─ t3.i:0!null\n" +
+					" │   └─ t4.x:2!null\n" +
+					" ├─ IndexedTableAccess(t3)\n" +
+					" │   ├─ index: [t3.i,t3.j]\n" +
+					" │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+					" │   ├─ colSet: (1,2)\n" +
+					" │   ├─ tableId: 1\n" +
+					" │   └─ Table\n" +
+					" │       ├─ name: t3\n" +
+					" │       └─ columns: [i j]\n" +
+					" └─ IndexedTableAccess(t4)\n" +
+					"     ├─ index: [t4.x,t4.y]\n" +
+					"     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+					"     ├─ colSet: (3,4)\n" +
+					"     ├─ tableId: 2\n" +
+					"     └─ Table\n" +
+					"         ├─ name: t4\n" +
+					"         └─ columns: [x y]\n" +
+					"",
+			},
+			{
+				Query: `select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t4.x desc, t4.y desc;`,
+				Expected: []sql.Row{
+					sql.Row{3, 3, 3, 3},
+					sql.Row{2, 2, 2, 2},
+				},
+				ExpectedPlan: "MergeJoin\n" +
+					" ├─ cmp: Eq\n" +
+					" │   ├─ t3.i:0!null\n" +
+					" │   └─ t4.x:2!null\n" +
+					" ├─ IndexedTableAccess(t3)\n" +
+					" │   ├─ index: [t3.i,t3.j]\n" +
+					" │   ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+					" │   ├─ reverse: true\n" +
+					" │   ├─ colSet: (1,2)\n" +
+					" │   ├─ tableId: 1\n" +
+					" │   └─ Table\n" +
+					" │       ├─ name: t3\n" +
+					" │       └─ columns: [i j]\n" +
+					" └─ IndexedTableAccess(t4)\n" +
+					"     ├─ index: [t4.x,t4.y]\n" +
+					"     ├─ static: [{[NULL, ∞), [NULL, ∞)}]\n" +
+					"     ├─ reverse: true\n" +
+					"     ├─ colSet: (3,4)\n" +
+					"     ├─ tableId: 2\n" +
+					"     └─ Table\n" +
+					"         ├─ name: t4\n" +
+					"         └─ columns: [x y]\n" +
+					"",
+			},
+			{
+				Query: `select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t4.x;`,
 				Expected: []sql.Row{
 					sql.Row{2, 2, 2, 2},
 					sql.Row{3, 3, 3, 3},
@@ -448,7 +448,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					"",
 			},
 			{
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t4.x desc;",
+				Query: `select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t4.x desc;`,
 				Expected: []sql.Row{
 					sql.Row{2, 2, 2, 2},
 					sql.Row{3, 3, 3, 3},
@@ -477,7 +477,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					"",
 			},
 			{
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t3.j, t4.x;",
+				Query: `select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t3.j, t4.x;`,
 				Expected: []sql.Row{
 					sql.Row{2, 2, 2, 2},
 					sql.Row{3, 3, 3, 3},
@@ -506,7 +506,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					"",
 			},
 			{
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t3.j, t4.x, t4.y;",
+				Query: `select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t3.j, t4.x, t4.y;`,
 				Expected: []sql.Row{
 					sql.Row{2, 2, 2, 2},
 					sql.Row{3, 3, 3, 3},
@@ -535,7 +535,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					"",
 			},
 			{
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.j;",
+				Query: `select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.j;`,
 				Expected: []sql.Row{
 					sql.Row{2, 2, 2, 2},
 					sql.Row{3, 3, 3, 3},
@@ -564,7 +564,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					"",
 			},
 			{
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t4.y;",
+				Query: `select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t4.y;`,
 				Expected: []sql.Row{
 					sql.Row{2, 2, 2, 2},
 					sql.Row{3, 3, 3, 3},
@@ -593,7 +593,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					"",
 			},
 			{
-				Query: "select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t3.j desc;",
+				Query: `select /*+ MERGE_JOIN(t3, t4) */ * from t3 join t4 on t3.i = t4.x order by t3.i, t3.j desc;`,
 				Expected: []sql.Row{
 					sql.Row{2, 2, 2, 2},
 					sql.Row{3, 3, 3, 3},
@@ -622,7 +622,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					"",
 			},
 			{
-				Query: "select * from t1 join t2 order by t1.i;",
+				Query: `select * from t1 join t2 order by t1.i;`,
 				Expected: []sql.Row{
 					sql.Row{1, 2},
 					sql.Row{1, 3},
@@ -650,7 +650,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					"",
 			},
 			{
-				Query: "select * from t1 join t2 order by t2.j;",
+				Query: `select * from t1 join t2 order by t2.j;`,
 				Expected: []sql.Row{
 					sql.Row{1, 2},
 					sql.Row{2, 2},
@@ -680,7 +680,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					"",
 			},
 			{
-				Query: "select * from t1 join t2 order by t1.i desc;",
+				Query: `select * from t1 join t2 order by t1.i desc;`,
 				Expected: []sql.Row{
 					sql.Row{3, 2},
 					sql.Row{3, 3},
@@ -709,7 +709,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					"",
 			},
 			{
-				Query: "select * from t1 join t2 where t1.i > 1 and t1.i < 3 and t2.j > 2 and t2.j < 4 order by t1.i;",
+				Query: `select * from t1 join t2 where t1.i > 1 and t1.i < 3 and t2.j > 2 and t2.j < 4 order by t1.i;`,
 				Expected: []sql.Row{
 					sql.Row{2, 3},
 				},
@@ -733,7 +733,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					"",
 			},
 			{
-				Query: "select * from t3 join t4 where t3.i = 1 and t4.x = 3 order by t3.i;",
+				Query: `select * from t3 join t4 where t3.i = 1 and t4.x = 3 order by t3.i;`,
 				Expected: []sql.Row{
 					sql.Row{1, 1, 3, 3},
 					sql.Row{1, 2, 3, 3},
@@ -758,7 +758,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					"",
 			},
 			{
-				Query: "select * from t3 join t4 where t3.j = 2 and t4.x = 3 order by t3.i desc;",
+				Query: `select * from t3 join t4 where t3.j = 2 and t4.x = 3 order by t3.i desc;`,
 				Expected: []sql.Row{
 					sql.Row{2, 2, 3, 3},
 					sql.Row{1, 2, 3, 3},
@@ -788,7 +788,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					"",
 			},
 			{
-				Query: "select * from t1 inner join t2 where t1.i < t2.j order by t1.i;",
+				Query: `select * from t1 inner join t2 where t1.i < t2.j order by t1.i;`,
 				Expected: []sql.Row{
 					sql.Row{1, 2},
 					sql.Row{1, 3},
@@ -816,7 +816,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					"",
 			},
 			{
-				Query: "select * from t1 inner join t2 where t1.i < t2.j order by t2.j desc;",
+				Query: `select * from t1 inner join t2 where t1.i < t2.j order by t2.j desc;`,
 				Expected: []sql.Row{
 					sql.Row{1, 4},
 					sql.Row{2, 4},
@@ -847,7 +847,7 @@ var QueryPlanScriptTests = []ScriptTest{
 					"",
 			},
 			{
-				Query: "select * from t3 inner join t4 where i != x order by t3.i, t3.j;",
+				Query: `select * from t3 inner join t4 where i != x order by t3.i, t3.j;`,
 				Expected: []sql.Row{
 					sql.Row{1, 1, 2, 2},
 					sql.Row{1, 1, 3, 3},
@@ -877,6 +877,140 @@ var QueryPlanScriptTests = []ScriptTest{
 					"     └─ Table\n" +
 					"         ├─ name: t4\n" +
 					"         └─ columns: [x y]\n" +
+					"",
+			},
+		},
+	},
+	{
+		Name: "Recursive CTE inside NOT EXISTS clause with correlated column filter",
+		SetUpScript: []string{
+			`CREATE TABLE issues (id INT PRIMARY KEY, title TEXT, status TEXT);`,
+			`CREATE TABLE dependencies (issue_id INT, depends_on_id INT, type TEXT);`,
+			`INSERT INTO issues (id, title, status) VALUES
+					(1, 'Login API',        'open'),
+					(2, 'Auth Library',    'in_progress'),
+					(3, 'User Profile',    'open'),
+					(4, 'Profile UI',      'open'),
+					(5, 'Settings Page',   'open'),
+					(6, 'Marketing Page',  'open'),
+					(7, 'Old Feature',     'closed');`,
+			`INSERT INTO dependencies (issue_id, depends_on_id, type) VALUES
+					(3, 1, 'blocks'),
+					(3, 2, 'blocks'),
+					(4, 3, 'parent-child'),
+					(5, 4, 'parent-child');`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `WITH RECURSIVE
+					  blocked_directly AS (
+						SELECT DISTINCT d.issue_id
+						FROM dependencies d
+						JOIN issues blocker ON d.depends_on_id = blocker.id
+						WHERE d.type = 'blocks'
+						  AND blocker.status IN ('open', 'in_progress', 'blocked', 'deferred', 'hooked')
+					  ),
+					  blocked_transitively AS (
+						SELECT issue_id, 0 as depth
+						FROM blocked_directly
+						UNION ALL
+						SELECT d.issue_id, bt.depth + 1
+						FROM blocked_transitively bt
+						JOIN dependencies d ON d.depends_on_id = bt.issue_id
+						WHERE d.type = 'parent-child'
+						  AND bt.depth < 50
+					  )
+					SELECT i.*
+					FROM issues i
+					WHERE i.status = 'open'
+					  AND NOT EXISTS (
+						SELECT 1 FROM blocked_transitively WHERE issue_id = i.id
+					  );`,
+				Expected: []sql.Row{
+					sql.Row{1, "Login API", "open"},
+					sql.Row{6, "Marketing Page", "open"},
+				},
+				ExpectedPlan: "AntiJoinIncludingNulls\n" +
+					" ├─ Eq\n" +
+					" │   ├─ blocked_transitively.issue_id:3\n" +
+					" │   └─ i.id:0!null\n" +
+					" ├─ Filter\n" +
+					" │   ├─ Eq\n" +
+					" │   │   ├─ i.status:2\n" +
+					" │   │   └─ open (longtext)\n" +
+					" │   └─ TableAlias(i)\n" +
+					" │       └─ ProcessTable\n" +
+					" │           └─ Table\n" +
+					" │               ├─ name: issues\n" +
+					" │               └─ columns: [id title status]\n" +
+					" └─ CachedResults\n" +
+					"     └─ SubqueryAlias\n" +
+					"         ├─ name: blocked_transitively\n" +
+					"         ├─ outerVisibility: true\n" +
+					"         ├─ isLateral: false\n" +
+					"         ├─ cacheable: true\n" +
+					"         ├─ colSet: (20,21)\n" +
+					"         ├─ tableId: 7\n" +
+					"         └─ RecursiveCTE\n" +
+					"             └─ Union all\n" +
+					"                 ├─ Project\n" +
+					"                 │   ├─ columns: [blocked_directly.issue_id:0, 0 (tinyint)->depth:9]\n" +
+					"                 │   └─ SubqueryAlias\n" +
+					"                 │       ├─ name: blocked_directly\n" +
+					"                 │       ├─ outerVisibility: false\n" +
+					"                 │       ├─ isLateral: false\n" +
+					"                 │       ├─ cacheable: true\n" +
+					"                 │       ├─ colSet: (8)\n" +
+					"                 │       ├─ tableId: 4\n" +
+					"                 │       └─ Distinct\n" +
+					"                 │           └─ Project\n" +
+					"                 │               ├─ columns: [d.issue_id:0]\n" +
+					"                 │               └─ LookupJoin\n" +
+					"                 │                   ├─ Filter\n" +
+					"                 │                   │   ├─ Eq\n" +
+					"                 │                   │   │   ├─ d.type:2\n" +
+					"                 │                   │   │   └─ blocks (longtext)\n" +
+					"                 │                   │   └─ TableAlias(d)\n" +
+					"                 │                   │       └─ Table\n" +
+					"                 │                   │           ├─ name: dependencies\n" +
+					"                 │                   │           ├─ columns: [issue_id depends_on_id type]\n" +
+					"                 │                   │           ├─ colSet: (1-3)\n" +
+					"                 │                   │           └─ tableId: 1\n" +
+					"                 │                   └─ Filter\n" +
+					"                 │                       ├─ HashIn\n" +
+					"                 │                       │   ├─ blocker.status:1\n" +
+					"                 │                       │   └─ TUPLE(open (longtext), in_progress (longtext), blocked (longtext), deferred (longtext), hooked (longtext))\n" +
+					"                 │                       └─ TableAlias(blocker)\n" +
+					"                 │                           └─ IndexedTableAccess(issues)\n" +
+					"                 │                               ├─ index: [issues.id]\n" +
+					"                 │                               ├─ keys: [d.depends_on_id:1]\n" +
+					"                 │                               ├─ colSet: (4-6)\n" +
+					"                 │                               ├─ tableId: 2\n" +
+					"                 │                               └─ Table\n" +
+					"                 │                                   ├─ name: issues\n" +
+					"                 │                                   └─ columns: [id status]\n" +
+					"                 └─ Project\n" +
+					"                     ├─ columns: [d.issue_id:0, (bt.depth:4!null + 1 (tinyint))->bt.depth + 1:0]\n" +
+					"                     └─ InnerJoin\n" +
+					"                         ├─ AND\n" +
+					"                         │   ├─ LessThan\n" +
+					"                         │   │   ├─ bt.depth:7!null\n" +
+					"                         │   │   └─ 50 (bigint)\n" +
+					"                         │   └─ Eq\n" +
+					"                         │       ├─ d.depends_on_id:4\n" +
+					"                         │       └─ bt.issue_id:6\n" +
+					"                         ├─ Filter\n" +
+					"                         │   ├─ Eq\n" +
+					"                         │   │   ├─ d.type:2\n" +
+					"                         │   │   └─ parent-child (longtext)\n" +
+					"                         │   └─ TableAlias(d)\n" +
+					"                         │       └─ Table\n" +
+					"                         │           ├─ name: dependencies\n" +
+					"                         │           ├─ columns: [issue_id depends_on_id type]\n" +
+					"                         │           ├─ colSet: (14-16)\n" +
+					"                         │           └─ tableId: 8\n" +
+					"                         └─ TableAlias(bt)\n" +
+					"                             └─ RecursiveTable(blocked_transitively)\n" +
 					"",
 			},
 		},

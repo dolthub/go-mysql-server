@@ -20,6 +20,9 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
+// TODO: ApplyBindings is only ever called for testing purposes and the other functions in this file are either never
+//  called or only called by each other. Consider deleting this file.
+
 // ApplyBindings replaces all `BindVar` expressions in the given sql.Node with
 // their corresponding sql.Expression entries in the provided |bindings| map.
 // If a binding for a |BindVar| expression is not found in the map, no error is
