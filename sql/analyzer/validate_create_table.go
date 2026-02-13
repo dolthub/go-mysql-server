@@ -15,6 +15,7 @@
 package analyzer
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -885,6 +886,16 @@ func validateIndex(ctx *sql.Context, colMap map[string]*sql.Column, idxDef *sql.
 		err := validatePrefixLength(ctx, idxCol.Name, idxCol.Length, schCol.Type, strictMySQLCompat, idxDef.IsUnique())
 		if err != nil {
 			return err
+		}
+	}
+
+	if idxDef.IsVector() {
+		if len(idxDef.Columns) != 1 {
+			return fmt.Errorf("a vector index must have exactly one column")
+		}
+		schCol, _ := colMap[strings.ToLower(idxDef.Columns[0].Name)]
+		if schCol.Nullable {
+			return sql.ErrNullableVectorIdx.New()
 		}
 	}
 

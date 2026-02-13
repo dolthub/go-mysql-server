@@ -16288,115 +16288,87 @@ var IndexPlanTests = []QueryPlanTest{
 			"",
 	},
 	{
-		Query: `select * from comp_vector_index_t0 order by vec_distance('[50,50]', v2) limit 5`,
+		Query: `select * from comp_vector_index_t0 order by vec_distance('[50,50]', json_column) limit 5`,
 		ExpectedPlan: "Limit(5)\n" +
 			" └─ IndexedTableAccess(comp_vector_index_t0)\n" +
-			"     ├─ index: [comp_vector_index_t0.v2]\n" +
-			"     ├─ order: VEC_DISTANCE_L2_SQUARED('[50,50]', comp_vector_index_t0.v2) LIMIT 5 (bigint)\n" +
-			"     ├─ colSet: (1-3)\n" +
-			"     ├─ tableId: 1\n" +
-			"     └─ Table\n" +
+			"     ├─ index: [comp_vector_index_t0.json_column]\n" +
+			"     ├─ order: VEC_DISTANCE_L2_SQUARED('[50,50]', comp_vector_index_t0.json_column) LIMIT 5 (bigint)\n" +
+			"     ├─ colSet: (5-8)\n" +
+			"     ├─ tableId: 2\n" +
+			"     └─ VirtualColumnTable\n" +
 			"         ├─ name: comp_vector_index_t0\n" +
-			"         └─ columns: [pk v1 v2]\n" +
-			"",
-		ExpectedEstimates: "Limit(5)\n" +
-			" └─ IndexedTableAccess(comp_vector_index_t0)\n" +
-			"     ├─ index: [comp_vector_index_t0.v2]\n" +
-			"     ├─ order: VEC_DISTANCE_L2_SQUARED('[50,50]', comp_vector_index_t0.v2) LIMIT 5 (bigint)\n" +
-			"     └─ columns: [pk v1 v2]\n" +
-			"",
-		ExpectedAnalysis: "Limit(5)\n" +
-			" └─ IndexedTableAccess(comp_vector_index_t0)\n" +
-			"     ├─ index: [comp_vector_index_t0.v2]\n" +
-			"     ├─ order: VEC_DISTANCE_L2_SQUARED('[50,50]', comp_vector_index_t0.v2) LIMIT 5 (bigint)\n" +
-			"     └─ columns: [pk v1 v2]\n" +
+			"         ├─ columns: [comp_vector_index_t0.pk:0!null, comp_vector_index_t0.v1:1, comp_vector_index_t0.json_column:2!null, parenthesized(STRING_TO_VECTOR(comp_vector_index_t0.json_column))]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: comp_vector_index_t0\n" +
+			"             └─ columns: [pk v1 json_column vector_column]\n" +
 			"",
 	},
 	{
-		Query: `select * from comp_vector_index_t0 order by vec_distance(v2, '[50,50]') limit 5`,
+		Query: `select * from comp_vector_index_t0 order by vec_distance('[50,50]', vector_column) limit 5`,
 		ExpectedPlan: "Limit(5)\n" +
 			" └─ IndexedTableAccess(comp_vector_index_t0)\n" +
-			"     ├─ index: [comp_vector_index_t0.v2]\n" +
-			"     ├─ order: VEC_DISTANCE_L2_SQUARED(comp_vector_index_t0.v2, '[50,50]') LIMIT 5 (bigint)\n" +
-			"     ├─ colSet: (1-3)\n" +
-			"     ├─ tableId: 1\n" +
-			"     └─ Table\n" +
+			"     ├─ index: [comp_vector_index_t0.vector_column]\n" +
+			"     ├─ order: VEC_DISTANCE_L2_SQUARED('[50,50]', comp_vector_index_t0.vector_column) LIMIT 5 (bigint)\n" +
+			"     ├─ colSet: (5-8)\n" +
+			"     ├─ tableId: 2\n" +
+			"     └─ VirtualColumnTable\n" +
 			"         ├─ name: comp_vector_index_t0\n" +
-			"         └─ columns: [pk v1 v2]\n" +
-			"",
-		ExpectedEstimates: "Limit(5)\n" +
-			" └─ IndexedTableAccess(comp_vector_index_t0)\n" +
-			"     ├─ index: [comp_vector_index_t0.v2]\n" +
-			"     ├─ order: VEC_DISTANCE_L2_SQUARED(comp_vector_index_t0.v2, '[50,50]') LIMIT 5 (bigint)\n" +
-			"     └─ columns: [pk v1 v2]\n" +
-			"",
-		ExpectedAnalysis: "Limit(5)\n" +
-			" └─ IndexedTableAccess(comp_vector_index_t0)\n" +
-			"     ├─ index: [comp_vector_index_t0.v2]\n" +
-			"     ├─ order: VEC_DISTANCE_L2_SQUARED(comp_vector_index_t0.v2, '[50,50]') LIMIT 5 (bigint)\n" +
-			"     └─ columns: [pk v1 v2]\n" +
+			"         ├─ columns: [comp_vector_index_t0.pk:0!null, comp_vector_index_t0.v1:1, comp_vector_index_t0.json_column:2!null, parenthesized(STRING_TO_VECTOR(comp_vector_index_t0.json_column))]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: comp_vector_index_t0\n" +
+			"             └─ columns: [pk v1 json_column vector_column]\n" +
 			"",
 	},
 	{
-		Query: `select pk+1 from comp_vector_index_t0 order by vec_distance('[50,50]', v2) limit 5`,
+		Query: `select * from comp_vector_index_t0 order by vec_distance(vector_column, '[50,50]') limit 5`,
+		ExpectedPlan: "Limit(5)\n" +
+			" └─ IndexedTableAccess(comp_vector_index_t0)\n" +
+			"     ├─ index: [comp_vector_index_t0.vector_column]\n" +
+			"     ├─ order: VEC_DISTANCE_L2_SQUARED(comp_vector_index_t0.vector_column, '[50,50]') LIMIT 5 (bigint)\n" +
+			"     ├─ colSet: (5-8)\n" +
+			"     ├─ tableId: 2\n" +
+			"     └─ VirtualColumnTable\n" +
+			"         ├─ name: comp_vector_index_t0\n" +
+			"         ├─ columns: [comp_vector_index_t0.pk:0!null, comp_vector_index_t0.v1:1, comp_vector_index_t0.json_column:2!null, parenthesized(STRING_TO_VECTOR(comp_vector_index_t0.json_column))]\n" +
+			"         └─ Table\n" +
+			"             ├─ name: comp_vector_index_t0\n" +
+			"             └─ columns: [pk v1 json_column vector_column]\n" +
+			"",
+	},
+	{
+		Query: `select pk+1 from comp_vector_index_t0 order by vec_distance('[50,50]', vector_column) limit 5`,
 		ExpectedPlan: "Limit(5)\n" +
 			" └─ Project\n" +
 			"     ├─ columns: [(comp_vector_index_t0.pk:0!null + 1 (tinyint))->pk+1:0]\n" +
 			"     └─ IndexedTableAccess(comp_vector_index_t0)\n" +
-			"         ├─ index: [comp_vector_index_t0.v2]\n" +
-			"         ├─ order: VEC_DISTANCE_L2_SQUARED('[50,50]', comp_vector_index_t0.v2) LIMIT 5 (bigint)\n" +
-			"         ├─ colSet: (1-3)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
+			"         ├─ index: [comp_vector_index_t0.vector_column]\n" +
+			"         ├─ order: VEC_DISTANCE_L2_SQUARED('[50,50]', comp_vector_index_t0.vector_column) LIMIT 5 (bigint)\n" +
+			"         ├─ colSet: (5-8)\n" +
+			"         ├─ tableId: 2\n" +
+			"         └─ VirtualColumnTable\n" +
 			"             ├─ name: comp_vector_index_t0\n" +
-			"             └─ columns: [pk v2]\n" +
-			"",
-		ExpectedEstimates: "Limit(5)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [(comp_vector_index_t0.pk + 1) as pk+1]\n" +
-			"     └─ IndexedTableAccess(comp_vector_index_t0)\n" +
-			"         ├─ index: [comp_vector_index_t0.v2]\n" +
-			"         ├─ order: VEC_DISTANCE_L2_SQUARED('[50,50]', comp_vector_index_t0.v2) LIMIT 5 (bigint)\n" +
-			"         └─ columns: [pk v2]\n" +
-			"",
-		ExpectedAnalysis: "Limit(5)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [(comp_vector_index_t0.pk + 1) as pk+1]\n" +
-			"     └─ IndexedTableAccess(comp_vector_index_t0)\n" +
-			"         ├─ index: [comp_vector_index_t0.v2]\n" +
-			"         ├─ order: VEC_DISTANCE_L2_SQUARED('[50,50]', comp_vector_index_t0.v2) LIMIT 5 (bigint)\n" +
-			"         └─ columns: [pk v2]\n" +
+			"             ├─ columns: [comp_vector_index_t0.pk:0!null, comp_vector_index_t0.v1:1, comp_vector_index_t0.json_column:2!null, parenthesized(STRING_TO_VECTOR(comp_vector_index_t0.json_column))]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: comp_vector_index_t0\n" +
+			"                 └─ columns: [pk v1 json_column vector_column]\n" +
 			"",
 	},
 	{
-		Query: `select v1+1 from comp_vector_index_t0 order by vec_distance(v2, '[50,50]') limit 5`,
+		Query: `select v1+1 from comp_vector_index_t0 order by vec_distance(vector_column, '[50,50]') limit 5`,
 		ExpectedPlan: "Limit(5)\n" +
 			" └─ Project\n" +
-			"     ├─ columns: [(comp_vector_index_t0.v1:0 + 1 (tinyint))->v1+1:0]\n" +
+			"     ├─ columns: [(comp_vector_index_t0.v1:1 + 1 (tinyint))->v1+1:0]\n" +
 			"     └─ IndexedTableAccess(comp_vector_index_t0)\n" +
-			"         ├─ index: [comp_vector_index_t0.v2]\n" +
-			"         ├─ order: VEC_DISTANCE_L2_SQUARED(comp_vector_index_t0.v2, '[50,50]') LIMIT 5 (bigint)\n" +
-			"         ├─ colSet: (1-3)\n" +
-			"         ├─ tableId: 1\n" +
-			"         └─ Table\n" +
+			"         ├─ index: [comp_vector_index_t0.vector_column]\n" +
+			"         ├─ order: VEC_DISTANCE_L2_SQUARED(comp_vector_index_t0.vector_column, '[50,50]') LIMIT 5 (bigint)\n" +
+			"         ├─ colSet: (5-8)\n" +
+			"         ├─ tableId: 2\n" +
+			"         └─ VirtualColumnTable\n" +
 			"             ├─ name: comp_vector_index_t0\n" +
-			"             └─ columns: [v1 v2]\n" +
-			"",
-		ExpectedEstimates: "Limit(5)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [(comp_vector_index_t0.v1 + 1) as v1+1]\n" +
-			"     └─ IndexedTableAccess(comp_vector_index_t0)\n" +
-			"         ├─ index: [comp_vector_index_t0.v2]\n" +
-			"         ├─ order: VEC_DISTANCE_L2_SQUARED(comp_vector_index_t0.v2, '[50,50]') LIMIT 5 (bigint)\n" +
-			"         └─ columns: [v1 v2]\n" +
-			"",
-		ExpectedAnalysis: "Limit(5)\n" +
-			" └─ Project\n" +
-			"     ├─ columns: [(comp_vector_index_t0.v1 + 1) as v1+1]\n" +
-			"     └─ IndexedTableAccess(comp_vector_index_t0)\n" +
-			"         ├─ index: [comp_vector_index_t0.v2]\n" +
-			"         ├─ order: VEC_DISTANCE_L2_SQUARED(comp_vector_index_t0.v2, '[50,50]') LIMIT 5 (bigint)\n" +
-			"         └─ columns: [v1 v2]\n" +
+			"             ├─ columns: [comp_vector_index_t0.pk:0!null, comp_vector_index_t0.v1:1, comp_vector_index_t0.json_column:2!null, parenthesized(STRING_TO_VECTOR(comp_vector_index_t0.json_column))]\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: comp_vector_index_t0\n" +
+			"                 └─ columns: [pk v1 json_column vector_column]\n" +
 			"",
 	},
 	{
