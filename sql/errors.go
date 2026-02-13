@@ -651,6 +651,9 @@ var (
 	// ErrNullableSpatialIdx is thrown when creating a SPATIAL index with a nullable column
 	ErrNullableSpatialIdx = errors.NewKind("All parts of a SPATIAL index must be NOT NULL")
 
+	// ErrNullableVectorIdx is thrown when creating a VECTOR index with a nullable column
+	ErrNullableVectorIdx = errors.NewKind("All parts of a VECTOR index must be NOT NULL")
+
 	// ErrBadSpatialIdxCol is thrown when attempting to define a SPATIAL index over a non-geometry column
 	ErrBadSpatialIdxCol = errors.NewKind("a SPATIAL index may only contain a geometrical type column")
 
