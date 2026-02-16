@@ -2163,6 +2163,9 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 					if !types.IsVectorConvertable(tblCol.Type) {
 						return sql.ErrVectorInvalidColumnType.New()
 					}
+					if tblCol.Nullable {
+						return sql.ErrNullableVectorIdx.New()
+					}
 					break
 				}
 			}

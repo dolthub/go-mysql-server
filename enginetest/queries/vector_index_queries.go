@@ -23,7 +23,7 @@ var VectorIndexQueries = []ScriptTest{
 	{
 		Name: "basic JSON vector index",
 		SetUpScript: []string{
-			"create table vectors (id int primary key, v json);",
+			"create table vectors (id int primary key, v json not null);",
 			`insert into vectors values (1, '[4.0,3.0]'), (2, '[0.0,0.0]'), (3, '[-1.0,1.0]'), (4, '[0.0,-2.0]');`,
 			`create vector index v_idx on vectors(v);`,
 			`set @query_vec = '[0.0,0.0]';`,
@@ -32,7 +32,7 @@ var VectorIndexQueries = []ScriptTest{
 			{
 				Query: "show create table vectors",
 				Expected: []sql.Row{
-					{"vectors", "CREATE TABLE `vectors` (\n  `id` int NOT NULL,\n  `v` json,\n  PRIMARY KEY (`id`),\n  VECTOR KEY `v_idx` (`v`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+					{"vectors", "CREATE TABLE `vectors` (\n  `id` int NOT NULL,\n  `v` json NOT NULL,\n  PRIMARY KEY (`id`),\n  VECTOR KEY `v_idx` (`v`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 			{
@@ -119,7 +119,7 @@ var VectorIndexQueries = []ScriptTest{
 	{
 		Name: "basic VECTOR vector index",
 		SetUpScript: []string{
-			"create table vectors (id int primary key, v vector(2));",
+			"create table vectors (id int primary key, v vector(2) not null);",
 			`insert into vectors values (1, STRING_TO_VECTOR('[4.0,3.0]')), (2, STRING_TO_VECTOR('[0.0,0.0]')), (3, STRING_TO_VECTOR('[-1.0,1.0]')), (4, STRING_TO_VECTOR('[0.0,-2.0]'));`,
 			`create vector index v_idx on vectors(v);`,
 			`set @query_vec = '[0.0,0.0]';`,
@@ -128,7 +128,7 @@ var VectorIndexQueries = []ScriptTest{
 			{
 				Query: "show create table vectors",
 				Expected: []sql.Row{
-					{"vectors", "CREATE TABLE `vectors` (\n  `id` int NOT NULL,\n  `v` VECTOR(2),\n  PRIMARY KEY (`id`),\n  VECTOR KEY `v_idx` (`v`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
+					{"vectors", "CREATE TABLE `vectors` (\n  `id` int NOT NULL,\n  `v` VECTOR(2) NOT NULL,\n  PRIMARY KEY (`id`),\n  VECTOR KEY `v_idx` (`v`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
 			{
@@ -230,6 +230,22 @@ var VectorIndexQueries = []ScriptTest{
 			{
 				Query:       `create vector index v_idx2 on vectors(id);`,
 				ExpectedErr: sql.ErrVectorInvalidColumnType,
+			},
+		},
+	},
+	{
+		Name: "vector index on nullable column errors",
+		SetUpScript: []string{
+			"create table vectors_nullable (id int primary key, v vector(2) null);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:       `create vector index v_idx on vectors_nullable(v);`,
+				ExpectedErr: sql.ErrNullableVectorIdx,
+			},
+			{
+				Query:       `create table bad_vector_idx (id int primary key, v vector(2), vector index (v));`,
+				ExpectedErr: sql.ErrNullableVectorIdx,
 			},
 		},
 	},
