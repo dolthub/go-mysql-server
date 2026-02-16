@@ -103,7 +103,7 @@ var Comp_index_tablesData = []SetupScript{{
 	`create table pref_index_t1 (i int primary key, v1 text, v2 text, unique index (v1(3),v2(5)));`,
 	`create table pref_index_t3 (v1 varchar(10), v2 varchar(10), unique index (v1(3),v2(5)));`,
 	`create table pref_index_t4 (i int primary key, v1 varchar(10), v2 varchar(10), unique index (v1(3),v2(5)));`,
-	`CREATE TABLE comp_vector_index_t0 (pk BIGINT PRIMARY KEY, v1 BIGINT, json_column JSON NOT NULL, vector_column VECTOR(2) NOT NULL GENERATED ALWAYS AS (STRING_TO_VECTOR(json_column)));`,
+	`CREATE TABLE comp_vector_index_t0 (pk BIGINT PRIMARY KEY, v1 BIGINT, json_column JSON NOT NULL, vector_column VECTOR(2) NOT NULL GENERATED ALWAYS AS (STRING_TO_VECTOR(json_column)) STORED);`,
 	`INSERT INTO comp_vector_index_t0 (pk, v1, json_column) VALUES (0,0,"[3,16]"),(1,2,"[65,9]"),(2,3,"[38,37]"),(3,3,"[99,99]"),(4,5,"[17,42]"),(5,6,"[6,76]"),(6,6,"[81,33]"),
 (7,7,"[33,51]"),(8,7,"[37,42]"),(9,8,"[9,21]"),(10,8,"[37,90]"),(11,9,"[39,20]"),(12,9,"[71,82]"),(13,10,"[16,21]"),(14,10,"[32,46]"),(15,10,"[47,36]"),
 (16,12,"[44,84]"),(17,12,"[66,40]"),(18,13,"[47,30]"),(19,13,"[56,41]"),(20,14,"[38,24]"),(21,14,"[91,1]"),(22,15,"[2,69]"),(23,16,"[40,36]"),

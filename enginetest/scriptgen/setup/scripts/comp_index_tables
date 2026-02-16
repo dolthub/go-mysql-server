@@ -98,7 +98,7 @@ create table pref_index_t4 (i int primary key, v1 varchar(10), v2 varchar(10), u
 ----
 
 exec
-CREATE TABLE comp_vector_index_t0 (pk BIGINT PRIMARY KEY, v1 BIGINT, json_column JSON NOT NULL, vector_column VECTOR(2) NOT NULL GENERATED ALWAYS AS (STRING_TO_VECTOR(json_column)));
+CREATE TABLE comp_vector_index_t0 (pk BIGINT PRIMARY KEY, v1 BIGINT, json_column JSON NOT NULL, vector_column VECTOR(2) NOT NULL GENERATED ALWAYS AS (STRING_TO_VECTOR(json_column)) STORED);
 ----
 
 exec
