@@ -655,8 +655,10 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 			if len(s.parentScopes) == 0 {
 				return n, nil
 			}
-			// TODO: combine scopes?
-			scopeLen := len(s.parentScopes[0].columns)
+			scopeLen := 0
+			for _, parentScope := range s.parentScopes {
+				scopeLen += len(parentScope.columns)
+			}
 			if scopeLen == 0 {
 				return n, nil
 			}
