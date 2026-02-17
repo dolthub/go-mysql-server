@@ -2810,10 +2810,10 @@ WHERE
 			"     │           ├─ columns: [Subquery\n" +
 			"     │           │   ├─ cacheable: false\n" +
 			"     │           │   ├─ alias-string: select id from TDRVG where SSHPJ = S7BYT.SSHPJ order by id asc limit 1\n" +
-			"     │           │   └─ Limit(1)\n" +
-			"     │           │       └─ Project\n" +
-			"     │           │           ├─ columns: [tdrvg.id:8!null]\n" +
-			"     │           │           └─ Sort(tdrvg.id:8!null ASC nullsFirst)\n" +
+			"     │           │   └─ Project\n" +
+			"     │           │       ├─ columns: [tdrvg.id:8!null]\n" +
+			"     │           │       └─ Limit(1)\n" +
+			"     │           │           └─ TopN(Limit: [1 (bigint)]; tdrvg.id:8!null ASC nullsFirst)\n" +
 			"     │           │               └─ Filter\n" +
 			"     │           │                   ├─ Eq\n" +
 			"     │           │                   │   ├─ tdrvg.SSHPJ:9!null\n" +
@@ -2831,10 +2831,10 @@ WHERE
 			"     │               ├─ columns: [s7byt.SSHPJ:5!null, s7byt.SFJ6L:6!null, Subquery\n" +
 			"     │               │   ├─ cacheable: false\n" +
 			"     │               │   ├─ alias-string: select id from TDRVG where SSHPJ = S7BYT.SSHPJ order by id asc limit 1\n" +
-			"     │               │   └─ Limit(1)\n" +
-			"     │               │       └─ Project\n" +
-			"     │               │           ├─ columns: [tdrvg.id:7!null]\n" +
-			"     │               │           └─ Sort(tdrvg.id:7!null ASC nullsFirst)\n" +
+			"     │               │   └─ Project\n" +
+			"     │               │       ├─ columns: [tdrvg.id:7!null]\n" +
+			"     │               │       └─ Limit(1)\n" +
+			"     │               │           └─ TopN(Limit: [1 (bigint)]; tdrvg.id:7!null ASC nullsFirst)\n" +
 			"     │               │               └─ Filter\n" +
 			"     │               │                   ├─ Eq\n" +
 			"     │               │                   │   ├─ tdrvg.SSHPJ:8!null\n" +
@@ -2902,10 +2902,10 @@ WHERE
 			"     │       └─ Project\n" +
 			"     │           ├─ columns: [Subquery\n" +
 			"     │           │   ├─ cacheable: false\n" +
-			"     │           │   └─ Limit(1)\n" +
-			"     │           │       └─ Project\n" +
-			"     │           │           ├─ columns: [tdrvg.id]\n" +
-			"     │           │           └─ Sort(tdrvg.id ASC)\n" +
+			"     │           │   └─ Project\n" +
+			"     │           │       ├─ columns: [tdrvg.id]\n" +
+			"     │           │       └─ Limit(1)\n" +
+			"     │           │           └─ TopN(Limit: [1]; tdrvg.id ASC)\n" +
 			"     │           │               └─ Filter\n" +
 			"     │           │                   ├─ (tdrvg.SSHPJ = s7byt.SSHPJ)\n" +
 			"     │           │                   └─ IndexedTableAccess(TDRVG)\n" +
@@ -2916,10 +2916,10 @@ WHERE
 			"     │           └─ Project\n" +
 			"     │               ├─ columns: [s7byt.SSHPJ, s7byt.SFJ6L, Subquery\n" +
 			"     │               │   ├─ cacheable: false\n" +
-			"     │               │   └─ Limit(1)\n" +
-			"     │               │       └─ Project\n" +
-			"     │               │           ├─ columns: [tdrvg.id]\n" +
-			"     │               │           └─ Sort(tdrvg.id ASC)\n" +
+			"     │               │   └─ Project\n" +
+			"     │               │       ├─ columns: [tdrvg.id]\n" +
+			"     │               │       └─ Limit(1)\n" +
+			"     │               │           └─ TopN(Limit: [1]; tdrvg.id ASC)\n" +
 			"     │               │               └─ Filter\n" +
 			"     │               │                   ├─ (tdrvg.SSHPJ = s7byt.SSHPJ)\n" +
 			"     │               │                   └─ IndexedTableAccess(TDRVG)\n" +
@@ -2969,10 +2969,10 @@ WHERE
 			"     │       └─ Project\n" +
 			"     │           ├─ columns: [Subquery\n" +
 			"     │           │   ├─ cacheable: false\n" +
-			"     │           │   └─ Limit(1)\n" +
-			"     │           │       └─ Project\n" +
-			"     │           │           ├─ columns: [tdrvg.id]\n" +
-			"     │           │           └─ Sort(tdrvg.id ASC)\n" +
+			"     │           │   └─ Project\n" +
+			"     │           │       ├─ columns: [tdrvg.id]\n" +
+			"     │           │       └─ Limit(1)\n" +
+			"     │           │           └─ TopN(Limit: [1]; tdrvg.id ASC)\n" +
 			"     │           │               └─ Filter\n" +
 			"     │           │                   ├─ (tdrvg.SSHPJ = s7byt.SSHPJ)\n" +
 			"     │           │                   └─ IndexedTableAccess(TDRVG)\n" +
@@ -2983,10 +2983,10 @@ WHERE
 			"     │           └─ Project\n" +
 			"     │               ├─ columns: [s7byt.SSHPJ, s7byt.SFJ6L, Subquery\n" +
 			"     │               │   ├─ cacheable: false\n" +
-			"     │               │   └─ Limit(1)\n" +
-			"     │               │       └─ Project\n" +
-			"     │               │           ├─ columns: [tdrvg.id]\n" +
-			"     │               │           └─ Sort(tdrvg.id ASC)\n" +
+			"     │               │   └─ Project\n" +
+			"     │               │       ├─ columns: [tdrvg.id]\n" +
+			"     │               │       └─ Limit(1)\n" +
+			"     │               │           └─ TopN(Limit: [1]; tdrvg.id ASC)\n" +
 			"     │               │               └─ Filter\n" +
 			"     │               │                   ├─ (tdrvg.SSHPJ = s7byt.SSHPJ)\n" +
 			"     │               │                   └─ IndexedTableAccess(TDRVG)\n" +
