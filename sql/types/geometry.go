@@ -263,6 +263,9 @@ func DeserializeMLine(buf []byte, isBig bool, srid uint32) (MultiLineString, int
 	var c int
 	for i := range lines {
 		isBig, typ, err := DeserializeWKBHeader(buf)
+		if err != nil {
+			return MultiLineString{}, 0, err
+		}
 		if typ != WKBLineID {
 			return MultiLineString{}, 0, sql.ErrInvalidGISData.New("DeserializeMLine")
 		}
@@ -294,6 +297,9 @@ func DeserializeMPoly(buf []byte, isBig bool, srid uint32) (MultiPolygon, int, e
 	var c int
 	for i := range polys {
 		isBig, typ, err := DeserializeWKBHeader(buf)
+		if err != nil {
+			return MultiPolygon{}, 0, err
+		}
 		if typ != WKBPolyID {
 			return MultiPolygon{}, 0, sql.ErrInvalidGISData.New("DeserializeMPoly")
 		}
