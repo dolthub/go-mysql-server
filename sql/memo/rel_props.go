@@ -133,7 +133,7 @@ func newRelProps(rel RelExpr) *relProps {
 func idxExprsColumns(idx sql.Index) []string {
 	exprs := idx.Expressions()
 	columns := make([]string, len(exprs))
-	// prefix includes table name and period
+	// prefix includes table name and '.' character
 	prefixLen := len(idx.Table()) + 1
 	for i, e := range exprs {
 		colName := e[prefixLen:]
@@ -231,6 +231,7 @@ func (p *relProps) populateFds() {
 				normIdx.order = oidx.Order()
 			}
 			for i, c := range columns {
+				// TODO: This doesn't account for when the column is not found and ord is -1
 				ord := sch.IndexOfColName(strings.ToLower(c))
 				idOffset := firstCol + sql.ColumnId(ord)
 				colId, _ := all.Next(idOffset)
