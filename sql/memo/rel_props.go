@@ -133,8 +133,10 @@ func newRelProps(rel RelExpr) *relProps {
 func idxExprsColumns(idx sql.Index) []string {
 	exprs := idx.Expressions()
 	columns := make([]string, len(exprs))
+	// prefix includes table name and period
+	prefixLen := len(idx.Table()) + 1
 	for i, e := range exprs {
-		colName := e[strings.IndexRune(e, '.')+1:]
+		colName := e[prefixLen:]
 		columns[i] = strings.ToLower(colName)
 	}
 	return columns
