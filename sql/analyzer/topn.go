@@ -79,7 +79,7 @@ func insertTopNNodes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 					updateCalcFoundRows = false
 					return node.WithCalcFoundRows(false), transform.NewTree, nil
 				}
-				return tc.Node, transform.SameTree, nil
+				return node, transform.SameTree, nil
 			}
 			topn := plan.NewTopN(childSort.SortFields, node.Limit, childSort.UnaryNode.Child)
 			topn = topn.WithCalcFoundRows(node.CalcFoundRows)
@@ -96,7 +96,7 @@ func insertTopNNodes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 			}
 			return newNode, transform.NewTree, err
 		default:
-			return tc.Node, transform.SameTree, nil
+			return node, transform.SameTree, nil
 		}
 	})
 }

@@ -17,6 +17,7 @@ package iters
 import (
 	"container/heap"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/errguard"
 	"io"
 	"sort"
 
@@ -82,28 +83,46 @@ func (i *topRowsIter) computeTopRows(ctx *sql.Context) error {
 			Ctx:        ctx,
 		},
 	}
-	for {
-		row, err := i.childIter.Next(ctx)
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return err
-		}
-		i.numFoundRows++
 
-		row = append(row, i.numFoundRows)
+	eg, subCtx := ctx.NewErrgroup()
+	var rowChan = make(chan sql.Row, 512)
+	errguard.Go(eg, func() error {
+		defer close(rowChan)
+		for {
+			row, err := i.childIter.Next(subCtx)
+			if err == io.EOF {
+				return nil
+			}
+			if err != nil {
+				return err
+			}
+			i.numFoundRows++
+			row = append(row, i.numFoundRows)
+			rowChan <- row
+		}
+	})
 
-		heap.Push(topRowsHeap, row)
-		if int64(topRowsHeap.Len()) > i.limit {
-			heap.Pop(topRowsHeap)
+	errguard.Go(eg, func() error {
+		for {
+			row, ok := <-rowChan
+			if !ok {
+				return nil
+			}
+			heap.Push(topRowsHeap, row)
+			if int64(topRowsHeap.Len()) > i.limit {
+				heap.Pop(topRowsHeap)
+			}
+			if topRowsHeap.LastError != nil {
+				return topRowsHeap.LastError
+			}
 		}
-		if topRowsHeap.LastError != nil {
-			return topRowsHeap.LastError
-		}
+	})
+
+	err := eg.Wait()
+	if err != nil {
+		return err
 	}
 
-	var err error
 	i.topRows, err = topRowsHeap.Rows()
 	return err
 }
