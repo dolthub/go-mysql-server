@@ -22,7 +22,6 @@ import (
 
 	"github.com/dolthub/jsonpath"
 
-	"github.com/dolthub/go-mysql-server/errguard"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/hash"
@@ -83,46 +82,28 @@ func (i *topRowsIter) computeTopRows(ctx *sql.Context) error {
 			Ctx:        ctx,
 		},
 	}
-
-	eg, subCtx := ctx.NewErrgroup()
-	var rowChan = make(chan sql.Row, 512)
-	errguard.Go(eg, func() error {
-		defer close(rowChan)
-		for {
-			row, err := i.childIter.Next(subCtx)
-			if err == io.EOF {
-				return nil
-			}
-			if err != nil {
-				return err
-			}
-			i.numFoundRows++
-			row = append(row, i.numFoundRows)
-			rowChan <- row
+	for {
+		row, err := i.childIter.Next(ctx)
+		if err == io.EOF {
+			break
 		}
-	})
-
-	errguard.Go(eg, func() error {
-		for {
-			row, ok := <-rowChan
-			if !ok {
-				return nil
-			}
-			heap.Push(topRowsHeap, row)
-			if int64(topRowsHeap.Len()) > i.limit {
-				heap.Pop(topRowsHeap)
-			}
-			if topRowsHeap.LastError != nil {
-				return topRowsHeap.LastError
-			}
+		if err != nil {
+			return err
 		}
-	})
+		i.numFoundRows++
 
-	err := eg.Wait()
-	if err != nil {
-		return err
+		row = append(row, i.numFoundRows)
+
+		heap.Push(topRowsHeap, row)
+		if int64(topRowsHeap.Len()) > i.limit {
+			heap.Pop(topRowsHeap)
+		}
+		if topRowsHeap.LastError != nil {
+			return topRowsHeap.LastError
+		}
 	}
 
+	var err error
 	i.topRows, err = topRowsHeap.Rows()
 	return err
 }
