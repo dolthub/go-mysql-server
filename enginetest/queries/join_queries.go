@@ -1669,6 +1669,15 @@ LATERAL (
 				},
 			},
 			{
+				Query: `select * from ab ab1 join lateral (select * from ab ab2 join lateral (select col < ab1.b from ab ab3 join three_pk where pk1 = ab1.a and pk2 = ab2.a and pk3 = ab3.a) inner2) inner3;`,
+				Expected: []sql.Row{
+					{0, 3, 0, 3, false},
+					{0, 3, 1, 2, false},
+					{1, 2, 0, 3, false},
+					{1, 2, 1, 2, false},
+				},
+			},
+			{
 				Query: `select * from ab ab1 where exists (select * from ab ab2 where exists (select * from three_pk where pk1 = ab1.a and pk2 = ab2.a));`,
 				Expected: []sql.Row{
 					{0, 3},
