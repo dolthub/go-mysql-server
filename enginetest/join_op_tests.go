@@ -2378,11 +2378,6 @@ WHERE
 				"create index name_id_country on `t2.with.dot`(name, id, country);",
 				"create index country_id_name on `t2.with.dot`(country, id, name);",
 				"insert into `t2.with.dot` values (1, 'name1', 'CA');",
-				"create table `t2`(id int, name varchar(100), country varchar(100));",
-				"create index id_name_country on `t2`(id, name, country);",
-				"create index name_id_country on `t2`(name, id, country);",
-				"create index country_id_name on `t2`(country, id, name);",
-				"insert into `t2` values (1, 'name1', 'CA');",
 			},
 		},
 		tests: []JoinOpTests{
