@@ -4877,6 +4877,11 @@ CREATE TABLE tab3 (
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
 			{
+				// https://github.com/dolthub/dolt/issues/10534
+				Query:    "SELECT CASE WHEN @@session.time_zone = 'SYSTEM' THEN @@system_time_zone ELSE @@session.time_zone END;",
+				Expected: []sql.Row{{"UTC"}},
+			},
+			{
 				Query:    "select from_unixtime(1)",
 				Expected: []sql.Row{{time.Unix(1, 0).In(time.UTC)}},
 			},
