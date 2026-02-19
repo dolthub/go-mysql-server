@@ -2363,6 +2363,35 @@ WHERE
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/10527
+		name: "join on table with dots in name",
+		setup: [][]string{
+			{
+				"create table t1(id int, name varchar(100), location varchar(100));",
+				"create index id_name_location on t1 (id, name, location);",
+				"create index name_id_location on t1(name, id, location);",
+				"create index location_id_name on t1 (location, id, name);",
+				"insert into t1 values (1, 'name1', 'loc1');",
+				"create table `t2.with.dot`(id int, name varchar(100), country varchar(100));",
+				"create index id_name_country on `t2.with.dot`(id, name, country);",
+				"create index name_id_country on `t2.with.dot`(name, id, country);",
+				"create index country_id_name on `t2.with.dot`(country, id, name);",
+				"insert into `t2.with.dot` values (1, 'name1', 'CA');",
+				"create table `t2`(id int, name varchar(100), country varchar(100));",
+				"create index id_name_country on `t2`(id, name, country);",
+				"create index name_id_country on `t2`(name, id, country);",
+				"create index country_id_name on `t2`(country, id, name);",
+				"insert into `t2` values (1, 'name1', 'CA');",
+			},
+		},
+		tests: []JoinOpTests{
+			{
+				Query:    "SELECT t1.id, t1.name, t1.location, `t2.with.dot`.country FROM t1 JOIN `t2.with.dot` ON t1.id = `t2.with.dot`.id WHERE t1.id = 1;",
+				Expected: []sql.Row{{1, "name1", "loc1", "CA"}},
+			},
+		},
+	},
 }
 
 var rangeJoinOpTests = []JoinOpTests{
