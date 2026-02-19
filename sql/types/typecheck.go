@@ -124,6 +124,8 @@ func IsSigned(t sql.Type) bool {
 
 // IsText checks if t is a CHAR, VARCHAR, TEXT, BINARY, VARBINARY, or BLOB (including TEXT and BLOB variants).
 func IsText(t sql.Type) bool {
+	// TODO: We can likely get rid of this function and replace calls to it with sql.IsStringType. But we need to make
+	//  sure the sql.StringType interface is correctly implemented for all string types
 	switch typ := t.(type) {
 	case sql.SystemVariableType:
 		return IsText(typ.UnderlyingType())
