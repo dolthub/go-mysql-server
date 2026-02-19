@@ -53,6 +53,8 @@ func IsBinaryType(t sql.Type) bool {
 
 // IsDecimal checks if t is a DECIMAL type.
 func IsDecimal(t sql.Type) bool {
+	// TODO: We can likely get rid of this function and replace calls to it with sql.IsDecimalType. But we need to make
+	//  sure the sql.DecimalType interface is correctly implemented for all decimal types
 	_, ok := t.(DecimalType_)
 	return ok
 }
@@ -96,6 +98,8 @@ func IsNull(ex sql.Expression) bool {
 
 // IsNumber checks if t is a number type
 func IsNumber(t sql.Type) bool {
+	// TODO: We can likely get rid of this function and replace calls to it with sql.IsNumberType. But we need to make
+	//  sure the sql.NumberType interface is correctly implemented for all number types
 	switch typ := t.(type) {
 	case sql.SystemVariableType:
 		return IsNumber(typ.UnderlyingType())
@@ -197,6 +201,8 @@ func IsTimestampType(t sql.Type) bool {
 
 // IsEnum checks if t is a enum
 func IsEnum(t sql.Type) bool {
+	// TODO: We can likely get rid of this function and replace calls to it with sql.IsEnumType. But we need to make
+	//  sure the sql.EnumType interface is correctly implemented for all enum types
 	switch typ := t.(type) {
 	case sql.SystemVariableType:
 		return IsEnum(typ.UnderlyingType())
