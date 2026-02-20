@@ -25,7 +25,6 @@ import (
 	"github.com/dolthub/vitess/go/mysql"
 	"github.com/sirupsen/logrus"
 
-	"github.com/dolthub/go-mysql-server/internal/similartext"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/fulltext"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
@@ -775,60 +774,17 @@ func (b *BaseBuilder) buildDropIndex(ctx *sql.Context, n *plan.DropIndex, row sq
 		return nil, err
 	}
 
-	nn, ok := n.Table.(sql.Nameable)
+	tableNode, ok := n.Table.(sql.TableNode)
 	if !ok {
-		return nil, plan.ErrTableNotNameable.New()
+		return nil, fmt.Errorf("expected sql.TableNode, but found: %T", n.Table)
 	}
 
-	table, ok, err := db.GetTableInsensitive(ctx, nn.Name())
-
+	err = b.executeAlterIndex(ctx, plan.NewAlterDropIndex(db, tableNode, false, n.Name))
 	if err != nil {
 		return nil, err
 	}
 
-	if !ok {
-		tableNames, err := db.GetTableNames(ctx)
-
-		if err != nil {
-			return nil, err
-		}
-
-		similar := similartext.Find(tableNames, nn.Name())
-		return nil, sql.ErrTableNotFound.New(nn.Name() + similar)
-	}
-
-	index := ctx.GetIndexRegistry().Index(db.Name(), n.Name)
-	if index == nil {
-		return nil, plan.ErrIndexNotFound.New(n.Name, nn.Name(), db.Name())
-	}
-	ctx.GetIndexRegistry().ReleaseIndex(index)
-
-	if !ctx.GetIndexRegistry().CanRemoveIndex(index) {
-		return nil, plan.ErrIndexNotAvailable.New(n.Name)
-	}
-
-	done, err := ctx.GetIndexRegistry().DeleteIndex(db.Name(), n.Name, true)
-	if err != nil {
-		return nil, err
-	}
-
-	driver := ctx.GetIndexRegistry().IndexDriver(index.Driver())
-	if driver == nil {
-		return nil, plan.ErrInvalidIndexDriver.New(index.Driver())
-	}
-
-	<-done
-
-	partitions, err := table.Partitions(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := driver.Delete(index, partitions); err != nil {
-		return nil, err
-	}
-
-	return sql.RowsToRowIter(), nil
+	return rowIterWithOkResultWithZeroRowsAffected(), nil
 }
 
 func (b *BaseBuilder) buildDropProcedure(ctx *sql.Context, n *plan.DropProcedure, row sql.Row) (sql.RowIter, error) {

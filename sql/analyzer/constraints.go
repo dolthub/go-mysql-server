@@ -80,6 +80,24 @@ func resolveDropConstraint(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pla
 			return newAlterDropCheck, transform.NewTree, nil
 		}
 
+		if ia, ok := table.(sql.IndexAddressable); ok {
+			indexes, err := ia.GetIndexes(ctx)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+
+			for _, index := range indexes {
+				if index.IsUnique() {
+					if index.ID() == dropConstraint.Name {
+						newDropIndex := plan.NewDropIndex(dropConstraint.Name, rt)
+						newDropIndex.Catalog = a.Catalog
+						newDropIndex.CurrentDatabase = rt.Database().Name()
+						return newDropIndex, transform.NewTree, nil
+					}
+				}
+			}
+		}
+
 		return nil, transform.SameTree, sql.ErrUnknownConstraint.New(dropConstraint.Name)
 	})
 }
