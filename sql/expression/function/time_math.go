@@ -733,6 +733,6 @@ func monthsDiff(time1, time2 time.Time) int64 {
 	return int64(sign) * (int64(yearDiff*sql.MonthsPerYear) + monthDiff)
 }
 
-func microsecondsDiff(date1, date2 time.Time) int64 {
-	return date2.UnixMicro() - date1.UnixMicro()
+func microsecondsDiff(time1, time2 time.Time) int64 {
+	return time2.UnixMicro() - time1.UnixMicro()
 }
