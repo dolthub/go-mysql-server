@@ -25,6 +25,20 @@ import (
 
 var AlterTableScripts = []ScriptTest{
 	{
+		// https://github.com/dolthub/doltgresql/pull/2359
+		Name: "alter table drop unique constraint",
+		SetUpScript: []string{
+			"CREATE TABLE t1 (pk int PRIMARY KEY, c1 int, c2 int);",
+			"ALTER TABLE t1 ADD CONSTRAINT uniq_c1c2 UNIQUE (c1, c2);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "ALTER TABLE t1 DROP CONSTRAINT uniq_c1c2;",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+		},
+	},
+	{
 		Name: "multi alter with invalid schemas",
 		SetUpScript: []string{
 			"CREATE TABLE t(a int primary key)",

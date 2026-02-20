@@ -18,6 +18,7 @@ import (
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 var (
@@ -57,7 +58,9 @@ func (d *DropIndex) Resolved() bool { return d.Table.Resolved() }
 func (d *DropIndex) IsReadOnly() bool { return false }
 
 // Schema implements the Node interface.
-func (d *DropIndex) Schema() sql.Schema { return nil }
+func (d *DropIndex) Schema() sql.Schema {
+	return types.OkResultSchema
+}
 
 // Children implements the Node interface.
 func (d *DropIndex) Children() []sql.Node { return []sql.Node{d.Table} }
