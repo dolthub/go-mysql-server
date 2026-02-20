@@ -16,6 +16,7 @@ package expression
 
 import (
 	"container/heap"
+
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
