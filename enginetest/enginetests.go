@@ -4974,7 +4974,6 @@ func TestTracing(t *testing.T, harness Harness) {
 
 	spans := tracer.Spans
 	var expectedSpans = []string{
-		"plan.Limit", // why Limit if there's already TopN?
 		"plan.TopN",
 		"plan.Distinct",
 		"plan.Project",
