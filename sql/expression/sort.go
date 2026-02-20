@@ -16,7 +16,6 @@ package expression
 
 import (
 	"container/heap"
-
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
@@ -36,13 +35,7 @@ func (s *Sorter) Swap(i, j int) {
 	s.Rows[i], s.Rows[j] = s.Rows[j], s.Rows[i]
 }
 
-func (s *Sorter) Less(i, j int) bool {
-	if s.LastError != nil {
-		return false
-	}
-
-	a := s.Rows[i]
-	b := s.Rows[j]
+func (s *Sorter) IsLess(a, b sql.Row) bool {
 	for _, sf := range s.SortFields {
 		typ := sf.Column.Type()
 		av, err := sf.Column.Eval(s.Ctx, a)
@@ -82,8 +75,14 @@ func (s *Sorter) Less(i, j int) bool {
 			return false
 		}
 	}
-
 	return false
+}
+
+func (s *Sorter) Less(i, j int) bool {
+	if s.LastError != nil {
+		return false
+	}
+	return s.IsLess(s.Rows[i], s.Rows[j])
 }
 
 // ValueRowSorter is a version of Sorter that operates on ValueRow
@@ -121,18 +120,18 @@ func (h *TopRowsHeap) Push(x interface{}) {
 }
 
 func (h *TopRowsHeap) Pop() interface{} {
-	old := h.Sorter.Rows
-	n := len(old)
-	res := old[n-1]
-	h.Sorter.Rows = old[0 : n-1]
+	n := len(h.Sorter.Rows)
+	res := h.Sorter.Rows[n-1]
+	h.Sorter.Rows = h.Sorter.Rows[:n-1]
 	return res
 }
 
 func (h *TopRowsHeap) Rows() ([]sql.Row, error) {
+	// TODO: skip all this is h.LastError != nil?
 	l := h.Len()
 	res := make([]sql.Row, l)
 	for i := l - 1; i >= 0; i-- {
-		res[i] = heap.Pop(h).(sql.Row)
+		res[i] = heap.Pop(h).(sql.Row) // This is slow
 	}
 	return res, h.LastError
 }

@@ -28,6 +28,65 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+// Special case for one row
+type topRowIter struct {
+	childIter  sql.RowIter
+	sortFields sql.SortFields
+	topRow     sql.Row
+	once       bool
+
+	numFoundRows  int64
+	calcFoundRows bool
+}
+
+var _ sql.RowIter = (*topRowIter)(nil)
+
+func NewTopRowIter(s sql.SortFields, calcFoundRows bool, child sql.RowIter) *topRowIter {
+	return &topRowIter{
+		childIter:     child,
+		sortFields:    s,
+		calcFoundRows: calcFoundRows,
+	}
+}
+
+func (i *topRowIter) Next(ctx *sql.Context) (sql.Row, error) {
+	if i.once {
+		return nil, io.EOF
+	}
+	i.once = true
+
+	topRow, err := i.childIter.Next(ctx)
+	if err != nil {
+		return nil, err
+	}
+	sorter := expression.Sorter{
+		Ctx:        ctx,
+		SortFields: i.sortFields,
+	}
+	for {
+		var row sql.Row
+		row, err = i.childIter.Next(ctx)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		i.numFoundRows++
+		if sorter.IsLess(row, topRow) {
+			topRow = row
+		}
+	}
+	return topRow, nil
+}
+
+func (i *topRowIter) Close(ctx *sql.Context) error {
+	if i.calcFoundRows {
+		ctx.GetLastQueryInfo().FoundRows.Store(i.numFoundRows)
+	}
+	return i.childIter.Close(ctx)
+}
+
 type topRowsIter struct {
 	childIter     sql.RowIter
 	sortFields    sql.SortFields
@@ -37,6 +96,8 @@ type topRowsIter struct {
 	numFoundRows  int64
 	calcFoundRows bool
 }
+
+var _ sql.RowIter = (*topRowsIter)(nil)
 
 func NewTopRowsIter(s sql.SortFields, limit int64, calcFoundRows bool, child sql.RowIter, childSchemaLen int) *topRowsIter {
 	return &topRowsIter{
