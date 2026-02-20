@@ -28,15 +28,14 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// Special case for one row
+// topRowIter is a special case of topRowsIter when N = 1
 type topRowIter struct {
-	childIter  sql.RowIter
-	sortFields sql.SortFields
-	topRow     sql.Row
-	once       bool
-
+	childIter     sql.RowIter
+	sortFields    sql.SortFields
+	topRow        sql.Row
 	numFoundRows  int64
 	calcFoundRows bool
+	once          bool
 }
 
 var _ sql.RowIter = (*topRowIter)(nil)
@@ -153,7 +152,7 @@ func (i *topRowsIter) computeTopRows(ctx *sql.Context) error {
 		}
 		i.numFoundRows++
 
-		row = append(row, i.numFoundRows)
+		row = append(row, i.numFoundRows) // TODO: this triggers a malloc
 
 		heap.Push(topRowsHeap, row)
 		if int64(topRowsHeap.Len()) > i.limit {

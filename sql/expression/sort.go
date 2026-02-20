@@ -128,11 +128,14 @@ func (h *TopRowsHeap) Pop() interface{} {
 }
 
 func (h *TopRowsHeap) Rows() ([]sql.Row, error) {
-	// TODO: skip all this is h.LastError != nil?
+	if h.LastError != nil {
+		return nil, h.LastError
+	}
+
 	l := h.Len()
 	res := make([]sql.Row, l)
 	for i := l - 1; i >= 0; i-- {
-		res[i] = heap.Pop(h).(sql.Row) // This is slow
+		res[i] = heap.Pop(h).(sql.Row) // TODO: this is slow
 	}
-	return res, h.LastError
+	return res, nil
 }
