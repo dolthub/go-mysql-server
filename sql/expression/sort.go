@@ -28,12 +28,12 @@ type Sorter struct {
 	Rows       []sql.Row
 }
 
-// Len implements the golang Sorter interface.
+// Len implements the sort.Interface interface.
 func (s *Sorter) Len() int {
 	return len(s.Rows)
 }
 
-// Swap implements the golang Sorter interface.
+// Swap implements the sort.Interface interface.
 func (s *Sorter) Swap(i, j int) {
 	s.Rows[i], s.Rows[j] = s.Rows[j], s.Rows[i]
 }
@@ -82,7 +82,7 @@ func (s *Sorter) IsLesserRow(a, b sql.Row) bool {
 	return false
 }
 
-// Less implements the golang Sorter interface.
+// Less implements the sort.Interface interface.
 func (s *Sorter) Less(i, j int) bool {
 	if s.LastError != nil {
 		return false
