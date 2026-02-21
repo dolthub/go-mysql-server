@@ -24,36 +24,42 @@ import (
 // insertTopNNodes replaces Limit(Sort(...)) and Limit(Offset(Sort(...))) with
 // a TopN node.
 func insertTopNNodes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	var updateCalcFoundRows bool
-	return transform.NodeWithCtx(n, nil, func(tc transform.Context) (sql.Node, transform.TreeIdentity, error) {
-		if o, ok := tc.Node.(*plan.Offset); ok {
-			parentLimit, ok := tc.Parent.(*plan.Limit)
-			if !ok {
-				return tc.Node, transform.SameTree, nil
-			}
-			childSort, ok := o.UnaryNode.Child.(*plan.Sort)
-			if !ok {
-				return tc.Node, transform.SameTree, nil
-			}
-			topn := plan.NewTopN(childSort.SortFields, expression.NewPlus(parentLimit.Limit, o.Offset), childSort.UnaryNode.Child)
-			topn = topn.WithCalcFoundRows(parentLimit.CalcFoundRows)
-			updateCalcFoundRows = true
-			node, err := o.WithChildren(topn)
-			return node, transform.NewTree, err
-		} else if l, ok := tc.Node.(*plan.Limit); ok {
-			childSort, ok := l.UnaryNode.Child.(*plan.Sort)
-			if !ok {
-				if updateCalcFoundRows {
-					updateCalcFoundRows = false
-					return l.WithCalcFoundRows(false), transform.NewTree, nil
-				}
-				return tc.Node, transform.SameTree, nil
-			}
-			topn := plan.NewTopN(childSort.SortFields, l.Limit, childSort.UnaryNode.Child)
-			topn = topn.WithCalcFoundRows(l.CalcFoundRows)
-			node, err := l.WithCalcFoundRows(false).WithChildren(topn)
-			return node, transform.NewTree, err
+	return transform.Node(n, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		limit, ok := node.(*plan.Limit)
+		if !ok {
+			return node, transform.SameTree, nil
 		}
-		return tc.Node, transform.SameTree, nil
+		child := limit.Child
+		offset, ok := child.(*plan.Offset)
+		if ok {
+			child = offset.Child
+		}
+		proj, ok := child.(*plan.Project)
+		if ok {
+			child = proj.Child
+		}
+		sort, ok := child.(*plan.Sort)
+		if !ok {
+			return node, transform.SameTree, nil
+		}
+
+		var newNode sql.Node
+		var err error
+		if offset != nil {
+			newNode = plan.NewTopN(sort.SortFields, expression.NewPlus(limit.Limit, offset.Offset), sort.Child).WithCalcFoundRows(limit.CalcFoundRows)
+			newNode, err = offset.WithChildren(newNode)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+		} else {
+			newNode = plan.NewTopN(sort.SortFields, limit.Limit, sort.Child).WithCalcFoundRows(limit.CalcFoundRows)
+		}
+		if proj != nil {
+			newNode, err = proj.WithChildren(newNode)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
+		}
+		return newNode, transform.NewTree, nil
 	})
 }

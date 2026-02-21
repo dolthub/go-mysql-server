@@ -44,12 +44,18 @@ func (b *BaseBuilder) buildTopN(ctx *sql.Context, n *plan.TopN, row sql.Row) (sq
 		span.End()
 		return nil, err
 	}
-
 	limit, err := iters.GetInt64Value(ctx, n.Limit)
 	if err != nil {
 		return nil, err
 	}
-	return sql.NewSpanIter(span, iters.NewTopRowsIter(n.Fields, limit, n.CalcFoundRows, i, len(n.Child.Schema()))), nil
+
+	var topIter sql.RowIter
+	if limit == 1 {
+		topIter = iters.NewTopRowIter(n.Fields, n.CalcFoundRows, i)
+	} else {
+		topIter = iters.NewTopRowsIter(n.Fields, limit, n.CalcFoundRows, i, len(n.Child.Schema()))
+	}
+	return sql.NewSpanIter(span, topIter), nil
 }
 
 func (b *BaseBuilder) buildValueDerivedTable(ctx *sql.Context, n *plan.ValueDerivedTable, row sql.Row) (sql.RowIter, error) {

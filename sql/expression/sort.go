@@ -28,21 +28,18 @@ type Sorter struct {
 	Rows       []sql.Row
 }
 
+// Len implements the sort.Interface interface.
 func (s *Sorter) Len() int {
 	return len(s.Rows)
 }
 
+// Swap implements the sort.Interface interface.
 func (s *Sorter) Swap(i, j int) {
 	s.Rows[i], s.Rows[j] = s.Rows[j], s.Rows[i]
 }
 
-func (s *Sorter) Less(i, j int) bool {
-	if s.LastError != nil {
-		return false
-	}
-
-	a := s.Rows[i]
-	b := s.Rows[j]
+// IsLesserRow determines if sql.Row `a` is less than sql.Row `b` based off s.SortFields.
+func (s *Sorter) IsLesserRow(a, b sql.Row) bool {
 	for _, sf := range s.SortFields {
 		typ := sf.Column.Type()
 		av, err := sf.Column.Eval(s.Ctx, a)
@@ -82,8 +79,15 @@ func (s *Sorter) Less(i, j int) bool {
 			return false
 		}
 	}
-
 	return false
+}
+
+// Less implements the sort.Interface interface.
+func (s *Sorter) Less(i, j int) bool {
+	if s.LastError != nil {
+		return false
+	}
+	return s.IsLesserRow(s.Rows[i], s.Rows[j])
 }
 
 // ValueRowSorter is a version of Sorter that operates on ValueRow
@@ -121,18 +125,21 @@ func (h *TopRowsHeap) Push(x interface{}) {
 }
 
 func (h *TopRowsHeap) Pop() interface{} {
-	old := h.Sorter.Rows
-	n := len(old)
-	res := old[n-1]
-	h.Sorter.Rows = old[0 : n-1]
+	n := len(h.Sorter.Rows)
+	res := h.Sorter.Rows[n-1]
+	h.Sorter.Rows = h.Sorter.Rows[:n-1]
 	return res
 }
 
 func (h *TopRowsHeap) Rows() ([]sql.Row, error) {
+	if h.LastError != nil {
+		return nil, h.LastError
+	}
+
 	l := h.Len()
 	res := make([]sql.Row, l)
 	for i := l - 1; i >= 0; i-- {
-		res[i] = heap.Pop(h).(sql.Row)
+		res[i] = heap.Pop(h).(sql.Row) // TODO: this is slow
 	}
-	return res, h.LastError
+	return res, nil
 }
