@@ -24,75 +24,46 @@ import (
 // insertTopNNodes replaces Limit(Sort(...)) and Limit(Offset(Sort(...))) with
 // a TopN node.
 func insertTopNNodes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	var updateCalcFoundRows bool
-	return transform.NodeWithCtx(n, nil, func(tc transform.Context) (sql.Node, transform.TreeIdentity, error) {
-		switch node := tc.Node.(type) {
-		case *plan.Offset:
-			parentLimit, ok := tc.Parent.(*plan.Limit)
-			if !ok {
-				return tc.Node, transform.SameTree, nil
-			}
-			var proj *plan.Project
-			var childSort *plan.Sort
-			switch child := node.UnaryNode.Child.(type) {
-			case *plan.Sort:
-				childSort = child
-			case *plan.Project:
-				proj = child
-				if sort, isSort := child.Child.(*plan.Sort); isSort {
-					childSort = sort
-				} else {
-					return tc.Node, transform.SameTree, nil
-				}
-			default:
-				return tc.Node, transform.SameTree, nil
-			}
-			topn := plan.NewTopN(childSort.SortFields, expression.NewPlus(parentLimit.Limit, node.Offset), childSort.UnaryNode.Child)
-			topn = topn.WithCalcFoundRows(parentLimit.CalcFoundRows)
-			updateCalcFoundRows = true
-			newNode, err := node.WithChildren(topn)
+	return transform.Node(n, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
+		limit, ok := node.(*plan.Limit)
+		if !ok {
+			return node, transform.SameTree, nil
+		}
+		child := limit.Child
+		offset, ok := child.(*plan.Offset)
+		if ok {
+			child = offset.Child
+		}
+		proj, ok := child.(*plan.Project)
+		if ok {
+			child = proj.Child
+		}
+		sort, ok := child.(*plan.Sort)
+		if !ok {
+			return node, transform.SameTree, nil
+		}
+
+		topExpr := limit.Limit
+		if offset != nil {
+			topExpr = expression.NewPlus(limit.Limit, offset.Offset)
+		}
+		top := plan.NewTopN(sort.SortFields, topExpr, sort.Child)
+		top = top.WithCalcFoundRows(limit.CalcFoundRows)
+
+		var newNode sql.Node = top
+		var err error
+		if offset != nil {
+			newNode, err = offset.WithChildren(newNode)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			if proj == nil {
-				return newNode, transform.NewTree, nil
-			}
+		}
+		if proj != nil {
 			newNode, err = proj.WithChildren(newNode)
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
-			return newNode, transform.NewTree, err
-		case *plan.Limit:
-			var proj *plan.Project
-			var childSort *plan.Sort
-			switch child := node.UnaryNode.Child.(type) {
-			case *plan.Sort:
-				childSort = child
-			case *plan.Project:
-				proj = child
-				if sort, isSort := child.Child.(*plan.Sort); isSort {
-					childSort = sort
-				}
-			}
-			if childSort == nil {
-				if updateCalcFoundRows {
-					updateCalcFoundRows = false
-					return node.WithCalcFoundRows(false), transform.NewTree, nil
-				}
-				return node, transform.SameTree, nil
-			}
-			topn := plan.NewTopN(childSort.SortFields, node.Limit, childSort.UnaryNode.Child)
-			topn = topn.WithCalcFoundRows(node.CalcFoundRows)
-			if proj == nil {
-				return topn, transform.NewTree, nil
-			}
-			newNode, err := proj.WithChildren(topn)
-			if err != nil {
-				return nil, transform.SameTree, err
-			}
-			return newNode, transform.NewTree, err
-		default:
-			return node, transform.SameTree, nil
 		}
+		return newNode, transform.NewTree, nil
 	})
 }
