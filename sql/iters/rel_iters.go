@@ -72,7 +72,7 @@ func (i *topRowIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, err
 		}
 		i.numFoundRows++
-		if sorter.IsLess(row, topRow) {
+		if sorter.IsLesserRow(row, topRow) {
 			topRow = row
 		}
 	}

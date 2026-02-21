@@ -28,15 +28,18 @@ type Sorter struct {
 	Rows       []sql.Row
 }
 
+// Len implements the golang Sorter interface.
 func (s *Sorter) Len() int {
 	return len(s.Rows)
 }
 
+// Swap implements the golang Sorter interface.
 func (s *Sorter) Swap(i, j int) {
 	s.Rows[i], s.Rows[j] = s.Rows[j], s.Rows[i]
 }
 
-func (s *Sorter) IsLess(a, b sql.Row) bool {
+// IsLesserRow determines if sql.Row `a` is less than sql.Row `b` based off s.SortFields.
+func (s *Sorter) IsLesserRow(a, b sql.Row) bool {
 	for _, sf := range s.SortFields {
 		typ := sf.Column.Type()
 		av, err := sf.Column.Eval(s.Ctx, a)
@@ -79,11 +82,12 @@ func (s *Sorter) IsLess(a, b sql.Row) bool {
 	return false
 }
 
+// Less implements the golang Sorter interface.
 func (s *Sorter) Less(i, j int) bool {
 	if s.LastError != nil {
 		return false
 	}
-	return s.IsLess(s.Rows[i], s.Rows[j])
+	return s.IsLesserRow(s.Rows[i], s.Rows[j])
 }
 
 // ValueRowSorter is a version of Sorter that operates on ValueRow
