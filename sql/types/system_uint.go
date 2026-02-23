@@ -37,6 +37,7 @@ type systemUintType struct {
 
 var _ sql.SystemVariableType = systemUintType{}
 var _ sql.CollationCoercible = systemUintType{}
+var _ sql.NumberType = systemUintType{}
 
 // NewSystemUintType returns a new systemUintType.
 func NewSystemUintType(varName string, lowerbound, upperbound uint64) sql.SystemVariableType {
@@ -166,6 +167,21 @@ func (t systemUintType) ValueType() reflect.Type {
 // Zero implements Type interface.
 func (t systemUintType) Zero() interface{} {
 	return uint64(0)
+}
+
+// IsNumericType implements the sql.NumberType interface.
+func (t systemUintType) IsNumericType() bool {
+	return true
+}
+
+// IsFloat implements the sql.NumberType interface.
+func (t systemUintType) IsFloat() bool {
+	return false
+}
+
+// DisplayWidth implements the sql.NumberType interface.
+func (t systemUintType) DisplayWidth() int {
+	return t.UnderlyingType().(sql.NumberType).DisplayWidth()
 }
 
 // CollationCoercibility implements sql.CollationCoercible interface.

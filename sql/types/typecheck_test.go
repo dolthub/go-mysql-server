@@ -98,3 +98,17 @@ func TestSystemTypesIsSet(t *testing.T) {
 	assert.True(t, IsSet(NewSystemSetType("", sql.Collation_Default, "")))
 	assert.False(t, IsSet(systemStringType{}))
 }
+
+func TestSystemTypesImplementSqlTypeInterfaces(t *testing.T) {
+	assert.True(t, sql.IsNumberType(SystemBoolType{}))
+	assert.True(t, sql.IsNumberType(systemIntType{}))
+	assert.True(t, sql.IsNumberType(systemUintType{}))
+	assert.True(t, sql.IsNumberType(systemDoubleType{}))
+
+	assert.False(t, sql.IsNumberType(systemEnumType{}))
+	assert.False(t, sql.IsNumberType(systemSetType{}))
+	assert.False(t, sql.IsNumberType(systemStringType{}))
+
+	assert.True(t, sql.IsStringType(systemStringType{}))
+	assert.False(t, sql.IsStringType(SystemBoolType{}))
+}
