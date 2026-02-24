@@ -36,6 +36,7 @@ type SystemBoolType struct {
 
 var _ sql.SystemVariableType = SystemBoolType{}
 var _ sql.CollationCoercible = SystemBoolType{}
+var _ sql.NumberType = SystemBoolType{}
 
 // NewSystemBoolType returns a new systemBoolType.
 func NewSystemBoolType(varName string) sql.SystemVariableType {
@@ -182,6 +183,21 @@ func (t SystemBoolType) ValueType() reflect.Type {
 // Zero implements Type interface.
 func (t SystemBoolType) Zero() interface{} {
 	return int8(0)
+}
+
+// IsNumericType implements the sql.NumberType interface.
+func (t SystemBoolType) IsNumericType() bool {
+	return true
+}
+
+// IsFloat implements the sql.NumberType interface.
+func (t SystemBoolType) IsFloat() bool {
+	return false
+}
+
+// DisplayWidth implements the sql.NumberType interface.
+func (t SystemBoolType) DisplayWidth() int {
+	return t.UnderlyingType().(sql.NumberType).DisplayWidth()
 }
 
 // EncodeValue implements SystemVariableType interface.
