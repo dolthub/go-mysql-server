@@ -970,6 +970,9 @@ var (
 
 	// ErrDistinctOnMatchOrderBy is returned when DISTINCT ON does not match the initial ORDER BY expressions
 	ErrDistinctOnMatchOrderBy = errors.NewKind("SELECT DISTINCT ON expressions must match initial ORDER BY expressions")
+
+	// ErrWrongDBName is returned for illegal database names with the [mysql.ERWrongDbName] error code and [mysql.SSClientError] SQLSTATE.
+	ErrWrongDBName = newMySQLKind("Incorrect database name '%s'", mysql.ERWrongDbName, mysql.SSClientError)
 )
 
 // CastSQLError returns a *mysql.SQLError with the error code and in some cases, also a SQL state, populated for the
@@ -983,16 +986,20 @@ func CastSQLError(err error) *mysql.SQLError {
 	if mysqlErr, ok := err.(*mysql.SQLError); ok {
 		return mysqlErr
 	}
-
 	var code int
-	var sqlState string = ""
-
+	var sqlState = ""
 	if w, ok := err.(WrappedInsertError); ok {
 		return CastSQLError(w.Cause)
 	}
 
 	if wm, ok := err.(WrappedTypeConversionError); ok {
 		return CastSQLError(wm.Err)
+	}
+
+	for _, mySQLErr := range mySQLErrors {
+		if mySQLErr.Kind.Is(err) {
+			return mysql.NewSQLError(mySQLErr.Code, mySQLErr.SQLState, "%s", err.Error())
+		}
 	}
 
 	switch {
@@ -1062,6 +1069,35 @@ func CastSQLError(err error) *mysql.SQLError {
 	}
 
 	return mysql.NewSQLError(code, sqlState, "%s", err.Error())
+}
+
+// mySQLErrors contain MySQL-specific [sql.SQLError] with their other metadata.
+var mySQLErrors []SQLError
+
+// newMySQLKind creates [sql.SQLError] specifically for mySQLErrors that is automatically interpreted by
+// [sql.CastSQLError]. If |SQLState| is omitted, an empty string takes its place.
+func newMySQLKind(msg string, code int, sqlState ...string) *errors.Kind {
+	err := errors.NewKind(msg)
+	state := ""
+	if len(sqlState) > 0 {
+		state = sqlState[0]
+	}
+	mySQLErrors = append(mySQLErrors, SQLError{
+		Kind:     err,
+		Code:     code,
+		SQLState: state,
+	})
+	return err
+}
+
+// SQLError identifies the error family and other metadata for SQL errors.
+type SQLError struct {
+	// Kind identifies the engine error family.
+	Kind *errors.Kind
+	// Code is the numeric error code, and is implementation specific (e.g., MySQL error codes are not cross-platform).
+	Code int
+	// SQLState is the five-character string taken from ANSI SQL and ODBC.
+	SQLState string
 }
 
 // UnwrapError removes any wrapping errors (e.g. WrappedInsertError) around the specified error and
