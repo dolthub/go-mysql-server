@@ -102,34 +102,6 @@ func (ab *Builder) WithDebug() *Builder {
 	return ab
 }
 
-// AddPreAnalyzeRule adds a new rule to the analyze before the standard analyzer rules.
-func (ab *Builder) AddPreAnalyzeRule(id RuleId, fn RuleFunc) *Builder {
-	ab.preAnalyzeRules = append(ab.preAnalyzeRules, Rule{Id: id, Apply: fn})
-
-	return ab
-}
-
-// AddPostAnalyzeRule adds a new rule to the analyzer after standard analyzer rules.
-func (ab *Builder) AddPostAnalyzeRule(id RuleId, fn RuleFunc) *Builder {
-	ab.postAnalyzeRules = append(ab.postAnalyzeRules, Rule{Id: id, Apply: fn})
-
-	return ab
-}
-
-// AddPreValidationRule adds a new rule to the analyzer before standard validation rules.
-func (ab *Builder) AddPreValidationRule(id RuleId, fn RuleFunc) *Builder {
-	ab.preValidationRules = append(ab.preValidationRules, Rule{Id: id, Apply: fn})
-
-	return ab
-}
-
-// AddPostValidationRule adds a new rule to the analyzer after standard validation rules.
-func (ab *Builder) AddPostValidationRule(id RuleId, fn RuleFunc) *Builder {
-	ab.postValidationRules = append(ab.postValidationRules, Rule{Id: id, Apply: fn})
-
-	return ab
-}
-
 // AddOverrides adds the given overrides to the builder.
 func (ab *Builder) AddOverrides(overrides sql.EngineOverrides) *Builder {
 	ab.overrides = overrides

@@ -27,36 +27,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-func TestAddRule(t *testing.T) {
-	require := require.New(t)
-
-	defRulesCount := countRules(NewDefault(nil).Batches)
-
-	a := NewBuilder(nil).AddPostAnalyzeRule(-1, pushFilters).Build()
-
-	require.Equal(countRules(a.Batches), defRulesCount+1)
-}
-
-func TestAddPreValidationRule(t *testing.T) {
-	require := require.New(t)
-
-	defRulesCount := countRules(NewDefault(nil).Batches)
-
-	a := NewBuilder(nil).AddPreValidationRule(-1, pushFilters).Build()
-
-	require.Equal(countRules(a.Batches), defRulesCount+1)
-}
-
-func TestAddPostValidationRule(t *testing.T) {
-	require := require.New(t)
-
-	defRulesCount := countRules(NewDefault(nil).Batches)
-
-	a := NewBuilder(nil).AddPostValidationRule(-1, pushFilters).Build()
-
-	require.Equal(countRules(a.Batches), defRulesCount+1)
-}
-
 func TestRemoveOnceBeforeRule(t *testing.T) {
 	require := require.New(t)
 
