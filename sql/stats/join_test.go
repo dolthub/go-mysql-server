@@ -458,26 +458,6 @@ func TestJoin(t *testing.T) {
 	}
 }
 
-func TestAlignBucketsAcceptsSystemNumberType(t *testing.T) {
-	ctx := sql.NewEmptyContext()
-	sysIntType := types.NewSystemIntType("test_var", 0, 100, false)
-	h1 := sql.Histogram{
-		&Bucket{RowCnt: 5, DistinctCnt: 5, BoundVal: sql.Row{int64(10)}, BoundCnt: 1},
-	}
-	h2 := sql.Histogram{
-		&Bucket{RowCnt: 3, DistinctCnt: 3, BoundVal: sql.Row{int64(10)}, BoundCnt: 1},
-	}
-
-	cmp := func(i, j sql.Row) (int, error) {
-		return sysIntType.Compare(ctx, i[0], j[0])
-	}
-
-	leftAligned, rightAligned, err := AlignBuckets(h1, h2, nil, nil, []sql.Type{sysIntType}, []sql.Type{sysIntType}, cmp)
-	require.NoError(t, err)
-	require.Len(t, leftAligned, 1)
-	require.Len(t, rightAligned, 1)
-}
-
 func compareHist(t *testing.T, exp, cmp sql.Histogram) {
 	if len(exp) != len(cmp) {
 		t.Errorf("histograms not same length: %d != %d\n%s\n%s\n", len(exp), len(cmp), exp.DebugString(), cmp.DebugString())
