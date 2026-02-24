@@ -268,15 +268,16 @@ type Context struct {
 	queryTime time.Time
 	context.Context
 	Session
-	ProcessList ProcessList
-	services    Services
-	tracer      trace.Tracer
-	rootSpan    trace.Span
-	Memory      *MemoryManager
-	query       string
-	pid         uint64
-	interpreted bool
-	Version     AnalyzerVersion
+	ProcessList       ProcessList
+	services          Services
+	tracer            trace.Tracer
+	rootSpan          trace.Span
+	Memory            *MemoryManager
+	query             string
+	pid               uint64
+	interpreted       bool
+	Version           AnalyzerVersion
+	disableFileWrites bool
 }
 
 // ContextOption is a function to configure the context.
@@ -335,6 +336,23 @@ func WithServices(services Services) ContextOption {
 	return func(ctx *Context) {
 		ctx.services = services
 	}
+}
+
+// WithDisableFileWrites disables SELECT INTO OUTFILE and INTO DUMPFILE for this context.
+// When true, any attempt to write to a file will return ErrFileWritesDisabled.
+// Intended for embedded or sandboxed use (e.g. SQL expressions) where file writes are a security risk.
+func WithDisableFileWrites(disable bool) ContextOption {
+	return func(ctx *Context) {
+		ctx.disableFileWrites = disable
+	}
+}
+
+// DisableFileWrites returns whether file writes (INTO OUTFILE/DUMPFILE) are disabled for this context.
+func (c *Context) DisableFileWrites() bool {
+	if c == nil {
+		return false
+	}
+	return c.disableFileWrites
 }
 
 var ctxNowFunc = time.Now

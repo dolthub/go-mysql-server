@@ -776,6 +776,9 @@ var (
 	// ErrSecureFilePriv is returned when an outfile/dumpfile path is invalid or not under the secure-file-priv directory
 	ErrSecureFilePriv = errors.NewKind("The MySQL server is running with the --secure-file-priv option so it cannot execute this statement")
 
+	// ErrFileWritesDisabled is returned when INTO OUTFILE/DUMPFILE is used but file writes are disabled
+	ErrFileWritesDisabled = errors.NewKind("file write operations (INTO OUTFILE/DUMPFILE) are disabled")
+
 	// ErrFileExists is returned when a file already exists
 	ErrFileExists = errors.NewKind("File '%s' already exists")
 

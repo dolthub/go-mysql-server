@@ -590,6 +590,9 @@ func (b *BaseBuilder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sq
 
 	var secureFileDir interface{}
 	if n.Outfile != "" || n.Dumpfile != "" {
+		if ctx.DisableFileWrites() {
+			return nil, sql.ErrFileWritesDisabled.New()
+		}
 		var ok bool
 		_, secureFileDir, ok = sql.SystemVariables.GetGlobal("secure_file_priv")
 		if !ok {
