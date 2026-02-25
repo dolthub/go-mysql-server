@@ -4974,6 +4974,7 @@ func TestTracing(t *testing.T, harness Harness) {
 
 	spans := tracer.Spans
 	var expectedSpans = []string{
+		"plan.Limit", // here because of doltgres generate_series
 		"plan.TopN",
 		"plan.Distinct",
 		"plan.Project",

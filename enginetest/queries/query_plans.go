@@ -5352,38 +5352,41 @@ Select * from (
 	},
 	{
 		Query: `select * from xy where exists (select * from ab where a = x order by a limit 2) order by x limit 5`,
-		ExpectedPlan: "TopN(Limit: [5 (bigint)]; xy.x:0!null ASC nullsFirst)\n" +
-			" └─ SemiLookupJoin\n" +
-			"     ├─ ProcessTable\n" +
-			"     │   └─ Table\n" +
-			"     │       ├─ name: xy\n" +
-			"     │       └─ columns: [x y]\n" +
-			"     └─ IndexedTableAccess(ab)\n" +
-			"         ├─ index: [ab.a]\n" +
-			"         ├─ keys: [xy.x:0!null]\n" +
-			"         ├─ colSet: (3,4)\n" +
-			"         ├─ tableId: 2\n" +
-			"         └─ Table\n" +
-			"             ├─ name: ab\n" +
-			"             └─ columns: [a b]\n" +
+		ExpectedPlan: "Limit(5)\n" +
+			" └─ TopN(Limit: [5 (bigint)]; xy.x:0!null ASC nullsFirst)\n" +
+			"     └─ SemiLookupJoin\n" +
+			"         ├─ ProcessTable\n" +
+			"         │   └─ Table\n" +
+			"         │       ├─ name: xy\n" +
+			"         │       └─ columns: [x y]\n" +
+			"         └─ IndexedTableAccess(ab)\n" +
+			"             ├─ index: [ab.a]\n" +
+			"             ├─ keys: [xy.x:0!null]\n" +
+			"             ├─ colSet: (3,4)\n" +
+			"             ├─ tableId: 2\n" +
+			"             └─ Table\n" +
+			"                 ├─ name: ab\n" +
+			"                 └─ columns: [a b]\n" +
 			"",
-		ExpectedEstimates: "TopN(Limit: [5]; xy.x ASC)\n" +
-			" └─ SemiLookupJoin\n" +
-			"     ├─ Table\n" +
-			"     │   └─ name: xy\n" +
-			"     └─ IndexedTableAccess(ab)\n" +
-			"         ├─ index: [ab.a]\n" +
-			"         ├─ columns: [a b]\n" +
-			"         └─ keys: xy.x\n" +
+		ExpectedEstimates: "Limit(5)\n" +
+			" └─ TopN(Limit: [5]; xy.x ASC)\n" +
+			"     └─ SemiLookupJoin\n" +
+			"         ├─ Table\n" +
+			"         │   └─ name: xy\n" +
+			"         └─ IndexedTableAccess(ab)\n" +
+			"             ├─ index: [ab.a]\n" +
+			"             ├─ columns: [a b]\n" +
+			"             └─ keys: xy.x\n" +
 			"",
-		ExpectedAnalysis: "TopN(Limit: [5]; xy.x ASC)\n" +
-			" └─ SemiLookupJoin\n" +
-			"     ├─ Table\n" +
-			"     │   └─ name: xy\n" +
-			"     └─ IndexedTableAccess(ab)\n" +
-			"         ├─ index: [ab.a]\n" +
-			"         ├─ columns: [a b]\n" +
-			"         └─ keys: xy.x\n" +
+		ExpectedAnalysis: "Limit(5)\n" +
+			" └─ TopN(Limit: [5]; xy.x ASC)\n" +
+			"     └─ SemiLookupJoin\n" +
+			"         ├─ Table\n" +
+			"         │   └─ name: xy\n" +
+			"         └─ IndexedTableAccess(ab)\n" +
+			"             ├─ index: [ab.a]\n" +
+			"             ├─ columns: [a b]\n" +
+			"             └─ keys: xy.x\n" +
 			"",
 	},
 	{
@@ -12459,104 +12462,110 @@ inner join pq on true
 		Query: `SELECT dt1.i FROM datetime_table dt1
 			join datetime_table dt2 on dt1.date_col = date(date_sub(dt2.timestamp_col, interval 2 day))
 			order by 1 limit 3 offset 0`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [dt1.i:1!null]\n" +
-			" └─ TopN(Limit: [3 (bigint)]; dt1.i:1!null ASC nullsFirst)\n" +
-			"     └─ InnerJoin\n" +
-			"         ├─ Eq\n" +
-			"         │   ├─ dt1.date_col:2\n" +
-			"         │   └─ DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY))\n" +
-			"         ├─ TableAlias(dt2)\n" +
-			"         │   └─ ProcessTable\n" +
-			"         │       └─ Table\n" +
-			"         │           ├─ name: datetime_table\n" +
-			"         │           └─ columns: [timestamp_col]\n" +
-			"         └─ TableAlias(dt1)\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: datetime_table\n" +
-			"                 ├─ columns: [i date_col]\n" +
-			"                 ├─ colSet: (1-5)\n" +
-			"                 └─ tableId: 1\n" +
+		ExpectedPlan: "Limit(3)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [dt1.i:1!null]\n" +
+			"     └─ TopN(Limit: [3 (bigint)]; dt1.i:1!null ASC nullsFirst)\n" +
+			"         └─ InnerJoin\n" +
+			"             ├─ Eq\n" +
+			"             │   ├─ dt1.date_col:2\n" +
+			"             │   └─ DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY))\n" +
+			"             ├─ TableAlias(dt2)\n" +
+			"             │   └─ ProcessTable\n" +
+			"             │       └─ Table\n" +
+			"             │           ├─ name: datetime_table\n" +
+			"             │           └─ columns: [timestamp_col]\n" +
+			"             └─ TableAlias(dt1)\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: datetime_table\n" +
+			"                     ├─ columns: [i date_col]\n" +
+			"                     ├─ colSet: (1-5)\n" +
+			"                     └─ tableId: 1\n" +
 			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [dt1.i]\n" +
-			" └─ TopN(Limit: [3]; dt1.i ASC)\n" +
-			"     └─ InnerJoin\n" +
-			"         ├─ (dt1.date_col = DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY)))\n" +
-			"         ├─ TableAlias(dt2)\n" +
-			"         │   └─ Table\n" +
-			"         │       ├─ name: datetime_table\n" +
-			"         │       └─ columns: [timestamp_col]\n" +
-			"         └─ TableAlias(dt1)\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: datetime_table\n" +
-			"                 └─ columns: [i date_col]\n" +
+		ExpectedEstimates: "Limit(3)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [dt1.i]\n" +
+			"     └─ TopN(Limit: [3]; dt1.i ASC)\n" +
+			"         └─ InnerJoin\n" +
+			"             ├─ (dt1.date_col = DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY)))\n" +
+			"             ├─ TableAlias(dt2)\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: datetime_table\n" +
+			"             │       └─ columns: [timestamp_col]\n" +
+			"             └─ TableAlias(dt1)\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: datetime_table\n" +
+			"                     └─ columns: [i date_col]\n" +
 			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [dt1.i]\n" +
-			" └─ TopN(Limit: [3]; dt1.i ASC)\n" +
-			"     └─ InnerJoin\n" +
-			"         ├─ (dt1.date_col = DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY)))\n" +
-			"         ├─ TableAlias(dt2)\n" +
-			"         │   └─ Table\n" +
-			"         │       ├─ name: datetime_table\n" +
-			"         │       └─ columns: [timestamp_col]\n" +
-			"         └─ TableAlias(dt1)\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: datetime_table\n" +
-			"                 └─ columns: [i date_col]\n" +
+		ExpectedAnalysis: "Limit(3)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [dt1.i]\n" +
+			"     └─ TopN(Limit: [3]; dt1.i ASC)\n" +
+			"         └─ InnerJoin\n" +
+			"             ├─ (dt1.date_col = DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY)))\n" +
+			"             ├─ TableAlias(dt2)\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: datetime_table\n" +
+			"             │       └─ columns: [timestamp_col]\n" +
+			"             └─ TableAlias(dt1)\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: datetime_table\n" +
+			"                     └─ columns: [i date_col]\n" +
 			"",
 	},
 	{
 		Query: `SELECT dt1.i FROM datetime_table dt1
 			join datetime_table dt2 on dt1.date_col = date(date_sub(dt2.timestamp_col, interval 2 day))
 			order by 1 limit 3`,
-		ExpectedPlan: "Project\n" +
-			" ├─ columns: [dt1.i:1!null]\n" +
-			" └─ TopN(Limit: [3 (bigint)]; dt1.i:1!null ASC nullsFirst)\n" +
-			"     └─ InnerJoin\n" +
-			"         ├─ Eq\n" +
-			"         │   ├─ dt1.date_col:2\n" +
-			"         │   └─ DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY))\n" +
-			"         ├─ TableAlias(dt2)\n" +
-			"         │   └─ ProcessTable\n" +
-			"         │       └─ Table\n" +
-			"         │           ├─ name: datetime_table\n" +
-			"         │           └─ columns: [timestamp_col]\n" +
-			"         └─ TableAlias(dt1)\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: datetime_table\n" +
-			"                 ├─ columns: [i date_col]\n" +
-			"                 ├─ colSet: (1-5)\n" +
-			"                 └─ tableId: 1\n" +
+		ExpectedPlan: "Limit(3)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [dt1.i:1!null]\n" +
+			"     └─ TopN(Limit: [3 (bigint)]; dt1.i:1!null ASC nullsFirst)\n" +
+			"         └─ InnerJoin\n" +
+			"             ├─ Eq\n" +
+			"             │   ├─ dt1.date_col:2\n" +
+			"             │   └─ DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY))\n" +
+			"             ├─ TableAlias(dt2)\n" +
+			"             │   └─ ProcessTable\n" +
+			"             │       └─ Table\n" +
+			"             │           ├─ name: datetime_table\n" +
+			"             │           └─ columns: [timestamp_col]\n" +
+			"             └─ TableAlias(dt1)\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: datetime_table\n" +
+			"                     ├─ columns: [i date_col]\n" +
+			"                     ├─ colSet: (1-5)\n" +
+			"                     └─ tableId: 1\n" +
 			"",
-		ExpectedEstimates: "Project\n" +
-			" ├─ columns: [dt1.i]\n" +
-			" └─ TopN(Limit: [3]; dt1.i ASC)\n" +
-			"     └─ InnerJoin\n" +
-			"         ├─ (dt1.date_col = DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY)))\n" +
-			"         ├─ TableAlias(dt2)\n" +
-			"         │   └─ Table\n" +
-			"         │       ├─ name: datetime_table\n" +
-			"         │       └─ columns: [timestamp_col]\n" +
-			"         └─ TableAlias(dt1)\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: datetime_table\n" +
-			"                 └─ columns: [i date_col]\n" +
+		ExpectedEstimates: "Limit(3)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [dt1.i]\n" +
+			"     └─ TopN(Limit: [3]; dt1.i ASC)\n" +
+			"         └─ InnerJoin\n" +
+			"             ├─ (dt1.date_col = DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY)))\n" +
+			"             ├─ TableAlias(dt2)\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: datetime_table\n" +
+			"             │       └─ columns: [timestamp_col]\n" +
+			"             └─ TableAlias(dt1)\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: datetime_table\n" +
+			"                     └─ columns: [i date_col]\n" +
 			"",
-		ExpectedAnalysis: "Project\n" +
-			" ├─ columns: [dt1.i]\n" +
-			" └─ TopN(Limit: [3]; dt1.i ASC)\n" +
-			"     └─ InnerJoin\n" +
-			"         ├─ (dt1.date_col = DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY)))\n" +
-			"         ├─ TableAlias(dt2)\n" +
-			"         │   └─ Table\n" +
-			"         │       ├─ name: datetime_table\n" +
-			"         │       └─ columns: [timestamp_col]\n" +
-			"         └─ TableAlias(dt1)\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: datetime_table\n" +
-			"                 └─ columns: [i date_col]\n" +
+		ExpectedAnalysis: "Limit(3)\n" +
+			" └─ Project\n" +
+			"     ├─ columns: [dt1.i]\n" +
+			"     └─ TopN(Limit: [3]; dt1.i ASC)\n" +
+			"         └─ InnerJoin\n" +
+			"             ├─ (dt1.date_col = DATE(date_sub(dt2.timestamp_col,INTERVAL 2 DAY)))\n" +
+			"             ├─ TableAlias(dt2)\n" +
+			"             │   └─ Table\n" +
+			"             │       ├─ name: datetime_table\n" +
+			"             │       └─ columns: [timestamp_col]\n" +
+			"             └─ TableAlias(dt1)\n" +
+			"                 └─ Table\n" +
+			"                     ├─ name: datetime_table\n" +
+			"                     └─ columns: [i date_col]\n" +
 			"",
 	},
 	{
@@ -21997,22 +22006,23 @@ With c as (
 			"     │   └─ Eq\n" +
 			"     │       ├─ b.i:1!null\n" +
 			"     │       └─ 0 (bigint)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [a.pk:1!null, b.i:0!null]\n" +
-			"         └─ TopN(Limit: [1 (bigint)]; a.pk:1!null ASC nullsFirst, b.i:0!null ASC nullsFirst)\n" +
-			"             └─ CrossJoin\n" +
-			"                 ├─ TableAlias(b)\n" +
-			"                 │   └─ Table\n" +
-			"                 │       ├─ name: mytable\n" +
-			"                 │       ├─ columns: [i]\n" +
-			"                 │       ├─ colSet: (7,8)\n" +
-			"                 │       └─ tableId: 2\n" +
-			"                 └─ TableAlias(a)\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: one_pk\n" +
-			"                         ├─ columns: [pk]\n" +
-			"                         ├─ colSet: (1-6)\n" +
-			"                         └─ tableId: 1\n" +
+			"     └─ Limit(1)\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [a.pk:1!null, b.i:0!null]\n" +
+			"             └─ TopN(Limit: [1 (bigint)]; a.pk:1!null ASC nullsFirst, b.i:0!null ASC nullsFirst)\n" +
+			"                 └─ CrossJoin\n" +
+			"                     ├─ TableAlias(b)\n" +
+			"                     │   └─ Table\n" +
+			"                     │       ├─ name: mytable\n" +
+			"                     │       ├─ columns: [i]\n" +
+			"                     │       ├─ colSet: (7,8)\n" +
+			"                     │       └─ tableId: 2\n" +
+			"                     └─ TableAlias(a)\n" +
+			"                         └─ Table\n" +
+			"                             ├─ name: one_pk\n" +
+			"                             ├─ columns: [pk]\n" +
+			"                             ├─ colSet: (1-6)\n" +
+			"                             └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "SubqueryAlias\n" +
 			" ├─ name: sq\n" +
@@ -22023,18 +22033,19 @@ With c as (
 			" ├─ tableId: 3\n" +
 			" └─ Filter\n" +
 			"     ├─ (NOT((b.i = 0)))\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [a.pk, b.i]\n" +
-			"         └─ TopN(Limit: [1]; a.pk ASC, b.i ASC)\n" +
-			"             └─ CrossJoin\n" +
-			"                 ├─ TableAlias(b)\n" +
-			"                 │   └─ Table\n" +
-			"                 │       ├─ name: mytable\n" +
-			"                 │       └─ columns: [i]\n" +
-			"                 └─ TableAlias(a)\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: one_pk\n" +
-			"                         └─ columns: [pk]\n" +
+			"     └─ Limit(1)\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [a.pk, b.i]\n" +
+			"             └─ TopN(Limit: [1]; a.pk ASC, b.i ASC)\n" +
+			"                 └─ CrossJoin\n" +
+			"                     ├─ TableAlias(b)\n" +
+			"                     │   └─ Table\n" +
+			"                     │       ├─ name: mytable\n" +
+			"                     │       └─ columns: [i]\n" +
+			"                     └─ TableAlias(a)\n" +
+			"                         └─ Table\n" +
+			"                             ├─ name: one_pk\n" +
+			"                             └─ columns: [pk]\n" +
 			"",
 		ExpectedAnalysis: "SubqueryAlias\n" +
 			" ├─ name: sq\n" +
@@ -22045,18 +22056,19 @@ With c as (
 			" ├─ tableId: 3\n" +
 			" └─ Filter\n" +
 			"     ├─ (NOT((b.i = 0)))\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [a.pk, b.i]\n" +
-			"         └─ TopN(Limit: [1]; a.pk ASC, b.i ASC)\n" +
-			"             └─ CrossJoin\n" +
-			"                 ├─ TableAlias(b)\n" +
-			"                 │   └─ Table\n" +
-			"                 │       ├─ name: mytable\n" +
-			"                 │       └─ columns: [i]\n" +
-			"                 └─ TableAlias(a)\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: one_pk\n" +
-			"                         └─ columns: [pk]\n" +
+			"     └─ Limit(1)\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [a.pk, b.i]\n" +
+			"             └─ TopN(Limit: [1]; a.pk ASC, b.i ASC)\n" +
+			"                 └─ CrossJoin\n" +
+			"                     ├─ TableAlias(b)\n" +
+			"                     │   └─ Table\n" +
+			"                     │       ├─ name: mytable\n" +
+			"                     │       └─ columns: [i]\n" +
+			"                     └─ TableAlias(a)\n" +
+			"                         └─ Table\n" +
+			"                             ├─ name: one_pk\n" +
+			"                             └─ columns: [pk]\n" +
 			"",
 	},
 	{
@@ -22073,22 +22085,23 @@ With c as (
 			"     │   └─ Eq\n" +
 			"     │       ├─ b.i:1!null\n" +
 			"     │       └─ 0 (bigint)\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [a.pk:1!null, b.i:0!null]\n" +
-			"         └─ TopN(Limit: [1 (bigint)]; a.pk:1!null DESC nullsFirst, b.i:0!null DESC nullsFirst)\n" +
-			"             └─ CrossJoin\n" +
-			"                 ├─ TableAlias(b)\n" +
-			"                 │   └─ Table\n" +
-			"                 │       ├─ name: mytable\n" +
-			"                 │       ├─ columns: [i]\n" +
-			"                 │       ├─ colSet: (7,8)\n" +
-			"                 │       └─ tableId: 2\n" +
-			"                 └─ TableAlias(a)\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: one_pk\n" +
-			"                         ├─ columns: [pk]\n" +
-			"                         ├─ colSet: (1-6)\n" +
-			"                         └─ tableId: 1\n" +
+			"     └─ Limit(1)\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [a.pk:1!null, b.i:0!null]\n" +
+			"             └─ TopN(Limit: [1 (bigint)]; a.pk:1!null DESC nullsFirst, b.i:0!null DESC nullsFirst)\n" +
+			"                 └─ CrossJoin\n" +
+			"                     ├─ TableAlias(b)\n" +
+			"                     │   └─ Table\n" +
+			"                     │       ├─ name: mytable\n" +
+			"                     │       ├─ columns: [i]\n" +
+			"                     │       ├─ colSet: (7,8)\n" +
+			"                     │       └─ tableId: 2\n" +
+			"                     └─ TableAlias(a)\n" +
+			"                         └─ Table\n" +
+			"                             ├─ name: one_pk\n" +
+			"                             ├─ columns: [pk]\n" +
+			"                             ├─ colSet: (1-6)\n" +
+			"                             └─ tableId: 1\n" +
 			"",
 		ExpectedEstimates: "SubqueryAlias\n" +
 			" ├─ name: sq\n" +
@@ -22099,18 +22112,19 @@ With c as (
 			" ├─ tableId: 3\n" +
 			" └─ Filter\n" +
 			"     ├─ (NOT((b.i = 0)))\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [a.pk, b.i]\n" +
-			"         └─ TopN(Limit: [1]; a.pk DESC, b.i DESC)\n" +
-			"             └─ CrossJoin\n" +
-			"                 ├─ TableAlias(b)\n" +
-			"                 │   └─ Table\n" +
-			"                 │       ├─ name: mytable\n" +
-			"                 │       └─ columns: [i]\n" +
-			"                 └─ TableAlias(a)\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: one_pk\n" +
-			"                         └─ columns: [pk]\n" +
+			"     └─ Limit(1)\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [a.pk, b.i]\n" +
+			"             └─ TopN(Limit: [1]; a.pk DESC, b.i DESC)\n" +
+			"                 └─ CrossJoin\n" +
+			"                     ├─ TableAlias(b)\n" +
+			"                     │   └─ Table\n" +
+			"                     │       ├─ name: mytable\n" +
+			"                     │       └─ columns: [i]\n" +
+			"                     └─ TableAlias(a)\n" +
+			"                         └─ Table\n" +
+			"                             ├─ name: one_pk\n" +
+			"                             └─ columns: [pk]\n" +
 			"",
 		ExpectedAnalysis: "SubqueryAlias\n" +
 			" ├─ name: sq\n" +
@@ -22121,18 +22135,19 @@ With c as (
 			" ├─ tableId: 3\n" +
 			" └─ Filter\n" +
 			"     ├─ (NOT((b.i = 0)))\n" +
-			"     └─ Project\n" +
-			"         ├─ columns: [a.pk, b.i]\n" +
-			"         └─ TopN(Limit: [1]; a.pk DESC, b.i DESC)\n" +
-			"             └─ CrossJoin\n" +
-			"                 ├─ TableAlias(b)\n" +
-			"                 │   └─ Table\n" +
-			"                 │       ├─ name: mytable\n" +
-			"                 │       └─ columns: [i]\n" +
-			"                 └─ TableAlias(a)\n" +
-			"                     └─ Table\n" +
-			"                         ├─ name: one_pk\n" +
-			"                         └─ columns: [pk]\n" +
+			"     └─ Limit(1)\n" +
+			"         └─ Project\n" +
+			"             ├─ columns: [a.pk, b.i]\n" +
+			"             └─ TopN(Limit: [1]; a.pk DESC, b.i DESC)\n" +
+			"                 └─ CrossJoin\n" +
+			"                     ├─ TableAlias(b)\n" +
+			"                     │   └─ Table\n" +
+			"                     │       ├─ name: mytable\n" +
+			"                     │       └─ columns: [i]\n" +
+			"                     └─ TableAlias(a)\n" +
+			"                         └─ Table\n" +
+			"                             ├─ name: one_pk\n" +
+			"                             └─ columns: [pk]\n" +
 			"",
 	},
 	{
