@@ -14867,6 +14867,8 @@ select * from t1 except (
 	},
 	{
 		Name: "Greatest and least with decimal arguments",
+		// TODO: This should work in Doltgres https://github.com/dolthub/doltgresql/issues/2378
+		Dialect: "mysql",
 		SetUpScript: []string{
 			"create table t(a decimal(6, 2), b decimal(8, 5), c decimal(5, 1));",
 			"insert into t values (2.75, 8.8, 3.1);",
