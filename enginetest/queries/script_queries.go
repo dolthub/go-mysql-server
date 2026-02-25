@@ -14865,6 +14865,24 @@ select * from t1 except (
 			},
 		},
 	},
+	{
+		Name: "Greatest and least with decimal arguments",
+		// TODO: This should work in Doltgres https://github.com/dolthub/doltgresql/issues/2378
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t(a decimal(6, 2), b decimal(8, 5), c decimal(5, 1));",
+			"insert into t values (2.75, 8.8, 3.1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// https://github.com/dolthub/dolt/issues/10562
+				Query: "select greatest(a, b, c), least(a, b, c) from t;",
+				// TODO: greatest and least currently return a float64 for decimals. MySQL returns a decimal with the
+				//  highest precision https://github.com/dolthub/dolt/issues/10567
+				Expected: []sql.Row{{8.8, 2.75}},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{

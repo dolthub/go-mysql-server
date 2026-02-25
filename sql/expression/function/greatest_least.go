@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"gopkg.in/src-d/go-errors.v1"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -52,6 +53,8 @@ func compEval(
 			return nil, err
 		}
 
+		// TODO: this switch statement can be cleaned up a lot. A lot of these type conversions and conversions are
+		//  also unnecessary because they get converted during compare
 		switch t := val.(type) {
 		case int, int8, int16, int32, int64, uint,
 			uint8, uint16, uint32, uint64:
@@ -117,6 +120,11 @@ func compEval(
 			if i == 0 || cmp(t, selectedTime) {
 				selectedTime = t
 			}
+		case decimal.Decimal:
+			fval, _ := t.Float64()
+			if i == 0 || cmp(fval, selectedNum) {
+				selectedNum = fval
+			}
 		case nil:
 			return nil, nil
 		default:
@@ -166,8 +174,7 @@ func compRetType(args ...sql.Expression) (sql.Type, error) {
 		} else if types.IsNumber(argType) {
 			allString = false
 			allDatetime = false
-			if types.IsFloat(argType) {
-				allString = false
+			if !types.IsInteger(argType) {
 				allInt = false
 			}
 		} else if types.IsText(argType) {
@@ -186,6 +193,7 @@ func compRetType(args ...sql.Expression) (sql.Type, error) {
 		}
 	}
 
+	// TODO: return Decimal type if all Decimals. Account for Decimals of different scales and precisions
 	if allString {
 		return types.LongText, nil
 	} else if allInt {
