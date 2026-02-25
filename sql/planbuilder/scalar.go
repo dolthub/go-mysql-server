@@ -192,7 +192,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 				b.handleErr(err)
 			}
 		}
-		
+
 		name := v.Name.Lowered()
 		if name == "name_const" {
 			return b.buildNameConst(inScope, v)
