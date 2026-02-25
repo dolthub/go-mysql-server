@@ -2810,41 +2810,43 @@ WHERE
 			"     │           ├─ columns: [Subquery\n" +
 			"     │           │   ├─ cacheable: false\n" +
 			"     │           │   ├─ alias-string: select id from TDRVG where SSHPJ = S7BYT.SSHPJ order by id asc limit 1\n" +
-			"     │           │   └─ Project\n" +
-			"     │           │       ├─ columns: [tdrvg.id:8!null]\n" +
-			"     │           │       └─ TopN(Limit: [1 (bigint)]; tdrvg.id:8!null ASC nullsFirst)\n" +
-			"     │           │           └─ Filter\n" +
-			"     │           │               ├─ Eq\n" +
-			"     │           │               │   ├─ tdrvg.SSHPJ:9!null\n" +
-			"     │           │               │   └─ s7byt.SSHPJ:5!null\n" +
-			"     │           │               └─ IndexedTableAccess(TDRVG)\n" +
-			"     │           │                   ├─ index: [TDRVG.SSHPJ]\n" +
-			"     │           │                   ├─ keys: [s7byt.SSHPJ:5!null]\n" +
-			"     │           │                   ├─ colSet: (36-40)\n" +
-			"     │           │                   ├─ tableId: 6\n" +
-			"     │           │                   └─ Table\n" +
-			"     │           │                       ├─ name: TDRVG\n" +
-			"     │           │                       └─ columns: [id sshpj]\n" +
+			"     │           │   └─ Limit(1)\n" +
+			"     │           │       └─ Project\n" +
+			"     │           │           ├─ columns: [tdrvg.id:8!null]\n" +
+			"     │           │           └─ TopN(Limit: [1 (bigint)]; tdrvg.id:8!null ASC nullsFirst)\n" +
+			"     │           │               └─ Filter\n" +
+			"     │           │                   ├─ Eq\n" +
+			"     │           │                   │   ├─ tdrvg.SSHPJ:9!null\n" +
+			"     │           │                   │   └─ s7byt.SSHPJ:5!null\n" +
+			"     │           │                   └─ IndexedTableAccess(TDRVG)\n" +
+			"     │           │                       ├─ index: [TDRVG.SSHPJ]\n" +
+			"     │           │                       ├─ keys: [s7byt.SSHPJ:5!null]\n" +
+			"     │           │                       ├─ colSet: (36-40)\n" +
+			"     │           │                       ├─ tableId: 6\n" +
+			"     │           │                       └─ Table\n" +
+			"     │           │                           ├─ name: TDRVG\n" +
+			"     │           │                           └─ columns: [id sshpj]\n" +
 			"     │           │  ->id:0]\n" +
 			"     │           └─ Project\n" +
 			"     │               ├─ columns: [s7byt.SSHPJ:5!null, s7byt.SFJ6L:6!null, Subquery\n" +
 			"     │               │   ├─ cacheable: false\n" +
 			"     │               │   ├─ alias-string: select id from TDRVG where SSHPJ = S7BYT.SSHPJ order by id asc limit 1\n" +
-			"     │               │   └─ Project\n" +
-			"     │               │       ├─ columns: [tdrvg.id:7!null]\n" +
-			"     │               │       └─ TopN(Limit: [1 (bigint)]; tdrvg.id:7!null ASC nullsFirst)\n" +
-			"     │               │           └─ Filter\n" +
-			"     │               │               ├─ Eq\n" +
-			"     │               │               │   ├─ tdrvg.SSHPJ:8!null\n" +
-			"     │               │               │   └─ s7byt.SSHPJ:5!null\n" +
-			"     │               │               └─ IndexedTableAccess(TDRVG)\n" +
-			"     │               │                   ├─ index: [TDRVG.SSHPJ]\n" +
-			"     │               │                   ├─ keys: [s7byt.SSHPJ:5!null]\n" +
-			"     │               │                   ├─ colSet: (36-40)\n" +
-			"     │               │                   ├─ tableId: 6\n" +
-			"     │               │                   └─ Table\n" +
-			"     │               │                       ├─ name: TDRVG\n" +
-			"     │               │                       └─ columns: [id sshpj]\n" +
+			"     │               │   └─ Limit(1)\n" +
+			"     │               │       └─ Project\n" +
+			"     │               │           ├─ columns: [tdrvg.id:7!null]\n" +
+			"     │               │           └─ TopN(Limit: [1 (bigint)]; tdrvg.id:7!null ASC nullsFirst)\n" +
+			"     │               │               └─ Filter\n" +
+			"     │               │                   ├─ Eq\n" +
+			"     │               │                   │   ├─ tdrvg.SSHPJ:8!null\n" +
+			"     │               │                   │   └─ s7byt.SSHPJ:5!null\n" +
+			"     │               │                   └─ IndexedTableAccess(TDRVG)\n" +
+			"     │               │                       ├─ index: [TDRVG.SSHPJ]\n" +
+			"     │               │                       ├─ keys: [s7byt.SSHPJ:5!null]\n" +
+			"     │               │                       ├─ colSet: (36-40)\n" +
+			"     │               │                       ├─ tableId: 6\n" +
+			"     │               │                       └─ Table\n" +
+			"     │               │                           ├─ name: TDRVG\n" +
+			"     │               │                           └─ columns: [id sshpj]\n" +
 			"     │               │  ->id:0]\n" +
 			"     │               └─ Project\n" +
 			"     │                   ├─ columns: [s7byt.SSHPJ:5!null, s7byt.SFJ6L:6!null]\n" +
@@ -2900,28 +2902,30 @@ WHERE
 			"     │       └─ Project\n" +
 			"     │           ├─ columns: [Subquery\n" +
 			"     │           │   ├─ cacheable: false\n" +
-			"     │           │   └─ Project\n" +
-			"     │           │       ├─ columns: [tdrvg.id]\n" +
-			"     │           │       └─ TopN(Limit: [1]; tdrvg.id ASC)\n" +
-			"     │           │           └─ Filter\n" +
-			"     │           │               ├─ (tdrvg.SSHPJ = s7byt.SSHPJ)\n" +
-			"     │           │               └─ IndexedTableAccess(TDRVG)\n" +
-			"     │           │                   ├─ index: [TDRVG.SSHPJ]\n" +
-			"     │           │                   ├─ columns: [id sshpj]\n" +
-			"     │           │                   └─ keys: s7byt.SSHPJ\n" +
+			"     │           │   └─ Limit(1)\n" +
+			"     │           │       └─ Project\n" +
+			"     │           │           ├─ columns: [tdrvg.id]\n" +
+			"     │           │           └─ TopN(Limit: [1]; tdrvg.id ASC)\n" +
+			"     │           │               └─ Filter\n" +
+			"     │           │                   ├─ (tdrvg.SSHPJ = s7byt.SSHPJ)\n" +
+			"     │           │                   └─ IndexedTableAccess(TDRVG)\n" +
+			"     │           │                       ├─ index: [TDRVG.SSHPJ]\n" +
+			"     │           │                       ├─ columns: [id sshpj]\n" +
+			"     │           │                       └─ keys: s7byt.SSHPJ\n" +
 			"     │           │   as id]\n" +
 			"     │           └─ Project\n" +
 			"     │               ├─ columns: [s7byt.SSHPJ, s7byt.SFJ6L, Subquery\n" +
 			"     │               │   ├─ cacheable: false\n" +
-			"     │               │   └─ Project\n" +
-			"     │               │       ├─ columns: [tdrvg.id]\n" +
-			"     │               │       └─ TopN(Limit: [1]; tdrvg.id ASC)\n" +
-			"     │               │           └─ Filter\n" +
-			"     │               │               ├─ (tdrvg.SSHPJ = s7byt.SSHPJ)\n" +
-			"     │               │               └─ IndexedTableAccess(TDRVG)\n" +
-			"     │               │                   ├─ index: [TDRVG.SSHPJ]\n" +
-			"     │               │                   ├─ columns: [id sshpj]\n" +
-			"     │               │                   └─ keys: s7byt.SSHPJ\n" +
+			"     │               │   └─ Limit(1)\n" +
+			"     │               │       └─ Project\n" +
+			"     │               │           ├─ columns: [tdrvg.id]\n" +
+			"     │               │           └─ TopN(Limit: [1]; tdrvg.id ASC)\n" +
+			"     │               │               └─ Filter\n" +
+			"     │               │                   ├─ (tdrvg.SSHPJ = s7byt.SSHPJ)\n" +
+			"     │               │                   └─ IndexedTableAccess(TDRVG)\n" +
+			"     │               │                       ├─ index: [TDRVG.SSHPJ]\n" +
+			"     │               │                       ├─ columns: [id sshpj]\n" +
+			"     │               │                       └─ keys: s7byt.SSHPJ\n" +
 			"     │               │   as id]\n" +
 			"     │               └─ Project\n" +
 			"     │                   ├─ columns: [s7byt.SSHPJ, s7byt.SFJ6L]\n" +
@@ -2965,28 +2969,30 @@ WHERE
 			"     │       └─ Project\n" +
 			"     │           ├─ columns: [Subquery\n" +
 			"     │           │   ├─ cacheable: false\n" +
-			"     │           │   └─ Project\n" +
-			"     │           │       ├─ columns: [tdrvg.id]\n" +
-			"     │           │       └─ TopN(Limit: [1]; tdrvg.id ASC)\n" +
-			"     │           │           └─ Filter\n" +
-			"     │           │               ├─ (tdrvg.SSHPJ = s7byt.SSHPJ)\n" +
-			"     │           │               └─ IndexedTableAccess(TDRVG)\n" +
-			"     │           │                   ├─ index: [TDRVG.SSHPJ]\n" +
-			"     │           │                   ├─ columns: [id sshpj]\n" +
-			"     │           │                   └─ keys: s7byt.SSHPJ\n" +
+			"     │           │   └─ Limit(1)\n" +
+			"     │           │       └─ Project\n" +
+			"     │           │           ├─ columns: [tdrvg.id]\n" +
+			"     │           │           └─ TopN(Limit: [1]; tdrvg.id ASC)\n" +
+			"     │           │               └─ Filter\n" +
+			"     │           │                   ├─ (tdrvg.SSHPJ = s7byt.SSHPJ)\n" +
+			"     │           │                   └─ IndexedTableAccess(TDRVG)\n" +
+			"     │           │                       ├─ index: [TDRVG.SSHPJ]\n" +
+			"     │           │                       ├─ columns: [id sshpj]\n" +
+			"     │           │                       └─ keys: s7byt.SSHPJ\n" +
 			"     │           │   as id]\n" +
 			"     │           └─ Project\n" +
 			"     │               ├─ columns: [s7byt.SSHPJ, s7byt.SFJ6L, Subquery\n" +
 			"     │               │   ├─ cacheable: false\n" +
-			"     │               │   └─ Project\n" +
-			"     │               │       ├─ columns: [tdrvg.id]\n" +
-			"     │               │       └─ TopN(Limit: [1]; tdrvg.id ASC)\n" +
-			"     │               │           └─ Filter\n" +
-			"     │               │               ├─ (tdrvg.SSHPJ = s7byt.SSHPJ)\n" +
-			"     │               │               └─ IndexedTableAccess(TDRVG)\n" +
-			"     │               │                   ├─ index: [TDRVG.SSHPJ]\n" +
-			"     │               │                   ├─ columns: [id sshpj]\n" +
-			"     │               │                   └─ keys: s7byt.SSHPJ\n" +
+			"     │               │   └─ Limit(1)\n" +
+			"     │               │       └─ Project\n" +
+			"     │               │           ├─ columns: [tdrvg.id]\n" +
+			"     │               │           └─ TopN(Limit: [1]; tdrvg.id ASC)\n" +
+			"     │               │               └─ Filter\n" +
+			"     │               │                   ├─ (tdrvg.SSHPJ = s7byt.SSHPJ)\n" +
+			"     │               │                   └─ IndexedTableAccess(TDRVG)\n" +
+			"     │               │                       ├─ index: [TDRVG.SSHPJ]\n" +
+			"     │               │                       ├─ columns: [id sshpj]\n" +
+			"     │               │                       └─ keys: s7byt.SSHPJ\n" +
 			"     │               │   as id]\n" +
 			"     │               └─ Project\n" +
 			"     │                   ├─ columns: [s7byt.SSHPJ, s7byt.SFJ6L]\n" +
