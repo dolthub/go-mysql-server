@@ -5352,41 +5352,38 @@ Select * from (
 	},
 	{
 		Query: `select * from xy where exists (select * from ab where a = x order by a limit 2) order by x limit 5`,
-		ExpectedPlan: "Limit(5)\n" +
-			" └─ TopN(Limit: [5 (bigint)]; xy.x:0!null ASC nullsFirst)\n" +
-			"     └─ SemiLookupJoin\n" +
-			"         ├─ ProcessTable\n" +
-			"         │   └─ Table\n" +
-			"         │       ├─ name: xy\n" +
-			"         │       └─ columns: [x y]\n" +
-			"         └─ IndexedTableAccess(ab)\n" +
-			"             ├─ index: [ab.a]\n" +
-			"             ├─ keys: [xy.x:0!null]\n" +
-			"             ├─ colSet: (3,4)\n" +
-			"             ├─ tableId: 2\n" +
-			"             └─ Table\n" +
-			"                 ├─ name: ab\n" +
-			"                 └─ columns: [a b]\n" +
+		ExpectedPlan: "TopN(Limit: [5 (bigint)]; xy.x:0!null ASC nullsFirst)\n" +
+			" └─ SemiLookupJoin\n" +
+			"     ├─ ProcessTable\n" +
+			"     │   └─ Table\n" +
+			"     │       ├─ name: xy\n" +
+			"     │       └─ columns: [x y]\n" +
+			"     └─ IndexedTableAccess(ab)\n" +
+			"         ├─ index: [ab.a]\n" +
+			"         ├─ keys: [xy.x:0!null]\n" +
+			"         ├─ colSet: (3,4)\n" +
+			"         ├─ tableId: 2\n" +
+			"         └─ Table\n" +
+			"             ├─ name: ab\n" +
+			"             └─ columns: [a b]\n" +
 			"",
-		ExpectedEstimates: "Limit(5)\n" +
-			" └─ TopN(Limit: [5]; xy.x ASC)\n" +
-			"     └─ SemiLookupJoin\n" +
-			"         ├─ Table\n" +
-			"         │   └─ name: xy\n" +
-			"         └─ IndexedTableAccess(ab)\n" +
-			"             ├─ index: [ab.a]\n" +
-			"             ├─ columns: [a b]\n" +
-			"             └─ keys: xy.x\n" +
+		ExpectedEstimates: "TopN(Limit: [5]; xy.x ASC)\n" +
+			" └─ SemiLookupJoin\n" +
+			"     ├─ Table\n" +
+			"     │   └─ name: xy\n" +
+			"     └─ IndexedTableAccess(ab)\n" +
+			"         ├─ index: [ab.a]\n" +
+			"         ├─ columns: [a b]\n" +
+			"         └─ keys: xy.x\n" +
 			"",
-		ExpectedAnalysis: "Limit(5)\n" +
-			" └─ TopN(Limit: [5]; xy.x ASC)\n" +
-			"     └─ SemiLookupJoin\n" +
-			"         ├─ Table\n" +
-			"         │   └─ name: xy\n" +
-			"         └─ IndexedTableAccess(ab)\n" +
-			"             ├─ index: [ab.a]\n" +
-			"             ├─ columns: [a b]\n" +
-			"             └─ keys: xy.x\n" +
+		ExpectedAnalysis: "TopN(Limit: [5]; xy.x ASC)\n" +
+			" └─ SemiLookupJoin\n" +
+			"     ├─ Table\n" +
+			"     │   └─ name: xy\n" +
+			"     └─ IndexedTableAccess(ab)\n" +
+			"         ├─ index: [ab.a]\n" +
+			"         ├─ columns: [a b]\n" +
+			"         └─ keys: xy.x\n" +
 			"",
 	},
 	{
