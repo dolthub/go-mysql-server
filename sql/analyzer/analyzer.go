@@ -95,7 +95,7 @@ func NewBuilder(pro sql.DatabaseProvider) *Builder {
 	}
 }
 
-// WithDebug activates debug on the Analyzer.
+// WithDebug activates debug on the Analyzer. This is used for debugging purposes.
 func (ab *Builder) WithDebug() *Builder {
 	ab.debug = true
 
