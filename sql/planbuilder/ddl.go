@@ -1820,10 +1820,6 @@ func (b *Builder) buildDBDDL(inScope *scope, c *ast.DBDDL) (outScope *scope) {
 	outScope = inScope.push()
 	switch strings.ToLower(c.Action) {
 	case ast.CreateStr:
-		if strings.ContainsRune(c.DBName, '/') {
-			b.handleErr(sql.ErrInvalidDatabaseName.New(c.DBName))
-		}
-
 		var charsetStr, collationStr string
 		if len(c.CharsetCollate) != 0 && b.ctx != nil && b.ctx.Session != nil {
 			b.ctx.Session.Warn(&sql.Warning{
