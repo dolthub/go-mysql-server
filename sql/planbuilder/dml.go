@@ -564,7 +564,7 @@ func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 		for _, rt := range tablesToUpdate {
 			tableScope := inScope.push()
 			for _, c := range rt.Schema() {
-				tableScope.addColumn(scopeColumn{
+				tableScope.addColumn(&scopeColumn{
 					db:       rt.SqlDatabase.Name(),
 					table:    strings.ToLower(rt.Name()),
 					tableId:  tableScope.tables[strings.ToLower(rt.Name())],

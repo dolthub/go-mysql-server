@@ -306,7 +306,11 @@ func (b *Builder) validateStatement(inScope *scope, stmt ast.Statement) {
 				varName := strings.ToLower(v.String())
 				param := expression.NewProcedureParam(varName, typ)
 				inScope.proc.AddVar(param)
-				inScope.newColumn(scopeColumn{col: varName, typ: typ, scalar: param})
+				inScope.newColumn(&scopeColumn{
+					col:    varName,
+					typ:    typ,
+					scalar: param,
+				})
 			}
 		} else if s.Cursor != nil {
 			inScope.proc.AddCursor(s.Cursor.Name)
@@ -695,7 +699,7 @@ func (b *Builder) buildCreateView(inScope *scope, subQuery string, fullQuery str
 	var cols sql.ColSet
 
 	for i, col := range queryScope.cols {
-		id := outScope.newColumn(scopeColumn{
+		id := outScope.newColumn(&scopeColumn{
 			db:          dbName,
 			table:       aliasName,
 			col:         strings.ToLower(queryAlias.ColumnNames[i]),
