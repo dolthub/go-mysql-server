@@ -114,6 +114,18 @@ func InspectExpr(expr sql.Expression, f func(sql.Expression) bool) (stop bool) {
 		if InspectExpr(e.Right(), f) {
 			return true
 		}
+	// TODO: special case is here because select_random_ranges has a large number of Between queries that alloc.
+	//  We should create an interface for expressions to Inspect their member variables.
+	case *expression.Between:
+		if InspectExpr(e.Val, f) {
+			return true
+		}
+		if InspectExpr(e.Lower, f) {
+			return true
+		}
+		if InspectExpr(e.Upper, f) {
+			return true
+		}
 	default:
 		children := e.Children()
 		for _, child := range children {

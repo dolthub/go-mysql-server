@@ -200,9 +200,9 @@ func keysEqual(ctx *sql.Context, types []sql.Type, left, right []interface{}) (b
 	return true, nil
 }
 
-func PrefixLt(ctx *sql.Context, buckets []sql.HistogramBucket, types []sql.Type, val interface{}) ([]sql.HistogramBucket, error) {
-	// first bucket whose upper bound is greater than val
-	idx, err := PrefixLtHist(buckets, sql.Row{val}, func(i, j sql.Row) (int, error) {
+func PrefixLt(ctx *sql.Context, buckets []sql.HistogramBucket, types []sql.Type, target sql.Row) ([]sql.HistogramBucket, error) {
+	// first bucket whose upper bound is greater than target
+	idx, err := PrefixLtHist(buckets, target, func(i, j sql.Row) (int, error) {
 		return nilSafeCmp(ctx, types[0], i[0], j[0])
 	})
 	if err != nil {
@@ -213,8 +213,8 @@ func PrefixLt(ctx *sql.Context, buckets []sql.HistogramBucket, types []sql.Type,
 	return PrefixIsNotNull(ret)
 }
 
-func PrefixGt(ctx *sql.Context, buckets []sql.HistogramBucket, types []sql.Type, val interface{}) ([]sql.HistogramBucket, error) {
-	idx, err := PrefixGtHist(buckets, sql.Row{val}, func(i, j sql.Row) (int, error) {
+func PrefixGt(ctx *sql.Context, buckets []sql.HistogramBucket, types []sql.Type, target sql.Row) ([]sql.HistogramBucket, error) {
+	idx, err := PrefixGtHist(buckets, target, func(i, j sql.Row) (int, error) {
 		return nilSafeCmp(ctx, types[0], i[0], j[0])
 	})
 	if err != nil {
@@ -222,15 +222,12 @@ func PrefixGt(ctx *sql.Context, buckets []sql.HistogramBucket, types []sql.Type,
 	}
 	// inclusive of idx bucket
 	ret := buckets[idx:]
-	if err != nil {
-		return nil, err
-	}
 	return PrefixIsNotNull(ret)
 }
 
-func PrefixLte(ctx *sql.Context, buckets []sql.HistogramBucket, types []sql.Type, val interface{}) ([]sql.HistogramBucket, error) {
-	// first bucket whose upper bound is greater than val
-	idx, err := PrefixLteHist(buckets, sql.Row{val}, func(i, j sql.Row) (int, error) {
+func PrefixLte(ctx *sql.Context, buckets []sql.HistogramBucket, types []sql.Type, target sql.Row) ([]sql.HistogramBucket, error) {
+	// first bucket whose upper bound is greater than row
+	idx, err := PrefixLteHist(buckets, target, func(i, j sql.Row) (int, error) {
 		return nilSafeCmp(ctx, types[0], i[0], j[0])
 	})
 	if err != nil {
@@ -298,8 +295,8 @@ func PrefixGteHist(h []sql.HistogramBucket, target sql.Row, cmp func(sql.Row, sq
 	return idx, searchErr
 }
 
-func PrefixGte(ctx *sql.Context, buckets []sql.HistogramBucket, types []sql.Type, val interface{}) ([]sql.HistogramBucket, error) {
-	idx, err := PrefixGteHist(buckets, sql.Row{val}, func(i, j sql.Row) (int, error) {
+func PrefixGte(ctx *sql.Context, buckets []sql.HistogramBucket, types []sql.Type, target sql.Row) ([]sql.HistogramBucket, error) {
+	idx, err := PrefixGteHist(buckets, target, func(i, j sql.Row) (int, error) {
 		return nilSafeCmp(ctx, types[0], i[0], j[0])
 	})
 	if err != nil {

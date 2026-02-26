@@ -402,16 +402,16 @@ func extractJoinColumnExpr(e sql.Expression) (leftCol *joinColExpr, rightCol *jo
 // Those expressions are NOT evaluable.
 func isEvaluable(e sql.Expression) bool {
 	var hasUnevaluable bool
-	sql.Inspect(e, func(e sql.Expression) bool {
+	transform.InspectExpr(e, func(e sql.Expression) bool {
 		switch e.(type) {
 		case *expression.GetField, *expression.UnresolvedColumn,
 			*plan.Subquery,
 			*expression.BindVar,
 			*expression.ProcedureParam:
 			hasUnevaluable = true
-			return false
-		default:
 			return true
+		default:
+			return false
 		}
 	})
 	return !hasUnevaluable
