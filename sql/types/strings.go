@@ -767,6 +767,9 @@ func (t StringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.
 			}
 		default:
 			valueBytes, err = ConvertToBytes(ctx, v, t, dest)
+			if err != nil {
+				return sqltypes.Value{}, err
+			}
 		}
 		if t.baseType == sqltypes.Binary {
 			val = append(val, make([]byte, int(t.maxCharLength)-len(val))...)
