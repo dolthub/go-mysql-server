@@ -65,13 +65,21 @@ func Inspect(node sql.Node, f func(sql.Node) bool) (cont bool) {
 	// Avoid allocating []sql.Expression
 	switch n := node.(type) {
 	case sql.UnaryNode:
-		Inspect(n.Child(), f)
+		if !Inspect(n.Child(), f) {
+			return false
+		}
 	case sql.BinaryNode:
-		Inspect(n.Left(), f)
-		Inspect(n.Right(), f)
+		if !Inspect(n.Left(), f) {
+			return false
+		}
+		if !Inspect(n.Right(), f) {
+			return false
+		}
 	default:
 		for _, child := range n.Children() {
-			Inspect(child, f)
+			if !Inspect(child, f) {
+				return false
+			}
 		}
 	}
 	return true
