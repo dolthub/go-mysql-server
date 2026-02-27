@@ -2580,7 +2580,7 @@ end;`,
 	{
 		Name: "insert into common sequence table (https://github.com/dolthub/dolt/issues/2534)",
 		SetUpScript: []string{
-			"create table mytable (id integer PRIMARY KEY DEFAULT 0, sometext text);",
+			"create table mytable (id integer PRIMARY KEY DEFAULT 0, sometext text DEFAULT NULL);",
 			"create table sequence_table (max_id integer PRIMARY KEY);",
 			"create trigger update_position_id before insert on mytable for each row begin set new.id = (select coalesce(max(max_id),1) from sequence_table); update sequence_table set max_id = max_id + 1; end;",
 			"insert into sequence_table values (1);",
@@ -2611,7 +2611,7 @@ end;`,
 	{
 		Name: "insert into common sequence table workaround",
 		SetUpScript: []string{
-			"create table mytable (id integer PRIMARY KEY DEFAULT 0, sometext text);",
+			"create table mytable (id integer PRIMARY KEY DEFAULT 0, sometext text DEFAULT NULL);",
 			"create table sequence_table (max_id integer PRIMARY KEY);",
 			`create trigger update_position_id before insert on mytable for each row 
 			begin 
@@ -4709,7 +4709,7 @@ var BrokenTriggerQueries = []ScriptTest{
 	{
 		Name: "update common table multiple times in single insert",
 		SetUpScript: []string{
-			"create table mytable (id integer PRIMARY KEY DEFAULT 0, sometext text);",
+			"create table mytable (id integer PRIMARY KEY DEFAULT 0, sometext text DEFAULT NULL);",
 			"create table sequence_table (max_id integer PRIMARY KEY);",
 			"create trigger update_position_id before insert on mytable for each row begin set new.id = (select coalesce(max(max_id),1) from sequence_table); update sequence_table set max_id = max_id + 1; end;",
 			"insert into sequence_table values (1);",

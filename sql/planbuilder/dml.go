@@ -75,8 +75,25 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 		if len(columns) == 0 && len(destScope.cols) > 0 && rt != nil {
 			schema := rt.Schema()
 			columns = make([]string, len(schema))
-			for i, col := range schema {
-				columns[i] = col.Name
+			for index, col := range schema {
+				columns[index] = col.Name
+			}
+			if ir, ok := i.Rows.(*ast.AliasedValues); ok {
+				// Handle any empty VALUES() tuples when no column list was specified
+				for valueIdx, valueRow := range ir.Values {
+					if len(valueRow) == 0 {
+						// VALUES() clause is empty in conjunction with empty column list, so we need to
+						// insert default val for respective columns.
+						ir.Values[valueIdx] = make([]ast.Expr, len(schema))
+						for j, col := range schema {
+							if col.Default == nil && !col.AutoIncrement {
+								b.handleErr(sql.ErrInsertIntoNonNullableDefaultNullColumn.New(col.Name))
+							}
+
+							ir.Values[valueIdx][j] = &ast.Default{}
+						}
+					}
+				}
 			}
 		}
 	}
@@ -210,20 +227,20 @@ func (b *Builder) buildInsertValues(inScope *scope, v *ast.AliasedValues, column
 	literalOnly = true
 	exprTuples := make([][]sql.Expression, len(v.Values))
 	for i, vt := range v.Values {
-		// noExprs is an edge case where we fill VALUES with nil expressions
-		noExprs := len(vt) == 0
 		// triggerUnknownTable is an edge case where we ignored an unresolved
 		// table error and do not have a schema for resolving defaults
 		triggerUnknownTable := (len(columnNames) == 0 && len(vt) > 0) && (len(b.TriggerCtx().UnresolvedTables) > 0)
 
-		if len(vt) != len(columnNames) && !noExprs && !triggerUnknownTable {
-			err := sql.ErrInsertIntoMismatchValueCount.New()
+		// For empty VALUES with explicit column list, this is an error
+		// For empty VALUES without column list, it was handled above by filling with defaults
+		if len(vt) != len(columnNames) && !triggerUnknownTable {
+			err := sql.ErrColValCountMismatch.New(i + 1)
 			b.handleErr(err)
 		}
 		exprs := make([]sql.Expression, len(columnNames))
 		exprTuples[i] = exprs
 		for j := range columnNames {
-			if noExprs || triggerUnknownTable {
+			if triggerUnknownTable {
 				exprs[j] = expression.WrapExpression(columnDefaultValues[j])
 				continue
 			}
