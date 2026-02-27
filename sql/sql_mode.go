@@ -169,16 +169,20 @@ func NewSqlModeFromString(sqlModeString string) *SqlMode {
 		return defaultMode
 	}
 	sqlModeString = strings.ToLower(sqlModeString)
-	elements := strings.Split(sqlModeString, ",")
-	sort.Strings(elements)
+
 	modes := map[string]struct{}{}
-	for _, element := range elements {
-		modes[element] = struct{}{}
+	start, end := 0, 0
+	for ; end < len(sqlModeString); end++ {
+		if sqlModeString[end] != ',' {
+			continue
+		}
+		modes[sqlModeString[start:end]] = struct{}{}
+		start = end + 1
 	}
+	modes[sqlModeString[start:end]] = struct{}{}
 
 	return &SqlMode{
-		modes:      modes,
-		modeString: strings.ToUpper(strings.Join(elements, ",")),
+		modes: modes,
 	}
 }
 
@@ -240,6 +244,14 @@ func (s *SqlMode) ParserOptions() sqlparser.ParserOptions {
 
 // String returns the SQL_MODE string representing this SqlMode instance.
 func (s *SqlMode) String() string {
+	if len(s.modeString) == 0 && len(s.modes) > 0 {
+		modes := make([]string, 0, len(s.modes))
+		for mode := range s.modes {
+			modes = append(modes, mode)
+		}
+		sort.Strings(modes)
+		s.modeString = strings.ToUpper(strings.Join(modes, ","))
+	}
 	return s.modeString
 }
 
