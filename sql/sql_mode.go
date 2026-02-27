@@ -169,13 +169,11 @@ func NewSqlModeFromString(sqlModeString string) *SqlMode {
 		return defaultMode
 	}
 	sqlModeString = strings.ToLower(sqlModeString)
-	elements := strings.Split(sqlModeString, ",") // TODO: write our own unsafe split?
-	sort.Strings(elements)
+	elements := strings.Split(sqlModeString, ",")
 	modes := map[string]struct{}{}
 	for _, element := range elements {
 		modes[element] = struct{}{}
 	}
-
 	return &SqlMode{
 		modes: modes,
 	}
