@@ -165,12 +165,11 @@ func LoadSqlMode(ctx *Context) *SqlMode {
 // NewSqlModeFromString returns a new SqlMode instance, constructed from the specified |sqlModeString| that
 // has a comma-delimited list of SQL modes (e.g. "ONLY_FULLY_GROUP_BY,ANSI_QUOTES").
 func NewSqlModeFromString(sqlModeString string) *SqlMode {
-	if sqlModeString == DefaultSqlMode {
+	if sqlModeString == DefaultSqlMode { // TODO: why? wouldn't it just parse to this anyway?? faster?
 		return defaultMode
 	}
 	sqlModeString = strings.ToLower(sqlModeString)
-	elements := strings.Split(sqlModeString, ",")
-	sort.Strings(elements)
+	elements := strings.Split(sqlModeString, ",") // TODO: write our own unsafe split?
 	modes := map[string]struct{}{}
 	for _, element := range elements {
 		modes[element] = struct{}{}
