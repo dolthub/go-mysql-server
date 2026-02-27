@@ -55,13 +55,13 @@ func newAuthServer(db *MySQLDb) *authServer {
 	// mysql_native_password auth support
 	nativePasswordAuthMethod := mysql.NewMysqlNativeAuthMethod(
 		&nativePasswordHashStorage{db: db},
-		&nativePasswordUserValidator{db: db})
+		newUserValidator(db, mysql.MysqlNativePassword))
 
 	// caching_sha2_password auth support
 	cachingSha2PasswordAuthMethod := mysql.NewSha2CachingAuthMethod(
 		&noopCachingStorage{db: db},
 		&sha2PlainTextStorage{db: db},
-		&cachingSha2UserValidator{db: db})
+		newUserValidator(db, mysql.CachingSha2Password))
 
 	// The extended auth method allows for integrators to register their own PlaintextAuthPlugin implementations,
 	// and uses the MySQL clear auth method to send the auth information from the client to the server.
@@ -313,10 +313,6 @@ func (uv extendedAuthUserValidator) HandleUser(user string, remoteAddr net.Addr)
 	db := uv.db
 	rd := db.Reader()
 	defer rd.Close()
-
-	if !db.Enabled() {
-		return true
-	}
 	userEntry := db.GetUser(rd, user, host, false)
 	if userEntry == nil {
 		return false
@@ -447,73 +443,86 @@ func validateConnectionSecurity(userEntry *User, conn *mysql.Conn) error {
 	return nil
 }
 
-// cachingSha2UserValidator gates the caching_sha2_password auth method to accounts configured with that plugin.
-type cachingSha2UserValidator struct {
+// userValidator implements the [mysql.UserValidator] interface. It looks up a user and host from the associated mysql
+// |db| and validates that a user entry exists and that it is configured for the specified authentication plugin
+// (|authMethod|).
+type userValidator struct {
+	// db is the mysql database that contains user information
 	db *MySQLDb
+	// authMethod is the name of the auth plugin for which this validator will
+	// validate users.
+	authMethod mysql.AuthMethodDescription
 }
 
-var _ mysql.UserValidator = (*cachingSha2UserValidator)(nil)
+var _ mysql.UserValidator = (*userValidator)(nil)
 
-// HandleUser implements mysql.UserValidator and returns true only when the matched account uses caching_sha2_password.
-func (uv *cachingSha2UserValidator) HandleUser(user string, remoteAddr net.Addr) bool {
+// newUserValidator creates a new userValidator instance, configured to use |db| to look up user
+// entries and validate that they have the specified auth plugin (|authMethod|) configured.
+func newUserValidator(db *MySQLDb, authMethod mysql.AuthMethodDescription) *userValidator {
+	return &userValidator{
+		db:         db,
+		authMethod: authMethod,
+	}
+}
+
+// HandleUser implements [mysql.UserValidator]. It verified if the specified userValidator auth method
+// can be used for the specified |user| at the specified |remoteAddr|. Any resolved decoy (non-existent) user
+// is delegated to only the [mysql.MysqlNativePassword] plugin to return the expected access denied error.
+func (uv *userValidator) HandleUser(user string, remoteAddr net.Addr) bool {
 	// If the mysql database is not enabled, then we don't have user information, so
 	// go ahead and return true without trying to look up the user in the db.
 	if !uv.db.Enabled() {
 		return true
 	}
 
-	userEntry, ok := getUserEntryForAuth(uv.db, user, remoteAddr)
-	if !ok {
-		return false
-	}
-
-	// If we don't find a matching user, or the account uses a different auth plugin,
-	// then this auth method cannot handle that user.
-	if userEntry == nil || userEntry.Plugin != string(mysql.CachingSha2Password) {
-		return false
-	}
-
-	return true
-}
-
-// nativePasswordUserValidator gates the mysql_native_password auth method.
-type nativePasswordUserValidator struct {
-	db *MySQLDb
-}
-
-var _ mysql.UserValidator = (*nativePasswordUserValidator)(nil)
-
-// HandleUser allows unknown users through native negotiation so this auth path returns ER_ACCESS_DENIED instead of
-// ending in a method-selection handshake error.
-func (uv *nativePasswordUserValidator) HandleUser(user string, remoteAddr net.Addr) bool {
-	if !uv.db.Enabled() {
-		return true
-	}
-
-	userEntry, ok := getUserEntryForAuth(uv.db, user, remoteAddr)
-	if !ok {
-		return false
-	}
-	if userEntry == nil {
-		return true
-	}
-	return userEntry.Plugin == string(mysql.MysqlNativePassword)
-}
-
-// getUserEntryForAuth resolves the host and loads the matching mysql.user entry. It returns false when host resolution
-// fails.
-func getUserEntryForAuth(db *MySQLDb, user string, remoteAddr net.Addr) (*User, bool) {
 	host, err := extractHostAddress(remoteAddr)
 	if err != nil {
 		logrus.Warnf("error extracting host address: %v", err)
-		return nil, false
+		return false
 	}
 
-	rd := db.Reader()
+	rd := uv.db.Reader()
 	defer rd.Close()
 
-	userEntry := db.GetUser(rd, user, host, false)
-	return userEntry, true
+	userEntry := uv.db.GetUser(rd, user, host, false)
+	if userEntry == nil {
+		return decoyAuthSubject{}.Allows(uv.authMethod)
+	}
+
+	return realAuthSubject{}.Allows(uv.authMethod)
+}
+
+// authSubject models who is being authenticated in method selection.
+type authSubject interface {
+	Allows(method mysql.AuthMethodDescription) bool
+}
+
+// realAuthSubject represents a real mysql.user row resolved from storage.
+type realAuthSubject struct {
+	userEntry *User
+}
+
+var _ authSubject = (*realAuthSubject)(nil)
+
+// Allows returns whether |method| matches the real account's configured authentication plugin.
+func (s realAuthSubject) Allows(method mysql.AuthMethodDescription) bool {
+	return s.userEntry.Plugin == string(method)
+}
+
+// decoyAuthSubject represents MySQL's internal "pretend user exists" behavior for unknown usernames. Intentionally
+// allows the native method so plugin auth returns ER_ACCESS_DENIED ([mysql.ERAccessDeniedError]:1045,
+// [mysql.SSAccessDeniedError]:"28000"), instead of failing method selection at handshake time.
+//
+// TODO: When a username is not found (decoy), route it through an enabled auth method so client gets access denied.
+//
+//	More options also reduces the observability of account-enumeration (an observable difference in login behavior).
+type decoyAuthSubject struct{}
+
+var _ authSubject = decoyAuthSubject{}
+
+// Allows returns true only for native-password method selection and ensures we follow through on access denied.
+func (decoyAuthSubject) Allows(method mysql.AuthMethodDescription) bool {
+	return method == mysql.MysqlNativePassword
 }
 
 // extractHostAddress extracts the host address from |addr|, checking to see if it is a unix socket, and if
