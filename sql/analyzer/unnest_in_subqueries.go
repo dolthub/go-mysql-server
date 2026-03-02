@@ -43,7 +43,7 @@ func unnestInSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 	if !qFlags.SubqueryIsSet() {
 		return n, transform.SameTree, nil
 	}
-	
+
 	switch n.(type) {
 	case *plan.DeleteFrom, *plan.InsertInto:
 		return n, transform.SameTree, nil

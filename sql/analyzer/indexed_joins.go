@@ -173,7 +173,7 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 	}
 
 	// TODO: updateJoinIter is not able to handle left joins wrapped in project nodes, which is what an antijoin gets
-	//  converted to.
+	//  converted to. https://github.com/dolthub/dolt/issues/10614
 	if !qFlags.IsSet(sql.QFlagUpdate) {
 		err = convertAntiToLeftJoin(m)
 		if err != nil {

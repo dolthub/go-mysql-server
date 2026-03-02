@@ -353,7 +353,8 @@ func (u *updateJoinIter) shouldUpdateDirectionalJoin(ctx *sql.Context, joinRow, 
 	// TODO: We shouldn't be evaluating the join condition on "joinRow". "joinRow" is not actually the row from the
 	//  join node but rather the row from the updateSourceIter. The join node could be wrapped in a Project node and the
 	//  indexes in the join condition would no longer match the correct columns. We also need to consider how to handle
-	//  updateJoins where a LeftOuterJoin is filtered by a null right side.
+	//  updateJoins where a LeftOuterJoin is filtered by a null right side. JoinCond could also be nil.
+	//  https://github.com/dolthub/dolt/issues/10614
 	val, err := jn.JoinCond().Eval(ctx, joinRow)
 	if err != nil {
 		return true, err
