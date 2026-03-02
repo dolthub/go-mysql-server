@@ -351,7 +351,7 @@ func (u *updateJoinIter) shouldUpdateDirectionalJoin(ctx *sql.Context, joinRow, 
 
 	// If the overall row fits the join condition it is fine (i.e. middle of the venn diagram).
 	// TODO: We shouldn't be evaluating the join condition on "joinRow". "joinRow" is not actually the row from the
-	//  join node but rather the row from the updateSourceIter. The joinNode could be wrapped in a Project node and the
+	//  join node but rather the row from the updateSourceIter. The join node could be wrapped in a Project node and the
 	//  indexes in the join condition would no longer match the correct columns. We also need to consider how to handle
 	//  updateJoins where a LeftOuterJoin is filtered by a null right side.
 	val, err := jn.JoinCond().Eval(ctx, joinRow)

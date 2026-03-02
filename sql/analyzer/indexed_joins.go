@@ -172,9 +172,13 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 		return nil, err
 	}
 
-	err = convertAntiToLeftJoin(m)
-	if err != nil {
-		return nil, err
+	// TODO: updateJoinIter is not able to handle left joins wrapped in project nodes, which is what an antijoin gets
+	//  converted to.
+	if !qFlags.IsSet(sql.QFlagUpdate) {
+		err = convertAntiToLeftJoin(m)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	err = addRightSemiJoins(ctx, m)
