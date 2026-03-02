@@ -45,7 +45,7 @@ func unnestInSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.S
 	}
 
 	switch n.(type) {
-	case *plan.DeleteFrom, *plan.InsertInto:
+	case *plan.DeleteFrom, *plan.InsertInto, *plan.Update:
 		return n, transform.SameTree, nil
 	}
 

@@ -209,12 +209,13 @@ func newUpdateIter(
 // done once.
 type updateJoinIter struct {
 	updateSourceIter sql.RowIter
-	joinNode         sql.Node
-	updaters         map[string]sql.RowUpdater
-	caches           map[string]sql.KeyValueCache
-	disposals        map[string]sql.DisposeFunc
-	accumulator      *updateJoinRowHandler
-	joinSchema       sql.Schema
+	// TODO: naming this joinNode is confusing. It's not actually a Join node but rather an UpdateSource
+	joinNode    sql.Node
+	updaters    map[string]sql.RowUpdater
+	caches      map[string]sql.KeyValueCache
+	disposals   map[string]sql.DisposeFunc
+	accumulator *updateJoinRowHandler
+	joinSchema  sql.Schema
 }
 
 var _ sql.RowIter = (*updateJoinIter)(nil)
@@ -289,6 +290,7 @@ func (u *updateJoinIter) Next(ctx *sql.Context) (sql.Row, error) {
 }
 
 func toJoinNode(node sql.Node) *plan.JoinNode {
+	// TODO: rewrite this to use Inspect
 	switch n := node.(type) {
 	case *plan.JoinNode:
 		return n
@@ -348,6 +350,10 @@ func (u *updateJoinIter) shouldUpdateDirectionalJoin(ctx *sql.Context, joinRow, 
 	}
 
 	// If the overall row fits the join condition it is fine (i.e. middle of the venn diagram).
+	// TODO: We shouldn't be evaluating the join condition on "joinRow". "joinRow" is not actually the row from the
+	//  join node but rather the row from the updateSourceIter. The joinNode could be wrapped in a Project node and the
+	//  indexes in the join condition would no longer match the correct columns. We also need to consider how to handle
+	//  updateJoins where a LeftOuterJoin is filtered by a null right side.
 	val, err := jn.JoinCond().Eval(ctx, joinRow)
 	if err != nil {
 		return true, err
