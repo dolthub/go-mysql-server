@@ -36,12 +36,8 @@ var (
 
 	ErrConvertingToTimeType = errors.NewKind("value %v is not a valid Time")
 
-	timespanMinimum           int64 = -3020399000000
-	timespanMaximum           int64 = 3020399000000
-	microsecondsPerSecond     int64 = 1000000
-	microsecondsPerMinute     int64 = 60000000
-	microsecondsPerHour       int64 = 3600000000
-	nanosecondsPerMicrosecond int64 = 1000
+	timespanMinimum int64 = -3020399000000
+	timespanMaximum int64 = 3020399000000
 
 	timeValueType = reflect.TypeOf(Timespan(0))
 )
@@ -141,12 +137,12 @@ func (t TimespanType_) ConvertToTimespan(v interface{}) (Timespan, error) {
 	case int64:
 		absValue := int64Abs(value)
 		if absValue >= -59 && absValue <= 59 {
-			return t.MicrosecondsToTimespan(value * microsecondsPerSecond), nil
+			return t.MicrosecondsToTimespan(value * sql.MicrosecondsPerSecond), nil
 		} else if absValue >= 100 && absValue <= 9999 {
 			minutes := absValue / 100
 			seconds := absValue % 100
 			if minutes <= 59 && seconds <= 59 {
-				microseconds := (seconds * microsecondsPerSecond) + (minutes * microsecondsPerMinute)
+				microseconds := (seconds * sql.MicrosecondsPerSecond) + (minutes * sql.MicrosecondsPerMinute)
 				if value < 0 {
 					return t.MicrosecondsToTimespan(-1 * microseconds), nil
 				}
@@ -157,7 +153,8 @@ func (t TimespanType_) ConvertToTimespan(v interface{}) (Timespan, error) {
 			minutes := (absValue / 100) % 100
 			seconds := absValue % 100
 			if minutes <= 59 && seconds <= 59 {
-				microseconds := (seconds * microsecondsPerSecond) + (minutes * microsecondsPerMinute) + (hours * microsecondsPerHour)
+				microseconds := (seconds * sql.MicrosecondsPerSecond) + (minutes * sql.MicrosecondsPerMinute) +
+					(hours * sql.MicrosecondsPerHour)
 				if value < 0 {
 					return t.MicrosecondsToTimespan(-1 * microseconds), nil
 				}
@@ -170,10 +167,10 @@ func (t TimespanType_) ConvertToTimespan(v interface{}) (Timespan, error) {
 		return t.ConvertToTimespan(float64(value))
 	case float64:
 		intValue := int64(value)
-		microseconds := int64Abs(int64(math.Round((value - float64(intValue)) * float64(microsecondsPerSecond))))
+		microseconds := int64Abs(int64(math.Round((value - float64(intValue)) * float64(sql.MicrosecondsPerSecond))))
 		absValue := int64Abs(intValue)
 		if absValue >= -59 && absValue <= 59 {
-			totalMicroseconds := (absValue * microsecondsPerSecond) + microseconds
+			totalMicroseconds := (absValue * sql.MicrosecondsPerSecond) + microseconds
 			if value < 0 {
 				return t.MicrosecondsToTimespan(-1 * totalMicroseconds), nil
 			}
@@ -182,7 +179,8 @@ func (t TimespanType_) ConvertToTimespan(v interface{}) (Timespan, error) {
 			minutes := absValue / 100
 			seconds := absValue % 100
 			if minutes <= 59 && seconds <= 59 {
-				totalMicroseconds := (seconds * microsecondsPerSecond) + (minutes * microsecondsPerMinute) + microseconds
+				totalMicroseconds := (seconds * sql.MicrosecondsPerSecond) + (minutes * sql.MicrosecondsPerMinute) +
+					microseconds
 				if value < 0 {
 					return t.MicrosecondsToTimespan(-1 * totalMicroseconds), nil
 				}
@@ -193,7 +191,8 @@ func (t TimespanType_) ConvertToTimespan(v interface{}) (Timespan, error) {
 			minutes := (absValue / 100) % 100
 			seconds := absValue % 100
 			if minutes <= 59 && seconds <= 59 {
-				totalMicroseconds := (seconds * microsecondsPerSecond) + (minutes * microsecondsPerMinute) + (hours * microsecondsPerHour) + microseconds
+				totalMicroseconds := (seconds * sql.MicrosecondsPerSecond) + (minutes * sql.MicrosecondsPerMinute) +
+					(hours * sql.MicrosecondsPerHour) + microseconds
 				if value < 0 {
 					return t.MicrosecondsToTimespan(-1 * totalMicroseconds), nil
 				}
@@ -225,14 +224,14 @@ func (t TimespanType_) ConvertToTimespan(v interface{}) (Timespan, error) {
 			return t.ConvertToTimespan(strAsInt)
 		}
 	case time.Duration:
-		microseconds := value.Nanoseconds() / nanosecondsPerMicrosecond
+		microseconds := value.Nanoseconds() / sql.NanosecondsPerMicrosecond
 		return t.MicrosecondsToTimespan(microseconds), nil
 	case time.Time:
 		h, m, s := value.Clock()
-		us := int64(value.Nanosecond())/nanosecondsPerMicrosecond +
-			microsecondsPerSecond*int64(s) +
-			microsecondsPerMinute*int64(m) +
-			microsecondsPerHour*int64(h)
+		us := int64(value.Nanosecond())/sql.NanosecondsPerMicrosecond +
+			sql.MicrosecondsPerSecond*int64(s) +
+			sql.MicrosecondsPerMinute*int64(m) +
+			sql.MicrosecondsPerHour*int64(h)
 		return Timespan(us), nil
 	}
 
@@ -395,7 +394,7 @@ func stringToTimespan(s string) (Timespan, error) {
 	}
 	seconds = int8(hmsSeconds)
 
-	if microseconds == int32(microsecondsPerSecond) {
+	if microseconds == int32(sql.MicrosecondsPerSecond) {
 		microseconds = 0
 		seconds++
 	}
@@ -454,18 +453,18 @@ func unitsToTimespan(isNegative bool, hours int16, minutes int8, seconds int8, m
 	}
 	return Timespan(negative *
 		(int64(microseconds) +
-			(int64(seconds) * microsecondsPerSecond) +
-			(int64(minutes) * microsecondsPerMinute) +
-			(int64(hours) * microsecondsPerHour)))
+			(int64(seconds) * sql.MicrosecondsPerSecond) +
+			(int64(minutes) * sql.MicrosecondsPerMinute) +
+			(int64(hours) * sql.MicrosecondsPerHour)))
 }
 
 func (t Timespan) timespanToUnits() (isNegative bool, hours int16, minutes int8, seconds int8, microseconds int32) {
 	isNegative = t < 0
 	absV := int64Abs(int64(t))
-	hours = int16(absV / microsecondsPerHour)
-	minutes = int8((absV / microsecondsPerMinute) % 60)
-	seconds = int8((absV / microsecondsPerSecond) % 60)
-	microseconds = int32(absV % microsecondsPerSecond)
+	hours = int16(absV / sql.MicrosecondsPerHour)
+	minutes = int8((absV / sql.MicrosecondsPerMinute) % 60)
+	seconds = int8((absV / sql.MicrosecondsPerSecond) % 60)
+	microseconds = int32(absV % sql.MicrosecondsPerSecond)
 	return
 }
 
@@ -569,7 +568,7 @@ func (t Timespan) AsMicroseconds() int64 {
 
 // AsTimeDuration returns the Timespan as a time.Duration.
 func (t Timespan) AsTimeDuration() time.Duration {
-	return time.Duration(t.AsMicroseconds() * nanosecondsPerMicrosecond)
+	return time.Duration(t.AsMicroseconds() * sql.NanosecondsPerMicrosecond)
 }
 
 // Equals returns whether the calling Timespan and given Timespan are equivalent.
