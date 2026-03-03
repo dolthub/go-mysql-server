@@ -159,7 +159,7 @@ func (i *joinState) makeLeftOuterNonMatchingResult() sql.Row {
 	return resultRow
 }
 
-// makeLeftOuterNonMatchingResult returns a new sql.Row representing a row from an OUTER RIGHT join where no match was made with the left child.
+// makeRightOuterNonMatchingResult returns a new sql.Row representing a row from an OUTER RIGHT join where no match was made with the left child.
 func (i *joinState) makeRightOuterNonMatchingResult() sql.Row {
 	resultRow := make(sql.Row, i.resultRowSize())
 	copy(resultRow, i.scopeColumns())
