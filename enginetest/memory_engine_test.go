@@ -193,68 +193,29 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
+	t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
-			// https://github.com/dolthub/dolt/issues/10600
-			Name: "self-referential NOT IN subquery",
+			Name: "Parse table name as column",
 			SetUpScript: []string{
-				"CREATE TABLE bug_repro (id VARCHAR(32) PRIMARY KEY, status VARCHAR(16), name VARCHAR(32));",
-				"INSERT INTO bug_repro VALUES ('a', 'open', 'x'), ('b', 'open', 'y'), ('c', 'open', 'z');",
+				`CREATE TABLE test (pk INT PRIMARY KEY, v1 VARCHAR(255));`,
+				`INSERT INTO test VALUES (1, 'a'), (2, 'b');`,
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query: "SELECT * FROM bug_repro WHERE id NOT IN (SELECT id FROM bug_repro WHERE status='open' LIMIT 1);",
-					Expected: []sql.Row{
-						{"b", "open", "y"},
-						{"c", "open", "z"},
-					},
+					Query:    "SELECT temporarytesting(t) FROM test AS t;",
+					Expected: []sql.Row{},
 				},
 				{
-					Query:    "UPDATE bug_repro SET status='closed' WHERE id NOT IN (SELECT id FROM bug_repro WHERE status='open' LIMIT 1);",
-					Expected: []sql.Row{{queries.NewUpdateResult(2, 2)}},
+					Query:    "SELECT temporarytesting(test) FROM test;",
+					Expected: []sql.Row{},
 				},
 				{
-					Query:    "INSERT INTO bug_repro VALUES ('d', 'open', 'zz')",
-					Expected: []sql.Row{{types.NewOkResult(1)}},
+					Query:    "SELECT temporarytesting(pk, test) FROM test;",
+					Expected: []sql.Row{},
 				},
 				{
-					Query:    "DELETE FROM bug_repro WHERE status='open' AND id NOT IN (SELECT id FROM bug_repro WHERE status='open' LIMIT 1);",
-					Expected: []sql.Row{{types.NewOkResult(1)}},
-				},
-				{
-					Query: "select * from bug_repro",
-					Expected: []sql.Row{
-						{"a", "open", "x"},
-						{"b", "closed", "y"},
-						{"c", "closed", "z"},
-					},
-				},
-				{
-					Query:    "UPDATE bug_repro SET status='delete this' WHERE id NOT IN (SELECT id FROM bug_repro WHERE status='keep this');",
-					Expected: []sql.Row{{queries.NewUpdateResult(3, 3)}},
-				},
-				{
-					Query: "select * from bug_repro",
-					Expected: []sql.Row{
-						{"a", "delete this", "x"},
-						{"b", "delete this", "y"},
-						{"c", "delete this", "z"},
-					},
-				},
-			},
-		},
-		{
-			Skip: true,
-			SetUpScript: []string{
-				"create table vals (val int unique key);",
-				"create table ranges (min int unique key, max int, unique key(min,max));",
-				"insert into vals values (null), (0), (1), (2), (3), (4), (5), (6);",
-				"insert into ranges values (null,1), (0,2), (1,3), (2,4), (3,5), (4,6);",
-			},
-			Assertions: []queries.ScriptTestAssertion{
-				{
-					Skip:     true,
-					Query:    "select * from vals where exists (select * from ranges where val between min and max limit 0);",
+					Query:    "SELECT temporarytesting(v1, test, pk) FROM test;",
 					Expected: []sql.Row{},
 				},
 			},
@@ -269,9 +230,8 @@ func TestSingleScript(t *testing.T) {
 			panic(err)
 		}
 
-		engine.EngineAnalyzer().Debug = true
-		engine.EngineAnalyzer().Verbose = true
-		// engine.EngineAnalyzer().Coster = memo.NewMergeBiasedCoster()
+		// engine.EngineAnalyzer().Debug = true
+		// engine.EngineAnalyzer().Verbose = true
 
 		enginetest.TestScriptWithEngine(t, engine, harness, test)
 	}
