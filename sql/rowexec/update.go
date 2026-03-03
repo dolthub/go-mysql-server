@@ -209,7 +209,8 @@ func newUpdateIter(
 // done once.
 type updateJoinIter struct {
 	updateSourceIter sql.RowIter
-	// TODO: naming this joinNode is confusing. It's not actually a Join node but rather an UpdateSource
+	// TODO: naming this joinNode is confusing. It's not always a join node because it could be wrapped inside another
+	//  node
 	joinNode    sql.Node
 	updaters    map[string]sql.RowUpdater
 	caches      map[string]sql.KeyValueCache
