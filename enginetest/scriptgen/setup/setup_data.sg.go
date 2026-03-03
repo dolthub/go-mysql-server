@@ -2999,12 +2999,12 @@ var JsontableData = []SetupScript{{
 }}
 
 var KeylessData = []SetupScript{{
-	"CREATE TABLE `unique_keyless` (   `c0` bigint,   `c1` bigint )",
+	"CREATE TABLE `unique_keyless` (   `c0` bigint DEFAULT NULL,   `c1` bigint DEFAULT NULL )",
 	`insert into unique_keyless values
     (0,0),
     (1,1),
     (2,2)`,
-	"CREATE TABLE `keyless` (   `c0` bigint,   `c1` bigint )",
+	"CREATE TABLE `keyless` (   `c0` bigint DEFAULT NULL,   `c1` bigint DEFAULT NULL )",
 	`insert into keyless values
     (0,0),
     (1,1),
