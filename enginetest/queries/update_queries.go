@@ -710,6 +710,36 @@ t1.oid = t2.pid;`,
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/dolt/issues/10600
+		Name: "UPDATE with NOT IN subquery",
+		SetUpScript: []string{
+			"CREATE TABLE bug_repro (id VARCHAR(32) PRIMARY KEY, status VARCHAR(16), name VARCHAR(32));",
+			"INSERT INTO bug_repro VALUES ('a', 'open', 'x'), ('b', 'open', 'y'), ('c', 'open', 'z');",
+			"UPDATE bug_repro SET status='closed' WHERE id NOT IN (SELECT id FROM bug_repro WHERE status='open' LIMIT 1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "select * from bug_repro",
+				Expected: []sql.Row{
+					{"a", "open", "x"},
+					{"b", "closed", "y"},
+					{"c", "closed", "z"},
+				},
+			},
+			{
+				Query: "UPDATE bug_repro SET status='delete this' WHERE id NOT IN (SELECT id FROM bug_repro WHERE status='keep this');",
+			},
+			{
+				Query: "select * from bug_repro",
+				Expected: []sql.Row{
+					{"a", "delete this", "x"},
+					{"b", "delete this", "y"},
+					{"c", "delete this", "z"},
+				},
+			},
+		},
+	},
 }
 
 var SpatialUpdateTests = []WriteQueryTest{
