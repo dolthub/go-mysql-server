@@ -150,10 +150,10 @@ func (b *Builder) buildSetOp(inScope *scope, u *ast.SetOp) (outScope *scope) {
 	return
 }
 
-func (b *Builder) mergeSetOpScopeColumns(left, right []scopeColumn, tabId sql.TableId) []scopeColumn {
-	merged := make([]scopeColumn, len(left))
+func (b *Builder) mergeSetOpScopeColumns(left, right []*scopeColumn, tabId sql.TableId) []*scopeColumn {
+	merged := make([]*scopeColumn, len(left))
 	for i := range left {
-		merged[i] = scopeColumn{
+		merged[i] = &scopeColumn{
 			tableId:     tabId,
 			db:          left[i].db,
 			table:       left[i].table,
