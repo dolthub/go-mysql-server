@@ -192,7 +192,7 @@ func (s sha2PlainTextStorage) UserEntryWithPassword(conn *mysql.Conn, user strin
 
 	userEntry := db.GetUser(rd, user, host, false)
 	if userEntry == nil || userEntry.Locked {
-		return nil, newAccessDeniedError(userEntry.User)
+		return nil, newAccessDeniedError(user)
 	}
 
 	// validate any extra connection security requirements, such as SSL or a client cert
@@ -313,16 +313,12 @@ func (uv extendedAuthUserValidator) HandleUser(user string, remoteAddr net.Addr)
 	db := uv.db
 	rd := db.Reader()
 	defer rd.Close()
-
-	if !db.Enabled() {
-		return true
-	}
 	userEntry := db.GetUser(rd, user, host, false)
 	if userEntry == nil {
 		return false
 	}
 
-	for pluginName, _ := range db.plugins {
+	for pluginName := range db.plugins {
 		if userEntry.Plugin == pluginName {
 			return true
 		}
@@ -447,13 +443,16 @@ func validateConnectionSecurity(userEntry *User, conn *mysql.Conn) error {
 	return nil
 }
 
-// userValidator implements the mysql.UserValidator interface. It looks up a user and host from the
-// associated mysql database (|db|) and validates that a user entry exists and that it is configured
-// for the specified authentication plugin (|authMethod|).
+// userValidator implements [mysql.UserValidator] for one advertised auth method.
+//
+// MySQL's auth flow invokes [MySQL find_mpvio_user()] and [MySQL decoy_user()] so that authentication
+// always continues into plugin handling rather than failing at method selection for unknown usernames.
+//
+// [MySQL decoy_user()]: https://dev.mysql.com/doc/dev/mysql-server/latest/sql__authentication_8cc.html#a1de21b350d90e000bb0ff939cb698a31
+// [MySQL find_mpvio_user()]: https://dev.mysql.com/doc/dev/mysql-server/latest/sql__authentication_8cc.html#a34fece87f5ba8dcb4174941cda59e5ea
 type userValidator struct {
 	// db is the mysql database that contains user information
 	db *MySQLDb
-
 	// authMethod is the name of the auth plugin for which this validator will
 	// validate users.
 	authMethod mysql.AuthMethodDescription
@@ -461,6 +460,8 @@ type userValidator struct {
 
 var _ mysql.UserValidator = (*userValidator)(nil)
 
+// newUserValidator returns a [userValidator] bound to one auth method.
+//
 // newUserValidator creates a new userValidator instance, configured to use |db| to look up user
 // entries and validate that they have the specified auth plugin (|authMethod|) configured.
 func newUserValidator(db *MySQLDb, authMethod mysql.AuthMethodDescription) *userValidator {
@@ -470,8 +471,26 @@ func newUserValidator(db *MySQLDb, authMethod mysql.AuthMethodDescription) *user
 	}
 }
 
-// HandleUser implements the mysql.UserValidator interface and verifies if the mysql_native_password auth method
-// can be used for the specified |user| at the specified |remoteAddr|.
+// HandleUser implements [mysql.UserValidator].
+//
+// HandleUser reports whether this validator's bound auth method is eligible for
+// |user| at |remoteAddr|.
+//
+// For known users, only the plugin configured on the matched [mysql.user] row
+// is allowed.
+//
+// For unknown users, a decoy policy applies: exactly [DefaultAuthMethod] is
+// allowed so authentication proceeds through plugin handling and ends on the
+// same access-denied outcome class as normal auth failures.
+//
+// This policy is enforced here in GMS (account/method eligibility) rather than
+// relying on Vitess fallback handling. Doing it at this layer keeps unknown-user
+// behavior modifiable, mirrors [MySQL decoy_user()] intent, and treats Vitess
+// fallback as defensive protocol safety rather than the primary auth path.
+//
+// [MySQL decoy_user()]: https://dev.mysql.com/doc/dev/mysql-server/latest/sql__authentication_8cc.html#a1de21b350d90e000bb0ff939cb698a31
+//
+// [MySQL Connection Phase]: https://dev.mysql.com/doc/dev/mysql-server/latest/page_protocol_connection_phase.html
 func (uv *userValidator) HandleUser(user string, remoteAddr net.Addr) bool {
 	// If the mysql database is not enabled, then we don't have user information, so
 	// go ahead and return true without trying to look up the user in the db.
@@ -485,22 +504,40 @@ func (uv *userValidator) HandleUser(user string, remoteAddr net.Addr) bool {
 		return false
 	}
 
-	db := uv.db
-	rd := db.Reader()
+	rd := uv.db.Reader()
 	defer rd.Close()
 
-	if !db.Enabled() {
-		return true
-	}
-	userEntry := db.GetUser(rd, user, host, false)
-
-	// If we don't find a matching user, or we find one, but it's for a different auth method,
-	// then return false to indicate this auth method can't handle that user.
-	if userEntry == nil || userEntry.Plugin != string(uv.authMethod) {
-		return false
+	userEntry := uv.db.GetUser(rd, user, host, false)
+	if userEntry == nil {
+		return decoyAuthSubject{}.Allows(uv.authMethod)
 	}
 
-	return true
+	return userEntry.Plugin == string(uv.authMethod)
+}
+
+// decoyAuthSubject represents the auth path taken for unknown users.
+//
+// To reduce account-enumeration signals, unknown users must experience the same authentication
+// flow as real users: the handshake completes through plugin auth before failing with access
+// denied. This mirrors [MySQL decoy_user()], which produces a fake account so the auth
+// plugin produces the final denial.
+//
+// TODO(elianddb): Mirror [MySQL decoy_user()] more closely to further reduce account-enumeration
+//
+//	potential for unknown user@host with enabled auth plugins, caching that plugin choice per
+//	unknown account, and keeping a deterministic fallback to [DefaultAuthMethod] when no plugin
+//	can be selected.
+//
+// [MySQL decoy_user()]: https://dev.mysql.com/doc/dev/mysql-server/latest/sql__authentication_8cc.html#a1de21b350d90e000bb0ff939cb698a31
+type decoyAuthSubject struct{}
+
+// Allows reports whether method is eligible for this decoy.
+//
+// Only [DefaultAuthMethod] is permitted at the moment. This guarantees at least one auth
+// method is available for every unknown user, so auth reaches plugin validation and fails
+// as access denied at the plugin level.
+func (decoyAuthSubject) Allows(method mysql.AuthMethodDescription) bool {
+	return method == DefaultAuthMethod
 }
 
 // extractHostAddress extracts the host address from |addr|, checking to see if it is a unix socket, and if
