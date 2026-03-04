@@ -178,6 +178,11 @@ type Session interface {
 	ValidateSession(ctx *Context) error
 }
 
+// TriggerCachingSession is a Session that can hold trigger information
+type TriggerCachingSession interface {
+	GetTriggerCache() map[TriggerDefinition]Node
+}
+
 // PersistableSession supports serializing/deserializing global system variables/
 type PersistableSession interface {
 	Session

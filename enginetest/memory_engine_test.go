@@ -193,29 +193,18 @@ func TestSingleQueryPrepared(t *testing.T) {
 
 // Convenience test for debugging a single query. Unskip and set to the desired query.
 func TestSingleScript(t *testing.T) {
-	t.Skip()
+	//t.Skip()
 	var scripts = []queries.ScriptTest{
 		{
 			Name: "Parse table name as column",
 			SetUpScript: []string{
-				`CREATE TABLE test (pk INT PRIMARY KEY, v1 VARCHAR(255));`,
-				`INSERT INTO test VALUES (1, 'a'), (2, 'b');`,
+				"create table t (i int, j int);",
+				"create table tt (i int, j int);",
+				"create trigger trig before insert on t for each row delete from tt where j = 100;",
 			},
 			Assertions: []queries.ScriptTestAssertion{
 				{
-					Query:    "SELECT temporarytesting(t) FROM test AS t;",
-					Expected: []sql.Row{},
-				},
-				{
-					Query:    "SELECT temporarytesting(test) FROM test;",
-					Expected: []sql.Row{},
-				},
-				{
-					Query:    "SELECT temporarytesting(pk, test) FROM test;",
-					Expected: []sql.Row{},
-				},
-				{
-					Query:    "SELECT temporarytesting(v1, test, pk) FROM test;",
+					Query:    "insert into t(i) values (1);",
 					Expected: []sql.Row{},
 				},
 			},

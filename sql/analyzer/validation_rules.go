@@ -785,9 +785,8 @@ func validateSubqueryColumns(ctx *sql.Context, a *Analyzer, n sql.Node, scope *p
 }
 
 func stringContains(strs []string, target string) bool {
-	lowerTarget := strings.ToLower(target)
 	for _, s := range strs {
-		if lowerTarget == strings.ToLower(s) {
+		if strings.EqualFold(target, s) {
 			return true
 		}
 	}
