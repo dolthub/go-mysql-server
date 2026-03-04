@@ -247,7 +247,9 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 				if !ok {
 					continue
 				}
-				trigCache[trigger] = createTrigger // TODO: mutex?
+				if trigCache != nil {
+					trigCache[trigger] = createTrigger // TODO: mutex?
+				}
 			}
 
 			var triggerTable string
