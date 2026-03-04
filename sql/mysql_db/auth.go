@@ -318,7 +318,7 @@ func (uv extendedAuthUserValidator) HandleUser(user string, remoteAddr net.Addr)
 		return false
 	}
 
-	for pluginName, _ := range db.plugins {
+	for pluginName := range db.plugins {
 		if userEntry.Plugin == pluginName {
 			return true
 		}
@@ -443,9 +443,13 @@ func validateConnectionSecurity(userEntry *User, conn *mysql.Conn) error {
 	return nil
 }
 
-// userValidator implements the [mysql.UserValidator] interface. It looks up a user and host from the associated mysql
-// |db| and validates that a user entry exists and that it is configured for the specified authentication plugin
-// (|authMethod|).
+// userValidator implements [mysql.UserValidator] for one advertised auth method.
+//
+// MySQL's auth flow invokes [MySQL find_mpvio_user()] and [MySQL decoy_user()] so that authentication
+// always continues into plugin handling rather than failing at method selection for unknown usernames.
+//
+// [MySQL decoy_user()]: https://dev.mysql.com/doc/dev/mysql-server/latest/sql__authentication_8cc.html#a1de21b350d90e000bb0ff939cb698a31
+// [MySQL find_mpvio_user()]: https://dev.mysql.com/doc/dev/mysql-server/latest/sql__authentication_8cc.html#a34fece87f5ba8dcb4174941cda59e5ea
 type userValidator struct {
 	// db is the mysql database that contains user information
 	db *MySQLDb
@@ -456,6 +460,8 @@ type userValidator struct {
 
 var _ mysql.UserValidator = (*userValidator)(nil)
 
+// newUserValidator returns a [userValidator] bound to one auth method.
+//
 // newUserValidator creates a new userValidator instance, configured to use |db| to look up user
 // entries and validate that they have the specified auth plugin (|authMethod|) configured.
 func newUserValidator(db *MySQLDb, authMethod mysql.AuthMethodDescription) *userValidator {
@@ -465,9 +471,26 @@ func newUserValidator(db *MySQLDb, authMethod mysql.AuthMethodDescription) *user
 	}
 }
 
-// HandleUser implements [mysql.UserValidator]. It verified if the specified userValidator auth method
-// can be used for the specified |user| at the specified |remoteAddr|. Any resolved decoy (non-existent) user
-// is delegated to only the [mysql.MysqlNativePassword] plugin to return the expected access denied error.
+// HandleUser implements [mysql.UserValidator].
+//
+// HandleUser reports whether this validator's bound auth method is eligible for
+// |user| at |remoteAddr|.
+//
+// For known users, only the plugin configured on the matched [mysql.user] row
+// is allowed.
+//
+// For unknown users, a decoy policy applies: exactly [DefaultAuthMethod] is
+// allowed so authentication proceeds through plugin handling and ends on the
+// same access-denied outcome class as normal auth failures.
+//
+// This policy is enforced here in GMS (account/method eligibility) rather than
+// relying on Vitess fallback handling. Doing it at this layer keeps unknown-user
+// behavior modifiable, mirrors [MySQL decoy_user()] intent, and treats Vitess
+// fallback as defensive protocol safety rather than the primary auth path.
+//
+// [MySQL decoy_user()]: https://dev.mysql.com/doc/dev/mysql-server/latest/sql__authentication_8cc.html#a1de21b350d90e000bb0ff939cb698a31
+//
+// [MySQL Connection Phase]: https://dev.mysql.com/doc/dev/mysql-server/latest/page_protocol_connection_phase.html
 func (uv *userValidator) HandleUser(user string, remoteAddr net.Addr) bool {
 	// If the mysql database is not enabled, then we don't have user information, so
 	// go ahead and return true without trying to look up the user in the db.
@@ -489,40 +512,31 @@ func (uv *userValidator) HandleUser(user string, remoteAddr net.Addr) bool {
 		return decoyAuthSubject{}.Allows(uv.authMethod)
 	}
 
-	return realAuthSubject{userEntry: userEntry}.Allows(uv.authMethod)
+	return userEntry.Plugin == string(uv.authMethod)
 }
 
-// authSubject models who is being authenticated in method selection.
-type authSubject interface {
-	Allows(method mysql.AuthMethodDescription) bool
-}
-
-// realAuthSubject represents a real mysql.user row resolved from storage.
-type realAuthSubject struct {
-	userEntry *User
-}
-
-var _ authSubject = (*realAuthSubject)(nil)
-
-// Allows returns whether |method| matches the real account's configured authentication plugin.
-func (s realAuthSubject) Allows(method mysql.AuthMethodDescription) bool {
-	return s.userEntry.Plugin == string(method)
-}
-
-// decoyAuthSubject represents MySQL's internal "pretend user exists" behavior for unknown usernames. Intentionally
-// allows the native method so plugin auth returns ER_ACCESS_DENIED ([mysql.ERAccessDeniedError]:1045,
-// [mysql.SSAccessDeniedError]:"28000"), instead of failing method selection at handshake time.
+// decoyAuthSubject represents the auth path taken for unknown users.
 //
-// TODO: When a username is not found (decoy), route it through an enabled auth method so client gets access denied.
+// To reduce account-enumeration signals, unknown users must experience the same authentication
+// flow as real users: the handshake completes through plugin auth before failing with access
+// denied. This mirrors [MySQL decoy_user()], which produces a fake account so the auth
+// plugin produces the final denial.
 //
-//	More options also reduces the observability of account-enumeration (an observable difference in login behavior).
+// TODO(elianddb): Mirror [MySQL decoy_user()] more closely to further reduce account-enumeration
+// potential for unknown user@host with enabled auth plugins, caching that plugin choice per
+// unknown account, and keeping a deterministic fallback to [DefaultAuthMethod] when no plugin
+// can be selected.
+//
+// [MySQL decoy_user()]: https://dev.mysql.com/doc/dev/mysql-server/latest/sql__authentication_8cc.html#a1de21b350d90e000bb0ff939cb698a31
 type decoyAuthSubject struct{}
 
-var _ authSubject = decoyAuthSubject{}
-
-// Allows returns true only for native-password method selection and ensures we follow through on access denied.
+// Allows reports whether method is eligible for this decoy.
+//
+// Only [DefaultAuthMethod] is permitted at the moment. This guarantees at least one auth
+// method is available for every unknown user, so auth reaches plugin validation and fails
+// as access denied at the plugin level.
 func (decoyAuthSubject) Allows(method mysql.AuthMethodDescription) bool {
-	return method == mysql.MysqlNativePassword
+	return method == DefaultAuthMethod
 }
 
 // extractHostAddress extracts the host address from |addr|, checking to see if it is a unix socket, and if
