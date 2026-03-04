@@ -489,7 +489,6 @@ func newUserValidator(db *MySQLDb, authMethod mysql.AuthMethodDescription) *user
 // fallback as defensive protocol safety rather than the primary auth path.
 //
 // [MySQL decoy_user()]: https://dev.mysql.com/doc/dev/mysql-server/latest/sql__authentication_8cc.html#a1de21b350d90e000bb0ff939cb698a31
-//
 // [MySQL Connection Phase]: https://dev.mysql.com/doc/dev/mysql-server/latest/page_protocol_connection_phase.html
 func (uv *userValidator) HandleUser(user string, remoteAddr net.Addr) bool {
 	// If the mysql database is not enabled, then we don't have user information, so
@@ -523,9 +522,9 @@ func (uv *userValidator) HandleUser(user string, remoteAddr net.Addr) bool {
 // plugin produces the final denial.
 //
 // TODO(elianddb): Mirror [MySQL decoy_user()] more closely to further reduce account-enumeration
-// potential for unknown user@host with enabled auth plugins, caching that plugin choice per
-// unknown account, and keeping a deterministic fallback to [DefaultAuthMethod] when no plugin
-// can be selected.
+//		potential for unknown user@host with enabled auth plugins, caching that plugin choice per
+//		unknown account, and keeping a deterministic fallback to [DefaultAuthMethod] when no plugin
+//		can be selected.
 //
 // [MySQL decoy_user()]: https://dev.mysql.com/doc/dev/mysql-server/latest/sql__authentication_8cc.html#a1de21b350d90e000bb0ff939cb698a31
 type decoyAuthSubject struct{}
