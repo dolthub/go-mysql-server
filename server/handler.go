@@ -449,6 +449,7 @@ func (h *Handler) doQuery(
 			if prequery != "" {
 				query = prequery
 			}
+			h.e.PreparedDataCache.CacheStmt(sqlCtx.Session.ID(), query, parsed) // TODO: move to session?
 		}
 	}
 
