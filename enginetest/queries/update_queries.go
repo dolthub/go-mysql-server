@@ -1914,9 +1914,12 @@ var OnUpdateExprScripts = []ScriptTest{
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, v1 int, dt datetime default 0 on update current_timestamp);",
 			"INSERT INTO test (pk, v1) VALUES (1, 1), (2, 2);",
-			"insert into test(pk, v1) values (1, 2) on duplicate key update v1 = values(v1);",
 		},
 		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "insert into test(pk, v1) values (1, 2) on duplicate key update v1 = values(v1);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
+			},
 			{
 				Query: "select * from test",
 				Expected: []sql.Row{
