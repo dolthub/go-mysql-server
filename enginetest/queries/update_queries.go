@@ -1910,6 +1910,7 @@ var OnUpdateExprScripts = []ScriptTest{
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/10627
 		Name: "ON UPDATE works with INSERT...ON DUPLICATE KEY UPDATE",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, v1 int, dt datetime default 0 on update current_timestamp);",

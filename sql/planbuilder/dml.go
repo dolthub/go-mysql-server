@@ -341,27 +341,30 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 		}
 	}
 
-	// We need additional update expressions for any generated columns and on update expressions, since they won't be part of the update
-	// expressions, but their value in the row must be updated before being passed to the integrator for storage.
-	if len(tableSch) > 0 {
-		tabId := inScope.tables[strings.ToLower(tableSch[0].Source)]
-		for i, col := range tableSch {
+	return b.addAdditionalUpdateExprs(inScope, tableSch, updateExprs)
+}
+
+// addAdditionalUpdateExprs adds update expressions for any generated columns and ON UPDATE expressions since their
+// values still need to be updated despite not being part of an explicit update expression
+func (b *Builder) addAdditionalUpdateExprs(inScope *scope, schema sql.Schema, updateExprs []sql.Expression) []sql.Expression {
+	if len(schema) > 0 {
+		tabId := inScope.tables[strings.ToLower(schema[0].Source)]
+		for i, col := range schema {
 			if col.Generated != nil {
 				colGf := expression.NewGetFieldWithTable(i+1, int(tabId), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
 				generated := b.resolveColumnDefaultExpression(inScope, col, col.Generated)
-				updateExprs = append(updateExprs, expression.NewSetField(colGf, assignColumnIndexes(generated, tableSch)))
+				updateExprs = append(updateExprs, expression.NewSetField(colGf, assignColumnIndexes(generated, schema)))
 			}
 			if col.OnUpdate != nil {
 				// don't add if column is already being updated
 				if !isColumnUpdated(col, updateExprs) {
 					colGf := expression.NewGetFieldWithTable(i+1, int(tabId), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
 					onUpdate := b.resolveColumnDefaultExpression(inScope, col, col.OnUpdate)
-					updateExprs = append(updateExprs, expression.NewSetField(colGf, assignColumnIndexes(onUpdate, tableSch)))
+					updateExprs = append(updateExprs, expression.NewSetField(colGf, assignColumnIndexes(onUpdate, schema)))
 				}
 			}
 		}
 	}
-
 	return updateExprs
 }
 
@@ -418,21 +421,7 @@ func (b *Builder) buildOnDupUpdateExprs(combinedScope, destScope *scope, schema 
 		}
 	}
 
-	// TODO: refactor out repeated code from assignmentExprsToExpressions
-	if len(schema) > 0 {
-		tabId := destScope.tables[strings.ToLower(schema[0].Source)]
-		for i, col := range schema {
-			if col.OnUpdate != nil {
-				// don't add if column is already being updated
-				if !isColumnUpdated(col, updateExprs) {
-					colGf := expression.NewGetFieldWithTable(i+1, int(tabId), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
-					onUpdate := b.resolveColumnDefaultExpression(destScope, col, col.OnUpdate)
-					updateExprs = append(updateExprs, expression.NewSetField(colGf, assignColumnIndexes(onUpdate, schema)))
-				}
-			}
-		}
-	}
-	return updateExprs
+	return b.addAdditionalUpdateExprs(destScope, schema, updateExprs)
 }
 
 func (b *Builder) buildOnDupLeft(inScope *scope, e ast.Expr) sql.Expression {
