@@ -67,10 +67,12 @@ func (b *Builder) Parse(query string, qFlags *sql.QueryFlags, multi bool) (ret s
 	}
 
 	var stmt ast.Statement
-	if !multi && parserCache != nil {
+	if !multi && !b.parserOpts.AnsiQuotes && !b.parserOpts.PipesAsConcat && parserCache != nil {
 		stmt = parserCache[query]
 		parsed = query
-	} else {
+	}
+
+	if stmt == nil {
 		stmt, parsed, remainder, err = b.parser.ParseWithOptions(ctx, query, ';', multi, b.parserOpts)
 		if err != nil {
 			if goerrors.Is(err, ast.ErrEmpty) {
@@ -79,7 +81,7 @@ func (b *Builder) Parse(query string, qFlags *sql.QueryFlags, multi bool) (ret s
 			}
 			return nil, parsed, remainder, nil, sql.ErrSyntaxError.New(err.Error())
 		}
-		if parserCache != nil {
+		if !multi && !b.parserOpts.AnsiQuotes && !b.parserOpts.PipesAsConcat && parserCache != nil {
 			parserCache[query] = stmt
 		}
 	}
