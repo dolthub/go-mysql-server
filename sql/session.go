@@ -15,6 +15,8 @@
 package sql
 
 import (
+	ast "github.com/dolthub/vitess/go/vt/sqlparser"
+
 	"context"
 	"fmt"
 	"io"
@@ -176,6 +178,10 @@ type Session interface {
 	// ValidateSession provides integrators a chance to do any custom validation of this session before any query is
 	// executed in it. For example, Dolt uses this hook to validate that the session's working set is valid.
 	ValidateSession(ctx *Context) error
+}
+
+type ParserCacheSession interface {
+	GetParserCache() map[string]ast.Statement
 }
 
 // PersistableSession supports serializing/deserializing global system variables/
