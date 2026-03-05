@@ -132,7 +132,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 				combinedScope.newColumn(srcScope.cols[i])
 			}
 		}
-		onDupExprs = b.buildOnDupUpdateExprs(combinedScope, destScope, ast.AssignmentExprs(i.OnDup))
+		onDupExprs = b.buildOnDupUpdateExprs(combinedScope, destScope, sch, ast.AssignmentExprs(i.OnDup))
 	}
 
 	ignore := false
@@ -270,6 +270,8 @@ func reorderSchema(names []string, schema sql.Schema) sql.Schema {
 	return newSch
 }
 
+// TODO: Need a more descriptive name for this function. Also consider combining this function with
+// buildOnDupUpdateExprs since there's a lot of similar and repeated code
 func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentExprs) []sql.Expression {
 	updateExprs := make([]sql.Expression, len(e))
 	var startAggCnt int
@@ -380,12 +382,14 @@ func isColumnUpdated(col *sql.Column, updateExprs []sql.Expression) bool {
 	return false
 }
 
-func (b *Builder) buildOnDupUpdateExprs(combinedScope, destScope *scope, e ast.AssignmentExprs) []sql.Expression {
+// TODO: consider combining this function with assignmentExprsToExpressions (awful name) since there's a lot of similar
+// repeated code
+func (b *Builder) buildOnDupUpdateExprs(combinedScope, destScope *scope, schema sql.Schema, e ast.AssignmentExprs) []sql.Expression {
 	b.insertActive = true
 	defer func() {
 		b.insertActive = false
 	}()
-	res := make([]sql.Expression, len(e))
+	updateExprs := make([]sql.Expression, len(e))
 	// todo(max): prevent aggregations in separate semantic walk step
 	var startAggCnt int
 	if combinedScope.groupBy != nil {
@@ -399,21 +403,36 @@ func (b *Builder) buildOnDupUpdateExprs(combinedScope, destScope *scope, e ast.A
 		colName := b.buildOnDupLeft(destScope, updateExpr.Name)
 		innerExpr := b.buildScalar(combinedScope, updateExpr.Expr)
 
-		res[i] = expression.NewSetField(colName, innerExpr)
+		updateExprs[i] = expression.NewSetField(colName, innerExpr)
 		if combinedScope.groupBy != nil {
 			if len(combinedScope.groupBy.aggs) > startAggCnt {
-				err := sql.ErrAggregationUnsupported.New(res[i])
+				err := sql.ErrAggregationUnsupported.New(updateExprs[i])
 				b.handleErr(err)
 			}
 		}
 		if combinedScope.windowFuncs != nil {
 			if len(combinedScope.windowFuncs) > startWinCnt {
-				err := sql.ErrWindowUnsupported.New(res[i])
+				err := sql.ErrWindowUnsupported.New(updateExprs[i])
 				b.handleErr(err)
 			}
 		}
 	}
-	return res
+
+	// TODO: refactor out repeated code from assignmentExprsToExpressions
+	if len(schema) > 0 {
+		tabId := destScope.tables[strings.ToLower(schema[0].Source)]
+		for i, col := range schema {
+			if col.OnUpdate != nil {
+				// don't add if column is already being updated
+				if !isColumnUpdated(col, updateExprs) {
+					colGf := expression.NewGetFieldWithTable(i+1, int(tabId), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
+					onUpdate := b.resolveColumnDefaultExpression(destScope, col, col.OnUpdate)
+					updateExprs = append(updateExprs, expression.NewSetField(colGf, assignColumnIndexes(onUpdate, schema)))
+				}
+			}
+		}
+	}
+	return updateExprs
 }
 
 func (b *Builder) buildOnDupLeft(inScope *scope, e ast.Expr) sql.Expression {
