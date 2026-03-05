@@ -138,3 +138,10 @@ func TestConvertSqlModeBitmask(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkNewSqlModeFromString(b *testing.B) {
+	sqlStr := "abc,def,hij,1234567890"
+	for i := 0; i < b.N; i++ {
+		_ = NewSqlModeFromString(sqlStr)
+	}
+}

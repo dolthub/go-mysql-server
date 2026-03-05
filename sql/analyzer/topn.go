@@ -59,6 +59,11 @@ func insertTopNNodes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
+			// For doltgres generate_series(...) to work correctly, the original limit node must remain.
+			newNode, err = limit.WithCalcFoundRows(false).WithChildren(newNode)
+			if err != nil {
+				return nil, transform.SameTree, err
+			}
 		}
 		return newNode, transform.NewTree, nil
 	})

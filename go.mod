@@ -6,7 +6,7 @@ require (
 	github.com/dolthub/go-icu-regex v0.0.0-20250916051405-78a38d478790
 	github.com/dolthub/jsonpath v0.0.2-0.20240227200619-19675ab05c71
 	github.com/dolthub/sqllogictest/go v0.0.0-20201107003712-816f3ae12d81
-	github.com/dolthub/vitess v0.0.0-20260225173707-20566e4abe9e
+	github.com/dolthub/vitess v0.0.0-20260304224106-95dd8eda10b0
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/gocraft/dbr/v2 v2.7.2
 	github.com/google/uuid v1.3.0
@@ -29,7 +29,7 @@ require (
 )
 
 require (
-	filippo.io/edwards25519 v1.1.0 // indirect
+	filippo.io/edwards25519 v1.1.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/kr/text v0.2.0 // indirect

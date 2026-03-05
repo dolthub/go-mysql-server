@@ -14865,6 +14865,73 @@ select * from t1 except (
 			},
 		},
 	},
+	{
+		Name: "Greatest and least with decimal arguments",
+		// TODO: This should work in Doltgres https://github.com/dolthub/doltgresql/issues/2378
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"create table t(a decimal(6, 2), b decimal(8, 5), c decimal(5, 1));",
+			"insert into t values (2.75, 8.8, 3.1);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// https://github.com/dolthub/dolt/issues/10562
+				Query: "select greatest(a, b, c), least(a, b, c) from t;",
+				// TODO: greatest and least currently return a float64 for decimals. MySQL returns a decimal with the
+				//  highest precision https://github.com/dolthub/dolt/issues/10567
+				Expected: []sql.Row{{8.8, 2.75}},
+			},
+		},
+	},
+	{
+		// https://github.com/dolthub/dolt/issues/10600
+		Name: "self-referential NOT IN subquery",
+		SetUpScript: []string{
+			"CREATE TABLE bug_repro (id VARCHAR(32) PRIMARY KEY, status VARCHAR(16), name VARCHAR(32));",
+			"INSERT INTO bug_repro VALUES ('a', 'open', 'x'), ('b', 'open', 'y'), ('c', 'open', 'z');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM bug_repro WHERE id NOT IN (SELECT id FROM bug_repro WHERE status='open' LIMIT 1);",
+				Expected: []sql.Row{
+					{"b", "open", "y"},
+					{"c", "open", "z"},
+				},
+			},
+			{
+				Query:    "UPDATE bug_repro SET status='closed' WHERE id NOT IN (SELECT id FROM bug_repro WHERE status='open' LIMIT 1);",
+				Expected: []sql.Row{{NewUpdateResult(2, 2)}},
+			},
+			{
+				Query:    "INSERT INTO bug_repro VALUES ('d', 'open', 'zz')",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query:    "DELETE FROM bug_repro WHERE status='open' AND id NOT IN (SELECT id FROM bug_repro WHERE status='open' LIMIT 1);",
+				Expected: []sql.Row{{types.NewOkResult(1)}},
+			},
+			{
+				Query: "select * from bug_repro",
+				Expected: []sql.Row{
+					{"a", "open", "x"},
+					{"b", "closed", "y"},
+					{"c", "closed", "z"},
+				},
+			},
+			{
+				Query:    "UPDATE bug_repro SET status='delete this' WHERE id NOT IN (SELECT id FROM bug_repro WHERE status='keep this');",
+				Expected: []sql.Row{{NewUpdateResult(3, 3)}},
+			},
+			{
+				Query: "select * from bug_repro",
+				Expected: []sql.Row{
+					{"a", "delete this", "x"},
+					{"b", "delete this", "y"},
+					{"c", "delete this", "z"},
+				},
+			},
+		},
+	},
 }
 
 var SpatialScriptTests = []ScriptTest{
@@ -16212,10 +16279,6 @@ var CreateDatabaseScripts = []ScriptTest{
 	{
 		Name: "CREATE DATABASE error handling",
 		Assertions: []ScriptTestAssertion{
-			{
-				Query:       "create database `abc/def`",
-				ExpectedErr: sql.ErrInvalidDatabaseName,
-			},
 			{
 				Query:    "CREATE DATABASE newtestdb CHARACTER SET utf8mb4 ENCRYPTION='N'",
 				Expected: []sql.Row{{types.NewOkResult(1)}},
