@@ -21,6 +21,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -326,6 +327,20 @@ func stringToTimespan(s string) (Timespan, error) {
 	if len(s) > 0 && s[0] == '-' {
 		negative = true
 		s = s[1:]
+	}
+
+	dotFound := false
+	for i, r := range s {
+		if unicode.IsDigit(r) || r == ':' {
+			continue
+		}
+
+		if r == '.' && dotFound == false {
+			dotFound = true
+			continue
+		}
+		s = s[0:i]
+		break
 	}
 
 	comps := strings.SplitN(s, ".", 2)
