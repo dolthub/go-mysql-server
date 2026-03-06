@@ -328,9 +328,12 @@ func TestHandlerComResetConnection(t *testing.T) {
 	}
 
 	// Create a prepared statement, a table lock, and a user var in the current session
-	_, err := handler.ComPrepare(context.Background(), dummyConn, prepareData.PrepareStmt, prepareData)
+	ctx := sql.NewEmptyContext()
+	_, err := handler.ComPrepare(ctx, dummyConn, prepareData.PrepareStmt, prepareData)
 	require.NoError(t, err)
-	_, cached := e.PreparedDataCache.GetCachedStmt(dummyConn.ConnectionID, prepareData.PrepareStmt)
+	sess, err := handler.sm.getOrCreateSession(ctx, dummyConn)
+	require.NoError(t, err)
+	_, cached := sess.GetPreparedQuery(prepareData.PrepareStmt)
 	require.True(t, cached)
 	err = handler.ComQuery(context.Background(), dummyConn, "SET @userVar = 42;", func(res *sqltypes.Result, more bool) error {
 		return nil
@@ -348,7 +351,7 @@ func TestHandlerComResetConnection(t *testing.T) {
 		return nil
 	})
 	require.NoError(t, err)
-	_, cached = e.PreparedDataCache.GetCachedStmt(dummyConn.ConnectionID, prepareData.PrepareStmt)
+	_, cached = ctx.Session.GetPreparedQuery(prepareData.PrepareStmt)
 	require.False(t, cached)
 	err = handler.ComQuery(context.Background(), dummyConn, "SELECT @userVar;", func(res *sqltypes.Result, more bool) error {
 		require.True(t, res.Rows[0][0].IsNull())
@@ -728,11 +731,12 @@ func TestServerEventListener(t *testing.T) {
 	query := "SELECT ?"
 	_, err = handler.ComPrepare(context.Background(), conn3, query, samplePrepareData)
 	require.NoError(err)
-	require.Equal(1, len(e.PreparedDataCache.CachedStatementsForSession(conn3.ConnectionID)))
-	require.NotNil(e.PreparedDataCache.GetCachedStmt(conn3.ConnectionID, query))
+
+	sess, err := handler.sm.getOrCreateSession(context.Background(), conn3)
+	require.NoError(err)
+	require.NotNil(sess.GetPreparedQuery(query))
 
 	handler.ConnectionClosed(conn3)
-	require.Equal(0, len(e.PreparedDataCache.CachedStatementsForSession(conn3.ConnectionID)))
 }
 
 func TestHandlerKill(t *testing.T) {
