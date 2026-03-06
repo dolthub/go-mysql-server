@@ -72,68 +72,6 @@ type TemporaryUser struct {
 	Password string
 }
 
-// PreparedDataCache manages all the prepared data for every session for every query for an engine.
-// There are two types of caching supported:
-// 1. Prepared statements for MySQL, which are stored as sqlparser.Statements
-// 2. Prepared statements for Postgres, which are stored as sql.Nodes
-// TODO: move this into the session
-type PreparedDataCache struct {
-	statements map[uint32]map[string]sqlparser.Statement
-	mu         *sync.Mutex
-}
-
-func NewPreparedDataCache() *PreparedDataCache {
-	return &PreparedDataCache{
-		statements: make(map[uint32]map[string]sqlparser.Statement),
-		mu:         &sync.Mutex{},
-	}
-}
-
-// GetCachedStmt retrieves the prepared statement associated with the ctx.SessionId and query. Returns nil, false if
-// the query does not exist
-func (p *PreparedDataCache) GetCachedStmt(sessId uint32, query string) (sqlparser.Statement, bool) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if sessData, ok := p.statements[sessId]; ok {
-		data, ok := sessData[query]
-		return data, ok
-	}
-	return nil, false
-}
-
-// CachedStatementsForSession returns all the prepared queries for a particular session
-func (p *PreparedDataCache) CachedStatementsForSession(sessId uint32) map[string]sqlparser.Statement {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.statements[sessId]
-}
-
-// DeleteSessionData clears a session along with all prepared queries for that session
-func (p *PreparedDataCache) DeleteSessionData(sessId uint32) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	delete(p.statements, sessId)
-}
-
-// CacheStmt saves the parsed statement and associates a ctx.SessionId and query to it
-func (p *PreparedDataCache) CacheStmt(sessId uint32, query string, stmt sqlparser.Statement) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if _, ok := p.statements[sessId]; !ok {
-		p.statements[sessId] = make(map[string]sqlparser.Statement)
-	}
-	p.statements[sessId][query] = stmt
-}
-
-// UncacheStmt removes the prepared node associated with a ctx.SessionId and query to it
-func (p *PreparedDataCache) UncacheStmt(sessId uint32, query string) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if _, ok := p.statements[sessId]; ok {
-		delete(p.statements[sessId], query)
-	}
-}
-
 // Engine is a SQL engine.
 type Engine struct {
 	Parser            sql.Parser
@@ -142,7 +80,6 @@ type Engine struct {
 	LS                *sql.LockSubsystem
 	MemoryManager     *sql.MemoryManager
 	BackgroundThreads *sql.BackgroundThreads
-	PreparedDataCache *PreparedDataCache
 	mu                *sync.Mutex
 	EventScheduler    *eventscheduler.EventScheduler
 	ReadOnly          atomic.Bool
@@ -191,7 +128,6 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 		LS:                ls,
 		BackgroundThreads: sql.NewBackgroundThreads(),
 		IsServerLocked:    cfg.IsServerLocked,
-		PreparedDataCache: NewPreparedDataCache(),
 		mu:                &sync.Mutex{},
 		EventScheduler:    nil,
 		Parser:            sql.GetParser(a.Overrides),
@@ -231,6 +167,7 @@ func (e *Engine) PrepareQuery(
 		return nil, err
 	}
 
+	// TODO: why take both statementKey and query if they are the same?
 	return e.PrepareParsedQuery(ctx, query, query, stmt)
 }
 
@@ -245,12 +182,12 @@ func (e *Engine) PrepareParsedQuery(
 
 	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.EventScheduler)
 	node, _, err := binder.BindOnly(stmt, query, nil)
-
 	if err != nil {
 		return nil, err
 	}
 
-	e.PreparedDataCache.CacheStmt(ctx.Session.ID(), statementKey, stmt)
+	ctx.Session.PrepareQuery(statementKey, stmt)
+
 	return node, nil
 }
 
@@ -565,7 +502,7 @@ func (e *Engine) BoundQueryPlan(ctx *sql.Context, query string, parsed sqlparser
 }
 
 func (e *Engine) preparedStatement(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]sqlparser.Expr) (sqlparser.Statement, *planbuilder.Builder, error) {
-	preparedAst, preparedDataFound := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query)
+	preparedAst, preparedDataFound := ctx.Session.GetPreparedQuery(query)
 
 	// This means that we have bindings but no prepared statement cached, which occurs in tests and in the
 	// dolthub/driver package. We prepare the statement from the query string in this case
@@ -577,7 +514,7 @@ func (e *Engine) preparedStatement(ctx *sql.Context, query string, parsed sqlpar
 			return nil, nil, err
 		}
 
-		preparedAst, preparedDataFound = e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), query)
+		preparedAst, preparedDataFound = ctx.Session.GetPreparedQuery(query)
 	}
 
 	binder := planbuilder.New(ctx, e.Analyzer.Catalog, e.EventScheduler)
@@ -611,13 +548,13 @@ func (e *Engine) analyzeNode(ctx *sql.Context, query string, bound sql.Node, qFl
 		} else if err != nil {
 			return nil, err
 		}
-		e.PreparedDataCache.CacheStmt(ctx.Session.ID(), n.Name, cacheStmt)
+		ctx.Session.CacheQuery(n.Name, cacheStmt)
 		return bound, nil
 	case *plan.DeallocateQuery:
-		if _, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), n.Name); !ok {
+		if _, ok := ctx.Session.GetPreparedQuery(n.Name); !ok {
 			return nil, sql.ErrUnknownPreparedStatement.New(n.Name)
 		}
-		e.PreparedDataCache.UncacheStmt(ctx.Session.ID(), n.Name)
+		ctx.Session.UnprepareQuery(n.Name)
 		return bound, nil
 	default:
 		return e.Analyzer.Analyze(ctx, bound, nil, qFlags)
@@ -658,7 +595,7 @@ func (e *Engine) bindQuery(ctx *sql.Context, query string, parsed sqlparser.Stat
 
 // bindExecuteQueryNode returns the
 func (e *Engine) bindExecuteQueryNode(ctx *sql.Context, query string, eq *plan.ExecuteQuery, bindings map[string]sqlparser.Expr, binder *planbuilder.Builder) (sql.Node, error) {
-	prep, ok := e.PreparedDataCache.GetCachedStmt(ctx.Session.ID(), eq.Name)
+	prep, ok := ctx.Session.GetPreparedQuery(eq.Name)
 	if !ok {
 		return nil, sql.ErrUnknownPreparedStatement.New(eq.Name)
 	}
@@ -739,7 +676,6 @@ func clearAutocommitTransaction(ctx *sql.Context) error {
 func (e *Engine) CloseSession(connID uint32) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	e.PreparedDataCache.DeleteSessionData(connID)
 }
 
 func (e *Engine) beginTransaction(ctx *sql.Context) error {
@@ -791,10 +727,6 @@ func (e *Engine) readOnlyCheck(node sql.Node) error {
 		return sql.ErrDatabaseWriteLocked.New()
 	}
 	return nil
-}
-
-func (e *Engine) EnginePreparedDataCache() *PreparedDataCache {
-	return e.PreparedDataCache
 }
 
 func (e *Engine) EngineAnalyzer() *analyzer.Analyzer {
