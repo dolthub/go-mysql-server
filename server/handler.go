@@ -442,13 +442,10 @@ func (h *Handler) doQuery(
 	start := time.Now()
 
 	var prequery string
-	if parsed == nil {
-		_, inPreparedCache := h.e.PreparedDataCache.GetCachedStmt(sqlCtx.Session.ID(), query)
-		if mode == MultiStmtModeOn && !inPreparedCache {
-			parsed, prequery, remainder, err = h.e.Parser.Parse(sqlCtx, query, true)
-			if prequery != "" {
-				query = prequery
-			}
+	if parsed == nil && mode == MultiStmtModeOn {
+		parsed, prequery, remainder, err = h.e.Parser.Parse(sqlCtx, query, true)
+		if prequery != "" {
+			query = prequery
 		}
 	}
 

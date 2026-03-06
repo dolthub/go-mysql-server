@@ -21,6 +21,7 @@ import (
 	"sync/atomic"
 
 	"github.com/dolthub/vitess/go/mysql"
+	"github.com/dolthub/vitess/go/vt/sqlparser"
 	"github.com/sirupsen/logrus"
 )
 
@@ -35,6 +36,8 @@ type BaseSession struct {
 	storedProcParams map[string]*StoredProcParam
 	systemVars       map[string]SystemVarValue
 	statusVars       map[string]StatusVarValue
+	preparedQueries  map[string]sqlparser.Statement
+	cachedQueries    map[string]sqlparser.Statement // TODO: limit size
 	lastQueryInfo    *LastQueryInfo
 	idxReg           *IndexRegistry
 	viewReg          *ViewRegistry
@@ -518,6 +521,30 @@ func (s *BaseSession) SetPrivilegeSet(newPs PrivilegeSet, counter uint64) {
 	s.privilegeSet = newPs
 }
 
+func (s *BaseSession) PrepareQuery(query string, stmt sqlparser.Statement) {
+	s.preparedQueries[query] = stmt
+}
+
+func (s *BaseSession) UnprepareQuery(query string) {
+	delete(s.preparedQueries, query)
+}
+
+func (s *BaseSession) GetPreparedQuery(query string) (sqlparser.Statement, bool) {
+	stmt, ok := s.preparedQueries[query]
+	return stmt, ok
+}
+
+func (s *BaseSession) CacheQuery(query string, stmt sqlparser.Statement) {
+	if s.cachedQueries != nil {
+		s.cachedQueries[query] = stmt
+	}
+}
+
+func (s *BaseSession) GetCachedQuery(query string) (sqlparser.Statement, bool) {
+	stmt, ok := s.cachedQueries[query]
+	return stmt, ok
+}
+
 // BaseSessionFromConnection is a SessionBuilder that returns a base session for the given connection and remote address
 func BaseSessionFromConnection(ctx context.Context, c *mysql.Conn, addr string) (*BaseSession, error) {
 	host := ""
@@ -554,6 +581,8 @@ func NewBaseSessionWithClientServer(server string, client Client, id uint32) *Ba
 		statusVars:       statusVars,
 		userVars:         NewUserVars(),
 		storedProcParams: make(map[string]*StoredProcParam),
+		preparedQueries:  make(map[string]sqlparser.Statement),
+		cachedQueries:    make(map[string]sqlparser.Statement),
 		idxReg:           NewIndexRegistry(),
 		viewReg:          NewViewRegistry(),
 		locks:            make(map[string]bool),

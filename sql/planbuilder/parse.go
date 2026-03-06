@@ -57,13 +57,21 @@ func (b *Builder) Parse(query string, qFlags *sql.QueryFlags, multi bool) (ret s
 			b.handleErr(err)
 		}
 	}
-	stmt, parsed, remainder, err := b.parser.ParseWithOptions(ctx, query, ';', multi, b.parserOpts)
-	if err != nil {
-		if goerrors.Is(err, ast.ErrEmpty) {
-			ctx.Warn(0, "query was empty after trimming comments, so it will be ignored")
-			return plan.NothingImpl, parsed, remainder, nil, nil
+
+	// TODO: this only works on EXACT query matches
+	// TODO: possible to make this work with multi?
+	// TODO: can preprocess query to somewhat normalize queries.
+	stmt, ok := ctx.Session.GetCachedQuery(query)
+	if !ok {
+		stmt, parsed, remainder, err = b.parser.ParseWithOptions(ctx, query, ';', multi, b.parserOpts)
+		if err != nil {
+			if goerrors.Is(err, ast.ErrEmpty) {
+				ctx.Warn(0, "query was empty after trimming comments, so it will be ignored")
+				return plan.NothingImpl, parsed, remainder, nil, nil
+			}
+			return nil, parsed, remainder, nil, sql.ErrSyntaxError.New(err.Error())
 		}
-		return nil, parsed, remainder, nil, sql.ErrSyntaxError.New(err.Error())
+		ctx.Session.CacheQuery(query, stmt)
 	}
 
 	if qFlags != nil {
