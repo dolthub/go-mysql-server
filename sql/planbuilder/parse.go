@@ -61,18 +61,8 @@ func (b *Builder) Parse(query string, qFlags *sql.QueryFlags, multi bool) (ret s
 	// TODO: this only works on EXACT query matches
 	// TODO: possible to make this work with multi?
 	// TODO: can preprocess query to somewhat normalize queries.
-	var parserCache map[string]ast.Statement
-	if parseSess, ok := b.ctx.Session.(sql.ParserCacheSession); ok {
-		parserCache = parseSess.GetParserCache()
-	}
-
-	var stmt ast.Statement
-	if !multi && !b.parserOpts.AnsiQuotes && !b.parserOpts.PipesAsConcat && parserCache != nil {
-		stmt = parserCache[query]
-		parsed = query
-	}
-
-	if stmt == nil {
+	stmt, ok := ctx.Session.GetCachedQuery(query)
+	if !ok {
 		stmt, parsed, remainder, err = b.parser.ParseWithOptions(ctx, query, ';', multi, b.parserOpts)
 		if err != nil {
 			if goerrors.Is(err, ast.ErrEmpty) {
@@ -81,9 +71,7 @@ func (b *Builder) Parse(query string, qFlags *sql.QueryFlags, multi bool) (ret s
 			}
 			return nil, parsed, remainder, nil, sql.ErrSyntaxError.New(err.Error())
 		}
-		if !multi && !b.parserOpts.AnsiQuotes && !b.parserOpts.PipesAsConcat && parserCache != nil {
-			parserCache[query] = stmt
-		}
+		ctx.Session.CacheQuery(query, stmt)
 	}
 
 	if qFlags != nil {
