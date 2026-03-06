@@ -35,6 +35,7 @@ type BaseSession struct {
 	storedProcParams map[string]*StoredProcParam
 	systemVars       map[string]SystemVarValue
 	statusVars       map[string]StatusVarValue
+	triggerCache     map[TriggerDefinition]Node
 	lastQueryInfo    *LastQueryInfo
 	idxReg           *IndexRegistry
 	viewReg          *ViewRegistry
@@ -518,6 +519,11 @@ func (s *BaseSession) SetPrivilegeSet(newPs PrivilegeSet, counter uint64) {
 	s.privilegeSet = newPs
 }
 
+// GetTriggerCache implements the sql.TriggerCachingSession interface.
+func (s *BaseSession) GetTriggerCache() map[TriggerDefinition]Node {
+	return s.triggerCache
+}
+
 // BaseSessionFromConnection is a SessionBuilder that returns a base session for the given connection and remote address
 func BaseSessionFromConnection(ctx context.Context, c *mysql.Conn, addr string) (*BaseSession, error) {
 	host := ""
@@ -554,6 +560,7 @@ func NewBaseSessionWithClientServer(server string, client Client, id uint32) *Ba
 		statusVars:       statusVars,
 		userVars:         NewUserVars(),
 		storedProcParams: make(map[string]*StoredProcParam),
+		triggerCache:     make(map[TriggerDefinition]Node),
 		idxReg:           NewIndexRegistry(),
 		viewReg:          NewViewRegistry(),
 		locks:            make(map[string]bool),

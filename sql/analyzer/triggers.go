@@ -166,6 +166,7 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 			if n.Database() != nil && n.Database().Name() != "" {
 				db = n.Database().Name()
 			}
+			return false
 		case *plan.Update:
 			if n.IsJoin {
 				if uj, ok := n.Child.(*plan.UpdateJoin); ok {
@@ -181,6 +182,7 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 			if n.Database() != "" {
 				db = n.Database()
 			}
+			return false
 		case *plan.DeleteFrom:
 			for _, target := range n.GetDeleteTargets() {
 				affectedTables = append(affectedTables, getTableName(target))
@@ -189,8 +191,10 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 			if n.Database() != "" {
 				db = n.Database()
 			}
+			return false
+		default:
+			return true
 		}
-		return true
 	})
 
 	if len(affectedTables) == 0 {
@@ -214,33 +218,51 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 		b := planbuilder.New(ctx, a.Catalog, nil)
 		b.DisableAuth()
 
+		var trigCache map[sql.TriggerDefinition]sql.Node
+		if trigSess, isTrigSess := ctx.Session.(sql.TriggerCachingSession); isTrigSess {
+			trigCache = trigSess.GetTriggerCache()
+		}
+
 		for _, trigger := range triggers {
 			var parsedTrigger sql.Node
-			sqlMode := sql.NewSqlModeFromString(trigger.SqlMode)
-			b.SetParserOptions(sqlMode.ParserOptions())
-			b.TriggerCtx().LoadOnly = true
-			parsedTrigger, _, _, _, err = b.Parse(trigger.CreateStatement, nil, false)
-			b.Reset()
-			if err != nil {
-				continue
+			var createTrigger *plan.CreateTrigger
+			if trigCache != nil {
+				parsedTrigger, ok = trigCache[trigger]
+				if ok {
+					createTrigger = parsedTrigger.(*plan.CreateTrigger)
+				}
 			}
-
-			ct, ok := parsedTrigger.(*plan.CreateTrigger)
-			if !ok {
-				continue
+			if createTrigger == nil {
+				// TODO: All this first pass does is find the table the trigger is applied to and the event.
+				//  We are wasting a ton of operations by using a full on parser here.
+				sqlMode := sql.NewSqlModeFromString(trigger.SqlMode)
+				b.SetParserOptions(sqlMode.ParserOptions())
+				b.TriggerCtx().LoadOnly = true
+				parsedTrigger, _, _, _, err = b.Parse(trigger.CreateStatement, nil, false)
+				b.Reset()
+				if err != nil {
+					continue
+				}
+				createTrigger, ok = parsedTrigger.(*plan.CreateTrigger)
+				if !ok {
+					continue
+				}
+				if trigCache != nil {
+					trigCache[trigger] = createTrigger // TODO: mutex?
+				}
 			}
 
 			var triggerTable string
-			switch t := ct.Table.(type) {
+			switch t := createTrigger.Table.(type) {
 			case *plan.ResolvedTable:
 				triggerTable = t.Name()
 			default:
 			}
-			if stringContains(affectedTables, triggerTable) && triggerEventsMatch(triggerEvent, ct.TriggerEvent) {
+
+			if stringContains(affectedTables, triggerTable) && triggerEventsMatch(triggerEvent, createTrigger.TriggerEvent) {
 				// first pass does not parse the trigger body and is only so we know whether trigger is relevant
+				// TODO: Not sure if it's possible to safely cache fully parsed triggers, since they reference resolved tables.
 				b.TriggerCtx().Call = true
-				// TODO: We only need to parse the body here since the other info from the create trigger statement have
-				// already been parsed.
 				parsedTrigger, _, _, _, err = b.Parse(trigger.CreateStatement, nil, false)
 				b.Reset()
 				if err != nil {
@@ -569,5 +591,5 @@ func orderTriggersAndReverseAfter(triggers []*plan.CreateTrigger) []*plan.Create
 }
 
 func triggerEventsMatch(event plan.TriggerEvent, event2 string) bool {
-	return strings.ToLower((string)(event)) == strings.ToLower(event2)
+	return strings.ToLower((string)(event)) == strings.ToLower(event2) // TODO: make this an enum?
 }
