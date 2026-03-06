@@ -457,6 +457,15 @@ func (b *Builder) resolveTable(tab, db string, asOf interface{}) *plan.ResolvedT
 	return plan.NewResolvedTable(table, database, asOf)
 }
 
+// BuildMultiExprTableFunc is a factory for creating plan nodes from nameless
+// TableFuncExpr (ROWS FROM pattern). Overridden by Doltgres.
+var BuildMultiExprTableFunc = func(
+	exprs []sql.Expression, alias string,
+	withOrdinality bool, columnAliases []string,
+) (sql.Node, error) {
+	return nil, sql.ErrUnsupportedFeature.New("ROWS FROM / multi-expression table functions")
+}
+
 func (b *Builder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outScope *scope) {
 	//TODO what are valid mysql table arguments
 	args := make([]sql.Expression, 0, len(t.Exprs))
@@ -468,6 +477,41 @@ func (b *Builder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outScope
 		default:
 			b.handleErr(sql.ErrUnsupportedSyntax.New(ast.String(e)))
 		}
+	}
+
+	// Nameless table function (ROWS FROM pattern) — delegate to factory
+	if t.Name == "" {
+		alias := t.Alias.String()
+		columnAliases := columnsToStrings(t.Columns)
+		node, err := BuildMultiExprTableFunc(args, alias, t.WithOrdinality, columnAliases)
+		if err != nil {
+			b.handleErr(err)
+		}
+		tidNode, ok := node.(plan.TableIdNode)
+		if !ok {
+			b.handleErr(fmt.Errorf("BuildMultiExprTableFunc must return a TableIdNode"))
+		}
+
+		outScope = inScope.push()
+		outScope.ast = t
+
+		name := alias
+		if name == "" {
+			name = "rows_from"
+		}
+
+		tabId := outScope.addTable(name)
+		var colset sql.ColSet
+		for _, c := range tidNode.Schema() {
+			id := outScope.newColumn(scopeColumn{
+				table: name,
+				col:   c.Name,
+				typ:   c.Type,
+			})
+			colset.Add(sql.ColumnId(id))
+		}
+		outScope.node = tidNode.WithColumns(colset).WithId(tabId)
+		return
 	}
 
 	utf := expression.NewUnresolvedTableFunction(t.Name, args)
@@ -527,6 +571,11 @@ func (b *Builder) buildTableFunc(inScope *scope, t *ast.TableFuncExpr) (outScope
 		if err != nil {
 			b.handleErr(err)
 		}
+	}
+
+	// Apply column aliases if provided
+	if len(t.Columns) > 0 {
+		b.renameSource(outScope, "", columnsToStrings(t.Columns))
 	}
 
 	tabId := outScope.addTable(name)
@@ -900,3 +949,4 @@ func (b *Builder) bindOnlyWithDatabase(db sql.Database, stmt ast.Statement, s st
 	outScope, err := b.bindOnly(stmt, s, nil)
 	return outScope, b.qFlags, err
 }
+
