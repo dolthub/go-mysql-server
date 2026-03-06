@@ -186,6 +186,13 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 		c = c.withOriginal(origTbl, v.Name.String())
 		return c.scalarGf()
 	case *ast.FuncExpr:
+		// TODO: support function privileges for gms auth handler
+		if v.Auth.AuthType != "" {
+			if err := b.cat.AuthorizationHandler().HandleAuth(b.ctx, b.authQueryState, v.Auth); err != nil && b.authEnabled {
+				b.handleErr(err)
+			}
+		}
+
 		name := v.Name.Lowered()
 		if name == "name_const" {
 			return b.buildNameConst(inScope, v)
