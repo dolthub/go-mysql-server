@@ -16,11 +16,12 @@ package planbuilder
 
 import (
 	goerrors "errors"
+	"runtime/trace"
+
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 	"go.opentelemetry.io/otel/attribute"
 	otel "go.opentelemetry.io/otel/trace"
 	"gopkg.in/src-d/go-errors.v1"
-	"runtime/trace"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
