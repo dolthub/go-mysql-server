@@ -548,7 +548,7 @@ func (e *Engine) analyzeNode(ctx *sql.Context, query string, bound sql.Node, qFl
 		} else if err != nil {
 			return nil, err
 		}
-		ctx.Session.CacheQuery(n.Name, cacheStmt)
+		ctx.Session.PrepareQuery(n.Name, cacheStmt)
 		return bound, nil
 	case *plan.DeallocateQuery:
 		if _, ok := ctx.Session.GetPreparedQuery(n.Name); !ok {

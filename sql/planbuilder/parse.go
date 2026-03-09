@@ -88,7 +88,7 @@ func (b *Builder) Parse(query string, qFlags *sql.QueryFlags, multi bool) (ret s
 		b.qFlags = qFlags
 	}
 
-	outScope := b.build(nil, stmt, parsed) // TODO: something is changing the SubStatementPositionStart for triggers
+	outScope := b.build(nil, stmt, parsed)
 
 	return outScope.node, parsed, remainder, b.qFlags, err
 }
