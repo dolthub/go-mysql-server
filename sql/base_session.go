@@ -535,9 +535,7 @@ func (s *BaseSession) GetPreparedQuery(query string) (sqlparser.Statement, bool)
 }
 
 func (s *BaseSession) CacheQuery(query string, stmt sqlparser.Statement) {
-	if s.cachedQueries != nil {
-		s.cachedQueries[query] = stmt
-	}
+	s.cachedQueries[query] = stmt
 }
 
 func (s *BaseSession) GetCachedQuery(query string) (sqlparser.Statement, bool) {
