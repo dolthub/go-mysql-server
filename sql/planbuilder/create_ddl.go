@@ -19,7 +19,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
@@ -44,12 +43,6 @@ func (b *Builder) buildCreateTrigger(inScope *scope, subQuery string, fullQuery 
 		triggerOrder = &plan.TriggerOrder{
 			PrecedesOrFollows: c.TriggerSpec.Order.PrecedesOrFollows,
 			OtherTriggerName:  c.TriggerSpec.Order.OtherTriggerName,
-		}
-	} else {
-		//TODO: fix vitess->sql.y, in CREATE TRIGGER, if trigger_order_opt evaluates to empty then SubStatementPositionStart swallows the first token of the body
-		beforeSwallowedToken := strings.LastIndexFunc(strings.TrimRightFunc(fullQuery[:c.SubStatementPositionStart], unicode.IsSpace), unicode.IsSpace)
-		if beforeSwallowedToken != -1 {
-			c.SubStatementPositionStart = beforeSwallowedToken
 		}
 	}
 
