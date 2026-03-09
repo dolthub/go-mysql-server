@@ -612,6 +612,8 @@ func NewBaseSession() *BaseSession {
 		statusVars:       statusVars,
 		userVars:         NewUserVars(),
 		storedProcParams: make(map[string]*StoredProcParam),
+		preparedQueries:  make(map[string]sqlparser.Statement),
+		cachedQueries:    make(map[string]sqlparser.Statement),
 		idxReg:           NewIndexRegistry(),
 		viewReg:          NewViewRegistry(),
 		locks:            make(map[string]bool),
