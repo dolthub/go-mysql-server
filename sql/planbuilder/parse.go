@@ -16,12 +16,11 @@ package planbuilder
 
 import (
 	goerrors "errors"
-	"runtime/trace"
-
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 	"go.opentelemetry.io/otel/attribute"
 	otel "go.opentelemetry.io/otel/trace"
 	"gopkg.in/src-d/go-errors.v1"
+	"runtime/trace"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -61,7 +60,15 @@ func (b *Builder) Parse(query string, qFlags *sql.QueryFlags, multi bool) (ret s
 	// TODO: this only works on EXACT query matches
 	// TODO: possible to make this work with multi?
 	// TODO: can preprocess query to somewhat normalize queries.
-	stmt, ok := ctx.Session.GetCachedQuery(query)
+	var stmt ast.Statement
+	var ok bool
+	if !b.parserOpts.AnsiQuotes && !b.parserOpts.PipesAsConcat {
+		parsed = sql.RemoveSpaceAndDelimiter(query, ';')
+		stmt, ok = ctx.Session.GetCachedQuery(parsed)
+		if ok {
+			print()
+		}
+	}
 	if !ok {
 		stmt, parsed, remainder, err = b.parser.ParseWithOptions(ctx, query, ';', multi, b.parserOpts)
 		if err != nil {
@@ -71,14 +78,16 @@ func (b *Builder) Parse(query string, qFlags *sql.QueryFlags, multi bool) (ret s
 			}
 			return nil, parsed, remainder, nil, sql.ErrSyntaxError.New(err.Error())
 		}
-		ctx.Session.CacheQuery(query, stmt)
+		if !b.parserOpts.AnsiQuotes && !b.parserOpts.PipesAsConcat {
+			ctx.Session.CacheQuery(parsed, stmt)
+		}
 	}
 
 	if qFlags != nil {
 		b.qFlags = qFlags
 	}
 
-	outScope := b.build(nil, stmt, parsed)
+	outScope := b.build(nil, stmt, parsed) // TODO: something is changing the SubStatementPositionStart for triggers
 
 	return outScope.node, parsed, remainder, b.qFlags, err
 }
