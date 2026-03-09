@@ -673,7 +673,7 @@ func (b *Builder) buildResolvedTable(inScope *scope, db, schema, name string, as
 			b.handleErr(err)
 		}
 		if !schemaFound {
-			b.handleErr(sql.ErrDatabaseSchemaNotFound.New(schema))
+			return outScope, false
 		}
 	} else if isScd && schema == "" {
 		// try using builder's current database, if it's SchemaDatabase
