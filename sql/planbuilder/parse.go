@@ -60,7 +60,7 @@ func (b *Builder) Parse(query string, qFlags *sql.QueryFlags, multi bool) (ret s
 
 	var stmt ast.Statement
 	var ok bool
-	if (b.triggerCtx.Call || b.triggerCtx.LoadOnly) && !b.parserOpts.AnsiQuotes && !b.parserOpts.PipesAsConcat {
+	if (b.triggerCtx != nil && (b.triggerCtx.Call || b.triggerCtx.LoadOnly)) && !b.parserOpts.AnsiQuotes && !b.parserOpts.PipesAsConcat {
 		parsed = sql.RemoveSpaceAndDelimiter(query, ';')
 		stmt, ok = ctx.Session.GetCachedQuery(parsed)
 		if ok {
@@ -76,7 +76,7 @@ func (b *Builder) Parse(query string, qFlags *sql.QueryFlags, multi bool) (ret s
 			}
 			return nil, parsed, remainder, nil, sql.ErrSyntaxError.New(err.Error())
 		}
-		if (b.triggerCtx.Call || b.triggerCtx.LoadOnly) && !b.parserOpts.AnsiQuotes && !b.parserOpts.PipesAsConcat {
+		if (b.triggerCtx != nil && (b.triggerCtx.Call || b.triggerCtx.LoadOnly)) && !b.parserOpts.AnsiQuotes && !b.parserOpts.PipesAsConcat {
 			ctx.Session.CacheQuery(parsed, stmt)
 		}
 	}
