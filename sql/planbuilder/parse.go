@@ -63,9 +63,6 @@ func (b *Builder) Parse(query string, qFlags *sql.QueryFlags, multi bool) (ret s
 	if (b.triggerCtx != nil && (b.triggerCtx.Call || b.triggerCtx.LoadOnly)) && !b.parserOpts.AnsiQuotes && !b.parserOpts.PipesAsConcat {
 		parsed = sql.RemoveSpaceAndDelimiter(query, ';')
 		stmt, ok = ctx.Session.GetCachedQuery(parsed)
-		if ok {
-			print()
-		}
 	}
 	if !ok {
 		stmt, parsed, remainder, err = b.parser.ParseWithOptions(ctx, query, ';', multi, b.parserOpts)
