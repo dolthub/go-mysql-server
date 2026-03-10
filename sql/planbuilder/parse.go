@@ -58,12 +58,9 @@ func (b *Builder) Parse(query string, qFlags *sql.QueryFlags, multi bool) (ret s
 		}
 	}
 
-	// TODO: this only works on EXACT query matches
-	// TODO: possible to make this work with multi?
-	// TODO: can preprocess query to somewhat normalize queries.
 	var stmt ast.Statement
 	var ok bool
-	if !b.parserOpts.AnsiQuotes && !b.parserOpts.PipesAsConcat {
+	if (b.triggerCtx.Call || b.triggerCtx.LoadOnly) && !b.parserOpts.AnsiQuotes && !b.parserOpts.PipesAsConcat {
 		parsed = sql.RemoveSpaceAndDelimiter(query, ';')
 		stmt, ok = ctx.Session.GetCachedQuery(parsed)
 		if ok {
@@ -79,7 +76,7 @@ func (b *Builder) Parse(query string, qFlags *sql.QueryFlags, multi bool) (ret s
 			}
 			return nil, parsed, remainder, nil, sql.ErrSyntaxError.New(err.Error())
 		}
-		if !b.parserOpts.AnsiQuotes && !b.parserOpts.PipesAsConcat {
+		if (b.triggerCtx.Call || b.triggerCtx.LoadOnly) && !b.parserOpts.AnsiQuotes && !b.parserOpts.PipesAsConcat {
 			ctx.Session.CacheQuery(parsed, stmt)
 		}
 	}
