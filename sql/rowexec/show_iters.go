@@ -481,7 +481,29 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 		var indexCols []string
 		for idx, expr := range index.Expressions() {
 			col := plan.GetColumnFromIndexExpr(ctx, expr, table)
-			if col != nil {
+			if col == nil {
+				continue
+			}
+			if col.HiddenSystem && col.Generated != nil {
+				// TODO: This type-check is a workaround for an inconsistency in how Dolt stores
+				// generated expressions. Dolt's ToDoltCol() serializes via col.Generated.String()
+				// (i.e. ColumnDefaultValue.String()), which wraps the inner expression in parens:
+				// e.g. Arithmetic.String()="(c1*10)" → stored as "((c1*10))". On read, that string
+				// becomes UnresolvedColumnDefault.ExprString, so calling ColumnDefaultValue.String()
+				// again would triple-wrap it. Two cleaner fixes exist:
+				//   A) Change ColumnDefaultValue.String() to return Expr.String() directly when Expr
+				//      is *UnresolvedColumnDefault (making it idempotent for the stored form). No
+				//      migration needed, but affects every call site that mixes resolved/unresolved.
+				//   B) Change Dolt's ToDoltCol() to store col.Generated.Expr.String() instead of
+				//      col.Generated.String(), removing the extra paren at the source. Requires
+				//      migration for any existing databases with functional indexes.
+				// Either fix would let this site use col.Generated.String() unconditionally.
+				if _, ok := col.Generated.Expr.(*sql.UnresolvedColumnDefault); ok {
+					indexCols = append(indexCols, col.Generated.Expr.String())
+				} else {
+					indexCols = append(indexCols, col.Generated.String())
+				}
+			} else {
 				indexDef := i.formatter.QuoteIdentifier(col.Name)
 				if len(prefixLengths) > idx && prefixLengths[idx] != 0 {
 					indexDef += fmt.Sprintf("(%v)", prefixLengths[idx])

@@ -954,6 +954,14 @@ func (b *BaseBuilder) buildRenameColumn(ctx *sql.Context, n *plan.RenameColumn, 
 		return nil, sql.ErrTableColumnNotFound.New(tbl.Name(), n.ColumnName)
 	}
 
+	// Check for functional index dependencies (matches MySQL ERROR 3837)
+	colLower := strings.ToLower(n.ColumnName)
+	for _, col := range n.TargetSchema() {
+		if col.HiddenSystem && col.Generated != nil && plan.ColumnReferencedInDefaultValueExpression(ctx, col.Generated, colLower) {
+			return nil, sql.ErrColumnFunctionalIndexDependency.New(n.ColumnName)
+		}
+	}
+
 	nc := *n.TargetSchema()[idx]
 	nc.Name = n.NewColumnName
 	col := &nc

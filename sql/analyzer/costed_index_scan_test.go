@@ -189,7 +189,7 @@ Or
 	ctx := sql.NewEmptyContext()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := newIndexCoster("xyz")
+			c := newIndexCoster("xy")
 			root, leftover, _ := c.buildRoot(ctx, tt.in, NewDefaultLogicTreeWalker())
 			costTree := formatIndexFilter(root)
 			require.Equal(t, strings.TrimSpace(tt.exp), strings.TrimSpace(costTree), costTree)

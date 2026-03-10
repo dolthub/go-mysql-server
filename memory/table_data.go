@@ -334,9 +334,10 @@ Top:
 	}
 }
 
-func (td *TableData) indexColsForTableEditor() ([][]int, [][]uint16) {
+func (td *TableData) indexColsForTableEditor() ([][]int, [][]uint16, []string) {
 	var uniqIdxCols [][]int
 	var prefixLengths [][]uint16
+	var idxNames []string
 	for _, idx := range td.indexes {
 		if !idx.IsUnique() {
 			continue
@@ -354,8 +355,9 @@ func (td *TableData) indexColsForTableEditor() ([][]int, [][]uint16) {
 		}
 		uniqIdxCols = append(uniqIdxCols, colIdxs)
 		prefixLengths = append(prefixLengths, idx.PrefixLengths())
+		idxNames = append(idxNames, strings.ToLower(idx.ID()))
 	}
-	return uniqIdxCols, prefixLengths
+	return uniqIdxCols, prefixLengths, idxNames
 }
 
 // Sorts the rows in the partitions of the table to be in primary key order.

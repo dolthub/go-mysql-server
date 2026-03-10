@@ -139,6 +139,30 @@ func stripTableNamesFromColumnDefaults(ctx *sql.Context, _ *Analyzer, n sql.Node
 				return node, transform.SameTree, err
 			}
 			return newNode, transform.NewTree, nil
+		case *plan.AlterIndex:
+			// AlterIndex.Expressions() only exposes per-column defaults from TargetSchema, not
+			// AlterIndex.Expression (the functional index expression). Strip table qualifiers from
+			// it explicitly so the expression is stored without a table name (e.g. "lower(email)"
+			// instead of "lower(users.email)"), matching what stripTableNamesFromDefault does for
+			// regular generated column defaults.
+			if node.Expression == nil {
+				return node, transform.SameTree, nil
+			}
+			newExpr, same, err := transform.Expr(ctx, node.Expression, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+				if gf, ok := e.(*expression.GetField); ok {
+					return gf.WithTable(""), transform.NewTree, nil
+				}
+				return e, transform.SameTree, nil
+			})
+			if err != nil {
+				return node, transform.SameTree, err
+			}
+			if same {
+				return node, transform.SameTree, nil
+			}
+			np := *node
+			np.Expression = newExpr
+			return &np, transform.NewTree, nil
 		case sql.SchemaTarget:
 			return transform.NodeExprs(ctx, n, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				eWrapper, ok := e.(*expression.Wrapper)

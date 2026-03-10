@@ -342,6 +342,11 @@ func getRowsFromTable(ctx *sql.Context, db DbWithNames, t sql.Table, privSetDb s
 
 	tblName := t.Name()
 	for i, col := range SchemaForTable(t, db.Database, allColsWithDefaultValue) {
+		// Don't include hidden system columns
+		if col.HiddenSystem {
+			continue
+		}
+
 		var columnKey string
 		// Check column PK here first because there are PKs from table implementations that don't implement sql.IndexedTable
 		if col.PrimaryKey {

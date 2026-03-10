@@ -114,6 +114,11 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 						err := sql.ErrColumnNotFound.New(gf.String())
 						b.handleErr(err)
 					}
+
+					// Don't include system hidden columns when expanding '*'
+					if strings.Contains(c.col, "!hidden!") {
+						continue
+					}
 					c.id = id
 					c.scalar = gf
 					outScope.addColumn(c)
