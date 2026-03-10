@@ -63,10 +63,12 @@ var AlwaysBeforeDefault []Rule
 
 // DefaultRules to apply when analyzing nodes.
 var DefaultRules = []Rule{
+	{Id: validateNoHiddenSystemColumnsId, Apply: validateNoHiddenSystemColumns},
 	{Id: hoistOutOfScopeFiltersId, Apply: hoistOutOfScopeFilters},
 	{Id: validateStarExpressionsId, Apply: validateStarExpressions}, //TODO
 	{Id: replaceSubqueriesId, Apply: replaceSubqueries},
 	{Id: pushdownSubqueryAliasFiltersId, Apply: pushdownSubqueryAliasFilters},
+	{Id: replaceIndexedExpressionsId, Apply: replaceIndexedExpressions},
 	{Id: pruneTablesId, Apply: pruneTables},
 	{Id: validateCheckConstraintId, Apply: validateCheckConstraints},
 	{Id: unnestInSubqueriesId, Apply: unnestInSubqueries},
