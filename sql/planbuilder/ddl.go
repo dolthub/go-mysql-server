@@ -1764,6 +1764,21 @@ func (b *Builder) resolveColumnDefaultExpression(inScope *scope, columnDef *sql.
 		b.handleErr(err)
 	}
 
+	// Hidden system columns store functional expression index expressions internally (e.g. "lower(email)",
+	// "(c1 * 10)"). The function-must-be-in-parens restriction is a user-facing syntax rule and should
+	// not be applied to these internally-generated expressions. Build the expression directly, treating
+	// it as parenthesized so that column-reference validation passes.
+	if columnDef.HiddenSystem {
+		resExpr := b.buildScalar(inScope, ae.Expr)
+		return &sql.ColumnDefaultValue{
+			Expr:          resExpr,
+			OutType:       columnDef.Type,
+			Literal:       false,
+			ReturnNil:     columnDef.Nullable,
+			Parenthesized: true,
+		}
+	}
+
 	return b.convertDefaultExpression(inScope, ae.Expr, columnDef.Type, columnDef.Nullable)
 }
 

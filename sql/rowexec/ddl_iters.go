@@ -562,11 +562,12 @@ func updateDefaultsOnColumnRename(ctx *sql.Context, tbl sql.AlterableTable, sche
 	var err error
 	colsToModify := make(map[*sql.Column]struct{})
 	for _, col := range schema {
-		if col.Default == nil {
+		if col.Default == nil && col.Generated == nil {
 			continue
 		}
 		newCol := *col
-		newCol.Default.Expr, _, err = transform.Expr(col.Default.Expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+
+		renameGetField := func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			if expr, ok := e.(*expression.GetField); ok {
 				if strings.ToLower(expr.Name()) == oldName {
 					colsToModify[&newCol] = struct{}{}
@@ -574,9 +575,22 @@ func updateDefaultsOnColumnRename(ctx *sql.Context, tbl sql.AlterableTable, sche
 				}
 			}
 			return e, transform.SameTree, nil
-		})
-		if err != nil {
-			return err
+		}
+
+		if col.Default != nil {
+			newCol.Default.Expr, _, err = transform.Expr(col.Default.Expr, renameGetField)
+			if err != nil {
+				return err
+			}
+		}
+		if col.Generated != nil {
+			// Deep copy the Generated value before modifying to avoid aliasing with the original column
+			genCopy := *col.Generated
+			newCol.Generated = &genCopy
+			newCol.Generated.Expr, _, err = transform.Expr(col.Generated.Expr, renameGetField)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	for col := range colsToModify {
@@ -2112,10 +2126,26 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 	switch n.Action {
 	case plan.IndexAction_Create:
 		if n.Expression != nil {
-			// Dolt doesn't currently support creating indices with expression arguments.
-			// If we parse a query attempting to do so, we offer a warning and no-op
-			ctx.Session.Warn(&sql.Warning{Level: "Error", Message: "Index not created, functional indexes not implemented"})
-			return nil
+			// NOTE: For now, if n.Expression is set, then we know the index has a single functional expression,
+			//       and does not contain any columns as other index fields. This logic will need to change when
+			//       we start allowing multiple functional expressions and allow mixing functional expressions with
+			//       column names as multiple fields in the index.
+			newColumn, err := b.createHiddenSystemColumn(ctx, n)
+			if err != nil {
+				return err
+			}
+
+			// After creating the system hidden, generated column, update the plan node so we can create the index next
+			n.Expression = nil
+			n.Columns = []sql.IndexColumn{{
+				Name: newColumn.Name,
+			}}
+			newSchema := append(n.Table.Schema().Copy(), newColumn)
+			newNode, err := n.WithTargetSchema(newSchema)
+			if err != nil {
+				return err
+			}
+			n = newNode.(*plan.AlterIndex)
 		}
 
 		if len(n.Columns) == 0 {
@@ -2303,7 +2333,14 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 			}
 			return err
 		}
-		return nil
+
+		resolvedTable, ok := n.Table.(*plan.ResolvedTable)
+		if !ok {
+			return fmt.Errorf("alter index: table is not a resolved table: %T", n.Table)
+		}
+
+		// Any hidden system columns created for an index must be dropped when the index is dropped
+		return b.dropHiddenSystemColumnsForIndex(ctx, resolvedTable, n.IndexName)
 	case plan.IndexAction_Rename:
 		return idxAltTbl.RenameIndex(ctx, n.PreviousIndexName, n.IndexName)
 	case plan.IndexAction_DisableEnableKeys:
@@ -2318,6 +2355,98 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 	default:
 		return plan.ErrIndexActionNotImplemented.New(n.Action)
 	}
+}
+
+// dropHiddenSystemColumnsForIndex searches the specified |table| for any hidden system columns that were created
+// for the specified index, |indexName|, and drops them from the table. If any error is encountered, it is returned.
+func (b *BaseBuilder) dropHiddenSystemColumnsForIndex(ctx *sql.Context, table *plan.ResolvedTable, indexName string) error {
+	systemHiddenColumnsToDrop := make([]string, 0, len(table.Schema()))
+	for _, col := range table.Schema() {
+		if !col.HiddenSystem {
+			continue
+		}
+
+		if strings.HasPrefix(col.Name, "!hidden!"+strings.ToLower(indexName)+"!") {
+			systemHiddenColumnsToDrop = append(systemHiddenColumnsToDrop, col.Name)
+		}
+	}
+
+	for _, systemHiddenColumn := range systemHiddenColumnsToDrop {
+		dropColumn := plan.NewDropColumnResolved(table, systemHiddenColumn)
+		newNode, err := dropColumn.WithTargetSchema(table.Schema())
+		if err != nil {
+			return err
+		}
+		dropColumn = newNode.(*plan.DropColumn)
+		iter, err := b.buildDropColumn(ctx, dropColumn, nil)
+		if err != nil {
+			return err
+		}
+
+		for _, err = iter.Next(ctx); ; _, err = iter.Next(ctx) {
+			if err == io.EOF {
+				break
+			} else if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// createHiddenSystemColumn created a virtual, hidden system column, used to generate an expression that
+// is used in a secondary index. The new column is returned, along with any encountered error.
+func (b *BaseBuilder) createHiddenSystemColumn(ctx *sql.Context, n *plan.AlterIndex) (*sql.Column, error) {
+	resolvedTable, ok := n.Table.(*plan.ResolvedTable)
+	if !ok {
+		return nil, fmt.Errorf("alter index: table is not a resolved table: %T", n.Table)
+	}
+
+	columnDefaultValue, err := sql.NewColumnDefaultValue(n.Expression, n.Expression.Type(), false, true, true)
+	if err != nil {
+		return nil, err
+	}
+
+	// MySQL uses the following pattern for naming hidden system columns for indexed
+	// functional expressions: !hidden!<index_name>!<position_in_index>!<subcomponent>
+	// subcomponent is intended for the subcomponent in the generated field, but in
+	// practice is always 0.
+	hiddenColumnName := "!hidden!" + strings.ToLower(n.IndexName) + "!0!0"
+
+	newColumn := sql.Column{
+		Type:           n.Expression.Type(),
+		Generated:      columnDefaultValue,
+		Name:           hiddenColumnName,
+		Source:         n.Table.Name(),
+		DatabaseSource: n.Table.Database().Name(),
+		PrimaryKey:     false,
+		Nullable:       true,
+		Virtual:        true,
+		AutoIncrement:  false,
+		// Marking this as a hidden system column means it can't be referenced
+		// by users, but we can use it in secondary indexes.
+		HiddenSystem: true,
+	}
+	addColumnNode := plan.NewAddColumnResolved(resolvedTable, newColumn, nil)
+
+	sqlNode, err := addColumnNode.WithTargetSchema(resolvedTable.Schema())
+	addColumnIter, err := b.buildAddColumn(ctx, sqlNode.(*plan.AddColumn), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// Drain the iterator to execute the logic to add the new column
+	for {
+		_, err := addColumnIter.Next(ctx)
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return nil, err
+		}
+	}
+
+	return &newColumn, nil
 }
 
 // warnOnDuplicateSecondaryIndex emits a session warning if the newly created index |newIndexName| duplicates
@@ -2386,8 +2515,11 @@ func buildIndex(ctx *sql.Context, n *plan.AlterIndex, ibt sql.IndexBuildingTable
 	var rowIter sql.RowIter = sql.NewTableRowIter(ctx, ibt, partitions)
 	rowIter = withSafepointPeriodicallyIter(rowIter)
 
-	// Our table scan needs to include projections for virtual columns if there are any
-	isVirtual := ibt.Schema().HasVirtualColumns()
+	// Our table scan needs to include projections for virtual columns if there are any.
+	// Use n.TargetSchema() instead of ibt.Schema() because the target schema includes virtual columns
+	// added during this ALTER TABLE execution (e.g., hidden system columns for functional indexes),
+	// which may not yet be reflected in the table's base schema.
+	isVirtual := n.TargetSchema().HasVirtualColumns()
 	var projections []sql.Expression
 	if isVirtual {
 		projections = virtualTableProjections(n.TargetSchema(), ibt.Name())

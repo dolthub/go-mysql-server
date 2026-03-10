@@ -997,33 +997,37 @@ func (t *Table) newTableEditor(ctx *sql.Context) (sql.TableEditor, error) {
 	tableUnderEdit := t.copy()
 	tableUnderEdit.data = data
 
-	uniqIdxCols, prefixLengths := t.data.indexColsForTableEditor()
+	uniqIdxCols, prefixLengths, uniqIdxNames := data.indexColsForTableEditor()
 	var editor sql.TableEditor = &tableEditor{
-		editedTable:   tableUnderEdit,
-		initialTable:  t.copy(),
-		ea:            ea,
-		uniqueIdxCols: uniqIdxCols,
-		prefixLengths: prefixLengths,
+		editedTable:    tableUnderEdit,
+		initialTable:   t.copy(),
+		ea:             ea,
+		uniqueIdxCols:  uniqIdxCols,
+		prefixLengths:  prefixLengths,
+		uniqueIdxNames: uniqIdxNames,
 	}
 	return editor, nil
 }
 
 func (t *Table) tableEditorForRewrite(ctx *sql.Context, oldSchema, newSchema sql.PrimaryKeySchema) (sql.TableEditor, error) {
 	// Make a copy of the table under edit with the new schema and no data
-	// sess := SessionFromContext(ctx)
 	tableUnderEdit := t.copy()
-	// tableUnderEdit.data = sess.tableData(t).copy()
+	// Use session indexes so that indexes created in this session are preserved during rewrite
+	if !t.ignoreSessionData {
+		tableUnderEdit.data.indexes = t.sessionTableData(ctx).indexes
+	}
 	tableData := tableUnderEdit.data.truncate(normalizeSchemaForRewrite(newSchema))
 	tableUnderEdit.data = tableData
 
 	// TODO: |editedTableAnd| and |ea| should have the same tableData reference
-	uniqIdxCols, prefixLengths := tableData.indexColsForTableEditor()
+	uniqIdxCols, prefixLengths, uniqIdxNames := tableData.indexColsForTableEditor()
 	var editor sql.TableEditor = &tableEditor{
-		editedTable:   tableUnderEdit,
-		initialTable:  t.copy(),
-		ea:            newTableEditAccumulator(tableData),
-		uniqueIdxCols: uniqIdxCols,
-		prefixLengths: prefixLengths,
+		editedTable:    tableUnderEdit,
+		initialTable:   t.copy(),
+		ea:             newTableEditAccumulator(tableData),
+		uniqueIdxCols:  uniqIdxCols,
+		prefixLengths:  prefixLengths,
+		uniqueIdxNames: uniqIdxNames,
 	}
 	return editor, nil
 }
@@ -1423,30 +1427,33 @@ func (t *Table) ModifyColumn(ctx *sql.Context, columnName string, column *sql.Co
 		}
 	}
 
-	for k, p := range data.partitions {
-		newP := make([]sql.Row, len(p))
-		for i, row := range p {
-			var oldRowWithoutVal sql.Row
-			oldRowWithoutVal = append(oldRowWithoutVal, row[:oldIdx]...)
-			oldRowWithoutVal = append(oldRowWithoutVal, row[oldIdx+1:]...)
-			oldType := data.schema.Schema[oldIdx].Type
-			newVal, inRange, err := types.TypeAwareConversion(ctx, row[oldIdx], oldType, column.Type)
-			if err != nil {
-				if sql.ErrNotMatchingSRID.Is(err) {
-					err = sql.ErrNotMatchingSRIDWithColName.New(columnName, err)
+	// Virtual columns are not stored in partition rows, so skip the row rewrite for them
+	if !data.schema.Schema[oldIdx].Virtual {
+		for k, p := range data.partitions {
+			newP := make([]sql.Row, len(p))
+			for i, row := range p {
+				var oldRowWithoutVal sql.Row
+				oldRowWithoutVal = append(oldRowWithoutVal, row[:oldIdx]...)
+				oldRowWithoutVal = append(oldRowWithoutVal, row[oldIdx+1:]...)
+				oldType := data.schema.Schema[oldIdx].Type
+				newVal, inRange, err := types.TypeAwareConversion(ctx, row[oldIdx], oldType, column.Type)
+				if err != nil {
+					if sql.ErrNotMatchingSRID.Is(err) {
+						err = sql.ErrNotMatchingSRIDWithColName.New(columnName, err)
+					}
+					return err
 				}
-				return err
+				if inRange != sql.InRange {
+					return sql.ErrValueOutOfRange.New(row[oldIdx], column.Type)
+				}
+				var newRow sql.Row
+				newRow = append(newRow, oldRowWithoutVal[:newIdx]...)
+				newRow = append(newRow, newVal)
+				newRow = append(newRow, oldRowWithoutVal[newIdx:]...)
+				newP[i] = newRow
 			}
-			if inRange != sql.InRange {
-				return sql.ErrValueOutOfRange.New(row[oldIdx], column.Type)
-			}
-			var newRow sql.Row
-			newRow = append(newRow, oldRowWithoutVal[:newIdx]...)
-			newRow = append(newRow, newVal)
-			newRow = append(newRow, oldRowWithoutVal[newIdx:]...)
-			newP[i] = newRow
+			data.partitions[k] = newP
 		}
-		data.partitions[k] = newP
 	}
 
 	pkNameToOrdIdx := make(map[string]int)
@@ -2539,13 +2546,14 @@ var _ MemTable = (*TableRevision)(nil)
 func (t *TableRevision) Inserter(ctx *sql.Context) sql.RowInserter {
 	ea := newTableEditAccumulator(t.Table.data)
 
-	uniqIdxCols, prefixLengths := t.data.indexColsForTableEditor()
+	uniqIdxCols, prefixLengths, uniqIdxNames := t.data.indexColsForTableEditor()
 	return &tableEditor{
-		editedTable:   t.Table,
-		initialTable:  t.copy(),
-		ea:            ea,
-		uniqueIdxCols: uniqIdxCols,
-		prefixLengths: prefixLengths,
+		editedTable:    t.Table,
+		initialTable:   t.copy(),
+		ea:             ea,
+		uniqueIdxCols:  uniqIdxCols,
+		prefixLengths:  prefixLengths,
+		uniqueIdxNames: uniqIdxNames,
 	}
 }
 
