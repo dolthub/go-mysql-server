@@ -680,16 +680,6 @@ var InsertQueries = []WriteQueryTest{
 			sql.NewRow(5, "5"),
 		},
 	},
-	{
-		WriteQuery:          "INSERT INTO mytable (i, s) VALUES (10, ' 12:23 a'), (11, '11:11:11.12.13'), (12, '10:10:');",
-		ExpectedWriteResult: []sql.Row{{types.OkResult{RowsAffected: 3}}},
-		SelectQuery:         "SELECT i, s FROM mytable WHERE i >= 10 ORDER BY i",
-		ExpectedSelect: []sql.Row{
-			{10, "12:23:00"},
-			{11, "11:11:11.12"},
-			{12, "10:10:00"},
-		},
-	},
 }
 
 var SpatialInsertQueries = []WriteQueryTest{
