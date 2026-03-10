@@ -28,6 +28,7 @@ type ShowColumns struct {
 	Indexes      []sql.Index
 	targetSchema sql.Schema
 	Full         bool
+	Extended     bool
 }
 
 var VarChar25000 = types.MustCreateStringWithDefaults(sqltypes.VarChar, 25_000)

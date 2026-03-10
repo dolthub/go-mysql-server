@@ -423,7 +423,7 @@ func convertColumnDefaultToString(ctx *sql.Context, def *sql.ColumnDefaultValue)
 }
 
 func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, table sql.Table, schema sql.Schema, pkSchema sql.PrimaryKeySchema) (string, error) {
-	colStmts := make([]string, len(schema))
+	colStmts := make([]string, 0, len(schema))
 	var primaryKeyCols []string
 
 	var pkOrdinals []int
@@ -434,6 +434,10 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 	// Statement creation parts for each column
 	tableCollation := table.Collation()
 	for idx, col := range schema {
+		if col.HiddenSystem {
+			continue
+		}
+
 		var colDefaultStr string
 		var err error
 		if col.Default != nil && col.Generated == nil {
@@ -456,7 +460,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 			pkOrdinals = append(pkOrdinals, idx)
 		}
 
-		colStmts[idx] = i.formatter.GenerateCreateTableColumnDefinition(col, colDefaultStr, onUpdateStr, tableCollation)
+		colStmts = append(colStmts, i.formatter.GenerateCreateTableColumnDefinition(col, colDefaultStr, onUpdateStr, tableCollation))
 	}
 
 	for _, idx := range pkOrdinals {

@@ -754,6 +754,9 @@ func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *sc
 	table = tableScope.node
 
 	show := plan.NewShowColumns(full, table)
+	if s.Extended {
+		show.Extended = true
+	}
 
 	for _, c := range show.Schema() {
 		outScope.newColumn(scopeColumn{
