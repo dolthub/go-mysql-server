@@ -167,7 +167,6 @@ func (e *Engine) PrepareQuery(
 		return nil, err
 	}
 
-	// TODO: why take both statementKey and query if they are the same?
 	return e.PrepareParsedQuery(ctx, query, query, stmt)
 }
 
