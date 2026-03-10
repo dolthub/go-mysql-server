@@ -1,10 +1,10 @@
 unaryAggs:
 - name:     "AnyValue"
   desc:     "returns any single value in the grouped rows"
-  nullable: true
+  nullable: true # TODO: doesn't this depend on whether the child is nullable?
 - name:     "Avg"
   desc:     "returns the average value of expr in all rows."
-  nullable: true
+  nullable: true # TODO: doesn't this depend whether the child is nullable?
 - name:    "BitAnd"
   desc:    "returns the bitwise AND of all bits in expr."
   retType: "types.Uint64"
@@ -31,7 +31,7 @@ unaryAggs:
   desc: "returns the minimum value of expr in all rows."
 - name:     "Sum"
   desc:     "returns the sum of expr in all rows"
-  nullable: false
+  nullable: false # TODO: remove this line. Sum can be null if all values are null
 - name: "StdDevPop"
   desc: "returns the population standard deviation of expr"
 - name: "StdDevSamp"

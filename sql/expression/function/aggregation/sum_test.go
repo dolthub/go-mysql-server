@@ -105,61 +105,64 @@ func TestSumWithDistinct(t *testing.T) {
 	require.Equal("SUM(DISTINCT myfield)", sum.String())
 
 	testCases := []struct {
+		skip     bool
 		name     string
 		rows     []sql.Row
 		expected interface{}
 	}{
 		{
-			"string int values",
-			[]sql.Row{{"1"}, {"1"}, {"2"}, {"2"}, {"3"}, {"3"}, {"4"}, {"4"}},
-			float64(10),
-		},
-		// TODO : DISTINCT returns incorrect result, it currently returns 11.00
-		//        https://github.com/dolthub/dolt/issues/4298
-		//{
-		//	"string int values",
-		//	[]sql.Row{{"1.00"}, {"1"}, {"2"}, {"2"}, {"3"}, {"3"}, {"4"}, {"4"}},
-		//	float64(10),
-		//},
-		{
-			"string float values",
-			[]sql.Row{{"1.5"}, {"1.5"}, {"1.5"}, {"1.5"}, {"2"}, {"3"}, {"4"}},
-			float64(10.5),
+			name:     "string int values",
+			rows:     []sql.Row{{"1"}, {"1"}, {"2"}, {"2"}, {"3"}, {"3"}, {"4"}, {"4"}},
+			expected: float64(10),
 		},
 		{
-			"string non-int values",
-			[]sql.Row{{"a"}, {"b"}, {"b"}, {"c"}, {"c"}, {"d"}},
-			float64(0),
+			name:     "string int values",
+			rows:     []sql.Row{{"1.00"}, {"1"}, {"2"}, {"2"}, {"3"}, {"3"}, {"4"}, {"4"}},
+			expected: float64(10),
+			// TODO : DISTINCT returns incorrect result, it currently returns 11.00
+			//        https://github.com/dolthub/dolt/issues/4298
+			// TODO: file new issue for this
+			skip: true,
 		},
 		{
-			"float values",
-			[]sql.Row{{1.}, {2.5}, {3.}, {4.}},
-			float64(10.5),
+			name:     "string float values",
+			rows:     []sql.Row{{"1.5"}, {"1.5"}, {"1.5"}, {"1.5"}, {"2"}, {"3"}, {"4"}},
+			expected: float64(10.5),
 		},
 		{
-			"no rows",
-			[]sql.Row{},
-			nil,
+			name:     "string non-int values",
+			rows:     []sql.Row{{"a"}, {"b"}, {"b"}, {"c"}, {"c"}, {"d"}},
+			expected: float64(0),
 		},
 		{
-			"nil values",
-			[]sql.Row{{nil}, {nil}},
-			nil,
+			name:     "float values",
+			rows:     []sql.Row{{1.}, {2.5}, {3.}, {4.}},
+			expected: float64(10.5),
 		},
 		{
-			"int64 values",
-			[]sql.Row{{int64(1)}, {int64(3)}, {int64(3)}, {int64(3)}},
-			float64(4),
+			name:     "no rows",
+			rows:     []sql.Row{},
+			expected: nil,
 		},
 		{
-			"int32 values",
-			[]sql.Row{{int32(1)}, {int32(1)}, {int32(1)}, {int32(3)}},
-			float64(4),
+			name:     "nil values",
+			rows:     []sql.Row{{nil}, {nil}},
+			expected: nil,
 		},
 		{
-			"int32 and nil values",
-			[]sql.Row{{nil}, {int32(1)}, {int32(1)}, {int32(1)}, {int32(3)}, {nil}, {nil}},
-			float64(4),
+			name:     "int64 values",
+			rows:     []sql.Row{{int64(1)}, {int64(3)}, {int64(3)}, {int64(3)}},
+			expected: float64(4),
+		},
+		{
+			name:     "int32 values",
+			rows:     []sql.Row{{int32(1)}, {int32(1)}, {int32(1)}, {int32(3)}},
+			expected: float64(4),
+		},
+		{
+			name:     "int32 and nil values",
+			rows:     []sql.Row{{nil}, {int32(1)}, {int32(1)}, {int32(1)}, {int32(3)}, {nil}, {nil}},
+			expected: float64(4),
 		},
 	}
 

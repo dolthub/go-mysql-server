@@ -18,8 +18,8 @@ type AggDef struct {
 	Name     string `yaml:"name"`
 	SqlName  string `yaml:"sqlName"`
 	Desc     string `yaml:"desc"`
-	RetType  string `yaml:"retType"` // must be valid sql.Type
-	Nullable bool   `yaml:"nullable"`
+	RetType  string `yaml:"retType"`  // must be valid sql.Type
+	Nullable bool   `yaml:"nullable"` // TODO: remove this! should be child.Nullable
 }
 
 var _ GenDefs = ([]AggDef)(nil)
@@ -94,6 +94,7 @@ func (g *AggGen) genAggConstructor(define AggDef) {
 }
 
 func (g *AggGen) genAggPropAccessors(define AggDef) {
+	// TODO: this is not true! Isn't even currently true in practice
 	retType := "a.Child.Type()"
 	if define.RetType != "" {
 		retType = define.RetType
@@ -102,6 +103,7 @@ func (g *AggGen) genAggPropAccessors(define AggDef) {
 	fmt.Fprintf(g.w, "    return %s\n", retType)
 	fmt.Fprintf(g.w, "}\n\n")
 
+	// TODO: remove this! should be child.IsNullable(), which is the default
 	fmt.Fprintf(g.w, "func (a *%s) IsNullable() bool {\n", define.Name)
 	fmt.Fprintf(g.w, "    return %t\n", define.Nullable)
 	fmt.Fprintf(g.w, "}\n\n")
