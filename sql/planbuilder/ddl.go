@@ -588,7 +588,14 @@ func (b *Builder) buildAlterTableClause(inScope *scope, ddl *ast.DDL) []*scope {
 		var ok bool
 		tableScope, ok := b.buildResolvedTableForTablename(inScope, ddl.Table, nil)
 		if !ok {
-			b.handleErr(sql.ErrTableNotFound.New(ddl.Table.Name.String()))
+			if ddl.IfExists {
+				return nil
+			}
+			tblName := ddl.Table.Name.String()
+			if sch := ddl.Table.SchemaQualifier.String(); sch != "" {
+				tblName = fmt.Sprintf("%s.%s", sch, tblName)
+			}
+			b.handleErr(sql.ErrTableNotFound.New(tblName))
 		}
 		rt, ok := tableScope.node.(*plan.ResolvedTable)
 		if !ok {
