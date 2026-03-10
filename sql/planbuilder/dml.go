@@ -207,6 +207,25 @@ func (b *Builder) buildInsertValues(inScope *scope, v *ast.AliasedValues, column
 		}
 	}
 
+	// If a table has a system hidden column, then a placeholder must be inserted into v.Values
+	// So that we generate the default value
+	// TODO: Is there a better / more efficient way to do this? Instead of modifying this potentially
+	//       large datastructure... we could identify hidden system columns and on the fly generate
+	//       the default values for them or just skip over them when inserting (especially since they
+	//       are virtual/generated and won't be stored anyway, so don't need to be computed) since
+	//       we know the hidden system columns will never be referenced in an insert.
+	for i, column := range destSchema {
+		if column.HiddenSystem && column.Generated != nil {
+			for valuesIdx := range v.Values {
+				newValues := make(ast.ValTuple, 0, len(v.Values)+1)
+				newValues = append(newValues, v.Values[valuesIdx][:i]...)
+				newValues = append(newValues, &ast.Default{ColName: column.Name})
+				newValues = append(newValues, v.Values[valuesIdx][i:]...)
+				v.Values[valuesIdx] = newValues
+			}
+		}
+	}
+
 	literalOnly = true
 	exprTuples := make([][]sql.Expression, len(v.Values))
 	for i, vt := range v.Values {
