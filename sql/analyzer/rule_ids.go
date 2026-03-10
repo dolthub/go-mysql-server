@@ -29,15 +29,17 @@ const (
 	validateGroupById                           // validateGroupBy
 
 	// default
-	flattenTableAliasesId          // flattenTableAliases
-	pushdownSubqueryAliasFiltersId // pushdownSubqueryAliasFilters
-	replaceSubqueriesId            // replaceSubqueries
-	validateCheckConstraintId      // validateCheckConstraints
-	replaceCountStarId             // replaceCountStar
-	replaceCrossJoinsId            // replaceCrossJoins
-	moveJoinCondsToFilterId        // moveJoinConditionsToFilter
-	simplifyFiltersId              // simplifyFilters
-	pushNotFiltersId               // pushNotFilters
+	flattenTableAliasesId           // flattenTableAliases
+	pushdownSubqueryAliasFiltersId  // pushdownSubqueryAliasFilters
+	replaceSubqueriesId             // replaceSubqueries
+	validateCheckConstraintId       // validateCheckConstraints
+	replaceCountStarId              // replaceCountStar
+	replaceCrossJoinsId             // replaceCrossJoins
+	moveJoinCondsToFilterId         // moveJoinConditionsToFilter
+	simplifyFiltersId               // simplifyFilters
+	pushNotFiltersId                // pushNotFilters
+	validateNoHiddenSystemColumnsId // validateNoHiddenSystemColumns
+	replaceIndexedExpressionsId     // replaceIndexedExpressions
 
 	// after default
 	hoistOutOfScopeFiltersId     // hoistOutOfScopeFilters
