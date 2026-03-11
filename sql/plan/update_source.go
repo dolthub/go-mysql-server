@@ -33,6 +33,15 @@ type UpdateSource struct {
 var _ sql.Node = (*UpdateSource)(nil)
 var _ sql.CollationCoercible = (*UpdateSource)(nil)
 
+type UpdateExprs struct {
+	// updateExprs are update expressions that are explicitly part of a query
+	updateExprs []sql.Expression
+	// derivedUpdateExprs are update expressions that are derived from the table's column expressions. This includes
+	// updates on generated columns and ON UPDATE columns. derivedUpdateExprs should only be applied when updateExprs
+	// actually yield a change in the row's values
+	derivedUpdateExprs []sql.Expression
+}
+
 // NewUpdateSource returns a new UpdateSource from the node and expressions given.
 func NewUpdateSource(node sql.Node, ignore bool, updateExprs []sql.Expression) *UpdateSource {
 	return &UpdateSource{

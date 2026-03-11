@@ -738,7 +738,7 @@ func (a *accumulatorIter) Next(ctx *sql.Context) (r sql.Row, err error) {
 
 	for {
 		row, err := a.iter.Next(ctx)
-		igErr, isIg := err.(sql.IgnorableError)
+		ignorableErr, isIgnorableErr := err.(sql.IgnorableError)
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
@@ -773,9 +773,9 @@ func (a *accumulatorIter) Next(ctx *sql.Context) (r sql.Row, err error) {
 			lastQueryInfo.RowCount.Store(int64(res.RowsAffected))
 
 			return sql.NewRow(res), nil
-		} else if isIg {
+		} else if isIgnorableErr {
 			if ui, ok := a.updateRowHandler.(updateIgnoreAccumulatorRowHandler); ok {
-				err = ui.handleRowUpdateWithIgnore(ctx, igErr.OffendingRow, true)
+				err = ui.handleRowUpdateWithIgnore(ctx, ignorableErr.OffendingRow, true)
 				if err != nil {
 					return nil, err
 				}

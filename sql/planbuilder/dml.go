@@ -107,7 +107,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 
 	srcScope, srcLiteralOnly := b.insertRowsToNode(inScope, insertRows, columns, i.Table.Name.String(), sch)
 
-	var onDupExprs []sql.Expression
+	var onDupUpdateExprs []sql.Expression
 	if len(i.OnDup) > 0 {
 		// TODO: on duplicate expressions need to reference both VALUES and
 		//  derived columns equally in ON DUPLICATE UPDATE expressions.
@@ -132,7 +132,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 				combinedScope.newColumn(srcScope.cols[i])
 			}
 		}
-		onDupExprs = b.buildOnDupUpdateExprs(combinedScope, destScope, sch, ast.AssignmentExprs(i.OnDup))
+		onDupUpdateExprs = b.buildOnDupUpdateExprs(combinedScope, destScope, sch, ast.AssignmentExprs(i.OnDup))
 	}
 
 	ignore := false
@@ -143,7 +143,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 
 	dest := destScope.node
 
-	ins := plan.NewInsertInto(db, plan.NewInsertDestination(sch, dest), srcScope.node, isReplace, columns, onDupExprs, ignore)
+	ins := plan.NewInsertInto(db, plan.NewInsertDestination(sch, dest), srcScope.node, isReplace, columns, onDupUpdateExprs, ignore)
 	ins.LiteralValueSource = srcLiteralOnly
 
 	if len(i.Returning) > 0 {
@@ -341,31 +341,33 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 		}
 	}
 
-	return b.addAdditionalUpdateExprs(inScope, tableSch, updateExprs)
+	return updateExprs
 }
 
-// addAdditionalUpdateExprs adds update expressions for any generated columns and ON UPDATE expressions since their
+// buildDerivedUpdateExprs adds update expressions for any generated columns and ON UPDATE expressions since their
 // values still need to be updated despite not being part of an explicit update expression
-func (b *Builder) addAdditionalUpdateExprs(inScope *scope, schema sql.Schema, updateExprs []sql.Expression) []sql.Expression {
+func (b *Builder) buildDerivedUpdateExprs(inScope *scope, schema sql.Schema, updateExprs []sql.Expression) []sql.Expression {
+	// TODO: initiating a zero-length array and then appending to it a bunch of times is not very performant
+	derivedUpdateExprs := make([]sql.Expression, 0)
 	if len(schema) > 0 {
 		tabId := inScope.tables[strings.ToLower(schema[0].Source)]
 		for i, col := range schema {
 			if col.Generated != nil {
 				colGf := expression.NewGetFieldWithTable(i+1, int(tabId), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
 				generated := b.resolveColumnDefaultExpression(inScope, col, col.Generated)
-				updateExprs = append(updateExprs, expression.NewSetField(colGf, assignColumnIndexes(generated, schema)))
+				derivedUpdateExprs = append(updateExprs, expression.NewSetField(colGf, assignColumnIndexes(generated, schema)))
 			}
 			if col.OnUpdate != nil {
 				// don't add if column is already being updated
 				if !isColumnUpdated(col, updateExprs) {
 					colGf := expression.NewGetFieldWithTable(i+1, int(tabId), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
 					onUpdate := b.resolveColumnDefaultExpression(inScope, col, col.OnUpdate)
-					updateExprs = append(updateExprs, expression.NewSetField(colGf, assignColumnIndexes(onUpdate, schema)))
+					derivedUpdateExprs = append(updateExprs, expression.NewSetField(colGf, assignColumnIndexes(onUpdate, schema)))
 				}
 			}
 		}
 	}
-	return updateExprs
+	return derivedUpdateExprs
 }
 
 func isColumnUpdated(col *sql.Column, updateExprs []sql.Expression) bool {
@@ -421,7 +423,7 @@ func (b *Builder) buildOnDupUpdateExprs(combinedScope, destScope *scope, schema 
 		}
 	}
 
-	return b.addAdditionalUpdateExprs(destScope, schema, updateExprs)
+	return updateExprs
 }
 
 func (b *Builder) buildOnDupLeft(inScope *scope, e ast.Expr) sql.Expression {
