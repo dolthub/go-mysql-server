@@ -4816,6 +4816,10 @@ func TestConcurrentCreateDatabaseIfNotExists(t *testing.T, harness Harness) {
 	engine := mustNewEngine(t, harness)
 	defer engine.Close()
 
+	if _, ok := engine.(*ServerQueryEngine); ok {
+		t.Skip("ServerQueryEngine is not safe for concurrent use")
+	}
+
 	concurrency := 10
 	// Create sessions before spawning goroutines to avoid racing on harness state.
 	sessions := make([]*sql.Context, concurrency)
@@ -4853,6 +4857,10 @@ func TestConcurrentDropDatabaseIfExists(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
 	engine := mustNewEngine(t, harness)
 	defer engine.Close()
+
+	if _, ok := engine.(*ServerQueryEngine); ok {
+		t.Skip("ServerQueryEngine is not safe for concurrent use")
+	}
 
 	// Create the database first so at least one goroutine actually drops it.
 	ctx := NewSession(harness)
