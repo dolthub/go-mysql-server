@@ -443,8 +443,8 @@ func (h *Handler) doQuery(
 
 	var prequery string
 	if parsed == nil {
-		_, inPreparedCache := h.e.PreparedDataCache.GetCachedStmt(sqlCtx.Session.ID(), query)
-		if mode == MultiStmtModeOn && !inPreparedCache {
+		_, isPrepared := sqlCtx.Session.GetPreparedQuery(query)
+		if mode == MultiStmtModeOn && !isPrepared {
 			parsed, prequery, remainder, err = h.e.Parser.Parse(sqlCtx, query, true)
 			if prequery != "" {
 				query = prequery

@@ -23,6 +23,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dolthub/vitess/go/vt/sqlparser"
+
 	"github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -176,6 +178,16 @@ type Session interface {
 	// ValidateSession provides integrators a chance to do any custom validation of this session before any query is
 	// executed in it. For example, Dolt uses this hook to validate that the session's working set is valid.
 	ValidateSession(ctx *Context) error
+	// PrepareQuery saves a parsed query AST to the session map keyed by `query`.
+	PrepareQuery(query string, stmt sqlparser.Statement)
+	// UnprepareQuery removes the saved query
+	UnprepareQuery(query string)
+	// GetPreparedQuery retrieves the saved query AST along with a bool indicating if it was found.
+	GetPreparedQuery(query string) (sqlparser.Statement, bool)
+	// CacheQuery saves a parsed query AST to the session.
+	CacheQuery(query string, stmt sqlparser.Statement)
+	// GetCachedQuery retrieves the saved query AST along with a bool indicating it was found.
+	GetCachedQuery(query string) (sqlparser.Statement, bool)
 }
 
 // PersistableSession supports serializing/deserializing global system variables/
