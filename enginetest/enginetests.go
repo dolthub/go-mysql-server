@@ -4841,6 +4841,42 @@ func TestConcurrentCreateDatabaseIfNotExists(t *testing.T, harness Harness) {
 	}
 }
 
+// TestConcurrentDropDatabaseIfExists tests that concurrent DROP DATABASE IF EXISTS
+// statements for the same database all succeed without error.
+func TestConcurrentDropDatabaseIfExists(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData)
+	engine := mustNewEngine(t, harness)
+	defer engine.Close()
+
+	// Create the database first so at least one goroutine actually drops it.
+	ctx := NewSession(harness)
+	RunQueryWithContext(t, engine, harness, ctx, "CREATE DATABASE dropme")
+
+	concurrency := 10
+	wg := sync.WaitGroup{}
+	wg.Add(concurrency)
+	errs := make([]error, concurrency)
+
+	for i := 0; i < concurrency; i++ {
+		go func(id int) {
+			defer wg.Done()
+			ctx := NewSession(harness)
+			_, iter, _, err := engine.Query(ctx, "DROP DATABASE IF EXISTS dropme")
+			if err != nil {
+				errs[id] = err
+				return
+			}
+			_, err = sql.RowIterToRows(ctx, iter)
+			errs[id] = err
+		}(i)
+	}
+
+	wg.Wait()
+	for i, err := range errs {
+		require.NoError(t, err, "goroutine %d returned error", i)
+	}
+}
+
 func TestTransactionScripts(t *testing.T, harness Harness) {
 	for _, script := range queries.TransactionTests {
 		TestTransactionScript(t, harness, script)
