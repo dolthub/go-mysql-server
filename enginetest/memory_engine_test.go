@@ -738,6 +738,14 @@ func TestDropDatabase(t *testing.T) {
 	enginetest.TestDropDatabase(t, enginetest.NewDefaultMemoryHarness())
 }
 
+func TestConcurrentCreateDatabaseIfNotExists(t *testing.T) {
+	enginetest.TestConcurrentCreateDatabaseIfNotExists(t, enginetest.NewDefaultMemoryHarness())
+}
+
+func TestConcurrentDropDatabaseIfExists(t *testing.T) {
+	enginetest.TestConcurrentDropDatabaseIfExists(t, enginetest.NewDefaultMemoryHarness())
+}
+
 func TestCreateForeignKeys(t *testing.T) {
 	enginetest.TestCreateForeignKeys(t, enginetest.NewDefaultMemoryHarness())
 }

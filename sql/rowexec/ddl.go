@@ -416,7 +416,22 @@ func (b *BaseBuilder) buildDeclareCondition(ctx *sql.Context, n *plan.DeclareCon
 }
 
 func (b *BaseBuilder) buildCreateDB(ctx *sql.Context, n *plan.CreateDB, row sql.Row) (sql.RowIter, error) {
+	exists := n.Catalog.HasDatabase(ctx, n.DbName)
 	rows := []sql.Row{{types.OkResult{RowsAffected: 1}}}
+
+	if exists {
+		if n.IfNotExists && ctx != nil && ctx.Session != nil {
+			ctx.Session.Warn(&sql.Warning{
+				Level:   "Note",
+				Code:    mysql.ERDbCreateExists,
+				Message: fmt.Sprintf("Can't create database %s; database exists ", n.DbName),
+			})
+
+			return sql.RowsToRowIter(rows...), nil
+		} else {
+			return nil, sql.ErrDatabaseExists.New(n.DbName)
+		}
+	}
 
 	collation := n.Collation
 	if collation == sql.Collation_Unspecified {
@@ -424,6 +439,8 @@ func (b *BaseBuilder) buildCreateDB(ctx *sql.Context, n *plan.CreateDB, row sql.
 	}
 	err := n.Catalog.CreateDatabase(ctx, n.DbName, collation)
 	if err != nil {
+		// Handle the race condition: another session may have created the database
+		// between our HasDatabase check and the CreateDatabase call.
 		if n.IfNotExists && sql.ErrDatabaseExists.Is(err) {
 			if ctx != nil && ctx.Session != nil {
 				ctx.Session.Warn(&sql.Warning{
@@ -801,6 +818,23 @@ func (b *BaseBuilder) buildDropProcedure(ctx *sql.Context, n *plan.DropProcedure
 }
 
 func (b *BaseBuilder) buildDropDB(ctx *sql.Context, n *plan.DropDB, row sql.Row) (sql.RowIter, error) {
+	exists := n.Catalog.HasDatabase(ctx, n.DbName)
+	if !exists {
+		if n.IfExists && ctx != nil && ctx.Session != nil {
+			ctx.Session.Warn(&sql.Warning{
+				Level:   "Note",
+				Code:    mysql.ERDbDropExists,
+				Message: fmt.Sprintf("Can't drop database %s; database doesn't exist ", n.DbName),
+			})
+
+			rows := []sql.Row{{types.OkResult{RowsAffected: 0}}}
+
+			return sql.RowsToRowIter(rows...), nil
+		} else {
+			return nil, sql.ErrDatabaseNotFound.New(n.DbName)
+		}
+	}
+
 	// make sure to notify the EventSchedulerStatus before dropping the database
 	if n.Scheduler != nil {
 		n.Scheduler.RemoveSchemaEvents(n.DbName)
@@ -808,6 +842,8 @@ func (b *BaseBuilder) buildDropDB(ctx *sql.Context, n *plan.DropDB, row sql.Row)
 
 	err := n.Catalog.RemoveDatabase(ctx, n.DbName)
 	if err != nil {
+		// Handle the race condition: another session may have dropped the database
+		// between our HasDatabase check and the RemoveDatabase call.
 		if n.IfExists && sql.ErrDatabaseNotFound.Is(err) {
 			if ctx != nil && ctx.Session != nil {
 				ctx.Session.Warn(&sql.Warning{
