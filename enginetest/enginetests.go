@@ -4810,7 +4810,8 @@ func TestConcurrentTransactions(t *testing.T, harness Harness) {
 }
 
 // TestConcurrentCreateDatabaseIfNotExists tests that concurrent CREATE DATABASE IF NOT EXISTS
-// statements for the same database all succeed without error.
+// statements for the same database all succeed without error, and that the database is fully
+// usable afterward (USE, CREATE TABLE, INSERT, SELECT).
 func TestConcurrentCreateDatabaseIfNotExists(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
 	engine := mustNewEngine(t, harness)
@@ -4835,13 +4836,46 @@ func TestConcurrentCreateDatabaseIfNotExists(t *testing.T, harness Harness) {
 		go func(id int) {
 			defer wg.Done()
 			ctx := sessions[id]
-			_, iter, _, err := engine.Query(ctx, "CREATE DATABASE IF NOT EXISTS newdb")
+
+			runQuery := func(q string) error {
+				_, iter, _, err := engine.Query(ctx, q)
+				if err != nil {
+					return err
+				}
+				_, err = sql.RowIterToRows(ctx, iter)
+				return err
+			}
+
+			if err := runQuery("CREATE DATABASE IF NOT EXISTS newdb"); err != nil {
+				errs[id] = err
+				return
+			}
+			if err := runQuery("USE newdb"); err != nil {
+				errs[id] = err
+				return
+			}
+			if err := runQuery(fmt.Sprintf("CREATE TABLE IF NOT EXISTS t%d (id int primary key, val int)", id)); err != nil {
+				errs[id] = err
+				return
+			}
+			if err := runQuery(fmt.Sprintf("INSERT INTO t%d VALUES (%d, %d)", id, id, id*10)); err != nil {
+				errs[id] = err
+				return
+			}
+
+			_, iter, _, err := engine.Query(ctx, fmt.Sprintf("SELECT * FROM t%d", id))
 			if err != nil {
 				errs[id] = err
 				return
 			}
-			_, err = sql.RowIterToRows(ctx, iter)
-			errs[id] = err
+			rows, err := sql.RowIterToRows(ctx, iter)
+			if err != nil {
+				errs[id] = err
+				return
+			}
+			if len(rows) != 1 {
+				errs[id] = fmt.Errorf("expected 1 row, got %d", len(rows))
+			}
 		}(i)
 	}
 

@@ -145,6 +145,11 @@ func (pro *DbProvider) CreateDatabase(_ *sql.Context, name string) (err error) {
 	pro.mu.Lock()
 	defer pro.mu.Unlock()
 
+	lowerName := strings.ToLower(name)
+	if _, ok := pro.dbs[lowerName]; ok {
+		return sql.ErrDatabaseExists.New(name)
+	}
+
 	var db sql.Database
 	if pro.readOnly {
 		db = NewReadOnlyDatabase(name)
@@ -154,7 +159,7 @@ func (pro *DbProvider) CreateDatabase(_ *sql.Context, name string) (err error) {
 		db = NewDatabase(name)
 	}
 
-	pro.dbs[strings.ToLower(db.Name())] = db
+	pro.dbs[lowerName] = db
 	return
 }
 
