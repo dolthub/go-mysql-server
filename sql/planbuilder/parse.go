@@ -59,12 +59,13 @@ func (b *Builder) Parse(query string, qFlags *sql.QueryFlags, multi bool) (ret s
 	}
 
 	var stmt ast.Statement
-	var ok bool
-	if (b.triggerCtx != nil && (b.triggerCtx.Call || b.triggerCtx.LoadOnly)) && !b.parserOpts.AnsiQuotes && !b.parserOpts.PipesAsConcat {
+	var stmtCached bool
+	isTrigger := b.triggerCtx != nil && (b.triggerCtx.Call || b.triggerCtx.LoadOnly)
+	if isTrigger && !b.parserOpts.AnsiQuotes && !b.parserOpts.PipesAsConcat {
 		parsed = sql.RemoveSpaceAndDelimiter(query, ';')
-		stmt, ok = ctx.Session.GetCachedQuery(parsed)
+		stmt, stmtCached = ctx.Session.GetCachedQuery(parsed)
 	}
-	if !ok {
+	if !stmtCached {
 		stmt, parsed, remainder, err = b.parser.ParseWithOptions(ctx, query, ';', multi, b.parserOpts)
 		if err != nil {
 			if goerrors.Is(err, ast.ErrEmpty) {
@@ -73,7 +74,7 @@ func (b *Builder) Parse(query string, qFlags *sql.QueryFlags, multi bool) (ret s
 			}
 			return nil, parsed, remainder, nil, sql.ErrSyntaxError.New(err.Error())
 		}
-		if (b.triggerCtx != nil && (b.triggerCtx.Call || b.triggerCtx.LoadOnly)) && !b.parserOpts.AnsiQuotes && !b.parserOpts.PipesAsConcat {
+		if isTrigger && !b.parserOpts.AnsiQuotes && !b.parserOpts.PipesAsConcat {
 			ctx.Session.CacheQuery(parsed, stmt)
 		}
 	}
