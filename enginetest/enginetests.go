@@ -4817,6 +4817,12 @@ func TestConcurrentCreateDatabaseIfNotExists(t *testing.T, harness Harness) {
 	defer engine.Close()
 
 	concurrency := 10
+	// Create sessions before spawning goroutines to avoid racing on harness state.
+	sessions := make([]*sql.Context, concurrency)
+	for i := 0; i < concurrency; i++ {
+		sessions[i] = NewSession(harness)
+	}
+
 	wg := sync.WaitGroup{}
 	wg.Add(concurrency)
 	errs := make([]error, concurrency)
@@ -4824,7 +4830,7 @@ func TestConcurrentCreateDatabaseIfNotExists(t *testing.T, harness Harness) {
 	for i := 0; i < concurrency; i++ {
 		go func(id int) {
 			defer wg.Done()
-			ctx := NewSession(harness)
+			ctx := sessions[id]
 			_, iter, _, err := engine.Query(ctx, "CREATE DATABASE IF NOT EXISTS newdb")
 			if err != nil {
 				errs[id] = err
@@ -4853,6 +4859,12 @@ func TestConcurrentDropDatabaseIfExists(t *testing.T, harness Harness) {
 	RunQueryWithContext(t, engine, harness, ctx, "CREATE DATABASE dropme")
 
 	concurrency := 10
+	// Create sessions before spawning goroutines to avoid racing on harness state.
+	sessions := make([]*sql.Context, concurrency)
+	for i := 0; i < concurrency; i++ {
+		sessions[i] = NewSession(harness)
+	}
+
 	wg := sync.WaitGroup{}
 	wg.Add(concurrency)
 	errs := make([]error, concurrency)
@@ -4860,7 +4872,7 @@ func TestConcurrentDropDatabaseIfExists(t *testing.T, harness Harness) {
 	for i := 0; i < concurrency; i++ {
 		go func(id int) {
 			defer wg.Done()
-			ctx := NewSession(harness)
+			ctx := sessions[id]
 			_, iter, _, err := engine.Query(ctx, "DROP DATABASE IF EXISTS dropme")
 			if err != nil {
 				errs[id] = err
