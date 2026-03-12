@@ -246,7 +246,7 @@ func (ue *UpdateExprs) WithExpressions(newExprs []sql.Expression) (*UpdateExprs,
 	ret := *ue
 	numExplicitUpdateExprs := len(ue.explicitUpdateExprs)
 	ret.explicitUpdateExprs = newExprs[numExplicitUpdateExprs:]
-	ret.derivedUpdateExprs = ue.derivedUpdateExprs[:numExplicitUpdateExprs]
+	ret.derivedUpdateExprs = newExprs[:numExplicitUpdateExprs]
 	return &ret, nil
 }
 
