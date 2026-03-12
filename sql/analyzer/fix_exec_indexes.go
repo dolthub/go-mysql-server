@@ -633,6 +633,8 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 			nn.Returning = s.expressions
 		}
 
+		// TODO: For a lot of nodes, we can figure out the ColumnIds from the child scope(s) without having to
+		//  recursively recalculate by revisiting the child nodes
 		s.ids = columnIdsForNode(n)
 		s.addSchema(n.Schema())
 		var err error
@@ -684,7 +686,7 @@ func columnIdsForNode(n sql.Node) []sql.ColumnId {
 			}
 		}
 	case *plan.TableCountLookup:
-		ret = append(ret, n.Id())
+		return []sql.ColumnId{n.Id()}
 	case *plan.TableAlias:
 		// Table alias's child either exposes 1) child ids or 2) is custom
 		// table function. We currently do not update table columns in response
@@ -698,18 +700,17 @@ func columnIdsForNode(n sql.Node) []sql.ColumnId {
 				ret = append(ret, col)
 			})
 		default:
-			ret = append(ret, columnIdsForNode(n.Child)...)
+			return columnIdsForNode(n.Child)
 		}
 	case *plan.SetOp:
-		ret = append(ret, columnIdsForNode(n.Left())...)
+		return columnIdsForNode(n.Left())
 	case *plan.EmptyTable:
 		// ColumnIds are all zero here. The index will be determined based on the column name or by the Projector that
 		// wraps the EmptyTable.
 		return make([]sql.ColumnId, len(n.Schema()))
 	case plan.TableIdNode:
 		if rt, ok := n.(*plan.ResolvedTable); ok && plan.IsDualTable(rt.Table) {
-			ret = append(ret, 0)
-			break
+			return []sql.ColumnId{0}
 		}
 
 		cols := n.(plan.TableIdNode).Columns()
@@ -731,17 +732,19 @@ func columnIdsForNode(n sql.Node) []sql.ColumnId {
 		})
 	case *plan.JoinNode:
 		if n.Op.IsPartial() {
-			ret = append(ret, columnIdsForNode(n.Left())...)
-		} else {
-			ret = append(ret, columnIdsForNode(n.Left())...)
-			ret = append(ret, columnIdsForNode(n.Right())...)
+			return columnIdsForNode(n.Left())
 		}
+		return append(columnIdsForNode(n.Left()), columnIdsForNode(n.Right())...)
 	case *plan.ShowStatus:
 		for i := range n.Schema() {
 			ret = append(ret, sql.ColumnId(i+1))
 		}
 	case *plan.Concat:
-		ret = append(ret, columnIdsForNode(n.Left())...)
+		return columnIdsForNode(n.Left())
+	case sql.UnaryNode:
+		return columnIdsForNode(n.Child())
+	case sql.BinaryNode:
+		return append(columnIdsForNode(n.Left()), columnIdsForNode(n.Right())...)
 	default:
 		for _, c := range n.Children() {
 			ret = append(ret, columnIdsForNode(c)...)
