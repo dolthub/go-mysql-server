@@ -224,7 +224,7 @@ type UpdateExprs struct {
 	len                int
 }
 
-func newUpdateExprs(explicitUpdateExprs []sql.Expression, updateExprs []sql.Expression) *UpdateExprs {
+func NewUpdateExprs(explicitUpdateExprs []sql.Expression, updateExprs []sql.Expression) *UpdateExprs {
 	return &UpdateExprs{
 		explicitUpdateExprs: explicitUpdateExprs,
 		derivedUpdateExprs:  updateExprs,
