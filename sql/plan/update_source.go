@@ -70,8 +70,8 @@ func (u *UpdateSource) Resolved() bool {
 
 func (u *UpdateSource) String() string {
 	tp := sql.NewTreePrinter()
-	updateExprs := make([]string, len(u.UpdateExprs.explicitUpdateExprs))
-	for i, e := range u.UpdateExprs.explicitUpdateExprs {
+	updateExprs := make([]string, u.UpdateExprs.Length())
+	for i, e := range u.UpdateExprs.AllExpressions() {
 		updateExprs[i] = sql.DebugString(e)
 	}
 	_ = tp.WriteNode("UpdateSource(%s)", strings.Join(updateExprs, ","))
@@ -81,8 +81,8 @@ func (u *UpdateSource) String() string {
 
 func (u *UpdateSource) DebugString() string {
 	pr := sql.NewTreePrinter()
-	updateExprs := make([]string, len(u.UpdateExprs.explicitUpdateExprs))
-	for i, e := range u.UpdateExprs.explicitUpdateExprs {
+	updateExprs := make([]string, u.UpdateExprs.Length())
+	for i, e := range u.UpdateExprs.AllExpressions() {
 		updateExprs[i] = sql.DebugString(e)
 	}
 	_ = pr.WriteNode("UpdateSource(%s)", strings.Join(updateExprs, ","))

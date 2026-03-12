@@ -240,8 +240,12 @@ func (ue *UpdateExprs) AllExpressions() []sql.Expression {
 }
 
 func (ue *UpdateExprs) WithExpressions(newExprs []sql.Expression) (*UpdateExprs, error) {
-	if len(newExprs) != ue.Length() {
+	length := ue.Length()
+	if len(newExprs) != length {
 		return nil, sql.ErrInvalidExpressionNumber.New(ue, ue.len, 1)
+	}
+	if length == 0 {
+		return ue, nil
 	}
 	ret := *ue
 	numExplicitUpdateExprs := len(ue.explicitUpdateExprs)
