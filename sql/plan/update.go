@@ -49,7 +49,7 @@ var _ sql.CollationCoercible = (*Update)(nil)
 var _ sql.CheckConstraintNode = (*Update)(nil)
 
 // NewUpdate creates an Update node.
-func NewUpdate(n sql.Node, ignore bool, updateExprs []sql.Expression) *Update {
+func NewUpdate(n sql.Node, ignore bool, updateExprs *UpdateExprs) *Update {
 	return &Update{
 		UnaryNode: UnaryNode{NewUpdateSource(
 			n,
@@ -146,9 +146,7 @@ func (u *Update) Database() string {
 }
 
 func (u *Update) Expressions() []sql.Expression {
-	exprs := append([]sql.Expression{}, u.checks.ToExpressions()...)
-	exprs = append(exprs, u.Returning...)
-	return exprs
+	return append(u.checks.ToExpressions(), u.Returning...)
 }
 
 func (u *Update) Resolved() bool {
@@ -158,21 +156,23 @@ func (u *Update) Resolved() bool {
 
 }
 
-func (u Update) WithExpressions(newExprs ...sql.Expression) (sql.Node, error) {
-	expectedLength := len(u.checks) + len(u.Returning)
+func (u *Update) WithExpressions(newExprs ...sql.Expression) (sql.Node, error) {
+	numChecks := len(u.checks)
+	expectedLength := numChecks + len(u.Returning)
 	if len(newExprs) != expectedLength {
-		return nil, sql.ErrInvalidChildrenNumber.New(u, len(newExprs), expectedLength)
+		return nil, sql.ErrInvalidExpressionNumber.New(u, len(newExprs), expectedLength)
 	}
 
 	var err error
-	u.checks, err = u.checks.FromExpressions(newExprs[:len(u.checks)])
+	ret := *u
+	ret.checks, err = u.checks.FromExpressions(newExprs[:numChecks])
 	if err != nil {
 		return nil, err
 	}
 
-	u.Returning = newExprs[len(u.checks):]
+	ret.Returning = newExprs[numChecks:]
 
-	return &u, nil
+	return &ret, nil
 }
 
 // UpdateInfo is the Info for OKResults returned by Update nodes.

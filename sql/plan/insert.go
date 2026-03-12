@@ -68,7 +68,7 @@ type InsertInto struct {
 	ColumnNames []string
 
 	checks     sql.CheckConstraints
-	OnDupExprs []sql.Expression
+	OnDupExprs *UpdateExprs
 	// Returning is a list of expressions to return after the insert operation. This feature is not supported
 	// in MySQL's syntax, but is exposed through PostgreSQL's and MariaDB's syntax.
 	Returning []sql.Expression
@@ -91,7 +91,7 @@ var _ sql.CollationCoercible = (*InsertInto)(nil)
 var _ DisjointedChildrenNode = (*InsertInto)(nil)
 
 // NewInsertInto creates an InsertInto node.
-func NewInsertInto(db sql.Database, dst, src sql.Node, isReplace bool, cols []string, onDupExprs []sql.Expression, ignore bool) *InsertInto {
+func NewInsertInto(db sql.Database, dst, src sql.Node, isReplace bool, cols []string, onDupExprs *UpdateExprs, ignore bool) *InsertInto {
 	return &InsertInto{
 		db:          db,
 		Destination: dst,

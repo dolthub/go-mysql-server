@@ -344,9 +344,9 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 	return updateExprs
 }
 
-// buildDerivedUpdateExprs adds update expressions for any generated columns and ON UPDATE expressions since their
+// buildDependentUpdateExprs finds update expressions for any generated columns and ON UPDATE expressions since their
 // values still need to be updated despite not being part of an explicit update expression
-func (b *Builder) buildDerivedUpdateExprs(inScope *scope, schema sql.Schema, updateExprs []sql.Expression) []sql.Expression {
+func (b *Builder) buildDependentUpdateExprs(inScope *scope, schema sql.Schema, updateExprs []sql.Expression) []sql.Expression {
 	// TODO: initiating a zero-length array and then appending to it a bunch of times is not very performant
 	derivedUpdateExprs := make([]sql.Expression, 0)
 	if len(schema) > 0 {
