@@ -93,6 +93,7 @@ func (u *updateIter) Next(ctx *sql.Context) (sql.Row, error) {
 // provided and there is a type conversion error, this function sets the value to the zero value as per the MySQL standard.
 // TODO: This can probably be combined with insertIter.handleOnDuplicateKeyUpdate or insertIter.applyUpdates
 func applyUpdateExpressionsWithIgnore(ctx *sql.Context, updateExprs *plan.UpdateExprs, tableSchema sql.Schema, row sql.Row, ignore bool) (sql.Row, error) {
+	oldRow := row
 	var secondPass []int
 	explicitUpdateExprs := updateExprs.ExplicitUpdateExprs()
 	for i, updateExpr := range explicitUpdateExprs {
@@ -139,9 +140,7 @@ func applyUpdateExpressionsWithIgnore(ctx *sql.Context, updateExprs *plan.Update
 		}
 	}
 
-	oldRow := row[:len(row)/2]
-	newRow := row[len(row)/2:]
-	if same, err := oldRow.Equals(ctx, newRow, tableSchema); err != nil {
+	if same, err := oldRow.Equals(ctx, row, tableSchema); err != nil {
 		return nil, err
 	} else if !same {
 		for _, updateExpr := range updateExprs.DerivedUpdateExprs() {
@@ -157,7 +156,7 @@ func applyUpdateExpressionsWithIgnore(ctx *sql.Context, updateExprs *plan.Update
 			}
 		}
 	}
-	
+
 	return row, nil
 }
 

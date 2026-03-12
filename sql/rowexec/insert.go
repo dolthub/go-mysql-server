@@ -263,11 +263,9 @@ func (i *insertIter) handleOnDuplicateKeyUpdate(ctx *sql.Context, oldRow, newRow
 	}
 
 	evalRow := updateAcc[:len(oldRow)]
-	same, err := oldRow.Equals(ctx, evalRow, i.schema)
-	if err != nil {
+	if same, err := oldRow.Equals(ctx, evalRow, i.schema); err != nil {
 		return nil, err
-	}
-	if !same {
+	} else if !same {
 		updateAcc, err = i.applyUpdates(ctx, i.onDupKeyUpdateExprs.DerivedUpdateExprs(), updateAcc, newRow)
 		if err != nil {
 			return nil, err
@@ -286,7 +284,7 @@ func (i *insertIter) handleOnDuplicateKeyUpdate(ctx *sql.Context, oldRow, newRow
 		}
 	}
 
-	return updateAcc, nil
+	return oldRow.Append(evalRow), nil
 }
 
 func getFieldIndexFromUpdateExpr(updateExpr sql.Expression) (int, bool) {
