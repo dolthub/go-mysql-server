@@ -232,23 +232,22 @@ func newUpdateExprs(explicitUpdateExprs []sql.Expression, updateExprs []sql.Expr
 	}
 }
 
-func (u *UpdateExprs) allExpressions() []sql.Expression {
-	return append(u.explicitUpdateExprs, u.derivedUpdateExprs...)
+func (ue *UpdateExprs) allExpressions() []sql.Expression {
+	return append(ue.explicitUpdateExprs, ue.derivedUpdateExprs...)
 }
 
-func (u *UpdateExprs) withExpressions(newExprs []sql.Expression) (*UpdateExprs, error) {
-	// number of expressions must match
-	if len(newExprs) != u.len {
-		return nil, sql.ErrInvalidExpressionNumber.New(u, u.len, 1)
+func (ue *UpdateExprs) withExpressions(newExprs []sql.Expression) (*UpdateExprs, error) {
+	if len(newExprs) != ue.len {
+		return nil, sql.ErrInvalidExpressionNumber.New(ue, ue.len, 1)
 	}
-	ret := *u
-	numExplicitUpdateExprs := len(u.explicitUpdateExprs)
+	ret := *ue
+	numExplicitUpdateExprs := len(ue.explicitUpdateExprs)
 	ret.explicitUpdateExprs = newExprs[numExplicitUpdateExprs:]
-	ret.derivedUpdateExprs = u.derivedUpdateExprs[:numExplicitUpdateExprs]
+	ret.derivedUpdateExprs = ue.derivedUpdateExprs[:numExplicitUpdateExprs]
 	return &ret, nil
 }
 
-func (u *UpdateExprs) Resolved() bool {
-	return expression.ExpressionsResolved(u.explicitUpdateExprs...) &&
-		expression.ExpressionsResolved(u.derivedUpdateExprs...)
+func (ue *UpdateExprs) Resolved() bool {
+	return expression.ExpressionsResolved(ue.explicitUpdateExprs...) &&
+		expression.ExpressionsResolved(ue.derivedUpdateExprs...)
 }
