@@ -312,6 +312,14 @@ func (s *SessionManager) KillConnection(connID uint32) error {
 	return nil
 }
 
+// GetConn returns the connection associated with |connID|, if it exists.
+func (s *SessionManager) GetConn(connID uint32) (*mysql.Conn, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	conn, ok := s.connections[connID]
+	return conn, ok
+}
+
 // Remove the session assosiated with |conn| from the session manager.
 func (s *SessionManager) RemoveConn(conn *mysql.Conn) {
 	s.mu.Lock()
