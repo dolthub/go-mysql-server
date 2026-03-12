@@ -136,10 +136,12 @@ func (d *AlterDefaultSet) TargetSchema() sql.Schema {
 	return d.targetSchema
 }
 
+// Database implements the sql.Databaser interface.
 func (d *AlterDefaultSet) Database() sql.Database {
 	return d.Db
 }
 
+// WithDatabase implements the sql.Databaser interface.
 func (d *AlterDefaultSet) WithDatabase(database sql.Database) (sql.Node, error) {
 	na := *d
 	na.Db = database

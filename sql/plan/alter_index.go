@@ -219,6 +219,7 @@ func (*AlterIndex) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 	return sql.Collation_binary, 7
 }
 
+// Database implements the sql.Databaser interface.
 func (p *AlterIndex) Database() sql.Database {
 	return p.Db
 }
