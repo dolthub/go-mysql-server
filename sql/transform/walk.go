@@ -65,13 +65,21 @@ func Inspect(node sql.Node, f func(sql.Node) bool) (cont bool) {
 	// Avoid allocating []sql.Expression
 	switch n := node.(type) {
 	case sql.UnaryNode:
-		Inspect(n.Child(), f)
+		if !Inspect(n.Child(), f) {
+			return false
+		}
 	case sql.BinaryNode:
-		Inspect(n.Left(), f)
-		Inspect(n.Right(), f)
+		if !Inspect(n.Left(), f) {
+			return false
+		}
+		if !Inspect(n.Right(), f) {
+			return false
+		}
 	default:
 		for _, child := range n.Children() {
-			Inspect(child, f)
+			if !Inspect(child, f) {
+				return false
+			}
 		}
 	}
 	return true
@@ -127,7 +135,7 @@ func WalkExpressionsWithNode(v sql.NodeVisitor, n sql.Node) {
 // InspectExpressions traverses every node through sql.InspectWithOpaque, and calls the `f` on expressions returned from
 // sql.Expressioner.Expressions().
 func InspectExpressions(node sql.Node, f func(sql.Expression) bool) {
-	WalkExpressions(exprInspector(f), node)
+	WalkExpressions(exprInspector(f), node) // TODO: avoiding WalkExpressions breaks things somehow
 }
 
 type exprInspector func(sql.Expression) bool
