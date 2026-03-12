@@ -24,7 +24,6 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
-	"github.com/dolthub/go-mysql-server/sql/expression/function"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -33,7 +32,6 @@ import (
 type insertIter struct {
 	ctx *sql.Context
 
-	tableNode sql.Node
 	inserter  sql.RowInserter
 	replacer  sql.RowReplacer
 	updater   sql.RowUpdater
@@ -43,11 +41,11 @@ type insertIter struct {
 	unlocker         func()
 
 	insertExprs                 []sql.Expression
-	updateExprs                 []sql.Expression
 	returnExprs                 []sql.Expression
 	checks                      sql.CheckConstraints
 	schema                      sql.Schema
 	returnSchema                sql.Schema
+	onDupKeyUpdateExprs         *plan.UpdateExprs
 	firstGeneratedAutoIncRowIdx int
 	rowNumber                   int64
 	closed                      bool
@@ -206,7 +204,8 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 		return toReturn, nil
 	} else {
 		if err := i.inserter.Insert(ctx, row); err != nil {
-			if (!sql.ErrPrimaryKeyViolation.Is(err) && !sql.ErrUniqueKeyViolation.Is(err) && !sql.ErrDuplicateEntry.Is(err)) || len(i.updateExprs) == 0 {
+			// TODO this can be rewritten better
+			if (!sql.ErrPrimaryKeyViolation.Is(err) && !sql.ErrUniqueKeyViolation.Is(err) && !sql.ErrDuplicateEntry.Is(err)) || i.onDupKeyUpdateExprs.Length() == 0 {
 				return nil, i.ignoreOrClose(ctx, row, err)
 			}
 
@@ -236,14 +235,10 @@ func (i *insertIter) getReturningRow(ctx *sql.Context, row sql.Row) (sql.Row, er
 	return retExprRow, nil
 }
 
-func (i *insertIter) handleOnDuplicateKeyUpdate(ctx *sql.Context, oldRow, newRow sql.Row) (returnRow sql.Row, returnErr error) {
-	var err error
-	updateAcc := append(oldRow, newRow...)
-	var evalRow sql.Row
-	for _, updateExpr := range i.updateExprs {
-		// this SET <val> indexes into LHS, but the <expr> can
-		// reference the new row on RHS
-		val, err := updateExpr.Eval(i.ctx, updateAcc)
+func (i *insertIter) applyUpdates(ctx *sql.Context, updateExprs []sql.Expression, updateAccumulator sql.Row, newRow sql.Row) (sql.Row, error) {
+	// TODO(max): this SET <val> indexes into LHS, but the <expr> can reference the new row on RHS
+	for _, updateExpr := range updateExprs {
+		val, err := updateExpr.Eval(i.ctx, updateAccumulator)
 		if err != nil {
 			if i.ignore {
 				idx, ok := getFieldIndexFromUpdateExpr(updateExpr)
@@ -255,24 +250,43 @@ func (i *insertIter) handleOnDuplicateKeyUpdate(ctx *sql.Context, oldRow, newRow
 				return nil, err
 			}
 		}
-		updateAcc = val.(sql.Row)
+		updateAccumulator = val.(sql.Row)
 	}
-	// project LHS only
-	evalRow = updateAcc[:len(oldRow)]
+	return updateAccumulator, nil
+}
 
-	// Should revaluate the check conditions.
-	err = i.evaluateChecks(ctx, evalRow)
+// TODO: This can probably be combined with applyUpdateExpressionsWithIgnore
+func (i *insertIter) handleOnDuplicateKeyUpdate(ctx *sql.Context, oldRow, newRow sql.Row) (sql.Row, error) {
+	updateAcc, err := i.applyUpdates(ctx, i.onDupKeyUpdateExprs.ExplicitUpdateExprs(), append(oldRow, newRow...), newRow)
 	if err != nil {
-		return nil, i.ignoreOrClose(ctx, newRow, err)
+		return nil, err
 	}
 
-	err = i.updater.Update(ctx, oldRow, evalRow)
+	evalRow := updateAcc[:len(oldRow)]
+	same, err := oldRow.Equals(ctx, evalRow, i.schema)
 	if err != nil {
-		return nil, i.ignoreOrClose(ctx, newRow, err)
+		return nil, err
+	}
+	if !same {
+		updateAcc, err = i.applyUpdates(ctx, i.onDupKeyUpdateExprs.DerivedUpdateExprs(), updateAcc, newRow)
+		if err != nil {
+			return nil, err
+		}
+		evalRow = updateAcc[:len(oldRow)]
+
+		// Should revaluate the check conditions.
+		err = i.evaluateChecks(ctx, evalRow)
+		if err != nil {
+			return nil, i.ignoreOrClose(ctx, newRow, err)
+		}
+
+		err = i.updater.Update(ctx, oldRow, evalRow)
+		if err != nil {
+			return nil, i.ignoreOrClose(ctx, newRow, err)
+		}
 	}
 
-	// In the case that we attempted an update, return a concatenated [old,new] row just like update.
-	return oldRow.Append(evalRow), nil
+	return updateAcc, nil
 }
 
 func getFieldIndexFromUpdateExpr(updateExpr sql.Expression) (int, bool) {
@@ -287,31 +301,6 @@ func getFieldIndexFromUpdateExpr(updateExpr sql.Expression) (int, bool) {
 	}
 
 	return getField.Index(), true
-}
-
-// resolveValues resolves all VALUES functions.
-func (i *insertIter) resolveValues(ctx *sql.Context, insertRow sql.Row) error {
-	// if vals empty then no need to resolve
-	for _, updateExpr := range i.updateExprs {
-		var err error
-		sql.Inspect(updateExpr, func(expr sql.Expression) bool {
-			valuesExpr, ok := expr.(*function.Values)
-			if !ok {
-				return true
-			}
-			getField, ok := valuesExpr.Child.(*expression.GetField)
-			if !ok {
-				err = fmt.Errorf("VALUES functions may only contain column names")
-				return false
-			}
-			valuesExpr.Value = insertRow[getField.Index()]
-			return false
-		})
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (i *insertIter) Close(ctx *sql.Context) error {

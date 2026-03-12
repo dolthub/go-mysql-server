@@ -91,10 +91,11 @@ func (u *updateIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 // Applies the update expressions given to the row given, returning the new resultant row. In the case that ignore is
 // provided and there is a type conversion error, this function sets the value to the zero value as per the MySQL standard.
-func applyUpdateExpressionsWithIgnore(ctx *sql.Context, updateExprs []sql.Expression, tableSchema sql.Schema, row sql.Row, ignore bool) (sql.Row, error) {
+// TODO: This can probably be combined with insertIter.handleOnDuplicateKeyUpdate or insertIter.applyUpdates
+func applyUpdateExpressionsWithIgnore(ctx *sql.Context, updateExprs *plan.UpdateExprs, tableSchema sql.Schema, row sql.Row, ignore bool) (sql.Row, error) {
 	var secondPass []int
-
-	for i, updateExpr := range updateExprs {
+	explicitUpdateExprs := updateExprs.ExplicitUpdateExprs()
+	for i, updateExpr := range explicitUpdateExprs {
 		defaultVal, isDefaultVal := defaultValFromSetExpression(updateExpr)
 		// Any generated columns must be projected into place so that the caller gets their newest values as well. We
 		// do this in a second pass as necessary.
@@ -122,8 +123,11 @@ func applyUpdateExpressionsWithIgnore(ctx *sql.Context, updateExprs []sql.Expres
 		}
 	}
 
+	// TODO: Is this "secondPass" loop still necessary? Updates on generated columns would be made as part of
+	//  DerivedUpdates. If it's possible to explicitly set an update on a generated column, then it should be part of
+	//  the first pass anyways.
 	for _, index := range secondPass {
-		val, err := updateExprs[index].Eval(ctx, row)
+		val, err := explicitUpdateExprs[index].Eval(ctx, row)
 		if err != nil {
 			return nil, err
 		}
@@ -135,6 +139,25 @@ func applyUpdateExpressionsWithIgnore(ctx *sql.Context, updateExprs []sql.Expres
 		}
 	}
 
+	oldRow := row[:len(row)/2]
+	newRow := row[len(row)/2:]
+	if same, err := oldRow.Equals(ctx, newRow, tableSchema); err != nil {
+		return nil, err
+	} else if !same {
+		for _, updateExpr := range updateExprs.DerivedUpdateExprs() {
+			val, err := updateExpr.Eval(ctx, row)
+			if err != nil {
+				return nil, err
+			}
+
+			var ok bool
+			row, ok = val.(sql.Row)
+			if !ok {
+				return nil, plan.ErrUpdateUnexpectedSetResult.New(val)
+			}
+		}
+	}
+	
 	return row, nil
 }
 

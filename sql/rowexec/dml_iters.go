@@ -433,6 +433,7 @@ func (o *onDuplicateUpdateHandler) handleRowUpdate(ctx *sql.Context, row sql.Row
 		return nil
 	}
 
+	// TODO: This check is already being done in insertIter.handleOnDuplicateKeyUpdate
 	// Otherwise (a row was updated), increment by 2 if the row changed, 0 if not
 	oldRow := row[:len(row)/2]
 	newRow := row[len(row)/2:]
@@ -465,6 +466,8 @@ type updateRowHandler struct {
 
 func (u *updateRowHandler) handleRowUpdate(ctx *sql.Context, row sql.Row) error {
 	u.rowsMatched++
+
+	// TODO: This check is already being done in applyUpdateExpressionsWithIgnore
 	oldRow := row[:len(row)/2]
 	newRow := row[len(row)/2:]
 	if equals, err := oldRow.Equals(ctx, newRow, u.schema); err == nil {
@@ -801,8 +804,8 @@ type matchingAccumulator interface {
 
 type updateSourceIter struct {
 	childIter   sql.RowIter
-	updateExprs []sql.Expression
 	tableSchema sql.Schema
+	updateExprs *plan.UpdateExprs
 	ignore      bool
 }
 

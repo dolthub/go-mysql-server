@@ -232,12 +232,15 @@ func NewUpdateExprs(explicitUpdateExprs []sql.Expression, updateExprs []sql.Expr
 	}
 }
 
-func (ue *UpdateExprs) allExpressions() []sql.Expression {
+func (ue *UpdateExprs) AllExpressions() []sql.Expression {
+	if ue == nil {
+		return nil
+	}
 	return append(ue.explicitUpdateExprs, ue.derivedUpdateExprs...)
 }
 
-func (ue *UpdateExprs) withExpressions(newExprs []sql.Expression) (*UpdateExprs, error) {
-	if len(newExprs) != ue.len {
+func (ue *UpdateExprs) WithExpressions(newExprs []sql.Expression) (*UpdateExprs, error) {
+	if len(newExprs) != ue.Length() {
 		return nil, sql.ErrInvalidExpressionNumber.New(ue, ue.len, 1)
 	}
 	ret := *ue
@@ -247,7 +250,25 @@ func (ue *UpdateExprs) withExpressions(newExprs []sql.Expression) (*UpdateExprs,
 	return &ret, nil
 }
 
+func (ue *UpdateExprs) ExplicitUpdateExprs() []sql.Expression {
+	return ue.explicitUpdateExprs
+}
+
+func (ue *UpdateExprs) DerivedUpdateExprs() []sql.Expression {
+	return ue.derivedUpdateExprs
+}
+
 func (ue *UpdateExprs) Resolved() bool {
+	if ue == nil {
+		return true
+	}
 	return expression.ExpressionsResolved(ue.explicitUpdateExprs...) &&
 		expression.ExpressionsResolved(ue.derivedUpdateExprs...)
+}
+
+func (ue *UpdateExprs) Length() int {
+	if ue == nil {
+		return 0
+	}
+	return ue.len
 }

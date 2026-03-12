@@ -38,7 +38,7 @@ func assignExecIndexes(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 	}
 	switch n := n.(type) {
 	case *plan.InsertInto:
-		if n.LiteralValueSource && len(n.Checks()) == 0 && len(n.OnDupExprs) == 0 && len(n.Returning) == 0 {
+		if n.LiteralValueSource && len(n.Checks()) == 0 && n.OnDupExprs.Length() == 0 && len(n.Returning) == 0 {
 			return n, transform.SameTree, nil
 		}
 	case *plan.Update:
@@ -521,7 +521,7 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 		rightScope.addSchema(rightSchema)
 		dstScope := s.childScopes[0]
 
-		for _, e := range n.OnDupExprs {
+		for _, e := range n.OnDupExprs.AllExpressions() {
 			set, ok := e.(*expression.SetField)
 			if !ok {
 				return fmt.Errorf("on duplicate update expressions should be *expression.SetField; found %T", e)
@@ -618,6 +618,7 @@ func (s *idxScope) visitSelf(n sql.Node) error {
 
 // finalizeSelf builds the output node and fixes the return scope
 func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
+	var err error
 	// assumes children scopes have been set
 	switch n := n.(type) {
 	case *plan.InsertInto:
@@ -625,8 +626,11 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 		nn := *n
 		nn.Source = s.children[0]
 		nn.Destination = s.children[1]
-		nn.OnDupExprs = s.expressions[:len(n.OnDupExprs)]
-		nn.Returning = s.expressions[len(n.OnDupExprs):]
+		// TODO: We could just return nn.WithExpressions if we rearranged how expressions are added to s.expressions to
+		//  match InsertInto.WithExpressions
+		onDupExprsLen := n.OnDupExprs.Length()
+		nn.OnDupExprs, err = n.OnDupExprs.WithExpressions(s.expressions[:onDupExprsLen])
+		nn.Returning = s.expressions[onDupExprsLen:]
 		return nn.WithChecks(s.checks), nil
 	default:
 		if nn, ok := n.(*plan.Update); ok {
@@ -635,7 +639,6 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 
 		s.ids = columnIdsForNode(n)
 		s.addSchema(n.Schema())
-		var err error
 		if s.children != nil {
 			n, err = n.WithChildren(s.children...)
 			if err != nil {

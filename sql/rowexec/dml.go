@@ -44,7 +44,7 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		replacer = insertable.(sql.ReplaceableTable).Replacer(ctx)
 	} else {
 		inserter = insertable.Inserter(ctx)
-		if len(ii.OnDupExprs) > 0 {
+		if ii.OnDupExprs.Length() > 0 {
 			updater = insertable.(sql.UpdatableTable).Updater(ctx)
 		}
 	}
@@ -78,13 +78,12 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 	}
 	insertIter := &insertIter{
 		schema:                      dstSchema,
-		tableNode:                   ii.Destination,
 		inserter:                    inserter,
 		replacer:                    replacer,
 		updater:                     updater,
 		rowSource:                   rowIter,
 		unlocker:                    unlocker,
-		updateExprs:                 ii.OnDupExprs,
+		onDupKeyUpdateExprs:         ii.OnDupExprs,
 		insertExprs:                 insertExpressions,
 		checks:                      ii.Checks(),
 		ctx:                         ctx,

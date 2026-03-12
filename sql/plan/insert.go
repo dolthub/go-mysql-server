@@ -258,24 +258,25 @@ func (ii *InsertInto) DebugString() string {
 
 // Expressions implements the sql.Expressioner interface.
 func (ii *InsertInto) Expressions() []sql.Expression {
-	exprs := append(ii.OnDupExprs.allExpressions(), ii.checks.ToExpressions()...)
+	exprs := append(ii.OnDupExprs.AllExpressions(), ii.checks.ToExpressions()...)
 	return append(exprs, ii.Returning...)
 }
 
 // WithExpressions implements the sql.Expressioner interface.
 func (ii *InsertInto) WithExpressions(newExprs ...sql.Expression) (sql.Node, error) {
-	expectedLen := ii.OnDupExprs.len + len(ii.checks) + len(ii.Returning)
+	numOnDupExprs := ii.OnDupExprs.Length()
+	expectedLen := numOnDupExprs + len(ii.checks) + len(ii.Returning)
 	if len(newExprs) != expectedLen {
 		return nil, sql.ErrInvalidExpressionNumber.New(ii, len(newExprs), expectedLen)
 	}
 
 	nii := *ii
 	var err error
-	nii.OnDupExprs, err = ii.OnDupExprs.withExpressions(newExprs[:ii.OnDupExprs.len])
+	nii.OnDupExprs, err = ii.OnDupExprs.WithExpressions(newExprs[:numOnDupExprs])
 	if err != nil {
 		return nil, err
 	}
-	newExprs = newExprs[ii.OnDupExprs.len:]
+	newExprs = newExprs[numOnDupExprs:]
 
 	nii.checks, err = nii.checks.FromExpressions(newExprs[:len(nii.checks)])
 	if err != nil {

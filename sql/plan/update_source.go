@@ -43,7 +43,7 @@ func NewUpdateSource(node sql.Node, ignore bool, updateExprs *UpdateExprs) *Upda
 
 // Expressions implements the sql.Expressioner interface.
 func (u *UpdateSource) Expressions() []sql.Expression {
-	return u.UpdateExprs.allExpressions()
+	return u.UpdateExprs.AllExpressions()
 }
 
 func (u *UpdateSource) IsReadOnly() bool {
@@ -54,7 +54,7 @@ func (u *UpdateSource) IsReadOnly() bool {
 func (u *UpdateSource) WithExpressions(newExprs ...sql.Expression) (sql.Node, error) {
 	var err error
 	ret := *u
-	ret.UpdateExprs, err = u.UpdateExprs.withExpressions(newExprs)
+	ret.UpdateExprs, err = u.UpdateExprs.WithExpressions(newExprs)
 	return &ret, err
 }
 
