@@ -18,7 +18,6 @@ import (
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 )
 
@@ -131,43 +130,4 @@ func (u *UpdateSource) WithChildren(children ...sql.Node) (sql.Node, error) {
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (u *UpdateSource) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.GetCoercibility(ctx, u.Child)
-}
-
-type UpdateExprs struct {
-	// explicitUpdateExprs are update expressions that are explicitly part of a query
-	explicitUpdateExprs []sql.Expression
-	// derivedUpdateExprs are update expressions that are derived from the table's column expressions. This includes
-	// updates on generated columns and ON UPDATE columns. derivedUpdateExprs should only be applied when updateExprs
-	// actually yield a change in the row's values
-	derivedUpdateExprs []sql.Expression
-	len                int
-}
-
-func newUpdateExprs(explicitUpdateExprs []sql.Expression, updateExprs []sql.Expression) *UpdateExprs {
-	return &UpdateExprs{
-		explicitUpdateExprs: explicitUpdateExprs,
-		derivedUpdateExprs:  updateExprs,
-		len:                 len(explicitUpdateExprs) + len(updateExprs),
-	}
-}
-
-func (u *UpdateExprs) allExpressions() []sql.Expression {
-	return append(u.explicitUpdateExprs, u.derivedUpdateExprs...)
-}
-
-func (u *UpdateExprs) withExpressions(newExprs []sql.Expression) (*UpdateExprs, error) {
-	// number of expressions must match
-	if len(newExprs) != u.len {
-		return nil, sql.ErrInvalidExpressionNumber.New(u, u.len, 1)
-	}
-	ret := *u
-	numExplicitUpdateExprs := len(u.explicitUpdateExprs)
-	ret.explicitUpdateExprs = newExprs[numExplicitUpdateExprs:]
-	ret.derivedUpdateExprs = u.derivedUpdateExprs[:numExplicitUpdateExprs]
-	return &ret, nil
-}
-
-func (u *UpdateExprs) Resolved() bool {
-	return expression.ExpressionsResolved(u.explicitUpdateExprs...) &&
-		expression.ExpressionsResolved(u.derivedUpdateExprs...)
 }
