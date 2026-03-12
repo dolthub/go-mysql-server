@@ -143,7 +143,7 @@ func TestInsert(t *testing.T) {
 
 			insertPlan := plan.NewInsertInto(sql.UnresolvedDatabase(""), plan.NewResolvedTable(table, nil, nil), plan.NewValues([][]sql.Expression{{
 				expression.NewLiteral(tc.value, tc.valueType),
-			}}), false, []string{"c1"}, []sql.Expression{}, tc.ignore)
+			}}), false, []string{"c1"}, nil, tc.ignore)
 
 			ri, err := DefaultBuilder.Build(ctx, insertPlan, nil)
 			require.NoError(t, err)

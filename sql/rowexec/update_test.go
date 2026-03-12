@@ -81,7 +81,8 @@ func TestUpdateIgnoreConversions(t *testing.T) {
 
 			// Run the UPDATE IGNORE
 			sf := expression.NewSetField(expression.NewGetField(0, tc.colType, "c1", true), expression.NewLiteral(tc.value, tc.valueType))
-			updatePlan := plan.NewUpdate(plan.NewResolvedTable(table, nil, nil), true, []sql.Expression{sf})
+			updateExpressions := plan.NewUpdateExprs([]sql.Expression{sf}, nil)
+			updatePlan := plan.NewUpdate(plan.NewResolvedTable(table, nil, nil), true, updateExpressions)
 
 			ri, err := DefaultBuilder.Build(ctx, updatePlan, nil)
 			require.NoError(t, err)
