@@ -47,6 +47,7 @@ type AlterDefaultDrop struct {
 var _ sql.Node = (*AlterDefaultDrop)(nil)
 var _ sql.SchemaTarget = (*AlterDefaultDrop)(nil)
 var _ sql.CollationCoercible = (*AlterDefaultDrop)(nil)
+var _ sql.Databaser = (*AlterDefaultDrop)(nil)
 
 // NewAlterDefaultSet returns a *AlterDefaultSet node.
 func NewAlterDefaultSet(database sql.Database, table sql.Node, columnName string, defVal *sql.ColumnDefaultValue) *AlterDefaultSet {
@@ -133,6 +134,10 @@ func (d *AlterDefaultSet) WithTargetSchema(schema sql.Schema) (sql.Node, error) 
 
 func (d *AlterDefaultSet) TargetSchema() sql.Schema {
 	return d.targetSchema
+}
+
+func (d *AlterDefaultSet) Database() sql.Database {
+	return d.Db
 }
 
 func (d *AlterDefaultSet) WithDatabase(database sql.Database) (sql.Node, error) {
