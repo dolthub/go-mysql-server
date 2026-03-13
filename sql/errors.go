@@ -493,6 +493,7 @@ var (
 	// ErrDuplicateKey is returned when a duplicate key is defined on a table.
 	ErrDuplicateKey = errors.NewKind("Duplicate key name '%s'")
 
+	// TODO: This is not actually how this error Kind is used. It's currently only used when creating a Set type
 	// ErrDuplicateEntry is returns when a duplicate entry is placed on an index such as a UNIQUE or a Primary Key.
 	ErrDuplicateEntry = errors.NewKind("Duplicate entry for key '%s'")
 
