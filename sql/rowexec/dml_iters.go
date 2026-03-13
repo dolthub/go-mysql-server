@@ -806,8 +806,8 @@ type matchingAccumulator interface {
 
 type updateSourceIter struct {
 	childIter   sql.RowIter
-	tableSchema sql.Schema
 	updateExprs *plan.UpdateExprs
+	tableSchema sql.Schema
 	ignore      bool
 }
 
