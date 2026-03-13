@@ -215,20 +215,17 @@ func (u *Update) DebugString() string {
 }
 
 type UpdateExprs struct {
-	// explicitUpdateExprs are update expressions that are explicitly part of a query
-	explicitUpdateExprs []sql.Expression
-	// derivedUpdateExprs are update expressions that are derived from the table's column expressions. This includes
-	// updates on generated columns and ON UPDATE columns. derivedUpdateExprs should only be applied when updateExprs
-	// actually yield a change in the row's values
-	derivedUpdateExprs []sql.Expression
-	len                int
+	exprs []sql.Expression
+	// numExplicitExprs is the number of explicit update expressions. Explicit updates are updates that are explicitly
+	// part of a query, as opposed to derived updates, which are derived from the table's column definitions.
+	// numExplicitExprs is used to index into exprs to separate explicit and derived expressions when needed
+	numExplicitExprs int
 }
 
-func NewUpdateExprs(explicitUpdateExprs []sql.Expression, updateExprs []sql.Expression) *UpdateExprs {
+func NewUpdateExprs(exprs []sql.Expression, numExplicitExprs int) *UpdateExprs {
 	return &UpdateExprs{
-		explicitUpdateExprs: explicitUpdateExprs,
-		derivedUpdateExprs:  updateExprs,
-		len:                 len(explicitUpdateExprs) + len(updateExprs),
+		exprs:            exprs,
+		numExplicitExprs: numExplicitExprs,
 	}
 }
 
@@ -236,43 +233,52 @@ func (ue *UpdateExprs) AllExpressions() []sql.Expression {
 	if ue == nil {
 		return nil
 	}
-	return append(ue.explicitUpdateExprs, ue.derivedUpdateExprs...)
+	return ue.exprs
 }
 
 func (ue *UpdateExprs) WithExpressions(newExprs []sql.Expression) (*UpdateExprs, error) {
 	length := ue.Length()
 	if len(newExprs) != length {
-		return nil, sql.ErrInvalidExpressionNumber.New(ue, ue.len, 1)
+		return nil, sql.ErrInvalidExpressionNumber.New(ue, length, 1)
 	}
 	if length == 0 {
 		return ue, nil
 	}
 	ret := *ue
-	numExplicitUpdateExprs := len(ue.explicitUpdateExprs)
-	ret.explicitUpdateExprs = newExprs[:numExplicitUpdateExprs]
-	ret.derivedUpdateExprs = newExprs[numExplicitUpdateExprs:]
+	ret.exprs = newExprs
 	return &ret, nil
 }
 
+// ExplicitUpdateExprs returns update expressions that are explicitly part of a query.
 func (ue *UpdateExprs) ExplicitUpdateExprs() []sql.Expression {
-	return ue.explicitUpdateExprs
+	return ue.exprs[:ue.numExplicitExprs]
 }
 
+// DerivedUpdateExprs returns update expressions derived from a table's column definition. This includes
+// updates on generated columns and ON UPDATE columns. Derived update expressions should only be applied when explicit
+// updates actually yield a change in the row's values
 func (ue *UpdateExprs) DerivedUpdateExprs() []sql.Expression {
-	return ue.derivedUpdateExprs
+	return ue.exprs[ue.numExplicitExprs:]
 }
 
 func (ue *UpdateExprs) Resolved() bool {
 	if ue == nil {
 		return true
 	}
-	return expression.ExpressionsResolved(ue.explicitUpdateExprs...) &&
-		expression.ExpressionsResolved(ue.derivedUpdateExprs...)
+	return expression.ExpressionsResolved(ue.exprs...)
 }
 
 func (ue *UpdateExprs) Length() int {
 	if ue == nil {
 		return 0
 	}
-	return ue.len
+	return len(ue.exprs)
+}
+
+func (ue *UpdateExprs) HasUpdates() bool {
+	return ue != nil && len(ue.exprs) > 0
+}
+
+func (ue *UpdateExprs) HasDerivedUpdates() bool {
+	return ue != nil && len(ue.exprs) > ue.numExplicitExprs
 }

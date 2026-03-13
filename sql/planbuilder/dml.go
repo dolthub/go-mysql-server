@@ -340,33 +340,31 @@ func (b *Builder) assignmentExprsToUpdateExprs(inScope *scope, e ast.AssignmentE
 		}
 	}
 
-	return plan.NewUpdateExprs(updateExprs, b.buildDependentUpdateExprs(inScope, tableSch, updateExprs))
+	return plan.NewUpdateExprs(b.addDependentUpdateExprs(inScope, tableSch, updateExprs), len(e))
 }
 
-// buildDependentUpdateExprs finds update expressions for any generated columns and ON UPDATE expressions since their
+// addDependentUpdateExprs adds update expressions for any generated columns and ON UPDATE expressions since their
 // values still need to be updated despite not being part of an explicit update expression
-func (b *Builder) buildDependentUpdateExprs(inScope *scope, schema sql.Schema, updateExprs []sql.Expression) []sql.Expression {
-	// TODO: initiating a zero-length array and then appending to it a bunch of times is not very performant
-	derivedUpdateExprs := make([]sql.Expression, 0)
+func (b *Builder) addDependentUpdateExprs(inScope *scope, schema sql.Schema, updateExprs []sql.Expression) []sql.Expression {
 	if len(schema) > 0 {
 		tabId := inScope.tables[strings.ToLower(schema[0].Source)]
 		for i, col := range schema {
 			if col.Generated != nil {
 				colGf := expression.NewGetFieldWithTable(i+1, int(tabId), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
 				generated := b.resolveColumnDefaultExpression(inScope, col, col.Generated)
-				derivedUpdateExprs = append(derivedUpdateExprs, expression.NewSetField(colGf, assignColumnIndexes(generated, schema)))
+				updateExprs = append(updateExprs, expression.NewSetField(colGf, assignColumnIndexes(generated, schema)))
 			}
 			if col.OnUpdate != nil {
 				// don't add if column is already being updated
 				if !isColumnUpdated(col, updateExprs) {
 					colGf := expression.NewGetFieldWithTable(i+1, int(tabId), col.Type, col.DatabaseSource, col.Source, col.Name, col.Nullable)
 					onUpdate := b.resolveColumnDefaultExpression(inScope, col, col.OnUpdate)
-					derivedUpdateExprs = append(derivedUpdateExprs, expression.NewSetField(colGf, assignColumnIndexes(onUpdate, schema)))
+					updateExprs = append(updateExprs, expression.NewSetField(colGf, assignColumnIndexes(onUpdate, schema)))
 				}
 			}
 		}
 	}
-	return derivedUpdateExprs
+	return updateExprs
 }
 
 func isColumnUpdated(col *sql.Column, updateExprs []sql.Expression) bool {
@@ -421,7 +419,7 @@ func (b *Builder) buildOnDupUpdateExprs(combinedScope, destScope *scope, schema 
 		}
 	}
 
-	return plan.NewUpdateExprs(updateExprs, b.buildDependentUpdateExprs(destScope, schema, updateExprs))
+	return plan.NewUpdateExprs(b.addDependentUpdateExprs(destScope, schema, updateExprs), len(e))
 }
 
 func (b *Builder) buildOnDupLeft(inScope *scope, e ast.Expr) sql.Expression {

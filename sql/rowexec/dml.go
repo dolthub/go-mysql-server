@@ -44,7 +44,7 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		replacer = insertable.(sql.ReplaceableTable).Replacer(ctx)
 	} else {
 		inserter = insertable.Inserter(ctx)
-		if ii.OnDupExprs.Length() > 0 {
+		if ii.OnDupExprs.HasUpdates() {
 			updater = insertable.(sql.UpdatableTable).Updater(ctx)
 		}
 	}

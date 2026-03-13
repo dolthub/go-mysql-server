@@ -43,7 +43,7 @@ func (b *Builder) validateInsert(ins *plan.InsertInto) {
 		}
 	}
 
-	if ins.OnDupExprs.Length() > 0 {
+	if ins.OnDupExprs.HasUpdates() {
 		var ok bool
 		_, ok = insertable.(sql.UpdatableTable)
 		if !ok {

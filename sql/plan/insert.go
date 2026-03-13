@@ -264,7 +264,7 @@ func (ii *InsertInto) Expressions() []sql.Expression {
 
 // WithExpressions implements the sql.Expressioner interface.
 func (ii *InsertInto) WithExpressions(newExprs ...sql.Expression) (sql.Node, error) {
-	numOnDupExprs := ii.OnDupExprs.Length()
+	numOnDupExprs := len(ii.OnDupExprs.AllExpressions())
 	expectedLen := numOnDupExprs + len(ii.checks) + len(ii.Returning)
 	if len(newExprs) != expectedLen {
 		return nil, sql.ErrInvalidExpressionNumber.New(ii, len(newExprs), expectedLen)

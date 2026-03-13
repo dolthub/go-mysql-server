@@ -204,13 +204,10 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 		return toReturn, nil
 	} else {
 		if err := i.inserter.Insert(ctx, row); err != nil {
-			// TODO this can be rewritten better
-			if (!sql.ErrPrimaryKeyViolation.Is(err) && !sql.ErrUniqueKeyViolation.Is(err) && !sql.ErrDuplicateEntry.Is(err)) || i.onDupKeyUpdateExprs.Length() == 0 {
-				return nil, i.ignoreOrClose(ctx, row, err)
+			if uniqueKeyError, ok := err.(*errors.Error).Cause().(sql.UniqueKeyError); ok && i.onDupKeyUpdateExprs.HasUpdates() {
+				return i.handleOnDuplicateKeyUpdate(ctx, uniqueKeyError.Existing, row)
 			}
-
-			ue := err.(*errors.Error).Cause().(sql.UniqueKeyError)
-			return i.handleOnDuplicateKeyUpdate(ctx, ue.Existing, row)
+			return nil, i.ignoreOrClose(ctx, row, err)
 		}
 	}
 
