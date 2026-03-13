@@ -433,6 +433,8 @@ func (o *onDuplicateUpdateHandler) handleRowUpdate(ctx *sql.Context, row sql.Row
 		return nil
 	}
 
+	// TODO: This check is already being done in insertIter.handleOnDuplicateKeyUpdate to check if derived updates need
+	//  to be applied
 	// Otherwise (a row was updated), increment by 2 if the row changed, 0 if not
 	oldRow := row[:len(row)/2]
 	newRow := row[len(row)/2:]
@@ -465,6 +467,9 @@ type updateRowHandler struct {
 
 func (u *updateRowHandler) handleRowUpdate(ctx *sql.Context, row sql.Row) error {
 	u.rowsMatched++
+
+	// TODO: This check is already being done in applyUpdateExpressionsWithIgnore to check if derived updates need to be
+	//  applied
 	oldRow := row[:len(row)/2]
 	newRow := row[len(row)/2:]
 	if equals, err := oldRow.Equals(ctx, newRow, u.schema); err == nil {
@@ -738,7 +743,7 @@ func (a *accumulatorIter) Next(ctx *sql.Context) (r sql.Row, err error) {
 
 	for {
 		row, err := a.iter.Next(ctx)
-		igErr, isIg := err.(sql.IgnorableError)
+		ignorableErr, isIgnorableErr := err.(sql.IgnorableError)
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
@@ -773,9 +778,9 @@ func (a *accumulatorIter) Next(ctx *sql.Context) (r sql.Row, err error) {
 			lastQueryInfo.RowCount.Store(int64(res.RowsAffected))
 
 			return sql.NewRow(res), nil
-		} else if isIg {
+		} else if isIgnorableErr {
 			if ui, ok := a.updateRowHandler.(updateIgnoreAccumulatorRowHandler); ok {
-				err = ui.handleRowUpdateWithIgnore(ctx, igErr.OffendingRow, true)
+				err = ui.handleRowUpdateWithIgnore(ctx, ignorableErr.OffendingRow, true)
 				if err != nil {
 					return nil, err
 				}
@@ -801,7 +806,7 @@ type matchingAccumulator interface {
 
 type updateSourceIter struct {
 	childIter   sql.RowIter
-	updateExprs []sql.Expression
+	updateExprs *plan.UpdateExprs
 	tableSchema sql.Schema
 	ignore      bool
 }

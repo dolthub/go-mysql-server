@@ -91,18 +91,10 @@ func (u *updateIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 // Applies the update expressions given to the row given, returning the new resultant row. In the case that ignore is
 // provided and there is a type conversion error, this function sets the value to the zero value as per the MySQL standard.
-func applyUpdateExpressionsWithIgnore(ctx *sql.Context, updateExprs []sql.Expression, tableSchema sql.Schema, row sql.Row, ignore bool) (sql.Row, error) {
-	var secondPass []int
-
-	for i, updateExpr := range updateExprs {
-		defaultVal, isDefaultVal := defaultValFromSetExpression(updateExpr)
-		// Any generated columns must be projected into place so that the caller gets their newest values as well. We
-		// do this in a second pass as necessary.
-		if isDefaultVal && !defaultVal.IsLiteral() {
-			secondPass = append(secondPass, i)
-			continue
-		}
-
+// TODO: This can probably be combined with insertIter.handleOnDuplicateKeyUpdate or insertIter.applyUpdates
+func applyUpdateExpressionsWithIgnore(ctx *sql.Context, updateExprs *plan.UpdateExprs, tableSchema sql.Schema, row sql.Row, ignore bool) (sql.Row, error) {
+	oldRow := row
+	for _, updateExpr := range updateExprs.ExplicitUpdateExprs() {
 		val, err := updateExpr.Eval(ctx, row)
 		if err != nil {
 			var wtce sql.WrappedTypeConversionError
@@ -122,16 +114,22 @@ func applyUpdateExpressionsWithIgnore(ctx *sql.Context, updateExprs []sql.Expres
 		}
 	}
 
-	for _, index := range secondPass {
-		val, err := updateExprs[index].Eval(ctx, row)
-		if err != nil {
+	if updateExprs.HasDerivedUpdates() {
+		if same, err := oldRow.Equals(ctx, row, tableSchema); err != nil {
 			return nil, err
-		}
+		} else if !same {
+			for _, updateExpr := range updateExprs.DerivedUpdateExprs() {
+				val, err := updateExpr.Eval(ctx, row)
+				if err != nil {
+					return nil, err
+				}
 
-		var ok bool
-		row, ok = val.(sql.Row)
-		if !ok {
-			return nil, plan.ErrUpdateUnexpectedSetResult.New(val)
+				var ok bool
+				row, ok = val.(sql.Row)
+				if !ok {
+					return nil, plan.ErrUpdateUnexpectedSetResult.New(val)
+				}
+			}
 		}
 	}
 

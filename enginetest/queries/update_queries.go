@@ -1130,6 +1130,14 @@ var OnUpdateExprScripts = []ScriptTest{
 				},
 			},
 			{
+				// This shouldn't update anything
+				// https://github.com/dolthub/dolt/issues/10657
+				Query: "update t set i = 2 where i = 2;",
+				Expected: []sql.Row{
+					{types.OkResult{RowsAffected: 0, Info: plan.UpdateInfo{Matched: 1, Updated: 0}}},
+				},
+			},
+			{
 				SkipResultCheckOnServerEngine: true,
 				Query:                         "select * from t order by i;",
 				Expected: []sql.Row{
@@ -1914,7 +1922,7 @@ var OnUpdateExprScripts = []ScriptTest{
 		Name: "ON UPDATE works with INSERT...ON DUPLICATE KEY UPDATE",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, v1 int, dt datetime default 0 on update current_timestamp);",
-			"INSERT INTO test (pk, v1) VALUES (1, 1), (2, 2);",
+			"INSERT INTO test (pk, v1) VALUES (1, 1), (2, 2), (3, 3);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -1922,10 +1930,17 @@ var OnUpdateExprScripts = []ScriptTest{
 				Expected: []sql.Row{{types.OkResult{RowsAffected: 2}}},
 			},
 			{
+				// Do not update ON UPDATE column when other values stay the same
+				// https://github.com/dolthub/dolt/issues/10657
+				Query:    "insert into test(pk, v1) values (3, 3) on duplicate key update v1 = values(v1);",
+				Expected: []sql.Row{{types.OkResult{RowsAffected: 0}}},
+			},
+			{
 				Query: "select * from test",
 				Expected: []sql.Row{
 					{1, 2, Dec15_1_30},
 					{2, 2, ZeroTime},
+					{3, 3, ZeroTime},
 				},
 			},
 		},

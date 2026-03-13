@@ -134,7 +134,7 @@ func (cc CheckConstraints) ToExpressions() []Expression {
 // constraints with the expressions given, holding names and other properties constant.
 func (cc CheckConstraints) FromExpressions(exprs []Expression) (CheckConstraints, error) {
 	if len(cc) != len(exprs) {
-		return nil, ErrInvalidChildrenNumber.New(cc, len(exprs), len(cc))
+		return nil, ErrInvalidExpressionNumber.New(cc, len(exprs), len(cc))
 	}
 
 	newChecks := make(CheckConstraints, len(cc))

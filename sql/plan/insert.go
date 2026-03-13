@@ -68,7 +68,7 @@ type InsertInto struct {
 	ColumnNames []string
 
 	checks     sql.CheckConstraints
-	OnDupExprs []sql.Expression
+	OnDupExprs *UpdateExprs
 	// Returning is a list of expressions to return after the insert operation. This feature is not supported
 	// in MySQL's syntax, but is exposed through PostgreSQL's and MariaDB's syntax.
 	Returning []sql.Expression
@@ -91,7 +91,7 @@ var _ sql.CollationCoercible = (*InsertInto)(nil)
 var _ DisjointedChildrenNode = (*InsertInto)(nil)
 
 // NewInsertInto creates an InsertInto node.
-func NewInsertInto(db sql.Database, dst, src sql.Node, isReplace bool, cols []string, onDupExprs []sql.Expression, ignore bool) *InsertInto {
+func NewInsertInto(db sql.Database, dst, src sql.Node, isReplace bool, cols []string, onDupExprs *UpdateExprs, ignore bool) *InsertInto {
 	return &InsertInto{
 		db:          db,
 		Destination: dst,
@@ -258,22 +258,26 @@ func (ii *InsertInto) DebugString() string {
 
 // Expressions implements the sql.Expressioner interface.
 func (ii *InsertInto) Expressions() []sql.Expression {
-	exprs := append(ii.OnDupExprs, ii.checks.ToExpressions()...)
-	exprs = append(exprs, ii.Returning...)
-	return exprs
+	exprs := append(ii.OnDupExprs.AllExpressions(), ii.checks.ToExpressions()...)
+	return append(exprs, ii.Returning...)
 }
 
 // WithExpressions implements the sql.Expressioner interface.
 func (ii *InsertInto) WithExpressions(newExprs ...sql.Expression) (sql.Node, error) {
-	if len(newExprs) != len(ii.OnDupExprs)+len(ii.checks)+len(ii.Returning) {
-		return nil, sql.ErrInvalidChildrenNumber.New(ii, len(newExprs), len(ii.OnDupExprs)+len(ii.checks)+len(ii.Returning))
+	numOnDupExprs := len(ii.OnDupExprs.AllExpressions())
+	expectedLen := numOnDupExprs + len(ii.checks) + len(ii.Returning)
+	if len(newExprs) != expectedLen {
+		return nil, sql.ErrInvalidExpressionNumber.New(ii, len(newExprs), expectedLen)
 	}
 
 	nii := *ii
-	nii.OnDupExprs = newExprs[:len(nii.OnDupExprs)]
-	newExprs = newExprs[len(nii.OnDupExprs):]
-
 	var err error
+	nii.OnDupExprs, err = ii.OnDupExprs.WithExpressions(newExprs[:numOnDupExprs])
+	if err != nil {
+		return nil, err
+	}
+	newExprs = newExprs[numOnDupExprs:]
+
 	nii.checks, err = nii.checks.FromExpressions(newExprs[:len(nii.checks)])
 	if err != nil {
 		return nil, err
@@ -287,17 +291,9 @@ func (ii *InsertInto) WithExpressions(newExprs ...sql.Expression) (sql.Node, err
 
 // Resolved implements the Resolvable interface.
 func (ii *InsertInto) Resolved() bool {
-	if !ii.Destination.Resolved() || !ii.Source.Resolved() {
-		return false
-	}
-
-	for _, checkExpr := range ii.checks {
-		if !checkExpr.Expr.Resolved() {
-			return false
-		}
-	}
-
-	return expression.ExpressionsResolved(ii.OnDupExprs...) &&
+	return ii.Destination.Resolved() && ii.Source.Resolved() &&
+		expression.ExpressionsResolved(ii.checks.ToExpressions()...) &&
+		ii.OnDupExprs.Resolved() &&
 		expression.ExpressionsResolved(ii.Returning...)
 }
 

@@ -107,7 +107,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 
 	srcScope, srcLiteralOnly := b.insertRowsToNode(inScope, insertRows, columns, i.Table.Name.String(), sch)
 
-	var onDupExprs []sql.Expression
+	var onDupUpdateExprs *plan.UpdateExprs
 	if len(i.OnDup) > 0 {
 		// TODO: on duplicate expressions need to reference both VALUES and
 		//  derived columns equally in ON DUPLICATE UPDATE expressions.
@@ -132,7 +132,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 				combinedScope.newColumn(srcScope.cols[i])
 			}
 		}
-		onDupExprs = b.buildOnDupUpdateExprs(combinedScope, destScope, sch, ast.AssignmentExprs(i.OnDup))
+		onDupUpdateExprs = b.buildOnDupUpdateExprs(combinedScope, destScope, sch, ast.AssignmentExprs(i.OnDup))
 	}
 
 	ignore := false
@@ -143,7 +143,7 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 
 	dest := destScope.node
 
-	ins := plan.NewInsertInto(db, plan.NewInsertDestination(sch, dest), srcScope.node, isReplace, columns, onDupExprs, ignore)
+	ins := plan.NewInsertInto(db, plan.NewInsertDestination(sch, dest), srcScope.node, isReplace, columns, onDupUpdateExprs, ignore)
 	ins.LiteralValueSource = srcLiteralOnly
 
 	if len(i.Returning) > 0 {
@@ -270,9 +270,8 @@ func reorderSchema(names []string, schema sql.Schema) sql.Schema {
 	return newSch
 }
 
-// TODO: Need a more descriptive name for this function. Also consider combining this function with
-// buildOnDupUpdateExprs since there's a lot of similar and repeated code
-func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentExprs) []sql.Expression {
+// TODO: Consider combining this function with buildOnDupUpdateExprs since there's a lot of similar and repeated code
+func (b *Builder) assignmentExprsToUpdateExprs(inScope *scope, e ast.AssignmentExprs) *plan.UpdateExprs {
 	updateExprs := make([]sql.Expression, len(e))
 	var startAggCnt int
 	if inScope.groupBy != nil {
@@ -341,12 +340,12 @@ func (b *Builder) assignmentExprsToExpressions(inScope *scope, e ast.AssignmentE
 		}
 	}
 
-	return b.addAdditionalUpdateExprs(inScope, tableSch, updateExprs)
+	return plan.NewUpdateExprs(b.addDependentUpdateExprs(inScope, tableSch, updateExprs), len(e))
 }
 
-// addAdditionalUpdateExprs adds update expressions for any generated columns and ON UPDATE expressions since their
+// addDependentUpdateExprs adds update expressions for any generated columns and ON UPDATE expressions since their
 // values still need to be updated despite not being part of an explicit update expression
-func (b *Builder) addAdditionalUpdateExprs(inScope *scope, schema sql.Schema, updateExprs []sql.Expression) []sql.Expression {
+func (b *Builder) addDependentUpdateExprs(inScope *scope, schema sql.Schema, updateExprs []sql.Expression) []sql.Expression {
 	if len(schema) > 0 {
 		tabId := inScope.tables[strings.ToLower(schema[0].Source)]
 		for i, col := range schema {
@@ -385,9 +384,8 @@ func isColumnUpdated(col *sql.Column, updateExprs []sql.Expression) bool {
 	return false
 }
 
-// TODO: consider combining this function with assignmentExprsToExpressions (awful name) since there's a lot of similar
-// repeated code
-func (b *Builder) buildOnDupUpdateExprs(combinedScope, destScope *scope, schema sql.Schema, e ast.AssignmentExprs) []sql.Expression {
+// TODO: consider combining this function with assignmentExprsToUpdateExprs since there's a lot of similar repeated code
+func (b *Builder) buildOnDupUpdateExprs(combinedScope, destScope *scope, schema sql.Schema, e ast.AssignmentExprs) *plan.UpdateExprs {
 	b.insertActive = true
 	defer func() {
 		b.insertActive = false
@@ -421,7 +419,7 @@ func (b *Builder) buildOnDupUpdateExprs(combinedScope, destScope *scope, schema 
 		}
 	}
 
-	return b.addAdditionalUpdateExprs(destScope, schema, updateExprs)
+	return plan.NewUpdateExprs(b.addDependentUpdateExprs(destScope, schema, updateExprs), len(e))
 }
 
 func (b *Builder) buildOnDupLeft(inScope *scope, e ast.Expr) sql.Expression {
@@ -532,7 +530,7 @@ func (b *Builder) buildUpdate(inScope *scope, u *ast.Update) (outScope *scope) {
 	_, foundJoin := outScope.node.(*plan.JoinNode)
 
 	// default expressions only resolve to target table
-	updateExprs := b.assignmentExprsToExpressions(outScope, u.Exprs)
+	updateExprs := b.assignmentExprsToUpdateExprs(outScope, u.Exprs)
 
 	b.buildWhere(outScope, u.Where)
 
