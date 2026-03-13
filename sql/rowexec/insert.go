@@ -30,19 +30,22 @@ import (
 )
 
 type insertIter struct {
-	rowSource                   sql.RowIter
-	inserter                    sql.RowInserter
-	replacer                    sql.RowReplacer
-	updater                     sql.RowUpdater
-	onDupKeyUpdateExprs         *plan.UpdateExprs
-	unlocker                    func()
-	ctx                         *sql.Context
-	deferredDefaults            sql.FastIntSet
-	returnSchema                sql.Schema
-	checks                      sql.CheckConstraints
-	schema                      sql.Schema
-	returnExprs                 []sql.Expression
-	insertExprs                 []sql.Expression
+	rowSource sql.RowIter
+	inserter  sql.RowInserter
+	replacer  sql.RowReplacer
+	updater   sql.RowUpdater
+
+	ctx                 *sql.Context
+	onDupKeyUpdateExprs *plan.UpdateExprs
+	unlocker            func()
+
+	deferredDefaults sql.FastIntSet
+	checks           sql.CheckConstraints
+	schema           sql.Schema
+	returnSchema     sql.Schema
+	returnExprs      []sql.Expression
+	insertExprs      []sql.Expression
+
 	firstGeneratedAutoIncRowIdx int
 	rowNumber                   int64
 	closed                      bool
