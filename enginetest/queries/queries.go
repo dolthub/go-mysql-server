@@ -1076,6 +1076,17 @@ var QueryTests = []QueryTest{
 		Expected: []sql.Row{{nil}},
 	},
 	{
+		Query:    "select sum(1) as s from emptytable",
+		Expected: []sql.Row{{nil}},
+		ExpectedColumns: sql.Schema{
+			{
+				Name:     "s",
+				Type:     types.Float64,
+				Nullable: true,
+			},
+		},
+	},
+	{
 		Query:    "select * from (select count(*) from xy) dt",
 		Expected: []sql.Row{{4}},
 	},
