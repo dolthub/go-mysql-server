@@ -260,25 +260,28 @@ func (i *insertIter) handleOnDuplicateKeyUpdate(ctx *sql.Context, oldRow, newRow
 	}
 
 	evalRow := updateAcc[:len(oldRow)]
-	if same, err := oldRow.Equals(ctx, evalRow, i.schema); err != nil {
-		return nil, err
-	} else if !same {
-		updateAcc, err = i.applyUpdates(ctx, i.onDupKeyUpdateExprs.DerivedUpdateExprs(), updateAcc, newRow)
-		if err != nil {
+	if i.onDupKeyUpdateExprs.HasDerivedUpdates() {
+		if same, err := oldRow.Equals(ctx, evalRow, i.schema); err != nil {
 			return nil, err
+		} else if !same {
+			updateAcc, err = i.applyUpdates(ctx, i.onDupKeyUpdateExprs.DerivedUpdateExprs(), updateAcc, newRow)
+			if err != nil {
+				return nil, err
+			}
+			evalRow = updateAcc[:len(oldRow)]
 		}
-		evalRow = updateAcc[:len(oldRow)]
+	}
 
-		// Should revaluate the check conditions.
-		err = i.evaluateChecks(ctx, evalRow)
-		if err != nil {
-			return nil, i.ignoreOrClose(ctx, newRow, err)
-		}
-
-		err = i.updater.Update(ctx, oldRow, evalRow)
-		if err != nil {
-			return nil, i.ignoreOrClose(ctx, newRow, err)
-		}
+	// TODO: we don't need to evaluate checks and perform the update if the oldRow and evalRow are the same. But doing
+	//  the sameness check with oldRow.Equals can be expensive too and we don't want to be doing it unnecessarily
+	// Should revaluate the check conditions.
+	err = i.evaluateChecks(ctx, evalRow)
+	if err != nil {
+		return nil, i.ignoreOrClose(ctx, newRow, err)
+	}
+	err = i.updater.Update(ctx, oldRow, evalRow)
+	if err != nil {
+		return nil, i.ignoreOrClose(ctx, newRow, err)
 	}
 
 	return oldRow.Append(evalRow), nil

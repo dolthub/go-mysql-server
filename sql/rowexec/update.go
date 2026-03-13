@@ -114,19 +114,21 @@ func applyUpdateExpressionsWithIgnore(ctx *sql.Context, updateExprs *plan.Update
 		}
 	}
 
-	if same, err := oldRow.Equals(ctx, row, tableSchema); err != nil {
-		return nil, err
-	} else if !same {
-		for _, updateExpr := range updateExprs.DerivedUpdateExprs() {
-			val, err := updateExpr.Eval(ctx, row)
-			if err != nil {
-				return nil, err
-			}
+	if updateExprs.HasDerivedUpdates() {
+		if same, err := oldRow.Equals(ctx, row, tableSchema); err != nil {
+			return nil, err
+		} else if !same {
+			for _, updateExpr := range updateExprs.DerivedUpdateExprs() {
+				val, err := updateExpr.Eval(ctx, row)
+				if err != nil {
+					return nil, err
+				}
 
-			var ok bool
-			row, ok = val.(sql.Row)
-			if !ok {
-				return nil, plan.ErrUpdateUnexpectedSetResult.New(val)
+				var ok bool
+				row, ok = val.(sql.Row)
+				if !ok {
+					return nil, plan.ErrUpdateUnexpectedSetResult.New(val)
+				}
 			}
 		}
 	}

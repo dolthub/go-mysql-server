@@ -433,7 +433,8 @@ func (o *onDuplicateUpdateHandler) handleRowUpdate(ctx *sql.Context, row sql.Row
 		return nil
 	}
 
-	// TODO: This check is already being done in insertIter.handleOnDuplicateKeyUpdate
+	// TODO: This check is already being done in insertIter.handleOnDuplicateKeyUpdate to check if derived updates need
+	//  to be applied
 	// Otherwise (a row was updated), increment by 2 if the row changed, 0 if not
 	oldRow := row[:len(row)/2]
 	newRow := row[len(row)/2:]
@@ -467,7 +468,8 @@ type updateRowHandler struct {
 func (u *updateRowHandler) handleRowUpdate(ctx *sql.Context, row sql.Row) error {
 	u.rowsMatched++
 
-	// TODO: This check is already being done in applyUpdateExpressionsWithIgnore
+	// TODO: This check is already being done in applyUpdateExpressionsWithIgnore to check if derived updates need to be
+	//  applied
 	oldRow := row[:len(row)/2]
 	newRow := row[len(row)/2:]
 	if equals, err := oldRow.Equals(ctx, newRow, u.schema); err == nil {
