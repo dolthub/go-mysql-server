@@ -57,13 +57,26 @@ func (b *Builder) Parse(query string, qFlags *sql.QueryFlags, multi bool) (ret s
 			b.handleErr(err)
 		}
 	}
-	stmt, parsed, remainder, err := b.parser.ParseWithOptions(ctx, query, ';', multi, b.parserOpts)
-	if err != nil {
-		if goerrors.Is(err, ast.ErrEmpty) {
-			ctx.Warn(0, "query was empty after trimming comments, so it will be ignored")
-			return plan.NothingImpl, parsed, remainder, nil, nil
+
+	var stmt ast.Statement
+	var stmtCached bool
+	isTrigger := b.triggerCtx != nil && (b.triggerCtx.Call || b.triggerCtx.LoadOnly)
+	if isTrigger && !b.parserOpts.AnsiQuotes && !b.parserOpts.PipesAsConcat {
+		parsed = sql.RemoveSpaceAndDelimiter(query, ';')
+		stmt, stmtCached = ctx.Session.GetCachedQuery(parsed)
+	}
+	if !stmtCached {
+		stmt, parsed, remainder, err = b.parser.ParseWithOptions(ctx, query, ';', multi, b.parserOpts)
+		if err != nil {
+			if goerrors.Is(err, ast.ErrEmpty) {
+				ctx.Warn(0, "query was empty after trimming comments, so it will be ignored")
+				return plan.NothingImpl, parsed, remainder, nil, nil
+			}
+			return nil, parsed, remainder, nil, sql.ErrSyntaxError.New(err.Error())
 		}
-		return nil, parsed, remainder, nil, sql.ErrSyntaxError.New(err.Error())
+		if isTrigger && !b.parserOpts.AnsiQuotes && !b.parserOpts.PipesAsConcat {
+			ctx.Session.CacheQuery(parsed, stmt)
+		}
 	}
 
 	if qFlags != nil {

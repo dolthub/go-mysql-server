@@ -81,6 +81,7 @@ var _ sql.SchemaTarget = (*AlterIndex)(nil)
 var _ sql.Expressioner = (*AlterIndex)(nil)
 var _ sql.Node = (*AlterIndex)(nil)
 var _ sql.CollationCoercible = (*AlterIndex)(nil)
+var _ sql.Databaser = (*AlterIndex)(nil)
 
 func NewAlterCreateIndex(db sql.Database, table sql.TableNode, ifNotExists bool, indexName string, using sql.IndexUsing, constraint sql.IndexConstraint, columns []sql.IndexColumn, expression sql.Expression, comment string) *AlterIndex {
 	return &AlterIndex{
@@ -216,6 +217,11 @@ func (p *AlterIndex) WithExpressions(expressions ...sql.Expression) (sql.Node, e
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*AlterIndex) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
+}
+
+// Database implements the sql.Databaser interface.
+func (p *AlterIndex) Database() sql.Database {
+	return p.Db
 }
 
 // WithDatabase implements the sql.Databaser interface.

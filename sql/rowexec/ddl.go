@@ -439,6 +439,18 @@ func (b *BaseBuilder) buildCreateDB(ctx *sql.Context, n *plan.CreateDB, row sql.
 	}
 	err := n.Catalog.CreateDatabase(ctx, n.DbName, collation)
 	if err != nil {
+		// Handle the race condition: another session may have created the database
+		// between our HasDatabase check and the CreateDatabase call.
+		if n.IfNotExists && sql.ErrDatabaseExists.Is(err) {
+			if ctx != nil && ctx.Session != nil {
+				ctx.Session.Warn(&sql.Warning{
+					Level:   "Note",
+					Code:    mysql.ERDbCreateExists,
+					Message: fmt.Sprintf("Can't create database %s; database exists ", n.DbName),
+				})
+			}
+			return sql.RowsToRowIter(rows...), nil
+		}
 		return nil, err
 	}
 
@@ -830,6 +842,19 @@ func (b *BaseBuilder) buildDropDB(ctx *sql.Context, n *plan.DropDB, row sql.Row)
 
 	err := n.Catalog.RemoveDatabase(ctx, n.DbName)
 	if err != nil {
+		// Handle the race condition: another session may have dropped the database
+		// between our HasDatabase check and the RemoveDatabase call.
+		if n.IfExists && sql.ErrDatabaseNotFound.Is(err) {
+			if ctx != nil && ctx.Session != nil {
+				ctx.Session.Warn(&sql.Warning{
+					Level:   "Note",
+					Code:    mysql.ERDbDropExists,
+					Message: fmt.Sprintf("Can't drop database %s; database doesn't exist ", n.DbName),
+				})
+			}
+			rows := []sql.Row{{types.OkResult{RowsAffected: 0}}}
+			return sql.RowsToRowIter(rows...), nil
+		}
 		return nil, err
 	}
 
@@ -839,7 +864,6 @@ func (b *BaseBuilder) buildDropDB(ctx *sql.Context, n *plan.DropDB, row sql.Row)
 	}
 
 	rows := []sql.Row{{types.OkResult{RowsAffected: 1}}}
-
 	return sql.RowsToRowIter(rows...), nil
 }
 

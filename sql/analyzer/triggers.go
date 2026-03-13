@@ -238,6 +238,7 @@ func applyTriggers(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope,
 			}
 			if stringContains(affectedTables, triggerTable) && triggerEventsMatch(triggerEvent, ct.TriggerEvent) {
 				// first pass does not parse the trigger body and is only so we know whether trigger is relevant
+				b.SetParserOptions(sqlMode.ParserOptions())
 				b.TriggerCtx().Call = true
 				// TODO: We only need to parse the body here since the other info from the create trigger statement have
 				// already been parsed.

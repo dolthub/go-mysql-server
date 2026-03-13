@@ -154,10 +154,6 @@ func (s *ServerQueryEngine) EngineEventScheduler() sql.EventScheduler {
 	return s.engine.EventScheduler
 }
 
-func (s *ServerQueryEngine) EnginePreparedDataCache() *sqle.PreparedDataCache {
-	return s.engine.PreparedDataCache
-}
-
 func (s *ServerQueryEngine) QueryWithBindings(ctx *sql.Context, query string, parsed sqlparser.Statement, bindings map[string]sqlparser.Expr, qFlags *sql.QueryFlags) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
 	if s.conn == nil {
 		err := s.NewConnection(ctx)
