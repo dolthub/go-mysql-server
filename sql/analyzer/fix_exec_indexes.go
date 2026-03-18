@@ -648,7 +648,7 @@ func (s *idxScope) finalizeSelf(n sql.Node) (sql.Node, error) {
 		if ne, ok := n.(sql.Expressioner); ok && s.expressions != nil {
 			exprs := make([]sql.Expression, len(s.checks)+len(s.expressions))
 			for i, check := range s.checks {
-				exprs[i] = check
+				exprs[i] = check.Expr
 			}
 			for i, expr := range s.expressions {
 				exprs[i+len(s.checks)] = expr
