@@ -3,6 +3,7 @@ package types
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/dolthub/go-mysql-server/sql"
 	"io"
 	"reflect"
 	"sort"
@@ -326,7 +327,7 @@ func writeMarshalledValue(writer io.Writer, val interface{}) error {
 
 	case time.Time:
 		writer.Write([]byte{'"'})
-		writer.Write([]byte(val.Format(time.RFC3339)))
+		writer.Write([]byte(val.Format(sql.TimestampDatetimeLayout)))
 		writer.Write([]byte{'"'})
 		return nil
 	case decimal.Decimal:
