@@ -465,6 +465,11 @@ func (t datetimeType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 	case sqltypes.Datetime, sqltypes.Timestamp:
 		if vt.Equal(ZeroTime) {
 			dest = append(dest, ZeroTimestampDatetimeStr...)
+			if t.precision > 0 {
+				dest = append(dest, []byte(".000000")...)
+				digitsToTrim := 6 - t.precision
+				dest = dest[:len(dest)-digitsToTrim]
+			}
 		} else {
 			dest = appendDatetimeFormat(dest, vt, t.precision)
 		}
