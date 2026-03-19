@@ -504,7 +504,8 @@ func (t Timespan) Bytes() []byte {
 }
 
 // precision is the number of digits of sub-second precision.
-// For the timespan type, this is always 6 (microsecond precision)
+// For the timespan type, this is currently always 6 (microsecond precision)
+// See https://github.com/dolthub/dolt/issues/10661
 func (t Timespan) precision() int {
 	return 6
 }
