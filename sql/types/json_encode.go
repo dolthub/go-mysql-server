@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql"
+
 	"github.com/shopspring/decimal"
 )
 
@@ -326,7 +328,7 @@ func writeMarshalledValue(writer io.Writer, val interface{}) error {
 
 	case time.Time:
 		writer.Write([]byte{'"'})
-		writer.Write([]byte(val.Format(time.RFC3339)))
+		writer.Write([]byte(val.Format(sql.DatetimeLayoutNoTrim)))
 		writer.Write([]byte{'"'})
 		return nil
 	case decimal.Decimal:
