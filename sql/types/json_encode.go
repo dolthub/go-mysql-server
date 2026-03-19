@@ -3,12 +3,13 @@ package types
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/dolthub/go-mysql-server/sql"
 	"io"
 	"reflect"
 	"sort"
 	"strconv"
 	"time"
+
+	"github.com/dolthub/go-mysql-server/sql"
 
 	"github.com/shopspring/decimal"
 )
