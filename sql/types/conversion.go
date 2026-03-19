@@ -16,7 +16,6 @@ package types
 
 import (
 	"fmt"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -669,7 +668,7 @@ func generalizeNumberTypes(a, b sql.Type) sql.Type {
 // TODO: Create and handle "Illegal mix of collations" error
 // TODO: Handle extended types, like DoltgresType
 func GeneralizeTypes(a, b sql.Type) sql.Type {
-	if reflect.DeepEqual(a, b) {
+	if a != nil && b != nil && a.Equals(b) {
 		return a
 	}
 

@@ -16,7 +16,6 @@ package analyzer
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -537,7 +536,7 @@ func validateUnionSchemasMatch(ctx *sql.Context, a *Analyzer, n sql.Node, scope 
 				return false
 			}
 			for i := range ls {
-				if !reflect.DeepEqual(ls[i].Type, rs[i].Type) {
+				if !ls[i].Type.Equals(rs[i].Type) {
 					firstmismatch = []string{
 						ls[i].Type.String(),
 						rs[i].Type.String(),
