@@ -539,7 +539,7 @@ func appendTimeFormat(dest []byte, h, m, s, ms int64, msPrecision int) []byte {
 	if msPrecision > 0 {
 		dest = append(dest, '.')
 		cmp := int64(100000)
-		for cmp > 0 && ms < cmp {
+		for cmp > 1 && ms < cmp {
 			dest = append(dest, '0')
 			cmp /= 10
 		}
