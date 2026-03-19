@@ -465,11 +465,7 @@ func (t datetimeType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 	case sqltypes.Datetime, sqltypes.Timestamp:
 		if vt.Equal(ZeroTime) {
 			dest = append(dest, ZeroTimestampDatetimeStr...)
-			if t.precision > 0 {
-				dest = append(dest, []byte(".000000")...)
-				digitsToTrim := 6 - t.precision
-				dest = dest[:len(dest)-digitsToTrim]
-			}
+			dest = appendMicroseconds(dest, 0, t.precision)
 		} else {
 			dest = appendDatetimeFormat(dest, vt, t.precision)
 		}
@@ -498,12 +494,7 @@ func (t datetimeType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqlt
 		x := values.ReadInt64(v.Val)
 		vt := time.UnixMicro(x).UTC()
 		if vt.Equal(ZeroTime) {
-			dest = append(dest, ZeroTimestampDatetimeStr...)
-			if t.precision > 0 {
-				dest = append(dest, []byte(".000000")...)
-				digitsToTrim := 6 - t.precision
-				dest = dest[:len(dest)-digitsToTrim]
-			}
+			dest = appendMicroseconds(dest, 0, t.precision)
 		} else {
 			dest = appendDatetimeFormat(dest, vt, t.precision)
 		}
@@ -615,4 +606,19 @@ func ValidateTimestamp(t time.Time) interface{} {
 		return nil
 	}
 	return t
+}
+
+func appendMicroseconds(dest []byte, ms int64, precision int) []byte {
+	if precision == 0 {
+		return dest
+	}
+	dest = append(dest, '.')
+	cmp := int64(100000)
+	for cmp > 1 && ms < cmp {
+		dest = append(dest, '0')
+		cmp /= 10
+	}
+	dest = strconv.AppendInt(dest, ms, 10)
+	digitsToTrim := 6 - precision
+	return dest[:len(dest)-digitsToTrim]
 }
