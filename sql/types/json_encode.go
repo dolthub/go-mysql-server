@@ -327,7 +327,7 @@ func writeMarshalledValue(writer io.Writer, val interface{}) error {
 
 	case time.Time:
 		writer.Write([]byte{'"'})
-		writer.Write([]byte(val.Format(sql.TimestampDatetimeLayout)))
+		writer.Write([]byte(val.Format(sql.DatetimeLayoutNoTrim)))
 		writer.Write([]byte{'"'})
 		return nil
 	case decimal.Decimal:
