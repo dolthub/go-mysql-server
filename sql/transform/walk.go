@@ -51,7 +51,7 @@ func (f inspector) Visit(node sql.Node) Visitor {
 }
 
 // Inspect performs a pre-order traversal of the sql.Node tree, excluding children of sql.OpaqueNodes
-// First, it does f(node) and if cont = true, then InspectWithOpaque is recursively called on node's children.
+// First, it does f(node) and if cont = true, then Inspect is recursively called on node's children.
 // TODO: this conflicts with transform.InspectExpr which performs a post-order traversal and stops when stop = true.
 func Inspect(node sql.Node, f func(sql.Node) bool) (cont bool) {
 	if !f(node) {
