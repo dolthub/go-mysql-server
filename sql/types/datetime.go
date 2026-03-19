@@ -466,7 +466,7 @@ func (t datetimeType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 		if vt.Equal(ZeroTime) {
 			dest = append(dest, ZeroTimestampDatetimeStr...)
 		} else {
-			dest = appendDatetimeFormat(dest, vt)
+			dest = appendDatetimeFormat(dest, vt, t.precision)
 		}
 	default:
 		return sqltypes.Value{}, sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime")
@@ -495,7 +495,7 @@ func (t datetimeType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqlt
 		if vt.Equal(ZeroTime) {
 			dest = append(dest, ZeroTimestampDatetimeStr...)
 		} else {
-			dest = appendDatetimeFormat(dest, vt)
+			dest = appendDatetimeFormat(dest, vt, t.precision)
 		}
 	default:
 		return sqltypes.Value{}, sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime")
@@ -527,11 +527,11 @@ func appendDateFormat(dest []byte, t time.Time) []byte {
 	return dest
 }
 
-func appendDatetimeFormat(dest []byte, t time.Time) []byte {
+func appendDatetimeFormat(dest []byte, t time.Time, precision int) []byte {
 	dest = appendDateFormat(dest, t)
 	dest = append(dest, ' ')
 	h, m, s := t.Clock()
-	dest = appendTimeFormat(dest, int64(h), int64(m), int64(s), int64(t.Nanosecond()/1000))
+	dest = appendTimeFormat(dest, int64(h), int64(m), int64(s), int64(t.Nanosecond()/1000), precision)
 	return dest
 }
 

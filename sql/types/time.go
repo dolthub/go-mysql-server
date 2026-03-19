@@ -503,16 +503,22 @@ func (t Timespan) Bytes() []byte {
 	return ret[:i]
 }
 
+// precision is the number of digits of sub-second precision.
+// For the timespan type, this is always 6 (microsecond precision)
+func (t Timespan) precision() int {
+	return 6
+}
+
 func (t Timespan) AppendBytes(dest []byte) []byte {
 	isNeg, h, m, s, ms := t.timespanToUnits()
 	if isNeg {
 		dest = append(dest, '-')
 	}
-	dest = appendTimeFormat(dest, int64(h), int64(m), int64(s), int64(ms))
+	dest = appendTimeFormat(dest, int64(h), int64(m), int64(s), int64(ms), t.precision())
 	return dest
 }
 
-func appendTimeFormat(dest []byte, h, m, s, ms int64) []byte {
+func appendTimeFormat(dest []byte, h, m, s, ms int64, msPrecision int) []byte {
 	if h < 10 {
 		dest = append(dest, '0')
 	}
@@ -530,7 +536,7 @@ func appendTimeFormat(dest []byte, h, m, s, ms int64) []byte {
 	}
 	dest = strconv.AppendInt(dest, s, 10)
 
-	if ms > 0 {
+	if msPrecision > 0 {
 		dest = append(dest, '.')
 		cmp := int64(100000)
 		for cmp > 0 && ms < cmp {
@@ -538,7 +544,10 @@ func appendTimeFormat(dest []byte, h, m, s, ms int64) []byte {
 			cmp /= 10
 		}
 		dest = strconv.AppendInt(dest, ms, 10)
+		digitsToTrim := 6 - msPrecision
+		dest = dest[:len(dest)-digitsToTrim]
 	}
+
 	return dest
 }
 
