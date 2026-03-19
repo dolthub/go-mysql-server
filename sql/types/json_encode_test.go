@@ -72,10 +72,10 @@ func TestMarshalToMySqlString(t *testing.T) {
 		{
 			name: "map of timestamps",
 			val: map[string]interface{}{
-				"a": time.Date(2023, 1, 2, 3, 4, 5, 6, time.UTC),
-				"b": time.Date(2023, 6, 5, 4, 3, 2, 1, time.UTC),
+				"a": time.Date(2023, 1, 2, 3, 4, 5, 6000, time.UTC),
+				"b": time.Date(2023, 6, 5, 4, 3, 2, 10000, time.UTC),
 			},
-			expected: `{"a": "2023-01-02T03:04:05Z", "b": "2023-06-05T04:03:02Z"}`,
+			expected: `{"a": "2023-01-02 03:04:05.000006", "b": "2023-06-05 04:03:02.000010"}`,
 		},
 		{
 			name: "string formatting",
