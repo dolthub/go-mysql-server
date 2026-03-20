@@ -562,6 +562,21 @@ func appendDigit(v int64, extend int, buf []byte, i int) int {
 	return i + len(tmpBuf)
 }
 
+func appendMicroseconds(dest []byte, ms int64, precision int) []byte {
+	if precision == 0 {
+		return dest
+	}
+	dest = append(dest, '.')
+	cmp := int64(100000)
+	for cmp > 1 && ms < cmp {
+		dest = append(dest, '0')
+		cmp /= 10
+	}
+	dest = strconv.AppendInt(dest, ms, 10)
+	digitsToTrim := 6 - precision
+	return dest[:len(dest)-digitsToTrim]
+}
+
 // AsMicroseconds returns the Timespan in microseconds.
 func (t Timespan) AsMicroseconds() int64 {
 	// Timespan already being implemented in microseconds is an implementation detail that integrators do not need to

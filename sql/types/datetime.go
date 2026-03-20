@@ -463,12 +463,7 @@ func (t datetimeType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 			dest = appendDateFormat(dest, vt)
 		}
 	case sqltypes.Datetime, sqltypes.Timestamp:
-		if vt.Equal(ZeroTime) {
-			dest = append(dest, ZeroTimestampDatetimeStr...)
-			dest = appendMicroseconds(dest, 0, t.precision)
-		} else {
-			dest = appendDatetimeFormat(dest, vt, t.precision)
-		}
+		dest = appendDatetimeFormat(dest, vt, t.precision)
 	default:
 		return sqltypes.Value{}, sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime")
 	}
@@ -493,11 +488,7 @@ func (t datetimeType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqlt
 	case sqltypes.Datetime, sqltypes.Timestamp:
 		x := values.ReadInt64(v.Val)
 		vt := time.UnixMicro(x).UTC()
-		if vt.Equal(ZeroTime) {
-			dest = appendMicroseconds(dest, 0, t.precision)
-		} else {
-			dest = appendDatetimeFormat(dest, vt, t.precision)
-		}
+		dest = appendDatetimeFormat(dest, vt, t.precision)
 	default:
 		return sqltypes.Value{}, sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime")
 	}
@@ -529,6 +520,10 @@ func appendDateFormat(dest []byte, t time.Time) []byte {
 }
 
 func appendDatetimeFormat(dest []byte, t time.Time, precision int) []byte {
+	if t.Equal(ZeroTime) {
+		dest = appendTimeFormat(dest, 0, 0, 0, 0, precision)
+		return dest
+	}
 	dest = appendDateFormat(dest, t)
 	dest = append(dest, ' ')
 	h, m, s := t.Clock()
@@ -606,19 +601,4 @@ func ValidateTimestamp(t time.Time) interface{} {
 		return nil
 	}
 	return t
-}
-
-func appendMicroseconds(dest []byte, ms int64, precision int) []byte {
-	if precision == 0 {
-		return dest
-	}
-	dest = append(dest, '.')
-	cmp := int64(100000)
-	for cmp > 1 && ms < cmp {
-		dest = append(dest, '0')
-		cmp /= 10
-	}
-	dest = strconv.AppendInt(dest, ms, 10)
-	digitsToTrim := 6 - precision
-	return dest[:len(dest)-digitsToTrim]
 }
