@@ -457,11 +457,7 @@ func (t datetimeType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 
 	switch t.baseType {
 	case sqltypes.Date:
-		if vt.Equal(ZeroTime) {
-			dest = append(dest, ZeroDateStr...)
-		} else {
-			dest = appendDateFormat(dest, vt)
-		}
+		dest = appendDateFormat(dest, vt)
 	case sqltypes.Datetime, sqltypes.Timestamp:
 		dest = appendDatetimeFormat(dest, vt, t.precision)
 	default:
@@ -496,6 +492,10 @@ func (t datetimeType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqlt
 }
 
 func appendDateFormat(dest []byte, t time.Time) []byte {
+	if t.Equal(ZeroTime) {
+		dest = append(dest, ZeroDateStr...)
+		return dest
+	}
 	year, m, d := t.Date()
 	if year == 0 {
 		dest = append(dest, '0', '0', '0', '0')
@@ -521,7 +521,8 @@ func appendDateFormat(dest []byte, t time.Time) []byte {
 
 func appendDatetimeFormat(dest []byte, t time.Time, precision int) []byte {
 	if t.Equal(ZeroTime) {
-		dest = appendTimeFormat(dest, 0, 0, 0, 0, precision)
+		dest = append(dest, ZeroTimestampDatetimeStr...)
+		dest = appendMicroseconds(dest, 0, precision)
 		return dest
 	}
 	dest = appendDateFormat(dest, t)
