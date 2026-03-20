@@ -68,7 +68,6 @@ var DefaultRules = []Rule{
 	{Id: validateStarExpressionsId, Apply: validateStarExpressions}, //TODO
 	{Id: replaceSubqueriesId, Apply: replaceSubqueries},
 	{Id: pushdownSubqueryAliasFiltersId, Apply: pushdownSubqueryAliasFilters},
-	{Id: replaceIndexedExpressionsId, Apply: replaceIndexedExpressions},
 	{Id: pruneTablesId, Apply: pruneTables},
 	{Id: validateCheckConstraintId, Apply: validateCheckConstraints},
 	{Id: unnestInSubqueriesId, Apply: unnestInSubqueries},
