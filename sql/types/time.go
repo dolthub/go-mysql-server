@@ -503,16 +503,23 @@ func (t Timespan) Bytes() []byte {
 	return ret[:i]
 }
 
+// precision is the number of digits of sub-second precision.
+// For the timespan type, this is currently always 6 (microsecond precision)
+// See https://github.com/dolthub/dolt/issues/10661
+func (t Timespan) precision() int {
+	return 6
+}
+
 func (t Timespan) AppendBytes(dest []byte) []byte {
 	isNeg, h, m, s, ms := t.timespanToUnits()
 	if isNeg {
 		dest = append(dest, '-')
 	}
-	dest = appendTimeFormat(dest, int64(h), int64(m), int64(s), int64(ms))
+	dest = appendTimeFormat(dest, int64(h), int64(m), int64(s), int64(ms), t.precision())
 	return dest
 }
 
-func appendTimeFormat(dest []byte, h, m, s, ms int64) []byte {
+func appendTimeFormat(dest []byte, h, m, s, ms int64, msPrecision int) []byte {
 	if h < 10 {
 		dest = append(dest, '0')
 	}
@@ -530,15 +537,10 @@ func appendTimeFormat(dest []byte, h, m, s, ms int64) []byte {
 	}
 	dest = strconv.AppendInt(dest, s, 10)
 
-	if ms > 0 {
-		dest = append(dest, '.')
-		cmp := int64(100000)
-		for cmp > 0 && ms < cmp {
-			dest = append(dest, '0')
-			cmp /= 10
-		}
-		dest = strconv.AppendInt(dest, ms, 10)
+	if msPrecision > 0 {
+		dest = appendMicroseconds(dest, ms, msPrecision)
 	}
+
 	return dest
 }
 
@@ -558,6 +560,21 @@ func appendDigit(v int64, extend int, buf []byte, i int) int {
 	}
 	tmpBuf := strconv.AppendInt(buf[i:i], v, 10)
 	return i + len(tmpBuf)
+}
+
+func appendMicroseconds(dest []byte, ms int64, precision int) []byte {
+	if precision == 0 {
+		return dest
+	}
+	dest = append(dest, '.')
+	cmp := int64(100000)
+	for cmp > 1 && ms < cmp {
+		dest = append(dest, '0')
+		cmp /= 10
+	}
+	dest = strconv.AppendInt(dest, ms, 10)
+	digitsToTrim := 6 - precision
+	return dest[:len(dest)-digitsToTrim]
 }
 
 // AsMicroseconds returns the Timespan in microseconds.

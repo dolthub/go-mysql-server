@@ -457,17 +457,9 @@ func (t datetimeType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 
 	switch t.baseType {
 	case sqltypes.Date:
-		if vt.Equal(ZeroTime) {
-			dest = append(dest, ZeroDateStr...)
-		} else {
-			dest = appendDateFormat(dest, vt)
-		}
+		dest = appendDateFormat(dest, vt)
 	case sqltypes.Datetime, sqltypes.Timestamp:
-		if vt.Equal(ZeroTime) {
-			dest = append(dest, ZeroTimestampDatetimeStr...)
-		} else {
-			dest = appendDatetimeFormat(dest, vt)
-		}
+		dest = appendDatetimeFormat(dest, vt, t.precision)
 	default:
 		return sqltypes.Value{}, sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime")
 	}
@@ -492,11 +484,7 @@ func (t datetimeType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqlt
 	case sqltypes.Datetime, sqltypes.Timestamp:
 		x := values.ReadInt64(v.Val)
 		vt := time.UnixMicro(x).UTC()
-		if vt.Equal(ZeroTime) {
-			dest = append(dest, ZeroTimestampDatetimeStr...)
-		} else {
-			dest = appendDatetimeFormat(dest, vt)
-		}
+		dest = appendDatetimeFormat(dest, vt, t.precision)
 	default:
 		return sqltypes.Value{}, sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime")
 	}
@@ -504,6 +492,10 @@ func (t datetimeType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqlt
 }
 
 func appendDateFormat(dest []byte, t time.Time) []byte {
+	if t.Equal(ZeroTime) {
+		dest = append(dest, ZeroDateStr...)
+		return dest
+	}
 	year, m, d := t.Date()
 	if year == 0 {
 		dest = append(dest, '0', '0', '0', '0')
@@ -527,11 +519,16 @@ func appendDateFormat(dest []byte, t time.Time) []byte {
 	return dest
 }
 
-func appendDatetimeFormat(dest []byte, t time.Time) []byte {
+func appendDatetimeFormat(dest []byte, t time.Time, precision int) []byte {
+	if t.Equal(ZeroTime) {
+		dest = append(dest, ZeroTimestampDatetimeStr...)
+		dest = appendMicroseconds(dest, 0, precision)
+		return dest
+	}
 	dest = appendDateFormat(dest, t)
 	dest = append(dest, ' ')
 	h, m, s := t.Clock()
-	dest = appendTimeFormat(dest, int64(h), int64(m), int64(s), int64(t.Nanosecond()/1000))
+	dest = appendTimeFormat(dest, int64(h), int64(m), int64(s), int64(t.Nanosecond()/1000), precision)
 	return dest
 }
 
