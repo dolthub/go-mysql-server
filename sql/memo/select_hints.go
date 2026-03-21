@@ -145,7 +145,7 @@ func parseJoinHints(comment string) []Hint {
 		if c[3] != "" {
 			argsParsed := argsRegex.FindAllStringSubmatch(c[3], -1)
 			for _, arg := range argsParsed {
-				args = append(args, arg[1])
+				args = append(args, strings.Trim(arg[1], "`"))
 			}
 		}
 		hint := newHint(c[1], args)

@@ -128,6 +128,22 @@ func TestHintParsing(t *testing.T) {
 				{Typ: HintTypeNoIndexConditionPushDown},
 			},
 		},
+		{
+			comment: "/*+ LOOKUP_JOIN(`a`, `b`) */",
+			hints:   []Hint{{Typ: HintTypeLookupJoin, Args: []string{"a", "b"}}},
+		},
+		{
+			comment: "/*+ HASH_JOIN(`a`,`b`) */",
+			hints:   []Hint{{Typ: HintTypeHashJoin, Args: []string{"a", "b"}}},
+		},
+		{
+			comment: "/*+ MERGE_JOIN(`a`, `b`) */",
+			hints:   []Hint{{Typ: HintTypeMergeJoin, Args: []string{"a", "b"}}},
+		},
+		{
+			comment: "/*+ JOIN_ORDER(`a`, `b`, `c`) */",
+			hints:   []Hint{{Typ: HintTypeJoinOrder, Args: []string{"a", "b", "c"}}},
+		},
 	}
 
 	for _, tt := range tests {
