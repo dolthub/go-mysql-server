@@ -543,7 +543,7 @@ func (d *Database) Database() *BaseDatabase {
 func (d *Database) CreateView(ctx *sql.Context, name string, selectStatement, createViewStmt string) error {
 	_, ok := d.views[strings.ToLower(name)]
 	if ok {
-		return sql.ErrExistingView.New(d.Name(), name)
+		return sql.ErrExistingView.New(name)
 	}
 
 	sqlMode := sql.LoadSqlMode(ctx)
