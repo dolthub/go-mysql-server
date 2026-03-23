@@ -566,8 +566,8 @@ func NewBaseSessionWithClientServer(server string, client Client, id uint32) *Ba
 		systemVars = make(map[string]SystemVarValue)
 	}
 	var statusVars map[string]StatusVarValue
-	if StatusVariables != nil {
-		statusVars = StatusVariables.NewSessionMap()
+	if sv := GetStatusVariables(); sv != nil {
+		statusVars = sv.NewSessionMap()
 	} else {
 		statusVars = make(map[string]StatusVarValue)
 	}
@@ -599,8 +599,8 @@ func NewBaseSession() *BaseSession {
 		systemVars = make(map[string]SystemVarValue)
 	}
 	var statusVars map[string]StatusVarValue
-	if StatusVariables != nil {
-		statusVars = StatusVariables.NewSessionMap()
+	if sv := GetStatusVariables(); sv != nil {
+		statusVars = sv.NewSessionMap()
 	} else {
 		statusVars = make(map[string]StatusVarValue)
 	}

@@ -816,7 +816,30 @@ type NameableNode interface {
 	Node
 }
 
-var StatusVariables StatusVariableRegistry
+var statusVariables atomic.Value // stores StatusVariableRegistry
+
+// GetStatusVariables returns the global StatusVariableRegistry, or nil if not yet initialized.
+func GetStatusVariables() StatusVariableRegistry {
+	v := statusVariables.Load()
+	if v == nil {
+		return nil
+	}
+	return v.(StatusVariableRegistry)
+}
+
+// SetStatusVariables atomically sets the global StatusVariableRegistry.
+func SetStatusVariables(r StatusVariableRegistry) {
+	if r == nil {
+		statusVariables = atomic.Value{}
+		return
+	}
+	statusVariables.Store(r)
+}
+
+// ResetStatusVariables clears the global status variable registry for testing.
+func ResetStatusVariables() {
+	statusVariables = atomic.Value{}
+}
 
 // StatusVariableRegistry is a registry of status variables.
 type StatusVariableRegistry interface {
@@ -954,7 +977,7 @@ func (s *ImmutableStatusVarValue) Copy() StatusVarValue {
 // IncrementStatusVariable increments the value of the status variable by integer val.
 // |name| is case-sensitive.
 func IncrementStatusVariable(ctx *Context, name string, val int) {
-	StatusVariables.IncrementGlobal(name, val)
+	GetStatusVariables().IncrementGlobal(name, val)
 	ctx.Session.IncrementStatusVariable(ctx, name, val)
 }
 

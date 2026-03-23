@@ -1393,7 +1393,7 @@ func checkGlobalStatVar(t *testing.T, name string, expected any) {
 	var globalVal interface{}
 	var ok bool
 	for time.Now().Sub(start) < waitTimeout {
-		_, globalVal, ok = sql.StatusVariables.GetGlobal(name)
+		_, globalVal, ok = sql.GetStatusVariables().GetGlobal(name)
 		require.True(t, ok)
 		if globalVal == expected {
 			return

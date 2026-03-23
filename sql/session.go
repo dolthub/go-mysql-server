@@ -89,13 +89,13 @@ type Session interface {
 	// GetAllSessionVariables returns a copy of all session variable values.
 	GetAllSessionVariables() map[string]interface{}
 	// GetStatusVariable returns the value of the status variable with session scope with the given name.
-	// To access global scope, use sql.StatusVariables instead.
+	// To access global scope, use sql.GetStatusVariables() instead.
 	GetStatusVariable(ctx *Context, statVarName string) (interface{}, error)
 	// SetStatusVariable sets the value of the status variable with session scope with the given name.
-	// To access global scope, use sql.StatusVariables.GetGlobal instead.
+	// To access global scope, use sql.GetStatusVariables().GetGlobal instead.
 	SetStatusVariable(ctx *Context, statVarName string, val interface{}) error
 	// GetAllStatusVariables returns a map of all status variables with session scope and their values.
-	// To access global scope, use sql.StatusVariables instead.
+	// To access global scope, use sql.GetStatusVariables() instead.
 	GetAllStatusVariables(ctx *Context) map[string]StatusVarValue
 	// IncrementStatusVariable increments the value of the status variable by the integer value
 	IncrementStatusVariable(ctx *Context, statVarName string, val int)

@@ -69,7 +69,7 @@ func (pl *ProcessList) Processes() []sql.Process {
 }
 
 func (pl *ProcessList) AddConnection(id uint32, addr string) {
-	sql.StatusVariables.IncrementGlobal("Threads_connected", 1)
+	sql.GetStatusVariables().IncrementGlobal("Threads_connected", 1)
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
 	pl.procs[id] = &sql.Process{
@@ -99,7 +99,7 @@ func (pl *ProcessList) RemoveConnection(connID uint32) {
 	defer pl.mu.Unlock()
 	p := pl.procs[connID]
 	if p != nil {
-		sql.StatusVariables.IncrementGlobal("Threads_connected", -1)
+		sql.GetStatusVariables().IncrementGlobal("Threads_connected", -1)
 		if p.Kill != nil {
 			p.Kill()
 		}
@@ -118,7 +118,7 @@ func (pl *ProcessList) BeginQuery(
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
 
-	sql.StatusVariables.IncrementGlobal("Threads_running", 1)
+	sql.GetStatusVariables().IncrementGlobal("Threads_running", 1)
 
 	id := ctx.Session.ID()
 	pid := ctx.Pid()
@@ -163,7 +163,7 @@ func (pl *ProcessList) EndQuery(ctx *sql.Context) {
 			sql.IncrementStatusVariable(ctx, "Slow_queries", 1)
 		}
 
-		sql.StatusVariables.IncrementGlobal("Threads_running", -1)
+		sql.GetStatusVariables().IncrementGlobal("Threads_running", -1)
 		p.Command = sql.ProcessCommandSleep
 		p.Query = ""
 		p.StartedAt = time.Now()

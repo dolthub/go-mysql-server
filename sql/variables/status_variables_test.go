@@ -53,24 +53,24 @@ func TestStatusVariables(t *testing.T) {
 	require.Equal(uint64(10), sessVal)
 
 	// Can't get session-only variable from global
-	_, _, ok := sql.StatusVariables.GetGlobal("Compression")
+	_, _, ok := sql.GetStatusVariables().GetGlobal("Compression")
 	require.False(ok)
 
 	// Can't set session-only variable from global
-	err = sql.StatusVariables.SetGlobal("Compression", uint(999))
+	err = sql.GetStatusVariables().SetGlobal("Compression", uint(999))
 	require.Error(err)
 
 	// Can get global-only variable from global
-	_, globalVal, ok := sql.StatusVariables.GetGlobal("Aborted_clients")
+	_, globalVal, ok := sql.GetStatusVariables().GetGlobal("Aborted_clients")
 	require.True(ok)
 	require.Equal(uint64(0), globalVal)
 
 	// Can set global-only variable from global
-	err = sql.StatusVariables.SetGlobal("Aborted_clients", uint64(100))
+	err = sql.GetStatusVariables().SetGlobal("Aborted_clients", uint64(100))
 	require.NoError(err)
 
 	// Global value persists
-	_, globalVal, ok = sql.StatusVariables.GetGlobal("Aborted_clients")
+	_, globalVal, ok = sql.GetStatusVariables().GetGlobal("Aborted_clients")
 	require.True(ok)
 	require.Equal(uint64(100), globalVal)
 
@@ -80,7 +80,7 @@ func TestStatusVariables(t *testing.T) {
 	require.Equal(uint64(0), sessVal)
 
 	// Can get variable with Both scope from global
-	_, globalVal, ok = sql.StatusVariables.GetGlobal("Bytes_received")
+	_, globalVal, ok = sql.GetStatusVariables().GetGlobal("Bytes_received")
 	require.True(ok)
 	require.Equal(uint64(0), globalVal)
 
@@ -89,7 +89,7 @@ func TestStatusVariables(t *testing.T) {
 	require.NoError(err)
 
 	// Can set variable with Both scope from global
-	err = sql.StatusVariables.SetGlobal("Bytes_received", uint64(200))
+	err = sql.GetStatusVariables().SetGlobal("Bytes_received", uint64(200))
 	require.True(ok)
 
 	// Can get variable with Both scope from session
@@ -98,7 +98,7 @@ func TestStatusVariables(t *testing.T) {
 	require.Equal(uint64(100), sessVal)
 
 	// Can get variable with Both scope from global
-	_, globalVal, ok = sql.StatusVariables.GetGlobal("Bytes_received")
+	_, globalVal, ok = sql.GetStatusVariables().GetGlobal("Bytes_received")
 	require.True(ok)
 	require.Equal(uint64(200), globalVal)
 

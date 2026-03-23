@@ -15,13 +15,16 @@
 package variables
 
 import (
+	"sync"
 	"sync/atomic"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-// globalStatusVariables is the underlying type of sql.StatusVariables.
+var statusInitMu sync.Mutex
+
+// globalStatusVariables is the underlying type returned by sql.GetStatusVariables().
 type globalStatusVariables struct {
 	varVals map[string]sql.StatusVarValue
 }
@@ -103,10 +106,14 @@ func (g *globalStatusVariables) IncrementGlobal(name string, val int) {
 	return
 }
 
-// InitStatusVariables initializes the global status variables in sql.StatusVariables. If they have already
-// been initialized, this function will reset their values back to their defaults, which is useful for testing.
+// InitStatusVariables initializes the global status variables. If the
+// registry has already been created, this resets values to defaults
+// (useful for testing). A mutex serializes concurrent callers.
 func InitStatusVariables() {
-	if sql.StatusVariables == nil {
+	statusInitMu.Lock()
+	defer statusInitMu.Unlock()
+
+	if sql.GetStatusVariables() == nil {
 		globalVars := &globalStatusVariables{
 			varVals: make(map[string]sql.StatusVarValue, len(statusVars)),
 		}
@@ -124,15 +131,15 @@ func InitStatusVariables() {
 				}
 			}
 		}
-		sql.StatusVariables = globalVars
+		sql.SetStatusVariables(globalVars)
 		return
 	}
 	for _, sysVar := range statusVars {
 		switch sysVar.GetDefault().(type) {
 		case atomic.Uint64:
-			sql.StatusVariables.SetGlobal(sysVar.GetName(), 0)
+			sql.GetStatusVariables().SetGlobal(sysVar.GetName(), 0)
 		default:
-			sql.StatusVariables.SetGlobal(sysVar.GetName(), sysVar.GetDefault())
+			sql.GetStatusVariables().SetGlobal(sysVar.GetName(), sysVar.GetDefault())
 		}
 	}
 }

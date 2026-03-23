@@ -239,7 +239,7 @@ func TestBeginEndOperation(t *testing.T) {
 // TestSlowQueryTracking tests that processes that take longer than @@long_query_time increment the
 // Slow_queries status variable.
 func TestSlowQueryTracking(t *testing.T) {
-	_, value, ok := sql.StatusVariables.GetGlobal("Slow_queries")
+	_, value, ok := sql.GetStatusVariables().GetGlobal("Slow_queries")
 	require.True(t, ok)
 	require.Equal(t, uint64(0), value)
 
@@ -261,7 +261,7 @@ func TestSlowQueryTracking(t *testing.T) {
 	// Status variables are updated asynchronously, so try a few times to find the updated value
 	found := false
 	for range 10 {
-		_, value, ok = sql.StatusVariables.GetGlobal("Slow_queries")
+		_, value, ok = sql.GetStatusVariables().GetGlobal("Slow_queries")
 		require.True(t, ok)
 		if value == uint64(1) {
 			found = true
