@@ -1205,4 +1205,27 @@ var FulltextTests = []ScriptTest{
 			},
 		},
 	},
+	{
+		Name: "MATCH AGAINST via JOIN",
+		SetUpScript: []string{
+			"CREATE TABLE parent (id BIGINT UNSIGNED PRIMARY KEY);",
+			"CREATE TABLE child (id BIGINT UNSIGNED PRIMARY KEY, parent_id BIGINT UNSIGNED, body VARCHAR(200), FULLTEXT idx (body));",
+			"INSERT INTO parent VALUES (1), (2), (3);",
+			"INSERT INTO child VALUES (1, 1, 'the quick brown fox jumps'), (2, 2, 'hello world'), (3, 3, 'another row');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT id FROM child WHERE MATCH(body) AGAINST ('fox');",
+				Expected: []sql.Row{{uint64(1)}},
+			},
+			{
+				Query:    "SELECT p.id FROM parent p LEFT JOIN child c ON c.parent_id = p.id WHERE MATCH(c.body) AGAINST ('fox');",
+				Expected: []sql.Row{{uint64(1)}},
+			},
+			{
+				Query:    "SELECT p.id FROM parent p JOIN child c ON c.parent_id = p.id WHERE MATCH(c.body) AGAINST ('fox');",
+				Expected: []sql.Row{{uint64(1)}},
+			},
+		},
+	},
 }
