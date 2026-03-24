@@ -58,22 +58,21 @@ func (bt *BackgroundThreads) Add(name string, f func(ctx context.Context)) error
 	bt.mu.Lock()
 	defer bt.mu.Unlock()
 
+	// XXX: It seems like duplicate names should either be an
+	// error or a replace (with cancelation and maybe
+	// block-on-exit behavior.
 	bt.nameToCancel[name] = threadCancel
 	bt.nameToCtx[name] = threadCtx
-	bt.wg.Add(1)
-
-	go func() {
-		defer bt.wg.Done()
+	bt.wg.Go(func() {
 		f(threadCtx)
-	}()
-
+	})
 	return nil
 }
 
-// Shutdown cancels the parent context for every async thread,
+// Shutdown cancels the parent context for every async thread
 // and waits for each goroutine to drain and return before exiting.
 func (bt *BackgroundThreads) Shutdown() error {
 	bt.parentCancel()
 	bt.wg.Wait()
-	return bt.parentCtx.Err()
+	return nil
 }
