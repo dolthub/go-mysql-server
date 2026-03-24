@@ -19,7 +19,9 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"regexp"
 	"strconv"
+	"strings"
 	"time"
 	"unicode"
 
@@ -34,7 +36,27 @@ import (
 
 const ZeroDateStr = "0000-00-00"
 
-const ZeroTimestampDatetimeStr = "0000-00-00 00:00:00"
+var ZeroTimestampDatetimeStrs = [][]byte{
+	[]byte("0000-00-00 00:00:00"),
+	[]byte("0000-00-00 00:00:00.0"),
+	[]byte("0000-00-00 00:00:00.00"),
+	[]byte("0000-00-00 00:00:00.000"),
+	[]byte("0000-00-00 00:00:00.0000"),
+	[]byte("0000-00-00 00:00:00.00000"),
+	[]byte("0000-00-00 00:00:00.000000"),
+}
+
+// A Zero timestamp begins with three delimited groups of zeros, then either a space or a dot,
+// And then a possibly truncated time value. We can't validate the time value in a regex, but
+// we can extract it.
+var zeroTimestampRegex = regexp.MustCompile(`^0+-0+-0+(?:[ .](.*))?$`)
+
+// IsZeroTimestampStr checks if a string is a valid zero string for a datetime type.
+func IsZeroTimestampStr(timestamp string) bool {
+	match := zeroTimestampRegex.FindStringSubmatchIndex(timestamp)
+
+	return match != nil && strings.HasPrefix("00:00:00.000000", timestamp[match[2]:])
+}
 
 const MinDatetimeStringLength = 8 // length of "2000-1-1"
 
@@ -278,7 +300,7 @@ func (t datetimeType) ConvertWithoutRangeCheck(ctx context.Context, v interface{
 	}
 	switch value := v.(type) {
 	case string:
-		if value == ZeroDateStr || value == ZeroTimestampDatetimeStr {
+		if IsZeroTimestampStr(value) {
 			return ZeroTime, nil
 		}
 		// TODO: consider not using time.Parse if we want to match MySQL exactly ('2010-06-03 11:22.:.:.:.:' is a valid timestamp)
@@ -521,8 +543,7 @@ func appendDateFormat(dest []byte, t time.Time) []byte {
 
 func appendDatetimeFormat(dest []byte, t time.Time, precision int) []byte {
 	if t.Equal(ZeroTime) {
-		dest = append(dest, ZeroTimestampDatetimeStr...)
-		dest = appendMicroseconds(dest, 0, precision)
+		dest = append(dest, ZeroTimestampDatetimeStrs[precision]...)
 		return dest
 	}
 	dest = appendDateFormat(dest, t)
