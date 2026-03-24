@@ -61,7 +61,7 @@ func TestBackgroundThreads(t *testing.T) {
 		assert.Equal(t, []int{}, b)
 
 		err = bThreads.Shutdown()
-		assert.True(t, errors.Is(err, context.Canceled))
+		assert.NoError(t, err)
 
 		sort.Ints(b)
 		assert.Equal(t, []int{1, 2}, b)
@@ -76,9 +76,9 @@ func TestBackgroundThreads(t *testing.T) {
 		assert.NoError(t, err)
 
 		err = bThreads.Shutdown()
-		assert.True(t, errors.Is(err, context.Canceled))
+		assert.NoError(t, err)
 		err = bThreads.Shutdown()
-		assert.True(t, errors.Is(err, context.Canceled))
+		assert.NoError(t, err)
 
 		sort.Ints(b)
 		assert.Equal(t, []int{1}, b)
@@ -90,7 +90,7 @@ func TestBackgroundThreads(t *testing.T) {
 		defer bThreads.Shutdown()
 
 		err = bThreads.Shutdown()
-		assert.True(t, errors.Is(err, context.Canceled))
+		assert.NoError(t, err)
 
 		err = bThreads.Add("first", f(1))
 		assert.True(t, errors.Is(err, sql.ErrCannotAddToClosedBackgroundThreads))
