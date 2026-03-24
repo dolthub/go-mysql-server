@@ -1148,7 +1148,7 @@ func (b *Builder) buildMatchAgainst(inScope *scope, v *ast.MatchExpr) *expressio
 	if err != nil {
 		b.handleErr(err)
 	}
-	ftIndex := findMatchAgainstIndex(cols, indexes)
+	ftIndex := findMatchAgainstIndex(cols, indexes, indexedTbl.Name())
 	if ftIndex == nil {
 		err := sql.ErrNoFullTextIndexFound.New(indexedTbl.Name())
 		b.handleErr(err)
@@ -1197,7 +1197,7 @@ func (b *Builder) buildMatchAgainst(inScope *scope, v *ast.MatchExpr) *expressio
 	return matchAgainst.WithInfo(indexedTbl, idxTables[0], idxTables[1], idxTables[2], idxTables[3], idxTables[4], keyCols)
 }
 
-func findMatchAgainstIndex(cols []*expression.GetField, indexes []sql.Index) fulltext.Index {
+func findMatchAgainstIndex(cols []*expression.GetField, indexes []sql.Index, actualTableName string) fulltext.Index {
 	var found fulltext.Index
 	for _, idx := range indexes {
 		idxExprs := idx.Expressions()
@@ -1207,9 +1207,10 @@ func findMatchAgainstIndex(cols []*expression.GetField, indexes []sql.Index) ful
 		// check that index expressions match |cols|
 		allMatch := true
 		for _, gf := range cols {
+			colKey := strings.ToLower(actualTableName) + "." + strings.ToLower(gf.Name())
 			var match bool
 			for _, idxExpr := range idxExprs {
-				if gf.String() == idxExpr {
+				if strings.EqualFold(colKey, idxExpr) {
 					match = true
 					break
 				}

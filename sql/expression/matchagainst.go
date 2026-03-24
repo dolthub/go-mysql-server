@@ -50,6 +50,8 @@ type MatchAgainst struct {
 	KeyCols         fulltext.KeyColumns
 	parser          fulltext.DefaultParser
 	expectedRowLen  int
+	tableColOffset     int
+	tableColOffsetOnce sync.Once
 	parentRowCount  uint64
 	once            sync.Once
 	SearchModifier  fulltext.SearchModifier
@@ -83,9 +85,35 @@ func (expr *MatchAgainst) Children() []sql.Expression {
 	return exprs
 }
 
+func (expr *MatchAgainst) colOffset() int {
+	expr.tableColOffsetOnce.Do(func() {
+		if len(expr.Columns) == 0 || expr.ParentTable == nil {
+			return
+		}
+		gf, ok := expr.Columns[0].(*GetField)
+		if !ok {
+			return
+		}
+		j := expr.ParentTable.Schema().IndexOfColName(gf.Name())
+		if j >= 0 {
+			offset := gf.Index() - j
+			if offset > 0 {
+				expr.tableColOffset = offset
+			}
+		}
+	})
+	return expr.tableColOffset
+}
+
 // Eval implements sql.Expression
 func (expr *MatchAgainst) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	row = row[:expr.expectedRowLen]
+	offset := expr.colOffset()
+	end := offset + expr.expectedRowLen
+	if end <= len(row) {
+		row = row[offset:end]
+	} else {
+		row = row[:expr.expectedRowLen]
+	}
 	switch expr.SearchModifier {
 	case fulltext.SearchModifier_NaturalLanguage:
 		return expr.inNaturalLanguageMode(ctx, row)
