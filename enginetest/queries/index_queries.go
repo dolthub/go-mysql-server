@@ -4180,6 +4180,41 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/go-mysql-server/issues/3459
+		Name: "prefix index charset-aware validation",
+		SetUpScript: []string{
+			`CREATE TABLE t_latin1 (
+  id bigint unsigned NOT NULL AUTO_INCREMENT,
+  group_key varchar(16) COLLATE latin1_bin NOT NULL,
+  code varchar(32) CHARACTER SET latin1 DEFAULT NULL,
+  PRIMARY KEY (id),
+  KEY idx_group_code (group_key, code(12))
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_bin`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "alter table t_latin1 add index (code(32))",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:       "alter table t_latin1 add index (code(33))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+			{
+				Query:    "create table t_latin1_text (c text CHARACTER SET latin1, index (c(100)))",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:    "create table t_utf8mb3 (c varchar(32) CHARACTER SET utf8mb3, index (c(12)))",
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+			{
+				Query:       "create table t_bad (c varchar(32) CHARACTER SET utf8mb3, index (c(33)))",
+				ExpectedErr: sql.ErrInvalidIndexPrefix,
+			},
+		},
+	},
 }
 
 var IndexQueries = []ScriptTest{
