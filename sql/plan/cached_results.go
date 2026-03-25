@@ -23,9 +23,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql"
 )
 
-// CachedResultsGlobalCache manages the caches created by CachedResults nodes.
-var CachedResultsGlobalCache = NewCachedResultsManager()
-
 var ErrEmptyCachedResult = errors.New("CachedResult contains no rows")
 var ErrRowIterDisposed = errors.New("attempted to call RowIter() on a disposed Node")
 
@@ -34,10 +31,11 @@ var ErrRowIterDisposed = errors.New("attempted to call RowIter() on a disposed N
 // results for future calls to RowIter. This node is only safe to use if the
 // Child is deterministic and is not dependent on the |row| parameter in the
 // call to RowIter.
-func NewCachedResults(n sql.Node) *CachedResults {
+func NewCachedResults(n sql.Node, mgr *CachedResultsManager) *CachedResults {
 	return &CachedResults{
 		UnaryNode: UnaryNode{n},
-		Id:        CachedResultsGlobalCache.allocateUniqueId(),
+		Id:        mgr.AllocateUniqueId(),
+		Manager:   mgr,
 	}
 }
 
@@ -59,8 +57,9 @@ func NewCachedResults(n sql.Node) *CachedResults {
 // fall back to a passthrough iterator.
 type CachedResults struct {
 	UnaryNode
-	Id    uint64
-	Mutex sync.Mutex
+	Id      uint64
+	Manager *CachedResultsManager
+	Mutex   sync.Mutex
 	//NoCache is set when the memory manager is unable to build
 	// a cache, so we fallback to a passthrough RowIter
 	NoCache bool
@@ -76,7 +75,7 @@ var _ sql.CollationCoercible = (*CachedResults)(nil)
 
 func (n *CachedResults) Dispose() {
 	n.Disposed = true
-	CachedResultsGlobalCache.disposeCachedResultsById(n.Id)
+	n.Manager.DisposeCachedResultsById(n.Id)
 }
 
 func (n *CachedResults) String() string {
@@ -108,7 +107,7 @@ func (n *CachedResults) CollationCoercibility(ctx *sql.Context) (collation sql.C
 }
 
 func (n *CachedResults) GetCachedResults() []sql.Row {
-	return CachedResultsGlobalCache.getCachedResultsById(n.Id)
+	return n.Manager.GetCachedResultsById(n.Id)
 }
 
 func (n *CachedResults) IsReadOnly() bool {
@@ -132,7 +131,7 @@ func (i *emptyCacheIter) Close(ctx *sql.Context) error { return nil }
 // cachedResultsManager manages the saved results collected by CachedResults nodes. It is necessary to do this outside
 // of the CachedResult node instances themselves, since executing a query plan can make transient transforms that are
 // not persisted back and can cause cache memory leaks.
-type cachedResultsManager struct {
+type CachedResultsManager struct {
 	// cachedResultsCaches tracks caches used by CachedResults globally so that even if a CachedResult
 	// object is copied as part of a transform, its cache can be properly disposed. This is necessary because
 	// when evaluating subquery expressions, the query plan is transformed into a new copy that has prependRow nodes
@@ -154,17 +153,17 @@ type cacheDisposeTuple struct {
 	dispose sql.DisposeFunc
 }
 
-func NewCachedResultsManager() *cachedResultsManager {
-	return &cachedResultsManager{
+func NewCachedResultsManager() *CachedResultsManager {
+	return &CachedResultsManager{
 		cachedResultsCaches: make(map[uint64]*cacheDisposeTuple),
 	}
 }
 
-func (crm *cachedResultsManager) allocateUniqueId() uint64 {
+func (crm *CachedResultsManager) AllocateUniqueId() uint64 {
 	return atomic.AddUint64(&(crm.cachedResultsUniqueIdCounter), 1)
 }
 
-func (crm *cachedResultsManager) getCachedResultsById(id uint64) []sql.Row {
+func (crm *CachedResultsManager) GetCachedResultsById(id uint64) []sql.Row {
 	crm.mutex.Lock()
 	defer crm.mutex.Unlock()
 
@@ -175,7 +174,7 @@ func (crm *cachedResultsManager) getCachedResultsById(id uint64) []sql.Row {
 	}
 }
 
-func (crm *cachedResultsManager) AddNewCache(id uint64, cache sql.RowsCache, dispose sql.DisposeFunc) bool {
+func (crm *CachedResultsManager) AddNewCache(id uint64, cache sql.RowsCache, dispose sql.DisposeFunc) bool {
 	crm.mutex.Lock()
 	defer crm.mutex.Unlock()
 
@@ -187,7 +186,7 @@ func (crm *cachedResultsManager) AddNewCache(id uint64, cache sql.RowsCache, dis
 	return true
 }
 
-func (crm *cachedResultsManager) disposeCachedResultsById(id uint64) {
+func (crm *CachedResultsManager) DisposeCachedResultsById(id uint64) {
 	crm.mutex.Lock()
 	defer crm.mutex.Unlock()
 
