@@ -51,8 +51,8 @@ type MatchAgainst struct {
 	parser          fulltext.DefaultParser
 	expectedRowLen  int
 	tableColOffset     int
-	tableColOffsetOnce sync.Once
 	parentRowCount  uint64
+	tableColOffsetOnce sync.Once
 	once            sync.Once
 	SearchModifier  fulltext.SearchModifier
 }
