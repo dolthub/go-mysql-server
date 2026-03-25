@@ -87,16 +87,16 @@ func (expr *MatchAgainst) Children() []sql.Expression {
 
 func (expr *MatchAgainst) colOffset() int {
 	expr.tableColOffsetOnce.Do(func() {
-		if len(expr.Columns) == 0 || expr.ParentTable == nil {
+		if expr.ParentTable == nil {
 			return
 		}
-		gf, ok := expr.Columns[0].(*GetField)
-		if !ok {
+		fields := expr.ColumnsAsGetFields()
+		if fields == nil {
 			return
 		}
-		j := expr.ParentTable.Schema().IndexOfColName(gf.Name())
+		j := expr.ParentTable.Schema().IndexOfColName(fields[0].Name())
 		if j >= 0 {
-			offset := gf.Index() - j
+			offset := fields[0].Index() - j
 			if offset > 0 {
 				expr.tableColOffset = offset
 			}

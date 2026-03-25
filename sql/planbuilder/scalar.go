@@ -1207,7 +1207,7 @@ func findMatchAgainstIndex(cols []*expression.GetField, indexes []sql.Index, act
 		// check that index expressions match |cols|
 		allMatch := true
 		for _, gf := range cols {
-			colKey := strings.ToLower(actualTableName) + "." + strings.ToLower(gf.Name())
+			colKey := gf.WithTable(actualTableName).String()
 			var match bool
 			for _, idxExpr := range idxExprs {
 				if strings.EqualFold(colKey, idxExpr) {
