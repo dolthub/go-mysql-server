@@ -28,8 +28,6 @@ import (
 // and that no DDL statements are used to modify hidden system columns.
 func validateNoHiddenSystemColumns(_ *sql.Context, _ *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector, _ *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	var err error
-	// TDOO: We don't want opaque here... because it'll go into subqueries (and union) and then when the analyzer runs on the outer node, it'll find those hidden columsn plugged in and error out
-	// hrmm... seems like Inspect is still using WithOpaque... ???
 	transform.Inspect(n, func(n sql.Node) bool {
 		switch nn := n.(type) {
 		case *plan.ModifyColumn:
@@ -46,14 +44,22 @@ func validateNoHiddenSystemColumns(_ *sql.Context, _ *Analyzer, n sql.Node, _ *p
 			}
 		}
 
-		transform.InspectExpressions(n, func(e sql.Expression) bool {
-			if gf, ok := e.(*expression.GetField); ok {
-				if isHiddenSystemColumn(gf.Name()) {
-					err = sql.ErrColumnNotFound.New(gf.Name())
+		switch n.(type) {
+		case *plan.Update, *plan.UpdateSource:
+		// NOTE: UpdateSource expressions can still have references to hidden system columns, because
+		//       those values need to be plugged in for the secondary indexes to be updated correctly.
+		//       So we skip validating those here, and rely on checks in planbuilder to prevent users
+		//       from directly referencing hidden system columns.
+		default:
+			transform.InspectExpressions(n, func(e sql.Expression) bool {
+				if gf, ok := e.(*expression.GetField); ok {
+					if isHiddenSystemColumn(gf.Name()) {
+						err = sql.ErrColumnNotFound.New(gf.Name())
+					}
 				}
-			}
-			return true
-		})
+				return true
+			})
+		}
 
 		// continue as long as no error has been set
 		return err == nil
