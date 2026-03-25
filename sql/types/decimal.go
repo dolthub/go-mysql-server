@@ -17,6 +17,7 @@ package types
 import (
 	"context"
 	"fmt"
+	"math"
 	"math/big"
 	"reflect"
 	"strings"
@@ -189,8 +190,6 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 		return decimal.NullDecimal{}, nil
 	}
 
-	var res decimal.Decimal
-
 	switch value := v.(type) {
 	case bool:
 		if value {
@@ -221,14 +220,12 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 	case float32:
 		return t.ConvertToNullDecimal(decimal.NewFromFloat32(value))
 	case float64:
-		//if !IsValidFloat(value) {
-		//	return decimal.NullDecimal{}, ErrConvertingToDecimal.New(value)
-		//}
-		return t.ConvertToNullDecimal(decimal.NewFromFloat(value))
+		if canConvertFloatToDecimal(value) {
+			return t.ConvertToNullDecimal(decimal.NewFromFloat(value))
+		}
 	case string:
-		var err error
 		truncStr := strings.Trim(value, sql.NumericCutSet)
-		res, err = decimal.NewFromString(truncStr)
+		res, err := decimal.NewFromString(truncStr)
 		if err == nil {
 			return t.ConvertToNullDecimal(res)
 		}
@@ -272,10 +269,9 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 			if err != nil {
 				return decimal.NullDecimal{}, err
 			}
-			res = val
-		} else {
-			res = value
+			return decimal.NullDecimal{Decimal: val, Valid: true}, nil
 		}
+		return decimal.NullDecimal{Decimal: value, Valid: true}, nil
 	case []uint8:
 		return t.ConvertToNullDecimal(string(value))
 	case decimal.NullDecimal:
@@ -286,11 +282,9 @@ func (t DecimalType_) ConvertToNullDecimal(v interface{}) (decimal.NullDecimal, 
 		return t.ConvertToNullDecimal(value.Decimal)
 	case JSONDocument:
 		return t.ConvertToNullDecimal(value.Val)
-	default:
-		return decimal.NullDecimal{}, ErrConvertingToDecimal.New(v)
 	}
 
-	return decimal.NullDecimal{Decimal: res, Valid: true}, nil
+	return decimal.NullDecimal{}, ErrConvertingToDecimal.New(v)
 }
 
 func (t DecimalType_) BoundsCheck(v decimal.Decimal) (decimal.Decimal, sql.ConvertInRange, error) {
@@ -443,6 +437,7 @@ func convertValueToDecimal(ctx *sql.Context, v sql.Value) (decimal.Decimal, erro
 		return decimal.NewFromFloat32(x), nil
 	case sqltypes.Float64:
 		x := values.ReadFloat64(v.Val)
+		// handle infinity and NaN values
 		return decimal.NewFromFloat(x), nil
 	case sqltypes.Decimal:
 		x := values.ReadDecimal(v.Val)
@@ -485,4 +480,8 @@ func convertValueToDecimal(ctx *sql.Context, v sql.Value) (decimal.Decimal, erro
 // IsDecimalType implements the sql.DecimalType
 func (t DecimalType_) IsDecimalType() bool {
 	return true
+}
+
+func canConvertFloatToDecimal(v float64) bool {
+	return math.IsNaN(v) || math.IsInf(v, 0)
 }
