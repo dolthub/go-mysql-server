@@ -283,15 +283,17 @@ type Context struct {
 	queryTime time.Time
 	context.Context
 	Session
-	ProcessList ProcessList
-	services    Services
-	tracer      trace.Tracer
-	rootSpan    trace.Span
-	Memory      *MemoryManager
-	query       string
-	pid         uint64
-	interpreted bool
-	Version     AnalyzerVersion
+	ProcessList     ProcessList
+	services        Services
+	tracer          trace.Tracer
+	rootSpan        trace.Span
+	Memory          *MemoryManager
+	query           string
+	pid             uint64
+	interpreted     bool
+	Version         AnalyzerVersion
+	systemVariables SystemVariableRegistry
+	statusVariables StatusVariableRegistry
 }
 
 // ContextOption is a function to configure the context.
@@ -350,6 +352,38 @@ func WithServices(services Services) ContextOption {
 	return func(ctx *Context) {
 		ctx.services = services
 	}
+}
+
+// WithSystemVariables sets the system variable registry for the Context.
+func WithSystemVariables(sv SystemVariableRegistry) ContextOption {
+	return func(ctx *Context) {
+		ctx.systemVariables = sv
+	}
+}
+
+// WithStatusVariables sets the status variable registry for the Context.
+func WithStatusVariables(sv StatusVariableRegistry) ContextOption {
+	return func(ctx *Context) {
+		ctx.statusVariables = sv
+	}
+}
+
+// GetSystemVariables returns the system variable registry for this context.
+// Falls back to the global SystemVariables if no per-context registry is set.
+func (c *Context) GetSystemVariables() SystemVariableRegistry {
+	if c.systemVariables != nil {
+		return c.systemVariables
+	}
+	return SystemVariables // global fallback — removed in Phase 3
+}
+
+// GetStatusVariables returns the status variable registry for this context.
+// Falls back to the global StatusVariables if no per-context registry is set.
+func (c *Context) GetStatusVariables() StatusVariableRegistry {
+	if c.statusVariables != nil {
+		return c.statusVariables
+	}
+	return StatusVariables // global fallback — removed in Phase 3
 }
 
 var ctxNowFunc = time.Now

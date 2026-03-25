@@ -544,7 +544,7 @@ func (f *ValidatePasswordStrength) Eval(ctx *sql.Context, row sql.Row) (interfac
 	strength += 25
 
 	// Requirements for LOW password strength
-	_, passLen, ok := sql.SystemVariables.GetGlobal("validate_password.length")
+	_, passLen, ok := ctx.GetSystemVariables().GetGlobal("validate_password.length")
 	if !ok {
 		return nil, err
 	}
@@ -558,7 +558,7 @@ func (f *ValidatePasswordStrength) Eval(ctx *sql.Context, row sql.Row) (interfac
 	strength += 25
 
 	// Requirements for MEDIUM password strength
-	_, numCount, ok := sql.SystemVariables.GetGlobal("validate_password.number_count")
+	_, numCount, ok := ctx.GetSystemVariables().GetGlobal("validate_password.number_count")
 	if !ok {
 		return nil, fmt.Errorf("error: validate_password.number_count variable was not found")
 	}
@@ -566,7 +566,7 @@ func (f *ValidatePasswordStrength) Eval(ctx *sql.Context, row sql.Row) (interfac
 	if !ok {
 		return nil, fmt.Errorf("invalid value for validate_password.number_count: %v", numCount)
 	}
-	_, mixCaseCount, ok := sql.SystemVariables.GetGlobal("validate_password.mixed_case_count")
+	_, mixCaseCount, ok := ctx.GetSystemVariables().GetGlobal("validate_password.mixed_case_count")
 	if !ok {
 		return nil, fmt.Errorf("error: validate_password.mixed_case_count variable was not found")
 	}
@@ -575,7 +575,7 @@ func (f *ValidatePasswordStrength) Eval(ctx *sql.Context, row sql.Row) (interfac
 		return nil, fmt.Errorf("invalid value for validate_password.mixed_case_count: %v", mixCaseCount)
 	}
 	lowerCount, upperCount := mixCaseCountInt, mixCaseCountInt
-	_, specialCharCount, ok := sql.SystemVariables.GetGlobal("validate_password.special_char_count")
+	_, specialCharCount, ok := ctx.GetSystemVariables().GetGlobal("validate_password.special_char_count")
 	if !ok {
 		return nil, fmt.Errorf("error: validate_password.special_char_count variable was not found")
 	}

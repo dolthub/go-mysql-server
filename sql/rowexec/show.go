@@ -525,7 +525,7 @@ func (b *BaseBuilder) buildShowVariables(ctx *sql.Context, n *plan.ShowVariables
 	var sysVars map[string]interface{}
 
 	if n.Global {
-		sysVars = sql.SystemVariables.GetAllGlobalVariables()
+		sysVars = ctx.GetSystemVariables().GetAllGlobalVariables()
 	} else {
 		sysVars = ctx.GetAllSessionVariables()
 	}

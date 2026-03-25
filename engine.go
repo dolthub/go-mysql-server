@@ -21,6 +21,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	querypb "github.com/dolthub/vitess/go/vt/proto/query"
@@ -85,6 +86,8 @@ type Engine struct {
 	ReadOnly          atomic.Bool
 	IsServerLocked    bool
 	Version           sql.AnalyzerVersion
+	SystemVariables   sql.SystemVariableRegistry
+	StatusVariables   sql.StatusVariableRegistry
 }
 
 var _ sql.StatementRunner = (*Engine)(nil)
@@ -108,7 +111,18 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 
 	ls := sql.NewLockSubsystem()
 
+	// During Phase 1, we use the globals as the engine's registries so that
+	// code still accessing sql.SystemVariables / sql.StatusVariables (e.g., Dolt)
+	// sees the same data. If a global already exists (e.g., Dolt's init() added
+	// custom variables), we reuse it rather than replacing it with a fresh one.
+	// In Phase 3, the engine will always create its own registry.
+	if sql.SystemVariables == nil {
+		sql.SystemVariables = variables.NewSystemVariableRegistry(time.Now())
+	}
+	sysVars := sql.SystemVariables
+
 	variables.InitStatusVariables()
+	statusVars := sql.StatusVariables
 
 	emptyCtx := sql.NewEmptyContext()
 
@@ -124,13 +138,15 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 	ret := &Engine{
 		Analyzer:          a,
 		MemoryManager:     sql.NewMemoryManager(sql.ProcessMemory),
-		ProcessList:       NewProcessList(),
+		ProcessList:       NewProcessList(sysVars, statusVars),
 		LS:                ls,
 		BackgroundThreads: sql.NewBackgroundThreads(),
 		IsServerLocked:    cfg.IsServerLocked,
 		mu:                &sync.Mutex{},
 		EventScheduler:    nil,
 		Parser:            sql.GetParser(a.Overrides),
+		SystemVariables:   sysVars,
+		StatusVariables:   statusVars,
 	}
 	ret.ReadOnly.Store(cfg.IsReadOnly)
 	a.Runner = ret

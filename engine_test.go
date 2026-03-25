@@ -189,7 +189,7 @@ func TestTrackProcess(t *testing.T) {
 		expression.NewLiteral(int64(1), types.Int64),
 	)
 
-	pl := NewProcessList()
+	pl := NewProcessList(sql.SystemVariables, sql.StatusVariables)
 
 	ctx := sql.NewContext(context.Background(), sql.WithPid(1), sql.WithProcessList(pl), sql.WithSession(sess))
 	pl.AddConnection(ctx.Session.ID(), "localhost")

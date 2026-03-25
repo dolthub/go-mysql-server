@@ -619,3 +619,67 @@ func NewBaseSession() *BaseSession {
 		privSetCounter:   0,
 	}
 }
+
+// NewBaseSessionWithClientServerAndRegistries creates a new session with the given registries.
+// This is the registry-aware version of NewBaseSessionWithClientServer.
+func NewBaseSessionWithClientServerAndRegistries(server string, client Client, id uint32, sysVarReg SystemVariableRegistry, statusVarReg StatusVariableRegistry) *BaseSession {
+	var systemVars map[string]SystemVarValue
+	if sysVarReg != nil {
+		systemVars = sysVarReg.NewSessionMap()
+	} else {
+		systemVars = make(map[string]SystemVarValue)
+	}
+	var statusVars map[string]StatusVarValue
+	if statusVarReg != nil {
+		statusVars = statusVarReg.NewSessionMap()
+	} else {
+		statusVars = make(map[string]StatusVarValue)
+	}
+	return &BaseSession{
+		addr:             server,
+		client:           client,
+		id:               id,
+		systemVars:       systemVars,
+		statusVars:       statusVars,
+		userVars:         NewUserVars(),
+		storedProcParams: make(map[string]*StoredProcParam),
+		preparedQueries:  make(map[string]sqlparser.Statement),
+		cachedQueries:    make(map[string]sqlparser.Statement),
+		idxReg:           NewIndexRegistry(),
+		viewReg:          NewViewRegistry(),
+		locks:            make(map[string]bool),
+		lastQueryInfo:    defaultLastQueryInfo(),
+		privSetCounter:   0,
+	}
+}
+
+// NewBaseSessionWithRegistries creates a new empty session with the given registries.
+// This is the registry-aware version of NewBaseSession.
+func NewBaseSessionWithRegistries(sysVarReg SystemVariableRegistry, statusVarReg StatusVariableRegistry) *BaseSession {
+	var systemVars map[string]SystemVarValue
+	if sysVarReg != nil {
+		systemVars = sysVarReg.NewSessionMap()
+	} else {
+		systemVars = make(map[string]SystemVarValue)
+	}
+	var statusVars map[string]StatusVarValue
+	if statusVarReg != nil {
+		statusVars = statusVarReg.NewSessionMap()
+	} else {
+		statusVars = make(map[string]StatusVarValue)
+	}
+	return &BaseSession{
+		id:               atomic.AddUint32(&autoSessionIDs, 1),
+		systemVars:       systemVars,
+		statusVars:       statusVars,
+		userVars:         NewUserVars(),
+		storedProcParams: make(map[string]*StoredProcParam),
+		preparedQueries:  make(map[string]sqlparser.Statement),
+		cachedQueries:    make(map[string]sqlparser.Statement),
+		idxReg:           NewIndexRegistry(),
+		viewReg:          NewViewRegistry(),
+		locks:            make(map[string]bool),
+		lastQueryInfo:    defaultLastQueryInfo(),
+		privSetCounter:   0,
+	}
+}

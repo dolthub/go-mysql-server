@@ -63,7 +63,7 @@ func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.
 	var reader io.ReadCloser
 	var err error
 	if n.Local {
-		_, localInfile, ok := sql.SystemVariables.GetGlobal("local_infile")
+		_, localInfile, ok := ctx.GetSystemVariables().GetGlobal("local_infile")
 		if !ok {
 			return nil, fmt.Errorf("error: local_infile variable was not found")
 		}
@@ -77,7 +77,7 @@ func (b *BaseBuilder) buildLoadData(ctx *sql.Context, n *plan.LoadData, row sql.
 			return nil, err
 		}
 	} else {
-		_, secureFileDir, ok := sql.SystemVariables.GetGlobal("secure_file_priv")
+		_, secureFileDir, ok := ctx.GetSystemVariables().GetGlobal("secure_file_priv")
 		if !ok {
 			return nil, fmt.Errorf("error: secure_file_priv variable was not found")
 		}

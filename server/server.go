@@ -90,7 +90,7 @@ func NewServerWithHandler(
 		tracer = sql.NoopTracer
 	}
 
-	sm := NewSessionManager(ctxFactory, sb, tracer, e.Analyzer.Catalog.Database, e.MemoryManager, e.ProcessList, cfg.Address)
+	sm := NewSessionManager(ctxFactory, sb, tracer, e.Analyzer.Catalog.Database, e.MemoryManager, e.ProcessList, cfg.Address, e.SystemVariables, e.StatusVariables)
 	h := &Handler{
 		e:                 e,
 		sm:                sm,
@@ -135,7 +135,7 @@ func getPort(cfg mysql.ListenerConfig) (int64, error) {
 	return portInt, nil
 }
 
-func updateSystemVariables(cfg mysql.ListenerConfig) error {
+func updateSystemVariables(cfg mysql.ListenerConfig, sysVarReg sql.SystemVariableRegistry) error {
 	sysVars := make(map[string]interface{})
 
 	if port, err := getPort(cfg); err == nil {
@@ -151,7 +151,7 @@ func updateSystemVariables(cfg mysql.ListenerConfig) error {
 	}
 
 	// TODO: add the rest of the config variables
-	err := sql.SystemVariables.AssignValues(sysVars)
+	err := sysVarReg.AssignValues(sysVars)
 	if err != nil {
 		return err
 	}
@@ -202,7 +202,7 @@ func newServerFromHandler(cfg Config, e *sqle.Engine, sm *SessionManager, handle
 		return nil, err
 	}
 
-	err = updateSystemVariables(listenerCfg)
+	err = updateSystemVariables(listenerCfg, e.SystemVariables)
 	if err != nil {
 		return nil, err
 	}
@@ -224,7 +224,7 @@ func (s *Server) Start() error {
 }
 
 func (s *Server) WarnIfLoadFileInsecure() {
-	_, v, ok := sql.SystemVariables.GetGlobal("secure_file_priv")
+	_, v, ok := s.Engine.SystemVariables.GetGlobal("secure_file_priv")
 	if ok {
 		if v == "" {
 			logrus.Warn("secure_file_priv is set to \"\", which is insecure.")

@@ -495,6 +495,8 @@ type SystemVariableRegistry interface {
 	SetGlobal(ctx *Context, name string, val interface{}) error
 	// GetAllGlobalVariables returns a copy of all global variable values.
 	GetAllGlobalVariables() map[string]interface{}
+	// StartUpTime returns the time at which this registry (and its owning engine) was created.
+	StartUpTime() time.Time
 }
 
 // SystemVariable is used to system variables.
@@ -555,7 +557,8 @@ type MysqlSystemVariable struct {
 	// the value of this system variable whenever it is requested. System variables
 	// that provide a ValueFunction should also set Dynamic to false, since they
 	// cannot be assigned a value and will return a read-only error if tried.
-	ValueFunction func() (interface{}, error)
+	// The SystemVariableRegistry parameter is the registry that owns this variable.
+	ValueFunction func(SystemVariableRegistry) (interface{}, error)
 	// Name is the name of the system variable.
 	Name string
 	// Dynamic defines whether the variable may be written to during runtime. Variables with this set to `false` will
@@ -673,7 +676,7 @@ func GetMysqlScope(t MysqlSVScopeType) *MysqlScope {
 func (m *MysqlScope) SetValue(ctx *Context, name string, val any) error {
 	switch m.Type {
 	case SystemVariableScope_Global:
-		err := SystemVariables.SetGlobal(ctx, name, val)
+		err := ctx.GetSystemVariables().SetGlobal(ctx, name, val)
 		if err != nil {
 			return err
 		}
@@ -691,7 +694,7 @@ func (m *MysqlScope) SetValue(ctx *Context, name string, val any) error {
 		if err != nil {
 			return err
 		}
-		err = SystemVariables.SetGlobal(ctx, name, val)
+		err = ctx.GetSystemVariables().SetGlobal(ctx, name, val)
 		if err != nil {
 			return err
 		}
@@ -729,7 +732,7 @@ func (m *MysqlScope) SetValue(ctx *Context, name string, val any) error {
 func (m *MysqlScope) GetValue(ctx *Context, name string, collation CollationID) (any, error) {
 	switch m.Type {
 	case SystemVariableScope_Global:
-		_, val, ok := SystemVariables.GetGlobal(name)
+		_, val, ok := ctx.GetSystemVariables().GetGlobal(name)
 		if !ok {
 			return nil, ErrUnknownSystemVariable.New(name)
 		}
@@ -954,7 +957,7 @@ func (s *ImmutableStatusVarValue) Copy() StatusVarValue {
 // IncrementStatusVariable increments the value of the status variable by integer val.
 // |name| is case-sensitive.
 func IncrementStatusVariable(ctx *Context, name string, val int) {
-	StatusVariables.IncrementGlobal(name, val)
+	ctx.GetStatusVariables().IncrementGlobal(name, val)
 	ctx.Session.IncrementStatusVariable(ctx, name, val)
 }
 

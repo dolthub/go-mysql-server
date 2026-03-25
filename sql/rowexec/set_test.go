@@ -91,9 +91,10 @@ func TestPersistedSessionSetIterator(t *testing.T) {
 		t.Run(test.title, func(t *testing.T) {
 			variables.InitSystemVariables()
 			sqlCtx, globals := newPersistedSqlContext()
+			sysVar, _, _ := sql.SystemVariables.GetGlobal(test.name)
 			s := plan.NewSet(
 				[]sql.Expression{
-					expression.NewSetField(expression.NewSystemVar(test.name, sql.GetMysqlScope(test.scope), string(test.scope)), expression.NewLiteral(int64(test.value), types.Int64)),
+					expression.NewSetField(expression.NewSystemVar(test.name, sql.GetMysqlScope(test.scope), string(test.scope), sysVar), expression.NewLiteral(int64(test.value), types.Int64)),
 				},
 			)
 

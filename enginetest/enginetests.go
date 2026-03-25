@@ -309,7 +309,7 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		if IsServerEngine(e) {
 			t.Skip("skipping for server engine as the processlist returned from server differs")
 		}
-		p := sqle.NewProcessList()
+		p := sqle.NewProcessList(sql.SystemVariables, sql.StatusVariables)
 		p.AddConnection(1, "localhost")
 
 		ctx := NewContext(h)
@@ -345,7 +345,7 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		if IsServerEngine(e) {
 			t.Skip("skipping for server engine as the processlist returned from server differs")
 		}
-		p := sqle.NewProcessList()
+		p := sqle.NewProcessList(sql.SystemVariables, sql.StatusVariables)
 		p.AddConnection(1, "localhost")
 
 		ctx := NewContext(h)
@@ -390,7 +390,7 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		if IsServerEngine(e) {
 			t.Skip("skipping for server engine as the processlist returned from server differs")
 		}
-		p := sqle.NewProcessList()
+		p := sqle.NewProcessList(sql.SystemVariables, sql.StatusVariables)
 		p.AddConnection(1, "localhost")
 
 		ctx := NewContext(h)
@@ -435,7 +435,7 @@ func TestInfoSchema(t *testing.T, h Harness) {
 		if IsServerEngine(e) {
 			t.Skip("skipping for server engine as the processlist returned from server differs")
 		}
-		p := sqle.NewProcessList()
+		p := sqle.NewProcessList(sql.SystemVariables, sql.StatusVariables)
 		p.AddConnection(1, "localhost")
 
 		ctx := NewContext(h)
@@ -4905,7 +4905,7 @@ func TestTransactionScripts(t *testing.T, harness Harness) {
 
 func TestConcurrentProcessList(t *testing.T, harness Harness) {
 	require := require.New(t)
-	pl := sqle.NewProcessList()
+	pl := sqle.NewProcessList(sql.SystemVariables, sql.StatusVariables)
 	numSessions := 2
 
 	for i := 0; i < numSessions; i++ {

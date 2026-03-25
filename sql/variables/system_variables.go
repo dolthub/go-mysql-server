@@ -41,6 +41,12 @@ var ServerStartUpTime = time.Now()
 type globalSystemVariables struct {
 	mutex      *sync.RWMutex
 	sysVarVals map[string]sql.SystemVarValue
+	startTime  time.Time
+}
+
+// StartUpTime implements sql.SystemVariableRegistry.
+func (sv *globalSystemVariables) StartUpTime() time.Time {
+	return sv.startTime
 }
 
 var _ sql.SystemVariableRegistry = (*globalSystemVariables)(nil)
@@ -56,7 +62,6 @@ func (sv *globalSystemVariables) AddSystemVariables(sysVars []sql.SystemVariable
 		}
 		sysVar := originalSysVar
 		lowerName := strings.ToLower(sysVar.GetName())
-		systemVars[lowerName] = sysVar
 		sv.sysVarVals[lowerName] = sql.SystemVarValue{
 			Var: sysVar,
 			Val: sysVar.GetDefault(),
@@ -74,11 +79,11 @@ func (sv *globalSystemVariables) AssignValues(vals map[string]interface{}) error
 	defer sv.mutex.Unlock()
 	for varName, val := range vals {
 		varName = strings.ToLower(varName)
-		sysVar, ok := getSystemVar(varName)
+		svVal, ok := sv.sysVarVals[varName]
 		if !ok {
 			return sql.ErrUnknownSystemVariable.New(varName)
 		}
-		svv, err := sysVar.InitValue(ctx, val, true)
+		svv, err := svVal.Var.InitValue(ctx, val, true)
 		if err != nil {
 			return err
 		}
@@ -104,13 +109,14 @@ func (sv *globalSystemVariables) GetGlobal(name string) (sql.SystemVariable, int
 	sv.mutex.RLock()
 	defer sv.mutex.RUnlock()
 	name = strings.ToLower(name)
-	v, ok := getSystemVar(name)
+	sysVal, ok := sv.sysVarVals[name]
 	if !ok {
 		return nil, nil, false
 	}
+	v := sysVal.Var
 
 	if msv, ok := v.(*sql.MysqlSystemVariable); ok && msv.ValueFunction != nil {
-		result, err := msv.ValueFunction()
+		result, err := msv.ValueFunction(sv)
 		if err != nil {
 			logrus.StandardLogger().Warnf("unable to get value for system variable %s: %s", msv.GetName(), err.Error())
 			return nil, nil, true
@@ -119,7 +125,6 @@ func (sv *globalSystemVariables) GetGlobal(name string) (sql.SystemVariable, int
 	}
 
 	// convert any set types to strings
-	sysVal := sv.sysVarVals[name]
 	if sysType, ok := sysVal.Var.GetType().(sql.SetType); ok {
 		if setTypeVal, ok := sysVal.Val.(uint64); ok {
 			var err error
@@ -141,11 +146,11 @@ func (sv *globalSystemVariables) SetGlobal(ctx *sql.Context, name string, val in
 	sv.mutex.Lock()
 	defer sv.mutex.Unlock()
 	name = strings.ToLower(name)
-	sysVar, ok := getSystemVar(name)
+	svVal, ok := sv.sysVarVals[name]
 	if !ok {
 		return sql.ErrUnknownSystemVariable.New(name)
 	}
-	svv, err := sysVar.SetValue(ctx, val, true)
+	svv, err := svVal.Var.SetValue(ctx, val, true)
 	if err != nil {
 		return err
 	}
@@ -166,12 +171,14 @@ func (sv *globalSystemVariables) GetAllGlobalVariables() map[string]interface{} 
 	return m
 }
 
-// InitSystemVariables resets the global systemVars singleton in the sql package
-func InitSystemVariables() {
+// NewSystemVariableRegistry creates a new SystemVariableRegistry populated with the default MySQL
+// system variables. The startTime is used for the per-registry "uptime" variable.
+func NewSystemVariableRegistry(startTime time.Time) sql.SystemVariableRegistry {
 	out := &globalSystemVariables{
 		mutex: &sync.RWMutex{},
 		sysVarVals: make(map[string]sql.SystemVarValue,
 			len(systemVars)+len(mariadbSystemVars)),
+		startTime: startTime,
 	}
 
 	for _, vars := range []map[string]sql.SystemVariable{
@@ -185,7 +192,13 @@ func InitSystemVariables() {
 			}
 		}
 	}
-	sql.SystemVariables = out
+
+	return out
+}
+
+// InitSystemVariables resets the global systemVars singleton in the sql package
+func InitSystemVariables() {
+	sql.SystemVariables = NewSystemVariableRegistry(ServerStartUpTime)
 }
 
 // init initializes SystemVariables as it functions as a global variable.
@@ -2953,8 +2966,8 @@ var systemVars = map[string]sql.SystemVariable{
 		SetVarHintApplies: true,
 		Type:              types.NewSystemBoolType("updatable_views_with_limit"),
 		Default:           int8(1),
-		ValueFunction: func() (interface{}, error) {
-			return int(time.Now().Sub(ServerStartUpTime).Seconds()), nil
+		ValueFunction: func(reg sql.SystemVariableRegistry) (interface{}, error) {
+			return int(time.Since(reg.StartUpTime()).Seconds()), nil
 		},
 	},
 	"use_secondary_engine": &sql.MysqlSystemVariable{

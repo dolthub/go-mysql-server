@@ -28,16 +28,20 @@ import (
 // ProcessList is a structure that keeps track of all the processes and their
 // status.
 type ProcessList struct {
-	procs      map[uint32]*sql.Process
-	byQueryPid map[uint64]uint32
-	mu         sync.RWMutex
+	procs        map[uint32]*sql.Process
+	byQueryPid   map[uint64]uint32
+	mu           sync.RWMutex
+	sysVarReg    sql.SystemVariableRegistry
+	statusVarReg sql.StatusVariableRegistry
 }
 
-// NewProcessList creates a new process list.
-func NewProcessList() *ProcessList {
+// NewProcessList creates a new process list with the given variable registries.
+func NewProcessList(sysVarReg sql.SystemVariableRegistry, statusVarReg sql.StatusVariableRegistry) *ProcessList {
 	return &ProcessList{
-		procs:      make(map[uint32]*sql.Process),
-		byQueryPid: make(map[uint64]uint32),
+		procs:        make(map[uint32]*sql.Process),
+		byQueryPid:   make(map[uint64]uint32),
+		sysVarReg:    sysVarReg,
+		statusVarReg: statusVarReg,
 	}
 }
 
@@ -69,7 +73,7 @@ func (pl *ProcessList) Processes() []sql.Process {
 }
 
 func (pl *ProcessList) AddConnection(id uint32, addr string) {
-	sql.StatusVariables.IncrementGlobal("Threads_connected", 1)
+	pl.statusVarReg.IncrementGlobal("Threads_connected", 1)
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
 	pl.procs[id] = &sql.Process{
@@ -99,7 +103,7 @@ func (pl *ProcessList) RemoveConnection(connID uint32) {
 	defer pl.mu.Unlock()
 	p := pl.procs[connID]
 	if p != nil {
-		sql.StatusVariables.IncrementGlobal("Threads_connected", -1)
+		pl.statusVarReg.IncrementGlobal("Threads_connected", -1)
 		if p.Kill != nil {
 			p.Kill()
 		}
@@ -118,7 +122,7 @@ func (pl *ProcessList) BeginQuery(
 	pl.mu.Lock()
 	defer pl.mu.Unlock()
 
-	sql.StatusVariables.IncrementGlobal("Threads_running", 1)
+	pl.statusVarReg.IncrementGlobal("Threads_running", 1)
 
 	id := ctx.Session.ID()
 	pid := ctx.Pid()
@@ -158,12 +162,12 @@ func (pl *ProcessList) EndQuery(ctx *sql.Context) {
 
 	if p != nil && p.QueryPid == pid {
 		processTime := time.Now().Sub(p.StartedAt)
-		longQueryTime := getLongQueryTime()
+		longQueryTime := pl.getLongQueryTime()
 		if longQueryTime > 0 && processTime.Seconds() > longQueryTime {
 			sql.IncrementStatusVariable(ctx, "Slow_queries", 1)
 		}
 
-		sql.StatusVariables.IncrementGlobal("Threads_running", -1)
+		pl.statusVarReg.IncrementGlobal("Threads_running", -1)
 		p.Command = sql.ProcessCommandSleep
 		p.Query = ""
 		p.StartedAt = time.Now()
@@ -378,8 +382,8 @@ func (pl *ProcessList) Kill(connID uint32) {
 
 // getLongQueryTime returns the value of the long_query_time system variable. If any errors are encountered loading
 // the value, then an error is logged and 0 is returned.
-func getLongQueryTime() float64 {
-	_, longQueryTimeValue, ok := sql.SystemVariables.GetGlobal("long_query_time")
+func (pl *ProcessList) getLongQueryTime() float64 {
+	_, longQueryTimeValue, ok := pl.sysVarReg.GetGlobal("long_query_time")
 	if !ok {
 		logrus.Errorf("unable to find long_query_time system variable")
 		return 0

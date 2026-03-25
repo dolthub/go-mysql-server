@@ -91,15 +91,15 @@ func (h *Handler) NewConnection(c *mysql.Conn) {
 	}
 
 	h.sm.AddConn(c)
-	updateMaxUsedConnectionsStatusVariable()
-	sql.StatusVariables.IncrementGlobal("Connections", 1)
+	h.updateMaxUsedConnectionsStatusVariable()
+	h.e.StatusVariables.IncrementGlobal("Connections", 1)
 
 	c.DisableClientMultiStatements = h.disableMultiStmts
 	logrus.WithField(sql.ConnectionIdLogField, c.ConnectionID).WithField("DisableClientMultiStatements", c.DisableClientMultiStatements).Infof("NewConnection")
 }
 
 func (h *Handler) ConnectionAborted(_ *mysql.Conn, _ string) error {
-	sql.StatusVariables.IncrementGlobal("Aborted_connects", 1)
+	h.e.StatusVariables.IncrementGlobal("Aborted_connects", 1)
 	return nil
 }
 
@@ -1131,8 +1131,8 @@ func (h *Handler) WarningCount(c *mysql.Conn) uint16 {
 // getMaxUsedConnections returns the maximum number of connections that have been established at the same time for
 // this sql-server, as tracked by the Max_used_connections status variable. If any error is encountered, it will be
 // logged and 0 will be returned.
-func getMaxUsedConnections() uint64 {
-	_, maxUsedConnectionsValue, ok := sql.StatusVariables.GetGlobal("Max_used_connections")
+func (h *Handler) getMaxUsedConnections() uint64 {
+	_, maxUsedConnectionsValue, ok := h.e.StatusVariables.GetGlobal("Max_used_connections")
 	if !ok {
 		logrus.Errorf("unable to find Max_used_connections status variable")
 		return 0
@@ -1147,8 +1147,8 @@ func getMaxUsedConnections() uint64 {
 
 // getThreadsConnected returns the current number of connected threads, as tracked by the Threads_connected status
 // variable. If any error is encountered, it will be logged and 0 will be returned.
-func getThreadsConnected() uint64 {
-	_, threadsConnectedValue, ok := sql.StatusVariables.GetGlobal("Threads_connected")
+func (h *Handler) getThreadsConnected() uint64 {
+	_, threadsConnectedValue, ok := h.e.StatusVariables.GetGlobal("Threads_connected")
 	if !ok {
 		logrus.Errorf("unable to find Threads_connected status variable")
 		return 0
@@ -1164,12 +1164,12 @@ func getThreadsConnected() uint64 {
 // updateMaxUsedConnectionsStatusVariable updates the Max_used_connections status
 // variables if the current number of connected threads is greater than the current
 // value of Max_used_connections.
-func updateMaxUsedConnectionsStatusVariable() {
+func (h *Handler) updateMaxUsedConnectionsStatusVariable() {
 	go func() {
-		maxUsedConnections := getMaxUsedConnections()
-		threadsConnected := getThreadsConnected()
+		maxUsedConnections := h.getMaxUsedConnections()
+		threadsConnected := h.getThreadsConnected()
 		if threadsConnected > maxUsedConnections {
-			sql.StatusVariables.SetGlobal("Max_used_connections", threadsConnected)
+			h.e.StatusVariables.SetGlobal("Max_used_connections", threadsConnected)
 			// TODO: When Max_used_connections is updated, we should also update
 			//       Max_used_connections_time with the current time, but our status
 			//       variables support currently only supports Uint values.

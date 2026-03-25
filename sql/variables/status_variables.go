@@ -103,6 +103,28 @@ func (g *globalStatusVariables) IncrementGlobal(name string, val int) {
 	return
 }
 
+// NewStatusVariableRegistry creates a new StatusVariableRegistry populated with the default MySQL status variables.
+func NewStatusVariableRegistry() sql.StatusVariableRegistry {
+	globalVars := &globalStatusVariables{
+		varVals: make(map[string]sql.StatusVarValue, len(statusVars)),
+	}
+	for _, sysVar := range statusVars {
+		switch sysVar.GetDefault().(type) {
+		case atomic.Uint64:
+			globalVars.varVals[sysVar.GetName()] = &sql.MutableStatusVarValue{
+				Var: sysVar,
+				Val: &atomic.Uint64{},
+			}
+		default:
+			globalVars.varVals[sysVar.GetName()] = &sql.ImmutableStatusVarValue{
+				Var: sysVar,
+				Val: sysVar.GetDefault(),
+			}
+		}
+	}
+	return globalVars
+}
+
 // InitStatusVariables initializes the global status variables in sql.StatusVariables. If they have already
 // been initialized, this function will reset their values back to their defaults, which is useful for testing.
 func InitStatusVariables() {

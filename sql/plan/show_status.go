@@ -84,7 +84,7 @@ func (s *ShowStatus) Children() []sql.Node {
 func (s *ShowStatus) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
 	// Session scope has visibility into both GLOBAL and SESSION variables.
 	// Global scope has visibility only into GLOBAL variables.
-	vars := sql.StatusVariables.NewGlobalMap()
+	vars := ctx.GetStatusVariables().NewGlobalMap()
 	if !s.isGlobal {
 		// Variables with both GLOBAL and SESSION scope are overridden by SESSION scope.
 		sessVars := ctx.Session.GetAllStatusVariables(ctx)

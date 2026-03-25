@@ -38,16 +38,18 @@ type DoneFunc func()
 // connections and keep track of which sessions are in each connection, so
 // they can be cancelled if the connection is closed.
 type SessionManager struct {
-	tracer      trace.Tracer
-	processlist sql.ProcessList
-	getDbFunc   func(ctx *sql.Context, db string) (sql.Database, error)
-	memory      *sql.MemoryManager
-	mu          *sync.Mutex
-	builder     SessionBuilder
-	sessions    map[uint32]sql.Session
-	connections map[uint32]*mysql.Conn
-	ctxFactory  sql.ContextFactory
-	addr        string
+	tracer          trace.Tracer
+	processlist     sql.ProcessList
+	getDbFunc       func(ctx *sql.Context, db string) (sql.Database, error)
+	memory          *sql.MemoryManager
+	mu              *sync.Mutex
+	builder         SessionBuilder
+	sessions        map[uint32]sql.Session
+	connections     map[uint32]*mysql.Conn
+	ctxFactory      sql.ContextFactory
+	addr            string
+	systemVariables sql.SystemVariableRegistry
+	statusVariables sql.StatusVariableRegistry
 	// Implements WaitForClosedConnections(), which is only used
 	// at server shutdown to allow the integrator to ensure that
 	// no connections are being handled by handlers.
@@ -64,19 +66,34 @@ func NewSessionManager(
 	memory *sql.MemoryManager,
 	processlist sql.ProcessList,
 	addr string,
+	sysVars sql.SystemVariableRegistry,
+	statusVars sql.StatusVariableRegistry,
 ) *SessionManager {
 	return &SessionManager{
-		addr:        addr,
-		tracer:      tracer,
-		getDbFunc:   getDbFunc,
-		memory:      memory,
-		processlist: processlist,
-		mu:          new(sync.Mutex),
-		builder:     builder,
-		sessions:    make(map[uint32]sql.Session),
-		connections: make(map[uint32]*mysql.Conn),
-		ctxFactory:  ctxFactory,
+		addr:            addr,
+		tracer:          tracer,
+		getDbFunc:       getDbFunc,
+		memory:          memory,
+		processlist:     processlist,
+		mu:              new(sync.Mutex),
+		builder:         builder,
+		sessions:        make(map[uint32]sql.Session),
+		connections:     make(map[uint32]*mysql.Conn),
+		ctxFactory:      ctxFactory,
+		systemVariables: sysVars,
+		statusVariables: statusVars,
 	}
+}
+
+// newCtx creates a new sql.Context with the registries injected.
+func (s *SessionManager) newCtx(ctx context.Context, opts ...sql.ContextOption) *sql.Context {
+	if s.systemVariables != nil {
+		opts = append(opts, sql.WithSystemVariables(s.systemVariables))
+	}
+	if s.statusVariables != nil {
+		opts = append(opts, sql.WithStatusVariables(s.statusVariables))
+	}
+	return s.ctxFactory(ctx, opts...)
 }
 
 func (s *SessionManager) nextPid() uint64 {
@@ -165,7 +182,7 @@ func (s *SessionManager) SetDB(ctx context.Context, conn *mysql.Conn, dbName str
 	}
 	defer sql.SessionCommandEnd(sess)
 
-	sqlCtx := s.ctxFactory(ctx, sql.WithSession(sess))
+	sqlCtx := s.newCtx(ctx, sql.WithSession(sess))
 	sqlCtx, err = s.processlist.BeginOperation(sqlCtx)
 	if err != nil {
 		return err
@@ -266,7 +283,7 @@ func (s *SessionManager) InitSessionDefaultVariable(ctx context.Context, conn *m
 	if err != nil {
 		return err
 	}
-	return sess.InitSessionVariableDefault(s.ctxFactory(ctx, sql.WithSession(sess)), name, value)
+	return sess.InitSessionVariableDefault(s.newCtx(ctx, sql.WithSession(sess)), name, value)
 }
 
 // NewContextWithQuery creates a new context for the session at the given conn.
@@ -279,7 +296,7 @@ func (s *SessionManager) NewContextWithQuery(ctx context.Context, conn *mysql.Co
 
 	ctx, span := s.tracer.Start(ctx, "query")
 
-	createdCtx := s.ctxFactory(
+	createdCtx := s.newCtx(
 		ctx,
 		sql.WithSession(sess),
 		sql.WithTracer(s.tracer),

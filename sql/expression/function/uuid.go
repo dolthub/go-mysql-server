@@ -24,7 +24,6 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/types"
-	"github.com/dolthub/go-mysql-server/sql/variables"
 )
 
 // Global state for UUID_SHORT function
@@ -590,14 +589,15 @@ func (u *UUIDShortFunc) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	uuidShortCounter++
 
 	serverID := uint64(1) // Default fallback
-	if _, val, ok := sql.SystemVariables.GetGlobal("server_id"); ok {
+	sysVarReg := ctx.GetSystemVariables()
+	if _, val, ok := sysVarReg.GetGlobal("server_id"); ok {
 		if serverIDVal, ok := val.(uint32); ok {
 			serverID = uint64(serverIDVal)
 		}
 	}
 
 	// Construct the UUID_SHORT value according to MySQL specification:
-	result := ((serverID & 255) << 56) + (uint64(variables.ServerStartUpTime.Unix()) << 24) + uuidShortCounter
+	result := ((serverID & 255) << 56) + (uint64(sysVarReg.StartUpTime().Unix()) << 24) + uuidShortCounter
 	return result, nil
 }
 

@@ -192,7 +192,7 @@ func (s *Session) ReleaseSavepoint(ctx *sql.Context, transaction sql.Transaction
 
 // PersistGlobal implements sql.PersistableSession
 func (s *Session) PersistGlobal(ctx *sql.Context, sysVarName string, value interface{}) error {
-	sysVar, _, ok := sql.SystemVariables.GetGlobal(sysVarName)
+	sysVar, _, ok := ctx.GetSystemVariables().GetGlobal(sysVarName)
 	if !ok {
 		return sql.ErrUnknownSystemVariable.New(sysVarName)
 	}

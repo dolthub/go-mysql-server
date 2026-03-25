@@ -26,6 +26,8 @@ type SystemVar struct {
 	Name           string
 	SpecifiedScope string
 	Collation      sql.CollationID
+	// Var holds the variable definition, used by Type() and String() without global lookups.
+	Var sql.SystemVariable
 }
 
 var _ sql.Expression = (*SystemVar)(nil)
@@ -36,8 +38,8 @@ var _ sql.CollationCoercible = (*SystemVar)(nil)
 // system variable, and is used to ensure we output a column name in a result set that exactly matches how the
 // system variable was originally referenced. If the |specifiedScope| parameter is empty, then the scope was not
 // originally specified and any scope has been inferred.
-func NewSystemVar(name string, scope sql.SystemVariableScope, specifiedScope string) *SystemVar {
-	return &SystemVar{Scope: scope, Name: name, SpecifiedScope: specifiedScope}
+func NewSystemVar(name string, scope sql.SystemVariableScope, specifiedScope string, sysVar sql.SystemVariable) *SystemVar {
+	return &SystemVar{Scope: scope, Name: name, SpecifiedScope: specifiedScope, Var: sysVar}
 }
 
 // Children implements the sql.Expression interface.
@@ -51,8 +53,8 @@ func (v *SystemVar) Eval(ctx *sql.Context, _ sql.Row) (interface{}, error) {
 
 // Type implements the sql.Expression interface.
 func (v *SystemVar) Type() sql.Type {
-	if sysVar, _, ok := sql.SystemVariables.GetGlobal(v.Name); ok {
-		return sysVar.GetType()
+	if v.Var != nil {
+		return v.Var.GetType()
 	}
 	return types.Null
 }
@@ -77,8 +79,8 @@ func (v *SystemVar) Resolved() bool { return true }
 
 // String implements the sql.Expression interface.
 func (v *SystemVar) String() string {
-	if sysVar, _, ok := sql.SystemVariables.GetGlobal(v.Name); ok {
-		return sysVar.DisplayString(v.SpecifiedScope)
+	if v.Var != nil {
+		return v.Var.DisplayString(v.SpecifiedScope)
 	}
 	return ""
 }
