@@ -481,7 +481,12 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 		var indexCols []string
 		for idx, expr := range index.Expressions() {
 			col := plan.GetColumnFromIndexExpr(expr, table)
-			if col != nil {
+			if col == nil {
+				continue
+			}
+			if col.HiddenSystem && col.Generated != nil {
+				indexCols = append(indexCols, col.Generated.Expr.String())
+			} else {
 				indexDef := i.formatter.QuoteIdentifier(col.Name)
 				if len(prefixLengths) > idx && prefixLengths[idx] != 0 {
 					indexDef += fmt.Sprintf("(%v)", prefixLengths[idx])
