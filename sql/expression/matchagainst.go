@@ -45,16 +45,16 @@ type MatchAgainst struct {
 
 	Expr sql.Expression
 
-	evaluatedString string
-	Columns         []sql.Expression
-	KeyCols         fulltext.KeyColumns
-	parser          fulltext.DefaultParser
-	expectedRowLen  int
+	evaluatedString    string
+	Columns            []sql.Expression
+	KeyCols            fulltext.KeyColumns
+	parser             fulltext.DefaultParser
+	expectedRowLen     int
 	tableColOffset     int
-	parentRowCount  uint64
+	parentRowCount     uint64
 	tableColOffsetOnce sync.Once
-	once            sync.Once
-	SearchModifier  fulltext.SearchModifier
+	once               sync.Once
+	SearchModifier     fulltext.SearchModifier
 }
 
 var _ sql.Expression = (*MatchAgainst)(nil)
