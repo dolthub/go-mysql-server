@@ -4180,6 +4180,25 @@ var IndexPrefixQueries = []ScriptTest{
 			},
 		},
 	},
+	{
+		// https://github.com/dolthub/go-mysql-server/issues/3459
+		// A prefix index on a single-byte charset column (e.g. latin1) should be valid
+		// when the prefix length is within the column's character length.
+		Name:        "prefix index on latin1 VARCHAR column",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `CREATE TABLE t_prefix_latin1 (
+  id bigint unsigned NOT NULL AUTO_INCREMENT,
+  group_key varchar(16) COLLATE latin1_bin NOT NULL,
+  code varchar(32) CHARACTER SET latin1 DEFAULT NULL,
+  PRIMARY KEY (id),
+  KEY idx_group_code (group_key, code(12))
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_bin`,
+				Expected: []sql.Row{{types.NewOkResult(0)}},
+			},
+		},
+	},
 }
 
 var IndexQueries = []ScriptTest{
