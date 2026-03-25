@@ -723,8 +723,19 @@ func validatePrefixLength(ctx *sql.Context, colName string, colLen int64, colTyp
 	}
 
 	if types.IsTextOnly(colType) {
-		colLen = 4 * colLen
+		// colLen is a character count. IsTextOnly types (CHAR, VARCHAR, TEXT) always
+		// implement sql.StringType, so compare directly in character space.
+		st := colType.(sql.StringType)
+		if colLen > MaxBytePrefix/st.CharacterSet().MaxLength() {
+			return sql.ErrKeyTooLong.New()
+		}
+		if colLen > st.MaxCharacterLength() {
+			return sql.ErrInvalidIndexPrefix.New(colName)
+		}
+		return nil
 	}
+
+	// For byte-based types (BLOB, BINARY, VARBINARY), the prefix is already in bytes.
 	if colLen > MaxBytePrefix {
 		return sql.ErrKeyTooLong.New()
 	}
