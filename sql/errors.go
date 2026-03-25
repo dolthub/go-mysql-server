@@ -800,17 +800,21 @@ var (
 	// ErrUnsupportedIndexPrefix is returned for an index on a string column with a prefix
 	ErrUnsupportedIndexPrefix = errors.NewKind("prefix index on string column '%s' unsupported")
 
-	// ErrInvalidIndexPrefix is returned for an index prefix on a non-string column, or the prefix is longer than string itself, or just unsupported
-	ErrInvalidIndexPrefix = errors.NewKind("incorrect prefix key '%s'; the used key part isn't a string, the used length is longer than the key part, or the storage engine doesn't support unique prefix keys")
+	// ErrInvalidIndexPrefix is returned when a prefix index is not valid for the column type,
+	// or the prefix length exceeds the column's character length.
+	ErrInvalidIndexPrefix = newMySQLKind("incorrect prefix key '%s'; the used key part isn't a string, the used length is longer than the key part, or the storage engine doesn't support unique prefix keys", mysql.ERWrongSubKey)
 
-	// ErrInvalidBlobTextKey is returned for an index on a blob or text column with no key length specified
-	ErrInvalidBlobTextKey = errors.NewKind("blob/text column '%s' used in key specification without a key length")
+	// ErrInvalidBlobTextKey is returned when a BLOB or TEXT column is included in an index
+	// without a prefix length.
+	ErrInvalidBlobTextKey = newMySQLKind("blob/text column '%s' used in key specification without a key length", mysql.ERBlobKeyWithoutLength)
 
-	// ErrKeyTooLong is returned for an index on a blob or text column that is longer than 3072 bytes
-	ErrKeyTooLong = errors.NewKind("specified key was too long; max key length is 3072 bytes")
+	// ErrKeyTooLong is returned when a prefix index key exceeds the maximum allowed byte length.
+	// See [analyzer.MaxBytePrefix] for the limit.
+	ErrKeyTooLong = newMySQLKind("specified key was too long; max key length is 3072 bytes", mysql.ERTooLongKey)
 
-	// ErrKeyZero is returned for an index on a blob or text column that is 0 in length
-	ErrKeyZero = errors.NewKind("key part '%s' length cannot be 0")
+	// ErrKeyZero is returned when a column is given a prefix index length of zero.
+	// The corresponding MySQL error code is 1391 (ER_KEY_PART_0), which is not yet defined in vitess.
+	ErrKeyZero = newMySQLKind("key part '%s' length cannot be 0", 1391)
 
 	// ErrDatabaseWriteLocked is returned when a database is locked in read-only mode to avoid
 	// conflicts with an active server

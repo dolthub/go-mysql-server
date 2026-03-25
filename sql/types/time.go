@@ -562,19 +562,21 @@ func appendDigit(v int64, extend int, buf []byte, i int) int {
 	return i + len(tmpBuf)
 }
 
-func appendMicroseconds(dest []byte, ms int64, precision int) []byte {
-	if precision == 0 {
+func appendMicroseconds(dest []byte, microseconds int64, precision int) []byte {
+	if precision <= 0 {
 		return dest
 	}
+	powersOfTen := []int64{1, 10, 100, 1000, 10000, 100000, 1000000}
+	subSecondSize := powersOfTen[6-precision]
+	subSeconds := microseconds / subSecondSize
 	dest = append(dest, '.')
-	cmp := int64(100000)
-	for cmp > 1 && ms < cmp {
+	cmp := powersOfTen[precision-1]
+	for cmp > 1 && subSeconds < cmp {
 		dest = append(dest, '0')
 		cmp /= 10
 	}
-	dest = strconv.AppendInt(dest, ms, 10)
-	digitsToTrim := 6 - precision
-	return dest[:len(dest)-digitsToTrim]
+	dest = strconv.AppendInt(dest, subSeconds, 10)
+	return dest
 }
 
 // AsMicroseconds returns the Timespan in microseconds.
