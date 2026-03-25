@@ -4182,11 +4182,8 @@ var IndexPrefixQueries = []ScriptTest{
 	},
 	{
 		// https://github.com/dolthub/go-mysql-server/issues/3459
-		// Prefix indexes on single-byte and multi-byte charset columns should use the
-		// column's actual bytes-per-character, not assume 4 (utf8mb4).
 		Name: "prefix index charset-aware validation",
 		SetUpScript: []string{
-			// Exact reproduction from the issue: latin1 (1 byte/char), prefix 12 < column length 32
 			`CREATE TABLE t_latin1 (
   id bigint unsigned NOT NULL AUTO_INCREMENT,
   group_key varchar(16) COLLATE latin1_bin NOT NULL,
@@ -4196,27 +4193,22 @@ var IndexPrefixQueries = []ScriptTest{
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_bin`,
 		},
 		Assertions: []ScriptTestAssertion{
-			// Prefix exactly at the column character length boundary: should be valid
 			{
 				Query:    "alter table t_latin1 add index (code(32))",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
-			// Prefix one over the column character length: must still error
 			{
 				Query:       "alter table t_latin1 add index (code(33))",
 				ExpectedErr: sql.ErrInvalidIndexPrefix,
 			},
-			// latin1 TEXT with a valid prefix
 			{
 				Query:    "create table t_latin1_text (c text CHARACTER SET latin1, index (c(100)))",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
-			// utf8mb3 VARCHAR (3 bytes/char): prefix 12 on varchar(32) is 36 bytes, valid
 			{
 				Query:    "create table t_utf8mb3 (c varchar(32) CHARACTER SET utf8mb3, index (c(12)))",
 				Expected: []sql.Row{{types.NewOkResult(0)}},
 			},
-			// utf8mb3: prefix over column character length must still error
 			{
 				Query:       "create table t_bad (c varchar(32) CHARACTER SET utf8mb3, index (c(33)))",
 				ExpectedErr: sql.ErrInvalidIndexPrefix,

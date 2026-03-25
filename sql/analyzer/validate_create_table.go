@@ -25,6 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
+// MaxBytePrefix is the maximum number of bytes permitted in a prefix index key for InnoDB tables.
 const MaxBytePrefix = 3072
 
 // validateCreateTable validates various constraints about CREATE TABLE statements.
@@ -694,7 +695,11 @@ func validateAlterIndex(ctx *sql.Context, initialSch, sch sql.Schema, ai *plan.A
 	return indexes, nil
 }
 
-// validatePrefixLength handles all errors related to creating indexes with prefix lengths
+// validatePrefixLength validates the prefix length |colLen| for the index column |colName| against |colType|.
+//
+// For character-based types (CHAR, VARCHAR, TEXT), |colLen| is a character count. For byte-based
+// types (BINARY, VARBINARY, BLOB), |colLen| is a byte count. In both cases, the effective prefix
+// must not exceed [MaxBytePrefix] bytes.
 func validatePrefixLength(ctx *sql.Context, colName string, colLen int64, colType sql.Type, strictMySQLCompat, isUnique bool) error {
 	// Throw prefix length error for non-string types with prefixes
 	if !types.IsText(colType) {
@@ -723,8 +728,8 @@ func validatePrefixLength(ctx *sql.Context, colName string, colLen int64, colTyp
 	}
 
 	if types.IsTextOnly(colType) {
-		// colLen is a character count. IsTextOnly types (CHAR, VARCHAR, TEXT) always
-		// implement sql.StringType, so compare directly in character space.
+		// CHAR, VARCHAR, and TEXT always implement [sql.StringType], so the assertion is safe.
+		// Since |colLen| is in characters, it is compared directly against the column's character length.
 		st := colType.(sql.StringType)
 		if colLen > MaxBytePrefix/st.CharacterSet().MaxLength() {
 			return sql.ErrKeyTooLong.New()
