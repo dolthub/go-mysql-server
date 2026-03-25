@@ -46,16 +46,29 @@ var ZeroTimestampDatetimeStrs = [][]byte{
 	[]byte("0000-00-00 00:00:00.000000"),
 }
 
-// A Zero timestamp begins with three delimited groups of zeros, then either a space or a dot,
-// And then a possibly truncated time value. We can't validate the time value in a regex, but
-// we can extract it.
-var zeroTimestampRegex = regexp.MustCompile(`^0+-0+-0+(?:[ .](.*))?$`)
+// A Zero timestamp or datetime begins with three delimited groups of zeros,
+// and then optionally either a space or a dot, followed by a zero time.
+var zeroTimestampRegex = regexp.MustCompile(`^0+-0+-0+(.*)$`)
 
 // IsZeroTimestampStr checks if a string is a valid zero string for a datetime type.
 func IsZeroTimestampStr(timestamp string) bool {
 	match := zeroTimestampRegex.FindStringSubmatchIndex(timestamp)
 
-	return match != nil && strings.HasPrefix("00:00:00.000000", timestamp[match[2]:])
+	if match == nil {
+		return false
+	}
+	remainder := timestamp[match[2]:]
+	if len(remainder) == 0 {
+		return true
+	}
+	if remainder[0] != '.' && remainder[0] != ' ' {
+		return false
+	}
+	return IsZeroTimeStr(remainder[1:])
+}
+
+func IsZeroTimeStr(time string) bool {
+	return strings.HasPrefix("00:00:00.000000", time)
 }
 
 const MinDatetimeStringLength = 8 // length of "2000-1-1"
