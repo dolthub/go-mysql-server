@@ -1197,6 +1197,10 @@ func (b *Builder) buildMatchAgainst(inScope *scope, v *ast.MatchExpr) *expressio
 	return matchAgainst.WithInfo(indexedTbl, idxTables[0], idxTables[1], idxTables[2], idxTables[3], idxTables[4], keyCols)
 }
 
+// findMatchAgainstIndex returns the [fulltext.Index] from |indexes| whose column expressions match |cols|.
+// |actualTableName| is the real name of the table the index was built on. It is substituted for any JOIN
+// alias that may be present in the [expression.GetField] values of |cols| before the comparison is made,
+// because index expressions are always stored using the real table name.
 func findMatchAgainstIndex(cols []*expression.GetField, indexes []sql.Index, actualTableName string) fulltext.Index {
 	var found fulltext.Index
 	for _, idx := range indexes {
@@ -1204,7 +1208,6 @@ func findMatchAgainstIndex(cols []*expression.GetField, indexes []sql.Index, act
 		if !idx.IsFullText() || len(cols) != len(idxExprs) {
 			continue
 		}
-		// check that index expressions match |cols|
 		allMatch := true
 		for _, gf := range cols {
 			colKey := gf.WithTable(actualTableName).String()
