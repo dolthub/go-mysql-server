@@ -154,14 +154,24 @@ func NewStaticIndexedAccessForTableNode(ctx *sql.Context, node sql.TableNode, lo
 	}, nil
 }
 
-// NewStaticIndexedAccessForFullTextTable creates an IndexedTableAccess node for Full-Text tables, which have a
-// different behavior compared to other indexed tables.
+// NewStaticIndexedAccessForFullTextTable creates a static [IndexedTableAccess] for a full-text index.
+// |ftTable| is accepted directly as the [sql.IndexedTable] implementation because it is pre-built
+// by the caller and cannot be derived from |node| and |lookup| alone. |node| provides the table
+// identity so that column positions in joined row schemas resolve correctly during query execution.
 func NewStaticIndexedAccessForFullTextTable(node sql.TableNode, lookup sql.IndexLookup, ftTable sql.IndexedTable) *IndexedTableAccess {
+	var id sql.TableId
+	var cols sql.ColSet
+	if tin, ok := node.(TableIdNode); ok {
+		id = tin.Id()
+		cols = tin.Columns()
+	}
 	return &IndexedTableAccess{
 		TableNode: node,
 		lookup:    lookup,
 		Table:     ftTable,
 		Typ:       ItaTypeStatic,
+		id:        id,
+		cols:      cols,
 	}
 }
 
