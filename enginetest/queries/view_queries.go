@@ -160,132 +160,176 @@ CREATE TABLE tab1 (
 	},
 	{
 		// https://github.com/dolthub/dolt/issues/10741
-		Name: "view with column names allows WHERE on renamed columns",
+		Name: "view with explicit column list renames literal columns",
 		SetUpScript: []string{
-			`CREATE TABLE foo (id int primary key, name varchar(10));`,
-			`CREATE TABLE bar (id int primary key, name varchar(10), type varchar(10));`,
-			`INSERT INTO foo VALUES (1, 'alice'), (2, 'bob');`,
-			`INSERT INTO bar VALUES (3, 'carol', 'MECH'), (4, 'dave', 'STAFF');`,
-			`CREATE VIEW last_literal (id, name, type) AS
-				SELECT id, name, 'STAFF' FROM foo
-				UNION ALL
-				SELECT id, name, type FROM bar;`,
-			`CREATE VIEW first_literal (type, id, name) AS
-				SELECT 'STAFF', id, name FROM foo
-				UNION ALL
-				SELECT type, id, name FROM bar;`,
-			`CREATE VIEW mid_literal (id, type, name) AS
-				SELECT id, 'STAFF', name FROM foo
-				UNION ALL
-				SELECT id, type, name FROM bar;`,
-			`CREATE VIEW colname_matches_literal (id, name, STAFF) AS
-				SELECT id, name, 'STAFF' FROM foo
-				UNION ALL
-				SELECT id, name, type FROM bar;`,
-			`CREATE VIEW empty_literal (id, name, tag) AS
-				SELECT id, name, '' FROM foo
-				UNION ALL
-				SELECT id, name, type FROM bar;`,
+			`CREATE TABLE t (id int primary key, name varchar(10));`,
+			`INSERT INTO t VALUES (1, 'alice'), (2, 'bob');`,
+			`CREATE VIEW v (id, name, tag) AS SELECT id, name, 'abc' FROM t;`,
+			`CREATE VIEW v_renamed (id, name, status) AS SELECT id, name, 'active' FROM t;`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT * FROM last_literal ORDER BY id;",
+				Query: "SELECT * FROM v;",
 				Expected: []sql.Row{
-					{1, "alice", "STAFF"},
-					{2, "bob", "STAFF"},
-					{3, "carol", "MECH"},
-					{4, "dave", "STAFF"},
+					{1, "alice", "abc"},
+					{2, "bob", "abc"},
 				},
 			},
 			{
-				Query: "SELECT * FROM last_literal WHERE type = 'MECH' ORDER BY id;",
+				Query: "SELECT v.tag FROM v WHERE v.tag = 'abc';",
 				Expected: []sql.Row{
-					{3, "carol", "MECH"},
+					{"abc"},
+					{"abc"},
 				},
 			},
 			{
-				Query: "SELECT * FROM last_literal WHERE type = 'STAFF' ORDER BY id;",
+				Query: "SELECT tag FROM v WHERE tag = 'abc';",
 				Expected: []sql.Row{
-					{1, "alice", "STAFF"},
-					{2, "bob", "STAFF"},
-					{4, "dave", "STAFF"},
+					{"abc"},
+					{"abc"},
 				},
 			},
 			{
-				Query: "SELECT * FROM colname_matches_literal WHERE STAFF = 'MECH' ORDER BY id;",
+				Query:    "SELECT * FROM v WHERE v.tag = 'xyz';",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "SELECT v.abc FROM v;",
+				// The explicit column list names this column 'tag', so 'abc' (the literal value) is not accessible.
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query: "SELECT v_renamed.status FROM v_renamed WHERE v_renamed.status = 'active';",
+				// The explicit column list names this column 'status', while the literal value is 'active'.
 				Expected: []sql.Row{
-					{3, "carol", "MECH"},
+					{"active"},
+					{"active"},
 				},
 			},
 			{
-				Query: "SELECT * FROM colname_matches_literal WHERE STAFF = 'STAFF' ORDER BY id;",
-				Expected: []sql.Row{
-					{1, "alice", "STAFF"},
-					{2, "bob", "STAFF"},
-					{4, "dave", "STAFF"},
-				},
+				Query:       "SELECT v_renamed.active FROM v_renamed;",
+				ExpectedErr: sql.ErrTableColumnNotFound,
 			},
 			{
-				Query: "SELECT * FROM first_literal ORDER BY id;",
+				Query: "SELECT column_name FROM information_schema.columns WHERE table_name = 'v' AND table_schema = database() ORDER BY ordinal_position;",
 				Expected: []sql.Row{
-					{"STAFF", 1, "alice"},
-					{"STAFF", 2, "bob"},
-					{"MECH", 3, "carol"},
-					{"STAFF", 4, "dave"},
+					{"id"},
+					{"name"},
+					{"tag"},
 				},
 			},
+		},
+	},
+	{
+		Name: "view with explicit column list supports various literal and expression types",
+		SetUpScript: []string{
+			`CREATE VIEW v (str_col, int_col, float_col, null_col, bool_col, func_col, expr_col) AS SELECT 'abc', 1, 1.5, NULL, TRUE, abs(-5), 1 + 1;`,
+		},
+		Assertions: []ScriptTestAssertion{
 			{
-				Query: "SELECT * FROM first_literal WHERE type = 'MECH' ORDER BY id;",
-				Expected: []sql.Row{
-					{"MECH", 3, "carol"},
-				},
+				Query:    "SELECT * FROM v;",
+				Expected: []sql.Row{{"abc", 1, "1.5", nil, true, 5, 2}},
 			},
 			{
-				Query: "SELECT * FROM first_literal WHERE type = 'STAFF' ORDER BY id;",
-				Expected: []sql.Row{
-					{"STAFF", 1, "alice"},
-					{"STAFF", 2, "bob"},
-					{"STAFF", 4, "dave"},
-				},
+				Query:    "SELECT v.str_col FROM v WHERE v.str_col = 'abc';",
+				Expected: []sql.Row{{"abc"}},
 			},
 			{
-				Query: "SELECT * FROM mid_literal ORDER BY id;",
-				Expected: []sql.Row{
-					{1, "STAFF", "alice"},
-					{2, "STAFF", "bob"},
-					{3, "MECH", "carol"},
-					{4, "STAFF", "dave"},
-				},
+				Query:    "SELECT str_col FROM v WHERE str_col = 'abc';",
+				Expected: []sql.Row{{"abc"}},
 			},
 			{
-				Query: "SELECT * FROM mid_literal WHERE type = 'MECH' ORDER BY id;",
-				Expected: []sql.Row{
-					{3, "MECH", "carol"},
-				},
+				Query:    "SELECT int_col FROM v WHERE int_col = 1;",
+				Expected: []sql.Row{{1}},
 			},
 			{
-				Query: "SELECT * FROM mid_literal WHERE type = 'STAFF' ORDER BY id;",
-				Expected: []sql.Row{
-					{1, "STAFF", "alice"},
-					{2, "STAFF", "bob"},
-					{4, "STAFF", "dave"},
-				},
+				Query:    "SELECT float_col FROM v WHERE float_col = 1.5;",
+				Expected: []sql.Row{{"1.5"}},
 			},
 			{
-				Query: "SELECT * FROM empty_literal ORDER BY id;",
-				Expected: []sql.Row{
-					{1, "alice", ""},
-					{2, "bob", ""},
-					{3, "carol", "MECH"},
-					{4, "dave", "STAFF"},
-				},
+				Query:    "SELECT null_col FROM v WHERE null_col IS NULL;",
+				Expected: []sql.Row{{nil}},
 			},
 			{
-				Query: "SELECT * FROM empty_literal WHERE tag = '' ORDER BY id;",
+				Query:    "SELECT bool_col FROM v WHERE bool_col = TRUE;",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "SELECT func_col FROM v WHERE func_col = 5;",
+				Expected: []sql.Row{{5}},
+			},
+			{
+				Query:    "SELECT expr_col FROM v WHERE expr_col = 2;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query: "SELECT column_name FROM information_schema.columns WHERE table_name = 'v' AND table_schema = database() ORDER BY ordinal_position;",
 				Expected: []sql.Row{
-					{1, "alice", ""},
-					{2, "bob", ""},
+					{"str_col"},
+					{"int_col"},
+					{"float_col"},
+					{"null_col"},
+					{"bool_col"},
+					{"func_col"},
+					{"expr_col"},
 				},
+			},
+		},
+	},
+	{
+		Name: "view with numeric column name supports dotted and backtick access",
+		SetUpScript: []string{
+			`CREATE VIEW v AS SELECT 'abc', 1, 1.5, NULL, TRUE, abs(1), 1 + 1;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT v.abc FROM v;",
+				Expected: []sql.Row{{"abc"}},
+			},
+			{
+				Query:    "SELECT v.`abc` FROM v;",
+				Expected: []sql.Row{{"abc"}},
+			},
+			{
+				Skip:  true, // TODO(elianddb): https://github.com/dolthub/dolt/issues/10757 unquoted dotted access for digit-leading column names (e.g. v.1) is not supported by the Vitess parser.
+				Query: "SELECT v.1 FROM v;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT v.`1` FROM v;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT v.`1.5` FROM v;",
+				Expected: []sql.Row{{"1.5"}},
+			},
+			{
+				Query:    "SELECT v.NULL FROM v;",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    "SELECT v.`NULL` FROM v;",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    "SELECT v.true FROM v;",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "SELECT v.`true` FROM v;",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "SELECT v.abs(1) FROM v;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT v.`abs(1)` FROM v;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT v.`1 + 1` FROM v;",
+				Expected: []sql.Row{{2}},
 			},
 		},
 	},
