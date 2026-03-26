@@ -1873,7 +1873,11 @@ func (c *conjCollector) getFds() *sql.FuncDepSet {
 
 func (c *conjCollector) addEq(ctx *sql.Context, col string, val interface{}, nullSafe bool) error {
 	// make constant
-	ord := c.ordinals[col]
+	col = strings.ToLower(col)
+	ord, ok := c.ordinals[col]
+	if !ok {
+		return fmt.Errorf("unknown column '%s'", col)
+	}
 	if c.constant.Contains(ord + 1) {
 		if c.eqVals[ord] != val {
 			// FALSE filter
@@ -1907,7 +1911,11 @@ func (c *conjCollector) addEq(ctx *sql.Context, col string, val interface{}, nul
 }
 
 func (c *conjCollector) addIneq(ctx *sql.Context, op sql.IndexScanOp, col string, val interface{}) error {
-	ord := c.ordinals[col]
+	col = strings.ToLower(col)
+	ord, ok := c.ordinals[col]
+	if !ok {
+		return fmt.Errorf("unknown column '%s'", col)
+	}
 	c.ineqCols.Add(ord)
 	if ord > 0 {
 		return nil
