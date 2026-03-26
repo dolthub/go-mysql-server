@@ -15,6 +15,7 @@
 package harness
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"strconv"
@@ -70,6 +71,18 @@ func (h *memoryHarness) newContext() *sql.Context {
 	ctx.SetCurrentDatabase("mydb")
 	ctx.ApplyOpts(sql.WithPid(uint64(atomic.AddUint32(&pid, 1))))
 	return ctx
+}
+
+func (h *memoryHarness) ExecuteStatementContext(_ context.Context, statement string) error {
+	return h.ExecuteStatement(statement)
+}
+
+func (h *memoryHarness) ExecuteQueryContext(_ context.Context, statement string) (schema string, results []string, err error) {
+	return h.ExecuteQuery(statement)
+}
+
+func (h *memoryHarness) GetTimeout() int64 {
+	return 0
 }
 
 func (h *memoryHarness) ExecuteQuery(statement string) (schema string, results []string, err error) {
