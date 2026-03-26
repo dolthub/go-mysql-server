@@ -159,6 +159,137 @@ CREATE TABLE tab1 (
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/10741
+		Name: "view with column names allows WHERE on renamed columns",
+		SetUpScript: []string{
+			`CREATE TABLE foo (id int primary key, name varchar(10));`,
+			`CREATE TABLE bar (id int primary key, name varchar(10), type varchar(10));`,
+			`INSERT INTO foo VALUES (1, 'alice'), (2, 'bob');`,
+			`INSERT INTO bar VALUES (3, 'carol', 'MECH'), (4, 'dave', 'STAFF');`,
+			`CREATE VIEW last_literal (id, name, type) AS
+				SELECT id, name, 'STAFF' FROM foo
+				UNION ALL
+				SELECT id, name, type FROM bar;`,
+			`CREATE VIEW first_literal (type, id, name) AS
+				SELECT 'STAFF', id, name FROM foo
+				UNION ALL
+				SELECT type, id, name FROM bar;`,
+			`CREATE VIEW mid_literal (id, type, name) AS
+				SELECT id, 'STAFF', name FROM foo
+				UNION ALL
+				SELECT id, type, name FROM bar;`,
+			`CREATE VIEW colname_matches_literal (id, name, STAFF) AS
+				SELECT id, name, 'STAFF' FROM foo
+				UNION ALL
+				SELECT id, name, type FROM bar;`,
+			`CREATE VIEW empty_literal (id, name, tag) AS
+				SELECT id, name, '' FROM foo
+				UNION ALL
+				SELECT id, name, type FROM bar;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM last_literal ORDER BY id;",
+				Expected: []sql.Row{
+					{1, "alice", "STAFF"},
+					{2, "bob", "STAFF"},
+					{3, "carol", "MECH"},
+					{4, "dave", "STAFF"},
+				},
+			},
+			{
+				Query: "SELECT * FROM last_literal WHERE type = 'MECH' ORDER BY id;",
+				Expected: []sql.Row{
+					{3, "carol", "MECH"},
+				},
+			},
+			{
+				Query: "SELECT * FROM last_literal WHERE type = 'STAFF' ORDER BY id;",
+				Expected: []sql.Row{
+					{1, "alice", "STAFF"},
+					{2, "bob", "STAFF"},
+					{4, "dave", "STAFF"},
+				},
+			},
+			{
+				Query: "SELECT * FROM colname_matches_literal WHERE STAFF = 'MECH' ORDER BY id;",
+				Expected: []sql.Row{
+					{3, "carol", "MECH"},
+				},
+			},
+			{
+				Query: "SELECT * FROM colname_matches_literal WHERE STAFF = 'STAFF' ORDER BY id;",
+				Expected: []sql.Row{
+					{1, "alice", "STAFF"},
+					{2, "bob", "STAFF"},
+					{4, "dave", "STAFF"},
+				},
+			},
+			{
+				Query: "SELECT * FROM first_literal ORDER BY id;",
+				Expected: []sql.Row{
+					{"STAFF", 1, "alice"},
+					{"STAFF", 2, "bob"},
+					{"MECH", 3, "carol"},
+					{"STAFF", 4, "dave"},
+				},
+			},
+			{
+				Query: "SELECT * FROM first_literal WHERE type = 'MECH' ORDER BY id;",
+				Expected: []sql.Row{
+					{"MECH", 3, "carol"},
+				},
+			},
+			{
+				Query: "SELECT * FROM first_literal WHERE type = 'STAFF' ORDER BY id;",
+				Expected: []sql.Row{
+					{"STAFF", 1, "alice"},
+					{"STAFF", 2, "bob"},
+					{"STAFF", 4, "dave"},
+				},
+			},
+			{
+				Query: "SELECT * FROM mid_literal ORDER BY id;",
+				Expected: []sql.Row{
+					{1, "STAFF", "alice"},
+					{2, "STAFF", "bob"},
+					{3, "MECH", "carol"},
+					{4, "STAFF", "dave"},
+				},
+			},
+			{
+				Query: "SELECT * FROM mid_literal WHERE type = 'MECH' ORDER BY id;",
+				Expected: []sql.Row{
+					{3, "MECH", "carol"},
+				},
+			},
+			{
+				Query: "SELECT * FROM mid_literal WHERE type = 'STAFF' ORDER BY id;",
+				Expected: []sql.Row{
+					{1, "STAFF", "alice"},
+					{2, "STAFF", "bob"},
+					{4, "STAFF", "dave"},
+				},
+			},
+			{
+				Query: "SELECT * FROM empty_literal ORDER BY id;",
+				Expected: []sql.Row{
+					{1, "alice", ""},
+					{2, "bob", ""},
+					{3, "carol", "MECH"},
+					{4, "dave", "STAFF"},
+				},
+			},
+			{
+				Query: "SELECT * FROM empty_literal WHERE tag = '' ORDER BY id;",
+				Expected: []sql.Row{
+					{1, "alice", ""},
+					{2, "bob", ""},
+				},
+			},
+		},
+	},
+	{
 		Name: "view columns retain original case",
 		SetUpScript: []string{
 			`CREATE TABLE strs ( id int NOT NULL AUTO_INCREMENT,
