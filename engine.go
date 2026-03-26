@@ -64,6 +64,12 @@ type Config struct {
 	// IncludeRootAccount adds the root account (with no password) to the list of accounts, and also enables
 	// authentication.
 	IncludeRootAccount bool
+	// SystemVariables is an optional pre-configured system variable registry for the engine.
+	// If nil, the engine creates a fresh one (or reuses the global during the Phase 1/2 transition).
+	SystemVariables sql.SystemVariableRegistry
+	// StatusVariables is an optional pre-configured status variable registry for the engine.
+	// If nil, the engine creates a fresh one.
+	StatusVariables sql.StatusVariableRegistry
 }
 
 // TemporaryUser is a user that will be added to the engine. This is for temporary use while the remaining features
@@ -111,18 +117,21 @@ func New(a *analyzer.Analyzer, cfg *Config) *Engine {
 
 	ls := sql.NewLockSubsystem()
 
-	// During Phase 1, we use the globals as the engine's registries so that
-	// code still accessing sql.SystemVariables / sql.StatusVariables (e.g., Dolt)
-	// sees the same data. If a global already exists (e.g., Dolt's init() added
-	// custom variables), we reuse it rather than replacing it with a fresh one.
-	// In Phase 3, the engine will always create its own registry.
-	if sql.SystemVariables == nil {
-		sql.SystemVariables = variables.NewSystemVariableRegistry(time.Now())
+	// Use caller-provided registries if available, otherwise fall back to
+	// the globals (Phase 1/2 bridge). Phase 3 will remove the global fallback.
+	sysVars := cfg.SystemVariables
+	if sysVars == nil {
+		if sql.SystemVariables == nil {
+			sql.SystemVariables = variables.NewSystemVariableRegistry(time.Now())
+		}
+		sysVars = sql.SystemVariables
 	}
-	sysVars := sql.SystemVariables
 
-	variables.InitStatusVariables()
-	statusVars := sql.StatusVariables
+	statusVars := cfg.StatusVariables
+	if statusVars == nil {
+		variables.InitStatusVariables()
+		statusVars = sql.StatusVariables
+	}
 
 	emptyCtx := sql.NewEmptyContext()
 
