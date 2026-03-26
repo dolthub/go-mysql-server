@@ -203,10 +203,12 @@ func getCostedIndexScan(
 	var dbName string
 	if dbTab, ok := rt.UnderlyingTable().(sql.Databaseable); ok {
 		dbName = strings.ToLower(dbTab.Database())
+	} else if dber, ok := rt.UnderlyingTable().(sql.Databaser); ok {
+		dbName = dber.Database().Name()
 	}
 
 	// build a map of the available indexed expressions that can be attempted to use in this scan
-	indexedExprToColumnMap, err := buildIndexedExprToColumnNameMap(ctx, cat, indexes, dbName)
+	indexedExprToColumnMap, err := buildIndexedExprToColumnNameMap(ctx, cat, indexes, dbName, rt)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -375,7 +377,7 @@ func getCostedIndexScan(
 // and the value is the table-qualified name of the hidden system column that generates
 // that expression for the index. This function is used as part of planning/costing
 // index scans.
-func buildIndexedExprToColumnNameMap(ctx *sql.Context, cat sql.Catalog, indexes []sql.Index, dbName string) (map[string]string, error) {
+func buildIndexedExprToColumnNameMap(ctx *sql.Context, cat sql.Catalog, indexes []sql.Index, dbName string, rt sql.TableNode) (map[string]string, error) {
 	indexedExprMap := make(map[string]string)
 	for _, idx := range indexes {
 		table, _, err := cat.Table(ctx, dbName, idx.Table())
@@ -384,11 +386,11 @@ func buildIndexedExprToColumnNameMap(ctx *sql.Context, cat sql.Catalog, indexes 
 		}
 		sch := table.Schema()
 		for _, qualifiedColName := range idx.Expressions() {
-			unqualifiedColName := strings.TrimPrefix(qualifiedColName, idx.Table()+".")
+			unqualifiedColName := strings.TrimPrefix(qualifiedColName, tableName+".")
 			columnIdx := sch.IndexOfColName(unqualifiedColName)
 			if columnIdx < 0 {
 				return nil, fmt.Errorf("unable to find column %s from index %s in table %s",
-					unqualifiedColName, idx.ID(), idx.Table())
+					unqualifiedColName, idx.ID(), tableName)
 			}
 			if sch[columnIdx].HiddenSystem && sch[columnIdx].Generated != nil {
 				generatedExpr := sch[columnIdx].Generated.Expr.String()
@@ -1656,7 +1658,6 @@ func buildLeaf(ctx *sql.Context, id indexScanId, e sql.Expression, underlying st
 				underlying: underlying,
 			}, true
 		}
-		return nil, false
 	}
 
 	if op == sql.IndexScanOpIsNull || op == sql.IndexScanOpIsNotNull {
