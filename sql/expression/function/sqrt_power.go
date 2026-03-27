@@ -189,9 +189,6 @@ func (p *Power) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	res := math.Pow(left.(float64), right.(float64))
-	if math.IsNaN(res) || math.IsInf(res, 0) {
-		return nil, nil
-	}
 
 	return res, nil
 }
