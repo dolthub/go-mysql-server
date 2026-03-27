@@ -379,12 +379,34 @@ func getCostedIndexScan(
 // index scans.
 func buildIndexedExprToColumnNameMap(ctx *sql.Context, cat sql.Catalog, indexes []sql.Index, dbName string, rt sql.TableNode) (map[string]string, error) {
 	indexedExprMap := make(map[string]string)
+	tableName := rt.UnderlyingTable().Name()
+
+	// TODO: Do we need to pass in |dbName| if we have |rt| to use?
+	// TODO: How do we explain |rt|? Why do we need to pass it in?
+
+	if rt.Database().Name() == "" {
+		// TODO: What cases are there where DbName is empty?
+	}
+
+	// We don't support indexed functional expressions on TableFunctions
+	if _, ok := rt.(sql.TableFunction); ok {
+		return indexedExprMap, nil
+	}
+
+	if dbName == "" {
+		// TODO: If we don't have a dbName, then we can't do certain logic in this code...
+		//       Is it correct to just give an empty map? That would never allow indexed
+		//       expressions to be used.
+		return indexedExprMap, nil
+	}
+
+	table, _, err := cat.Table(ctx, dbName, tableName)
+	if err != nil {
+		return nil, err
+	}
+
+	sch := table.Schema()
 	for _, idx := range indexes {
-		table, _, err := cat.Table(ctx, dbName, idx.Table())
-		if err != nil {
-			return nil, err
-		}
-		sch := table.Schema()
 		for _, qualifiedColName := range idx.Expressions() {
 			unqualifiedColName := strings.TrimPrefix(qualifiedColName, tableName+".")
 			columnIdx := sch.IndexOfColName(unqualifiedColName)
@@ -1603,13 +1625,8 @@ func buildLeaf(ctx *sql.Context, id indexScanId, e sql.Expression, underlying st
 		op = op.Swap()
 	}
 
-	gf, ok := left.(*expression.GetField)
-	if !ok {
-		// Neither side is a plain GetField after the initial swap attempt.
-		// Check if either side is a functional expression with a matching index.
-		//
-		// This code handles where the right or left side is an indexed functional expression
-		// and the other side is a literal value.
+	// Check if either side is a matching functional expression in an index.
+	if right != nil {
 		if colName, ok := indexedExprToColumnMap[right.String()]; ok {
 			// Right side is the indexed functional expression, left is the literal.
 			// The initial swap inverted the op to represent "literal op expr".
@@ -1635,6 +1652,7 @@ func buildLeaf(ctx *sql.Context, id indexScanId, e sql.Expression, underlying st
 				underlying: underlying,
 			}, true
 		}
+	} else if left != nil {
 		if colName, ok := indexedExprToColumnMap[left.String()]; ok {
 			// Left side is the indexed functional expression, right is the literal.
 			// op is already in "expr op literal" orientation — no swap needed.
@@ -1660,6 +1678,21 @@ func buildLeaf(ctx *sql.Context, id indexScanId, e sql.Expression, underlying st
 		}
 	}
 
+	if left == nil && right != nil {
+		// TODO: handle this error case???
+	} else if right == nil && left != nil {
+		// TODO: handle this error case???
+	}
+
+	// At this point, we expect a GetField, but that may not be correct all the time
+	gf, ok := left.(*expression.GetField)
+	if !ok {
+		return nil, false
+	}
+
+	// TODO: Add tests for IS NULL and IS NOT NULL of an indexed expression
+	//       Seems like we need to update this code to work for a function expression
+	// TODO: Should we move this code up higher in the file?
 	if op == sql.IndexScanOpIsNull || op == sql.IndexScanOpIsNotNull {
 		return &iScanLeaf{id: id, name: gf.Name(), typ: gf.Type(), op: op, underlying: underlying}, true
 	}
