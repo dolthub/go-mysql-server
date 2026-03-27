@@ -159,6 +159,213 @@ CREATE TABLE tab1 (
 		},
 	},
 	{
+		// https://github.com/dolthub/dolt/issues/10741
+		Name: "view with explicit column list renames literal columns",
+		SetUpScript: []string{
+			`CREATE TABLE t (id int primary key, name varchar(10));`,
+			`INSERT INTO t VALUES (1, 'alice'), (2, 'bob');`,
+			`CREATE VIEW v (id, name, tag) AS SELECT id, name, 'abc' FROM t;`,
+			`CREATE VIEW v_renamed (id, name, status) AS SELECT id, name, 'active' FROM t;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM v;",
+				Expected: []sql.Row{
+					{1, "alice", "abc"},
+					{2, "bob", "abc"},
+				},
+			},
+			{
+				Query: "SELECT v.tag FROM v WHERE v.tag = 'abc';",
+				Expected: []sql.Row{
+					{"abc"},
+					{"abc"},
+				},
+			},
+			{
+				Query: "SELECT tag FROM v WHERE tag = 'abc';",
+				Expected: []sql.Row{
+					{"abc"},
+					{"abc"},
+				},
+			},
+			{
+				Query:    "SELECT * FROM v WHERE v.tag = 'xyz';",
+				Expected: []sql.Row{},
+			},
+			{
+				Query: "SELECT v.abc FROM v;",
+				// The explicit column list names this column 'tag', so 'abc' (the literal value) is not accessible.
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query: "SELECT v_renamed.status FROM v_renamed WHERE v_renamed.status = 'active';",
+				// The explicit column list names this column 'status', while the literal value is 'active'.
+				Expected: []sql.Row{
+					{"active"},
+					{"active"},
+				},
+			},
+			{
+				Query:       "SELECT v_renamed.active FROM v_renamed;",
+				ExpectedErr: sql.ErrTableColumnNotFound,
+			},
+			{
+				Query: "SELECT column_name FROM information_schema.columns WHERE table_name = 'v' AND table_schema = database() ORDER BY ordinal_position;",
+				Expected: []sql.Row{
+					{"id"},
+					{"name"},
+					{"tag"},
+				},
+			},
+		},
+	},
+	{
+		Name: "view with explicit column list supports various literal and expression types",
+		SetUpScript: []string{
+			`CREATE VIEW v (str_col, int_col, decimal_col, float_col, null_col, bool_col, hex_col, bit_col, func_col, expr_col) AS SELECT 'abc', 1, 1.5, 1.5e0, NULL, TRUE, 0x41, b'1010', abs(-5), 1 + 1;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT * FROM v;",
+				Expected: []sql.Row{{"abc", 1, "1.5", float64(1.5), nil, true, []byte{0x41}, uint64(10), 5, 2}},
+			},
+			{
+				Query:    "SELECT v.str_col FROM v WHERE v.str_col = 'abc';",
+				Expected: []sql.Row{{"abc"}},
+			},
+			{
+				Query:    "SELECT str_col FROM v WHERE str_col = 'abc';",
+				Expected: []sql.Row{{"abc"}},
+			},
+			{
+				Query:    "SELECT int_col FROM v WHERE int_col = 1;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT decimal_col FROM v WHERE decimal_col = 1.5;",
+				Expected: []sql.Row{{"1.5"}},
+			},
+			{
+				Query:    "SELECT float_col FROM v WHERE float_col = 1.5e0;",
+				Expected: []sql.Row{{float64(1.5)}},
+			},
+			{
+				Query:    "SELECT null_col FROM v WHERE null_col IS NULL;",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    "SELECT bool_col FROM v WHERE bool_col = TRUE;",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "SELECT hex_col FROM v;",
+				Expected: []sql.Row{{[]byte{0x41}}},
+			},
+			{
+				Query:    "SELECT bit_col FROM v;",
+				Expected: []sql.Row{{uint64(10)}},
+			},
+			{
+				Query:    "SELECT func_col FROM v WHERE func_col = 5;",
+				Expected: []sql.Row{{5}},
+			},
+			{
+				Query:    "SELECT expr_col FROM v WHERE expr_col = 2;",
+				Expected: []sql.Row{{2}},
+			},
+			{
+				Query: "SELECT column_name FROM information_schema.columns WHERE table_name = 'v' AND table_schema = database() ORDER BY ordinal_position;",
+				Expected: []sql.Row{
+					{"str_col"},
+					{"int_col"},
+					{"decimal_col"},
+					{"float_col"},
+					{"null_col"},
+					{"bool_col"},
+					{"hex_col"},
+					{"bit_col"},
+					{"func_col"},
+					{"expr_col"},
+				},
+			},
+		},
+	},
+	{
+		Name: "view with numeric column name supports dotted and backtick access",
+		SetUpScript: []string{
+			`CREATE VIEW v AS SELECT 'abc', 1, 1.5, 1.5e0, NULL, TRUE, 0x41, b'1010', abs(1), 1 + 1;`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT v.abc FROM v;",
+				Expected: []sql.Row{{"abc"}},
+			},
+			{
+				Query:    "SELECT v.`abc` FROM v;",
+				Expected: []sql.Row{{"abc"}},
+			},
+			{
+				Skip:     true, // TODO(elianddb): https://github.com/dolthub/dolt/issues/10757 unquoted dotted access for digit-leading column names is not supported by the Vitess parser.
+				Query:    "SELECT v.1 FROM v;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT v.`1` FROM v;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT v.`1.5` FROM v;",
+				Expected: []sql.Row{{"1.5"}},
+			},
+			{
+				Query:    "SELECT v.`1.5e0` FROM v;",
+				Expected: []sql.Row{{float64(1.5)}},
+			},
+			{
+				Query:    "SELECT v.NULL FROM v;",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    "SELECT v.`NULL` FROM v;",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    "SELECT v.true FROM v;",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "SELECT v.`true` FROM v;",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Skip:     true, // TODO(elianddb): https://github.com/dolthub/dolt/issues/10757 unquoted dotted access for hex-prefixed column names is not supported by the Vitess parser.
+				Query:    "SELECT v.0x41 FROM v;",
+				Expected: []sql.Row{{[]byte{0x41}}},
+			},
+			{
+				Query:    "SELECT v.`0x41` FROM v;",
+				Expected: []sql.Row{{[]byte{0x41}}},
+			},
+			{
+				Query:    "SELECT v.`b'1010'` FROM v;",
+				Expected: []sql.Row{{uint64(10)}},
+			},
+			{
+				Query:    "SELECT v.abs(1) FROM v;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT v.`abs(1)` FROM v;",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				Query:    "SELECT v.`1 + 1` FROM v;",
+				Expected: []sql.Row{{2}},
+			},
+		},
+	},
+	{
 		Name: "view columns retain original case",
 		SetUpScript: []string{
 			`CREATE TABLE strs ( id int NOT NULL AUTO_INCREMENT,
