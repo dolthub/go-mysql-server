@@ -9333,7 +9333,7 @@ from typestable`,
 		ExpectedWarningsCount: 1,
 	},
 	{
-		// TODO: Handle erroring out of range values when casting
+		// TODO: Handle erroring out of range values when casting https://github.com/dolthub/dolt/issues/10759
 		Skip:        true,
 		Query:       "select cast('61232343e124312434' as float);",
 		ExpectedErr: sql.ErrValueOutOfRange,

@@ -84,7 +84,8 @@ func TestTableInsert(t *testing.T) {
 			err:     true,
 		},
 		{
-			// TODO: Postgres allows NaN values for decimals but shopspring/decimal does not
+			// TODO: Postgres possibly allows NaN values for decimals (documentation unclear) but shopspring/decimal
+			//  does not
 			name:    "inserting NaN into Decimal results in error",
 			colType: types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, types.DecimalTypeMaxScale),
 			value:   math.NaN(),
@@ -103,7 +104,8 @@ func TestTableInsert(t *testing.T) {
 			err:     true,
 		},
 		{
-			// TODO: Postgres allows Inf values for decimals but shopspring/decimal does not
+			// TODO: Postgres possibly allows Inf values for decimals (documentation unclear) but shopspring/decimal
+			//  does not
 			name:    "inserting Infinity into Decimal results in error",
 			colType: types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, types.DecimalTypeMaxScale),
 			value:   math.Inf(1),
@@ -122,7 +124,8 @@ func TestTableInsert(t *testing.T) {
 			err:     true,
 		},
 		{
-			// TODO: Postgres allows Inf values for decimals but shopspring/decimal does not
+			// TODO: Postgres possibly allows Inf values for decimals (documentation unclear) but shopspring/decimal
+			//  does not
 			name:    "inserting negative Infinity into Decimal results in error",
 			colType: types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, types.DecimalTypeMaxScale),
 			value:   math.Inf(-1),
