@@ -415,12 +415,6 @@ func (t NumberTypeImpl_) Convert(ctx context.Context, v interface{}) (interface{
 		return float32(num), sql.InRange, err
 	case sqltypes.Float64:
 		num, err := convertToFloat64(t, v)
-		if num > math.MaxFloat64 {
-			return math.MaxFloat64, sql.Overflow, nil
-		}
-		if num < -math.MaxFloat64 {
-			return -math.MaxFloat64, sql.Underflow, nil
-		}
 		return num, sql.InRange, err
 	default:
 		return nil, sql.InRange, sql.ErrInvalidType.New(t.baseType.String())
@@ -1025,6 +1019,9 @@ func convertToInt64(t NumberTypeImpl_, v any, round Round) (int64, sql.ConvertIn
 		}
 		return int64(math.Round(float64(v))), sql.InRange, nil
 	case float64:
+		if math.IsNaN(v) {
+			return 0, sql.InRange, sql.ErrInvalidValue.New(v, t.String())
+		}
 		if v > float64(math.MaxInt64) {
 			return math.MaxInt64, sql.Overflow, nil
 		}
@@ -1135,6 +1132,9 @@ func convertToUint64(t NumberTypeImpl_, v any, round Round) (uint64, sql.Convert
 		}
 		return uint64(math.Round(float64(v))), sql.InRange, nil
 	case float64:
+		if math.IsNaN(v) {
+			return 0, sql.InRange, sql.ErrInvalidValue.New(v, t.String())
+		}
 		if v >= float64(math.MaxUint64) {
 			return math.MaxUint64, sql.Overflow, nil
 		}
