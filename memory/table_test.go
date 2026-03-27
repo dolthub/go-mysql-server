@@ -72,10 +72,10 @@ func TestTableInsert(t *testing.T) {
 		err     bool
 	}{
 		{
-			name:    "inserting NaN into float results in error",
+			// This diverges from MySQL because NaN values are okay in Postgres
+			name:    "inserting NaN into float results is okay",
 			colType: types.Float64,
 			value:   math.NaN(),
-			err:     true,
 		},
 		{
 			name:    "inserting NaN into int results in error",
@@ -84,16 +84,18 @@ func TestTableInsert(t *testing.T) {
 			err:     true,
 		},
 		{
+			// TODO: Postgres possibly allows NaN values for decimals (documentation unclear) but shopspring/decimal
+			//  does not
 			name:    "inserting NaN into Decimal results in error",
 			colType: types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, types.DecimalTypeMaxScale),
 			value:   math.NaN(),
 			err:     true,
 		},
 		{
-			name:    "inserting Infinity into float results in error",
+			// This diverges from MySQL because Infinity values are okay in Postgres
+			name:    "inserting Infinity into float results is okay",
 			colType: types.Float64,
 			value:   math.Inf(1),
-			err:     true,
 		},
 		{
 			name:    "inserting Infinity into int results in error",
@@ -102,16 +104,18 @@ func TestTableInsert(t *testing.T) {
 			err:     true,
 		},
 		{
+			// TODO: Postgres possibly allows Inf values for decimals (documentation unclear) but shopspring/decimal
+			//  does not
 			name:    "inserting Infinity into Decimal results in error",
 			colType: types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, types.DecimalTypeMaxScale),
 			value:   math.Inf(1),
 			err:     true,
 		},
 		{
-			name:    "inserting negative Infinity into float results in error",
+			// This diverges from MySQL because Infinity values are okay in Postgres
+			name:    "inserting negative Infinity into float results is okay",
 			colType: types.Float64,
 			value:   math.Inf(-1),
-			err:     true,
 		},
 		{
 			name:    "inserting negative Infinity into int results in error",
@@ -120,6 +124,8 @@ func TestTableInsert(t *testing.T) {
 			err:     true,
 		},
 		{
+			// TODO: Postgres possibly allows Inf values for decimals (documentation unclear) but shopspring/decimal
+			//  does not
 			name:    "inserting negative Infinity into Decimal results in error",
 			colType: types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, types.DecimalTypeMaxScale),
 			value:   math.Inf(-1),

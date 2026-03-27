@@ -296,6 +296,10 @@ func (t NumberTypeImpl_) Convert(ctx context.Context, v interface{}) (interface{
 		}
 	}
 
+	// TODO: This can be cleaned up a lot. The max/min values can be passed into the convert functions and checked
+	//  there to avoid doing extra checks. Range checks seem to be inconsistent, sometimes we do them multiple times,
+	//  sometimes we skip them altogether. We also do a lot of back and forth casting; for example, the int8 case will
+	//  cast the value into an int64 during convertToInt64 and then cast it back to an int8.
 	switch t.baseType {
 	case sqltypes.Int8:
 		num, inRange, err := convertToInt64(t, v, ShouldTruncate)
@@ -400,7 +404,7 @@ func (t NumberTypeImpl_) Convert(ctx context.Context, v interface{}) (interface{
 	case sqltypes.Float32:
 		num, err := convertToFloat64(t, v)
 		if err != nil && !sql.ErrTruncatedIncorrect.Is(err) {
-			return int8(num), sql.InRange, err
+			return float32(num), sql.InRange, err
 		}
 		if num > math.MaxFloat32 {
 			return float32(math.MaxFloat32), sql.Overflow, nil
@@ -410,8 +414,8 @@ func (t NumberTypeImpl_) Convert(ctx context.Context, v interface{}) (interface{
 		}
 		return float32(num), sql.InRange, err
 	case sqltypes.Float64:
-		ret, err := convertToFloat64(t, v)
-		return ret, sql.InRange, err
+		num, err := convertToFloat64(t, v)
+		return num, sql.InRange, err
 	default:
 		return nil, sql.InRange, sql.ErrInvalidType.New(t.baseType.String())
 	}
@@ -1015,14 +1019,14 @@ func convertToInt64(t NumberTypeImpl_, v any, round Round) (int64, sql.ConvertIn
 		}
 		return int64(math.Round(float64(v))), sql.InRange, nil
 	case float64:
+		if math.IsNaN(v) {
+			return 0, sql.InRange, sql.ErrInvalidValue.New(v, t.String())
+		}
 		if v > float64(math.MaxInt64) {
 			return math.MaxInt64, sql.Overflow, nil
 		}
 		if v < float64(math.MinInt64) {
 			return math.MinInt64, sql.Underflow, nil
-		}
-		if !IsValidFloat(v) {
-			return 0, sql.InRange, sql.ErrInvalidValue.New(v, t.String())
 		}
 		return int64(math.Round(v)), sql.InRange, nil
 	case decimal.Decimal:
@@ -1128,14 +1132,14 @@ func convertToUint64(t NumberTypeImpl_, v any, round Round) (uint64, sql.Convert
 		}
 		return uint64(math.Round(float64(v))), sql.InRange, nil
 	case float64:
+		if math.IsNaN(v) {
+			return 0, sql.InRange, sql.ErrInvalidValue.New(v, t.String())
+		}
 		if v >= float64(math.MaxUint64) {
 			return math.MaxUint64, sql.Overflow, nil
 		}
 		if v < 0 {
 			return uint64(math.MaxUint64 - uint(-v-1)), sql.Underflow, nil
-		}
-		if !IsValidFloat(v) {
-			return 0, sql.InRange, sql.ErrInvalidValue.New(v, t.String())
 		}
 		return uint64(math.Round(v)), sql.InRange, nil
 	case decimal.Decimal:
@@ -1211,6 +1215,7 @@ func convertToUint64(t NumberTypeImpl_, v any, round Round) (uint64, sql.Convert
 func convertToFloat64(t NumberTypeImpl_, v interface{}) (float64, error) {
 	switch v := v.(type) {
 	case time.Time:
+		// TODO: This is not how datetime is converted in MySQL https://github.com/dolthub/dolt/issues/10278
 		return float64(v.UTC().Unix()), nil
 	case int:
 		return float64(v), nil
@@ -1235,9 +1240,6 @@ func convertToFloat64(t NumberTypeImpl_, v interface{}) (float64, error) {
 	case float32:
 		return float64(v), nil
 	case float64:
-		if !IsValidFloat(v) {
-			return v, sql.ErrInvalidValue.New(v, t.String())
-		}
 		return v, nil
 	case decimal.Decimal:
 		f, _ := v.Float64()
@@ -1537,10 +1539,4 @@ func ConvertHexBlobToDecimalForNumericContext(val interface{}, originType sql.Ty
 		val = decimalNum
 	}
 	return val, nil
-}
-
-// IsValidFloat returns false in go-mysql-server if a float is NaN or infinity. Since NaN and infinity values are
-// allowed in Doltgres, this function is replaced there.
-var IsValidFloat = func(f float64) bool {
-	return !math.IsNaN(f) && !math.IsInf(f, 0)
 }

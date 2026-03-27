@@ -76,10 +76,11 @@ func TestInsert(t *testing.T) {
 			ignore:    true,
 		},
 		{
-			name:    "inserting NaN into float results in error",
-			colType: types.Float64,
-			value:   math.NaN(),
-			err:     true,
+			// This diverges from MySQL because NaN values are okay in Postgres
+			name:     "inserting NaN into float results is okay",
+			colType:  types.Float64,
+			value:    math.NaN(),
+			expected: math.NaN(),
 		},
 		{
 			name:    "inserting NaN into int results in error",
@@ -88,16 +89,25 @@ func TestInsert(t *testing.T) {
 			err:     true,
 		},
 		{
+			name:    "inserting NaN into unsigned int results in error",
+			colType: types.Uint64,
+			value:   math.NaN(),
+			err:     true,
+		},
+		{
+			// TODO: Postgres possibly allows NaN values for decimals (documentation unclear) but shopspring/decimal
+			//  does not
 			name:    "inserting NaN into Decimal results in error",
 			colType: types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, types.DecimalTypeMaxScale),
 			value:   math.NaN(),
 			err:     true,
 		},
 		{
-			name:    "inserting Infinity into float results in error",
-			colType: types.Float64,
-			value:   math.Inf(1),
-			err:     true,
+			// This diverges from MySQL because Infinity values are okay in Postgres
+			name:     "inserting Infinity into float is okay",
+			colType:  types.Float64,
+			value:    math.Inf(1),
+			expected: math.Inf(1),
 		},
 		{
 			name:    "inserting Infinity into int results in error",
@@ -106,16 +116,25 @@ func TestInsert(t *testing.T) {
 			err:     true,
 		},
 		{
+			name:    "inserting Infinity into unsigned int results in error",
+			colType: types.Uint64,
+			value:   math.Inf(1),
+			err:     true,
+		},
+		{
+			// TODO: Postgres possibly allows Inf values for decimals (documentation unclear) but shopspring/decimal
+			//  does not
 			name:    "inserting Infinity into Decimal results in error",
 			colType: types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, types.DecimalTypeMaxScale),
 			value:   math.Inf(1),
 			err:     true,
 		},
 		{
-			name:    "inserting negative Infinity into float results in error",
-			colType: types.Float64,
-			value:   math.Inf(-1),
-			err:     true,
+			// This diverges from MySQL because Infinity values are okay in Postgres
+			name:     "inserting negative Infinity into float results is okay",
+			colType:  types.Float64,
+			value:    math.Inf(-1),
+			expected: math.Inf(-1),
 		},
 		{
 			name:    "inserting negative Infinity into int results in error",
@@ -124,6 +143,14 @@ func TestInsert(t *testing.T) {
 			err:     true,
 		},
 		{
+			name:    "inserting negative Infinity into unsigned int results in error",
+			colType: types.Uint64,
+			value:   math.Inf(-1),
+			err:     true,
+		},
+		{
+			// TODO: Postgres possibly allows Inf values for decimals (documentation unclear) but shopspring/decimal
+			//  does not
 			name:    "inserting negative Infinity into Decimal results in error",
 			colType: types.MustCreateDecimalType(types.DecimalTypeMaxPrecision, types.DecimalTypeMaxScale),
 			value:   math.Inf(-1),
@@ -154,7 +181,15 @@ func TestInsert(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 
-				require.Equal(t, sql.Row{tc.expected}, row)
+				require.True(t, len(row) == 1)
+				// math.NaN != math.NaN so using math.IsNaN is the only way math.NaN results can be checked
+				if expectedFloat64, expectedIsFloat64 := tc.expected.(float64); expectedIsFloat64 && math.IsNaN(expectedFloat64) {
+					resultFloat64, resultIsFloat64 := row[0].(float64)
+					require.True(t, resultIsFloat64)
+					require.True(t, math.IsNaN(resultFloat64))
+				} else {
+					require.Equal(t, sql.Row{tc.expected}, row)
+				}
 
 				var warningCnt int
 				if tc.warning {
