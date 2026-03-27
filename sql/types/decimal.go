@@ -483,8 +483,7 @@ func (t DecimalType_) IsDecimalType() bool {
 }
 
 // TODO: Postgres allows NaN and Inf values for decimals but shopspring/decimal does not allow converting those values
-//
-//	into decimal.Decimals
+// into decimal.Decimals
 func canConvertFloatToDecimal(v float64) bool {
 	return !math.IsNaN(v) && !math.IsInf(v, 0)
 }
