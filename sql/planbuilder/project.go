@@ -167,7 +167,7 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 			exprs = append(exprs, e)
 		case *expression.Literal:
 			exprs = append(exprs, e)
-			// String literals are quoted by String, but plan.Project.Schema uses the raw
+			// String literals are quoted by String, but plan.Project.Schema uses the unquoted
 			// value. The scope column name must match the projection schema for column
 			// lookup to succeed during execution.
 			colName := e.String()

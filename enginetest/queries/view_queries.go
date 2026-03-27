@@ -223,12 +223,12 @@ CREATE TABLE tab1 (
 	{
 		Name: "view with explicit column list supports various literal and expression types",
 		SetUpScript: []string{
-			`CREATE VIEW v (str_col, int_col, float_col, null_col, bool_col, func_col, expr_col) AS SELECT 'abc', 1, 1.5, NULL, TRUE, abs(-5), 1 + 1;`,
+			`CREATE VIEW v (str_col, int_col, decimal_col, float_col, null_col, bool_col, hex_col, bit_col, func_col, expr_col) AS SELECT 'abc', 1, 1.5, 1.5e0, NULL, TRUE, 0x41, b'1010', abs(-5), 1 + 1;`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:    "SELECT * FROM v;",
-				Expected: []sql.Row{{"abc", 1, "1.5", nil, true, 5, 2}},
+				Expected: []sql.Row{{"abc", 1, "1.5", float64(1.5), nil, true, []byte{0x41}, uint64(10), 5, 2}},
 			},
 			{
 				Query:    "SELECT v.str_col FROM v WHERE v.str_col = 'abc';",
@@ -243,8 +243,12 @@ CREATE TABLE tab1 (
 				Expected: []sql.Row{{1}},
 			},
 			{
-				Query:    "SELECT float_col FROM v WHERE float_col = 1.5;",
+				Query:    "SELECT decimal_col FROM v WHERE decimal_col = 1.5;",
 				Expected: []sql.Row{{"1.5"}},
+			},
+			{
+				Query:    "SELECT float_col FROM v WHERE float_col = 1.5e0;",
+				Expected: []sql.Row{{float64(1.5)}},
 			},
 			{
 				Query:    "SELECT null_col FROM v WHERE null_col IS NULL;",
@@ -253,6 +257,14 @@ CREATE TABLE tab1 (
 			{
 				Query:    "SELECT bool_col FROM v WHERE bool_col = TRUE;",
 				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "SELECT hex_col FROM v;",
+				Expected: []sql.Row{{[]byte{0x41}}},
+			},
+			{
+				Query:    "SELECT bit_col FROM v;",
+				Expected: []sql.Row{{uint64(10)}},
 			},
 			{
 				Query:    "SELECT func_col FROM v WHERE func_col = 5;",
@@ -267,9 +279,12 @@ CREATE TABLE tab1 (
 				Expected: []sql.Row{
 					{"str_col"},
 					{"int_col"},
+					{"decimal_col"},
 					{"float_col"},
 					{"null_col"},
 					{"bool_col"},
+					{"hex_col"},
+					{"bit_col"},
 					{"func_col"},
 					{"expr_col"},
 				},
@@ -279,7 +294,7 @@ CREATE TABLE tab1 (
 	{
 		Name: "view with numeric column name supports dotted and backtick access",
 		SetUpScript: []string{
-			`CREATE VIEW v AS SELECT 'abc', 1, 1.5, NULL, TRUE, abs(1), 1 + 1;`,
+			`CREATE VIEW v AS SELECT 'abc', 1, 1.5, 1.5e0, NULL, TRUE, 0x41, b'1010', abs(1), 1 + 1;`,
 		},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -291,7 +306,7 @@ CREATE TABLE tab1 (
 				Expected: []sql.Row{{"abc"}},
 			},
 			{
-				Skip:  true, // TODO(elianddb): https://github.com/dolthub/dolt/issues/10757 unquoted dotted access for digit-leading column names (e.g. v.1) is not supported by the Vitess parser.
+				Skip:  true, // TODO(elianddb): https://github.com/dolthub/dolt/issues/10757 unquoted dotted access for digit-leading column names is not supported by the Vitess parser.
 				Query: "SELECT v.1 FROM v;",
 				Expected: []sql.Row{{1}},
 			},
@@ -302,6 +317,10 @@ CREATE TABLE tab1 (
 			{
 				Query:    "SELECT v.`1.5` FROM v;",
 				Expected: []sql.Row{{"1.5"}},
+			},
+			{
+				Query:    "SELECT v.`1.5e0` FROM v;",
+				Expected: []sql.Row{{float64(1.5)}},
 			},
 			{
 				Query:    "SELECT v.NULL FROM v;",
@@ -318,6 +337,19 @@ CREATE TABLE tab1 (
 			{
 				Query:    "SELECT v.`true` FROM v;",
 				Expected: []sql.Row{{true}},
+			},
+			{
+				Skip:     true, // TODO(elianddb): https://github.com/dolthub/dolt/issues/10757 unquoted dotted access for hex-prefixed column names is not supported by the Vitess parser.
+				Query:    "SELECT v.0x41 FROM v;",
+				Expected: []sql.Row{{[]byte{0x41}}},
+			},
+			{
+				Query:    "SELECT v.`0x41` FROM v;",
+				Expected: []sql.Row{{[]byte{0x41}}},
+			},
+			{
+				Query:    "SELECT v.`b'1010'` FROM v;",
+				Expected: []sql.Row{{uint64(10)}},
 			},
 			{
 				Query:    "SELECT v.abs(1) FROM v;",
