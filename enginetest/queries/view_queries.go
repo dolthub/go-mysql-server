@@ -306,8 +306,8 @@ CREATE TABLE tab1 (
 				Expected: []sql.Row{{"abc"}},
 			},
 			{
-				Skip:  true, // TODO(elianddb): https://github.com/dolthub/dolt/issues/10757 unquoted dotted access for digit-leading column names is not supported by the Vitess parser.
-				Query: "SELECT v.1 FROM v;",
+				Skip:     true, // TODO(elianddb): https://github.com/dolthub/dolt/issues/10757 unquoted dotted access for digit-leading column names is not supported by the Vitess parser.
+				Query:    "SELECT v.1 FROM v;",
 				Expected: []sql.Row{{1}},
 			},
 			{
