@@ -9306,6 +9306,65 @@ from typestable`,
 		Query:    "select max(i) as max_i from mytable having max(i) < 3",
 		Expected: []sql.Row{},
 	},
+	{
+		// This diverges from MySQL. MySQL treats the +Inf string here as MaxFloat64 and divides that by 12
+		// while GMS treats it as +Inf to be Postgres-compatible. In MySQL, the result is 1.4980776123852632e+307
+		Query:                 "select '123433221e12343121231212' / 12;",
+		Expected:              []sql.Row{{math.Inf(1)}},
+		ExpectedWarningsCount: 1,
+	},
+	{
+		// This diverges from MySQL. MySQL treats the +Inf string here as MaxFloat64 and divides that by 12
+		// while GMS treats it as +Inf to be Postgres-compatible. In MySQL, the result is 1.7976931348623157e308
+		Query:                 "select '123433221e12343121231212' / 1;",
+		Expected:              []sql.Row{{math.Inf(1)}},
+		ExpectedWarningsCount: 1,
+	},
+	{
+		// +Inf is greater than 0 https://github.com/dolthub/dolt/issues/10710
+		Query:                 "select '612312e12353423132434' > 0;",
+		Expected:              []sql.Row{{true}},
+		ExpectedWarningsCount: 1,
+	},
+	{
+		// -Inf is not greater than 0 https://github.com/dolthub/dolt/issues/10710
+		Query:                 "select '-612312e12353423132434' > 0;",
+		Expected:              []sql.Row{{false}},
+		ExpectedWarningsCount: 1,
+	},
+	{
+		// TODO: Handle erroring out of range values when casting
+		Skip:        true,
+		Query:       "select cast('61232343e124312434' as float);",
+		ExpectedErr: sql.ErrValueOutOfRange,
+	},
+	{
+		// This diverges from MySQL. MySQL treats +Inf as Max Float64 while GMS treats it as +Inf to be
+		// Postgres-compatible
+		Query:                 "select cast('61232343e124312434' as double);",
+		Expected:              []sql.Row{{math.Inf(1)}},
+		ExpectedWarningsCount: 1,
+	},
+	{
+		// TODO: Assert equality for math.NaN() results. math.NaN() != math.NaN() so require.Equal does not
+		//  work for it
+		Skip: true,
+		// This diverges from MySQL. MySQL treats the +Inf strings here as MaxFloat64 so they cancel out,
+		// while GMS treats them as +Inf to be Postgres-compatible. In MySQL, the result is 0
+		Query:                 "select '123433221e12343121231212' - '12322312e123243231213';",
+		Expected:              []sql.Row{{math.NaN()}},
+		ExpectedWarningsCount: 2,
+	},
+	{
+		// TODO: Assert equality for math.NaN() results. math.NaN() != math.NaN() so require.Equal does not
+		//  work for it
+		Skip: true,
+		// This diverges from MySQL. MySQL treats the Inf strings here as +/- MaxFloat64 so they cancel out,
+		// while GMS treats them as +/-Inf to be Postgres-compatible. In MySQL, the result is 0
+		Query:                 "select '123433221e12343121231212' + '-12322312e123243231213';",
+		Expected:              []sql.Row{{math.NaN()}},
+		ExpectedWarningsCount: 2,
+	},
 }
 
 var KeylessQueries = []QueryTest{
