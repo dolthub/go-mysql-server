@@ -282,6 +282,12 @@ func TestDatetimeConvert(t *testing.T) {
 		{Date, uint64(0), time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC), false},
 		{Date, float32(0), time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC), false},
 		{Date, float64(0), time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC), false},
+		{Date, "0000-00-00", time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC), false},
+		{Date, "0000-00-00 00:00:00.000000", time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC), false},
+		{Date, "0000-00-00 00:00:00", time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC), false},
+		{Date, "0000-00-00.00:00:00", time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC), false},
+		{Date, "00-00-00", time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC), false},
+
 		{Date, []byte{0}, nil, true},
 
 		{DatetimeMaxPrecision, "0500-01-01 01:01:01", time.Date(500, 1, 1, 1, 1, 1, 0, time.UTC), false},
@@ -299,6 +305,12 @@ func TestDatetimeConvert(t *testing.T) {
 		{DatetimeMaxPrecision, uint64(0), time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC), false},
 		{DatetimeMaxPrecision, float32(0), time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC), false},
 		{DatetimeMaxPrecision, float64(0), time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC), false},
+		{DatetimeMaxPrecision, "0000-00-00", time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC), false},
+		{DatetimeMaxPrecision, "0000-00-00 00:00:00.000000", time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC), false},
+		{DatetimeMaxPrecision, "0000-00-00 00:00:00", time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC), false},
+		{DatetimeMaxPrecision, "0000-00-00.00:00:00", time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC), false},
+		{DatetimeMaxPrecision, "00-00-00", time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC), false},
+
 		{DatetimeMaxPrecision, []byte{0}, nil, true},
 
 		{TimestampMaxPrecision, time.Date(1960, 1, 1, 1, 1, 1, 1, time.UTC), nil, true},
@@ -317,6 +329,11 @@ func TestDatetimeConvert(t *testing.T) {
 		{TimestampMaxPrecision, uint64(0), time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC), false},
 		{TimestampMaxPrecision, float32(0), time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC), false},
 		{TimestampMaxPrecision, float64(0), time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC), false},
+		{TimestampMaxPrecision, "0000-00-00", time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC), false},
+		{TimestampMaxPrecision, "0000-00-00 00:00:00.000000", time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC), false},
+		{TimestampMaxPrecision, "0000-00-00 00:00:00", time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC), false},
+		{TimestampMaxPrecision, "0000-00-00.00:00:00", time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC), false},
+		{TimestampMaxPrecision, "00-00-00", time.Date(0, 0, 0, 0, 0, 0, 0, time.UTC), false},
 		{TimestampMaxPrecision, []byte{0}, nil, true},
 
 		{Date, int(1), nil, true},

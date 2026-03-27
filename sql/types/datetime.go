@@ -19,7 +19,9 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"regexp"
 	"strconv"
+	"strings"
 	"time"
 	"unicode"
 
@@ -34,7 +36,40 @@ import (
 
 const ZeroDateStr = "0000-00-00"
 
-const ZeroTimestampDatetimeStr = "0000-00-00 00:00:00"
+var ZeroTimestampDatetimeStrs = [][]byte{
+	[]byte("0000-00-00 00:00:00"),
+	[]byte("0000-00-00 00:00:00.0"),
+	[]byte("0000-00-00 00:00:00.00"),
+	[]byte("0000-00-00 00:00:00.000"),
+	[]byte("0000-00-00 00:00:00.0000"),
+	[]byte("0000-00-00 00:00:00.00000"),
+	[]byte("0000-00-00 00:00:00.000000"),
+}
+
+// A Zero timestamp or datetime begins with three delimited groups of zeros,
+// and then optionally either a space or a dot, followed by a zero time.
+var zeroTimestampRegex = regexp.MustCompile(`^0+-0+-0+(.*)$`)
+
+// IsZeroTimestampStr checks if a string is a valid zero string for a datetime type.
+func IsZeroTimestampStr(timestamp string) bool {
+	match := zeroTimestampRegex.FindStringSubmatchIndex(timestamp)
+
+	if match == nil {
+		return false
+	}
+	remainder := timestamp[match[2]:]
+	if len(remainder) == 0 {
+		return true
+	}
+	if remainder[0] != '.' && remainder[0] != ' ' {
+		return false
+	}
+	return IsZeroTimeStr(remainder[1:])
+}
+
+func IsZeroTimeStr(time string) bool {
+	return strings.HasPrefix("00:00:00.000000", time)
+}
 
 const MinDatetimeStringLength = 8 // length of "2000-1-1"
 
@@ -278,7 +313,7 @@ func (t datetimeType) ConvertWithoutRangeCheck(ctx context.Context, v interface{
 	}
 	switch value := v.(type) {
 	case string:
-		if value == ZeroDateStr || value == ZeroTimestampDatetimeStr {
+		if IsZeroTimestampStr(value) {
 			return ZeroTime, nil
 		}
 		// TODO: consider not using time.Parse if we want to match MySQL exactly ('2010-06-03 11:22.:.:.:.:' is a valid timestamp)
@@ -457,17 +492,9 @@ func (t datetimeType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 
 	switch t.baseType {
 	case sqltypes.Date:
-		if vt.Equal(ZeroTime) {
-			dest = append(dest, ZeroDateStr...)
-		} else {
-			dest = appendDateFormat(dest, vt)
-		}
+		dest = appendDateFormat(dest, vt)
 	case sqltypes.Datetime, sqltypes.Timestamp:
-		if vt.Equal(ZeroTime) {
-			dest = append(dest, ZeroTimestampDatetimeStr...)
-		} else {
-			dest = appendDatetimeFormat(dest, vt)
-		}
+		dest = appendDatetimeFormat(dest, vt, t.precision)
 	default:
 		return sqltypes.Value{}, sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime")
 	}
@@ -492,11 +519,7 @@ func (t datetimeType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqlt
 	case sqltypes.Datetime, sqltypes.Timestamp:
 		x := values.ReadInt64(v.Val)
 		vt := time.UnixMicro(x).UTC()
-		if vt.Equal(ZeroTime) {
-			dest = append(dest, ZeroTimestampDatetimeStr...)
-		} else {
-			dest = appendDatetimeFormat(dest, vt)
-		}
+		dest = appendDatetimeFormat(dest, vt, t.precision)
 	default:
 		return sqltypes.Value{}, sql.ErrInvalidBaseType.New(t.baseType.String(), "datetime")
 	}
@@ -504,6 +527,10 @@ func (t datetimeType) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqlt
 }
 
 func appendDateFormat(dest []byte, t time.Time) []byte {
+	if t.Equal(ZeroTime) {
+		dest = append(dest, ZeroDateStr...)
+		return dest
+	}
 	year, m, d := t.Date()
 	if year == 0 {
 		dest = append(dest, '0', '0', '0', '0')
@@ -527,11 +554,15 @@ func appendDateFormat(dest []byte, t time.Time) []byte {
 	return dest
 }
 
-func appendDatetimeFormat(dest []byte, t time.Time) []byte {
+func appendDatetimeFormat(dest []byte, t time.Time, precision int) []byte {
+	if t.Equal(ZeroTime) {
+		dest = append(dest, ZeroTimestampDatetimeStrs[precision]...)
+		return dest
+	}
 	dest = appendDateFormat(dest, t)
 	dest = append(dest, ' ')
 	h, m, s := t.Clock()
-	dest = appendTimeFormat(dest, int64(h), int64(m), int64(s), int64(t.Nanosecond()/1000))
+	dest = appendTimeFormat(dest, int64(h), int64(m), int64(s), int64(t.Nanosecond()/1000), precision)
 	return dest
 }
 

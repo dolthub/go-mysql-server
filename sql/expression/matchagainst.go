@@ -45,14 +45,16 @@ type MatchAgainst struct {
 
 	Expr sql.Expression
 
-	evaluatedString string
-	Columns         []sql.Expression
-	KeyCols         fulltext.KeyColumns
-	parser          fulltext.DefaultParser
-	expectedRowLen  int
-	parentRowCount  uint64
-	once            sync.Once
-	SearchModifier  fulltext.SearchModifier
+	evaluatedString    string
+	Columns            []sql.Expression
+	KeyCols            fulltext.KeyColumns
+	parser             fulltext.DefaultParser
+	expectedRowLen     int
+	tableColOffset     int
+	parentRowCount     uint64
+	tableColOffsetOnce sync.Once
+	once               sync.Once
+	SearchModifier     fulltext.SearchModifier
 }
 
 var _ sql.Expression = (*MatchAgainst)(nil)
@@ -83,9 +85,45 @@ func (expr *MatchAgainst) Children() []sql.Expression {
 	return exprs
 }
 
+// colOffset returns the starting index in the evaluated row at which the parent table's columns begin.
+//
+// In a JOIN, the evaluated row contains columns from all joined tables concatenated. [GetField] indices
+// reflect positions in that full row, while [fulltext.KeyColumns] positions are offsets within the
+// parent table's schema. This offset bridges those two coordinate systems so that [MatchAgainst.Eval]
+// can slice the row to the parent table's columns before the search mode functions apply key column positions.
+func (expr *MatchAgainst) colOffset() int {
+	expr.tableColOffsetOnce.Do(func() {
+		if expr.ParentTable == nil {
+			return
+		}
+		fields := expr.ColumnsAsGetFields()
+		if fields == nil {
+			return
+		}
+		// Subtracting the column's position in the parent schema from its position in the joined row
+		// gives the number of columns from other tables that precede the parent table in the joined row.
+		j := expr.ParentTable.Schema().IndexOfColName(fields[0].Name())
+		if j >= 0 {
+			offset := fields[0].Index() - j
+			if offset > 0 {
+				expr.tableColOffset = offset
+			}
+		}
+	})
+	return expr.tableColOffset
+}
+
 // Eval implements sql.Expression
 func (expr *MatchAgainst) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	row = row[:expr.expectedRowLen]
+	// KeyCols.Positions are offsets into the parent table's schema, so the row must be
+	// sliced to the parent table's columns before the search mode functions use those positions.
+	offset := expr.colOffset()
+	end := offset + expr.expectedRowLen
+	if end <= len(row) {
+		row = row[offset:end]
+	} else {
+		row = row[:expr.expectedRowLen]
+	}
 	switch expr.SearchModifier {
 	case fulltext.SearchModifier_NaturalLanguage:
 		return expr.inNaturalLanguageMode(ctx, row)

@@ -16,7 +16,6 @@ package planbuilder
 
 import (
 	"fmt"
-	"reflect"
 
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
 
@@ -184,7 +183,7 @@ func (b *Builder) mergeSetOpSchemas(u *plan.SetOp) sql.Node {
 		// todo: proj col ids should align with input column ids
 		les[i] = expression.NewGetFieldWithTable(int(leftIds[i]), 0, ls[i].Type, ls[i].DatabaseSource, ls[i].Source, ls[i].Name, ls[i].Nullable)
 		res[i] = expression.NewGetFieldWithTable(int(rightIds[i]), 0, rs[i].Type, rs[i].DatabaseSource, rs[i].Source, rs[i].Name, rs[i].Nullable)
-		if reflect.DeepEqual(ls[i].Type, rs[i].Type) {
+		if ls[i].Type.Equals(rs[i].Type) {
 			continue
 		}
 		hasdiff = true

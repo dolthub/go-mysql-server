@@ -1148,7 +1148,7 @@ func (b *Builder) buildMatchAgainst(inScope *scope, v *ast.MatchExpr) *expressio
 	if err != nil {
 		b.handleErr(err)
 	}
-	ftIndex := findMatchAgainstIndex(cols, indexes)
+	ftIndex := findMatchAgainstIndex(cols, indexes, indexedTbl.Name())
 	if ftIndex == nil {
 		err := sql.ErrNoFullTextIndexFound.New(indexedTbl.Name())
 		b.handleErr(err)
@@ -1197,19 +1197,23 @@ func (b *Builder) buildMatchAgainst(inScope *scope, v *ast.MatchExpr) *expressio
 	return matchAgainst.WithInfo(indexedTbl, idxTables[0], idxTables[1], idxTables[2], idxTables[3], idxTables[4], keyCols)
 }
 
-func findMatchAgainstIndex(cols []*expression.GetField, indexes []sql.Index) fulltext.Index {
+// findMatchAgainstIndex returns the [fulltext.Index] from |indexes| whose column expressions match |cols|.
+// |tableName| is the unaliased table name the index was built on. It is substituted for any JOIN
+// alias that may be present in the [expression.GetField] values of |cols| before the comparison is made,
+// because index expressions are always stored using the unaliased table name.
+func findMatchAgainstIndex(cols []*expression.GetField, indexes []sql.Index, tableName string) fulltext.Index {
 	var found fulltext.Index
 	for _, idx := range indexes {
 		idxExprs := idx.Expressions()
 		if !idx.IsFullText() || len(cols) != len(idxExprs) {
 			continue
 		}
-		// check that index expressions match |cols|
 		allMatch := true
 		for _, gf := range cols {
+			colKey := gf.WithTable(tableName).String()
 			var match bool
 			for _, idxExpr := range idxExprs {
-				if gf.String() == idxExpr {
+				if strings.EqualFold(colKey, idxExpr) {
 					match = true
 					break
 				}

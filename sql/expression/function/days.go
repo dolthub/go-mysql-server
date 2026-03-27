@@ -88,7 +88,7 @@ func (t *ToDays) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Special case for zero date
-	if dateStr, isStr := date.(string); isStr && (dateStr == types.ZeroDateStr || dateStr == types.ZeroTimestampDatetimeStr) {
+	if dateStr, isStr := date.(string); isStr && types.IsZeroTimestampStr(dateStr) {
 		return nil, nil
 	}
 
