@@ -47,7 +47,7 @@ type eventExecutor struct {
 func newEventExecutor(bgt *sql.BackgroundThreads, ctxFunc func() (*sql.Context, error), runQueryFunc func(ctx *sql.Context, dbName, query, username, address string) error, period int) *eventExecutor {
 	return &eventExecutor{
 		bThreads:            bgt,
-		list:                newEnabledEventsList([]*enabledEvent{}),
+		list:                newEnabledEventsList(),
 		runningEventsStatus: newRunningEventsStatus(),
 		ctxGetterFunc:       ctxFunc,
 		queryRunFunc:        runQueryFunc,
@@ -73,21 +73,24 @@ func (ee *eventExecutor) start() {
 	if ee.period > 0 {
 		pollingDuration = time.Duration(ee.period) * time.Second
 	}
+	ticker := time.NewTicker(pollingDuration)
+	ticker.Stop()
 
 	for {
 		// Determine how long to sleep before the next check. If all databases support
 		// quiescing and there are no events, we block indefinitely on the wake channel,
 		// only waking when an event is created or the executor is shut down.
-		quiescable := ee.canQuiesce()
-		if quiescable && ee.list.len() == 0 {
+		if ee.list.len() == 0 && ee.canQuiesce() {
 			logrus.Trace("eventExecutor quiescing (no events, all databases quiescable)")
 			<-ee.wake
 			logrus.Trace("eventExecutor woke from quiesce")
 		} else {
+			ticker.Reset(pollingDuration)
 			select {
-			case <-time.After(pollingDuration):
+			case <-ticker.C:
 			case <-ee.wake:
 			}
+			ticker.Stop()
 		}
 
 		type res int
@@ -118,28 +121,14 @@ func (ee *eventExecutor) start() {
 				return res_continue
 			}
 
-			if quiescable {
-				// Quiescable databases guarantee events only change through the
-				// EventScheduler interface, so we don't need to poll
-				// NeedsToReloadEvents. But we must reload events whenever we
-				// wake up (from quiesce or from the normal select) because a
-				// wake signal from NotifyDatabaseAdded could arrive while we
-				// are in either sleep path.
+			needsToReloadEvents, err := ee.needsToReloadEvents(ctx)
+			if err != nil {
+				lgr.Errorf("unable to determine if events need to be reloaded: %s", err)
+			}
+			if needsToReloadEvents {
 				err := ee.loadAllEvents(ctx)
 				if err != nil {
 					lgr.Errorf("unable to reload events: %s", err)
-				}
-			} else {
-				// When not quiescable, poll for out-of-band changes as usual.
-				needsToReloadEvents, err := ee.needsToReloadEvents(ctx)
-				if err != nil {
-					lgr.Errorf("unable to determine if events need to be reloaded: %s", err)
-				}
-				if needsToReloadEvents {
-					err := ee.loadAllEvents(ctx)
-					if err != nil {
-						lgr.Errorf("unable to reload events: %s", err)
-					}
 				}
 			}
 
@@ -308,7 +297,7 @@ func (ee *eventExecutor) loadAllEvents(ctx *sql.Context) error {
 		}
 	}
 
-	ee.list = newEnabledEventsList(enabledEvents)
+	ee.list.reset(enabledEvents)
 	return nil
 }
 
