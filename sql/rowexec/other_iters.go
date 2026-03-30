@@ -191,7 +191,7 @@ func (i *cachedResultsIter) Next(ctx *sql.Context) (sql.Row, error) {
 }
 
 func (i *cachedResultsIter) saveResultsInGlobalCache() {
-	if plan.CachedResultsGlobalCache.AddNewCache(i.parent.Id, i.cache, i.dispose) {
+	if i.parent.Manager.AddNewCache(i.parent.Id, i.cache, i.dispose) {
 		i.cache = nil
 		i.dispose = nil
 	}
