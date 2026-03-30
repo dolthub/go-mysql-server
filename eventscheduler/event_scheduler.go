@@ -239,6 +239,7 @@ func (es *EventScheduler) AddEvent(ctx *sql.Context, edb sql.EventDatabase, deta
 		return
 	}
 	es.executor.addEvent(ctx, edb, details)
+	es.executor.notify()
 }
 
 // UpdateEvent implements sql.EventScheduler interface.
@@ -251,6 +252,7 @@ func (es *EventScheduler) UpdateEvent(ctx *sql.Context, edb sql.EventDatabase, o
 		return
 	}
 	es.executor.updateEvent(ctx, edb, orgEventName, details)
+	es.executor.notify()
 }
 
 // RemoveEvent implements sql.EventScheduler interface.
@@ -264,6 +266,7 @@ func (es *EventScheduler) RemoveEvent(dbName, eventName string) {
 		return
 	}
 	es.executor.removeEvent(fmt.Sprintf("%s.%s", dbName, eventName))
+	es.executor.notify()
 }
 
 // RemoveSchemaEvents implements sql.EventScheduler interface.
@@ -277,4 +280,19 @@ func (es *EventScheduler) RemoveSchemaEvents(dbName string) {
 		return
 	}
 	es.executor.removeSchemaEvents(dbName)
+	es.executor.notify()
+}
+
+// NotifyDatabaseAdded wakes the event executor so that it can discover any events in a newly
+// added database. Integrators should call this when a new database that may contain events is
+// registered (e.g. via clone, restore, or undrop) to ensure the event executor picks up those
+// events, especially when the executor is quiesced.
+func (es *EventScheduler) NotifyDatabaseAdded() {
+	if es == nil {
+		return
+	}
+	if es.status == SchedulerDisabled || es.status == SchedulerOff {
+		return
+	}
+	es.executor.notify()
 }

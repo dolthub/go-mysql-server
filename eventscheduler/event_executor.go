@@ -39,6 +39,7 @@ type eventExecutor struct {
 	tokenTracker        *tokenTracker
 	period              int
 	stop                atomic.Bool
+	wake                chan struct{}
 }
 
 // newEventExecutor returns a new eventExecutor instance with an empty enabled events list.
@@ -46,13 +47,14 @@ type eventExecutor struct {
 func newEventExecutor(bgt *sql.BackgroundThreads, ctxFunc func() (*sql.Context, error), runQueryFunc func(ctx *sql.Context, dbName, query, username, address string) error, period int) *eventExecutor {
 	return &eventExecutor{
 		bThreads:            bgt,
-		list:                newEnabledEventsList([]*enabledEvent{}),
+		list:                newEnabledEventsList(),
 		runningEventsStatus: newRunningEventsStatus(),
 		ctxGetterFunc:       ctxFunc,
 		queryRunFunc:        runQueryFunc,
 		stop:                atomic.Bool{},
 		tokenTracker:        newTokenTracker(),
 		period:              period,
+		wake:                make(chan struct{}, 1),
 	}
 }
 
@@ -71,9 +73,25 @@ func (ee *eventExecutor) start() {
 	if ee.period > 0 {
 		pollingDuration = time.Duration(ee.period) * time.Second
 	}
+	ticker := time.NewTicker(pollingDuration)
+	ticker.Stop()
 
 	for {
-		time.Sleep(pollingDuration)
+		// Determine how long to sleep before the next check. If all databases support
+		// quiescing and there are no events, we block indefinitely on the wake channel,
+		// only waking when an event is created or the executor is shut down.
+		if ee.list.len() == 0 && ee.canQuiesce() {
+			logrus.Trace("eventExecutor quiescing (no events, all databases quiescable)")
+			<-ee.wake
+			logrus.Trace("eventExecutor woke from quiesce")
+		} else {
+			ticker.Reset(pollingDuration)
+			select {
+			case <-ticker.C:
+			case <-ee.wake:
+			}
+			ticker.Stop()
+		}
 
 		type res int
 		const (
@@ -186,6 +204,40 @@ func (ee *eventExecutor) start() {
 	}
 }
 
+// canQuiesce returns true if all EventDatabases in the catalog implement
+// sql.QuiescableEventDatabase, meaning they will only modify events through
+// the EventDatabase interface and don't require periodic polling.
+func (ee *eventExecutor) canQuiesce() bool {
+	if ee.catalog == nil {
+		return false
+	}
+	ctx, err := ee.ctxGetterFunc()
+	if err != nil {
+		return false
+	}
+	defer sql.SessionEnd(ctx.Session)
+	sql.SessionCommandBegin(ctx.Session)
+	defer sql.SessionCommandEnd(ctx.Session)
+
+	for _, database := range ee.catalog.AllDatabases(ctx) {
+		if _, ok := database.(sql.EventDatabase); !ok {
+			continue
+		}
+		if _, ok := database.(sql.QuiescableEventDatabase); !ok {
+			return false
+		}
+	}
+	return true
+}
+
+// notify sends a non-blocking signal to wake the executor's main loop.
+func (ee *eventExecutor) notify() {
+	select {
+	case ee.wake <- struct{}{}:
+	default:
+	}
+}
+
 // needsToReloadEvents returns true if any of the EventDatabases known to this event executor
 func (ee *eventExecutor) needsToReloadEvents(ctx *sql.Context) (bool, error) {
 	// TODO: We currently reload all events across all databases if any of the EventDatabases indicate they
@@ -245,7 +297,7 @@ func (ee *eventExecutor) loadAllEvents(ctx *sql.Context) error {
 		}
 	}
 
-	ee.list = newEnabledEventsList(enabledEvents)
+	ee.list.reset(enabledEvents)
 	return nil
 }
 
@@ -254,6 +306,7 @@ func (ee *eventExecutor) shutdown() {
 	ee.stop.Store(true)
 	ee.list.clear()
 	ee.runningEventsStatus.clear()
+	ee.notify()
 }
 
 // executeEventAndUpdateList executes the given event and updates the event's last executed time in the database.
@@ -319,18 +372,13 @@ func (ee *eventExecutor) executeEvent(event *enabledEvent) (bool, error) {
 			// Note that we pass in the full CREATE EVENT statement so that the engine can parse it
 			// and pull out the plan nodes for the event body, since the event body doesn't always
 			// parse as a valid SQL statement on its own (e.g. when using a BEGIN/END block).
+			// The query execution pipeline commits the transaction via TransactionCommittingIter,
+			// so we do not call commitTx here.
 			logrus.WithField("query", event.event.EventBody).Debugf("executing event %s", event.name())
 			err = ee.queryRunFunc(sqlCtx, event.edb.Name(), event.event.CreateEventStatement(), event.username, event.address)
 			if err != nil {
 				logrus.WithField("query", event.event.EventBody).Errorf("unable to execute query: %v", err)
 				rollbackTx(sqlCtx)
-				return
-			}
-
-			// must commit after done using the sql.Context
-			err = commitTx(sqlCtx)
-			if err != nil {
-				logrus.WithField("query", event.event.EventBody).Errorf("unable to commit transaction: %v", err)
 				return
 			}
 		}
