@@ -141,6 +141,29 @@ type PrivilegedDatabase struct {
 	//TODO: this should also handle views as the relevant privilege exists
 }
 
+type QuiescableEventPrivilegedDatabase struct {
+	PrivilegedDatabase
+}
+
+var _ sql.QuiescableEventDatabase = QuiescableEventPrivilegedDatabase{}
+var _ sql.Database = QuiescableEventPrivilegedDatabase{}
+var _ sql.VersionedDatabase = QuiescableEventPrivilegedDatabase{}
+var _ sql.TableCreator = QuiescableEventPrivilegedDatabase{}
+var _ sql.TableDropper = QuiescableEventPrivilegedDatabase{}
+var _ sql.TableRenamer = QuiescableEventPrivilegedDatabase{}
+var _ sql.TriggerDatabase = QuiescableEventPrivilegedDatabase{}
+var _ sql.StoredProcedureDatabase = QuiescableEventPrivilegedDatabase{}
+var _ sql.EventDatabase = QuiescableEventPrivilegedDatabase{}
+var _ sql.TableCopierDatabase = QuiescableEventPrivilegedDatabase{}
+var _ sql.ReadOnlyDatabase = QuiescableEventPrivilegedDatabase{}
+var _ sql.TemporaryTableDatabase = QuiescableEventPrivilegedDatabase{}
+var _ sql.CollatedDatabase = QuiescableEventPrivilegedDatabase{}
+var _ sql.ViewDatabase = QuiescableEventPrivilegedDatabase{}
+var _ fulltext.Database = QuiescableEventPrivilegedDatabase{}
+
+func (QuiescableEventPrivilegedDatabase) QuiescableEvents() {
+}
+
 var _ sql.Database = PrivilegedDatabase{}
 var _ sql.VersionedDatabase = PrivilegedDatabase{}
 var _ sql.TableCreator = PrivilegedDatabase{}
@@ -158,10 +181,15 @@ var _ fulltext.Database = PrivilegedDatabase{}
 
 // NewPrivilegedDatabase returns a new PrivilegedDatabase.
 func NewPrivilegedDatabase(grantTables *MySQLDb, db sql.Database, authHandler sql.AuthorizationHandler) sql.Database {
-	return PrivilegedDatabase{
+	pdb := PrivilegedDatabase{
 		grantTables: grantTables,
 		db:          db,
 		authHandler: authHandler,
+	}
+	if _, ok := db.(sql.QuiescableEventDatabase); ok {
+		return QuiescableEventPrivilegedDatabase{PrivilegedDatabase: pdb}
+	} else {
+		return pdb
 	}
 }
 
