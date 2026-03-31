@@ -223,7 +223,9 @@ func (ee *eventExecutor) canQuiesce() bool {
 		if _, ok := database.(sql.EventDatabase); !ok {
 			continue
 		}
-		if _, ok := database.(sql.QuiescableEventDatabase); !ok {
+		if qedb, ok := database.(sql.QuiescableEventDatabase); !ok {
+			return false
+		} else if !qedb.QuiescableEvents() {
 			return false
 		}
 	}
