@@ -1,4 +1,4 @@
-// Copyright 2025 Dolthub, Inc.
+// Copyright 2026 Dolthub, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ import (
 // numLargeGeomPoints is the number of points used to construct large geometry values that
 // exceed 64KB when serialized, exercising out-of-band/adaptive storage paths.
 // Each point is 16 bytes in WKB format, so 4100 points ≈ 65,600 bytes.
-const numLargeGeomPoints = 4100
+const numLargeGeomPoints = 5000
 
 // makeLargePointList generates a SQL point list like "POINT(0,0),POINT(1,1),...,POINT(N-1,N-1)"
 func makeLargePointList(n int) string {
