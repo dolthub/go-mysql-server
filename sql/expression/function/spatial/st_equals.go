@@ -82,7 +82,7 @@ func (s *STEquals) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	g1, g2, err := validateGeomComp(geom1, geom2, s.FunctionName())
+	g1, g2, err := validateGeomComp(ctx, geom1, geom2, s.FunctionName())
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +91,7 @@ func (s *STEquals) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// TODO (james): remove this switch block when the other comparisons are implemented
-	switch geom1.(type) {
+	switch g1.(type) {
 	case types.LineString:
 		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("LineString", s.FunctionName())
 	case types.Polygon:
@@ -107,7 +107,7 @@ func (s *STEquals) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// TODO (james): remove this switch block when the other comparisons are implemented
-	switch geom2.(type) {
+	switch g2.(type) {
 	case types.LineString:
 		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("LineString", s.FunctionName())
 	case types.Polygon:

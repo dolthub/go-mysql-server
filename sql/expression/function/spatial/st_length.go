@@ -97,6 +97,12 @@ func (s *STLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
+	// Unwrap if needed (e.g. adaptive storage)
+	v1, err = types.UnwrapGeometry(ctx, v1)
+	if err != nil {
+		return nil, sql.ErrInvalidGISData.New(s.FunctionName())
+	}
+
 	// Return nil if argument is geometry typ, but not linestring
 	var l types.LineString
 	switch v := v1.(type) {

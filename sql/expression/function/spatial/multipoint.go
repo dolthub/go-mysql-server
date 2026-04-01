@@ -81,7 +81,11 @@ func (l *MultiPoint) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		switch v := val.(type) {
+		gv, err := types.UnwrapGeometry(ctx, val)
+		if err != nil {
+			return nil, sql.ErrIllegalGISValue.New(val)
+		}
+		switch v := gv.(type) {
 		case types.Point:
 			points[i] = v
 		case types.GeometryValue:

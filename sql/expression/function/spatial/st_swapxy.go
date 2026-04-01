@@ -86,10 +86,9 @@ func (s *SwapXY) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Expect one of the geometry types
-	switch v := val.(type) {
-	case types.GeometryValue:
-		return v.Swap(), nil
-	default:
+	gv, err := types.UnwrapGeometry(ctx, val)
+	if err != nil {
 		return nil, sql.ErrInvalidGISData.New(s.FunctionName())
 	}
+	return gv.Swap(), nil
 }

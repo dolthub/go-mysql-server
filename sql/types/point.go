@@ -86,6 +86,12 @@ func (t PointType) Convert(ctx context.Context, v interface{}) (interface{}, sql
 			return nil, sql.InRange, err
 		}
 		return val, sql.InRange, nil
+	case sql.AnyWrapper:
+		unwrapped, err := val.UnwrapAny(ctx)
+		if err != nil {
+			return nil, sql.InRange, err
+		}
+		return t.Convert(ctx, unwrapped)
 	default:
 		return nil, sql.InRange, sql.ErrSpatialTypeConversion.New()
 	}

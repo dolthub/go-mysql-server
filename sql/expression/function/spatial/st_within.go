@@ -234,7 +234,7 @@ func (w *Within) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	g1, g2, err := validateGeomComp(geom1, geom2, w.FunctionName())
+	g1, g2, err := validateGeomComp(ctx, geom1, geom2, w.FunctionName())
 	if err != nil {
 		return nil, err
 	}
@@ -243,7 +243,7 @@ func (w *Within) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// TODO (james): remove this switch block when the other comparisons are implemented
-	switch geom1.(type) {
+	switch g1.(type) {
 	case types.LineString:
 		return nil, sql.ErrUnsupportedGISTypeForSpatialFunc.New("LineString", w.FunctionName())
 	case types.Polygon:

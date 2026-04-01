@@ -114,10 +114,9 @@ func (p *Dimension) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Expect one of the geometry types
-	switch v := val.(type) {
-	case types.GeometryValue:
-		return FindDimension(v), nil
-	default:
+	gv, err := types.UnwrapGeometry(ctx, val)
+	if err != nil {
 		return nil, sql.ErrInvalidGISData.New("ST_DIMENSION")
 	}
+	return FindDimension(gv), nil
 }

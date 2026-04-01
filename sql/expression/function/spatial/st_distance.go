@@ -154,13 +154,13 @@ func (d *Distance) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	geom1, ok := g1.(types.GeometryValue)
-	if !ok {
+	geom1, err := types.UnwrapGeometry(ctx, g1)
+	if err != nil {
 		return nil, sql.ErrInvalidGISData.New(d.FunctionName())
 	}
 
-	geom2, ok := g2.(types.GeometryValue)
-	if !ok {
+	geom2, err := types.UnwrapGeometry(ctx, g2)
+	if err != nil {
 		return nil, sql.ErrInvalidGISData.New(d.FunctionName())
 	}
 

@@ -86,7 +86,11 @@ func (l *LineString) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			return nil, err
 		}
 		// Must be of type point, throw error otherwise
-		switch v := val.(type) {
+		gv, err := types.UnwrapGeometry(ctx, val)
+		if err != nil {
+			return nil, sql.ErrIllegalGISValue.New(val)
+		}
+		switch v := gv.(type) {
 		case types.Point:
 			points[i] = v
 		case types.GeometryValue:

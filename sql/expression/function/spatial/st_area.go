@@ -100,7 +100,11 @@ func (a *Area) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	// TODO: Multi-Polygons are also valid
 	// Only allow polygons
-	p, ok := v.(types.Polygon)
+	gv, err := types.UnwrapGeometry(ctx, v)
+	if err != nil {
+		return nil, sql.ErrInvalidArgument.New(a.FunctionName())
+	}
+	p, ok := gv.(types.Polygon)
 	if !ok {
 		return nil, sql.ErrInvalidArgument.New(a.FunctionName())
 	}
