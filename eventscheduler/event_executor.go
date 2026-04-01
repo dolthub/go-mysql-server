@@ -17,7 +17,6 @@ package eventscheduler
 import (
 	"context"
 	"fmt"
-	"sync/atomic"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -38,7 +37,6 @@ type eventExecutor struct {
 	queryRunFunc        func(ctx *sql.Context, dbName, query, username, address string) error
 	tokenTracker        *tokenTracker
 	period              int
-	stop                atomic.Bool
 	wake                chan struct{}
 }
 
@@ -51,7 +49,6 @@ func newEventExecutor(bgt *sql.BackgroundThreads, ctxFunc func() (*sql.Context, 
 		runningEventsStatus: newRunningEventsStatus(),
 		ctxGetterFunc:       ctxFunc,
 		queryRunFunc:        runQueryFunc,
-		stop:                atomic.Bool{},
 		tokenTracker:        newTokenTracker(),
 		period:              period,
 		wake:                make(chan struct{}, 1),
@@ -60,9 +57,9 @@ func newEventExecutor(bgt *sql.BackgroundThreads, ctxFunc func() (*sql.Context, 
 
 // start starts the eventExecutor. It checks and executes
 // enabled events and updates necessary events' metadata.
-func (ee *eventExecutor) start() {
-	ee.stop.Store(false)
+func (ee *eventExecutor) start(ctx context.Context) {
 	logrus.Trace("Starting eventExecutor")
+	defer ee.clear()
 
 	// TODO: Currently, we execute events by sorting the enabled events by their execution time, then
 	//       waking up at a regular period and seeing if any events are ready to be executed. This
@@ -82,13 +79,22 @@ func (ee *eventExecutor) start() {
 		// only waking when an event is created or the executor is shut down.
 		if ee.list.len() == 0 && ee.canQuiesce() {
 			logrus.Trace("eventExecutor quiescing (no events, all databases quiescable)")
-			<-ee.wake
+			select {
+			case <-ee.wake:
+			case <-ctx.Done():
+				logrus.Trace("Stopping eventExecutor")
+				return
+			}
 			logrus.Trace("eventExecutor woke from quiesce")
 		} else {
 			ticker.Reset(pollingDuration)
 			select {
 			case <-ticker.C:
 			case <-ee.wake:
+			case <-ctx.Done():
+				ticker.Stop()
+				logrus.Trace("Stopping eventExecutor")
+				return
 			}
 			ticker.Stop()
 		}
@@ -104,39 +110,39 @@ func (ee *eventExecutor) start() {
 		var lgr *logrus.Entry
 
 		result := func() res {
-			ctx, err := ee.ctxGetterFunc()
+			sqlCtx, err := ee.ctxGetterFunc()
 			if err != nil {
 				logrus.Errorf("unable to create context for event executor: %s", err)
 				return res_continue
 			}
-			lgr = ctx.GetLogger()
+			lgr = sqlCtx.GetLogger()
 
-			defer sql.SessionEnd(ctx.Session)
-			sql.SessionCommandBegin(ctx.Session)
-			defer sql.SessionCommandEnd(ctx.Session)
+			defer sql.SessionEnd(sqlCtx.Session)
+			sql.SessionCommandBegin(sqlCtx.Session)
+			defer sql.SessionCommandEnd(sqlCtx.Session)
 
-			err = beginTx(ctx)
+			err = beginTx(sqlCtx)
 			if err != nil {
 				lgr.Errorf("unable to begin transaction for event executor: %s", err)
 				return res_continue
 			}
 
-			needsToReloadEvents, err := ee.needsToReloadEvents(ctx)
+			needsToReloadEvents, err := ee.needsToReloadEvents(sqlCtx)
 			if err != nil {
 				lgr.Errorf("unable to determine if events need to be reloaded: %s", err)
 			}
 			if needsToReloadEvents {
-				err := ee.loadAllEvents(ctx)
+				err := ee.loadAllEvents(sqlCtx)
 				if err != nil {
 					lgr.Errorf("unable to reload events: %s", err)
 				}
 			}
 
-			if ee.stop.Load() {
+			if ctx.Err() != nil {
 				logrus.Trace("Stopping eventExecutor")
 				return res_return
 			} else if ee.list.len() == 0 {
-				rollbackTx(ctx)
+				rollbackTx(sqlCtx)
 				return res_continue
 			}
 
@@ -145,11 +151,11 @@ func (ee *eventExecutor) start() {
 			var ok bool
 			nextAt, ok = ee.list.getNextExecutionTime()
 			if !ok {
-				rollbackTx(ctx)
+				rollbackTx(sqlCtx)
 				return res_continue
 			}
 
-			err = commitTx(ctx)
+			err = commitTx(sqlCtx)
 			if err != nil {
 				lgr.Errorf("unable to commit transaction for reloading events: %s", err)
 			}
@@ -175,26 +181,26 @@ func (ee *eventExecutor) start() {
 			if curEvent != nil {
 				func() {
 					lgr.Debugf("Executing event %s, seconds until execution: %f", curEvent.name(), secondsUntilExecution)
-					ctx, err := ee.ctxGetterFunc()
+					sqlCtx, err := ee.ctxGetterFunc()
 					if err != nil {
-						ctx.GetLogger().Errorf("Received error '%s' getting ctx in event scheduler", err)
+						sqlCtx.GetLogger().Errorf("Received error '%s' getting ctx in event scheduler", err)
 						return
 					}
-					defer sql.SessionEnd(ctx.Session)
-					sql.SessionCommandBegin(ctx.Session)
-					defer sql.SessionCommandEnd(ctx.Session)
-					err = beginTx(ctx)
+					defer sql.SessionEnd(sqlCtx.Session)
+					sql.SessionCommandBegin(sqlCtx.Session)
+					defer sql.SessionCommandEnd(sqlCtx.Session)
+					err = beginTx(sqlCtx)
 					if err != nil {
-						ctx.GetLogger().Errorf("Received error '%s' beginning transaction in event scheduler", err)
+						sqlCtx.GetLogger().Errorf("Received error '%s' beginning transaction in event scheduler", err)
 						return
 					}
-					err = ee.executeEventAndUpdateList(ctx, curEvent, timeNow)
+					err = ee.executeEventAndUpdateList(sqlCtx, curEvent, timeNow)
 					if err != nil {
-						ctx.GetLogger().Errorf("Received error '%s' executing event: %s", err, curEvent.event.Name)
+						sqlCtx.GetLogger().Errorf("Received error '%s' executing event: %s", err, curEvent.event.Name)
 					}
-					err = commitTx(ctx)
+					err = commitTx(sqlCtx)
 					if err != nil {
-						ctx.GetLogger().Errorf("Received error '%s' executing event: %s", err, curEvent.event.Name)
+						sqlCtx.GetLogger().Errorf("Received error '%s' executing event: %s", err, curEvent.event.Name)
 					}
 				}()
 			}
@@ -303,12 +309,10 @@ func (ee *eventExecutor) loadAllEvents(ctx *sql.Context) error {
 	return nil
 }
 
-// shutdown stops the eventExecutor.
-func (ee *eventExecutor) shutdown() {
-	ee.stop.Store(true)
+// clear resets the executor's event list and running status.
+func (ee *eventExecutor) clear() {
 	ee.list.clear()
 	ee.runningEventsStatus.clear()
-	ee.notify()
 }
 
 // executeEventAndUpdateList executes the given event and updates the event's last executed time in the database.
@@ -353,7 +357,6 @@ func (ee *eventExecutor) executeEvent(event *enabledEvent) (bool, error) {
 		select {
 		case <-ctx.Done():
 			logrus.Tracef("stopping background thread (%s)", taskName)
-			ee.stop.Store(true)
 			return
 		default:
 			// get a new session sql.Context for each event definition execution

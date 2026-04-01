@@ -15,8 +15,10 @@
 package eventscheduler
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
@@ -53,6 +55,8 @@ type EventScheduler struct {
 	executor      *eventExecutor
 	ctxGetterFunc func() (*sql.Context, error)
 	status        SchedulerStatus
+	cancel        context.CancelFunc
+	wg            sync.WaitGroup
 }
 
 // InitEventScheduler is called at the start of the server. This function returns EventScheduler object
@@ -163,7 +167,7 @@ func (es *EventScheduler) Close() {
 		return
 	}
 	es.status = SchedulerOff
-	es.executor.shutdown()
+	es.shutdownExecutor()
 }
 
 // TurnOnEventScheduler is called when user sets --event-scheduler system variable to ON or 1.
@@ -212,9 +216,18 @@ func (es *EventScheduler) TurnOffEventScheduler() error {
 	}
 
 	es.status = SchedulerOff
-	es.executor.shutdown()
+	es.shutdownExecutor()
 
 	return nil
+}
+
+// shutdownExecutor cancels the executor's background goroutine, waits
+// for it to finish, and clears the executor's state.
+func (es *EventScheduler) shutdownExecutor() {
+	if es.cancel != nil {
+		es.cancel()
+	}
+	es.wg.Wait()
 }
 
 // loadEventsAndStartEventExecutor evaluates all events in all databases and evaluates the enabled events
@@ -225,7 +238,9 @@ func (es *EventScheduler) loadEventsAndStartEventExecutor(ctx *sql.Context, a *a
 	}
 	es.executor.catalog = a.Catalog
 	es.executor.loadAllEvents(ctx)
-	go es.executor.start()
+	bgCtx, cancel := context.WithCancel(context.Background())
+	es.cancel = cancel
+	es.wg.Go(func() { es.executor.start(bgCtx) })
 	return nil
 }
 
