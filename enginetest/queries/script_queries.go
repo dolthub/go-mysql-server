@@ -15510,6 +15510,175 @@ var SpatialScriptTests = []ScriptTest{
 			},
 		},
 	},
+	// ========================================================================
+	// ST_Envelope tests
+	// ========================================================================
+	{
+		Name: "ST_Envelope returns bounding box",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				// Point envelope is the point itself
+				Query:    "SELECT ST_ASWKT(ST_ENVELOPE(POINT(1,2)))",
+				Expected: []sql.Row{{"POINT(1 2)"}},
+			},
+			{
+				// Horizontal line envelope is a linestring
+				Query:    "SELECT ST_ASWKT(ST_ENVELOPE(LINESTRING(POINT(0,0),POINT(5,0))))",
+				Expected: []sql.Row{{"LINESTRING(0 0,5 0)"}},
+			},
+			{
+				// General linestring envelope is a polygon
+				Query:    "SELECT ST_ASWKT(ST_ENVELOPE(LINESTRING(POINT(0,0),POINT(3,4))))",
+				Expected: []sql.Row{{"POLYGON((0 0,3 0,3 4,0 4,0 0))"}},
+			},
+			{
+				// Polygon envelope is a bounding polygon
+				Query:    "SELECT ST_ASWKT(ST_ENVELOPE(POLYGON(LINESTRING(POINT(0,0),POINT(10,0),POINT(10,5),POINT(0,0)))))",
+				Expected: []sql.Row{{"POLYGON((0 0,10 0,10 5,0 5,0 0))"}},
+			},
+			{
+				Query:    "SELECT ST_ENVELOPE(NULL)",
+				Expected: []sql.Row{{nil}},
+			},
+		},
+	},
+	// ========================================================================
+	// ST_Disjoint tests
+	// ========================================================================
+	{
+		Name: "ST_Disjoint tests spatial disjointness",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				// Same point — not disjoint
+				Query:    "SELECT ST_DISJOINT(POINT(0,0), POINT(0,0))",
+				Expected: []sql.Row{{false}},
+			},
+			{
+				// Different points — disjoint
+				Query:    "SELECT ST_DISJOINT(POINT(0,0), POINT(1,1))",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				// Point on a linestring — not disjoint
+				Query:    "SELECT ST_DISJOINT(POINT(0,0), LINESTRING(POINT(0,0),POINT(1,1)))",
+				Expected: []sql.Row{{false}},
+			},
+			{
+				Query:    "SELECT ST_DISJOINT(NULL, POINT(0,0))",
+				Expected: []sql.Row{{nil}},
+			},
+		},
+	},
+	// ========================================================================
+	// ST_NumInteriorRings tests
+	// ========================================================================
+	{
+		Name: "ST_NumInteriorRings returns interior ring count",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				// Polygon with no holes
+				Query:    "SELECT ST_NUMINTERIORRINGS(POLYGON(LINESTRING(POINT(0,0),POINT(1,0),POINT(1,1),POINT(0,0))))",
+				Expected: []sql.Row{{0}},
+			},
+			{
+				// Polygon with one hole
+				Query:    "SELECT ST_NUMINTERIORRINGS(POLYGON(LINESTRING(POINT(0,0),POINT(10,0),POINT(10,10),POINT(0,0)),LINESTRING(POINT(1,1),POINT(2,1),POINT(2,2),POINT(1,1))))",
+				Expected: []sql.Row{{1}},
+			},
+			{
+				// Alias st_numinteriorring also works
+				Query:    "SELECT ST_NUMINTERIORRING(POLYGON(LINESTRING(POINT(0,0),POINT(1,0),POINT(1,1),POINT(0,0))))",
+				Expected: []sql.Row{{0}},
+			},
+			{
+				Query:    "SELECT ST_NUMINTERIORRINGS(NULL)",
+				Expected: []sql.Row{{nil}},
+			},
+		},
+	},
+	// ========================================================================
+	// ST_InteriorRingN tests
+	// ========================================================================
+	{
+		Name: "ST_InteriorRingN extracts interior ring",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT ST_ASWKT(ST_INTERIORRINGN(POLYGON(LINESTRING(POINT(0,0),POINT(10,0),POINT(10,10),POINT(0,0)),LINESTRING(POINT(1,1),POINT(2,1),POINT(2,2),POINT(1,1))), 1))",
+				Expected: []sql.Row{{"LINESTRING(1 1,2 1,2 2,1 1)"}},
+			},
+			{
+				// Out of range returns NULL
+				Query:    "SELECT ST_INTERIORRINGN(POLYGON(LINESTRING(POINT(0,0),POINT(1,0),POINT(1,1),POINT(0,0))), 1)",
+				Expected: []sql.Row{{nil}},
+			},
+			{
+				Query:    "SELECT ST_INTERIORRINGN(NULL, 1)",
+				Expected: []sql.Row{{nil}},
+			},
+		},
+	},
+	// ========================================================================
+	// ST_IsEmpty tests
+	// ========================================================================
+	{
+		Name: "ST_IsEmpty checks for empty geometry collection",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT ST_ISEMPTY(GEOMETRYCOLLECTION())",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				Query:    "SELECT ST_ISEMPTY(GEOMETRYCOLLECTION(POINT(0,0)))",
+				Expected: []sql.Row{{false}},
+			},
+			{
+				Query:    "SELECT ST_ISEMPTY(POINT(0,0))",
+				Expected: []sql.Row{{false}},
+			},
+			{
+				Query:    "SELECT ST_ISEMPTY(NULL)",
+				Expected: []sql.Row{{nil}},
+			},
+		},
+	},
+	// ========================================================================
+	// ST_Centroid tests
+	// ========================================================================
+	{
+		Name: "ST_Centroid returns centroid of geometry",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				// Point centroid is itself
+				Query:    "SELECT ST_ASWKT(ST_CENTROID(POINT(3,5)))",
+				Expected: []sql.Row{{"POINT(3 5)"}},
+			},
+			{
+				// Linestring centroid is midpoint for 2-point line
+				Query:    "SELECT ST_ASWKT(ST_CENTROID(LINESTRING(POINT(0,0),POINT(10,0))))",
+				Expected: []sql.Row{{"POINT(5 0)"}},
+			},
+			{
+				// Square polygon centroid is the center
+				Query:    "SELECT ST_ASWKT(ST_CENTROID(POLYGON(LINESTRING(POINT(0,0),POINT(4,0),POINT(4,4),POINT(0,4),POINT(0,0)))))",
+				Expected: []sql.Row{{"POINT(2 2)"}},
+			},
+			{
+				// Multipoint centroid is average
+				Query:    "SELECT ST_ASWKT(ST_CENTROID(MULTIPOINT(POINT(0,0),POINT(10,0),POINT(10,10),POINT(0,10))))",
+				Expected: []sql.Row{{"POINT(5 5)"}},
+			},
+			{
+				Query:    "SELECT ST_CENTROID(NULL)",
+				Expected: []sql.Row{{nil}},
+			},
+		},
+	},
 }
 
 var SpatialIndexScriptTests = []ScriptTest{
