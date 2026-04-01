@@ -15,6 +15,7 @@
 package spatial
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -329,16 +330,16 @@ func isIntersects(g1, g2 types.GeometryValue) bool {
 // 2. Not a types.GeometryValue, return error
 // 3. SRIDs don't match, return error
 // 4. Empty GeometryCollection, return nil
-func validateGeomComp(geom1, geom2 interface{}, funcName string) (types.GeometryValue, types.GeometryValue, error) {
+func validateGeomComp(ctx context.Context, geom1, geom2 interface{}, funcName string) (types.GeometryValue, types.GeometryValue, error) {
 	if geom1 == nil || geom2 == nil {
 		return nil, nil, nil
 	}
-	g1, ok := geom1.(types.GeometryValue)
-	if !ok {
+	g1, err := types.UnwrapGeometry(ctx, geom1)
+	if err != nil {
 		return nil, nil, sql.ErrInvalidGISData.New(funcName)
 	}
-	g2, ok := geom2.(types.GeometryValue)
-	if !ok {
+	g2, err := types.UnwrapGeometry(ctx, geom2)
+	if err != nil {
 		return nil, nil, sql.ErrInvalidGISData.New(funcName)
 	}
 	if g1.GetSRID() != g2.GetSRID() {
@@ -363,7 +364,7 @@ func (i *Intersects) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	g1, g2, err := validateGeomComp(geom1, geom2, i.FunctionName())
+	g1, g2, err := validateGeomComp(ctx, geom1, geom2, i.FunctionName())
 	if err != nil {
 		return nil, err
 	}

@@ -262,6 +262,11 @@ func (g *AsGeoJSON) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
+	val, err = types.UnwrapGeometry(ctx, val)
+	if err != nil {
+		return nil, sql.ErrInvalidArgumentType.New(g.FunctionName())
+	}
+
 	obj := make(map[string]interface{})
 	switch v := val.(type) {
 	case types.Point:

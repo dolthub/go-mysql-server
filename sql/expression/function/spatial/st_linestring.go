@@ -82,11 +82,12 @@ func (s *StartPoint) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	if _, ok := g.(types.GeometryValue); !ok {
+	gv, err := types.UnwrapGeometry(ctx, g)
+	if err != nil {
 		return nil, sql.ErrInvalidGISData.New(s.FunctionName())
 	}
 
-	l, ok := g.(types.LineString)
+	l, ok := gv.(types.LineString)
 	if !ok {
 		return nil, nil
 	}
@@ -154,11 +155,12 @@ func (e *EndPoint) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	if _, ok := g.(types.GeometryValue); !ok {
+	gv, err := types.UnwrapGeometry(ctx, g)
+	if err != nil {
 		return nil, sql.ErrInvalidGISData.New(e.FunctionName())
 	}
 
-	l, ok := g.(types.LineString)
+	l, ok := gv.(types.LineString)
 	if !ok {
 		return nil, nil
 	}
@@ -230,11 +232,12 @@ func (i *IsClosed) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	if _, ok := g.(types.GeometryValue); !ok {
+	gv, err := types.UnwrapGeometry(ctx, g)
+	if err != nil {
 		return nil, sql.ErrInvalidGISData.New(i.FunctionName())
 	}
 
-	switch g := g.(type) {
+	switch g := gv.(type) {
 	case types.LineString:
 		return isClosed(g), nil
 	case types.MultiLineString:

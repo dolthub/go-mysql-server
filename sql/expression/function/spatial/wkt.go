@@ -167,6 +167,11 @@ func (p *AsWKT) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
+	val, err = types.UnwrapGeometry(ctx, val)
+	if err != nil {
+		return nil, sql.ErrInvalidGISData.New(p.FunctionName())
+	}
+
 	var geomType string
 	var data string
 	switch v := val.(type) {

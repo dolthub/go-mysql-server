@@ -78,12 +78,11 @@ func (g *GeomColl) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		switch v := val.(type) {
-		case types.GeometryValue:
-			geoms[i] = v
-		default:
-			return nil, sql.ErrIllegalGISValue.New(v)
+		gv, err := types.UnwrapGeometry(ctx, val)
+		if err != nil {
+			return nil, sql.ErrIllegalGISValue.New(val)
 		}
+		geoms[i] = gv
 	}
 
 	return types.GeomColl{Geoms: geoms}, nil

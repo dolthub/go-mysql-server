@@ -811,8 +811,8 @@ func (i *spatialTableIter) Next(ctx *sql.Context) (sql.Row, error) {
 	// if the range [i.minX, i.maxX] and [gMinX, gMaxX] overlap and
 	// if the range [i.minY, i.maxY] and [gMinY, gMaxY] overlap
 	// then, the bounding boxes intersect
-	g, ok := row[i.ord].(types.GeometryValue)
-	if !ok {
+	g, err := types.UnwrapGeometry(ctx, row[i.ord])
+	if err != nil {
 		return nil, fmt.Errorf("spatial index over non-geometry column")
 	}
 	gMinX, gMinY, gMaxX, gMaxY := g.BBox()

@@ -81,7 +81,11 @@ func (p *MultiLineString) Eval(ctx *sql.Context, row sql.Row) (interface{}, erro
 		if err != nil {
 			return nil, err
 		}
-		switch v := val.(type) {
+		gv, err := types.UnwrapGeometry(ctx, val)
+		if err != nil {
+			return nil, sql.ErrIllegalGISValue.New(val)
+		}
+		switch v := gv.(type) {
 		case types.LineString:
 			lines[i] = v
 		case types.GeometryValue:

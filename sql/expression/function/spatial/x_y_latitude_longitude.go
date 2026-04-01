@@ -94,7 +94,11 @@ func (s *STX) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Check that it is a point
-	_p, ok := p.(types.Point)
+	gv, err := types.UnwrapGeometry(ctx, p)
+	if err != nil {
+		return nil, ErrInvalidType.New(s.FunctionName())
+	}
+	_p, ok := gv.(types.Point)
 	if !ok {
 		return nil, ErrInvalidType.New(s.FunctionName())
 	}
@@ -192,7 +196,11 @@ func (s *STY) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Check that it is a point
-	_p, ok := p.(types.Point)
+	gv, err := types.UnwrapGeometry(ctx, p)
+	if err != nil {
+		return nil, ErrInvalidType.New(s.FunctionName())
+	}
+	_p, ok := gv.(types.Point)
 	if !ok {
 		return nil, ErrInvalidType.New(s.FunctionName())
 	}
@@ -294,7 +302,11 @@ func (l *Longitude) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Check that it is a point
-	_p, ok := p.(types.Point)
+	gv, err := types.UnwrapGeometry(ctx, p)
+	if err != nil {
+		return nil, ErrInvalidType.New(l.FunctionName())
+	}
+	_p, ok := gv.(types.Point)
 	if !ok {
 		return nil, ErrInvalidType.New(l.FunctionName())
 	}
@@ -403,7 +415,11 @@ func (l *Latitude) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Check that it is a point
-	_p, ok := p.(types.Point)
+	gv, err := types.UnwrapGeometry(ctx, p)
+	if err != nil {
+		return nil, ErrInvalidType.New(l.FunctionName())
+	}
+	_p, ok := gv.(types.Point)
 	if !ok {
 		return nil, ErrInvalidType.New(l.FunctionName())
 	}
