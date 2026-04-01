@@ -15679,6 +15679,170 @@ var SpatialScriptTests = []ScriptTest{
 			},
 		},
 	},
+	// ========================================================================
+	// ST_ConvexHull tests
+	// ========================================================================
+	{
+		Name: "ST_ConvexHull returns convex hull",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				// Point hull is the point itself
+				Query:    "SELECT ST_ASWKT(ST_CONVEXHULL(POINT(1,2)))",
+				Expected: []sql.Row{{"POINT(1 2)"}},
+			},
+			{
+				// Collinear points hull is a linestring
+				Query:    "SELECT ST_ASWKT(ST_CONVEXHULL(MULTIPOINT(POINT(0,0),POINT(1,1),POINT(2,2))))",
+				Expected: []sql.Row{{"LINESTRING(0 0,2 2)"}},
+			},
+			{
+				// Square of points
+				Query:    "SELECT ST_ASWKT(ST_CONVEXHULL(MULTIPOINT(POINT(0,0),POINT(4,0),POINT(4,4),POINT(0,4))))",
+				Expected: []sql.Row{{"POLYGON((0 0,4 0,4 4,0 4,0 0))"}},
+			},
+			{
+				// Interior point should be excluded
+				Query:    "SELECT ST_ASWKT(ST_CONVEXHULL(MULTIPOINT(POINT(0,0),POINT(4,0),POINT(4,4),POINT(0,4),POINT(2,2))))",
+				Expected: []sql.Row{{"POLYGON((0 0,4 0,4 4,0 4,0 0))"}},
+			},
+			{
+				Query:    "SELECT ST_CONVEXHULL(NULL)",
+				Expected: []sql.Row{{nil}},
+			},
+		},
+	},
+	// ========================================================================
+	// ST_IsSimple tests
+	// ========================================================================
+	{
+		Name: "ST_IsSimple checks for self-intersection",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				// Point is always simple
+				Query:    "SELECT ST_ISSIMPLE(POINT(0,0))",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				// Non-self-intersecting linestring
+				Query:    "SELECT ST_ISSIMPLE(LINESTRING(POINT(0,0),POINT(1,1),POINT(2,0)))",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				// Self-intersecting linestring (figure-8 shape)
+				Query:    "SELECT ST_ISSIMPLE(LINESTRING(POINT(0,0),POINT(2,2),POINT(2,0),POINT(0,2)))",
+				Expected: []sql.Row{{false}},
+			},
+			{
+				// MultiPoint with no duplicates
+				Query:    "SELECT ST_ISSIMPLE(MULTIPOINT(POINT(0,0),POINT(1,1)))",
+				Expected: []sql.Row{{true}},
+			},
+			{
+				// MultiPoint with duplicates
+				Query:    "SELECT ST_ISSIMPLE(MULTIPOINT(POINT(0,0),POINT(0,0)))",
+				Expected: []sql.Row{{false}},
+			},
+			{
+				Query:    "SELECT ST_ISSIMPLE(NULL)",
+				Expected: []sql.Row{{nil}},
+			},
+		},
+	},
+	// ========================================================================
+	// ST_Validate tests
+	// ========================================================================
+	{
+		Name: "ST_Validate returns valid geometry or NULL",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				// Valid point
+				Query:    "SELECT ST_ASWKT(ST_VALIDATE(POINT(1,2)))",
+				Expected: []sql.Row{{"POINT(1 2)"}},
+			},
+			{
+				// Valid polygon
+				Query:    "SELECT ST_ASWKT(ST_VALIDATE(POLYGON(LINESTRING(POINT(0,0),POINT(1,0),POINT(1,1),POINT(0,0)))))",
+				Expected: []sql.Row{{"POLYGON((0 0,1 0,1 1,0 0))"}},
+			},
+			{
+				// Valid linestring
+				Query:    "SELECT ST_ASWKT(ST_VALIDATE(LINESTRING(POINT(0,0),POINT(1,1))))",
+				Expected: []sql.Row{{"LINESTRING(0 0,1 1)"}},
+			},
+			{
+				Query:    "SELECT ST_VALIDATE(NULL)",
+				Expected: []sql.Row{{nil}},
+			},
+		},
+	},
+	// ========================================================================
+	// ST_GeoHash / ST_LatFromGeoHash / ST_LongFromGeoHash / ST_PointFromGeoHash tests
+	// ========================================================================
+	{
+		Name: "ST_GeoHash encodes coordinates",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				// 3-arg form: lon, lat, precision
+				Query:    "SELECT ST_GEOHASH(0, 0, 5)",
+				Expected: []sql.Row{{"s0000"}},
+			},
+			{
+				// 2-arg form: point, precision
+				Query:    "SELECT ST_GEOHASH(POINT(0, 0), 5)",
+				Expected: []sql.Row{{"s0000"}},
+			},
+			{
+				// Known geohash for specific coordinates
+				Query:    "SELECT LEFT(ST_GEOHASH(-87.65, 41.85, 10), 5)",
+				Expected: []sql.Row{{"dp3wj"}},
+			},
+			{
+				Query:    "SELECT ST_GEOHASH(NULL, NULL, 5)",
+				Expected: []sql.Row{{nil}},
+			},
+		},
+	},
+	{
+		Name: "ST_LatFromGeoHash and ST_LongFromGeoHash decode geohash",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				// Lat/Long from known geohash "s0000" (near 0,0)
+				Query:    "SELECT ROUND(ST_LATFROMGEOHASH('s0000'), 1)",
+				Expected: []sql.Row{{0.0}},
+			},
+			{
+				Query:    "SELECT ROUND(ST_LONGFROMGEOHASH('s0000'), 1)",
+				Expected: []sql.Row{{0.0}},
+			},
+			{
+				Query:    "SELECT ST_LATFROMGEOHASH(NULL)",
+				Expected: []sql.Row{{nil}},
+			},
+		},
+	},
+	{
+		Name: "ST_PointFromGeoHash decodes to point",
+		SetUpScript: []string{},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "SELECT ROUND(ST_X(ST_POINTFROMGEOHASH('s0000', 0)), 1)",
+				Expected: []sql.Row{{0.0}},
+			},
+			{
+				Query:    "SELECT ROUND(ST_Y(ST_POINTFROMGEOHASH('s0000', 0)), 1)",
+				Expected: []sql.Row{{0.0}},
+			},
+			{
+				Query:    "SELECT ST_POINTFROMGEOHASH(NULL, 0)",
+				Expected: []sql.Row{{nil}},
+			},
+		},
+	},
 }
 
 var SpatialIndexScriptTests = []ScriptTest{
