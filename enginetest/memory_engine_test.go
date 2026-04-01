@@ -615,6 +615,10 @@ func TestSpatialScripts(t *testing.T) {
 	enginetest.TestSpatialScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }
 
+func TestLargeGeometryScripts(t *testing.T) {
+	enginetest.TestLargeGeometryScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
+}
+
 func TestSpatialIndexScripts(t *testing.T) {
 	enginetest.TestSpatialIndexScripts(t, enginetest.NewMemoryHarness("default", testNumPartitions, mergableIndexDriver))
 }

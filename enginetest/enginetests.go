@@ -1838,6 +1838,20 @@ func TestSpatialScriptsPrepared(t *testing.T, harness Harness) {
 	}
 }
 
+func TestLargeGeometryScripts(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData)
+	for _, script := range queries.LargeGeometryScriptTests {
+		TestScript(t, harness, script)
+	}
+}
+
+func TestLargeGeometryScriptsPrepared(t *testing.T, harness Harness) {
+	harness.Setup(setup.MydbData)
+	for _, script := range queries.LargeGeometryScriptTests {
+		TestScriptPrepared(t, harness, script)
+	}
+}
+
 func TestSpatialIndexScripts(t *testing.T, harness Harness) {
 	harness.Setup(setup.MydbData)
 	for _, script := range queries.SpatialIndexScriptTests {
