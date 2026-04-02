@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package mysqlshim
+package mysql_harness
 
 import (
 	"os"
@@ -22,8 +22,9 @@ import (
 	"github.com/dolthub/go-mysql-server/enginetest"
 )
 
-// These tests run the spatial function engine tests against a local MySQL instance.
-// They are skipped by default unless the MYSQL_TEST_HOST environment variable is set.
+// These tests run engine tests of your choice against a live MySQL server to validate that enginetest
+// expectations match actual MySQL behavior.
+// They are destructive to data on that server, so  use with caution.
 //
 // To run these tests, start a MySQL instance and set the following environment variables:
 //

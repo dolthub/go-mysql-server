@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package mysqlshim
+package mysql_harness
 
 import (
 	dsql "database/sql"

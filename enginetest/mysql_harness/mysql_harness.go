@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package mysqlshim
+package mysql_harness
 
 import (
 	"context"
@@ -32,15 +32,15 @@ import (
 
 // MySQLHarness is a harness for a local MySQL server. This will modify databases and tables as the tests see fit, which
 // may delete pre-existing data. Ensure that the MySQL instance may freely be modified without worry.
+// This harness is incomplete, so additional result processing may be necessary for your particular test.
 type MySQLHarness struct {
-	shim           *MySQLShim
+	shim           *MySQLQueryEngine
 	skippedQueries map[string]struct{}
 	setupData      []setup.SetupScript
 	session        sql.Session
 }
 
 var _ enginetest.Harness = (*MySQLHarness)(nil)
-var _ enginetest.ClientHarness = (*MySQLHarness)(nil)
 var _ enginetest.SkippingHarness = (*MySQLHarness)(nil)
 var _ enginetest.ResultEvaluationHarness = (*MySQLHarness)(nil)
 
@@ -105,26 +105,6 @@ func extractDatabaseName(stmt string) string {
 	name = strings.Trim(name, "`")
 	name = strings.TrimRight(name, ";")
 	return name
-}
-
-func (m *MySQLHarness) NewContextWithClient(client sql.Client) *sql.Context {
-	session := sql.NewBaseSessionWithClientServer("address", client, 1)
-	return sql.NewContext(
-		context.Background(),
-		sql.WithSession(session),
-	)
-}
-
-// MySQLDatabase represents a database for a local MySQL server.
-type MySQLDatabase struct {
-	harness *MySQLHarness
-	dbName  string
-}
-
-// MySQLTable represents a table for a local MySQL server.
-type MySQLTable struct {
-	harness   *MySQLHarness
-	tableName string
 }
 
 // NewMySQLHarness returns a new MySQLHarness.
