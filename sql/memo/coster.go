@@ -121,18 +121,17 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 			// TODO: estimate memory overhead
 			return float64(lTableScan+rTableScan)*(seqIOCostFactor+cpuCostFactor) + cpuCostFactor*selfJoinCard, nil
 		case jp.Op.IsLookup():
-			// TODO added overhead for right lookups
 			switch n := n.(type) {
 			case *LookupJoin:
 				if !n.Injective {
 					// partial index completion is undesirable
-					// TODO don't do this whe we have stats
+					// TODO don't do this when we have stats
 					selfJoinCard = math.Max(0, selfJoinCard+float64(indexCoverageAdjustment(n.Lookup)))
 				}
 
-				// read the whole left table and randIO into table equivalent to
-				// this join's output cardinality estimate
-				return lBest*seqIOCostFactor + selfJoinCard*(randIOCostFactor+seqIOCostFactor), nil
+				// Scan left child (seqIO), one index seek per left row (randIO),
+				// then sequential reads for matching right rows (seqIO per result).
+				return lBest*(seqIOCostFactor+randIOCostFactor) + selfJoinCard*seqIOCostFactor, nil
 			case *ConcatJoin:
 				return c.costConcatJoin(ctx, n, s)
 			}
