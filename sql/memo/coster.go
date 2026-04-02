@@ -106,7 +106,10 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 				cost := lBest * (rBest / 2.0) * (seqIOCostFactor + cpuCostFactor)
 				return cost * .5, nil
 			}
-			return lBest*(seqIOCostFactor+cpuCostFactor) + float64(rBest)*(seqIOCostFactor+memCostFactor) + selfJoinCard*cpuCostFactor, nil
+			// Sequential cost for IO over the entire left table
+			// One time cost of hashing the entire right side
+			// Small cost for lookup into the right table
+			return lBest*(seqIOCostFactor+cpuCostFactor)*rBest*(cpuCostFactor) + float64(rBest)*(seqIOCostFactor+memCostFactor+cpuCostFactor) + selfJoinCard*cpuCostFactor, nil
 
 		case jp.Op.IsLateral():
 			return (lBest*rBest-1)*seqIOCostFactor + (lBest*rBest)*cpuCostFactor, nil
@@ -129,7 +132,7 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 			// TODO: estimate memory overhead
 			return float64(lTableScan+rTableScan)*(seqIOCostFactor+cpuCostFactor) + cpuCostFactor*selfJoinCard, nil
 		case jp.Op.IsLookup():
-			// TODO added overhead for right lookups
+			// TODO add overhead for right lookups
 			switch n := n.(type) {
 			case *LookupJoin:
 				if !n.Injective {
@@ -140,7 +143,7 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 
 				// read the whole left table and randIO into table equivalent to
 				// this join's output cardinality estimate
-				return lBest*seqIOCostFactor + selfJoinCard*(randIOCostFactor+seqIOCostFactor), nil
+				return lBest*(seqIOCostFactor+cpuCostFactor)*rBest*(cpuCostFactor) + selfJoinCard*(randIOCostFactor+seqIOCostFactor), nil
 			case *ConcatJoin:
 				return c.costConcatJoin(ctx, n, s)
 			}

@@ -179,9 +179,8 @@ func (e *ExprGroup) fixTableScanPath() bool {
 			n = n.Next()
 			continue
 		}
-		_, ok = src.(*IndexScan) // TODO: what's wrong with IndexScan??
+		_, ok = src.(*IndexScan)
 		if ok {
-			return true
 			n = n.Next()
 			continue
 		}
