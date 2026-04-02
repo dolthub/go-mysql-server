@@ -16,9 +16,11 @@ package mysqlshim
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
+	"github.com/dolthub/go-mysql-server/sql/types"
 	vitess "github.com/dolthub/vitess/go/vt/sqlparser"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gocraft/dbr/v2"
@@ -77,6 +79,21 @@ func NewMySQLShim(user string, password string, host string, port int) (*MySQLSh
 	return &MySQLShim{conn, make(map[string]string)}, nil
 }
 
+// isWriteStatement returns true for SQL statements that modify data and return an OkResult.
+func isWriteStatement(query string) bool {
+	upper := strings.ToUpper(strings.TrimSpace(query))
+	return strings.HasPrefix(upper, "INSERT") ||
+		strings.HasPrefix(upper, "UPDATE") ||
+		strings.HasPrefix(upper, "DELETE") ||
+		strings.HasPrefix(upper, "REPLACE") ||
+		strings.HasPrefix(upper, "CREATE") ||
+		strings.HasPrefix(upper, "DROP") ||
+		strings.HasPrefix(upper, "ALTER") ||
+		strings.HasPrefix(upper, "TRUNCATE") ||
+		strings.HasPrefix(upper, "SET") ||
+		strings.HasPrefix(upper, "USE")
+}
+
 // Query queries the connection and return a row iterator.
 func (m *MySQLShim) Query(ctx *sql.Context, query string) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
 	if len(ctx.GetCurrentDatabase()) > 0 {
@@ -85,6 +102,21 @@ func (m *MySQLShim) Query(ctx *sql.Context, query string) (sql.Schema, sql.RowIt
 			return nil, nil, nil, err
 		}
 	}
+
+	// For write statements, use Exec and return an OkResult
+	if isWriteStatement(query) {
+		result, err := m.conn.Exec(query)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		affected, _ := result.RowsAffected()
+		insertID, _ := result.LastInsertId()
+		return types.OkResultSchema, sql.RowsToRowIter(sql.Row{types.OkResult{
+			RowsAffected: uint64(affected),
+			InsertID:     uint64(insertID),
+		}}), nil, nil
+	}
+
 	rows, err := m.conn.Query(query)
 	if err != nil {
 		return nil, nil, nil, err
