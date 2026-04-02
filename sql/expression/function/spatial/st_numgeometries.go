@@ -90,7 +90,7 @@ func (n *NumGeometries) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	}
 
 	// For GeometryCollection, MultiPoint, MultiLineString, MultiPolygon: return component count
-	// For all other geometry types: return 1
+	// For simple geometry types (Point, LineString, Polygon): return NULL per MySQL behavior
 	switch v := gv.(type) {
 	case types.GeomColl:
 		return len(v.Geoms), nil
@@ -101,6 +101,6 @@ func (n *NumGeometries) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	case types.MultiPolygon:
 		return len(v.Polygons), nil
 	default:
-		return 1, nil
+		return nil, nil
 	}
 }

@@ -15382,8 +15382,9 @@ var SpatialScriptTests = []ScriptTest{
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
+				// Non-collection types return NULL
 				Query:    "SELECT ST_NUMGEOMETRIES(POINT(0,0))",
-				Expected: []sql.Row{{1}},
+				Expected: []sql.Row{{nil}},
 			},
 			{
 				Query:    "SELECT ST_NUMGEOMETRIES(MULTIPOINT(POINT(0,0),POINT(1,1),POINT(2,2)))",
@@ -15429,9 +15430,9 @@ var SpatialScriptTests = []ScriptTest{
 				Expected: []sql.Row{{nil}},
 			},
 			{
-				// Non-collection returns self for N=1
-				Query:    "SELECT ST_ASWKT(ST_GEOMETRYN(POINT(5,10), 1))",
-				Expected: []sql.Row{{"POINT(5 10)"}},
+				// Non-collection returns NULL per MySQL behavior
+				Query:    "SELECT ST_GEOMETRYN(POINT(5,10), 1)",
+				Expected: []sql.Row{{nil}},
 			},
 			{
 				Query:    "SELECT ST_GEOMETRYN(NULL, 1)",

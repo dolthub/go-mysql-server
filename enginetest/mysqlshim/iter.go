@@ -186,6 +186,8 @@ func normalizeValue(val interface{}, expectedType reflect.Type, dbTypeName strin
 		default:
 			return string(v)
 		}
+	case int:
+		return int64(v)
 	case int64:
 		return v
 	case int32:

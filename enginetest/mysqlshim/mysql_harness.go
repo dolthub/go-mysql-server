@@ -194,19 +194,19 @@ func (m *MySQLHarness) EvaluateQueryResults(
 	t.Helper()
 	require := require.New(t)
 
+	// Widen expected rows first (same as the default evaluator)
+	for i, row := range expectedRows {
+		for j, val := range row {
+			expectedRows[i][j] = widenExpected(val)
+		}
+	}
+
 	// Normalize actual rows: convert MySQL types to match GMS expected types
 	for i, row := range actualRows {
 		for j, val := range row {
 			if i < len(expectedRows) && j < len(expectedRows[i]) {
 				actualRows[i][j] = normalizeToExpected(val, expectedRows[i][j])
 			}
-		}
-	}
-
-	// Widen expected rows the same way the default evaluator does
-	for i, row := range expectedRows {
-		for j, val := range row {
-			expectedRows[i][j] = widenExpected(val)
 		}
 	}
 
@@ -258,6 +258,15 @@ func normalizeToExpected(actual, expected interface{}) interface{} {
 		switch v := actual.(type) {
 		case int64:
 			return int(v)
+		case int:
+			return v
+		}
+	case int64:
+		switch v := actual.(type) {
+		case int:
+			return int64(v)
+		case int32:
+			return int64(v)
 		}
 	case uint32:
 		switch v := actual.(type) {

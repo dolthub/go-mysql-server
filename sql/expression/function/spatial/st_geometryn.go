@@ -133,10 +133,7 @@ func (g *GeometryN) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		}
 		return v.Polygons[idx-1], nil
 	default:
-		// Non-collection types: return self for N=1, NULL otherwise
-		if idx == 1 {
-			return gv, nil
-		}
+		// Non-collection types: return NULL per MySQL behavior
 		return nil, nil
 	}
 }
