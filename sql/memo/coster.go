@@ -67,6 +67,14 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 		lBest := math.Max(1, float64(jp.Left.RelProps.GetStats().RowCount()))
 		rBest := math.Max(1, float64(jp.Right.RelProps.GetStats().RowCount()))
 
+		// TODO: Filters should incur additional proportional cost. Source: I made it up
+		if filter, isFilter := jp.Left.Best.(*Filter); isFilter {
+			lBest = (1.0 + cpuCostFactor) * float64(len(filter.Filters)) * lBest
+		}
+		if filter, isFilter := jp.Right.Best.(*Filter); isFilter {
+			rBest = (1.0 + cpuCostFactor) * float64(len(filter.Filters)) * rBest
+		}
+
 		// if a child is an index scan, the table scan will be more expensive
 		var err error
 		lTableScan := uint64(lBest)

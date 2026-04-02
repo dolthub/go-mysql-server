@@ -453,6 +453,9 @@ func (m *Memo) optimizeMemoGroup(grp *ExprGroup) error {
 
 	for n != nil {
 		m.Tracer.Log("Evaluating plan (%s)", n)
+		if _, ok := n.(*LookupJoin); ok {
+			print()
+		}
 		var cost float64
 		for _, g := range n.Children() {
 			err := m.optimizeMemoGroup(g)
