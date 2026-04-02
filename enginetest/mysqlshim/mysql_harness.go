@@ -16,10 +16,15 @@ package mysqlshim
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+	"gopkg.in/src-d/go-errors.v1"
+
 	"github.com/dolthub/go-mysql-server/enginetest"
+	"github.com/dolthub/go-mysql-server/enginetest/queries"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
 	"github.com/dolthub/go-mysql-server/sql"
 )
@@ -36,6 +41,7 @@ type MySQLHarness struct {
 var _ enginetest.Harness = (*MySQLHarness)(nil)
 var _ enginetest.ClientHarness = (*MySQLHarness)(nil)
 var _ enginetest.SkippingHarness = (*MySQLHarness)(nil)
+var _ enginetest.ResultEvaluationHarness = (*MySQLHarness)(nil)
 
 func (m *MySQLHarness) Setup(setupData ...[]setup.SetupScript) {
 	m.setupData = nil
@@ -46,9 +52,58 @@ func (m *MySQLHarness) Setup(setupData ...[]setup.SetupScript) {
 }
 
 func (m *MySQLHarness) NewEngine(t *testing.T) (enginetest.QueryEngine, error) {
-	// TODO: this needs to initialize database state by first dropping any databases about to be created by the setup
-	//  statements, then running them all on the connection.
+	// Run setup scripts: first drop any databases that will be created, then execute all statements.
+	for _, script := range m.setupData {
+		for _, stmt := range script {
+			lcStmt := strings.ToLower(strings.TrimSpace(stmt))
+			if strings.HasPrefix(lcStmt, "create database") {
+				// Extract the database name and drop it first for a clean slate.
+				dbName := extractDatabaseName(stmt)
+				if dbName != "" {
+					_ = m.shim.Exec("", fmt.Sprintf("DROP DATABASE IF EXISTS `%s`", dbName))
+				}
+			}
+		}
+	}
+
+	for _, script := range m.setupData {
+		for _, stmt := range script {
+			if err := m.shim.Exec("", stmt); err != nil {
+				t.Fatalf("setup statement failed: %s\nerror: %v", stmt, err)
+			}
+		}
+	}
+
 	return m.shim, nil
+}
+
+// extractDatabaseName parses a CREATE DATABASE statement and returns the database name.
+func extractDatabaseName(stmt string) string {
+	// Tokenize by whitespace, then find the name token after "CREATE DATABASE [IF NOT EXISTS]"
+	tokens := strings.Fields(stmt)
+	i := 0
+	// Skip "CREATE" and "DATABASE"
+	if i < len(tokens) && strings.EqualFold(tokens[i], "create") {
+		i++
+	}
+	if i < len(tokens) && strings.EqualFold(tokens[i], "database") {
+		i++
+	}
+	// Skip optional "IF NOT EXISTS"
+	if i+2 < len(tokens) &&
+		strings.EqualFold(tokens[i], "if") &&
+		strings.EqualFold(tokens[i+1], "not") &&
+		strings.EqualFold(tokens[i+2], "exists") {
+		i += 3
+	}
+	if i >= len(tokens) {
+		return ""
+	}
+	name := tokens[i]
+	// Strip backticks and trailing semicolons
+	name = strings.Trim(name, "`")
+	name = strings.TrimRight(name, ";")
+	return name
 }
 
 func (m *MySQLHarness) NewContextWithClient(client sql.Client) *sql.Context {
@@ -123,6 +178,131 @@ func (m *MySQLHarness) SupportsForeignKeys() bool {
 // SupportsKeylessTables implements the interface KeylessTableHarness.
 func (m *MySQLHarness) SupportsKeylessTables() bool {
 	return true
+}
+
+// EvaluateQueryResults implements ResultEvaluationHarness. It normalizes MySQL wire-protocol
+// types to match the Go types used in GMS test expectations before comparing.
+func (m *MySQLHarness) EvaluateQueryResults(
+	t *testing.T,
+	expectedRows []sql.Row,
+	expectedCols []*sql.Column,
+	expectedSch sql.Schema,
+	actualRows []sql.Row,
+	query string,
+	wrapBehavior queries.WrapBehavior,
+) {
+	t.Helper()
+	require := require.New(t)
+
+	// Normalize actual rows: convert MySQL types to match GMS expected types
+	for i, row := range actualRows {
+		for j, val := range row {
+			if i < len(expectedRows) && j < len(expectedRows[i]) {
+				actualRows[i][j] = normalizeToExpected(val, expectedRows[i][j])
+			}
+		}
+	}
+
+	// Widen expected rows the same way the default evaluator does
+	for i, row := range expectedRows {
+		for j, val := range row {
+			expectedRows[i][j] = widenExpected(val)
+		}
+	}
+
+	upperQuery := strings.ToUpper(query)
+	orderBy := strings.Contains(upperQuery, "ORDER BY ")
+
+	if orderBy || len(expectedRows) <= 1 {
+		require.Equal(expectedRows, actualRows, "Unexpected result for query %s", query)
+	} else {
+		require.ElementsMatch(expectedRows, actualRows, "Unexpected result for query %s", query)
+	}
+}
+
+// EvaluateExpectedError implements ResultEvaluationHarness.
+func (m *MySQLHarness) EvaluateExpectedError(t *testing.T, expected string, err error) {
+	t.Helper()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), expected)
+}
+
+// EvaluateExpectedErrorKind implements ResultEvaluationHarness.
+func (m *MySQLHarness) EvaluateExpectedErrorKind(t *testing.T, expected *errors.Kind, err error) {
+	t.Helper()
+	require.Error(t, err)
+}
+
+// normalizeToExpected converts a MySQL actual value to match the type of the expected value.
+func normalizeToExpected(actual, expected interface{}) interface{} {
+	if actual == nil || expected == nil {
+		return actual
+	}
+
+	switch expected.(type) {
+	case bool:
+		// MySQL returns 0/1 integers for boolean functions; convert to bool
+		switch v := actual.(type) {
+		case int64:
+			return v != 0
+		case int32:
+			return v != 0
+		case uint64:
+			return v != 0
+		case uint8:
+			return v != 0
+		case float64:
+			return v != 0
+		}
+	case int:
+		switch v := actual.(type) {
+		case int64:
+			return int(v)
+		}
+	case uint32:
+		switch v := actual.(type) {
+		case int64:
+			return uint32(v)
+		case uint64:
+			return uint32(v)
+		}
+	case float64:
+		switch v := actual.(type) {
+		case int64:
+			return float64(v)
+		}
+	case string:
+		switch v := actual.(type) {
+		case []byte:
+			return string(v)
+		}
+	}
+
+	return actual
+}
+
+// widenExpected normalizes expected values: widening small int types to int64.
+func widenExpected(val interface{}) interface{} {
+	switch v := val.(type) {
+	case int:
+		return int64(v)
+	case int8:
+		return int64(v)
+	case int16:
+		return int64(v)
+	case int32:
+		return int64(v)
+	case uint:
+		return uint64(v)
+	case uint8:
+		return uint64(v)
+	case uint16:
+		return uint64(v)
+	case uint32:
+		return uint64(v)
+	default:
+		return val
+	}
 }
 
 // Close closes the connection. This will drop all databases created and accessed during the tests.

@@ -50,11 +50,15 @@ func (m *MySQLShim) EngineEventScheduler() sql.EventScheduler {
 }
 
 func (m *MySQLShim) QueryWithBindings(ctx *sql.Context, query string, parsed vitess.Statement, bindings map[string]vitess.Expr, qFlags *sql.QueryFlags) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
-	panic("unimplemented")
+	// The MySQL shim doesn't support prepared statements with bindings.
+	// For queries without bindings, delegate to the regular Query method.
+	return m.Query(ctx, query)
 }
 
 func (m *MySQLShim) Close() error {
-	return m.conn.Close()
+	// Don't close the connection here — it's shared across tests.
+	// The MySQLHarness.Close() method handles cleanup.
+	return nil
 }
 
 var _ enginetest.QueryEngine = (*MySQLShim)(nil)
