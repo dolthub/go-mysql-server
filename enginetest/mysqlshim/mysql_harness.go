@@ -178,6 +178,11 @@ func (m *MySQLHarness) SkipQueryTest(query string) bool {
 	if strings.Contains(lower, "st_perimeter") {
 		return true
 	}
+	// geometry_table has mixed SRID data which causes errors in MySQL for some spatial functions
+	// (e.g. st_isclosed on geographic SRIDs is not implemented in MySQL)
+	if strings.Contains(lower, "geometry_table order by g") {
+		return true
+	}
 	return false
 }
 

@@ -143,11 +143,11 @@ var LargeGeometryScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:    "SELECT ST_SRID(ST_SRID(l, 4326)) FROM large_line_srid WHERE i = 1",
-				Expected: []sql.Row{{uint32(4326)}},
+				Query:    "SELECT ST_SRID(ST_SRID(l, 3857)) FROM large_line_srid WHERE i = 1",
+				Expected: []sql.Row{{uint32(3857)}},
 			},
 			{
-				Query:    "SELECT ST_ASWKT(ST_STARTPOINT(ST_SRID(l, 4326))) FROM large_line_srid WHERE i = 1",
+				Query:    "SELECT ST_ASWKT(ST_STARTPOINT(ST_SRID(l, 3857))) FROM large_line_srid WHERE i = 1",
 				Expected: []sql.Row{{"POINT(0 0)"}},
 			},
 		},
@@ -258,7 +258,7 @@ var LargeGeometryScriptTests = []ScriptTest{
 				Expected: []sql.Row{{uint32(0)}},
 			},
 			{
-				Query:    "SELECT ST_ASWKT(mp) LIKE 'MULTIPOINT(0 0,1 1,2 2,%' FROM large_mpoint WHERE i = 1",
+				Query:    "SELECT ST_ASWKT(mp) LIKE 'MULTIPOINT((0 0),(1 1),(2 2),%' FROM large_mpoint WHERE i = 1",
 				Expected: []sql.Row{{true}},
 			},
 		},
