@@ -30,7 +30,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
-
 // MySQLHarness is a harness for a local MySQL server. This will modify databases and tables as the tests see fit, which
 // may delete pre-existing data. Ensure that the MySQL instance may freely be modified without worry.
 type MySQLHarness struct {

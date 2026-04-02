@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/go-mysql-server/sql/types"
 	vitess "github.com/dolthub/vitess/go/vt/sqlparser"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gocraft/dbr/v2"
@@ -26,6 +25,7 @@ import (
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/analyzer"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // MySQLShim is a shim for a local MySQL server. Ensure that a MySQL instance is running prior to using this shim. Note:
@@ -83,15 +83,15 @@ func NewMySQLShim(user string, password string, host string, port int) (*MySQLSh
 func isWriteStatement(query string) bool {
 	upper := strings.ToUpper(strings.TrimSpace(query))
 	return strings.HasPrefix(upper, "INSERT") ||
-			strings.HasPrefix(upper, "UPDATE") ||
-			strings.HasPrefix(upper, "DELETE") ||
-			strings.HasPrefix(upper, "REPLACE") ||
-			strings.HasPrefix(upper, "CREATE") ||
-			strings.HasPrefix(upper, "DROP") ||
-			strings.HasPrefix(upper, "ALTER") ||
-			strings.HasPrefix(upper, "TRUNCATE") ||
-			strings.HasPrefix(upper, "SET") ||
-			strings.HasPrefix(upper, "USE")
+		strings.HasPrefix(upper, "UPDATE") ||
+		strings.HasPrefix(upper, "DELETE") ||
+		strings.HasPrefix(upper, "REPLACE") ||
+		strings.HasPrefix(upper, "CREATE") ||
+		strings.HasPrefix(upper, "DROP") ||
+		strings.HasPrefix(upper, "ALTER") ||
+		strings.HasPrefix(upper, "TRUNCATE") ||
+		strings.HasPrefix(upper, "SET") ||
+		strings.HasPrefix(upper, "USE")
 }
 
 // Query queries the connection and return a row iterator.
