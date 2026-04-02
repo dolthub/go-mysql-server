@@ -16,9 +16,10 @@ package mysqlshim
 
 import (
 	"fmt"
-	"sort"
-	"strings"
 
+	"github.com/dolthub/go-mysql-server/enginetest"
+	"github.com/dolthub/go-mysql-server/sql/analyzer"
+	vitess "github.com/dolthub/vitess/go/vt/sqlparser"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gocraft/dbr/v2"
 
@@ -32,7 +33,31 @@ type MySQLShim struct {
 	databases map[string]string
 }
 
-var _ sql.MutableDatabaseProvider = (*MySQLShim)(nil)
+func (m *MySQLShim) PrepareQuery(context *sql.Context, s string) (sql.Node, error) {
+	panic("unimplemented")
+}
+
+func (m *MySQLShim) AnalyzeQuery(context *sql.Context, s string) (sql.Node, error) {
+	panic("unimplemented")
+}
+
+func (m *MySQLShim) EngineAnalyzer() *analyzer.Analyzer {
+	panic("unimplemented")
+}
+
+func (m *MySQLShim) EngineEventScheduler() sql.EventScheduler {
+	panic("unimplemented")
+}
+
+func (m *MySQLShim) QueryWithBindings(ctx *sql.Context, query string, parsed vitess.Statement, bindings map[string]vitess.Expr, qFlags *sql.QueryFlags) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
+	panic("unimplemented")
+}
+
+func (m *MySQLShim) Close() error {
+	return m.conn.Close()
+}
+
+var _ enginetest.QueryEngine = (*MySQLShim)(nil)
 
 // NewMySQLShim returns a new MySQLShim.
 func NewMySQLShim(user string, password string, host string, port int) (*MySQLShim, error) {
@@ -48,75 +73,21 @@ func NewMySQLShim(user string, password string, host string, port int) (*MySQLSh
 	return &MySQLShim{conn, make(map[string]string)}, nil
 }
 
-// Database implements the interface sql.MutableDatabaseProvider.
-func (m *MySQLShim) Database(ctx *sql.Context, name string) (sql.Database, error) {
-	if dbName, ok := m.databases[strings.ToLower(name)]; ok {
-		return Database{m, dbName}, nil
-	}
-	return nil, sql.ErrDatabaseNotFound.New(name)
-}
-
-// HasDatabase implements the interface sql.MutableDatabaseProvider.
-func (m *MySQLShim) HasDatabase(ctx *sql.Context, name string) bool {
-	_, ok := m.databases[strings.ToLower(name)]
-	return ok
-}
-
-// AllDatabases implements the interface sql.MutableDatabaseProvider.
-func (m *MySQLShim) AllDatabases(*sql.Context) []sql.Database {
-	var dbStrings []string
-	for _, dbName := range m.databases {
-		dbStrings = append(dbStrings, dbName)
-	}
-	sort.Strings(dbStrings)
-	dbs := make([]sql.Database, len(dbStrings))
-	for i, dbString := range dbStrings {
-		dbs[i] = Database{m, dbString}
-	}
-	return dbs
-}
-
-// CreateDatabase implements the interface sql.MutableDatabaseProvider.
-func (m *MySQLShim) CreateDatabase(ctx *sql.Context, name string) error {
-	_, err := m.conn.Exec(fmt.Sprintf("CREATE DATABASE `%s` DEFAULT COLLATE %s;", name, sql.Collation_Default.String()))
-	if err != nil {
-		return err
-	}
-	m.databases[strings.ToLower(name)] = name
-	return nil
-}
-
-// DropDatabase implements the interface sql.MutableDatabaseProvider.
-func (m *MySQLShim) DropDatabase(ctx *sql.Context, name string) error {
-	_, err := m.conn.Exec(fmt.Sprintf("DROP DATABASE `%s`;", name))
-	if err != nil {
-		return err
-	}
-	delete(m.databases, strings.ToLower(name))
-	return nil
-}
-
-// Close closes the shim. This will drop all databases created and accessed since this shim was created.
-func (m *MySQLShim) Close() {
-	for dbName := range m.databases {
-		_, _ = m.conn.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS `%s`;", dbName))
-	}
-	_ = m.conn.Close()
-}
-
 // Query queries the connection and return a row iterator.
-func (m *MySQLShim) Query(db string, query string) (sql.RowIter, error) {
-	if len(db) > 0 {
-		_, err := m.conn.Exec(fmt.Sprintf("USE `%s`;", db))
+func (m *MySQLShim) Query(ctx *sql.Context, query string) (sql.Schema, sql.RowIter, *sql.QueryFlags, error) {
+	if len(ctx.GetCurrentDatabase()) > 0 {
+		_, err := m.conn.Exec(fmt.Sprintf("USE `%s`;", ctx.GetCurrentDatabase()))
 		if err != nil {
-			return nil, err
+			return nil, nil, nil, err
 		}
 	}
 	rows, err := m.conn.Query(query)
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
-	return newMySQLIter(rows), nil
+
+	iter := newMySQLIter(rows)
+	return iter.Schema(), iter, nil, nil
 }
 
 // QueryRows queries the connection and returns the rows returned.

@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
 // mysqlIter wraps an iterator returned by the MySQL connection.
@@ -59,10 +60,57 @@ func newMySQLIter(rows *dsql.Rows) mysqlIter {
 			scanType = reflect.TypeOf("")
 		case reflect.TypeOf(dsql.NullTime{}):
 			scanType = reflect.TypeOf(time.Time{})
+		default:
+			panic("unsupported scan type: " + scanType.String())
 		}
 		types[i] = scanType
 	}
 	return mysqlIter{rows, types}
+}
+
+func (m mysqlIter) Schema() sql.Schema {
+	schema := make(sql.Schema, len(m.types))
+	for i, typ := range m.types {
+		var col sql.Column
+		switch typ {
+		case reflect.TypeOf(""):
+			col = sql.Column{
+				Type: types.Text,
+			}
+		case reflect.TypeOf(true):
+			col = sql.Column{
+				Type: types.Boolean,
+			}
+		case reflect.TypeOf(byte(0)):
+			col = sql.Column{
+				Type: types.Uint8,
+			}
+		case reflect.TypeOf(float64(0)):
+			col = sql.Column{
+				Type: types.Float64,
+			}
+		case reflect.TypeOf(int16(0)):
+			col = sql.Column{
+				Type: types.Int16,
+			}
+		case reflect.TypeOf(int32(0)):
+			col = sql.Column{
+				Type: types.Int32,
+			}
+		case reflect.TypeOf(int64(0)):
+			col = sql.Column{
+				Type: types.Int64,
+			}
+		case reflect.TypeOf(time.Time{}):
+			col = sql.Column{
+				Type: types.Time,
+			}
+		default:
+			panic("unsupported scan type: " + typ.String())
+		}
+		schema[i] = &col
+	}
+	return schema
 }
 
 // Next implements the interface sql.RowIter.

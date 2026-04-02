@@ -16,11 +16,8 @@ package mysqlshim
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"testing"
-
-	"github.com/dolthub/go-mysql-server/memory"
 
 	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/enginetest/scriptgen/setup"
@@ -36,11 +33,7 @@ type MySQLHarness struct {
 	session        sql.Session
 }
 
-// TODO: refactor to remove enginetest cycle
 var _ enginetest.Harness = (*MySQLHarness)(nil)
-var _ enginetest.IndexHarness = (*MySQLHarness)(nil)
-var _ enginetest.ForeignKeyHarness = (*MySQLHarness)(nil)
-var _ enginetest.KeylessTableHarness = (*MySQLHarness)(nil)
 var _ enginetest.ClientHarness = (*MySQLHarness)(nil)
 var _ enginetest.SkippingHarness = (*MySQLHarness)(nil)
 
@@ -53,7 +46,8 @@ func (m *MySQLHarness) Setup(setupData ...[]setup.SetupScript) {
 }
 
 func (m *MySQLHarness) NewEngine(t *testing.T) (enginetest.QueryEngine, error) {
-	return enginetest.NewEngine(t, m, m.Provider(), m.setupData, memory.NewStatsProv())
+	// TODO: init
+	return m.shim, nil
 }
 
 func (m *MySQLHarness) NewContextWithClient(client sql.Client) *sql.Context {
@@ -62,10 +56,6 @@ func (m *MySQLHarness) NewContextWithClient(client sql.Client) *sql.Context {
 		context.Background(),
 		sql.WithSession(session),
 	)
-}
-
-func (m *MySQLHarness) Cleanup() error {
-	return nil
 }
 
 // MySQLDatabase represents a database for a local MySQL server.
@@ -92,56 +82,6 @@ func NewMySQLHarness(user string, password string, host string, port int) (*MySQ
 // Parallelism implements the interface Harness.
 func (m *MySQLHarness) Parallelism() int {
 	return 1
-}
-
-// NewDatabase implements the interface Harness.
-func (m *MySQLHarness) NewDatabase(name string) sql.Database {
-	return m.NewDatabases(name)[0]
-}
-
-// NewDatabases implements the interface Harness.
-func (m *MySQLHarness) NewDatabases(names ...string) []sql.Database {
-	var dbs []sql.Database
-	ctx := sql.NewEmptyContext()
-	for _, name := range names {
-		_ = m.shim.DropDatabase(ctx, name)
-		err := m.shim.CreateDatabase(ctx, name)
-		if err != nil {
-			panic(err)
-		}
-		db, err := m.shim.Database(ctx, name)
-		if err != nil {
-			panic(err)
-		}
-		dbs = append(dbs, db)
-	}
-	return dbs
-}
-
-// NewDatabaseProvider implements the interface Harness.
-func (m *MySQLHarness) NewDatabaseProvider() sql.MutableDatabaseProvider {
-	return m.shim
-}
-
-func (m *MySQLHarness) Provider() sql.MutableDatabaseProvider {
-	return m.shim
-}
-
-// NewTable implements the interface Harness.
-func (m *MySQLHarness) NewTable(db sql.Database, name string, schema sql.PrimaryKeySchema) (sql.Table, error) {
-	ctx := sql.NewEmptyContext()
-	err := db.(sql.TableCreator).CreateTable(ctx, name, schema, sql.Collation_Default, "")
-	if err != nil {
-		return nil, err
-	}
-	tbl, ok, err := db.GetTableInsensitive(ctx, name)
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return nil, fmt.Errorf("successfully created table `%s` but could not retrieve", name)
-	}
-	return tbl, nil
 }
 
 // NewContext implements the interface Harness.
