@@ -17,13 +17,13 @@ package mysqlshim
 import (
 	"fmt"
 
-	"github.com/dolthub/go-mysql-server/enginetest"
-	"github.com/dolthub/go-mysql-server/sql/analyzer"
 	vitess "github.com/dolthub/vitess/go/vt/sqlparser"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gocraft/dbr/v2"
 
+	"github.com/dolthub/go-mysql-server/enginetest"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/analyzer"
 )
 
 // MySQLShim is a shim for a local MySQL server. Ensure that a MySQL instance is running prior to using this shim. Note:

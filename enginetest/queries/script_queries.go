@@ -15378,7 +15378,7 @@ var SpatialScriptTests = []ScriptTest{
 	// ST_NumGeometries tests
 	// ========================================================================
 	{
-		Name: "ST_NumGeometries returns component count",
+		Name:        "ST_NumGeometries returns component count",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -15408,7 +15408,7 @@ var SpatialScriptTests = []ScriptTest{
 	// ST_GeometryN tests
 	// ========================================================================
 	{
-		Name: "ST_GeometryN extracts Nth geometry",
+		Name:        "ST_GeometryN extracts Nth geometry",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -15444,7 +15444,7 @@ var SpatialScriptTests = []ScriptTest{
 	// ST_ExteriorRing tests
 	// ========================================================================
 	{
-		Name: "ST_ExteriorRing returns exterior ring of polygon",
+		Name:        "ST_ExteriorRing returns exterior ring of polygon",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -15466,7 +15466,7 @@ var SpatialScriptTests = []ScriptTest{
 	// ST_PointN tests
 	// ========================================================================
 	{
-		Name: "ST_PointN extracts Nth point from linestring",
+		Name:        "ST_PointN extracts Nth point from linestring",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -15492,7 +15492,7 @@ var SpatialScriptTests = []ScriptTest{
 	// ST_Contains tests
 	// ========================================================================
 	{
-		Name: "ST_Contains tests containment",
+		Name:        "ST_Contains tests containment",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -15515,7 +15515,7 @@ var SpatialScriptTests = []ScriptTest{
 	// ST_Envelope tests
 	// ========================================================================
 	{
-		Name: "ST_Envelope returns bounding box",
+		Name:        "ST_Envelope returns bounding box",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -15548,7 +15548,7 @@ var SpatialScriptTests = []ScriptTest{
 	// ST_Disjoint tests
 	// ========================================================================
 	{
-		Name: "ST_Disjoint tests spatial disjointness",
+		Name:        "ST_Disjoint tests spatial disjointness",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -15576,7 +15576,7 @@ var SpatialScriptTests = []ScriptTest{
 	// ST_NumInteriorRings tests
 	// ========================================================================
 	{
-		Name: "ST_NumInteriorRings returns interior ring count",
+		Name:        "ST_NumInteriorRings returns interior ring count",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -15604,7 +15604,7 @@ var SpatialScriptTests = []ScriptTest{
 	// ST_InteriorRingN tests
 	// ========================================================================
 	{
-		Name: "ST_InteriorRingN extracts interior ring",
+		Name:        "ST_InteriorRingN extracts interior ring",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -15626,7 +15626,7 @@ var SpatialScriptTests = []ScriptTest{
 	// ST_IsEmpty tests
 	// ========================================================================
 	{
-		Name: "ST_IsEmpty checks for empty geometry collection",
+		Name:        "ST_IsEmpty checks for empty geometry collection",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -15651,7 +15651,7 @@ var SpatialScriptTests = []ScriptTest{
 	// ST_Centroid tests
 	// ========================================================================
 	{
-		Name: "ST_Centroid returns centroid of geometry",
+		Name:        "ST_Centroid returns centroid of geometry",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -15684,7 +15684,7 @@ var SpatialScriptTests = []ScriptTest{
 	// ST_ConvexHull tests
 	// ========================================================================
 	{
-		Name: "ST_ConvexHull returns convex hull",
+		Name:        "ST_ConvexHull returns convex hull",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -15717,7 +15717,7 @@ var SpatialScriptTests = []ScriptTest{
 	// ST_IsSimple tests
 	// ========================================================================
 	{
-		Name: "ST_IsSimple checks for self-intersection",
+		Name:        "ST_IsSimple checks for self-intersection",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -15755,7 +15755,7 @@ var SpatialScriptTests = []ScriptTest{
 	// ST_Validate tests
 	// ========================================================================
 	{
-		Name: "ST_Validate returns valid geometry or NULL",
+		Name:        "ST_Validate returns valid geometry or NULL",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -15783,7 +15783,7 @@ var SpatialScriptTests = []ScriptTest{
 	// ST_GeoHash / ST_LatFromGeoHash / ST_LongFromGeoHash / ST_PointFromGeoHash tests
 	// ========================================================================
 	{
-		Name: "ST_GeoHash encodes coordinates",
+		Name:        "ST_GeoHash encodes coordinates",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -15808,7 +15808,7 @@ var SpatialScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "ST_LatFromGeoHash and ST_LongFromGeoHash decode geohash",
+		Name:        "ST_LatFromGeoHash and ST_LongFromGeoHash decode geohash",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
@@ -15827,7 +15827,7 @@ var SpatialScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "ST_PointFromGeoHash decodes to point",
+		Name:        "ST_PointFromGeoHash decodes to point",
 		SetUpScript: []string{},
 		Assertions: []ScriptTestAssertion{
 			{
