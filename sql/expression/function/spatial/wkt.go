@@ -108,7 +108,7 @@ func PolygonToWKT(p types.Polygon, order bool) string {
 func MultiPointToWKT(p types.MultiPoint, order bool) string {
 	points := make([]string, len(p.Points))
 	for i, p := range p.Points {
-		points[i] = PointToWKT(p, order)
+		points[i] = "(" + PointToWKT(p, order) + ")"
 	}
 	return strings.Join(points, ",")
 }
@@ -149,7 +149,11 @@ func GeomCollToWKT(g types.GeomColl, order bool) string {
 		case types.MultiPolygon:
 			geoms[i] = "MULTIPOLYGON(" + MultiPolygonToWKT(g, order) + ")"
 		case types.GeomColl:
-			geoms[i] = "GEOMETRYCOLLECTION(" + GeomCollToWKT(g, order) + ")"
+			if len(g.Geoms) == 0 {
+				geoms[i] = "GEOMETRYCOLLECTION EMPTY"
+			} else {
+				geoms[i] = "GEOMETRYCOLLECTION(" + GeomCollToWKT(g, order) + ")"
+			}
 		}
 	}
 	return strings.Join(geoms, ",")
@@ -194,6 +198,9 @@ func (p *AsWKT) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		geomType = "MULTIPOLYGON"
 		data = MultiPolygonToWKT(v, v.SRID == types.GeoSpatialSRID)
 	case types.GeomColl:
+		if len(v.Geoms) == 0 {
+			return "GEOMETRYCOLLECTION EMPTY", nil
+		}
 		geomType = "GEOMETRYCOLLECTION"
 		data = GeomCollToWKT(v, v.SRID == types.GeoSpatialSRID)
 	default:
@@ -283,6 +290,20 @@ func TrimWKTData(s string) (string, int, error) {
 // ParseWKTHeader should extract the type and data from the geometry string
 // `end` is used to detect extra characters after a valid geometry
 func ParseWKTHeader(s string) (string, string, int, error) {
+	// Handle "GEOMETRYCOLLECTION EMPTY" (and similar EMPTY forms)
+	trimmed := strings.TrimSpace(s)
+	lower := strings.ToLower(trimmed)
+	if strings.HasSuffix(lower, " empty") {
+		// Check if there's no parenthesis (pure EMPTY form)
+		parenIdx := strings.Index(trimmed, "(")
+		spaceIdx := strings.LastIndex(trimmed, " ")
+		if parenIdx == -1 || (spaceIdx > 0 && spaceIdx < len(trimmed) && parenIdx > spaceIdx) {
+			geomType := strings.TrimSpace(lower[:spaceIdx])
+			endIdx := spaceIdx + len(" empty")
+			return geomType, "", endIdx, nil
+		}
+	}
+
 	// Read until first open parenthesis
 	start := strings.Index(s, "(")
 
@@ -395,12 +416,42 @@ func WKTToPoly(s string, srid uint32, order bool) (types.Polygon, error) {
 	return types.Polygon{SRID: srid, Lines: lines}, nil
 }
 
-// WKTToMPoint expects a string like "1.2 3.4, 5.6 7.8, ..."
+// WKTToMPoint expects a string like "(1.2 3.4), (5.6 7.8), ..." or "1.2 3.4, 5.6 7.8, ..."
 func WKTToMPoint(s string, srid uint32, order bool) (types.MultiPoint, error) {
 	if len(s) == 0 {
 		return types.MultiPoint{}, sql.ErrInvalidGISData.New()
 	}
 
+	s = strings.TrimSpace(s)
+
+	// Check if points are wrapped in parentheses: "(x y), (x y), ..."
+	if s[0] == '(' {
+		var points []types.Point
+		for {
+			pointStr, end, err := TrimWKTData(s)
+			if err != nil {
+				return types.MultiPoint{}, err
+			}
+			point, err := WKTToPoint(pointStr, srid, order)
+			if err != nil {
+				return types.MultiPoint{}, sql.ErrInvalidGISData.New()
+			}
+			points = append(points, point)
+
+			s = s[end:]
+			s = strings.TrimSpace(s)
+			if len(s) == 0 {
+				break
+			}
+			if s[0] != ',' {
+				return types.MultiPoint{}, sql.ErrInvalidGISData.New()
+			}
+			s = strings.TrimSpace(s[1:])
+		}
+		return types.MultiPoint{SRID: srid, Points: points}, nil
+	}
+
+	// Legacy format without parentheses: "x y, x y, ..."
 	pointStrs := strings.Split(s, ",")
 	var points = make([]types.Point, len(pointStrs))
 	var err error
