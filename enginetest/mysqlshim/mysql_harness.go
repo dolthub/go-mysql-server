@@ -46,7 +46,8 @@ func (m *MySQLHarness) Setup(setupData ...[]setup.SetupScript) {
 }
 
 func (m *MySQLHarness) NewEngine(t *testing.T) (enginetest.QueryEngine, error) {
-	// TODO: init
+	// TODO: this needs to initialize database state by first dropping any databases about to be created by the setup
+	//  statements, then running them all on the connection.
 	return m.shim, nil
 }
 
