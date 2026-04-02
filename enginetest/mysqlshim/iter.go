@@ -26,8 +26,8 @@ import (
 
 // mysqlIter wraps an iterator returned by the MySQL connection.
 type mysqlIter struct {
-	rows      *dsql.Rows
-	types     []reflect.Type
+	rows        *dsql.Rows
+	types       []reflect.Type
 	dbTypeNames []string
 }
 
