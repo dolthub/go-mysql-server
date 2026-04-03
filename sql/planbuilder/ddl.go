@@ -1431,7 +1431,7 @@ func (b *Builder) tableSpecToSchema(inScope, outScope *scope, db sql.Database, t
 		}
 
 		schema = append(schema, column)
-		outScope.newColumn(scopeColumn{
+		outScope.newColumn(&scopeColumn{
 			tableId:  tabId,
 			table:    tableName,
 			db:       db.Name(),
@@ -1632,7 +1632,7 @@ func (b *Builder) modifySchemaTarget(inScope *scope, n sql.SchemaTarget, sch sql
 func (b *Builder) ResolveSchemaDefaults(db string, tableName string, schema sql.Schema) sql.Schema {
 	tableScope := b.newScope()
 	for _, c := range schema {
-		tableScope.newColumn(scopeColumn{
+		tableScope.newColumn(&scopeColumn{
 			table:       strings.ToLower(tableName),
 			db:          strings.ToLower(db),
 			col:         strings.ToLower(c.Name),
@@ -1669,7 +1669,7 @@ func (b *Builder) resolveSchemaDefaults(inScope *scope, schema sql.Schema) sql.S
 		// backfill rest of columns
 		resolveScope := inScope.replace()
 		for _, col := range schema {
-			resolveScope.newColumn(scopeColumn{
+			resolveScope.newColumn(&scopeColumn{
 				db:       col.DatabaseSource,
 				table:    strings.ToLower(col.Source),
 				col:      strings.ToLower(col.Name),
