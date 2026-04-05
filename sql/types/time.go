@@ -328,6 +328,21 @@ func stringToTimespan(s string) (Timespan, error) {
 		s = s[1:]
 	}
 
+	// Truncate trailing non-time characters (MySQL compatibility)
+	// MySQL silently truncates non-numeric suffixes, e.g. '12:34:12abc' -> '12:34:12'
+	end := len(s)
+	for end > 0 {
+		c := s[end-1]
+		if (c >= '0' && c <= '9') || c == ':' || c == '.' {
+			break
+		}
+		end--
+	}
+	if end == 0 {
+		return Timespan(0), ErrConvertingToTimeType.New(s)
+	}
+	s = s[:end]
+
 	comps := strings.SplitN(s, ".", 2)
 
 	// Parse microseconds
