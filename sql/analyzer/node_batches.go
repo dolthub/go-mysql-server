@@ -48,7 +48,7 @@ func isSimpleSelect(proj *plan.Project) bool {
 
 // getBatchesForNode returns a partial analyzer ruleset for simple node
 // types that require little prior validation before execution.
-func (a *Analyzer) getBatchesForNode(scope *plan.Scope, node sql.Node) ([]*Batch, bool) {
+func getBatchesForNode(scope *plan.Scope, node sql.Node) ([]*Batch, bool) {
 	switch n := node.(type) {
 	case *plan.Commit:
 		return nil, true
@@ -174,7 +174,7 @@ func (a *Analyzer) getBatchesForNode(scope *plan.Scope, node sql.Node) ([]*Batch
 			}, true
 		}
 	case *plan.Project:
-		// TODO: avoid analyzer recursing on subqueries in project expressions
+		// Scope checks here are to prevent this from applying to subqueries
 		if (scope == nil || scope.RecursionDepth() < 1) && isSimpleSelect(n) {
 			return []*Batch{
 				{
@@ -191,8 +191,7 @@ func (a *Analyzer) getBatchesForNode(scope *plan.Scope, node sql.Node) ([]*Batch
 					Rules:      AlwaysBeforeDefault,
 				},
 				{
-					// TODO: hacky way to deal with subqueries?
-					Desc:       "default-rules",
+					Desc:       "defaultRules",
 					Iterations: 1,
 					Rules: []Rule{
 						{Id: validateStarExpressionsId, Apply: validateStarExpressions},
@@ -206,17 +205,19 @@ func (a *Analyzer) getBatchesForNode(scope *plan.Scope, node sql.Node) ([]*Batch
 						{Id: stripTableNameInDefaultsId, Apply: stripTableNamesFromColumnDefaults},
 						{Id: pushFiltersId, Apply: pushFilters},
 						{Id: optimizeJoinsId, Apply: optimizeJoins},
-						{Id: applyIndexesFromOuterScopeId, Apply: applyIndexesFromOuterScope}, // TODO: this shouldn't be necessary
 						{Id: eraseProjectionId, Apply: eraseProjection},
 						{Id: applyHashInId, Apply: applyHashIn},
 						{Id: assignRoutinesId, Apply: assignRoutines},
 					},
 				},
 				{
-					// TODO: can skip resolveInsertRows here probably
 					Desc:       "onceAfterAll",
 					Iterations: 1,
-					Rules:      OnceAfterAll,
+					Rules: []Rule{
+						{Id: assignExecIndexesId, Apply: assignExecIndexes},
+						{Id: QuoteDefaultColumnValueNamesId, Apply: quoteDefaultColumnValueNames},
+						{Id: TrackProcessId, Apply: trackProcess},
+					},
 				},
 				{
 					// TODO: can skip resolveInsertRows here probably
