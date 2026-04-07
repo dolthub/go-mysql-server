@@ -38,9 +38,10 @@ func (b *ExecBuilder) buildCrossJoin(j *CrossJoin, children ...sql.Node) (sql.No
 	return plan.NewCrossJoin(children[0], children[1]), nil
 }
 
+// TODO: buildLeftJoin, buildSemiJoin, and buildAntiJoin are all identical. Condense into single function
 func (b *ExecBuilder) buildLeftJoin(j *LeftJoin, children ...sql.Node) (sql.Node, error) {
 	filters := b.buildFilterConjunction(j.Filter...)
-	return plan.NewLeftOuterJoin(children[0], children[1], filters), nil
+	return plan.NewJoin(children[0], children[1], j.Op, filters), nil
 }
 
 func (b *ExecBuilder) buildFullOuterJoin(j *FullOuterJoin, children ...sql.Node) (sql.Node, error) {

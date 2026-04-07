@@ -68,7 +68,7 @@ var JoinPlanningTests = []joinPlanScript{
 			},
 			{
 				q:     "select * from xy where x > 0 and x not in (select 999) and x in (select 888 union select 777)",
-				types: []plan.JoinType{plan.JoinTypeLeftOuter},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterExcludeNulls},
 				exp:   []sql.Row{},
 			},
 		},
@@ -438,18 +438,18 @@ var JoinPlanningTests = []joinPlanScript{
 			},
 			{
 				q:     "select * from xy where x not in (select u from uv where u not in (select a from ab where a not in (select r from rs where r = 1))) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeLeftOuterHashExcludeNulls, plan.JoinTypeLeftOuterHashExcludeNulls, plan.JoinTypeLeftOuter},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterHashExcludeNulls, plan.JoinTypeLeftOuterHashExcludeNulls, plan.JoinTypeLeftOuterExcludeNulls},
 				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
 			},
 			{
 				q:     "select * from xy where x != (select r from rs where r = 1) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeLeftOuter},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterExcludeNulls},
 				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
 			},
 			{
 				// anti join will be cross-join-right, then converted to inner join when filters are pushed down, be passed non-nil parent row
 				q:     "select x,a from ab, (select * from xy where x != (select r from rs where r = 1) order by 1) sq where x = 2 and b = 2 order by 1,2;",
-				types: []plan.JoinType{plan.JoinTypeInner, plan.JoinTypeLeftOuter},
+				types: []plan.JoinType{plan.JoinTypeInner, plan.JoinTypeLeftOuterExcludeNulls},
 				exp:   []sql.Row{{2, 0}, {2, 1}, {2, 2}},
 			},
 			{
@@ -464,7 +464,7 @@ select * from uv where u > (
   order by 1 limit 1
 )
 order by 1;`,
-				types: []plan.JoinType{plan.JoinTypeSemi, plan.JoinTypeCrossHash, plan.JoinTypeLeftOuter},
+				types: []plan.JoinType{plan.JoinTypeSemi, plan.JoinTypeCrossHash, plan.JoinTypeLeftOuterExcludeNulls},
 				exp:   []sql.Row{{1, 1}, {2, 2}, {3, 2}},
 			},
 			{
@@ -476,13 +476,13 @@ order by 1;`,
 			{
 				// order by will be discarded
 				q:     "select * from xy where x != (select r from rs where r = 1 order by 1) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeLeftOuter},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterExcludeNulls},
 				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
 			},
 			{
 				// limit prevents scope merging
 				q:     "select * from xy where x != (select r from rs where r = 1 limit 1) order by 1;",
-				types: []plan.JoinType{plan.JoinTypeLeftOuter},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterExcludeNulls},
 				exp:   []sql.Row{{0, 2}, {2, 1}, {3, 3}},
 			},
 			{
@@ -562,12 +562,12 @@ order by 1;`,
 			},
 			{
 				q:     "select * from xy where x = 1 and x != (select u from uv where u = 4);",
-				types: []plan.JoinType{plan.JoinTypeLeftOuter},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterExcludeNulls},
 				exp:   []sql.Row{{1, 0}},
 			},
 			{
 				q:     "select * from xy where x = 1 and x not in (select u from uv where u = 4);",
-				types: []plan.JoinType{plan.JoinTypeLeftOuter},
+				types: []plan.JoinType{plan.JoinTypeLeftOuterExcludeNulls},
 				exp:   []sql.Row{{1, 0}},
 			},
 			{
