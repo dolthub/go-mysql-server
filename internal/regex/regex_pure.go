@@ -1,4 +1,4 @@
-//go:build gms_pure_go
+//go:build windows || gms_pure_go
 
 package regex
 
