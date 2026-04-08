@@ -537,7 +537,7 @@ func (a *Analyzer) analyzeWithSelector(ctx *sql.Context, n sql.Node, scope *plan
 	a.LogNode(n)
 
 	batches := a.Batches
-	if b, ok := getBatchesForNode(scope, n); ok {
+	if b, ok := getBatchesForNode(scope, n, qFlags); ok {
 		batches = b
 	}
 

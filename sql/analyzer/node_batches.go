@@ -2,54 +2,15 @@ package analyzer
 
 import (
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
-
-func isSubqueryExpr(expr sql.Expression) bool {
-	switch e := expr.(type) {
-	case *plan.Subquery:
-		return true
-	case *plan.InSubquery:
-		return true
-	case *plan.ExistsSubquery:
-		return true
-	case *expression.Case:
-		if isSubqueryExpr(e.Expr) {
-			return true
-		}
-		if isSubqueryExpr(e.Else) {
-			return true
-		}
-		for _, branch := range e.Branches {
-			if isSubqueryExpr(branch.Value) || isSubqueryExpr(branch.Cond) {
-				return true
-			}
-		}
-		return false
-	case expression.UnaryExpression:
-		return isSubqueryExpr(e.UnaryChild())
-	case expression.BinaryExpression:
-		return isSubqueryExpr(e.Left()) || isSubqueryExpr(e.Right())
-	default:
-		return false
-	}
-}
 
 func isSimpleSelect(proj *plan.Project) bool {
 	child := proj.Child
 	switch c := child.(type) {
 	case *plan.Filter:
-		if isSubqueryExpr(c.Expression) {
-			return false
-		}
 		child = c.Child
 	default:
-	}
-	for _, expr := range proj.Projections {
-		if isSubqueryExpr(expr) {
-			return false
-		}
 	}
 	if _, isResTbl := child.(*plan.ResolvedTable); !isResTbl {
 		return false
@@ -59,7 +20,7 @@ func isSimpleSelect(proj *plan.Project) bool {
 
 // getBatchesForNode returns a partial analyzer ruleset for simple node
 // types that require little prior validation before execution.
-func getBatchesForNode(scope *plan.Scope, node sql.Node) ([]*Batch, bool) {
+func getBatchesForNode(scope *plan.Scope, node sql.Node, qFlags *sql.QueryFlags) ([]*Batch, bool) {
 	switch n := node.(type) {
 	case *plan.Commit:
 		return nil, true
@@ -190,7 +151,7 @@ func getBatchesForNode(scope *plan.Scope, node sql.Node) ([]*Batch, bool) {
 			return nil, false
 		}
 		// Scope checks to prevent this from applying to subqueries
-		if (scope == nil || scope.RecursionDepth() < 1) && isSimpleSelect(n) {
+		if (scope == nil || scope.RecursionDepth() < 1) && (qFlags == nil || !qFlags.SubqueryIsSet()) && isSimpleSelect(n) {
 			return []*Batch{
 				{
 					Desc:       "onceBeforeDefault",
