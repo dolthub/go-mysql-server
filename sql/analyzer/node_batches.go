@@ -6,7 +6,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
-func isSubqeryExpr(expr sql.Expression) bool {
+func isSubqueryExpr(expr sql.Expression) bool {
 	switch e := expr.(type) {
 	case *plan.Subquery:
 		return true
@@ -14,13 +14,19 @@ func isSubqeryExpr(expr sql.Expression) bool {
 		return true
 	case *plan.ExistsSubquery:
 		return true
-	//case *expression.Alias:
-	//	return isSubqeryExpr(e.Child)
+	case *expression.InTuple:
+		return true
 	case expression.UnaryExpression:
-		return isSubqeryExpr(e.UnaryChild())
+		return isSubqueryExpr(e.UnaryChild())
 	case expression.BinaryExpression:
-		return isSubqeryExpr(e.Left()) || isSubqeryExpr(e.Right())
+		return isSubqueryExpr(e.Left()) || isSubqueryExpr(e.Right())
 	default:
+		// TODO: write test cases for subquery case
+		for _, child := range expr.Children() {
+			if isSubqueryExpr(child) {
+				return true
+			}
+		}
 		return false
 	}
 }
@@ -29,14 +35,14 @@ func isSimpleSelect(proj *plan.Project) bool {
 	child := proj.Child
 	switch c := child.(type) {
 	case *plan.Filter:
-		if isSubqeryExpr(c.Expression) {
+		if isSubqueryExpr(c.Expression) {
 			return false
 		}
 		child = c.Child
 	default:
 	}
 	for _, expr := range proj.Projections {
-		if isSubqeryExpr(expr) {
+		if isSubqueryExpr(expr) {
 			return false
 		}
 	}
@@ -174,15 +180,25 @@ func getBatchesForNode(scope *plan.Scope, node sql.Node) ([]*Batch, bool) {
 			}, true
 		}
 	case *plan.Project:
-		// Scope checks here are to prevent this from applying to subqueries
+		// TODO: hacky, but if using a custom rule set, do not apply this optimization
+		if len(AlwaysBeforeDefault) == 0 {
+			return nil, false
+		}
+		// Scope checks to prevent this from applying to subqueries
 		if (scope == nil || scope.RecursionDepth() < 1) && isSimpleSelect(n) {
 			return []*Batch{
 				{
 					Desc:       "onceBeforeDefault",
 					Iterations: 1,
 					Rules: []Rule{
-						{Id: simplifyFiltersId, Apply: simplifyFilters},
-						{Id: pushNotFiltersId, Apply: pushNotFilters},
+						{
+							Id:    simplifyFiltersId,
+							Apply: simplifyFilters,
+						},
+						{
+							Id:    pushNotFiltersId,
+							Apply: pushNotFilters,
+						},
 					},
 				},
 				{
@@ -194,37 +210,72 @@ func getBatchesForNode(scope *plan.Scope, node sql.Node) ([]*Batch, bool) {
 					Desc:       "defaultRules",
 					Iterations: 1,
 					Rules: []Rule{
-						{Id: validateStarExpressionsId, Apply: validateStarExpressions},
-						{Id: pruneTablesId, Apply: pruneTables},
+						{
+							Id:    validateStarExpressionsId,
+							Apply: validateStarExpressions,
+						},
+						{
+							Id:    pruneTablesId,
+							Apply: pruneTables,
+						},
 					},
 				},
 				{
 					Desc:       "simpleSelect",
 					Iterations: 1,
 					Rules: []Rule{
-						{Id: stripTableNameInDefaultsId, Apply: stripTableNamesFromColumnDefaults},
-						{Id: pushFiltersId, Apply: pushFilters},
-						{Id: optimizeJoinsId, Apply: optimizeJoins},
-						{Id: eraseProjectionId, Apply: eraseProjection},
-						{Id: applyHashInId, Apply: applyHashIn},
-						{Id: assignRoutinesId, Apply: assignRoutines},
+						{
+							Id:    stripTableNameInDefaultsId,
+							Apply: stripTableNamesFromColumnDefaults,
+						},
+						{
+							Id:    pushFiltersId,
+							Apply: pushFilters,
+						},
+						{
+							Id:    optimizeJoinsId,
+							Apply: optimizeJoins,
+						},
+						{
+							Id:    eraseProjectionId,
+							Apply: eraseProjection,
+						},
+						{
+							Id:    applyHashInId,
+							Apply: applyHashIn,
+						},
+						{
+							Id:    assignRoutinesId,
+							Apply: assignRoutines,
+						},
 					},
 				},
 				{
 					Desc:       "onceAfterAll",
 					Iterations: 1,
 					Rules: []Rule{
-						{Id: assignExecIndexesId, Apply: assignExecIndexes},
-						{Id: QuoteDefaultColumnValueNamesId, Apply: quoteDefaultColumnValueNames},
-						{Id: TrackProcessId, Apply: trackProcess},
+						{
+							Id:    assignExecIndexesId,
+							Apply: assignExecIndexes,
+						},
+						{
+							Id:    QuoteDefaultColumnValueNamesId,
+							Apply: quoteDefaultColumnValueNames,
+						},
+						{
+							Id:    TrackProcessId,
+							Apply: trackProcess,
+						},
 					},
 				},
 				{
-					// TODO: can skip resolveInsertRows here probably
 					Desc:       "simpleSelectValidationRules",
 					Iterations: 1,
 					Rules: []Rule{
-						{Id: ValidateOperandsId, Apply: validateOperands},
+						{
+							Id:    ValidateOperandsId,
+							Apply: validateOperands,
+						},
 					},
 				},
 			}, true
