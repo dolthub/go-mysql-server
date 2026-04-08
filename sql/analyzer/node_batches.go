@@ -21,7 +21,6 @@ func isSubqueryExpr(expr sql.Expression) bool {
 	case expression.BinaryExpression:
 		return isSubqueryExpr(e.Left()) || isSubqueryExpr(e.Right())
 	default:
-		// TODO: write test cases for subquery case
 		for _, child := range expr.Children() {
 			if isSubqueryExpr(child) {
 				return true

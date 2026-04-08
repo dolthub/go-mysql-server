@@ -251,8 +251,7 @@ func resolveSubqueriesHelper(ctx *sql.Context, a *Analyzer, node sql.Node, scope
 		} else {
 			return transform.OneNodeExprsWithNode(n, func(node sql.Node, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				if sq, ok := e.(*plan.Subquery); ok {
-					newExpr, same, err := analyzeSubqueryExpression(ctx, a, node, sq, scope, sel, finalize, qFlags)
-					return newExpr, same, err
+					return analyzeSubqueryExpression(ctx, a, node, sq, scope, sel, finalize, qFlags)
 				} else {
 					return e, transform.SameTree, nil
 				}

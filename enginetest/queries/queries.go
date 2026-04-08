@@ -5382,6 +5382,14 @@ SELECT * FROM cte WHERE  d = 2;`,
 		},
 	},
 	{
+		Query: `SELECT CASE WHEN i > (select 1) THEN 'one' ELSE 'two' END FROM mytable`,
+		Expected: []sql.Row{
+			{"two"},
+			{"one"},
+			{"one"},
+		},
+	},
+	{
 		Query: `SELECT CASE i WHEN 1 THEN JSON_OBJECT("a", 1) WHEN 2 THEN JSON_OBJECT("b", 2) END FROM mytable`,
 		Expected: []sql.Row{
 			{types.MustJSON(`{"a": 1}`)},
