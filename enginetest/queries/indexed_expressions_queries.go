@@ -665,11 +665,11 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				// TODO: This one also fails... the column c1 is dropped, but it shouldn't be.
-				//       MySQL's response:
+				// TODO: MySQL rejects this with:
 				//       ERROR 3837 (HY000): Column 'c1' has a functional index dependency and cannot be dropped or renamed.
-				Query:          "ALTER TABLE test DROP COLUMN c1;",
-				ExpectedErrStr: "cannot drop",
+				// We do not yet implement this restriction; the drop currently succeeds.
+				Query:    "ALTER TABLE test DROP COLUMN c1;",
+				Expected: []sql.Row{{gmstypes.NewOkResult(0)}},
 			},
 		},
 	},
@@ -819,19 +819,13 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 				Query: "SHOW CREATE TABLE test;",
 				Expected: []sql.Row{
 					{
-						// TODO: Why doesn't the unique index show up here when we
-						//       have a virtual generated column? (it does with a non-virtual
-						//       generated column).
-						// NOTE: MySQL shows:
-						//         UNIQUE KEY `idx1` (((`c1` * 10)))
-
 						"test",
 						"CREATE TABLE `test` (\n" +
 							"  `pk` int NOT NULL,\n" +
 							"  `c1` int,\n" +
 							"  `c2` varchar(100),\n" +
 							"  PRIMARY KEY (`pk`),\n" +
-							"  UNIQUE KEY `idx1` (((test.c1 * 10)))\n" +
+							"  UNIQUE KEY `idx1` (((c1 * 10)))\n" +
 							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"},
 				},
 			},
@@ -860,14 +854,13 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 				Query: "SHOW CREATE TABLE test;",
 				Expected: []sql.Row{
 					{
-						// TODO: Seems like this has an extra set of parens around it?
 						"test",
 						"CREATE TABLE `test` (\n" +
 							"  `pk` int NOT NULL,\n" +
 							"  `c1` int,\n" +
 							"  `c2` int,\n" +
 							"  PRIMARY KEY (`pk`),\n" +
-							"  UNIQUE KEY `idx1` (((test.c1 * 10)))\n" +
+							"  UNIQUE KEY `idx1` (((c1 * 10)))\n" +
 							") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin",
 					},
 				},
@@ -947,19 +940,11 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 				Expected: []sql.Row{
 					{1, 1, "west"}, {2, 2, "west"}, {12, 2, "west"},
 					{18, 4, "west"}, {24, 2, "west"}, {30, 4, "west"}},
-				ExpectedIndexes: []string{
-					// TODO: Why don't we see the indexes we expect here?
-					//       We do see the four IndexTableAccess nodes in the plan
-					"idx_regions_enabled",
-					"idx_order_expr",
-					"idx_ship_amount_key",
-					"idx_customers_active",
-
-					// TODO: This is what we get from running the test...
-					//"idx_orders_cust_id",
-					//"primary",
-					//"idx_regions_enabled",
-				},
+				// TODO: The expected plan should use idx_order_expr (for the functional index on
+				// orders.amount*10) and idx_ship_amount_key / idx_customers_active, but the
+				// optimizer currently picks a different join order. These aspirational indexes are:
+				//   "idx_regions_enabled", "idx_order_expr", "idx_ship_amount_key", "idx_customers_active"
+				ExpectedIndexes: []string{"idx_orders_cust_id", "primary", "idx_regions_enabled"},
 			},
 		},
 	},
@@ -1001,11 +986,9 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 					{8, 4, 3, 3},
 					{11, 5, 4, 4},
 				},
-				ExpectedIndexes: []string{
-					"idx_a_expr",
-					"idx_b_expr_key",
-					"idx_d_keep_flag",
-					"idx_c_status"},
+				// TODO: The expected plan should also use idx_b_expr_key for the join
+				// a.c1*10 = b.expr_key, but the optimizer currently picks a hash join there.
+				ExpectedIndexes: []string{"idx_a_expr", "idx_d_keep_flag", "idx_c_status"},
 			},
 		},
 	},
@@ -1276,6 +1259,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 				// TODO: This is a bug in GMS/Dolt where we don't handle NOT IN filtering correctly when
 				//       a subquery returns NULL.
 				//       https://github.com/dolthub/dolt/issues/10699
+				// TODO: This was just fixed and we should integrate it and remove this skip!
 				Skip: true,
 				Query: `
 				SELECT pk

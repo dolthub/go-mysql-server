@@ -562,11 +562,12 @@ func updateDefaultsOnColumnRename(ctx *sql.Context, tbl sql.AlterableTable, sche
 	var err error
 	colsToModify := make(map[*sql.Column]struct{})
 	for _, col := range schema {
-		if col.Default == nil {
+		if col.Default == nil && col.Generated == nil {
 			continue
 		}
 		newCol := *col
-		newCol.Default.Expr, _, err = transform.Expr(col.Default.Expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+
+		renameGetField := func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			if expr, ok := e.(*expression.GetField); ok {
 				if strings.ToLower(expr.Name()) == oldName {
 					colsToModify[&newCol] = struct{}{}
@@ -574,9 +575,22 @@ func updateDefaultsOnColumnRename(ctx *sql.Context, tbl sql.AlterableTable, sche
 				}
 			}
 			return e, transform.SameTree, nil
-		})
-		if err != nil {
-			return err
+		}
+
+		if col.Default != nil {
+			newCol.Default.Expr, _, err = transform.Expr(col.Default.Expr, renameGetField)
+			if err != nil {
+				return err
+			}
+		}
+		if col.Generated != nil {
+			// Deep copy the Generated value before modifying to avoid aliasing with the original column
+			genCopy := *col.Generated
+			newCol.Generated = &genCopy
+			newCol.Generated.Expr, _, err = transform.Expr(col.Generated.Expr, renameGetField)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	for col := range colsToModify {
@@ -2501,8 +2515,11 @@ func buildIndex(ctx *sql.Context, n *plan.AlterIndex, ibt sql.IndexBuildingTable
 	var rowIter sql.RowIter = sql.NewTableRowIter(ctx, ibt, partitions)
 	rowIter = withSafepointPeriodicallyIter(rowIter)
 
-	// Our table scan needs to include projections for virtual columns if there are any
-	isVirtual := ibt.Schema().HasVirtualColumns()
+	// Our table scan needs to include projections for virtual columns if there are any.
+	// Use n.TargetSchema() instead of ibt.Schema() because the target schema includes virtual columns
+	// added during this ALTER TABLE execution (e.g., hidden system columns for functional indexes),
+	// which may not yet be reflected in the table's base schema.
+	isVirtual := n.TargetSchema().HasVirtualColumns()
 	var projections []sql.Expression
 	if isVirtual {
 		projections = virtualTableProjections(n.TargetSchema(), ibt.Name())

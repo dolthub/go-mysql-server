@@ -450,9 +450,9 @@ func keyForExpr(
 			// Check if targetCol is an indexed functional expression and if
 			// either side of the filter matches the generated expression.
 			if generatedExpr, ok := columnIdToIndexedExprMap[targetCol]; ok {
-				if stripTableQualifiers(left).String() == generatedExpr {
+				if removeOuterParens(stripTableQualifiers(left).String()) == generatedExpr {
 					key = right
-				} else if stripTableQualifiers(right).String() == generatedExpr {
+				} else if removeOuterParens(stripTableQualifiers(right).String()) == generatedExpr {
 					key = left
 				}
 			}
@@ -499,7 +499,10 @@ func buildColumnIdToIndexedExprMap(tableNode sql.TableNode, indexes []*memo.Inde
 			}
 			col := sch[schIdx]
 			if col.HiddenSystem && col.Generated != nil {
-				result[cols[i]] = removeOuterParens(stripTableQualifiers(col.Generated.Expr).String())
+				// Apply removeOuterParens twice: once for the Arithmetic.String() wrapper and
+				// once for the ColumnDefaultValue.String() wrapper that may be present when
+				// the expression was loaded from storage as an UnresolvedColumnDefault.
+				result[cols[i]] = removeOuterParens(removeOuterParens(stripTableQualifiers(col.Generated.Expr).String()))
 			}
 		}
 	}
@@ -535,8 +538,21 @@ func exprRefsTable(e sql.Expression, tableId sql.TableId) bool {
 // pattern for single-table filter planning.
 func stripTableQualifiers(e sql.Expression) sql.Expression {
 	result, _, _ := transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-		if gf, ok := e.(*expression.GetField); ok && gf.Table() != "" {
-			return gf.WithTable(""), transform.NewTree, nil
+		if gf, ok := e.(*expression.GetField); ok {
+			changed := false
+			if gf.Table() != "" {
+				gf = gf.WithTable("")
+				changed = true
+			}
+			// Clear quoteName so that stored generated expressions (which use backtick-quoted
+			// names, e.g. `c1_new`) compare equal to filter expressions (which use plain names).
+			if gf.IsQuotedIdentifier() {
+				gf = gf.WithQuotedNames(nil, false)
+				changed = true
+			}
+			if changed {
+				return gf, transform.NewTree, nil
+			}
 		}
 		return e, transform.SameTree, nil
 	})

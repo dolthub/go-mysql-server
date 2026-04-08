@@ -208,7 +208,7 @@ func getCostedIndexScan(
 	}
 
 	// build a map of the available indexed expressions that can be attempted to use in this scan
-	indexedExprToColumnMap, err := buildIndexedExprToColumnNameMap(ctx, cat, indexes, dbName, rt)
+	indexedExprToColumnMap, err := buildIndexedExprToColumnNameMap(indexes, rt)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -377,46 +377,39 @@ func getCostedIndexScan(
 // and the value is the table-qualified name of the hidden system column that generates
 // that expression for the index. This function is used as part of planning/costing
 // index scans.
-func buildIndexedExprToColumnNameMap(ctx *sql.Context, cat sql.Catalog, indexes []sql.Index, dbName string, rt sql.TableNode) (map[string]string, error) {
+func buildIndexedExprToColumnNameMap(indexes []sql.Index, rt sql.TableNode) (map[string]string, error) {
 	indexedExprMap := make(map[string]string)
 	tableName := rt.UnderlyingTable().Name()
-
-	// TODO: Do we need to pass in |dbName| if we have |rt| to use?
-	// TODO: How do we explain |rt|? Why do we need to pass it in?
-
-	if rt.Database().Name() == "" {
-		// TODO: What cases are there where DbName is empty?
-	}
 
 	// We don't support indexed functional expressions on TableFunctions
 	if _, ok := rt.(sql.TableFunction); ok {
 		return indexedExprMap, nil
 	}
 
-	if dbName == "" {
-		// TODO: If we don't have a dbName, then we can't do certain logic in this code...
-		//       Is it correct to just give an empty map? That would never allow indexed
-		//       expressions to be used.
-		return indexedExprMap, nil
-	}
-
-	table, _, err := cat.Table(ctx, dbName, tableName)
-	if err != nil {
-		return nil, err
-	}
-
-	sch := table.Schema()
+	// Use the schema from the table node already in the query plan. This schema has had its
+	// column default expressions resolved (UnresolvedColumnDefault → real expression trees),
+	// so stripTableQualifiers can properly walk and normalize the generated expressions.
+	// Using cat.Table() here would return the raw unresolved schema from storage (e.g. in
+	// Dolt, hidden system column expressions would still be UnresolvedColumnDefault strings),
+	// causing stripTableQualifiers to be a no-op and producing wrong map keys.
+	sch := rt.Schema()
 	for _, idx := range indexes {
 		for _, qualifiedColName := range idx.Expressions() {
 			unqualifiedColName := strings.TrimPrefix(qualifiedColName, tableName+".")
 			columnIdx := sch.IndexOfColName(unqualifiedColName)
 			if columnIdx < 0 {
-				return nil, fmt.Errorf("unable to find column %s from index %s in table %s",
-					unqualifiedColName, idx.ID(), tableName)
+				// The column may not appear in a projected schema (e.g. inside a subquery
+				// that only selects a subset of columns). Non-hidden columns can be safely
+				// skipped here — we only care about HiddenSystem columns.
+				continue
 			}
 			if sch[columnIdx].HiddenSystem && sch[columnIdx].Generated != nil {
-				generatedExpr := sch[columnIdx].Generated.Expr.String()
-				indexedExprMap[removeOuterParens(generatedExpr)] = unqualifiedColName
+				generatedExpr := stripTableQualifiers(sch[columnIdx].Generated.Expr).String()
+				// Apply removeOuterParens twice: once for the Arithmetic.String() wrapper and
+				// once for the ColumnDefaultValue.String() wrapper that may be present when
+				// the expression was loaded from storage as an UnresolvedColumnDefault (e.g.
+				// in Dolt, where stripTableQualifiers cannot unwrap the opaque string).
+				indexedExprMap[removeOuterParens(removeOuterParens(generatedExpr))] = unqualifiedColName
 			}
 		}
 	}
@@ -1627,7 +1620,7 @@ func buildLeaf(ctx *sql.Context, id indexScanId, e sql.Expression, underlying st
 
 	// Check if either side is a matching functional expression in an index.
 	if right != nil {
-		if colName, ok := indexedExprToColumnMap[right.String()]; ok {
+		if colName, ok := indexedExprToColumnMap[removeOuterParens(stripTableQualifiers(right).String())]; ok {
 			// Right side is the indexed functional expression, left is the literal.
 			// The initial swap inverted the op to represent "literal op expr".
 			// Swap it back so the range builder sees "expr op literal".
@@ -1689,7 +1682,7 @@ func buildLeaf(ctx *sql.Context, id indexScanId, e sql.Expression, underlying st
 			}, true
 		}
 	} else if left != nil {
-		if colName, ok := indexedExprToColumnMap[left.String()]; ok {
+		if colName, ok := indexedExprToColumnMap[removeOuterParens(stripTableQualifiers(left).String())]; ok {
 			// Left side is the indexed functional expression, right is the literal.
 			// op is already in "expr op literal" orientation — no swap needed.
 			if op == sql.IndexScanOpIsNull || op == sql.IndexScanOpIsNotNull {
