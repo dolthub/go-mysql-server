@@ -14,18 +14,24 @@ func isSubqueryExpr(expr sql.Expression) bool {
 		return true
 	case *plan.ExistsSubquery:
 		return true
-	case *expression.InTuple:
-		return true
+	case *expression.Case:
+		if isSubqueryExpr(e.Expr) {
+			return true
+		}
+		if isSubqueryExpr(e.Else) {
+			return true
+		}
+		for _, branch := range e.Branches {
+			if isSubqueryExpr(branch.Value) || isSubqueryExpr(branch.Cond) {
+				return true
+			}
+		}
+		return false
 	case expression.UnaryExpression:
 		return isSubqueryExpr(e.UnaryChild())
 	case expression.BinaryExpression:
 		return isSubqueryExpr(e.Left()) || isSubqueryExpr(e.Right())
 	default:
-		for _, child := range expr.Children() {
-			if isSubqueryExpr(child) {
-				return true
-			}
-		}
 		return false
 	}
 }
