@@ -186,7 +186,7 @@ func getBatchesForNode(scope *plan.Scope, node sql.Node) ([]*Batch, bool) {
 		}
 	case *plan.Project:
 		// TODO: hacky, but if using a custom rule set, do not apply this optimization
-		if len(AlwaysBeforeDefault) == 0 {
+		if len(AlwaysBeforeDefault) != 0 {
 			return nil, false
 		}
 		// Scope checks to prevent this from applying to subqueries
