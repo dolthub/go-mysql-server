@@ -1635,6 +1635,42 @@ func buildLeaf(ctx *sql.Context, id indexScanId, e sql.Expression, underlying st
 			if op == sql.IndexScanOpIsNull || op == sql.IndexScanOpIsNotNull {
 				return &iScanLeaf{id: id, name: colName, typ: right.Type(), op: op, underlying: underlying}, true
 			}
+
+			// --- ---
+
+			// TODO: This logic was copy/pasted from below. We probably need it for the left
+			//       side branch, too. Figure out how to clean this up so it can be maintained.
+
+			if op == sql.IndexScanOpInSet || op == sql.IndexScanOpNotInSet {
+				tup := left.(expression.Tuple)
+				var litSet []interface{}
+				var setTypes []sql.Type
+				var litType sql.Type
+				for _, lit := range tup {
+					value, err := lit.Eval(ctx, nil)
+					if err != nil {
+						return nil, false
+					}
+					litSet = append(litSet, value)
+					setTypes = append(setTypes, lit.Type())
+					if litType == nil {
+						litType = lit.Type()
+					}
+				}
+				return &iScanLeaf{
+					id:         id,
+					name:       colName,
+					typ:        right.Type(),
+					op:         op,
+					setValues:  litSet,
+					setTypes:   setTypes,
+					litType:    litType,
+					underlying: underlying,
+				}, true
+			}
+
+			// --- ---
+
 			if !isEvaluable(left) {
 				return nil, false
 			}
