@@ -90,6 +90,7 @@ func (s *Scope) NewScopeFromSubqueryExpression(node sql.Node, corr sql.ColSet) *
 	subScope := s.NewScope(node)
 	subScope.CurrentNodeIsFromSubqueryExpression = true
 	subScope.corr = corr
+	subScope.recursionDepth = s.RecursionDepth() + 1
 	if s != nil {
 		subScope.corr = s.corr.Union(corr)
 	}
