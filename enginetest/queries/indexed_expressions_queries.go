@@ -629,7 +629,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Indexed Expressions: rename base column updates metadata and behavior",
+		Name: "Indexed Expressions: rename base column is rejected with functional index dependency",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT);",
 			"INSERT INTO test VALUES (1, 100), (2, 200);",
@@ -637,22 +637,8 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				// TODO: Actually... Mysql 8.0 restricts this:
-				//       MySQL Response:
-				//       ERROR 3837 (HY000): Column 'c1' has a functional index dependency and cannot be dropped or renamed.
-				Query:    "ALTER TABLE test RENAME COLUMN c1 TO c1_new;",
-				Expected: []sql.Row{{gmstypes.NewOkResult(0)}},
-			},
-			{
-				// TODO: This fails – the default value expression for this generated column
-				//       does NOT get updated from the column rename.
-				Query:           "SELECT pk FROM test WHERE c1_new*10 = 1000;",
-				Expected:        []sql.Row{{1}},
-				ExpectedIndexes: []string{"idx1"},
-			},
-			{
-				Query:    "SELECT * FROM test ORDER BY pk;",
-				Expected: []sql.Row{{1, 100}, {2, 200}},
+				Query:          "ALTER TABLE test RENAME COLUMN c1 TO c1_new;",
+				ExpectedErrStr: "Column 'c1' has a functional index dependency and cannot be dropped or renamed.",
 			},
 		},
 	},
@@ -665,11 +651,8 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				// TODO: MySQL rejects this with:
-				//       ERROR 3837 (HY000): Column 'c1' has a functional index dependency and cannot be dropped or renamed.
-				// We do not yet implement this restriction; the drop currently succeeds.
-				Query:    "ALTER TABLE test DROP COLUMN c1;",
-				Expected: []sql.Row{{gmstypes.NewOkResult(0)}},
+				Query:          "ALTER TABLE test DROP COLUMN c1;",
+				ExpectedErrStr: "Column 'c1' has a functional index dependency and cannot be dropped or renamed.",
 			},
 		},
 	},
