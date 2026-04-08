@@ -450,9 +450,9 @@ func keyForExpr(
 			// Check if targetCol is an indexed functional expression and if
 			// either side of the filter matches the generated expression.
 			if generatedExpr, ok := columnIdToIndexedExprMap[targetCol]; ok {
-				if left.String() == generatedExpr {
+				if stripTableQualifiers(left).String() == generatedExpr {
 					key = right
-				} else if right.String() == generatedExpr {
+				} else if stripTableQualifiers(right).String() == generatedExpr {
 					key = left
 				}
 			}
@@ -499,7 +499,7 @@ func buildColumnIdToIndexedExprMap(tableNode sql.TableNode, indexes []*memo.Inde
 			}
 			col := sch[schIdx]
 			if col.HiddenSystem && col.Generated != nil {
-				result[cols[i]] = removeOuterParens(col.Generated.Expr.String())
+				result[cols[i]] = removeOuterParens(stripTableQualifiers(col.Generated.Expr).String())
 			}
 		}
 	}
@@ -514,6 +514,33 @@ func exprRefsTable(e sql.Expression, tableId sql.TableId) bool {
 		}
 		return false
 	})
+}
+
+// stripTableQualifiers returns a copy of e with the table name cleared on every
+// GetField node. This normalizes expressions before string comparison so that a
+// table alias (e.g. "u" in LOWER(u.email)) does not prevent matching against a
+// stored generated expression that uses the real table name (e.g. LOWER(users.email)).
+//
+// TODO: The underlying issue is that functional-index matching relies on string
+// comparison of expression trees rather than structural / ColumnId-based comparison.
+// A more robust long-term fix would be to:
+//  1. Change buildColumnIdToIndexedExprMap to store sql.Expression objects
+//     instead of plain strings.
+//  2. Implement an expressionsMatch(a, b sql.Expression) bool helper that walks
+//     both trees in parallel, comparing GetField nodes by ColumnId (which is
+//     alias-immune) rather than by table.column string.
+//
+// The same string-comparison fragility exists in costed_index_scan.go's
+// buildIndexedExprToColumnMap / buildLeaf, which uses an identical map-keyed-by-string
+// pattern for single-table filter planning.
+func stripTableQualifiers(e sql.Expression) sql.Expression {
+	result, _, _ := transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		if gf, ok := e.(*expression.GetField); ok && gf.Table() != "" {
+			return gf.WithTable(""), transform.NewTree, nil
+		}
+		return e, transform.SameTree, nil
+	})
+	return result
 }
 
 // convertSemiToInnerJoin adds inner join alternatives for semi joins.
