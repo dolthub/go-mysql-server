@@ -5,6 +5,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
+// isSimpleSelect checks if an unanalyzed plan tree is SELECT query with a FILTER that doesn't need thorough analysis
 func isSimpleSelect(proj *plan.Project) bool {
 	child := proj.Child
 	switch c := child.(type) {
@@ -12,10 +13,8 @@ func isSimpleSelect(proj *plan.Project) bool {
 		child = c.Child
 	default:
 	}
-	if _, isResTbl := child.(*plan.ResolvedTable); !isResTbl {
-		return false
-	}
-	return true
+	_, isResTbl := child.(*plan.ResolvedTable)
+	return isResTbl
 }
 
 // getBatchesForNode returns a partial analyzer ruleset for simple node
