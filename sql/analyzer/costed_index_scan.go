@@ -1604,147 +1604,55 @@ func (c *indexCoster) costFulltext(filter *iScanLeaf, s sql.Statistic, ordinal i
 	return s, s.IndexClass() == sql.IndexClassFulltext && s.Qualifier().Index() == filter.fulltextIndex, nil
 }
 
-// buildLeaf tries to convert an expression into the intermediate
-// representation that facilitates index column matching. We return
-// a metadata enriched *iScanLeaf, or nil and a false value if the
-// expression is not supported for index matching.
-func (c *indexCoster) buildLeaf(id indexScanId, e sql.Expression) (*iScanLeaf, bool) {
-	ctx := c.ctx
-	underlying := c.underlyingName
-	indexedExprToColumnMap := c.indexedExprToColumnMap
-	op, left, right, ok := IndexLeafChildren(e)
-	if !ok {
-		return nil, false
-	}
-	if op == sql.IndexScanOpFulltextEq {
-		e := e.(*expression.MatchAgainst)
-		gf := e.Columns[0].(*expression.GetField)
-		return &iScanLeaf{id: id, op: op, name: gf.Name(), typ: gf.Type(), underlying: underlying, fulltextIndex: e.GetIndex().ID()}, true
-	}
-	if _, ok := left.(*expression.GetField); !ok {
-		left, right = right, left
-		op = op.Swap()
-	}
+// normalizeExprKey returns the normalized string key used to look up an expression in the
+// indexedExprToColumnMap. It strips table qualifiers and removes one layer of outer parentheses
+// to match the form stored in the map.
+func normalizeExprKey(e sql.Expression) string {
+	return removeOuterParens(stripTableQualifiers(e).String())
+}
 
-	// Check if either side is a matching functional expression in an index.
+// normalizeLeafSides identifies the index target (a functional expression or GetField) and the
+// literal side of a comparison, returning the index column name, its type, the correctly-oriented
+// scan op, and the literal expression. The op is always returned in "indexTarget op litExpr"
+// orientation: if the index target is on the right side of the original expression, op is swapped.
+func (c *indexCoster) normalizeLeafSides(op sql.IndexScanOp, left, right sql.Expression) (name string, typ sql.Type, normalizedOp sql.IndexScanOp, litExpr sql.Expression, ok bool) {
+	// Check the left side first: functional expression match, then plain GetField.
+	// If the index target is on the left, op is already in "indexTarget op litExpr" orientation.
+	if left != nil {
+		if colName, hit := c.indexedExprToColumnMap[normalizeExprKey(left)]; hit {
+			return colName, left.Type(), op, right, true
+		}
+		if gf, hit := left.(*expression.GetField); hit {
+			return gf.Name(), gf.Type(), op, right, true
+		}
+	}
+	// Check the right side: functional expression match, then plain GetField.
+	// If the index target is on the right, swap op to normalize to "indexTarget op litExpr".
 	if right != nil {
-		if colName, ok := indexedExprToColumnMap[removeOuterParens(stripTableQualifiers(right).String())]; ok {
-			// Right side is the indexed functional expression, left is the literal.
-			// The initial swap inverted the op to represent "literal op expr".
-			// Swap it back so the range builder sees "expr op literal".
-			op = op.Swap()
-			if op == sql.IndexScanOpIsNull || op == sql.IndexScanOpIsNotNull {
-				return &iScanLeaf{id: id, name: colName, typ: right.Type(), op: op, underlying: underlying}, true
-			}
-
-			// --- ---
-
-			// TODO: This logic was copy/pasted from below. We probably need it for the left
-			//       side branch, too. Figure out how to clean this up so it can be maintained.
-
-			if op == sql.IndexScanOpInSet || op == sql.IndexScanOpNotInSet {
-				tup := left.(expression.Tuple)
-				var litSet []interface{}
-				var setTypes []sql.Type
-				var litType sql.Type
-				for _, lit := range tup {
-					value, err := lit.Eval(ctx, nil)
-					if err != nil {
-						return nil, false
-					}
-					litSet = append(litSet, value)
-					setTypes = append(setTypes, lit.Type())
-					if litType == nil {
-						litType = lit.Type()
-					}
-				}
-				return &iScanLeaf{
-					id:         id,
-					name:       colName,
-					typ:        right.Type(),
-					op:         op,
-					setValues:  litSet,
-					setTypes:   setTypes,
-					litType:    litType,
-					underlying: underlying,
-				}, true
-			}
-
-			// --- ---
-
-			if !isEvaluable(left) {
-				return nil, false
-			}
-			value, err := left.Eval(ctx, nil)
-			if err != nil {
-				return nil, false
-			}
-			return &iScanLeaf{
-				id:         id,
-				name:       colName,
-				typ:        right.Type(),
-				op:         op,
-				litValue:   value,
-				litType:    left.Type(),
-				underlying: underlying,
-			}, true
+		if colName, hit := c.indexedExprToColumnMap[normalizeExprKey(right)]; hit {
+			return colName, right.Type(), op.Swap(), left, true
 		}
-	} else if left != nil {
-		if colName, ok := indexedExprToColumnMap[removeOuterParens(stripTableQualifiers(left).String())]; ok {
-			// Left side is the indexed functional expression, right is the literal.
-			// op is already in "expr op literal" orientation — no swap needed.
-			if op == sql.IndexScanOpIsNull || op == sql.IndexScanOpIsNotNull {
-				return &iScanLeaf{id: id, name: colName, typ: left.Type(), op: op, underlying: underlying}, true
-			}
-			if !isEvaluable(right) {
-				return nil, false
-			}
-			value, err := right.Eval(ctx, nil)
-			if err != nil {
-				return nil, false
-			}
-			return &iScanLeaf{
-				id:         id,
-				name:       colName,
-				typ:        left.Type(),
-				op:         op,
-				litValue:   value,
-				litType:    right.Type(),
-				underlying: underlying,
-			}, true
+		if gf, hit := right.(*expression.GetField); hit {
+			return gf.Name(), gf.Type(), op.Swap(), left, true
 		}
 	}
+	return "", nil, 0, nil, false
+}
 
-	if left == nil && right != nil {
-		// TODO: handle this error case???
-	} else if right == nil && left != nil {
-		// TODO: handle this error case???
-	}
-
-	// At this point, we expect a GetField, but that may not be correct all the time
-	gf, ok := left.(*expression.GetField)
-	if !ok {
-		return nil, false
-	}
-
-	// TODO: Add tests for IS NULL and IS NOT NULL of an indexed expression
-	//       Seems like we need to update this code to work for a function expression
-	// TODO: Should we move this code up higher in the file?
+// buildLeafFromParts constructs an iScanLeaf from a resolved index column name, its type,
+// the scan operation, and the literal expression on the other side of the comparison.
+// litExpr must be nil for unary operations (IsNull, IsNotNull) and non-nil otherwise.
+func (c *indexCoster) buildLeafFromParts(id indexScanId, name string, typ sql.Type, op sql.IndexScanOp, litExpr sql.Expression) (*iScanLeaf, bool) {
 	if op == sql.IndexScanOpIsNull || op == sql.IndexScanOpIsNotNull {
-		return &iScanLeaf{id: id, name: gf.Name(), typ: gf.Type(), op: op, underlying: underlying}, true
+		return &iScanLeaf{id: id, name: name, typ: typ, op: op, underlying: c.underlyingName}, true
 	}
-
-	if !isEvaluable(right) {
-		return nil, false
-	}
-
 	if op == sql.IndexScanOpInSet || op == sql.IndexScanOpNotInSet {
-		tup := right.(expression.Tuple)
+		tup := litExpr.(expression.Tuple)
 		var litSet []interface{}
 		var setTypes []sql.Type
 		var litType sql.Type
 		for _, lit := range tup {
-			value, err := lit.Eval(ctx, nil)
+			value, err := lit.Eval(c.ctx, nil)
 			if err != nil {
 				return nil, false
 			}
@@ -1756,30 +1664,52 @@ func (c *indexCoster) buildLeaf(id indexScanId, e sql.Expression) (*iScanLeaf, b
 		}
 		return &iScanLeaf{
 			id:         id,
-			name:       gf.Name(),
-			typ:        gf.Type(),
+			name:       name,
+			typ:        typ,
 			op:         op,
 			setValues:  litSet,
 			setTypes:   setTypes,
 			litType:    litType,
-			underlying: underlying,
+			underlying: c.underlyingName,
 		}, true
 	}
-
-	value, err := right.Eval(ctx, nil)
+	if !isEvaluable(litExpr) {
+		return nil, false
+	}
+	value, err := litExpr.Eval(c.ctx, nil)
 	if err != nil {
 		return nil, false
 	}
-
 	return &iScanLeaf{
 		id:         id,
-		name:       gf.Name(),
-		typ:        gf.Type(),
+		name:       name,
+		typ:        typ,
 		op:         op,
 		litValue:   value,
-		litType:    right.Type(),
-		underlying: underlying,
+		litType:    litExpr.Type(),
+		underlying: c.underlyingName,
 	}, true
+}
+
+// buildLeaf tries to convert an expression into the intermediate
+// representation that facilitates index column matching. We return
+// a metadata enriched *iScanLeaf, or nil and a false value if the
+// expression is not supported for index matching.
+func (c *indexCoster) buildLeaf(id indexScanId, e sql.Expression) (*iScanLeaf, bool) {
+	op, left, right, ok := IndexLeafChildren(e)
+	if !ok {
+		return nil, false
+	}
+	if op == sql.IndexScanOpFulltextEq {
+		e := e.(*expression.MatchAgainst)
+		gf := e.Columns[0].(*expression.GetField)
+		return &iScanLeaf{id: id, op: op, name: gf.Name(), typ: gf.Type(), underlying: c.underlyingName, fulltextIndex: e.GetIndex().ID()}, true
+	}
+	name, typ, normalizedOp, litExpr, ok := c.normalizeLeafSides(op, left, right)
+	if !ok {
+		return nil, false
+	}
+	return c.buildLeafFromParts(id, name, typ, normalizedOp, litExpr)
 }
 
 // IndexLeafChildren handles the struct types that may be found on a leaf node while creating indexes.

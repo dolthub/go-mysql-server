@@ -55,12 +55,27 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 				ExpectedIndexes: []string{"idx1"},
 			},
 			{
+				Query:           "SELECT pk FROM test WHERE 1000 = (c1*10);",
+				Expected:        []sql.Row{{1}},
+				ExpectedIndexes: []string{"idx1"},
+			},
+			{
 				Query:           "SELECT pk FROM test WHERE (c1*10) >= 1000;",
 				Expected:        []sql.Row{{1}, {2}},
 				ExpectedIndexes: []string{"idx1"},
 			},
 			{
+				Query:           "SELECT pk FROM test WHERE 1000 <= (c1*10);",
+				Expected:        []sql.Row{{1}, {2}},
+				ExpectedIndexes: []string{"idx1"},
+			},
+			{
 				Query:           "SELECT pk, c1*10 FROM test WHERE (c1*10) > 1;",
+				Expected:        []sql.Row{{1, 1000}, {2, 2000}},
+				ExpectedIndexes: []string{"idx1"},
+			},
+			{
+				Query:           "SELECT pk, c1*10 FROM test WHERE 1 < (c1*10);",
 				Expected:        []sql.Row{{1, 1000}, {2, 2000}},
 				ExpectedIndexes: []string{"idx1"},
 			},
@@ -82,6 +97,11 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 			},
 			{
 				Query:           "SELECT pk FROM test WHERE (c1*10) = 1000;",
+				Expected:        []sql.Row{{1}},
+				ExpectedIndexes: []string{"idx1"},
+			},
+			{
+				Query:           "SELECT pk FROM test WHERE 1000 = (c1*10);",
 				Expected:        []sql.Row{{1}},
 				ExpectedIndexes: []string{"idx1"},
 			},
@@ -121,6 +141,11 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		Assertions: []ScriptTestAssertion{
 			{
 				Query:           "SELECT pk FROM test JOIN t2 ON (c1*10) = t2c1;",
+				Expected:        []sql.Row{{1}},
+				ExpectedIndexes: []string{"idx1"},
+			},
+			{
+				Query:           "SELECT pk FROM test JOIN t2 ON t2c1 = (c1*10);",
 				Expected:        []sql.Row{{1}},
 				ExpectedIndexes: []string{"idx1"},
 			},
