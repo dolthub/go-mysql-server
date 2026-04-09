@@ -79,6 +79,36 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 				Expected:        []sql.Row{{1, 1000}, {2, 2000}},
 				ExpectedIndexes: []string{"idx1"},
 			},
+			{
+				Query:           "SELECT pk FROM test WHERE (c1*10) < 2000;",
+				Expected:        []sql.Row{{1}},
+				ExpectedIndexes: []string{"idx1"},
+			},
+			{
+				Query:           "SELECT pk FROM test WHERE 2000 > (c1*10);",
+				Expected:        []sql.Row{{1}},
+				ExpectedIndexes: []string{"idx1"},
+			},
+			{
+				Query:           "SELECT pk FROM test WHERE (c1*10) <= 1000;",
+				Expected:        []sql.Row{{1}},
+				ExpectedIndexes: []string{"idx1"},
+			},
+			{
+				Query:           "SELECT pk FROM test WHERE 1000 >= (c1*10);",
+				Expected:        []sql.Row{{1}},
+				ExpectedIndexes: []string{"idx1"},
+			},
+			{
+				Query:           "SELECT pk FROM test WHERE (c1*10) <=> 1000;",
+				Expected:        []sql.Row{{1}},
+				ExpectedIndexes: []string{"idx1"},
+			},
+			{
+				Query:           "SELECT pk FROM test WHERE 1000 <=> (c1*10);",
+				Expected:        []sql.Row{{1}},
+				ExpectedIndexes: []string{"idx1"},
+			},
 		},
 	},
 
@@ -429,6 +459,31 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 			{
 				Query:           "SELECT pk FROM test WHERE c1*10 IS NULL ORDER BY pk;",
 				Expected:        []sql.Row{{1}, {2}},
+				ExpectedIndexes: []string{"idx1"},
+			},
+			{
+				Query:           "SELECT pk FROM test WHERE c1*10 IS NOT NULL ORDER BY pk;",
+				Expected:        []sql.Row{{3}},
+				ExpectedIndexes: []string{"idx1"},
+			},
+			{
+				Query:           "SELECT pk FROM test WHERE (c1*10) <=> NULL ORDER BY pk;",
+				Expected:        []sql.Row{{1}, {2}},
+				ExpectedIndexes: []string{"idx1"},
+			},
+			{
+				Query:           "SELECT pk FROM test WHERE NULL <=> (c1*10) ORDER BY pk;",
+				Expected:        []sql.Row{{1}, {2}},
+				ExpectedIndexes: []string{"idx1"},
+			},
+			{
+				Query:           "SELECT pk FROM test WHERE (c1*10) <=> 1000;",
+				Expected:        []sql.Row{{3}},
+				ExpectedIndexes: []string{"idx1"},
+			},
+			{
+				Query:           "SELECT pk FROM test WHERE 1000 <=> (c1*10);",
+				Expected:        []sql.Row{{3}},
 				ExpectedIndexes: []string{"idx1"},
 			},
 			{
