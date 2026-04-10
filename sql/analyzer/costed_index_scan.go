@@ -207,14 +207,14 @@ func getCostedIndexScan(
 		dbName = dber.Database().Name()
 	}
 
-	// build a map of the available indexed expressions that can be attempted to use in this scan
-	indexedExprToColumnMap, err := buildIndexedExprToColumnNameMap(indexes, rt)
+	// build the list of available indexed expressions that can be attempted to use in this scan
+	indexedExprs, err := buildIndexedExprToColumnNameMap(indexes, rt)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
 	c := newIndexCoster(ctx, rt.Name())
-	c.indexedExprToColumnMap = indexedExprToColumnMap
+	c.indexedExprs = indexedExprs
 	root, leftover, imprecise := c.buildRoot(expression.JoinAnd(filters...), expressionWalker)
 	if root == nil {
 		return nil, nil, nil, err
@@ -372,27 +372,69 @@ func getCostedIndexScan(
 	return ret, bestStat, retFilters, nil
 }
 
-// buildIndexedExprToColumnNameMap builds a map of the indexed functional expressions
-// (e.g. "(lower(name))") that are available from the specified |indexes|. Each key
-// in the returned map is a string representation of the indexed functional expression
-// and the value is the table-qualified name of the hidden system column that generates
-// that expression for the index. This function is used as part of planning/costing
-// index scans.
-func buildIndexedExprToColumnNameMap(indexes []sql.Index, rt sql.TableNode) (map[string]string, error) {
-	indexedExprMap := make(map[string]string)
+// indexedExprEntry holds a hidden system column's generated expression and the column name
+// that backs it. Used to match filter expressions against indexed functional expressions.
+//
+// canonicalStr is pre-computed at build time: it is the normalized, table-qualifier-stripped
+// string form of the indexed expression. At match time only the filter side needs to be
+// normalized, avoiding repeated stripTableQualifiers calls on the stored expression.
+type indexedExprEntry struct {
+	canonicalStr string
+	colName      string
+}
+
+// newIndexedExprEntry constructs an indexedExprEntry by normalizing the stored expression once
+// at build time. The canonical string form strips table qualifiers and one layer of outer parens
+// so that it is symmetric with the filter canonical computed in matches().
+//
+// For UnresolvedColumnDefault expressions (used in Dolt when schema expressions cannot be resolved
+// at load time), the stored string has two layers of outer parens (one from ColumnDefaultValue and
+// one from Arithmetic). Two strips are applied to reduce it to the bare expression, e.g.
+// "((c1 * 10))" → "c1 * 10".
+//
+// For fully resolved expression trees, stripTableQualifiers is called once to clear table names
+// from GetField nodes, then one layer of outer parens is stripped. Arithmetic.String() always
+// adds one outer paren layer (e.g. "(c1 * 10)"), so after stripping both sides reach "c1 * 10".
+// Non-paren-wrapped expressions (e.g. "LOWER(c1)") are returned unchanged.
+func newIndexedExprEntry(expr sql.Expression, colName string) indexedExprEntry {
+	var canonicalStr string
+	switch ucd := expr.(type) {
+	case sql.UnresolvedColumnDefault:
+		canonicalStr = strings.ToLower(removeOuterParens(removeOuterParens(ucd.ExprString)))
+	case *sql.UnresolvedColumnDefault:
+		canonicalStr = strings.ToLower(removeOuterParens(removeOuterParens(ucd.ExprString)))
+	default:
+		canonicalStr = strings.ToLower(removeOuterParens(stripTableQualifiers(expr).String()))
+	}
+	return indexedExprEntry{canonicalStr: canonicalStr, colName: colName}
+}
+
+// matches reports whether the given filter expression refers to the same functional expression
+// as this entry. The filter's canonical string is computed at call time (we cannot pre-compute
+// it since filters vary per query), then compared to the pre-computed stored canonical string.
+// One layer of outer parens is stripped from the filter to match the stored canonical form.
+func (e indexedExprEntry) matches(filter sql.Expression) bool {
+	filterStr := strings.ToLower(removeOuterParens(stripTableQualifiers(filter).String()))
+	return e.canonicalStr == filterStr
+}
+
+// buildIndexedExprToColumnNameMap builds a slice of indexed functional expressions available
+// from the specified |indexes|. Each entry pairs the expression tree for the indexed functional
+// expression with the hidden system column name that generates it. This function is used as
+// part of planning/costing index scans.
+func buildIndexedExprToColumnNameMap(indexes []sql.Index, rt sql.TableNode) ([]indexedExprEntry, error) {
+	var indexedExprs []indexedExprEntry
 	tableName := rt.UnderlyingTable().Name()
 
 	// We don't support indexed functional expressions on TableFunctions
 	if _, ok := rt.(sql.TableFunction); ok {
-		return indexedExprMap, nil
+		return indexedExprs, nil
 	}
 
 	// Use the schema from the table node already in the query plan. This schema has had its
-	// column default expressions resolved (UnresolvedColumnDefault → real expression trees),
-	// so stripTableQualifiers can properly walk and normalize the generated expressions.
+	// column default expressions resolved (UnresolvedColumnDefault → real expression trees).
 	// Using cat.Table() here would return the raw unresolved schema from storage (e.g. in
-	// Dolt, hidden system column expressions would still be UnresolvedColumnDefault strings),
-	// causing stripTableQualifiers to be a no-op and producing wrong map keys.
+	// Dolt, hidden system column expressions would still be UnresolvedColumnDefault strings).
 	sch := rt.Schema()
 	for _, idx := range indexes {
 		for _, qualifiedColName := range idx.Expressions() {
@@ -405,20 +447,16 @@ func buildIndexedExprToColumnNameMap(indexes []sql.Index, rt sql.TableNode) (map
 				continue
 			}
 			if sch[columnIdx].HiddenSystem && sch[columnIdx].Generated != nil {
-				generatedExpr := stripTableQualifiers(sch[columnIdx].Generated.Expr).String()
-				// Apply removeOuterParens twice: once for the Arithmetic.String() wrapper and
-				// once for the ColumnDefaultValue.String() wrapper that may be present when
-				// the expression was loaded from storage as an UnresolvedColumnDefault (e.g.
-				// in Dolt, where stripTableQualifiers cannot unwrap the opaque string).
-				indexedExprMap[removeOuterParens(removeOuterParens(generatedExpr))] = unqualifiedColName
+				indexedExprs = append(indexedExprs, newIndexedExprEntry(sch[columnIdx].Generated.Expr, unqualifiedColName))
 			}
 		}
 	}
-	return indexedExprMap, nil
+	return indexedExprs, nil
 }
 
 // removeOuterParens removes one set of matching parens from the outside of |s|. If matching parens
-// are not found in the first and last chars, then |s| is returned unchanged.
+// are not found in the first and last chars, then |s| is returned unchanged. Used by
+// newIndexedExprEntry and matches() to normalize expression string forms for comparison.
 func removeOuterParens(s string) string {
 	if strings.HasPrefix(s, "(") && strings.HasSuffix(s, ")") {
 		return s[1 : len(s)-1]
@@ -536,8 +574,8 @@ func newIndexCoster(ctx *sql.Context, underlyingName string) *indexCoster {
 
 // indexCoster is a short-lived, single-use helper for planning index scans on a single table.
 // It is constructed fresh for each call to getCostedIndexScan and must not be reused across
-// tables or planning operations. All fields (ctx, underlyingName, indexedExprToColumnMap, etc.)
-// are scoped to the one table and one set of filters being evaluated.
+// tables or planning operations. All fields are scoped to the one table and one set of filters
+// being evaluated.
 type indexCoster struct {
 	ctx *sql.Context
 	// bestStat is the lowest cardinality indexScan option
@@ -550,9 +588,9 @@ type indexCoster struct {
 	bestConstant sql.FastIntSet
 
 	underlyingName string
-	// indexedExprToColumnMap maps normalized functional expression strings (e.g. "lower(name)")
-	// to the hidden system column name that backs that expression in an index.
-	indexedExprToColumnMap map[string]string
+	// indexedExprs holds the indexed functional expressions available for this table, paired
+	// with the hidden system column name that backs each expression in an index.
+	indexedExprs []indexedExprEntry
 
 	bestHist []sql.HistogramBucket
 	bestCnt  uint64
@@ -1604,13 +1642,6 @@ func (c *indexCoster) costFulltext(filter *iScanLeaf, s sql.Statistic, ordinal i
 	return s, s.IndexClass() == sql.IndexClassFulltext && s.Qualifier().Index() == filter.fulltextIndex, nil
 }
 
-// normalizeExprKey returns the normalized string key used to look up an expression in the
-// indexedExprToColumnMap. It strips table qualifiers and removes one layer of outer parentheses
-// to match the form stored in the map.
-func normalizeExprKey(e sql.Expression) string {
-	return removeOuterParens(stripTableQualifiers(e).String())
-}
-
 // normalizeLeafSides identifies the index target (a functional expression or GetField) and the
 // literal side of a comparison, returning the index column name, its type, the correctly-oriented
 // scan op, and the literal expression. The op is always returned in "indexTarget op litExpr"
@@ -1619,8 +1650,10 @@ func (c *indexCoster) normalizeLeafSides(op sql.IndexScanOp, left, right sql.Exp
 	// Check the left side first: functional expression match, then plain GetField.
 	// If the index target is on the left, op is already in "indexTarget op litExpr" orientation.
 	if left != nil {
-		if colName, hit := c.indexedExprToColumnMap[normalizeExprKey(left)]; hit {
-			return colName, left.Type(), op, right, true
+		for _, entry := range c.indexedExprs {
+			if entry.matches(left) {
+				return entry.colName, left.Type(), op, right, true
+			}
 		}
 		if gf, hit := left.(*expression.GetField); hit {
 			return gf.Name(), gf.Type(), op, right, true
@@ -1629,8 +1662,10 @@ func (c *indexCoster) normalizeLeafSides(op sql.IndexScanOp, left, right sql.Exp
 	// Check the right side: functional expression match, then plain GetField.
 	// If the index target is on the right, swap op to normalize to "indexTarget op litExpr".
 	if right != nil {
-		if colName, hit := c.indexedExprToColumnMap[normalizeExprKey(right)]; hit {
-			return colName, right.Type(), op.Swap(), left, true
+		for _, entry := range c.indexedExprs {
+			if entry.matches(right) {
+				return entry.colName, right.Type(), op.Swap(), left, true
+			}
 		}
 		if gf, hit := right.(*expression.GetField); hit {
 			return gf.Name(), gf.Type(), op.Swap(), left, true

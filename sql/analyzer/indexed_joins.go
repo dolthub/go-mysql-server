@@ -400,7 +400,7 @@ func keyExprsForIndex(
 	tableId sql.TableId,
 	idxExprs []sql.ColumnId,
 	filters []sql.Expression,
-	columnIdToIndexedExprMap map[sql.ColumnId]string) (keyExprs, matchedFilters []sql.Expression, nullmask []bool) {
+	columnIdToIndexedExprMap map[sql.ColumnId]indexedExprEntry) (keyExprs, matchedFilters []sql.Expression, nullmask []bool) {
 	for _, col := range idxExprs {
 		key, filter, nullable := keyForExpr(col, tableId, filters, columnIdToIndexedExprMap)
 		if key == nil {
@@ -422,7 +422,7 @@ func keyForExpr(
 	targetCol sql.ColumnId,
 	tableId sql.TableId,
 	filters []sql.Expression,
-	columnIdToIndexedExprMap map[sql.ColumnId]string) (key sql.Expression, filter sql.Expression, nullable bool) {
+	columnIdToIndexedExprMap map[sql.ColumnId]indexedExprEntry) (key sql.Expression, filter sql.Expression, nullable bool) {
 	for _, f := range filters {
 		var left sql.Expression
 		var right sql.Expression
@@ -449,10 +449,10 @@ func keyForExpr(
 		} else if left != nil && right != nil {
 			// Check if targetCol is an indexed functional expression and if
 			// either side of the filter matches the generated expression.
-			if generatedExpr, ok := columnIdToIndexedExprMap[targetCol]; ok {
-				if removeOuterParens(stripTableQualifiers(left).String()) == generatedExpr {
+			if entry, ok := columnIdToIndexedExprMap[targetCol]; ok {
+				if entry.matches(left) {
 					key = right
-				} else if removeOuterParens(stripTableQualifiers(right).String()) == generatedExpr {
+				} else if entry.matches(right) {
 					key = left
 				}
 			}
@@ -476,15 +476,15 @@ func keyForExpr(
 }
 
 // buildColumnIdToIndexedExprMap builds a map of sql.ColumnId to the indexed expression they
-// generate. Each key in the returned map is a sql.ColumnId of a hidden system column that
-// generates an expresion that is included in secondary index. Each value is a string
-// representation of the expression. This function is used for planning/costing joins.
-func buildColumnIdToIndexedExprMap(tableNode sql.TableNode, indexes []*memo.Index) map[sql.ColumnId]string {
+// generate. Each key in the returned map is the sql.ColumnId of a hidden system column that
+// generates an expression included in a secondary index. Each value is a pre-normalized
+// indexedExprEntry for efficient match-time comparison. This function is used for planning/costing joins.
+func buildColumnIdToIndexedExprMap(tableNode sql.TableNode, indexes []*memo.Index) map[sql.ColumnId]indexedExprEntry {
 	if tableNode == nil {
 		return nil
 	}
 
-	result := make(map[sql.ColumnId]string)
+	result := make(map[sql.ColumnId]indexedExprEntry)
 	sch := tableNode.Schema()
 	for _, idx := range indexes {
 		cols := idx.Cols()
@@ -499,10 +499,7 @@ func buildColumnIdToIndexedExprMap(tableNode sql.TableNode, indexes []*memo.Inde
 			}
 			col := sch[schIdx]
 			if col.HiddenSystem && col.Generated != nil {
-				// Apply removeOuterParens twice: once for the Arithmetic.String() wrapper and
-				// once for the ColumnDefaultValue.String() wrapper that may be present when
-				// the expression was loaded from storage as an UnresolvedColumnDefault.
-				result[cols[i]] = removeOuterParens(removeOuterParens(stripTableQualifiers(col.Generated.Expr).String()))
+				result[cols[i]] = newIndexedExprEntry(col.Generated.Expr, unqualifiedColName)
 			}
 		}
 	}
@@ -519,23 +516,8 @@ func exprRefsTable(e sql.Expression, tableId sql.TableId) bool {
 	})
 }
 
-// stripTableQualifiers returns a copy of e with the table name cleared on every
-// GetField node. This normalizes expressions before string comparison so that a
-// table alias (e.g. "u" in LOWER(u.email)) does not prevent matching against a
-// stored generated expression that uses the real table name (e.g. LOWER(users.email)).
-//
-// TODO: The underlying issue is that functional-index matching relies on string
-// comparison of expression trees rather than structural / ColumnId-based comparison.
-// A more robust long-term fix would be to:
-//  1. Change buildColumnIdToIndexedExprMap to store sql.Expression objects
-//     instead of plain strings.
-//  2. Implement an expressionsMatch(a, b sql.Expression) bool helper that walks
-//     both trees in parallel, comparing GetField nodes by ColumnId (which is
-//     alias-immune) rather than by table.column string.
-//
-// The same string-comparison fragility exists in costed_index_scan.go's
-// buildIndexedExprToColumnMap / buildLeaf, which uses an identical map-keyed-by-string
-// pattern for single-table filter planning.
+// stripTableQualifiers returns a copy of e with the table name cleared on every GetField
+// node, so that expressions using different table aliases compare equal via String().
 func stripTableQualifiers(e sql.Expression) sql.Expression {
 	result, _, _ := transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		if gf, ok := e.(*expression.GetField); ok {
