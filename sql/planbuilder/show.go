@@ -501,7 +501,11 @@ func (b *Builder) buildShowIndex(inScope *scope, s *ast.Show) (outScope *scope) 
 }
 
 func (b *Builder) getInfoSchemaIndexes(rt *plan.ResolvedTable) []sql.Index {
-	it, ok := rt.Table.(sql.IndexAddressableTable)
+	table := rt.Table
+	if tw, ok := table.(sql.TableWrapper); ok {
+		table = tw.Underlying()
+	}
+	it, ok := table.(sql.IndexAddressableTable)
 	if !ok {
 		return nil
 	}
@@ -754,6 +758,9 @@ func (b *Builder) buildShowAllColumns(inScope *scope, s *ast.Show) (outScope *sc
 	table = tableScope.node
 
 	show := plan.NewShowColumns(full, table)
+	if s.Extended {
+		show.Extended = true
+	}
 
 	for _, c := range show.Schema() {
 		outScope.newColumn(scopeColumn{

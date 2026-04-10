@@ -319,6 +319,7 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo) error {
 			return nil
 		}
 
+		columnIdToIndexedExprMap := buildColumnIdToIndexedExprMap(rt, indexes)
 		if or, ok := join.Filter[0].(*expression.Or); ok && len(join.Filter) == 1 {
 			// Special case disjoint filter. The execution plan will perform an index
 			// lookup for each predicate leaf in the OR tree.
@@ -330,7 +331,7 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo) error {
 			for _, on := range conds {
 				filters := expression.SplitConjunction(on)
 				for _, idx := range indexes {
-					keyExprs, _, nullmask := keyExprsForIndex(tableId, idx.Cols(), append(filters, extraFilters...))
+					keyExprs, _, nullmask := keyExprsForIndex(tableId, idx.Cols(), append(filters, extraFilters...), columnIdToIndexedExprMap)
 					if keyExprs != nil {
 						ita, err := plan.NewIndexedAccessForTableNode(ctx, rt, plan.NewLookupBuilder(idx.SqlIdx(), keyExprs, nullmask))
 						if err != nil {
@@ -354,7 +355,7 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo) error {
 		}
 
 		for _, idx := range indexes {
-			keyExprs, matchedFilters, nullmask := keyExprsForIndex(tableId, idx.Cols(), append(join.Filter, extraFilters...))
+			keyExprs, matchedFilters, nullmask := keyExprsForIndex(tableId, idx.Cols(), append(join.Filter, extraFilters...), columnIdToIndexedExprMap)
 			if keyExprs == nil {
 				m.Tracer.Log("Index %s: no matching key expressions found", idx.SqlIdx().ID())
 				continue
@@ -395,9 +396,13 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo) error {
 // keyExprsForIndex returns a list of expression groups that compute a lookup
 // key into the given index. The key fields will either be equality filters
 // (from ON conditions) or constants.
-func keyExprsForIndex(tableId sql.TableId, idxExprs []sql.ColumnId, filters []sql.Expression) (keyExprs, matchedFilters []sql.Expression, nullmask []bool) {
+func keyExprsForIndex(
+	tableId sql.TableId,
+	idxExprs []sql.ColumnId,
+	filters []sql.Expression,
+	columnIdToIndexedExprMap map[sql.ColumnId]indexedExprEntry) (keyExprs, matchedFilters []sql.Expression, nullmask []bool) {
 	for _, col := range idxExprs {
-		key, filter, nullable := keyForExpr(col, tableId, filters)
+		key, filter, nullable := keyForExpr(col, tableId, filters, columnIdToIndexedExprMap)
 		if key == nil {
 			break
 		}
@@ -413,7 +418,11 @@ func keyExprsForIndex(tableId sql.TableId, idxExprs []sql.ColumnId, filters []sq
 
 // keyForExpr returns an equivalence or constant value to satisfy the
 // lookup index expression.
-func keyForExpr(targetCol sql.ColumnId, tableId sql.TableId, filters []sql.Expression) (key sql.Expression, filter sql.Expression, nullable bool) {
+func keyForExpr(
+	targetCol sql.ColumnId,
+	tableId sql.TableId,
+	filters []sql.Expression,
+	columnIdToIndexedExprMap map[sql.ColumnId]indexedExprEntry) (key sql.Expression, filter sql.Expression, nullable bool) {
 	for _, f := range filters {
 		var left sql.Expression
 		var right sql.Expression
@@ -437,7 +446,19 @@ func keyForExpr(targetCol sql.ColumnId, tableId sql.TableId, filters []sql.Expre
 		} else if ref, ok := right.(*expression.GetField); ok && ref.Id() == targetCol &&
 			sql.IsConvertibleKeyType(right.Type(), left.Type()) {
 			key = left
-		} else {
+		} else if left != nil && right != nil {
+			// Check if targetCol is an indexed functional expression and if
+			// either side of the filter matches the generated expression.
+			if entry, ok := columnIdToIndexedExprMap[targetCol]; ok {
+				if entry.matches(left) {
+					key = right
+				} else if entry.matches(right) {
+					key = left
+				}
+			}
+		}
+
+		if key == nil {
 			continue
 		}
 
@@ -454,6 +475,37 @@ func keyForExpr(targetCol sql.ColumnId, tableId sql.TableId, filters []sql.Expre
 	return nil, nil, false
 }
 
+// buildColumnIdToIndexedExprMap builds a map of sql.ColumnId to the indexed expression they
+// generate. Each key in the returned map is the sql.ColumnId of a hidden system column that
+// generates an expression included in a secondary index. Each value is a pre-normalized
+// indexedExprEntry for efficient match-time comparison. This function is used for planning/costing joins.
+func buildColumnIdToIndexedExprMap(tableNode sql.TableNode, indexes []*memo.Index) map[sql.ColumnId]indexedExprEntry {
+	if tableNode == nil {
+		return nil
+	}
+
+	result := make(map[sql.ColumnId]indexedExprEntry)
+	sch := tableNode.Schema()
+	for _, idx := range indexes {
+		cols := idx.Cols()
+		if len(idx.SqlIdx().Expressions()) != len(cols) {
+			continue
+		}
+		for i, qualifiedColName := range idx.SqlIdx().Expressions() {
+			unqualifiedColName := strings.TrimPrefix(qualifiedColName, idx.SqlIdx().Table()+".")
+			schIdx := sch.IndexOfColName(unqualifiedColName)
+			if schIdx < 0 {
+				continue
+			}
+			col := sch[schIdx]
+			if col.HiddenSystem && col.Generated != nil {
+				result[cols[i]] = newIndexedExprEntry(col.Generated.Expr, unqualifiedColName)
+			}
+		}
+	}
+	return result
+}
+
 func exprRefsTable(e sql.Expression, tableId sql.TableId) bool {
 	return transform.InspectExpr(e, func(e sql.Expression) bool {
 		gf, _ := e.(*expression.GetField)
@@ -462,6 +514,31 @@ func exprRefsTable(e sql.Expression, tableId sql.TableId) bool {
 		}
 		return false
 	})
+}
+
+// stripTableQualifiers returns a copy of e with the table name cleared on every GetField
+// node, so that expressions using different table aliases compare equal via String().
+func stripTableQualifiers(e sql.Expression) sql.Expression {
+	result, _, _ := transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		if gf, ok := e.(*expression.GetField); ok {
+			changed := false
+			if gf.Table() != "" {
+				gf = gf.WithTable("")
+				changed = true
+			}
+			// Clear quoteName so that stored generated expressions (which use backtick-quoted
+			// names, e.g. `c1_new`) compare equal to filter expressions (which use plain names).
+			if gf.IsQuotedIdentifier() {
+				gf = gf.WithQuotedNames(nil, false)
+				changed = true
+			}
+			if changed {
+				return gf, transform.NewTree, nil
+			}
+		}
+		return e, transform.SameTree, nil
+	})
+	return result
 }
 
 // convertSemiToInnerJoin adds inner join alternatives for semi joins.
@@ -730,12 +807,13 @@ func addRightSemiJoins(ctx *sql.Context, m *memo.Memo) error {
 			}
 		}
 
+		columnIdToIndexedExprMap := buildColumnIdToIndexedExprMap(leftRt, indexes)
 		for _, idx := range indexes {
 			if !semi.Group().RelProps.FuncDeps().ColsAreStrictKey(idx.ColSet()) {
 				continue
 			}
 
-			keyExprs, _, nullmask := keyExprsForIndex(tableId, idx.Cols(), append(semi.Filter, filters...))
+			keyExprs, _, nullmask := keyExprsForIndex(tableId, idx.Cols(), append(semi.Filter, filters...), columnIdToIndexedExprMap)
 			if keyExprs == nil {
 				continue
 			}

@@ -114,6 +114,15 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 						err := sql.ErrColumnNotFound.New(gf.String())
 						b.handleErr(err)
 					}
+
+					// Don't include system hidden columns when expanding '*'
+					// TODO: Matching on the column name here isn't ideal. Would be nicer
+					//       if we could just ask if this is a system hidden column.
+					// TODO: In addition to not including system hidden columns, we also
+					//       want to not include user hidden columns.
+					if strings.Contains(c.col, "!hidden!") {
+						continue
+					}
 					c.id = id
 					c.scalar = gf
 					outScope.addColumn(c)
