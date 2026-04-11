@@ -21,6 +21,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/dolthub/vitess/go/vt/proto/query"
@@ -211,6 +212,11 @@ func (t TimespanType_) ConvertToTimespan(v interface{}) (Timespan, error) {
 		if err == nil {
 			return impl, nil
 		}
+
+		if sql.ErrTruncatedIncorrect.Is(err) {
+			return impl, err
+		}
+
 		if strings.Contains(value, ".") {
 			strAsDouble, err := strconv.ParseFloat(value, 64)
 			if err != nil {
@@ -323,9 +329,36 @@ func stringToTimespan(s string) (Timespan, error) {
 	var seconds int8
 	var microseconds int32
 
+	originalStr := s
+	s = strings.TrimSpace(s)
+
 	if len(s) > 0 && s[0] == '-' {
 		negative = true
 		s = s[1:]
+	}
+
+	var isTruncated bool
+	var dotFound bool
+	for i, r := range s {
+		if !unicode.IsDigit(r) && r != ':' && r != '.' {
+			s = s[0:i]
+			isTruncated = true
+			break
+		}
+	}
+
+	for i, r := range s {
+		if r == '.' {
+			if dotFound {
+				s = s[0:i]
+				isTruncated = true
+				break
+			}
+		}
+	}
+
+	if s == "" || s == ":" || s == "." {
+		return Timespan(0), ErrConvertingToTimeType.New(s)
 	}
 
 	comps := strings.SplitN(s, ".", 2)
@@ -418,6 +451,9 @@ func stringToTimespan(s string) (Timespan, error) {
 		microseconds = 0
 	}
 
+	if isTruncated {
+		return unitsToTimespan(negative, hours, minutes, seconds, microseconds), sql.ErrTruncatedIncorrect.New("time", originalStr)
+	}
 	return unitsToTimespan(negative, hours, minutes, seconds, microseconds), nil
 }
 
