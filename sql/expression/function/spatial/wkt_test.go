@@ -63,7 +63,7 @@ func TestAsWKT(t *testing.T) {
 		f := NewAsWKT(expression.NewLiteral(types.MultiPoint{Points: []types.Point{{X: 1, Y: 2}, {X: 3, Y: 4}}}, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal("MULTIPOINT(1 2,3 4)", v)
+		require.Equal("MULTIPOINT((1 2),(3 4))", v)
 	})
 
 	t.Run("convert multilinestring", func(t *testing.T) {
@@ -91,7 +91,7 @@ func TestAsWKT(t *testing.T) {
 		f := NewAsWKT(expression.NewLiteral(types.GeomColl{}, types.GeomCollType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
-		require.Equal("GEOMETRYCOLLECTION()", v)
+		require.Equal("GEOMETRYCOLLECTION EMPTY", v)
 	})
 
 	t.Run("convert geometry collections", func(t *testing.T) {
@@ -119,10 +119,10 @@ func TestAsWKT(t *testing.T) {
 			"POINT(1 2),"+
 			"LINESTRING(1 2,3 4),"+
 			"POLYGON((0 0,1 1,1 0,0 0)),"+
-			"MULTIPOINT(1 2,1 2),"+
+			"MULTIPOINT((1 2),(1 2)),"+
 			"MULTILINESTRING((1 2,3 4),(1 2,3 4)),"+
 			"MULTIPOLYGON(((0 0,1 1,1 0,0 0)),((0 0,1 1,1 0,0 0))),"+
-			"GEOMETRYCOLLECTION()"+
+			"GEOMETRYCOLLECTION EMPTY"+
 			")", v)
 	})
 
