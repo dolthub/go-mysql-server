@@ -331,6 +331,10 @@ func (editor TableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 			positionRow[0] = word
 			positionRow = append(positionRow, keyCols...)
 			positionRow = append(positionRow, position)
+			// TODO: In some places, for example `REPLACE INTO` and `INSERT...ON DUPLICATE UPDATE`, we use the information
+			//  inside UniqueKeyError to perform the replace/update. However, the information in the UniqueKeyError
+			//  generated from an Insert on index.Position.Editor does not match the primary table's schema.
+			//  https://github.com/dolthub/dolt/issues/10882#issuecomment-4255176383
 			if err = index.Position.Editor.Insert(ctx, positionRow); err != nil {
 				return err
 			}

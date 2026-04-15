@@ -93,12 +93,21 @@ func (editor MultiTableEditor) StatementComplete(ctx *sql.Context) error {
 
 // Insert implements the interface sql.TableEditor.
 func (editor MultiTableEditor) Insert(ctx *sql.Context, row sql.Row) error {
+	// Any error generated from inserting on a primary table should take precedence over errors generated from
+	// inserting on a secondary table.
+	if err := editor.primary.Insert(ctx, row); err != nil {
+		return err
+	}
 	for _, secondary := range editor.secondaries {
+		// TODO: In some places, for example `REPLACE INTO` and `INSERT...ON DUPLICATE UPDATE`, we use the information
+		//  inside UniqueKeyError to perform the replace/update. However, the information in the UniqueKeyError
+		//  generated from an Insert on a secondary table does not match the primary table's schema.
+		//  https://github.com/dolthub/dolt/issues/10882#issuecomment-4255176383
 		if err := secondary.Insert(ctx, row); err != nil {
 			return err
 		}
 	}
-	return editor.primary.Insert(ctx, row)
+	return nil
 }
 
 // Update implements the interface sql.TableEditor.

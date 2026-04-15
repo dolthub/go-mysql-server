@@ -189,6 +189,8 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 					return nil, sql.NewWrappedInsertError(row, err)
 				}
 
+				// TODO: For multitables, UniqueKeyError.Existing might not be the correct row if the error is coming
+				//  from a secondary table. https://github.com/dolthub/dolt/issues/10882#issuecomment-4255176383
 				ue := err.(*errors.Error).Cause().(sql.UniqueKeyError)
 				if err = i.replacer.Delete(ctx, ue.Existing); err != nil {
 					i.rowSource.Close(ctx)
@@ -206,6 +208,8 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 		if err := i.inserter.Insert(ctx, row); err != nil {
 			if (sql.ErrPrimaryKeyViolation.Is(err) || sql.ErrUniqueKeyViolation.Is(err)) &&
 				i.onDupKeyUpdateExprs.HasUpdates() {
+				// TODO: For multitables, UniqueKeyError.Existing might not be the correct row if the error is coming
+				//  from a secondary table. https://github.com/dolthub/dolt/issues/10882#issuecomment-4255176383
 				if uniqueKeyError, ok := err.(*errors.Error).Cause().(sql.UniqueKeyError); ok {
 					return i.handleOnDuplicateKeyUpdate(ctx, uniqueKeyError.Existing, row)
 				}
