@@ -331,7 +331,8 @@ func (editor TableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 			positionRow[0] = word
 			positionRow = append(positionRow, keyCols...)
 			positionRow = append(positionRow, position)
-			if err = index.Position.Editor.Insert(ctx, positionRow); err != nil {
+			// TODO: write to this table only once, rather than ignoring duplicate errors
+			if err = index.Position.Editor.Insert(ctx, positionRow); err != nil && !sql.ErrPrimaryKeyViolation.Is(err) && !sql.ErrUniqueKeyViolation.Is(err) && !sql.ErrDuplicateEntry.Is(err) {
 				return err
 			}
 		}
@@ -354,7 +355,7 @@ func (editor TableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 			docCountRow[0] = word
 			docCountRow = append(docCountRow, keyCols...)
 			docCountRow = append(docCountRow, wordDocCount)
-			//TODO: write to this table only once, rather than ignoring duplicate errors
+			// TODO: write to this table only once, rather than ignoring duplicate errors
 			if err = index.DocCount.Editor.Insert(ctx, docCountRow); err != nil && !sql.ErrPrimaryKeyViolation.Is(err) && !sql.ErrUniqueKeyViolation.Is(err) && !sql.ErrDuplicateEntry.Is(err) {
 				return err
 			}
