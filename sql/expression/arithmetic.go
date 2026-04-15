@@ -71,11 +71,18 @@ type Arithmetic struct {
 	BinaryExpressionStub
 	Op  string
 	ops int32
+	typ sql.Type
 }
 
 // NewArithmetic creates a new Arithmetic sql.Expression.
 func NewArithmetic(left, right sql.Expression, op string) *Arithmetic {
-	a := &Arithmetic{BinaryExpressionStub{LeftChild: left, RightChild: right}, op, 0}
+	a := &Arithmetic{
+		BinaryExpressionStub: BinaryExpressionStub{
+			LeftChild:  left,
+			RightChild: right,
+		},
+		Op: op,
+	}
 	ops := countArithmeticOps(a)
 	setArithmeticOps(a, ops)
 	return a
@@ -122,9 +129,9 @@ func (a *Arithmetic) IsNullable() bool {
 	return a.BinaryExpressionStub.IsNullable()
 }
 
-// Type returns the greatest type for given operation.
-func (a *Arithmetic) Type() sql.Type {
-	//TODO: what if both BindVars? should be constant folded
+// getReturnType returns the greatest type for given operation.
+func (a *Arithmetic) getReturnType() sql.Type {
+	// TODO: what if both BindVars? should be constant folded
 	rTyp := a.RightChild.Type()
 	if types.IsDeferredType(rTyp) {
 		return rTyp
@@ -250,6 +257,16 @@ func (a *Arithmetic) Type() sql.Type {
 
 	// When in doubt return float64
 	return types.Float64
+}
+
+// Type implements the Expression interface
+func (a *Arithmetic) Type() sql.Type {
+	// Cache the return type for Arithmetic functions for performance.
+	// We this here instead of NewArithmeticExpression because of placeholder expressions.
+	if a.typ == nil {
+		a.typ = a.getReturnType()
+	}
+	return a.typ
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
