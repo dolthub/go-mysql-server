@@ -18,9 +18,10 @@ import (
 	"fmt"
 	"strings"
 
+	"gopkg.in/src-d/go-errors.v1"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
-	"gopkg.in/src-d/go-errors.v1"
 )
 
 // schemaPositionDeleter contains a sql.RowDeleter and the start (inclusive) and end (exclusive) position
