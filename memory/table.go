@@ -1884,7 +1884,7 @@ func (t *Table) AddForeignKey(ctx *sql.Context, fk sql.ForeignKeyConstraint) err
 }
 
 // DropForeignKey implements sql.ForeignKeyTable.
-func (t *Table) DropForeignKey(ctx *sql.Context, fkName string) error {
+func (t *Table) DropForeignKey(ctx *sql.Context, fkName string, tableName string, schemaName string) error {
 	sess := SessionFromContext(ctx)
 	data := sess.tableData(t)
 

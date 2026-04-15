@@ -198,9 +198,9 @@ type ForeignKeyTable interface {
 	// already exists on any other table within the database.
 	AddForeignKey(ctx *Context, fk ForeignKeyConstraint) error
 	// DropForeignKey removes a foreign key from the table.
-	DropForeignKey(ctx *Context, fkName string) error
+	DropForeignKey(ctx *Context, fkName string, tableName string, schemaName string) error
 	// UpdateForeignKey updates the given foreign key constraint. May range from updated table names to setting the
-	// IsResolved boolean.
+	// IsResolved boolean. The new foreign key's table name and schema name are used to search the foreign key.
 	UpdateForeignKey(ctx *Context, fkName string, fk ForeignKeyConstraint) error
 	// GetForeignKeyEditor returns a ForeignKeyEditor for this table.
 	GetForeignKeyEditor(ctx *Context) ForeignKeyEditor
