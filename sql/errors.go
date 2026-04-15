@@ -136,7 +136,7 @@ var (
 
 	// ErrMisusedAlias is returned when a alias is defined and used in the same projection.
 	ErrMisusedAlias = errors.NewKind("column %q does not exist in scope, but there is an alias defined in" +
-			" this projection with that name. Aliases cannot be used in the same projection they're defined in")
+		" this projection with that name. Aliases cannot be used in the same projection they're defined in")
 
 	// ErrInvalidAsOfExpression is returned when an expression for AS OF cannot be used
 	ErrInvalidAsOfExpression = errors.NewKind("expression %s cannot be used in AS OF")
@@ -420,7 +420,7 @@ var (
 	// prefix length specified, and the collation is case-insensitive or accent-insensitive, meaning we can't
 	// reliably use a content-hashed field to detect uniqueness.
 	ErrCollationNotSupportedOnUniqueTextIndex = errors.NewKind("unable to create a unique index on TEXT columns without " +
-			"a prefix length specified when using a case-insensitive or accent-insensitive collation")
+		"a prefix length specified when using a case-insensitive or accent-insensitive collation")
 
 	// ErrPartitionNotFound is thrown when a partition key on a table is not found
 	ErrPartitionNotFound = errors.NewKind("partition not found %q")
@@ -576,7 +576,7 @@ var (
 	// grouping and another projected expression contains a non-aggregated column.
 	// MySQL error code: 1140, SQL state: 42000
 	ErrNonAggregatedColumnWithoutGroupBy = errors.NewKind("in aggregated query without GROUP BY, expression #%d of SELECT list contains nonaggregated column '%s'; " +
-			"this is incompatible with sql_mode=only_full_group_by")
+		"this is incompatible with sql_mode=only_full_group_by")
 
 	// ErrInvalidArgumentNumber is returned when the number of arguments to call a
 	// function is different from the function arity.
@@ -839,7 +839,7 @@ var (
 	// ErrCollationNotYetImplementedTemp is returned when the collation is valid but has not yet been implemented.
 	// This error is temporary, and will be removed once all collations have been added.
 	ErrCollationNotYetImplementedTemp = errors.NewKind("The collation `%s` has not yet been implemented, " +
-			"please create an issue at https://github.com/dolthub/go-mysql-server/issues/new and the DoltHub developers will implement it")
+		"please create an issue at https://github.com/dolthub/go-mysql-server/issues/new and the DoltHub developers will implement it")
 
 	// ErrCollationIllegalMix is returned when two different collations are used in a scenario where they are not compatible.
 	ErrCollationIllegalMix = errors.NewKind("Illegal mix of collations (%v) and (%v)")
@@ -859,7 +859,7 @@ var (
 	// ErrCharSetNotYetImplementedTemp is returned when the character set is valid but has not yet been implemented.
 	// This error is temporary, and will be removed once all character sets have been added.
 	ErrCharSetNotYetImplementedTemp = errors.NewKind("The character set `%s` has not yet been implemented, " +
-			"please create an issue at https://github.com/dolthub/go-mysql-server/issues/new and the DoltHub developers will implement it")
+		"please create an issue at https://github.com/dolthub/go-mysql-server/issues/new and the DoltHub developers will implement it")
 
 	// ErrNoTablesUsed is returned when there is no table provided or dual table is defined with column access.
 	ErrNoTablesUsed = errors.NewKind("No tables used")

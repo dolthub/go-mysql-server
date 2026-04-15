@@ -73,6 +73,9 @@ func (i *insertIter) Next(ctx *sql.Context) (returnRow sql.Row, returnErr error)
 	}
 
 	if err != nil {
+		if errors.Is(err, sql.ErrRowEditCanceled) {
+			return i.Next(ctx)
+		}
 		return nil, i.ignoreOrClose(ctx, row, err)
 	}
 

@@ -20,6 +20,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"gopkg.in/src-d/go-errors.v1"
 )
 
 // schemaPositionDeleter contains a sql.RowDeleter and the start (inclusive) and end (exclusive) position
@@ -74,7 +75,11 @@ type deleteIter struct {
 
 func (d *deleteIter) Next(ctx *sql.Context) (sql.Row, error) {
 	row, err := d.childIter.Next(ctx)
+
 	if err != nil {
+		if errors.Is(err, sql.ErrRowEditCanceled) {
+			return d.Next(ctx)
+		}
 		return nil, err
 	}
 	select {
