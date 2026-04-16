@@ -242,7 +242,7 @@ func (i *showIndexesIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 
 	nullable := ""
-	if col := plan.GetColumnFromIndexExpr(show.expression, tbl); col != nil {
+	if col := plan.GetColumnFromIndexExpr(ctx, show.expression, tbl); col != nil {
 		columnName, expression = col.Name, nil
 		if col.Nullable {
 			nullable = "YES"
@@ -281,7 +281,7 @@ func (i *showIndexesIter) Next(ctx *sql.Context) (sql.Row, error) {
 }
 
 // isPriCol checks if this column is the first column in a unique index
-func isPriCol(s *plan.ShowColumns, col *sql.Column, table sql.Table) bool {
+func isPriCol(ctx *sql.Context, s *plan.ShowColumns, col *sql.Column, table sql.Table) bool {
 	for _, idx := range s.Indexes {
 		if !idx.IsUnique() {
 			continue
@@ -290,12 +290,12 @@ func isPriCol(s *plan.ShowColumns, col *sql.Column, table sql.Table) bool {
 		//   this currently works because the primary key shows up as unique, so the condition below satisfies it
 		//   but I am not confident that this is always true
 		idxExprs := idx.Expressions()
-		firstIndexCol := plan.GetColumnFromIndexExpr(idxExprs[0], table)
+		firstIndexCol := plan.GetColumnFromIndexExpr(ctx, idxExprs[0], table)
 		if firstIndexCol == nil || firstIndexCol.Name != col.Name {
 			return false
 		}
 		for _, expr := range idxExprs {
-			idxCol := plan.GetColumnFromIndexExpr(expr, table)
+			idxCol := plan.GetColumnFromIndexExpr(ctx, expr, table)
 			if idxCol == nil || idxCol.Nullable {
 				return false
 			}
@@ -306,14 +306,14 @@ func isPriCol(s *plan.ShowColumns, col *sql.Column, table sql.Table) bool {
 }
 
 // isUnqCol checks if this the values in this column must be unique
-func isUnqCol(s *plan.ShowColumns, col *sql.Column, table sql.Table) bool {
+func isUnqCol(ctx *sql.Context, s *plan.ShowColumns, col *sql.Column, table sql.Table) bool {
 	for _, idx := range s.Indexes {
 		// Column is in a unique index by itself
 		idxExprs := idx.Expressions()
 		if !idx.IsUnique() || len(idxExprs) > 1 {
 			continue
 		}
-		firstIndexCol := plan.GetColumnFromIndexExpr(idxExprs[0], table)
+		firstIndexCol := plan.GetColumnFromIndexExpr(ctx, idxExprs[0], table)
 		if firstIndexCol != nil && firstIndexCol.Name == col.Name {
 			return true
 		}
@@ -322,10 +322,10 @@ func isUnqCol(s *plan.ShowColumns, col *sql.Column, table sql.Table) bool {
 }
 
 // isMulCol checks if values in this column can be non-unique and that it's the first column in an index
-func isMulCol(s *plan.ShowColumns, col *sql.Column, table sql.Table) bool {
+func isMulCol(ctx *sql.Context, s *plan.ShowColumns, col *sql.Column, table sql.Table) bool {
 	for _, idx := range s.Indexes {
 		idxExprs := idx.Expressions()
-		firstIdxCol := plan.GetColumnFromIndexExpr(idxExprs[0], table)
+		firstIdxCol := plan.GetColumnFromIndexExpr(ctx, idxExprs[0], table)
 		// Not first column in index, ignore
 		if firstIdxCol == nil || firstIdxCol.Name != col.Name {
 			continue
@@ -406,7 +406,7 @@ type NameAndSchema interface {
 func convertColumnDefaultToString(ctx *sql.Context, def *sql.ColumnDefaultValue) (string, error) {
 	// TODO : string literals should have character set introducer
 	colDefaultStr := def.String()
-	defType := def.Type()
+	defType := def.Type(ctx)
 
 	// These types do not need to be quoted
 	if !def.IsLiteral() || colDefaultStr == "NULL" || types.IsTime(defType) || types.IsText(defType) {
@@ -476,7 +476,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 		prefixLengths := index.PrefixLengths()
 		var indexCols []string
 		for idx, expr := range index.Expressions() {
-			col := plan.GetColumnFromIndexExpr(expr, table)
+			col := plan.GetColumnFromIndexExpr(ctx, expr, table)
 			if col != nil {
 				indexDef := i.formatter.QuoteIdentifier(col.Name)
 				if len(prefixLengths) > idx && prefixLengths[idx] != 0 {

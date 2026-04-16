@@ -153,7 +153,7 @@ func TestTruncate(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			f := NewTruncate(tt.xExpr, tt.dExpr)
+			f := NewTruncate(sql.NewEmptyContext(), tt.xExpr, tt.dExpr)
 
 			if tt.err != nil {
 				t.Skip("Argument validation handled by framework")
@@ -177,14 +177,17 @@ func TestTruncate(t *testing.T) {
 }
 
 func TestTruncateWithChildren(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	req := require.New(t)
 
 	f := NewTruncate(
+		ctx,
 		expression.NewLiteral(1.223, types.Float64),
 		expression.NewLiteral(1, types.Int32),
 	)
 
 	newF, err := f.WithChildren(
+		ctx,
 		expression.NewLiteral(2.456, types.Float64),
 		expression.NewLiteral(2, types.Int32),
 	)
@@ -200,6 +203,7 @@ func TestTruncateString(t *testing.T) {
 	req := require.New(t)
 
 	f := NewTruncate(
+		sql.NewEmptyContext(),
 		expression.NewLiteral(1.223, types.Float64),
 		expression.NewLiteral(1, types.Int32),
 	)
@@ -210,31 +214,37 @@ func TestTruncateString(t *testing.T) {
 func TestTruncateType(t *testing.T) {
 	req := require.New(t)
 
+	ctx := sql.NewEmptyContext()
 	f := NewTruncate(
+		ctx,
 		expression.NewLiteral(1.223, types.Float64),
 		expression.NewLiteral(1, types.Int32),
 	)
-	req.Equal(types.Float64, f.Type())
+	req.Equal(types.Float64, f.Type(ctx))
 
 	f = NewTruncate(
+		ctx,
 		expression.NewLiteral("1.223", types.Text),
 		expression.NewLiteral(1, types.Int32),
 	)
-	req.Equal(types.Float64, f.Type())
+	req.Equal(types.Float64, f.Type(ctx))
 }
 
 func TestTruncateIsNullable(t *testing.T) {
 	req := require.New(t)
 
+	ctx := sql.NewEmptyContext()
 	f := NewTruncate(
+		ctx,
 		expression.NewLiteral(nil, types.Null),
 		expression.NewLiteral(1, types.Int32),
 	)
-	req.True(f.IsNullable())
+	req.True(f.IsNullable(ctx))
 
 	f = NewTruncate(
+		ctx,
 		expression.NewLiteral(1.223, types.Float64),
 		expression.NewLiteral(1, types.Int32),
 	)
-	req.False(f.IsNullable())
+	req.False(f.IsNullable(ctx))
 }

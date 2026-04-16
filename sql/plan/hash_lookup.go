@@ -32,9 +32,9 @@ import (
 // available, it fulfills the RowIter call by performing a hash lookup
 // on the projected results. If cached results are not available, it
 // simply delegates to the child.
-func NewHashLookup(n sql.Node, rightEntryKey sql.Expression, leftProbeKey sql.Expression, joinType JoinType) *HashLookup {
-	leftKeySch := hash.ExprsToSchema(leftProbeKey)
-	compareType := types.GetCompareType(leftProbeKey.Type(), rightEntryKey.Type())
+func NewHashLookup(ctx *sql.Context, n sql.Node, rightEntryKey sql.Expression, leftProbeKey sql.Expression, joinType JoinType) *HashLookup {
+	leftKeySch := hash.ExprsToSchema(ctx, leftProbeKey)
+	compareType := types.GetCompareType(leftProbeKey.Type(ctx), rightEntryKey.Type(ctx))
 	return &HashLookup{
 		UnaryNode:     UnaryNode{n},
 		RightEntryKey: rightEntryKey,
@@ -70,14 +70,14 @@ func (n *HashLookup) IsReadOnly() bool {
 	return n.Child.IsReadOnly()
 }
 
-func (n *HashLookup) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (n *HashLookup) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(exprs), 2)
 	}
 	ret := *n
 	ret.RightEntryKey = exprs[0]
 	ret.LeftProbeKey = exprs[1]
-	ret.leftKeySch = hash.ExprsToSchema(ret.LeftProbeKey)
+	ret.leftKeySch = hash.ExprsToSchema(ctx, ret.LeftProbeKey)
 	return &ret, nil
 }
 
@@ -92,29 +92,29 @@ func (n *HashLookup) String() string {
 	return pr.String()
 }
 
-func (n *HashLookup) DebugString() string {
+func (n *HashLookup) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("HashLookup")
 	children := make([]string, 3)
-	children[0] = fmt.Sprintf("left-key: %s", sql.DebugString(n.LeftProbeKey))
-	children[1] = fmt.Sprintf("right-key: %s", sql.DebugString(n.RightEntryKey))
-	children[2] = sql.DebugString(n.Child)
+	children[0] = fmt.Sprintf("left-key: %s", sql.DebugString(ctx, n.LeftProbeKey))
+	children[1] = fmt.Sprintf("right-key: %s", sql.DebugString(ctx, n.RightEntryKey))
+	children[2] = sql.DebugString(ctx, n.Child)
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
 
-func (n *HashLookup) Describe(options sql.DescribeOptions) string {
+func (n *HashLookup) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("HashLookup")
 	children := make([]string, 3)
-	children[0] = fmt.Sprintf("left-key: %s", sql.Describe(n.LeftProbeKey, options))
-	children[1] = fmt.Sprintf("right-key: %s", sql.Describe(n.RightEntryKey, options))
-	children[2] = sql.Describe(n.Child, options)
+	children[0] = fmt.Sprintf("left-key: %s", sql.Describe(ctx, n.LeftProbeKey, options))
+	children[1] = fmt.Sprintf("right-key: %s", sql.Describe(ctx, n.RightEntryKey, options))
+	children[2] = sql.Describe(ctx, n.Child, options)
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
 
-func (n *HashLookup) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (n *HashLookup) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 1)
 	}
@@ -157,6 +157,6 @@ func (n *HashLookup) GetHashKey(ctx *sql.Context, e sql.Expression, row sql.Row)
 	return hash.HashOfSimple(ctx, key, n.CompareType)
 }
 
-func (n *HashLookup) Dispose() {
+func (n *HashLookup) Dispose(ctx *sql.Context) {
 	n.Lookup = nil
 }

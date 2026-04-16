@@ -31,7 +31,7 @@ var _ sql.FunctionExpression = (*StrCmp)(nil)
 var _ sql.CollationCoercible = (*StrCmp)(nil)
 
 // NewStrCmp creates a new NewStrCmp UDF.
-func NewStrCmp(e1, e2 sql.Expression) sql.Expression {
+func NewStrCmp(ctx *sql.Context, e1, e2 sql.Expression) sql.Expression {
 	return &StrCmp{
 		expression.BinaryExpressionStub{
 			LeftChild:  e1,
@@ -51,7 +51,7 @@ func (s *StrCmp) Description() string {
 }
 
 // Type implements the Expression interface.
-func (s *StrCmp) Type() sql.Type {
+func (s *StrCmp) Type(ctx *sql.Context) sql.Type {
 	return types.Int8
 }
 
@@ -67,11 +67,11 @@ func (s *StrCmp) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (s *StrCmp) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (s *StrCmp) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 2)
 	}
-	return NewStrCmp(children[0], children[1]), nil
+	return NewStrCmp(ctx, children[0], children[1]), nil
 }
 
 func (s *StrCmp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {

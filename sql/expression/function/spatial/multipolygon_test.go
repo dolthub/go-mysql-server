@@ -25,11 +25,12 @@ import (
 )
 
 func TestMultiPolygon(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	t.Run("create valid multipolygon", func(t *testing.T) {
 		require := require.New(t)
 		line := types.LineString{Points: []types.Point{{X: 0, Y: 0}, {X: 1, Y: 0}, {X: 1, Y: 1}, {X: 0, Y: 0}}}
 		poly := types.Polygon{Lines: []types.LineString{line}}
-		f, err := NewMultiPolygon(expression.NewLiteral(poly, types.PolygonType{}))
+		f, err := NewMultiPolygon(ctx, expression.NewLiteral(poly, types.PolygonType{}))
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -44,6 +45,7 @@ func TestMultiPolygon(t *testing.T) {
 		line2 := types.LineString{Points: []types.Point{{X: 0, Y: 0}, {X: 0, Y: 1}, {X: 1, Y: 1}, {X: 0, Y: 0}}}
 		poly2 := types.Polygon{Lines: []types.LineString{line2}}
 		f, err := NewMultiPolygon(
+			ctx,
 			expression.NewLiteral(poly1, types.PolygonType{}),
 			expression.NewLiteral(poly2, types.PolygonType{}),
 		)
@@ -57,7 +59,7 @@ func TestMultiPolygon(t *testing.T) {
 
 func TestNewMultiPolygon(t *testing.T) {
 	require := require.New(t)
-	_, err := NewMultiPolygon(expression.NewLiteral(nil, types.PolygonType{}),
+	_, err := NewMultiPolygon(sql.NewEmptyContext(), expression.NewLiteral(nil, types.PolygonType{}),
 		expression.NewLiteral(nil, types.PolygonType{}),
 		expression.NewLiteral(nil, types.PolygonType{}),
 	)

@@ -20,7 +20,7 @@ type Visitor interface {
 	// If the result Visitor is not nil, Walk visits each of the children
 	// of the expr with that visitor, followed by a call of Visit(nil)
 	// to the returned visitor.
-	Visit(expr Expression) Visitor
+	Visit(ctx *Context, expr Expression) Visitor
 }
 
 // Walk traverses the expression tree in depth-first order. It starts by calling
@@ -28,13 +28,13 @@ type Visitor interface {
 // v.Visit(expr) is not nil, Walk is invoked recursively with the returned
 // visitor for each children of the expr, followed by a call of v.Visit(nil)
 // to the returned visitor.
-func Walk(v Visitor, expr Expression) {
-	if v = v.Visit(expr); v == nil {
+func Walk(ctx *Context, v Visitor, expr Expression) {
+	if v = v.Visit(ctx, expr); v == nil {
 		return
 	}
 
 	for _, child := range expr.Children() {
-		Walk(v, child)
+		Walk(ctx, v, child)
 	}
 }
 
@@ -43,28 +43,28 @@ func Walk(v Visitor, expr Expression) {
 type NodeVisitor interface {
 	// Visit method is invoked for each expr encountered by Walk. If the result Visitor is not nil, Walk visits each of
 	// the children of the expr with that visitor, followed by a call of Visit(nil, nil) to the returned visitor.
-	Visit(node Node, expression Expression) NodeVisitor
+	Visit(ctx *Context, node Node, expression Expression) NodeVisitor
 }
 
 // WalkWithNode traverses the expression tree in depth-first order. It starts by calling v.Visit(node, expr); expr must
 // not be nil. If the visitor returned by v.Visit(node, expr) is not nil, Walk is invoked recursively with the returned
 // visitor for each children of the expr, followed by a call of v.Visit(nil, nil) to the returned visitor.
-func WalkWithNode(v NodeVisitor, n Node, expr Expression) {
-	if v = v.Visit(n, expr); v == nil {
+func WalkWithNode(ctx *Context, v NodeVisitor, n Node, expr Expression) {
+	if v = v.Visit(ctx, n, expr); v == nil {
 		return
 	}
 
 	for _, child := range expr.Children() {
-		WalkWithNode(v, n, child)
+		WalkWithNode(ctx, v, n, child)
 	}
 
-	v.Visit(nil, nil)
+	v.Visit(ctx, nil, nil)
 }
 
-type inspector func(Expression) bool
+type inspector func(*Context, Expression) bool
 
-func (f inspector) Visit(expr Expression) Visitor {
-	if f(expr) {
+func (f inspector) Visit(ctx *Context, expr Expression) Visitor {
+	if f(ctx, expr) {
 		return f
 	}
 	return nil
@@ -74,12 +74,12 @@ func (f inspector) Visit(expr Expression) Visitor {
 // f(expr); expr must not be nil. If f returns true, Inspect invokes f
 // recursively for each of the children of expr, followed by a call of
 // f(nil).
-func Inspect(expr Expression, f func(expr Expression) bool) {
-	Walk(inspector(f), expr)
+func Inspect(ctx *Context, expr Expression, f func(ctx *Context, expr Expression) bool) {
+	Walk(ctx, inspector(f), expr)
 }
 
 // NillaryWithChildren is a common implementation of expression.WithChildren for expressions with no children.
-func NillaryWithChildren(expr Expression, children ...Expression) (Expression, error) {
+func NillaryWithChildren(ctx *Context, expr Expression, children ...Expression) (Expression, error) {
 	if len(children) > 0 {
 		return nil, ErrInvalidChildrenNumber.New(expr, len(children), 0)
 	}

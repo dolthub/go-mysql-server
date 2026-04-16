@@ -179,7 +179,7 @@ func TestRangeOverlapTwoColumns(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		t.Run(fmt.Sprintf("Expr:  %s\nRange: %s", test.reference.String(), test.ranges.DebugString()), func(t *testing.T) {
+		t.Run(fmt.Sprintf("Expr:  %s\nRange: %s", test.reference.String(), test.ranges.DebugString(ctx)), func(t *testing.T) {
 			discreteRanges, err := sql.RemoveOverlappingRanges(test.ranges...)
 			require.NoError(t, err)
 			verificationRanges, err := removeOverlappingRangesVerification(test.ranges...)
@@ -188,7 +188,7 @@ func TestRangeOverlapTwoColumns(t *testing.T) {
 				referenceBool, err := test.reference.Eval(ctx, row)
 				require.NoError(t, err)
 				rangeBool := evalRanges(t, discreteRanges, row)
-				assert.Equal(t, referenceBool, rangeBool, fmt.Sprintf("%v: DiscreteRanges: %s", row, discreteRanges.DebugString()))
+				assert.Equal(t, referenceBool, rangeBool, fmt.Sprintf("%v: DiscreteRanges: %s", row, discreteRanges.DebugString(ctx)))
 			}
 			discreteRanges, err = sql.SortRanges(discreteRanges...)
 			require.NoError(t, err)
@@ -294,7 +294,7 @@ func TestRangeOverlapThreeColumns(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		t.Run(fmt.Sprintf("Expr:  %s\nRange: %s", test.reference.String(), test.ranges.DebugString()), func(t *testing.T) {
+		t.Run(fmt.Sprintf("Expr:  %s\nRange: %s", test.reference.String(), test.ranges.DebugString(ctx)), func(t *testing.T) {
 			discreteRanges, err := sql.RemoveOverlappingRanges(test.ranges...)
 			require.NoError(t, err)
 			verificationRanges, err := removeOverlappingRangesVerification(test.ranges...)
@@ -303,7 +303,7 @@ func TestRangeOverlapThreeColumns(t *testing.T) {
 				referenceBool, err := test.reference.Eval(ctx, row)
 				require.NoError(t, err)
 				rangeBool := evalRanges(t, discreteRanges, row)
-				assert.Equal(t, referenceBool, rangeBool, fmt.Sprintf("%v: DiscreteRanges: %s", row, discreteRanges.DebugString()))
+				assert.Equal(t, referenceBool, rangeBool, fmt.Sprintf("%v: DiscreteRanges: %s", row, discreteRanges.DebugString(ctx)))
 			}
 			discreteRanges, err = sql.SortRanges(discreteRanges...)
 			require.NoError(t, err)
@@ -383,7 +383,7 @@ func TestRangeOverlapNulls(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		t.Run(fmt.Sprintf("Expr:  %s\nRange: %s", test.reference.String(), test.ranges.DebugString()), func(t *testing.T) {
+		t.Run(fmt.Sprintf("Expr:  %s\nRange: %s", test.reference.String(), test.ranges.DebugString(ctx)), func(t *testing.T) {
 			discreteRanges, err := sql.RemoveOverlappingRanges(test.ranges...)
 			require.NoError(t, err)
 			verificationRanges, err := removeOverlappingRangesVerification(test.ranges...)
@@ -392,7 +392,7 @@ func TestRangeOverlapNulls(t *testing.T) {
 				referenceBool, err := test.reference.Eval(ctx, row)
 				require.NoError(t, err)
 				rangeBool := evalRanges(t, discreteRanges, row)
-				assert.Equal(t, referenceBool, rangeBool, fmt.Sprintf("%v: DiscreteRanges: %s", row, discreteRanges.DebugString()))
+				assert.Equal(t, referenceBool, rangeBool, fmt.Sprintf("%v: DiscreteRanges: %s", row, discreteRanges.DebugString(ctx)))
 			}
 			discreteRanges, err = sql.SortRanges(discreteRanges...)
 			require.NoError(t, err)
@@ -567,7 +567,8 @@ func TestComplexRange(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		t.Run(fmt.Sprintf("Range: %s", test.ranges.DebugString()), func(t *testing.T) {
+		ctx := sql.NewEmptyContext()
+		t.Run(fmt.Sprintf("Range: %s", test.ranges.DebugString(ctx)), func(t *testing.T) {
 			if test.skip {
 				t.Skip()
 			}
@@ -583,8 +584,8 @@ func TestComplexRange(t *testing.T) {
 			require.NoError(t, err)
 			assert.True(t, ok)
 			if !ok {
-				t.Logf("DiscreteRanges: %s", discreteRanges.DebugString())
-				t.Logf("VerificationRanges: %s", verificationRanges.DebugString())
+				t.Logf("DiscreteRanges: %s", discreteRanges.DebugString(ctx))
+				t.Logf("VerificationRanges: %s", verificationRanges.DebugString(ctx))
 			}
 
 			// TODO: need a way to either verify that the ranges cover the area, or that they're the same

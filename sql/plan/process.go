@@ -36,13 +36,13 @@ type ProcessIndexableTable struct {
 	OnRowNext        NamedNotifyFunc
 }
 
-func (t *ProcessIndexableTable) DebugString() string {
+func (t *ProcessIndexableTable) DebugString(ctx *sql.Context) string {
 	tp := sql.NewTreePrinter()
 	// This is a bit of a misnomer -- some db implementations get this node, rather than ProcessTable, but the two
 	// nodes are functionally equivalent for testing which is where this output is used. We could fix this by making a
 	// version of the memory package that doesn't implement sql.DriverIndexableTable
 	_ = tp.WriteNode("ProcessTable")
-	_ = tp.WriteChildren(TableDebugString(t.Underlying()))
+	_ = tp.WriteChildren(TableDebugString(ctx, t.Underlying()))
 	return tp.String()
 }
 
@@ -149,17 +149,17 @@ func (t *ProcessTable) PartitionRows(ctx *sql.Context, p sql.Partition) (sql.Row
 	return NewTrackedRowIter(nil, iter, onNext, onDone), nil
 }
 
-func (t *ProcessTable) DebugString() string {
+func (t *ProcessTable) DebugString(ctx *sql.Context) string {
 	tp := sql.NewTreePrinter()
 	_ = tp.WriteNode("ProcessTable")
 
 	underlying := t.Underlying()
 	if _, ok := underlying.(sql.TableWrapper); ok {
 		if _, ok := underlying.(sql.DebugStringer); ok {
-			_ = tp.WriteChildren(sql.DebugString(underlying))
+			_ = tp.WriteChildren(sql.DebugString(ctx, underlying))
 		}
 	} else {
-		_ = tp.WriteChildren(TableDebugString(underlying))
+		_ = tp.WriteChildren(TableDebugString(ctx, underlying))
 	}
 
 	return tp.String()
@@ -188,10 +188,10 @@ func (t *ProcessTable) notifyFuncsForPartition(p sql.Partition) (NotifyFunc, Not
 	return onDone, onNext
 }
 
-func GetQueryType(child sql.Node) queryType {
+func GetQueryType(ctx *sql.Context, child sql.Node) queryType {
 	// TODO: behavior of CALL is not specified in the docs. Needs investigation
 	var queryType queryType = QueryTypeSelect
-	transform.InspectWithOpaque(child, func(node sql.Node) bool {
+	transform.InspectWithOpaque(ctx, child, func(ctx *sql.Context, node sql.Node) bool {
 		if IsNoRowNode(node) {
 			queryType = QueryTypeDdl
 			return false
@@ -244,9 +244,9 @@ func NewTrackedRowIter(
 
 // ShouldSetFoundRows returns whether the query process should set the FOUND_ROWS query variable. It should do this for
 // any select except a Limit with a SQL_CALC_FOUND_ROWS modifier, which is handled in the Limit node itself.
-func shouldSetFoundRows(node sql.Node) bool {
+func shouldSetFoundRows(ctx *sql.Context, node sql.Node) bool {
 	result := true
-	transform.InspectWithOpaque(node, func(n sql.Node) bool {
+	transform.InspectWithOpaque(ctx, node, func(ctx *sql.Context, n sql.Node) bool {
 		switch nn := n.(type) {
 		case *Limit:
 			if nn.CalcFoundRows {
@@ -269,36 +269,36 @@ func AddTrackedRowIter(ctx *sql.Context, node sql.Node, iter sql.RowIter) sql.Ro
 			span.End()
 		}
 	})
-	trackedIter.QueryType = GetQueryType(node)
-	trackedIter.ShouldSetFoundRows = trackedIter.QueryType == QueryTypeSelect && shouldSetFoundRows(node)
+	trackedIter.QueryType = GetQueryType(ctx, node)
+	trackedIter.ShouldSetFoundRows = trackedIter.QueryType == QueryTypeSelect && shouldSetFoundRows(ctx, node)
 	return trackedIter
 }
 
-func (i *TrackedRowIter) done() {
+func (i *TrackedRowIter) done(ctx *sql.Context, ) {
 	if i.onDone != nil {
 		i.onDone()
 		i.onDone = nil
 	}
 	if i.node != nil {
-		i.Dispose()
+		i.Dispose(ctx)
 		i.node = nil
 	}
 }
 
-func disposeNode(n sql.Node) {
-	transform.InspectWithOpaque(n, func(node sql.Node) bool {
-		sql.Dispose(node)
+func disposeNode(ctx *sql.Context, n sql.Node) {
+	transform.InspectWithOpaque(ctx, n, func(ctx *sql.Context, node sql.Node) bool {
+		sql.Dispose(ctx, node)
 		return true
 	})
-	transform.InspectExpressions(n, func(e sql.Expression) bool {
-		sql.Dispose(e)
+	transform.InspectExpressions(ctx, n, func(ctx *sql.Context, e sql.Expression) bool {
+		sql.Dispose(ctx, e)
 		return true
 	})
 }
 
-func (i *TrackedRowIter) Dispose() {
+func (i *TrackedRowIter) Dispose(ctx *sql.Context) {
 	if i.node != nil {
-		disposeNode(i.node)
+		disposeNode(ctx, i.node)
 	}
 }
 
@@ -341,7 +341,7 @@ func (i *TrackedRowIter) Close(ctx *sql.Context) error {
 
 	i.updateSessionVars(ctx)
 
-	i.done()
+	i.done(ctx)
 	return err
 }
 

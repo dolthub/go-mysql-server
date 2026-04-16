@@ -85,7 +85,7 @@ func (c *Column) Equals(c2 *Column) bool {
 		c.Type.Equals(c2.Type)
 }
 
-func (c *Column) DebugString() string {
+func (c *Column) DebugString(ctx *Context) string {
 	sb := strings.Builder{}
 	sb.WriteString("Name: ")
 	sb.WriteString(c.Name)
@@ -106,9 +106,9 @@ func (c *Column) DebugString() string {
 	sb.WriteString(c.Comment)
 	sb.WriteString(", ")
 	sb.WriteString("Default: ")
-	sb.WriteString(DebugString(c.Default))
+	sb.WriteString(DebugString(ctx, c.Default))
 	sb.WriteString("Generated: ")
-	sb.WriteString(DebugString(c.Generated))
+	sb.WriteString(DebugString(ctx, c.Generated))
 	sb.WriteString(", ")
 	sb.WriteString("AutoIncrement: ")
 	sb.WriteString(fmt.Sprintf("%v", c.AutoIncrement))

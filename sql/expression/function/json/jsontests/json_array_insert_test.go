@@ -28,7 +28,7 @@ import (
 )
 
 func TestArrayInsert(t *testing.T) {
-	_, err := json.NewJSONArrayInsert()
+	_, err := json.NewJSONArrayInsert(sql.NewEmptyContext())
 	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
 
 	f1 := buildGetFieldExpressions(t, json.NewJSONArrayInsert, 3)

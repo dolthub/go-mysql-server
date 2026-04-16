@@ -54,7 +54,7 @@ func (n *ExternalProcedure) String() string {
 }
 
 // Schema implements the interface sql.Node.
-func (n *ExternalProcedure) Schema() sql.Schema {
+func (n *ExternalProcedure) Schema(ctx *sql.Context) sql.Schema {
 	return n.ExternalStoredProcedureDetails.Schema
 }
 
@@ -64,7 +64,7 @@ func (n *ExternalProcedure) Children() []sql.Node {
 }
 
 // WithChildren implements the interface sql.Node.
-func (n *ExternalProcedure) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (n *ExternalProcedure) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 0)
 	}
@@ -81,12 +81,12 @@ func (n *ExternalProcedure) Expressions() []sql.Expression {
 }
 
 // WithExpressions implements the interface sql.Expressioner.
-func (n *ExternalProcedure) WithExpressions(expressions ...sql.Expression) (sql.Node, error) {
-	if len(expressions) != len(n.Params) {
-		return nil, sql.ErrInvalidExpressionNumber.New(n, len(expressions), len(n.Params))
+func (n *ExternalProcedure) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != len(n.Params) {
+		return nil, sql.ErrInvalidExpressionNumber.New(n, len(exprs), len(n.Params))
 	}
-	newParams := make([]*expression.ProcedureParam, len(expressions))
-	for i, expr := range expressions {
+	newParams := make([]*expression.ProcedureParam, len(exprs))
+	for i, expr := range exprs {
 		newParams[i] = expr.(*expression.ProcedureParam)
 	}
 	nn := *n
@@ -142,7 +142,7 @@ func (n *ExternalProcedure) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter,
 		if paramDefinition.Direction == ProcedureParamDirection_Inout || paramDefinition.Direction == ProcedureParamDirection_Out {
 			exprParam := n.Params[i]
 			funcParamVal := funcParams[i+1].Elem().Interface()
-			err := exprParam.Set(ctx, funcParamVal, exprParam.Type())
+			err := exprParam.Set(ctx, funcParamVal, exprParam.Type(ctx))
 			if err != nil {
 				return nil, err
 			}

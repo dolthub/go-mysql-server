@@ -261,7 +261,7 @@ func (d *BaseDatabase) CreateTable(ctx *sql.Context, name string, schema sql.Pri
 		return sql.ErrTableAlreadyExists.New(name)
 	}
 
-	table := NewTableWithCollation(d, name, schema, d.fkColl, collation)
+	table := NewTableWithCollation(ctx, d, name, schema, d.fkColl, collation)
 	table.db = d
 	table.data.comment = comment
 
@@ -281,7 +281,7 @@ func (d *BaseDatabase) CreateIndexedTable(ctx *sql.Context, name string, sch sql
 		return sql.ErrTableAlreadyExists.New(name)
 	}
 
-	table := NewTableWithCollation(d, name, sch, d.fkColl, collation)
+	table := NewTableWithCollation(ctx, d, name, sch, d.fkColl, collation)
 	table.db = d
 
 	for _, idxCol := range idxDef.Columns {
@@ -348,7 +348,7 @@ func (d *BaseDatabase) RenameTable(ctx *sql.Context, oldName, newName string) er
 		memIndex := index.(*Index)
 		for i, expr := range memIndex.Exprs {
 			getField := expr.(*expression.GetField)
-			memIndex.Exprs[i] = expression.NewGetFieldWithTable(i, 0, getField.Type(), d.name, newName, getField.Name(), getField.IsNullable())
+			memIndex.Exprs[i] = expression.NewGetFieldWithTable(i, 0, getField.Type(ctx), d.name, newName, getField.Name(), getField.IsNullable(ctx))
 		}
 	}
 	memTbl.data.tableName = newName

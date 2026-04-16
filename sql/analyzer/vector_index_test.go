@@ -51,7 +51,7 @@ func vectorIndexTestCases(t *testing.T, db *memory.Database, table sql.IndexedTa
 			name: "without limit",
 			inputPlan: plan.NewSort(
 				sql.SortFields{
-					{Column: vector.NewDistance(vector.DistanceL2Squared{}, jsonExpression(t, "[0.0, 0.0]"), expression.NewGetFieldWithTable(2, 1, types.JSON, "", "test-table", "v", false)), Order: sql.Ascending},
+					{Column: vector.NewDistance(sql.NewEmptyContext(), vector.DistanceL2Squared{}, jsonExpression(t, "[0.0, 0.0]"), expression.NewGetFieldWithTable(2, 1, types.JSON, "", "test-table", "v", false)), Order: sql.Ascending},
 				}, plan.NewResolvedTable(table, db, nil)),
 			usesVectorIndex: false,
 			expectedRows: []sql.Row{
@@ -64,7 +64,7 @@ func vectorIndexTestCases(t *testing.T, db *memory.Database, table sql.IndexedTa
 			name: "with limit",
 			inputPlan: plan.NewTopN(
 				sql.SortFields{
-					{Column: vector.NewDistance(vector.DistanceL2Squared{}, jsonExpression(t, "[0.0, 0.0]"), expression.NewGetFieldWithTable(2, 1, types.JSON, "", "test-table", "v", false)), Order: sql.Ascending},
+					{Column: vector.NewDistance(sql.NewEmptyContext(), vector.DistanceL2Squared{}, jsonExpression(t, "[0.0, 0.0]"), expression.NewGetFieldWithTable(2, 1, types.JSON, "", "test-table", "v", false)), Order: sql.Ascending},
 				}, expression.NewLiteral(1, types.Int64), plan.NewResolvedTable(table, db, nil)),
 			usesVectorIndex: true,
 			expectedPlan: `
@@ -89,7 +89,7 @@ func TestVectorIndex(t *testing.T) {
 		{Name: "pk", Type: types.Int64, Nullable: false},
 		{Name: "v", Type: types.JSON, Nullable: false},
 	})
-	child := memory.NewTable(db.BaseDatabase, "test", childSchema, nil)
+	child := memory.NewTable(ctx, db.BaseDatabase, "test", childSchema, nil)
 
 	rows := []sql.Row{
 		sql.NewRow(int64(1), jsontests.ConvertToJson(t, "[3.0, 4.0]")),
@@ -117,7 +117,7 @@ func TestVectorIndex(t *testing.T) {
 			res, same, err := replaceIdxOrderByDistanceHelper(nil, nil, testCase.inputPlan, nil, nil)
 			require.NoError(t, err)
 			require.Equal(t, testCase.usesVectorIndex, !bool(same))
-			res = offsetAssignIndexes(res)
+			res = offsetAssignIndexes(ctx, res)
 			if testCase.usesVectorIndex {
 				require.Equal(t,
 					strings.TrimSpace(testCase.expectedPlan),
@@ -147,9 +147,9 @@ func TestShowCreateTableWithVectorIndex(t *testing.T) {
 		&sql.Column{Name: "v", Source: "test-table", Type: types.JSON, Default: nil, Nullable: true},
 	}
 
-	table := memory.NewTable(db.BaseDatabase, "test-table", sql.NewPrimaryKeySchema(schema), &memory.ForeignKeyCollection{})
+	table := memory.NewTable(ctx, db.BaseDatabase, "test-table", sql.NewPrimaryKeySchema(schema), &memory.ForeignKeyCollection{})
 
-	showCreateTable, err := plan.NewShowCreateTable(plan.NewResolvedTable(table, nil, nil), false).WithTargetSchema(schema)
+	showCreateTable, err := plan.NewShowCreateTable(ctx, plan.NewResolvedTable(table, nil, nil), false).WithTargetSchema(schema)
 	require.NoError(err)
 
 	// This mimics what happens during analysis (indexes get filled in for the table)
@@ -190,8 +190,8 @@ func (i vectorIndexTable) String() string {
 	return i.underlying.String()
 }
 
-func (i vectorIndexTable) Schema() sql.Schema {
-	return i.underlying.Schema()
+func (i vectorIndexTable) Schema(ctx *sql.Context) sql.Schema {
+	return i.underlying.Schema(ctx)
 }
 
 func (i vectorIndexTable) Collation() sql.CollationID {

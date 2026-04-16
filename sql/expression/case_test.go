@@ -246,7 +246,7 @@ func TestCaseType(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.t, tt.c.Type())
+			require.Equal(t, tt.t, tt.c.Type(sql.NewEmptyContext()))
 		})
 	}
 }

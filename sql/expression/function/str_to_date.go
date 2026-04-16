@@ -19,7 +19,7 @@ var _ sql.FunctionExpression = (*StrToDate)(nil)
 var _ sql.CollationCoercible = (*StrToDate)(nil)
 
 // NewStrToDate constructs a new function expression from the given child expressions.
-func NewStrToDate(arg1, arg2 sql.Expression) sql.Expression {
+func NewStrToDate(ctx *sql.Context, arg1, arg2 sql.Expression) sql.Expression {
 	return &StrToDate{
 		Date:   arg1,
 		Format: arg2,
@@ -47,7 +47,7 @@ func (s *StrToDate) String() string {
 }
 
 // Type returns the expression type.
-func (s *StrToDate) Type() sql.Type {
+func (s *StrToDate) Type(ctx *sql.Context) sql.Type {
 	// TODO: depending on the format, the return type can be a date, datetime or timestamp
 	//  just make best guess for now
 	formatLit, isLit := s.Format.(*expression.Literal)
@@ -85,7 +85,7 @@ func (*StrToDate) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 }
 
 // IsNullable returns whether the expression can be null.
-func (s *StrToDate) IsNullable() bool {
+func (s *StrToDate) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
@@ -94,11 +94,11 @@ func (s *StrToDate) Children() []sql.Expression {
 	return []sql.Expression{s.Date, s.Format}
 }
 
-func (s *StrToDate) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (s *StrToDate) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidArgumentNumber.New("STR_TO_DATE", 2, len(children))
 	}
-	return NewStrToDate(children[0], children[1]), nil
+	return NewStrToDate(ctx, children[0], children[1]), nil
 }
 
 // Eval evaluates the given row and returns a result.

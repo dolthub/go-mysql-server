@@ -164,7 +164,7 @@ func (g *MemoGen) genSourceRelInterface(defn ExprDef) {
 	fmt.Fprintf(g.w, "}\n\n")
 
 	fmt.Fprintf(g.w, "func (r *%s) OutputCols() sql.Schema {\n", defn.Name)
-	fmt.Fprintf(g.w, "  return r.Table.Schema()\n")
+	fmt.Fprintf(g.w, "  return r.Table.Schema(ctx)\n")
 	fmt.Fprintf(g.w, "}\n\n")
 }
 

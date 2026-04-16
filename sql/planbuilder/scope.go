@@ -413,11 +413,11 @@ func (s *scope) replace() *scope {
 
 // aliasCte copies a scope, but increments the column and table ids
 // for the new relation.
-func (s *scope) aliasCte(alias string) *scope {
+func (s *scope) aliasCte(ctx *sql.Context, alias string) *scope {
 	if s == nil {
 		return nil
 	}
-	outScope := s.copy()
+	outScope := s.copy(ctx)
 
 	sq, _ := outScope.node.(*plan.SubqueryAlias)
 
@@ -459,14 +459,14 @@ func (s *scope) aliasCte(alias string) *scope {
 }
 
 // copy produces an identical scope with copied references.
-func (s *scope) copy() *scope {
+func (s *scope) copy(ctx *sql.Context, ) *scope {
 	if s == nil {
 		return nil
 	}
 
 	ret := *s
 	if ret.node != nil {
-		ret.node, _ = DeepCopyNode(s.node)
+		ret.node, _ = DeepCopyNode(ctx, s.node)
 	}
 	if s.tables != nil {
 		ret.tables = make(map[string]sql.TableId, len(s.tables))
@@ -508,9 +508,9 @@ func (s *scope) copy() *scope {
 }
 
 // DeepCopyNode copies a sql.Node.
-func DeepCopyNode(node sql.Node) (sql.Node, error) {
-	n, _, err := transform.NodeExprs(node, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-		e, err := transform.Clone(e)
+func DeepCopyNode(ctx *sql.Context, node sql.Node) (sql.Node, error) {
+	n, _, err := transform.NodeExprs(ctx, node, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		e, err := transform.Clone(ctx, e)
 		return e, transform.NewTree, err
 	})
 	return n, err

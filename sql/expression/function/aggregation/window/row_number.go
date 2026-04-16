@@ -33,7 +33,7 @@ var _ sql.WindowAggregation = (*RowNumber)(nil)
 var _ sql.WindowAdaptableExpression = (*RowNumber)(nil)
 var _ sql.CollationCoercible = (*RowNumber)(nil)
 
-func NewRowNumber() sql.Expression {
+func NewRowNumber(ctx *sql.Context) sql.Expression {
 	return &RowNumber{}
 }
 
@@ -59,7 +59,7 @@ func (r *RowNumber) Window() *sql.WindowDefinition {
 	return r.window
 }
 
-// IsNullable implements sql.Expression
+// Resolved implements sql.Expression
 func (r *RowNumber) Resolved() bool {
 	return windowResolved(r.window)
 }
@@ -74,12 +74,12 @@ func (r *RowNumber) String() string {
 	return sb.String()
 }
 
-func (r *RowNumber) DebugString() string {
+func (r *RowNumber) DebugString(ctx *sql.Context) string {
 	sb := strings.Builder{}
 	sb.WriteString("row_number()")
 	if r.window != nil {
 		sb.WriteString(" ")
-		sb.WriteString(sql.DebugString(r.window))
+		sb.WriteString(sql.DebugString(ctx, r.window))
 	}
 	return sb.String()
 }
@@ -90,7 +90,7 @@ func (r *RowNumber) FunctionName() string {
 }
 
 // Type implements sql.Expression
-func (r *RowNumber) Type() sql.Type {
+func (r *RowNumber) Type(ctx *sql.Context) sql.Type {
 	return types.Int64
 }
 
@@ -100,7 +100,7 @@ func (*RowNumber) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 }
 
 // IsNullable implements sql.Expression
-func (r *RowNumber) IsNullable() bool {
+func (r *RowNumber) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
@@ -115,22 +115,22 @@ func (r *RowNumber) Children() []sql.Expression {
 }
 
 // WithChildren implements sql.Expression
-func (r *RowNumber) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	window, err := r.window.FromExpressions(children)
+func (r *RowNumber) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	window, err := r.window.FromExpressions(ctx, children)
 	if err != nil {
 		return nil, err
 	}
 
-	return r.WithWindow(window), nil
+	return r.WithWindow(ctx, window), nil
 }
 
 // WithWindow implements sql.WindowAggregation
-func (r *RowNumber) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
+func (r *RowNumber) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {
 	nr := *r
 	nr.window = window
 	return &nr
 }
 
-func (r *RowNumber) NewWindowFunction() (sql.WindowFunction, error) {
+func (r *RowNumber) NewWindowFunction(ctx *sql.Context) (sql.WindowFunction, error) {
 	return aggregation.NewRowNumber(), nil
 }

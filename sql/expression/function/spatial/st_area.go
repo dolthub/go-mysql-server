@@ -31,7 +31,7 @@ var _ sql.FunctionExpression = (*Area)(nil)
 var _ sql.CollationCoercible = (*Area)(nil)
 
 // NewArea creates a new Area expression.
-func NewArea(arg sql.Expression) sql.Expression {
+func NewArea(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &Area{expression.UnaryExpressionStub{Child: arg}}
 }
 
@@ -46,7 +46,7 @@ func (a *Area) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (a *Area) Type() sql.Type {
+func (a *Area) Type(ctx *sql.Context) sql.Type {
 	return types.Float64
 }
 
@@ -60,11 +60,11 @@ func (a *Area) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (a *Area) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (a *Area) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(a, len(children), 1)
 	}
-	return NewArea(children[0]), nil
+	return NewArea(ctx, children[0]), nil
 }
 
 // calculateArea takes a polygon linestring, and finds the area

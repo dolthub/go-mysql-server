@@ -145,17 +145,17 @@ func GetConvertToType(l, r sql.Type) string {
 }
 
 // IsNullable implements the Expression interface.
-func (c *Convert) IsNullable() bool {
+func (c *Convert) IsNullable(ctx *sql.Context) bool {
 	switch c.castToType {
 	case ConvertToDate, ConvertToDatetime, ConvertToBinary, ConvertToChar, ConvertToNChar:
 		return true
 	default:
-		return c.Child.IsNullable()
+		return c.Child.IsNullable(ctx)
 	}
 }
 
 // Type implements the Expression interface.
-func (c *Convert) Type() sql.Type {
+func (c *Convert) Type(ctx *sql.Context) sql.Type {
 	switch c.castToType {
 	case ConvertToBinary:
 		return types.LongBlob
@@ -233,7 +233,7 @@ func (c *Convert) String() string {
 }
 
 // DebugString implements the Expression interface.
-func (c *Convert) DebugString() string {
+func (c *Convert) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("convert")
 	children := []string{
@@ -248,14 +248,14 @@ func (c *Convert) DebugString() string {
 		children = append(children, fmt.Sprintf("typeScale: %v", c.typeScale))
 	}
 
-	children = append(children, sql.DebugString(c.Child))
+	children = append(children, sql.DebugString(ctx, c.Child))
 
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
 
 // WithChildren implements the Expression interface.
-func (c *Convert) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (c *Convert) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 	}
@@ -274,7 +274,7 @@ func (c *Convert) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Should always return nil, and a warning instead
-	casted, err := convertValue(ctx, val, c.castToType, c.Child.Type(), c.typeLength, c.typeScale)
+	casted, err := convertValue(ctx, val, c.castToType, c.Child.Type(ctx), c.typeLength, c.typeScale)
 	if err != nil {
 		if c.castToType == ConvertToJSON {
 			return nil, ErrConvertExpression.Wrap(err, c.String(), c.castToType)
@@ -480,7 +480,7 @@ func truncateConvertedValue(val interface{}, typeLength int) (interface{}, error
 // type cannot be created from the values specified, the internal Decimal type is returned. If |logErrors| is true,
 // an error will also logged to the standard logger. (Setting |logErrors| to false, allows the caller to prevent
 // spurious error message from being logged multiple times for the same error.) This function is intended to be
-// used in places where an error cannot be returned (e.g. Node.Type() implementations), hence why it logs an error
+// used in places where an error cannot be returned (e.g. Node.Type(ctx) implementations), hence why it logs an error
 // instead of returning one.
 func createConvertedDecimalType(length, scale int, logErrors bool) sql.DecimalType {
 	if length > 0 && scale > 0 {

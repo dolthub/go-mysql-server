@@ -161,11 +161,11 @@ func (h *Handler) ComPrepare(ctx context.Context, c *mysql.Conn, query string, p
 	}
 
 	// A nil result signals to the handler that the query is not a SELECT statement.
-	if nodeReturnsOkResultSchema(analyzed) || types.IsOkResultSchema(analyzed.Schema()) {
+	if nodeReturnsOkResultSchema(analyzed) || types.IsOkResultSchema(analyzed.Schema(sqlCtx)) {
 		return nil, nil
 	}
 
-	return schemaToFields(sqlCtx, analyzed.Schema()), nil
+	return schemaToFields(sqlCtx, analyzed.Schema(sqlCtx)), nil
 }
 
 // These nodes will eventually return an OK result, but their intermediate forms here return a different schema
@@ -211,10 +211,10 @@ func (h *Handler) ComPrepareParsed(ctx context.Context, c *mysql.Conn, query str
 	var fields []*querypb.Field
 	// The return result fields should only be directly translated if it doesn't correspond to an OK result.
 	// See comment in ComPrepare
-	if !(nodeReturnsOkResultSchema(analyzed) || types.IsOkResultSchema(analyzed.Schema())) {
+	if !(nodeReturnsOkResultSchema(analyzed) || types.IsOkResultSchema(analyzed.Schema(sqlCtx))) {
 		fields = nil
 	} else {
-		fields = schemaToFields(sqlCtx, analyzed.Schema())
+		fields = schemaToFields(sqlCtx, analyzed.Schema(sqlCtx))
 	}
 
 	return analyzed, fields, nil
@@ -251,7 +251,7 @@ func (h *Handler) ComBind(ctx context.Context, c *mysql.Conn, query string, pars
 		return nil, nil, err
 	}
 
-	return queryPlan, schemaToFields(sqlCtx, queryPlan.Schema()), nil
+	return queryPlan, schemaToFields(sqlCtx, queryPlan.Schema(sqlCtx)), nil
 }
 
 func (h *Handler) ComExecuteBound(ctx context.Context, conn *mysql.Conn, query string, boundQuery mysql.BoundQuery, callback mysql.ResultSpoolFn) error {

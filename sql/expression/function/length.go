@@ -46,12 +46,12 @@ const (
 )
 
 // NewLength returns a new LENGTH function.
-func NewLength(e sql.Expression) sql.Expression {
+func NewLength(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &Length{expression.UnaryExpressionStub{Child: e}, NumBytes}
 }
 
 // NewCharLength returns a new CHAR_LENGTH function.
-func NewCharLength(e sql.Expression) sql.Expression {
+func NewCharLength(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &Length{expression.UnaryExpressionStub{Child: e}, NumChars}
 }
 
@@ -78,7 +78,7 @@ func (l *Length) Description() string {
 }
 
 // WithChildren implements the Expression interface.
-func (l *Length) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (l *Length) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 1)
 	}
@@ -87,7 +87,7 @@ func (l *Length) WithChildren(children ...sql.Expression) (sql.Expression, error
 }
 
 // Type implements the sql.Expression interface.
-func (l *Length) Type() sql.Type { return types.Int32 }
+func (l *Length) Type(ctx *sql.Context) sql.Type { return types.Int32 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*Length) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -101,11 +101,11 @@ func (l *Length) String() string {
 	return fmt.Sprintf("char_length(%s)", l.Child)
 }
 
-func (l *Length) DebugString() string {
+func (l *Length) DebugString(ctx *sql.Context) string {
 	if l.CountType == NumBytes {
-		return fmt.Sprintf("length(%s)", sql.DebugString(l.Child))
+		return fmt.Sprintf("length(%s)", sql.DebugString(ctx, l.Child))
 	}
-	return fmt.Sprintf("char_length(%s)", sql.DebugString(l.Child))
+	return fmt.Sprintf("char_length(%s)", sql.DebugString(ctx, l.Child))
 }
 
 // Eval implements the sql.Expression interface.
@@ -123,7 +123,7 @@ func (l *Length) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return int32(wrapper.MaxByteLength()), nil
 	}
 
-	content, collation, err := types.ConvertToCollatedString(ctx, val, l.Child.Type())
+	content, collation, err := types.ConvertToCollatedString(ctx, val, l.Child.Type(ctx))
 	if err != nil {
 		return nil, err
 	}

@@ -34,7 +34,7 @@ func (s PointLookupTable) String() string {
 	return fmt.Sprintf("pointLookup")
 }
 
-func (s PointLookupTable) DebugString() string {
+func (s PointLookupTable) DebugString(ctx *sql.Context) string {
 	return "pointLookup"
 }
 

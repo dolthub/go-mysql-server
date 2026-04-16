@@ -29,7 +29,7 @@ import (
 )
 
 func TestJSONType(t *testing.T) {
-	_, err := json.NewJSONType()
+	_, err := json.NewJSONType(sql.NewEmptyContext())
 	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
 
 	f1 := buildGetFieldExpressions(t, json.NewJSONType, 1)

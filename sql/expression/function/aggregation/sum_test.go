@@ -83,7 +83,7 @@ func TestSum(t *testing.T) {
 			require := require.New(t)
 
 			ctx := sql.NewEmptyContext()
-			buf, _ := sum.NewBuffer()
+			buf, _ := sum.NewBuffer(ctx)
 			for _, row := range tt.rows {
 				require.NoError(buf.Update(ctx, row))
 			}
@@ -165,10 +165,10 @@ func TestSumWithDistinct(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			ad.Dispose()
+			ad.Dispose(sql.NewEmptyContext())
 
 			ctx := sql.NewEmptyContext()
-			buf, _ := sum.NewBuffer()
+			buf, _ := sum.NewBuffer(ctx)
 			for _, row := range tt.rows {
 				require.NoError(buf.Update(ctx, row))
 			}

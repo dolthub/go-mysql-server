@@ -37,7 +37,7 @@ func TestTransformUp(t *testing.T) {
 			inp:  a(a(a(), a(), a(b())), c()),
 			cmp:  b(b(b(), b(), b(c())), c()),
 			same: NewTree,
-			visit: func(node sql.Node) (sql.Node, TreeIdentity, error) {
+			visit: func(ctx *sql.Context, node sql.Node) (sql.Node, TreeIdentity, error) {
 				switch n := node.(type) {
 				case *nodeA:
 					return b(n.children...), NewTree, nil
@@ -52,7 +52,7 @@ func TestTransformUp(t *testing.T) {
 			inp:  a(a(a(), a(), a(b())), c()),
 			cmp:  b(b(b(), b(), b(b())), b()),
 			same: NewTree,
-			visit: func(node sql.Node) (sql.Node, TreeIdentity, error) {
+			visit: func(ctx *sql.Context, node sql.Node) (sql.Node, TreeIdentity, error) {
 				switch n := node.(type) {
 				case *nodeA, *nodeB, *nodeC:
 					return b(n.Children()...), NewTree, nil
@@ -65,7 +65,7 @@ func TestTransformUp(t *testing.T) {
 			inp:  a(a(a(), a(), a(b())), c()),
 			cmp:  a(a(a(), a(), a(b())), b()),
 			same: NewTree,
-			visit: func(node sql.Node) (sql.Node, TreeIdentity, error) {
+			visit: func(ctx *sql.Context, node sql.Node) (sql.Node, TreeIdentity, error) {
 				switch n := node.(type) {
 				case *nodeC:
 					return b(n.Children()...), NewTree, nil
@@ -78,7 +78,7 @@ func TestTransformUp(t *testing.T) {
 			inp:  a(b(b(), c(), b(b())), c()),
 			cmp:  c(b(b(), c(), b(b())), c()),
 			same: NewTree,
-			visit: func(node sql.Node) (sql.Node, TreeIdentity, error) {
+			visit: func(ctx *sql.Context, node sql.Node) (sql.Node, TreeIdentity, error) {
 				switch n := node.(type) {
 				case *nodeA:
 					return c(n.Children()...), NewTree, nil
@@ -91,7 +91,7 @@ func TestTransformUp(t *testing.T) {
 			inp:  a(b(b())),
 			cmp:  c(b(b())),
 			same: NewTree,
-			visit: func(node sql.Node) (sql.Node, TreeIdentity, error) {
+			visit: func(ctx *sql.Context, node sql.Node) (sql.Node, TreeIdentity, error) {
 				switch n := node.(type) {
 				case *nodeA:
 					return c(n.Children()...), NewTree, nil
@@ -104,7 +104,7 @@ func TestTransformUp(t *testing.T) {
 			inp:  a(b(a())),
 			cmp:  c(b(c())),
 			same: NewTree,
-			visit: func(node sql.Node) (sql.Node, TreeIdentity, error) {
+			visit: func(ctx *sql.Context, node sql.Node) (sql.Node, TreeIdentity, error) {
 				switch n := node.(type) {
 				case *nodeA:
 					return c(n.Children()...), NewTree, nil
@@ -117,7 +117,7 @@ func TestTransformUp(t *testing.T) {
 			inp:  a(b(b(b(b(b(b(b(b(b()))))))))),
 			cmp:  c(b(b(b(b(b(b(b(b(b()))))))))),
 			same: NewTree,
-			visit: func(node sql.Node) (sql.Node, TreeIdentity, error) {
+			visit: func(ctx *sql.Context, node sql.Node) (sql.Node, TreeIdentity, error) {
 				switch n := node.(type) {
 				case *nodeA:
 					return c(n.Children()...), NewTree, nil
@@ -130,7 +130,7 @@ func TestTransformUp(t *testing.T) {
 			inp:  a(),
 			cmp:  c(),
 			same: NewTree,
-			visit: func(node sql.Node) (sql.Node, TreeIdentity, error) {
+			visit: func(ctx *sql.Context, node sql.Node) (sql.Node, TreeIdentity, error) {
 				switch n := node.(type) {
 				case *nodeA:
 					return c(n.Children()...), NewTree, nil
@@ -143,7 +143,7 @@ func TestTransformUp(t *testing.T) {
 			inp:  a(a(a(), a(), a(b())), b()),
 			cmp:  a(a(a(), a(), a(b())), b()),
 			same: SameTree,
-			visit: func(node sql.Node) (sql.Node, TreeIdentity, error) {
+			visit: func(ctx *sql.Context, node sql.Node) (sql.Node, TreeIdentity, error) {
 				switch n := node.(type) {
 				case *nodeC:
 					return a(n.children...), NewTree, nil
@@ -156,7 +156,7 @@ func TestTransformUp(t *testing.T) {
 			inp:  a(a(a(), a(), a(b())), b()),
 			cmp:  a(a(a(), a(), a(b())), b()),
 			same: SameTree,
-			visit: func(node sql.Node) (sql.Node, TreeIdentity, error) {
+			visit: func(ctx *sql.Context, node sql.Node) (sql.Node, TreeIdentity, error) {
 				switch n := node.(type) {
 				case *nodeC:
 					return a(n.children...), NewTree, nil
@@ -169,7 +169,7 @@ func TestTransformUp(t *testing.T) {
 			inp:  c(b(b(), c(), b(b())), c()),
 			cmp:  c(b(b(), c(), b(b())), c()),
 			same: SameTree,
-			visit: func(node sql.Node) (sql.Node, TreeIdentity, error) {
+			visit: func(ctx *sql.Context, node sql.Node) (sql.Node, TreeIdentity, error) {
 				switch n := node.(type) {
 				case *nodeA:
 					return c(n.Children()...), NewTree, nil
@@ -182,7 +182,7 @@ func TestTransformUp(t *testing.T) {
 			inp:  a(b(b())),
 			cmp:  a(b(b())),
 			same: SameTree,
-			visit: func(node sql.Node) (sql.Node, TreeIdentity, error) {
+			visit: func(ctx *sql.Context, node sql.Node) (sql.Node, TreeIdentity, error) {
 				switch n := node.(type) {
 				case *nodeC:
 					return c(n.Children()...), NewTree, nil
@@ -195,7 +195,7 @@ func TestTransformUp(t *testing.T) {
 			inp:  a(b(a())),
 			cmp:  a(b(a())),
 			same: SameTree,
-			visit: func(node sql.Node) (sql.Node, TreeIdentity, error) {
+			visit: func(ctx *sql.Context, node sql.Node) (sql.Node, TreeIdentity, error) {
 				switch n := node.(type) {
 				case *nodeC:
 					return c(n.Children()...), NewTree, nil
@@ -208,7 +208,7 @@ func TestTransformUp(t *testing.T) {
 			inp:  a(b(b(b(b(b(b(b(b(b()))))))))),
 			cmp:  a(b(b(b(b(b(b(b(b(b()))))))))),
 			same: SameTree,
-			visit: func(node sql.Node) (sql.Node, TreeIdentity, error) {
+			visit: func(ctx *sql.Context, node sql.Node) (sql.Node, TreeIdentity, error) {
 				switch n := node.(type) {
 				case *nodeC:
 					return c(n.Children()...), NewTree, nil
@@ -221,7 +221,7 @@ func TestTransformUp(t *testing.T) {
 			inp:  a(),
 			cmp:  a(),
 			same: SameTree,
-			visit: func(node sql.Node) (sql.Node, TreeIdentity, error) {
+			visit: func(ctx *sql.Context, node sql.Node) (sql.Node, TreeIdentity, error) {
 				switch n := node.(type) {
 				case *nodeC:
 					return c(n.Children()...), NewTree, nil
@@ -241,7 +241,7 @@ func TestTransformUp(t *testing.T) {
 		}
 
 		t.Run(name, func(t *testing.T) {
-			res, same, err := Node(tt.inp, tt.visit)
+			res, same, err := Node(sql.NewEmptyContext(), tt.inp, tt.visit)
 			require.NoError(err)
 			require.Equal(tt.cmp, res)
 			require.Equal(same, tt.same)
@@ -274,19 +274,19 @@ func c(nodes ...sql.Node) *nodeC {
 	return &nodeC{testNode{children: nodes}}
 }
 
-func (n *nodeA) WithChildren(nodes ...sql.Node) (sql.Node, error) {
+func (n *nodeA) WithChildren(ctx *sql.Context, nodes ...sql.Node) (sql.Node, error) {
 	nn := *n
 	nn.children = nodes
 	return &nn, nil
 }
 
-func (n *nodeB) WithChildren(nodes ...sql.Node) (sql.Node, error) {
+func (n *nodeB) WithChildren(ctx *sql.Context, nodes ...sql.Node) (sql.Node, error) {
 	nn := *n
 	nn.children = nodes
 	return &nn, nil
 }
 
-func (n *nodeC) WithChildren(nodes ...sql.Node) (sql.Node, error) {
+func (n *nodeC) WithChildren(ctx *sql.Context, nodes ...sql.Node) (sql.Node, error) {
 	nn := *n
 	nn.children = nodes
 	return &nn, nil
@@ -313,7 +313,7 @@ func (n *testNode) String() string {
 	return ""
 }
 
-func (n *testNode) Schema() sql.Schema {
+func (n *testNode) Schema(ctx *sql.Context) sql.Schema {
 	return nil
 }
 
@@ -329,7 +329,7 @@ func (n *testNode) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) {
 	return nil, nil
 }
 
-func (n *testNode) WithChildren(nodes ...sql.Node) (sql.Node, error) {
+func (n *testNode) WithChildren(ctx *sql.Context, nodes ...sql.Node) (sql.Node, error) {
 	nn := *n
 	nn.children = nodes
 	return &nn, nil

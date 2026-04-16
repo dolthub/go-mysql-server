@@ -763,7 +763,7 @@ func TestQueryPlanWithName(t *testing.T, name string, harness Harness, e QueryEn
 			require.NoError(t, err)
 		}
 
-		cmp := sql.Describe(ExtractQueryNode(node), options)
+		cmp := sql.Describe(ctx, ExtractQueryNode(node), options)
 		assert.Equal(t, expectedPlan, cmp, "Unexpected result for query: "+query)
 	})
 }
@@ -786,7 +786,7 @@ func TestQueryPlanWithEngine(t *testing.T, harness Harness, e QueryEngine, tt qu
 
 		var cmp string
 		if verbose {
-			cmp = sql.DebugString(ExtractQueryNode(node))
+			cmp = sql.DebugString(ctx, ExtractQueryNode(node))
 		} else {
 			cmp = ExtractQueryNode(node).String()
 		}
@@ -1540,7 +1540,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		analyzed, err := e.EngineAnalyzer().Analyze(ctx, parsed, nil, qFlags)
 		require.NoError(t, err)
 		truncateFound := false
-		transform.InspectWithOpaque(analyzed, func(n sql.Node) bool {
+		transform.InspectWithOpaque(ctx, analyzed, func(ctx *sql.Context, n sql.Node) bool {
 			switch n.(type) {
 			case *plan.Truncate:
 				truncateFound = true
@@ -1570,7 +1570,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		analyzed, err := e.EngineAnalyzer().Analyze(ctx, parsed, nil, qFlags)
 		require.NoError(t, err)
 		truncateFound := false
-		transform.InspectWithOpaque(analyzed, func(n sql.Node) bool {
+		transform.InspectWithOpaque(ctx, analyzed, func(ctx *sql.Context, n sql.Node) bool {
 			switch n.(type) {
 			case *plan.Truncate:
 				truncateFound = true
@@ -1598,7 +1598,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		analyzed, err := e.EngineAnalyzer().Analyze(ctx, parsed, nil, qFlags)
 		require.NoError(t, err)
 		truncateFound := false
-		transform.InspectWithOpaque(analyzed, func(n sql.Node) bool {
+		transform.InspectWithOpaque(ctx, analyzed, func(ctx *sql.Context, n sql.Node) bool {
 			switch n.(type) {
 			case *plan.Truncate:
 				truncateFound = true
@@ -1626,7 +1626,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		analyzed, err := e.EngineAnalyzer().Analyze(ctx, parsed, nil, qFlags)
 		require.NoError(t, err)
 		truncateFound := false
-		transform.InspectWithOpaque(analyzed, func(n sql.Node) bool {
+		transform.InspectWithOpaque(ctx, analyzed, func(ctx *sql.Context, n sql.Node) bool {
 			switch n.(type) {
 			case *plan.Truncate:
 				truncateFound = true
@@ -1655,7 +1655,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		analyzed, err := e.EngineAnalyzer().Analyze(ctx, parsed, nil, qFlags)
 		require.NoError(t, err)
 		truncateFound := false
-		transform.InspectWithOpaque(analyzed, func(n sql.Node) bool {
+		transform.InspectWithOpaque(ctx, analyzed, func(ctx *sql.Context, n sql.Node) bool {
 			switch n.(type) {
 			case *plan.Truncate:
 				truncateFound = true
@@ -1682,7 +1682,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		analyzed, err := e.EngineAnalyzer().Analyze(ctx, parsed, nil, qFlags)
 		require.NoError(t, err)
 		truncateFound := false
-		transform.InspectWithOpaque(analyzed, func(n sql.Node) bool {
+		transform.InspectWithOpaque(ctx, analyzed, func(ctx *sql.Context, n sql.Node) bool {
 			switch n.(type) {
 			case *plan.Truncate:
 				truncateFound = true
@@ -1709,7 +1709,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		analyzed, err := e.EngineAnalyzer().Analyze(ctx, parsed, nil, qFlags)
 		require.NoError(t, err)
 		truncateFound := false
-		transform.InspectWithOpaque(analyzed, func(n sql.Node) bool {
+		transform.InspectWithOpaque(ctx, analyzed, func(ctx *sql.Context, n sql.Node) bool {
 			switch n.(type) {
 			case *plan.Truncate:
 				truncateFound = true
@@ -1740,7 +1740,7 @@ func TestTruncate(t *testing.T, harness Harness) {
 		analyzed, err := e.EngineAnalyzer().Analyze(ctx, parsed, nil, qFlags)
 		require.NoError(t, err)
 		truncateFound := false
-		transform.InspectWithOpaque(analyzed, func(n sql.Node) bool {
+		transform.InspectWithOpaque(ctx, analyzed, func(ctx *sql.Context, n sql.Node) bool {
 			switch n.(type) {
 			case *plan.Truncate:
 				truncateFound = true
@@ -2801,7 +2801,7 @@ func TestCreateTable(t *testing.T, harness Harness) {
 			{Name: "b", Type: types.MustCreateStringWithDefaults(sqltypes.VarChar, 10), Nullable: false, DatabaseSource: "mydb", Source: "t11"},
 		}
 
-		require.Equal(t, s, testTable.Schema())
+		require.Equal(t, s, testTable.Schema(ctx))
 	})
 
 	t.Run("CREATE TABLE with multiple unnamed indexes", func(t *testing.T) {
@@ -5354,7 +5354,7 @@ func TestColumnDefaults(t *testing.T, harness Harness) {
 		ctx := NewContext(harness)
 		t28, _, err := e.EngineAnalyzer().Catalog.Table(ctx, ctx.GetCurrentDatabase(), "t28")
 		require.NoError(t, err)
-		sch := t28.Schema()
+		sch := t28.Schema(ctx)
 		require.Len(t, sch, 2)
 		require.Equal(t, "v1", sch[1].Name)
 		require.NotContains(t, sch[1].Default.String(), "t28")

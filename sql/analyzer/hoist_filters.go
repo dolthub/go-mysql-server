@@ -32,7 +32,7 @@ func hoistOutOfScopeFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pl
 	}
 
 	// todo: seems like inCorr/outCorr should match
-	ret, same, filters, outCorr, err := recurseSubqueryForOuterFilters(n, a, inCorr)
+	ret, same, filters, outCorr, err := recurseSubqueryForOuterFilters(ctx, n, a, inCorr)
 	if len(filters) != 0 {
 		return n, transform.SameTree, fmt.Errorf("rule 'hoistOutOfScopeFilters' tried to hoist filters above root node")
 	}
@@ -48,14 +48,14 @@ func hoistOutOfScopeFilters(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pl
 // subquery filters. We do a BFS to extract hoistable filters from subquery
 // expressions before checking the normalized subquery and its hoisted
 // filters for further hoisting.
-func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, corr sql.ColSet) (sql.Node, transform.TreeIdentity, []sql.Expression, sql.ColSet, error) {
+func recurseSubqueryForOuterFilters(ctx *sql.Context, n sql.Node, a *Analyzer, corr sql.ColSet) (sql.Node, transform.TreeIdentity, []sql.Expression, sql.ColSet, error) {
 	var hoistFilters []sql.Expression
 	var newCorr sql.ColSet
-	ret, same, err := transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	ret, same, err := transform.Node(ctx, n, func(ctx *sql.Context, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		sq, _ := n.(*plan.SubqueryAlias)
 		if sq != nil {
 			corrIn := corr.Union(sq.Correlated)
-			newQ, same, hoisted, subCorr, err := recurseSubqueryForOuterFilters(sq.Child, a, corrIn)
+			newQ, same, hoisted, subCorr, err := recurseSubqueryForOuterFilters(ctx, sq.Child, a, corrIn)
 			if err != nil {
 				return n, transform.SameTree, err
 			}
@@ -99,7 +99,7 @@ func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, corr sql.ColSet) (s
 			if sq != nil && !sq.Correlated().Empty() {
 				children := e.Children()
 				corrIn := corr.Union(sq.Correlated())
-				newQ, same, hoisted, subCorr, err := recurseSubqueryForOuterFilters(sq.Query, a, corrIn)
+				newQ, same, hoisted, subCorr, err := recurseSubqueryForOuterFilters(ctx, sq.Query, a, corrIn)
 				if err != nil {
 					return n, transform.SameTree, err
 				}
@@ -108,7 +108,7 @@ func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, corr sql.ColSet) (s
 				newSq := sq.WithQuery(newQ)
 				newSq = newSq.WithCorrelated(subCorr)
 				children[len(children)-1] = newSq
-				e, _ = e.WithChildren(children...)
+				e, _ = e.WithChildren(ctx, children...)
 
 				if len(hoisted) > 0 {
 					if not {
@@ -125,14 +125,14 @@ func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, corr sql.ColSet) (s
 				e = expression.NewNot(e)
 			}
 
-			inScope, outOfScope := partitionFilterByScope(e, corr)
+			inScope, outOfScope := partitionFilterByScope(ctx, e, corr)
 			if !inScope.Empty() {
 				// maintain reference to correlations that aren't hoisted
 				newCorr = newCorr.Union(outOfScope)
 				keepFilters = append(keepFilters, e)
 			} else {
 				// nothing tethers the subquery or filter expression to this scope
-				if sq == nil && e.IsNullable() {
+				if sq == nil && e.IsNullable(ctx) {
 					// If a filter expression has been hoisted out of a subquery, it needs to be made not nullable. This
 					// is because filters that evaluate to null in an Exists or In subquery are treated the same as
 					// false.
@@ -168,8 +168,8 @@ func recurseSubqueryForOuterFilters(n sql.Node, a *Analyzer, corr sql.ColSet) (s
 
 // partitionFilterByScope returns two colsets that include the in and
 // out-of-scope columns referenced in this expression.
-func partitionFilterByScope(e sql.Expression, corr sql.ColSet) (inScope, outOfScope sql.ColSet) {
-	transform.InspectExpr(e, func(e sql.Expression) bool {
+func partitionFilterByScope(ctx *sql.Context, e sql.Expression, corr sql.ColSet) (inScope, outOfScope sql.ColSet) {
+	transform.InspectExpr(ctx, e, func(ctx *sql.Context, e sql.Expression) bool {
 		switch e := e.(type) {
 		case *expression.GetField:
 			// we're searching for anything in-scope
@@ -182,10 +182,10 @@ func partitionFilterByScope(e sql.Expression, corr sql.ColSet) (inScope, outOfSc
 			}
 		case *plan.Subquery:
 			// TODO cache in-scope on subqueries?
-			transform.InspectWithOpaque(e.Query, func(n sql.Node) bool {
+			transform.InspectWithOpaque(ctx, e.Query, func(ctx *sql.Context, n sql.Node) bool {
 				if ne, ok := n.(sql.Expressioner); ok {
 					for _, e := range ne.Expressions() {
-						in, out := partitionFilterByScope(e, corr)
+						in, out := partitionFilterByScope(ctx, e, corr)
 						inScope = inScope.Union(in)
 						outOfScope = outOfScope.Union(out)
 					}

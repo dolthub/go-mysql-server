@@ -147,7 +147,7 @@ func TestBitCount(t *testing.T) {
 			}
 
 			ctx := sql.NewEmptyContext()
-			f := NewBitCount(tt.arg)
+			f := NewBitCount(ctx, tt.arg)
 
 			res, err := f.Eval(ctx, nil)
 			if tt.err {

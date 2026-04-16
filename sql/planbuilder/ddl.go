@@ -316,7 +316,7 @@ func (b *Builder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *scope)
 	// if the table spec != nil it will get parsed below.
 	if c.TableSpec == nil && c.OptSelect != nil {
 		selectScope := b.buildSelectStmt(inScope, c.OptSelect.Select)
-		sch := b.resolveSchemaDefaults(outScope, selectScope.node.Schema())
+		sch := b.resolveSchemaDefaults(outScope, selectScope.node.Schema(b.ctx))
 		tableSpec := &plan.TableSpec{
 			Schema: sql.NewPrimaryKeySchema(sch),
 		}
@@ -329,8 +329,8 @@ func (b *Builder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *scope)
 	schema, collation, tblOpts := b.tableSpecToSchema(inScope, outScope, database, strings.ToLower(c.Table.Name.String()), c.TableSpec, false)
 	fkDefs, chDefs := b.buildConstraintsDefs(outScope, c.Table, c.TableSpec)
 
-	schema.Schema = assignColumnIndexesInSchema(schema.Schema)
-	chDefs = assignColumnIndexesInCheckDefs(chDefs, schema.Schema)
+	schema.Schema = assignColumnIndexesInSchema(b.ctx, schema.Schema)
+	chDefs = assignColumnIndexesInCheckDefs(b.ctx, chDefs, schema.Schema)
 
 	if privDb, ok := database.(mysql_db.PrivilegedDatabase); ok {
 		if sv, ok := privDb.Unwrap().(sql.SchemaValidator); ok {
@@ -367,24 +367,24 @@ func (b *Builder) buildCreateTable(inScope *scope, c *ast.DDL) (outScope *scope)
 	return
 }
 
-func assignColumnIndexesInCheckDefs(defs []*sql.CheckConstraint, schema sql.Schema) []*sql.CheckConstraint {
+func assignColumnIndexesInCheckDefs(ctx *sql.Context, defs []*sql.CheckConstraint, schema sql.Schema) []*sql.CheckConstraint {
 	newDefs := make([]*sql.CheckConstraint, len(defs))
 	for i, def := range defs {
 		newDefs[i] = def
-		newDefs[i].Expr = assignColumnIndexes(def.Expr, schema).(sql.Expression)
+		newDefs[i].Expr = assignColumnIndexes(ctx, def.Expr, schema).(sql.Expression)
 	}
 	return newDefs
 }
 
-func assignColumnIndexesInSchema(schema sql.Schema) sql.Schema {
+func assignColumnIndexesInSchema(ctx *sql.Context, schema sql.Schema) sql.Schema {
 	newSch := make(sql.Schema, len(schema))
 	for i, col := range schema {
 		newSch[i] = col
 		if col.Default != nil {
-			newSch[i].Default = assignColumnIndexes(col.Default, schema).(*sql.ColumnDefaultValue)
+			newSch[i].Default = assignColumnIndexes(ctx, col.Default, schema).(*sql.ColumnDefaultValue)
 		}
 		if col.Generated != nil {
-			newSch[i].Generated = assignColumnIndexes(col.Generated, schema).(*sql.ColumnDefaultValue)
+			newSch[i].Generated = assignColumnIndexes(ctx, col.Generated, schema).(*sql.ColumnDefaultValue)
 		}
 	}
 	return newSch
@@ -471,7 +471,7 @@ func (b *Builder) buildCreateTableLike(inScope *scope, ct *ast.DDL) *scope {
 
 		schOff := len(newSch)
 		hasSkippedCols := false
-		for _, col := range lTable.Schema() {
+		for _, col := range lTable.Schema(b.ctx) {
 			newCol := *col
 			name := strings.ToLower(newCol.Name)
 			if _, ok := newSchMap[name]; ok {
@@ -605,7 +605,7 @@ func (b *Builder) buildAlterTableClause(inScope *scope, ddl *ast.DDL) []*scope {
 
 		if ddl.ColumnAction != "" {
 			columnActionOutscope := b.buildAlterTableColumnAction(tableScope, ddl, rt)
-			outScopes = append(outScopes, columnActionOutscope.copy())
+			outScopes = append(outScopes, columnActionOutscope.copy(b.ctx))
 
 			if ddl.TableSpec != nil {
 				if len(ddl.TableSpec.Columns) != 1 {
@@ -672,15 +672,15 @@ func (b *Builder) buildAlterTableClause(inScope *scope, ddl *ast.DDL) []*scope {
 
 		for _, s := range outScopes {
 			if ts, ok := s.node.(sql.SchemaTarget); ok {
-				s.node = b.modifySchemaTarget(s, ts, rt.Schema())
+				s.node = b.modifySchemaTarget(s, ts, rt.Schema(b.ctx))
 			}
 		}
 		pkt, _ := rt.Table.(sql.PrimaryKeyTable)
 		if pkt != nil {
 			for _, s := range outScopes {
 				if ts, ok := s.node.(sql.PrimaryKeySchemaTarget); ok {
-					s.node = b.modifySchemaTarget(inScope, ts, rt.Schema())
-					ts.WithPrimaryKeySchema(pkt.PrimaryKeySchema())
+					s.node = b.modifySchemaTarget(inScope, ts, rt.Schema(b.ctx))
+					ts.WithPrimaryKeySchema(b.ctx, pkt.PrimaryKeySchema())
 				}
 			}
 		}
@@ -1023,7 +1023,7 @@ func (b *Builder) buildAlterIndex(inScope *scope, ddl *ast.DDL, table *plan.Reso
 			indexExpr,
 			comment,
 		)
-		outScope.node = b.modifySchemaTarget(inScope, createIndex, table.Schema())
+		outScope.node = b.modifySchemaTarget(inScope, createIndex, table.Schema(b.ctx))
 		return
 	case ast.DropStr:
 		if ddl.IndexSpec.Type == ast.PrimaryStr {
@@ -1107,7 +1107,7 @@ func (b *Builder) buildAlterNotNull(inScope *scope, ddl *ast.DDL, table *plan.Re
 
 	// Resolve the schema defaults, so we don't leave around any UnresolvedColumnDefault expressions,
 	// otherwise Doltgres won't be able to process these nodes.
-	resolvedSchema := b.resolveSchemaDefaults(inScope, table.Schema())
+	resolvedSchema := b.resolveSchemaDefaults(inScope, table.Schema(b.ctx))
 	for _, c := range resolvedSchema {
 		if strings.EqualFold(c.Name, spec.Column.String()) {
 			colCopy := *c
@@ -1124,7 +1124,7 @@ func (b *Builder) buildAlterNotNull(inScope *scope, ddl *ast.DDL, table *plan.Re
 			}
 
 			modifyColumn := plan.NewModifyColumnResolved(table, c.Name, colCopy, nil)
-			outScope.node = b.modifySchemaTarget(inScope, modifyColumn, table.Schema())
+			outScope.node = b.modifySchemaTarget(inScope, modifyColumn, table.Schema(b.ctx))
 			return
 		}
 	}
@@ -1139,7 +1139,7 @@ func (b *Builder) buildAlterChangeColumnType(inScope *scope, ddl *ast.DDL, table
 
 	// Resolve the schema defaults, so we don't leave around any UnresolvedColumnDefault expressions,
 	// otherwise Doltgres won't be able to process these nodes.
-	resolvedSchema := b.resolveSchemaDefaults(inScope, table.Schema())
+	resolvedSchema := b.resolveSchemaDefaults(inScope, table.Schema(b.ctx))
 	for _, c := range resolvedSchema {
 		if strings.EqualFold(c.Name, spec.Column.String()) {
 			colCopy := *c
@@ -1150,7 +1150,7 @@ func (b *Builder) buildAlterChangeColumnType(inScope *scope, ddl *ast.DDL, table
 			}
 			colCopy.Type = typ
 			modifyColumn := plan.NewModifyColumnResolved(table, c.Name, colCopy, nil)
-			outScope.node = b.modifySchemaTarget(inScope, modifyColumn, table.Schema())
+			outScope.node = b.modifySchemaTarget(inScope, modifyColumn, table.Schema(b.ctx))
 			return
 		}
 	}
@@ -1163,11 +1163,11 @@ func (b *Builder) buildAlterDefault(inScope *scope, ddl *ast.DDL, table *plan.Re
 	outScope = inScope
 	switch strings.ToLower(ddl.DefaultSpec.Action) {
 	case ast.SetStr:
-		for _, c := range table.Schema() {
+		for _, c := range table.Schema(b.ctx) {
 			if strings.EqualFold(c.Name, ddl.DefaultSpec.Column.String()) {
 				defaultExpr := b.convertDefaultExpression(inScope, ddl.DefaultSpec.Value, c.Type, c.Nullable)
 				defSet := plan.NewAlterDefaultSet(table.Database(), table, ddl.DefaultSpec.Column.String(), defaultExpr)
-				outScope.node = b.modifySchemaTarget(inScope, defSet, table.Schema())
+				outScope.node = b.modifySchemaTarget(inScope, defSet, table.Schema(b.ctx))
 				return
 			}
 		}

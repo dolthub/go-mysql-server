@@ -109,7 +109,7 @@ func (l *Lag) String() string {
 	return sb.String()
 }
 
-func (l *Lag) DebugString() string {
+func (l *Lag) DebugString(ctx *sql.Context) string {
 	sb := strings.Builder{}
 	if len(l.ChildExpressions) > 1 {
 		sb.WriteString(fmt.Sprintf("lag(%s, %d, %s)", l.ChildExpressions[0].String(), l.offset, l.ChildExpressions[1]))
@@ -118,7 +118,7 @@ func (l *Lag) DebugString() string {
 	}
 	if l.window != nil {
 		sb.WriteString(" ")
-		sb.WriteString(sql.DebugString(l.window))
+		sb.WriteString(sql.DebugString(ctx, l.window))
 	}
 	return sb.String()
 }
@@ -129,8 +129,8 @@ func (l *Lag) FunctionName() string {
 }
 
 // Type implements sql.Expression
-func (l *Lag) Type() sql.Type {
-	return l.ChildExpressions[0].Type()
+func (l *Lag) Type(ctx *sql.Context) sql.Type {
+	return l.ChildExpressions[0].Type(ctx)
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -144,7 +144,7 @@ func (l *Lag) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID
 }
 
 // IsNullable implements sql.Expression
-func (l *Lag) IsNullable() bool {
+func (l *Lag) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
@@ -162,14 +162,14 @@ func (l *Lag) Children() []sql.Expression {
 }
 
 // WithChildren implements sql.Expression
-func (l *Lag) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (l *Lag) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) < 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 2)
 	}
 
 	nl := *l
 	numWindowExpr := len(children) - len(l.ChildExpressions)
-	window, err := l.window.FromExpressions(children[:numWindowExpr])
+	window, err := l.window.FromExpressions(ctx, children[:numWindowExpr])
 	if err != nil {
 		return nil, err
 	}
@@ -181,20 +181,20 @@ func (l *Lag) WithChildren(children ...sql.Expression) (sql.Expression, error) {
 }
 
 // WithWindow implements sql.WindowAggregation
-func (l *Lag) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
+func (l *Lag) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {
 	nl := *l
 	nl.window = window
 	return &nl
 }
 
-func (l *Lag) NewWindowFunction() (sql.WindowFunction, error) {
-	c, err := transform.Clone(l.ChildExpressions[0])
+func (l *Lag) NewWindowFunction(ctx *sql.Context) (sql.WindowFunction, error) {
+	c, err := transform.Clone(ctx, l.ChildExpressions[0])
 	if err != nil {
 		return nil, err
 	}
 	var def sql.Expression
 	if len(l.ChildExpressions) > 1 {
-		def, err = transform.Clone(l.ChildExpressions[1])
+		def, err = transform.Clone(ctx, l.ChildExpressions[1])
 		if err != nil {
 			return nil, err
 		}

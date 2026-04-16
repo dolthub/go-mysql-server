@@ -47,7 +47,7 @@ var benchtable = func() *memory.Table {
 		{Name: "bigintfield", Type: types.Int64, Nullable: false},
 		{Name: "blobfield", Type: types.Blob, Nullable: false},
 	})
-	t := memory.NewTable(db.BaseDatabase, "test", schema, nil)
+	t := memory.NewTable(sql.NewEmptyContext(), db.BaseDatabase, "test", schema, nil)
 
 	for i := 0; i < 100; i++ {
 		n := fmt.Sprint(i)
@@ -148,7 +148,7 @@ func collectRows(t *testing.T, ctx *sql.Context, node sql.Node) []sql.Row {
 func TestIsUnary(t *testing.T) {
 	require := require.New(t)
 	db := memory.NewDatabase("test")
-	table := memory.NewTable(db.BaseDatabase, "foo", sql.PrimaryKeySchema{}, nil)
+	table := memory.NewTable(sql.NewEmptyContext(), db.BaseDatabase, "foo", sql.PrimaryKeySchema{}, nil)
 
 	require.True(plan.IsUnary(plan.NewFilter(nil, plan.NewResolvedTable(table, nil, nil))))
 	require.False(plan.IsUnary(plan.NewCrossJoin(
@@ -160,7 +160,7 @@ func TestIsUnary(t *testing.T) {
 func TestIsBinary(t *testing.T) {
 	require := require.New(t)
 	db := memory.NewDatabase("test")
-	table := memory.NewTable(db.BaseDatabase, "foo", sql.PrimaryKeySchema{}, nil)
+	table := memory.NewTable(sql.NewEmptyContext(), db.BaseDatabase, "foo", sql.PrimaryKeySchema{}, nil)
 
 	require.False(plan.IsBinary(plan.NewFilter(nil, plan.NewResolvedTable(table, nil, nil))))
 	require.True(plan.IsBinary(plan.NewCrossJoin(

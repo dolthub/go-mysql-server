@@ -556,7 +556,7 @@ func (reference *ForeignKeyReferenceHandler) validateColumnTypeConstraints(ctx *
 		return nil
 	}
 
-	for parentIdx, parentCol := range mapper.Index.ColumnExpressionTypes() {
+	for parentIdx, parentCol := range mapper.Index.ColumnExpressionTypes(ctx) {
 		if parentIdx >= len(mapper.IndexPositions) {
 			break
 		}
@@ -672,7 +672,7 @@ func (mapper *ForeignKeyRowMapper) GetIter(ctx *sql.Context, row sql.Row, refChe
 	}
 
 	if !mapper.Index.CanSupport(ctx, rang) {
-		return nil, ErrInvalidLookupForIndexedTable.New(rang.DebugString())
+		return nil, ErrInvalidLookupForIndexedTable.New(rang.DebugString(ctx))
 	}
 	// TODO: profile this, may need to redesign this or add a fast path
 	lookup := sql.IndexLookup{Ranges: sql.MySQLRangeCollection{rang}, Index: mapper.Index}

@@ -83,12 +83,12 @@ func (c *Call) IsReadOnly() bool {
 }
 
 // Schema implements the sql.Node interface.
-func (c *Call) Schema() sql.Schema {
+func (c *Call) Schema(ctx *sql.Context) sql.Schema {
 	if c.resSch != nil {
 		return c.resSch
 	}
 	if c.Procedure != nil {
-		return c.Procedure.Schema()
+		return c.Procedure.Schema(ctx)
 	}
 	return types.OkResultSchema
 }
@@ -99,7 +99,7 @@ func (c *Call) Children() []sql.Node {
 }
 
 // WithChildren implements the sql.Node interface.
-func (c *Call) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (c *Call) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(c, children...)
 }
 
@@ -119,7 +119,7 @@ func (c *Call) AsOf() sql.Expression {
 }
 
 // WithExpressions implements the sql.Expressioner interface.
-func (c *Call) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (c *Call) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != len(c.Params) {
 		return nil, fmt.Errorf("%s: invalid param number, got %d, expected %d", c.Name, len(exprs), len(c.Params))
 	}
@@ -130,7 +130,7 @@ func (c *Call) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 }
 
 // WithAsOf implements the Versionable interface.
-func (c *Call) WithAsOf(asOf sql.Expression) (sql.Node, error) {
+func (c *Call) WithAsOf(ctx *sql.Context, asOf sql.Expression) (sql.Node, error) {
 	nc := *c
 	nc.asOf = asOf
 	return &nc, nil
@@ -167,13 +167,13 @@ func (c *Call) String() string {
 }
 
 // DebugString implements sql.DebugStringer
-func (c *Call) DebugString() string {
+func (c *Call) DebugString(ctx *sql.Context) string {
 	paramStr := ""
 	for i, param := range c.Params {
 		if i > 0 {
 			paramStr += ", "
 		}
-		paramStr += sql.DebugString(param)
+		paramStr += sql.DebugString(ctx, param)
 	}
 	tp := sql.NewTreePrinter()
 	if c.db == nil {
@@ -200,9 +200,9 @@ func (c *Call) WithDatabase(db sql.Database) (sql.Node, error) {
 	return &nc, nil
 }
 
-func (c *Call) Dispose() {
+func (c *Call) Dispose(ctx *sql.Context) {
 	if c.Procedure != nil {
-		disposeNode(c.Procedure)
+		disposeNode(ctx, c.Procedure)
 	}
 }
 

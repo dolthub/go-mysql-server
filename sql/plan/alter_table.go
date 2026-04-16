@@ -59,7 +59,7 @@ func (r *RenameTable) IsReadOnly() bool {
 	return false
 }
 
-func (r *RenameTable) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (r *RenameTable) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(r, children...)
 }
 
@@ -195,14 +195,14 @@ var _ sql.Expressioner = (*AddColumn)(nil)
 var _ sql.SchemaTarget = (*AddColumn)(nil)
 var _ sql.CollationCoercible = (*AddColumn)(nil)
 
-func (a *AddColumn) DebugString() string {
+func (a *AddColumn) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	pr.WriteNode("add column %s to %s", a.column.Name, a.Table)
 
 	var children []string
-	children = append(children, sql.DebugString(a.column))
+	children = append(children, sql.DebugString(ctx, a.column))
 	for _, col := range a.targetSch {
-		children = append(children, sql.DebugString(col))
+		children = append(children, sql.DebugString(ctx, col))
 	}
 
 	pr.WriteChildren(children...)
@@ -233,7 +233,7 @@ func (a *AddColumn) Column() *sql.Column {
 	return a.column
 }
 
-func (a *AddColumn) Order() *sql.ColumnOrder {
+func (a *AddColumn) Order(ctx *sql.Context) *sql.ColumnOrder {
 	return a.order
 }
 
@@ -248,7 +248,7 @@ func (a *AddColumn) WithDatabase(db sql.Database) (sql.Node, error) {
 }
 
 // Schema implements the sql.Node interface.
-func (a *AddColumn) Schema() sql.Schema {
+func (a *AddColumn) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -260,7 +260,7 @@ func (a *AddColumn) Expressions() []sql.Expression {
 	return append(transform.WrappedColumnDefaults(a.targetSch), transform.WrappedColumnDefaults(sql.Schema{a.column})...)
 }
 
-func (a AddColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (a AddColumn) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != 1+len(a.targetSch) {
 		return nil, sql.ErrInvalidChildrenNumber.New(a, len(exprs), 1+len(a.targetSch))
 	}
@@ -298,7 +298,7 @@ func (a *AddColumn) TargetSchema() sql.Schema {
 	return a.targetSch
 }
 
-func (a *AddColumn) ValidateDefaultPosition(tblSch sql.Schema) error {
+func (a *AddColumn) ValidateDefaultPosition(ctx *sql.Context, tblSch sql.Schema) error {
 	colsAfterThis := map[string]*sql.Column{a.column.Name: a.column}
 	if a.order != nil {
 		if a.order.First {
@@ -318,7 +318,7 @@ func (a *AddColumn) ValidateDefaultPosition(tblSch sql.Schema) error {
 		}
 	}
 
-	err := inspectDefaultForInvalidColumns(a.column, colsAfterThis)
+	err := inspectDefaultForInvalidColumns(ctx, a.column, colsAfterThis)
 	if err != nil {
 		return err
 	}
@@ -326,12 +326,12 @@ func (a *AddColumn) ValidateDefaultPosition(tblSch sql.Schema) error {
 	return nil
 }
 
-func inspectDefaultForInvalidColumns(col *sql.Column, columnsAfterThis map[string]*sql.Column) error {
+func inspectDefaultForInvalidColumns(ctx *sql.Context, col *sql.Column, columnsAfterThis map[string]*sql.Column) error {
 	if col.Default == nil {
 		return nil
 	}
 	var err error
-	sql.Inspect(col.Default, func(expr sql.Expression) bool {
+	sql.Inspect(ctx, col.Default, func(ctx *sql.Context, expr sql.Expression) bool {
 		switch expr := expr.(type) {
 		case *expression.GetField:
 			if col, ok := columnsAfterThis[expr.Name()]; ok && col.Default != nil && !col.Default.IsLiteral() {
@@ -344,7 +344,7 @@ func inspectDefaultForInvalidColumns(col *sql.Column, columnsAfterThis map[strin
 	return err
 }
 
-func (a AddColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (a AddColumn) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(a, len(children), 1)
 	}
@@ -372,8 +372,8 @@ var _ sql.CollationCoercible = ColDefaultExpression{}
 
 func (c ColDefaultExpression) Resolved() bool   { return true }
 func (c ColDefaultExpression) String() string   { return "" }
-func (c ColDefaultExpression) Type() sql.Type   { return c.Column.Type }
-func (c ColDefaultExpression) IsNullable() bool { return c.Column.Default == nil }
+func (c ColDefaultExpression) Type(*sql.Context) sql.Type   { return c.Column.Type }
+func (c ColDefaultExpression) IsNullable(*sql.Context) bool { return c.Column.Default == nil }
 func (c ColDefaultExpression) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	if c.Column != nil && c.Column.Default != nil {
 		return c.Column.Default.CollationCoercibility(ctx)
@@ -385,7 +385,7 @@ func (c ColDefaultExpression) Children() []sql.Expression {
 	panic("ColDefaultExpression is only meant for immediate evaluation and should never be modified")
 }
 
-func (c ColDefaultExpression) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (c ColDefaultExpression) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	panic("ColDefaultExpression is only meant for immediate evaluation and should never be modified")
 }
 
@@ -479,7 +479,7 @@ func (d *DropColumn) Validate(ctx *sql.Context, tbl sql.Table) error {
 			continue
 		}
 		var err error
-		sql.Inspect(col.Default, func(expr sql.Expression) bool {
+		sql.Inspect(ctx, col.Default, func(ctx *sql.Context, expr sql.Expression) bool {
 			switch expr := expr.(type) {
 			case *expression.GetField:
 				if expr.Name() == d.Column {
@@ -523,7 +523,7 @@ func (d *DropColumn) Validate(ctx *sql.Context, tbl sql.Table) error {
 	return nil
 }
 
-func (d *DropColumn) Schema() sql.Schema {
+func (d *DropColumn) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -535,7 +535,7 @@ func (d *DropColumn) Children() []sql.Node {
 	return []sql.Node{d.Table}
 }
 
-func (d DropColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (d DropColumn) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}
@@ -561,7 +561,7 @@ func (d *DropColumn) Expressions() []sql.Expression {
 	return transform.WrappedColumnDefaults(d.targetSchema)
 }
 
-func (d DropColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (d DropColumn) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != len(d.targetSchema) {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(exprs), len(d.targetSchema))
 	}
@@ -641,13 +641,13 @@ func (r *RenameColumn) IsReadOnly() bool {
 	return false
 }
 
-func (r *RenameColumn) DebugString() string {
+func (r *RenameColumn) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	pr.WriteNode("rename column %s to %s", r.ColumnName, r.NewColumnName)
 
 	var children []string
 	for _, col := range r.targetSchema {
-		children = append(children, sql.DebugString(col))
+		children = append(children, sql.DebugString(ctx, col))
 	}
 
 	pr.WriteChildren(children...)
@@ -658,7 +658,7 @@ func (r *RenameColumn) Resolved() bool {
 	return r.Table.Resolved() && r.ddlNode.Resolved() && r.targetSchema.Resolved()
 }
 
-func (r *RenameColumn) Schema() sql.Schema {
+func (r *RenameColumn) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -666,7 +666,7 @@ func (r *RenameColumn) Expressions() []sql.Expression {
 	return transform.WrappedColumnDefaults(r.targetSchema)
 }
 
-func (r RenameColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (r RenameColumn) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != len(r.targetSchema) {
 		return nil, sql.ErrInvalidChildrenNumber.New(r, len(exprs), len(r.targetSchema))
 	}
@@ -684,7 +684,7 @@ func (r *RenameColumn) Children() []sql.Node {
 	return []sql.Node{r.Table}
 }
 
-func (r RenameColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (r RenameColumn) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), 1)
 	}
@@ -748,12 +748,12 @@ func (m *ModifyColumn) NewColumn() *sql.Column {
 	return m.column
 }
 
-func (m *ModifyColumn) Order() *sql.ColumnOrder {
+func (m *ModifyColumn) Order(*sql.Context) *sql.ColumnOrder {
 	return m.order
 }
 
 // Schema implements the sql.Node interface.
-func (m *ModifyColumn) Schema() sql.Schema {
+func (m *ModifyColumn) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -779,7 +779,7 @@ func (m *ModifyColumn) Children() []sql.Node {
 	return []sql.Node{m.Table}
 }
 
-func (m *ModifyColumn) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (m *ModifyColumn) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(m, len(children), 1)
 	}
@@ -797,7 +797,7 @@ func (m *ModifyColumn) Expressions() []sql.Expression {
 	return append(transform.WrappedColumnDefaults(m.targetSchema), expression.WrapExpressions(m.column.Default)...)
 }
 
-func (m *ModifyColumn) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (m *ModifyColumn) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != 1+len(m.targetSchema) {
 		return nil, sql.ErrInvalidChildrenNumber.New(m, len(exprs), 1+len(m.targetSchema))
 	}
@@ -823,7 +823,7 @@ func (m *ModifyColumn) Resolved() bool {
 	return m.Table.Resolved() && m.column.Default.Resolved() && m.ddlNode.Resolved() && m.targetSchema.Resolved()
 }
 
-func (m *ModifyColumn) ValidateDefaultPosition(tblSch sql.Schema) error {
+func (m *ModifyColumn) ValidateDefaultPosition(ctx *sql.Context, tblSch sql.Schema) error {
 	colsBeforeThis := make(map[string]*sql.Column)
 	colsAfterThis := make(map[string]*sql.Column) // includes the modified column
 	if m.order == nil {
@@ -857,13 +857,13 @@ func (m *ModifyColumn) ValidateDefaultPosition(tblSch sql.Schema) error {
 		colsAfterThis[m.column.Name] = m.column
 	}
 
-	err := inspectDefaultForInvalidColumns(m.column, colsAfterThis)
+	err := inspectDefaultForInvalidColumns(ctx, m.column, colsAfterThis)
 	if err != nil {
 		return err
 	}
 	thisCol := map[string]*sql.Column{m.column.Name: m.column}
 	for _, colBefore := range colsBeforeThis {
-		err = inspectDefaultForInvalidColumns(colBefore, thisCol)
+		err = inspectDefaultForInvalidColumns(ctx, colBefore, thisCol)
 		if err != nil {
 			return err
 		}
@@ -916,7 +916,7 @@ func (atc *AlterTableCollation) String() string {
 }
 
 // DebugString implements the interface sql.Node.
-func (atc *AlterTableCollation) DebugString() string {
+func (atc *AlterTableCollation) DebugString(ctx *sql.Context) string {
 	return atc.String()
 }
 
@@ -926,7 +926,7 @@ func (atc *AlterTableCollation) Resolved() bool {
 }
 
 // Schema implements the interface sql.Node.
-func (atc *AlterTableCollation) Schema() sql.Schema {
+func (atc *AlterTableCollation) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -936,7 +936,7 @@ func (atc *AlterTableCollation) Children() []sql.Node {
 }
 
 // WithChildren implements the interface sql.Node.
-func (atc *AlterTableCollation) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (atc *AlterTableCollation) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(atc, len(children), 1)
 	}
@@ -980,7 +980,7 @@ func (atc *AlterTableComment) String() string {
 }
 
 // DebugString implements the interface sql.Node
-func (atc *AlterTableComment) DebugString() string {
+func (atc *AlterTableComment) DebugString(ctx *sql.Context) string {
 	return atc.String()
 }
 
@@ -990,8 +990,8 @@ func (atc *AlterTableComment) Resolved() bool {
 }
 
 // Schema implements the interface sql.Node
-func (atc *AlterTableComment) Schema() sql.Schema {
-	return atc.Table.Schema()
+func (atc *AlterTableComment) Schema(ctx *sql.Context) sql.Schema {
+	return atc.Table.Schema(ctx)
 }
 
 // Children implements the interface sql.Node
@@ -1000,7 +1000,7 @@ func (atc *AlterTableComment) Children() []sql.Node {
 }
 
 // WithChildren implements the interface sql.Node
-func (atc *AlterTableComment) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (atc *AlterTableComment) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(atc, len(children), 1)
 	}

@@ -58,7 +58,7 @@ func (d *DeclareVariables) String() string {
 }
 
 // Schema implements the interface sql.Node.
-func (d *DeclareVariables) Schema() sql.Schema {
+func (d *DeclareVariables) Schema(ctx *sql.Context) sql.Schema {
 	return nil
 }
 
@@ -68,7 +68,7 @@ func (d *DeclareVariables) Children() []sql.Node {
 }
 
 // WithChildren implements the interface sql.Node.
-func (d *DeclareVariables) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (d *DeclareVariables) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(d, children...)
 }
 

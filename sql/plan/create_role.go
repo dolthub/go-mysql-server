@@ -43,7 +43,7 @@ var _ sql.Node = (*CreateRole)(nil)
 var _ sql.CollationCoercible = (*CreateRole)(nil)
 
 // Schema implements the interface sql.Node.
-func (n *CreateRole) Schema() sql.Schema {
+func (n *CreateRole) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -88,7 +88,7 @@ func (n *CreateRole) Children() []sql.Node {
 }
 
 // WithChildren implements the interface sql.Node.
-func (n *CreateRole) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (n *CreateRole) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 0)
 	}

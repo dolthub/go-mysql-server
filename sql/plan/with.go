@@ -61,19 +61,19 @@ func (w *With) String() string {
 	return pr.String()
 }
 
-func (w *With) DebugString() string {
+func (w *With) DebugString(ctx *sql.Context) string {
 	cteStrings := make([]string, len(w.CTEs))
 	for i, e := range w.CTEs {
-		cteStrings[i] = sql.DebugString(e)
+		cteStrings[i] = sql.DebugString(ctx, e)
 	}
 
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("With(%s)", strings.Join(cteStrings, ", "))
-	_ = pr.WriteChildren(sql.DebugString(w.Child))
+	_ = pr.WriteChildren(sql.DebugString(ctx, w.Child))
 	return pr.String()
 }
 
-func (w *With) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (w *With) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(w, len(children), 1)
 	}
@@ -140,11 +140,14 @@ func (e *CommonTableExpression) String() string {
 	} else {
 		_ = pr.WriteNode("%s", e.Subquery.name)
 	}
-	_ = pr.WriteChildren(sql.DebugString(e.Subquery.Child))
+	// To maintain compatibility with fmt.Stringer we have to use an empty context, but this will fail in any case that
+	// requires a context to determine a string (such as an integrator using the context to contain type information).
+	ctx := sql.NewEmptyContext()
+	_ = pr.WriteChildren(sql.DebugString(ctx, e.Subquery.Child))
 	return pr.String()
 }
 
-func (e *CommonTableExpression) DebugString() string {
+func (e *CommonTableExpression) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	if len(e.Columns) > 0 {
 		_ = pr.WriteNode("%s (%s)", e.Subquery.name, strings.Join(e.Columns, ","))

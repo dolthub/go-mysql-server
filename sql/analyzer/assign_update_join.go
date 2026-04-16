@@ -17,7 +17,7 @@ func modifyUpdateExprsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 		}
 
 		var jn sql.Node
-		transform.InspectWithOpaque(us, func(node sql.Node) bool {
+		transform.InspectWithOpaque(ctx, us, func(ctx *sql.Context, node sql.Node) bool {
 			switch node.(type) {
 			case *plan.JoinNode:
 				jn = node
@@ -31,13 +31,13 @@ func modifyUpdateExprsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 			return n, transform.SameTree, nil
 		}
 
-		updateTargets, err := getUpdateTargetsByTable(us, jn, n.IsJoin)
+		updateTargets, err := getUpdateTargetsByTable(ctx, us, jn, n.IsJoin)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
 
 		uj := plan.NewUpdateJoin(updateTargets, us)
-		ret, err := n.WithChildren(uj)
+		ret, err := n.WithChildren(ctx, uj)
 		if err != nil {
 			return nil, transform.SameTree, err
 		}
@@ -49,9 +49,9 @@ func modifyUpdateExprsForJoin(ctx *sql.Context, a *Analyzer, n sql.Node, scope *
 }
 
 // getUpdateTargetsByTable maps a set of table names and aliases to their corresponding update target Node
-func getUpdateTargetsByTable(node sql.Node, ij sql.Node, isJoin bool) (map[string]sql.Node, error) {
-	namesOfTableToBeUpdated := plan.GetTablesToBeUpdated(node)
-	resolvedTables := getResolvedTablesByName(ij)
+func getUpdateTargetsByTable(ctx *sql.Context, node sql.Node, ij sql.Node, isJoin bool) (map[string]sql.Node, error) {
+	namesOfTableToBeUpdated := plan.GetTablesToBeUpdated(ctx, node)
+	resolvedTables := getResolvedTablesByName(ctx, ij)
 
 	updateTargets := make(map[string]sql.Node)
 	for tableToBeUpdated, _ := range namesOfTableToBeUpdated {
@@ -68,7 +68,7 @@ func getUpdateTargetsByTable(node sql.Node, ij sql.Node, isJoin bool) (map[strin
 			return nil, plan.ErrUpdateForTableNotSupported.New(tableToBeUpdated)
 		}
 
-		keyless := sql.IsKeyless(updatable.Schema())
+		keyless := sql.IsKeyless(updatable.Schema(ctx))
 		if keyless && isJoin {
 			return nil, sql.ErrUnsupportedFeature.New("error: keyless tables unsupported for UPDATE JOIN")
 		}

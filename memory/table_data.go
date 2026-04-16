@@ -146,7 +146,7 @@ func (td TableData) partition(ctx *sql.Context, row sql.Row) (int, error) {
 	return int(sum64 % uint64(len(td.partitionKeys))), nil
 }
 
-func (td *TableData) truncate(schema sql.PrimaryKeySchema) *TableData {
+func (td *TableData) truncate(ctx *sql.Context, schema sql.PrimaryKeySchema) *TableData {
 	var keys [][]byte
 	var partitions = map[string][]sql.Row{}
 	numParts := len(td.partitionKeys)
@@ -161,7 +161,7 @@ func (td *TableData) truncate(schema sql.PrimaryKeySchema) *TableData {
 	td.partitions = partitions
 	td.schema = schema
 
-	td.indexes = rewriteIndexes(td.indexes, schema)
+	td.indexes = rewriteIndexes(ctx, td.indexes, schema)
 	td.secondaryIndexStorage = make(map[indexName][]sql.Row)
 
 	td.autoIncVal = 0
@@ -180,10 +180,10 @@ func (td *TableData) truncate(schema sql.PrimaryKeySchema) *TableData {
 
 // rewriteIndexes returns a new set of indexes appropriate for the new schema provided. Index expressions are adjusted
 // as necessary, and any indexes for columns that no longer exist are removed from the set.
-func rewriteIndexes(indexes map[string]sql.Index, schema sql.PrimaryKeySchema) map[string]sql.Index {
+func rewriteIndexes(ctx *sql.Context, indexes map[string]sql.Index, schema sql.PrimaryKeySchema) map[string]sql.Index {
 	newIdxes := make(map[string]sql.Index)
 	for name, idx := range indexes {
-		newIdx := rewriteIndex(idx.(*Index), schema)
+		newIdx := rewriteIndex(ctx, idx.(*Index), schema)
 		if newIdx != nil {
 			newIdxes[name] = newIdx
 		}
@@ -193,10 +193,10 @@ func rewriteIndexes(indexes map[string]sql.Index, schema sql.PrimaryKeySchema) m
 
 // rewriteIndex returns a new index appropriate for the new schema provided, or nil if no columns remain to be indexed
 // in the schema
-func rewriteIndex(idx *Index, schema sql.PrimaryKeySchema) *Index {
+func rewriteIndex(ctx *sql.Context, idx *Index, schema sql.PrimaryKeySchema) *Index {
 	var newExprs []sql.Expression
 	for _, expr := range idx.Exprs {
-		newE, _, _ := transform.Expr(expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		newE, _, _ := transform.Expr(ctx, expr, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			if gf, ok := e.(*expression.GetField); ok {
 				newIdx := schema.IndexOfColName(gf.Name())
 				if newIdx < 0 {

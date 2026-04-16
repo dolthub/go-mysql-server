@@ -35,7 +35,7 @@ func (in *InTuple) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 	panic("Compare not implemented for InTuple")
 }
 
-func (in *InTuple) Type() sql.Type {
+func (in *InTuple) Type(ctx *sql.Context) sql.Type {
 	return types.Boolean
 }
 
@@ -74,7 +74,7 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	lType := in.Left().Type()
+	lType := in.Left().Type(ctx)
 	lColCount := types.NumColumns(lType)
 	lLit := NewLiteral(lVal, lType)
 
@@ -85,7 +85,7 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 	var rHasNull bool
 	for _, el := range right {
-		rType := el.Type()
+		rType := el.Type(ctx)
 		if rType == types.Null {
 			rHasNull = true
 			continue
@@ -123,12 +123,12 @@ func (in *InTuple) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // IsNullable implements sql.Expression
-func (in *InTuple) IsNullable() bool {
+func (in *InTuple) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
 // WithChildren implements the Expression interface.
-func (in *InTuple) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (in *InTuple) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(in, len(children), 2)
 	}
@@ -140,10 +140,10 @@ func (in *InTuple) String() string {
 	return fmt.Sprintf("(%s IN %s)", in.Left(), in.Right())
 }
 
-func (in *InTuple) DebugString() string {
+func (in *InTuple) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("IN")
-	children := []string{fmt.Sprintf("left: %s", sql.DebugString(in.Left())), fmt.Sprintf("right: %s", sql.DebugString(in.Right()))}
+	children := []string{fmt.Sprintf("left: %s", sql.DebugString(ctx, in.Left())), fmt.Sprintf("right: %s", sql.DebugString(ctx, in.Right()))}
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
@@ -177,7 +177,7 @@ func NewHashInTuple(ctx *sql.Context, left, right sql.Expression) (*HashInTuple,
 		return nil, ErrUnsupportedInOperand.New(right)
 	}
 
-	cmp, cmpType, hasNull, err := newInMap(ctx, left.Type(), rightTup)
+	cmp, cmpType, hasNull, err := newInMap(ctx, left.Type(ctx), rightTup)
 	if err != nil {
 		return nil, err
 	}
@@ -208,7 +208,7 @@ func newInMap(ctx *sql.Context, lType sql.Type, right Tuple) (map[uint64]struct{
 	rVals := make([]any, 0, len(right))
 	var rHasNull bool
 	for _, el := range right {
-		rType := el.Type()
+		rType := el.Type(ctx)
 		rColCount := types.NumColumns(rType)
 		if lColCount != rColCount {
 			return nil, nil, false, sql.ErrInvalidOperandColumns.New(lColCount, rColCount)
@@ -234,7 +234,7 @@ func newInMap(ctx *sql.Context, lType sql.Type, right Tuple) (map[uint64]struct{
 	} else {
 		// If we've made it this far, we are guaranteed that the right Tuple has a consistent set of types
 		// (all numeric, string, or time), so it is enough to just compare against the first element of the right Tuple
-		cmpType = types.GetCompareType(lType, right[0].Type())
+		cmpType = types.GetCompareType(lType, right[0].Type(ctx))
 	}
 	elements := map[uint64]struct{}{}
 	for _, rVal := range rVals {
@@ -284,24 +284,24 @@ func (hit *HashInTuple) Resolved() bool {
 	return hit.in.Resolved()
 }
 
-func (hit *HashInTuple) Type() sql.Type {
-	return hit.in.Type()
+func (hit *HashInTuple) Type(ctx *sql.Context) sql.Type {
+	return hit.in.Type(ctx)
 }
 
-func (hit *HashInTuple) IsNullable() bool {
-	return hit.hasNull || hit.in.Left().IsNullable()
+func (hit *HashInTuple) IsNullable(ctx *sql.Context) bool {
+	return hit.hasNull || hit.in.Left().IsNullable(ctx)
 }
 
 func (hit *HashInTuple) Children() []sql.Expression {
 	return hit.in.Children()
 }
 
-func (hit *HashInTuple) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (hit *HashInTuple) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(hit, len(children), 2)
 	}
 	ret := *hit
-	newIn, err := ret.in.WithChildren(children...)
+	newIn, err := ret.in.WithChildren(ctx, children...)
 	ret.in = newIn.(*InTuple)
 	return &ret, err
 }
@@ -322,10 +322,10 @@ func (hit *HashInTuple) String() string {
 	return fmt.Sprintf("(%s HASH IN %s)", hit.in.Left(), hit.in.Right())
 }
 
-func (hit *HashInTuple) DebugString() string {
+func (hit *HashInTuple) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("HashIn")
-	children := []string{sql.DebugString(hit.in.Left()), sql.DebugString(hit.in.Right())}
+	children := []string{sql.DebugString(ctx, hit.in.Left()), sql.DebugString(ctx, hit.in.Right())}
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }

@@ -15,8 +15,8 @@ func NewExecBuilder() *ExecBuilder {
 	return &ExecBuilder{}
 }
 
-func (b *ExecBuilder) buildRel(r RelExpr, children ...sql.Node) (sql.Node, error) {
-	n, err := buildRelExpr(b, r, children...)
+func (b *ExecBuilder) buildRel(ctx *sql.Context, r RelExpr, children ...sql.Node) (sql.Node, error) {
+	n, err := buildRelExpr(ctx, b, r, children...)
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +185,7 @@ func (b *ExecBuilder) buildConcatJoin(j *ConcatJoin, children ...sql.Node) (sql.
 	return plan.NewJoin(children[0], right, j.Op, filters), nil
 }
 
-func (b *ExecBuilder) buildHashJoin(j *HashJoin, children ...sql.Node) (sql.Node, error) {
+func (b *ExecBuilder) buildHashJoin(ctx *sql.Context, j *HashJoin, children ...sql.Node) (sql.Node, error) {
 	leftProbeFilters := make([]sql.Expression, len(j.LeftAttrs))
 	for i := range j.LeftAttrs {
 		leftProbeFilters[i] = j.LeftAttrs[i]
@@ -205,7 +205,7 @@ func (b *ExecBuilder) buildHashJoin(j *HashJoin, children ...sql.Node) (sql.Node
 
 	filters := b.buildFilterConjunction(j.Filter...)
 
-	outer := plan.NewHashLookup(children[1], rightEntryKey, leftProbeKey, j.Op)
+	outer := plan.NewHashLookup(ctx, children[1], rightEntryKey, leftProbeKey, j.Op)
 	inner := children[0]
 	return plan.NewJoin(inner, outer, j.Op, filters), nil
 }
@@ -259,12 +259,12 @@ func (b *ExecBuilder) buildIndexScan(i *IndexScan, children ...sql.Node) (sql.No
 	return ret, nil
 }
 
-func checkIndexTypeMismatch(idx sql.Index, rang sql.Range) bool {
+func checkIndexTypeMismatch(ctx *sql.Context, idx sql.Index, rang sql.Range) bool {
 	mysqlRange, ok := rang.(sql.MySQLRange)
 	if !ok {
 		return false
 	}
-	for i, typ := range idx.ColumnExpressionTypes() {
+	for i, typ := range idx.ColumnExpressionTypes(ctx) {
 		if !types.Null.Equals(mysqlRange[i].Typ) && !typ.Type.Equals(mysqlRange[i].Typ) {
 			return true
 		}

@@ -84,6 +84,7 @@ func TestConv(t *testing.T) {
 
 	for _, tt := range testCases {
 		f := NewConv(
+			sql.NewEmptyContext(),
 			expression.NewGetField(0, tt.nType, "N", false),
 			expression.NewGetField(1, types.Int64, "FromBase", false),
 			expression.NewGetField(2, types.Int64, "ToBase", false),

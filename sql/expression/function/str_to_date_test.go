@@ -32,7 +32,9 @@ func TestStrToDate(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
+		ctx := sql.NewEmptyContext()
 		f := NewStrToDate(
+			ctx,
 			expression.NewGetField(0, types.Text, "", true),
 			expression.NewGetField(1, types.Text, "", true),
 		)
@@ -41,7 +43,7 @@ func TestStrToDate(t *testing.T) {
 			require.Equal(t, tt.expected, dtime)
 		})
 		req := require.New(t)
-		req.True(f.IsNullable())
+		req.True(f.IsNullable(ctx))
 	}
 }
 
@@ -57,7 +59,9 @@ func TestStrToDateFailure(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
+		ctx := sql.NewEmptyContext()
 		f := NewStrToDate(
+			ctx,
 			expression.NewGetField(0, types.Text, "", true),
 			expression.NewGetField(1, types.Text, "", true),
 		)
@@ -66,7 +70,7 @@ func TestStrToDateFailure(t *testing.T) {
 			require.Equal(t, nil, dtime)
 		})
 		req := require.New(t)
-		req.True(f.IsNullable())
+		req.True(f.IsNullable(ctx))
 	}
 }
 

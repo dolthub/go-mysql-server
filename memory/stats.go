@@ -55,7 +55,7 @@ func (s *StatsProv) AnalyzeTable(ctx *sql.Context, table sql.Table, db string) e
 	}
 
 	ordinals := make(map[string]int)
-	for i, c := range table.Schema() {
+	for i, c := range table.Schema(ctx) {
 		ordinals[strings.ToLower(c.Name)] = i
 	}
 
@@ -111,7 +111,7 @@ func (s *StatsProv) estimateStats(ctx *sql.Context, table sql.Table, keys map[st
 		}
 	}
 
-	sch := table.Schema()
+	sch := table.Schema(ctx)
 	for key, ordinals := range keys {
 		keyVals := make([]sql.Row, len(sample))
 		for i, row := range sample {
@@ -174,7 +174,7 @@ func (s *StatsProv) estimateStats(ctx *sql.Context, table sql.Table, keys map[st
 		stat := stats.NewStatistic(rowCount, rowCount, 0, dataLen, time.Now(), qual, cols, types, buckets, sql.IndexClassDefault, nil)
 
 		// functional dependencies
-		fds, idxCols, err := stats.IndexFds(table.Name(), sch, indexes[strings.ToLower(qual.Index())])
+		fds, idxCols, err := stats.IndexFds(ctx, table.Name(), sch, indexes[strings.ToLower(qual.Index())])
 		if err != nil {
 			return err
 		}

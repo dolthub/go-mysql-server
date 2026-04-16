@@ -112,14 +112,14 @@ func (i *WindowPartitionIter) WindowBlock() *WindowPartition {
 }
 
 func (i *WindowPartitionIter) Close(ctx *sql.Context) error {
-	i.Dispose()
+	i.Dispose(ctx)
 	i.input = nil
 	return nil
 }
 
-func (i *WindowPartitionIter) Dispose() {
+func (i *WindowPartitionIter) Dispose(ctx *sql.Context) {
 	for _, a := range i.w.Aggs {
-		a.fn.Dispose()
+		a.fn.Dispose(ctx)
 	}
 }
 
@@ -370,7 +370,7 @@ func isNewPartition(ctx *sql.Context, partitionBy []sql.Expression, last sql.Row
 	}
 
 	for i, expr := range partitionBy {
-		cmp, err := expr.Type().Compare(ctx, lastExp[i], thisExp[i])
+		cmp, err := expr.Type(ctx).Compare(ctx, lastExp[i], thisExp[i])
 		if err != nil {
 			return false, err
 		}

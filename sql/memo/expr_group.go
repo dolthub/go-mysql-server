@@ -63,7 +63,7 @@ func (e *ExprGroup) Format(f fmt.State, verb rune) {
 
 var _ fmt.Formatter = (*ExprGroup)(nil)
 
-func newExprGroup(m *Memo, id GroupId, expr exprType) *ExprGroup {
+func newExprGroup(ctx *sql.Context, m *Memo, id GroupId, expr exprType) *ExprGroup {
 	// bit of circularity: |grp| references |rel|, |rel| references |grp|,
 	// and |relProps| references |rel| and |grp| info.
 	grp := &ExprGroup{
@@ -74,7 +74,7 @@ func newExprGroup(m *Memo, id GroupId, expr exprType) *ExprGroup {
 	switch e := expr.(type) {
 	case RelExpr:
 		grp.First = e
-		grp.RelProps = newRelProps(e)
+		grp.RelProps = newRelProps(ctx, e)
 	}
 	return grp
 }

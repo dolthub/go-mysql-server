@@ -31,7 +31,7 @@ var _ sql.FunctionExpression = (*SwapXY)(nil)
 var _ sql.CollationCoercible = (*SwapXY)(nil)
 
 // NewSwapXY creates a new point expression.
-func NewSwapXY(e sql.Expression) sql.Expression {
+func NewSwapXY(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &SwapXY{expression.UnaryExpressionStub{Child: e}}
 }
 
@@ -46,13 +46,13 @@ func (s *SwapXY) Description() string {
 }
 
 // IsNullable implements the sql.Expression interface.
-func (s *SwapXY) IsNullable() bool {
-	return s.Child.IsNullable()
+func (s *SwapXY) IsNullable(ctx *sql.Context) bool {
+	return s.Child.IsNullable(ctx)
 }
 
 // Type implements the sql.Expression interface.
-func (s *SwapXY) Type() sql.Type {
-	return s.Child.Type()
+func (s *SwapXY) Type(ctx *sql.Context) sql.Type {
+	return s.Child.Type(ctx)
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -65,11 +65,11 @@ func (s *SwapXY) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (s *SwapXY) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (s *SwapXY) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
 	}
-	return NewSwapXY(children[0]), nil
+	return NewSwapXY(ctx, children[0]), nil
 }
 
 // Eval implements the sql.Expression interface.

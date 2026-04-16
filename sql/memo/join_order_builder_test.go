@@ -185,9 +185,10 @@ func TestJoinOrderBuilder(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			j := NewJoinOrderBuilder(NewMemo(newContext(pro), nil, nil, NewDefaultCoster(), nil))
+			ctx := newContext(pro)
+			j := NewJoinOrderBuilder(NewMemo(ctx, nil, nil, NewDefaultCoster(), nil))
 			j.forceFastDFSLookupForTest = tt.forceFastReorder
-			j.ReorderJoin(tt.in)
+			j.ReorderJoin(ctx, tt.in)
 			require.Equal(t, tt.plans, j.m.String())
 		})
 	}
@@ -367,8 +368,9 @@ func TestJoinOrderBuilder_populateSubgraph(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			b := NewJoinOrderBuilder(NewMemo(newContext(pro), nil, nil, NewDefaultCoster(), nil))
-			b.populateSubgraph(tt.join)
+			ctx := newContext(pro)
+			b := NewJoinOrderBuilder(NewMemo(ctx, nil, nil, NewDefaultCoster(), nil))
+			b.populateSubgraph(ctx, tt.join)
 			edgesEq(t, tt.expEdges, b.edges)
 		})
 	}
@@ -671,10 +673,11 @@ func TestEnsureClosure(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			b := NewJoinOrderBuilder(NewMemo(newContext(pro), nil, nil, NewDefaultCoster(), nil))
-			b.populateSubgraph(tt.in)
+			ctx := newContext(pro)
+			b := NewJoinOrderBuilder(NewMemo(ctx, nil, nil, NewDefaultCoster(), nil))
+			b.populateSubgraph(ctx, tt.in)
 			beforeLen := len(b.edges)
-			b.ensureClosure(b.m.Root())
+			b.ensureClosure(ctx, b.m.Root())
 			newEdges := b.edges[beforeLen:]
 			edgesEq(t, tt.expEdges, newEdges)
 		})
@@ -690,7 +693,7 @@ func childSchema(source string) sql.PrimaryKeySchema {
 }
 
 func tableNode(db *memory.Database, name string) sql.Node {
-	t := memory.NewTable(db, name, childSchema(name), nil)
+	t := memory.NewTable(sql.NewEmptyContext(), db, name, childSchema(name), nil)
 	tabId, colId := getIds([]string{name, "x"})
 	colset := sql.NewColSet(sql.ColumnId(colId), sql.ColumnId(colId+1), sql.ColumnId(colId+2))
 	return plan.NewResolvedTable(t, db, nil).WithId(sql.TableId(tabId)).WithColumns(colset)

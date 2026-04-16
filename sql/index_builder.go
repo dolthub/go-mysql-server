@@ -41,8 +41,8 @@ type MySQLIndexBuilder struct {
 
 // NewMySQLIndexBuilder returns a new MySQLIndexBuilder. Used internally to construct a range that will later be passed to
 // integrators through the Index function NewLookup.
-func NewMySQLIndexBuilder(idx Index) *MySQLIndexBuilder {
-	cets := idx.ColumnExpressionTypes()
+func NewMySQLIndexBuilder(ctx *Context, idx Index) *MySQLIndexBuilder {
+	cets := idx.ColumnExpressionTypes(ctx)
 	colExprTypes := make(map[string]Type, len(cets))
 	ranges := make(map[string][]MySQLRangeColumnExpr, len(cets))
 	for _, cet := range cets {
@@ -525,7 +525,7 @@ func (b *MySQLIndexBuilder) Ranges(ctx *Context) MySQLRangeCollection {
 	}
 	// An invalid builder that did not error got into a state where no columns will ever match, so we return an empty range
 	if b.isInvalid {
-		cets := b.idx.ColumnExpressionTypes()
+		cets := b.idx.ColumnExpressionTypes(ctx)
 		emptyRange := make(MySQLRange, len(cets))
 		for i, cet := range cets {
 			typ := cet.Type
@@ -579,7 +579,7 @@ func (b *MySQLIndexBuilder) Ranges(ctx *Context) MySQLRangeCollection {
 		}
 	}
 	if len(ranges) == 0 {
-		cets := b.idx.ColumnExpressionTypes()
+		cets := b.idx.ColumnExpressionTypes(ctx)
 		emptyRange := make(MySQLRange, len(cets))
 		for i, cet := range cets {
 			emptyRange[i] = EmptyRangeColumnExpr(cet.Type.Promote())
@@ -656,8 +656,8 @@ type SpatialIndexBuilder struct {
 	rng MySQLRangeColumnExpr
 }
 
-func NewSpatialIndexBuilder(idx Index) *SpatialIndexBuilder {
-	return &SpatialIndexBuilder{idx: idx, typ: idx.ColumnExpressionTypes()[0].Type}
+func NewSpatialIndexBuilder(ctx *Context, idx Index) *SpatialIndexBuilder {
+	return &SpatialIndexBuilder{idx: idx, typ: idx.ColumnExpressionTypes(ctx)[0].Type}
 }
 
 func (b *SpatialIndexBuilder) AddRange(lower, upper interface{}) *SpatialIndexBuilder {
@@ -708,7 +708,7 @@ func (b *EqualityIndexBuilder) AddEquality(ctx *Context, colIdx int, k interface
 		return fmt.Errorf("redundant restriction on index column")
 	}
 
-	typ := b.idx.ColumnExpressionTypes()[colIdx].Type
+	typ := b.idx.ColumnExpressionTypes(ctx)[colIdx].Type
 	// if converting from float to int results in rounding, then it's empty range
 	if t, ok := typ.(NumberType); ok && t.IsNumericType() && !t.IsFloat() {
 		f, c := floor(k), ceil(k)
@@ -741,9 +741,9 @@ func (b *EqualityIndexBuilder) AddEquality(ctx *Context, colIdx int, k interface
 	return nil
 }
 
-func (b *EqualityIndexBuilder) Build(_ *Context) (IndexLookup, error) {
+func (b *EqualityIndexBuilder) Build(ctx *Context) (IndexLookup, error) {
 	if b.empty {
-		for i, cet := range b.idx.ColumnExpressionTypes() {
+		for i, cet := range b.idx.ColumnExpressionTypes(ctx) {
 			b.rng[i] = EmptyRangeColumnExpr(cet.Type)
 		}
 	}

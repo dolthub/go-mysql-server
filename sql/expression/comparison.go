@@ -39,11 +39,11 @@ var ErrNilOperand = errors.NewKind("nil operand found in comparison")
 // PreciseComparison searches an expression tree for comparison
 // expressions that require a conversion or type promotion.
 // This utility helps determine if filter predicates can be pushed down.
-func PreciseComparison(e sql.Expression) bool {
+func PreciseComparison(ctx *sql.Context, e sql.Expression) bool {
 	var imprecise bool
-	sql.Inspect(e, func(expr sql.Expression) bool {
+	sql.Inspect(ctx, e, func(ctx *sql.Context, expr sql.Expression) bool {
 		if cmp, ok := expr.(Comparer); ok {
-			left, right := cmp.Left().Type(), cmp.Right().Type()
+			left, right := cmp.Left().Type(ctx), cmp.Right().Type(ctx)
 
 			// integer comparisons are exact
 			if types.IsInteger(left) && types.IsInteger(right) {
@@ -139,7 +139,7 @@ func (c *comparison) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		return 0, err
 	}
 
-	lTyp, rTyp := c.Left().Type(), c.Right().Type()
+	lTyp, rTyp := c.Left().Type(ctx), c.Right().Type(ctx)
 	if types.TypesEqual(lTyp, rTyp) {
 		return lTyp.Compare(ctx, left, right)
 	}
@@ -176,7 +176,7 @@ func (c *comparison) CompareValue(ctx *sql.Context, row sql.ValueRow) (int, erro
 		return 0, nil
 	}
 
-	lTyp, rTyp := c.LeftChild.Type().(sql.ValueType), c.RightChild.Type().(sql.ValueType)
+	lTyp, rTyp := c.LeftChild.Type(ctx).(sql.ValueType), c.RightChild.Type(ctx).(sql.ValueType)
 	if types.TypesEqual(lTyp, rTyp) {
 		return lTyp.(sql.ValueType).CompareValue(ctx, lv, rv)
 	}
@@ -198,7 +198,7 @@ func (c *comparison) CompareValue(ctx *sql.Context, row sql.ValueRow) (int, erro
 }
 
 // IsValueExpression returns whether every child supports sql.ValueExpression
-func (c *comparison) IsValueExpression() bool {
+func (c *comparison) IsValueExpression(ctx *sql.Context) bool {
 	l, ok := c.LeftChild.(sql.ValueExpression)
 	if !ok {
 		return false
@@ -208,10 +208,10 @@ func (c *comparison) IsValueExpression() bool {
 		return false
 	}
 	// TODO: only allow comparisons between Integers, Floats, Decimals, Bits and Year for now
-	if !types.IsNumber(c.LeftChild.Type()) || !types.IsNumber(c.RightChild.Type()) {
+	if !types.IsNumber(c.LeftChild.Type(ctx)) || !types.IsNumber(c.RightChild.Type(ctx)) {
 		return false
 	}
-	return l.IsValueExpression() && r.IsValueExpression()
+	return l.IsValueExpression(ctx) && r.IsValueExpression(ctx)
 }
 
 func (c *comparison) evalLeftAndRight(ctx *sql.Context, row sql.Row) (interface{}, interface{}, error) {
@@ -229,8 +229,8 @@ func (c *comparison) evalLeftAndRight(ctx *sql.Context, row sql.Row) (interface{
 }
 
 func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right any) (any, any, sql.Type, error) {
-	lTyp := c.Left().Type()
-	rTyp := c.Right().Type()
+	lTyp := c.Left().Type(ctx)
+	rTyp := c.Right().Type(ctx)
 
 	leftIsEnumOrSet := types.IsEnum(lTyp) || types.IsSet(lTyp)
 	rightIsEnumOrSet := types.IsEnum(rTyp) || types.IsSet(rTyp)
@@ -385,7 +385,7 @@ func (c *comparison) castLeftAndRight(ctx *sql.Context, left, right any) (any, a
 }
 
 // Type implements the Expression interface.
-func (*comparison) Type() sql.Type {
+func (*comparison) Type(ctx *sql.Context) sql.Type {
 	return types.Boolean
 }
 
@@ -437,7 +437,7 @@ func (e *Equals) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements the Expression interface.
-func (e *Equals) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (e *Equals) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 2)
 	}
@@ -451,13 +451,13 @@ func (e *Equals) String() string {
 	return fmt.Sprintf("(%s = %s)", e.Left(), e.Right())
 }
 
-func (e *Equals) DebugString() string {
+func (e *Equals) DebugString(ctx *sql.Context) string {
 	if e == nil {
 		return ""
 	}
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Eq")
-	children := []string{sql.DebugString(e.Left()), sql.DebugString(e.Right())}
+	children := []string{sql.DebugString(ctx, e.Left()), sql.DebugString(ctx, e.Right())}
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
@@ -493,7 +493,7 @@ func NewNullSafeEquals(left sql.Expression, right sql.Expression) *NullSafeEqual
 }
 
 // Type implements the Expression interface.
-func (e *NullSafeEquals) Type() sql.Type {
+func (e *NullSafeEquals) Type(ctx *sql.Context) sql.Type {
 	return types.Boolean
 }
 
@@ -516,7 +516,7 @@ func (e *NullSafeEquals) Compare(ctx *sql.Context, row sql.Row) (int, error) {
 		return -1, nil
 	}
 
-	lTyp, rTyp := e.Left().Type(), e.Right().Type()
+	lTyp, rTyp := e.Left().Type(ctx), e.Right().Type(ctx)
 	if types.TypesEqual(lTyp, rTyp) {
 		return lTyp.Compare(ctx, left, right)
 	}
@@ -541,12 +541,12 @@ func (e *NullSafeEquals) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 }
 
 // IsNullable implements sql.Expression
-func (e *NullSafeEquals) IsNullable() bool {
+func (e *NullSafeEquals) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
 // WithChildren implements the Expression interface.
-func (e *NullSafeEquals) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (e *NullSafeEquals) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 2)
 	}
@@ -557,8 +557,8 @@ func (e *NullSafeEquals) String() string {
 	return fmt.Sprintf("(%s <=> %s)", e.Left(), e.Right())
 }
 
-func (e *NullSafeEquals) DebugString() string {
-	return fmt.Sprintf("(%s <=> %s)", sql.DebugString(e.Left()), sql.DebugString(e.Right()))
+func (e *NullSafeEquals) DebugString(ctx *sql.Context) string {
+	return fmt.Sprintf("(%s <=> %s)", sql.DebugString(ctx, e.Left()), sql.DebugString(ctx, e.Right()))
 }
 
 // GreaterThan is a comparison that checks an expression is greater than another.
@@ -595,7 +595,7 @@ func (gt *GreaterThan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 }
 
 // WithChildren implements the Expression interface.
-func (gt *GreaterThan) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (gt *GreaterThan) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(gt, len(children), 2)
 	}
@@ -606,10 +606,10 @@ func (gt *GreaterThan) String() string {
 	return fmt.Sprintf("(%s > %s)", gt.Left(), gt.Right())
 }
 
-func (gt *GreaterThan) DebugString() string {
+func (gt *GreaterThan) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("GreaterThan")
-	children := []string{sql.DebugString(gt.Left()), sql.DebugString(gt.Right())}
+	children := []string{sql.DebugString(ctx, gt.Left()), sql.DebugString(ctx, gt.Right())}
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
@@ -627,8 +627,8 @@ func (gt *GreaterThan) EvalValue(ctx *sql.Context, row sql.ValueRow) (sql.Value,
 }
 
 // IsValueExpression implements the ValueExpression interface.
-func (gt *GreaterThan) IsValueExpression() bool {
-	return gt.comparison.IsValueExpression()
+func (gt *GreaterThan) IsValueExpression(ctx *sql.Context) bool {
+	return gt.comparison.IsValueExpression(ctx)
 }
 
 // LessThan is a comparison that checks an expression is less than another.
@@ -662,7 +662,7 @@ func (lt *LessThan) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements the Expression interface.
-func (lt *LessThan) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (lt *LessThan) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(lt, len(children), 2)
 	}
@@ -673,10 +673,10 @@ func (lt *LessThan) String() string {
 	return fmt.Sprintf("(%s < %s)", lt.Left(), lt.Right())
 }
 
-func (lt *LessThan) DebugString() string {
+func (lt *LessThan) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("LessThan")
-	children := []string{sql.DebugString(lt.Left()), sql.DebugString(lt.Right())}
+	children := []string{sql.DebugString(ctx, lt.Left()), sql.DebugString(ctx, lt.Right())}
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
@@ -694,8 +694,8 @@ func (lt *LessThan) EvalValue(ctx *sql.Context, row sql.ValueRow) (sql.Value, er
 }
 
 // IsValueExpression implements the ValueExpression interface.
-func (lt *LessThan) IsValueExpression() bool {
-	return lt.comparison.IsValueExpression()
+func (lt *LessThan) IsValueExpression(ctx *sql.Context) bool {
+	return lt.comparison.IsValueExpression(ctx)
 }
 
 // GreaterThanOrEqual is a comparison that checks an expression is greater or equal to
@@ -730,7 +730,7 @@ func (gte *GreaterThanOrEqual) Eval(ctx *sql.Context, row sql.Row) (interface{},
 }
 
 // WithChildren implements the Expression interface.
-func (gte *GreaterThanOrEqual) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (gte *GreaterThanOrEqual) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(gte, len(children), 2)
 	}
@@ -741,10 +741,10 @@ func (gte *GreaterThanOrEqual) String() string {
 	return fmt.Sprintf("(%s >= %s)", gte.Left(), gte.Right())
 }
 
-func (gte *GreaterThanOrEqual) DebugString() string {
+func (gte *GreaterThanOrEqual) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("GreaterThanOrEqual")
-	children := []string{sql.DebugString(gte.Left()), sql.DebugString(gte.Right())}
+	children := []string{sql.DebugString(ctx, gte.Left()), sql.DebugString(ctx, gte.Right())}
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
@@ -762,8 +762,8 @@ func (gte *GreaterThanOrEqual) EvalValue(ctx *sql.Context, row sql.ValueRow) (sq
 }
 
 // IsValueExpression implements the ValueExpression interface.
-func (gte *GreaterThanOrEqual) IsValueExpression() bool {
-	return gte.comparison.IsValueExpression()
+func (gte *GreaterThanOrEqual) IsValueExpression(ctx *sql.Context) bool {
+	return gte.comparison.IsValueExpression(ctx)
 }
 
 // LessThanOrEqual is a comparison that checks an expression is equal or lower than
@@ -800,7 +800,7 @@ func (lte *LessThanOrEqual) Eval(ctx *sql.Context, row sql.Row) (interface{}, er
 }
 
 // WithChildren implements the Expression interface.
-func (lte *LessThanOrEqual) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (lte *LessThanOrEqual) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(lte, len(children), 2)
 	}
@@ -811,10 +811,10 @@ func (lte *LessThanOrEqual) String() string {
 	return fmt.Sprintf("(%s <= %s)", lte.Left(), lte.Right())
 }
 
-func (lte *LessThanOrEqual) DebugString() string {
+func (lte *LessThanOrEqual) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("LessThanOrEqual")
-	children := []string{sql.DebugString(lte.Left()), sql.DebugString(lte.Right())}
+	children := []string{sql.DebugString(ctx, lte.Left()), sql.DebugString(ctx, lte.Right())}
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
@@ -832,8 +832,8 @@ func (lte *LessThanOrEqual) EvalValue(ctx *sql.Context, row sql.ValueRow) (sql.V
 }
 
 // IsValueExpression implements the ValueExpression interface.
-func (lte *LessThanOrEqual) IsValueExpression() bool {
-	return lte.comparison.IsValueExpression()
+func (lte *LessThanOrEqual) IsValueExpression(ctx *sql.Context) bool {
+	return lte.comparison.IsValueExpression(ctx)
 }
 
 var (

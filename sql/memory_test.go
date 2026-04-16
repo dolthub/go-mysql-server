@@ -23,22 +23,23 @@ import (
 func TestManager(t *testing.T) {
 	require := require.New(t)
 	m := NewMemoryManager(nil)
+	ctx := NewEmptyContext()
 
-	kv, dispose := m.NewLRUCache(5)
+	kv, dispose := m.NewLRUCache(ctx, 5)
 	_, ok := kv.(*lruCache)
 	require.True(ok)
 	require.Len(m.caches, 1)
 	dispose()
 	require.Len(m.caches, 0)
 
-	kv, dispose = m.NewHistoryCache()
+	kv, dispose = m.NewHistoryCache(ctx)
 	_, ok = kv.(*historyCache)
 	require.True(ok)
 	require.Len(m.caches, 1)
 	dispose()
 	require.Len(m.caches, 0)
 
-	rc, dispose := m.NewRowsCache()
+	rc, dispose := m.NewRowsCache(ctx)
 	_, ok = rc.(*rowsCache)
 	require.True(ok)
 	require.Len(m.caches, 1)
@@ -54,7 +55,7 @@ func TestManager(t *testing.T) {
 
 type disposableCache struct{}
 
-func (d disposableCache) Dispose() {}
+func (d disposableCache) Dispose(ctx *Context) {}
 
 type freeableCache struct {
 	disposableCache

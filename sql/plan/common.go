@@ -47,8 +47,8 @@ type UnaryNode struct {
 }
 
 // Schema implements the Node interface.
-func (n *UnaryNode) Schema() sql.Schema {
-	return n.Child.Schema()
+func (n *UnaryNode) Schema(ctx *sql.Context) sql.Schema {
+	return n.Child.Schema(ctx)
 }
 
 // Resolved implements the Resolvable interface.
@@ -95,11 +95,11 @@ type BlockRowIter interface {
 	// an IF/ELSE block, the RowIter represents the Node where the condition evaluated to true.
 	RepresentingNode() sql.Node
 	// Schema returns the schema of this RowIter.
-	Schema() sql.Schema
+	Schema(ctx *sql.Context) sql.Schema
 }
 
 // NodeRepresentsSelect attempts to walk a sql.Node to determine if it represents a SELECT statement.
-func NodeRepresentsSelect(s sql.Node) bool {
+func NodeRepresentsSelect(ctx *sql.Context, s sql.Node) bool {
 	if s == nil {
 		return false
 	}
@@ -107,12 +107,12 @@ func NodeRepresentsSelect(s sql.Node) bool {
 	// Special case for calling procedures that call other procedures.
 	switch node := s.(type) {
 	case *Call:
-		return NodeRepresentsSelect(node.Procedure)
+		return NodeRepresentsSelect(ctx, node.Procedure)
 	case *Procedure:
-		return NodeRepresentsSelect(node.ExternalProc)
+		return NodeRepresentsSelect(ctx, node.ExternalProc)
 	case *Block:
 		for _, stmt := range node.statements {
-			if NodeRepresentsSelect(stmt) {
+			if NodeRepresentsSelect(ctx, stmt) {
 				return true
 			}
 		}
@@ -121,7 +121,7 @@ func NodeRepresentsSelect(s sql.Node) bool {
 
 	isSelect := false
 	// All SELECT statements, including those that do not specify a table (using "dual"), have a TableNode.
-	transform.InspectWithOpaque(s, func(node sql.Node) bool {
+	transform.InspectWithOpaque(ctx, s, func(ctx *sql.Context, node sql.Node) bool {
 		switch node.(type) {
 		case *AlterAutoIncrement, *AlterIndex, *CreateForeignKey, *CreateIndex, *CreateTable, *CreateTrigger,
 			*DeleteFrom, *DropForeignKey, *InsertInto, *ShowCreateTable, *ShowIndexes, *Truncate, *Update, *Into:
@@ -165,10 +165,10 @@ func getTableName(nodeToSearch sql.Node) string {
 }
 
 // GetTablesToBeUpdated takes a node and looks for the tables modified by a SetField.
-func GetTablesToBeUpdated(node sql.Node) map[string]struct{} {
+func GetTablesToBeUpdated(ctx *sql.Context, node sql.Node) map[string]struct{} {
 	ret := make(map[string]struct{})
 
-	transform.InspectExpressions(node, func(e sql.Expression) bool {
+	transform.InspectExpressions(ctx, node, func(ctx *sql.Context, e sql.Expression) bool {
 		switch e := e.(type) {
 		case *expression.SetField:
 			gf := e.LeftChild.(*expression.GetField)

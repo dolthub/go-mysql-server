@@ -51,6 +51,7 @@ type CreateEvent struct {
 
 // NewCreateEvent returns a *CreateEvent node.
 func NewCreateEvent(
+	ctx *sql.Context,
 	db sql.Database,
 	es sql.EventScheduler,
 	name, definer string,
@@ -75,7 +76,7 @@ func NewCreateEvent(
 		Status:           status,
 		Comment:          comment,
 		DefinitionString: definitionString,
-		DefinitionNode:   prepareCreateEventDefinitionNode(definition),
+		DefinitionNode:   prepareCreateEventDefinitionNode(ctx, definition),
 		IfNotExists:      ifNotExists,
 	}
 }
@@ -102,7 +103,7 @@ func (c *CreateEvent) IsReadOnly() bool {
 }
 
 // Schema implements the sql.Node interface.
-func (c *CreateEvent) Schema() sql.Schema {
+func (c *CreateEvent) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -112,13 +113,13 @@ func (c *CreateEvent) Children() []sql.Node {
 }
 
 // WithChildren implements the sql.Node interface.
-func (c *CreateEvent) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (c *CreateEvent) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 	}
 
 	nc := *c
-	nc.DefinitionNode = prepareCreateEventDefinitionNode(children[0])
+	nc.DefinitionNode = prepareCreateEventDefinitionNode(ctx, children[0])
 
 	return &nc, nil
 }
@@ -159,8 +160,11 @@ func (c *CreateEvent) String() string {
 		comment = fmt.Sprintf(" COMMENT '%s'", c.Comment)
 	}
 
+	// To maintain compatibility with fmt.Stringer we have to use an empty context, but this will fail in any case that
+	// requires a context to determine a string (such as an integrator using the context to contain type information).
+	ctx := sql.NewEmptyContext()
 	return fmt.Sprintf("CREATE%s EVENT %s %s%s%s%s DO %s",
-		definer, c.EventName, onSchedule, onCompletion, c.Status.String(), comment, sql.DebugString(c.DefinitionNode))
+		definer, c.EventName, onSchedule, onCompletion, c.Status.String(), comment, sql.DebugString(ctx, c.DefinitionNode))
 }
 
 // Expressions implements the sql.Expressioner interface.
@@ -181,30 +185,30 @@ func (c *CreateEvent) Expressions() []sql.Expression {
 }
 
 // WithExpressions implements the sql.Expressioner interface.
-func (c *CreateEvent) WithExpressions(e ...sql.Expression) (sql.Node, error) {
-	if len(e) < 1 {
-		return nil, sql.ErrInvalidChildrenNumber.New(c, len(e), "at least 1")
+func (c *CreateEvent) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) < 1 {
+		return nil, sql.ErrInvalidChildrenNumber.New(c, len(exprs), "at least 1")
 	}
 
 	nc := *c
 	if c.At != nil {
-		ts, ok := e[0].(*OnScheduleTimestamp)
+		ts, ok := exprs[0].(*OnScheduleTimestamp)
 		if !ok {
-			return nil, fmt.Errorf("expected `*OnScheduleTimestamp` but got `%T`", e[0])
+			return nil, fmt.Errorf("expected `*OnScheduleTimestamp` but got `%T`", exprs[0])
 		}
 		nc.At = ts
 	} else {
-		every, ok := e[0].(*expression.Interval)
+		every, ok := exprs[0].(*expression.Interval)
 		if !ok {
-			return nil, fmt.Errorf("expected `*expression.Interval` but got `%T`", e[0])
+			return nil, fmt.Errorf("expected `*expression.Interval` but got `%T`", exprs[0])
 		}
 		nc.Every = every
 
 		var ts *OnScheduleTimestamp
-		if len(e) > 1 {
-			ts, ok = e[1].(*OnScheduleTimestamp)
+		if len(exprs) > 1 {
+			ts, ok = exprs[1].(*OnScheduleTimestamp)
 			if !ok {
-				return nil, fmt.Errorf("expected `*OnScheduleTimestamp` but got `%T`", e[1])
+				return nil, fmt.Errorf("expected `*OnScheduleTimestamp` but got `%T`", exprs[1])
 			}
 			if c.Starts != nil {
 				nc.Starts = ts
@@ -213,10 +217,10 @@ func (c *CreateEvent) WithExpressions(e ...sql.Expression) (sql.Node, error) {
 			}
 		}
 
-		if len(e) == 3 {
-			ts, ok = e[2].(*OnScheduleTimestamp)
+		if len(exprs) == 3 {
+			ts, ok = exprs[2].(*OnScheduleTimestamp)
 			if !ok {
-				return nil, fmt.Errorf("expected `*OnScheduleTimestamp` but got `%T`", e[2])
+				return nil, fmt.Errorf("expected `*OnScheduleTimestamp` but got `%T`", exprs[2])
 			}
 			nc.Ends = ts
 		}
@@ -312,7 +316,7 @@ func (c *CreateEvent) GetEventDefinition(ctx *sql.Context, eventCreationTime, la
 
 // prepareCreateEventDefinitionNode fills in any missing ProcedureReference structures for
 // BeginEndBlocks in the event's definition.
-func prepareCreateEventDefinitionNode(definition sql.Node) sql.Node {
+func prepareCreateEventDefinitionNode(ctx *sql.Context, definition sql.Node) sql.Node {
 	beginEndBlock, ok := definition.(*BeginEndBlock)
 	if !ok {
 		return definition
@@ -328,9 +332,9 @@ func prepareCreateEventDefinitionNode(definition sql.Node) sql.Node {
 
 	newChildren := make([]sql.Node, len(beginEndBlock.Children()))
 	for i, child := range beginEndBlock.Children() {
-		newChildren[i] = prepareCreateEventDefinitionNode(child)
+		newChildren[i] = prepareCreateEventDefinitionNode(ctx, child)
 	}
-	newNode, _ := beginEndBlock.WithChildren(newChildren...)
+	newNode, _ := beginEndBlock.WithChildren(ctx, newChildren...)
 	return newNode
 }
 
@@ -457,16 +461,16 @@ func (ost *OnScheduleTimestamp) IsReadOnly() bool {
 	return true
 }
 
-func (ost *OnScheduleTimestamp) Type() sql.Type {
-	return ost.timestamp.Type()
+func (ost *OnScheduleTimestamp) Type(ctx *sql.Context) sql.Type {
+	return ost.timestamp.Type(ctx)
 }
 
-func (ost *OnScheduleTimestamp) IsNullable() bool {
-	if ost.timestamp.IsNullable() {
+func (ost *OnScheduleTimestamp) IsNullable(ctx *sql.Context) bool {
+	if ost.timestamp.IsNullable(ctx) {
 		return true
 	}
 	for _, i := range ost.intervals {
-		if i.IsNullable() {
+		if i.IsNullable(ctx) {
 			return true
 		}
 	}
@@ -478,7 +482,7 @@ func (ost *OnScheduleTimestamp) Children() []sql.Expression {
 	return append(exprs, ost.intervals...)
 }
 
-func (ost *OnScheduleTimestamp) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (ost *OnScheduleTimestamp) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) == 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(ost, len(children), "at least 1")
 	}
@@ -593,7 +597,7 @@ func (d *DropEvent) String() string {
 }
 
 // Schema implements the sql.Node interface.
-func (d *DropEvent) Schema() sql.Schema {
+func (d *DropEvent) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -632,7 +636,7 @@ func (d *DropEvent) RowIter(ctx *sql.Context, row sql.Row) (sql.RowIter, error) 
 }
 
 // WithChildren implements the sql.Node interface.
-func (d *DropEvent) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (d *DropEvent) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(d, children...)
 }
 

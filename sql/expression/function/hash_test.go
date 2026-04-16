@@ -28,6 +28,7 @@ import (
 // NOTE: all expected values are pulled from MySQL 8.0
 
 func TestMD5(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	tests := []struct {
 		val         sql.Expression
 		expectedOut string
@@ -38,11 +39,11 @@ func TestMD5(t *testing.T) {
 		{expression.NewLiteral(float32(2.5), types.Float32), "8221435bcce913b5c2dc22eaf6cb6590"},
 		{expression.NewLiteral("2.5", types.Text), "8221435bcce913b5c2dc22eaf6cb6590"},
 		{expression.NewLiteral([]byte{0x80}, types.LongBlob), "8d39dd7eef115ea6975446ef4082951f"},
-		{NewMD5(expression.NewLiteral(int8(10), types.Int8)), "8d8e353b98d5191d5ceea1aa3eb05d43"},
+		{NewMD5(ctx, expression.NewLiteral(int8(10), types.Int8)), "8d8e353b98d5191d5ceea1aa3eb05d43"},
 	}
 
 	for _, test := range tests {
-		f := NewMD5(test.val)
+		f := NewMD5(ctx, test.val)
 		t.Run(f.String(), func(t *testing.T) {
 			res, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(t, err)
@@ -51,7 +52,7 @@ func TestMD5(t *testing.T) {
 	}
 
 	// Test nil
-	f := NewMD5(expression.NewLiteral(nil, types.Null))
+	f := NewMD5(ctx, expression.NewLiteral(nil, types.Null))
 	t.Run(f.String(), func(t *testing.T) {
 		res, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(t, err)
@@ -60,6 +61,7 @@ func TestMD5(t *testing.T) {
 }
 
 func TestSHA1(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	tests := []struct {
 		val         sql.Expression
 		expectedOut string
@@ -69,11 +71,11 @@ func TestSHA1(t *testing.T) {
 		{expression.NewLiteral("abcd", types.Text), "81fe8bfe87576c3ecb22426f8e57847382917acf"},
 		{expression.NewLiteral(float32(2.5), types.Float32), "555a5c5c92b230dccab828d90e89ec66847ab9ce"},
 		{expression.NewLiteral("2.5", types.Text), "555a5c5c92b230dccab828d90e89ec66847ab9ce"},
-		{NewSHA1(expression.NewLiteral(int8(10), types.Int8)), "f270819294d6d015758421bdcb1202fd353c6f06"},
+		{NewSHA1(ctx, expression.NewLiteral(int8(10), types.Int8)), "f270819294d6d015758421bdcb1202fd353c6f06"},
 	}
 
 	for _, test := range tests {
-		f := NewSHA1(test.val)
+		f := NewSHA1(ctx, test.val)
 		t.Run(f.String(), func(t *testing.T) {
 			res, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(t, err)
@@ -82,7 +84,7 @@ func TestSHA1(t *testing.T) {
 	}
 
 	// Test nil
-	f := NewSHA1(expression.NewLiteral(nil, types.Null))
+	f := NewSHA1(ctx, expression.NewLiteral(nil, types.Null))
 	t.Run(f.String(), func(t *testing.T) {
 		res, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(t, err)
@@ -241,7 +243,7 @@ func TestSHA2(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		f := NewSHA2(test.arg, test.count)
+		f := NewSHA2(sql.NewEmptyContext(), test.arg, test.count)
 		t.Run(f.String(), func(t *testing.T) {
 			res, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(t, err)
@@ -274,7 +276,7 @@ func TestSHA2Null(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		f := NewSHA2(test.arg, test.count)
+		f := NewSHA2(sql.NewEmptyContext(), test.arg, test.count)
 		t.Run(f.String(), func(t *testing.T) {
 			res, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(t, err)
@@ -315,7 +317,7 @@ func TestCompress(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		f := NewCompress(test.val)
+		f := NewCompress(sql.NewEmptyContext(), test.val)
 		t.Run(f.String(), func(t *testing.T) {
 			res, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(t, err)
@@ -375,7 +377,7 @@ func TestUncompress(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		f := NewUncompress(test.val)
+		f := NewUncompress(sql.NewEmptyContext(), test.val)
 		t.Run(f.String(), func(t *testing.T) {
 			res, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(t, err)
@@ -435,7 +437,7 @@ func TestUncompressedLength(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		f := NewUncompressedLength(test.val)
+		f := NewUncompressedLength(sql.NewEmptyContext(), test.val)
 		t.Run(f.String(), func(t *testing.T) {
 			res, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(t, err)
@@ -480,7 +482,7 @@ func TestValidatePasswordStrength(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		f := NewValidatePasswordStrength(test.val)
+		f := NewValidatePasswordStrength(sql.NewEmptyContext(), test.val)
 		t.Run(f.String(), func(t *testing.T) {
 			res, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(t, err)

@@ -158,14 +158,14 @@ func (p *Procedure) String() string {
 }
 
 // DebugString implements the sql.DebugStringer interface.
-func (p *Procedure) DebugString() string {
-	return sql.DebugString(p.Ops)
+func (p *Procedure) DebugString(ctx *sql.Context) string {
+	return sql.DebugString(ctx, p.Ops)
 }
 
 // Schema implements the sql.Node interface.
-func (p *Procedure) Schema() sql.Schema {
+func (p *Procedure) Schema(ctx *sql.Context) sql.Schema {
 	if p.ExternalProc != nil {
-		return p.ExternalProc.Schema()
+		return p.ExternalProc.Schema(ctx)
 	}
 	return types.OkResultSchema
 }
@@ -179,7 +179,7 @@ func (p *Procedure) Children() []sql.Node {
 }
 
 // WithChildren implements the sql.Node interface.
-func (p *Procedure) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (p *Procedure) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) == 0 {
 		return p, nil
 	}

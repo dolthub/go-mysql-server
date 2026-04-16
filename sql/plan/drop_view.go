@@ -57,7 +57,7 @@ func (dv *SingleDropView) IsReadOnly() bool {
 }
 
 // Schema implements the Node interface. It always returns Query OK result.
-func (dv *SingleDropView) Schema() sql.Schema { return types.OkResultSchema }
+func (dv *SingleDropView) Schema(ctx *sql.Context) sql.Schema { return types.OkResultSchema }
 
 // String implements the fmt.Stringer interface, using sql.TreePrinter to
 // generate the string.
@@ -70,7 +70,7 @@ func (dv *SingleDropView) String() string {
 
 // WithChildren implements the Node interface. It only succeeds if the length
 // of the specified children equals 0.
-func (dv *SingleDropView) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (dv *SingleDropView) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(dv, len(children), 0)
 	}
@@ -134,7 +134,7 @@ func (dvs *DropView) Resolved() bool {
 }
 
 // Schema implements the Node interface. It always returns Query OK result.
-func (dvs *DropView) Schema() sql.Schema { return types.OkResultSchema }
+func (dvs *DropView) Schema(ctx *sql.Context) sql.Schema { return types.OkResultSchema }
 
 // String implements the fmt.Stringer interface, using sql.TreePrinter to
 // generate the string.
@@ -153,7 +153,7 @@ func (dvs *DropView) String() string {
 
 // WithChildren implements the Node interface. It always suceeds, returning a
 // copy of this node with the new array of nodes as children.
-func (dvs *DropView) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (dvs *DropView) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	newDrop := dvs
 	newDrop.children = children
 	return newDrop, nil

@@ -101,7 +101,7 @@ func getUpdatableTable(t sql.Table) (sql.UpdatableTable, error) {
 }
 
 // Schema implements the sql.Node interface.
-func (u *Update) Schema() sql.Schema {
+func (u *Update) Schema(ctx *sql.Context) sql.Schema {
 	// Postgres allows the returned values of the update statement to be controlled, so if returning
 	// expressions were specified, then we return a different schema.
 	if u.Returning != nil {
@@ -109,13 +109,13 @@ func (u *Update) Schema() sql.Schema {
 		// safely until Resolved() is true.
 		returningSchema := sql.Schema{}
 		for _, expr := range u.Returning {
-			returningSchema = append(returningSchema, transform.ExpressionToColumn(expr, ""))
+			returningSchema = append(returningSchema, transform.ExpressionToColumn(ctx, expr, ""))
 		}
 
 		return returningSchema
 	}
 
-	return u.Child.Schema()
+	return u.Child.Schema(ctx)
 }
 
 func (u *Update) Checks() sql.CheckConstraints {
@@ -156,21 +156,21 @@ func (u *Update) Resolved() bool {
 
 }
 
-func (u *Update) WithExpressions(newExprs ...sql.Expression) (sql.Node, error) {
+func (u *Update) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	numChecks := len(u.checks)
 	expectedLength := numChecks + len(u.Returning)
-	if len(newExprs) != expectedLength {
-		return nil, sql.ErrInvalidExpressionNumber.New(u, len(newExprs), expectedLength)
+	if len(exprs) != expectedLength {
+		return nil, sql.ErrInvalidExpressionNumber.New(u, len(exprs), expectedLength)
 	}
 
 	var err error
 	ret := *u
-	ret.checks, err = u.checks.FromExpressions(newExprs[:numChecks])
+	ret.checks, err = u.checks.FromExpressions(exprs[:numChecks])
 	if err != nil {
 		return nil, err
 	}
 
-	ret.Returning = newExprs[numChecks:]
+	ret.Returning = exprs[numChecks:]
 
 	return &ret, nil
 }
@@ -186,7 +186,7 @@ func (ui UpdateInfo) String() string {
 }
 
 // WithChildren implements the Node interface.
-func (u *Update) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (u *Update) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 1)
 	}
@@ -207,10 +207,10 @@ func (u *Update) String() string {
 	return pr.String()
 }
 
-func (u *Update) DebugString() string {
+func (u *Update) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Update")
-	_ = pr.WriteChildren(sql.DebugString(u.Child))
+	_ = pr.WriteChildren(sql.DebugString(ctx, u.Child))
 	return pr.String()
 }
 

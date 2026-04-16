@@ -58,7 +58,7 @@ func (d *DropIndex) Resolved() bool { return d.Table.Resolved() }
 func (d *DropIndex) IsReadOnly() bool { return false }
 
 // Schema implements the Node interface.
-func (d *DropIndex) Schema() sql.Schema {
+func (d *DropIndex) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -73,7 +73,7 @@ func (d *DropIndex) String() string {
 }
 
 // WithChildren implements the Node interface.
-func (d *DropIndex) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (d *DropIndex) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}

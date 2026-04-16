@@ -123,6 +123,7 @@ func TestSubtractExprSet(t *testing.T) {
 }
 
 func TestExprToTableFilters(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	t.Run("basic", func(t *testing.T) {
 		expr := expression.NewAnd(
 			expression.NewAnd(
@@ -180,13 +181,13 @@ func TestExprToTableFilters(t *testing.T) {
 			},
 		}
 
-		filters := exprToTableFilters(expr, nil, nil)
+		filters := exprToTableFilters(ctx, expr, nil, nil)
 		assert.Equal(t, expected, filters)
 	})
 	// Test various complex conditions -- anytime we can't neatly split the expressions into tables
 	t.Run("int literal", func(t *testing.T) {
 
-		filters := exprToTableFilters(expression.NewAnd(
+		filters := exprToTableFilters(ctx, expression.NewAnd(
 			lit(0),
 			expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
 		), nil, nil)
@@ -199,7 +200,7 @@ func TestExprToTableFilters(t *testing.T) {
 	})
 
 	t.Run("NULL literal", func(t *testing.T) {
-		filters := exprToTableFilters(expression.NewAnd(
+		filters := exprToTableFilters(ctx, expression.NewAnd(
 			expression.NewLiteral(nil, types.Null),
 			expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
 		), nil, nil)
@@ -212,8 +213,8 @@ func TestExprToTableFilters(t *testing.T) {
 	})
 
 	t.Run("random expression", func(t *testing.T) {
-		filters := exprToTableFilters(expression.NewAnd(
-			expression.NewEquals(lit(1), mustExpr(function.NewRand())),
+		filters := exprToTableFilters(ctx, expression.NewAnd(
+			expression.NewEquals(lit(1), mustExpr(function.NewRand(ctx))),
 			expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
 		), nil, nil)
 		expected := filtersByTable{
@@ -225,7 +226,7 @@ func TestExprToTableFilters(t *testing.T) {
 	})
 
 	t.Run("or expression", func(t *testing.T) {
-		filters := exprToTableFilters(expression.NewOr(
+		filters := exprToTableFilters(ctx, expression.NewOr(
 			expression.NewLiteral(nil, types.Null),
 			expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "f", false),
 		), nil, nil)
@@ -241,7 +242,7 @@ func TestExprToTableFilters(t *testing.T) {
 	})
 
 	t.Run("comparing multiple tables", func(t *testing.T) {
-		filters := exprToTableFilters(expression.NewAnd(
+		filters := exprToTableFilters(ctx, expression.NewAnd(
 			eq(
 				expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "a", false),
 				lit(1),
@@ -267,6 +268,7 @@ func TestExprToTableFilters(t *testing.T) {
 			1: expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "a", false),
 		}
 		filters := exprToTableFilters(
+			ctx,
 			expression.NewGetFieldWithTable(1, 0, types.Int64, "db", "", "a", false),
 			nil, projections)
 		expected := filtersByTable{
@@ -283,6 +285,7 @@ func TestExprToTableFilters(t *testing.T) {
 			2: expression.NewGetFieldWithTable(0, 0, types.Int64, "db", "mytable", "a", false),
 		}
 		filters := exprToTableFilters(
+			ctx,
 			expression.NewGetFieldWithTable(1, 0, types.Int64, "db", "", "a", false),
 			nil, projections)
 		expected := filtersByTable{

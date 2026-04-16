@@ -148,7 +148,10 @@ func (a *AlterEvent) String() string {
 	}
 
 	if a.AlterDefinition {
-		stmt = fmt.Sprintf("%s DO %s", stmt, sql.DebugString(a.DefinitionNode))
+		// To maintain compatibility with fmt.Stringer we have to use an empty context, but this will fail in any case that
+		// requires a context to determine a string (such as an integrator using the context to contain type information).
+		ctx := sql.NewEmptyContext()
+		stmt = fmt.Sprintf("%s DO %s", stmt, sql.DebugString(ctx, a.DefinitionNode))
 	}
 
 	return stmt
@@ -178,7 +181,7 @@ func (a *AlterEvent) Resolved() bool {
 }
 
 // Schema implements the sql.Node interface.
-func (a *AlterEvent) Schema() sql.Schema {
+func (a *AlterEvent) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -195,7 +198,7 @@ func (a *AlterEvent) Children() []sql.Node {
 }
 
 // WithChildren implements the sql.Node interface.
-func (a *AlterEvent) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (a *AlterEvent) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) > 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(a, len(children), "0 or 1")
 	}
@@ -338,9 +341,9 @@ func (a *AlterEvent) Expressions() []sql.Expression {
 }
 
 // WithExpressions implements the sql.Expressioner interface.
-func (a *AlterEvent) WithExpressions(e ...sql.Expression) (sql.Node, error) {
-	if len(e) > 3 {
-		return nil, sql.ErrInvalidChildrenNumber.New(a, len(e), "up to 3")
+func (a *AlterEvent) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) > 3 {
+		return nil, sql.ErrInvalidChildrenNumber.New(a, len(exprs), "up to 3")
 	}
 
 	if !a.AlterOnSchedule {
@@ -349,23 +352,23 @@ func (a *AlterEvent) WithExpressions(e ...sql.Expression) (sql.Node, error) {
 
 	na := *a
 	if a.At != nil {
-		ts, ok := e[0].(*OnScheduleTimestamp)
+		ts, ok := exprs[0].(*OnScheduleTimestamp)
 		if !ok {
-			return nil, fmt.Errorf("expected `*OnScheduleTimestamp` but got `%T`", e[0])
+			return nil, fmt.Errorf("expected `*OnScheduleTimestamp` but got `%T`", exprs[0])
 		}
 		na.At = ts
 	} else {
-		every, ok := e[0].(*expression.Interval)
+		every, ok := exprs[0].(*expression.Interval)
 		if !ok {
-			return nil, fmt.Errorf("expected `*expression.Interval` but got `%T`", e[0])
+			return nil, fmt.Errorf("expected `*expression.Interval` but got `%T`", exprs[0])
 		}
 		na.Every = every
 
 		var ts *OnScheduleTimestamp
-		if len(e) > 1 {
-			ts, ok = e[1].(*OnScheduleTimestamp)
+		if len(exprs) > 1 {
+			ts, ok = exprs[1].(*OnScheduleTimestamp)
 			if !ok {
-				return nil, fmt.Errorf("expected `*OnScheduleTimestamp` but got `%T`", e[1])
+				return nil, fmt.Errorf("expected `*OnScheduleTimestamp` but got `%T`", exprs[1])
 			}
 			if a.Starts != nil {
 				na.Starts = ts
@@ -374,10 +377,10 @@ func (a *AlterEvent) WithExpressions(e ...sql.Expression) (sql.Node, error) {
 			}
 		}
 
-		if len(e) == 3 {
-			ts, ok = e[2].(*OnScheduleTimestamp)
+		if len(exprs) == 3 {
+			ts, ok = exprs[2].(*OnScheduleTimestamp)
 			if !ok {
-				return nil, fmt.Errorf("expected `*OnScheduleTimestamp` but got `%T`", e[2])
+				return nil, fmt.Errorf("expected `*OnScheduleTimestamp` but got `%T`", exprs[2])
 			}
 			na.Ends = ts
 		}

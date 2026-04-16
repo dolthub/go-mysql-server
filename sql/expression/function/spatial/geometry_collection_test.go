@@ -27,7 +27,7 @@ import (
 func TestGeomColl(t *testing.T) {
 	t.Run("create valid empty geometrycollection", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewGeomColl()
+		f, err := NewGeomColl(sql.NewEmptyContext())
 		require.NoError(err)
 
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
@@ -46,6 +46,7 @@ func TestGeomColl(t *testing.T) {
 		gColl := types.GeomColl{}
 
 		f, err := NewGeomColl(
+			sql.NewEmptyContext(),
 			expression.NewLiteral(point, types.PointType{}),
 			expression.NewLiteral(line, types.LineStringType{}),
 			expression.NewLiteral(poly, types.PolygonType{}),
@@ -72,6 +73,6 @@ func TestGeomColl(t *testing.T) {
 
 func TestNewGeomColl(t *testing.T) {
 	require := require.New(t)
-	_, err := NewGeomColl(expression.NewLiteral(nil, types.GeometryType{}))
+	_, err := NewGeomColl(sql.NewEmptyContext(),expression.NewLiteral(nil, types.GeometryType{}))
 	require.NoError(err)
 }

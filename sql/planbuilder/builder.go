@@ -420,7 +420,7 @@ func (b *Builder) buildSubquery(inScope *scope, stmt ast.Statement, subQuery str
 // buildVirtualTableScan returns a VirtualColumnTable for a table with virtual columns.
 func (b *Builder) buildVirtualTableScan(db string, tab sql.Table) *plan.VirtualColumnTable {
 	tableScope := b.newScope()
-	schema := tab.Schema()
+	schema := tab.Schema(b.ctx)
 	for _, c := range schema {
 		tableScope.newColumn(scopeColumn{
 			table:       strings.ToLower(tab.Name()),
@@ -445,7 +445,7 @@ func (b *Builder) buildVirtualTableScan(db string, tab sql.Table) *plan.VirtualC
 	// Unlike other kinds of nodes, the projection on this table wrapper is invisible to the analyzer, so we need to
 	// get the column indexes correct here, they won't be fixed later like other kinds of expressions.
 	for i, p := range projections {
-		projections[i] = assignColumnIndexes(p, schema)
+		projections[i] = assignColumnIndexes(b.ctx, p, schema)
 	}
 
 	return plan.NewVirtualColumnTable(tab, projections)
@@ -475,8 +475,8 @@ func (b *Builder) buildInjectedStatement(inScope *scope, n ast.InjectedStatement
 }
 
 // assignColumnIndexes fixes the column indexes in the expression to match the schema given
-func assignColumnIndexes(e sql.Expression, schema sql.Schema) sql.Expression {
-	e, _, _ = transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+func assignColumnIndexes(ctx *sql.Context, e sql.Expression, schema sql.Schema) sql.Expression {
+	e, _, _ = transform.Expr(ctx, e, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		if gf, ok := e.(*expression.GetField); ok {
 			idx := schema.IndexOfColName(gf.Name())
 			return gf.WithIndex(idx), transform.NewTree, nil

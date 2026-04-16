@@ -199,7 +199,7 @@ func TestExtract(t *testing.T) {
 				t.Skip()
 			}
 			require := require.New(t)
-			f := NewExtract(expression.NewLiteral(tt.unit, types.LongText), expression.NewLiteral(tt.dateTime, types.LongText))
+			f := NewExtract(sql.NewEmptyContext(), expression.NewLiteral(tt.unit, types.LongText), expression.NewLiteral(tt.dateTime, types.LongText))
 			v, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(err)
 			require.Equal(tt.expected, v)
@@ -208,7 +208,7 @@ func TestExtract(t *testing.T) {
 
 	t.Run("test extract null datetime", func(t *testing.T) {
 		require := require.New(t)
-		f := NewExtract(expression.NewLiteral("DAY", types.LongText), expression.NewLiteral(nil, types.Null))
+		f := NewExtract(sql.NewEmptyContext(), expression.NewLiteral("DAY", types.LongText), expression.NewLiteral(nil, types.Null))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(nil, v)
@@ -216,7 +216,7 @@ func TestExtract(t *testing.T) {
 
 	t.Run("test extract null units", func(t *testing.T) {
 		require := require.New(t)
-		f := NewExtract(expression.NewLiteral(nil, types.Null), expression.NewLiteral("2023-11-12 11:22:33.445566", types.LongText))
+		f := NewExtract(sql.NewEmptyContext(), expression.NewLiteral(nil, types.Null), expression.NewLiteral("2023-11-12 11:22:33.445566", types.LongText))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(nil, v)
@@ -224,7 +224,7 @@ func TestExtract(t *testing.T) {
 
 	t.Run("test bad date", func(t *testing.T) {
 		require := require.New(t)
-		f := NewExtract(expression.NewLiteral("DAY", types.LongText), expression.NewLiteral("thisisnotadate", types.LongText))
+		f := NewExtract(sql.NewEmptyContext(), expression.NewLiteral("DAY", types.LongText), expression.NewLiteral("thisisnotadate", types.LongText))
 		ctx := sql.NewEmptyContext()
 		_, err := f.Eval(ctx, nil)
 		require.NoError(err)

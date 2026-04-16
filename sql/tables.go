@@ -23,7 +23,7 @@ type Table interface {
 	Nameable
 	fmt.Stringer
 	// Schema returns the table's schema.
-	Schema() Schema
+	Schema(*Context) Schema
 	// Collation returns the table's collation.
 	Collation() CollationID
 	// Partitions returns the table's partitions in an iterator.
@@ -95,7 +95,7 @@ type FilteredTable interface {
 	// Filters returns the filter expressions that have been applied to this table.
 	Filters() []Expression
 	// HandledFilters returns the subset of the filter expressions given that this table can apply.
-	HandledFilters(filters []Expression) []Expression
+	HandledFilters(ctx *Context, filters []Expression) []Expression
 	// WithFilters returns a table with the given filter expressions applied.
 	WithFilters(ctx *Context, filters []Expression) Table
 }
@@ -115,7 +115,7 @@ type ProjectedTable interface {
 	// WithProjections returns a version of this table with only the subset of columns named. Calls to Schema must
 	// only include these columns. A zero-length slice of column names is valid and indicates that rows from this table
 	// should be spooled, but no columns should be returned. A nil slice will never be provided.
-	WithProjections(colNames []string) Table
+	WithProjections(ctx *Context, colNames []string) (Table, error)
 	// Projections returns the names of the column projections applied to this table, or nil if no projection is applied
 	// and all columns of the schema will be returned.
 	Projections() []string
@@ -464,7 +464,7 @@ type UnresolvedTable interface {
 	Database() Database
 	// WithAsOf returns a copy of this versioned table with its AsOf
 	// field set to the given value. Analogous to WithChildren.
-	WithAsOf(asOf Expression) (Node, error)
+	WithAsOf(ctx *Context, asOf Expression) (Node, error)
 	// AsOf returns this table's asof expression.
 	AsOf() Expression
 }
@@ -492,9 +492,9 @@ type MutableTableNode interface {
 	TableNode
 	// WithTable returns a new TableNode with the table given. If the MutableTableNode has a MutableTableWrapper, it must
 	// re-wrap the table given with this wrapper.
-	WithTable(Table) (MutableTableNode, error)
+	WithTable(*Context, Table) (MutableTableNode, error)
 	// ReplaceTable replaces the table with the table given, with no re-wrapping semantics.
-	ReplaceTable(table Table) (MutableTableNode, error)
+	ReplaceTable(ctx *Context, table Table) (MutableTableNode, error)
 	// WrappedTable returns the Table this node wraps, without unwinding any additional layers of wrapped tables.
 	WrappedTable() Table
 }

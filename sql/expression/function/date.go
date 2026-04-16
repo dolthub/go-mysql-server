@@ -15,7 +15,6 @@
 package function
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -54,8 +53,8 @@ func (t *DatetimeConversion) String() string {
 	return fmt.Sprintf("%s(%s)", t.FunctionName(), t.Date)
 }
 
-func (t *DatetimeConversion) Type() sql.Type {
-	return t.Date.Type()
+func (t *DatetimeConversion) Type(ctx *sql.Context) sql.Type {
+	return t.Date.Type(ctx)
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -63,7 +62,7 @@ func (*DatetimeConversion) CollationCoercibility(ctx *sql.Context) (collation sq
 	return sql.Collation_binary, 5
 }
 
-func (t *DatetimeConversion) IsNullable() bool {
+func (t *DatetimeConversion) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
@@ -83,15 +82,15 @@ func (t *DatetimeConversion) Children() []sql.Expression {
 	return []sql.Expression{t.Date}
 }
 
-func (t *DatetimeConversion) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewDatetime(children...)
+func (t *DatetimeConversion) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewDatetime(ctx, children...)
 }
 
 // NewDatetime returns a DatetimeConversion instance to handle the sql function "datetime". The standard
 // MySQL function associated with this function is "timestamp", which actually returns a datetime type
 // instead of a timestamp type.
 // https://dev.mysql.com/doc/refman/8.4/en/date-and-time-functions.html#function_timestamp
-func NewDatetime(args ...sql.Expression) (sql.Expression, error) {
+func NewDatetime(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("DATETIME", 1, len(args))
 	}
@@ -113,9 +112,9 @@ const MaxUnixTimeMicroSecs = 32536771199999999
 const MaxUnixTimeSecs = 32536771199
 
 // canEval returns if the expression contains an expression that cannot be evaluated without sql.Context or sql.Row.
-func canEval(expr sql.Expression) bool {
+func canEval(ctx *sql.Context, expr sql.Expression) bool {
 	evaluable := true
-	transform.InspectExpr(expr, func(e sql.Expression) bool {
+	transform.InspectExpr(ctx, expr, func(ctx *sql.Context, e sql.Expression) bool {
 		switch e.(type) {
 		case *expression.GetField, *ConvertTz:
 			evaluable = false
@@ -126,9 +125,9 @@ func canEval(expr sql.Expression) bool {
 	return evaluable
 }
 
-func getNowExpr(expr sql.Expression) *Now {
+func getNowExpr(ctx *sql.Context, expr sql.Expression) *Now {
 	var now *Now
-	transform.InspectExpr(expr, func(e sql.Expression) bool {
+	transform.InspectExpr(ctx, expr, func(ctx *sql.Context, e sql.Expression) bool {
 		if n, ok := e.(*Now); ok {
 			now = n
 			return true
@@ -138,11 +137,11 @@ func getNowExpr(expr sql.Expression) *Now {
 	return now
 }
 
-func evalNowType(now *Now) sql.Type {
+func evalNowType(ctx *sql.Context, now *Now) sql.Type {
 	if now.prec == nil {
 		return types.Int64
 	}
-	if !canEval(now.prec) {
+	if !canEval(ctx, now.prec) {
 		return types.MustCreateDecimalType(19, 6)
 	}
 	prec, pErr := now.prec.Eval(nil, nil)
@@ -160,9 +159,7 @@ func evalNowType(now *Now) sql.Type {
 	return typ
 }
 
-func NewUnixTimestamp(args ...sql.Expression) (sql.Expression, error) {
-	// TODO: Add context.parameter
-	ctx := context.Background()
+func NewUnixTimestamp(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) > 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("UNIX_TIMESTAMP", 1, len(args))
 	}
@@ -171,14 +168,14 @@ func NewUnixTimestamp(args ...sql.Expression) (sql.Expression, error) {
 	}
 
 	arg := args[0]
-	if dtType, isDtType := arg.Type().(sql.DatetimeType); isDtType {
+	if dtType, isDtType := arg.Type(ctx).(sql.DatetimeType); isDtType {
 		return &UnixTimestamp{Date: arg, typ: types.MustCreateDecimalType(19, uint8(dtType.Precision()))}, nil
 	}
-	if !canEval(arg) {
+	if !canEval(ctx, arg) {
 		return &UnixTimestamp{Date: arg, typ: types.MustCreateDecimalType(19, 6)}, nil
 	}
-	if now := getNowExpr(arg); now != nil {
-		return &UnixTimestamp{Date: arg, typ: evalNowType(now)}, nil
+	if now := getNowExpr(ctx, arg); now != nil {
+		return &UnixTimestamp{Date: arg, typ: evalNowType(ctx, now)}, nil
 	}
 
 	// evaluate arg to determine return type
@@ -189,7 +186,7 @@ func NewUnixTimestamp(args ...sql.Expression) (sql.Expression, error) {
 	}
 	// special case: text types with fractional seconds preserve scale
 	// e.g. '2000-01-02 12:34:56.000' -> scale 3
-	if types.IsText(arg.Type()) {
+	if types.IsText(arg.Type(ctx)) {
 		dateStr := date.(string)
 		idx := strings.Index(dateStr, ".")
 		if idx != -1 {
@@ -251,14 +248,14 @@ func (ut *UnixTimestamp) Resolved() bool {
 	return true
 }
 
-func (ut *UnixTimestamp) IsNullable() bool {
+func (ut *UnixTimestamp) IsNullable(ctx *sql.Context) bool {
 	if ut.Date != nil {
-		return ut.Date.IsNullable()
+		return ut.Date.IsNullable(ctx)
 	}
 	return false
 }
 
-func (ut *UnixTimestamp) Type() sql.Type {
+func (ut *UnixTimestamp) Type(ctx *sql.Context) sql.Type {
 	if ut.typ == nil {
 		return types.Int64
 	}
@@ -270,13 +267,13 @@ func (*UnixTimestamp) CollationCoercibility(ctx *sql.Context) (collation sql.Col
 	return sql.Collation_binary, 5
 }
 
-func (ut *UnixTimestamp) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewUnixTimestamp(children...)
+func (ut *UnixTimestamp) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewUnixTimestamp(ctx, children...)
 }
 
 func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	if ut.Date == nil {
-		return toUnixTimestamp(ctx.QueryTime(), ut.Type()), nil
+		return toUnixTimestamp(ctx.QueryTime(), ut.Type(ctx)), nil
 	}
 
 	date, err := ut.Date.Eval(ctx, row)
@@ -299,8 +296,8 @@ func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 	// When the date argument is a TIMESTAMP column,
 	// UNIX_TIMESTAMP() returns the internal timestamp value directly,
 	// with no implicit “string-to-Unix-timestamp” conversion.
-	if ut.Date.Type().Equals(types.Timestamp) {
-		return toUnixTimestamp(date.(time.Time), ut.Type()), nil
+	if ut.Date.Type(ctx).Equals(types.Timestamp) {
+		return toUnixTimestamp(date.(time.Time), ut.Type(ctx)), nil
 	}
 	// The function above returns the time value in UTC time zone.
 	// Instead, it should use the current session time zone.
@@ -321,7 +318,7 @@ func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 		date = ctz
 	}
 
-	return toUnixTimestamp(date.(time.Time), ut.Type()), nil
+	return toUnixTimestamp(date.(time.Time), ut.Type(ctx)), nil
 }
 
 func toUnixTimestamp(t time.Time, resType sql.Type) interface{} {
@@ -364,7 +361,7 @@ var _ sql.FunctionExpression = (*FromUnixtime)(nil)
 var _ sql.CollationCoercible = (*FromUnixtime)(nil)
 
 // NewFromUnixtime https://dev.mysql.com/doc/refman/8.4/en/date-and-time-functions.html#function_from-unixtime
-func NewFromUnixtime(args ...sql.Expression) (sql.Expression, error) {
+func NewFromUnixtime(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	switch len(args) {
 	case 1, 2:
 		return &FromUnixtime{expression.NaryExpression{ChildExpressions: args}}, nil
@@ -425,12 +422,12 @@ func (r *FromUnixtime) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 }
 
 // IsNullable implements sql.Expression.
-func (r *FromUnixtime) IsNullable() bool {
+func (r *FromUnixtime) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
-func (r *FromUnixtime) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewFromUnixtime(children...)
+func (r *FromUnixtime) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewFromUnixtime(ctx, children...)
 }
 
 func (r *FromUnixtime) FunctionName() string {
@@ -448,7 +445,7 @@ func (r *FromUnixtime) String() string {
 	}
 }
 
-func (r *FromUnixtime) Type() sql.Type {
+func (r *FromUnixtime) Type(ctx *sql.Context) sql.Type {
 	switch len(r.ChildExpressions) {
 	case 1:
 		return types.DatetimeMaxPrecision
@@ -475,13 +472,13 @@ func (c CurrDate) Description() string {
 	return "returns the current date."
 }
 
-func NewCurrDate() sql.Expression {
+func NewCurrDate(ctx *sql.Context) sql.Expression {
 	return CurrDate{
 		NoArgFunc: NoArgFunc{Name: "curdate", SQLType: types.LongText},
 	}
 }
 
-func NewCurrentDate() sql.Expression {
+func NewCurrentDate(ctx *sql.Context) sql.Expression {
 	return CurrDate{
 		NoArgFunc: NoArgFunc{Name: "current_date", SQLType: types.LongText},
 	}
@@ -503,7 +500,7 @@ func (CurrDate) CollationCoercibility(ctx *sql.Context) (collation sql.Collation
 }
 
 // WithChildren implements sql.Expression
-func (c CurrDate) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (c CurrDate) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	return NoArgFuncWithChildren(c, children)
 }
 
@@ -523,11 +520,11 @@ func isHmsInterval(interval *expression.Interval) bool {
 
 // Determines the return type of a DateAdd/DateSub expression
 // Logic is based on https://dev.mysql.com/doc/refman/8.0/en/date-and-time-functions.html#function_date-add
-func dateOffsetType(input sql.Expression, interval *expression.Interval) sql.Type {
+func dateOffsetType(ctx *sql.Context, input sql.Expression, interval *expression.Interval) sql.Type {
 	if input == nil {
 		return types.Null
 	}
-	inputType := input.Type()
+	inputType := input.Type(ctx)
 
 	// result is null if expression is null
 	if inputType == types.Null {

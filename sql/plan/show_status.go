@@ -55,7 +55,7 @@ func (s *ShowStatus) String() string {
 }
 
 // Schema implements sql.Node interface.
-func (s *ShowStatus) Schema() sql.Schema {
+func (s *ShowStatus) Schema(ctx *sql.Context) sql.Schema {
 	return sql.Schema{
 		{
 			Name: ShowStatusVariableCol,
@@ -107,7 +107,7 @@ func (s *ShowStatus) RowIter(ctx *sql.Context, _ sql.Row) (sql.RowIter, error) {
 }
 
 // WithChildren implements sql.Node interface.
-func (s *ShowStatus) WithChildren(node ...sql.Node) (sql.Node, error) {
+func (s *ShowStatus) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return NewShowStatus(s.isGlobal), nil
 }
 

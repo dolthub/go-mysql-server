@@ -30,9 +30,9 @@ var _ sql.RowIter = (*ExprCloserIter)(nil)
 
 // AddExpressionCloser returns a new iterator that ensures that any expressions that implement sql.Closer are closed.
 // If there are no expressions that implement sql.Closer in the tree, then the original iterator is returned.
-func AddExpressionCloser(node sql.Node, iter sql.RowIter) sql.RowIter {
+func AddExpressionCloser(ctx *sql.Context, node sql.Node, iter sql.RowIter) sql.RowIter {
 	var exprs []sql.Closer
-	transform.InspectExpressions(node, func(expr sql.Expression) bool {
+	transform.InspectExpressions(ctx, node, func(ctx *sql.Context, expr sql.Expression) bool {
 		if closer, ok := expr.(sql.Closer); ok {
 			exprs = append(exprs, closer)
 			// If we've hit an expression that closes, then we assume that the expression will also close its children.
