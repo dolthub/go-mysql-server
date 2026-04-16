@@ -33,6 +33,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/fulltext"
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 	"github.com/dolthub/go-mysql-server/sql/transform"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -1523,9 +1524,19 @@ func (i addColumnIter) Close(context *sql.Context) error {
 	return nil
 }
 
-// rewriteTable rewrites the table given if required or requested, and returns the whether it was rewritten
+// rewriteTable rewrites the table given if required or requested, and returns whether it was rewritten
 func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) (bool, error) {
-	newSch, projections, err := addColumnToSchema(i.a.TargetSchema(), i.a.Column(), i.a.Order())
+	targetSch := i.a.TargetSchema()
+	for _, col := range targetSch {
+		// To correctly update secondary indexes that store values from virtual
+		// generated columns, the generated expression must be resolved.
+		if col.Virtual && col.Generated != nil && !col.Generated.Resolved() {
+			b := planbuilder.NewBuilderForColumnDefaultResolution(ctx, i.b.EngineOverrides)
+			targetSch = b.ResolveSchemaDefaults(i.a.Db.Name(), rwt.Name(), targetSch)
+			break
+		}
+	}
+	newSch, projections, err := addColumnToSchema(targetSch, i.a.Column(), i.a.Order())
 	if err != nil {
 		return false, err
 	}
@@ -1639,10 +1650,11 @@ func addColumnToSchema(schema sql.Schema, column *sql.Column, order *sql.ColumnO
 	newGetField := func(i int) sql.Expression {
 		col := schema[i]
 		if col.Virtual {
+			// Virtual generated columns are not stored in primary row data. The schema passed
+			// here should already have unresolved expressions resolved (see rewriteTable).
 			return col.Generated
-		} else {
-			return expression.NewGetField(i, col.Type, col.Name, col.Nullable)
 		}
+		return expression.NewGetField(i, col.Type, col.Name, col.Nullable)
 	}
 
 	if idx >= 0 {
