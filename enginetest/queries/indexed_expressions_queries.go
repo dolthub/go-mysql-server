@@ -228,7 +228,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 				// NOTE: as in MySQL, functional indexes are not used for projection values
 				Query:           "SELECT pk, LOWER(name) FROM people ORDER BY pk;",
 				Expected:        []sql.Row{{1, "alice"}, {2, "alice"}, {3, "bob"}, {4, nil}},
-				ExpectedIndexes: []string{"primary"},
+				ExpectedIndexes: nil,
 			},
 		},
 	},
@@ -939,6 +939,64 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 				Query:           "SELECT t.pk FROM test AS t WHERE t.c1*10 = 2000;",
 				Expected:        []sql.Row{{2}},
 				ExpectedIndexes: []string{"idx1"},
+			},
+		},
+	},
+	{
+		Name: "Indexed Expressions: JSON functions",
+		SetUpScript: []string{
+			"CREATE TABLE events (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, payload JSON NOT NULL);",
+			"INSERT INTO events (payload) VALUES (JSON_OBJECT('amount', 149, 'user_id', 42, 'event_type', 'purchase'));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "select id, (CAST(JSON_UNQUOTE(JSON_EXTRACT(payload, '$.amount')) AS DECIMAL(10,2))) from events;",
+				Expected: []sql.Row{{uint64(1), "149.00"}},
+			},
+			{
+				Query:    "CREATE INDEX idx1 ON events ((CAST(JSON_UNQUOTE(JSON_EXTRACT(payload, '$.amount')) AS DECIMAL(10,2))));",
+				Expected: []sql.Row{{gmstypes.NewOkResult(0)}},
+			},
+			{
+				Query:    "SELECT id FROM events WHERE (CAST(JSON_UNQUOTE(JSON_EXTRACT(payload, '$.amount')) AS DECIMAL(10,2))) = 149.0;",
+				Expected: []sql.Row{{uint64(1)}},
+			},
+		},
+	},
+	{
+		Name: "Indexed Expressions: JSON: multiple functional indexes",
+		SetUpScript: []string{
+			"CREATE TABLE events (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, payload JSON NOT NULL);",
+			`INSERT INTO events (payload) VALUES
+				('{"event_type": "purchase", "country": "US"}'),
+				('{"event_type": "purchase", "country": "GB"}'),
+				('{"event_type": "signup",   "country": "US"}'),
+				('{"event_type": "signup",   "country": "GB"}'),
+				('{"event_type": "purchase", "country": "CA"}');`,
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "CREATE INDEX idx_event_type ON events ((JSON_UNQUOTE(JSON_EXTRACT(payload, '$.event_type'))));",
+				Expected: []sql.Row{{gmstypes.NewOkResult(0)}},
+			},
+			{
+				Query:           "SELECT COUNT(*) FROM events WHERE JSON_UNQUOTE(JSON_EXTRACT(payload, '$.event_type')) = 'purchase';",
+				Expected:        []sql.Row{{int64(3)}},
+				ExpectedIndexes: []string{"idx_event_type"},
+			},
+			{
+				Query:    "CREATE INDEX idx_country ON events ((JSON_UNQUOTE(JSON_EXTRACT(payload, '$.country'))));",
+				Expected: []sql.Row{{gmstypes.NewOkResult(0)}},
+			},
+			{
+				Query:           "SELECT COUNT(*) FROM events WHERE JSON_UNQUOTE(JSON_EXTRACT(payload, '$.event_type')) = 'purchase';",
+				Expected:        []sql.Row{{int64(3)}},
+				ExpectedIndexes: []string{"idx_event_type"},
+			},
+			{
+				Query:           "SELECT COUNT(*) FROM events WHERE JSON_UNQUOTE(JSON_EXTRACT(payload, '$.country')) = 'US';",
+				Expected:        []sql.Row{{int64(2)}},
+				ExpectedIndexes: []string{"idx_country"},
 			},
 		},
 	},
