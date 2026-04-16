@@ -22,7 +22,7 @@ import (
 
 var IndexedExpressionsScriptTests = []ScriptTest{
 	{
-		Name: "Indexed Expressions: filter: IN list",
+		Name: "filtering: IN list",
 		SetUpScript: []string{
 			"CREATE TABLE t (pk INT PRIMARY KEY, name VARCHAR(100))",
 			"INSERT INTO t VALUES (1,'Alice'),(2,'BOB'),(3,'Carol')",
@@ -37,7 +37,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Indexed Expressions: filter: all comparison operators, both orderings",
+		Name: "filtering: all comparison operators, both orderings",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT);",
 			"INSERT INTO test VALUES (1, 100), (2, 200);",
@@ -144,7 +144,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Indexed Expressions: filter: IS NULL, IS NOT NULL, NULL-safe equality",
+		Name: "filtering: IS NULL, IS NOT NULL, NULL-safe equality",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT);",
 			"INSERT INTO test VALUES (1, NULL), (2, NULL), (3, 100);",
@@ -207,7 +207,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Indexed Expressions: filter: LOWER function",
+		Name: "filtering: LOWER function",
 		SetUpScript: []string{
 			"CREATE TABLE people (pk INT PRIMARY KEY, name VARCHAR(100));",
 			"INSERT INTO people VALUES (1, 'Alice'), (2, 'ALICE'), (3, 'Bob'), (4, NULL);",
@@ -233,7 +233,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Indexed Expressions: filter: multi-column expression: (c1+c2)*10",
+		Name: "filtering: multi-column functional expression",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT, c2 INT);",
 			"INSERT INTO test VALUES (1, 10, 20), (2, 30, 40);",
@@ -253,7 +253,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Indexed Expressions: join: arithmetic expression, both ON orderings",
+		Name: "joins: arithmetic expression",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT);",
 			// NOTE: For the indexed access plan to be chosen, we need to populate enough test data
@@ -279,7 +279,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Indexed Expressions: join: LOWER function expression",
+		Name: "joins: LOWER() function expression",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, c1 VARCHAR(100));",
 			// NOTE: For the indexed access plan to be chosen, we need to populate enough test data for the
@@ -301,7 +301,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Indexed Expressions: join: expression with whitespace variations",
+		Name: "joins: expression with whitespace variations",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT);",
 			// NOTE: For the indexed access plan to be chosen, we need to populate enough test data
@@ -322,7 +322,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Indexed Expressions: join: index used regardless of table order in FROM",
+		Name: "joins: index used regardless of table order",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT);",
 			"INSERT INTO test VALUES (1, 100), (2, 200), (3, 300), (4, 400), (5, 500), (6, 600), (7, 700), (8, 800), (9, 900), (10, 1000), (11, 1100), (12, 1200), (13, 1300), (14, 1400), (15, 1500), (16, 1600), (17, 1700), (18, 1800), (19, 1900), (20, 2000), (21, 2100), (22, 2200), (23, 2300), (24, 2400), (25, 2500), (26, 2600), (27, 2700), (28, 2800), (29, 2900), (30, 3000);",
@@ -344,7 +344,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Indexed Expressions: three table join with functional expression lookup",
+		Name: "joins: three table join",
 		SetUpScript: []string{
 			// NOTE: Need about 30 rows before lookup join becomes the best join plan
 			"CREATE TABLE t1 (pk INT PRIMARY KEY, c1 INT, payload VARCHAR(20));",
@@ -380,12 +380,12 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Indexed Expressions: projection: non-covering queries; index remains correct after ALTER TABLE ADD COLUMN",
+		Name: "projections: non-covering queries; index remains correct after ALTER TABLE ADD COLUMN",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT);",
 			"INSERT INTO test VALUES (1, 100), (2, 200);",
 
-			// NOTE: The index must be unique in order for it to be used for strict lookups
+			// NOTE: The index must be unique in order for it to be used for strict lookups in a join
 			"CREATE UNIQUE INDEX idx1 ON test ((c1*10));",
 
 			"CREATE TABLE t2 (t2pk INT PRIMARY KEY, t2c1 INT);",
@@ -435,7 +435,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Indexed Expressions: order: indexed expression used for sort",
+		Name: "sorting: indexed expression used for sort",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT);",
 			"INSERT INTO test VALUES (1, 20), (2, 10), (3, 30);",
@@ -452,7 +452,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Indexed Expressions: index maintenance: secondary index kept in sync with INSERT/UPDATE/DELETE",
+		Name: "index maintenance: secondary index kept in sync with INSERT/UPDATE/DELETE",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT, c2 INT);",
 			"CREATE UNIQUE INDEX idx1 ON test ((c1*10));",
@@ -499,7 +499,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Indexed Expressions: DML: UPDATE and DELETE with expression in WHERE clause",
+		Name: "DML filtering: UPDATE and DELETE with expression in WHERE clause",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT, c2 INT);",
 			"INSERT INTO test VALUES (1, 100, 0), (2, 200, 0), (3, 300, 0);",
@@ -527,7 +527,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Indexed Expressions: uniqueness: UNIQUE index enforces constraint on expression result",
+		Name: "constraints: UNIQUE index enforces constraint on expression result",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT);",
 			"CREATE UNIQUE INDEX idx1 ON test ((c1*10));",
@@ -553,7 +553,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Indexed Expressions: uniqueness: UNIQUE index allows multiple NULLs",
+		Name: "constraints: UNIQUE index allows multiple NULLs",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT);",
 			"CREATE UNIQUE INDEX idx1 ON test ((c1*10));",
@@ -578,7 +578,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Indexed Expressions: DDL: DROP INDEX removes hidden system column",
+		Name: "DDL: DROP INDEX removes hidden system column",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT);",
 			"INSERT INTO test VALUES (1, 100), (2, 200);",
@@ -610,7 +610,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Indexed Expressions: DDL: create/drop/recreate index lifecycle",
+		Name: "DDL: create/drop/recreate index lifecycle",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT);",
 			"INSERT INTO test VALUES (1, 100), (2, 200);",
@@ -644,7 +644,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Indexed Expressions: DDL: RENAME COLUMN blocked by functional index dependency",
+		Name: "DDL: RENAME COLUMN blocked by functional index dependency",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT);",
 			"INSERT INTO test VALUES (1, 100), (2, 200);",
@@ -658,7 +658,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Indexed Expressions: DDL: DROP COLUMN blocked by functional index dependency",
+		Name: "DDL: DROP COLUMN blocked by functional index dependency",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT);",
 			"CREATE INDEX idx1 ON test ((c1*10));",
@@ -671,7 +671,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Indexed Expressions: hidden column: not accessible via any SQL operation",
+		Name: "system hidden columns: not accessible via any SQL operation",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT);",
 			"INSERT INTO test VALUES (1, 100), (2, 200);",
@@ -747,7 +747,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Indexed Expressions: hidden column: omitted from SHOW CREATE TABLE",
+		Name: "system hidden columns: omitted from SHOW CREATE TABLE",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT, c2 VARCHAR(100));",
 			"CREATE UNIQUE INDEX idx1 ON test ((c1*10));",
@@ -781,7 +781,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Indexed Expressions: hidden column: omitted from SHOW CREATE TABLE after ALTER TABLE ADD COLUMN",
+		Name: "system hidden columns: omitted from SHOW CREATE TABLE after ALTER TABLE ADD COLUMN",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT);",
 			"CREATE UNIQUE INDEX idx1 ON test ((c1*10));",
@@ -806,7 +806,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Indexed Expressions: subquery: IN subquery",
+		Name: "subqueries: IN subquery",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT);",
 			"INSERT INTO test VALUES (1, 100), (2, 200), (3, 300), (4, 400), (5, 500), (6, 600), (7, 700), (8, 800), (9, 900), (10, 1000), (11, 1100), (12, 1200), (13, 1300), (14, 1400), (15, 1500), (16, 1600), (17, 1700), (18, 1800), (19, 1900), (20, 2000), (21, 2100), (22, 2200), (23, 2300), (24, 2400), (25, 2500), (26, 2600), (27, 2700), (28, 2800), (29, 2900), (30, 3000);",
@@ -832,7 +832,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Indexed Expressions: subquery: scalar subquery RHS",
+		Name: "subqueries: scalar subquery RHS",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT);",
 			"INSERT INTO test VALUES (1, 100), (2, 200), (3, 300), (4, 400), (5, 500), (6, 600), (7, 700), (8, 800), (9, 900), (10, 1000), (11, 1100), (12, 1200), (13, 1300), (14, 1400), (15, 1500), (16, 1600), (17, 1700), (18, 1800), (19, 1900), (20, 2000), (21, 2100), (22, 2200), (23, 2300), (24, 2400), (25, 2500), (26, 2600), (27, 2700), (28, 2800), (29, 2900), (30, 3000);",
@@ -855,7 +855,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Indexed Expressions: subquery: filter inside derived table",
+		Name: "subqueries: filter inside derived table",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT);",
 			"INSERT INTO test VALUES (1, 100), (2, 200), (3, 300);",
@@ -879,7 +879,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Indexed Expressions: filter: BETWEEN range scan",
+		Name: "filtering: BETWEEN range scan",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT);",
 			"INSERT INTO test VALUES (1, 10), (2, 20), (3, 30), (4, 40), (5, 50);",
@@ -896,7 +896,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Indexed Expressions: filter: YEAR() function on date column",
+		Name: "filtering: YEAR() function on date column",
 		SetUpScript: []string{
 			"CREATE TABLE events (pk INT PRIMARY KEY, created_at DATE);",
 			"INSERT INTO events VALUES (1, '2023-03-15'), (2, '2024-01-01'), (3, '2024-07-04'), (4, '2025-12-31'), (5, NULL);",
@@ -921,7 +921,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Indexed Expressions: filter: table alias does not prevent index use",
+		Name: "filtering: table alias does not prevent index use",
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT);",
 			"INSERT INTO test VALUES (1, 100), (2, 200), (3, 300);",
@@ -943,7 +943,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Indexed Expressions: JSON functions",
+		Name: "JSON functions",
 		SetUpScript: []string{
 			"CREATE TABLE events (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, payload JSON NOT NULL);",
 			"INSERT INTO events (payload) VALUES (JSON_OBJECT('amount', 149, 'user_id', 42, 'event_type', 'purchase'));",
@@ -964,7 +964,7 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		},
 	},
 	{
-		Name: "Indexed Expressions: JSON: multiple functional indexes",
+		Name: "JSON functions: multiple functional indexes",
 		SetUpScript: []string{
 			"CREATE TABLE events (id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, payload JSON NOT NULL);",
 			`INSERT INTO events (payload) VALUES
@@ -997,6 +997,53 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 				Query:           "SELECT COUNT(*) FROM events WHERE JSON_UNQUOTE(JSON_EXTRACT(payload, '$.country')) = 'US';",
 				Expected:        []sql.Row{{int64(2)}},
 				ExpectedIndexes: []string{"idx_country"},
+			},
+		},
+	},
+	{
+		Name: "functional index value remains correct after ALTER TABLE ADD COLUMN FIRST",
+		SetUpScript: []string{
+			"CREATE TABLE t (pk INT PRIMARY KEY, c1 INT);",
+			"INSERT INTO t VALUES (1, 100), (2, 200);",
+			"CREATE UNIQUE INDEX idx ON t ((c1 * 10));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "ALTER TABLE t ADD COLUMN x INT DEFAULT 0 FIRST;",
+				Expected: []sql.Row{{gmstypes.NewOkResult(0)}},
+			},
+			{
+				Query:           "SELECT pk FROM t WHERE c1 * 10 = 1000;",
+				Expected:        []sql.Row{{1}},
+				ExpectedIndexes: []string{"idx"},
+			},
+			{
+				Query:           "SELECT pk FROM t WHERE c1 * 10 = 2000;",
+				Expected:        []sql.Row{{2}},
+				ExpectedIndexes: []string{"idx"},
+			},
+		},
+	},
+	{
+		Name: "virtual generated column index value remains correct after ALTER TABLE ADD COLUMN FIRST",
+		SetUpScript: []string{
+			"CREATE TABLE t (pk INT PRIMARY KEY, c1 INT, vc INT GENERATED ALWAYS AS (c1 * 10) VIRTUAL, INDEX idx_vc (vc));",
+			"INSERT INTO t (pk, c1) VALUES (1, 100), (2, 200);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:    "ALTER TABLE t ADD COLUMN x INT DEFAULT 0 FIRST;",
+				Expected: []sql.Row{{gmstypes.NewOkResult(0)}},
+			},
+			{
+				Query:           "SELECT pk FROM t WHERE vc = 1000;",
+				Expected:        []sql.Row{{1}},
+				ExpectedIndexes: []string{"idx_vc"},
+			},
+			{
+				Query:           "SELECT pk FROM t WHERE vc = 2000;",
+				Expected:        []sql.Row{{2}},
+				ExpectedIndexes: []string{"idx_vc"},
 			},
 		},
 	},
