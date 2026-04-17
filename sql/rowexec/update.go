@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"strings"
 
+	go_errors "gopkg.in/src-d/go-errors.v1"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/hash"
 	"github.com/dolthub/go-mysql-server/sql/plan"
@@ -38,6 +40,9 @@ type updateIter struct {
 func (u *updateIter) Next(ctx *sql.Context) (sql.Row, error) {
 	oldAndNewRow, err := u.childIter.Next(ctx)
 	if err != nil {
+		if go_errors.Is(err, sql.ErrRowEditCanceled) {
+			return u.Next(ctx)
+		}
 		return nil, err
 	}
 

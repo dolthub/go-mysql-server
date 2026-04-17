@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"strings"
 
+	"gopkg.in/src-d/go-errors.v1"
+
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/plan"
 )
@@ -74,7 +76,11 @@ type deleteIter struct {
 
 func (d *deleteIter) Next(ctx *sql.Context) (sql.Row, error) {
 	row, err := d.childIter.Next(ctx)
+
 	if err != nil {
+		if errors.Is(err, sql.ErrRowEditCanceled) {
+			return d.Next(ctx)
+		}
 		return nil, err
 	}
 	select {
