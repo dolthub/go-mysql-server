@@ -16,6 +16,7 @@ package plan
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
@@ -465,6 +466,25 @@ func (d *DropColumn) IsReadOnly() bool {
 	return false
 }
 
+// ColumnReferencedInDefaultValueExpression returns true if the given column name, |colName|, is
+// referenced in the column default value, |generated|.
+// Handles both resolved expression trees and unresolved raw-string expressions.
+func ColumnReferencedInDefaultValueExpression(generated *sql.ColumnDefaultValue, colName string) bool {
+	if unresolved, ok := generated.Expr.(*sql.UnresolvedColumnDefault); ok {
+		re := regexp.MustCompile(`(?i)\b` + regexp.QuoteMeta(colName) + `\b`)
+		return re.MatchString(unresolved.ExprString)
+	}
+	var found bool
+	sql.Inspect(generated, func(e sql.Expression) bool {
+		if gf, ok := e.(*expression.GetField); ok && strings.EqualFold(gf.Name(), colName) {
+			found = true
+			return false
+		}
+		return !found
+	})
+	return found
+}
+
 // Validate returns an error if this drop column operation is invalid (because it would invalidate a column default
 // or other constraint).
 // TODO: move this check to analyzer
@@ -517,6 +537,14 @@ func (d *DropColumn) Validate(ctx *sql.Context, tbl sql.Table) error {
 					return sql.ErrForeignKeyDropColumn.New(d.Column, parentFk.Name)
 				}
 			}
+		}
+	}
+
+	// Check for functional index dependencies (matches MySQL ERROR 3837)
+	colLower := strings.ToLower(d.Column)
+	for _, col := range d.targetSchema {
+		if col.HiddenSystem && col.Generated != nil && ColumnReferencedInDefaultValueExpression(col.Generated, colLower) {
+			return sql.ErrColumnFunctionalIndexDependency.New(d.Column)
 		}
 	}
 

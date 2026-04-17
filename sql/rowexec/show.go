@@ -444,8 +444,12 @@ func (b *BaseBuilder) buildShowColumns(ctx *sql.Context, n *plan.ShowColumns, ro
 	span, _ := ctx.Span("plan.ShowColumns")
 
 	schema := n.TargetSchema()
-	var rows = make([]sql.Row, len(schema))
-	for i, col := range schema {
+	var rows = make([]sql.Row, 0, len(schema))
+	for _, col := range schema {
+		if col.HiddenSystem && !n.Extended {
+			continue
+		}
+
 		var row sql.Row
 		var collation interface{}
 		if types.IsTextOnly(col.Type) {
@@ -514,7 +518,7 @@ func (b *BaseBuilder) buildShowColumns(ctx *sql.Context, n *plan.ShowColumns, ro
 			}
 		}
 
-		rows[i] = row
+		rows = append(rows, row)
 	}
 
 	return sql.NewSpanIter(span, sql.RowsToRowIter(rows...)), nil
