@@ -128,6 +128,34 @@ func TestHintParsing(t *testing.T) {
 				{Typ: HintTypeNoIndexConditionPushDown},
 			},
 		},
+		{
+			comment: "/*+ LOOKUP_JOIN(`a`, `b`) */",
+			hints:   []Hint{{Typ: HintTypeLookupJoin, Args: []string{"a", "b"}}},
+		},
+		{
+			comment: "/*+ HASH_JOIN(`a`,`b`) */",
+			hints:   []Hint{{Typ: HintTypeHashJoin, Args: []string{"a", "b"}}},
+		},
+		{
+			comment: "/*+ MERGE_JOIN(`a`, `b`) */",
+			hints:   []Hint{{Typ: HintTypeMergeJoin, Args: []string{"a", "b"}}},
+		},
+		{
+			comment: "/*+ JOIN_ORDER(`a`, `b`, `c`) */",
+			hints:   []Hint{{Typ: HintTypeJoinOrder, Args: []string{"a", "b", "c"}}},
+		},
+		{
+			comment: "/*+ LOOKUP_JOIN(t1, `t2.with.dot`) */",
+			hints:   []Hint{{Typ: HintTypeLookupJoin, Args: []string{"t1", "t2.with.dot"}}},
+		},
+		{
+			comment: "/*+ HASH_JOIN(`my-table`, `another-table`) */",
+			hints:   []Hint{{Typ: HintTypeHashJoin, Args: []string{"my-table", "another-table"}}},
+		},
+		{
+			comment: "/*+ JOIN_ORDER(`t1`, `t2.with.dot`, `my-table`) */",
+			hints:   []Hint{{Typ: HintTypeJoinOrder, Args: []string{"t1", "t2.with.dot", "my-table"}}},
+		},
 	}
 
 	for _, tt := range tests {
