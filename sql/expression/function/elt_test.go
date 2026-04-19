@@ -134,7 +134,7 @@ func TestElt(t *testing.T) {
 			}
 
 			ctx := sql.NewEmptyContext()
-			f, err := NewElt(tt.args...)
+			f, err := NewElt(sql.NewEmptyContext(), tt.args...)
 			require.NoError(t, err)
 
 			res, err := f.Eval(ctx, nil)

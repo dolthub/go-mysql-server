@@ -65,7 +65,7 @@ type UUIDFunc struct{}
 var _ sql.FunctionExpression = &UUIDFunc{}
 var _ sql.CollationCoercible = &UUIDFunc{}
 
-func NewUUIDFunc() sql.Expression {
+func NewUUIDFunc(ctx *sql.Context) sql.Expression {
 	return &UUIDFunc{}
 }
 
@@ -78,7 +78,7 @@ func (u UUIDFunc) String() string {
 	return fmt.Sprintf("%s()", u.FunctionName())
 }
 
-func (u UUIDFunc) Type() sql.Type {
+func (u UUIDFunc) Type(ctx *sql.Context) sql.Type {
 	return types.MustCreateStringWithDefaults(sqltypes.VarChar, 36)
 }
 
@@ -91,7 +91,7 @@ func (u UUIDFunc) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return uuid.New().String(), nil
 }
 
-func (u UUIDFunc) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (u UUIDFunc) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 0)
 	}
@@ -113,7 +113,7 @@ func (u UUIDFunc) Children() []sql.Expression {
 }
 
 // IsNullable returns whether the expression can be null.
-func (u UUIDFunc) IsNullable() bool {
+func (u UUIDFunc) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
@@ -136,7 +136,7 @@ type IsUUID struct {
 var _ sql.FunctionExpression = &IsUUID{}
 var _ sql.CollationCoercible = &IsUUID{}
 
-func NewIsUUID(arg sql.Expression) sql.Expression {
+func NewIsUUID(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &IsUUID{child: arg}
 }
 
@@ -154,7 +154,7 @@ func (u IsUUID) String() string {
 	return fmt.Sprintf("%s(%s)", u.FunctionName(), u.child)
 }
 
-func (u IsUUID) Type() sql.Type {
+func (u IsUUID) Type(ctx *sql.Context) sql.Type {
 	return types.Boolean
 }
 
@@ -193,7 +193,7 @@ func (u IsUUID) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 }
 
-func (u IsUUID) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (u IsUUID) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 1)
 	}
@@ -211,8 +211,8 @@ func (u IsUUID) Children() []sql.Expression {
 }
 
 // IsNullable returns whether the expression can be null.
-func (u IsUUID) IsNullable() bool {
-	return u.child.IsNullable()
+func (u IsUUID) IsNullable(ctx *sql.Context) bool {
+	return u.child.IsNullable(ctx)
 }
 
 // UUID_TO_BIN(string_uuid), UUID_TO_BIN(string_uuid, swap_flag)
@@ -246,7 +246,7 @@ type UUIDToBin struct {
 var _ sql.FunctionExpression = (*UUIDToBin)(nil)
 var _ sql.CollationCoercible = (*UUIDToBin)(nil)
 
-func NewUUIDToBin(args ...sql.Expression) (sql.Expression, error) {
+func NewUUIDToBin(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	switch len(args) {
 	case 1:
 		return &UUIDToBin{inputUUID: args[0]}, nil
@@ -270,7 +270,7 @@ func (ub UUIDToBin) String() string {
 	}
 }
 
-func (ub UUIDToBin) Type() sql.Type {
+func (ub UUIDToBin) Type(ctx *sql.Context) sql.Type {
 	return types.MustCreateBinary(query.Type_VARBINARY, int64(16))
 }
 
@@ -353,8 +353,8 @@ func swapUUIDBytes(cur uuid.UUID) []byte {
 	return ret
 }
 
-func (ub UUIDToBin) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewUUIDToBin(children...)
+func (ub UUIDToBin) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewUUIDToBin(ctx, children...)
 }
 
 func (ub UUIDToBin) FunctionName() string {
@@ -375,8 +375,8 @@ func (ub UUIDToBin) Children() []sql.Expression {
 }
 
 // IsNullable returns whether the expression can be null.
-func (ub UUIDToBin) IsNullable() bool {
-	return ub.inputUUID.IsNullable() || (ub.swapFlag != nil && ub.inputUUID.IsNullable())
+func (ub UUIDToBin) IsNullable(ctx *sql.Context) bool {
+	return ub.inputUUID.IsNullable(ctx) || (ub.swapFlag != nil && ub.inputUUID.IsNullable(ctx))
 }
 
 // BIN_TO_UUID(binary_uuid), BIN_TO_UUID(binary_uuid, swap_flag)
@@ -407,7 +407,7 @@ type BinToUUID struct {
 var _ sql.FunctionExpression = (*BinToUUID)(nil)
 var _ sql.CollationCoercible = (*BinToUUID)(nil)
 
-func NewBinToUUID(args ...sql.Expression) (sql.Expression, error) {
+func NewBinToUUID(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	switch len(args) {
 	case 1:
 		return &BinToUUID{inputBinary: args[0]}, nil
@@ -436,7 +436,7 @@ func (bu BinToUUID) String() string {
 	}
 }
 
-func (bu BinToUUID) Type() sql.Type {
+func (bu BinToUUID) Type(ctx *sql.Context) sql.Type {
 	return types.MustCreateStringWithDefaults(sqltypes.VarChar, 36)
 }
 
@@ -515,8 +515,8 @@ func unswapUUIDBytes(cur uuid.UUID) []byte {
 	return ret
 }
 
-func (bu BinToUUID) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewBinToUUID(children...)
+func (bu BinToUUID) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewBinToUUID(ctx, children...)
 }
 
 func (bu BinToUUID) Resolved() bool {
@@ -533,8 +533,8 @@ func (bu BinToUUID) Children() []sql.Expression {
 }
 
 // IsNullable returns whether the expression can be null.
-func (bu BinToUUID) IsNullable() bool {
-	return bu.inputBinary.IsNullable()
+func (bu BinToUUID) IsNullable(ctx *sql.Context) bool {
+	return bu.inputBinary.IsNullable(ctx)
 }
 
 // UUID_SHORT()
@@ -558,7 +558,7 @@ type UUIDShortFunc struct{}
 var _ sql.FunctionExpression = &UUIDShortFunc{}
 var _ sql.CollationCoercible = &UUIDShortFunc{}
 
-func NewUUIDShortFunc() sql.Expression {
+func NewUUIDShortFunc(ctx *sql.Context) sql.Expression {
 	return &UUIDShortFunc{}
 }
 
@@ -573,7 +573,7 @@ func (u *UUIDShortFunc) String() string {
 }
 
 // Type returns the data type of the UUID_SHORT function result (Uint64).
-func (u *UUIDShortFunc) Type() sql.Type {
+func (u *UUIDShortFunc) Type(ctx *sql.Context) sql.Type {
 	return types.Uint64
 }
 
@@ -602,7 +602,7 @@ func (u *UUIDShortFunc) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 }
 
 // WithChildren returns a new UUID_SHORT function with the given children (must be empty).
-func (u *UUIDShortFunc) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (u *UUIDShortFunc) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 0)
 	}
@@ -626,7 +626,7 @@ func (u *UUIDShortFunc) Children() []sql.Expression {
 }
 
 // IsNullable returns false since UUID_SHORT always returns a value.
-func (u *UUIDShortFunc) IsNullable() bool {
+func (u *UUIDShortFunc) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 

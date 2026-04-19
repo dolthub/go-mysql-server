@@ -163,7 +163,7 @@ func TestAddColumnToSchema(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			schema, projections, err := addColumnToSchema(tc.schema, tc.newColumn, tc.order)
+			schema, projections, err := addColumnToSchema(sql.NewEmptyContext(), tc.schema, tc.newColumn, tc.order)
 			if err != nil {
 				return
 			}
@@ -365,7 +365,7 @@ func TestModifyColumnInSchema(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			schema, projections, err := modifyColumnInSchema(tc.schema, tc.colName, tc.newColumn, tc.order)
+			schema, projections, err := modifyColumnInSchema(sql.NewEmptyContext(), tc.schema, tc.colName, tc.newColumn, tc.order)
 			if err != nil {
 				return
 			}

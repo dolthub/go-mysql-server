@@ -60,7 +60,7 @@ func (d *DeclareCondition) String() string {
 }
 
 // Schema implements the sql.Node interface.
-func (d *DeclareCondition) Schema() sql.Schema {
+func (d *DeclareCondition) Schema(ctx *sql.Context) sql.Schema {
 	return nil
 }
 
@@ -70,7 +70,7 @@ func (d *DeclareCondition) Children() []sql.Node {
 }
 
 // WithChildren implements the sql.Node interface.
-func (d *DeclareCondition) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (d *DeclareCondition) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(d, children...)
 }
 

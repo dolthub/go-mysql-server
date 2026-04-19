@@ -61,11 +61,11 @@ var _ sql.OrderedIndex = (*Index)(nil)
 var _ sql.ExtendedIndex = (*Index)(nil)
 var _ fulltext.Index = (*Index)(nil)
 
-func (idx *Index) Database() string                    { return idx.DB }
-func (idx *Index) Driver() string                      { return idx.DriverName }
-func (idx *Index) MemTable() *Table                    { return idx.Tbl }
-func (idx *Index) ColumnExpressions() []sql.Expression { return idx.Exprs }
-func (idx *Index) IsGenerated() bool                   { return false }
+func (idx *Index) Database() string                                { return idx.DB }
+func (idx *Index) Driver() string                                  { return idx.DriverName }
+func (idx *Index) MemTable() *Table                                { return idx.Tbl }
+func (idx *Index) ColumnExpressions(*sql.Context) []sql.Expression { return idx.Exprs }
+func (idx *Index) IsGenerated() bool                               { return false }
 
 func (idx *Index) Expressions() []string {
 	var exprs []string
@@ -75,7 +75,7 @@ func (idx *Index) Expressions() []string {
 	return exprs
 }
 
-func (idx *Index) ExtendedExpressions() []string {
+func (idx *Index) ExtendedExpressions(ctx *sql.Context) []string {
 	var exprs []string
 	foundCols := make(map[string]struct{})
 	for _, e := range idx.Exprs {
@@ -179,29 +179,29 @@ func (idx *Index) rangeFilterExpr(ctx *sql.Context, ranges ...sql.MySQLRange) (s
 		return nil, nil
 	}
 
-	return expression.NewRangeFilterExpr(idx.ExtendedExprs(), ranges)
+	return expression.NewRangeFilterExpr(ctx, idx.ExtendedExprs(), ranges)
 }
 
 // ColumnExpressionTypes implements the interface sql.Index.
-func (idx *Index) ColumnExpressionTypes() []sql.ColumnExpressionType {
+func (idx *Index) ColumnExpressionTypes(ctx *sql.Context) []sql.ColumnExpressionType {
 	cets := make([]sql.ColumnExpressionType, len(idx.Exprs))
 	for i, expr := range idx.Exprs {
 		cets[i] = sql.ColumnExpressionType{
 			Expression: expr.String(),
-			Type:       expr.Type(),
+			Type:       expr.Type(ctx),
 		}
 	}
 	return cets
 }
 
-func (idx *Index) ExtendedColumnExpressionTypes() []sql.ColumnExpressionType {
+func (idx *Index) ExtendedColumnExpressionTypes(ctx *sql.Context) []sql.ColumnExpressionType {
 	cets := make([]sql.ColumnExpressionType, 0, len(idx.Tbl.data.schema.Schema))
 	cetsInExprs := make(map[string]struct{})
 	for _, expr := range idx.Exprs {
 		cetsInExprs[strings.ToLower(expr.(*expression.GetField).Name())] = struct{}{}
 		cets = append(cets, sql.ColumnExpressionType{
 			Expression: expr.String(),
-			Type:       expr.Type(),
+			Type:       expr.Type(ctx),
 		})
 	}
 	for _, ord := range idx.Tbl.data.schema.PkOrdinals {
@@ -248,13 +248,13 @@ func (idx *Index) ID() string {
 
 func (idx *Index) Table() string { return idx.TableName }
 
-func (idx *Index) HandledFilters(filters []sql.Expression) []sql.Expression {
+func (idx *Index) HandledFilters(ctx *sql.Context, filters []sql.Expression) []sql.Expression {
 	var handled []sql.Expression
 	if idx.Spatial {
 		return handled
 	}
 	for _, expr := range filters {
-		if !expression.PreciseComparison(expr) {
+		if !expression.PreciseComparison(ctx, expr) {
 			continue
 		}
 		handled = append(handled, expr)
@@ -278,22 +278,22 @@ type ExpressionsIndex interface {
 	ColumnExpressions() []sql.Expression
 }
 
-func (idx *Index) Order() sql.IndexOrder {
+func (idx *Index) Order(ctx *sql.Context) sql.IndexOrder {
 	// If there are any hash-encoded fields, then we will not have a deterministic order
 	// Even though we don't actually hash hash-encoded fields in the in-memory implementation, we
 	// still honor this here so that we can test this behavior.
-	if len(idx.contentHashedFields()) > 0 {
+	if len(idx.contentHashedFields(ctx)) > 0 {
 		return sql.IndexOrderNone
 	}
 
 	return sql.IndexOrderAsc
 }
 
-func (idx *Index) Reversible() bool {
+func (idx *Index) Reversible(ctx *sql.Context) bool {
 	// If there are any hash-encoded fields, then we will not have a deterministic order
 	// Even though we don't actually hash hash-encoded fields in the in-memory implementation, we
 	// still honor this here so that we can test this behavior.
-	if len(idx.contentHashedFields()) > 0 {
+	if len(idx.contentHashedFields(ctx)) > 0 {
 		return false
 	}
 
@@ -320,13 +320,13 @@ func (idx *Index) columnIndexes(schema sql.Schema) []int {
 
 // contentHashedFields returns a slice of field indexes in this secondary index that should be hashed, instead
 // of directly storing their content. This is only applicable to unique secondary indexes.
-func (idx *Index) contentHashedFields() (contentHashedFields []uint) {
+func (idx *Index) contentHashedFields(ctx *sql.Context) (contentHashedFields []uint) {
 	if !idx.Unique {
 		return nil
 	}
 
 	for i, expr := range idx.Exprs {
-		if !types.IsTextBlob(expr.Type()) {
+		if !types.IsTextBlob(expr.Type(ctx)) {
 			continue
 		}
 

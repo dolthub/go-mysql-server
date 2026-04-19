@@ -140,7 +140,7 @@ func (i *blockIter) RepresentingNode() sql.Node {
 }
 
 // Schema implements the sql.BlockRowIter interface.
-func (i *blockIter) Schema() sql.Schema {
+func (i *blockIter) Schema(ctx *sql.Context) sql.Schema {
 	return i.repSch
 }
 
@@ -304,7 +304,7 @@ type concatIter struct {
 }
 
 func newConcatIter(ctx *sql.Context, cur sql.RowIter, nextIter func() (sql.RowIter, error)) *concatIter {
-	seen, dispose := ctx.Memory.NewHistoryCache()
+	seen, dispose := ctx.Memory.NewHistoryCache(ctx)
 	return &concatIter{
 		cur,
 		seen,
@@ -356,12 +356,12 @@ func (ci *concatIter) Next(ctx *sql.Context) (sql.Row, error) {
 	}
 }
 
-func (ci *concatIter) Dispose() {
+func (ci *concatIter) Dispose(ctx *sql.Context) {
 	ci.dispose()
 }
 
 func (ci *concatIter) Close(ctx *sql.Context) error {
-	ci.Dispose()
+	ci.Dispose(ctx)
 	if ci.cur != nil {
 		return ci.cur.Close(ctx)
 	} else {

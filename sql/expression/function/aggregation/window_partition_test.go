@@ -97,7 +97,7 @@ func mustNewRowIter(t *testing.T, db *memory.Database, ctx *sql.Context) sql.Row
 		{Name: "y", Type: types.Text, Nullable: true},
 		{Name: "z", Type: types.Int32, Nullable: true},
 	})
-	table := memory.NewTable(db, "test", childSchema, nil)
+	table := memory.NewTable(sql.NewEmptyContext(), db, "test", childSchema, nil)
 
 	rows := []sql.Row{
 		{int64(1), "forest", "leaf", int32(4)},

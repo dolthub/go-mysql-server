@@ -155,27 +155,27 @@ func (c *coster) costRel(ctx *sql.Context, n RelExpr, s sql.StatsProvider) (floa
 
 // isInjectiveMerge determines whether either of a merge join's child indexes returns only unique values for the merge
 // comparator.
-func isInjectiveMerge(n *MergeJoin, leftCompareExprs, rightCompareExprs []sql.Expression) bool {
+func isInjectiveMerge(ctx *sql.Context, n *MergeJoin, leftCompareExprs, rightCompareExprs []sql.Expression) bool {
 	{
-		keyExprs, nullmask := keyExprsForIndexFromTupleComparison(n.Left.RelProps.tableNodes[0].Id(), n.InnerScan.Index.Cols(), leftCompareExprs, rightCompareExprs)
-		if isInjectiveLookup(n.InnerScan.Index, n.JoinBase, keyExprs, nullmask) {
+		keyExprs, nullmask := keyExprsForIndexFromTupleComparison(ctx, n.Left.RelProps.tableNodes[0].Id(), n.InnerScan.Index.Cols(), leftCompareExprs, rightCompareExprs)
+		if isInjectiveLookup(ctx, n.InnerScan.Index, n.JoinBase, keyExprs, nullmask) {
 			return true
 		}
 	}
 	{
-		keyExprs, nullmask := keyExprsForIndexFromTupleComparison(n.Right.RelProps.tableNodes[0].Id(), n.OuterScan.Index.Cols(), leftCompareExprs, rightCompareExprs)
-		if isInjectiveLookup(n.OuterScan.Index, n.JoinBase, keyExprs, nullmask) {
+		keyExprs, nullmask := keyExprsForIndexFromTupleComparison(ctx, n.Right.RelProps.tableNodes[0].Id(), n.OuterScan.Index.Cols(), leftCompareExprs, rightCompareExprs)
+		if isInjectiveLookup(ctx, n.OuterScan.Index, n.JoinBase, keyExprs, nullmask) {
 			return true
 		}
 	}
 	return false
 }
 
-func keyExprsForIndexFromTupleComparison(tabId sql.TableId, idxExprs []sql.ColumnId, leftExprs []sql.Expression, rightExprs []sql.Expression) ([]sql.Expression, []bool) {
+func keyExprsForIndexFromTupleComparison(ctx *sql.Context, tabId sql.TableId, idxExprs []sql.ColumnId, leftExprs []sql.Expression, rightExprs []sql.Expression) ([]sql.Expression, []bool) {
 	var keyExprs []sql.Expression
 	var nullmask []bool
 	for _, col := range idxExprs {
-		key, nullable := keyForExprFromTupleComparison(col, tabId, leftExprs, rightExprs)
+		key, nullable := keyForExprFromTupleComparison(ctx, col, tabId, leftExprs, rightExprs)
 		if key == nil {
 			break
 		}
@@ -190,7 +190,7 @@ func keyExprsForIndexFromTupleComparison(tabId sql.TableId, idxExprs []sql.Colum
 
 // keyForExpr returns an equivalence or constant value to satisfy the
 // lookup index expression.
-func keyForExprFromTupleComparison(targetCol sql.ColumnId, tabId sql.TableId, leftExprs []sql.Expression, rightExprs []sql.Expression) (sql.Expression, bool) {
+func keyForExprFromTupleComparison(ctx *sql.Context, targetCol sql.ColumnId, tabId sql.TableId, leftExprs []sql.Expression, rightExprs []sql.Expression) (sql.Expression, bool) {
 	for i, leftExpr := range leftExprs {
 		rightExpr := rightExprs[i]
 
@@ -204,7 +204,7 @@ func keyForExprFromTupleComparison(targetCol sql.ColumnId, tabId sql.TableId, le
 		}
 		// expression key can be arbitrarily complex (or simple), but cannot
 		// reference the lookup table
-		if !exprReferencesTable(key, tabId) {
+		if !exprReferencesTable(ctx, key, tabId) {
 			return key, false
 		}
 
@@ -213,8 +213,8 @@ func keyForExprFromTupleComparison(targetCol sql.ColumnId, tabId sql.TableId, le
 }
 
 // TODO need a way to map memo groups to table ids (or names if this doesn't work)
-func exprReferencesTable(e sql.Expression, tabId sql.TableId) bool {
-	return transform.InspectExpr(e, func(e sql.Expression) bool {
+func exprReferencesTable(ctx *sql.Context, e sql.Expression, tabId sql.TableId) bool {
+	return transform.InspectExpr(ctx, e, func(ctx *sql.Context, e sql.Expression) bool {
 		gf, _ := e.(*expression.GetField)
 		if gf != nil && gf.TableId() == tabId {
 			return true
@@ -223,12 +223,12 @@ func exprReferencesTable(e sql.Expression, tabId sql.TableId) bool {
 	})
 }
 
-func (c *coster) costConcatJoin(_ *sql.Context, n *ConcatJoin, _ sql.StatsProvider) (float64, error) {
+func (c *coster) costConcatJoin(ctx *sql.Context, n *ConcatJoin, _ sql.StatsProvider) (float64, error) {
 	l := float64(n.Left.RelProps.GetStats().RowCount())
 	var sel float64
 	for _, l := range n.Concat {
 		lookup := l
-		sel += lookupJoinSelectivity(lookup, n.JoinBase)
+		sel += lookupJoinSelectivity(ctx, lookup, n.JoinBase)
 	}
 	return l*sel*concatCostFactor*(randIOCostFactor+cpuCostFactor) - float64(n.Right.RelProps.GetStats().RowCount())*seqIOCostFactor, nil
 }
@@ -236,8 +236,8 @@ func (c *coster) costConcatJoin(_ *sql.Context, n *ConcatJoin, _ sql.StatsProvid
 // lookupJoinSelectivity estimates the selectivity of a join condition with n lhs rows and m rhs rows.
 // A join with a selectivity of k will return k*(n*m) rows.
 // Special case: A join with a selectivity of 0 will return n rows.
-func lookupJoinSelectivity(l *IndexScan, joinBase *JoinBase) float64 {
-	if isInjectiveLookup(l.Index, joinBase, l.Table.Expressions(), l.Table.NullMask()) {
+func lookupJoinSelectivity(ctx *sql.Context, l *IndexScan, joinBase *JoinBase) float64 {
+	if isInjectiveLookup(ctx, l.Index, joinBase, l.Table.Expressions(), l.Table.NullMask()) {
 		return 0
 	}
 	return math.Pow(perKeyCostReductionFactor, float64(len(l.Table.Expressions()))) * optimisticJoinSel
@@ -245,17 +245,17 @@ func lookupJoinSelectivity(l *IndexScan, joinBase *JoinBase) float64 {
 
 // isInjectiveLookup returns whether every lookup with the given key expressions is guarenteed to return
 // at most one row.
-func isInjectiveLookup(idx *Index, joinBase *JoinBase, keyExprs []sql.Expression, nullMask []bool) bool {
+func isInjectiveLookup(ctx *sql.Context, idx *Index, joinBase *JoinBase, keyExprs []sql.Expression, nullMask []bool) bool {
 	if !idx.SqlIdx().IsUnique() {
 		return false
 	}
 
-	joinFds := joinBase.Group().RelProps.FuncDeps()
+	joinFds := joinBase.Group().RelProps.FuncDeps(ctx)
 
 	var notNull sql.ColSet
 	var constCols sql.ColSet
 	for i, nullable := range nullMask {
-		cols, _, nullRej := getExprScalarProps(keyExprs[i])
+		cols, _, nullRej := getExprScalarProps(ctx, keyExprs[i])
 		onCols := joinFds.EquivalenceClosure(cols)
 		if !nullable {
 			if nullRej {
@@ -269,7 +269,7 @@ func isInjectiveLookup(idx *Index, joinBase *JoinBase, keyExprs []sql.Expression
 		constCols = constCols.Union(onCols)
 	}
 
-	fds := sql.NewLookupFDs(joinBase.Right.RelProps.FuncDeps(), idx.ColSet(), notNull, constCols, joinFds)
+	fds := sql.NewLookupFDs(joinBase.Right.RelProps.FuncDeps(ctx), idx.ColSet(), notNull, constCols, joinFds)
 	return fds.HasMax1Row()
 }
 

@@ -110,7 +110,7 @@ func TestMakeSet(t *testing.T) {
 				}
 			}
 
-			f, err := NewMakeSet(args...)
+			f, err := NewMakeSet(ctx, args...)
 			if tt.err {
 				require.Error(err)
 				return
@@ -126,12 +126,13 @@ func TestMakeSet(t *testing.T) {
 
 func TestMakeSetArguments(t *testing.T) {
 	require := require.New(t)
+	ctx := sql.NewEmptyContext()
 
 	// Test invalid number of arguments
-	_, err := NewMakeSet()
+	_, err := NewMakeSet(ctx)
 	require.Error(err)
 
-	_, err = NewMakeSet(expression.NewLiteral(1, types.Int64))
+	_, err = NewMakeSet(ctx, expression.NewLiteral(1, types.Int64))
 	require.Error(err)
 
 	// Test valid argument counts
@@ -142,7 +143,7 @@ func TestMakeSetArguments(t *testing.T) {
 	}
 
 	for _, args := range validArgs {
-		_, err := NewMakeSet(args...)
+		_, err := NewMakeSet(ctx, args...)
 		require.NoError(err)
 	}
 }

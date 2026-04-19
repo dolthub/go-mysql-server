@@ -25,11 +25,12 @@ import (
 
 func TestIsNull(t *testing.T) {
 	require := require.New(t)
+	ctx := sql.NewEmptyContext()
 
 	get0 := NewGetField(0, types.Text, "col1", true)
 	e := NewIsNull(get0)
-	require.Equal(types.Boolean, e.Type())
-	require.Equal(false, e.IsNullable())
+	require.Equal(types.Boolean, e.Type(ctx))
+	require.Equal(false, e.IsNullable(ctx))
 	require.Equal(true, eval(t, e, sql.NewRow(nil)))
 	require.Equal(false, eval(t, e, sql.NewRow("")))
 }

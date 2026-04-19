@@ -32,7 +32,7 @@ var _ sql.FunctionExpression = (*Validate)(nil)
 var _ sql.CollationCoercible = (*Validate)(nil)
 
 // NewValidate creates a new Validate expression.
-func NewValidate(e sql.Expression) sql.Expression {
+func NewValidate(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &Validate{expression.UnaryExpressionStub{Child: e}}
 }
 
@@ -47,12 +47,12 @@ func (v *Validate) Description() string {
 }
 
 // IsNullable implements the sql.Expression interface.
-func (v *Validate) IsNullable() bool {
+func (v *Validate) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
 // Type implements the sql.Expression interface.
-func (v *Validate) Type() sql.Type {
+func (v *Validate) Type(ctx *sql.Context) sql.Type {
 	return types.GeometryType{}
 }
 
@@ -66,11 +66,11 @@ func (v *Validate) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (v *Validate) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (v *Validate) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(v, len(children), 1)
 	}
-	return NewValidate(children[0]), nil
+	return NewValidate(ctx, children[0]), nil
 }
 
 // isValidGeometry checks if a geometry is valid according to basic OGC rules.

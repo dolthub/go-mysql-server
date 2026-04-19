@@ -36,7 +36,7 @@ var _ sql.FunctionExpression = (*DateDiff)(nil)
 var _ sql.CollationCoercible = (*DateDiff)(nil)
 
 // NewDateDiff creates a new DATEDIFF() function.
-func NewDateDiff(expr1, expr2 sql.Expression) sql.Expression {
+func NewDateDiff(ctx *sql.Context, expr1, expr2 sql.Expression) sql.Expression {
 	return &DateDiff{
 		expression.BinaryExpressionStub{
 			LeftChild:  expr1,
@@ -61,10 +61,10 @@ func (d *DateDiff) String() string {
 }
 
 // Type implements the sql.Expression interface.
-func (d *DateDiff) Type() sql.Type { return types.Int64 }
+func (d *DateDiff) Type(ctx *sql.Context) sql.Type { return types.Int64 }
 
 // IsNullable implements the Expression interface
-func (d *DateDiff) IsNullable() bool {
+func (d *DateDiff) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
@@ -74,11 +74,11 @@ func (*DateDiff) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 }
 
 // WithChildren implements the Expression interface.
-func (d *DateDiff) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (d *DateDiff) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 2)
 	}
-	return NewDateDiff(children[0], children[1]), nil
+	return NewDateDiff(ctx, children[0], children[1]), nil
 }
 
 // Eval implements the sql.Expression interface.
@@ -147,7 +147,7 @@ var _ sql.FunctionExpression = (*DateAdd)(nil)
 var _ sql.CollationCoercible = (*DateAdd)(nil)
 
 // NewDateAdd creates a new date add function.
-func NewDateAdd(args ...sql.Expression) (sql.Expression, error) {
+func NewDateAdd(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 2 {
 		return nil, sql.ErrInvalidArgumentNumber.New("DATE_ADD", 2, len(args))
 	}
@@ -164,7 +164,7 @@ func NewDateAdd(args ...sql.Expression) (sql.Expression, error) {
 // function is a synonym for DATE_ADD, with the one exception that if the second argument is NOT an
 // explicitly declared interval, then the value is used and the interval period is assumed to be DAY.
 // In either case, this function will actually return a *DateAdd struct.
-func NewAddDate(args ...sql.Expression) (sql.Expression, error) {
+func NewAddDate(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 2 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ADDDATE", 2, len(args))
 	}
@@ -206,13 +206,13 @@ func (d *DateAdd) Resolved() bool {
 }
 
 // IsNullable implements the sql.Expression interface.
-func (d *DateAdd) IsNullable() bool {
+func (d *DateAdd) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
 // Type implements the sql.Expression interface.
-func (d *DateAdd) Type() sql.Type {
-	sqlType := dateOffsetType(d.Date, d.Interval)
+func (d *DateAdd) Type(ctx *sql.Context) sql.Type {
+	sqlType := dateOffsetType(ctx, d.Date, d.Interval)
 	return sqlType
 }
 
@@ -222,8 +222,8 @@ func (*DateAdd) CollationCoercibility(ctx *sql.Context) (collation sql.Collation
 }
 
 // WithChildren implements the Expression interface.
-func (d *DateAdd) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewDateAdd(children...)
+func (d *DateAdd) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewDateAdd(ctx, children...)
 }
 
 // Eval implements the sql.Expression interface.
@@ -264,7 +264,7 @@ func (d *DateAdd) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	resType := d.Type()
+	resType := d.Type(ctx)
 	if types.IsText(resType) {
 		// If the input is a properly formatted date/datetime string, the output should also be a string
 		if dateStr, isStr := date.(string); isStr {
@@ -300,7 +300,7 @@ var _ sql.FunctionExpression = (*DateSub)(nil)
 var _ sql.CollationCoercible = (*DateSub)(nil)
 
 // NewDateSub creates a new date add function.
-func NewDateSub(args ...sql.Expression) (sql.Expression, error) {
+func NewDateSub(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 2 {
 		return nil, sql.ErrInvalidArgumentNumber.New("DATE_SUB", 2, len(args))
 	}
@@ -317,7 +317,7 @@ func NewDateSub(args ...sql.Expression) (sql.Expression, error) {
 // function is a synonym for DATE_SUB, with the one exception that if the second argument is NOT an
 // explicitly declared interval, then the value is used and the interval period is assumed to be DAY.
 // In either case, this function will actually return a *DateSub struct.
-func NewSubDate(args ...sql.Expression) (sql.Expression, error) {
+func NewSubDate(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 2 {
 		return nil, sql.ErrInvalidArgumentNumber.New("SUBDATE", 2, len(args))
 	}
@@ -359,13 +359,13 @@ func (d *DateSub) Resolved() bool {
 }
 
 // IsNullable implements the sql.Expression interface.
-func (d *DateSub) IsNullable() bool {
+func (d *DateSub) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
 // Type implements the sql.Expression interface.
-func (d *DateSub) Type() sql.Type {
-	sqlType := dateOffsetType(d.Date, d.Interval)
+func (d *DateSub) Type(ctx *sql.Context) sql.Type {
+	sqlType := dateOffsetType(ctx, d.Date, d.Interval)
 	return sqlType
 }
 
@@ -375,8 +375,8 @@ func (*DateSub) CollationCoercibility(ctx *sql.Context) (collation sql.Collation
 }
 
 // WithChildren implements the Expression interface.
-func (d *DateSub) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewDateSub(children...)
+func (d *DateSub) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewDateSub(ctx, children...)
 }
 
 // Eval implements the sql.Expression interface.
@@ -417,7 +417,7 @@ func (d *DateSub) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	resType := d.Type()
+	resType := d.Type(ctx)
 	if types.IsText(resType) {
 		// If the input is a properly formatted date/datetime string, the output should also be a string
 		if dateStr, isStr := date.(string); isStr {
@@ -452,7 +452,7 @@ var _ sql.FunctionExpression = (*TimeDiff)(nil)
 var _ sql.CollationCoercible = (*TimeDiff)(nil)
 
 // NewTimeDiff creates a new NewTimeDiff expression.
-func NewTimeDiff(e1, e2 sql.Expression) sql.Expression {
+func NewTimeDiff(ctx *sql.Context, e1, e2 sql.Expression) sql.Expression {
 	return &TimeDiff{
 		expression.BinaryExpressionStub{
 			LeftChild:  e1,
@@ -472,7 +472,7 @@ func (td *TimeDiff) Description() string {
 }
 
 // Type implements the Expression interface.
-func (td *TimeDiff) Type() sql.Type { return types.Time }
+func (td *TimeDiff) Type(ctx *sql.Context) sql.Type { return types.Time }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*TimeDiff) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -484,11 +484,11 @@ func (td *TimeDiff) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (td *TimeDiff) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (td *TimeDiff) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(td, len(children), 2)
 	}
-	return NewTimeDiff(children[0], children[1]), nil
+	return NewTimeDiff(ctx, children[0], children[1]), nil
 }
 
 func convToDateOrTime(ctx *sql.Context, val interface{}) (interface{}, error) {
@@ -574,7 +574,7 @@ var _ sql.FunctionExpression = (*TimestampDiff)(nil)
 var _ sql.CollationCoercible = (*TimestampDiff)(nil)
 
 // NewTimestampDiff creates a new TIMESTAMPDIFF() function.
-func NewTimestampDiff(u, e1, e2 sql.Expression) sql.Expression {
+func NewTimestampDiff(ctx *sql.Context, u, e1, e2 sql.Expression) sql.Expression {
 	return &TimestampDiff{u, e1, e2}
 }
 
@@ -604,12 +604,12 @@ func (t *TimestampDiff) Resolved() bool {
 }
 
 // IsNullable implements the sql.Expression interface.
-func (t *TimestampDiff) IsNullable() bool {
+func (t *TimestampDiff) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
 // Type implements the sql.Expression interface.
-func (t *TimestampDiff) Type() sql.Type { return types.Int64 }
+func (t *TimestampDiff) Type(ctx *sql.Context) sql.Type { return types.Int64 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*TimestampDiff) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -617,11 +617,11 @@ func (*TimestampDiff) CollationCoercibility(ctx *sql.Context) (collation sql.Col
 }
 
 // WithChildren implements the Expression interface.
-func (t *TimestampDiff) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (t *TimestampDiff) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 3 {
 		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 3)
 	}
-	return NewTimestampDiff(children[0], children[1], children[2]), nil
+	return NewTimestampDiff(ctx, children[0], children[1], children[2]), nil
 }
 
 // Eval implements the sql.Expression interface.

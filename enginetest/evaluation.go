@@ -476,9 +476,9 @@ func testQueryWithContext(
 	validateEngine(t, ctx, harness, e)
 }
 
-func GetFilterIndex(n sql.Node) sql.IndexLookup {
+func GetFilterIndex(ctx *sql.Context, n sql.Node) sql.IndexLookup {
 	var lookup sql.IndexLookup
-	transform.InspectUp(n, func(n sql.Node) bool {
+	transform.InspectUp(ctx, n, func(ctx *sql.Context, n sql.Node) bool {
 		switch n := n.(type) {
 		case *plan.IndexedTableAccess:
 			lookup = plan.GetIndexLookup(n)
@@ -501,7 +501,7 @@ func TestQueryWithIndexCheck(t *testing.T, ctx *sql.Context, e QueryEngine, harn
 	if !IsServerEngine(e) {
 		node, err := e.AnalyzeQuery(ctx, q)
 		require.NoError(err, "Unexpected error for query %s: %s", q, err)
-		require.True(CheckIndexedAccess(node), "expected plan to have index, but found: %s", sql.DebugString(node))
+		require.True(CheckIndexedAccess(ctx, node), "expected plan to have index, but found: %s", sql.DebugString(ctx, node))
 	}
 
 	sch, iter, _, err := e.QueryWithBindings(ctx, q, nil, bindings, nil)
@@ -519,9 +519,9 @@ func TestQueryWithIndexCheck(t *testing.T, ctx *sql.Context, e QueryEngine, harn
 	validateEngine(t, ctx, harness, e)
 }
 
-func CheckIndexedAccess(n sql.Node) bool {
+func CheckIndexedAccess(ctx *sql.Context, n sql.Node) bool {
 	var hasIndex bool
-	transform.InspectWithOpaque(n, func(n sql.Node) bool {
+	transform.InspectWithOpaque(ctx, n, func(ctx *sql.Context, n sql.Node) bool {
 		if n == nil {
 			return false
 		}
@@ -715,7 +715,7 @@ func runQueryPreparedWithCtx(t *testing.T, ctx *sql.Context, e QueryEngine, q st
 	if checkIndexedAccess {
 		n, err := e.AnalyzeQuery(ctx, q)
 		require.NoError(t, err)
-		require.True(t, CheckIndexedAccess(n), "expected plan to have index, but found: %s", sql.DebugString(n))
+		require.True(t, CheckIndexedAccess(ctx, n), "expected plan to have index, but found: %s", sql.DebugString(ctx, n))
 	}
 
 	sch, iter, _, err := e.QueryWithBindings(ctx, q, nil, bindVars, nil)

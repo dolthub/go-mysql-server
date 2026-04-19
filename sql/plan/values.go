@@ -42,7 +42,7 @@ func NewValuesWithAlias(tableName string, columnNames map[string]string, tuples 
 }
 
 // Schema implements the Node interface.
-func (p *Values) Schema() sql.Schema {
+func (p *Values) Schema(ctx *sql.Context) sql.Schema {
 	if len(p.ExpressionTuples) == 0 {
 		return nil
 	}
@@ -58,8 +58,8 @@ func (p *Values) Schema() sql.Schema {
 		}
 		s[i] = &sql.Column{
 			Name:     name,
-			Type:     e.Type(),
-			Nullable: e.IsNullable(),
+			Type:     e.Type(ctx),
+			Nullable: e.IsNullable(ctx),
 		}
 	}
 
@@ -105,7 +105,7 @@ func (p *Values) String() string {
 	return sb.String()
 }
 
-func (p *Values) DebugString() string {
+func (p *Values) DebugString(ctx *sql.Context) string {
 	var sb strings.Builder
 	sb.WriteString("Values(")
 	for i, tuple := range p.ExpressionTuples {
@@ -117,7 +117,7 @@ func (p *Values) DebugString() string {
 			if j > 0 {
 				sb.WriteString(",")
 			}
-			sb.WriteString(sql.DebugString(e))
+			sb.WriteString(sql.DebugString(ctx, e))
 		}
 		sb.WriteRune(']')
 	}
@@ -136,7 +136,7 @@ func (p *Values) Expressions() []sql.Expression {
 }
 
 // WithChildren implements the Node interface.
-func (p *Values) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (p *Values) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 0)
 	}
@@ -150,7 +150,7 @@ func (*Values) CollationCoercibility(ctx *sql.Context) (collation sql.CollationI
 }
 
 // WithExpressions implements the Expressioner interface.
-func (p *Values) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (p *Values) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	var expected int
 	for _, t := range p.ExpressionTuples {
 		expected += len(t)

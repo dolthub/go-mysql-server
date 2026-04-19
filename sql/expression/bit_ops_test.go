@@ -229,9 +229,9 @@ func TestBitOpType(t *testing.T) {
 			t.Run(tt.name+"_"+op.name, func(t *testing.T) {
 				require := require.New(t)
 				bitOp := op.op(NewLiteral(1, tt.leftType), NewLiteral(1, tt.rightType))
-				actualType := bitOp.Type()
+				actualType := bitOp.Type(sql.NewEmptyContext())
 				require.Equal(tt.expectedType, actualType,
-					"BitOp.Type() should return %v for %s: %s",
+					"BitOp.Type(ctx) should return %v for %s: %s",
 					tt.expectedType, tt.name, tt.description)
 			})
 		}

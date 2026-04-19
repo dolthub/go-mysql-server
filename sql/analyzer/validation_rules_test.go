@@ -79,7 +79,7 @@ func TestValidateGroupBy(t *testing.T) {
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
 
-	child := memory.NewTable(db, "test", childSchema, nil)
+	child := memory.NewTable(ctx, db, "test", childSchema, nil)
 
 	rows := []sql.Row{
 		sql.NewRow("col1_1", int64(1111)),
@@ -127,7 +127,7 @@ func TestValidateGroupByErr(t *testing.T) {
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
 
-	child := memory.NewTable(db, "test", childSchema, nil)
+	child := memory.NewTable(ctx, db, "test", childSchema, nil)
 
 	rows := []sql.Row{
 		sql.NewRow("col1_1", int64(1111)),
@@ -175,7 +175,7 @@ func TestValidateSchemaSource(t *testing.T) {
 		},
 		{
 			"table with valid schema",
-			plan.NewResolvedTable(memory.NewTable(db, "mytable", sql.NewPrimaryKeySchema(sql.Schema{
+			plan.NewResolvedTable(memory.NewTable(ctx, db, "mytable", sql.NewPrimaryKeySchema(sql.Schema{
 				{Name: "foo", Source: "mytable"},
 				{Name: "bar", Source: "mytable"},
 			}), nil), nil, nil),
@@ -183,7 +183,7 @@ func TestValidateSchemaSource(t *testing.T) {
 		},
 		{
 			"table with invalid schema",
-			plan.NewResolvedTable(memory.NewTable(db, "mytable", sql.NewPrimaryKeySchema(sql.Schema{
+			plan.NewResolvedTable(memory.NewTable(ctx, db, "mytable", sql.NewPrimaryKeySchema(sql.Schema{
 				{Name: "foo", Source: ""},
 				{Name: "bar", Source: "something"},
 			}), nil), nil, nil),
@@ -191,7 +191,7 @@ func TestValidateSchemaSource(t *testing.T) {
 		},
 		{
 			"table alias with table",
-			plan.NewTableAlias("foo", plan.NewResolvedTable(memory.NewTable(db, "mytable", sql.NewPrimaryKeySchema(sql.Schema{
+			plan.NewTableAlias("foo", plan.NewResolvedTable(memory.NewTable(ctx, db, "mytable", sql.NewPrimaryKeySchema(sql.Schema{
 				{Name: "foo", Source: "mytable"},
 			}), nil), nil, nil)),
 			true,
@@ -232,7 +232,7 @@ func TestValidateUnionSchemasMatch(t *testing.T) {
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
 
-	table := plan.NewResolvedTable(memory.NewTable(db, "mytable", sql.NewPrimaryKeySchema(sql.Schema{
+	table := plan.NewResolvedTable(memory.NewTable(ctx, db, "mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "foo", Source: "mytable", Type: types.Text},
 		{Name: "bar", Source: "mytable", Type: types.Int64},
 		{Name: "rab", Source: "mytable", Type: types.Text},
@@ -503,7 +503,7 @@ func TestValidateIndexCreation(t *testing.T) {
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
 
-	table := memory.NewTable(db, "foo", sql.NewPrimaryKeySchema(sql.Schema{
+	table := memory.NewTable(ctx, db, "foo", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "a", Source: "foo"},
 		{Name: "b", Source: "foo"},
 	}), nil)
@@ -587,6 +587,7 @@ func TestValidateIntervalUsage(t *testing.T) {
 			plan.NewProject(
 				[]sql.Expression{
 					mustFunc(function.NewDateAdd(
+						sql.NewEmptyContext(),
 						expression.NewLiteral("2018-05-01", types.LongText),
 						expression.NewInterval(
 							expression.NewLiteral(int64(1), types.Int64),
@@ -603,6 +604,7 @@ func TestValidateIntervalUsage(t *testing.T) {
 			plan.NewProject(
 				[]sql.Expression{
 					mustFunc(function.NewDateSub(
+						sql.NewEmptyContext(),
 						expression.NewLiteral("2018-05-01", types.LongText),
 						expression.NewInterval(
 							expression.NewLiteral(int64(1), types.Int64),
@@ -699,10 +701,10 @@ func TestValidateSubqueryColumns(t *testing.T) {
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
 
-	table := memory.NewTable(db, "test", sql.NewPrimaryKeySchema(sql.Schema{
+	table := memory.NewTable(ctx, db, "test", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "foo", Type: types.Text},
 	}), nil)
-	subTable := memory.NewTable(db, "subtest", sql.NewPrimaryKeySchema(sql.Schema{
+	subTable := memory.NewTable(ctx, db, "subtest", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "bar", Type: types.Text},
 	}), nil)
 
@@ -757,13 +759,13 @@ type dummyNode struct{ resolved bool }
 var _ sql.Node = dummyNode{}
 var _ sql.CollationCoercible = dummyNode{}
 
-func (n dummyNode) String() string                                   { return "dummynode" }
-func (n dummyNode) Resolved() bool                                   { return n.resolved }
-func (dummyNode) IsReadOnly() bool                                   { return true }
-func (dummyNode) Schema() sql.Schema                                 { return nil }
-func (dummyNode) Children() []sql.Node                               { return nil }
-func (dummyNode) RowIter(*sql.Context, sql.Row) (sql.RowIter, error) { return nil, nil }
-func (dummyNode) WithChildren(...sql.Node) (sql.Node, error)         { return nil, nil }
+func (n dummyNode) String() string                                         { return "dummynode" }
+func (n dummyNode) Resolved() bool                                         { return n.resolved }
+func (dummyNode) IsReadOnly() bool                                         { return true }
+func (dummyNode) Schema(ctx *sql.Context) sql.Schema                       { return nil }
+func (dummyNode) Children() []sql.Node                                     { return nil }
+func (dummyNode) RowIter(*sql.Context, sql.Row) (sql.RowIter, error)       { return nil, nil }
+func (dummyNode) WithChildren(*sql.Context, ...sql.Node) (sql.Node, error) { return nil, nil }
 func (dummyNode) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	return sql.Collation_binary, 7
 }

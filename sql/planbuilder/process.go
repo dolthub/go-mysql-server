@@ -62,13 +62,13 @@ func (b *Builder) getInt64Literal(inScope *scope, expr ast.Expr, errStr string) 
 
 	switch e := e.(type) {
 	case *expression.Literal:
-		if !types.IsInteger(e.Type()) {
+		if !types.IsInteger(e.Type(b.ctx)) {
 			err := sql.ErrUnsupportedFeature.New(errStr)
 			b.handleErr(err)
 		}
 	}
 	nl, ok := e.(*expression.Literal)
-	if !ok || !types.IsInteger(nl.Type()) {
+	if !ok || !types.IsInteger(nl.Type(b.ctx)) {
 		err := sql.ErrUnsupportedFeature.New(errStr)
 		b.handleErr(err)
 	} else {

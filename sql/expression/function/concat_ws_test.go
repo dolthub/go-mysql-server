@@ -27,7 +27,7 @@ import (
 func TestConcatWithSeparator(t *testing.T) {
 	t.Run("multiple arguments", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewConcatWithSeparator(expression.NewLiteral(",", types.LongText),
+		f, err := NewConcatWithSeparator(sql.NewEmptyContext(), expression.NewLiteral(",", types.LongText),
 			expression.NewLiteral("foo", types.LongText),
 			expression.NewLiteral(5, types.LongText),
 			expression.NewLiteral(true, types.Boolean),
@@ -41,7 +41,7 @@ func TestConcatWithSeparator(t *testing.T) {
 
 	t.Run("some argument is empty", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewConcatWithSeparator(expression.NewLiteral(",", types.LongText),
+		f, err := NewConcatWithSeparator(sql.NewEmptyContext(), expression.NewLiteral(",", types.LongText),
 			expression.NewLiteral("foo", types.LongText),
 			expression.NewLiteral("", types.LongText),
 			expression.NewLiteral(true, types.Boolean),
@@ -55,7 +55,7 @@ func TestConcatWithSeparator(t *testing.T) {
 
 	t.Run("some argument is nil", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewConcatWithSeparator(expression.NewLiteral(",", types.LongText),
+		f, err := NewConcatWithSeparator(sql.NewEmptyContext(), expression.NewLiteral(",", types.LongText),
 			expression.NewLiteral("foo", types.LongText),
 			expression.NewLiteral(nil, types.LongText),
 			expression.NewLiteral(true, types.Boolean),
@@ -69,7 +69,7 @@ func TestConcatWithSeparator(t *testing.T) {
 
 	t.Run("separator is nil", func(t *testing.T) {
 		require := require.New(t)
-		f, err := NewConcatWithSeparator(expression.NewLiteral(nil, types.LongText),
+		f, err := NewConcatWithSeparator(sql.NewEmptyContext(), expression.NewLiteral(nil, types.LongText),
 			expression.NewLiteral("foo", types.LongText),
 			expression.NewLiteral(5, types.LongText),
 			expression.NewLiteral(true, types.Boolean),
@@ -85,13 +85,13 @@ func TestConcatWithSeparator(t *testing.T) {
 func TestNewConcatWithSeparator(t *testing.T) {
 	require := require.New(t)
 
-	_, err := NewConcatWithSeparator(expression.NewLiteral(nil, types.LongText))
+	_, err := NewConcatWithSeparator(sql.NewEmptyContext(), expression.NewLiteral(nil, types.LongText))
 	require.NoError(err)
 
-	_, err = NewConcatWithSeparator(expression.NewLiteral(nil, types.LongText), expression.NewLiteral(nil, types.Int64))
+	_, err = NewConcatWithSeparator(sql.NewEmptyContext(), expression.NewLiteral(nil, types.LongText), expression.NewLiteral(nil, types.Int64))
 	require.NoError(err)
 
-	_, err = NewConcatWithSeparator(expression.NewLiteral(nil, types.LongText),
+	_, err = NewConcatWithSeparator(sql.NewEmptyContext(), expression.NewLiteral(nil, types.LongText),
 		expression.NewLiteral(nil, types.Boolean),
 		expression.NewLiteral(nil, types.Int64),
 		expression.NewLiteral(nil, types.LongText),

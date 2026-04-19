@@ -61,6 +61,6 @@ func FinalizeIters(ctx *sql.Context, analyzed sql.Node, qFlags *sql.QueryFlags, 
 		return nil, nil, err
 	}
 	iter = plan.AddTrackedRowIter(ctx, analyzed, iter)
-	iter = AddExpressionCloser(analyzed, iter)
+	iter = AddExpressionCloser(ctx, analyzed, iter)
 	return iter, sch, nil
 }

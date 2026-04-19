@@ -124,7 +124,7 @@ func TestLocate(t *testing.T) {
 				row = append(row, *tt.Start)
 			}
 
-			f, err := NewLocate(exprs...)
+			f, err := NewLocate(sql.NewEmptyContext(), exprs...)
 			require.NoError(err)
 
 			result, err := f.Eval(sql.NewEmptyContext(), row)

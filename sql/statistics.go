@@ -201,7 +201,7 @@ func (h Histogram) ToInterface(context.Context) (interface{}, error) {
 	return ret, nil
 }
 
-func (h Histogram) DebugString() string {
+func (h Histogram) DebugString(ctx *Context) string {
 	var bounds []string
 	var cnts []int
 	var allCnt int

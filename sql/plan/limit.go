@@ -42,7 +42,7 @@ func (l *Limit) Expressions() []sql.Expression {
 }
 
 // WithExpressions implements sql.Expressioner
-func (l Limit) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (l Limit) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(l, len(exprs), 1)
 	}
@@ -66,7 +66,7 @@ func (l Limit) IsReadOnly() bool {
 }
 
 // WithChildren implements the Node interface.
-func (l *Limit) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (l *Limit) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 1)
 	}
@@ -88,9 +88,9 @@ func (l Limit) String() string {
 	return pr.String()
 }
 
-func (l Limit) DebugString() string {
+func (l Limit) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Limit(%s)", l.Limit)
-	_ = pr.WriteChildren(sql.DebugString(l.Child))
+	_ = pr.WriteChildren(sql.DebugString(ctx, l.Child))
 	return pr.String()
 }

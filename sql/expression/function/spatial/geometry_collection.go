@@ -33,7 +33,7 @@ var _ sql.FunctionExpression = (*GeomColl)(nil)
 var _ sql.CollationCoercible = (*GeomColl)(nil)
 
 // NewGeomColl creates a new geometrycollection expression.
-func NewGeomColl(args ...sql.Expression) (sql.Expression, error) {
+func NewGeomColl(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	return &GeomColl{expression.NaryExpression{ChildExpressions: args}}, nil
 }
 
@@ -48,7 +48,7 @@ func (g *GeomColl) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (g *GeomColl) Type() sql.Type {
+func (g *GeomColl) Type(ctx *sql.Context) sql.Type {
 	return types.GeomCollType{}
 }
 
@@ -66,8 +66,8 @@ func (g *GeomColl) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (g *GeomColl) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewGeomColl(children...)
+func (g *GeomColl) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewGeomColl(ctx, children...)
 }
 
 // Eval implements the sql.Expression interface.

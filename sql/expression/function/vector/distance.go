@@ -167,26 +167,26 @@ var _ sql.FunctionExpression = (*Distance)(nil)
 var _ sql.CollationCoercible = (*Distance)(nil)
 
 // NewDistance creates a new Distance expression.
-func NewDistance(distanceType DistanceType, left sql.Expression, right sql.Expression) sql.Expression {
+func NewDistance(ctx *sql.Context, distanceType DistanceType, left sql.Expression, right sql.Expression) sql.Expression {
 	return &Distance{DistanceType: distanceType, BinaryExpressionStub: expression.BinaryExpressionStub{LeftChild: left, RightChild: right}}
 }
 
 var _ sql.CreateFunc2Args = NewL2SquaredDistance
 
-func NewL2SquaredDistance(left, right sql.Expression) sql.Expression {
-	return NewDistance(DistanceL2Squared{}, left, right)
+func NewL2SquaredDistance(ctx *sql.Context, left, right sql.Expression) sql.Expression {
+	return NewDistance(ctx, DistanceL2Squared{}, left, right)
 }
 
 var _ sql.CreateFunc2Args = NewEuclideanDistance
 
-func NewEuclideanDistance(left, right sql.Expression) sql.Expression {
-	return NewDistance(DistanceEuclidean{}, left, right)
+func NewEuclideanDistance(ctx *sql.Context, left, right sql.Expression) sql.Expression {
+	return NewDistance(ctx, DistanceEuclidean{}, left, right)
 }
 
 var _ sql.CreateFunc2Args = NewCosineDistance
 
-func NewCosineDistance(left, right sql.Expression) sql.Expression {
-	return NewDistance(DistanceCosine{}, left, right)
+func NewCosineDistance(ctx *sql.Context, left, right sql.Expression) sql.Expression {
+	return NewDistance(ctx, DistanceCosine{}, left, right)
 }
 
 func (d Distance) CollationCoercibility(_ *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -197,15 +197,15 @@ func (d Distance) String() string {
 	return fmt.Sprintf("%s(%s, %s)", d.DistanceType, d.LeftChild, d.RightChild)
 }
 
-func (d Distance) Type() sql.Type {
+func (d Distance) Type(ctx *sql.Context) sql.Type {
 	return types.Float64
 }
 
-func (d Distance) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (d Distance) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 2)
 	}
-	return NewDistance(d.DistanceType, children[0], children[1]), nil
+	return NewDistance(ctx, d.DistanceType, children[0], children[1]), nil
 }
 
 // Eval implements the Expression interface.
@@ -256,7 +256,7 @@ var _ sql.Expression = (*GenericDistance)(nil)
 var _ sql.FunctionExpression = (*GenericDistance)(nil)
 var _ sql.CollationCoercible = (*GenericDistance)(nil)
 
-func NewGenericDistance(args ...sql.Expression) (sql.Expression, error) {
+func NewGenericDistance(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 3 {
 		return nil, sql.ErrInvalidArgumentNumber.New("DISTANCE", "3", len(args))
 	}
@@ -271,7 +271,7 @@ func (g *GenericDistance) Description() string {
 	return "returns the distance between two vectors using the specified metric (EUCLIDEAN or COSINE)"
 }
 
-func (g *GenericDistance) Type() sql.Type {
+func (g *GenericDistance) Type(ctx *sql.Context) sql.Type {
 	return types.Float64
 }
 
@@ -284,11 +284,11 @@ func (g *GenericDistance) String() string {
 	return fmt.Sprintf("DISTANCE(%s, %s, %s)", children[0], children[1], children[2])
 }
 
-func (g *GenericDistance) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (g *GenericDistance) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 3 {
 		return nil, sql.ErrInvalidChildrenNumber.New(g, len(children), 3)
 	}
-	newDist, err := NewGenericDistance(children...)
+	newDist, err := NewGenericDistance(ctx, children...)
 	return newDist, err
 }
 

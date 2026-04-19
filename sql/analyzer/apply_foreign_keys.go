@@ -110,9 +110,9 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 		if fkEditor == nil {
 			return n, transform.SameTree, nil
 		}
-		nn, err := n.WithChildren(&plan.ForeignKeyHandler{
+		nn, err := n.WithChildren(ctx, &plan.ForeignKeyHandler{
 			Table:        tbl,
-			Sch:          insertableDest.Schema(),
+			Sch:          insertableDest.Schema(ctx),
 			OriginalNode: n.Destination,
 			Editor:       fkEditor,
 			AllUpdaters:  fkChain.GetUpdaters(),
@@ -138,7 +138,7 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 				}
 			}
 			uj = plan.NewUpdateJoin(fkHandlerMap, uj.Child)
-			nn, err := n.WithChildren(uj)
+			nn, err := n.WithChildren(ctx, uj)
 			return nn, transform.NewTree, err
 		}
 		fkHandler, err := getForeignKeyHandlerFromUpdateTarget(ctx, a, n.Child, cache, fkChain)
@@ -148,7 +148,7 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 		if fkHandler == nil {
 			return n, transform.SameTree, nil
 		}
-		nn, err := n.WithChildren(fkHandler)
+		nn, err := n.WithChildren(ctx, fkHandler)
 		return nn, transform.NewTree, err
 	case *plan.DeleteFrom:
 		if plan.IsEmptyTable(n.Child) {
@@ -180,7 +180,7 @@ func applyForeignKeysToNodes(ctx *sql.Context, a *Analyzer, n sql.Node, cache *f
 
 			foreignKeyHandlers[i] = &plan.ForeignKeyHandler{
 				Table:        tbl,
-				Sch:          deleteDest.Schema(),
+				Sch:          deleteDest.Schema(ctx),
 				OriginalNode: targets[i],
 				Editor:       fkEditor,
 				AllUpdaters:  fkChain.GetUpdaters(),
@@ -238,7 +238,7 @@ func getForeignKeyReferences(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 	}
 	fkChain = fkChain.AddTable(fks[0].Database, fks[0].SchemaName, fks[0].Table).AddTableUpdater(fks[0].Database, fks[0].SchemaName, fks[0].Table, updater)
 
-	tblSch := tbl.Schema()
+	tblSch := tbl.Schema(ctx)
 	fkEditor := &plan.ForeignKeyEditor{
 		Schema:     tblSch,
 		Editor:     updater,
@@ -276,7 +276,7 @@ func getForeignKeyReferences(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 			return nil, err
 		}
 
-		typeConversions, err := plan.GetForeignKeyTypeConversions(parentTbl.Schema(), tblSch, fk, plan.ChildToParent)
+		typeConversions, err := plan.GetForeignKeyTypeConversions(parentTbl.Schema(ctx), tblSch, fk, plan.ChildToParent)
 		if err != nil {
 			return nil, err
 		}
@@ -326,7 +326,7 @@ func getForeignKeyRefActions(ctx *sql.Context, a *Analyzer, tbl sql.ForeignKeyTa
 		return cachedFkEditor, nil
 	}
 	// No matching editor was cached, so we either create a new one or add to the existing one
-	tblSch := tbl.Schema()
+	tblSch := tbl.Schema(ctx)
 	if fkEditor == nil {
 		fkEditor = &plan.ForeignKeyEditor{
 			Schema:     tblSch,
@@ -466,7 +466,7 @@ func getForeignKeyHandlerFromUpdateTarget(ctx *sql.Context, a *Analyzer, updateT
 
 	return &plan.ForeignKeyHandler{
 		Table:        fkTbl,
-		Sch:          updateDest.Schema(),
+		Sch:          updateDest.Schema(ctx),
 		OriginalNode: updateTarget,
 		Editor:       fkEditor,
 		AllUpdaters:  fkChain.GetUpdaters(),
@@ -481,7 +481,7 @@ func getForeignKeyHandlerFromUpdateTarget(ctx *sql.Context, a *Analyzer, updateT
 func resolveSchemaDefaults(ctx *sql.Context, catalog *Catalog, table sql.Table) (sql.Schema, error) {
 	// Resolve any column default expressions in tblSch
 	builder := planbuilder.New(ctx, catalog, nil)
-	childTblSch := builder.ResolveSchemaDefaults(ctx.GetCurrentDatabase(), table.Name(), table.Schema())
+	childTblSch := builder.ResolveSchemaDefaults(ctx.GetCurrentDatabase(), table.Name(), table.Schema(ctx))
 
 	// Field Indexes are off by one initially and don't fixed by assignExecIndexes because it doesn't traverse through
 	// the ForeignKeyEditors and referential actions, so we correct them here. This is safe because we know these fields
@@ -489,7 +489,7 @@ func resolveSchemaDefaults(ctx *sql.Context, catalog *Catalog, table sql.Table) 
 	for i, col := range childTblSch {
 		if col.Default != nil {
 			expr := col.Default.Expr
-			expr, identity, err := transform.Expr(expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			expr, identity, err := transform.Expr(ctx, expr, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				if gf, ok := e.(*expression.GetField); ok {
 					return gf.WithIndex(gf.Index() - 1), transform.NewTree, nil
 				}

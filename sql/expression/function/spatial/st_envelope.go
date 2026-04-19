@@ -33,7 +33,7 @@ var _ sql.FunctionExpression = (*Envelope)(nil)
 var _ sql.CollationCoercible = (*Envelope)(nil)
 
 // NewEnvelope creates a new Envelope expression.
-func NewEnvelope(e sql.Expression) sql.Expression {
+func NewEnvelope(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &Envelope{expression.UnaryExpressionStub{Child: e}}
 }
 
@@ -48,12 +48,12 @@ func (e *Envelope) Description() string {
 }
 
 // IsNullable implements the sql.Expression interface.
-func (e *Envelope) IsNullable() bool {
-	return e.Child.IsNullable()
+func (e *Envelope) IsNullable(ctx *sql.Context) bool {
+	return e.Child.IsNullable(ctx)
 }
 
 // Type implements the sql.Expression interface.
-func (e *Envelope) Type() sql.Type {
+func (e *Envelope) Type(ctx *sql.Context) sql.Type {
 	return types.GeometryType{}
 }
 
@@ -67,11 +67,11 @@ func (e *Envelope) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (e *Envelope) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (e *Envelope) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(e, len(children), 1)
 	}
-	return NewEnvelope(children[0]), nil
+	return NewEnvelope(ctx, children[0]), nil
 }
 
 // Eval implements the sql.Expression interface.

@@ -89,17 +89,17 @@ func (c CountingRowIter) Next(ctx *Context) (Row, error) {
 }
 
 type Describable interface {
-	Describe(options DescribeOptions) string
+	Describe(ctx *Context, options DescribeOptions) string
 }
 
 // Describe produces a human-readable string for |n|, based on the values set in |options|.
 // For |n| to benefit from |options|, it must implement `sql.Describable`.
-func Describe(n fmt.Stringer, options DescribeOptions) string {
+func Describe(ctx *Context, n fmt.Stringer, options DescribeOptions) string {
 	if d, ok := n.(Describable); ok {
-		return d.Describe(options)
+		return d.Describe(ctx, options)
 	}
 	if d, ok := n.(DebugStringer); ok && options.Debug {
-		return d.DebugString()
+		return d.DebugString(ctx)
 	}
 	return n.String()
 }

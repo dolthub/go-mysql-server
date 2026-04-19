@@ -36,7 +36,7 @@ var _ sql.FunctionExpression = (*RandomBytes)(nil)
 var _ sql.CollationCoercible = (*RandomBytes)(nil)
 
 // NewRandomBytes returns a new RANDOM_BYTES function.
-func NewRandomBytes(e sql.Expression) sql.Expression {
+func NewRandomBytes(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &RandomBytes{expression.UnaryExpressionStub{Child: e}}
 }
 
@@ -51,16 +51,16 @@ func (r *RandomBytes) Description() string {
 }
 
 // WithChildren implements the Expression interface.
-func (r *RandomBytes) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (r *RandomBytes) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(r, len(children), 1)
 	}
 
-	return NewRandomBytes(children[0]), nil
+	return NewRandomBytes(ctx, children[0]), nil
 }
 
 // Type implements the sql.Expression interface.
-func (r *RandomBytes) Type() sql.Type {
+func (r *RandomBytes) Type(ctx *sql.Context) sql.Type {
 	return types.MustCreateString(sqltypes.VarBinary, 1024, sql.Collation_binary)
 }
 

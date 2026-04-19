@@ -25,19 +25,20 @@ import (
 
 func TestIsTrue(t *testing.T) {
 	require := require.New(t)
+	ctx := sql.NewEmptyContext()
 
 	boolF := NewGetField(0, types.Boolean, "col1", true)
 	e := NewIsTrue(boolF)
-	require.Equal(types.Boolean, e.Type())
-	require.False(e.IsNullable())
+	require.Equal(types.Boolean, e.Type(ctx))
+	require.False(e.IsNullable(ctx))
 	require.Equal(false, eval(t, e, sql.NewRow(nil)))
 	require.Equal(true, eval(t, e, sql.NewRow(true)))
 	require.Equal(false, eval(t, e, sql.NewRow(false)))
 
 	intF := NewGetField(0, types.Int64, "col1", true)
 	e = NewIsTrue(intF)
-	require.Equal(types.Boolean, e.Type())
-	require.False(e.IsNullable())
+	require.Equal(types.Boolean, e.Type(ctx))
+	require.False(e.IsNullable(ctx))
 	require.Equal(false, eval(t, e, sql.NewRow(nil)))
 	require.Equal(true, eval(t, e, sql.NewRow(100)))
 	require.Equal(true, eval(t, e, sql.NewRow(-1)))
@@ -45,8 +46,8 @@ func TestIsTrue(t *testing.T) {
 
 	floatF := NewGetField(0, types.Float64, "col1", true)
 	e = NewIsTrue(floatF)
-	require.Equal(types.Boolean, e.Type())
-	require.False(e.IsNullable())
+	require.Equal(types.Boolean, e.Type(ctx))
+	require.False(e.IsNullable(ctx))
 	require.Equal(false, eval(t, e, sql.NewRow(nil)))
 	require.Equal(true, eval(t, e, sql.NewRow(1.5)))
 	require.Equal(true, eval(t, e, sql.NewRow(-1.5)))
@@ -54,8 +55,8 @@ func TestIsTrue(t *testing.T) {
 
 	stringF := NewGetField(0, types.Text, "col1", true)
 	e = NewIsTrue(stringF)
-	require.Equal(types.Boolean, e.Type())
-	require.False(e.IsNullable())
+	require.Equal(types.Boolean, e.Type(ctx))
+	require.False(e.IsNullable(ctx))
 	require.Equal(false, eval(t, e, sql.NewRow(nil)))
 	require.Equal(false, eval(t, e, sql.NewRow("")))
 	require.Equal(false, eval(t, e, sql.NewRow("false")))
@@ -64,19 +65,20 @@ func TestIsTrue(t *testing.T) {
 
 func TestIsFalse(t *testing.T) {
 	require := require.New(t)
+	ctx := sql.NewEmptyContext()
 
 	boolF := NewGetField(0, types.Boolean, "col1", true)
 	e := NewIsFalse(boolF)
-	require.Equal(types.Boolean, e.Type())
-	require.False(e.IsNullable())
+	require.Equal(types.Boolean, e.Type(ctx))
+	require.False(e.IsNullable(ctx))
 	require.Equal(false, eval(t, e, sql.NewRow(nil)))
 	require.Equal(false, eval(t, e, sql.NewRow(true)))
 	require.Equal(true, eval(t, e, sql.NewRow(false)))
 
 	intF := NewGetField(0, types.Int64, "col1", true)
 	e = NewIsFalse(intF)
-	require.Equal(types.Boolean, e.Type())
-	require.False(e.IsNullable())
+	require.Equal(types.Boolean, e.Type(ctx))
+	require.False(e.IsNullable(ctx))
 	require.Equal(false, eval(t, e, sql.NewRow(nil)))
 	require.Equal(false, eval(t, e, sql.NewRow(100)))
 	require.Equal(false, eval(t, e, sql.NewRow(-1)))
@@ -84,8 +86,8 @@ func TestIsFalse(t *testing.T) {
 
 	floatF := NewGetField(0, types.Float64, "col1", true)
 	e = NewIsFalse(floatF)
-	require.Equal(types.Boolean, e.Type())
-	require.False(e.IsNullable())
+	require.Equal(types.Boolean, e.Type(ctx))
+	require.False(e.IsNullable(ctx))
 	require.Equal(false, eval(t, e, sql.NewRow(nil)))
 	require.Equal(false, eval(t, e, sql.NewRow(1.5)))
 	require.Equal(false, eval(t, e, sql.NewRow(-1.5)))
@@ -93,8 +95,8 @@ func TestIsFalse(t *testing.T) {
 
 	stringF := NewGetField(0, types.Text, "col1", true)
 	e = NewIsFalse(stringF)
-	require.Equal(types.Boolean, e.Type())
-	require.False(e.IsNullable())
+	require.Equal(types.Boolean, e.Type(ctx))
+	require.False(e.IsNullable(ctx))
 	require.Equal(false, eval(t, e, sql.NewRow(nil)))
 	require.Equal(true, eval(t, e, sql.NewRow("")))
 	require.Equal(true, eval(t, e, sql.NewRow("false")))

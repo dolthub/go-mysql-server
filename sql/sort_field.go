@@ -42,7 +42,7 @@ func (sf SortFields) ToExpressions() []Expression {
 	return es
 }
 
-func (sf SortFields) FromExpressions(exprs ...Expression) SortFields {
+func (sf SortFields) FromExpressions(ctx *Context, exprs ...Expression) SortFields {
 	var fields = make(SortFields, len(sf))
 
 	if len(exprs) != len(fields) {
@@ -65,12 +65,12 @@ func (s SortField) String() string {
 	return fmt.Sprintf("%s %s", s.Column, s.Order)
 }
 
-func (s SortField) DebugString() string {
+func (s SortField) DebugString(ctx *Context) string {
 	nullOrdering := "nullsFirst"
 	if s.NullOrdering == NullsLast {
 		nullOrdering = "nullsLast"
 	}
-	return fmt.Sprintf("%s %s %s", DebugString(s.Column), DebugString(s.Order), nullOrdering)
+	return fmt.Sprintf("%s %s %s", DebugString(ctx, s.Column), DebugString(ctx, s.Order), nullOrdering)
 }
 
 // ErrUnableSort is thrown when something happens on sorting

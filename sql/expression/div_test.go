@@ -295,7 +295,8 @@ func TestDiv(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		name := fmt.Sprintf("%s(%v)/%s(%v)", tt.left.Type(), tt.left, tt.right.Type(), tt.right)
+		ctx := sql.NewEmptyContext()
+		name := fmt.Sprintf("%s(%v)/%s(%v)", tt.left.Type(ctx), tt.left, tt.right.Type(ctx), tt.right)
 		t.Run(name, func(t *testing.T) {
 			require := require.New(t)
 			if tt.skip {
@@ -333,9 +334,10 @@ func TestDivUsesFloatsInternally(t *testing.T) {
 
 	// Internal nodes should use floats for division with integers (for performance reasons), but the top node
 	// should return a Decimal (to match MySQL's behavior).
-	require.Equal(t, types.Float64, bottomDiv.Type())
-	require.Equal(t, types.Float64, middleDiv.Type())
-	require.True(t, types.IsDecimal(topDiv.Type()))
+	ctx := sql.NewEmptyContext()
+	require.Equal(t, types.Float64, bottomDiv.Type(ctx))
+	require.Equal(t, types.Float64, middleDiv.Type(ctx))
+	require.True(t, types.IsDecimal(topDiv.Type(ctx)))
 }
 
 func TestIntDiv(t *testing.T) {

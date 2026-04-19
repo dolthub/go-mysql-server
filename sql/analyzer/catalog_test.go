@@ -67,7 +67,7 @@ func TestCatalogTable(t *testing.T) {
 	require.EqualError(err, "table not found: bar")
 	require.Nil(table)
 
-	mytable := memory.NewTable(db, "bar", sql.PrimaryKeySchema{PkOrdinals: []int{}}, db.GetForeignKeyCollection())
+	mytable := memory.NewTable(ctx, db, "bar", sql.PrimaryKeySchema{PkOrdinals: []int{}}, db.GetForeignKeyCollection())
 	db.AddTable("bar", mytable)
 
 	table, _, err = c.Table(ctx, "foo", "baz")
@@ -90,8 +90,8 @@ func TestCatalogUnlockTables(t *testing.T) {
 	c := NewCatalog(pro, sql.EngineOverrides{})
 	ctx := newContext(pro)
 
-	t1 := newLockableTable(memory.NewTable(db, "t1", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
-	t2 := newLockableTable(memory.NewTable(db, "t2", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
+	t1 := newLockableTable(memory.NewTable(ctx, db, "t1", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
+	t2 := newLockableTable(memory.NewTable(ctx, db, "t2", sql.PrimaryKeySchema{}, db.GetForeignKeyCollection()))
 	db.AddTable("t1", t1)
 	db.AddTable("t2", t2)
 

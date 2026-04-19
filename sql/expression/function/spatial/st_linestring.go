@@ -31,7 +31,7 @@ var _ sql.FunctionExpression = (*StartPoint)(nil)
 var _ sql.CollationCoercible = (*StartPoint)(nil)
 
 // NewStartPoint creates a new StartPoint expression.
-func NewStartPoint(arg sql.Expression) sql.Expression {
+func NewStartPoint(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &StartPoint{expression.UnaryExpressionStub{Child: arg}}
 }
 
@@ -46,7 +46,7 @@ func (s *StartPoint) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (s *StartPoint) Type() sql.Type {
+func (s *StartPoint) Type(ctx *sql.Context) sql.Type {
 	return types.PointType{}
 }
 
@@ -60,11 +60,11 @@ func (s *StartPoint) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (s *StartPoint) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (s *StartPoint) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New(s.FunctionName(), "1", len(children))
 	}
-	return NewStartPoint(children[0]), nil
+	return NewStartPoint(ctx, children[0]), nil
 }
 
 func startPoint(l types.LineString) types.Point {
@@ -104,7 +104,7 @@ var _ sql.FunctionExpression = (*EndPoint)(nil)
 var _ sql.CollationCoercible = (*EndPoint)(nil)
 
 // NewEndPoint creates a new EndPoint expression.
-func NewEndPoint(arg sql.Expression) sql.Expression {
+func NewEndPoint(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &EndPoint{expression.UnaryExpressionStub{Child: arg}}
 }
 
@@ -119,7 +119,7 @@ func (e *EndPoint) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (e *EndPoint) Type() sql.Type {
+func (e *EndPoint) Type(ctx *sql.Context) sql.Type {
 	return types.PointType{}
 }
 
@@ -133,11 +133,11 @@ func (e *EndPoint) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (e *EndPoint) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (e *EndPoint) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New(e.FunctionName(), "1", len(children))
 	}
-	return NewEndPoint(children[0]), nil
+	return NewEndPoint(ctx, children[0]), nil
 }
 
 func endPoint(l types.LineString) types.Point {
@@ -177,7 +177,7 @@ var _ sql.FunctionExpression = (*IsClosed)(nil)
 var _ sql.CollationCoercible = (*IsClosed)(nil)
 
 // NewIsClosed creates a new EndPoint expression.
-func NewIsClosed(arg sql.Expression) sql.Expression {
+func NewIsClosed(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &IsClosed{expression.UnaryExpressionStub{Child: arg}}
 }
 
@@ -192,7 +192,7 @@ func (i *IsClosed) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (i *IsClosed) Type() sql.Type {
+func (i *IsClosed) Type(ctx *sql.Context) sql.Type {
 	return types.Boolean
 }
 
@@ -206,11 +206,11 @@ func (i *IsClosed) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (i *IsClosed) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (i *IsClosed) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New(i.FunctionName(), "1", len(children))
 	}
-	return NewIsClosed(children[0]), nil
+	return NewIsClosed(ctx, children[0]), nil
 }
 
 func isPointEqual(a, b types.Point) bool {

@@ -94,7 +94,7 @@ func TestFindInSet(t *testing.T) {
 				t.Skip()
 			}
 			require := require.New(t)
-			f := NewFindInSet(expression.NewLiteral(tt.left, types.LongText), expression.NewLiteral(tt.right, types.LongText))
+			f := NewFindInSet(sql.NewEmptyContext(), expression.NewLiteral(tt.left, types.LongText), expression.NewLiteral(tt.right, types.LongText))
 			v, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(err)
 			require.Equal(tt.expected, v)
@@ -103,7 +103,7 @@ func TestFindInSet(t *testing.T) {
 
 	t.Run("test find in null set", func(t *testing.T) {
 		require := require.New(t)
-		f := NewFindInSet(expression.NewLiteral("a", types.LongText), expression.NewLiteral(nil, types.Null))
+		f := NewFindInSet(sql.NewEmptyContext(), expression.NewLiteral("a", types.LongText), expression.NewLiteral(nil, types.Null))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(nil, v)
@@ -111,7 +111,7 @@ func TestFindInSet(t *testing.T) {
 
 	t.Run("find null in set", func(t *testing.T) {
 		require := require.New(t)
-		f := NewFindInSet(expression.NewLiteral("a", types.LongText), expression.NewLiteral(nil, types.Null))
+		f := NewFindInSet(sql.NewEmptyContext(), expression.NewLiteral("a", types.LongText), expression.NewLiteral(nil, types.Null))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(nil, v)
@@ -119,7 +119,7 @@ func TestFindInSet(t *testing.T) {
 
 	t.Run("find number", func(t *testing.T) {
 		require := require.New(t)
-		f := NewFindInSet(expression.NewLiteral(500, types.Int64), expression.NewLiteral("1,2,3,500", types.Null))
+		f := NewFindInSet(sql.NewEmptyContext(), expression.NewLiteral(500, types.Int64), expression.NewLiteral("1,2,3,500", types.Null))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(4, v)

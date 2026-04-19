@@ -42,13 +42,13 @@ func (s *SetField) String() string {
 	return fmt.Sprintf("SET %s = %s", s.LeftChild, s.RightChild)
 }
 
-func (s *SetField) DebugString() string {
-	return fmt.Sprintf("SET %s = %s", sql.DebugString(s.LeftChild), sql.DebugString(s.RightChild))
+func (s *SetField) DebugString(ctx *sql.Context) string {
+	return fmt.Sprintf("SET %s = %s", sql.DebugString(ctx, s.LeftChild), sql.DebugString(ctx, s.RightChild))
 }
 
 // Type implements the Expression interface.
-func (s *SetField) Type() sql.Type {
-	return s.LeftChild.Type()
+func (s *SetField) Type(ctx *sql.Context) sql.Type {
+	return s.LeftChild.Type(ctx)
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -91,12 +91,12 @@ func (s *SetField) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // IsNullable implements sql.Expression
-func (s *SetField) IsNullable() bool {
+func (s *SetField) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
 // WithChildren implements the Expression interface.
-func (s *SetField) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (s *SetField) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 2)
 	}

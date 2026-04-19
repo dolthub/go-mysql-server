@@ -28,7 +28,7 @@ func NewDistinctExpression(e sql.Expression) *DistinctExpression {
 
 func (de *DistinctExpression) seenValue(ctx *sql.Context, value interface{}) (bool, error) {
 	if de.seen == nil {
-		cache, dispose := ctx.Memory.NewHistoryCache()
+		cache, dispose := ctx.Memory.NewHistoryCache(ctx)
 		de.seen = cache
 		de.dispose = dispose
 	}
@@ -69,7 +69,7 @@ func (de *DistinctExpression) seenValue(ctx *sql.Context, value interface{}) (bo
 	return true, nil
 }
 
-func (de *DistinctExpression) Dispose() {
+func (de *DistinctExpression) Dispose(ctx *sql.Context) {
 	if de.dispose != nil {
 		de.dispose()
 	}
@@ -87,8 +87,8 @@ func (de *DistinctExpression) String() string {
 	return fmt.Sprintf("DISTINCT %s", de.Child.String())
 }
 
-func (de *DistinctExpression) Type() sql.Type {
-	return de.Child.Type()
+func (de *DistinctExpression) Type(ctx *sql.Context) sql.Type {
+	return de.Child.Type(ctx)
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -96,7 +96,7 @@ func (de *DistinctExpression) CollationCoercibility(ctx *sql.Context) (collation
 	return sql.GetCoercibility(ctx, de.Child)
 }
 
-func (de *DistinctExpression) IsNullable() bool {
+func (de *DistinctExpression) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
@@ -124,7 +124,7 @@ func (de *DistinctExpression) Children() []sql.Expression {
 	return []sql.Expression{de.Child}
 }
 
-func (de *DistinctExpression) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (de *DistinctExpression) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, fmt.Errorf("DistinctExpression has an invalid number of children")
 	}

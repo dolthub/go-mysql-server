@@ -64,7 +64,7 @@ func (u *UpdateHistogram) String() string {
 	return fmt.Sprintf("update histogram  %s.(%s) using %s", u.table, strings.Join(u.cols, ","), statBytes)
 }
 
-func (u *UpdateHistogram) Schema() sql.Schema {
+func (u *UpdateHistogram) Schema(ctx *sql.Context) sql.Schema {
 	return analyzeSchema
 }
 
@@ -72,7 +72,7 @@ func (u *UpdateHistogram) Children() []sql.Node {
 	return nil
 }
 
-func (u *UpdateHistogram) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (u *UpdateHistogram) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return u, nil
 }
 
@@ -128,7 +128,7 @@ func (d *DropHistogram) String() string {
 	return fmt.Sprintf("drop histogram %s.(%s)", d.table, strings.Join(d.cols, ","))
 }
 
-func (d *DropHistogram) Schema() sql.Schema {
+func (d *DropHistogram) Schema(ctx *sql.Context) sql.Schema {
 	return analyzeSchema
 }
 
@@ -136,7 +136,7 @@ func (d *DropHistogram) Children() []sql.Node {
 	return nil
 }
 
-func (d *DropHistogram) WithChildren(_ ...sql.Node) (sql.Node, error) {
+func (d *DropHistogram) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return d, nil
 }
 

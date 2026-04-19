@@ -268,7 +268,7 @@ func (f *DateFormat) Description() string {
 }
 
 // NewDateFormat returns a new DateFormat UDF
-func NewDateFormat(ex, value sql.Expression) sql.Expression {
+func NewDateFormat(ctx *sql.Context, ex, value sql.Expression) sql.Expression {
 	return &DateFormat{
 		expression.BinaryExpressionStub{
 			LeftChild:  ex,
@@ -319,7 +319,7 @@ func (f *DateFormat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // Type implements the Expression interface.
-func (f *DateFormat) Type() sql.Type {
+func (f *DateFormat) Type(ctx *sql.Context) sql.Type {
 	return types.Text
 }
 
@@ -329,14 +329,14 @@ func (*DateFormat) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 }
 
 // IsNullable implements the Expression interface.
-func (f *DateFormat) IsNullable() bool {
-	if types.IsNull(f.LeftChild) {
-		if types.IsNull(f.RightChild) {
+func (f *DateFormat) IsNullable(ctx *sql.Context) bool {
+	if types.IsNull(ctx, f.LeftChild) {
+		if types.IsNull(ctx, f.RightChild) {
 			return true
 		}
-		return f.RightChild.IsNullable()
+		return f.RightChild.IsNullable(ctx)
 	}
-	return f.LeftChild.IsNullable()
+	return f.LeftChild.IsNullable(ctx)
 }
 
 func (f *DateFormat) String() string {
@@ -344,9 +344,9 @@ func (f *DateFormat) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (f *DateFormat) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (f *DateFormat) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 2)
 	}
-	return NewDateFormat(children[0], children[1]), nil
+	return NewDateFormat(ctx, children[0], children[1]), nil
 }

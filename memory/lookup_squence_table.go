@@ -45,7 +45,7 @@ func (s LookupSequenceTable) String() string {
 	return fmt.Sprintf("sequence(%s, %d)", s.name, s.Len)
 }
 
-func (s LookupSequenceTable) DebugString() string {
+func (s LookupSequenceTable) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("sequence")
 	children := []string{
@@ -56,7 +56,7 @@ func (s LookupSequenceTable) DebugString() string {
 	return pr.String()
 }
 
-func (s LookupSequenceTable) Schema() sql.Schema {
+func (s LookupSequenceTable) Schema(ctx *sql.Context) sql.Schema {
 	schema := []*sql.Column{
 		{
 			DatabaseSource: s.db.Name(),
@@ -69,11 +69,11 @@ func (s LookupSequenceTable) Schema() sql.Schema {
 	return schema
 }
 
-func (s LookupSequenceTable) WithChildren(_ ...sql.Node) (sql.Node, error) {
+func (s LookupSequenceTable) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return s, nil
 }
 
-func (s LookupSequenceTable) WithExpressions(e ...sql.Expression) (sql.Node, error) {
+func (s LookupSequenceTable) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	return s, nil
 }
 
@@ -125,11 +125,11 @@ func (s LookupSequenceTable) LookupPartitions(ctx *sql.Context, lookup sql.Index
 	if !ok {
 		return s.Partitions(ctx)
 	}
-	min, _, err := s.Schema()[0].Type.Convert(ctx, below.Key)
+	min, _, err := s.Schema(ctx)[0].Type.Convert(ctx, below.Key)
 	if err != nil {
 		return nil, err
 	}
-	max, _, err := s.Schema()[0].Type.Convert(ctx, above.Key)
+	max, _, err := s.Schema(ctx)[0].Type.Convert(ctx, above.Key)
 	if err != nil {
 		return nil, err
 	}

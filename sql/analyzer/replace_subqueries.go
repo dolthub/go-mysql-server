@@ -33,19 +33,19 @@ func replaceSubqueries(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 		return n, transform.SameTree, nil
 	}
 
-	return transform.NodeWithOpaque(n, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	return transform.NodeWithOpaque(ctx, n, func(ctx *sql.Context, node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if sqa, ok := node.(*plan.SubqueryAlias); ok {
 			switch child := sqa.Child.(type) {
 			case *plan.Project:
 				if len(sqa.ColumnNames) == 0 {
-					if table, ok := child.Child.(*plan.ResolvedTable); ok && child.Schema().Equals(table.Schema()) {
+					if table, ok := child.Child.(*plan.ResolvedTable); ok && child.Schema(ctx).Equals(table.Schema(ctx)) {
 						return plan.NewTableAlias(sqa.Name(), table), transform.NewTree, nil
 
 					}
 				}
 			case *plan.TableAlias:
 				if len(sqa.ColumnNames) == 0 {
-					return plan.NewTableAlias(sqa.Name(), getResolvedTable(child)), transform.NewTree, nil
+					return plan.NewTableAlias(sqa.Name(), getResolvedTable(ctx, child)), transform.NewTree, nil
 				}
 			case *plan.SubqueryAlias:
 				if sqa.Columns().Len() == child.Columns().Len() {

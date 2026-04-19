@@ -67,8 +67,8 @@ func (tc *TableCopier) ProcessCreateTable(ctx *sql.Context, b sql.NodeExecBuilde
 		return sql.RowsToRowIter(), fmt.Errorf("error: Newly created table does not exist")
 	}
 
-	if tc.createTableSelectCanBeCopied(table) {
-		return tc.CopyTableOver(ctx, tc.Source.Schema()[0].Source, table.Name())
+	if tc.createTableSelectCanBeCopied(ctx, table) {
+		return tc.CopyTableOver(ctx, tc.Source.Schema(ctx)[0].Source, table.Name())
 	}
 
 	// TODO: Improve parsing for CREATE TABLE SELECT to allow for IGNORE/REPLACE and custom specs
@@ -78,7 +78,7 @@ func (tc *TableCopier) ProcessCreateTable(ctx *sql.Context, b sql.NodeExecBuilde
 }
 
 // createTableSelectCanBeCopied determines whether the newly created table's data can just be copied from the Source table
-func (tc *TableCopier) createTableSelectCanBeCopied(tableNode sql.Table) bool {
+func (tc *TableCopier) createTableSelectCanBeCopied(ctx *sql.Context, tableNode sql.Table) bool {
 	// The differences in LIMIT between integrators prevent us from using a copy
 	if _, ok := tc.Source.(*Limit); ok {
 		return false
@@ -94,8 +94,8 @@ func (tc *TableCopier) createTableSelectCanBeCopied(tableNode sql.Table) bool {
 	}
 
 	// If there isn't a match in schema we cannot do a direct copy.
-	sourceSchema := tc.Source.Schema()
-	tableNodeSchema := tableNode.Schema()
+	sourceSchema := tc.Source.Schema(ctx)
+	tableNodeSchema := tableNode.Schema(ctx)
 
 	if len(sourceSchema) != len(tableNodeSchema) {
 		return false
@@ -125,15 +125,15 @@ func (tc *TableCopier) CopyTableOver(ctx *sql.Context, sourceTable string, desti
 	return sql.RowsToRowIter([]sql.Row{{types.OkResult{RowsAffected: rowsUpdated, InsertID: 0, Info: nil}}}...), nil
 }
 
-func (tc *TableCopier) Schema() sql.Schema {
-	return tc.Destination.Schema()
+func (tc *TableCopier) Schema(ctx *sql.Context) sql.Schema {
+	return tc.Destination.Schema(ctx)
 }
 
 func (tc *TableCopier) Children() []sql.Node {
 	return nil
 }
 
-func (tc *TableCopier) WithChildren(...sql.Node) (sql.Node, error) {
+func (tc *TableCopier) WithChildren(*sql.Context, ...sql.Node) (sql.Node, error) {
 	return tc, nil
 }
 

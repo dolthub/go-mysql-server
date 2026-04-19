@@ -32,7 +32,7 @@ var _ sql.FunctionExpression = (*Collation)(nil)
 var _ sql.CollationCoercible = (*Collation)(nil)
 
 // NewCollation creates a new Collation expression.
-func NewCollation(e sql.Expression) sql.Expression {
+func NewCollation(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &Collation{expression.UnaryExpressionStub{Child: e}}
 }
 
@@ -62,7 +62,7 @@ func (c *Collation) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // IsNullable implements sql.Expression.
-func (c *Collation) IsNullable() bool {
+func (c *Collation) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
@@ -72,15 +72,15 @@ func (c *Collation) String() string {
 }
 
 // WithChildren implements sql.Expression.
-func (c *Collation) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (c *Collation) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 	}
-	return NewCollation(children[0]), nil
+	return NewCollation(ctx, children[0]), nil
 }
 
 // Type implements sql.Expression.
-func (c *Collation) Type() sql.Type {
+func (c *Collation) Type(ctx *sql.Context) sql.Type {
 	return types.LongText
 }
 
@@ -98,7 +98,7 @@ var _ sql.FunctionExpression = (*Coercibility)(nil)
 var _ sql.CollationCoercible = (*Coercibility)(nil)
 
 // NewCoercibility creates a new Coercibility expression.
-func NewCoercibility(e sql.Expression) sql.Expression {
+func NewCoercibility(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &Coercibility{expression.UnaryExpressionStub{Child: e}}
 }
 
@@ -128,7 +128,7 @@ func (c *Coercibility) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) 
 }
 
 // IsNullable implements sql.Expression.
-func (c *Coercibility) IsNullable() bool {
+func (c *Coercibility) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
@@ -138,15 +138,15 @@ func (c *Coercibility) String() string {
 }
 
 // WithChildren implements sql.Expression.
-func (c *Coercibility) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (c *Coercibility) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 	}
-	return NewCoercibility(children[0]), nil
+	return NewCoercibility(ctx, children[0]), nil
 }
 
 // Type implements sql.Expression.
-func (c *Coercibility) Type() sql.Type {
+func (c *Coercibility) Type(ctx *sql.Context) sql.Type {
 	return types.Int8
 }
 
@@ -164,7 +164,7 @@ var _ sql.FunctionExpression = (*Charset)(nil)
 var _ sql.CollationCoercible = (*Charset)(nil)
 
 // NewCharset creates a new Charset expression.
-func NewCharset(e sql.Expression) sql.Expression {
+func NewCharset(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &Charset{expression.UnaryExpressionStub{Child: e}}
 }
 
@@ -194,7 +194,7 @@ func (c *Charset) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // IsNullable implements sql.Expression.
-func (c *Charset) IsNullable() bool {
+func (c *Charset) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
@@ -204,15 +204,15 @@ func (c *Charset) String() string {
 }
 
 // WithChildren implements the sql.Expression interface.
-func (c *Charset) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (c *Charset) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 	}
-	return NewCharset(children[0]), nil
+	return NewCharset(ctx, children[0]), nil
 }
 
 // Type implements sql.Expression.
-func (c *Charset) Type() sql.Type {
+func (c *Charset) Type(ctx *sql.Context) sql.Type {
 	return types.LongText
 }
 

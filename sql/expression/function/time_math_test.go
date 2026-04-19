@@ -34,17 +34,18 @@ func TestAddDate(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	// Not enough params
-	_, err := NewAddDate()
+	_, err := NewAddDate(ctx)
 	require.Error(err)
 
 	// Not enough params
-	_, err = NewAddDate(expression.NewLiteral("2018-05-02", types.LongText))
+	_, err = NewAddDate(ctx, expression.NewLiteral("2018-05-02", types.LongText))
 	require.Error(err)
 
 	var expected, result interface{}
 	var f sql.Expression
 
 	f, err = NewAddDate(
+		ctx,
 		expression.NewLiteral(time.Date(2018, 5, 2, 12, 34, 56, 123456000, time.UTC), types.Date),
 		expression.NewLiteral(int64(1), types.Int64))
 	require.NoError(err)
@@ -54,6 +55,7 @@ func TestAddDate(t *testing.T) {
 	require.Equal(expected, result)
 
 	f, err = NewAddDate(
+		ctx,
 		expression.NewLiteral(time.Date(2018, 5, 2, 12, 34, 56, 0, time.UTC), types.Datetime),
 		expression.NewLiteral(int64(1), types.Int64))
 	require.NoError(err)
@@ -63,6 +65,7 @@ func TestAddDate(t *testing.T) {
 	require.Equal(expected, result)
 
 	f, err = NewAddDate(
+		ctx,
 		expression.NewLiteral(time.Date(2018, 5, 2, 12, 34, 56, 123456000, time.UTC), types.DatetimeMaxPrecision),
 		expression.NewLiteral(int64(1), types.Int64))
 	require.NoError(err)
@@ -73,6 +76,7 @@ func TestAddDate(t *testing.T) {
 
 	// If the second argument is NOT an interval, then ADDDATE works exactly like DATE_ADD
 	f, err = NewAddDate(
+		ctx,
 		expression.NewLiteral("2018-05-02", types.LongText),
 		expression.NewLiteral(int64(1), types.Int64))
 	require.NoError(err)
@@ -83,6 +87,7 @@ func TestAddDate(t *testing.T) {
 
 	// If the second argument is an interval, then ADDDATE works exactly like DATE_ADD
 	f, err = NewAddDate(
+		ctx,
 		expression.NewGetField(0, types.Text, "foo", false),
 		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "DAY"))
 	require.NoError(err)
@@ -91,6 +96,7 @@ func TestAddDate(t *testing.T) {
 	require.Equal(expected, result)
 
 	f, err = NewAddDate(
+		ctx,
 		expression.NewLiteral("2018-05-02", types.LongText),
 		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "DAY"))
 	require.NoError(err)
@@ -100,6 +106,7 @@ func TestAddDate(t *testing.T) {
 	require.Equal(expected, result)
 
 	f, err = NewAddDate(
+		ctx,
 		expression.NewLiteral("2018-05-02 12:34:56", types.LongText),
 		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "DAY"))
 	require.NoError(err)
@@ -109,6 +116,7 @@ func TestAddDate(t *testing.T) {
 	require.Equal(expected, result)
 
 	f, err = NewAddDate(
+		ctx,
 		expression.NewLiteral("2018-05-02 12:34:56.123", types.LongText),
 		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "DAY"))
 	require.NoError(err)
@@ -118,6 +126,7 @@ func TestAddDate(t *testing.T) {
 	require.Equal(expected, result)
 
 	f, err = NewAddDate(
+		ctx,
 		expression.NewLiteral("2018-05-02 12:34:56.123456", types.LongText),
 		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "DAY"))
 	require.NoError(err)
@@ -127,6 +136,7 @@ func TestAddDate(t *testing.T) {
 	require.Equal(expected, result)
 
 	f, err = NewAddDate(
+		ctx,
 		expression.NewLiteral("2018-05-02", types.LongText),
 		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "SECOND"))
 	require.NoError(err)
@@ -136,6 +146,7 @@ func TestAddDate(t *testing.T) {
 	require.Equal(expected, result)
 
 	f, err = NewAddDate(
+		ctx,
 		expression.NewLiteral("2018-05-02", types.LongText),
 		expression.NewInterval(expression.NewLiteral(int64(10), types.Int64), "MICROSECOND"))
 	require.NoError(err)
@@ -145,6 +156,7 @@ func TestAddDate(t *testing.T) {
 	require.Equal(expected, result)
 
 	f, err = NewAddDate(
+		ctx,
 		expression.NewLiteral("2018-05-02", types.LongText),
 		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "MICROSECOND"))
 	require.NoError(err)
@@ -155,6 +167,7 @@ func TestAddDate(t *testing.T) {
 
 	// If the interval param is NULL, then NULL is returned
 	f2, err := NewAddDate(
+		ctx,
 		expression.NewLiteral("2018-05-02", types.LongText),
 		expression.NewGetField(0, types.Int64, "foo", true))
 	result, err = f2.Eval(ctx, sql.Row{nil})
@@ -162,6 +175,7 @@ func TestAddDate(t *testing.T) {
 	require.Nil(result)
 
 	f, err = NewAddDate(
+		ctx,
 		expression.NewGetField(0, types.Int64, "foo", true),
 		expression.NewLiteral(int64(1), types.Int64))
 
@@ -184,6 +198,7 @@ func TestAddDate(t *testing.T) {
 	// If the second argument is NOT an interval, then it's assumed to be a day interval
 	t.Skip("Interval does not handle overflows correctly")
 	f, err = NewAddDate(
+		ctx,
 		expression.NewLiteral("2018-05-02", types.Text),
 		expression.NewLiteral(int64(1_000_000), types.Int64))
 	require.NoError(err)
@@ -197,18 +212,18 @@ func TestDateAdd(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	_, err := NewDateAdd()
+	_, err := NewDateAdd(ctx)
 	require.Error(err)
 
-	_, err = NewDateAdd(expression.NewLiteral("2018-05-02", types.LongText))
+	_, err = NewDateAdd(ctx, expression.NewLiteral("2018-05-02", types.LongText))
 	require.Error(err)
 
-	_, err = NewDateAdd(expression.NewLiteral("2018-05-02", types.LongText),
+	_, err = NewDateAdd(ctx, expression.NewLiteral("2018-05-02", types.LongText),
 		expression.NewLiteral(int64(1), types.Int64),
 	)
 	require.Error(err)
 
-	f, err := NewDateAdd(expression.NewGetField(0, types.Text, "foo", false),
+	f, err := NewDateAdd(ctx, expression.NewGetField(0, types.Text, "foo", false),
 		expression.NewInterval(
 			expression.NewLiteral(int64(1), types.Int64),
 			"DAY",
@@ -242,17 +257,18 @@ func TestSubDate(t *testing.T) {
 	ctx := sql.NewEmptyContext()
 
 	// Not enough params
-	_, err := NewSubDate()
+	_, err := NewSubDate(ctx)
 	require.Error(err)
 
 	// Not enough params
-	_, err = NewSubDate(expression.NewLiteral("2018-05-02", types.LongText))
+	_, err = NewSubDate(ctx, expression.NewLiteral("2018-05-02", types.LongText))
 	require.Error(err)
 
 	var expected, result interface{}
 	var f sql.Expression
 
 	f, err = NewSubDate(
+		ctx,
 		expression.NewLiteral(time.Date(2018, 5, 2, 12, 34, 56, 123456000, time.UTC), types.Date),
 		expression.NewLiteral(int64(1), types.Int64))
 	require.NoError(err)
@@ -262,6 +278,7 @@ func TestSubDate(t *testing.T) {
 	require.Equal(expected, result)
 
 	f, err = NewSubDate(
+		ctx,
 		expression.NewLiteral(time.Date(2018, 5, 2, 12, 34, 56, 0, time.UTC), types.Datetime),
 		expression.NewLiteral(int64(1), types.Int64))
 	require.NoError(err)
@@ -271,6 +288,7 @@ func TestSubDate(t *testing.T) {
 	require.Equal(expected, result)
 
 	f, err = NewSubDate(
+		ctx,
 		expression.NewLiteral(time.Date(2018, 5, 2, 12, 34, 56, 123456000, time.UTC), types.DatetimeMaxPrecision),
 		expression.NewLiteral(int64(1), types.Int64))
 	require.NoError(err)
@@ -281,6 +299,7 @@ func TestSubDate(t *testing.T) {
 
 	// If the second argument is NOT an interval, then it's assumed to be a day interval
 	f, err = NewSubDate(
+		ctx,
 		expression.NewLiteral("2018-05-02", types.LongText),
 		expression.NewLiteral(int64(1), types.Int64))
 	require.NoError(err)
@@ -291,6 +310,7 @@ func TestSubDate(t *testing.T) {
 
 	// If the second argument is an interval, then SUBDATE works exactly like DATE_SUB
 	f, err = NewSubDate(
+		ctx,
 		expression.NewGetField(0, types.Text, "foo", false),
 		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "DAY"))
 	require.NoError(err)
@@ -299,6 +319,7 @@ func TestSubDate(t *testing.T) {
 	require.Equal(expected, result)
 
 	f, err = NewSubDate(
+		ctx,
 		expression.NewLiteral("2018-05-02", types.LongText),
 		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "DAY"))
 	require.NoError(err)
@@ -308,6 +329,7 @@ func TestSubDate(t *testing.T) {
 	require.Equal(expected, result)
 
 	f, err = NewSubDate(
+		ctx,
 		expression.NewLiteral("2018-05-02 12:34:56", types.LongText),
 		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "DAY"))
 	require.NoError(err)
@@ -317,6 +339,7 @@ func TestSubDate(t *testing.T) {
 	require.Equal(expected, result)
 
 	f, err = NewSubDate(
+		ctx,
 		expression.NewLiteral("2018-05-02 12:34:56.123", types.LongText),
 		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "DAY"))
 	require.NoError(err)
@@ -326,6 +349,7 @@ func TestSubDate(t *testing.T) {
 	require.Equal(expected, result)
 
 	f, err = NewSubDate(
+		ctx,
 		expression.NewLiteral("2018-05-02 12:34:56.123456", types.LongText),
 		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "DAY"))
 	require.NoError(err)
@@ -335,6 +359,7 @@ func TestSubDate(t *testing.T) {
 	require.Equal(expected, result)
 
 	f, err = NewSubDate(
+		ctx,
 		expression.NewLiteral("2018-05-02", types.LongText),
 		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "SECOND"))
 	require.NoError(err)
@@ -344,6 +369,7 @@ func TestSubDate(t *testing.T) {
 	require.Equal(expected, result)
 
 	f, err = NewSubDate(
+		ctx,
 		expression.NewLiteral("2018-05-02", types.LongText),
 		expression.NewInterval(expression.NewLiteral(int64(10), types.Int64), "MICROSECOND"))
 	require.NoError(err)
@@ -353,6 +379,7 @@ func TestSubDate(t *testing.T) {
 	require.Equal(expected, result)
 
 	f, err = NewSubDate(
+		ctx,
 		expression.NewLiteral("2018-05-02", types.LongText),
 		expression.NewInterval(expression.NewLiteral(int64(1), types.Int64), "MICROSECOND"))
 	require.NoError(err)
@@ -363,6 +390,7 @@ func TestSubDate(t *testing.T) {
 
 	// If the interval param is NULL, then NULL is returned
 	f2, err := NewSubDate(
+		ctx,
 		expression.NewLiteral("2018-05-02", types.LongText),
 		expression.NewGetField(0, types.Int64, "foo", true))
 	result, err = f2.Eval(ctx, sql.Row{nil})
@@ -370,6 +398,7 @@ func TestSubDate(t *testing.T) {
 	require.Nil(result)
 
 	f, err = NewSubDate(
+		ctx,
 		expression.NewGetField(0, types.Int64, "foo", true),
 		expression.NewLiteral(int64(1), types.Int64))
 
@@ -393,18 +422,18 @@ func TestDateSub(t *testing.T) {
 	require := require.New(t)
 	ctx := sql.NewEmptyContext()
 
-	_, err := NewDateSub()
+	_, err := NewDateSub(ctx)
 	require.Error(err)
 
-	_, err = NewDateSub(expression.NewLiteral("2018-05-02", types.LongText))
+	_, err = NewDateSub(ctx, expression.NewLiteral("2018-05-02", types.LongText))
 	require.Error(err)
 
-	_, err = NewDateSub(expression.NewLiteral("2018-05-02", types.LongText),
+	_, err = NewDateSub(ctx, expression.NewLiteral("2018-05-02", types.LongText),
 		expression.NewLiteral(int64(1), types.Int64),
 	)
 	require.Error(err)
 
-	f, err := NewDateSub(expression.NewGetField(0, types.Text, "foo", false),
+	f, err := NewDateSub(ctx, expression.NewGetField(0, types.Text, "foo", false),
 		expression.NewInterval(
 			expression.NewLiteral(int64(1), types.Int64),
 			"DAY",
@@ -557,7 +586,7 @@ func TestTimeDiff(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
-			diff := NewTimeDiff(tt.from, tt.to)
+			diff := NewTimeDiff(ctx, tt.from, tt.to)
 			result, err := diff.Eval(ctx, nil)
 			if tt.err {
 				require.Error(err)
@@ -599,7 +628,7 @@ func TestDateDiff(t *testing.T) {
 	for _, tt := range testCases {
 		args0 := expression.NewGetField(0, tt.e1Type, "", false)
 		args1 := expression.NewGetField(1, tt.e2Type, "", false)
-		f := NewDateDiff(args0, args1)
+		f := NewDateDiff(sql.NewEmptyContext(), args0, args1)
 
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
@@ -667,7 +696,7 @@ func TestTimestampDiff(t *testing.T) {
 		args0 := expression.NewGetField(0, tt.unit, "", false)
 		args1 := expression.NewGetField(1, tt.e1Type, "", false)
 		args2 := expression.NewGetField(2, tt.e2Type, "", false)
-		f := NewTimestampDiff(args0, args1, args2)
+		f := NewTimestampDiff(sql.NewEmptyContext(), args0, args1, args2)
 
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)

@@ -73,7 +73,7 @@ func TestMemoGen(t *testing.T) {
         }
         
         func (r *tableScan) OutputCols() sql.Schema {
-          return r.Table.Schema()
+          return r.Table.Schema(ctx)
         }
         
         func (r *tableScan) Children() []*ExprGroup {

@@ -63,7 +63,7 @@ func (b *Binlog) Resolved() bool {
 	return true
 }
 
-func (b *Binlog) Schema() sql.Schema {
+func (b *Binlog) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -76,7 +76,7 @@ func (b *Binlog) IsReadOnly() bool {
 }
 
 // WithChildren implements the Node interface.
-func (b *Binlog) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (b *Binlog) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(b, len(children), 0)
 	}

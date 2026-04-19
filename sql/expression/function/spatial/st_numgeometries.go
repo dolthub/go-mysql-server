@@ -32,7 +32,7 @@ var _ sql.FunctionExpression = (*NumGeometries)(nil)
 var _ sql.CollationCoercible = (*NumGeometries)(nil)
 
 // NewNumGeometries creates a new NumGeometries expression.
-func NewNumGeometries(e sql.Expression) sql.Expression {
+func NewNumGeometries(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &NumGeometries{expression.UnaryExpressionStub{Child: e}}
 }
 
@@ -47,12 +47,12 @@ func (n *NumGeometries) Description() string {
 }
 
 // IsNullable implements the sql.Expression interface.
-func (n *NumGeometries) IsNullable() bool {
-	return n.Child.IsNullable()
+func (n *NumGeometries) IsNullable(ctx *sql.Context) bool {
+	return n.Child.IsNullable(ctx)
 }
 
 // Type implements the sql.Expression interface.
-func (n *NumGeometries) Type() sql.Type {
+func (n *NumGeometries) Type(ctx *sql.Context) sql.Type {
 	return types.Int32
 }
 
@@ -66,11 +66,11 @@ func (n *NumGeometries) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (n *NumGeometries) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (n *NumGeometries) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 1)
 	}
-	return NewNumGeometries(children[0]), nil
+	return NewNumGeometries(ctx, children[0]), nil
 }
 
 // Eval implements the sql.Expression interface.

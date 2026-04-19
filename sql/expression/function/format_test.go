@@ -118,7 +118,7 @@ func TestFormat(t *testing.T) {
 		args[0] = expression.NewGetField(0, tt.xType, "Val", false)
 		args[1] = expression.NewGetField(1, tt.dType, "Df", false)
 		args[2] = expression.NewGetField(2, types.LongText, "Locale", true)
-		f, err := NewFormat(args...)
+		f, err := NewFormat(sql.NewEmptyContext(), args...)
 
 		t.Run(tt.name, func(t *testing.T) {
 			require := require.New(t)
@@ -238,7 +238,7 @@ func TestSkippedFormat(t *testing.T) {
 		args[0] = expression.NewGetField(0, tt.xType, "Val", false)
 		args[1] = expression.NewGetField(1, tt.dType, "Df", false)
 		args[2] = expression.NewGetField(2, types.LongText, "Locale", true)
-		f, err := NewFormat(args...)
+		f, err := NewFormat(sql.NewEmptyContext(), args...)
 
 		t.Run(tt.name, func(t *testing.T) {
 			t.Skip()

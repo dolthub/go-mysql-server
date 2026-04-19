@@ -303,8 +303,8 @@ func (r *TableScan) TableIdNode() plan.TableIdNode {
 	return r.Table
 }
 
-func (r *TableScan) OutputCols() sql.Schema {
-	return r.Table.Schema()
+func (r *TableScan) OutputCols(ctx *sql.Context) sql.Schema {
+	return r.Table.Schema(ctx)
 }
 
 func (r *TableScan) Children() []*ExprGroup {
@@ -344,8 +344,8 @@ func (r *IndexScan) TableIdNode() plan.TableIdNode {
 	return r.Table
 }
 
-func (r *IndexScan) OutputCols() sql.Schema {
-	return r.Table.Schema()
+func (r *IndexScan) OutputCols(ctx *sql.Context) sql.Schema {
+	return r.Table.Schema(ctx)
 }
 
 func (r *IndexScan) Children() []*ExprGroup {
@@ -382,8 +382,8 @@ func (r *Values) TableIdNode() plan.TableIdNode {
 	return r.Table
 }
 
-func (r *Values) OutputCols() sql.Schema {
-	return r.Table.Schema()
+func (r *Values) OutputCols(ctx *sql.Context) sql.Schema {
+	return r.Table.Schema(ctx)
 }
 
 func (r *Values) Children() []*ExprGroup {
@@ -420,8 +420,8 @@ func (r *TableAlias) TableIdNode() plan.TableIdNode {
 	return r.Table
 }
 
-func (r *TableAlias) OutputCols() sql.Schema {
-	return r.Table.Schema()
+func (r *TableAlias) OutputCols(ctx *sql.Context) sql.Schema {
+	return r.Table.Schema(ctx)
 }
 
 func (r *TableAlias) Children() []*ExprGroup {
@@ -458,8 +458,8 @@ func (r *RecursiveTable) TableIdNode() plan.TableIdNode {
 	return r.Table
 }
 
-func (r *RecursiveTable) OutputCols() sql.Schema {
-	return r.Table.Schema()
+func (r *RecursiveTable) OutputCols(ctx *sql.Context) sql.Schema {
+	return r.Table.Schema(ctx)
 }
 
 func (r *RecursiveTable) Children() []*ExprGroup {
@@ -496,8 +496,8 @@ func (r *RecursiveCte) TableIdNode() plan.TableIdNode {
 	return r.Table
 }
 
-func (r *RecursiveCte) OutputCols() sql.Schema {
-	return r.Table.Schema()
+func (r *RecursiveCte) OutputCols(ctx *sql.Context) sql.Schema {
+	return r.Table.Schema(ctx)
 }
 
 func (r *RecursiveCte) Children() []*ExprGroup {
@@ -534,8 +534,8 @@ func (r *SubqueryAlias) TableIdNode() plan.TableIdNode {
 	return r.Table
 }
 
-func (r *SubqueryAlias) OutputCols() sql.Schema {
-	return r.Table.Schema()
+func (r *SubqueryAlias) OutputCols(ctx *sql.Context) sql.Schema {
+	return r.Table.Schema(ctx)
 }
 
 func (r *SubqueryAlias) Children() []*ExprGroup {
@@ -572,8 +572,8 @@ func (r *TableFunc) TableIdNode() plan.TableIdNode {
 	return nil
 }
 
-func (r *TableFunc) OutputCols() sql.Schema {
-	return r.Table.Schema()
+func (r *TableFunc) OutputCols(ctx *sql.Context) sql.Schema {
+	return r.Table.Schema(ctx)
 }
 
 func (r *TableFunc) Children() []*ExprGroup {
@@ -610,8 +610,8 @@ func (r *JSONTable) TableIdNode() plan.TableIdNode {
 	return r.Table
 }
 
-func (r *JSONTable) OutputCols() sql.Schema {
-	return r.Table.Schema()
+func (r *JSONTable) OutputCols(ctx *sql.Context) sql.Schema {
+	return r.Table.Schema(ctx)
 }
 
 func (r *JSONTable) Children() []*ExprGroup {
@@ -648,8 +648,8 @@ func (r *EmptyTable) TableIdNode() plan.TableIdNode {
 	return r.Table
 }
 
-func (r *EmptyTable) OutputCols() sql.Schema {
-	return r.Table.Schema()
+func (r *EmptyTable) OutputCols(ctx *sql.Context) sql.Schema {
+	return r.Table.Schema(ctx)
 }
 
 func (r *EmptyTable) Children() []*ExprGroup {
@@ -686,8 +686,8 @@ func (r *SetOp) TableIdNode() plan.TableIdNode {
 	return r.Table
 }
 
-func (r *SetOp) OutputCols() sql.Schema {
-	return r.Table.Schema()
+func (r *SetOp) OutputCols(ctx *sql.Context) sql.Schema {
+	return r.Table.Schema(ctx)
 }
 
 func (r *SetOp) Children() []*ExprGroup {
@@ -716,8 +716,8 @@ func (r *Project) Children() []*ExprGroup {
 	return []*ExprGroup{r.Child}
 }
 
-func (r *Project) outputCols() sql.ColSet {
-	return getProjectColset(r)
+func (r *Project) outputCols(ctx *sql.Context) sql.ColSet {
+	return getProjectColset(ctx, r)
 }
 
 type Distinct struct {
@@ -741,8 +741,8 @@ func (r *Distinct) Children() []*ExprGroup {
 	return []*ExprGroup{r.Child}
 }
 
-func (r *Distinct) outputCols() sql.ColSet {
-	return r.Child.RelProps.OutputCols()
+func (r *Distinct) outputCols(ctx *sql.Context) sql.ColSet {
+	return r.Child.RelProps.OutputCols(ctx)
 }
 
 type Max1Row struct {
@@ -766,8 +766,8 @@ func (r *Max1Row) Children() []*ExprGroup {
 	return []*ExprGroup{r.Child}
 }
 
-func (r *Max1Row) outputCols() sql.ColSet {
-	return r.Child.RelProps.OutputCols()
+func (r *Max1Row) outputCols(ctx *sql.Context) sql.ColSet {
+	return r.Child.RelProps.OutputCols(ctx)
 }
 
 type Filter struct {
@@ -792,11 +792,11 @@ func (r *Filter) Children() []*ExprGroup {
 	return []*ExprGroup{r.Child}
 }
 
-func (r *Filter) outputCols() sql.ColSet {
-	return r.Child.RelProps.OutputCols()
+func (r *Filter) outputCols(ctx *sql.Context) sql.ColSet {
+	return r.Child.RelProps.OutputCols(ctx)
 }
 
-func buildRelExpr(b *ExecBuilder, r RelExpr, children ...sql.Node) (sql.Node, error) {
+func buildRelExpr(ctx *sql.Context, b *ExecBuilder, r RelExpr, children ...sql.Node) (sql.Node, error) {
 	var result sql.Node
 	var err error
 
@@ -818,7 +818,7 @@ func buildRelExpr(b *ExecBuilder, r RelExpr, children ...sql.Node) (sql.Node, er
 	case *ConcatJoin:
 		result, err = b.buildConcatJoin(r, children...)
 	case *HashJoin:
-		result, err = b.buildHashJoin(r, children...)
+		result, err = b.buildHashJoin(ctx, r, children...)
 	case *MergeJoin:
 		result, err = b.buildMergeJoin(r, children...)
 	case *FullOuterJoin:

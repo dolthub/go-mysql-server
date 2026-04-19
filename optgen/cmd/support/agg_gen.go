@@ -94,15 +94,15 @@ func (g *AggGen) genAggConstructor(define AggDef) {
 }
 
 func (g *AggGen) genAggPropAccessors(define AggDef) {
-	retType := "a.Child.Type()"
+	retType := "a.Child.Type(ctx)"
 	if define.RetType != "" {
 		retType = define.RetType
 	}
-	fmt.Fprintf(g.w, "func (a *%s) Type() sql.Type {\n", define.Name)
+	fmt.Fprintf(g.w, "func (a *%s) Type(ctx *sql.Context) sql.Type {\n", define.Name)
 	fmt.Fprintf(g.w, "    return %s\n", retType)
 	fmt.Fprintf(g.w, "}\n\n")
 
-	fmt.Fprintf(g.w, "func (a *%s) IsNullable() bool {\n", define.Name)
+	fmt.Fprintf(g.w, "func (a *%s) IsNullable(ctx *sql.Context) bool {\n", define.Name)
 	fmt.Fprintf(g.w, "    return %t\n", define.Nullable)
 	fmt.Fprintf(g.w, "}\n\n")
 }
@@ -123,15 +123,15 @@ func (g *AggGen) genAggStringer(define AggDef) {
 	fmt.Fprintf(g.w, " return \"%s(\" + a.Child.String() + \")\"\n", strings.ToUpper(sqlName))
 	fmt.Fprintf(g.w, "}\n\n")
 
-	fmt.Fprintf(g.w, "func (a *%s) DebugString() string {\n", define.Name)
+	fmt.Fprintf(g.w, "func (a *%s) DebugString(ctx *sql.Context) string {\n", define.Name)
 	fmt.Fprintf(g.w, "  if a.window != nil {\n")
 	fmt.Fprintf(g.w, "    pr := sql.NewTreePrinter()\n")
 	fmt.Fprintf(g.w, "    _ = pr.WriteNode(\"%s\")\n	", strings.ToUpper(sqlName))
-	fmt.Fprintf(g.w, "    children := []string{sql.DebugString(a.window), sql.DebugString(a.Child)}\n")
+	fmt.Fprintf(g.w, "    children := []string{sql.DebugString(ctx, a.window), sql.DebugString(ctx, a.Child)}\n")
 	fmt.Fprintf(g.w, "    pr.WriteChildren(children...)\n")
 	fmt.Fprintf(g.w, "    return pr.String()\n")
 	fmt.Fprintf(g.w, "  }\n")
-	fmt.Fprintf(g.w, "  return fmt.Sprintf(\"%s(%%s)\", sql.DebugString(a.Child))\n", strings.ToUpper(sqlName))
+	fmt.Fprintf(g.w, "  return fmt.Sprintf(\"%s(%%s)\", sql.DebugString(ctx, a.Child))\n", strings.ToUpper(sqlName))
 	fmt.Fprintf(g.w, "}\n\n")
 }
 
@@ -157,8 +157,8 @@ func (g *AggGen) genAggWithWindow(define AggDef) {
 }
 
 func (g *AggGen) genAggWindowConstructor(define AggDef) {
-	fmt.Fprintf(g.w, "func (a *%s) NewWindowFunction() (sql.WindowFunction, error) {\n", define.Name)
-	fmt.Fprintf(g.w, "    child, err := transform.Clone(a.Child)\n")
+	fmt.Fprintf(g.w, "func (a *%s) NewWindowFunction(ctx *sql.Context) (sql.WindowFunction, error) {\n", define.Name)
+	fmt.Fprintf(g.w, "    child, err := transform.Clone(ctx, a.Child)\n")
 	fmt.Fprintf(g.w, "    if err != nil {\n")
 	fmt.Fprintf(g.w, "        return nil, err\n")
 	fmt.Fprintf(g.w, "    }\n")
@@ -167,8 +167,8 @@ func (g *AggGen) genAggWindowConstructor(define AggDef) {
 }
 
 func (g *AggGen) genAggNewBuffer(define AggDef) {
-	fmt.Fprintf(g.w, "func (a *%s) NewBuffer() (sql.AggregationBuffer, error) {\n", define.Name)
-	fmt.Fprintf(g.w, "    child, err := transform.Clone(a.Child)\n")
+	fmt.Fprintf(g.w, "func (a *%s) NewBuffer(ctx *sql.Context) (sql.AggregationBuffer, error) {\n", define.Name)
+	fmt.Fprintf(g.w, "    child, err := transform.Clone(ctx, a.Child)\n")
 	fmt.Fprintf(g.w, "    if err != nil {\n")
 	fmt.Fprintf(g.w, "        return nil, err\n")
 	fmt.Fprintf(g.w, "    }\n")

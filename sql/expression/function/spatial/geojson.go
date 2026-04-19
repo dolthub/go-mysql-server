@@ -22,7 +22,7 @@ var _ sql.FunctionExpression = (*AsGeoJSON)(nil)
 var _ sql.CollationCoercible = (*AsGeoJSON)(nil)
 
 // NewAsGeoJSON creates a new point expression.
-func NewAsGeoJSON(args ...sql.Expression) (sql.Expression, error) {
+func NewAsGeoJSON(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 1 || len(args) > 3 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_ASGEOJSON", "1, 2, or 3", len(args))
 	}
@@ -40,7 +40,7 @@ func (g *AsGeoJSON) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (g *AsGeoJSON) Type() sql.Type {
+func (g *AsGeoJSON) Type(ctx *sql.Context) sql.Type {
 	return types.JSON
 }
 
@@ -58,8 +58,8 @@ func (g *AsGeoJSON) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (g *AsGeoJSON) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewAsGeoJSON(children...)
+func (g *AsGeoJSON) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewAsGeoJSON(ctx, children...)
 }
 
 func PointToSlice(p types.Point) [2]float64 {
@@ -394,7 +394,7 @@ var _ sql.FunctionExpression = (*GeomFromGeoJSON)(nil)
 var _ sql.CollationCoercible = (*GeomFromGeoJSON)(nil)
 
 // NewGeomFromGeoJSON creates a new point expression.
-func NewGeomFromGeoJSON(args ...sql.Expression) (sql.Expression, error) {
+func NewGeomFromGeoJSON(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 1 || len(args) > 3 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_GEOMFROMGEOJSON", "1, 2, or 3", len(args))
 	}
@@ -412,7 +412,7 @@ func (g *GeomFromGeoJSON) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (g *GeomFromGeoJSON) Type() sql.Type {
+func (g *GeomFromGeoJSON) Type(ctx *sql.Context) sql.Type {
 	return types.GeometryType{}
 }
 
@@ -430,8 +430,8 @@ func (g *GeomFromGeoJSON) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (g *GeomFromGeoJSON) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewGeomFromGeoJSON(children...)
+func (g *GeomFromGeoJSON) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewGeomFromGeoJSON(ctx, children...)
 }
 
 func SliceToPoint(coords interface{}) (interface{}, error) {

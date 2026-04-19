@@ -76,8 +76,9 @@ func TestJSONUnquote(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(fmt.Sprintf("%v", tt.arg), func(t *testing.T) {
 			require := require.New(t)
-			js := NewJSONUnquote(tt.arg)
-			result, err := js.Eval(sql.NewEmptyContext(), nil)
+			ctx := sql.NewEmptyContext()
+			js := NewJSONUnquote(ctx, tt.arg)
+			result, err := js.Eval(ctx, nil)
 			if tt.err {
 				require.Error(err)
 				return

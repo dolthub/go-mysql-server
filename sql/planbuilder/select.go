@@ -164,8 +164,8 @@ func (b *Builder) buildLimitVal(inScope *scope, e ast.Expr) sql.Expression {
 			if col, ok := inScope.proc.GetVar(e.String()); ok {
 				// proc param is OK
 				if pp, ok := col.scalarGf().(*expression.ProcedureParam); ok {
-					if !pp.Type().Promote().Equals(types.Int64) && !pp.Type().Promote().Equals(types.Uint64) {
-						err := fmt.Errorf("the variable '%s' has a non-integer based type: %s", pp.Name(), pp.Type().String())
+					if !pp.Type(b.ctx).Promote().Equals(types.Int64) && !pp.Type(b.ctx).Promote().Equals(types.Uint64) {
+						err := fmt.Errorf("the variable '%s' has a non-integer based type: %s", pp.Name(), pp.Type(b.ctx).String())
 						b.handleErr(err)
 					}
 					return pp
@@ -187,7 +187,7 @@ func (b *Builder) typeCoerceLiteral(e sql.Expression) sql.Expression {
 	case *expression.Literal:
 		val, _, err := types.Int64.Convert(b.ctx, e.Value())
 		if err != nil {
-			err = fmt.Errorf("%s: %w", err.Error(), sql.ErrInvalidTypeForLimit.New(types.Int64, e.Type()))
+			err = fmt.Errorf("%s: %w", err.Error(), sql.ErrInvalidTypeForLimit.New(types.Int64, e.Type(b.ctx)))
 		}
 		return expression.NewLiteral(val, types.Int64)
 	case *expression.BindVar:
@@ -210,7 +210,7 @@ func (b *Builder) buildDistinct(inScope *scope, distinct bool, distinctOn ast.Ex
 		distinctOnExprs[i] = b.buildScalar(inScope, distinctOn[i])
 	}
 	var err error
-	inScope.node, err = b.f.buildDistinct(inScope.node, inScope.refsSubquery, distinctOnExprs)
+	inScope.node, err = b.f.buildDistinct(b.ctx, inScope.node, inScope.refsSubquery, distinctOnExprs)
 	return err
 }
 

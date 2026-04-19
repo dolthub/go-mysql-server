@@ -32,7 +32,7 @@ var _ sql.FunctionExpression = (*ConvexHull)(nil)
 var _ sql.CollationCoercible = (*ConvexHull)(nil)
 
 // NewConvexHull creates a new ConvexHull expression.
-func NewConvexHull(e sql.Expression) sql.Expression {
+func NewConvexHull(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &ConvexHull{expression.UnaryExpressionStub{Child: e}}
 }
 
@@ -47,12 +47,12 @@ func (c *ConvexHull) Description() string {
 }
 
 // IsNullable implements the sql.Expression interface.
-func (c *ConvexHull) IsNullable() bool {
-	return c.Child.IsNullable()
+func (c *ConvexHull) IsNullable(ctx *sql.Context) bool {
+	return c.Child.IsNullable(ctx)
 }
 
 // Type implements the sql.Expression interface.
-func (c *ConvexHull) Type() sql.Type {
+func (c *ConvexHull) Type(ctx *sql.Context) sql.Type {
 	return types.GeometryType{}
 }
 
@@ -66,11 +66,11 @@ func (c *ConvexHull) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (c *ConvexHull) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (c *ConvexHull) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 	}
-	return NewConvexHull(children[0]), nil
+	return NewConvexHull(ctx, children[0]), nil
 }
 
 // collectPoints extracts all points from any geometry type.

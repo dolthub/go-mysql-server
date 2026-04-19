@@ -70,12 +70,12 @@ func (d *Div) String() string {
 	return fmt.Sprintf("(%s / %s)", d.LeftChild, d.RightChild)
 }
 
-func (d *Div) DebugString() string {
-	return fmt.Sprintf("(%s / %s)", sql.DebugString(d.LeftChild), sql.DebugString(d.RightChild))
+func (d *Div) DebugString(ctx *sql.Context) string {
+	return fmt.Sprintf("(%s / %s)", sql.DebugString(ctx, d.LeftChild), sql.DebugString(ctx, d.RightChild))
 }
 
 // IsNullable implements the sql.Expression interface.
-func (d *Div) IsNullable() bool {
+func (d *Div) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
@@ -83,15 +83,15 @@ func (d *Div) IsNullable() bool {
 // the result back as a float when possible, since division with floats is more efficient than division with Decimals.
 // However, if this is the outermost division expression in an expression tree, we must return the result as a
 // Decimal type in order to match MySQL's results exactly.
-func (d *Div) Type() sql.Type {
-	return d.determineResultType(isOutermostDiv(d, 0, d.divOps))
+func (d *Div) Type(ctx *sql.Context) sql.Type {
+	return d.determineResultType(ctx, isOutermostDiv(d, 0, d.divOps))
 }
 
 // internalType returns the internal result type for this division expression. For performance reasons, we prefer
 // to use floats internally in division operations wherever possible, since division operations on floats can be
 // orders of magnitude faster than division operations on Decimal types.
-func (d *Div) internalType() sql.Type {
-	return d.determineResultType(false)
+func (d *Div) internalType(ctx *sql.Context) sql.Type {
+	return d.determineResultType(ctx, false)
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -100,7 +100,7 @@ func (*Div) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, 
 }
 
 // WithChildren implements the Expression interface.
-func (d *Div) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (d *Div) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 2)
 	}
@@ -149,7 +149,7 @@ func (d *Div) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interfa
 	// this operation is only done on the left value as the scale/fraction part of the leftmost value
 	// is used to calculate the scale of the final result. If the value is GetField of decimal type column
 	// the decimal value evaluated does not always match the scale of column type definition
-	if dt, ok := d.LeftChild.Type().(sql.DecimalType); ok {
+	if dt, ok := d.LeftChild.Type(ctx).(sql.DecimalType); ok {
 		if dVal, ok := lval.(decimal.Decimal); ok {
 			ts := int32(dt.Scale())
 			if ts > dVal.Exponent()*-1 {
@@ -177,9 +177,9 @@ func (d *Div) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, interfa
 // The decimal types of left and right value does NOT need to be the same. Both the types
 // should be preserved.
 func (d *Div) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}) {
-	typ := d.internalType()
-	lIsTimeType := types.IsTime(d.LeftChild.Type())
-	rIsTimeType := types.IsTime(d.RightChild.Type())
+	typ := d.internalType(ctx)
+	lIsTimeType := types.IsTime(d.LeftChild.Type(ctx))
+	rIsTimeType := types.IsTime(d.RightChild.Type(ctx))
 
 	if types.IsFloat(typ) {
 		left = convertValueToType(ctx, typ, left, lIsTimeType)
@@ -253,13 +253,13 @@ func (d *Div) div(ctx *sql.Context, lval, rval interface{}) (interface{}, error)
 // and looking for float types or Decimal types. If |outermostResult| is false, then we prefer to treat ints as floats
 // (instead of Decimals) for performance reasons, but when |outermostResult| is true, we must treat ints as Decimals
 // in order to match MySQL's behavior.
-func (d *Div) determineResultType(outermostResult bool) sql.Type {
+func (d *Div) determineResultType(ctx *sql.Context, outermostResult bool) sql.Type {
 	//TODO: what if both BindVars? should be constant folded
-	rTyp := d.RightChild.Type()
+	rTyp := d.RightChild.Type(ctx)
 	if types.IsDeferredType(rTyp) {
 		return rTyp
 	}
-	lTyp := d.LeftChild.Type()
+	lTyp := d.LeftChild.Type(ctx)
 	if types.IsDeferredType(lTyp) {
 		return lTyp
 	}
@@ -318,13 +318,13 @@ func (d *Div) determineResultType(outermostResult bool) sql.Type {
 // getFloatOrMaxDecimalType returns either Float64 or Decimal type with max precision and scale
 // depending on column reference, expression types and evaluated value types. Otherwise, the return
 // type is always max decimal type. |treatIntsAsFloats| is used for division operation optimization.
-func getFloatOrMaxDecimalType(e sql.Expression, treatIntsAsFloats bool) sql.Type {
+func getFloatOrMaxDecimalType(ctx *sql.Context, e sql.Expression, treatIntsAsFloats bool) sql.Type {
 	var resType sql.Type
 	var maxWhole, maxFrac uint8
-	sql.Inspect(e, func(expr sql.Expression) bool {
+	sql.Inspect(ctx, e, func(ctx *sql.Context, expr sql.Expression) bool {
 		switch c := expr.(type) {
 		case *GetField:
-			ct := c.Type()
+			ct := c.Type(ctx)
 			if treatIntsAsFloats && types.IsInteger(ct) {
 				resType = types.Float64
 				return false
@@ -355,7 +355,7 @@ func getFloatOrMaxDecimalType(e sql.Expression, treatIntsAsFloats bool) sql.Type
 				}
 			}
 		case *Literal:
-			if types.IsNumber(c.Type()) {
+			if types.IsNumber(c.Type(ctx)) {
 				l, err := c.Eval(nil, nil)
 				if err == nil {
 					p, s := GetPrecisionAndScale(l)
@@ -368,9 +368,9 @@ func getFloatOrMaxDecimalType(e sql.Expression, treatIntsAsFloats bool) sql.Type
 				}
 			}
 		case sql.FunctionExpression:
-			// Mod.Type() calls this, so ignore it for infinite loop
+			// Mod.Type(ctx) calls this, so ignore it for infinite loop
 			if c.FunctionName() != "mod" {
-				resType = c.Type()
+				resType = c.Type(ctx)
 			}
 		}
 		return true
@@ -520,7 +520,7 @@ func getFinalScale(ctx *sql.Context, row sql.Row, expr sql.Expression, divOpCnt 
 				return 0, false
 			}
 			_, s := GetPrecisionAndScale(lval)
-			typ := div.LeftChild.Type()
+			typ := div.LeftChild.Type(ctx)
 			if dt, dok := typ.(sql.DecimalType); dok {
 				ts := dt.Scale()
 				if ts > s {
@@ -579,7 +579,7 @@ func getFinalScale(ctx *sql.Context, row sql.Row, expr sql.Expression, divOpCnt 
 	if lit, isLit := expr.(*Literal); isLit {
 		_, fScale = GetPrecisionAndScale(lit.Val)
 	}
-	typ := expr.Type()
+	typ := expr.Type(ctx)
 	if dt, dok := typ.(sql.DecimalType); dok {
 		ts := dt.Scale()
 		if ts > fScale {
@@ -650,19 +650,19 @@ func (i *IntDiv) String() string {
 	return fmt.Sprintf("(%s div %s)", i.LeftChild, i.RightChild)
 }
 
-func (i *IntDiv) DebugString() string {
-	return fmt.Sprintf("(%s div %s)", sql.DebugString(i.LeftChild), sql.DebugString(i.RightChild))
+func (i *IntDiv) DebugString(ctx *sql.Context) string {
+	return fmt.Sprintf("(%s div %s)", sql.DebugString(ctx, i.LeftChild), sql.DebugString(ctx, i.RightChild))
 }
 
 // IsNullable implements the sql.Expression interface.
-func (i *IntDiv) IsNullable() bool {
+func (i *IntDiv) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
 // Type returns the greatest type for given operation.
-func (i *IntDiv) Type() sql.Type {
-	lTyp := i.LeftChild.Type()
-	rTyp := i.RightChild.Type()
+func (i *IntDiv) Type(ctx *sql.Context) sql.Type {
+	lTyp := i.LeftChild.Type(ctx)
+	rTyp := i.RightChild.Type(ctx)
 
 	if types.IsUnsigned(lTyp) || types.IsUnsigned(rTyp) {
 		return types.Uint64
@@ -677,7 +677,7 @@ func (*IntDiv) CollationCoercibility(ctx *sql.Context) (collation sql.CollationI
 }
 
 // WithChildren implements the Expression interface.
-func (i *IntDiv) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (i *IntDiv) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 2)
 	}
@@ -726,7 +726,7 @@ func (i *IntDiv) evalLeftRight(ctx *sql.Context, row sql.Row) (interface{}, inte
 // should be preserved.
 func (i *IntDiv) convertLeftRight(ctx *sql.Context, left interface{}, right interface{}) (interface{}, interface{}) {
 	var typ sql.Type
-	lTyp, rTyp := i.LeftChild.Type(), i.RightChild.Type()
+	lTyp, rTyp := i.LeftChild.Type(ctx), i.RightChild.Type(ctx)
 	lIsTimeType := types.IsTime(lTyp)
 	rIsTimeType := types.IsTime(rTyp)
 

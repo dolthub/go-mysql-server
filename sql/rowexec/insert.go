@@ -53,9 +53,9 @@ type insertIter struct {
 	hasAfterTrigger             bool
 }
 
-func getInsertExpressions(values sql.Node) []sql.Expression {
+func getInsertExpressions(ctx *sql.Context, values sql.Node) []sql.Expression {
 	var exprs []sql.Expression
-	transform.InspectWithOpaque(values, func(node sql.Node) bool {
+	transform.InspectWithOpaque(ctx, values, func(ctx *sql.Context, node sql.Node) bool {
 		switch node := node.(type) {
 		case *plan.Project:
 			exprs = node.Projections

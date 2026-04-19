@@ -73,13 +73,13 @@ func (nl *NamedLockFunction) GetLockName(ctx *sql.Context, row sql.Row) (*string
 		return nil, nil
 	}
 
-	s, ok := nl.Child.Type().(sql.StringType)
+	s, ok := nl.Child.Type(ctx).(sql.StringType)
 	if !ok {
-		return nil, ErrIllegalLockNameArgType.New(nl.Child.Type().String(), nl.funcName)
+		return nil, ErrIllegalLockNameArgType.New(nl.Child.Type(ctx).String(), nl.funcName)
 	}
 	lockName, err := types.ConvertToString(ctx, val, s, nil)
 	if err != nil {
-		return nil, fmt.Errorf("%w; %s", ErrIllegalLockNameArgType.New(nl.Child.Type().String(), nl.funcName), err)
+		return nil, fmt.Errorf("%w; %s", ErrIllegalLockNameArgType.New(nl.Child.Type(ctx).String(), nl.funcName), err)
 	}
 
 	return &lockName, nil
@@ -91,12 +91,12 @@ func (nl *NamedLockFunction) String() string {
 }
 
 // IsNullable implements the Expression interface.
-func (nl *NamedLockFunction) IsNullable() bool {
+func (nl *NamedLockFunction) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
 // Type implements the Expression interface.
-func (nl *NamedLockFunction) Type() sql.Type {
+func (nl *NamedLockFunction) Type(ctx *sql.Context) sql.Type {
 	return nl.retType
 }
 
@@ -125,7 +125,7 @@ var _ sql.FunctionExpression = &IsFreeLock{}
 var _ sql.CollationCoercible = &IsFreeLock{}
 
 func NewIsFreeLock(ls *sql.LockSubsystem) sql.CreateFunc1Args {
-	return func(e sql.Expression) sql.Expression {
+	return func(ctx *sql.Context, e sql.Expression) sql.Expression {
 		return &IsFreeLock{
 			NamedLockFunction: NamedLockFunction{
 				UnaryExpressionStub: expression.UnaryExpressionStub{e},
@@ -151,12 +151,12 @@ func (i *IsFreeLock) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return i.evalLockLogic(ctx, IsFreeLockFunc, row)
 }
 
-func (i *IsFreeLock) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (i *IsFreeLock) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}
 
-	return NewIsFreeLock(i.ls)(children[0]), nil
+	return NewIsFreeLock(i.ls)(ctx, children[0]), nil
 }
 
 type IsUsedLock struct {
@@ -167,7 +167,7 @@ var _ sql.FunctionExpression = &IsUsedLock{}
 var _ sql.CollationCoercible = &IsUsedLock{}
 
 func NewIsUsedLock(ls *sql.LockSubsystem) sql.CreateFunc1Args {
-	return func(e sql.Expression) sql.Expression {
+	return func(ctx *sql.Context, e sql.Expression) sql.Expression {
 		return &IsUsedLock{
 			NamedLockFunction: NamedLockFunction{
 				UnaryExpressionStub: expression.UnaryExpressionStub{e},
@@ -193,12 +193,12 @@ func (i *IsUsedLock) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return i.evalLockLogic(ctx, IsUsedLockFunc, row)
 }
 
-func (i *IsUsedLock) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (i *IsUsedLock) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}
 
-	return NewIsUsedLock(i.ls)(children[0]), nil
+	return NewIsUsedLock(i.ls)(ctx, children[0]), nil
 }
 
 type ReleaseLock struct {
@@ -209,7 +209,7 @@ var _ sql.FunctionExpression = &ReleaseLock{}
 var _ sql.CollationCoercible = &ReleaseLock{}
 
 func NewReleaseLock(ls *sql.LockSubsystem) sql.CreateFunc1Args {
-	return func(e sql.Expression) sql.Expression {
+	return func(ctx *sql.Context, e sql.Expression) sql.Expression {
 		return &ReleaseLock{
 			NamedLockFunction: NamedLockFunction{
 				UnaryExpressionStub: expression.UnaryExpressionStub{e},
@@ -235,12 +235,12 @@ func (i *ReleaseLock) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return i.evalLockLogic(ctx, ReleaseLockFunc, row)
 }
 
-func (i *ReleaseLock) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (i *ReleaseLock) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}
 
-	return NewReleaseLock(i.ls)(children[0]), nil
+	return NewReleaseLock(i.ls)(ctx, children[0]), nil
 }
 
 // IsFreeLockFunc is the function logic that is executed when the is_free_lock function is called.
@@ -277,8 +277,8 @@ var _ sql.FunctionExpression = (*GetLock)(nil)
 var _ sql.CollationCoercible = (*GetLock)(nil)
 
 // CreateNewGetLock returns a new GetLock object
-func CreateNewGetLock(ls *sql.LockSubsystem) func(e1, e2 sql.Expression) sql.Expression {
-	return func(e1, e2 sql.Expression) sql.Expression {
+func CreateNewGetLock(ctx *sql.Context, ls *sql.LockSubsystem) func(ctx *sql.Context, e1, e2 sql.Expression) sql.Expression {
+	return func(ctx *sql.Context, e1, e2 sql.Expression) sql.Expression {
 		return &GetLock{expression.BinaryExpressionStub{e1, e2}, ls}
 	}
 }
@@ -323,14 +323,14 @@ func (gl *GetLock) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return nil, nil
 	}
 
-	s, ok := gl.LeftChild.Type().(sql.StringType)
+	s, ok := gl.LeftChild.Type(ctx).(sql.StringType)
 	if !ok {
-		return nil, ErrIllegalLockNameArgType.New(gl.LeftChild.Type().String(), gl.FunctionName())
+		return nil, ErrIllegalLockNameArgType.New(gl.LeftChild.Type(ctx).String(), gl.FunctionName())
 	}
 
 	lockName, err := types.ConvertToString(ctx, leftVal, s, nil)
 	if err != nil {
-		return nil, fmt.Errorf("%w; %s", ErrIllegalLockNameArgType.New(gl.LeftChild.Type().String(), gl.FunctionName()), err)
+		return nil, fmt.Errorf("%w; %s", ErrIllegalLockNameArgType.New(gl.LeftChild.Type(ctx).String(), gl.FunctionName()), err)
 	}
 
 	timeout, _, err := types.Int64.Convert(ctx, rightVal)
@@ -358,12 +358,12 @@ func (gl *GetLock) String() string {
 }
 
 // IsNullable implements the Expression interface.
-func (gl *GetLock) IsNullable() bool {
-	return gl.LeftChild.IsNullable() || gl.RightChild.IsNullable()
+func (gl *GetLock) IsNullable(ctx *sql.Context) bool {
+	return gl.LeftChild.IsNullable(ctx) || gl.RightChild.IsNullable(ctx)
 }
 
 // WithChildren implements the Expression interface.
-func (gl *GetLock) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (gl *GetLock) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(gl, len(children), 1)
 	}
@@ -372,7 +372,7 @@ func (gl *GetLock) WithChildren(children ...sql.Expression) (sql.Expression, err
 }
 
 // Type implements the Expression interface.
-func (gl *GetLock) Type() sql.Type {
+func (gl *GetLock) Type(ctx *sql.Context) sql.Type {
 	return types.Int8
 }
 
@@ -389,8 +389,8 @@ type ReleaseAllLocks struct {
 var _ sql.FunctionExpression = ReleaseAllLocks{}
 var _ sql.CollationCoercible = ReleaseAllLocks{}
 
-func NewReleaseAllLocks(ls *sql.LockSubsystem) func() sql.Expression {
-	return func() sql.Expression {
+func NewReleaseAllLocks(ctx *sql.Context, ls *sql.LockSubsystem) func(ctx *sql.Context) sql.Expression {
+	return func(ctx *sql.Context) sql.Expression {
 		return ReleaseAllLocks{
 			NoArgFunc: NoArgFunc{Name: "release_all_locks", SQLType: types.Int32},
 			ls:        ls,
@@ -412,6 +412,6 @@ func (r ReleaseAllLocks) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 	return r.ls.ReleaseAll(ctx)
 }
 
-func (r ReleaseAllLocks) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (r ReleaseAllLocks) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	return NoArgFuncWithChildren(r, children)
 }

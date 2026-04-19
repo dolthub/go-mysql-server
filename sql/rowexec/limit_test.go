@@ -47,10 +47,10 @@ func TestLimitPlan(t *testing.T) {
 func TestLimitImplementsNode(t *testing.T) {
 	require := require.New(t)
 	_, table, _ := getTestingTable(t)
-
+	ctx := sql.NewEmptyContext()
 	limitPlan := plan.NewLimit(expression.NewLiteral(0, types.Int8), plan.NewResolvedTable(table, nil, nil))
-	childSchema := table.Schema()
-	nodeSchema := limitPlan.Schema()
+	childSchema := table.Schema(ctx)
+	nodeSchema := limitPlan.Schema(ctx)
 	require.True(reflect.DeepEqual(childSchema, nodeSchema))
 	require.True(receivesNode(limitPlan))
 	require.True(limitPlan.Resolved())
@@ -121,7 +121,7 @@ func getTestingTable(t *testing.T) (*memory.Database, *memory.Table, int) {
 	childSchema := sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "col1", Type: types.Text},
 	})
-	testingTable = memory.NewTable(db, "test", childSchema, nil)
+	testingTable = memory.NewTable(sql.NewEmptyContext(), db, "test", childSchema, nil)
 
 	rows := []sql.Row{
 		sql.NewRow("11a"),

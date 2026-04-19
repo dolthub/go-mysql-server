@@ -31,7 +31,7 @@ var _ sql.FunctionExpression = (*NumPoints)(nil)
 var _ sql.CollationCoercible = (*NumPoints)(nil)
 
 // NewNumPoints creates a new NumPoints expression.
-func NewNumPoints(e sql.Expression) sql.Expression {
+func NewNumPoints(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &NumPoints{expression.UnaryExpressionStub{Child: e}}
 }
 
@@ -46,12 +46,12 @@ func (n *NumPoints) Description() string {
 }
 
 // IsNullable implements the sql.Expression interface.
-func (n *NumPoints) IsNullable() bool {
+func (n *NumPoints) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
 // Type implements the sql.Expression interface.
-func (n *NumPoints) Type() sql.Type {
+func (n *NumPoints) Type(ctx *sql.Context) sql.Type {
 	return types.Int32
 }
 
@@ -65,11 +65,11 @@ func (n *NumPoints) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (n *NumPoints) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (n *NumPoints) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 1)
 	}
-	return NewNumPoints(children[0]), nil
+	return NewNumPoints(ctx, children[0]), nil
 }
 
 // Eval implements the sql.Expression interface.

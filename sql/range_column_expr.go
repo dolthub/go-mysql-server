@@ -334,7 +334,7 @@ func (r MySQLRangeColumnExpr) String() string {
 }
 
 // DebugString returns this MySQLRangeColumnExpr as a string for debugging purposes.
-func (r MySQLRangeColumnExpr) DebugString() string {
+func (r MySQLRangeColumnExpr) DebugString(ctx *Context) string {
 	var lowerB interface{} = "-∞"
 	if MySQLRangeCutIsBinding(r.LowerBound) {
 		lowerB = GetMySQLRangeCutKey(r.LowerBound)

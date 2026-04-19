@@ -15,6 +15,7 @@
 package expression
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -66,12 +67,12 @@ func (lit *Literal) Resolved() bool {
 }
 
 // IsNullable implements the Expression interface.
-func (lit *Literal) IsNullable() bool {
+func (lit *Literal) IsNullable(ctx *sql.Context) bool {
 	return lit.Val == nil
 }
 
 // Type implements the Expression interface.
-func (lit *Literal) Type() sql.Type {
+func (lit *Literal) Type(ctx *sql.Context) sql.Type {
 	return lit.Typ
 }
 
@@ -115,7 +116,7 @@ func (lit *Literal) String() string {
 	}
 }
 
-func (lit *Literal) DebugString() string {
+func (lit *Literal) DebugString(ctx *sql.Context) string {
 	typeStr := lit.Typ.String()
 	switch v := lit.Val.(type) {
 	case string:
@@ -136,7 +137,7 @@ func (lit *Literal) DebugString() string {
 }
 
 // WithChildren implements the Expression interface.
-func (lit *Literal) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (lit *Literal) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(lit, len(children), 0)
 	}
@@ -154,7 +155,7 @@ func (lit *Literal) EvalValue(ctx *sql.Context, row sql.ValueRow) (sql.Value, er
 }
 
 // IsValueExpression implements the ValueExpression interface.
-func (lit *Literal) IsValueExpression() bool {
+func (lit *Literal) IsValueExpression(ctx *sql.Context) bool {
 	return types.IsInteger(lit.Typ)
 }
 
@@ -163,7 +164,7 @@ func (lit *Literal) Value() interface{} {
 	return lit.Val
 }
 
-func (lit *Literal) WithResolvedChildren(children []any) (any, error) {
+func (lit *Literal) WithResolvedChildren(ctx context.Context, children []any) (any, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(lit, len(children), 0)
 	}

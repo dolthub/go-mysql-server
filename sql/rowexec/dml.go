@@ -28,7 +28,7 @@ import (
 )
 
 func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row sql.Row) (sql.RowIter, error) {
-	dstSchema := ii.Destination.Schema()
+	dstSchema := ii.Destination.Schema(ctx)
 
 	insertable, err := plan.GetInsertable(ii.Destination)
 	if err != nil {
@@ -55,7 +55,7 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 	}
 
 	var unlocker func()
-	insertExpressions := getInsertExpressions(ii.Source)
+	insertExpressions := getInsertExpressions(ctx, ii.Source)
 	if ii.FirstGeneratedAutoIncRowIdx >= 0 {
 		_, i, _ := sql.SystemVariables.GetGlobal("innodb_autoinc_lock_mode")
 		lockMode, ok := i.(int64)
@@ -90,7 +90,7 @@ func (b *BaseBuilder) buildInsertInto(ctx *sql.Context, ii *plan.InsertInto, row
 		ignore:                      ii.Ignore,
 		firstGeneratedAutoIncRowIdx: ii.FirstGeneratedAutoIncRowIdx,
 		returnExprs:                 ii.Returning,
-		returnSchema:                ii.Schema(),
+		returnSchema:                ii.Schema(ctx),
 		deferredDefaults:            ii.DeferredDefaults,
 		hasAfterTrigger:             ii.HasAfterTrigger,
 	}
@@ -123,7 +123,7 @@ func (b *BaseBuilder) buildDeleteFrom(ctx *sql.Context, n *plan.DeleteFrom, row 
 
 	targets := n.GetDeleteTargets()
 	schemaPositionDeleters := make([]schemaPositionDeleter, len(targets))
-	schema := n.Child.Schema()
+	schema := n.Child.Schema(ctx)
 
 	for i, target := range targets {
 		deletable, err := plan.GetDeletable(target)
@@ -135,7 +135,7 @@ func (b *BaseBuilder) buildDeleteFrom(ctx *sql.Context, n *plan.DeleteFrom, row 
 		// By default the sourceName in the schema is the table name, but if there is a
 		// table alias applied, then use that instead.
 		sourceName := deletable.Name()
-		transform.InspectWithOpaque(target, func(node sql.Node) bool {
+		transform.InspectWithOpaque(ctx, target, func(ctx *sql.Context, node sql.Node) bool {
 			if tableAlias, ok := node.(*plan.TableAlias); ok {
 				sourceName = tableAlias.Name()
 				return false
@@ -149,7 +149,7 @@ func (b *BaseBuilder) buildDeleteFrom(ctx *sql.Context, n *plan.DeleteFrom, row 
 		}
 		schemaPositionDeleters[i] = schemaPositionDeleter{deleter, int(start), int(end)}
 	}
-	return newDeleteIter(iter, schema, schemaPositionDeleters, n.Returning, n.Schema()), nil
+	return newDeleteIter(iter, schema, schemaPositionDeleters, n.Returning, n.Schema(ctx)), nil
 }
 
 func (b *BaseBuilder) buildForeignKeyHandler(ctx *sql.Context, n *plan.ForeignKeyHandler, row sql.Row) (sql.RowIter, error) {
@@ -168,7 +168,7 @@ func (b *BaseBuilder) buildUpdate(ctx *sql.Context, n *plan.Update, row sql.Row)
 		return nil, err
 	}
 
-	return newUpdateIter(iter, updatable.Schema(), updater, n.Checks(), n.Ignore, n.Returning, n.Schema()), nil
+	return newUpdateIter(iter, updatable.Schema(ctx), updater, n.Checks(), n.Ignore, n.Returning, n.Schema(ctx)), nil
 }
 
 func (b *BaseBuilder) buildDropForeignKey(ctx *sql.Context, n *plan.DropForeignKey, row sql.Row) (sql.RowIter, error) {
@@ -359,7 +359,6 @@ func (b *BaseBuilder) buildTriggerExecutor(ctx *sql.Context, n *plan.TriggerExec
 		triggerTime:    n.TriggerTime,
 		triggerEvent:   n.TriggerEvent,
 		executionLogic: n.Right(),
-		ctx:            ctx,
 		b:              b,
 	}, nil
 }
@@ -380,7 +379,7 @@ func (b *BaseBuilder) buildTruncate(ctx *sql.Context, n *plan.Truncate, row sql.
 	if err != nil {
 		return nil, err
 	}
-	for _, col := range truncatable.Schema() {
+	for _, col := range truncatable.Schema(ctx) {
 		if col.AutoIncrement {
 			aiTable, ok := truncatable.(sql.AutoIncrementTable)
 			if ok {
@@ -412,7 +411,7 @@ func (b *BaseBuilder) buildUpdateSource(ctx *sql.Context, n *plan.UpdateSource, 
 		return nil, err
 	}
 
-	schema, err := n.GetChildSchema()
+	schema, err := n.GetChildSchema(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -437,7 +436,7 @@ func (b *BaseBuilder) buildUpdateJoin(ctx *sql.Context, n *plan.UpdateJoin, row 
 	}
 	return &updateJoinIter{
 		updateSourceIter: ji,
-		joinSchema:       n.Child.(*plan.UpdateSource).Child.Schema(),
+		joinSchema:       n.Child.(*plan.UpdateSource).Child.Schema(ctx),
 		updaters:         updaters,
 		caches:           make(map[string]sql.KeyValueCache),
 		disposals:        make(map[string]sql.DisposeFunc),

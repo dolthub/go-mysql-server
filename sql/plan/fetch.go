@@ -63,16 +63,16 @@ func (f *Fetch) String() string {
 }
 
 // DebugString implements the interface sql.DebugStringer.
-func (f *Fetch) DebugString() string {
+func (f *Fetch) DebugString(ctx *sql.Context) string {
 	vars := make([]string, len(f.ToSet))
 	for i, e := range f.ToSet {
-		vars[i] = sql.DebugString(e)
+		vars[i] = sql.DebugString(ctx, e)
 	}
 	return fmt.Sprintf("FETCH %s INTO %s", f.Name, strings.Join(vars, ", "))
 }
 
 // Schema implements the interface sql.Node.
-func (f *Fetch) Schema() sql.Schema {
+func (f *Fetch) Schema(ctx *sql.Context) sql.Schema {
 	return nil
 }
 
@@ -80,7 +80,7 @@ func (f *Fetch) Expressions() []sql.Expression {
 	return f.ToSet
 }
 
-func (f *Fetch) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (f *Fetch) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != len(f.ToSet) {
 		return nil, sql.ErrInvalidExpressionNumber.New(len(exprs), len(f.ToSet))
 	}
@@ -99,7 +99,7 @@ func (f *Fetch) IsReadOnly() bool {
 }
 
 // WithChildren implements the interface sql.Node.
-func (f *Fetch) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (f *Fetch) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return f, nil
 }
 

@@ -33,8 +33,8 @@ var _ sql.FunctionExpression = (Version)("")
 var _ sql.CollationCoercible = (Version)("")
 
 // NewVersion creates a new Version UDF.
-func NewVersion(versionPostfix string) func(...sql.Expression) (sql.Expression, error) {
-	return func(...sql.Expression) (sql.Expression, error) {
+func NewVersion(versionPostfix string) func(ctx *sql.Context, exprs ...sql.Expression) (sql.Expression, error) {
+	return func(ctx *sql.Context, exprs ...sql.Expression) (sql.Expression, error) {
 		return Version(versionPostfix), nil
 	}
 }
@@ -50,7 +50,7 @@ func (f Version) Description() string {
 }
 
 // Type implements the Expression interface.
-func (f Version) Type() sql.Type { return types.LongText }
+func (f Version) Type(ctx *sql.Context) sql.Type { return types.LongText }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (Version) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -58,7 +58,7 @@ func (Version) CollationCoercibility(ctx *sql.Context) (collation sql.CollationI
 }
 
 // IsNullable implements the Expression interface.
-func (f Version) IsNullable() bool {
+func (f Version) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
@@ -67,7 +67,7 @@ func (f Version) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (f Version) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (f Version) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 0)
 	}

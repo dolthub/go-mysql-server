@@ -30,7 +30,7 @@ func TestStartPoint(t *testing.T) {
 		s := types.Point{X: 123, Y: 456}
 		e := types.Point{X: 456, Y: 789}
 		l := types.LineString{Points: []types.Point{s, e}}
-		f := NewStartPoint(expression.NewLiteral(l, types.LineStringType{}))
+		f := NewStartPoint(sql.NewEmptyContext(), expression.NewLiteral(l, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(s, v)
@@ -41,7 +41,7 @@ func TestStartPoint(t *testing.T) {
 		s := types.Point{SRID: types.GeoSpatialSRID, X: 123, Y: 456}
 		e := types.Point{SRID: types.GeoSpatialSRID, X: 456, Y: 789}
 		l := types.LineString{Points: []types.Point{s, e}}
-		f := NewStartPoint(expression.NewLiteral(l, types.LineStringType{}))
+		f := NewStartPoint(sql.NewEmptyContext(), expression.NewLiteral(l, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(s, v)
@@ -49,7 +49,7 @@ func TestStartPoint(t *testing.T) {
 
 	t.Run("null argument", func(t *testing.T) {
 		require := require.New(t)
-		f := NewStartPoint(expression.NewLiteral(nil, types.Null))
+		f := NewStartPoint(sql.NewEmptyContext(), expression.NewLiteral(nil, types.Null))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(nil, v)
@@ -57,7 +57,7 @@ func TestStartPoint(t *testing.T) {
 
 	t.Run("non-linestring argument", func(t *testing.T) {
 		require := require.New(t)
-		f := NewStartPoint(expression.NewLiteral(types.Point{SRID: types.GeoSpatialSRID, X: 123, Y: 456}, types.Null))
+		f := NewStartPoint(sql.NewEmptyContext(), expression.NewLiteral(types.Point{SRID: types.GeoSpatialSRID, X: 123, Y: 456}, types.Null))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(nil, v)
@@ -65,7 +65,7 @@ func TestStartPoint(t *testing.T) {
 
 	t.Run("non-geometry argument", func(t *testing.T) {
 		require := require.New(t)
-		f := NewStartPoint(expression.NewLiteral(123, types.Int8))
+		f := NewStartPoint(sql.NewEmptyContext(), expression.NewLiteral(123, types.Int8))
 		_, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.Error(err)
 	})
@@ -77,7 +77,7 @@ func TestEndPoint(t *testing.T) {
 		s := types.Point{X: 123, Y: 456}
 		e := types.Point{X: 456, Y: 789}
 		l := types.LineString{Points: []types.Point{s, e}}
-		f := NewEndPoint(expression.NewLiteral(l, types.LineStringType{}))
+		f := NewEndPoint(sql.NewEmptyContext(), expression.NewLiteral(l, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(e, v)
@@ -88,7 +88,7 @@ func TestEndPoint(t *testing.T) {
 		s := types.Point{SRID: types.GeoSpatialSRID, X: 123, Y: 456}
 		e := types.Point{SRID: types.GeoSpatialSRID, X: 456, Y: 789}
 		l := types.LineString{Points: []types.Point{s, e}}
-		f := NewEndPoint(expression.NewLiteral(l, types.LineStringType{}))
+		f := NewEndPoint(sql.NewEmptyContext(), expression.NewLiteral(l, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(e, v)
@@ -96,7 +96,7 @@ func TestEndPoint(t *testing.T) {
 
 	t.Run("null argument", func(t *testing.T) {
 		require := require.New(t)
-		f := NewEndPoint(expression.NewLiteral(nil, types.Null))
+		f := NewEndPoint(sql.NewEmptyContext(), expression.NewLiteral(nil, types.Null))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(nil, v)
@@ -104,7 +104,7 @@ func TestEndPoint(t *testing.T) {
 
 	t.Run("non-linestring argument", func(t *testing.T) {
 		require := require.New(t)
-		f := NewEndPoint(expression.NewLiteral(types.Point{SRID: types.GeoSpatialSRID, X: 123, Y: 456}, types.Null))
+		f := NewEndPoint(sql.NewEmptyContext(), expression.NewLiteral(types.Point{SRID: types.GeoSpatialSRID, X: 123, Y: 456}, types.Null))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(nil, v)
@@ -112,7 +112,7 @@ func TestEndPoint(t *testing.T) {
 
 	t.Run("non-geometry argument", func(t *testing.T) {
 		require := require.New(t)
-		f := NewEndPoint(expression.NewLiteral(123, types.Int8))
+		f := NewEndPoint(sql.NewEmptyContext(), expression.NewLiteral(123, types.Int8))
 		_, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.Error(err)
 	})
@@ -126,7 +126,7 @@ func TestIsClosed(t *testing.T) {
 		p2 := types.Point{X: 2, Y: 2}
 		p3 := types.Point{X: 3, Y: 3}
 		l := types.LineString{Points: []types.Point{s, p1, p2, p3, s}}
-		f := NewIsClosed(expression.NewLiteral(l, types.LineStringType{}))
+		f := NewIsClosed(sql.NewEmptyContext(), expression.NewLiteral(l, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -139,7 +139,7 @@ func TestIsClosed(t *testing.T) {
 		p2 := types.Point{SRID: types.GeoSpatialSRID, X: 2, Y: 2}
 		p3 := types.Point{SRID: types.GeoSpatialSRID, X: 3, Y: 3}
 		l := types.LineString{Points: []types.Point{s, p1, p2, p3, s}}
-		f := NewIsClosed(expression.NewLiteral(l, types.LineStringType{}))
+		f := NewIsClosed(sql.NewEmptyContext(), expression.NewLiteral(l, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -152,7 +152,7 @@ func TestIsClosed(t *testing.T) {
 		p2 := types.Point{X: 2, Y: 2}
 		p3 := types.Point{X: 3, Y: 3}
 		l := types.LineString{Points: []types.Point{s, p1, p2, p3}}
-		f := NewIsClosed(expression.NewLiteral(l, types.LineStringType{}))
+		f := NewIsClosed(sql.NewEmptyContext(), expression.NewLiteral(l, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -167,7 +167,7 @@ func TestIsClosed(t *testing.T) {
 		l1 := types.LineString{Points: []types.Point{s, p1, p2, p3, s}}
 		l2 := types.LineString{Points: []types.Point{s, p2, p1, s}}
 		ml := types.MultiLineString{Lines: []types.LineString{l1, l2}}
-		f := NewIsClosed(expression.NewLiteral(ml, types.MultiLineStringType{}))
+		f := NewIsClosed(sql.NewEmptyContext(), expression.NewLiteral(ml, types.MultiLineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -182,7 +182,7 @@ func TestIsClosed(t *testing.T) {
 		l1 := types.LineString{Points: []types.Point{s, p1, p2, p3, s}}
 		l2 := types.LineString{Points: []types.Point{s, p2, p1}}
 		ml := types.MultiLineString{Lines: []types.LineString{l1, l2}}
-		f := NewIsClosed(expression.NewLiteral(ml, types.MultiLineStringType{}))
+		f := NewIsClosed(sql.NewEmptyContext(), expression.NewLiteral(ml, types.MultiLineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(false, v)
@@ -192,7 +192,7 @@ func TestIsClosed(t *testing.T) {
 		require := require.New(t)
 		s := types.Point{X: 0, Y: 0}
 		l := types.LineString{Points: []types.Point{s, s, s}}
-		f := NewIsClosed(expression.NewLiteral(l, types.LineStringType{}))
+		f := NewIsClosed(sql.NewEmptyContext(), expression.NewLiteral(l, types.LineStringType{}))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(true, v)
@@ -200,7 +200,7 @@ func TestIsClosed(t *testing.T) {
 
 	t.Run("null argument", func(t *testing.T) {
 		require := require.New(t)
-		f := NewIsClosed(expression.NewLiteral(nil, types.Null))
+		f := NewIsClosed(sql.NewEmptyContext(), expression.NewLiteral(nil, types.Null))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(nil, v)
@@ -208,7 +208,7 @@ func TestIsClosed(t *testing.T) {
 
 	t.Run("non-linestring argument", func(t *testing.T) {
 		require := require.New(t)
-		f := NewIsClosed(expression.NewLiteral(types.Point{SRID: types.GeoSpatialSRID, X: 123, Y: 456}, types.Null))
+		f := NewIsClosed(sql.NewEmptyContext(), expression.NewLiteral(types.Point{SRID: types.GeoSpatialSRID, X: 123, Y: 456}, types.Null))
 		v, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(err)
 		require.Equal(nil, v)
@@ -216,7 +216,7 @@ func TestIsClosed(t *testing.T) {
 
 	t.Run("non-geometry argument", func(t *testing.T) {
 		require := require.New(t)
-		f := NewIsClosed(expression.NewLiteral(123, types.Int8))
+		f := NewIsClosed(sql.NewEmptyContext(), expression.NewLiteral(123, types.Int8))
 		_, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.Error(err)
 	})

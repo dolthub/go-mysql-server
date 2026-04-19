@@ -147,7 +147,7 @@ func TestSpace(t *testing.T) {
 			}
 
 			ctx := sql.NewEmptyContext()
-			f := NewSpace(tt.arg)
+			f := NewSpace(sql.NewEmptyContext(), tt.arg)
 
 			res, err := f.Eval(ctx, nil)
 			if tt.err {

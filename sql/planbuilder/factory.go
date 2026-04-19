@@ -34,22 +34,21 @@ import (
 // TODO: logging when optimizations triggered
 
 type factory struct {
-	ctx   *sql.Context
 	debug bool
 }
 
-func (f *factory) log(s string) {
+func (f *factory) log(ctx *sql.Context, s string) {
 	if f.debug {
-		f.ctx.GetLogger().Info(s)
+		ctx.GetLogger().Info(s)
 	}
 }
 
-func (f *factory) buildProject(p *plan.Project, subquery bool) (sql.Node, error) {
+func (f *factory) buildProject(ctx *sql.Context, p *plan.Project, subquery bool) (sql.Node, error) {
 	{
 		// todo generalize this. proj->proj with subquery expression alias
 		// references are one problem.
-		if sqa, _ := p.Child.(*plan.SubqueryAlias); sqa != nil && p.Schema().Equals(sqa.Schema()) {
-			f.log("eliminated projection")
+		if sqa, _ := p.Child.(*plan.SubqueryAlias); sqa != nil && p.Schema(ctx).Equals(sqa.Schema(ctx)) {
+			f.log(ctx, "eliminated projection")
 			return sqa, nil
 		}
 	}
@@ -63,7 +62,7 @@ func (f *factory) buildProject(p *plan.Project, subquery bool) (sql.Node, error)
 				adjGraph := make(map[sql.ColumnId]sql.Expression, 0)
 				for _, e := range p2.Projections {
 					// inner projections track/collapse alias refs
-					_, err := aliasTrackAndReplace(adjGraph, e)
+					_, err := aliasTrackAndReplace(ctx, adjGraph, e)
 					if err != nil {
 						return nil, err
 					}
@@ -72,7 +71,7 @@ func (f *factory) buildProject(p *plan.Project, subquery bool) (sql.Node, error)
 				var newP []sql.Expression
 				for _, e := range p.Projections {
 					//outer projections are the ones we want, with aliases replaced
-					newE, err := aliasTrackAndReplace(adjGraph, e)
+					newE, err := aliasTrackAndReplace(ctx, adjGraph, e)
 					if err != nil {
 						return nil, err
 					}
@@ -85,25 +84,12 @@ func (f *factory) buildProject(p *plan.Project, subquery bool) (sql.Node, error)
 	return p, nil
 }
 
-func containsSubqueryExpr(exprs []sql.Expression) bool {
-	for _, e := range exprs {
-		subqFound := transform.InspectExpr(e, func(e sql.Expression) bool {
-			_, ok := e.(*plan.Subquery)
-			return ok
-		})
-		if subqFound {
-			return true
-		}
-	}
-	return false
-}
-
-func aliasTrackAndReplace(adj map[sql.ColumnId]sql.Expression, e sql.Expression) (sql.Expression, error) {
+func aliasTrackAndReplace(ctx *sql.Context, adj map[sql.ColumnId]sql.Expression, e sql.Expression) (sql.Expression, error) {
 	var id sql.ColumnId
 	if ide, ok := e.(sql.IdExpression); ok {
 		id = ide.Id()
 	}
-	newE, _, err := transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+	newE, _, err := transform.Expr(ctx, e, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		switch e := e.(type) {
 		case *expression.GetField:
 			if a, _ := adj[sql.ColumnId(e.Index())]; a != nil {
@@ -125,17 +111,17 @@ func aliasTrackAndReplace(adj map[sql.ColumnId]sql.Expression, e sql.Expression)
 	return newE, nil
 }
 
-func (f *factory) buildConvert(expr sql.Expression, castToType string, typeLength, typeScale int) (sql.Expression, error) {
+func (f *factory) buildConvert(ctx *sql.Context, expr sql.Expression, castToType string, typeLength, typeScale int) (sql.Expression, error) {
 	n := expression.NewConvertWithLengthAndScale(expr, castToType, typeLength, typeScale)
 	{
 		// deduplicate redundant convert
-		if expr.Type().Equals(n.Type()) {
-			f.log("eliminated convert")
+		if expr.Type(ctx).Equals(n.Type(ctx)) {
+			f.log(ctx, "eliminated convert")
 			return expr, nil
 		}
 	}
-	if types.IsText(n.Type()) && types.IsEnum(expr.Type()) {
-		newNode, err := n.WithChildren(expression.NewEnumToString(expr))
+	if types.IsText(n.Type(ctx)) && types.IsEnum(expr.Type(ctx)) {
+		newNode, err := n.WithChildren(ctx, expression.NewEnumToString(expr))
 		if err != nil {
 			return nil, err
 		}
@@ -144,19 +130,19 @@ func (f *factory) buildConvert(expr sql.Expression, castToType string, typeLengt
 	return n, nil
 }
 
-func (f *factory) buildJoin(l, r sql.Node, op plan.JoinType, cond sql.Expression) (sql.Node, error) {
+func (f *factory) buildJoin(ctx *sql.Context, l, r sql.Node, op plan.JoinType, cond sql.Expression) (sql.Node, error) {
 	{
 		// fold empty joins
 		// TODO: shouldn't be allowed for right outer joins or full outer joins
 		// https://github.com/dolthub/dolt/issues/10445
 		if _, empty := l.(*plan.EmptyTable); empty {
-			f.log("folded empty table join")
-			return plan.NewEmptyTableWithSchema(append(l.Schema(), r.Schema()...)), nil
+			f.log(ctx, "folded empty table join")
+			return plan.NewEmptyTableWithSchema(append(l.Schema(ctx), r.Schema(ctx)...)), nil
 		}
 		// TODO: shouldn't be allowed for full outer joins either https://github.com/dolthub/dolt/issues/10445
 		if _, empty := r.(*plan.EmptyTable); empty && !op.IsLeftOuter() {
-			f.log("folded empty table join")
-			return plan.NewEmptyTableWithSchema(append(l.Schema(), r.Schema()...)), nil
+			f.log(ctx, "folded empty table join")
+			return plan.NewEmptyTableWithSchema(append(l.Schema(ctx), r.Schema(ctx)...)), nil
 		}
 	}
 
@@ -164,12 +150,12 @@ func (f *factory) buildJoin(l, r sql.Node, op plan.JoinType, cond sql.Expression
 	{
 		// transpose right joins
 		if op.IsRightOuter() {
-			f.log("transposed right join")
-			return f.buildJoin(r, l, plan.JoinTypeLeftOuter, cond)
+			f.log(ctx, "transposed right join")
+			return f.buildJoin(ctx, r, l, plan.JoinTypeLeftOuter, cond)
 		}
 		if op == plan.JoinTypeLateralRight {
-			f.log("transposed right join")
-			return f.buildJoin(r, l, plan.JoinTypeLateralLeft, cond)
+			f.log(ctx, "transposed right join")
+			return f.buildJoin(ctx, r, l, plan.JoinTypeLateralLeft, cond)
 		}
 	}
 	return plan.NewJoin(l, r, op, cond), nil
@@ -202,7 +188,7 @@ func (f *factory) buildTableAlias(name string, child sql.Node) (plan.TableIdNode
 //
 // With DISTINCT ON columns, we may use columns that are not referenced by the projection, and therefore it must be
 // pushed under it. This also means that the sort node has to be pushed under distinct as well.
-func (f *factory) buildDistinct(child sql.Node, refsSubquery bool, distinctOn []sql.Expression) (sql.Node, error) {
+func (f *factory) buildDistinct(ctx *sql.Context, child sql.Node, refsSubquery bool, distinctOn []sql.Expression) (sql.Node, error) {
 	if len(distinctOn) > 0 {
 		if proj, isProj := child.(*plan.Project); isProj {
 			if sort, isSort := proj.Child.(*plan.Sort); isSort {
@@ -245,7 +231,7 @@ func (f *factory) buildDistinct(child sql.Node, refsSubquery bool, distinctOn []
 			if !hasDiff {
 				proj.Child = sort.Child
 				// collapse potential redundant project->project
-				proj, err := f.buildProject(proj, refsSubquery)
+				proj, err := f.buildProject(ctx, proj, refsSubquery)
 				if err != nil {
 					return nil, err
 				}
@@ -257,7 +243,7 @@ func (f *factory) buildDistinct(child sql.Node, refsSubquery bool, distinctOn []
 	return plan.NewDistinct(child, distinctOn...), nil
 }
 
-func (f *factory) buildSort(child sql.Node, exprs []sql.SortField, deps sql.ColSet, subquery bool) (sql.Node, error) {
+func (f *factory) buildSort(ctx *sql.Context, child sql.Node, exprs []sql.SortField, deps sql.ColSet, subquery bool) (sql.Node, error) {
 	{
 		// The default binder behavior adds a projection before and after
 		// sort nodes for alias dependency correctness. In many cases the sort
@@ -280,7 +266,7 @@ func (f *factory) buildSort(child sql.Node, exprs []sql.SortField, deps sql.ColS
 			}
 			if !aliasCols.Intersects(deps) {
 				newP := plan.NewProject(p.Projections, plan.NewSort(exprs, p.Child))
-				return f.buildProject(newP, subquery)
+				return f.buildProject(ctx, newP, subquery)
 			}
 		}
 	}

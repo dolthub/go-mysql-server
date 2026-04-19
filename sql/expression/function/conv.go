@@ -35,7 +35,7 @@ var _ sql.FunctionExpression = (*Conv)(nil)
 var _ sql.CollationCoercible = (*Conv)(nil)
 
 // NewConv returns a new Conv expression.
-func NewConv(n, from, to sql.Expression) sql.Expression {
+func NewConv(ctx *sql.Context, n, from, to sql.Expression) sql.Expression {
 	return &Conv{n, from, to}
 }
 
@@ -50,7 +50,7 @@ func (c *Conv) Description() string {
 }
 
 // Type implements the Expression interface.
-func (c *Conv) Type() sql.Type { return types.LongText }
+func (c *Conv) Type(ctx *sql.Context) sql.Type { return types.LongText }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*Conv) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -58,7 +58,7 @@ func (*Conv) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID,
 }
 
 // IsNullable implements sql.Expression.
-func (c *Conv) IsNullable() bool {
+func (c *Conv) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
@@ -125,11 +125,11 @@ func (c *Conv) Children() []sql.Expression {
 }
 
 // WithChildren implements the Expression interface.
-func (c *Conv) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (c *Conv) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 3 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 3)
 	}
-	return NewConv(children[0], children[1], children[2]), nil
+	return NewConv(ctx, children[0], children[1], children[2]), nil
 }
 
 // convertFromBase returns nil if fromBase input is invalid, 0 if nVal input is invalid and converted result if nVal and fromBase inputs are valid.

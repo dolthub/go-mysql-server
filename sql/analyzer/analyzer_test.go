@@ -212,9 +212,10 @@ func TestDeepCopyNode(t *testing.T) {
 
 	for i, tt := range tests {
 		t.Run(fmt.Sprintf("DeepCopyTest_%d", i), func(t *testing.T) {
-			cop, err := DeepCopyNode(tt.node)
+			ctx := sql.NewEmptyContext()
+			cop, err := DeepCopyNode(ctx, tt.node)
 			require.NoError(t, err)
-			cop, _, err = plan.ApplyBindings(cop, map[string]sql.Expression{
+			cop, _, err = plan.ApplyBindings(ctx, cop, map[string]sql.Expression{
 				"v1": expression.NewLiteral(1, types.Int64),
 				"v2": expression.NewLiteral("x", types.Text),
 			})

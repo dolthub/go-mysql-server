@@ -23,8 +23,8 @@ import (
 
 // engineOverrides handles adding the engine overrides to any nodes or expressions that implement the corresponding
 // interface.
-func engineOverrides(_ *sql.Context, a *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector, _ *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	newNode, sameNode, err := transform.NodeWithOpaque(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+func engineOverrides(ctx *sql.Context, a *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector, _ *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
+	newNode, sameNode, err := transform.NodeWithOpaque(ctx, n, func(ctx *sql.Context, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		overriding, ok := n.(sql.NodeOverriding)
 		if !ok {
 			return n, transform.SameTree, nil
@@ -34,7 +34,7 @@ func engineOverrides(_ *sql.Context, a *Analyzer, n sql.Node, _ *plan.Scope, _ R
 	if err != nil {
 		return nil, transform.SameTree, err
 	}
-	newNode, sameExpr, err := transform.NodeExprsWithOpaque(newNode, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+	newNode, sameExpr, err := transform.NodeExprsWithOpaque(ctx, newNode, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		overriding, ok := e.(sql.ExpressionOverriding)
 		if !ok {
 			return e, transform.SameTree, nil

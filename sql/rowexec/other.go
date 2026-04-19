@@ -129,7 +129,7 @@ func (b *BaseBuilder) buildCachedResults(ctx *sql.Context, n *plan.CachedResults
 	if err != nil {
 		return nil, err
 	}
-	cache, dispose := ctx.Memory.NewRowsCache()
+	cache, dispose := ctx.Memory.NewRowsCache(ctx)
 	return &cachedResultsIter{n, ci, cache, dispose}, nil
 }
 
@@ -187,7 +187,7 @@ func (b *BaseBuilder) buildBlock(ctx *sql.Context, n *plan.Block, row sql.Row) (
 		}
 
 		err = func() error {
-			rowCache, disposeFunc := ctx.Memory.NewRowsCache()
+			rowCache, disposeFunc := ctx.Memory.NewRowsCache(ctx)
 			defer disposeFunc()
 
 			var isSelect bool
@@ -201,12 +201,12 @@ func (b *BaseBuilder) buildBlock(ctx *sql.Context, n *plan.Block, row sql.Row) (
 				return nil
 			}
 			subIterNode := s
-			subIterSch := s.Schema()
+			subIterSch := s.Schema(ctx)
 			if blockSubIter, ok := subIter.(plan.BlockRowIter); ok {
 				subIterNode = blockSubIter.RepresentingNode()
-				subIterSch = blockSubIter.Schema()
+				subIterSch = blockSubIter.Schema(ctx)
 			}
-			if isSelect = plan.NodeRepresentsSelect(subIterNode); isSelect {
+			if isSelect = plan.NodeRepresentsSelect(ctx, subIterNode); isSelect {
 				selectSeen = true
 				returnNode = subIterNode
 				returnIter = subIter
@@ -282,7 +282,7 @@ func (b *BaseBuilder) buildTableCopier(ctx *sql.Context, n *plan.TableCopier, ro
 		return nil, fmt.Errorf("TableCopier only accepts CreateTable or TableNode as the destination")
 	}
 
-	return n.CopyTableOver(ctx, n.Source.Schema()[0].Source, drt.Name())
+	return n.CopyTableOver(ctx, n.Source.Schema(ctx)[0].Source, drt.Name())
 }
 
 func (b *BaseBuilder) buildUnresolvedTable(ctx *sql.Context, n *plan.UnresolvedTable, row sql.Row) (sql.RowIter, error) {

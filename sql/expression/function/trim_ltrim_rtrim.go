@@ -128,8 +128,8 @@ func (t *Trim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // IsNullable implements the Expression interface.
-func (t Trim) IsNullable() bool {
-	return t.str.IsNullable() || t.pat.IsNullable()
+func (t Trim) IsNullable(ctx *sql.Context) bool {
+	return t.str.IsNullable(ctx) || t.pat.IsNullable(ctx)
 }
 
 func (t Trim) String() string {
@@ -149,7 +149,7 @@ func (t Trim) Resolved() bool {
 	return t.str.Resolved() && t.pat.Resolved() && t.pat.Resolved()
 }
 
-func (t Trim) Type() sql.Type { return t.str.Type() }
+func (t Trim) Type(ctx *sql.Context) sql.Type { return t.str.Type(ctx) }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (t Trim) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -158,7 +158,7 @@ func (t Trim) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID
 	return sql.ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
 }
 
-func (t Trim) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (t Trim) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 2)
 	}
@@ -169,7 +169,7 @@ type LeftTrim struct {
 	expression.UnaryExpressionStub
 }
 
-func NewLeftTrim(str sql.Expression) sql.Expression {
+func NewLeftTrim(ctx *sql.Context, str sql.Expression) sql.Expression {
 	return &LeftTrim{expression.UnaryExpressionStub{Child: str}}
 }
 
@@ -186,7 +186,7 @@ func (t *LeftTrim) Description() string {
 	return "returns the string str with leading space characters removed."
 }
 
-func (t *LeftTrim) Type() sql.Type { return t.Child.Type() }
+func (t *LeftTrim) Type(ctx *sql.Context) sql.Type { return t.Child.Type(ctx) }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (t *LeftTrim) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -197,15 +197,15 @@ func (t *LeftTrim) String() string {
 	return fmt.Sprintf("ltrim(%s)", t.Child)
 }
 
-func (t *LeftTrim) IsNullable() bool {
-	return t.Child.IsNullable()
+func (t *LeftTrim) IsNullable(ctx *sql.Context) bool {
+	return t.Child.IsNullable(ctx)
 }
 
-func (t *LeftTrim) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (t *LeftTrim) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 1)
 	}
-	return NewLeftTrim(children[0]), nil
+	return NewLeftTrim(ctx, children[0]), nil
 }
 
 func (t *LeftTrim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -238,7 +238,7 @@ type RightTrim struct {
 	expression.UnaryExpressionStub
 }
 
-func NewRightTrim(str sql.Expression) sql.Expression {
+func NewRightTrim(ctx *sql.Context, str sql.Expression) sql.Expression {
 	return &RightTrim{expression.UnaryExpressionStub{Child: str}}
 }
 
@@ -255,7 +255,7 @@ func (t *RightTrim) Description() string {
 	return "returns the string str with trailing space characters removed."
 }
 
-func (t *RightTrim) Type() sql.Type { return t.Child.Type() }
+func (t *RightTrim) Type(ctx *sql.Context) sql.Type { return t.Child.Type(ctx) }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (t *RightTrim) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -266,15 +266,15 @@ func (t *RightTrim) String() string {
 	return fmt.Sprintf("rtrim(%s)", t.Child)
 }
 
-func (t *RightTrim) IsNullable() bool {
-	return t.Child.IsNullable()
+func (t *RightTrim) IsNullable(ctx *sql.Context) bool {
+	return t.Child.IsNullable(ctx)
 }
 
-func (t *RightTrim) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (t *RightTrim) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 1)
 	}
-	return NewRightTrim(children[0]), nil
+	return NewRightTrim(ctx, children[0]), nil
 }
 
 func (t *RightTrim) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {

@@ -63,29 +63,29 @@ func (w *Window) String() string {
 	return pr.String()
 }
 
-func (w *Window) DebugString() string {
+func (w *Window) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	var exprs = make([]string, len(w.SelectExprs))
 	for i, expr := range w.SelectExprs {
-		exprs[i] = sql.DebugString(expr)
+		exprs[i] = sql.DebugString(ctx, expr)
 	}
 	_ = pr.WriteNode("Window")
-	exprs = append(exprs, sql.DebugString(w.Child))
+	exprs = append(exprs, sql.DebugString(ctx, w.Child))
 	_ = pr.WriteChildren(exprs...)
 	return pr.String()
 }
 
 // Schema implements sql.Node
-func (w *Window) Schema() sql.Schema {
+func (w *Window) Schema(ctx *sql.Context) sql.Schema {
 	var s = make(sql.Schema, len(w.SelectExprs))
 	for i, e := range w.SelectExprs {
-		s[i] = transform.ExpressionToColumn(e, AliasSubqueryString(e))
+		s[i] = transform.ExpressionToColumn(ctx, e, AliasSubqueryString(e))
 	}
 	return s
 }
 
 // WithChildren implements sql.Node
-func (w *Window) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (w *Window) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(w, len(children), 1)
 	}
@@ -109,10 +109,10 @@ func (w *Window) ProjectedExprs() []sql.Expression {
 }
 
 // WithExpressions implements sql.Expressioner
-func (w *Window) WithExpressions(e ...sql.Expression) (sql.Node, error) {
-	if len(e) != len(w.SelectExprs) {
-		return nil, sql.ErrInvalidChildrenNumber.New(w, len(e), len(w.SelectExprs))
+func (w *Window) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
+	if len(exprs) != len(w.SelectExprs) {
+		return nil, sql.ErrInvalidChildrenNumber.New(w, len(exprs), len(w.SelectExprs))
 	}
 
-	return NewWindow(e, w.Child), nil
+	return NewWindow(exprs, w.Child), nil
 }

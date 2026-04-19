@@ -386,7 +386,7 @@ func (u *updateJoinIter) getOrCreateCache(ctx *sql.Context, tableName string) sq
 		return potential
 	}
 
-	cache, disposal := ctx.Memory.NewHistoryCache()
+	cache, disposal := ctx.Memory.NewHistoryCache(ctx)
 	u.caches[tableName] = cache
 	u.disposals[tableName] = disposal
 

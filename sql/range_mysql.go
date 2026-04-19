@@ -100,14 +100,14 @@ func (ranges MySQLRangeCollection) String() string {
 }
 
 // DebugString returns this RangeCollection as a string for debugging purposes.
-func (ranges MySQLRangeCollection) DebugString() string {
+func (ranges MySQLRangeCollection) DebugString(ctx *Context) string {
 	sb := strings.Builder{}
 	sb.WriteByte('[')
 	for i, rang := range ranges {
 		if i != 0 {
 			sb.WriteString(", ")
 		}
-		sb.WriteString(rang.DebugString())
+		sb.WriteString(rang.DebugString(ctx))
 	}
 	sb.WriteByte(']')
 	return sb.String()
@@ -403,14 +403,14 @@ func (rang MySQLRange) String() string {
 }
 
 // DebugString returns this MySQLRange as a string for debugging purposes.
-func (rang MySQLRange) DebugString() string {
+func (rang MySQLRange) DebugString(ctx *Context) string {
 	sb := strings.Builder{}
 	sb.WriteByte('{')
 	for i, colExpr := range rang {
 		if i != 0 {
 			sb.WriteString(", ")
 		}
-		sb.WriteString(colExpr.DebugString())
+		sb.WriteString(colExpr.DebugString(ctx))
 	}
 	sb.WriteByte('}')
 	return sb.String()

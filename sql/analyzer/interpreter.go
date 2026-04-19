@@ -23,7 +23,7 @@ import (
 
 // interpreter hands the engine to any interpreter expressions.
 func interpreter(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, sel RuleSelector, qFlags *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
-	newNode, sameNode, err := transform.Node(n, func(node sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	newNode, sameNode, err := transform.Node(ctx, n, func(ctx *sql.Context, node sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if interp, ok := node.(procedures.InterpreterNode); ok {
 			return interp.SetStatementRunner(ctx, a.Runner), transform.NewTree, nil
 		}
@@ -33,7 +33,7 @@ func interpreter(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scope, s
 		return nil, transform.SameTree, err
 	}
 
-	newNode, sameExpr, err := transform.NodeExprs(newNode, func(expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+	newNode, sameExpr, err := transform.NodeExprs(ctx, newNode, func(ctx *sql.Context, expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		if interp, ok := expr.(procedures.InterpreterExpr); ok {
 			return interp.SetStatementRunner(ctx, a.Runner), transform.NewTree, nil
 		}

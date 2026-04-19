@@ -27,6 +27,7 @@ import (
 
 func TestSqrt(t *testing.T) {
 	f := NewSqrt(
+		sql.NewEmptyContext(),
 		expression.NewGetField(0, types.Float64, "n", false),
 	)
 	testCases := []struct {
@@ -95,6 +96,7 @@ func TestPower(t *testing.T) {
 	}
 	for _, tt := range testCases {
 		f := NewPower(
+			sql.NewEmptyContext(),
 			expression.NewGetField(0, tt.rowType, "", false),
 			expression.NewGetField(1, tt.rowType, "", false),
 		)

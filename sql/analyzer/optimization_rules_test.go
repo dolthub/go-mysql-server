@@ -35,7 +35,7 @@ func TestEvalFilter(t *testing.T) {
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
 
-	inner := memory.NewTable(db, "foo", sql.PrimaryKeySchema{}, nil)
+	inner := memory.NewTable(ctx, db, "foo", sql.PrimaryKeySchema{}, nil)
 	rule := getRule(simplifyFiltersId)
 
 	testCases := []struct {
@@ -77,7 +77,7 @@ func TestEvalFilter(t *testing.T) {
 					expression.NewGetFieldWithTable(0, 0, types.Int64, "", "foo", "bar", false),
 					lit(5)),
 			),
-			plan.NewEmptyTableWithSchema(inner.Schema()),
+			plan.NewEmptyTableWithSchema(inner.Schema(ctx)),
 		},
 		{
 			and(
@@ -86,7 +86,7 @@ func TestEvalFilter(t *testing.T) {
 					lit(5)),
 				eq(lit(5), lit(4)),
 			),
-			plan.NewEmptyTableWithSchema(inner.Schema()),
+			plan.NewEmptyTableWithSchema(inner.Schema(ctx)),
 		},
 		{
 			and(
@@ -146,7 +146,7 @@ func TestEvalFilter(t *testing.T) {
 				eq(lit(5), lit(4)),
 				eq(lit(5), lit(4)),
 			),
-			plan.NewEmptyTableWithSchema(inner.Schema()),
+			plan.NewEmptyTableWithSchema(inner.Schema(ctx)),
 		},
 	}
 
@@ -242,13 +242,13 @@ func newTestCatalog(db *memory.Database) *sql.MapCatalog {
 		Databases: make(map[string]sql.Database),
 		Tables:    make(map[string]sql.Table),
 	}
-
-	cat.Tables["xy"] = memory.NewTable(db, "xy", sql.NewPrimaryKeySchema(sql.Schema{
+	ctx := sql.NewEmptyContext()
+	cat.Tables["xy"] = memory.NewTable(ctx, db, "xy", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "x", Type: types.Int64, Source: "xy"},
 		{Name: "y", Type: types.Int64, Source: "xy"},
 		{Name: "z", Type: types.Int64, Source: "xy"},
 	}, 0), nil)
-	cat.Tables["uv"] = memory.NewTable(db, "uv", sql.NewPrimaryKeySchema(sql.Schema{
+	cat.Tables["uv"] = memory.NewTable(ctx, db, "uv", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "u", Type: types.Int64, Source: "uv"},
 		{Name: "v", Type: types.Int64, Source: "uv"},
 		{Name: "w", Type: types.Int64, Source: "uv"},

@@ -54,7 +54,7 @@ func (o *Open) String() string {
 }
 
 // Schema implements the interface sql.Node.
-func (o *Open) Schema() sql.Schema {
+func (o *Open) Schema(ctx *sql.Context) sql.Schema {
 	return nil
 }
 
@@ -64,7 +64,7 @@ func (o *Open) Children() []sql.Node {
 }
 
 // WithChildren implements the interface sql.Node.
-func (o *Open) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (o *Open) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return NillaryWithChildren(o, children...)
 }
 

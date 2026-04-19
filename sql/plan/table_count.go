@@ -61,7 +61,7 @@ func (t *TableCountLookup) String() string {
 	return fmt.Sprintf("table_count(%s) as %s", t.table.Name(), t.aliasName)
 }
 
-func (t *TableCountLookup) Schema() sql.Schema {
+func (t *TableCountLookup) Schema(ctx *sql.Context) sql.Schema {
 	return sql.Schema{{
 		Name:     t.aliasName,
 		Type:     types.Int64,
@@ -74,6 +74,6 @@ func (t *TableCountLookup) Children() []sql.Node {
 	return nil
 }
 
-func (t *TableCountLookup) WithChildren(_ ...sql.Node) (sql.Node, error) {
+func (t *TableCountLookup) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return t, nil
 }

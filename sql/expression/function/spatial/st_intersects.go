@@ -33,7 +33,7 @@ var _ sql.FunctionExpression = (*Intersects)(nil)
 var _ sql.CollationCoercible = (*Intersects)(nil)
 
 // NewIntersects creates a new Intersects expression.
-func NewIntersects(g1, g2 sql.Expression) sql.Expression {
+func NewIntersects(ctx *sql.Context, g1, g2 sql.Expression) sql.Expression {
 	return &Intersects{
 		expression.BinaryExpressionStub{
 			LeftChild:  g1,
@@ -53,7 +53,7 @@ func (i *Intersects) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (i *Intersects) Type() sql.Type {
+func (i *Intersects) Type(ctx *sql.Context) sql.Type {
 	return types.Boolean
 }
 
@@ -66,16 +66,16 @@ func (i *Intersects) String() string {
 	return fmt.Sprintf("%s(%s,%s)", i.FunctionName(), i.LeftChild, i.RightChild)
 }
 
-func (i *Intersects) DebugString() string {
-	return fmt.Sprintf("%s(%s,%s)", i.FunctionName(), sql.DebugString(i.LeftChild), sql.DebugString(i.RightChild))
+func (i *Intersects) DebugString(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s,%s)", i.FunctionName(), sql.DebugString(ctx, i.LeftChild), sql.DebugString(ctx, i.RightChild))
 }
 
 // WithChildren implements the Expression interface.
-func (i *Intersects) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (i *Intersects) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 2)
 	}
-	return NewIntersects(children[0], children[1]), nil
+	return NewIntersects(ctx, children[0], children[1]), nil
 }
 
 // isPointIntersectLine checks if Point p intersects the LineString l
