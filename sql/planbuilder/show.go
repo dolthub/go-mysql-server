@@ -39,8 +39,10 @@ func (b *Builder) buildShow(inScope *scope, s *ast.Show) (outScope *scope) {
 	case "processlist":
 		outScope = inScope.push()
 		outScope.node = plan.NewShowProcessList()
-	case ast.CreateTableStr, "create view":
-		return b.buildShowTable(inScope, s, showType)
+	case ast.CreateTableStr:
+		return b.buildShowTable(inScope, s)
+	case ast.CreateViewStr:
+		return b.buildShowCreateView(inScope, s)
 	case "create database", "create schema":
 		return b.buildShowDatabase(inScope, s)
 	case ast.CreateTriggerStr:
@@ -118,24 +120,27 @@ func (b *Builder) buildShow(inScope *scope, s *ast.Show) (outScope *scope) {
 	return
 }
 
-func (b *Builder) buildShowTable(inScope *scope, s *ast.Show, showType string) (outScope *scope) {
-	outScope = inScope.push()
-	var asOf *ast.AsOf
-	var asOfExpr sql.Expression
+// showTargetInfo extracts the database name, table name, and AS OF info from |s|.
+func (b *Builder) showTargetInfo(inScope *scope, s *ast.Show) (db, tableName string, asOf *ast.AsOf, asOfExpr sql.Expression) {
 	if s.ShowTablesOpt != nil && s.ShowTablesOpt.AsOf != nil {
 		asOfExpr = b.buildAsOfExpr(inScope, s.ShowTablesOpt.AsOf)
 		asOf = &ast.AsOf{Time: s.ShowTablesOpt.AsOf}
 	}
-
-	db := s.Database
+	db = s.Database
 	if db == "" {
 		db = s.Table.DbQualifier.String()
 	}
 	if db == "" {
 		db = b.currentDb().Name()
 	}
+	tableName = strings.ToLower(s.Table.Name.String())
+	return
+}
 
-	tableName := strings.ToLower(s.Table.Name.String())
+func (b *Builder) buildShowTable(inScope *scope, s *ast.Show) (outScope *scope) {
+	outScope = inScope.push()
+	_, tableName, asOf, asOfExpr := b.showTargetInfo(inScope, s)
+
 	tableScope, ok := b.buildResolvedTableForTablename(inScope, s.Table, asOf)
 	if !ok {
 		err := sql.ErrTableNotFound.New(tableName)
@@ -152,7 +157,7 @@ func (b *Builder) buildShowTable(inScope *scope, s *ast.Show, showType string) (
 		})
 	}
 
-	showCreate := plan.NewShowCreateTableWithAsOf(tableScope.node, showType == "create view", asOfExpr)
+	showCreate := plan.NewShowCreateTableWithAsOf(tableScope.node, false, asOfExpr)
 	outScope.node = showCreate
 
 	if rt != nil {
@@ -178,6 +183,63 @@ func (b *Builder) buildShowTable(inScope *scope, s *ast.Show, showType string) (
 
 	}
 	return
+}
+
+func (b *Builder) buildShowCreateView(inScope *scope, s *ast.Show) (outScope *scope) {
+	outScope = inScope.push()
+	db, tableName, _, asOfExpr := b.showTargetInfo(inScope, s)
+	node, err := b.newShowCreateViewNode(db, tableName, asOfExpr)
+	if err != nil {
+		b.handleErr(err)
+	}
+	outScope.node = node
+	return
+}
+
+// newShowCreateViewNode returns a ShowCreateTable node for view |tableName| in |db|, reading
+// the stored definition directly without resolving the body.
+func (b *Builder) newShowCreateViewNode(db, tableName string, asOfExpr sql.Expression) (sql.Node, error) {
+	database, err := b.cat.Database(b.ctx, db)
+	if err != nil {
+		return nil, err
+	}
+	viewDb, ok := database.(sql.ViewDatabase)
+	if !ok {
+		return nil, sql.ErrTableNotFound.New(tableName)
+	}
+	viewDef, found, err := viewDb.GetViewDefinition(b.ctx, tableName)
+	if err != nil {
+		return nil, err
+	}
+	if !found {
+		return nil, sql.ErrTableNotFound.New(tableName)
+	}
+	textDef := viewDef.TextDefinition
+	if textDef == "" {
+		textDef = b.viewSelectBody(viewDef)
+		if textDef == "" {
+			return nil, sql.ErrTableNotFound.New(tableName)
+		}
+	}
+	subqueryAlias := plan.NewSubqueryAlias(tableName, textDef, plan.NewEmptyTableWithSchema(nil))
+	return plan.NewShowCreateTableWithAsOf(subqueryAlias, true, asOfExpr), nil
+}
+
+// viewSelectBody parses the CREATE VIEW statement in |viewDef| and returns the SELECT body text,
+// or an empty string if the statement cannot be parsed.
+func (b *Builder) viewSelectBody(viewDef sql.ViewDefinition) string {
+	oldOpts := b.parserOpts
+	defer func() { b.parserOpts = oldOpts }()
+	b.parserOpts = sql.NewSqlModeFromString(viewDef.SqlMode).ParserOptions()
+	stmt, _, _, err := b.parser.ParseWithOptions(b.ctx, viewDef.CreateViewStatement, ';', false, b.parserOpts)
+	if err != nil {
+		return ""
+	}
+	ddl, ok := stmt.(*ast.DDL)
+	if !ok {
+		return ""
+	}
+	return viewDef.CreateViewStatement[ddl.SubStatementPositionStart:ddl.SubStatementPositionEnd]
 }
 
 func (b *Builder) buildShowDatabase(inScope *scope, s *ast.Show) (outScope *scope) {
