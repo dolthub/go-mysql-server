@@ -116,7 +116,7 @@ func (b *Builder) analyzeSelectList(inScope, outScope *scope, selectExprs ast.Se
 					}
 
 					// Don't include system hidden columns when expanding '*'
-					if strings.Contains(c.col, "!hidden!") {
+					if strings.Contains(c.col, sql.HiddenSystemColumnPrefix) {
 						continue
 					}
 					c.id = id

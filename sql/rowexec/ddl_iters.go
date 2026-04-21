@@ -2376,7 +2376,7 @@ func (b *BaseBuilder) dropHiddenSystemColumnsForIndex(ctx *sql.Context, table *p
 			continue
 		}
 
-		if strings.HasPrefix(col.Name, "!hidden!"+strings.ToLower(indexName)+"!") {
+		if sql.IsHiddenSystemColumn(col.Name) {
 			systemHiddenColumnsToDrop = append(systemHiddenColumnsToDrop, col.Name)
 		}
 	}
@@ -2422,7 +2422,7 @@ func (b *BaseBuilder) createHiddenSystemColumn(ctx *sql.Context, n *plan.AlterIn
 	// functional expressions: !hidden!<index_name>!<position_in_index>!<subcomponent>
 	// subcomponent is intended for the subcomponent in the generated field, but in
 	// practice is always 0.
-	hiddenColumnName := "!hidden!" + strings.ToLower(n.IndexName) + "!0!0"
+	hiddenColumnName := sql.HiddenSystemColumnPrefix + strings.ToLower(n.IndexName) + "!0!0"
 
 	newColumn := sql.Column{
 		Type:           n.Expression.Type(ctx),

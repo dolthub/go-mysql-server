@@ -278,7 +278,7 @@ func reorderSchema(names []string, schema sql.Schema) sql.Schema {
 func (b *Builder) assignmentExprsToUpdateExprs(inScope *scope, e ast.AssignmentExprs) *plan.UpdateExprs {
 	// Make sure the assignment expressions don't reference hidden system columns
 	for _, expr := range e {
-		if isHiddenSystemColumn(expr.Name.Name.String()) {
+		if sql.IsHiddenSystemColumn(expr.Name.Name.String()) {
 			b.handleErr(sql.ErrColumnNotFound.New(expr.Name.Name.String()))
 		}
 	}
@@ -376,12 +376,6 @@ func (b *Builder) addDependentUpdateExprs(inScope *scope, schema sql.Schema, upd
 		}
 	}
 	return updateExprs
-}
-
-// isHiddenSystemColumn returns true if |name| has the "!hidden!" prefix,
-// indicating it is a system hidden column.
-func isHiddenSystemColumn(name string) bool {
-	return strings.HasPrefix(strings.ToLower(name), "!hidden!")
 }
 
 func isColumnUpdated(col *sql.Column, updateExprs []sql.Expression) bool {

@@ -34,17 +34,17 @@ type indexedExprEntry struct {
 // newIndexedExprEntry constructs an indexedExprEntry from a resolved expression tree.
 // The expression must not be an UnresolvedColumnDefault; callers are responsible for
 // resolving the schema before calling this (see buildIndexedExprToColumnNameMap).
-// No normalization is needed at storage time: expressionsEqual handles table qualifier
+// No normalization is needed at storage time: expressionsEquivalent handles table qualifier
 // and quoteName differences inline during matching.
 func newIndexedExprEntry(expr sql.Expression, colName string) indexedExprEntry {
 	return indexedExprEntry{expr: expr, colName: colName}
 }
 
 // matches reports whether the given filter expression refers to the same functional expression
-// as this entry. Comparison is structural via expressionsEqual, which ignores table qualifiers
+// as this entry. Comparison is structural via expressionsEquivalent, which ignores table qualifiers
 // and quoteName flags on GetField nodes.
 func (e indexedExprEntry) matches(filter sql.Expression) bool {
-	return expressionsEqual(e.expr, filter)
+	return expressionsEquivalent(e.expr, filter)
 }
 
 // buildIndexedExprToColumnNameMap builds a slice of indexed functional expressions available
@@ -96,6 +96,11 @@ func buildColumnIdToIndexedExprMap(ctx *sql.Context, cat sql.Catalog, tableNode 
 	result := make(map[sql.ColumnId]indexedExprEntry)
 	sch := resolveTableSchema(ctx, cat, tableNode)
 
+	// If the table doesn't have any virtual columns, exit out early without iterating over indexes
+	if sch.HasVirtualColumns() == false {
+		return result
+	}
+
 	for _, idx := range indexes {
 		cols := idx.Cols()
 		if len(idx.SqlIdx().Expressions()) != len(cols) {
@@ -116,7 +121,7 @@ func buildColumnIdToIndexedExprMap(ctx *sql.Context, cat sql.Catalog, tableNode 
 	return result
 }
 
-// expressionsEqual reports whether two sql.Expression trees are structurally equal
+// expressionsEquivalent reports whether two sql.Expression trees are structurally equal
 // for the purpose of functional index matching. Table qualifiers and quoteName flags
 // on GetField nodes are ignored so that expressions using different table aliases match.
 // This function does not currently consider expressions such as 10*c1 and c1*10 as
@@ -131,7 +136,7 @@ func buildColumnIdToIndexedExprMap(ctx *sql.Context, cat sql.Catalog, tableNode 
 // Any interface-level Equals would have to pick one semantic and be wrong for other
 // callers. If more call sites emerge, a standalone function or an optional
 // ExpressionComparer interface is likely a better path.
-func expressionsEqual(a, b sql.Expression) bool {
+func expressionsEquivalent(a, b sql.Expression) bool {
 	if a == nil && b == nil {
 		return true
 	}
@@ -174,7 +179,7 @@ func expressionsEqual(a, b sql.Expression) bool {
 		return false
 	}
 	for i := range aChildren {
-		if !expressionsEqual(aChildren[i], bChildren[i]) {
+		if !expressionsEquivalent(aChildren[i], bChildren[i]) {
 			return false
 		}
 	}

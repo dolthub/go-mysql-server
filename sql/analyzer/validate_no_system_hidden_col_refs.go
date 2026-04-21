@@ -15,7 +15,7 @@
 package analyzer
 
 import (
-	"strings"
+	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
@@ -24,23 +24,34 @@ import (
 )
 
 // validateNoHiddenSystemColumns inspects the query plan and asserts that no references to hidden
-// system columns are used. For example, asserts that no hidden system columns are used in expressions
+// system columns are used, including references to existing hidden system columns, as well as
+// attempts to create or rename a column to the reserved hidden system column prefix. For example,
+// asserts that no hidden system columns are used in expressions.
 // and that no DDL statements are used to modify hidden system columns.
 func validateNoHiddenSystemColumns(ctx *sql.Context, _ *Analyzer, n sql.Node, _ *plan.Scope, _ RuleSelector, _ *sql.QueryFlags) (sql.Node, transform.TreeIdentity, error) {
 	var err error
 	transform.Inspect(n, func(n sql.Node) bool {
 		switch nn := n.(type) {
+		case *plan.CreateTable:
+			for _, col := range nn.TargetSchema() {
+				if sql.IsHiddenSystemColumn(col.Name) {
+					err = fmt.Errorf("invalid column name: %s", col.Name)
+				}
+			}
 		case *plan.ModifyColumn:
-			if isHiddenSystemColumn(nn.Column()) {
+			if sql.IsHiddenSystemColumn(nn.Column()) {
 				err = sql.ErrColumnNotFound.New(nn.Column())
 			}
 		case *plan.DropColumn:
-			if isHiddenSystemColumn(nn.Column) {
+			if sql.IsHiddenSystemColumn(nn.Column) {
 				err = sql.ErrColumnNotFound.New(nn.Column)
 			}
 		case *plan.RenameColumn:
-			if isHiddenSystemColumn(nn.ColumnName) {
+			if sql.IsHiddenSystemColumn(nn.ColumnName) {
 				err = sql.ErrColumnNotFound.New(nn.ColumnName)
+			}
+			if sql.IsHiddenSystemColumn(nn.NewColumnName) {
+				err = fmt.Errorf("invalid column name: %s", nn.NewColumnName)
 			}
 		}
 
@@ -53,7 +64,7 @@ func validateNoHiddenSystemColumns(ctx *sql.Context, _ *Analyzer, n sql.Node, _ 
 		default:
 			transform.InspectExpressions(ctx, n, func(ctx *sql.Context, e sql.Expression) bool {
 				if gf, ok := e.(*expression.GetField); ok {
-					if isHiddenSystemColumn(gf.Name()) {
+					if sql.IsHiddenSystemColumn(gf.Name()) {
 						err = sql.ErrColumnNotFound.New(gf.Name())
 					}
 				}
@@ -69,10 +80,4 @@ func validateNoHiddenSystemColumns(ctx *sql.Context, _ *Analyzer, n sql.Node, _ 
 	}
 
 	return n, transform.SameTree, err
-}
-
-// isHiddenSystemColumn returns true if |name| has the "!hidden!" prefix,
-// indicating it is a system hidden column.
-func isHiddenSystemColumn(name string) bool {
-	return strings.HasPrefix(strings.ToLower(name), "!hidden!")
 }

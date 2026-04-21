@@ -41,11 +41,11 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 		SetUpScript: []string{
 			"CREATE TABLE test (pk INT PRIMARY KEY, c1 INT);",
 			"INSERT INTO test VALUES (1, 100), (2, 200);",
-			"CREATE INDEX idx1 ON test ((c1*10));",
+			"CREATE INDEX idx1 ON test ((C1*10));",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:           "SELECT pk FROM test WHERE c1*10 = 1000;",
+				Query:           "SELECT pk FROM test WHERE C1*10 = 1000;",
 				Expected:        []sql.Row{{1}},
 				ExpectedIndexes: []string{"idx1"},
 			},
@@ -260,14 +260,14 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 			"INSERT INTO test VALUES (1, 100), (2, 200), (3, -3), (4, -4), (5, -5), (6, -6), (7, -7), (8, -8), (9, -9), (10, -10), (11, -11), (12, -12), (13, -13), (14, -14), (15, -15), (16, -16), (17, -17), (18, -18), (19, -19), (20, -20), (21, -21), (22, -22), (23, -23), (24, -24), (25, -25), (26, -26), (27, -27), (28, -28), (29, -29);",
 
 			// NOTE: The index must be unique in order for it to be used for strict lookups
-			"CREATE UNIQUE INDEX idx1 ON test ((c1*10));",
+			"CREATE UNIQUE INDEX idx1 ON test ((C1*10));",
 
 			"CREATE TABLE t2 (t2pk INT PRIMARY KEY, t2c1 INT);",
 			"INSERT INTO t2 VALUES (1, 1000), (2, -1), (3, -1), (4, -1), (5, -1), (6, -1), (7, -1), (8, -1), (9, -1), (10, -10);",
 		},
 		Assertions: []ScriptTestAssertion{
 			{
-				Query:           "SELECT pk FROM test JOIN t2 ON (c1*10) = t2c1;",
+				Query:           "SELECT pk FROM test JOIN t2 ON (C1*10) = t2c1;",
 				Expected:        []sql.Row{{1}},
 				ExpectedIndexes: []string{"idx1"},
 			},
@@ -958,8 +958,9 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 				Expected: []sql.Row{{gmstypes.NewOkResult(0)}},
 			},
 			{
-				Query:    "SELECT id FROM events WHERE (CAST(JSON_UNQUOTE(JSON_EXTRACT(payload, '$.amount')) AS DECIMAL(10,2))) = 149.0;",
-				Expected: []sql.Row{{uint64(1)}},
+				Query:           "SELECT id FROM events WHERE (CAST(JSON_UNQUOTE(JSON_EXTRACT(payload, '$.amount')) AS DECIMAL(10,2))) = 149.0;",
+				Expected:        []sql.Row{{uint64(1)}},
+				ExpectedIndexes: []string{"idx1"},
 			},
 		},
 	},
@@ -1044,6 +1045,52 @@ var IndexedExpressionsScriptTests = []ScriptTest{
 				Query:           "SELECT pk FROM t WHERE vc = 2000;",
 				Expected:        []sql.Row{{2}},
 				ExpectedIndexes: []string{"idx_vc"},
+			},
+		},
+	},
+	{
+		// TODO: Parser changes needed in order to support inline functional expression index
+		Skip: true,
+		Name: "create functional index inline in table definition",
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: `CREATE TABLE t (
+  pk int NOT NULL,
+  c1 int DEFAULT NULL,
+  PRIMARY KEY (pk),
+  KEY idx1 (((10 * c1)))
+) `,
+
+				Expected: []sql.Row{{gmstypes.NewOkResult(0)}},
+			},
+			{
+				Query:    "INSERT INTO t VALUES (1, 100), (2, 200);",
+				Expected: []sql.Row{{gmstypes.NewOkResult(2)}},
+			},
+			{
+				Query:           "SELECT pk FROM t WHERE c1 * 10 = 1000;",
+				Expected:        []sql.Row{{1}},
+				ExpectedIndexes: []string{"idx1"},
+			},
+		},
+	},
+	{
+		Name: "!hidden! column name prefix is reserved",
+		SetUpScript: []string{
+			"create table t2 (pk int primary key, c1 int);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query:          "create table t (pk int primary key, `!hidden!idx!0` int);",
+				ExpectedErrStr: "invalid column name: !hidden!idx!0",
+			},
+			{
+				Query:          "create table t (pk int primary key, `!HIDDEN!idx!0` int);",
+				ExpectedErrStr: "invalid column name: !HIDDEN!idx!0",
+			},
+			{
+				Query:          "ALTER TABLE t2 RENAME COLUMN c1 TO `!hidden!idx!0`;",
+				ExpectedErrStr: "invalid column name: !hidden!idx!0",
 			},
 		},
 	},

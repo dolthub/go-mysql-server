@@ -20,6 +20,18 @@ import (
 	"strings"
 )
 
+// HiddenSystemColumnPrefix is a reserved prefix for hidden columns created
+// by the engine that are used for generating functional expressions for
+// indexes. Users are restricted from creating or renaming columns with this
+// prefix.
+const HiddenSystemColumnPrefix = "!hidden!"
+
+// IsHiddenSystemColumn returns true if |name| has the "!hidden!" prefix,
+// indicating it is a system hidden column.
+func IsHiddenSystemColumn(name string) bool {
+	return strings.HasPrefix(strings.ToLower(name), HiddenSystemColumnPrefix)
+}
+
 // Column is the definition of a table column.
 // As SQL:2016 puts it:
 //

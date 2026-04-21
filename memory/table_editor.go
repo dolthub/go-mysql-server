@@ -483,19 +483,9 @@ func (pke *pkTableEditAccumulator) GetByCols(value sql.Row, cols []int, prefixLe
 		return r, true, nil
 	}
 
-	// Check if any column is virtual. Virtual columns are not stored in partition rows,
-	// so we check secondary index storage instead for conflicts with committed rows.
-	hasVirtual := false
-	for _, idx := range cols {
-		if idx < len(pke.tableData.schema.Schema) && pke.tableData.schema.Schema[idx].Virtual {
-			hasVirtual = true
-			break
-		}
-	}
-
-	if hasVirtual {
-		// For virtual columns, find unique secondary indexes that cover these columns
-		// and check their storage for existing conflicting entries.
+	// For virtual columns, find unique secondary indexes that cover these columns
+	// and check their storage for existing conflicting entries.
+	if pke.tableData.schema.HasVirtualColumns() {
 		for idxName, storage := range pke.tableData.secondaryIndexStorage {
 			memIdx, ok := pke.tableData.indexes[string(idxName)]
 			if !ok || !memIdx.IsUnique() {
