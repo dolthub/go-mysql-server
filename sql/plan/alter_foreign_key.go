@@ -143,9 +143,13 @@ func ResolveForeignKey(ctx *sql.Context, tbl sql.ForeignKeyTable, refTbl sql.For
 		if ok {
 			return sql.ErrAddForeignKeyDuplicateColumn.New(fkCol)
 		}
-		// Non-nullable columns may not have SET NULL as a reference option
-		if !col.Nullable && (fkDef.OnUpdate == sql.ForeignKeyReferentialAction_SetNull || fkDef.OnDelete == sql.ForeignKeyReferentialAction_SetNull) {
-			return sql.ErrForeignKeySetNullNonNullable.New(col.Name)
+
+		// This is checked for Dolt only. Doltgres must have schema name defined.
+		if fkDef.SchemaName == "" {
+			// Non-nullable columns may not have SET NULL as a reference option
+			if !col.Nullable && (fkDef.OnUpdate == sql.ForeignKeyReferentialAction_SetNull || fkDef.OnDelete == sql.ForeignKeyReferentialAction_SetNull) {
+				return sql.ErrForeignKeySetNullNonNullable.New(col.Name)
+			}
 		}
 		seenCols[lowerFkCol] = struct{}{}
 		fkDef.Columns[i] = col.Name

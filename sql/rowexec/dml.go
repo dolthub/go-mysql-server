@@ -187,7 +187,8 @@ func (b *BaseBuilder) buildDropForeignKey(ctx *sql.Context, n *plan.DropForeignK
 	if !ok {
 		return nil, sql.ErrNoForeignKeySupport.New(n.Name)
 	}
-	err = fkTbl.DropForeignKey(ctx, n.Name)
+	// TODO: provide schema name
+	err = fkTbl.DropForeignKey(ctx, n.Name, fkTbl.Name(), "")
 	if err != nil {
 		return nil, err
 	}
@@ -239,7 +240,8 @@ func (b *BaseBuilder) buildDropTable(ctx *sql.Context, n *plan.DropTable, _ sql.
 				return nil, err
 			}
 			for _, fk := range fks {
-				if err = fkTable.DropForeignKey(ctx, fk.Name); err != nil {
+				// TODO: provide schema name
+				if err = fkTable.DropForeignKey(ctx, fk.Name, fk.Table, ""); err != nil {
 					return nil, err
 				}
 			}
@@ -472,8 +474,8 @@ func (b *BaseBuilder) buildRenameForeignKey(ctx *sql.Context, n *plan.RenameFore
 			break
 		}
 	}
-
-	err = fkTbl.DropForeignKey(ctx, n.OldName)
+	// TODO: provide schema name
+	err = fkTbl.DropForeignKey(ctx, n.OldName, fkTbl.Name(), "")
 	if err != nil {
 		return nil, err
 	}
