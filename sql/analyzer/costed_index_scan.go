@@ -1539,13 +1539,6 @@ func (c *indexCoster) costFulltext(filter *iScanLeaf, s sql.Statistic, ordinal i
 	return s, s.IndexClass() == sql.IndexClassFulltext && s.Qualifier().Index() == filter.fulltextIndex, nil
 }
 
-<<<<<<< HEAD
-// normalizeLeafSides identifies the index target (a functional expression or GetField) and the
-// literal side of a comparison, returning the index column name, its type, the correctly-oriented
-// scan op, and the literal expression. The op is always returned in "indexTarget op litExpr"
-// orientation: if the index target is on the right side of the original expression, op is swapped.
-func (c *indexCoster) normalizeLeafSides(ctx *sql.Context, op sql.IndexScanOp, left, right sql.Expression) (name string, typ sql.Type, normalizedOp sql.IndexScanOp, litExpr sql.Expression, ok bool) {
-=======
 // normalizeLeafSides identifies which side of a comparison holds the index target (a matching
 // indexed expression or a plain GetField) and which side holds the literal, then returns
 // everything the caller needs to build an index scan leaf.
@@ -1564,8 +1557,7 @@ func (c *indexCoster) normalizeLeafSides(ctx *sql.Context, op sql.IndexScanOp, l
 //
 // ok is false when neither side of the comparison matches any indexed expression or GetField,
 // meaning this comparison cannot be served by an index scan.
-func (c *indexCoster) normalizeLeafSides(op sql.IndexScanOp, left, right sql.Expression) (name string, typ sql.Type, normalizedOp sql.IndexScanOp, litExpr sql.Expression, ok bool) {
->>>>>>> 2d563886c (PR feedback)
+func (c *indexCoster) normalizeLeafSides(ctx *sql.Context, op sql.IndexScanOp, left, right sql.Expression) (name string, typ sql.Type, normalizedOp sql.IndexScanOp, litExpr sql.Expression, ok bool) {
 	// Check the left side first: functional expression match, then plain GetField.
 	// If the index target is on the left, op is already in "indexTarget op litExpr" orientation.
 	if left != nil {

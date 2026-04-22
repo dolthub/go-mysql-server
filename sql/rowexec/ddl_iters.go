@@ -1534,7 +1534,7 @@ func (i *addColumnIter) rewriteTable(ctx *sql.Context, rwt sql.RewritableTable) 
 			break
 		}
 	}
-	newSch, projections, err := addColumnToSchema(ctx, targetSch, i.a.Column(), i.a.Order())
+	newSch, projections, err := addColumnToSchema(ctx, targetSch, i.a.Column(), i.a.Order(ctx))
 	if err != nil {
 		return false, err
 	}
