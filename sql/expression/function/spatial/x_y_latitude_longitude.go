@@ -36,7 +36,7 @@ var _ sql.CollationCoercible = (*STX)(nil)
 var ErrInvalidType = errors.NewKind("%s received non-point type")
 
 // NewSTX creates a new STX expression.
-func NewSTX(args ...sql.Expression) (sql.Expression, error) {
+func NewSTX(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 1 && len(args) != 2 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_X", "1 or 2", len(args))
 	}
@@ -54,7 +54,7 @@ func (s *STX) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (s *STX) Type() sql.Type {
+func (s *STX) Type(ctx *sql.Context) sql.Type {
 	if len(s.ChildExpressions) == 1 {
 		return types.Float64
 	} else {
@@ -76,8 +76,8 @@ func (s *STX) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (s *STX) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewSTX(children...)
+func (s *STX) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewSTX(ctx, children...)
 }
 
 // Eval implements the sql.Expression interface.
@@ -138,7 +138,7 @@ var _ sql.FunctionExpression = (*STY)(nil)
 var _ sql.CollationCoercible = (*STY)(nil)
 
 // NewSTY creates a new STY expression.
-func NewSTY(args ...sql.Expression) (sql.Expression, error) {
+func NewSTY(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 1 && len(args) != 2 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_Y", "1 or 2", len(args))
 	}
@@ -156,7 +156,7 @@ func (s *STY) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (s *STY) Type() sql.Type {
+func (s *STY) Type(ctx *sql.Context) sql.Type {
 	if len(s.ChildExpressions) == 1 {
 		return types.Float64
 	} else {
@@ -178,8 +178,8 @@ func (s *STY) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (s *STY) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewSTY(children...)
+func (s *STY) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewSTY(ctx, children...)
 }
 
 // Eval implements the sql.Expression interface.
@@ -244,7 +244,7 @@ var ErrLatitudeOutOfRange = errors.NewKind("latitude %v is out of range in funct
 var ErrLongitudeOutOfRange = errors.NewKind("longitude %v is out of range in function %s. it must be within [-180.0, 180.0]")
 
 // NewLongitude creates a new ST_LONGITUDE expression.
-func NewLongitude(args ...sql.Expression) (sql.Expression, error) {
+func NewLongitude(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 1 && len(args) != 2 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_LONGITUDE", "1 or 2", len(args))
 	}
@@ -262,7 +262,7 @@ func (l *Longitude) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (l *Longitude) Type() sql.Type {
+func (l *Longitude) Type(ctx *sql.Context) sql.Type {
 	if len(l.ChildExpressions) == 1 {
 		return types.Float64
 	} else {
@@ -284,8 +284,8 @@ func (l *Longitude) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (l *Longitude) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewLongitude(children...)
+func (l *Longitude) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewLongitude(ctx, children...)
 }
 
 // Eval implements the sql.Expression interface.
@@ -375,7 +375,7 @@ func (l *Latitude) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (l *Latitude) Type() sql.Type {
+func (l *Latitude) Type(ctx *sql.Context) sql.Type {
 	if len(l.ChildExpressions) == 1 {
 		return types.Float64
 	} else {
@@ -397,7 +397,7 @@ func (l *Latitude) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (l *Latitude) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (l *Latitude) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	return NewLatitude(children...)
 }
 

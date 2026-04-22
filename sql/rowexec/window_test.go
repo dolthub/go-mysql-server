@@ -28,36 +28,34 @@ import (
 )
 
 func TestWindowPlanToIter(t *testing.T) {
-	n1 := window.NewRowNumber().(sql.WindowAggregation).WithWindow(
-		&sql.WindowDefinition{
-			PartitionBy: []sql.Expression{
-				expression.NewGetField(2, types.Int64, "c", false)},
-			OrderBy: nil,
-		})
+	ctx := sql.NewEmptyContext()
+	n1 := window.NewRowNumber(ctx).(sql.WindowAggregation).WithWindow(ctx, &sql.WindowDefinition{
+		PartitionBy: []sql.Expression{
+			expression.NewGetField(2, types.Int64, "c", false)},
+		OrderBy: nil,
+	})
 	n2 := aggregation.NewMax(
 		expression.NewGetField(0, types.Int64, "a", false),
-	).WithWindow(
-		&sql.WindowDefinition{
-			PartitionBy: []sql.Expression{
-				expression.NewGetField(1, types.Int64, "b", false)},
-			OrderBy: nil,
-		})
+	).WithWindow(ctx, &sql.WindowDefinition{
+		PartitionBy: []sql.Expression{
+			expression.NewGetField(1, types.Int64, "b", false)},
+		OrderBy: nil,
+	})
 	n3 := expression.NewGetField(0, types.Int64, "a", false)
 	n4 := aggregation.NewMin(
 		expression.NewGetField(0, types.Int64, "a", false),
-	).WithWindow(
-		&sql.WindowDefinition{
-			PartitionBy: []sql.Expression{
-				expression.NewGetField(1, types.Int64, "b", false)},
-			OrderBy: nil,
-		})
+	).WithWindow(ctx, &sql.WindowDefinition{
+		PartitionBy: []sql.Expression{
+			expression.NewGetField(1, types.Int64, "b", false)},
+		OrderBy: nil,
+	})
 
-	fn1, err := n1.NewWindowFunction()
+	fn1, err := n1.NewWindowFunction(ctx)
 	require.NoError(t, err)
-	fn2, err := n2.NewWindowFunction()
+	fn2, err := n2.NewWindowFunction(ctx)
 	require.NoError(t, err)
-	fn3, err := aggregation.NewLast(n3).NewWindowFunction()
-	fn4, err := n4.NewWindowFunction()
+	fn3, err := aggregation.NewLast(n3).NewWindowFunction(ctx)
+	fn4, err := n4.NewWindowFunction(ctx)
 	require.NoError(t, err)
 
 	agg1 := aggregation.NewAggregation(fn1, fn1.DefaultFramer())
@@ -66,7 +64,7 @@ func TestWindowPlanToIter(t *testing.T) {
 	agg4 := aggregation.NewAggregation(fn4, fn4.DefaultFramer())
 
 	window := plan.NewWindow([]sql.Expression{n1, n2, n3, n4}, nil)
-	outputIters, outputOrdinals, err := windowToIter(window)
+	outputIters, outputOrdinals, err := windowToIter(ctx, window)
 	require.NoError(t, err)
 
 	require.Equal(t, len(outputIters), 3)

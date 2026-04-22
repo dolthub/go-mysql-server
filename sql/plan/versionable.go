@@ -23,5 +23,5 @@ type Versionable interface {
 	AsOf() sql.Expression
 	// WithAsOf returns a copy of this versioned table with its AsOf
 	// field set to the given value. Analogous to WithChildren.
-	WithAsOf(asOf sql.Expression) (sql.Node, error)
+	WithAsOf(ctx *sql.Context, asOf sql.Expression) (sql.Node, error)
 }

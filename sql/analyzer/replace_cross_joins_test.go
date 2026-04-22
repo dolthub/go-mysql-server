@@ -30,12 +30,12 @@ func TestConvertCrossJoin(t *testing.T) {
 	pro := memory.NewDBProvider(db)
 	ctx := newContext(pro)
 
-	tableA := memory.NewTable(db, "a", sql.NewPrimaryKeySchema(sql.Schema{
+	tableA := memory.NewTable(ctx, db, "a", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "x", Type: types.Int64, Source: "a"},
 		{Name: "y", Type: types.Int64, Source: "a"},
 		{Name: "z", Type: types.Int64, Source: "a"},
 	}), nil)
-	tableB := memory.NewTable(db, "b", sql.NewPrimaryKeySchema(sql.Schema{
+	tableB := memory.NewTable(ctx, db, "b", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "x", Type: types.Int64, Source: "b"},
 		{Name: "y", Type: types.Int64, Source: "b"},
 		{Name: "z", Type: types.Int64, Source: "b"},

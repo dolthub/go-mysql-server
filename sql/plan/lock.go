@@ -66,7 +66,7 @@ func (t *LockTables) Resolved() bool {
 }
 
 // Schema implements the sql.Node interface.
-func (t *LockTables) Schema() sql.Schema { return nil }
+func (t *LockTables) Schema(ctx *sql.Context) sql.Schema { return nil }
 
 func (t *LockTables) String() string {
 	var children = make([]string, len(t.Locks))
@@ -85,7 +85,7 @@ func (t *LockTables) String() string {
 }
 
 // WithChildren implements the Node interface.
-func (t *LockTables) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (t *LockTables) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != len(t.Locks) {
 		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), len(t.Locks))
 	}
@@ -129,7 +129,7 @@ func (t *UnlockTables) Resolved() bool { return true }
 func (t *UnlockTables) IsReadOnly() bool { return true }
 
 // Schema implements the sql.Node interface.
-func (t *UnlockTables) Schema() sql.Schema { return nil }
+func (t *UnlockTables) Schema(ctx *sql.Context) sql.Schema { return nil }
 
 func (t *UnlockTables) String() string {
 	p := sql.NewTreePrinter()
@@ -138,7 +138,7 @@ func (t *UnlockTables) String() string {
 }
 
 // WithChildren implements the Node interface.
-func (t *UnlockTables) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (t *UnlockTables) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 0)
 	}

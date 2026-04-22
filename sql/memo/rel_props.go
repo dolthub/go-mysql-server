@@ -44,7 +44,7 @@ type relProps struct {
 	DistinctOn   []sql.Expression
 }
 
-func newRelProps(rel RelExpr) *relProps {
+func newRelProps(ctx *sql.Context, rel RelExpr) *relProps {
 	p := &relProps{
 		grp: rel.Group(),
 	}
@@ -52,7 +52,7 @@ func newRelProps(rel RelExpr) *relProps {
 	case *EmptyTable:
 		if r.TableIdNode().Columns().Len() > 0 {
 			p.outputCols = r.TableIdNode().Columns()
-			p.populateFds()
+			p.populateFds(ctx)
 			p.populateOutputTables()
 			p.populateInputTables()
 			return p
@@ -60,7 +60,7 @@ func newRelProps(rel RelExpr) *relProps {
 	case *SetOp:
 	case SourceRel:
 		n := r.TableIdNode()
-		if len(n.Schema()) == n.Columns().Len() {
+		if len(n.Schema(ctx)) == n.Columns().Len() {
 			p.outputCols = r.TableIdNode().Columns()
 
 			firstCol, _ := n.Columns().Next(1)
@@ -79,7 +79,7 @@ func newRelProps(rel RelExpr) *relProps {
 				if irt, ok := table.(sql.IndexRequired); ok {
 					cols := irt.RequiredPredicates()
 					for _, c := range cols {
-						i := n.Schema().IndexOfColName(c)
+						i := n.Schema(ctx).IndexOfColName(c)
 						requiredIndexCols.Add(firstCol + sql.ColumnId(i))
 					}
 				}
@@ -95,14 +95,14 @@ func newRelProps(rel RelExpr) *relProps {
 			var sch sql.Schema
 			switch n := tw.UnderlyingTable().(type) {
 			case sql.PrimaryKeyTable:
-				sch = n.PrimaryKeySchema().Schema
+				sch = n.PrimaryKeySchema(ctx).Schema
 			default:
-				sch = n.Schema()
+				sch = n.Schema(ctx)
 			}
 			firstCol, _ := n.Columns().Next(1)
 
 			var colset sql.ColSet
-			for _, c := range n.Schema() {
+			for _, c := range n.Schema(ctx) {
 				i := sch.IndexOfColName(c.Name)
 				colset.Add(firstCol + sql.ColumnId(i))
 			}
@@ -122,7 +122,7 @@ func newRelProps(rel RelExpr) *relProps {
 	}
 
 	p.populateRequiredIdxCols()
-	p.populateFds()
+	p.populateFds(ctx)
 	p.populateOutputTables()
 	p.populateInputTables()
 	return p
@@ -161,22 +161,22 @@ func (p *relProps) populateRequiredIdxCols() {
 	}
 }
 
-func (p *relProps) populateFds() {
+func (p *relProps) populateFds(ctx *sql.Context) {
 	var fds *sql.FuncDepSet
 	switch rel := p.grp.First.(type) {
 	case JoinRel:
 		jp := rel.JoinPrivate()
 		switch {
 		case jp.Op.IsDegenerate():
-			fds = sql.NewCrossJoinFDs(jp.Left.RelProps.FuncDeps(), jp.Right.RelProps.FuncDeps())
+			fds = sql.NewCrossJoinFDs(jp.Left.RelProps.FuncDeps(ctx), jp.Right.RelProps.FuncDeps(ctx))
 		case jp.Op.IsLeftOuter():
-			fds = sql.NewLeftJoinFDs(jp.Left.RelProps.FuncDeps(), jp.Right.RelProps.FuncDeps(), getEquivs(jp.Filter))
+			fds = sql.NewLeftJoinFDs(jp.Left.RelProps.FuncDeps(ctx), jp.Right.RelProps.FuncDeps(ctx), getEquivs(jp.Filter))
 		default:
-			fds = sql.NewInnerJoinFDs(jp.Left.RelProps.FuncDeps(), jp.Right.RelProps.FuncDeps(), getEquivs(jp.Filter))
+			fds = sql.NewInnerJoinFDs(jp.Left.RelProps.FuncDeps(ctx), jp.Right.RelProps.FuncDeps(ctx), getEquivs(jp.Filter))
 		}
 	case *Max1Row:
-		all := rel.Child.RelProps.FuncDeps().All()
-		notNull := rel.Child.RelProps.FuncDeps().NotNull()
+		all := rel.Child.RelProps.FuncDeps(ctx).All()
+		notNull := rel.Child.RelProps.FuncDeps(ctx).NotNull()
 		fds = sql.NewMax1RowFDs(all, notNull)
 	case *EmptyTable:
 		fds = &sql.FuncDepSet{}
@@ -184,7 +184,7 @@ func (p *relProps) populateFds() {
 		n := rel.TableIdNode()
 		all := n.Columns()
 
-		sch := allTableCols(rel)
+		sch := allTableCols(ctx, rel)
 		var notNull sql.ColSet
 		j := 0
 		for id, hasNext := all.Next(1); hasNext; id, hasNext = all.Next(id + 1) {
@@ -206,14 +206,14 @@ func (p *relProps) populateFds() {
 			if !ok {
 				break
 			}
-			indexes, _ = indexableTable.GetIndexes(rel.Group().m.Ctx)
+			indexes, _ = indexableTable.GetIndexes(ctx)
 		case *TableScan:
 			table := n.Table.(sql.TableNode).UnderlyingTable()
 			indexableTable, ok := table.(sql.IndexAddressableTable)
 			if !ok {
 				break
 			}
-			indexes, _ = indexableTable.GetIndexes(rel.Group().m.Ctx)
+			indexes, _ = indexableTable.GetIndexes(ctx)
 		default:
 		}
 
@@ -228,7 +228,7 @@ func (p *relProps) populateFds() {
 			strict := true
 			normIdx := &Index{idx: idx, cols: make([]sql.ColumnId, len(columns)), order: sql.IndexOrderNone}
 			if oidx, ok := idx.(sql.OrderedIndex); ok {
-				normIdx.order = oidx.Order()
+				normIdx.order = oidx.Order(ctx)
 			}
 			for i, c := range columns {
 				// TODO: This doesn't account for when the column is not found and ord is -1
@@ -304,16 +304,16 @@ func (p *relProps) populateFds() {
 				}
 			}
 		}
-		fds = sql.NewFilterFDs(rel.Child.RelProps.FuncDeps(), notNull, constant, equiv)
+		fds = sql.NewFilterFDs(rel.Child.RelProps.FuncDeps(ctx), notNull, constant, equiv)
 	case *Project:
 		var projCols sql.ColSet
 		for _, e := range rel.Projections {
-			cols, _, _ := getExprScalarProps(e)
+			cols, _, _ := getExprScalarProps(ctx, e)
 			projCols = projCols.Union(cols)
 		}
-		fds = sql.NewProjectFDs(rel.Child.RelProps.FuncDeps(), projCols, false)
+		fds = sql.NewProjectFDs(rel.Child.RelProps.FuncDeps(ctx), projCols, false)
 	case *Distinct:
-		fds = sql.NewProjectFDs(rel.Child.RelProps.FuncDeps(), rel.Child.RelProps.FuncDeps().All(), true)
+		fds = sql.NewProjectFDs(rel.Child.RelProps.FuncDeps(ctx), rel.Child.RelProps.FuncDeps(ctx).All(), true)
 	default:
 		rel.Group().m.HandleErr(fmt.Errorf("unsupported relProps type: %T", rel))
 	}
@@ -489,7 +489,7 @@ func (m *Memo) statsForRel(ctx *sql.Context, rel RelExpr) sql.Statistic {
 			return &stats.Statistic{RowCnt: defaultTableSize}
 		}
 		if prov := rel.Group().m.StatsProvider(); prov != nil {
-			if card, err := prov.RowCount(rel.Group().m.Ctx, dbName, table); err == nil {
+			if card, err := prov.RowCount(ctx, dbName, table); err == nil {
 				return &stats.Statistic{RowCnt: card}
 			}
 		}
@@ -557,11 +557,11 @@ func getJoinStats(ctx *sql.Context, leftIdx, rightIdx, leftChild, rightChild sql
 
 // getExprScalarProps returns bitsets of the column and table references,
 // and whether the expression is null rejecting.
-func getExprScalarProps(e sql.Expression) (sql.ColSet, sql.FastIntSet, bool) {
+func getExprScalarProps(ctx *sql.Context, e sql.Expression) (sql.ColSet, sql.FastIntSet, bool) {
 	var cols sql.ColSet
 	var tables sql.FastIntSet
 	nullRej := true
-	transform.InspectExpr(e, func(e sql.Expression) bool {
+	transform.InspectExpr(ctx, e, func(ctx *sql.Context, e sql.Expression) bool {
 		switch e := e.(type) {
 		case *expression.GetField:
 			cols.Add(e.Id())
@@ -574,9 +574,9 @@ func getExprScalarProps(e sql.Expression) (sql.ColSet, sql.FastIntSet, bool) {
 	return cols, tables, nullRej
 }
 
-func isSimpleEquality(expr sql.Expression) bool {
+func isSimpleEquality(ctx *sql.Context, expr sql.Expression) bool {
 	hasOnlyEquals := true
-	transform.InspectExpr(expr, func(e sql.Expression) bool {
+	transform.InspectExpr(ctx, expr, func(ctx *sql.Context, e sql.Expression) bool {
 		switch e.(type) {
 		case *expression.GetField:
 		case *expression.Equals, *expression.NullSafeEquals:
@@ -591,7 +591,7 @@ func isSimpleEquality(expr sql.Expression) bool {
 
 // allTableCols returns the full schema of a table ignoring
 // declared projections.
-func allTableCols(rel SourceRel) sql.Schema {
+func allTableCols(ctx *sql.Context, rel SourceRel) sql.Schema {
 	var table sql.Table
 	switch rel := rel.(type) {
 	case *TableAlias:
@@ -605,14 +605,14 @@ func allTableCols(rel SourceRel) sql.Schema {
 	case *TableScan:
 		table = rel.Table.(sql.TableNode).UnderlyingTable()
 	default:
-		return rel.OutputCols()
+		return rel.OutputCols(ctx)
 	}
 	projTab, ok := table.(sql.PrimaryKeyTable)
 	if !ok {
-		return rel.OutputCols()
+		return rel.OutputCols(ctx)
 	}
 
-	sch := projTab.PrimaryKeySchema().Schema
+	sch := projTab.PrimaryKeySchema(ctx).Schema
 	ret := make(sql.Schema, len(sch))
 	for i, c := range sch {
 		// TODO: generation_expression
@@ -653,9 +653,9 @@ func getEquivs(filters []sql.Expression) [][2]sql.ColumnId {
 	return ret
 }
 
-func (p *relProps) FuncDeps() *sql.FuncDepSet {
+func (p *relProps) FuncDeps(ctx *sql.Context) *sql.FuncDepSet {
 	if p.fds == nil {
-		p.populateFds()
+		p.populateFds(ctx)
 	}
 	return p.fds
 }
@@ -729,34 +729,34 @@ func (p *relProps) populateInputTables() {
 	}
 }
 
-func (p *relProps) populateOutputCols() {
-	p.outputCols = p.outputColsForRel(p.grp.Best)
+func (p *relProps) populateOutputCols(ctx *sql.Context) {
+	p.outputCols = p.outputColsForRel(ctx, p.grp.Best)
 }
 
-func (p *relProps) outputColsForRel(r RelExpr) sql.ColSet {
+func (p *relProps) outputColsForRel(ctx *sql.Context, r RelExpr) sql.ColSet {
 	switch r := r.(type) {
 	case *SemiJoin:
-		return r.Left.RelProps.OutputCols()
+		return r.Left.RelProps.OutputCols(ctx)
 	case *AntiJoin:
-		return r.Left.RelProps.OutputCols()
+		return r.Left.RelProps.OutputCols(ctx)
 	case *LookupJoin:
 		if r.Op.IsPartial() {
-			return r.Left.RelProps.OutputCols()
+			return r.Left.RelProps.OutputCols(ctx)
 		} else {
-			return r.JoinPrivate().Left.RelProps.OutputCols().Union(r.JoinPrivate().Right.RelProps.OutputCols())
+			return r.JoinPrivate().Left.RelProps.OutputCols(ctx).Union(r.JoinPrivate().Right.RelProps.OutputCols(ctx))
 		}
 	case JoinRel:
-		return r.JoinPrivate().Left.RelProps.OutputCols().Union(r.JoinPrivate().Right.RelProps.OutputCols())
+		return r.JoinPrivate().Left.RelProps.OutputCols(ctx).Union(r.JoinPrivate().Right.RelProps.OutputCols(ctx))
 	case *Distinct:
-		return r.Child.RelProps.OutputCols()
+		return r.Child.RelProps.OutputCols(ctx)
 	case *Project:
-		return r.outputCols()
+		return r.outputCols(ctx)
 	case *Filter:
-		return r.outputCols()
+		return r.outputCols(ctx)
 	case *Max1Row:
-		return r.outputCols()
+		return r.outputCols(ctx)
 	case *IndexScan:
-		return p.outputColsForRel(r.Next())
+		return p.outputColsForRel(ctx, r.Next())
 	default:
 		err := fmt.Errorf("unknown type for rel output cols: %T", r)
 		p.grp.m.HandleErr(err)
@@ -765,12 +765,12 @@ func (p *relProps) outputColsForRel(r RelExpr) sql.ColSet {
 }
 
 // OutputCols returns the output schema of a node
-func (p *relProps) OutputCols() sql.ColSet {
+func (p *relProps) OutputCols(ctx *sql.Context) sql.ColSet {
 	if p.outputCols.Empty() {
 		if p.grp.Best == nil {
-			return p.outputColsForRel(p.grp.First)
+			return p.outputColsForRel(ctx, p.grp.First)
 		}
-		p.populateOutputCols()
+		p.populateOutputCols(ctx)
 	}
 	return p.outputCols
 }
@@ -793,7 +793,7 @@ func (p *relProps) InputTables() sql.FastIntSet {
 // sortedInputs returns true if a relation's inputs are sorted on the
 // full output schema. The OrderedDistinct operator can be used in this
 // case.
-func sortedInputs(rel RelExpr) bool {
+func sortedInputs(ctx *sql.Context, rel RelExpr) bool {
 	switch r := rel.(type) {
 	case *Max1Row:
 		return true
@@ -801,12 +801,12 @@ func sortedInputs(rel RelExpr) bool {
 		if _, ok := r.Child.Best.(*Max1Row); ok {
 			return true
 		}
-		inputs := sortedColsForRel(r.Child.Best)
+		inputs := sortedColsForRel(ctx, r.Child.Best)
 		outputs := r.Projections
 		i := 0
 		j := 0
 		for i < len(r.Projections) && j < len(inputs) {
-			out := transform.ExpressionToColumn(outputs[i], plan.AliasSubqueryString(outputs[i]))
+			out := transform.ExpressionToColumn(ctx, outputs[i], plan.AliasSubqueryString(outputs[i]))
 			in := inputs[j]
 			// i -> output idx (distinct)
 			// j -> input idx
@@ -825,15 +825,15 @@ func sortedInputs(rel RelExpr) bool {
 	}
 }
 
-func sortedColsForRel(rel RelExpr) sql.Schema {
+func sortedColsForRel(ctx *sql.Context, rel RelExpr) sql.Schema {
 	switch r := rel.(type) {
 	case *TableScan:
 		tab, ok := r.Table.(sql.TableNode).UnderlyingTable().(sql.PrimaryKeyTable)
 		if ok {
-			ords := tab.PrimaryKeySchema().PkOrdinals
+			ords := tab.PrimaryKeySchema(ctx).PkOrdinals
 			var pks sql.Schema
 			for _, i := range ords {
-				pks = append(pks, tab.PrimaryKeySchema().Schema[i])
+				pks = append(pks, tab.PrimaryKeySchema(ctx).Schema[i])
 			}
 			return pks
 		}
@@ -853,7 +853,7 @@ func sortedColsForRel(rel RelExpr) sql.Schema {
 		}
 		return ret
 	case JoinRel:
-		return sortedColsForRel(r.JoinPrivate().Left.Best)
+		return sortedColsForRel(ctx, r.JoinPrivate().Left.Best)
 	case *Project:
 		// TODO remove projections from sortedColsForRel(n.child.best)
 		return nil
@@ -864,10 +864,10 @@ func sortedColsForRel(rel RelExpr) sql.Schema {
 		}
 		tab, ok := rt.Table.(sql.PrimaryKeyTable)
 		if ok {
-			ords := tab.PrimaryKeySchema().PkOrdinals
+			ords := tab.PrimaryKeySchema(ctx).PkOrdinals
 			var pks sql.Schema
 			for _, i := range ords {
-				col := tab.PrimaryKeySchema().Schema[i].Copy()
+				col := tab.PrimaryKeySchema(ctx).Schema[i].Copy()
 				col.Source = r.Name()
 				pks = append(pks, col)
 			}

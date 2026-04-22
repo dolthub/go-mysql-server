@@ -60,23 +60,23 @@ func (n *NamedWindows) String() string {
 }
 
 // DebugString implements sql.Node
-func (n *NamedWindows) DebugString() string {
+func (n *NamedWindows) DebugString(ctx *sql.Context) string {
 	var sb strings.Builder
 	sb.WriteString("NamedWindows(")
 	var sep string
 	for n, def := range n.WindowDefs {
-		sb.WriteString(strings.ReplaceAll(fmt.Sprintf("%s%s %s", sep, n, def.DebugString()), "over", "as"))
+		sb.WriteString(strings.ReplaceAll(fmt.Sprintf("%s%s %s", sep, n, def.DebugString(ctx)), "over", "as"))
 		sep = ", "
 	}
 	pr := sql.NewTreePrinter()
 	sb.WriteString(")")
 	_ = pr.WriteNode("%s", sb.String())
-	_ = pr.WriteChildren(sql.DebugString(n.Child))
+	_ = pr.WriteChildren(sql.DebugString(ctx, n.Child))
 	return pr.String()
 }
 
 // WithChildren implements sql.Node
-func (n *NamedWindows) WithChildren(nodes ...sql.Node) (sql.Node, error) {
+func (n *NamedWindows) WithChildren(ctx *sql.Context, nodes ...sql.Node) (sql.Node, error) {
 	if len(nodes) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(nodes), 1)
 	}

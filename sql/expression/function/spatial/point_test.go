@@ -25,9 +25,10 @@ import (
 )
 
 func TestPoint(t *testing.T) {
+	ctx := sql.NewEmptyContext()
 	t.Run("create valid point with integers", func(t *testing.T) {
 		require := require.New(t)
-		f := NewPoint(expression.NewLiteral(1, types.Int64),
+		f := NewPoint(ctx, expression.NewLiteral(1, types.Int64),
 			expression.NewLiteral(2, types.Int64),
 		)
 
@@ -38,7 +39,7 @@ func TestPoint(t *testing.T) {
 
 	t.Run("create valid point with floats", func(t *testing.T) {
 		require := require.New(t)
-		f := NewPoint(expression.NewLiteral(123.456, types.Float64),
+		f := NewPoint(ctx, expression.NewLiteral(123.456, types.Float64),
 			expression.NewLiteral(789.000, types.Float64),
 		)
 
@@ -49,7 +50,7 @@ func TestPoint(t *testing.T) {
 
 	t.Run("create valid point with null x", func(t *testing.T) {
 		require := require.New(t)
-		f := NewPoint(expression.NewLiteral(nil, types.Null),
+		f := NewPoint(ctx, expression.NewLiteral(nil, types.Null),
 			expression.NewLiteral(2, types.Int32),
 		)
 
@@ -60,7 +61,7 @@ func TestPoint(t *testing.T) {
 
 	t.Run("create valid point with null y", func(t *testing.T) {
 		require := require.New(t)
-		f := NewPoint(expression.NewLiteral(1, types.Int32),
+		f := NewPoint(ctx, expression.NewLiteral(1, types.Int32),
 			expression.NewLiteral(nil, types.Null),
 		)
 
@@ -71,7 +72,7 @@ func TestPoint(t *testing.T) {
 
 	t.Run("create valid point with nulls", func(t *testing.T) {
 		require := require.New(t)
-		f := NewPoint(expression.NewLiteral(nil, types.Null),
+		f := NewPoint(ctx, expression.NewLiteral(nil, types.Null),
 			expression.NewLiteral(nil, types.Null),
 		)
 

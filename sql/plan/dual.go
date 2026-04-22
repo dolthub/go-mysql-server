@@ -29,11 +29,11 @@ func IsDualTable(t sql.Table) bool {
 	if t == nil {
 		return false
 	}
-	return strings.ToLower(t.Name()) == DualTableName && t.Schema().Equals(memory.DualTableSchema.Schema)
+	return strings.ToLower(t.Name()) == DualTableName && t.Schema(sql.NewEmptyContext()).Equals(memory.DualTableSchema.Schema)
 }
 
 var dualTable = func() sql.Table {
-	return memory.NewDualTable()
+	return memory.NewDualTable(sql.NewEmptyContext())
 }()
 
 // NewDualSqlTable creates a new Dual table.

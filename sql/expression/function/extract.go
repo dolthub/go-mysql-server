@@ -32,7 +32,7 @@ var _ sql.FunctionExpression = (*Extract)(nil)
 var _ sql.CollationCoercible = (*Extract)(nil)
 
 // NewExtract creates a new Extract expression.
-func NewExtract(e1, e2 sql.Expression) sql.Expression {
+func NewExtract(ctx *sql.Context, e1, e2 sql.Expression) sql.Expression {
 	return &Extract{
 		expression.BinaryExpressionStub{
 			LeftChild:  e1,
@@ -52,10 +52,10 @@ func (td *Extract) Description() string {
 }
 
 // Type implements the Expression interface.
-func (td *Extract) Type() sql.Type { return types.Int64 }
+func (td *Extract) Type(ctx *sql.Context) sql.Type { return types.Int64 }
 
 // IsNullable implements the Expression interface
-func (td *Extract) IsNullable() bool {
+func (td *Extract) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
@@ -69,11 +69,11 @@ func (td *Extract) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (td *Extract) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (td *Extract) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(td, len(children), 2)
 	}
-	return NewExtract(children[0], children[1]), nil
+	return NewExtract(ctx, children[0], children[1]), nil
 }
 
 // Eval implements the Expression interface.

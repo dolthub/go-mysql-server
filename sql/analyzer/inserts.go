@@ -36,13 +36,13 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 		return n, transform.SameTree, nil
 	}
 	// We capture all INSERTs along the tree, such as those inside of block statements.
-	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(ctx, n, func(ctx *sql.Context, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		insert, ok := n.(*plan.InsertInto)
 		if !ok {
 			return n, transform.SameTree, nil
 		}
 
-		table := getResolvedTable(insert.Destination)
+		table := getResolvedTable(ctx, insert.Destination)
 
 		insertable, err := plan.GetInsertable(table)
 		if err != nil {
@@ -55,7 +55,7 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 			// Analyze the source of the insert independently
 			if _, ok := insert.Source.(*plan.Values); ok {
 				scope = scope.NewScope(plan.NewProject(
-					expression.SchemaToGetFields(insert.Source.Schema()[:len(insert.ColumnNames)], sql.ColSet{}),
+					expression.SchemaToGetFields(insert.Source.Schema(ctx)[:len(insert.ColumnNames)], sql.ColSet{}),
 					plan.NewSubqueryAlias("dummy", "", insert.Source),
 				))
 			}
@@ -66,7 +66,7 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 			}
 		}
 
-		dstSchema := insertable.Schema()
+		dstSchema := insertable.Schema(ctx)
 
 		// normalize the column name
 		columnNames := make([]string, len(insert.ColumnNames))
@@ -88,7 +88,7 @@ func resolveInsertRows(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Sc
 			ctx,
 			source,
 			insertable,
-			insert.Destination.Schema(),
+			insert.Destination.Schema(ctx),
 			columnNames,
 		)
 		if err != nil {
@@ -152,7 +152,7 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 			for i, c := range schema {
 				colNameToIdx[fmt.Sprintf("%s.%s", strings.ToLower(c.Source), strings.ToLower(c.Name))] = i
 			}
-			def, _, err := transform.Expr(defaultExpr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+			def, _, err := transform.Expr(ctx, defaultExpr, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				switch e := e.(type) {
 				case *expression.GetField:
 					idx, ok := colNameToIdx[strings.ToLower(e.WithTable(destTbl.Name()).String())]
@@ -200,7 +200,7 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 						if lit, isLit := expr.(*expression.Literal); isLit {
 							// If a literal NULL or if 0 is specified and the NO_AUTO_VALUE_ON_ZERO SQL mode is
 							// not active, then MySQL will fill in an auto_increment value.
-							if types.Null.Equals(lit.Type()) ||
+							if types.Null.Equals(lit.Type(ctx)) ||
 								(!sql.LoadSqlMode(ctx).ModeEnabled(sql.NoAutoValueOnZero) && isZero(ctx, lit)) {
 								firstGeneratedAutoIncRowIdx = ii
 								break
@@ -241,7 +241,7 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 
 // isZero returns true if the specified literal value |lit| has a value equal to 0.
 func isZero(ctx *sql.Context, lit *expression.Literal) bool {
-	if !types.IsNumber(lit.Type()) {
+	if !types.IsNumber(lit.Type(ctx)) {
 		return false
 	}
 
@@ -258,7 +258,7 @@ func isZero(ctx *sql.Context, lit *expression.Literal) bool {
 // expression above the UUID() function call, so that the auto generated UUID value can be captured and
 // saved to the session's query info.
 func insertAutoUuidExpression(ctx *sql.Context, expr sql.Expression, autoUuidCol *sql.Column) (sql.Expression, transform.TreeIdentity, error) {
-	return transform.Expr(expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+	return transform.Expr(ctx, expr, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		switch e := e.(type) {
 		case *function.UUIDFunc:
 			return expression.NewAutoUuid(ctx, autoUuidCol, e), transform.NewTree, nil
@@ -271,9 +271,9 @@ func insertAutoUuidExpression(ctx *sql.Context, expr sql.Expression, autoUuidCol
 // findAutoUuidColumn searches the specified |schema| for a column that meets the requirements of an auto UUID
 // column, and if found, returns the column, as well as its index in the schema. See isAutoUuidColumn() for the
 // requirements on what is considered an auto UUID column.
-func findAutoUuidColumn(_ *sql.Context, schema sql.Schema) (autoUuidCol *sql.Column, autoUuidColIdx int) {
+func findAutoUuidColumn(ctx *sql.Context, schema sql.Schema) (autoUuidCol *sql.Column, autoUuidColIdx int) {
 	for i, col := range schema {
-		if isAutoUuidColumn(col) {
+		if isAutoUuidColumn(ctx, col) {
 			return col, i
 		}
 	}
@@ -333,7 +333,7 @@ func wrapAutoUuidInValuesTuples(ctx *sql.Context, autoUuidCol *sql.Column, inser
 // type must be either varchar(36), char(36), varbinary(16), or binary(16). It must have a default value set to
 // populate a UUID, either through the UUID() function (for char and varchar columns) or the UUID_TO_BIN(UUID())
 // function (for binary and varbinary columns).
-func isAutoUuidColumn(col *sql.Column) bool {
+func isAutoUuidColumn(ctx *sql.Context, col *sql.Column) bool {
 	if col.PrimaryKey == false {
 		return false
 	}

@@ -45,10 +45,10 @@ func (u *UpdateJoin) String() string {
 }
 
 // DebugString implements the sql.Node interface.
-func (u *UpdateJoin) DebugString() string {
+func (u *UpdateJoin) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Update Join")
-	_ = pr.WriteChildren(sql.DebugString(u.Child))
+	_ = pr.WriteChildren(sql.DebugString(ctx, u.Child))
 	return pr.String()
 }
 
@@ -61,7 +61,7 @@ func (u *UpdateJoin) GetUpdatable() sql.UpdatableTable {
 }
 
 // WithChildren implements the sql.Node interface.
-func (u *UpdateJoin) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (u *UpdateJoin) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(u, len(children), 1)
 	}
@@ -123,8 +123,8 @@ func (u *updatableJoinTable) String() string {
 }
 
 // Schema implements the sql.UpdatableTable interface.
-func (u *updatableJoinTable) Schema() sql.Schema {
-	return u.joinNode.Schema()
+func (u *updatableJoinTable) Schema(ctx *sql.Context) sql.Schema {
+	return u.joinNode.Schema(ctx)
 }
 
 // Collation implements the sql.Table interface.
@@ -137,8 +137,8 @@ func (u *updatableJoinTable) Updater(ctx *sql.Context) sql.RowUpdater {
 	updaters, _ := getUpdaters(u.updateTargets, ctx)
 	return &updatableJoinUpdater{
 		updaterMap: updaters,
-		schemaMap:  RecreateTableSchemaFromJoinSchema(u.joinNode.Schema()),
-		joinSchema: u.joinNode.Schema(),
+		schemaMap:  RecreateTableSchemaFromJoinSchema(u.joinNode.Schema(ctx)),
+		joinSchema: u.joinNode.Schema(ctx),
 	}
 }
 

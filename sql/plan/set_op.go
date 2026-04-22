@@ -94,9 +94,9 @@ func (s *SetOp) AddDispose(f sql.DisposeFunc) {
 	s.dispose = append(s.dispose, f)
 }
 
-func (s *SetOp) Schema() sql.Schema {
-	ls := s.left.Schema()
-	rs := s.right.Schema()
+func (s *SetOp) Schema(ctx *sql.Context) sql.Schema {
+	ls := s.left.Schema(ctx)
+	rs := s.right.Schema(ctx)
 	ret := make([]*sql.Column, len(ls))
 	for i := range ls {
 		c := *ls[i]
@@ -161,7 +161,7 @@ func (s *SetOp) Expressions() []sql.Expression {
 	return exprs
 }
 
-func (s *SetOp) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (s *SetOp) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	var expLim, expOff, expSort int
 	if s.Limit != nil {
 		expLim = 1
@@ -186,12 +186,12 @@ func (s *SetOp) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
 		ret.Offset = exprs[0]
 		exprs = exprs[1:]
 	}
-	ret.SortFields = s.SortFields.FromExpressions(exprs...)
+	ret.SortFields = s.SortFields.FromExpressions(ctx, exprs...)
 	return &ret, nil
 }
 
 // WithChildren implements the Node interface.
-func (s *SetOp) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (s *SetOp) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 2)
 	}
@@ -207,7 +207,7 @@ func (*SetOp) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID
 	return sql.Collation_binary, 7
 }
 
-func (s *SetOp) Dispose() {
+func (s *SetOp) Dispose(ctx *sql.Context) {
 	for _, f := range s.dispose {
 		f()
 	}
@@ -248,7 +248,7 @@ func (s *SetOp) IsReadOnly() bool {
 	return s.left.IsReadOnly() && s.right.IsReadOnly()
 }
 
-func (s *SetOp) DebugString() string {
+func (s *SetOp) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	var distinct string
 	if s.Distinct {
@@ -268,7 +268,7 @@ func (s *SetOp) DebugString() string {
 	if len(s.SortFields) > 0 {
 		sFields := make([]string, len(s.SortFields))
 		for i, e := range s.SortFields.ToExpressions() {
-			sFields[i] = sql.DebugString(e)
+			sFields[i] = sql.DebugString(ctx, e)
 		}
 		children = append(children, fmt.Sprintf("sortFields: %s", strings.Join(sFields, ", ")))
 	}
@@ -278,7 +278,7 @@ func (s *SetOp) DebugString() string {
 	if s.Offset != nil {
 		children = append(children, fmt.Sprintf("offset: %s", s.Offset))
 	}
-	children = append(children, sql.DebugString(s.left), sql.DebugString(s.right))
+	children = append(children, sql.DebugString(ctx, s.left), sql.DebugString(ctx, s.right))
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }

@@ -43,7 +43,7 @@ var _ sql.FunctionExpression = (*MD5)(nil)
 var _ sql.CollationCoercible = (*MD5)(nil)
 
 // NewMD5 returns a new MD5 function expression
-func NewMD5(arg sql.Expression) sql.Expression {
+func NewMD5(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &MD5{NewUnaryFunc(arg, "MD5", types.LongText)}
 }
 
@@ -81,11 +81,11 @@ func (f *MD5) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements sql.Expression
-func (f *MD5) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (f *MD5) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 1)
 	}
-	return NewMD5(children[0]), nil
+	return NewMD5(ctx, children[0]), nil
 }
 
 // SHA1 function returns the SHA1 hash of the input.
@@ -98,7 +98,7 @@ var _ sql.FunctionExpression = (*SHA1)(nil)
 var _ sql.CollationCoercible = (*SHA1)(nil)
 
 // NewSHA1 returns a new SHA1 function expression
-func NewSHA1(arg sql.Expression) sql.Expression {
+func NewSHA1(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &SHA1{NewUnaryFunc(arg, "SHA1", types.LongText)}
 }
 
@@ -140,11 +140,11 @@ func (f *SHA1) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements sql.Expression
-func (f *SHA1) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (f *SHA1) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 1)
 	}
-	return NewSHA1(children[0]), nil
+	return NewSHA1(ctx, children[0]), nil
 }
 
 // SHA2 function returns the SHA-224/256/384/512 hash of the input.
@@ -157,7 +157,7 @@ var _ sql.FunctionExpression = (*SHA2)(nil)
 var _ sql.CollationCoercible = (*SHA2)(nil)
 
 // NewSHA2 returns a new SHA2 function expression
-func NewSHA2(arg, count sql.Expression) sql.Expression {
+func NewSHA2(ctx *sql.Context, arg, count sql.Expression) sql.Expression {
 	return &SHA2{expression.BinaryExpressionStub{LeftChild: arg, RightChild: count}}
 }
 
@@ -219,7 +219,7 @@ func (f *SHA2) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // IsNullable implements sql.Expression
-func (f *SHA2) IsNullable() bool {
+func (f *SHA2) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
@@ -234,16 +234,16 @@ func (f *SHA2) String() string {
 }
 
 // Type implements sql.Expression
-func (f *SHA2) Type() sql.Type {
+func (f *SHA2) Type(ctx *sql.Context) sql.Type {
 	return types.LongText
 }
 
 // WithChildren implements sql.Expression
-func (f *SHA2) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (f *SHA2) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 2)
 	}
-	return NewSHA2(children[0], children[1]), nil
+	return NewSHA2(ctx, children[0], children[1]), nil
 }
 
 // Compress function returns the compressed binary string of the input.
@@ -256,7 +256,7 @@ var _ sql.FunctionExpression = (*Compress)(nil)
 var _ sql.CollationCoercible = (*Compress)(nil)
 
 // NewCompress returns a new Compress function expression
-func NewCompress(arg sql.Expression) sql.Expression {
+func NewCompress(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &Compress{NewUnaryFunc(arg, "Compress", types.LongBlob)}
 }
 
@@ -265,7 +265,7 @@ func (f *Compress) Description() string {
 	return "compresses a string and returns the result as a binary string."
 }
 
-func (f *Compress) Type() sql.Type {
+func (f *Compress) Type(ctx *sql.Context) sql.Type {
 	return types.LongBlob
 }
 
@@ -318,11 +318,11 @@ func (f *Compress) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements sql.Expression
-func (f *Compress) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (f *Compress) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 1)
 	}
-	return NewCompress(children[0]), nil
+	return NewCompress(ctx, children[0]), nil
 }
 
 // Uncompress function returns the binary string from the compressed input.
@@ -340,7 +340,7 @@ const (
 )
 
 // NewUncompress returns a new Uncompress function expression
-func NewUncompress(arg sql.Expression) sql.Expression {
+func NewUncompress(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &Uncompress{NewUnaryFunc(arg, "Uncompress", types.LongBlob)}
 }
 
@@ -349,7 +349,7 @@ func (f *Uncompress) Description() string {
 	return "uncompresses a string compressed by the COMPRESS() function."
 }
 
-func (f *Uncompress) Type() sql.Type {
+func (f *Uncompress) Type(ctx *sql.Context) sql.Type {
 	return types.LongBlob
 }
 
@@ -411,16 +411,16 @@ func (f *Uncompress) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // IsNullable implements sql.Expression
-func (f *Uncompress) IsNullable() bool {
+func (f *Uncompress) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
 // WithChildren implements sql.Expression
-func (f *Uncompress) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (f *Uncompress) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 1)
 	}
-	return NewUncompress(children[0]), nil
+	return NewUncompress(ctx, children[0]), nil
 }
 
 // UncompressedLength function returns the length of the original string from the compressed string input.
@@ -433,7 +433,7 @@ var _ sql.FunctionExpression = (*UncompressedLength)(nil)
 var _ sql.CollationCoercible = (*UncompressedLength)(nil)
 
 // NewUncompressedLength returns a new UncompressedLength function expression
-func NewUncompressedLength(arg sql.Expression) sql.Expression {
+func NewUncompressedLength(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &UncompressedLength{NewUnaryFunc(arg, "UncompressedLength", types.Uint32)}
 }
 
@@ -442,7 +442,7 @@ func (f *UncompressedLength) Description() string {
 	return "returns length of original uncompressed string from compressed string input."
 }
 
-func (f *UncompressedLength) Type() sql.Type {
+func (f *UncompressedLength) Type(ctx *sql.Context) sql.Type {
 	return types.Uint32
 }
 
@@ -480,16 +480,16 @@ func (f *UncompressedLength) Eval(ctx *sql.Context, row sql.Row) (interface{}, e
 }
 
 // IsNullable implements sql.Expression
-func (f *UncompressedLength) IsNullable() bool {
+func (f *UncompressedLength) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
 // WithChildren implements sql.Expression
-func (f *UncompressedLength) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (f *UncompressedLength) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 1)
 	}
-	return NewUncompressedLength(children[0]), nil
+	return NewUncompressedLength(ctx, children[0]), nil
 }
 
 // ValidatePasswordStrength function returns an integer to indicate how strong the password is.
@@ -504,7 +504,7 @@ var _ sql.FunctionExpression = (*ValidatePasswordStrength)(nil)
 var _ sql.CollationCoercible = (*ValidatePasswordStrength)(nil)
 
 // NewValidatePasswordStrength returns a new ValidatePasswordStrength function expression
-func NewValidatePasswordStrength(arg sql.Expression) sql.Expression {
+func NewValidatePasswordStrength(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &ValidatePasswordStrength{NewUnaryFunc(arg, "ValidatePasswordStrength", types.Uint32)}
 }
 
@@ -513,7 +513,7 @@ func (f *ValidatePasswordStrength) Description() string {
 	return "returns an integer to indicate how strong the password is."
 }
 
-func (f *ValidatePasswordStrength) Type() sql.Type {
+func (f *ValidatePasswordStrength) Type(ctx *sql.Context) sql.Type {
 	return types.Int32
 }
 
@@ -607,9 +607,9 @@ func (f *ValidatePasswordStrength) Eval(ctx *sql.Context, row sql.Row) (interfac
 }
 
 // WithChildren implements sql.Expression
-func (f *ValidatePasswordStrength) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (f *ValidatePasswordStrength) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 1)
 	}
-	return NewValidatePasswordStrength(children[0]), nil
+	return NewValidatePasswordStrength(ctx, children[0]), nil
 }

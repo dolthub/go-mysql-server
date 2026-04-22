@@ -31,7 +31,7 @@ var _ sql.FunctionExpression = (*NumInteriorRings)(nil)
 var _ sql.CollationCoercible = (*NumInteriorRings)(nil)
 
 // NewNumInteriorRings creates a new NumInteriorRings expression.
-func NewNumInteriorRings(e sql.Expression) sql.Expression {
+func NewNumInteriorRings(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &NumInteriorRings{expression.UnaryExpressionStub{Child: e}}
 }
 
@@ -46,12 +46,12 @@ func (n *NumInteriorRings) Description() string {
 }
 
 // IsNullable implements the sql.Expression interface.
-func (n *NumInteriorRings) IsNullable() bool {
+func (n *NumInteriorRings) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
 // Type implements the sql.Expression interface.
-func (n *NumInteriorRings) Type() sql.Type {
+func (n *NumInteriorRings) Type(ctx *sql.Context) sql.Type {
 	return types.Int32
 }
 
@@ -65,11 +65,11 @@ func (n *NumInteriorRings) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (n *NumInteriorRings) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (n *NumInteriorRings) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 1)
 	}
-	return NewNumInteriorRings(children[0]), nil
+	return NewNumInteriorRings(ctx, children[0]), nil
 }
 
 // Eval implements the sql.Expression interface.

@@ -571,7 +571,7 @@ func (i *sortIter) Close(ctx *sql.Context) error {
 }
 
 func (i *sortIter) computeSortedRows(ctx *sql.Context) error {
-	cache, dispose := ctx.Memory.NewRowsCache()
+	cache, dispose := ctx.Memory.NewRowsCache(ctx)
 	defer dispose()
 
 	for {
@@ -622,7 +622,7 @@ type DistinctHasher interface {
 }
 
 func NewDistinctIter(ctx *sql.Context, child sql.RowIter, hasher DistinctHasher) *distinctIter {
-	cache, dispose := ctx.Memory.NewHistoryCache()
+	cache, dispose := ctx.Memory.NewHistoryCache(ctx)
 	return &distinctIter{
 		childIter:   child,
 		hasher:      hasher,
@@ -636,7 +636,7 @@ func (di *distinctIter) Next(ctx *sql.Context) (sql.Row, error) {
 		row, err := di.childIter.Next(ctx)
 		if err != nil {
 			if err == io.EOF {
-				di.Dispose()
+				di.Dispose(ctx)
 			}
 			return nil, err
 		}
@@ -659,11 +659,11 @@ func (di *distinctIter) Next(ctx *sql.Context) (sql.Row, error) {
 }
 
 func (di *distinctIter) Close(ctx *sql.Context) error {
-	di.Dispose()
+	di.Dispose(ctx)
 	return di.childIter.Close(ctx)
 }
 
-func (di *distinctIter) Dispose() {
+func (di *distinctIter) Dispose(ctx *sql.Context) {
 	if di.DisposeFunc != nil {
 		di.DisposeFunc()
 	}

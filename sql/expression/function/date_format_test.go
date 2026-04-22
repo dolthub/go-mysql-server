@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
@@ -163,28 +164,29 @@ func TestDateFormatEval(t *testing.T) {
 	dateLit := expression.NewLiteral(dt, types.DatetimeMaxPrecision)
 	format := expression.NewLiteral("%Y-%m-%d %H:%i:%s.%f", types.Text)
 	nullLiteral := expression.NewLiteral(nil, types.Null)
+	ctx := sql.NewEmptyContext()
 
-	dateFormat := NewDateFormat(dateLit, format)
+	dateFormat := NewDateFormat(ctx, dateLit, format)
 	res, err := dateFormat.Eval(nil, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, "2020-02-03 04:05:06.000007", res)
 
-	dateFormat = NewDateFormat(dateLit, nil)
+	dateFormat = NewDateFormat(ctx, dateLit, nil)
 	res, err = dateFormat.Eval(nil, nil)
 	assert.NoError(t, err)
 	assert.Nil(t, res)
 
-	dateFormat = NewDateFormat(nil, format)
+	dateFormat = NewDateFormat(ctx, nil, format)
 	res, err = dateFormat.Eval(nil, nil)
 	assert.NoError(t, err)
 	assert.Nil(t, res)
 
-	dateFormat = NewDateFormat(dateLit, nullLiteral)
+	dateFormat = NewDateFormat(ctx, dateLit, nullLiteral)
 	res, err = dateFormat.Eval(nil, nil)
 	assert.NoError(t, err)
 	assert.Nil(t, res)
 
-	dateFormat = NewDateFormat(nullLiteral, format)
+	dateFormat = NewDateFormat(ctx, nullLiteral, format)
 	res, err = dateFormat.Eval(nil, nil)
 	assert.NoError(t, err)
 	assert.Nil(t, res)

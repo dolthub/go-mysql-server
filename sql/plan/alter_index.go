@@ -128,13 +128,13 @@ func NewAlterDisableEnableKeys(db sql.Database, table sql.TableNode, disableKeys
 }
 
 // Schema implements the Node interface.
-func (p *AlterIndex) Schema() sql.Schema {
+func (p *AlterIndex) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
 // WithChildren implements the Node interface. For AlterIndex, the only appropriate input is
 // a single child - The Table.
-func (p *AlterIndex) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (p *AlterIndex) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 1)
 	}
@@ -181,14 +181,14 @@ func (p *AlterIndex) Expressions() []sql.Expression {
 
 // WithExpressions implements the Node Interface. For AlterIndex, expressions represent  column defaults on the
 // targetSchema instance - required to be the same number of columns on the target schema.
-func (p *AlterIndex) WithExpressions(expressions ...sql.Expression) (sql.Node, error) {
+func (p *AlterIndex) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	columns := p.TargetSchema().Copy()
 
-	if len(columns) != len(expressions) {
+	if len(columns) != len(exprs) {
 		return nil, fmt.Errorf("invariant failure: column count does not match expression count")
 	}
 
-	for i, expr := range expressions {
+	for i, expr := range exprs {
 		wrapper, ok := expr.(*expression.Wrapper)
 		if !ok {
 			return nil, fmt.Errorf("*expression.Wrapper cast failure unexpected: %v", expr)

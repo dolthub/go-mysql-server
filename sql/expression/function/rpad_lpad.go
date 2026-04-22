@@ -34,11 +34,11 @@ const (
 	rPadType padType = 'r'
 )
 
-func NewLeftPad(e ...sql.Expression) (sql.Expression, error) {
+func NewLeftPad(ctx *sql.Context, e ...sql.Expression) (sql.Expression, error) {
 	return NewPad(lPadType, e...)
 }
 
-func NewRightPad(e ...sql.Expression) (sql.Expression, error) {
+func NewRightPad(ctx *sql.Context, e ...sql.Expression) (sql.Expression, error) {
 	return NewPad(rPadType, e...)
 }
 
@@ -96,12 +96,12 @@ func (p *Pad) Resolved() bool {
 }
 
 // IsNullable implements the Expression interface.
-func (p *Pad) IsNullable() bool {
-	return p.str.IsNullable() || p.length.IsNullable() || p.padStr.IsNullable()
+func (p *Pad) IsNullable(ctx *sql.Context) bool {
+	return p.str.IsNullable(ctx) || p.length.IsNullable(ctx) || p.padStr.IsNullable(ctx)
 }
 
 // Type implements the Expression interface.
-func (p *Pad) Type() sql.Type { return types.LongText }
+func (p *Pad) Type(ctx *sql.Context) sql.Type { return types.LongText }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (p *Pad) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -118,7 +118,7 @@ func (p *Pad) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (p *Pad) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (p *Pad) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	return NewPad(p.padType, children...)
 }
 

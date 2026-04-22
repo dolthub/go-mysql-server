@@ -72,7 +72,7 @@ func newRangeHeapJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinN
 
 	parentLen := len(row)
 
-	primaryRow := make(sql.Row, parentLen+len(j.Left().Schema()))
+	primaryRow := make(sql.Row, parentLen+len(j.Left().Schema(ctx)))
 	copy(primaryRow, row)
 
 	return sql.NewSpanIter(span, &rangeHeapJoinIter{
@@ -85,7 +85,7 @@ func newRangeHeapJoinIter(ctx *sql.Context, b sql.NodeExecBuilder, j *plan.JoinN
 		primaryRow:     primaryRow,
 		loadPrimaryRow: true,
 
-		rowSize:   len(row) + len(j.Left().Schema()) + len(j.Right().Schema()),
+		rowSize:   len(row) + len(j.Left().Schema(ctx)) + len(j.Right().Schema(ctx)),
 		scopeLen:  j.ScopeLen,
 		parentLen: parentLen,
 
@@ -234,7 +234,7 @@ func (iter *rangeHeapJoinIter) initializeHeap(ctx *sql.Context, builder sql.Node
 		return err
 	}
 	iter.activeRanges = nil
-	iter.rangeHeapPlan.ComparisonType = iter.rangeHeapPlan.Schema()[iter.rangeHeapPlan.MaxColumnIndex].Type
+	iter.rangeHeapPlan.ComparisonType = iter.rangeHeapPlan.Schema(ctx)[iter.rangeHeapPlan.MaxColumnIndex].Type
 
 	iter.pendingRow, err = iter.childRowIter.Next(ctx)
 	if err == io.EOF {

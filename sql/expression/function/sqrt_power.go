@@ -34,7 +34,7 @@ var _ sql.FunctionExpression = (*Sqrt)(nil)
 var _ sql.CollationCoercible = (*Sqrt)(nil)
 
 // NewSqrt creates a new Sqrt expression.
-func NewSqrt(e sql.Expression) sql.Expression {
+func NewSqrt(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &Sqrt{expression.UnaryExpressionStub{Child: e}}
 }
 
@@ -53,7 +53,7 @@ func (s *Sqrt) String() string {
 }
 
 // Type implements the Expression interface.
-func (s *Sqrt) Type() sql.Type {
+func (s *Sqrt) Type(ctx *sql.Context) sql.Type {
 	return types.Float64
 }
 
@@ -63,16 +63,16 @@ func (*Sqrt) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID,
 }
 
 // IsNullable implements the Expression interface.
-func (s *Sqrt) IsNullable() bool {
+func (s *Sqrt) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
 // WithChildren implements the Expression interface.
-func (s *Sqrt) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (s *Sqrt) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(s, len(children), 1)
 	}
-	return NewSqrt(children[0]), nil
+	return NewSqrt(ctx, children[0]), nil
 }
 
 // Eval implements the Expression interface.
@@ -110,7 +110,7 @@ var _ sql.FunctionExpression = (*Power)(nil)
 var _ sql.CollationCoercible = (*Power)(nil)
 
 // NewPower creates a new Power expression.
-func NewPower(e1, e2 sql.Expression) sql.Expression {
+func NewPower(ctx *sql.Context, e1, e2 sql.Expression) sql.Expression {
 	return &Power{
 		expression.BinaryExpressionStub{
 			LeftChild:  e1,
@@ -130,7 +130,7 @@ func (p *Power) Description() string {
 }
 
 // Type implements the Expression interface.
-func (p *Power) Type() sql.Type { return types.Float64 }
+func (p *Power) Type(ctx *sql.Context) sql.Type { return types.Float64 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*Power) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -138,10 +138,10 @@ func (*Power) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID
 }
 
 // IsNullable implements the Expression interface.
-func (p *Power) IsNullable() bool {
+func (p *Power) IsNullable(ctx *sql.Context) bool {
 	// This should be correct, even though Power.Eval returns nil if math.Pow(left, right) returns NaN or Inf. However,
 	// it's unlikely this would ever actually happen since NaN and Inf are not valid in MySQL
-	return p.LeftChild.IsNullable() || p.RightChild.IsNullable()
+	return p.LeftChild.IsNullable(ctx) || p.RightChild.IsNullable(ctx)
 }
 
 func (p *Power) String() string {
@@ -149,11 +149,11 @@ func (p *Power) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (p *Power) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (p *Power) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 2)
 	}
-	return NewPower(children[0], children[1]), nil
+	return NewPower(ctx, children[0], children[1]), nil
 }
 
 // Eval implements the Expression interface.

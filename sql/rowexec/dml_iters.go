@@ -139,7 +139,7 @@ func (i *triggerBlockIter) Next(ctx *sql.Context) (sql.Row, error) {
 			// We only return the result of a trigger block statement in certain cases, specifically when we are setting the
 			// value of new.field, so that the wrapping iterator can use it for the insert / update. Otherwise, this iterator
 			// always returns its input row.
-			if shouldUseTriggerStatementForReturnRow(s) {
+			if shouldUseTriggerStatementForReturnRow(ctx, s) {
 				row = newRow[len(newRow)/2:]
 			}
 		}
@@ -152,13 +152,13 @@ func (i *triggerBlockIter) Next(ctx *sql.Context) (sql.Row, error) {
 // shouldUseTriggerStatementForReturnRow returns whether the statement has Set node that contains GetField expression,
 // which means whether there is column value update. The Set node can be inside other nodes, so need to inspect all nodes
 // of the given node.
-func shouldUseTriggerStatementForReturnRow(stmt sql.Node) bool {
+func shouldUseTriggerStatementForReturnRow(ctx *sql.Context, stmt sql.Node) bool {
 	hasSetField := false
-	transform.InspectWithOpaque(stmt, func(n sql.Node) bool {
+	transform.InspectWithOpaque(ctx, stmt, func(ctx *sql.Context, n sql.Node) bool {
 		switch logic := n.(type) {
 		case *plan.Set:
 			for _, expr := range logic.Exprs {
-				sql.Inspect(expr.(*expression.SetField).LeftChild, func(e sql.Expression) bool {
+				sql.Inspect(ctx, expr.(*expression.SetField).LeftChild, func(ctx *sql.Context, e sql.Expression) bool {
 					if _, ok := e.(*expression.GetField); ok {
 						hasSetField = true
 						return false
@@ -180,7 +180,6 @@ func (i *triggerBlockIter) Close(*sql.Context) error {
 type triggerIter struct {
 	child          sql.RowIter
 	executionLogic sql.Node
-	ctx            *sql.Context
 	b              *BaseBuilder
 	triggerTime    plan.TriggerTime
 	triggerEvent   plan.TriggerEvent
@@ -189,8 +188,8 @@ type triggerIter struct {
 // prependRowInPlanForTriggerExecution returns a transformation function that prepends the row given to any row source in a query
 // plan. Any source of rows, as well as any node that alters the schema of its children, will be wrapped so that its
 // result rows are prepended with the row given.
-func prependRowInPlanForTriggerExecution(row sql.Row) func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
-	return func(c transform.Context) (sql.Node, transform.TreeIdentity, error) {
+func prependRowInPlanForTriggerExecution(ctx *sql.Context, row sql.Row) func(ctx *sql.Context, c transform.Context) (sql.Node, transform.TreeIdentity, error) {
+	return func(ctx *sql.Context, c transform.Context) (sql.Node, transform.TreeIdentity, error) {
 		switch n := c.Node.(type) {
 		case *plan.Project:
 			// Only prepend rows for projects that aren't the input to inserts and other triggers
@@ -203,7 +202,7 @@ func prependRowInPlanForTriggerExecution(row sql.Row) func(c transform.Context) 
 		case *plan.ResolvedTable, *plan.IndexedTableAccess:
 			return plan.NewPrependNode(n, row), transform.NewTree, nil
 		case *plan.Call:
-			newNode, same, err := transform.NodeWithCtx(n.Procedure, prependRowForTriggerExecutionSelector, prependRowInPlanForTriggerExecution(row))
+			newNode, same, err := transform.NodeWithCtx(ctx, n.Procedure, prependRowForTriggerExecutionSelector, prependRowInPlanForTriggerExecution(ctx, row))
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -212,7 +211,7 @@ func prependRowInPlanForTriggerExecution(row sql.Row) func(c transform.Context) 
 			}
 			return n.WithProcedure(newNode.(*plan.Procedure)), transform.NewTree, nil
 		case *plan.InsertInto:
-			newNode, same, err := transform.NodeWithCtx(n.Source, prependRowForTriggerExecutionSelector, prependRowInPlanForTriggerExecution(row))
+			newNode, same, err := transform.NodeWithCtx(ctx, n.Source, prependRowForTriggerExecutionSelector, prependRowInPlanForTriggerExecution(ctx, row))
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -221,7 +220,7 @@ func prependRowInPlanForTriggerExecution(row sql.Row) func(c transform.Context) 
 			}
 			return n.WithSource(newNode), transform.NewTree, nil
 		case *plan.SubqueryAlias:
-			newNode, same, err := transform.NodeWithCtx(n.Child, prependRowForTriggerExecutionSelector, prependRowInPlanForTriggerExecution(row))
+			newNode, same, err := transform.NodeWithCtx(ctx, n.Child, prependRowForTriggerExecutionSelector, prependRowInPlanForTriggerExecution(ctx, row))
 			if err != nil {
 				return nil, transform.SameTree, err
 			}
@@ -235,7 +234,7 @@ func prependRowInPlanForTriggerExecution(row sql.Row) func(c transform.Context) 
 	}
 }
 
-func prependRowForTriggerExecutionSelector(ctx transform.Context) bool {
+func prependRowForTriggerExecutionSelector(_ *sql.Context, ctx transform.Context) bool {
 	switch p := ctx.Parent.(type) {
 	case *plan.TriggerExecutor:
 		// don't nest prepends
@@ -252,14 +251,14 @@ func (t *triggerIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
 	}
 
 	// Wrap the execution logic with the current child row before executing it.
-	logic, _, err := transform.NodeWithCtx(t.executionLogic, prependRowForTriggerExecutionSelector, prependRowInPlanForTriggerExecution(childRow))
+	logic, _, err := transform.NodeWithCtx(ctx, t.executionLogic, prependRowForTriggerExecutionSelector, prependRowInPlanForTriggerExecution(ctx, childRow))
 	if err != nil {
 		return nil, err
 	}
 
 	// We don't do anything interesting with this subcontext yet, but it's a good idea to cancel it independently of the
 	// parent context if something goes wrong in trigger execution.
-	ctx, cancelFunc := t.ctx.NewSubContext()
+	ctx, cancelFunc := ctx.NewSubContext()
 	defer cancelFunc()
 
 	logicIter, err := t.b.buildNodeExec(ctx, logic, childRow)
@@ -269,7 +268,7 @@ func (t *triggerIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
 	logicIter = withSafepointPeriodicallyIter(logicIter)
 
 	defer func() {
-		err := logicIter.Close(t.ctx)
+		err := logicIter.Close(ctx)
 		if returnErr == nil {
 			returnErr = err
 		}
@@ -293,7 +292,7 @@ func (t *triggerIter) Next(ctx *sql.Context) (row sql.Row, returnErr error) {
 
 	// For some logic statements, we want to return the result of the logic operation as our row, e.g. a Set that alters
 	// the fields of the new row
-	if ok, returnRow := shouldUseLogicResult(logic, logicRow); ok {
+	if ok, returnRow := shouldUseLogicResult(ctx, logic, logicRow); ok {
 		return returnRow, nil
 	}
 
@@ -314,13 +313,13 @@ func (t *triggerIter) getReturningRow(ctx *sql.Context, row sql.Row) (sql.Row, e
 	return nil, nil, false
 }
 
-func shouldUseLogicResult(logic sql.Node, row sql.Row) (bool, sql.Row) {
+func shouldUseLogicResult(ctx *sql.Context, logic sql.Node, row sql.Row) (bool, sql.Row) {
 	switch logic := logic.(type) {
 	// TODO: are there other statement types that we should use here?
 	case *plan.Set:
 		hasSetField := false
 		for _, expr := range logic.Exprs {
-			sql.Inspect(expr.(*expression.SetField).LeftChild, func(e sql.Expression) bool {
+			sql.Inspect(ctx, expr.(*expression.SetField).LeftChild, func(ctx *sql.Context, e sql.Expression) bool {
 				if _, ok := e.(*expression.GetField); ok {
 					hasSetField = true
 					return false
@@ -331,13 +330,13 @@ func shouldUseLogicResult(logic sql.Node, row sql.Row) (bool, sql.Row) {
 		return hasSetField, row[len(row)/2:]
 	case *plan.TriggerBeginEndBlock:
 		hasSetField := false
-		transform.InspectWithOpaque(logic, func(n sql.Node) bool {
+		transform.InspectWithOpaque(ctx, logic, func(ctx *sql.Context, n sql.Node) bool {
 			set, ok := n.(*plan.Set)
 			if !ok {
 				return true
 			}
 			for _, expr := range set.Exprs {
-				sql.Inspect(expr.(*expression.SetField).LeftChild, func(e sql.Expression) bool {
+				sql.Inspect(ctx, expr.(*expression.SetField).LeftChild, func(ctx *sql.Context, e sql.Expression) bool {
 					if _, ok := e.(*expression.GetField); ok {
 						hasSetField = true
 						return false
@@ -598,7 +597,7 @@ func getRowHandler(clientFoundRowsToggled bool, iter sql.RowIter) accumulatorRow
 			return rowHandler
 		}
 		sch := i.schema
-		// special case for foreign keys; plan.ForeignKeyHandler.Schema() returns original schema
+		// special case for foreign keys; plan.ForeignKeyHandler.Schema(ctx) returns original schema
 		if fkHandler, isFk := i.updater.(*plan.ForeignKeyHandler); isFk {
 			sch = fkHandler.Sch
 		}

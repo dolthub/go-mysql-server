@@ -34,7 +34,7 @@ var _ sql.FunctionExpression = (*Coalesce)(nil)
 var _ sql.CollationCoercible = (*Coalesce)(nil)
 
 // NewCoalesce creates a new Coalesce sql.Expression.
-func NewCoalesce(args ...sql.Expression) (sql.Expression, error) {
+func NewCoalesce(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) == 0 {
 		return nil, sql.ErrInvalidArgumentNumber.New("COALESCE", "1 or more", 0)
 	}
@@ -54,7 +54,7 @@ func (c *Coalesce) Description() string {
 
 // Type implements the sql.Expression interface.
 // The return type of Type() is the aggregated type of the argument types.
-func (c *Coalesce) Type() sql.Type {
+func (c *Coalesce) Type(ctx *sql.Context) sql.Type {
 	if c.typ != nil {
 		return c.typ
 	}
@@ -65,7 +65,7 @@ func (c *Coalesce) Type() sql.Type {
 		if arg == nil {
 			continue
 		}
-		argType := arg.Type()
+		argType := arg.Type(ctx)
 		if sysVarType, ok := argType.(sql.SystemVariableType); ok {
 			argType = sysVarType.UnderlyingType()
 		}
@@ -133,7 +133,7 @@ func (c *Coalesce) Type() sql.Type {
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (c *Coalesce) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	// Preferably, this would be done during evaluation, but that's not possible with the current abstraction
-	if typ := c.Type(); typ != nil {
+	if typ := c.Type(ctx); typ != nil {
 		return typ.CollationCoercibility(ctx)
 	}
 	return sql.Collation_binary, 6
@@ -142,12 +142,12 @@ func (c *Coalesce) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 // IsNullable implements the sql.Expression interface.
 // Returns true if all arguments are nil
 // or of the first non-nil argument is nullable, otherwise false.
-func (c *Coalesce) IsNullable() bool {
+func (c *Coalesce) IsNullable(ctx *sql.Context) bool {
 	for _, arg := range c.args {
 		if arg == nil {
 			continue
 		}
-		return arg.IsNullable()
+		return arg.IsNullable(ctx)
 	}
 	return true
 }
@@ -160,17 +160,17 @@ func (c *Coalesce) String() string {
 	return fmt.Sprintf("%s(%s)", c.FunctionName(), strings.Join(args, ","))
 }
 
-func (c *Coalesce) DebugString() string {
+func (c *Coalesce) DebugString(ctx *sql.Context) string {
 	var args = make([]string, len(c.args))
 	for i, arg := range c.args {
-		args[i] = sql.DebugString(arg)
+		args[i] = sql.DebugString(ctx, arg)
 	}
 	return fmt.Sprintf("%s(%s)", c.FunctionName(), strings.Join(args, ","))
 }
 
 // WithChildren implements the Expression interface.
-func (*Coalesce) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewCoalesce(children...)
+func (*Coalesce) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewCoalesce(ctx, children...)
 }
 
 // Resolved implements the sql.Expression interface.
@@ -208,8 +208,8 @@ func (c *Coalesce) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 			continue
 		}
 
-		if !types.IsEnum(c.Type()) && !types.IsSet(c.Type()) {
-			val, _, err = c.Type().Convert(ctx, val)
+		if !types.IsEnum(c.Type(ctx)) && !types.IsSet(c.Type(ctx)) {
+			val, _, err = c.Type(ctx).Convert(ctx, val)
 			if err != nil {
 				return nil, err
 			}

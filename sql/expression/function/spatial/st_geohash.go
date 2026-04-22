@@ -35,7 +35,7 @@ var _ sql.FunctionExpression = (*GeoHash)(nil)
 var _ sql.CollationCoercible = (*GeoHash)(nil)
 
 // NewGeoHash creates a new GeoHash expression.
-func NewGeoHash(args ...sql.Expression) (sql.Expression, error) {
+func NewGeoHash(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) != 2 && len(args) != 3 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ST_GEOHASH", "2 or 3", len(args))
 	}
@@ -53,12 +53,12 @@ func (g *GeoHash) Description() string {
 }
 
 // IsNullable implements the sql.Expression interface.
-func (g *GeoHash) IsNullable() bool {
+func (g *GeoHash) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
 // Type implements the sql.Expression interface.
-func (g *GeoHash) Type() sql.Type {
+func (g *GeoHash) Type(ctx *sql.Context) sql.Type {
 	return types.LongText
 }
 
@@ -76,8 +76,8 @@ func (g *GeoHash) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (g *GeoHash) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewGeoHash(children...)
+func (g *GeoHash) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewGeoHash(ctx, children...)
 }
 
 // encodeGeoHash encodes longitude/latitude to a geohash string of the given length.
@@ -231,7 +231,7 @@ var _ sql.FunctionExpression = (*PointFromGeoHash)(nil)
 var _ sql.CollationCoercible = (*PointFromGeoHash)(nil)
 
 // NewPointFromGeoHash creates a new PointFromGeoHash expression.
-func NewPointFromGeoHash(hash, srid sql.Expression) sql.Expression {
+func NewPointFromGeoHash(ctx *sql.Context, hash, srid sql.Expression) sql.Expression {
 	return &PointFromGeoHash{
 		expression.BinaryExpressionStub{
 			LeftChild:  hash,
@@ -251,12 +251,12 @@ func (p *PointFromGeoHash) Description() string {
 }
 
 // IsNullable implements the sql.Expression interface.
-func (p *PointFromGeoHash) IsNullable() bool {
+func (p *PointFromGeoHash) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
 // Type implements the sql.Expression interface.
-func (p *PointFromGeoHash) Type() sql.Type {
+func (p *PointFromGeoHash) Type(ctx *sql.Context) sql.Type {
 	return types.PointType{}
 }
 
@@ -270,11 +270,11 @@ func (p *PointFromGeoHash) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (p *PointFromGeoHash) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (p *PointFromGeoHash) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 2)
 	}
-	return NewPointFromGeoHash(children[0], children[1]), nil
+	return NewPointFromGeoHash(ctx, children[0], children[1]), nil
 }
 
 // decodeGeoHash decodes a geohash string to longitude, latitude.
@@ -359,7 +359,7 @@ var _ sql.FunctionExpression = (*LatFromGeoHash)(nil)
 var _ sql.CollationCoercible = (*LatFromGeoHash)(nil)
 
 // NewLatFromGeoHash creates a new LatFromGeoHash expression.
-func NewLatFromGeoHash(e sql.Expression) sql.Expression {
+func NewLatFromGeoHash(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &LatFromGeoHash{expression.UnaryExpressionStub{Child: e}}
 }
 
@@ -374,12 +374,12 @@ func (l *LatFromGeoHash) Description() string {
 }
 
 // IsNullable implements the sql.Expression interface.
-func (l *LatFromGeoHash) IsNullable() bool {
-	return l.Child.IsNullable()
+func (l *LatFromGeoHash) IsNullable(ctx *sql.Context) bool {
+	return l.Child.IsNullable(ctx)
 }
 
 // Type implements the sql.Expression interface.
-func (l *LatFromGeoHash) Type() sql.Type {
+func (l *LatFromGeoHash) Type(ctx *sql.Context) sql.Type {
 	return types.Float64
 }
 
@@ -393,11 +393,11 @@ func (l *LatFromGeoHash) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (l *LatFromGeoHash) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (l *LatFromGeoHash) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 1)
 	}
-	return NewLatFromGeoHash(children[0]), nil
+	return NewLatFromGeoHash(ctx, children[0]), nil
 }
 
 // Eval implements the sql.Expression interface.
@@ -431,7 +431,7 @@ var _ sql.FunctionExpression = (*LongFromGeoHash)(nil)
 var _ sql.CollationCoercible = (*LongFromGeoHash)(nil)
 
 // NewLongFromGeoHash creates a new LongFromGeoHash expression.
-func NewLongFromGeoHash(e sql.Expression) sql.Expression {
+func NewLongFromGeoHash(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &LongFromGeoHash{expression.UnaryExpressionStub{Child: e}}
 }
 
@@ -446,12 +446,12 @@ func (l *LongFromGeoHash) Description() string {
 }
 
 // IsNullable implements the sql.Expression interface.
-func (l *LongFromGeoHash) IsNullable() bool {
-	return l.Child.IsNullable()
+func (l *LongFromGeoHash) IsNullable(ctx *sql.Context) bool {
+	return l.Child.IsNullable(ctx)
 }
 
 // Type implements the sql.Expression interface.
-func (l *LongFromGeoHash) Type() sql.Type {
+func (l *LongFromGeoHash) Type(ctx *sql.Context) sql.Type {
 	return types.Float64
 }
 
@@ -465,11 +465,11 @@ func (l *LongFromGeoHash) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (l *LongFromGeoHash) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (l *LongFromGeoHash) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 1)
 	}
-	return NewLongFromGeoHash(children[0]), nil
+	return NewLongFromGeoHash(ctx, children[0]), nil
 }
 
 // Eval implements the sql.Expression interface.

@@ -447,13 +447,13 @@ func (tree *MySQLRangeColumnExprTree) String() string {
 	sb := strings.Builder{}
 	sb.WriteString("RangeColumnExprTree\n")
 	if tree.size > 0 {
-		tree.root.string("", true, &sb, tree.typ)
+		tree.root.string(NewEmptyContext(), "", true, &sb, tree.typ)
 	}
 	return sb.String()
 }
 
 // strings returns this node as a formatted string.
-func (node *rangeColumnExprTreeNode) string(prefix string, isTail bool, sb *strings.Builder, typ Type) {
+func (node *rangeColumnExprTreeNode) string(ctx *Context, prefix string, isTail bool, sb *strings.Builder, typ Type) {
 	if node == nil {
 		return
 	}
@@ -464,7 +464,7 @@ func (node *rangeColumnExprTreeNode) string(prefix string, isTail bool, sb *stri
 		} else {
 			newPrefix += "    "
 		}
-		node.Right.string(newPrefix, false, sb, typ)
+		node.Right.string(ctx, newPrefix, false, sb, typ)
 	}
 	sb.WriteString(prefix)
 	if isTail {
@@ -476,7 +476,7 @@ func (node *rangeColumnExprTreeNode) string(prefix string, isTail bool, sb *stri
 		LowerBound: node.LowerBound,
 		UpperBound: node.UpperBound,
 		Typ:        typ,
-	}.DebugString())
+	}.DebugString(ctx))
 	sb.WriteString(fmt.Sprintf(" max: %s", node.MaxUpperbound.String()))
 	sb.WriteString(fmt.Sprintf(" color: %d", node.color))
 	// TODO: if we ever need to see one level deeper
@@ -485,7 +485,7 @@ func (node *rangeColumnExprTreeNode) string(prefix string, isTail bool, sb *stri
 	//		LowerBound: node.Inner.root.LowerBound,
 	//		UpperBound: node.Inner.root.UpperBound,
 	//		Typ:        typ,
-	//	}.DebugString()
+	//	}.DebugString(ctx)
 	//	sb.WriteString(fmt.Sprintf(" inner: %s", innerStr))
 	//	sb.WriteString(fmt.Sprintf(" max: %s", node.Inner.root.MaxUpperbound.String()))
 	//}
@@ -497,7 +497,7 @@ func (node *rangeColumnExprTreeNode) string(prefix string, isTail bool, sb *stri
 		} else {
 			newPrefix += "│   "
 		}
-		node.Left.string(newPrefix, true, sb, typ)
+		node.Left.string(ctx, newPrefix, true, sb, typ)
 	}
 }
 

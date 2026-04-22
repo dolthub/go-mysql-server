@@ -31,7 +31,7 @@ var _ sql.FunctionExpression = (*IsEmpty)(nil)
 var _ sql.CollationCoercible = (*IsEmpty)(nil)
 
 // NewIsEmpty creates a new IsEmpty expression.
-func NewIsEmpty(e sql.Expression) sql.Expression {
+func NewIsEmpty(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &IsEmpty{expression.UnaryExpressionStub{Child: e}}
 }
 
@@ -46,12 +46,12 @@ func (i *IsEmpty) Description() string {
 }
 
 // IsNullable implements the sql.Expression interface.
-func (i *IsEmpty) IsNullable() bool {
-	return i.Child.IsNullable()
+func (i *IsEmpty) IsNullable(ctx *sql.Context) bool {
+	return i.Child.IsNullable(ctx)
 }
 
 // Type implements the sql.Expression interface.
-func (i *IsEmpty) Type() sql.Type {
+func (i *IsEmpty) Type(ctx *sql.Context) sql.Type {
 	return types.Boolean
 }
 
@@ -65,11 +65,11 @@ func (i *IsEmpty) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (i *IsEmpty) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (i *IsEmpty) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(i, len(children), 1)
 	}
-	return NewIsEmpty(children[0]), nil
+	return NewIsEmpty(ctx, children[0]), nil
 }
 
 // Eval implements the sql.Expression interface.

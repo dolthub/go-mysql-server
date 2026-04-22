@@ -99,8 +99,8 @@ func (sq *SubqueryAlias) IsReadOnly() bool {
 }
 
 // Schema implements the Node interface.
-func (sq *SubqueryAlias) Schema() sql.Schema {
-	childSchema := sq.Child.Schema()
+func (sq *SubqueryAlias) Schema(ctx *sql.Context) sql.Schema {
+	childSchema := sq.Child.Schema(ctx)
 	schema := make(sql.Schema, len(childSchema))
 	for i, col := range childSchema {
 		c := *col
@@ -114,7 +114,7 @@ func (sq *SubqueryAlias) Schema() sql.Schema {
 }
 
 // WithChildren implements the Node interface.
-func (sq *SubqueryAlias) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (sq *SubqueryAlias) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(sq, len(children), 1)
 	}
@@ -175,7 +175,7 @@ func (sq *SubqueryAlias) String() string {
 	return pr.String()
 }
 
-func (sq *SubqueryAlias) DebugString() string {
+func (sq *SubqueryAlias) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("SubqueryAlias")
 	children := make([]string, 7)
@@ -185,12 +185,12 @@ func (sq *SubqueryAlias) DebugString() string {
 	children[3] = fmt.Sprintf("cacheable: %t", sq.CanCacheResults())
 	children[4] = fmt.Sprintf("colSet: %s", sq.Columns())
 	children[5] = fmt.Sprintf("tableId: %d", sq.Id())
-	children[6] = sql.DebugString(sq.Child)
+	children[6] = sql.DebugString(ctx, sq.Child)
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
 
-func (sq *SubqueryAlias) Describe(options sql.DescribeOptions) string {
+func (sq *SubqueryAlias) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("SubqueryAlias")
 	children := make([]string, 7)
@@ -200,7 +200,7 @@ func (sq *SubqueryAlias) Describe(options sql.DescribeOptions) string {
 	children[3] = fmt.Sprintf("cacheable: %t", sq.CanCacheResults())
 	children[4] = fmt.Sprintf("colSet: %s", sq.Columns())
 	children[5] = fmt.Sprintf("tableId: %d", sq.Id())
-	children[6] = sql.Describe(sq.Child, options)
+	children[6] = sql.Describe(ctx, sq.Child, options)
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }

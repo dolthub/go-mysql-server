@@ -44,7 +44,7 @@ var _ sql.CollationCoercible = (*JsonValue)(nil)
 var jsonValueDefaultType = types.MustCreateString(sqltypes.VarChar, 512, sql.Collation_Default)
 
 // NewJsonValue creates a new JsonValue UDF.
-func NewJsonValue(args ...sql.Expression) (sql.Expression, error) {
+func NewJsonValue(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 1 || len(args) > 3 {
 		return nil, sql.ErrInvalidArgumentNumber.New("JSON_VALUE", 2, len(args))
 	} else if len(args) == 1 {
@@ -53,7 +53,7 @@ func NewJsonValue(args ...sql.Expression) (sql.Expression, error) {
 		return &JsonValue{JSON: args[0], Path: args[1], Typ: jsonValueDefaultType}, nil
 	} else {
 		// third argument is literal zero of the coercion type
-		return &JsonValue{JSON: args[0], Path: args[1], Typ: args[2].Type()}, nil
+		return &JsonValue{JSON: args[0], Path: args[1], Typ: args[2].Type(ctx)}, nil
 	}
 }
 
@@ -73,7 +73,7 @@ func (j *JsonValue) Resolved() bool {
 }
 
 // Type implements the sql.Expression interface.
-func (j *JsonValue) Type() sql.Type { return j.Typ }
+func (j *JsonValue) Type(ctx *sql.Context) sql.Type { return j.Typ }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (*JsonValue) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -139,8 +139,8 @@ func (j *JsonValue) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // IsNullable implements the sql.Expression interface.
-func (j *JsonValue) IsNullable() bool {
-	return j.JSON.IsNullable() || j.Path.IsNullable()
+func (j *JsonValue) IsNullable(ctx *sql.Context) bool {
+	return j.JSON.IsNullable(ctx) || j.Path.IsNullable(ctx)
 }
 
 // Children implements the sql.Expression interface.
@@ -149,7 +149,7 @@ func (j *JsonValue) Children() []sql.Expression {
 }
 
 // WithChildren implements the Expression interface.
-func (j *JsonValue) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (j *JsonValue) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(j, len(children), 2)
 	}

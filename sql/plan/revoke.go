@@ -40,7 +40,7 @@ var _ sql.CollationCoercible = (*Revoke)(nil)
 var _ sql.AuthorizationCheckerNode = (*Revoke)(nil)
 
 // Schema implements the interface sql.Node.
-func (n *Revoke) Schema() sql.Schema {
+func (n *Revoke) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -81,7 +81,7 @@ func (n *Revoke) Children() []sql.Node {
 }
 
 // WithChildren implements the interface sql.Node.
-func (n *Revoke) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (n *Revoke) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 0)
 	}
@@ -452,7 +452,7 @@ func NewRevokeRole(roles []UserName, users []UserName, ifExists, ignoreUnknownUs
 }
 
 // Schema implements the interface sql.Node.
-func (n *RevokeRole) Schema() sql.Schema {
+func (n *RevokeRole) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -497,7 +497,7 @@ func (n *RevokeRole) Children() []sql.Node {
 }
 
 // WithChildren implements the interface sql.Node.
-func (n *RevokeRole) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (n *RevokeRole) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 0)
 	}
@@ -569,7 +569,7 @@ func NewRevokeProxy(on UserName, from []UserName, ifExists, ignoreUnknownUser bo
 }
 
 // Schema implements the interface sql.Node.
-func (n *RevokeProxy) Schema() sql.Schema {
+func (n *RevokeProxy) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
@@ -597,7 +597,7 @@ func (n *RevokeProxy) Children() []sql.Node {
 }
 
 // WithChildren implements the interface sql.Node.
-func (n *RevokeProxy) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (n *RevokeProxy) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(n, len(children), 0)
 	}

@@ -32,7 +32,7 @@ var _ sql.FunctionExpression = (*Centroid)(nil)
 var _ sql.CollationCoercible = (*Centroid)(nil)
 
 // NewCentroid creates a new Centroid expression.
-func NewCentroid(e sql.Expression) sql.Expression {
+func NewCentroid(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &Centroid{expression.UnaryExpressionStub{Child: e}}
 }
 
@@ -47,12 +47,12 @@ func (c *Centroid) Description() string {
 }
 
 // IsNullable implements the sql.Expression interface.
-func (c *Centroid) IsNullable() bool {
-	return c.Child.IsNullable()
+func (c *Centroid) IsNullable(ctx *sql.Context) bool {
+	return c.Child.IsNullable(ctx)
 }
 
 // Type implements the sql.Expression interface.
-func (c *Centroid) Type() sql.Type {
+func (c *Centroid) Type(ctx *sql.Context) sql.Type {
 	return types.PointType{}
 }
 
@@ -66,11 +66,11 @@ func (c *Centroid) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (c *Centroid) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (c *Centroid) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 	}
-	return NewCentroid(children[0]), nil
+	return NewCentroid(ctx, children[0]), nil
 }
 
 // ringCentroidAndArea computes the centroid and signed area of a polygon ring using the shoelace formula.
@@ -252,7 +252,7 @@ func (c *Centroid) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 // evalGeomCentroid is a helper to compute the centroid of a single geometry value.
 func (c *Centroid) evalGeomCentroid(ctx *sql.Context, gv types.GeometryValue) (*types.Point, error) {
-	result, err := NewCentroid(nil).(*Centroid).evalRaw(ctx, gv)
+	result, err := NewCentroid(ctx, nil).(*Centroid).evalRaw(ctx, gv)
 	if err != nil {
 		return nil, err
 	}

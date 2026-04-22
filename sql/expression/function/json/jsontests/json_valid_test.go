@@ -25,7 +25,7 @@ import (
 )
 
 func TestValid(t *testing.T) {
-	_, err := json.NewJSONValid()
+	_, err := json.NewJSONValid(sql.NewEmptyContext())
 	require.True(t, errors.Is(err, sql.ErrInvalidArgumentNumber))
 
 	f1 := buildGetFieldExpressions(t, json.NewJSONValid, 1)

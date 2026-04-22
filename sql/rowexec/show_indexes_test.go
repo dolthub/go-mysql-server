@@ -43,20 +43,20 @@ func TestShowIndexes(t *testing.T) {
 	}{
 		{
 			name: "test1",
-			table: memory.NewTable(db, "test1", sql.NewPrimaryKeySchema(sql.Schema{
+			table: memory.NewTable(ctx, db, "test1", sql.NewPrimaryKeySchema(sql.Schema{
 				&sql.Column{Name: "foo", Type: types.Int32, Source: "test1", Default: planbuilder.MustStringToColumnDefaultValue(ctx, "0", types.Int32, false), Nullable: false},
 			}), db.GetForeignKeyCollection()),
 		},
 		{
 			name: "test2",
-			table: memory.NewTable(db, "test2", sql.NewPrimaryKeySchema(sql.Schema{
+			table: memory.NewTable(ctx, db, "test2", sql.NewPrimaryKeySchema(sql.Schema{
 				&sql.Column{Name: "bar", Type: types.Int64, Source: "test2", Default: planbuilder.MustStringToColumnDefaultValue(ctx, "0", types.Int64, true), Nullable: true},
 				&sql.Column{Name: "rab", Type: types.Int64, Source: "test2", Default: planbuilder.MustStringToColumnDefaultValue(ctx, "0", types.Int64, false), Nullable: false},
 			}), db.GetForeignKeyCollection()),
 		},
 		{
 			name: "test3",
-			table: memory.NewTable(db, "test3", sql.NewPrimaryKeySchema(sql.Schema{
+			table: memory.NewTable(ctx, db, "test3", sql.NewPrimaryKeySchema(sql.Schema{
 				&sql.Column{Name: "baz", Type: types.Text, Source: "test3", Default: planbuilder.MustStringToColumnDefaultValue(ctx, `""`, types.Text, false), Nullable: false},
 				&sql.Column{Name: "zab", Type: types.Int32, Source: "test3", Default: planbuilder.MustStringToColumnDefaultValue(ctx, "0", types.Int32, true), Nullable: true},
 				&sql.Column{Name: "bza", Type: types.Int64, Source: "test3", Default: planbuilder.MustStringToColumnDefaultValue(ctx, "0", types.Int64, true), Nullable: true},
@@ -64,7 +64,7 @@ func TestShowIndexes(t *testing.T) {
 		},
 		{
 			name: "test4",
-			table: memory.NewTable(db, "test4", sql.NewPrimaryKeySchema(sql.Schema{
+			table: memory.NewTable(ctx, db, "test4", sql.NewPrimaryKeySchema(sql.Schema{
 				&sql.Column{Name: "oof", Type: types.Text, Source: "test4", Default: planbuilder.MustStringToColumnDefaultValue(ctx, `""`, types.Text, false), Nullable: false},
 			}), db.GetForeignKeyCollection()),
 		},
@@ -74,8 +74,8 @@ func TestShowIndexes(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			db.AddTable(test.name, test.table)
 
-			expressions := make([]sql.Expression, len(test.table.Schema()))
-			for i, col := range test.table.Schema() {
+			expressions := make([]sql.Expression, len(test.table.Schema(ctx)))
+			for i, col := range test.table.Schema(ctx) {
 				var ex sql.Expression = expression.NewGetFieldWithTable(i, 1, col.Type, "", test.name, col.Name, col.Nullable)
 
 				if test.isExpression {
@@ -108,7 +108,7 @@ func TestShowIndexes(t *testing.T) {
 				var nullable string
 				var columnName, ex interface{}
 				columnName, ex = "NULL", expressions[i].String()
-				if col := GetColumnFromIndexExpr(ex.(string), test.table); col != nil {
+				if col := GetColumnFromIndexExpr(ctx, ex.(string), test.table); col != nil {
 					columnName, ex = col.Name, nil
 					if col.Nullable {
 						nullable = "YES"

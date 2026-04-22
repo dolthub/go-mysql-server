@@ -33,7 +33,7 @@ var _ sql.WindowAggregation = (*Rank)(nil)
 var _ sql.WindowAdaptableExpression = (*Rank)(nil)
 var _ sql.CollationCoercible = (*Rank)(nil)
 
-func NewRank() sql.Expression {
+func NewRank(ctx *sql.Context) sql.Expression {
 	return &Rank{}
 }
 
@@ -73,12 +73,12 @@ func (p *Rank) String() string {
 	return sb.String()
 }
 
-func (p *Rank) DebugString() string {
+func (p *Rank) DebugString(ctx *sql.Context) string {
 	sb := strings.Builder{}
 	sb.WriteString("rank()")
 	if p.window != nil {
 		sb.WriteString(" ")
-		sb.WriteString(sql.DebugString(p.window))
+		sb.WriteString(sql.DebugString(ctx, p.window))
 	}
 	return sb.String()
 }
@@ -89,7 +89,7 @@ func (p *Rank) FunctionName() string {
 }
 
 // Type implements sql.Expression
-func (p *Rank) Type() sql.Type {
+func (p *Rank) Type(ctx *sql.Context) sql.Type {
 	return types.Uint64
 }
 
@@ -99,7 +99,7 @@ func (*Rank) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID,
 }
 
 // IsNullable implements sql.Expression
-func (p *Rank) IsNullable() bool {
+func (p *Rank) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
@@ -114,22 +114,22 @@ func (p *Rank) Children() []sql.Expression {
 }
 
 // WithChildren implements sql.Expression
-func (p *Rank) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	window, err := p.window.FromExpressions(children)
+func (p *Rank) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	window, err := p.window.FromExpressions(ctx, children)
 	if err != nil {
 		return nil, err
 	}
 
-	return p.WithWindow(window), nil
+	return p.WithWindow(ctx, window), nil
 }
 
 // WithWindow implements sql.WindowAggregation
-func (p *Rank) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
+func (p *Rank) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {
 	nr := *p
 	nr.window = window
 	return &nr
 }
 
-func (p *Rank) NewWindowFunction() (sql.WindowFunction, error) {
+func (p *Rank) NewWindowFunction(ctx *sql.Context) (sql.WindowFunction, error) {
 	return aggregation.NewRank(p.window.OrderBy.ToExpressions()), nil
 }

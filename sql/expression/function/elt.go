@@ -31,7 +31,7 @@ var _ sql.FunctionExpression = (*Elt)(nil)
 var _ sql.CollationCoercible = (*Elt)(nil)
 
 // NewElt creates a new Elt UDF.
-func NewElt(args ...sql.Expression) (sql.Expression, error) {
+func NewElt(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 2 {
 		return nil, sql.ErrInvalidArgumentNumber.New("ELT", "2 or more", len(args))
 	}
@@ -50,7 +50,7 @@ func (e *Elt) Description() string {
 }
 
 // Type implements the Expression interface.
-func (e *Elt) Type() sql.Type {
+func (e *Elt) Type(ctx *sql.Context) sql.Type {
 	return types.LongText
 }
 
@@ -68,7 +68,7 @@ func (e *Elt) CollationCoercibility(ctx *sql.Context) (sql.CollationID, byte) {
 }
 
 // IsNullable implements the Expression interface.
-func (e *Elt) IsNullable() bool {
+func (e *Elt) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
@@ -82,8 +82,8 @@ func (e *Elt) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (*Elt) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewElt(children...)
+func (*Elt) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewElt(ctx, children...)
 }
 
 // Resolved implements the Expression interface.

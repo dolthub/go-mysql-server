@@ -2668,7 +2668,7 @@ Project
 
 			outScope := b.build(nil, stmt, tt.Query)
 			defer b.Reset()
-			plan := sql.DebugString(outScope.node)
+			plan := sql.DebugString(ctx, outScope.node)
 
 			if rewrite {
 				w.WriteString("\t{\n")
@@ -2684,7 +2684,7 @@ Project
 				print(plan)
 			}
 
-			require.Equal(t, tt.ExpectedPlan, "\n"+sql.DebugString(outScope.node))
+			require.Equal(t, tt.ExpectedPlan, "\n"+sql.DebugString(ctx, outScope.node))
 			require.True(t, outScope.node.Resolved())
 		})
 	}
@@ -2695,13 +2695,13 @@ func newTestCatalog(db *memory.Database) *sql.MapCatalog {
 		Databases: make(map[string]sql.Database),
 		Tables:    make(map[string]sql.Table),
 	}
-
-	cat.Tables["xy"] = memory.NewTable(db, "xy", sql.NewPrimaryKeySchema(sql.Schema{
+	ctx := sql.NewEmptyContext()
+	cat.Tables["xy"] = memory.NewTable(ctx, db, "xy", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "x", Type: types.Int64},
 		{Name: "y", Type: types.Int64},
 		{Name: "z", Type: types.Int64},
 	}, 0), nil)
-	cat.Tables["uv"] = memory.NewTable(db, "uv", sql.NewPrimaryKeySchema(sql.Schema{
+	cat.Tables["uv"] = memory.NewTable(ctx, db, "uv", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "u", Type: types.Int64},
 		{Name: "v", Type: types.Int64},
 		{Name: "w", Type: types.Int64},

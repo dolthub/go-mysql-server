@@ -81,7 +81,7 @@ func (s NormalDistTable) String() string {
 	return "normal_dist"
 }
 
-func (s NormalDistTable) DebugString() string {
+func (s NormalDistTable) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("normal_dist")
 	children := []string{
@@ -94,7 +94,7 @@ func (s NormalDistTable) DebugString() string {
 	return pr.String()
 }
 
-func (s NormalDistTable) Schema() sql.Schema {
+func (s NormalDistTable) Schema(ctx *sql.Context) sql.Schema {
 	var sch sql.Schema
 	for i := 0; i < s.colCnt+1; i++ {
 		sch = append(sch, &sql.Column{
@@ -115,7 +115,7 @@ func (s NormalDistTable) RowIter(_ *sql.Context, _ sql.Row) (sql.RowIter, error)
 	return stats.NewNormDistIter(s.colCnt, s.rowCnt, s.mean, s.std), nil
 }
 
-func (s NormalDistTable) WithChildren(_ ...sql.Node) (sql.Node, error) {
+func (s NormalDistTable) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return s, nil
 }
 
@@ -133,7 +133,7 @@ func (s NormalDistTable) Expressions() []sql.Expression {
 	return []sql.Expression{}
 }
 
-func (s NormalDistTable) WithExpressions(e ...sql.Expression) (sql.Node, error) {
+func (s NormalDistTable) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	return s, nil
 }
 

@@ -55,17 +55,17 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 			left := be.Left()
 			right := be.Right()
 			if leftBindVar, ok := left.(*expression.BindVar); ok {
-				if typ, ok := hasColumnType(right); ok {
+				if typ, ok := hasColumnType(b.ctx, right); ok {
 					leftBindVar.Typ = typ
 					left = leftBindVar
 				}
 			} else if rightBindVar, ok := right.(*expression.BindVar); ok {
-				if typ, ok := hasColumnType(left); ok {
+				if typ, ok := hasColumnType(b.ctx, left); ok {
 					rightBindVar.Typ = typ
 					right = rightBindVar
 				}
 			}
-			ex, _ = be.WithChildren(left, right)
+			ex, _ = be.WithChildren(b.ctx, left, right)
 		}
 	}()
 
@@ -231,7 +231,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 			}
 		}
 
-		rf, err := f.NewInstance(args)
+		rf, err := f.NewInstance(nil, args)
 		if err != nil {
 			b.handleErr(err)
 		}
@@ -288,7 +288,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 			args[i] = b.selectExprToExpression(inScope, e)
 		}
 
-		f, err := function.NewChar(args...)
+		f, err := function.NewChar(b.ctx, args...)
 		if err != nil {
 			b.handleErr(err)
 		}
@@ -321,7 +321,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 			}
 		}
 		expr := b.buildScalar(inScope, v.Expr)
-		ret, err := b.f.buildConvert(expr, v.Type.Type, typeLength, typeScale)
+		ret, err := b.f.buildConvert(b.ctx, expr, v.Type.Type, typeLength, typeScale)
 		if err != nil {
 			b.handleErr(err)
 		}
@@ -410,7 +410,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 				err := sql.ErrFunctionNotFound.New("values")
 				b.handleErr(err)
 			}
-			values, err := fn.NewInstance([]sql.Expression{col})
+			values, err := fn.NewInstance(nil, []sql.Expression{col})
 			if err != nil {
 				b.handleErr(err)
 			}
@@ -436,13 +436,13 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 
 		switch v.Name {
 		case "timestampadd":
-			dateAddFunc, err := function.NewDateAdd(expr2, expression.NewInterval(expr1, v.Unit))
+			dateAddFunc, err := function.NewDateAdd(b.ctx, expr2, expression.NewInterval(expr1, v.Unit))
 			if err != nil {
 				b.handleErr(err)
 			}
 			return dateAddFunc
 		case "timestampdiff":
-			return function.NewTimestampDiff(unit, expr1, expr2)
+			return function.NewTimestampDiff(b.ctx, unit, expr1, expr2)
 		default:
 			return nil
 		}
@@ -450,7 +450,7 @@ func (b *Builder) buildScalar(inScope *scope, e ast.Expr) (ex sql.Expression) {
 	case *ast.ExtractFuncExpr:
 		var unit sql.Expression = expression.NewLiteral(strings.ToUpper(v.Unit), types.LongText)
 		expr := b.buildScalar(inScope, v.Expr)
-		return function.NewExtract(unit, expr)
+		return function.NewExtract(b.ctx, unit, expr)
 	case *ast.MatchExpr:
 		return b.buildMatchAgainst(inScope, v)
 	default:
@@ -480,7 +480,7 @@ func (b *Builder) buildInjectedExpr(inScope *scope, v ast.InjectedExpr) sql.Expr
 }
 
 func (b *Builder) buildInjectedExpressionFromResolvedChildren(v ast.InjectedExpr, resolvedChildren []any) sql.Expression {
-	expr, err := v.Expression.WithResolvedChildren(resolvedChildren)
+	expr, err := v.Expression.WithResolvedChildren(b.ctx, resolvedChildren)
 	if err != nil {
 		b.handleErr(err)
 		return nil
@@ -498,7 +498,7 @@ func (b *Builder) getOrigTblName(node sql.Node, alias string) string {
 	}
 	// Look past table aliases
 	var origTbl string
-	transform.InspectWithOpaque(node, func(n sql.Node) bool {
+	transform.InspectWithOpaque(b.ctx, node, func(ctx *sql.Context, n sql.Node) bool {
 		switch nn := n.(type) {
 		case *plan.TableAlias:
 			if nn.Name() == alias {
@@ -601,7 +601,7 @@ func (b *Builder) buildUnaryScalar(inScope *scope, e *ast.UnaryExpr) sql.Express
 
 			// Character set introducers only work on string literals
 			expr := b.buildScalar(inScope, e.Expr)
-			if _, ok := expr.(*expression.Literal); !ok || !types.IsText(expr.Type()) {
+			if _, ok := expr.(*expression.Literal); !ok || !types.IsText(expr.Type(b.ctx)) {
 				err := sql.ErrCharSetIntroducer.New()
 				b.handleErr(err)
 			}
@@ -625,7 +625,7 @@ func (b *Builder) buildUnaryScalar(inScope *scope, e *ast.UnaryExpr) sql.Express
 			} else {
 				// Should not be possible
 				err := fmt.Errorf("expression literal returned type `%s` but literal value had type `%T`",
-					expr.Type().String(), literal)
+					expr.Type(b.ctx).String(), literal)
 				b.handleErr(err)
 			}
 		}
@@ -670,21 +670,21 @@ func (b *Builder) typeExpandComparisonLiteral(left, right sql.Expression) (sql.E
 	}
 
 	if leftGf != nil && rightLit != nil {
-		if types.IsSigned(left.Type()) && types.IsSigned(right.Type()) ||
-			types.IsUnsigned(left.Type()) && types.IsUnsigned(right.Type()) ||
-			types.IsFloat(left.Type()) && types.IsFloat(right.Type()) ||
-			types.IsDecimal(left.Type()) && types.IsDecimal(right.Type()) ||
-			types.IsText(left.Type()) && types.IsText(right.Type()) {
-			if left.Type().MaxTextResponseByteLength(b.ctx) >= right.Type().MaxTextResponseByteLength(b.ctx) {
+		if types.IsSigned(left.Type(b.ctx)) && types.IsSigned(right.Type(b.ctx)) ||
+			types.IsUnsigned(left.Type(b.ctx)) && types.IsUnsigned(right.Type(b.ctx)) ||
+			types.IsFloat(left.Type(b.ctx)) && types.IsFloat(right.Type(b.ctx)) ||
+			types.IsDecimal(left.Type(b.ctx)) && types.IsDecimal(right.Type(b.ctx)) ||
+			types.IsText(left.Type(b.ctx)) && types.IsText(right.Type(b.ctx)) {
+			if left.Type(b.ctx).MaxTextResponseByteLength(b.ctx) >= right.Type(b.ctx).MaxTextResponseByteLength(b.ctx) {
 				// The types are congruent and the literal does not lose
 				// information casting to the column type. The conditions
 				// should preclude out of range, casting errors, or
 				// correctness missteps.
-				val, _, err := leftGf.Type().Convert(b.ctx, rightLit.Value())
+				val, _, err := leftGf.Type(b.ctx).Convert(b.ctx, rightLit.Value())
 				if err != nil && !expression.ErrNilOperand.Is(err) {
 					b.handleErr(err)
 				}
-				right = expression.NewLiteral(val, leftGf.Type())
+				right = expression.NewLiteral(val, leftGf.Type(b.ctx))
 			}
 		}
 
@@ -708,13 +708,13 @@ func (b *Builder) buildComparison(inScope *scope, c *ast.ComparisonExpr) sql.Exp
 
 	switch strings.ToLower(c.Operator) {
 	case ast.RegexpStr:
-		regexpLike, err := function.NewRegexpLike(left, right)
+		regexpLike, err := function.NewRegexpLike(b.ctx, left, right)
 		if err != nil {
 			b.handleErr(err)
 		}
 		return regexpLike
 	case ast.NotRegexpStr:
-		regexpLike, err := function.NewRegexpLike(left, right)
+		regexpLike, err := function.NewRegexpLike(b.ctx, left, right)
 		if err != nil {
 			b.handleErr(err)
 		}
@@ -773,11 +773,11 @@ func (b *Builder) buildComparison(inScope *scope, c *ast.ComparisonExpr) sql.Exp
 	return nil
 }
 
-func hasColumnType(e sql.Expression) (sql.Type, bool) {
+func hasColumnType(ctx *sql.Context, e sql.Expression) (sql.Type, bool) {
 	var typ sql.Type
-	sql.Inspect(e, func(e sql.Expression) bool {
+	sql.Inspect(ctx, e, func(ctx *sql.Context, e sql.Expression) bool {
 		if col, ok := e.(*expression.GetField); ok {
-			typ = col.Type()
+			typ = col.Type(ctx)
 			return false
 		}
 		return true
@@ -867,13 +867,13 @@ func (b *Builder) binaryExprToExpression(inScope *scope, be *ast.BinaryExpr) (sq
 		}
 
 	case ast.JSONExtractOp, ast.JSONUnquoteExtractOp:
-		jsonExtract, err := json.NewJSONExtract(l, r)
+		jsonExtract, err := json.NewJSONExtract(b.ctx, l, r)
 		if err != nil {
 			return nil, err
 		}
 
 		if operator == ast.JSONUnquoteExtractOp {
-			return json.NewJSONUnquote(jsonExtract), nil
+			return json.NewJSONUnquote(b.ctx, jsonExtract), nil
 		}
 		return jsonExtract, nil
 
@@ -909,13 +909,13 @@ func (b *Builder) caseExprToExpression(inScope *scope, e *ast.CaseExpr) (sql.Exp
 	}
 
 	newCase := expression.NewCase(expr, branches, elseExpr)
-	if types.IsText(newCase.Type()) {
+	if types.IsText(newCase.Type(b.ctx)) {
 		for _, branch := range branches {
-			if types.IsEnum(branch.Value.Type()) {
+			if types.IsEnum(branch.Value.Type(b.ctx)) {
 				branch.Value = expression.NewEnumToString(branch.Value)
 			}
 		}
-		if elseExpr != nil && types.IsEnum(elseExpr.Type()) {
+		if elseExpr != nil && types.IsEnum(elseExpr.Type(b.ctx)) {
 			elseExpr = expression.NewEnumToString(elseExpr)
 		}
 		newCase = expression.NewCase(expr, branches, elseExpr)
@@ -1091,7 +1091,7 @@ func (b *Builder) ConvertVal(v *ast.SQLVal) sql.Expression {
 // filter, since we only need to load the tables once. All steps after this
 // one can assume that the expression has been fully resolved and is valid.
 func (b *Builder) buildMatchAgainst(inScope *scope, v *ast.MatchExpr) *expression.MatchAgainst {
-	rts := getResolvedTablesByName(inScope.node)
+	rts := getResolvedTablesByName(b.ctx, inScope.node)
 	var rt *plan.ResolvedTable
 	var matchTable string
 	cols := make([]*expression.GetField, len(v.Columns))
@@ -1194,7 +1194,7 @@ func (b *Builder) buildMatchAgainst(inScope *scope, v *ast.MatchExpr) *expressio
 	matchAgainst := expression.NewMatchAgainst(genericCols, matchExpr, searchModifier)
 	matchAgainst.SetIndex(ftIndex)
 
-	return matchAgainst.WithInfo(indexedTbl, idxTables[0], idxTables[1], idxTables[2], idxTables[3], idxTables[4], keyCols)
+	return matchAgainst.WithInfo(b.ctx, indexedTbl, idxTables[0], idxTables[1], idxTables[2], idxTables[3], idxTables[4], keyCols)
 }
 
 // findMatchAgainstIndex returns the [fulltext.Index] from |indexes| whose column expressions match |cols|.

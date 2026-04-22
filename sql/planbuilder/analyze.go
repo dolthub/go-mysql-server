@@ -69,7 +69,7 @@ func (b *Builder) buildAnalyze(inScope *scope, n *ast.Analyze, query string) (ou
 
 	switch n.Action {
 	case ast.UpdateStr:
-		sch := tableScope.node.Schema()
+		sch := tableScope.node.Schema(b.ctx)
 		return b.buildAnalyzeUpdate(inScope, n, strings.ToLower(n.Tables[0].DbQualifier.String()), strings.ToLower(n.Tables[0].SchemaQualifier.String()), strings.ToLower(n.Tables[0].Name.String()), sch, columns, types)
 	case ast.DropStr:
 		outScope = inScope.push()
@@ -129,7 +129,7 @@ func (b *Builder) buildAnalyzeUpdate(inScope *scope, n *ast.Analyze, dbName, sch
 	statisticJ := new(stats.StatisticJSON)
 	using := b.buildScalar(inScope, n.Using)
 	if l, ok := using.(*expression.Literal); ok {
-		if typ, ok := l.Type().(sql.StringType); ok {
+		if typ, ok := l.Type(b.ctx).(sql.StringType); ok {
 			val, _, err := typ.Convert(b.ctx, l.Value())
 			if err != nil {
 				b.handleErr(err)

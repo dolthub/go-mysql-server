@@ -87,7 +87,7 @@ func (c *ColumnsTable) String() string {
 }
 
 // Schema implements the sql.Table interface.
-func (c *ColumnsTable) Schema() sql.Schema {
+func (c *ColumnsTable) Schema(ctx *sql.Context) sql.Schema {
 	return c.TableSchema
 }
 
@@ -106,8 +106,8 @@ func (c *ColumnsTable) Database() string {
 	return sql.InformationSchemaDatabaseName
 }
 
-func (c *ColumnsTable) DataLength(_ *sql.Context) (uint64, error) {
-	return uint64(len(c.Schema()) * int(types.Text.MaxByteLength()) * defaultColumnsTableRowCount), nil
+func (c *ColumnsTable) DataLength(ctx *sql.Context) (uint64, error) {
+	return uint64(len(c.Schema(ctx)) * int(types.Text.MaxByteLength()) * defaultColumnsTableRowCount), nil
 }
 
 func (c *ColumnsTable) RowCount(ctx *sql.Context) (uint64, bool, error) {
@@ -159,7 +159,7 @@ func (c *ColumnsTable) AllColumns(ctx *sql.Context) (sql.Schema, error) {
 
 	for _, db := range databases {
 		err := sql.DBTableIter(ctx, db.Database, func(t sql.Table) (cont bool, err error) {
-			tableSch := t.Schema()
+			tableSch := t.Schema(ctx)
 			for i := range tableSch {
 				newCol := tableSch[i].Copy()
 				newCol.DatabaseSource = db.Database.Name()
@@ -464,7 +464,7 @@ func getIndexKeyInfo(ctx *sql.Context, t sql.Table) (map[string]string, bool, er
 				idx = "MUL"
 			}
 
-			colNames := getColumnNamesFromIndex(index, t)
+			colNames := getColumnNamesFromIndex(ctx, index, t)
 			// A UNIQUE index may display as MUL if several columns form a composite UNIQUE index
 			if idx == "UNI" && len(colNames) > 1 {
 				idx = "MUL"
@@ -495,14 +495,14 @@ func GetColumnDefault(ctx *sql.Context, cd *sql.ColumnDefaultValue) interface{} 
 		if strings.HasPrefix(defStr, "(") && strings.HasSuffix(defStr, ")") {
 			defStr = strings.TrimSuffix(strings.TrimPrefix(defStr, "("), ")")
 		}
-		if types.IsTime(cd.Type()) && (strings.HasPrefix(defStr, "NOW") || strings.HasPrefix(defStr, "CURRENT_TIMESTAMP")) {
+		if types.IsTime(cd.Type(ctx)) && (strings.HasPrefix(defStr, "NOW") || strings.HasPrefix(defStr, "CURRENT_TIMESTAMP")) {
 			defStr = strings.Replace(defStr, "NOW", "CURRENT_TIMESTAMP", -1)
 			defStr = strings.TrimSuffix(defStr, "()")
 		}
 		return fmt.Sprint(defStr)
 	}
 
-	if types.IsEnum(cd.Type()) || types.IsSet(cd.Type()) {
+	if types.IsEnum(cd.Type(ctx)) || types.IsSet(cd.Type(ctx)) {
 		return strings.Trim(defStr, "'")
 	}
 
@@ -519,7 +519,7 @@ func GetColumnDefault(ctx *sql.Context, cd *sql.ColumnDefaultValue) interface{} 
 		v = fmt.Sprintf("0x%s", hexStr)
 	}
 
-	if types.IsBit(cd.Type()) {
+	if types.IsBit(cd.Type(ctx)) {
 		if i, ok := v.(uint64); ok {
 			bitStr := strconv.FormatUint(i, 2)
 			v = fmt.Sprintf("b'%s'", bitStr)

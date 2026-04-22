@@ -28,7 +28,7 @@ import (
 )
 
 func newCreateView(db memory.MemoryDatabase, ifNotExists, isReplace bool) *plan.CreateView {
-	table := memory.NewTable(db.Database(), "mytable", sql.NewPrimaryKeySchema(sql.Schema{
+	table := memory.NewTable(sql.NewEmptyContext(), db.Database(), "mytable", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "i", Source: "mytable", Type: types.Int32},
 		{Name: "s", Source: "mytable", Type: types.Text},
 	}), nil)
@@ -195,7 +195,7 @@ func TestCreateViewWithConflictingTableName(t *testing.T) {
 	db := memory.NewDatabase("mydb")
 
 	// Create a table named "v"
-	table := memory.NewTable(db.Database(), "v", sql.NewPrimaryKeySchema(sql.Schema{
+	table := memory.NewTable(sql.NewEmptyContext(), db.Database(), "v", sql.NewPrimaryKeySchema(sql.Schema{
 		{Name: "id", Source: "v", Type: types.Int32},
 	}), nil)
 	db.AddTable("v", table)

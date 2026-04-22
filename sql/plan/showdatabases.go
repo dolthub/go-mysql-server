@@ -47,7 +47,7 @@ func (*ShowDatabases) IsReadOnly() bool {
 }
 
 // Schema implements the Node interface.
-func (*ShowDatabases) Schema() sql.Schema {
+func (*ShowDatabases) Schema(ctx *sql.Context) sql.Schema {
 	return sql.Schema{{
 		Name:     "Database",
 		Type:     types.LongText,
@@ -56,7 +56,7 @@ func (*ShowDatabases) Schema() sql.Schema {
 }
 
 // WithChildren implements the Node interface.
-func (p *ShowDatabases) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (p *ShowDatabases) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 0 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 0)
 	}

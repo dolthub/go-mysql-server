@@ -32,7 +32,7 @@ var _ sql.FunctionExpression = (*Disjoint)(nil)
 var _ sql.CollationCoercible = (*Disjoint)(nil)
 
 // NewDisjoint creates a new Disjoint expression.
-func NewDisjoint(g1, g2 sql.Expression) sql.Expression {
+func NewDisjoint(ctx *sql.Context, g1, g2 sql.Expression) sql.Expression {
 	return &Disjoint{
 		expression.BinaryExpressionStub{
 			LeftChild:  g1,
@@ -52,12 +52,12 @@ func (d *Disjoint) Description() string {
 }
 
 // IsNullable implements the sql.Expression interface.
-func (d *Disjoint) IsNullable() bool {
+func (d *Disjoint) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
 // Type implements the sql.Expression interface.
-func (d *Disjoint) Type() sql.Type {
+func (d *Disjoint) Type(ctx *sql.Context) sql.Type {
 	return types.Boolean
 }
 
@@ -71,11 +71,11 @@ func (d *Disjoint) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (d *Disjoint) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (d *Disjoint) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 2)
 	}
-	return NewDisjoint(children[0], children[1]), nil
+	return NewDisjoint(ctx, children[0], children[1]), nil
 }
 
 // Eval implements the sql.Expression interface.

@@ -90,7 +90,7 @@ func (f *TimeFormat) Description() string {
 }
 
 // NewTimeFormat returns a new TimeFormat UDF
-func NewTimeFormat(ex, value sql.Expression) sql.Expression {
+func NewTimeFormat(ctx *sql.Context, ex, value sql.Expression) sql.Expression {
 	return &TimeFormat{
 		expression.BinaryExpressionStub{
 			LeftChild:  ex,
@@ -140,7 +140,7 @@ func (f *TimeFormat) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // Type implements the Expression interface.
-func (f *TimeFormat) Type() sql.Type {
+func (f *TimeFormat) Type(ctx *sql.Context) sql.Type {
 	return types.Text
 }
 
@@ -150,8 +150,8 @@ func (*TimeFormat) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 }
 
 // IsNullable implements the Expression interface.
-func (f *TimeFormat) IsNullable() bool {
-	return f.LeftChild.IsNullable() || f.RightChild.IsNullable()
+func (f *TimeFormat) IsNullable(ctx *sql.Context) bool {
+	return f.LeftChild.IsNullable(ctx) || f.RightChild.IsNullable(ctx)
 }
 
 func (f *TimeFormat) String() string {
@@ -159,9 +159,9 @@ func (f *TimeFormat) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (f *TimeFormat) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (f *TimeFormat) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 2)
 	}
-	return NewTimeFormat(children[0], children[1]), nil
+	return NewTimeFormat(ctx, children[0], children[1]), nil
 }

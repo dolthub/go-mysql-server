@@ -57,17 +57,17 @@ func (j JSONArrayAppend) String() string {
 	return fmt.Sprintf("%s(%s)", j.FunctionName(), strings.Join(parts, ","))
 }
 
-func (j JSONArrayAppend) Type() sql.Type {
+func (j JSONArrayAppend) Type(ctx *sql.Context) sql.Type {
 	return types.JSON
 }
 
-func (j JSONArrayAppend) IsNullable() bool {
+func (j JSONArrayAppend) IsNullable(ctx *sql.Context) bool {
 	for _, arg := range j.pathVals {
-		if arg.IsNullable() {
+		if arg.IsNullable(ctx) {
 			return true
 		}
 	}
-	return j.doc.IsNullable()
+	return j.doc.IsNullable(ctx)
 }
 
 func (j JSONArrayAppend) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -101,17 +101,17 @@ func (j JSONArrayAppend) Children() []sql.Expression {
 	return append([]sql.Expression{j.doc}, j.pathVals...)
 }
 
-func (j JSONArrayAppend) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (j JSONArrayAppend) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(j.Children()) != len(children) {
 		return nil, fmt.Errorf("json_array_append did not receive the correct number of args")
 	}
-	return NewJSONArrayAppend(children...)
+	return NewJSONArrayAppend(ctx, children...)
 }
 
 var _ sql.FunctionExpression = JSONArrayAppend{}
 
 // NewJSONArrayAppend creates a new JSONArrayAppend function.
-func NewJSONArrayAppend(args ...sql.Expression) (sql.Expression, error) {
+func NewJSONArrayAppend(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) <= 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("JSON_ARRAY_APPEND", "more than 1", len(args))
 	} else if (len(args)-1)%2 == 1 {

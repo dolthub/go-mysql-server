@@ -58,6 +58,6 @@ func (uf *UnaryFunc) String() string {
 }
 
 // Type implements the Expression interface.
-func (uf *UnaryFunc) Type() sql.Type {
+func (uf *UnaryFunc) Type(ctx *sql.Context) sql.Type {
 	return uf.RetType
 }

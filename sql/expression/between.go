@@ -40,8 +40,8 @@ func (b *Between) String() string {
 	return fmt.Sprintf("(%s BETWEEN %s AND %s)", b.Val, b.Lower, b.Upper)
 }
 
-func (b *Between) DebugString() string {
-	return fmt.Sprintf("(%s BETWEEN %s AND %s)", sql.DebugString(b.Val), sql.DebugString(b.Lower), sql.DebugString(b.Upper))
+func (b *Between) DebugString(ctx *sql.Context) string {
+	return fmt.Sprintf("(%s BETWEEN %s AND %s)", sql.DebugString(ctx, b.Val), sql.DebugString(ctx, b.Lower), sql.DebugString(ctx, b.Upper))
 }
 
 // Children implements the Expression interface.
@@ -50,7 +50,7 @@ func (b *Between) Children() []sql.Expression {
 }
 
 // Type implements the Expression interface.
-func (*Between) Type() sql.Type { return types.Boolean }
+func (*Between) Type(ctx *sql.Context) sql.Type { return types.Boolean }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
 func (b *Between) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
@@ -58,8 +58,8 @@ func (b *Between) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 }
 
 // IsNullable implements the Expression interface.
-func (b *Between) IsNullable() bool {
-	return b.Val.IsNullable() || b.Lower.IsNullable() || b.Upper.IsNullable()
+func (b *Between) IsNullable(ctx *sql.Context) bool {
+	return b.Val.IsNullable(ctx) || b.Lower.IsNullable(ctx) || b.Upper.IsNullable(ctx)
 }
 
 // Resolved implements the Expression interface.
@@ -75,7 +75,7 @@ func (b *Between) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // WithChildren implements the Expression interface.
-func (b *Between) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (b *Between) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 3 {
 		return nil, sql.ErrInvalidChildrenNumber.New(b, len(children), 3)
 	}

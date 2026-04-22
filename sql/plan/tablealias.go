@@ -90,9 +90,9 @@ func (t *TableAlias) Comment() string {
 
 // Schema implements the Node interface. TableAlias alters the schema of its child element to rename the source of
 // columns to the alias.
-func (t *TableAlias) Schema() sql.Schema {
+func (t *TableAlias) Schema(ctx *sql.Context) sql.Schema {
 	if t.sch == nil {
-		childSchema := t.Child.Schema()
+		childSchema := t.Child.Schema(ctx)
 		t.sch = make(sql.Schema, len(childSchema))
 		for i, col := range childSchema {
 			newCol := *col
@@ -104,7 +104,7 @@ func (t *TableAlias) Schema() sql.Schema {
 }
 
 // WithChildren implements the Node interface.
-func (t *TableAlias) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (t *TableAlias) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 1)
 	}
@@ -131,10 +131,10 @@ func (t *TableAlias) String() string {
 	return pr.String()
 }
 
-func (t *TableAlias) DebugString() string {
+func (t *TableAlias) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("TableAlias(%s)", t.name)
-	_ = pr.WriteChildren(sql.DebugString(t.Child))
+	_ = pr.WriteChildren(sql.DebugString(ctx, t.Child))
 	return pr.String()
 }
 

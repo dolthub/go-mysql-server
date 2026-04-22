@@ -37,7 +37,7 @@ func TestShowColumns(t *testing.T) {
 		{Name: "b", Source: "foo", Type: types.Int64, Nullable: true},
 		{Name: "c", Source: "foo", Type: types.Int64, Default: planbuilder.MustStringToColumnDefaultValue(ctx, "1", types.Int64, false)},
 	}
-	table := NewResolvedTable(memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(schema), nil), nil, nil)
+	table := NewResolvedTable(memory.NewTable(ctx, db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(schema), nil), nil, nil)
 
 	showColumns, err := NewShowColumns(false, table).WithTargetSchema(schema)
 	require.NoError(err)
@@ -69,7 +69,7 @@ func TestShowColumnsWithIndexes(t *testing.T) {
 		{Name: "d", Source: "foo", Type: types.Int64, Nullable: true},
 		{Name: "e", Source: "foo", Type: types.Int64, Default: planbuilder.MustStringToColumnDefaultValue(ctx, "1", types.Int64, false)},
 	}
-	memTable := memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(schema), nil)
+	memTable := memory.NewTable(ctx, db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(schema), nil)
 	table := NewResolvedTable(memTable, nil, nil)
 
 	showColumns, err := NewShowColumns(false, table).WithTargetSchema(schema)
@@ -162,7 +162,7 @@ func TestShowColumnsFull(t *testing.T) {
 		{Name: "b", Type: types.Int64, Nullable: true},
 		{Name: "c", Type: types.Int64, Default: planbuilder.MustStringToColumnDefaultValue(ctx, "1", types.Int64, false), Comment: "a comment"},
 	}
-	table := NewResolvedTable(memory.NewTable(db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(schema), nil), nil, nil)
+	table := NewResolvedTable(memory.NewTable(ctx, db.BaseDatabase, "foo", sql.NewPrimaryKeySchema(schema), nil), nil, nil)
 
 	showColumns, err := NewShowColumns(true, table).WithTargetSchema(schema)
 	require.NoError(err)

@@ -32,7 +32,7 @@ var _ sql.FunctionExpression = (*PointN)(nil)
 var _ sql.CollationCoercible = (*PointN)(nil)
 
 // NewPointN creates a new PointN expression.
-func NewPointN(g, n sql.Expression) sql.Expression {
+func NewPointN(ctx *sql.Context, g, n sql.Expression) sql.Expression {
 	return &PointN{
 		expression.BinaryExpressionStub{
 			LeftChild:  g,
@@ -52,12 +52,12 @@ func (p *PointN) Description() string {
 }
 
 // IsNullable implements the sql.Expression interface.
-func (p *PointN) IsNullable() bool {
+func (p *PointN) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
 // Type implements the sql.Expression interface.
-func (p *PointN) Type() sql.Type {
+func (p *PointN) Type(ctx *sql.Context) sql.Type {
 	return types.PointType{}
 }
 
@@ -71,11 +71,11 @@ func (p *PointN) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (p *PointN) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (p *PointN) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(p, len(children), 2)
 	}
-	return NewPointN(children[0], children[1]), nil
+	return NewPointN(ctx, children[0], children[1]), nil
 }
 
 // Eval implements the sql.Expression interface.

@@ -54,8 +54,8 @@ func (t *tableEditor) String() string {
 	return t.editedTable.String()
 }
 
-func (t *tableEditor) Schema() sql.Schema {
-	return t.editedTable.Schema()
+func (t *tableEditor) Schema(ctx *sql.Context) sql.Schema {
+	return t.editedTable.Schema(ctx)
 }
 
 func (t *tableEditor) Collation() sql.CollationID {
@@ -201,7 +201,7 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 
 // Delete the given row from the table.
 func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
-	if err := checkRow(ctx, t.editedTable.Schema(), row); err != nil {
+	if err := checkRow(ctx, t.editedTable.Schema(ctx), row); err != nil {
 		return err
 	}
 
@@ -215,10 +215,10 @@ func (t *tableEditor) Delete(ctx *sql.Context, row sql.Row) error {
 
 // Update updates the given row in the table.
 func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) error {
-	if err := checkRow(ctx, t.editedTable.Schema(), oldRow); err != nil {
+	if err := checkRow(ctx, t.editedTable.Schema(ctx), oldRow); err != nil {
 		return err
 	}
-	if err := checkRow(ctx, t.editedTable.Schema(), newRow); err != nil {
+	if err := checkRow(ctx, t.editedTable.Schema(ctx), newRow); err != nil {
 		return err
 	}
 
@@ -227,7 +227,7 @@ func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) e
 		return err
 	}
 
-	if t.pkColsDiffer(oldRow, newRow) {
+	if t.pkColsDiffer(ctx, oldRow, newRow) {
 		partitionRow, added, err := t.ea.Get(newRow)
 		if err != nil {
 			return err
@@ -308,9 +308,9 @@ func (t *tableEditor) pkColumnIndexes() []int {
 	return pkColIdxes
 }
 
-func (t *tableEditor) pkColsDiffer(row, row2 sql.Row) bool {
+func (t *tableEditor) pkColsDiffer(ctx *sql.Context, row, row2 sql.Row) bool {
 	pkColIdxes := t.pkColumnIndexes()
-	return !columnsMatch(pkColIdxes, nil, row, row2, t.Schema())
+	return !columnsMatch(pkColIdxes, nil, row, row2, t.Schema(ctx))
 }
 
 // Returns whether the values for the columns given match in the two rows provided

@@ -33,7 +33,7 @@ func replaceCountStar(ctx *sql.Context, a *Analyzer, n sql.Node, _ *plan.Scope, 
 		return n, transform.SameTree, nil
 	}
 
-	return transform.Node(n, func(n sql.Node) (sql.Node, transform.TreeIdentity, error) {
+	return transform.Node(ctx, n, func(ctx *sql.Context, n sql.Node) (sql.Node, transform.TreeIdentity, error) {
 		if agg, ok := n.(*plan.GroupBy); ok {
 			if len(agg.GroupByExprs) == 0 && !qFlags.JoinIsSet() && !qFlags.SubqueryIsSet() && !qFlags.IsSet(sql.QFlagAnyAgg) && !qFlags.IsSet(sql.QFlagAnalyzeProcedure) {
 				// top-level aggregation with a single group and no "any_value" functions can only return one row
@@ -65,7 +65,7 @@ func replaceCountStar(ctx *sql.Context, a *Analyzer, n sql.Node, _ *plan.Scope, 
 						rt = t
 					}
 				}
-				if rt == nil || sql.IsKeyless(rt.Table.Schema()) {
+				if rt == nil || sql.IsKeyless(rt.Table.Schema(ctx)) {
 					return n, transform.SameTree, nil
 				}
 
@@ -77,7 +77,7 @@ func replaceCountStar(ctx *sql.Context, a *Analyzer, n sql.Node, _ *plan.Scope, 
 				case *expression.GetField:
 					var matched bool
 					var otherPk bool
-					for _, col := range rt.Schema() {
+					for _, col := range rt.Schema(ctx) {
 						if col.PrimaryKey {
 							if strings.EqualFold(col.Name, e.Name()) {
 								matched = true
@@ -110,10 +110,10 @@ func replaceCountStar(ctx *sql.Context, a *Analyzer, n sql.Node, _ *plan.Scope, 
 
 		}
 
-		return transform.NodeExprs(n, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+		return transform.NodeExprs(ctx, n, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 			if count, ok := e.(*aggregation.Count); ok {
 				if _, ok := count.Child.(*expression.Star); ok {
-					count, err := count.WithChildren(expression.NewLiteral(int64(1), types.Int64))
+					count, err := count.WithChildren(ctx, expression.NewLiteral(int64(1), types.Int64))
 					if err != nil {
 						return nil, transform.SameTree, err
 					}

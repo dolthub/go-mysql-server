@@ -35,7 +35,7 @@ var _ sql.FunctionExpression = (*Polygon)(nil)
 var _ sql.CollationCoercible = (*Polygon)(nil)
 
 // NewPolygon creates a new polygon expression.
-func NewPolygon(args ...sql.Expression) (sql.Expression, error) {
+func NewPolygon(ctx *sql.Context, args ...sql.Expression) (sql.Expression, error) {
 	if len(args) < 1 {
 		return nil, sql.ErrInvalidArgumentNumber.New("Polygon", "1 or more", len(args))
 	}
@@ -53,7 +53,7 @@ func (p *Polygon) Description() string {
 }
 
 // Type implements the sql.Expression interface.
-func (p *Polygon) Type() sql.Type {
+func (p *Polygon) Type(ctx *sql.Context) sql.Type {
 	return types.PolygonType{}
 }
 
@@ -71,8 +71,8 @@ func (p *Polygon) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (p *Polygon) WithChildren(children ...sql.Expression) (sql.Expression, error) {
-	return NewPolygon(children...)
+func (p *Polygon) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
+	return NewPolygon(ctx, children...)
 }
 
 // TODO: https://www.geeksforgeeks.org/orientation-3-ordered-points/

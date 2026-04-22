@@ -10,7 +10,7 @@ import (
 // static query strings, rather than the plan string (which is mutable through
 // analysis).
 func AliasSubqueryString(e sql.Expression) string {
-	e, _, err := transform.Expr(e, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+	e, _, err := transform.Expr(nil /*ctx isn't used here*/, e, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		switch e := e.(type) {
 		case *Subquery:
 			return NewSubquery(NewStrExpr(e.QueryString, e), e.QueryString), transform.NewTree, nil
@@ -48,15 +48,15 @@ func NewStrExpr(s string, orig *Subquery) *StrExpr {
 	}
 }
 
-func (s *StrExpr) Schema() sql.Schema {
-	return s.original.Query.Schema()
+func (s *StrExpr) Schema(ctx *sql.Context) sql.Schema {
+	return s.original.Query.Schema(ctx)
 }
 
 func (s *StrExpr) Children() []sql.Node {
 	panic("StrExpr.Children should never be called")
 }
 
-func (s *StrExpr) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (s *StrExpr) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	panic("StrExpr.WithChildren should never be called")
 }
 
@@ -72,7 +72,7 @@ func (s *StrExpr) String() string {
 	return s.s
 }
 
-func (s *StrExpr) IsNullable() bool {
+func (s *StrExpr) IsNullable(ctx *sql.Context) bool {
 	panic("StrExpr.IsNullable should never be called")
 }
 

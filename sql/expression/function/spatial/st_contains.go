@@ -32,7 +32,7 @@ var _ sql.FunctionExpression = (*Contains)(nil)
 var _ sql.CollationCoercible = (*Contains)(nil)
 
 // NewContains creates a new Contains expression.
-func NewContains(g1, g2 sql.Expression) sql.Expression {
+func NewContains(ctx *sql.Context, g1, g2 sql.Expression) sql.Expression {
 	return &Contains{
 		expression.BinaryExpressionStub{
 			LeftChild:  g1,
@@ -52,12 +52,12 @@ func (c *Contains) Description() string {
 }
 
 // IsNullable implements the sql.Expression interface.
-func (c *Contains) IsNullable() bool {
+func (c *Contains) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
 // Type implements the sql.Expression interface.
-func (c *Contains) Type() sql.Type {
+func (c *Contains) Type(ctx *sql.Context) sql.Type {
 	return types.Boolean
 }
 
@@ -71,11 +71,11 @@ func (c *Contains) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (c *Contains) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (c *Contains) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 2)
 	}
-	return NewContains(children[0], children[1]), nil
+	return NewContains(ctx, children[0], children[1]), nil
 }
 
 // Eval implements the sql.Expression interface.

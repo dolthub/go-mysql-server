@@ -25,7 +25,7 @@ import (
 )
 
 func TestInetAton(t *testing.T) {
-	f := NewInetAton(expression.NewGetField(0, types.LongText, "", false))
+	f := NewInetAton(sql.NewEmptyContext(), expression.NewGetField(0, types.LongText, "", false))
 	testCases := []struct {
 		name     string
 		row      sql.Row
@@ -60,7 +60,7 @@ func TestInetAton(t *testing.T) {
 }
 
 func TestInetNtoa(t *testing.T) {
-	f := NewInetNtoa(expression.NewGetField(0, types.LongText, "", false))
+	f := NewInetNtoa(sql.NewEmptyContext(), expression.NewGetField(0, types.LongText, "", false))
 	testCases := []struct {
 		name     string
 		row      sql.Row
@@ -91,7 +91,7 @@ func TestInetNtoa(t *testing.T) {
 }
 
 func TestInet6Aton(t *testing.T) {
-	f := NewInet6Aton(expression.NewGetField(0, types.LongText, "", false))
+	f := NewInet6Aton(sql.NewEmptyContext(), expression.NewGetField(0, types.LongText, "", false))
 	testCases := []struct {
 		name     string
 		row      sql.Row
@@ -124,7 +124,7 @@ func TestInet6Aton(t *testing.T) {
 }
 
 func TestInet6Ntoa(t *testing.T) {
-	f := NewInet6Ntoa(expression.NewGetField(0, types.LongText, "", false))
+	f := NewInet6Ntoa(sql.NewEmptyContext(), expression.NewGetField(0, types.LongText, "", false))
 	testCases := []struct {
 		name     string
 		row      sql.Row

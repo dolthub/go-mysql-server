@@ -109,7 +109,7 @@ func (l *Lead) String() string {
 	return sb.String()
 }
 
-func (l *Lead) DebugString() string {
+func (l *Lead) DebugString(ctx *sql.Context) string {
 	sb := strings.Builder{}
 	if len(l.ChildExpressions) > 1 {
 		sb.WriteString(fmt.Sprintf("lead(%s, %d, %s)", l.ChildExpressions[0].String(), l.offset, l.ChildExpressions[1]))
@@ -118,7 +118,7 @@ func (l *Lead) DebugString() string {
 	}
 	if l.window != nil {
 		sb.WriteString(" ")
-		sb.WriteString(sql.DebugString(l.window))
+		sb.WriteString(sql.DebugString(ctx, l.window))
 	}
 	return sb.String()
 }
@@ -129,8 +129,8 @@ func (l *Lead) FunctionName() string {
 }
 
 // Type implements sql.Expression
-func (l *Lead) Type() sql.Type {
-	return l.ChildExpressions[0].Type()
+func (l *Lead) Type(ctx *sql.Context) sql.Type {
+	return l.ChildExpressions[0].Type(ctx)
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -143,7 +143,7 @@ func (l *Lead) CollationCoercibility(ctx *sql.Context) (collation sql.CollationI
 }
 
 // IsNullable implements sql.Expression
-func (l *Lead) IsNullable() bool {
+func (l *Lead) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
@@ -161,14 +161,14 @@ func (l *Lead) Children() []sql.Expression {
 }
 
 // WithChildren implements sql.Expression
-func (l *Lead) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (l *Lead) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) < 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(l, len(children), 2)
 	}
 
 	nl := *l
 	numWindowExpr := len(children) - len(l.ChildExpressions)
-	window, err := l.window.FromExpressions(children[:numWindowExpr])
+	window, err := l.window.FromExpressions(ctx, children[:numWindowExpr])
 	if err != nil {
 		return nil, err
 	}
@@ -180,20 +180,20 @@ func (l *Lead) WithChildren(children ...sql.Expression) (sql.Expression, error) 
 }
 
 // WithWindow implements sql.WindowAggregation
-func (l *Lead) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
+func (l *Lead) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {
 	nl := *l
 	nl.window = window
 	return &nl
 }
 
-func (l *Lead) NewWindowFunction() (sql.WindowFunction, error) {
-	c, err := transform.Clone(l.ChildExpressions[0])
+func (l *Lead) NewWindowFunction(ctx *sql.Context) (sql.WindowFunction, error) {
+	c, err := transform.Clone(ctx, l.ChildExpressions[0])
 	if err != nil {
 		return nil, err
 	}
 	var def sql.Expression
 	if len(l.ChildExpressions) > 1 {
-		def, err = transform.Clone(l.ChildExpressions[1])
+		def, err = transform.Clone(ctx, l.ChildExpressions[1])
 		if err != nil {
 			return nil, err
 		}

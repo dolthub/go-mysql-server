@@ -30,7 +30,7 @@ var _ sql.FunctionExpression = (*BitCount)(nil)
 var _ sql.CollationCoercible = (*BitCount)(nil)
 
 // NewBitCount creates a new Ceil expression.
-func NewBitCount(arg sql.Expression) sql.Expression {
+func NewBitCount(ctx *sql.Context, arg sql.Expression) sql.Expression {
 	return &BitCount{NewUnaryFunc(arg, "BIT_COUNT", types.Int32)}
 }
 
@@ -45,7 +45,7 @@ func (b *BitCount) Description() string {
 }
 
 // Type implements the Expression interface.
-func (b *BitCount) Type() sql.Type {
+func (b *BitCount) Type(ctx *sql.Context) sql.Type {
 	return types.Int32
 }
 
@@ -59,11 +59,11 @@ func (b *BitCount) String() string {
 }
 
 // WithChildren implements the Expression interface.
-func (b *BitCount) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (b *BitCount) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(b, len(children), 1)
 	}
-	return NewBitCount(children[0]), nil
+	return NewBitCount(ctx, children[0]), nil
 }
 
 func countBits(n uint64) int32 {

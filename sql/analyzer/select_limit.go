@@ -44,11 +44,11 @@ func applyDefaultSelectLimit(
 		return n, transform.SameTree, nil
 	}
 	limit := expression.NewLiteral(mustCastNumToInt64(val), types.Int64)
-	ret, same := applyLimit(n, limit)
+	ret, same := applyLimit(ctx, n, limit)
 	return ret, same, nil
 }
 
-func applyLimit(n sql.Node, limit sql.Expression) (sql.Node, transform.TreeIdentity) {
+func applyLimit(ctx *sql.Context, n sql.Node, limit sql.Expression) (sql.Node, transform.TreeIdentity) {
 	var child sql.Node
 	switch n := n.(type) {
 	case *plan.Limit:
@@ -69,9 +69,9 @@ func applyLimit(n sql.Node, limit sql.Expression) (sql.Node, transform.TreeIdent
 	default:
 		return n, transform.SameTree
 	}
-	c, same := applyLimit(child, limit)
+	c, same := applyLimit(ctx, child, limit)
 	if !same {
-		ret, _ := n.WithChildren(c)
+		ret, _ := n.WithChildren(ctx, c)
 		return ret, transform.NewTree
 	}
 	return n, transform.SameTree

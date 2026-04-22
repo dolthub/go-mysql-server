@@ -160,7 +160,7 @@ func TestChar(t *testing.T) {
 			}
 
 			ctx := sql.NewEmptyContext()
-			f, err := NewChar(tt.args...)
+			f, err := NewChar(sql.NewEmptyContext(), tt.args...)
 			require.NoError(t, err)
 
 			res, err := f.Eval(ctx, nil)

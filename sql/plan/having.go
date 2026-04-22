@@ -45,7 +45,7 @@ func (h *Having) IsReadOnly() bool {
 func (h *Having) Expressions() []sql.Expression { return []sql.Expression{h.Cond} }
 
 // WithChildren implements the Node interface.
-func (h *Having) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (h *Having) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(h, len(children), 1)
 	}
@@ -59,7 +59,7 @@ func (h *Having) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 }
 
 // WithExpressions implements the Expressioner interface.
-func (h *Having) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (h *Having) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(h, len(exprs), 1)
 	}
@@ -74,10 +74,10 @@ func (h *Having) String() string {
 	return p.String()
 }
 
-func (h *Having) DebugString() string {
+func (h *Having) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Having")
-	children := []string{sql.DebugString(h.Cond), sql.DebugString(h.Child)}
+	children := []string{sql.DebugString(ctx, h.Cond), sql.DebugString(ctx, h.Child)}
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }

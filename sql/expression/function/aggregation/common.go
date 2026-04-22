@@ -37,16 +37,16 @@ type unaryAggBase struct {
 var _ sql.Aggregation = (*unaryAggBase)(nil)
 var _ sql.CollationCoercible = (*unaryAggBase)(nil)
 
-func (a *unaryAggBase) NewWindowFunction() (sql.WindowFunction, error) {
+func (a *unaryAggBase) NewWindowFunction(ctx *sql.Context) (sql.WindowFunction, error) {
 	panic("unaryAggBase is a base type, type must implement NewWindowFunction")
 }
 
-func (a *unaryAggBase) NewBuffer() (sql.AggregationBuffer, error) {
+func (a *unaryAggBase) NewBuffer(ctx *sql.Context) (sql.AggregationBuffer, error) {
 	panic("unaryAggBase is a base type, type must implement NewWindowFunction")
 }
 
 // WithWindow returns a new unaryAggBase to be embedded in wrapping type
-func (a *unaryAggBase) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
+func (a *unaryAggBase) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {
 	na := *a
 	na.window = window
 	return &na
@@ -60,7 +60,7 @@ func (a *unaryAggBase) String() string {
 	return a.functionName + "(" + a.Child.String() + ")"
 }
 
-func (a *unaryAggBase) Type() sql.Type {
+func (a *unaryAggBase) Type(ctx *sql.Context) sql.Type {
 	return a.typ
 }
 
@@ -77,8 +77,8 @@ func (a *unaryAggBase) WithId(id sql.ColumnId) sql.IdExpression {
 }
 
 // IsNullable returns whether the expression can be null.
-func (a *unaryAggBase) IsNullable() bool {
-	return a.Child.IsNullable()
+func (a *unaryAggBase) IsNullable(ctx *sql.Context) bool {
+	return a.Child.IsNullable(ctx)
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -112,7 +112,7 @@ func (a *unaryAggBase) Resolved() bool {
 }
 
 // WithChildren returns a new unaryAggBase to be embedded in wrapping type
-func (a *unaryAggBase) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (a *unaryAggBase) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) < 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(a, len(children), 1)
 	}
@@ -120,11 +120,11 @@ func (a *unaryAggBase) WithChildren(children ...sql.Expression) (sql.Expression,
 	na := *a
 	na.Child = children[0]
 	if len(children) > 1 && a.window != nil {
-		w, err := a.window.FromExpressions(children[1:])
+		w, err := a.window.FromExpressions(ctx, children[1:])
 		if err != nil {
 			return nil, err
 		}
-		return na.WithWindow(w), nil
+		return na.WithWindow(ctx, w), nil
 	}
 	return &na, nil
 }

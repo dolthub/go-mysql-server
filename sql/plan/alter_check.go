@@ -80,7 +80,7 @@ func (c *CreateCheck) IsReadOnly() bool {
 }
 
 // WithExpressions implements the sql.Expressioner interface.
-func (c *CreateCheck) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (c *CreateCheck) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	if len(exprs) != 1 {
 		return nil, fmt.Errorf("expected one expression, got: %d", len(exprs))
 	}
@@ -91,7 +91,7 @@ func (c *CreateCheck) WithExpressions(exprs ...sql.Expression) (sql.Node, error)
 }
 
 // WithChildren implements the Node interface.
-func (c *CreateCheck) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (c *CreateCheck) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(c, len(children), 1)
 	}
@@ -107,7 +107,7 @@ func (c *CreateCheck) CollationCoercibility(ctx *sql.Context) (collation sql.Col
 	return sql.Collation_binary, 7
 }
 
-func (c *CreateCheck) Schema() sql.Schema { return types.OkResultSchema }
+func (c *CreateCheck) Schema(ctx *sql.Context) sql.Schema { return types.OkResultSchema }
 
 func (c CreateCheck) String() string {
 	pr := sql.NewTreePrinter()
@@ -124,7 +124,7 @@ func (d *DropCheck) Children() []sql.Node {
 }
 
 // WithChildren implements the Node interface.
-func (d *DropCheck) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (d *DropCheck) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}
@@ -139,7 +139,7 @@ func (d *DropCheck) CollationCoercibility(ctx *sql.Context) (collation sql.Colla
 	return sql.Collation_binary, 7
 }
 
-func (d *DropCheck) Schema() sql.Schema { return nil }
+func (d *DropCheck) Schema(ctx *sql.Context) sql.Schema { return nil }
 
 func (d *DropCheck) IsReadOnly() bool { return false }
 
@@ -154,10 +154,10 @@ func NewCheckDefinition(ctx *sql.Context, check *sql.CheckConstraint, schemaForm
 	// When transforming an analyzed CheckConstraint into a CheckDefinition (for storage), we strip off any table
 	// qualifiers that got resolved during analysis. This is to naively match the MySQL behavior, which doesn't print
 	// any table qualifiers in check expressions.
-	unqualifiedCols, _, err := transform.Expr(check.Expr, func(e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
+	unqualifiedCols, _, err := transform.Expr(ctx, check.Expr, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 		gf, ok := e.(*expression.GetField)
 		if ok {
-			newGf := expression.NewGetField(gf.Index(), gf.Type(), gf.Name(), gf.IsNullable())
+			newGf := expression.NewGetField(gf.Index(), gf.Type(ctx), gf.Name(), gf.IsNullable(ctx))
 			newGf = newGf.WithQuotedNames(schemaFormatter, true)
 			return newGf, transform.NewTree, nil
 		}
@@ -192,7 +192,7 @@ func (d *DropConstraint) String() string {
 	return tp.String()
 }
 
-func (d DropConstraint) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (d DropConstraint) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(d, len(children), 1)
 	}

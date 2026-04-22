@@ -38,7 +38,7 @@ var _ sql.FunctionExpression = (*Truncate)(nil)
 var _ sql.CollationCoercible = (*Truncate)(nil)
 
 // NewTruncate returns a new Truncate expression.
-func NewTruncate(left, right sql.Expression) sql.Expression {
+func NewTruncate(ctx *sql.Context, left, right sql.Expression) sql.Expression {
 	return &Truncate{expression.BinaryExpressionStub{LeftChild: left, RightChild: right}}
 }
 
@@ -117,7 +117,7 @@ func (t *Truncate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 
 	// Convert truncated value back to the appropriate type
-	lType := t.LeftChild.Type()
+	lType := t.LeftChild.Type(ctx)
 	if types.IsSigned(lType) {
 		res, _, err = types.Int64.Convert(ctx, tmp)
 	} else if types.IsUnsigned(lType) {
@@ -140,8 +140,8 @@ func (t *Truncate) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 }
 
 // IsNullable implements the Expression interface.
-func (t *Truncate) IsNullable() bool {
-	return t.LeftChild.IsNullable() || t.RightChild.IsNullable()
+func (t *Truncate) IsNullable(ctx *sql.Context) bool {
+	return t.LeftChild.IsNullable(ctx) || t.RightChild.IsNullable(ctx)
 }
 
 func (t *Truncate) String() string {
@@ -154,8 +154,8 @@ func (t *Truncate) Resolved() bool {
 }
 
 // Type implements the Expression interface.
-func (t *Truncate) Type() sql.Type {
-	return numericRetType(t.LeftChild.Type())
+func (t *Truncate) Type(ctx *sql.Context) sql.Type {
+	return numericRetType(t.LeftChild.Type(ctx))
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -164,9 +164,9 @@ func (*Truncate) CollationCoercibility(*sql.Context) (collation sql.CollationID,
 }
 
 // WithChildren implements the Expression interface.
-func (t *Truncate) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (t *Truncate) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 2)
 	}
-	return NewTruncate(children[0], children[1]), nil
+	return NewTruncate(ctx, children[0], children[1]), nil
 }

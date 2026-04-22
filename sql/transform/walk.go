@@ -80,32 +80,32 @@ func Inspect(node sql.Node, f func(sql.Node) bool) (cont bool) {
 // InspectWithOpaque performs a pre-order traversal of the sql.Node tree, including children of sql.OpaqueNodes.
 // First, it does f(node) and if cont = true, then InspectWithOpaque is recursively called on node's children.
 // TODO: this conflicts with transform.InspectExpr which performs a post-order traversal and stops when stop = true.
-func InspectWithOpaque(node sql.Node, f func(sql.Node) bool) (cont bool) {
-	if !f(node) {
+func InspectWithOpaque(ctx *sql.Context, node sql.Node, f func(*sql.Context, sql.Node) bool) (cont bool) {
+	if !f(ctx, node) {
 		return false
 	}
 
 	// Avoid allocating []sql.Expression
 	switch n := node.(type) {
 	case sql.UnaryNode:
-		InspectWithOpaque(n.Child(), f)
+		InspectWithOpaque(ctx, n.Child(), f)
 	case sql.BinaryNode:
-		InspectWithOpaque(n.Left(), f)
-		InspectWithOpaque(n.Right(), f)
+		InspectWithOpaque(ctx, n.Left(), f)
+		InspectWithOpaque(ctx, n.Right(), f)
 	default:
 		for _, child := range n.Children() {
-			InspectWithOpaque(child, f)
+			InspectWithOpaque(ctx, child, f)
 		}
 	}
 	return true
 }
 
 // WalkExpressions traverses the plan and calls sql.Walk on any expression it finds.
-func WalkExpressions(v sql.Visitor, node sql.Node) {
-	InspectWithOpaque(node, func(node sql.Node) bool {
+func WalkExpressions(ctx *sql.Context, v sql.Visitor, node sql.Node) {
+	InspectWithOpaque(ctx, node, func(ctx *sql.Context, node sql.Node) bool {
 		if n, ok := node.(sql.Expressioner); ok {
 			for _, e := range n.Expressions() {
-				sql.Walk(v, e)
+				sql.Walk(ctx, v, e)
 			}
 		}
 		return true
@@ -113,11 +113,11 @@ func WalkExpressions(v sql.Visitor, node sql.Node) {
 }
 
 // WalkExpressionsWithNode traverses the plan and calls sql.WalkWithNode on any expression it finds.
-func WalkExpressionsWithNode(v sql.NodeVisitor, n sql.Node) {
-	InspectWithOpaque(n, func(n sql.Node) bool {
+func WalkExpressionsWithNode(ctx *sql.Context, v sql.NodeVisitor, n sql.Node) {
+	InspectWithOpaque(ctx, n, func(ctx *sql.Context, n sql.Node) bool {
 		if expressioner, ok := n.(sql.Expressioner); ok {
 			for _, e := range expressioner.Expressions() {
-				sql.WalkWithNode(v, n, e)
+				sql.WalkWithNode(ctx, v, n, e)
 			}
 		}
 		return true
@@ -126,14 +126,14 @@ func WalkExpressionsWithNode(v sql.NodeVisitor, n sql.Node) {
 
 // InspectExpressions traverses every node through sql.InspectWithOpaque, and calls the `f` on expressions returned from
 // sql.Expressioner.Expressions().
-func InspectExpressions(node sql.Node, f func(sql.Expression) bool) {
-	WalkExpressions(exprInspector(f), node)
+func InspectExpressions(ctx *sql.Context, node sql.Node, f func(*sql.Context, sql.Expression) bool) {
+	WalkExpressions(ctx, exprInspector(f), node)
 }
 
-type exprInspector func(sql.Expression) bool
+type exprInspector func(*sql.Context, sql.Expression) bool
 
-func (f exprInspector) Visit(e sql.Expression) sql.Visitor {
-	if f(e) {
+func (f exprInspector) Visit(ctx *sql.Context, e sql.Expression) sql.Visitor {
+	if f(ctx, e) {
 		return f
 	}
 	return nil
@@ -141,14 +141,14 @@ func (f exprInspector) Visit(e sql.Expression) sql.Visitor {
 
 // InspectExpressionsWithNode traverses every node through sql.InspectWithOpaque, and calls the `f` on expressions
 // returned from sql.Expressioner.Expressions().
-func InspectExpressionsWithNode(node sql.Node, f func(sql.Node, sql.Expression) bool) {
-	WalkExpressionsWithNode(exprWithNodeInspector(f), node)
+func InspectExpressionsWithNode(ctx *sql.Context, node sql.Node, f func(*sql.Context, sql.Node, sql.Expression) bool) {
+	WalkExpressionsWithNode(ctx, exprWithNodeInspector(f), node)
 }
 
-type exprWithNodeInspector func(sql.Node, sql.Expression) bool
+type exprWithNodeInspector func(*sql.Context, sql.Node, sql.Expression) bool
 
-func (f exprWithNodeInspector) Visit(n sql.Node, e sql.Expression) sql.NodeVisitor {
-	if f(n, e) {
+func (f exprWithNodeInspector) Visit(ctx *sql.Context, n sql.Node, e sql.Expression) sql.NodeVisitor {
+	if f(ctx, n, e) {
 		return f
 	}
 	return nil

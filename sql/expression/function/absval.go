@@ -35,7 +35,7 @@ var _ sql.FunctionExpression = (*AbsVal)(nil)
 var _ sql.CollationCoercible = (*AbsVal)(nil)
 
 // NewAbsVal creates a new AbsVal expression.
-func NewAbsVal(e sql.Expression) sql.Expression {
+func NewAbsVal(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &AbsVal{expression.UnaryExpressionStub{Child: e}}
 }
 
@@ -127,26 +127,26 @@ func (t *AbsVal) String() string {
 	return fmt.Sprintf("%s(%s)", t.FunctionName(), t.Child.String())
 }
 
-func (t *AbsVal) DebugString() string {
-	return fmt.Sprintf("%s(%s)", t.FunctionName(), sql.DebugString(t.Child))
+func (t *AbsVal) DebugString(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", t.FunctionName(), sql.DebugString(ctx, t.Child))
 }
 
 // IsNullable implements the Expression interface.
-func (t *AbsVal) IsNullable() bool {
-	return t.Child.IsNullable()
+func (t *AbsVal) IsNullable(ctx *sql.Context) bool {
+	return t.Child.IsNullable(ctx)
 }
 
 // WithChildren implements the Expression interface.
-func (t *AbsVal) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (t *AbsVal) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) != 1 {
 		return nil, sql.ErrInvalidChildrenNumber.New(t, len(children), 1)
 	}
-	return NewAbsVal(children[0]), nil
+	return NewAbsVal(ctx, children[0]), nil
 }
 
 // Type implements the Expression interface.
-func (t *AbsVal) Type() sql.Type {
-	typ := t.Child.Type()
+func (t *AbsVal) Type(ctx *sql.Context) sql.Type {
+	typ := t.Child.Type(ctx)
 	if types.IsNumber(typ) {
 		return typ
 	}

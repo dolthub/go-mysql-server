@@ -36,7 +36,7 @@ var _ sql.WindowAggregation = (*FirstValue)(nil)
 var _ sql.WindowAdaptableExpression = (*FirstValue)(nil)
 var _ sql.CollationCoercible = (*FirstValue)(nil)
 
-func NewFirstValue(e sql.Expression) sql.Expression {
+func NewFirstValue(ctx *sql.Context, e sql.Expression) sql.Expression {
 	return &FirstValue{Child: e}
 }
 
@@ -77,12 +77,12 @@ func (f *FirstValue) String() string {
 	return sb.String()
 }
 
-func (f *FirstValue) DebugString() string {
+func (f *FirstValue) DebugString(ctx *sql.Context) string {
 	sb := strings.Builder{}
 	sb.WriteString(fmt.Sprintf("first_value(%s)", f.Child.String()))
 	if f.window != nil {
 		sb.WriteString(" ")
-		sb.WriteString(sql.DebugString(f.window))
+		sb.WriteString(sql.DebugString(ctx, f.window))
 	}
 	return sb.String()
 }
@@ -93,8 +93,8 @@ func (f *FirstValue) FunctionName() string {
 }
 
 // Type implements sql.Expression
-func (f *FirstValue) Type() sql.Type {
-	return f.Child.Type()
+func (f *FirstValue) Type(ctx *sql.Context) sql.Type {
+	return f.Child.Type(ctx)
 }
 
 // CollationCoercibility implements the interface sql.CollationCoercible.
@@ -103,8 +103,8 @@ func (f *FirstValue) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 }
 
 // IsNullable implements sql.Expression
-func (f *FirstValue) IsNullable() bool {
-	return f.Child.IsNullable()
+func (f *FirstValue) IsNullable(ctx *sql.Context) bool {
+	return f.Child.IsNullable(ctx)
 }
 
 // Eval implements sql.Expression
@@ -121,13 +121,13 @@ func (f *FirstValue) Children() []sql.Expression {
 }
 
 // WithChildren implements sql.Expression
-func (f *FirstValue) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+func (f *FirstValue) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) < 2 {
 		return nil, sql.ErrInvalidChildrenNumber.New(f, len(children), 2)
 	}
 
 	nf := *f
-	window, err := f.window.FromExpressions(children[:len(children)-1])
+	window, err := f.window.FromExpressions(ctx, children[:len(children)-1])
 	if err != nil {
 		return nil, err
 	}
@@ -139,16 +139,16 @@ func (f *FirstValue) WithChildren(children ...sql.Expression) (sql.Expression, e
 }
 
 // WithWindow implements sql.WindowAggregation
-func (f *FirstValue) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
+func (f *FirstValue) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {
 	nr := *f
 	nr.window = window
 	return &nr
 }
 
-func (f *FirstValue) NewWindowFunction() (sql.WindowFunction, error) {
-	c, err := transform.Clone(f.Child)
+func (f *FirstValue) NewWindowFunction(ctx *sql.Context) (sql.WindowFunction, error) {
+	c, err := transform.Clone(ctx, f.Child)
 	if err != nil {
 		return nil, err
 	}
-	return aggregation.NewFirstAgg(c).WithWindow(f.window)
+	return aggregation.NewFirstAgg(c).WithWindow(ctx, f.window)
 }

@@ -53,7 +53,7 @@ func (b *BaseBuilder) buildTopN(ctx *sql.Context, n *plan.TopN, row sql.Row) (sq
 	if limit == 1 {
 		topIter = iters.NewTopRowIter(n.Fields, n.CalcFoundRows, i)
 	} else {
-		topIter = iters.NewTopRowsIter(n.Fields, limit, n.CalcFoundRows, i, len(n.Child.Schema()))
+		topIter = iters.NewTopRowsIter(n.Fields, limit, n.CalcFoundRows, i, len(n.Child.Schema(ctx)))
 	}
 	return sql.NewSpanIter(span, topIter), nil
 }
@@ -69,12 +69,12 @@ func (b *BaseBuilder) buildValueDerivedTable(ctx *sql.Context, n *plan.ValueDeri
 				return nil, err
 			}
 			// cast all row values to the most permissive type
-			vals[j], _, err = n.Schema()[j].Type.Convert(ctx, p)
+			vals[j], _, err = n.Schema(ctx)[j].Type.Convert(ctx, p)
 			if err != nil {
 				return nil, err
 			}
 			// decimalType.Convert() does not use the given type precision and scale information
-			if t, ok := n.Schema()[j].Type.(sql.DecimalType); ok {
+			if t, ok := n.Schema(ctx)[j].Type.(sql.DecimalType); ok {
 				vals[j] = vals[j].(decimal.Decimal).Round(int32(t.Scale()))
 			}
 		}
@@ -120,7 +120,7 @@ func (b *BaseBuilder) buildWindow(ctx *sql.Context, n *plan.Window, row sql.Row)
 	if err != nil {
 		return nil, err
 	}
-	blockIters, outputOrdinals, err := windowToIter(n)
+	blockIters, outputOrdinals, err := windowToIter(ctx, n)
 	if err != nil {
 		return nil, err
 	}
@@ -302,7 +302,7 @@ func (b *BaseBuilder) buildOrderedDistinct(ctx *sql.Context, n *plan.OrderedDist
 		return nil, err
 	}
 
-	return sql.NewSpanIter(span, iters.NewOrderedDistinctIter(it, n.Child.Schema())), nil
+	return sql.NewSpanIter(span, iters.NewOrderedDistinctIter(it, n.Child.Schema(ctx))), nil
 }
 
 func (b *BaseBuilder) buildWith(ctx *sql.Context, n *plan.With, row sql.Row) (sql.RowIter, error) {
@@ -377,7 +377,7 @@ func (b *BaseBuilder) buildSet(ctx *sql.Context, n *plan.Set, row sql.Row) (sql.
 			if err != nil {
 				return nil, err
 			}
-			err = left.Set(ctx, value, setField.RightChild.Type())
+			err = left.Set(ctx, value, setField.RightChild.Type(ctx))
 			if err != nil {
 				return nil, err
 			}
@@ -460,7 +460,7 @@ func (b *BaseBuilder) buildRecursiveCte(ctx *sql.Context, n *plan.RecursiveCte, 
 		if err != nil {
 			return nil, err
 		}
-		iter = iters.NewTopRowsIter(n.Union().SortFields, limit, false, iter, len(n.Union().Schema()))
+		iter = iters.NewTopRowsIter(n.Union().SortFields, limit, false, iter, len(n.Union().Schema(ctx)))
 	} else if n.Union().Limit != nil {
 		limit, err := iters.GetInt64Value(ctx, n.Union().Limit)
 		if err != nil {
@@ -615,7 +615,7 @@ func (b *BaseBuilder) buildInto(ctx *sql.Context, n *plan.Into, row sql.Row) (sq
 		}
 		defer file.Close()
 
-		sch := n.Child.Schema()
+		sch := n.Child.Schema(ctx)
 		for _, r := range rows {
 			file.WriteString(n.LinesStartingBy)
 			for i, val := range r {
@@ -744,7 +744,7 @@ func (b *BaseBuilder) buildExternalProcedure(ctx *sql.Context, n *plan.ExternalP
 		if paramDefinition.Direction == plan.ProcedureParamDirection_Inout || paramDefinition.Direction == plan.ProcedureParamDirection_Out {
 			exprParam := n.Params[i]
 			funcParamVal := funcParams[i+1].Elem().Interface()
-			err := exprParam.Set(ctx, funcParamVal, exprParam.Type())
+			err := exprParam.Set(ctx, funcParamVal, exprParam.Type(ctx))
 			if err != nil {
 				return nil, err
 			}
@@ -880,7 +880,7 @@ func (b *BaseBuilder) buildSetOp(ctx *sql.Context, s *plan.SetOp, row sql.Row) (
 		if err != nil {
 			return nil, err
 		}
-		iter = iters.NewTopRowsIter(s.SortFields, limit, false, iter, len(s.Schema()))
+		iter = iters.NewTopRowsIter(s.SortFields, limit, false, iter, len(s.Schema(ctx)))
 	} else if s.Limit != nil {
 		limit, err := iters.GetInt64Value(ctx, s.Limit)
 		if err != nil {

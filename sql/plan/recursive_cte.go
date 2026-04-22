@@ -144,14 +144,14 @@ func (r *RecursiveCte) WithWorking(t *RecursiveTable) *RecursiveCte {
 }
 
 // Schema implements sql.Node
-func (r *RecursiveCte) Schema() sql.Schema {
+func (r *RecursiveCte) Schema(ctx *sql.Context) sql.Schema {
 	return r.schema
 }
 
 // WithChildren implements sql.Node
-func (r *RecursiveCte) WithChildren(children ...sql.Node) (sql.Node, error) {
+func (r *RecursiveCte) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	ret := *r
-	s, err := r.union.WithChildren(children...)
+	s, err := r.union.WithChildren(ctx, children...)
 	if err != nil {
 		return nil, err
 	}
@@ -180,9 +180,9 @@ func (r *RecursiveCte) Expressions() []sql.Expression {
 	return r.union.Expressions()
 }
 
-func (r *RecursiveCte) WithExpressions(exprs ...sql.Expression) (sql.Node, error) {
+func (r *RecursiveCte) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql.Node, error) {
 	ret := *r
-	s, err := r.union.WithExpressions(exprs...)
+	s, err := r.union.WithExpressions(ctx, exprs...)
 	if err != nil {
 		return nil, err
 	}
@@ -199,15 +199,15 @@ func (r *RecursiveCte) String() string {
 }
 
 // DebugString implements sql.Node
-func (r *RecursiveCte) DebugString() string {
+func (r *RecursiveCte) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("RecursiveCTE")
-	pr.WriteChildren(sql.DebugString(r.union))
+	pr.WriteChildren(sql.DebugString(ctx, r.union))
 	return pr.String()
 }
 
 // Type implements sql.Node
-func (r *RecursiveCte) Type() sql.Type {
+func (r *RecursiveCte) Type(ctx *sql.Context) sql.Type {
 	cols := r.schema
 	if len(cols) == 1 {
 		return cols[0].Type
@@ -220,7 +220,7 @@ func (r *RecursiveCte) Type() sql.Type {
 }
 
 // IsNullable implements sql.Node
-func (r *RecursiveCte) IsNullable() bool {
+func (r *RecursiveCte) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
@@ -293,7 +293,7 @@ func (r *RecursiveTable) String() string {
 	return fmt.Sprintf("RecursiveTable(%s)", r.name)
 }
 
-func (r *RecursiveTable) Schema() sql.Schema {
+func (r *RecursiveTable) Schema(ctx *sql.Context) sql.Schema {
 	return r.schema
 }
 
@@ -301,7 +301,7 @@ func (r *RecursiveTable) Children() []sql.Node {
 	return nil
 }
 
-func (r *RecursiveTable) WithChildren(node ...sql.Node) (sql.Node, error) {
+func (r *RecursiveTable) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {
 	return r, nil
 }
 
