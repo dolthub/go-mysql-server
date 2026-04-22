@@ -181,12 +181,12 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 		}
 	}
 
-	err = addRightSemiJoins(ctx, m)
+	err = addRightSemiJoins(ctx, m, a.Catalog)
 	if err != nil {
 		return nil, err
 	}
 
-	err = addLookupJoins(ctx, m)
+	err = addLookupJoins(ctx, m, a.Catalog)
 	if err != nil {
 		return nil, err
 	}
@@ -264,7 +264,7 @@ func mergeJoinsDisabled(hints []memo.Hint) bool {
 // ii) with an index that matches a prefix of the indexable relation's free
 // attributes in the join filter. Costing is responsible for choosing the most
 // appropriate execution plan among options added to an expression group.
-func addLookupJoins(ctx *sql.Context, m *memo.Memo) error {
+func addLookupJoins(ctx *sql.Context, m *memo.Memo, cat sql.Catalog) error {
 	m.Tracer.PushDebugContext("addLookupJoins")
 	defer m.Tracer.PopDebugContext()
 
@@ -319,6 +319,7 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo) error {
 			return nil
 		}
 
+		columnIdToIndexedExprMap := buildColumnIdToIndexedExprMap(ctx, cat, rt, indexes)
 		if or, ok := join.Filter[0].(*expression.Or); ok && len(join.Filter) == 1 {
 			// Special case disjoint filter. The execution plan will perform an index
 			// lookup for each predicate leaf in the OR tree.
@@ -330,7 +331,7 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo) error {
 			for _, on := range conds {
 				filters := expression.SplitConjunction(ctx, on)
 				for _, idx := range indexes {
-					keyExprs, _, nullmask := keyExprsForIndex(ctx, tableId, idx.Cols(), append(filters, extraFilters...))
+					keyExprs, _, nullmask := keyExprsForIndex(ctx, tableId, idx.Cols(), append(filters, extraFilters...), columnIdToIndexedExprMap)
 					if keyExprs != nil {
 						ita, err := plan.NewIndexedAccessForTableNode(ctx, rt, plan.NewLookupBuilder(ctx, idx.SqlIdx(), keyExprs, nullmask))
 						if err != nil {
@@ -354,7 +355,7 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo) error {
 		}
 
 		for _, idx := range indexes {
-			keyExprs, matchedFilters, nullmask := keyExprsForIndex(ctx, tableId, idx.Cols(), append(join.Filter, extraFilters...))
+			keyExprs, matchedFilters, nullmask := keyExprsForIndex(ctx, tableId, idx.Cols(), append(join.Filter, extraFilters...), columnIdToIndexedExprMap)
 			if keyExprs == nil {
 				m.Tracer.Log("Index %s: no matching key expressions found", idx.SqlIdx().ID())
 				continue
@@ -395,9 +396,13 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo) error {
 // keyExprsForIndex returns a list of expression groups that compute a lookup
 // key into the given index. The key fields will either be equality filters
 // (from ON conditions) or constants.
-func keyExprsForIndex(ctx *sql.Context, tableId sql.TableId, idxExprs []sql.ColumnId, filters []sql.Expression) (keyExprs, matchedFilters []sql.Expression, nullmask []bool) {
+func keyExprsForIndex(
+	ctx *sql.Context, tableId sql.TableId,
+	idxExprs []sql.ColumnId,
+	filters []sql.Expression,
+	columnIdToIndexedExprMap map[sql.ColumnId]indexedExprEntry) (keyExprs, matchedFilters []sql.Expression, nullmask []bool) {
 	for _, col := range idxExprs {
-		key, filter, nullable := keyForExpr(ctx, col, tableId, filters)
+		key, filter, nullable := keyForExpr(ctx, col, tableId, filters, columnIdToIndexedExprMap)
 		if key == nil {
 			break
 		}
@@ -413,7 +418,11 @@ func keyExprsForIndex(ctx *sql.Context, tableId sql.TableId, idxExprs []sql.Colu
 
 // keyForExpr returns an equivalence or constant value to satisfy the
 // lookup index expression.
-func keyForExpr(ctx *sql.Context, targetCol sql.ColumnId, tableId sql.TableId, filters []sql.Expression) (key sql.Expression, filter sql.Expression, nullable bool) {
+func keyForExpr(
+	ctx *sql.Context, targetCol sql.ColumnId,
+	tableId sql.TableId,
+	filters []sql.Expression,
+	columnIdToIndexedExprMap map[sql.ColumnId]indexedExprEntry) (key sql.Expression, filter sql.Expression, nullable bool) {
 	for _, f := range filters {
 		var left sql.Expression
 		var right sql.Expression
@@ -437,7 +446,19 @@ func keyForExpr(ctx *sql.Context, targetCol sql.ColumnId, tableId sql.TableId, f
 		} else if ref, ok := right.(*expression.GetField); ok && ref.Id() == targetCol &&
 			sql.IsConvertibleKeyType(right.Type(ctx), left.Type(ctx)) {
 			key = left
-		} else {
+		} else if left != nil && right != nil {
+			// Check if targetCol is an indexed functional expression and if
+			// either side of the filter matches the generated expression.
+			if entry, ok := columnIdToIndexedExprMap[targetCol]; ok {
+				if entry.matches(left) {
+					key = right
+				} else if entry.matches(right) {
+					key = left
+				}
+			}
+		}
+
+		if key == nil {
 			continue
 		}
 
@@ -676,7 +697,7 @@ func convertAntiToLeftJoin(ctx *sql.Context, m *memo.Memo) error {
 
 // addRightSemiJoins allows for a reversed semiJoin operator when
 // the join attributes of the left side are provably unique.
-func addRightSemiJoins(ctx *sql.Context, m *memo.Memo) error {
+func addRightSemiJoins(ctx *sql.Context, m *memo.Memo, cat sql.Catalog) error {
 	m.Tracer.PushDebugContext("addRightSemiJoins")
 	defer m.Tracer.PopDebugContext()
 
@@ -730,12 +751,13 @@ func addRightSemiJoins(ctx *sql.Context, m *memo.Memo) error {
 			}
 		}
 
+		columnIdToIndexedExprMap := buildColumnIdToIndexedExprMap(ctx, cat, leftRt, indexes)
 		for _, idx := range indexes {
 			if !semi.Group().RelProps.FuncDeps(ctx).ColsAreStrictKey(idx.ColSet()) {
 				continue
 			}
 
-			keyExprs, _, nullmask := keyExprsForIndex(ctx, tableId, idx.Cols(), append(semi.Filter, filters...))
+			keyExprs, _, nullmask := keyExprsForIndex(ctx, tableId, idx.Cols(), append(semi.Filter, filters...), columnIdToIndexedExprMap)
 			if keyExprs == nil {
 				continue
 			}

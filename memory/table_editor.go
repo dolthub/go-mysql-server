@@ -23,6 +23,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/internal/cmap"
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/types"
 )
 
@@ -34,6 +35,7 @@ type tableEditor struct {
 	fkTable        *Table
 	uniqueIdxCols  [][]int
 	prefixLengths  [][]uint16
+	uniqueIdxNames []string
 	discardChanges bool
 }
 
@@ -156,19 +158,8 @@ func (t *tableEditor) Insert(ctx *sql.Context, row sql.Row) error {
 		return sql.NewUniqueKeyErr(formatRow(row, pkColIdxes), true, partitionRow)
 	}
 
-	for i, cols := range t.uniqueIdxCols {
-		if hasNullForAnyCols(row, cols) {
-			continue
-		}
-		prefixLengths := t.prefixLengths[i]
-		existing, found, err := t.ea.GetByCols(row, cols, prefixLengths)
-		if err != nil {
-			return err
-		}
-
-		if found {
-			return sql.NewUniqueKeyErr(formatRow(row, cols), false, existing)
-		}
+	if err := t.checkUniqueConstraints(ctx, row); err != nil {
+		return err
 	}
 
 	err = t.ea.Insert(ctx, row)
@@ -244,19 +235,8 @@ func (t *tableEditor) Update(ctx *sql.Context, oldRow sql.Row, newRow sql.Row) e
 	}
 
 	// Throw a unique key error if any unique indexes are defined
-	for i, cols := range t.uniqueIdxCols {
-		if hasNullForAnyCols(newRow, cols) {
-			continue
-		}
-		prefixLengths := t.prefixLengths[i]
-		existing, found, err := t.ea.GetByCols(newRow, cols, prefixLengths)
-		if err != nil {
-			return err
-		}
-
-		if found {
-			return sql.NewUniqueKeyErr(formatRow(newRow, cols), false, existing)
-		}
+	if err := t.checkUniqueConstraints(ctx, newRow); err != nil {
+		return err
 	}
 
 	err = t.ea.Insert(ctx, newRow)
@@ -297,6 +277,24 @@ func (t *tableEditor) IndexedAccess(ctx *sql.Context, lookup sql.IndexLookup) sq
 	return &IndexedTable{Table: indexedTable, Lookup: lookup}
 }
 
+// checkUniqueConstraints checks if inserting |row| would violate any unique index constraint.
+func (t *tableEditor) checkUniqueConstraints(ctx *sql.Context, row sql.Row) error {
+	for i, cols := range t.uniqueIdxCols {
+		if hasNullForAnyCols(row, cols) {
+			continue
+		}
+		prefixLengths := t.prefixLengths[i]
+		existing, found, err := t.ea.GetByCols(row, cols, prefixLengths)
+		if err != nil {
+			return err
+		}
+		if found {
+			return sql.NewUniqueKeyErr(formatRow(row, cols), false, existing)
+		}
+	}
+	return nil
+}
+
 func (t *tableEditor) pkColumnIndexes() []int {
 	var pkColIdxes []int
 	for _, column := range t.editedTable.data.schema.Schema {
@@ -316,11 +314,13 @@ func (t *tableEditor) pkColsDiffer(ctx *sql.Context, row, row2 sql.Row) bool {
 // Returns whether the values for the columns given match in the two rows provided
 func columnsMatch(colIndexes []int, prefixLengths []uint16, row sql.Row, row2 sql.Row, schema sql.Schema) bool {
 	for i, idx := range colIndexes {
-		// Skip validating unique virtual columns.
-		// Right now trying to validate them would just trigger a panic.
-		// See https://github.com/dolthub/go-mysql-server/issues/2643
+		// Virtual columns are not stored in partition rows, so protect against out-of-bounds.
+		// If either row doesn't have the value (e.g., a stored partition row), treat as no-match.
+		// When both rows have the value (e.g., comparing pending adds/deletes), compare normally.
 		if schema[idx].Virtual {
-			return false
+			if idx >= len(row) || idx >= len(row2) {
+				return false
+			}
 		}
 		v1 := row[idx]
 		v2 := row2[idx]
@@ -481,6 +481,52 @@ func (pke *pkTableEditAccumulator) GetByCols(value sql.Row, cols []int, prefixLe
 		return columnsMatch(cols, prefixLengths, r, value, pke.tableData.schema.Schema)
 	}); exists {
 		return r, true, nil
+	}
+
+	// For virtual columns, find unique secondary indexes that cover these columns
+	// and check their storage for existing conflicting entries.
+	if pke.tableData.schema.HasVirtualColumns() {
+		for idxName, storage := range pke.tableData.secondaryIndexStorage {
+			memIdx, ok := pke.tableData.indexes[string(idxName)]
+			if !ok || !memIdx.IsUnique() {
+				continue
+			}
+			exprs := memIdx.(*Index).Exprs
+			if len(exprs) != len(cols) {
+				continue
+			}
+			// Verify this index covers exactly the cols requested
+			matches := true
+			for i, expr := range exprs {
+				gf, ok := expr.(*expression.GetField)
+				if !ok || gf.Index() != cols[i] {
+					matches = false
+					break
+				}
+			}
+			if !matches {
+				continue
+			}
+			// Check if any storage entry matches value[cols[i]]
+			for _, storedEntry := range storage {
+				entryMatch := true
+				for j, colIdx := range cols {
+					if colIdx >= len(value) || j >= len(storedEntry)-1 {
+						entryMatch = false
+						break
+					}
+					cmp, err := pke.tableData.schema.Schema[colIdx].Type.Compare(nil, value[colIdx], storedEntry[j])
+					if err != nil || cmp != 0 {
+						entryMatch = false
+						break
+					}
+				}
+				if entryMatch {
+					return nil, true, nil
+				}
+			}
+		}
+		return nil, false, nil
 	}
 
 	for _, partition := range pke.tableData.partitions {

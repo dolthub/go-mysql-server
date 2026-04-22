@@ -6177,6 +6177,12 @@ func TestIndexes(t *testing.T, h Harness) {
 	}
 }
 
+func TestIndexedExpressions(t *testing.T, h Harness) {
+	for _, tt := range queries.IndexedExpressionsScriptTests {
+		TestScript(t, h, tt)
+	}
+}
+
 func TestVectorIndexes(t *testing.T, h Harness) {
 	for _, tt := range queries.VectorIndexQueries {
 		TestScript(t, h, tt)

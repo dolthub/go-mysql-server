@@ -334,9 +334,26 @@ Top:
 	}
 }
 
-func (td *TableData) indexColsForTableEditor() ([][]int, [][]uint16) {
+// indexColsForTableEditor returns three parallel slices describing the unique
+// indexes defined on this table, for use when constructing a tableEditor.
+//
+// The first return value is the column ordinals: for each unique index, a
+// slice of 0-based positions of the indexed columns within the table schema.
+//
+// The second return value is the prefix lengths: for each unique index, a
+// slice of per-column prefix lengths (uint16). A value of 0 means the full
+// column value is indexed with no prefix truncation.
+//
+// The third return value is the index names: the lowercased ID of each unique
+// index, in the same order as the first two slices.
+//
+// Indexes that are not unique, and indexes whose columns are absent from the
+// current schema (which can occur during a table rewrite), are silently
+// omitted from all three slices.
+func (td *TableData) indexColsForTableEditor() ([][]int, [][]uint16, []string) {
 	var uniqIdxCols [][]int
 	var prefixLengths [][]uint16
+	var idxNames []string
 	for _, idx := range td.indexes {
 		if !idx.IsUnique() {
 			continue
@@ -354,8 +371,9 @@ func (td *TableData) indexColsForTableEditor() ([][]int, [][]uint16) {
 		}
 		uniqIdxCols = append(uniqIdxCols, colIdxs)
 		prefixLengths = append(prefixLengths, idx.PrefixLengths())
+		idxNames = append(idxNames, strings.ToLower(idx.ID()))
 	}
-	return uniqIdxCols, prefixLengths
+	return uniqIdxCols, prefixLengths, idxNames
 }
 
 // Sorts the rows in the partitions of the table to be in primary key order.

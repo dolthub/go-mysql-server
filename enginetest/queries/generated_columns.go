@@ -458,6 +458,57 @@ var GeneratedColumnTests = []ScriptTest{
 		},
 	},
 	{
+		Name: "virtual column preceding primary key used in index",
+		SetUpScript: []string{
+			"create table t (pk int primary key, a int, b int);",
+			"insert into t values (1, 10, 100), (2, 20, 200), (3, 30, 300);",
+			"alter table t add column gen1 int generated always as (a * 2) virtual;",
+			"create index idx_gen1 on t(gen1);",
+			"alter table t add column gen2 int generated always as (b * 2) virtual after pk;",
+			"create index idx_a on t(a);",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				Query: "SELECT * FROM t;",
+				Expected: []sql.Row{
+					{1, 200, 10, 100, 20},
+					{2, 400, 20, 200, 40},
+					{3, 600, 30, 300, 60},
+				},
+			},
+			{
+				Query:              "select pk from t where a = 10",
+				Expected:           []sql.Row{{1}},
+				CheckIndexedAccess: true,
+				ExpectedIndexes:    []string{"idx_a"},
+			},
+			{
+				Query:              "select pk from t where gen1 = 20",
+				Expected:           []sql.Row{{1}},
+				CheckIndexedAccess: true,
+				ExpectedIndexes:    []string{"idx_gen1"},
+			},
+			{
+				Query:              "select pk from t where a = 20",
+				Expected:           []sql.Row{{2}},
+				CheckIndexedAccess: true,
+				ExpectedIndexes:    []string{"idx_a"},
+			},
+			{
+				Query:              "select pk from t where a = 30",
+				Expected:           []sql.Row{{3}},
+				CheckIndexedAccess: true,
+				ExpectedIndexes:    []string{"idx_a"},
+			},
+			{
+				Query:              "select pk from t where gen1 = 20",
+				Expected:           []sql.Row{{1}},
+				CheckIndexedAccess: true,
+				ExpectedIndexes:    []string{"idx_gen1"},
+			},
+		},
+	},
+	{
 		Name: "creating index on stored generated column with type conversion",
 		SetUpScript: []string{
 			"create table t1 (a int primary key, b float generated always as (a + 1) stored)",

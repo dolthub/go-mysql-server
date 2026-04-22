@@ -74,9 +74,13 @@ func (b *Builder) buildInsert(inScope *scope, i *ast.Insert) (outScope *scope) {
 		// TODO: setting the plan field directly is not great
 		if len(columns) == 0 && len(destScope.cols) > 0 && rt != nil {
 			schema := rt.Schema(b.ctx)
-			columns = make([]string, len(schema))
-			for i, col := range schema {
-				columns[i] = col.Name
+			columns = make([]string, 0, len(schema))
+			for _, col := range schema {
+				// hidden system columns can't be directly referenced,
+				// so exclude them from the column name list.
+				if !col.HiddenSystem {
+					columns = append(columns, col.Name)
+				}
 			}
 		}
 	}
@@ -272,6 +276,13 @@ func reorderSchema(names []string, schema sql.Schema) sql.Schema {
 
 // TODO: Consider combining this function with buildOnDupUpdateExprs since there's a lot of similar and repeated code
 func (b *Builder) assignmentExprsToUpdateExprs(inScope *scope, e ast.AssignmentExprs) *plan.UpdateExprs {
+	// Make sure the assignment expressions don't reference hidden system columns
+	for _, expr := range e {
+		if sql.IsHiddenSystemColumn(expr.Name.Name.String()) {
+			b.handleErr(sql.ErrColumnNotFound.New(expr.Name.Name.String()))
+		}
+	}
+
 	updateExprs := make([]sql.Expression, len(e))
 	var startAggCnt int
 	if inScope.groupBy != nil {

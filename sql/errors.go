@@ -800,6 +800,10 @@ var (
 	// ErrUnsupportedIndexPrefix is returned for an index on a string column with a prefix
 	ErrUnsupportedIndexPrefix = errors.NewKind("prefix index on string column '%s' unsupported")
 
+	// ErrColumnFunctionalIndexDependency is returned when a column referenced in a functional index is dropped or renamed.
+	// This matches MySQL ERROR 3837 (HY000).
+	ErrColumnFunctionalIndexDependency = newMySQLKind("Column '%s' has a functional index dependency and cannot be dropped or renamed.", 3837, "HY000")
+
 	// ErrInvalidIndexPrefix is returned when a prefix index is not valid for the column type,
 	// or the prefix length exceeds the column's character length.
 	ErrInvalidIndexPrefix = newMySQLKind("incorrect prefix key '%s'; the used key part isn't a string, the used length is longer than the key part, or the storage engine doesn't support unique prefix keys", mysql.ERWrongSubKey)
