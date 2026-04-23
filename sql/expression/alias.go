@@ -146,8 +146,7 @@ func (e *Alias) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
 func (e *Alias) String() string {
 	// To maintain compatibility with fmt.Stringer we have to use an empty context, but this will fail in any case that
 	// requires a context to determine a string (such as an integrator using the context to contain type information).
-	ctx := sql.NewEmptyContext()
-	return e.Describe(ctx, sql.DescribeOptions{
+	return e.Describe(nil, sql.DescribeOptions{
 		Debug: false,
 	})
 }
