@@ -119,6 +119,10 @@ var (
 	// ErrDeleteRowNotFound is returned when row being deleted was not found
 	ErrDeleteRowNotFound = errors.NewKind("row was not found when attempting to delete")
 
+	// ErrRowEditCanceled is returned when an INSERT, UPDATE, or DELETE operation is canceled due to a trigger
+	// or other circumstances. It is only used as a signal error.
+	ErrRowEditCanceled = errors.NewKind("row edit was canceled")
+
 	// ErrDuplicateAliasOrTable should be returned when a query contains a duplicate alias / table name.
 	ErrDuplicateAliasOrTable = errors.NewKind("Not unique table/alias: %s")
 
