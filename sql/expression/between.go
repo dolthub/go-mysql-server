@@ -32,6 +32,7 @@ var _ sql.Expression = (*Between)(nil)
 var _ sql.CollationCoercible = (*Between)(nil)
 
 // NewBetween creates a new Between expression.
+// TODO: have this implement ValueExpression.
 func NewBetween(val, lower, upper sql.Expression) *Between {
 	return &Between{val, lower, upper}
 }
@@ -69,8 +70,13 @@ func (b *Between) Resolved() bool {
 
 // Eval implements the Expression interface.
 func (b *Between) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
-	// TODO: Delete Between expression entirely?
-	// Reuse type conversion logic in comparison expressions by creating a logically equivalent expression
+	// TODO: implement between without reusing LTE/GTE expressions
+	b.Lower.Eval(ctx, row)
+	b.Upper.Eval(ctx, row)
+	b.Val.Eval(ctx, row)
+
+	// TODO: cast left and right? tricky...
+
 	return NewAnd(NewLessThanOrEqual(b.Lower, b.Val), NewGreaterThanOrEqual(b.Upper, b.Val)).Eval(ctx, row)
 }
 
