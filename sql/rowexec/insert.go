@@ -381,7 +381,7 @@ func (i *insertIter) ignoreOrClose(ctx *sql.Context, row sql.Row, err error) err
 func convertDataAndWarn(ctx *sql.Context, tableSchema sql.Schema, row sql.Row, columnIdx int, err error) sql.Row {
 	if types.ErrLengthBeyondLimit.Is(err) {
 		maxLength := tableSchema[columnIdx].Type.(sql.StringType).MaxCharacterLength()
-		row[columnIdx] = row[columnIdx].(string)[:maxLength]
+		row[columnIdx] = row[columnIdx].(string)[:maxLength] // truncate string
 	} else if types.ErrBadCharsetString.Is(err) {
 		switch v := row[columnIdx].(type) {
 		case string:
@@ -391,13 +391,7 @@ func convertDataAndWarn(ctx *sql.Context, tableSchema sql.Schema, row sql.Row, c
 		default:
 			row[columnIdx] = tableSchema[columnIdx].Type.Zero()
 		}
-		if ctx != nil && ctx.Session != nil {
-			ctx.Session.Warn(&sql.Warning{
-				Level:   "Warning",
-				Code:    mysql.ERTruncatedWrongValueForField,
-				Message: err.Error(),
-			})
-		}
+		ctx.Warn(mysql.ERTruncatedWrongValueForField, "%s", err.Error())
 		return row
 	} else {
 		row[columnIdx] = tableSchema[columnIdx].Type.Zero()
@@ -405,6 +399,7 @@ func convertDataAndWarn(ctx *sql.Context, tableSchema sql.Schema, row sql.Row, c
 
 	sqlerr := sql.CastSQLError(err)
 
+	// Add a warning instead
 	if ctx != nil && ctx.Session != nil {
 		ctx.Session.Warn(&sql.Warning{
 			Level:   "Note",
