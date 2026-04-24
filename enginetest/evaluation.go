@@ -63,17 +63,29 @@ func TestScript(t *testing.T, harness Harness, script queries.ScriptTest) {
 	TestScriptWithEngine(t, e, harness, script)
 }
 
+// ServerBackedEngine is implemented by QueryEngine types that run queries
+// through a real server (i.e. over the wire protocol). Plan-inspection checks
+// like evalIndexTest and evalJoinTypeTest are skipped for these engines.
+type ServerBackedEngine interface {
+	IsServerBacked() bool
+}
+
 func IsServerEngine(e QueryEngine) bool {
-	_, ok := e.(*ServerQueryEngine)
-	return ok
+	if _, ok := e.(*ServerQueryEngine); ok {
+		return true
+	}
+	if sb, ok := e.(ServerBackedEngine); ok {
+		return sb.IsServerBacked()
+	}
+	return false
 }
 
 // CreateNewConnectionForServerEngine creates a new connection in the server engine.
 // If there was an existing one, it gets closed before the new gets created.
 // This function should be called when needing to use new session for the server.
 func CreateNewConnectionForServerEngine(ctx *sql.Context, e QueryEngine) error {
-	if IsServerEngine(e) {
-		return e.(*ServerQueryEngine).NewConnection(ctx)
+	if sre, ok := e.(*ServerQueryEngine); ok {
+		return sre.NewConnection(ctx)
 	}
 	return nil
 }

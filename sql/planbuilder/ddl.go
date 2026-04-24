@@ -624,7 +624,6 @@ func (b *Builder) buildAlterTableClause(inScope *scope, ddl *ast.DDL) []*scope {
 						sql.IndexUsing_BTree,
 						sql.IndexConstraint_Unique,
 						[]sql.IndexColumn{{Name: column.Name.String()}},
-						nil,
 						"",
 					)
 
@@ -830,7 +829,7 @@ func columnOrderToColumnOrder(order *ast.ColumnOrder) *sql.ColumnOrder {
 	}
 }
 
-func (b *Builder) buildIndexDefs(_ *scope, spec *ast.TableSpec) (idxDefs sql.IndexDefs) {
+func (b *Builder) buildIndexDefs(inScope *scope, spec *ast.TableSpec) (idxDefs sql.IndexDefs) {
 	for _, idxDef := range spec.Indexes {
 		constraint := sql.IndexConstraint_None
 		if idxDef.Info.Primary {
@@ -846,7 +845,7 @@ func (b *Builder) buildIndexDefs(_ *scope, spec *ast.TableSpec) (idxDefs sql.Ind
 			constraint = sql.IndexConstraint_Vector
 		}
 
-		columns := b.gatherIndexColumns(idxDef.Columns)
+		columns := b.gatherIndexColumns(inScope, idxDef.Columns)
 
 		var comment string
 		for _, option := range idxDef.Options {
@@ -987,12 +986,7 @@ func (b *Builder) buildAlterIndex(inScope *scope, ddl *ast.DDL, table *plan.Reso
 			constraint = sql.IndexConstraint_None
 		}
 
-		columns := b.gatherIndexColumns(ddl.IndexSpec.Columns)
-
-		var indexExpr sql.Expression
-		if ddl.IndexSpec.Expression != nil {
-			indexExpr = b.buildScalar(inScope, ddl.IndexSpec.Expression)
-		}
+		columns := b.gatherIndexColumns(inScope, ddl.IndexSpec.Columns)
 
 		var comment string
 		for _, option := range ddl.IndexSpec.Options {
@@ -1020,7 +1014,6 @@ func (b *Builder) buildAlterIndex(inScope *scope, ddl *ast.DDL, table *plan.Reso
 			using,
 			constraint,
 			columns,
-			indexExpr,
 			comment,
 		)
 		outScope.node = b.modifySchemaTarget(inScope, createIndex, table.Schema(b.ctx))
@@ -1048,7 +1041,13 @@ func (b *Builder) buildAlterIndex(inScope *scope, ddl *ast.DDL, table *plan.Reso
 	return
 }
 
-func (b *Builder) gatherIndexColumns(cols []*ast.IndexColumn) []sql.IndexColumn {
+// gatherIndexColumns converts a slice of AST index column definitions into
+// []sql.IndexColumn. For each column, it parses the optional key length prefix
+// (rejecting lengths less than 1) and, for functional index columns, builds the
+// scalar expression using inScope for name resolution. Plain column references
+// carry only a name and an optional length; expression columns carry only the
+// built sql.Expression.
+func (b *Builder) gatherIndexColumns(inScope *scope, cols []*ast.IndexColumn) []sql.IndexColumn {
 	out := make([]sql.IndexColumn, len(cols))
 	for i, col := range cols {
 		var length int64
@@ -1063,9 +1062,16 @@ func (b *Builder) gatherIndexColumns(cols []*ast.IndexColumn) []sql.IndexColumn 
 				b.handleErr(err)
 			}
 		}
+
+		var expr sql.Expression
+		if col.Expression != nil {
+			expr = b.buildScalar(inScope, col.Expression)
+		}
+
 		out[i] = sql.IndexColumn{
-			Name:   col.Column.String(),
-			Length: length,
+			Name:       col.Column.String(),
+			Expression: expr,
+			Length:     length,
 		}
 	}
 	return out
