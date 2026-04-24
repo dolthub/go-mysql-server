@@ -44,8 +44,8 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 			return n, transform.SameTree, nil
 		}
 		sfExprs := normalizeExpressions(ctx, tableAliases, nil, sortNode.SortFields.ToExpressions()...)
-		sfAliases := aliasedExpressionsInNode(sortNode)
-		if !isSortFieldsValidPrefix(sfExprs, sfAliases, lookup.Index.Expressions()) {
+		sfAliases := aliasedExpressionsInNode(ctx, sortNode)
+		if !isSortFieldsValidPrefix(ctx, sfExprs, sfAliases, lookup.Index.Expressions(ctx)) {
 			return n, transform.SameTree, nil
 		}
 		mysqlRanges, ok := lookup.Ranges.(sql.MySQLRangeCollection)
@@ -54,7 +54,7 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 		}
 		// if the resulting ranges are overlapping, we cannot drop the sort node
 		// it is possible we end up with blocks of rows that intersect
-		if hasOverlapping(sfExprs, mysqlRanges) {
+		if hasOverlapping(ctx, sfExprs, mysqlRanges) {
 			return n, transform.SameTree, nil
 		}
 
@@ -104,7 +104,7 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 			return nil, transform.SameTree, err
 		}
 		sfExprs := normalizeExpressions(ctx, tableAliases, nil, sortNode.SortFields.ToExpressions()...)
-		sfAliases := aliasedExpressionsInNode(sortNode)
+		sfAliases := aliasedExpressionsInNode(ctx, sortNode)
 		for _, idxCandidate := range idxs {
 			if idxCandidate.IsSpatial() {
 				continue
@@ -113,7 +113,7 @@ func replaceIdxSortHelper(ctx *sql.Context, scope *plan.Scope, node sql.Node, so
 				// TODO: It's possible that we may be able to use vector indexes for point lookups, but not range lookups
 				continue
 			}
-			if isSortFieldsValidPrefix(sfExprs, sfAliases, idxCandidate.Expressions()) {
+			if isSortFieldsValidPrefix(ctx, sfExprs, sfAliases, idxCandidate.Expressions(ctx)) {
 				idx = idxCandidate
 				break
 			}
@@ -345,7 +345,7 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 		case *plan.IndexedTableAccess:
 			if _, ok := t.Table.(sql.IndexAddressableTable); ok {
 				idx := t.Index()
-				if idx.ID() != "PRIMARY" {
+				if idx.ID(ctx) != "PRIMARY" {
 					return n, transform.SameTree, nil
 				}
 				pkIdx = idx
@@ -395,16 +395,16 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 		}
 
 		// since we're only supporting one aggregation, it must be on the first column of the primary key
-		if pkCols := pkIdx.Expressions(); len(pkCols) < 1 {
+		if pkCols := pkIdx.Expressions(ctx); len(pkCols) < 1 {
 			return n, transform.SameTree, nil
-		} else if !strings.EqualFold(pkCols[0], sf.Column.String()) {
+		} else if !strings.EqualFold(pkCols[0], sf.Column.String(ctx)) {
 			return n, transform.SameTree, nil
 		}
 
 		// replace all aggs in proj.Projections with GetField
-		name := gb.SelectDeps[0].String()
+		name := gb.SelectDeps[0].String(ctx)
 		newProjs, _, err := transform.Exprs(ctx, proj.Projections, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-			if strings.EqualFold(e.String(), name) {
+			if strings.EqualFold(e.String(ctx), name) {
 				return sf.Column, transform.NewTree, nil
 			}
 			return e, transform.SameTree, nil
@@ -419,16 +419,16 @@ func replaceAgg(ctx *sql.Context, a *Analyzer, node sql.Node, scope *plan.Scope,
 }
 
 // isSortFieldsValidPrefix checks if the SortFields in sortNode are a valid prefix of the index columns
-func isSortFieldsValidPrefix(sfExprs []sql.Expression, sfAliases map[string]string, idxColExprs []string) bool {
+func isSortFieldsValidPrefix(ctx *sql.Context, sfExprs []sql.Expression, sfAliases map[string]string, idxColExprs []string) bool {
 	if len(sfExprs) > len(idxColExprs) {
 		return false
 	}
 	for i, fieldExpr := range sfExprs {
 		var fieldName string
 		if alias, ok := fieldExpr.(*expression.Alias); ok {
-			fieldName = alias.Child.String()
+			fieldName = alias.Child.String(ctx)
 		} else {
-			fieldName = fieldExpr.String()
+			fieldName = fieldExpr.String(ctx)
 		}
 		if alias, ok := sfAliases[strings.ToLower(idxColExprs[i])]; ok && alias == fieldName {
 			continue
@@ -454,11 +454,11 @@ func isValidSortFieldOrder(sfs sql.SortFields) bool {
 
 // hasOverlapping checks if the ranges in a RangeCollection that are part of the sortfield exprs are overlapping
 // This function assumes that the sort field exprs are a valid prefix of the index columns
-func hasOverlapping(sfExprs []sql.Expression, ranges sql.MySQLRangeCollection) bool {
+func hasOverlapping(ctx *sql.Context, sfExprs []sql.Expression, ranges sql.MySQLRangeCollection) bool {
 	for si := range sfExprs {
 		for ri := 0; ri < len(ranges)-1; ri++ {
 			for rj := ri + 1; rj < len(ranges); rj++ {
-				if _, overlaps, _ := ranges[ri][si].Overlaps(ranges[rj][si]); overlaps {
+				if _, overlaps, _ := ranges[ri][si].Overlaps(ctx, ranges[rj][si]); overlaps {
 					return true
 				}
 			}
@@ -474,7 +474,7 @@ func getPKIndex(ctx *sql.Context, idxTbl sql.IndexAddressableTable) (sql.Index, 
 		return nil, err
 	}
 	for _, idx := range idxs {
-		if idx.ID() == "PRIMARY" {
+		if idx.ID(ctx) == "PRIMARY" {
 			return idx, nil
 		}
 	}

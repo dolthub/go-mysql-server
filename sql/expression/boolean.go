@@ -68,8 +68,8 @@ func (e *Not) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return !b, nil
 }
 
-func (e *Not) String() string {
-	return fmt.Sprintf("(NOT(%s))", e.Child)
+func (e *Not) String(ctx *sql.Context) string {
+	return fmt.Sprintf("(NOT(%s))", e.Child.String(ctx))
 }
 
 func (e *Not) DebugString(ctx *sql.Context) string {

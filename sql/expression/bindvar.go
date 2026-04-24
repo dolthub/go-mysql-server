@@ -35,7 +35,7 @@ func (bv *BindVar) Resolved() bool {
 	return true
 }
 
-func (bv *BindVar) String() string {
+func (bv *BindVar) String(ctx *sql.Context) string {
 	return "BindVar(" + bv.Name + ")"
 }
 

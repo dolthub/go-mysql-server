@@ -50,7 +50,7 @@ func NewShowTriggers(db sql.Database) *ShowTriggers {
 }
 
 // String implements the sql.Node interface.
-func (s *ShowTriggers) String() string {
+func (s *ShowTriggers) String(ctx *sql.Context) string {
 	return "SHOW TRIGGERS"
 }
 

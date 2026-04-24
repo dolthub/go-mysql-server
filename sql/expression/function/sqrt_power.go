@@ -48,8 +48,8 @@ func (s *Sqrt) Description() string {
 	return "returns the square root of a nonnegative number X."
 }
 
-func (s *Sqrt) String() string {
-	return fmt.Sprintf("sqrt(%s)", s.Child.String())
+func (s *Sqrt) String(ctx *sql.Context) string {
+	return fmt.Sprintf("sqrt(%s)", s.Child.String(ctx))
 }
 
 // Type implements the Expression interface.
@@ -144,8 +144,8 @@ func (p *Power) IsNullable(ctx *sql.Context) bool {
 	return p.LeftChild.IsNullable(ctx) || p.RightChild.IsNullable(ctx)
 }
 
-func (p *Power) String() string {
-	return fmt.Sprintf("power(%s, %s)", p.LeftChild, p.RightChild)
+func (p *Power) String(ctx *sql.Context) string {
+	return fmt.Sprintf("power(%s, %s)", p.LeftChild.String(ctx), p.RightChild.String(ctx))
 }
 
 // WithChildren implements the Expression interface.

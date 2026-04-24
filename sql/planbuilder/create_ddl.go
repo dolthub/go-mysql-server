@@ -375,7 +375,7 @@ func (b *Builder) validateStatement(inScope *scope, stmt ast.Statement) {
 					// proc param is OK
 					if pp, ok := col.scalarGf().(*expression.ProcedureParam); ok {
 						if !pp.Type(b.ctx).Promote().Equals(types.Int64) && !pp.Type(b.ctx).Promote().Equals(types.Uint64) {
-							err := fmt.Errorf("the variable '%s' has a non-integer based type: %s", pp.Name(), pp.Type(b.ctx).String())
+							err := fmt.Errorf("the variable '%s' has a non-integer based type: %s", pp.Name(), pp.Type(b.ctx).String(b.ctx))
 							b.handleErr(err)
 						}
 					}

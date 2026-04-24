@@ -54,7 +54,7 @@ func (p *Values) Schema(ctx *sql.Context) sql.Schema {
 		if n, ok := e.(sql.Nameable); ok {
 			name = n.Name()
 		} else {
-			name = e.String()
+			name = e.String(ctx)
 		}
 		s[i] = &sql.Column{
 			Name:     name,
@@ -86,7 +86,7 @@ func (p *Values) IsReadOnly() bool {
 	return true
 }
 
-func (p *Values) String() string {
+func (p *Values) String(ctx *sql.Context) string {
 	var sb strings.Builder
 	sb.WriteString("Values(")
 	for i, tuple := range p.ExpressionTuples {
@@ -97,7 +97,7 @@ func (p *Values) String() string {
 			if j > 0 {
 				sb.WriteString(",")
 			}
-			sb.WriteString(e.String())
+			sb.WriteString(e.String(ctx))
 		}
 	}
 

@@ -66,8 +66,8 @@ func (d *Div) SetOpCount(i int32) {
 	d.ops = i
 }
 
-func (d *Div) String() string {
-	return fmt.Sprintf("(%s / %s)", d.LeftChild, d.RightChild)
+func (d *Div) String(ctx *sql.Context) string {
+	return fmt.Sprintf("(%s / %s)", d.LeftChild.String(ctx), d.RightChild.String(ctx))
 }
 
 func (d *Div) DebugString(ctx *sql.Context) string {
@@ -646,8 +646,8 @@ func (i *IntDiv) SetOpCount(i2 int32) {
 	i.ops = i2
 }
 
-func (i *IntDiv) String() string {
-	return fmt.Sprintf("(%s div %s)", i.LeftChild, i.RightChild)
+func (i *IntDiv) String(ctx *sql.Context) string {
+	return fmt.Sprintf("(%s div %s)", i.LeftChild.String(ctx), i.RightChild.String(ctx))
 }
 
 func (i *IntDiv) DebugString(ctx *sql.Context) string {

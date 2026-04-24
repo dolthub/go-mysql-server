@@ -64,8 +64,8 @@ func (ib *IsNull) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
-func (ib *IsNull) String() string {
-	return fmt.Sprintf("isnull(%s)", ib.Child)
+func (ib *IsNull) String(ctx *sql.Context) string {
+	return fmt.Sprintf("isnull(%s)", ib.Child.String(ctx))
 }
 
 // WithChildren implements the Expression interface.

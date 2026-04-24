@@ -141,7 +141,7 @@ func getOuterScopeIndexes(
 			if err != nil {
 				return false
 			}
-			defer indexAnalyzer.releaseUsedIndexes()
+			defer indexAnalyzer.releaseUsedIndexes(ctx)
 
 			indexes, exprsByTable, err = getSubqueryIndexes(ctx, a, node.Expression, scope, indexAnalyzer, tableAliases)
 			if err != nil {
@@ -187,10 +187,10 @@ func getOuterScopeIndexes(
 // createIndexKeyExpr returns a slice of expressions to be used when creating an index lookup key for the table given.
 func createIndexKeyExpr(ctx *sql.Context, idx sql.Index, joinExprs []*joinColExpr, tableAliases TableAliases) ([]sql.Expression, []bool, error) {
 	// To allow partial matching, we need to see if the expressions are a prefix of the index
-	idxExpressions := idx.Expressions()
+	idxExpressions := idx.Expressions(ctx)
 	normalizedJoinExprStrs := make([]string, len(joinExprs))
 	for i := range joinExprs {
-		normalizedJoinExprStrs[i] = normalizeExpression(ctx, tableAliases, nil, joinExprs[i].colExpr).String()
+		normalizedJoinExprStrs[i] = normalizeExpression(ctx, tableAliases, nil, joinExprs[i].colExpr).String(ctx)
 	}
 	if ok, prefixCount := exprsAreIndexSubset(normalizedJoinExprStrs, idxExpressions); !ok || prefixCount != len(normalizedJoinExprStrs) {
 		return nil, nil, nil
@@ -211,7 +211,7 @@ IndexExpressions:
 		}
 
 		return nil, nil, fmt.Errorf("index `%s` reported having prefix of `%v` but has expressions `%v`",
-			idx.ID(), normalizedJoinExprStrs, idxExpressions)
+			idx.ID(ctx), normalizedJoinExprStrs, idxExpressions)
 	}
 
 	return keyExprs, nullmask, nil

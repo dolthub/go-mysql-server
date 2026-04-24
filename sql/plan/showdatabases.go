@@ -69,6 +69,6 @@ func (*ShowDatabases) CollationCoercibility(ctx *sql.Context) (collation sql.Col
 	return sql.Collation_binary, 7
 }
 
-func (p ShowDatabases) String() string {
+func (p ShowDatabases) String(ctx *sql.Context) string {
 	return "ShowDatabases"
 }

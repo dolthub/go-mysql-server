@@ -108,7 +108,7 @@ func (j *JSONExtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 
 		results[i], err = types.LookupJSONValue(ctx, searchable, path.(string))
 		if err != nil {
-			return nil, fmt.Errorf("failed to extract from expression '%s'; %s", j.JSON.String(), err.Error())
+			return nil, fmt.Errorf("failed to extract from expression '%s'; %s", j.JSON.String(ctx), err.Error())
 		}
 	}
 
@@ -139,11 +139,11 @@ func (j *JSONExtract) WithChildren(ctx *sql.Context, children ...sql.Expression)
 	return NewJSONExtract(ctx, children...)
 }
 
-func (j *JSONExtract) String() string {
+func (j *JSONExtract) String(ctx *sql.Context) string {
 	children := j.Children()
 	var parts = make([]string, len(children))
 	for i, c := range children {
-		parts[i] = c.String()
+		parts[i] = c.String(ctx)
 	}
 	return fmt.Sprintf("json_extract(%s)", strings.Join(parts, ", "))
 }

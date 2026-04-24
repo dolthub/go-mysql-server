@@ -118,28 +118,28 @@ func (j *JSONSearch) Resolved() bool {
 }
 
 // String implements sql.Expression
-func (j *JSONSearch) String() string {
+func (j *JSONSearch) String(ctx *sql.Context) string {
 	// TODO: maybe just don't print if escape/path are nil?
 	var escapeStr, pathStr string
 	if j.Escape == nil {
 		escapeStr = "NULL"
 	} else {
-		escapeStr = j.Escape.String()
+		escapeStr = j.Escape.String(ctx)
 	}
 	if len(j.Paths) == 0 {
 		pathStr = "NULL"
 	} else {
 		var paths []string
 		for _, p := range j.Paths {
-			paths = append(paths, p.String())
+			paths = append(paths, p.String(ctx))
 		}
 		pathStr = strings.Join(paths, ", ")
 	}
 	return fmt.Sprintf("%s(%s, %s, %s, %s, %s)",
 		j.FunctionName(),
-		j.JSON.String(),
-		j.OneOrAll.String(),
-		j.Search.String(),
+		j.JSON.String(ctx),
+		j.OneOrAll.String(ctx),
+		j.Search.String(ctx),
 		escapeStr,
 		pathStr,
 	)

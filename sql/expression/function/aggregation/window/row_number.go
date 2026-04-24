@@ -64,12 +64,12 @@ func (r *RowNumber) Resolved() bool {
 	return windowResolved(r.window)
 }
 
-func (r *RowNumber) String() string {
+func (r *RowNumber) String(ctx *sql.Context) string {
 	sb := strings.Builder{}
 	sb.WriteString("row_number()")
 	if r.window != nil {
 		sb.WriteString(" ")
-		sb.WriteString(r.window.String())
+		sb.WriteString(r.window.String(ctx))
 	}
 	return sb.String()
 }

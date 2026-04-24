@@ -88,7 +88,7 @@ func resolveDropConstraint(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pla
 
 			for _, index := range indexes {
 				if index.IsUnique() {
-					if index.ID() == dropConstraint.Name {
+					if index.ID(ctx) == dropConstraint.Name {
 						newDropIndex := plan.NewDropIndex(dropConstraint.Name, rt)
 						newDropIndex.Catalog = a.Catalog
 						newDropIndex.CurrentDatabase = rt.Database().Name()

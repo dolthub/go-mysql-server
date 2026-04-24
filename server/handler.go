@@ -557,7 +557,7 @@ func resultForOkIter(ctx *sql.Context, iter sql.RowIter) (*sqltypes.Result, erro
 	if err := iter.Close(ctx); err != nil {
 		return nil, err
 	}
-	return resultFromOkResult(row[0].(types.OkResult)), nil
+	return resultFromOkResult(ctx, row[0].(types.OkResult)), nil
 }
 
 // resultForEmptyIter ensures that an expected empty iterator returns no rows.
@@ -730,7 +730,7 @@ func (h *Handler) resultForDefaultIter(ctx *sql.Context, c *mysql.Conn, schema s
 					if res.RowsAffected > 0 {
 						panic("Got OkResult mixed with RowResult")
 					}
-					res = resultFromOkResult(row[0].(types.OkResult))
+					res = resultFromOkResult(ctx, row[0].(types.OkResult))
 					continue
 				}
 
@@ -1103,10 +1103,10 @@ func maybeGetTCPConn(conn net.Conn) (*net.TCPConn, bool) {
 	return nil, false
 }
 
-func resultFromOkResult(result types.OkResult) *sqltypes.Result {
+func resultFromOkResult(ctx *sql.Context, result types.OkResult) *sqltypes.Result {
 	infoStr := ""
 	if result.Info != nil {
-		infoStr = result.Info.String()
+		infoStr = result.Info.String(ctx)
 	}
 	return &sqltypes.Result{
 		RowsAffected: result.RowsAffected,

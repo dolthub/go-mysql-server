@@ -41,7 +41,7 @@ var _ RepresentsLabeledBlock = (*BeginEndBlock)(nil)
 var _ RepresentsScope = (*BeginEndBlock)(nil)
 
 // String implements the interface sql.Node.
-func (b *BeginEndBlock) String() string {
+func (b *BeginEndBlock) String(ctx *sql.Context) string {
 	label := ""
 	if len(b.Label) > 0 {
 		label = b.Label + ": "
@@ -50,7 +50,7 @@ func (b *BeginEndBlock) String() string {
 	_ = p.WriteNode("%s", label+"BEGIN .. END")
 	var children []string
 	for _, s := range b.statements {
-		children = append(children, s.String())
+		children = append(children, s.String(ctx))
 	}
 	_ = p.WriteChildren(children...)
 	return p.String()

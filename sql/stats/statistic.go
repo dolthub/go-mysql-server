@@ -227,9 +227,11 @@ func (s *Statistic) Clone(context.Context) sql.JSONWrapper {
 }
 
 func (s *Statistic) ToInterface(ctx context.Context) (interface{}, error) {
+	// TODO: should convert this interface to take a *sql.Context
+	sqlCtx, _ := ctx.(*sql.Context)
 	typs := make([]string, len(s.Typs))
 	for i, t := range s.Typs {
-		typs[i] = t.String()
+		typs[i] = t.String(sqlCtx)
 	}
 
 	buckets, err := s.Histogram().ToInterface(ctx)

@@ -29,7 +29,7 @@ func TestMin_Name(t *testing.T) {
 	assert := require.New(t)
 
 	m := NewMin(expression.NewGetField(0, types.Int32, "field", true))
-	assert.Equal("MIN(field)", m.String())
+	assert.Equal("MIN(field)", m.String(sql.NewEmptyContext()))
 }
 
 func TestMin_Eval_Int32(t *testing.T) {
@@ -119,7 +119,7 @@ func TestMin_Distinct(t *testing.T) {
 	m := NewMin(expression.NewDistinctExpression(expression.NewGetField(0, types.Int32, "field", true)))
 	b, _ := m.NewBuffer(ctx)
 
-	require.Equal(t, "MIN(DISTINCT field)", m.String())
+	require.Equal(t, "MIN(DISTINCT field)", m.String(ctx))
 
 	require.NoError(t, b.Update(ctx, sql.Row{1}))
 	require.NoError(t, b.Update(ctx, sql.Row{1}))
@@ -134,7 +134,7 @@ func TestMin_Distinct(t *testing.T) {
 	m = NewMin(expression.NewDistinctExpression(expression.NewGetField(0, types.Int32, "field", true)))
 	b, _ = m.NewBuffer(ctx)
 
-	require.Equal(t, "MIN(DISTINCT field)", m.String())
+	require.Equal(t, "MIN(DISTINCT field)", m.String(ctx))
 
 	require.NoError(t, b.Update(ctx, sql.Row{1}))
 	require.NoError(t, b.Update(ctx, sql.Row{1}))

@@ -155,9 +155,9 @@ func wrapRowSource(ctx *sql.Context, insertSource sql.Node, destTbl sql.Table, s
 			def, _, err := transform.Expr(ctx, defaultExpr, func(ctx *sql.Context, e sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
 				switch e := e.(type) {
 				case *expression.GetField:
-					idx, ok := colNameToIdx[strings.ToLower(e.WithTable(destTbl.Name()).String())]
+					idx, ok := colNameToIdx[strings.ToLower(e.WithTable(destTbl.Name()).String(ctx))]
 					if !ok {
-						return nil, transform.SameTree, fmt.Errorf("field not found: %s", e.String())
+						return nil, transform.SameTree, fmt.Errorf("field not found: %s", e.String(ctx))
 					}
 					return e.WithIndex(idx), transform.NewTree, nil
 				default:

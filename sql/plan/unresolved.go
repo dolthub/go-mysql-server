@@ -151,7 +151,7 @@ func (t *UnresolvedTable) WithExpressions(ctx *sql.Context, exprs ...sql.Express
 	return t.WithAsOf(ctx, exprs[0])
 }
 
-func (t UnresolvedTable) String() string {
+func (t UnresolvedTable) String(ctx *sql.Context) string {
 	return fmt.Sprintf("UnresolvedTable(%s)", t.name)
 }
 

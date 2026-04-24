@@ -104,7 +104,7 @@ func (v *ValueDerivedTable) WithExpressions(ctx *sql.Context, exprs ...sql.Expre
 	return &nv, nil
 }
 
-func (v *ValueDerivedTable) String() string {
+func (v *ValueDerivedTable) String(ctx *sql.Context) string {
 	children := make([]string, len(v.ExpressionTuples))
 	for i, tuple := range v.ExpressionTuples {
 		var sb strings.Builder
@@ -113,7 +113,7 @@ func (v *ValueDerivedTable) String() string {
 			if j > 0 {
 				sb.WriteString(",")
 			}
-			sb.WriteString(e.String())
+			sb.WriteString(e.String(ctx))
 		}
 		sb.WriteRune(')')
 		children[i] = sb.String()
@@ -164,7 +164,7 @@ func getSchema(ctx *sql.Context, rows [][]sql.Expression) sql.Schema {
 				if n, ok := val.(sql.Nameable); ok {
 					name = n.Name()
 				} else {
-					name = val.String()
+					name = val.String(ctx)
 				}
 
 				s[i] = &sql.Column{Name: name, Type: val.Type(ctx), Nullable: val.IsNullable(ctx)}

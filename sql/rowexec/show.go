@@ -481,7 +481,7 @@ func (b *BaseBuilder) buildShowColumns(ctx *sql.Context, n *plan.ShowColumns, ro
 
 		var defaultVal interface{}
 		if col.Default != nil {
-			defaultVal = col.Default.String()
+			defaultVal = col.Default.String(ctx)
 		} else {
 			// From: https://dev.mysql.com/doc/refman/8.0/en/show-columns.html
 			// The default value for the column. This is NULL if the column has an explicit default of NULL,
@@ -498,7 +498,7 @@ func (b *BaseBuilder) buildShowColumns(ctx *sql.Context, n *plan.ShowColumns, ro
 		if n.Full {
 			row = sql.Row{
 				col.Name,
-				col.Type.String(),
+				col.Type.String(ctx),
 				collation,
 				null,
 				key,
@@ -510,7 +510,7 @@ func (b *BaseBuilder) buildShowColumns(ctx *sql.Context, n *plan.ShowColumns, ro
 		} else {
 			row = sql.Row{
 				col.Name,
-				col.Type.String(),
+				col.Type.String(ctx),
 				null,
 				key,
 				defaultVal,

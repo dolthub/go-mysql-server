@@ -49,7 +49,7 @@ func (o *Open) IsReadOnly() bool {
 }
 
 // String implements the interface sql.Node.
-func (o *Open) String() string {
+func (o *Open) String(ctx *sql.Context) string {
 	return fmt.Sprintf("OPEN %s", o.Name)
 }
 

@@ -15,14 +15,13 @@
 package sql
 
 import (
-	"context"
 	"fmt"
 )
 
 // MySQLRangeCut represents a position on the line of all possible values.
 type MySQLRangeCut interface {
 	// Compare returns an integer stating the relative position of the calling MySQLRangeCut to the given MySQLRangeCut.
-	Compare(MySQLRangeCut, Type) (int, error)
+	Compare(*Context, MySQLRangeCut, Type) (int, error)
 	// String returns the MySQLRangeCut as a string for display purposes.
 	String() string
 	// TypeAsLowerBound returns the bound type if the calling MySQLRangeCut is the lower bound of a range.
@@ -70,7 +69,7 @@ func MySQLRangeCutIsBinding(c MySQLRangeCut) bool {
 }
 
 // GetMySQLRangeCutMax returns the MySQLRangeCut with the highest value.
-func GetMySQLRangeCutMax(typ Type, cuts ...MySQLRangeCut) (MySQLRangeCut, error) {
+func GetMySQLRangeCutMax(ctx *Context, typ Type, cuts ...MySQLRangeCut) (MySQLRangeCut, error) {
 	i := 0
 	var maxCut MySQLRangeCut
 	for ; i < len(cuts); i++ {
@@ -84,7 +83,7 @@ func GetMySQLRangeCutMax(typ Type, cuts ...MySQLRangeCut) (MySQLRangeCut, error)
 		if cuts[i] == nil {
 			continue
 		}
-		comp, err := maxCut.Compare(cuts[i], typ)
+		comp, err := maxCut.Compare(ctx, cuts[i], typ)
 		if err != nil {
 			return maxCut, err
 		}
@@ -96,7 +95,7 @@ func GetMySQLRangeCutMax(typ Type, cuts ...MySQLRangeCut) (MySQLRangeCut, error)
 }
 
 // GetMySQLRangeCutMin returns the MySQLRangeCut with the lowest value.
-func GetMySQLRangeCutMin(typ Type, cuts ...MySQLRangeCut) (MySQLRangeCut, error) {
+func GetMySQLRangeCutMin(ctx *Context, typ Type, cuts ...MySQLRangeCut) (MySQLRangeCut, error) {
 	i := 0
 	var minCut MySQLRangeCut
 	for ; i < len(cuts); i++ {
@@ -110,7 +109,7 @@ func GetMySQLRangeCutMin(typ Type, cuts ...MySQLRangeCut) (MySQLRangeCut, error)
 		if cuts[i] == nil {
 			continue
 		}
-		comp, err := minCut.Compare(cuts[i], typ)
+		comp, err := minCut.Compare(ctx, cuts[i], typ)
 		if err != nil {
 			return minCut, err
 		}
@@ -130,9 +129,7 @@ type Above struct {
 var _ MySQLRangeCut = Above{}
 
 // Compare implements MySQLRangeCut.
-func (a Above) Compare(c MySQLRangeCut, typ Type) (int, error) {
-	// TODO: Add context parameter to MySQLRangeCut.Compare
-	ctx := context.Background()
+func (a Above) Compare(ctx *Context, c MySQLRangeCut, typ Type) (int, error) {
 	switch c := c.(type) {
 	case AboveAll:
 		return -1, nil
@@ -177,7 +174,7 @@ type AboveAll struct{}
 var _ MySQLRangeCut = AboveAll{}
 
 // Compare implements MySQLRangeCut.
-func (AboveAll) Compare(c MySQLRangeCut, typ Type) (int, error) {
+func (AboveAll) Compare(ctx *Context, c MySQLRangeCut, typ Type) (int, error) {
 	if _, ok := c.(AboveAll); ok {
 		return 0, nil
 	}
@@ -208,9 +205,7 @@ type Below struct {
 var _ MySQLRangeCut = Below{}
 
 // Compare implements MySQLRangeCut.
-func (b Below) Compare(c MySQLRangeCut, typ Type) (int, error) {
-	// TODO: Add context parameter to MySQLRangeCut.Compare
-	ctx := context.Background()
+func (b Below) Compare(ctx *Context, c MySQLRangeCut, typ Type) (int, error) {
 	switch c := c.(type) {
 	case AboveAll:
 		return -1, nil
@@ -239,24 +234,23 @@ type typedValue struct {
 	typ   Type
 }
 
-func compareRangeCuts(ctx context.Context, rangeType Type, a typedValue, b typedValue) (int, error) {
+func compareRangeCuts(ctx *Context, rangeType Type, a typedValue, b typedValue) (int, error) {
 	if et, ok := rangeType.(ExtendedType); ok {
 		aet, aok := a.typ.(ExtendedType)
 		bet, bok := b.typ.(ExtendedType)
 		if aok && bok {
-			// TODO: context
-			ac, inRange, err := et.ConvertToType(nil, aet, a.value)
+			ac, inRange, err := et.ConvertToType(ctx, aet, a.value)
 			if err != nil {
 				return 0, err
 			} else if inRange != InRange {
-				return 0, ErrValueOutOfRange.New(a.value, aet)
+				return 0, ErrValueOutOfRange.New(a.value, aet.String(ctx))
 			}
 
-			bc, inRange, err := et.ConvertToType(nil, bet, b.value)
+			bc, inRange, err := et.ConvertToType(ctx, bet, b.value)
 			if err != nil {
 				return 0, err
 			} else if inRange != InRange {
-				return 0, ErrValueOutOfRange.New(b.value, bet)
+				return 0, ErrValueOutOfRange.New(b.value, bet.String(ctx))
 			}
 
 			return aet.Compare(ctx, ac, bc)
@@ -286,7 +280,7 @@ type AboveNull struct{}
 var _ MySQLRangeCut = AboveNull{}
 
 // Compare implements MySQLRangeCut.
-func (AboveNull) Compare(c MySQLRangeCut, typ Type) (int, error) {
+func (AboveNull) Compare(ctx *Context, c MySQLRangeCut, typ Type) (int, error) {
 	if _, ok := c.(AboveNull); ok {
 		return 0, nil
 	}
@@ -318,7 +312,7 @@ type BelowNull struct{}
 var _ MySQLRangeCut = BelowNull{}
 
 // Compare implements MySQLRangeCut.
-func (BelowNull) Compare(c MySQLRangeCut, typ Type) (int, error) {
+func (BelowNull) Compare(ctx *Context, c MySQLRangeCut, typ Type) (int, error) {
 	// BelowNull overlaps with itself
 	if _, ok := c.(BelowNull); ok {
 		return 0, nil

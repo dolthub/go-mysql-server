@@ -60,8 +60,8 @@ func (*SwapXY) CollationCoercibility(ctx *sql.Context) (collation sql.CollationI
 	return sql.Collation_binary, 4
 }
 
-func (s *SwapXY) String() string {
-	return fmt.Sprintf("%s(%s)", s.FunctionName(), s.Child.String())
+func (s *SwapXY) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", s.FunctionName(), s.Child.String(ctx))
 }
 
 // WithChildren implements the Expression interface.

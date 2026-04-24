@@ -48,8 +48,8 @@ func (i *InetAton) Description() string {
 	return "returns the numeric value of an IP address."
 }
 
-func (i *InetAton) String() string {
-	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
+func (i *InetAton) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String(ctx))
 }
 
 func (i *InetAton) Type(ctx *sql.Context) sql.Type {
@@ -128,8 +128,8 @@ func (i *Inet6Aton) Description() string {
 	return "returns the numeric value of an IPv6 address."
 }
 
-func (i *Inet6Aton) String() string {
-	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
+func (i *Inet6Aton) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String(ctx))
 }
 
 func (i *Inet6Aton) Type(ctx *sql.Context) sql.Type {
@@ -208,8 +208,8 @@ func (i *InetNtoa) Description() string {
 	return "returns the IP address from a numeric value."
 }
 
-func (i *InetNtoa) String() string {
-	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
+func (i *InetNtoa) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String(ctx))
 }
 
 func (i *InetNtoa) Type(ctx *sql.Context) sql.Type {
@@ -281,8 +281,8 @@ func (i *Inet6Ntoa) Description() string {
 	return "returns the IPv6 address from a numeric value."
 }
 
-func (i *Inet6Ntoa) String() string {
-	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
+func (i *Inet6Ntoa) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String(ctx))
 }
 
 func (i *Inet6Ntoa) Type(ctx *sql.Context) sql.Type {

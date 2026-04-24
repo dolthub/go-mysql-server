@@ -66,9 +66,9 @@ func (c *Collation) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
-// String implements the fmt.Stringer interface.
-func (c *Collation) String() string {
-	return fmt.Sprintf("%s(%s)", c.FunctionName(), c.Child.String())
+// String implements the sql.Stringer interface.
+func (c *Collation) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", c.FunctionName(), c.Child.String(ctx))
 }
 
 // WithChildren implements sql.Expression.
@@ -132,9 +132,9 @@ func (c *Coercibility) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
-// String implements the fmt.Stringer interface.
-func (c *Coercibility) String() string {
-	return fmt.Sprintf("%s(%s)", c.FunctionName(), c.Child.String())
+// String implements the sql.Stringer interface.
+func (c *Coercibility) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", c.FunctionName(), c.Child.String(ctx))
 }
 
 // WithChildren implements sql.Expression.
@@ -198,9 +198,9 @@ func (c *Charset) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
-// String implements the fmt.Stringer interface.
-func (c *Charset) String() string {
-	return fmt.Sprintf("%s(%s)", c.FunctionName(), c.Child.String())
+// String implements the sql.Stringer interface.
+func (c *Charset) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", c.FunctionName(), c.Child.String(ctx))
 }
 
 // WithChildren implements the sql.Expression interface.

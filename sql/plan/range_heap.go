@@ -51,8 +51,8 @@ func NewRangeHeap(child sql.Node, value, min, max *expression.GetField, rangeIsC
 	return newSr, nil
 }
 
-func (s *RangeHeap) String() string {
-	return s.Child.String()
+func (s *RangeHeap) String(ctx *sql.Context) string {
+	return s.Child.String(ctx)
 }
 
 func (s *RangeHeap) DebugString(ctx *sql.Context) string {

@@ -16,7 +16,6 @@ package types
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -55,7 +54,7 @@ func CreateVectorType(dimensions int) (VectorType, error) {
 }
 
 // Compare implements Type interface.
-func (t VectorType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
+func (t VectorType) Compare(ctx *sql.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
@@ -76,7 +75,7 @@ func (t VectorType) Compare(ctx context.Context, a interface{}, b interface{}) (
 }
 
 // Convert implements Type interface.
-func (t VectorType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t VectorType) Convert(ctx *sql.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
 		return nil, sql.InRange, nil
 	}
@@ -138,7 +137,7 @@ func (t VectorType) Convert(ctx context.Context, v interface{}) (interface{}, sq
 }
 
 // MustConvert implements Type interface.
-func (t VectorType) MustConvert(ctx context.Context, v interface{}) interface{} {
+func (t VectorType) MustConvert(ctx *sql.Context, v interface{}) interface{} {
 	value, _, err := t.Convert(ctx, v)
 	if err != nil {
 		panic(err)
@@ -175,7 +174,7 @@ func (t VectorType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltypes.
 }
 
 // String implements Type interface.
-func (t VectorType) String() string {
+func (t VectorType) String(ctx *sql.Context) string {
 	return fmt.Sprintf("VECTOR(%d)", t.Dimensions)
 }
 

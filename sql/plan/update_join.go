@@ -37,10 +37,10 @@ var _ sql.Node = (*UpdateJoin)(nil)
 var _ sql.CollationCoercible = (*UpdateJoin)(nil)
 
 // String implements the sql.Node interface.
-func (u *UpdateJoin) String() string {
+func (u *UpdateJoin) String(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Update Join")
-	_ = pr.WriteChildren(u.Child.String())
+	_ = pr.WriteChildren(u.Child.String(ctx))
 	return pr.String()
 }
 
@@ -118,7 +118,7 @@ func (u *updatableJoinTable) Name() string {
 }
 
 // String implements the sql.UpdatableTable interface.
-func (u *updatableJoinTable) String() string {
+func (u *updatableJoinTable) String(ctx *sql.Context) string {
 	panic("this method should not be called")
 }
 

@@ -28,7 +28,7 @@ const (
 	KillType_Connection KillType = 1
 )
 
-func (kt KillType) String() string {
+func (kt KillType) String(ctx *sql.Context) string {
 	if kt == KillType_Query {
 		return "QUERY"
 	} else if kt == KillType_Connection {
@@ -77,6 +77,6 @@ func (k *Kill) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
-func (k *Kill) String() string {
-	return fmt.Sprintf("KILL %s %d", k.Kt.String(), k.ConnID)
+func (k *Kill) String(ctx *sql.Context) string {
+	return fmt.Sprintf("KILL %s %d", k.Kt.String(ctx), k.ConnID)
 }

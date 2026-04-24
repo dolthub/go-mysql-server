@@ -80,11 +80,8 @@ func (r *routineTable) Collation() CollationID {
 	return Collation_Information_Schema_Default
 }
 
-func (r *routineTable) String() string {
-	// To maintain compatibility with fmt.Stringer we have to use an empty context, but this will fail in any case that
-	// requires a context to determine a string (such as an integrator using the context to contain type information).
-	ctx := NewEmptyContext()
-	return printTable(r.Name(), r.Schema(ctx))
+func (r *routineTable) String(ctx *Context) string {
+	return printTable(ctx, r.Name(), r.Schema(ctx))
 }
 
 func (r *routineTable) Partitions(context *Context) (PartitionIter, error) {
@@ -268,7 +265,7 @@ func parametersRowIter(ctx *Context, c Catalog, p map[string][]*plan.Procedure) 
 					parameterMode     interface{}
 				)
 
-				dtdId, dataType := getDtdIdAndDataType(param.Type)
+				dtdId, dataType := getDtdIdAndDataType(ctx, param.Type)
 
 				if param.Direction == plan.ProcedureParamDirection_In {
 					parameterMode = "IN"

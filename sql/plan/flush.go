@@ -38,7 +38,7 @@ func NewFlushPrivileges(ft bool) *FlushPrivileges {
 }
 
 // String implements the interface sql.Node.
-func (*FlushPrivileges) String() string { return "FLUSH PRIVILEGES" }
+func (*FlushPrivileges) String(ctx *sql.Context) string { return "FLUSH PRIVILEGES" }
 
 // WithChildren implements the interface sql.Node.
 func (f *FlushPrivileges) WithChildren(ctx *sql.Context, children ...sql.Node) (sql.Node, error) {

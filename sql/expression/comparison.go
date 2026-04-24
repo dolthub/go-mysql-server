@@ -444,11 +444,11 @@ func (e *Equals) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql
 	return NewEquals(children[0], children[1]), nil
 }
 
-func (e *Equals) String() string {
+func (e *Equals) String(ctx *sql.Context) string {
 	if e == nil {
 		return ""
 	}
-	return fmt.Sprintf("(%s = %s)", e.Left(), e.Right())
+	return fmt.Sprintf("(%s = %s)", e.Left().String(ctx), e.Right().String(ctx))
 }
 
 func (e *Equals) DebugString(ctx *sql.Context) string {
@@ -553,8 +553,8 @@ func (e *NullSafeEquals) WithChildren(ctx *sql.Context, children ...sql.Expressi
 	return NewNullSafeEquals(children[0], children[1]), nil
 }
 
-func (e *NullSafeEquals) String() string {
-	return fmt.Sprintf("(%s <=> %s)", e.Left(), e.Right())
+func (e *NullSafeEquals) String(ctx *sql.Context) string {
+	return fmt.Sprintf("(%s <=> %s)", e.Left().String(ctx), e.Right().String(ctx))
 }
 
 func (e *NullSafeEquals) DebugString(ctx *sql.Context) string {
@@ -602,8 +602,8 @@ func (gt *GreaterThan) WithChildren(ctx *sql.Context, children ...sql.Expression
 	return NewGreaterThan(children[0], children[1]), nil
 }
 
-func (gt *GreaterThan) String() string {
-	return fmt.Sprintf("(%s > %s)", gt.Left(), gt.Right())
+func (gt *GreaterThan) String(ctx *sql.Context) string {
+	return fmt.Sprintf("(%s > %s)", gt.Left().String(ctx), gt.Right().String(ctx))
 }
 
 func (gt *GreaterThan) DebugString(ctx *sql.Context) string {
@@ -669,8 +669,8 @@ func (lt *LessThan) WithChildren(ctx *sql.Context, children ...sql.Expression) (
 	return NewLessThan(children[0], children[1]), nil
 }
 
-func (lt *LessThan) String() string {
-	return fmt.Sprintf("(%s < %s)", lt.Left(), lt.Right())
+func (lt *LessThan) String(ctx *sql.Context) string {
+	return fmt.Sprintf("(%s < %s)", lt.Left().String(ctx), lt.Right().String(ctx))
 }
 
 func (lt *LessThan) DebugString(ctx *sql.Context) string {
@@ -737,8 +737,8 @@ func (gte *GreaterThanOrEqual) WithChildren(ctx *sql.Context, children ...sql.Ex
 	return NewGreaterThanOrEqual(children[0], children[1]), nil
 }
 
-func (gte *GreaterThanOrEqual) String() string {
-	return fmt.Sprintf("(%s >= %s)", gte.Left(), gte.Right())
+func (gte *GreaterThanOrEqual) String(ctx *sql.Context) string {
+	return fmt.Sprintf("(%s >= %s)", gte.Left().String(ctx), gte.Right().String(ctx))
 }
 
 func (gte *GreaterThanOrEqual) DebugString(ctx *sql.Context) string {
@@ -807,8 +807,8 @@ func (lte *LessThanOrEqual) WithChildren(ctx *sql.Context, children ...sql.Expre
 	return NewLessThanOrEqual(children[0], children[1]), nil
 }
 
-func (lte *LessThanOrEqual) String() string {
-	return fmt.Sprintf("(%s <= %s)", lte.Left(), lte.Right())
+func (lte *LessThanOrEqual) String(ctx *sql.Context) string {
+	return fmt.Sprintf("(%s <= %s)", lte.Left().String(ctx), lte.Right().String(ctx))
 }
 
 func (lte *LessThanOrEqual) DebugString(ctx *sql.Context) string {

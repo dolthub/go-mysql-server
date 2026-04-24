@@ -60,8 +60,8 @@ func (*ExteriorRing) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 	return sql.Collation_binary, 4
 }
 
-func (e *ExteriorRing) String() string {
-	return fmt.Sprintf("%s(%s)", e.FunctionName(), e.Child.String())
+func (e *ExteriorRing) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", e.FunctionName(), e.Child.String(ctx))
 }
 
 // WithChildren implements the Expression interface.

@@ -28,7 +28,7 @@ import (
 func TestMax_String(t *testing.T) {
 	assert := require.New(t)
 	m := NewMax(expression.NewGetField(0, types.Int32, "field", true))
-	assert.Equal("MAX(field)", m.String())
+	assert.Equal("MAX(field)", m.String(sql.NewEmptyContext()))
 }
 
 func TestMax_Eval_Int32(t *testing.T) {
@@ -117,7 +117,7 @@ func TestMax_Distinct(t *testing.T) {
 	m := NewMax(expression.NewDistinctExpression(expression.NewGetField(0, types.Int32, "field", true)))
 	b, _ := m.NewBuffer(ctx)
 
-	require.Equal(t, "MAX(DISTINCT field)", m.String())
+	require.Equal(t, "MAX(DISTINCT field)", m.String(sql.NewEmptyContext()))
 
 	require.NoError(t, b.Update(ctx, sql.Row{1}))
 	require.NoError(t, b.Update(ctx, sql.Row{1}))

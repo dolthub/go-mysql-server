@@ -28,7 +28,7 @@ func TestJsonArrayAgg_Name(t *testing.T) {
 	assert := require.New(t)
 
 	m := NewJsonArray(expression.NewGetField(0, types.Int32, "field", true))
-	assert.Equal("JSON_ARRAYAGG(field)", m.String())
+	assert.Equal("JSON_ARRAYAGG(field)", m.String(sql.NewEmptyContext()))
 }
 
 func TestJsonArrayAgg_SimpleIntField(t *testing.T) {

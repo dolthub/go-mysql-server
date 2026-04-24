@@ -54,8 +54,8 @@ func (js *JSONUnquote) IsUnsupported() bool {
 	return false
 }
 
-func (js *JSONUnquote) String() string {
-	return fmt.Sprintf("%s(%s)", js.FunctionName(), js.Child)
+func (js *JSONUnquote) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", js.FunctionName(), js.Child.String(ctx))
 }
 
 // Type implements the Expression interface.

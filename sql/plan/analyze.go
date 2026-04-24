@@ -61,10 +61,10 @@ func (n *AnalyzeTable) IsReadOnly() bool {
 }
 
 // String implements the interface sql.Node.
-func (n *AnalyzeTable) String() string {
+func (n *AnalyzeTable) String(ctx *sql.Context) string {
 	tblNames := make([]string, len(n.Tables))
 	for i, t := range n.Tables {
-		tblNames[i] = t.String()
+		tblNames[i] = t.String(ctx)
 	}
 	return fmt.Sprintf("AnalyzeTable table %s", strings.Join(tblNames, ", "))
 }

@@ -70,8 +70,8 @@ func (j *JSONKeys) Resolved() bool {
 }
 
 // String implements sql.Expression
-func (j *JSONKeys) String() string {
-	return fmt.Sprintf("%s(%s, %s)", j.FunctionName(), j.JSON.String(), j.Path.String())
+func (j *JSONKeys) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s, %s)", j.FunctionName(), j.JSON.String(ctx), j.Path.String(ctx))
 }
 
 // Type implements sql.Expression

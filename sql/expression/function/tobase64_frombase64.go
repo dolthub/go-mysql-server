@@ -108,9 +108,9 @@ func (t *ToBase64) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return out.String(), nil
 }
 
-// String implements the fmt.Stringer interface.
-func (t *ToBase64) String() string {
-	return fmt.Sprintf("%s(%s)", t.FunctionName(), t.Child)
+// String implements the sql.Stringer interface.
+func (t *ToBase64) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", t.FunctionName(), t.Child.String(ctx))
 }
 
 // IsNullable implements the Expression interface.
@@ -185,9 +185,9 @@ func (t *FromBase64) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return decoded, nil
 }
 
-// String implements the fmt.Stringer interface.
-func (t *FromBase64) String() string {
-	return fmt.Sprintf("%s(%s)", t.FunctionName(), t.Child)
+// String implements the sql.Stringer interface.
+func (t *FromBase64) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", t.FunctionName(), t.Child.String(ctx))
 }
 
 // IsNullable implements the Expression interface.

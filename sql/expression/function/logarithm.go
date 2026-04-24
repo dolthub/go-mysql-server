@@ -79,16 +79,16 @@ func (l *LogBase) Description() string {
 	}
 }
 
-func (l *LogBase) String() string {
+func (l *LogBase) String(ctx *sql.Context) string {
 	switch l.base {
 	case float64(math.E):
-		return fmt.Sprintf("ln(%s)", l.Child)
+		return fmt.Sprintf("ln(%s)", l.Child.String(ctx))
 	case float64(10):
-		return fmt.Sprintf("log10(%s)", l.Child)
+		return fmt.Sprintf("log10(%s)", l.Child.String(ctx))
 	case float64(2):
-		return fmt.Sprintf("log2(%s)", l.Child)
+		return fmt.Sprintf("log2(%s)", l.Child.String(ctx))
 	default:
-		return fmt.Sprintf("log(%v, %s)", l.base, l.Child)
+		return fmt.Sprintf("log(%v, %s)", l.base, l.Child.String(ctx))
 	}
 }
 
@@ -170,8 +170,8 @@ func (l *Log) Description() string {
 	return "if called with one parameter, this function returns the natural logarithm of X. If called with two parameters, this function returns the logarithm of X to the base B. If X is less than or equal to 0, or if B is less than or equal to 1, then NULL is returned."
 }
 
-func (l *Log) String() string {
-	return fmt.Sprintf("%s(%s,%s)", l.FunctionName(), l.LeftChild, l.RightChild)
+func (l *Log) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s,%s)", l.FunctionName(), l.LeftChild.String(ctx), l.RightChild.String(ctx))
 }
 
 // WithChildren implements the Expression interface.

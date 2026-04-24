@@ -42,7 +42,7 @@ func (c *CreateDB) IsReadOnly() bool {
 	return false
 }
 
-func (c *CreateDB) String() string {
+func (c *CreateDB) String(ctx *sql.Context) string {
 	ifNotExists := ""
 	if c.IfNotExists {
 		ifNotExists = " if not exists"
@@ -98,7 +98,7 @@ func NewCreateSchema(schemaName string, ifNotExists bool, collation sql.Collatio
 	}
 }
 
-func (c *CreateSchema) String() string {
+func (c *CreateSchema) String(ctx *sql.Context) string {
 	ifNotExists := ""
 	if c.IfNotExists {
 		ifNotExists = " if not exists"
@@ -131,7 +131,7 @@ func (d *DropDB) IsReadOnly() bool {
 	return false
 }
 
-func (d *DropDB) String() string {
+func (d *DropDB) String(ctx *sql.Context) string {
 	ifExists := ""
 	if d.IfExists {
 		ifExists = " if exists"
@@ -200,7 +200,7 @@ func (c *AlterDB) IsReadOnly() bool {
 }
 
 // String implements the interface sql.Node.
-func (c *AlterDB) String() string {
+func (c *AlterDB) String(ctx *sql.Context) string {
 	var dbName string
 	if len(c.dbName) > 0 {
 		dbName = fmt.Sprintf(" %s", c.dbName)

@@ -47,8 +47,8 @@ func (f *FulltextFilterTable) Name() string {
 }
 
 // String implements the interface sql.IndexedTable.
-func (f *FulltextFilterTable) String() string {
-	return f.Table.String()
+func (f *FulltextFilterTable) String(ctx *sql.Context) string {
+	return f.Table.String(ctx)
 }
 
 // Schema implements the interface sql.IndexedTable.
@@ -114,12 +114,12 @@ func (f *FulltextFilterTable) PartitionRows(ctx *sql.Context, partition sql.Part
 	for _, index := range parentIndexes {
 		switch f.MatchAgainst.KeyCols.Type {
 		case fulltext.KeyType_Primary:
-			if index.ID() == "PRIMARY" {
+			if index.ID(ctx) == "PRIMARY" {
 				parentIndex = index
 				break
 			}
 		case fulltext.KeyType_Unique:
-			if index.ID() == f.MatchAgainst.KeyCols.Name {
+			if index.ID(ctx) == f.MatchAgainst.KeyCols.Name {
 				parentIndex = index
 				break
 			}

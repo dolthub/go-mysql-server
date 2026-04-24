@@ -89,9 +89,9 @@ func (cv *CreateView) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
-// String implements the fmt.Stringer interface, using sql.TreePrinter to
+// String implements the sql.Stringer interface, using sql.TreePrinter to
 // generate the string.
-func (cv *CreateView) String() string {
+func (cv *CreateView) String(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("CreateView(%s)", cv.Name)
 	return pr.String()

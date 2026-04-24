@@ -130,14 +130,14 @@ func (*ShowColumns) CollationCoercibility(ctx *sql.Context) (collation sql.Colla
 	return sql.Collation_binary, 7
 }
 
-func (s *ShowColumns) String() string {
+func (s *ShowColumns) String(ctx *sql.Context) string {
 	tp := sql.NewTreePrinter()
 	if s.Full {
 		_ = tp.WriteNode("ShowColumns(full)")
 	} else {
 		_ = tp.WriteNode("ShowColumns")
 	}
-	_ = tp.WriteChildren(s.Child.String())
+	_ = tp.WriteChildren(s.Child.String(ctx))
 	return tp.String()
 }
 

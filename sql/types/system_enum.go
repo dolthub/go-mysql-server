@@ -15,7 +15,6 @@
 package types
 
 import (
-	"context"
 	"reflect"
 	"strings"
 
@@ -51,7 +50,7 @@ func NewSystemEnumType(varName string, values ...string) sql.SystemVariableType 
 }
 
 // Compare implements Type interface.
-func (t systemEnumType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
+func (t systemEnumType) Compare(ctx *sql.Context, a interface{}, b interface{}) (int, error) {
 	as, _, err := t.Convert(ctx, a)
 	if err != nil {
 		return 0, err
@@ -73,7 +72,7 @@ func (t systemEnumType) Compare(ctx context.Context, a interface{}, b interface{
 }
 
 // Convert implements Type interface.
-func (t systemEnumType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t systemEnumType) Convert(ctx *sql.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	// Nil values are not accepted
 	switch value := v.(type) {
 	case int:
@@ -163,7 +162,7 @@ func (t systemEnumType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqlty
 }
 
 // String implements Type interface.
-func (t systemEnumType) String() string {
+func (t systemEnumType) String(ctx *sql.Context) string {
 	return "system_enum"
 }
 
@@ -188,19 +187,19 @@ func (systemEnumType) CollationCoercibility(ctx *sql.Context) (collation sql.Col
 }
 
 // EncodeValue implements SystemVariableType interface.
-func (t systemEnumType) EncodeValue(val interface{}) (string, error) {
+func (t systemEnumType) EncodeValue(ctx *sql.Context, val interface{}) (string, error) {
 	expectedVal, ok := val.(string)
 	if !ok {
-		return "", sql.ErrSystemVariableCodeFail.New(val, t.String())
+		return "", sql.ErrSystemVariableCodeFail.New(val, t.String(ctx))
 	}
 	return expectedVal, nil
 }
 
 // DecodeValue implements SystemVariableType interface.
-func (t systemEnumType) DecodeValue(val string) (interface{}, error) {
-	outVal, _, err := t.Convert(context.Background(), val)
+func (t systemEnumType) DecodeValue(ctx *sql.Context, val string) (interface{}, error) {
+	outVal, _, err := t.Convert(ctx, val)
 	if err != nil {
-		return nil, sql.ErrSystemVariableCodeFail.New(val, t.String())
+		return nil, sql.ErrSystemVariableCodeFail.New(val, t.String(ctx))
 	}
 	return outVal, nil
 }

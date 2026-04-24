@@ -141,7 +141,7 @@ func (i *AutoIncrement) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 
 	ret, inRange, err := i.Type(ctx).Convert(ctx, given)
 	if err == nil && inRange != sql.InRange {
-		err = sql.ErrValueOutOfRange.New(given, i.Type(ctx))
+		err = sql.ErrValueOutOfRange.New(given, i.Type(ctx).String(ctx))
 	}
 	if err != nil {
 		return nil, err
@@ -149,8 +149,8 @@ func (i *AutoIncrement) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	return ret, nil
 }
 
-func (i *AutoIncrement) String() string {
-	return fmt.Sprintf("AutoIncrement(%s)", i.Child.String())
+func (i *AutoIncrement) String(ctx *sql.Context) string {
+	return fmt.Sprintf("AutoIncrement(%s)", i.Child.String(ctx))
 }
 
 // WithChildren implements the Expression interface.

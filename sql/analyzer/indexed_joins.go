@@ -236,10 +236,10 @@ func replanJoin(ctx *sql.Context, n *plan.JoinNode, a *Analyzer, scope *plan.Sco
 	m.LogCostDebugString()
 
 	if a.Verbose && a.Debug {
-		a.Log("%s", m.String())
+		a.Log("%s", m.String(ctx))
 	}
 	if scope != nil {
-		scope.JoinTrees = append(scope.JoinTrees, m.String())
+		scope.JoinTrees = append(scope.JoinTrees, m.String(ctx))
 	}
 
 	m.LogBestPlanDebugString()
@@ -338,6 +338,7 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo, cat sql.Catalog) error {
 							return err
 						}
 						lookup := &memo.IndexScan{
+							Ctx:   ctx,
 							Table: ita,
 							Index: idx,
 							Alias: aliasName,
@@ -357,17 +358,18 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo, cat sql.Catalog) error {
 		for _, idx := range indexes {
 			keyExprs, matchedFilters, nullmask := keyExprsForIndex(ctx, tableId, idx.Cols(), append(join.Filter, extraFilters...), columnIdToIndexedExprMap)
 			if keyExprs == nil {
-				m.Tracer.Log("Index %s: no matching key expressions found", idx.SqlIdx().ID())
+				m.Tracer.Log("Index %s: no matching key expressions found", idx.SqlIdx().ID(ctx))
 				continue
 			}
-			m.Tracer.Log("Index %s: found %d key expressions, %d matched filters", idx.SqlIdx().ID(), len(keyExprs), len(matchedFilters))
+			m.Tracer.Log("Index %s: found %d key expressions, %d matched filters", idx.SqlIdx().ID(ctx), len(keyExprs), len(matchedFilters))
 
 			ita, err := plan.NewIndexedAccessForTableNode(ctx, rt, plan.NewLookupBuilder(ctx, idx.SqlIdx(), keyExprs, nullmask))
 			if err != nil {
-				m.Tracer.Log("Index %s: failed to create indexed table access: %v", idx.SqlIdx().ID(), err)
+				m.Tracer.Log("Index %s: failed to create indexed table access: %v", idx.SqlIdx().ID(ctx), err)
 				return err
 			}
 			lookup := &memo.IndexScan{
+				Ctx:   ctx,
 				Table: ita,
 				Alias: aliasName,
 				Index: idx,
@@ -386,7 +388,7 @@ func addLookupJoins(ctx *sql.Context, m *memo.Memo, cat sql.Catalog) error {
 				}
 			}
 
-			m.Tracer.Log("Adding lookup join with index %s, %d remaining filters", idx.SqlIdx().ID(), len(filters))
+			m.Tracer.Log("Adding lookup join with index %s, %d remaining filters", idx.SqlIdx().ID(ctx), len(filters))
 			m.MemoizeLookupJoin(ctx, e.Group(), join.Left, join.Right, join.Op, filters, lookup)
 		}
 		return nil
@@ -450,9 +452,9 @@ func keyForExpr(
 			// Check if targetCol is an indexed functional expression and if
 			// either side of the filter matches the generated expression.
 			if entry, ok := columnIdToIndexedExprMap[targetCol]; ok {
-				if entry.matches(left) {
+				if entry.matches(ctx, left) {
 					key = right
-				} else if entry.matches(right) {
+				} else if entry.matches(ctx, right) {
 					key = left
 				}
 			}
@@ -773,6 +775,7 @@ func addRightSemiJoins(ctx *sql.Context, m *memo.Memo, cat sql.Catalog) error {
 			}
 
 			lookup := &memo.IndexScan{
+				Ctx:   ctx,
 				Table: ita,
 				Alias: aliasName,
 				Index: idx,
@@ -858,6 +861,7 @@ func addCrossHashJoins(ctx *sql.Context, m *memo.Memo) error {
 
 		rel := &memo.HashJoin{
 			JoinBase:   join.Copy(),
+			Ctx:        ctx,
 			LeftAttrs:  nil,
 			RightAttrs: nil,
 		}
@@ -932,7 +936,7 @@ type rangeFilter struct {
 // getRangeFilters takes the filter expressions on a join and identifies "ranges" where a given expression
 // is constrained between two other expressions. (For instance, detecting "x > 5" and "x <= 10" and creating a range
 // object representing "5 < x <= 10". See range_filter_test.go for examples.
-func getRangeFilters(filters []sql.Expression) (ranges []rangeFilter) {
+func getRangeFilters(ctx *sql.Context, filters []sql.Expression) (ranges []rangeFilter) {
 	type candidateMap struct {
 		group    sql.Expression
 		isClosed bool
@@ -941,7 +945,7 @@ func getRangeFilters(filters []sql.Expression) (ranges []rangeFilter) {
 	upperToLower := make(map[string][]candidateMap)
 
 	findUpperBounds := func(value, min sql.Expression, closedOnLowerBound bool) {
-		for _, max := range lowerToUpper[value.String()] {
+		for _, max := range lowerToUpper[value.String(ctx)] {
 			ranges = append(ranges, rangeFilter{
 				value:              value,
 				min:                min,
@@ -952,7 +956,7 @@ func getRangeFilters(filters []sql.Expression) (ranges []rangeFilter) {
 	}
 
 	findLowerBounds := func(value, max sql.Expression, closedOnUpperBound bool) {
-		for _, min := range upperToLower[value.String()] {
+		for _, min := range upperToLower[value.String(ctx)] {
 			ranges = append(ranges, rangeFilter{
 				value:              value,
 				min:                min.group,
@@ -963,12 +967,12 @@ func getRangeFilters(filters []sql.Expression) (ranges []rangeFilter) {
 	}
 
 	addBounds := func(lower, upper sql.Expression, isClosed bool) {
-		lowerStr := lower.String()
+		lowerStr := lower.String(ctx)
 		lowerToUpper[lowerStr] = append(lowerToUpper[lowerStr], candidateMap{
 			group:    upper,
 			isClosed: isClosed,
 		})
-		upperStr := upper.String()
+		upperStr := upper.String(ctx)
 		upperToLower[upperStr] = append(upperToLower[upperStr], candidateMap{
 			group:    lower,
 			isClosed: isClosed,
@@ -1036,7 +1040,7 @@ func addRangeHeapJoin(ctx *sql.Context, m *memo.Memo) error {
 		leftTab := join.Left.RelProps.TableIdNodes()[0]
 		rightTab := join.Right.RelProps.TableIdNodes()[0]
 
-		for _, filter := range getRangeFilters(join.Filter) {
+		for _, filter := range getRangeFilters(ctx, join.Filter) {
 			if !(satisfiesScalarRefs(ctx, filter.value, join.Left.RelProps.OutputTables()) &&
 				satisfiesScalarRefs(ctx, filter.min, join.Right.RelProps.OutputTables()) &&
 				satisfiesScalarRefs(ctx, filter.max, join.Right.RelProps.OutputTables())) {
@@ -1085,6 +1089,7 @@ func addRangeHeapJoin(ctx *sql.Context, m *memo.Memo) error {
 				}
 				for _, rIdx := range rightIndexScans {
 					rel := &memo.RangeHeapJoin{
+						Ctx:      ctx,
 						JoinBase: join.Copy(),
 					}
 					rel.RangeHeap = &memo.RangeHeap{
@@ -1221,21 +1226,21 @@ func addMergeJoins(ctx *sql.Context, m *memo.Memo) error {
 			if lIndex.Order(ctx) == sql.IndexOrderNone {
 				// lookups can be unordered, merge indexes need to
 				// be globally ordered
-				m.Tracer.Log("Left index %s: skipping - unordered index", lIndex.SqlIdx().ID())
+				m.Tracer.Log("Left index %s: skipping - unordered index", lIndex.SqlIdx().ID(ctx))
 				continue
 			}
 
 			matchedEqFilters := matchedFiltersForLeftIndex(ctx, lIndex, join.Left.RelProps.FuncDeps(ctx).Constants(), eqFilters)
-			m.Tracer.Log("Left index %s: matched %d equality filters", lIndex.SqlIdx().ID(), len(matchedEqFilters))
+			m.Tracer.Log("Left index %s: matched %d equality filters", lIndex.SqlIdx().ID(ctx), len(matchedEqFilters))
 
 			for len(matchedEqFilters) > 0 {
 				for _, rIndex := range rIndexes {
 					if rIndex.Order(ctx) == sql.IndexOrderNone {
-						m.Tracer.Log("Right index %s: skipping - unordered index", rIndex.SqlIdx().ID())
+						m.Tracer.Log("Right index %s: skipping - unordered index", rIndex.SqlIdx().ID(ctx))
 						continue
 					}
 					if rightIndexMatchesFilters(ctx, rIndex, join.Left.RelProps.FuncDeps(ctx).Constants(), matchedEqFilters) {
-						m.Tracer.Log("Found matching index pair: left[%s] <-> right[%s]", lIndex.SqlIdx().ID(), rIndex.SqlIdx().ID())
+						m.Tracer.Log("Found matching index pair: left[%s] <-> right[%s]", lIndex.SqlIdx().ID(ctx), rIndex.SqlIdx().ID(ctx))
 						jb := join.Copy()
 						if d, ok := jb.Left.First.(*memo.Distinct); ok && lIndex.SqlIdx().IsUnique() {
 							jb.Left = d.Child
@@ -1278,10 +1283,10 @@ func addMergeJoins(ctx *sql.Context, m *memo.Memo) error {
 							return err
 						}
 						if !success {
-							m.Tracer.Log("Failed to create index scan for right index %s", rIndex.SqlIdx().ID())
+							m.Tracer.Log("Failed to create index scan for right index %s", rIndex.SqlIdx().ID(ctx))
 							continue
 						}
-						m.Tracer.Log("Adding merge join with left index %s, right index %s", lIndex.SqlIdx().ID(), rIndex.SqlIdx().ID())
+						m.Tracer.Log("Adding merge join with left index %s, right index %s", lIndex.SqlIdx().ID(ctx), rIndex.SqlIdx().ID(ctx))
 						m.MemoizeMergeJoin(ctx, e.Group(), join.Left, join.Right, lIndexScan, rIndexScan, jb.Op.AsMerge(), newFilters, false)
 					}
 				}
@@ -1509,7 +1514,7 @@ func makeIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, tab plan.Table
 
 	var cols []string
 	tablePrefix := fmt.Sprintf("%s.", tn.Name())
-	for _, e := range idx.SqlIdx().Expressions() {
+	for _, e := range idx.SqlIdx().Expressions(ctx) {
 		cols = append(cols, strings.TrimPrefix(e, tablePrefix))
 	}
 	var schemaName string
@@ -1517,8 +1522,9 @@ func makeIndexScan(ctx *sql.Context, statsProv sql.StatsProvider, tab plan.Table
 		schemaName = strings.ToLower(schTab.DatabaseSchema().SchemaName())
 	}
 
-	stats, _ := statsProv.GetStats(ctx, sql.NewStatQualifier(tn.Database().Name(), schemaName, tn.Name(), idx.SqlIdx().ID()), cols)
+	stats, _ := statsProv.GetStats(ctx, sql.NewStatQualifier(tn.Database().Name(), schemaName, tn.Name(), idx.SqlIdx().ID(ctx)), cols)
 	return &memo.IndexScan{
+		Ctx:   ctx,
 		Table: ret,
 		Index: idx,
 		Alias: alias,

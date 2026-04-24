@@ -107,7 +107,7 @@ func TestShowIndexes(t *testing.T) {
 			for i, row := range rows {
 				var nullable string
 				var columnName, ex interface{}
-				columnName, ex = "NULL", expressions[i].String()
+				columnName, ex = "NULL", expressions[i].String(ctx)
 				if col := GetColumnFromIndexExpr(ctx, ex.(string), test.table); col != nil {
 					columnName, ex = col.Name, nil
 					if col.Nullable {
@@ -118,7 +118,7 @@ func TestShowIndexes(t *testing.T) {
 				expected := sql.NewRow(
 					test.name,
 					1,
-					idx.ID(),
+					idx.ID(ctx),
 					i+1,
 					columnName,
 					nil,

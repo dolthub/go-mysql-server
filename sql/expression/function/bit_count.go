@@ -54,8 +54,8 @@ func (b *BitCount) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 	return sql.Collation_binary, 5
 }
 
-func (b *BitCount) String() string {
-	return fmt.Sprintf("%s(%s)", b.FunctionName(), b.Child)
+func (b *BitCount) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", b.FunctionName(), b.Child.String(ctx))
 }
 
 // WithChildren implements the Expression interface.

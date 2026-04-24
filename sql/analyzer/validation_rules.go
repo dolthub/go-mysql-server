@@ -38,7 +38,7 @@ func validateOffsetAndLimit(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pl
 			switch e := n.Limit.(type) {
 			case *expression.Literal:
 				if !types.IsInteger(e.Type(ctx)) {
-					err = sql.ErrInvalidType.New(e.Type(ctx).String())
+					err = sql.ErrInvalidType.New(e.Type(ctx).String(ctx))
 					return false
 				}
 				i, err = e.Eval(ctx, nil)
@@ -57,14 +57,14 @@ func validateOffsetAndLimit(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pl
 			case *expression.BindVar, *expression.ProcedureParam:
 				return true
 			default:
-				err = sql.ErrInvalidType.New(e.Type(ctx).String())
+				err = sql.ErrInvalidType.New(e.Type(ctx).String(ctx))
 				return false
 			}
 		case *plan.Offset:
 			switch e := n.Offset.(type) {
 			case *expression.Literal:
 				if !types.IsInteger(e.Type(ctx)) {
-					err = sql.ErrInvalidType.New(e.Type(ctx).String())
+					err = sql.ErrInvalidType.New(e.Type(ctx).String(ctx))
 					return false
 				}
 				i, err = e.Eval(ctx, nil)
@@ -83,7 +83,7 @@ func validateOffsetAndLimit(ctx *sql.Context, a *Analyzer, n sql.Node, scope *pl
 			case *expression.BindVar, *expression.ProcedureParam:
 				return true
 			default:
-				err = sql.ErrInvalidType.New(e.Type(ctx).String())
+				err = sql.ErrInvalidType.New(e.Type(ctx).String(ctx))
 				return false
 			}
 		default:
@@ -289,7 +289,7 @@ func validateGroupBy(ctx *sql.Context, a *Analyzer, n sql.Node, scope *plan.Scop
 			}
 			for _, expr := range exprs {
 				sql.Inspect(ctx, expr, func(ctx *sql.Context, expr sql.Expression) bool {
-					exprStr := strings.ToLower(expr.String())
+					exprStr := strings.ToLower(expr.String(ctx))
 					if primaryKeys[exprStr] && !groupBys[exprStr] {
 						groupByPrimaryKeys++
 					}
@@ -381,14 +381,14 @@ func getSelectAndOrderByExprs(ctx *sql.Context, project *plan.Project, orderBy *
 	} else {
 		sd := make(map[string]sql.Expression, len(selectDeps))
 		for _, dep := range selectDeps {
-			sd[strings.ToLower(dep.String())] = dep
+			sd[strings.ToLower(dep.String(ctx))] = dep
 		}
 
 		selectExprs := make([]sql.Expression, 0)
 		orderByExprs := make([]sql.Expression, 0)
 
 		for _, expr := range project.Projections {
-			if !project.AliasDeps[strings.ToLower(expr.String())] {
+			if !project.AliasDeps[strings.ToLower(expr.String(ctx))] {
 				resolvedExpr := resolveExpr(ctx, expr, sd, groupBys)
 				selectExprs = append(selectExprs, resolvedExpr)
 			}
@@ -407,17 +407,17 @@ func getSelectAndOrderByExprs(ctx *sql.Context, project *plan.Project, orderBy *
 
 func resolveExpr(ctx *sql.Context, expr sql.Expression, selectDeps map[string]sql.Expression, groupBys map[string]bool) sql.Expression {
 	resolvedExpr, _, _ := transform.Expr(ctx, expr, func(ctx *sql.Context, expr sql.Expression) (sql.Expression, transform.TreeIdentity, error) {
-		if groupBys[strings.ToLower(expr.String())] {
+		if groupBys[strings.ToLower(expr.String(ctx))] {
 			return expr, transform.SameTree, nil
 		}
 		switch expr := expr.(type) {
 		case *expression.Alias:
-			if dep, ok := selectDeps[strings.ToLower(expr.Child.String())]; ok {
+			if dep, ok := selectDeps[strings.ToLower(expr.Child.String(ctx))]; ok {
 				selectDeps[strings.ToLower(expr.Name())] = dep
 				return dep, transform.NewTree, nil
 			}
 		case *expression.GetField:
-			if dep, ok := selectDeps[strings.ToLower(expr.String())]; ok {
+			if dep, ok := selectDeps[strings.ToLower(expr.String(ctx))]; ok {
 				return dep, transform.NewTree, nil
 			}
 		}
@@ -435,7 +435,7 @@ func expressionReferencesOnlyGroupBys(ctx *sql.Context, groupBys map[string]bool
 		case nil, sql.Aggregation, *expression.Literal:
 			return false
 		default:
-			if groupBys[strings.ToLower(expr.String())] {
+			if groupBys[strings.ToLower(expr.String(ctx))] {
 				return false
 			}
 
@@ -450,7 +450,7 @@ func expressionReferencesOnlyGroupBys(ctx *sql.Context, groupBys map[string]bool
 				// one row for an aggregated query, we will error out later on.
 				if _, isSubquery := expr.(*plan.Subquery); !(isSubquery && noGroupBy) {
 					valid = false
-					col = expr.String()
+					col = expr.String(ctx)
 				}
 				return false
 			}
@@ -538,8 +538,8 @@ func validateUnionSchemasMatch(ctx *sql.Context, a *Analyzer, n sql.Node, scope 
 			for i := range ls {
 				if !ls[i].Type.Equals(rs[i].Type) {
 					firstmismatch = []string{
-						ls[i].Type.String(),
-						rs[i].Type.String(),
+						ls[i].Type.String(ctx),
+						rs[i].Type.String(ctx),
 					}
 					return false
 				}
@@ -969,7 +969,7 @@ func checkForAggregationFunctions(ctx *sql.Context, exprs []sql.Expression) erro
 	for _, e := range exprs {
 		sql.Inspect(ctx, e, func(ctx *sql.Context, ie sql.Expression) bool {
 			if _, ok := ie.(sql.Aggregation); ok {
-				validationErr = sql.ErrAggregationUnsupported.New(e.String())
+				validationErr = sql.ErrAggregationUnsupported.New(e.String(ctx))
 			}
 			return validationErr == nil
 		})
@@ -988,7 +988,7 @@ func checkForNonAggregatedColumnReferences(ctx *sql.Context, w *plan.Window) err
 				index, gf := findFirstWindowAggregationColumnReference(ctx, w)
 
 				if index >= 0 {
-					return sql.ErrNonAggregatedColumnWithoutGroupBy.New(index, gf.String())
+					return sql.ErrNonAggregatedColumnWithoutGroupBy.New(index, gf.String(ctx))
 				} else {
 					// We should always have an index and GetField value to use, but just in case
 					// something changes that, return a similar error message without those details.

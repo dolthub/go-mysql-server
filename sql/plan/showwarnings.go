@@ -44,8 +44,8 @@ func (ShowWarnings) CollationCoercibility(ctx *sql.Context) (collation sql.Colla
 	return sql.Collation_binary, 7
 }
 
-// String implements the fmt.Stringer interface.
-func (ShowWarnings) String() string {
+// String implements the sql.Stringer interface.
+func (ShowWarnings) String(ctx *sql.Context) string {
 	return "SHOW WARNINGS"
 }
 

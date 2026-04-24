@@ -408,7 +408,7 @@ func TestDatetimeString(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v %v", test.typ, test.expectedStr), func(t *testing.T) {
-			str := test.typ.String()
+			str := test.typ.String(sql.NewEmptyContext())
 			assert.Equal(t, test.expectedStr, str)
 		})
 	}
@@ -441,7 +441,7 @@ func TestDatetimeOverflowUnderflow(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.typ.String()+"_"+tt.val.(string), func(t *testing.T) {
+		t.Run(tt.typ.String(ctx)+"_"+tt.val.(string), func(t *testing.T) {
 			_, inRange, err := tt.typ.Convert(ctx, tt.val)
 
 			if tt.expectError {

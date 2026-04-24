@@ -59,8 +59,8 @@ func (*FindInSet) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 	return ctx.GetCollation(), 5
 }
 
-func (f *FindInSet) String() string {
-	return fmt.Sprintf("%s(%s from %s)", f.FunctionName(), f.LeftChild, f.RightChild)
+func (f *FindInSet) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s from %s)", f.FunctionName(), f.LeftChild.String(ctx), f.RightChild.String(ctx))
 }
 
 // WithChildren implements the Expression interface.

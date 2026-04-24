@@ -52,7 +52,7 @@ func (r *RenameTable) WithDatabase(db sql.Database) (sql.Node, error) {
 	return &nr, nil
 }
 
-func (r *RenameTable) String() string {
+func (r *RenameTable) String(ctx *sql.Context) string {
 	return fmt.Sprintf("Rename table %s to %s", r.OldNames, r.NewNames)
 }
 
@@ -253,7 +253,7 @@ func (a *AddColumn) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
-func (a *AddColumn) String() string {
+func (a *AddColumn) String(ctx *sql.Context) string {
 	return fmt.Sprintf("add column %s", a.column.Name)
 }
 
@@ -371,10 +371,10 @@ type ColDefaultExpression struct {
 var _ sql.Expression = ColDefaultExpression{}
 var _ sql.CollationCoercible = ColDefaultExpression{}
 
-func (c ColDefaultExpression) Resolved() bool               { return true }
-func (c ColDefaultExpression) String() string               { return "" }
-func (c ColDefaultExpression) Type(*sql.Context) sql.Type   { return c.Column.Type }
-func (c ColDefaultExpression) IsNullable(*sql.Context) bool { return c.Column.Default == nil }
+func (c ColDefaultExpression) Resolved() bool                 { return true }
+func (c ColDefaultExpression) String(ctx *sql.Context) string { return "" }
+func (c ColDefaultExpression) Type(*sql.Context) sql.Type     { return c.Column.Type }
+func (c ColDefaultExpression) IsNullable(*sql.Context) bool   { return c.Column.Default == nil }
 func (c ColDefaultExpression) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, coercibility byte) {
 	if c.Column != nil && c.Column.Default != nil {
 		return c.Column.Default.CollationCoercibility(ctx)
@@ -458,7 +458,7 @@ func (d *DropColumn) WithDatabase(db sql.Database) (sql.Node, error) {
 	return &nd, nil
 }
 
-func (d *DropColumn) String() string {
+func (d *DropColumn) String(ctx *sql.Context) string {
 	return fmt.Sprintf("drop column %s", d.Column)
 }
 
@@ -661,7 +661,7 @@ func (r *RenameColumn) TargetSchema() sql.Schema {
 	return r.targetSchema
 }
 
-func (r *RenameColumn) String() string {
+func (r *RenameColumn) String(ctx *sql.Context) string {
 	return fmt.Sprintf("rename column %s to %s", r.ColumnName, r.NewColumnName)
 }
 
@@ -785,7 +785,7 @@ func (m *ModifyColumn) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
-func (m *ModifyColumn) String() string {
+func (m *ModifyColumn) String(ctx *sql.Context) string {
 	return fmt.Sprintf("modify column %s", m.column.Name)
 }
 
@@ -939,13 +939,13 @@ func (atc *AlterTableCollation) IsReadOnly() bool {
 }
 
 // String implements the interface sql.Node.
-func (atc *AlterTableCollation) String() string {
-	return fmt.Sprintf("alter table %s collate %s", atc.Table.String(), atc.Collation.Name())
+func (atc *AlterTableCollation) String(ctx *sql.Context) string {
+	return fmt.Sprintf("alter table %s collate %s", atc.Table.String(ctx), atc.Collation.Name())
 }
 
 // DebugString implements the interface sql.Node.
 func (atc *AlterTableCollation) DebugString(ctx *sql.Context) string {
-	return atc.String()
+	return atc.String(ctx)
 }
 
 // Resolved implements the interface sql.Node.
@@ -1003,13 +1003,13 @@ func (atc *AlterTableComment) IsReadOnly() bool {
 }
 
 // String implements the interface sql.Node
-func (atc *AlterTableComment) String() string {
-	return fmt.Sprintf("alter table %s comment %s", atc.Table.String(), atc.Comment)
+func (atc *AlterTableComment) String(ctx *sql.Context) string {
+	return fmt.Sprintf("alter table %s comment %s", atc.Table.String(ctx), atc.Comment)
 }
 
 // DebugString implements the interface sql.Node
 func (atc *AlterTableComment) DebugString(ctx *sql.Context) string {
-	return atc.String()
+	return atc.String(ctx)
 }
 
 // Resolved implements the interface sql.Node

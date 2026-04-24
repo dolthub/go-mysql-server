@@ -112,8 +112,8 @@ func (f *If) IsNullable(ctx *sql.Context) bool {
 	return f.ifTrue.IsNullable(ctx) || f.ifFalse.IsNullable(ctx)
 }
 
-func (f *If) String() string {
-	return fmt.Sprintf("%s(%s,%s,%s)", f.FunctionName(), f.expr, f.ifTrue, f.ifFalse)
+func (f *If) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s,%s,%s)", f.FunctionName(), f.expr.String(ctx), f.ifTrue.String(ctx), f.ifFalse.String(ctx))
 }
 
 // WithChildren implements the Expression interface.

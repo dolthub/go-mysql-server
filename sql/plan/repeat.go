@@ -43,16 +43,16 @@ func NewRepeat(label string, condition sql.Expression, block *Block) *Repeat {
 }
 
 // String implements the interface sql.Node.
-func (r *Repeat) String() string {
+func (r *Repeat) String(ctx *sql.Context) string {
 	label := ""
 	if len(r.Label) > 0 {
 		label = r.Label + ": "
 	}
 	p := sql.NewTreePrinter()
-	_ = p.WriteNode("%s: REPEAT(%s)", label, r.Condition.String())
+	_ = p.WriteNode("%s: REPEAT(%s)", label, r.Condition.String(ctx))
 	var children []string
 	for _, s := range r.statements {
-		children = append(children, s.String())
+		children = append(children, s.String(ctx))
 	}
 	_ = p.WriteChildren(children...)
 	return p.String()

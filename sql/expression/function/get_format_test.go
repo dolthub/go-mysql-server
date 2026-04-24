@@ -158,7 +158,8 @@ func TestGetFormat(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		t.Run(fmt.Sprintf("%s %s", tt.left.String(), tt.right.String()), func(t *testing.T) {
+		ctx := sql.NewEmptyContext()
+		t.Run(fmt.Sprintf("%s %s", tt.left.String(ctx), tt.right.String(ctx)), func(t *testing.T) {
 			require := require.New(t)
 			ctx := sql.NewEmptyContext()
 			f := NewGetFormat(ctx, tt.left, tt.right)

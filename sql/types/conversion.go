@@ -812,7 +812,7 @@ func ConvertOrTruncate(ctx *sql.Context, i any, t sql.Type) (any, sql.ConvertInR
 	// the type and log a warning in the session.
 	warning := sql.Warning{
 		Level:   "Warning",
-		Message: fmt.Sprintf("Truncated incorrect %s value: %v", t.String(), i),
+		Message: fmt.Sprintf("Truncated incorrect %s value: %v", t.String(ctx), i),
 		Code:    1292,
 	}
 

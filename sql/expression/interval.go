@@ -184,8 +184,8 @@ func (i *Interval) WithChildren(ctx *sql.Context, children ...sql.Expression) (s
 	return NewInterval(children[0], i.Unit), nil
 }
 
-func (i *Interval) String() string {
-	return fmt.Sprintf("INTERVAL %s %s", i.Child, i.Unit)
+func (i *Interval) String(ctx *sql.Context) string {
+	return fmt.Sprintf("INTERVAL %s %s", i.Child.String(ctx), i.Unit)
 }
 
 var unitTextFormats = map[string]*regexp.Regexp{

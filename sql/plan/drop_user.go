@@ -49,7 +49,7 @@ func (n *DropUser) Schema(ctx *sql.Context) sql.Schema {
 }
 
 // String implements the interface sql.Node.
-func (n *DropUser) String() string {
+func (n *DropUser) String(ctx *sql.Context) string {
 	users := make([]string, len(n.Users))
 	for i, user := range n.Users {
 		users[i] = user.String("")

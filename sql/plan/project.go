@@ -129,7 +129,7 @@ func (p *Project) Schema(ctx *sql.Context) sql.Schema {
 	if p.sch == nil {
 		p.sch = make(sql.Schema, len(p.Projections))
 		for i, expr := range p.Projections {
-			p.sch[i] = transform.ExpressionToColumn(ctx, expr, AliasSubqueryString(expr))
+			p.sch[i] = transform.ExpressionToColumn(ctx, expr, AliasSubqueryString(ctx, expr))
 			if gf := unwrapGetField(expr); gf != nil {
 				p.sch[i].Default = findDefault(ctx, p.Child, gf)
 			}
@@ -161,11 +161,8 @@ func (p *Project) Describe(ctx *sql.Context, options sql.DescribeOptions) string
 	return pr.String()
 }
 
-// String implements the fmt.Stringer interface.
-func (p *Project) String() string {
-	// To maintain compatibility with fmt.Stringer we have to use an empty context, but this will fail in any case that
-	// requires a context to determine a string (such as an integrator using the context to contain type information).
-	ctx := sql.NewEmptyContext()
+// String implements the sql.Stringer interface.
+func (p *Project) String(ctx *sql.Context) string {
 	return p.Describe(ctx, sql.DescribeOptions{
 		Analyze:   false,
 		Estimates: false,

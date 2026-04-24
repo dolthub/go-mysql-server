@@ -41,7 +41,7 @@ func (s LookupSequenceTable) NewInstance(ctx *sql.Context, db sql.Database, args
 	return LookupSequenceTable{newIntSequenceTable.(IntSequenceTable), length.(int64)}, nil
 }
 
-func (s LookupSequenceTable) String() string {
+func (s LookupSequenceTable) String(ctx *sql.Context) string {
 	return fmt.Sprintf("sequence(%s, %d)", s.name, s.Len)
 }
 

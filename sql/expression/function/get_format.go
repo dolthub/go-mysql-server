@@ -61,8 +61,8 @@ func (*GetFormat) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 	return ctx.GetCollation(), 5
 }
 
-func (g *GetFormat) String() string {
-	return fmt.Sprintf("%s(%s, %s)", g.FunctionName(), g.LeftChild, g.RightChild)
+func (g *GetFormat) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s, %s)", g.FunctionName(), g.LeftChild.String(ctx), g.RightChild.String(ctx))
 }
 
 // WithChildren implements the Expression interface.

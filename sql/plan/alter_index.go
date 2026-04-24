@@ -231,12 +231,12 @@ func (p *AlterIndex) WithDatabase(database sql.Database) (sql.Node, error) {
 	return &np, nil
 }
 
-func (p *AlterIndex) String() string {
+func (p *AlterIndex) String(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	switch p.Action {
 	case IndexAction_Create:
 		_ = pr.WriteNode("CreateIndex(%s)", p.IndexName)
-		children := []string{fmt.Sprintf("Table(%s)", p.Table.String())}
+		children := []string{fmt.Sprintf("Table(%s)", p.Table.String(ctx))}
 		switch p.Constraint {
 		case sql.IndexConstraint_Unique:
 			children = append(children, "Constraint(UNIQUE)")
@@ -266,11 +266,11 @@ func (p *AlterIndex) String() string {
 		_ = pr.WriteChildren(children...)
 	case IndexAction_Drop:
 		_ = pr.WriteNode("DropIndex(%s)", p.IndexName)
-		_ = pr.WriteChildren(fmt.Sprintf("Table(%s)", p.Table.String()))
+		_ = pr.WriteChildren(fmt.Sprintf("Table(%s)", p.Table.String(ctx)))
 	case IndexAction_Rename:
 		_ = pr.WriteNode("RenameIndex")
 		_ = pr.WriteChildren(
-			fmt.Sprintf("Table(%s)", p.Table.String()),
+			fmt.Sprintf("Table(%s)", p.Table.String(ctx)),
 			fmt.Sprintf("FromIndex(%s)", p.PreviousIndexName),
 			fmt.Sprintf("ToIndex(%s)", p.IndexName),
 		)

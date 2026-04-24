@@ -62,8 +62,8 @@ func (s *StrCmp) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 	return sql.ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
 }
 
-func (s *StrCmp) String() string {
-	return fmt.Sprintf("%s(%s,%s)", s.FunctionName(), s.LeftChild, s.RightChild)
+func (s *StrCmp) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s,%s)", s.FunctionName(), s.LeftChild.String(ctx), s.RightChild.String(ctx))
 }
 
 // WithChildren implements the Expression interface.

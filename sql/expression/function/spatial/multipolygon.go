@@ -60,10 +60,10 @@ func (*MultiPolygon) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 	return sql.Collation_binary, 5
 }
 
-func (p *MultiPolygon) String() string {
+func (p *MultiPolygon) String(ctx *sql.Context) string {
 	var args = make([]string, len(p.ChildExpressions))
 	for i, arg := range p.ChildExpressions {
-		args[i] = arg.String()
+		args[i] = arg.String(ctx)
 	}
 	return fmt.Sprintf("%s(%s)", p.FunctionName(), strings.Join(args, ","))
 }

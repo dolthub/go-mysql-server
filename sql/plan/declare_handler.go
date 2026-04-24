@@ -56,7 +56,7 @@ func (d *DeclareHandler) IsReadOnly() bool {
 }
 
 // String implements the interface sql.Node.
-func (d *DeclareHandler) String() string {
+func (d *DeclareHandler) String(ctx *sql.Context) string {
 	var action string
 	switch d.Action {
 	case expression.DeclareHandlerAction_Continue:
@@ -66,7 +66,7 @@ func (d *DeclareHandler) String() string {
 	case expression.DeclareHandlerAction_Undo:
 		action = "UNDO"
 	}
-	return fmt.Sprintf("DECLARE %s HANDLER FOR NOT FOUND %s", action, d.Statement.String())
+	return fmt.Sprintf("DECLARE %s HANDLER FOR NOT FOUND %s", action, d.Statement.String(ctx))
 }
 
 // DebugString implements the interface sql.DebugStringer.

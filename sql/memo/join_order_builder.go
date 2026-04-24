@@ -572,27 +572,27 @@ func (j *joinOrderBuilder) buildJoinLeaf(ctx *sql.Context, n plan.TableIdNode) *
 	b := &sourceBase{relBase: &relBase{}}
 	switch n := n.(type) {
 	case *plan.ResolvedTable:
-		rel = &TableScan{sourceBase: b, Table: n}
+		rel = &TableScan{sourceBase: b, Table: n, ctx: ctx}
 	case *plan.TableAlias:
-		rel = &TableAlias{sourceBase: b, Table: n}
+		rel = &TableAlias{sourceBase: b, Table: n, ctx: ctx}
 	case *plan.RecursiveTable:
-		rel = &RecursiveTable{sourceBase: b, Table: n}
+		rel = &RecursiveTable{sourceBase: b, Table: n, ctx: ctx}
 	case *plan.SubqueryAlias:
-		rel = &SubqueryAlias{sourceBase: b, Table: n}
+		rel = &SubqueryAlias{sourceBase: b, Table: n, ctx: ctx}
 	case *plan.RecursiveCte:
-		rel = &RecursiveCte{sourceBase: b, Table: n}
+		rel = &RecursiveCte{sourceBase: b, Table: n, ctx: ctx}
 	case *plan.IndexedTableAccess:
-		rel = &TableScan{sourceBase: b, Table: n.TableNode.(plan.TableIdNode)}
+		rel = &TableScan{sourceBase: b, Table: n.TableNode.(plan.TableIdNode), ctx: ctx}
 	case *plan.ValueDerivedTable:
-		rel = &Values{sourceBase: b, Table: n}
+		rel = &Values{sourceBase: b, Table: n, ctx: ctx}
 	case *plan.JSONTable:
-		rel = &JSONTable{sourceBase: b, Table: n}
+		rel = &JSONTable{sourceBase: b, Table: n, ctx: ctx}
 	case sql.TableFunction:
-		rel = &TableFunc{sourceBase: b, Table: n}
+		rel = &TableFunc{sourceBase: b, Table: n, ctx: ctx}
 	case *plan.EmptyTable:
-		rel = &EmptyTable{sourceBase: b, Table: n}
+		rel = &EmptyTable{sourceBase: b, Table: n, ctx: ctx}
 	case *plan.SetOp:
-		rel = &SetOp{sourceBase: b, Table: n}
+		rel = &SetOp{sourceBase: b, Table: n, ctx: ctx}
 	default:
 		err := fmt.Errorf("%w: %T", ErrUnsupportedReorderNode, n)
 		j.m.HandleErr(err)
@@ -773,17 +773,18 @@ func (j *joinOrderBuilder) addJoin(ctx *sql.Context, op plan.JoinType, s1, s2 ve
 			group = j.memoize(ctx, op, left, right, joinFilter)
 			j.plans[union] = group
 		} else {
-			j.addJoinToGroup(op, left, right, joinFilter, selFilters, group)
+			j.addJoinToGroup(ctx, op, left, right, joinFilter, selFilters, group)
 		}
 	}
 
 	if commute(op) {
-		j.addJoinToGroup(op, right, left, joinFilter, selFilters, group)
+		j.addJoinToGroup(ctx, op, right, left, joinFilter, selFilters, group)
 	}
 }
 
 // addJoinToGroup adds a new plan to existing groups
 func (j *joinOrderBuilder) addJoinToGroup(
+	ctx *sql.Context,
 	op plan.JoinType,
 	left *ExprGroup,
 	right *ExprGroup,
@@ -807,7 +808,7 @@ func (j *joinOrderBuilder) addJoinToGroup(
 			j.m.HandleErr(fmt.Errorf("failed to reorder join, unexpected intermediate expression: %T", e))
 		}
 	}
-	rel := j.constructJoin(op, left, right, joinFilter, group)
+	rel := j.constructJoin(ctx, op, left, right, joinFilter, group)
 	group.Prepend(rel)
 	return
 }
@@ -820,11 +821,12 @@ func (j *joinOrderBuilder) memoize(
 	right *ExprGroup,
 	joinFilter []sql.Expression,
 ) *ExprGroup {
-	rel := j.constructJoin(op, left, right, joinFilter, nil)
+	rel := j.constructJoin(ctx, op, left, right, joinFilter, nil)
 	return j.m.NewExprGroup(ctx, rel)
 }
 
 func (j *joinOrderBuilder) constructJoin(
+	ctx *sql.Context,
 	op plan.JoinType,
 	left *ExprGroup,
 	right *ExprGroup,
@@ -841,23 +843,23 @@ func (j *joinOrderBuilder) constructJoin(
 	}
 	switch op {
 	case plan.JoinTypeCross:
-		rel = &CrossJoin{b}
+		rel = &CrossJoin{ctx, b}
 	case plan.JoinTypeInner:
-		rel = &InnerJoin{b}
+		rel = &InnerJoin{ctx, b}
 	case plan.JoinTypeFullOuter:
-		rel = &FullOuterJoin{b}
+		rel = &FullOuterJoin{ctx, b}
 	case plan.JoinTypeLeftOuter:
-		rel = &LeftJoin{b}
+		rel = &LeftJoin{ctx, b}
 	case plan.JoinTypeSemi:
-		rel = &SemiJoin{b}
+		rel = &SemiJoin{ctx, b}
 	case plan.JoinTypeAnti, plan.JoinTypeAntiIncludeNulls:
-		rel = &AntiJoin{b}
+		rel = &AntiJoin{ctx, b}
 	case plan.JoinTypeLateralInner, plan.JoinTypeLateralCross,
 		plan.JoinTypeLateralRight, plan.JoinTypeLateralLeft:
-		rel = &LateralJoin{b}
+		rel = &LateralJoin{ctx, b}
 		b.Op = op
 	default:
-		panic(fmt.Sprintf("unexpected join type: %s", op))
+		panic(fmt.Sprintf("unexpected join type: %s", op.String(ctx)))
 	}
 
 	if j.newPlanCb != nil {
@@ -954,15 +956,15 @@ func (e *edge) populateEdgeProps(ctx *sql.Context, tableIds []sql.TableId, edges
 	e.calcTES(edges)
 }
 
-func (e *edge) String() string {
+func (e *edge) String(ctx *sql.Context) string {
 	b := strings.Builder{}
 	b.WriteString("edge\n")
-	b.WriteString(fmt.Sprintf("  - joinType: %s\n", e.op.joinType.String()))
+	b.WriteString(fmt.Sprintf("  - joinType: %s\n", e.op.joinType.String(ctx)))
 	if e.filters != nil {
 		b.WriteString(" - on: ")
 		sep := ""
 		for _, e := range e.filters {
-			b.WriteString(fmt.Sprintf("%s%s", sep, e.String()))
+			b.WriteString(fmt.Sprintf("%s%s", sep, e.String(ctx)))
 		}
 		b.WriteString("\n")
 	}

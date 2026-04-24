@@ -42,8 +42,8 @@ func (t *ToDays) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 }
 
 // String implements sql.Stringer
-func (t *ToDays) String() string {
-	return fmt.Sprintf("%s(%s)", t.FunctionName(), t.Child.String())
+func (t *ToDays) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", t.FunctionName(), t.Child.String(ctx))
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -136,8 +136,8 @@ func (f *FromDays) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 }
 
 // String implements sql.Stringer
-func (f *FromDays) String() string {
-	return fmt.Sprintf("%s(%s)", f.FunctionName(), f.Child.String())
+func (f *FromDays) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", f.FunctionName(), f.Child.String(ctx))
 }
 
 // FunctionName implements sql.FunctionExpression
@@ -260,8 +260,8 @@ func (f *LastDay) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 }
 
 // String implements sql.Stringer
-func (f *LastDay) String() string {
-	return fmt.Sprintf("%s(%s)", f.FunctionName(), f.Child.String())
+func (f *LastDay) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", f.FunctionName(), f.Child.String(ctx))
 }
 
 // FunctionName implements sql.FunctionExpression

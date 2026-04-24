@@ -1,6 +1,7 @@
 package types
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -114,7 +115,7 @@ func (b *NoCopyBuilder) Bytes() []byte {
 	return res
 }
 
-func (b *NoCopyBuilder) String() string {
+func (b *NoCopyBuilder) String(ctx *sql.Context) string {
 	return string(b.Bytes())
 }
 
@@ -134,14 +135,14 @@ func WriteStrings(wr io.Writer, strs ...string) (int, error) {
 
 // marshalToMySqlString is a helper function to marshal a JSONDocument to a string that is
 // compatible with MySQL's JSON output, including spaces.
-func marshalToMySqlString(val interface{}) (string, error) {
+func marshalToMySqlString(ctx context.Context, val interface{}) (string, error) {
 	b := NewNoCopyBuilder(1024)
 	err := writeMarshalledValue(b, val)
 	if err != nil {
 		return "", err
 	}
-
-	return b.String(), nil
+	sqlCtx, _ := ctx.(*sql.Context) // TODO: We should enforce the SQL context through all JSON interfaces
+	return b.String(sqlCtx), nil
 }
 
 // marshalToMySqlBytes is a helper function to marshal a JSONDocument to a byte slice that is

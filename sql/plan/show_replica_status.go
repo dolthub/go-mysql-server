@@ -61,7 +61,7 @@ func (s *ShowReplicaStatus) Resolved() bool {
 	return true
 }
 
-func (s *ShowReplicaStatus) String() string {
+func (s *ShowReplicaStatus) String(ctx *sql.Context) string {
 	if s.useDeprecatedColumnNames {
 		return "SHOW SLAVE STATUS"
 	} else {

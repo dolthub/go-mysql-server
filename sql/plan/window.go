@@ -52,14 +52,14 @@ func (w *Window) IsReadOnly() bool {
 	return w.Child.IsReadOnly()
 }
 
-func (w *Window) String() string {
+func (w *Window) String(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	var exprs = make([]string, len(w.SelectExprs))
 	for i, expr := range w.SelectExprs {
-		exprs[i] = expr.String()
+		exprs[i] = expr.String(ctx)
 	}
 	_ = pr.WriteNode("Window(%s)", strings.Join(exprs, ", "))
-	_ = pr.WriteChildren(w.Child.String())
+	_ = pr.WriteChildren(w.Child.String(ctx))
 	return pr.String()
 }
 
@@ -79,7 +79,7 @@ func (w *Window) DebugString(ctx *sql.Context) string {
 func (w *Window) Schema(ctx *sql.Context) sql.Schema {
 	var s = make(sql.Schema, len(w.SelectExprs))
 	for i, e := range w.SelectExprs {
-		s[i] = transform.ExpressionToColumn(ctx, e, AliasSubqueryString(e))
+		s[i] = transform.ExpressionToColumn(ctx, e, AliasSubqueryString(ctx, e))
 	}
 	return s
 }

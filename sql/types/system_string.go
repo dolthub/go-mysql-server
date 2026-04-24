@@ -15,7 +15,6 @@
 package types
 
 import (
-	"context"
 	"reflect"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -41,7 +40,7 @@ func NewSystemStringType(varName string) sql.SystemVariableType {
 }
 
 // Compare implements Type interface.
-func (t systemStringType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
+func (t systemStringType) Compare(ctx *sql.Context, a interface{}, b interface{}) (int, error) {
 	as, _, err := t.Convert(ctx, a)
 	if err != nil {
 		return 0, err
@@ -63,7 +62,7 @@ func (t systemStringType) Compare(ctx context.Context, a interface{}, b interfac
 }
 
 // Convert implements Type interface.
-func (t systemStringType) Convert(c context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t systemStringType) Convert(c *sql.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
 		return "", sql.InRange, nil
 	}
@@ -109,7 +108,7 @@ func (t systemStringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sql
 }
 
 // String implements Type interface.
-func (t systemStringType) String() string {
+func (t systemStringType) String(ctx *sql.Context) string {
 	return "system_string"
 }
 
@@ -134,16 +133,16 @@ func (t systemStringType) CollationCoercibility(ctx *sql.Context) (collation sql
 }
 
 // EncodeValue implements SystemVariableType interface.
-func (t systemStringType) EncodeValue(val interface{}) (string, error) {
+func (t systemStringType) EncodeValue(ctx *sql.Context, val interface{}) (string, error) {
 	expectedVal, ok := val.(string)
 	if !ok {
-		return "", sql.ErrSystemVariableCodeFail.New(val, t.String())
+		return "", sql.ErrSystemVariableCodeFail.New(val, t.String(ctx))
 	}
 	return expectedVal, nil
 }
 
 // DecodeValue implements SystemVariableType interface.
-func (t systemStringType) DecodeValue(val string) (interface{}, error) {
+func (t systemStringType) DecodeValue(ctx *sql.Context, val string) (interface{}, error) {
 	return val, nil
 }
 

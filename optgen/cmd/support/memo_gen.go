@@ -108,7 +108,7 @@ func (g *MemoGen) genType(defn ExprDef) {
 func (g *MemoGen) genRelInterfaces(defn ExprDef) {
 	fmt.Fprintf(g.w, "var _ RelExpr = (*%s)(nil)\n", defn.Name)
 	fmt.Fprintf(g.w, "var _ fmt.Formatter = (*%s)(nil)\n", defn.Name)
-	fmt.Fprintf(g.w, "var _ fmt.Stringer = (*%s)(nil)\n", defn.Name)
+	fmt.Fprintf(g.w, "var _ sql.Stringer = (*%s)(nil)\n", defn.Name)
 	if defn.SourceType != "" {
 		fmt.Fprintf(g.w, "var _ SourceRel = (*%s)(nil)\n", defn.Name)
 	} else if defn.Join {
@@ -131,14 +131,14 @@ func (g *MemoGen) genScalarInterfaces(defn ExprDef) {
 }
 
 func (g *MemoGen) genStringer(defn ExprDef) {
-	fmt.Fprintf(g.w, "func (r *%s) String() string {\n", defn.Name)
+	fmt.Fprintf(g.w, "func (r *%s) String(ctx *sql.Context) string {\n", defn.Name)
 	fmt.Fprintf(g.w, "  return fmt.Sprintf(\"%%s\", r)\n")
 	fmt.Fprintf(g.w, "}\n\n")
 }
 
 func (g *MemoGen) genFormatter(defn ExprDef) {
 	fmt.Fprintf(g.w, "func (r *%s) Format(s fmt.State, verb rune) {\n", defn.Name)
-	fmt.Fprintf(g.w, "  FormatExpr(r, s, verb)\n")
+	fmt.Fprintf(g.w, "  FormatExpr(r.ctx, r, s, verb)\n")
 	fmt.Fprintf(g.w, "}\n\n")
 }
 

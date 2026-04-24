@@ -15,7 +15,6 @@
 package spatial
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql/types"
@@ -62,8 +61,8 @@ func (*Intersects) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 	return sql.Collation_binary, 5
 }
 
-func (i *Intersects) String() string {
-	return fmt.Sprintf("%s(%s,%s)", i.FunctionName(), i.LeftChild, i.RightChild)
+func (i *Intersects) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s,%s)", i.FunctionName(), i.LeftChild.String(ctx), i.RightChild.String(ctx))
 }
 
 func (i *Intersects) DebugString(ctx *sql.Context) string {
@@ -330,7 +329,7 @@ func isIntersects(g1, g2 types.GeometryValue) bool {
 // 2. Not a types.GeometryValue, return error
 // 3. SRIDs don't match, return error
 // 4. Empty GeometryCollection, return nil
-func validateGeomComp(ctx context.Context, geom1, geom2 interface{}, funcName string) (types.GeometryValue, types.GeometryValue, error) {
+func validateGeomComp(ctx *sql.Context, geom1, geom2 interface{}, funcName string) (types.GeometryValue, types.GeometryValue, error) {
 	if geom1 == nil || geom2 == nil {
 		return nil, nil, nil
 	}

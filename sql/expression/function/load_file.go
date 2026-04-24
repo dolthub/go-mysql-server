@@ -48,8 +48,8 @@ func (l *LoadFile) Resolved() bool {
 }
 
 // String implements sql.Expression.
-func (l *LoadFile) String() string {
-	return fmt.Sprintf("%s(%s)", l.FunctionName(), l.fileName)
+func (l *LoadFile) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", l.FunctionName(), l.fileName.String(ctx))
 }
 
 // Type implements sql.Expression.

@@ -45,7 +45,7 @@ func (t *TableFunctionWrapper) NewInstance(ctx *sql.Context, db sql.Database, ar
 	nt := *t
 	nt.database = db
 	nt.args = args
-	f, err := nt.underlyingFunc.NewInstance(nil, args)
+	f, err := nt.underlyingFunc.NewInstance(ctx, args)
 	if err != nil {
 		return nil, err
 	}
@@ -103,10 +103,10 @@ func (t *TableFunctionWrapper) Schema(ctx *sql.Context) sql.Schema {
 	return sql.Schema{&sql.Column{Name: t.underlyingFunc.FunctionName(), Type: t.funcExpr.Type(ctx)}}
 }
 
-func (t *TableFunctionWrapper) String() string {
+func (t *TableFunctionWrapper) String(ctx *sql.Context) string {
 	var args []string
 	for _, expr := range t.args {
-		args = append(args, expr.String())
+		args = append(args, expr.String(ctx))
 	}
 	return fmt.Sprintf("%s(%s)", t.underlyingFunc.FunctionName(), strings.Join(args, ", "))
 }

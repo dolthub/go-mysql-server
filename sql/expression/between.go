@@ -36,8 +36,8 @@ func NewBetween(val, lower, upper sql.Expression) *Between {
 	return &Between{val, lower, upper}
 }
 
-func (b *Between) String() string {
-	return fmt.Sprintf("(%s BETWEEN %s AND %s)", b.Val, b.Lower, b.Upper)
+func (b *Between) String(ctx *sql.Context) string {
+	return fmt.Sprintf("(%s BETWEEN %s AND %s)", b.Val.String(ctx), b.Lower.String(ctx), b.Upper.String(ctx))
 }
 
 func (b *Between) DebugString(ctx *sql.Context) string {

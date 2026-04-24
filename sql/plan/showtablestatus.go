@@ -74,7 +74,7 @@ func (s *ShowTableStatus) Resolved() bool { return true }
 // Schema implements the sql.Node interface.
 func (s *ShowTableStatus) Schema(ctx *sql.Context) sql.Schema { return showTableStatusSchema }
 
-func (s *ShowTableStatus) String() string {
+func (s *ShowTableStatus) String(ctx *sql.Context) string {
 	return "SHOW TABLE STATUS"
 }
 

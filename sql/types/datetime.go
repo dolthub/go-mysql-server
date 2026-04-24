@@ -15,7 +15,6 @@
 package types
 
 import (
-	"context"
 	"fmt"
 	"math"
 	"reflect"
@@ -193,7 +192,7 @@ func (t datetimeType) Precision() int {
 }
 
 // Compare implements Type interface.
-func (t datetimeType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
+func (t datetimeType) Compare(ctx *sql.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
@@ -234,7 +233,7 @@ func (t datetimeType) CompareValue(ctx *sql.Context, a, b sql.Value) (int, error
 }
 
 // Convert implements Type interface.
-func (t datetimeType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t datetimeType) Convert(ctx *sql.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
 		return nil, sql.InRange, nil
 	}
@@ -251,7 +250,7 @@ var precisionConversion = [7]int{
 	1, 10, 100, 1_000, 10_000, 100_000, 1_000_000,
 }
 
-func ConvertToTime(ctx context.Context, v interface{}, t datetimeType) (time.Time, error) {
+func ConvertToTime(ctx *sql.Context, v interface{}, t datetimeType) (time.Time, error) {
 	if v == nil {
 		return time.Time{}, nil
 	}
@@ -284,15 +283,15 @@ func ConvertToTime(ctx context.Context, v interface{}, t datetimeType) (time.Tim
 	switch t.baseType {
 	case sqltypes.Date:
 		if res.Year() < 0 || res.Year() > 9999 {
-			return time.Time{}, ErrConvertingToTimeOutOfRange.New(res.Format(sql.DateLayout), t.String())
+			return time.Time{}, ErrConvertingToTimeOutOfRange.New(res.Format(sql.DateLayout), t.String(ctx))
 		}
 	case sqltypes.Datetime:
 		if res.Year() < 0 || res.Year() > 9999 {
-			return time.Time{}, ErrConvertingToTimeOutOfRange.New(res.Format(sql.TimestampDatetimeLayout), t.String())
+			return time.Time{}, ErrConvertingToTimeOutOfRange.New(res.Format(sql.TimestampDatetimeLayout), t.String(ctx))
 		}
 	case sqltypes.Timestamp:
 		if ValidateTimestamp(res) == nil {
-			return time.Time{}, ErrConvertingToTimeOutOfRange.New(res.Format(sql.TimestampDatetimeLayout), t.String())
+			return time.Time{}, ErrConvertingToTimeOutOfRange.New(res.Format(sql.TimestampDatetimeLayout), t.String(ctx))
 		}
 	}
 
@@ -300,7 +299,7 @@ func ConvertToTime(ctx context.Context, v interface{}, t datetimeType) (time.Tim
 }
 
 // ConvertWithoutRangeCheck converts the parameter to time.Time without checking the range.
-func (t datetimeType) ConvertWithoutRangeCheck(ctx context.Context, v interface{}) (time.Time, error) {
+func (t datetimeType) ConvertWithoutRangeCheck(ctx *sql.Context, v interface{}) (time.Time, error) {
 	var res time.Time
 
 	var err error
@@ -432,7 +431,7 @@ func parseDatetime(value string) (time.Time, bool, error) {
 		for _, layout := range TimestampDatetimeLayouts {
 			if t, err := time.Parse(layout, value[0:end]); err == nil {
 				if end != valueLen {
-					err = sql.ErrTruncatedIncorrect.New(t, value)
+					err = sql.ErrTruncatedIncorrect.New(t.String(), value)
 				}
 				return t.UTC(), true, err
 			}
@@ -566,7 +565,7 @@ func appendDatetimeFormat(dest []byte, t time.Time, precision int) []byte {
 	return dest
 }
 
-func (t datetimeType) String() string {
+func (t datetimeType) String(ctx *sql.Context) string {
 	switch t.baseType {
 	case sqltypes.Date:
 		return "date"

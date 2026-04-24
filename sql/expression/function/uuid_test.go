@@ -293,7 +293,7 @@ func TestUUIDShortProperties(t *testing.T) {
 
 	require.Equal(t, "UUID_SHORT", uuidShortE.FunctionName())
 	require.Equal(t, "returns a short universal identifier as a 64-bit unsigned integer.", uuidShortE.Description())
-	require.Equal(t, "UUID_SHORT()", uuidShortE.String())
+	require.Equal(t, "UUID_SHORT()", uuidShortE.String(ctx))
 	require.Equal(t, types.Uint64, uuidShortE.Type(ctx))
 	require.True(t, uuidShortE.Resolved())
 	require.False(t, uuidShortE.IsNullable(ctx))

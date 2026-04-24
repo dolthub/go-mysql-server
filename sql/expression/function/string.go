@@ -450,7 +450,7 @@ func (h *Bin) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 		return strconv.FormatUint(val, 2), nil
 
 	default:
-		n, err := h.convertToInt64(arg)
+		n, err := h.convertToInt64(ctx, arg)
 
 		if err != nil {
 			return "0", nil
@@ -476,7 +476,7 @@ func (h *Bin) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Ex
 // sql.Int64 handled conversions, which matches the expected behavior of this function. sql.Int64 has been fixed,
 // and the fixes cause incorrect behavior for this function (as they use different rules), therefore this is simply to
 // restore the original behavior specifically for this function.
-func (h *Bin) convertToInt64(v interface{}) (int64, error) {
+func (h *Bin) convertToInt64(ctx *sql.Context, v interface{}) (int64, error) {
 	switch v := v.(type) {
 	case int:
 		return int64(v), nil
@@ -525,7 +525,7 @@ func (h *Bin) convertToInt64(v interface{}) (int64, error) {
 	case []byte:
 		i, err := strconv.ParseInt(hex.EncodeToString(v), 16, 64)
 		if err != nil {
-			return 0, sql.ErrInvalidValue.New(v, types.Int64.String())
+			return 0, sql.ErrInvalidValue.New(v, types.Int64.String(ctx))
 		}
 		return i, nil
 	case string:
@@ -537,7 +537,7 @@ func (h *Bin) convertToInt64(v interface{}) (int64, error) {
 		// If that fails, try as a float and truncate it to integral
 		f, err := strconv.ParseFloat(v, 64)
 		if err != nil {
-			return 0, sql.ErrInvalidValue.New(v, types.Int64.String())
+			return 0, sql.ErrInvalidValue.New(v, types.Int64.String(ctx))
 		}
 		return int64(f), nil
 	case bool:
@@ -548,7 +548,7 @@ func (h *Bin) convertToInt64(v interface{}) (int64, error) {
 	case nil:
 		return 0, nil
 	default:
-		return 0, sql.ErrInvalidValueType.New(v, types.Int64.String())
+		return 0, sql.ErrInvalidValueType.New(v, types.Int64.String(ctx))
 	}
 }
 

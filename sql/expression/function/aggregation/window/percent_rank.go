@@ -63,12 +63,12 @@ func (p *PercentRank) Resolved() bool {
 	return windowResolved(p.window)
 }
 
-func (p *PercentRank) String() string {
+func (p *PercentRank) String(ctx *sql.Context) string {
 	sb := strings.Builder{}
 	sb.WriteString("percent_rank()")
 	if p.window != nil {
 		sb.WriteString(" ")
-		sb.WriteString(p.window.String())
+		sb.WriteString(p.window.String(ctx))
 	}
 	return sb.String()
 }

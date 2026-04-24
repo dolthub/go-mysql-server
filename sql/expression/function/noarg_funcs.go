@@ -35,7 +35,7 @@ func (fn NoArgFunc) FunctionName() string {
 // Type implements the Expression interface.
 func (fn NoArgFunc) Type(ctx *sql.Context) sql.Type { return fn.SQLType }
 
-func (fn NoArgFunc) String() string { return fn.FunctionName() + "()" }
+func (fn NoArgFunc) String(ctx *sql.Context) string { return fn.FunctionName() + "()" }
 
 // IsNullable implements the Expression interface.
 func (fn NoArgFunc) IsNullable(ctx *sql.Context) bool { return false }

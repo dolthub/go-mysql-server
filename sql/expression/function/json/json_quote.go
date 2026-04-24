@@ -56,9 +56,9 @@ func (js *JSONQuote) Description() string {
 	return "quotes a string as a JSON value and returns the result as a utf8mb4 string."
 }
 
-// String implements the fmt.Stringer interface.
-func (js *JSONQuote) String() string {
-	return fmt.Sprintf("%s(%s)", js.FunctionName(), js.Child)
+// String implements the sql.Stringer interface.
+func (js *JSONQuote) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", js.FunctionName(), js.Child.String(ctx))
 }
 
 // Type implements the Expression interface.

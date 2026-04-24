@@ -79,8 +79,21 @@ func (f *Format) IsNullable(ctx *sql.Context) bool {
 	return f.NumValue.IsNullable(ctx) || f.NumDecimalPlaces.IsNullable(ctx) || (f.Locale != nil && f.Locale.IsNullable(ctx))
 }
 
-func (f *Format) String() string {
-	return fmt.Sprintf("%s(%s,%s,%s)", f.FunctionName(), f.NumValue, f.NumDecimalPlaces, f.Locale)
+// String implements the Expression interface.
+func (f *Format) String(ctx *sql.Context) string {
+	numValue := "null"
+	if f.NumValue != nil {
+		numValue = f.NumValue.String(ctx)
+	}
+	numDecimalPlaces := "null"
+	if f.NumDecimalPlaces != nil {
+		numDecimalPlaces = f.NumDecimalPlaces.String(ctx)
+	}
+	locale := "null"
+	if f.Locale != nil {
+		locale = f.Locale.String(ctx)
+	}
+	return fmt.Sprintf("%s(%s,%s,%s)", f.FunctionName(), numValue, numDecimalPlaces, locale)
 }
 
 // Eval implements the Expression interface.

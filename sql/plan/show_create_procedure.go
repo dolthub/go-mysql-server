@@ -50,7 +50,7 @@ func NewShowCreateProcedure(db sql.Database, procedure string) *ShowCreateProced
 }
 
 // String implements the sql.Node interface.
-func (s *ShowCreateProcedure) String() string {
+func (s *ShowCreateProcedure) String(ctx *sql.Context) string {
 	return fmt.Sprintf("SHOW CREATE PROCEDURE %s", s.ProcedureName)
 }
 

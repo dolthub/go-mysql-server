@@ -53,12 +53,12 @@ func (j JSONInsert) Resolved() bool {
 	return true
 }
 
-func (j JSONInsert) String() string {
+func (j JSONInsert) String(ctx *sql.Context) string {
 	children := j.Children()
 	var parts = make([]string, len(children))
 
 	for i, c := range children {
-		parts[i] = c.String()
+		parts[i] = c.String(ctx)
 	}
 
 	return fmt.Sprintf("%s(%s)", j.FunctionName(), strings.Join(parts, ","))

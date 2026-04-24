@@ -162,7 +162,7 @@ func (sq *SubqueryAlias) Opaque() bool {
 	return true
 }
 
-func (sq *SubqueryAlias) String() string {
+func (sq *SubqueryAlias) String(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("SubqueryAlias")
 	children := make([]string, 5)
@@ -170,7 +170,7 @@ func (sq *SubqueryAlias) String() string {
 	children[1] = fmt.Sprintf("outerVisibility: %t", sq.OuterScopeVisibility)
 	children[2] = fmt.Sprintf("isLateral: %t", sq.IsLateral)
 	children[3] = fmt.Sprintf("cacheable: %t", sq.CanCacheResults())
-	children[4] = sq.Child.String()
+	children[4] = sq.Child.String(ctx)
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }

@@ -61,8 +61,8 @@ func (*ConvexHull) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 	return sql.Collation_binary, 4
 }
 
-func (c *ConvexHull) String() string {
-	return fmt.Sprintf("%s(%s)", c.FunctionName(), c.Child.String())
+func (c *ConvexHull) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", c.FunctionName(), c.Child.String(ctx))
 }
 
 // WithChildren implements the Expression interface.

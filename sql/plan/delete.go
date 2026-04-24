@@ -214,10 +214,10 @@ func (*DeleteFrom) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 	return sql.Collation_binary, 7
 }
 
-func (p *DeleteFrom) String() string {
+func (p *DeleteFrom) String(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Delete")
-	_ = pr.WriteChildren(p.Child.String())
+	_ = pr.WriteChildren(p.Child.String(ctx))
 	return pr.String()
 }
 

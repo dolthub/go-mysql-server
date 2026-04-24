@@ -15,7 +15,6 @@
 package types
 
 import (
-	"context"
 	"encoding/binary"
 	"fmt"
 	"reflect"
@@ -79,7 +78,7 @@ func (t BitType_) MaxTextResponseByteLength(*sql.Context) uint32 {
 }
 
 // Compare implements Type interface.
-func (t BitType_) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
+func (t BitType_) Compare(ctx *sql.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
@@ -129,7 +128,7 @@ func (t BitType_) CompareValue(ctx *sql.Context, a, b sql.Value) (int, error) {
 }
 
 // Convert implements Type interface.
-func (t BitType_) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t BitType_) Convert(ctx *sql.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
 		return nil, sql.InRange, nil
 	}
@@ -261,7 +260,7 @@ func (t BitType_) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sqltypes
 }
 
 // String implements Type interface.
-func (t BitType_) String() string {
+func (t BitType_) String(ctx *sql.Context) string {
 	return fmt.Sprintf("bit(%v)", t.numOfBits)
 }
 

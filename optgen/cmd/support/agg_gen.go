@@ -112,15 +112,15 @@ func (g *AggGen) genAggStringer(define AggDef) {
 	if define.SqlName != "" {
 		sqlName = define.SqlName
 	}
-	fmt.Fprintf(g.w, "func (a *%s) String() string {\n", define.Name)
+	fmt.Fprintf(g.w, "func (a *%s) String(ctx *sql.Context) string {\n", define.Name)
 	fmt.Fprintf(g.w, "  if a.window != nil {\n")
 	fmt.Fprintf(g.w, "    pr := sql.NewTreePrinter()\n")
 	fmt.Fprintf(g.w, "    _ = pr.WriteNode(\"%s\")\n	", strings.ToUpper(sqlName))
-	fmt.Fprintf(g.w, "    children := []string{a.window.String(), a.Child.String()}\n")
+	fmt.Fprintf(g.w, "    children := []string{a.window.String(ctx), a.Child.String(ctx)}\n")
 	fmt.Fprintf(g.w, "    pr.WriteChildren(children...)\n")
 	fmt.Fprintf(g.w, "    return pr.String()\n")
 	fmt.Fprintf(g.w, "  }\n")
-	fmt.Fprintf(g.w, " return \"%s(\" + a.Child.String() + \")\"\n", strings.ToUpper(sqlName))
+	fmt.Fprintf(g.w, " return \"%s(\" + a.Child.String(ctx) + \")\"\n", strings.ToUpper(sqlName))
 	fmt.Fprintf(g.w, "}\n\n")
 
 	fmt.Fprintf(g.w, "func (a *%s) DebugString(ctx *sql.Context) string {\n", define.Name)
@@ -136,7 +136,7 @@ func (g *AggGen) genAggStringer(define AggDef) {
 }
 
 func (g *AggGen) genAggWithChildren(define AggDef) {
-	fmt.Fprintf(g.w, "func (a *%s) WithChildren(children ...sql.Expression) (sql.Expression, error) {\n", define.Name)
+	fmt.Fprintf(g.w, "func (a *%s) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {\n", define.Name)
 	fmt.Fprintf(g.w, "    res, err := a.unaryAggBase.WithChildren(children...)\n")
 	fmt.Fprintf(g.w, "    return &%s{unaryAggBase: *res.(*unaryAggBase)}, err\n", define.Name)
 	fmt.Fprintf(g.w, "}\n\n")
@@ -150,7 +150,7 @@ func (g *AggGen) genAggWithId(define AggDef) {
 }
 
 func (g *AggGen) genAggWithWindow(define AggDef) {
-	fmt.Fprintf(g.w, "func (a *%s) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {\n", define.Name)
+	fmt.Fprintf(g.w, "func (a *%s) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {\n", define.Name)
 	fmt.Fprintf(g.w, "    res := a.unaryAggBase.WithWindow(window)\n")
 	fmt.Fprintf(g.w, "    return &%s{unaryAggBase: *res.(*unaryAggBase)}\n", define.Name)
 	fmt.Fprintf(g.w, "}\n\n")

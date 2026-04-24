@@ -41,7 +41,7 @@ func getDate(ctx *sql.Context, val interface{}) (interface{}, error) {
 
 	date, err := types.DatetimeMaxPrecision.ConvertWithoutRangeCheck(ctx, val)
 	if err != nil {
-		ctx.Warn(1292, "Incorrect datetime value: '%s'", val)
+		ctx.Warn(1292, "Incorrect datetime value: '%v'", val)
 		return nil, nil
 	}
 
@@ -67,7 +67,7 @@ func getDatePart(ctx *sql.Context,
 
 	part := f(date)
 	if part == nil {
-		ctx.Warn(1292, "Incorrect datetime value: '%s'", val)
+		ctx.Warn(1292, "Incorrect datetime value: '%v'", val)
 	}
 	return part, nil
 }
@@ -95,7 +95,9 @@ func (y *Year) Description() string {
 	return "returns the year of the given date."
 }
 
-func (y *Year) String() string { return fmt.Sprintf("%s(%s)", y.FunctionName(), y.Child) }
+func (y *Year) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", y.FunctionName(), y.Child.String(ctx))
+}
 
 // Type implements the Expression interface.
 func (y *Year) Type(ctx *sql.Context) sql.Type { return types.Int32 }
@@ -140,7 +142,9 @@ func (q *Quarter) Description() string {
 	return "returns the quarter of the given date."
 }
 
-func (q *Quarter) String() string { return fmt.Sprintf("%s(%s)", q.FunctionName(), q.Child) }
+func (q *Quarter) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", q.FunctionName(), q.Child.String(ctx))
+}
 
 // Type implements the Expression interface.
 func (q *Quarter) Type(ctx *sql.Context) sql.Type { return types.Int32 }
@@ -191,7 +195,9 @@ func (m *Month) Description() string {
 	return "returns the month of the given date."
 }
 
-func (m *Month) String() string { return fmt.Sprintf("%s(%s)", m.FunctionName(), m.Child) }
+func (m *Month) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", m.FunctionName(), m.Child.String(ctx))
+}
 
 // Type implements the Expression interface.
 func (m *Month) Type(ctx *sql.Context) sql.Type { return types.Int32 }
@@ -242,7 +248,9 @@ func (d *Day) Description() string {
 	return "returns the day of the month (0-31)."
 }
 
-func (d *Day) String() string { return fmt.Sprintf("%s(%s)", d.FunctionName(), d.Child) }
+func (d *Day) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", d.FunctionName(), d.Child.String(ctx))
+}
 
 // Type implements the Expression interface.
 func (d *Day) Type(ctx *sql.Context) sql.Type { return types.Int32 }
@@ -294,7 +302,9 @@ func (d *Weekday) Description() string {
 	return "returns the weekday of the given date."
 }
 
-func (d *Weekday) String() string { return fmt.Sprintf("%s(%s)", d.FunctionName(), d.Child) }
+func (d *Weekday) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", d.FunctionName(), d.Child.String(ctx))
+}
 
 // Type implements the Expression interface.
 func (d *Weekday) Type(ctx *sql.Context) sql.Type { return types.Int32 }
@@ -345,7 +355,9 @@ func (h *Hour) Description() string {
 	return "returns the hours of the given date."
 }
 
-func (h *Hour) String() string { return fmt.Sprintf("%s(%s)", h.FunctionName(), h.Child) }
+func (h *Hour) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", h.FunctionName(), h.Child.String(ctx))
+}
 
 // Type implements the Expression interface.
 func (h *Hour) Type(ctx *sql.Context) sql.Type { return types.Int32 }
@@ -391,7 +403,9 @@ func (m *Minute) Description() string {
 	return "returns the minutes of the given date."
 }
 
-func (m *Minute) String() string { return fmt.Sprintf("%s(%d)", m.FunctionName(), m.Child) }
+func (m *Minute) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", m.FunctionName(), m.Child.String(ctx))
+}
 
 // Type implements the Expression interface.
 func (m *Minute) Type(ctx *sql.Context) sql.Type { return types.Int32 }
@@ -437,7 +451,9 @@ func (s *Second) Description() string {
 	return "returns the seconds of the given date."
 }
 
-func (s *Second) String() string { return fmt.Sprintf("%s(%s)", s.FunctionName(), s.Child) }
+func (s *Second) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", s.FunctionName(), s.Child.String(ctx))
+}
 
 // Type implements the Expression interface.
 func (s *Second) Type(ctx *sql.Context) sql.Type { return types.Int32 }
@@ -484,7 +500,9 @@ func (d *DayOfWeek) Description() string {
 	return "returns the day of the week of the given date."
 }
 
-func (d *DayOfWeek) String() string { return fmt.Sprintf("DAYOFWEEK(%s)", d.Child) }
+func (d *DayOfWeek) String(ctx *sql.Context) string {
+	return fmt.Sprintf("DAYOFWEEK(%s)", d.Child.String(ctx))
+}
 
 // Type implements the Expression interface.
 func (d *DayOfWeek) Type(ctx *sql.Context) sql.Type { return types.Int32 }
@@ -535,7 +553,9 @@ func (d *DayOfYear) Description() string {
 	return "returns the day of the year of the given date."
 }
 
-func (d *DayOfYear) String() string { return fmt.Sprintf("DAYOFYEAR(%s)", d.Child) }
+func (d *DayOfYear) String(ctx *sql.Context) string {
+	return fmt.Sprintf("DAYOFYEAR(%s)", d.Child.String(ctx))
+}
 
 // Type implements the Expression interface.
 func (d *DayOfYear) Type(ctx *sql.Context) sql.Type { return types.Int32 }
@@ -612,7 +632,9 @@ func (d *YearWeek) Description() string {
 	return "returns year and week for a date. The year in the result may be different from the year in the date argument for the first and the last week of the year."
 }
 
-func (d *YearWeek) String() string { return fmt.Sprintf("YEARWEEK(%s, %d)", d.date, d.mode) }
+func (d *YearWeek) String(ctx *sql.Context) string {
+	return fmt.Sprintf("YEARWEEK(%s, %s)", d.date.String(ctx), d.mode.String(ctx))
+}
 
 // Type implements the Expression interface.
 func (d *YearWeek) Type(ctx *sql.Context) sql.Type { return types.Int32 }
@@ -727,7 +749,9 @@ func (d *Week) Description() string {
 	return "returns the week number."
 }
 
-func (d *Week) String() string { return fmt.Sprintf("WEEK(%s, %s)", d.date, d.mode.String()) }
+func (d *Week) String(ctx *sql.Context) string {
+	return fmt.Sprintf("WEEK(%s, %s)", d.date.String(ctx), d.mode.String(ctx))
+}
 
 func (d *Week) DebugString(ctx *sql.Context) string {
 	return fmt.Sprintf("WEEK(%s, %s)", sql.DebugString(ctx, d.date), sql.DebugString(ctx, d.mode))
@@ -1052,12 +1076,12 @@ func (*Now) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID, 
 }
 
 // String implements the sql.Expression interface.
-func (n *Now) String() string {
+func (n *Now) String(ctx *sql.Context) string {
 	if n.prec == nil {
 		return "NOW()"
 	}
 
-	return fmt.Sprintf("NOW(%s)", n.prec.String())
+	return fmt.Sprintf("NOW(%s)", n.prec.String(ctx))
 }
 
 // IsNullable implements the sql.Expression interface.
@@ -1213,7 +1237,7 @@ func NewUTCTimestamp(ctx *sql.Context, args ...sql.Expression) (sql.Expression, 
 	} else if len(args) == 1 {
 		argType := args[0].Type(ctx).Promote()
 		if argType != types.Int64 && argType != types.Uint64 {
-			return nil, sql.ErrInvalidType.New(args[0].Type(ctx).String())
+			return nil, sql.ErrInvalidType.New(args[0].Type(ctx).String(ctx))
 		}
 		val, err := args[0].Eval(ctx, nil)
 		if err != nil {
@@ -1255,7 +1279,7 @@ func (*UTCTimestamp) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 	return sql.Collation_binary, 5
 }
 
-func (ut *UTCTimestamp) String() string {
+func (ut *UTCTimestamp) String(ctx *sql.Context) string {
 	if ut.precision == nil {
 		return "UTC_TIMESTAMP()"
 	}
@@ -1309,7 +1333,7 @@ func NewDate(ctx *sql.Context, date sql.Expression) sql.Expression {
 	return &Date{expression.UnaryExpressionStub{Child: date}}
 }
 
-func (d *Date) String() string { return fmt.Sprintf("DATE(%s)", d.Child) }
+func (d *Date) String(ctx *sql.Context) string { return fmt.Sprintf("DATE(%s)", d.Child.String(ctx)) }
 
 // Type implements the Expression interface.
 func (d *Date) Type(ctx *sql.Context) sql.Type { return types.Date }
@@ -1396,9 +1420,9 @@ func (dtf *UnaryDatetimeFunc) EvalChild(ctx *sql.Context, row sql.Row) (interfac
 	return ret, nil
 }
 
-// String implements the fmt.Stringer interface.
-func (dtf *UnaryDatetimeFunc) String() string {
-	return fmt.Sprintf("%s(%s)", strings.ToUpper(dtf.Name), dtf.Child.String())
+// String implements the sql.Stringer interface.
+func (dtf *UnaryDatetimeFunc) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", strings.ToUpper(dtf.Name), dtf.Child.String(ctx))
 }
 
 // IsNullable implements the Expression interface
@@ -1699,12 +1723,12 @@ func (*CurrTime) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 }
 
 // String implements the sql.Expression interface.
-func (c *CurrTime) String() string {
+func (c *CurrTime) String(ctx *sql.Context) string {
 	if c.prec == nil {
 		return "CURRENT_TIME()"
 	}
 
-	return fmt.Sprintf("CURRENT_TIME(%s)", c.prec.String())
+	return fmt.Sprintf("CURRENT_TIME(%s)", c.prec.String(ctx))
 }
 
 // IsNullable implements the sql.Expression interface.
@@ -1772,8 +1796,8 @@ func (t *Time) Description() string {
 	return "extracts the time part of a time or datetime expression and returns it as a string"
 }
 
-func (t *Time) String() string {
-	return fmt.Sprintf("TIME(%s)", t.Child)
+func (t *Time) String(ctx *sql.Context) string {
+	return fmt.Sprintf("TIME(%s)", t.Child.String(ctx))
 }
 
 // Type implements the Expression interface.

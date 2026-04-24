@@ -759,7 +759,7 @@ type dummyNode struct{ resolved bool }
 var _ sql.Node = dummyNode{}
 var _ sql.CollationCoercible = dummyNode{}
 
-func (n dummyNode) String() string                                         { return "dummynode" }
+func (n dummyNode) String(ctx *sql.Context) string                         { return "dummynode" }
 func (n dummyNode) Resolved() bool                                         { return n.resolved }
 func (dummyNode) IsReadOnly() bool                                         { return true }
 func (dummyNode) Schema(ctx *sql.Context) sql.Schema                       { return nil }

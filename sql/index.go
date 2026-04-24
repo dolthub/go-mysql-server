@@ -93,7 +93,7 @@ const (
 // Index is the representation of an index, and also creates an IndexLookup when given a collection of ranges.
 type Index interface {
 	// ID returns the identifier of the index.
-	ID() string
+	ID(*Context) string
 	// Database returns the database name this index belongs to.
 	Database() string
 	// Table returns the table name this index belongs to.
@@ -101,7 +101,7 @@ type Index interface {
 	// Expressions returns the indexed expressions. If the result is more than
 	// one expression, it means the index has multiple columns indexed. If it's
 	// just one, it means it may be an expression or a column.
-	Expressions() []string
+	Expressions(*Context) []string
 	// IsUnique returns whether this index is unique
 	IsUnique() bool
 	// IsSpatial returns whether this index is a spatial index
@@ -229,10 +229,10 @@ func (il IndexLookup) IsEmpty() bool {
 	return il.Index == nil
 }
 
-func (il IndexLookup) String() string {
+func (il IndexLookup) String(ctx *Context) string {
 	pr := NewTreePrinter()
 	_ = pr.WriteNode("IndexLookup")
-	pr.WriteChildren(fmt.Sprintf("index: %s", il.Index), fmt.Sprintf("ranges: %s", il.Ranges.String()))
+	pr.WriteChildren(fmt.Sprintf("index: %s", il.Index), fmt.Sprintf("ranges: %s", il.Ranges.String(ctx)))
 	return pr.String()
 }
 
@@ -303,11 +303,11 @@ func ValidatePrimaryKeyDrop(ctx *Context, t IndexAddressableTable, oldSchema Pri
 		}
 
 		// Skip the primary key index, since we're trying to delete it
-		if strings.ToLower(idx.ID()) == "primary" {
+		if strings.ToLower(idx.ID(ctx)) == "primary" {
 			continue
 		}
 
-		if idx.Expressions()[0] == autoIncrementColumn.Source+"."+autoIncrementColumn.Name {
+		if idx.Expressions(ctx)[0] == autoIncrementColumn.Source+"."+autoIncrementColumn.Name {
 			// By this point, we've verified that it's valid to drop the table's primary key
 			return nil
 		}

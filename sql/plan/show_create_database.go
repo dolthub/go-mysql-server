@@ -62,7 +62,7 @@ func (s *ShowCreateDatabase) Schema(ctx *sql.Context) sql.Schema {
 	return showCreateDatabaseSchema
 }
 
-func (s *ShowCreateDatabase) String() string {
+func (s *ShowCreateDatabase) String(ctx *sql.Context) string {
 	return fmt.Sprintf("SHOW CREATE DATABASE %s", s.db.Name())
 }
 

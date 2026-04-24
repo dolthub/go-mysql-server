@@ -302,7 +302,7 @@ type dummyFrame struct{}
 
 var _ sql.WindowFrame = (*dummyFrame)(nil)
 
-func (d dummyFrame) String() string {
+func (d dummyFrame) String(ctx *sql.Context) string {
 	panic("implement me")
 }
 

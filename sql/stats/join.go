@@ -16,7 +16,6 @@ package stats
 
 import (
 	"container/heap"
-	"context"
 	"fmt"
 	"log"
 	"math"
@@ -63,7 +62,7 @@ func Join(ctx *sql.Context, s1, s2 sql.Statistic, prefixCnt int, debug bool) (sq
 	s1Buckets := s1.Histogram()
 	s2Buckets := s2.Histogram()
 
-	s1AliHist, s2AliHist, err := AlignBuckets(s1Buckets, s2Buckets, s1.LowerBound(), s2.LowerBound(), s1.Types()[:prefixCnt], s2.Types()[:prefixCnt], cmp)
+	s1AliHist, s2AliHist, err := AlignBuckets(ctx, s1Buckets, s2Buckets, s1.LowerBound(), s2.LowerBound(), s1.Types()[:prefixCnt], s2.Types()[:prefixCnt], cmp)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +149,7 @@ func joinAlignedStats(left, right []sql.HistogramBucket, cmp func(sql.Row, sql.R
 // keyspace. Then for every misaligned pair of buckets, cut the one with the
 // higher bound value on the smaller's key. We use a linear interpolation
 // to divide keys when splitting.
-func AlignBuckets(h1, h2 sql.Histogram, lBound1, lBound2 sql.Row, s1Types, s2Types []sql.Type, cmp func(sql.Row, sql.Row) (int, error)) (sql.Histogram, sql.Histogram, error) {
+func AlignBuckets(ctx *sql.Context, h1, h2 sql.Histogram, lBound1, lBound2 sql.Row, s1Types, s2Types []sql.Type, cmp func(sql.Row, sql.Row) (int, error)) (sql.Histogram, sql.Histogram, error) {
 	var numericTypes bool = true
 	for _, t := range s1Types {
 		if !sql.IsNumberType(t) {
@@ -319,7 +318,7 @@ func AlignBuckets(h1, h2 sql.Histogram, lBound1, lBound2 sql.Row, s1Types, s2Typ
 				}
 
 				// nextR < nextL < peekR
-				bucketMagnitude, err := euclideanDistance(nextR.UpperBound(), peekR.UpperBound(), len(s1Types))
+				bucketMagnitude, err := euclideanDistance(ctx, nextR.UpperBound(), peekR.UpperBound(), len(s1Types))
 				if err != nil {
 					return nil, nil, err
 				}
@@ -330,7 +329,7 @@ func AlignBuckets(h1, h2 sql.Histogram, lBound1, lBound2 sql.Row, s1Types, s2Typ
 				}
 
 				// estimate midpoint
-				cutMagnitude, err := euclideanDistance(nextR.UpperBound(), nextL.UpperBound(), len(s1Types))
+				cutMagnitude, err := euclideanDistance(ctx, nextR.UpperBound(), nextL.UpperBound(), len(s1Types))
 				if err != nil {
 					return nil, nil, err
 				}
@@ -360,13 +359,13 @@ func AlignBuckets(h1, h2 sql.Histogram, lBound1, lBound2 sql.Row, s1Types, s2Typ
 			}
 
 			// get left "distance"
-			bucketMagnitude, err := euclideanDistance(nextL.UpperBound(), leftRes[len(leftRes)-1].UpperBound(), len(s1Types))
+			bucketMagnitude, err := euclideanDistance(ctx, nextL.UpperBound(), leftRes[len(leftRes)-1].UpperBound(), len(s1Types))
 			if err != nil {
 				return nil, nil, err
 			}
 
 			// estimate midpoint
-			cutMagnitude, err := euclideanDistance(nextL.UpperBound(), nextR.UpperBound(), len(s1Types))
+			cutMagnitude, err := euclideanDistance(ctx, nextL.UpperBound(), nextR.UpperBound(), len(s1Types))
 			if err != nil {
 				return nil, nil, err
 			}
@@ -568,9 +567,7 @@ const (
 
 // euclideanDistance is a vectorwise sum of squares distance between
 // two numeric types.
-func euclideanDistance(row1, row2 sql.Row, prefixLen int) (float64, error) {
-	// TODO: Add context parameter
-	ctx := context.Background()
+func euclideanDistance(ctx *sql.Context, row1, row2 sql.Row, prefixLen int) (float64, error) {
 	var distSq float64
 	for i := 0; i < prefixLen; i++ {
 		v1, _, err := types.Float64.Convert(ctx, row1[i])

@@ -70,8 +70,8 @@ func (*RandomBytes) CollationCoercibility(ctx *sql.Context) (collation sql.Colla
 }
 
 // String implements the sql.Expression interface.
-func (r *RandomBytes) String() string {
-	return fmt.Sprintf("%s(%s)", r.FunctionName(), r.Child)
+func (r *RandomBytes) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", r.FunctionName(), r.Child.String(ctx))
 }
 
 // IsNonDeterministic implements the sql.Expression interface.

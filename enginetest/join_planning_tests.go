@@ -1896,11 +1896,11 @@ func evalJoinTypeTest(t *testing.T, harness Harness, e QueryEngine, query string
 		jts := collectJoinTypes(ctx, a)
 		var exp []string
 		for _, t := range types {
-			exp = append(exp, t.String())
+			exp = append(exp, t.String(ctx))
 		}
 		var cmp []string
 		for _, t := range jts {
-			cmp = append(cmp, t.String())
+			cmp = append(cmp, t.String(ctx))
 		}
 		require.Equal(t, exp, cmp, fmt.Sprintf("unexpected plan:\n%s", sql.DebugString(ctx, a)))
 	})
@@ -1941,7 +1941,7 @@ func evalMergeCmpTest(t *testing.T, harness Harness, e QueryEngine, tt JoinPlanT
 		compares := collectMergeCompares(ctx, a)
 		var cmp []string
 		for _, i := range compares {
-			cmp = append(cmp, i.String())
+			cmp = append(cmp, i.String(ctx))
 		}
 		require.Equal(t, tt.mergeCompares, cmp, fmt.Sprintf("unexpected plan:\n%s", sql.DebugString(ctx, a)))
 	})
@@ -1966,7 +1966,7 @@ func evalIndexTest(t *testing.T, harness Harness, e QueryEngine, q string, index
 		}
 		var cmp []string
 		for _, i := range idxs {
-			cmp = append(cmp, strings.ToLower(i.ID()))
+			cmp = append(cmp, strings.ToLower(i.ID(ctx)))
 		}
 		require.Equal(t, exp, cmp, fmt.Sprintf("unexpected plan:\n%s", sql.DebugString(ctx, a)))
 	})

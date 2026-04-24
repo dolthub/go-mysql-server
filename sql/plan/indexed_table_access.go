@@ -294,11 +294,11 @@ func (i *IndexedTableAccess) IsStrictLookup(ctx *sql.Context) bool {
 			return false
 		}
 	}
-	if len(i.lb.keyExprs) != len(i.lb.index.Expressions()) {
+	if len(i.lb.keyExprs) != len(i.lb.index.Expressions(ctx)) {
 		// only partial key
 		return false
 	}
-	if strings.EqualFold(i.lb.index.ID(), "primary") {
+	if strings.EqualFold(i.lb.index.ID(ctx), "primary") {
 		return true
 	}
 	for _, e := range i.lb.keyExprs {
@@ -337,14 +337,11 @@ func (i *IndexedTableAccess) getValueLookup(ctx *sql.Context, row sql.ValueRow) 
 	return i.lb.GetLookup(ctx, key)
 }
 
-func (i *IndexedTableAccess) String() string {
-	// To maintain compatibility with fmt.Stringer we have to use an empty context, but this will fail in any case that
-	// requires a context to determine a string (such as an integrator using the context to contain type information).
-	ctx := sql.NewEmptyContext()
+func (i *IndexedTableAccess) String(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	pr.WriteNode("IndexedTableAccess(%s)", i.TableNode.Name())
 	var children []string
-	children = append(children, fmt.Sprintf("index: %s", formatIndexDecoratorString(i.Index())))
+	children = append(children, fmt.Sprintf("index: %s", formatIndexDecoratorString(ctx, i.Index())))
 	if !i.lookup.IsEmpty() && i.lookup.Ranges.Len() > 0 {
 		children = append(children, fmt.Sprintf("filters: %s", i.lookup.Ranges.DebugString(ctx)))
 	}
@@ -366,7 +363,7 @@ func (i *IndexedTableAccess) String() string {
 	if i.lb != nil && len(i.lb.keyExprs) > 0 {
 		keys := make([]string, len(i.lb.keyExprs))
 		for i, e := range i.lb.keyExprs {
-			keys[i] = e.String()
+			keys[i] = e.String(ctx)
 		}
 		children = append(children, fmt.Sprintf("keys: %s", strings.Join(keys, ", ")))
 	}
@@ -374,7 +371,7 @@ func (i *IndexedTableAccess) String() string {
 	if ft, ok := i.Table.(sql.FilteredTable); ok {
 		var filters []string
 		for _, f := range ft.Filters() {
-			filters = append(filters, f.String())
+			filters = append(filters, f.String(ctx))
 		}
 		if len(filters) > 0 {
 			pr.WriteChildren(fmt.Sprintf("filters: %v", filters))
@@ -389,9 +386,9 @@ func (i *IndexedTableAccess) String() string {
 	return pr.String()
 }
 
-func formatIndexDecoratorString(idx sql.Index) string {
+func formatIndexDecoratorString(ctx *sql.Context, idx sql.Index) string {
 	var expStrs []string
-	expStrs = append(expStrs, idx.Expressions()...)
+	expStrs = append(expStrs, idx.Expressions(ctx)...)
 	return fmt.Sprintf("[%s]", strings.Join(expStrs, ","))
 }
 
@@ -399,7 +396,7 @@ func (i *IndexedTableAccess) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	pr.WriteNode("IndexedTableAccess(%s)", i.TableNode.Name())
 	var children []string
-	children = append(children, fmt.Sprintf("index: %s", formatIndexDecoratorString(i.Index())))
+	children = append(children, fmt.Sprintf("index: %s", formatIndexDecoratorString(ctx, i.Index())))
 	if !i.lookup.IsEmpty() {
 		if i.lookup.Ranges.Len() > 0 {
 			children = append(children, fmt.Sprintf("static: %s", i.lookup.Ranges.DebugString(ctx)))
@@ -750,7 +747,7 @@ func (lb *LookupBuilder) DebugString(ctx *sql.Context) string {
 	for i := range lb.keyExprs {
 		keyExprs[i] = sql.DebugString(ctx, lb.keyExprs[i])
 	}
-	return fmt.Sprintf("on %s, using fields %s", formatIndexDecoratorString(lb.Index()), strings.Join(keyExprs, ", "))
+	return fmt.Sprintf("on %s, using fields %s", formatIndexDecoratorString(ctx, lb.Index()), strings.Join(keyExprs, ", "))
 }
 
 func (lb *LookupBuilder) WithExpressions(node sql.Node, exprs ...sql.Expression) (*LookupBuilder, error) {

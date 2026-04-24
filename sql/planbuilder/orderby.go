@@ -127,7 +127,7 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 			// replace aggregations with refs
 			// pick up auxiliary cols
 			expr := b.buildScalar(fromScope, e)
-			_, ok := outScope.getExpr(expr.String(), true)
+			_, ok := outScope.getExpr(expr.String(b.ctx), true)
 			if ok {
 				continue
 			}
@@ -145,18 +145,18 @@ func (b *Builder) analyzeOrderBy(fromScope, projScope *scope, order ast.OrderBy)
 					fromScope.addExtraColumn(c)
 				case sql.WindowAdaptableExpression:
 					// has to have been ref'd already
-					id, ok := fromScope.getExpr(e.String(), true)
+					id, ok := fromScope.getExpr(e.String(ctx), true)
 					if !ok {
-						err := fmt.Errorf("failed to ref aggregate expression: %s", e.String())
+						err := fmt.Errorf("failed to ref aggregate expression: %s", e.String(ctx))
 						b.handleErr(err)
 					}
-					return expression.NewGetField(int(id), e.Type(ctx), e.String(), e.IsNullable(ctx)), transform.NewTree, nil
+					return expression.NewGetField(int(id), e.Type(ctx), e.String(ctx), e.IsNullable(ctx)), transform.NewTree, nil
 				default:
 				}
 				return e, transform.SameTree, nil
 			})
 			col := scopeColumn{
-				col:        expr.String(),
+				col:        expr.String(b.ctx),
 				scalar:     expr,
 				typ:        expr.Type(b.ctx),
 				nullable:   expr.IsNullable(b.ctx),

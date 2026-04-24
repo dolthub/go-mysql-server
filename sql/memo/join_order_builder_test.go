@@ -189,7 +189,7 @@ func TestJoinOrderBuilder(t *testing.T) {
 			j := NewJoinOrderBuilder(NewMemo(ctx, nil, nil, NewDefaultCoster(), nil))
 			j.forceFastDFSLookupForTest = tt.forceFastReorder
 			j.ReorderJoin(ctx, tt.in)
-			require.Equal(t, tt.plans, j.m.String())
+			require.Equal(t, tt.plans, j.m.String(ctx))
 		})
 	}
 }
@@ -762,6 +762,7 @@ func edgesEq(t *testing.T, edges1, edges2 []edge) bool {
 }
 
 func assertScalarEq(t *testing.T, exp, cmp sql.Expression) {
+	ctx := sql.NewEmptyContext()
 	switch cmp := cmp.(type) {
 	case *expression.Equals:
 		exp, ok := exp.(*expression.Equals)
@@ -777,6 +778,6 @@ func assertScalarEq(t *testing.T, exp, cmp sql.Expression) {
 		require.True(t, ok)
 		require.Equal(t, exp.Table(), cmp.Table())
 		require.Equal(t, exp.Name(), cmp.Name())
-		require.Equal(t, exp.String(), cmp.String())
+		require.Equal(t, exp.String(ctx), cmp.String(ctx))
 	}
 }

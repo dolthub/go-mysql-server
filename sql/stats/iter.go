@@ -15,7 +15,6 @@
 package stats
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -56,7 +55,7 @@ func (s *statsIter) Next(ctx *sql.Context) (sql.Row, error) {
 			return nil, io.EOF
 		}
 		if s.j == 0 {
-			s.updateIndexMeta()
+			s.updateIndexMeta(ctx)
 		}
 
 		dStat := s.dStats[s.i]
@@ -68,23 +67,23 @@ func (s *statsIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 		currentJ := s.j
 		s.j++
-		return s.bucketToRow(currentJ, dStat.Histogram()[currentJ])
+		return s.bucketToRow(ctx, currentJ, dStat.Histogram()[currentJ])
 	}
 }
 
-func (s *statsIter) updateIndexMeta() {
+func (s *statsIter) updateIndexMeta(ctx *sql.Context) {
 	dStat := s.dStats[s.i]
 
 	typesB := strings.Builder{}
 	sep := ""
 	for _, t := range dStat.Types() {
-		typesB.WriteString(sep + t.String())
+		typesB.WriteString(sep + t.String(ctx))
 		sep = ","
 	}
 	s.types = dStat.Types()
 	s.typesStr = typesB.String()
 	if len(dStat.LowerBound()) > 0 {
-		s.lowerBoundStr = StringifyKey(dStat.LowerBound(), dStat.Types())
+		s.lowerBoundStr = StringifyKey(ctx, dStat.LowerBound(), dStat.Types())
 	}
 	s.colsStr = strings.Join(dStat.Columns(), ",")
 	s.qual = dStat.Qualifier()
@@ -95,7 +94,7 @@ func (s *statsIter) updateIndexMeta() {
 // TODO: standardize uses of this constant
 const mcvCnt = 4
 
-func (s *statsIter) bucketToRow(i int, bucket sql.HistogramBucket) (sql.Row, error) {
+func (s *statsIter) bucketToRow(ctx *sql.Context, i int, bucket sql.HistogramBucket) (sql.Row, error) {
 	// todo calculate mcvs, mcvCountsStr
 	mcvCntB := strings.Builder{}
 	sep := ""
@@ -108,7 +107,7 @@ func (s *statsIter) bucketToRow(i int, bucket sql.HistogramBucket) (sql.Row, err
 
 	for i, mcv := range bucket.Mcvs() {
 		if len(mcv) > 0 {
-			mcvs[i] = StringifyKey(mcv, s.types)
+			mcvs[i] = StringifyKey(ctx, mcv, s.types)
 		}
 	}
 
@@ -121,7 +120,7 @@ func (s *statsIter) bucketToRow(i int, bucket sql.HistogramBucket) (sql.Row, err
 		uint64(bucket.NullCount()),
 		s.colsStr,
 		s.typesStr,
-		StringifyKey(bucket.UpperBound(), s.types),
+		StringifyKey(ctx, bucket.UpperBound(), s.types),
 		uint64(bucket.BoundCount()),
 		s.createdAt,
 		mcvs[0], mcvs[1], mcvs[2], mcvs[3],
@@ -129,9 +128,7 @@ func (s *statsIter) bucketToRow(i int, bucket sql.HistogramBucket) (sql.Row, err
 	}, nil
 }
 
-func StringifyKey(r sql.Row, typs []sql.Type) string {
-	// TODO: Add context parameter
-	ctx := context.Background()
+func StringifyKey(ctx *sql.Context, r sql.Row, typs []sql.Type) string {
 	b := strings.Builder{}
 	sep := ""
 	for i := range typs {

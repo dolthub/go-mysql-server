@@ -66,8 +66,8 @@ func (*Contains) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 	return sql.Collation_binary, 5
 }
 
-func (c *Contains) String() string {
-	return fmt.Sprintf("%s(%s,%s)", c.FunctionName(), c.LeftChild.String(), c.RightChild.String())
+func (c *Contains) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s,%s)", c.FunctionName(), c.LeftChild.String(ctx), c.RightChild.String(ctx))
 }
 
 // WithChildren implements the Expression interface.

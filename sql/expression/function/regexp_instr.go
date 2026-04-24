@@ -158,10 +158,10 @@ func (r *RegexpInstr) WithChildren(ctx *sql.Context, children ...sql.Expression)
 }
 
 // String implements the sql.Expression interface.
-func (r *RegexpInstr) String() string {
+func (r *RegexpInstr) String(ctx *sql.Context) string {
 	var args []string
 	for _, e := range r.Children() {
-		args = append(args, e.String())
+		args = append(args, e.String(ctx))
 	}
 	return fmt.Sprintf("%s(%s)", r.FunctionName(), strings.Join(args, ","))
 }

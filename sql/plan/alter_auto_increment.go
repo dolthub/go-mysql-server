@@ -66,10 +66,10 @@ func (p *AlterAutoIncrement) CollationCoercibility(ctx *sql.Context) (collation 
 
 func (p *AlterAutoIncrement) Schema(ctx *sql.Context) sql.Schema { return nil }
 
-func (p AlterAutoIncrement) String() string {
+func (p AlterAutoIncrement) String(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("AlterAutoIncrement(%d)", p.AutoVal)
-	_ = pr.WriteChildren(fmt.Sprintf("Table(%s)", p.Table.String()))
+	_ = pr.WriteChildren(fmt.Sprintf("Table(%s)", p.Table.String(ctx)))
 	return pr.String()
 }
 

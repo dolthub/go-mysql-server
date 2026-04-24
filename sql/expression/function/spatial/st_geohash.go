@@ -67,10 +67,10 @@ func (*GeoHash) CollationCoercibility(ctx *sql.Context) (collation sql.Collation
 	return sql.Collation_binary, 4
 }
 
-func (g *GeoHash) String() string {
+func (g *GeoHash) String(ctx *sql.Context) string {
 	var args = make([]string, len(g.ChildExpressions))
 	for i, arg := range g.ChildExpressions {
-		args[i] = arg.String()
+		args[i] = arg.String(ctx)
 	}
 	return fmt.Sprintf("%s(%s)", g.FunctionName(), strings.Join(args, ","))
 }
@@ -265,8 +265,8 @@ func (*PointFromGeoHash) CollationCoercibility(ctx *sql.Context) (collation sql.
 	return sql.Collation_binary, 4
 }
 
-func (p *PointFromGeoHash) String() string {
-	return fmt.Sprintf("%s(%s,%s)", p.FunctionName(), p.LeftChild.String(), p.RightChild.String())
+func (p *PointFromGeoHash) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s,%s)", p.FunctionName(), p.LeftChild.String(ctx), p.RightChild.String(ctx))
 }
 
 // WithChildren implements the Expression interface.
@@ -388,8 +388,8 @@ func (*LatFromGeoHash) CollationCoercibility(ctx *sql.Context) (collation sql.Co
 	return sql.Collation_binary, 5
 }
 
-func (l *LatFromGeoHash) String() string {
-	return fmt.Sprintf("%s(%s)", l.FunctionName(), l.Child.String())
+func (l *LatFromGeoHash) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", l.FunctionName(), l.Child.String(ctx))
 }
 
 // WithChildren implements the Expression interface.
@@ -460,8 +460,8 @@ func (*LongFromGeoHash) CollationCoercibility(ctx *sql.Context) (collation sql.C
 	return sql.Collation_binary, 5
 }
 
-func (l *LongFromGeoHash) String() string {
-	return fmt.Sprintf("%s(%s)", l.FunctionName(), l.Child.String())
+func (l *LongFromGeoHash) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", l.FunctionName(), l.Child.String(ctx))
 }
 
 // WithChildren implements the Expression interface.

@@ -26,7 +26,7 @@ import (
 )
 
 type DistanceType interface {
-	String() string
+	String(ctx *sql.Context) string
 	Eval(left []float32, right []float32) (float64, error)
 	CanEval(distanceType DistanceType) bool
 	FunctionName() string
@@ -35,10 +35,10 @@ type DistanceType interface {
 
 type DistanceL2Squared struct{}
 
-var _ fmt.Stringer = DistanceL2Squared{}
+var _ sql.Stringer = DistanceL2Squared{}
 var _ DistanceType = DistanceL2Squared{}
 
-func (d DistanceL2Squared) String() string {
+func (d DistanceL2Squared) String(ctx *sql.Context) string {
 	return "VEC_DISTANCE_L2_SQUARED"
 }
 
@@ -68,10 +68,10 @@ func (d DistanceL2Squared) Description() string {
 
 type DistanceEuclidean struct{}
 
-var _ fmt.Stringer = DistanceEuclidean{}
+var _ sql.Stringer = DistanceEuclidean{}
 var _ DistanceType = DistanceEuclidean{}
 
-func (d DistanceEuclidean) String() string {
+func (d DistanceEuclidean) String(ctx *sql.Context) string {
 	return "VEC_DISTANCE_EUCLIDEAN"
 }
 
@@ -101,10 +101,10 @@ func (d DistanceEuclidean) Description() string {
 
 type DistanceCosine struct{}
 
-var _ fmt.Stringer = DistanceCosine{}
+var _ sql.Stringer = DistanceCosine{}
 var _ DistanceType = DistanceCosine{}
 
-func (d DistanceCosine) String() string {
+func (d DistanceCosine) String(ctx *sql.Context) string {
 	return "VEC_DISTANCE_COSINE"
 }
 
@@ -193,8 +193,8 @@ func (d Distance) CollationCoercibility(_ *sql.Context) (collation sql.Collation
 	return sql.Collation_binary, 5
 }
 
-func (d Distance) String() string {
-	return fmt.Sprintf("%s(%s, %s)", d.DistanceType, d.LeftChild, d.RightChild)
+func (d Distance) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s, %s)", d.DistanceType.String(ctx), d.LeftChild.String(ctx), d.RightChild.String(ctx))
 }
 
 func (d Distance) Type(ctx *sql.Context) sql.Type {
@@ -279,9 +279,9 @@ func (g *GenericDistance) CollationCoercibility(_ *sql.Context) (collation sql.C
 	return sql.Collation_binary, 5
 }
 
-func (g *GenericDistance) String() string {
+func (g *GenericDistance) String(ctx *sql.Context) string {
 	children := g.Children()
-	return fmt.Sprintf("DISTANCE(%s, %s, %s)", children[0], children[1], children[2])
+	return fmt.Sprintf("DISTANCE(%s, %s, %s)", children[0].String(ctx), children[1].String(ctx), children[2].String(ctx))
 }
 
 func (g *GenericDistance) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {

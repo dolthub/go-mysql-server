@@ -60,8 +60,8 @@ func NewAlterDefaultSet(database sql.Database, table sql.Node, columnName string
 }
 
 // String implements the sql.Node interface.
-func (d *AlterDefaultSet) String() string {
-	return fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET DEFAULT %s", d.Table.String(), d.ColumnName, d.Default.String())
+func (d *AlterDefaultSet) String(ctx *sql.Context) string {
+	return fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s SET DEFAULT %s", d.Table.String(ctx), d.ColumnName, d.Default.String(ctx))
 }
 
 func (d *AlterDefaultSet) IsReadOnly() bool {
@@ -170,7 +170,7 @@ func NewAlterDefaultDrop(database sql.Database, table sql.Node, columnName strin
 }
 
 // String implements the sql.Node interface.
-func (d *AlterDefaultDrop) String() string {
+func (d *AlterDefaultDrop) String(ctx *sql.Context) string {
 	return fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s DROP DEFAULT", getTableName(d.Table), d.ColumnName)
 }
 

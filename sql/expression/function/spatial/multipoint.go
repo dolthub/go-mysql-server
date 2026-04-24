@@ -60,10 +60,10 @@ func (*MultiPoint) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 	return sql.Collation_binary, 5
 }
 
-func (l *MultiPoint) String() string {
+func (l *MultiPoint) String(ctx *sql.Context) string {
 	var args = make([]string, len(l.ChildExpressions))
 	for i, arg := range l.ChildExpressions {
-		args[i] = arg.String()
+		args[i] = arg.String(ctx)
 	}
 	return fmt.Sprintf("%s(%s)", l.FunctionName(), strings.Join(args, ","))
 }

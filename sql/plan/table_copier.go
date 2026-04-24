@@ -146,6 +146,6 @@ func (tc *TableCopier) Resolved() bool {
 	return tc.Source.Resolved()
 }
 
-func (tc *TableCopier) String() string {
+func (tc *TableCopier) String(ctx *sql.Context) string {
 	return fmt.Sprintf("TABLE_COPY SRC: %s into DST: %s", tc.Source, tc.Destination)
 }

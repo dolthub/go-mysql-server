@@ -54,8 +54,8 @@ func (s *STEquals) Type(ctx *sql.Context) sql.Type {
 	return types.Boolean
 }
 
-func (s *STEquals) String() string {
-	return fmt.Sprintf("ST_EQUALS(%s, %s)", s.LeftChild, s.RightChild)
+func (s *STEquals) String(ctx *sql.Context) string {
+	return fmt.Sprintf("ST_EQUALS(%s, %s)", s.LeftChild.String(ctx), s.RightChild.String(ctx))
 }
 
 // WithChildren implements the Expression interface.

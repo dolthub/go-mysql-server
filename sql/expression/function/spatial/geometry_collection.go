@@ -57,10 +57,10 @@ func (*GeomColl) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 	return sql.Collation_binary, 5
 }
 
-func (g *GeomColl) String() string {
+func (g *GeomColl) String(ctx *sql.Context) string {
 	var args = make([]string, len(g.ChildExpressions))
 	for i, arg := range g.ChildExpressions {
-		args[i] = arg.String()
+		args[i] = arg.String(ctx)
 	}
 	return fmt.Sprintf("geomcoll(%s)", strings.Join(args, ","))
 }

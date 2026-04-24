@@ -121,8 +121,8 @@ func TestVectorIndex(t *testing.T) {
 			if testCase.usesVectorIndex {
 				require.Equal(t,
 					strings.TrimSpace(testCase.expectedPlan),
-					strings.TrimSpace(res.String()),
-					"expected:\n%s,\nfound:\n%s\n", testCase.expectedPlan, res.String())
+					strings.TrimSpace(res.String(ctx)),
+					"expected:\n%s,\nfound:\n%s\n", testCase.expectedPlan, res.String(ctx))
 			}
 
 			iter, err := rowexec.NewBuilder(nil, sql.EngineOverrides{}).Build(ctx, res, nil)
@@ -186,8 +186,8 @@ func (i vectorIndexTable) Name() string {
 	return i.underlying.Name()
 }
 
-func (i vectorIndexTable) String() string {
-	return i.underlying.String()
+func (i vectorIndexTable) String(ctx *sql.Context) string {
+	return i.underlying.String(ctx)
 }
 
 func (i vectorIndexTable) Schema(ctx *sql.Context) sql.Schema {

@@ -73,10 +73,10 @@ func (f *ConcatWithSeparator) IsNullable(ctx *sql.Context) bool {
 	return f.args[0].IsNullable(ctx)
 }
 
-func (f *ConcatWithSeparator) String() string {
+func (f *ConcatWithSeparator) String(ctx *sql.Context) string {
 	var args = make([]string, len(f.args))
 	for i, arg := range f.args {
-		args[i] = arg.String()
+		args[i] = arg.String(ctx)
 	}
 	return fmt.Sprintf("%s(%s)", f.FunctionName(), strings.Join(args, ","))
 }

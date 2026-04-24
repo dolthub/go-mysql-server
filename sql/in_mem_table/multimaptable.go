@@ -99,7 +99,7 @@ func (t *IndexedSetTable[V]) Name() string {
 	return t.name
 }
 
-func (t *IndexedSetTable[V]) String() string {
+func (t *IndexedSetTable[V]) String(ctx *sql.Context) string {
 	return t.Name()
 }
 
@@ -203,7 +203,7 @@ func (t *MultiIndexedSetTable[V]) Name() string {
 	return t.name
 }
 
-func (t *MultiIndexedSetTable[V]) String() string {
+func (t *MultiIndexedSetTable[V]) String(ctx *sql.Context) string {
 	return t.Name()
 }
 

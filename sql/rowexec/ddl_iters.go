@@ -852,14 +852,14 @@ func createIndex(
 ) {
 	span, ctx := ctx.Span("plan.createIndex",
 		trace.WithAttributes(
-			attribute.String("index", index.ID()),
+			attribute.String("index", index.ID(ctx)),
 			attribute.String("table", index.Table()),
 			attribute.String("driver", index.Driver()),
 		),
 	)
 	defer span.End()
 
-	l := log.WithField("id", index.ID())
+	l := log.WithField("id", index.ID(ctx))
 
 	err := driver.Save(ctx, index, newLoggingPartitionKeyValueIter(l, iter))
 	close(done)
@@ -870,7 +870,7 @@ func createIndex(
 		ctx.Error(0, "unable to save the index: %s", err)
 		logrus.WithField("err", err).Error("unable to save the index")
 
-		deleted, err := ctx.GetIndexRegistry().DeleteIndex(index.Database(), index.ID(), true)
+		deleted, err := ctx.GetIndexRegistry().DeleteIndex(ctx, index.Database(), index.ID(ctx), true)
 		if err != nil {
 			ctx.Error(0, "unable to delete index: %s", err)
 			logrus.WithField("err", err).Error("unable to delete the index")
@@ -1051,7 +1051,7 @@ func projectRowWithTypes(ctx *sql.Context, oldSchema, newSchema sql.Schema, proj
 			return nil, err
 		}
 		if inRange != sql.InRange {
-			return nil, sql.ErrValueOutOfRange.New(newRow[i], newSchema[i].Type)
+			return nil, sql.ErrValueOutOfRange.New(newRow[i], newSchema[i].Type.String(ctx))
 		}
 		newRow[i] = converted
 	}
@@ -2084,7 +2084,7 @@ func generateIndexName(ctx *sql.Context, idxAltable sql.IndexAlterableTable, idx
 			return "", err
 		}
 		for _, index := range indexes {
-			indexMap[strings.ToLower(index.ID())] = struct{}{}
+			indexMap[strings.ToLower(index.ID(ctx))] = struct{}{}
 		}
 	}
 	// MySQL names the index by the first column in the definition
@@ -2293,7 +2293,7 @@ func (b *BaseBuilder) executeAlterIndex(ctx *sql.Context, n *plan.AlterIndex) er
 			var ftIndex fulltext.Index
 			lowercaseIndexName := strings.ToLower(n.IndexName)
 			for _, index := range indexes {
-				if strings.ToLower(index.ID()) == lowercaseIndexName {
+				if strings.ToLower(index.ID(ctx)) == lowercaseIndexName {
 					if index.IsFullText() {
 						ftIndex, ok = index.(fulltext.Index)
 						if !ok {
@@ -2475,7 +2475,7 @@ func warnOnDuplicateSecondaryIndex(ctx *sql.Context, newIndexName string, idxAlt
 	// Find the new sql.Index by name
 	var newIdx sql.Index
 	for _, existingIndex := range existingIndexes {
-		if existingIndex.ID() == newIndexName {
+		if existingIndex.ID(ctx) == newIndexName {
 			newIdx = existingIndex
 		}
 	}
@@ -2483,7 +2483,7 @@ func warnOnDuplicateSecondaryIndex(ctx *sql.Context, newIndexName string, idxAlt
 	// Then iterate through the existing indexes to look for a duplicate
 	if newIdx != nil {
 		for _, existingIndex := range existingIndexes {
-			if existingIndex == newIdx || existingIndex.ID() == "PRIMARY" {
+			if existingIndex == newIdx || existingIndex.ID(ctx) == "PRIMARY" {
 				continue
 			}
 
@@ -2503,7 +2503,7 @@ func warnOnDuplicateSecondaryIndex(ctx *sql.Context, newIndexName string, idxAlt
 			// Log a session warning if we find a duplicate, then break, to avoid multiple warnings
 			ctx.Warn(1831, "Duplicate index '%s' defined on the table '%s.%s'. "+
 				"This is deprecated and will be disallowed in a future release.",
-				newIdx.ID(), newIdx.Database(), newIdx.Table())
+				newIdx.ID(ctx), newIdx.Database(), newIdx.Table())
 			break
 		}
 	}

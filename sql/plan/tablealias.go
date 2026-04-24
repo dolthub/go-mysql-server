@@ -124,10 +124,10 @@ func (t *TableAlias) CollationCoercibility(ctx *sql.Context) (collation sql.Coll
 	return sql.Collation_binary, 7
 }
 
-func (t *TableAlias) String() string {
+func (t *TableAlias) String(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("TableAlias(%s)", t.name)
-	_ = pr.WriteChildren(t.Child.String())
+	_ = pr.WriteChildren(t.Child.String(ctx))
 	return pr.String()
 }
 

@@ -85,11 +85,11 @@ func (j *JSONMergePreserve) Resolved() bool {
 }
 
 // String implements the Expression interface.
-func (j *JSONMergePreserve) String() string {
+func (j *JSONMergePreserve) String(ctx *sql.Context) string {
 	children := j.Children()
 	var parts = make([]string, len(children))
 	for i, c := range children {
-		parts[i] = c.String()
+		parts[i] = c.String(ctx)
 	}
 	return fmt.Sprintf("%s(%s)", j.FunctionName(), strings.Join(parts, ","))
 }

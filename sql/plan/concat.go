@@ -69,10 +69,10 @@ func (c *Concat) IsReadOnly() bool {
 	return c.left.IsReadOnly() && c.right.IsReadOnly()
 }
 
-func (c Concat) String() string {
+func (c Concat) String(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Concat")
-	_ = pr.WriteChildren(c.left.String(), c.right.String())
+	_ = pr.WriteChildren(c.left.String(ctx), c.right.String(ctx))
 	return pr.String()
 }
 

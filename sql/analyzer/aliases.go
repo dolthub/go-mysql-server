@@ -278,7 +278,7 @@ func getTableAliases(ctx *sql.Context, n sql.Node, scope *plan.Scope) (TableAlia
 // aliasedExpressionsInNode returns a map of the aliased expressions defined in the first Projector node found (starting
 // the search from the specified node), mapped from the expression string to the alias name. Returned
 // map keys are normalized to lower case.
-func aliasedExpressionsInNode(n sql.Node) map[string]string {
+func aliasedExpressionsInNode(ctx *sql.Context, n sql.Node) map[string]string {
 	projector := findFirstProjectorNode(n)
 	if projector == nil {
 		return nil
@@ -287,7 +287,7 @@ func aliasedExpressionsInNode(n sql.Node) map[string]string {
 	for _, e := range projector.ProjectedExprs() {
 		alias, ok := e.(*expression.Alias)
 		if ok {
-			aliasesFromExpressionToName[strings.ToLower(alias.Child.String())] = alias.Name()
+			aliasesFromExpressionToName[strings.ToLower(alias.Child.String(ctx))] = alias.Name()
 		}
 	}
 

@@ -69,12 +69,12 @@ func (*Locate) CollationCoercibility(ctx *sql.Context) (collation sql.CollationI
 	return sql.Collation_binary, 5
 }
 
-func (l *Locate) String() string {
+func (l *Locate) String(ctx *sql.Context) string {
 	switch len(l.ChildExpressions) {
 	case 2:
-		return fmt.Sprintf("%s(%s,%s)", l.FunctionName(), l.ChildExpressions[0], l.ChildExpressions[1])
+		return fmt.Sprintf("%s(%s,%s)", l.FunctionName(), l.ChildExpressions[0].String(ctx), l.ChildExpressions[1].String(ctx))
 	case 3:
-		return fmt.Sprintf("%s(%s,%s,%s)", l.FunctionName(), l.ChildExpressions[0], l.ChildExpressions[1], l.ChildExpressions[2])
+		return fmt.Sprintf("%s(%s,%s,%s)", l.FunctionName(), l.ChildExpressions[0].String(ctx), l.ChildExpressions[1].String(ctx), l.ChildExpressions[2].String(ctx))
 	}
 	return ""
 }

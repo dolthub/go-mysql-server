@@ -49,7 +49,7 @@ func (s IntSequenceTable) IsReadOnly() bool {
 	return true
 }
 
-func (s IntSequenceTable) String() string {
+func (s IntSequenceTable) String(ctx *sql.Context) string {
 	return fmt.Sprintf("sequence(%s, %d)", s.name, s.Len)
 }
 

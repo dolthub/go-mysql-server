@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
+
+	"github.com/dolthub/go-mysql-server/sql"
 )
 
 func TestMarshalToMySqlString(t *testing.T) {
@@ -118,7 +120,7 @@ newlines
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			actual, err := marshalToMySqlString(test.val)
+			actual, err := marshalToMySqlString(sql.NewEmptyContext(), test.val)
 			if err != nil {
 				t.Fatal(err)
 			}

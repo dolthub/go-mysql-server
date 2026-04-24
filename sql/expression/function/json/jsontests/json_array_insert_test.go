@@ -90,7 +90,7 @@ func TestArrayInsert(t *testing.T) {
 			}
 		}
 
-		t.Run(tstC.f.String()+"."+strings.Join(paths, ","), func(t *testing.T) {
+		t.Run(tstC.f.String(sql.NewEmptyContext())+"."+strings.Join(paths, ","), func(t *testing.T) {
 			req := require.New(t)
 			result, err := tstC.f.Eval(sql.NewEmptyContext(), tstC.row)
 			if tstC.err == nil {

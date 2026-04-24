@@ -90,7 +90,7 @@ func (lit *Literal) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return lit.Val, nil
 }
 
-func (lit *Literal) String() string {
+func (lit *Literal) String(ctx *sql.Context) string {
 	switch litVal := lit.Val.(type) {
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
 		return fmt.Sprintf("%d", litVal)
@@ -112,12 +112,16 @@ func (lit *Literal) String() string {
 	case nil:
 		return "NULL"
 	default:
-		return fmt.Sprint(litVal)
+		if stringer, ok := litVal.(sql.Stringer); ok {
+			return stringer.String(ctx)
+		} else {
+			return fmt.Sprint(litVal)
+		}
 	}
 }
 
 func (lit *Literal) DebugString(ctx *sql.Context) string {
-	typeStr := lit.Typ.String()
+	typeStr := lit.Typ.String(ctx)
 	switch v := lit.Val.(type) {
 	case string:
 		return fmt.Sprintf("%s (%s)", v, typeStr)
@@ -132,7 +136,10 @@ func (lit *Literal) DebugString(ctx *sql.Context) string {
 	case bool:
 		return fmt.Sprintf("%t (%s)", v, typeStr)
 	default:
-		return fmt.Sprintf("%s (%s)", v, typeStr)
+		if stringer, ok := v.(sql.Stringer); ok {
+			v = stringer.String(ctx)
+		}
+		return fmt.Sprintf("%v (%s)", v, typeStr)
 	}
 }
 

@@ -50,7 +50,7 @@ func NewShowCreateTrigger(db sql.Database, trigger string) *ShowCreateTrigger {
 }
 
 // String implements the sql.Node interface.
-func (s *ShowCreateTrigger) String() string {
+func (s *ShowCreateTrigger) String(ctx *sql.Context) string {
 	return fmt.Sprintf("SHOW CREATE TRIGGER %s", s.TriggerName)
 }
 

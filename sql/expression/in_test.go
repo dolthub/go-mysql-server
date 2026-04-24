@@ -38,13 +38,13 @@ func TestRoundTripNames(t *testing.T) {
 		expression.NewTuple(
 			expression.NewGetField(0, types.Int64, "foo", false),
 			expression.NewLiteral(int64(2), types.Int64),
-		)).String())
+		)).String(sql.NewEmptyContext()))
 	hit, err := expression.NewHashInTuple(nil, expression.NewGetField(0, types.Int64, "foo", false),
 		expression.NewTuple(
 			expression.NewLiteral(int64(2), types.Int64),
 		))
 	assert.NoError(t, err)
-	assert.Equal(t, "(foo HASH IN (2))", hit.String())
+	assert.Equal(t, "(foo HASH IN (2))", hit.String(sql.NewEmptyContext()))
 }
 
 func TestInTuple(t *testing.T) {

@@ -110,11 +110,11 @@ func (p *Pad) CollationCoercibility(ctx *sql.Context) (collation sql.CollationID
 	return sql.ResolveCoercibility(leftCollation, leftCoercibility, rightCollation, rightCoercibility)
 }
 
-func (p *Pad) String() string {
+func (p *Pad) String(ctx *sql.Context) string {
 	if p.padType == lPadType {
-		return fmt.Sprintf("lpad(%s, %s, %s)", p.str, p.length, p.padStr)
+		return fmt.Sprintf("lpad(%s, %s, %s)", p.str.String(ctx), p.length.String(ctx), p.padStr.String(ctx))
 	}
-	return fmt.Sprintf("rpad(%s, %s, %s)", p.str, p.length, p.padStr)
+	return fmt.Sprintf("rpad(%s, %s, %s)", p.str.String(ctx), p.length.String(ctx), p.padStr.String(ctx))
 }
 
 // WithChildren implements the Expression interface.

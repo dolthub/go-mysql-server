@@ -115,7 +115,7 @@ func (*CreateTrigger) CollationCoercibility(ctx *sql.Context) (collation sql.Col
 	return sql.Collation_binary, 7
 }
 
-func (c *CreateTrigger) String() string {
+func (c *CreateTrigger) String(ctx *sql.Context) string {
 	order := ""
 	if c.TriggerOrder != nil {
 		order = fmt.Sprintf("%s %s ", c.TriggerOrder.PrecedesOrFollows, c.TriggerOrder.OtherTriggerName)

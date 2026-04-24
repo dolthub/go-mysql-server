@@ -167,7 +167,7 @@ func (t *JSONTable) IsReadOnly() bool {
 }
 
 // String implements the sql.Table interface
-func (t *JSONTable) String() string {
+func (t *JSONTable) String(ctx *sql.Context) string {
 	return t.TableName
 }
 

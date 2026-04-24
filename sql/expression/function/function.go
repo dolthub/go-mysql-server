@@ -52,9 +52,9 @@ func (uf *UnaryFunc) EvalChild(ctx *sql.Context, row sql.Row) (interface{}, erro
 	return uf.Child.Eval(ctx, row)
 }
 
-// String implements the fmt.Stringer interface.
-func (uf *UnaryFunc) String() string {
-	return fmt.Sprintf("%s(%s)", uf.FunctionName(), uf.Child.String())
+// String implements the sql.Stringer interface.
+func (uf *UnaryFunc) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", uf.FunctionName(), uf.Child.String(ctx))
 }
 
 // Type implements the Expression interface.

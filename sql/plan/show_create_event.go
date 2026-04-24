@@ -49,7 +49,7 @@ func NewShowCreateEvent(db sql.Database, event sql.EventDefinition) *ShowCreateE
 }
 
 // String implements the sql.Node interface.
-func (s *ShowCreateEvent) String() string {
+func (s *ShowCreateEvent) String(ctx *sql.Context) string {
 	return fmt.Sprintf("SHOW CREATE EVENT %s", s.Event.Name)
 }
 

@@ -68,13 +68,13 @@ func (t *LockTables) Resolved() bool {
 // Schema implements the sql.Node interface.
 func (t *LockTables) Schema(ctx *sql.Context) sql.Schema { return nil }
 
-func (t *LockTables) String() string {
+func (t *LockTables) String(ctx *sql.Context) string {
 	var children = make([]string, len(t.Locks))
 	for i, l := range t.Locks {
 		if l.Write {
-			children[i] = fmt.Sprintf("[WRITE] %s", l.Table.String())
+			children[i] = fmt.Sprintf("[WRITE] %s", l.Table.String(ctx))
 		} else {
-			children[i] = fmt.Sprintf("[READ] %s", l.Table.String())
+			children[i] = fmt.Sprintf("[READ] %s", l.Table.String(ctx))
 		}
 	}
 
@@ -131,7 +131,7 @@ func (t *UnlockTables) IsReadOnly() bool { return true }
 // Schema implements the sql.Node interface.
 func (t *UnlockTables) Schema(ctx *sql.Context) sql.Schema { return nil }
 
-func (t *UnlockTables) String() string {
+func (t *UnlockTables) String(ctx *sql.Context) string {
 	p := sql.NewTreePrinter()
 	_ = p.WriteNode("UnlockTables")
 	return p.String()

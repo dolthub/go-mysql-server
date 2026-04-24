@@ -45,10 +45,10 @@ func (w *With) IsReadOnly() bool {
 	return w.Child.IsReadOnly()
 }
 
-func (w *With) String() string {
+func (w *With) String(ctx *sql.Context) string {
 	cteStrings := make([]string, len(w.CTEs))
 	for i, e := range w.CTEs {
-		cteStrings[i] = e.String()
+		cteStrings[i] = e.String(ctx)
 	}
 
 	pr := sql.NewTreePrinter()
@@ -57,7 +57,7 @@ func (w *With) String() string {
 	} else {
 		_ = pr.WriteNode("with(%s)", strings.Join(cteStrings, ", "))
 	}
-	_ = pr.WriteChildren(w.Child.String())
+	_ = pr.WriteChildren(w.Child.String(ctx))
 	return pr.String()
 }
 
@@ -133,16 +133,13 @@ func NewCommonTableExpression(subquery *SubqueryAlias, columns []string) *Common
 	}
 }
 
-func (e *CommonTableExpression) String() string {
+func (e *CommonTableExpression) String(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	if len(e.Columns) > 0 {
 		_ = pr.WriteNode("%s (%s)", e.Subquery.name, strings.Join(e.Columns, ","))
 	} else {
 		_ = pr.WriteNode("%s", e.Subquery.name)
 	}
-	// To maintain compatibility with fmt.Stringer we have to use an empty context, but this will fail in any case that
-	// requires a context to determine a string (such as an integrator using the context to contain type information).
-	ctx := sql.NewEmptyContext()
 	_ = pr.WriteChildren(sql.DebugString(ctx, e.Subquery.Child))
 	return pr.String()
 }
@@ -154,6 +151,6 @@ func (e *CommonTableExpression) DebugString(ctx *sql.Context) string {
 	} else {
 		_ = pr.WriteNode("%s", e.Subquery.name)
 	}
-	_ = pr.WriteChildren(e.Subquery.Child.String())
+	_ = pr.WriteChildren(e.Subquery.Child.String(ctx))
 	return pr.String()
 }

@@ -60,7 +60,7 @@ func (db *Database) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
-func (db *Database) String() string {
+func (db *Database) String(ctx *sql.Context) string {
 	return fmt.Sprintf("%s()", db.FunctionName())
 }
 

@@ -71,7 +71,7 @@ func (g *GroupBy) Schema(ctx *sql.Context) sql.Schema {
 		if n, ok := e.(sql.Nameable); ok {
 			name = n.Name()
 		} else {
-			name = AliasSubqueryString(e)
+			name = AliasSubqueryString(ctx, e)
 		}
 
 		var table string
@@ -126,24 +126,24 @@ func (g *GroupBy) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sq
 	return NewGroupBy(agg, grouping, g.Child), nil
 }
 
-func (g *GroupBy) String() string {
+func (g *GroupBy) String(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("GroupBy")
 
 	var selectDeps = make([]string, len(g.SelectDeps))
 	for i, e := range g.SelectDeps {
-		selectDeps[i] = e.String()
+		selectDeps[i] = e.String(ctx)
 	}
 
 	var grouping = make([]string, len(g.GroupByExprs))
 	for i, g := range g.GroupByExprs {
-		grouping[i] = g.String()
+		grouping[i] = g.String(ctx)
 	}
 
 	_ = pr.WriteChildren(
 		fmt.Sprintf("select: %s", strings.Join(selectDeps, ", ")),
 		fmt.Sprintf("group: %s", strings.Join(grouping, ", ")),
-		g.Child.String(),
+		g.Child.String(ctx),
 	)
 	return pr.String()
 }

@@ -81,8 +81,8 @@ func reverseString(s string) string {
 	return string(r)
 }
 
-func (r *Reverse) String() string {
-	return fmt.Sprintf("reverse(%s)", r.Child)
+func (r *Reverse) String(ctx *sql.Context) string {
+	return fmt.Sprintf("reverse(%s)", r.Child.String(ctx))
 }
 
 // WithChildren implements the Expression interface.
@@ -128,8 +128,8 @@ func (r *Repeat) Description() string {
 	return "returns a string consisting of the string str repeated count times."
 }
 
-func (r *Repeat) String() string {
-	return fmt.Sprintf("repeat(%s, %s)", r.LeftChild, r.RightChild)
+func (r *Repeat) String(ctx *sql.Context) string {
+	return fmt.Sprintf("repeat(%s, %s)", r.LeftChild.String(ctx), r.RightChild.String(ctx))
 }
 
 // Type implements the Expression interface.
@@ -230,8 +230,8 @@ func (r *Replace) IsNullable(ctx *sql.Context) bool {
 	return r.str.IsNullable(ctx) || r.fromStr.IsNullable(ctx) || r.toStr.IsNullable(ctx)
 }
 
-func (r *Replace) String() string {
-	return fmt.Sprintf("replace(%s, %s, %s)", r.str, r.fromStr, r.toStr)
+func (r *Replace) String(ctx *sql.Context) string {
+	return fmt.Sprintf("replace(%s, %s, %s)", r.str.String(ctx), r.fromStr.String(ctx), r.toStr.String(ctx))
 }
 
 // Type implements the Expression interface.

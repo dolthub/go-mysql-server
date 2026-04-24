@@ -50,7 +50,7 @@ func (s TableFunc) IsReadOnly() bool {
 	return true
 }
 
-func (s TableFunc) String() string {
+func (s TableFunc) String(ctx *sql.Context) string {
 	return fmt.Sprintf("table_func(%s, %d)", s.name, s.value)
 }
 

@@ -124,7 +124,7 @@ func (g *GroupConcat) Resolved() bool {
 	return true
 }
 
-func (g *GroupConcat) String() string {
+func (g *GroupConcat) String(ctx *sql.Context) string {
 	sb := strings.Builder{}
 	sb.WriteString("group_concat(")
 	if g.distinct != "" {
@@ -134,7 +134,7 @@ func (g *GroupConcat) String() string {
 	if g.selectExprs != nil {
 		var exprs = make([]string, len(g.selectExprs))
 		for i, expr := range g.selectExprs {
-			exprs[i] = expr.String()
+			exprs[i] = expr.String(ctx)
 		}
 
 		sb.WriteString(strings.Join(exprs, ", "))
@@ -146,7 +146,7 @@ func (g *GroupConcat) String() string {
 			if i > 0 {
 				sb.WriteString(", ")
 			}
-			sb.WriteString(ob.String())
+			sb.WriteString(ob.String(ctx))
 		}
 	}
 

@@ -63,12 +63,28 @@ func (gs *GtidSubtract) IsNullable(ctx *sql.Context) bool {
 	return gs.gtid1.IsNullable(ctx) || gs.gtid2.IsNullable(ctx)
 }
 
-func (gs *GtidSubtract) String() string {
-	return fmt.Sprintf("%s(%s, %s)", gs.FunctionName(), gs.gtid1, gs.gtid2)
+func (gs *GtidSubtract) String(ctx *sql.Context) string {
+	gtid1 := "null"
+	if gs.gtid1 != nil {
+		gtid1 = gs.gtid1.String(ctx)
+	}
+	gtid2 := "null"
+	if gs.gtid2 != nil {
+		gtid2 = gs.gtid2.String(ctx)
+	}
+	return fmt.Sprintf("%s(%s, %s)", gs.FunctionName(), gtid1, gtid2)
 }
 
 func (gs *GtidSubtract) DebugString(ctx *sql.Context) string {
-	return fmt.Sprintf("%s(%s, %s)", gs.FunctionName(), gs.gtid1, gs.gtid2)
+	gtid1 := "null"
+	if gs.gtid1 != nil {
+		gtid1 = gs.gtid1.String(ctx)
+	}
+	gtid2 := "null"
+	if gs.gtid2 != nil {
+		gtid2 = gs.gtid2.String(ctx)
+	}
+	return fmt.Sprintf("%s(%s, %s)", gs.FunctionName(), gtid1, gtid2)
 }
 
 // WithChildren implements the Expression interface.
@@ -112,10 +128,10 @@ func (gs *GtidSubtract) Eval(ctx *sql.Context, row sql.Row) (interface{}, error)
 	}
 
 	if _, ok := left.(string); !ok {
-		return nil, sql.ErrInvalidType.New(gs.gtid1)
+		return nil, sql.ErrInvalidType.New(gs.gtid1.String(ctx))
 	}
 	if _, ok := right.(string); !ok {
-		return nil, sql.ErrInvalidType.New(gs.gtid2)
+		return nil, sql.ErrInvalidType.New(gs.gtid2.String(ctx))
 	}
 
 	gtidSet1, err := mysql.ParseMysql56GTIDSet(left.(string))

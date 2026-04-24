@@ -50,22 +50,22 @@ func (g *groupBy) hasAggs() bool {
 	return len(g.aggs) > 0
 }
 
-func (g *groupBy) aggregations() []scopeColumn {
+func (g *groupBy) aggregations(ctx *sql.Context) []scopeColumn {
 	aggregations := make([]scopeColumn, 0, len(g.aggs))
 	for _, agg := range g.aggs {
 		aggregations = append(aggregations, agg)
 	}
 	sort.Slice(aggregations, func(i, j int) bool {
-		return aggregations[i].scalar.String() < aggregations[j].scalar.String()
+		return aggregations[i].scalar.String(ctx) < aggregations[j].scalar.String(ctx)
 	})
 	return aggregations
 }
 
-func (g *groupBy) addAggStr(c scopeColumn) {
+func (g *groupBy) addAggStr(ctx *sql.Context, c scopeColumn) {
 	if g.aggs == nil {
 		g.aggs = make(map[string]scopeColumn)
 	}
-	g.aggs[strings.ToLower(c.scalar.String())] = c
+	g.aggs[strings.ToLower(c.scalar.String(ctx))] = c
 }
 
 func (g *groupBy) getAggRef(name string) sql.Expression {
@@ -140,7 +140,7 @@ func (b *Builder) buildGroupingCols(fromScope, projScope *scope, groupby ast.Gro
 		default:
 			expr := b.buildScalar(fromScope, e)
 			col = scopeColumn{
-				col:      expr.String(),
+				col:      expr.String(b.ctx),
 				typ:      nil,
 				scalar:   expr,
 				nullable: expr.IsNullable(b.ctx),
@@ -148,9 +148,9 @@ func (b *Builder) buildGroupingCols(fromScope, projScope *scope, groupby ast.Gro
 		}
 		if col.scalar == nil {
 			gf := expression.NewGetFieldWithTable(int(col.id), int(col.tableId), col.typ, col.db, col.table, col.col, col.nullable)
-			id, ok := fromScope.getExpr(gf.String(), true)
+			id, ok := fromScope.getExpr(gf.String(b.ctx), true)
 			if !ok {
-				err := sql.ErrColumnNotFound.New(gf.String())
+				err := sql.ErrColumnNotFound.New(gf.String(b.ctx))
 				b.handleErr(err)
 			}
 			col.scalar = gf.WithIndex(int(id))
@@ -178,9 +178,9 @@ func (b *Builder) buildNameConst(fromScope *scope, f *ast.FuncExpr) sql.Expressi
 	}
 	var aliasStr string
 	if types.IsText(aLit.Type(b.ctx)) {
-		aliasStr = strings.Trim(aLit.String(), "'")
+		aliasStr = strings.Trim(aLit.String(b.ctx), "'")
 	} else {
-		aliasStr = aLit.String()
+		aliasStr = aLit.String(b.ctx)
 	}
 	return expression.NewAlias(aliasStr, vLit)
 }
@@ -202,7 +202,7 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 	var selectGfs []sql.Expression
 	selectStr := make(map[string]bool)
 	aliasDeps := make(map[string]bool)
-	for _, e := range group.aggregations() {
+	for _, e := range group.aggregations(b.ctx) {
 		if !selectStr[strings.ToLower(e.String())] {
 			selectDeps = append(selectDeps, e.scalar)
 			selectGfs = append(selectGfs, e.scalarGf())
@@ -226,14 +226,14 @@ func (b *Builder) buildAggregation(fromScope, projScope *scope, groupingCols []s
 		findSelectDeps = func(ctx *sql.Context, e sql.Expression) bool {
 			switch e := e.(type) {
 			case *expression.GetField:
-				colName := strings.ToLower(e.String())
+				colName := strings.ToLower(e.String(b.ctx))
 				if !selectStr[colName] {
 					selectDeps = append(selectDeps, e)
 					selectGfs = append(selectGfs, e)
 					selectStr[colName] = true
 				}
 
-				exprStr := strings.ToLower(e.String())
+				exprStr := strings.ToLower(e.String(b.ctx))
 				if isAliasDep, ok := aliasDeps[exprStr]; !ok && inAlias {
 					aliasDeps[exprStr] = true
 				} else if isAliasDep && !inAlias {
@@ -326,7 +326,7 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 		aggType = types.Float64
 	}
 
-	aggName := strings.ToLower(plan.AliasSubqueryString(agg))
+	aggName := strings.ToLower(plan.AliasSubqueryString(b.ctx, agg))
 	if id, ok := gb.outScope.getExpr(aggName, true); ok {
 		// if we've already computed use reference here
 		gf := expression.NewGetFieldWithTable(int(id), 0, aggType, "", "", aggName, agg.IsNullable(b.ctx))
@@ -341,7 +341,7 @@ func (b *Builder) buildAggregateFunc(inScope *scope, name string, e *ast.FuncExp
 	col.scalar = agg
 
 	col.id = id
-	gb.addAggStr(col)
+	gb.addAggStr(b.ctx, col)
 	return col.scalarGf()
 }
 
@@ -369,7 +369,7 @@ func (b *Builder) newAggregation(e *ast.FuncExpr, name string, args []sql.Expres
 			b.handleErr(err)
 		}
 
-		newInst, err := f.NewInstance(nil, args)
+		newInst, err := f.NewInstance(b.ctx, args)
 		if err != nil {
 			b.handleErr(err)
 		}
@@ -395,7 +395,7 @@ func (b *Builder) buildAggFunctionArgs(inScope *scope, e *ast.FuncExpr, gb *grou
 		switch e := e.(type) {
 		case *expression.GetField:
 			if e.TableId() == 0 {
-				b.handleErr(fmt.Errorf("failed to resolve aggregate column argument: %s", e))
+				b.handleErr(fmt.Errorf("failed to resolve aggregate column argument: %s", e.String(b.ctx)))
 			}
 			args = append(args, e)
 			col := scopeColumn{tableId: e.TableID(), db: e.Database(), table: e.Table(), col: e.Name(), scalar: e, typ: e.Type(b.ctx), nullable: e.IsNullable(b.ctx)}
@@ -409,7 +409,7 @@ func (b *Builder) buildAggFunctionArgs(inScope *scope, e *ast.FuncExpr, gb *grou
 			gb.addInCol(col)
 		default:
 			args = append(args, e)
-			col := scopeColumn{col: e.String(), scalar: e, typ: e.Type(b.ctx)}
+			col := scopeColumn{col: e.String(b.ctx), scalar: e, typ: e.Type(b.ctx)}
 			gb.addInCol(col)
 		}
 	}
@@ -425,14 +425,14 @@ func (b *Builder) buildJsonArrayStarAggregate(gb *groupBy) sql.Expression {
 	// if e.Distinct {
 	//	agg = plan.NewDistinct(expression.NewLiteral(1, types.Int64))
 	// }
-	aggName := strings.ToLower(agg.String())
+	aggName := strings.ToLower(agg.String(b.ctx))
 	gf := gb.getAggRef(aggName)
 	if gf != nil {
 		// if we've already computed use reference here
 		return gf
 	}
 
-	col := scopeColumn{col: strings.ToLower(agg.String()), scalar: agg, typ: agg.Type(b.ctx), nullable: agg.IsNullable(b.ctx)}
+	col := scopeColumn{col: strings.ToLower(agg.String(b.ctx)), scalar: agg, typ: agg.Type(b.ctx), nullable: agg.IsNullable(b.ctx)}
 	id := gb.outScope.newColumn(col)
 
 	agg = agg.WithId(sql.ColumnId(id)).(*aggregation.JsonArray)
@@ -440,7 +440,7 @@ func (b *Builder) buildJsonArrayStarAggregate(gb *groupBy) sql.Expression {
 	col.scalar = agg
 
 	col.id = id
-	gb.addAggStr(col)
+	gb.addAggStr(b.ctx, col)
 	return col.scalarGf()
 }
 
@@ -453,14 +453,14 @@ func (b *Builder) buildCountStarAggregate(e *ast.FuncExpr, gb *groupBy) sql.Expr
 		agg = aggregation.NewCount(expression.NewLiteral(1, types.Int64))
 	}
 	b.qFlags.Set(sql.QFlagCountStar)
-	aggName := strings.ToLower(agg.String())
+	aggName := strings.ToLower(agg.String(b.ctx))
 	gf := gb.getAggRef(aggName)
 	if gf != nil {
 		// if we've already computed use reference here
 		return gf
 	}
 
-	col := scopeColumn{col: strings.ToLower(agg.String()), scalar: agg, typ: agg.Type(b.ctx), nullable: agg.IsNullable(b.ctx)}
+	col := scopeColumn{col: strings.ToLower(agg.String(b.ctx)), scalar: agg, typ: agg.Type(b.ctx), nullable: agg.IsNullable(b.ctx)}
 	id := gb.outScope.newColumn(col)
 	col.id = id
 
@@ -468,7 +468,7 @@ func (b *Builder) buildCountStarAggregate(e *ast.FuncExpr, gb *groupBy) sql.Expr
 	gb.outScope.cols[len(gb.outScope.cols)-1].scalar = agg
 	col.scalar = agg
 
-	gb.addAggStr(col)
+	gb.addAggStr(b.ctx, col)
 	return col.scalarGf()
 }
 
@@ -514,7 +514,7 @@ func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.E
 
 	// todo store ref to aggregate
 	agg := aggregation.NewGroupConcat(e.Distinct, sortFields, separatorS, args, int(groupConcatMaxLen))
-	aggName := strings.ToLower(plan.AliasSubqueryString(agg))
+	aggName := strings.ToLower(plan.AliasSubqueryString(b.ctx, agg))
 	col := scopeColumn{col: aggName, scalar: agg, typ: agg.Type(b.ctx), nullable: agg.IsNullable(b.ctx)}
 
 	id := gb.outScope.newColumn(col)
@@ -523,7 +523,7 @@ func (b *Builder) buildGroupConcat(inScope *scope, e *ast.GroupConcatExpr) sql.E
 	gb.outScope.cols[len(gb.outScope.cols)-1].scalar = agg
 	col.scalar = agg
 
-	gb.addAggStr(col)
+	gb.addAggStr(b.ctx, col)
 	col.id = id
 	return col.scalarGf()
 }
@@ -572,7 +572,7 @@ func (b *Builder) buildOrderedInjectedExpr(inScope *scope, e *ast.OrderedInjecte
 		b.handleErr(fmt.Errorf("expected sql.Aggregation, got %T", expr))
 	}
 
-	aggName := strings.ToLower(plan.AliasSubqueryString(agg))
+	aggName := strings.ToLower(plan.AliasSubqueryString(b.ctx, agg))
 	col := scopeColumn{col: aggName, scalar: agg, typ: agg.Type(b.ctx), nullable: agg.IsNullable(b.ctx)}
 	id := gb.outScope.newColumn(col)
 
@@ -580,7 +580,7 @@ func (b *Builder) buildOrderedInjectedExpr(inScope *scope, e *ast.OrderedInjecte
 	gb.outScope.cols[len(gb.outScope.cols)-1].scalar = agg
 	col.scalar = agg
 
-	gb.addAggStr(col)
+	gb.addAggStr(b.ctx, col)
 	col.id = id
 	return col.scalarGf()
 }
@@ -629,7 +629,7 @@ func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, 
 			b.handleErr(err)
 		}
 
-		newInst, err := f.NewInstance(nil, args)
+		newInst, err := f.NewInstance(b.ctx, args)
 
 		win, ok = newInst.(sql.WindowAdaptableExpression)
 		if !ok {
@@ -647,7 +647,7 @@ func (b *Builder) buildWindowFunc(inScope *scope, name string, e *ast.FuncExpr, 
 		win = w.WithWindow(b.ctx, def)
 	}
 
-	col := scopeColumn{col: strings.ToLower(win.String()), scalar: win, typ: win.Type(b.ctx), nullable: win.IsNullable(b.ctx)}
+	col := scopeColumn{col: strings.ToLower(win.String(b.ctx)), scalar: win, typ: win.Type(b.ctx), nullable: win.IsNullable(b.ctx)}
 	id := inScope.newColumn(col)
 	col.id = id
 	win = win.WithId(sql.ColumnId(id)).(sql.WindowAdaptableExpression)
@@ -667,10 +667,10 @@ func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {
 	selectStr := make(map[string]bool)
 	for _, col := range fromScope.windowFuncs {
 		e := col.scalar
-		if !selectStr[strings.ToLower(e.String())] {
+		if !selectStr[strings.ToLower(e.String(b.ctx))] {
 			switch e.(type) {
 			case sql.WindowAdaptableExpression:
-				selectStr[strings.ToLower(e.String())] = true
+				selectStr[strings.ToLower(e.String(b.ctx))] = true
 				selectExprs = append(selectExprs, e)
 				selectGfs = append(selectGfs, col.scalarGf())
 			default:
@@ -694,7 +694,7 @@ func (b *Builder) buildWindow(fromScope, projScope *scope) *scope {
 		transform.InspectExpr(b.ctx, col.scalar, func(ctx *sql.Context, e sql.Expression) bool {
 			switch e := e.(type) {
 			case *expression.GetField:
-				colName := strings.ToLower(e.String())
+				colName := strings.ToLower(e.String(b.ctx))
 				if !selectStr[colName] {
 					selectExprs = append(selectExprs, e)
 					selectGfs = append(selectGfs, e)
@@ -849,8 +849,8 @@ func (b *Builder) mergeWindowDefs(def, ref *sql.WindowDefinition) *sql.WindowDef
 			frame = def.Frame
 		} else {
 			// if both frames have identical string representations, use either one
-			df := def.Frame.String()
-			rf := ref.Frame.String()
+			df := def.Frame.String(b.ctx)
+			rf := ref.Frame.String(b.ctx)
 			if df != rf {
 				err := sql.ErrInvalidWindowInheritance.New("", "", "both contain different frame clauses")
 				b.handleErr(err)
@@ -977,7 +977,7 @@ func (b *Builder) buildHaving(fromScope, projScope, outScope *scope, having *ast
 	}
 
 	// add columns from fromScope referenced in any aggregate expressions
-	for _, c := range fromScope.groupBy.aggregations() {
+	for _, c := range fromScope.groupBy.aggregations(b.ctx) {
 		transform.InspectExpr(b.ctx, c.scalar, func(ctx *sql.Context, e sql.Expression) bool {
 			switch e := e.(type) {
 			case *expression.GetField:

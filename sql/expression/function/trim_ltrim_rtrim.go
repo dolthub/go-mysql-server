@@ -132,16 +132,16 @@ func (t Trim) IsNullable(ctx *sql.Context) bool {
 	return t.str.IsNullable(ctx) || t.pat.IsNullable(ctx)
 }
 
-func (t Trim) String() string {
+func (t Trim) String(ctx *sql.Context) string {
 	if t.dir == sqlparser.Leading {
-		return fmt.Sprintf("trim(leading %v from %v)", t.pat, t.str)
+		return fmt.Sprintf("trim(leading %v from %v)", t.pat.String(ctx), t.str.String(ctx))
 	} else if t.dir == sqlparser.Trailing {
-		return fmt.Sprintf("trim(trailing %v from %v)", t.pat, t.str)
+		return fmt.Sprintf("trim(trailing %v from %v)", t.pat.String(ctx), t.str.String(ctx))
 	} else {
-		if t.pat.String() == " " {
-			return fmt.Sprintf("trim(%v)", t.str)
+		if t.pat.String(ctx) == " " {
+			return fmt.Sprintf("trim(%v)", t.str.String(ctx))
 		}
-		return fmt.Sprintf("trim(both %v from %v)", t.pat, t.str)
+		return fmt.Sprintf("trim(both %v from %v)", t.pat.String(ctx), t.str.String(ctx))
 	}
 }
 
@@ -193,8 +193,8 @@ func (t *LeftTrim) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 	return sql.GetCoercibility(ctx, t.Child)
 }
 
-func (t *LeftTrim) String() string {
-	return fmt.Sprintf("ltrim(%s)", t.Child)
+func (t *LeftTrim) String(ctx *sql.Context) string {
+	return fmt.Sprintf("ltrim(%s)", t.Child.String(ctx))
 }
 
 func (t *LeftTrim) IsNullable(ctx *sql.Context) bool {
@@ -262,8 +262,8 @@ func (t *RightTrim) CollationCoercibility(ctx *sql.Context) (collation sql.Colla
 	return sql.GetCoercibility(ctx, t.Child)
 }
 
-func (t *RightTrim) String() string {
-	return fmt.Sprintf("rtrim(%s)", t.Child)
+func (t *RightTrim) String(ctx *sql.Context) string {
+	return fmt.Sprintf("rtrim(%s)", t.Child.String(ctx))
 }
 
 func (t *RightTrim) IsNullable(ctx *sql.Context) bool {

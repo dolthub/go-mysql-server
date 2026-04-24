@@ -350,7 +350,7 @@ Top:
 // Indexes that are not unique, and indexes whose columns are absent from the
 // current schema (which can occur during a table rewrite), are silently
 // omitted from all three slices.
-func (td *TableData) indexColsForTableEditor() ([][]int, [][]uint16, []string) {
+func (td *TableData) indexColsForTableEditor(ctx *sql.Context) ([][]int, [][]uint16, []string) {
 	var uniqIdxCols [][]int
 	var prefixLengths [][]uint16
 	var idxNames []string
@@ -371,7 +371,7 @@ func (td *TableData) indexColsForTableEditor() ([][]int, [][]uint16, []string) {
 		}
 		uniqIdxCols = append(uniqIdxCols, colIdxs)
 		prefixLengths = append(prefixLengths, idx.PrefixLengths())
-		idxNames = append(idxNames, strings.ToLower(idx.ID()))
+		idxNames = append(idxNames, strings.ToLower(idx.ID(ctx)))
 	}
 	return uniqIdxCols, prefixLengths, idxNames
 }

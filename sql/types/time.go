@@ -15,7 +15,6 @@
 package types
 
 import (
-	"context"
 	"math"
 	"reflect"
 	"strconv"
@@ -83,7 +82,7 @@ func (t TimespanType_) MaxTextResponseByteLength(*sql.Context) uint32 {
 type Timespan int64
 
 // Compare implements Type interface.
-func (t TimespanType_) Compare(s context.Context, a interface{}, b interface{}) (int, error) {
+func (t TimespanType_) Compare(ctx *sql.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
@@ -105,7 +104,7 @@ func (t TimespanType_) CompareValue(ctx *sql.Context, a, b sql.Value) (int, erro
 	panic("TODO: implement CompareValue for TimespanType")
 }
 
-func (t TimespanType_) Convert(c context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t TimespanType_) Convert(c *sql.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
 		return nil, sql.InRange, nil
 	}
@@ -286,7 +285,7 @@ func (t TimespanType_) SQLValue(ctx *sql.Context, v sql.Value, dest []byte) (sql
 }
 
 // String implements Type interface.
-func (t TimespanType_) String() string {
+func (t TimespanType_) String(ctx *sql.Context) string {
 	return "time(6)"
 }
 
@@ -470,7 +469,7 @@ func (t Timespan) timespanToUnits() (isNegative bool, hours int16, minutes int8,
 }
 
 // String returns the Timespan formatted as a string (such as for display purposes).
-func (t Timespan) String() string {
+func (t Timespan) String(ctx *sql.Context) string {
 	return string(t.Bytes())
 }
 

@@ -102,7 +102,7 @@ func (c *ChangeReplicationSource) IsReadOnly() bool {
 	return false
 }
 
-func (c *ChangeReplicationSource) String() string {
+func (c *ChangeReplicationSource) String(ctx *sql.Context) string {
 	sb := strings.Builder{}
 	sb.WriteString("CHANGE REPLICATION SOURCE TO ")
 	for i, option := range c.Options {
@@ -168,7 +168,7 @@ func (c *ChangeReplicationFilter) IsReadOnly() bool {
 	return false
 }
 
-func (c *ChangeReplicationFilter) String() string {
+func (c *ChangeReplicationFilter) String(ctx *sql.Context) string {
 	sb := strings.Builder{}
 	sb.WriteString("CHANGE REPLICATION FILTER ")
 	for i, option := range c.Options {
@@ -234,7 +234,7 @@ func (s *StartReplica) IsReadOnly() bool {
 	return false
 }
 
-func (s *StartReplica) String() string {
+func (s *StartReplica) String(ctx *sql.Context) string {
 	return "START REPLICA"
 }
 
@@ -289,7 +289,7 @@ func (s *StopReplica) IsReadOnly() bool {
 	return false
 }
 
-func (s *StopReplica) String() string {
+func (s *StopReplica) String(ctx *sql.Context) string {
 	return "STOP REPLICA"
 }
 
@@ -347,7 +347,7 @@ func (r *ResetReplica) IsReadOnly() bool {
 	return false
 }
 
-func (r *ResetReplica) String() string {
+func (r *ResetReplica) String(ctx *sql.Context) string {
 	sb := strings.Builder{}
 	sb.WriteString("RESET REPLICA")
 	if r.All {

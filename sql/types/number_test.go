@@ -507,7 +507,7 @@ func TestNumberString(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v %v", test.typ, test.expectedStr), func(t *testing.T) {
-			str := test.typ.String()
+			str := test.typ.String(sql.NewEmptyContext())
 			assert.Equal(t, test.expectedStr, str)
 		})
 	}

@@ -67,10 +67,10 @@ func (h *Having) WithExpressions(ctx *sql.Context, exprs ...sql.Expression) (sql
 	return NewHaving(exprs[0], h.Child), nil
 }
 
-func (h *Having) String() string {
+func (h *Having) String(ctx *sql.Context) string {
 	p := sql.NewTreePrinter()
-	_ = p.WriteNode("Having(%s)", h.Cond)
-	_ = p.WriteChildren(h.Child.String())
+	_ = p.WriteNode("Having(%s)", h.Cond.String(ctx))
+	_ = p.WriteChildren(h.Child.String(ctx))
 	return p.String()
 }
 

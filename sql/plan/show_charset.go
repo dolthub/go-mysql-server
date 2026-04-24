@@ -58,7 +58,7 @@ func (*ShowCharset) CollationCoercibility(ctx *sql.Context) (collation sql.Colla
 	return sql.Collation_binary, 7
 }
 
-func (sc *ShowCharset) String() string {
+func (sc *ShowCharset) String(ctx *sql.Context) string {
 	return "SHOW CHARSET"
 }
 

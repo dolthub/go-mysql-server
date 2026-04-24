@@ -15,7 +15,6 @@
 package types
 
 import (
-	"context"
 	"reflect"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -40,12 +39,12 @@ func (t nullType) IsNullType() bool {
 
 // Compare implements Type interface. Note that while this returns 0 (equals)
 // for ordering purposes, in SQL NULL != NULL.
-func (t nullType) Compare(s context.Context, a interface{}, b interface{}) (int, error) {
+func (t nullType) Compare(ctx *sql.Context, a interface{}, b interface{}) (int, error) {
 	return 0, nil
 }
 
 // Convert implements Type interface.
-func (t nullType) Convert(c context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t nullType) Convert(c *sql.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v != nil {
 		return nil, sql.InRange, ErrValueNotNil.New(v)
 	}
@@ -75,7 +74,7 @@ func (t nullType) SQL(*sql.Context, []byte, interface{}) (sqltypes.Value, error)
 }
 
 // String implements Type interface.
-func (t nullType) String() string {
+func (t nullType) String(ctx *sql.Context) string {
 	return "null"
 }
 

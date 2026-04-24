@@ -103,10 +103,10 @@ func (*Truncate) IsReadOnly() bool {
 }
 
 // String implements the Node interface.
-func (p Truncate) String() string {
+func (p Truncate) String(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Truncate")
-	_ = pr.WriteChildren(p.Child.String())
+	_ = pr.WriteChildren(p.Child.String(ctx))
 	return pr.String()
 }
 

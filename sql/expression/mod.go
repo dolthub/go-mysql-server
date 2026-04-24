@@ -61,8 +61,8 @@ func (m *Mod) SetOpCount(i int32) {
 	m.ops = i
 }
 
-func (m *Mod) String() string {
-	return fmt.Sprintf("(%s %% %s)", m.LeftChild, m.RightChild)
+func (m *Mod) String(ctx *sql.Context) string {
+	return fmt.Sprintf("(%s %% %s)", m.LeftChild.String(ctx), m.RightChild.String(ctx))
 }
 
 func (m *Mod) DebugString(ctx *sql.Context) string {

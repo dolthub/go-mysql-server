@@ -56,15 +56,15 @@ func TestAggGen(t *testing.T) {
             return false
         }
 
-        func (a *Test) String() string {
+        func (a *Test) String(ctx *sql.Context) string {
           if a.window != nil {
             pr := sql.NewTreePrinter()
             _ = pr.WriteNode("TEST")
-        	    children := []string{a.window.String(), a.Child.String()}
+        	    children := []string{a.window.String(ctx), a.Child.String(ctx)}
             pr.WriteChildren(children...)
             return pr.String()
           }
-          return "TEST(" + a.Child.String() + ")"
+          return "TEST(" + a.Child.String(ctx) + ")"
         }
 
         func (a *Test) DebugString(ctx *sql.Context) string {
@@ -78,12 +78,12 @@ func TestAggGen(t *testing.T) {
           return fmt.Sprintf("TEST(%s)", sql.DebugString(ctx, a.Child))
         }
 
-        func (a *Test) WithWindow(window *sql.WindowDefinition) sql.WindowAdaptableExpression {
+        func (a *Test) WithWindow(ctx *sql.Context, window *sql.WindowDefinition) sql.WindowAdaptableExpression {
             res := a.unaryAggBase.WithWindow(window)
             return &Test{unaryAggBase: *res.(*unaryAggBase)}
         }
 
-        func (a *Test) WithChildren(children ...sql.Expression) (sql.Expression, error) {
+        func (a *Test) WithChildren(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
             res, err := a.unaryAggBase.WithChildren(children...)
             return &Test{unaryAggBase: *res.(*unaryAggBase)}, err
         }

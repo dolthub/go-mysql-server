@@ -63,10 +63,10 @@ func (*Describe) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 	return sql.Collation_binary, 7
 }
 
-func (d Describe) String() string {
+func (d Describe) String(ctx *sql.Context) string {
 	p := sql.NewTreePrinter()
 	_ = p.WriteNode("Describe")
-	_ = p.WriteChildren(d.Child.String())
+	_ = p.WriteChildren(d.Child.String(ctx))
 	return p.String()
 }
 
@@ -140,7 +140,7 @@ func (d *DescribeQuery) Schema(ctx *sql.Context) sql.Schema {
 
 func (d *DescribeQuery) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("DescribeQuery(format=%s)", d.Format)
+	_ = pr.WriteNode("DescribeQuery(format=%s)", d.Format.String())
 	options.Estimates = d.Format.Estimates || options.Estimates
 	options.Analyze = d.Format.Analyze || options.Analyze
 	options.Debug = d.Format.Debug || options.Debug
@@ -149,10 +149,7 @@ func (d *DescribeQuery) Describe(ctx *sql.Context, options sql.DescribeOptions) 
 	return pr.String()
 }
 
-func (d *DescribeQuery) String() string {
-	// To maintain compatibility with fmt.Stringer we have to use an empty context, but this will fail in any case that
-	// requires a context to determine a string (such as an integrator using the context to contain type information).
-	ctx := sql.NewEmptyContext()
+func (d *DescribeQuery) String(ctx *sql.Context) string {
 	return d.Describe(ctx, sql.DescribeOptions{
 		Analyze:   false,
 		Estimates: false,

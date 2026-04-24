@@ -82,10 +82,10 @@ func (s *Set) Schema(ctx *sql.Context) sql.Schema {
 	return types.OkResultSchema
 }
 
-func (s *Set) String() string {
+func (s *Set) String(ctx *sql.Context) string {
 	var children = make([]string, len(s.Exprs))
 	for i, v := range s.Exprs {
-		children[i] = v.String()
+		children[i] = v.String(ctx)
 	}
 	return strings.Join(children, ", ")
 }

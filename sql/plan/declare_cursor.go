@@ -52,8 +52,8 @@ func (d *DeclareCursor) IsReadOnly() bool {
 }
 
 // String implements the interface sql.Node.
-func (d *DeclareCursor) String() string {
-	return fmt.Sprintf("DECLARE %s CURSOR FOR %s", d.Name, d.Select.String())
+func (d *DeclareCursor) String(ctx *sql.Context) string {
+	return fmt.Sprintf("DECLARE %s CURSOR FOR %s", d.Name, d.Select.String(ctx))
 }
 
 // DebugString implements the interface sql.DebugStringer.

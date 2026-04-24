@@ -16,7 +16,6 @@ package types
 
 import (
 	"bytes"
-	"context"
 	"encoding/binary"
 	"math"
 	"reflect"
@@ -51,7 +50,7 @@ type GeometryValue interface {
 // UnwrapGeometry unwraps a value that may be a sql.AnyWrapper (e.g. adaptive/out-of-band storage)
 // and returns the underlying GeometryValue. If the value is already a GeometryValue, it is returned
 // directly. Returns ErrNotGeometry if the value cannot be converted.
-func UnwrapGeometry(ctx context.Context, v interface{}) (GeometryValue, error) {
+func UnwrapGeometry(ctx *sql.Context, v interface{}) (GeometryValue, error) {
 	if gv, ok := v.(GeometryValue); ok {
 		return gv, nil
 	}
@@ -405,17 +404,17 @@ func WriteCount(buf []byte, count uint32) {
 }
 
 // Compare implements Type interface.
-func (t GeometryType) Compare(s context.Context, a interface{}, b interface{}) (int, error) {
+func (t GeometryType) Compare(ctx *sql.Context, a interface{}, b interface{}) (int, error) {
 	if hasNulls, res := CompareNulls(a, b); hasNulls {
 		return res, nil
 	}
 
-	aa, err := UnwrapGeometry(s, a)
+	aa, err := UnwrapGeometry(ctx, a)
 	if err != nil {
 		return 0, err
 	}
 
-	bb, err := UnwrapGeometry(s, b)
+	bb, err := UnwrapGeometry(ctx, b)
 	if err != nil {
 		return 0, err
 	}
@@ -424,7 +423,7 @@ func (t GeometryType) Compare(s context.Context, a interface{}, b interface{}) (
 }
 
 // Convert implements Type interface.
-func (t GeometryType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t GeometryType) Convert(ctx *sql.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v == nil {
 		return nil, sql.InRange, nil
 	}
@@ -510,7 +509,7 @@ func (t GeometryType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 }
 
 // String implements Type interface.
-func (t GeometryType) String() string {
+func (t GeometryType) String(ctx *sql.Context) string {
 	return "geometry"
 }
 

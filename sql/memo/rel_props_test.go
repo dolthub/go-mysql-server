@@ -26,6 +26,7 @@ func TestPopulateFDs(t *testing.T) {
 			name: "tablescan",
 			in: &TableScan{
 				sourceBase: &sourceBase{relBase: &relBase{}},
+				ctx:        sql.NewEmptyContext(),
 				Table: plan.NewResolvedTable(
 					&dummyTable{
 						schema: sql.NewPrimaryKeySchema(sql.Schema{
@@ -49,6 +50,7 @@ func TestPopulateFDs(t *testing.T) {
 			name: "table alias",
 			in: &TableAlias{
 				sourceBase: &sourceBase{relBase: &relBase{}},
+				ctx:        sql.NewEmptyContext(),
 				Table: plan.NewTableAlias("tab", plan.NewResolvedTable(
 					&dummyTable{
 						schema: sql.NewPrimaryKeySchema(sql.Schema{
@@ -72,6 +74,7 @@ func TestPopulateFDs(t *testing.T) {
 			name: "empty table",
 			in: &EmptyTable{
 				sourceBase: &sourceBase{relBase: &relBase{}},
+				ctx:        sql.NewEmptyContext(),
 				Table: plan.NewEmptyTableWithSchema(
 					sql.Schema{
 						{Name: "x", Source: "t", Type: types.Int64, Nullable: false},
@@ -87,6 +90,7 @@ func TestPopulateFDs(t *testing.T) {
 			name: "max1Row",
 			in: &Max1Row{
 				relBase: &relBase{},
+				ctx:     sql.NewEmptyContext(),
 				Child: newExprGroup(sql.NewEmptyContext(), NewMemo(nil, nil, nil, nil, nil), 0, &TableScan{
 					sourceBase: &sourceBase{relBase: &relBase{}},
 					Table: plan.NewResolvedTable(
@@ -108,6 +112,7 @@ func TestPopulateFDs(t *testing.T) {
 			name: "values",
 			in: &Values{
 				sourceBase: &sourceBase{relBase: &relBase{}},
+				ctx:        sql.NewEmptyContext(),
 				Table:      plan.NewValueDerivedTable(sql.NewEmptyContext(), plan.NewValues([][]sql.Expression{{expression.NewLiteral(1, types.Int64)}}), "values").WithId(1).WithColumns(sql.NewColSet(1)).(*plan.ValueDerivedTable),
 			},
 			all:     sql.NewColSet(1),
@@ -173,7 +178,7 @@ func (t *dummyTable) PrimaryKeySchema(ctx *sql.Context) sql.PrimaryKeySchema {
 
 func (t *dummyTable) Name() string { return "dummy" }
 
-func (t *dummyTable) String() string {
+func (t *dummyTable) String(ctx *sql.Context) string {
 	return "name"
 }
 
@@ -201,7 +206,7 @@ func (dummyIndex) CanSupport(*sql.Context, ...sql.Range) bool {
 	return true
 }
 
-func (dummyIndex) ID() string {
+func (dummyIndex) ID(*sql.Context) string {
 	return "test_index"
 }
 
@@ -213,7 +218,7 @@ func (dummyIndex) Table() string {
 	return "table"
 }
 
-func (i dummyIndex) Expressions() []string {
+func (i dummyIndex) Expressions(ctx *sql.Context) []string {
 	return i.cols
 }
 
@@ -250,7 +255,7 @@ func (dummyIndex) IsGenerated() bool {
 }
 
 func (i dummyIndex) ColumnExpressionTypes(ctx *sql.Context) []sql.ColumnExpressionType {
-	es := i.Expressions()
+	es := i.Expressions(ctx)
 	res := make([]sql.ColumnExpressionType, len(es))
 	for i := range es {
 		res[i] = sql.ColumnExpressionType{Expression: es[i], Type: types.Int8}

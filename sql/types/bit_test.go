@@ -15,7 +15,6 @@
 package types
 
 import (
-	"context"
 	"fmt"
 	"reflect"
 	"testing"
@@ -127,7 +126,7 @@ func TestBitConvert(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v %v %v", test.typ, test.val, test.expectedVal), func(t *testing.T) {
-			val, _, err := test.typ.Convert(context.Background(), test.val)
+			val, _, err := test.typ.Convert(sql.NewEmptyContext(), test.val)
 			if test.expectedErr {
 				assert.Error(t, err)
 			} else {
@@ -154,7 +153,7 @@ func TestBitString(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v %v", test.typ, test.expectedStr), func(t *testing.T) {
-			str := test.typ.String()
+			str := test.typ.String(sql.NewEmptyContext())
 			assert.Equal(t, test.expectedStr, str)
 		})
 	}

@@ -84,8 +84,8 @@ func NewPrependNode(child sql.Node, row sql.Row) sql.Node {
 	}
 }
 
-func (p *PrependNode) String() string {
-	return p.Child.String()
+func (p *PrependNode) String(ctx *sql.Context) string {
+	return p.Child.String(ctx)
 }
 
 func (p *PrependNode) IsReadOnly() bool {
@@ -237,10 +237,10 @@ func (m *Max1Row) Children() []sql.Node {
 	return []sql.Node{m.Child}
 }
 
-func (m *Max1Row) String() string {
+func (m *Max1Row) String(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("Max1Row")
-	children := []string{m.Child.String()}
+	children := []string{m.Child.String(ctx)}
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
@@ -484,7 +484,7 @@ func (s *Subquery) Describe(ctx *sql.Context, options sql.DescribeOptions) strin
 	return pr.String()
 }
 
-func (s *Subquery) String() string {
+func (s *Subquery) String(ctx *sql.Context) string {
 	return fmt.Sprintf("Subquery(%s)", s.QueryString)
 }
 

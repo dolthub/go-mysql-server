@@ -15,7 +15,6 @@
 package types
 
 import (
-	"context"
 	"reflect"
 
 	"github.com/dolthub/vitess/go/sqltypes"
@@ -41,12 +40,12 @@ func (t deferredType) Equals(otherType sql.Type) bool {
 
 // Compare implements Type interface. Note that while this returns 0 (equals)
 // for ordering purposes, in SQL NULL != NULL.
-func (t deferredType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
+func (t deferredType) Compare(ctx *sql.Context, a interface{}, b interface{}) (int, error) {
 	return 0, nil
 }
 
 // Convert implements Type interface.
-func (t deferredType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t deferredType) Convert(ctx *sql.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	if v != nil {
 		return nil, sql.InRange, ErrValueNotNil.New(v)
 	}
@@ -70,7 +69,7 @@ func (t deferredType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqltype
 }
 
 // String implements Type interface.
-func (t deferredType) String() string {
+func (t deferredType) String(ctx *sql.Context) string {
 	return "deferred"
 }
 

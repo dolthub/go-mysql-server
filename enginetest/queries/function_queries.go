@@ -156,7 +156,7 @@ var FunctionQueryTests = []QueryTest{
 		},
 		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount:           1,
-		ExpectedWarningMessageSubstring: fmt.Sprintf(sql.ErrTruncatedIncorrect.Message, types.Float64.String(), "123abc"),
+		ExpectedWarningMessageSubstring: fmt.Sprintf(sql.ErrTruncatedIncorrect.Message, types.Float64.String(sql.NewEmptyContext()), "123abc"),
 	},
 	{
 		Dialect: "mysql",
@@ -166,7 +166,7 @@ var FunctionQueryTests = []QueryTest{
 		},
 		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount:           1,
-		ExpectedWarningMessageSubstring: fmt.Sprintf(sql.ErrTruncatedIncorrect.Message, types.Float64.String(), "1.5abc"),
+		ExpectedWarningMessageSubstring: fmt.Sprintf(sql.ErrTruncatedIncorrect.Message, types.Float64.String(sql.NewEmptyContext()), "1.5abc"),
 	},
 	{
 		Dialect: "mysql",
@@ -176,7 +176,7 @@ var FunctionQueryTests = []QueryTest{
 		},
 		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount:           1,
-		ExpectedWarningMessageSubstring: fmt.Sprintf(sql.ErrTruncatedIncorrect.Message, types.Float64.String(), "999xyz"),
+		ExpectedWarningMessageSubstring: fmt.Sprintf(sql.ErrTruncatedIncorrect.Message, types.Float64.String(sql.NewEmptyContext()), "999xyz"),
 	},
 	{
 		Dialect: "mysql",
@@ -186,7 +186,7 @@ var FunctionQueryTests = []QueryTest{
 		},
 		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount:           2, // Both input and precision conversions generate warnings
-		ExpectedWarningMessageSubstring: fmt.Sprintf(sql.ErrTruncatedIncorrect.Message, types.Int32.String(), "1.5abc"),
+		ExpectedWarningMessageSubstring: fmt.Sprintf(sql.ErrTruncatedIncorrect.Message, types.Int32.String(sql.NewEmptyContext()), "1.5abc"),
 	},
 	{
 		Dialect: "mysql",
@@ -196,7 +196,7 @@ var FunctionQueryTests = []QueryTest{
 		},
 		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount:           2, // Both input and precision conversions generate warnings
-		ExpectedWarningMessageSubstring: fmt.Sprintf(sql.ErrTruncatedIncorrect.Message, types.Int32.String(), "0.5"),
+		ExpectedWarningMessageSubstring: fmt.Sprintf(sql.ErrTruncatedIncorrect.Message, types.Int32.String(sql.NewEmptyContext()), "0.5"),
 	},
 	{
 		Dialect: "mysql",
@@ -206,7 +206,7 @@ var FunctionQueryTests = []QueryTest{
 		},
 		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount:           2, // Both input and precision conversions generate warnings
-		ExpectedWarningMessageSubstring: fmt.Sprintf(sql.ErrTruncatedIncorrect.Message, types.Int32.String(), "2.7"),
+		ExpectedWarningMessageSubstring: fmt.Sprintf(sql.ErrTruncatedIncorrect.Message, types.Int32.String(sql.NewEmptyContext()), "2.7"),
 	},
 	{
 		Dialect: "mysql",
@@ -216,7 +216,7 @@ var FunctionQueryTests = []QueryTest{
 		},
 		ExpectedWarning:                 mysql.ERTruncatedWrongValue,
 		ExpectedWarningsCount:           2, // Both input and precision conversions generate warnings
-		ExpectedWarningMessageSubstring: fmt.Sprintf(sql.ErrTruncatedIncorrect.Message, types.Int32.String(), "invalid_precision"),
+		ExpectedWarningMessageSubstring: fmt.Sprintf(sql.ErrTruncatedIncorrect.Message, types.Int32.String(sql.NewEmptyContext()), "invalid_precision"),
 	},
 	{
 		Query:          "SELECT TRUNCATE()",

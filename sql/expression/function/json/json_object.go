@@ -68,12 +68,12 @@ func (j JSONObject) Resolved() bool {
 	return true
 }
 
-func (j JSONObject) String() string {
+func (j JSONObject) String(ctx *sql.Context) string {
 	children := j.Children()
 	var parts = make([]string, len(children))
 
 	for i, c := range children {
-		parts[i] = c.String()
+		parts[i] = c.String(ctx)
 	}
 
 	return fmt.Sprintf("%s(%s)", j.FunctionName(), strings.Join(parts, ","))

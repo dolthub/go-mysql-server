@@ -174,8 +174,8 @@ func (l *Like) evalRight(ctx *sql.Context, row sql.Row) (right *string, escape r
 	return &rightStr, []rune(escapeVal.(string))[0], nil
 }
 
-func (l *Like) String() string {
-	return fmt.Sprintf("%s LIKE %s", l.LeftChild, l.RightChild)
+func (l *Like) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s LIKE %s", l.LeftChild.String(ctx), l.RightChild.String(ctx))
 }
 
 // WithChildren implements the Expression interface.
@@ -383,7 +383,7 @@ func (l LikeMatcher) Match(s string) bool {
 
 // String returns the string form of this LIKE expression. If an Escape character was provided, it is used instead of
 // the default.
-func (l LikeMatcher) String() string {
+func (l LikeMatcher) String(ctx *sql.Context) string {
 	sb := strings.Builder{}
 	for _, node := range l.nodes {
 		switch node := node.(type) {

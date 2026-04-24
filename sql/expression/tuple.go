@@ -59,10 +59,10 @@ func (t Tuple) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
-func (t Tuple) String() string {
+func (t Tuple) String(ctx *sql.Context) string {
 	var exprs = make([]string, len(t))
 	for i, e := range t {
-		exprs[i] = e.String()
+		exprs[i] = e.String(ctx)
 	}
 	return fmt.Sprintf("(%s)", strings.Join(exprs, ", "))
 }

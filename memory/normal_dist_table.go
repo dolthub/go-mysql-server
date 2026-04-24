@@ -77,7 +77,7 @@ func (s NormalDistTable) IsReadOnly() bool {
 	return true
 }
 
-func (s NormalDistTable) String() string {
+func (s NormalDistTable) String(ctx *sql.Context) string {
 	return "normal_dist"
 }
 

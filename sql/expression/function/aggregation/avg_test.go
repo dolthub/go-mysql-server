@@ -29,7 +29,7 @@ func TestAvg_String(t *testing.T) {
 	require := require.New(t)
 
 	avg := NewAvg(expression.NewGetField(0, types.Int32, "col1", true))
-	require.Equal("AVG(col1)", avg.String())
+	require.Equal("AVG(col1)", avg.String(sql.NewEmptyContext()))
 }
 
 func TestAvg_Float64(t *testing.T) {
@@ -158,7 +158,7 @@ func TestAvg_Distinct(t *testing.T) {
 	avg := NewAvg(ad)
 
 	// first validate that the expression's name is correct
-	require.Equal("AVG(DISTINCT myfield)", avg.String())
+	require.Equal("AVG(DISTINCT myfield)", avg.String(ctx))
 
 	testCases := []struct {
 		name     string

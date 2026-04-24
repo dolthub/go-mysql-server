@@ -58,7 +58,7 @@ func TestWrappedInsertError(t *testing.T) {
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v", test.err), func(t *testing.T) {
 			r := Row{"a", "b"}
-			err := NewWrappedInsertError(r, test.err)
+			err := NewWrappedInsertError(NewEmptyContext(), r, test.err)
 			require.Error(t, err)
 			extendedOutput := fmt.Sprintf("%+v", err)
 			for _, expectedErrStr := range test.expectedErrStrs {

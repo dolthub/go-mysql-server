@@ -27,14 +27,15 @@ import (
 
 func TestGroupConcat_FunctionName(t *testing.T) {
 	assert := require.New(t)
+	ctx := sql.NewEmptyContext()
 
 	m := NewGroupConcat("field", nil, ",", nil, 1024)
 
-	assert.Equal("group_concat(distinct field separator ',')", m.String())
+	assert.Equal("group_concat(distinct field separator ',')", m.String(ctx))
 
 	m = NewGroupConcat("field", nil, "-", nil, 1024)
 
-	assert.Equal("group_concat(distinct field separator '-')", m.String())
+	assert.Equal("group_concat(distinct field separator '-')", m.String(ctx))
 
 	sf := sql.SortFields{
 		{Column: expression.NewUnresolvedColumn("field"), Order: sql.Ascending},
@@ -43,7 +44,7 @@ func TestGroupConcat_FunctionName(t *testing.T) {
 
 	m = NewGroupConcat("field", sf, "-", nil, 1024)
 
-	assert.Equal("group_concat(distinct field order by field ASC, field2 DESC separator '-')", m.String())
+	assert.Equal("group_concat(distinct field order by field ASC, field2 DESC separator '-')", m.String(ctx))
 }
 
 // Validates that the return length of GROUP_CONCAT is bounded by group_concat_max_len (default 1024)

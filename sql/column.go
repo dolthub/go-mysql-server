@@ -117,7 +117,7 @@ func (c *Column) DebugString(ctx *Context) string {
 	sb.WriteString(c.Source)
 	sb.WriteString(", ")
 	sb.WriteString("Type: ")
-	sb.WriteString(c.Type.String())
+	sb.WriteString(c.Type.String(ctx))
 	sb.WriteString(", ")
 	sb.WriteString("PrimaryKey: ")
 	sb.WriteString(fmt.Sprintf("%v", c.PrimaryKey))

@@ -84,8 +84,8 @@ func (au *AutoUuid) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return childResult, nil
 }
 
-func (au *AutoUuid) String() string {
-	return fmt.Sprintf("AutoUuid(%s)", au.Child.String())
+func (au *AutoUuid) String(ctx *sql.Context) string {
+	return fmt.Sprintf("AutoUuid(%s)", au.Child.String(ctx))
 }
 
 // WithChildren implements the Expression interface.

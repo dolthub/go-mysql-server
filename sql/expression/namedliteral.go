@@ -37,6 +37,6 @@ func NewNamedLiteral(name string, value interface{}, fieldType sql.Type) NamedLi
 }
 
 // String implements the interface sql.Expression.
-func (lit NamedLiteral) String() string {
+func (lit NamedLiteral) String(ctx *sql.Context) string {
 	return lit.Name
 }

@@ -63,8 +63,8 @@ func (e *IsNull) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	return v == nil, nil
 }
 
-func (e IsNull) String() string {
-	return e.Child.String() + " IS NULL"
+func (e IsNull) String(ctx *sql.Context) string {
+	return e.Child.String(ctx) + " IS NULL"
 }
 
 func (e IsNull) DebugString(ctx *sql.Context) string {

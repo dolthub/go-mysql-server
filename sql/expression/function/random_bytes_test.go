@@ -85,11 +85,11 @@ func TestRandomBytes(t *testing.T) {
 	}
 
 	for _, test := range testCases {
-		t.Run(fmt.Sprintf("%s(%v)", "random_bytes", test.expr.String()), func(t *testing.T) {
+		ctx := sql.NewEmptyContext()
+		t.Run(fmt.Sprintf("%s(%v)", "random_bytes", test.expr.String(ctx)), func(t *testing.T) {
 			if test.skip {
 				t.Skip()
 			}
-			ctx := sql.NewEmptyContext()
 			f := NewRandomBytes(ctx, test.expr)
 			res, err := f.Eval(ctx, nil)
 			if test.err != nil {

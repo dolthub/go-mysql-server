@@ -81,12 +81,12 @@ func (b *Block) IsReadOnly() bool {
 }
 
 // String implements the sql.Node interface.
-func (b *Block) String() string {
+func (b *Block) String(ctx *sql.Context) string {
 	p := sql.NewTreePrinter()
 	_ = p.WriteNode("BLOCK")
 	var children []string
 	for _, s := range b.statements {
-		children = append(children, s.String())
+		children = append(children, s.String(ctx))
 	}
 	_ = p.WriteChildren(children...)
 	return p.String()

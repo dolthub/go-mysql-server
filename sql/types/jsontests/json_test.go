@@ -106,7 +106,7 @@ func TestJsonConvert(t *testing.T) {
 }
 
 func TestJsonString(t *testing.T) {
-	require.Equal(t, "json", types.JSON.String())
+	require.Equal(t, "json", types.JSON.String(sql.NewEmptyContext()))
 }
 
 func TestJsonSQL(t *testing.T) {

@@ -1151,11 +1151,12 @@ func (ue UniqueKeyError) Error() string {
 }
 
 type WrappedInsertError struct {
+	ctx          *Context
 	Cause        error
 	OffendingRow Row
 }
 
-func NewWrappedInsertError(r Row, err error) WrappedInsertError {
+func NewWrappedInsertError(ctx *Context, r Row, err error) WrappedInsertError {
 	return WrappedInsertError{
 		OffendingRow: r,
 		Cause:        err,

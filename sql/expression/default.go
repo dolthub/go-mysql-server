@@ -65,7 +65,7 @@ func (c *DefaultColumn) Name() string { return c.name }
 
 // String implements the Stringer
 // The function returns column's name (can be an empty string)
-func (c *DefaultColumn) String() string {
+func (c *DefaultColumn) String(ctx *sql.Context) string {
 	return c.name
 }
 

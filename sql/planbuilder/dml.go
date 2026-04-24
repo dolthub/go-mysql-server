@@ -339,13 +339,13 @@ func (b *Builder) assignmentExprsToUpdateExprs(inScope *scope, e ast.AssignmentE
 		updateExprs[i] = expression.NewSetField(colName, innerExpr)
 		if inScope.groupBy != nil {
 			if len(inScope.groupBy.aggs) > startAggCnt {
-				err := sql.ErrAggregationUnsupported.New(updateExprs[i])
+				err := sql.ErrAggregationUnsupported.New(updateExprs[i].String(b.ctx))
 				b.handleErr(err)
 			}
 		}
 		if inScope.windowFuncs != nil {
 			if len(inScope.windowFuncs) > startWinCnt {
-				err := sql.ErrWindowUnsupported.New(updateExprs[i])
+				err := sql.ErrWindowUnsupported.New(updateExprs[i].String(b.ctx))
 				b.handleErr(err)
 			}
 		}

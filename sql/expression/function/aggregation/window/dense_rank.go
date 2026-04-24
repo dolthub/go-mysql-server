@@ -63,12 +63,12 @@ func (p *DenseRank) Resolved() bool {
 	return windowResolved(p.window)
 }
 
-func (p *DenseRank) String() string {
+func (p *DenseRank) String(ctx *sql.Context) string {
 	sb := strings.Builder{}
 	sb.WriteString("dense_rank()")
 	if p.window != nil {
 		sb.WriteString(" ")
-		sb.WriteString(p.window.String())
+		sb.WriteString(p.window.String(ctx))
 	}
 	return sb.String()
 }

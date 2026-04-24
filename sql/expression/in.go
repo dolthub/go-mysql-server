@@ -135,9 +135,9 @@ func (in *InTuple) WithChildren(ctx *sql.Context, children ...sql.Expression) (s
 	return NewInTuple(children[0], children[1]), nil
 }
 
-func (in *InTuple) String() string {
+func (in *InTuple) String(ctx *sql.Context) string {
 	// scalar expression must round-trip
-	return fmt.Sprintf("(%s IN %s)", in.Left(), in.Right())
+	return fmt.Sprintf("(%s IN %s)", in.Left().String(ctx), in.Right().String(ctx))
 }
 
 func (in *InTuple) DebugString(ctx *sql.Context) string {
@@ -318,8 +318,8 @@ func (hit *HashInTuple) Right() sql.Expression {
 	return hit.in.Right()
 }
 
-func (hit *HashInTuple) String() string {
-	return fmt.Sprintf("(%s HASH IN %s)", hit.in.Left(), hit.in.Right())
+func (hit *HashInTuple) String(ctx *sql.Context) string {
+	return fmt.Sprintf("(%s HASH IN %s)", hit.in.Left().String(ctx), hit.in.Right().String(ctx))
 }
 
 func (hit *HashInTuple) DebugString(ctx *sql.Context) string {

@@ -81,16 +81,16 @@ func (l *Limit) CollationCoercibility(ctx *sql.Context) (collation sql.Collation
 	return sql.GetCoercibility(ctx, l.Child)
 }
 
-func (l Limit) String() string {
+func (l Limit) String(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("Limit(%s)", l.Limit)
-	_ = pr.WriteChildren(l.Child.String())
+	_ = pr.WriteNode("Limit(%s)", l.Limit.String(ctx))
+	_ = pr.WriteChildren(l.Child.String(ctx))
 	return pr.String()
 }
 
 func (l Limit) DebugString(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
-	_ = pr.WriteNode("Limit(%s)", l.Limit)
+	_ = pr.WriteNode("Limit(%s)", l.Limit.String(ctx))
 	_ = pr.WriteChildren(sql.DebugString(ctx, l.Child))
 	return pr.String()
 }

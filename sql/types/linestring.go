@@ -15,7 +15,6 @@
 package types
 
 import (
-	"context"
 	"math"
 	"reflect"
 
@@ -49,12 +48,12 @@ var (
 )
 
 // Compare implements Type interface.
-func (t LineStringType) Compare(ctx context.Context, a interface{}, b interface{}) (int, error) {
+func (t LineStringType) Compare(ctx *sql.Context, a interface{}, b interface{}) (int, error) {
 	return GeometryType{}.Compare(ctx, a, b)
 }
 
 // Convert implements Type interface.
-func (t LineStringType) Convert(ctx context.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
+func (t LineStringType) Convert(ctx *sql.Context, v interface{}) (interface{}, sql.ConvertInRange, error) {
 	switch buf := v.(type) {
 	case nil:
 		return nil, sql.InRange, nil
@@ -115,7 +114,7 @@ func (t LineStringType) SQL(ctx *sql.Context, dest []byte, v interface{}) (sqlty
 }
 
 // String implements Type interface.
-func (t LineStringType) String() string {
+func (t LineStringType) String(ctx *sql.Context) string {
 	return "linestring"
 }
 

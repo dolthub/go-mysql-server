@@ -137,7 +137,7 @@ func (c *CreateEvent) WithDatabase(database sql.Database) (sql.Node, error) {
 }
 
 // String implements the sql.Node interface.
-func (c *CreateEvent) String() string {
+func (c *CreateEvent) String(ctx *sql.Context) string {
 	definer := ""
 	if c.Definer != "" {
 		definer = fmt.Sprintf(" DEFINER = %s", c.Definer)
@@ -145,9 +145,9 @@ func (c *CreateEvent) String() string {
 
 	onSchedule := ""
 	if c.At != nil {
-		onSchedule = fmt.Sprintf(" ON SCHEDULE %s", c.At.String())
+		onSchedule = fmt.Sprintf(" ON SCHEDULE %s", c.At.String(ctx))
 	} else {
-		onSchedule = onScheduleEveryString(c.Every, c.Starts, c.Ends)
+		onSchedule = onScheduleEveryString(ctx, c.Every, c.Starts, c.Ends)
 	}
 
 	onCompletion := ""
@@ -160,9 +160,6 @@ func (c *CreateEvent) String() string {
 		comment = fmt.Sprintf(" COMMENT '%s'", c.Comment)
 	}
 
-	// To maintain compatibility with fmt.Stringer we have to use an empty context, but this will fail in any case that
-	// requires a context to determine a string (such as an integrator using the context to contain type information).
-	ctx := sql.NewEmptyContext()
 	return fmt.Sprintf("CREATE%s EVENT %s %s%s%s%s DO %s",
 		definer, c.EventName, onSchedule, onCompletion, c.Status.String(), comment, sql.DebugString(ctx, c.DefinitionNode))
 }
@@ -425,15 +422,15 @@ func (c *createEventIter) Close(ctx *sql.Context) error {
 }
 
 // onScheduleEveryString returns ON SCHEDULE EVERY clause part of CREATE EVENT statement.
-func onScheduleEveryString(every sql.Expression, starts, ends *OnScheduleTimestamp) string {
-	everyInterval := strings.TrimPrefix(every.String(), "INTERVAL ")
+func onScheduleEveryString(ctx *sql.Context, every sql.Expression, starts, ends *OnScheduleTimestamp) string {
+	everyInterval := strings.TrimPrefix(every.String(ctx), "INTERVAL ")
 	startsStr := ""
 	if starts != nil {
-		startsStr = fmt.Sprintf(" %s", starts.String())
+		startsStr = fmt.Sprintf(" %s", starts.String(ctx))
 	}
 	endsStr := ""
 	if ends != nil {
-		endsStr = fmt.Sprintf(" %s", ends.String())
+		endsStr = fmt.Sprintf(" %s", ends.String(ctx))
 	}
 
 	return fmt.Sprintf("ON SCHEDULE EVERY %s%s%s", everyInterval, startsStr, endsStr)
@@ -508,12 +505,12 @@ func (ost *OnScheduleTimestamp) Resolved() bool {
 }
 
 // String implements the sql.Node interface.
-func (ost *OnScheduleTimestamp) String() string {
+func (ost *OnScheduleTimestamp) String(ctx *sql.Context) string {
 	intervals := ""
 	for _, interval := range ost.intervals {
-		intervals = fmt.Sprintf("%s + %s", intervals, interval.String())
+		intervals = fmt.Sprintf("%s + %s", intervals, interval.String(ctx))
 	}
-	return fmt.Sprintf("%s %s%s", ost.field, ost.timestamp.String(), intervals)
+	return fmt.Sprintf("%s %s%s", ost.field, ost.timestamp.String(ctx), intervals)
 }
 
 func (ost *OnScheduleTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
@@ -588,7 +585,7 @@ func NewDropEvent(db sql.Database, es sql.EventScheduler, eventName string, ifEx
 }
 
 // String implements the sql.Node interface.
-func (d *DropEvent) String() string {
+func (d *DropEvent) String(ctx *sql.Context) string {
 	ifExists := ""
 	if d.IfExists {
 		ifExists = "IF EXISTS "

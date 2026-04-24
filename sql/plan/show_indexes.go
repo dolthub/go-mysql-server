@@ -54,8 +54,8 @@ func (*ShowIndexes) CollationCoercibility(ctx *sql.Context) (collation sql.Colla
 	return sql.Collation_binary, 7
 }
 
-// String implements the fmt.Stringer interface.
-func (n *ShowIndexes) String() string {
+// String implements the sql.Stringer interface.
+func (n *ShowIndexes) String(ctx *sql.Context) string {
 	return fmt.Sprintf("ShowIndexes(%s)", n.Child)
 }
 

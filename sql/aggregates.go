@@ -14,8 +14,6 @@
 
 package sql
 
-import "fmt"
-
 // Aggregation implements an aggregation expression, where an
 // aggregation buffer is created for each grouping (NewBuffer). Rows for the
 // grouping should be fed to the buffer with |Update| and the buffer should be
@@ -97,7 +95,7 @@ type WindowFramer interface {
 // and end bounds. A WindowFrame plan node is associated
 // with an exec WindowFramer.
 type WindowFrame interface {
-	fmt.Stringer
+	Stringer
 
 	// NewFramer constructs an executable WindowFramer
 	NewFramer(*WindowDefinition) (WindowFramer, error)

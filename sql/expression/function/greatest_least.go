@@ -257,10 +257,10 @@ func (f *Greatest) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
-func (f *Greatest) String() string {
+func (f *Greatest) String(ctx *sql.Context) string {
 	var args = make([]string, len(f.Args))
 	for i, arg := range f.Args {
-		args[i] = arg.String()
+		args[i] = arg.String(ctx)
 	}
 	return fmt.Sprintf("%s(%s)", f.FunctionName(), strings.Join(args, ","))
 }
@@ -367,10 +367,10 @@ func (f *Least) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
-func (f *Least) String() string {
+func (f *Least) String(ctx *sql.Context) string {
 	var args = make([]string, len(f.Args))
 	for i, arg := range f.Args {
-		args[i] = arg.String()
+		args[i] = arg.String(ctx)
 	}
 	return fmt.Sprintf("%s(%s)", f.FunctionName(), strings.Join(args, ", "))
 }

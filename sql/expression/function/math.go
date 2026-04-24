@@ -89,9 +89,9 @@ func (r *Rand) Resolved() bool {
 	return r.Child == nil || r.Child.Resolved()
 }
 
-func (r *Rand) String() string {
+func (r *Rand) String(ctx *sql.Context) string {
 	if r.Child != nil {
-		return fmt.Sprintf("%s(%s)", r.FunctionName(), r.Child)
+		return fmt.Sprintf("%s(%s)", r.FunctionName(), r.Child.String(ctx))
 	}
 	return fmt.Sprintf("%s()", r.FunctionName())
 }
@@ -467,11 +467,11 @@ func (a *Atan) Resolved() bool {
 }
 
 // String implements sql.Expression
-func (a *Atan) String() string {
+func (a *Atan) String(ctx *sql.Context) string {
 	if a.x != nil {
-		return fmt.Sprintf("%s(%s, %s)", a.FunctionName(), a.x, a.y)
+		return fmt.Sprintf("%s(%s, %s)", a.FunctionName(), a.x.String(ctx), a.y.String(ctx))
 	}
-	return fmt.Sprintf("%s(%s)", a.FunctionName(), a.y)
+	return fmt.Sprintf("%s(%s)", a.FunctionName(), a.y.String(ctx))
 }
 
 // Type implements sql.Expression
@@ -951,7 +951,7 @@ func (p *Pi) Resolved() bool {
 }
 
 // String implements sql.Expression
-func (p *Pi) String() string {
+func (p *Pi) String(ctx *sql.Context) string {
 	return fmt.Sprintf("%s()", p.FunctionName())
 }
 

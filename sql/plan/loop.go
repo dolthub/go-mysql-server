@@ -45,7 +45,7 @@ func NewLoop(label string, block *Block) *Loop {
 }
 
 // String implements the interface sql.Node.
-func (l *Loop) String() string {
+func (l *Loop) String(ctx *sql.Context) string {
 	label := ""
 	if len(l.Label) > 0 {
 		label = l.Label + ": "
@@ -54,7 +54,7 @@ func (l *Loop) String() string {
 	_ = p.WriteNode("%s", label+"LOOP")
 	var children []string
 	for _, s := range l.statements {
-		children = append(children, s.String())
+		children = append(children, s.String(ctx))
 	}
 	_ = p.WriteChildren(children...)
 	return p.String()

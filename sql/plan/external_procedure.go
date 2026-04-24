@@ -49,7 +49,7 @@ func (n *ExternalProcedure) IsReadOnly() bool {
 }
 
 // String implements the interface sql.Node.
-func (n *ExternalProcedure) String() string {
+func (n *ExternalProcedure) String(ctx *sql.Context) string {
 	return n.ExternalStoredProcedureDetails.Name
 }
 

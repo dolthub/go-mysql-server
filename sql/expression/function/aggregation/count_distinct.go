@@ -16,6 +16,7 @@ package aggregation
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/go-mysql-server/sql/transform"
@@ -120,8 +121,17 @@ func (a *CountDistinct) Window() *sql.WindowDefinition {
 }
 
 // String implements the ValueStats interface.
-func (a *CountDistinct) String() string {
-	return fmt.Sprintf("COUNTDISTINCT(%s)", a.ChildExpressions)
+func (a *CountDistinct) String(ctx *sql.Context) string {
+	sb := strings.Builder{}
+	sb.WriteRune('[')
+	for i, child := range a.ChildExpressions {
+		if i > 0 {
+			sb.WriteString(", ")
+		}
+		sb.WriteString(child.String(ctx))
+	}
+	sb.WriteRune(']')
+	return fmt.Sprintf("COUNTDISTINCT(%s)", sb.String())
 }
 
 // NewWindowFunction implements the WindowAdaptableExpression interface.

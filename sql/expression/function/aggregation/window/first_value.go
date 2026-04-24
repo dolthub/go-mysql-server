@@ -67,19 +67,19 @@ func (f *FirstValue) Resolved() bool {
 	return windowResolved(f.window)
 }
 
-func (f *FirstValue) String() string {
+func (f *FirstValue) String(ctx *sql.Context) string {
 	sb := strings.Builder{}
-	sb.WriteString(fmt.Sprintf("first_value(%s)", f.Child.String()))
+	sb.WriteString(fmt.Sprintf("first_value(%s)", f.Child.String(ctx)))
 	if f.window != nil {
 		sb.WriteString(" ")
-		sb.WriteString(f.window.String())
+		sb.WriteString(f.window.String(ctx))
 	}
 	return sb.String()
 }
 
 func (f *FirstValue) DebugString(ctx *sql.Context) string {
 	sb := strings.Builder{}
-	sb.WriteString(fmt.Sprintf("first_value(%s)", f.Child.String()))
+	sb.WriteString(fmt.Sprintf("first_value(%s)", f.Child.String(ctx)))
 	if f.window != nil {
 		sb.WriteString(" ")
 		sb.WriteString(sql.DebugString(ctx, f.window))

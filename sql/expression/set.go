@@ -38,8 +38,8 @@ func NewSetField(left, expr sql.Expression) sql.Expression {
 	return &SetField{BinaryExpressionStub{LeftChild: left, RightChild: expr}}
 }
 
-func (s *SetField) String() string {
-	return fmt.Sprintf("SET %s = %s", s.LeftChild, s.RightChild)
+func (s *SetField) String(ctx *sql.Context) string {
+	return fmt.Sprintf("SET %s = %s", s.LeftChild.String(ctx), s.RightChild.String(ctx))
 }
 
 func (s *SetField) DebugString(ctx *sql.Context) string {

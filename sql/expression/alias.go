@@ -39,7 +39,7 @@ func (a AliasReference) Table() string {
 	return ""
 }
 
-func (a AliasReference) String() string {
+func (a AliasReference) String(ctx *sql.Context) string {
 	return fmt.Sprintf("(alias reference)%s", a.name)
 }
 
@@ -143,10 +143,7 @@ func (e *Alias) Describe(ctx *sql.Context, options sql.DescribeOptions) string {
 	return fmt.Sprintf("%s as %s", sql.Describe(ctx, e.Child, options), e.name)
 }
 
-func (e *Alias) String() string {
-	// To maintain compatibility with fmt.Stringer we have to use an empty context, but this will fail in any case that
-	// requires a context to determine a string (such as an integrator using the context to contain type information).
-	ctx := sql.NewEmptyContext()
+func (e *Alias) String(ctx *sql.Context) string {
 	return e.Describe(ctx, sql.DescribeOptions{
 		Debug: false,
 	})

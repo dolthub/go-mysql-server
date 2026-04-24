@@ -55,8 +55,8 @@ func (c *ConvertTz) Resolved() bool {
 }
 
 // String implements the sql.Expression interface.
-func (c *ConvertTz) String() string {
-	return fmt.Sprintf("%s(%s,%s,%s)", c.FunctionName(), c.dt, c.fromTz, c.toTz)
+func (c *ConvertTz) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s,%s,%s)", c.FunctionName(), c.dt.String(ctx), c.fromTz.String(ctx), c.toTz.String(ctx))
 }
 
 // Type implements the sql.Expression interface.

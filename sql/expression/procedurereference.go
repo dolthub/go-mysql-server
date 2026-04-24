@@ -351,7 +351,7 @@ func (pp *ProcedureParam) Name() string {
 }
 
 // String implements the sql.Expression interface.
-func (pp *ProcedureParam) String() string {
+func (pp *ProcedureParam) String(ctx *sql.Context) string {
 	return pp.name
 }
 
@@ -424,7 +424,7 @@ func (upp *UnresolvedProcedureParam) Name() string {
 }
 
 // String implements the sql.Expression interface.
-func (upp *UnresolvedProcedureParam) String() string {
+func (upp *UnresolvedProcedureParam) String(ctx *sql.Context) string {
 	return upp.name
 }
 

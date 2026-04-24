@@ -62,7 +62,7 @@ func (f Version) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
-func (f Version) String() string {
+func (f Version) String(ctx *sql.Context) string {
 	return fmt.Sprintf("%s()", f.FunctionName())
 }
 

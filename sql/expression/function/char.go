@@ -53,10 +53,10 @@ func (c *Char) Resolved() bool {
 }
 
 // String implements sql.Expression
-func (c *Char) String() string {
+func (c *Char) String(ctx *sql.Context) string {
 	args := make([]string, len(c.args))
 	for i, arg := range c.args {
-		args[i] = arg.String()
+		args[i] = arg.String(ctx)
 	}
 	str := strings.Join(args, ", ")
 	return fmt.Sprintf("%s(%s)", c.FunctionName(), str)

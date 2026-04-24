@@ -44,7 +44,7 @@ func (r *RowCount) Resolved() bool {
 }
 
 // String implements sql.Expression
-func (r *RowCount) String() string {
+func (r *RowCount) String(ctx *sql.Context) string {
 	return fmt.Sprintf("%s()", r.FunctionName())
 }
 
@@ -98,7 +98,7 @@ var _ sql.CollationCoercible = &LastInsertUuid{}
 
 func NewLastInsertUuid(ctx *sql.Context, children ...sql.Expression) (sql.Expression, error) {
 	if len(children) > 0 {
-		return nil, sql.ErrInvalidChildrenNumber.New((&LastInsertUuid{}).String(), len(children), 0)
+		return nil, sql.ErrInvalidChildrenNumber.New((&LastInsertUuid{}).String(ctx), len(children), 0)
 	}
 	return &LastInsertUuid{}, nil
 }
@@ -111,7 +111,7 @@ func (l *LastInsertUuid) Resolved() bool {
 	return true
 }
 
-func (l *LastInsertUuid) String() string {
+func (l *LastInsertUuid) String(ctx *sql.Context) string {
 	return fmt.Sprintf("%s()", l.FunctionName())
 }
 
@@ -179,8 +179,12 @@ func (r *LastInsertId) Resolved() bool {
 }
 
 // String implements sql.Expression
-func (r *LastInsertId) String() string {
-	return fmt.Sprintf("%s(%s)", r.FunctionName(), r.Child)
+func (r *LastInsertId) String(ctx *sql.Context) string {
+	child := "null"
+	if r.Child != nil {
+		r.Child.String(ctx)
+	}
+	return fmt.Sprintf("%s(%s)", r.FunctionName(), child)
 }
 
 // Type implements sql.Expression
@@ -273,7 +277,7 @@ func (r *FoundRows) Resolved() bool {
 }
 
 // String implements sql.Expression
-func (r *FoundRows) String() string {
+func (r *FoundRows) String(ctx *sql.Context) string {
 	return fmt.Sprintf("%s()", r.FunctionName())
 }
 

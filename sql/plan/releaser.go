@@ -56,8 +56,8 @@ func (r *Releaser) CollationCoercibility(ctx *sql.Context) (collation sql.Collat
 	return sql.GetCoercibility(ctx, r.Child)
 }
 
-func (r *Releaser) String() string {
-	return r.Child.String()
+func (r *Releaser) String(ctx *sql.Context) string {
+	return r.Child.String(ctx)
 }
 
 func (r *Releaser) Equal(n sql.Node) bool {

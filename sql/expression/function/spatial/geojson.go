@@ -49,10 +49,10 @@ func (f *AsGeoJSON) CollationCoercibility(ctx *sql.Context) (collation sql.Colla
 	return ctx.GetCollation(), 2
 }
 
-func (g *AsGeoJSON) String() string {
+func (g *AsGeoJSON) String(ctx *sql.Context) string {
 	var args = make([]string, len(g.ChildExpressions))
 	for i, arg := range g.ChildExpressions {
-		args[i] = arg.String()
+		args[i] = arg.String(ctx)
 	}
 	return fmt.Sprintf("%s(%s)", g.FunctionName(), strings.Join(args, ","))
 }
@@ -421,10 +421,10 @@ func (*GeomFromGeoJSON) CollationCoercibility(ctx *sql.Context) (collation sql.C
 	return sql.Collation_binary, 4
 }
 
-func (g *GeomFromGeoJSON) String() string {
+func (g *GeomFromGeoJSON) String(ctx *sql.Context) string {
 	var args = make([]string, len(g.ChildExpressions))
 	for i, arg := range g.ChildExpressions {
-		args[i] = arg.String()
+		args[i] = arg.String(ctx)
 	}
 	return fmt.Sprintf("ST_GEOMFROMGEOJSON(%s)", strings.Join(args, ","))
 }

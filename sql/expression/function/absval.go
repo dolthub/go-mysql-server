@@ -122,9 +122,9 @@ func (t *AbsVal) Eval(ctx *sql.Context, row sql.Row) (interface{}, error) {
 	}
 }
 
-// String implements the fmt.Stringer interface.
-func (t *AbsVal) String() string {
-	return fmt.Sprintf("%s(%s)", t.FunctionName(), t.Child.String())
+// String implements the sql.Stringer interface.
+func (t *AbsVal) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", t.FunctionName(), t.Child.String(ctx))
 }
 
 func (t *AbsVal) DebugString(ctx *sql.Context) string {

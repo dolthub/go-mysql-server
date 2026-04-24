@@ -45,7 +45,7 @@ func (n *CreateUser) Schema(ctx *sql.Context) sql.Schema {
 }
 
 // String implements the interface sql.Node.
-func (n *CreateUser) String() string {
+func (n *CreateUser) String(ctx *sql.Context) string {
 	users := make([]string, len(n.Users))
 	for i, user := range n.Users {
 		users[i] = user.UserName.String("")

@@ -53,8 +53,8 @@ func (d *DeclareVariables) IsReadOnly() bool {
 }
 
 // String implements the interface sql.Node.
-func (d *DeclareVariables) String() string {
-	return fmt.Sprintf("DECLARE %s %s", strings.Join(d.Names, ", "), d.Type.String())
+func (d *DeclareVariables) String(ctx *sql.Context) string {
+	return fmt.Sprintf("DECLARE %s %s", strings.Join(d.Names, ", "), d.Type.String(ctx))
 }
 
 // Schema implements the interface sql.Node.

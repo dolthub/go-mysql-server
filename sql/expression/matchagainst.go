@@ -154,7 +154,7 @@ func (expr *MatchAgainst) Resolved() bool {
 }
 
 // String implements sql.Expression
-func (expr *MatchAgainst) String() string {
+func (expr *MatchAgainst) String(ctx *sql.Context) string {
 	var searchModifierStr string
 	switch expr.SearchModifier {
 	case fulltext.SearchModifier_NaturalLanguage:
@@ -170,9 +170,9 @@ func (expr *MatchAgainst) String() string {
 	}
 	columns := make([]string, len(expr.Columns))
 	for i := range expr.Columns {
-		columns[i] = expr.Columns[i].String()
+		columns[i] = expr.Columns[i].String(ctx)
 	}
-	return fmt.Sprintf("MATCH (%s) AGAINST (%s %s)", strings.Join(columns, ","), expr.Expr.String(), searchModifierStr)
+	return fmt.Sprintf("MATCH (%s) AGAINST (%s %s)", strings.Join(columns, ","), expr.Expr.String(ctx), searchModifierStr)
 }
 
 // Type implements sql.Expression
@@ -285,7 +285,7 @@ func (expr *MatchAgainst) inNaturalLanguageMode(ctx *sql.Context, row sql.Row) (
 			err = nErr
 			return
 		}
-		if len(docCountIndexes) != 1 || docCountIndexes[0].ID() != "PRIMARY" {
+		if len(docCountIndexes) != 1 || docCountIndexes[0].ID(ctx) != "PRIMARY" {
 			err = fmt.Errorf("expected to find a primary key on the table `%s`", expr.DocCountTable.Name())
 		}
 		expr.docCountIndex = docCountIndexes[0]
@@ -295,7 +295,7 @@ func (expr *MatchAgainst) inNaturalLanguageMode(ctx *sql.Context, row sql.Row) (
 			err = nErr
 			return
 		}
-		if len(globalCountIndexes) != 1 || globalCountIndexes[0].ID() != "PRIMARY" {
+		if len(globalCountIndexes) != 1 || globalCountIndexes[0].ID(ctx) != "PRIMARY" {
 			err = fmt.Errorf("expected to find a primary key on the table `%s`", expr.GlobalCountTable.Name())
 		}
 		expr.globalCountIndex = globalCountIndexes[0]
@@ -305,7 +305,7 @@ func (expr *MatchAgainst) inNaturalLanguageMode(ctx *sql.Context, row sql.Row) (
 			err = nErr
 			return
 		}
-		if len(rowCountIndexes) != 1 || rowCountIndexes[0].ID() != "PRIMARY" {
+		if len(rowCountIndexes) != 1 || rowCountIndexes[0].ID(ctx) != "PRIMARY" {
 			err = fmt.Errorf("expected to find a primary key on the table `%s`", expr.RowCountTable.Name())
 		}
 		expr.rowCountIndex = rowCountIndexes[0]

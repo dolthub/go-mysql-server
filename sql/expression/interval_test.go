@@ -287,7 +287,7 @@ func TestIntervalEvalDelta(t *testing.T) {
 
 	for _, tt := range testCases {
 		interval := NewInterval(tt.expr, tt.unit)
-		t.Run(interval.String(), func(t *testing.T) {
+		t.Run(interval.String(sql.NewEmptyContext()), func(t *testing.T) {
 			require := require.New(t)
 			result, err := interval.EvalDelta(sql.NewEmptyContext(), tt.row)
 			require.NoError(err)

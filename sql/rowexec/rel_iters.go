@@ -62,7 +62,7 @@ func windowToIter(ctx *sql.Context, w *plan.Window) ([]*aggregation.WindowPartit
 		}
 		agg = aggregation.NewAggregation(fn, fn.DefaultFramer())
 
-		id, err := window.PartitionId()
+		id, err := window.PartitionId(ctx)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -258,7 +258,7 @@ func (r RowIterEvaluator) Resolved() bool {
 	return true
 }
 
-func (r RowIterEvaluator) String() string {
+func (r RowIterEvaluator) String(ctx *sql.Context) string {
 	return "RowIterEvaluator"
 }
 

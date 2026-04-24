@@ -76,11 +76,8 @@ func (f *Filter) Describe(ctx *sql.Context, options sql.DescribeOptions) string 
 	return pr.String()
 }
 
-// String implements the fmt.Stringer interface
-func (f *Filter) String() string {
-	// To maintain compatibility with fmt.Stringer we have to use an empty context, but this will fail in any case that
-	// requires a context to determine a string (such as an integrator using the context to contain type information).
-	ctx := sql.NewEmptyContext()
+// String implements the sql.Stringer interface
+func (f *Filter) String(ctx *sql.Context) string {
 	return f.Describe(ctx, sql.DescribeOptions{
 		Analyze:   false,
 		Estimates: false,

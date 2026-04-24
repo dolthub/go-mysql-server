@@ -46,8 +46,8 @@ func (i *IsIPv4) Description() string {
 	return "returns whether argument is an IPv4 address."
 }
 
-func (i *IsIPv4) String() string {
-	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
+func (i *IsIPv4) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String(ctx))
 }
 
 func (i *IsIPv4) Type(ctx *sql.Context) sql.Type { return types.Boolean }
@@ -114,8 +114,8 @@ func (i *IsIPv6) Description() string {
 	return "returns whether argument is an IPv6 address."
 }
 
-func (i *IsIPv6) String() string {
-	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
+func (i *IsIPv6) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String(ctx))
 }
 
 func (i *IsIPv6) Type(ctx *sql.Context) sql.Type { return types.Boolean }
@@ -182,8 +182,8 @@ func (i *IsIPv4Compat) Description() string {
 	return "returns whether argument is an IPv4-compatible address."
 }
 
-func (i *IsIPv4Compat) String() string {
-	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
+func (i *IsIPv4Compat) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String(ctx))
 }
 
 func (i *IsIPv4Compat) Type(ctx *sql.Context) sql.Type { return types.Boolean }
@@ -254,8 +254,8 @@ func (i *IsIPv4Mapped) Description() string {
 	return "returns whether argument is an IPv4-mapped address."
 }
 
-func (i *IsIPv4Mapped) String() string {
-	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String())
+func (i *IsIPv4Mapped) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", i.FunctionName(), i.Child.String(ctx))
 }
 
 func (i *IsIPv4Mapped) Type(ctx *sql.Context) sql.Type { return types.Boolean }

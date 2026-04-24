@@ -50,7 +50,7 @@ func (l *LoadData) Resolved() bool {
 	return l.DestSch.Resolved()
 }
 
-func (l *LoadData) String() string {
+func (l *LoadData) String(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 
 	_ = pr.WriteNode("LOAD DATA %s", l.File)

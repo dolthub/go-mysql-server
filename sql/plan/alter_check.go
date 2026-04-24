@@ -109,12 +109,12 @@ func (c *CreateCheck) CollationCoercibility(ctx *sql.Context) (collation sql.Col
 
 func (c *CreateCheck) Schema(ctx *sql.Context) sql.Schema { return types.OkResultSchema }
 
-func (c CreateCheck) String() string {
+func (c CreateCheck) String(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("AddCheck(%s)", c.Check.Name)
 	_ = pr.WriteChildren(
 		fmt.Sprintf("Table(%s)", c.Table.Name()),
-		fmt.Sprintf("Expr(%s)", c.Check.Expr.String()),
+		fmt.Sprintf("Expr(%s)", c.Check.Expr.String(ctx)),
 	)
 	return pr.String()
 }
@@ -143,7 +143,7 @@ func (d *DropCheck) Schema(ctx *sql.Context) sql.Schema { return nil }
 
 func (d *DropCheck) IsReadOnly() bool { return false }
 
-func (d DropCheck) String() string {
+func (d DropCheck) String(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	_ = pr.WriteNode("DropCheck(%s)", d.Name)
 	_ = pr.WriteChildren(fmt.Sprintf("Table(%s)", d.Table.Name()))
@@ -169,7 +169,7 @@ func NewCheckDefinition(ctx *sql.Context, check *sql.CheckConstraint, schemaForm
 
 	return &sql.CheckDefinition{
 		Name:            check.Name,
-		CheckExpression: unqualifiedCols.String(),
+		CheckExpression: unqualifiedCols.String(ctx),
 		Enforced:        check.Enforced,
 	}, nil
 }
@@ -185,10 +185,10 @@ type DropConstraint struct {
 var _ sql.Node = (*DropConstraint)(nil)
 var _ sql.CollationCoercible = (*DropConstraint)(nil)
 
-func (d *DropConstraint) String() string {
+func (d *DropConstraint) String(ctx *sql.Context) string {
 	tp := sql.NewTreePrinter()
 	_ = tp.WriteNode("DropConstraint(%s)", d.Name)
-	_ = tp.WriteChildren(d.UnaryNode.Child.String())
+	_ = tp.WriteChildren(d.UnaryNode.Child.String(ctx))
 	return tp.String()
 }
 

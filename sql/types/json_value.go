@@ -40,7 +40,7 @@ func JsonToMySqlString(ctx context.Context, jsonWrapper sql.JSONWrapper) (string
 	if err != nil {
 		return "", err
 	}
-	return marshalToMySqlString(val)
+	return marshalToMySqlString(ctx, val)
 }
 
 // JsonToMySqlBytes generates a byte slice representation of a sql.JSONWrapper that is compatible with MySQL's JSON output, including spaces.
@@ -133,7 +133,7 @@ func (doc JSONDocument) ToInterface(context.Context) (interface{}, error) {
 	return doc.Val, nil
 }
 
-func (doc JSONDocument) Compare(ctx context.Context, other sql.JSONWrapper) (int, error) {
+func (doc JSONDocument) Compare(ctx *sql.Context, other sql.JSONWrapper) (int, error) {
 	otherVal, err := other.ToInterface(ctx)
 	if err != nil {
 		return 0, err
@@ -142,11 +142,12 @@ func (doc JSONDocument) Compare(ctx context.Context, other sql.JSONWrapper) (int
 }
 
 func (doc JSONDocument) JSONString() (string, error) {
-	return marshalToMySqlString(doc.Val)
+	// TODO: thread context here
+	return marshalToMySqlString(context.Background(), doc.Val)
 }
 
-// JSONDocument implements the fmt.Stringer interface.
-func (doc JSONDocument) String() string {
+// JSONDocument implements the sql.Stringer interface.
+func (doc JSONDocument) String(ctx *sql.Context) string {
 	result, err := doc.JSONString()
 	if err != nil {
 		return fmt.Sprintf("(Error marshalling JSON: %s, %s)", doc.Val, err.Error())
@@ -171,7 +172,7 @@ type LazyJSONDocument struct {
 
 var _ sql.JSONWrapper = &LazyJSONDocument{}
 var _ JSONBytes = &LazyJSONDocument{}
-var _ fmt.Stringer = &LazyJSONDocument{}
+var _ sql.Stringer = &LazyJSONDocument{}
 var _ driver.Valuer = &LazyJSONDocument{}
 
 func NewLazyJSONDocument(bytes []byte) sql.JSONWrapper {
@@ -206,8 +207,8 @@ func (j *LazyJSONDocument) Value() (driver.Value, error) {
 	return JsonToMySqlString(context.Background(), j)
 }
 
-// LazyJSONDocument implements the fmt.Stringer interface.
-func (j *LazyJSONDocument) String() string {
+// LazyJSONDocument implements the sql.Stringer interface.
+func (j *LazyJSONDocument) String(ctx *sql.Context) string {
 	s, err := JsonToMySqlString(context.Background(), j)
 	if err != nil {
 		return fmt.Sprintf("error while stringifying JSON: %s", err.Error())
@@ -288,8 +289,8 @@ func (doc JSONDocument) Value() (driver.Value, error) {
 	if doc.Val == nil {
 		return nil, nil
 	}
-
-	mysqlString, err := marshalToMySqlString(doc.Val)
+	// TODO: perhaps we should stash the context in the document?
+	mysqlString, err := marshalToMySqlString(context.Background(), doc.Val)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal document: %w", err)
 	}

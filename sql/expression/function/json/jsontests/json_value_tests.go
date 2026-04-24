@@ -15,7 +15,6 @@
 package jsontests
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -68,7 +67,7 @@ func RunJsonValueTests(t *testing.T, prepare prepareJsonValue) {
 		}
 		args = append(args, tt.path)
 		if tt.typ != nil {
-			args = append(args, tt.typ.String())
+			args = append(args, tt.typ.String(sql.NewEmptyContext()))
 		}
 		t.Run(strings.Join(args, ", "), func(t *testing.T) {
 			args := []sql.Expression{expression.NewGetField(0, types.JSON, "", true)}
@@ -85,7 +84,7 @@ func RunJsonValueTests(t *testing.T, prepare prepareJsonValue) {
 			if tt.err == nil {
 				require.NoError(err)
 				if tt.typ == types.JSON {
-					cmp, err := types.JSON.Compare(context.Background(), tt.expected, result)
+					cmp, err := types.JSON.Compare(sql.NewEmptyContext(), tt.expected, result)
 					require.NoError(err)
 					require.Equal(0, cmp)
 				} else {

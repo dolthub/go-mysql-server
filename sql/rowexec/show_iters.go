@@ -37,7 +37,7 @@ func (i *describeIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 	f := i.schema[i.i]
 	i.i++
-	return sql.NewRow(f.Name, f.Type.String()), nil
+	return sql.NewRow(f.Name, f.Type.String(ctx)), nil
 }
 
 func (i *describeIter) Close(*sql.Context) error {
@@ -194,13 +194,13 @@ type idxToShow struct {
 	exPosition int
 }
 
-func (i *indexesToShow) next() (*idxToShow, error) {
+func (i *indexesToShow) next(ctx *sql.Context) (*idxToShow, error) {
 	if i.pos >= len(i.indexes) {
 		return nil, io.EOF
 	}
 
 	index := i.indexes[i.pos]
-	expressions := index.Expressions()
+	expressions := index.Expressions(ctx)
 	if i.epos >= len(expressions) {
 		i.pos++
 		if i.pos >= len(i.indexes) {
@@ -209,7 +209,7 @@ func (i *indexesToShow) next() (*idxToShow, error) {
 
 		index = i.indexes[i.pos]
 		i.epos = 0
-		expressions = index.Expressions()
+		expressions = index.Expressions(ctx)
 	}
 
 	show := &idxToShow{
@@ -228,7 +228,7 @@ type showIndexesIter struct {
 }
 
 func (i *showIndexesIter) Next(ctx *sql.Context) (sql.Row, error) {
-	show, err := i.idxs.next()
+	show, err := i.idxs.next(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -251,7 +251,7 @@ func (i *showIndexesIter) Next(ctx *sql.Context) (sql.Row, error) {
 
 	visible := "YES"
 	if x, ok := show.index.(sql.DriverIndex); ok && len(x.Driver()) > 0 {
-		if !ctx.GetIndexRegistry().CanUseIndex(x) {
+		if !ctx.GetIndexRegistry().CanUseIndex(ctx, x) {
 			visible = "NO"
 		}
 	}
@@ -264,7 +264,7 @@ func (i *showIndexesIter) Next(ctx *sql.Context) (sql.Row, error) {
 	return sql.NewRow(
 		show.index.Table(),     // "Table" string
 		nonUnique,              // "Non_unique" int32, Values [0, 1]
-		show.index.ID(),        // "Key_name" string
+		show.index.ID(ctx),     // "Key_name" string
 		show.exPosition+1,      // "Seq_in_index" int32
 		columnName,             // "Column_name" string
 		nil,                    // "Collation" string, Values [A, D, NULL]
@@ -289,7 +289,7 @@ func isPriCol(ctx *sql.Context, s *plan.ShowColumns, col *sql.Column, table sql.
 		// TODO: also have to determine that there are no primary keys defined later
 		//   this currently works because the primary key shows up as unique, so the condition below satisfies it
 		//   but I am not confident that this is always true
-		idxExprs := idx.Expressions()
+		idxExprs := idx.Expressions(ctx)
 		firstIndexCol := plan.GetColumnFromIndexExpr(ctx, idxExprs[0], table)
 		if firstIndexCol == nil || firstIndexCol.Name != col.Name {
 			return false
@@ -309,7 +309,7 @@ func isPriCol(ctx *sql.Context, s *plan.ShowColumns, col *sql.Column, table sql.
 func isUnqCol(ctx *sql.Context, s *plan.ShowColumns, col *sql.Column, table sql.Table) bool {
 	for _, idx := range s.Indexes {
 		// Column is in a unique index by itself
-		idxExprs := idx.Expressions()
+		idxExprs := idx.Expressions(ctx)
 		if !idx.IsUnique() || len(idxExprs) > 1 {
 			continue
 		}
@@ -324,7 +324,7 @@ func isUnqCol(ctx *sql.Context, s *plan.ShowColumns, col *sql.Column, table sql.
 // isMulCol checks if values in this column can be non-unique and that it's the first column in an index
 func isMulCol(ctx *sql.Context, s *plan.ShowColumns, col *sql.Column, table sql.Table) bool {
 	for _, idx := range s.Indexes {
-		idxExprs := idx.Expressions()
+		idxExprs := idx.Expressions(ctx)
 		firstIdxCol := plan.GetColumnFromIndexExpr(ctx, idxExprs[0], table)
 		// Not first column in index, ignore
 		if firstIdxCol == nil || firstIdxCol.Name != col.Name {
@@ -405,7 +405,7 @@ type NameAndSchema interface {
 
 func convertColumnDefaultToString(ctx *sql.Context, def *sql.ColumnDefaultValue) (string, error) {
 	// TODO : string literals should have character set introducer
-	colDefaultStr := def.String()
+	colDefaultStr := def.String(ctx)
 	defType := def.Type(ctx)
 
 	// These types do not need to be quoted
@@ -460,7 +460,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 			pkOrdinals = append(pkOrdinals, idx)
 		}
 
-		colStmts = append(colStmts, i.formatter.GenerateCreateTableColumnDefinition(col, colDefaultStr, onUpdateStr, tableCollation))
+		colStmts = append(colStmts, i.formatter.GenerateCreateTableColumnDefinition(ctx, col, colDefaultStr, onUpdateStr, tableCollation))
 	}
 
 	for _, idx := range pkOrdinals {
@@ -468,18 +468,18 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 	}
 
 	if len(primaryKeyCols) > 0 {
-		colStmts = append(colStmts, i.formatter.GenerateCreateTablePrimaryKeyDefinition(primaryKeyCols))
+		colStmts = append(colStmts, i.formatter.GenerateCreateTablePrimaryKeyDefinition(ctx, primaryKeyCols))
 	}
 
 	for _, index := range i.indexes {
 		// The primary key may or may not be declared as an index by the table; don't print it twice.
-		if index.ID() == "PRIMARY" {
+		if index.ID(ctx) == "PRIMARY" {
 			continue
 		}
 
 		prefixLengths := index.PrefixLengths()
 		var indexCols []string
-		for idx, expr := range index.Expressions() {
+		for idx, expr := range index.Expressions(ctx) {
 			col := plan.GetColumnFromIndexExpr(ctx, expr, table)
 			if col == nil {
 				continue
@@ -499,12 +499,12 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 				//      migration for any existing databases with functional indexes.
 				// Either fix would let this site use col.Generated.String() unconditionally.
 				if _, ok := col.Generated.Expr.(*sql.UnresolvedColumnDefault); ok {
-					indexCols = append(indexCols, col.Generated.Expr.String())
+					indexCols = append(indexCols, col.Generated.Expr.String(ctx))
 				} else {
-					indexCols = append(indexCols, col.Generated.String())
+					indexCols = append(indexCols, col.Generated.String(ctx))
 				}
 			} else {
-				indexDef := i.formatter.QuoteIdentifier(col.Name)
+				indexDef := i.formatter.QuoteIdentifier(ctx, col.Name)
 				if len(prefixLengths) > idx && prefixLengths[idx] != 0 {
 					indexDef += fmt.Sprintf("(%v)", prefixLengths[idx])
 				}
@@ -512,8 +512,8 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 			}
 		}
 
-		indexDefn, shouldInclude := i.formatter.GenerateCreateTableIndexDefinition(index.IsUnique(), index.IsSpatial(),
-			index.IsFullText(), index.IsVector(), index.ID(), indexCols, index.Comment())
+		indexDefn, shouldInclude := i.formatter.GenerateCreateTableIndexDefinition(ctx, index.IsUnique(), index.IsSpatial(),
+			index.IsFullText(), index.IsVector(), index.ID(ctx), indexCols, index.Comment())
 		if shouldInclude {
 			colStmts = append(colStmts, indexDefn)
 		}
@@ -534,13 +534,13 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 			if len(fk.OnUpdate) > 0 && fk.OnUpdate != sql.ForeignKeyReferentialAction_DefaultAction {
 				onUpdate = string(fk.OnUpdate)
 			}
-			colStmts = append(colStmts, i.formatter.GenerateCreateTableForiegnKeyDefinition(fk.Name, fk.Columns, fk.ParentTable, fk.ParentColumns, onDelete, onUpdate))
+			colStmts = append(colStmts, i.formatter.GenerateCreateTableForiegnKeyDefinition(ctx, fk.Name, fk.Columns, fk.ParentTable, fk.ParentColumns, onDelete, onUpdate))
 		}
 	}
 
 	if i.checks != nil {
 		for _, check := range i.checks {
-			colStmts = append(colStmts, i.formatter.GenerateCreateTableCheckConstraintClause(check.Name, check.Expr.String(), check.Enforced))
+			colStmts = append(colStmts, i.formatter.GenerateCreateTableCheckConstraintClause(ctx, check.Name, check.Expr.String(ctx), check.Enforced))
 		}
 	}
 
@@ -566,7 +566,7 @@ func (i *showCreateTablesIter) produceCreateTableStatement(ctx *sql.Context, tab
 		temp = " TEMPORARY"
 	}
 
-	return i.formatter.GenerateCreateTableStatement(table.Name(), colStmts, temp, autoInc, table.Collation().CharacterSet().Name(), table.Collation().Name(), comment), nil
+	return i.formatter.GenerateCreateTableStatement(ctx, table.Name(), colStmts, temp, autoInc, table.Collation().CharacterSet().Name(), table.Collation().Name(), comment), nil
 }
 
 func produceCreateViewStatement(view *plan.SubqueryAlias) string {

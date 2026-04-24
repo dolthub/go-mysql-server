@@ -213,7 +213,7 @@ func (s *SetOp) Dispose(ctx *sql.Context) {
 	}
 }
 
-func (s *SetOp) String() string {
+func (s *SetOp) String(ctx *sql.Context) string {
 	pr := sql.NewTreePrinter()
 	var distinct string
 	if s.Distinct {
@@ -234,12 +234,12 @@ func (s *SetOp) String() string {
 		children = append(children, fmt.Sprintf("sortFields: %s", s.SortFields.ToExpressions()))
 	}
 	if s.Limit != nil {
-		children = append(children, fmt.Sprintf("limit: %s", s.Limit))
+		children = append(children, fmt.Sprintf("limit: %s", s.Limit.String(ctx)))
 	}
 	if s.Offset != nil {
-		children = append(children, fmt.Sprintf("offset: %s", s.Offset))
+		children = append(children, fmt.Sprintf("offset: %s", s.Offset.String(ctx)))
 	}
-	children = append(children, s.left.String(), s.right.String())
+	children = append(children, s.left.String(ctx), s.right.String(ctx))
 	_ = pr.WriteChildren(children...)
 	return pr.String()
 }
@@ -273,10 +273,10 @@ func (s *SetOp) DebugString(ctx *sql.Context) string {
 		children = append(children, fmt.Sprintf("sortFields: %s", strings.Join(sFields, ", ")))
 	}
 	if s.Limit != nil {
-		children = append(children, fmt.Sprintf("limit: %s", s.Limit))
+		children = append(children, fmt.Sprintf("limit: %s", s.Limit.String(ctx)))
 	}
 	if s.Offset != nil {
-		children = append(children, fmt.Sprintf("offset: %s", s.Offset))
+		children = append(children, fmt.Sprintf("offset: %s", s.Offset.String(ctx)))
 	}
 	children = append(children, sql.DebugString(ctx, s.left), sql.DebugString(ctx, s.right))
 	_ = pr.WriteChildren(children...)

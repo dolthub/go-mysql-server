@@ -1073,7 +1073,7 @@ func keyColumnUsageRowIter(ctx *Context, c Catalog) (RowIter, error) {
 
 				for _, index := range indexes {
 					// In this case we have a multi-index which is not represented in this table
-					if index.ID() != "PRIMARY" && !index.IsUnique() {
+					if index.ID(ctx) != "PRIMARY" && !index.IsUnique() {
 						continue
 					}
 
@@ -1086,7 +1086,7 @@ func keyColumnUsageRowIter(ctx *Context, c Catalog) (RowIter, error) {
 						rows = append(rows, Row{
 							db.CatalogName,  // constraint_catalog
 							db.SchemaName,   // constraint_schema
-							index.ID(),      // constraint_name
+							index.ID(ctx),   // constraint_name
 							db.CatalogName,  // table_catalog
 							db.SchemaName,   // table_schema
 							tbl.Name(),      // table_name
@@ -1245,7 +1245,7 @@ func referentialConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 
 							}
 							for _, index := range indexes {
-								if index.ID() != "PRIMARY" && !index.IsUnique() {
+								if index.ID(ctx) != "PRIMARY" && !index.IsUnique() {
 									continue
 								}
 								colNames := getColumnNamesFromIndex(ctx, index, refTbl)
@@ -1255,7 +1255,7 @@ func referentialConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 										_, hasAll = referencedCols[colName]
 									}
 									if hasAll {
-										uniqueConstName = index.ID()
+										uniqueConstName = index.ID(ctx)
 									}
 								}
 							}
@@ -1403,7 +1403,7 @@ func stGeometryColumnsRowIter(ctx *Context, cat Catalog) (RowIter, error) {
 					srsName interface{}
 					srsId   interface{}
 				)
-				typeName, _ := getDtdIdAndDataType(col.Type)
+				typeName, _ := getDtdIdAndDataType(ctx, col.Type)
 
 				if srid, d := s.GetSpatialTypeSRID(); d {
 					srsName = types.SupportedSRIDs[srid].Name
@@ -1498,7 +1498,7 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 						comment      = ""
 						isVisible    string
 					)
-					indexName = index.ID()
+					indexName = index.ID(ctx)
 					if index.IsUnique() {
 						nonUnique = 0
 					} else {
@@ -1511,7 +1511,7 @@ func statisticsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 
 					// Create a Row for each column this index refers too.
 					i := 0
-					for j, expr := range index.Expressions() {
+					for j, expr := range index.Expressions(ctx) {
 						col := plan.GetColumnFromIndexExpr(ctx, expr, tbl)
 						if col != nil {
 							i += 1
@@ -1630,7 +1630,7 @@ func tableConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 
 				for _, index := range indexes {
 					outputType := "PRIMARY KEY"
-					if index.ID() != "PRIMARY" {
+					if index.ID(ctx) != "PRIMARY" {
 						if index.IsUnique() {
 							outputType = "UNIQUE"
 						} else {
@@ -1643,7 +1643,7 @@ func tableConstraintsRowIter(ctx *Context, c Catalog) (RowIter, error) {
 					rows = append(rows, Row{
 						db.CatalogName, // constraint_catalog
 						db.SchemaName,  // constraint_schema
-						index.ID(),     // constraint_name
+						index.ID(ctx),  // constraint_name
 						db.SchemaName,  // table_schema
 						tbl.Name(),     // table_name
 						outputType,     // constraint_type
@@ -1713,7 +1713,7 @@ func tableConstraintsExtensionsRowIter(ctx *Context, c Catalog) (RowIter, error)
 					rows = append(rows, Row{
 						db.CatalogName, // constraint_catalog
 						db.SchemaName,  // constraint_schema
-						index.ID(),     // constraint_name
+						index.ID(ctx),  // constraint_name
 						tblName,        // table_name
 						nil,            // engine_attribute
 						nil,            // secondary_engine_attribute
@@ -2616,11 +2616,8 @@ func (t *InformationSchemaTable) PartitionRows(ctx *Context, partition Partition
 }
 
 // PartitionCount implements the sql.PartitionCounter interface.
-func (t *InformationSchemaTable) String() string {
-	// To maintain compatibility with fmt.Stringer we have to use an empty context, but this will fail in any case that
-	// requires a context to determine a string (such as an integrator using the context to contain type information).
-	ctx := NewEmptyContext()
-	return printTable(t.Name(), t.Schema(ctx))
+func (t *InformationSchemaTable) String(ctx *Context) string {
+	return printTable(ctx, t.Name(), t.Schema(ctx))
 }
 
 // Key implements Partition  interface
@@ -2663,7 +2660,7 @@ func (n *defaultStatsTable) AssignCatalog(cat Catalog) Table {
 	return n
 }
 
-func printTable(name string, tableSchema Schema) string {
+func printTable(ctx *Context, name string, tableSchema Schema) string {
 	p := NewTreePrinter()
 	_ = p.WriteNode("Table(%s)", name)
 	var schema = make([]string, len(tableSchema))
@@ -2671,7 +2668,7 @@ func printTable(name string, tableSchema Schema) string {
 		schema[i] = fmt.Sprintf(
 			"Column(%s, %s, nullable=%v)",
 			col.Name,
-			col.Type.String(),
+			col.Type.String(ctx),
 			col.Nullable,
 		)
 	}
@@ -2685,7 +2682,7 @@ func partitionKey(tableName string) []byte {
 
 func getColumnNamesFromIndex(ctx *Context, idx Index, table Table) []string {
 	var indexCols []string
-	for _, expr := range idx.Expressions() {
+	for _, expr := range idx.Expressions(ctx) {
 		col := plan.GetColumnFromIndexExpr(ctx, expr, table)
 		if col != nil {
 			indexCols = append(indexCols, col.Name)

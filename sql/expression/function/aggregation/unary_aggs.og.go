@@ -36,15 +36,15 @@ func (a *AnyValue) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
-func (a *AnyValue) String() string {
+func (a *AnyValue) String(ctx *sql.Context) string {
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
 		_ = pr.WriteNode("ANYVALUE")
-		children := []string{a.window.String(), a.Child.String()}
+		children := []string{a.window.String(ctx), a.Child.String(ctx)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return "ANYVALUE(" + a.Child.String() + ")"
+	return "ANYVALUE(" + a.Child.String(ctx) + ")"
 }
 
 func (a *AnyValue) DebugString(ctx *sql.Context) string {
@@ -115,15 +115,15 @@ func (a *Avg) IsNullable(ctx *sql.Context) bool {
 	return true
 }
 
-func (a *Avg) String() string {
+func (a *Avg) String(ctx *sql.Context) string {
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
 		_ = pr.WriteNode("AVG")
-		children := []string{a.window.String(), a.Child.String()}
+		children := []string{a.window.String(ctx), a.Child.String(ctx)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return "AVG(" + a.Child.String() + ")"
+	return "AVG(" + a.Child.String(ctx) + ")"
 }
 
 func (a *Avg) DebugString(ctx *sql.Context) string {
@@ -194,15 +194,15 @@ func (a *BitAnd) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
-func (a *BitAnd) String() string {
+func (a *BitAnd) String(ctx *sql.Context) string {
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
 		_ = pr.WriteNode("BITAND")
-		children := []string{a.window.String(), a.Child.String()}
+		children := []string{a.window.String(ctx), a.Child.String(ctx)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return "BITAND(" + a.Child.String() + ")"
+	return "BITAND(" + a.Child.String(ctx) + ")"
 }
 
 func (a *BitAnd) DebugString(ctx *sql.Context) string {
@@ -273,15 +273,15 @@ func (a *BitOr) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
-func (a *BitOr) String() string {
+func (a *BitOr) String(ctx *sql.Context) string {
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
 		_ = pr.WriteNode("BITOR")
-		children := []string{a.window.String(), a.Child.String()}
+		children := []string{a.window.String(ctx), a.Child.String(ctx)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return "BITOR(" + a.Child.String() + ")"
+	return "BITOR(" + a.Child.String(ctx) + ")"
 }
 
 func (a *BitOr) DebugString(ctx *sql.Context) string {
@@ -352,15 +352,15 @@ func (a *BitXor) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
-func (a *BitXor) String() string {
+func (a *BitXor) String(ctx *sql.Context) string {
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
 		_ = pr.WriteNode("BITXOR")
-		children := []string{a.window.String(), a.Child.String()}
+		children := []string{a.window.String(ctx), a.Child.String(ctx)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return "BITXOR(" + a.Child.String() + ")"
+	return "BITXOR(" + a.Child.String(ctx) + ")"
 }
 
 func (a *BitXor) DebugString(ctx *sql.Context) string {
@@ -431,15 +431,15 @@ func (a *Count) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
-func (a *Count) String() string {
+func (a *Count) String(ctx *sql.Context) string {
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
 		_ = pr.WriteNode("COUNT")
-		children := []string{a.window.String(), a.Child.String()}
+		children := []string{a.window.String(ctx), a.Child.String(ctx)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return "COUNT(" + a.Child.String() + ")"
+	return "COUNT(" + a.Child.String(ctx) + ")"
 }
 
 func (a *Count) DebugString(ctx *sql.Context) string {
@@ -510,15 +510,15 @@ func (a *First) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
-func (a *First) String() string {
+func (a *First) String(ctx *sql.Context) string {
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
 		_ = pr.WriteNode("FIRST")
-		children := []string{a.window.String(), a.Child.String()}
+		children := []string{a.window.String(ctx), a.Child.String(ctx)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return "FIRST(" + a.Child.String() + ")"
+	return "FIRST(" + a.Child.String(ctx) + ")"
 }
 
 func (a *First) DebugString(ctx *sql.Context) string {
@@ -589,15 +589,15 @@ func (a *JsonArray) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
-func (a *JsonArray) String() string {
+func (a *JsonArray) String(ctx *sql.Context) string {
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
 		_ = pr.WriteNode("JSON_ARRAYAGG")
-		children := []string{a.window.String(), a.Child.String()}
+		children := []string{a.window.String(ctx), a.Child.String(ctx)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return "JSON_ARRAYAGG(" + a.Child.String() + ")"
+	return "JSON_ARRAYAGG(" + a.Child.String(ctx) + ")"
 }
 
 func (a *JsonArray) DebugString(ctx *sql.Context) string {
@@ -668,15 +668,15 @@ func (a *Last) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
-func (a *Last) String() string {
+func (a *Last) String(ctx *sql.Context) string {
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
 		_ = pr.WriteNode("LAST")
-		children := []string{a.window.String(), a.Child.String()}
+		children := []string{a.window.String(ctx), a.Child.String(ctx)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return "LAST(" + a.Child.String() + ")"
+	return "LAST(" + a.Child.String(ctx) + ")"
 }
 
 func (a *Last) DebugString(ctx *sql.Context) string {
@@ -747,15 +747,15 @@ func (a *Max) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
-func (a *Max) String() string {
+func (a *Max) String(ctx *sql.Context) string {
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
 		_ = pr.WriteNode("MAX")
-		children := []string{a.window.String(), a.Child.String()}
+		children := []string{a.window.String(ctx), a.Child.String(ctx)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return "MAX(" + a.Child.String() + ")"
+	return "MAX(" + a.Child.String(ctx) + ")"
 }
 
 func (a *Max) DebugString(ctx *sql.Context) string {
@@ -826,15 +826,15 @@ func (a *Min) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
-func (a *Min) String() string {
+func (a *Min) String(ctx *sql.Context) string {
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
 		_ = pr.WriteNode("MIN")
-		children := []string{a.window.String(), a.Child.String()}
+		children := []string{a.window.String(ctx), a.Child.String(ctx)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return "MIN(" + a.Child.String() + ")"
+	return "MIN(" + a.Child.String(ctx) + ")"
 }
 
 func (a *Min) DebugString(ctx *sql.Context) string {
@@ -905,15 +905,15 @@ func (a *Sum) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
-func (a *Sum) String() string {
+func (a *Sum) String(ctx *sql.Context) string {
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
 		_ = pr.WriteNode("SUM")
-		children := []string{a.window.String(), a.Child.String()}
+		children := []string{a.window.String(ctx), a.Child.String(ctx)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return "SUM(" + a.Child.String() + ")"
+	return "SUM(" + a.Child.String(ctx) + ")"
 }
 
 func (a *Sum) DebugString(ctx *sql.Context) string {
@@ -984,15 +984,15 @@ func (a *StdDevPop) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
-func (a *StdDevPop) String() string {
+func (a *StdDevPop) String(ctx *sql.Context) string {
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
 		_ = pr.WriteNode("STDDEVPOP")
-		children := []string{a.window.String(), a.Child.String()}
+		children := []string{a.window.String(ctx), a.Child.String(ctx)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return "STDDEVPOP(" + a.Child.String() + ")"
+	return "STDDEVPOP(" + a.Child.String(ctx) + ")"
 }
 
 func (a *StdDevPop) DebugString(ctx *sql.Context) string {
@@ -1063,15 +1063,15 @@ func (a *StdDevSamp) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
-func (a *StdDevSamp) String() string {
+func (a *StdDevSamp) String(ctx *sql.Context) string {
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
 		_ = pr.WriteNode("STDDEVSAMP")
-		children := []string{a.window.String(), a.Child.String()}
+		children := []string{a.window.String(ctx), a.Child.String(ctx)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return "STDDEVSAMP(" + a.Child.String() + ")"
+	return "STDDEVSAMP(" + a.Child.String(ctx) + ")"
 }
 
 func (a *StdDevSamp) DebugString(ctx *sql.Context) string {
@@ -1142,15 +1142,15 @@ func (a *VarPop) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
-func (a *VarPop) String() string {
+func (a *VarPop) String(ctx *sql.Context) string {
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
 		_ = pr.WriteNode("VARPOP")
-		children := []string{a.window.String(), a.Child.String()}
+		children := []string{a.window.String(ctx), a.Child.String(ctx)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return "VARPOP(" + a.Child.String() + ")"
+	return "VARPOP(" + a.Child.String(ctx) + ")"
 }
 
 func (a *VarPop) DebugString(ctx *sql.Context) string {
@@ -1221,15 +1221,15 @@ func (a *VarSamp) IsNullable(ctx *sql.Context) bool {
 	return false
 }
 
-func (a *VarSamp) String() string {
+func (a *VarSamp) String(ctx *sql.Context) string {
 	if a.window != nil {
 		pr := sql.NewTreePrinter()
 		_ = pr.WriteNode("VARSAMP")
-		children := []string{a.window.String(), a.Child.String()}
+		children := []string{a.window.String(ctx), a.Child.String(ctx)}
 		pr.WriteChildren(children...)
 		return pr.String()
 	}
-	return "VARSAMP(" + a.Child.String() + ")"
+	return "VARSAMP(" + a.Child.String(ctx) + ")"
 }
 
 func (a *VarSamp) DebugString(ctx *sql.Context) string {

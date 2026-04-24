@@ -49,7 +49,7 @@ func replaceCountStar(ctx *sql.Context, a *Analyzer, n sql.Node, _ *plan.Scope, 
 					name = alias.Name()
 				} else {
 					cnt, _ = child.(*aggregation.Count)
-					name = child.String()
+					name = child.String(ctx)
 				}
 
 				if cnt == nil {

@@ -61,8 +61,8 @@ func (*Centroid) CollationCoercibility(ctx *sql.Context) (collation sql.Collatio
 	return sql.Collation_binary, 4
 }
 
-func (c *Centroid) String() string {
-	return fmt.Sprintf("%s(%s)", c.FunctionName(), c.Child.String())
+func (c *Centroid) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", c.FunctionName(), c.Child.String(ctx))
 }
 
 // WithChildren implements the Expression interface.

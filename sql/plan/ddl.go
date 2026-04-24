@@ -170,8 +170,8 @@ func (c *CreateTable) Resolved() bool {
 	return true
 }
 
-// String implements the fmt.Stringer interface.
-func (c *CreateTable) String() string {
+// String implements the sql.Stringer interface.
+func (c *CreateTable) String(ctx *sql.Context) string {
 	ifNotExists := ""
 	if c.ifNotExists {
 		ifNotExists = "if not exists "
@@ -560,7 +560,7 @@ func (*DropTable) CollationCoercibility(ctx *sql.Context) (collation sql.Collati
 }
 
 // String implements the sql.Node interface.
-func (d *DropTable) String() string {
+func (d *DropTable) String(ctx *sql.Context) string {
 	ifExists := ""
 	tblNames, _ := d.TableNames()
 	names := strings.Join(tblNames, ", ")

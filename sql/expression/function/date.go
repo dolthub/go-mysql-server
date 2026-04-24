@@ -49,8 +49,8 @@ func (t *DatetimeConversion) Resolved() bool {
 	return t.Date == nil || t.Date.Resolved()
 }
 
-func (t *DatetimeConversion) String() string {
-	return fmt.Sprintf("%s(%s)", t.FunctionName(), t.Date)
+func (t *DatetimeConversion) String(ctx *sql.Context) string {
+	return fmt.Sprintf("%s(%s)", t.FunctionName(), t.Date.String(ctx))
 }
 
 func (t *DatetimeConversion) Type(ctx *sql.Context) sql.Type {
@@ -288,7 +288,7 @@ func (ut *UnixTimestamp) Eval(ctx *sql.Context, row sql.Row) (interface{}, error
 	if err != nil {
 		// If we aren't able to convert the value to a date, return 0 and set
 		// a warning to match MySQL's behavior
-		ctx.Warn(1292, "Incorrect datetime value: %s", ut.Date.String())
+		ctx.Warn(1292, "Incorrect datetime value: %s", ut.Date.String(ctx))
 		return int64(0), nil
 	}
 
@@ -344,9 +344,9 @@ func toUnixTimestamp(t time.Time, resType sql.Type) interface{} {
 	return unixMicro / 1e6
 }
 
-func (ut *UnixTimestamp) String() string {
+func (ut *UnixTimestamp) String(ctx *sql.Context) string {
 	if ut.Date != nil {
-		return fmt.Sprintf("%s(%s)", ut.FunctionName(), ut.Date)
+		return fmt.Sprintf("%s(%s)", ut.FunctionName(), ut.Date.String(ctx))
 	} else {
 		return fmt.Sprintf("%s()", ut.FunctionName())
 	}
@@ -434,12 +434,12 @@ func (r *FromUnixtime) FunctionName() string {
 	return "FROM_UNIXTIME"
 }
 
-func (r *FromUnixtime) String() string {
+func (r *FromUnixtime) String(ctx *sql.Context) string {
 	switch len(r.ChildExpressions) {
 	case 1:
-		return fmt.Sprintf("FROM_UNIXTIME(%s)", r.ChildExpressions[0])
+		return fmt.Sprintf("FROM_UNIXTIME(%s)", r.ChildExpressions[0].String(ctx))
 	case 2:
-		return fmt.Sprintf("FROM_UNIXTIME(%s, %s)", r.ChildExpressions[0], r.ChildExpressions[1])
+		return fmt.Sprintf("FROM_UNIXTIME(%s, %s)", r.ChildExpressions[0].String(ctx), r.ChildExpressions[1].String(ctx))
 	default:
 		return "FROM_UNIXTIME(INVALID_NUMBER_OF_ARGUMENTS)"
 	}

@@ -44,7 +44,7 @@ func TestMD5(t *testing.T) {
 
 	for _, test := range tests {
 		f := NewMD5(ctx, test.val)
-		t.Run(f.String(), func(t *testing.T) {
+		t.Run(f.String(ctx), func(t *testing.T) {
 			res, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(t, err)
 			require.Equal(t, test.expectedOut, res)
@@ -53,7 +53,7 @@ func TestMD5(t *testing.T) {
 
 	// Test nil
 	f := NewMD5(ctx, expression.NewLiteral(nil, types.Null))
-	t.Run(f.String(), func(t *testing.T) {
+	t.Run(f.String(ctx), func(t *testing.T) {
 		res, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(t, err)
 		require.Equal(t, nil, res)
@@ -76,7 +76,7 @@ func TestSHA1(t *testing.T) {
 
 	for _, test := range tests {
 		f := NewSHA1(ctx, test.val)
-		t.Run(f.String(), func(t *testing.T) {
+		t.Run(f.String(ctx), func(t *testing.T) {
 			res, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(t, err)
 			require.Equal(t, test.expectedOut, res)
@@ -85,7 +85,7 @@ func TestSHA1(t *testing.T) {
 
 	// Test nil
 	f := NewSHA1(ctx, expression.NewLiteral(nil, types.Null))
-	t.Run(f.String(), func(t *testing.T) {
+	t.Run(f.String(ctx), func(t *testing.T) {
 		res, err := f.Eval(sql.NewEmptyContext(), nil)
 		require.NoError(t, err)
 		require.Equal(t, nil, res)
@@ -244,7 +244,7 @@ func TestSHA2(t *testing.T) {
 
 	for _, test := range tests {
 		f := NewSHA2(sql.NewEmptyContext(), test.arg, test.count)
-		t.Run(f.String(), func(t *testing.T) {
+		t.Run(f.String(sql.NewEmptyContext()), func(t *testing.T) {
 			res, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(t, err)
 			require.Equal(t, test.expectedOut, res)
@@ -277,7 +277,7 @@ func TestSHA2Null(t *testing.T) {
 
 	for _, test := range tests {
 		f := NewSHA2(sql.NewEmptyContext(), test.arg, test.count)
-		t.Run(f.String(), func(t *testing.T) {
+		t.Run(f.String(sql.NewEmptyContext()), func(t *testing.T) {
 			res, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(t, err)
 			require.Equal(t, nil, res)
@@ -318,7 +318,7 @@ func TestCompress(t *testing.T) {
 
 	for _, test := range tests {
 		f := NewCompress(sql.NewEmptyContext(), test.val)
-		t.Run(f.String(), func(t *testing.T) {
+		t.Run(f.String(sql.NewEmptyContext()), func(t *testing.T) {
 			res, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(t, err)
 			if test.exp == nil {
@@ -378,7 +378,7 @@ func TestUncompress(t *testing.T) {
 
 	for _, test := range tests {
 		f := NewUncompress(sql.NewEmptyContext(), test.val)
-		t.Run(f.String(), func(t *testing.T) {
+		t.Run(f.String(sql.NewEmptyContext()), func(t *testing.T) {
 			res, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(t, err)
 			if test.exp == nil {
@@ -438,7 +438,7 @@ func TestUncompressedLength(t *testing.T) {
 
 	for _, test := range tests {
 		f := NewUncompressedLength(sql.NewEmptyContext(), test.val)
-		t.Run(f.String(), func(t *testing.T) {
+		t.Run(f.String(sql.NewEmptyContext()), func(t *testing.T) {
 			res, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(t, err)
 			require.Equal(t, test.exp, res)
@@ -483,7 +483,7 @@ func TestValidatePasswordStrength(t *testing.T) {
 
 	for _, test := range tests {
 		f := NewValidatePasswordStrength(sql.NewEmptyContext(), test.val)
-		t.Run(f.String(), func(t *testing.T) {
+		t.Run(f.String(sql.NewEmptyContext()), func(t *testing.T) {
 			res, err := f.Eval(sql.NewEmptyContext(), nil)
 			require.NoError(t, err)
 			require.Equal(t, test.exp, res)
