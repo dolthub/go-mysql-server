@@ -346,18 +346,18 @@ func updateFilterNode(ctx *sql.Context, a *Analyzer, node *plan.Filter, filters 
 		return node.Child
 	}
 
-	// push filters into joinChild
-	if joinChild, ok := node.Child.(*plan.JoinNode); ok && !joinChild.Op.IsOuter() && !joinChild.Op.IsAnti() {
-		a.Log("pushing filters into join node")
-		if joinChild.Op.IsCross() {
-			return plan.NewInnerJoin(joinChild.Left(), joinChild.Right(), expression.JoinAnd(unhandled...))
-		}
-		if joinChild.Filter != nil {
-			unhandled = append(unhandled, joinChild.Filter)
-		}
-		joinChild.Filter = expression.JoinAnd(unhandled...)
-		return joinChild
-	}
+	//// push filters into joinChild
+	//if joinChild, ok := node.Child.(*plan.JoinNode); ok && !joinChild.Op.IsOuter() && !joinChild.Op.IsAnti() {
+	//	a.Log("pushing filters into join node")
+	//	if joinChild.Op.IsCross() {
+	//		return plan.NewInnerJoin(joinChild.Left(), joinChild.Right(), expression.JoinAnd(unhandled...))
+	//	}
+	//	if joinChild.Filter != nil {
+	//		unhandled = append(unhandled, joinChild.Filter)
+	//	}
+	//	joinChild.Filter = expression.JoinAnd(unhandled...)
+	//	return joinChild
+	//}
 
 	if filters.handledCount() == 0 {
 		a.Log("no handled filters, leaving filter untouched")
