@@ -16964,4 +16964,44 @@ var DropDatabaseScripts = []ScriptTest{
 			},
 		},
 	},
+	{
+		// See https://github.com/dolthub/dolt/issues/10924
+		Name:    "INSERT IGNORE truncates invalid UTF-8 at first bad byte",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY, name VARCHAR(255));",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// 0x85 is invalid UTF-8; the row is inserted with the value truncated to the valid prefix.
+				Query:                 "INSERT IGNORE INTO t VALUES (1, UNHEX('5353442031544220322E3585204E564D65'));",
+				Expected:              []sql.Row{{types.OkResult{RowsAffected: 1}}},
+				ExpectedWarning:       mysql.ERTruncatedWrongValueForField,
+				ExpectedWarningsCount: 1,
+			},
+			{
+				Query:    "SELECT name, HEX(name) FROM t WHERE id = 1;",
+				Expected: []sql.Row{{"SSD 1TB 2.5", "5353442031544220322E35"}},
+			},
+		},
+	},
+	{
+		// See https://github.com/dolthub/dolt/issues/10924
+		Name:    "LIKE with invalid UTF-8 pattern issues warning and returns no match",
+		Dialect: "mysql",
+		SetUpScript: []string{
+			"CREATE TABLE t (id INT PRIMARY KEY, name VARCHAR(255));",
+			"INSERT INTO t VALUES (1, 'hello');",
+		},
+		Assertions: []ScriptTestAssertion{
+			{
+				// 0x85 is invalid UTF-8 in the pattern literal; LIKE issues warning 1300 and returns no match.
+				Query:                           "SELECT id FROM t WHERE name LIKE '%" + "\x85" + "%';",
+				Expected:                        []sql.Row{},
+				ExpectedWarning:                 mysql.ERInvalidCharacterString,
+				ExpectedWarningsCount:           1,
+				ExpectedWarningMessageSubstring: "invalid string for character set",
+			},
+		},
+	},
 }
